@@ -113,7 +113,7 @@ procedure FitDriveBarGlyphs(AMaxWidth: Integer; out AGlyphs: TArray<Char>;
 implementation
 
 uses
-  System.Math, System.Classes, System.SyncObjs,
+  System.Math, System.Classes,
   Winapi.Windows,
   uTerminalTypes, uVfsTypes, uStrings;
 
@@ -435,7 +435,11 @@ begin
 end;
 
 var
-  GDriveInfoCacheSection: TCriticalSection;
+  /// <summary>A plain record in the data segment, not a heap object: a
+  /// worker stuck on an unresponsive drive can wake up after the RTL has
+  /// shut the memory manager down, and must still be able to take the lock
+  /// to see GDriveInfoShuttingDown.</summary>
+  GDriveInfoLock: TRTLCriticalSection;
   GDriveInfoCache: TDriveInfoArray;
   GDriveInfoCacheReady: Boolean;
   /// <summary>Drive letters with a worker thread currently running
@@ -443,11 +447,20 @@ var
   /// here forever (an unresponsive network share) simply never gets
   /// re-queried; it does NOT block any other drive's worker or result.</summary>
   GDriveInfoInFlight: TArray<Char>;
+  /// <summary>Set by finalization under GDriveInfoLock. A worker still stuck
+  /// on an unresponsive drive can return after the program's main block
+  /// ends -- by then globals and the heap are being torn down, so it must
+  /// leave without touching either (see StartDriveWorker).</summary>
+  GDriveInfoShuttingDown: Boolean;
 
-procedure EnsureDriveInfoCacheSection;
+procedure LockDriveInfo; inline;
 begin
-  if GDriveInfoCacheSection = nil then
-    GDriveInfoCacheSection := TCriticalSection.Create;
+  EnterCriticalSection(GDriveInfoLock);
+end;
+
+procedure UnlockDriveInfo; inline;
+begin
+  LeaveCriticalSection(GDriveInfoLock);
 end;
 
 /// <summary>True once a drive's cache entry carries real detail (as opposed
@@ -519,7 +532,15 @@ begin
       Info.SerialNumber := 0;
       Info.VolumeFlags := 0;
       FillVolumeDetails(Info, Dt); // the slow part -- may block for a long time
-      GDriveInfoCacheSection.Enter;
+      LockDriveInfo;
+      if GDriveInfoShuttingDown then
+      begin
+        // Woke up after finalization: the heap may already be gone, so even
+        // releasing this frame's strings or the TThread object would fault.
+        // The process is ending anyway -- leave without any RTL cleanup.
+        UnlockDriveInfo;
+        ExitThread(0);
+      end;
       try
         RemoveInFlight(ALetter);
         Idx := IndexOfDriveLetter(GDriveInfoCache, ALetter);
@@ -531,15 +552,17 @@ begin
           SetLength(GDriveInfoCache, Idx + 1);
           GDriveInfoCache[Idx] := Info;
         end;
+        // Queued under the lock so finalization cannot slip in between the
+        // shutdown check and the queue (TThread.Queue does not block).
+        if Assigned(Callback) then
+          TThread.Queue(nil,
+            procedure
+            begin
+              Callback();
+            end);
       finally
-        GDriveInfoCacheSection.Leave;
+        UnlockDriveInfo;
       end;
-      if Assigned(Callback) then
-        TThread.Queue(nil,
-          procedure
-          begin
-            Callback();
-          end);
     end).Start;
 end;
 
@@ -557,7 +580,7 @@ var
 begin
   Letters := EnumLogicalDrivesFast; // cheap -- no GetVolumeInformation/GetDiskFreeSpaceEx
   SetLength(ToSpawn, 0);
-  GDriveInfoCacheSection.Enter;
+  LockDriveInfo;
   try
     if not GDriveInfoCacheReady then
     begin
@@ -584,7 +607,7 @@ begin
       ToSpawn[High(ToSpawn)] := Letters[I].Letter;
     end;
   finally
-    GDriveInfoCacheSection.Leave;
+    UnlockDriveInfo;
   end;
 
   for I := 0 to High(ToSpawn) do
@@ -593,16 +616,15 @@ end;
 
 function CachedDriveInfo(const AOnRefreshed: TProc): TDriveInfoArray;
 begin
-  EnsureDriveInfoCacheSection;
   StartDriveInfoRefresh(AOnRefreshed);
-  GDriveInfoCacheSection.Enter;
+  LockDriveInfo;
   try
     if GDriveInfoCacheReady then
       Result := Copy(GDriveInfoCache)
     else
       Result := EnumLogicalDrivesFast;
   finally
-    GDriveInfoCacheSection.Leave;
+    UnlockDriveInfo;
   end;
 end;
 
@@ -614,8 +636,7 @@ procedure ForceRefreshDriveInfo(const AOnRefreshed: TProc = nil);
 var
   I: Integer;
 begin
-  EnsureDriveInfoCacheSection;
-  GDriveInfoCacheSection.Enter;
+  LockDriveInfo;
   try
     for I := 0 to High(GDriveInfoCache) do
       if not IsLetterInFlight(GDriveInfoCache[I].Letter) then
@@ -625,7 +646,7 @@ begin
         GDriveInfoCache[I].FreeBytes := 0;
       end;
   finally
-    GDriveInfoCacheSection.Leave;
+    UnlockDriveInfo;
   end;
   StartDriveInfoRefresh(AOnRefreshed);
 end;
@@ -809,5 +830,16 @@ begin
   ADriveCount := DriveN;
   AShowSep := (DriveN > 0) and (SpecialN > 0);
 end;
+
+initialization
+  InitializeCriticalSection(GDriveInfoLock);
+
+finalization
+  // Workers blocked on an unresponsive drive outlive the main block; stop
+  // them touching GDriveInfoCache (or the heap) once they wake. The lock is
+  // deliberately never deleted: those late workers still enter it.
+  LockDriveInfo;
+  GDriveInfoShuttingDown := True;
+  UnlockDriveInfo;
 
 end.
