@@ -87,7 +87,7 @@ type
     procedure FlushPendingToUi(AEpoch: Integer);
     procedure QueueExit(ACode: DWORD; AEpoch: Integer);
     function LaunchProcess(const ACmdLine, AWorkingDir: string;
-      AKeepStdIn: Boolean; ACols, ARows: Word): Boolean;
+      ACols, ARows: Word): Boolean;
     /// <summary>Natural process exit (the shell just runs `exit`) leaves the
     /// ConPTY pseudoconsole -- and so the output pipe's write end -- open, so
     /// the reader thread's blocking ReadFile never observes EOF/broken-pipe
@@ -1054,7 +1054,7 @@ begin
 end;
 
 function TConPtySession.LaunchProcess(const ACmdLine, AWorkingDir: string;
-  AKeepStdIn: Boolean; ACols, ARows: Word): Boolean;
+  ACols, ARows: Word): Boolean;
 var
   PtyInRead, PtyOutWrite: THandle;
   Sa: TSecurityAttributes;
@@ -1153,6 +1153,11 @@ begin
     // with ERROR_INVALID_PARAMETER (confirmed empirically; matches
     // Microsoft's own ConPTY sample, which sets cb = sizeof(STARTUPINFOEX)).
     Si.StartupInfo.cb := SizeOf(Si);
+    // Null std handles (Si is zeroed) with STARTF_USESTDHANDLES: otherwise a
+    // console-subsystem host whose stdio is redirected (test exes under CI,
+    // pipes) passes its own std handles to the child, which then talks to
+    // them instead of the pseudoconsole -- cmd reads EOF and exits at once.
+    Si.StartupInfo.dwFlags := STARTF_USESTDHANDLES;
 
     CmdLine := ACmdLine;
     UniqueString(CmdLine);
@@ -1175,14 +1180,9 @@ begin
     FProcess := Pi.hProcess;
     FThread := Pi.hThread;
     FRunning := True;
-
-    if not AKeepStdIn then
-    begin
-      // One-shot Start(): matches the old pipe path's immediate-EOF behavior;
-      // WriteInput correctly reports "stdin closed" afterward.
-      CloseHandle(FStdInWrite);
-      FStdInWrite := INVALID_HANDLE_VALUE;
-    end;
+    // FStdInWrite stays open for one-shot Start() too: closing ConPTY's input
+    // pipe means "terminal gone", and conhost tears the session down (killing
+    // the child before it prints anything). WriteInput refuses one-shot input.
 
     FReader := TPtyReaderThread.Create(Self);
     FReader.Start;
@@ -1258,7 +1258,7 @@ begin
     Exit;
   end;
   BeginSession(AOnOutput, AOnExit, False);
-  Result := LaunchProcess(BuildCmdLineForShell(ACommand), AWorkingDir, False, ACols, ARows);
+  Result := LaunchProcess(BuildCmdLineForShell(ACommand), AWorkingDir, ACols, ARows);
 end;
 
 function TConPtySession.StartShell(const AProfile, ACwd: string;
@@ -1275,7 +1275,7 @@ begin
     FPersistent := False;
     Exit(False);
   end;
-  Result := LaunchProcess(Cmd, Cwd, True, ACols, ARows);
+  Result := LaunchProcess(Cmd, Cwd, ACols, ARows);
 end;
 
 function TConPtySession.StartShell(const ACwd: string; ACols, ARows: Word;
@@ -1283,7 +1283,7 @@ function TConPtySession.StartShell(const ACwd: string; ACols, ARows: Word;
 begin
   BeginSession(AOnOutput, AOnExit, True);
   FProfileId := cShellProfileCmd;
-  Result := LaunchProcess(BuildPersistentShellCmdLine('cmd'), ACwd, True, ACols, ARows);
+  Result := LaunchProcess(BuildPersistentShellCmdLine('cmd'), ACwd, ACols, ARows);
 end;
 
 procedure TConPtySession.WriteInput(const AText: string);
@@ -1298,6 +1298,11 @@ begin
   if not IsRunning then
   begin
     FLastError := 'Shell is not running';
+    Exit;
+  end;
+  if not FPersistent then
+  begin
+    FLastError := 'Shell stdin is closed';
     Exit;
   end;
 
