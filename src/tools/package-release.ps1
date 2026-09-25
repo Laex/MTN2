@@ -9,8 +9,14 @@ $Bin = Join-Path $Root 'bin'
 $Dist = Join-Path $Root 'dist'
 $Stage = Join-Path $Dist 'MTN2'
 
-if (-not (Test-Path (Join-Path $Bin 'MTN2.exe'))) {
-    throw "bin\MTN2.exe not found; run src\build.ps1 first"
+foreach ($Required in 'MTN2.exe', 'sk4d.dll') {
+    # sk4d.dll: MTN2 renders through Skia and does not start without it.
+    if (-not (Test-Path (Join-Path $Bin $Required))) {
+        throw "bin\$Required not found; run src\build.ps1 first"
+    }
+}
+if (-not (Test-Path (Join-Path $Bin 'wasmtime.dll'))) {
+    Write-Host 'WARN: bin\wasmtime.dll missing -- WASM plugins will not load from this package'
 }
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null

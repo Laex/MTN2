@@ -107,9 +107,23 @@ if ($7zSrc) {
     Write-Host "WARN: 7z.dll not found; drop an x64 copy into $(Split-Path $Dest7z) for 7z:// to work"
 }
 
+# MTN2 renders through Skia (FMX.Skia, GlobalUseSkia): the exe does not start
+# without sk4d.dll next to it. The IDE deploys it; a command-line build must.
+$SkiaArch = if ($Platform -eq 'Win64') { 'win64' } else { 'win32' }
+$SkiaBin = if ($Platform -eq 'Win64') { 'bin64' } else { 'bin' }
+$SkiaDll = @((Join-Path $Studio "Redist\$SkiaArch\sk4d.dll"), (Join-Path $Studio "$SkiaBin\sk4d.dll")) |
+    Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $SkiaDll) { throw "sk4d.dll not found under $Studio (Redist\$SkiaArch or $SkiaBin)" }
+Copy-Item $SkiaDll (Join-Path (Split-Path $Exe -Parent) 'sk4d.dll') -Force
+Write-Host "OK: staged sk4d.dll from $SkiaDll"
+
 $WasmtimeDll = $env:MTN2_WASMTIME_DLL
 if (-not $WasmtimeDll) {
     $WasmtimeDll = Join-Path $PSScriptRoot 'tools\wasmtime\wasmtime.dll'
+    if (-not (Test-Path $WasmtimeDll)) {
+        try { & (Join-Path $PSScriptRoot 'tools\fetch-wasmtime.ps1') | Out-Null }
+        catch { Write-Host "WARN: wasmtime.dll download failed: $_" }
+    }
 }
 if ($WasmtimeDll -and (Test-Path $WasmtimeDll)) {
     Copy-Item $WasmtimeDll (Join-Path (Split-Path $Exe -Parent) 'wasmtime.dll') -Force
