@@ -26,6 +26,7 @@ const
   cUpdateAssetSuffix = '-win64.zip';
   cUpdateStagingDir = '.update-staging';
   cUpdateWaitPidSwitch = '--wait-pid';
+  cNoSkiaSwitch = '--no-skia';
   cUpdateCheckIntervalHours = 24;
 
 type
@@ -88,6 +89,8 @@ function RestartApplication(const AExeFile: string; out AError: string): Boolean
 procedure WaitForPreviousInstanceFromCommandLine;
 /// <summary>First command-line argument that is not an updater switch.</summary>
 function StartupPathArgument: string;
+/// <summary>True when the process was started with --no-skia.</summary>
+function NoSkiaRequested: Boolean;
 
 function DefaultUpdateSettings: TUpdateSettings;
 function LoadUpdateSettings: TUpdateSettings;
@@ -538,10 +541,22 @@ begin
   begin
     if SameText(ParamStr(I), cUpdateWaitPidSwitch) then
       Inc(I, 2)
+    else if SameText(ParamStr(I), cNoSkiaSwitch) then
+      Inc(I)
     else
       Exit(ParamStr(I));
   end;
   Result := '';
+end;
+
+function NoSkiaRequested: Boolean;
+var
+  I: Integer;
+begin
+  for I := 1 to ParamCount do
+    if SameText(ParamStr(I), cNoSkiaSwitch) then
+      Exit(True);
+  Result := False;
 end;
 
 function UpdateSettingsFile: string;

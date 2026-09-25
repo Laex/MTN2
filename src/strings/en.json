@@ -6,7 +6,6 @@
     "DIALOG_ABOUT": {
       "$title": "About MTN2",
       "lbl_sub": "High-Performance Dual Panel File Manager",
-      "lbl_skia": "Graphics Engine: Standard GDI/FMX Renderer",
       "lbl_pty": "Platform: Win64 | ConPty Persistent Shell",
       "ok": "  OK  "
     },
@@ -348,6 +347,9 @@
     "update.busyDetails": "The update will be installed when MTN2 exits.",
     "update.upToDate": "You have the latest version (%s).",
     "update.current": "Installed version: %s.",
+    "about.version": "Version %s",
+    "about.engine.skia": "Graphics Engine: Skia (mono AA + modal dim)",
+    "about.engine.gdi": "Graphics Engine: Standard GDI/FMX Renderer",
     "update.failed": "Could not update MTN2.",
     "update.noWrite": "The program folder is not writable.",
     "update.openPage": "Open page",    "delete.promptOne": "Delete item \"%s\"?",

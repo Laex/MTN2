@@ -277,7 +277,11 @@ function BuildKeymapEditDialog(const AActionName, AKeysText,
 implementation
 
 uses
-  uDialogResources, uDisplaySettings, uStrings;
+  uDialogResources, uDialogLocaleLayout, uDisplaySettings, uStrings, uUpdater
+  {$IFDEF SKIA}
+  , FMX.Skia
+  {$ENDIF}
+  ;
 
 procedure ClearControlLayout(var C: TDialogControl);
 begin
@@ -1281,16 +1285,30 @@ end;
 
 function BuildAboutDialog: TDialogDeclaration;
 var
-  SkiaStatus: string;
+  Engine, Ver: string;
 begin
   RequireDialogResource(cResDialogAbout, Result);
 
+  // --no-skia wins even if GlobalUseSkia was already captured by the canvas.
   {$IFDEF SKIA}
-  SkiaStatus := 'Skia (mono AA + modal dim)';
+  if GlobalUseSkia and not NoSkiaRequested then
+    Engine := T('ui.about.engine.skia', 'Graphics Engine: Skia (mono AA + modal dim)')
+  else
+    Engine := T('ui.about.engine.gdi', 'Graphics Engine: Standard GDI/FMX Renderer');
   {$ELSE}
-  SkiaStatus := 'Standard GDI/FMX Renderer';
+  Engine := T('ui.about.engine.gdi', 'Graphics Engine: Standard GDI/FMX Renderer');
   {$ENDIF}
-  DialogSetLabelText(Result, 'lbl_skia', 'Graphics Engine: ' + SkiaStatus);
+  DialogSetLabelText(Result, 'lbl_skia', Engine);
+
+  Ver := AppVersionString;
+  if Ver = '' then
+    Ver := '?';
+  DialogSetLabelText(Result, 'lbl_version', T('ui.about.version', 'Version %s', [Ver]));
+  // RequireDialogResource already fitted the English JSON captions. These two
+  // lines are longer in translation, so measure them again or the single-row
+  // label clips (DrawLabel keeps only the first wrapped line).
+  if not SameText(CurrentLocale, 'en') then
+    FitDialogToTranslatedText(Result);
 end;
 
 function BuildKeymapDialog(const AItems: TArray<string>;

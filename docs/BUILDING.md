@@ -18,6 +18,8 @@
 
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
 
+Запуск: `bin\MTN2.exe [--no-skia] [путь]`. Ключи (`--no-skia`, путь новой вкладкой, служебный `--wait-pid`) — [ARCHITECTURE.md](ARCHITECTURE.md) §10.
+
 ## Тесты
 
 Каждый тест — отдельная консольная программа `Test*.dpr` (без фреймворка): код выхода 0 — успех.

@@ -10,8 +10,8 @@ unit uDialogLocaleLayout;
   longer caption cannot land on the next control. A control that already
   reached the right client edge stretches with the dialog. The dialog width
   grows to cover the new right edge, at least two client cells of right
-  padding for button ▄ shadow + gap before the frame (rule labels that
-  already spanned the client still stretch flush to both sides), and the
+  padding for button ▄ shadow + gap before the frame (a rule that already
+  spanned the client keeps the same inset on the right as on the left), and the
   title plus the frame's close mark. After button widths settle, each row
   of buttons is recentered in the new client width. Width never shrinks. }
 
@@ -316,10 +316,12 @@ begin
   begin
     if Stretch[I] then
     begin
-      // Rules stay flush with both frame sides (same as the source layout).
-      // Other stretch controls keep RightPad so a button's ▄ + gap still fit.
+      // A rule's left inset is its column. The right inset matches it, so a
+      // separator that started one cell in from the frame stays one cell in
+      // after the dialog grows. Other stretch controls keep RightPad so a
+      // button's ▄ + gap still fit.
       if Rule[I] then
-        NewW[I] := Max(NewW[I], NewClient - NewCol[I])
+        NewW[I] := Max(1, NewClient - 2 * NewCol[I])
       else
         NewW[I] := Max(NewW[I], NewClient - RightPad - NewCol[I]);
     end;

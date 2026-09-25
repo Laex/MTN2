@@ -2,6 +2,7 @@ program MTN2;
 
 // Skia: project DCC_Define SKIA in MTN2.dproj (+ GlobalUseSkia below).
 // Rollback: remove SKIA from DCC_Define and the FMX.Skia / GlobalUseSkia bits.
+// Runtime: --no-skia leaves the Skia-linked binary on the GDI/FMX canvas.
 
 uses
   {$IFDEF SKIA}
@@ -164,7 +165,7 @@ begin
   end;
 
   {$IFDEF SKIA}
-  GlobalUseSkia := True;
+  GlobalUseSkia := not NoSkiaRequested;
   {$ENDIF}
   Application.Initialize;
   Application.CreateForm(TMainForm, MainForm);
