@@ -171,6 +171,7 @@ begin
 
     tmaHelpContents: CallProc(AHost.OpenHelp);
     tmaHelpAbout: CallProc(AHost.OpenAboutDialog);
+    tmaHelpUpdates: CallProc(AHost.OpenUpdates);
     tmaQuit: CallProc(AHost.RequestQuit);
   else
     Result := False;
@@ -184,7 +185,7 @@ begin
     tmaNone:
       Exit(False);
 
-    tmaHelpContents, tmaHelpAbout, tmaQuit,
+    tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
     tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,

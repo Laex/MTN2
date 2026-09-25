@@ -10,7 +10,23 @@
       "lbl_pty": "Platform: Win64 | ConPty Persistent Shell",
       "ok": "  OK  "
     },
-    "DIALOG_ARCHIVEPASSWORD": {
+    "DIALOG_UPDATE": {
+      "$title": "MTN2 update",
+      "update": "Update",
+      "later": "Later",
+      "skip": "Skip this version"
+    },
+    "DIALOG_UPDATEMSG": {
+      "$title": "MTN2 update",
+      "ok": "OK",
+      "cancel": "Cancel"
+    },
+    "DIALOG_UPDATES": {
+      "$title": "Updates",
+      "check_on_start": "Check for updates at startup",
+      "check": "Check now",
+      "close": "Close"
+    },    "DIALOG_ARCHIVEPASSWORD": {
       "$title": "Archive password",
       "ok": "OK",
       "cancel": "Cancel"
@@ -321,7 +337,20 @@
     }
   },
   "ui": {
-    "delete.promptOne": "Delete item \"%s\"?",
+    "update.offer": "Version %s is available (installed: %s).",
+    "update.offerDetails": "Download and install it?",
+    "update.downloading": "Downloading version %s...",
+    "update.ready": "Version %s is downloaded and ready to install.",
+    "update.readyDetails": "Restart MTN2 now?",
+    "update.restartNow": "Restart",
+    "update.onExit": "On exit",
+    "update.busy": "Background jobs are running.",
+    "update.busyDetails": "The update will be installed when MTN2 exits.",
+    "update.upToDate": "You have the latest version (%s).",
+    "update.current": "Installed version: %s.",
+    "update.failed": "Could not update MTN2.",
+    "update.noWrite": "The program folder is not writable.",
+    "update.openPage": "Open page",    "delete.promptOne": "Delete item \"%s\"?",
     "delete.promptMany": "Delete %d selected items?",
     "delete.okRecycle": "Recycle",
     "delete.okWipe": "Wipe",
@@ -527,6 +556,7 @@
     "category.Right": "Right",
 
     "tmaHelpAbout": "About MTN2...",
+    "tmaHelpUpdates": "Check for updates...",
     "tmaHelpContents": "Help contents",
     "tmaQuit": "Quit",
 

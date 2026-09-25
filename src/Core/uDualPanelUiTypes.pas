@@ -145,7 +145,10 @@ type
     hdkAssociations, hdkAssociationEdit, hdkAssociationConfirm,
     hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt,
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress,
-    hdkWorkspaceTabRename, hdkExternalTools, hdkChecksumOptions, hdkChecksumResult);
+    hdkWorkspaceTabRename, hdkExternalTools, hdkChecksumOptions, hdkChecksumResult,
+    // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
+    // command goes back to the opener's callback.
+    hdkHost);
 
   /// <summary>Dialog-field values DialogCommand reads unconditionally before
   /// dispatching on FDialogKind — see DispatchDialogCommand. Each field is

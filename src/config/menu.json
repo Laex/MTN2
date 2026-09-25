@@ -5,6 +5,7 @@
       "hotChar": "",
       "items": [
         { "caption": "About MTN2...", "hotChar": "A", "shortcut": "", "action": "tmaHelpAbout" },
+        { "caption": "Check for updates...", "hotChar": "U", "shortcut": "", "action": "tmaHelpUpdates" },
         { "caption": "Help contents", "hotChar": "H", "shortcut": "F1", "action": "tmaHelpContents" },
         { "isSeparator": true },
         { "caption": "Quit", "hotChar": "Q", "shortcut": "F10", "action": "tmaQuit" }

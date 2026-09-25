@@ -35,6 +35,9 @@ const
   cResDialogFileDiff = 'DIALOG_FILEDIFF';
   cResDialogTerminalProfile = 'DIALOG_TERMINALPROFILE';
   cResDialogAbout = 'DIALOG_ABOUT';
+  cResDialogUpdate = 'DIALOG_UPDATE';
+  cResDialogUpdateMsg = 'DIALOG_UPDATEMSG';
+  cResDialogUpdates = 'DIALOG_UPDATES';
   cResDialogPluginList = 'DIALOG_PLUGINLIST';
   cResDialogColorCoding = 'DIALOG_COLORCODING';
   cResDialogColorCodingEdit = 'DIALOG_COLORCODINGEDIT';

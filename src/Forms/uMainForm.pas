@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings;
+  uDisplaySettings, uStrings, uUpdateController;
 
 type
   TMainForm = class(TForm)
@@ -63,6 +63,10 @@ type
     FBlinkPhase: Boolean;   // True = cursor visible
     FCursorBlinkEnabled: Boolean;
     FContextMenuTimer: TTimer;
+    /// <summary>Self-update (Help > Updates, quiet check shortly after start).</summary>
+    FUpdater: TUpdateController;
+    FUpdateTimer: TTimer;
+    FAppVersion: string;
     FContextHoldPath: string;
     FContextHoldScreenX: Integer;
     FContextHoldScreenY: Integer;
@@ -130,6 +134,9 @@ type
     procedure DualPanelShowProperties(const APaths: TArray<string>);
     function TryDualPanelQuickViewWheel(AWheelDelta: Integer): Boolean;
     procedure DualPanelQuitRequest(Sender: TObject);
+    procedure DualPanelOpenUpdates(Sender: TObject);
+    procedure UpdateTimerTick(Sender: TObject);
+    procedure CreateUpdater;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelShellCwdSync(const APath: string);
     procedure DualPanelToggleConsole(Sender: TObject);
@@ -271,7 +278,6 @@ var
 
 const
   AppName = 'MTN2';
-  AppVersion = '0.3.0';
   AppTitle = 'Modern Terminal Navigator 2';
 
 implementation
@@ -279,7 +285,7 @@ implementation
 {$R *.fmx}
 
 uses
-  FMX.Platform.Win, uOverlayRenderer, uSingleInstance;
+  FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes;
 
 const
   cBlinkIntervalMs = 530;   // standard Windows cursor blink rate
@@ -707,10 +713,10 @@ begin
     ActiveTitle := '  [' + FMdi.Active.Title + ']';
   if Assigned(FRenderer) then
     Caption := Format('%s - %s v%s  [%dx%d  %s %.0f%%%s]',
-      [AppTitle, AppName, AppVersion, FRenderer.Cols, FRenderer.Rows,
+      [AppTitle, AppName, FAppVersion, FRenderer.Cols, FRenderer.Rows,
        T('ui.window.zoom', 'zoom'), FRenderer.Zoom * 100, ActiveTitle])
   else
-    Caption := Format('%s - %s v%s', [AppTitle, AppName, AppVersion]);
+    Caption := Format('%s - %s v%s', [AppTitle, AppName, FAppVersion]);
 end;
 
 procedure TMainForm.SyncRenderer;
@@ -767,6 +773,7 @@ begin
   FDualPanel.OnOpenEditor := DualPanelOpenEditor;
   FDualPanel.OnShowProperties := DualPanelShowProperties;
   FDualPanel.OnQuitRequest := DualPanelQuitRequest;
+  FDualPanel.OnOpenUpdates := DualPanelOpenUpdates;
   FDualPanel.OnRunCommand := DualPanelRunCommand;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
@@ -1177,6 +1184,50 @@ begin
   Close;
 end;
 
+procedure TMainForm.DualPanelOpenUpdates(Sender: TObject);
+begin
+  if Assigned(FUpdater) then
+    FUpdater.OpenUpdatesDialog;
+end;
+
+procedure TMainForm.UpdateTimerTick(Sender: TObject);
+begin
+  FUpdateTimer.Enabled := False;
+  if Assigned(FUpdater) then
+    FUpdater.StartupCheck;
+end;
+
+procedure TMainForm.CreateUpdater;
+var
+  Host: TUpdateHost;
+begin
+  Host.ShowDialog :=
+    function(ADecl: TDialogDeclaration; AOnCommand: TProc<string, string>): Boolean
+    begin
+      // Only over the panels: never pop up inside an editor, viewer or
+      // terminal the user is working in. The controller retries later.
+      Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+      if Result then
+        Recompose;
+    end;
+  Host.HasBusyJob :=
+    function: Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.HasBusyJob;
+    end;
+  Host.RequestClose :=
+    procedure
+    begin
+      Close;
+    end;
+  FUpdater := TUpdateController.Create(Host);
+  FUpdateTimer := TTimer.Create(Self);
+  FUpdateTimer.Interval := 5000;
+  FUpdateTimer.OnTimer := UpdateTimerTick;
+  FUpdateTimer.Enabled := True;
+end;
+
 procedure TMainForm.DualPanelOpenViewer(const AURI: string);
 begin
   if (AURI = '') or not Assigned(FDualPanel) then
@@ -1459,6 +1510,11 @@ procedure TMainForm.FormCreate(Sender: TObject);
 var
   SessionThemeNameValue, SessionThemeFileValue: string;
 begin
+  // From the exe's version resource (stamped from the release tag), so the
+  // caption and the updater agree on what is installed.
+  FAppVersion := AppVersionString;
+  if FAppVersion = '' then
+    FAppVersion := '?';
   FRestoringBounds := False;
   FNormalLeft := Left;
   FNormalTop := Top;
@@ -1496,9 +1552,9 @@ begin
   FCursorBlinkEnabled := True;
   TryRestoreSession;
   // Stage 28: mtn2 <path> — a brand new tab for the CLI path, restored
-  // session tabs are left untouched.
-  if ParamCount >= 1 then
-    OpenPathFromArgument(ParamStr(1));
+  // session tabs are left untouched. Updater switches (--wait-pid) are not paths.
+  if StartupPathArgument <> '' then
+    OpenPathFromArgument(StartupPathArgument);
   SyncRenderer;
 
   // Pre-warm the background Dual Panel console so the persistent shell is
@@ -1519,6 +1575,8 @@ begin
   FContextMenuTimer.Interval := cContextMenuHoldMs;
   FContextMenuTimer.OnTimer := ContextMenuHoldTick;
   FContextMenuTimer.Enabled := False;
+
+  CreateUpdater;
 
   // Stage 24: Quick View decode/error lands async — repaint once it does.
   SetOverlayRepaintHandler(
@@ -1558,6 +1616,9 @@ begin
     Exit;
   PersistSession;
   ReleaseTaskbarButton;
+  // An update the user chose to install "on exit" (or deferred by a busy job).
+  if Assigned(FUpdater) then
+    FUpdater.BeforeExit;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
@@ -1568,6 +1629,9 @@ begin
     UnhookWindowsForShutdown;
   if not FSystemShutdown then
     ReleaseTaskbarButton;
+  // Before the panel window goes: the updater's dialogs live there.
+  FreeAndNil(FUpdateTimer);
+  FreeAndNil(FUpdater);
   StopPluginHost;
   FreeAndNil(FBlinkTimer);
   if not FSystemShutdown then

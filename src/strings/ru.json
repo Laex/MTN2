@@ -7,7 +7,23 @@
       "lbl_pty": "Платформа: Win64 | Постоянная оболочка ConPty",
       "ok": "  ОК  "
     },
-    "DIALOG_ARCHIVEPASSWORD": {
+    "DIALOG_UPDATE": {
+      "$title": "Обновление MTN2",
+      "update": "Обновить",
+      "later": "Позже",
+      "skip": "Пропустить версию"
+    },
+    "DIALOG_UPDATEMSG": {
+      "$title": "Обновление MTN2",
+      "ok": "ОК",
+      "cancel": "Отмена"
+    },
+    "DIALOG_UPDATES": {
+      "$title": "Обновления",
+      "check_on_start": "Проверять обновления при запуске",
+      "check": "Проверить",
+      "close": "Закрыть"
+    },    "DIALOG_ARCHIVEPASSWORD": {
       "$title": "Пароль архива",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -318,7 +334,20 @@
     }
   },
   "ui": {
-    "delete.promptOne": "Удалить объект «%s»?",
+    "update.offer": "Доступна версия %s (установлена %s).",
+    "update.offerDetails": "Загрузить и установить её?",
+    "update.downloading": "Загрузка версии %s...",
+    "update.ready": "Версия %s загружена и готова к установке.",
+    "update.readyDetails": "Перезапустить MTN2 сейчас?",
+    "update.restartNow": "Перезапустить",
+    "update.onExit": "При выходе",
+    "update.busy": "Идут фоновые задания.",
+    "update.busyDetails": "Обновление установится при выходе из MTN2.",
+    "update.upToDate": "У вас последняя версия (%s).",
+    "update.current": "Установлена версия %s.",
+    "update.failed": "Не удалось обновить MTN2.",
+    "update.noWrite": "Нет прав на запись в папку программы.",
+    "update.openPage": "Открыть страницу",    "delete.promptOne": "Удалить объект «%s»?",
     "delete.promptMany": "Удалить выбранные объекты (%d)?",
     "delete.okRecycle": "В корзину",
     "delete.okWipe": "Затереть",
@@ -524,6 +553,7 @@
     "category.Right": "&Справа",
 
     "tmaHelpAbout": "&О программе MTN2...",
+    "tmaHelpUpdates": "Об&новления...",
     "tmaHelpContents": "&Справка",
     "tmaQuit": "&Выход",
 

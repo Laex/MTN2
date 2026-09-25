@@ -133,6 +133,7 @@ type
     OpenColumnsConfigDialog: TKeymapProc;
     OpenDisplayDialog: TKeymapProc;
     OpenAboutDialog: TKeymapProc;
+    OpenUpdates: TKeymapProc;
     EditGotoLine: TKeymapProc;
     EditFind: TKeymapProc;
     EditFindReplace: TKeymapProc;

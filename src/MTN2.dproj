@@ -138,7 +138,7 @@
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=MTN2;FileDescription=$(MSBuildProjectName);FileVersion=0.1.14.0;InternalName=MTN2;LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Modern Terminal Navigator 2;ProductVersion=0.1.14;Comments=v0.1.14</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=MTN2;FileDescription=$(MSBuildProjectName);FileVersion=0.3.1.0;InternalName=MTN2;LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Modern Terminal Navigator 2;ProductVersion=0.3.1;Comments=v0.3.1</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>MTN2.manifest</Manifest_File>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
@@ -150,7 +150,7 @@
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=MTN2;FileDescription=$(MSBuildProjectName);FileVersion=0.1.14.0;InternalName=MTN2;LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Modern Terminal Navigator 2;ProductVersion=0.1.14;Comments=v0.1.14</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=MTN2;FileDescription=$(MSBuildProjectName);FileVersion=0.3.1.0;InternalName=MTN2;LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Modern Terminal Navigator 2;ProductVersion=0.3.1;Comments=v0.3.1</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>MTN2.manifest</Manifest_File>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
@@ -174,8 +174,8 @@
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
-        <VerInfo_MinorVer>1</VerInfo_MinorVer>
-        <VerInfo_Release>14</VerInfo_Release>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>1</VerInfo_Release>
         <VerInfo_Locale>1033</VerInfo_Locale>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -192,8 +192,8 @@
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
-        <VerInfo_MinorVer>1</VerInfo_MinorVer>
-        <VerInfo_Release>14</VerInfo_Release>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>1</VerInfo_Release>
         <VerInfo_Locale>1033</VerInfo_Locale>
     </PropertyGroup>
     <ItemGroup>
@@ -325,6 +325,8 @@
         <DCCReference Include="Core\uWinFileDragDrop.pas"/>
         <DCCReference Include="Core\uWinFileAttr.pas"/>
         <DCCReference Include="Core\uSingleInstance.pas"/>
+        <DCCReference Include="Core\uUpdater.pas"/>
+        <DCCReference Include="Core\uUpdateController.pas"/>
         <DCCReference Include="Forms\uMainForm.pas">
             <Form>MainForm</Form>
             <FormType>fmx</FormType>

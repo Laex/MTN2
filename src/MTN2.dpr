@@ -134,6 +134,8 @@ uses
   uWinFileDragDrop in 'Core\uWinFileDragDrop.pas',
   uWinFileAttr in 'Core\uWinFileAttr.pas',
   uSingleInstance in 'Core\uSingleInstance.pas',
+  uUpdater in 'Core\uUpdater.pas',
+  uUpdateController in 'Core\uUpdateController.pas',
   uMainForm in 'Forms\uMainForm.pas' {MainForm};
 
 {$R *.res}
@@ -143,6 +145,10 @@ var
   AlreadyRunning: Boolean;
   ExistingHwnd: HWND;
 begin
+  // Restarted by the updater (--wait-pid): let the old process finish exiting
+  // first, or the single-instance check below would hand off to it and quit.
+  WaitForPreviousInstanceFromCommandLine;
+
   // Stage 28: mtn2 <path> with another instance already running forwards the
   // path via WM_COPYDATA and exits here -- before Application.Initialize, so
   // the delegating second process never touches FMX/the platform layer.
@@ -150,10 +156,7 @@ begin
   begin
     if TryFindExistingInstanceWindow(ExistingHwnd) then
     begin
-      if ParamCount >= 1 then
-        SendActivateRequest(ExistingHwnd, ParamStr(1))
-      else
-        SendActivateRequest(ExistingHwnd, '');
+      SendActivateRequest(ExistingHwnd, StartupPathArgument);
       Exit;
     end;
     // Existing window not found (narrow startup race) -- fall through to a

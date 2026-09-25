@@ -88,6 +88,10 @@ type
     FOnOpenEditor: TOpenEditorEvent;
     FOnShowProperties: TShowPropertiesEvent;
     FOnQuitRequest: TQuitRequestEvent;
+    FOnOpenUpdates: TQuitRequestEvent;
+    /// <summary>hdkHost: where ShowHostDialog's command (control id, values
+    /// JSON) goes once the dialog has closed.</summary>
+    FHostDialogCommand: TProc<string, string>;
     FDrivePopupCtrl: TDrivePopupController;
     /// <summary>Ctrl+Left/Right preview: highlight only; navigate on Ctrl release.</summary>
     FDrivePreviewActive: Boolean;
@@ -526,6 +530,9 @@ type
     procedure ResolveRelativeCommandAsync(const AText, ABaseDir: string);
     procedure ExecuteTopMenuAction(AAction: TTopMenuAction);
     procedure OpenAboutDialog;
+    /// <summary>Help > Updates: forwarded to OnOpenUpdates (the updater lives
+    /// in the form, not in the panel window).</summary>
+    procedure OpenUpdates;
     procedure OpenPluginListDialog;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
@@ -706,6 +713,13 @@ type
   public
     constructor Create(const ATheme: IThemeRenderer; AId: Cardinal);
     destructor Destroy; override;
+    /// <summary>Opens ADecl for a caller outside the panel window. False (and
+    /// nothing opens) while another dialog is up. AOnCommand runs after the
+    /// dialog has closed, so it may open the next one.</summary>
+    function ShowHostDialog(const ADecl: TDialogDeclaration;
+      const AOnCommand: TProc<string, string>): Boolean;
+    /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
+    function HasBusyJob: Boolean;
     procedure RebuildBuffer; override;
     function SetKeyModifiers(AShift: TShiftState): Boolean; override;
     function HandleInput(var AKey: Word; AShift: TShiftState;
@@ -784,6 +798,7 @@ type
     property OnOpenEditor: TOpenEditorEvent read FOnOpenEditor write FOnOpenEditor;
     property OnShowProperties: TShowPropertiesEvent read FOnShowProperties write FOnShowProperties;
     property OnQuitRequest: TQuitRequestEvent read FOnQuitRequest write FOnQuitRequest;
+    property OnOpenUpdates: TQuitRequestEvent read FOnOpenUpdates write FOnOpenUpdates;
     property OnRunCommand: TRunCommandEvent read FOnRunCommand write FOnRunCommand;
     property OnShellCwdSync: TShellCwdSyncEvent read FOnShellCwdSync write FOnShellCwdSync;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
@@ -1328,6 +1343,7 @@ begin
   FKeymapHost.OpenColumnsConfigDialog := OpenColumnsConfigDialog;
   FKeymapHost.OpenDisplayDialog := OpenDisplayDialog;
   FKeymapHost.OpenAboutDialog := OpenAboutDialog;
+  FKeymapHost.OpenUpdates := OpenUpdates;
   FKeymapHost.EditGotoLine := EditGotoLine;
   FKeymapHost.EditFind := EditFind;
   FKeymapHost.EditFindReplace := EditFindReplace;
@@ -4164,6 +4180,8 @@ end;
 
 function TDualPanelWindow.DispatchDialogCommand(AKind: THostDialogKind;
   const AControlId, AValuesJson: string; const AFields: TDialogCommandFields): Boolean;
+var
+  HostCmd: TProc<string, string>;
 begin
   Result := True;
   case AKind of
@@ -4202,6 +4220,14 @@ begin
       Result := FKeymapDlg.DispatchCommand(AKind, AControlId);
     hdkCompareResult:
       FDialog.Close;
+    hdkHost:
+      begin
+        FDialog.Close;
+        HostCmd := FHostDialogCommand;
+        FHostDialogCommand := nil;
+        if Assigned(HostCmd) then
+          HostCmd(AControlId, AValuesJson);
+      end;
     hdkDirSync:
       Result := FDirSync.DispatchCommand(AControlId, AFields);
     hdkArchivePassword:
@@ -5937,6 +5963,30 @@ begin
   FDialogKind := hdkHelp;
   FDialog.Open(BuildAboutDialog, DialogCommand);
   NotifyChanged;
+end;
+
+procedure TDualPanelWindow.OpenUpdates;
+begin
+  if Assigned(FOnOpenUpdates) then
+    FOnOpenUpdates(Self);
+end;
+
+function TDualPanelWindow.ShowHostDialog(const ADecl: TDialogDeclaration;
+  const AOnCommand: TProc<string, string>): Boolean;
+begin
+  Result := Assigned(FDialog) and not FDialog.Visible;
+  if not Result then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkHost;
+  FHostDialogCommand := AOnCommand;
+  FDialog.Open(ADecl, DialogCommand);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.HasBusyJob: Boolean;
+begin
+  Result := Assigned(FJobs) and FJobs.HasBusyJob;
 end;
 
 procedure TDualPanelWindow.OpenPluginListDialog;

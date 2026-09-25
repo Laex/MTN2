@@ -241,6 +241,17 @@ function BuildTerminalProfileDialog(const ATitles: TArray<string>;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildAboutDialog: TDialogDeclaration;
+/// <summary>Update offer: buttons update / later (Esc) / skip.</summary>
+function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;
+/// <summary>Two-line updater message; buttons ok / cancel (Esc). '' keeps a
+/// button's translated resource caption; AShowCancel = False leaves a single
+/// OK that Esc also triggers.</summary>
+function BuildUpdateMessageDialog(const AMessage, ADetails, AOkText: string;
+  AShowCancel: Boolean; const ACancelText: string = ''): TDialogDeclaration;
+/// <summary>Help > Updates: installed version, the check_on_start checkbox,
+/// buttons check / close (Esc).</summary>
+function BuildUpdatesDialog(const ACurrentVersion: string;
+  ACheckOnStart: Boolean): TDialogDeclaration;
 /// <summary>AItems are pre-formatted display labels — see
 /// ColorCodingDisplayLabel in uColorCodingEditHelpers.pas.</summary>
 function BuildColorCodingDialog(const AItems: TArray<string>;
@@ -1218,6 +1229,54 @@ begin
     DialogSetColorSampleSources(Result, 'preview', '', 'picker_hex')
   else
     DialogSetColorSampleSources(Result, 'preview', 'picker_hex', '');
+end;
+
+function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogUpdate, Result);
+  DialogSetLabelText(Result, 'message', T('ui.update.offer',
+    'Version %s is available (installed: %s).', [ANewVersion, ACurrentVersion]));
+  DialogSetLabelText(Result, 'details', T('ui.update.offerDetails', 'Download and install it?'));
+end;
+
+function BuildUpdateMessageDialog(const AMessage, ADetails, AOkText: string;
+  AShowCancel: Boolean; const ACancelText: string): TDialogDeclaration;
+var
+  I, J: Integer;
+begin
+  RequireDialogResource(cResDialogUpdateMsg, Result);
+  DialogSetLabelText(Result, 'message', AMessage);
+  DialogSetLabelText(Result, 'details', ADetails);
+  if AOkText <> '' then
+    DialogSetButtonText(Result, cDlgCmdOk, AOkText);
+  if AShowCancel then
+  begin
+    if ACancelText <> '' then
+      DialogSetButtonText(Result, cDlgCmdCancel, ACancelText);
+    Exit;
+  end;
+  // Single-button message: drop cancel, centre OK and let Esc close via OK.
+  for I := High(Result.Controls) downto 0 do
+    if SameText(Result.Controls[I].Id, cDlgCmdCancel) then
+    begin
+      for J := I to High(Result.Controls) - 1 do
+        Result.Controls[J] := Result.Controls[J + 1];
+      SetLength(Result.Controls, Length(Result.Controls) - 1);
+    end
+    else if SameText(Result.Controls[I].Id, cDlgCmdOk) then
+    begin
+      Result.Controls[I].Col := (Result.Width - 2 - Result.Controls[I].BoxW) div 2;
+      Result.Controls[I].IsCancel := True;
+    end;
+end;
+
+function BuildUpdatesDialog(const ACurrentVersion: string;
+  ACheckOnStart: Boolean): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogUpdates, Result);
+  DialogSetLabelText(Result, 'version', T('ui.update.current', 'Installed version: %s.',
+    [ACurrentVersion]));
+  DialogSetCheckbox(Result, 'check_on_start', ACheckOnStart);
 end;
 
 function BuildAboutDialog: TDialogDeclaration;
