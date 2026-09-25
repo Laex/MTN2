@@ -43,6 +43,10 @@ type
     procedure Close;
     property OnChanged: TDirWatchNotify read FOnChanged write FOnChanged;
     property Path: string read FPath;
+    /// <summary>True once the background setup has armed the change
+    /// notification for Path (Path itself is published optimistically,
+    /// before that). Changes made before this may be missed.</summary>
+    function Active: Boolean;
   end;
 
 implementation
@@ -239,6 +243,11 @@ begin
     end);
   FThread.FreeOnTerminate := True;
   FThread.Start;
+end;
+
+function TDirectoryWatcher.Active: Boolean;
+begin
+  Result := (FChangeHandle <> 0) and (FChangeHandle <> INVALID_HANDLE_VALUE);
 end;
 
 procedure TDirectoryWatcher.SetPath(const APath: string);
