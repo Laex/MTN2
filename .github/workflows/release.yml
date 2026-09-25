@@ -46,6 +46,12 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:TAG $Zip.FullName --clobber
           } else {
-            gh release create $env:TAG $Zip.FullName --title "MTN2 $env:TAG" --generate-notes
+            # Install/7z.dll notes (.github/release-notes.md) go above the
+            # generated changelog; {{TAG}} becomes the release tag.
+            $Notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+            (Get-Content .github/release-notes.md -Raw).Replace('{{TAG}}', $env:TAG) |
+              Set-Content $Notes -Encoding utf8NoBOM
+            gh release create $env:TAG $Zip.FullName --title "MTN2 $env:TAG" `
+              --notes-file $Notes --generate-notes
           }
           if ($LASTEXITCODE -ne 0) { throw "gh release failed: $LASTEXITCODE" }
