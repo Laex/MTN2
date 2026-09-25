@@ -1,0 +1,101 @@
+# Delphi / RAD Studio
+*.dcu
+*.dcp
+*.dcpil
+*.dsk
+*.dti
+*.drc
+*.exe
+*.dll
+*.bpl
+*.bpi
+*.rsm
+*.map
+*.jdbg
+*.local
+*.identcache
+*.tvsconfig
+*.stat
+*.dsv
+*.~*
+*.bak
+*.ddp
+*.cfg
+*.dof
+*.mes
+*.otares
+*.vlb
+*.skincfg
+*.groupproj.local
+*.dproj.local
+*.deployproj
+*.app
+*.dylib
+*.so
+*.a
+*.o
+*.obj
+*.lib
+*.ridl
+*.tlb
+*.ocx
+
+# Compiled resources (keep project .rc; keep MTN2.res linked from dpr)
+*.res
+!src/MTN2.res
+!*.rc
+
+# Project build outputs (see MTN2.dproj: DCC_ExeOutput / DCC_DcuOutput)
+/bin/*
+# F1 help topics are sources, not build output
+!/bin/help/
+/dcu/
+src/dcu/
+src/tools/dcu/
+src/tools/**/dcu/
+src/tools/wasmtime/
+
+# Rust plugin build trees
+**/target/
+
+# Platform / IDE build trees (any depth)
+Win32/
+Win64/
+Android/
+Android64/
+iOSDevice*/
+iOSSimulator/
+OSX*/
+Linux*/
+__history/
+__recovery/
+modules/
+
+# IDE / OS junk
+.obsidian/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime / logs (local machine; not source)
+*.log
+*.tmp
+*.temp
+# `*.tmp` also matches the plugin folder name -- keep its sources
+!src/plugins/mtn.tmp/
+session.json
+history.json
+portable.dat
+.obsidian/
+.zcode/
+.vscode/
+.repowise/
+.claude/
+.cursor/
+.mcp.json
+
+# repowise API keys (local)
+.repowise/.env
+
+# Release packages (src/tools/package-release.ps1)
+/dist/

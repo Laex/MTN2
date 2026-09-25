@@ -1,0 +1,156 @@
+{
+  "categories": [
+    {
+      "title": "≡",
+      "hotChar": "",
+      "items": [
+        { "caption": "About MTN2...", "hotChar": "A", "shortcut": "", "action": "tmaHelpAbout" },
+        { "caption": "Help contents", "hotChar": "H", "shortcut": "F1", "action": "tmaHelpContents" },
+        { "isSeparator": true },
+        { "caption": "Quit", "hotChar": "Q", "shortcut": "F10", "action": "tmaQuit" }
+      ]
+    },
+    {
+      "title": "Left",
+      "hotChar": "L",
+      "items": [
+        { "caption": "Drive selection...", "hotChar": "D", "shortcut": "Alt+F1", "action": "tmaLeftDrive" },
+        { "caption": "Sort menu...", "hotChar": "S", "shortcut": "Ctrl+F12", "action": "tmaLeftSort" },
+        { "caption": "Column modes...", "hotChar": "C", "shortcut": "Ctrl+`", "action": "tmaLeftColumnModes" },
+        { "caption": "Info panel toggle", "hotChar": "I", "shortcut": "Ctrl+L", "action": "tmaLeftInfo" },
+        { "caption": "Show hidden/system files", "hotChar": "H", "shortcut": "Ctrl+H", "action": "tmaLeftShowHidden" },
+        { "isSeparator": true },
+        { "caption": "New panel tab", "hotChar": "N", "shortcut": "Ctrl+T", "action": "tmaLeftNewTab" },
+        { "caption": "Close panel tab", "hotChar": "W", "shortcut": "Ctrl+W", "action": "tmaLeftCloseTab" },
+        { "caption": "Toggle Left panel", "hotChar": "T", "shortcut": "Ctrl+F1", "action": "tmaLeftToggle" }
+      ]
+    },
+    {
+      "title": "Files",
+      "hotChar": "F",
+      "items": [
+        { "caption": "View", "hotChar": "V", "shortcut": "F3", "action": "tmaFileView" },
+        { "caption": "Edit", "hotChar": "E", "shortcut": "F4", "action": "tmaFileEdit" },
+        { "caption": "View externally", "shortcut": "Alt+F3", "action": "tmaFileExternalView" },
+        { "caption": "Edit externally", "shortcut": "Alt+F4", "action": "tmaFileExternalEdit" },
+        { "caption": "Quick View...", "hotChar": "Q", "shortcut": "Ctrl+Q", "action": "tmaCmdQuickView" },
+        { "caption": "New file", "hotChar": "F", "shortcut": "Shift+F4", "action": "tmaFileNew" },
+        { "caption": "Copy", "hotChar": "C", "shortcut": "F5", "action": "tmaFileCopy" },
+        { "caption": "Move", "hotChar": "M", "shortcut": "F6", "action": "tmaFileMove" },
+        { "caption": "Rename", "hotChar": "R", "shortcut": "Shift+F6", "action": "tmaFileRename" },
+        { "caption": "Make directory", "hotChar": "K", "shortcut": "F7", "action": "tmaFileMkDir" },
+        { "caption": "Create link...", "hotChar": "L", "shortcut": "Shift+F7", "action": "tmaFileCreateLink" },
+        { "caption": "Set attributes...", "hotChar": "B", "shortcut": "Ctrl+Shift+A", "action": "tmaFileSetAttributes" },
+        { "caption": "Properties...", "shortcut": "Alt+Enter", "action": "tmaFileProperties" },
+        { "caption": "Compare files...", "hotChar": "X", "shortcut": "Ctrl+Alt+C", "action": "tmaFileCompare" },
+        { "caption": "Checksums...", "hotChar": "H", "shortcut": "Ctrl+Alt+H", "action": "tmaFileChecksums" },
+        { "caption": "Restore from Recycle Bin", "hotChar": "T", "shortcut": "Ctrl+Alt+R", "action": "tmaFileRestore" },
+        { "caption": "Delete", "hotChar": "D", "shortcut": "F8", "action": "tmaFileDelete" },
+        { "caption": "Wipe file", "hotChar": "W", "shortcut": "Shift+F8", "action": "tmaFileWipe" },
+        { "isSeparator": true },
+        { "caption": "Pack archive", "hotChar": "P", "shortcut": "Shift+F1", "action": "tmaFilePack" },
+        { "caption": "Unpack archive", "hotChar": "U", "shortcut": "Shift+F2", "action": "tmaFileUnpack" },
+        { "isSeparator": true },
+        { "caption": "Select by mask...", "hotChar": "S", "shortcut": "Num+", "action": "tmaFileSelectMask" },
+        { "caption": "Unselect by mask...", "hotChar": "N", "shortcut": "Num-", "action": "tmaFileUnselectMask" },
+        { "caption": "Select by extension", "hotChar": "", "shortcut": "Ctrl++", "action": "tmaFileSelectByExt" },
+        { "caption": "Unselect by extension", "hotChar": "", "shortcut": "Ctrl+-", "action": "tmaFileUnselectByExt" },
+        { "caption": "Select all", "hotChar": "A", "shortcut": "Ctrl+A", "action": "tmaFileSelectAll" },
+        { "caption": "Invert selection", "hotChar": "I", "shortcut": "Ctrl+I", "action": "tmaFileInvertSelect" },
+        { "isSeparator": true },
+        { "caption": "Calculate folder size", "hotChar": "Z", "shortcut": "F3", "action": "tmaFileCalcSize" },
+        { "caption": "Copy full path", "hotChar": "Y", "shortcut": "Ctrl+Alt+Ins", "action": "tmaFileCopyPath" },
+        { "caption": "Run detached (OS)", "hotChar": "O", "shortcut": "Shift+Enter", "action": "tmaFileRunDetached" }
+      ]
+    },
+    {
+      "title": "Edit",
+      "hotChar": "E",
+      "items": [
+        { "caption": "Copy", "hotChar": "C", "shortcut": "Ctrl+C / Ctrl+Ins", "action": "tmaEditCopy" },
+        { "caption": "Cut", "hotChar": "T", "shortcut": "Ctrl+X / Ctrl+Del", "action": "tmaEditCut" },
+        { "caption": "Paste", "hotChar": "P", "shortcut": "Ctrl+V / Shift+Ins", "action": "tmaEditPaste" },
+        { "isSeparator": true },
+        { "caption": "Goto line...", "hotChar": "G", "shortcut": "Alt+F8", "action": "tmaEditGotoLine" },
+        { "caption": "Find...", "hotChar": "F", "shortcut": "F7", "action": "tmaEditFind" },
+        { "caption": "Find and replace...", "hotChar": "R", "shortcut": "Ctrl+F7", "action": "tmaEditFindReplace" },
+        { "caption": "Encoding...", "hotChar": "N", "shortcut": "Shift+F8", "action": "tmaEditEncoding" },
+        { "caption": "Undo", "hotChar": "U", "shortcut": "Ctrl+Z", "action": "tmaEditUndo" },
+        { "caption": "Redo", "hotChar": "D", "shortcut": "Ctrl+Shift+Z", "action": "tmaEditRedo" },
+        { "caption": "Hex↔Text", "hotChar": "H", "shortcut": "Ctrl+H", "action": "tmaEditHexToggle" }
+      ]
+    },
+    {
+      "title": "Commands",
+      "hotChar": "C",
+      "items": [
+        { "caption": "Find file...", "hotChar": "F", "shortcut": "Alt+F7", "action": "tmaCmdFind" },
+        { "caption": "Synchronize dirs...", "hotChar": "Y", "shortcut": "Ctrl+Alt+S", "action": "tmaCmdDirSync" },
+        { "caption": "Compare folders", "shortcut": "Ctrl+Shift+C", "action": "tmaCmdCompareFolders" },
+        { "caption": "User menu", "hotChar": "U", "shortcut": "F2", "action": "tmaCmdUserMenu" },
+        { "caption": "History back", "hotChar": "B", "shortcut": "Alt+Left", "action": "tmaCmdHistoryBack" },
+        { "caption": "History forward", "hotChar": "G", "shortcut": "Alt+Right", "action": "tmaCmdHistoryForward" },
+        { "caption": "Folder history...", "hotChar": "H", "shortcut": "Alt+F12", "action": "tmaCmdFolderHistory" },
+        { "caption": "File history...", "hotChar": "I", "shortcut": "Alt+F11", "action": "tmaCmdFileHistory" },
+        { "caption": "Directory hotlist...", "hotChar": "D", "shortcut": "Ctrl+D", "action": "tmaCmdFolderHotlist" },
+        { "caption": "Add to hotlist", "hotChar": "J", "shortcut": "Ctrl+Alt+D", "action": "tmaCmdFolderHotlistAdd" },
+        { "caption": "Workspaces...", "hotChar": "W", "shortcut": "Ctrl+Shift+D", "action": "tmaCmdWorkspaceLibrary" },
+        { "caption": "Save workspace", "hotChar": "K", "shortcut": "Ctrl+Alt+Shift+D", "action": "tmaCmdWorkspaceSave" },
+        { "caption": "SSH/SFTP Connections...", "hotChar": "S", "shortcut": "Ctrl+Alt+Shift+N", "action": "tmaCmdSshConnections" },
+        { "caption": "File associations...", "hotChar": "A", "shortcut": "Ctrl+Alt+Shift+A", "action": "tmaCmdAssociations" },
+        { "caption": "Flat/branch view", "hotChar": "V", "shortcut": "Ctrl+B", "action": "tmaCmdBranchView" },
+        { "caption": "Filter by mask...", "hotChar": "K", "shortcut": "Ctrl+F", "action": "tmaCmdLiveFilter" },
+        { "caption": "Recycle bin", "hotChar": "Z", "shortcut": "Ctrl+Alt+F8", "action": "tmaCmdRecycleBin" },
+        { "caption": "Command history...", "hotChar": "C", "shortcut": "Alt+F8", "action": "tmaCmdCmdHistory" },
+        { "caption": "Drive root", "hotChar": "R", "shortcut": "Ctrl+\\", "action": "tmaCmdDriveRoot" },
+        { "caption": "Refresh panel", "hotChar": "E", "shortcut": "Ctrl+R", "action": "tmaCmdRefresh" },
+        { "isSeparator": true },
+        { "caption": "Swap panels", "hotChar": "S", "shortcut": "Ctrl+U", "action": "tmaCmdSwapPanels" },
+        { "caption": "Target := Active", "hotChar": "T", "shortcut": "Ctrl+]", "action": "tmaCmdEqualizeOther" },
+        { "caption": "Active := Target", "hotChar": "A", "shortcut": "Ctrl+[", "action": "tmaCmdEqualizeActive" },
+        { "isSeparator": true },
+        { "caption": "Insert item name", "hotChar": "N", "shortcut": "Ctrl+Enter", "action": "tmaCmdInsertName" },
+        { "caption": "Insert item path", "hotChar": "P", "shortcut": "Ctrl+Shift+Enter", "action": "tmaCmdInsertPath" },
+        { "caption": "Focus command line", "hotChar": "L", "shortcut": "Ctrl+Down", "action": "tmaCmdFocusCmdLine" },
+        { "caption": "Console toggle", "hotChar": "O", "shortcut": "Ctrl+O", "action": "tmaCmdConsoleToggle" },
+        { "caption": "Background console...", "hotChar": "Q", "shortcut": "Ctrl+Alt+O", "action": "tmaCmdConsoleProfile" },
+        { "caption": "Sync console dir", "hotChar": "I", "shortcut": "Ctrl+Shift+O", "action": "tmaCmdSyncConsoleDir" },
+        { "caption": "New terminal...", "hotChar": "M", "shortcut": "Ctrl+Shift+N", "action": "tmaCmdNewTerminal" },
+        { "caption": "Next tab", "hotChar": "X", "shortcut": "Ctrl+Tab", "action": "tmaCmdNextTab" }
+      ]
+    },
+    {
+      "title": "Options",
+      "hotChar": "O",
+      "items": [
+        { "caption": "Reload keymap", "hotChar": "K", "shortcut": "Ctrl+Alt+K", "action": "tmaOptReloadKeymap" },
+        { "caption": "Plugins...", "hotChar": "P", "shortcut": "", "action": "tmaOptShowPlugins" },
+        { "caption": "Color coding...", "hotChar": "C", "shortcut": "", "action": "tmaOptColorCoding" },
+        { "caption": "Keymap...", "hotChar": "M", "shortcut": "", "action": "tmaOptKeymap" },
+        { "caption": "Theme...", "hotChar": "T", "shortcut": "", "action": "tmaOptTheme" },
+        { "caption": "Font / Display...", "hotChar": "F", "shortcut": "", "action": "tmaOptDisplay" },
+        { "caption": "External viewer/editor...", "hotChar": "E", "shortcut": "", "action": "tmaOptExternalTools" },
+        { "caption": "Columns...", "hotChar": "L", "shortcut": "Ctrl+Shift+F7", "action": "tmaOptColumnsConfig" },
+        { "isSeparator": true },
+        { "caption": "Zoom In", "hotChar": "I", "shortcut": "Ctrl+Wheel", "action": "tmaOptZoomIn" },
+        { "caption": "Zoom Out", "hotChar": "O", "shortcut": "Ctrl+Wheel", "action": "tmaOptZoomOut" },
+        { "caption": "Reset Zoom", "hotChar": "R", "shortcut": "Ctrl+0", "action": "tmaOptResetZoom" }
+      ]
+    },
+    {
+      "title": "Right",
+      "hotChar": "R",
+      "items": [
+        { "caption": "Drive selection...", "hotChar": "D", "shortcut": "Alt+F2", "action": "tmaRightDrive" },
+        { "caption": "Sort menu...", "hotChar": "S", "shortcut": "Ctrl+F12", "action": "tmaRightSort" },
+        { "caption": "Column modes...", "hotChar": "C", "shortcut": "Ctrl+`", "action": "tmaRightColumnModes" },
+        { "caption": "Info panel toggle", "hotChar": "I", "shortcut": "Ctrl+L", "action": "tmaRightInfo" },
+        { "caption": "Show hidden/system files", "hotChar": "H", "shortcut": "Ctrl+H", "action": "tmaRightShowHidden" },
+        { "isSeparator": true },
+        { "caption": "New panel tab", "hotChar": "N", "shortcut": "Ctrl+T", "action": "tmaRightNewTab" },
+        { "caption": "Close panel tab", "hotChar": "W", "shortcut": "Ctrl+W", "action": "tmaRightCloseTab" },
+        { "caption": "Toggle Right panel", "hotChar": "T", "shortcut": "Ctrl+F2", "action": "tmaRightToggle" }
+      ]
+    }
+  ]
+}

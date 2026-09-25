@@ -1,0 +1,6 @@
+{
+  "id": "mtn.wasm.demo",
+  "name": "WASM demo VFS",
+  "version": "0.1.0",
+  "abi": 1
+}

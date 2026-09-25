@@ -1,0 +1,58 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Select",
+  "width": 48,
+  "height": 10,
+  "children": [
+    {
+      "type": "label",
+      "text": "Prompt:",
+      "id": "prompt",
+      "col": 1,
+      "row": 1,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "name",
+      "history": "masks",
+      "value": "*.*",
+      "col": 1,
+      "row": 2,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "select_folders",
+      "text": "Select folders",
+      "checked": false,
+      "col": 1,
+      "row": 4,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 12,
+      "row": 6,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 24,
+      "row": 6,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

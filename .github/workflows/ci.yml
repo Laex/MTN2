@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Runs on GitHub-hosted runners: no RAD Studio needed.
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate JSON resources
+        # Dialog/string resources are saved with a UTF-8 BOM by the IDE.
+        run: |
+          git ls-files -z '*.json' | xargs -0 python3 -c '
+          import json, sys
+          for f in sys.argv[1:]:
+              json.load(open(f, encoding="utf-8-sig"))
+          print(f"OK: {len(sys.argv) - 1} JSON files")
+          '
+
+  wasm-plugin:
+    name: mtn.ws (Rust -> wasm32)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/plugins/mtn.ws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/plugins/mtn.ws
+      - run: cargo build --locked --release --target wasm32-unknown-unknown
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mtn.ws-plugin.wasm
+          path: src/plugins/mtn.ws/target/wasm32-unknown-unknown/release/mtn_ws.wasm
+
+  # RAD Studio is commercial and absent from hosted runners, so the Delphi
+  # build runs on a self-hosted runner labelled `delphi` (see BUILDING.md).
+  # Enabled by the repository variable DELPHI_RUNNER=true; never runs for
+  # pull requests from forks (untrusted code on the maintainer's machine).
+  delphi:
+    name: Delphi build + tests (Win64)
+    if: >-
+      vars.DELPHI_RUNNER == 'true' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, windows, delphi]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        shell: pwsh
+        run: ./src/build.ps1 -Config Release -Platform Win64
+
+      - name: Tests
+        shell: pwsh
+        run: ./src/tools/run-panel-smoke.ps1
+
+      - name: Package
+        shell: pwsh
+        run: ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MTN2-win64
+          path: dist/*.zip
+          retention-days: 14

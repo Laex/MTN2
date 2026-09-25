@@ -1,0 +1,100 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "style": "warning",
+  "title": "Error",
+  "width": 80,
+  "height": 14,
+  "children": [
+    {
+      "type": "label",
+      "id": "headline",
+      "text": "Cannot move item to the Recycle Bin",
+      "col": 1,
+      "row": 1,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "path",
+      "text": "path",
+      "col": 1,
+      "row": 2,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "question",
+      "text": "Try to delete it permanently?",
+      "col": 1,
+      "row": 3,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 4,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "error_line",
+      "text": "0x00000005 - Access denied",
+      "col": 1,
+      "row": 5,
+      "width": 78,
+      "height": 3
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 8,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "delete",
+      "text": "Delete",
+      "default": true,
+      "col": 13,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "skip",
+      "text": "Skip",
+      "col": 26,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "skipall",
+      "text": "Skip all",
+      "col": 39,
+      "row": 10,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 54,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

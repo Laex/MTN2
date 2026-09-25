@@ -1,0 +1,123 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Find file",
+  "width": 58,
+  "height": 14,
+  "children": [
+    {
+      "type": "label",
+      "text": "A file mask or several file masks:",
+      "col": 1,
+      "row": 1,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "search_mask",
+      "history": "findmask",
+      "value": "*.*",
+      "col": 1,
+      "row": 2,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Containing text:",
+      "col": 1,
+      "row": 3,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "search_text",
+      "history": "findtext",
+      "value": "",
+      "col": 1,
+      "row": 4,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 5,
+      "width": 56,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "search_case",
+      "text": "Case sensitive",
+      "checked": false,
+      "col": 1,
+      "row": 6,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "search_words",
+      "text": "Whole words",
+      "checked": false,
+      "col": 26,
+      "row": 6,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "search_folders",
+      "text": "Search for folders",
+      "checked": false,
+      "col": 1,
+      "row": 7,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "search_regex",
+      "text": "Regex",
+      "checked": false,
+      "col": 32,
+      "row": 7,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "search_subdirs",
+      "text": "Search in subfolders",
+      "checked": true,
+      "col": 1,
+      "row": 8,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Find",
+      "default": true,
+      "col": 15,
+      "row": 10,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 29,
+      "row": 10,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

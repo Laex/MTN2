@@ -1,0 +1,72 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "About MTN2",
+  "width": 56,
+  "height": 14,
+  "children": [
+    {
+      "type": "label",
+      "text": "Modern Turbo Navigator 2.0 (MTN2)",
+      "id": "lbl_title",
+      "col": 2,
+      "row": 1,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "────────────────────────────────────────────────────",
+      "col": 2,
+      "row": 2,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "High-Performance Dual Panel File Manager",
+      "id": "lbl_sub",
+      "col": 2,
+      "row": 4,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Graphics Engine: Standard GDI/FMX Renderer",
+      "id": "lbl_skia",
+      "col": 2,
+      "row": 5,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Platform: Win64 | ConPty Persistent Shell",
+      "id": "lbl_pty",
+      "col": 2,
+      "row": 6,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "────────────────────────────────────────────────────",
+      "col": 2,
+      "row": 8,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "  OK  ",
+      "default": true,
+      "cancel": true,
+      "col": 22,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Input",
+  "width": 48,
+  "height": 8,
+  "children": [
+    {
+      "type": "label",
+      "text": "Prompt:",
+      "id": "prompt",
+      "col": 1,
+      "row": 1,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "name",
+      "value": "",
+      "col": 1,
+      "row": 2,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 12,
+      "row": 4,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 24,
+      "row": 4,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

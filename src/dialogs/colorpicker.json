@@ -1,0 +1,92 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Pick color",
+  "width": 52,
+  "height": 21,
+  "children": [
+    {
+      "type": "label",
+      "text": "Presets:",
+      "col": 1,
+      "row": 0,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "picker_presets",
+      "selected": 0,
+      "items": [
+        "(no presets)"
+      ],
+      "col": 1,
+      "row": 1,
+      "width": 46,
+      "height": 9
+    },
+    {
+      "type": "label",
+      "text": "Custom hex (#RRGGBB), overrides the preset above:",
+      "col": 1,
+      "row": 11,
+      "width": 48,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "picker_hex",
+      "value": "",
+      "col": 1,
+      "row": 12,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "preview",
+      "text": " filename.txt ",
+      "col": 16,
+      "row": 12,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 14,
+      "width": 48,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────",
+      "col": 0,
+      "row": 15,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Use",
+      "default": true,
+      "col": 13,
+      "row": 17,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 24,
+      "row": 17,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

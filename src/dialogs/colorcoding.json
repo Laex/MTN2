@@ -1,0 +1,104 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Color coding groups",
+  "width": 78,
+  "height": 21,
+  "children": [
+    {
+      "type": "label",
+      "id": "header",
+      "text": "    T Name             Mask                     N S C",
+      "col": 1,
+      "row": 1,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "groups",
+      "selected": 0,
+      "items": [
+        "(no groups)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 74,
+      "height": 12
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "Ins=Add F4=Edit Del=Remove/Disable Ctrl+Space=Enable Ctrl+Up/Dn=Move",
+      "col": 1,
+      "row": 15,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "add",
+      "text": "Add",
+      "col": 0,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "edit",
+      "text": "Edit",
+      "col": 10,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "delete",
+      "text": "Delete",
+      "col": 20,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "moveup",
+      "text": "Up",
+      "col": 30,
+      "row": 17,
+      "width": 7,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "movedown",
+      "text": "Dn",
+      "col": 38,
+      "row": 17,
+      "width": 7,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Save",
+      "default": true,
+      "col": 54,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 64,
+      "row": 17,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "File Associations",
+  "width": 64,
+  "height": 16,
+  "children": [
+    {
+      "type": "label",
+      "id": "assocHeader",
+      "text": "Ext          Action        Command",
+      "col": 1,
+      "row": 1,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "associations",
+      "selected": 0,
+      "items": [
+        "(empty - Ins adds an association)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 60,
+      "height": 9
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Edit",
+      "default": true,
+      "col": 4,
+      "row": 12,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "add",
+      "text": "Add",
+      "col": 22,
+      "row": 12,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 46,
+      "row": 12,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

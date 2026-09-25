@@ -1,0 +1,32 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Loaded plugins",
+  "width": 62,
+  "height": 16,
+  "children": [
+    {
+      "type": "list",
+      "id": "plugins",
+      "selected": 0,
+      "items": [
+        "(no plugins loaded)"
+      ],
+      "col": 1,
+      "row": 1,
+      "width": 58,
+      "height": 12
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "  OK  ",
+      "default": true,
+      "cancel": true,
+      "col": 25,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

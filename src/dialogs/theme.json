@@ -1,0 +1,41 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Theme",
+  "width": 46,
+  "height": 12,
+  "children": [
+    {
+      "type": "list",
+      "id": "themes",
+      "selected": 0,
+      "items": [
+        "Classic FAR (NDN)"
+      ],
+      "col": 1,
+      "row": 1,
+      "width": 42,
+      "height": 8
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 8,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 26,
+      "row": 10,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

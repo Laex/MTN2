@@ -1,0 +1,74 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Replace",
+  "width": 50,
+  "height": 10,
+  "children": [
+    {
+      "type": "label",
+      "text": "Find:",
+      "col": 1,
+      "row": 1,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "find",
+      "history": "editfind",
+      "value": "",
+      "col": 1,
+      "row": 2,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Replace with:",
+      "col": 1,
+      "row": 3,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "replace",
+      "history": "editreplace",
+      "value": "",
+      "col": 1,
+      "row": 4,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "one",
+      "text": "Replace",
+      "default": true,
+      "col": 4,
+      "row": 6,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "all",
+      "text": "All",
+      "col": 18,
+      "row": 6,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 32,
+      "row": 6,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

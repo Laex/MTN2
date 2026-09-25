@@ -1,0 +1,68 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Background jobs",
+  "width": 72,
+  "height": 17,
+  "children": [
+    {
+      "type": "label",
+      "id": "header",
+      "text": "Job                                              Progress",
+      "col": 1,
+      "row": 1,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "jobs",
+      "selected": 0,
+      "items": [
+        "(no jobs)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 68,
+      "height": 10
+    },
+    {
+      "type": "button",
+      "id": "foreground",
+      "text": "Foreground",
+      "default": true,
+      "col": 3,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "canceljob",
+      "text": "Cancel",
+      "col": 19,
+      "row": 13,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancelall",
+      "text": "Cancel all",
+      "col": 31,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Close",
+      "cancel": true,
+      "col": 57,
+      "row": 13,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

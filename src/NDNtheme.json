@@ -1,0 +1,35 @@
+{
+  "description": "MTN2 NDN theme — embedded default (RCDATA THEME_DEFAULT) and the shape of the on-disk override at the config dir (uColorCoding.GetConfigFilePath — active file name set by TMtnSession.ThemeFile, 'NDNtheme.json' when unspecified). Currently only 'fileColoring' (FAR Manager 'File highlighting' style): groups are checked top to bottom against the file/folder display name, first mask match wins. Each group can set colors for up to three visual states — 'normal' (plain row), 'selected' (marked), 'current' (under the cursor) — as optional #RRGGBB 'fg'/'bg' pairs; a state a group doesn't set is left to the theme's own per-filetype/selection/cursor color. Colors here are theme-owned on purpose — picked to not clash with THIS theme's own selection/cursor palette (e.g. Archives is magenta, not yellow, because yellow reads as the NDN selection color) — so a different theme file (e.g. FARtheme.json) is expected to repick them for its own palette rather than share this file. An on-disk override only needs the groups it wants to add or change (uColorCoding.MergeColorCodingGroups, merge-by-name); the extreme case is a file that redefines every group, which amounts to a full replacement.",
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": { "fg": "#FF55FF" }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": { "fg": "#55FF55" }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": { "fg": "#AAAAAA" }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": { "fg": "#00AAAA" }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": { "fg": "#55FFFF" }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": { "fg": "#FF5555" }
+    }
+  ]
+}

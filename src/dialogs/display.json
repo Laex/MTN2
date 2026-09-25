@@ -1,0 +1,163 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Font / Display",
+  "width": 54,
+  "height": 22,
+  "children": [
+    {
+      "type": "label",
+      "text": "Font",
+      "id": "lbl_font",
+      "col": 1,
+      "row": 0,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "fonts",
+      "selected": 0,
+      "items": [
+        "Consolas"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 50,
+      "height": 8
+    },
+    {
+      "type": "label",
+      "text": "Size",
+      "id": "lbl_size",
+      "col": 1,
+      "row": 11,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "font_size",
+      "selected": 0,
+      "items": [
+        "14 pt"
+      ],
+      "col": 10,
+      "row": 11,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Zoom",
+      "id": "lbl_zoom",
+      "col": 26,
+      "row": 11,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "zoom",
+      "selected": 0,
+      "items": [
+        "100%"
+      ],
+      "col": 35,
+      "row": 11,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "blink",
+      "text": "Blink cursor",
+      "checked": true,
+      "col": 1,
+      "row": 13,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Interval",
+      "id": "lbl_interval",
+      "col": 24,
+      "row": 13,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "blink_ms",
+      "selected": 0,
+      "items": [
+        "530 ms"
+      ],
+      "col": 35,
+      "row": 13,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "panel_icons",
+      "text": "Show panel icons",
+      "checked": true,
+      "col": 1,
+      "row": 15,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "font_note",
+      "col": 1,
+      "row": 14,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Language",
+      "id": "lbl_language",
+      "col": 1,
+      "row": 16,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "language",
+      "selected": 0,
+      "items": [
+        "English"
+      ],
+      "col": 13,
+      "row": 16,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 11,
+      "row": 18,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 29,
+      "row": 18,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

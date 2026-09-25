@@ -1,0 +1,38 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Confirm",
+  "width": 48,
+  "height": 7,
+  "children": [
+    {
+      "type": "label",
+      "text": "Message",
+      "id": "message",
+      "col": 1,
+      "row": 1,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 12,
+      "row": 3,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 24,
+      "row": 3,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

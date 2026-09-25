@@ -1,0 +1,50 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "File history",
+  "width": 72,
+  "height": 18,
+  "children": [
+    {
+      "type": "list",
+      "id": "files",
+      "selected": 0,
+      "items": [
+        "(empty)"
+      ],
+      "col": 1,
+      "row": 1,
+      "width": 68,
+      "height": 12
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "Enter=Open F3=View F4=Edit Ctrl+Enter=Go to file Del=Remove",
+      "col": 1,
+      "row": 14,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Open",
+      "default": true,
+      "col": 21,
+      "row": 16,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 39,
+      "row": 16,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

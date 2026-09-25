@@ -1,0 +1,7 @@
+{
+  "id": "mtn.7z",
+  "name": "7-Zip archives",
+  "version": "0.1.0",
+  "abi": 1,
+  "archiveExtensions": ["7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "iso", "cab", "wim"]
+}

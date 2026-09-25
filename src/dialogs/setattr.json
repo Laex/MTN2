@@ -1,0 +1,258 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Set attributes",
+  "width": 56,
+  "height": 22,
+  "children": [
+    {
+      "type": "label",
+      "text": "item",
+      "id": "summary",
+      "col": 1,
+      "row": 0,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Read-only",
+      "id": "lbl_ro",
+      "col": 1,
+      "row": 2,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_ro",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 14,
+      "row": 2,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Hidden",
+      "id": "lbl_h",
+      "col": 28,
+      "row": 2,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_h",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 37,
+      "row": 2,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Archive",
+      "id": "lbl_a",
+      "col": 1,
+      "row": 3,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_a",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 14,
+      "row": 3,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "System",
+      "id": "lbl_s",
+      "col": 28,
+      "row": 3,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_s",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 37,
+      "row": 3,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Owner:",
+      "id": "lbl_owner",
+      "col": 1,
+      "row": 5,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "owner_now",
+      "col": 10,
+      "row": 5,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "change_owner",
+      "text": "Change owner",
+      "checked": false,
+      "col": 1,
+      "row": 6,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "owner",
+      "value": "",
+      "col": 1,
+      "row": 7,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Created",
+      "id": "lbl_created",
+      "col": 1,
+      "row": 9,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_created",
+      "value": "",
+      "col": 14,
+      "row": 9,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Modified",
+      "id": "lbl_modified",
+      "col": 1,
+      "row": 10,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_modified",
+      "value": "",
+      "col": 14,
+      "row": 10,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Accessed",
+      "id": "lbl_accessed",
+      "col": 1,
+      "row": 11,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_accessed",
+      "value": "",
+      "col": 14,
+      "row": 11,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_now",
+      "text": "Current",
+      "col": 12,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_orig",
+      "text": "Original",
+      "col": 30,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "date_error",
+      "col": 1,
+      "row": 13,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "recurse",
+      "text": "Process subfolders",
+      "checked": false,
+      "col": 1,
+      "row": 16,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Set",
+      "default": true,
+      "col": 11,
+      "row": 18,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 31,
+      "row": 18,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

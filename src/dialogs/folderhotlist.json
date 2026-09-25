@@ -1,0 +1,50 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Directory hotlist",
+  "width": 62,
+  "height": 16,
+  "children": [
+    {
+      "type": "label",
+      "id": "hotlistHeader",
+      "text": "Name                 Path                         Hotkey",
+      "col": 1,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "hotlist",
+      "selected": 0,
+      "items": [
+        "(empty - Ctrl+Alt+D adds the current directory)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 58,
+      "height": 11
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Go",
+      "default": true,
+      "col": 16,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 34,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

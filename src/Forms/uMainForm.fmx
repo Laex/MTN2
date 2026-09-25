@@ -1,0 +1,23 @@
+object MainForm: TMainForm
+  Left = 0
+  Top = 0
+  Caption = 'MTN2'
+  ClientHeight = 540
+  ClientWidth = 960
+  Fill.Kind = Solid
+  Fill.Color = xFF000080
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnShow = FormShow
+  OnDestroy = FormDestroy
+  OnKeyDown = FormKeyDown
+  OnMouseDown = FormMouseDown
+  OnMouseMove = FormMouseMove
+  OnMouseUp = FormMouseUp
+  OnMouseWheel = FormMouseWheel
+  OnPaint = FormPaint
+  OnResize = FormResize
+  DesignerMasterStyle = 0
+end

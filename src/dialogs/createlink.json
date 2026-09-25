@@ -1,0 +1,87 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Create link",
+  "width": 70,
+  "height": 13,
+  "children": [
+    {
+      "type": "label",
+      "text": "Link name:",
+      "col": 1,
+      "row": 0,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "link_name",
+      "value": "",
+      "col": 1,
+      "row": 1,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Target:",
+      "col": 1,
+      "row": 3,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "target",
+      "history": "linktarget",
+      "value": "",
+      "col": 1,
+      "row": 4,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Type:",
+      "col": 1,
+      "row": 6,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "link_type",
+      "selected": 0,
+      "items": [
+        "Symbolic link (file)",
+        "Symbolic link (directory)",
+        "Hard link",
+        "Junction (directory)"
+      ],
+      "col": 12,
+      "row": 6,
+      "width": 32,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Create",
+      "default": true,
+      "col": 14,
+      "row": 9,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 39,
+      "row": 9,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

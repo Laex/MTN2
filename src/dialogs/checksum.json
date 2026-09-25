@@ -1,0 +1,59 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Checksums",
+  "width": 78,
+  "height": 21,
+  "children": [
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 0,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "lines",
+      "selected": 0,
+      "items": [
+        "(none)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 74,
+      "height": 14
+    },
+    {
+      "type": "button",
+      "id": "copy",
+      "text": "Copy",
+      "col": 10,
+      "row": 17,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "save",
+      "text": "Save",
+      "col": 30,
+      "row": 17,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "close",
+      "text": "Close",
+      "default": true,
+      "cancel": true,
+      "col": 50,
+      "row": 17,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

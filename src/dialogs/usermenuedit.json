@@ -1,0 +1,133 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "User Menu Item",
+  "width": 72,
+  "height": 17,
+  "children": [
+    {
+      "type": "label",
+      "id": "lbl_hotkey",
+      "text": "Hotkey:",
+      "col": 1,
+      "row": 1,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "hotkey",
+      "value": "",
+      "col": 12,
+      "row": 1,
+      "width": 4,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_kind",
+      "text": "Type:",
+      "col": 20,
+      "row": 1,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "kind",
+      "selected": 0,
+      "items": [
+        "Command",
+        "Submenu",
+        "Separator"
+      ],
+      "col": 29,
+      "row": 1,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_caption",
+      "text": "Caption:",
+      "col": 1,
+      "row": 3,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "caption",
+      "value": "",
+      "col": 12,
+      "row": 3,
+      "width": 57,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_command",
+      "text": "Command:",
+      "col": 1,
+      "row": 5,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "command",
+      "value": "",
+      "col": 1,
+      "row": 6,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "help1",
+      "text": "!.! file name   ! name w/o extension   !\\ folder   !: drive",
+      "col": 1,
+      "row": 8,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "help2",
+      "text": "!& selected names   !@! list file   !?Question?default! ask",
+      "col": 1,
+      "row": 9,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "help3",
+      "text": "!# passive panel   !^ active panel   !! the ! character",
+      "col": 1,
+      "row": 10,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 18,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 40,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

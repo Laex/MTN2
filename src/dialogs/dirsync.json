@@ -1,0 +1,140 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Synchronize directories",
+  "width": 72,
+  "height": 21,
+  "children": [
+    {
+      "type": "label",
+      "id": "src_label",
+      "text": "Source:",
+      "col": 1,
+      "row": 0,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "src_path",
+      "text": "",
+      "col": 12,
+      "row": 0,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "dst_label",
+      "text": "Target:",
+      "col": 1,
+      "row": 1,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "dst_path",
+      "text": "",
+      "col": 12,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "oneway",
+      "group": "sync_mode",
+      "text": "One-way (→)",
+      "checked": true,
+      "col": 1,
+      "row": 2,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "twoway",
+      "group": "sync_mode",
+      "text": "Two-way (⇄)",
+      "checked": false,
+      "col": 26,
+      "row": 2,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "bydate",
+      "group": "compare_by",
+      "text": "Date / size",
+      "checked": true,
+      "col": 1,
+      "row": 3,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "bycontent",
+      "group": "compare_by",
+      "text": "Content",
+      "checked": false,
+      "col": 26,
+      "row": 3,
+      "width": 22,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "0 to copy",
+      "col": 1,
+      "row": 4,
+      "width": 70,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "preview",
+      "selected": 0,
+      "items": [
+        "(none)"
+      ],
+      "col": 1,
+      "row": 6,
+      "width": 70,
+      "height": 8
+    },
+    {
+      "type": "checkbox",
+      "id": "dry_run",
+      "text": "Dry run (report only)",
+      "checked": false,
+      "col": 1,
+      "row": 15,
+      "width": 36,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Synchronize",
+      "default": true,
+      "col": 16,
+      "row": 17,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 42,
+      "row": 17,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

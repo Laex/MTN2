@@ -1,0 +1,59 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Workspaces",
+  "width": 62,
+  "height": 16,
+  "children": [
+    {
+      "type": "label",
+      "id": "wsHeader",
+      "text": "Name                                            Links",
+      "col": 1,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "workspaces",
+      "selected": 0,
+      "items": [
+        "(empty - Ins saves the current workspace)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 58,
+      "height": 11
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Go",
+      "default": true,
+      "col": 7,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "save",
+      "text": "Save",
+      "col": 25,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 43,
+      "row": 14,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

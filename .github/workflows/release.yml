@@ -1,0 +1,51 @@
+name: Release
+
+# Push a tag like v0.3.0 to build, test and publish a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)build the release for
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: [self-hosted, windows, delphi]
+    timeout-minutes: 90
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Build
+        shell: pwsh
+        run: ./src/build.ps1 -Config Release -Platform Win64
+
+      - name: Tests
+        shell: pwsh
+        run: ./src/tools/run-panel-smoke.ps1
+
+      - name: Package
+        shell: pwsh
+        run: ./src/tools/package-release.ps1 -Version $env:TAG
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $Zip = Get-ChildItem dist -Filter *.zip | Select-Object -First 1
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG $Zip.FullName --clobber
+          } else {
+            gh release create $env:TAG $Zip.FullName --title "MTN2 $env:TAG" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "gh release failed: $LASTEXITCODE" }

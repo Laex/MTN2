@@ -1,0 +1,99 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Custom columns",
+  "width": 38,
+  "height": 13,
+  "children": [
+    {
+      "type": "checkbox",
+      "id": "col_ext",
+      "text": "Extension",
+      "checked": false,
+      "col": 1,
+      "row": 1,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_size",
+      "text": "Size",
+      "checked": true,
+      "col": 1,
+      "row": 2,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_modified",
+      "text": "Modified date",
+      "checked": true,
+      "col": 1,
+      "row": 3,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_created",
+      "text": "Created date",
+      "checked": false,
+      "col": 1,
+      "row": 4,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_accessed",
+      "text": "Accessed date",
+      "checked": false,
+      "col": 1,
+      "row": 5,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_type",
+      "text": "Type",
+      "checked": false,
+      "col": 1,
+      "row": 6,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "col_attr",
+      "text": "Attributes",
+      "checked": true,
+      "col": 1,
+      "row": 7,
+      "width": 34,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 4,
+      "row": 9,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 19,
+      "row": 9,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

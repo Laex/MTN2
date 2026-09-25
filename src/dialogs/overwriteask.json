@@ -1,0 +1,127 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "style": "warning",
+  "title": "Warning",
+  "width": 68,
+  "height": 13,
+  "children": [
+    {
+      "type": "label",
+      "id": "subtitle",
+      "text": "File already exists",
+      "col": 1,
+      "row": 0,
+      "width": 64,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "path",
+      "text": "path",
+      "col": 1,
+      "row": 1,
+      "width": 64,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 2,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "new_line",
+      "text": "New       0  01.01.2020 00:00:00",
+      "col": 1,
+      "row": 3,
+      "width": 64,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "existing_line",
+      "text": "Existing  0  01.01.2020 00:00:00",
+      "col": 1,
+      "row": 4,
+      "width": 64,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 5,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "remember",
+      "text": "Remember choice",
+      "checked": false,
+      "col": 1,
+      "row": 6,
+      "width": 64,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 7,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "overwrite",
+      "text": "Overwrite",
+      "default": true,
+      "col": 0,
+      "row": 9,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "skip",
+      "text": "Skip",
+      "col": 15,
+      "row": 9,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "rename",
+      "text": "Rename",
+      "col": 28,
+      "row": 9,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "append",
+      "text": "Append",
+      "col": 41,
+      "row": 9,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 54,
+      "row": 9,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

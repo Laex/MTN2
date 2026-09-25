@@ -1,0 +1,109 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Copy",
+  "width": 76,
+  "height": 16,
+  "children": [
+    {
+      "type": "label",
+      "text": "Copying the file",
+      "id": "verb",
+      "col": 1,
+      "row": 0,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "src",
+      "col": 1,
+      "row": 1,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "to",
+      "id": "to",
+      "col": 1,
+      "row": 2,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "dst",
+      "col": 1,
+      "row": 3,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "file_bar",
+      "col": 1,
+      "row": 4,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────── Total ──────────────────────────────────",
+      "id": "total_rule",
+      "col": 0,
+      "row": 5,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Files:",
+      "id": "files",
+      "col": 1,
+      "row": 6,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Bytes:",
+      "id": "bytes",
+      "col": 1,
+      "row": 7,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "total_bar",
+      "col": 1,
+      "row": 8,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "background",
+      "text": "Background",
+      "col": 10,
+      "row": 12,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 52,
+      "row": 12,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

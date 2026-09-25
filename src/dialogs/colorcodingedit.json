@@ -1,0 +1,266 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Color coding group",
+  "width": 78,
+  "height": 19,
+  "children": [
+    {
+      "type": "label",
+      "text": "Name:",
+      "col": 1,
+      "row": 0,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_name",
+      "value": "",
+      "col": 12,
+      "row": 0,
+      "width": 62,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Mask(s):",
+      "col": 1,
+      "row": 1,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_mask",
+      "value": "",
+      "col": 12,
+      "row": 1,
+      "width": 62,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Apply to:",
+      "col": 1,
+      "row": 2,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "cc_applyto",
+      "selected": 0,
+      "items": [
+        "Files and dirs",
+        "Files only",
+        "Dirs only"
+      ],
+      "col": 12,
+      "row": 2,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "cc_enabled",
+      "text": "Enabled",
+      "checked": true,
+      "col": 63,
+      "row": 2,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "────────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 3,
+      "width": 76,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "           Fg             Bg             Sample",
+      "col": 1,
+      "row": 4,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Normal:",
+      "col": 1,
+      "row": 5,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_normal_fg",
+      "value": "",
+      "col": 12,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_normal_bg",
+      "value": "",
+      "col": 27,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "cc_normal_sample",
+      "text": " filename.txt ",
+      "fgFrom": "cc_normal_fg",
+      "bgFrom": "cc_normal_bg",
+      "panelState": "normal",
+      "col": 43,
+      "row": 5,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Selected:",
+      "col": 1,
+      "row": 6,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_selected_fg",
+      "value": "",
+      "col": 12,
+      "row": 6,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_selected_bg",
+      "value": "",
+      "col": 27,
+      "row": 6,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "cc_selected_sample",
+      "text": " filename.txt ",
+      "fgFrom": "cc_selected_fg",
+      "bgFrom": "cc_selected_bg",
+      "panelState": "selected",
+      "col": 43,
+      "row": 6,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Current:",
+      "col": 1,
+      "row": 7,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_current_fg",
+      "value": "",
+      "col": 12,
+      "row": 7,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_current_bg",
+      "value": "",
+      "col": 27,
+      "row": 7,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "cc_current_sample",
+      "text": " filename.txt ",
+      "fgFrom": "cc_current_fg",
+      "bgFrom": "cc_current_bg",
+      "panelState": "current",
+      "col": 43,
+      "row": 7,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "F9 = pick a color for the focused Fg/Bg field above.",
+      "col": 1,
+      "row": 9,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Leave a color blank to inherit the theme's own color there.",
+      "col": 1,
+      "row": 10,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Colors are #RRGGBB (e.g. #FF55FF) or RRGGBB.",
+      "col": 1,
+      "row": 11,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 12,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "────────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 13,
+      "width": 76,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 25,
+      "row": 15,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 39,
+      "row": 15,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

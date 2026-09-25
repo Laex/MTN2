@@ -1,0 +1,172 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Help",
+  "width": 64,
+  "height": 23,
+  "children": [
+    {
+      "type": "label",
+      "text": "F2 User   F3 View/size dirs   F4 Edit   F5 Copy",
+      "col": 1,
+      "row": 0,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "F6 Move   F7 MkDir  F8 Del    F10 Quit",
+      "col": 1,
+      "row": 1,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Shift+F1 Pack ZIP   Shift+F2 Unpack   Shift+F6 Ren",
+      "col": 1,
+      "row": 2,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Shift+F8 Wipe   Alt+F1/F2 Drive   Alt+F7 Find",
+      "col": 1,
+      "row": 3,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Gray+/-/* Select  Shift+Arrows/Home/End/Pg invert",
+      "col": 1,
+      "row": 4,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+O / Esc Console   Ctrl+Down cmdline   Ctrl+R refresh",
+      "col": 1,
+      "row": 5,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+Enter name   Ctrl+Shift+Enter path   Tab complete   Up/Dn hist",
+      "col": 1,
+      "row": 6,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+F1/F2 hide panel   Ctrl+\\ root / leave archive",
+      "col": 1,
+      "row": 7,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+U swap  Ctrl+]/=other  Ctrl+[=active  Ctrl+L info",
+      "col": 1,
+      "row": 8,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+` modes  Ctrl+F12 Sort  Alt+F12 dirs  Alt+F8 cmds  F3-9",
+      "col": 1,
+      "row": 9,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+Left/Right drive preview (release=go)",
+      "col": 1,
+      "row": 10,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+Alt+S sync dirs   F5: newer/retry/exclude/links",
+      "col": 1,
+      "row": 11,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "F5 extract from ZIP / copy into open ZIP",
+      "col": 1,
+      "row": 12,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ins / Ctrl+A select   Ctrl+Shift+A attr   Tab side",
+      "col": 1,
+      "row": 13,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Brief: Shift+Left/Right invert column span (not landing)",
+      "col": 1,
+      "row": 14,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "F3 on dirs: size all selected folders (Esc cancels)",
+      "col": 1,
+      "row": 15,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Viewer: F4/Ctrl+H Hex↔Text   F8 re-decode binary as text",
+      "col": 1,
+      "row": 16,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Ctrl+Shift+O sync dir   Alt+F8 works in Console too",
+      "col": 1,
+      "row": 17,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Shift+F5 Copy into same directory under a new name",
+      "col": 1,
+      "row": 18,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "cancel": true,
+      "col": 26,
+      "row": 19,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

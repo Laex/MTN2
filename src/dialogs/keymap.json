@@ -1,0 +1,86 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Keymap - keyboard shortcuts",
+  "width": 78,
+  "height": 21,
+  "children": [
+    {
+      "type": "label",
+      "id": "header",
+      "text": "    Action                        Hotkeys",
+      "col": 1,
+      "row": 1,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "actions",
+      "selected": 0,
+      "items": [
+        "(loading)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 74,
+      "height": 12
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "Enter/F4=Edit hotkeys   Reset=this action   Reset all=whole profile",
+      "col": 1,
+      "row": 15,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "edit",
+      "text": "Edit",
+      "col": 0,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "reset",
+      "text": "Reset",
+      "col": 10,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "resetall",
+      "text": "Reset all",
+      "col": 20,
+      "row": 17,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Save",
+      "default": true,
+      "col": 54,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 64,
+      "row": 17,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}
