@@ -24,7 +24,10 @@ New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 # Debug/IDE by-products (*.map, *.rsm, *.drc) and dev tools stay out.
 # 7z.dll is not ours to ship (LGPL + unRAR terms): users drop their own x64
 # copy into plugins\mtn.7z\, as build.ps1 does from a local 7-Zip install.
-foreach ($Name in 'MTN2.exe', 'sk4d.dll', 'wasmtime.dll', 'keymap.json') {
+# No keymap.json: it is the user's override of the embedded default (and in
+# portable mode lives in this very folder), so a package -- and the updater,
+# which replaces whatever the package contains -- must never carry one.
+foreach ($Name in 'MTN2.exe', 'sk4d.dll', 'wasmtime.dll') {
     $Src = Join-Path $Bin $Name
     if (Test-Path $Src) { Copy-Item $Src $Stage }
 }

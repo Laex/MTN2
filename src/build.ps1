@@ -3,7 +3,11 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Config = 'Debug',
     [ValidateSet('Win32', 'Win64')]
-    [string]$Platform = 'Win64'
+    [string]$Platform = 'Win64',
+    # Release version (e.g. 0.3.2 or v0.3.2, from the git tag). Stamped into the
+    # exe's version resource, which is what MTN2 reports and the updater compares.
+    # Empty: keep the version written in MTN2.dproj.
+    [string]$Version = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,8 +27,23 @@ if (Test-Path $Brcc) {
     if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE" }
 }
 
+$VerProps = ''
+if ($Version) {
+    if ($Version -notmatch '^v?(\d+)\.(\d+)\.(\d+)$') {
+        throw "Version must look like 1.2.3 or v1.2.3, got '$Version'"
+    }
+    $Major, $Minor, $Patch = $Matches[1], $Matches[2], $Matches[3]
+    $Plain = "$Major.$Minor.$Patch"
+    # ';' separates properties on the msbuild command line -- escape it.
+    $Keys = ("CompanyName=MTN2;FileDescription=MTN2;FileVersion=$Plain.0;InternalName=MTN2;" +
+        "LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.MTN2;" +
+        "ProductName=Modern Terminal Navigator 2;ProductVersion=$Plain;Comments=v$Plain") -replace ';', '%3B'
+    $VerProps = "/p:VerInfo_IncludeVerInfo=true /p:VerInfo_MajorVer=$Major /p:VerInfo_MinorVer=$Minor " +
+        "/p:VerInfo_Release=$Patch /p:VerInfo_Build=0 `"/p:VerInfo_Keys=$Keys`""
+}
+
 $Cmd = @"
-call "$RsVars" && msbuild "$Project" /p:Config=$Config /p:Platform=$Platform /t:Build /v:m
+call "$RsVars" && msbuild "$Project" /p:Config=$Config /p:Platform=$Platform $VerProps /t:Build /v:m
 "@
 cmd /c $Cmd
 if ($LASTEXITCODE -ne 0) { throw "msbuild failed with $LASTEXITCODE" }
@@ -45,6 +64,13 @@ $PluginDcu = Join-Path $PSScriptRoot 'dcu'
 $CoreDir = Join-Path $PSScriptRoot 'Core'
 New-Item -ItemType Directory -Force -Path $PluginsOut | Out-Null
 New-Item -ItemType Directory -Force -Path $PluginDcu | Out-Null
+# Plugins are built with dcc64 directly (not msbuild): mirror MTN2.dproj's
+# Release / Debug settings so the DLLs match the exe they ship with.
+$PluginSwitches = if ($Config -eq 'Release') {
+    '-DRELEASE -$O+ -$D- -$L- -$Y-'
+} else {
+    '-DDEBUG -$O- -$D+ -$L+ -$W+ -V'
+}
 
 Get-ChildItem -Path $PluginsSrc -Directory | ForEach-Object {
     $Name = $_.Name
@@ -54,7 +80,7 @@ Get-ChildItem -Path $PluginsSrc -Directory | ForEach-Object {
 
     Get-ChildItem -Path $Src -Filter '*.dpr' -File -ErrorAction SilentlyContinue | ForEach-Object {
         $PluginCmd = @"
-call "$RsVars" && dcc64 -B -U"$CoreDir;$Src" -N"$PluginDcu" -E"$Dest" -NSSystem;System.Win;Winapi;System.IOUtils "$($_.FullName)"
+call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src" -N"$PluginDcu" -E"$Dest" -NSSystem;System.Win;Winapi;System.IOUtils "$($_.FullName)"
 "@
         cmd /c $PluginCmd
         if ($LASTEXITCODE -ne 0) { throw "$Name compile failed: $LASTEXITCODE ($($_.Name))" }

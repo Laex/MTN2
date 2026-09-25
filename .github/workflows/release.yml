@@ -26,7 +26,8 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: ./src/build.ps1 -Config Release -Platform Win64
+        # The tag becomes the exe's version resource (what the updater compares).
+        run: ./src/build.ps1 -Config Release -Platform Win64 -Version $env:TAG
 
       - name: Tests
         shell: pwsh
