@@ -64,6 +64,10 @@ New-Item -ItemType Directory -Force -Path $Dcu | Out-Null
 if ($Selected | Where-Object { $_.Directory.Name -eq 'plugins' }) {
     try { & (Join-Path $Src 'tools\fetch-wasmtime.ps1') | Out-Null }
     catch { Write-Host "WARN: wasmtime.dll fetch failed; TestWasmHost will SKIP" }
+    # FindWasmtimeDll probes next to the exe's parent folder, which for
+    # src\tests\dcu is src\tests -- point it at the fetched copy explicitly.
+    $WasmtimeDll = Join-Path $Src 'tools\wasmtime\wasmtime.dll'
+    if (Test-Path $WasmtimeDll) { $env:MTN2_WASMTIME_DLL = $WasmtimeDll }
     $WsSrc = Join-Path $Src 'plugins\mtn.ws'
     if (Get-Command cargo -ErrorAction SilentlyContinue) {
         Push-Location $WsSrc

@@ -412,6 +412,11 @@ begin
     Exit(False);
   end;
   Wasmtime.ConfigConsumeFuelSet(Cfg, 1);
+  // Parallel compilation spins up a thread pool as wide as the CPU (32
+  // threads, ~9 MB on a 32-thread machine) that then idles for the whole
+  // session -- pointless for a couple of small plugin modules.
+  if Assigned(Wasmtime.ConfigParallelCompilationSet) then
+    Wasmtime.ConfigParallelCompilationSet(Cfg, 0);
   GEngine := Wasmtime.EngineNewWithConfig(Cfg);
   if GEngine = nil then
   begin

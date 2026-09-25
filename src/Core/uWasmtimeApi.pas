@@ -106,6 +106,9 @@ type
     ConfigNew: function: PWasmConfig; cdecl;
     ConfigDelete: procedure(C: PWasmConfig); cdecl;
     ConfigConsumeFuelSet: procedure(C: PWasmConfig; Enable: Byte); cdecl;
+    /// <summary>Optional (nil if the DLL lacks it): Wasmtime otherwise
+    /// compiles on a thread pool as wide as the CPU.</summary>
+    ConfigParallelCompilationSet: procedure(C: PWasmConfig; Enable: Byte); cdecl;
     EngineNewWithConfig: function(C: PWasmConfig): PWasmEngine; cdecl;
     EngineDelete: procedure(E: PWasmEngine); cdecl;
     StoreNew: function(E: PWasmEngine; Data: Pointer; Finalizer: Pointer): PWasmtimeStore; cdecl;
@@ -203,6 +206,7 @@ begin
   if not Need('wasm_config_new', GFns.ConfigNew) then Exit;
   if not Need('wasm_config_delete', GFns.ConfigDelete) then Exit;
   if not Need('wasmtime_config_consume_fuel_set', GFns.ConfigConsumeFuelSet) then Exit;
+  Need('wasmtime_config_parallel_compilation_set', GFns.ConfigParallelCompilationSet); // optional
   if not Need('wasm_engine_new_with_config', GFns.EngineNewWithConfig) then Exit;
   if not Need('wasm_engine_delete', GFns.EngineDelete) then Exit;
   if not Need('wasmtime_store_new', GFns.StoreNew) then Exit;
