@@ -10,7 +10,7 @@ unit uRecycleBinVfs;
   Linux, a per-volume .Trashes on macOS) -- a port needs its own VFS backend
   behind the same recycle:// scheme, not a portable rewrite of this one.
 
-  Validated against the live Shell APIs by src/tools/TestRecycleBin.dpr
+  Validated against the live Shell APIs by src/tests/vfs/TestRecycleBin.dpr
   before this was written (see that file's header for the exact findings).
   Key facts that shape the design below:
   - IShellFolder2 bound to CSIDL_BITBUCKET enumerates real Recycle Bin

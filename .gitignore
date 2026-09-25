@@ -53,6 +53,7 @@
 src/dcu/
 src/tools/dcu/
 src/tools/**/dcu/
+src/tests/dcu/
 src/tools/wasmtime/
 
 # Rust plugin build trees

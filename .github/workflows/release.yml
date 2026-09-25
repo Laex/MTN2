@@ -30,7 +30,7 @@ jobs:
 
       - name: Tests
         shell: pwsh
-        run: ./src/tools/run-panel-smoke.ps1
+        run: ./src/tests/run-tests.ps1
 
       - name: Package
         shell: pwsh
