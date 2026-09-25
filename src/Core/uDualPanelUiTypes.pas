@@ -196,6 +196,10 @@ type
   /// Ctrl+O console to this profile.</summary>
   TSetConsoleProfileEvent = procedure(const AProfileId: string) of object;
   TGetConsoleProfileEvent = function: string of object;
+  /// <summary>Background console dialog: start the shell in FormCreate
+  /// (True) or on the first Ctrl+O / command-line command (False).</summary>
+  TGetConsoleStartOnLaunchEvent = function: Boolean of object;
+  TSetConsoleStartOnLaunchEvent = procedure(AValue: Boolean) of object;
   TQuitRequestEvent = TNotifyEvent;
   /// <summary>Stage 27: Theme dialog reports the uThemeRegistry id the user
   /// picked / TMainForm reports which one is currently active.</summary>

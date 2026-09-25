@@ -35,6 +35,10 @@ type
     ConsoleRestartOnExit: Boolean; // auto-restart the Ctrl+O background console's shell when it exits
     TerminalCloseOnExit: Boolean;  // close a Ctrl+Shift+N terminal tab when its shell exits
     AutoSyncConsoleCwd: Boolean;   // auto-cd the background console whenever the active panel navigates
+    /// <summary>When True, FormCreate starts the Ctrl+O shell immediately.
+    /// When False (default), the shell starts on the first Ctrl+O or the
+    /// first command submitted from the Dual Panel command line.</summary>
+    ConsoleStartOnLaunch: Boolean;
     /// <summary>IThemeRenderer implementation to instantiate (e.g. 'NDN').
     /// '' = unspecified — caller falls back to the default theme.</summary>
     ThemeName: string;
@@ -489,6 +493,7 @@ begin
       Root.AddPair('consoleRestartOnExit', TJSONBool.Create(ASession.ConsoleRestartOnExit));
       Root.AddPair('terminalCloseOnExit', TJSONBool.Create(ASession.TerminalCloseOnExit));
       Root.AddPair('autoSyncConsoleCwd', TJSONBool.Create(ASession.AutoSyncConsoleCwd));
+      Root.AddPair('consoleStartOnLaunch', TJSONBool.Create(ASession.ConsoleStartOnLaunch));
       if ASession.ThemeName <> '' then
         Root.AddPair('theme', ASession.ThemeName);
       if ASession.ThemeFile <> '' then
@@ -538,6 +543,7 @@ begin
   ASession.ConsoleRestartOnExit := True;
   ASession.TerminalCloseOnExit := True;
   ASession.AutoSyncConsoleCwd := False;
+  ASession.ConsoleStartOnLaunch := False;
   ASession.ThemeName := '';
   ASession.ThemeFile := '';
   ASession.CustomColumns := DefaultCustomColumnsConfig;
@@ -591,6 +597,8 @@ begin
         JsonBool(Root, 'terminalCloseOnExit', True);
       ASession.AutoSyncConsoleCwd :=
         JsonBool(Root, 'autoSyncConsoleCwd', False);
+      ASession.ConsoleStartOnLaunch :=
+        JsonBool(Root, 'consoleStartOnLaunch', False);
       ASession.ThemeName := JsonStr(Root, 'theme', '');
       ASession.ThemeFile := JsonStr(Root, 'themeFile', '');
       V := Root.GetValue('customColumns');

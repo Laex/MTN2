@@ -28,7 +28,13 @@ unit uPluginLoader;
   called, a genuinely misbehaving *native* plugin (e.g. an access violation
   inside its own code) can still crash the process — Win32/Delphi structured
   exception handling cannot fully sandbox a loaded native DLL. WASM guests
-  are the in-process sandbox for untrusted native-contract plugins. }
+  are the in-process sandbox for untrusted native-contract plugins.
+
+  Lazy load: CatalogPlugins only reads plugin.json and remembers module
+  paths. The DLL/WASM is loaded the first time its scheme or archive
+  extension is needed (EnsureScheme / EnsureArchiveExtension), or when the
+  user opens the top menu or the plugin list (EnsureAll). LoadPluginsFrom
+  stays eager for tests and tools that want every plugin immediately. }
 
 interface
 
@@ -68,12 +74,25 @@ type
         /// plugin may stash this pointer until mtn_plugin_shutdown.</summary>
         HostApi: PHostApiTable;
       end;
+    type
+      TCatalogedPlugin = record
+        PluginId: string;
+        Schemes: TArray<string>;
+        ArchiveExtensions: TArray<string>;
+        Files: TArray<string>;
+        Attempted: Boolean;
+      end;
     var
       FLoaded: TList<TLoadedPlugin>;
+      FCatalog: TList<TCatalogedPlugin>;
       FOnLog: TPluginLoadLogEvent;
+      FEnsuring: Boolean;
+      FAllEnsured: Boolean;
     function BuildHostApiTable: THostApiTable;
     function TryLoadOne(const AFileName, APluginId: string): Boolean;
     function TryLoadOneWasm(const AFileName, APluginId: string): Boolean;
+    function PluginIsLoaded(const APluginId: string): Boolean;
+    function EnsureIndex(AIndex: Integer): Boolean;
     procedure Log(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string);
   public
     constructor Create;
@@ -85,6 +104,22 @@ type
     /// individual modules are logged (see OnLog) and skipped — one bad
     /// plugin never stops the others or the host.</summary>
     procedure LoadPluginsFrom(const ADir: string);
+    /// <summary>Scans ADir the same way as LoadPluginsFrom but does not
+    /// call LoadLibrary. Schemes and archive extensions come from
+    /// plugin.json so a later Ensure* can load just that plugin.</summary>
+    procedure CatalogPlugins(const ADir: string);
+    /// <summary>Loads the catalogued plugin that declared AScheme, if it
+    /// is not loaded yet. False when nothing in the catalog owns it, or
+    /// a load was already attempted.</summary>
+    function EnsureScheme(const AScheme: string): Boolean;
+    /// <summary>Loads the catalogued plugin whose plugin.json lists this
+    /// file's extension in archiveExtensions.</summary>
+    function EnsureArchiveExtension(const AFileName: string): Boolean;
+    /// <summary>Loads every catalogued plugin that has not been attempted
+    /// yet. Used when the UI needs registrations that are not in
+    /// plugin.json (menu items, key rebinds).</summary>
+    procedure EnsureAll;
+    function CatalogPluginIds: TArray<string>;
     /// <summary>Calls mtn_plugin_shutdown then FreeLibrary for every loaded
     /// plugin, in reverse load order. Safe to call multiple times.</summary>
     procedure UnloadAll;
@@ -194,15 +229,84 @@ begin
   end;
 end;
 
+function CollectPluginModules(const APluginDir: string): TArray<string>;
+var
+  DirFiles: TArray<string>;
+  FileName: string;
+  Dlls, Wats, Wasms: TList<string>;
+  I: Integer;
+begin
+  Dlls := TList<string>.Create;
+  Wats := TList<string>.Create;
+  Wasms := TList<string>.Create;
+  try
+    DirFiles := TDirectory.GetFiles(APluginDir, '*', TSearchOption.soTopDirectoryOnly);
+    for FileName in DirFiles do
+      if SameText(TPath.GetExtension(FileName), '.dll') then
+        Dlls.Add(FileName)
+      else if SameText(TPath.GetExtension(FileName), '.wat') then
+        Wats.Add(FileName)
+      else if SameText(TPath.GetExtension(FileName), '.wasm') then
+        Wasms.Add(FileName);
+    SetLength(Result, Dlls.Count + Wats.Count + Wasms.Count);
+    I := 0;
+    for FileName in Dlls do
+    begin
+      Result[I] := FileName;
+      Inc(I);
+    end;
+    for FileName in Wats do
+    begin
+      Result[I] := FileName;
+      Inc(I);
+    end;
+    for FileName in Wasms do
+    begin
+      Result[I] := FileName;
+      Inc(I);
+    end;
+  finally
+    Dlls.Free;
+    Wats.Free;
+    Wasms.Free;
+  end;
+end;
+
+function ExtensionKey(const AFileName: string): string;
+begin
+  Result := LowerCase(TPath.GetExtension(AFileName));
+  if (Result <> '') and (Result[1] = '.') then
+    Result := Copy(Result, 2, MaxInt);
+end;
+
+function ListHasExt(const AExts: TArray<string>; const AKey: string): Boolean;
+var
+  One, Key: string;
+begin
+  Result := False;
+  if AKey = '' then
+    Exit;
+  for One in AExts do
+  begin
+    Key := LowerCase(Trim(One));
+    if (Key <> '') and (Key[1] = '.') then
+      Key := Copy(Key, 2, MaxInt);
+    if Key = AKey then
+      Exit(True);
+  end;
+end;
+
 constructor TPluginLoader.Create;
 begin
   inherited Create;
   FLoaded := TList<TLoadedPlugin>.Create;
+  FCatalog := TList<TCatalogedPlugin>.Create;
 end;
 
 destructor TPluginLoader.Destroy;
 begin
   UnloadAll;
+  FCatalog.Free;
   FLoaded.Free;
   inherited Destroy;
 end;
@@ -424,28 +528,143 @@ begin
       Exit(FLoaded[I].SetSecret(PAnsiChar(KeyU), nil) = 0);
 end;
 
+function TPluginLoader.PluginIsLoaded(const APluginId: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to FLoaded.Count - 1 do
+    if SameText(FLoaded[I].PluginId, APluginId) then
+      Exit(True);
+end;
+
+function TPluginLoader.EnsureIndex(AIndex: Integer): Boolean;
+var
+  E: TCatalogedPlugin;
+  FileName: string;
+begin
+  if (AIndex < 0) or (AIndex >= FCatalog.Count) then
+    Exit(False);
+  E := FCatalog[AIndex];
+  if PluginIsLoaded(E.PluginId) then
+    Exit(True);
+  // A nested resolve from inside mtn_plugin_init must not start a second load.
+  if E.Attempted or FEnsuring then
+    Exit(False);
+  E.Attempted := True;
+  FCatalog[AIndex] := E;
+  FEnsuring := True;
+  try
+    for FileName in E.Files do
+      if SameText(TPath.GetExtension(FileName), '.dll') then
+        TryLoadOne(FileName, E.PluginId)
+      else
+        TryLoadOneWasm(FileName, E.PluginId);
+  finally
+    FEnsuring := False;
+  end;
+  Result := PluginIsLoaded(E.PluginId);
+end;
+
+procedure TPluginLoader.CatalogPlugins(const ADir: string);
+var
+  PluginDir, PluginId: string;
+  E: TCatalogedPlugin;
+  Manifest: TPluginManifest;
+begin
+  FCatalog.Clear;
+  FAllEnsured := False;
+  if not TDirectory.Exists(ADir) then
+    Exit;
+  for PluginDir in TDirectory.GetDirectories(ADir, '*', TSearchOption.soTopDirectoryOnly) do
+  begin
+    PluginId := TPath.GetFileName(PluginDir);
+    E.PluginId := PluginId;
+    E.Files := CollectPluginModules(PluginDir);
+    E.Attempted := PluginIsLoaded(PluginId);
+    if TryReadPluginManifest(PluginDir, Manifest) then
+    begin
+      E.Schemes := Manifest.Schemes;
+      E.ArchiveExtensions := Manifest.ArchiveExtensions;
+    end
+    else
+    begin
+      SetLength(E.Schemes, 0);
+      SetLength(E.ArchiveExtensions, 0);
+    end;
+    FCatalog.Add(E);
+  end;
+end;
+
+function TPluginLoader.EnsureScheme(const AScheme: string): Boolean;
+var
+  I, J: Integer;
+  Scheme: string;
+begin
+  Result := False;
+  if FEnsuring then
+    Exit;
+  Scheme := LowerCase(Trim(AScheme));
+  if Scheme = '' then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    for J := 0 to High(FCatalog[I].Schemes) do
+      if FCatalog[I].Schemes[J] = Scheme then
+        Exit(EnsureIndex(I));
+end;
+
+function TPluginLoader.EnsureArchiveExtension(const AFileName: string): Boolean;
+var
+  I: Integer;
+  Key: string;
+begin
+  Result := False;
+  if FEnsuring then
+    Exit;
+  Key := ExtensionKey(AFileName);
+  if Key = '' then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    if ListHasExt(FCatalog[I].ArchiveExtensions, Key) then
+      Exit(EnsureIndex(I));
+end;
+
+procedure TPluginLoader.EnsureAll;
+var
+  I: Integer;
+begin
+  if FAllEnsured or FEnsuring then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    EnsureIndex(I);
+  FAllEnsured := True;
+end;
+
+function TPluginLoader.CatalogPluginIds: TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, FCatalog.Count);
+  for I := 0 to FCatalog.Count - 1 do
+    Result[I] := FCatalog[I].PluginId;
+end;
+
 procedure TPluginLoader.LoadPluginsFrom(const ADir: string);
 var
   PluginDir, FileName, PluginId: string;
-  DirFiles: TArray<string>;
+  Modules: TArray<string>;
 begin
   if not TDirectory.Exists(ADir) then
     Exit;
   for PluginDir in TDirectory.GetDirectories(ADir, '*', TSearchOption.soTopDirectoryOnly) do
   begin
     PluginId := TPath.GetFileName(PluginDir);
-    // One directory scan instead of three (.dll/.wat/.wasm each did their
-    // own TDirectory.GetFiles before) — same load order preserved (all
-    // .dll, then all .wat, then all .wasm), just filtered in memory.
-    DirFiles := TDirectory.GetFiles(PluginDir, '*', TSearchOption.soTopDirectoryOnly);
-    for FileName in DirFiles do
+    // dll, then wat, then wasm — same order as before the single scan.
+    Modules := CollectPluginModules(PluginDir);
+    for FileName in Modules do
       if SameText(TPath.GetExtension(FileName), '.dll') then
-        TryLoadOne(FileName, PluginId);
-    for FileName in DirFiles do
-      if SameText(TPath.GetExtension(FileName), '.wat') then
-        TryLoadOneWasm(FileName, PluginId);
-    for FileName in DirFiles do
-      if SameText(TPath.GetExtension(FileName), '.wasm') then
+        TryLoadOne(FileName, PluginId)
+      else
         TryLoadOneWasm(FileName, PluginId);
   end;
 end;
@@ -453,6 +672,7 @@ end;
 procedure TPluginLoader.UnloadAll;
 var
   I: Integer;
+  E: TCatalogedPlugin;
 begin
   for I := FLoaded.Count - 1 downto 0 do
   begin
@@ -482,6 +702,13 @@ begin
       FreeLibrary(FLoaded[I].ModuleHandle);
   end;
   FLoaded.Clear;
+  for I := 0 to FCatalog.Count - 1 do
+  begin
+    E := FCatalog[I];
+    E.Attempted := False;
+    FCatalog[I] := E;
+  end;
+  FAllEnsured := False;
 end;
 
 var

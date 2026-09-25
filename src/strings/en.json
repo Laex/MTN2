@@ -547,7 +547,8 @@
 
     "terminalProfile.title": "New terminal",
     "shellProfiles.noneAvailable": "No shell profiles available",
-    "consoleProfile.title": "Background console"
+    "consoleProfile.title": "Background console",
+    "consoleProfile.startOnLaunch": "Start shell at program launch"
   },
   "menu": {
     "category.Left": "Left",

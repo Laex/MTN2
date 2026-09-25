@@ -149,12 +149,30 @@ function ClassifyVfsTransfer(const AFromURI, AToURI: string; AIsMove: Boolean;
 /// up for every FVfs obtained via CreateDefaultVfs across the app.</summary>
 function GlobalVfsRegistry: IVfsRegistry;
 
+/// <summary>Optional hooks so a missing scheme or archive extension can load
+/// its plugin before resolve fails. uPluginHost registers these; the registry
+/// does not depend on the loader (that unit already uses this one).</summary>
+type
+  TVfsLazyLoadFunc = function(const AKey: string): Boolean;
+
+procedure SetVfsLazyLoad(AEnsureScheme, AEnsureArchiveExt: TVfsLazyLoadFunc);
+
 implementation
 
 uses
   System.IOUtils, System.SyncObjs,
   uFileVfs, uZipVfs, uFindVfs, uSysFoldersVfs, uRecycleBinVfs, uWorkspaceVfs,
   uSftpVfs;
+
+var
+  GEnsureScheme: TVfsLazyLoadFunc;
+  GEnsureArchiveExt: TVfsLazyLoadFunc;
+
+procedure SetVfsLazyLoad(AEnsureScheme, AEnsureArchiveExt: TVfsLazyLoadFunc);
+begin
+  GEnsureScheme := AEnsureScheme;
+  GEnsureArchiveExt := AEnsureArchiveExt;
+end;
 
 function UriSchemeOf(const AURI: string): string;
 var
@@ -576,20 +594,32 @@ end;
 
 function TVfsRegistry.TryResolveArchiveKind(const AFileName: string;
   out AKind: TArchiveExtensionKind): Boolean;
-var
-  Ext: string;
-  I: Integer;
+
+  function Match: Boolean;
+  var
+    Ext: string;
+    I: Integer;
+  begin
+    AKind := akZipChain;
+    Ext := LowerCase(TPath.GetExtension(AFileName));
+    if Ext = '' then
+      Exit(False);
+    for I := 0 to FArchiveExts.Count - 1 do
+      if FArchiveExts[I].Extension = Ext then
+      begin
+        AKind := FArchiveExts[I].Kind;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
 begin
-  AKind := akZipChain;
-  Ext := LowerCase(TPath.GetExtension(AFileName));
-  if Ext = '' then
-    Exit(False);
-  for I := 0 to FArchiveExts.Count - 1 do
-    if FArchiveExts[I].Extension = Ext then
-    begin
-      AKind := FArchiveExts[I].Kind;
-      Exit(True);
-    end;
+  if Match then
+    Exit(True);
+  // Extension is known from plugin.json before the DLL is loaded. Enter on
+  // a .7z (etc.) loads that plugin, which then registers the extension.
+  if Assigned(GEnsureArchiveExt) and GEnsureArchiveExt(AFileName) and Match then
+    Exit(True);
   Result := False;
 end;
 
@@ -623,20 +653,33 @@ end;
 
 function TVfsRegistry.TryResolve(const AURI: string;
   out ABackend: IVirtualFileSystem): Boolean;
-var
-  I: Integer;
-  E: TEntry;
-begin
-  ABackend := nil;
-  for I := 0 to FEntries.Count - 1 do
+
+  function Match: Boolean;
+  var
+    I: Integer;
+    E: TEntry;
   begin
-    E := FEntries[I];
-    if E.Pred(AURI) then
+    ABackend := nil;
+    for I := 0 to FEntries.Count - 1 do
     begin
-      ABackend := E.Backend;
-      Exit(True);
+      E := FEntries[I];
+      if E.Pred(AURI) then
+      begin
+        ABackend := E.Backend;
+        Exit(True);
+      end;
     end;
+    Result := False;
   end;
+
+var
+  Scheme: string;
+begin
+  if Match then
+    Exit(True);
+  Scheme := UriSchemeOf(AURI);
+  if (Scheme <> '') and Assigned(GEnsureScheme) and GEnsureScheme(Scheme) and Match then
+    Exit(True);
   Result := False;
 end;
 

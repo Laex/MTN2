@@ -49,7 +49,7 @@ begin
   // archiveExtensions entry so TestArchiveExtensionsFromManifest below can
   // exercise uPluginLoader.RegisterManifestArchiveExtensions end-to-end.
   TFile.WriteAllText(TPath.Combine(DestDir, 'plugin.json'),
-    '{"id":"SamplePlugin","abi":1,"archiveExtensions":["samplearchive"]}',
+    '{"id":"SamplePlugin","abi":1,"archiveExtensions":["samplearchive"],"schemes":["sample"]}',
     TEncoding.UTF8);
 end;
 
@@ -112,11 +112,42 @@ begin
   Writeln('OK: TestUnloadIsIdempotent passed');
 end;
 
+procedure TestCatalogLoadsOnDemand;
+var
+  PluginsRoot: string;
+  Backend: IVirtualFileSystem;
+  Kind: TArchiveExtensionKind;
+begin
+  PluginsRoot := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-test');
+  PluginLoader.CatalogPlugins(PluginsRoot);
+  Assert(Length(PluginLoader.LoadedPluginIds) = 0,
+    'catalog must not load the DLL');
+
+  Assert(PluginLoader.EnsureArchiveExtension('data.samplearchive'),
+    'archive extension must load the catalogued plugin');
+  Assert(GlobalVfsRegistry.TryResolve('sample://test-file.txt', Backend),
+    'sample:// resolves after the on-demand load');
+  Assert(GlobalVfsRegistry.TryResolveArchiveKind('data.samplearchive', Kind),
+    'archive extension is registered by the loaded plugin');
+  Assert(Kind = akSevenZip, 'on-demand load still registers akSevenZip');
+
+  PluginLoader.UnloadAll;
+  PluginLoader.CatalogPlugins(PluginsRoot);
+  Assert(Length(PluginLoader.LoadedPluginIds) = 0,
+    'unload drops the module; catalog does not reload it');
+  Assert(PluginLoader.EnsureScheme('sample'), 'scheme loads the catalogued plugin');
+  Assert(GlobalVfsRegistry.TryResolve('sample://x', Backend),
+    'sample:// resolves after EnsureScheme');
+  PluginLoader.UnloadAll;
+  Writeln('OK: TestCatalogLoadsOnDemand passed');
+end;
+
 begin
   try
     TestLoadAndResolveSamplePlugin;
     TestArchiveExtensionsFromManifest;
     TestUnloadIsIdempotent;
+    TestCatalogLoadsOnDemand;
     Writeln('All PluginLoader tests PASSED');
   except
     on E: Exception do

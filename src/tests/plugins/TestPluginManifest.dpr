@@ -36,6 +36,12 @@ begin
   Expect(M.ArchiveExtensions[0] = '7z', 'archiveExtensions[0]');
   Expect(M.ArchiveExtensions[1] = 'rar', 'archiveExtensions[1]');
   Expect(M.ArchiveExtensions[2] = 'tar', 'archiveExtensions[2]');
+  Expect(Length(M.Schemes) = 0, 'schemes optional');
+  Expect(TryParsePluginManifestJson(
+    '{"id":"mtn.tmp","schemes":["tmp","TMP"]}', M), 'schemes json');
+  Expect(Length(M.Schemes) = 2, 'schemes count');
+  Expect(M.Schemes[0] = 'tmp', 'schemes[0]');
+  Expect(M.Schemes[1] = 'tmp', 'schemes lowercased');
   Writeln('OK: TestParse');
 end;
 

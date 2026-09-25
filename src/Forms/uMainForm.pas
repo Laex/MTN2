@@ -112,6 +112,8 @@ type
     /// preselect the currently active theme without owning that state itself.</summary>
     function GetActiveThemeId: string;
     function GetConsoleProfile: string;
+    function GetConsoleStartOnLaunch: Boolean;
+    procedure SetConsoleStartOnLaunch(AValue: Boolean);
     function GetDisplaySettings: TDisplaySettings;
     procedure ApplyDisplaySettings(const ASettings: TDisplaySettings);
     /// <summary>Theme to instantiate (session.json's 'theme') and the
@@ -780,6 +782,8 @@ begin
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
   FDualPanel.OnSetConsoleProfile := ChangeConsoleProfile;
   FDualPanel.OnGetConsoleProfile := GetConsoleProfile;
+  FDualPanel.OnGetConsoleStartOnLaunch := GetConsoleStartOnLaunch;
+  FDualPanel.OnSetConsoleStartOnLaunch := SetConsoleStartOnLaunch;
   FDualPanel.OnThemeSelect := ThemeSelected;
   FDualPanel.OnGetActiveThemeId := GetActiveThemeId;
   FDualPanel.OnGetDisplaySettings := GetDisplaySettings;
@@ -995,6 +999,16 @@ begin
     Result := cShellProfileCmd;
 end;
 
+function TMainForm.GetConsoleStartOnLaunch: Boolean;
+begin
+  Result := FSession.ConsoleStartOnLaunch;
+end;
+
+procedure TMainForm.SetConsoleStartOnLaunch(AValue: Boolean);
+begin
+  FSession.ConsoleStartOnLaunch := AValue;
+end;
+
 function TMainForm.GetDisplaySettings: TDisplaySettings;
 begin
   Result := DefaultDisplaySettings;
@@ -1138,6 +1152,7 @@ begin
     Sess.TerminalCloseOnExit := FSession.TerminalCloseOnExit;
     Sess.AutoSyncConsoleCwd := FSession.AutoSyncConsoleCwd;
   end;
+  Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
   // Stage 27: FThemeName is the live theme (switched via the Theme dialog or
   // loaded from session.json at startup) — always the source of truth here.
   // ThemeFile (color-coding overrides) has no live-switch UI yet, so that
@@ -1305,37 +1320,35 @@ end;
 procedure TMainForm.ChangeConsoleProfile(const AProfileId: string);
 var
   ProfileId: string;
-  WasVisible: Boolean;
+  WasVisible, HadConsole: Boolean;
 begin
   ProfileId := NormalizeShellProfileId(AProfileId);
   if ProfileId = '' then
     ProfileId := cShellProfileCmd;
-  if Assigned(FConsole) and SameText(FConsole.ProfileId, ProfileId) then
-    Exit;
-  // Save new profile for future sessions.
   FSession.BackgroundConsoleProfile := ProfileId;
-  // Restart running console immediately with the new profile. The console is
-  // normally hidden (pre-warmed for Ctrl+O), so only bring it back to the
-  // foreground if it was already visible when the profile changed.
-  WasVisible := Assigned(FConsole) and FConsole.Visible;
-  if Assigned(FConsole) then
-  begin
-    FConsole.OnCloseRequest   := nil;
-    FConsole.OnContentChanged := nil;
-    FConsole.OnBackToPanels   := nil;
-    FConsole.OnDismissConsole := nil;
-    FConsole.OnFocusCommandLine := nil;
-    FConsole.OnSyncDirToPanels := nil;
-    FConsole.OnGetCmdHistory := nil;
-    FConsole.OnCommandExecuted := nil;
-    FMdi.CloseWindow(FConsole);
-    FConsole := nil;
-  end;
+  HadConsole := Assigned(FConsole);
+  if HadConsole and SameText(FConsole.ProfileId, ProfileId) then
+    Exit;
+  // No shell yet: remember the profile. The first Ctrl+O or command starts it.
+  if not HadConsole then
+    Exit;
+  // Restart a shell that is already up. Bring the console forward only when
+  // it was visible; a hidden one stays hidden.
+  WasVisible := FConsole.Visible;
+  FConsole.OnCloseRequest   := nil;
+  FConsole.OnContentChanged := nil;
+  FConsole.OnBackToPanels   := nil;
+  FConsole.OnDismissConsole := nil;
+  FConsole.OnFocusCommandLine := nil;
+  FConsole.OnSyncDirToPanels := nil;
+  FConsole.OnGetCmdHistory := nil;
+  FConsole.OnCommandExecuted := nil;
+  FMdi.CloseWindow(FConsole);
+  FConsole := nil;
   if WasVisible then
     ShowConsoleMode
   else
   begin
-    // Re-create hidden and pre-warm the shell, exactly like FormCreate does.
     EnsureConsole;
     if Assigned(FConsole) and Assigned(FDualPanel) then
       FConsole.EnsureShell(FDualPanel.ActiveLocalPath);
@@ -1362,6 +1375,15 @@ begin
   end;
   FConsole.Visible := True;
   ApplyConsoleLayout;
+  // First Ctrl+O (and Esc-to-console) pays shell startup here. A shell that
+  // is already running is left alone — EnsureShell would cd to the panel.
+  if not FConsole.Running then
+  begin
+    if Assigned(FDualPanel) then
+      FConsole.EnsureShell(FDualPanel.ActiveLocalPath)
+    else
+      FConsole.EnsureShell('');
+  end;
   FMdi.Activate(FConsole);
   UpdateBlinkTimer;
 end;
@@ -1544,6 +1566,7 @@ begin
   FSession.ConsoleRestartOnExit := True;
   FSession.TerminalCloseOnExit := True;
   FSession.AutoSyncConsoleCwd := False;
+  FSession.ConsoleStartOnLaunch := False;
   FSession.RestoreWorkspaceOnStart := True;
   FSession.FontSize := cDisplayDefaultFontSize;
   FSession.CursorBlink := True;
@@ -1557,13 +1580,15 @@ begin
     OpenPathFromArgument(StartupPathArgument);
   SyncRenderer;
 
-  // Pre-warm the background Dual Panel console so the persistent shell is
-  // already running by the time the user hits Ctrl+O or submits the first
-  // command, instead of paying shell-startup latency on that first action.
-  // Stays hidden — Dual Panel remains the active/visible window.
-  EnsureConsole;
-  if Assigned(FConsole) and Assigned(FDualPanel) then
-    FConsole.EnsureShell(FDualPanel.ActiveLocalPath);
+  // Optional pre-warm (Commands → Background console, "Start shell at
+  // program launch"). Off by default: the shell starts on the first Ctrl+O
+  // or the first command from the command line.
+  if FSession.ConsoleStartOnLaunch then
+  begin
+    EnsureConsole;
+    if Assigned(FConsole) and Assigned(FDualPanel) then
+      FConsole.EnsureShell(FDualPanel.ActiveLocalPath);
+  end;
 
   FBlinkPhase := True;
   FBlinkTimer := TTimer.Create(Self);

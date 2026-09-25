@@ -544,7 +544,8 @@
 
     "terminalProfile.title": "Новый терминал",
     "shellProfiles.noneAvailable": "Нет доступных профилей оболочки",
-    "consoleProfile.title": "Фоновая консоль"
+    "consoleProfile.title": "Фоновая консоль",
+    "consoleProfile.startOnLaunch": "Запускать оболочку при старте программы"
   },
   "menu": {
     "category.Left": "С&лева",

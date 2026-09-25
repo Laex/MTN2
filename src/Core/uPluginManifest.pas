@@ -22,6 +22,10 @@ type
     /// (see uVfsRegistry.RegisterArchiveExtension / TArchiveExtensionKind).
     /// Empty for plugins that are not archive backends.</summary>
     ArchiveExtensions: TArray<string>;
+    /// <summary>Optional "schemes": ["7z","tmp",...] — URI schemes this
+    /// plugin registers in mtn_plugin_init. The host uses them to load the
+    /// DLL the first time that scheme is resolved, instead of at startup.</summary>
+    Schemes: TArray<string>;
   end;
 
 function TryParsePluginManifestJson(const AJson: string;
@@ -48,6 +52,7 @@ begin
   AManifest.AbiVersion := 0;
   AManifest.HasAbi := False;
   SetLength(AManifest.ArchiveExtensions, 0);
+  SetLength(AManifest.Schemes, 0);
 end;
 
 function TryParsePluginManifestJson(const AJson: string;
@@ -99,6 +104,19 @@ begin
           Exts[High(Exts)] := TJSONString(Arr.Items[I]).Value;
         end;
       AManifest.ArchiveExtensions := Exts;
+    end;
+    N := Obj.Values['schemes'];
+    if N is TJSONArray then
+    begin
+      Arr := TJSONArray(N);
+      SetLength(Exts, 0);
+      for I := 0 to Arr.Count - 1 do
+        if Arr.Items[I] is TJSONString then
+        begin
+          SetLength(Exts, Length(Exts) + 1);
+          Exts[High(Exts)] := LowerCase(Trim(TJSONString(Arr.Items[I]).Value));
+        end;
+      AManifest.Schemes := Exts;
     end;
     Result := AManifest.Id <> '';
   finally

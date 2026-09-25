@@ -40,6 +40,8 @@ type
     FOnOpenTerminal: TSettingsOpenTerminal;
     FOnSetConsoleProfile: TSettingsSetConsoleProfile;
     FOnGetConsoleProfile: TSettingsGetConsoleProfile;
+    FOnGetConsoleStartOnLaunch: TFunc<Boolean>;
+    FOnSetConsoleStartOnLaunch: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
     FOnApplyDisplay: TSettingsApplyDisplay;
@@ -69,6 +71,10 @@ type
     procedure OpenExternalTools;
     procedure OpenTerminalProfiles;
     procedure OpenConsoleProfiles;
+    property OnGetConsoleStartOnLaunch: TFunc<Boolean>
+      read FOnGetConsoleStartOnLaunch write FOnGetConsoleStartOnLaunch;
+    property OnSetConsoleStartOnLaunch: TProc<Boolean>
+      read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
     procedure DispatchThemeCommand(const AControlId: string);
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
@@ -274,6 +280,7 @@ var
   Ids: TArray<string>;
   Sel: Integer;
   CurId: string;
+  StartOnLaunch: Boolean;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -292,9 +299,12 @@ begin
     Exit;
   end;
 
+  StartOnLaunch := False;
+  if Assigned(FOnGetConsoleStartOnLaunch) then
+    StartOnLaunch := FOnGetConsoleStartOnLaunch();
   FProfileIds := Ids;
   SetKind(hdkConsoleProfile);
-  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel), FOnCommand);
+  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch), FOnCommand);
   Notify;
 end;
 
@@ -427,11 +437,14 @@ procedure TSettingsDialogController.DispatchConsoleProfileCommand(
   const AControlId: string);
 var
   Idx: Integer;
-  Accepted: Boolean;
+  Accepted, StartOnLaunch: Boolean;
 begin
   Idx := FDialog.GetListSelectedIndex('profiles');
+  StartOnLaunch := FDialog.GetCheckbox('start_on_launch');
   Accepted := DialogCmdIsListAccept(AControlId, 'profiles');
   FDialog.Close;
+  if Accepted and Assigned(FOnSetConsoleStartOnLaunch) then
+    FOnSetConsoleStartOnLaunch(StartOnLaunch);
   if Accepted and (Idx >= 0) and (Idx <= High(FProfileIds)) and
      Assigned(FOnSetConsoleProfile) then
     FOnSetConsoleProfile(FProfileIds[Idx]);

@@ -11,6 +11,15 @@ uses
 procedure StartPluginHost(const APluginsDir: string);
 procedure StopPluginHost;
 function HostLoadedPluginIds: TArray<string>;
+/// <summary>Load the catalogued plugin that owns AScheme, if any.
+/// No-op when that plugin is already loaded. Used from VFS resolve.</summary>
+function HostEnsurePluginScheme(const AScheme: string): Boolean;
+/// <summary>Load the catalogued plugin whose manifest lists this file's
+/// archive extension. No-op when already loaded.</summary>
+function HostEnsureArchiveExtension(const AFileName: string): Boolean;
+/// <summary>Load every catalogued plugin so menu items and key rebinds
+/// exist. Cheap after the first call.</summary>
+procedure HostEnsureAllPlugins;
 /// <summary>Display labels for the Loaded plugins dialog, parallel to
 /// HostLoadedPluginIds. Each row is FormatPluginListLabel from
 /// uPluginManifest (id, plugin.json name/version).</summary>
@@ -27,7 +36,7 @@ implementation
 
 uses
   System.JSON, System.IOUtils,
-  uPluginLoader, uPluginHostAbi, uPluginManifest;
+  uPluginLoader, uPluginHostAbi, uPluginManifest, uVfsRegistry;
 
 var
   GPluginsDir: string;
@@ -35,7 +44,24 @@ var
 procedure StartPluginHost(const APluginsDir: string);
 begin
   GPluginsDir := ExcludeTrailingPathDelimiter(APluginsDir);
-  PluginLoader.LoadPluginsFrom(APluginsDir);
+  // Catalog only. DLLs load on the first scheme/archive use, or when the
+  // menu / plugin list needs the rest of the registrations.
+  PluginLoader.CatalogPlugins(APluginsDir);
+end;
+
+function HostEnsurePluginScheme(const AScheme: string): Boolean;
+begin
+  Result := PluginLoader.EnsureScheme(AScheme);
+end;
+
+function HostEnsureArchiveExtension(const AFileName: string): Boolean;
+begin
+  Result := PluginLoader.EnsureArchiveExtension(AFileName);
+end;
+
+procedure HostEnsureAllPlugins;
+begin
+  PluginLoader.EnsureAll;
 end;
 
 procedure StopPluginHost;
@@ -127,5 +153,8 @@ procedure UnbindHostInvalidate(AWindowId: Int64);
 begin
   UnregisterInvalidatableWindow(AWindowId);
 end;
+
+initialization
+  SetVfsLazyLoad(HostEnsurePluginScheme, HostEnsureArchiveExtension);
 
 end.

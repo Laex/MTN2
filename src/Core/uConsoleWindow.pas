@@ -5,8 +5,9 @@ unit uConsoleWindow;
   Bottom frame sits above the shared F-keys / status (Dual Panel draws those).
   Inherits buffer, PTY, selection, mouse and clipboard from TBaseConsoleWindow.
   Unique to this class:
-    - Persistent-shell start via EnsureShell (profile-aware); pre-warmed at
-      app launch, so it is usually already running by the time it's shown.
+    - Persistent-shell start via EnsureShell (profile-aware). By default the
+      shell is not started until the first Ctrl+O or command-line command;
+      "Start shell at program launch" pre-warms it from FormCreate.
     - OnBackToPanels / OnDismissConsole / OnFocusCommandLine events.
     - Esc → panels (never stops the shell/command — Ctrl+C does that);
       Ctrl+O → panels; F10 → close.

@@ -123,6 +123,8 @@ type
     FOnOpenTerminal: TOpenTerminalEvent;
     FOnSetConsoleProfile: TSetConsoleProfileEvent;
     FOnGetConsoleProfile: TGetConsoleProfileEvent;
+    FOnGetConsoleStartOnLaunch: TGetConsoleStartOnLaunchEvent;
+    FOnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent;
     FOnThemeSelect: TThemeSelectEvent;
     FOnGetActiveThemeId: TGetThemeIdEvent;
     FOnApplyDisplaySettings: TDisplaySettingsEvent;
@@ -269,6 +271,8 @@ type
     procedure HostOpenTerminal(const AProfileId, ACwd: string);
     procedure HostSetConsoleProfile(const AProfileId: string);
     function HostGetConsoleProfile: string;
+    function HostGetConsoleStartOnLaunch: Boolean;
+    procedure HostSetConsoleStartOnLaunch(AValue: Boolean);
     function HostActivePanelUri: string;
     function HostInPanelsWorkspace: Boolean;
     function HostLastSelectMask: string;
@@ -807,6 +811,10 @@ type
       read FOnSetConsoleProfile write FOnSetConsoleProfile;
     property OnGetConsoleProfile: TGetConsoleProfileEvent
       read FOnGetConsoleProfile write FOnGetConsoleProfile;
+    property OnGetConsoleStartOnLaunch: TGetConsoleStartOnLaunchEvent
+      read FOnGetConsoleStartOnLaunch write FOnGetConsoleStartOnLaunch;
+    property OnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent
+      read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
     property OnThemeSelect: TThemeSelectEvent read FOnThemeSelect write FOnThemeSelect;
     property OnGetActiveThemeId: TGetThemeIdEvent read FOnGetActiveThemeId write FOnGetActiveThemeId;
     property OnApplyDisplaySettings: TDisplaySettingsEvent read FOnApplyDisplaySettings write FOnApplyDisplaySettings;
@@ -1655,6 +1663,20 @@ begin
     Result := '';
 end;
 
+function TDualPanelWindow.HostGetConsoleStartOnLaunch: Boolean;
+begin
+  if Assigned(FOnGetConsoleStartOnLaunch) then
+    Result := FOnGetConsoleStartOnLaunch()
+  else
+    Result := False;
+end;
+
+procedure TDualPanelWindow.HostSetConsoleStartOnLaunch(AValue: Boolean);
+begin
+  if Assigned(FOnSetConsoleStartOnLaunch) then
+    FOnSetConsoleStartOnLaunch(AValue);
+end;
+
 function TDualPanelWindow.HostActivePanelUri: string;
 var
   Ws: TDualPanelWorkspaceTab;
@@ -2157,6 +2179,8 @@ begin
     ActiveLocalPath, HostOpenTerminal, HostSetConsoleProfile, HostGetConsoleProfile,
     HostShowShellStub,
     HostGetDisplaySettings, HostApplyDisplaySettings);
+  FSettings.OnGetConsoleStartOnLaunch := HostGetConsoleStartOnLaunch;
+  FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
   FFileOps := TFileOpDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     HostUnfocusCmd, HostActivePanelUri, HostInPanelsWorkspace,
@@ -2334,6 +2358,9 @@ end;
 
 function TDualPanelWindow.ClickHandleTopMenu(ACol, ARow: Integer): Boolean;
 begin
+  // First open of the menu is when plugin menu items have to exist.
+  if Assigned(FTopMenu) and not FTopMenu.Active then
+    HostEnsureAllPlugins;
   Result := FTopMenu.HandleClick(ACol, ARow);
 end;
 
@@ -5994,6 +6021,7 @@ begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
   CloseTransientUiBeforeDialog;
+  HostEnsureAllPlugins;
 
   FDialogKind := hdkHelp;
   FDialog.Open(BuildPluginListDialog(HostPluginListDisplayLabels), DialogCommand);
@@ -8749,6 +8777,11 @@ begin
   // hdkColorCodingEdit's "pick a color for the focused field").
   if Assigned(FTopMenu) and ShouldOfferTopMenu(ActiveWorkspace.Kind, DialogVis) then
   begin
+    // F9 / Alt-release opens the bar. Load plugins first so their items
+    // are already in the menu; any other key must not pay that cost.
+    if not FTopMenu.Active and
+       ((AKey = vkF9) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0))) then
+      HostEnsureAllPlugins;
     if FTopMenu.HandleInput(AKey, AShift, AKeyChar) then
     begin
       Invalidate;

@@ -239,7 +239,7 @@ function BuildChecksumResultDialog(const ATitle, AStatus: string;
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0; AStartOnLaunch: Boolean = False): TDialogDeclaration;
 function BuildAboutDialog: TDialogDeclaration;
 /// <summary>Update offer: buttons update / later (Esc) / skip.</summary>
 function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;
@@ -1158,9 +1158,24 @@ begin
 end;
 
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; AStartOnLaunch: Boolean): TDialogDeclaration;
+var
+  I, N: Integer;
 begin
   Result := BuildShellProfileListDialog('Background console', ATitles, ASelectedIndex);
+  // Checkbox sits under the profile list; the shared terminal-profile
+  // resource has no room for it, so only this dialog grows.
+  Result.Height := Result.Height + 2;
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Kind = dckButton then
+      Inc(Result.Controls[I].Row, 2);
+  N := Length(Result.Controls);
+  SetLength(Result.Controls, N + 1);
+  Result.Controls[N] := WithControlBox(
+    MakeCheckbox('start_on_launch',
+      T('ui.consoleProfile.startOnLaunch', 'Start shell at program launch'),
+      AStartOnLaunch),
+    1, 14, Result.Width - 4, 1);
 end;
 
 function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;
