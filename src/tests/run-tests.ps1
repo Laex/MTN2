@@ -60,6 +60,12 @@ foreach ($Line in (cmd /c "call `"$RsVars`" >nul && set")) {
 }
 New-Item -ItemType Directory -Force -Path $Dcu | Out-Null
 
+# MTN2.dres (dialogs, strings, keymap, menu as RCDATA) is a build product, not
+# in git; tests link it with {$R '..\..\MTN2.dres'}. Rebuild it here so a fresh
+# clone runs without build.ps1 and a test never sees stale resources.
+& (Join-Path $Studio 'bin\brcc32.exe') "-fo$(Join-Path $Src 'MTN2.dres')" (Join-Path $Src 'MTN2Resource.rc') | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE (MTN2Resource.rc)" }
+
 # Runtime pieces some plugin tests need; they SKIP themselves when absent.
 if ($Selected | Where-Object { $_.Directory.Name -eq 'plugins' }) {
     try { & (Join-Path $Src 'tools\fetch-wasmtime.ps1') | Out-Null }

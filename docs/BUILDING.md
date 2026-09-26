@@ -17,6 +17,8 @@
 или из `MTN2_7Z_DLL` и в релизный архив не входит.
 
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
+Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся — их собирает `build.ps1`
+(и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.
 
 Запуск: `bin\MTN2.exe [--no-skia] [путь]`. Ключи (`--no-skia`, путь новой вкладкой, служебный `--wait-pid`) — [ARCHITECTURE.md](ARCHITECTURE.md) §10.
 

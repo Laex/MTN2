@@ -44,6 +44,8 @@
 *.res
 !src/MTN2.res
 !*.rc
+# MTN2Resource.rc -> MTN2.dres: rebuilt by build.ps1 and run-tests.ps1
+*.dres
 
 # Project build outputs (see MTN2.dproj: DCC_ExeOutput / DCC_DcuOutput)
 /bin/*
@@ -84,19 +86,47 @@ desktop.ini
 *.temp
 # `*.tmp` also matches the plugin folder name -- keep its sources
 !src/plugins/mtn.tmp/
+portable.dat
+
+# MTN2 user data. Portable mode (portable.dat) writes it next to the exe,
+# so a test or IDE build run outside bin/ would leave it in the tree: saved
+# SSH hosts and users, visited folders, command history, file positions.
 session.json
 history.json
-portable.dat
-.obsidian/
+dialoghistory.json
+dirsync-state.json
+fileposition.json
+filehistory.json
+folderhistory.json
+folderhotlist.json
+sshconnections.json
+workspaces.json
+# ...the same names are dialog layouts in the sources -- keep those
+!src/dialogs/*.json
+
+# Keys, certificates, local secrets (SSH testing, release signing)
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.ppk
+id_rsa*
+id_ecdsa*
+id_ed25519*
+
+# Python (src/Assets/make_ico.py)
+__pycache__/
+*.py[cod]
+
+# Local AI / editor tooling (repowise keeps API keys in .repowise/.env)
 .zcode/
 .vscode/
 .repowise/
 .claude/
 .cursor/
 .mcp.json
-
-# repowise API keys (local)
-.repowise/.env
 
 # Release packages (src/tools/package-release.ps1)
 /dist/

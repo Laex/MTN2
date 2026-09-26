@@ -128,19 +128,19 @@ begin
     // Pasting a "X:\..." path via the local-input path must land on the same
     // prompt line, not be mistaken for an incoming shell prompt (regression:
     // Shift+Insert paste used to jump to a new line below the prompt).
-    Buf.AppendOutput('C:\Users\laex\AppData\Roaming\MTN2>');
+    Buf.AppendOutput('C:\Users\user\AppData\Roaming\MTN2>');
     Buf.AppendLocalInput('D:\Work\Delphi\MTN2\ARCHITECTURE.md');
     Expect(Buf.GetLine(Buf.LineCount - 1),
-      'C:\Users\laex\AppData\Roaming\MTN2>D:\Work\Delphi\MTN2\ARCHITECTURE.md',
+      'C:\Users\user\AppData\Roaming\MTN2>D:\Work\Delphi\MTN2\ARCHITECTURE.md',
       'pasted path stays on prompt line');
 
     Buf.Clear;
     // Pasting more text onto an already-started command must also extend the
     // same line (e.g. typed "cd " then pasted a path).
-    Buf.AppendOutput('C:\Users\laex>');
+    Buf.AppendOutput('C:\Users\user>');
     Buf.AppendLocalInput('cd ');
     Buf.AppendLocalInput('D:\Work\Delphi\MTN2');
-    Expect(Buf.GetLine(Buf.LineCount - 1), 'C:\Users\laex>cd D:\Work\Delphi\MTN2',
+    Expect(Buf.GetLine(Buf.LineCount - 1), 'C:\Users\user>cd D:\Work\Delphi\MTN2',
       'paste onto an already-started command stays on the same line');
 
     Buf.Clear;
@@ -288,17 +288,17 @@ begin
   Writeln('TestPasteOntoPromptLineGrid');
   Buf := TConsoleBuffer.Create;
   try
-    Buf.AppendOutputEx('C:\Users\laex\AppData\Roaming\MTN2>', 80, 1);
+    Buf.AppendOutputEx('C:\Users\user\AppData\Roaming\MTN2>', 80, 1);
     Buf.AppendLocalInput('D:\Work\Delphi\MTN2\ARCHITECTURE.md');
     Expect(Buf.GetLine(Buf.LineCount - 1),
-      'C:\Users\laex\AppData\Roaming\MTN2>D:\Work\Delphi\MTN2\ARCHITECTURE.md',
+      'C:\Users\user\AppData\Roaming\MTN2>D:\Work\Delphi\MTN2\ARCHITECTURE.md',
       'pasted path stays on prompt line (grid)');
 
     Buf.Clear;
-    Buf.AppendOutputEx('C:\Users\laex>', 80, 1);
+    Buf.AppendOutputEx('C:\Users\user>', 80, 1);
     Buf.AppendLocalInput('cd ');
     Buf.AppendLocalInput('D:\Work\Delphi\MTN2');
-    Expect(Buf.GetLine(Buf.LineCount - 1), 'C:\Users\laex>cd D:\Work\Delphi\MTN2',
+    Expect(Buf.GetLine(Buf.LineCount - 1), 'C:\Users\user>cd D:\Work\Delphi\MTN2',
       'paste onto an already-started command stays on the same line (grid)');
 
     // Note: the legacy suite's third sub-scenario (a bare PTY chunk that
@@ -428,8 +428,8 @@ begin
   Writeln('TestGridModePromptNotSplitByOscTitle');
   Buf := TConsoleBuffer.Create;
   try
-    Buf.AppendOutputEx(#27'[2J'#27'[HC:\Users\laex\AppData\Roaming\MTN2>'#27']0;C:\WINDOWS\SYSTEM32\cmd.exe'#7, 80, 5);
-    Expect(Buf.GetLine(0), 'C:\Users\laex\AppData\Roaming\MTN2>', 'prompt text stays on row 0');
+    Buf.AppendOutputEx(#27'[2J'#27'[HC:\Users\user\AppData\Roaming\MTN2>'#27']0;C:\WINDOWS\SYSTEM32\cmd.exe'#7, 80, 5);
+    Expect(Buf.GetLine(0), 'C:\Users\user\AppData\Roaming\MTN2>', 'prompt text stays on row 0');
     Buf.GetInputCursor(LineIdx, Col);
     Expect(IntToStr(LineIdx), IntToStr(0), 'cursor stays on row 0 after the prompt + OSC title, not pushed to row 1');
     Expect(IntToStr(Col), IntToStr(35), 'cursor sits right after the prompt text, not reset to column 0');
@@ -449,7 +449,7 @@ begin
   Writeln('TestGetInputCursorAfterUnfollow');
   Buf := TConsoleBuffer.Create;
   try
-    Buf.AppendOutputEx(#27'[2J'#27'[HC:\Users\laex\AppData\Roaming\MTN2>'#27']0;C:\WINDOWS\SYSTEM32\cmd.exe'#7, 80, 5);
+    Buf.AppendOutputEx(#27'[2J'#27'[HC:\Users\user\AppData\Roaming\MTN2>'#27']0;C:\WINDOWS\SYSTEM32\cmd.exe'#7, 80, 5);
     Buf.FollowTail := False;
     Expect(BoolToStr(Buf.GetInputCursor(LineIdx, Col), True), 'True',
       'GetInputCursor succeeds after FollowTail is cleared');

@@ -391,9 +391,6 @@
                 <Source>
                     <Source Name="MainSource">MTN2.dpr</Source>
                 </Source>
-                <Excluded_Packages>
-                    <Excluded_Packages Name="C:\Users\laex\Documents\Embarcadero\Studio\37.0\Bpl\LivePascal370.bpl">File C:\Users\laex\Documents\Embarcadero\Studio\37.0\Bpl\LivePascal370.bpl not found</Excluded_Packages>
-                </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="5">
                 <DeployFile LocalName="$(BDS)\Redist\en\Embarcadero.InterBase.Assets.resx" Configuration="Debug" Class="InterBaseResource">
