@@ -25,6 +25,7 @@ type
     CmdHandled: Boolean;
     function ActiveSide: TPanelSide;
     procedure CopyFullPath;
+    procedure CopyItemName;
     procedure ShowProperties;
     procedure ExternalView;
     procedure ExternalEdit;
@@ -114,6 +115,11 @@ begin
   Last := 'copyfull';
 end;
 
+procedure TKeymapSpy.CopyItemName;
+begin
+  Last := 'copyname';
+end;
+
 procedure TKeymapSpy.ExternalView;
 begin
   Last := 'extview';
@@ -199,6 +205,7 @@ begin
   FillChar(AHost, SizeOf(AHost), 0);
   AHost.ActiveSide := ASpy.ActiveSide;
   AHost.CopyFullPathToClipboard := ASpy.CopyFullPath;
+  AHost.CopyItemNameToClipboard := ASpy.CopyItemName;
   AHost.ShowProperties := ASpy.ShowProperties;
   AHost.ExternalView := ASpy.ExternalView;
   AHost.ExternalEdit := ASpy.ExternalEdit;
@@ -259,6 +266,14 @@ begin
     Assert(Spy.Last = 'copyfull', 'copy-full-path host called');
     Assert(Key = 0, 'copy-full-path consumes AKey');
     Assert(KeyChar = #0, 'copy-full-path consumes AKeyChar');
+
+    Key := vkInsert;
+    KeyChar := 'x';
+    Assert(DispatchKeymapActionPrimary(Host, kaCopyItemName, Key, KeyChar),
+      'kaCopyItemName is primary');
+    Assert(Spy.Last = 'copyname', 'copy-name host called');
+    Assert(Key = 0, 'copy-name consumes AKey');
+    Assert(KeyChar = #0, 'copy-name consumes AKeyChar');
 
     // Alt+Enter: Alt quick search (after the primary dispatch) would take
     // it as a search key, so Properties must be primary.

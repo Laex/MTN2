@@ -3,13 +3,28 @@
 The **Options** menu (F9):
 
 - **Theme...** — appearance; changes at once.
-- **Font / Display...** — font, size, zoom, cursor blinking, file icons in the panel and the **interface language** (English / Русский); everything applies without a restart.
+- **Font / Display...** — font, size, zoom, cursor blinking, file icons in the panel, pop-up notifications and the **interface language** (English / Русский); everything applies without a restart.
 - **Columns...** — the columns of the “Custom” mode.
 - **Color coding...** — row colors by name masks.
 - **Keymap...** — view and change keys.
 - **Plugins...** — installed plugins.
 - **External viewer/editor...** — the Alt+F3 / Alt+F4 commands; `%1` is the file path (without `%1` the path is added at the end), e.g. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
 - **Zoom**: Ctrl+mouse wheel, **Ctrl+0** — reset.
+
+## Notifications
+
+Commands that change nothing on screen confirm themselves with a short notice in the bottom right corner; it disappears after a few seconds and does not take keys. Notices appear for:
+
+- **Ctrl+Alt+Ins** / **Alt+Shift+Ins** — the path / name copied (or “Nothing to copy”);
+- **Ctrl+C** / **Ctrl+X** (**Ctrl+Ins** / **Ctrl+Del**) on the panel — the files placed on the clipboard;
+- copying text in the viewer / editor (without a selection — the current line), in the command line and in a terminal;
+- **Ctrl+R** — the panel refreshed;
+- **Ctrl+Shift+O** — the folder the console went to;
+- **Ctrl+Alt+R** — the item restored from the Recycle Bin;
+- **Ctrl+Alt+D** — the folder added to the hotlist;
+- selection by mask (**Gray +/−**, **Ctrl+Gray +/−**, **Alt+Gray +/−**) that changed nothing — shown in red.
+
+Notices are turned off in **Options → Font / Display...** (“Show pop-up notifications”).
 
 ## Updates
 

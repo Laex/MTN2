@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController;
+  uDisplaySettings, uStrings, uUpdateController, uToast;
 
 type
   TMainForm = class(TForm)
@@ -1024,6 +1024,7 @@ begin
   else
     Result.CursorBlinkMs := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   Result.ShowPanelIcons := GShowPanelIcons;
+  Result.ShowNotifications := GShowToasts;
   Result.Language := CurrentLocale;
 end;
 
@@ -1036,6 +1037,8 @@ begin
   FSession.CursorBlinkMs := ClampDisplayBlinkMs(ASettings.CursorBlinkMs);
   FSession.ShowPanelIcons := ASettings.ShowPanelIcons;
   GShowPanelIcons := ASettings.ShowPanelIcons;
+  FSession.ShowNotifications := ASettings.ShowNotifications;
+  GShowToasts := ASettings.ShowNotifications;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -1104,6 +1107,7 @@ begin
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
   GShowPanelIcons := Sess.ShowPanelIcons;
+  GShowToasts := Sess.ShowNotifications;
   FCursorBlinkEnabled := Sess.CursorBlink;
   FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetZoom(Sess.Zoom, ClientWidth, ClientHeight, Canvas);
@@ -1175,6 +1179,7 @@ begin
   else
     Sess.CursorBlinkMs := FSession.CursorBlinkMs;
   Sess.ShowPanelIcons := GShowPanelIcons;
+  Sess.ShowNotifications := GShowToasts;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever
@@ -1572,6 +1577,7 @@ begin
   FSession.CursorBlink := True;
   FSession.CursorBlinkMs := cBlinkIntervalMs;
   FSession.ShowPanelIcons := True;
+  FSession.ShowNotifications := True;
   FCursorBlinkEnabled := True;
   TryRestoreSession;
   // Stage 28: mtn2 <path> — a brand new tab for the CLI path, restored

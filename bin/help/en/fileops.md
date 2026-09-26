@@ -19,6 +19,9 @@
 | Ctrl+Alt+H | checksums (MD5, SHA-1, SHA-256, SHA-512) of the selected files and folders; on a `.md5` / `.sha1` / `.sha256` / `.sha512` file — verify it |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy / cut / paste files through the clipboard |
 | Ctrl+Alt+Ins | copy the full path to the clipboard |
+| Alt+Shift+Ins | copy only the name (no path) to the clipboard |
+
+**Ctrl+Alt+Ins** and **Alt+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` — the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → Font / Display...**.
 
 In the **Ctrl+Shift+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional). An empty field keeps the date: that is how dates that differ between the selected files are shown. **Current** puts the current time into all three fields, **Original** restores the values read from the files. “Process subfolders” applies to the dates too.
 

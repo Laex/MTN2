@@ -137,6 +137,8 @@ uses
   uSingleInstance in 'Core\uSingleInstance.pas',
   uUpdater in 'Core\uUpdater.pas',
   uUpdateController in 'Core\uUpdateController.pas',
+  uNotice in 'Core\uNotice.pas',
+  uToast in 'Core\uToast.pas',
   uMainForm in 'Forms\uMainForm.pas' {MainForm};
 
 {$R *.res}

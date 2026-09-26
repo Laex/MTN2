@@ -225,7 +225,8 @@ function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
-  const ALanguageNames: TArray<string>; ALanguageIndex: Integer): TDialogDeclaration;
+  const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
+  AShowNotifications: Boolean = True): TDialogDeclaration;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
@@ -1078,7 +1079,8 @@ end;
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
-  const ALanguageNames: TArray<string>; ALanguageIndex: Integer): TDialogDeclaration;
+  const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
+  AShowNotifications: Boolean): TDialogDeclaration;
 var
   Fonts, Languages: TArray<string>;
   Sel: Integer;
@@ -1105,6 +1107,7 @@ begin
   DialogSetListItems(Result, 'blink_ms', DisplayBlinkMsItems, ABlinkMsIndex);
   DialogSetCheckbox(Result, 'blink', ABlink);
   DialogSetCheckbox(Result, 'panel_icons', AShowIcons);
+  DialogSetCheckbox(Result, 'notifications', AShowNotifications);
   DialogSetLabelText(Result, 'font_note', ANote);
 
   if Length(ALanguageNames) = 0 then

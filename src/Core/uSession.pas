@@ -63,6 +63,7 @@ type
     CursorBlink: Boolean;
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
+    ShowNotifications: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -508,6 +509,7 @@ begin
       Root.AddPair('cursorBlink', TJSONBool.Create(ASession.CursorBlink));
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
+      Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -554,6 +556,7 @@ begin
   ASession.CursorBlink := True;
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
   ASession.ShowPanelIcons := True;
+  ASession.ShowNotifications := True;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -614,6 +617,7 @@ begin
       ASession.CursorBlinkMs :=
         ClampDisplayBlinkMs(JsonInt(Root, 'cursorBlinkMs', cDisplayDefaultBlinkMs));
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
+      ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

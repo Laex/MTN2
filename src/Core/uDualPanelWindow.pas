@@ -29,7 +29,7 @@ uses
   uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
-  uMessageBus, uDisplaySettings, uConPty;
+  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -140,6 +140,8 @@ type
     FHelp: THelpViewer;
     /// <summary>Ctrl+Q text preview (created on first use).</summary>
     FQuickText: TQuickTextView;
+    /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
+    FToast: TToast;
     /// <summary>Workspace tab id while hdkWorkspaceTabRename is open.</summary>
     FRenameWorkspaceId: Cardinal;
     FSkipArchivePasswordUri: string;
@@ -401,7 +403,12 @@ type
     /// invert [From..To) ? includes the row before landing, not the landing.</summary>
     procedure MoveCursorWithSelect(ADelta: Integer;
       AExcludeLanding: Boolean = False);
+    /// <summary>Selected items (or the cursor item) to the clipboard, one per
+    /// line: full paths, or bare names when ANameOnly. '..' stands for the
+    /// current folder.</summary>
+    procedure CopyItemsToClipboard(ANameOnly: Boolean);
     procedure CopyFullPathToClipboard;
+    procedure CopyItemNameToClipboard;
     procedure SelectAllActive;
     procedure InvertSelectionActive;
     procedure BeginSelectByMask(AUnselect: Boolean);
@@ -415,6 +422,10 @@ type
     /// <summary>FAR Alt+Gray+/Gray?: select/deselect files sharing the cursor
     /// file's name stem (no extension).</summary>
     procedure ApplySelectByName(AUnselect: Boolean);
+    /// <summary>Toast when a mask (de)selection left the selection as it
+    /// was -- the only case where nothing on screen answers the key.</summary>
+    procedure NoteSelectionUnchanged(ABefore: Integer; const ATab: TTab;
+      const AMask: string);
     procedure SubmitCommandLine;
     procedure RunConsoleCommand(const ACommand: string);
     /// <summary>FAR Shift+Enter: cmdline or cursor file as a separate OS process.</summary>
@@ -880,6 +891,16 @@ uses
 const
   cLiveFilterHistory = 'livefilter';
 
+/// <summary>Last segment of a path or URI ("C:\a\b\" -> "b", "a.zip!\d\f"
+/// -> "f"); '' for a drive root.</summary>
+function PathLastSegment(const APath: string): string;
+begin
+  Result := APath;
+  while (Result <> '') and CharInSet(Result[Length(Result)], ['\', '/']) do
+    Delete(Result, Length(Result), 1);
+  Result := Copy(Result, LastDelimiter('\/:', Result) + 1, MaxInt);
+end;
+
 class function TInputOverlayEntry.Make(AIsActive: TFunc<Boolean>;
   AHandle: THandleInputMethod): TInputOverlayEntry;
 begin
@@ -931,6 +952,23 @@ begin
     begin
       if FAlive then
         Invalidate;
+    end);
+  // NotifyChanged, not Invalidate: the hide comes from a timer, outside any
+  // input/paint pass, so the host must be told to repaint.
+  FToast := TToast.Create(
+    procedure
+    begin
+      if FAlive then
+        NotifyChanged;
+    end);
+  // Notices from anywhere (editor, command line, terminal, dialogs). Not
+  // over the Ctrl+O console: the toast is not painted there and would pop
+  // up stale on return to the panels.
+  SetNoticeHandler(
+    procedure(const ATemplate, AArg: string; AKind: TToastKind)
+    begin
+      if FAlive and not FConsoleMode and Assigned(FToast) then
+        FToast.Show(ATemplate, AArg, AKind);
     end);
   FVfs := CreateDefaultVfs;
   FLeftModel := TFilePanelModel.Create(FVfs, cPanelWindowIdLeft);
@@ -1125,6 +1163,8 @@ begin
     FHelp.OnChanged := nil;
     FreeAndNil(FHelp);
   end;
+  SetNoticeHandler(nil);
+  FreeAndNil(FToast);
   FreeAndNil(FFilterPopup);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
@@ -1277,6 +1317,7 @@ procedure TDualPanelWindow.BindKeymapHost;
 begin
   FKeymapHost.ActiveSide := KeymapActiveSide;
   FKeymapHost.CopyFullPathToClipboard := CopyFullPathToClipboard;
+  FKeymapHost.CopyItemNameToClipboard := CopyItemNameToClipboard;
   FKeymapHost.ToggleConsole := KeymapToggleConsole;
   FKeymapHost.RequestQuit := KeymapRequestQuit;
   FKeymapHost.TogglePanelVisible := TogglePanelVisible;
@@ -2521,15 +2562,38 @@ end;
 procedure TDualPanelWindow.ClipboardCopyFiles(ACut: Boolean);
 var
   Uris, Paths: TArray<string>;
+  Name: string;
 begin
   Uris := CollectActiveSources;
   if Length(Uris) = 0 then
+  begin
+    FToast.Show(T('ui.toast.nothingToCopy', 'Nothing to copy'), '', tkWarning);
     Exit;
+  end;
   Paths := FileUrisToLocalPaths(Uris);
   FFileClipUris := Uris;
   FFileClipCut := ACut;
   ClipboardSetPanelItems(Paths, Uris, ACut);
   FFileClipSeq := GetClipboardSequenceNumber;
+  if Length(Uris) > 1 then
+  begin
+    if ACut then
+      FToast.Show(T('ui.toast.cutItems',
+        'Cut to the clipboard: %d items (Ctrl+V moves them)', [Length(Uris)]))
+    else
+      FToast.Show(T('ui.toast.copiedItems',
+        'Copied to the clipboard: %d items', [Length(Uris)]));
+    Exit;
+  end;
+  Name := '';
+  if (Length(Paths) > 0) and (Paths[0] <> '') then
+    Name := PathLastSegment(Paths[0]);
+  if Name = '' then
+    Name := PathLastSegment(Uris[0]);
+  if ACut then
+    FToast.Show(T('ui.toast.cutItem', '"%s" cut to the clipboard (Ctrl+V moves it)'), Name)
+  else
+    FToast.Show(T('ui.toast.copiedItem', '"%s" copied to the clipboard'), Name);
 end;
 
 function TDualPanelWindow.FileClipStillOurs: Boolean;
@@ -3439,6 +3503,16 @@ begin
 end;
 
 procedure TDualPanelWindow.CopyFullPathToClipboard;
+begin
+  CopyItemsToClipboard(False);
+end;
+
+procedure TDualPanelWindow.CopyItemNameToClipboard;
+begin
+  CopyItemsToClipboard(True);
+end;
+
+procedure TDualPanelWindow.CopyItemsToClipboard(ANameOnly: Boolean);
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -3448,6 +3522,17 @@ var
   Paths, Keys: TArray<string>;
   Path, Text: string;
   I: Integer;
+
+  function ItemText(const ARow: TPanelRow): string;
+  begin
+    Result := PanelItemFullPath(ARow.URI, Tab.CurrentURI, ARow.IsParent);
+    if not ANameOnly or (Result = '') then
+      Exit;
+    // Archive members ("a.zip!\dir\f") split the same way; a drive root
+    // has no name and yields ''.
+    Result := PathLastSegment(Result);
+  end;
+
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -3463,7 +3548,7 @@ begin
     for R in Rows do
       if (not R.IsParent) and (R.URI <> '') and SelectionKeysHas(Keys, R.URI) then
       begin
-        Path := PanelItemFullPath(R.URI, Tab.CurrentURI, False);
+        Path := ItemText(R);
         if Path <> '' then
           Paths := Paths + [Path];
       end;
@@ -3471,17 +3556,33 @@ begin
   else if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
   begin
     R := Rows[Tab.CursorIndex];
-    Path := PanelItemFullPath(R.URI, Tab.CurrentURI, R.IsParent);
+    Path := ItemText(R);
     if Path <> '' then
       Paths := [Path];
   end;
 
   if Length(Paths) = 0 then
+  begin
+    FToast.Show(T('ui.toast.nothingToCopy', 'Nothing to copy'), '', tkWarning);
     Exit;
+  end;
   Text := Paths[0];
   for I := 1 to High(Paths) do
     Text := Text + sLineBreak + Paths[I];
   ClipboardSet(Text);
+  if Length(Paths) > 1 then
+  begin
+    if ANameOnly then
+      FToast.Show(T('ui.toast.copiedNames', 'Names copied to the clipboard: %d',
+        [Length(Paths)]))
+    else
+      FToast.Show(T('ui.toast.copiedPaths', 'Full paths copied to the clipboard: %d',
+        [Length(Paths)]));
+  end
+  else if ANameOnly then
+    FToast.Show(T('ui.toast.copiedName', 'Name "%s" copied to the clipboard'), Paths[0])
+  else
+    FToast.Show(T('ui.toast.copiedPath', 'Full path "%s" copied to the clipboard'), Paths[0]);
 end;
 
 procedure TDualPanelWindow.SelectAllActive;
@@ -3530,6 +3631,7 @@ var
   Panel: TPanelState;
   Tab: TTab;
   Mask: string;
+  Before: Integer;
 begin
   Mask := Trim(AMask);
   if Mask = '' then
@@ -3544,6 +3646,7 @@ begin
     Exit;
   Panel := ActivePanel(Ws);
   Tab := ActiveTab(Panel);
+  Before := Length(Tab.SelectedURIs);
   if AUnselect then
     TabUnselectByMask(Tab, RowsForSide(Ws.State.ActiveSide), Mask, ASelectFolders)
   else
@@ -3552,6 +3655,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  NoteSelectionUnchanged(Before, Tab, Mask);
 end;
 
 procedure TDualPanelWindow.ApplySelectAllFiles(AUnselect: Boolean);
@@ -3560,6 +3664,7 @@ var
   Panel: TPanelState;
   Tab: TTab;
   Folders: Boolean;
+  Before: Integer;
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -3567,6 +3672,7 @@ begin
   Panel := ActivePanel(Ws);
   Tab := ActiveTab(Panel);
   Folders := Assigned(FSelHelper) and FSelHelper.SelectFolders;
+  Before := Length(Tab.SelectedURIs);
   if AUnselect then
     TabUnselectByMask(Tab, RowsForSide(Ws.State.ActiveSide), '*', Folders)
   else
@@ -3575,6 +3681,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  NoteSelectionUnchanged(Before, Tab, '*');
 end;
 
 procedure TDualPanelWindow.ApplySelectByExtension(AUnselect: Boolean);
@@ -3586,6 +3693,7 @@ var
   Row: TPanelRow;
   Name, Ext, Mask: string;
   Folders: Boolean;
+  Before: Integer;
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -3607,6 +3715,7 @@ begin
   else
     Mask := '*' + Ext;
   Folders := Assigned(FSelHelper) and FSelHelper.SelectFolders;
+  Before := Length(Tab.SelectedURIs);
   if AUnselect then
     TabUnselectByMask(Tab, Rows, Mask, Folders)
   else
@@ -3615,6 +3724,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  NoteSelectionUnchanged(Before, Tab, Mask);
 end;
 
 procedure TDualPanelWindow.ApplySelectByName(AUnselect: Boolean);
@@ -3626,6 +3736,7 @@ var
   Row: TPanelRow;
   Name: string;
   Folders: Boolean;
+  Before: Integer;
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -3642,11 +3753,21 @@ begin
   if Name = '' then
     Exit;
   Folders := Assigned(FSelHelper) and FSelHelper.SelectFolders;
+  Before := Length(Tab.SelectedURIs);
   TabSelectByNameStem(Tab, Rows, FileNameStem(Name), AUnselect, Folders);
   SetActiveTab(Panel, Tab);
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  NoteSelectionUnchanged(Before, Tab, FileNameStem(Name) + '.*');
+end;
+
+procedure TDualPanelWindow.NoteSelectionUnchanged(ABefore: Integer;
+  const ATab: TTab; const AMask: string);
+begin
+  if Length(ATab.SelectedURIs) = ABefore then
+    FToast.Show(T('ui.toast.selectionUnchanged', 'Selection unchanged (mask "%s")'),
+      AMask, tkWarning);
 end;
 
 function TDualPanelWindow.TryResolveCommandPath(const AText: string;
@@ -3748,8 +3869,28 @@ begin
 end;
 
 procedure TDualPanelWindow.SyncConsoleDirNow;
+var
+  Ws: TDualPanelWorkspaceTab;
+  URI, Path: string;
 begin
+  Ws := ActiveWorkspace;
+  if not Assigned(FOnShellCwdSync) or (Ws.Kind <> wkPanels) then
+    Exit;
+  // Same rules as PushShellCwdSync, which stays silent: it also runs on
+  // every panel navigation when auto-sync is on.
+  URI := ActiveTab(ActivePanel(Ws)).CurrentURI;
+  if HasArchiveChain(URI) or IsFindUri(URI) then
+    Path := ''
+  else
+    Path := FileUriToPath(URI);
+  if Path = '' then
+  begin
+    FToast.Show(T('ui.toast.consoleDirUnavailable',
+      'The console cannot go into this folder'), '', tkWarning);
+    Exit;
+  end;
   PushShellCwdSync;
+  FToast.Show(T('ui.toast.consoleDir', 'Console folder: %s'), Path);
 end;
 
 procedure TDualPanelWindow.RunConsoleCommand(const ACommand: string);
@@ -4672,7 +4813,7 @@ var
   Rows: TPanelRows;
   Row: TPanelRow;
   Idx: Integer;
-  URI: string;
+  URI, Name: string;
 begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
@@ -4683,6 +4824,7 @@ begin
   if Row.IsParent or not IsRecycleBinUri(Row.URI) then
     Exit;
   URI := Row.URI;
+  Name := PathLastSegment(Row.Text);
   TThread.CreateAnonymousThread(
     procedure
     var
@@ -4701,6 +4843,7 @@ begin
           begin
             ReloadActiveRows;
             NotifyChanged;
+            FToast.Show(T('ui.toast.restored', '"%s" restored from the Recycle Bin'), Name);
           end;
         end);
     end).Start;
@@ -6461,6 +6604,8 @@ var
 begin
   Ws := ActiveWorkspace;
   LoadSide(Ws.State.ActiveSide);
+  if Ws.Kind = wkPanels then
+    FToast.Show(T('ui.toast.refreshed', 'Panel refreshed'));
 end;
 
 function TDualPanelWindow.ListViewHeight: Integer;
@@ -8666,6 +8811,10 @@ begin
       FFilterPopup.Draw(Buffer, Theme);
     if HelpVisible then
       FHelp.Paint(Buffer, W, H, Area.Left, Area.Top);
+    // Last and only over a screen without a dialog / Help: a notice must
+    // not cover the buttons of whatever the user is answering.
+    if Assigned(FToast) and not Snap.DialogVisible and not HelpVisible then
+      FToast.Draw(Buffer, Theme, W, H);
   end;
 end;
 

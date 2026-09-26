@@ -310,7 +310,7 @@ implementation
 
 uses
   System.IOUtils, System.StrUtils, FMX.Platform,
-  uOverlayRenderer, uStrings, uDialogHistory;
+  uOverlayRenderer, uStrings, uDialogHistory, uNotice;
 
 const
   /// <summary>uDialogHistory key of the F7 prompt; replace.json's Find field
@@ -2328,9 +2328,16 @@ begin
     Exit;
   ClampCursor;
   if HasSelection then
-    ClipboardSetText(SelectedText)
+  begin
+    ClipboardSetText(SelectedText);
+    Notice(T('ui.toast.copiedSelection', 'Selected text copied to the clipboard'));
+  end
   else
+  begin
     ClipboardSetText(FDoc.GetLine(FCursorRow));
+    Notice(T('ui.toast.copiedLine', 'Line %s copied to the clipboard'),
+      IntToStr(FCursorRow + 1));
+  end;
 end;
 
 procedure TEditorWindow.CutSelectionOrLine;

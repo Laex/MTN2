@@ -95,7 +95,8 @@ type
 implementation
 
 uses
-  System.IOUtils, System.JSON, System.Generics.Collections, uConfigLocation;
+  System.IOUtils, System.JSON, System.Generics.Collections, uConfigLocation,
+  uStrings, uNotice;
 
 const
   cMaxHistory = 100;
@@ -223,7 +224,13 @@ end;
 
 procedure TDualPanelCmdLineManager.CopyToClipboard;
 begin
+  if FCmd.Text = '' then
+    Exit;
   InputLineCopy(FCmd);
+  if InputLineHasSelection(FCmd) then
+    Notice(T('ui.toast.copiedSelection', 'Selected text copied to the clipboard'))
+  else
+    Notice(T('ui.toast.copiedCmdLine', 'Command line copied to the clipboard'));
 end;
 
 procedure TDualPanelCmdLineManager.CutToClipboard;

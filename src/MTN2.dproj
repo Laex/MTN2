@@ -327,6 +327,8 @@
         <DCCReference Include="Core\uSingleInstance.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>
         <DCCReference Include="Core\uUpdateController.pas"/>
+        <DCCReference Include="Core\uNotice.pas"/>
+        <DCCReference Include="Core\uToast.pas"/>
         <DCCReference Include="Forms\uMainForm.pas">
             <Form>MainForm</Form>
             <FormType>fmx</FormType>

@@ -24,6 +24,8 @@ type
     CursorBlink: Boolean;
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
+    /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
+    ShowNotifications: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -203,6 +205,7 @@ begin
   Result.CursorBlink := True;
   Result.CursorBlinkMs := cDisplayDefaultBlinkMs;
   Result.ShowPanelIcons := True;
+  Result.ShowNotifications := True;
   Result.Language := '';
 end;
 

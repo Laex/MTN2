@@ -61,6 +61,9 @@ type
 
 implementation
 
+uses
+  uNotice;
+
 constructor TFolderHotlistDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFolderHotlistKindSetter;
   const AOnNotify: TProc; const AOnCanStart: TFolderHotlistCanStart;
@@ -304,7 +307,13 @@ begin
   FDialog.Close;
   ActiveUri := '';
   if Accepted and Assigned(FOnGetActiveUri) and FOnGetActiveUri(ActiveUri) then
+  begin
     FolderHotlistAdd(NameVal, ActiveUri);
+    if Trim(NameVal) = '' then
+      NameVal := VfsUriTitle(ActiveUri);
+    Notice(T('ui.toast.hotlistAdded', '"%s" added to the folder hotlist (Ctrl+D)'),
+      Trim(NameVal));
+  end;
 end;
 
 procedure TFolderHotlistDialogController.DispatchRenameCommand(

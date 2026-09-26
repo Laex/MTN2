@@ -61,6 +61,7 @@
         { "isSeparator": true },
         { "caption": "Calculate folder size", "hotChar": "Z", "shortcut": "F3", "action": "tmaFileCalcSize" },
         { "caption": "Copy full path", "hotChar": "Y", "shortcut": "Ctrl+Alt+Ins", "action": "tmaFileCopyPath" },
+        { "caption": "Copy name", "hotChar": "", "shortcut": "Alt+Shift+Ins", "action": "tmaFileCopyName" },
         { "caption": "Run detached (OS)", "hotChar": "O", "shortcut": "Shift+Enter", "action": "tmaFileRunDetached" }
       ]
     },

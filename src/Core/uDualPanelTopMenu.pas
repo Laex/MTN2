@@ -111,6 +111,7 @@ begin
     tmaFileInvertSelect: CallProc(AHost.InvertSelectionActive);
     tmaFileCalcSize: CallProc(AHost.CalculateFolderSize);
     tmaFileCopyPath: CallProc(AHost.CopyFullPathToClipboard);
+    tmaFileCopyName: CallProc(AHost.CopyItemNameToClipboard);
     tmaFileRunDetached: CallProc(AHost.RunDetached);
     tmaFileNew: CallProc(AHost.BeginNewFile);
     tmaCmdQuickView: CallProc(AHost.ToggleQuickView);

@@ -59,6 +59,7 @@ type
   TDualPanelKeymapHost = record
     ActiveSide: TKeymapSideFn;
     CopyFullPathToClipboard: TKeymapProc;
+    CopyItemNameToClipboard: TKeymapProc;
     ToggleConsole: TKeymapProc;
     RequestQuit: TKeymapProc;
     TogglePanelVisible: TKeymapSideProc;
@@ -331,6 +332,13 @@ begin
     kaCopyFullPath:
       begin
         AHost.CopyFullPathToClipboard();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaCopyItemName:
+      begin
+        if Assigned(AHost.CopyItemNameToClipboard) then
+          AHost.CopyItemNameToClipboard();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

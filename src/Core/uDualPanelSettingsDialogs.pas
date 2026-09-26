@@ -215,7 +215,8 @@ begin
   FDialog.Open(BuildDisplayDialog(Fonts, FontIdx,
     IndexOfDisplayFontSize(Cur.FontSize), IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
-    Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx), FOnCommand);
+    Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
+    Cur.ShowNotifications), FOnCommand);
   Notify;
 end;
 
@@ -361,6 +362,7 @@ begin
     Disp.CursorBlink := FDialog.GetCheckbox('blink');
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
+    Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
       Disp.Language := FLanguageCodes[LanguageIdx]

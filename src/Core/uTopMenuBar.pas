@@ -59,6 +59,7 @@ type
     tmaFileInvertSelect,
     tmaFileCalcSize,
     tmaFileCopyPath,
+    tmaFileCopyName,
     tmaFileRunDetached,
     tmaFileNew,
     tmaCmdQuickView,
@@ -535,7 +536,7 @@ begin
   FCategories[2].Title := 'Files';
   FCategories[2].HotChar := 'F';
   FCategories[2].HotPos := 1;
-  SetLength(FCategories[2].Items, 23);
+  SetLength(FCategories[2].Items, 24);
   FCategories[2].Items[0] := SubItem('View', 'V', 'F3', tmaFileView);
   FCategories[2].Items[1] := SubItem('Edit', 'E', 'F4', tmaFileEdit);
   FCategories[2].Items[2] := SubItem('Copy', 'C', 'F5', tmaFileCopy);
@@ -558,7 +559,8 @@ begin
   FCategories[2].Items[19] := Separator;
   FCategories[2].Items[20] := SubItem('Calculate folder size', 'Z', 'F3', tmaFileCalcSize);
   FCategories[2].Items[21] := SubItem('Copy full path', 'Y', 'Ctrl+Alt+Ins', tmaFileCopyPath);
-  FCategories[2].Items[22] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
+  FCategories[2].Items[22] := SubItem('Copy name', #0, 'Alt+Shift+Ins', tmaFileCopyName);
+  FCategories[2].Items[23] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
 
   // 3: Edit (clipboard + document ops — not Files → Edit / F4)
   FCategories[3].Title := 'Edit';

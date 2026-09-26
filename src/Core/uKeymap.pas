@@ -104,7 +104,8 @@ type
     kaCompareFolders, // Ctrl+Shift+C -- select what differs between panels
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
-    kaChecksums       // Ctrl+Alt+H -- calculate / verify checksums
+    kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
+    kaCopyItemName    // Alt+Shift+Ins -- copy item name(s) only (no path)
   );
 
   TKeyBinding = record
@@ -454,6 +455,7 @@ begin
 
   // Clipboard & item insertion
   AddBinding(Result, kaCopyFullPath, KeyBinding(vkInsert, False, True, True));
+  AddBinding(Result, kaCopyItemName, KeyBinding(vkInsert, True, True, False));
   AddBinding(Result, kaInsertItemName, KeyBinding(vkReturn, False, False, True));
   AddBinding(Result, kaInsertItemPath, KeyBinding(vkReturn, True, False, True));
   AddBinding(Result, kaRunDetached, KeyBinding(vkReturn, True, False, False));
@@ -652,7 +654,8 @@ const
     'CompareFolders',        // kaCompareFolders
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
-    'Checksums'              // kaChecksums
+    'Checksums',             // kaChecksums
+    'CopyItemName'           // kaCopyItemName
   );
 
 function TryKeymapActionByName(const AName: string; out AAction: TKeymapAction): Boolean;

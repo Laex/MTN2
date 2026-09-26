@@ -77,6 +77,7 @@ begin
   Result.CursorBlink := False;
   Result.CursorBlinkMs := 300;
   Result.ShowPanelIcons := False;
+  Result.ShowNotifications := False;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
   SetLength(Result.Panels.WorkspaceTabs, 1);
@@ -107,6 +108,7 @@ begin
     Expect(not Loaded.CursorBlink, 'cursorBlink saved');
     Expect(Loaded.CursorBlinkMs = 300, 'cursorBlinkMs saved');
     Expect(not Loaded.ShowPanelIcons, 'showPanelIcons saved');
+    Expect(not Loaded.ShowNotifications, 'showNotifications saved');
     Expect(SameValue(Loaded.Zoom, 1.25), 'zoom still saved');
     Expect(Loaded.Language = 'ru', 'language saved');
   finally
@@ -143,6 +145,9 @@ begin
     Pair := Root.RemovePair('showPanelIcons');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('showNotifications');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('language');
     if Assigned(Pair) then
       Pair.Free;
@@ -157,6 +162,7 @@ begin
     Expect(Sess.CursorBlink, 'missing cursorBlink -> on');
     Expect(Sess.CursorBlinkMs = cDisplayDefaultBlinkMs, 'missing blink ms -> 530');
     Expect(Sess.ShowPanelIcons, 'missing showPanelIcons -> on');
+    Expect(Sess.ShowNotifications, 'missing showNotifications -> on');
     Expect(Sess.Language = '', 'missing language -> empty (English)');
   finally
     if TFile.Exists(Path) then

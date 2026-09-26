@@ -218,7 +218,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uNotice;
 
 { ---- helpers --------------------------------------------------------------- }
 
@@ -743,7 +743,10 @@ end;
 procedure TBaseConsoleWindow.CopySelection;
 begin
   if HasSelection then
+  begin
     ClipboardSetText(SelectedText);
+    Notice(T('ui.toast.copiedSelection', 'Selected text copied to the clipboard'));
+  end;
 end;
 
 procedure TBaseConsoleWindow.PasteClipboard;
