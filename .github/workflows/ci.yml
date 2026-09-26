@@ -19,12 +19,12 @@ jobs:
     name: Repository checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,15 +45,17 @@ jobs:
       run:
         working-directory: src/plugins/mtn.ws
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
+          # Pinned by SHA, so the toolchain can't come from the ref name.
+          toolchain: stable
           targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: src/plugins/mtn.ws
       - run: cargo build --locked --release --target wasm32-unknown-unknown
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mtn.ws-plugin.wasm
           path: src/plugins/mtn.ws/target/wasm32-unknown-unknown/release/mtn_ws.wasm
@@ -71,7 +73,7 @@ jobs:
     runs-on: [self-hosted, windows, delphi]
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Build
         shell: pwsh
@@ -85,7 +87,7 @@ jobs:
         shell: pwsh
         run: ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: MTN2-win64
           path: dist/*.zip

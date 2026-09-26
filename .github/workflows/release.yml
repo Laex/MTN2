@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing tag to (re)build the release for
+        description: Existing tag whose release has not been published yet
         required: true
 
 permissions:
@@ -20,7 +20,7 @@ jobs:
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ env.TAG }}
 
@@ -45,7 +45,9 @@ jobs:
           $Zip = Get-ChildItem dist -Filter *.zip | Select-Object -First 1
           gh release view $env:TAG *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:TAG $Zip.FullName --clobber
+            # Releases are immutable (repo setting): a published zip can't be
+            # replaced, since the updater trusts its SHA-256 digest. Ship a new tag.
+            throw "Release $env:TAG is already published and immutable; tag a new version"
           } else {
             # Install/7z.dll notes (.github/release-notes.md) go above the
             # generated changelog; {{TAG}} becomes the release tag.

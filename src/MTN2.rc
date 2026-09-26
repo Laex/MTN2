@@ -1,31 +1,5 @@
-1 VERSIONINFO
-FILEVERSION 0,1,14,0
-PRODUCTVERSION 0,1,14,0
-FILEFLAGSMASK 0x3FL
-FILEFLAGS 0x0L
-FILEOS 0x40004L
-FILETYPE 0x1L
-FILESUBTYPE 0x0L
-BEGIN
-  BLOCK "StringFileInfo"
-  BEGIN
-    BLOCK "040904E4"
-    BEGIN
-      VALUE "CompanyName", "MTN2"
-      VALUE "FileDescription", "Modern Terminal Navigator 2"
-      VALUE "FileVersion", "0.1.14.0"
-      VALUE "InternalName", "MTN2"
-      VALUE "OriginalFilename", "MTN2.exe"
-      VALUE "ProductName", "Modern Terminal Navigator 2"
-      VALUE "ProductVersion", "0.1.14"
-      VALUE "Comments", "v0.1.14 MVP daily local + UX polish"
-    END
-  END
-  BLOCK "VarFileInfo"
-  BEGIN
-    VALUE "Translation", 0x409, 1252
-  END
-END
+/* No VERSIONINFO here: msbuild stamps it into MTN2.res from MTN2.dproj
+   (VerInfo_*), and build.ps1 -Version overrides that from the release tag. */
 
 MAINICON ICON "Assets\\MTN2.ico"
 
