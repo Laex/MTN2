@@ -96,8 +96,10 @@ function ProfileNeedsBackspaceWorkaround(const AProfileId: string): Boolean;
 /// closing quote is not escaped by a trailing backslash (C:\ → "C:\.").</summary>
 function QuoteCmdExePath(const APath: string): string;
 function BuildCmdCdLine(const ACwd: string): string;
-/// <summary>Profile-aware `cd` line for cwd sync. cmd → `cd /d &lt;path&gt;`;
-/// WSL → `cd '/mnt/...'` (drive letter mapped to /mnt/x). Returns '' when ACwd is empty.</summary>
+/// <summary>Profile-aware `cd` line for cwd sync, ending in the profile's own
+/// Enter (ProfileReturnSeq). cmd → `cd /d &lt;path&gt;`; PowerShell / pwsh →
+/// `Set-Location -LiteralPath '&lt;path&gt;'`; WSL → `cd '/mnt/...'` (drive letter
+/// mapped to /mnt/x); Git Bash → `cd /x/...`; ssh → ''. Returns '' when ACwd is empty.</summary>
 function BuildCdLineForProfile(const AProfileId, ACwd: string): string;
 
 implementation
@@ -880,32 +882,61 @@ begin
     Result := P;
 end;
 
+/// <summary>PowerShell single-quoted literal: nothing inside is expanded
+/// ($, `), and a quote is escaped by doubling it. PowerShell also treats the
+/// typographic single quotes as quote characters, so those are doubled too.</summary>
+function QuotePowerShellLiteral(const S: string): string;
+var
+  C: Char;
+begin
+  Result := '''';
+  for C in S do
+  begin
+    if CharInSet(C, ['''']) or (C = #$2018) or (C = #$2019) or (C = #$201A) or
+       (C = #$201B) then
+      Result := Result + C;
+    Result := Result + C;
+  end;
+  Result := Result + '''';
+end;
+
 function BuildCdLineForProfile(const AProfileId, ACwd: string): string;
 var
-  NormId, LinuxPath: string;
+  NormId, LinuxPath, Path: string;
 begin
   NormId := NormalizeShellProfileId(AProfileId);
+  Path := Trim(ACwd);
+  if Path = '' then
+    Exit('');
+  // The line is submitted with the profile's own Enter (ProfileReturnSeq),
+  // exactly like RunCommand: a fixed CRLF left PowerShell's PSReadLine on a
+  // ">>" continuation prompt and gave bash a second, empty Enter.
   if (NormId = cShellProfileWsl) or NormId.StartsWith(cShellProfileWslPrefix) then
   begin
-    LinuxPath := WindowsPathToWslPath(ACwd);
+    LinuxPath := WindowsPathToWslPath(Path);
     if LinuxPath = '' then
       Exit('');
     // Single-quote the path; bash accepts 'cd "/mnt/c/My Files"' safely.
     // bash does not understand cmd's /d flag, so a plain cd is emitted.
-    Result := 'cd ' + QuoteArgIfNeeded(LinuxPath) + #13#10;
+    Result := 'cd ' + QuoteArgIfNeeded(LinuxPath) + ProfileReturnSeq(NormId);
   end
   else if NormId = cShellProfileGitBash then
   begin
-    LinuxPath := WindowsPathToGitBashPath(ACwd);
+    LinuxPath := WindowsPathToGitBashPath(Path);
     if LinuxPath = '' then
       Exit('');
-    Result := 'cd ' + QuoteArgIfNeeded(LinuxPath) + #13#10;
+    Result := 'cd ' + QuoteArgIfNeeded(LinuxPath) + ProfileReturnSeq(NormId);
   end
+  else if (NormId = cShellProfilePowerShell) or (NormId = cShellProfilePwsh) then
+    // cmd's `cd /d` is a positional-argument error in PowerShell. -LiteralPath:
+    // [ ] in folder names are not wildcards; Set-Location also switches drive.
+    Result := 'Set-Location -LiteralPath ' + QuotePowerShellLiteral(Path) +
+      ProfileReturnSeq(NormId)
   else if NormId.StartsWith(cShellProfileSshPrefix) then
     // Local Windows path has no meaning on the remote host; no cwd to sync.
     Result := ''
   else
-    Result := BuildCmdCdLine(ACwd);
+    Result := BuildCmdCdLine(Path);
 end;
 
 end.

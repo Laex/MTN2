@@ -49,6 +49,26 @@ begin
     'QuoteCmdExePath must strip trailing backslash before quote');
   Assert(BuildCmdCdLine('C:\') = 'cd /d C:\'#13#10, 'BuildCmdCdLine drive root');
 
+  // Cwd sync (Ctrl+Shift+O): each shell gets its own syntax and its own Enter.
+  Assert(BuildCdLineForProfile(cShellProfileCmd, 'D:\Work\Obsidian') =
+    'cd /d D:\Work\Obsidian'#13#10, 'cmd cd line');
+  Assert(BuildCdLineForProfile(cShellProfilePowerShell, 'D:\Work\Obsidian') =
+    'Set-Location -LiteralPath ''D:\Work\Obsidian'''#13,
+    'PowerShell cd line: Set-Location, lone CR (no ">>" continuation)');
+  Assert(BuildCdLineForProfile(cShellProfilePwsh, 'C:\My Files\[x] $a') =
+    'Set-Location -LiteralPath ''C:\My Files\[x] $a'''#13,
+    'pwsh cd line: literal path, nothing expanded');
+  Assert(BuildCdLineForProfile(cShellProfilePowerShell, 'C:\Bob''s') =
+    'Set-Location -LiteralPath ''C:\Bob''''s'''#13, 'PowerShell quote doubled');
+  Assert(BuildCdLineForProfile(cShellProfilePowerShell, 'C:\Bob'#$2019's') =
+    'Set-Location -LiteralPath ''C:\Bob'#$2019#$2019's'''#13,
+    'PowerShell typographic quote doubled');
+  Assert(BuildCdLineForProfile(cShellProfilePowerShell, '') = '', 'empty cwd -> no line');
+  Assert(BuildCdLineForProfile(cShellProfileGitBash, 'C:\Work') = 'cd /c/Work'#10,
+    'Git Bash cd line: lone LF');
+  Assert(BuildCdLineForProfile(cShellProfileWsl, 'C:\Work') = 'cd /mnt/c/Work'#10,
+    'WSL cd line: lone LF');
+
   Assert(ResolveShellCmdLine(cShellProfileWsl, 'C:\Test', CmdLine, WorkingDir), 'WSL resolve failed');
   Assert(CmdLine.Contains('wsl.exe') and CmdLine.Contains('--cd C:\Test'), 'WSL cmdline mismatch: ' + CmdLine);
   Assert(not CmdLine.Contains('stdbuf'), 'WSL must not require stdbuf: ' + CmdLine);
