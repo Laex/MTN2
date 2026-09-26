@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController, uToast;
+  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats;
 
 type
   TMainForm = class(TForm)
@@ -67,6 +67,11 @@ type
     FUpdater: TUpdateController;
     FUpdateTimer: TTimer;
     FAppVersion: string;
+    /// <summary>--fps only (nil otherwise): once a second moves FFpsStats
+    /// into FFpsText, which UpdateCaption appends to the caption.</summary>
+    FFpsTimer: TTimer;
+    FFpsStats: TFrameStats;
+    FFpsText: string;
     FContextHoldPath: string;
     FContextHoldScreenX: Integer;
     FContextHoldScreenY: Integer;
@@ -92,6 +97,8 @@ type
     function TryHandleZoom(var AKey: Word; var AKeyChar: Char;
       AShift: TShiftState): Boolean;
     procedure ComposeScene(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+    /// <summary>FormPaint's body; split out so --fps can time it whole.</summary>
+    procedure PaintFrame(Canvas: TCanvas);
     function PointToCell(X, Y: Single; out ACol, ARow: Integer): Boolean;
     procedure Recompose;
     procedure EnsureDemoWindows;
@@ -138,6 +145,7 @@ type
     procedure DualPanelQuitRequest(Sender: TObject);
     procedure DualPanelOpenUpdates(Sender: TObject);
     procedure UpdateTimerTick(Sender: TObject);
+    procedure FpsTimerTick(Sender: TObject);
     procedure CreateUpdater;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelShellCwdSync(const APath: string);
@@ -287,6 +295,7 @@ implementation
 {$R *.fmx}
 
 uses
+  System.Diagnostics,
   FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes;
 
 const
@@ -719,6 +728,14 @@ begin
        T('ui.window.zoom', 'zoom'), FRenderer.Zoom * 100, ActiveTitle])
   else
     Caption := Format('%s - %s v%s', [AppTitle, AppName, FAppVersion]);
+  if FFpsText <> '' then
+    Caption := Caption + '  [' + FFpsText + ']';
+end;
+
+procedure TMainForm.FpsTimerTick(Sender: TObject);
+begin
+  FFpsText := FFpsStats.TakeSummary;
+  UpdateCaption;
 end;
 
 procedure TMainForm.SyncRenderer;
@@ -1542,6 +1559,14 @@ begin
   FAppVersion := AppVersionString;
   if FAppVersion = '' then
     FAppVersion := '?';
+  if FpsRequested then
+  begin
+    FFpsStats.Reset;
+    FFpsTimer := TTimer.Create(Self);
+    FFpsTimer.Interval := 1000;
+    FFpsTimer.OnTimer := FpsTimerTick;
+    FFpsTimer.Enabled := True;
+  end;
   FRestoringBounds := False;
   FNormalLeft := Left;
   FNormalTop := Top;
@@ -1566,6 +1591,12 @@ begin
 
   FRenderer := TTerminalRenderer.Create;
   FRenderer.OnCompose := ComposeScene;
+  if Assigned(FFpsTimer) then
+    FRenderer.OnRasterized :=
+      procedure(AElapsedTicks: Int64)
+      begin
+        FFpsStats.Add(fsRender, AElapsedTicks);
+      end;
   // Defaults for a missing/unreadable session.json (TryRestoreSession leaves
   // FSession untouched on failure, which would otherwise zero-init to False).
   FSession.ConsoleRestartOnExit := True;
@@ -1662,6 +1693,7 @@ begin
     ReleaseTaskbarButton;
   // Before the panel window goes: the updater's dialogs live there.
   FreeAndNil(FUpdateTimer);
+  FreeAndNil(FFpsTimer);
   FreeAndNil(FUpdater);
   StopPluginHost;
   FreeAndNil(FBlinkTimer);
@@ -1697,12 +1729,17 @@ begin
 end;
 
 procedure TMainForm.ComposeScene(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+var
+  T0: Int64;
 begin
   if not Assigned(FMdi) then
     Exit;
+  T0 := TStopwatch.GetTimeStamp;
   // Console keeps a 2-row bottom margin (LayoutBottomMargin) for shared F-keys / status.
   FMdi.LayoutMaximized(ACols, ARows);
   FMdi.Paint(AGrid, ACols, ARows);
+  if Assigned(FFpsTimer) then
+    FFpsStats.Add(fsCompose, TStopwatch.GetTimeStamp - T0);
 end;
 
 function TMainForm.PointToCell(X, Y: Single; out ACol, ARow: Integer): Boolean;
@@ -1727,9 +1764,22 @@ begin
 end;
 
 procedure TMainForm.FormPaint(Sender: TObject; Canvas: TCanvas; const ARect: TRectF);
+var
+  T0: Int64;
 begin
   if not Assigned(FRenderer) then
     Exit;
+  T0 := TStopwatch.GetTimeStamp;
+  try
+    PaintFrame(Canvas);
+  finally
+    if Assigned(FFpsTimer) then
+      FFpsStats.Add(fsPaint, TStopwatch.GetTimeStamp - T0);
+  end;
+end;
+
+procedure TMainForm.PaintFrame(Canvas: TCanvas);
+begin
   if (Canvas.Scale > 0) and (Canvas.Scale <> FLastScale) then
   begin
     FLastScale := Canvas.Scale;

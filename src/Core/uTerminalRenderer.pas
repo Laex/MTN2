@@ -11,6 +11,8 @@ uses
 type
   TComposeEvent = reference to procedure(const AGrid: TTerminalGrid;
     ACols, ARows: Integer);
+  /// <summary>Time one grid-to-bitmap pass took, in TStopwatch ticks.</summary>
+  TRasterizedEvent = reference to procedure(AElapsedTicks: Int64);
 
 type
   TGlyphKey = record
@@ -56,6 +58,7 @@ type
     FDefaultFg: TAlphaColor;
     FDefaultBg: TAlphaColor;
     FOnCompose: TComposeEvent;
+    FOnRasterized: TRasterizedEvent;
     FXLeft: TArray<Single>;
     FYTop: TArray<Single>;
     FGlyphCache: TGlyphCache;
@@ -66,6 +69,7 @@ type
     function BackFrame: TBitmap; inline;
     procedure FlipFrames; inline;
     procedure RenderGridToBitmap;
+    procedure RasterizeGrid;
     procedure DrawBoxGlyph(ACanvas: TCanvas; ACol, ARow, N, S, E, W: Integer;
       AColor: TAlphaColor);
     function EffectiveFontSize: Single;
@@ -96,12 +100,17 @@ type
     // The host composes desktop + windows into AGrid. When unset, a built-in
     // demo screen is drawn instead.
     property OnCompose: TComposeEvent read FOnCompose write FOnCompose;
+    /// <summary>--fps: after each grid-to-bitmap pass (it runs from
+    /// Recompose / Resize, not from Draw's paint, so the host cannot time it
+    /// around either).</summary>
+    property OnRasterized: TRasterizedEvent read FOnRasterized write FOnRasterized;
   end;
 
 implementation
 
 uses
-  System.Math, FMX.TextLayout, uShellIcons, uPanelColumns, uDisplaySettings;
+  System.Math, System.Diagnostics, FMX.TextLayout, uShellIcons, uPanelColumns,
+  uDisplaySettings;
 
 { TGlyphCache }
 
@@ -583,6 +592,20 @@ begin
 end;
 
 procedure TTerminalRenderer.RenderGridToBitmap;
+var
+  T0: Int64;
+begin
+  if not Assigned(FOnRasterized) then
+  begin
+    RasterizeGrid;
+    Exit;
+  end;
+  T0 := TStopwatch.GetTimeStamp;
+  RasterizeGrid;
+  FOnRasterized(TStopwatch.GetTimeStamp - T0);
+end;
+
+procedure TTerminalRenderer.RasterizeGrid;
 var
   X, Y, RunX, I: Integer;
   Cell, SubCell: TCharCell;

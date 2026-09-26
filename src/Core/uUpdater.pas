@@ -27,6 +27,7 @@ const
   cUpdateStagingDir = '.update-staging';
   cUpdateWaitPidSwitch = '--wait-pid';
   cNoSkiaSwitch = '--no-skia';
+  cFpsSwitch = '--fps';
   cUpdateCheckIntervalHours = 24;
 
 type
@@ -91,6 +92,9 @@ procedure WaitForPreviousInstanceFromCommandLine;
 function StartupPathArgument: string;
 /// <summary>True when the process was started with --no-skia.</summary>
 function NoSkiaRequested: Boolean;
+/// <summary>True when the process was started with --fps: frames per second
+/// and frame times in the window caption.</summary>
+function FpsRequested: Boolean;
 
 function DefaultUpdateSettings: TUpdateSettings;
 function LoadUpdateSettings: TUpdateSettings;
@@ -541,7 +545,7 @@ begin
   begin
     if SameText(ParamStr(I), cUpdateWaitPidSwitch) then
       Inc(I, 2)
-    else if SameText(ParamStr(I), cNoSkiaSwitch) then
+    else if SameText(ParamStr(I), cNoSkiaSwitch) or SameText(ParamStr(I), cFpsSwitch) then
       Inc(I)
     else
       Exit(ParamStr(I));
@@ -549,14 +553,24 @@ begin
   Result := '';
 end;
 
-function NoSkiaRequested: Boolean;
+function SwitchRequested(const ASwitch: string): Boolean;
 var
   I: Integer;
 begin
   for I := 1 to ParamCount do
-    if SameText(ParamStr(I), cNoSkiaSwitch) then
+    if SameText(ParamStr(I), ASwitch) then
       Exit(True);
   Result := False;
+end;
+
+function NoSkiaRequested: Boolean;
+begin
+  Result := SwitchRequested(cNoSkiaSwitch);
+end;
+
+function FpsRequested: Boolean;
+begin
+  Result := SwitchRequested(cFpsSwitch);
 end;
 
 function UpdateSettingsFile: string;
