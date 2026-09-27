@@ -178,58 +178,14 @@ end;
 { ---- Start ----------------------------------------------------------------- }
 
 function TTerminalWorkspaceWindow.Start(const AProfileId, ACwd: string): Boolean;
-var
-  Gen: Integer;
-  OnOut: TConPtyOutputEvent;
-  OnExitEvt: TConPtyExitEvent;
 begin
   Result     := False;
   FProfileId := NormalizeShellProfileId(AProfileId);
   WorkingDir := Trim(ACwd);
 
-  if not Assigned(FPty) then
-    FPty := TConPtySession.Create;
-  if FPty.IsRunning then
-    FPty.Terminate;
-
-  Inc(FCallbackGen);
-  Gen      := FCallbackGen;
-  FRunning := True;
-  SyncTitle;
-  NotifyHost;
-
-  OnOut :=
-    procedure(const AChunk: string)
-    begin
-      if not Alive or (Gen <> FCallbackGen) then
-        Exit;
-      AppendOutput(AChunk);
-    end;
-  OnExitEvt :=
-    procedure(AExitCode: DWORD)
-    begin
-      if not Alive or (Gen <> FCallbackGen) then
-        Exit;
-      ProcessExited(AExitCode);
-    end;
-
-  FPty.OnOutput := OnOut;
-  FPty.OnExit   := OnExitEvt;
-  // Profile selects UTF-8 (ps/pwsh/wsl) vs OEM (cmd) decode + input encoding.
-  FPty.ProfileId := FProfileId;
-  if not FPty.StartShell(FProfileId, WorkingDir, PtyCols, PtyRows) then
-  begin
-    FRunning := False;
-    if FPty.LastError <> '' then
-      FHistory.AppendStatus('[MTN2] ' + FPty.LastError)
-    else
-      FHistory.AppendStatus('[MTN2] Failed to start shell');
-    SyncTitle;
-    NotifyHost;
+  if not StartShellSession then
     Exit;
-  end;
 
-  SendInitCommand(ProfileInitCommand(FProfileId));
   FHistory.AppendStatus('[MTN2] ' + ShellProfileTitle(FProfileId) + ' ready');
   SyncTitle;
   Result := True;

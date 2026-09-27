@@ -179,10 +179,7 @@ end;
 
 function TConsoleWindow.EnsureShell(const ACwd: string): Boolean;
 var
-  Gen: Integer;
   Cwd: string;
-  OnOut: TConPtyOutputEvent;
-  OnExitEvt: TConPtyExitEvent;
 begin
   if not Assigned(FPty) then
     FPty := TConPtySession.Create;
@@ -203,49 +200,10 @@ begin
     Exit(True);
   end;
 
-  // Drop leftover one-shot before starting a persistent shell.
-  if FPty.IsRunning then
-    FPty.Terminate;
-
-  Inc(FCallbackGen);
-  Gen := FCallbackGen;
-  FRunning := True;
-  SyncTitle;
-  NotifyHost;
-
-  OnOut :=
-    procedure(const AChunk: string)
-    begin
-      if not Alive or (Gen <> FCallbackGen) then
-        Exit;
-      AppendOutput(AChunk);
-    end;
-  OnExitEvt :=
-    procedure(AExitCode: DWORD)
-    begin
-      if not Alive or (Gen <> FCallbackGen) then
-        Exit;
-      ProcessExited(AExitCode);
-    end;
-
-  // Set callbacks before starting shell.
-  FPty.OnOutput := OnOut;
-  FPty.OnExit   := OnExitEvt;
-  // Profile drives both output decoding and input encoding (cmd=OEM, ps/wsl=UTF-8).
-  FPty.ProfileId := ProfileId;
-  if not FPty.StartShell(ProfileId, WorkingDir, PtyCols, PtyRows) then
-  begin
-    FRunning := False;
-    if FPty.LastError <> '' then
-      FHistory.AppendStatus('[MTN2] ' + FPty.LastError)
-    else
-      FHistory.AppendStatus('[MTN2] Failed to start shell');
-    SyncTitle;
-    NotifyHost;
+  // Drops any leftover one-shot before starting the persistent shell.
+  if not StartShellSession then
     Exit(False);
-  end;
 
-  SendInitCommand(ProfileInitCommand(ProfileId));
   FLastSyncedCwd := WorkingDir;
   SyncTitle;
   Result := True;

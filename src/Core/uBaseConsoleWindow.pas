@@ -133,6 +133,12 @@ type
     /// continuation prompt sitting in front of the user's real first
     /// command instead of a fresh, ready prompt.</summary>
     procedure SendInitCommand(const AText: string);
+    /// <summary>Starts a fresh FProfileId shell in WorkingDir, terminating
+    /// whatever FPty was still running. Bumps FCallbackGen so output/exit
+    /// callbacks of the previous shell are dropped, then sends the profile's
+    /// init command. On failure logs the PTY error to the scrollback, clears
+    /// FRunning and returns False.</summary>
+    function StartShellSession: Boolean;
     /// <summary>cmd pipe mode: local line editing; whole line sent on Enter only.</summary>
     function HandleLineBufferedPtyInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -779,6 +785,60 @@ begin
     Exit;
   for I := 1 to Length(AText) do
     FPty.WriteInput(AText[I]);
+end;
+
+function TBaseConsoleWindow.StartShellSession: Boolean;
+var
+  Gen: Integer;
+  OnOut: TConPtyOutputEvent;
+  OnExitEvt: TConPtyExitEvent;
+begin
+  if not Assigned(FPty) then
+    FPty := TConPtySession.Create;
+  // Drop a leftover (one-shot or previous) shell before starting a new one.
+  if FPty.IsRunning then
+    FPty.Terminate;
+
+  Inc(FCallbackGen);
+  Gen      := FCallbackGen;
+  FRunning := True;
+  SyncTitle;
+  NotifyHost;
+
+  OnOut :=
+    procedure(const AChunk: string)
+    begin
+      if not Alive or (Gen <> FCallbackGen) then
+        Exit;
+      AppendOutput(AChunk);
+    end;
+  OnExitEvt :=
+    procedure(AExitCode: DWORD)
+    begin
+      if not Alive or (Gen <> FCallbackGen) then
+        Exit;
+      ProcessExited(AExitCode);
+    end;
+
+  // Set callbacks before starting the shell.
+  FPty.OnOutput := OnOut;
+  FPty.OnExit   := OnExitEvt;
+  // Profile selects UTF-8 (ps/pwsh/wsl) vs OEM (cmd) decode + input encoding.
+  FPty.ProfileId := FProfileId;
+  if not FPty.StartShell(FProfileId, FWorkingDir, PtyCols, PtyRows) then
+  begin
+    FRunning := False;
+    if FPty.LastError <> '' then
+      FHistory.AppendStatus('[MTN2] ' + FPty.LastError)
+    else
+      FHistory.AppendStatus('[MTN2] Failed to start shell');
+    SyncTitle;
+    NotifyHost;
+    Exit(False);
+  end;
+
+  SendInitCommand(ProfileInitCommand(FProfileId));
+  Result := True;
 end;
 
 function TBaseConsoleWindow.HandleLineBufferedPtyInput(var AKey: Word;
