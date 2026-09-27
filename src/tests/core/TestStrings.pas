@@ -23,6 +23,7 @@ type
     [Test] procedure TestPlainLookup;
     [Test] procedure TestFormatArgs;
     [Test] procedure TestLooseFileOverrideAndBadFormatFallback;
+    [Test] procedure TestLooseFileLayersOverEmbedded;
     [Test] procedure TestDialogTranslationEn;
     [Test] procedure TestDialogTranslationRu;
     [Test] procedure TestDialogTranslationBroadSweep;
@@ -140,6 +141,30 @@ begin
       'a locale with no embedded STRINGS_ZZ resource still loads from strings\zz.json next to the exe');
     Assert.IsTrue(T('zz.badfmt', 'value: %d', [42]) = 'value: 42',
       'a translated string whose placeholders don''t match AArgs formats ADefault instead of raising');
+  finally
+    SetLocale('en');
+    TFile.Delete(FilePath);
+  end;
+end;
+
+procedure TestLooseFileLayersOverEmbedded;
+var
+  Dir, FilePath: string;
+begin
+  Dir := TPath.Combine(ExtractFilePath(ParamStr(0)), 'strings');
+  ForceDirectories(Dir);
+  FilePath := TPath.Combine(Dir, 'ru.json');
+  Assert.IsFalse(TFile.Exists(FilePath), 'no stray strings\ru.json next to the test exe');
+  TFile.WriteAllText(FilePath,
+    '{"menu":{"tmaFileCopy":"COPY-FIX"},"zz":{"extra":"ZZ-EXTRA"}}', TEncoding.UTF8);
+  try
+    SetLocale('ru');
+    Assert.IsTrue(T('menu.tmaFileCopy', 'Copy') = 'COPY-FIX',
+      'a key in the loose strings\ru.json overrides the embedded STRINGS_RU text');
+    Assert.IsTrue(T('menu.tmaFileMove', 'Move') = 'П&ереместить',
+      'a key the loose file lacks keeps the embedded translation, not English');
+    Assert.IsTrue(T('zz.extra', 'fallback') = 'ZZ-EXTRA',
+      'a key only the loose file has is added');
   finally
     SetLocale('en');
     TFile.Delete(FilePath);
@@ -309,6 +334,11 @@ end;
 procedure TTestStrings.TestLooseFileOverrideAndBadFormatFallback;
 begin
   TestStrings.TestLooseFileOverrideAndBadFormatFallback;
+end;
+
+procedure TTestStrings.TestLooseFileLayersOverEmbedded;
+begin
+  TestStrings.TestLooseFileLayersOverEmbedded;
 end;
 
 procedure TTestStrings.TestDialogTranslationEn;

@@ -435,6 +435,11 @@ begin
   FLblLocale.Margins.Right := 6;
   FLblLocale.Text := 'Language';
   FLblLocale.TextSettings.VertAlign := TTextAlign.Center;
+  // No STRINGS_* resources are linked here, and uStrings only looks next to
+  // the exe on its own -- preview translations straight from src\strings.
+  if ProjectDialogsDir <> '' then
+    AddStringsSearchDir(System.IOUtils.TPath.Combine(
+      ExtractFileDir(ProjectDialogsDir), 'strings'));
   FLocaleApplying := True;
   try
     for Loc in AvailableLocales do

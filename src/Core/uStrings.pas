@@ -8,20 +8,24 @@ unit uStrings;
     with zero translation files changes nothing about today's English UI,
     and English can never break from a missing/stale resource.
   - A non-'en' locale's key->text map loads once (lazily, on first use after
-    SetLocale) from, in priority order:
-      1. an RCDATA resource named STRINGS_<LOCALE> (uppercased), embedded at
-         build time from strings/<locale>.json (see MTN2Resource.rc) --
-         mirrors uDialogResources.pas's TryLoadDialogResourceJson;
-      2. a loose <exedir>\strings\<locale>.json override, so a
-         community-contributed locale can be dropped in without a recompile
-         -- mirrors TTopMenuController.BuildMenuStructure's menu.json
-         fallback. Search starts at <exedir>\strings, then the same name
-         on each parent directory and that parent's src\strings, so a
-         tool whose exe sits in bin\ still finds src\strings. (Unlike the 42 built-in dialogs\*.json layouts, whose
-         disk loading is deliberately disabled, a strings file can only ever
-         substitute text, never control structure/geometry, so the same
-         risk does not apply here -- worth a second look if that stops
-         being true.)
+    SetLocale) as two layers:
+      1. the base: an RCDATA resource named STRINGS_<LOCALE> (uppercased),
+         embedded at build time from strings/<locale>.json (see
+         MTN2Resource.rc) -- mirrors uDialogResources.pas's
+         TryLoadDialogResourceJson;
+      2. on top of it, a loose <exedir>\strings\<locale>.json: its keys win,
+         keys it lacks keep the embedded text. So a community locale can be
+         dropped in without a recompile, a shipped translation can be fixed
+         in place, and a stale file left over from an older version only
+         shadows the keys it still has instead of dropping the rest to
+         English. Only the exe's own folder is searched -- a portable copy
+         must not pick up whatever strings\ happens to sit higher up on the
+         drive. Dev tools that run without the embedded resources point at
+         src\strings explicitly via AddStringsSearchDir. (Unlike the built-in
+         dialogs\*.json layouts, whose disk loading is deliberately disabled,
+         a strings file can only ever substitute text, never control
+         structure/geometry, so the same risk does not apply here -- worth a
+         second look if that stops being true.)
   - Any lookup miss (key absent from the map, whole file missing or
     unparsable, a locale never switched to) falls back to the caller's own
     ADefault -- a partial or absent translation degrades to English, never
@@ -57,6 +61,11 @@ procedure SetLocale(const ALocale: string);
 /// strings\*.json file found next to the exe, deduplicated, 'en' always
 /// first. For populating a language picker.</summary>
 function AvailableLocales: TArray<string>;
+/// <summary>Adds ADir to the folders searched for loose <locale>.json files,
+/// after <exedir>\strings. For dev tools that link no STRINGS_* resources
+/// and run from bin\ (DialogDesigner -> src\strings); the app itself never
+/// calls it. Takes effect on the next SetLocale/AvailableLocales.</summary>
+procedure AddStringsSearchDir(const ADir: string);
 
 /// <summary>Plain-text lookup for Pascal string-literal call sites. ADefault
 /// is both the English baseline (what ships until AKey is translated) and
@@ -82,24 +91,31 @@ uses
 var
   GLocale: string = 'en';
   GMap: TDictionary<string, string>; // nil whenever GLocale = 'en'
+  GExtraDirs: TArray<string>;        // AddStringsSearchDir, dev tools only
+
+procedure AddStringsSearchDir(const ADir: string);
+var
+  Dir, Existing: string;
+begin
+  if Trim(ADir) = '' then
+    Exit;
+  Dir := ExcludeTrailingPathDelimiter(ExpandFileName(ADir));
+  for Existing in GExtraDirs do
+    if SameText(Existing, Dir) then
+      Exit;
+  GExtraDirs := GExtraDirs + [Dir];
+end;
 
 procedure ForEachStringsDir(const AVisit: TProc<string>);
 var
-  Dir, Candidate: string;
+  Dir: string;
 begin
-  Dir := ExtractFilePath(ParamStr(0));
-  while Dir <> '' do
-  begin
-    Candidate := TPath.Combine(Dir, 'strings');
-    if TDirectory.Exists(Candidate) then
-      AVisit(Candidate);
-    Candidate := TPath.Combine(TPath.Combine(Dir, 'src'), 'strings');
-    if TDirectory.Exists(Candidate) then
-      AVisit(Candidate);
-    if SameText(ExpandFileName(TPath.Combine(Dir, '..')), ExpandFileName(Dir)) then
-      Break;
-    Dir := ExpandFileName(TPath.Combine(Dir, '..'));
-  end;
+  Dir := TPath.Combine(ExtractFilePath(ParamStr(0)), 'strings');
+  if TDirectory.Exists(Dir) then
+    AVisit(Dir);
+  for Dir in GExtraDirs do
+    if TDirectory.Exists(Dir) then
+      AVisit(Dir);
 end;
 
 function FindStringsFile(const ALocale: string): string;
@@ -122,55 +138,63 @@ begin
   Result := Found;
 end;
 
-function TryLoadLocaleJsonText(const ALocale: string; out AJson: string): Boolean;
+function StripBom(const AText: string): string;
+begin
+  Result := AText;
+  if (Length(Result) > 0) and (Ord(Result[1]) = $FEFF) then
+    Delete(Result, 1, 1);
+end;
+
+function TryLoadLocaleResource(const ALocale: string; out AJson: string): Boolean;
 var
-  ResName, FilePath: string;
+  ResName: string;
+  Module: HMODULE;
   RS: TResourceStream;
   Bytes: TBytes;
-  ResHandle: HRSRC;
 begin
   AJson := '';
   ResName := 'STRINGS_' + UpperCase(ALocale);
 
-  // RCDATA first -- same HInstance-then-MainInstance probe as
-  // uDialogResources.TryLoadDialogResourceJson.
-  ResHandle := FindResource(HInstance, PChar(ResName), RT_RCDATA);
-  if ResHandle = 0 then
-    ResHandle := FindResource(MainInstance, PChar(ResName), RT_RCDATA);
-  if ResHandle <> 0 then
+  // Same HInstance-then-MainInstance probe as
+  // uDialogResources.TryLoadDialogResourceJson; the stream is opened on
+  // whichever module actually has it.
+  Module := HInstance;
+  if FindResource(Module, PChar(ResName), RT_RCDATA) = 0 then
   begin
-    try
-      RS := TResourceStream.Create(HInstance, ResName, RT_RCDATA);
-      try
-        SetLength(Bytes, RS.Size);
-        if RS.Size > 0 then
-          RS.ReadBuffer(Bytes[0], RS.Size);
-        AJson := TEncoding.UTF8.GetString(Bytes);
-        if (Length(AJson) > 0) and (Ord(AJson[1]) = $FEFF) then
-          Delete(AJson, 1, 1);
-      finally
-        RS.Free;
-      end;
-      if Trim(AJson) <> '' then
-        Exit(True);
-    except
-      AJson := '';
-    end;
+    Module := MainInstance;
+    if FindResource(Module, PChar(ResName), RT_RCDATA) = 0 then
+      Exit(False);
   end;
+  try
+    RS := TResourceStream.Create(Module, ResName, RT_RCDATA);
+    try
+      SetLength(Bytes, RS.Size);
+      if RS.Size > 0 then
+        RS.ReadBuffer(Bytes[0], RS.Size);
+      AJson := StripBom(TEncoding.UTF8.GetString(Bytes));
+    finally
+      RS.Free;
+    end;
+  except
+    AJson := '';
+  end;
+  Result := Trim(AJson) <> '';
+end;
 
-  // Loose-file override / a locale added without a recompile.
+function TryLoadLocaleFile(const ALocale: string; out AJson: string): Boolean;
+var
+  FilePath: string;
+begin
+  AJson := '';
   FilePath := FindStringsFile(ALocale);
   if FilePath = '' then
     Exit(False);
   try
-    AJson := TFile.ReadAllText(FilePath, TEncoding.UTF8);
-    if (Length(AJson) > 0) and (Ord(AJson[1]) = $FEFF) then
-      Delete(AJson, 1, 1);
-    Result := Trim(AJson) <> '';
+    AJson := StripBom(TFile.ReadAllText(FilePath, TEncoding.UTF8));
   except
     AJson := '';
-    Result := False;
   end;
+  Result := Trim(AJson) <> '';
 end;
 
 // Recursively flattens nested JSON objects into dotted keys, e.g.
@@ -197,10 +221,24 @@ begin
   end;
 end;
 
+procedure MergeJsonInto(AMap: TDictionary<string, string>; const AJson: string);
+var
+  Val: TJSONValue;
+begin
+  Val := TJSONObject.ParseJSONValue(AJson);
+  if not Assigned(Val) then
+    Exit; // unparsable layer: whatever the other layer gave stays
+  try
+    if Val is TJSONObject then
+      FlattenInto(AMap, '', TJSONObject(Val));
+  finally
+    Val.Free;
+  end;
+end;
+
 procedure EnsureLoaded;
 var
   Json: string;
-  Val: TJSONValue;
 begin
   if SameText(GLocale, 'en') then
   begin
@@ -210,18 +248,13 @@ begin
   if Assigned(GMap) then
     Exit; // already loaded for the current locale
 
+  // Embedded base first, loose file on top (AddOrSetValue: its keys win).
+  // Neither present leaves an empty map: every lookup falls back to ADefault.
   GMap := TDictionary<string, string>.Create;
-  if not TryLoadLocaleJsonText(GLocale, Json) then
-    Exit; // empty map: every lookup below falls back to ADefault
-  Val := TJSONObject.ParseJSONValue(Json);
-  if not Assigned(Val) then
-    Exit;
-  try
-    if Val is TJSONObject then
-      FlattenInto(GMap, '', TJSONObject(Val));
-  finally
-    Val.Free;
-  end;
+  if TryLoadLocaleResource(GLocale, Json) then
+    MergeJsonInto(GMap, Json);
+  if TryLoadLocaleFile(GLocale, Json) then
+    MergeJsonInto(GMap, Json);
 end;
 
 function CurrentLocale: string;
