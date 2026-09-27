@@ -74,31 +74,23 @@ uses
 
 procedure RestoreGrayOpKey(var AKey: Word; const AKeyChar: Char);
 begin
-  { FMX+Alt often delivers Gray+/− as AKey=0 + KeyChar, not vkAdd.
-    vkInsert = 45 = Ord('-'): never treat Ins as Gray− (that opened the
-    deselect-mask dialog). Recover Gray keys only from AKey=0 / vkAdd. }
-  if (AKey = vkAdd) or (AKey = vkSubtract) or (AKey = vkMultiply) then
+  { FMX+Alt often delivers Gray+/−/* as AKey=0 + KeyChar, not vkAdd /
+    vkSubtract / vkMultiply. Only AKey=0 is recovered; a real key code is
+    never rewritten (Ins, whose code 45 equals Ord('-'), once became Gray−
+    and opened the deselect-mask dialog). }
+  if AKey <> 0 then
     Exit;
-  if AKey = vkInsert then
-    Exit;
-  if (GetAsyncKeyState(VK_ADD) < 0) and (AKey = 0) then
+  if GetAsyncKeyState(VK_ADD) < 0 then
     AKey := vkAdd
-  else if (GetAsyncKeyState(VK_SUBTRACT) < 0) and (AKey = 0) then
+  else if GetAsyncKeyState(VK_SUBTRACT) < 0 then
     AKey := vkSubtract
-  else if (GetAsyncKeyState(VK_MULTIPLY) < 0) and (AKey = 0) then
+  else if GetAsyncKeyState(VK_MULTIPLY) < 0 then
     AKey := vkMultiply
-  else if AKey = 0 then
-  begin
-    if AKeyChar = '+' then
-      AKey := vkAdd
-    else if AKeyChar = '-' then
-      AKey := vkSubtract
-    else if AKeyChar = '*' then
-      AKey := vkMultiply;
-  end
-  else if (AKey = Ord('+')) and (AKeyChar = '+') then
+  else if AKeyChar = '+' then
     AKey := vkAdd
-  else if (AKey = Ord('*')) and (AKeyChar = '*') then
+  else if AKeyChar = '-' then
+    AKey := vkSubtract
+  else if AKeyChar = '*' then
     AKey := vkMultiply;
 end;
 

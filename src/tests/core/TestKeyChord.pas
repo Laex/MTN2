@@ -104,12 +104,14 @@ begin
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkC, [ssCtrl], #3)), 'Ctrl+C goes to the shell');
 end;
 
-// Letter virtual keys are uppercase only; Ord('a')..Ord('z') are numpad and
-// F-keys (see uKeyChord). Guards against comparing a key code with one:
-// "Key = Ord('x')", "AKey >= Ord('a')", "case AKey of Ord('y'), ...".
+// Only uppercase letters and digits have their own ASCII code as virtual key
+// code. Ord('a')..Ord('z') are numpad and F-keys, and punctuation is some
+// other key too (Ord('-') = vkInsert, Ord('+') = vkExecute), see uKeyChord.
+// Guards against comparing a key code with one: "Key = Ord('x')",
+// "AKey <> Ord('-')", "AKey >= Ord('a')", "case AKey of Ord('y'), ...".
 procedure TTestKeyChord.TestNoLowercaseKeyCodes;
 const
-  cKeyCompare = '\b\w*Key\s*(=|<>|>=|<=|>|<)\s*Ord\(''[a-z]''\)';
+  cKeyCompare = '\b\w*Key\s*(=|<>|>=|<=|>|<)\s*Ord\(''[^A-Z0-9'']''\)';
   cCaseLabel = 'Ord\(''[a-z]''\)\s*(,|:[^=]|\.\.)';
 var
   Root, Dir, F, Line, Hits: string;
@@ -134,7 +136,7 @@ begin
             [TPath.GetFileName(F), I + 1, Trim(Line)]);
       end;
     end;
-  Assert.IsTrue(Hits = '', 'key code compared with a lowercase letter:' + Hits);
+  Assert.IsTrue(Hits = '', 'key code compared with a character that is not its code:' + Hits);
 end;
 
 initialization

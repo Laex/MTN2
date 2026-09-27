@@ -616,8 +616,11 @@ begin
   Assert.IsTrue(not IsAltQuickSearchChord(vkF7, [ssAlt]), 'Alt+F7 is not quick search');
   Assert.IsTrue(not IsAltQuickSearchChord(vkAdd, [ssAlt]), 'Alt+Gray+ is not quick search');
   Assert.IsTrue(not IsAltQuickSearchChord(vkSubtract, [ssAlt]), 'Alt+Gray- is not quick search');
-  Assert.IsTrue(not IsAltQuickSearchChord(Ord('+'), [ssAlt]), 'Alt+Ord(+) is not quick search');
-  Assert.IsTrue(not IsAltQuickSearchChord(Ord('-'), [ssAlt]), 'Alt+Ord(-) is not quick search');
+  Assert.IsTrue(not IsAltQuickSearchChord(vkMultiply, [ssAlt]), 'Alt+Gray* is not quick search');
+  Assert.IsTrue(not IsAltQuickSearchChord(vkEqual, [ssAlt]), 'Alt+OEM= is not quick search');
+  // A key without a character reaches quick search but adds nothing to it.
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkInsert, #0, True, Ch) = nbaUnhandled,
+    'Alt+Ins is not typed into quick search');
 
   Spy := TFreeInputSpy.Create;
   NavSpy := TKeymapSpy.Create;
@@ -822,7 +825,15 @@ begin
     Key := vkInsert;
     Ch := #0;
     RestoreGrayOpKey(Key, Ch);
-    Assert.IsTrue(Key = vkInsert, 'RestoreGray leaves Ins (Ord(-) is vkInsert)');
+    Assert.IsTrue(Key = vkInsert, 'RestoreGray leaves Ins (its code 45 is Ord(''-''))');
+    Key := 0;
+    Ch := '+';
+    RestoreGrayOpKey(Key, Ch);
+    Assert.IsTrue(Key = vkAdd, 'RestoreGray: AKey=0 + ''+'' is Gray+');
+    Key := vkExecute; // = Ord('+')
+    Ch := '+';
+    RestoreGrayOpKey(Key, Ch);
+    Assert.IsTrue(Key = vkExecute, 'RestoreGray never rewrites a real key code');
     Key := vkInsert;
     Ch := #0;
     Spy.Last := '';
