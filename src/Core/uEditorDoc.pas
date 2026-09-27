@@ -12,8 +12,8 @@ unit uEditorDoc;
   after the open is not lost
   (FKnownSize/FKnownWriteTime double as the guard against reacting to our
   own SaveAsync writing the file: right after a save they're updated to
-  match, so the watcher notification that follows sees no difference and
-  is a no-op). Only fires when there are no unsaved edits (FDirty) — an
+  match, and a check arriving before that update waits for it, so the
+  watcher notification that follows sees no difference and is a no-op). Only fires when there are no unsaved edits (FDirty) — an
   edit in progress is never silently discarded. ContentGen (FGen, already
   used to guard stale async completions) doubles as a change counter the
   Viewer/Editor can compare against to know when its own per-line caches
@@ -80,6 +80,15 @@ type
     FReadStatValid: Boolean;
     FReadStatSize: Int64;
     FReadStatWriteTime: TDateTime;
+    // Known-stat refresh after a save (RecordKnownFileStat): in flight for
+    // generation FKnownStatGen; a check arriving meanwhile sets
+    // FRecheckAfterKnownStat and runs when it lands. FKnownStatSeq counts
+    // known-stat updates, so a check's own stat taken before one is redone.
+    FKnownStatPending: Boolean;
+    FKnownStatGen: Cardinal;
+    FRecheckAfterKnownStat: Boolean;
+    FKnownStatSeq: Cardinal;
+    function KnownStatPending: Boolean;
     procedure NotifyChanged;
     procedure ApplyLoadedText(const AText: string);
     function BuildSaveText: string;
@@ -519,15 +528,35 @@ procedure TEditorDoc.RecordKnownFileStat;
 begin
   if FPath = '' then
     Exit;
+  // Until this stat lands the known stat still describes the file before
+  // the save, while FSaving/FDirty already say "clean": a check in that
+  // window would reload what we just wrote. CheckExternalChange waits for
+  // it instead (KnownStatPending) and runs once it is here.
+  Inc(FKnownStatSeq);
+  FKnownStatPending := True;
+  FKnownStatGen := FGen;
   StatFileAsync(FPath, FGen,
     procedure(AExists: Boolean; ASize: Int64; AWriteTime: TDateTime)
     begin
+      FKnownStatPending := False;
       if AExists then
       begin
         FKnownSize := ASize;
         FKnownWriteTime := AWriteTime;
       end;
+      if FRecheckAfterKnownStat then
+      begin
+        FRecheckAfterKnownStat := False;
+        CheckExternalChange;
+      end;
     end);
+end;
+
+function TEditorDoc.KnownStatPending: Boolean;
+begin
+  // A newer Open/Close/reload (FGen) drops the stat's callback, so a flag
+  // left from an older generation means nothing any more.
+  Result := FKnownStatPending and (FKnownStatGen = FGen);
 end;
 
 procedure TEditorDoc.ReadWithStatAsync(AGen: Cardinal; const AURI: string;
@@ -558,6 +587,7 @@ begin
   begin
     FKnownSize := FReadStatSize;
     FKnownWriteTime := FReadStatWriteTime;
+    Inc(FKnownStatSeq);
   end;
   FReadStatValid := False;
 end;
@@ -590,12 +620,27 @@ end;
 // uDirWatch). Fires on ANY change in the file's directory, not just this
 // file, so this always re-stats before deciding anything.
 procedure TEditorDoc.CheckExternalChange;
+var
+  Seq: Cardinal;
 begin
   if not CanReloadFromDisk then
     Exit;
+  if KnownStatPending then
+  begin
+    FRecheckAfterKnownStat := True;
+    Exit;
+  end;
+  Seq := FKnownStatSeq;
   StatFileAsync(FPath, FGen,
     procedure(AExists: Boolean; ASize: Int64; AWriteTime: TDateTime)
     begin
+      // The known stat moved on (a save) while this stat was out: it may
+      // describe the file from before that write, so judge afresh.
+      if Seq <> FKnownStatSeq then
+      begin
+        CheckExternalChange;
+        Exit;
+      end;
       // FKnownSize/FKnownWriteTime were set to match what we last loaded OR
       // saved — if the file on disk is still exactly that, there's nothing
       // to do (this is what makes SaveAsync's own write a no-op here too,
