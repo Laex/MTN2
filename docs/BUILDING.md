@@ -78,7 +78,7 @@
 | `ci.yml` → `checks` | GitHub-hosted (ubuntu) | gitleaks, валидность JSON-ресурсов |
 | `ci.yml` → `wasm-plugin` | GitHub-hosted (ubuntu) | `cargo build` плагина `mtn.ws` под `wasm32` |
 | `ci.yml` → `delphi` | self-hosted `delphi` | `build.ps1` + `run-tests.ps1` + zip-артефакт |
-| `release.yml` | self-hosted `delphi` | по тегу `v*`: сборка, тесты, GitHub Release с zip |
+| `release.yml` | self-hosted `delphi` | по тегу `v*`: сборка, тесты, GitHub Release с zip и разделом из `CHANGELOG.md` |
 
 RAD Studio коммерческая и на GitHub-hosted раннерах отсутствует, поэтому Delphi-часть идёт на своей машине.
 
@@ -94,9 +94,20 @@ RAD Studio коммерческая и на GitHub-hosted раннерах от�
 5. *Settings → Actions → General → Fork pull request workflows*: «Require approval for all outside collaborators».
    Job `delphi` и так не запускается для PR из форков.
 
+### Что нового: `CHANGELOG.md`
+
+`CHANGELOG.md` в корне — для пользователей: что появилось, что исправлено, что изменилось в поведении, по-русски и без
+внутренней кухни (рефакторинг, тесты, CI туда не пишутся). Изменение, заметное пользователю, сразу записывается
+в раздел «Не выпущено» под «Новое», «Исправлено» или «Изменено». Файл кладётся в оба архива рядом с `LICENSE`.
+
 ### Релиз
 
 ```powershell
+./src/tools/changelog.ps1 -Stamp v0.3.0   # «Не выпущено» -> «v0.3.0 — <дата>», новый пустой «Не выпущено»
+# вместе с этим — версия в MTN2.dproj (коммит «Stamp 0.3.0.»)
 git tag v0.3.0
 git push origin v0.3.0
 ```
+
+`release.yml` берёт раздел этой версии из `CHANGELOG.md` на теге и ставит его в начало страницы релиза со ссылкой
+на весь файл; без такого раздела (не сделан `-Stamp`) релиз останавливается до сборки.

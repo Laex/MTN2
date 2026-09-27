@@ -24,6 +24,12 @@ jobs:
         with:
           ref: ${{ env.TAG }}
 
+      - name: Changelog
+        shell: pwsh
+        # This version's CHANGELOG.md section becomes the release page's "what's
+        # new"; fails early when the tag has none (changelog.ps1 -Stamp first).
+        run: ./src/tools/changelog.ps1 -Section $env:TAG -OutFile "$env:RUNNER_TEMP/changes.md"
+
       - name: Build
         shell: pwsh
         # The tag becomes the exe's version resource (what the updater compares).
@@ -56,10 +62,13 @@ jobs:
             # replaced, since the updater trusts its SHA-256 digest. Ship a new tag.
             throw "Release $env:TAG is already published and immutable; tag a new version"
           } else {
-            # Install/7z.dll notes (.github/release-notes.md) go above the
-            # generated changelog; {{TAG}} becomes the release tag.
+            # What's new (the tag's CHANGELOG.md section, with a link to the
+            # whole file), then the install/7z.dll notes
+            # (.github/release-notes.md, {{TAG}} = the tag), then GitHub's
+            # generated compare link.
             $Notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
-            (Get-Content .github/release-notes.md -Raw).Replace('{{TAG}}', $env:TAG) |
+            (Get-Content (Join-Path $env:RUNNER_TEMP 'changes.md') -Raw -Encoding utf8) +
+              (Get-Content .github/release-notes.md -Raw -Encoding utf8).Replace('{{TAG}}', $env:TAG) |
               Set-Content $Notes -Encoding utf8NoBOM
             gh release create $env:TAG @Zips --title "MTN2 $env:TAG" `
               --notes-file $Notes --generate-notes

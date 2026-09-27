@@ -47,6 +47,8 @@ foreach ($Dir in 'help', 'plugins') {
 }
 Get-ChildItem $Stage -Recurse -File -Filter '7z.dll' | Remove-Item -Force
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
+# What's new for the user, version by version (also linked from the release page).
+Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage
 
 $Safe = $Version -replace '[^\w.\-]', '_'
 $Zip = Join-Path $Dist "MTN2-$Safe-win64.zip"
