@@ -235,7 +235,11 @@ begin
   SetLength(Result, 0);
   for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
   begin
-    if Act = AExclude then
+    // Only the same context clashes: Ctrl+C copies files on panels and text
+    // in a document, and a specific context overriding a general one
+    // (Markdown F4 over Document F4) is by design.
+    if (Act = AExclude) or
+       (KeymapActionContext(Act) <> KeymapActionContext(AExclude)) then
       Continue;
     Found := False;
     for I := 0 to High(ABindings) do
@@ -259,8 +263,9 @@ var
 begin
   for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
   begin
-    if Act = FEditAction then
-      Continue;
+    if (Act = FEditAction) or
+       (KeymapActionContext(Act) <> KeymapActionContext(FEditAction)) then
+      Continue; // see FindConflicts
     SetLength(Kept, 0);
     for I := 0 to High(FProfile.Bindings[Act]) do
     begin

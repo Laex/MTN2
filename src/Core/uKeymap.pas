@@ -105,7 +105,33 @@ type
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
-    kaCopyItemName    // Alt+Shift+Ins -- copy item name(s) only (no path)
+    kaCopyItemName,   // Alt+Shift+Ins -- copy item name(s) only (no path)
+    // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
+    // see KeymapActionContext).
+    kaDocToggleEdit, // F6 -- viewer <-> editor
+    kaDocHex, // F4 / Ctrl+H -- hex <-> text
+    kaDocMarkdown, // Ctrl+M -- Markdown render <-> raw text
+    kaDocEncodingNext, // F8 -- next encoding
+    kaDocEncoding, // Shift+F8 -- encoding dialog
+    kaDocGotoLine, // Alt+F8 -- go to line
+    kaDocFind, // F7 / Ctrl+F -- find (Ctrl+F7 too: the Viewer has no replace)
+    kaDocFindNext, // Shift+F7 / F3 -- find next
+    kaDocFindPrev, // Alt+F7 / Shift+F3 -- find previous
+    kaDocCopy, // Ctrl+C / Ctrl+Ins -- copy selection or line
+    kaDocSelectAll, // Ctrl+A -- select all
+    kaDocClearSelection, // Ctrl+U -- clear selection
+    kaDocClose, // Esc / F10 -- close
+    kaViewerWordWrap, // F2 -- word wrap (not in Markdown)
+    kaMarkdownSource, // F4 in Markdown -- rendered <-> source
+    kaEditorSave, // F2 / Ctrl+S -- save
+    kaEditorReplace, // Ctrl+F7 -- replace
+    kaEditorPaste, // Ctrl+V / Shift+Ins -- paste
+    kaEditorCut, // Ctrl+X / Ctrl+Del / Shift+Del -- cut selection or line
+    kaEditorUndo, // Ctrl+Z -- undo
+    kaEditorRedo, // Ctrl+Shift+Z -- redo
+    kaEditorDeleteLine, // Ctrl+Y / Ctrl+D -- delete line (Far)
+    kaEditorDeleteToEol, // Ctrl+K -- delete to end of line
+    kaEditorInsertLine // Ctrl+N -- insert a blank line below
   );
 
   TKeyBinding = record
@@ -119,6 +145,33 @@ type
     Name: string;
     Bindings: array[TKeymapAction] of TArray<TKeyBinding>;
   end;
+
+  /// <summary>Where an action applies. A window looks a keystroke up along a
+  /// chain of contexts, most specific first (the editor: Editor, Document,
+  /// Global), so one chord can mean different actions in different windows
+  /// (Ctrl+H: ToggleHidden on panels, DocHex in a document) and a specific
+  /// context can override a general one (Markdown F4 over Document F4).</summary>
+  TKeymapContext = (
+    kcGlobal,    // everywhere
+    kcPanels,    // file panels
+    kcDocument,  // viewer and editor alike
+    kcViewer,    // viewer only
+    kcMarkdown,  // rendered Markdown view (above kcViewer)
+    kcEditor,    // editor only
+    kcConsole,   // Panel Console (Ctrl+O)
+    kcTerminal   // terminal workspace
+  );
+
+/// <summary>The one context AAction belongs to.</summary>
+function KeymapActionContext(AAction: TKeymapAction): TKeymapContext;
+/// <summary>First action bound to AKey + Shift/Ctrl/Alt of AShiftState,
+/// looking through AChain's contexts in order (most specific first); kaNone
+/// if none. Modifiers must match exactly; mouse flags are ignored.</summary>
+function MatchActionIn(const AProfile: TKeymapProfile;
+  const AChain: array of TKeymapContext; AKey: Word; AShiftState: TShiftState): TKeymapAction;
+/// <summary>MatchActionIn against ActiveKeymap.</summary>
+function MatchActiveActionIn(const AChain: array of TKeymapContext; AKey: Word;
+  AShiftState: TShiftState): TKeymapAction;
 
 function KeyBinding(AKey: Word; AShift: Boolean = False; AAlt: Boolean = False; ACtrl: Boolean = False): TKeyBinding;
 procedure AddBinding(var AProfile: TKeymapProfile; AAction: TKeymapAction; const ABinding: TKeyBinding);
@@ -500,6 +553,44 @@ begin
   AddBinding(Result, kaEditCut, KeyBinding(vkDelete, False, False, True));
   AddBinding(Result, kaEditPaste, KeyBinding(Ord('V'), False, False, True));
   AddBinding(Result, kaEditPaste, KeyBinding(vkInsert, True, False, False));
+
+  // Viewer / editor.
+  AddBinding(Result, kaDocToggleEdit, KeyBinding(vkF6, False, False, False));
+  AddBinding(Result, kaDocHex, KeyBinding(vkF4, False, False, False));
+  AddBinding(Result, kaDocHex, KeyBinding(Ord('H'), False, False, True));
+  AddBinding(Result, kaDocMarkdown, KeyBinding(Ord('M'), False, False, True));
+  AddBinding(Result, kaDocEncodingNext, KeyBinding(vkF8, False, False, False));
+  AddBinding(Result, kaDocEncoding, KeyBinding(vkF8, True, False, False));
+  AddBinding(Result, kaDocGotoLine, KeyBinding(vkF8, False, True, False));
+  AddBinding(Result, kaDocFind, KeyBinding(vkF7, False, False, False));
+  AddBinding(Result, kaDocFind, KeyBinding(Ord('F'), False, False, True));
+  AddBinding(Result, kaDocFind, KeyBinding(vkF7, False, False, True));
+  AddBinding(Result, kaDocFindNext, KeyBinding(vkF7, True, False, False));
+  AddBinding(Result, kaDocFindNext, KeyBinding(vkF3, False, False, False));
+  AddBinding(Result, kaDocFindPrev, KeyBinding(vkF7, False, True, False));
+  AddBinding(Result, kaDocFindPrev, KeyBinding(vkF3, True, False, False));
+  AddBinding(Result, kaDocCopy, KeyBinding(Ord('C'), False, False, True));
+  AddBinding(Result, kaDocCopy, KeyBinding(vkInsert, False, False, True));
+  AddBinding(Result, kaDocSelectAll, KeyBinding(Ord('A'), False, False, True));
+  AddBinding(Result, kaDocClearSelection, KeyBinding(Ord('U'), False, False, True));
+  AddBinding(Result, kaDocClose, KeyBinding(vkEscape, False, False, False));
+  AddBinding(Result, kaDocClose, KeyBinding(vkF10, False, False, False));
+  AddBinding(Result, kaViewerWordWrap, KeyBinding(vkF2, False, False, False));
+  AddBinding(Result, kaMarkdownSource, KeyBinding(vkF4, False, False, False));
+  AddBinding(Result, kaEditorSave, KeyBinding(vkF2, False, False, False));
+  AddBinding(Result, kaEditorSave, KeyBinding(Ord('S'), False, False, True));
+  AddBinding(Result, kaEditorReplace, KeyBinding(vkF7, False, False, True));
+  AddBinding(Result, kaEditorPaste, KeyBinding(Ord('V'), False, False, True));
+  AddBinding(Result, kaEditorPaste, KeyBinding(vkInsert, True, False, False));
+  AddBinding(Result, kaEditorCut, KeyBinding(Ord('X'), False, False, True));
+  AddBinding(Result, kaEditorCut, KeyBinding(vkDelete, False, False, True));
+  AddBinding(Result, kaEditorCut, KeyBinding(vkDelete, True, False, False));
+  AddBinding(Result, kaEditorUndo, KeyBinding(Ord('Z'), False, False, True));
+  AddBinding(Result, kaEditorRedo, KeyBinding(Ord('Z'), True, False, True));
+  AddBinding(Result, kaEditorDeleteLine, KeyBinding(Ord('Y'), False, False, True));
+  AddBinding(Result, kaEditorDeleteLine, KeyBinding(Ord('D'), False, False, True));
+  AddBinding(Result, kaEditorDeleteToEol, KeyBinding(Ord('K'), False, False, True));
+  AddBinding(Result, kaEditorInsertLine, KeyBinding(Ord('N'), False, False, True));
 end;
 
 function GetDefaultFARProfile: TKeymapProfile;
@@ -510,8 +601,29 @@ begin
   AddBinding(Result, kaPack, KeyBinding(vkF7, False, True, False)); // Alt+F7 Find in FAR
 end;
 
-function MatchAction(const AProfile: TKeymapProfile; AKey: Word; AShiftState: TShiftState): TKeymapAction;
+function KeymapActionContext(AAction: TKeymapAction): TKeymapContext;
+begin
+  case AAction of
+    kaDocToggleEdit, kaDocHex, kaDocMarkdown, kaDocEncodingNext, kaDocEncoding,
+    kaDocGotoLine, kaDocFind, kaDocFindNext, kaDocFindPrev, kaDocCopy,
+    kaDocSelectAll, kaDocClearSelection, kaDocClose:
+      Result := kcDocument;
+    kaViewerWordWrap:
+      Result := kcViewer;
+    kaMarkdownSource:
+      Result := kcMarkdown;
+    kaEditorSave, kaEditorReplace, kaEditorPaste, kaEditorCut, kaEditorUndo,
+    kaEditorRedo, kaEditorDeleteLine, kaEditorDeleteToEol, kaEditorInsertLine:
+      Result := kcEditor;
+  else
+    Result := kcPanels;
+  end;
+end;
+
+function MatchActionIn(const AProfile: TKeymapProfile;
+  const AChain: array of TKeymapContext; AKey: Word; AShiftState: TShiftState): TKeymapAction;
 var
+  Ctx: TKeymapContext;
   Act: TKeymapAction;
   B: TKeyBinding;
   I: Integer;
@@ -522,20 +634,23 @@ begin
   HasAlt := ssAlt in AShiftState;
   HasCtrl := ssCtrl in AShiftState;
 
-  for Act := Low(TKeymapAction) to High(TKeymapAction) do
-  begin
-    if Act = kaNone then
-      Continue;
-    for I := 0 to High(AProfile.Bindings[Act]) do
+  for Ctx in AChain do
+    for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
     begin
-      B := AProfile.Bindings[Act][I];
-      if (B.Key = AKey) and (B.Shift = HasShift) and (B.Alt = HasAlt) and (B.Ctrl = HasCtrl) then
+      if KeymapActionContext(Act) <> Ctx then
+        Continue;
+      for I := 0 to High(AProfile.Bindings[Act]) do
       begin
-        Result := Act;
-        Exit;
+        B := AProfile.Bindings[Act][I];
+        if (B.Key = AKey) and (B.Shift = HasShift) and (B.Alt = HasAlt) and (B.Ctrl = HasCtrl) then
+          Exit(Act);
       end;
     end;
-  end;
+end;
+
+function MatchAction(const AProfile: TKeymapProfile; AKey: Word; AShiftState: TShiftState): TKeymapAction;
+begin
+  Result := MatchActionIn(AProfile, [kcPanels, kcGlobal], AKey, AShiftState);
 end;
 
 procedure ParseItemObject(const AItemObj: TJSONObject; AAct: TKeymapAction; var AProfile: TKeymapProfile);
@@ -655,7 +770,31 @@ const
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
     'Checksums',             // kaChecksums
-    'CopyItemName'           // kaCopyItemName
+    'CopyItemName',          // kaCopyItemName
+    'DocViewEdit',           // kaDocToggleEdit
+    'DocHex',                // kaDocHex
+    'DocMarkdown',           // kaDocMarkdown
+    'DocEncodingNext',       // kaDocEncodingNext
+    'DocEncoding',           // kaDocEncoding
+    'DocGotoLine',           // kaDocGotoLine
+    'DocFind',               // kaDocFind
+    'DocFindNext',           // kaDocFindNext
+    'DocFindPrev',           // kaDocFindPrev
+    'DocCopy',               // kaDocCopy
+    'DocSelectAll',          // kaDocSelectAll
+    'DocClearSelection',     // kaDocClearSelection
+    'DocClose',              // kaDocClose
+    'ViewerWrap',            // kaViewerWordWrap
+    'MarkdownSource',        // kaMarkdownSource
+    'EditorSave',            // kaEditorSave
+    'EditorReplace',         // kaEditorReplace
+    'EditorPaste',           // kaEditorPaste
+    'EditorCut',             // kaEditorCut
+    'EditorUndo',            // kaEditorUndo
+    'EditorRedo',            // kaEditorRedo
+    'EditorDeleteLine',      // kaEditorDeleteLine
+    'EditorDeleteToEol',     // kaEditorDeleteToEol
+    'EditorInsertLine'       // kaEditorInsertLine
   );
 
 function TryKeymapActionByName(const AName: string; out AAction: TKeymapAction): Boolean;
@@ -980,6 +1119,12 @@ end;
 function MatchActiveAction(AKey: Word; AShiftState: TShiftState): TKeymapAction;
 begin
   Result := MatchAction(ActiveKeymap, AKey, AShiftState);
+end;
+
+function MatchActiveActionIn(const AChain: array of TKeymapContext; AKey: Word;
+  AShiftState: TShiftState): TKeymapAction;
+begin
+  Result := MatchActionIn(ActiveKeymap, AChain, AKey, AShiftState);
 end;
 
 /// <summary>Test helper: how many times LoadKeymapFromFile ran.</summary>

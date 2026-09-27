@@ -107,6 +107,62 @@
     "EditPaste": [
       { "key": "V", "ctrl": true, "description": "Paste (text, or files/folders on panels)" },
       { "key": "Insert", "shift": true, "description": "Paste (Shift+Ins)" }
-    ]
+    ],
+    "DocViewEdit": { "key": "F6", "description": "Viewer <-> editor" },
+    "DocHex": [
+      { "key": "F4", "description": "Hex <-> text" },
+      { "key": "H", "ctrl": true, "description": "Hex <-> text" }
+    ],
+    "DocMarkdown": { "key": "M", "ctrl": true, "description": "Markdown render <-> raw text" },
+    "DocEncodingNext": { "key": "F8", "description": "Next encoding" },
+    "DocEncoding": { "key": "F8", "shift": true, "description": "Encoding dialog" },
+    "DocGotoLine": { "key": "F8", "alt": true, "description": "Go to line" },
+    "DocFind": [
+      { "key": "F7", "description": "Find (Ctrl+F7 too: the Viewer has no replace)" },
+      { "key": "F", "ctrl": true, "description": "Find (Ctrl+F7 too: the Viewer has no replace)" },
+      { "key": "F7", "ctrl": true, "description": "Find (Ctrl+F7 too: the Viewer has no replace)" }
+    ],
+    "DocFindNext": [
+      { "key": "F7", "shift": true, "description": "Find next" },
+      { "key": "F3", "description": "Find next" }
+    ],
+    "DocFindPrev": [
+      { "key": "F7", "alt": true, "description": "Find previous" },
+      { "key": "F3", "shift": true, "description": "Find previous" }
+    ],
+    "DocCopy": [
+      { "key": "C", "ctrl": true, "description": "Copy selection or line" },
+      { "key": "Insert", "ctrl": true, "description": "Copy selection or line" }
+    ],
+    "DocSelectAll": { "key": "A", "ctrl": true, "description": "Select all" },
+    "DocClearSelection": { "key": "U", "ctrl": true, "description": "Clear selection" },
+    "DocClose": [
+      { "key": "Escape", "description": "Close" },
+      { "key": "F10", "description": "Close" }
+    ],
+    "ViewerWrap": { "key": "F2", "description": "Word wrap (not in Markdown)" },
+    "MarkdownSource": { "key": "F4", "description": "Rendered <-> source" },
+    "EditorSave": [
+      { "key": "F2", "description": "Save" },
+      { "key": "S", "ctrl": true, "description": "Save" }
+    ],
+    "EditorReplace": { "key": "F7", "ctrl": true, "description": "Replace" },
+    "EditorPaste": [
+      { "key": "V", "ctrl": true, "description": "Paste" },
+      { "key": "Insert", "shift": true, "description": "Paste" }
+    ],
+    "EditorCut": [
+      { "key": "X", "ctrl": true, "description": "Cut selection or line" },
+      { "key": "Delete", "ctrl": true, "description": "Cut selection or line" },
+      { "key": "Delete", "shift": true, "description": "Cut selection or line" }
+    ],
+    "EditorUndo": { "key": "Z", "ctrl": true, "description": "Undo" },
+    "EditorRedo": { "key": "Z", "ctrl": true, "shift": true, "description": "Redo" },
+    "EditorDeleteLine": [
+      { "key": "Y", "ctrl": true, "description": "Delete line (Far)" },
+      { "key": "D", "ctrl": true, "description": "Delete line (Far)" }
+    ],
+    "EditorDeleteToEol": { "key": "K", "ctrl": true, "description": "Delete to end of line" },
+    "EditorInsertLine": { "key": "N", "ctrl": true, "description": "Insert a blank line below" }
   }
 }

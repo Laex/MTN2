@@ -10,6 +10,7 @@ type
   TTestKeymap = class
   public
     [Test] procedure Run;
+    [Test] procedure TestContexts;
   end;
 
 implementation
@@ -151,6 +152,52 @@ begin
       [LoadsBefore, LoadsAfter]));
 
   Writeln('TestKeymap passed successfully.');
+end;
+
+// One chord, different actions by context; a specific context wins over a
+// general one along the chain; the panels never see document actions.
+procedure TTestKeymap.TestContexts;
+var
+  P: TKeymapProfile;
+  Act: TKeymapAction;
+  K: Word;
+  M: Integer;
+  S: TShiftState;
+begin
+  P := GetDefaultNDNProfile;
+  Assert.IsTrue(MatchActionIn(P, [kcPanels, kcGlobal], Ord('H'), [ssCtrl]) = kaToggleHidden,
+    'Ctrl+H on panels: show hidden files');
+  Assert.IsTrue(MatchActionIn(P, [kcViewer, kcDocument], Ord('H'), [ssCtrl]) = kaDocHex,
+    'Ctrl+H in a document: hex');
+  Assert.IsTrue(MatchActionIn(P, [kcViewer, kcDocument], vkF4, []) = kaDocHex, 'F4 in the viewer: hex');
+  Assert.IsTrue(MatchActionIn(P, [kcMarkdown, kcViewer, kcDocument], vkF4, []) = kaMarkdownSource,
+    'F4 over rendered Markdown: source (Markdown over Document)');
+  Assert.IsTrue(MatchActionIn(P, [kcEditor, kcDocument], vkF7, [ssCtrl]) = kaEditorReplace,
+    'Ctrl+F7 in the editor: replace (Editor over Document)');
+  Assert.IsTrue(MatchActionIn(P, [kcViewer, kcDocument], vkF7, [ssCtrl]) = kaDocFind,
+    'Ctrl+F7 in the viewer: find');
+  Assert.IsTrue(MatchActionIn(P, [kcViewer, kcDocument], vkF2, []) = kaViewerWordWrap, 'F2 in the viewer: wrap');
+  Assert.IsTrue(MatchActionIn(P, [kcEditor, kcDocument], vkF2, []) = kaEditorSave, 'F2 in the editor: save');
+  Assert.IsTrue(MatchActionIn(P, [kcEditor, kcDocument], vkF10, []) = kaDocClose, 'F10 in a document: close');
+  Assert.IsTrue(MatchAction(P, vkF10, []) = kaQuit, 'F10 on panels: quit');
+  Assert.IsTrue(MatchActionIn(P, [kcEditor, kcDocument], Ord('Z'), [ssCtrl, ssShift]) = kaEditorRedo,
+    'Ctrl+Shift+Z: redo');
+  Assert.IsTrue(MatchActionIn(P, [kcEditor, kcDocument], Ord('A'), [ssCtrl, ssShift]) = kaNone,
+    'modifiers match exactly');
+
+  for K := 1 to 255 do
+    for M := 0 to 7 do
+    begin
+      S := [];
+      if M and 1 <> 0 then Include(S, ssShift);
+      if M and 2 <> 0 then Include(S, ssCtrl);
+      if M and 4 <> 0 then Include(S, ssAlt);
+      Act := MatchAction(P, K, S);
+      Assert.IsTrue(KeymapActionContext(Act) in [kcPanels, kcGlobal],
+        Format('panels matched %s (key %d)', [KeymapActionDisplayName(Act), K]));
+    end;
+
+  Assert.IsTrue(TryKeymapActionByName('DocHex', Act) and (Act = kaDocHex), 'names resolve');
 end;
 
 { TTestKeymap }

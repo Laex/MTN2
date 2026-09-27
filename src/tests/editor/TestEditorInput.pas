@@ -10,13 +10,14 @@ type
   TTestEditorInput = class
   public
     [Test] procedure TestDispatch;
+    [Test] procedure TestRebinding;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uEditorInput;
+  uKeymap, uEditorInput;
 
 type
   TEditorSpy = class
@@ -538,6 +539,37 @@ begin
 end;
 
 { TTestEditorInput }
+
+// Commands follow the keymap: a rebound action moves to its new key.
+procedure TTestEditorInput.TestRebinding;
+var
+  Spy: TEditorSpy;
+  Host: TEditorKeymapHost;
+  P: TKeymapProfile;
+  Key: Word;
+  KeyChar: Char;
+begin
+  Spy := TEditorSpy.Create;
+  try
+    BindSpy(Host, Spy);
+    Spy.ViewOnlyVal := True;
+    P := GetDefaultNDNProfile;
+    P.Bindings[kaDocHex] := [KeyBinding(vkF9)];
+
+    Spy.Last := 'keep';
+    Key := vkF9;
+    KeyChar := #0;
+    Assert.IsTrue(DispatchEditorKeysWith(P, Host, Key, [], KeyChar, 10), 'F9 handled');
+    Assert.IsTrue(Spy.Last = 'hex', 'rebound F9 toggles hex');
+
+    Spy.Last := 'keep';
+    Key := vkF4;
+    Assert.IsTrue(not DispatchEditorKeysWith(P, Host, Key, [], KeyChar, 10), 'F4 no longer bound');
+    Assert.IsTrue(Spy.Last = 'keep', 'F4 does nothing');
+  finally
+    Spy.Free;
+  end;
+end;
 
 procedure TTestEditorInput.TestDispatch;
 begin
