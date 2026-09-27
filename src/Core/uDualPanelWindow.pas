@@ -5784,7 +5784,11 @@ var
   Doc: TEditorWindow;
 begin
   Doc := ActiveDocument;
+  // Host dialogs and the top menu drop-down are cells too; the image Overlay
+  // would paint over them.
   Result := (not FConsoleMode) and (not HelpVisible) and Assigned(Doc) and
+    not (Assigned(FDialog) and FDialog.Visible) and
+    not (Assigned(FTopMenu) and FTopMenu.Active) and
     Doc.MarkdownImageOverlayVisible;
 end;
 
