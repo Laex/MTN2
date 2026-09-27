@@ -6,7 +6,7 @@
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # -> bin\MTN2.exe + bin\plugins\
-./src/tests/run-tests.ps1                         # регрессионные тесты (dcc64)
+./src/tests/run-tests.ps1                         # регрессионные тесты (DUnitX, dcc64)
 ./src/tools/package-release.ps1 -Version v0.3.0   # -> dist\MTN2-v0.3.0-win64.zip
 ```
 
@@ -24,8 +24,10 @@
 
 ## Тесты
 
-Каждый тест — отдельная консольная программа `Test*.dpr` (без фреймворка): код выхода 0 — успех.
-Тесты разложены по группам в `src/tests/<группа>/`:
+Тесты написаны на [DUnitX](https://github.com/VSoftTechnologies/DUnitX) (входит в RAD Studio). Каждый
+`src/tests/<группа>/TestXxx.pas` — модуль с фикстурой `[TestFixture] TTestXxx`, методы `[Test]` проверяют
+через `Assert.*`. Фикстуры группы собирает консольный раннер `<Группа>Tests.dpr` (например,
+`vfs/VfsTests.dpr`); общий `Main` — в `src/tests/common/uTestRunner.pas`. Группы:
 
 | Группа | Что покрывает |
 |---|---|
@@ -38,20 +40,30 @@
 | `core` | конфигурация, keymap, шина сообщений, строки, справка |
 
 ```powershell
-./src/tests/run-tests.ps1                    # все группы, кроме тестов из manual.txt
+./src/tests/run-tests.ps1                    # все группы, кроме фикстур категории Manual
 ./src/tests/run-tests.ps1 -Group vfs,panels  # выбранные группы
-./src/tests/run-tests.ps1 -Test TestPty*     # по имени (маски), в т.ч. из manual.txt
-./src/tests/run-tests.ps1 -All               # вместе с manual.txt
+./src/tests/run-tests.ps1 -Test TestPty*     # фикстуры по имени модуля (маски), в т.ч. Manual
+./src/tests/run-tests.ps1 -All               # вместе с Manual
 ./src/tests/run-tests.ps1 -List              # только показать список
 ```
 
-Раннер компилирует тест в `src/tests/dcu` и запускает его из папки группы (пути вида `..\..\dialogs`
-в тестах отсчитываются от неё). Тест дольше `-TimeoutSec` (по умолчанию 300 с) снимается и считается
-упавшим; прогон не останавливается на первой ошибке и в конце печатает сводку.
+`run-tests.ps1` компилирует раннер группы в `src/tests/dcu` и запускает его из папки группы (пути вида
+`..\..\dialogs` в тестах отсчитываются от неё). Отчёт в формате NUnit XML пишется в
+`src/tests/dcu/<Группа>Tests.xml`, CI сохраняет его артефактом. Раннер дольше `-TimeoutSec` (по умолчанию
+900 с) снимается и считается упавшим; прогон не останавливается на первой ошибке и в конце печатает сводку.
 
-Новый тест: `src/tests/<группа>/TestXxx.dpr`, модули подключать как `uX in '..\..\Core\uX.pas'` — раннер
-подхватит его автоматически. Ручные, интерактивные и зависящие от окружения тесты перечислены в
-`src/tests/manual.txt` с причиной.
+Раннер группы можно запустить и напрямую (из папки группы) — ключи DUnitX: `-h` — справка,
+`--run:TestToast.TTestToast` — одна фикстура, `--exclude:Manual`, `--xmlfile:<путь>`.
+
+Новый тест: `src/tests/<группа>/TestXxx.pas` по образцу соседних (фикстура регистрируется в `initialization`
+через `TDUnitX.RegisterTestFixture`), модули Core подключать без `in`-путей — их находит `-U` раннера.
+Модуль нужно добавить в `uses` раннера группы; `run-tests.ps1` падает, если какой-то `Test*.pas` там не
+указан. Ручные, интерактивные и зависящие от окружения фикстуры помечаются `[Category('Manual')]` с
+комментарием-причиной над атрибутом. Нет нужного окружения (7z.dll, wasmtime.dll) — тест завершается
+`Assert.Pass('SKIP: …')`.
+
+Внутри методов фикстуры `Writeln(…)` разрешается в хелпер DUnitX `TObject.WriteLn(msg)` (один
+строковый аргумент, пишет в лог раннера) — для обычного вывода в консоль пишите `System.Writeln`.
 
 ## CI/CD (GitHub Actions)
 

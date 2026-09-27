@@ -83,6 +83,17 @@ jobs:
         shell: pwsh
         run: ./src/tests/run-tests.ps1
 
+      - name: Test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: test-reports
+          path: |
+            src/tests/dcu/*Tests.xml
+            src/tests/dcu/*Tests.log
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Package
         shell: pwsh
         run: ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}"

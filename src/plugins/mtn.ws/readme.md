@@ -223,11 +223,11 @@ copy target\wasm32-unknown-unknown\release\mtn_ws.wasm plugin.wasm
 
 ## Проверка
 
-- `src/tests/plugins/TestWorkspacePlugin.dpr` — ссылки, unlink, виртуальные папки; `..` без return URI = дисковый родитель.
-- `src/tests/console/TestWorkspaceLibrary.dpr` — save / restore / rename / delete снимков.
-- `src/tests/core/TestKeymap.dpr` — `Ctrl+Shift+D` / `Ctrl+Alt+Shift+D`.
-- `src/tests/panels/TestDualPanelStatus.dpr` — F-строка панели (`8Unlink`, `CtAlt+Ent:GoTo`) и диалога библиотеки (`fbcWorkspaceLibrary`; stub важнее диалога).
-- `src/tests/panels/TestDualPanelPanelDraw.dpr` — порядок оверлеев: диалог, затем stub, затем подменю F9.
-- `src/tests/panels/TestDualPanelClick.dpr` — клик сначала в stub, потом в диалог.
-- `src/tests/panels/TestDualPanelInput.dpr` — Ctrl+Alt+Enter не обрабатывается как обычный Enter.
-- `src/tests/vfs/TestVfsRegistry.dpr` — Copy на `ws://` = plugin dest, Move на `ws://` запрещён.
+- `src/tests/plugins/TestWorkspacePlugin.pas` — ссылки, unlink, виртуальные папки; `..` без return URI = дисковый родитель.
+- `src/tests/console/TestWorkspaceLibrary.pas` — save / restore / rename / delete снимков.
+- `src/tests/core/TestKeymap.pas` — `Ctrl+Shift+D` / `Ctrl+Alt+Shift+D`.
+- `src/tests/panels/TestDualPanelStatus.pas` — F-строка панели (`8Unlink`, `CtAlt+Ent:GoTo`) и диалога библиотеки (`fbcWorkspaceLibrary`; stub важнее диалога).
+- `src/tests/panels/TestDualPanelPanelDraw.pas` — порядок оверлеев: диалог, затем stub, затем подменю F9.
+- `src/tests/panels/TestDualPanelClick.pas` — клик сначала в stub, потом в диалог.
+- `src/tests/panels/TestDualPanelInput.pas` — Ctrl+Alt+Enter не обрабатывается как обычный Enter.
+- `src/tests/vfs/TestVfsRegistry.pas` — Copy на `ws://` = plugin dest, Move на `ws://` запрещён.

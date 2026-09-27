@@ -1,20 +1,23 @@
-# Build and run the Test*.dpr regression programs under src\tests\<group>\.
+# Build and run the DUnitX test runners, one per src\tests\<group>\ folder.
 #
-#   ./src/tests/run-tests.ps1                    # every group, manual.txt skipped
+#   ./src/tests/run-tests.ps1                    # every group, Manual fixtures skipped
 #   ./src/tests/run-tests.ps1 -Group vfs,panels  # some groups
-#   ./src/tests/run-tests.ps1 -Test TestPty*     # by name (wildcards)
-#   ./src/tests/run-tests.ps1 -All               # include manual.txt tests
+#   ./src/tests/run-tests.ps1 -Test TestPty*     # fixture units by name (wildcards)
+#   ./src/tests/run-tests.ps1 -All               # include [Category('Manual')] fixtures
 #   ./src/tests/run-tests.ps1 -List              # show what would run
 #
-# Each test is compiled with dcc64 into src\tests\dcu and run with its group
-# folder as the current directory. A test that outlives -TimeoutSec is killed
-# and counted as failed, so CI never hangs on e.g. an unreachable network drive.
+# Each group folder holds Test*.pas fixture units and a <Group>Tests.dpr that
+# lists them. The runner is compiled with dcc64 into src\tests\dcu and run with
+# its group folder as the current directory; its NUnit XML report lands next to
+# it as <Group>Tests.xml. A runner that outlives -TimeoutSec is killed and
+# counted as failed, so CI never hangs on e.g. an unreachable network drive.
+# -Test names a fixture explicitly, so it runs even when tagged Manual.
 param(
     [string[]]$Group,
     [string[]]$Test,
     [switch]$All,
     [switch]$List,
-    [int]$TimeoutSec = 300
+    [int]$TimeoutSec = 900
 )
 $ErrorActionPreference = 'Stop'
 # `pwsh -File run-tests.ps1 -Test A,B` passes "A,B" as one string.
@@ -26,31 +29,51 @@ $Tests = $PSScriptRoot
 $Src = Split-Path $Tests -Parent
 $Dcu = Join-Path $Tests 'dcu'
 
-# Fixtures built into $Dcu before the test that loads them from its exe dir.
+# Fixtures built into $Dcu before the group whose tests load them from the exe dir.
 $Fixtures = @{
-    TestPluginLoader   = @(Join-Path $Tests 'plugins\SamplePlugin.dpr')
-    TestSevenZipPlugin = @(Join-Path $Src 'plugins\mtn.7z\SevenZipPlugin.dpr')
-    TestTmpPanelPlugin = @(Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr')
+    plugins = @(
+        (Join-Path $Tests 'plugins\SamplePlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.7z\SevenZipPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr'))
 }
 
-$Manual = @{}
-Get-Content (Join-Path $Tests 'manual.txt') | ForEach-Object {
-    $Line = ($_ -replace '#.*$', '').Trim()
-    if ($Line) { $Manual[$Line] = $true }
+function Get-RunnerName([string]$GroupName) {
+    (Get-Culture).TextInfo.ToTitleCase($GroupName) + 'Tests'
 }
 
-$Selected = Get-ChildItem $Tests -Directory | Where-Object { $_.Name -ne 'dcu' } |
-    Where-Object { -not $Group -or $Group -contains $_.Name } |
-    ForEach-Object { Get-ChildItem $_.FullName -Filter 'Test*.dpr' -File } |
-    Where-Object { $Name = $_.BaseName; -not $Test -or ($Test | Where-Object { $Name -like $_ }) } |
-    Where-Object { $All -or $Test -or -not $Manual[$_.BaseName] } |
-    Sort-Object { $_.Directory.Name }, Name
+$Groups = foreach ($Dir in Get-ChildItem $Tests -Directory) {
+    $Dpr = Join-Path $Dir.FullName "$(Get-RunnerName $Dir.Name).dpr"
+    if (-not (Test-Path $Dpr)) { continue }
+    if ($Group -and $Group -notcontains $Dir.Name) { continue }
+    $Units = Get-ChildItem $Dir.FullName -Filter 'Test*.pas' -File | Sort-Object Name
+    # A fixture unit missing from the runner's uses clause would silently never run.
+    $DprText = Get-Content $Dpr -Raw
+    $Missing = @($Units | Where-Object { $DprText -notmatch "\b$([regex]::Escape($_.BaseName))\s+in\s+'" })
+    if ($Missing) {
+        throw "$(Split-Path $Dpr -Leaf) does not list: $(($Missing | ForEach-Object BaseName) -join ', ')"
+    }
+    $Fx = foreach ($U in $Units) {
+        $Name = $U.BaseName
+        if ($Test -and -not ($Test | Where-Object { $Name -like $_ })) { continue }
+        [pscustomobject]@{
+            Name   = $Name
+            Manual = [bool](Select-String -Path $U.FullName -Pattern "Category\('Manual'\)" -Quiet)
+        }
+    }
+    if (-not $Fx) { continue }
+    [pscustomobject]@{ Name = $Dir.Name; Dir = $Dir.FullName; Dpr = $Dpr; Fixtures = @($Fx) }
+}
 
 if ($List) {
-    $Selected | ForEach-Object { '{0,-8} {1}' -f $_.Directory.Name, $_.BaseName }
+    foreach ($G in $Groups) {
+        foreach ($F in $G.Fixtures) {
+            $Mark = if ($F.Manual -and -not ($All -or $Test)) { ' (manual, skipped)' } elseif ($F.Manual) { ' (manual)' } else { '' }
+            '{0,-8} {1}{2}' -f $G.Name, $F.Name, $Mark
+        }
+    }
     return
 }
-if (-not $Selected) { throw 'No tests selected' }
+if (-not $Groups) { throw 'No tests selected' }
 
 if (-not (Test-Path $RsVars)) { throw "rsvars.bat not found: $RsVars" }
 foreach ($Line in (cmd /c "call `"$RsVars`" >nul && set")) {
@@ -61,13 +84,13 @@ foreach ($Line in (cmd /c "call `"$RsVars`" >nul && set")) {
 New-Item -ItemType Directory -Force -Path $Dcu | Out-Null
 
 # MTN2.dres (dialogs, strings, keymap, menu as RCDATA) is a build product, not
-# in git; tests link it with {$R '..\..\MTN2.dres'}. Rebuild it here so a fresh
-# clone runs without build.ps1 and a test never sees stale resources.
+# in git; the runners link it with {$R '..\..\MTN2.dres'}. Rebuild it here so a
+# fresh clone runs without build.ps1 and a test never sees stale resources.
 & (Join-Path $Studio 'bin\brcc32.exe') "-fo$(Join-Path $Src 'MTN2.dres')" (Join-Path $Src 'MTN2Resource.rc') | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE (MTN2Resource.rc)" }
 
 # Runtime pieces some plugin tests need; they SKIP themselves when absent.
-if ($Selected | Where-Object { $_.Directory.Name -eq 'plugins' }) {
+if ($Groups | Where-Object Name -eq 'plugins') {
     try { & (Join-Path $Src 'tools\fetch-wasmtime.ps1') | Out-Null }
     catch { Write-Host "WARN: wasmtime.dll fetch failed; TestWasmHost will SKIP" }
     # FindWasmtimeDll probes next to the exe's parent folder, which for
@@ -89,36 +112,42 @@ if ($Selected | Where-Object { $_.Directory.Name -eq 'plugins' }) {
     }
 }
 
-$UnitPath = @('Core', 'Themes', 'plugins\mtn.7z', 'plugins\mtn.tmp' |
+$UnitPath = @('Core', 'Themes', 'plugins\mtn.7z', 'plugins\mtn.tmp', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 function Invoke-Dcc([string]$Dpr) {
     $Out = & dcc64 -B -Q "-U$UnitPath" "-N$Dcu" "-E$Dcu" `
         '-NSSystem;System.Win;Winapi;System.IOUtils' $Dpr 2>&1
     if ($LASTEXITCODE -ne 0) {
-        return ($Out | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 5) -join "`n"
+        return ($Out | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 10) -join "`n"
     }
     return $null
 }
 
-$Results = foreach ($Dpr in $Selected) {
-    $Name = $Dpr.BaseName
+$Results = foreach ($G in $Groups) {
+    $Runner = Get-RunnerName $G.Name
     $Sw = [Diagnostics.Stopwatch]::StartNew()
     $Status = 'PASS'
     $Detail = ''
+    $Counts = ''
 
     $Err = $null
-    foreach ($Fix in @($Fixtures[$Name])) {
+    foreach ($Fix in @($Fixtures[$G.Name])) {
         if ($Fix -and -not $Err) { $Err = Invoke-Dcc $Fix }
     }
-    if (-not $Err) { $Err = Invoke-Dcc $Dpr.FullName }
+    if (-not $Err) { $Err = Invoke-Dcc $G.Dpr }
 
     if ($Err) {
         $Status = 'BUILD'
         $Detail = $Err
     } else {
-        $Log = Join-Path $Dcu "$Name.log"
-        $P = Start-Process (Join-Path $Dcu "$Name.exe") -WorkingDirectory $Dpr.DirectoryName `
+        $Log = Join-Path $Dcu "$Runner.log"
+        $Xml = Join-Path $Dcu "$Runner.xml"
+        Remove-Item $Xml -ErrorAction SilentlyContinue
+        $RunArgs = @('--hidebanner', '--consolemode:Quiet', '--exitbehavior:Continue', "--xmlfile:$Xml")
+        if (-not ($All -or $Test)) { $RunArgs += '--exclude:Manual' }
+        if ($Test) { $RunArgs += '--run:' + (($G.Fixtures | ForEach-Object { "$($_.Name).T$($_.Name)" }) -join ',') }
+        $P = Start-Process (Join-Path $Dcu "$Runner.exe") -ArgumentList $RunArgs -WorkingDirectory $G.Dir `
             -NoNewWindow -PassThru -RedirectStandardOutput $Log -RedirectStandardError "$Log.err"
         if (-not $P.WaitForExit($TimeoutSec * 1000)) {
             $P.Kill($true)
@@ -126,22 +155,28 @@ $Results = foreach ($Dpr in $Selected) {
         } elseif ($P.ExitCode -ne 0) {
             $Status = 'FAIL'
         }
+        if (Test-Path $Xml) {
+            $R = ([xml](Get-Content $Xml -Raw)).'test-results'
+            $Counts = "$($R.total) tests, $([int]$R.failures + [int]$R.errors) failed, $($R.'not-run') not run"
+        }
         if ($Status -ne 'PASS') {
-            $Detail = ((Get-Content $Log, "$Log.err" -ErrorAction SilentlyContinue) |
-                Select-Object -Last 8) -join "`n"
+            $Text = @(Get-Content $Log, "$Log.err" -ErrorAction SilentlyContinue)
+            $At = [Array]::FindIndex([string[]]$Text, [Predicate[string]] { param($l) $l -match '^Failing Tests' })
+            $Detail = if ($At -ge 0) { ($Text[$At..($Text.Count - 1)] | Where-Object { $_.Trim() }) -join "`n" }
+                      else { ($Text | Select-Object -Last 12) -join "`n" }
             if ($Status -eq 'FAIL') { $Detail = "exit $($P.ExitCode)`n$Detail" }
         }
     }
 
     $Secs = [Math]::Round($Sw.Elapsed.TotalSeconds, 1)
-    Write-Host ('{0,-7} {1,-8} {2} ({3}s)' -f $Status, $Dpr.Directory.Name, $Name, $Secs)
+    Write-Host ('{0,-7} {1,-8} {2} ({3}s)' -f $Status, $G.Name, $Counts, $Secs)
     if ($Detail) { $Detail -split "`n" | ForEach-Object { Write-Host "        $_" } }
-    [pscustomobject]@{ Name = $Name; Status = $Status }
+    [pscustomobject]@{ Name = $G.Name; Status = $Status }
 }
 
 $Failed = @($Results | Where-Object Status -ne 'PASS')
 Write-Host ''
-Write-Host "$($Results.Count - $Failed.Count)/$($Results.Count) passed"
+Write-Host "$($Results.Count - $Failed.Count)/$($Results.Count) groups passed (reports: $Dcu\*Tests.xml)"
 if ($Failed) {
     Write-Host "Failed: $(($Failed | ForEach-Object { "$($_.Name) [$($_.Status)]" }) -join ', ')"
     exit 1

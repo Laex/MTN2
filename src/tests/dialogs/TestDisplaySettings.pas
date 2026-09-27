@@ -1,0 +1,259 @@
+unit TestDisplaySettings;
+
+{ Stage 55: clamp/index helpers, monospace fallback, session round-trip,
+  GShowPanelIcons / PanelIconReserve. Also covers the Language field/picker
+  (uStrings.pas) added on top -- needs the embedded STRINGS_RU resource, see
+  the $R above (uDisplaySettings.DisplayLanguageItems reads it indirectly
+  through uStrings.AvailableLocales). }
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TTestDisplaySettings = class
+  public
+    [Test] procedure TestClampAndIndex;
+    [Test] procedure TestFontEnum;
+    [Test] procedure TestSessionRoundTrip;
+    [Test] procedure TestSessionMissingKeys;
+    [Test] procedure TestLanguagePicker;
+    [Test] procedure TestPanelIconFlag;
+  end;
+
+implementation
+
+uses
+  System.SysUtils, System.IOUtils, System.JSON, System.Math,
+  uVfsTypes,
+  uDualPanelTypes,
+  uPanelColumns,
+  uConfigLocation,
+  uDisplaySettings,
+  uSession;
+
+procedure TestClampAndIndex;
+begin
+  Assert.IsTrue(SameValue(ClampDisplayFontSize(4), cDisplayMinFontSize), 'font size min');
+  Assert.IsTrue(SameValue(ClampDisplayFontSize(99), cDisplayMaxFontSize), 'font size max');
+  Assert.IsTrue(SameValue(ClampDisplayFontSize(14), 14), 'font size 14');
+  Assert.IsTrue(SameValue(ClampDisplayZoom(0.1), cDisplayMinZoom), 'zoom min');
+  Assert.IsTrue(SameValue(ClampDisplayZoom(9), cDisplayMaxZoom), 'zoom max');
+  Assert.IsTrue(SameValue(ClampDisplayZoom(1), 1.0), 'zoom 100%');
+  Assert.IsTrue(ClampDisplayBlinkMs(530) = cDisplayDefaultBlinkMs, 'blink 530');
+  Assert.IsTrue(ClampDisplayBlinkMs(400) = 300, 'blink 400 -> 300');
+  Assert.IsTrue(ClampDisplayBlinkMs(800) = 1000, 'blink 800 -> 1000');
+  Assert.IsTrue(IndexOfDisplayFontSize(14) = 5, '14 pt index');
+  Assert.IsTrue(SameValue(DisplayFontSizeAt(5), 14), 'index 5 is 14 pt');
+  Assert.IsTrue(IndexOfDisplayZoom(1.0) = 2, '100% zoom index');
+  Assert.IsTrue(SameValue(DisplayZoomAt(2), 1.0), 'index 2 is 100%');
+  Assert.IsTrue(IndexOfDisplayBlinkMs(530) = 1, '530 ms index');
+  Assert.IsTrue(DisplayBlinkMsAt(1) = 530, 'index 1 is 530 ms');
+end;
+
+procedure TestFontEnum;
+var
+  Names: TArray<string>;
+  Fallback: string;
+begin
+  Names := EnumerateMonospaceFontFamilies;
+  Assert.IsTrue(Length(Names) >= 1, 'at least one monospace family');
+  Fallback := PreferMonoFontFamily;
+  Assert.IsTrue(Fallback <> '', 'prefer-mono is non-empty');
+  Assert.IsTrue(ResolveMonospaceFontFamily('') = Fallback, 'blank name -> prefer-mono');
+  Assert.IsTrue(ResolveMonospaceFontFamily('NoSuchFont_MTN2_Stage55') = Fallback,
+    'unknown name -> prefer-mono');
+  Assert.IsTrue(ResolveMonospaceFontFamily(Fallback) = Fallback, 'prefer-mono resolves to itself');
+end;
+
+function MakeUsableSession: TMtnSession;
+var
+  Tab: TTab;
+begin
+  Result := Default(TMtnSession);
+  Result.Version := cSessionVersion;
+  Result.Zoom := 1.25;
+  Result.ConsoleRestartOnExit := True;
+  Result.TerminalCloseOnExit := True;
+  Result.RestoreWorkspaceOnStart := True;
+  Result.CustomColumns := DefaultCustomColumnsConfig;
+  Result.FontName := 'Consolas';
+  Result.FontSize := 16;
+  Result.CursorBlink := False;
+  Result.CursorBlinkMs := 300;
+  Result.ShowPanelIcons := False;
+  Result.ShowNotifications := False;
+  Result.Language := 'ru';
+  Tab := MakeTab(1, 'C:', 'file:///C:/');
+  SetLength(Result.Panels.WorkspaceTabs, 1);
+  Result.Panels.WorkspaceTabs[0].Id := 1;
+  Result.Panels.WorkspaceTabs[0].Title := 'Workspace';
+  Result.Panels.WorkspaceTabs[0].Kind := wkPanels;
+  Result.Panels.WorkspaceTabs[0].State.LeftVisible := True;
+  Result.Panels.WorkspaceTabs[0].State.RightVisible := True;
+  SetLength(Result.Panels.WorkspaceTabs[0].State.LeftPanel.Tabs, 1);
+  Result.Panels.WorkspaceTabs[0].State.LeftPanel.Tabs[0] := Tab;
+  SetLength(Result.Panels.WorkspaceTabs[0].State.RightPanel.Tabs, 1);
+  Result.Panels.WorkspaceTabs[0].State.RightPanel.Tabs[0] := Tab;
+end;
+
+procedure TestSessionRoundTrip;
+var
+  Path: string;
+  Saved, Loaded: TMtnSession;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-display-session-test.json');
+  Saved := MakeUsableSession;
+  Assert.IsTrue(SaveSession(Path, Saved), 'save session');
+  try
+    Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
+    Assert.IsTrue(Loaded.FontName = 'Consolas', 'fontName saved');
+    Assert.IsTrue(SameValue(Loaded.FontSize, 16), 'fontSize saved');
+    Assert.IsTrue(not Loaded.CursorBlink, 'cursorBlink saved');
+    Assert.IsTrue(Loaded.CursorBlinkMs = 300, 'cursorBlinkMs saved');
+    Assert.IsTrue(not Loaded.ShowPanelIcons, 'showPanelIcons saved');
+    Assert.IsTrue(not Loaded.ShowNotifications, 'showNotifications saved');
+    Assert.IsTrue(SameValue(Loaded.Zoom, 1.25), 'zoom still saved');
+    Assert.IsTrue(Loaded.Language = 'ru', 'language saved');
+  finally
+    if TFile.Exists(Path) then
+      TFile.Delete(Path);
+  end;
+end;
+
+procedure TestSessionMissingKeys;
+var
+  Path: string;
+  Root: TJSONObject;
+  Pair: TJSONPair;
+  Sess: TMtnSession;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-display-session-missing.json');
+  Sess := MakeUsableSession;
+  Assert.IsTrue(SaveSession(Path, Sess), 'save before stripping keys');
+  Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(Path, TEncoding.UTF8)) as TJSONObject;
+  try
+    Pair := Root.RemovePair('fontName');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('fontSize');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('cursorBlink');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('cursorBlinkMs');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('showPanelIcons');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('showNotifications');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('language');
+    if Assigned(Pair) then
+      Pair.Free;
+    TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
+  finally
+    Root.Free;
+  end;
+  try
+    Assert.IsTrue(TryLoadSession(Path, Sess), 'load old session.json');
+    Assert.IsTrue(Sess.FontName = '', 'missing fontName defaults empty');
+    Assert.IsTrue(SameValue(Sess.FontSize, cDisplayDefaultFontSize), 'missing fontSize -> 14');
+    Assert.IsTrue(Sess.CursorBlink, 'missing cursorBlink -> on');
+    Assert.IsTrue(Sess.CursorBlinkMs = cDisplayDefaultBlinkMs, 'missing blink ms -> 530');
+    Assert.IsTrue(Sess.ShowPanelIcons, 'missing showPanelIcons -> on');
+    Assert.IsTrue(Sess.ShowNotifications, 'missing showNotifications -> on');
+    Assert.IsTrue(Sess.Language = '', 'missing language -> empty (English)');
+  finally
+    if TFile.Exists(Path) then
+      TFile.Delete(Path);
+  end;
+end;
+
+procedure TestLanguagePicker;
+var
+  Codes: TArray<string>;
+  I: Integer;
+  HasEn, HasRu: Boolean;
+begin
+  Assert.IsTrue(DefaultDisplaySettings.Language = '', 'default settings: no language pinned (English passthrough)');
+
+  Codes := DisplayLanguageItems;
+  HasEn := False;
+  HasRu := False;
+  for I := 0 to High(Codes) do
+  begin
+    if SameText(Codes[I], 'en') then HasEn := True;
+    if SameText(Codes[I], 'ru') then HasRu := True;
+  end;
+  Assert.IsTrue(HasEn, 'en is always offered');
+  Assert.IsTrue(HasRu, 'ru is offered (embedded STRINGS_RU resource)');
+
+  Assert.IsTrue(DisplayLanguageName('en') = 'English', 'en -> English');
+  Assert.IsTrue(DisplayLanguageName('') = 'English', 'blank -> English');
+  Assert.IsTrue(DisplayLanguageName('ru') <> 'RU', 'ru has a curated name, not just the uppercased code');
+  Assert.IsTrue(DisplayLanguageName('zz') = 'ZZ', 'an unknown code falls back to its own uppercased form');
+
+  // IndexOfFontName is reused (unchanged) as a generic case-insensitive
+  // lookup for the language-code array too -- see
+  // TSettingsDialogController.OpenDisplay/DispatchDisplayCommand.
+  Assert.IsTrue(IndexOfFontName(Codes, 'RU') = IndexOfFontName(Codes, 'ru'),
+    'language lookup is case-insensitive, like the font lookup it reuses');
+  Assert.IsTrue(IndexOfFontName(Codes, 'no-such-locale') = 0,
+    'an unrecognized locale falls back to index 0 (en)');
+end;
+
+procedure TestPanelIconFlag;
+begin
+  GShowPanelIcons := True;
+  Assert.IsTrue(PanelIconReserve = 3, 'icons on reserve');
+  GShowPanelIcons := False;
+  try
+    Assert.IsTrue(PanelIconColumnWidth = 0, 'icons off width');
+    Assert.IsTrue(PanelIconReserve = 0, 'icons off reserve');
+  finally
+    GShowPanelIcons := True;
+  end;
+end;
+
+{ TTestDisplaySettings }
+
+procedure TTestDisplaySettings.TestClampAndIndex;
+begin
+  TestDisplaySettings.TestClampAndIndex;
+end;
+
+procedure TTestDisplaySettings.TestFontEnum;
+begin
+  TestDisplaySettings.TestFontEnum;
+end;
+
+procedure TTestDisplaySettings.TestSessionRoundTrip;
+begin
+  TestDisplaySettings.TestSessionRoundTrip;
+end;
+
+procedure TTestDisplaySettings.TestSessionMissingKeys;
+begin
+  TestDisplaySettings.TestSessionMissingKeys;
+end;
+
+procedure TTestDisplaySettings.TestLanguagePicker;
+begin
+  TestDisplaySettings.TestLanguagePicker;
+end;
+
+procedure TTestDisplaySettings.TestPanelIconFlag;
+begin
+  TestDisplaySettings.TestPanelIconFlag;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TTestDisplaySettings);
+
+end.
