@@ -571,6 +571,7 @@ var
   Snap: TPanelFreeInputSnap;
   Key: Word;
   Ch: Char;
+  P: TKeymapProfile;
 begin
   Key := 0;
   Ch := #9;
@@ -593,44 +594,67 @@ begin
   Assert.IsTrue(ShouldOfferTopMenu(wkTerminal, False), 'terminal offers top menu');
   Assert.IsTrue(not ShouldOfferTopMenu(wkPanels, True), 'dialog hides top menu');
   Assert.IsTrue(not ShouldOfferTopMenu(wkDocument, True), 'dialog hides menu on document');
-  Assert.IsTrue(IsWorkspaceCycleChord(vkTab, [ssCtrl], False), 'Ctrl+Tab cycles');
-  Assert.IsTrue(IsWorkspaceCycleChord(vkTab, [ssCtrl, ssAlt], False),
+  P := GetDefaultNDNProfile;
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], False) = kaNextTab,
+    'Ctrl+Tab cycles');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssAlt], False) = kaNextTab,
     'Ctrl+Tab cycles with leftover Alt');
-  Assert.IsTrue(IsWorkspaceCycleChord(vkTab, [ssCtrl, ssShift], False),
-    'Ctrl+Shift+Tab cycles');
-  Assert.IsTrue(not IsWorkspaceCycleChord(vkTab, [ssCtrl], True), 'dialog blocks cycle');
-  Assert.IsTrue(IsConsoleToggleChord(Ord('O'), [ssCtrl], False), 'Ctrl+O console');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssShift], False) = kaPrevTab,
+    'Ctrl+Shift+Tab cycles back');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssShift, ssAlt], False) =
+    kaPrevTab, 'Ctrl+Shift+Tab cycles back with leftover Alt');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], True) = kaNone,
+    'dialog blocks cycle');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('O'), #0, [ssCtrl], False) =
+    kaAppConsoleToggle, 'Ctrl+O console');
   // Ord('o') is vkDivide: Ctrl+Num/ is not Ctrl+O.
-  Assert.IsTrue(not IsConsoleToggleChord(Ord('o'), [ssCtrl], False), 'Ctrl+Num/ is not Ctrl+O');
-  Assert.IsTrue(not IsConsoleToggleChord(vkEscape, [], False), 'Esc is not host Ctrl+O');
-  Assert.IsTrue(not IsConsoleToggleChord(Ord('O'), [ssCtrl], True), 'dialog blocks Ctrl+O');
-  Assert.IsTrue(not IsConsoleToggleChord(Ord('O'), [ssCtrl, ssShift], False),
-    'Ctrl+Shift+O is not console toggle');
-  Assert.IsTrue(IsHelpChord(vkF1, [], False), 'F1 help');
-  Assert.IsTrue(not IsHelpChord(vkF1, [ssShift], False), 'Shift+F1 is not help');
-  Assert.IsTrue(not IsHelpChord(vkF1, [], True), 'dialog blocks F1');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('o'), #0, [ssCtrl], False) = kaNone,
+    'Ctrl+Num/ is not Ctrl+O');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkEscape, #0, [], False) = kaNone,
+    'Esc is the panels'' own');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('O'), #0, [ssCtrl, ssShift], False) = kaNone,
+    'Ctrl+Shift+O is the panels'' SyncConsoleDir');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF1, #0, [], False) = kaHelp, 'F1 help');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF1, #0, [ssShift], False) = kaNone,
+    'Shift+F1 is not help');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF1, #0, [], True) = kaNone, 'dialog blocks F1');
   Assert.IsTrue(IsContextHelpChord(vkF1, [], True, False), 'F1 over the open top menu');
   Assert.IsTrue(IsContextHelpChord(vkF1, [], False, True), 'F1 over a dialog without its own F1');
   Assert.IsTrue(not IsContextHelpChord(vkF1, [], False, False), 'nothing to be context for');
   Assert.IsTrue(not IsContextHelpChord(vkF1, [ssShift], True, True), 'Shift+F1 is not help');
   Assert.IsTrue(not IsContextHelpChord(vkF2, [], True, True), 'only F1');
-  Assert.IsTrue(IsNewTerminalChord(Ord('N'), [ssCtrl, ssShift], False), 'Ctrl+Shift+N');
-  Assert.IsTrue(not IsNewTerminalChord(Ord('N'), [ssCtrl], False), 'Ctrl+N is not new terminal');
-  Assert.IsTrue(not IsNewTerminalChord(Ord('N'), [ssCtrl, ssShift], True),
-    'dialog blocks new terminal');
-  Assert.IsTrue(IsSelectConsoleProfileChord(Ord('O'), [ssCtrl, ssAlt], False),
-    'Ctrl+Alt+O console profile');
-  Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('o'), [ssCtrl, ssAlt], False),
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('N'), #0, [ssCtrl, ssShift], False) =
+    kaNewTerminal, 'Ctrl+Shift+N');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcEditor, kcDocument], Ord('N'), #0, [ssCtrl], False) =
+    kaNone, 'Ctrl+N is the editor''s insert line');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('O'), #0, [ssCtrl, ssAlt], False) =
+    kaSelectConsoleProfile, 'Ctrl+Alt+O console profile');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('o'), #0, [ssCtrl, ssAlt], False) = kaNone,
     'Ctrl+Alt+Num/ is not Ctrl+Alt+O');
-  Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('O'), [ssCtrl], False),
-    'Ctrl+O is not console profile');
-  Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('O'), [ssCtrl, ssShift], False),
-    'Ctrl+Shift+O is not console profile');
-  Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('O'), [ssCtrl, ssAlt], True),
-    'dialog blocks console profile');
-  Assert.IsTrue(IsAppQuitChord(Ord('X'), [ssAlt], False), 'Alt+X quit');
-  Assert.IsTrue(not IsAppQuitChord(vkF10, [], False), 'F10 is not app quit on embed');
-  Assert.IsTrue(not IsAppQuitChord(Ord('X'), [ssAlt], True), 'dialog blocks Alt+X');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('X'), #0, [ssAlt], False) = kaAppQuit,
+    'Alt+X quit');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], 0, 'x', [ssAlt], False) = kaAppQuit,
+    'Alt+X reported as the character only');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF10, #0, [], False) = kaNone,
+    'F10 is the panels'' Quit');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkF10, #0, [], False) = kaNone,
+    'F10 goes to the terminal');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkF10, #0, [], False) = kaNone,
+    'F10 closes a document');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkTab, #0, [ssCtrl], False) =
+    kaNextTab, 'Ctrl+Tab from a document');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('X'), #0, [ssAlt], True) = kaNone,
+    'dialog blocks Alt+X');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkF9, #0, [], False) = kaTopMenu, 'F9 menu');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF9, #0, [ssCtrl], False) = kaNone,
+    'Ctrl+F9 is the panels'' sort by access time');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], Ord('0'), #0, [ssCtrl], False) = kaZoomReset,
+    'Ctrl+0 zoom reset');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkNumpad0, #0, [ssCtrl], False) = kaZoomReset,
+    'Ctrl+Num0 zoom reset');
+  P.Bindings[kaDocHex] := [KeyBinding(vkF9)];
+  Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkF9, #0, [], False) = kaNone,
+    'a document binding wins over Global');
   Assert.IsTrue(ClassifyEmbeddedInputOwner(wkDocument, False, False) = eioDocument, 'doc owner');
   Assert.IsTrue(ClassifyEmbeddedInputOwner(wkTerminal, False, False) = eioTerminal, 'term owner');
   Assert.IsTrue(ClassifyEmbeddedInputOwner(wkPanels, False, True) = eioConsoleYield, 'console yield');
@@ -899,10 +923,11 @@ begin
     Spy.Last := '';
     Key := vkTab;
     Ch := 'x';
-    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl], Ch),
-      'Ctrl+Tab handled');
+    // Ctrl+Tab is the keymap's NextTab (Global), run by the primary keymap
+    // dispatch; not a panel key of its own.
+    Assert.IsTrue(not DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl], Ch),
+      'Ctrl+Tab is not a built-in panel key');
     Assert.IsTrue(Spy.Last <> 'switch', 'Ctrl+Tab does not switch panel side');
-    Assert.IsTrue(Key = 0, 'Ctrl+Tab consumes AKey');
 
     Key := Ord('T');
     Ch := 't';

@@ -131,7 +131,16 @@ type
     kaEditorRedo, // Ctrl+Shift+Z -- redo
     kaEditorDeleteLine, // Ctrl+Y / Ctrl+D -- delete line (Far)
     kaEditorDeleteToEol, // Ctrl+K -- delete to end of line
-    kaEditorInsertLine // Ctrl+N -- insert a blank line below
+    kaEditorInsertLine, // Ctrl+N -- insert a blank line below
+    // Global (context kcGlobal, with kaHelp, kaNextTab, kaNewTerminal and
+    // kaSelectConsoleProfile): every window, unless its own context binds
+    // the same keys.
+    kaPrevTab, // Ctrl+Shift+Tab -- previous workspace tab
+    kaTopMenu, // F9 -- top menu
+    kaAppQuit, // Alt+X -- quit (kaQuit is F10 on the panels only)
+    kaAppConsoleToggle, // Ctrl+O -- panels <-> console (kaConsoleToggle is Esc on the panels)
+    kaZoomReset, // Ctrl+0 -- zoom back to 100%
+    kaReloadKeymap // Ctrl+Alt+K -- reload keymap.json
   );
 
   TKeyBinding = record
@@ -169,6 +178,10 @@ function KeymapActionContext(AAction: TKeymapAction): TKeymapContext;
 /// if none. Modifiers must match exactly; mouse flags are ignored.</summary>
 function MatchActionIn(const AProfile: TKeymapProfile;
   const AChain: array of TKeymapContext; AKey: Word; AShiftState: TShiftState): TKeymapAction;
+/// <summary>The key code to look AKey up by: FMX sometimes reports a letter
+/// or digit only as the typed character (AKey = 0), which then stands for
+/// its key. Ord('o') and the like are other keys (vkDivide) and stay.</summary>
+function KeymapLookupKey(AKey: Word; AKeyChar: Char): Word;
 /// <summary>MatchActionIn against ActiveKeymap.</summary>
 function MatchActiveActionIn(const AChain: array of TKeymapContext; AKey: Word;
   AShiftState: TShiftState): TKeymapAction;
@@ -336,6 +349,10 @@ begin
   else if (UpperS = 'PRIOR') or (UpperS = 'PAGEUP') or (UpperS = 'PGUP') then Result := vkPrior
   else if (UpperS = 'NEXT') or (UpperS = 'PAGEDOWN') or (UpperS = 'PGDN') then Result := vkNext
   else if (UpperS = 'ENTER') or (UpperS = 'RETURN') then Result := vkReturn
+  else if (Length(UpperS) = 4) and UpperS.StartsWith('NUM') and CharInSet(UpperS[4], ['0'..'9']) then
+    Result := vkNumpad0 + Ord(UpperS[4]) - Ord('0')
+  else if (Length(UpperS) = 7) and UpperS.StartsWith('NUMPAD') and CharInSet(UpperS[7], ['0'..'9']) then
+    Result := vkNumpad0 + Ord(UpperS[7]) - Ord('0')
   else if (UpperS = 'NUMPAD+') or (UpperS = '+') or (UpperS = 'ADD') then Result := vkAdd
   else if (UpperS = 'NUMPAD-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
   else if (UpperS = 'NUMPAD*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
@@ -378,6 +395,7 @@ begin
     vkAdd: Result := '+';
     vkSubtract: Result := '-';
     vkMultiply: Result := '*';
+    vkNumpad0..vkNumpad9: Result := 'Num' + Chr(Ord('0') + AKey - vkNumpad0);
   else
     if (AKey >= Ord('0')) and (AKey <= Ord('9')) then
       Result := Chr(AKey)
@@ -460,9 +478,8 @@ begin
   AddBinding(Result, kaWipe, KeyBinding(vkF8, True, False, False));
   AddBinding(Result, kaWipe, KeyBinding(vkDelete, True, False, False));
   
-  // kaQuit: F10 and Alt+X (NDN/FAR habit)
+  // kaQuit: F10 on the panels (NDN/FAR habit); Alt+X is kaAppQuit, everywhere.
   AddBinding(Result, kaQuit, KeyBinding(vkF10, False, False, False));
-  AddBinding(Result, kaQuit, KeyBinding(Ord('X'), False, True, False));
 
   AddBinding(Result, kaFind, KeyBinding(vkF7, False, True, False));
   AddBinding(Result, kaColumnMode, KeyBinding(vkOemGrave, False, False, True));
@@ -471,7 +488,6 @@ begin
   AddBinding(Result, kaEqualizeOtherPanel, KeyBinding(vkOemCloseBrackets, False, False, True));
   AddBinding(Result, kaEqualizeActivePanel, KeyBinding(vkOemOpenBrackets, False, False, True));
   AddBinding(Result, kaSortMenu, KeyBinding(vkF12, False, False, True));
-  AddBinding(Result, kaConsoleToggle, KeyBinding(Ord('O'), False, False, True));
   AddBinding(Result, kaConsoleToggle, KeyBinding(vkEscape, False, False, False));
   AddBinding(Result, kaDriveRoot, KeyBinding(vkBackSlash, False, False, True));
   AddBinding(Result, kaDriveLeft, KeyBinding(vkF1, False, True, False));
@@ -591,6 +607,18 @@ begin
   AddBinding(Result, kaEditorDeleteLine, KeyBinding(Ord('D'), False, False, True));
   AddBinding(Result, kaEditorDeleteToEol, KeyBinding(Ord('K'), False, False, True));
   AddBinding(Result, kaEditorInsertLine, KeyBinding(Ord('N'), False, False, True));
+
+  // Global. Ctrl(+Shift)+Alt+Tab too: after Ctrl+Alt+Enter FMX often still
+  // reports Alt down.
+  AddBinding(Result, kaNextTab, KeyBinding(vkTab, False, True, True));
+  AddBinding(Result, kaPrevTab, KeyBinding(vkTab, True, False, True));
+  AddBinding(Result, kaPrevTab, KeyBinding(vkTab, True, True, True));
+  AddBinding(Result, kaTopMenu, KeyBinding(vkF9, False, False, False));
+  AddBinding(Result, kaAppQuit, KeyBinding(Ord('X'), False, True, False));
+  AddBinding(Result, kaAppConsoleToggle, KeyBinding(Ord('O'), False, False, True));
+  AddBinding(Result, kaZoomReset, KeyBinding(Ord('0'), False, False, True));
+  AddBinding(Result, kaZoomReset, KeyBinding(vkNumpad0, False, False, True));
+  AddBinding(Result, kaReloadKeymap, KeyBinding(Ord('K'), False, True, True));
 end;
 
 function GetDefaultFARProfile: TKeymapProfile;
@@ -615,9 +643,19 @@ begin
     kaEditorSave, kaEditorReplace, kaEditorPaste, kaEditorCut, kaEditorUndo,
     kaEditorRedo, kaEditorDeleteLine, kaEditorDeleteToEol, kaEditorInsertLine:
       Result := kcEditor;
+    kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
+    kaTopMenu, kaAppQuit, kaAppConsoleToggle, kaZoomReset, kaReloadKeymap:
+      Result := kcGlobal;
   else
     Result := kcPanels;
   end;
+end;
+
+function KeymapLookupKey(AKey: Word; AKeyChar: Char): Word;
+begin
+  Result := AKey;
+  if (Result = 0) and CharInSet(AKeyChar, ['a'..'z', 'A'..'Z', '0'..'9']) then
+    Result := Ord(UpCase(AKeyChar));
 end;
 
 function MatchActionIn(const AProfile: TKeymapProfile;
@@ -794,7 +832,13 @@ const
     'EditorRedo',            // kaEditorRedo
     'EditorDeleteLine',      // kaEditorDeleteLine
     'EditorDeleteToEol',     // kaEditorDeleteToEol
-    'EditorInsertLine'       // kaEditorInsertLine
+    'EditorInsertLine',      // kaEditorInsertLine
+    'PrevTab',               // kaPrevTab
+    'TopMenu',               // kaTopMenu
+    'AppQuit',               // kaAppQuit
+    'AppConsoleToggle',      // kaAppConsoleToggle
+    'ZoomReset',             // kaZoomReset
+    'ReloadKeymap'           // kaReloadKeymap
   );
 
 function TryKeymapActionByName(const AName: string; out AAction: TKeymapAction): Boolean;

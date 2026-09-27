@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup;
+  uHistoryPopup, uKeymap;
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
@@ -262,6 +262,9 @@ type
     function HandleMouseUp: Boolean;
     function HandleInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean; override;
+    /// <summary>Keymap contexts this document looks keys up in (Markdown /
+    /// Viewer or Editor / Document), most specific first.</summary>
+    function KeymapChain: TArray<TKeymapContext>;
     procedure ToggleHexMode;
     procedure ToggleMarkdownMode;
     function MarkdownImageOverlayVisible: Boolean;
@@ -3446,6 +3449,11 @@ begin
   FCursorVisible := AVisible;
   Invalidate;
   NotifyHost;
+end;
+
+function TEditorWindow.KeymapChain: TArray<TKeymapContext>;
+begin
+  Result := EditorKeymapChain(EditorIsViewOnly, EditorIsMarkdownMode);
 end;
 
 function TEditorWindow.HandleInput(var AKey: Word; AShift: TShiftState;

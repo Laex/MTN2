@@ -65,6 +65,9 @@ type
 /// typing. True when the key was used; AKey/AKeyChar are then consumed.</summary>
 function DispatchEditorKeys(const AHost: TEditorKeymapHost; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char; AViewH: Integer): Boolean;
+/// <summary>The keymap contexts a document looks keys up in, most specific
+/// first (Global not included).</summary>
+function EditorKeymapChain(AViewOnly, AMarkdown: Boolean): TArray<TKeymapContext>;
 /// <summary>DispatchEditorKeys against AProfile instead of ActiveKeymap.</summary>
 function DispatchEditorKeysWith(const AProfile: TKeymapProfile;
   const AHost: TEditorKeymapHost; var AKey: Word; AShift: TShiftState;
@@ -110,14 +113,19 @@ end;
   for one that does not apply right now). What is not a command stays here: '/' and numpad 5 in the viewer, Ctrl+arrows /
   Home / End, cursor movement and typing. }
 
-function DocumentChain(const AHost: TEditorKeymapHost): TArray<TKeymapContext>;
+function EditorKeymapChain(AViewOnly, AMarkdown: Boolean): TArray<TKeymapContext>;
 begin
-  if HostViewOnly(AHost) then
+  if AViewOnly then
     Result := [kcViewer, kcDocument]
   else
     Result := [kcEditor, kcDocument];
-  if HostMarkdownMode(AHost) then
+  if AMarkdown then
     Result := [kcMarkdown] + Result;
+end;
+
+function DocumentChain(const AHost: TEditorKeymapHost): TArray<TKeymapContext>;
+begin
+  Result := EditorKeymapChain(HostViewOnly(AHost), HostMarkdownMode(AHost));
 end;
 
 /// <summary>F7-family "find again": opens the prompt while there is no needle.</summary>
@@ -291,15 +299,10 @@ function DispatchEditorKeysWith(const AProfile: TKeymapProfile;
 var
   K: TKeyChord;
   Act: TKeymapAction;
-  LookupKey: Word;
 begin
   K := TKeyChord.Make(AKey, AKeyChar, AShift);
-  // FMX sometimes reports a letter only as the typed character (AKey = 0):
-  // look it up as the letter's key, like TKeyChord.MatchesLetter does.
-  LookupKey := AKey;
-  if (LookupKey = 0) and CharInSet(AKeyChar, ['a'..'z', 'A'..'Z']) then
-    LookupKey := Ord(UpCase(AKeyChar));
-  Act := MatchActionIn(AProfile, DocumentChain(AHost), LookupKey, AShift);
+  Act := MatchActionIn(AProfile, DocumentChain(AHost),
+    KeymapLookupKey(AKey, AKeyChar), AShift);
   if Act <> kaNone then
     case RunAction(AHost, Act) of
       arReject:

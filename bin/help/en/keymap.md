@@ -4,6 +4,8 @@ The built-in key set can be partly redefined by the `keymap.json` file in the se
 
 Besides the panels, the viewer and editor commands can be rebound. Their names in `keymap.json` start with `Doc` (both viewing and editing: `DocHex`, `DocFind`, `DocEncoding`, `DocClose`…), `Viewer` (viewing only: `ViewerWrap`), `Markdown` (rendered Markdown: `MarkdownSource`) and `Editor` (editing only: `EditorSave`, `EditorUndo`, `EditorDeleteLine`…). The same chord can mean different things on the panels and in a document — Ctrl+H shows hidden files on a panel and toggles hex in a document. A narrower meaning overrides a general one: F4 over rendered Markdown toggles the source, not hex.
 
+Global commands work in any window — the panels, a document, a terminal: `Help` (F1), `TopMenu` (F9), `NextTab` / `PrevTab` (Ctrl+Tab / Ctrl+Shift+Tab), `AppConsoleToggle` (Ctrl+O), `NewTerminal` (Ctrl+Shift+N), `SelectConsoleProfile` (Ctrl+Alt+O), `AppQuit` (Alt+X), `ZoomReset` (Ctrl+0) and `ReloadKeymap` (Ctrl+Alt+K). A chord the window binds itself stays the window's: F10 closes a document and quits only on the panels (`Quit`); Esc on the panels shows the console (`ConsoleToggle`). While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
+
 Modifiers must match exactly: Ctrl+Shift+A is not Ctrl+A. Arrows, Home/End, typing and `/` in the viewer are not configurable.
 
 ---

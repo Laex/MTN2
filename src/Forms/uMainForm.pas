@@ -760,25 +760,21 @@ end;
 function TMainForm.TryHandleZoom(var AKey: Word; var AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
-  Result := False;
   // Ctrl++ / Ctrl+- select-by-extension on Dual Panel (and must not steal
-  // those chords here). Zoom is Ctrl+MouseWheel; Ctrl+0 still resets.
-  if not TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl]) then
+  // those chords here). Zoom is Ctrl+MouseWheel; the keymap's ZoomReset
+  // (Ctrl+0) resets it. Checked above every window, like ReloadKeymap.
+  Result := MatchActionIn(ActiveKeymap, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
+    AShift) = kaZoomReset;
+  if not Result then
     Exit;
-  if (AKey = vkNumpad0) or (AKey = vk0) or (AKeyChar = '0') then
+  if Assigned(FRenderer) then
   begin
-    if Assigned(FRenderer) then
-    begin
-      FRenderer.SetZoom(1.0, ClientWidth, ClientHeight, Canvas);
-      UpdateCaption;
-      Invalidate;
-    end;
-  end
-  else
-    Exit;
+    FRenderer.SetZoom(1.0, ClientWidth, ClientHeight, Canvas);
+    UpdateCaption;
+    Invalidate;
+  end;
   AKey := 0;
   AKeyChar := #0;
-  Result := True;
 end;
 
 procedure TMainForm.EnsureDemoWindows;
@@ -2216,7 +2212,8 @@ end;
 function TMainForm.IsReloadKeymapShortcut(AKey: Word; AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
-  Result := TKeyChord.Make(AKey, AKeyChar, AShift).MatchesLetter('K', [ssCtrl, ssAlt]);
+  Result := MatchActionIn(ActiveKeymap, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
+    AShift) = kaReloadKeymap;
 end;
 
 // Host form dialogs (MkDir/Copy/…) live on Dual Panel — must win over the
@@ -2375,7 +2372,7 @@ begin
   // Zoom shortcuts only; Tab/panels handled in KeyDown override (before FMX).
   SyncKeyModifiers(Shift);
 
-  // Ctrl+Alt+K — reload keymap.json from config dir.
+  // ReloadKeymap (Ctrl+Alt+K) — reload keymap.json from config dir.
   // Checked BEFORE DispatchTerminalKey: the Dual Panel cmdline and panels
   // absorb printable letters (including 'K') as input, which would otherwise
   // swallow the hot-reload shortcut whenever the panel/cmdline had focus.

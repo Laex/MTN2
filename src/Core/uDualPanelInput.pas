@@ -242,22 +242,22 @@ type
 procedure NormalizePanelInputKey(var AKey: Word; var AKeyChar: Char);
 function ShouldOfferTopMenu(AWorkspaceKind: TWorkspaceKind;
   ADialogVisible: Boolean): Boolean;
-function IsWorkspaceCycleChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-function IsConsoleToggleChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-function IsHelpChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-/// <summary>F1 over the open top menu or a dialog that has no F1 of its own
-/// (ADialogWantsHelp): both would otherwise take the key first.</summary>
+/// <summary>The Global keymap action (kcGlobal) for this keystroke in a
+/// window whose own contexts are AChain, or kaNone: the window's contexts
+/// come first, so a key they bind is theirs (F10 closes a document rather
+/// than quitting). Nothing while a modal dialog is open.</summary>
+function GlobalKeymapAction(const AProfile: TKeymapProfile;
+  const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
+  AShift: TShiftState; ADialogVisible: Boolean): TKeymapAction;
+/// <summary>Runs a Global action on AHost; False for kaNone and for the ones
+/// the window or form runs itself (TopMenu, ZoomReset, ReloadKeymap).</summary>
+function DispatchGlobalAction(const AHost: TDualPanelKeymapHost;
+  AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
+/// <summary>The Help key (kaHelp) over the open top menu or a dialog that has
+/// no F1 of its own (ADialogWantsHelp): both would otherwise take the key
+/// first.</summary>
 function IsContextHelpChord(AKey: Word; AShift: TShiftState;
   ATopMenuActive, ADialogWantsHelp: Boolean): Boolean;
-function IsNewTerminalChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-function IsSelectConsoleProfileChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-function IsAppQuitChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
   ADialogVisible, AConsoleMode: Boolean): TEmbeddedInputOwner;
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
@@ -337,6 +337,10 @@ end;
 function DispatchKeymapActionPrimary(const AHost: TDualPanelKeymapHost;
   AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
 begin
+  // The panels look keys up in Panels, then Global: the Global ones run as
+  // they do from any window.
+  if DispatchGlobalAction(AHost, AAction, AKey, AKeyChar) then
+    Exit(True);
   Result := True;
   case AAction of
     kaCopyFullPath:
@@ -556,18 +560,6 @@ begin
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
-    kaNewTerminal:
-      begin
-        AHost.OpenTerminalProfileDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSelectConsoleProfile:
-      begin
-        AHost.OpenConsoleProfileDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
     kaSyncConsoleDir:
       begin
         AHost.SyncConsoleDirNow();
@@ -679,12 +671,6 @@ begin
     kaInsertItemPath:
       begin
         AHost.InsertPanelItemToCmdLine(True);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaNextTab:
-      begin
-        AHost.NextWorkspace();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
@@ -989,56 +975,51 @@ begin
     not ADialogVisible;
 end;
 
-function IsWorkspaceCycleChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
+function GlobalKeymapAction(const AProfile: TKeymapProfile;
+  const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
+  AShift: TShiftState; ADialogVisible: Boolean): TKeymapAction;
 begin
-  // Ctrl+Tab / Ctrl+Shift+Tab. Ignore leftover ssAlt: after Ctrl+Alt+Enter
-  // FMX often still reports Alt down, which used to drop this chord so Tab
-  // fell through to SwitchSide.
-  Result := not ADialogVisible and
-    TKeyChord.Make(AKey, #0, AShift).MatchesAny(vkTab, [ssCtrl], [ssShift, ssAlt]);
+  // A dialog owns every key: cycling the workspace or opening the console
+  // under Rename / Search params would leave it on a panel it no longer
+  // matches.
+  if ADialogVisible then
+    Exit(kaNone);
+  Result := MatchActionIn(AProfile, AChain + [kcGlobal],
+    KeymapLookupKey(AKey, AKeyChar), AShift);
+  if (Result <> kaNone) and (KeymapActionContext(Result) <> kcGlobal) then
+    Result := kaNone;
 end;
 
-function IsConsoleToggleChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
+function DispatchGlobalAction(const AHost: TDualPanelKeymapHost;
+  AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
 begin
-  // Ctrl+O only — Esc is also kaConsoleToggle on panels, but Viewer/Editor
-  // own Esc (close tab). Same dialog guard as Ctrl+Tab.
-  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkO, [ssCtrl]);
-end;
-
-function IsHelpChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-begin
-  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkF1);
+  Result := True;
+  case AAction of
+    kaHelp:
+      AHost.OpenHelp();
+    kaNextTab:
+      AHost.NextWorkspace();
+    kaPrevTab:
+      AHost.PrevWorkspace();
+    kaNewTerminal:
+      AHost.OpenTerminalProfileDialog();
+    kaSelectConsoleProfile:
+      AHost.OpenConsoleProfileDialog();
+    kaAppQuit:
+      AHost.RequestQuit();
+    kaAppConsoleToggle:
+      AHost.ToggleConsole();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
 end;
 
 function IsContextHelpChord(AKey: Word; AShift: TShiftState;
   ATopMenuActive, ADialogWantsHelp: Boolean): Boolean;
 begin
   Result := (ATopMenuActive or ADialogWantsHelp) and
-    TKeyChord.Make(AKey, #0, AShift).Matches(vkF1);
-end;
-
-function IsNewTerminalChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-begin
-  Result := not ADialogVisible and
-    TKeyChord.Make(AKey, #0, AShift).Matches(vkN, [ssCtrl, ssShift]);
-end;
-
-function IsSelectConsoleProfileChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-begin
-  Result := not ADialogVisible and
-    TKeyChord.Make(AKey, #0, AShift).Matches(vkO, [ssCtrl, ssAlt]);
-end;
-
-function IsAppQuitChord(AKey: Word; AShift: TShiftState;
-  ADialogVisible: Boolean): Boolean;
-begin
-  // Alt+X quits the app (NDN). F10 on Viewer/Editor closes the tab.
-  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkX, [ssAlt]);
+    (MatchActiveActionIn([kcGlobal], AKey, AShift) = kaHelp);
 end;
 
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
@@ -1344,18 +1325,6 @@ begin
   end;
   if AKey = vkTab then
   begin
-    if ssCtrl in Mods then
-    begin
-      if ssShift in Mods then
-      begin
-        if Assigned(AKeymap.PrevWorkspace) then
-          AKeymap.PrevWorkspace();
-      end
-      else if Assigned(AKeymap.NextWorkspace) then
-        AKeymap.NextWorkspace();
-      ConsumeKey(AKey, AKeyChar, False);
-      Exit;
-    end;
     if Mods <> [] then
     begin
       Result := False;

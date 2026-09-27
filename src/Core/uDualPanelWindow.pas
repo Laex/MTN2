@@ -8934,6 +8934,8 @@ var
   OverlayIdx: Integer;
   Snap: TPanelFreeInputSnap;
   DialogVis: Boolean;
+  Chain: TArray<TKeymapContext>;
+  GlobalAct: TKeymapAction;
 begin
   Result := True;
   SetKeyModifiers(AShift);
@@ -8961,18 +8963,58 @@ begin
     Exit;
   end;
 
-  // F9, Alt hotkeys or active TUI Top Menu (non-matching Alt keys fall through to Quick Search).
-  // Same offer on Viewer/Editor tabs as on panels: row 0 click reaches the
-  // menu via DispatchClickOverlays, so keyboard F9 must match. Disabled
-  // whenever a modal dialog is open — this check runs first, and without
-  // the guard F9 would win over dialog-specific bindings (e.g.
-  // hdkColorCodingEdit's "pick a color for the focused field").
+  // Global keymap actions (uKeymap kcGlobal: F1, F9, Ctrl+Tab, Ctrl+O,
+  // Alt+X, ...) work in every workspace, so they are looked up before the
+  // document / terminal early-exit below -- but along the active window's
+  // own contexts first: a key the document binds (F10, Esc) stays its own.
+  case ActiveWorkspace.Kind of
+    wkDocument:
+      begin
+        Doc := DocumentForWorkspace(FState.ActiveWorkspaceIndex);
+        if Doc <> nil then
+          Chain := Doc.KeymapChain
+        else
+          Chain := [kcDocument];
+      end;
+    wkTerminal:
+      Chain := [kcTerminal];
+  else
+    if FConsoleMode then
+      Chain := [kcConsole]
+    else
+      Chain := [kcPanels];
+  end;
+  GlobalAct := GlobalKeymapAction(ActiveKeymap, Chain, AKey, AKeyChar, AShift, DialogVis);
+
+  // Top menu: its key (F9) opens and closes the bar, so does an Alt
+  // release; an open bar takes every key, and Alt+letter hotkeys that match
+  // none of its items fall through to Quick Search. Same offer on
+  // Viewer/Editor tabs as on panels: a row 0 click reaches the menu via
+  // DispatchClickOverlays. Not while a modal dialog is open, or F9 would win
+  // over dialog bindings (hdkColorCodingEdit's "pick a color").
   if Assigned(FTopMenu) and ShouldOfferTopMenu(ActiveWorkspace.Kind, DialogVis) then
   begin
-    // F9 / Alt-release opens the bar. Load plugins first so their items
-    // are already in the menu; any other key must not pay that cost.
-    if not FTopMenu.Active and
-       ((AKey = vkF9) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0))) then
+    if FTopMenu.Active and (MatchActiveActionIn([kcGlobal],
+      KeymapLookupKey(AKey, AKeyChar), AShift) = kaTopMenu) then
+    begin
+      FTopMenu.DeactivateMenu;
+      AKey := 0;
+      AKeyChar := #0;
+      Invalidate;
+      Exit(True);
+    end;
+    // Opening: load plugins first so their items are already in the menu;
+    // any other key must not pay that cost.
+    if not FTopMenu.Active and (GlobalAct = kaTopMenu) then
+    begin
+      HostEnsureAllPlugins;
+      FTopMenu.ActivateMenu(1, True);
+      AKey := 0;
+      AKeyChar := #0;
+      Invalidate;
+      Exit(True);
+    end;
+    if not FTopMenu.Active and (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
       HostEnsureAllPlugins;
     if FTopMenu.HandleInput(AKey, AShift, AKeyChar) then
     begin
@@ -8981,60 +9023,8 @@ begin
     end;
   end;
 
-  // Ctrl+Tab / Ctrl+Shift+Tab ? cycle Dual Panel Tabs (panels + documents).
-  // Must run before the document early-exit, or Editor/Viewer swallows Tab.
-  // Disabled while a modal dialog is open ? cycling the workspace underneath
-  // an open dialog (Rename, Search params, ...) would leave it operating on
-  // a panel/tab it no longer matches.
-  if IsWorkspaceCycleChord(AKey, AShift, DialogVis) then
-  begin
-    if ssShift in AShift then
-      PrevWorkspace
-    else
-      NextWorkspace;
-    AKey := 0;
-    AKeyChar := #0;
+  if DispatchGlobalAction(FKeymapHost, GlobalAct, AKey, AKeyChar) then
     Exit;
-  end;
-
-  // Ctrl+O is Dual Panel FAR-toggle (ShowConsoleMode), not an editor chord.
-  // Must run before the document/terminal early-exit or Viewer/Editor
-  // swallows it. Esc stays with the document (close tab).
-  if IsConsoleToggleChord(AKey, AShift, DialogVis) then
-  begin
-    KeymapToggleConsole;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if IsHelpChord(AKey, AShift, DialogVis) then
-  begin
-    OpenHelp;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if IsNewTerminalChord(AKey, AShift, DialogVis) then
-  begin
-    OpenTerminalProfileDialog;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if IsSelectConsoleProfileChord(AKey, AShift, DialogVis) then
-  begin
-    OpenConsoleProfileDialog;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if IsAppQuitChord(AKey, AShift, DialogVis) then
-  begin
-    KeymapRequestQuit;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
 
   // Embedded Viewer/Editor: document input (and its dialogs) before Dual Panel
   // host dialogs ? matches HandleClick order so Enter reaches Editor Code page.

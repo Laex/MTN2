@@ -62,7 +62,7 @@ begin
   Assert.IsTrue(Act = kaQuit, 'F10 should match kaQuit');
 
   Act := MatchAction(Profile, Ord('X'), [ssAlt]);
-  Assert.IsTrue(Act = kaQuit, 'Alt+X should match kaQuit');
+  Assert.IsTrue(Act = kaAppQuit, 'Alt+X should match kaAppQuit (Global)');
 
   Act := MatchAction(Profile, Ord('D'), [ssCtrl]);
   Assert.IsTrue(Act = kaFolderHotlist, 'Ctrl+D should match kaFolderHotlist');
@@ -119,7 +119,9 @@ begin
   Act := MatchAction(Profile, Ord('O'), [ssCtrl, ssShift]);
   Assert.IsTrue(Act = kaSyncConsoleDir, 'Ctrl+Shift+O should match kaSyncConsoleDir');
   Act := MatchAction(Profile, Ord('O'), [ssCtrl]);
-  Assert.IsTrue(Act = kaConsoleToggle, 'Ctrl+O should match kaConsoleToggle');
+  Assert.IsTrue(Act = kaAppConsoleToggle, 'Ctrl+O should match kaAppConsoleToggle (Global)');
+  Act := MatchAction(Profile, vkEscape, []);
+  Assert.IsTrue(Act = kaConsoleToggle, 'Esc on the panels should match kaConsoleToggle');
 
   JsonText :=
     '{"profile":"NDN","bindings":{' +

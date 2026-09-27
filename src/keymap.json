@@ -38,10 +38,7 @@
     "EqualizeOtherPanel": { "key": "]", "ctrl": true, "description": "Set other panel directory to active panel" },
     "EqualizeActivePanel": { "key": "[", "ctrl": true, "description": "Set active panel directory to other panel" },
     "SortMenu": { "key": "F12", "ctrl": true, "description": "Sort Options Menu" },
-    "ConsoleToggle": [
-      { "key": "O", "ctrl": true, "description": "Toggle Panel <-> Console Screen (Ctrl+O)" },
-      { "key": "Esc", "description": "Toggle Panel <-> Console Screen (Esc)" }
-    ],
+    "ConsoleToggle": { "key": "Esc", "description": "Toggle Panel <-> Console Screen (Esc on the panels)" },
     "DriveRoot": { "key": "\\", "ctrl": true, "description": "Navigate to Drive Root" },
     "DriveLeft": { "key": "F1", "alt": true, "description": "Change Left Drive" },
     "DriveRight": { "key": "F2", "alt": true, "description": "Change Right Drive" },
@@ -80,7 +77,10 @@
     "FocusCmdLine": { "key": "Down", "ctrl": true, "description": "Focus Command Line" },
     "NewTab": { "key": "T", "ctrl": true, "description": "Open New Panel Tab" },
     "CloseTab": { "key": "W", "ctrl": true, "description": "Close Active Panel Tab" },
-    "NextTab": { "key": "Tab", "ctrl": true, "description": "Switch to Next Panel Tab" },
+    "NextTab": [
+      { "key": "Tab", "ctrl": true, "description": "Switch to the next workspace tab" },
+      { "key": "Tab", "ctrl": true, "alt": true, "description": "Switch to the next workspace tab (Alt still reported down)" }
+    ],
     "SelectByMask": { "key": "+", "description": "Select Files by Wildcard Mask" },
     "UnselectByMask": { "key": "-", "description": "Deselect Files by Wildcard Mask" },
     "DirSync": { "key": "S", "ctrl": true, "alt": true, "description": "Synchronize directories (one-way or two-way)" },
@@ -163,6 +163,18 @@
       { "key": "D", "ctrl": true, "description": "Delete line (Far)" }
     ],
     "EditorDeleteToEol": { "key": "K", "ctrl": true, "description": "Delete to end of line" },
-    "EditorInsertLine": { "key": "N", "ctrl": true, "description": "Insert a blank line below" }
+    "EditorInsertLine": { "key": "N", "ctrl": true, "description": "Insert a blank line below" },
+    "PrevTab": [
+      { "key": "Tab", "ctrl": true, "shift": true, "description": "Switch to the previous workspace tab" },
+      { "key": "Tab", "ctrl": true, "shift": true, "alt": true, "description": "Switch to the previous workspace tab (Alt still reported down)" }
+    ],
+    "TopMenu": { "key": "F9", "description": "Open / close the top menu" },
+    "AppQuit": { "key": "X", "alt": true, "description": "Quit the application (from any window)" },
+    "AppConsoleToggle": { "key": "O", "ctrl": true, "description": "Toggle Panel <-> Console Screen (from any window)" },
+    "ZoomReset": [
+      { "key": "0", "ctrl": true, "description": "Reset zoom to 100%" },
+      { "key": "Num0", "ctrl": true, "description": "Reset zoom to 100%" }
+    ],
+    "ReloadKeymap": { "key": "K", "ctrl": true, "alt": true, "description": "Reload keymap.json" }
   }
 }

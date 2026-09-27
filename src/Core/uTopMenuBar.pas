@@ -1054,8 +1054,9 @@ begin
   Result := False;
   if not FActive then
   begin
-    // F9 or single Alt release (without character) activates the menu
-    if (AKey = vkF9) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0)) then
+    // A single Alt release (without character) activates the menu; the
+    // keymap's TopMenu key (F9) is the host's (TDualPanelWindow.HandleInput).
+    if (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
     begin
       ActivateMenu(1, True);
       AKey := 0;
@@ -1068,8 +1069,9 @@ begin
 
   Result := True;
 
-  // Esc or second F9 / Alt press toggles menu off
-  if (AKey = vkEscape) or (AKey = vkF9) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0)) then
+  // Esc or a second Alt press toggles the menu off (the TopMenu key too,
+  // in the host).
+  if (AKey = vkEscape) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0)) then
   begin
     DeactivateMenu;
     AKey := 0;
