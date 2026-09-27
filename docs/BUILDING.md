@@ -7,8 +7,14 @@
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # -> bin\MTN2.exe + bin\plugins\
 ./src/tests/run-tests.ps1                         # регрессионные тесты (DUnitX, dcc64)
-./src/tools/package-release.ps1 -Version v0.3.0   # -> dist\MTN2-v0.3.0-win64.zip
+./src/tools/package-release.ps1 -Version v0.3.0   # -> dist\MTN2-v0.3.0-win64.zip + -win64-portable.zip
+./src/tools/check-release.ps1 -Version v0.3.0     # распаковать оба и прогнать MTN2.exe --self-check
 ```
+
+Архивы отличаются только файлом `portable.dat` (настройки рядом с exe вместо `%APPDATA%\MTN2`).
+Автообновление берёт ровно `MTN2-<тег>-win64.zip` и, распакованное поверх переносной копии, `portable.dat`
+не трогает. `--self-check` проверяет встроенные ресурсы, `help\<язык>\` для каждого языка, `sk4d.dll` и
+манифесты плагинов, печатает отчёт в stdout и выходит с кодом 0/1, не открывая окно.
 
 `-Version 0.3.2` (или `v0.3.2`) прошивает номер в ресурс версии exe: его показывает заголовок окна и с ним
 сравнивает автообновление. Без параметра берётся версия из `MTN2.dproj`; релизная сборка передаёт тег.
@@ -20,7 +26,7 @@
 Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся — их собирает `build.ps1`
 (и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.
 
-Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` — кадры и время кадра в заголовке, путь новой вкладкой, служебный `--wait-pid`) — [ARCHITECTURE.md](ARCHITECTURE.md) §10.
+Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` — кадры и время кадра в заголовке, путь новой вкладкой, служебные `--wait-pid` и `--self-check`) — [ARCHITECTURE.md](ARCHITECTURE.md) §10.
 
 ## Тесты
 

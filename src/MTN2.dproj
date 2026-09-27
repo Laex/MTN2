@@ -326,6 +326,7 @@
         <DCCReference Include="Core\uWinFileAttr.pas"/>
         <DCCReference Include="Core\uSingleInstance.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>
+        <DCCReference Include="Core\uSelfCheck.pas"/>
         <DCCReference Include="Core\uUpdateController.pas"/>
         <DCCReference Include="Core\uNotice.pas"/>
         <DCCReference Include="Core\uToast.pas"/>

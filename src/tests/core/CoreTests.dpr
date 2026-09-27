@@ -15,6 +15,7 @@ uses
   TestKeymap in 'TestKeymap.pas',
   TestLiveReload in 'TestLiveReload.pas',
   TestMessageBus in 'TestMessageBus.pas',
+  TestSelfCheck in 'TestSelfCheck.pas',
   TestStrings in 'TestStrings.pas',
   TestToast in 'TestToast.pas',
   TestUpdater in 'TestUpdater.pas';

@@ -23,6 +23,9 @@ uses
 
 const
   cUpdateRepo = 'Laex/MTN2';
+  // Package name: <prefix><tag><suffix>, as src\tools\package-release.ps1
+  // writes it.
+  cUpdateAssetPrefix = 'MTN2-';
   cUpdateAssetSuffix = '-win64.zip';
   cUpdateStagingDir = '.update-staging';
   cUpdateWaitPidSwitch = '--wait-pid';
@@ -61,7 +64,11 @@ function FileVersionString(const AExeFile: string): string;
 function AppVersionString: string;
 
 /// <summary>Parses a GitHub "get latest release" response. False for drafts,
-/// prereleases, a malformed tag or no asset ending in AAssetSuffix.</summary>
+/// prereleases, a malformed tag or no asset named exactly
+/// cUpdateAssetPrefix + tag + AAssetSuffix (MTN2-v0.3.2-win64.zip) -- an
+/// exact name, so another package in the same release (the portable
+/// MTN2-v0.3.2-win64-portable.zip, or any future *-win64.zip) is never
+/// picked up in its place.</summary>
 function ParseLatestReleaseJson(const AJson, AAssetSuffix: string;
   out ARelease: TUpdateRelease): Boolean;
 function FetchLatestRelease(out ARelease: TUpdateRelease; out AError: string): Boolean;
@@ -202,7 +209,8 @@ begin
       if not (Assets.Items[I] is TJSONObject) then
         Continue;
       Asset := TJSONObject(Assets.Items[I]);
-      if not Asset.GetValue<string>('name', '').EndsWith(AAssetSuffix, True) then
+      if not SameText(Asset.GetValue<string>('name', ''),
+        cUpdateAssetPrefix + ARelease.Tag + AAssetSuffix) then
         Continue;
       ARelease.AssetName := Asset.GetValue<string>('name', '');
       ARelease.AssetUrl := Asset.GetValue<string>('browser_download_url', '');

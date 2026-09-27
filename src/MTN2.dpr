@@ -136,6 +136,7 @@ uses
   uWinFileAttr in 'Core\uWinFileAttr.pas',
   uSingleInstance in 'Core\uSingleInstance.pas',
   uUpdater in 'Core\uUpdater.pas',
+  uSelfCheck in 'Core\uSelfCheck.pas',
   uUpdateController in 'Core\uUpdateController.pas',
   uNotice in 'Core\uNotice.pas',
   uToast in 'Core\uToast.pas',
@@ -149,6 +150,14 @@ var
   AlreadyRunning: Boolean;
   ExistingHwnd: HWND;
 begin
+  // --self-check: report missing run-time files and exit (release smoke
+  // test, src\tools\check-release.ps1) -- no window, no instance handshake.
+  if SelfCheckRequested then
+  begin
+    ExitCode := RunSelfCheckToStdOut;
+    Exit;
+  end;
+
   // Restarted by the updater (--wait-pid): let the old process finish exiting
   // first, or the single-instance check below would hand off to it and quit.
   WaitForPreviousInstanceFromCommandLine;

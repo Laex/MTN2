@@ -93,6 +93,23 @@ begin
   Assert.IsTrue(not ParseLatestReleaseJson(StringReplace(cReleaseJson, 'v0.3.2"', 'nightly"', []),
     cUpdateAssetSuffix, R), 'non-version tag ignored');
   Assert.IsTrue(not ParseLatestReleaseJson('not json', cUpdateAssetSuffix, R), 'garbage ignored');
+
+  // Other packages of the same release, listed first, must not be taken for
+  // the regular one -- even one whose name also ends in -win64.zip.
+  Assert.IsTrue(ParseLatestReleaseJson(StringReplace(cReleaseJson, '"assets":[',
+    '"assets":[{"name":"MTN2-v0.3.2-win64-portable.zip","size":1,' +
+    '"browser_download_url":"https://x/portable.zip"},' +
+    '{"name":"MTN2-v0.3.2-portable-win64.zip","size":2,' +
+    '"browser_download_url":"https://x/portable2.zip"},', []), cUpdateAssetSuffix, R),
+    'release with extra packages still parses');
+  Assert.IsTrue(R.AssetName = 'MTN2-v0.3.2-win64.zip',
+    'picks exactly MTN2-<tag>-win64.zip, not a portable package: ' + R.AssetName);
+  Assert.IsTrue(not ParseLatestReleaseJson(StringReplace(cReleaseJson, 'MTN2-v0.3.2-win64.zip',
+    'MTN2-v0.3.2-portable-win64.zip', [rfReplaceAll]), cUpdateAssetSuffix, R),
+    'only a portable package -> nothing to offer');
+  Assert.IsTrue(not ParseLatestReleaseJson(StringReplace(cReleaseJson, 'MTN2-v0.3.2-win64.zip',
+    'MTN2-v0.3.1-win64.zip', [rfReplaceAll]), cUpdateAssetSuffix, R),
+    'a package named for another tag is not this release''s package');
 end;
 
 procedure TestSha256;
@@ -233,7 +250,8 @@ begin
     Exit;
   end;
   Assert.IsTrue(R.Version <> '', 'latest release has a version: ' + R.Tag);
-  Assert.IsTrue(R.AssetName.EndsWith(cUpdateAssetSuffix), 'has a win64 package: ' + R.AssetName);
+  Assert.IsTrue(SameText(R.AssetName, cUpdateAssetPrefix + R.Tag + cUpdateAssetSuffix),
+    'has the regular win64 package: ' + R.AssetName);
   Assert.IsTrue(Length(R.AssetSha256) = 64, 'GitHub publishes its sha256');
 end;
 
