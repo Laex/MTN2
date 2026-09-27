@@ -100,7 +100,7 @@ implementation
 
 uses
   {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
-  System.Rtti, System.Character, FMX.Platform;
+  System.Rtti, System.Character, FMX.Platform, uKeyChord;
 
 procedure Clamp(var A: TInputLine);
 begin
@@ -443,77 +443,37 @@ function InputLineHandleInput(var A: TInputLine; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char;
   APassScrollKeys: Boolean): TInputLineResult;
 var
-  Ch: Char;
+  K: TKeyChord;
+  Extend, Handled: Boolean;
 begin
   Result := ilrHandled;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  Extend := ssShift in K.Mods;
 
-  if (AKey = vkInsert) and (ssShift in AShift) and not (ssAlt in AShift) then
+  // Clipboard, in this priority: Shift+Insert paste, Ctrl+Insert copy,
+  // Shift/Ctrl+Delete cut (extra-keyboard equivalents), then Ctrl+A/C/X/V.
+  Handled := True;
+  if K.MatchesAny(vkInsert, [ssShift], [ssCtrl]) then
+    InputLinePaste(A)
+  else if K.MatchesAny(vkInsert, [ssCtrl], [ssShift]) then
+    InputLineCopy(A)
+  else if K.Matches(vkDelete, [ssShift]) or K.Matches(vkDelete, [ssCtrl]) then
+    InputLineCut(A)
+  else if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
+    InputLineSelectAll(A)
+  else if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
+    InputLineCopy(A)
+  else if K.MatchesLetter('X', [ssCtrl], [ssShift]) then
+    InputLineCut(A)
+  else if K.MatchesLetter('V', [ssCtrl], [ssShift]) then
+    InputLinePaste(A)
+  else
+    Handled := False;
+  if Handled then
   begin
-    InputLinePaste(A);
     AKey := 0;
     AKeyChar := #0;
     Exit;
-  end;
-
-  if (AKey = vkInsert) and (ssCtrl in AShift) and not (ssAlt in AShift) then
-  begin
-    InputLineCopy(A);
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-
-  // Shift+Delete / Ctrl+Delete — cut (extra-keyboard equivalents of Ctrl+X).
-  if (AKey = vkDelete) and not (ssAlt in AShift) and
-     (((ssShift in AShift) and not (ssCtrl in AShift)) or
-      ((ssCtrl in AShift) and not (ssShift in AShift))) then
-  begin
-    InputLineCut(A);
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-
-  if (ssCtrl in AShift) and not (ssAlt in AShift) then
-  begin
-    Ch := #0;
-    if (AKey = Ord('A')) or (AKeyChar = 'a') or (AKeyChar = 'A') then
-      Ch := 'a'
-    else if (AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C') then
-      Ch := 'c'
-    else if (AKey = Ord('X')) or (AKeyChar = 'x') or (AKeyChar = 'X') then
-      Ch := 'x'
-    else if (AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V') then
-      Ch := 'v';
-
-    if Ch = 'a' then
-    begin
-      InputLineSelectAll(A);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
-    if Ch = 'c' then
-    begin
-      InputLineCopy(A);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
-    if Ch = 'x' then
-    begin
-      InputLineCut(A);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
-    if Ch = 'v' then
-    begin
-      InputLinePaste(A);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
   end;
 
   case AKey of
@@ -538,28 +498,28 @@ begin
       end;
     vkLeft:
       begin
-        if ssCtrl in AShift then
-          MoveWord(A, False, ssShift in AShift)
+        if ssCtrl in K.Mods then
+          MoveWord(A, False, Extend)
         else
-          MoveCursor(A, -1, ssShift in AShift);
+          MoveCursor(A, -1, Extend);
         AKey := 0;
       end;
     vkRight:
       begin
-        if ssCtrl in AShift then
-          MoveWord(A, True, ssShift in AShift)
+        if ssCtrl in K.Mods then
+          MoveWord(A, True, Extend)
         else
-          MoveCursor(A, 1, ssShift in AShift);
+          MoveCursor(A, 1, Extend);
         AKey := 0;
       end;
     vkHome:
       begin
-        MoveCursor(A, -A.Cursor, ssShift in AShift);
+        MoveCursor(A, -A.Cursor, Extend);
         AKey := 0;
       end;
     vkEnd:
       begin
-        MoveCursor(A, Length(A.Text) - A.Cursor, ssShift in AShift);
+        MoveCursor(A, Length(A.Text) - A.Cursor, Extend);
         AKey := 0;
       end;
     vkBack:
@@ -582,8 +542,7 @@ begin
         AKey := 0;
       end;
   else
-    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-       not (ssCtrl in AShift) and not (ssAlt in AShift) then
+    if K.IsPrintable and K.HasMods([], [ssShift]) then
     begin
       InsertText(A, AKeyChar);
       AKey := 0;

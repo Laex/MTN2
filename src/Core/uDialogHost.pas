@@ -175,6 +175,9 @@ type
 
 implementation
 
+uses
+  uKeyChord;
+
 function ControlRowSpan(const C: TDialogControl): Integer;
 begin
   case C.Kind of
@@ -2055,10 +2058,12 @@ var
   Ch: Char;
   C: TDialogControl;
   LineRes: TInputLineResult;
+  K: TKeyChord;
 begin
   Result := False;
   if not FVisible then
     Exit;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
 
   if not FCursorVisible then
   begin
@@ -2156,8 +2161,8 @@ begin
   end;
 
   // History input: Ctrl+Down / Alt+Down drop the history down.
-  if IsHistoryInput(FFocusIndex) and (AKey = vkDown) and
-     ((ssCtrl in AShift) or (ssAlt in AShift)) and not (ssShift in AShift) then
+  if IsHistoryInput(FFocusIndex) and
+     (K.MatchesAny(vkDown, [ssCtrl], [ssAlt]) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl])) then
   begin
     OpenDropDown(FFocusIndex);
     AKey := 0;
@@ -2169,7 +2174,7 @@ begin
   if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
      (FDecl.Controls[FFocusIndex].Kind = dckDropDown) then
   begin
-    if (AKey = vkF4) or ((AKey = vkDown) and (ssAlt in AShift)) or
+    if (AKey = vkF4) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl, ssShift]) or
        (AKey = vkSpace) or (AKeyChar = ' ') then
     begin
       OpenDropDown(FFocusIndex);
@@ -2357,8 +2362,10 @@ begin
   begin
     // Copy/writeback: dynarray-of-record field as var can drop edits otherwise.
     C := FDecl.Controls[FFocusIndex];
-    if C.Password and (ssCtrl in AShift) and
-       ((AKey = Ord('C')) or (AKey = Ord('X')) or (AKey = vkInsert)) then
+    // Password inputs: no Ctrl+C / Ctrl+X / Ctrl+Insert copy-out.
+    if C.Password and (K.MatchesAny(vkC, [ssCtrl], [ssShift, ssAlt]) or
+       K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
+       K.MatchesAny(vkInsert, [ssCtrl], [ssShift, ssAlt])) then
     begin
       AKey := 0;
       AKeyChar := #0;

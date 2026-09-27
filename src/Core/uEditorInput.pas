@@ -65,6 +65,9 @@ function DispatchEditorKeys(const AHost: TEditorKeymapHost; var AKey: Word;
 
 implementation
 
+uses
+  uKeyChord;
+
 procedure ConsumeKey(var AKey: Word; var AKeyChar: Char; AClearChar: Boolean);
 begin
   AKey := 0;
@@ -96,7 +99,8 @@ end;
 
   DispatchEditorKeys tries the key groups below in a fixed order; the first
   group that claims the key wins, so the order is part of the keymap (e.g.
-  Ctrl+H is Hex before it could be Replace, Ctrl+F7 is Replace before Find). }
+  Ctrl+H is Hex before it could be Replace, Ctrl+F7 is Replace before Find).
+  Each group gets the keystroke as K and consumes it through AKey/AKeyChar. }
 
 type
   TKeyOutcome = (
@@ -104,31 +108,6 @@ type
     koHandled,   // action run, key consumed
     koRejected   // this group's key, but nothing to do here: report unhandled
   );
-
-function Mods(AShift: TShiftState): TShiftState; inline;
-begin
-  Result := AShift * [ssShift, ssCtrl, ssAlt];
-end;
-
-function CtrlNoAlt(AShift: TShiftState): Boolean; inline;
-begin
-  Result := (ssCtrl in AShift) and not (ssAlt in AShift);
-end;
-
-/// <summary>Key is the uppercase letter AUpper by virtual key code. Letter
-/// virtual keys are always uppercase; Ord(lowercase) is a different key
-/// (Ord('s') = vkF4, Ord('k') = vkAdd), so it must not match.</summary>
-function IsLetterVk(AKey: Word; AUpper: Char): Boolean; inline;
-begin
-  Result := AKey = Ord(AUpper);
-end;
-
-/// <summary>IsLetterVk, or the typed character is AUpper in either case.</summary>
-function IsLetter(AKey: Word; AKeyChar, AUpper: Char): Boolean; inline;
-begin
-  Result := IsLetterVk(AKey, AUpper) or
-    (AKeyChar = AUpper) or (Ord(AKeyChar) = Ord(AUpper) + 32);
-end;
 
 function Handled(var AKey: Word; var AKeyChar: Char;
   AClearChar: Boolean): TKeyOutcome;
@@ -147,12 +126,12 @@ begin
 end;
 
 { F6 view/edit, F4 / Ctrl+H hex, Ctrl+M markdown. }
-function TryModeKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
+function TryModeKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
 begin
   Result := koPass;
   // F6 — Viewer ↔ Editor
-  if (AKey = vkF6) and (Mods(AShift) = []) then
+  if K.Matches(vkF6) then
   begin
     AHost.ToggleViewMode();
     Exit(Handled(AKey, AKeyChar, False));
@@ -160,7 +139,7 @@ begin
 
   // F4 — Hex in text/hex Viewer; Raw (render ↔ source) while Markdown is on.
   // Ctrl+H is always Hex, including Markdown (F-bar Ctrl+H:Hex / Ctrl+M:Raw).
-  if (AKey = vkF4) and (Mods(AShift) = []) then
+  if K.Matches(vkF4) then
   begin
     if HostMarkdownMode(AHost) then
       AHost.ToggleMarkdownMode()
@@ -168,16 +147,14 @@ begin
       AHost.ToggleHexMode();
     Exit(Handled(AKey, AKeyChar, True));
   end;
-  if CtrlNoAlt(AShift) and IsLetterVk(AKey, 'H') then
+  if K.MatchesAny(vkH, [ssCtrl], [ssShift]) then
   begin
     AHost.ToggleHexMode();
     Exit(Handled(AKey, AKeyChar, True));
   end;
 
-  // Ctrl+M — Markdown render ↔ raw text. Do not match Ord('m'): that is
-  // vkSubtract, so Ctrl+- (zoom out) looked like this chord.
-  if (Mods(AShift) = [ssCtrl]) and
-     ((AKey = vkM) or (AKeyChar = 'm') or (AKeyChar = 'M')) then
+  // Ctrl+M — Markdown render ↔ raw text.
+  if K.MatchesLetter('M', [ssCtrl]) then
   begin
     AHost.ToggleMarkdownMode();
     Exit(Handled(AKey, AKeyChar, True));
@@ -185,23 +162,21 @@ begin
 end;
 
 { F8 / Shift+F8 encoding, Alt+F8 goto line. }
-function TryEncodingKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
+function TryEncodingKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
 begin
   Result := koPass;
-  if AKey <> vkF8 then
-    Exit;
   // F8 / Shift+F8 — encoding (also exits Hex via re-decode)
-  if not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if K.MatchesAny(vkF8, [], [ssShift]) then
   begin
-    if ssShift in AShift then
+    if ssShift in K.Mods then
       AHost.OpenEncodingDialog()
     else
       AHost.CycleEncoding();
     Exit(Handled(AKey, AKeyChar, False));
   end;
   // Alt+F8 — goto line
-  if (ssAlt in AShift) and not (ssCtrl in AShift) then
+  if K.MatchesAny(vkF8, [ssAlt], [ssShift]) then
   begin
     AHost.OpenGotoDialog();
     Exit(Handled(AKey, AKeyChar, False));
@@ -210,25 +185,25 @@ end;
 
 { Ctrl+F7 replace, Shift/Alt+F7 find next/previous, Ctrl+F / F7 / '/' find
   prompt, F3 / Shift+F3 find again. }
-function TrySearchKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
+function TrySearchKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
 begin
   Result := koPass;
   // Ctrl+F7 — replace (Editor only). Ctrl+H would be too, but TryModeKeys
   // already took it for Hex.
-  if (AKey = vkF7) and CtrlNoAlt(AShift) and HostCanEdit(AHost) then
+  if K.MatchesAny(vkF7, [ssCtrl], [ssShift]) and HostCanEdit(AHost) then
   begin
     AHost.OpenReplaceDialog();
     Exit(Handled(AKey, AKeyChar, True));
   end;
 
   // Shift+F7 / Alt+F7 — find next / previous
-  if (AKey = vkF7) and (Mods(AShift) = [ssShift]) then
+  if K.Matches(vkF7, [ssShift]) then
   begin
     FindAgain(AHost, True);
     Exit(Handled(AKey, AKeyChar, False));
   end;
-  if (AKey = vkF7) and (ssAlt in AShift) and not (ssCtrl in AShift) then
+  if K.MatchesAny(vkF7, [ssAlt], [ssShift]) then
   begin
     FindAgain(AHost, False);
     Exit(Handled(AKey, AKeyChar, False));
@@ -236,28 +211,27 @@ begin
 
   // Ctrl+F / F7 — Find prompt. '/' opens find in ViewOnly; in edit mode '/'
   // is a normal character.
-  if (CtrlNoAlt(AShift) and IsLetterVk(AKey, 'F')) or (AKey = vkF7) or
-     ((AKeyChar = '/') and not (ssCtrl in AShift) and
-      not (ssAlt in AShift) and not HostCanEdit(AHost)) then
-    if (AKey = vkF7) or HostViewOnly(AHost) or (ssCtrl in AShift) then
+  if K.MatchesAny(vkF, [ssCtrl], [ssShift]) or (K.Key = vkF7) or
+     ((K.Ch = '/') and K.HasMods([], [ssShift]) and not HostCanEdit(AHost)) then
+    if (K.Key = vkF7) or HostViewOnly(AHost) or (ssCtrl in K.Mods) then
     begin
       AHost.OpenFindPrompt();
       Exit(Handled(AKey, AKeyChar, True));
     end;
 
-  if AKey = vkF3 then
+  if K.Key = vkF3 then
   begin
-    FindAgain(AHost, not (ssShift in AShift));
+    FindAgain(AHost, not (ssShift in K.Mods));
     Exit(Handled(AKey, AKeyChar, False));
   end;
 end;
 
 { F2 save (Editor) / word wrap (Viewer), Ctrl+S save. }
-function TrySaveKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
+function TrySaveKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
 begin
   Result := koPass;
-  if (AKey = vkF2) and (Mods(AShift) = []) then
+  if K.Matches(vkF2) then
   begin
     if HostCanEdit(AHost) then
       AHost.SaveDoc()
@@ -268,7 +242,7 @@ begin
     Exit(Handled(AKey, AKeyChar, True));
   end;
 
-  if HostCanEdit(AHost) and (ssCtrl in AShift) and IsLetter(AKey, AKeyChar, 'S') then
+  if HostCanEdit(AHost) and K.MatchesLetter('S', [ssCtrl], [ssShift, ssAlt]) then
   begin
     AHost.SaveDoc();
     Exit(Handled(AKey, AKeyChar, True));
@@ -277,18 +251,15 @@ end;
 
 { Extra-keyboard clipboard keys: Ctrl+Insert copy, Shift+Insert paste,
   Ctrl+Delete / Shift+Delete cut — same actions as Ctrl+C/V/X. }
-function TryClipboardKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
-var
-  M: TShiftState;
+function TryClipboardKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
 begin
   Result := koPass;
-  M := Mods(AShift);
-  if (AKey = vkInsert) and (M = [ssCtrl]) then
+  if K.Matches(vkInsert, [ssCtrl]) then
     AHost.CopySelectionOrLine()
-  else if (AKey = vkInsert) and (M = [ssShift]) and HostCanEdit(AHost) then
+  else if K.Matches(vkInsert, [ssShift]) and HostCanEdit(AHost) then
     AHost.PasteText()
-  else if (AKey = vkDelete) and ((M = [ssCtrl]) or (M = [ssShift])) and
+  else if (K.Matches(vkDelete, [ssCtrl]) or K.Matches(vkDelete, [ssShift])) and
           HostCanEdit(AHost) then
     AHost.CutSelectionOrLine()
   else
@@ -297,52 +268,59 @@ begin
 end;
 
 { Ctrl (no Alt) letter chords, Ctrl+Left/Right word moves, Ctrl+Home/End. }
-function TryCtrlKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char): TKeyOutcome;
+function TryCtrlKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char): TKeyOutcome;
+
+  function CtrlLetter(AUpper: Char): Boolean;
+  begin
+    Result := K.MatchesLetter(AUpper, [ssCtrl], [ssShift]);
+  end;
+
 var
-  CanEdit: Boolean;
+  CanEdit, Extend: Boolean;
 begin
   Result := koPass;
-  if not CtrlNoAlt(AShift) then
+  if not K.HasMods([ssCtrl], [ssShift]) then
     Exit;
   CanEdit := HostCanEdit(AHost);
+  Extend := ssShift in K.Mods;
 
-  if IsLetter(AKey, AKeyChar, 'A') then
+  if CtrlLetter('A') then
     AHost.SelectAll()
-  else if IsLetter(AKey, AKeyChar, 'C') then
+  else if CtrlLetter('C') then
     AHost.CopySelectionOrLine()
-  else if IsLetter(AKey, AKeyChar, 'U') then
+  else if CtrlLetter('U') then
   begin
     AHost.ClearSelection();
     AHost.NotifyHost();
   end
-  else if CanEdit and IsLetter(AKey, AKeyChar, 'X') then
+  else if CanEdit and CtrlLetter('X') then
     AHost.CutSelectionOrLine()
-  else if CanEdit and IsLetter(AKey, AKeyChar, 'V') then
+  else if CanEdit and CtrlLetter('V') then
     AHost.PasteText()
-  else if CanEdit and IsLetter(AKey, AKeyChar, 'Z') then
+  else if CanEdit and CtrlLetter('Z') then
   begin
-    if ssShift in AShift then
+    if Extend then
       AHost.RedoEdit()
     else
       AHost.UndoEdit();
   end
   // Far: Ctrl+Y / Ctrl+D = delete line (Redo is Ctrl+Shift+Z only).
-  else if CanEdit and (IsLetter(AKey, AKeyChar, 'Y') or IsLetter(AKey, AKeyChar, 'D')) then
+  else if CanEdit and (CtrlLetter('Y') or CtrlLetter('D')) then
     AHost.DeleteCurrentLine()
-  else if CanEdit and IsLetter(AKey, AKeyChar, 'K') then
+  else if CanEdit and CtrlLetter('K') then
     AHost.DeleteToEndOfLine()
-  else if CanEdit and not (ssShift in AShift) and IsLetter(AKey, AKeyChar, 'N') then
+  else if CanEdit and K.MatchesLetter('N', [ssCtrl]) then
     AHost.InsertBlankLineBelow()
   else
   begin
-    case AKey of
+    case K.Key of
       vkLeft, vkRight:
-        AHost.MoveWord(AKey = vkRight, ssShift in AShift);
+        AHost.MoveWord(K.Key = vkRight, Extend);
       vkHome:
-        AHost.GotoFileHome(ssShift in AShift);
+        AHost.GotoFileHome(Extend);
       vkEnd:
-        AHost.GotoFileEnd(ssShift in AShift);
+        AHost.GotoFileEnd(Extend);
     else
       Exit;
     end;
@@ -352,21 +330,20 @@ begin
 end;
 
 { Unmodified navigation / editing keys and typed characters. }
-function TryBasicKeys(const AHost: TEditorKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char; AViewH: Integer): TKeyOutcome;
+function TryBasicKeys(const AHost: TEditorKeymapHost; const K: TKeyChord;
+  var AKey: Word; var AKeyChar: Char; AViewH: Integer): TKeyOutcome;
 var
   Extend: Boolean;
 begin
   // Viewer: numpad 5 = F10 (close).
-  if HostViewOnly(AHost) and (Mods(AShift) = []) and
-     ((AKey = vkNumpad5) or (AKey = vkClear)) then
+  if HostViewOnly(AHost) and (K.Matches(vkNumpad5) or K.Matches(vkClear)) then
   begin
     AHost.RequestClose();
     Exit(Handled(AKey, AKeyChar, True));
   end;
 
-  Extend := ssShift in AShift;
-  case AKey of
+  Extend := ssShift in K.Mods;
+  case K.Key of
     vkEscape, vkF10: AHost.RequestClose();
     vkUp:            AHost.MoveCursor(-1, 0, Extend);
     vkDown:          AHost.MoveCursor(1, 0, Extend);
@@ -388,10 +365,9 @@ begin
     vkDelete:        AHost.DoDelete();
     vkReturn:        AHost.DoEnter();
   else
-    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-       not (ssCtrl in AShift) and not (ssAlt in AShift) then
-      AHost.InsertChar(AKeyChar)
-    else if HostViewOnly(AHost) and (AKeyChar = '/') then
+    if K.IsPrintable and K.HasMods([], [ssShift]) then
+      AHost.InsertChar(K.Ch)
+    else if HostViewOnly(AHost) and (K.Ch = '/') then
       AHost.OpenFindPrompt()
     else
       Exit(koPass);
@@ -403,21 +379,23 @@ end;
 function DispatchEditorKeys(const AHost: TEditorKeymapHost; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char; AViewH: Integer): Boolean;
 var
+  K: TKeyChord;
   R: TKeyOutcome;
 begin
-  R := TryModeKeys(AHost, AKey, AShift, AKeyChar);
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  R := TryModeKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TryEncodingKeys(AHost, AKey, AShift, AKeyChar);
+    R := TryEncodingKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TrySearchKeys(AHost, AKey, AShift, AKeyChar);
+    R := TrySearchKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TrySaveKeys(AHost, AKey, AShift, AKeyChar);
+    R := TrySaveKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TryClipboardKeys(AHost, AKey, AShift, AKeyChar);
+    R := TryClipboardKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TryCtrlKeys(AHost, AKey, AShift, AKeyChar);
+    R := TryCtrlKeys(AHost, K, AKey, AKeyChar);
   if R = koPass then
-    R := TryBasicKeys(AHost, AKey, AShift, AKeyChar, AViewH);
+    R := TryBasicKeys(AHost, K, AKey, AKeyChar, AViewH);
   Result := R = koHandled;
 end;
 

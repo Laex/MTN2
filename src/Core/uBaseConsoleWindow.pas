@@ -15,7 +15,7 @@ uses
   FMX.Platform,
   Winapi.Windows,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uConsoleBuffer, uConPty,
-  uShellProfiles, uDialogTypes, uDialogHost, uInputLine;
+  uShellProfiles, uDialogTypes, uDialogHost, uInputLine, uKeyChord;
 
 type
   TConsoleCommandEvent = reference to procedure(const ACommand: string);
@@ -312,7 +312,7 @@ begin
   Result := False;
   if not AltScreenActive then
     Exit;
-  if (ssShift in AShift) or (ssAlt in AShift) or (ssCtrl in AShift) then
+  if AShift * cKeyMods <> [] then
     Exit;
   case AKey of
     vkLeft:   SendRaw(#27'[D');
@@ -879,8 +879,8 @@ begin
         Result := True;
       end;
   else
-    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-       not (ssCtrl in AShift) and not (ssAlt in AShift) then
+    if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
+       (AShift * [ssCtrl, ssAlt] = []) then
     begin
       AppendLocalInput(AKeyChar);
       AKey := 0;
@@ -958,8 +958,8 @@ begin
   Result := False;
   if not FCmdHistDialogOpen then
     Exit;
-  if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-     not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
+     (AShift * [ssCtrl, ssAlt] = []) then
   begin
     FCmdHistFilter := FCmdHistFilter + AKeyChar;
     RefreshCmdHistoryDialog;
@@ -1031,15 +1031,16 @@ end;
 function TBaseConsoleWindow.HandleCommonInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
+  K: TKeyChord;
   ViewH: Integer;
 begin
   Result := False;
+  K      := TKeyChord.Make(AKey, AKeyChar, AShift);
   ViewH  := ViewHeight;
 
   // Alt+F8 — command history picker (matches Dual Panel's kaCmdHistory);
   // selecting an entry runs it immediately in this console.
-  if (ssAlt in AShift) and not (ssCtrl in AShift) and not (ssShift in AShift) and
-     (AKey = vkF8) then
+  if K.Matches(vkF8, [ssAlt]) then
   begin
     OpenCmdHistoryDialog;
     AKey := 0; AKeyChar := #0;
@@ -1047,8 +1048,7 @@ begin
   end;
 
   // Ctrl+A — select all.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('A')) or (AKeyChar = 'a') or (AKeyChar = 'A')) then
+  if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
   begin
     SelectAll;
     AKey := 0; AKeyChar := #0;
@@ -1056,8 +1056,7 @@ begin
   end;
 
   // Ctrl+C — copy selection (if any), handled by caller for interrupt.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C')) then
+  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
   begin
     if HasSelection then
     begin
@@ -1070,7 +1069,7 @@ begin
   end;
 
   // Shift+arrows — extend selection.
-  if (ssShift in AShift) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if K.Mods = [ssShift] then
   begin
     case AKey of
       vkLeft:  begin MoveSelCursor(0, -1, True);     AKey := 0; Exit(True); end;
@@ -1093,7 +1092,7 @@ begin
   end;
 
   // Bare navigation (no Shift): scroll the view.
-  if not (ssShift in AShift) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if K.Mods = [] then
   begin
     case AKey of
       vkUp:

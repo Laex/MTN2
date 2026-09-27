@@ -67,7 +67,7 @@ type
 implementation
 
 uses
-  FMX.Platform, uStrings;
+  FMX.Platform, uStrings, uKeyChord;
 
 const
   cTextFg      = TAlphaColor($FFE0E0E0);
@@ -399,6 +399,8 @@ end;
 
 function TConsoleWindow.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
+var
+  K: TKeyChord;
 begin
   if not Alive or PendingClose then
     Exit(True);
@@ -426,11 +428,11 @@ begin
     DoCloseConsole;
     Exit(True);
   end;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
 
   // Ctrl+Shift+O — sync active panel's directory to this console's cwd
   // (mirror of Dual Panel's kaSyncConsoleDir, other direction).
-  if (ssCtrl in AShift) and (ssShift in AShift) and not (ssAlt in AShift) and
-     (AKey = kmConsole) then
+  if K.Matches(kmConsole, [ssCtrl, ssShift]) then
   begin
     if Assigned(FOnSyncDirToPanels) then
       FOnSyncDirToPanels(Self);
@@ -439,8 +441,7 @@ begin
   end;
 
   // Ctrl+O — back to panels.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and not (ssShift in AShift) and
-     (AKey = kmConsole) then
+  if K.Matches(kmConsole, [ssCtrl]) then
   begin
     if Assigned(FOnBackToPanels) then
       FOnBackToPanels(Self);
@@ -450,8 +451,7 @@ begin
 
   // Ctrl+A — select all (handled by base).
   // Ctrl+C — copy if selection; interrupt if running.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C')) then
+  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
   begin
     if HasSelection then
       CopySelection
@@ -462,8 +462,7 @@ begin
   end;
 
   // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
-  if (AKey = vkInsert) and (ssCtrl in AShift) and not (ssShift in AShift) and
-     not (ssAlt in AShift) then
+  if K.Matches(vkInsert, [ssCtrl]) then
   begin
     CopySelection;
     AKey := 0; AKeyChar := #0;
@@ -471,10 +470,7 @@ begin
   end;
 
   // Shift+Insert / Ctrl+V — paste clipboard as input.
-  if ((AKey = vkInsert) and (ssShift in AShift) and not (ssCtrl in AShift) and
-      not (ssAlt in AShift)) or
-     ((ssCtrl in AShift) and not (ssAlt in AShift) and
-      ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V'))) then
+  if K.Matches(vkInsert, [ssShift]) or K.MatchesLetter('V', [ssCtrl], [ssShift]) then
   begin
     PasteClipboard;
     AKey := 0; AKeyChar := #0;
@@ -482,7 +478,7 @@ begin
   end;
 
   // Ctrl+Down — unused (panel cmdline is hidden while console is open).
-  if (ssCtrl in AShift) and (AKey = vkDown) then
+  if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
   begin
     AKey := 0;
     Exit;
@@ -551,8 +547,7 @@ begin
         AKeyChar := #0;
       end;
   else
-    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-       not (ssCtrl in AShift) and not (ssAlt in AShift) then
+    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and K.HasMods([], [ssShift]) then
     begin
       SendRaw(AKeyChar);
       AKey := 0;
