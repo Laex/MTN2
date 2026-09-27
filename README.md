@@ -2,10 +2,13 @@
 
 Двухпанельный файловый менеджер в духе **Necromancer's DOS Navigator** и **FAR Manager** со встроенной консолью,
 терминалами, просмотрщиком и редактором. Интерфейс — текстовый (TUI), но рисуется в обычном GUI-окне:
-виртуальная сетка символов на GPU-холсте Delphi FireMonkey с TrueType-шрифтами, Unicode и 32-битным цветом.
+виртуальная сетка символов на холсте Delphi FireMonkey (Skia, с откатом на стандартный холст по `--no-skia`)
+с TrueType-шрифтами, Unicode и 32-битным цветом.
 
 [![CI](https://github.com/Laex/MTN2/actions/workflows/ci.yml/badge.svg)](https://github.com/Laex/MTN2/actions/workflows/ci.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+
+![MTN2: две панели и окно «О программе»](docs/images/mtn2-about.png)
 
 ## Возможности
 
@@ -32,10 +35,10 @@
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # bin\MTN2.exe + bin\plugins\
-./src/tests/run-tests.ps1                          # регрессионные тесты
+./src/tests/run-tests.ps1                          # регрессионные тесты (DUnitX)
 ```
 
-Подробности — в [docs/BUILDING.md](docs/BUILDING.md).
+Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Подробности — в [docs/BUILDING.md](docs/BUILDING.md).
 
 ## Структура репозитория
 
@@ -44,10 +47,10 @@
 | `src/Core` | ядро: панели, VFS, ConPTY, консоль, редактор, диалоги, плагинный хост |
 | `src/Forms`, `src/Themes`, `src/dialogs`, `src/strings` | главная форма, темы, JSON-диалоги, локализация |
 | `src/plugins` | встроенные плагины (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM-демо) |
-| `src/tests` | регрессионные тесты по группам и раннер `run-tests.ps1` |
+| `src/tests` | регрессионные тесты DUnitX по группам и раннер `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, группа проектов `Group.groupproj`, служебные скрипты |
 | `bin/help` | справка F1 (ru/en), поставляется вместе с программой |
-| `docs` | документация разработчика |
+| `docs` | документация разработчика, скриншоты (`docs/images`) |
 
 ## Документация
 

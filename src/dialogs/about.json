@@ -7,7 +7,7 @@
   "children": [
     {
       "type": "label",
-      "text": "Modern Turbo Navigator 2.0 (MTN2)",
+      "text": "Modern Terminal Navigator 2 (MTN2)",
       "id": "lbl_title",
       "col": 2,
       "row": 1,
