@@ -449,33 +449,10 @@ begin
     Exit;
   end;
 
-  // Ctrl+A — select all (handled by base).
-  // Ctrl+C — copy if selection; interrupt if running.
-  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
-  begin
-    if HasSelection then
-      CopySelection
-    else if Running then
-      Interrupt;
-    AKey := 0; AKeyChar := #0;
+  // Alt+F8, Ctrl+A, Ctrl+C (copy or interrupt), Ctrl+Insert, Ctrl+V /
+  // Shift+Insert.
+  if HandleSharedKeys(AKey, AShift, AKeyChar) then
     Exit;
-  end;
-
-  // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
-  if K.Matches(vkInsert, [ssCtrl]) then
-  begin
-    CopySelection;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
-
-  // Shift+Insert / Ctrl+V — paste clipboard as input.
-  if K.Matches(vkInsert, [ssShift]) or K.MatchesLetter('V', [ssCtrl], [ssShift]) then
-  begin
-    PasteClipboard;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
 
   // Ctrl+Down — unused (panel cmdline is hidden while console is open).
   if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
@@ -485,12 +462,12 @@ begin
   end;
 
   // Alt-screen (TUI app running): forward navigation keys to the PTY before
-  // HandleCommonInput's bare-arrow scroll-interception can steal them.
+  // HandleScrollKeys' bare-arrow scroll-interception can steal them.
   if HandleAltScreenNav(AKey, AShift) then
     Exit;
 
-  // Common: Ctrl+A, Shift+arrows, bare navigation.
-  if HandleCommonInput(AKey, AShift, AKeyChar) then
+  // Shift+arrows select, bare navigation scrolls.
+  if HandleSelectionKeys(AKey, AShift) or HandleScrollKeys(AKey, AShift) then
     Exit;
 
   // cmd pipe: edit in buffer only; submit full line on Enter (avoids BS

@@ -168,11 +168,18 @@ type
     { Scrollbar drawing — delegates to subclass for row bounds. }
     procedure DrawScrollBar(ATotal, ATop, AViewH, ATopY, ABottomY: Integer);
 
-    { Common keyboard block: Ctrl+A/C (select/copy/interrupt), Shift+arrows,
-      bare navigation arrows/PgUp/PgDn/Home/End.
+    { Keys the Panel Console and the terminal share: Alt+F8 history picker,
+      Ctrl+A select all, Ctrl+C copy (or interrupt without a selection),
+      Ctrl+Insert copy, Ctrl+V / Shift+Insert paste.
       Returns True if the key was consumed. }
-    function HandleCommonInput(var AKey: Word; AShift: TShiftState;
+    function HandleSharedKeys(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    /// <summary>Shift+arrows / PgUp / PgDn / Home / End extend the scrollback
+    /// selection.</summary>
+    function HandleSelectionKeys(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Bare arrows / PgUp / PgDn / Home / End scroll the scrollback
+    /// (Panel Console; the terminal sends them to the shell instead).</summary>
+    function HandleScrollKeys(var AKey: Word; AShift: TShiftState): Boolean;
 
     { Common mouse-down skeleton: scrollbar hit, text-cell hit, frame close.
       AScrollTopY / AScrollBottomY: scrollbar track rows inside the window.
@@ -1028,48 +1035,48 @@ end;
 
 { ---- Common keyboard ------------------------------------------------------- }
 
-function TBaseConsoleWindow.HandleCommonInput(var AKey: Word;
+function TBaseConsoleWindow.HandleSharedKeys(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
   K: TKeyChord;
-  ViewH: Integer;
 begin
-  Result := False;
-  K      := TKeyChord.Make(AKey, AKeyChar, AShift);
-  ViewH  := ViewHeight;
-
+  Result := True;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
   // Alt+F8 — command history picker (matches Dual Panel's kaCmdHistory);
   // selecting an entry runs it immediately in this console.
   if K.Matches(vkF8, [ssAlt]) then
-  begin
-    OpenCmdHistoryDialog;
-    AKey := 0; AKeyChar := #0;
-    Exit(True);
-  end;
-
+    OpenCmdHistoryDialog
   // Ctrl+A — select all.
-  if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
-  begin
-    SelectAll;
-    AKey := 0; AKeyChar := #0;
-    Exit(True);
-  end;
-
-  // Ctrl+C — copy selection (if any), handled by caller for interrupt.
-  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
+  else if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
+    SelectAll
+  // Ctrl+C — copy the selection; without one, interrupt the running command.
+  else if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
   begin
     if HasSelection then
-    begin
-      CopySelection;
-      AKey := 0; AKeyChar := #0;
-      Exit(True);
-    end;
-    // Let caller decide (interrupt vs. send to PTY).
+      CopySelection
+    else if Running then
+      Interrupt;
+  end
+  // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
+  else if K.Matches(vkInsert, [ssCtrl]) then
+    CopySelection
+  // Ctrl+V / Shift+Insert — paste clipboard as input.
+  else if K.MatchesLetter('V', [ssCtrl], [ssShift]) or K.Matches(vkInsert, [ssShift]) then
+    PasteClipboard
+  else
     Exit(False);
-  end;
+  AKey := 0;
+  AKeyChar := #0;
+end;
 
-  // Shift+arrows — extend selection.
-  if K.Mods = [ssShift] then
+function TBaseConsoleWindow.HandleSelectionKeys(var AKey: Word;
+  AShift: TShiftState): Boolean;
+var
+  ViewH: Integer;
+begin
+  Result := False;
+  ViewH := ViewHeight;
+  if AShift * cKeyMods = [ssShift] then
   begin
     case AKey of
       vkLeft:  begin MoveSelCursor(0, -1, True);     AKey := 0; Exit(True); end;
@@ -1090,9 +1097,16 @@ begin
         end;
     end;
   end;
+end;
 
-  // Bare navigation (no Shift): scroll the view.
-  if K.Mods = [] then
+function TBaseConsoleWindow.HandleScrollKeys(var AKey: Word;
+  AShift: TShiftState): Boolean;
+var
+  ViewH: Integer;
+begin
+  Result := False;
+  ViewH := ViewHeight;
+  if AShift * cKeyMods = [] then
   begin
     case AKey of
       vkUp:

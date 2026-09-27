@@ -379,49 +379,10 @@ begin
   end;
   ViewH := ViewHeight;
 
-  // Alt+F8 — command history picker (matches Dual Panel's kaCmdHistory);
-  // selecting an entry runs it immediately in this terminal tab.
-  if K.Matches(vkF8, [ssAlt]) then
-  begin
-    OpenCmdHistoryDialog;
-    AKey := 0; AKeyChar := #0;
+  // Alt+F8, Ctrl+A, Ctrl+C (copy or interrupt), Ctrl+Insert, Ctrl+V /
+  // Shift+Insert.
+  if HandleSharedKeys(AKey, AShift, AKeyChar) then
     Exit;
-  end;
-
-  // Ctrl+A — select all.
-  if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
-  begin
-    SelectAll;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
-
-  // Ctrl+C — copy or interrupt.
-  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
-  begin
-    if HasSelection then
-      CopySelection
-    else if Running then
-      Interrupt;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
-
-  // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
-  if K.Matches(vkInsert, [ssCtrl]) then
-  begin
-    CopySelection;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
-
-  // Ctrl+V / Shift+Insert — paste.
-  if K.MatchesLetter('V', [ssCtrl], [ssShift]) or K.Matches(vkInsert, [ssShift]) then
-  begin
-    PasteClipboard;
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
 
   // Alt-screen (TUI app running): forward navigation keys to the PTY instead
   // of the local-scrollback/selection handling below, which would otherwise
@@ -430,24 +391,8 @@ begin
     Exit;
 
   // Shift+arrows — extend selection (no PTY passthrough).
-  if K.Mods = [ssShift] then
-  begin
-    case AKey of
-      vkLeft:  begin MoveSelCursor(0, -1, True);     AKey := 0; Exit; end;
-      vkRight: begin MoveSelCursor(0,  1, True);     AKey := 0; Exit; end;
-      vkUp:    begin MoveSelCursor(-1, 0, True);     AKey := 0; Exit; end;
-      vkDown:  begin MoveSelCursor( 1, 0, True);     AKey := 0; Exit; end;
-      vkPrior: begin MoveSelCursor(-ViewH, 0, True); AKey := 0; Exit; end;
-      vkNext:  begin MoveSelCursor( ViewH, 0, True); AKey := 0; Exit; end;
-      vkHome:
-        begin SetCursorPos(CursorRow, 0, True); AKey := 0; Exit; end;
-      vkEnd:
-        begin
-          SetCursorPos(CursorRow, Length(FHistory.GetLine(CursorRow)), True);
-          AKey := 0; Exit;
-        end;
-    end;
-  end;
+  if HandleSelectionKeys(AKey, AShift) then
+    Exit;
 
   // cmd pipe: local line editing (see HandleLineBufferedPtyInput). Never
   // during alt-screen: a raw full-screen app needs character-at-a-time
