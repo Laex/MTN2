@@ -389,6 +389,10 @@ type
     procedure HistoryBack;
     procedure HistoryForward;
     procedure ActivateCurrent;
+    /// <summary>Enter on ARow of ATab's listing: open, enter, run, go back.</summary>
+    procedure ActivateRow(const ATab: TTab; const ARow: TPanelRow);
+    /// <summary>Up one level: activates the ".." row of the active panel.</summary>
+    procedure GoToParent;
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
@@ -1549,6 +1553,7 @@ begin
   FFreeInputHost.HandleCmdLineInput := HandleCmdLineInput;
   FFreeInputHost.FocusCommandLine := FocusCommandLine;
   FFreeInputHost.SwitchSide := SwitchSide;
+  FFreeInputHost.GoToParent := GoToParent;
   FFreeInputHost.NewPanelTab := NewPanelTab;
   FFreeInputHost.NewWorkspace := NewWorkspace;
   FFreeInputHost.NextPanelTab := NextPanelTab;
@@ -4078,49 +4083,74 @@ var
   Rows: TPanelRows;
   Row: TPanelRow;
   Idx: Integer;
+begin
+  if GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
+    ActivateRow(Tab, Row);
+end;
+
+procedure TDualPanelWindow.GoToParent;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  I: Integer;
+begin
+  // Whatever Enter on ".." does here (a folder up, out of an archive, back
+  // from search results / the Recycle Bin); nothing at a drive root.
+  if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
+    Exit;
+  for I := 0 to High(Rows) do
+    if Rows[I].IsParent then
+    begin
+      ActivateRow(Tab, Rows[I]);
+      Exit;
+    end;
+end;
+
+procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
+var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
   UserCommand: string;
 begin
-  if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
-    Exit;
   // Ask the registry which extensions currently navigate as an archive
   // (built-in zip/jar/apk plus whatever a loaded plugin's manifest declared
   // — see uVfsRegistry.RegisterArchiveExtension) instead of hardcoding the
   // extension list here.
-  IsArchiveFile := (Row.URI <> '') and
-    GlobalVfsRegistry.TryResolveArchiveKind(Row.Text, ArchiveKind);
+  IsArchiveFile := (ARow.URI <> '') and
+    GlobalVfsRegistry.TryResolveArchiveKind(ARow.Text, ArchiveKind);
   case ClassifyActivateCurrent(
-    IsFindUri(Tab.CurrentURI) and (not Row.IsParent) and (Row.URI <> ''),
-    Row.IsParent and (IsSystemFoldersUri(Tab.CurrentURI) or
-      IsRecycleBinUri(Tab.CurrentURI)),
-    Row.IsDirectory or Row.IsParent,
+    IsFindUri(ATab.CurrentURI) and (not ARow.IsParent) and (ARow.URI <> ''),
+    ARow.IsParent and (IsSystemFoldersUri(ATab.CurrentURI) or
+      IsRecycleBinUri(ATab.CurrentURI)),
+    ARow.IsDirectory or ARow.IsParent,
     IsArchiveFile,
-    ResolveAssociationWithUserRules(Row.Text, False, UserCommand)) of
+    ResolveAssociationWithUserRules(ARow.Text, False, UserCommand)) of
     ackFindGoto:
-      GotoFileLocation(FileUriToPath(Row.URI));
+      GotoFileLocation(FileUriToPath(ARow.URI));
     ackHistoryBack:
       HistoryBack;
     ackNavigate:
-      if Row.URI <> '' then
-        NavigateActiveTo(Row.URI);
+      if ARow.URI <> '' then
+        NavigateActiveTo(ARow.URI);
     ackZipNavigate:
-      if (ArchiveKind = akSevenZip) and (not HasArchiveChain(Row.URI)) then
+      if (ArchiveKind = akSevenZip) and (not HasArchiveChain(ARow.URI)) then
       begin
         FSkipArchivePasswordUri := '';
         FArchivePasswordRetry := False;
-        NavigateActiveTo(PathToSevenZipRootUri(FileUriToPath(Row.URI)))
+        NavigateActiveTo(PathToSevenZipRootUri(FileUriToPath(ARow.URI)))
       end
       else
-        NavigateActiveTo(EnsureArchiveRootUri(Row.URI));
+        NavigateActiveTo(EnsureArchiveRootUri(ARow.URI));
     ackView:
-      RequestOpenViewer(Row.URI);
+      RequestOpenViewer(ARow.URI);
     ackEdit:
-      RequestOpenEditor(Row.URI);
+      RequestOpenEditor(ARow.URI);
     ackShell:
       ShellOpenCurrent;
     ackCommand:
-      RunUserCommandCurrent(Row.URI, UserCommand);
+      RunUserCommandCurrent(ARow.URI, UserCommand);
   end;
 end;
 

@@ -5,6 +5,7 @@
 | ↑ ↓ PgUp PgDn Home End | move the cursor |
 | ← / → | in Brief mode — one column left / right; in the other modes — to the first / last item (like Home / End) |
 | Enter | enter a folder / archive, open a file (by [association](associations.md)) |
+| Backspace | up one level, like Enter on `..` (with an empty command line; otherwise it erases a character there) |
 | Shift+Enter | run a file or command in a separate OS window |
 | Tab | switch the active panel |
 | Ctrl+\\ | go to the drive root (inside an archive — leave the archive) |

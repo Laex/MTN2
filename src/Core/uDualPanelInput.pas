@@ -206,6 +206,9 @@ type
     HandleCmdLineInput: TKeymapInputFn;
     FocusCommandLine: TKeymapProc;
     SwitchSide: TKeymapProc;
+    /// <summary>Up one level (Enter on ".."): Backspace with an empty
+    /// command line.</summary>
+    GoToParent: TKeymapProc;
     NewPanelTab: TKeymapProc;
     NewWorkspace: TKeymapProc;
     NextPanelTab: TKeymapProc;
@@ -1219,6 +1222,14 @@ begin
   end;
   if AHost.DispatchKeymapPrimary(MatchActiveAction(AKey, AShift), AKey, AKeyChar) then
     Exit;
+  // Backspace with an empty command line: up one level, like Enter on "..".
+  // With text in it, Backspace edits the command line (DispatchPanelNavKeys).
+  if Chord.Matches(vkBack) and not ASnap.CmdLineHasText and Assigned(AHost.GoToParent) then
+  begin
+    AHost.GoToParent();
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
   // Ctrl+Shift+Left/Right with text in the command line select word parts
   // there instead of cycling the drive preview.
   if (Chord.Matches(vkLeft, [ssCtrl, ssShift]) or Chord.Matches(vkRight, [ssCtrl, ssShift])) and

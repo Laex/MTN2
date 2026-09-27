@@ -95,6 +95,7 @@ type
     function QuickSearch(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function CmdLine(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure SwitchSide;
+    procedure GoToParent;
     procedure NewTab;
     procedure NewWs;
     procedure NextTab;
@@ -506,6 +507,7 @@ begin
   Result := CmdHandled;
 end;
 procedure TFreeInputSpy.SwitchSide; begin Last := 'switch'; end;
+procedure TFreeInputSpy.GoToParent; begin Last := 'parent'; end;
 procedure TFreeInputSpy.NewTab; begin Last := 'newtab'; end;
 procedure TFreeInputSpy.NewWs; begin Last := 'newws'; end;
 procedure TFreeInputSpy.NextTab; begin Last := 'nexttab'; end;
@@ -549,6 +551,7 @@ begin
   AHost.HandleQuickSearchInput := ASpy.QuickSearch;
   AHost.HandleCmdLineInput := ASpy.CmdLine;
   AHost.SwitchSide := ASpy.SwitchSide;
+  AHost.GoToParent := ASpy.GoToParent;
   AHost.NewPanelTab := ASpy.NewTab;
   AHost.NewWorkspace := ASpy.NewWs;
   AHost.NextPanelTab := ASpy.NextTab;
@@ -691,6 +694,27 @@ begin
     Assert.IsTrue(Spy.Last = 'primary', 'keymap primary wins');
 
     Spy.PrimaryHandled := False;
+    // Backspace: up one level with an empty command line, else the command line's.
+    Snap.CmdLineHasText := False;
+    Key := vkBack;
+    Ch := #8;
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'Backspace handled');
+    Assert.IsTrue(Spy.Last = 'parent', 'Backspace with an empty command line goes up');
+    Assert.IsTrue((Key = 0) and (Ch = #0), 'Backspace consumed');
+    Snap.CmdLineHasText := True;
+    Spy.Last := '';
+    Key := vkBack;
+    Ch := #8;
+    DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch);
+    Assert.IsTrue(Spy.Last <> 'parent', 'Backspace with text edits the command line');
+    Snap.CmdLineHasText := False;
+    Spy.Last := '';
+    Key := vkBack;
+    Ch := #8;
+    DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssShift], Ch);
+    Assert.IsTrue(Spy.Last <> 'parent', 'Shift+Backspace does not go up');
+    Ch := #0;
+
     Key := vkLeft;
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl], Ch), 'Ctrl+Left handled');
     Assert.IsTrue((Spy.Last = 'preview') and (Spy.Delta = -1), 'Ctrl+Left previews prev drive');
