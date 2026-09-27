@@ -6,7 +6,10 @@ unit uEditorDoc;
   Live reload: a local (non-streaming) file is watched via TDirectoryWatcher
   (uDirWatch) — its containing directory, since Windows has no lightweight
   single-file change notification — and silently re-read whenever the file's
-  on-disk size/write-time no longer match what was last loaded or saved
+  on-disk size/write-time no longer match what was last loaded or saved.
+  A load records the stat taken just before its read (ReadWithStatAsync), and
+  arming the watcher triggers one check (OnArmed), so a write landing right
+  after the open is not lost
   (FKnownSize/FKnownWriteTime double as the guard against reacting to our
   own SaveAsync writing the file: right after a save they're updated to
   match, so the watcher notification that follows sees no difference and
@@ -73,6 +76,10 @@ type
     FWatcher: TDirectoryWatcher;
     FKnownSize: Int64;
     FKnownWriteTime: TDateTime;
+    // Stat taken just before the read in flight started (see ReadWithStatAsync).
+    FReadStatValid: Boolean;
+    FReadStatSize: Int64;
+    FReadStatWriteTime: TDateTime;
     procedure NotifyChanged;
     procedure ApplyLoadedText(const AText: string);
     function BuildSaveText: string;
@@ -96,6 +103,14 @@ type
     // FGen (a newer Open/Close/reload started while the stat was in flight).
     procedure StatFileAsync(const APath: string; AGen: Cardinal; const AOnDone: TFileStatCallback);
     procedure RecordKnownFileStat;
+    /// <summary>ReadBytesAsync, preceded for a local file by a stat whose
+    /// result AcceptReadStat later makes the known stat. Stat-then-read, not
+    /// read-then-stat: a write landing after the stat makes the known stat
+    /// stale, so CheckExternalChange reloads; a stat taken after the read
+    /// would already describe that write and hide it.</summary>
+    procedure ReadWithStatAsync(AGen: Cardinal; const AURI: string; AMaxBytes: Int64;
+      const ACancel: IJobCancelToken; const AOnDone: TVfsBytesCallback);
+    procedure AcceptReadStat;
     procedure StartWatchingCurrentFile;
     function CanReloadFromDisk: Boolean;
     procedure CheckExternalChange;
@@ -174,6 +189,8 @@ begin
   SetLength(FRawBytes, 0);
   FWatcher := TDirectoryWatcher.Create;
   FWatcher.OnChanged := CheckExternalChange;
+  // A write between the load and the watcher arming raises no OnChanged.
+  FWatcher.OnArmed := CheckExternalChange;
 end;
 
 destructor TEditorDoc.Destroy;
@@ -182,6 +199,7 @@ begin
   if Assigned(FWatcher) then
   begin
     FWatcher.OnChanged := nil;
+    FWatcher.OnArmed := nil;
     FreeAndNil(FWatcher);
   end;
   FreeAndNil(FLines);
@@ -235,6 +253,7 @@ begin
   FWatcher.SetPath('');
   FKnownSize := 0;
   FKnownWriteTime := 0;
+  FReadStatValid := False;
 end;
 
 function TEditorDoc.LineCount: Integer;
@@ -511,6 +530,38 @@ begin
     end);
 end;
 
+procedure TEditorDoc.ReadWithStatAsync(AGen: Cardinal; const AURI: string;
+  AMaxBytes: Int64; const ACancel: IJobCancelToken; const AOnDone: TVfsBytesCallback);
+begin
+  FReadStatValid := False;
+  // Archive entries are never watched (see StartWatchingCurrentFile).
+  if HasArchiveChain(AURI) or (FPath = '') then
+  begin
+    FVfs.ReadBytesAsync(AURI, AMaxBytes, ACancel, AOnDone);
+    Exit;
+  end;
+  StatFileAsync(FPath, AGen,
+    procedure(AExists: Boolean; ASize: Int64; AWriteTime: TDateTime)
+    begin
+      FReadStatValid := AExists;
+      FReadStatSize := ASize;
+      FReadStatWriteTime := AWriteTime;
+      FVfs.ReadBytesAsync(AURI, AMaxBytes, ACancel, AOnDone);
+    end);
+end;
+
+procedure TEditorDoc.AcceptReadStat;
+begin
+  // No stat (the file appeared between stat and read): leave the known
+  // stat mismatched, so the next check reloads once more.
+  if FReadStatValid then
+  begin
+    FKnownSize := FReadStatSize;
+    FKnownWriteTime := FReadStatWriteTime;
+  end;
+  FReadStatValid := False;
+end;
+
 // Only a genuine local file backs a real directory to watch — archive
 // entries and streamed-from-archive temp copies aren't worth following.
 // Streaming docs (Stage 24) are excluded too: reacting to an external
@@ -582,7 +633,7 @@ begin
     MaxBytes := cEditorEditMaxBytes
   else
     MaxBytes := cEditorMaxBytes;
-  FVfs.ReadBytesAsync(URI, MaxBytes, Cancel,
+  ReadWithStatAsync(Gen, URI, MaxBytes, Cancel,
     procedure(const ABytes: TBytes; const AError: TVfsError)
     var
       Text: string;
@@ -602,7 +653,7 @@ begin
       FEncoding := Enc;
       ApplyLoadedText(Text);
       RefreshReadOnly;
-      RecordKnownFileStat;
+      AcceptReadStat;
       NotifyChanged;
     end);
 end;
@@ -817,7 +868,7 @@ begin
     MaxBytes := cEditorEditMaxBytes
   else
     MaxBytes := cEditorMaxBytes;
-  FVfs.ReadBytesAsync(URI, MaxBytes, FCancel,
+  ReadWithStatAsync(Gen, URI, MaxBytes, FCancel,
     procedure(const ABytes: TBytes; const AError: TVfsError)
     var
       Text: string;
@@ -903,8 +954,8 @@ begin
           FStatus := 'Read-only'
         else
           FStatus := '';
+        AcceptReadStat;
         StartWatchingCurrentFile;
-        RecordKnownFileStat;
       end;
       NotifyChanged;
     end);

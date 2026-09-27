@@ -22,6 +22,7 @@ type
   private
     FPath: string;
     FOnChanged: TDirWatchNotify;
+    FOnArmed: TDirWatchNotify;
     FThread: TThread;
     FStopEvent: THandle;
     FChangeHandle: THandle;
@@ -42,6 +43,11 @@ type
     procedure SetPath(const APath: string);
     procedure Close;
     property OnChanged: TDirWatchNotify read FOnChanged write FOnChanged;
+    /// <summary>Main thread, once per SetPath, when the change notification
+    /// is actually armed (see Active). A change made between SetPath and this
+    /// raises no OnChanged, so a caller that must not miss one re-checks
+    /// here.</summary>
+    property OnArmed: TDirWatchNotify read FOnArmed write FOnArmed;
     property Path: string read FPath;
     /// <summary>True once the background setup has armed the change
     /// notification for Path (Path itself is published optimistically,
@@ -201,6 +207,8 @@ begin
           begin
             FStopEvent := StopEv;
             FChangeHandle := ChangeH;
+            if Assigned(FOnArmed) then
+              FOnArmed();
           end
           else
           begin
