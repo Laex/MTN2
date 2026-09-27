@@ -175,6 +175,22 @@
       { "key": "0", "ctrl": true, "description": "Reset zoom to 100%" },
       { "key": "Num0", "ctrl": true, "description": "Reset zoom to 100%" }
     ],
-    "ReloadKeymap": { "key": "K", "ctrl": true, "alt": true, "description": "Reload keymap.json" }
+    "ReloadKeymap": { "key": "K", "ctrl": true, "alt": true, "description": "Reload keymap.json" },
+    "ShellHistory": { "key": "F8", "alt": true, "description": "Console / terminal: command history" },
+    "ShellSelectAll": [
+      { "key": "A", "ctrl": true, "description": "Console / terminal: select all" },
+      { "key": "A", "ctrl": true, "shift": true, "description": "Console / terminal: select all" }
+    ],
+    "ShellCopyOrInterrupt": [
+      { "key": "C", "ctrl": true, "description": "Console / terminal: copy the selection, or interrupt the command" },
+      { "key": "C", "ctrl": true, "shift": true, "description": "Console / terminal: copy the selection, or interrupt the command" }
+    ],
+    "ShellCopy": { "key": "Ins", "ctrl": true, "description": "Console / terminal: copy the selection" },
+    "ShellPaste": [
+      { "key": "V", "ctrl": true, "description": "Console / terminal: paste" },
+      { "key": "V", "ctrl": true, "shift": true, "description": "Console / terminal: paste" },
+      { "key": "Ins", "shift": true, "description": "Console / terminal: paste" }
+    ],
+    "ConsoleSyncDir": { "key": "O", "ctrl": true, "shift": true, "description": "Console: show the console's folder in the active panel" }
   }
 }

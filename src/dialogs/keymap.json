@@ -8,7 +8,7 @@
     {
       "type": "label",
       "id": "header",
-      "text": "    Action                        Hotkeys",
+      "text": "  Action                                Hotkeys",
       "col": 1,
       "row": 1,
       "width": 74,

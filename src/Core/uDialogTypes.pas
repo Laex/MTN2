@@ -1358,7 +1358,7 @@ function BuildKeymapEditDialog(const AActionName, AKeysText,
   AStatus: string): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogKeymapEdit, Result);
-  DialogSetLabelText(Result, 'km_action', 'Action: ' + AActionName);
+  DialogSetLabelText(Result, 'km_action', T('ui.keymap.editAction', 'Action: %s', [AActionName]));
   DialogSetInputValue(Result, 'km_keys', AKeysText);
   DialogSetLabelText(Result, 'km_status', AStatus);
 end;

@@ -91,53 +91,135 @@ begin
   Result[9] := '10';
 end;
 
+// ---- From the keymap ------------------------------------------------------
+//
+// F1-F10 slots and the Ctrl+letter hints of the windows that take their keys
+// from the keymap (panels, viewer, editor, console, terminal) are read off
+// ActiveKeymap, so a rebound key shows where it now is.
+
+type
+  TFBarActions = set of TKeymapAction;
+
+  /// <summary>A letter hint: its key is looked up in the keymap.</summary>
+  TFBarHint = record
+    Action: TKeymapAction;
+    Lbl: string;
+  end;
+
+const
+  cAllFBarActions: TFBarActions = [Succ(Low(TKeymapAction))..High(TKeymapAction)];
+  // What each document F-bar lists (what that view really handles).
+  cViewerFBar: TFBarActions = [kaDocToggleEdit, kaDocHex, kaDocEncodingNext,
+    kaDocEncoding, kaDocGotoLine, kaDocFind, kaDocFindNext, kaDocFindPrev,
+    kaDocClose, kaViewerWordWrap];
+  cViewerHexFBar: TFBarActions = [kaDocToggleEdit, kaDocHex, kaDocEncodingNext,
+    kaDocGotoLine, kaDocClose];
+  cMarkdownFBar: TFBarActions = [kaMarkdownSource, kaDocToggleEdit, kaDocGotoLine,
+    kaDocFind, kaDocFindNext, kaDocFindPrev, kaDocClose];
+  cEditorFBar: TFBarActions = [kaEditorSave, kaEditorReplace, kaDocToggleEdit,
+    kaDocEncodingNext, kaDocEncoding, kaDocGotoLine, kaDocFind, kaDocFindNext,
+    kaDocFindPrev, kaDocClose];
+
+function Hint(AAction: TKeymapAction; const ALabel: string): TFBarHint;
+begin
+  Result.Action := AAction;
+  Result.Lbl := ALabel;
+end;
+
+function FBarActionLabel(ACtx: TFunctionBarContext; AAction: TKeymapAction): string;
+begin
+  if (ACtx = fbcViewerHex) and (AAction = kaDocHex) then
+    Result := 'Text'
+  else if (ACtx = fbcEditor) and (AAction = kaDocToggleEdit) then
+    Result := 'View'
+  else
+    Result := KeymapFBarShortLabel(AAction);
+end;
+
+/// <summary>F1-F10 with AMods held: the label of the action AChain binds
+/// there, when it is one of AAllowed.</summary>
+procedure FKeysFromKeymap(ACtx: TFunctionBarContext; const AChain: TArray<TKeymapContext>;
+  const AAllowed: TFBarActions; AMods: TShiftState; var AItems: TArray<string>);
+var
+  N: Integer;
+  Act: TKeymapAction;
+  Lbl: string;
+begin
+  for N := 1 to 10 do
+  begin
+    Act := MatchActionIn(ActiveKeymap, AChain, vkF1 + N - 1, AMods);
+    if (Act = kaNone) or not (Act in AAllowed) then
+      Continue;
+    Lbl := FBarActionLabel(ACtx, Act);
+    if Lbl <> '' then
+      AItems[N - 1] := IntToStr(N) + Lbl;
+  end;
+end;
+
+/// <summary>Key text of AAction's hint with AMods held: its binding with
+/// exactly those modifiers, else one that needs more ("S" Shift, "A" Alt,
+/// "C" Ctrl in front: "SEnt"); '' when none. F1-F10 are the slots' own.</summary>
+function HintKeyText(AAction: TKeymapAction; AMods: TShiftState): string;
+var
+  Pass, I: Integer;
+  B: TKeyBinding;
+  BMods: TShiftState;
+begin
+  for Pass := 0 to 1 do
+    for I := 0 to High(ActiveKeymap.Bindings[AAction]) do
+    begin
+      B := ActiveKeymap.Bindings[AAction][I];
+      if (B.Key >= vkF1) and (B.Key <= vkF10) then
+        Continue;
+      BMods := [];
+      if B.Shift then Include(BMods, ssShift);
+      if B.Alt then Include(BMods, ssAlt);
+      if B.Ctrl then Include(BMods, ssCtrl);
+      if (Pass = 0) and (BMods <> AMods) then
+        Continue;
+      if (Pass = 1) and ((BMods = AMods) or not (AMods <= BMods)) then
+        Continue;
+      Result := '';
+      if (ssCtrl in BMods) and not (ssCtrl in AMods) then
+        Result := Result + 'C';
+      if (ssAlt in BMods) and not (ssAlt in AMods) then
+        Result := Result + 'A';
+      if (ssShift in BMods) and not (ssShift in AMods) then
+        Result := Result + 'S';
+      if B.Key = vkReturn then
+        Exit(Result + 'Ent');
+      Exit(Result + VKToShortString(B.Key));
+    end;
+  Result := '';
+end;
+
+procedure HintsFromKeymap(const AHints: array of TFBarHint; AMods: TShiftState;
+  var ALetters: TArray<string>);
+var
+  H: TFBarHint;
+  Key: string;
+begin
+  SetLength(ALetters, 0);
+  for H in AHints do
+  begin
+    Key := HintKeyText(H.Action, AMods);
+    if Key <> '' then
+      ALetters := ALetters + [Key + ':' + H.Lbl];
+  end;
+end;
+
 procedure FunctionBarItemsForPanels(ACtx: TFunctionBarContext; Mods: TShiftState;
   var AItems, ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) and not (ssShift in Mods) then
-  begin
-    AItems[0] := '1Left';
-    AItems[1] := '2Right';
-    AItems[2] := '3Name';
-    AItems[3] := '4Ext';
-    AItems[4] := '5Time';
-    AItems[5] := '6Size';
-    AItems[6] := '7Unsrt';
-    AItems[7] := '8Creat';
-    AItems[8] := '9Acces';
-    ApplyKeymapToFBarItems(ActiveKeymap, Mods, AItems);
-    // Letter hints: actions not on F1–F10 (F12 / digit / letters).
-    SetLength(ALetters, 10);
-    ALetters[0] := '3:Modes';
-    ALetters[1] := 'U:Swap';
-    ALetters[2] := 'L:Info';
-    ALetters[3] := 'F12:Sort';
-    ALetters[4] := 'O:Cons';
-    ALetters[5] := 'R:Refr';
-    ALetters[6] := 'A:All';
-    ALetters[7] := 'T:PTab';
-    ALetters[8] := 'Ent:Name';
-    ALetters[9] := 'SEnt:Path';
-  end
-  else if (ssAlt in Mods) and not (ssCtrl in Mods) and not (ssShift in Mods) then
-  begin
-    AItems[0] := '1Left';
-    AItems[1] := '2Right';
-    AItems[6] := '7Find';
-    ApplyKeymapToFBarItems(ActiveKeymap, Mods, AItems);
-  end
-  else if (ssShift in Mods) and not (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    AItems[0] := '1Pack';
-    AItems[1] := '2Unpk';
-    AItems[3] := '4Edit';
-    AItems[4] := '5CopyH';
-    AItems[5] := '6Renam';
-    AItems[7] := '8Wipe';
-    ApplyKeymapToFBarItems(ActiveKeymap, Mods, AItems);
-  end
-  else if (ssAlt in Mods) and (ssShift in Mods) and not (ssCtrl in Mods)
-    and (ACtx = fbcTmpPanel) then
+  FKeysFromKeymap(ACtx, [kcPanels, kcGlobal], cAllFBarActions, Mods, AItems);
+  if Mods = [ssCtrl] then
+    // Letter hints: actions not on F1-F10 (F12 / Enter / letters).
+    HintsFromKeymap([Hint(kaColumnMode, 'Modes'), Hint(kaSwapPanels, 'Swap'),
+      Hint(kaInfoPanel, 'Info'), Hint(kaSortMenu, 'Sort'),
+      Hint(kaAppConsoleToggle, 'Cons'), Hint(kaRefresh, 'Refr'),
+      Hint(kaSelectAll, 'All'), Hint(kaNewTab, 'PTab'),
+      Hint(kaInsertItemName, 'Name'), Hint(kaInsertItemPath, 'Path')], Mods, ALetters)
+  else if (Mods = [ssAlt, ssShift]) and (ACtx = fbcTmpPanel) then
   begin
     // Far TmpPanel: Alt+Shift+F2 save list, Alt+Shift+F3 goto opposite.
     AItems[1] := '2SavLst';
@@ -145,24 +227,13 @@ begin
     SetLength(ALetters, 1);
     ALetters[0] := 'CPgUp:GoTo';
   end
-  else if (ssCtrl in Mods) and (ssAlt in Mods) and not (ssShift in Mods)
-    and (ACtx = fbcWorkspace) then
+  else if (Mods = [ssCtrl, ssAlt]) and (ACtx = fbcWorkspace) then
   begin
     SetLength(ALetters, 1);
     ALetters[0] := 'Ent:GoTo';
   end
   else if Mods = [] then
   begin
-    AItems[0] := '1Help';
-    AItems[1] := '2Menu';
-    AItems[2] := '3View';
-    AItems[3] := '4Edit';
-    AItems[4] := '5Copy';
-    AItems[5] := '6Move';
-    AItems[6] := '7MkDir';
-    AItems[7] := '8Del';
-    AItems[9] := '10Quit';
-    ApplyKeymapToFBarItems(ActiveKeymap, Mods, AItems);
     if ACtx = fbcTmpPanel then
     begin
       AItems[6] := '7Remove';
@@ -180,120 +251,57 @@ end;
 
 procedure FunctionBarItemsForConsole(Mods: TShiftState; var ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    SetLength(ALetters, 3);
-    ALetters[0] := 'A:All';
-    ALetters[1] := 'C:Copy';
-    ALetters[2] := 'O:Panels';
-  end
-  else if Mods = [] then
+  if Mods = [] then
   begin
     SetLength(ALetters, 1);
     ALetters[0] := 'Esc:Panels';
-  end;
+  end
+  else if Mods = [ssCtrl] then
+    HintsFromKeymap([Hint(kaShellSelectAll, 'All'), Hint(kaShellCopyOrInterrupt, 'Copy'),
+      Hint(kaAppConsoleToggle, 'Panels')], Mods, ALetters)
+  else if Mods = [ssCtrl, ssShift] then
+    HintsFromKeymap([Hint(kaShellSelectAll, 'All'), Hint(kaShellCopyOrInterrupt, 'Copy')],
+      Mods, ALetters);
 end;
 
 // Raw passthrough: almost every key goes straight to the shell, so only the
 // host-level shortcuts get a hint here.
 procedure FunctionBarItemsForTerminal(Mods: TShiftState; var ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    SetLength(ALetters, 3);
-    ALetters[0] := 'A:All';
-    ALetters[1] := 'C:Copy/Brk';
-    ALetters[2] := 'V:Paste';
-  end
-  else if Mods = [] then
+  if Mods = [] then
   begin
     SetLength(ALetters, 1);
     ALetters[0] := 'Esc:Close';
-  end;
+  end
+  else if (Mods = [ssCtrl]) or (Mods = [ssCtrl, ssShift]) then
+    HintsFromKeymap([Hint(kaShellSelectAll, 'All'),
+      Hint(kaShellCopyOrInterrupt, 'Copy/Brk'), Hint(kaShellPaste, 'Paste')], Mods, ALetters);
 end;
 
 procedure FunctionBarItemsForViewer(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    SetLength(ALetters, 3);
-    ALetters[0] := 'A:All';
-    ALetters[1] := 'C:Copy';
-    ALetters[2] := 'H:Hex';
-  end
-  else if (ssShift in Mods) and not (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    AItems[2] := '3Prev';
-    AItems[6] := '7Next';
-    AItems[7] := '8Code';
-  end
-  else if (ssAlt in Mods) and not (ssCtrl in Mods) then
-  begin
-    AItems[6] := '7Prev';
-    AItems[7] := '8Goto';
-  end
-  else if Mods = [] then
-  begin
-    AItems[1] := '2Wrap';
-    AItems[2] := '3Next';
-    AItems[3] := '4Hex';
-    AItems[5] := '6Edit';
-    AItems[6] := '7Find';
-    AItems[7] := '8Code';
-    AItems[9] := '10Quit';
-  end;
+  FKeysFromKeymap(fbcViewer, [kcViewer, kcDocument], cViewerFBar, Mods, AItems);
+  if Mods = [ssCtrl] then
+    HintsFromKeymap([Hint(kaDocSelectAll, 'All'), Hint(kaDocCopy, 'Copy'),
+      Hint(kaDocHex, 'Hex')], Mods, ALetters);
 end;
 
 procedure FunctionBarItemsForViewerHex(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    SetLength(ALetters, 2);
-    ALetters[0] := 'C:Copy';
-    ALetters[1] := 'H:Text';
-  end
-  else if (ssAlt in Mods) and not (ssCtrl in Mods) then
-  begin
-    AItems[7] := '8Goto';
-  end
-  else if Mods = [] then
-  begin
-    AItems[3] := '4Text';
-    AItems[5] := '6Edit';
-    AItems[7] := '8Code';
-    AItems[9] := '10Quit';
-  end;
+  FKeysFromKeymap(fbcViewerHex, [kcViewer, kcDocument], cViewerHexFBar, Mods, AItems);
+  if Mods = [ssCtrl] then
+    HintsFromKeymap([Hint(kaDocCopy, 'Copy'), Hint(kaDocHex, 'Text')], Mods, ALetters);
 end;
 
 // Markdown render: F4 is Raw (same as Ctrl+M). Ctrl+H stays Hex. No Wrap on
 // F2 — Markdown wraps via the parser, not Viewer word-wrap.
 procedure FunctionBarItemsForViewerMarkdown(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    SetLength(ALetters, 3);
-    ALetters[0] := 'C:Copy';
-    ALetters[1] := 'H:Hex';
-    ALetters[2] := 'M:Raw';
-  end
-  else if (ssShift in Mods) and not (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    AItems[2] := '3Prev';
-    AItems[6] := '7Next';
-  end
-  else if (ssAlt in Mods) and not (ssCtrl in Mods) then
-  begin
-    AItems[6] := '7Prev';
-    AItems[7] := '8Goto';
-  end
-  else if Mods = [] then
-  begin
-    AItems[2] := '3Next';
-    AItems[3] := '4Raw';
-    AItems[5] := '6Edit';
-    AItems[6] := '7Find';
-    AItems[9] := '10Quit';
-  end;
+  FKeysFromKeymap(fbcViewerMarkdown, [kcMarkdown, kcViewer, kcDocument], cMarkdownFBar,
+    Mods, AItems);
+  if Mods = [ssCtrl] then
+    HintsFromKeymap([Hint(kaDocCopy, 'Copy'), Hint(kaDocHex, 'Hex'),
+      Hint(kaDocMarkdown, 'Raw')], Mods, ALetters);
 end;
 
 // F1 Help: read-only Markdown with links; F6/F4/F8 of the Viewer do not apply.
@@ -339,45 +347,13 @@ end;
 
 procedure FunctionBarItemsForEditor(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
-  if (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    if ssShift in Mods then
-    begin
-      SetLength(ALetters, 1);
-      ALetters[0] := 'Z:Redo';
-    end
-    else
-    begin
-      SetLength(ALetters, 7);
-      ALetters[0] := 'A:All';
-      ALetters[1] := 'C:Copy';
-      ALetters[2] := 'X:Cut';
-      ALetters[3] := 'V:Paste';
-      ALetters[4] := 'Z:Undo';
-      ALetters[5] := 'Y:DelLn';
-      ALetters[6] := 'F7:Repl';
-    end;
-  end
-  else if (ssShift in Mods) and not (ssCtrl in Mods) and not (ssAlt in Mods) then
-  begin
-    AItems[2] := '3Prev';
-    AItems[6] := '7Next';
-    AItems[7] := '8Code';
-  end
-  else if (ssAlt in Mods) and not (ssCtrl in Mods) then
-  begin
-    AItems[6] := '7Prev';
-    AItems[7] := '8Goto';
-  end
-  else if Mods = [] then
-  begin
-    AItems[1] := '2Save';
-    AItems[2] := '3Next';
-    AItems[5] := '6View';
-    AItems[6] := '7Find';
-    AItems[7] := '8Code';
-    AItems[9] := '10Quit';
-  end;
+  FKeysFromKeymap(fbcEditor, [kcEditor, kcDocument], cEditorFBar, Mods, AItems);
+  if Mods = [ssCtrl] then
+    HintsFromKeymap([Hint(kaDocSelectAll, 'All'), Hint(kaDocCopy, 'Copy'),
+      Hint(kaEditorCut, 'Cut'), Hint(kaEditorPaste, 'Paste'), Hint(kaEditorUndo, 'Undo'),
+      Hint(kaEditorDeleteLine, 'DelLn')], Mods, ALetters)
+  else if Mods = [ssCtrl, ssShift] then
+    HintsFromKeymap([Hint(kaEditorRedo, 'Redo')], Mods, ALetters);
 end;
 
 // Labels are built in English everywhere above (and by the keymap) and
@@ -846,12 +822,51 @@ begin
   end;
 end;
 
+/// <summary>Key of a hint's key text: "Esc", "Enter" / "Ent", "Tab", "BkSp",
+/// "Ins", "Del", "F1".."F12", a letter or digit, or any keymap key name
+/// ("PgUp", "`", "\\").</summary>
+function ResolveHintKey(const S: string; out AKey: Word; out AKeyChar: Char): Boolean;
+var
+  N: Integer;
+begin
+  AKey := 0;
+  AKeyChar := #0;
+  if SameText(S, 'Esc') or SameText(S, 'Escape') then
+    AKey := vkEscape
+  else if SameText(S, 'Enter') or SameText(S, 'Return') or SameText(S, 'Ent') then
+    AKey := vkReturn
+  else if SameText(S, 'Tab') then
+    AKey := vkTab
+  else if SameText(S, 'BkSp') or SameText(S, 'Backspace') then
+    AKey := vkBack
+  else if SameText(S, 'Ins') or SameText(S, 'Insert') then
+    AKey := vkInsert
+  else if SameText(S, 'Del') or SameText(S, 'Delete') then
+    AKey := vkDelete
+  else if (Length(S) >= 2) and CharInSet(S[1], ['F', 'f']) and
+    TryStrToInt(Copy(S, 2, MaxInt), N) then
+  begin
+    if (N >= 1) and (N <= 12) then
+      AKey := Word(vkF1 + (N - 1));
+  end
+  else if (Length(S) = 1) and CharInSet(S[1], ['a'..'z', 'A'..'Z', '0'..'9']) then
+  begin
+    AKeyChar := UpCase(S[1]);
+    AKey := Word(Ord(AKeyChar));
+  end
+  else
+  begin
+    AKey := StringToVK(S);
+    if Length(S) = 1 then
+      AKeyChar := S[1];
+  end;
+  Result := AKey <> 0;
+end;
+
 function FunctionBarHitToInput(const AHit: TFunctionBarHit; AMods: TShiftState;
   out AKey: Word; out AKeyChar: Char; out AShift: TShiftState): Boolean;
 var
   S: string;
-  Ch: Char;
-  N: Integer;
 begin
   Result := False;
   AKey := 0;
@@ -880,50 +895,17 @@ begin
             Break;
           S := Copy(S, Pos('+', S) + 1, MaxInt);
         end;
-        if SameText(S, 'Esc') or SameText(S, 'Escape') then
+        Result := ResolveHintKey(S, AKey, AKeyChar);
+        // Keymap hints mark a modifier beyond the held ones by its letter:
+        // "SEnt" = Shift+Enter, "CPgUp" = Ctrl+PgUp (HintKeyText).
+        if not Result and (Length(S) > 1) and CharInSet(S[1], ['S', 'A', 'C']) and
+          ResolveHintKey(Copy(S, 2, MaxInt), AKey, AKeyChar) then
         begin
-          AKey := vkEscape;
-          Result := True;
-        end
-        else if SameText(S, 'Enter') or SameText(S, 'Return') then
-        begin
-          AKey := vkReturn;
-          Result := True;
-        end
-        else if SameText(S, 'Tab') then
-        begin
-          AKey := vkTab;
-          Result := True;
-        end
-        else if SameText(S, 'BkSp') or SameText(S, 'Backspace') then
-        begin
-          AKey := vkBack;
-          Result := True;
-        end
-        else if SameText(S, 'Ins') or SameText(S, 'Insert') then
-        begin
-          AKey := vkInsert;
-          Result := True;
-        end
-        else if SameText(S, 'Del') or SameText(S, 'Delete') then
-        begin
-          AKey := vkDelete;
-          Result := True;
-        end
-        else if (Length(S) >= 2) and ((S[1] = 'F') or (S[1] = 'f')) then
-        begin
-          N := StrToIntDef(Copy(S, 2, MaxInt), 0);
-          if (N >= 1) and (N <= 12) then
-          begin
-            AKey := Word(vkF1 + (N - 1));
-            Result := True;
+          case S[1] of
+            'S': Include(AShift, ssShift);
+            'A': Include(AShift, ssAlt);
+            'C': Include(AShift, ssCtrl);
           end;
-        end
-        else if Length(S) = 1 then
-        begin
-          Ch := UpCase(S[1]);
-          AKey := Word(Ord(Ch));
-          AKeyChar := Ch;
           Result := True;
         end;
       end;

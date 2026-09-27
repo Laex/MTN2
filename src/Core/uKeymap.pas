@@ -140,7 +140,15 @@ type
     kaAppQuit, // Alt+X -- quit (kaQuit is F10 on the panels only)
     kaAppConsoleToggle, // Ctrl+O -- panels <-> console (kaConsoleToggle is Esc on the panels)
     kaZoomReset, // Ctrl+0 -- zoom back to 100%
-    kaReloadKeymap // Ctrl+Alt+K -- reload keymap.json
+    kaReloadKeymap, // Ctrl+Alt+K -- reload keymap.json
+    // Panel Console and terminal alike (kcShell).
+    kaShellHistory, // Alt+F8 -- command history picker
+    kaShellSelectAll, // Ctrl+A -- select all
+    kaShellCopyOrInterrupt, // Ctrl+C -- copy the selection, else interrupt
+    kaShellCopy, // Ctrl+Ins -- copy the selection
+    kaShellPaste, // Ctrl+V / Shift+Ins -- paste
+    // Panel Console (kcConsole).
+    kaConsoleSyncDir // Ctrl+Shift+O -- the panel follows the console's folder
   );
 
   TKeyBinding = record
@@ -168,7 +176,8 @@ type
     kcMarkdown,  // rendered Markdown view (above kcViewer)
     kcEditor,    // editor only
     kcConsole,   // Panel Console (Ctrl+O)
-    kcTerminal   // terminal workspace
+    kcTerminal,  // terminal workspace
+    kcShell      // Panel Console and terminal alike (below kcConsole / kcTerminal)
   );
 
 /// <summary>The one context AAction belongs to.</summary>
@@ -182,6 +191,12 @@ function MatchActionIn(const AProfile: TKeymapProfile;
 /// or digit only as the typed character (AKey = 0), which then stands for
 /// its key. Ord('o') and the like are other keys (vkDivide) and stay.</summary>
 function KeymapLookupKey(AKey: Word; AKeyChar: Char): Word;
+/// <summary>The Global action (kcGlobal) for this keystroke in a window whose
+/// own contexts are AChain, or kaNone: the window's contexts come first, so
+/// a key they bind stays theirs. AKey goes through KeymapLookupKey.</summary>
+function MatchGlobalActionIn(const AProfile: TKeymapProfile;
+  const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
+  AShiftState: TShiftState): TKeymapAction;
 /// <summary>MatchActionIn against ActiveKeymap.</summary>
 function MatchActiveActionIn(const AChain: array of TKeymapContext; AKey: Word;
   AShiftState: TShiftState): TKeymapAction;
@@ -259,9 +274,15 @@ function KeymapFileLoadCount: Integer;
 
 /// <summary>Short F-bar label for an action (empty = not shown on F1–F10 bar).</summary>
 function KeymapFBarShortLabel(AAction: TKeymapAction): string;
-/// <summary>Overwrite F1–F10 slots from profile bindings that match AMods.</summary>
-procedure ApplyKeymapToFBarItems(const AProfile: TKeymapProfile; AMods: TShiftState;
-  var AItems: TArray<string>);
+/// <summary>Compact key name for menus and the F-bar: "Ins", "Del", "Esc",
+/// "PgUp", "Num+" where VKToDisplayString says "Insert", "Delete", ...</summary>
+function VKToShortString(AKey: Word): string;
+/// <summary>"Ctrl+Shift+Ins" style label for one binding, compact key names.</summary>
+function KeyBindingToShortStr(const ABinding: TKeyBinding): string;
+/// <summary>The first AMax bindings of AAction joined with " / " for a menu
+/// ("Ctrl+C / Ctrl+Ins"); '' when it has none.</summary>
+function KeymapShortcutText(const AProfile: TKeymapProfile; AAction: TKeymapAction;
+  AMax: Integer = 2): string;
 
 const
   // OEM bracket/grave keys (Winapi VK_OEM_4 / VK_OEM_6 / VK_OEM_3); not in System.UITypes.
@@ -293,7 +314,7 @@ const
 implementation
 
 uses
-  uConfigLocation;
+  System.Math, uConfigLocation;
 
 function KeyBinding(AKey: Word; AShift: Boolean; AAlt: Boolean; ACtrl: Boolean): TKeyBinding;
 begin
@@ -353,9 +374,10 @@ begin
     Result := vkNumpad0 + Ord(UpperS[4]) - Ord('0')
   else if (Length(UpperS) = 7) and UpperS.StartsWith('NUMPAD') and CharInSet(UpperS[7], ['0'..'9']) then
     Result := vkNumpad0 + Ord(UpperS[7]) - Ord('0')
-  else if (UpperS = 'NUMPAD+') or (UpperS = '+') or (UpperS = 'ADD') then Result := vkAdd
-  else if (UpperS = 'NUMPAD-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
-  else if (UpperS = 'NUMPAD*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
+  else if (UpperS = 'NUMPAD+') or (UpperS = 'NUM+') or (UpperS = '+') or (UpperS = 'ADD') then Result := vkAdd
+  else if (UpperS = 'NUMPAD-') or (UpperS = 'NUM-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
+  else if (UpperS = 'NUMPAD*') or (UpperS = 'NUM*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
+  else if (UpperS = 'BACKSPACE') or (UpperS = 'BKSP') then Result := vkBack
   else if Length(UpperS) = 1 then Result := Ord(UpperS[1])
   else Result := 0;
 end;
@@ -619,6 +641,19 @@ begin
   AddBinding(Result, kaZoomReset, KeyBinding(Ord('0'), False, False, True));
   AddBinding(Result, kaZoomReset, KeyBinding(vkNumpad0, False, False, True));
   AddBinding(Result, kaReloadKeymap, KeyBinding(Ord('K'), False, True, True));
+
+  // Panel Console and terminal. Ctrl+Shift+A / C / V as well: the usual
+  // terminal copy / paste chords.
+  AddBinding(Result, kaShellHistory, KeyBinding(vkF8, False, True, False));
+  AddBinding(Result, kaShellSelectAll, KeyBinding(Ord('A'), False, False, True));
+  AddBinding(Result, kaShellSelectAll, KeyBinding(Ord('A'), True, False, True));
+  AddBinding(Result, kaShellCopyOrInterrupt, KeyBinding(Ord('C'), False, False, True));
+  AddBinding(Result, kaShellCopyOrInterrupt, KeyBinding(Ord('C'), True, False, True));
+  AddBinding(Result, kaShellCopy, KeyBinding(vkInsert, False, False, True));
+  AddBinding(Result, kaShellPaste, KeyBinding(Ord('V'), False, False, True));
+  AddBinding(Result, kaShellPaste, KeyBinding(Ord('V'), True, False, True));
+  AddBinding(Result, kaShellPaste, KeyBinding(vkInsert, True, False, False));
+  AddBinding(Result, kaConsoleSyncDir, KeyBinding(Ord('O'), True, False, True));
 end;
 
 function GetDefaultFARProfile: TKeymapProfile;
@@ -646,6 +681,11 @@ begin
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
     kaTopMenu, kaAppQuit, kaAppConsoleToggle, kaZoomReset, kaReloadKeymap:
       Result := kcGlobal;
+    kaShellHistory, kaShellSelectAll, kaShellCopyOrInterrupt, kaShellCopy,
+    kaShellPaste:
+      Result := kcShell;
+    kaConsoleSyncDir:
+      Result := kcConsole;
   else
     Result := kcPanels;
   end;
@@ -684,6 +724,16 @@ begin
           Exit(Act);
       end;
     end;
+end;
+
+function MatchGlobalActionIn(const AProfile: TKeymapProfile;
+  const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
+  AShiftState: TShiftState): TKeymapAction;
+begin
+  Result := MatchActionIn(AProfile, AChain + [kcGlobal],
+    KeymapLookupKey(AKey, AKeyChar), AShiftState);
+  if (Result <> kaNone) and (KeymapActionContext(Result) <> kcGlobal) then
+    Result := kaNone;
 end;
 
 function MatchAction(const AProfile: TKeymapProfile; AKey: Word; AShiftState: TShiftState): TKeymapAction;
@@ -838,7 +888,13 @@ const
     'AppQuit',               // kaAppQuit
     'AppConsoleToggle',      // kaAppConsoleToggle
     'ZoomReset',             // kaZoomReset
-    'ReloadKeymap'           // kaReloadKeymap
+    'ReloadKeymap',          // kaReloadKeymap
+    'ShellHistory',          // kaShellHistory
+    'ShellSelectAll',        // kaShellSelectAll
+    'ShellCopyOrInterrupt',  // kaShellCopyOrInterrupt
+    'ShellCopy',             // kaShellCopy
+    'ShellPaste',            // kaShellPaste
+    'ConsoleSyncDir'         // kaConsoleSyncDir
   );
 
 function TryKeymapActionByName(const AName: string; out AAction: TKeymapAction): Boolean;
@@ -1208,44 +1264,67 @@ begin
     kaSortByAccessed: Result := 'Acces';
     kaExternalView: Result := 'ExtVw';
     kaExternalEdit: Result := 'ExtEd';
+    kaDriveLeft: Result := 'Left';
+    kaDriveRight: Result := 'Right';
+    kaNewFile: Result := 'Edit';
+    kaDocToggleEdit: Result := 'Edit';
+    kaDocHex: Result := 'Hex';
+    kaDocMarkdown, kaMarkdownSource: Result := 'Raw';
+    kaDocEncodingNext, kaDocEncoding: Result := 'Code';
+    kaDocGotoLine: Result := 'Goto';
+    kaDocFind: Result := 'Find';
+    kaDocFindNext: Result := 'Next';
+    kaDocFindPrev: Result := 'Prev';
+    kaDocClose: Result := 'Quit';
+    kaViewerWordWrap: Result := 'Wrap';
+    kaEditorSave: Result := 'Save';
+    kaEditorReplace: Result := 'Repl';
   else
     Result := '';
   end;
 end;
 
-procedure ApplyKeymapToFBarItems(const AProfile: TKeymapProfile; AMods: TShiftState;
-  var AItems: TArray<string>);
-var
-  Act: TKeymapAction;
-  I, FNum: Integer;
-  B: TKeyBinding;
-  WantShift, WantAlt, WantCtrl: Boolean;
-  Lbl, Prefix: string;
+function VKToShortString(AKey: Word): string;
 begin
-  if Length(AItems) < 10 then
-    SetLength(AItems, 10);
-  WantShift := ssShift in AMods;
-  WantAlt := ssAlt in AMods;
-  WantCtrl := ssCtrl in AMods;
-  for Act := Low(TKeymapAction) to High(TKeymapAction) do
+  case AKey of
+    vkInsert: Result := 'Ins';
+    vkDelete: Result := 'Del';
+    vkEscape: Result := 'Esc';
+    vkPrior: Result := 'PgUp';
+    vkNext: Result := 'PgDn';
+    vkBack: Result := 'BkSp';
+    vkBackSlash: Result := '\';
+    vkAdd: Result := 'Num+';
+    vkSubtract: Result := 'Num-';
+    vkMultiply: Result := 'Num*';
+  else
+    Result := VKToDisplayString(AKey);
+  end;
+end;
+
+function KeyBindingToShortStr(const ABinding: TKeyBinding): string;
+begin
+  Result := '';
+  if ABinding.Ctrl then
+    Result := Result + 'Ctrl+';
+  if ABinding.Alt then
+    Result := Result + 'Alt+';
+  if ABinding.Shift then
+    Result := Result + 'Shift+';
+  Result := Result + VKToShortString(ABinding.Key);
+end;
+
+function KeymapShortcutText(const AProfile: TKeymapProfile; AAction: TKeymapAction;
+  AMax: Integer): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to Min(High(AProfile.Bindings[AAction]), AMax - 1) do
   begin
-    Lbl := KeymapFBarShortLabel(Act);
-    if Lbl = '' then
-      Continue;
-    for I := 0 to High(AProfile.Bindings[Act]) do
-    begin
-      B := AProfile.Bindings[Act][I];
-      if (B.Key < vkF1) or (B.Key > vkF10) then
-        Continue;
-      if (B.Shift <> WantShift) or (B.Alt <> WantAlt) or (B.Ctrl <> WantCtrl) then
-        Continue;
-      FNum := Integer(B.Key - vkF1) + 1;
-      if FNum = 10 then
-        Prefix := '10'
-      else
-        Prefix := IntToStr(FNum);
-      AItems[FNum - 1] := Prefix + Lbl;
-    end;
+    if Result <> '' then
+      Result := Result + ' / ';
+    Result := Result + KeyBindingToShortStr(AProfile.Bindings[AAction][I]);
   end;
 end;
 

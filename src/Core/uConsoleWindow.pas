@@ -430,23 +430,25 @@ begin
   end;
   K := TKeyChord.Make(AKey, AKeyChar, AShift);
 
-  // Ctrl+Shift+O — sync active panel's directory to this console's cwd
-  // (mirror of Dual Panel's kaSyncConsoleDir, other direction).
-  if K.Matches(kmConsole, [ssCtrl, ssShift]) then
-  begin
-    if Assigned(FOnSyncDirToPanels) then
-      FOnSyncDirToPanels(Self);
-    AKey := 0; AKeyChar := #0;
-    Exit;
-  end;
-
-  // Ctrl+O — back to panels.
-  if K.Matches(kmConsole, [ssCtrl]) then
-  begin
-    if Assigned(FOnBackToPanels) then
-      FOnBackToPanels(Self);
-    AKey := 0; AKeyChar := #0;
-    Exit;
+  case MatchActiveActionIn([kcConsole, kcShell, kcGlobal],
+    KeymapLookupKey(AKey, AKeyChar), AShift) of
+    // Ctrl+Shift+O — the active panel goes to this console's folder (the
+    // panels' SyncConsoleDir, the other way round).
+    kaConsoleSyncDir:
+      begin
+        if Assigned(FOnSyncDirToPanels) then
+          FOnSyncDirToPanels(Self);
+        AKey := 0; AKeyChar := #0;
+        Exit;
+      end;
+    // Ctrl+O (Global AppConsoleToggle) — back to panels.
+    kaAppConsoleToggle:
+      begin
+        if Assigned(FOnBackToPanels) then
+          FOnBackToPanels(Self);
+        AKey := 0; AKeyChar := #0;
+        Exit;
+      end;
   end;
 
   // Alt+F8, Ctrl+A, Ctrl+C (copy or interrupt), Ctrl+Insert, Ctrl+V /
@@ -480,9 +482,8 @@ begin
   case AKey of
     vkF10:
       begin
-        // F10 no longer closes the Panel Console — Esc/Ctrl+O do. Still
-        // swallow the key so it doesn't fall through to the global F10 =
-        // Quit application binding (uKeymap.kmQuit).
+        // F10 does not close the Panel Console — Esc / Ctrl+O do. Swallowed
+        // so it never reaches the panels' F10 = Quit.
         AKey := 0;
       end;
     vkEscape:

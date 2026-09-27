@@ -37,15 +37,22 @@ type
     /// Reset buttons.</summary>
     FDefaults: TKeymapProfile;
     FEditAction: TKeymapAction;
+    /// <summary>The action on each list row, kaNone on a context heading
+    /// (BuildRows).</summary>
+    FRows: TArray<TKeymapAction>;
     /// <summary>Set once a conflict warning has been shown for the pending
     /// edit — a second Save press with the same conflicting combo confirms
     /// the reassignment instead of warning again.</summary>
     FConfirmOverwrite: Boolean;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
-    function ActionCount: Integer;
     function ActionRowLabel(AAction: TKeymapAction): string;
+    /// <summary>List rows grouped by keymap context (Global, Panels,
+    /// Document, ...), each group under a heading row; fills FRows.</summary>
     function BuildRows: TArray<string>;
+    /// <summary>The action on list row AIndex; kaNone on a heading or out of
+    /// range.</summary>
+    function ActionAt(AIndex: Integer): TKeymapAction;
     /// <summary>Splits AText on ';', parses each token via
     /// uKeymapRegistry.TryParseKeyCombo. Returns False with AError set on the
     /// first unrecognized token.</summary>
@@ -76,10 +83,172 @@ type
       const AControlId: string): Boolean;
   end;
 
+/// <summary>Readable, translated name of AAction ("Hex <-> text").</summary>
+function KeymapActionCaption(AAction: TKeymapAction): string;
+/// <summary>Translated heading of a keymap context ("Viewer and editor").</summary>
+function KeymapContextCaption(AContext: TKeymapContext): string;
+
 implementation
 
 uses
-  uKeymapRegistry;
+  uKeymapRegistry, uStrings;
+
+const
+  /// <summary>English captions of the actions, in TKeymapAction order;
+  /// translated as ui.keymap.action.<keymap.json name>.</summary>
+  KEYMAP_ACTION_CAPTIONS: array[TKeymapAction] of string = (
+    '',
+    'Help',
+    'Pack into an archive',
+    'User menu',
+    'Unpack an archive',
+    'View file / folder size',
+    'Edit file',
+    'Copy',
+    'Move',
+    'Rename',
+    'Copy here under a new name',
+    'Create folder',
+    'Create link',
+    'Compare files',
+    'Recycle Bin',
+    'Restore from Recycle Bin',
+    'Delete to Recycle Bin',
+    'Delete permanently',
+    'Quit (panels)',
+    'Find files',
+    'Swap panels',
+    'Other panel to this folder',
+    'This panel to the other folder',
+    'Info panel',
+    'Column mode menu',
+    'Sort menu',
+    'Panels <-> console (panels)',
+    'Drive root',
+    'Left panel drive',
+    'Right panel drive',
+    'Refresh panel',
+    'Select all',
+    'Invert selection',
+    'Folder history back',
+    'Folder history forward',
+    'Folder history',
+    'File history',
+    'Command history',
+    'Folder hotlist',
+    'Add folder to hotlist',
+    'Branch view',
+    'Filter by mask',
+    'Show / hide left panel',
+    'Show / hide right panel',
+    'Sort by name',
+    'Sort by extension',
+    'Sort by modified time',
+    'Sort by size',
+    'Unsorted',
+    'Sort by creation time',
+    'Sort by access time',
+    'Copy full path',
+    'Name to command line',
+    'Path to command line',
+    'Run in a separate window',
+    'Go to command line',
+    'New panel tab',
+    'Close panel tab',
+    'Next workspace tab',
+    'Select by mask',
+    'Deselect by mask',
+    'Synchronize folders',
+    'Background jobs',
+    'New terminal',
+    'New file',
+    'Quick view',
+    'Sync folder with console',
+    'Console shell profile',
+    'Show / hide hidden files',
+    'Columns: Brief',
+    'Columns: Size',
+    'Columns: Date',
+    'Columns: Full',
+    'Columns: Created',
+    'Columns: Types',
+    'Columns: Custom',
+    'Copy to clipboard',
+    'Cut to clipboard',
+    'Paste from clipboard',
+    'Saved workspaces',
+    'Save workspace',
+    'File attributes',
+    'Windows properties',
+    'SSH connections',
+    'File associations',
+    'Compare folders',
+    'External viewer',
+    'External editor',
+    'Checksums',
+    'Copy name',
+    'Viewer <-> editor',
+    'Hex <-> text',
+    'Markdown <-> text',
+    'Next encoding',
+    'Choose encoding',
+    'Go to line',
+    'Find',
+    'Find next',
+    'Find previous',
+    'Copy selection or line',
+    'Select all',
+    'Clear selection',
+    'Close',
+    'Word wrap',
+    'Rendered <-> source',
+    'Save',
+    'Replace',
+    'Paste',
+    'Cut selection or line',
+    'Undo',
+    'Redo',
+    'Delete line',
+    'Delete to end of line',
+    'Insert line below',
+    'Previous workspace tab',
+    'Top menu',
+    'Quit',
+    'Panels <-> console',
+    'Zoom 100%',
+    'Reload keymap.json',
+    'Command history',
+    'Select all',
+    'Copy, or interrupt the command',
+    'Copy selection',
+    'Paste',
+    'Panel to the console folder'
+  );
+
+  /// <summary>Order of the groups in the list.</summary>
+  KEYMAP_CONTEXT_ORDER: array[0..8] of TKeymapContext = (
+    kcGlobal, kcPanels, kcDocument, kcViewer, kcMarkdown, kcEditor, kcShell, kcConsole, kcTerminal);
+
+function KeymapActionCaption(AAction: TKeymapAction): string;
+begin
+  Result := T('ui.keymap.action.' + KeymapActionDisplayName(AAction),
+    KEYMAP_ACTION_CAPTIONS[AAction]);
+end;
+
+function KeymapContextCaption(AContext: TKeymapContext): string;
+begin
+  case AContext of
+    kcGlobal: Result := T('ui.keymap.context.global', 'Global (any window)');
+    kcPanels: Result := T('ui.keymap.context.panels', 'File panels');
+    kcDocument: Result := T('ui.keymap.context.document', 'Viewer and editor');
+    kcViewer: Result := T('ui.keymap.context.viewer', 'Viewer');
+    kcMarkdown: Result := T('ui.keymap.context.markdown', 'Markdown view');
+    kcEditor: Result := T('ui.keymap.context.editor', 'Editor');
+    kcShell: Result := T('ui.keymap.context.shell', 'Console and terminal');
+    kcConsole: Result := T('ui.keymap.context.console', 'Console');
+    kcTerminal: Result := T('ui.keymap.context.terminal', 'Terminal');
+  end;
+end;
 
 constructor TKeymapDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TKeymapKindSetter;
@@ -108,29 +277,49 @@ begin
     FOnNotify();
 end;
 
-function TKeymapDialogController.ActionCount: Integer;
-begin
-  Result := Ord(High(TKeymapAction)); // kaNone = 0, so this is also the count.
-end;
-
 function TKeymapDialogController.ActionRowLabel(AAction: TKeymapAction): string;
 var
-  Name, Keys: string;
+  Keys: string;
 begin
-  Name := KeymapActionDisplayName(AAction);
   Keys := BindingsToStr(FProfile.Bindings[AAction]);
   if Keys = '' then
-    Keys := '(none)';
-  Result := Format('%-28s%s', [Name, Keys]);
+    Keys := T('ui.keymap.noKeys', '(none)');
+  // Two spaces in, keys at column 40: lines up with the "header" label.
+  Result := Format('  %-38s%s', [KeymapActionCaption(AAction), Keys]);
 end;
 
 function TKeymapDialogController.BuildRows: TArray<string>;
 var
-  I: Integer;
+  Ctx: TKeymapContext;
+  Act: TKeymapAction;
+  First: Boolean;
 begin
-  SetLength(Result, ActionCount);
-  for I := 0 to ActionCount - 1 do
-    Result[I] := ActionRowLabel(TKeymapAction(I + 1));
+  Result := nil;
+  FRows := nil;
+  for Ctx in KEYMAP_CONTEXT_ORDER do
+  begin
+    First := True;
+    for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+    begin
+      if KeymapActionContext(Act) <> Ctx then
+        Continue;
+      if First then
+      begin
+        Result := Result + ['── ' + KeymapContextCaption(Ctx) + ' ──'];
+        FRows := FRows + [kaNone];
+        First := False;
+      end;
+      Result := Result + [ActionRowLabel(Act)];
+      FRows := FRows + [Act];
+    end;
+  end;
+end;
+
+function TKeymapDialogController.ActionAt(AIndex: Integer): TKeymapAction;
+begin
+  if (AIndex < 0) or (AIndex > High(FRows)) then
+    Exit(kaNone);
+  Result := FRows[AIndex];
 end;
 
 procedure TKeymapDialogController.OpenList;
@@ -145,7 +334,8 @@ begin
   FDefaults := LoadDefaultKeymapProfile;
 
   SetKind(hdkKeymap);
-  FDialog.Open(BuildKeymapDialog(BuildRows, 0), FOnCommand);
+  // Row 0 is the first group's heading.
+  FDialog.Open(BuildKeymapDialog(BuildRows, 1), FOnCommand);
   Notify;
 end;
 
@@ -159,10 +349,8 @@ begin
     Sel := ASelectedIndex
   else
     Sel := FDialog.GetListSelectedIndex('actions');
-  if Sel > ActionCount - 1 then
-    Sel := ActionCount - 1;
-  if Sel < 0 then
-    Sel := 0;
+  if Sel < 1 then
+    Sel := 1;
   SetKind(hdkKeymap);
   FDialog.Open(BuildKeymapDialog(BuildRows, Sel), FOnCommand);
   Notify;
@@ -170,12 +358,13 @@ end;
 
 procedure TKeymapDialogController.BeginEdit(AIndex: Integer);
 begin
-  if (AIndex < 0) or (AIndex > ActionCount - 1) then
+  if ActionAt(AIndex) = kaNone then
     Exit;
-  FEditAction := TKeymapAction(AIndex + 1);
+  FEditAction := ActionAt(AIndex);
   FConfirmOverwrite := False;
   SetKind(hdkKeymapEdit);
-  FDialog.Open(BuildKeymapEditDialog(KeymapActionDisplayName(FEditAction),
+  FDialog.Open(BuildKeymapEditDialog(Format('%s [%s]',
+    [KeymapActionCaption(FEditAction), KeymapActionDisplayName(FEditAction)]),
     BindingsToStr(FProfile.Bindings[FEditAction]), ''), FOnCommand);
   Notify;
 end;
@@ -186,9 +375,9 @@ var
   Act: TKeymapAction;
 begin
   Idx := FDialog.GetListSelectedIndex('actions');
-  if (Idx < 0) or (Idx > ActionCount - 1) then
+  Act := ActionAt(Idx);
+  if Act = kaNone then
     Exit;
-  Act := TKeymapAction(Idx + 1);
   FProfile.Bindings[Act] := Copy(FDefaults.Bindings[Act]);
   RefreshList(Idx);
 end;
@@ -196,7 +385,7 @@ end;
 procedure TKeymapDialogController.ResetAll;
 begin
   FProfile := CloneKeymapProfile(FDefaults);
-  RefreshList(0);
+  RefreshList(1);
 end;
 
 function TKeymapDialogController.TryParseKeysField(const AText: string;

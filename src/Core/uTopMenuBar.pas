@@ -228,10 +228,205 @@ type
 /// match a member's exact case.</summary>
 function StringToTopMenuAction(const AName: string): TTopMenuAction;
 
+/// <summary>Shortcut text of a menu item: the keys of the keymap action it
+/// runs, so a rebound key shows in the menu; menu.json's own "shortcut" text
+/// for items with no keymap action (and plugin items).</summary>
+function TopMenuItemShortcut(const AItem: TSubmenuItem): string;
+
 implementation
 
 uses
-  uInputLine;
+  uInputLine, uKeymap;
+
+/// <summary>The keymap action a menu item runs, whose keys it shows as its
+/// shortcut; kaNone for items with no keymap action (their menu.json
+/// "shortcut" text is shown as is).</summary>
+function TopMenuKeymapAction(AAction: TTopMenuAction): TKeymapAction;
+begin
+  case AAction of
+    tmaLeftDrive:
+      Result := kaDriveLeft;
+    tmaRightDrive:
+      Result := kaDriveRight;
+    tmaLeftSort, tmaRightSort:
+      Result := kaSortMenu;
+    tmaLeftColumnModes, tmaRightColumnModes:
+      Result := kaColumnMode;
+    tmaLeftInfo, tmaRightInfo:
+      Result := kaInfoPanel;
+    tmaLeftShowHidden, tmaRightShowHidden:
+      Result := kaToggleHidden;
+    tmaLeftNewTab, tmaRightNewTab:
+      Result := kaNewTab;
+    tmaLeftCloseTab, tmaRightCloseTab:
+      Result := kaCloseTab;
+    tmaLeftToggle:
+      Result := kaTogglePanelLeft;
+    tmaRightToggle:
+      Result := kaTogglePanelRight;
+    tmaFileView, tmaFileCalcSize:
+      Result := kaView;
+    tmaFileEdit:
+      Result := kaEdit;
+    tmaFileExternalView:
+      Result := kaExternalView;
+    tmaFileExternalEdit:
+      Result := kaExternalEdit;
+    tmaFileCopy:
+      Result := kaCopy;
+    tmaFileMove:
+      Result := kaMove;
+    tmaFileRename:
+      Result := kaRename;
+    tmaFileMkDir:
+      Result := kaMkDir;
+    tmaFileCreateLink:
+      Result := kaCreateLink;
+    tmaFileSetAttributes:
+      Result := kaSetAttributes;
+    tmaFileProperties:
+      Result := kaProperties;
+    tmaFileCompare:
+      Result := kaCompareFiles;
+    tmaFileChecksums:
+      Result := kaChecksums;
+    tmaFileRestore:
+      Result := kaRestore;
+    tmaFileDelete:
+      Result := kaDelete;
+    tmaFileWipe:
+      Result := kaWipe;
+    tmaFilePack:
+      Result := kaPack;
+    tmaFileUnpack:
+      Result := kaUnpack;
+    tmaFileJobList, tmaCmdJobList:
+      Result := kaJobList;
+    tmaFileSelectMask:
+      Result := kaSelectByMask;
+    tmaFileUnselectMask:
+      Result := kaUnselectByMask;
+    tmaFileSelectAll:
+      Result := kaSelectAll;
+    tmaFileInvertSelect:
+      Result := kaInvertSelection;
+    tmaFileCopyPath:
+      Result := kaCopyFullPath;
+    tmaFileCopyName:
+      Result := kaCopyItemName;
+    tmaFileRunDetached:
+      Result := kaRunDetached;
+    tmaFileNew:
+      Result := kaNewFile;
+    tmaCmdQuickView:
+      Result := kaQuickView;
+    tmaCmdFind:
+      Result := kaFind;
+    tmaCmdHistoryBack:
+      Result := kaHistoryBack;
+    tmaCmdHistoryForward:
+      Result := kaHistoryForward;
+    tmaCmdDriveRoot:
+      Result := kaDriveRoot;
+    tmaCmdRefresh:
+      Result := kaRefresh;
+    tmaCmdSwapPanels:
+      Result := kaSwapPanels;
+    tmaCmdEqualizeOther:
+      Result := kaEqualizeOtherPanel;
+    tmaCmdEqualizeActive:
+      Result := kaEqualizeActivePanel;
+    tmaCmdUserMenu:
+      Result := kaUserMenu;
+    tmaCmdInsertName:
+      Result := kaInsertItemName;
+    tmaCmdInsertPath:
+      Result := kaInsertItemPath;
+    tmaCmdFocusCmdLine:
+      Result := kaFocusCmdLine;
+    tmaCmdConsoleToggle:
+      Result := kaAppConsoleToggle;
+    tmaCmdDirSync:
+      Result := kaDirSync;
+    tmaCmdCompareFolders:
+      Result := kaCompareFolders;
+    tmaCmdNewTerminal:
+      Result := kaNewTerminal;
+    tmaCmdSyncConsoleDir:
+      Result := kaSyncConsoleDir;
+    tmaCmdConsoleProfile:
+      Result := kaSelectConsoleProfile;
+    tmaCmdFolderHistory:
+      Result := kaFolderHistory;
+    tmaCmdFileHistory:
+      Result := kaFileHistory;
+    tmaCmdCmdHistory:
+      Result := kaCmdHistory;
+    tmaCmdFolderHotlist:
+      Result := kaFolderHotlist;
+    tmaCmdFolderHotlistAdd:
+      Result := kaFolderHotlistAdd;
+    tmaCmdWorkspaceLibrary:
+      Result := kaWorkspaceLibrary;
+    tmaCmdWorkspaceSave:
+      Result := kaWorkspaceSave;
+    tmaCmdSshConnections:
+      Result := kaSshConnections;
+    tmaCmdAssociations:
+      Result := kaAssociations;
+    tmaCmdBranchView:
+      Result := kaBranchView;
+    tmaCmdLiveFilter:
+      Result := kaLiveFilter;
+    tmaCmdRecycleBin:
+      Result := kaRecycleBin;
+    tmaCmdNextTab:
+      Result := kaNextTab;
+    tmaEditCopy:
+      Result := kaEditCopy;
+    tmaEditCut:
+      Result := kaEditCut;
+    tmaEditPaste:
+      Result := kaEditPaste;
+    tmaEditGotoLine:
+      Result := kaDocGotoLine;
+    tmaEditFind:
+      Result := kaDocFind;
+    tmaEditFindReplace:
+      Result := kaEditorReplace;
+    tmaEditEncoding:
+      Result := kaDocEncoding;
+    tmaEditUndo:
+      Result := kaEditorUndo;
+    tmaEditRedo:
+      Result := kaEditorRedo;
+    tmaEditHexToggle:
+      Result := kaDocHex;
+    tmaOptReloadKeymap:
+      Result := kaReloadKeymap;
+    tmaOptResetZoom:
+      Result := kaZoomReset;
+    tmaHelpContents:
+      Result := kaHelp;
+    tmaQuit:
+      Result := kaQuit;
+  else
+    Result := kaNone;
+  end;
+end;
+
+function TopMenuItemShortcut(const AItem: TSubmenuItem): string;
+var
+  Act: TKeymapAction;
+begin
+  Act := kaNone;
+  if not AItem.IsPluginItem then
+    Act := TopMenuKeymapAction(AItem.Action);
+  if Act = kaNone then
+    Result := AItem.Shortcut
+  else
+    Result := KeymapShortcutText(ActiveKeymap, Act);
+end;
 
 const
   // Submenu (F9 dropdown) idle-row hotkey — dark red on the theme's own
@@ -823,7 +1018,7 @@ begin
     if Cat.Items[I].IsSeparator then
       Continue;
     MaxCapW := Max(MaxCapW, Length(Cat.Items[I].Caption));
-    MaxShortW := Max(MaxShortW, Length(Cat.Items[I].Shortcut));
+    MaxShortW := Max(MaxShortW, Length(TopMenuItemShortcut(Cat.Items[I])));
   end;
 
   ItemW := MaxCapW + 2;
@@ -953,7 +1148,7 @@ begin
     end;
 
     Cap := Item.Caption;
-    ShortText := Item.Shortcut;
+    ShortText := TopMenuItemShortcut(Item);
     CapW := InnerW - 2;
     if ShortText <> '' then
       CapW := Max(CapW - Length(ShortText) - 1, 4);

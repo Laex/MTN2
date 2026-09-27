@@ -984,10 +984,7 @@ begin
   // matches.
   if ADialogVisible then
     Exit(kaNone);
-  Result := MatchActionIn(AProfile, AChain + [kcGlobal],
-    KeymapLookupKey(AKey, AKeyChar), AShift);
-  if (Result <> kaNone) and (KeymapActionContext(Result) <> kcGlobal) then
-    Result := kaNone;
+  Result := MatchGlobalActionIn(AProfile, AChain, AKey, AKeyChar, AShift);
 end;
 
 function DispatchGlobalAction(const AHost: TDualPanelKeymapHost;

@@ -8977,10 +8977,10 @@ begin
           Chain := [kcDocument];
       end;
     wkTerminal:
-      Chain := [kcTerminal];
+      Chain := [kcTerminal, kcShell];
   else
     if FConsoleMode then
-      Chain := [kcConsole]
+      Chain := [kcConsole, kcShell]
     else
       Chain := [kcPanels];
   end;

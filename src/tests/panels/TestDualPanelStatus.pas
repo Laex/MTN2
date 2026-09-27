@@ -15,6 +15,7 @@ type
     [Test] procedure TestPathSideAndItem;
     [Test] procedure TestAssembleAndPaint;
     [Test] procedure TestReplaceHintMapsToF7;
+    [Test] procedure TestFBarFollowsKeymap;
   end;
 
 implementation
@@ -28,7 +29,10 @@ uses
   uVfsTypes,
   uDualPanelTypes,
   uDualPanelUiTypes,
-  uDualPanelStatus;
+  uDualPanelStatus,
+  uTopMenuBar,
+  uDualPanelKeymapDialog,
+  System.IOUtils;
 
 type
   TChromeSpy = class
@@ -335,6 +339,78 @@ begin
 end;
 
 { TTestDualPanelStatus }
+
+// The F-bar and the menu show the keys the keymap has now.
+procedure TestFBarFollowsKeymap;
+var
+  Items, Letters: TArray<string>;
+  Hit: TFunctionBarHit;
+  Key: Word;
+  KeyChar: Char;
+  Shift: TShiftState;
+  Item: TSubmenuItem;
+  Path: string;
+  Act: TKeymapAction;
+  Ctx: TKeymapContext;
+begin
+  // Keymap dialog: every action has a readable caption that fits its column.
+  for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+    Assert.IsTrue((KeymapActionCaption(Act) <> '') and (Length(KeymapActionCaption(Act)) <= 38),
+      'caption of ' + KeymapActionDisplayName(Act));
+  for Ctx := Low(TKeymapContext) to High(TKeymapContext) do
+    Assert.IsTrue(KeymapContextCaption(Ctx) <> '', 'context caption');
+
+  // Defaults.
+  FunctionBarGetItems(fbcViewer, [], Items, Letters);
+  Assert.IsTrue(Items[3] = '4Hex', 'viewer F4 Hex');
+  FunctionBarGetItems(fbcEditor, [ssCtrl], Items, Letters);
+  Assert.IsTrue(Items[6] = '7Repl', 'editor Ctrl+F7 Replace in its slot');
+  Assert.IsTrue((Length(Letters) > 0) and (Letters[0] = 'A:All'), 'editor Ctrl+A hint');
+  FunctionBarGetItems(fbcPanels, [ssCtrl], Items, Letters);
+  Assert.IsTrue((Length(Letters) = 10) and (Letters[9] = 'SEnt:Path'),
+    'Ctrl+Shift+Enter shown under Ctrl as SEnt');
+  FunctionBarGetItems(fbcViewer, [ssCtrl, ssShift], Items, Letters);
+  Assert.IsTrue(Length(Letters) = 0, 'Ctrl+Shift+A is not select all');
+  Item := Default(TSubmenuItem);
+  Item.Action := tmaEditCopy;
+  Item.Shortcut := 'json text';
+  Assert.IsTrue(TopMenuItemShortcut(Item) = 'Ctrl+C / Ctrl+Ins', 'menu shows keymap keys');
+  Item.Action := tmaFileSelectByExt;
+  Assert.IsTrue(TopMenuItemShortcut(Item) = 'json text', 'no keymap action: menu.json text');
+
+  // Hint keys resolve back to their keys.
+  Hit := Default(TFunctionBarHit);
+  Hit.Kind := fbhHint;
+  Hit.HintKey := 'SEnt';
+  Assert.IsTrue(FunctionBarHitToInput(Hit, [ssCtrl], Key, KeyChar, Shift) and
+    (Key = vkReturn) and (Shift = [ssCtrl, ssShift]), 'SEnt = Shift+Enter');
+  Hit.HintKey := '`';
+  Assert.IsTrue(FunctionBarHitToInput(Hit, [ssCtrl], Key, KeyChar, Shift) and
+    (Key = vkOemGrave), '` is the grave key, not Num0');
+
+  // Rebound: DocHex on F9, DocSelectAll on Ctrl+E.
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-fbar-keymap.json');
+  TFile.WriteAllText(Path, '{"profile":"NDN","bindings":{' +
+    '"DocHex":{"key":"F9"},"DocSelectAll":{"key":"E","ctrl":true}}}');
+  try
+    ReloadKeymap(Path);
+    FunctionBarGetItems(fbcViewer, [], Items, Letters);
+    Assert.IsTrue(Items[8] = '9Hex', 'viewer Hex moved to F9');
+    Assert.IsTrue(Items[3] = '4', 'F4 slot empty after the move');
+    FunctionBarGetItems(fbcViewer, [ssCtrl], Items, Letters);
+    Assert.IsTrue((Length(Letters) > 0) and (Letters[0] = 'E:All'), 'hint follows Ctrl+E');
+    Item.Action := tmaEditHexToggle;
+    Assert.IsTrue(TopMenuItemShortcut(Item) = 'F9', 'menu follows the rebinding');
+  finally
+    TFile.Delete(Path);
+    ReloadKeymap('');
+  end;
+end;
+
+procedure TTestDualPanelStatus.TestFBarFollowsKeymap;
+begin
+  TestDualPanelStatus.TestFBarFollowsKeymap;
+end;
 
 procedure TTestDualPanelStatus.TestPosAndTruncate;
 begin

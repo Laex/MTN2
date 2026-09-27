@@ -168,9 +168,10 @@ type
     { Scrollbar drawing — delegates to subclass for row bounds. }
     procedure DrawScrollBar(ATotal, ATop, AViewH, ATopY, ABottomY: Integer);
 
-    { Keys the Panel Console and the terminal share: Alt+F8 history picker,
-      Ctrl+A select all, Ctrl+C copy (or interrupt without a selection),
-      Ctrl+Insert copy, Ctrl+V / Shift+Insert paste.
+    { Keymap actions the Panel Console and the terminal share (uKeymap
+      kcShell): ShellHistory (Alt+F8), ShellSelectAll (Ctrl+A),
+      ShellCopyOrInterrupt (Ctrl+C: copy, or interrupt without a selection),
+      ShellCopy (Ctrl+Insert), ShellPaste (Ctrl+V / Shift+Insert).
       Returns True if the key was consumed. }
     function HandleSharedKeys(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -231,7 +232,7 @@ type
 implementation
 
 uses
-  uStrings, uNotice;
+  uStrings, uNotice, uKeymap;
 
 { ---- helpers --------------------------------------------------------------- }
 
@@ -1037,34 +1038,27 @@ end;
 
 function TBaseConsoleWindow.HandleSharedKeys(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
-var
-  K: TKeyChord;
 begin
   Result := True;
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
-  // Alt+F8 — command history picker (matches Dual Panel's kaCmdHistory);
-  // selecting an entry runs it immediately in this console.
-  if K.Matches(vkF8, [ssAlt]) then
-    OpenCmdHistoryDialog
-  // Ctrl+A — select all.
-  else if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
-    SelectAll
-  // Ctrl+C — copy the selection; without one, interrupt the running command.
-  else if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
-  begin
-    if HasSelection then
-      CopySelection
-    else if Running then
-      Interrupt;
-  end
-  // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
-  else if K.Matches(vkInsert, [ssCtrl]) then
-    CopySelection
-  // Ctrl+V / Shift+Insert — paste clipboard as input.
-  else if K.MatchesLetter('V', [ssCtrl], [ssShift]) or K.Matches(vkInsert, [ssShift]) then
-    PasteClipboard
+  case MatchActiveActionIn([kcShell], KeymapLookupKey(AKey, AKeyChar), AShift) of
+    // History picker (like the panels' CmdHistory); an entry picked runs
+    // at once in this console.
+    kaShellHistory:
+      OpenCmdHistoryDialog;
+    kaShellSelectAll:
+      SelectAll;
+    kaShellCopyOrInterrupt:
+      if HasSelection then
+        CopySelection
+      else if Running then
+        Interrupt;
+    kaShellCopy:
+      CopySelection;
+    kaShellPaste:
+      PasteClipboard;
   else
     Exit(False);
+  end;
   AKey := 0;
   AKeyChar := #0;
 end;

@@ -92,12 +92,12 @@ begin
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkN, [ssCtrl])), 'Ctrl+N goes to the shell');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkDecimal, [ssCtrl, ssShift])),
     'Ctrl+Shift+Num. (= Ord(''n'')) is not Ctrl+Shift+N');
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkAdd, [ssCtrl])), 'Ctrl+Num+ zoom');
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(0, [ssCtrl, ssShift], '+')), 'Ctrl++ zoom');
+  // Passthrough = the keymap's Global actions (uKeymap kcGlobal).
   Assert.IsTrue(IsTerminalHostPassthrough(KC(vk0, [ssCtrl], '0')), 'Ctrl+0 zoom reset');
+  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkF9, [])), 'F9 top menu');
+  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkO, [ssCtrl])), 'Ctrl+O console');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkAdd, [ssCtrl, ssAlt])), 'Ctrl+Alt+Num+');
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkF10, [])), 'F10');
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkF10, [ssShift])), 'F10 with any modifiers');
+  Assert.IsFalse(IsTerminalHostPassthrough(KC(vkF10, [])), 'F10 is the panels'' Quit, not Global');
   Assert.IsTrue(IsTerminalHostPassthrough(KC(vkX, [ssAlt])), 'Alt+X');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkF9, [ssAlt])), 'Alt+F9 (= Ord(''x'')) is not Alt+X');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkX, [])), 'x goes to the shell');

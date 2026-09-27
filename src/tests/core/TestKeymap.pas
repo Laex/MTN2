@@ -199,6 +199,19 @@ begin
         Format('panels matched %s (key %d)', [KeymapActionDisplayName(Act), K]));
     end;
 
+  Assert.IsTrue(MatchActionIn(P, [kcConsole, kcShell], Ord('C'), [ssCtrl, ssShift]) =
+    kaShellCopyOrInterrupt, 'Ctrl+Shift+C in the console: copy');
+  Assert.IsTrue(MatchActionIn(P, [kcTerminal, kcShell], vkF8, [ssAlt]) = kaShellHistory,
+    'Alt+F8 in the terminal: its history');
+  Assert.IsTrue(MatchActionIn(P, [kcConsole, kcShell], Ord('O'), [ssCtrl, ssShift]) =
+    kaConsoleSyncDir, 'Ctrl+Shift+O in the console: panel follows it');
+  Assert.IsTrue(MatchActionIn(P, [kcTerminal, kcShell], Ord('O'), [ssCtrl, ssShift]) = kaNone,
+    'no console sync in the terminal');
+  Assert.IsTrue(MatchGlobalActionIn(P, [kcTerminal, kcShell], 0, 'x', [ssAlt]) = kaAppQuit,
+    'Alt+X from the terminal, typed character only');
+  Assert.IsTrue(MatchGlobalActionIn(P, [kcConsole, kcShell], Ord('C'), #0, [ssCtrl]) = kaNone,
+    'Ctrl+C is the console''s own');
+
   Assert.IsTrue(TryKeymapActionByName('DocHex', Act) and (Act = kaDocHex), 'names resolve');
 end;
 

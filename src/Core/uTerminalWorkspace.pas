@@ -4,7 +4,7 @@
   raw keyboard → pipes, scrollback/selection chrome.
   Inherits buffer, PTY, selection, mouse and clipboard from TBaseConsoleWindow.
   Unique to this class:
-    - IsTerminalHostPassthrough: blocks host-level hotkeys (Ctrl+Tab, zoom, F10, Alt+X).
+    - IsTerminalHostPassthrough: keeps the keymap's Global keys from the shell.
     - Full raw PTY passthrough for all printable characters.
     - Profile-specific Backspace (#127 WSL / #8 Windows) and local echo (cmd).
     - Status bar with profile name.
@@ -18,7 +18,7 @@ uses
   FMX.Platform,
   uTerminalTypes, uThemeTypes, uTerminalWindow, uConsoleBuffer, uConPty,
   uShellProfiles, uDialogTypes, uDialogHost, uBaseConsoleWindow, uStrings,
-  uKeyChord;
+  uKeyChord, uKeymap;
 
 type
   TTerminalWorkspaceWindow = class(TBaseConsoleWindow)
@@ -58,9 +58,10 @@ type
     // Inherited: ProfileId, Running, WorkingDir, OnCloseRequest, OnContentChanged
   end;
 
-/// <summary>Host-level hotkeys the terminal must not send to the shell:
-/// Ctrl+Tab (workspace cycle), Ctrl+Shift+N (new terminal), Ctrl +/-/0
-/// (zoom), F10 and Alt+X (quit).</summary>
+/// <summary>Keys the terminal must not send to the shell: the keymap's Global
+/// actions (Ctrl+Tab, Ctrl+Shift+N, Ctrl+0, Alt+X, ...) not bound in the
+/// terminal's own contexts. The host runs them before the terminal sees the
+/// key; this keeps e.g. Ctrl+Tab from ever reaching the shell as Tab.</summary>
 function IsTerminalHostPassthrough(const K: TKeyChord): Boolean;
 
 implementation
@@ -314,17 +315,8 @@ end;
 
 function IsTerminalHostPassthrough(const K: TKeyChord): Boolean;
 begin
-  // Ctrl+Tab / Ctrl+Shift+Tab — Dual Panel workspace cycle.
-  if K.MatchesAny(vkTab, [ssCtrl], [ssShift, ssAlt]) then
-    Exit(True);
-  // New terminal / zoom / quit — host or Dual Panel keymap.
-  if K.Matches(vkN, [ssCtrl, ssShift]) then
-    Exit(True);
-  if K.HasMods([ssCtrl], [ssShift]) and
-     ((K.Key = vkAdd) or (K.Key = vkSubtract) or (K.Key = vkNumpad0) or
-      (K.Ch = '+') or (K.Ch = '=') or (K.Ch = '-') or (K.Ch = '0')) then
-    Exit(True);
-  Result := (K.Key = vkF10) or K.MatchesAny(vkX, [ssAlt], [ssCtrl, ssShift]);
+  Result := MatchGlobalActionIn(ActiveKeymap, [kcTerminal, kcShell], K.Key, K.Ch,
+    K.Mods) <> kaNone;
 end;
 
 { ---- Input ----------------------------------------------------------------- }
