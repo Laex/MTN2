@@ -182,7 +182,7 @@ type
 implementation
 
 uses
-  System.Character, uKeyChord;
+  System.Character, uKeyChord, uDialogLocaleLayout;
 
 type
   TDialogYesNoAnswer = (dyaNone, dyaYes, dyaNo);
@@ -375,6 +375,9 @@ procedure TDialogHost.Open(const ADecl: TDialogDeclaration;
   AOnCommand: TDialogCommandEvent);
 begin
   FDecl := ADecl;
+  // Captions set after the resource was loaded and fitted (Build* naming a
+  // button after the operation, e.g. "Копирование") can outgrow their box.
+  FitDialogCaptions(FDecl);
   if FDecl.Width < 28 then
     FDecl.Width := 28;
   if FDecl.Height < 6 then

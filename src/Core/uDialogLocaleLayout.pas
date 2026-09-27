@@ -22,6 +22,20 @@ uses
 
 procedure FitDialogToTranslatedText(var ADecl: TDialogDeclaration);
 
+/// <summary>A protocol-2 button, checkbox or radio whose caption does not fit
+/// its box (caption + 4 cells for the brackets).</summary>
+function DialogCaptionsOverflow(const ADecl: TDialogDeclaration): Boolean;
+
+/// <summary>Fits captions set after the dialog was loaded and fitted (a
+/// Build* naming a button after the operation). Row-local, unlike
+/// FitDialogToTranslatedText: a button, checkbox or radio grows to its
+/// caption and pushes the controls after it in the same row right; an
+/// input / drop-down / list pushed that way keeps its right edge and
+/// narrows instead, down to cMinFieldCells. The dialog widens only if a row
+/// still overflows; button rows are recentered. Label text (a path, a file
+/// name) never widens the dialog here.</summary>
+procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
+
 implementation
 
 uses
@@ -334,6 +348,108 @@ begin
   end;
   ADecl.Width := Max(ADecl.Width, NewClient + 2);
   CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
+end;
+
+const
+  cCaptionKinds = [dckButton, dckCheckbox, dckRadio];
+  cFieldKinds = [dckInput, dckDropDown, dckList];
+  cMinFieldCells = 8;
+
+function DialogCaptionsOverflow(const ADecl: TDialogDeclaration): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if not IsDialogProtocolV2(ADecl.Version) then
+    Exit;
+  for I := 0 to High(ADecl.Controls) do
+    if (ADecl.Controls[I].Kind in cCaptionKinds) and
+       (CaptionCells(ADecl.Controls[I]) > Max(ADecl.Controls[I].BoxW, 1)) then
+      Exit(True);
+end;
+
+procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
+var
+  Rows, Order: TArray<Integer>;
+  I, J, K, Row, Tmp, Col, OrigCol, W, FreeCol, NewClient: Integer;
+  ButtonsGrew, Grew: Boolean;
+begin
+  if not DialogCaptionsOverflow(ADecl) then
+    Exit;
+  NewClient := ClientWidthOf(ADecl.Width);
+  ButtonsGrew := False;
+
+  Rows := nil;
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    Row := ADecl.Controls[I].Row;
+    J := 0;
+    while (J <= High(Rows)) and (Rows[J] <> Row) do
+      Inc(J);
+    if J > High(Rows) then
+      Rows := Rows + [Row];
+  end;
+
+  for Row in Rows do
+  begin
+    // This row's controls, left to right.
+    Order := nil;
+    for I := 0 to High(ADecl.Controls) do
+      if ADecl.Controls[I].Row = Row then
+        Order := Order + [I];
+    for I := 1 to High(Order) do
+    begin
+      J := I;
+      while (J > 0) and (ADecl.Controls[Order[J]].Col < ADecl.Controls[Order[J - 1]].Col) do
+      begin
+        Tmp := Order[J];
+        Order[J] := Order[J - 1];
+        Order[J - 1] := Tmp;
+        Dec(J);
+      end;
+    end;
+
+    // FreeCol: first column the next control may start at -- right after
+    // the previous one (plus its ▄ shadow for a button), and one blank cell
+    // further if it grew, so a longer caption never runs into the next
+    // control. Rows where nothing grew keep their authored columns.
+    FreeCol := 0;
+    for K in Order do
+    begin
+      OrigCol := Max(ADecl.Controls[K].Col, 0);
+      Col := Max(OrigCol, FreeCol);
+      W := Max(ADecl.Controls[K].BoxW, 1);
+      // A field pushed right keeps its right edge while it can.
+      if (Col > OrigCol) and (ADecl.Controls[K].Kind in cFieldKinds) and
+         (W - (Col - OrigCol) >= cMinFieldCells) then
+        Dec(W, Col - OrigCol);
+      Grew := (ADecl.Controls[K].Kind in cCaptionKinds) and
+        (CaptionCells(ADecl.Controls[K]) > W);
+      if Grew then
+      begin
+        W := CaptionCells(ADecl.Controls[K]);
+        if ADecl.Controls[K].Kind = dckButton then
+          ButtonsGrew := True;
+      end;
+      ADecl.Controls[K].Col := Col;
+      ADecl.Controls[K].BoxW := W;
+      FreeCol := Col + W;
+      if ADecl.Controls[K].Kind = dckButton then
+        Inc(FreeCol); // ▄ shadow
+      if Grew then
+        Inc(FreeCol);
+      // Client right edge: the control itself; a button also needs its
+      // shadow and a gap before the frame.
+      if ADecl.Controls[K].Kind = dckButton then
+        NewClient := Max(NewClient, Col + W + 2)
+      else
+        NewClient := Max(NewClient, Col + W);
+    end;
+  end;
+
+  ADecl.Width := Max(ADecl.Width, NewClient + 2);
+  if ButtonsGrew then
+    CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
 end;
 
 end.
