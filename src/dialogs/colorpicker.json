@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "Presets:",
+      "id": "lbl_presets",
       "col": 1,
       "row": 0,
       "width": 30,
@@ -28,6 +29,7 @@
     {
       "type": "label",
       "text": "Custom hex (#RRGGBB), overrides the preset above:",
+      "id": "lbl_custom",
       "col": 1,
       "row": 11,
       "width": 48,

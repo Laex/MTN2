@@ -961,7 +961,11 @@ begin
             Continue;
           Idx := ListSelectedIndexOf(FDecl.Controls[I].Id);
           Name := '';
-          if (Idx >= 0) and (Idx <= High(FDecl.Controls[I].Items)) then
+          // A translated fixed choice reports its English ItemId.
+          if (Idx >= 0) and (Idx <= High(FDecl.Controls[I].ItemIds)) and
+             (FDecl.Controls[I].ItemIds[Idx] <> '') then
+            Name := FDecl.Controls[I].ItemIds[Idx]
+          else if (Idx >= 0) and (Idx <= High(FDecl.Controls[I].Items)) then
             Name := FDecl.Controls[I].Items[Idx];
           N := Length(Parts);
           SetLength(Parts, N + 1);

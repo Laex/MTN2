@@ -34,11 +34,21 @@
       "cancel": "Отмена"
     },
     "DIALOG_ASSOCIATIONEDIT": {
+      "lbl_extension": "Расширение:",
+      "lbl_action": "Действие:",
+      "lbl_command": "Команда (%1 = файл, только для «Запуск команды»):",
+      "action_items": {
+        "View": "Просмотр",
+        "Edit": "Редактирование",
+        "Shell (OS open)": "Открыть средствами ОС",
+        "Run command": "Запуск команды"
+      },
       "$title": "Ассоциация файла",
       "ok": "ОК",
       "cancel": "Отмена"
     },
     "DIALOG_ASSOCIATIONS": {
+      "assocHeader": "Расш.        Действие      Команда",
       "$title": "Ассоциации файлов",
       "ok": "Изменить",
       "add": "Добавить",
@@ -50,6 +60,7 @@
       "cancel": "Отмена"
     },
     "DIALOG_COLORCODING": {
+      "header": "    Т Имя              Маска                    О В К",
       "$title": "Группы цветовой разметки",
       "hint": "Ins=Добавить F4=Изменить Del=Удалить/Отключить Ctrl+Space=Включить Ctrl+Up/Dn=Переместить",
       "add": "Добавить",
@@ -61,12 +72,29 @@
       "cancel": "Отмена"
     },
     "DIALOG_COLORCODINGEDIT": {
+      "lbl_name": "Имя:",
+      "lbl_masks": "Маски:",
+      "lbl_applyto": "Применить:",
+      "lbl_columns": "           Текст          Фон            Образец",
+      "lbl_normal": "Обычный:",
+      "lbl_selected": "Выбранный:",
+      "lbl_current": "Курсор:",
+      "lbl_hint_pick": "F9 — выбор цвета для поля «Текст»/«Фон» выше.",
+      "lbl_hint_blank": "Пустое поле — цвет берётся из темы.",
+      "lbl_hint_format": "Цвет: #RRGGBB (например, #FF55FF) или RRGGBB.",
+      "cc_applyto_items": {
+        "Files and dirs": "Файлы и папки",
+        "Files only": "Только файлы",
+        "Dirs only": "Только папки"
+      },
       "$title": "Группа цветовой разметки",
       "cc_enabled": "Включено",
       "ok": "ОК",
       "cancel": "Отмена"
     },
     "DIALOG_COLORPICKER": {
+      "lbl_presets": "Готовые цвета:",
+      "lbl_custom": "Свой цвет (#RRGGBB), заменяет выбранный выше:",
       "$title": "Выбор цвета",
       "ok": "Использовать",
       "cancel": "Отмена"
@@ -88,6 +116,11 @@
       "cancel": "Отмена"
     },
     "DIALOG_COPYMOVE": {
+      "job_existing_items": {
+        "Ask": "Спрашивать",
+        "Overwrite": "Перезаписывать",
+        "Skip": "Пропускать"
+      },
       "$title": "Копирование",
       "existing_label": "Существующие файлы:",
       "retry_label": "Повторов при ошибке:",
@@ -100,11 +133,21 @@
       "cancel": "Отмена"
     },
     "DIALOG_CREATELINK": {
+      "lbl_link_name": "Имя ссылки:",
+      "lbl_target": "Цель:",
+      "lbl_type": "Тип:",
+      "link_type_items": {
+        "Symbolic link (file)": "Символическая ссылка (файл)",
+        "Symbolic link (directory)": "Символическая ссылка (папка)",
+        "Hard link": "Жёсткая ссылка",
+        "Junction (directory)": "Точка соединения (папка)"
+      },
       "$title": "Создание ссылки",
       "ok": "Создать",
       "cancel": "Отмена"
     },
     "DIALOG_DELETE": {
+      "background": "В фоне",
       "ok": "Удалить",
       "cancel": "Отмена"
     },
@@ -179,16 +222,37 @@
       "cancel": "Отмена"
     },
     "DIALOG_FOLDERHOTLIST": {
+      "hotlistHeader": "Имя                  Путь                         Клавиша",
       "$title": "Избранные папки",
       "ok": "Перейти",
       "cancel": "Отмена"
     },
     "DIALOG_GOTOLINE": {
+      "lbl_line": "Номер строки:",
       "$title": "Перейти к строке",
       "ok": "ОК",
       "cancel": "Отмена"
     },
     "DIALOG_HELP": {
+      "line0": "F2 Меню   F3 Просмотр/размер папок   F4 Правка   F5 Копия",
+      "line1": "F6 Перенос   F7 Папка   F8 Удалить   F10 Выход",
+      "line2": "Shift+F1 Упаковать ZIP   Shift+F2 Распаковать   Shift+F6 Имя",
+      "line3": "Shift+F8 Уничтожить   Alt+F1/F2 Диск   Alt+F7 Поиск",
+      "line4": "Серые +/-/* Выделение   Shift+стрелки/Home/End/Pg инверсия",
+      "line5": "Ctrl+O/Esc Консоль   Ctrl+Down ком.строка   Ctrl+R обновить",
+      "line6": "Ctrl+Enter имя  Ctrl+Shift+Enter путь  Tab дополн.  ↑↓ ист.",
+      "line7": "Ctrl+F1/F2 скрыть панель   Ctrl+\\ корень / выход из архива",
+      "line8": "Ctrl+U обмен  Ctrl+]/=другая  Ctrl+[=активная  Ctrl+L инфо",
+      "line9": "Ctrl+` режимы Ctrl+F12 сорт. Alt+F12 папки Alt+F8 ком. F3-9",
+      "line10": "Ctrl+Left/Right предпросмотр диска (отпустить = переход)",
+      "line11": "Ctrl+Alt+S синхр. папок   F5: новее/повтор/исключ./ссылки",
+      "line12": "F5 распаковать из ZIP / копировать в открытый ZIP",
+      "line13": "Ins / Ctrl+A выделить   Ctrl+Shift+A атрибуты   Tab сторона",
+      "line14": "Brief: Shift+Left/Right — инверсия колонки (кроме целевого)",
+      "line15": "F3 на папках: размер всех выделенных (Esc — отмена)",
+      "line16": "Просмотр: F4/Ctrl+H Hex↔Текст   F8 бинарный как текст",
+      "line17": "Ctrl+Shift+O синхр. папки   Alt+F8 работает и в консоли",
+      "line18": "Shift+F5 копия в ту же папку под новым именем",
       "$title": "Справка",
       "ok": "ОК"
     },
@@ -205,6 +269,7 @@
       "cancel": "Отмена"
     },
     "DIALOG_JOBLIST": {
+      "header": "Задание                                          Прогресс",
       "$title": "Фоновые задачи",
       "foreground": "На передний план",
       "canceljob": "Отмена",
@@ -228,6 +293,7 @@
       "ok": "Закрыть"
     },
     "DIALOG_KEYMAP": {
+      "header": "    Действие                      Клавиши",
       "$title": "Раскладка клавиш",
       "hint": "Enter/F4=Изменить   Reset=это действие   Reset all=весь профиль",
       "edit": "Изменить",
@@ -237,6 +303,9 @@
       "cancel": "Отмена"
     },
     "DIALOG_KEYMAPEDIT": {
+      "lbl_keys": "Клавиши:",
+      "lbl_hint_sep": "Несколько сочетаний разделяйте ';', например Ctrl+C; F5",
+      "lbl_hint_mods": "Модификаторы: Ctrl+ Alt+ Shift+ (напр. Ctrl+Shift+F5, Alt+F7)",
       "$title": "Изменение сочетаний клавиш",
       "ok": "ОК",
       "reset": "Сброс",
@@ -257,12 +326,16 @@
       "ok": "  ОК  "
     },
     "DIALOG_REPLACE": {
+      "lbl_find": "Найти:",
+      "lbl_replace": "Заменить на:",
       "$title": "Замена",
       "one": "Заменить",
       "all": "Все",
       "cancel": "Отмена"
     },
     "DIALOG_SEARCH": {
+      "lbl_mask": "Маска файла или несколько масок:",
+      "lbl_text": "Содержащие текст:",
       "$title": "Поиск файла",
       "search_case": "Учитывать регистр",
       "search_words": "Только слово целиком",
@@ -279,6 +352,26 @@
       "cancel": "Отмена"
     },
     "DIALOG_SETATTR": {
+      "attr_ro_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_h_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_a_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_s_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
       "$title": "Атрибуты",
       "lbl_ro": "Только чтение",
       "lbl_h": "Скрытый",
@@ -296,17 +389,24 @@
       "cancel": "Отмена"
     },
     "DIALOG_SSHCONNECTIONEDIT": {
+      "lbl_name": "Имя:",
+      "lbl_host": "Хост:",
+      "lbl_port": "Порт (0=станд.):",
+      "lbl_user": "Пользователь:",
+      "lbl_identity": "Файл ключа:",
       "$title": "SSH/SFTP-соединение",
       "ok": "ОК",
       "cancel": "Отмена"
     },
     "DIALOG_SSHCONNECTIONS": {
+      "sshHeader": "Имя                                     Хост",
       "$title": "SSH/SFTP-соединения",
       "ok": "Оболочка",
       "browse": "Обзор",
       "cancel": "Отмена"
     },
     "DIALOG_TERMINALPROFILE": {
+      "lbl_prompt": "Выберите профиль оболочки:",
       "$title": "Новый терминал",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -329,6 +429,7 @@
       "cancel": "Отмена"
     },
     "DIALOG_WORKSPACES": {
+      "wsHeader": "Имя                                             Ссылки",
       "$title": "Рабочие пространства",
       "ok": "Перейти",
       "save": "Сохранить",

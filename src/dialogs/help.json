@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "F2 User   F3 View/size dirs   F4 Edit   F5 Copy",
+      "id": "line0",
       "col": 1,
       "row": 0,
       "width": 60,
@@ -16,6 +17,7 @@
     {
       "type": "label",
       "text": "F6 Move   F7 MkDir  F8 Del    F10 Quit",
+      "id": "line1",
       "col": 1,
       "row": 1,
       "width": 60,
@@ -24,6 +26,7 @@
     {
       "type": "label",
       "text": "Shift+F1 Pack ZIP   Shift+F2 Unpack   Shift+F6 Ren",
+      "id": "line2",
       "col": 1,
       "row": 2,
       "width": 60,
@@ -32,6 +35,7 @@
     {
       "type": "label",
       "text": "Shift+F8 Wipe   Alt+F1/F2 Drive   Alt+F7 Find",
+      "id": "line3",
       "col": 1,
       "row": 3,
       "width": 60,
@@ -40,6 +44,7 @@
     {
       "type": "label",
       "text": "Gray+/-/* Select  Shift+Arrows/Home/End/Pg invert",
+      "id": "line4",
       "col": 1,
       "row": 4,
       "width": 60,
@@ -48,6 +53,7 @@
     {
       "type": "label",
       "text": "Ctrl+O / Esc Console   Ctrl+Down cmdline   Ctrl+R refresh",
+      "id": "line5",
       "col": 1,
       "row": 5,
       "width": 60,
@@ -56,6 +62,7 @@
     {
       "type": "label",
       "text": "Ctrl+Enter name   Ctrl+Shift+Enter path   Tab complete   Up/Dn hist",
+      "id": "line6",
       "col": 1,
       "row": 6,
       "width": 60,
@@ -64,6 +71,7 @@
     {
       "type": "label",
       "text": "Ctrl+F1/F2 hide panel   Ctrl+\\ root / leave archive",
+      "id": "line7",
       "col": 1,
       "row": 7,
       "width": 60,
@@ -72,6 +80,7 @@
     {
       "type": "label",
       "text": "Ctrl+U swap  Ctrl+]/=other  Ctrl+[=active  Ctrl+L info",
+      "id": "line8",
       "col": 1,
       "row": 8,
       "width": 60,
@@ -80,6 +89,7 @@
     {
       "type": "label",
       "text": "Ctrl+` modes  Ctrl+F12 Sort  Alt+F12 dirs  Alt+F8 cmds  F3-9",
+      "id": "line9",
       "col": 1,
       "row": 9,
       "width": 60,
@@ -88,6 +98,7 @@
     {
       "type": "label",
       "text": "Ctrl+Left/Right drive preview (release=go)",
+      "id": "line10",
       "col": 1,
       "row": 10,
       "width": 60,
@@ -96,6 +107,7 @@
     {
       "type": "label",
       "text": "Ctrl+Alt+S sync dirs   F5: newer/retry/exclude/links",
+      "id": "line11",
       "col": 1,
       "row": 11,
       "width": 60,
@@ -104,6 +116,7 @@
     {
       "type": "label",
       "text": "F5 extract from ZIP / copy into open ZIP",
+      "id": "line12",
       "col": 1,
       "row": 12,
       "width": 60,
@@ -112,6 +125,7 @@
     {
       "type": "label",
       "text": "Ins / Ctrl+A select   Ctrl+Shift+A attr   Tab side",
+      "id": "line13",
       "col": 1,
       "row": 13,
       "width": 60,
@@ -120,6 +134,7 @@
     {
       "type": "label",
       "text": "Brief: Shift+Left/Right invert column span (not landing)",
+      "id": "line14",
       "col": 1,
       "row": 14,
       "width": 60,
@@ -128,6 +143,7 @@
     {
       "type": "label",
       "text": "F3 on dirs: size all selected folders (Esc cancels)",
+      "id": "line15",
       "col": 1,
       "row": 15,
       "width": 60,
@@ -136,6 +152,7 @@
     {
       "type": "label",
       "text": "Viewer: F4/Ctrl+H Hex↔Text   F8 re-decode binary as text",
+      "id": "line16",
       "col": 1,
       "row": 16,
       "width": 60,
@@ -144,6 +161,7 @@
     {
       "type": "label",
       "text": "Ctrl+Shift+O sync dir   Alt+F8 works in Console too",
+      "id": "line17",
       "col": 1,
       "row": 17,
       "width": 60,
@@ -152,6 +170,7 @@
     {
       "type": "label",
       "text": "Shift+F5 Copy into same directory under a new name",
+      "id": "line18",
       "col": 1,
       "row": 18,
       "width": 60,

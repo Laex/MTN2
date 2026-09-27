@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "Line number:",
+      "id": "lbl_line",
       "col": 1,
       "row": 1,
       "width": 32,

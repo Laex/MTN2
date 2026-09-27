@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "A file mask or several file masks:",
+      "id": "lbl_mask",
       "col": 1,
       "row": 1,
       "width": 54,
@@ -26,6 +27,7 @@
     {
       "type": "label",
       "text": "Containing text:",
+      "id": "lbl_text",
       "col": 1,
       "row": 3,
       "width": 54,

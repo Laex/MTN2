@@ -13,6 +13,7 @@ uses
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogCaptionFit in 'TestDialogCaptionFit.pas',
+  TestDialogTranslation in 'TestDialogTranslation.pas',
   TestDialogJson in 'TestDialogJson.pas',
   TestDialogRenderer in 'TestDialogRenderer.pas',
   TestDisplaySettings in 'TestDisplaySettings.pas',

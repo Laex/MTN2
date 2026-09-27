@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "Find:",
+      "id": "lbl_find",
       "col": 1,
       "row": 1,
       "width": 46,
@@ -26,6 +27,7 @@
     {
       "type": "label",
       "text": "Replace with:",
+      "id": "lbl_replace",
       "col": 1,
       "row": 3,
       "width": 46,

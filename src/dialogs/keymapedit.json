@@ -17,6 +17,7 @@
     {
       "type": "label",
       "text": "Hotkeys:",
+      "id": "lbl_keys",
       "col": 1,
       "row": 3,
       "width": 10,
@@ -34,6 +35,7 @@
     {
       "type": "label",
       "text": "Separate multiple combos with ';', e.g. Ctrl+C; F5",
+      "id": "lbl_hint_sep",
       "col": 1,
       "row": 5,
       "width": 64,
@@ -42,6 +44,7 @@
     {
       "type": "label",
       "text": "Modifiers: Ctrl+ Alt+ Shift+ (e.g. Ctrl+Shift+F5, Alt+F7)",
+      "id": "lbl_hint_mods",
       "col": 1,
       "row": 6,
       "width": 64,

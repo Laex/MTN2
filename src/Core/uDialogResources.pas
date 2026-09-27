@@ -311,6 +311,31 @@ end;
 // dialog and recenters button rows via FitDialogToTranslatedText.
 procedure TranslateDialogDeclaration(const ANamespace: string;
   var ADecl: TDialogDeclaration);
+
+  // Fixed drop-down / radio-group choices from the JSON, keyed
+  // "<id>_items.<English item>". A translated item keeps its English text as
+  // its ItemId, so the dialog's values (GetValuesJson) stay the same in
+  // every language.
+  procedure TranslateItems(var C: TDialogControl);
+  var
+    J: Integer;
+    Tr: string;
+  begin
+    for J := 0 to High(C.Items) do
+    begin
+      if C.Items[J] = '' then
+        Continue;
+      Tr := TDialog(ANamespace, C.Id + '_items.' + C.Items[J], C.Items[J]);
+      if Tr = C.Items[J] then
+        Continue;
+      if Length(C.ItemIds) < Length(C.Items) then
+        SetLength(C.ItemIds, Length(C.Items));
+      if C.ItemIds[J] = '' then
+        C.ItemIds[J] := C.Items[J];
+      C.Items[J] := Tr;
+    end;
+  end;
+
 var
   I: Integer;
 begin
@@ -324,6 +349,8 @@ begin
         ADecl.Controls[I].Text :=
           TDialog(ANamespace, ADecl.Controls[I].Id, ADecl.Controls[I].Text);
     end;
+    if ADecl.Controls[I].Kind in [dckDropDown, dckRadioGroup] then
+      TranslateItems(ADecl.Controls[I]);
   end;
   if not SameText(CurrentLocale, 'en') then
     FitDialogToTranslatedText(ADecl);
@@ -487,6 +514,7 @@ begin
   if (I < 0) or not (ADecl.Controls[I].Kind in [dckList, dckDropDown, dckRadioGroup]) then
     Exit;
   ADecl.Controls[I].Items := Copy(AItems);
+  ADecl.Controls[I].ItemIds := nil; // ids belonged to the replaced items
   if Length(AItems) = 0 then
     ADecl.Controls[I].SelectedIndex := 0
   else

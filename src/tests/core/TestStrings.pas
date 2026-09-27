@@ -208,6 +208,17 @@ begin
   SetLocale('en');
 end;
 
+/// <summary>Start offsets of the words in a column header, e.g. '0,13,27,'.</summary>
+function ColumnStarts(const AText: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(AText) do
+    if (AText[I] <> ' ') and ((I = 1) or (AText[I - 1] = ' ')) then
+      Result := Result + IntToStr(I - 1) + ',';
+end;
+
 procedure TestDialogTranslationBroadSweep;
 var
   Decl: TDialogDeclaration;
@@ -246,12 +257,14 @@ begin
   Assert.IsTrue(Length(FindCtrlText(Decl, 'total_rule')) = Length('──────────────────────────────── Total ──────────────────────────────────'),
     'translated separator keeps the exact same rendered width as the English default');
 
-  // A multi-column list header (assocHeader) is a deliberate translation gap:
-  // its fixed-width padding lines up with data-row offsets baked into the
-  // Pascal renderer, so translating the label alone would misalign the grid.
+  // A multi-column list header (assocHeader) is padded to line up with
+  // data-row offsets baked into the Pascal renderer, so its translation must
+  // start every column exactly where the English one does.
   Assert.IsTrue(TryLoadDialogResource(cResDialogAssociations, Decl), 'DIALOG_ASSOCIATIONS loads');
-  Assert.IsTrue(FindCtrlText(Decl, 'assocHeader').StartsWith('Ext'),
-    'column header intentionally left untranslated (see uStrings.pas dialog-translation notes)');
+  Assert.IsTrue(FindCtrlText(Decl, 'assocHeader').StartsWith('Расш.'), 'column header translates');
+  Assert.IsTrue(ColumnStarts(FindCtrlText(Decl, 'assocHeader')) =
+    ColumnStarts('Ext          Action        Command'),
+    'translated column header keeps every column where the English one starts it');
   Assert.IsTrue(FindCtrlText(Decl, 'ok') = 'Изменить', 'Edit button translates');
 
   SetLocale('en');

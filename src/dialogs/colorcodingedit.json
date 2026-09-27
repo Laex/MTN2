@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "Name:",
+      "id": "lbl_name",
       "col": 1,
       "row": 0,
       "width": 10,
@@ -25,6 +26,7 @@
     {
       "type": "label",
       "text": "Mask(s):",
+      "id": "lbl_masks",
       "col": 1,
       "row": 1,
       "width": 10,
@@ -42,6 +44,7 @@
     {
       "type": "label",
       "text": "Apply to:",
+      "id": "lbl_applyto",
       "col": 1,
       "row": 2,
       "width": 10,
@@ -82,6 +85,7 @@
     {
       "type": "label",
       "text": "           Fg             Bg             Sample",
+      "id": "lbl_columns",
       "col": 1,
       "row": 4,
       "width": 60,
@@ -90,6 +94,7 @@
     {
       "type": "label",
       "text": "Normal:",
+      "id": "lbl_normal",
       "col": 1,
       "row": 5,
       "width": 10,
@@ -128,6 +133,7 @@
     {
       "type": "label",
       "text": "Selected:",
+      "id": "lbl_selected",
       "col": 1,
       "row": 6,
       "width": 10,
@@ -166,6 +172,7 @@
     {
       "type": "label",
       "text": "Current:",
+      "id": "lbl_current",
       "col": 1,
       "row": 7,
       "width": 10,
@@ -204,6 +211,7 @@
     {
       "type": "label",
       "text": "F9 = pick a color for the focused Fg/Bg field above.",
+      "id": "lbl_hint_pick",
       "col": 1,
       "row": 9,
       "width": 60,
@@ -212,6 +220,7 @@
     {
       "type": "label",
       "text": "Leave a color blank to inherit the theme's own color there.",
+      "id": "lbl_hint_blank",
       "col": 1,
       "row": 10,
       "width": 60,
@@ -220,6 +229,7 @@
     {
       "type": "label",
       "text": "Colors are #RRGGBB (e.g. #FF55FF) or RRGGBB.",
+      "id": "lbl_hint_format",
       "col": 1,
       "row": 11,
       "width": 60,

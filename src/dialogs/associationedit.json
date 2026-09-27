@@ -8,6 +8,7 @@
     {
       "type": "label",
       "text": "Extension:",
+      "id": "lbl_extension",
       "col": 1,
       "row": 1,
       "width": 16,
@@ -25,6 +26,7 @@
     {
       "type": "label",
       "text": "Action:",
+      "id": "lbl_action",
       "col": 1,
       "row": 3,
       "width": 16,
@@ -48,6 +50,7 @@
     {
       "type": "label",
       "text": "Command (%1 = file, Run command only):",
+      "id": "lbl_command",
       "col": 1,
       "row": 5,
       "width": 56,
