@@ -958,13 +958,7 @@ procedure NormalizePanelInputKey(var AKey: Word; var AKeyChar: Char);
 begin
   if (AKey = 0) and (AKeyChar = #9) then
     AKey := vkTab;
-  // Do not let a stray CR/LF KeyChar turn Tab into Return (Ctrl+Tab).
-  if AKey = vkTab then
-    Exit;
-  if (AKeyChar = #13) or (AKeyChar = #10) then
-    AKey := vkReturn;
-  if (AKey = 10) or (AKey = 13) or (AKey = vkAccept) then
-    AKey := vkReturn;
+  NormalizeEnterKey(AKey, AKeyChar);
 end;
 
 function ShouldOfferTopMenu(AWorkspaceKind: TWorkspaceKind;

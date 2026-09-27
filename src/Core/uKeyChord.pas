@@ -53,10 +53,14 @@ const
 /// Viewer find.</summary>
 function IsHistoryDropDownChord(const K: TKeyChord): Boolean;
 
+/// <summary>Enter arrives as #13/#10, raw 13/10 or vkAccept depending on the
+/// source; all become vkReturn. vkTab is left alone even with a stray CR/LF
+/// character (it would turn Ctrl+Tab into Ctrl+Enter).</summary>
+procedure NormalizeEnterKey(var AKey: Word; AKeyChar: Char);
+
 /// <summary>Entry-point normalization, applied once before any handler sees
-/// the key. Enter arrives as #13/#10, raw 13/10 or vkAccept depending on the
-/// source; all become vkReturn (Tab is left alone). Right Alt on AltGr
-/// layouts arrives as Ctrl+Alt (Windows adds a synthetic Left Ctrl): with
+/// the key: NormalizeEnterKey, and AltGr+Enter. Right Alt on AltGr layouts
+/// arrives as Ctrl+Alt (Windows adds a synthetic Left Ctrl): with
 /// AAltGrDown, Enter drops the Ctrl so AltGr+Enter is Alt+Enter, not
 /// Ctrl+Alt+Enter.</summary>
 procedure NormalizeKeyInput(var AKey: Word; AKeyChar: Char;
@@ -107,13 +111,18 @@ begin
     K.MatchesAny(vkDown, [ssAlt], [ssCtrl]);
 end;
 
-procedure NormalizeKeyInput(var AKey: Word; AKeyChar: Char;
-  var AShift: TShiftState; AAltGrDown: Boolean);
+procedure NormalizeEnterKey(var AKey: Word; AKeyChar: Char);
 begin
   if AKey = vkTab then
     Exit;
   if (AKeyChar = #13) or (AKeyChar = #10) or (AKey = 10) or (AKey = vkAccept) then
     AKey := vkReturn;
+end;
+
+procedure NormalizeKeyInput(var AKey: Word; AKeyChar: Char;
+  var AShift: TShiftState; AAltGrDown: Boolean);
+begin
+  NormalizeEnterKey(AKey, AKeyChar);
   if (AKey = vkReturn) and AAltGrDown then
     Exclude(AShift, ssCtrl);
 end;
