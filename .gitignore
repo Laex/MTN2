@@ -74,9 +74,14 @@ __history/
 __recovery/
 modules/
 
+# Dot-files and dot-folders are local tooling unless listed here
+.*
+!.gitignore
+!.gitattributes
+!/.github/
+!/src/plugins/mtn.ws/.cargo/
+
 # IDE / OS junk
-.obsidian/
-.DS_Store
 Thumbs.db
 desktop.ini
 
@@ -119,14 +124,6 @@ id_ed25519*
 # Python (src/Assets/make_ico.py)
 __pycache__/
 *.py[cod]
-
-# Local AI / editor tooling (repowise keeps API keys in .repowise/.env)
-.zcode/
-.vscode/
-.repowise/
-.claude/
-.cursor/
-.mcp.json
 
 # Release packages (src/tools/package-release.ps1)
 /dist/
