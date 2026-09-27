@@ -22,19 +22,12 @@ function GetConfigFilePath(const AFileName: string): string;
 implementation
 
 function IsPortableMode: Boolean;
-var
-  ExeDir, PortableFile: string;
 begin
-  ExeDir := ExtractFilePath(ParamStr(0));
-  PortableFile := TPath.Combine(ExeDir, 'portable.dat');
-  if FileExists(PortableFile) then
-    Exit(True);
-
-  // Check current directory fallback
-  if FileExists('portable.dat') then
-    Exit(True);
-
-  Result := False;
+  // Only the exe's own folder decides. The current directory is wherever
+  // MTN2 happened to be started from (a console, a shortcut's "Start in"),
+  // and a portable.dat lying there must not flip an installed copy into
+  // writing its settings next to the exe.
+  Result := FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'portable.dat'));
 end;
 
 function GetConfigDirectory: string;
