@@ -223,6 +223,7 @@
         <DCCReference Include="Core\uEditorLayout.pas"/>
         <DCCReference Include="Core\uEditorDialogs.pas"/>
         <DCCReference Include="Core\uEditorInput.pas"/>
+        <DCCReference Include="Core\uKeyChord.pas"/>
         <DCCReference Include="Core\uVfsUtils.pas"/>
         <DCCReference Include="Core\uDialogRenderer.pas"/>
         <DCCReference Include="Core\uDualPanelCmdLine.pas"/>

@@ -4,7 +4,7 @@
   raw keyboard → pipes, scrollback/selection chrome.
   Inherits buffer, PTY, selection, mouse and clipboard from TBaseConsoleWindow.
   Unique to this class:
-    - IsHostPassthrough: blocks host-level hotkeys (Ctrl+Tab, zoom, F10, Alt+X).
+    - IsTerminalHostPassthrough: blocks host-level hotkeys (Ctrl+Tab, zoom, F10, Alt+X).
     - Full raw PTY passthrough for all printable characters.
     - Profile-specific Backspace (#127 WSL / #8 Windows) and local echo (cmd).
     - Status bar with profile name.
@@ -17,7 +17,8 @@ uses
   Winapi.Windows,
   FMX.Platform,
   uTerminalTypes, uThemeTypes, uTerminalWindow, uConsoleBuffer, uConPty,
-  uShellProfiles, uDialogTypes, uDialogHost, uBaseConsoleWindow, uStrings;
+  uShellProfiles, uDialogTypes, uDialogHost, uBaseConsoleWindow, uStrings,
+  uKeyChord;
 
 type
   TTerminalWorkspaceWindow = class(TBaseConsoleWindow)
@@ -30,8 +31,6 @@ type
     /// this is asynchronous — the tab dies only once the dialog answers.</summary>
     procedure AskCloseWorkspace;
     procedure CloseConfirmCommand(const AControlId, AValuesJson: string);
-    function  IsHostPassthrough(AKey: Word; AShift: TShiftState;
-                AKeyChar: Char): Boolean;
   protected
     procedure SyncTitle; override;
     procedure ProcessExited(AExitCode: Cardinal); override;
@@ -58,6 +57,11 @@ type
     property CloseOnExit: Boolean read FCloseOnExit write FCloseOnExit;
     // Inherited: ProfileId, Running, WorkingDir, OnCloseRequest, OnContentChanged
   end;
+
+/// <summary>Host-level hotkeys the terminal must not send to the shell:
+/// Ctrl+Tab (workspace cycle), Ctrl+Shift+N (new terminal), Ctrl +/-/0
+/// (zoom), F10 and Alt+X (quit).</summary>
+function IsTerminalHostPassthrough(const K: TKeyChord): Boolean;
 
 implementation
 
@@ -308,26 +312,19 @@ end;
 
 { ---- Host-passthrough filter ----------------------------------------------- }
 
-function TTerminalWorkspaceWindow.IsHostPassthrough(AKey: Word;
-  AShift: TShiftState; AKeyChar: Char): Boolean;
+function IsTerminalHostPassthrough(const K: TKeyChord): Boolean;
 begin
-  Result := False;
   // Ctrl+Tab / Ctrl+Shift+Tab — Dual Panel workspace cycle.
-  if (AKey = vkTab) and (ssCtrl in AShift) then
+  if K.MatchesAny(vkTab, [ssCtrl], [ssShift, ssAlt]) then
     Exit(True);
   // New terminal / zoom / quit — host or Dual Panel keymap.
-  if (ssCtrl in AShift) and (ssShift in AShift) and not (ssAlt in AShift) and
-     (AKey = Ord('N')) then
+  if K.Matches(vkN, [ssCtrl, ssShift]) then
     Exit(True);
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = vkAdd) or (AKey = vkSubtract) or (AKey = vkNumpad0) or
-      (AKeyChar = '+') or (AKeyChar = '=') or (AKeyChar = '-') or
-      (AKeyChar = '0')) then
+  if K.HasMods([ssCtrl], [ssShift]) and
+     ((K.Key = vkAdd) or (K.Key = vkSubtract) or (K.Key = vkNumpad0) or
+      (K.Ch = '+') or (K.Ch = '=') or (K.Ch = '-') or (K.Ch = '0')) then
     Exit(True);
-  if AKey = vkF10 then
-    Exit(True);
-  if (ssAlt in AShift) and (AKey = Ord('X')) then
-    Exit(True);
+  Result := (K.Key = vkF10) or K.MatchesAny(vkX, [ssAlt], [ssCtrl, ssShift]);
 end;
 
 { ---- Input ----------------------------------------------------------------- }
@@ -338,24 +335,26 @@ function TTerminalWorkspaceWindow.HandleInput(var AKey: Word;
   function GetCharFromVK: Char;
   begin
     Result := #0;
-    if (AKey >= Ord('A')) and (AKey <= Ord('Z')) then
+    if (AKey >= vkA) and (AKey <= vkZ) then
     begin
       if ssShift in AShift then
         Result := Char(AKey)
       else
-        Result := Char(AKey + 32);
+        Result := Char(Ord('a') + AKey - vkA);
     end
-    else if (AKey >= Ord('0')) and (AKey <= Ord('9')) then
+    else if (AKey >= vk0) and (AKey <= vk9) then
       Result := Char(AKey)
-    else if AKey = 32 then
+    else if AKey = vkSpace then
       Result := ' ';
   end;
 
 var
+  K: TKeyChord;
   ViewH: Integer;
 begin
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
   // Let host handle its own global hotkeys first.
-  if IsHostPassthrough(AKey, AShift, AKeyChar) then
+  if IsTerminalHostPassthrough(K) then
     Exit(False);
 
   Result := True;
@@ -382,8 +381,7 @@ begin
 
   // Alt+F8 — command history picker (matches Dual Panel's kaCmdHistory);
   // selecting an entry runs it immediately in this terminal tab.
-  if (ssAlt in AShift) and not (ssCtrl in AShift) and not (ssShift in AShift) and
-     (AKey = vkF8) then
+  if K.Matches(vkF8, [ssAlt]) then
   begin
     OpenCmdHistoryDialog;
     AKey := 0; AKeyChar := #0;
@@ -391,8 +389,7 @@ begin
   end;
 
   // Ctrl+A — select all.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('A')) or (AKeyChar = 'a') or (AKeyChar = 'A')) then
+  if K.MatchesLetter('A', [ssCtrl], [ssShift]) then
   begin
     SelectAll;
     AKey := 0; AKeyChar := #0;
@@ -400,8 +397,7 @@ begin
   end;
 
   // Ctrl+C — copy or interrupt.
-  if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C')) then
+  if K.MatchesLetter('C', [ssCtrl], [ssShift]) then
   begin
     if HasSelection then
       CopySelection
@@ -412,8 +408,7 @@ begin
   end;
 
   // Ctrl+Insert — copy selection (no interrupt fallback, unlike Ctrl+C).
-  if (AKey = vkInsert) and (ssCtrl in AShift) and not (ssShift in AShift) and
-     not (ssAlt in AShift) then
+  if K.Matches(vkInsert, [ssCtrl]) then
   begin
     CopySelection;
     AKey := 0; AKeyChar := #0;
@@ -421,10 +416,7 @@ begin
   end;
 
   // Ctrl+V / Shift+Insert — paste.
-  if ((ssCtrl in AShift) and not (ssAlt in AShift) and
-      ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V'))) or
-     ((AKey = vkInsert) and (ssShift in AShift) and not (ssCtrl in AShift) and
-      not (ssAlt in AShift)) then
+  if K.MatchesLetter('V', [ssCtrl], [ssShift]) or K.Matches(vkInsert, [ssShift]) then
   begin
     PasteClipboard;
     AKey := 0; AKeyChar := #0;
@@ -438,7 +430,7 @@ begin
     Exit;
 
   // Shift+arrows — extend selection (no PTY passthrough).
-  if (ssShift in AShift) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if K.Mods = [ssShift] then
   begin
     case AKey of
       vkLeft:  begin MoveSelCursor(0, -1, True);     AKey := 0; Exit; end;
@@ -557,7 +549,7 @@ begin
       end;
     vkHome:
       begin
-        if ssCtrl in AShift then
+        if ssCtrl in K.Mods then
         begin
           FHistory.FollowTail := False;
           FHistory.ScrollToStart;
@@ -570,7 +562,7 @@ begin
       end;
     vkEnd:
       begin
-        if ssCtrl in AShift then
+        if ssCtrl in K.Mods then
         begin
           FHistory.ScrollToEnd;
           NotifyHost;
@@ -585,11 +577,11 @@ begin
   end;
 
   // Printable characters → raw PTY.
-  if (AKeyChar < ' ') and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if K.Mods * [ssCtrl, ssAlt] <> [] then
+    Exit(False);
+  if AKeyChar < ' ' then
     AKeyChar := GetCharFromVK;
-
-  if (AKeyChar >= ' ') and (AKeyChar <> #127) and
-     not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if (AKeyChar >= ' ') and (AKeyChar <> #127) then
   begin
     SendRaw(AKeyChar);
     AKey := 0; AKeyChar := #0;

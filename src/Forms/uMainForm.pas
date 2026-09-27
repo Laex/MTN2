@@ -296,7 +296,8 @@ implementation
 
 uses
   System.Diagnostics,
-  FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes;
+  FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes,
+  uKeyChord;
 
 const
   cBlinkIntervalMs = 530;   // standard Windows cursor blink rate
@@ -2341,19 +2342,9 @@ begin
     KeyChar := #0;
     Exit;
   end;
-  // Normalize Enter before dispatch (WideChar #13 / raw 13 / vkAccept).
-  if (C = #13) or (C = #10) then
-  begin
-    if K <> vkTab then
-      K := vkReturn;
-  end;
-  if (K <> vkTab) and ((K = 10) or (K = 13) or (K = vkAccept)) then
-    K := vkReturn;
-  // Right Alt on AltGr layouts arrives as Ctrl+Alt (Windows adds a synthetic
-  // Left Ctrl). For Enter the user means Alt+Enter (Properties), not
-  // Ctrl+Alt+Enter (reveal on the other panel) -- only a real Ctrl keeps it.
-  if (K = vkReturn) and IsAltGrDown then
-    Exclude(Shift, ssCtrl);
+  // Enter variants → vkReturn; AltGr+Enter → Alt+Enter (Properties), not
+  // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.
+  NormalizeKeyInput(K, C, Shift, IsAltGrDown);
   if TryHandleZoom(K, C, Shift) then
   begin
     Key := 0;

@@ -34,6 +34,7 @@ uses
   uEditorLayout in 'Core\uEditorLayout.pas',
   uEditorDialogs in 'Core\uEditorDialogs.pas',
   uEditorInput in 'Core\uEditorInput.pas',
+  uKeyChord in 'Core\uKeyChord.pas',
   uVfsUtils in 'Core\uVfsUtils.pas',
   uDialogRenderer in 'Core\uDialogRenderer.pas',
   uDualPanelCmdLine in 'Core\uDualPanelCmdLine.pas',
