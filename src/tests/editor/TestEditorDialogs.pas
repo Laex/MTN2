@@ -35,6 +35,9 @@ begin
   Assert.IsTrue(EditorAskSaveHotkey(0, #$0414) = cDlgCmdYes, 'Cyrillic D is Yes');
   Assert.IsTrue(EditorAskSaveHotkey(0, #$043D) = cDlgCmdNo, 'Cyrillic n is No');
   Assert.IsTrue(EditorAskSaveHotkey(vkEscape, #0) = '', 'Esc is not a letter hotkey');
+  Assert.IsTrue(EditorAskSaveHotkey(vkF10, #0) = '', 'F10 (= Ord(''y'')) is not Yes');
+  Assert.IsTrue(EditorAskSaveHotkey(vkF4, #0) = '', 'F4 (= Ord(''s'')) is not Yes');
+  Assert.IsTrue(EditorAskSaveHotkey(vkNumpad4, #0) = '', 'Num4 (= Ord(''d'')) is not No');
   Assert.IsTrue(EditorAskSaveAction(cDlgCmdYes) = esaYes, 'yes cmd');
   Assert.IsTrue(EditorAskSaveAction(cDlgCmdNo) = esaNo, 'no cmd');
   Assert.IsTrue(EditorAskSaveAction(cDlgCmdCancel) = esaCancel, 'cancel cmd');

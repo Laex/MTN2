@@ -2219,7 +2219,7 @@ function TMainForm.IsReloadKeymapShortcut(AKey: Word; AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
   Result := (ssCtrl in AShift) and (ssAlt in AShift) and not (ssShift in AShift) and
-    ((AKey = Ord('K')) or (AKey = Ord('k')) or (AKeyChar = 'k') or (AKeyChar = 'K'));
+    ((AKey = Ord('K')) or (AKeyChar = 'k') or (AKeyChar = 'K'));
 end;
 
 // Host form dialogs (MkDir/Copy/…) live on Dual Panel — must win over the

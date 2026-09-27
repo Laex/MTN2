@@ -451,8 +451,7 @@ begin
   // Ctrl+A — select all (handled by base).
   // Ctrl+C — copy if selection; interrupt if running.
   if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('C')) or (AKey = Ord('c')) or
-      (AKeyChar = 'c') or (AKeyChar = 'C')) then
+     ((AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C')) then
   begin
     if HasSelection then
       CopySelection
@@ -475,8 +474,7 @@ begin
   if ((AKey = vkInsert) and (ssShift in AShift) and not (ssCtrl in AShift) and
       not (ssAlt in AShift)) or
      ((ssCtrl in AShift) and not (ssAlt in AShift) and
-      ((AKey = Ord('V')) or (AKey = Ord('v')) or
-       (AKeyChar = 'v') or (AKeyChar = 'V'))) then
+      ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V'))) then
   begin
     PasteClipboard;
     AKey := 0; AKeyChar := #0;

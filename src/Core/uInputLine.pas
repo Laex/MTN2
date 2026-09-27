@@ -477,13 +477,13 @@ begin
   if (ssCtrl in AShift) and not (ssAlt in AShift) then
   begin
     Ch := #0;
-    if (AKey = Ord('A')) or (AKey = Ord('a')) or (AKeyChar = 'a') or (AKeyChar = 'A') then
+    if (AKey = Ord('A')) or (AKeyChar = 'a') or (AKeyChar = 'A') then
       Ch := 'a'
-    else if (AKey = Ord('C')) or (AKey = Ord('c')) or (AKeyChar = 'c') or (AKeyChar = 'C') then
+    else if (AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C') then
       Ch := 'c'
-    else if (AKey = Ord('X')) or (AKey = Ord('x')) or (AKeyChar = 'x') or (AKeyChar = 'X') then
+    else if (AKey = Ord('X')) or (AKeyChar = 'x') or (AKeyChar = 'X') then
       Ch := 'x'
-    else if (AKey = Ord('V')) or (AKey = Ord('v')) or (AKeyChar = 'v') or (AKeyChar = 'V') then
+    else if (AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V') then
       Ch := 'v';
 
     if Ch = 'a' then

@@ -574,7 +574,8 @@ begin
     'Ctrl+Shift+Tab cycles');
   Assert.IsTrue(not IsWorkspaceCycleChord(vkTab, [ssCtrl], True), 'dialog blocks cycle');
   Assert.IsTrue(IsConsoleToggleChord(Ord('O'), [ssCtrl], False), 'Ctrl+O console');
-  Assert.IsTrue(IsConsoleToggleChord(Ord('o'), [ssCtrl], False), 'ctrl+o lowercase');
+  // Ord('o') is vkDivide: Ctrl+Num/ is not Ctrl+O.
+  Assert.IsTrue(not IsConsoleToggleChord(Ord('o'), [ssCtrl], False), 'Ctrl+Num/ is not Ctrl+O');
   Assert.IsTrue(not IsConsoleToggleChord(vkEscape, [], False), 'Esc is not host Ctrl+O');
   Assert.IsTrue(not IsConsoleToggleChord(Ord('O'), [ssCtrl], True), 'dialog blocks Ctrl+O');
   Assert.IsTrue(not IsConsoleToggleChord(Ord('O'), [ssCtrl, ssShift], False),
@@ -593,8 +594,8 @@ begin
     'dialog blocks new terminal');
   Assert.IsTrue(IsSelectConsoleProfileChord(Ord('O'), [ssCtrl, ssAlt], False),
     'Ctrl+Alt+O console profile');
-  Assert.IsTrue(IsSelectConsoleProfileChord(Ord('o'), [ssCtrl, ssAlt], False),
-    'ctrl+alt+o lowercase');
+  Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('o'), [ssCtrl, ssAlt], False),
+    'Ctrl+Alt+Num/ is not Ctrl+Alt+O');
   Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('O'), [ssCtrl], False),
     'Ctrl+O is not console profile');
   Assert.IsTrue(not IsSelectConsoleProfileChord(Ord('O'), [ssCtrl, ssShift], False),
@@ -984,6 +985,8 @@ begin
   Assert.IsTrue(RecoverPrintableKeyChar(Ord('A'), #0) = 'A', 'Alt letter recovers Key');
   Assert.IsTrue(RecoverPrintableKeyChar(Ord('7'), #0) = '7', 'digit Key recovers');
   Assert.IsTrue(RecoverPrintableKeyChar(vkDown, #0) = #0, 'non-printable stays empty');
+  Assert.IsTrue(RecoverPrintableKeyChar(vkF1, #0) = #0, 'F1 (= Ord(''p'')) is not a letter');
+  Assert.IsTrue(RecoverPrintableKeyChar(vkNumpad1, #0) = #0, 'Num1 (= Ord(''a'')) is not a letter');
   Assert.IsTrue(RecoverPrintableKeyChar(Ord('A'), 'b') = 'b', 'KeyChar wins when printable');
 
   Assert.IsTrue(ClassifyNeedleBoxKey(vkEscape, 'x', True, Ch) = nbaClear, 'Esc clears search');

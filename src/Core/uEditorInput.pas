@@ -115,12 +115,12 @@ begin
   Result := (ssCtrl in AShift) and not (ssAlt in AShift);
 end;
 
-/// <summary>Key is the uppercase letter AUpper by virtual key code. Also
-/// accepts Ord(lowercase), which aliases numpad/F-key codes (Ord('h') =
-/// vkNumpad8, Ord('s') = vkF4) -- kept as the keymap always matched it.</summary>
+/// <summary>Key is the uppercase letter AUpper by virtual key code. Letter
+/// virtual keys are always uppercase; Ord(lowercase) is a different key
+/// (Ord('s') = vkF4, Ord('k') = vkAdd), so it must not match.</summary>
 function IsLetterVk(AKey: Word; AUpper: Char): Boolean; inline;
 begin
-  Result := (AKey = Ord(AUpper)) or (AKey = Ord(AUpper) + 32);
+  Result := AKey = Ord(AUpper);
 end;
 
 /// <summary>IsLetterVk, or the typed character is AUpper in either case.</summary>

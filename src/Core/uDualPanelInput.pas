@@ -989,7 +989,7 @@ begin
   // own Esc (close tab). Same dialog guard as Ctrl+Tab.
   Result := (not ADialogVisible) and (ssCtrl in AShift) and not (ssAlt in AShift)
     and not (ssShift in AShift) and
-    ((AKey = Ord('O')) or (AKey = Ord('o')));
+    (AKey = Ord('O'));
 end;
 
 function IsHelpChord(AKey: Word; AShift: TShiftState;
@@ -1011,7 +1011,7 @@ function IsNewTerminalChord(AKey: Word; AShift: TShiftState;
 begin
   Result := (not ADialogVisible) and (ssCtrl in AShift) and (ssShift in AShift)
     and not (ssAlt in AShift) and
-    ((AKey = Ord('N')) or (AKey = Ord('n')));
+    (AKey = Ord('N'));
 end;
 
 function IsSelectConsoleProfileChord(AKey: Word; AShift: TShiftState;
@@ -1019,7 +1019,7 @@ function IsSelectConsoleProfileChord(AKey: Word; AShift: TShiftState;
 begin
   Result := (not ADialogVisible) and (ssCtrl in AShift) and (ssAlt in AShift)
     and not (ssShift in AShift) and
-    ((AKey = Ord('O')) or (AKey = Ord('o')));
+    (AKey = Ord('O'));
 end;
 
 function IsAppQuitChord(AKey: Word; AShift: TShiftState;
@@ -1028,7 +1028,7 @@ begin
   // Alt+X quits the app (NDN). F10 on Viewer/Editor closes the tab.
   Result := (not ADialogVisible) and (ssAlt in AShift) and not (ssCtrl in AShift)
     and not (ssShift in AShift) and
-    ((AKey = Ord('X')) or (AKey = Ord('x')));
+    (AKey = Ord('X'));
 end;
 
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
@@ -1046,8 +1046,7 @@ end;
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
 begin
   Result := (((AKey = vkInsert) and (ssShift in AShift)) or
-    ((ssCtrl in AShift) and ((AKey = Ord('V')) or (AKey = Ord('v')) or
-     (AKeyChar = 'v') or (AKeyChar = 'V')))) and not (ssAlt in AShift);
+    ((ssCtrl in AShift) and ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V')))) and not (ssAlt in AShift);
 end;
 
 function IsAltQuickSearchChord(AKey: Word; AShift: TShiftState): Boolean;
@@ -1103,10 +1102,10 @@ begin
   Result := AKeyChar;
   if (Result < ' ') or (Ord(Result) = 127) then
   begin
+    // Letter virtual keys are uppercase only: 'a'..'z' codes are the
+    // numpad and F1..F11 keys, not letters.
     case AKey of
       Ord('A')..Ord('Z'),
-      Ord('a')..Ord('z'):
-        Result := Char(AKey);
       Ord('0')..Ord('9'):
         Result := Char(AKey);
     else

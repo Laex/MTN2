@@ -317,7 +317,7 @@ begin
     Exit(True);
   // New terminal / zoom / quit — host or Dual Panel keymap.
   if (ssCtrl in AShift) and (ssShift in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('N')) or (AKey = Ord('n'))) then
+     (AKey = Ord('N')) then
     Exit(True);
   if (ssCtrl in AShift) and not (ssAlt in AShift) and
      ((AKey = vkAdd) or (AKey = vkSubtract) or (AKey = vkNumpad0) or
@@ -326,7 +326,7 @@ begin
     Exit(True);
   if AKey = vkF10 then
     Exit(True);
-  if (ssAlt in AShift) and ((AKey = Ord('X')) or (AKey = Ord('x'))) then
+  if (ssAlt in AShift) and (AKey = Ord('X')) then
     Exit(True);
 end;
 
@@ -392,8 +392,7 @@ begin
 
   // Ctrl+A — select all.
   if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('A')) or (AKey = Ord('a')) or
-      (AKeyChar = 'a') or (AKeyChar = 'A')) then
+     ((AKey = Ord('A')) or (AKeyChar = 'a') or (AKeyChar = 'A')) then
   begin
     SelectAll;
     AKey := 0; AKeyChar := #0;
@@ -402,8 +401,7 @@ begin
 
   // Ctrl+C — copy or interrupt.
   if (ssCtrl in AShift) and not (ssAlt in AShift) and
-     ((AKey = Ord('C')) or (AKey = Ord('c')) or
-      (AKeyChar = 'c') or (AKeyChar = 'C')) then
+     ((AKey = Ord('C')) or (AKeyChar = 'c') or (AKeyChar = 'C')) then
   begin
     if HasSelection then
       CopySelection
@@ -424,8 +422,7 @@ begin
 
   // Ctrl+V / Shift+Insert — paste.
   if ((ssCtrl in AShift) and not (ssAlt in AShift) and
-      ((AKey = Ord('V')) or (AKey = Ord('v')) or
-       (AKeyChar = 'v') or (AKeyChar = 'V'))) or
+      ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V'))) or
      ((AKey = vkInsert) and (ssShift in AShift) and not (ssCtrl in AShift) and
       not (ssAlt in AShift)) then
   begin

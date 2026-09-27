@@ -72,11 +72,12 @@ function EditorAskSaveHotkey(AKey: Word; AKeyChar: Char): string;
 var
   Ch: Char;
 begin
-  // Physical Latin keys — layout-independent (Y/S=Yes, N/D=No).
+  // Physical Latin keys — layout-independent (Y/S=Yes, N/D=No). Letter
+  // virtual keys are uppercase only: Ord('y') is vkF10, Ord('s') is vkF4.
   case AKey of
-    Ord('Y'), Ord('y'), Ord('S'), Ord('s'):
+    Ord('Y'), Ord('S'):
       Exit(cDlgCmdYes);
-    Ord('N'), Ord('n'), Ord('D'), Ord('d'):
+    Ord('N'), Ord('D'):
       Exit(cDlgCmdNo);
   end;
   // Typed glyph: Latin fallback + Cyrillic Да/Нет.

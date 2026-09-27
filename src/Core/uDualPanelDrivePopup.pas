@@ -428,11 +428,9 @@ begin
   end;
 
   Ch := UpCase(AKeyChar);
-  if (Ch < 'A') or (Ch > 'Z') then
-    if (AKey >= Ord('A')) and (AKey <= Ord('Z')) then
-      Ch := Char(AKey)
-    else if (AKey >= Ord('a')) and (AKey <= Ord('z')) then
-      Ch := UpCase(Char(AKey));
+  // Letter virtual keys are uppercase only ('a'..'z' codes are numpad/F-keys).
+  if ((Ch < 'A') or (Ch > 'Z')) and (AKey >= Ord('A')) and (AKey <= Ord('Z')) then
+    Ch := Char(AKey);
   if (Ch >= 'A') and (Ch <= 'Z') then
   begin
     for I := 0 to High(FState.Drives) do

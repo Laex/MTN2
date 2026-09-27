@@ -513,6 +513,25 @@ begin
       'Ctrl+Shift+N is host new-terminal');
     Assert.IsTrue(Spy.Last = 'keep', 'Ctrl+Shift+N does not insert a line');
     Assert.IsTrue(Key = Ord('N'), 'Ctrl+Shift+N leaves AKey');
+
+    // Lowercase letter codes are other keys, not letters.
+    Spy.Last := 'keep';
+    Key := vkF4; // = Ord('s')
+    KeyChar := #0;
+    Assert.IsTrue(not DispatchEditorKeys(Host, Key, [ssCtrl], KeyChar, 10), 'Ctrl+F4 unhandled');
+    Assert.IsTrue(Spy.Last = 'keep', 'Ctrl+F4 does not save');
+    Key := vkF11; // = Ord('z')
+    KeyChar := #0;
+    Assert.IsTrue(not DispatchEditorKeys(Host, Key, [ssCtrl], KeyChar, 10), 'Ctrl+F11 unhandled');
+    Assert.IsTrue(Spy.Last = 'keep', 'Ctrl+F11 does not undo');
+    Key := vkAdd; // = Ord('k')
+    KeyChar := #0;
+    Assert.IsTrue(not DispatchEditorKeys(Host, Key, [ssCtrl], KeyChar, 10), 'Ctrl+Num+ unhandled');
+    Assert.IsTrue(Spy.Last = 'keep', 'Ctrl+Num+ does not delete to end of line');
+    Key := vkNumpad8; // = Ord('h')
+    KeyChar := #0;
+    Assert.IsTrue(not DispatchEditorKeys(Host, Key, [ssCtrl], KeyChar, 10), 'Ctrl+Num8 unhandled');
+    Assert.IsTrue(Spy.Last = 'keep', 'Ctrl+Num8 is not Hex');
   finally
     Spy.Free;
   end;
