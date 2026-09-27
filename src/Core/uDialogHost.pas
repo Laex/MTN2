@@ -41,6 +41,12 @@ type
     function FirstFocusable: Integer;
     function NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
     function FocusedIsInput: Boolean;
+    /// <summary>Fires the first button whose command is Yes (AYes) or No.</summary>
+    function TryYesNoButton(AYes: Boolean): Boolean;
+    /// <summary>Activates the first control whose hotkey (ExtractControlHotkey)
+    /// is ACh: fires a button, toggles a checkbox, selects a radio, focuses
+    /// anything else.</summary>
+    function TryMnemonic(ACh: Char): Boolean;
     function FocusedIsButton: Boolean;
     function NormalizeAcceptKey(var AKey: Word; var AKeyChar: Char): Boolean;
     procedure NotifyChanged;
@@ -176,7 +182,10 @@ type
 implementation
 
 uses
-  uKeyChord;
+  System.Character, uKeyChord;
+
+type
+  TDialogYesNoAnswer = (dyaNone, dyaYes, dyaNo);
 
 function ControlRowSpan(const C: TDialogControl): Integer;
 begin
@@ -208,7 +217,7 @@ begin
   Result := #0;
   AmpPos := Pos('&', AText);
   if (AmpPos > 0) and (AmpPos < Length(AText)) then
-    Exit(UpCase(AText[AmpPos + 1]));
+    Exit(AText[AmpPos + 1].ToUpper);
 
   Id := LowerCase(Trim(AId));
   if Id = 'delete' then Exit('D');
@@ -221,10 +230,10 @@ begin
   if Id = 'cancel' then Exit('C');
 
   if AText <> '' then
-    Exit(UpCase(AText[1]));
+    Exit(AText[1].ToUpper);
 
   if AId <> '' then
-    Exit(UpCase(AId[1]));
+    Exit(AId[1].ToUpper);
 end;
 
 function ButtonCellWidth(const C: TDialogControl): Integer;
@@ -2051,6 +2060,83 @@ begin
   Result := True;
 end;
 
+function DialogYesNoAnswer(AKey: Word; AKeyChar: Char): TDialogYesNoAnswer;
+begin
+  // By meaning first: y / д (Да) = Yes, n / н (Нет) = No, in any case. Then
+  // the physical key, for any other layout (the Russian т sits on N and
+  // answers No; н sits on Y but its meaning wins).
+  case AKeyChar of
+    'y', 'Y', #$0434, #$0414: Exit(dyaYes);
+    'n', 'N', #$043D, #$041D: Exit(dyaNo);
+  end;
+  if AKey = vkY then
+    Exit(dyaYes);
+  if AKey = vkN then
+    Exit(dyaNo);
+  Result := dyaNone;
+end;
+
+function TDialogHost.TryYesNoButton(AYes: Boolean): Boolean;
+var
+  I: Integer;
+  C: TDialogControl;
+begin
+  for I := 0 to High(FDecl.Controls) do
+  begin
+    C := FDecl.Controls[I];
+    if (C.Kind = dckButton) and
+       ((AYes and DialogCmdIsYes(C.Id)) or (not AYes and DialogCmdIsNo(C.Id))) then
+    begin
+      FireCommand(C.Id);
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TDialogHost.TryMnemonic(ACh: Char): Boolean;
+var
+  I: Integer;
+  C: TDialogControl;
+begin
+  Result := True;
+  for I := 0 to High(FDecl.Controls) do
+  begin
+    C := FDecl.Controls[I];
+    if ExtractControlHotkey(C.Text, C.Id) = ACh then
+    begin
+      case C.Kind of
+        dckButton:
+          begin
+            FireCommand(C.Id);
+            Exit;
+          end;
+        dckCheckbox:
+          begin
+            FFocusIndex := I;
+            FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
+            NotifyChanged;
+            Exit;
+          end;
+        dckRadio:
+          begin
+            FFocusIndex := I;
+            SelectRadio(I);
+            NotifyChanged;
+            Exit;
+          end;
+        dckInput, dckList, dckDropDown, dckRadioGroup:
+          begin
+            FFocusIndex := I;
+            NotifyChanged;
+            Exit;
+          end;
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
 function TDialogHost.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
@@ -2223,98 +2309,39 @@ begin
   // Hot-keys / Mnemonics in dialogs trigger when Alt is pressed OR when not focused on an input box.
   if (ssAlt in AShift) or not FocusedIsInput then
   begin
-    Ch := UpCase(AKeyChar);
-    if (Ch < 'A') or (Ch > 'Z') then
-    begin
-      if (AKeyChar = 'ы') or (AKeyChar = 'Ы') then Ch := 'S'
-      else if (AKeyChar = 'ф') or (AKeyChar = 'Ф') then Ch := 'A'
-      else if (AKeyChar = 'в') or (AKeyChar = 'В') then Ch := 'D'
-      else if (AKeyChar = 'к') or (AKeyChar = 'К') then Ch := 'R'
-      else if (AKeyChar = 'с') or (AKeyChar = 'С') then Ch := 'C'
-      else if (AKeyChar = 'щ') or (AKeyChar = 'Щ') then Ch := 'O'
-      else if (AKeyChar = 'д') or (AKeyChar = 'Д') then Ch := 'Y'
-      else if (AKeyChar = 'н') or (AKeyChar = 'Н') or (AKeyChar = 'т') or (AKeyChar = 'Т') then Ch := 'N';
-    end;
-    if (Ch = #0) and (AKey >= Ord('A')) and (AKey <= Ord('Z')) then
-      Ch := Char(AKey);
-
-    // Explicit Y/N confirmation for Yes/No dialogs
-    if (Ch = 'Y') or (AKeyChar = 'y') or (AKeyChar = 'Y') or
-       (AKeyChar = 'д') or (AKeyChar = 'Д') then
-    begin
-      for I := 0 to High(FDecl.Controls) do
-      begin
-        C := FDecl.Controls[I];
-        if (C.Kind = dckButton) and DialogCmdIsYes(C.Id) then
+    case DialogYesNoAnswer(AKey, AKeyChar) of
+      dyaYes:
+        if TryYesNoButton(True) then
         begin
-          FireCommand(C.Id);
           AKey := 0;
           AKeyChar := #0;
           Exit;
         end;
-      end;
-    end;
-
-    if (Ch = 'N') or (AKeyChar = 'n') or (AKeyChar = 'N') or
-       (AKeyChar = 'н') or (AKeyChar = 'Н') then
-    begin
-      for I := 0 to High(FDecl.Controls) do
-      begin
-        C := FDecl.Controls[I];
-        if (C.Kind = dckButton) and DialogCmdIsNo(C.Id) then
+      dyaNo:
+        if TryYesNoButton(False) then
         begin
-          FireCommand(C.Id);
           AKey := 0;
           AKeyChar := #0;
           Exit;
         end;
-      end;
     end;
-
-    if (Ch >= 'A') and (Ch <= 'Z') then
+    // A mnemonic matches the typed letter first (any script: &Удалить takes
+    // у), then the physical key, so Latin mnemonics also work from another
+    // layout (the Russian ы on the S key takes &Skip).
+    Ch := #0;
+    if AKeyChar.IsLetter then
+      Ch := AKeyChar.ToUpper;
+    if (Ch <> #0) and TryMnemonic(Ch) then
     begin
-      for I := 0 to High(FDecl.Controls) do
-      begin
-        C := FDecl.Controls[I];
-        if ExtractControlHotkey(C.Text, C.Id) = Ch then
-        begin
-          case C.Kind of
-            dckButton:
-              begin
-                FireCommand(C.Id);
-                AKey := 0;
-                AKeyChar := #0;
-                Exit;
-              end;
-            dckCheckbox:
-              begin
-                FFocusIndex := I;
-                FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
-                NotifyChanged;
-                AKey := 0;
-                AKeyChar := #0;
-                Exit;
-              end;
-            dckRadio:
-              begin
-                FFocusIndex := I;
-                SelectRadio(I);
-                NotifyChanged;
-                AKey := 0;
-                AKeyChar := #0;
-                Exit;
-              end;
-            dckInput, dckList, dckDropDown, dckRadioGroup:
-              begin
-                FFocusIndex := I;
-                NotifyChanged;
-                AKey := 0;
-                AKeyChar := #0;
-                Exit;
-              end;
-          end;
-        end;
-      end;
+      AKey := 0;
+      AKeyChar := #0;
+      Exit;
+    end;
+    if (AKey >= vkA) and (AKey <= vkZ) and (Char(AKey) <> Ch) and TryMnemonic(Char(AKey)) then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      Exit;
     end;
   end;
 
