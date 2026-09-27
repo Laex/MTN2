@@ -275,6 +275,9 @@ function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;
 
 implementation
 
+uses
+  uKeyChord;
+
 procedure ConsumeKey(var AKey: Word; var AKeyChar: Char; AClearChar: Boolean);
 begin
   AKey := 0;
@@ -849,30 +852,31 @@ begin
   Result := False;
 end;
 
-function ShiftNav(AShift: TShiftState): Boolean;
-begin
-  Result := (ssShift in AShift) and not (ssCtrl in AShift) and not (ssAlt in AShift);
-end;
-
 function DispatchPanelNavKeys(const AHost: TDualPanelKeymapHost; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char; AViewH, ACols, APageSize: Integer): Boolean;
+var
+  K: TKeyChord;
+  ShiftNav: Boolean;
 begin
   Result := True;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  // Shift alone extends the selection; any other modifier is not navigation.
+  ShiftNav := K.Mods = [ssShift];
   case AKey of
     vkUp:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(-1, False)
       else
         AHost.MoveCursor(-1);
     vkDown:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(1, False)
       else
         AHost.MoveCursor(1);
     vkLeft:
-      if (ACols > 1) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+      if (ACols > 1) and K.HasMods([], [ssShift]) then
       begin
-        if ssShift in AShift then
+        if ShiftNav then
           AHost.MoveCursorWithSelect(-AViewH, True)
         else
           AHost.MoveCursor(-AViewH);
@@ -880,9 +884,9 @@ begin
       else
         Result := False;
     vkRight:
-      if (ACols > 1) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+      if (ACols > 1) and K.HasMods([], [ssShift]) then
       begin
-        if ssShift in AShift then
+        if ShiftNav then
           AHost.MoveCursorWithSelect(AViewH, True)
         else
           AHost.MoveCursor(AViewH);
@@ -890,28 +894,28 @@ begin
       else
         Result := False;
     vkPrior:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(-APageSize, False)
       else
         AHost.MoveCursor(-APageSize);
     vkNext:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(APageSize, False)
       else
         AHost.MoveCursor(APageSize);
     vkHome:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(-100000, False)
       else
         AHost.MoveCursor(-100000);
     vkEnd:
-      if ShiftNav(AShift) then
+      if ShiftNav then
         AHost.MoveCursorWithSelect(100000, False)
       else
         AHost.MoveCursor(100000);
     vkInsert:
       begin
-        if (ssCtrl in AShift) or (ssAlt in AShift) then
+        if not K.HasMods([], [ssShift]) then
         begin
           Result := False;
           Exit;
@@ -928,7 +932,7 @@ begin
       end;
     vkReturn:
       begin
-        if (ssCtrl in AShift) or (ssAlt in AShift) or (ssShift in AShift) then
+        if K.Mods <> [] then
         begin
           Result := False;
           Exit;
@@ -938,8 +942,7 @@ begin
         Exit;
       end;
   else
-    if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-       not (ssCtrl in AShift) and not (ssAlt in AShift) then
+    if K.IsPrintable and K.HasMods([], [ssShift]) then
     begin
       AHost.FocusCommandLine();
       Result := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
@@ -979,7 +982,8 @@ begin
   // Ctrl+Tab / Ctrl+Shift+Tab. Ignore leftover ssAlt: after Ctrl+Alt+Enter
   // FMX often still reports Alt down, which used to drop this chord so Tab
   // fell through to SwitchSide.
-  Result := (AKey = vkTab) and (ssCtrl in AShift) and not ADialogVisible;
+  Result := not ADialogVisible and
+    TKeyChord.Make(AKey, #0, AShift).MatchesAny(vkTab, [ssCtrl], [ssShift, ssAlt]);
 end;
 
 function IsConsoleToggleChord(AKey: Word; AShift: TShiftState;
@@ -987,48 +991,41 @@ function IsConsoleToggleChord(AKey: Word; AShift: TShiftState;
 begin
   // Ctrl+O only — Esc is also kaConsoleToggle on panels, but Viewer/Editor
   // own Esc (close tab). Same dialog guard as Ctrl+Tab.
-  Result := (not ADialogVisible) and (ssCtrl in AShift) and not (ssAlt in AShift)
-    and not (ssShift in AShift) and
-    (AKey = Ord('O'));
+  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkO, [ssCtrl]);
 end;
 
 function IsHelpChord(AKey: Word; AShift: TShiftState;
   ADialogVisible: Boolean): Boolean;
 begin
-  Result := (not ADialogVisible) and (AKey = vkF1) and
-    (AShift * [ssShift, ssAlt, ssCtrl] = []);
+  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkF1);
 end;
 
 function IsContextHelpChord(AKey: Word; AShift: TShiftState;
   ATopMenuActive, ADialogWantsHelp: Boolean): Boolean;
 begin
-  Result := (ATopMenuActive or ADialogWantsHelp) and (AKey = vkF1) and
-    (AShift * [ssShift, ssAlt, ssCtrl] = []);
+  Result := (ATopMenuActive or ADialogWantsHelp) and
+    TKeyChord.Make(AKey, #0, AShift).Matches(vkF1);
 end;
 
 function IsNewTerminalChord(AKey: Word; AShift: TShiftState;
   ADialogVisible: Boolean): Boolean;
 begin
-  Result := (not ADialogVisible) and (ssCtrl in AShift) and (ssShift in AShift)
-    and not (ssAlt in AShift) and
-    (AKey = Ord('N'));
+  Result := not ADialogVisible and
+    TKeyChord.Make(AKey, #0, AShift).Matches(vkN, [ssCtrl, ssShift]);
 end;
 
 function IsSelectConsoleProfileChord(AKey: Word; AShift: TShiftState;
   ADialogVisible: Boolean): Boolean;
 begin
-  Result := (not ADialogVisible) and (ssCtrl in AShift) and (ssAlt in AShift)
-    and not (ssShift in AShift) and
-    (AKey = Ord('O'));
+  Result := not ADialogVisible and
+    TKeyChord.Make(AKey, #0, AShift).Matches(vkO, [ssCtrl, ssAlt]);
 end;
 
 function IsAppQuitChord(AKey: Word; AShift: TShiftState;
   ADialogVisible: Boolean): Boolean;
 begin
   // Alt+X quits the app (NDN). F10 on Viewer/Editor closes the tab.
-  Result := (not ADialogVisible) and (ssAlt in AShift) and not (ssCtrl in AShift)
-    and not (ssShift in AShift) and
-    (AKey = Ord('X'));
+  Result := not ADialogVisible and TKeyChord.Make(AKey, #0, AShift).Matches(vkX, [ssAlt]);
 end;
 
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
@@ -1044,18 +1041,21 @@ begin
 end;
 
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
+var
+  K: TKeyChord;
 begin
-  Result := (((AKey = vkInsert) and (ssShift in AShift)) or
-    ((ssCtrl in AShift) and ((AKey = Ord('V')) or (AKeyChar = 'v') or (AKeyChar = 'V')))) and not (ssAlt in AShift);
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  Result := K.MatchesAny(vkInsert, [ssShift], [ssCtrl]) or
+    K.MatchesLetter('V', [ssCtrl], [ssShift]);
 end;
 
 function IsAltQuickSearchChord(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := (ssAlt in AShift) and not (ssCtrl in AShift) and
+  Result := TKeyChord.Make(AKey, #0, AShift).HasMods([ssAlt], [ssShift]) and
     (AKey <> vkF1) and (AKey <> vkF2) and (AKey <> vkF7) and (AKey <> vkF10) and
     (AKey <> vkF12) and (AKey <> vkLeft) and (AKey <> vkRight) and
     (AKey <> vkAdd) and (AKey <> vkSubtract) and (AKey <> vkMultiply) and
-    (AKey <> $BB) and (AKey <> $BD) and // OEM +/− (not in System.UITypes here)
+    (AKey <> vkEqual) and (AKey <> vkMinus) and // OEM +/−
     (AKey <> Ord('+')) and (AKey <> Ord('-')) and (AKey <> Ord('*'));
 end;
 
@@ -1141,18 +1141,6 @@ begin
     Delete(AText, Length(AText), 1);
 end;
 
-function CtrlLetterMatch(AKey: Word; AKeyChar: Char; ALetter: Char): Boolean;
-begin
-  Result := (AKeyChar = ALetter) or (AKeyChar = UpCase(ALetter)) or
-    (AKey = Ord(UpCase(ALetter)));
-end;
-
-function BareNoMod(AShift: TShiftState): Boolean;
-begin
-  Result := not (ssCtrl in AShift) and not (ssAlt in AShift) and
-    not (ssShift in AShift);
-end;
-
 function KeyCharIsLetter(AKeyChar: Char): Boolean;
 begin
   Result := ((AKeyChar >= 'A') and (AKeyChar <= 'Z')) or
@@ -1177,8 +1165,19 @@ end;
 function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
   const AKeymap: TDualPanelKeymapHost; const ASnap: TPanelFreeInputSnap;
   var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
+
+  // The keystroke as it is now: RestoreGrayOpKey and the host input handlers
+  // may rewrite AKey / AKeyChar on the way down.
+  function Chord: TKeyChord;
+  begin
+    Result := TKeyChord.Make(AKey, AKeyChar, AShift);
+  end;
+
+var
+  Mods: TShiftState;
 begin
   Result := True;
+  Mods := AShift * cKeyMods;
   // Command line focused (Ctrl+Down): every key is the command line's, the
   // panel bindings included (- + * deselect / select / invert, F-keys, ...).
   // Esc / Ctrl+Up there give the focus back to the panel.
@@ -1196,7 +1195,7 @@ begin
     ConsumeKey(AKey, AKeyChar, False);
     Exit;
   end;
-  if (AKey = vkEscape) and BareNoMod(AShift) and ASnap.CmdLineHasText then
+  if Chord.Matches(vkEscape) and ASnap.CmdLineHasText then
   begin
     AHost.ClearCmdLineOnEsc();
     ConsumeKey(AKey, AKeyChar, True);
@@ -1211,15 +1210,14 @@ begin
     Exit;
   // Ctrl+Shift+Left/Right with text in the command line select word parts
   // there instead of cycling the drive preview.
-  if (ssCtrl in AShift) and (ssShift in AShift) and not (ssAlt in AShift) and
-     ((AKey = vkLeft) or (AKey = vkRight)) and
+  if (Chord.Matches(vkLeft, [ssCtrl, ssShift]) or Chord.Matches(vkRight, [ssCtrl, ssShift])) and
      (ASnap.CmdFocused or ASnap.CmdLineHasText) then
   begin
     if not ASnap.CmdFocused and Assigned(AHost.FocusCommandLine) then
       AHost.FocusCommandLine();
     Exit(AHost.HandleCmdLineInput(AKey, AShift, AKeyChar));
   end;
-  if (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if Chord.HasMods([ssCtrl], [ssShift]) then
   begin
     if AKey = vkLeft then
     begin
@@ -1249,7 +1247,7 @@ begin
     end;
   end;
   AHost.RestoreGrayOpKey(AKey, AKeyChar);
-  if BareNoMod(AShift) then
+  if Mods = [] then
   begin
     if AKey = vkAdd then
     begin
@@ -1270,7 +1268,7 @@ begin
       Exit;
     end;
   end;
-  if (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if Chord.HasMods([ssCtrl], [ssShift]) then
   begin
     if IsPlusSelectKey(AKey, AKeyChar) then
     begin
@@ -1285,7 +1283,7 @@ begin
       Exit;
     end;
   end;
-  if (ssShift in AShift) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if Mods = [ssShift] then
   begin
     if AKey = vkAdd then
     begin
@@ -1300,7 +1298,7 @@ begin
       Exit;
     end;
   end;
-  if (ssAlt in AShift) and not (ssCtrl in AShift) and not (ssShift in AShift) then
+  if Mods = [ssAlt] then
   begin
     if (AKey = vkAdd) or (AKeyChar = '+') then
     begin
@@ -1324,9 +1322,9 @@ begin
   end;
   if AKey = vkTab then
   begin
-    if ssCtrl in AShift then
+    if ssCtrl in Mods then
     begin
-      if ssShift in AShift then
+      if ssShift in Mods then
       begin
         if Assigned(AKeymap.PrevWorkspace) then
           AKeymap.PrevWorkspace();
@@ -1336,7 +1334,7 @@ begin
       ConsumeKey(AKey, AKeyChar, False);
       Exit;
     end;
-    if (ssAlt in AShift) or (ssShift in AShift) then
+    if Mods <> [] then
     begin
       Result := False;
       Exit;
@@ -1345,31 +1343,31 @@ begin
     ConsumeKey(AKey, AKeyChar, False);
     Exit;
   end;
-  if (ssCtrl in AShift) and (ssShift in AShift) and CtrlLetterMatch(AKey, AKeyChar, 't') then
+  if Chord.MatchesLetter('T', [ssCtrl, ssShift], [ssAlt]) then
   begin
     AHost.NewPanelTab();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if (ssCtrl in AShift) and (ssShift in AShift) and CtrlLetterMatch(AKey, AKeyChar, 'w') then
+  if Chord.MatchesLetter('W', [ssCtrl, ssShift], [ssAlt]) then
   begin
     AHost.NewWorkspace();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if (ssCtrl in AShift) and not (ssShift in AShift) and CtrlLetterMatch(AKey, AKeyChar, 't') then
+  if Chord.MatchesLetter('T', [ssCtrl], [ssAlt]) then
   begin
     AHost.NextPanelTab();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if (ssCtrl in AShift) and not (ssShift in AShift) and CtrlLetterMatch(AKey, AKeyChar, 'r') then
+  if Chord.MatchesLetter('R', [ssCtrl], [ssAlt]) then
   begin
     AHost.RefreshActive();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if (ssCtrl in AShift) and not (ssShift in AShift) and CtrlLetterMatch(AKey, AKeyChar, 'a') then
+  if Chord.MatchesLetter('A', [ssCtrl], [ssAlt]) then
   begin
     AHost.SelectAllActive();
     ConsumeKey(AKey, AKeyChar, True);
@@ -1379,7 +1377,7 @@ begin
     Exit;
   if AHost.DispatchKeymapFunctionKeys(MatchActiveAction(AKey, AShift), AKey, AKeyChar) then
     Exit;
-  if ((AKey = vkNumpad5) or (AKey = vkClear)) and BareNoMod(AShift) then
+  if Chord.Matches(vkNumpad5) or Chord.Matches(vkClear) then
   begin
     AHost.OpenViewOrEdit(False);
     ConsumeKey(AKey, AKeyChar, True);
