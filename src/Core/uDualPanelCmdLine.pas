@@ -96,7 +96,7 @@ implementation
 
 uses
   System.IOUtils, System.JSON, System.Generics.Collections, uConfigLocation,
-  uStrings, uNotice;
+  uStrings, uNotice, uKeyChord;
 
 const
   cMaxHistory = 100;
@@ -496,8 +496,7 @@ begin
   end;
 
   // Ctrl+Down / Alt+Down: history as a drop-down list.
-  if (AKey = vkDown) and ((ssCtrl in AShift) or (ssAlt in AShift)) and
-     not (ssShift in AShift) and not FConsoleMode then
+  if IsHistoryDropDownChord(TKeyChord.Make(AKey, AKeyChar, AShift)) and not FConsoleMode then
   begin
     if (FHistory.Count > 0) and Assigned(FOnOpenHistoryPopup) then
       FOnOpenHistoryPopup();
@@ -508,8 +507,7 @@ begin
   end;
 
   // Tab-complete (no modifiers).
-  if (AKey = vkTab) and not (ssCtrl in AShift) and not (ssAlt in AShift) and
-     not (ssShift in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkTab) then
   begin
     DoTabComplete;
     AKey := 0;
@@ -520,14 +518,14 @@ begin
 
   // Command history (Up/Down without Ctrl/Alt). Prefer history over console
   // scroll while the cmdline has focus.
-  if (AKey = vkUp) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkUp, [], [ssShift]) then
   begin
     HistoryUp;
     AKey := 0;
     Result := True;
     Exit;
   end;
-  if (AKey = vkDown) and not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkDown, [], [ssShift]) then
   begin
     HistoryDown;
     AKey := 0;
@@ -536,8 +534,7 @@ begin
   end;
 
   // Ctrl+Up — return focus to the file panel (inverse of Ctrl+Down).
-  if (AKey = vkUp) and (ssCtrl in AShift) and not (ssAlt in AShift) and
-     not (ssShift in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkUp, [ssCtrl]) then
   begin
     SetFocused(False);
     AKey := 0;

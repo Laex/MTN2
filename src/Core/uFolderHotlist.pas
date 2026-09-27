@@ -52,7 +52,7 @@ implementation
 
 uses
   System.IOUtils, System.JSON, System.Generics.Collections, System.Generics.Defaults,
-  uConfigLocation, uVfsTypes;
+  System.UITypes, uConfigLocation, uVfsTypes;
 
 var
   GLoaded: Boolean = False;
@@ -337,10 +337,10 @@ end;
 
 function FolderHotlistKeyFromVKey(AKey: Word): Integer;
 begin
-  if AKey = Ord('0') then
+  if AKey = vk0 then
     Result := 10
-  else if (AKey >= Ord('1')) and (AKey <= Ord('9')) then
-    Result := AKey - Ord('0')
+  else if (AKey >= vk1) and (AKey <= vk9) then
+    Result := AKey - vk0
   else
     Result := 0;
 end;

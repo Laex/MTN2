@@ -48,7 +48,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uKeyChord;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -286,7 +286,7 @@ begin
   // this menu. Ctrl+Alt+F1..F6 was tried first but collides with global
   // hotkeys some terminal emulators (e.g. ConEmu) register system-wide;
   // Ctrl+Shift+F1..F6 is a different chord from that.
-  if (ssCtrl in AShift) and (ssShift in AShift) and
+  if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl, ssShift], [ssAlt]) and
      (AKey >= vkF1) and (AKey <= vkF6) then
   begin
     I := AKey - vkF1;

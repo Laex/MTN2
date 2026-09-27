@@ -2162,7 +2162,7 @@ begin
 
   // History input: Ctrl+Down / Alt+Down drop the history down.
   if IsHistoryInput(FFocusIndex) and
-     (K.MatchesAny(vkDown, [ssCtrl], [ssAlt]) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl])) then
+     IsHistoryDropDownChord(K) then
   begin
     OpenDropDown(FFocusIndex);
     AKey := 0;

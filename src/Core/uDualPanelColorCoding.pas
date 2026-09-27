@@ -63,7 +63,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uKeyChord;
 
 constructor TColorCodingDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TColorCodingKindSetter;
@@ -368,21 +368,21 @@ begin
     AKeyChar := #0;
     Exit(True);
   end;
-  if (ssCtrl in AShift) and (AKey = vkSpace) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkSpace, [ssCtrl], [ssShift, ssAlt]) then
   begin
     ToggleEnabledSelected;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
   end;
-  if (ssCtrl in AShift) and (AKey = vkUp) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
   begin
     MoveSelected(-1);
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
   end;
-  if (ssCtrl in AShift) and (AKey = vkDown) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
   begin
     MoveSelected(1);
     AKey := 0;

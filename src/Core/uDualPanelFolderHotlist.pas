@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  uNotice;
+  uNotice, uKeyChord;
 
 constructor TFolderHotlistDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFolderHotlistKindSetter;
@@ -233,7 +233,8 @@ begin
   // another entry steals it (FolderHotlistSetHotKey enforces uniqueness).
   // Checked on AKey, not AKeyChar — Ctrl+digit has no ASCII control-code
   // to reverse-map, so AKeyChar is #0 for it (unlike Ctrl+letter).
-  if (ssCtrl in AShift) and (FolderHotlistKeyFromVKey(AKey) <> 0) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl], [ssShift, ssAlt]) and
+     (FolderHotlistKeyFromVKey(AKey) <> 0) then
   begin
     HotIdx := FDialog.GetListSelectedIndex('hotlist');
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
@@ -263,7 +264,7 @@ begin
   // uColumnModeMenuController), so Alt must be off here. Checked on AKey,
   // not AKeyChar — Ctrl+digit has no ASCII control-code to reverse-map, so
   // AKeyChar is #0 for it (unlike Ctrl+letter).
-  if not ((ssCtrl in AShift) and not (ssShift in AShift) and not (ssAlt in AShift)) then
+  if not TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl]) then
     Exit;
   HotKeyDigit := FolderHotlistKeyFromVKey(AKey);
   if HotKeyDigit = 0 then

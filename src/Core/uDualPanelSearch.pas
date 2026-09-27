@@ -65,7 +65,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uKeyChord;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -441,8 +441,7 @@ begin
     AKey := 0;
     Exit;
   end;
-  if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-     not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     FSearch.Mask := FSearch.Mask + AKeyChar;
     if Assigned(FOnInvalidate) then

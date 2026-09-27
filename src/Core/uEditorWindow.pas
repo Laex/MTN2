@@ -323,7 +323,7 @@ implementation
 uses
   System.IOUtils, System.StrUtils, FMX.Platform,
   uOverlayRenderer, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc;
+  uShellAssoc, uKeyChord;
 
 const
   /// <summary>uDialogHistory key of the F7 prompt; replace.json's Find field
@@ -3496,8 +3496,7 @@ begin
         end;
     end;
     // Ctrl+Down / Alt+Down: earlier searches above the field.
-    if (AKey = vkDown) and ((ssCtrl in AShift) or (ssAlt in AShift)) and
-       not (ssShift in AShift) then
+    if IsHistoryDropDownChord(TKeyChord.Make(AKey, AKeyChar, AShift)) then
     begin
       FFindPopup.Open(DialogHistoryItems(cEditFindHistory), FFind.Text,
         FFindFieldRow, FFindFieldLeft, FFindFieldRight, Area.Width, Area.Height);
@@ -3522,7 +3521,7 @@ begin
 
   // Markdown Viewer: Tab / Shift+Tab select the next / previous link.
   if FMarkdownMode and ((AKey = vkTab) or ((AKey = 0) and (AKeyChar = #9))) and
-     (AShift * [ssCtrl, ssAlt] = []) then
+     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     SelectMarkdownLink(not (ssShift in AShift));
     AKey := 0;

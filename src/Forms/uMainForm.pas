@@ -763,7 +763,7 @@ begin
   Result := False;
   // Ctrl++ / Ctrl+- select-by-extension on Dual Panel (and must not steal
   // those chords here). Zoom is Ctrl+MouseWheel; Ctrl+0 still resets.
-  if not (ssCtrl in AShift) or (ssAlt in AShift) or (ssShift in AShift) then
+  if not TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl]) then
     Exit;
   if (AKey = vkNumpad0) or (AKey = vk0) or (AKeyChar = '0') then
   begin
@@ -2170,8 +2170,7 @@ end;
 
 function TMainForm.IsBareEscape(Key: Word; Shift: TShiftState): Boolean;
 begin
-  Result := (Key = vkEscape) and not (ssCtrl in Shift) and not (ssAlt in Shift) and
-    not (ssShift in Shift);
+  Result := TKeyChord.Make(Key, #0, Shift).Matches(vkEscape);
 end;
 
 function TMainForm.IsConsoleNavigationKey(Key: Word): Boolean;
@@ -2183,10 +2182,8 @@ end;
 function TMainForm.IsConsoleCopySelectAllKey(Key: Word; KeyChar: Char;
   Shift: TShiftState): Boolean;
 begin
-  // Virtual key codes for letters are always the uppercase ASCII value, so
-  // only KeyChar (which does carry case) needs both-case comparison.
-  Result := (ssCtrl in Shift) and not (ssAlt in Shift) and
-    ((Key = Ord('C')) or (Key = Ord('A')) or (UpCase(KeyChar) = 'C') or (UpCase(KeyChar) = 'A'));
+  Result := TKeyChord.Make(Key, KeyChar, Shift).MatchesLetter('C', [ssCtrl], [ssShift]) or
+    TKeyChord.Make(Key, KeyChar, Shift).MatchesLetter('A', [ssCtrl], [ssShift]);
 end;
 
 function TMainForm.IsConsoleScrollOrSelectionKey(Key: Word; KeyChar: Char;
@@ -2219,8 +2216,7 @@ end;
 function TMainForm.IsReloadKeymapShortcut(AKey: Word; AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
-  Result := (ssCtrl in AShift) and (ssAlt in AShift) and not (ssShift in AShift) and
-    ((AKey = Ord('K')) or (AKeyChar = 'k') or (AKeyChar = 'K'));
+  Result := TKeyChord.Make(AKey, AKeyChar, AShift).MatchesLetter('K', [ssCtrl, ssAlt]);
 end;
 
 // Host form dialogs (MkDir/Copy/…) live on Dual Panel — must win over the

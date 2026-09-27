@@ -94,7 +94,7 @@ type
 implementation
 
 uses
-  uInputLine, uStrings;
+  uInputLine, uStrings, uKeyChord;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -523,7 +523,7 @@ begin
         Exit;
       end;
   end;
-  if (AKeyChar <> #0) and not Ctrl and not (ssAlt in AShift) then
+  if (AKeyChar <> #0) and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     Hot := FindHotKey(AKeyChar);
     if Hot >= 0 then

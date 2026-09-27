@@ -886,7 +886,7 @@ implementation
 uses
   Winapi.Windows, Winapi.ActiveX,
   uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare,
-  uExternalTools, uDialogHistory, uChecksums;
+  uExternalTools, uDialogHistory, uChecksums, uKeyChord;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -5391,8 +5391,7 @@ begin
       end;
   end;
   // Ctrl+Down / Alt+Down: earlier masks as a drop-down above the field.
-  if (AKey = vkDown) and ((ssCtrl in AShift) or (ssAlt in AShift)) and
-     not (ssShift in AShift) then
+  if IsHistoryDropDownChord(TKeyChord.Make(AKey, AKeyChar, AShift)) then
   begin
     FFilterPopup.Open(DialogHistoryItems(cLiveFilterHistory), FFilterBoxText,
       FFilterFieldBounds.Top, FFilterFieldBounds.Left, FFilterFieldBounds.Right,
@@ -9060,15 +9059,14 @@ begin
   // (DispatchPanelFreeInput).
   if ActivePanelIsTmp and not Snap.CmdFocused then
   begin
-    if (ssCtrl in AShift) and not (ssAlt in AShift) and not (ssShift in AShift) and
-       (AKey = vkPrior) then
+    if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkPrior, [ssCtrl]) then
     begin
       TmpGotoCursorFile;
       AKey := 0;
       AKeyChar := #0;
       Exit(True);
     end;
-    if (ssAlt in AShift) and (ssShift in AShift) and not (ssCtrl in AShift) then
+    if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssAlt, ssShift]) then
     begin
       if AKey = vkF2 then
       begin
@@ -9090,8 +9088,7 @@ begin
   // even after Enter on a workspace dir-link (CurrentURI is then file://),
   // otherwise DispatchPanelNavKeys treats Return as ActivateCurrent and
   // opens the file.
-  if (ssCtrl in AShift) and (ssAlt in AShift) and not (ssShift in AShift)
-    and (AKey = vkReturn) and not Snap.CmdFocused then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkReturn, [ssCtrl, ssAlt]) and not Snap.CmdFocused then
   begin
     WorkspaceGotoOpposite;
     AKey := 0;

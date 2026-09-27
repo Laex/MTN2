@@ -113,7 +113,7 @@ function FileHistoryDisplayLabel(const AEntry: TFileHistoryEntry): string;
 implementation
 
 uses
-  System.Math, uStrings;
+  System.Math, uStrings, uKeyChord;
 
 const
   // Commands the list keys send through the dialog's OnCommand, so closing
@@ -285,8 +285,7 @@ function TCmdHistoryDialogController.HandleFilterInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 begin
   Result := False;
-  if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-     not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     FFilter := FFilter + AKeyChar;
     RefreshList;
@@ -447,8 +446,7 @@ begin
     Exit(True);
   end;
   // Typing narrows the list (substring of the path, any case), like Alt+F8.
-  if (AKeyChar >= ' ') and (Ord(AKeyChar) <> 127) and
-     not (ssCtrl in AShift) and not (ssAlt in AShift) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     FFilter := FFilter + AKeyChar;
     RefreshList(0);

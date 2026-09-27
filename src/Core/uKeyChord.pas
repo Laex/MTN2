@@ -48,6 +48,11 @@ type
 const
   cKeyMods = [ssShift, ssCtrl, ssAlt];
 
+/// <summary>Ctrl+Down or Alt+Down (either or both, no Shift): opens an input's
+/// history as a drop-down list -- command line, dialog inputs, live filter,
+/// Viewer find.</summary>
+function IsHistoryDropDownChord(const K: TKeyChord): Boolean;
+
 /// <summary>Entry-point normalization, applied once before any handler sees
 /// the key. Enter arrives as #13/#10, raw 13/10 or vkAccept depending on the
 /// source; all become vkReturn (Tab is left alone). Right Alt on AltGr
@@ -94,6 +99,12 @@ end;
 function TKeyChord.IsPrintable: Boolean;
 begin
   Result := (Ch >= ' ') and (Ch <> #127);
+end;
+
+function IsHistoryDropDownChord(const K: TKeyChord): Boolean;
+begin
+  Result := K.MatchesAny(vkDown, [ssCtrl], [ssAlt]) or
+    K.MatchesAny(vkDown, [ssAlt], [ssCtrl]);
 end;
 
 procedure NormalizeKeyInput(var AKey: Word; AKeyChar: Char;
