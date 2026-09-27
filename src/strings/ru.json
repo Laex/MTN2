@@ -411,6 +411,10 @@
     "editor.reloadEncodingMsg": "Отменить несохранённые изменения и перекодировать?",
     "editor.readOnlyTitle": "Файл только для чтения",
     "editor.readOnlyMsg": "Снять атрибут «только для чтения» и редактировать?",
+    "editor.openLinkTitle": "Открыть ссылку",
+    "editor.openLinkMsg": "Открыть ссылку в программе по умолчанию?",
+    "editor.openLinkOk": "Открыть",
+    "editor.openLinkFailed": "Не удалось открыть %s",
 
     "terminal.title": "Терминал",
     "terminal.confirmClose": "Закрыть консоль?",

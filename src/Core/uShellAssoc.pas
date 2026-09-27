@@ -29,6 +29,10 @@ function ShellOpenFile(const AFilePath: string): Boolean;
 /// the type registers none. Returns False on failure.</summary>
 function ShellEditFile(const AFilePath: string): Boolean;
 
+/// <summary>Open a URL (https://…, mailto:…) with the OS default handler,
+/// e.g. the default browser. Returns False on failure.</summary>
+function ShellOpenUrl(const AUrl: string): Boolean;
+
 /// <summary>Show the OS shell context menu for a local file or folder at screen coords.
 /// AOwnerHwnd must be the host window (SetForegroundWindow / menu routing).</summary>
 function ShellShowContextMenu(const AFilePath: string; AScreenX, AScreenY: Integer;
@@ -143,6 +147,19 @@ begin
     DirP := nil;
   // ShellExecute returns value > 32 on success.
   Code := ShellExecute(0, 'open', PChar(Path), nil, DirP, SW_SHOWNORMAL);
+  Result := NativeInt(Code) > 32;
+end;
+
+function ShellOpenUrl(const AUrl: string): Boolean;
+var
+  Url: string;
+  Code: HINST;
+begin
+  Url := Trim(AUrl);
+  Result := False;
+  if Url = '' then
+    Exit;
+  Code := ShellExecute(0, 'open', PChar(Url), nil, nil, SW_SHOWNORMAL);
   Result := NativeInt(Code) > 32;
 end;
 
@@ -405,6 +422,14 @@ function ShellShowProperties(const APaths: TArray<string>; AOwnerHwnd: NativeUIn
 begin
   // Future: platform file manager properties (if any).
   Result := False;
+end;
+
+function ShellOpenUrl(const AUrl: string): Boolean;
+begin
+  // Future: xdg-open / open(1).
+  Result := False;
+  if AUrl = '' then
+    Exit;
 end;
 
 function ShellRunDetached(const ACommand, AWorkingDir: string): Boolean;

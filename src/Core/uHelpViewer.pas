@@ -7,8 +7,9 @@
 
   Links ([text](target)): "topic.md", "topic.md#anchor" or "#anchor", where
   anchor is the GitHub-style slug of a heading ("## Верхнее меню (F9)" ->
-  "верхнее-меню-f9"). Keys: Tab / Shift+Tab select a link, Enter or a click
-  follows it, BkSp / Alt+Left go back, F1 opens the title page, Esc / F10
+  "верхнее-меню-f9"); "https://..." and other URIs open in the OS default
+  application after a confirmation. Keys: Tab / Shift+Tab select a link,
+  Enter or a click follows it, BkSp / Alt+Left go back, F1 opens the title page, Esc / F10
   close. Scrolling, text selection, copy and F7 search are the Viewer's own;
   keys that would edit, re-encode or leave the rendered view are dropped. }
 
@@ -245,8 +246,13 @@ var
   Topic, Anchor, FileName: string;
   P, Line: Integer;
 begin
-  if (ATarget = '') or (Pos('://', ATarget) > 0) or StartsText('mailto:', ATarget) then
+  if ATarget = '' then
     Exit;
+  if TEditorWindow.IsExternalLink(ATarget) then
+  begin
+    FViewer.OpenExternalLink(ATarget);
+    Exit;
+  end;
   Topic := ATarget;
   Anchor := '';
   P := Pos('#', Topic);
@@ -328,8 +334,9 @@ begin
     AKey := vkTab;
   Mods := AShift * [ssShift, ssAlt, ssCtrl];
   try
-    // The F7 prompt owns every key until Enter/Esc.
-    if FViewer.FindPromptOpen then
+    // The F7 prompt and the open-link question own every key until
+    // Enter/Esc.
+    if FViewer.FindPromptOpen or FViewer.DialogOpen then
     begin
       FViewer.HandleInput(AKey, AShift, AKeyChar);
       Exit;
@@ -405,6 +412,14 @@ begin
     Exit;
   LC := AHostCol - FBounds.Left;
   LR := AHostRow - FBounds.Top;
+  // The open-link question: its buttons (and F-bar hints) are the Viewer's,
+  // and the click must not arm the link under the cursor again.
+  if FViewer.DialogOpen then
+  begin
+    FViewer.HandleMouseDown(LC, LR, AShift);
+    Changed;
+    Exit;
+  end;
   if (LR = FBounds.Height - 2) and not FViewer.FindPromptOpen then
   begin
     if FViewer.SearchEmpty then

@@ -13,6 +13,8 @@
 | F8 | next encoding; Shift+F8 — choose an encoding |
 | F4 (in the viewer), Ctrl+H | HEX mode (in the editor's HEX mode bytes can be edited) |
 | Ctrl+M | Markdown: rendered view ↔ source text |
+| Tab / Shift+Tab | Markdown: next / previous link |
+| Enter, click on a link | Markdown: open an external link (`https://…`, `mailto:…`) in the default application, after a confirmation |
 | F2 | save (editor) / word wrap (viewer) |
 | Ctrl+S | save |
 | Ctrl+Z / Ctrl+Shift+Z | undo / redo |

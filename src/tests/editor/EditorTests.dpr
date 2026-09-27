@@ -15,6 +15,7 @@ uses
   TestEditorPainter in 'TestEditorPainter.pas',
   TestEditorSearchUndo in 'TestEditorSearchUndo.pas',
   TestMarkdownParser in 'TestMarkdownParser.pas',
+  TestMarkdownLinks in 'TestMarkdownLinks.pas',
   TestQuickTextView in 'TestQuickTextView.pas',
   TestStreamingArchiveViewer in 'TestStreamingArchiveViewer.pas',
   TestStreamingViewer in 'TestStreamingViewer.pas';

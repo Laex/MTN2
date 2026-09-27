@@ -414,6 +414,10 @@
     "editor.reloadEncodingMsg": "Discard unsaved changes and re-decode?",
     "editor.readOnlyTitle": "Read-only file",
     "editor.readOnlyMsg": "Clear the OS read-only attribute and edit?",
+    "editor.openLinkTitle": "Open link",
+    "editor.openLinkMsg": "Open the link in the default application?",
+    "editor.openLinkOk": "Open",
+    "editor.openLinkFailed": "Cannot open %s",
 
     "terminal.title": "Terminal",
     "terminal.confirmClose": "Close console?",

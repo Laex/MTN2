@@ -21,7 +21,8 @@ uses
   uHistoryPopup;
 
 type
-  TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly);
+  TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
+    ecOpenLink);
 
   TMdImageSize = record
     W, H: Integer; // pixels; 0 = unknown
@@ -116,6 +117,9 @@ type
     FMatchLine: Integer;
     FMatchCol: Integer;
     FMouseSelecting: Boolean;
+    // Markdown link under a plain mouse press; the release on the same link
+    // (no drag selection in between) follows it.
+    FPressLink: string;
     FClicks: TMouseClickCounter; // double = word, triple = line
     FWordWrap: Boolean;
     FPositionRestored: Boolean;
@@ -291,6 +295,14 @@ type
     /// <summary>Selects the next/previous Markdown link (wrapping around the
     /// document) and puts the cursor on its first character.</summary>
     function SelectMarkdownLink(AForward: Boolean): Boolean;
+    /// <summary>ATarget carries a URI scheme ("https:", "mailto:", ...) --
+    /// not a local topic / file / "#anchor".</summary>
+    class function IsExternalLink(const ATarget: string): Boolean; static;
+    /// <summary>Asks whether to open AUrl and, on OK, hands it to the OS
+    /// default handler (the browser for http/https).</summary>
+    procedure OpenExternalLink(const AUrl: string);
+    /// <summary>A modal dialog (e.g. the open-link question) owns the input.</summary>
+    function DialogOpen: Boolean;
     property HelpMode: Boolean read FHelpMode write FHelpMode;
     property Chromeless: Boolean read FChromeless write FChromeless;
     /// <summary>Drops the document (cancels a load in flight, stops the file
@@ -310,7 +322,8 @@ implementation
 
 uses
   System.IOUtils, System.StrUtils, FMX.Platform,
-  uOverlayRenderer, uStrings, uDialogHistory, uNotice;
+  uOverlayRenderer, uStrings, uDialogHistory, uDialogResources, uNotice,
+  uShellAssoc;
 
 const
   /// <summary>uDialogHistory key of the F7 prompt; replace.json's Find field
@@ -1596,7 +1609,9 @@ end;
 
 function TEditorWindow.MarkdownImageOverlayVisible: Boolean;
 begin
-  Result := FMarkdownMode and FMdOverlayShowing;
+  // The Overlay is a Canvas pass on top of the whole grid: it would cover a
+  // dialog (open-link question, Go to line, ...) drawn into the cells.
+  Result := FMarkdownMode and FMdOverlayShowing and not DialogOpen;
 end;
 
 procedure TEditorWindow.ToggleHexMode;
@@ -2050,6 +2065,59 @@ begin
     else
       Line := (Line - 1 + Count) mod Count;
   end;
+end;
+
+class function TEditorWindow.IsExternalLink(const ATarget: string): Boolean;
+var
+  P, I: Integer;
+begin
+  // RFC 3986 scheme: a letter, then letters / digits / "+-.". Two chars at
+  // least, so "C:\docs\a.md" stays a local path.
+  P := Pos(':', ATarget);
+  if (P < 3) or not CharInSet(ATarget[1], ['A'..'Z', 'a'..'z']) then
+    Exit(False);
+  for I := 2 to P - 1 do
+    if not CharInSet(ATarget[I], ['A'..'Z', 'a'..'z', '0'..'9', '+', '-', '.']) then
+      Exit(False);
+  Result := True;
+end;
+
+procedure TEditorWindow.OpenExternalLink(const AUrl: string);
+const
+  cShownUrl = 54; // the "details" label of updatemsg.json
+var
+  Url, Shown: string;
+  Decl: TDialogDeclaration;
+begin
+  Url := Trim(AUrl);
+  // Chromeless (Quick View) draws no dialogs.
+  if (Url = '') or FChromeless or (FConfirm <> ecNone) or FDialog.Visible then
+    Exit;
+  // The whole address matters when deciding: keep both ends of a long one.
+  Shown := Url;
+  if Length(Shown) > cShownUrl then
+    Shown := Copy(Shown, 1, cShownUrl - 16) + '...' +
+      Copy(Shown, Length(Shown) - 12, 13);
+  Decl := BuildUpdateMessageDialog(
+    T('ui.editor.openLinkMsg', 'Open the link in the default application?'),
+    Shown, T('ui.editor.openLinkOk', 'Open'), True);
+  DialogSetTitle(Decl, T('ui.editor.openLinkTitle', 'Open link'));
+  FConfirm := ecOpenLink;
+  FDialog.Open(Decl,
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      FDialog.Close;
+      FConfirm := ecNone;
+      if DialogCmdIsOk(AControlId) and not ShellOpenUrl(Url) then
+        Notice(T('ui.editor.openLinkFailed', 'Cannot open %s'), Url, tkWarning);
+      NotifyHost;
+    end);
+  NotifyHost;
+end;
+
+function TEditorWindow.DialogOpen: Boolean;
+begin
+  Result := Assigned(FDialog) and FDialog.Visible;
 end;
 
 procedure TEditorWindow.EnsureSelAnchor;
@@ -2538,6 +2606,14 @@ procedure TEditorWindow.DoEnter;
 var
   Line, Left, Right: string;
 begin
+  // Markdown Viewer: Enter on an external link offers to open it (the Help
+  // window follows its own topic links before the key gets here).
+  if FMarkdownMode and not FHelpMode and LinkAtCursor(Line) then
+  begin
+    if IsExternalLink(Line) then
+      OpenExternalLink(Line);
+    Exit;
+  end;
   if FHexMode or (not CanEdit) then
     Exit;
   ClampCursor;
@@ -3191,6 +3267,7 @@ var
 begin
   Result := False;
   FMouseSelecting := False;
+  FPressLink := '';
   // Dialog frame first (may overlap F-bar on short windows); F-bar hints next
   // (Y/N/Esc for AskSave); only then treat outside click as Cancel.
   if Assigned(FDialog) and FDialog.Visible and
@@ -3266,6 +3343,10 @@ begin
     FCursorCol := Col;
     EnsureCursorVisible;
     NotifyHost;
+    // The Help window tracks its own link presses.
+    if FMarkdownMode and not FHelpMode and LinkAtCursor(FPressLink) and
+       not IsExternalLink(FPressLink) then
+      FPressLink := '';
   end;
   FMouseSelecting := True;
 end;
@@ -3342,9 +3423,20 @@ begin
 end;
 
 function TEditorWindow.HandleMouseUp: Boolean;
+var
+  Link: string;
 begin
   Result := FMouseSelecting;
   FMouseSelecting := False;
+  // A plain click (no drag selection) on an external link offers to open it.
+  if (FPressLink <> '') and not HasSelection and LinkAtCursor(Link) and
+     (Link = FPressLink) then
+  begin
+    FPressLink := '';
+    OpenExternalLink(Link);
+    Exit(True);
+  end;
+  FPressLink := '';
 end;
 
 procedure TEditorWindow.SetCursorVisible(AVisible: Boolean);
@@ -3425,6 +3517,16 @@ begin
     else
       NotifyHost;
     end;
+    Exit;
+  end;
+
+  // Markdown Viewer: Tab / Shift+Tab select the next / previous link.
+  if FMarkdownMode and ((AKey = vkTab) or ((AKey = 0) and (AKeyChar = #9))) and
+     (AShift * [ssCtrl, ssAlt] = []) then
+  begin
+    SelectMarkdownLink(not (ssShift in AShift));
+    AKey := 0;
+    AKeyChar := #0;
     Exit;
   end;
 
