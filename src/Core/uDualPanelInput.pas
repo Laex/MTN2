@@ -161,7 +161,8 @@ function DispatchKeymapActionPrimary(const AHost: TDualPanelKeymapHost;
 function DispatchKeymapActionFunctionKeys(const AHost: TDualPanelKeymapHost;
   AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
 function DispatchPanelNavKeys(const AHost: TDualPanelKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char; AViewH, ACols, APageSize: Integer): Boolean;
+  AShift: TShiftState; var AKeyChar: Char; AViewH: Integer; ABrief: Boolean;
+  APageSize: Integer): Boolean;
 
 type
   TEmbeddedInputOwner = (eioNone, eioDocument, eioTerminal, eioConsoleYield);
@@ -181,6 +182,9 @@ type
     FilterBoxActive: Boolean;
     CmdFocused: Boolean;
     ViewH, Cols, PageSize: Integer;
+    /// <summary>Active panel is in Brief mode: Left/Right move between its
+    /// columns; every other mode sends them to the first / last item.</summary>
+    Brief: Boolean;
   end;
 
   TDualPanelFreeInputHost = record
@@ -853,7 +857,8 @@ begin
 end;
 
 function DispatchPanelNavKeys(const AHost: TDualPanelKeymapHost; var AKey: Word;
-  AShift: TShiftState; var AKeyChar: Char; AViewH, ACols, APageSize: Integer): Boolean;
+  AShift: TShiftState; var AKeyChar: Char; AViewH: Integer; ABrief: Boolean;
+  APageSize: Integer): Boolean;
 var
   K: TKeyChord;
   ShiftNav: Boolean;
@@ -873,26 +878,37 @@ begin
         AHost.MoveCursorWithSelect(1, False)
       else
         AHost.MoveCursor(1);
+    // Brief: one column left / right. Other modes have one column, so Left /
+    // Right go to the first / last item, exactly like Home / End (Shift
+    // selects up to there).
     vkLeft:
-      if (ACols > 1) and K.HasMods([], [ssShift]) then
+      if not K.HasMods([], [ssShift]) then
+        Result := False
+      else if ABrief then
       begin
         if ShiftNav then
           AHost.MoveCursorWithSelect(-AViewH, True)
         else
           AHost.MoveCursor(-AViewH);
       end
+      else if ShiftNav then
+        AHost.MoveCursorWithSelect(-100000, False)
       else
-        Result := False;
+        AHost.MoveCursor(-100000);
     vkRight:
-      if (ACols > 1) and K.HasMods([], [ssShift]) then
+      if not K.HasMods([], [ssShift]) then
+        Result := False
+      else if ABrief then
       begin
         if ShiftNav then
           AHost.MoveCursorWithSelect(AViewH, True)
         else
           AHost.MoveCursor(AViewH);
       end
+      else if ShiftNav then
+        AHost.MoveCursorWithSelect(100000, False)
       else
-        Result := False;
+        AHost.MoveCursor(100000);
     vkPrior:
       if ShiftNav then
         AHost.MoveCursorWithSelect(-APageSize, False)
@@ -1379,7 +1395,7 @@ begin
     Exit;
   end;
   Result := DispatchPanelNavKeys(AKeymap, AKey, AShift, AKeyChar, ASnap.ViewH,
-    ASnap.Cols, ASnap.PageSize);
+    ASnap.Brief, ASnap.PageSize);
 end;
 
 function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;

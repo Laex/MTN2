@@ -385,53 +385,76 @@ begin
 
     Key := vkUp;
     KeyChar := #0;
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, 2, 20), 'Up handled');
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, True, 20), 'Up handled');
     Assert.IsTrue((Spy.Last = 'move') and (Spy.Delta = -1), 'Up moves -1');
     Assert.IsTrue(Key = 0, 'Up consumes AKey');
 
     Key := vkUp;
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, 2, 20),
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, True, 20),
       'Shift+Up handled');
     Assert.IsTrue((Spy.Last = 'select') and (Spy.SelectDelta = -1) and
       (not Spy.ExcludeLanding), 'Shift+Up selects leaving row');
     Assert.IsTrue(Key = 0, 'Shift+Up consumes AKey');
 
+    // Not Brief: Left / Right go to the first / last item, like Home / End.
     Key := vkLeft;
-    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, 1, 20),
-      'Left with 1 col is unhandled');
-    Assert.IsTrue(Key = vkLeft, 'unhandled Left leaves AKey');
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),
+      'Left outside Brief handled');
+    Assert.IsTrue((Spy.Last = 'move') and (Spy.Delta = -100000), 'Left goes to the first item');
+    Assert.IsTrue(Key = 0, 'Left consumes AKey');
+    Key := vkRight;
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),
+      'Right outside Brief handled');
+    Assert.IsTrue((Spy.Last = 'move') and (Spy.Delta = 100000), 'Right goes to the last item');
+    Key := vkLeft;
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, False, 20),
+      'Shift+Left outside Brief handled');
+    Assert.IsTrue((Spy.Last = 'select') and (Spy.SelectDelta = -100000) and
+      (not Spy.ExcludeLanding), 'Shift+Left selects up to the first item, like Shift+Home');
+    Key := vkRight;
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, False, 20),
+      'Shift+Right outside Brief handled');
+    Assert.IsTrue((Spy.Last = 'select') and (Spy.SelectDelta = 100000),
+      'Shift+Right selects up to the last item');
+    Key := vkLeft;
+    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssAlt], KeyChar, 10, False, 20),
+      'Alt+Left is not navigation');
+    Assert.IsTrue(Key = vkLeft, 'unhandled Alt+Left leaves AKey');
+    Key := vkRight;
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, True, 20), 'Right in Brief handled');
+    Assert.IsTrue((Spy.Last = 'move') and (Spy.Delta = 10), 'Right in Brief moves one column');
 
     Key := vkLeft;
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, 2, 20),
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [ssShift], KeyChar, 10, True, 20),
       'Shift+Left in brief handled');
     Assert.IsTrue((Spy.Last = 'select') and (Spy.SelectDelta = -10) and
       Spy.ExcludeLanding, 'Shift+Left excludes landing');
 
     Key := vkInsert;
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, 1, 20), 'Insert handled');
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20), 'Insert handled');
     Assert.IsTrue(Spy.Last = 'insert', 'Insert toggles select');
     Assert.IsTrue(Key = 0, 'Insert consumes AKey');
 
     Key := vkInsert;
-    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssCtrl], KeyChar, 10, 1, 20),
+    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssCtrl], KeyChar, 10, False, 20),
       'Ctrl+Insert is unhandled');
     Assert.IsTrue(Key = vkInsert, 'Ctrl+Insert leaves AKey');
 
     Key := vkReturn;
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, 1, 20), 'Return handled');
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20), 'Return handled');
     Assert.IsTrue(Spy.Last = 'submit', 'Return submits cmdline');
     Assert.IsTrue(Key = 0, 'Return consumes AKey');
 
     Spy.Last := '';
     Key := vkReturn;
-    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssCtrl, ssAlt], KeyChar, 10, 1, 20),
+    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssCtrl, ssAlt], KeyChar, 10, False, 20),
       'Ctrl+Alt+Enter is not Activate/submit');
     Assert.IsTrue(Spy.Last = '', 'Ctrl+Alt+Enter does not submit cmdline');
     Assert.IsTrue(Key = vkReturn, 'Ctrl+Alt+Enter leaves AKey for panel handler');
 
     Key := Ord('A');
     KeyChar := 'a';
-    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, 1, 20),
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),
       'printable goes to cmdline');
     Assert.IsTrue(Spy.Last = 'focus+cmd', 'printable focuses then feeds cmdline');
 

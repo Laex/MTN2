@@ -9055,6 +9055,10 @@ begin
   Snap.ViewH := ViewH;
   Snap.Cols := Cols;
   Snap.PageSize := PageSize;
+  if ActiveWorkspace.State.ActiveSide = psLeft then
+    Snap.Brief := ActiveWorkspace.State.LeftPanel.ColumnMode = pcmBrief
+  else
+    Snap.Brief := ActiveWorkspace.State.RightPanel.ColumnMode = pcmBrief;
   // Panel-only chords below; a focused command line takes every key
   // (DispatchPanelFreeInput).
   if ActivePanelIsTmp and not Snap.CmdFocused then
