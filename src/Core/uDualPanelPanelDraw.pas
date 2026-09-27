@@ -40,7 +40,7 @@ procedure DrawPanelEmbeddedTabs(const ABuffer: TTerminalGrid; const ABounds: TRe
 procedure DrawPanelListSeparator(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   AUseDouble: Boolean; AFrame, ABodyBg: TAlphaColor);
 procedure DrawPanelTotalsOnRule(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  const AFooter: string; AFrame, ABodyBg: TAlphaColor);
+  const AFooter: string; AFooterFg, ABodyBg: TAlphaColor);
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const AInfoLine: string; AFg, ABg: TAlphaColor);
 procedure DrawPanelDropBadge(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -132,7 +132,7 @@ procedure DrawPanelShell(const ABuffer: TTerminalGrid;
   const AResolveChrome: TResolvePanelChromeProc);
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
-  AFrame, ABodyBg: TAlphaColor; const AFooter, AInfoLine: string;
+  AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
   const AResolveChrome: TResolvePanelChromeProc);
 procedure DrawPanelDropHighlight(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
@@ -157,7 +157,7 @@ type
     Tab: TTab;
     Side, ActiveSide: TPanelSide;
     Active: Boolean;
-    Frame, BodyBg, DropFg, DropBg: TAlphaColor;
+    Frame, BodyBg, FooterFg, DropFg, DropBg: TAlphaColor;
     Count, PageSize: Integer;
     Footer, InfoLine: string;
     HasTheme, ThemeDouble, DropHighlight, QuickSearch, Filter: Boolean;
@@ -359,12 +359,12 @@ begin
 end;
 
 procedure DrawPanelTotalsOnRule(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  const AFooter: string; AFrame, ABodyBg: TAlphaColor);
+  const AFooter: string; AFooterFg, ABodyBg: TAlphaColor);
 begin
   if AFooter = '' then
     Exit;
   PutGridText(ABuffer, ABounds.Left + (ABounds.Width - Length(AFooter)) div 2,
-    ABounds.Bottom - 2, AFooter, AFrame, ABodyBg);
+    ABounds.Bottom - 2, AFooter, AFooterFg, ABodyBg);
 end;
 
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -585,7 +585,7 @@ end;
 
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
-  AFrame, ABodyBg: TAlphaColor; const AFooter, AInfoLine: string;
+  AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
   const AResolveChrome: TResolvePanelChromeProc);
 var
   InfoBounds: TRectI;
@@ -594,7 +594,7 @@ begin
   DrawPanelListSeparator(ABuffer, ABounds,
     UseDoubleListSeparator(AActive, AHasTheme, AThemeDouble),
     AFrame, ABodyBg);
-  DrawPanelTotalsOnRule(ABuffer, ABounds, AFooter, AFrame, ABodyBg);
+  DrawPanelTotalsOnRule(ABuffer, ABounds, AFooter, AFooterFg, ABodyBg);
   InfoBounds := PanelInfoStripBounds(ABounds);
   AResolveChrome(pcpInfoStrip, AActive, InfoFg, InfoBg);
   DrawPanelCursorStrip(ABuffer, InfoBounds, AInfoLine, InfoFg, InfoBg);
@@ -649,7 +649,8 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
   const ASnap: TDrawFilesSnapshot);
 begin
   DrawPanelFilesChrome(ABuffer, ASnap.Bounds, ASnap.Active, ASnap.HasTheme,
-    ASnap.ThemeDouble, ASnap.Frame, ASnap.BodyBg, ASnap.Footer, ASnap.InfoLine,
+    ASnap.ThemeDouble, ASnap.Frame, ASnap.BodyBg, ASnap.FooterFg, ASnap.Footer,
+    ASnap.InfoLine,
     AHost.ResolveChrome);
   AHost.DrawDriveLetters(ASnap.Bounds, ASnap.Tab, ASnap.Side, ASnap.Frame,
     ASnap.BodyBg);

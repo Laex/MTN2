@@ -8242,6 +8242,7 @@ var
   M: IPanelModel;
   Rows: TPanelRows;
   Snap: TDrawFilesSnapshot;
+  SelFg, SelBg: TAlphaColor;
 begin
   Tab := ActiveTab(APanel);
   M := ModelForSide(ASide);
@@ -8263,12 +8264,21 @@ begin
   Snap.DropFg := cCursorFg;
   Snap.DropBg := cMenuHot;
   Snap.Count := Count;
+  Snap.FooterFg := AFrame;
   if Length(Tab.SelectedURIs) > 0 then
   begin
     Rows := RowsForSide(ASide);
     PanelSelectionTotals(Tab, Rows, Bytes, Files, Folders);
     Snap.Footer := FormatPanelTotalsFooter(True, Bytes, Files, Folders,
       ABounds.Width - 2);
+    // "Selected: ..." takes the marked-file foreground so the totals read
+    // as belonging to the highlighted rows; the background stays the rule's.
+    if Assigned(Theme) then
+      Theme.ResolveFileRowColors(False, False, False, '', True, False, AActive,
+        SelFg, SelBg)
+    else
+      SelFg := cSelectedFg;
+    Snap.FooterFg := SelFg;
   end
   else
   begin
