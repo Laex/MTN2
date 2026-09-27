@@ -39,16 +39,16 @@
       "type": "button",
       "id": "edit",
       "text": "Edit",
-      "col": 0,
+      "col": 2,
       "row": 17,
-      "width": 9,
+      "width": 12,
       "height": 1
     },
     {
       "type": "button",
       "id": "reset",
       "text": "Reset",
-      "col": 10,
+      "col": 15,
       "row": 17,
       "width": 9,
       "height": 1
@@ -57,9 +57,9 @@
       "type": "button",
       "id": "resetall",
       "text": "Reset all",
-      "col": 20,
+      "col": 25,
       "row": 17,
-      "width": 13,
+      "width": 16,
       "height": 1
     },
     {

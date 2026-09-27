@@ -305,7 +305,9 @@ begin
         Continue;
       if First then
       begin
-        Result := Result + ['── ' + KeymapContextCaption(Ctx) + ' ──'];
+        // #$2500 = box-drawing line; this unit has no BOM, so a literal
+        // would be read as ANSI.
+        Result := Result + [#$2500#$2500' ' + KeymapContextCaption(Ctx) + ' '#$2500#$2500];
         FRows := FRows + [kaNone];
         First := False;
       end;
