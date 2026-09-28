@@ -5,7 +5,7 @@ unit uRecycleBinVfs;
   uFindVfs.pas: only ListDirectoryAsync/ExistsAsync are real; DeleteAsync
   does a real permanent purge; everything else is vecNotSupported.
 
-  CROSS-PLATFORM (Этап 23): IShellFolder2/CSIDL_BITBUCKET are Windows-only;
+  CROSS-PLATFORM: IShellFolder2/CSIDL_BITBUCKET are Windows-only;
   "recycle bin" isn't the same concept elsewhere (freedesktop Trash spec on
   Linux, a per-volume .Trashes on macOS) -- a port needs its own VFS backend
   behind the same recycle:// scheme, not a portable rewrite of this one.

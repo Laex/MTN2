@@ -3,7 +3,7 @@ unit uConfigLocation;
 { Centralized Configuration Directory Resolver for MTN2.
   Supports Standard Mode (%APPDATA%\MTN2\) and Portable Mode (portable.dat).
 
-  CROSS-PLATFORM (Этап 23): already degrades reasonably on its own --
+  CROSS-PLATFORM: already degrades reasonably on its own --
   GetEnvironmentVariable('APPDATA') is empty on POSIX, so it already falls
   back to TPath.GetHomePath (no crash, no Winapi.* dependency here at all).
   Not yet XDG-correct though: on Linux this lands config files directly in

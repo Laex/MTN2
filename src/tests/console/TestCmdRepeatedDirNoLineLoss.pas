@@ -170,8 +170,8 @@ begin
     Assert.IsTrue(Length(Round1Lines) >= 5, 'round 1 dir produced real per-file output lines');
 
     // --- Round 2: dir again, same session -----------------------------------
-    // This is exactly the scenario that lost a line before Фаза D: a second
-    // CUP-driven prompt-to-output transition in the same conhost viewport.
+    // The scenario that can lose a line: a second CUP-driven
+    // prompt-to-output transition in the same conhost viewport.
     var Round2Start := Buf.LineCount;
     Pty.WriteInput('dir' + #13#10);
     Assert.IsTrue(WaitForPromptReady(15000), 'prompt ready after round 2 dir');

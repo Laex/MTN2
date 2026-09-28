@@ -372,9 +372,9 @@ begin
   Assert.IsTrue(Uri = 'file:///D:/', 'no remembered folder -> drive root');
 
   // Remembered folder is used as-is, WITHOUT a synchronous existence check
-  // (GetFileAttributes/LocalPathIsDirectory used to run here on the UI
-  // thread and could block for a long time on an unresponsive network
-  // drive -- see the comment on ResolvePanelDriveUri). A path that no
+  // (GetFileAttributes/LocalPathIsDirectory on the UI thread could block for
+  // a long time on an unresponsive network drive -- see the comment on
+  // ResolvePanelDriveUri). A path that no
   // longer exists is deliberately not special-cased: navigating to it and
   // letting the async listing report "Path not found" is safer than
   // blocking here to pre-verify it.

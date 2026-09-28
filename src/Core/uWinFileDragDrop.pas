@@ -4,7 +4,7 @@ unit uWinFileDragDrop;
   Drag-in uses FMX TWinDropTarget; this unit only starts DoDragDrop with real
   HDROP data - stock FMX BeginDragDrop does not export CF_HDROP.
 
-  CROSS-PLATFORM (Этап 23): Windows OLE drag & drop, no portable concept to
+  CROSS-PLATFORM: Windows OLE drag & drop, no portable concept to
   fall back to. Caller (uDualPanelWindow.pas) should treat this as an
   optional enhancement -- no-op / feature-detect on other platforms rather
   than something to reimplement per-OS. }

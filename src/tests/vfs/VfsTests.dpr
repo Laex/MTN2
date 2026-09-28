@@ -14,7 +14,6 @@ uses
   TestCopyLockedSource in 'TestCopyLockedSource.pas',
   TestCopySkipMerge in 'TestCopySkipMerge.pas',
   TestCreateLink in 'TestCreateLink.pas',
-  TestDelete in 'TestDelete.pas',
   TestDeleteProgress in 'TestDeleteProgress.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',

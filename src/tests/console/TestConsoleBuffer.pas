@@ -172,7 +172,7 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-// Фаза D, Этап 2: grid-mode duplicates of the scenarios above, driven via
+// Grid-mode duplicates of the scenarios above, driven via
 // AppendOutputEx(text, cols, rows) with real geometry -- that's what latches
 // TConsoleBuffer's grid mode (EnableGridModeLocked). A 1-row grid is used for
 // the single-line editing scenarios so "the current line" (row 0) is always
@@ -340,8 +340,8 @@ begin
     Assert.AreEqual(IntToStr(5), IntToStr(Buf.LineCount), 'ED in grid mode resets to a fresh grid-only LineCount (archive emptied, grid re-alloc''d same size)');
     Assert.AreEqual('', Buf.GetLine(0), 'content cleared by ED');
 
-    // Session continues in grid mode after ED (Фаза D's explicit decision:
-    // full-history-reset behavior is kept, but grid mode itself stays live).
+    // Session continues in grid mode after ED (on purpose: the
+    // full-history reset is kept, but grid mode itself stays live).
     Buf.AppendOutputEx('after clear', 80, 5);
     Assert.AreEqual('after clear', Buf.GetLine(0), 'grid mode still live and writable after ED (not torn down)');
   finally

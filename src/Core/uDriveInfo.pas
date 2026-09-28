@@ -2,7 +2,7 @@ unit uDriveInfo;
 
 { Enumerate local drive letters for the Alt+F1/F2 Change Drive popup.
 
-  CROSS-PLATFORM (Этап 23): drive letters are a Windows-only concept, not
+  CROSS-PLATFORM: drive letters are a Windows-only concept, not
   just a Windows-only API call -- a POSIX port needs a different UI concept
   here (mounted filesystems under a single '/' tree), not a drop-in
   replacement for EnumLogicalDrives. Callers keying off TDriveInfo.Letter

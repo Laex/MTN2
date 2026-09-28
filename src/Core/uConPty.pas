@@ -5,7 +5,7 @@ unit uConPty;
   Persistent cmd.exe session (StartShell + WriteInput).
   Real Windows ConPTY (CreatePseudoConsole) backend.
 
-  CROSS-PLATFORM (Этап 23, roadmap §7): this unit is the Windows-only PTY
+  CROSS-PLATFORM: this unit is the Windows-only PTY
   backend (ConPTY via uConPtyApi.pas). IPtySession below is the intended
   swap seam for a future POSIX backend (forkpty/termios) -- but callers
   (TBaseConsoleWindow.FPty in uBaseConsoleWindow.pas) reference the concrete

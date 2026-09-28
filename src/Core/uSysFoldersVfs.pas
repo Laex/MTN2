@@ -4,7 +4,7 @@ unit uSysFoldersVfs;
   Lists Windows system directories (Desktop, Documents, Downloads, AppData, etc.).
   Each entry has TargetURI set to its real file:// path.
 
-  CROSS-PLATFORM (Этап 23): the folder set/lookup (SHGetKnownFolderPath-class
+  CROSS-PLATFORM: the folder set/lookup (SHGetKnownFolderPath-class
   APIs) is Windows-only; POSIX equivalents are XDG user dirs (Linux) /
   NSSearchPathForDirectoriesInDomains (macOS) -- different sources, same
   sys://folders scheme and TargetURI contract for callers. }

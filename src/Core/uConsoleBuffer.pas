@@ -52,7 +52,7 @@ type
     /// Clear(). While True, FActiveGrid (not FPlainLines' bottom line) is
     /// the live, cursor-addressable "active screen"; FPlainLines/FCellLines
     /// become an archive of rows scrolled off its top -- see the unit's
-    /// "Единая адресация строк" design (Фаза D).</summary>
+    /// grid design (TPrimaryScreenGrid).</summary>
     FGridEnabled: Boolean;
     FActiveGrid: TPrimaryScreenGrid;
     procedure EnsureCurrentLineLocked;
@@ -71,8 +71,8 @@ type
     procedure ClearContentLocked;
     procedure ClearAllLinesLocked;
     /// <summary>ED (ESC[2J) callback target: always a full reset (matches
-    /// legacy; the ED mode argument is intentionally ignored, per Фаза D's
-    /// "keep today's full-history-reset behavior" decision), but keeps grid
+    /// legacy; the ED mode argument is intentionally ignored: ED keeps its
+    /// full-history-reset behavior in grid mode too), but keeps grid
     /// mode latched if it was already active instead of tearing it down.</summary>
     procedure EraseDisplayLocked(AEdMode: Integer);
     procedure TrimLocked(out ADeleted: Integer);
@@ -86,7 +86,7 @@ type
     /// <summary>FActiveGrid.OnArchiveRow target: files a row scrolled off
     /// the grid's top into the permanent FPlainLines/FCellLines archive.</summary>
     procedure ArchiveRowLocked(const ARow: TTerminalRow);
-    /// <summary>Единая точка входа операций записи (Фаза D): each dispatches
+    /// <summary>Single entry point for write operations: each dispatches
     /// FGridEnabled ? FActiveGrid.<op> : <untouched legacy Xxx*Locked call>,
     /// called from AppendOutputEx's ANSI-parser callbacks in place of the
     /// direct legacy call, with the callbacks' existing FAltActive /
@@ -1052,7 +1052,7 @@ begin
     // line already ends with '>'. FixPromptNewlines splits that case. Do NOT
     // start a new line for ordinary typed characters (local line-buffered echo).
     // Grid mode already tracks real cursor position from the byte stream's
-    // own CUP/LF/CR (that's Фаза D's whole point), so these chunk-boundary
+    // own CUP/LF/CR (the reason grid mode exists), so these chunk-boundary
     // prompt-guessing heuristics -- built to compensate for the legacy
     // buffer's lack of a cursor -- are legacy-only; run them against a grid
     // session's frozen archive tail and they could force a bogus blank line
@@ -1152,8 +1152,8 @@ begin
         if FSuppressingBackspaceEcho then
           Exit;
         // Mode is intentionally ignored either way -- ED always means a full
-        // reset here (legacy default, and Фаза D's explicit decision to keep
-        // it for grid mode too), not partial-ED semantics.
+        // reset here (legacy default, kept for grid mode too on purpose),
+        // not partial-ED semantics.
         FPendingCR := False;
         EraseDisplayLocked(AEdMode);
       end,

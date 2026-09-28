@@ -10,7 +10,7 @@ unit uLinkUtils;
   technique, via DeviceIoControl(FSCTL_SET_REPARSE_POINT) with a hand-built
   REPARSE_DATA_BUFFER (MountPointReparseBuffer layout).
 
-  CROSS-PLATFORM (Этап 23): junctions are NTFS/Windows-only, no POSIX
+  CROSS-PLATFORM: junctions are NTFS/Windows-only, no POSIX
   equivalent -- that creation path just won't exist on a POSIX build.
   Symlinks/hardlinks do exist on POSIX (symlink()/link() syscalls) but
   need their own implementation here, not a portable rewrite of the

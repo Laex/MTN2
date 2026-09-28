@@ -1,13 +1,13 @@
 unit uSftpVfs;
 
-{ Built-in backend for sftp:// (Этап 20 -- Сетевой VFS). One protocol,
+{ Built-in backend for sftp://. One protocol,
   end-to-end, per the SDS: SFTP over the system OpenSSH `sftp.exe` client in
   batch mode -- no bundled network/crypto library, no plugin, same
   ssh/sftp binaries the SSH console profile (uShellProfiles.pas) already
   requires. Cross-platform: `sftp -b -` batch-mode syntax is identical on
   Windows/Linux/macOS OpenSSH builds; only the process-spawn plumbing below
   (Winapi.Windows) is Windows-specific, the same seam uConPty.pas already
-  has for a future POSIX build (Этап 23).
+  has for a future POSIX build.
 
   URI: sftp://[user@]host[:port]/remote/path -- see uVfsTypes.pas
   (IsSftpUri/SftpAuthorityOf/SftpRemotePathOf/MakeSftpUri).

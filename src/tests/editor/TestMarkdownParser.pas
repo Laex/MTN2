@@ -820,9 +820,8 @@ begin
 
   // AEndCharIndex: a word-boundary chunk shorter than AWidth must NOT spill
   // the next chunk's characters into this row's remaining cells - they pad
-  // with blanks instead. This is exactly what distinguishes word-boundary
-  // wrap from the old hard-width slicing (every chunk used to be exactly
-  // AWidth long, so there was nothing to spill).
+  // with blanks instead. This is what distinguishes word-boundary wrap from
+  // hard-width slicing, where every chunk is exactly AWidth long.
   L := TMarkdownParser.ParseLine('cat dog elephant', State); // "cat " = chars 1..4
   Row := MakeRow(10);
   TMarkdownPainter.DrawLine(Row, 1, 10, L, Theme, 1, 4);

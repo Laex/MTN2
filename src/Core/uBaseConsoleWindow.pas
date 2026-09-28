@@ -50,7 +50,7 @@ type
     procedure ClampPos(var ARow, ACol: Integer);
   protected
     FHistory:       TConsoleBuffer;
-    // CROSS-PLATFORM (Этап 23): concrete Windows-only class, not the
+    // CROSS-PLATFORM: concrete Windows-only class, not the
     // IPtySession interface uConPty.pas already declares for this seam.
     // A POSIX PTY backend needs this typed as IPtySession first.
     FPty:           TConPtySession;

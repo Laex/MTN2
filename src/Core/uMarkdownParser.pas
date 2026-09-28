@@ -278,7 +278,7 @@ begin
 end;
 
 // Whole (trimmed) line is exactly "![alt](path)" - Overlay shape.
-// Inline images mid-paragraph stay out of scope (readme.md Этап 25).
+// Inline images mid-paragraph stay out of scope.
 function TryParseCommonMarkImage(const T: string; out AAlt, APath: string): Boolean;
 var
   N, CloseBracket, CloseParen, Gt, Sp: Integer;

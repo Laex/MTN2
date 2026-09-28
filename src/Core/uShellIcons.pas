@@ -7,7 +7,7 @@ unit uShellIcons;
   runs on a dedicated worker so the file list can draw immediately; the
   fallback glyph stays until the bitmap arrives, then the panel invalidates.
 
-  CROSS-PLATFORM (Этап 23): backed by Windows Shell (SHGetFileInfo-class
+  CROSS-PLATFORM: backed by Windows Shell (SHGetFileInfo-class
   APIs); a POSIX port needs a different icon source entirely (freedesktop
   icon theme lookup on Linux, NSWorkspace on macOS) -- not a portable
   substitute for this unit's internals, a parallel implementation behind
