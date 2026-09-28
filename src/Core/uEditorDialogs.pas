@@ -33,6 +33,8 @@ type
     procedure Notify;
     procedure ClearConfirm;
     procedure CloseDialog;
+    /// <summary>Shows the Save? button ACmd pressed, then runs it.</summary>
+    procedure PressAskSave(const ACmd: string);
   public
     constructor Create(ADialog: TDialogHost;
       const AOnNotify, AOnSetConfirmNone, AOnSaveAndMaybeClose,
@@ -312,6 +314,23 @@ begin
   Notify;
 end;
 
+procedure TEditorDialogController.PressAskSave(const ACmd: string);
+var
+  Cmd: string;
+begin
+  Cmd := ACmd;
+  if not (Assigned(FDialog) and FDialog.Visible) then
+  begin
+    AskSaveCommand(Cmd, '');
+    Exit;
+  end;
+  FDialog.PressButtonThen(Cmd,
+    procedure
+    begin
+      AskSaveCommand(Cmd, '');
+    end);
+end;
+
 function TEditorDialogController.HandleAskSaveInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
@@ -320,6 +339,13 @@ var
   procedure Finish(const ACmd: string);
   begin
     AskSaveCommand(ACmd, '');
+    AKey := 0;
+    AKeyChar := #0;
+  end;
+
+  procedure Press(const ACmd: string);
+  begin
+    PressAskSave(ACmd);
     AKey := 0;
     AKeyChar := #0;
   end;
@@ -346,14 +372,14 @@ begin
       BtnId := FDialog.FocusedOrDefaultButtonId;
     if BtnId = '' then
       BtnId := cDlgCmdYes;
-    Finish(BtnId);
+    Press(BtnId);
     Exit;
   end;
 
   BtnId := EditorAskSaveHotkey(AKey, AKeyChar);
   if BtnId <> '' then
   begin
-    Finish(BtnId);
+    Press(BtnId);
     Exit;
   end;
 

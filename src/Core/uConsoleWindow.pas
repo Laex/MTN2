@@ -30,6 +30,9 @@ type
     FOnFocusCommandLine: TNotifyEvent;
     FOnSyncDirToPanels:  TNotifyEvent;
     procedure DoCloseConsole;
+    /// <summary>A dialog button released after the click or key returned:
+    /// the close its command asked for, as HandleInput / HandleClick do.</summary>
+    procedure DialogDeferredCommand(Sender: TObject);
   protected
     procedure ProcessExited(AExitCode: Cardinal); override;
     procedure SyncTitle; override;
@@ -94,6 +97,16 @@ begin
   FRestartOnExit     := True;
   LayoutBottomMargin := 2; // shared Dual Panel F-keys / status below (no cmdline)
   Title              := T('ui.window.console', 'Console');
+  FDialog.OnDeferredCommand := DialogDeferredCommand;
+end;
+
+procedure TConsoleWindow.DialogDeferredCommand(Sender: TObject);
+begin
+  if PendingClose then
+  begin
+    PendingClose := False;
+    DoCloseConsole;
+  end;
 end;
 
 { ---- Title ----------------------------------------------------------------- }

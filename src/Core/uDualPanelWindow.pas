@@ -1593,6 +1593,7 @@ begin
   FModalInputHost.HandleDialogWidget := FDialog.HandleInput;
   FModalInputHost.DialogDropDownOpen := FDialog.DropDownOpen;
   FModalInputHost.RecordDialogHistory := FDialog.RecordInputHistory;
+  FModalInputHost.PressDialogButton := FDialog.PressButtonThen;
   FModalInputHost.SyncColorPickerHex := FColorCoding.SyncHexFromPreset;
 end;
 

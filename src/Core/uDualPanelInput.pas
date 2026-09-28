@@ -175,6 +175,7 @@ type
   TDialogCmdProc = procedure(const AControlId, AValuesJson: string) of object;
   TDialogIdFn = function: string of object;
   TDialogIdProc = procedure(const AId: string) of object;
+  TDialogPressProc = procedure(const AId: string; const AAction: TProc) of object;
 
   TPanelFreeInputSnap = record
     DrivePreviewActive: Boolean;
@@ -238,6 +239,9 @@ type
     DialogDropDownOpen: TKeymapTryFn;
     /// <summary>TDialogHost.RecordInputHistory for the Enter shortcut below.</summary>
     RecordDialogHistory: TDialogIdProc;
+    /// <summary>TDialogHost.PressButtonThen: the Enter shortcut shows its
+    /// button pressed before the command. Unset runs the command at once.</summary>
+    PressDialogButton: TDialogPressProc;
   end;
 
 procedure NormalizePanelInputKey(var AKey: Word; var AKeyChar: Char);
@@ -1388,6 +1392,9 @@ function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;
   var AKeyChar: Char): Boolean;
 var
   DialogCmdId: string;
+  Record_: TDialogIdProc;
+  Command: TDialogCmdProc;
+  Run: TProc;
 begin
   // Before the generic Enter: Ctrl+Enter there is "show in panel", not OK.
   if (AKind = hdkFileHistory) and Assigned(AHost.HandleFileHistoryList) and
@@ -1405,9 +1412,19 @@ begin
     if DialogCmdId = '' then
       DialogCmdId := cDlgCmdOk;
     // Bypasses TDialogHost.FireCommand, which would record the history.
-    if Assigned(AHost.RecordDialogHistory) then
-      AHost.RecordDialogHistory(DialogCmdId);
-    AHost.DialogCommand(DialogCmdId, '');
+    Record_ := AHost.RecordDialogHistory;
+    Command := AHost.DialogCommand;
+    Run :=
+      procedure
+      begin
+        if Assigned(Record_) then
+          Record_(DialogCmdId);
+        Command(DialogCmdId, '');
+      end;
+    if Assigned(AHost.PressDialogButton) then
+      AHost.PressDialogButton(DialogCmdId, Run)
+    else
+      Run();
     ConsumeKey(AKey, AKeyChar, True);
     Exit(True);
   end;

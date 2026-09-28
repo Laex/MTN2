@@ -12,7 +12,8 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing;
+  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing,
+  uDialogHost;
 
 type
   TMainForm = class(TForm)
@@ -63,6 +64,9 @@ type
     FBlinkPhase: Boolean;   // True = cursor visible
     FCursorBlinkEnabled: Boolean;
     FContextMenuTimer: TTimer;
+    /// <summary>One-shot, cDialogButtonPressMs: releases a dialog button
+    /// pressed from the keyboard (uDialogHost.GDialogButtonPressStart).</summary>
+    FButtonPressTimer: TTimer;
     /// <summary>Self-update (Help > Updates, quiet check shortly after start).</summary>
     FUpdater: TUpdateController;
     FUpdateTimer: TTimer;
@@ -81,6 +85,7 @@ type
     procedure PrepareForSystemShutdown;
     procedure ReleaseTaskbarButton;
     procedure BlinkTick(Sender: TObject);
+    procedure ButtonPressTick(Sender: TObject);
     procedure ContextMenuHoldTick(Sender: TObject);
     procedure CancelContextMenuHold;
     procedure ArmContextMenuHold(const APath: string; AScreenX, AScreenY: Integer);
@@ -598,6 +603,13 @@ begin
 
   if Assigned(FConsole) then
     FConsole.ShutdownForSessionEnd;
+end;
+
+procedure TMainForm.ButtonPressTick(Sender: TObject);
+begin
+  FButtonPressTimer.Enabled := False;
+  FlushDialogButtonPress;
+  Recompose;
 end;
 
 procedure TMainForm.BlinkTick(Sender: TObject);
@@ -1665,6 +1677,16 @@ begin
   FBlinkTimer.Interval := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   FBlinkTimer.OnTimer := BlinkTick;
   FBlinkTimer.Enabled := False;
+  FButtonPressTimer := TTimer.Create(Self);
+  FButtonPressTimer.Interval := cDialogButtonPressMs;
+  FButtonPressTimer.OnTimer := ButtonPressTick;
+  FButtonPressTimer.Enabled := False;
+  GDialogButtonPressStart :=
+    procedure
+    begin
+      FButtonPressTimer.Enabled := False;
+      FButtonPressTimer.Enabled := True;
+    end;
 
   FContextMenuTimer := TTimer.Create(Self);
   FContextMenuTimer.Interval := cContextMenuHoldMs;
@@ -1730,6 +1752,8 @@ begin
   FreeAndNil(FUpdater);
   StopPluginHost;
   FreeAndNil(FBlinkTimer);
+  GDialogButtonPressStart := nil;
+  FreeAndNil(FButtonPressTimer);
   if not FSystemShutdown then
     PersistSession;
   if Assigned(FConsole) then
@@ -1976,7 +2000,12 @@ begin
   end;
   Dbl := (Button = TMouseButton.mbLeft) and (ssDouble in Shift);
   if Button = TMouseButton.mbLeft then
+  begin
     CancelContextMenuHold;
+    DialogButtonMouseDown(Col, Row);
+  end
+  else
+    FlushDialogButtonPress;
 
   FMdi.ActivateAt(Col, Row);
   if TryDispatchActiveMdiMouseDown(Col, Row, Shift, Button) then
@@ -2053,6 +2082,13 @@ var
 begin
   if not Assigned(FMdi) then
     Exit;
+
+  if DialogButtonCaptured then
+  begin
+    if PointToCell(X, Y, Col, Row) and DialogButtonCaptureMove(Col, Row) then
+      Recompose;
+    Exit;
+  end;
 
   if TryHandleDualPanelDragMove(Shift, X, Y) then
     Exit;
@@ -2165,6 +2201,8 @@ end;
 
 procedure TMainForm.FormMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Single);
+var
+  Col, Row: Integer;
 begin
   if Button = TMouseButton.mbRight then
   begin
@@ -2173,6 +2211,17 @@ begin
   end;
   if Button <> TMouseButton.mbLeft then
     Exit;
+  if DialogButtonCaptured then
+  begin
+    if not PointToCell(X, Y, Col, Row) then
+    begin
+      Col := -1;
+      Row := -1;
+    end;
+    DialogButtonCaptureRelease(Col, Row);
+    Recompose;
+    Exit;
+  end;
   if Assigned(FDualPanel) and FDualPanel.Visible then
   begin
     if FDualPanel.HandleMouseUp then
@@ -2370,6 +2419,13 @@ begin
     Key := 0;
     KeyChar := #0;
     Exit;
+  end;
+  // A dialog button still showing its keyboard press runs its command
+  // before this key is handled.
+  if DialogButtonPressPending then
+  begin
+    FlushDialogButtonPress;
+    Recompose;
   end;
   // Enter variants -> vkReturn; AltGr+Enter -> Alt+Enter (Properties), not
   // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.

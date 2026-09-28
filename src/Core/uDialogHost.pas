@@ -38,6 +38,19 @@ type
     FCursorVisible: Boolean;
     FUpdateLock: Integer;
     FUpdateDirty: Boolean;
+    /// <summary>Button drawn pressed (face one cell right, no shadow), else -1.</summary>
+    FPressIndex: Integer;
+    /// <summary>Button the left mouse button went down on, else -1. The
+    /// command runs on release over the same button.</summary>
+    FMouseIndex: Integer;
+    /// <summary>Keyboard press waiting for the release: runs when the press
+    /// timer fires or the next input arrives (FlushDialogButtonPress).</summary>
+    FPendingAction: TProc;
+    FPendingGen: Cardinal;
+    /// <summary>Bumped by Open and Close, so a press queued for one dialog
+    /// never runs against the next.</summary>
+    FOpenGen: Cardinal;
+    FOnDeferredCommand: TNotifyEvent;
     function FirstFocusable: Integer;
     function NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
     /// <summary>Joins full-width separator rules to the dialog frame:
@@ -54,6 +67,15 @@ type
     function NormalizeAcceptKey(var AKey: Word; var AKeyChar: Char): Boolean;
     procedure NotifyChanged;
     procedure FireCommand(const AId: string);
+    /// <summary>Button AIndex's command, after the press animation.</summary>
+    procedure PressButton(AIndex: Integer);
+    procedure StartPress(AIndex: Integer; const AAction: TProc);
+    procedure RunPendingPress;
+    procedure DropPress;
+    function ButtonIndexById(const AId: string): Integer;
+    function CanShiftButton(const R: TRectI): Boolean;
+    procedure MouseCaptureMove(ALocalCol, ALocalRow: Integer);
+    procedure MouseCaptureRelease(ALocalCol, ALocalRow: Integer);
     procedure FireCancel;
     function FindDefaultButtonIndex: Integer;
     procedure FireDefault;
@@ -110,6 +132,7 @@ type
       AIndex: Integer; const C: TDialogControl);
   public
     constructor Create(const ATheme: IThemeRenderer);
+    destructor Destroy; override;
     procedure Open(const ADecl: TDialogDeclaration; AOnCommand: TDialogCommandEvent);
     /// <summary>DIALOG_PLUGIN JSON subset. Returns False if parse fails (no open).</summary>
     function OpenJson(const ADeclJson: string; AOnCommand: TDialogCommandEvent): Boolean;
@@ -178,14 +201,115 @@ type
     /// into a command without going through HandleInput call it.</summary>
     procedure RecordInputHistory(const ACommandId: string);
     procedure SetCursorVisible(AVisible: Boolean);
+    /// <summary>Shows the button AId pressed, then runs AAction when it is
+    /// released (see GDialogButtonPressStart). Runs AAction at once when
+    /// press animation is off or no button has that id. For hosts that pick
+    /// a key's command themselves instead of passing the key to HandleInput.</summary>
+    procedure PressButtonThen(const AId: string; const AAction: TProc);
+    /// <summary>Index of the button drawn pressed, -1 when none.</summary>
+    property PressedButton: Integer read FPressIndex;
     property CursorVisible: Boolean read FCursorVisible;
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+    /// <summary>After a button command that ran later than the input that
+    /// pressed it (mouse release, end of the keyboard press), so the owner
+    /// can finish what it does after HandleInput / HandleClick return.</summary>
+    property OnDeferredCommand: TNotifyEvent read FOnDeferredCommand write FOnDeferredCommand;
   end;
+
+const
+  /// <summary>How long a button stays pressed after a key activates it.</summary>
+  cDialogButtonPressMs = 100;
+
+var
+  /// <summary>Starts (or restarts) the one-shot press timer, which calls
+  /// FlushDialogButtonPress after cDialogButtonPressMs. Set by the main form.
+  /// While nil (tests, DialogDesigner) buttons fire on mouse down and on the
+  /// key itself, without the press.</summary>
+  GDialogButtonPressStart: TProc = nil;
+
+/// <summary>Releases the keyboard-pressed button, if any, and runs its
+/// command. The press timer calls it; so does the main form before handling
+/// the next key or click, so a fast key never overtakes the command.</summary>
+procedure FlushDialogButtonPress;
+/// <summary>A button pressed from the keyboard is waiting for its release.</summary>
+function DialogButtonPressPending: Boolean;
+/// <summary>A button holds the mouse (pressed, waiting for the release).</summary>
+function DialogButtonCaptured: Boolean;
+/// <summary>Main form, before routing a left mouse-down: completes a
+/// keyboard press (FlushDialogButtonPress) and remembers the screen cell, so
+/// a button this click captures maps later moves and the release to the
+/// dialog's own coordinates.</summary>
+procedure DialogButtonMouseDown(AAbsCol, AAbsRow: Integer);
+/// <summary>Mouse moved while captured: the button looks pressed only while
+/// the pointer is over it. True when that changed.</summary>
+function DialogButtonCaptureMove(AAbsCol, AAbsRow: Integer): Boolean;
+/// <summary>Left button released while captured: runs the command when the
+/// pointer is still over the button.</summary>
+procedure DialogButtonCaptureRelease(AAbsCol, AAbsRow: Integer);
 
 implementation
 
 uses
   System.Character, uKeyChord, uDialogLocaleLayout;
+
+var
+  GPressHost: TDialogHost = nil;
+  GCaptureHost: TDialogHost = nil;
+  GCaptureDX: Integer = 0;
+  GCaptureDY: Integer = 0;
+  GMouseDownCol: Integer = 0;
+  GMouseDownRow: Integer = 0;
+
+procedure FlushDialogButtonPress;
+var
+  Host: TDialogHost;
+begin
+  Host := GPressHost;
+  if Host = nil then
+    Exit;
+  GPressHost := nil;
+  Host.RunPendingPress;
+end;
+
+function DialogButtonPressPending: Boolean;
+begin
+  Result := GPressHost <> nil;
+end;
+
+function DialogButtonCaptured: Boolean;
+begin
+  Result := GCaptureHost <> nil;
+end;
+
+procedure DialogButtonMouseDown(AAbsCol, AAbsRow: Integer);
+begin
+  FlushDialogButtonPress;
+  GMouseDownCol := AAbsCol;
+  GMouseDownRow := AAbsRow;
+end;
+
+function DialogButtonCaptureMove(AAbsCol, AAbsRow: Integer): Boolean;
+var
+  Was: Integer;
+begin
+  Result := False;
+  if GCaptureHost = nil then
+    Exit;
+  Was := GCaptureHost.FPressIndex;
+  GCaptureHost.MouseCaptureMove(AAbsCol - GCaptureDX, AAbsRow - GCaptureDY);
+  Result := (GCaptureHost <> nil) and (GCaptureHost.FPressIndex <> Was);
+end;
+
+procedure DialogButtonCaptureRelease(AAbsCol, AAbsRow: Integer);
+var
+  Host: TDialogHost;
+begin
+  Host := GCaptureHost;
+  if Host = nil then
+    Exit;
+  GCaptureHost := nil;
+  Host.MouseCaptureRelease(AAbsCol - GCaptureDX, AAbsRow - GCaptureDY);
+end;
 
 type
   TDialogYesNoAnswer = (dyaNone, dyaYes, dyaNo);
@@ -274,7 +398,15 @@ begin
   FUpdateDirty := False;
   FAreaW := 80;
   FAreaH := 25;
+  FPressIndex := -1;
+  FMouseIndex := -1;
   SetLength(FControlBounds, 0);
+end;
+
+destructor TDialogHost.Destroy;
+begin
+  DropPress;
+  inherited;
 end;
 
 procedure TDialogHost.EnsureLayout;
@@ -386,6 +518,8 @@ begin
   if FDecl.Height < 6 then
     FDecl.Height := 6;
   FOnCommand := AOnCommand;
+  DropPress;
+  Inc(FOpenGen);
   FDropOpenIndex := -1;
   FDropHover := 0;
   FDropScrollTop := 0;
@@ -424,6 +558,8 @@ begin
     Exit;
   FVisible := False;
   FOnCommand := nil;
+  DropPress;
+  Inc(FOpenGen);
   FDropOpenIndex := -1;
   FDropHover := 0;
   FDropScrollTop := 0;
@@ -1102,6 +1238,135 @@ begin
     SaveInputHistory;
 end;
 
+procedure TDialogHost.DropPress;
+begin
+  if GPressHost = Self then
+    GPressHost := nil;
+  if GCaptureHost = Self then
+    GCaptureHost := nil;
+  FPendingAction := nil;
+  FPressIndex := -1;
+  FMouseIndex := -1;
+end;
+
+function TDialogHost.ButtonIndexById(const AId: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckButton) and SameText(FDecl.Controls[I].Id, AId) then
+      Exit(I);
+  Result := -1;
+end;
+
+function TDialogHost.CanShiftButton(const R: TRectI): Boolean;
+begin
+  // Same room check as the shadow: the shifted face must not reach the frame.
+  Result := R.Right + 1 < FBounds.Right;
+end;
+
+procedure TDialogHost.StartPress(AIndex: Integer; const AAction: TProc);
+var
+  Gen: Cardinal;
+begin
+  if not Assigned(GDialogButtonPressStart) or not FVisible or
+     (AIndex < 0) or (AIndex > High(FDecl.Controls)) then
+  begin
+    AAction();
+    Exit;
+  end;
+  // A press still showing (another key within the press time) completes first.
+  Gen := FOpenGen;
+  FlushDialogButtonPress;
+  if not FVisible or (FOpenGen <> Gen) then
+    Exit;
+  FPressIndex := AIndex;
+  FPendingAction := AAction;
+  FPendingGen := FOpenGen;
+  GPressHost := Self;
+  NotifyChanged;
+  GDialogButtonPressStart();
+end;
+
+procedure TDialogHost.PressButton(AIndex: Integer);
+var
+  Id: string;
+begin
+  Id := FDecl.Controls[AIndex].Id;
+  StartPress(AIndex,
+    procedure
+    begin
+      FireCommand(Id);
+    end);
+end;
+
+procedure TDialogHost.PressButtonThen(const AId: string; const AAction: TProc);
+begin
+  StartPress(ButtonIndexById(AId), AAction);
+end;
+
+procedure TDialogHost.RunPendingPress;
+var
+  Action: TProc;
+  Done: TNotifyEvent;
+begin
+  Action := FPendingAction;
+  FPendingAction := nil;
+  FPressIndex := -1;
+  if not Assigned(Action) or not FVisible or (FPendingGen <> FOpenGen) then
+  begin
+    NotifyChanged;
+    Exit;
+  end;
+  // Read before the command: it may close the dialog or its window.
+  Done := FOnDeferredCommand;
+  Action();
+  if Assigned(Done) then
+    Done(Self);
+end;
+
+procedure TDialogHost.MouseCaptureMove(ALocalCol, ALocalRow: Integer);
+var
+  Over: Boolean;
+begin
+  if (FMouseIndex < 0) or (FMouseIndex > High(FControlBounds)) then
+    Exit;
+  Over := FControlBounds[FMouseIndex].Contains(ALocalCol, ALocalRow);
+  if Over and (FPressIndex <> FMouseIndex) then
+  begin
+    FPressIndex := FMouseIndex;
+    NotifyChanged;
+  end
+  else if not Over and (FPressIndex = FMouseIndex) then
+  begin
+    FPressIndex := -1;
+    NotifyChanged;
+  end;
+end;
+
+procedure TDialogHost.MouseCaptureRelease(ALocalCol, ALocalRow: Integer);
+var
+  Idx: Integer;
+  Id: string;
+  Done: TNotifyEvent;
+begin
+  Idx := FMouseIndex;
+  FMouseIndex := -1;
+  FPressIndex := -1;
+  if not FVisible or (Idx < 0) or (Idx > High(FControlBounds)) or
+     (Idx > High(FDecl.Controls)) or
+     not FControlBounds[Idx].Contains(ALocalCol, ALocalRow) then
+  begin
+    NotifyChanged;
+    Exit;
+  end;
+  Id := FDecl.Controls[Idx].Id;
+  Done := FOnDeferredCommand;
+  FireCommand(Id);
+  if Assigned(Done) then
+    Done(Self);
+end;
+
 procedure TDialogHost.FireCancel;
 var
   I: Integer;
@@ -1146,7 +1411,7 @@ begin
         Break;
       end;
   if Idx >= 0 then
-    FireCommand(FDecl.Controls[Idx].Id)
+    PressButton(Idx)
   else
   begin
     // List-only dialogs (e.g. Code page): Enter accepts current selection.
@@ -1164,7 +1429,7 @@ begin
   // Windows-like: Enter on a focused push-button activates that button;
   // otherwise activate the dialog default.
   if FocusedIsButton then
-    FireCommand(FDecl.Controls[FFocusIndex].Id)
+    PressButton(FFocusIndex)
   else
     FireDefault;
 end;
@@ -1634,19 +1899,29 @@ procedure TDialogHost.DrawButtonControl(const AGrid: TTerminalGrid; const R: TRe
   AIndex: Integer; const C: TDialogControl);
 var
   St: TThemeWidgetState;
+  Face: TRectI;
 begin
   St := [];
   if AIndex = FFocusIndex then
     Include(St, twFocused);
   if C.IsDefault then
     Include(St, twSelected);
+  Face := R;
+  if AIndex = FPressIndex then
+  begin
+    Include(St, twPressed);
+    // Pressed: the face slides onto its right shadow cell and the shadow
+    // row below stays unpainted, so the button looks pushed in.
+    if CanShiftButton(R) then
+      Face := TRectI.Make(R.Left + 1, R.Top, R.Right + 1, R.Bottom);
+  end;
   if Assigned(FTheme) then
-    FTheme.DrawButton(AGrid, R, C.Text, St)
+    FTheme.DrawButton(AGrid, Face, C.Text, St)
   else if C.IsDefault then
-    PutGridText(AGrid, R.Left, R.Top, '< ' + C.Text + ' >',
+    PutGridText(AGrid, Face.Left, Face.Top, '< ' + C.Text + ' >',
       TAlphaColor($FF000000), TAlphaColor($FF00AAAA))
   else
-    PutGridText(AGrid, R.Left, R.Top, '[ ' + C.Text + ' ]',
+    PutGridText(AGrid, Face.Left, Face.Top, '[ ' + C.Text + ' ]',
       TAlphaColor($FF000000), TAlphaColor($FF00AAAA));
 end;
 
@@ -1777,7 +2052,7 @@ begin
   begin
     if (I > High(FControlBounds)) then
       Break;
-    if FDecl.Controls[I].Kind <> dckButton then
+    if (FDecl.Controls[I].Kind <> dckButton) or (I = FPressIndex) then
       Continue;
     R := FControlBounds[I];
     if (R.Top > FBounds.Bottom - 1) or (R.Bottom < FBounds.Top + 1) then
@@ -2022,7 +2297,20 @@ begin
       dckButton:
         begin
           FFocusIndex := I;
-          FireCommand(C.Id);
+          if Assigned(GDialogButtonPressStart) then
+          begin
+            // Pressed until the release; the command runs only if the
+            // release is over this button (DialogButtonCaptureRelease).
+            DropPress;
+            FMouseIndex := I;
+            FPressIndex := I;
+            GCaptureHost := Self;
+            GCaptureDX := GMouseDownCol - ALocalCol;
+            GCaptureDY := GMouseDownRow - ALocalRow;
+            NotifyChanged;
+          end
+          else
+            FireCommand(C.Id);
           Exit(True);
         end;
       dckCheckbox:
@@ -2157,7 +2445,7 @@ begin
     if (C.Kind = dckButton) and
        ((AYes and DialogCmdIsYes(C.Id)) or (not AYes and DialogCmdIsNo(C.Id))) then
     begin
-      FireCommand(C.Id);
+      PressButton(I);
       Exit(True);
     end;
   end;
@@ -2178,7 +2466,7 @@ begin
       case C.Kind of
         dckButton:
           begin
-            FireCommand(C.Id);
+            PressButton(I);
             Exit;
           end;
         dckCheckbox:
@@ -2369,7 +2657,7 @@ begin
     end;
     if FDecl.Controls[FFocusIndex].Kind = dckButton then
     begin
-      FireCommand(FDecl.Controls[FFocusIndex].Id);
+      PressButton(FFocusIndex);
       AKey := 0;
       AKeyChar := #0;
       Exit;

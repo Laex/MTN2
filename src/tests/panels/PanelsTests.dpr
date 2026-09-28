@@ -12,6 +12,7 @@ uses
   TestButtonTextClip in 'TestButtonTextClip.pas',
   TestColorCodingMerge in 'TestColorCodingMerge.pas',
   TestColorSampleRender in 'TestColorSampleRender.pas',
+  TestDialogButtonPress in 'TestDialogButtonPress.pas',
   TestDialogSeparator in 'TestDialogSeparator.pas',
   TestColumnModeMenuController in 'TestColumnModeMenuController.pas',
   TestDrivePopup in 'TestDrivePopup.pas',

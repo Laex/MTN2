@@ -27,6 +27,9 @@ type
     FDragStartCol: Integer;
     FCloseOnExit: Boolean;
     procedure DoCloseWorkspace;
+    /// <summary>A dialog button released after the click or key returned:
+    /// the close its command asked for, as HandleInput / HandleClick do.</summary>
+    procedure DialogDeferredCommand(Sender: TObject);
     /// <summary>Esc: confirm before killing the shell. Unlike CloseWorkspace
     /// this is asynchronous - the tab dies only once the dialog answers.</summary>
     procedure AskCloseWorkspace;
@@ -93,6 +96,16 @@ begin
   LayoutBottomMargin := 0;
   Title              := T('ui.terminal.title', 'Terminal');
   FCloseOnExit       := True;
+  FDialog.OnDeferredCommand := DialogDeferredCommand;
+end;
+
+procedure TTerminalWorkspaceWindow.DialogDeferredCommand(Sender: TObject);
+begin
+  if PendingClose then
+  begin
+    PendingClose := False;
+    DoCloseWorkspace;
+  end;
 end;
 
 { ---- Title ----------------------------------------------------------------- }
