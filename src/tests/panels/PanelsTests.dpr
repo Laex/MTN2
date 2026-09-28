@@ -31,6 +31,7 @@ uses
   TestDualPanelTopMenu in 'TestDualPanelTopMenu.pas',
   TestHistoryPopup in 'TestHistoryPopup.pas',
   TestJobPopupLayout in 'TestJobPopupLayout.pas',
+  TestMarkedRowColors in 'TestMarkedRowColors.pas',
   TestPanelColumns in 'TestPanelColumns.pas',
   TestPanelCompare in 'TestPanelCompare.pas',
   TestPanelModel in 'TestPanelModel.pas',

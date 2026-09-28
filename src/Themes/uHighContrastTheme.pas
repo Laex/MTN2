@@ -45,6 +45,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -68,6 +69,7 @@ const
   // but never so dark it stops being a deliberate colour choice.
   cGreyPanel = TAlphaColor($FF303030);
   cGreyFg    = TAlphaColor($FFC0C0C0);
+  cNavy      = TAlphaColor($FF000080);
 
   cDesktopBg    = cBlack;
   cWindowBg     = cBlack;
@@ -536,8 +538,9 @@ begin
   begin
     if ASelected then
     begin
+      // Not yellow: that is the plain cursor here.
       AFg := cCursorFg;
-      ABg := cYellow;
+      ABg := cCyan;
     end
     else if ASideActive then
     begin
@@ -560,6 +563,12 @@ begin
     ABg := cWindowBg;
     AFg := TypeFg;
   end;
+end;
+
+procedure THighContrastTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  AFg := cSelectedFg;
+  ABg := cNavy;
 end;
 
 procedure THighContrastTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

@@ -44,7 +44,7 @@ const
   cThemeHiCon   = 'HighContrast';
 
   cThemes: array[0..7] of TThemeInfo = (
-    (Id: cThemeNDN;     DisplayName: 'Classic FAR (NDN)'),
+    (Id: cThemeNDN;     DisplayName: 'Far Classic'),
     (Id: cThemeModern;  DisplayName: 'Modern Unicode'),
     (Id: cThemeASCII;   DisplayName: 'ASCII (no box-drawing glyphs)'),
     (Id: cThemeTC;      DisplayName: 'Total Commander (light)'),

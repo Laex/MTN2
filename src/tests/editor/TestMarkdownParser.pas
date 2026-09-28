@@ -699,6 +699,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -736,6 +737,8 @@ function TFakeTheme.UsesDoubleLineForActivePanel: Boolean; begin Result := False
 procedure TFakeTheme.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
   const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
   out AFg, ABg: TAlphaColor); begin AFg := 0; ABg := 0; end;
+procedure TFakeTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin AFg := 0; ABg := 0; end;
 procedure TFakeTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
 begin AFg := 0; ABg := 0; end;
 procedure TFakeTheme.ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;

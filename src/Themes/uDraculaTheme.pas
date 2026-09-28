@@ -44,6 +44,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -552,6 +553,12 @@ begin
     ABg := cWindowBg;
     AFg := TypeFg;
   end;
+end;
+
+procedure TDraculaTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  AFg := cSelectedFg;
+  ABg := cCurrentLine;
 end;
 
 procedure TDraculaTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

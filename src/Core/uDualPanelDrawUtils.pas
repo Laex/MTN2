@@ -331,8 +331,9 @@ var
   begin
     Selected := SelectionKeysHas(SelKeys, Row.URI);
     if Assigned(ATheme) then
-      ATheme.ResolveFileRowColors(Row.IsDirectory, Row.IsParent, Row.IsHidden,
-        Row.FileType, Selected, Idx = ATab.CursorIndex, ASideActive, Fg, Bg)
+      ResolvePanelRowColors(ATheme, Row.IsDirectory, Row.IsParent, Row.IsHidden,
+        Row.FileType, Selected, Idx = ATab.CursorIndex, ASideActive,
+        GMarkedRowStyle, Fg, Bg)
     else
       FallbackFileRowColors(Row.IsDirectory, Row.IsParent, Row.IsHidden,
         Selected, Idx = ATab.CursorIndex, ASideActive, Fg, Bg);

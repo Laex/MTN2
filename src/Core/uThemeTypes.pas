@@ -157,6 +157,10 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    /// <summary>A marked row away from the cursor when marked rows get a
+    /// background band (uDisplaySettings.mrsBand): the band and a text
+    /// colour that reads on it.</summary>
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);

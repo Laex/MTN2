@@ -53,6 +53,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -162,6 +163,11 @@ procedure TThemeProxy.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: B
 begin
   FInner.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden, AFileType,
     ASelected, ACursor, ASideActive, AFg, ABg);
+end;
+
+procedure TThemeProxy.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  FInner.ResolveMarkedRowBand(AFg, ABg);
 end;
 
 procedure TThemeProxy.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

@@ -1043,6 +1043,7 @@ begin
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
   Result.ShadowStyle := GShadowStyle;
+  Result.MarkedRowStyle := GMarkedRowStyle;
   Result.LineSpacing := FSession.LineSpacing;
   Result.Language := CurrentLocale;
 end;
@@ -1061,6 +1062,8 @@ begin
   FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
   FSession.LineSpacing := ASettings.LineSpacing;
   GShadowStyle := ASettings.ShadowStyle;
+  FSession.MarkedRows := MarkedRowStyleId(ASettings.MarkedRowStyle);
+  GMarkedRowStyle := ASettings.MarkedRowStyle;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -1132,6 +1135,7 @@ begin
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
+  GMarkedRowStyle := MarkedRowStyleFromId(Sess.MarkedRows);
   FCursorBlinkEnabled := Sess.CursorBlink;
   FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetZoom(Sess.Zoom, ClientWidth, ClientHeight, Canvas);
@@ -1206,6 +1210,7 @@ begin
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
+  Sess.MarkedRows := MarkedRowStyleId(GMarkedRowStyle);
   Sess.LineSpacing := FSession.LineSpacing;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
@@ -1636,6 +1641,7 @@ begin
   FSession.ShowPanelIcons := True;
   FSession.ShowNotifications := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
+  FSession.MarkedRows := MarkedRowStyleId(mrsText);
   FCursorBlinkEnabled := True;
   TryRestoreSession;
   // Mtn2 <path> - a brand new tab for the CLI path, restored

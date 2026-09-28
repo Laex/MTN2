@@ -46,6 +46,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -69,6 +70,8 @@ const
   cDarkGreen    = TAlphaColor($FF008000);
   cPurple       = TAlphaColor($FF800080);
   cRed          = TAlphaColor($FFFF0000);
+  cLightRed     = TAlphaColor($FFFF8080);
+  cPaleYellow   = TAlphaColor($FFFFFFC0);
   cFaceHighlight= TAlphaColor($FFD4D0C8);
 
   cDesktopBg    = cGreyDesktop;
@@ -100,11 +103,12 @@ const
   cScrollFg     = cGrey;
   cScrollThumb  = cNavy;
   // Total Commander's signature: marked files turn red, background unchanged.
-  cSelectedFg   = cRed;
+  cSelectedFg   = cMaroon;
   cSelectedBg   = cWindowBg;
   cCursorFg     = cWhite;
   cCursorBg     = cNavy;
   cCursorIdleBg = cNavyLight;
+  cMarkedBandBg = cPaleYellow;
 
 function TTotalCommanderTheme.DesktopColor: TAlphaColor;
 begin
@@ -538,7 +542,7 @@ begin
     if ASelected then
     begin
       // Marked + under cursor: keep the red mark legible on the cursor bar.
-      AFg := cRed;
+      AFg := cLightRed;
       ABg := cCursorBg;
     end
     else if ASideActive then
@@ -562,6 +566,12 @@ begin
     ABg := cWindowBg;
     AFg := TypeFg;
   end;
+end;
+
+procedure TTotalCommanderTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  AFg := cSelectedFg;
+  ABg := cMarkedBandBg;
 end;
 
 procedure TTotalCommanderTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

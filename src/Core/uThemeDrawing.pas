@@ -18,6 +18,16 @@ var
   /// DimGridExcept, so every dialog, button, toast and modal backdrop
   /// follows it.</summary>
   GShadowStyle: TShadowStyle = ssClassic;
+  /// <summary>Display dialog "Marked files"; persisted in session.json
+  /// (markedRows). Read by ResolvePanelRowColors.</summary>
+  GMarkedRowStyle: TMarkedRowStyle = mrsText;
+
+/// <summary>IThemeRenderer.ResolveFileRowColors, with a marked row away
+/// from the cursor taking the theme's band under mrsBand.</summary>
+procedure ResolvePanelRowColors(const ATheme: IThemeRenderer;
+  AIsDirectory, AIsParent, AIsHidden: Boolean; const AFileType: string;
+  ASelected, ACursor, ASideActive: Boolean; AStyle: TMarkedRowStyle;
+  out AFg, ABg: TAlphaColor);
 
 /// <summary>How much black a shadow mixes in under AStyle (0 = none).</summary>
 function ShadowCoverFor(AStyle: TShadowStyle): Byte;
@@ -212,6 +222,18 @@ const
   // "Soft": still reads as depth on light and dark palettes, without the
   // 1992 slab.
   cSoftShadowCover = 80;
+
+procedure ResolvePanelRowColors(const ATheme: IThemeRenderer;
+  AIsDirectory, AIsParent, AIsHidden: Boolean; const AFileType: string;
+  ASelected, ACursor, ASideActive: Boolean; AStyle: TMarkedRowStyle;
+  out AFg, ABg: TAlphaColor);
+begin
+  if ASelected and not ACursor and (AStyle = mrsBand) then
+    ATheme.ResolveMarkedRowBand(AFg, ABg)
+  else
+    ATheme.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden, AFileType,
+      ASelected, ACursor, ASideActive, AFg, ABg);
+end;
 
 function ShadowCoverFor(AStyle: TShadowStyle): Byte;
 begin

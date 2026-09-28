@@ -223,7 +223,8 @@ begin
     FOpenFontSizeIdx, IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
-    Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing), FOnCommand);
+    Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
+    Ord(Cur.MarkedRowStyle)), FOnCommand);
   Notify;
 end;
 
@@ -357,7 +358,7 @@ procedure TSettingsDialogController.DispatchDisplayCommand(
 var
   Accepted: Boolean;
   Disp: TDisplaySettings;
-  LanguageIdx, ShadowIdx, SizeIdx: Integer;
+  LanguageIdx, ShadowIdx, SizeIdx, MarkedIdx: Integer;
 begin
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
@@ -378,6 +379,9 @@ begin
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
       Disp.ShadowStyle := TShadowStyle(ShadowIdx);
+    MarkedIdx := FDialog.GetListSelectedIndex('marked_rows');
+    if (MarkedIdx >= Ord(Low(TMarkedRowStyle))) and (MarkedIdx <= Ord(High(TMarkedRowStyle))) then
+      Disp.MarkedRowStyle := TMarkedRowStyle(MarkedIdx);
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
       Disp.Language := FLanguageCodes[LanguageIdx]

@@ -25,6 +25,10 @@ type
   /// (uThemeDrawing.GShadowStyle): classic FAR/NDN strength, a lighter one,
   /// or none.</summary>
   TShadowStyle = (ssClassic, ssSoft, ssNone);
+  /// <summary>How marked panel rows away from the cursor stand out
+  /// (uThemeDrawing.GMarkedRowStyle): the theme's mark text colour only, or
+  /// also a background band (IThemeRenderer.ResolveMarkedRowBand).</summary>
+  TMarkedRowStyle = (mrsText, mrsBand);
 
   TDisplaySettings = record
     FontName: string;
@@ -36,6 +40,7 @@ type
     /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
     ShowNotifications: Boolean;
     ShadowStyle: TShadowStyle;
+    MarkedRowStyle: TMarkedRowStyle;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
@@ -84,6 +89,12 @@ function ShadowStyleId(AStyle: TShadowStyle): string;
 function ShadowStyleFromId(const AId: string): TShadowStyle;
 /// <summary>Display dialog "Shadows" dropdown, in TShadowStyle order.</summary>
 function DisplayShadowItems: TArray<string>;
+/// <summary>session.json id: 'text' / 'band'.</summary>
+function MarkedRowStyleId(AStyle: TMarkedRowStyle): string;
+/// <summary>Unknown or empty id -> mrsText.</summary>
+function MarkedRowStyleFromId(const AId: string): TMarkedRowStyle;
+/// <summary>Display dialog "Marked files" dropdown, in TMarkedRowStyle order.</summary>
+function DisplayMarkedRowItems: TArray<string>;
 
 implementation
 
@@ -251,6 +262,30 @@ begin
     T('ui.display.shadowNone', 'None')];
 end;
 
+const
+  cMarkedRowStyleIds: array[TMarkedRowStyle] of string = ('text', 'band');
+
+function MarkedRowStyleId(AStyle: TMarkedRowStyle): string;
+begin
+  Result := cMarkedRowStyleIds[AStyle];
+end;
+
+function MarkedRowStyleFromId(const AId: string): TMarkedRowStyle;
+var
+  S: TMarkedRowStyle;
+begin
+  for S := Low(TMarkedRowStyle) to High(TMarkedRowStyle) do
+    if SameText(AId, cMarkedRowStyleIds[S]) then
+      Exit(S);
+  Result := mrsText;
+end;
+
+function DisplayMarkedRowItems: TArray<string>;
+begin
+  Result := [T('ui.display.markedText', 'Text color'),
+    T('ui.display.markedBand', 'Row background')];
+end;
+
 function DefaultDisplaySettings: TDisplaySettings;
 begin
   Result.FontName := '';
@@ -261,6 +296,7 @@ begin
   Result.ShowPanelIcons := True;
   Result.ShowNotifications := True;
   Result.ShadowStyle := ssClassic;
+  Result.MarkedRowStyle := mrsText;
   Result.LineSpacing := False;
   Result.Language := '';
 end;

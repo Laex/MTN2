@@ -47,6 +47,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -561,6 +562,12 @@ begin
     ABg := cWindowBg;
     AFg := TypeFg;
   end;
+end;
+
+procedure TModernUnicodeTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  AFg := cSelectedFg;
+  ABg := cOverlay;
 end;
 
 procedure TModernUnicodeTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

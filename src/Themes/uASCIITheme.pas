@@ -45,6 +45,7 @@ type
     procedure ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Boolean;
       const AFileType: string; ASelected, ACursor, ASideActive: Boolean;
       out AFg, ABg: TAlphaColor);
+    procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
@@ -102,6 +103,8 @@ const
   cCursorFg     = cBlack;
   cCursorBg     = cCyan;
   cCursorIdleBg = TAlphaColor($FF1A3A6A);
+  // Marked-row band: bright VGA blue under the yellow mark colour.
+  cMarkedBandBg = TAlphaColor($FF0000FF);
 
   // ASCII-only box/shade glyphs (vs. Unicode chBox*/chDbl*/chShade*/chBlock).
   chAH  = '-';
@@ -576,6 +579,12 @@ begin
     ABg := cWindowBg;
     AFg := TypeFg;
   end;
+end;
+
+procedure TASCIIOnlyTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
+begin
+  AFg := cSelectedFg;
+  ABg := cMarkedBandBg;
 end;
 
 procedure TASCIIOnlyTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

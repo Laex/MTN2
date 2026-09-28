@@ -98,6 +98,7 @@ begin
   Result.ShowNotifications := False;
   Result.ShadowStyle := 'soft';
   Result.LineSpacing := True;
+  Result.MarkedRows := 'band';
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
   SetLength(Result.Panels.WorkspaceTabs, 1);
@@ -132,6 +133,7 @@ begin
     Assert.IsTrue(Loaded.Language = 'ru', 'language saved');
     Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
     Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
+    Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -177,6 +179,9 @@ begin
     Pair := Root.RemovePair('lineSpacing');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('markedRows');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -192,6 +197,7 @@ begin
     Assert.IsTrue(Sess.Language = '', 'missing language -> empty (English)');
     Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
+    Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -226,6 +232,11 @@ begin
   Assert.IsTrue(ShadowStyleFromId('bogus') = ssClassic, 'unknown id -> classic');
   Assert.IsTrue(ShadowStyleFromId(ShadowStyleId(ssSoft)) = ssSoft, 'id round-trip');
   Assert.IsTrue(Length(DisplayShadowItems) = Ord(High(TShadowStyle)) + 1, 'one item per style');
+  Assert.IsTrue(MarkedRowStyleFromId('BAND') = mrsBand, 'marked id band, any case');
+  Assert.IsTrue(MarkedRowStyleFromId('') = mrsText, 'missing marked id -> text');
+  Assert.IsTrue(MarkedRowStyleFromId(MarkedRowStyleId(mrsBand)) = mrsBand, 'marked id round-trip');
+  Assert.IsTrue(Length(DisplayMarkedRowItems) = Ord(High(TMarkedRowStyle)) + 1,
+    'one marked-files item per style');
 
   AllocTerminalGrid(Grid, 20, 10);
   Box := TRectI.Make(2, 2, 10, 6);
