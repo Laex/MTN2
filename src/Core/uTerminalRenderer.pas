@@ -531,8 +531,10 @@ begin
     FOnCompose(FGrid, FCols, FRows)
   else
     FillDemoContent;
+  // Rasterized by the next Draw, once per painted frame: a held key's
+  // repeats between two frames cost one raster, not one each. Rasterizing
+  // here would keep the message queue busy and starve WM_PAINT.
   FNeedRebuildBuffer := True;
-  Present;
 end;
 
 procedure TTerminalRenderer.Resize(AWidth, AHeight: Single; ACanvas: TCanvas);

@@ -19,6 +19,7 @@ type
     [Test] procedure TestGlyphBitmapIsDeviceSized;
     [Test] procedure TestDescendersInsideCell;
     [Test] procedure TestLineSpacing;
+    [Test] procedure TestRecomposeRastersOncePerFrame;
   end;
 
 implementation
@@ -26,7 +27,7 @@ implementation
 uses
   System.SysUtils, System.Types, System.UITypes, System.Math,
   FMX.Types, FMX.Graphics,
-  uTerminalRenderer, uDisplaySettings;
+  uTerminalTypes, uTerminalRenderer, uDisplaySettings;
 
 function SameF(A, B: Single): Boolean;
 begin
@@ -243,6 +244,52 @@ begin
     Assert.IsTrue(SameF(R.CellHeight, Plain), 'off again: back to the plain height');
   finally
     R.Free;
+    Measure.Free;
+  end;
+end;
+
+// Input recomposes the grid many times between two frames (a held arrow key);
+// only the painted frame rasterizes it, once.
+procedure TTestTerminalRenderer.TestRecomposeRastersOncePerFrame;
+var
+  R: TTerminalRenderer;
+  Measure, Target: TBitmap;
+  Composed, Rastered, I: Integer;
+begin
+  Measure := TBitmap.Create(16, 16);
+  Target := TBitmap.Create(500, 150);
+  R := TTerminalRenderer.Create;
+  try
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+    R.Resize(500, 150, Measure.Canvas);
+    Composed := 0;
+    Rastered := 0;
+    R.OnCompose :=
+      procedure(const AGrid: TTerminalGrid; ACols, ARows: Integer)
+      begin
+        Inc(Composed);
+      end;
+    R.OnRasterized :=
+      procedure(AElapsedTicks: Int64)
+      begin
+        Inc(Rastered);
+      end;
+    for I := 1 to 10 do
+      R.Recompose;
+    Assert.AreEqual(10, Composed, 'every input recomposes the grid');
+    Assert.AreEqual(0, Rastered, 'recompose alone rasterizes nothing');
+    Assert.IsTrue(Target.Canvas.BeginScene, 'target canvas');
+    try
+      R.Draw(Target.Canvas, RectF(0, 0, 500, 150));
+      Assert.AreEqual(1, Rastered, 'the frame rasterizes the grid once');
+      R.Draw(Target.Canvas, RectF(0, 0, 500, 150));
+      Assert.AreEqual(1, Rastered, 'an unchanged frame is not rasterized again');
+    finally
+      Target.Canvas.EndScene;
+    end;
+  finally
+    R.Free;
+    Target.Free;
     Measure.Free;
   end;
 end;
