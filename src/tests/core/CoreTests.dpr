@@ -18,6 +18,7 @@ uses
   TestMessageBus in 'TestMessageBus.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
   TestStrings in 'TestStrings.pas',
+  TestTerminalRenderer in 'TestTerminalRenderer.pas',
   TestToast in 'TestToast.pas',
   TestUpdater in 'TestUpdater.pas';
 

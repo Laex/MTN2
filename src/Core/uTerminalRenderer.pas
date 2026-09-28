@@ -21,6 +21,11 @@ type
     Style: TFontStyles;
   end;
 
+  /// <summary>One bitmap per (char, colour, style), rasterized at the scene
+  /// scale in device pixels so it is blitted 1:1 onto the frame (a logical-size
+  /// bitmap stretched to 125% came out blurry and uneven). The text line's top
+  /// sits AGlyphTop below the cell top: the renderer picks it from the font's
+  /// measured ink so descenders and accents stay inside the cell.</summary>
   TGlyphCache = class
   private
     FMap: TDictionary<TGlyphKey, TBitmap>;
@@ -28,13 +33,26 @@ type
     FFontSize: Single;
     FCellW: Single;
     FCellH: Single;
+    FScale: Single;
+    FGlyphTop: Single;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
     function GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
-      ACellW, ACellH: Single; const AFontName: string; AFontSize: Single): TBitmap;
+      ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
+      AFontSize: Single): TBitmap;
   end;
+
+  /// <summary>Vertical placement of the text line inside a cell.
+  /// ALineH: the font's line height; AInkTop / AInkBottom: extent of the
+  /// probe glyphs' ink relative to the line top (bottom exclusive); all in
+  /// logical px. Returns the cell height (whole device pixels: the rounded
+  /// line height, or more if the ink needs it) and, in AGlyphTop, where the line top
+  /// goes: centred like before, then shifted so the ink fits, on a whole
+  /// device pixel so the baseline is crisp.</summary>
+  function FitGlyphLine(ALineH, AInkTop, AInkBottom, AScale: Single;
+    out AGlyphTop: Single): Single;
 
 type
   TTerminalRenderer = class
@@ -53,6 +71,12 @@ type
     FCellHeight: Single;
     FGlyphAdvW: Single;   // natural glyph advance width (logical, pre-snap)
     FGlyphAdvH: Single;   // natural glyph/line height (logical, pre-snap)
+    FGlyphTop: Single;    // text line top inside the cell (logical, see FitGlyphLine)
+    // MeasureInk result for this font/size/scale: Resize re-runs the metrics
+    // on every window resize, the ink probe only has to run when these change.
+    FInkKey: string;
+    FInkTop, FInkBottom: Single;
+    FInkOk: Boolean;
     FSceneScale: Single;
     FNeedRebuildBuffer: Boolean;
     FDefaultFg: TAlphaColor;
@@ -63,6 +87,7 @@ type
     FYTop: TArray<Single>;
     FGlyphCache: TGlyphCache;
     procedure CalculateCellMetrics(ACanvas: TCanvas);
+    function MeasureInk(ALineH: Single; out AInkTop, AInkBottom: Single): Boolean;
     procedure RecalcGridDimensions(AClientWidth, AClientHeight: Single);
     procedure EnsureFrameSize(AWidth, AHeight: Integer);
     function FrontFrame: TBitmap; inline;
@@ -94,6 +119,8 @@ type
     property Zoom: Single read FZoom;
     property CellWidth: Single read FCellWidth;
     property CellHeight: Single read FCellHeight;
+    property GlyphTop: Single read FGlyphTop;
+    property SceneScale: Single read FSceneScale;
     property FontName: string read FFontName;
     property BaseFontSize: Single read FBaseFontSize;
     // Fired whenever the grid is (re)allocated (resize / zoom / DPI change).
@@ -140,22 +167,60 @@ begin
   FMap.Clear;
 end;
 
+function FitGlyphLine(ALineH, AInkTop, AInkBottom, AScale: Single;
+  out AGlyphTop: Single): Single;
+const
+  // Metrics that land on a device pixel within float noise must not grow a
+  // whole row (16.0000019 * 1.25 is 20, not 21).
+  cEps = 0.05;
+var
+  Top: Single;
+  DevH: Integer;
+begin
+  if AScale <= 0 then
+    AScale := 1.0;
+  // The line height rounds as it always has (Consolas 16.4 stays 16 rows of
+  // pixels: its leading is blank); only ink that does not fit grows the cell.
+  DevH := Max(Max(Round(ALineH * AScale),
+    Ceil((AInkBottom - AInkTop) * AScale - cEps)), 1);
+  Result := DevH / AScale;
+  // Centre the line (what TTextAlign.Center did), then pull the ink inside.
+  Top := (Result - ALineH) / 2;
+  if Top + AInkBottom > Result then
+    Top := Result - AInkBottom;
+  if Top + AInkTop < 0 then
+    Top := -AInkTop;
+  // Whole device pixel, rounding towards whichever edge the ink is closer to.
+  Top := Round(Top * AScale) / AScale;
+  if Top + AInkBottom > Result + cEps / AScale then
+    Top := Floor((Result - AInkBottom) * AScale + cEps) / AScale;
+  if Top + AInkTop < -cEps / AScale then
+    Top := Ceil(-AInkTop * AScale - cEps) / AScale;
+  AGlyphTop := Top;
+end;
+
 function TGlyphCache.GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
-  ACellW, ACellH: Single; const AFontName: string; AFontSize: Single): TBitmap;
+  ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
+  AFontSize: Single): TBitmap;
 var
   Key: TGlyphKey;
   Bmp: TBitmap;
   W, H: Integer;
   R: TRectF;
 begin
+  if AScale <= 0 then
+    AScale := 1.0;
   if (FFontName <> AFontName) or (FFontSize <> AFontSize) or
-     (FCellW <> ACellW) or (FCellH <> ACellH) then
+     (FCellW <> ACellW) or (FCellH <> ACellH) or
+     (FScale <> AScale) or (FGlyphTop <> AGlyphTop) then
   begin
     Clear;
     FFontName := AFontName;
     FFontSize := AFontSize;
     FCellW := ACellW;
     FCellH := ACellH;
+    FScale := AScale;
+    FGlyphTop := AGlyphTop;
   end;
 
   Key.Ch := ACh;
@@ -168,11 +233,14 @@ begin
   if FMap.Count > 512 then
     Clear;
 
-  W := Max(Round(ACellW), 1);
-  H := Max(Round(ACellH), 1);
+  // Device pixels: the cell is snapped to them, so this is exactly the size
+  // of the glyph's DestRect on the frame.
+  W := Max(Round(ACellW * AScale), 1);
+  H := Max(Round(ACellH * AScale), 1);
 
   Bmp := TBitmap.Create;
   Bmp.SetSize(W, H);
+  Bmp.BitmapScale := AScale;
   if Bmp.Canvas.BeginScene then
   begin
     try
@@ -182,8 +250,11 @@ begin
       Bmp.Canvas.Font.Style := AStyle;
       Bmp.Canvas.Fill.Kind := TBrushKind.Solid;
       Bmp.Canvas.Fill.Color := AFgColor;
-      R := RectF(0, 0, ACellW, ACellH);
-      Bmp.Canvas.FillText(R, string(ACh), False, 1, [], TTextAlign.Center, TTextAlign.Center);
+      // FillText drops a line that does not fit its rect, so the rect runs
+      // well past the cell; the bitmap edge is the only clip, and the ink was
+      // measured to fit it.
+      R := RectF(0, AGlyphTop, ACellW, AGlyphTop + 3 * ACellH);
+      Bmp.Canvas.FillText(R, string(ACh), False, 1, [], TTextAlign.Center, TTextAlign.Leading);
     finally
       Bmp.Canvas.EndScene;
     end;
@@ -280,6 +351,8 @@ procedure TTerminalRenderer.CalculateCellMetrics(ACanvas: TCanvas);
 var
   Layout: TTextLayout;
   R: TRectF;
+  InkTop, InkBottom: Single;
+  InkKey: string;
 begin
   Layout := TTextLayoutManager.DefaultTextLayout.Create;
   try
@@ -313,11 +386,96 @@ begin
   FGlyphAdvW := Max(FCellWidth, 1);
   FGlyphAdvH := Max(FCellHeight, 1);
 
-  // Snap cell size to whole DEVICE pixels.
+  // Snap cell size to whole DEVICE pixels. The height also has to hold the
+  // font's real ink: some fonts (Ubuntu Mono) draw descenders below the
+  // reported line height, which used to cut 1 px off g/j/p/q/y/[/]/_.
   if FSceneScale <= 0 then
     FSceneScale := 1.0;
   FCellWidth := Max(Round(FCellWidth * FSceneScale), 1) / FSceneScale;
-  FCellHeight := Max(Round(FCellHeight * FSceneScale), 1) / FSceneScale;
+  InkKey := Format('%s|%g|%g|%g|%g', [FFontName, EffectiveFontSize, FSceneScale,
+    FGlyphAdvW, FGlyphAdvH]);
+  if InkKey <> FInkKey then
+  begin
+    FInkOk := MeasureInk(FGlyphAdvH, FInkTop, FInkBottom);
+    FInkKey := InkKey;
+  end;
+  InkTop := FInkTop;
+  InkBottom := FInkBottom;
+  if not FInkOk then
+  begin
+    InkTop := 0;
+    InkBottom := FGlyphAdvH;
+  end;
+  FCellHeight := FitGlyphLine(FGlyphAdvH, InkTop, InkBottom, FSceneScale, FGlyphTop);
+end;
+
+function TTerminalRenderer.MeasureInk(ALineH: Single; out AInkTop, AInkBottom: Single): Boolean;
+const
+  // Tallest ascenders/accents and deepest descenders, Latin and Cyrillic:
+  // W A-ring E-acute g j p q y [ ] | _ ( ) { } Yo Short-I De Tse Shcha ef u.
+  cInkProbe = 'W'#$00C5#$00C9'gjpqy[]|_(){}'#$0401#$0419#$0414#$0426#$0429#$0444#$0443;
+  cAlphaMin = 24; // ~10% coverage: fainter AA fringe may be cut, unnoticed
+var
+  Bmp: TBitmap;
+  Data: TBitmapData;
+  Pad, Slot: Single;
+  X, Y, I, TopRow, BottomRow: Integer;
+begin
+  Result := False;
+  AInkTop := 0;
+  AInkBottom := 0;
+  // Same scale, font and FillText call as the glyph cache, one char per slot:
+  // a whole-string line can sit on a different baseline (mixed-script runs),
+  // which misjudged Ubuntu Mono's descenders by a pixel. The line top sits
+  // Pad below the bitmap top so ink above the line is caught too; Pad is a
+  // whole device pixel like the glyph top (FitGlyphLine), since the baseline
+  // snaps to the pixel grid and a fractional Pad shifted the ink by a pixel.
+  Pad := Max(Ceil(ALineH * FSceneScale), 1) / FSceneScale;
+  Slot := Max(FGlyphAdvW, 1) * 2;
+  Bmp := TBitmap.Create;
+  try
+    Bmp.SetSize(Max(Ceil(Length(cInkProbe) * Slot * FSceneScale), 1),
+      Max(Ceil(4 * Pad * FSceneScale), 1));
+    Bmp.BitmapScale := FSceneScale;
+    if not Bmp.Canvas.BeginScene then
+      Exit;
+    try
+      Bmp.Canvas.Clear($00000000);
+      Bmp.Canvas.Font.Family := FFontName;
+      Bmp.Canvas.Font.Size := EffectiveFontSize;
+      Bmp.Canvas.Fill.Kind := TBrushKind.Solid;
+      Bmp.Canvas.Fill.Color := TAlphaColorRec.White;
+      for I := 1 to Length(cInkProbe) do
+        Bmp.Canvas.FillText(RectF((I - 1) * Slot, Pad, I * Slot, 4 * Pad),
+          string(cInkProbe[I]), False, 1, [], TTextAlign.Center, TTextAlign.Leading);
+    finally
+      Bmp.Canvas.EndScene;
+    end;
+    TopRow := MaxInt;
+    BottomRow := -1;
+    if not Bmp.Map(TMapAccess.Read, Data) then
+      Exit;
+    try
+      for Y := 0 to Bmp.Height - 1 do
+        for X := 0 to Bmp.Width - 1 do
+          if TAlphaColorRec(Data.GetPixel(X, Y)).A >= cAlphaMin then
+          begin
+            if Y < TopRow then
+              TopRow := Y;
+            BottomRow := Y;
+            Break; // the rest of this row adds nothing
+          end;
+    finally
+      Bmp.Unmap(Data);
+    end;
+    if BottomRow < 0 then
+      Exit;
+    AInkTop := TopRow / FSceneScale - Pad;
+    AInkBottom := (BottomRow + 1) / FSceneScale - Pad;
+    Result := True;
+  finally
+    Bmp.Free;
+  end;
 end;
 
 procedure TTerminalRenderer.RecalcGridDimensions(AClientWidth, AClientHeight: Single);
@@ -782,7 +940,8 @@ begin
           for I := 1 to Length(RunStr) do
           begin
             GlyphBmp := FGlyphCache.GetGlyph(RunStr[I], RunFg, TargetStyle,
-              FCellWidth, FCellHeight, FFontName, EffectiveFontSize);
+              FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontName,
+              EffectiveFontSize);
             if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
             begin
               SrcRect := RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height);
