@@ -95,6 +95,7 @@ begin
     tmaFileCreateLink: CallProc(AHost.BeginCreateLink);
     tmaFileSetAttributes: CallProc(AHost.BeginSetAttributes);
     tmaFileProperties: CallProc(AHost.ShowProperties);
+    tmaFileShellMenu: CallProc(AHost.ShellContextMenu);
     tmaFileCompare: CallProc(AHost.BeginCompareFiles);
     tmaFileChecksums: CallProc(AHost.BeginChecksums);
     tmaFileRestore: CallProc(AHost.RestoreCursorItemFromRecycleBin);

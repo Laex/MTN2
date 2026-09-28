@@ -189,6 +189,10 @@ type
   /// <summary>Alt+Enter: TMainForm shows the OS Properties window (it owns
   /// the native window handle the shell call needs).</summary>
   TShowPropertiesEvent = procedure(const APaths: TArray<string>) of object;
+  /// <summary>Windows context menu for APaths, anchored at a Dual Panel
+  /// local cell (the cursor row).</summary>
+  TShellContextMenuEvent = procedure(const APaths: TArray<string>;
+    ALocalCol, ALocalRow: Integer) of object;
   TRunCommandEvent = procedure(const ACommand, AWorkingDir: string) of object;
   TShellCwdSyncEvent = procedure(const APath: string) of object;
   TOpenTerminalEvent = procedure(const AProfileId, ACwd: string) of object;

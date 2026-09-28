@@ -141,6 +141,8 @@ type
     procedure DualPanelOpenViewer(const AURI: string);
     procedure DualPanelOpenEditor(const AURI: string);
     procedure DualPanelShowProperties(const APaths: TArray<string>);
+    procedure DualPanelShellContextMenu(const APaths: TArray<string>;
+      ALocalCol, ALocalRow: Integer);
     function TryDualPanelQuickViewWheel(AWheelDelta: Integer): Boolean;
     procedure DualPanelQuitRequest(Sender: TObject);
     procedure DualPanelOpenUpdates(Sender: TObject);
@@ -788,6 +790,7 @@ begin
   FDualPanel.OnOpenViewer := DualPanelOpenViewer;
   FDualPanel.OnOpenEditor := DualPanelOpenEditor;
   FDualPanel.OnShowProperties := DualPanelShowProperties;
+  FDualPanel.OnShellContextMenu := DualPanelShellContextMenu;
   FDualPanel.OnQuitRequest := DualPanelQuitRequest;
   FDualPanel.OnOpenUpdates := DualPanelOpenUpdates;
   FDualPanel.OnRunCommand := DualPanelRunCommand;
@@ -1304,6 +1307,23 @@ end;
 procedure TMainForm.DualPanelShowProperties(const APaths: TArray<string>);
 begin
   ShellShowProperties(APaths, NativeWindowHandle);
+end;
+
+procedure TMainForm.DualPanelShellContextMenu(const APaths: TArray<string>;
+  ALocalCol, ALocalRow: Integer);
+var
+  Pt: TPointF;
+begin
+  if not Assigned(FDualPanel) or not Assigned(FRenderer) or
+     (FRenderer.CellWidth <= 0) or (FRenderer.CellHeight <= 0) then
+    Exit;
+  // Just below the start of the cursor row, like Explorer's Shift+F10:
+  // the reverse of the pixel -> cell mapping the mouse path uses.
+  Pt := ClientToScreen(TPointF.Create(
+    (FDualPanel.Area.Left + ALocalCol) * FRenderer.CellWidth,
+    (FDualPanel.Area.Top + ALocalRow + 1) * FRenderer.CellHeight));
+  ShellShowContextMenuFor(APaths, Round(Pt.X), Round(Pt.Y), NativeWindowHandle);
+  Recompose;
 end;
 
 procedure TMainForm.DualPanelOpenEditor(const AURI: string);

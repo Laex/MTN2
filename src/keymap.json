@@ -71,6 +71,10 @@
     "SortByAccessed": { "key": "F9", "ctrl": true, "description": "Sort Panel Items by Access Date" },
     "CopyFullPath": { "key": "Insert", "ctrl": true, "alt": true, "description": "Copy Full Path of Item(s) to Clipboard" },
     "CopyItemName": { "key": "Insert", "alt": true, "shift": true, "description": "Copy Name of Item(s) to Clipboard" },
+    "ShellContextMenu": [
+      { "key": "F10", "shift": true, "description": "Windows Context Menu (Shift+F10)" },
+      { "key": "Apps", "description": "Windows Context Menu (Menu key)" }
+    ],
     "InsertItemName": { "key": "Enter", "ctrl": true, "description": "Insert Selected Item Name into Command Line" },
     "InsertItemPath": { "key": "Enter", "ctrl": true, "shift": true, "description": "Insert Selected Item Path into Command Line" },
     "RunDetached": { "key": "Enter", "shift": true, "description": "Run File or Command in Detached OS Window" },

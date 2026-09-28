@@ -37,6 +37,11 @@ function ShellOpenUrl(const AUrl: string): Boolean;
 /// AOwnerHwnd must be the host window (SetForegroundWindow / menu routing).</summary>
 function ShellShowContextMenu(const AFilePath: string; AScreenX, AScreenY: Integer;
   AOwnerHwnd: NativeUInt): Boolean;
+/// <summary>Same for several local files / folders (the panel selection):
+/// one folder's items get that folder's menu, items from several folders
+/// the desktop's (Explorer's multi-folder menu).</summary>
+function ShellShowContextMenuFor(const APaths: TArray<string>; AScreenX, AScreenY: Integer;
+  AOwnerHwnd: NativeUInt): Boolean;
 
 /// <summary>Alt+Enter: the OS "Properties" window for local files / folders
 /// (one path, or a combined sheet for several). Non-modal: returns as soon
@@ -193,70 +198,123 @@ const
 
 function ShellShowContextMenu(const AFilePath: string; AScreenX, AScreenY: Integer;
   AOwnerHwnd: NativeUInt): Boolean;
+begin
+  Result := ShellShowContextMenuFor([AFilePath], AScreenX, AScreenY, AOwnerHwnd);
+end;
+
+function RunShellContextMenu(const AContextMenu: IContextMenu; AScreenX, AScreenY: Integer;
+  AOwnerWnd: HWND): Boolean;
 var
-  Path: string;
-  ItemIdList: PItemIDList;
-  ParentFolder: IShellFolder;
-  RelPidl: PItemIDList;
-  ContextMenu: IContextMenu;
-  ParentObj, MenuObj: Pointer;
   Menu: HMENU;
   Cmd: UINT;
   InvokeInfo: TCMInvokeCommandInfo;
-  OwnerWnd: HWND;
-  ShellAttrs: ULONG;
 begin
   Result := False;
-  Path := Trim(AFilePath);
-  OwnerWnd := HWND(AOwnerHwnd);
-  if (Path = '') or (OwnerWnd = 0) then
-    Exit;
-  if not (TFile.Exists(Path) or TDirectory.Exists(Path)) then
-    Exit;
-
-  ItemIdList := nil;
-  ShellAttrs := 0;
-  if Failed(SHParseDisplayName(PChar(Path), nil, ItemIdList, 0, ShellAttrs)) then
+  Menu := CreatePopupMenu;
+  if Menu = 0 then
     Exit;
   try
-    ParentObj := nil;
-    if Failed(SHBindToParent(ItemIdList, IShellFolder, ParentObj, RelPidl)) then
+    if Failed(AContextMenu.QueryContextMenu(Menu, 0, cShellContextCmdFirst,
+      cShellContextCmdLast, CMF_NORMAL or CMF_EXPLORE)) then
       Exit;
-    ParentFolder := IShellFolder(ParentObj);
-    MenuObj := nil;
-    if Failed(ParentFolder.GetUIObjectOf(0, 1, RelPidl, IID_IContextMenu, nil, MenuObj)) then
-      Exit;
-    ContextMenu := IContextMenu(MenuObj);
-
-    Menu := CreatePopupMenu;
-    if Menu = 0 then
-      Exit;
-    try
-      if Failed(ContextMenu.QueryContextMenu(Menu, 0, cShellContextCmdFirst,
-        cShellContextCmdLast, CMF_NORMAL or CMF_EXPLORE)) then
-        Exit;
-
-      SetForegroundWindow(OwnerWnd);
-      Cmd := UINT(TrackPopupMenu(Menu, TPM_RETURNCMD or TPM_LEFTALIGN or
-        TPM_RIGHTBUTTON, AScreenX, AScreenY, 0, OwnerWnd, nil));
-      if Cmd <> 0 then
-      begin
-        FillChar(InvokeInfo, SizeOf(InvokeInfo), 0);
-        InvokeInfo.cbSize := SizeOf(InvokeInfo);
-        InvokeInfo.fMask := CMIC_MASK_UNICODE;
-        InvokeInfo.hwnd := OwnerWnd;
-        InvokeInfo.lpVerb := MAKEINTRESOURCEA(Cmd - cShellContextCmdFirst);
-        InvokeInfo.nShow := SW_SHOWNORMAL;
-        ContextMenu.InvokeCommand(InvokeInfo);
-      end;
-      Result := True;
-    finally
-      DestroyMenu(Menu);
+    SetForegroundWindow(AOwnerWnd);
+    Cmd := UINT(TrackPopupMenu(Menu, TPM_RETURNCMD or TPM_LEFTALIGN or
+      TPM_RIGHTBUTTON, AScreenX, AScreenY, 0, AOwnerWnd, nil));
+    if Cmd <> 0 then
+    begin
+      FillChar(InvokeInfo, SizeOf(InvokeInfo), 0);
+      InvokeInfo.cbSize := SizeOf(InvokeInfo);
+      InvokeInfo.fMask := CMIC_MASK_UNICODE;
+      InvokeInfo.hwnd := AOwnerWnd;
+      InvokeInfo.lpVerb := MAKEINTRESOURCEA(Cmd - cShellContextCmdFirst);
+      InvokeInfo.nShow := SW_SHOWNORMAL;
+      AContextMenu.InvokeCommand(InvokeInfo);
     end;
+    Result := True;
   finally
-    CoTaskMemFree(ItemIdList);
+    DestroyMenu(Menu);
   end;
-  PostMessage(OwnerWnd, WM_NULL, 0, 0);
+  PostMessage(AOwnerWnd, WM_NULL, 0, 0);
+end;
+
+function ShellShowContextMenuFor(const APaths: TArray<string>; AScreenX, AScreenY: Integer;
+  AOwnerHwnd: NativeUInt): Boolean;
+var
+  Paths: TArray<string>;
+  Path, Dir: string;
+  Abs, Rel: TArray<PItemIDList>;
+  Pidl: PItemIDList;
+  ShellAttrs: ULONG;
+  Folder: IShellFolder;
+  FolderObj, MenuObj: Pointer;
+  SameDir: Boolean;
+  I, N: Integer;
+  OwnerWnd: HWND;
+begin
+  Result := False;
+  OwnerWnd := HWND(AOwnerHwnd);
+  if OwnerWnd = 0 then
+    Exit;
+  SetLength(Paths, 0);
+  for Path in APaths do
+    if (Trim(Path) <> '') and (TFile.Exists(Trim(Path)) or TDirectory.Exists(Trim(Path))) then
+      Paths := Paths + [Trim(Path)];
+  if Length(Paths) = 0 then
+    Exit;
+
+  SetLength(Abs, Length(Paths));
+  N := 0;
+  try
+    for I := 0 to High(Paths) do
+    begin
+      Pidl := nil;
+      ShellAttrs := 0;
+      if Succeeded(SHParseDisplayName(PChar(Paths[I]), nil, Pidl, 0, ShellAttrs)) then
+      begin
+        Abs[N] := Pidl;
+        Inc(N);
+      end;
+    end;
+    if N = 0 then
+      Exit;
+
+    // Items of one folder: that folder's menu over their relative ids, as
+    // Explorer does. Items from several folders (Ctrl+B flat view): the
+    // desktop folder accepts absolute ids for all of them.
+    Dir := ExtractFileDir(Paths[0]);
+    SameDir := True;
+    for I := 1 to High(Paths) do
+      if not SameText(ExtractFileDir(Paths[I]), Dir) then
+      begin
+        SameDir := False;
+        Break;
+      end;
+
+    MenuObj := nil;
+    if SameDir then
+    begin
+      FolderObj := nil;
+      if Failed(SHBindToParent(Abs[0], IShellFolder, FolderObj, Pidl)) then
+        Exit;
+      Folder := IShellFolder(FolderObj);
+      SetLength(Rel, N);
+      for I := 0 to N - 1 do
+        Rel[I] := ILFindLastID(Abs[I]);
+      if Failed(Folder.GetUIObjectOf(OwnerWnd, N, Rel[0], IID_IContextMenu, nil, MenuObj)) then
+        Exit;
+    end
+    else
+    begin
+      if Failed(SHGetDesktopFolder(Folder)) then
+        Exit;
+      if Failed(Folder.GetUIObjectOf(OwnerWnd, N, Abs[0], IID_IContextMenu, nil, MenuObj)) then
+        Exit;
+    end;
+    Result := RunShellContextMenu(IContextMenu(MenuObj), AScreenX, AScreenY, OwnerWnd);
+  finally
+    for I := 0 to N - 1 do
+      CoTaskMemFree(Abs[I]);
+  end;
 end;
 
 function ShellShowProperties(const APaths: TArray<string>; AOwnerHwnd: NativeUInt): Boolean;
@@ -415,6 +473,12 @@ function ShellShowContextMenu(const AFilePath: string; AScreenX, AScreenY: Integ
   AOwnerHwnd: NativeUInt): Boolean;
 begin
   // Future: platform file context menu.
+  Result := False;
+end;
+
+function ShellShowContextMenuFor(const APaths: TArray<string>; AScreenX, AScreenY: Integer;
+  AOwnerHwnd: NativeUInt): Boolean;
+begin
   Result := False;
 end;
 

@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "dialog",
   "version": "2.0",
   "title": "Font / Display",
@@ -31,7 +31,7 @@
       "text": "Size",
       "id": "lbl_size",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 8,
       "height": 1
     },
@@ -43,7 +43,7 @@
         "14 pt"
       ],
       "col": 10,
-      "row": 8,
+      "row": 9,
       "width": 12,
       "height": 1
     },
@@ -52,7 +52,7 @@
       "text": "Zoom",
       "id": "lbl_zoom",
       "col": 26,
-      "row": 8,
+      "row": 9,
       "width": 8,
       "height": 1
     },
@@ -64,7 +64,7 @@
         "100%"
       ],
       "col": 35,
-      "row": 8,
+      "row": 9,
       "width": 16,
       "height": 1
     },
@@ -74,7 +74,7 @@
       "text": "Line spacing (as in a terminal)",
       "checked": false,
       "col": 1,
-      "row": 9,
+      "row": 10,
       "width": 50,
       "height": 1
     },

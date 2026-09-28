@@ -87,6 +87,7 @@ type
     FOnOpenViewer: TOpenViewerEvent;
     FOnOpenEditor: TOpenEditorEvent;
     FOnShowProperties: TShowPropertiesEvent;
+    FOnShellContextMenu: TShellContextMenuEvent;
     FOnQuitRequest: TQuitRequestEvent;
     FOnOpenUpdates: TQuitRequestEvent;
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
@@ -512,6 +513,10 @@ type
     procedure ConfirmCreateLink(const ALinkName, ATarget: string; AKind: TLinkKind);
     procedure BeginSetAttributes;
     procedure ShowProperties;
+    /// <summary>Shift+F10 / Menu: the Windows context menu for the selection
+    /// (else the cursor item, or the folder itself on ".."), at the cursor
+    /// row; local files and folders only.</summary>
+    procedure ShowShellContextMenu;
     procedure ApplySetAttributes(const APaths: TArray<string>; const APlan: TFileAttrPlan);
     procedure BeginCompareFiles;
     /// <summary>Ctrl+Shift+C: select what differs between the two panels.</summary>
@@ -816,6 +821,8 @@ type
     property OnOpenViewer: TOpenViewerEvent read FOnOpenViewer write FOnOpenViewer;
     property OnOpenEditor: TOpenEditorEvent read FOnOpenEditor write FOnOpenEditor;
     property OnShowProperties: TShowPropertiesEvent read FOnShowProperties write FOnShowProperties;
+    property OnShellContextMenu: TShellContextMenuEvent read FOnShellContextMenu
+      write FOnShellContextMenu;
     property OnQuitRequest: TQuitRequestEvent read FOnQuitRequest write FOnQuitRequest;
     property OnOpenUpdates: TQuitRequestEvent read FOnOpenUpdates write FOnOpenUpdates;
     property OnRunCommand: TRunCommandEvent read FOnRunCommand write FOnRunCommand;
@@ -1378,6 +1385,7 @@ begin
   FKeymapHost.BeginCreateLink := BeginCreateLink;
   FKeymapHost.BeginSetAttributes := BeginSetAttributes;
   FKeymapHost.ShowProperties := ShowProperties;
+  FKeymapHost.ShellContextMenu := ShowShellContextMenu;
   FKeymapHost.ExternalView := ExternalView;
   FKeymapHost.ExternalEdit := ExternalEdit;
   FKeymapHost.BeginCompareFiles := BeginCompareFiles;
@@ -4610,6 +4618,42 @@ begin
   end;
   if Assigned(FOnShowProperties) then
     FOnShowProperties(Paths);
+end;
+
+procedure TDualPanelWindow.ShowShellContextMenu;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Tab: TTab;
+  Uris, Paths: TArray<string>;
+  Col, Row: Integer;
+begin
+  if not HostInPanelsWorkspace then
+    Exit;
+  Ws := ActiveWorkspace;
+  Side := Ws.State.ActiveSide;
+  Tab := ActiveTab(ActivePanel(Ws));
+  Uris := CollectActiveSources;
+  // ".." with nothing selected: the menu of the folder being shown.
+  if Length(Uris) = 0 then
+    Uris := [Tab.CurrentURI];
+  Paths := FileUrisToLocalPaths(Uris);
+  if Length(Paths) = 0 then
+  begin
+    OpenStub(skShellInfo, T('ui.shellMenu.title', 'Context menu'),
+      T('ui.properties.unavailable', 'Only for files and folders on disk'));
+    Exit;
+  end;
+  // Anchor: the start of the cursor row; the panel's top-left corner when
+  // the cursor is scrolled out of view.
+  if not PanelListIndexCell(PanelListBounds(HostPanelBounds(Side)),
+    ActivePanel(Ws).ColumnMode, Tab.ScrollOffset, Tab.CursorIndex, Col, Row) then
+  begin
+    Col := HostPanelBounds(Side).Left + 1;
+    Row := HostPanelBounds(Side).Top + 1;
+  end;
+  if Assigned(FOnShellContextMenu) then
+    FOnShellContextMenu(Paths, Col, Row);
 end;
 
 procedure TDualPanelWindow.ApplySetAttributes(const APaths: TArray<string>;

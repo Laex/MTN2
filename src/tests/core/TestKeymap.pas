@@ -37,6 +37,15 @@ begin
       Assert.IsTrue(Length(Res.Bindings[A]) > 0, 'resource keymap.json has no key for ' +
         KeymapActionDisplayName(A) + ' (code default: ' + BindingsToStr(Code.Bindings[A]) + ')');
   Assert.IsTrue(MatchAction(Res, vkReturn, [ssAlt]) = kaProperties, 'resource: Alt+Enter = Properties');
+  Assert.IsTrue(MatchAction(Res, vkF10, [ssShift]) = kaShellContextMenu,
+    'resource: Shift+F10 = ShellContextMenu');
+  Assert.IsTrue(MatchAction(Res, vkApps, []) = kaShellContextMenu,
+    'resource: Menu key = ShellContextMenu');
+  Assert.IsTrue(MatchAction(Res, vkF10, []) = kaQuit, 'resource: plain F10 is still Quit');
+  Assert.IsTrue(StringToVK('Apps') = vkApps, 'key name Apps');
+  Assert.IsTrue(StringToVK('menu') = vkApps, 'key name Menu, any case');
+  Assert.IsTrue(VKToDisplayString(vkApps) = 'Menu', 'Menu key shown as Menu');
+  Assert.IsTrue(StringToVK(VKToDisplayString(vkApps)) = vkApps, 'Menu key round-trips');
   Assert.IsTrue(MatchAction(Res, vkF11, [ssAlt]) = kaFileHistory, 'resource: Alt+F11 = FileHistory');
   Assert.IsTrue(MatchAction(Res, vkF3, [ssAlt]) = kaExternalView, 'resource: Alt+F3 = ExternalView');
   Assert.IsTrue(MatchAction(Res, vkF4, [ssAlt]) = kaExternalEdit, 'resource: Alt+F4 = ExternalEdit');

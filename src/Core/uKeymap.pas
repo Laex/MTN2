@@ -105,6 +105,7 @@ type
     kaExternalEdit,   // Alt+F4 -- external editor
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
     kaCopyItemName,   // Alt+Shift+Ins -- copy item name(s) only (no path)
+    kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
     // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
     // see KeymapActionContext).
     kaDocToggleEdit, // F6 -- viewer <-> editor
@@ -377,6 +378,7 @@ begin
   else if (UpperS = 'NUMPAD-') or (UpperS = 'NUM-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
   else if (UpperS = 'NUMPAD*') or (UpperS = 'NUM*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
   else if (UpperS = 'BACKSPACE') or (UpperS = 'BKSP') then Result := vkBack
+  else if (UpperS = 'APPS') or (UpperS = 'MENU') or (UpperS = 'CONTEXTMENU') then Result := vkApps
   else if Length(UpperS) = 1 then Result := Ord(UpperS[1])
   else Result := 0;
 end;
@@ -417,6 +419,7 @@ begin
     vkSubtract: Result := '-';
     vkMultiply: Result := '*';
     vkNumpad0..vkNumpad9: Result := 'Num' + Chr(Ord('0') + AKey - vkNumpad0);
+    vkApps: Result := 'Menu';
   else
     if (AKey >= Ord('0')) and (AKey <= Ord('9')) then
       Result := Chr(AKey)
@@ -546,6 +549,8 @@ begin
   // Clipboard & item insertion
   AddBinding(Result, kaCopyFullPath, KeyBinding(vkInsert, False, True, True));
   AddBinding(Result, kaCopyItemName, KeyBinding(vkInsert, True, True, False));
+  AddBinding(Result, kaShellContextMenu, KeyBinding(vkF10, True, False, False));
+  AddBinding(Result, kaShellContextMenu, KeyBinding(vkApps, False, False, False));
   AddBinding(Result, kaInsertItemName, KeyBinding(vkReturn, False, False, True));
   AddBinding(Result, kaInsertItemPath, KeyBinding(vkReturn, True, False, True));
   AddBinding(Result, kaRunDetached, KeyBinding(vkReturn, True, False, False));
@@ -858,6 +863,7 @@ const
     'ExternalEdit',          // kaExternalEdit
     'Checksums',             // kaChecksums
     'CopyItemName',          // kaCopyItemName
+    'ShellContextMenu',      // kaShellContextMenu
     'DocViewEdit',           // kaDocToggleEdit
     'DocHex',                // kaDocHex
     'DocMarkdown',           // kaDocMarkdown
@@ -1263,6 +1269,7 @@ begin
     kaSortByAccessed: Result := 'Acces';
     kaExternalView: Result := 'ExtVw';
     kaExternalEdit: Result := 'ExtEd';
+    kaShellContextMenu: Result := 'Shell';
     kaDriveLeft: Result := 'Left';
     kaDriveRight: Result := 'Right';
     kaNewFile: Result := 'Edit';

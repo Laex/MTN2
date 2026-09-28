@@ -291,6 +291,8 @@ var
   LeftB, RightB, ListB, Outer: TRectI;
   Side: TPanelSide;
   Idx: Integer;
+  Mode: TPanelColumnMode;
+  I, Col, Row: Integer;
 begin
   Outer := TRectI.Make(0, 2, 58, 17);
   ListB := PanelListBounds(Outer);
@@ -321,6 +323,19 @@ begin
     'left frame is not a row');
   Assert.IsTrue(not HitPanelListIndex(ListB, pcmFull, 0, 5, 6, 0, Idx),
     'empty list misses');
+
+  // PanelListIndexCell (anchor of the Shift+F10 context menu) is the inverse
+  // of HitPanelListIndex, in single-column and Brief layouts alike.
+  for Mode in [pcmFull, pcmBrief] do
+    for I := 0 to 40 do
+      if PanelListIndexCell(ListB, Mode, 3, I, Col, Row) then
+        Assert.IsTrue(HitPanelListIndex(ListB, Mode, 3, Col, Row, 100, Idx) and (Idx = I),
+          Format('mode %d item %d: cell (%d,%d) hits %d', [Ord(Mode), I, Col, Row, Idx]));
+  Assert.IsTrue(PanelListIndexCell(ListB, pcmFull, 3, 5, Col, Row) and
+    (Col = ListB.Left) and (Row = ListB.Top + 2), 'full: row below the scroll offset');
+  Assert.IsTrue(not PanelListIndexCell(ListB, pcmFull, 3, 2, Col, Row), 'scrolled off above');
+  Assert.IsTrue(not PanelListIndexCell(ListB, pcmFull, 3, 3 + ListB.Height, Col, Row),
+    'scrolled off below');
 end;
 
 procedure TestOverlays;

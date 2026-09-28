@@ -187,6 +187,7 @@ const
     'External editor',
     'Checksums',
     'Copy name',
+    'Windows context menu',
     'Viewer <-> editor',
     'Hex <-> text',
     'Markdown <-> text',

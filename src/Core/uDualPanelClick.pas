@@ -95,6 +95,10 @@ function ClassifyPanelClickZone(ALocalRow: Integer; const ABounds: TRectI;
 function HitPanelListIndex(const AListBounds: TRectI; AMode: TPanelColumnMode;
   AScrollOffset, ALocalCol, ALocalRow, ARowCount: Integer;
   out AIndex: Integer): Boolean;
+/// <summary>Inverse of HitPanelListIndex: the cell where list item AIndex
+/// starts, or False when it is scrolled out of view.</summary>
+function PanelListIndexCell(const AListBounds: TRectI; AMode: TPanelColumnMode;
+  AScrollOffset, AIndex: Integer; out ALocalCol, ALocalRow: Integer): Boolean;
 function UpdateListClickPair(AHitList, AAllowOpenOnDouble: Boolean;
   var ADoubleClick: Boolean; ACol, ARow: Integer;
   var ALastCol, ALastRow: Integer; var ALastTick: Cardinal;
@@ -171,6 +175,36 @@ begin
   Result := (AIndex >= 0) and (AIndex < ARowCount);
   if not Result then
     AIndex := -1;
+end;
+
+function PanelListIndexCell(const AListBounds: TRectI; AMode: TPanelColumnMode;
+  AScrollOffset, AIndex: Integer; out ALocalCol, ALocalRow: Integer): Boolean;
+var
+  ViewH, Cols, Rel: Integer;
+begin
+  ALocalCol := AListBounds.Left;
+  ALocalRow := AListBounds.Top;
+  ViewH := AListBounds.Height;
+  Rel := AIndex - AScrollOffset;
+  if (ViewH < 1) or (AIndex < 0) or (Rel < 0) then
+    Exit(False);
+  Cols := PanelListColumnCount(AMode, AListBounds.Width);
+  if (AMode = pcmBrief) and (Cols > 1) then
+  begin
+    // Brief fills columns top to bottom (BriefIndexAt).
+    if Rel >= ViewH * Cols then
+      Exit(False);
+    ALocalCol := AListBounds.Left + (Rel div ViewH) *
+      BriefCellWidth(AListBounds.Width, Cols);
+    ALocalRow := AListBounds.Top + Rel mod ViewH;
+  end
+  else
+  begin
+    if Rel >= ViewH then
+      Exit(False);
+    ALocalRow := AListBounds.Top + Rel;
+  end;
+  Result := True;
 end;
 
 function UpdateListClickPair(AHitList, AAllowOpenOnDouble: Boolean;

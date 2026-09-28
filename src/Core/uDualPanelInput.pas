@@ -111,6 +111,7 @@ type
     BeginCreateLink: TKeymapProc;
     BeginSetAttributes: TKeymapProc;
     ShowProperties: TKeymapProc;
+    ShellContextMenu: TKeymapProc;
     ExternalView: TKeymapProc;
     ExternalEdit: TKeymapProc;
     BeginCompareFiles: TKeymapProc;
@@ -512,6 +513,13 @@ begin
       begin
         if Assigned(AHost.ShowProperties) then
           AHost.ShowProperties();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaShellContextMenu:
+      begin
+        if Assigned(AHost.ShellContextMenu) then
+          AHost.ShellContextMenu();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

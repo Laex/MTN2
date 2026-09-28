@@ -48,6 +48,7 @@ type
     procedure CopyFullPath;
     procedure CopyItemName;
     procedure ShowProperties;
+    procedure ShellContextMenu;
     procedure ExternalView;
     procedure ExternalEdit;
     procedure CompareFolders;
@@ -162,6 +163,11 @@ begin
   Last := 'properties';
 end;
 
+procedure TKeymapSpy.ShellContextMenu;
+begin
+  Last := 'shellmenu';
+end;
+
 procedure TKeymapSpy.RequestQuit;
 begin
   Last := 'quit';
@@ -229,6 +235,7 @@ begin
   AHost.CopyFullPathToClipboard := ASpy.CopyFullPath;
   AHost.CopyItemNameToClipboard := ASpy.CopyItemName;
   AHost.ShowProperties := ASpy.ShowProperties;
+  AHost.ShellContextMenu := ASpy.ShellContextMenu;
   AHost.ExternalView := ASpy.ExternalView;
   AHost.ExternalEdit := ASpy.ExternalEdit;
   AHost.CompareFolders := ASpy.CompareFolders;
@@ -308,6 +315,15 @@ begin
     Assert.IsTrue((Key = 0) and (KeyChar = #0), 'Properties consumes the key');
     Assert.IsTrue(IsAltQuickSearchChord(vkReturn, [ssAlt]),
       'Alt+Enter would be quick search if it got that far');
+
+    // Shift+F10 / Menu: the Windows context menu.
+    Spy.Last := '';
+    Key := vkF10;
+    KeyChar := #0;
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaShellContextMenu, Key, KeyChar),
+      'kaShellContextMenu is primary');
+    Assert.IsTrue(Spy.Last = 'shellmenu', 'context menu host called');
+    Assert.IsTrue(Key = 0, 'context menu consumes the key');
 
     // Alt+F3 / Alt+F4: the same trap as Alt+Enter.
     Key := vkF3;

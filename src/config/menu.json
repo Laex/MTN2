@@ -43,6 +43,7 @@
         { "caption": "Create link...", "hotChar": "L", "shortcut": "Shift+F7", "action": "tmaFileCreateLink" },
         { "caption": "Set attributes...", "hotChar": "B", "shortcut": "Ctrl+Shift+A", "action": "tmaFileSetAttributes" },
         { "caption": "Properties...", "shortcut": "Alt+Enter", "action": "tmaFileProperties" },
+        { "caption": "Windows context menu", "shortcut": "Shift+F10", "action": "tmaFileShellMenu" },
         { "caption": "Compare files...", "hotChar": "X", "shortcut": "Ctrl+Alt+C", "action": "tmaFileCompare" },
         { "caption": "Checksums...", "hotChar": "H", "shortcut": "Ctrl+Alt+H", "action": "tmaFileChecksums" },
         { "caption": "Restore from Recycle Bin", "hotChar": "T", "shortcut": "Ctrl+Alt+R", "action": "tmaFileRestore" },

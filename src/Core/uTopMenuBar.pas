@@ -43,6 +43,7 @@ type
     tmaFileCreateLink,
     tmaFileSetAttributes,
     tmaFileProperties,
+    tmaFileShellMenu,
     tmaFileCompare,
     tmaFileChecksums,
     tmaFileRestore,
@@ -286,6 +287,8 @@ begin
       Result := kaSetAttributes;
     tmaFileProperties:
       Result := kaProperties;
+    tmaFileShellMenu:
+      Result := kaShellContextMenu;
     tmaFileCompare:
       Result := kaCompareFiles;
     tmaFileChecksums:

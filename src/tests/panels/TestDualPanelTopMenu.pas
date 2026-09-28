@@ -32,6 +32,7 @@ type
     Job: TPanelJobKind;
     Recycle: Boolean;
     Edit: Boolean;
+    procedure ShellContextMenu;
     procedure ActivateSide(ASide: TPanelSide);
     procedure OpenSortMenu;
     procedure ToggleDrive(ASide: TPanelSide);
@@ -118,9 +119,15 @@ begin
   Last := 'consoleprofile';
 end;
 
+procedure TMenuSpy.ShellContextMenu;
+begin
+  Last := 'shellmenu';
+end;
+
 procedure BindSpy(var AHost: TDualPanelKeymapHost; ASpy: TMenuSpy);
 begin
   FillChar(AHost, SizeOf(AHost), 0);
+  AHost.ShellContextMenu := ASpy.ShellContextMenu;
   AHost.ActivateSide := ASpy.ActivateSide;
   AHost.OpenSortMenu := ASpy.OpenSortMenu;
   AHost.ToggleDrivePopup := ASpy.ToggleDrive;
@@ -182,6 +189,9 @@ begin
 
     Assert.IsTrue(DispatchTopMenuAction(Host, tmaEditCopy), 'edit copy handled');
     Assert.IsTrue(Spy.Last = 'editcopy', 'edit copy calls EditCopy');
+
+    Assert.IsTrue(DispatchTopMenuAction(Host, tmaFileShellMenu), 'context menu handled');
+    Assert.IsTrue(Spy.Last = 'shellmenu', 'Files > Windows context menu calls the host');
 
     Assert.IsTrue(DispatchTopMenuAction(Host, tmaFileSetAttributes), 'set attributes handled');
     Assert.IsTrue(Spy.Last = 'setattr', 'set attributes calls BeginSetAttributes');
