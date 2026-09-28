@@ -23,7 +23,7 @@ type
   TConPtyExitEvent = reference to procedure(AExitCode: DWORD);
 
   /// <summary>Long-lived panel / workspace shell session (SDS §5.4).
-  /// Concrete Stage 16 impl: TConPtySession (pipes). ConPTY — Stage 17.</summary>
+  /// Concrete Stage 16 impl: TConPtySession (pipes). ConPTY - Stage 17.</summary>
   IPtySession = interface
     ['{A7C2E901-4B1D-4F0A-9C3E-2D8F6B1A0E55}']
     function StartShell(const AProfile, ACwd: string; ACols, ARows: Word): Boolean;
@@ -458,7 +458,7 @@ begin
   begin
     // Deterministic UTF-8: never fall back to CP866, because CP866 Cyrillic
     // (e.g. 0xD0 0xB1) is spuriously valid UTF-8 and would corrupt cmd-style
-    // bytes — but UTF-8 profiles never emit CP866, so the heuristic is safe.
+    // bytes - but UTF-8 profiles never emit CP866, so the heuristic is safe.
     TailLen := Length(FDecodeTail);
     if TailLen > 0 then
     begin
@@ -490,7 +490,7 @@ begin
   end;
 
   // OEM / cmd profile: cmd.exe banner is OEM866; legacy tools (find, xcopy) often
-  // emit ACP/1251 on Russian Windows — see DecodeCmdOutputChunk.
+  // emit ACP/1251 on Russian Windows - see DecodeCmdOutputChunk.
   Result := DecodeCmdOutputChunk(ABuf, ACount);
 end;
 
@@ -786,7 +786,7 @@ begin
     Exit;
   // Captured by the anonymous method (hoisted to the heap). ClosePseudoConsole
   // blocks the caller for about 5 seconds while conhost tears the session
-  // down — long enough for Windows to ghost the window and leave the taskbar
+  // down - long enough for Windows to ghost the window and leave the taskbar
   // button up after F10. The UI thread must not wait for it.
   Hpc := AHpc;
   Thread := TThread.CreateAnonymousThread(
@@ -940,7 +940,7 @@ begin
       if not ReadFile(OutRead, Buf[0], Length(Buf), N, nil) then
       begin
         // ERROR_OPERATION_ABORTED: Terminate cancelled this read. Do not
-        // retry — the handle may be closed as soon as we leave the loop.
+        // retry - the handle may be closed as soon as we leave the loop.
         if (GetLastError = ERROR_BROKEN_PIPE) or
            (GetLastError = ERROR_OPERATION_ABORTED) then
           Break;

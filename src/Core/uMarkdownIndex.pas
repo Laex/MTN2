@@ -3,11 +3,11 @@ unit uMarkdownIndex;
 { Stage 25: lazy fence-state recovery for the Markdown Viewer.
 
   TMdFenceState (uMarkdownParser) is the only state ParseLine needs carried
-  from the start of the document — but the Viewer only ever wants to paint
+  from the start of the document - but the Viewer only ever wants to paint
   the current viewport (a few dozen lines), not the whole file, so it can't
   just replay every line from 0 on every repaint. TMarkdownFenceIndex makes
   "what's the fence state right before line N" cheap by remembering where it
-  last left off (FLastLine/FLastState — the common case: sequential
+  last left off (FLastLine/FLastState - the common case: sequential
   scrolling never rescans anything) and a sparse list of checkpoints spaced
   cCheckpointStride lines apart recorded along the way, so a later jump
   (Goto, PageDown in bursts, Ctrl+End) only rescans from the nearest
@@ -43,7 +43,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Drop all cached state — call when the document is
+    /// <summary>Drop all cached state - call when the document is
     /// (re)opened, since a different file's fence layout invalidates
     /// everything remembered so far.</summary>
     procedure Reset;
@@ -74,7 +74,7 @@ begin
 end;
 
 // Checkpoints are always appended in strictly increasing Line order (each
-// scan only ever moves forward), so the list stays sorted — binary search
+// scan only ever moves forward), so the list stays sorted - binary search
 // for the last entry with Line <= ALineIdx.
 function TMarkdownFenceIndex.FindCheckpointAtOrBefore(ALineIdx: Integer): Integer;
 var

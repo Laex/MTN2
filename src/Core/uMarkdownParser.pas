@@ -1,9 +1,9 @@
 unit uMarkdownParser;
 
-{ Stage 25: Markdown Viewer parser. Pure, no I/O — turns one raw source line
+{ Stage 25: Markdown Viewer parser. Pure, no I/O - turns one raw source line
   plus carried fence state into a TMdLine (display text + non-overlapping
   style spans). Deliberately line-oriented: one source line always maps to
-  one screen line of markdown content (no paragraph reflow/joining) — the
+  one screen line of markdown content (no paragraph reflow/joining) - the
   Viewer wraps a too-long DisplayText across several screen rows itself
   (uEditorWindow.DrawMarkdownContent), it never merges two source lines into
   one.
@@ -13,8 +13,8 @@ unit uMarkdownParser;
   (just the inner text is kept, styled), since showing literal markers
   around already-colored emphasis reads as noise. [text](url) shows just
   "text" as one mskLink span; the url travels in TMdSpan.Target (the Help
-  viewer follows it). `code` and ~~strike~~ keep their delimiters — colored
-  as one span covering the whole token — and ATX headings still get their leading #'s + following space
+  viewer follows it). `code` and ~~strike~~ keep their delimiters - colored
+  as one span covering the whole token - and ATX headings still get their leading #'s + following space
   stripped (a heading is always a single-style whole line, so there's no
   delimiter/content split to preserve). Standalone image lines become a
   "[image: alt]" placeholder,
@@ -22,7 +22,7 @@ unit uMarkdownParser;
   CommonMark `![alt](path)` and Obsidian `![[file.png]]` /
   `![[file.png|size]]` (whole line) both count; wiki embeds of notes
   without an image extension are left as plain text. MarkdownResolveImageFile
-  is the only I/O helper here — ParseLine itself stays pure.
+  is the only I/O helper here - ParseLine itself stays pure.
 
   GFM pipe tables (`| a | b |` + `| --- | --- |` + body) are a block
   construct: ParseLine leaves them as ordinary lines so a fenced code block
@@ -33,19 +33,19 @@ unit uMarkdownParser;
 
   When given a target width that the table's natural (unwrapped) column
   widths don't fit, FormatPipeTableLine shrinks columns to fit it and word-
-  wraps each cell's text within its column — so one source line can now
+  wraps each cell's text within its column - so one source line can now
   expand into several physical screen rows. Those rows are still returned
   as a single TMdLine: DisplayText is every physical row concatenated back
   to back, each padded to exactly the target width, with span offsets
   translated into that concatenated string. This keeps the existing
   contract that ComputeHardWrapStarts slices DisplayText into fixed-width
   chunks for the Viewer to draw one at a time (uEditorWindow.
-  DrawMarkdownContent) — because every physical row is exactly the target
+  DrawMarkdownContent) - because every physical row is exactly the target
   width long, that fixed-width slicing always lands exactly on a row
   boundary, never mid-cell.
 
   A cell may also force its own line breaks with `<br>` (GFM's standard
-  workaround since a pipe row can't contain a literal newline) — see
+  workaround since a pipe row can't contain a literal newline) - see
   BuildCellRows: every '<br>'-separated segment gets its own row regardless
   of available width, and is then word-wrapped independently like any other
   cell text. A column's "natural" width is the widest SEGMENT, not the
@@ -53,7 +53,7 @@ unit uMarkdownParser;
   multi-line by the author's own choice.
 
   The only state carried across ParseLine calls for one document is whether
-  a fenced code block is open — every other construct (heading, quote,
+  a fenced code block is open - every other construct (heading, quote,
   list, hr, inline emphasis) is fully determined by its own source line, so
   a caller only needs to remember TMdFenceState between successive lines
   (see uMarkdownIndex.TMarkdownFenceIndex for how a Viewer recovers that
@@ -106,7 +106,7 @@ type
     /// fit within AWidth columns, returning the 1-based start index of every
     /// chunk (chunk N's end is chunk N+1's start minus one, or Length(AText)
     /// for the last chunk). Breaks after the rightmost separator (space,
-    /// tab, or common punctuation — see IsWrapBreakChar) at or before the
+    /// tab, or common punctuation - see IsWrapBreakChar) at or before the
     /// AWidth boundary, so the separator stays attached to the line it
     /// closes rather than starting the next one; a run with no separator
     /// anywhere in range (e.g. a long URL) falls back to a hard cut at
@@ -126,7 +126,7 @@ type
     /// natural (widest-cell) width, exactly as before. A positive
     /// AAvailWidth that the natural widths don't fit shrinks columns to fit
     /// it and word-wraps cell text within the shrunk width, expanding this
-    /// one source line into several physical rows — see the file header
+    /// one source line into several physical rows - see the file header
     /// comment for how those rows travel back as a single TMdLine.</summary>
     class function FormatPipeTableLine(const ABlock: TArray<string>;
       AIndexInBlock: Integer; AAvailWidth: Integer = 0): TMdLine; static;
@@ -192,7 +192,7 @@ end;
 
 // Markdown image paths conventionally use '/' even in a Windows document, so
 // plain ExtractFileName (which only recognizes the platform PathDelim, '\'
-// on Windows — never '/') would return the whole "dir/name.png" unsplit.
+// on Windows - never '/') would return the whole "dir/name.png" unsplit.
 function LastPathSegment(const APath: string): string;
 var
   P: Integer;
@@ -277,7 +277,7 @@ begin
   Result := (E = '.png') or (E = '.jpg') or (E = '.jpeg') or (E = '.bmp');
 end;
 
-// Whole (trimmed) line is exactly "![alt](path)" — Stage 25 Overlay shape.
+// Whole (trimmed) line is exactly "![alt](path)" - Stage 25 Overlay shape.
 // Inline images mid-paragraph stay out of scope (readme.md Этап 25).
 function TryParseCommonMarkImage(const T: string; out AAlt, APath: string): Boolean;
 var
@@ -296,7 +296,7 @@ begin
     Exit;
   if T[CloseBracket + 2] = '<' then
   begin
-    // "![alt](<path with spaces>)" — Obsidian writes this form for names with
+    // "![alt](<path with spaces>)" - Obsidian writes this form for names with
     // spaces; the path itself may contain ')' so look for '>' first.
     Gt := PosEx('>', T, CloseBracket + 3);
     if Gt = 0 then
@@ -323,7 +323,7 @@ begin
 end;
 
 // Obsidian embed on its own line: ![[file.png]] or ![[file.png|wsmall]].
-// Only image extensions — ![[OtherNote]] is a note transclusion, not Overlay.
+// Only image extensions - ![[OtherNote]] is a note transclusion, not Overlay.
 function TryParseWikiImage(const T: string; out AAlt, APath: string): Boolean;
 var
   N, Pipe: Integer;
@@ -427,7 +427,7 @@ var
   begin
     Result := '';
     Rel := StringReplace(ARel, '/', PathDelim, [rfReplaceAll]);
-    // '<', '>', '|', '"', '?', '*': TPath raises on them — not a file ref.
+    // '<', '>', '|', '"', '?', '*': TPath raises on them - not a file ref.
     if (Rel = '') or not TPath.HasValidPathChars(Rel, False) then
       Exit;
     if TPath.IsPathRooted(Rel) then
@@ -483,7 +483,7 @@ end;
 
 type
   // Inline parsing both re-flows the text (emphasis delimiters are dropped)
-  // and produces spans into that new text, so the two have to travel together —
+  // and produces spans into that new text, so the two have to travel together -
   // a bare TArray<TMdSpan> result is no longer enough on its own.
   TMdInlineResult = record
     Text: string;
@@ -492,7 +492,7 @@ type
 
 // CommonMark's intraword-underscore rule: '_' inside "WM_COPYDATA" or
 // "some_var_name" must NOT be read as an emphasis delimiter (unlike '*',
-// which CommonMark does allow intraword) — otherwise a single identifier
+// which CommonMark does allow intraword) - otherwise a single identifier
 // containing an underscore, or worse, two underscored identifiers on the
 // same line, would spuriously turn everything between them italic/bold.
 function IsWordChar(ACh: Char): Boolean;
@@ -510,7 +510,7 @@ end;
 // one span.
 // No nesting (e.g. an *italic* run inside **bold** is not separately
 // styled) and an unmatched opening marker is copied through as plain text
-// rather than consuming the rest of the line — deliberate MVP
+// rather than consuming the rest of the line - deliberate MVP
 // simplifications for a TUI cell-grid viewer, not a CommonMark-conformant
 // inline parser.
 function ParseInline(const S: string): TMdInlineResult;
@@ -537,13 +537,13 @@ var
     CloseIdx := PosEx(AClose, S, I + OpenLen);
     if CloseIdx = 0 then
       Exit;
-    // Adjacent markers ("**unterminated", empty "**") are not a match —
+    // Adjacent markers ("**unterminated", empty "**") are not a match -
     // otherwise a failed **bold** attempt would let *italic* swallow the
     // two opening stars as an empty span and drop them from DisplayText.
     if CloseIdx <= I + OpenLen then
       Exit;
     // ...and not immediately followed by a word char on the right (e.g.
-    // "_foo_bar" — the second '_' abuts "bar", so it can't close either).
+    // "_foo_bar" - the second '_' abuts "bar", so it can't close either).
     AfterClose := CloseIdx + Length(AClose);
     if ARequireWordBoundary and (AfterClose <= N) and IsWordChar(S[AfterClose]) then
       Exit;
@@ -691,7 +691,7 @@ begin
   begin
     // Inline markup inside the heading ("## **Title**", "# `code` and
     // [link](x)") is stripped the same way as in body text, but the whole
-    // line keeps the one heading style — inline spans' colors would
+    // line keeps the one heading style - inline spans' colors would
     // override it.
     InlineRes := ParseInline(AtxHeadingText(Trimmed, HeadLevel));
     Result.DisplayText := InlineRes.Text;
@@ -868,7 +868,7 @@ end;
 // '<br>' variants GFM tables use as the standard way to force a line break
 // inside one cell (a literal newline can't appear there, since a pipe row
 // is exactly one source line). Case-insensitive; accepts optional
-// whitespace and a self-closing '/' but not attributes — same "cell-grid
+// whitespace and a self-closing '/' but not attributes - same "cell-grid
 // viewer, not a CommonMark-conformant parser" scope as the rest of this
 // file's inline handling.
 function IsBrTag(const S: string; APos: Integer; out ATagLen: Integer): Boolean;
@@ -897,7 +897,7 @@ begin
 end;
 
 // Splits one raw table-cell string on '<br>' tags into forced line segments
-// — GFM's standard workaround for a multi-line cell. Always returns at
+// - GFM's standard workaround for a multi-line cell. Always returns at
 // least one segment, even with no '<br>' present.
 function SplitCellBr(const ARaw: string): TArray<string>;
 var
@@ -928,7 +928,7 @@ end;
 
 // Clips ASpans to [AFrom, ATo] (1-based, inclusive, in the coordinate space
 // the spans already live in) and translates the surviving pieces to be
-// 1-based within just that slice — e.g. turning a table cell's whole-text
+// 1-based within just that slice - e.g. turning a table cell's whole-text
 // span into one local to a single wrapped physical row of that cell.
 function SliceSpans(const ASpans: TArray<TMdSpan>; AFrom, ATo: Integer): TArray<TMdSpan>;
 var
@@ -1032,7 +1032,7 @@ const
 
 // One vertical rule per column plus a leading one (ColCount + 1), plus one
 // leading and one trailing padding space around every cell's text
-// (ColCount * 2) — the fixed per-table overhead FormatPipeTableLine's
+// (ColCount * 2) - the fixed per-table overhead FormatPipeTableLine's
 // DisplayText always carries regardless of column widths.
 function PipeTableOverhead(AColCount: Integer): Integer;
 begin
@@ -1095,7 +1095,7 @@ begin
     end;
 
   // Integer division above can leave a few text columns short of
-  // AAvailForText — hand them out one at a time, round-robin, to columns
+  // AAvailForText - hand them out one at a time, round-robin, to columns
   // that still have room to grow (TotalDeficit > Pool guarantees at least
   // one such column exists, so this always terminates).
   Remainder := AAvailForText - UsedSum;
@@ -1210,11 +1210,11 @@ begin
     Result.Widths := NaturalWidths
   else if AvailForText < ColCount then
     // The viewport can't even fit 1 text column per column plus the
-    // borders/padding overhead — shrinking can't help (ComputeTableColumnWidths
+    // borders/padding overhead - shrinking can't help (ComputeTableColumnWidths
     // would have to make a physical row WIDER than AAvailWidth to stay >=1
     // char per column, breaking the "every physical row is exactly AAvailWidth"
     // invariant ComputeHardWrapStarts's fixed-width slicing in the Viewer
-    // depends on). Fall back to natural widths — the Viewer's existing
+    // depends on). Fall back to natural widths - the Viewer's existing
     // fixed-width hard-cut still degrades this gracefully, just densely.
     Result.Widths := NaturalWidths
   else
@@ -1256,7 +1256,7 @@ begin
 
   Spans := TList<TMdSpan>.Create;
   try
-    // Every column's full row list is computed once up front —
+    // Every column's full row list is computed once up front -
     // BuildCellRows already handles both '<br>' forced breaks and
     // width-driven word-wrap, and hands back rows whose spans are already
     // local (1-based within that one row's own text). RowLines (how many
@@ -1284,7 +1284,7 @@ begin
           RowContent := ColRows[C][R]
         else
         begin
-          // This column ran out of rows before RowLines — pad out with a
+          // This column ran out of rows before RowLines - pad out with a
           // blank cell for the remaining physical rows.
           RowContent.Text := '';
           RowContent.Spans := nil;
@@ -1313,7 +1313,7 @@ end;
 // Word-wrap break points: whitespace plus the punctuation a line most
 // naturally breaks after. CharInSet's TSysCharSet only covers ordinals
 // 0..255, so multi-byte punctuation (em/en dash, curly quotes, CJK
-// punctuation) never matches — plain ASCII '-' still does, which covers the
+// punctuation) never matches - plain ASCII '-' still does, which covers the
 // common markdown/plain-text case.
 function IsWrapBreakChar(ACh: Char): Boolean;
 begin
@@ -1340,8 +1340,8 @@ begin
     begin
       Starts.Add(LineStart);
       if N - LineStart + 1 <= AWidth then
-        Break; // rest of the text fits on this one row — done
-      // Rightmost break char within [LineStart+1, LineStart+AWidth-1] — the
+        Break; // rest of the text fits on this one row - done
+      // Rightmost break char within [LineStart+1, LineStart+AWidth-1] - the
       // lower bound excludes LineStart itself so a row can never come out
       // zero-length (which would loop forever).
       BestBreak := 0;
@@ -1352,7 +1352,7 @@ begin
           Break;
         end;
       if BestBreak = 0 then
-        LineStart := LineStart + AWidth // no break char in range — hard cut
+        LineStart := LineStart + AWidth // no break char in range - hard cut
       else
         LineStart := BestBreak + 1; // break char stays as this row's last char
     end;

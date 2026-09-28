@@ -558,7 +558,7 @@ begin
   FPruneQueued := True;
   // Queue on the main thread runs the proc before it returns (ForceQueue is
   // what actually defers). Prune frees controllers whose phase is already
-  // pjpNone, and CloseJobUi reaches this from inside FinishJob — an immediate
+  // pjpNone, and CloseJobUi reaches this from inside FinishJob - an immediate
   // free leaves FinishJob calling FOnJobFinished on a dead object
   // (read of FFFFFFFFFFFFFFFF).
   TThread.ForceQueue(nil,

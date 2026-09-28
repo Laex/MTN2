@@ -1,7 +1,7 @@
 unit TestJobPopupLayout;
 
 { Pure-function checks for TJobPopupRenderer.ComputeLayout (extracted from
-  TPanelJobController.LayoutJobPopup — see uJobPopupRenderer.pas). }
+  TPanelJobController.LayoutJobPopup - see uJobPopupRenderer.pas). }
 
 interface
 
@@ -98,7 +98,7 @@ begin
 
   // Running+Delete is its own case: same width cap as Rich (it now shows a
   // full path, needing the room) but Rich's own 13-row height stays gated
-  // on Kind (Delete has no per-file/per-byte bars) — see TestSizingByPhaseKind.
+  // on Kind (Delete has no per-file/per-byte bars) - see TestSizingByPhaseKind.
   R := TJobPopupRenderer.ComputeLayout(MakeJob(pjpRunning, pjkDelete), 120, 40);
   Assert.IsTrue(R.Width = 74, 'running-delete width caps at 74, same as rich');
   Assert.IsTrue(R.Height = 9, 'running-delete stays at plain''s 9 rows');

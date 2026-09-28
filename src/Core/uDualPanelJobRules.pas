@@ -1,6 +1,6 @@
 unit uDualPanelJobRules;
 
-{ Pure job-UI predicates and conflict rules. No FMX — used by Dual Panel
+{ Pure job-UI predicates and conflict rules. No FMX - used by Dual Panel
   and by console tests. }
 
 interface

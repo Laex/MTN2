@@ -1,7 +1,7 @@
 unit uZipVfs;
 
 { ZIP Nested VFS (Stage 14). Lists / reads / extracts / packs via System.Zip.
-  Grammar: file:///…/archive.zip!/path and nested …zip!/inner.zip!/…
+  Grammar: file:///.../archive.zip!/path and nested ...zip!/inner.zip!/...
   Write/delete supported for outer file-backed ZIP only (not nested layers).
   Listing: CD cached as prefix tree (invalidate on size/mtime and after writes). }
 
@@ -165,7 +165,7 @@ begin
     procedure
     begin
       // Pack/unpack has no reliable per-file byte breakdown here (pack
-      // counts files, unpack counts archive-wide bytes) — leave the item
+      // counts files, unpack counts archive-wide bytes) - leave the item
       // fields empty so the job UI falls back to the tree-cumulative
       // ADone/ATotal for its per-file bar, same as before this callback
       // grew the item-level parameters.
@@ -212,9 +212,9 @@ type
     FileSize: Int64;
     FileTime: TDateTime;
     LastUsed: UInt64;
-    /// <summary>Lowercase parent prefix ('' = root) → sorted children.</summary>
+    /// <summary>Lowercase parent prefix ('' = root) -> sorted children.</summary>
     Children: TObjectDictionary<string, TList<TVfsEntry>>;
-    /// <summary>Lowercase full entry path → is directory (for Exists).</summary>
+    /// <summary>Lowercase full entry path -> is directory (for Exists).</summary>
     Entries: TDictionary<string, Boolean>;
     constructor Create;
     destructor Destroy; override;
@@ -913,7 +913,7 @@ begin
   AStack[0] := Layer;
 
   // Segments: [0..N-2] are nested zip entry paths; last is path inside innermost.
-  // If last is empty → list root of innermost.
+  // If last is empty -> list root of innermost.
   if Length(ASegments) = 0 then
   begin
     AListPrefix := '';
@@ -1797,7 +1797,7 @@ begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
       try
-        // Disk / file → archive (pack into zip).
+        // Disk / file -> archive (pack into zip).
         if HasArchiveChain(ToURI) and not HasArchiveChain(FromURI) then
         begin
           if not SplitArchiveUri(ToURI, Base, Segs) then
@@ -1828,7 +1828,7 @@ begin
             end;
           end;
         end
-        // Archive → disk (extract).
+        // Archive -> disk (extract).
         else if HasArchiveChain(FromURI) and not HasArchiveChain(ToURI) then
         begin
           if not SplitArchiveUri(FromURI, Base, Segs) then

@@ -1,8 +1,8 @@
 ﻿unit uPluginManifest;
 
-{ Optional plugins\<id>\plugin.json — host-side filter before LoadLibrary.
+{ Optional plugins\<id>\plugin.json - host-side filter before LoadLibrary.
   Missing file is not an error (ABI is still checked via
-  mtn_plugin_get_abi_version). A present file with abi ≠ cPluginAbiVersion
+  mtn_plugin_get_abi_version). A present file with abi <> cPluginAbiVersion
   skips the DLL. }
 
 interface
@@ -17,12 +17,12 @@ type
     Version: string;
     AbiVersion: Int64;
     HasAbi: Boolean;
-    /// <summary>Optional "archiveExtensions": ["7z","rar",...] — file name
+    /// <summary>Optional "archiveExtensions": ["7z","rar",...] - file name
     /// extensions this plugin's VFS scheme should navigate into on Enter
     /// (see uVfsRegistry.RegisterArchiveExtension / TArchiveExtensionKind).
     /// Empty for plugins that are not archive backends.</summary>
     ArchiveExtensions: TArray<string>;
-    /// <summary>Optional "schemes": ["7z","tmp",...] — URI schemes this
+    /// <summary>Optional "schemes": ["7z","tmp",...] - URI schemes this
     /// plugin registers in mtn_plugin_init. The host uses them to load the
     /// DLL the first time that scheme is resolved, instead of at startup.</summary>
     Schemes: TArray<string>;

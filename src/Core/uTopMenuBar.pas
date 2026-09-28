@@ -429,9 +429,9 @@ begin
 end;
 
 const
-  // Submenu (F9 dropdown) idle-row hotkey — dark red on the theme's own
-  // dialog body, fixed rather than theme-driven at the user's request (this
-  // is how FAR/NDN's dropdown always looked). The selected row still uses
+  // Submenu (F9 dropdown) idle-row hotkey - dark red on the theme's own
+  // dialog body. Fixed, not theme-driven: FAR/NDN's dropdown always looked
+  // like this. The selected row still uses
   // the theme's own accent (see DrawSubmenu) since that already matched the
   // historical yellow-on-blue look before themes existed.
   cSubmenuHotFg = cMenuHotKeyFg;
@@ -444,7 +444,7 @@ begin
 end;
 
 // Mnemonic lookup order for a typed char: the exact letter first, then the
-// same key on the other layout (#0 if none — callers skip it).
+// same key on the other layout (#0 if none - callers skip it).
 function HotCandidates(AChar: Char): TArray<Char>;
 begin
   Result := [HotUpper(AChar), TextKeyLayoutAlternate(AChar)];
@@ -757,7 +757,7 @@ begin
   FCategories[2].Items[22] := SubItem('Copy name', #0, 'Alt+Shift+Ins', tmaFileCopyName);
   FCategories[2].Items[23] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
 
-  // 3: Edit (clipboard + document ops — not Files → Edit / F4)
+  // 3: Edit (clipboard + document ops - not Files -> Edit / F4)
   FCategories[3].Title := 'Edit';
   FCategories[3].HotChar := 'E';
   FCategories[3].HotPos := 1;
@@ -884,7 +884,7 @@ var
   Tmp: TPluginMenuItemDesc;
 begin
   Sorted := Copy(AItems);
-  // Stable insertion sort by (ParentTitle, Priority) — plugin item counts
+  // Stable insertion sort by (ParentTitle, Priority) - plugin item counts
   // are expected to be small, so O(n^2) is fine here.
   for I := 1 to High(Sorted) do
   begin
@@ -1045,7 +1045,7 @@ begin
 
   // Themed bar colours. First pass reused pcpWorkspaceTabIdle for the
   // resting bar, but that role is deliberately muted in most themes (an
-  // idle tab shouldn't shout) — for a theme whose idle tone happens to be
+  // idle tab shouldn't shout) - for a theme whose idle tone happens to be
   // close to another theme's (e.g. NDN and High Contrast both rest on
   // plain black), the always-visible top bar ended up looking unchanged
   // even though the colour value genuinely did change a few shades.
@@ -1053,7 +1053,7 @@ begin
   // (FAR/NDN's cyan bar, Dracula's purple, Nord's frost cyan, ...) and is
   // what this bar historically looked like before themes existed at all, so
   // the resting strip uses that instead. The open category then inverts
-  // that same accent for a pressed/engaged look — there's no separate
+  // that same accent for a pressed/engaged look - there's no separate
   // "pressed" role on IThemeRenderer, and colour inversion is the classic
   // textmode convention for exactly this.
   FTheme.ResolvePanelChromeColors(pcpPanelTabActive, True, NormalFg, NormalBg);
@@ -1082,9 +1082,9 @@ begin
     PutGridText(AGrid, X, 0, Title, Fg, Bg);
 
     // Highlight mnemonic char: same fixed red as the submenu's idle-row
-    // hotkey (cSubmenuHotFg), background left untouched — at the user's
-    // explicit request, for one consistent "this is a shortcut" colour
-    // across the whole menu instead of a per-bar accent.
+    // hotkey (cSubmenuHotFg), background left untouched: one consistent
+    // "this is a shortcut" colour across the whole menu instead of a
+    // per-bar accent.
     if (FCategories[I].HotPos > 0) and (FCategories[I].HotPos <= Length(FCategories[I].Title)) then
       PutGridText(AGrid, X + FCategories[I].HotPos, 0,
         FCategories[I].Title[FCategories[I].HotPos], cSubmenuHotFg, Bg, [ccaBold]);
@@ -1186,7 +1186,7 @@ begin
     PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
 
     // Mnemonic char in submenu: fixed dark red on whichever background the
-    // row already has (idle or selected) — no background inversion, at the
+    // row already has (idle or selected) - no background inversion, at the
     // user's explicit request. Restores the original FAR/NDN submenu look;
     // never clashes since none of the eight themes' dialog/cursor colours
     // are reddish. Disabled rows skip the accent so they stay uniformly dim.

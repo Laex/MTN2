@@ -1,6 +1,6 @@
 unit uVfsRegistry;
 
-{ Scheme / predicate → IVirtualFileSystem registry (SDS §5 / Plugin prep).
+{ Scheme / predicate -> IVirtualFileSystem registry (SDS §5 / Plugin prep).
   Host uses CreateDefaultVfs; extra backends register without Dual Panel edits. }
 
 interface
@@ -503,7 +503,7 @@ var
   I, J: Integer;
   Tmp: TArchiveExtEntry;
 begin
-  // Lower Priority number = earlier match (stable insertion sort) —
+  // Lower Priority number = earlier match (stable insertion sort) -
   // mirrors SortByPriority above.
   for I := 1 to FArchiveExts.Count - 1 do
   begin
@@ -1136,7 +1136,7 @@ begin
     Reg.RegisterScheme('file', GGlobalFileVfs, 100);
     // Built-in archive extensions (PluginId '' so UnregisterPlugin never
     // drops them). 7z/rar/tar/... are registered by uPluginLoader.pas when
-    // mtn.7z's manifest declares them (see uPluginManifest.pas) — not here,
+    // mtn.7z's manifest declares them (see uPluginManifest.pas) - not here,
     // so a missing/failed plugin load stops those extensions from claiming
     // to be navigable instead of leaving a stale hardcoded association.
     Reg.RegisterArchiveExtension('', '.zip', akZipChain, 50);

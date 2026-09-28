@@ -1,7 +1,7 @@
 ﻿unit uDialogHost;
 
 { Host-built declarative dialogs (DIALOG_PLUGIN). Draws via IThemeRenderer;
-  inputs use TInputLine. In-process — cdecl export comes with DLL stage. }
+  inputs use TInputLine. In-process - cdecl export comes with DLL stage. }
 
 interface
 
@@ -64,11 +64,11 @@ type
     function FindInputIndexById(const AId: string): Integer;
     function PadGridLine(const AText: string; AWidth: Integer): string;
     /// <summary>Themed vs fallback color for an always-selected row (combo
-    /// display, focused/open DropDown field) — FTheme.ResolveDialogRowColors
+    /// display, focused/open DropDown field) - FTheme.ResolveDialogRowColors
     /// when themed, else the fixed FAR/NDN black-on-cyan cursor row.</summary>
     procedure ResolveSelectedRowColors(out AFg, ABg: TAlphaColor);
     /// <summary>Themed vs fallback color for a list row that may or may not
-    /// be selected — same rule as ResolveSelectedRowColors, but falls back
+    /// be selected - same rule as ResolveSelectedRowColors, but falls back
     /// to the caller's own ANormalFg/ANormalBg when not selected and no
     /// theme is assigned.</summary>
     procedure ResolveRowHighlight(ASelected: Boolean; ANormalFg, ANormalBg: TAlphaColor;
@@ -115,7 +115,7 @@ type
     function GetValuesJson: string;
     function GetInputValue(const AId: string): string;
     /// <summary>Live-updates a dckInput's text on the already-open dialog
-    /// (cursor moves to the end) — the setter counterpart to GetInputValue,
+    /// (cursor moves to the end) - the setter counterpart to GetInputValue,
     /// for cross-field sync (e.g. picking a list preset fills a hex field)
     /// that would be too disruptive to do via the usual close/reopen-with-a
     /// -patched-declaration pattern (that's for committing a whole dialog's
@@ -163,7 +163,7 @@ type
     function FocusedOrDefaultButtonId: string;
     /// <summary>Id of whichever control currently has keyboard focus (any
     /// kind), '' when none focused. Unlike FocusedOrDefaultButtonId this
-    /// never falls back to a button — for callers that need "the field the
+    /// never falls back to a button - for callers that need "the field the
     /// user is actually on" (e.g. F9 = pick a color for the focused hex
     /// input), a fallback would answer the wrong question.</summary>
     function FocusedControlId: string;
@@ -1076,7 +1076,7 @@ begin
   Cmd := FOnCommand;
   // Own a reference to the id before invoking the handler. Callers pass
   // FDecl.Controls[I].Id, and handlers routinely call Close, which does
-  // SetLength(FDecl.Controls, 0) — that drops the last reference and frees the
+  // SetLength(FDecl.Controls, 0) - that drops the last reference and frees the
   // string out from under this `const` (no-refcount) parameter. Any
   // DialogCmdIs* test the handler runs after Close would then read freed
   // memory ("Invalid pointer operation").
@@ -1475,18 +1475,18 @@ var
   SrcIdx: Integer;
 begin
   // Re-resolved every Draw from the live (possibly uncommitted) text
-  // of the source input(s) — no rebuild/reopen needed as the user
+  // of the source input(s) - no rebuild/reopen needed as the user
   // types. Blank/unparsable source text keeps whatever's pre-set
   // below as the fallback for that channel.
   //
   // When C.PanelState names a panel row (color-coding's editor sets
-  // this — colorpicker.json's single-channel preview doesn't), an
+  // this - colorpicker.json's single-channel preview doesn't), an
   // unset channel previews as the THEME's own resolved color for
-  // that row/state — the exact same "0 = inherit" meaning
+  // that row/state - the exact same "0 = inherit" meaning
   // TColorCodingColor.Fg/Bg=0 already has, so this shows what the
   // panel would actually render, not a placeholder. Without a theme
   // or a named state, falls back to fixed black-on-gray (still not
-  // white — see dialog body note below).
+  // white - see dialog body note below).
   SampleFg := TAlphaColor($FF000000);
   SampleBg := TAlphaColor($FFC0C0C0); // not white: would blend into this Host's own (white) dialog body, hiding the swatch's extent
   if (C.PanelState <> cspsNone) and Assigned(FTheme) then
@@ -1558,7 +1558,7 @@ begin
   SelIdx := ListSelectedIndexOf(C.Id);
   if Span <= 1 then
   begin
-    // Height 1: combo-style — show selected item (not items[0]).
+    // Height 1: combo-style - show selected item (not items[0]).
     if (SelIdx >= 0) and (SelIdx <= High(C.Items)) then
       Line := C.Items[SelIdx]
     else
@@ -1722,7 +1722,7 @@ begin
       dckCheckbox:
         begin
           // Warning chrome is red: theme DrawCheckBox paints black-on-white
-          // (dialog body), which shows as a white strip on the red fill —
+          // (dialog body), which shows as a white strip on the red fill -
           // worse after translation when the caption (and box) grow.
           if FDecl.IsWarning or not Assigned(FTheme) then
           begin
@@ -2013,7 +2013,7 @@ begin
           Span := R.Height;
           if (Span > 1) and (ALocalCol = R.Right) then
           begin
-            // Scrollbar: ▲ / ▼ / track → move selection.
+            // Scrollbar: ▲ / ▼ / track -> move selection.
             FFocusIndex := I;
             EnsureListInView(I);
             Count := Length(FDecl.Controls[I].Items);

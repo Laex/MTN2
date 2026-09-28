@@ -1,7 +1,7 @@
 unit TestCopyLockedSource;
 
 { Regression: copying a folder that contains files another process holds open
-  for writing — an application log, a live SQLite/LevelDB store — must copy
+  for writing - an application log, a live SQLite/LevelDB store - must copy
   the whole tree instead of dying partway through.
 
   Reported as "copying D:\Hiddify to P:\Hiddify shows an error at the end and
@@ -115,7 +115,7 @@ end;
 type
   /// <summary>Holds a file open exactly the way an application's log writer
   /// does: read/write access, readers allowed, other writers denied. That is
-  /// what made the old fmShareDenyWrite source open fail — our own request to
+  /// what made the old fmShareDenyWrite source open fail - our own request to
   /// deny writers collided with the holder's existing write handle.</summary>
   TLiveWriter = class
   private

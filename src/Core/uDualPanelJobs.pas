@@ -43,7 +43,7 @@ type
     FProgressInvalidateQueued: Boolean;
     FProgressInvalidateDirty: Boolean;
     /// <summary>Full source path of the file the last progress report was
-    /// about — used to detect "file finished, next one started" transitions
+    /// about - used to detect "file finished, next one started" transitions
     /// inside a recursive tree copy so FJob.FilesDone can count real files
     /// instead of top-level selected items.</summary>
     FLastItemSrcPath: string;
@@ -578,7 +578,7 @@ end;
 procedure TPanelJobController.AdvanceJobAfterItem(AIndex: Integer);
 begin
   CommitItemBytes;
-  // Flush the last file of this item into FilesDone — NoteItemProgress only
+  // Flush the last file of this item into FilesDone - NoteItemProgress only
   // counts on a path *transition*, so the final file of a tree (or the only
   // file of a plain-file item) never gets counted from inside a transition
   // and must be flushed here instead. A skipped item (no transfer ever
@@ -596,7 +596,7 @@ begin
   FJob.FileProgressTotal := 0;
   FJob.RetryLeft := FJob.RetryLimit;
   // Keep the progress dialog live while a run of items is being skipped
-  // (excluded mask, reparse/newer skip, Skip overwrite mode) — without this,
+  // (excluded mask, reparse/newer skip, Skip overwrite mode) - without this,
   // the bars only redraw once an item actually starts transferring bytes,
   // so they look frozen during a skip streak.
   if Assigned(FOnInvalidate) then
@@ -647,7 +647,7 @@ var
 begin
   // ADone/ATotal keep their original meaning unchanged: cumulative bytes for
   // the whole current top-level item (a recursive tree copy reports running
-  // totals across all its files here) — this still drives the "Total" bar
+  // totals across all its files here) - this still drives the "Total" bar
   // and the Bytes counter exactly like before.
   FJob.ProgressDone := ADone;
   if ATotal > 0 then
@@ -656,7 +656,7 @@ begin
     FJob.CurrentName := ACurrentName;
 
   // AItemDone/AItemTotal/AItemSrcPath, when the VFS callback knows which
-  // file it's on, describe just that one file — used for the per-file bar
+  // file it's on, describe just that one file - used for the per-file bar
   // and the live path display instead of reusing ADone/ATotal (which, for a
   // recursive folder copy, are tree-wide and made the "file" and "total"
   // bars move in lockstep when both read from the same numbers).
@@ -757,7 +757,7 @@ begin
   FJob.Presentation := jpBackground;
   // Foreground execution pauses dir-watches. Leaving the progress dialog
   // must re-list both panels so the user sees files already copied and
-  // LoadSide → SyncDirWatches arms watches again for the rest of the job.
+  // LoadSide -> SyncDirWatches arms watches again for the rest of the job.
   if WasForeground and Assigned(FOnReloadPanels) then
     FOnReloadPanels(FJob.OriginSrcDirURI, FJob.OriginDstDirURI);
   if Assigned(FOnInvalidate) then
@@ -895,12 +895,12 @@ end;
 function TPanelJobController.TryContinueDirMerge(const ASrcURI, ADstURI: string;
   AIndex: Integer; AIsDirMerge: Boolean): Boolean;
 begin
-  // Folder onto an existing folder is a merge, never a real conflict — the
+  // Folder onto an existing folder is a merge, never a real conflict - the
   // actual overwrite/skip decisions happen one level down, per file, inside
   // CopyTree. Skip/Overwrite mode is handled unconditionally right here. Ask
   // mode still prompts once per folder (matches Explorer/FAR convention, and
   // CopyTree has no way to prompt per file mid-recursion), but the answer
-  // must become CopyTree's AOverwrite for a merge — it must never mean
+  // must become CopyTree's AOverwrite for a merge - it must never mean
   // "abandon this whole folder". Treating a pre-existing folder as an
   // ordinary conflict is what silently dropped everything missing at the
   // destination under a folder-level "Skip", both from Skip mode directly
@@ -949,7 +949,7 @@ begin
     Exit;
   end;
   // Fresh Ask prompt: IsDirMerge means "folder conflict, no remembered
-  // answer yet" — tell ResolveOverwriteAsk so its Skip branch merges
+  // answer yet" - tell ResolveOverwriteAsk so its Skip branch merges
   // instead of abandoning.
   FJob.PendingBothDirs := AIsDirMerge;
   PromptOverwriteAsk(ASrcURI, ADstURI, AIndex, ANewLine, AExistingLine);
@@ -1046,7 +1046,7 @@ begin
       DstURI := JoinFileUri(FJob.DestDirURI, Name)
     else if IsZipFileName(Name) then
     begin
-      // Whole .zip on disk → extract into Dest\<archiveName>\
+      // Whole .zip on disk -> extract into Dest\<archiveName>\
       SrcURI := EnsureArchiveRootUri(SrcURI);
       DstURI := JoinFileUri(FJob.DestDirURI, ChangeFileExt(Name, ''));
     end
@@ -1063,7 +1063,7 @@ begin
   else
     DstURI := JoinFileUri(FJob.DestDirURI, Name);
 
-  // Pack/Unpack: no local FS probes — start transfer on UI thread.
+  // Pack/Unpack: no local FS probes - start transfer on UI thread.
   if not (Kind in [pjkCopy, pjkMove]) then
   begin
     if Assigned(FOnInvalidate) then
@@ -1072,7 +1072,7 @@ begin
     Exit;
   end;
 
-  // Copy/Move: Exists/GetFileAttributes/mtime can block on network/OneDrive —
+  // Copy/Move: Exists/GetFileAttributes/mtime can block on network/OneDrive -
   // keep the progress popup responsive by probing off the UI thread.
   CapSrc := SrcURI;
   CapDst := DstURI;
@@ -1154,7 +1154,7 @@ begin
       ExistingLine := FormatConflictFileLine('Existing', DstPath);
     end;
   except
-    // Treat probe failures as "no skip / dest unknown" — transfer will report.
+    // Treat probe failures as "no skip / dest unknown" - transfer will report.
   end;
   TThread.Queue(nil,
     procedure
@@ -1303,7 +1303,7 @@ begin
   FJob.PendingTransferAppend := AAppend;
   FJob.PendingErrorMessage := AError.Message;
   // AError.URI names the file that actually failed (a recursive tree copy
-  // means this is rarely the top-level ASrcURI) — show that one, falling
+  // means this is rarely the top-level ASrcURI) - show that one, falling
   // back to ASrcURI only if the VFS layer left it blank.
   Path := JobErrorDisplayPath(AError, ASrcURI);
   case FJob.Kind of
@@ -1516,7 +1516,7 @@ begin
         if FJob.PendingBothDirs then
         begin
           // Folder-vs-folder prompt: "Skip" means "don't overwrite files
-          // that conflict inside it", not "abandon the folder" — the whole
+          // that conflict inside it", not "abandon the folder" - the whole
           // point of this fix (see ContinueJobItemAfterProbe). Route through
           // ExecuteTransfer/CopyTree exactly like the Skip-mode fast path.
           ExecuteTransfer(SrcURI, DstURI, Idx, False, False);

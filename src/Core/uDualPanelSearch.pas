@@ -75,8 +75,8 @@ const
   cFrameActive = TAlphaColor($FF55FFFF);
   cMenuHot  = TAlphaColor($FFFFFF55);
   cDirFg    = TAlphaColor($FFFFFFFF);
-  // U+2026 by codepoint rather than a pasted '…'. The file carries a UTF-8 BOM
-  // now, so a literal would compile correctly too — but it did not when this
+  // U+2026 by codepoint rather than a pasted '...'. The file carries a UTF-8 BOM
+  // now, so a literal would compile correctly too - but it did not when this
   // truncation was written, and the compiler then read the ellipsis as 3 ANSI
   // chars, making the clipped path 2 cells wider than the frame's inner span
   // and spilling it past the right border. Stated by codepoint the width math
@@ -198,7 +198,7 @@ begin
     Exit;
   end;
 
-  // Validate the regex once up front — a bad pattern is reported instantly
+  // Validate the regex once up front - a bad pattern is reported instantly
   // instead of silently matching nothing on every file in the walk.
   if FSearch.UseRegex and (Trim(FSearch.ContainingText) <> '') and
      not ValidateRegexPattern(FSearch.ContainingText, RegexError) then

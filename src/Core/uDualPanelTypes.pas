@@ -21,7 +21,7 @@ type
   );
 
   /// <summary>Active list sort key (click column headers / Ctrl+F12 to change).
-  /// Header cycle per column: ascending → descending → none.</summary>
+  /// Header cycle per column: ascending -> descending -> none.</summary>
   TPanelSortColumn = (
     pscNone,
     pscName,
@@ -55,7 +55,7 @@ type
   /// <summary>Panel content mode. Ctrl+L toggles Info on the adjacent panel.</summary>
   TPanelViewKind = (pvkFiles, pvkInfo, pvkQuickView);
 
-  /// <summary>Last visited directory path per drive letter (A–Z) for one panel.</summary>
+  /// <summary>Last visited directory path per drive letter (A-Z) for one panel.</summary>
   TPanelDriveDirs = array['A'..'Z'] of string;
 
   TPanelState = record
@@ -66,15 +66,15 @@ type
     SortColumn: TPanelSortColumn;
     SortDescending: Boolean;
     ViewKind: TPanelViewKind;
-    ShowHiddenFiles: Boolean;  // Ctrl+H toggle — Hidden/System files in listing
+    ShowHiddenFiles: Boolean;  // Ctrl+H toggle - Hidden/System files in listing
   end;
 
   TDualPanelState = record
     LeftPanel: TPanelState;
     RightPanel: TPanelState;
     ActiveSide: TPanelSide;
-    LeftVisible: Boolean;   // FAR Ctrl+F1 — hide/show left
-    RightVisible: Boolean;  // FAR Ctrl+F2 — hide/show right
+    LeftVisible: Boolean;   // FAR Ctrl+F1 - hide/show left
+    RightVisible: Boolean;  // FAR Ctrl+F2 - hide/show right
   end;
 
   /// <summary>Dual Panel Tabs: panels snapshot, Viewer/Editor document, or a
@@ -94,7 +94,7 @@ type
     /// <summary>Workspace Id that opened this Viewer/Editor; 0 = unknown.</summary>
     OriginWorkspaceId: Cardinal;
     /// <summary>Shell profile id; used when Kind = wkTerminal (set at
-    /// creation, ephemeral like the tab itself — not persisted).</summary>
+    /// creation, ephemeral like the tab itself - not persisted).</summary>
     TermProfileId: string;
   end;
 
@@ -103,7 +103,7 @@ type
     ActiveWorkspaceIndex: Integer;
   end;
 
-  // Logical row returned by panel Pull (no style fields — theme decides colour).
+  // Logical row returned by panel Pull (no style fields - theme decides colour).
   // Stores full metadata so Host can switch column modes without re-listing.
   TPanelRow = record
     Id: string;
@@ -192,7 +192,7 @@ procedure TabSelectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean = False);
 procedure TabUnselectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean = False);
-/// <summary>FAR Alt+Gray+/−: same name stem (no last extension) as AStem.</summary>
+/// <summary>FAR Alt+Gray+/-: same name stem (no last extension) as AStem.</summary>
 procedure TabSelectByNameStem(var ATab: TTab; const ARows: TPanelRows;
   const AStem: string; AUnselect: Boolean; AIncludeFolders: Boolean = False);
 function FileNameStem(const AName: string): string;
@@ -254,7 +254,7 @@ begin
   if AIsParent or AIsDirectory then
     Exit('directory');
   Base := AName;
-  // Display names may append '/' for directories — strip just in case.
+  // Display names may append '/' for directories - strip just in case.
   if (Base <> '') and (Base[Length(Base)] = '/') then
     Base := Copy(Base, 1, Length(Base) - 1);
   Ext := LowerCase(TPath.GetExtension(Base));
@@ -321,11 +321,11 @@ begin
   Result := MakePanelRow(ADisplayName, AEntry.IsDirectory, AEntry.Size, ASizeText,
     FormatFileDate(AEntry.ModificationTime), AURI, False, AEntry.IsHidden,
     FormatVfsAttrText(AEntry), AEntry.IsLink);
-  // Directories never have an "extension" — even when VFS reports none and
+  // Directories never have an "extension" - even when VFS reports none and
   // the name itself contains a dot (e.g. "My.Folder"). MakePanelRow already
   // got this right via AIsDir above; don't let the file-only fallback below
-  // clobber it (Text carries a trailing '/' for dirs — see RowsFromVfsItems
-  // — so stripping Extension's length back out of Text would eat into the
+  // clobber it (Text carries a trailing '/' for dirs - see RowsFromVfsItems
+  // - so stripping Extension's length back out of Text would eat into the
   // name itself, not just the fake extension).
   if not AEntry.IsDirectory then
   begin
@@ -875,7 +875,7 @@ begin
   Budget := AMaxLen - Length(Ext) - 3;
   if Budget < 1 then
   begin
-    // Extension alone with ellipsis — prefer showing the extension.
+    // Extension alone with ellipsis - prefer showing the extension.
     Result := Copy('...' + Ext, 1, AMaxLen);
     Exit;
   end;
@@ -925,7 +925,7 @@ begin
   Masks := SplitMasks(AMask);
   for R in ARows do
   begin
-    // FAR default: Gray+/Gray− do not select folders (Select folders = off).
+    // FAR default: Gray+/Gray- do not select folders (Select folders = off).
     if not TabRowSelectable(R, AIncludeFolders) then
       Continue;
     if NameMatchesAnyMask(PanelRowMaskName(R), Masks) and
@@ -1046,7 +1046,7 @@ begin
     Exit(True);
   if AExcludeLanding then
   begin
-    // Brief Left/Right: [From..To) — include the row before landing.
+    // Brief Left/Right: [From..To) - include the row before landing.
     if ATo > AFrom then
     begin
       ALo := AFrom;

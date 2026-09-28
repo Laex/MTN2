@@ -5,13 +5,13 @@ unit TestDeleteProgress;
   instead of sitting still until the whole delete finishes.
 
   Root cause: IVirtualFileSystem.DeleteAsync had no progress callback at all
-  (unlike CopyAsync/MoveAsync) — TPanelJobController.ExecuteDeleteItem's only
+  (unlike CopyAsync/MoveAsync) - TPanelJobController.ExecuteDeleteItem's only
   feedback was the top-level item finishing, so a single "delete this one
   folder" job (FJob.FilesTotal=1) rendered as a static 100% bar for the
   entire recursive walk. Fixed on two paths:
     - Permanent delete: uFileVfs.DeleteTree now reports (ADoneItems,
-      ATotalItems) — files-plus-folders removed so far vs. a pre-walk count
-      from EstimateTreeItemCount — after every individual file/folder it
+      ATotalItems) - files-plus-folders removed so far vs. a pre-walk count
+      from EstimateTreeItemCount - after every individual file/folder it
       actually removes.
     - Recycle Bin delete: uFileRecycleBin.DeleteToRecycleBinIFileOp now
       advises an IFileOperationProgressSink (the recycle runs with

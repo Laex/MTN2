@@ -177,8 +177,8 @@ begin
   Idx := FDialog.GetListSelectedIndex('groups');
   if (Idx < 0) or (Idx > High(FGroups)) then
     Exit;
-  // A name the dialog opened with can't be removed outright — only ever
-  // overridden by MergeColorCodingGroups, never deleted — so soft-disable
+  // A name the dialog opened with can't be removed outright - only ever
+  // overridden by MergeColorCodingGroups, never deleted - so soft-disable
   // it instead; a name added this session (not yet saved anywhere) can just
   // go away.
   if ColorCodingNameExistsIn(FOriginal, FGroups[Idx].Name) then
@@ -425,7 +425,7 @@ begin
   begin
     FDialog.Close;
     // Only touch the theme file if the effective group list actually
-    // changed — comparing serialized JSON is simpler and just as
+    // changed - comparing serialized JSON is simpler and just as
     // correct as a field-by-field diff (uColorCoding.GetActiveThemeFileName).
     if ColorCodingGroupsToJson(FGroups) <> ColorCodingGroupsToJson(FOriginal) then
     begin
@@ -454,7 +454,7 @@ begin
   begin
     if not CommitEdit then
     begin
-      // Validation failed (status already set) — stay on the edit
+      // Validation failed (status already set) - stay on the edit
       // dialog rather than falling through to Close/Refresh below.
       SetKind(hdkColorCodingEdit);
       Notify;
@@ -481,7 +481,7 @@ begin
     PickedHex := Trim(FDialog.GetInputValue('picker_hex'));
     if PickedHex = '' then
     begin
-      // Nothing typed — fall back to whichever preset is highlighted.
+      // Nothing typed - fall back to whichever preset is highlighted.
       PresetIdx := FDialog.GetListSelectedIndex('picker_presets');
       ColorPickerPresets(PresetLabels, PresetHexes);
       if (PresetIdx >= 0) and (PresetIdx <= High(PresetHexes)) then

@@ -1,8 +1,8 @@
 ﻿unit uDualPanelSync;
 
 { Directory compare for Directory Sync.
-  Stage 19: one-way Active → Inactive (missing | newer).
-  Stage 35: two-way ⇄ — copy direction follows whichever side is newer;
+  Stage 19: one-way Active -> Inactive (missing | newer).
+  Stage 35: two-way <-> - copy direction follows whichever side is newer;
   conflicts (both sides changed since the last successful sync) stay
   unresolved and are listed for a manual choice.
   Stage 34: optional content mode (size + byte compare) marks files that
@@ -769,7 +769,7 @@ begin
 end;
 
 // Reads AFile's existing "pairs" (if any) and clones every entry that is NOT
-// this (ALeftRoot, ARightRoot) pair into AKept — i.e. every other root-pair's
+// this (ALeftRoot, ARightRoot) pair into AKept - i.e. every other root-pair's
 // snapshot, kept as-is while this one gets replaced below. Silently gives up
 // (AKept left however far it got) on a missing/corrupt file.
 procedure LoadKeptSyncPairs(const AFile, ALeftRoot, ARightRoot: string;

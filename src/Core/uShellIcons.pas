@@ -578,7 +578,7 @@ begin
   if Uri = '' then
     Exit;
   Result := FileUriToPath(Uri);
-  // Only real local/UNC files — skip zip/plugin URIs that are not on disk.
+  // Only real local/UNC files - skip zip/plugin URIs that are not on disk.
   if Result = '' then
     Exit;
   if not (TPath.IsPathRooted(Result) or Result.StartsWith('\\')) then

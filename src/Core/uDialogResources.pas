@@ -102,7 +102,7 @@ procedure DialogSetDropDownSelected(var ADecl: TDialogDeclaration; const AId: st
   ASelectedIndex: Integer);
 procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;
   const AItems: TArray<string>; ASelectedIndex: Integer = 0);
-/// <summary>Repoints a dckColorSample control's live-preview sources — e.g.
+/// <summary>Repoints a dckColorSample control's live-preview sources - e.g.
 /// the color picker's single "preview" control is reused for either a Fg or
 /// a Bg pick by wiring it to 'picker_hex' on whichever side is being edited.</summary>
 procedure DialogSetColorSampleSources(var ADecl: TDialogDeclaration; const AId: string;

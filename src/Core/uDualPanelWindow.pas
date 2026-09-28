@@ -2505,7 +2505,7 @@ procedure TDualPanelWindow.TogglePanelConsoleMode;
 begin
   // Same FAR Ctrl+O path as the keymap: MainForm.ShowConsoleMode paints
   // TConsoleWindow over Dual Panel. Flipping FConsoleMode alone only
-  // blanks DrawContent (dckConsole = F-keys + status) — a black screen.
+  // blanks DrawContent (dckConsole = F-keys + status) - a black screen.
   KeymapToggleConsole;
 end;
 
@@ -3243,7 +3243,7 @@ begin
   end;
 
   // Leaving a folder via "..": place cursor on that folder in the parent list.
-  // Only THIS tab's workspace-enter marker, not a global dir-link lookup —
+  // Only THIS tab's workspace-enter marker, not a global dir-link lookup -
   // the other panel at the same disk path must `..` to the disk parent.
   if (Tab.WorkspaceBackUri <> '') and
      SameVfsUri(Tab.CurrentURI, Tab.WorkspaceBackTarget) and
@@ -4116,7 +4116,7 @@ var
 begin
   // Ask the registry which extensions currently navigate as an archive
   // (built-in zip/jar/apk plus whatever a loaded plugin's manifest declared
-  // — see uVfsRegistry.RegisterArchiveExtension) instead of hardcoding the
+  // - see uVfsRegistry.RegisterArchiveExtension) instead of hardcoding the
   // extension list here.
   IsArchiveFile := (ARow.URI <> '') and
     GlobalVfsRegistry.TryResolveArchiveKind(ARow.Text, ArchiveKind);

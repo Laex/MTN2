@@ -1,14 +1,14 @@
 unit TestDrivePopup;
 
 { Characterization tests for TDrivePopupController (Alt+F1/F2 Change Drive
-  overlay, uDualPanelDrivePopup.pas) — previously untested. Exercises the
+  overlay, uDualPanelDrivePopup.pas) - previously untested. Exercises the
   pure controller logic (Layout's width/height clamping, keyboard/mouse
   dispatch, Confirm's navigation) via injected callbacks, without touching
   the FMX grid (Draw is not exercised here).
 
   The real drive list comes from CachedDriveInfo (actual OS drives), so
   assertions are written to hold regardless of how many drives the test
-  machine has — layout tests use panel sizes small/large enough that the
+  machine has - layout tests use panel sizes small/large enough that the
   drive count cannot change the outcome, and shortcut tests only rely on
   ChangeDriveSpecialUris (fixed constants) or the near-universal presence of
   a C: drive on Windows. }

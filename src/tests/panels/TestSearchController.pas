@@ -1,7 +1,7 @@
 unit TestSearchController;
 
 { Characterization tests for TSearchController (Alt+F7 Find-file overlay,
-  uDualPanelSearch.pas) — previously untested. Exercises StartSearch's
+  uDualPanelSearch.pas) - previously untested. Exercises StartSearch's
   synchronous validation guards directly, then runs one real (async)
   filesystem search against a temp fixture to characterize the spResults
   cursor/navigation behavior in HandleSearchInput, and the spDialog field

@@ -55,7 +55,7 @@ const
   cFileFg   = TAlphaColor($FFAAAAAA);
   cPanelBg  = TAlphaColor($FF0000AA);
   cFrameActive = TAlphaColor($FF55FFFF);
-  cSortHot  = TAlphaColor($FFFF55FF); // raspberry/magenta — readable on blue
+  cSortHot  = TAlphaColor($FFFF55FF); // raspberry/magenta - readable on blue
 
 constructor TSortMenuController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AGetActivePanelBounds: TMenuPanelBoundsEvent;

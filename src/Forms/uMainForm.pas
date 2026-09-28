@@ -41,7 +41,7 @@ type
   private
     FRenderer: TTerminalRenderer;
     FTheme: IThemeRenderer;
-    /// <summary>Same object as FTheme, typed for SetInner — see uThemeProxy.
+    /// <summary>Same object as FTheme, typed for SetInner - see uThemeProxy.
     /// Every window/dialog/controller holds this one shared IThemeRenderer
     /// reference, so switching FThemeProxy's inner theme repaints all of
     /// them without recreating anything.</summary>
@@ -108,8 +108,8 @@ type
     /// when AThemeName is blank or unrecognized.</summary>
     function CreateTheme(const AThemeName: string): IThemeRenderer;
     /// <summary>Live theme switch (Stage 27): repoints FThemeProxy at a new
-    /// concrete theme — every open window/dialog picks it up on its next
-    /// repaint, no recreation needed — and remembers AThemeId for
+    /// concrete theme - every open window/dialog picks it up on its next
+    /// repaint, no recreation needed - and remembers AThemeId for
     /// PersistSession. No-op if AThemeId is already active.</summary>
     procedure SwitchTheme(const AThemeId: string);
     /// <summary>FDualPanel.OnThemeSelect handler: the Theme dialog (Options
@@ -125,7 +125,7 @@ type
     procedure ApplyDisplaySettings(const ASettings: TDisplaySettings);
     /// <summary>Theme to instantiate (session.json's 'theme') and the
     /// on-disk theme file to load fileColoring/palette overrides from
-    /// (session.json's 'themeFile', independent of AThemeName — see
+    /// (session.json's 'themeFile', independent of AThemeName - see
     /// TMtnSession.ThemeFile) for this run. Peeks session.json without
     /// applying the rest of the session (that still happens later, in
     /// TryRestoreSession, once FDualPanel/FRenderer exist).</summary>
@@ -263,7 +263,7 @@ type
     /// the path (empty path = activate only, no new tab).</summary>
     procedure HandleActivateRequest(ACds: PCopyDataStruct);
     /// <summary>Stage 28: shared by the startup CLI-arg path (FormCreate,
-    /// after TryRestoreSession) and HandleActivateRequest — opens APath in a
+    /// after TryRestoreSession) and HandleActivateRequest - opens APath in a
     /// new tab on the active side. No-op for '' or a path that doesn't
     /// exist.</summary>
     procedure OpenPathFromArgument(const APath: string);
@@ -494,7 +494,7 @@ var
 begin
   // FMX.Platform.Win's TWinSystemAppearanceService (and ThreadSync) use
   // AllocateHWnd. Those hidden top-level windows receive WM_QUERYENDSESSION
-  // but their WndProc leaves Result=0, which Windows treats as a veto —
+  // but their WndProc leaves Result=0, which Windows treats as a veto -
   // the form subclass returning TRUE is not enough. Force TRUE on every
   // other top-level HWND of this UI thread.
   if GExtraWndProcs = nil then
@@ -842,7 +842,7 @@ begin
   begin
     Search.WorkRect := Info.rcWork;
     Search.Found := True;
-    Result := False; // stop enumeration — found it
+    Result := False; // stop enumeration - found it
   end;
 end;
 
@@ -890,7 +890,7 @@ begin
 end;
 
 /// <summary>True when at least a title-bar-sized chunk of the saved window
-/// rect would land on some currently connected monitor — i.e. the position
+/// rect would land on some currently connected monitor - i.e. the position
 /// is still sane to restore as-is. False for a rect left entirely off-screen
 /// (its monitor unplugged, resolution shrunk, etc.), which should fall back
 /// to the default window position instead of being nudged/clamped.</summary>
@@ -903,7 +903,7 @@ var
 begin
   VirtualScreen := VirtualScreenRect;
   if IsRectEmpty(VirtualScreen) then
-    Exit(True); // couldn't enumerate monitors — don't block startup on that
+    Exit(True); // couldn't enumerate monitors - don't block startup on that
   WindowRect := Rect(Round(AWindow.Left), Round(AWindow.Top),
     Round(AWindow.Left + AWindow.Width), Round(AWindow.Top + AWindow.Height));
   if not IntersectRect(Overlap, WindowRect, VirtualScreen) then
@@ -932,8 +932,8 @@ begin
   if not AWindow.Valid then
     Exit;
   if not IsSavedWindowPositionValid(AWindow) then
-    Exit; // off-screen on every connected monitor — keep the default position
-  // Prefer the monitor the window was actually on last time — Screen.WorkAreaRect
+    Exit; // off-screen on every connected monitor - keep the default position
+  // Prefer the monitor the window was actually on last time - Screen.WorkAreaRect
   // alone only clamps against the primary display, which silently relocates a
   // window that was deliberately placed on a secondary monitor whenever monitor
   // order/primary designation changes even though that monitor is still there.
@@ -1180,7 +1180,7 @@ begin
   end;
   Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
   // Stage 27: FThemeName is the live theme (switched via the Theme dialog or
-  // loaded from session.json at startup) — always the source of truth here.
+  // loaded from session.json at startup) - always the source of truth here.
   // ThemeFile (color-coding overrides) has no live-switch UI yet, so that
   // half keeps preserving whatever session.json had.
   Sess.ThemeName := FThemeName;
@@ -1405,7 +1405,7 @@ begin
   FConsole.Visible := True;
   ApplyConsoleLayout;
   // First Ctrl+O (and Esc-to-console) pays shell startup here. A shell that
-  // is already running is left alone — EnsureShell would cd to the panel.
+  // is already running is left alone - EnsureShell would cd to the panel.
   if not FConsole.Running then
   begin
     if Assigned(FDualPanel) then
@@ -1475,7 +1475,7 @@ procedure TMainForm.DualPanelToggleConsole(Sender: TObject);
 begin
   if not Assigned(FMdi) then
     Exit;
-  // ConsoleMode: Ctrl+O always restores panels — it must never stop a
+  // ConsoleMode: Ctrl+O always restores panels - it must never stop a
   // running command (that's Ctrl+C's job). If the flag is set but the
   // console window is not actually up (menu used to flip the flag only),
   // show the console instead of restoring an already-blank Dual Panel.
@@ -1531,7 +1531,7 @@ procedure TMainForm.ConsoleDismiss(Sender: TObject);
 begin
   if not Assigned(FConsole) then
     Exit;
-  // Esc must never stop an in-flight command (Ctrl+C does that) — it only
+  // Esc must never stop an in-flight command (Ctrl+C does that) - it only
   // restores Dual Panel, whether or not something is still running.
   ShowPanelMode;
   Recompose;
@@ -1619,13 +1619,13 @@ begin
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FCursorBlinkEnabled := True;
   TryRestoreSession;
-  // Stage 28: mtn2 <path> — a brand new tab for the CLI path, restored
+  // Stage 28: mtn2 <path> - a brand new tab for the CLI path, restored
   // session tabs are left untouched. Updater switches (--wait-pid) are not paths.
   if StartupPathArgument <> '' then
     OpenPathFromArgument(StartupPathArgument);
   SyncRenderer;
 
-  // Optional pre-warm (Commands → Background console, "Start shell at
+  // Optional pre-warm (Commands -> Background console, "Start shell at
   // program launch"). Off by default: the shell starts on the first Ctrl+O
   // or the first command from the command line.
   if FSession.ConsoleStartOnLaunch then
@@ -1648,7 +1648,7 @@ begin
 
   CreateUpdater;
 
-  // Stage 24: Quick View decode/error lands async — repaint once it does.
+  // Stage 24: Quick View decode/error lands async - repaint once it does.
   SetOverlayRepaintHandler(
     procedure
     begin
@@ -1803,7 +1803,7 @@ begin
       begin
         Recompose;
       end);
-  // Stage 24: Media Overlay (Ctrl+Q Quick View) — separate canvas pass on
+  // Stage 24: Media Overlay (Ctrl+Q Quick View) - separate canvas pass on
   // top of the grid, per OVERLAY_PLUGIN.md invariant 2 ("not TCharCell").
   // Gated by QuickViewVisible: the overlay's stored bounds only make sense
   // while Dual Panel is showing its wkPanels list, not Console/Viewer/
@@ -1812,7 +1812,7 @@ begin
     DrawOverlayPreview(Canvas, FRenderer.CellWidth, FRenderer.CellHeight)
   // Stage 25: Markdown Viewer image reuses the same Media Overlay singleton.
   // F3 opens the Viewer as a Dual Panel document tab, so FMdi.Active is
-  // DualPanel — not TEditorWindow. Check the nested document first; keep
+  // DualPanel - not TEditorWindow. Check the nested document first; keep
   // the standalone-editor branch for a future MDI editor window.
   else if Assigned(FDualPanel) and FDualPanel.MarkdownImageOverlayVisible then
     DrawOverlayPreview(Canvas, FRenderer.CellWidth, FRenderer.CellHeight)
@@ -2227,7 +2227,7 @@ begin
     AShift) = kaReloadKeymap;
 end;
 
-// Host form dialogs (MkDir/Copy/…) live on Dual Panel — must win over the
+// Host form dialogs (MkDir/Copy/...) live on Dual Panel - must win over the
 // active MDI window (Console/Editor) so Enter reaches the default button.
 function TMainForm.TryDispatchDualPanelDialogKey(var Key: Word; var KeyChar: Char;
   Shift: TShiftState): Boolean;
@@ -2237,7 +2237,7 @@ begin
 end;
 
 // Esc in ConsoleMode always restores panels (never stops the running command
-// — Ctrl+C does that). Routed through FConsole.HandleInput first so an
+// - Ctrl+C does that). Routed through FConsole.HandleInput first so an
 // active scrollback selection is cleared before dismissing, same as
 // click-away. Routed here because DualPanel.HandleInput exits early while
 // ConsoleMode is on, so focus on F-keys / status would otherwise swallow Esc.
@@ -2346,7 +2346,7 @@ begin
     KeyChar := #0;
     Exit;
   end;
-  // Enter variants → vkReturn; AltGr+Enter → Alt+Enter (Properties), not
+  // Enter variants -> vkReturn; AltGr+Enter -> Alt+Enter (Properties), not
   // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.
   NormalizeKeyInput(K, C, Shift, IsAltGrDown);
   if TryHandleZoom(K, C, Shift) then
@@ -2359,7 +2359,7 @@ begin
   begin
     Key := 0;
     KeyChar := #0;
-    Exit; // do not call inherited — prevents FMX Tab focus cycling
+    Exit; // do not call inherited - prevents FMX Tab focus cycling
   end;
   inherited KeyDown(Key, KeyChar, Shift);
 end;
@@ -2383,7 +2383,7 @@ begin
   // Zoom shortcuts only; Tab/panels handled in KeyDown override (before FMX).
   SyncKeyModifiers(Shift);
 
-  // ReloadKeymap (Ctrl+Alt+K) — reload keymap.json from config dir.
+  // ReloadKeymap (Ctrl+Alt+K) - reload keymap.json from config dir.
   // Checked BEFORE DispatchTerminalKey: the Dual Panel cmdline and panels
   // absorb printable letters (including 'K') as input, which would otherwise
   // swallow the hot-reload shortcut whenever the panel/cmdline had focus.

@@ -43,7 +43,7 @@ function SshConnectionDisplayLabel(const AConn: TSshConnection): string;
 function SshConnectionAuthority(const AConn: TSshConnection): string;
 
 /// <summary>Builds the ssh.exe/sftp.exe host argument list shared by both
-/// consumers: ['-p'/'​-P', port] (if Port &lt;&gt; 0), ['-i', identity] (if set).
+/// consumers: ['-p'/'-P', port] (if Port &lt;&gt; 0), ['-i', identity] (if set).
 /// AHostArg is always appended last as "user@host" (or just "host" if User
 /// is empty). APortFlag is '-p' for ssh.exe, '-P' for sftp.exe (they differ).</summary>
 function SshConnectionArgs(const AConn: TSshConnection; const APortFlag: string): TArray<string>;

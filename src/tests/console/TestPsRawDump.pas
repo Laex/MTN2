@@ -4,7 +4,7 @@
   sends over ConPTY at startup and after one WriteInput, with control bytes
   made visible, so a human can see what our ANSI parser / line-buffered
   local-echo logic actually has to deal with. Paste the console output back
-  for analysis — this is what TConsoleBuffer.AppendOutputEx receives verbatim. }
+  for analysis - this is what TConsoleBuffer.AppendOutputEx receives verbatim. }
 
 interface
 

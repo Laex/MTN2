@@ -23,7 +23,7 @@ type
 function ResolveAssociation(const AName: string; AIsDirectory: Boolean): TAssocAction;
 function AssociationLabel(AAction: TAssocAction): string;
 /// <summary>True for extensions that always launch directly (.exe/.bat/...)
-/// — exported so uUserAssociations.pas can keep this one priority-1 rule
+/// - exported so uUserAssociations.pas can keep this one priority-1 rule
 /// ahead of user-defined overrides, mirroring Far/TC/NDN where executables
 /// always win over internal associations.</summary>
 function IsLaunchableExt(const AExt: string): Boolean;
@@ -94,24 +94,24 @@ begin
 
   Ext := NormalizeFileExtension(AName);
 
-  // Launchables → always platform shell.
+  // Launchables -> always platform shell.
   if IsLaunchableExt(Ext) then
     Exit(aaShell);
 
-  // Source / structured text → Editor (F4 / Enter).
+  // Source / structured text -> Editor (F4 / Enter).
   if IsEditorExt(Ext) then
     Exit(aaEdit);
 
-  // Plain notes / logs → Viewer on Enter (F4 still edits).
+  // Plain notes / logs -> Viewer on Enter (F4 still edits).
   if IsPlainTextExt(Ext) then
     Exit(aaView);
 
-  // Archives → Nested VFS navigate (Enter handled in ActivateCurrent too).
+  // Archives -> Nested VFS navigate (Enter handled in ActivateCurrent too).
   if (Ext = '.zip') or (Ext = '.jar') or (Ext = '.apk') then
     Exit(aaNavigate);
 
   // Documents / media: always prefer the OS open handler (ShellExecute).
-  // Do not gate on HasShellOpen — AssocQueryString often returns empty for
+  // Do not gate on HasShellOpen - AssocQueryString often returns empty for
   // UWP defaults (Movies & TV, Photos) even though ShellExecute still works.
   if IsShellPreferredExt(Ext) then
     Exit(aaShell);

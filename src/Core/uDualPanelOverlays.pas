@@ -18,9 +18,9 @@ type
 
 const
   /// <summary>Menu hotkey letters in every menu (F9 bar and dropdowns, F2
-  /// user menu) -- dark red on whatever background the row has, fixed
-  /// rather than theme-driven at the user's request (how FAR/NDN menus
-  /// always looked), and one colour so all menus read the same.</summary>
+  /// user menu) -- dark red on whatever background the row has. Fixed, not
+  /// theme-driven: FAR/NDN menus always looked like this, and one colour
+  /// makes all menus read the same.</summary>
   cMenuHotKeyFg = TAlphaColor($FFC00000);
 
 /// <summary>Resolves a menu item's hotkey after translation (every menu: F9,
@@ -170,7 +170,7 @@ procedure ResolveOverlayTextColors(const ATheme: IThemeRenderer;
   AFallbackFg, AFallbackBg: TAlphaColor; out AFg, ABg: TAlphaColor);
 begin
   // Dialog body: cursor = black on cyan; selected/error = dark red;
-  // AIsDirectory reused by callers as "hot tip" → dark cyan. Fallbacks ignored
+  // AIsDirectory reused by callers as "hot tip" -> dark cyan. Fallbacks ignored
   // when Theme is set so panel-blue colours never paint over dialog chrome.
   if ACursor then
   begin

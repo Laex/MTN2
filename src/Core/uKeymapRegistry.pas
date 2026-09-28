@@ -6,7 +6,7 @@ unit uKeymapRegistry;
   runtime; the registry is applied as an overlay on top of the embedded
   default + user keymap.json merge (see uKeymap.GKeymapOverlayHook).
 
-  TKeymapAction stays a closed compile-time enum (uKeymap.pas) — plugins can
+  TKeymapAction stays a closed compile-time enum (uKeymap.pas) - plugins can
   only rebind keys to *existing* actions, not introduce new ones. That is
   a deliberate scope limit: dispatch for each action is still hardcoded
   elsewhere in the app, so a "new action" would need a matching dispatch
@@ -22,7 +22,7 @@ type
   IKeymapRegistry = interface
     ['{7C6F1A2E-9B3D-4C5A-8E1F-2D4B6A8C0E12}']
     /// <summary>Registers AKeyCombo (e.g. "Ctrl+Shift+F5") as an additional
-    /// hotkey for AAction (e.g. "Copy" — see KEYMAP_ACTION_NAMES in uKeymap.pas).
+    /// hotkey for AAction (e.g. "Copy" - see KEYMAP_ACTION_NAMES in uKeymap.pas).
     /// Silently ignored if AAction/AKeyCombo cannot be parsed.</summary>
     procedure RegisterBinding(const APluginId, AAction, AKeyCombo: string);
     /// <summary>Removes all bindings registered by APluginId.</summary>

@@ -3,7 +3,7 @@ unit TestStreamingArchiveViewer;
 { Regression: an archive entry too big for the whole-buffer load
   (cEditorMaxBytes) must still open in F3/F4 via the line-indexed streaming
   path, by extracting to a temp file first (TEditorDoc.
-  StartStreamingOpenFromArchive) — mirrors TestStreamingViewer.pas's
+  StartStreamingOpenFromArchive) - mirrors TestStreamingViewer.pas's
   coverage of the plain-local-file streaming path, plus a check that the
   temp file used for extraction doesn't leak past Close/Free. }
 
@@ -44,8 +44,8 @@ uses
   uEditorDoc;
 
 const
-  // Cyrillic "Тест" — codepoints, not a literal (avoids depending on this
-  // unit's own source encoding — see TestStreamingViewer.pas's header note).
+  // Cyrillic "Тест" - codepoints, not a literal (avoids depending on this
+  // unit's own source encoding - see TestStreamingViewer.pas's header note).
   cCyr = #$0422#$0435#$0441#$0442;
 
 var
@@ -76,7 +76,7 @@ begin
   Result := TPath.Combine(GTempDir, AName);
 end;
 
-/// <summary>Plain UTF-8 text file, no BOM, just over cEditorMaxBytes — same
+/// <summary>Plain UTF-8 text file, no BOM, just over cEditorMaxBytes - same
 /// shape as TestStreamingViewer.pas's MakeBigUtf8, kept self-contained here
 /// since these standalone harnesses don't share code with each other.</summary>
 function MakeBigUtf8File(const APath: string): Integer;

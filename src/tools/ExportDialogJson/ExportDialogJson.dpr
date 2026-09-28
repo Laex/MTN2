@@ -3,7 +3,7 @@ program ExportDialogJson;
 {$APPTYPE CONSOLE}
 
 { Validates src/dialogs/*.json (source of truth for RCDATA in MTN2.rc).
-  Does not regenerate layouts from Pascal — edit JSON, then rebuild MTN2. }
+  Does not regenerate layouts from Pascal - edit JSON, then rebuild MTN2. }
 
 uses
   System.SysUtils, System.IOUtils,

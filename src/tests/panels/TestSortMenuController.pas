@@ -1,6 +1,6 @@
 unit TestSortMenuController;
 
-{ Behavior checks for TSortMenuController (Ctrl+F3..F9 "Sort by" popup) —
+{ Behavior checks for TSortMenuController (Ctrl+F3..F9 "Sort by" popup) -
   navigation, hotkey/Enter/click selection, mutual-exclusion-free lifecycle.
   Draw() is not exercised: the project's test convention (see
   TestPanelColumns.pas, TestDualPanelCmdLine.pas, ...) checks logic/state,
@@ -86,7 +86,7 @@ begin
     Assert.IsTrue(Ctrl.Bounds.Width >= 10, 'Open() lays out a non-degenerate popup');
     Assert.IsTrue(Inv.Count > 0, 'Open() requests an invalidate');
 
-    // Size is the 4th item (index 3) in BuildSortMenuItems order — confirmed
+    // Size is the 4th item (index 3) in BuildSortMenuItems order - confirmed
     // indirectly: pressing Enter immediately must select Size, not Name.
     Key := Word(vkReturn);
     Ch := #0;
@@ -117,7 +117,7 @@ begin
     Ctrl.Open(pscName, False); // Name = index 0, first row
 
     // AKey is a var param that HandleInput zeroes after consuming it (the
-    // "handled, stop dispatching" signal a real key-event loop relies on) —
+    // "handled, stop dispatching" signal a real key-event loop relies on) -
     // it must be re-armed with the key code before every single press.
     Ch := #0;
     Key := Word(vkUp); Ctrl.HandleInput(Key, [], Ch);

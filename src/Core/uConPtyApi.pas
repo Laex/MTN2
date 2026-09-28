@@ -3,7 +3,7 @@ unit uConPtyApi;
 { Windows ConPTY (Pseudo Console) API bindings.
   Not present in Delphi's Winapi.Windows.pas (added to Windows 10 SDK in
   build 17763 / Oct 2018 Update, RTL headers have not caught up). Requires
-  Windows 10 1809+ at runtime — every currently supported Windows version. }
+  Windows 10 1809+ at runtime - every currently supported Windows version. }
 
 interface
 

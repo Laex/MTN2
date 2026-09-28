@@ -7,7 +7,7 @@ unit TestPluginLoader;
   IVfsRegistry/IMenuRegistry/IKeymapRegistry.
 
   TPluginLoader.LoadPluginsFrom expects one subdirectory per plugin
-  (<dir>\<plugin-id>\*.dll — see uPluginLoader.pas), so this test stages
+  (<dir>\<plugin-id>\*.dll - see uPluginLoader.pas), so this test stages
   SamplePlugin.dll into such a layout under a scratch "plugins" folder next
   to the exe before loading it. }
 
@@ -60,7 +60,7 @@ begin
   TDirectory.CreateDirectory(DestDir);
   DestDll := TPath.Combine(DestDir, 'SamplePlugin.dll');
   TFile.Copy(SrcDll, DestDll, True);
-  // No plugin.json shipped with SamplePlugin — write one declaring an
+  // No plugin.json shipped with SamplePlugin - write one declaring an
   // archiveExtensions entry so TestArchiveExtensionsFromManifest below can
   // exercise uPluginLoader.RegisterManifestArchiveExtensions end-to-end.
   TFile.WriteAllText(TPath.Combine(DestDir, 'plugin.json'),

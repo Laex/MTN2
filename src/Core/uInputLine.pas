@@ -58,8 +58,8 @@ procedure ClipboardSet(const AText: string);
 function ClipboardGet: string;
 
 /// <summary>Word-navigation alphabet shared by input lines and the
-/// Viewer/Editor: letters (any script), digits and '_'. Everything else —
-/// spaces, punctuation, path separators — is a delimiter.</summary>
+/// Viewer/Editor: letters (any script), digits and '_'. Everything else -
+/// spaces, punctuation, path separators - is a delimiter.</summary>
 function TextIsWordChar(ACh: Char): Boolean;
 /// <summary>Ctrl+Right step within one line: skip delimiters, then the word,
 /// stopping at the next delimiter. APos/Result are 0-based caret positions

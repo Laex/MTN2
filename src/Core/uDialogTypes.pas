@@ -16,7 +16,7 @@ type
   /// channel should preview as the theme's own resolved color for (matching
   /// color-coding's own "0 = inherit" semantics) instead of falling back to
   /// a fixed placeholder. cspsNone (JSON omits "panelState") keeps the old
-  /// fixed black-on-gray fallback — e.g. the color picker's single-channel
+  /// fixed black-on-gray fallback - e.g. the color picker's single-channel
   /// preview isn't tied to any one panel row.</summary>
   TColorSamplePanelState = (cspsNone, cspsNormal, cspsSelected, cspsCurrent);
 
@@ -45,7 +45,7 @@ type
     /// <summary>dckColorSample only: same as FgSourceId, for the background.
     /// '' = background stays at Host's default (white).</summary>
     BgSourceId: string;
-    /// <summary>dckColorSample only — see TColorSamplePanelState.</summary>
+    /// <summary>dckColorSample only - see TColorSamplePanelState.</summary>
     PanelState: TColorSamplePanelState;
     /// <summary>dckInput: draw '*' instead of the stored characters.</summary>
     Password: Boolean;
@@ -128,7 +128,7 @@ function MakeRadioGroup(const AId, ACaption: string; const AItems: TArray<string
 function MakeButton(const AId, AText: string; ADefault: Boolean = False;
   ACancel: Boolean = False): TDialogControl;
 function MakeStatus(const AId, AText: string): TDialogControl;
-/// <summary>Live color-swatch preview — see TDialogControl.FgSourceId/BgSourceId.</summary>
+/// <summary>Live color-swatch preview - see TDialogControl.FgSourceId/BgSourceId.</summary>
 function MakeColorSample(const AId, AText, AFgSourceId, ABgSourceId: string;
   APanelState: TColorSamplePanelState = cspsNone): TDialogControl;
 /// <summary>"normal"/"selected"/"current" -> TColorSamplePanelState; anything
@@ -139,7 +139,7 @@ function MakeList(const AId: string; const AItems: TArray<string>;
 /// <summary>Collapsed combo: selected item + popup list (DropDownList).</summary>
 function MakeDropDown(const AId: string; const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogControl;
-/// <summary>Horizontal rule label (─ × width) for protocol 2.0 separators.</summary>
+/// <summary>Horizontal rule label (─ x width) for protocol 2.0 separators.</summary>
 function MakeHRule(AWidth: Integer): TDialogControl;
 /// <summary>Protocol 2.0 helper: set absolute cell box (col/row/w/h).</summary>
 function WithControlBox(const ACtrl: TDialogControl; ACol, ARow, AWidth,
@@ -184,8 +184,8 @@ function BuildFileHistoryDialog(const AItems: TArray<string>;
 /// <summary>AItems are pre-formatted display labels (id, name, version),
 /// see HostPluginListDisplayLabels in uPluginHost.pas.</summary>
 function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;
-/// <summary>AItems are pre-formatted display labels ("Name  —  path" or
-/// bare path when unnamed) — see FolderHotlistDisplayLabel.</summary>
+/// <summary>AItems are pre-formatted display labels ("Name  -  path" or
+/// bare path when unnamed) - see FolderHotlistDisplayLabel.</summary>
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
@@ -217,7 +217,7 @@ function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   ATwoWay: Boolean = False; AByContent: Boolean = False): TDialogDeclaration;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
   const ALines: TArray<string>): TDialogDeclaration;
-/// <summary>Options > Columns... — which fields pcmCustom shows. One
+/// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
@@ -254,7 +254,7 @@ function BuildUpdateMessageDialog(const AMessage, ADetails, AOkText: string;
 /// show_check_notice checkboxes, buttons check / close (Esc).</summary>
 function BuildUpdatesDialog(const ACurrentVersion: string;
   ACheckOnStart, AShowCheckNotice: Boolean): TDialogDeclaration;
-/// <summary>AItems are pre-formatted display labels — see
+/// <summary>AItems are pre-formatted display labels - see
 /// ColorCodingDisplayLabel in uColorCodingEditHelpers.pas.</summary>
 function BuildColorCodingDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
@@ -262,14 +262,14 @@ function BuildColorCodingEditDialog(const AName, AMask: string;
   AApplyToIndex: Integer; AEnabled: Boolean;
   const ANormalFg, ANormalBg, ASelectedFg, ASelectedBg,
   ACurrentFg, ACurrentBg: string): TDialogDeclaration;
-/// <summary>APresetLabels are pre-formatted display labels (name + hex —
+/// <summary>APresetLabels are pre-formatted display labels (name + hex -
 /// see ColorPickerPresets in uColorCodingEditHelpers.pas); APresetIndex is which one
 /// starts selected. AIsBg wires the live preview to show ACurrentHex as the
 /// background (picking a Bg field) or foreground (picking a Fg field).</summary>
 function BuildColorPickerDialog(const ATitle, ACurrentHex: string;
   const APresetLabels: TArray<string>; APresetIndex: Integer;
   AIsBg: Boolean): TDialogDeclaration;
-/// <summary>AItems are pre-formatted "Action  Hotkeys" rows — see
+/// <summary>AItems are pre-formatted "Action  Hotkeys" rows - see
 /// TKeymapDialogController.ActionRowLabel in uDualPanelKeymapDialog.pas.</summary>
 function BuildKeymapDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;

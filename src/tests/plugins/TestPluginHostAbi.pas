@@ -61,7 +61,7 @@ begin
 
   LRes := mtn_host_invalidate(LWindowId);
   Assert.IsTrue(LRes = 0, 'mtn_host_invalidate should return 0 for a registered window');
-  // Invalidate is delivered via TThread.Queue — pump the message queue.
+  // Invalidate is delivered via TThread.Queue - pump the message queue.
   CheckSynchronize(200);
   Assert.IsTrue(LInvalidated, 'Registered invalidate proc should have run');
 

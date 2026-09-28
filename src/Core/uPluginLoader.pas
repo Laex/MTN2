@@ -1,7 +1,7 @@
 unit uPluginLoader;
 
 { Plugin loader. Layout: each plugin lives in its own subdirectory of the
-  plugins root (<ExeDir>\plugins\<plugin-id>\ — the plugin-id used for
+  plugins root (<ExeDir>\plugins\<plugin-id>\ - the plugin-id used for
   registration and for uDialogResources.TryLoadPluginDialogJson's
   plugins\<id>\dialogs\ lookup is the subdirectory name). Bare files
   directly under the plugins root are NOT loaded.
@@ -18,7 +18,7 @@ unit uPluginLoader;
 
   WASM (stage 30): every *.wat / *.wasm in the same subdirectory is loaded
   through uWasmPluginHost (optional wasmtime.dll). Guest code talks JSON /
-  UTF-8 copies in linear memory — not THostApiTable pointers. Missing
+  UTF-8 copies in linear memory - not THostApiTable pointers. Missing
   wasmtime.dll skips WASM modules without failing the host (same idea as
   a missing 7z.dll). A trap inside the guest is logged and isolated; it
   does not unwind into the Delphi process.
@@ -26,7 +26,7 @@ unit uPluginLoader;
   Stability note: LoadLibrary/GetProcAddress failures and ABI mismatches are
   handled without crashing the host (skip + log). Once mtn_plugin_init is
   called, a genuinely misbehaving *native* plugin (e.g. an access violation
-  inside its own code) can still crash the process — Win32/Delphi structured
+  inside its own code) can still crash the process - Win32/Delphi structured
   exception handling cannot fully sandbox a loaded native DLL. WASM guests
   are the in-process sandbox for untrusted native-contract plugins.
 
@@ -97,11 +97,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Loads every plugin found under ADir\<plugin-id>\*.dll — one
+    /// <summary>Loads every plugin found under ADir\<plugin-id>\*.dll - one
     /// subdirectory per plugin, plugin-id = subdirectory name (see unit
     /// comment). A bare *.dll/*.wat/*.wasm directly under ADir is ignored.
     /// Missing ADir is not an error (no plugins to load). Failures on
-    /// individual modules are logged (see OnLog) and skipped — one bad
+    /// individual modules are logged (see OnLog) and skipped - one bad
     /// plugin never stops the others or the host.</summary>
     procedure LoadPluginsFrom(const ADir: string);
     /// <summary>Scans ADir the same way as LoadPluginsFrom but does not
@@ -138,13 +138,13 @@ function PluginLoader: TPluginLoader;
 
 implementation
 
-{ Register* thunks — each becomes a THostApiTable function pointer.
+{ Register* thunks - each becomes a THostApiTable function pointer.
   AUserData for RegisterVfsScheme carries the plugin's own VFS callback
   AUserData through unchanged; the plugin id is passed explicitly per call
   since a single cdecl function pointer is shared by every loaded plugin. }
 
 { A manifest's archiveExtensions (mtn.7z's plugin.json etc.) become
-  akSevenZip entries in GlobalVfsRegistry — the only pluggable archive
+  akSevenZip entries in GlobalVfsRegistry - the only pluggable archive
   kind today (see TArchiveExtensionKind in uVfsRegistry.pas); the built-in
   zip/jar/apk entries are registered once in GlobalVfsRegistry itself, not
   here. Tagging with APluginId means UnloadAll's UnregisterPlugin call
@@ -659,7 +659,7 @@ begin
   for PluginDir in TDirectory.GetDirectories(ADir, '*', TSearchOption.soTopDirectoryOnly) do
   begin
     PluginId := TPath.GetFileName(PluginDir);
-    // dll, then wat, then wasm — same order as before the single scan.
+    // dll, then wat, then wasm - same order as before the single scan.
     Modules := CollectPluginModules(PluginDir);
     for FileName in Modules do
       if SameText(TPath.GetExtension(FileName), '.dll') then

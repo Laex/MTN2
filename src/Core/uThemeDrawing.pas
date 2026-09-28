@@ -2,7 +2,7 @@ unit uThemeDrawing;
 
 { Concrete Host-side drawing helpers shared across dialogs/overlays/windows:
   FAR-style warning frame, drop shadows, backdrop dimming, and the frame
-  close-hit test. Not part of IThemeRenderer — themes decide colors, this
+  close-hit test. Not part of IThemeRenderer - themes decide colors, this
   unit paints fixed FAR/NDN chrome that every theme shares. See uThemeTypes
   for the type/interface contracts these operate on. }
 
@@ -32,7 +32,7 @@ procedure DrawWarningDialogFrame(const AGrid: TTerminalGrid; const ABounds: TRec
   const ATitle: string);
 /// <summary>
 /// FAR/NDN-style dialog drop shadow (1 cell right + below). Darkens cells
-/// already painted under the dialog — does not clear them to blank spaces.
+/// already painted under the dialog - does not clear them to blank spaces.
 /// </summary>
 procedure DrawDialogShadow(const AGrid: TTerminalGrid; const ABounds: TRectI);
 /// <summary>
@@ -64,7 +64,7 @@ function ContrastingGlyphFg(ABg, APreferred, AFallback: TAlphaColor): TAlphaColo
 
 /// <summary>
 /// Vertical "dialog-style" scrollbar: black ▲/▼ arrows, track and thumb on
-/// a fixed white/black/cyan palette (not theme-dependent) — every plain
+/// a fixed white/black/cyan palette (not theme-dependent) - every plain
 /// declarative dialog list (TDialogHost.DrawListScrollBar) and the
 /// ADialogStyle overlays in uDualPanelDrawUtils.DrawPanelScrollBar (Change
 /// Drive / Sort / Column popups) share this exact chrome.
@@ -202,7 +202,7 @@ end;
 const
   // Single shadow strength shared by DrawDialogShadow and DrawButtonShadow
   // (was two separate constants, each with its own Skia/non-Skia split, and
-  // DrawButtonShadow additionally graded a "near"/"far" pair — that second,
+  // DrawButtonShadow additionally graded a "near"/"far" pair - that second,
   // lighter tone plus Skia's own glyph-edge antialiasing read as a shadow
   // cast on top of a shadow. One strength, used the same way in both places,
   // fixes that. Stronger under Skia where subpixel AA makes a softer strip
@@ -263,7 +263,7 @@ begin
   Cover := ShadowCoverFor(GShadowStyle);
   if (Cover = 0) or (ABounds.Width < 2) or (ABounds.Height < 2) then
     Exit;
-  // Right strip (starts one row below the top corner — classic FAR look).
+  // Right strip (starts one row below the top corner - classic FAR look).
   for Y := ABounds.Top + 1 to ABounds.Bottom + 1 do
     ShadeCell(ABounds.Right + 1, Y);
   // Bottom strip (Left+1 .. Right inclusive; corner already shaded above).
@@ -315,7 +315,7 @@ begin
   if (Cover = 0) or (ABounds.Width < 1) or (ABounds.Height < 1) then
     Exit;
   // Half-block glyph (▄/▀), single darkened tone (cShadowCover, same one
-  // DrawDialogShadow uses) — the glyph's own half of the cell is the shadow;
+  // DrawDialogShadow uses) - the glyph's own half of the cell is the shadow;
   // the other half keeps the panel color under it exactly as-is (not a
   // second, lighter darken pass), so there's one shadow edge, not two.
   // Right of face: ▄ (lower half block).
@@ -344,7 +344,7 @@ begin
   // Match TNDNTheme.DrawWindowFrame: BtnX := Right - Length('[x]').
   BtnX := ABounds.Right - cCloseW;
   if BtnX <= ABounds.Left + 2 then
-    Exit; // no room — theme skips the mark
+    Exit; // no room - theme skips the mark
   Result := (AX >= BtnX) and (AX < BtnX + cCloseW);
 end;
 

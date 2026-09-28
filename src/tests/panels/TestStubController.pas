@@ -2,9 +2,9 @@ unit TestStubController;
 
 { Behavior checks for TStubController (generic shell-info / folder-size
   message overlay). Two asymmetries worth locking down against regression:
-  (1) unlike the three menu popups, Open() does NOT lay out Bounds — only
+  (1) unlike the three menu popups, Open() does NOT lay out Bounds - only
   Layout()/Draw() do, so Bounds is stale/degenerate right after Open();
-  (2) HandleInput has no Visible/skNone guard — it's safe (and a no-op past
+  (2) HandleInput has no Visible/skNone guard - it's safe (and a no-op past
   the first call) to invoke even when nothing is open.
   Draw() itself is not exercised: the project's test convention (see
   TestPanelColumns.pas, TestSortMenuController.pas, ...) checks logic/state,
@@ -119,7 +119,7 @@ begin
 
     // Medium panel: half (25) is below the 28 floor -> floors at 28.
     // (The implementation's second "W > PanelW-2" clamp re-floors to
-    // Max(PanelW-2, 28), which is always >= 28 — so 28 is a hard floor
+    // Max(PanelW-2, 28), which is always >= 28 - so 28 is a hard floor
     // that this Layout can never size below, by construction.)
     Ctrl.Layout(50, 25);
     R := Ctrl.Bounds;
@@ -142,7 +142,7 @@ begin
     Ctrl.Open(skShellInfo, 'Title', 'Detail');
 
     // PanelW=10 is narrower than the 28-cell floor: W still floors to 28
-    // (wider than the panel itself — accepted overflow, same convention as
+    // (wider than the panel itself - accepted overflow, same convention as
     // TJobPopupRenderer.ComputeLayout), but Left must not go negative.
     Ctrl.Layout(10, 20);
     R := Ctrl.Bounds;

@@ -1,6 +1,6 @@
 unit uRecycleBinVfs;
 
-{ Virtual file system backend for recycle:// — browse and restore items in
+{ Virtual file system backend for recycle:// - browse and restore items in
   the Windows Recycle Bin. Mostly read-only, shaped like uSysFoldersVfs.pas/
   uFindVfs.pas: only ListDirectoryAsync/ExistsAsync are real; DeleteAsync
   does a real permanent purge; everything else is vecNotSupported.
@@ -15,22 +15,22 @@ unit uRecycleBinVfs;
   Key facts that shape the design below:
   - IShellFolder2 bound to CSIDL_BITBUCKET enumerates real Recycle Bin
     entries. Column index 1 is "Original Location" on every locale/Windows
-    version — the column ORDER is fixed by the shell even though the header
+    version - the column ORDER is fixed by the shell even though the header
     TEXT is localized (confirmed against a live Russian-locale install).
   - GetDisplayNameOf(pidl, SHGDN_NORMAL) is NOT a plain leaf name for
-    Recycle Bin items — it returns something closer to the full original
+    Recycle Bin items - it returns something closer to the full original
     path. GetDetailsOf(pidl, 0, ...) (the "Name" column) is closer but has
     its extension stripped whenever Explorer's "hide extensions for known
     file types" preference applies. GetDisplayNameOf(pidl, SHGDN_FORPARSING)
     reliably returns the item's real underlying filesystem path
     (`<drive>:\$Recycle.Bin\<SID>\$R<random><.ext>`) WITH the true
-    extension — used both as this unit's stable URI identity (no PIDL/
-    session caching needed between calls — every operation re-enumerates
+    extension - used both as this unit's stable URI identity (no PIDL/
+    session caching needed between calls - every operation re-enumerates
     and matches by this path) and as the source of the true extension for
     reconstructing the original display name (column-0 name + this path's
     extension, only appended if column-0 doesn't already end with it).
   - Restoring is IFileOperation.MoveItem(item, originalFolderItem, itemName,
-    nil) — there is no direct Win32 "Restore" call. }
+    nil) - there is no direct Win32 "Restore" call. }
 
 interface
 
@@ -69,7 +69,7 @@ const
   cRecycleBinRootUri = 'recycle:///';
 
 /// <summary>Restore ARecycleUri's item back to its original location.
-/// Synchronous (Shell COM calls) — run off the UI thread. Re-enumerates and
+/// Synchronous (Shell COM calls) - run off the UI thread. Re-enumerates and
 /// matches by real path each time; no session/PIDL state is kept between
 /// calls.</summary>
 function RestoreRecycleBinItem(const ARecycleUri: string; out AError: TVfsError): Boolean;
@@ -80,7 +80,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils,
   Winapi.Windows, Winapi.ActiveX, Winapi.ShlObj, Winapi.ShellAPI;
 
-{ Thread-marshalling boilerplate — duplicated from uSysFoldersVfs.pas/
+{ Thread-marshalling boilerplate - duplicated from uSysFoldersVfs.pas/
   uFindVfs.pas per established project convention (not factored out). }
 
 procedure QueueList(const AOnDone: TVfsListCallback; const AItems: TArray<TVfsEntry>;
@@ -285,7 +285,7 @@ begin
         Col0 := StrRetToStr(Details.str, ChildPidl);
       AItemName := BuildItemName(Col0, ParsingPath);
       Result := True;
-      Exit; // keep this PIDL alive for the caller — do not free it below
+      Exit; // keep this PIDL alive for the caller - do not free it below
     end;
     if Assigned(AMalloc) then
       AMalloc.Free(ChildPidl);
@@ -369,7 +369,7 @@ begin
     except
       // A background-thread exception here would otherwise kill the worker
       // silently (see uDualPanelWindow.RestoreCursorItemFromRecycleBin: it
-      // only reports back via TThread.Queue after this function returns) —
+      // only reports back via TThread.Queue after this function returns) -
       // never let one escape unreported.
       on E: Exception do
       begin
@@ -426,7 +426,7 @@ begin
           AError := TVfsError.Make(vecIOError, 'Cannot start delete operation', ARecycleUri);
           Exit;
         end;
-        // No FOF_ALLOWUNDO — this permanently purges the item.
+        // No FOF_ALLOWUNDO - this permanently purges the item.
         Op.SetOperationFlags(FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI);
         HR := Op.DeleteItem(Item, nil);
         if Succeeded(HR) then
@@ -443,7 +443,7 @@ begin
           Malloc.Free(FoundPidl);
       end;
     except
-      // Same reasoning as RestoreRecycleBinItem — never let an exception
+      // Same reasoning as RestoreRecycleBinItem - never let an exception
       // escape and silently kill the calling background thread.
       on E: Exception do
       begin
@@ -528,10 +528,10 @@ begin
             FillChar(E, SizeOf(E), 0);
             E.Name := BuildItemName(Col0, ParsingPath);
             E.IsDirectory := TDirectory.Exists(ParsingPath);
-            // TVfsEntry has no URI field of its own — RowsFromVfsItems
+            // TVfsEntry has no URI field of its own - RowsFromVfsItems
             // (uDualPanelTypes.pas) uses TargetURI as the row's actual URI
-            // whenever set (falling back to JoinFileUri(dir, Name) — always
-            // a file:// URI — otherwise, which would be wrong here). Every
+            // whenever set (falling back to JoinFileUri(dir, Name) - always
+            // a file:// URI - otherwise, which would be wrong here). Every
             // entry MUST set TargetURI, and it must stay a recycle:// URI
             // (not file://) so Delete/etc. keep routing through this
             // provider's DeleteAsync (permanent purge) instead of silently
@@ -569,7 +569,7 @@ var
 begin
   URI := AURI;
   OnDone := AOnDone;
-  // Recycle Bin items are already "deleted" — Delete here always means a
+  // Recycle Bin items are already "deleted" - Delete here always means a
   // real permanent purge (AMode is ignored: there is nowhere further to
   // recycle to).
   TThread.CreateAnonymousThread(
@@ -603,7 +603,7 @@ procedure TRecycleBinVirtualFileSystem.MoveAsync(const AFromURI, AToURI: string;
 begin
   // Restore is exposed as a dedicated RestoreRecycleBinItem function, called
   // directly by the UI rather than routed through IVirtualFileSystem.MoveAsync
-  // — TVfsRegistryRoot.MoveAsync special-cases only find:// and archive
+  // - TVfsRegistryRoot.MoveAsync special-cases only find:// and archive
   // chains today, so bypassing it here is simpler than extending it.
   QueueBool(AOnDone, False, TVfsError.Make(vecNotSupported,
     'Use Restore to move an item out of the Recycle Bin', AFromURI));

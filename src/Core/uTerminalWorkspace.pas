@@ -1,7 +1,7 @@
 ﻿unit uTerminalWorkspace;
 
 { Stage 21 Terminal Workspace: full-area MDI window with its own shell session,
-  raw keyboard → pipes, scrollback/selection chrome.
+  raw keyboard -> pipes, scrollback/selection chrome.
   Inherits buffer, PTY, selection, mouse and clipboard from TBaseConsoleWindow.
   Unique to this class:
     - IsTerminalHostPassthrough: keeps the keymap's Global keys from the shell.
@@ -28,7 +28,7 @@ type
     FCloseOnExit: Boolean;
     procedure DoCloseWorkspace;
     /// <summary>Esc: confirm before killing the shell. Unlike CloseWorkspace
-    /// this is asynchronous — the tab dies only once the dialog answers.</summary>
+    /// this is asynchronous - the tab dies only once the dialog answers.</summary>
     procedure AskCloseWorkspace;
     procedure CloseConfirmCommand(const AControlId, AValuesJson: string);
   protected
@@ -144,7 +144,7 @@ end;
 
 procedure TTerminalWorkspaceWindow.AskCloseWorkspace;
 begin
-  // No dialog host (shouldn't happen) — fall back to the old direct close
+  // No dialog host (shouldn't happen) - fall back to the old direct close
   // rather than leaving Esc dead.
   if not Assigned(FDialog) then
   begin
@@ -382,7 +382,7 @@ begin
   if HandleAltScreenNav(AKey, AShift) then
     Exit;
 
-  // Shift+arrows — extend selection (no PTY passthrough).
+  // Shift+arrows - extend selection (no PTY passthrough).
   if HandleSelectionKeys(AKey, AShift) then
     Exit;
 
@@ -513,7 +513,7 @@ begin
       begin SendRaw(#27'[3~'); AKey := 0; Exit; end;
   end;
 
-  // Printable characters → raw PTY.
+  // Printable characters -> raw PTY.
   if K.Mods * [ssCtrl, ssAlt] <> [] then
     Exit(False);
   if AKeyChar < ' ' then

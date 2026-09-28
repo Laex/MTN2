@@ -253,7 +253,7 @@ begin
     Rule[I] := (ADecl.Controls[I].Kind in [dckLabel, dckStatus]) and
       IsRuleText(ADecl.Controls[I].Text);
     NeedW[I] := Max(OrigW[I], CaptionCells(ADecl.Controls[I]));
-    // Buttons keep caption width — do not stretch a rightmost Cancel into
+    // Buttons keep caption width - do not stretch a rightmost Cancel into
     // a full-width bar when the dialog grows.
     Stretch[I] := (ADecl.Controls[I].Kind <> dckButton) and
       (OrigCol[I] + OrigW[I] >= ClientW - 1);

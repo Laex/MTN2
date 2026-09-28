@@ -56,7 +56,7 @@ begin
   Buf := TConsoleBuffer.Create;
   try
     // Prompt and typed command always arrive as separate chunks in production
-    // (prompt from the PTY, then local echo char-by-char) — never glued into
+    // (prompt from the PTY, then local echo char-by-char) - never glued into
     // one string; a combined "C:\>abc" here would hit FixPromptNewlines'
     // unrelated prompt-glued-to-content split, not what this test targets.
     Buf.AppendOutput('C:\>');

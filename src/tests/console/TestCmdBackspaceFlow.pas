@@ -97,7 +97,7 @@ begin
   Buf := TConsoleBuffer.Create;
   try
     // Prompt and typed command arrive as separate chunks in production (see
-    // TestConsoleBufferCmd.TestCmdEchoBackspaceSpace) — a combined string here
+    // TestConsoleBufferCmd.TestCmdEchoBackspaceSpace) - a combined string here
     // would hit FixPromptNewlines' unrelated prompt-glued-to-content split.
     Buf.AppendOutputEx('D:\Work\MTN2>');
     Buf.AppendOutputEx('abc');

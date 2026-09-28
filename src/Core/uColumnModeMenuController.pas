@@ -54,7 +54,7 @@ const
   cFileFg   = TAlphaColor($FFAAAAAA);
   cPanelBg  = TAlphaColor($FF0000AA);
   cFrameActive = TAlphaColor($FF55FFFF);
-  cSortHot  = TAlphaColor($FFFF55FF); // raspberry/magenta — readable on blue
+  cSortHot  = TAlphaColor($FFFF55FF); // raspberry/magenta - readable on blue
 
 constructor TColumnModeMenuController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AGetActivePanelBounds: TMenuPanelBoundsEvent;
@@ -280,7 +280,7 @@ begin
   end;
   // Ctrl+Shift+F1..Ctrl+Shift+F6: jump straight to that mode. Checked on the
   // raw VK (not AKeyChar) since held modifiers often suppress character
-  // translation — same convention as the outer Ctrl+` binding that opens
+  // translation - same convention as the outer Ctrl+` binding that opens
   // this menu. Ctrl+Alt+F1..F6 was tried first but collides with global
   // hotkeys some terminal emulators (e.g. ConEmu) register system-wide;
   // Ctrl+Shift+F1..F6 is a different chord from that.

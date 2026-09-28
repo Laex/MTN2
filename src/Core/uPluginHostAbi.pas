@@ -17,7 +17,7 @@ unit uPluginHostAbi;
   mtn_plugin_shutdown (uPluginLoader keeps a heap copy per plugin). Plugins
   that stash AHostApi must not use it after shutdown; copying the record by
   value is also valid because the function pointers themselves are stable.
-  The plugin calls back into the host through it — publish/invalidate for
+  The plugin calls back into the host through it - publish/invalidate for
   cross-cutting notifications, Register* to extend VFS/panels/keymap/menu/
   dialogs. Every host-side function wraps its Pascal body in try/except so
   an exception raised while servicing a plugin call can never unwind across
@@ -51,7 +51,7 @@ type
   /// If the encoded result doesn't fit, the plugin must not write partial
   /// data, set ANegotiatedSize to the required size, and return
   /// verNeedsBiggerBuffer (see TVfsCdeclResult). The host adapter currently
-  /// treats that as a hard failure (no retry) — plugins should keep
+  /// treats that as a hard failure (no retry) - plugins should keep
   /// listings/reads within a practical single-shot size
   /// (uVfsCdeclAdapter.cCdeclVfsBufferSize, 4 MB by default).
   ///
@@ -89,7 +89,7 @@ type
     verNeedsBiggerBuffer = 7
   );
 
-  { C-ABI Host Function Pointers — handed to the plugin at init time. }
+  { C-ABI Host Function Pointers - handed to the plugin at init time. }
   THostPublishFn = function(APluginId, ATopicUtf8, APayloadJsonUtf8: PAnsiChar): Int64; cdecl;
   THostInvalidateFn = function(AWindowId: Int64): Int64; cdecl;
   THostRegisterVfsSchemeFn = function(APluginId, AScheme: PAnsiChar;
@@ -102,7 +102,7 @@ type
     AOnClick: THostRegisterMenuItemCallback; AUserData: Pointer; APriority: Int64): Int64; cdecl;
 
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
-  /// Field order/types are the ABI — see cPluginAbiVersion.</summary>
+  /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
     AbiVersion: Int64;
     HostPublish: THostPublishFn;

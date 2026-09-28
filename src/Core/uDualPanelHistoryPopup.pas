@@ -34,7 +34,7 @@ type
       const AGetPanelBounds: TPanelBoundsEvent);
     procedure SetTheme(const ATheme: IThemeRenderer);
     /// <summary>(Re)shows the popup for ASide with AItems (display labels,
-    /// oldest first — same order as TTab.History) and highlights
+    /// oldest first - same order as TTab.History) and highlights
     /// ACursorIndex. Closes itself when AItems is empty.</summary>
     procedure Show(ASide: TPanelSide; const AItems: TArray<string>;
       ACursorIndex: Integer);

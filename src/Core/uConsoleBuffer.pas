@@ -26,7 +26,7 @@ type
     FPendingEraseToEOL: Boolean;
     FCursorCol: Integer;
     /// <summary>Index of the line CommitInputLine most recently started. Lines
-    /// before this are submitted history — GetInputAfterPrompt's upward scan
+    /// before this are submitted history - GetInputAfterPrompt's upward scan
     /// must never cross it, or it can find an old already-run command (e.g.
     /// "PS ...> ls" still sitting in scrollback) and mistake it for input the
     /// user is currently typing.</summary>
@@ -41,7 +41,7 @@ type
     FPendingLocalBackspace: Boolean;
     /// <summary>True while swallowing the real shell's own CUP-based erase
     /// echo (hide-cursor / CUP / overwrite-with-spaces / CUP / show-cursor)
-    /// for a backspace we already applied locally via AppendLocalInput(#8) —
+    /// for a backspace we already applied locally via AppendLocalInput(#8) -
     /// see NotePendingLocalBackspace. Real Windows conhost line-editing
     /// erases via absolute cursor addressing that does not map onto this
     /// buffer's unbounded scrollback coordinates (confirmed empirically),
@@ -376,9 +376,9 @@ begin
   if (N >= 2) and IsBlankLine(N - 1) and IsBlankLine(N - 2) then
   begin
     // Collapsing into the existing blank line still means "start fresh at
-    // column 0" — that line is blank by definition. Skipping this left
+    // column 0" - that line is blank by definition. Skipping this left
     // FCursorCol stale at whatever it held before the call, so the next
-    // character wrote mid-string (silently overwriting real content — e.g.
+    // character wrote mid-string (silently overwriting real content - e.g.
     // corrupting a freshly-printed prompt) instead of appending.
     FCursorCol := 0;
     FPendingEraseToEOL := False;
@@ -915,9 +915,9 @@ begin
   // current line from column 0), not two PTY events glued together. Same for
   // a chunk arriving while an erase-to-EOL is still pending (deferred until
   // the redraw's replacement content shows up, possibly in a later chunk
-  // with no CR of its own — see PutCellAtCursorLocked). Any "drive:\...>"
+  // with no CR of its own - see PutCellAtCursorLocked). Any "drive:\...>"
   // pattern found in either case is that same redraw's own content
-  // re-echoing the prompt, not a new prompt arriving — splitting it here
+  // re-echoing the prompt, not a new prompt arriving - splitting it here
   // fractures a single redraw into a phantom extra line and drops the prompt
   // prefix (see TestCmdCrPromptRedraw / TestCrElWipesPrompt).
   if (AText[1] = #13) or APendingRedraw then
@@ -940,12 +940,12 @@ begin
           Sb.Append(Copy(AText, PromptStart, I - PromptStart + 1));
           Inc(I);
           // Only split when real (non-whitespace) content is glued directly
-          // onto the prompt — e.g. a second prompt or command text arriving
+          // onto the prompt - e.g. a second prompt or command text arriving
           // in the same PTY chunk with no newline between them. A prompt's
           // own trailing padding ("PS D:\path> ") has nothing but whitespace
           // after '>' and must stay on the same line: inserting a break here
           // corrupted it (the synthetic CR then reset the write cursor to
-          // column 0, so the very next character — that trailing space —
+          // column 0, so the very next character - that trailing space -
           // overwrote the prompt's first letter instead of being appended).
           if (I <= Len) and not CharInSet(AText[I], [#10, #13]) and
              (Trim(Copy(AText, I, MaxInt)) <> '') then
@@ -968,7 +968,7 @@ begin
 end;
 
 /// <summary>True if S has at least one char that is not part of a
-/// backspace/erase idiom (BS, DEL, or a plain space used to blank a cell —
+/// backspace/erase idiom (BS, DEL, or a plain space used to blank a cell -
 /// e.g. "\b\b" or "\b \b", both common single-char-erase echoes). A run of
 /// only those is never "glued-on content"; only real text should count.</summary>
 function HasPrintableChar(const S: string): Boolean;
@@ -1018,7 +1018,7 @@ begin
       // keeps the grid in sync regardless of which thread wins the race.
       FActiveGrid.Reflow(ACols, ARows, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
 
-    // Local keyboard/paste echo is never a shell prompt arriving over the PTY —
+    // Local keyboard/paste echo is never a shell prompt arriving over the PTY -
     // skip the "text looks like an incoming prompt" heuristics below, which
     // would otherwise force e.g. a pasted "D:\some\path" onto a new line just
     // because it happens to start with a drive letter like a real prompt.
@@ -1069,7 +1069,7 @@ begin
     // Local input never hits this: pasting/typing more onto an already-started
     // command (e.g. "cd " then paste a path) must extend the same line. A pure
     // control-char burst (e.g. "\b\b" from two fast backspaces echoed in one
-    // chunk) is never "glued-on content" either — it must edit the existing
+    // chunk) is never "glued-on content" either - it must edit the existing
     // line in place, not wipe it by forcing a new blank one.
     if (not FGridEnabled) and not AIsLocalInput and (CurrLine <> '') and LineHasInputAfterPrompt(CurrLine) and
        (Length(ProcessedText) > 0) and not CharInSet(ProcessedText[1], [#10, #13]) and
@@ -1403,7 +1403,7 @@ begin
       end;
     end;
 
-    // Scan upward for any in-progress input after a prompt — never past the
+    // Scan upward for any in-progress input after a prompt - never past the
     // last CommitInputLine boundary. Lines before it are submitted history;
     // an old "PS ...> ls" still sitting in scrollback must never be mistaken
     // for input the user is currently typing (see FInputLineStart).

@@ -21,7 +21,7 @@ procedure FolderHotlistAdd(const AName, AURI: string);
 procedure FolderHotlistRemove(AIndex: Integer);
 procedure FolderHotlistRename(AIndex: Integer; const ANewName: string);
 /// <summary>Assigns AHotKey (1..10, see TFolderHotlistEntry.HotKey) to entry
-/// AIndex, stealing it from whichever other entry currently holds it —
+/// AIndex, stealing it from whichever other entry currently holds it -
 /// each hotkey maps to at most one entry. AHotKey = 0 clears AIndex's own
 /// hotkey without assigning it elsewhere (toggle-off).</summary>
 procedure FolderHotlistSetHotKey(AIndex, AHotKey: Integer);
@@ -36,12 +36,12 @@ function FolderHotlistKeyLabel(AHotKey: Integer): string;
 /// physical keyboard row); 0 for anything else. Takes AKey rather than
 /// AKeyChar: Ctrl+digit has no ASCII control-code to reverse-map, so
 /// AKeyChar is typically #0 for it (unlike Ctrl+letter, which reverse-maps
-/// to its own letter) — callers gating on Ctrl+1..Ctrl+0 must check AKey.</summary>
+/// to its own letter) - callers gating on Ctrl+1..Ctrl+0 must check AKey.</summary>
 function FolderHotlistKeyFromVKey(AKey: Word): Integer;
 /// <summary>Index of the entry whose URI matches AUri (SameVfsUri-normalized),
 /// or -1 if none.</summary>
 function FolderHotlistFindByUri(const AUri: string): Integer;
-/// <summary>Remove/rename/set-hotkey by URI rather than raw storage index —
+/// <summary>Remove/rename/set-hotkey by URI rather than raw storage index -
 /// safe to call with an entry taken from FolderHotlistGetEntries's result,
 /// which is sorted by hotkey and so no longer matches storage order.</summary>
 procedure FolderHotlistRemoveByUri(const AUri: string);
@@ -115,7 +115,7 @@ begin
         Entry.HotKey := HotKeyVal;
         GEntries.Add(Entry);
       end;
-      // Defend against a hand-edited file assigning the same hotkey twice —
+      // Defend against a hand-edited file assigning the same hotkey twice -
       // each hotkey must map to at most one entry; keep the first, clear the rest.
       for I := 1 to GEntries.Count - 1 do
       begin
@@ -239,7 +239,7 @@ begin
     Exit;
   if AHotKey <> 0 then
   begin
-    // Each hotkey maps to at most one entry — steal it from whoever had it.
+    // Each hotkey maps to at most one entry - steal it from whoever had it.
     Prev := FolderHotlistFindByHotKey(AHotKey);
     if (Prev >= 0) and (Prev <> AIndex) then
     begin
@@ -290,7 +290,7 @@ var
   KeyA, KeyB: Integer;
 begin
   // Assigned hotkeys (1..10) sort first in that order; unassigned (0) sort
-  // after, alphabetically by name — so the list mirrors the Ctrl+1..Ctrl+0
+  // after, alphabetically by name - so the list mirrors the Ctrl+1..Ctrl+0
   // jump order the user just set up in the dialog.
   KeyA := A.HotKey;
   if KeyA = 0 then

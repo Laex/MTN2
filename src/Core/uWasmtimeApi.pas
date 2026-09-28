@@ -1,7 +1,7 @@
 unit uWasmtimeApi;
 
 { Dynamic cdecl bindings to the Wasmtime C API (wasmtime.dll). The DLL is an
-  optional runtime — the core exe must start without it (SDS: WASM plugins are
+  optional runtime - the core exe must start without it (SDS: WASM plugins are
   extensions, not a required dependency). Pinned to the v26 C ABI:
 
     wasmtime-v26.0.1-x86_64-windows-c-api.zip
@@ -199,7 +199,7 @@ begin
 end;
 
 // One guard clause per required C API export, instead of one 34-operand
-// boolean expression — same all-or-nothing check, easier to scan/diff.
+// boolean expression - same all-or-nothing check, easier to scan/diff.
 function AllWasmtimeExportsPresent: Boolean;
 begin
   Result := False;

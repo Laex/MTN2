@@ -26,7 +26,7 @@ type
   end;
 
   /// <summary>One search hit. Line/Snippet are 0/'' unless ContainingText was
-  /// set — then they point at the first matching line (1-based).</summary>
+  /// set - then they point at the first matching line (1-based).</summary>
   TFindHit = record
     Path: string;
     Line: Integer;
@@ -41,7 +41,7 @@ type
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean = True): TFindOptions;
 
-/// <summary>Split `*.pas;*.dfm` / comma-separated masks (empty → `*.*`).</summary>
+/// <summary>Split `*.pas;*.dfm` / comma-separated masks (empty -> `*.*`).</summary>
 function SplitMasks(const AMask: string): TArray<string>;
 /// <summary>True if AName matches any mask from SplitMasks / System.Masks.</summary>
 function NameMatchesAnyMask(const AName: string;
@@ -175,7 +175,7 @@ var
 begin
   AError := '';
   try
-    // TRegEx.Create alone does not compile the pattern — it stays lazy until
+    // TRegEx.Create alone does not compile the pattern - it stays lazy until
     // the first IsMatch/Match call, so a malformed pattern only raises there.
     // Force that now so a bad pattern is caught here, not mid-walk.
     Re := TRegEx.Create(APattern);
@@ -201,7 +201,7 @@ begin
 end;
 
 /// <summary>Reads APath (size-capped like the old FileContainsText) and scans
-/// it line by line for ANeedle — plain substring/whole-word, or (AUseRegex)
+/// it line by line for ANeedle - plain substring/whole-word, or (AUseRegex)
 /// a compiled regex. Returns the first matching line (1-based) and a
 /// trimmed copy of it. A malformed regex is caught per-file (defensive:
 /// callers should already have validated the pattern once via
@@ -251,7 +251,7 @@ begin
             Exit(True);
           end;
         except
-          // Malformed pattern reaching here despite upfront validation —
+          // Malformed pattern reaching here despite upfront validation -
           // treat as no match on this line rather than aborting the job.
         end;
     end

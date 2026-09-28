@@ -9,7 +9,7 @@ unit TestRecycleBin;
 
   Safety: only ever touches ONE scratch file this program creates itself
   (create -> delete to bin -> find by name -> restore -> verify -> clean
-  up) — enumeration reads the real Recycle Bin's other entries (needed to
+  up) - enumeration reads the real Recycle Bin's other entries (needed to
   find our own item and to prove enumeration works at realistic scale) but
   never restores or deletes anything other than our own scratch file. }
 
@@ -40,7 +40,7 @@ var
   GLog: TStringList;
 
 // Console codepage on a non-English Windows install mangles Cyrillic
-// (and other non-ASCII) Writeln output — log to a UTF-8 file instead so the
+// (and other non-ASCII) Writeln output - log to a UTF-8 file instead so the
 // actual column headers / paths returned by the Shell can be inspected
 // accurately regardless of console codepage.
 procedure Log(const AMsg: string);
@@ -139,9 +139,9 @@ begin
   try
     // 1) Create + recycle a scratch file so we have a known needle.
     // NOTE: some temp-classified folders are excluded from the Recycle Bin
-    // by Windows/drive policy (confirmed on this machine's D:\Temp — files
+    // by Windows/drive policy (confirmed on this machine's D:\Temp - files
     // deleted there are purged immediately, not recycled, independent of
-    // FOF_ALLOWUNDO) — use a normal user-profile folder instead so the
+    // FOF_ALLOWUNDO) - use a normal user-profile folder instead so the
     // delete actually lands in the Recycle Bin this spike is testing.
     ScratchDir := TPath.Combine(TPath.Combine(GetEnvironmentVariable('USERPROFILE'),
       'Desktop'), 'mtn2_testrecyclebin');
@@ -176,10 +176,10 @@ begin
       Exit;
     end;
 
-    // 3) Log every column header (logged to file — console codepage mangles
-    // non-ASCII on non-English Windows, e.g. this Russian-locale machine) —
+    // 3) Log every column header (logged to file - console codepage mangles
+    // non-ASCII on non-English Windows, e.g. this Russian-locale machine) -
     // for inspection, not decision-making: the Recycle Bin's column ORDER
-    // (not the localized header text) is fixed by the shell — column 1 is
+    // (not the localized header text) is fixed by the shell - column 1 is
     // "Original Location" on every locale/Windows version tested by prior
     // art (Explorer, undelete tools). Trust that fixed index; the header
     // text substring match is kept only as a best-effort cross-check logged
@@ -234,14 +234,14 @@ begin
           TestRecycleBin.Log('  item[' + IntToStr(EnumCount) + ']: normal="' + DisplayName +
             '" parsing="' + ParsingName + '" col0="' + Col0Name +
             '" origLoc="' + OrigLocation + '"');
-        // Log any near-match unconditionally (diagnostic) — helps see exactly
+        // Log any near-match unconditionally (diagnostic) - helps see exactly
         // what GetDisplayNameOf returns if the exact-match check below fails.
         if Pos('NEEDLE', UpperCase(DisplayName)) > 0 then
           TestRecycleBin.Log('  candidate: name="' + DisplayName + '" origLoc="' + OrigLocation + '"');
         // GetDisplayNameOf(SHGDN_NORMAL) returned the full original path on
         // this Windows build, not a bare leaf name (see earlier spike log),
         // AND drops the extension when "Hide extensions for known file
-        // types" is on (a system-wide Explorer display preference — this is
+        // types" is on (a system-wide Explorer display preference - this is
         // SHGDN_NORMAL being display-oriented, not identity-oriented).
         // Match on the leaf name with extension stripped from both sides;
         // the real feature should prefer SHGDN_FORPARSING instead, which is

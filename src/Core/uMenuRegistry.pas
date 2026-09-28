@@ -6,7 +6,7 @@ unit uMenuRegistry;
 
   Unlike TTopMenuAction (closed enum, dispatched via a hardcoded handler),
   plugin items carry their own TProc callback (TTopMenuController.
-  TPluginMenuItemDesc.OnClick / TSubmenuItem.PluginOnClick) — so a plugin
+  TPluginMenuItemDesc.OnClick / TSubmenuItem.PluginOnClick) - so a plugin
   can wire up genuinely new behavior, not just rebind an existing command. }
 
 interface
@@ -19,7 +19,7 @@ type
   IMenuRegistry = interface
     ['{3B2A9C1D-6E4F-4A8B-9D0C-1E3F5A7B9C2D}']
     /// <summary>Adds/replaces (by APluginId+AItemId) an item at the end of
-    /// the category whose title matches AParentPath (e.g. "File", "Tools" —
+    /// the category whose title matches AParentPath (e.g. "File", "Tools" -
     /// see config/menu.json category titles). Items from the same plugin
     /// within one category are ordered by ascending APriority.</summary>
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;

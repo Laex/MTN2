@@ -1,9 +1,9 @@
 unit TestColorCodingMerge;
 
 { Checks for uColorCoding's merge-by-name logic (embedded THEME_DEFAULT's
-  "fileColoring" merged with the active theme file's "fileColoring" — see
+  "fileColoring" merged with the active theme file's "fileColoring" - see
   the unit header comment and ARCHITECTURE.md). Works against literal JSON
-  strings, not embedded RCDATA — MergeColorCodingGroups / ParseColorCodingJson
+  strings, not embedded RCDATA - MergeColorCodingGroups / ParseColorCodingJson
   are pure functions, no resource lookup involved. }
 
 interface
@@ -72,7 +72,7 @@ begin
   // Wrong key for the shape actually in the JSON must not silently succeed.
   Ok := ParseColorCodingJson(
     '{"fileColoring":[{"name":"Archives","mask":"*.zip","normal":{"fg":"#FF55FF"}}]}',
-    Groups); // default key 'groups' — not present in this JSON
+    Groups); // default key 'groups' - not present in this JSON
   Assert.IsTrue(not Ok, 'default "groups" key does not match a "fileColoring" document');
 end;
 

@@ -29,7 +29,7 @@ type
   /// <summary>Answer when a delete item fails (Recycle Bin / permanent).</summary>
   TJobDeleteFailAction = (jdaPermanent, jdaRetry, jdaSkip, jdaSkipAll, jdaCancel);
   /// <summary>Answer when a copy/move transfer fails with an I/O error (not a
-  /// name conflict — those go through TJobConflictAction) after the job's
+  /// name conflict - those go through TJobConflictAction) after the job's
   /// automatic retry budget (RetryLimit/RetryLeft) is exhausted.</summary>
   TJobIOErrorAction = (jioRetry, jioSkip, jioSkipAll, jioCancel);
 
@@ -65,10 +65,10 @@ type
     PendingDstURI: string;
     PendingIndex: Integer;
     /// <summary>True when the pjpOverwriteAsk prompt is for a folder that
-    /// already exists at the destination (not a real conflict — the actual
+    /// already exists at the destination (not a real conflict - the actual
     /// per-file decisions happen inside CopyTree). Skip on this kind of
     /// prompt means "merge, don't overwrite conflicting files", not
-    /// "abandon the whole subtree" — see ResolveOverwriteAsk.</summary>
+    /// "abandon the whole subtree" - see ResolveOverwriteAsk.</summary>
     PendingBothDirs: Boolean;
     /// <summary>Error text for pjpDeleteAsk / pjpIOErrorAsk / pjpError.</summary>
     PendingErrorMessage: string;
@@ -79,11 +79,11 @@ type
     Index: Integer;
     /// <summary>Cumulative byte progress for the current top-level item
     /// (base + this: a recursive tree copy reports running totals across
-    /// the whole tree here) — feeds the "Total" bar / Bytes counter.</summary>
+    /// the whole tree here) - feeds the "Total" bar / Bytes counter.</summary>
     ProgressDone: Int64;
     ProgressTotal: Int64;
     /// <summary>Byte progress of just the single file currently being
-    /// transferred — feeds the per-file bar. Equal to ProgressDone/Total for
+    /// transferred - feeds the per-file bar. Equal to ProgressDone/Total for
     /// a plain single-file item; distinct inside a recursive tree copy.</summary>
     FileProgressDone: Int64;
     FileProgressTotal: Int64;
@@ -92,7 +92,7 @@ type
     /// <summary>Estimated total bytes for the job (grows as sizes are learned).</summary>
     BytesTotal: Int64;
     FilesTotal: Integer;
-    /// <summary>Files actually finished transferring so far — counted per
+    /// <summary>Files actually finished transferring so far - counted per
     /// real file (including ones inside a recursive tree copy), not per
     /// top-level selected source. See TPanelJobController.NoteItemProgress /
     /// AdvanceJobAfterItem.</summary>
@@ -151,7 +151,7 @@ type
     hdkHost);
 
   /// <summary>Dialog-field values DialogCommand reads unconditionally before
-  /// dispatching on FDialogKind — see DispatchDialogCommand. Each field is
+  /// dispatching on FDialogKind - see DispatchDialogCommand. Each field is
   /// only meaningful to the branches that actually use it.</summary>
   TDialogCommandFields = record
     Name, Mask, Containing, DestPath, ExcludeMask, Password: string;

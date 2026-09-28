@@ -21,7 +21,7 @@ type
     Maximized: Boolean;
     Valid: Boolean; // False = omit / ignore (old sessions)
     /// <summary>Windows monitor device name (e.g. '\\.\DISPLAY1') the window
-    /// was on when saved; '' = unknown (old sessions) — falls back to the
+    /// was on when saved; '' = unknown (old sessions) - falls back to the
     /// primary-monitor clamp in TMainForm.ApplySessionWindow.</summary>
     Display: string;
   end;
@@ -40,17 +40,17 @@ type
     /// first command submitted from the Dual Panel command line.</summary>
     ConsoleStartOnLaunch: Boolean;
     /// <summary>IThemeRenderer implementation to instantiate (e.g. 'NDN').
-    /// '' = unspecified — caller falls back to the default theme.</summary>
+    /// '' = unspecified - caller falls back to the default theme.</summary>
     ThemeName: string;
     /// <summary>Theme JSON file (in the config dir, uColorCoding's active
-    /// theme file — see SetActiveThemeFileName) whose "fileColoring" (and,
+    /// theme file - see SetActiveThemeFileName) whose "fileColoring" (and,
     /// eventually, palette/roles) overrides ThemeName's embedded defaults.
     /// Independent of ThemeName on purpose: lets a JSON-only reskin (e.g.
     /// 'FARtheme.json') run through the existing IThemeRenderer before a
-    /// dedicated Pascal class exists for it. '' = unspecified — caller
+    /// dedicated Pascal class exists for it. '' = unspecified - caller
     /// falls back to 'NDNtheme.json'.</summary>
     ThemeFile: string;
-    /// <summary>Options > Columns... selection — which fields pcmCustom
+    /// <summary>Options > Columns... selection - which fields pcmCustom
     /// shows. App-wide, like ThemeName/Zoom (not per-panel).</summary>
     CustomColumns: TCustomColumnsConfig;
     /// <summary>Id of the last saved/restored ws:/// snapshot. '' = none.</summary>

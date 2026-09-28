@@ -5,10 +5,10 @@ unit uDualPanelTabs;
   manipulation and tab hit-testing.
 
   Includes:
-    - TDualPanelTabManager — class methods for tab lifecycle (create/close/reorder/navigate)
-    - Tab caption formatting helpers (WorkspaceTabCaption, PanelTabCaption, …)
+    - TDualPanelTabManager - class methods for tab lifecycle (create/close/reorder/navigate)
+    - Tab caption formatting helpers (WorkspaceTabCaption, PanelTabCaption, ...)
     - Hit-testing for workspace and panel tabs (HitWorkspaceTabAtCol, HitPanelTabAtCol)
-    - PaintTabCloseMark — draws the 'x' glyph in a TTerminalGrid cell
+    - PaintTabCloseMark - draws the 'x' glyph in a TTerminalGrid cell
 }
 
 interface
@@ -45,7 +45,7 @@ function PanelTabHeadX(const ABounds: TRectI): Integer;
 
 /// <summary>Right edge tabs must stop drawing before (reserves a margin at
 /// the panel's top-right corner) and the per-tab caption length budget for
-/// APanel's tab bar inside ABounds — shared by drawing (DrawPanel) and
+/// APanel's tab bar inside ABounds - shared by drawing (DrawPanel) and
 /// hit-testing (HitPanelTabAtCol) so a click always lands on what's
 /// actually on screen, including the close mark, even once captions are
 /// dynamically truncated (see VfsUriDirTabTitle).</summary>
@@ -55,14 +55,14 @@ procedure ComputePanelTabLayout(const APanel: TPanelState; const ABounds: TRectI
 { --- Hit-testing ----------------------------------------------------------- }
 
 /// <summary>Find which workspace tab (if any) a column click falls on.
-/// AWorkspaceTabs — the full workspace tab array.
-/// AShowClose — whether close marks are visible.
+/// AWorkspaceTabs - the full workspace tab array.
+/// AShowClose - whether close marks are visible.
 /// Returns True when hit; sets AIndex and AIsClose.</summary>
 function HitWorkspaceTabAtCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
   ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
 
 /// <summary>Find which panel tab (if any) a column click within ABounds falls on.
-/// ABounds — outer frame rect of the panel.
+/// ABounds - outer frame rect of the panel.
 /// Returns True when hit; sets AIndex and AIsClose.</summary>
 function HitPanelTabAtCol(const APanel: TPanelState; const ABounds: TRectI;
   ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
@@ -93,10 +93,10 @@ type
     class function CanGoForward(const ATab: TTab): Boolean;
     class procedure GoBack(var ATab: TTab);
     class procedure GoForward(var ATab: TTab);
-    /// <summary>Move tab AFrom → ATo; updates AActiveIndex.</summary>
+    /// <summary>Move tab AFrom -> ATo; updates AActiveIndex.</summary>
     class function ReorderTab(var ATabs: TArray<TTab>; var AActiveIndex: Integer;
       AFrom, ATo: Integer): Boolean;
-    /// <summary>Move workspace tab AFrom → ATo; updates AActiveIndex.</summary>
+    /// <summary>Move workspace tab AFrom -> ATo; updates AActiveIndex.</summary>
     class function ReorderWorkspace(var ATabs: TArray<TDualPanelWorkspaceTab>;
       var AActiveIndex: Integer; AFrom, ATo: Integer): Boolean;
     class function PanelsWorkspaceCount(

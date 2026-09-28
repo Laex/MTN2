@@ -60,7 +60,7 @@ var
   I, J: Integer;
   Tmp: TPluginEntry;
 begin
-  // Lower Priority number = earlier match (stable insertion sort) —
+  // Lower Priority number = earlier match (stable insertion sort) -
   // mirrors TVfsRegistry.SortByPriority in uVfsRegistry.pas.
   for I := 1 to FEntries.Count - 1 do
   begin

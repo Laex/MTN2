@@ -2,7 +2,7 @@ unit uMarkdownPainter;
 
 { Stage 25: paints one parsed TMdLine (uMarkdownParser) into a TTerminalRow.
   This is the "text + spans -> colored cells" primitive that didn't exist
-  anywhere in the codebase before Markdown Viewer — every other renderer
+  anywhere in the codebase before Markdown Viewer - every other renderer
   (TEditorPainter.DrawTextLine, panel row drawing) paints a whole line with
   one uniform Fg/Bg. Mirrors TEditorPainter's shape (class, static
   procedure, writes directly into a var TTerminalRow) so it slots into
@@ -18,7 +18,7 @@ type
   TMarkdownPainter = class
   public
     /// <summary>Paints ALine.DisplayText[AStartCharIndex..AEndCharIndex]
-    /// (1-based, inclusive) into AWidth cells from AStartCol — the same
+    /// (1-based, inclusive) into AWidth cells from AStartCol - the same
     /// "AStartCharIndex" slicing convention TEditorPainter.DrawTextLine uses
     /// for horizontal scroll, plus an explicit end so a word-wrapped chunk
     /// shorter than AWidth (the common case once wrapping breaks at a space
@@ -74,9 +74,9 @@ begin
 
   // Padding past this chunk's last glyph (wrap cutoff or end of DisplayText)
   // fills the rest of the row. Only whole-line kinds (heading / fence /
-  // HR) keep their color out to the edge — that's what makes a heading or
+  // HR) keep their color out to the edge - that's what makes a heading or
   // code block look like a bar. Inline spans (mskInlineCode, bold, link,
-  // …) must NOT: a list item that ends with `src/main.cpp` would otherwise
+  // ...) must NOT: a list item that ends with `src/main.cpp` would otherwise
   // paint the code background across the empty tail of the row.
   LastChunkChar := Min(N, AEndCharIndex);
   if LastChunkChar > 0 then
@@ -95,7 +95,7 @@ begin
       Kind := Kinds[CharIdx - 1];
       St := Styles[Kind];
       // A horizontal rule ('---'/'***'/'___') renders as an actual ruled
-      // line, not the literal source characters — the whole span always
+      // line, not the literal source characters - the whole span always
       // covers the full line (see uMarkdownParser.ParseLine), so every
       // cell in it gets the box-drawing glyph regardless of what character
       // sits at that column in DisplayText.

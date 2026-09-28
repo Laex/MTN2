@@ -1,11 +1,11 @@
 unit TestLiveReload;
 
-{ Regression: TEditorDoc's live reload — a local file opened for View/Edit is
+{ Regression: TEditorDoc's live reload - a local file opened for View/Edit is
   watched (via uDirWatch.TDirectoryWatcher, on its containing directory) and
   silently re-read whenever another process changes it on disk, as long as
   there are no unsaved edits. Also verifies the file is never held with an
   exclusive lock, so an external process can always write to it while it's
-  open here — TFileVirtualFileSystem.ReadBytesAsync already opens with
+  open here - TFileVirtualFileSystem.ReadBytesAsync already opens with
   fmShareDenyNone and closes the handle immediately after each read.
 
   Source is deliberately pure ASCII, matching the other Stage 24 test files
@@ -59,7 +59,7 @@ end;
 procedure WriteFileText(const APath, AText: string);
 begin
   // Explicit bytes (no TEncoding.UTF8 BOM) so re-reads land on the same
-  // encoding every time — a BOM appearing/disappearing between writes would
+  // encoding every time - a BOM appearing/disappearing between writes would
   // be its own (unrelated) source of flaky diffs here.
   TFile.WriteAllText(APath, AText, TEncoding.ASCII);
 end;
@@ -108,7 +108,7 @@ end;
 
 /// <summary>Pumps TThread.Queue-delivered callbacks (the watcher's debounced
 /// notification, the background stat, the async reload) for AMs milliseconds
-/// regardless of what happens — used where the test asserts something did
+/// regardless of what happens - used where the test asserts something did
 /// NOT happen, so it has to wait out the full window either way.</summary>
 procedure PumpFor(AMs: Cardinal);
 var
@@ -161,7 +161,7 @@ begin
     Assert.IsTrue(Doc.GetLine(0) = 'line0', 'initial content matches');
 
     // Simulates "some other program" editing the file while it's open here
-    // — a second, independent handle. If TEditorDoc held an exclusive lock
+    // - a second, independent handle. If TEditorDoc held an exclusive lock
     // this would itself raise; it must not.
     WriteFileText(Path, 'newline0'#13#10'newline1'#13#10'newline2'#13#10);
 
@@ -220,7 +220,7 @@ begin
     GenAfterSave := Doc.ContentGen;
 
     // The save itself is a real write to the watched directory, so the
-    // watcher WILL fire — the point is that FKnownSize/FKnownWriteTime were
+    // watcher WILL fire - the point is that FKnownSize/FKnownWriteTime were
     // updated to match right after saving, so CheckExternalChange sees no
     // difference and never calls ReloadFromDisk.
     PumpFor(cQuietWaitMs);

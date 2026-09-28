@@ -3,7 +3,7 @@
 { Stage 25 regression: uMarkdownParser (pure line parsing) and
   uMarkdownIndex.TMarkdownFenceIndex (lazy fence-state recovery for large
   documents). Source is deliberately pure ASCII for the same reason
-  TestStreamingViewer.pas is — no literal non-ASCII, only explicit
+  TestStreamingViewer.pas is - no literal non-ASCII, only explicit
   codepoints, so this unit's own encoding can never be the thing under test. }
 
 interface
@@ -85,7 +85,7 @@ begin
 end;
 
 /// <summary>True if ALine has exactly one span of AKind covering the full
-/// DisplayText — the shape every whole-line construct (heading/hr/code
+/// DisplayText - the shape every whole-line construct (heading/hr/code
 /// fence) produces.</summary>
 function IsSingleFullSpan(const ALine: TMdLine; AKind: TMdSpanKind): Boolean;
 begin
@@ -269,7 +269,7 @@ begin
 
   // CommonMark intraword-underscore rule: a single '_' flanked by word
   // characters on both sides (identifiers like WM_COPYDATA) must NOT open
-  // an italic span — '*' has no such restriction (kept as-is on purpose).
+  // an italic span - '*' has no such restriction (kept as-is on purpose).
   L := TMarkdownParser.ParseLine('Handle (WM_COPYDATA) here.', State);
   Assert.IsTrue(Length(L.Spans) = 0,
     'a lone intraword "_" in an identifier does not start italic (no matching pair)');
@@ -445,7 +445,7 @@ begin
   Assert.IsTrue(Length(H.DisplayText) mod 20 = 0, 'the header row (which also needs to wrap "Description") is a whole multiple of 20 too');
 
   // A table whose natural width already fits AAvailWidth must render
-  // byte-for-byte the same as the unbounded (legacy, AAvailWidth<=0) call —
+  // byte-for-byte the same as the unbounded (legacy, AAvailWidth<=0) call -
   // fitting-to-width must never touch a table that didn't need it.
   Wide := TMarkdownParser.FormatPipeTableLine(Block, 2, 100);
   Unbounded := TMarkdownParser.FormatPipeTableLine(Block, 2, 0);
@@ -455,7 +455,7 @@ begin
   // Regression: a table with enough columns that even 1 text column per
   // column plus borders/padding doesn't fit AAvailWidth used to clamp
   // AvailForText up to ColCount anyway, which made the rendered physical
-  // row WIDER than AAvailWidth — breaking the "every physical row is
+  // row WIDER than AAvailWidth - breaking the "every physical row is
   // exactly AAvailWidth long" invariant ComputeHardWrapStarts's fixed-width
   // slicing depends on, so the Viewer would slice a table's rows at the
   // wrong offsets (garbled/misaligned rendering). 5 columns need at least
@@ -527,7 +527,7 @@ begin
   // Unbounded width (no shrink): col 0 ("Name"/"Al") stays natural width 4;
   // col 1's natural width must come from the widest <br>-SEGMENT ("Notes"
   // in the header, 5 chars), not the whole "One<br>Two" cell run together
-  // (10 chars) — that's the point of treating <br> as always-multi-line.
+  // (10 chars) - that's the point of treating <br> as always-multi-line.
   Block := TArray<string>.Create(
     '| Name | Notes |',
     '| --- | --- |',
@@ -551,7 +551,7 @@ begin
   // also needs word-wrap must apply both: forced break first, then wrap
   // each resulting segment independently. At width 16 (col 1 shrinks to 8),
   // "one two three" word-wraps to "one two " / "three", and "four five six"
-  // to "four " / "five six" — hand-traced via ComputeWrapStarts's own
+  // to "four " / "five six" - hand-traced via ComputeWrapStarts's own
   // break-selection rule (rightmost break at-or-before the width).
   Block := TArray<string>.Create(
     '| A | B |',
@@ -625,7 +625,7 @@ var
 begin
 
   // "one two three" (13 chars) at width 5 breaks after each space, keeping
-  // whole words together — not a hard mid-word cut.
+  // whole words together - not a hard mid-word cut.
   Starts := TMarkdownParser.ComputeWrapStarts('one two three', 5);
   Assert.IsTrue((Length(Starts) = 3) and (Starts[0] = 1) and (Starts[1] = 5) and (Starts[2] = 9),
     '"one two three" @5 wraps to rows starting at 1/5/9 (after each space)');
@@ -638,8 +638,8 @@ begin
 
   // The key behavior this whole feature is for: a hard character-count cut
   // at width 6 would split "cat dog elephant" into "cat do"/"g elep"/...
-  // (mid-word). Word-boundary wrap instead breaks at 1/5/9 — clean "cat "/
-  // "dog "/... — only falling back to a mid-word cut for "elephant" itself,
+  // (mid-word). Word-boundary wrap instead breaks at 1/5/9 - clean "cat "/
+  // "dog "/... - only falling back to a mid-word cut for "elephant" itself,
   // since that single word (8 chars) is longer than the width and there's
   // no earlier break point available.
   Starts := TMarkdownParser.ComputeWrapStarts('cat dog elephant', 6);
@@ -664,7 +664,7 @@ end;
 { ---- TMarkdownPainter: text+spans -> TTerminalRow cells --------------------- }
 
 type
-  // Minimal IThemeRenderer stub — every method but ResolveMarkdownStyleColors
+  // Minimal IThemeRenderer stub - every method but ResolveMarkdownStyleColors
   // is a no-op, since DrawLine only ever calls that one. Distinct, made-up
   // colors per TMdSpanKind so a test can tell "which kind painted this cell"
   // back out of the resulting TCharCell.
@@ -756,14 +756,14 @@ end;
 
 procedure TFakeTheme.ResolveEditorColors(out AColors: TEditorThemeColors);
 begin
-  // Not exercised by any test below (no TEditorWindow instance here — that
-  // needs a live FMX window) — this stub exists only so TFakeTheme still
+  // Not exercised by any test below (no TEditorWindow instance here - that
+  // needs a live FMX window) - this stub exists only so TFakeTheme still
   // fully implements IThemeRenderer.
   FillChar(AColors, SizeOf(AColors), 0);
 end;
 
 // AWidth here is the width passed to DrawLine's AWidth param, painted
-// starting at column 1 (AStartCol=1 in every test call below) — the row
+// starting at column 1 (AStartCol=1 in every test call below) - the row
 // needs AWidth+1 elements (0-based array) so index AWidth itself is valid.
 function MakeRow(AWidth: Integer): TTerminalRow;
 begin
@@ -783,7 +783,7 @@ begin
   State.InFence := False;
 
   // Horizontal rule renders as an actual ruled line (chBoxH), not the
-  // literal '-'/'*'/'_' source characters, across the FULL painted width —
+  // literal '-'/'*'/'_' source characters, across the FULL painted width -
   // including padding past the (short) DisplayText.
   L := TMarkdownParser.ParseLine('---', State);
   Row := MakeRow(12);
@@ -819,7 +819,7 @@ begin
     'wrap chunk 2 (AStartCharIndex=11) shows the next 10 characters');
 
   // AEndCharIndex: a word-boundary chunk shorter than AWidth must NOT spill
-  // the next chunk's characters into this row's remaining cells — they pad
+  // the next chunk's characters into this row's remaining cells - they pad
   // with blanks instead. This is exactly what distinguishes word-boundary
   // wrap from the old hard-width slicing (every chunk used to be exactly
   // AWidth long, so there was nothing to spill).
@@ -854,7 +854,7 @@ end;
 
 /// <summary>Builds a temp .md file: lines 0..9 plain, line 10 opens a fence,
 /// lines 11..(AFenceLen+9) are fence content, next line closes it, then a
-/// few more plain lines — long enough to cross several checkpoint strides.</summary>
+/// few more plain lines - long enough to cross several checkpoint strides.</summary>
 function BuildFenceFixture(const APath: string; AFenceLen: Integer): Integer;
 var
   SL: TStringList;
@@ -928,7 +928,7 @@ begin
 
     // Jump far forward (forces a long scan + checkpoint creation), then jump
     // back near the start (checkpoints beyond the target are unusable, must
-    // fall back to scanning from 0 — still has to give the right answer),
+    // fall back to scanning from 0 - still has to give the right answer),
     // then forward again past a checkpoint recorded on the very first scan.
     Assert.IsTrue(not Idx.FenceStateBefore(Doc, AfterLine + 5).InFence,
       'far-forward jump lands on the correct (not-in-fence) state');

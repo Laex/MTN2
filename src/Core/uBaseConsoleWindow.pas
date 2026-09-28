@@ -4,9 +4,9 @@ unit uBaseConsoleWindow;
   Holds the shared PTY session, scroll-back buffer, text selection, mouse handling,
   scrollbar drawing, and clipboard utilities so neither subclass duplicates them.
   Subclasses override:
-    DrawContent  — window-specific chrome (frame, status bar, hints)
-    HandleInput  — keyboard dispatch (raw PTY vs. scroll-only vs. host shortcuts)
-    SyncTitle    — title format specific to window type }
+    DrawContent  - window-specific chrome (frame, status bar, hints)
+    HandleInput  - keyboard dispatch (raw PTY vs. scroll-only vs. host shortcuts)
+    SyncTitle    - title format specific to window type }
 
 interface
 
@@ -40,7 +40,7 @@ type
     /// (Stage 38); '' = unfiltered.</summary>
     FCmdHistFilter:     string;
     /// <summary>True while the Alt+F8 command history dialog (specifically)
-    /// is the one open in FDialog — distinguishes it from e.g. the
+    /// is the one open in FDialog - distinguishes it from e.g. the
     /// TTerminalWorkspaceWindow close-confirm dialog, which also uses FDialog.</summary>
     FCmdHistDialogOpen: Boolean;
     procedure CmdHistoryDialogCommand(const AControlId, AValuesJson: string);
@@ -67,7 +67,7 @@ type
     FSelAnchorCol:  Integer;
     FMouseSelecting: Boolean;
     FClicks: TMouseClickCounter; // double = word, triple = line
-    { Selection trim helper — protected so AppendOutput overrides can call it. }
+    { Selection trim helper - protected so AppendOutput overrides can call it. }
     procedure AdjustSelectionForTrim(ADeleted: Integer);
     { Lifecycle. }
     procedure DoClose; virtual;
@@ -76,12 +76,12 @@ type
     procedure NotifyHost; virtual;
     procedure NotifyHostThrottled;
     procedure AppendOutput(const AText: string); virtual;
-    /// <summary>Local keyboard/paste echo — see TConsoleBuffer.AppendLocalInput.</summary>
+    /// <summary>Local keyboard/paste echo - see TConsoleBuffer.AppendLocalInput.</summary>
     procedure AppendLocalInput(const AText: string); virtual;
     procedure ProcessExited(AExitCode: Cardinal); virtual; abstract;
     procedure SyncTitle; virtual; abstract;
 
-    { PTY sizing — called on resize and after start. }
+    { PTY sizing - called on resize and after start. }
     function  ViewHeight: Integer; virtual; abstract;
     function  TextWidth:  Integer; virtual; abstract;
     function  PtyCols: Word;
@@ -165,7 +165,7 @@ type
     function HandleCmdHistoryFilterInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
 
-    { Scrollbar drawing — delegates to subclass for row bounds. }
+    { Scrollbar drawing - delegates to subclass for row bounds. }
     procedure DrawScrollBar(ATotal, ATop, AViewH, ATopY, ABottomY: Integer);
 
     { Keymap actions the Panel Console and the terminal share (uKeymap
@@ -196,7 +196,7 @@ type
     property Alive:       Boolean read FAlive;
     property PendingClose: Boolean read FPendingClose write FPendingClose;
 
-    { Current selection / cursor — used by subclass DrawContent. }
+    { Current selection / cursor - used by subclass DrawContent. }
     property CursorRow: Integer read FCursorRow;
     property CursorCol: Integer read FCursorCol;
     property CursorVisible: Boolean read FCursorVisible;
@@ -1299,7 +1299,7 @@ begin
     Exit;
   end;
 
-  // Drag above/below → auto-scroll.
+  // Drag above/below -> auto-scroll.
   if ALocalRow < 1 then
   begin
     FHistory.FollowTail := False;

@@ -1,6 +1,6 @@
 unit uHighContrastTheme;
 
-{ Stage 27: accessibility theme — pure black background, pure white/yellow
+{ Stage 27: accessibility theme - pure black background, pure white/yellow
   text, fully saturated file-type colours, no dimmed/muted tones anywhere
   (a "hidden file" or "idle panel" still has to be legible, not merely
   present) and double-line box-drawing everywhere for maximum edge
@@ -525,7 +525,7 @@ procedure THighContrastTheme.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHi
       Result := cMagenta
     else
       Result := cText;
-    // Hidden files stay legible on purpose — accessibility, not decoration —
+    // Hidden files stay legible on purpose - accessibility, not decoration -
     // just a distinct light grey instead of the file type's usual colour.
     if AIsHidden and not AIsParent then
       Result := cGreyFg;

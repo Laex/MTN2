@@ -306,7 +306,7 @@ begin
   AHandled := True;
 
   // Row 0 is the Dual Panel menu bar for every workspace kind (panels,
-  // Viewer/Editor, Terminal). Skip only while a modal dialog is open —
+  // Viewer/Editor, Terminal). Skip only while a modal dialog is open -
   // otherwise the click would drive the menu behind the dialog. Document
   // tabs used to exclude this branch, which swallowed row 0 (the document
   // arm below only handles row 1 / >= 2).

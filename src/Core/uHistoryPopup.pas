@@ -247,7 +247,7 @@ begin
     else
       Line := '';
     if Length(Line) > TextW then
-      Line := Copy(Line, 1, TextW - 1) + WideChar($2026) // …
+      Line := Copy(Line, 1, TextW - 1) + WideChar($2026) // ...
     else
       Line := Line + StringOfChar(' ', TextW - Length(Line));
     if Assigned(ATheme) then

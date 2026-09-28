@@ -4,8 +4,8 @@ unit uEditorDoc;
   async VFS. Dirty flag tracks unsaved edits. Raw bytes kept for F8 re-decode.
 
   Live reload: a local (non-streaming) file is watched via TDirectoryWatcher
-  (uDirWatch) — its containing directory, since Windows has no lightweight
-  single-file change notification — and silently re-read whenever the file's
+  (uDirWatch) - its containing directory, since Windows has no lightweight
+  single-file change notification - and silently re-read whenever the file's
   on-disk size/write-time no longer match what was last loaded or saved.
   A load records the stat taken just before its read (ReadWithStatAsync), and
   arming the watcher triggers one check (OnArmed), so a write landing right
@@ -13,7 +13,7 @@ unit uEditorDoc;
   (FKnownSize/FKnownWriteTime double as the guard against reacting to our
   own SaveAsync writing the file: right after a save they're updated to
   match, and a check arriving before that update waits for it, so the
-  watcher notification that follows sees no difference and is a no-op). Only fires when there are no unsaved edits (FDirty) — an
+  watcher notification that follows sees no difference and is a no-op). Only fires when there are no unsaved edits (FDirty) - an
   edit in progress is never silently discarded. ContentGen (FGen, already
   used to guard stale async completions) doubles as a change counter the
   Viewer/Editor can compare against to know when its own per-line caches
@@ -26,8 +26,8 @@ uses
   uVfsTypes, uTextEncoding, uDirWatch;
 
 const
-  cEditorMaxBytes = 16 * 1024 * 1024; // 16 MB — F3 View whole-buffer limit
-  cEditorEditMaxBytes = 256 * 1024 * 1024; // 256 MB — F4 in-RAM edit cap
+  cEditorMaxBytes = 16 * 1024 * 1024; // 16 MB - F3 View whole-buffer limit
+  cEditorEditMaxBytes = 256 * 1024 * 1024; // 256 MB - F4 in-RAM edit cap
   cStreamSampleBytes = 65536;        // sample read for encoding/binary sniff before indexing
   cStreamScanChunk = 1024 * 1024;    // read buffer while scanning for line offsets
   cStreamCacheCap = 4000;            // decoded-line cache size (FIFO eviction)
@@ -57,13 +57,13 @@ type
     FCancel: IJobCancelToken;
     FOnChanged: TNotifyEvent;
     // Stage 24: streaming Viewer for local text files too big for whole-buffer
-    // load (cEditorMaxBytes). View-only — FReadOnly is forced True. FLines
+    // load (cEditorMaxBytes). View-only - FReadOnly is forced True. FLines
     // stays empty in this mode; lines are seeked/decoded on demand from
     // FStreamPath using FLineOffsets and cached in FLineCache.
     FStreaming: Boolean;
     FStreamPath: string;
     // True when FStreamPath is a temp file extracted from an archive entry
-    // for streaming (Stage: archive streaming) — Close must delete it. False
+    // for streaming (Stage: archive streaming) - Close must delete it. False
     // for a plain local file, where FStreamPath is the user's own file.
     FStreamPathIsTemp: Boolean;
     FStreamEncoding: TTextFileEncoding;
@@ -104,7 +104,7 @@ type
     function StreamingGetLine(AIndex: Integer): string;
     procedure CacheLine(AIndex: Integer; const AValue: string);
     // Stats APath (Exists/GetSize/GetLastWriteTime) on a background thread
-    // and delivers the result back via AOnDone on the main thread — never
+    // and delivers the result back via AOnDone on the main thread - never
     // call TFile.Exists/GetSize/GetLastWriteTime directly here (see
     // RefreshReadOnly's note on why). Silently reports AExists=False on any
     // stat failure (e.g. a momentarily-locked/unreachable path) rather than
@@ -170,7 +170,7 @@ type
     property Error: string read FError;
     property Status: string read FStatus;
     /// <summary>Bumps every time the in-memory content is (re)loaded from
-    /// disk — a fresh Open, a re-decode, or a live-reload triggered by an
+    /// disk - a fresh Open, a re-decode, or a live-reload triggered by an
     /// external change. A caller with its own per-line cache derived from
     /// this document's content (e.g. the Markdown Viewer's fence index and
     /// wrapped-row cache) can compare this against what it last saw to know
@@ -318,7 +318,7 @@ begin
     // at most), fmShareDenyNone, and normally page-cache-backed after the
     // background index scan already touched the whole file once. Kept
     // deliberately synchronous (not routed through async VFS/Jobs) so
-    // uEditorWindow.pas's paint path — which calls GetLine per visible row —
+    // uEditorWindow.pas's paint path - which calls GetLine per visible row -
     // needs no changes; a fully async per-line fetch would require a
     // placeholder/redraw protocol there instead.
     FS := TFileStream.Create(WinApiPath(FStreamPath), fmOpenRead or fmShareDenyNone);
@@ -330,7 +330,7 @@ begin
     end;
     // Offsets mark spans including the trailing line terminator; strip it.
     // UTF-16 lines carry a 2-byte code unit per terminator (see
-    // Utf16PairIsLF) — a single trailing byte check would only ever see the
+    // Utf16PairIsLF) - a single trailing byte check would only ever see the
     // unit's zero half and strip nothing, leaving a stray CR/LF in the text.
     if FStreamEncoding = tfeUtf16LE then
       while (Length(Buf) >= 2) and
@@ -592,11 +592,11 @@ begin
   FReadStatValid := False;
 end;
 
-// Only a genuine local file backs a real directory to watch — archive
+// Only a genuine local file backs a real directory to watch - archive
 // entries and streamed-from-archive temp copies aren't worth following.
 // Streaming docs (Stage 24) are excluded too: reacting to an external
 // change there means rescanning the whole file for FLineOffsets, a much
-// bigger job than a plain reload — out of scope for now.
+// bigger job than a plain reload - out of scope for now.
 procedure TEditorDoc.StartWatchingCurrentFile;
 begin
   if FStreaming or FBinary or HasArchiveChain(FURI) or (FPath = '') then
@@ -616,7 +616,7 @@ begin
     not FStreaming and not FBinary and (FPath <> '');
 end;
 
-// TDirectoryWatcher.OnChanged — already marshaled to the main thread (see
+// TDirectoryWatcher.OnChanged - already marshaled to the main thread (see
 // uDirWatch). Fires on ANY change in the file's directory, not just this
 // file, so this always re-stats before deciding anything.
 procedure TEditorDoc.CheckExternalChange;
@@ -642,7 +642,7 @@ begin
         Exit;
       end;
       // FKnownSize/FKnownWriteTime were set to match what we last loaded OR
-      // saved — if the file on disk is still exactly that, there's nothing
+      // saved - if the file on disk is still exactly that, there's nothing
       // to do (this is what makes SaveAsync's own write a no-op here too,
       // not just a genuinely external one).
       if AExists and ((ASize <> FKnownSize) or (AWriteTime <> FKnownWriteTime)) then
@@ -650,12 +650,12 @@ begin
     end);
 end;
 
-// Silently re-reads the current file and replaces the in-memory content —
+// Silently re-reads the current file and replaces the in-memory content -
 // only ever called with no unsaved edits (FDirty), so there's nothing to
 // lose. Deliberately does NOT go through Close/the FReady:=False "Loading"
 // state OpenAsync uses for a fresh open: staying FReady=True throughout
 // means TEditorWindow.DocChanged's cursor-clamp never sees a not-ready
-// document and never resets the cursor to (0,0) — the existing
+// document and never resets the cursor to (0,0) - the existing
 // ClampCursor/EnsureCursorVisible calls it already makes on every
 // OnChanged tick are exactly what re-clamps the view to content that may
 // now be shorter/longer, so no separate scroll-position bookkeeping is
@@ -690,7 +690,7 @@ begin
       FCancel := nil;
       // A failed read, a decode failure, or content that now looks binary
       // is left alone rather than surfaced as an error or flipped into Hex
-      // mid-view — most likely a transient race with the writer still
+      // mid-view - most likely a transient race with the writer still
       // mid-save; the next change notification gets another try.
       if (AError.Code <> vecOk) or (not DetectAndDecodeText(ABytes, Text, Enc, IsBin)) or IsBin then
         Exit;
@@ -742,11 +742,11 @@ begin
   if FStreaming then
   begin
     // The line index built by StartStreamingOpen is aligned to whatever
-    // code-unit width it was scanned with — 1 byte for UTF-8/ANSI/OEM, 2
+    // code-unit width it was scanned with - 1 byte for UTF-8/ANSI/OEM, 2
     // bytes for UTF-16 (see Utf16PairIsLF). Redecoding within the same
     // width only changes how each line's bytes are decoded, not where
     // lines start, so the index stays valid (this is also how UTF-16
-    // LE <-> BE re-decoding is allowed here — same 2-byte width, index
+    // LE <-> BE re-decoding is allowed here - same 2-byte width, index
     // unaffected). Crossing widths would silently reinterpret the index at
     // the wrong granularity, so refuse instead of corrupting line
     // boundaries.
@@ -934,7 +934,7 @@ begin
         Exit;
       end;
       // An oversized archive entry gets the same second chance, but there's
-      // no local file to seek/line-index directly — extract it to a temp
+      // no local file to seek/line-index directly - extract it to a temp
       // file first (reusing the same CopyAsync path F5/Copy uses to pull a
       // file out of a ZIP), then stream from that temp copy.
       if (AError.Code = vecNotSupported) and HasArchiveChain(URI) then
@@ -1024,14 +1024,14 @@ end;
 
 { Stage 24: line-indexed streaming open for a local file that ReadBytesAsync
   refused as too large. Two phases, both off the UI thread:
-    1. Sample the first cStreamSampleBytes to detect encoding/binary — reuses
+    1. Sample the first cStreamSampleBytes to detect encoding/binary - reuses
        the exact same DetectAndDecodeText used for the whole-buffer path, so
        detection behavior matches for the part of the file that overlaps.
     2. Scan the whole file once (cStreamScanChunk-sized reads) to build
        FLineOffsets. Byte-level LF scanning (one byte at a time) is safe for
-       UTF-8/ANSI/OEM — a raw 0x0A byte is never part of a multi-byte UTF-8
+       UTF-8/ANSI/OEM - a raw 0x0A byte is never part of a multi-byte UTF-8
        sequence, and single-byte code pages have no multi-byte sequences at
-       all — but NOT safe for UTF-16, where a lone 0x0A byte can be the
+       all - but NOT safe for UTF-16, where a lone 0x0A byte can be the
        non-LF half of an unrelated code unit, so UTF-16 gets its own 2-byte-
        code-unit-aligned scan instead (see Utf16PairIsLF below); this is
        possible only because UTF-16 is BOM-only detected in this codebase
@@ -1090,7 +1090,7 @@ begin
       if SampleLen > 0 then
         FS.Read(Sample[0], SampleLen);
       // The cut at SampleLen is arbitrary, not an encoding boundary, unless
-      // the sample is the whole file (real EOF) — drop a trailing incomplete
+      // the sample is the whole file (real EOF) - drop a trailing incomplete
       // UTF-8 sequence so it doesn't make a genuinely UTF-8 file look invalid
       // (see TrimUtf8SampleTail).
       if SampleLen < ASize then
@@ -1180,7 +1180,7 @@ begin
     begin
       I := 0;
       // A leftover byte from the previous chunk pairs with this chunk's
-      // first byte — keeps pairs aligned to the code-unit grid even if a
+      // first byte - keeps pairs aligned to the code-unit grid even if a
       // read ever returns an odd byte count.
       if HasPending then
       begin
@@ -1307,9 +1307,9 @@ begin
 end;
 
 { An oversized archive entry has no local file to seek/line-index directly.
-  Extract it to a temp file first — reusing the same CopyAsync path F5/Copy
+  Extract it to a temp file first - reusing the same CopyAsync path F5/Copy
   already uses to pull a single file out of a ZIP
-  (TZipVirtualFileSystem.CopyAsync, "archive -> disk" branch) — then hand
+  (TZipVirtualFileSystem.CopyAsync, "archive -> disk" branch) - then hand
   that temp path to StartStreamingOpen unchanged. }
 procedure TEditorDoc.StartStreamingOpenFromArchive(const AURI: string; AGen: Cardinal);
 var
@@ -1345,7 +1345,7 @@ begin
         Exit;
       end;
       // StartStreamingOpen takes over FCancel/FLoading/FGen bookkeeping from
-      // here — same contract as the plain-local-file call site.
+      // here - same contract as the plain-local-file call site.
       FStreamPathIsTemp := True;
       StartStreamingOpen(TempPath, AGen);
     end, True, False);

@@ -90,7 +90,7 @@ end;
 
 procedure SampleMenuOnClick(AUserData: Pointer); cdecl;
 begin
-  // Demo callback — a real plugin would do something UI-visible here.
+  // Demo callback - a real plugin would do something UI-visible here.
 end;
 
 function mtn_plugin_get_abi_version: Int64; cdecl;

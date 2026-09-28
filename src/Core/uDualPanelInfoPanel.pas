@@ -1,7 +1,7 @@
 unit uDualPanelInfoPanel;
 
 { FAR/NDN Ctrl+L information panel (host/disk/memory). Extracted from
-  TDualPanelWindow.DrawPanelInfoContent — the host only supplies path and
+  TDualPanelWindow.DrawPanelInfoContent - the host only supplies path and
   directory totals. }
 
 interface

@@ -1,7 +1,7 @@
 unit uTextEncoding;
 
 { Detect / decode / encode text for Viewer/Editor VFS load-save.
-  Detect: BOM → UTF-8/16; else valid UTF-8; else CP1251 vs CP866 by
+  Detect: BOM -> UTF-8/16; else valid UTF-8; else CP1251 vs CP866 by
   Cyrillic letter hits + scaled score margin (OEM only when clearly ahead).
   F8 cycles encodings; OEM uses the Windows OEM code page. }
 
@@ -187,14 +187,14 @@ begin
   while (P >= 0) and (Steps < 3) do
   begin
     B := ABytes[P];
-    if (B and $C0) = $80 then // continuation byte — keep walking back
+    if (B and $C0) = $80 then // continuation byte - keep walking back
     begin
       Dec(P);
       Inc(Steps);
       Continue;
     end;
     if B < $80 then
-      Exit; // ASCII right before the cut — sample tail is already complete
+      Exit; // ASCII right before the cut - sample tail is already complete
     if (B and $E0) = $C0 then
       Need := 1
     else if (B and $F0) = $E0 then
@@ -202,7 +202,7 @@ begin
     else if (B and $F8) = $F0 then
       Need := 3
     else
-      Exit; // not a valid lead byte either way — let IsLikelyUtf8 judge it
+      Exit; // not a valid lead byte either way - let IsLikelyUtf8 judge it
     if (N - 1 - P) < Need then
       SetLength(ABytes, P); // sequence needs more continuation bytes than the sample has
     Exit;
@@ -315,19 +315,19 @@ begin
         Dec(Result, 3);
       Continue;
     end;
-    // Ё ё — distinctive for CP1251
+    // Ё ё - distinctive for CP1251
     if (B = $A8) or (B = $B8) then
     begin
       Inc(Result, 4);
       Inc(ALetterHits);
     end
-    // А-Я а-я (0xC0-0xFF) — primary CP1251 Cyrillic; rare as letters in CP866
+    // А-Я а-я (0xC0-0xFF) - primary CP1251 Cyrillic; rare as letters in CP866
     else if B >= $C0 then
     begin
       Inc(Result, 3);
       Inc(ALetterHits);
     end
-    // 0x80-0xBF except Ё/ё: punctuation / rare — weak or slightly negative
+    // 0x80-0xBF except Ё/ё: punctuation / rare - weak or slightly negative
     else if B >= $80 then
       Dec(Result);
   end;
@@ -357,7 +357,7 @@ begin
       Inc(Result, 3);
       Inc(ALetterHits);
     end
-    // Box-drawing / fill (0xB0-0xDF) — common in OEM screens, not letters
+    // Box-drawing / fill (0xB0-0xDF) - common in OEM screens, not letters
     else if (B >= $B0) and (B <= $DF) then
       Dec(Result, 2)
     // 0xF2-0xFF in CP866 are rare symbols
@@ -390,7 +390,7 @@ begin
   if N = 0 then
     Exit(True);
 
-  // BOM first — UTF-16 may contain NUL bytes.
+  // BOM first - UTF-16 may contain NUL bytes.
   if (N >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
   begin
     AEncoding := tfeUtf8Bom;
@@ -416,7 +416,7 @@ begin
     Exit(False);
   end;
 
-  // Structurally valid UTF-8 with real multi-byte chars → strong UTF-8.
+  // Structurally valid UTF-8 with real multi-byte chars -> strong UTF-8.
   // Pure ASCII is also UTF-8.
   if IsLikelyUtf8(ABytes) then
   begin
@@ -433,7 +433,7 @@ begin
     Exit(True);
   end;
 
-  // Not valid UTF-8 — choose Windows-1251 (ANSI) vs CP866 (OEM) by Cyrillic score.
+  // Not valid UTF-8 - choose Windows-1251 (ANSI) vs CP866 (OEM) by Cyrillic score.
   ScoreAnsi := ScoreCp1251(ABytes, HitsAnsi);
   ScoreOem := ScoreCp866(ABytes, HitsOem);
   // Base margin scales a little with sample size so short dumps aren't noisy.
@@ -554,7 +554,7 @@ begin
         end;
       end;
   else
-    // tfeUtf8 — no BOM
+    // tfeUtf8 - no BOM
     begin
       SetLength(Bom, 0);
       Body := SafeGetBytes(TEncoding.UTF8, AText);

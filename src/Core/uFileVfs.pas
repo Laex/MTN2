@@ -134,7 +134,7 @@ procedure QueueProgress(AOnProgress: TVfsProgressCallback; ADone, ATotal: Int64;
   const AName: string; AItemDone: Int64 = 0; AItemTotal: Int64 = 0;
   const AItemSrcPath: string = ''; const AItemDstPath: string = '');
 const
-  cMinQueueMs = 50; // ~20 Hz — avoid flooding the UI with TThread.Queue
+  cMinQueueMs = 50; // ~20 Hz - avoid flooding the UI with TThread.Queue
 var
   D, T, ID, IT: Int64;
   N, ISrc, IDst: string;
@@ -153,7 +153,7 @@ begin
   IDst := AItemDstPath;
   Prog := AOnProgress;
   // Force through on either the whole-item completion (D>=T) or a single
-  // file's own completion (ID>=IT) — without the latter, a fast per-file
+  // file's own completion (ID>=IT) - without the latter, a fast per-file
   // finish inside a tree copy routinely lands inside the 50ms window and
   // gets dropped, so the per-file bar visibly skips past 100% straight into
   // the next file's low percentage and never appears to finish.
@@ -190,7 +190,7 @@ begin
     ForceDirectories(WinApiPath(Parent));
 end;
 
-// True when ADst is ASrc itself or a path nested inside it — copying a
+// True when ADst is ASrc itself or a path nested inside it - copying a
 // directory into its own subtree would make CopyTree's FindFirst walk over
 // ASrc pick up the freshly-created destination and recurse into it forever.
 function IsSameOrDescendantPath(const ASrc, ADst: string): Boolean;
@@ -217,7 +217,7 @@ begin
   end;
   // Non-strict: this file may have been left untouched by Skip-mode conflict
   // handling rather than freshly written by us, so a size difference from
-  // ASrc is the expected, intentional outcome — only prove it still exists.
+  // ASrc is the expected, intentional outcome - only prove it still exists.
   if not AStrict then
     Exit;
   try
@@ -319,7 +319,7 @@ end;
 
 procedure PreserveFileAttributes(const ASrc, ADst: string);
 const
-  // Only the bits SetFileAttributes actually accepts (per WinAPI docs) —
+  // Only the bits SetFileAttributes actually accepts (per WinAPI docs) -
   // FILE_ATTRIBUTE_DIRECTORY/REPARSE_POINT/COMPRESSED/ENCRYPTED etc. are not
   // settable this way and would make the call fail or be silently ignored.
   AttrMask = FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or
@@ -410,7 +410,7 @@ begin
         Dst.WriteBuffer(Buf[0], N);
         Inc(Copied, N);
         // ADone/ATotal stay cumulative across the whole item (base + this
-        // file's progress so far), not just this one file's own share — inside
+        // file's progress so far), not just this one file's own share - inside
         // a recursive folder copy, ASrc is one of many child files, and the
         // "Total" bar/counter needs the running tree total to move smoothly
         // instead of resetting to a near-zero per-file value on every new
@@ -476,7 +476,7 @@ begin
   if APreserveTimestamps then
     PreserveFileTimestamps(ASrc, ADst);
   // Attributes (R/H/S/A) are carried over unconditionally, like Explorer/TC
-  // do — unrelated to the "preserve timestamps" job option.
+  // do - unrelated to the "preserve timestamps" job option.
   PreserveFileAttributes(ASrc, ADst);
 end;
 
@@ -497,7 +497,7 @@ begin
   end;
   if TFile.Exists(WinApiPath(ADst)) then
   begin
-    // A plain file sits where a directory needs to go — a real type
+    // A plain file sits where a directory needs to go - a real type
     // conflict (only this and per-file leaf conflicts below respect
     // AOverwrite). A directory already existing at ADst is not a conflict at
     // all: recursive copy into an existing folder is a merge by definition,
@@ -544,14 +544,14 @@ begin
           end;
         end;
         // Skip mode (AOverwrite=False): one item already existing at the
-        // destination is the expected, common case for a re-run/merge copy —
+        // destination is the expected, common case for a re-run/merge copy -
         // it must not abort the rest of the tree, or nothing past the first
         // pre-existing name ever gets copied (the reported bug). Real
         // failures and cancellation still stop the walk.
         if (ChildErr.Code = vecAlreadyExists) and not AOverwrite then
         begin
           AAnySkipped := True;
-          // A skipped item still needs to nudge progress along — without
+          // A skipped item still needs to nudge progress along - without
           // this, a run of skipped files (Skip-overwrite mode, or Ask+Skip
           // remembered) never advances the per-file bar, the file counter,
           // or the current-name display, and the job looks stalled even
@@ -618,7 +618,7 @@ begin
 end;
 
 // Counts every file plus every directory (including APath itself) that
-// DeleteTree below will remove — the denominator for its progress reporting.
+// DeleteTree below will remove - the denominator for its progress reporting.
 // A second walk of the same tree before deletion starts, mirroring
 // EstimateTreeBytes above for copy.
 function EstimateTreeItemCount(const APath: string): Int64;
@@ -876,7 +876,7 @@ begin
             List := TList<TVfsEntry>.Create;
             try
               Code := FindFirst(WinApiPath(TPath.Combine(Path, '*')), faAnyFile, SR);
-              // 5 = ERROR_ACCESS_DENIED (avoid Winapi.Windows — clashes with FindClose).
+              // 5 = ERROR_ACCESS_DENIED (avoid Winapi.Windows - clashes with FindClose).
               if Code = 5 then
                 Err := TVfsError.Make(vecAccessDenied, 'Access denied', URI)
               else if Code = 0 then
@@ -1216,7 +1216,7 @@ begin
             Err := TVfsError.Make(vecNotFound, 'Source not found', FromURI)
           else if TFile.Exists(WinApiPath(Dst)) then
           begin
-            // Dst is an existing file — a real conflict regardless of Src's kind.
+            // Dst is an existing file - a real conflict regardless of Src's kind.
             if not Overwrite then
               Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
             else
@@ -1224,7 +1224,7 @@ begin
           end
           else if TDirectory.Exists(WinApiPath(Dst)) and not TDirectory.Exists(WinApiPath(Src)) then
           begin
-            // Src is a file but Dst is an existing directory — real type conflict.
+            // Src is a file but Dst is an existing directory - real type conflict.
             if not Overwrite then
               Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
             else
@@ -1232,7 +1232,7 @@ begin
           end;
           // Src and Dst both directories, Dst already exists: not treated as a
           // conflict here. Same-volume TDirectory.Move below fails on its own
-          // (native Windows limitation, surfaces as a normal I/O error) —
+          // (native Windows limitation, surfaces as a normal I/O error) -
           // cross-volume falls through to CopyTree, which merges into the
           // existing folder per file, honoring AOverwrite/skip like Copy does.
           if Err.Code = vecOk then
@@ -1288,7 +1288,7 @@ begin
                 if Err.Code <> vecOk then
                   CleanupFailedCopy(Dst)
                 // Skip mode left at least one source item untouched at the
-                // destination (see CopyTree) — it still exists only in Src,
+                // destination (see CopyTree) - it still exists only in Src,
                 // so deleting Src here (the whole point of Move) would lose
                 // it. Leave the whole source tree in place instead; the merge
                 // itself already succeeded for everything that was copied.

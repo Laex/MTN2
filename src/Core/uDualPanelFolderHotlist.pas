@@ -128,7 +128,7 @@ begin
   if not (Assigned(FDialog) and FDialog.Visible) then
     Exit;
   // Re-sorting (FolderHotlistGetEntries orders by hotkey) can move the
-  // entry the cursor was on to a different row — follow it by URI rather
+  // entry the cursor was on to a different row - follow it by URI rather
   // than keeping the same numeric row, which would land on whatever
   // unrelated entry happens to sort into that slot now.
   Sel := FDialog.GetListSelectedIndex('hotlist');
@@ -189,7 +189,7 @@ begin
     Exit;
   // Search the entries themselves for the matching HotKey rather than
   // combining FolderHotlistFindByHotKey's raw-storage index with this
-  // (hotkey-sorted) array — those two are different orderings.
+  // (hotkey-sorted) array - those two are different orderings.
   Entries := FolderHotlistGetEntries;
   for I := 0 to High(Entries) do
     if Entries[I].HotKey = ADigit then
@@ -231,7 +231,7 @@ begin
   // Ctrl+1..Ctrl+9,Ctrl+0: toggle-assign that hotkey to the selected entry.
   // Pressing the digit already owning it clears it; pressing one owned by
   // another entry steals it (FolderHotlistSetHotKey enforces uniqueness).
-  // Checked on AKey, not AKeyChar — Ctrl+digit has no ASCII control-code
+  // Checked on AKey, not AKeyChar - Ctrl+digit has no ASCII control-code
   // to reverse-map, so AKeyChar is #0 for it (unlike Ctrl+letter).
   if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl], [ssShift, ssAlt]) and
      (FolderHotlistKeyFromVKey(AKey) <> 0) then
@@ -241,7 +241,7 @@ begin
     begin
       HotKeyDigit := FolderHotlistKeyFromVKey(AKey);
       if FEntries[HotIdx].HotKey = HotKeyDigit then
-        FolderHotlistSetHotKeyByUri(FEntries[HotIdx].URI, 0) // already assigned here — toggle off
+        FolderHotlistSetHotKeyByUri(FEntries[HotIdx].URI, 0) // already assigned here - toggle off
       else
         FolderHotlistSetHotKeyByUri(FEntries[HotIdx].URI, HotKeyDigit);
       RefreshList;
@@ -262,7 +262,7 @@ begin
   // that hotkey assigned (Ctrl+D dialog). No-op if nothing is bound to it.
   // Ctrl+Alt+1..6 is a separate namespace (column modes, see
   // uColumnModeMenuController), so Alt must be off here. Checked on AKey,
-  // not AKeyChar — Ctrl+digit has no ASCII control-code to reverse-map, so
+  // not AKeyChar - Ctrl+digit has no ASCII control-code to reverse-map, so
   // AKeyChar is #0 for it (unlike Ctrl+letter).
   if not TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl]) then
     Exit;

@@ -2,7 +2,7 @@ unit uPanelUriLabels;
 
 { Pure URI-building and display-label helpers used by the dual-panel host's
   folder history / folder hotlist dialogs and initial workspace setup.
-  Extracted from uDualPanelWindow.pas (health/refactor pass) — none of these
+  Extracted from uDualPanelWindow.pas (health/refactor pass) - none of these
   touch TDualPanelWindow state, so they live here as free functions. }
 
 interface
@@ -137,13 +137,13 @@ begin
 end;
 
 const
-  { Column widths for the "Directory hotlist" list — it has no native
+  { Column widths for the "Directory hotlist" list - it has no native
     multi-column support (dckList is one string per row), so rows and the
     header (dialogs/folderhotlist.json) are hand-aligned to these same
     widths via uPanelColumns.PadRight/PadLeft. Name + 1 + Path + 1 + Hotkey
-    is 1 short of the list's usable text width — its declared width (58)
+    is 1 short of the list's usable text width - its declared width (58)
     minus 1 for TDialogHost's own scrollbar column (uDialogHost.pas
-    reserves R.Width - 1), i.e. 57 usable — so TDialogHost's own
+    reserves R.Width - 1), i.e. 57 usable - so TDialogHost's own
     right-padding (it pads every row out to that full width) leaves one
     blank column between the Hotkey text and the scrollbar. }
   cHotlistNameW = 20;

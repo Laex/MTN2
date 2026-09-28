@@ -1,15 +1,15 @@
 unit uColorCoding;
 
-{ Panel row "color coding" — FAR Manager "File highlighting" style, Stage 37:
+{ Panel row "color coding" - FAR Manager "File highlighting" style, Stage 37:
   named groups (mask + per-state colors), checked top to bottom against a
-  row's display name — first matching group wins, mirroring FAR's own
+  row's display name - first matching group wins, mirroring FAR's own
   highlight.hst structure (group name, mask, separate colors for the
   Normal/Selected/Current visual states).
 
   Layered by the caller (panel row drawing, uDualPanelDrawUtils.DrawPanelList)
   on top of the theme's normal per-filetype color. A group's Normal color
   overrides the theme unconditionally; its Selected/Current colors are
-  opt-in — a group that only sets "normal" leaves selection/cursor
+  opt-in - a group that only sets "normal" leaves selection/cursor
   highlighting exactly as the theme draws it (this was Stage 37's original,
   still-default precedence), while a group that *does* set "selected" or
   "current" now wins there too, same as a FAR highlight group would. This
@@ -18,14 +18,14 @@ unit uColorCoding;
 
   Effective group list = one merge-by-name pass, embedded THEME_DEFAULT
   ("fileColoring", the baked-in NDN theme) merged with whichever theme file
-  is active on disk — colors are theme-owned on purpose: a mask's color has
+  is active on disk - colors are theme-owned on purpose: a mask's color has
   to be picked to not clash with that theme's own selection/cursor palette
   (e.g. Archives is magenta, not yellow, because yellow reads as the NDN
   selection color), so there is no separate theme-agnostic user layer that
   could silently clash after a theme switch. The active file defaults to
   NDNtheme.json in the config dir; TMtnSession.ThemeFile can point it at a
   different file (e.g. FARtheme.json) independent of which IThemeRenderer
-  Pascal class is instantiated — see SetActiveThemeFileName / uMainForm.
+  Pascal class is instantiated - see SetActiveThemeFileName / uMainForm.
 
     GGroups := Merge(THEME_DEFAULT.fileColoring, <active theme file>.fileColoring)
 
@@ -49,7 +49,7 @@ type
     Bg: TAlphaColor; // 0 = unset (leave to theme / to the state below it)
   end;
 
-  /// <summary>Which rows a group is even considered for — TC-style row-kind
+  /// <summary>Which rows a group is even considered for - TC-style row-kind
   /// condition layered on top of the FAR-style mask (uColorCoding's own
   /// addition, not present in FAR's highlight groups). ccaFilesAndDirs is
   /// the default ("both", no restriction), matching every group loaded from
@@ -60,8 +60,8 @@ type
     Name: string;
     Masks: TArray<string>;
     /// <summary>Soft-delete flag (FAR-style "disable without deleting").
-    /// A disabled group is skipped entirely during matching — as if it
-    /// weren't in the list — but stays present so the color-coding editor
+    /// A disabled group is skipped entirely during matching - as if it
+    /// weren't in the list - but stays present so the color-coding editor
     /// dialog can turn a THEME_DEFAULT-supplied group off via an override
     /// entry, since MergeColorCodingGroups has no way to remove a base
     /// entry outright (override-by-name only ever replaces or adds).
@@ -70,7 +70,7 @@ type
     /// <summary>Restricts matching to files, directories, or both (default).</summary>
     ApplyTo: TColorCodingApplyTo;
     /// <summary>Indexed by TColorCodingState. States left fully unset
-    /// (Fg=0 and Bg=0) mean "no opinion for this state" — the caller should
+    /// (Fg=0 and Bg=0) mean "no opinion for this state" - the caller should
     /// fall back to its own (theme) color, matching FAR: a group that
     /// doesn't define a Current color still gets the normal cursor look.</summary>
     Colors: array[TColorCodingState] of TColorCodingColor;
@@ -95,39 +95,39 @@ function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
 function MergeColorCodingGroups(const ABase, AOverride: TArray<TColorCodingGroup>): TArray<TColorCodingGroup>;
 /// <summary>Reloads the effective group list: THEME_DEFAULT's "fileColoring"
 /// merged with the active theme file's "fileColoring" (AFileName, or the
-/// active theme file set via SetActiveThemeFileName — NDNtheme.json by
-/// default — when AFileName is blank), read from the config dir. Result =
+/// active theme file set via SetActiveThemeFileName - NDNtheme.json by
+/// default - when AFileName is blank), read from the config dir. Result =
 /// True when that file was found and applied.</summary>
 function ReloadColorCoding(const AFileName: string = ''): Boolean;
-/// <summary>Cached groups — loaded lazily on first use via ReloadColorCoding.</summary>
+/// <summary>Cached groups - loaded lazily on first use via ReloadColorCoding.</summary>
 function ActiveColorCodingLoaded: Boolean;
 /// <summary>Sets the theme file name (in the config dir) ReloadColorCoding
-/// reads when called with a blank AFileName — the file a running theme's
+/// reads when called with a blank AFileName - the file a running theme's
 /// on-disk override lives in (e.g. 'FARtheme.json'). Empty AFileName resets
 /// to the default, 'NDNtheme.json'. Does not itself trigger a reload.</summary>
 procedure SetActiveThemeFileName(const AFileName: string);
 /// <summary>Parses a {"groups":[...]}-shaped document (or {"<AArrayKey>":[...]}
-/// with a different array key — theme files use "fileColoring") into
+/// with a different array key - theme files use "fileColoring") into
 /// AGroups. Exposed for reuse by the theme loader and for testing.</summary>
 function ParseColorCodingJson(const AJsonText: string; out AGroups: TArray<TColorCodingGroup>;
   const AArrayKey: string = 'groups'): Boolean;
 /// <summary>"#RRGGBB"/"RRGGBB" -> TAlphaColor. Exposed so the color-coding
 /// editor dialog can validate/parse user-typed hex without duplicating this.</summary>
 function HexToColor(const AHex: string; out AColor: TAlphaColor): Boolean;
-/// <summary>TAlphaColor -> "#RRGGBB", or '' for AColor = 0 (unset) — the
+/// <summary>TAlphaColor -> "#RRGGBB", or '' for AColor = 0 (unset) - the
 /// editor dialog's prefill/round-trip counterpart to HexToColor.</summary>
 function ColorToHex(AColor: TAlphaColor): string;
 /// <summary>Serializes AGroups back to a {"fileColoring":[...]} document,
-/// the same shape ParseColorCodingJson(..., 'fileColoring') reads — the
+/// the same shape ParseColorCodingJson(..., 'fileColoring') reads - the
 /// write-side counterpart that never existed before the color-coding editor
 /// dialog needed to persist edits.</summary>
 function ColorCodingGroupsToJson(const AGroups: TArray<TColorCodingGroup>): string;
 /// <summary>Effective (already merged) groups the panels are currently
-/// drawing with — a copy, safe for a caller (the editor dialog) to mutate.
+/// drawing with - a copy, safe for a caller (the editor dialog) to mutate.
 /// Forces a load via ReloadColorCoding if nothing has loaded yet.</summary>
 function GetActiveColorCodingGroups: TArray<TColorCodingGroup>;
 /// <summary>The theme file name ReloadColorCoding('') currently resolves to
-/// (see SetActiveThemeFileName) — where the editor dialog's Save writes.</summary>
+/// (see SetActiveThemeFileName) - where the editor dialog's Save writes.</summary>
 function GetActiveThemeFileName: string;
 /// <summary>Writes AGroups as the active theme file's "fileColoring"
 /// (GetConfigFilePath(GetActiveThemeFileName)), then reloads so panel
@@ -169,7 +169,7 @@ end;
 
 /// <summary>Parses one optional {"fg":"#..","bg":"#.."} state block. Missing
 /// entirely, or present with unparsable colors, both just leave AColor at
-/// its zeroed default (caller pre-zeroes) — "unset", not an error.</summary>
+/// its zeroed default (caller pre-zeroes) - "unset", not an error.</summary>
 procedure ParseStateBlock(AObj: TJSONObject; const AKey: string; var AColor: TColorCodingColor);
 var
   StateVal: TJSONValue;
@@ -252,7 +252,7 @@ begin
         if not Obj.TryGetValue<string>('name', Group.Name) then
           Group.Name := MaskVal;
         Group.Masks := SplitMasks(MaskVal);
-        // Not Obj.TryGetValue<Boolean>('enabled', Group.Enabled) — that
+        // Not Obj.TryGetValue<Boolean>('enabled', Group.Enabled) - that
         // generic overload clobbers the out param to False when the key is
         // absent, defeating "defaults to True" (caught by TestColorCodingMerge).
         Group.Enabled := True;
@@ -355,7 +355,7 @@ begin
     end;
   end;
   SetLength(NewEntries, NewCount);
-  // New (unmatched) override entries go first — first mask match wins, and
+  // New (unmatched) override entries go first - first mask match wins, and
   // an override/addition should get first crack, not be shadowed by a
   // pre-existing base entry that happens to match the same file too.
   Result := NewEntries + Merged;
@@ -386,7 +386,7 @@ begin
         Result := True;
       end;
     except
-      // Corrupt/unreadable theme file — keep the embedded THEME_DEFAULT groups.
+      // Corrupt/unreadable theme file - keep the embedded THEME_DEFAULT groups.
     end;
   end;
 
@@ -411,12 +411,12 @@ begin
     ReloadColorCoding('');
   if AName = '' then
     Exit;
-  // First mask match wins outright (Stage 37's original resolution rule) —
+  // First mask match wins outright (Stage 37's original resolution rule) -
   // the winning group's color for AState governs even when it's unset
   // (Result = False then, i.e. "this group has no opinion here, defer to
   // the theme"); we don't fall through to a later group just because this
   // one left a state blank. Disabled groups, and groups whose ApplyTo
-  // excludes this row's kind, are invisible to matching — skipped, not
+  // excludes this row's kind, are invisible to matching - skipped, not
   // treated as a match with nothing to say (that would still stop the scan).
   for I := 0 to High(GGroups) do
   begin

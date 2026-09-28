@@ -1,7 +1,7 @@
 unit uShellAssoc;
 
 { Platform shell file associations (open handler probe + open).
-  Host/UI code uses only this unit — Windows today, other OS later. }
+  Host/UI code uses only this unit - Windows today, other OS later. }
 
 interface
 
@@ -29,7 +29,7 @@ function ShellOpenFile(const AFilePath: string): Boolean;
 /// the type registers none. Returns False on failure.</summary>
 function ShellEditFile(const AFilePath: string): Boolean;
 
-/// <summary>Open a URL (https://…, mailto:…) with the OS default handler,
+/// <summary>Open a URL (https://..., mailto:...) with the OS default handler,
 /// e.g. the default browser. Returns False on failure.</summary>
 function ShellOpenUrl(const AUrl: string): Boolean;
 
@@ -70,7 +70,7 @@ begin
   S := Trim(AExtOrName);
   if S = '' then
     Exit('');
-  // File name → extension; bare "pdf" → ".pdf".
+  // File name -> extension; bare "pdf" -> ".pdf".
   if (Pos(PathDelim, S) > 0) or (Pos('/', S) > 0) or (Pos('.', S) > 1) then
     S := TPath.GetExtension(S)
   else if (Length(S) > 0) and (S[1] <> '.') then
@@ -341,7 +341,7 @@ begin
   else
     CwdP := nil;
   // CREATE_NEW_CONSOLE: own console for console apps; GUI apps ignore it.
-  // Do not wait — close handles immediately (detached from Host / ConPTY).
+  // Do not wait - close handles immediately (detached from Host / ConPTY).
   if not CreateProcess(nil, PChar(Line), nil, nil, False,
     CREATE_NEW_CONSOLE or CREATE_UNICODE_ENVIRONMENT, nil, CwdP, Si, Pi) then
     Exit;
@@ -361,7 +361,7 @@ begin
   if Cmd = '' then
     Exit;
 
-  // Single existing file/folder → shell open (associations, Explorer).
+  // Single existing file/folder -> shell open (associations, Explorer).
   Path := Cmd;
   if (Length(Path) >= 2) and (Path[1] = '"') and (Path[Length(Path)] = '"') then
     Path := Copy(Path, 2, Length(Path) - 2);

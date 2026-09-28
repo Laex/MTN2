@@ -1,7 +1,7 @@
 unit uNordTheme;
 
 { Stage 27: the canonical Nord palette (nordtheme.com) applied to
-  IThemeRenderer — cold "polar night" backgrounds, "snow storm" body text,
+  IThemeRenderer - cold "polar night" backgrounds, "snow storm" body text,
   "frost" accent hues for chrome/focus, "aurora" hues for file-type colour
   coding. Single-line unicode box-drawing everywhere, like
   uModernUnicodeTheme, and the same 3-cell '[x]' close button geometry every
@@ -56,7 +56,7 @@ type
 implementation
 
 const
-  // Nord — https://www.nordtheme.com/docs/colors-and-palettes
+  // Nord - https://www.nordtheme.com/docs/colors-and-palettes
   cNord0  = TAlphaColor($FF2E3440); // polar night, darkest
   cNord1  = TAlphaColor($FF3B4252);
   cNord2  = TAlphaColor($FF434C5E);
@@ -65,7 +65,7 @@ const
   cNord5  = TAlphaColor($FFE5E9F0);
   cNord6  = TAlphaColor($FFECEFF4); // snow storm, brightest
   cNord7  = TAlphaColor($FF8FBCBB); // frost teal
-  cNord8  = TAlphaColor($FF88C0D0); // frost cyan — primary accent
+  cNord8  = TAlphaColor($FF88C0D0); // frost cyan - primary accent
   cNord9  = TAlphaColor($FF81A1C1); // frost blue
   cNord10 = TAlphaColor($FF5E81AC); // frost dark blue
   cNord11 = TAlphaColor($FFBF616A); // aurora red

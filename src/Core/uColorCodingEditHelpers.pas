@@ -3,7 +3,7 @@ unit uColorCodingEditHelpers;
 { Pure helpers for the "Color coding" list/editor and its color-picker
   overlay (hdkColorCoding / hdkColorCodingEdit / hdkColorPicker), plus the
   Gray+/Gray-/Gray* key-recovery helper used by the same dialog family.
-  Extracted from uDualPanelWindow.pas (health/refactor pass) — none of these
+  Extracted from uDualPanelWindow.pas (health/refactor pass) - none of these
   touch TDualPanelWindow state, so they live here as free functions. }
 
 interface
@@ -13,9 +13,9 @@ uses
   uColorCoding;
 
 /// <summary>In-progress (not yet committed to FColorCodingGroups) values
-/// of hdkColorCodingEdit's fields — snapshotted before opening hdkColorPicker
+/// of hdkColorCodingEdit's fields - snapshotted before opening hdkColorPicker
 /// on top of it (which needs to fully close/replace FDialog, per this
-/// codebase's usual "reopen with a patched declaration" pattern — there's
+/// codebase's usual "reopen with a patched declaration" pattern - there's
 /// no live in-place field mutation on an open TDialogHost) and restored
 /// (with the picked field updated) when the picker returns.</summary>
 type
@@ -27,7 +27,7 @@ type
   end;
 
 { FMX Win ExtractChar zeroes Key for printable chars (KeyChar kept). Recover
-  Gray+/Gray−/Gray* via the physical VK still held during KeyDown. }
+  Gray+/Gray-/Gray* via the physical VK still held during KeyDown. }
 procedure RestoreGrayOpKey(var AKey: Word; const AKeyChar: Char);
 
 function ColorCodingApplyToChar(AApplyTo: TColorCodingApplyTo): Char;
@@ -44,11 +44,11 @@ function ColorCodingNameExistsIn(const AGroups: TArray<TColorCodingGroup>;
 procedure ColorCodingArrayDelete(var AGroups: TArray<TColorCodingGroup>; AIndex: Integer);
 
 /// <summary>Blank AText = unset (True, AColor left at 0). Non-blank must
-/// parse via uColorCoding.HexToColor or this fails — a typo should be
+/// parse via uColorCoding.HexToColor or this fails - a typo should be
 /// rejected, not silently dropped to "unset".</summary>
 function ColorCodingParseHexField(const AText: string; out AColor: TAlphaColor): Boolean;
 
-/// <summary>True for a field id ending "_bg" (vs. "_fg") — used both to
+/// <summary>True for a field id ending "_bg" (vs. "_fg") - used both to
 /// route hdkColorPicker's live preview and to know which half of a pair to
 /// write the picked color back into.</summary>
 function ColorCodingFieldIsBg(const AFieldId: string): Boolean;
@@ -60,7 +60,7 @@ procedure ColorCodingSetFieldValue(var AFields: TColorCodingEditFields;
   const AFieldId, AValue: string);
 
 /// <summary>16 named ANSI presets (uANSIParser.TANSIParser.StandardAnsiColor
-/// — the same 16 colors the terminal itself uses for SGR 30-37/90-97, so
+/// - the same 16 colors the terminal itself uses for SGR 30-37/90-97, so
 /// the picker offers exactly the palette this app already renders with,
 /// not an invented one) as pre-formatted "Name           #RRGGBB" labels
 /// for the picker's list, plus the matching hex strings in the same order.</summary>
@@ -74,9 +74,9 @@ uses
 
 procedure RestoreGrayOpKey(var AKey: Word; const AKeyChar: Char);
 begin
-  { FMX+Alt often delivers Gray+/−/* as AKey=0 + KeyChar, not vkAdd /
+  { FMX+Alt often delivers Gray+/-/* as AKey=0 + KeyChar, not vkAdd /
     vkSubtract / vkMultiply. Only AKey=0 is recovered; a real key code is
-    never rewritten (Ins, whose code 45 equals Ord('-'), once became Gray−
+    never rewritten (Ins, whose code 45 equals Ord('-'), once became Gray-
     and opened the deselect-mask dialog). }
   if AKey <> 0 then
     Exit;

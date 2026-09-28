@@ -1,15 +1,15 @@
 unit TestCopySkipMerge;
 
 { Regression: recursive copy/move into an already-existing destination folder
-  with OverwriteMode=Skip must merge — copy every source file missing at the
-  destination and leave existing destination files untouched — instead of
+  with OverwriteMode=Skip must merge - copy every source file missing at the
+  destination and leave existing destination files untouched - instead of
   bailing out at the first "already exists" the way TDualPanelWindow's
   ExecuteTransfer(..., FJob.OverwriteMode <> jomSkip, ...) drives CopyAsync.
 
   Root cause was in uFileVfs.pas's CopyTree: it treated "destination
   directory already exists" as a hard conflict (same class of check as a
-  colliding file), so the very first recursive call — the top-level
-  destination folder itself, in the reported scenario — aborted the whole
+  colliding file), so the very first recursive call - the top-level
+  destination folder itself, in the reported scenario - aborted the whole
   tree copy before touching a single file. }
 
 interface
@@ -130,7 +130,7 @@ begin
 
   // Destination already exists (this is exactly what made CopyTree bail
   // immediately, before the bug fix) and already has 'a.txt' with DIFFERENT
-  // content than the source — Skip mode must leave it exactly as-is.
+  // content than the source - Skip mode must leave it exactly as-is.
   TDirectory.CreateDirectory(ADst);
   WriteTextFile(TPath.Combine(ADst, 'a.txt'), 'dst-a-preexisting');
   WriteTextFile(TPath.Combine(ADst, 'unrelated.txt'), 'dst-only');
@@ -196,14 +196,14 @@ begin
   WriteTextFile(TPath.Combine(Src, 'sub', 'new.txt'), 'fresh');
   WriteTextFile(TPath.Combine(Src, 'sub', 'old.txt'), 'src-old');
   // Dst does NOT exist yet, but its 'sub' equivalent will be created fresh by
-  // the copy itself down one level — instead pre-seed a *second* copy run
+  // the copy itself down one level - instead pre-seed a *second* copy run
   // into the same destination to prove re-running Skip against an already-
   // merged tree keeps working (the realistic "re-sync" workflow).
   Ok := RunCopy(Src, Dst, False, Err);
   Assert.IsTrue(Ok, 'first pass copies the whole (new) tree');
 
   // Simulate the destination's copy of old.txt having been edited locally
-  // after the first sync, then re-run the same Skip copy — a second pass
+  // after the first sync, then re-run the same Skip copy - a second pass
   // must still merge in anything new without touching the edited file.
   WriteTextFile(TPath.Combine(Dst, 'sub', 'old.txt'), 'locally-edited');
   WriteTextFile(TPath.Combine(Src, 'sub', 'second.txt'), 'second-pass-new');
@@ -221,7 +221,7 @@ end;
 /// <summary>Run a real TPanelJobController copy the way the panel does:
 /// BeginJob -> ApplyCopyMoveOptions(Skip) -> ConfirmJob, pumping the UI queue
 /// until the finish callback fires. This is the layer the reported bug lived
-/// in — CopyAsync alone never saw the folder because the controller skipped
+/// in - CopyAsync alone never saw the folder because the controller skipped
 /// the whole item before calling it.</summary>
 function RunJobCopy(const ASrcDir, ADestParentDir: string;
   AMode: TJobOverwriteMode; out ASuccess: Boolean): Boolean;
@@ -403,7 +403,7 @@ var
 begin
   Writeln('  inside the source folder, Ask mode, click Skip on the folder prompt)');
 
-  // Mirrors "select all files/folders inside P:\_.. and copy to D:\_.." —
+  // Mirrors "select all files/folders inside P:\_.. and copy to D:\_.." -
   // Src's *children* become FJob.Sources, not Src itself.
   Src := TPath.Combine(GRoot, 'ask_src');
   Dst := TPath.Combine(GRoot, 'ask_dst');
@@ -413,7 +413,7 @@ begin
   WriteTextFile(TPath.Combine(Src, '__2026', 'ZNRM', '2026_new.txt'), 'src-2026-new');
 
   // Destination already has the folder tree (from an earlier sync) with the
-  // 2024/2025 files but not the newly added 2026 one — exactly the reported
+  // 2024/2025 files but not the newly added 2026 one - exactly the reported
   // state of P:\..\ЗНРМ vs D:\..\ЗНРМ.
   TDirectory.CreateDirectory(TPath.Combine(Dst, TPath.Combine('__2026', 'ZNRM')));
   WriteTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2024.txt'), 'src-2024');

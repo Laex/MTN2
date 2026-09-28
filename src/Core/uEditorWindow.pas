@@ -2,12 +2,12 @@
 
 { MDI Editor/Viewer window: edit small text files in memory, save via async VFS.
   F4 = editable Editor; F3 = same window in ViewOnly (no mutations).
-  Binary / Hex: F3 opens Hex dump when file has NULs; F4 / Ctrl+H toggles Hexв†”Text.
-  Far-core keys: F6 Viewв†”Edit, F8/Shift+F8 encoding, Alt+F8 goto, Shift/Alt+F7 find,
+  Binary / Hex: F3 opens Hex dump when file has NULs; F4 / Ctrl+H toggles Hex<->Text.
+  Far-core keys: F6 View<->Edit, F8/Shift+F8 encoding, Alt+F8 goto, Shift/Alt+F7 find,
   Ctrl+F7 replace, Ctrl+D/Y line delete, Ctrl+K to EOL, Ctrl+N blank line,
   Ctrl+Left/Right words, Ctrl+Home/End file ends, Ctrl+U clear sel.
   Clipboard Ctrl+C/X/V; Undo Ctrl+Z; Redo Ctrl+Shift+Z (Ctrl+Y = Far delete line).
-  Find: F7 or / вЂ” prompt; Enter/F3 вЂ” next; Shift+F3 вЂ” previous. }
+  Find: F7 or / - prompt; Enter/F3 - next; Shift+F3 - previous. }
 
 interface
 
@@ -36,16 +36,16 @@ type
     FHexMode: Boolean;
     FHexHighNibble: Boolean;
     // Bug fix: was a fixed hard-coded NDN-blue palette (module consts below,
-    // now removed) вЂ” switching the active theme changed the window frame
+    // now removed) - switching the active theme changed the window frame
     // but never the body content. Refreshed from Theme.ResolveEditorColors
     // at the top of every DrawContent call (cheap; mirrors how every other
     // window re-reads Theme fresh each frame rather than caching across a
-    // live theme switch вЂ” see uThemeProxy.pas), so every Draw*Content /
+    // live theme switch - see uThemeProxy.pas), so every Draw*Content /
     // DrawScrollBar / DrawFunctionKeys / DrawAppStatusLine call reached from
     // within that same DrawContent sees the current theme's colors.
     FThemeColors: TEditorThemeColors;
     // Stage 25: cell-aware Markdown render mode (F3 on .md, view-only).
-    // Mutually exclusive with FHexMode by construction вЂ” never both True.
+    // Mutually exclusive with FHexMode by construction - never both True.
     FMarkdownMode: Boolean;
     FMdFenceIdx: TMarkdownFenceIndex;
     FMdLineCache: TDictionary<Integer, TMdLine>;
@@ -63,7 +63,7 @@ type
     FMdImageSizeCache: TDictionary<string, TMdImageSize>;
     // Table rows now bake the viewport's TextWidth into their wrapped
     // DisplayText (see FormatPipeTableLine), so a cached TMdLine is only
-    // valid for the width it was built at — a resize must invalidate it.
+    // valid for the width it was built at - a resize must invalidate it.
     FMdLineCacheWidth: Integer;
     // Layout (columns, alignment, fitted widths) of the pipe-table block
     // rows were last formatted from, keyed by the block's first/last line
@@ -74,12 +74,12 @@ type
     FMdTableLayoutStart, FMdTableLayoutEnd, FMdTableLayoutWidth: Integer;
     FMdTableLayout: TMdTableLayout;
     // Last FDoc.ContentGen this window's markdown caches were built against
-    // — a live reload (FDoc's own file-watcher) bumps ContentGen without
+    // - a live reload (FDoc's own file-watcher) bumps ContentGen without
     // going through Open, so DocChanged compares against this to know when
     // the fence index / line cache now point at stale content.
     FLastMdContentGen: Cardinal;
     // True only while DrawMarkdownContent has an active Overlay request for
-    // an image line in the current viewport вЂ” read by uMainForm.FormPaint
+    // an image line in the current viewport - read by uMainForm.FormPaint
     // (MarkdownImageOverlayVisible) to decide whether to run the Overlay
     // Canvas pass for this window, mirroring TDualPanelWindow.QuickViewVisible.
     FMdOverlayShowing: Boolean;
@@ -211,7 +211,7 @@ type
     procedure RequestEncoding(AEncoding: TTextFileEncoding; ARedecode: Boolean);
     procedure CycleEncoding;
     /// <summary>Clears the line if it's the only one, else deletes it and
-    /// clamps the cursor row/col вЂ” the shared tail of DeleteCurrentLine and
+    /// clamps the cursor row/col - the shared tail of DeleteCurrentLine and
     /// CutSelectionOrLine's no-selection path. Caller must PushUndo (and
     /// copy to clipboard, for Cut) first.</summary>
     procedure RemoveCurrentLine;
@@ -219,7 +219,7 @@ type
     procedure DeleteToEndOfLine;
     procedure InsertBlankLineBelow;
     /// <summary>Applies one ReplaceInLine hit at (ALineIdx, AMatchPos) and
-    /// moves the cursor to just past the replacement вЂ” the shared "apply
+    /// moves the cursor to just past the replacement - the shared "apply
     /// and land the cursor" step of ReplaceInDocument's forward-then-wrap
     /// search.</summary>
     procedure ReplaceOccurrenceAt(ALineIdx, AMatchPos: Integer; const ALine, ANeedle, AReplace: string);
@@ -336,7 +336,7 @@ const
 const
   cMaxUndo     = 100;
   // Stage 25: rows reserved for a standalone "![alt](path)" image line when
-  // its extension/path resolve to something the Overlay can preview вЂ” the
+  // its extension/path resolve to something the Overlay can preview - the
   // one deliberate break from "one source line = one screen line" (see
   // uMarkdownParser header), because a 1-cell-tall image isn't useful.
   cMdImageRows = 8;
@@ -727,8 +727,8 @@ begin
   if not FAlive then
     Exit;
   // A live reload (FDoc's own file-watcher) replaces the document's content
-  // without going through Open, so the markdown fence index / line cache —
-  // keyed by line index into content that just changed underneath — would
+  // without going through Open, so the markdown fence index / line cache -
+  // keyed by line index into content that just changed underneath - would
   // otherwise keep serving stale parses for lines whose text didn't shift
   // but whose meaning did (or worse, serve a cached table block that no
   // longer matches its (now different) source rows).
@@ -751,16 +751,16 @@ begin
     FPositionRestored := True;
     RestoreSavedPosition;
     JustRestored := True;
-    // Stage 25: default F3 on a .md file to the rendered view вЂ” only on this
+    // Stage 25: default F3 on a .md file to the rendered view - only on this
     // one-time "doc just became ready" tick, so a later Ctrl+M (raw text)
     // isn't silently undone by an unrelated DocChanged (dirty/saving state
-    // changes fire this same event). Never for F4/Editor вЂ” raw source only.
+    // changes fire this same event). Never for F4/Editor - raw source only.
     if (not FDoc.Binary) and FViewOnly and IsMarkdownFile then
       FMarkdownMode := True;
   end;
   ClampCursor;
   // EnsureCursorVisible re-anchors FTopLine/FLeftCol to keep the cursor in
-  // view вЂ” exactly the opposite of what a just-restored position wants: the
+  // view - exactly the opposite of what a just-restored position wants: the
   // saved top-left corner is authoritative, the cursor is drawn wherever it
   // falls relative to it (it was saved from the same session, so normally
   // it's already inside that view). Skip it for this one tick only.
@@ -814,7 +814,7 @@ begin
   FLeftCol := 0;
   FCursorRow := 0;
   FCursorCol := 0;
-  // Applied once the async load reaches Ready (DocChanged) вЂ” the document
+  // Applied once the async load reaches Ready (DocChanged) - the document
   // has no lines/bytes to clamp against before then.
   FPositionRestored := False;
   ClearSelection;
@@ -869,7 +869,7 @@ end;
 
 function TEditorWindow.ViewHeight: Integer;
 begin
-  // Row 0 = title; вЂ¦; H-3 = bottom frame; H-2 = F-keys; H-1 = status.
+  // Row 0 = title; ...; H-3 = bottom frame; H-2 = F-keys; H-1 = status.
   // Chromeless: rows 1..H-2 inside the host's frame.
   if FChromeless then
     Exit(Max(Area.Height - 2, 1));
@@ -899,8 +899,8 @@ var
 begin
   Border := FrameBorderColor;
   // This bottom edge is Host-drawn (the F-key bar/status line occupy the
-  // window's own bottom border, so Theme.DrawWindowFrame вЂ” which already
-  // correctly picks single vs double line per theme for the top/sides вЂ”
+  // window's own bottom border, so Theme.DrawWindowFrame - which already
+  // correctly picks single vs double line per theme for the top/sides -
   // never reaches this row); it used to always close with double-line
   // glyphs, which only matches NDN/TotalCommander/HighContrast. Same fix as
   // Stage 27 item 9's panel divider: ask the theme, and only actually use
@@ -1103,12 +1103,12 @@ end;
 // (what the generic branch below still assumes: 1 line = 1 row) can no
 // longer tell whether the cursor's line is actually visible. FTopLine stays
 // a line index either way (DrawMarkdownContent always starts a fresh line
-// at the top of the viewport — see its own comment on why it's line-, not
-// row-, granular) — this only fixes how far FTopLine gets pushed to catch
+// at the top of the viewport - see its own comment on why it's line-, not
+// row-, granular) - this only fixes how far FTopLine gets pushed to catch
 // up with the cursor. Both walks below are bounded by AViewH iterations at
 // most (every line is at least 1 row), independent of document size or how
 // far the cursor just jumped (arrow keys move 1 line, PageUp/Down move
-// ViewHeight lines, Goto/Home/End can jump the whole document — all handled
+// ViewHeight lines, Goto/Home/End can jump the whole document - all handled
 // the same way, in the same bounded cost).
 procedure TEditorWindow.EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
 var
@@ -1659,7 +1659,7 @@ begin
     Exit;
   if ARedecode and FDoc.Dirty then
   begin
-    // Re-decode from raw bytes would drop unsaved edits вЂ” ask first.
+    // Re-decode from raw bytes would drop unsaved edits - ask first.
     FPendingEncoding := AEncoding;
     FConfirm := ecDiscardEncoding;
     CloseFindPrompt;
@@ -2827,8 +2827,8 @@ begin
     Exit;
   end;
 
-  DrawGridChar(Buffer, W - 2, 1, #$25B2, FThemeColors.ScrollFg, FThemeColors.BodyBg); // в–І
-  DrawGridChar(Buffer, W - 2, Bottom, #$25BC, FThemeColors.ScrollFg, FThemeColors.BodyBg); // в–ј
+  DrawGridChar(Buffer, W - 2, 1, #$25B2, FThemeColors.ScrollFg, FThemeColors.BodyBg); // в-І
+  DrawGridChar(Buffer, W - 2, Bottom, #$25BC, FThemeColors.ScrollFg, FThemeColors.BodyBg); // в-ј
   for I := 2 to Bottom - 1 do
     DrawGridChar(Buffer, W - 2, I, chShadeLight, FThemeColors.ScrollFg, FThemeColors.BodyBg);
   if FDoc.Ready then
@@ -3096,7 +3096,7 @@ begin
     end;
 
     // Word wrap: a long line is sliced into word-boundary chunks (breaks
-    // after the rightmost space/punctuation that still fits вЂ” see
+    // after the rightmost space/punctuation that still fits - see
     // TMarkdownParser.ComputeWrapStarts; falls back to a hard cut only for
     // an unbroken run longer than the width, e.g. a URL), one
     // TMarkdownPainter.DrawLine call per chunk. Deliberately computed per
@@ -3137,7 +3137,7 @@ begin
   end;
 
   // LeaveMarkdownOverlay reads the *previous* FMdOverlayShowing to decide
-  // whether a ClearOverlayPreview is even needed вЂ” set the new flag only
+  // whether a ClearOverlayPreview is even needed - set the new flag only
   // in the branch that doesn't call it.
   if ShowingOverlay then
     FMdOverlayShowing := True
@@ -3282,7 +3282,7 @@ begin
     Exit(FDialog.HandleClick(ALocalCol, ALocalRow));
   if FConfirm <> ecNone then
     Exit;
-  // Frame [x] (DrawWindowFrame) вЂ” embedded Viewer/Editor and standalone.
+  // Frame [x] (DrawWindowFrame) - embedded Viewer/Editor and standalone.
   Frame := TRectI.Make(0, 0, Area.Width - 1, Area.Height - 1);
   if WindowFrameCloseHit(Frame, ALocalCol, ALocalRow) then
   begin
@@ -3375,7 +3375,7 @@ begin
     Exit;
   end;
 
-  // Drag above/below the text pane в†’ scroll and keep selecting.
+  // Drag above/below the text pane -> scroll and keep selecting.
   Bottom := ContentBottomRow;
   if (ALocalRow < 1) and (FTopLine > 0) then
   begin

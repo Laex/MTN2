@@ -3,7 +3,7 @@ unit uFileRecycleBin;
 { Deleting a local path into the Windows Recycle Bin, via the modern
   IFileOperation Shell API with a legacy SHFileOperation fallback. Isolated
   from uFileVfs.pas because this is the only code in the local VFS provider
-  that needs COM / Shell headers (Winapi.ShellAPI/ShlObj/ActiveX) — permanent
+  that needs COM / Shell headers (Winapi.ShellAPI/ShlObj/ActiveX) - permanent
   delete (uFileVfs.DeleteTree) is plain filesystem I/O and doesn't. }
 
 interface
@@ -24,7 +24,7 @@ type
   /// <summary>Bridges IFileOperation's own progress notifications (the
   /// Recycle Bin delete runs with FOF_SILENT, so nothing else reports
   /// progress) to AOnProgress. Every method but UpdateProgress/PostDeleteItem
-  /// is a required no-op — returning anything other than S_OK from a Pre*
+  /// is a required no-op - returning anything other than S_OK from a Pre*
   /// hook would tell the shell to abandon that item.</summary>
   TDeleteProgressSink = class(TInterfacedObject, IFileOperationProgressSink)
   private
@@ -363,7 +363,7 @@ begin
     if DeleteToRecycleBinIFileOp(Path, AError, AOnProgress) then
       Exit;
     if AError.Code <> vecOk then
-      Exit; // real failure from IFileOperation — do not hide behind SHFileOp
+      Exit; // real failure from IFileOperation - do not hide behind SHFileOp
 
     // Fallback: legacy SHFileOperation.
     AError := TVfsError.Ok;

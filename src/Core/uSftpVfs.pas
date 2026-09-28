@@ -67,7 +67,7 @@ type
 function ParseSftpLsLine(const ALine: string; out AEntry: TVfsEntry): Boolean;
 function ParseSftpLsDate(const AMonth, ADay, ATimeOrYear: string): TDateTime;
 /// <summary>Maps sftp.exe stdout/stderr + spawn outcome to a TVfsError.
-/// Exposed for tests — no process is spawned.</summary>
+/// Exposed for tests - no process is spawned.</summary>
 function ClassifySftpFailure(const AOutput: string; AExitCode: Cardinal;
   ATimedOut, ACancelled: Boolean; const AURI: string): TVfsError;
 function SftpFailureIsTransient(const AError: TVfsError): Boolean;
@@ -228,7 +228,7 @@ end;
 /// <summary>Spawns AExe with AArgs, writes AStdIn to its stdin then closes
 /// it, captures merged stdout+stderr. ATimeoutMs=0 waits until the process
 /// exits or ACancel is signalled. Timeout/cancel kill the child. A nonzero
-/// exit code is ssrOk — the caller reads AOutput to explain the failure.</summary>
+/// exit code is ssrOk - the caller reads AOutput to explain the failure.</summary>
 function RunCapturedProcess(const AExe: string; const AArgs: TArray<string>;
   const AStdIn: string; ATimeoutMs: Cardinal; ACancel: IJobCancelToken;
   out AOutput: string; out AExitCode: Cardinal): TSftpSpawnResult;

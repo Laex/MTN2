@@ -1,11 +1,11 @@
 unit TestColorSampleRender;
 
 { Headless render check for dckColorSample (uDialogHost.pas): parses the real
-  colorcodingedit.json (same as TestDialogJson.pas does — no RCDATA needed,
+  colorcodingedit.json (same as TestDialogJson.pas does - no RCDATA needed,
   this bypasses RequireDialogResource entirely since a console tool has none
   compiled in), sets cc_normal_fg's live text the way a user typing it would,
   opens it on a real TTerminalGrid, calls Draw, then inspects the actual
-  cells the three sample swatches landed on — no screenshot needed to tell
+  cells the three sample swatches landed on - no screenshot needed to tell
   whether the background fill / theme-driven fallback is actually happening. }
 
 interface
@@ -53,7 +53,7 @@ begin
 end;
 
 /// <summary>All (col,row) positions where "filename.t" starts, top to bottom
-/// — the three sample swatches (Normal/Selected/Current) draw in that order.</summary>
+/// - the three sample swatches (Normal/Selected/Current) draw in that order.</summary>
 function FindSampleCells(const AGrid: TTerminalGrid): TArray<TPoint>;
 var
   X, Y, K, N: Integer;
@@ -135,7 +135,7 @@ begin
   Assert.IsTrue(TryParseDialogJson(
     TFile.ReadAllText('..\..\dialogs\colorcodingedit.json', TEncoding.UTF8), Decl),
     'colorcodingedit.json failed to parse');
-  // All 6 Fg/Bg fields left blank — every channel on every row should fall
+  // All 6 Fg/Bg fields left blank - every channel on every row should fall
   // back to that row's theme-resolved color, not the generic gray.
 
   FillGrid(Grid);
@@ -186,7 +186,7 @@ begin
     'colorpicker.json failed to parse');
 
   // Raw parse leaves picker_presets at its JSON placeholder ("(no presets)",
-  // one item) — real opens go through BuildColorPickerDialog's
+  // one item) - real opens go through BuildColorPickerDialog's
   // DialogSetListItems, which this console tool can't reach (no RCDATA).
   // Fill in a few items by hand so Down-arrow has somewhere to move to.
   Idx0 := FindControlById(Decl, 'picker_presets');

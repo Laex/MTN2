@@ -30,10 +30,10 @@ type
     /// until Save. Cloned from ActiveKeymap so in-place edits never alias
     /// the shared cache (see uKeymap.CloneKeymapProfile).</summary>
     FProfile: TKeymapProfile;
-    /// <summary>Snapshot of FProfile as opened — diffed against FProfile on
+    /// <summary>Snapshot of FProfile as opened - diffed against FProfile on
     /// Save so a Cancel-only session never touches keymap.json.</summary>
     FOriginal: TKeymapProfile;
-    /// <summary>Embedded defaults — source for the per-action / whole-profile
+    /// <summary>Embedded defaults - source for the per-action / whole-profile
     /// Reset buttons.</summary>
     FDefaults: TKeymapProfile;
     FEditAction: TKeymapAction;
@@ -41,7 +41,7 @@ type
     /// (BuildRows).</summary>
     FRows: TArray<TKeymapAction>;
     /// <summary>Set once a conflict warning has been shown for the pending
-    /// edit — a second Save press with the same conflicting combo confirms
+    /// edit - a second Save press with the same conflicting combo confirms
     /// the reassignment instead of warning again.</summary>
     FConfirmOverwrite: Boolean;
     procedure SetKind(AKind: THostDialogKind);
@@ -63,7 +63,7 @@ type
     function FindConflicts(const ABindings: TArray<TKeyBinding>;
       AExclude: TKeymapAction): TArray<TKeymapAction>;
     /// <summary>Strips every binding in ABindings away from any other action
-    /// that currently holds it, then assigns ABindings to FEditAction —
+    /// that currently holds it, then assigns ABindings to FEditAction -
     /// makes each hotkey unambiguous again after a reassignment.</summary>
     procedure ApplyEdit(const ABindings: TArray<TKeyBinding>);
   public
@@ -501,7 +501,7 @@ begin
   begin
     FDialog.Close;
     // Only touch keymap.json if the effective bindings actually
-    // changed — comparing serialized JSON is simpler and just as
+    // changed - comparing serialized JSON is simpler and just as
     // correct as a field-by-field diff.
     if KeymapProfileToJson(FProfile) <> KeymapProfileToJson(FOriginal) then
     begin

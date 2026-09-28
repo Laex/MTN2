@@ -2,7 +2,7 @@ unit uThemeProxy;
 
 { Stage 27: live theme switching. Every window/dialog/controller receives an
   IThemeRenderer once at construction time and stores that exact interface
-  reference for its whole lifetime (constructor injection, never re-queried —
+  reference for its whole lifetime (constructor injection, never re-queried -
   see uMdiCompositor/uDualPanelWindow/uTopMenuBar/etc.). Recreating dozens of
   live windows just to change which theme they point at isn't an option, so
   TMainForm hands out this proxy instead of a concrete theme: everyone ends up

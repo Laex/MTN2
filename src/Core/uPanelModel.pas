@@ -19,7 +19,7 @@ const
   cSlowNavigationHintMs = 8000;
 
 type
-  /// <summary>Plugin → Host: model changed (mtn_host_invalidate).</summary>
+  /// <summary>Plugin -> Host: model changed (mtn_host_invalidate).</summary>
   TPanelInvalidateEvent = reference to procedure(AWindowId: Integer);
 
   IPanelModel = interface
@@ -32,7 +32,7 @@ type
     procedure SetWindowId(AId: Integer);
     function ItemCount: Integer;
     function GetRow(AIndex: Integer): TPanelRow;
-    /// <summary>PANEL_PLUGIN get_row_json — logical metadata only.</summary>
+    /// <summary>PANEL_PLUGIN get_row_json - logical metadata only.</summary>
     function GetRowJson(AIndex: Integer): string;
     function IsLoading: Boolean;
     procedure Refresh;
@@ -47,7 +47,7 @@ type
     procedure SetOnChanged(AHandler: TNotifyEvent);
     /// <summary>Live filter (Ctrl+F): '' clears it. Narrows the rows exposed
     /// via ItemCount/GetRow to those matching the mask (SplitMasks/
-    /// NameMatchesAnyMask semantics) — the '..' parent row always survives.</summary>
+    /// NameMatchesAnyMask semantics) - the '..' parent row always survives.</summary>
     procedure SetFilterMask(const AMask: string);
     function FilterActive: Boolean;
     function FilterMask: string;
@@ -442,7 +442,7 @@ begin
   Gen := FGen;
   ReturnUri := FWorkspaceReturnUri;
   // Soft refresh / dir-watch: keep the previous list on screen until the new
-  // list arrives — LoadingRows flash is the main panel blink on redraw.
+  // list arrives - LoadingRows flash is the main panel blink on redraw.
   KeepVisual := SameVfsUri(FURI, URI) and (Length(FRows) > 0);
   FURI := URI;
   FLastError := TVfsError.Ok;

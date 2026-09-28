@@ -1,12 +1,12 @@
 unit uLinkUtils;
 
-{ Symlink / hardlink / junction creation (Win32 interop — nothing else in the
+{ Symlink / hardlink / junction creation (Win32 interop - nothing else in the
   codebase creates links; uVfsTypes.TVfsEntry.IsLink only detects them).
 
   Symlinks/hardlinks use plain kernel32 calls, declared here explicitly
   (rather than relying on Winapi.Windows to have them, which varies by RTL
   version) so this compiles the same way across Delphi releases. Junctions
-  have no direct Win32 call — they're implemented, per the standard
+  have no direct Win32 call - they're implemented, per the standard
   technique, via DeviceIoControl(FSCTL_SET_REPARSE_POINT) with a hand-built
   REPARSE_DATA_BUFFER (MountPointReparseBuffer layout).
 
@@ -27,7 +27,7 @@ type
 /// <summary>Create a link at ALinkPath pointing at ATargetPath. Local
 /// filesystem only. Symlinks retry without the "unprivileged create" flag
 /// on Windows versions that reject it outright; that retry still needs
-/// elevation/Developer Mode and fails the same way if unavailable — the
+/// elevation/Developer Mode and fails the same way if unavailable - the
 /// error message surfaces whatever Windows reports rather than crashing.</summary>
 function CreateFileLink(const ALinkPath, ATargetPath: string; AKind: TLinkKind;
   out AError: TVfsError): Boolean;
@@ -79,7 +79,7 @@ begin
   Result := Win32CreateSymbolicLinkW(PWideChar(ALinkPath), PWideChar(ATargetPath), Flags);
   if not Result then
     // Older Windows without Developer Mode rejects the unprivileged-create
-    // flag outright before even trying — retry without it (still needs
+    // flag outright before even trying - retry without it (still needs
     // SeCreateSymbolicLinkPrivilege/elevation on those systems).
     Result := Win32CreateSymbolicLinkW(PWideChar(ALinkPath), PWideChar(ATargetPath),
       Flags and not SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE);

@@ -1046,8 +1046,8 @@ begin
     (AKey <> vkF1) and (AKey <> vkF2) and (AKey <> vkF7) and (AKey <> vkF10) and
     (AKey <> vkF12) and (AKey <> vkLeft) and (AKey <> vkRight) and
     (AKey <> vkAdd) and (AKey <> vkSubtract) and (AKey <> vkMultiply) and
-    (AKey <> vkEqual) and (AKey <> vkMinus); // OEM +/−
-  // Alt+Gray +/−/* arriving as AKey=0 + KeyChar is already vkAdd etc. here
+    (AKey <> vkEqual) and (AKey <> vkMinus); // OEM +/-
+  // Alt+Gray +/-/* arriving as AKey=0 + KeyChar is already vkAdd etc. here
   // (RestoreGrayOpKey runs first).
 end;
 

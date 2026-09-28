@@ -1,6 +1,6 @@
 unit uPanelColumns;
 
-{ Dual Panel column display modes (FAR-like brief/size/date/full/…).
+{ Dual Panel column display modes (FAR-like brief/size/date/full/...).
   Host picks mode per panel; row model already holds full metadata.
   Column-header click sorts via SortPanelRows / HitPanelSortColumn.
   Name/extension keys use numeric (natural) compare so file2 < file10. }
@@ -12,7 +12,7 @@ uses
   uDualPanelTypes;
 
 type
-  /// <summary>Which optional columns pcmCustom shows — one flag per existing
+  /// <summary>Which optional columns pcmCustom shows - one flag per existing
   /// sortable field, independent of each other (Modified/Created/Accessed
   /// can all be on at once, unlike the single-date-column preset modes).</summary>
   TCustomColumnsConfig = record
@@ -36,14 +36,14 @@ type
 
 function DefaultCustomColumnsConfig: TCustomColumnsConfig;
 /// <summary>Ordered list of AConfig's enabled columns (Ext, Size, Modified,
-/// Created, Accessed, Type, Attr) — the single source of truth for
+/// Created, Accessed, Type, Attr) - the single source of truth for
 /// pcmCustom's width/header/format/hit-test, so they can't drift apart.</summary>
 function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig): TCustomColumnDefs;
 
 var
   /// <summary>Live app-wide "which columns" setting for pcmCustom. One
   /// setting shared by every panel currently in Custom mode (mirrors
-  /// Theme/Zoom being global rather than per-panel) — loaded from the
+  /// Theme/Zoom being global rather than per-panel) - loaded from the
   /// session in uSession.pas, mutated by the Columns... dialog in
   /// uDualPanelWindow.pas.</summary>
   GCustomColumnsConfig: TCustomColumnsConfig;
@@ -74,8 +74,8 @@ function PanelSortModeLetter(ACol: TPanelSortColumn; ADescending: Boolean): Char
 function PanelSortMark(AActive, ADescending: Boolean): string;
 /// <summary>Default direction when switching to a new sort column.</summary>
 function DefaultSortDescending(ACol: TPanelSortColumn): Boolean;
-/// <summary>Header click: new column → ascending, same column →
-/// descending, third click → unsorted.</summary>
+/// <summary>Header click: new column -> ascending, same column ->
+/// descending, third click -> unsorted.</summary>
 procedure CycleHeaderSort(var ACol: TPanelSortColumn; var ADescending: Boolean;
   AClicked: TPanelSortColumn);
 /// <summary>Sort menu / keymap: pscNone clears; same column toggles
@@ -512,7 +512,7 @@ begin
   X := IconRes + NameW + 1;
   if AMode = pcmCustom then
   begin
-    // Dynamic column list — can't reuse the fixed Show* walk below.
+    // Dynamic column list - can't reuse the fixed Show* walk below.
     Defs := BuildCustomColumnDefs(GCustomColumnsConfig);
     for I := 0 to High(Defs) do
     begin
@@ -682,7 +682,7 @@ begin
       end));
 end;
 
-// Ext already has its own column — don't repeat it inside Name too. Dirs/
+// Ext already has its own column - don't repeat it inside Name too. Dirs/
 // parent excluded even if Extension were ever wrongly non-empty: Text
 // carries a trailing '/' for dirs, so blindly trimming Extension's length
 // back out of it would eat into the name, not an extension.
@@ -696,12 +696,12 @@ end;
 function FormatPanelRowName(const ARow: TPanelRow; ANameW: Integer;
   AStripExt: Boolean): string;
 begin
-  // ASCII only — Unicode arrows (→) break under Consolas/grid glyph path.
+  // ASCII only - Unicode arrows (->) break under Consolas/grid glyph path.
   Result := ARow.Text;
   if ShouldStripPanelRowExt(ARow, AStripExt, Result) then
   begin
     Result := Copy(Result, 1, Length(Result) - Length(ARow.Extension));
-    // Extension lives in its own column — end-ellipsis only, do not re-parse
+    // Extension lives in its own column - end-ellipsis only, do not re-parse
     // dots inside the stem as a fake extension.
     if Length(Result) > ANameW then
     begin

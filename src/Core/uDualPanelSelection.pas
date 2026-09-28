@@ -1,6 +1,6 @@
 unit uDualPanelSelection;
 
-{ File mask selection helper (FAR Gray+ / Gray−) for Dual Panel.
+{ File mask selection helper (FAR Gray+ / Gray-) for Dual Panel.
   Extracted from TDualPanelWindow as part of Step 1 refactoring. }
 
 interface

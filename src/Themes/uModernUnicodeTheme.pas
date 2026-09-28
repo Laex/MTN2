@@ -4,7 +4,7 @@ unit uModernUnicodeTheme;
   uNDNTheme.pas. Same widget-state logic (twFocused/twSelected/...), same
   IThemeRenderer contract, same close-button geometry (uThemeDrawing.
   WindowFrameCloseHit assumes a literal 3-cell '[x]' at Right-3, so every
-  theme keeps that) — only glyphs and colours differ: dark "editor" palette
+  theme keeps that) - only glyphs and colours differ: dark "editor" palette
   instead of VGA blue/cyan, and single-line box-drawing everywhere (including
   window/dialog frames, which uNDNTheme draws double-line) instead of mixing
   weights by focus state. }
@@ -58,7 +58,7 @@ type
 implementation
 
 const
-  // Dark "editor" palette — deliberately not VGA, unlike uNDNTheme.
+  // Dark "editor" palette - deliberately not VGA, unlike uNDNTheme.
   cCrust        = TAlphaColor($FF11111B);
   cBase         = TAlphaColor($FF1E1E2E);
   cSurface      = TAlphaColor($FF313244);
@@ -166,7 +166,7 @@ begin
     DrawGridChar(AGrid, ABounds.Right, Y, chBoxV, Border, cWindowBg);
   end;
 
-  // Close button — same 3-cell '[x]' geometry as every other theme.
+  // Close button - same 3-cell '[x]' geometry as every other theme.
   Btns := '[x]';
   BtnX := ABounds.Right - Length(Btns);
   if BtnX <= ABounds.Left + 2 then
@@ -497,7 +497,7 @@ procedure TModernUnicodeTheme.DrawPanelFrame(const AGrid: TTerminalGrid; const A
 var
   Frame: TAlphaColor;
 begin
-  // Unlike uNDNTheme, active vs idle is colour-only here — both sides use the
+  // Unlike uNDNTheme, active vs idle is colour-only here - both sides use the
   // same single-line glyph set, consistent with the window/dialog frames.
   if AActive then
     Frame := cBorderFocus

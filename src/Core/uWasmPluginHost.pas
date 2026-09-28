@@ -14,7 +14,7 @@ unit uWasmPluginHost;
   - Guest plugin-id is assigned by the host from the plugins\<id>\ folder
     name. The module only supplies a scheme string.
 
-  Guest ABI (not the cdecl THostApiTable — those pointers would be a shared
+  Guest ABI (not the cdecl THostApiTable - those pointers would be a shared
   address space). Imports on module "mtn_host":
     register_vfs_scheme(ptr, len, priority) -> i32
     register_panel_plugin(ptr, len, priority) -> i32
@@ -272,7 +272,7 @@ begin
   Prio := Vals^[2].Of_.I32;
   if not ReadGuestUtf8(Caller, Ptr, Len, Scheme) or (Scheme = '') then
     Exit;
-  // Drive-bar schemes (ws, recycle, …) are built-in. A WASM module may still
+  // Drive-bar schemes (ws, recycle, ...) are built-in. A WASM module may still
   // call register_vfs_scheme; ignore it so File VFS / the core backend stay
   // in charge and an empty panel does not become "Invalid path".
   if SameText(Scheme, 'file') or SameText(Scheme, 'recycle') or

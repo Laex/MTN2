@@ -1,8 +1,8 @@
 unit uTotalCommanderTheme;
 
-{ Stage 27: light "classic Windows file manager" look — silver/grey panels,
+{ Stage 27: light "classic Windows file manager" look - silver/grey panels,
   navy-blue chrome, black text, red-text marks (Total Commander's signature
-  "marked files turn red" instead of FAR's yellow-on-blue) — a deliberately
+  "marked files turn red" instead of FAR's yellow-on-blue) - a deliberately
   light counterpoint to uNDNTheme's dark-blue VGA panels. Same IThemeRenderer
   contract, same double-line/single-line frame convention as uNDNTheme
   (active = double-line, idle = single-line) and the same 3-cell '[x]' close
@@ -586,7 +586,7 @@ begin
   Pal.TextFg := cText;
   Pal.WindowBg := cWindowBg;
   // Classic Windows/TC list-view header: light "button face" grey with dark
-  // text, not a solid colour block — a plain navy bar read as out of place
+  // text, not a solid colour block - a plain navy bar read as out of place
   // against the rest of this light theme.
   Pal.HeaderFg := cBlack;
   Pal.HeaderBg := cFaceHighlight;

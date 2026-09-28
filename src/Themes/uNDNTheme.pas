@@ -145,7 +145,7 @@ begin
   FillGridRect(AGrid, ABounds.Left + 1, ABounds.Top + 1,
     ABounds.Right - 1, ABounds.Bottom - 1, ' ', cText, cWindowBg);
 
-  // Double-line frame (full top ═ — title/[x] cut gaps into it below).
+  // Double-line frame (full top ═ - title/[x] cut gaps into it below).
   DrawGridChar(AGrid, ABounds.Left,  ABounds.Top,    chDblTL, Border, cWindowBg);
   DrawGridChar(AGrid, ABounds.Right, ABounds.Top,    chDblTR, Border, cWindowBg);
   DrawGridChar(AGrid, ABounds.Left,  ABounds.Bottom, chDblBL, Border, cWindowBg);
@@ -165,7 +165,7 @@ begin
   Btns := '[x]';
   BtnX := ABounds.Right - Length(Btns);
   if BtnX <= ABounds.Left + 2 then
-    BtnX := ABounds.Right; // no room — treat as absent
+    BtnX := ABounds.Right; // no room - treat as absent
   if BtnX < ABounds.Right then
   begin
     PutGridText(AGrid, BtnX, ABounds.Top, Btns, Border, cWindowBg);
@@ -271,7 +271,7 @@ begin
     Fg := cBtnFg;
     Bg := cBtnBg;
   end;
-  // Face only — Host paints ▄/▀ button shadow after all controls.
+  // Face only - Host paints ▄/▀ button shadow after all controls.
   FillGridRect(AGrid, ABounds.Left, ABounds.Top, ABounds.Right, ABounds.Bottom,
     ' ', Fg, Bg);
   // twSelected marks the dialog default button (Enter target).
@@ -486,7 +486,7 @@ begin
   if AMenuText <> '' then
   begin
     PutGridText(AGrid, ABounds.Left + 1, ABounds.Top, AMenuText, cStatusFg, cStatusBg);
-    // Hot glyph (hamburger) — first character of menu text when present.
+    // Hot glyph (hamburger) - first character of menu text when present.
     HotLen := 1;
     if Length(AMenuText) >= HotLen then
       PutGridText(AGrid, ABounds.Left + 1, ABounds.Top, Copy(AMenuText, 1, HotLen),
@@ -616,7 +616,7 @@ begin
   Pal.HeaderBg := cWindowBg;
   Pal.PanelTabActiveFg := cBlack;
   Pal.PanelTabActiveBg := cCyan;
-  // On the focused panel, idle tabs keep frame-cyan labels (FAR/NDN) — see
+  // On the focused panel, idle tabs keep frame-cyan labels (FAR/NDN) - see
   // ResolveStandardPanelChromeColors' pcpPanelTabIdle branch.
   Pal.BorderFocusFg := cBorderFocus;
   Pal.BorderNormalFg := cBorderNormal;

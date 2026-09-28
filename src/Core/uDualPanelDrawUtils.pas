@@ -1,7 +1,7 @@
 unit uDualPanelDrawUtils;
 
 { Pure rendering helpers for Dual Panel UI elements.
-  All procedures accept explicit parameters — no dependency on TDualPanelWindow.
+  All procedures accept explicit parameters - no dependency on TDualPanelWindow.
   Extracted from uDualPanelWindow.pas as part of refactoring (high-priority). }
 
 interface
@@ -60,7 +60,7 @@ function HighlightDriveLetter(APreviewActive: Boolean; APreviewSide, ASide: TPan
 { --- Search / filter info box ---------------------------------------------- }
 
 /// <summary>FAR-style single-line input box on the panel's info-strip row
-/// (Quick Search jump-to and Live Filter share this exact chrome — only the
+/// (Quick Search jump-to and Live Filter share this exact chrome - only the
 /// prefix label and backing text differ).</summary>
 procedure DrawSearchInfoBox(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const APrefix, AText: string; ACursorVisible: Boolean);
@@ -184,7 +184,7 @@ begin
 
   if AMode = pcmCustom then
   begin
-    // Dynamic column list — one header per enabled field, canonical order.
+    // Dynamic column list - one header per enabled field, canonical order.
     CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig);
     for I := 0 to High(CustomDefs) do
     begin
@@ -302,7 +302,7 @@ var
   // this last with the row's visual state (Normal/Selected/Current); a
   // group only overrides a state it explicitly sets a color for, so a group
   // that defines just "normal" leaves selection/cursor highlighting exactly
-  // as the theme draws it — same precedence Stage 37 shipped with.
+  // as the theme draws it - same precedence Stage 37 shipped with.
   procedure ApplyColorCoding;
   var
     Name: string;
@@ -552,7 +552,7 @@ var
   EditW, X, Y, Right: Integer;
   Line: TInputLine;
 const
-  // Muted ochre (not FAR hot yellow) — readable without dominating the panel.
+  // Muted ochre (not FAR hot yellow) - readable without dominating the panel.
   cSearchBoxBg = TAlphaColor($FFB8A040);
 begin
   X := ABounds.Left + 1;

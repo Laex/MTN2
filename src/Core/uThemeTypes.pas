@@ -22,7 +22,7 @@ type
   TThemeWidgetFlag = (twFocused, twPressed, twHovered, twDisabled, twSelected);
   TThemeWidgetState = set of TThemeWidgetFlag;
 
-  // Dual Panel Tabs (workspace) vs Panel Tabs (per side) — same widget, different chrome.
+  // Dual Panel Tabs (workspace) vs Panel Tabs (per side) - same widget, different chrome.
   TTabBarKind = (tbkWorkspace, tbkPanel);
 
   /// <summary>Panel-interior chrome parts Host paints after DrawPanelFrame.</summary>
@@ -44,7 +44,7 @@ type
   /// TPanelChromePart query. Every IThemeRenderer implementer's
   /// ResolvePanelChromeColors had the exact same case statement,
   /// differing only in which of its own private color constants filled each
-  /// role — so the branching now lives once here (same "shared here, no
+  /// role - so the branching now lives once here (same "shared here, no
   /// uses-clause churn" reasoning as TMdSpanKind above) and each theme just
   /// fills a palette from its own constants.</summary>
   TPanelChromePalette = record
@@ -61,7 +61,7 @@ type
   /// <summary>Stage 25: logical style categories a Markdown Viewer span can
   /// carry. Lives here (not in uMarkdownParser) so every IThemeRenderer
   /// implementer already has it in scope via the uThemeTypes they use for
-  /// the interface itself — no extra uses-clause churn across the 8 theme
+  /// the interface itself - no extra uses-clause churn across the 8 theme
   /// units. mskH3to6 collapses H3..H6 into one visual tier (cell-grid TUI,
   /// not enough palette headroom for 6 distinct heading weights).</summary>
   TMdSpanKind = (
@@ -85,15 +85,15 @@ type
   );
 
   /// <summary>Bug fix: TEditorWindow (F3 Viewer / F4 Editor) drew its whole
-  /// body — text, cursor, selection, status line, frame, scrollbar, find
-  /// highlight — with a fixed hard-coded NDN-blue palette, so switching the
+  /// body - text, cursor, selection, status line, frame, scrollbar, find
+  /// highlight - with a fixed hard-coded NDN-blue palette, so switching the
   /// active theme changed the window frame (via DrawWindowFrame) but never
   /// the content inside it. Every field here mirrors a color TEditorWindow
   /// used to hard-code locally; each implementer just re-exposes consts it
   /// already declares for the equivalent panel/chrome concept (cText/
   /// cWindowBg, cCursorFg/cCursorBg, cStatusFg/cStatusBg, cBorderFocus/
   /// cBorderNormal, cScrollFg/cScrollThumb, cToolKeyFg). SelFg/SelBg fill
-  /// F3/F4 text selection and must contrast BodyBg — not the panel file-mark
+  /// F3/F4 text selection and must contrast BodyBg - not the panel file-mark
   /// pair (cSelected* is often yellow on the same blue as the body). MatchFg/
   /// MatchBg is the Find prompt selection on the status line; same constraint.</summary>
   TEditorThemeColors = record
@@ -145,7 +145,7 @@ type
     procedure DrawStatusLine(const AGrid: TTerminalGrid; const ABounds: TRectI;
       const ASegments: TArray<string>; AState: TThemeWidgetState);
 
-    /// <summary>Top menu strip with hotkeys (e.g. Left/Files/Commands… + clock).</summary>
+    /// <summary>Top menu strip with hotkeys (e.g. Left/Files/Commands... + clock).</summary>
     procedure DrawMenuBar(const AGrid: TTerminalGrid; const ABounds: TRectI;
       const AMenuText, AClockText: string; AState: TThemeWidgetState);
 
@@ -166,24 +166,24 @@ type
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     /// <summary>Stage 25 Markdown Viewer: color/attribute for one span kind.
-    /// AAttr should only ever contain ccaBold in practice — the terminal
+    /// AAttr should only ever contain ccaBold in practice - the terminal
     /// renderer (uTerminalRenderer.TTerminalRenderer) paints ccaBold,
     /// ccaUnderline and ccaInsertCaret; ccaItalic has no visual effect, so
     /// implementers should lean on AFg/ABg (and ccaBold) to convey style.
     /// TMarkdownPainter adds ccaUnderline to mskLink itself.</summary>
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
       out AFg, ABg: TAlphaColor; out AAttr: TCharCellAttributes);
-    /// <summary>TEditorWindow (F3/F4) body chrome — see TEditorThemeColors.</summary>
+    /// <summary>TEditorWindow (F3/F4) body chrome - see TEditorThemeColors.</summary>
     procedure ResolveEditorColors(out AColors: TEditorThemeColors);
   end;
 
 /// <summary>Shared body for every IThemeRenderer.ResolvePanelChromeColors
 /// implementation (and TDualPanelWindow.ResolveChrome's Theme=nil
-/// fallback) — see TPanelChromePalette.</summary>
+/// fallback) - see TPanelChromePalette.</summary>
 procedure ResolveStandardPanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
   const APalette: TPanelChromePalette; out AFg, ABg: TAlphaColor);
 
-/// <summary>Fills ABounds and draws a box-drawing border on top of it —
+/// <summary>Fills ABounds and draws a box-drawing border on top of it -
 /// the "fill body, then paint 4 corners + 2 edge loops" shape every
 /// IThemeRenderer.DrawPanelFrame implementation had (and the Theme=nil /
 /// fallback frame draws in uDualPanelWindow.pas, uDialogHost.pas and

@@ -2,7 +2,7 @@ unit TestCopyIntoSelf;
 
 { Regression: TFileVirtualFileSystem.CopyAsync must reject copying a folder
   into itself or into one of its own subfolders. CopyTree (uFileVfs.pas)
-  recurses over the source directory's own FindFirst listing — if the
+  recurses over the source directory's own FindFirst listing - if the
   destination lives inside the source, the freshly-created destination
   folder gets picked up by that same walk and copied into itself again,
   indefinitely. See IsSameOrDescendantPath / the guard in CopyAsync. }

@@ -1,6 +1,6 @@
 unit uDialogJson;
 
-{ DIALOG_PLUGIN JSON subset ↔ TDialogDeclaration (in-process seam for cdecl). }
+{ DIALOG_PLUGIN JSON subset <-> TDialogDeclaration (in-process seam for cdecl). }
 
 interface
 

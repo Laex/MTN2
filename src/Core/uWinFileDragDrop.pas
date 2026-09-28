@@ -2,7 +2,7 @@ unit uWinFileDragDrop;
 
 { OLE CF_HDROP drag-out for FMX (Explorer and other shell targets).
   Drag-in uses FMX TWinDropTarget; this unit only starts DoDragDrop with real
-  HDROP data — stock FMX BeginDragDrop does not export CF_HDROP.
+  HDROP data - stock FMX BeginDragDrop does not export CF_HDROP.
 
   CROSS-PLATFORM (Этап 23): Windows OLE drag & drop, no portable concept to
   fall back to. Caller (uDualPanelWindow.pas) should treat this as an
@@ -22,10 +22,10 @@ function OleFileDragActive: Boolean;
 function OleDragLocalFiles(const APaths: TArray<string>;
   AAllowedEffects: LongInt = DROPEFFECT_COPY or DROPEFFECT_MOVE): LongInt;
 
-/// <summary>file:// URIs → absolute local paths (skips archives / non-file).</summary>
+/// <summary>file:// URIs -> absolute local paths (skips archives / non-file).</summary>
 function FileUrisToLocalPaths(const AUris: TArray<string>): TArray<string>;
 
-/// <summary>Local paths → file:// URIs.</summary>
+/// <summary>Local paths -> file:// URIs.</summary>
 function LocalPathsToFileUris(const APaths: TArray<string>): TArray<string>;
 
 /// <summary>Serialize panel URIs for the MTN2 clipboard format.</summary>

@@ -1,7 +1,7 @@
 unit uSolarizedDarkTheme;
 
 { Stage 27: the canonical Solarized Dark palette (Ethan Schoonover) applied
-  to IThemeRenderer — base03 background, base0 body text, accent hues used
+  to IThemeRenderer - base03 background, base0 body text, accent hues used
   exactly as the palette intends (blue = structure/focus, yellow = emphasis,
   orange/green/magenta = file-type colour coding). Single-line unicode
   box-drawing everywhere, like uModernUnicodeTheme, and the same 3-cell
@@ -56,7 +56,7 @@ type
 implementation
 
 const
-  // Solarized Dark — https://ethanschoonover.com/solarized/
+  // Solarized Dark - https://ethanschoonover.com/solarized/
   cBase03  = TAlphaColor($FF002B36);
   cBase02  = TAlphaColor($FF073642);
   cBase01  = TAlphaColor($FF586E75);

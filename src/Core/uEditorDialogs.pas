@@ -72,7 +72,7 @@ function EditorAskSaveHotkey(AKey: Word; AKeyChar: Char): string;
 var
   Ch: Char;
 begin
-  // Physical Latin keys — layout-independent (Y/S=Yes, N/D=No). Letter
+  // Physical Latin keys - layout-independent (Y/S=Yes, N/D=No). Letter
   // virtual keys are uppercase only: Ord('y') is vkF10, Ord('s') is vkF4.
   case AKey of
     Ord('Y'), Ord('S'):
@@ -273,7 +273,7 @@ begin
   Idx := FDialog.GetListSelectedIndex('encoding');
   EditorMergeEncodingJson(AValuesJson, Name, Idx);
   CloseDialog;
-  // Enter / list accept → ok; Esc / outside click → cancel.
+  // Enter / list accept -> ok; Esc / outside click -> cancel.
   if not EditorEncodingAccepted(AControlId) then
   begin
     Notify;

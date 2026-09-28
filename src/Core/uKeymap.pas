@@ -22,7 +22,7 @@ type
     kaCopy,
     kaMove,
     kaRename,
-    kaCopyInPlace,          // Shift+F5 — copy file into the same directory under a new name
+    kaCopyInPlace,          // Shift+F5 - copy file into the same directory under a new name
     kaMkDir,
     kaCreateLink,
     kaCompareFiles,
@@ -33,8 +33,8 @@ type
     kaQuit,
     kaFind,
     kaSwapPanels,
-    kaEqualizeOtherPanel,   // Ctrl+] — other panel := active URI
-    kaEqualizeActivePanel,  // Ctrl+[ — active panel := other URI
+    kaEqualizeOtherPanel,   // Ctrl+] - other panel := active URI
+    kaEqualizeActivePanel,  // Ctrl+[ - active panel := other URI
     kaInfoPanel,
     kaColumnMode,
     kaSortMenu,
@@ -78,10 +78,10 @@ type
     kaNewTerminal,
     kaNewFile,
     kaQuickView,
-    kaSyncConsoleDir,      // Ctrl+Shift+O — push active panel's dir into the console
-    kaSelectConsoleProfile, // Ctrl+Alt+O — pick shell for the Ctrl+O background console
-    kaToggleHidden,        // Ctrl+H — show/hide Hidden & System files in panel listing
-    // Ctrl+Shift+F1..F6 — jump straight to a column mode, no menu needed
+    kaSyncConsoleDir,      // Ctrl+Shift+O - push active panel's dir into the console
+    kaSelectConsoleProfile, // Ctrl+Alt+O - pick shell for the Ctrl+O background console
+    kaToggleHidden,        // Ctrl+H - show/hide Hidden & System files in panel listing
+    // Ctrl+Shift+F1..F6 - jump straight to a column mode, no menu needed
     // (mirrors kaSortByName..kaSortBySize's Ctrl+F3..F6 direct-sort pattern).
     kaColumnBrief,
     kaColumnSize,
@@ -89,7 +89,7 @@ type
     kaColumnFull,
     kaColumnCreated,
     kaColumnTypes,
-    // Ctrl+Shift+F7 — user-configured column set (Options > Columns...).
+    // Ctrl+Shift+F7 - user-configured column set (Options > Columns...).
     kaColumnCustom,
     // Edit menu clipboard (Ctrl+C/X/V): files on panels, text in cmdline.
     kaEditCopy,
@@ -212,7 +212,7 @@ function TryKeymapActionByName(const AName: string; out AAction: TKeymapAction):
 /// <summary>Display name for an action, e.g. kaCopy -> "Copy". See uKeymap.pas's
 /// private KEYMAP_ACTION_NAMES for the full table.</summary>
 function KeymapActionDisplayName(AAction: TKeymapAction): string;
-/// <summary>Inverse of StringToVK — canonical display token for a VK code
+/// <summary>Inverse of StringToVK - canonical display token for a VK code
 /// (e.g. vkF5 -> "F5", Ord('C') -> "C"). Falls back to "Key<code>" for a code
 /// StringToVK does not recognize, so round-tripping never silently drops it.</summary>
 function VKToDisplayString(AKey: Word): string;
@@ -222,7 +222,7 @@ function KeyBindingToStr(const ABinding: TKeyBinding): string;
 function BindingsToStr(const ABindings: TArray<TKeyBinding>): string;
 function SameKeyBinding(const A, B: TKeyBinding): Boolean;
 /// <summary>Independent deep copy. AProfile.Bindings are dynamic arrays, so a
-/// plain := only copies the reference — code that builds a working copy to
+/// plain := only copies the reference - code that builds a working copy to
 /// edit (e.g. the Keymap settings dialog) must clone first, or in-place
 /// mutation of the copy would corrupt the shared ActiveKeymap cache too.</summary>
 function CloneKeymapProfile(const ASrc: TKeymapProfile): TKeymapProfile;
@@ -238,13 +238,13 @@ function GetDefaultNDNProfile: TKeymapProfile;
 function GetDefaultFARProfile: TKeymapProfile;
 
 function ParseKeymapJson(const AJsonText: string; out AProfile: TKeymapProfile): Boolean;
-/// <summary>Overrides hotkeys on top of an already-loaded AProfile — see
+/// <summary>Overrides hotkeys on top of an already-loaded AProfile - see
 /// implementation for details.</summary>
 function MergeKeymapJson(const AJsonText: string; var AProfile: TKeymapProfile): Boolean;
 function LoadKeymapFromFile(const APath: string = ''): TKeymapProfile;
 function GetDefaultKeymapPath: string;
 /// <summary>Serializes AProfile's bindings to the same JSON shape ParseKeymapJson /
-/// MergeKeymapJson read back (see ApplyBindingsFromRootObj) — the inverse of
+/// MergeKeymapJson read back (see ApplyBindingsFromRootObj) - the inverse of
 /// LoadKeymapFromFile's merge direction.</summary>
 function KeymapProfileToJson(const AProfile: TKeymapProfile): string;
 /// <summary>Writes KeymapProfileToJson(AProfile) to APath (GetDefaultKeymapPath
@@ -256,11 +256,11 @@ procedure SaveKeymapProfile(const AProfile: TKeymapProfile; const APath: string 
 /// hardcoded GetDefaultNDNProfile if the resource is missing/unparsable.</summary>
 function LoadDefaultKeymapProfile: TKeymapProfile;
 
-/// <summary>Cached profile — load once; use ReloadKeymap to refresh.</summary>
+/// <summary>Cached profile - load once; use ReloadKeymap to refresh.</summary>
 function ActiveKeymap: TKeymapProfile;
 /// <summary>Force reload: starts from the embedded default (LoadDefaultKeymapProfile),
-/// then — if a user keymap.json exists at APath (or the config dir when APath
-/// is blank) — overrides hotkeys from that file on top of it. Result = True
+/// then - if a user keymap.json exists at APath (or the config dir when APath
+/// is blank) - overrides hotkeys from that file on top of it. Result = True
 /// when such a user file was found and applied.</summary>
 function ReloadKeymap(const APath: string = ''): Boolean;
 /// <summary>True after at least one successful/failed load into the cache.</summary>
@@ -272,7 +272,7 @@ function MatchActiveAction(AKey: Word; AShiftState: TShiftState): TKeymapAction;
 /// <summary>Diagnostics: times LoadKeymapFromFile was invoked (tests).</summary>
 function KeymapFileLoadCount: Integer;
 
-/// <summary>Short F-bar label for an action (empty = not shown on F1–F10 bar).</summary>
+/// <summary>Short F-bar label for an action (empty = not shown on F1-F10 bar).</summary>
 function KeymapFBarShortLabel(AAction: TKeymapAction): string;
 /// <summary>Compact key name for menus and the F-bar: "Ins", "Del", "Esc",
 /// "PgUp", "Num+" where VKToDisplayString says "Insert", "Delete", ...</summary>
@@ -564,19 +564,19 @@ begin
   AddBinding(Result, kaJobList, KeyBinding(Ord('J'), True, False, True));
   AddBinding(Result, kaNewTerminal, KeyBinding(Ord('N'), True, False, True));
 
-  // Stage 24: Ctrl+Q — Quick View (opposite panel; any file or directory).
+  // Stage 24: Ctrl+Q - Quick View (opposite panel; any file or directory).
   AddBinding(Result, kaQuickView, KeyBinding(Ord('Q'), False, False, True));
 
-  // Ctrl+Shift+O — sync active panel dir <-> background console cwd
+  // Ctrl+Shift+O - sync active panel dir <-> background console cwd
   // (direction depends on which side is active; console side is hardcoded
   // in TConsoleWindow.HandleInput, not routed through this keymap).
   AddBinding(Result, kaSyncConsoleDir, KeyBinding(Ord('O'), True, False, True));
   AddBinding(Result, kaSelectConsoleProfile, KeyBinding(Ord('O'), False, True, True));
 
-  // Ctrl+H — show/hide Hidden & System files (Total Commander habit).
+  // Ctrl+H - show/hide Hidden & System files (Total Commander habit).
   AddBinding(Result, kaToggleHidden, KeyBinding(Ord('H'), False, False, True));
 
-  // Ctrl+Shift+F1..F6 — direct column mode switch, no menu needed.
+  // Ctrl+Shift+F1..F6 - direct column mode switch, no menu needed.
   AddBinding(Result, kaColumnBrief, KeyBinding(vkF1, True, False, True));
   AddBinding(Result, kaColumnSize, KeyBinding(vkF2, True, False, True));
   AddBinding(Result, kaColumnDate, KeyBinding(vkF3, True, False, True));
@@ -986,7 +986,7 @@ begin
 end;
 
 /// <summary>Adds ABinding to AAction unless a binding with the same Key+Shift
-/// is already present (Ctrl/Alt are not compared — matches the two call
+/// is already present (Ctrl/Alt are not compared - matches the two call
 /// sites' original hand-rolled checks below).</summary>
 procedure EnsureBindingPresent(var AProfile: TKeymapProfile; AAction: TKeymapAction;
   const ABinding: TKeyBinding);
@@ -1000,7 +1000,7 @@ begin
   AddBinding(AProfile, AAction, ABinding);
 end;
 
-/// <summary>Applies the "bindings" object of ARootObj onto AProfile in place —
+/// <summary>Applies the "bindings" object of ARootObj onto AProfile in place -
 /// only actions present in the JSON are touched; everything else in AProfile
 /// (e.g. a resource-loaded default) is left as-is. Shared by ParseKeymapJson
 /// (fresh profile) and MergeKeymapJson (override on top of an existing one).</summary>
@@ -1063,7 +1063,7 @@ begin
   end;
 end;
 
-/// <summary>Overrides hotkeys on top of an already-loaded AProfile — only
+/// <summary>Overrides hotkeys on top of an already-loaded AProfile - only
 /// actions present in AJsonText's "bindings" are replaced; the rest of
 /// AProfile (typically the resource-loaded default) is untouched. Used to
 /// apply a user's config-dir keymap.json over the embedded default.</summary>
@@ -1173,7 +1173,7 @@ begin
     ActualPath := GetDefaultKeymapPath;
 
   // A user keymap.json in the config dir only overrides the hotkeys it
-  // mentions — everything else stays on the embedded default above.
+  // mentions - everything else stays on the embedded default above.
   if System.SysUtils.FileExists(ActualPath) then
   begin
     try

@@ -40,7 +40,7 @@ function CmdLinePathCompletions(const AToken, ABaseDir: string): TArray<string>;
 /// <summary>Shorten a path for on-screen display (head...tail). AMaxLen is
 /// character count excluding the trailing #0 PathCompactPathEx expects.</summary>
 function CompactDisplayPath(const APath: string; AMaxLen: Integer): string;
-/// <summary>Dual Panel cmdline prompt: compact path + "&gt; ", total width ≤
+/// <summary>Dual Panel cmdline prompt: compact path + "&gt; ", total width <=
 /// AMaxPrefixCells (typically grid width div 3).</summary>
 function FormatCmdLinePrefix(const APath: string; AMaxPrefixCells: Integer): string;
 function CmdLinePrefixMaxCells(AWidth: Integer): Integer;

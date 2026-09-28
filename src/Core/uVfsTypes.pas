@@ -31,7 +31,7 @@ type
     /// <summary>When set, panel row URI uses this instead of Join(dir, Name).</summary>
     TargetURI: string;
     /// <summary>Alt+F7 content-search hit info (find:// backend only; 0/''
-    /// everywhere else — MatchSnippet is a managed field so it is always
+    /// everywhere else - MatchSnippet is a managed field so it is always
     /// safely '' by default even where nothing sets it explicitly).</summary>
     MatchLine: Integer;
     MatchSnippet: string;
@@ -77,12 +77,12 @@ type
   /// AItemDone/AItemTotal: byte progress of the single file currently being
   /// transferred (0/0 when no per-file breakdown is available, e.g. archive
   /// pack/unpack). AItemSrcPath/AItemDstPath: full paths of that file ('' when
-  /// unavailable) — lets the UI show which file is in flight inside a tree,
+  /// unavailable) - lets the UI show which file is in flight inside a tree,
   /// not just the top-level source/destination.</summary>
   TVfsProgressCallback = reference to procedure(const ADone, ATotal: Int64;
     const ACurrentName: string; const AItemDone, AItemTotal: Int64;
     const AItemSrcPath, AItemDstPath: string);
-  /// <summary>Async existence probe — AIsDirectory meaningful only when AExists.</summary>
+  /// <summary>Async existence probe - AIsDirectory meaningful only when AExists.</summary>
   TVfsExistsCallback = reference to procedure(const AExists: Boolean;
     const AIsDirectory: Boolean; const AError: TVfsError);
   TVfsFreeSpaceCallback = reference to procedure(const AFree, ATotal: Int64;
@@ -118,7 +118,7 @@ type
 
   TJobCancelToken = class(TInterfacedObject, IJobCancelToken)
   private
-    FCancelled: Integer; // 0/1 — written from UI, read from workers
+    FCancelled: Integer; // 0/1 - written from UI, read from workers
   public
     function IsCancellationRequested: Boolean;
     procedure Cancel;
@@ -141,7 +141,7 @@ function LocalPathIsFile(const APath: string): Boolean;
 /// paths of 248+ chars (CreateDirectory's limit, the strictest of MAX_PATH's)
 /// get the \\?\ (\\?\UNC\) prefix so they work without longPathAware /
 /// LongPathsEnabled; anything shorter, relative or already prefixed is
-/// returned unchanged. Apply at the call site only — keep logic, URIs and
+/// returned unchanged. Apply at the call site only - keep logic, URIs and
 /// messages on the plain path. Not for Shell APIs (SHFileOperation,
 /// IFileOperation, ShellExecute): they reject the prefix.</summary>
 function WinApiPath(const APath: string): string;
@@ -161,7 +161,7 @@ function ResolveFileUri(const AURI: string): string;
 /// <summary>True if URI contains archive mount marker '!/'.</summary>
 function HasArchiveChain(const AURI: string): Boolean;
 /// <summary>
-/// Split file:///…/a.zip!/inner.zip!/path into base file URI and inner segments
+/// Split file:///.../a.zip!/inner.zip!/path into base file URI and inner segments
 /// (empty last segment = archive layer root).
 /// </summary>
 function SplitArchiveUri(const AURI: string; out ABaseFileUri: string;
@@ -171,7 +171,7 @@ function ArchiveBaseDirUri(const AURI: string): string;
 function SameVfsUri(const A, B: string): Boolean;
 /// <summary>Normalized form of AURI: SameVfsUri(A, B) holds exactly when
 /// VfsUriKey(A) = VfsUriKey(B) (except URIs SameVfsUri never matches, such
-/// as a Find URI without a session id — those key to themselves). Lets hot
+/// as a Find URI without a session id - those key to themselves). Lets hot
 /// loops compare against many URIs by hashing/sorting instead of O(N*M)
 /// SameVfsUri calls.</summary>
 function VfsUriKey(const AURI: string): string;
@@ -180,7 +180,7 @@ function ParentVfsUri(const AURI: string): string;
 function VfsUriTitle(const AURI: string): string;
 /// <summary>Panel-tab caption for a filesystem directory: drive letter +
 /// full current path (e.g. 'C:\Users\me\Documents'), truncated in the
-/// middle — not at an edge — to fit AMaxLen, e.g. 'C:\...\Documents', so the
+/// middle - not at an edge - to fit AMaxLen, e.g. 'C:\...\Documents', so the
 /// drive and the current folder name stay visible. Falls back to
 /// VfsUriTitle's short form for drive roots, archives, Find and System
 /// Folders, where a full path isn't meaningful.</summary>
@@ -210,7 +210,7 @@ function SftpRemotePathOf(const AURI: string): string;
 function MakeSftpUri(const AAuthority, ARemotePath: string): string;
 /// <summary>recycle:// wraps a real filesystem path (the Recycle Bin
 /// item's underlying $R<random> path) with the same URI grammar as
-/// file:// — these just swap the scheme prefix onto/off FileUriToPath /
+/// file:// - these just swap the scheme prefix onto/off FileUriToPath /
 /// PathToFileUri rather than duplicating that codec.</summary>
 function RecyclePathToUri(const APath: string): string;
 function RecycleUriToPath(const AURI: string): string;
@@ -276,7 +276,7 @@ begin
   P := Trim(APath);
   if P = '' then
     Exit('');
-  // Bare "C:" means current-dir-on-drive in Windows APIs — force true root.
+  // Bare "C:" means current-dir-on-drive in Windows APIs - force true root.
   if (Length(P) = 2) and (P[2] = ':') and (UpCase(P[1]) >= 'A') and (UpCase(P[1]) <= 'Z') then
     Exit(DriveRootPath(P[1]));
   if IsWindowsDriveRoot(P) then
@@ -342,7 +342,7 @@ var
   Bytes: TList<Byte>;
   Chunk: TBytes;
 begin
-  // Percent-decode only. Do NOT treat '+' as space (form-urlencoded) —
+  // Percent-decode only. Do NOT treat '+' as space (form-urlencoded) -
   // folder names like "Update 1 + Keygen" must stay intact.
   Result := '';
   Bytes := TList<Byte>.Create;
@@ -385,7 +385,7 @@ end;
 function StripExtendedPathPrefix(const APath: string): string;
 begin
   if APath.StartsWith('\\?\UNC\', True) then
-    // \\?\UNC\server\share → \\server\share
+    // \\?\UNC\server\share -> \\server\share
     Result := '\\' + Copy(APath, Length('\\?\UNC\') + 1, MaxInt)
   else if APath.StartsWith('\\?\', True) then
     Result := Copy(APath, Length('\\?\') + 1, MaxInt)
@@ -502,8 +502,8 @@ begin
     if (FinalPath = '') or not LocalPathIsDirectory(FinalPath) then
       Exit;
     // SUBST / mapped drives: GetFinalPathName jumps to another letter or UNC
-    // (P:\Folder → D:\Real\Folder). Keeping that URI makes the panel leave the
-    // drive root, so ".." appears after going up — stay on the original drive.
+    // (P:\Folder -> D:\Real\Folder). Keeping that URI makes the panel leave the
+    // drive root, so ".." appears after going up - stay on the original drive.
     OrigDrive := DriveLetterOf(P);
     if OrigDrive <> #0 then
     begin
@@ -530,7 +530,7 @@ begin
   S := Trim(AURI);
   if not S.StartsWith('file:', True) then
   begin
-    // tmp:///, 7z:///, sys://… are VFS URIs, not local paths. Treating them as
+    // tmp:///, 7z:///, sys://... are VFS URIs, not local paths. Treating them as
     // relative names (GetFullPath) made Copy's dest dialog retarget to disk.
     if Pos('://', S) > 0 then
       Exit('');
@@ -546,7 +546,7 @@ begin
     Exit(NormalizeLocalPath('\\' + PathPart));
   end;
 
-  // file:///C:/x  — local absolute path (three slashes)
+  // file:///C:/x  - local absolute path (three slashes)
   if S.StartsWith('file:///', True) then
   begin
     PathPart := Copy(S, Length('file:///') + 1, MaxInt);
@@ -598,7 +598,7 @@ begin
     Result := 'file:///' + UpCase(Full[1]) + ':/'
   else if IsUncPath(Full) then
   begin
-    // \\server\share\dir → file://server/share/dir
+    // \\server\share\dir -> file://server/share/dir
     Full := ExcludeTrailingPathDelimiter(Full);
     Slash := Copy(Full, 3, MaxInt);
     Slash := StringReplace(Slash, PathDelim, '/', [rfReplaceAll]);
@@ -1144,7 +1144,7 @@ begin
   if IsFindUri(ADirURI) then
     Exit(ADirURI);
 
-  // Flat (no subfolders) in v1 — same "no-op join" as find:// above.
+  // Flat (no subfolders) in v1 - same "no-op join" as find:// above.
   if IsRecycleBinUri(ADirURI) or IsTmpPanelUri(ADirURI) then
     Exit(ADirURI);
 
@@ -1190,7 +1190,7 @@ begin
     if Segs[I] <> '' then
       Result := Result + Segs[I];
   end;
-  // Directory-looking joins keep trailing '!/' only when last seg empty — files stay without.
+  // Directory-looking joins keep trailing '!/' only when last seg empty - files stay without.
 end;
 
 // Shared by both archive-layer branches of ParentVfsUri: '!/'-joins ASegs
@@ -1253,7 +1253,7 @@ begin
 end;
 
 // Precondition: SplitArchiveUri(AURI, ABase, ASegs) already succeeded with
-// Length(ASegs) > 0 — see the two call sites in ParentVfsUriOfArchive.
+// Length(ASegs) > 0 - see the two call sites in ParentVfsUriOfArchive.
 function ParentVfsUriOfArchiveSegs(const AURI, ABase: string; ASegs: TArray<string>): string;
 var
   Last, ParentSeg: string;
@@ -1283,7 +1283,7 @@ begin
   // At layer root (empty last segment): peel one archive layer.
   if Length(ASegs) = 1 then
   begin
-    // Outer zip root → directory containing the zip file.
+    // Outer zip root -> directory containing the zip file.
     Path := ArchiveBaseLocalPath(ABase);
     Parent := TPath.GetDirectoryName(ExcludeTrailingPathDelimiter(Path));
     if Parent = '' then
@@ -1417,7 +1417,7 @@ var
   Avail: Integer;
 begin
   // Archives, Find sessions and System Folders have no meaningful "current
-  // folder inside a drive" — keep VfsUriTitle's short form for them, and
+  // folder inside a drive" - keep VfsUriTitle's short form for them, and
   // for a drive root itself (nothing to show past the letter).
   if IsSystemFoldersUri(AURI) or IsFindUri(AURI) or IsRecycleBinUri(AURI) or
      IsTmpPanelUri(AURI) or IsWorkspaceUri(AURI) or HasArchiveChain(AURI) then
@@ -1427,7 +1427,7 @@ begin
     Exit(UpCase(Path[1]) + ':');
   Path := ExcludeTrailingPathDelimiter(Path);
   if (Length(Path) < 2) or (Path[2] <> ':') then
-    Exit(VfsUriTitle(AURI)); // UNC or unexpected shape — keep old behavior
+    Exit(VfsUriTitle(AURI)); // UNC or unexpected shape - keep old behavior
   if AMaxLen < 1 then
     Exit('');
 
@@ -1436,7 +1436,7 @@ begin
   if Length(Full) <= AMaxLen then
     Exit(Full);
 
-  // The drive letter always stays, even under extreme truncation — it's
+  // The drive letter always stays, even under extreme truncation - it's
   // the one piece of information this caption exists to surface, so it
   // must survive narrower tabs/panels rather than fall off with the rest.
   if AMaxLen <= Length(Drive) then
@@ -1449,7 +1449,7 @@ begin
   if Avail >= Length('\...\') + Length(Tail) then
     Rest := '\...\' + Tail
   else if Avail >= 2 then
-    // No room left for the '...' marker on top of the drive — keep the
+    // No room left for the '...' marker on top of the drive - keep the
     // separator and as much of the tail's own END as fits (the part an
     // ellipsis would otherwise be standing in for).
     Rest := '\' + Copy(Tail, Max(Length(Tail) - (Avail - 1) + 1, 1), Avail - 1)
@@ -1476,7 +1476,7 @@ begin
   if IsSystemFoldersUri(AURI) then
     Exit('sys://folders');
   if IsRecycleBinUri(AURI) then
-    Exit('recycle:///'); // canonical root — matches uRecycleBinVfs.cRecycleBinRootUri
+    Exit('recycle:///'); // canonical root - matches uRecycleBinVfs.cRecycleBinRootUri
   if IsTmpPanelUri(AURI) then
     Exit('tmp:///');
   if IsWorkspaceUri(AURI) then

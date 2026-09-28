@@ -9,8 +9,8 @@ unit uConsoleWindow;
       shell is not started until the first Ctrl+O or command-line command;
       "Start shell at program launch" pre-warms it from FormCreate.
     - OnBackToPanels / OnDismissConsole / OnFocusCommandLine events.
-    - Esc → panels (never stops the shell/command — Ctrl+C does that);
-      Ctrl+O → panels; F10 → close.
+    - Esc -> panels (never stops the shell/command - Ctrl+C does that);
+      Ctrl+O -> panels; F10 -> close.
     - DrawAppStatusHint (running indicator). }
 
 interface
@@ -432,7 +432,7 @@ begin
 
   case MatchActiveActionIn([kcConsole, kcShell, kcGlobal],
     KeymapLookupKey(AKey, AKeyChar), AShift) of
-    // Ctrl+Shift+O — the active panel goes to this console's folder (the
+    // Ctrl+Shift+O - the active panel goes to this console's folder (the
     // panels' SyncConsoleDir, the other way round).
     kaConsoleSyncDir:
       begin
@@ -441,7 +441,7 @@ begin
         AKey := 0; AKeyChar := #0;
         Exit;
       end;
-    // Ctrl+O (Global AppConsoleToggle) — back to panels.
+    // Ctrl+O (Global AppConsoleToggle) - back to panels.
     kaAppConsoleToggle:
       begin
         if Assigned(FOnBackToPanels) then
@@ -456,7 +456,7 @@ begin
   if HandleSharedKeys(AKey, AShift, AKeyChar) then
     Exit;
 
-  // Ctrl+Down — unused (panel cmdline is hidden while console is open).
+  // Ctrl+Down - unused (panel cmdline is hidden while console is open).
   if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
   begin
     AKey := 0;
@@ -482,7 +482,7 @@ begin
   case AKey of
     vkF10:
       begin
-        // F10 does not close the Panel Console — Esc / Ctrl+O do. Swallowed
+        // F10 does not close the Panel Console - Esc / Ctrl+O do. Swallowed
         // so it never reaches the panels' F10 = Quit.
         AKey := 0;
       end;

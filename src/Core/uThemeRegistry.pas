@@ -1,7 +1,7 @@
 unit uThemeRegistry;
 
 { Stage 27: catalog of built-in IThemeRenderer "looks" (chrome/skin), keyed
-  by a stable Id persisted in session.json (TMtnSession.ThemeName) — distinct
+  by a stable Id persisted in session.json (TMtnSession.ThemeName) - distinct
   from uColorCoding's on-disk fileColoring theme *file*, which is a separate,
   independent axis (see uColorCoding.pas header comment). Single source of
   truth for both TMainForm.CreateTheme and the theme-picker dialog, so the
@@ -20,7 +20,7 @@ type
 
 /// <summary>Built-in themes, display order = picker order.</summary>
 function GetAvailableThemes: TArray<TThemeInfo>;
-/// <summary>Theme named AId, or the default when AId is blank/unrecognized —
+/// <summary>Theme named AId, or the default when AId is blank/unrecognized -
 /// never fails.</summary>
 function CreateThemeByName(const AId: string): IThemeRenderer;
 function DefaultThemeId: string;

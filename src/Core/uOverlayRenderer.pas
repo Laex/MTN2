@@ -2,13 +2,13 @@ unit uOverlayRenderer;
 
 { Stage 24: Media Overlay (Quick View, Ctrl+Q). Host-only MVP path per
   OVERLAY_PLUGIN.md §4 ("Host сам по file_type/uri панели делает
-  overlay_request") — no plugin cdecl API yet, that's Post-MVP (stage 29+).
+  overlay_request") - no plugin cdecl API yet, that's Post-MVP (stage 29+).
 
   Threading: the VFS byte read is async/worker (uFileVfs.pas already
-  marshals its callback onto the UI thread via TThread.Queue — see
+  marshals its callback onto the UI thread via TThread.Queue - see
   QueueBytes). Decode (TBitmap.LoadFromStream) and every frame's blit-scale
   in Draw both run on the UI thread; FMX TBitmap/TCanvas aren't safe to
-  touch off it. No pre-downscale at decode time either — Draw blit-scales
+  touch off it. No pre-downscale at decode time either - Draw blit-scales
   the full decoded bitmap into the current pixel bounds every frame (GPU
   DrawBitmap, same pattern TTerminalRenderer.Draw already uses for the
   whole grid frame), which also means a bounds_changed resize just needs a
@@ -21,9 +21,9 @@ uses
   uThemeTypes;
 
 const
-  cOverlayMaxBytes = 32 * 1024 * 1024; // 32 MB cap — generous for one photo
+  cOverlayMaxBytes = 32 * 1024 * 1024; // 32 MB cap - generous for one photo
 
-/// <summary>Whitelist for Quick View — matches what FMX's default bitmap
+/// <summary>Whitelist for Quick View - matches what FMX's default bitmap
 /// codecs (WIC on Windows) reliably decode via LoadFromStream.</summary>
 function IsOverlayImageExtension(const AExt: string): Boolean;
 
@@ -31,10 +31,10 @@ function IsOverlayImageExtension(const AExt: string): Boolean;
 /// cells (inclusive Left/Top/Right/Bottom, TRectI convention).</summary>
 procedure RequestOverlayPreview(const AURI: string; const ABounds: TRectI); overload;
 /// <summary>As above, but the image is fitted into ABounds and only the
-/// part inside AClip (grid cells, inclusive) is painted — a block that runs
+/// part inside AClip (grid cells, inclusive) is painted - a block that runs
 /// past the viewport edge is cut off instead of shrunk.</summary>
 procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI); overload;
-/// <summary>Cheap, no decode/network — just moves where Draw paints the
+/// <summary>Cheap, no decode/network - just moves where Draw paints the
 /// already-loaded (or loading) preview. Call every redraw from the panel
 /// that owns the Quick View bounds so a resize/reflow doesn't leave the
 /// image positioned against stale geometry between URI changes.</summary>
@@ -48,7 +48,7 @@ function OverlayCurrentURI: string;
 /// the stored cell bounds to pixels via ACellWidth/ACellHeight.</summary>
 procedure DrawOverlayPreview(ACanvas: TCanvas; ACellWidth, ACellHeight: Single);
 /// <summary>Host subscribes once (e.g. FormCreate) to repaint when a decode
-/// completes or fails — the request itself doesn't force a paint.</summary>
+/// completes or fails - the request itself doesn't force a paint.</summary>
 procedure SetOverlayRepaintHandler(AHandler: TThreadProcedure);
 /// <summary>Host reports the grid's cell size in pixels (every paint). Lets
 /// layout code size an image block in cells without knowing the font.
@@ -57,7 +57,7 @@ function SetOverlayCellMetrics(ACellWidth, ACellHeight: Single): Boolean;
 /// <summary>Cell height / cell width in pixels; 2.0 until the host reports.</summary>
 function OverlayCellAspect: Single;
 /// <summary>Pixel size from the file header only (PNG, JPEG, GIF, BMP,
-/// WebP) — no decode, reads at most 64 KB. False for other formats or a
+/// WebP) - no decode, reads at most 64 KB. False for other formats or a
 /// broken header.</summary>
 function ReadImagePixelSize(const APath: string; out AWidth, AHeight: Integer): Boolean;
 
@@ -253,7 +253,7 @@ begin
   if (SrcW <= 0) or (SrcH <= 0) then
     Exit;
 
-  // fit: contain — scale to fit inside bounds, preserve aspect, center.
+  // fit: contain - scale to fit inside bounds, preserve aspect, center.
   Scale := Min(BW / SrcW, BH / SrcH);
   CX := BoundsPx.Left + (BW - SrcW * Scale) / 2;
   CY := BoundsPx.Top + (BH - SrcH * Scale) / 2;

@@ -12,10 +12,10 @@ const
   cTopicThemeChanged   = 'theme.changed';
   cTopicPanelNavigated = 'panel.navigated';
   cTopicJobProgress    = 'job.progress';
-  /// <summary>Plugin → Dual Panel: open a URI in the active panel.
+  /// <summary>Plugin -> Dual Panel: open a URI in the active panel.
   /// Payload is TPluginPayload whose Json is {"uri":"..."}.</summary>
   cTopicPanelNavigate  = 'panel.navigate';
-  /// <summary>Plugin → Dual Panel: reload every visible panel already
+  /// <summary>Plugin -> Dual Panel: reload every visible panel already
   /// showing this URI (do not steal the active panel). Payload Json is
   /// {"uri":"..."}.</summary>
   cTopicPanelReload    = 'panel.reload';

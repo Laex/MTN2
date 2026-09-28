@@ -948,7 +948,7 @@ procedure TDialogDesignerForm.DrawSelectionMarks(const AGrid: TTerminalGrid;
 const
   // Reverse-video overlay: recolors whatever glyph Draw already put in each
   // cell instead of overwriting it with box-drawing characters, so a 1-row
-  // control (button/checkbox/input — most controls) keeps its text readable
+  // control (button/checkbox/input - most controls) keeps its text readable
   // while selected.
   cSelFg = TAlphaColor($FF1A1A1A);
   cSelBg = TAlphaColor($FFFFA500);

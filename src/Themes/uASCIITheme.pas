@@ -2,7 +2,7 @@ unit uASCIITheme;
 
 { Stage 27, optional third look: same classic FAR/VGA palette as uNDNTheme,
   but every glyph is plain 7-bit ASCII (+/-/|, ^v&lt;&gt;, #, :) instead of
-  Unicode box-drawing/block characters — for terminals or fonts that don't
+  Unicode box-drawing/block characters - for terminals or fonts that don't
   carry the box-drawing block. Colours intentionally match uNDNTheme so
   switching between the two is a pure glyph change, not a repaint you'd
   mistake for a different theme. }
@@ -56,7 +56,7 @@ type
 implementation
 
 const
-  // Same VGA approximations as uNDNTheme — only the glyphs differ.
+  // Same VGA approximations as uNDNTheme - only the glyphs differ.
   cBlack        = TAlphaColor($FF000000);
   cBlue         = TAlphaColor($FF0000AA);
   cCyan         = TAlphaColor($FF00AAAA);
@@ -512,7 +512,7 @@ end;
 
 function TASCIIOnlyTheme.UsesDoubleLineForActivePanel: Boolean;
 begin
-  // ASCII has only one glyph weight — active/idle differ by colour only.
+  // ASCII has only one glyph weight - active/idle differ by colour only.
   Result := False;
 end;
 

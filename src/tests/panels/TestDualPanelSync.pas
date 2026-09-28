@@ -1,6 +1,6 @@
 unit TestDualPanelSync;
 
-{ Stage 35: two-way directory sync — newer side wins; conflicts (both
+{ Stage 35: two-way directory sync - newer side wins; conflicts (both
   sides changed since the last snapshot) stay unresolved.
   Stage 34: content mode marks same-date files whose bytes differ. }
 

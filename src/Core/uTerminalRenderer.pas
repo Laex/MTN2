@@ -630,7 +630,7 @@ begin
   Border := TAlphaColorRec.White;
   ClearTerminalGrid(FGrid, Fg, Bg);
 
-  // Unicode double-line box (code points — UTF-8 char literals are string in DCC)
+  // Unicode double-line box (code points - UTF-8 char literals are string in DCC)
   FGrid[0][0] := TCharCell.Make(WideChar($2554), Border, Bg);
   FGrid[0][FCols - 1] := TCharCell.Make(WideChar($2557), Border, Bg);
   FGrid[FRows - 1][0] := TCharCell.Make(WideChar($255A), Border, Bg);
@@ -912,7 +912,7 @@ begin
           Continue;
         end;
 
-        // ▄ / ▀ — fill exact half-cell (button shadows); font glyphs leave gaps.
+        // ▄ / ▀ - fill exact half-cell (button shadows); font glyphs leave gaps.
         if (Length(Ch) = 1) and ((Ch[1] = chLowerHalf) or (Ch[1] = chUpperHalf)) then
         begin
           Canvas.SetMatrix(SavedMatrix);

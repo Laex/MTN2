@@ -1,7 +1,7 @@
 unit uJobPopupRenderer;
 
 { Stateless rendering of the Copy/Move/Delete job popup (TPanelJobState is a
-  snapshot passed in — this unit never mutates job state or drives the job
+  snapshot passed in - this unit never mutates job state or drives the job
   state machine; see uDualPanelJobs.TPanelJobController for that). }
 
 interface
@@ -212,7 +212,7 @@ begin
     // shows the full current path (see Draw below), which needs the room
     // just as much as Copy/Move's source/destination lines do. Other
     // "plain" phases (Confirm, Error, the Ask popups' hit-test bounds)
-    // keep the narrower width — they don't show a path.
+    // keep the narrower width - they don't show a path.
     W := Min(72, Max(PanelW - 2, 48)) + 2;
     H := 9;
   end

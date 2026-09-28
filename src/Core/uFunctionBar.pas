@@ -294,7 +294,7 @@ begin
 end;
 
 // Markdown render: F4 is Raw (same as Ctrl+M). Ctrl+H stays Hex. No Wrap on
-// F2 — Markdown wraps via the parser, not Viewer word-wrap.
+// F2 - Markdown wraps via the parser, not Viewer word-wrap.
 procedure FunctionBarItemsForViewerMarkdown(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
   FKeysFromKeymap(fbcViewerMarkdown, [kcMarkdown, kcViewer, kcDocument], cMarkdownFBar,
@@ -576,7 +576,7 @@ begin
     fbcSysFolders:
       begin
         // Synthetic category listing: only navigation and the always-available
-        // Help/Menu/Quit apply — Copy/Move/MkDir/Delete etc. aren't supported
+        // Help/Menu/Quit apply - Copy/Move/MkDir/Delete etc. aren't supported
         // here, so they're left blank instead of shown and then rejected.
         AItems[0] := '1Help';
         AItems[1] := '2Menu';

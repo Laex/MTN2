@@ -1,7 +1,7 @@
 unit uShellProfiles;
 
 { Shell profile catalog for Terminal Workspaces (Stage 21).
-  Resolves profile id → CreateProcess command line + working directory.
+  Resolves profile id -> CreateProcess command line + working directory.
   Supports automatic discovery of Windows Subsystem for Linux (WSL/WSL2) distros.
 
   CROSS-PLATFORM (Этап 23): the profile set itself (cmd/PowerShell/pwsh/WSL)
@@ -61,7 +61,7 @@ function ProfileReturnSeq(const AProfileId: string): string;
 /// <summary>Silent setup line sent once right after the shell starts, before
 /// the user can type anything; '' if the profile needs none. PowerShell/pwsh
 /// piped stdin (no real console) hangs indefinitely when a command reports a
-/// non-terminating error — PowerShell's error view tries to query console
+/// non-terminating error - PowerShell's error view tries to query console
 /// dimensions that don't exist for a pipe. Forcing SilentlyContinue avoids
 /// that hang (at the cost of not showing the error text).</summary>
 function ProfileInitCommand(const AProfileId: string): string;
@@ -74,7 +74,7 @@ function ProfileOutputEncoding(const AProfileId: string): Boolean;
 /// line-buffer/echo simulation the old pipe backend required.</summary>
 function ProfileUsesLineBufferedInput(const AProfileId: string): Boolean;
 /// <summary>Rewrite a PS command so its top-level result never reaches the
-/// format engine — piped stdout (no real console) hangs indefinitely
+/// format engine - piped stdout (no real console) hangs indefinitely
 /// rendering any non-string object (Get-Date, Get-Process, Out-String,
 /// Format-Table, ... all confirmed). ls/dir/gci get a clean, known-good
 /// rewrite; other simple expressions get a generic ToString() pipeline
@@ -93,13 +93,13 @@ function ProfileBackspaceChar(const AProfileId: string): Char;
 /// already applies correctly through the normal backspace path.</summary>
 function ProfileNeedsBackspaceWorkaround(const AProfileId: string): Boolean;
 /// <summary>Quote a path for cmd.exe / cd /d. Appends "." to drive roots so the
-/// closing quote is not escaped by a trailing backslash (C:\ → "C:\.").</summary>
+/// closing quote is not escaped by a trailing backslash (C:\ -> "C:\.").</summary>
 function QuoteCmdExePath(const APath: string): string;
 function BuildCmdCdLine(const ACwd: string): string;
 /// <summary>Profile-aware `cd` line for cwd sync, ending in the profile's own
-/// Enter (ProfileReturnSeq). cmd → `cd /d &lt;path&gt;`; PowerShell / pwsh →
-/// `Set-Location -LiteralPath '&lt;path&gt;'`; WSL → `cd '/mnt/...'` (drive letter
-/// mapped to /mnt/x); Git Bash → `cd /x/...`; ssh → ''. Returns '' when ACwd is empty.</summary>
+/// Enter (ProfileReturnSeq). cmd -> `cd /d &lt;path&gt;`; PowerShell / pwsh ->
+/// `Set-Location -LiteralPath '&lt;path&gt;'`; WSL -> `cd '/mnt/...'` (drive letter
+/// mapped to /mnt/x); Git Bash -> `cd /x/...`; ssh -> ''. Returns '' when ACwd is empty.</summary>
 function BuildCdLineForProfile(const AProfileId, ACwd: string): string;
 
 implementation
@@ -648,7 +648,7 @@ begin
     // WSL/Linux bash, Git Bash (MSYS bash), and ssh.exe forwarding to a
     // remote bash-like shell:
     // the pty's icrnl setting already turns our CR into LF,
-    // so sending CRLF lands as two line terminators — bash executes the
+    // so sending CRLF lands as two line terminators - bash executes the
     // command on the CR-turned-LF, then treats the literal trailing LF as a
     // second, empty Enter press, which redraws the prompt a second time
     // (visible as a duplicated prompt after every command). A lone LF
@@ -668,7 +668,7 @@ begin
     // cmd (piped stdin, no real console -- or a genuine console today, but
     // unconfirmed whether a lone CR is equally safe there): a lone CR may
     // be interpreted as ^M when icrnl is off, so Enter would not submit
-    // input — CRLF is required here.
+    // input - CRLF is required here.
     Result := #13#10;
 end;
 
@@ -705,22 +705,22 @@ begin
   Result := False;
 end;
 
-/// <summary>True if T is a single simple pipeline/expression — safe to
+/// <summary>True if T is a single simple pipeline/expression - safe to
 /// append a display wrapper to without changing what it does. Deliberately
 /// conservative: any of these makes it False (never wrap, fall back to
 /// sending T unchanged) rather than risk corrupting semantics:
-///   - ';' (multiple statements — a trailing wrapper would only apply to
+///   - ';' (multiple statements - a trailing wrapper would only apply to
 ///     the last one, changing what the earlier ones do to their output).
-///   - '{' / '}' (script block — Where-Object/ForEach-Object filters, or a
+///   - '{' / '}' (script block - Where-Object/ForEach-Object filters, or a
 ///     control-flow/function body).
 ///   - a literal '=' (PowerShell has no '==' for comparison, so any '=' is
-///     almost certainly assignment — appending "| % {"$_"}" to
+///     almost certainly assignment - appending "| % {"$_"}" to
 ///     "$x = 5" would pipe 5 through the wrapper *before* assigning it,
 ///     silently turning $x from Int32 into the string "5").
 ///   - starts with a keyword that begins a statement rather than an
-///     expression (if/for/function/etc.) — piping those is invalid or
+///     expression (if/for/function/etc.) - piping those is invalid or
 ///     changes control flow, not display.
-///   - already ends in an explicit display/format cmdlet — the user chose
+///   - already ends in an explicit display/format cmdlet - the user chose
 ///     that rendering on purpose; wrapping again just mangles it.</summary>
 function IsSimplePsExpression(const T: string): Boolean;
 const
@@ -759,7 +759,7 @@ var
 begin
   T := Trim(ACmd);
   // Piped PS host: table/list formatters (Out-Default's default view for any
-  // non-string object) hang indefinitely instead of just printing nothing —
+  // non-string object) hang indefinitely instead of just printing nothing -
   // confirmed via Get-Date, Get-Process, Out-String, Out-Host all hanging
   // the same way, regardless of console-width hints. Explicit .ToString()-
   // shaped output never hangs, so:
@@ -855,7 +855,7 @@ function WindowsPathToWslPath(const APath: string): string;
 var
   P: string;
 begin
-  // C:\foo\bar → /mnt/c/foo/bar. UNC and relative paths fall back to the raw
+  // C:\foo\bar -> /mnt/c/foo/bar. UNC and relative paths fall back to the raw
   // string; WSL bash will report an error rather than be misled.
   P := Trim(APath);
   if (Length(P) >= 3) and CharInSet(UpCase(P[1]), ['A'..'Z']) and

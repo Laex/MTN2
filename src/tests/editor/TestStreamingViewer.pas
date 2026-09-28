@@ -3,7 +3,7 @@ unit TestStreamingViewer;
 { Stage 24 regression: the line-indexed (streaming) Viewer path in uEditorDoc,
   plus the UTF-8 sample-trim in uTextEncoding that feeds its encoding sniff.
 
-  Source is deliberately pure ASCII — every non-ASCII test string is built from
+  Source is deliberately pure ASCII - every non-ASCII test string is built from
   explicit codepoints (#$xxxx). A pasted literal would depend on whether this
   .pas carries a UTF-8 BOM, which is the exact class of defect that produced
   the mojibake this test guards against. }
@@ -52,7 +52,7 @@ uses
   uEditorDoc;
 
 const
-  // Cyrillic "Тест" — codepoints, not a literal (see header note).
+  // Cyrillic "Тест" - codepoints, not a literal (see header note).
   cCyr = #$0422#$0435#$0441#$0442;
   cNoTrailMarker = 'LAST-LINE-NO-TRAILING-NEWLINE';
 

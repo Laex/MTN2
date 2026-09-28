@@ -1,7 +1,7 @@
 unit TestColumnModeMenuController;
 
 { Behavior checks for TColumnModeMenuController (Ctrl+1..6 "Column modes"
-  popup) — navigation, numeric/hotkey/Enter/click selection. Draw() is not
+  popup) - navigation, numeric/hotkey/Enter/click selection. Draw() is not
   exercised: the project's test convention (see TestPanelColumns.pas,
   TestSortMenuController.pas, ...) checks logic/state, not grid rendering. }
 
@@ -87,7 +87,7 @@ begin
     Assert.IsTrue(Ctrl.Bounds.Width >= 10, 'Open() lays out a non-degenerate popup');
     Assert.IsTrue(Inv.Count > 0, 'Open() requests an invalidate');
 
-    // Date is the 3rd item (index 2) in BuildColumnModeMenuItems order —
+    // Date is the 3rd item (index 2) in BuildColumnModeMenuItems order -
     // confirmed indirectly: pressing Enter immediately must select Date.
     Key := Word(vkReturn);
     Ch := #0;
@@ -118,7 +118,7 @@ begin
     Ctrl.Open(pcmBrief); // Brief = index 0, first row
 
     // AKey is a var param that HandleInput zeroes after consuming it (the
-    // "handled, stop dispatching" signal a real key-event loop relies on) —
+    // "handled, stop dispatching" signal a real key-event loop relies on) -
     // it must be re-armed with the key code before every single press.
     Ch := #0;
     Key := Word(vkUp); Ctrl.HandleInput(Key, [], Ch);

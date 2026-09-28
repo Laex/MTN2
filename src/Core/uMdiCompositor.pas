@@ -40,7 +40,7 @@ type
     procedure BringToFront(AWindow: TTerminalWindow);
 
     procedure Paint(const AGrid: TTerminalGrid; ACols, ARows: Integer);
-    // Cascaded demo layout for Stage 3 (≥2 overlapping windows).
+    // Cascaded demo layout for Stage 3 (>=2 overlapping windows).
     procedure LayoutCascade(ACols, ARows: Integer);
     // Single maximized window; ATopMargin reserves rows above (Dual Panel Tabs).
     procedure LayoutMaximized(ACols, ARows: Integer; ATopMargin: Integer = 0);
@@ -163,7 +163,7 @@ begin
   if WasActive then
     FActive := nil;
 
-  // Extract without freeing — caller may still be inside AWindow methods.
+  // Extract without freeing - caller may still be inside AWindow methods.
   FWindows.Extract(AWindow);
 
   if WasActive then
@@ -293,7 +293,7 @@ begin
   for I := 0 to FWindows.Count - 1 do
     Sorted[I] := FWindows[I];
 
-  // Insertion sort by ZIndex ascending (bottom → top).
+  // Insertion sort by ZIndex ascending (bottom -> top).
   for I := 1 to High(Sorted) do
   begin
     Tmp := Sorted[I];

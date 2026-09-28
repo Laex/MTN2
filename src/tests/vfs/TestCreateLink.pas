@@ -3,7 +3,7 @@ unit TestCreateLink;
 { Spike/regression for uLinkUtils: exercises symlink (file + dir), hardlink,
   and junction creation against real Win32 APIs in a scratch temp directory.
   Symlink creation without Developer Mode/elevation is expected to fail with
-  a clean error (not a crash) — that path is reported, not treated as a
+  a clean error (not a crash) - that path is reported, not treated as a
   hard failure of the run. }
 
 interface

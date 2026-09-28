@@ -5,11 +5,11 @@ unit TestIOErrorAskDialog;
   Retry/Skip/Skip all/Cancel choice (TPanelJobController.PromptIOErrorAsk /
   ResolveIOErrorAsk) instead of always aborting the whole job the moment the
   automatic retry budget (RetryLeft, 0 unless the job confirm dialog's Retry
-  dropdown was raised) runs out — see HandleTransferFailure.
+  dropdown was raised) runs out - see HandleTransferFailure.
 
   Also covers the reason this dialog is actually useful: PendingSrcURI /
   the "path" shown in the dialog must name the one file that failed (via
-  AError.URI), not the top-level job source — the fix already made to
+  AError.URI), not the top-level job source - the fix already made to
   CopyFileWithProgress (uFileVfs.pas) so a recursive tree copy attributes an
   I/O error to the file it actually happened on. }
 
@@ -65,7 +65,7 @@ end;
 
 type
   /// <summary>Callback invoked synchronously each time PromptIOErrorAsk opens
-  /// (the panel's real popup, here simulated) — records what was shown and
+  /// (the panel's real popup, here simulated) - records what was shown and
   /// decides how to answer it via AJobs.ResolveIOErrorAsk.</summary>
   TIOErrorAskHandler = reference to procedure(AJobs: TPanelJobController;
     const AHeadline, APath, AErrorLine: string);
@@ -138,7 +138,7 @@ end;
 
 function LockExclusive(const APath: string): TFileStream;
 begin
-  // fmOpenRead, not fmCreate — the file already has fixture content; fmCreate
+  // fmOpenRead, not fmCreate - the file already has fixture content; fmCreate
   // would truncate it before CopyFileWithProgress ever gets a chance to fail.
   Result := TFileStream.Create(APath, fmOpenRead or fmShareExclusive);
 end;
@@ -273,7 +273,7 @@ begin
       PathToFileUri(DstDir),
       procedure(AJobs: TPanelJobController; const AHeadline, APath, AErrorLine: string)
       begin
-        // Release the lock right before answering Retry — mirrors a user who
+        // Release the lock right before answering Retry - mirrors a user who
         // closed the other program and then clicked Retry.
         FreeAndNil(Hold);
         AJobs.ResolveIOErrorAsk(jioRetry);

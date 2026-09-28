@@ -105,7 +105,7 @@ begin
     Assert.AreEqual('dir', Buf.GetInputAfterPrompt, 'command after prompt on next line');
 
     Buf.Clear;
-    // Prompt without trailing newline — local echo stays on the prompt line.
+    // Prompt without trailing newline - local echo stays on the prompt line.
     Buf.AppendOutput('D:\Work\Delphi>');
     Buf.AppendOutput('d');
     Buf.AppendOutput('i');
@@ -157,7 +157,7 @@ begin
 
     Buf.Clear;
     // Real PTY output that looks like a fresh prompt must still split onto a
-    // new line — the fix must not weaken this for genuine PTY chunks.
+    // new line - the fix must not weaken this for genuine PTY chunks.
     // FixPromptNewlines also splits the glued-on command off the new prompt,
     // so "D:\Other>ls" itself lands on two rows (pre-existing, unrelated to
     // the local-input fix).
@@ -441,7 +441,7 @@ var
   LineIdx, Col: Integer;
 begin
   // Mouse-down on the console unpins FollowTail so scrollback selection can
-  // start. The PTY write cursor must still be reported — otherwise the
+  // start. The PTY write cursor must still be reported - otherwise the
   // insert caret vanishes on click even when the prompt is still on screen.
   Writeln('TestGetInputCursorAfterUnfollow');
   Buf := TConsoleBuffer.Create;

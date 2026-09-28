@@ -87,7 +87,7 @@ begin
   I := FindControlById(LDecl, 'preview');
   Assert.IsTrue(I >= 0, 'preview control not found in colorpicker.json');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckColorSample, 'preview is not dckColorSample');
-  // fgFrom/bgFrom are left blank in the JSON itself — BuildColorPickerDialog
+  // fgFrom/bgFrom are left blank in the JSON itself - BuildColorPickerDialog
   // patches them at open time via DialogSetColorSampleSources (AIsBg-dependent).
   Assert.IsTrue(LDecl.Controls[I].FgSourceId = '', 'preview.FgSourceId should start blank (patched at Build time)');
   Assert.IsTrue(LDecl.Controls[I].BgSourceId = '', 'preview.BgSourceId should start blank (patched at Build time)');

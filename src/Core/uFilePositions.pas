@@ -1,8 +1,8 @@
 unit uFilePositions;
 
 { Persistent per-file Viewer/Editor position (F3/F4): top-left scroll
-  corner, cursor row/column, and — if one was active when the window
-  closed — the selection range. Reopening the same file restores all of it,
+  corner, cursor row/column, and - if one was active when the window
+  closed - the selection range. Reopening the same file restores all of it,
   in both Viewer and Editor. }
 
 interface
@@ -16,7 +16,7 @@ type
     LeftCol: Integer;
     CursorRow: Integer;
     CursorCol: Integer;
-    /// <summary>True if a selection was active when saved — then
+    /// <summary>True if a selection was active when saved - then
     /// SelAnchorRow/SelAnchorCol is the far end from CursorRow/CursorCol.</summary>
     HasSelection: Boolean;
     SelAnchorRow: Integer;
@@ -179,7 +179,7 @@ begin
   try
     SaveLocked;
   except
-    // Best-effort persistence — a write failure should not block closing the file.
+    // Best-effort persistence - a write failure should not block closing the file.
   end;
 end;
 

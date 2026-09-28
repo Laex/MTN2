@@ -18,8 +18,8 @@ type
   TDriveInfo = record
     Letter: Char;
     RootPath: string;    // e.g. 'C:\'
-    KindLabel: string;   // Hard disk / Removable / Network / …
-    FsName: string;      // NTFS, FAT32, …
+    KindLabel: string;   // Hard disk / Removable / Network / ...
+    FsName: string;      // NTFS, FAT32, ...
     LabelOrPath: string; // volume label or UNC for network
     TotalBytes: Int64;
     FreeBytes: Int64;
@@ -70,16 +70,16 @@ function FormatByteCount(ABytes: Int64): string;
 /// <summary>FAR-style size: 10.0 GB / 63.2 MB / 1 234.</summary>
 function FormatSizeFar(ABytes: Int64): string;
 function FormatPctSize(APart, ATotal: Int64): string;
-/// <summary>'C:\Work' → 'C'; UNC / empty / relative → #0.</summary>
+/// <summary>'C:\Work' -> 'C'; UNC / empty / relative -> #0.</summary>
 function DriveLetterFromPath(const APath: string): Char;
 function IndexOfDriveLetter(const ADrives: TDriveInfoArray; ALetter: Char): Integer;
 /// <summary>Wrap ACurrentIndex by ADelta. Missing current (ACurrentIndex&lt;0):
-/// +delta starts at 0, −delta at last.</summary>
+/// +delta starts at 0, -delta at last.</summary>
 function CycleDriveIndex(ACount, ACurrentIndex, ADelta: Integer): Integer;
 
 const
   /// <summary>Same numbered extras as Change Drive (Alt+F1/F2), after the
-  /// physical drives. Glyphs are '1'.. so they never collide with A–Z.</summary>
+  /// physical drives. Glyphs are '1'.. so they never collide with A-Z.</summary>
   ChangeDriveSpecialCount = 4;
   ChangeDriveSpecialLabels: array[0..ChangeDriveSpecialCount - 1] of string =
     ('System folders', 'Recycle bin', 'Temporary', 'Workspace');
@@ -97,7 +97,7 @@ function TryChangeDriveSpecialUri(AGlyph: Char; out AUri: string): Boolean;
 /// <summary>Drive letter, or special glyph '1'.. when AUri is sys/recycle/tmp/ws.</summary>
 function DriveBarGlyphFromUri(const AUri: string): Char;
 /// <summary>Change Drive list index for AUri: physical drive, or
-/// Length(ADrives)+1+special. Unknown URI → 0.</summary>
+/// Length(ADrives)+1+special. Unknown URI -> 0.</summary>
 function DrivePopupCursorIndex(const ADrives: TDriveInfoArray;
   const AUri: string): Integer;
 /// <summary>Logical drives in EnumLogicalDrives order, then specials 1..N.</summary>
@@ -206,7 +206,7 @@ begin
     FreeSz := StringOfChar(' ', 7 - Length(FreeSz)) + FreeSz
   else
     FreeSz := Copy(FreeSz, 1, 7);
-  // Use chBoxV (#$2502), not a UTF-8 literal — source encoding must not matter.
+  // Use chBoxV (#$2502), not a UTF-8 literal - source encoding must not matter.
   Sep := ' ' + chBoxV + ' ';
   LeftPart := Mark + AInfo.Letter + ': ' + Kind + Sep + Fs + Sep;
   // AInnerWidth - 1 reserve empty column before right border / scrollbar

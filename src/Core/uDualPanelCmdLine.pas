@@ -287,7 +287,7 @@ begin
   try
     SaveHistory;
   except
-    // Ignore disk errors — history is best-effort.
+    // Ignore disk errors - history is best-effort.
   end;
   Invalidate;
 end;
@@ -340,7 +340,7 @@ begin
       Root.Free;
     end;
   except
-    // Corrupt history — start empty.
+    // Corrupt history - start empty.
     FHistory.Clear;
   end;
 end;
@@ -379,7 +379,7 @@ begin
   try
     SaveHistory;
   except
-    // Ignore disk errors — history is best-effort.
+    // Ignore disk errors - history is best-effort.
   end;
 end;
 
@@ -533,7 +533,7 @@ begin
     Exit;
   end;
 
-  // Ctrl+Up — return focus to the file panel (inverse of Ctrl+Down).
+  // Ctrl+Up - return focus to the file panel (inverse of Ctrl+Down).
   if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkUp, [ssCtrl]) then
   begin
     SetFocused(False);

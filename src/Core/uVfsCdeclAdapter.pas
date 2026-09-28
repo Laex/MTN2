@@ -10,7 +10,7 @@ unit uVfsCdeclAdapter;
   Each Async method runs the (synchronous) cdecl callback on a background
   thread and delivers the result via TThread.Queue, matching the pattern
   used throughout uFileVfs.pas. Buffer-fill calls (ListDirectory/ReadText/
-  ReadBytes) use a single fixed-size buffer — if the plugin reports the
+  ReadBytes) use a single fixed-size buffer - if the plugin reports the
   result doesn't fit (verNeedsBiggerBuffer), the call fails with vecIOError;
   there is no retry-with-bigger-buffer loop in this first version. }
 
@@ -23,7 +23,7 @@ uses
 const
   /// <summary>Single-shot buffer size for ListDirectory/ReadText/ReadBytes.
   /// A plugin whose result doesn't fit should keep it under this, or the
-  /// call fails (see unit comment) — generous for typical directory
+  /// call fails (see unit comment) - generous for typical directory
   /// listings and small text files.</summary>
   cCdeclVfsBufferSize = 4 * 1024 * 1024;
 
