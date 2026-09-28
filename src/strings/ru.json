@@ -590,6 +590,7 @@
     "display.shadowClassic": "Классические",
     "display.shadowSoft": "Мягкие",
     "display.shadowNone": "Нет",
+    "display.pt": "пт",
     "update.checkingNotice": "Проверка обновлений MTN2 на github.com...",
     "update.checkingHint": "Отключить: F9 > ≡ > Обновления",
     "about.version": "Версия %s",

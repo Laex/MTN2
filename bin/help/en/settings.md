@@ -15,13 +15,13 @@ The **Options** menu (F9):
 
 The **Line spacing (as in a terminal)** checkbox in **Options → Font / Display...** makes rows 15% of the font size taller; the text stays centred in the row, frames and highlights stretch over its whole height. It is off by default: rows are as tall as the font's line, and more of them fit on the screen. For Cascadia Mono 11 pt that is 17 pixels without spacing and 19 with it — the same as in Windows Terminal.
 
-The sizes in the list (“8 pt” … “32 pt”) are really pixels at 100% scaling: “14 pt” is 14 pixels, about 10.5 typographic points. Windows Terminal and the Windows console use real points: 11 pt = 14.7 pixels.
+Font size is in typographic points, as in Windows Terminal and the Windows console: 6 to 24 pt, in half-point steps from 8 to 12 pt. At 100% Windows scaling 1 pt = 4/3 pixel: 10.5 pt is 14 pixels (the former default), 11 pt is 14.7 pixels.
 
 ### Why text looks different from Far
 
 Far does not draw its text itself: the console window it runs in does — Windows Terminal or the classic Windows console — with its own font and rules. Compared with the same font, size and colours, MTN2 and Far draw the same letters: stroke weight and antialiasing match. The differences come from settings:
 
-- **Font and size.** Windows Terminal defaults to Cascadia Mono 11 pt (14.7 pixels). MTN2 uses the font and size from Font / Display (Cascadia Mono if installed, otherwise Consolas; 14 pixels). Narrow, light fonts such as Ubuntu Mono look thinner and paler, especially on blue.
+- **Font and size.** Windows Terminal defaults to Cascadia Mono 11 pt. MTN2 uses the font and size from Font / Display (Cascadia Mono if installed, otherwise Consolas; 10.5 pt). Narrow, light fonts such as Ubuntu Mono look thinner and paler, especially on blue.
 - **Row height.** Windows Terminal adds about 15% of the font size to the font's line. In MTN2 that is the Line spacing checkbox; without it rows are tighter. The classic Windows console takes the row height from the font's Windows metrics, which can be another 1–3 pixels taller (Cascadia Mono 11 pt — 20 pixels).
 - **Colours.** MTN2's colours come from its theme; Far's from its own highlighting and the terminal's colour scheme. In the default theme plain files are light grey; in Far they are usually cyan, with twice the contrast on blue, so the text looks bolder.
 - **Antialiasing.** MTN2 uses greyscale antialiasing. So does Windows Terminal when the profile's `antialiasingMode` is `grayscale` (the default); with `cleartype` letters get coloured fringes. The classic Windows console uses ClearType when it is on in Windows.
@@ -32,7 +32,7 @@ Far does not draw its text itself: the console window it runs in does — Window
 MTN2 matches Far in Windows Terminal in cell size, stroke weight and row height when:
 
 - the font is the same (Windows Terminal's default is Cascadia Mono);
-- the size is the same in pixels: 11 pt is 14.67. The list has no such value, the nearest are “14 pt” and “16 pt”. The exact value can be written to `session.json` (`"fontSize": 14.67`) while MTN2 is closed; it stays until the size is touched, and pressing **OK** in Font / Display replaces it with the nearest value from the list;
+- the size is the same (Windows Terminal's default is 11 pt);
 - Line spacing (as in a terminal) is on;
 - the Windows Terminal profile uses `grayscale` antialiasing;
 - MTN2's theme and Far use similar colours.

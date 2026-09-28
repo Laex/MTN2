@@ -48,6 +48,11 @@ type
     FThemeIds: TArray<string>;
     FProfileIds: TArray<string>;
     FLanguageCodes: TArray<string>;
+    /// <summary>Display dialog: the size it opened with (pixels) and its
+    /// list row. OK without touching the size keeps the exact value -- a
+    /// size set outside the list (session.json) is not rounded to it.</summary>
+    FOpenFontSize: Single;
+    FOpenFontSizeIdx: Integer;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     function CollectAvailableProfiles(out ATitles, AIds: TArray<string>;
@@ -212,8 +217,10 @@ begin
   LanguageIdx := IndexOfFontName(FLanguageCodes, Cur.Language);
 
   SetKind(hdkDisplay);
+  FOpenFontSize := Cur.FontSize;
+  FOpenFontSizeIdx := IndexOfDisplayFontSize(Cur.FontSize);
   FDialog.Open(BuildDisplayDialog(Fonts, FontIdx,
-    IndexOfDisplayFontSize(Cur.FontSize), IndexOfDisplayZoom(Cur.Zoom),
+    FOpenFontSizeIdx, IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
     Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing), FOnCommand);
@@ -350,14 +357,18 @@ procedure TSettingsDialogController.DispatchDisplayCommand(
 var
   Accepted: Boolean;
   Disp: TDisplaySettings;
-  LanguageIdx, ShadowIdx: Integer;
+  LanguageIdx, ShadowIdx, SizeIdx: Integer;
 begin
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
   begin
     Disp := DefaultDisplaySettings;
     Disp.FontName := FDialog.GetListSelectedText('fonts');
-    Disp.FontSize := DisplayFontSizeAt(FDialog.GetListSelectedIndex('font_size'));
+    SizeIdx := FDialog.GetListSelectedIndex('font_size');
+    if SizeIdx = FOpenFontSizeIdx then
+      Disp.FontSize := FOpenFontSize
+    else
+      Disp.FontSize := DisplayFontSizeAt(SizeIdx);
     Disp.Zoom := DisplayZoomAt(FDialog.GetListSelectedIndex('zoom'));
     Disp.CursorBlink := FDialog.GetCheckbox('blink');
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));

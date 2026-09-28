@@ -490,6 +490,7 @@
     "display.shadowClassic": "Classic",
     "display.shadowSoft": "Soft",
     "display.shadowNone": "None",
+    "display.pt": "pt",
     "update.checkingNotice": "Checking github.com for MTN2 updates...",
     "update.checkingHint": "Turn off: F9 > ≡ > Check for updates",
     "about.version": "Version %s",

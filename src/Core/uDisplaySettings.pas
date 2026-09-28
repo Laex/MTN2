@@ -9,9 +9,13 @@ uses
   System.SysUtils;
 
 const
+  // Font sizes are FMX pixels at 100% scaling (TTerminalRenderer, session.json
+  // fontSize); the Display dialog shows them as typographic points
+  // (1 pt = 96/72 px), the unit Windows Terminal and the console use.
   cDisplayMinFontSize = 8;
   cDisplayMaxFontSize = 32;
   cDisplayDefaultFontSize = 14;
+  cDisplayPxPerPt = 96 / 72;
   cDisplayDefaultBlinkMs = 530;
   cDisplayMinZoom = 0.5;
   cDisplayMaxZoom = 3.0;
@@ -49,13 +53,19 @@ function DefaultDisplaySettings: TDisplaySettings;
 function ClampDisplayFontSize(ASize: Single): Single;
 function ClampDisplayZoom(AZoom: Single): Single;
 function ClampDisplayBlinkMs(AMs: Integer): Integer;
+/// <summary>Display dialog size list, in points ("10.5 pt"; the decimal
+/// separator follows the Windows locale).</summary>
 function DisplayFontSizeItems: TArray<string>;
 function DisplayZoomItems: TArray<string>;
 function DisplayBlinkMsItems: TArray<string>;
+/// <summary>ASize in pixels -> the nearest point size in the list.</summary>
 function IndexOfDisplayFontSize(ASize: Single): Integer;
 function IndexOfDisplayZoom(AZoom: Single): Integer;
 function IndexOfDisplayBlinkMs(AMs: Integer): Integer;
+/// <summary>List index -> size in pixels (11 pt -> 14.67).</summary>
 function DisplayFontSizeAt(AIndex: Integer): Single;
+function FontPointsToPixels(APoints: Single): Single;
+function FontPixelsToPoints(APixels: Single): Single;
 function DisplayZoomAt(AIndex: Integer): Single;
 function DisplayBlinkMsAt(AIndex: Integer): Integer;
 function IndexOfFontName(const ANames: TArray<string>; const AName: string): Integer;
@@ -82,8 +92,12 @@ uses
   Winapi.Windows, uStrings;
 
 const
-  cFontSizes: array[0..12] of Integer =
-    (8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32);
+  // Points; half steps where terminals are usually set (8..12 pt). 6 and 24 pt
+  // are cDisplayMinFontSize / cDisplayMaxFontSize px. 10.5 pt = the old
+  // 14 px default, 11 pt = Windows Terminal's default.
+  cFontPoints: array[0..20] of Single =
+    (6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13, 14, 15, 16,
+     18, 20, 22, 24);
   cZoomPercents: array[0..8] of Integer =
     (50, 75, 100, 125, 150, 175, 200, 250, 300);
   cBlinkMs: array[0..2] of Integer = (300, 530, 1000);
@@ -279,13 +293,25 @@ begin
   Result := Best;
 end;
 
+function FontPointsToPixels(APoints: Single): Single;
+begin
+  Result := APoints * cDisplayPxPerPt;
+end;
+
+function FontPixelsToPoints(APixels: Single): Single;
+begin
+  Result := APixels / cDisplayPxPerPt;
+end;
+
 function DisplayFontSizeItems: TArray<string>;
 var
   I: Integer;
+  Pt: string;
 begin
-  SetLength(Result, Length(cFontSizes));
-  for I := 0 to High(cFontSizes) do
-    Result[I] := Format('%d pt', [cFontSizes[I]]);
+  Pt := T('ui.display.pt', 'pt');
+  SetLength(Result, Length(cFontPoints));
+  for I := 0 to High(cFontPoints) do
+    Result[I] := FormatFloat('0.#', cFontPoints[I]) + ' ' + Pt;
 end;
 
 function DisplayZoomItems: TArray<string>;
@@ -325,8 +351,22 @@ begin
 end;
 
 function IndexOfDisplayFontSize(ASize: Single): Integer;
+var
+  I: Integer;
+  Pt, Dist, Best: Single;
 begin
-  Result := NearestIndex(ClampDisplayFontSize(ASize), cFontSizes);
+  Pt := FontPixelsToPoints(ClampDisplayFontSize(ASize));
+  Result := 0;
+  Best := Abs(Pt - cFontPoints[0]);
+  for I := 1 to High(cFontPoints) do
+  begin
+    Dist := Abs(Pt - cFontPoints[I]);
+    if Dist < Best - 0.001 then
+    begin
+      Best := Dist;
+      Result := I;
+    end;
+  end;
 end;
 
 function IndexOfDisplayZoom(AZoom: Single): Integer;
@@ -348,9 +388,9 @@ function DisplayFontSizeAt(AIndex: Integer): Single;
 begin
   if AIndex < 0 then
     AIndex := 0;
-  if AIndex > High(cFontSizes) then
-    AIndex := High(cFontSizes);
-  Result := cFontSizes[AIndex];
+  if AIndex > High(cFontPoints) then
+    AIndex := High(cFontPoints);
+  Result := FontPointsToPixels(cFontPoints[AIndex]);
 end;
 
 function DisplayZoomAt(AIndex: Integer): Single;

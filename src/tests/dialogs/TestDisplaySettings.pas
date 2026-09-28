@@ -47,8 +47,17 @@ begin
   Assert.IsTrue(ClampDisplayBlinkMs(530) = cDisplayDefaultBlinkMs, 'blink 530');
   Assert.IsTrue(ClampDisplayBlinkMs(400) = 300, 'blink 400 -> 300');
   Assert.IsTrue(ClampDisplayBlinkMs(800) = 1000, 'blink 800 -> 1000');
-  Assert.IsTrue(IndexOfDisplayFontSize(14) = 5, '14 pt index');
-  Assert.IsTrue(SameValue(DisplayFontSizeAt(5), 14), 'index 5 is 14 pt');
+  // The list is in points; sizes are pixels (1 pt = 4/3 px).
+  Assert.IsTrue(IndexOfDisplayFontSize(14) = 9, '14 px = 10.5 pt, index 9');
+  Assert.IsTrue(SameValue(DisplayFontSizeAt(9), 14, 0.001), 'index 9 = 10.5 pt = 14 px');
+  Assert.IsTrue(SameValue(DisplayFontSizeAt(10), 11 * 96 / 72, 0.001), 'index 10 = 11 pt = 14.67 px');
+  Assert.IsTrue(IndexOfDisplayFontSize(11 * 96 / 72) = 10, '14.67 px back to 11 pt');
+  Assert.IsTrue(IndexOfDisplayFontSize(16) = 12, '16 px = 12 pt');
+  Assert.IsTrue(SameValue(DisplayFontSizeAt(0), cDisplayMinFontSize, 0.001), 'first item = min size');
+  Assert.IsTrue(SameValue(DisplayFontSizeAt(High(DisplayFontSizeItems)), cDisplayMaxFontSize, 0.001),
+    'last item = max size');
+  Assert.IsTrue(DisplayFontSizeItems[9].StartsWith('10') and DisplayFontSizeItems[9].Contains('5'),
+    'half points shown: ' + DisplayFontSizeItems[9]);
   Assert.IsTrue(IndexOfDisplayZoom(1.0) = 2, '100% zoom index');
   Assert.IsTrue(SameValue(DisplayZoomAt(2), 1.0), 'index 2 is 100%');
   Assert.IsTrue(IndexOfDisplayBlinkMs(530) = 1, '530 ms index');
