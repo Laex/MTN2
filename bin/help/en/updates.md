@@ -13,7 +13,7 @@ After the download (the package is checked against its SHA-256) MTN2 offers to *
 **≡ → Check for updates...** (F9, then the leftmost top-menu item) shows the installed version, checks right away (**Check now**) and has two checkboxes:
 
 - **Check for updates at startup** – once a day at startup. With it off, MTN2 does not go online by itself.
-- **Show a notice when checking** – every check that goes online (at startup or with **Check now**) shows a notice “Checking github.com for MTN2 updates...” in the bottom right corner for a few seconds. For the startup check it has a second line on how to turn the check off. It is shown even when other pop-up notices are off; while a dialog is open it stays hidden under it.
+- **Show a notice when checking** – every check that goes online (at startup or with **Check now**) shows a notice “Checking github.com for MTN2 updates...” in the bottom right corner for a few seconds. For the startup check it has a second line on how to turn the check off. It is shown even when other pop-up notices are off and disappears as soon as GitHub has answered; while a dialog is open it stays hidden under it.
 
 ### What goes over the network
 

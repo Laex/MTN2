@@ -27,6 +27,7 @@ type
     FTemplate: string;
     FArg: string;
     FHint: string;
+    FTag: string;
     FOnChanged: TProc;
     procedure TimerTick(Sender: TObject);
     procedure Changed;
@@ -43,6 +44,8 @@ type
     /// ARequest.Always shows it even while GShowToasts is off.</summary>
     procedure ShowRequest(const ARequest: TNoticeRequest);
     procedure Hide;
+    /// <summary>Hide, but only if the notice on screen was shown with ATag.</summary>
+    procedure HideTag(const ATag: string);
     procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
       AWidth, AHeight: Integer);
     property Visible: Boolean read FVisible;
@@ -173,6 +176,7 @@ begin
   FTemplate := ARequest.Template;
   FArg := ARequest.Arg;
   FHint := ARequest.Hint;
+  FTag := ARequest.Tag;
   FKind := ARequest.Kind;
   FVisible := True;
   // Restart the countdown: a repeated command keeps the box up.
@@ -194,6 +198,12 @@ begin
     Exit;
   FVisible := False;
   Changed;
+end;
+
+procedure TToast.HideTag(const ATag: string);
+begin
+  if FVisible and (ATag <> '') and SameText(FTag, ATag) then
+    Hide;
 end;
 
 procedure TToast.TimerTick(Sender: TObject);

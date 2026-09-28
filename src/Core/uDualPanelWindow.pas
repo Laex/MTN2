@@ -973,6 +973,11 @@ begin
     begin
       if FAlive and not FConsoleMode and Assigned(FToast) then
         FToast.ShowRequest(ARequest);
+    end,
+    procedure(const ATag: string)
+    begin
+      if FAlive and Assigned(FToast) then
+        FToast.HideTag(ATag);
     end);
   FVfs := CreateDefaultVfs;
   FLeftModel := TFilePanelModel.Create(FVfs, cPanelWindowIdLeft);

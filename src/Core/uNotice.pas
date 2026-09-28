@@ -26,11 +26,15 @@ type
     Always: Boolean;
     /// <summary>How long the toast stays up; 0 = the default for Kind.</summary>
     DurationMs: Integer;
+    /// <summary>Optional id for NoticeDismiss: a notice about something in
+    /// progress can be taken down as soon as it is over. '' = none.</summary>
+    Tag: string;
     class function Make(const ATemplate: string; const AArg: string = '';
       AKind: TToastKind = tkInfo): TNoticeRequest; static;
   end;
 
   TNoticeHandler = reference to procedure(const ARequest: TNoticeRequest);
+  TNoticeDismissHandler = reference to procedure(const ATag: string);
 
 /// <summary>ATemplate may hold one %s for AArg (a path or a name): the
 /// toast shortens AArg to fit the window, so pass it separately rather than
@@ -39,12 +43,17 @@ procedure Notice(const ATemplate: string; const AArg: string = '';
   AKind: TToastKind = tkInfo);
 /// <summary>Full form: a hint line, Always, a duration.</summary>
 procedure NoticeRequest(const ARequest: TNoticeRequest);
-procedure SetNoticeHandler(const AHandler: TNoticeHandler);
+/// <summary>Hides the notice shown with this Tag if it is still the one on
+/// screen; a notice that has replaced it stays.</summary>
+procedure NoticeDismiss(const ATag: string);
+procedure SetNoticeHandler(const AHandler: TNoticeHandler;
+  const ADismiss: TNoticeDismissHandler = nil);
 
 implementation
 
 var
   GHandler: TNoticeHandler;
+  GDismiss: TNoticeDismissHandler;
 
 class function TNoticeRequest.Make(const ATemplate, AArg: string;
   AKind: TToastKind): TNoticeRequest;
@@ -66,14 +75,23 @@ begin
   NoticeRequest(TNoticeRequest.Make(ATemplate, AArg, AKind));
 end;
 
-procedure SetNoticeHandler(const AHandler: TNoticeHandler);
+procedure NoticeDismiss(const ATag: string);
+begin
+  if (ATag <> '') and Assigned(GDismiss) then
+    GDismiss(ATag);
+end;
+
+procedure SetNoticeHandler(const AHandler: TNoticeHandler;
+  const ADismiss: TNoticeDismissHandler);
 begin
   GHandler := AHandler;
+  GDismiss := ADismiss;
 end;
 
 initialization
 
 finalization
   GHandler := nil;
+  GDismiss := nil;
 
 end.

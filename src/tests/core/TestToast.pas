@@ -118,6 +118,20 @@ begin
     Text := GridText(Grid);
     Assert.IsTrue(Pos('Checking github.com', Text) > 0, 'first line drawn');
     Assert.IsTrue(Pos('Turn off: F9', Text) > 0, 'hint line drawn');
+    // Dismissed by its tag only: another tag leaves it up.
+    Req.Tag := 'update.check';
+    Toast.ShowRequest(Req);
+    Toast.HideTag('something.else');
+    Assert.IsTrue(Toast.Visible, 'other tag does not hide it');
+    Toast.HideTag('update.check');
+    Assert.IsTrue(not Toast.Visible, 'own tag hides it');
+    // A newer notice without the tag survives the dismissal.
+    Toast.ShowRequest(Req);
+    GShowToasts := True;
+    Toast.Show('Path copied');
+    Toast.HideTag('update.check');
+    Assert.IsTrue(Toast.Visible, 'a notice that replaced it stays');
+    GShowToasts := False;
     // A plain notice still obeys the switch.
     Toast.Hide;
     Toast.Show('Panel refreshed');

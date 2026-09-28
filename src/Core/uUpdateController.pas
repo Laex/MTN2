@@ -96,6 +96,9 @@ const
   /// <summary>The "checking for updates" toast stays up longer than a
   /// "copied" one: it has a second line to read.</summary>
   cCheckNoticeMs = 6000;
+  /// <summary>TNoticeRequest.Tag of that toast: CheckDone takes it down as
+  /// soon as GitHub has answered.</summary>
+  cCheckNoticeTag = 'update.check';
 
 type
   TUpdateLife = class(TInterfacedObject, IUpdateLife)
@@ -293,6 +296,7 @@ begin
       'Turn off: F9 > ' + #$2261 + ' > Check for updates');
   Req.Always := True;
   Req.DurationMs := cCheckNoticeMs;
+  Req.Tag := cCheckNoticeTag;
   NoticeRequest(Req);
 end;
 
@@ -347,13 +351,18 @@ begin
             CheckDone(Interactive, Ok, Rel, Err);
         end);
     end) then
+  begin
     FState := usIdle;
+    NoticeDismiss(cCheckNoticeTag);
+  end;
 end;
 
 procedure TUpdateController.CheckDone(AInteractive, AOk: Boolean;
   const ARelease: TUpdateRelease; const AError: string);
 begin
   FState := usIdle;
+  // The check is over: the "checking github.com" toast has said its piece.
+  NoticeDismiss(cCheckNoticeTag);
   if not AOk then
   begin
     if AInteractive then
