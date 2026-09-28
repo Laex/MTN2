@@ -273,6 +273,7 @@ type
 2. **Шрифт** – при наличии `CascadiaMono.ttf` выбирается Cascadia Mono, иначе Consolas.
 3. **Тени диалогов** – затемнение исходных Fg/Bg ячеек (сохраняется содержимое под тенью), а не плоская серая заливка.
 4. **Modal dim** – перед рамкой диалога затемняется весь грид вне bounds (FAR-стиль).
+   Тени и затемнение подчиняются `uThemeDrawing.GShadowStyle` (`TShadowStyle` в `uDisplaySettings`: классические / мягкие / нет; диалог «Шрифт / экран», `session.json` → `shadowStyle`). Для `DrawDialogShadow` и `DrawButtonShadow` сила берётся из `ShadowCoverFor` (`cShadowCover` / 80 / 0), для `DimGridExcept` — из `DimCoverFor` (как есть / половина / 0). Все тени диалогов, кнопок и уведомлений проходят через эти функции, темы свои тени не рисуют.
 5. **Shell-иконки в панелях** – blit `TBitmap` с alpha в ячейки (`TCharCell.IconId`); HighSpeed=False, чтобы прозрачный фон (`parent_up.png`) просвечивал цвет строки.
 
 Архитектура Host/Theme/cell-grid сохраняется: иконки – гибрид (cell + bitmap overlay в рендерере). Полноценный Quick View / превью медиа – этап 24; отдельный Skia-only paint всего грида – только если профилирование это оправдает.

@@ -10,7 +10,20 @@ interface
 
 uses
   System.UITypes, System.Math,
-  uTerminalTypes, uThemeTypes;
+  uTerminalTypes, uThemeTypes, uDisplaySettings;
+
+var
+  /// <summary>Display dialog "Shadows"; persisted in session.json
+  /// (shadowStyle). Read by DrawDialogShadow, DrawButtonShadow and
+  /// DimGridExcept, so every dialog, button, toast and modal backdrop
+  /// follows it.</summary>
+  GShadowStyle: TShadowStyle = ssClassic;
+
+/// <summary>How much black a shadow mixes in under AStyle (0 = none).</summary>
+function ShadowCoverFor(AStyle: TShadowStyle): Byte;
+/// <summary>Modal backdrop strength ACover under AStyle: halved for soft
+/// shadows, 0 for none.</summary>
+function DimCoverFor(AStyle: TShadowStyle; ACover: Byte): Byte;
 
 /// <summary>
 /// FAR Warning dialog chrome: red body, white double frame, cyan title bar.
@@ -199,11 +212,35 @@ const
   {$ELSE}
   cShadowCover = 200;
   {$ENDIF}
+  // "Soft": still reads as depth on light and dark palettes, without the
+  // 1992 slab.
+  cSoftShadowCover = 80;
+
+function ShadowCoverFor(AStyle: TShadowStyle): Byte;
+begin
+  case AStyle of
+    ssSoft: Result := cSoftShadowCover;
+    ssNone: Result := 0;
+  else
+    Result := cShadowCover;
+  end;
+end;
+
+function DimCoverFor(AStyle: TShadowStyle; ACover: Byte): Byte;
+begin
+  case AStyle of
+    ssSoft: Result := ACover div 2;
+    ssNone: Result := 0;
+  else
+    Result := ACover;
+  end;
+end;
 
 procedure DrawDialogShadow(const AGrid: TTerminalGrid; const ABounds: TRectI);
 var
   X, Y: Integer;
   Cell: TCharCell;
+  Cover: Byte;
 
   procedure ShadeCell(AX, AY: Integer);
   var
@@ -215,15 +252,16 @@ var
       Exit;
     Cell := AGrid[AY][AX];
     Next := TCharCell.Make(Cell.CharValue,
-      BlendTowardBlack(Cell.FgColor, cShadowCover),
-      BlendTowardBlack(Cell.BgColor, cShadowCover),
+      BlendTowardBlack(Cell.FgColor, Cover),
+      BlendTowardBlack(Cell.BgColor, Cover),
       Cell.Attributes);
     Next.IconId := Cell.IconId;
     AGrid[AY][AX] := Next;
   end;
 
 begin
-  if (ABounds.Width < 2) or (ABounds.Height < 2) then
+  Cover := ShadowCoverFor(GShadowStyle);
+  if (Cover = 0) or (ABounds.Width < 2) or (ABounds.Height < 2) then
     Exit;
   // Right strip (starts one row below the top corner — classic FAR look).
   for Y := ABounds.Top + 1 to ABounds.Bottom + 1 do
@@ -239,6 +277,7 @@ var
   X, Y: Integer;
   Cell, Next: TCharCell;
 begin
+  ACover := DimCoverFor(GShadowStyle, ACover);
   if ACover = 0 then
     Exit;
   for Y := 0 to High(AGrid) do
@@ -260,6 +299,7 @@ procedure DrawButtonShadow(const AGrid: TTerminalGrid; const ABounds: TRectI);
 var
   X, Y: Integer;
   Bg: TAlphaColor;
+  Cover: Byte;
 
   function CellBg(AX, AY: Integer): TAlphaColor;
   begin
@@ -271,7 +311,8 @@ var
   end;
 
 begin
-  if (ABounds.Width < 1) or (ABounds.Height < 1) then
+  Cover := ShadowCoverFor(GShadowStyle);
+  if (Cover = 0) or (ABounds.Width < 1) or (ABounds.Height < 1) then
     Exit;
   // Half-block glyph (▄/▀), single darkened tone (cShadowCover, same one
   // DrawDialogShadow uses) — the glyph's own half of the cell is the shadow;
@@ -281,13 +322,13 @@ begin
   for Y := ABounds.Top to ABounds.Bottom do
   begin
     Bg := CellBg(ABounds.Right + 1, Y);
-    DrawGridChar(AGrid, ABounds.Right + 1, Y, chLowerHalf, BlendTowardBlack(Bg, cShadowCover), Bg);
+    DrawGridChar(AGrid, ABounds.Right + 1, Y, chLowerHalf, BlendTowardBlack(Bg, Cover), Bg);
   end;
   // Below face: ▀ (upper half block), Left+1 .. Right+1 (corner included).
   for X := ABounds.Left + 1 to ABounds.Right + 1 do
   begin
     Bg := CellBg(X, ABounds.Bottom + 1);
-    DrawGridChar(AGrid, X, ABounds.Bottom + 1, chUpperHalf, BlendTowardBlack(Bg, cShadowCover), Bg);
+    DrawGridChar(AGrid, X, ABounds.Bottom + 1, chUpperHalf, BlendTowardBlack(Bg, Cover), Bg);
   end;
 end;
 

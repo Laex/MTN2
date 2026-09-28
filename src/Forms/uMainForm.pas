@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats;
+  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing;
 
 type
   TMainForm = class(TForm)
@@ -1039,6 +1039,7 @@ begin
     Result.CursorBlinkMs := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
+  Result.ShadowStyle := GShadowStyle;
   Result.Language := CurrentLocale;
 end;
 
@@ -1053,6 +1054,8 @@ begin
   GShowPanelIcons := ASettings.ShowPanelIcons;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
+  FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
+  GShadowStyle := ASettings.ShadowStyle;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -1122,6 +1125,7 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
+  GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
   FCursorBlinkEnabled := Sess.CursorBlink;
   FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetZoom(Sess.Zoom, ClientWidth, ClientHeight, Canvas);
@@ -1194,6 +1198,7 @@ begin
     Sess.CursorBlinkMs := FSession.CursorBlinkMs;
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
+  Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever
@@ -1606,6 +1611,7 @@ begin
   FSession.CursorBlinkMs := cBlinkIntervalMs;
   FSession.ShowPanelIcons := True;
   FSession.ShowNotifications := True;
+  FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FCursorBlinkEnabled := True;
   TryRestoreSession;
   // Stage 28: mtn2 <path> — a brand new tab for the CLI path, restored

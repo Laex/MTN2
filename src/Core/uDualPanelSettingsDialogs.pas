@@ -216,7 +216,7 @@ begin
     IndexOfDisplayFontSize(Cur.FontSize), IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
-    Cur.ShowNotifications), FOnCommand);
+    Cur.ShowNotifications, Ord(Cur.ShadowStyle)), FOnCommand);
   Notify;
 end;
 
@@ -350,7 +350,7 @@ procedure TSettingsDialogController.DispatchDisplayCommand(
 var
   Accepted: Boolean;
   Disp: TDisplaySettings;
-  LanguageIdx: Integer;
+  LanguageIdx, ShadowIdx: Integer;
 begin
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
@@ -363,6 +363,9 @@ begin
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
     Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    ShadowIdx := FDialog.GetListSelectedIndex('shadows');
+    if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
+      Disp.ShadowStyle := TShadowStyle(ShadowIdx);
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
       Disp.Language := FLanguageCodes[LanguageIdx]

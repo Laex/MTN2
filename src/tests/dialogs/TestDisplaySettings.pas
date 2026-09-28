@@ -21,6 +21,7 @@ type
     [Test] procedure TestSessionMissingKeys;
     [Test] procedure TestLanguagePicker;
     [Test] procedure TestPanelIconFlag;
+    [Test] procedure TestShadowStyle;
   end;
 
 implementation
@@ -32,7 +33,8 @@ uses
   uPanelColumns,
   uConfigLocation,
   uDisplaySettings,
-  uSession;
+  uSession,
+  System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing;
 
 procedure TestClampAndIndex;
 begin
@@ -85,6 +87,7 @@ begin
   Result.CursorBlinkMs := 300;
   Result.ShowPanelIcons := False;
   Result.ShowNotifications := False;
+  Result.ShadowStyle := 'soft';
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
   SetLength(Result.Panels.WorkspaceTabs, 1);
@@ -117,6 +120,7 @@ begin
     Assert.IsTrue(not Loaded.ShowNotifications, 'showNotifications saved');
     Assert.IsTrue(SameValue(Loaded.Zoom, 1.25), 'zoom still saved');
     Assert.IsTrue(Loaded.Language = 'ru', 'language saved');
+    Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -156,6 +160,9 @@ begin
     Pair := Root.RemovePair('language');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('shadowStyle');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -169,9 +176,54 @@ begin
     Assert.IsTrue(Sess.ShowPanelIcons, 'missing showPanelIcons -> on');
     Assert.IsTrue(Sess.ShowNotifications, 'missing showNotifications -> on');
     Assert.IsTrue(Sess.Language = '', 'missing language -> empty (English)');
+    Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
+  end;
+end;
+
+procedure TestShadowStyle;
+const
+  cBg = TAlphaColor($FF0000AA);
+var
+  Grid: TTerminalGrid;
+  Box: TRectI;
+  Saved: TShadowStyle;
+
+  // Background of the cell right of the box after DrawDialogShadow.
+  function ShadowBg(AStyle: TShadowStyle): TAlphaColor;
+  begin
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, cBg, ' ');
+    GShadowStyle := AStyle;
+    DrawDialogShadow(Grid, Box);
+    Result := Grid[3][Box.Right + 1].BgColor;
+  end;
+
+  function Luma(C: TAlphaColor): Integer;
+  begin
+    Result := TAlphaColorRec(C).R + TAlphaColorRec(C).G + TAlphaColorRec(C).B;
+  end;
+
+begin
+  Assert.IsTrue(ShadowStyleFromId('soft') = ssSoft, 'id soft');
+  Assert.IsTrue(ShadowStyleFromId('NONE') = ssNone, 'ids ignore case');
+  Assert.IsTrue(ShadowStyleFromId('bogus') = ssClassic, 'unknown id -> classic');
+  Assert.IsTrue(ShadowStyleFromId(ShadowStyleId(ssSoft)) = ssSoft, 'id round-trip');
+  Assert.IsTrue(Length(DisplayShadowItems) = Ord(High(TShadowStyle)) + 1, 'one item per style');
+
+  AllocTerminalGrid(Grid, 20, 10);
+  Box := TRectI.Make(2, 2, 10, 6);
+  Saved := GShadowStyle;
+  try
+    Assert.IsTrue(ShadowBg(ssNone) = cBg, 'none: nothing darkened');
+    Assert.IsTrue(Luma(ShadowBg(ssClassic)) < Luma(ShadowBg(ssSoft)), 'soft lighter than classic');
+    Assert.IsTrue(Luma(ShadowBg(ssSoft)) < Luma(cBg), 'soft still darkens');
+    Assert.IsTrue(DimCoverFor(ssNone, 96) = 0, 'none: no modal dim');
+    Assert.IsTrue(DimCoverFor(ssSoft, 96) = 48, 'soft: half the modal dim');
+    Assert.IsTrue(DimCoverFor(ssClassic, 96) = 96, 'classic: modal dim unchanged');
+  finally
+    GShadowStyle := Saved;
   end;
 end;
 
@@ -246,6 +298,11 @@ end;
 procedure TTestDisplaySettings.TestLanguagePicker;
 begin
   TestDisplaySettings.TestLanguagePicker;
+end;
+
+procedure TTestDisplaySettings.TestShadowStyle;
+begin
+  TestDisplaySettings.TestShadowStyle;
 end;
 
 procedure TTestDisplaySettings.TestPanelIconFlag;

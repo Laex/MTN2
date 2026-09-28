@@ -3,7 +3,7 @@
 The **Options** menu (F9):
 
 - **Theme...** — appearance; changes at once.
-- **Font / Display...** — font, size, zoom, cursor blinking, file icons in the panel, pop-up notifications and the **interface language** (English / Русский); everything applies without a restart.
+- **Font / Display...** — font, size, zoom, cursor blinking, file icons in the panel, pop-up notifications, window and button **shadows** (Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them) and the **interface language** (English / Русский); everything applies without a restart.
 - **Columns...** — the columns of the “Custom” mode.
 - **Color coding...** — row colors by name masks.
 - **Keymap...** — view and change keys.

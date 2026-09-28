@@ -64,6 +64,8 @@ type
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
     ShowNotifications: Boolean;
+    /// <summary>uDisplaySettings.ShadowStyleId: 'classic' / 'soft' / 'none'.</summary>
+    ShadowStyle: string;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -510,6 +512,7 @@ begin
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
+      Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -557,6 +560,7 @@ begin
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
   ASession.ShowPanelIcons := True;
   ASession.ShowNotifications := True;
+  ASession.ShadowStyle := ShadowStyleId(ssClassic);
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -618,6 +622,7 @@ begin
         ClampDisplayBlinkMs(JsonInt(Root, 'cursorBlinkMs', cDisplayDefaultBlinkMs));
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
+      ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

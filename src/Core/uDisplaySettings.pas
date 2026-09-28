@@ -17,6 +17,11 @@ const
   cDisplayMaxZoom = 3.0;
 
 type
+  /// <summary>Dialog, button and toast drop shadows and the modal backdrop
+  /// (uThemeDrawing.GShadowStyle): classic FAR/NDN strength, a lighter one,
+  /// or none.</summary>
+  TShadowStyle = (ssClassic, ssSoft, ssNone);
+
   TDisplaySettings = record
     FontName: string;
     FontSize: Single;
@@ -26,6 +31,7 @@ type
     ShowPanelIcons: Boolean;
     /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
     ShowNotifications: Boolean;
+    ShadowStyle: TShadowStyle;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -59,6 +65,12 @@ function DisplayLanguageItems: TArray<string>;
 /// uppercased code itself for a locale with no curated name yet (e.g. a
 /// community locale dropped into strings\ without an app update).</summary>
 function DisplayLanguageName(const ALocale: string): string;
+/// <summary>session.json id: 'classic' / 'soft' / 'none'.</summary>
+function ShadowStyleId(AStyle: TShadowStyle): string;
+/// <summary>Unknown or empty id -> ssClassic.</summary>
+function ShadowStyleFromId(const AId: string): TShadowStyle;
+/// <summary>Display dialog "Shadows" dropdown, in TShadowStyle order.</summary>
+function DisplayShadowItems: TArray<string>;
 
 implementation
 
@@ -197,6 +209,31 @@ begin
   Result := PreferMonoFontFamily;
 end;
 
+const
+  cShadowStyleIds: array[TShadowStyle] of string = ('classic', 'soft', 'none');
+
+function ShadowStyleId(AStyle: TShadowStyle): string;
+begin
+  Result := cShadowStyleIds[AStyle];
+end;
+
+function ShadowStyleFromId(const AId: string): TShadowStyle;
+var
+  S: TShadowStyle;
+begin
+  for S := Low(TShadowStyle) to High(TShadowStyle) do
+    if SameText(AId, cShadowStyleIds[S]) then
+      Exit(S);
+  Result := ssClassic;
+end;
+
+function DisplayShadowItems: TArray<string>;
+begin
+  Result := [T('ui.display.shadowClassic', 'Classic'),
+    T('ui.display.shadowSoft', 'Soft'),
+    T('ui.display.shadowNone', 'None')];
+end;
+
 function DefaultDisplaySettings: TDisplaySettings;
 begin
   Result.FontName := '';
@@ -206,6 +243,7 @@ begin
   Result.CursorBlinkMs := cDisplayDefaultBlinkMs;
   Result.ShowPanelIcons := True;
   Result.ShowNotifications := True;
+  Result.ShadowStyle := ssClassic;
   Result.Language := '';
 end;
 
