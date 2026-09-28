@@ -8,7 +8,7 @@
 
 ## 1. Область и роли
 
-Media Overlay — слой FMX Canvas **поверх** `TTerminalGrid`. Единственный легальный путь показать bitmap (фото, PDF page, video frame) без нарушения инварианта «плагин без Canvas».
+Media Overlay – слой FMX Canvas **поверх** `TTerminalGrid`. Единственный легальный путь показать bitmap (фото, PDF page, video frame) без нарушения инварианта «плагин без Canvas».
 
 ```text
 FMX Form
@@ -57,7 +57,7 @@ sequenceDiagram
 | **present** | Отрисовка поверх grid на каждом кадре / при dirty. |
 | **clear** | Снятие оверлея при смене URI, ресайзе, закрытии QV. |
 
-Плагин **не** передаёт сырые пиксели в MVP (слишком тяжёлый маршалинг). Он передаёт URI; декод — в ядре. Post-MVP: опциональный shared-memory / host-side cache id.
+Плагин **не** передаёт сырые пиксели в MVP (слишком тяжёлый маршалинг). Он передаёт URI; декод – в ядре. Post-MVP: опциональный shared-memory / host-side cache id.
 
 ---
 
@@ -129,7 +129,7 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 |---|---|---|---|---|
 | 100 | `preview_query` | RowIndex | 0 | Host спрашивает: нужно ли превью для строки |
 | 101 | `preview_closed` | 0 | 0 | Оверлей снят |
-| 102 | `bounds_changed` | 0 | 0 | Dynamic grid resize — плагин может переиздать request |
+| 102 | `bounds_changed` | 0 | 0 | Dynamic grid resize – плагин может переиздать request |
 | 103 | `overlay_failed` | 0 | 0 | Декод/VFS ошибка; детали в status JSON |
 
 Частый MVP-путь **без** плагина превью: Host сам по `file_type`/`uri` панели делает `overlay_request` для Quick View. Плагинный путь нужен для нестандартных источников (DB blob, генерация диаграммы).
@@ -148,10 +148,10 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 
 ## 6. Потоки и производительность
 
-1. Декод и VFS — только worker.
-2. `DrawBitmap` — UI-поток в связке с FormPaint (после текста или в отдельном overlay pass).
+1. Декод и VFS – только worker.
+2. `DrawBitmap` – UI-поток в связке с FormPaint (после текста или в отдельном overlay pass).
 3. Смена курсора в панели отменяет предыдущий decode через cancel token.
-4. Большие изображения — downscale до размера bounds×cell в worker.
+4. Большие изображения – downscale до размера bounds×cell в worker.
 
 ---
 
@@ -169,6 +169,6 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 
 1. Плагин **никогда** не получает `TCanvas` / `TBitmap` handle.
 2. Оверлей не заменяет текстовую сетку и не участвует в `TCharCell`.
-3. Клиппинг и z-order относительно MDI — за Host (оверлей обычно в пределах окна Quick View / панели).
-4. Ошибка декода не обязана ломать панель — status `error` + текстовый fallback в Status Line.
+3. Клиппинг и z-order относительно MDI – за Host (оверлей обычно в пределах окна Quick View / панели).
+4. Ошибка декода не обязана ломать панель – status `error` + текстовый fallback в Status Line.
 5. Post-MVP WASM: только URI/request JSON через Host API, без shared framebuffer от модуля.

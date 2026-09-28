@@ -8,7 +8,7 @@
 
 ## 1. Область и роли
 
-Input Line — однострочный примитив ввода. Типичные вхождения:
+Input Line – однострочный примитив ввода. Типичные вхождения:
 
 * командная строка под Dual Panel;
 * поле внутри Dialog (маска поиска, имя файла);
@@ -19,13 +19,13 @@ Host Window / Dialog
 └── Input Line (ControlId)
     ├── Text / Caret / Selection
     ├── History (опционально, Host или плагин)
-    └── Bound Plugin (WindowId) — владелец логики submit
+    └── Bound Plugin (WindowId) – владелец логики submit
 ```
 
 | Участник | Ответственность |
 |---|---|
 | **Host** | Фокус, каретка, выделение, вставка из буфера, отрисовка через тему, keymap (Enter/Esc/стрелки/история). |
-| **Плагин** | Начальное значение, валидация, реакция на submit/change; опционально — подсказки (completion). Без Canvas. |
+| **Плагин** | Начальное значение, валидация, реакция на submit/change; опционально – подсказки (completion). Без Canvas. |
 | **IThemeRenderer** | Стиль поля, курсора, disabled/focused. |
 
 ---
@@ -95,9 +95,9 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 | `value` | Текущий текст (источник при bind / после программного set). |
 | `placeholder` | Подсказка при пустом value (рисует Host/тема). |
 | `max_length` | Ограничение длины; Enforce делает Host. |
-| `notify_change` | Если `true` — Host шлёт `change` после правок (с debounce на стороне Host). |
+| `notify_change` | Если `true` – Host шлёт `change` после правок (с debounce на стороне Host). |
 
-Во время обычного набора **источник истины для текста — Host**. Плагин получает актуальное значение в момент `submit` / `change` (через побочный буфер или `mtn_host_get_control_text`).
+Во время обычного набора **источник истины для текста – Host**. Плагин получает актуальное значение в момент `submit` / `change` (через побочный буфер или `mtn_host_get_control_text`).
 
 ```pascal
 procedure mtn_host_get_control_text(WindowId, ControlId: Integer;
@@ -149,8 +149,8 @@ Host показывает popup-список (примитив Panel в режи
 
 ## 6. Потоки
 
-* `get_json` / обработка `submit` в UI-потоке — без I/O.
-* Тяжёлая валидация / completion по VFS — worker + `invalidate`.
+* `get_json` / обработка `submit` в UI-потоке – без I/O.
+* Тяжёлая валидация / completion по VFS – worker + `invalidate`.
 
 ---
 
@@ -158,4 +158,4 @@ Host показывает popup-список (примитив Panel в режи
 
 1. Плагин не рисует каретку и не задаёт цвета поля.
 2. Submit всегда идёт через Host (клавиша/кнопка), не через прямой вызов UI плагином.
-3. Командная строка Dual Panel — тот же контракт; `submit` маршрутизируется в PTY / внутренние команды ядра по решению Host+ассоциаций. Канон панельной консоли (persistent shell + sync cwd) — [readme.md](SDS.md) §5.4, [ARCHITECTURE.md](ARCHITECTURE.md) §8; Tab-complete / вставка путей — roadmap этап 18.
+3. Командная строка Dual Panel – тот же контракт; `submit` маршрутизируется в PTY / внутренние команды ядра по решению Host+ассоциаций. Канон панельной консоли (persistent shell + sync cwd) – [readme.md](SDS.md) §5.4, [ARCHITECTURE.md](ARCHITECTURE.md) §8; Tab-complete / вставка путей – roadmap этап 18.

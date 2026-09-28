@@ -8,7 +8,7 @@
 
 ## 1. Область и роли
 
-Status Line — одно- или двухстрочный примитив с логическими сегментами (URI, free space, selected count/size, тип файла, прогресс job, сообщение).
+Status Line – одно- или двухстрочный примитив с логическими сегментами (URI, free space, selected count/size, тип файла, прогресс job, сообщение).
 
 ```text
 TDualPanelWindow / Dialog / Viewer
@@ -24,7 +24,7 @@ TDualPanelWindow / Dialog / Viewer
 | **Плагин** | Опциональные сегменты и значения (`message`, custom metrics); invalidate при изменении. |
 | **IThemeRenderer** | Разделители, цвета сегментов по *ролям* (normal/warn/error), не по произвольному RGB от плагина. |
 
-**MVP (сейчас):** строка статуса Dual Panel — Host-only (`TryFormatChromeStatus` / `ResolveChromeContext` в `uDualPanelStatus.pas`). cdecl pull сегментов ещё не экспортируется.
+**MVP (сейчас):** строка статуса Dual Panel – Host-only (`TryFormatChromeStatus` / `ResolveChromeContext` в `uDualPanelStatus.pas`). cdecl pull сегментов ещё не экспортируется.
 
 ---
 
@@ -115,7 +115,7 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 | 90 | `refresh` | StatusId | 0 | Host просит обновить значения |
 | 91 | `click_segment` | StatusId | SegmentIndex | Клик по сегменту (если enabled) |
 
-Клик по `uri` может открыть диалог пути (Host); по `branch` — команда плагина.
+Клик по `uri` может открыть диалог пути (Host); по `branch` – команда плагина.
 
 ---
 
@@ -128,20 +128,20 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 | message / custom | **Плагин** |
 | Визуальные разделители | **Theme** |
 
-Инвариант: для файловой панели Status часто обновляется при `cursor` / `select` из [PANEL_PLUGIN.md](PANEL_PLUGIN.md) без участия плагина статуса — Host сам читает row JSON.
+Инвариант: для файловой панели Status часто обновляется при `cursor` / `select` из [PANEL_PLUGIN.md](PANEL_PLUGIN.md) без участия плагина статуса – Host сам читает row JSON.
 
 ---
 
 ## 6. Потоки
 
-* Сборка текстов сегментов — UI-поток; `free`/долгие метрики кэшируются из фоновых job.
+* Сборка текстов сегментов – UI-поток; `free`/долгие метрики кэшируются из фоновых job.
 * Плагин не блокирует UI в `get_segments_json`.
 
 ---
 
 ## 7. Инварианты
 
-1. Нет RGB/стилей от плагина — только текст + `role`.
+1. Нет RGB/стилей от плагина – только текст + `role`.
 2. Progress job рисует Host; плагин не дублирует прогресс-бар копирования, если Jobs уже шлёт в Host.
 3. Двухстрочный status: Host передаёт в тему два массива сегментов (`line0`, `line1`) или два StatusId.
 4. `DrawStatusLine` получает уже готовые строки сегментов.

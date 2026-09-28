@@ -1,7 +1,7 @@
 # Modern Terminal Navigator 2 (MTN2)
 
 Двухпанельный файловый менеджер в духе **Necromancer's DOS Navigator** и **FAR Manager** со встроенной консолью,
-терминалами, просмотрщиком и редактором. Интерфейс — текстовый (TUI), но рисуется в обычном GUI-окне:
+терминалами, просмотрщиком и редактором. Интерфейс – текстовый (TUI), но рисуется в обычном GUI-окне:
 виртуальная сетка символов на холсте Delphi FireMonkey (Skia, с откатом на стандартный холст по `--no-skia`)
 с TrueType-шрифтами, Unicode и 32-битным цветом.
 
@@ -10,7 +10,7 @@
 
 ![MTN2: две панели и окно «О программе»](docs/images/mtn2-about.png)
 
-Что нового в каждой версии — [CHANGELOG.md](CHANGELOG.md).
+Что нового в каждой версии – [CHANGELOG.md](CHANGELOG.md).
 
 ## Возможности
 
@@ -25,22 +25,22 @@
 - **Виртуальные ФС:** архивы как папки (zip, 7z через `7z.dll`), SFTP по SSH, плагинные VFS.
 - **Настройка:** переопределяемые клавиши (`keymap.json`), темы (NDN, Total Commander, Dracula, Nord, Solarized, High Contrast и др.),
   меню пользователя (F2), ассоциации файлов, контекстная справка F1 на русском и английском.
-- **Плагины:** нативные DLL и WebAssembly (через Wasmtime) — панели, VFS, диалоги, оверлеи, строки состояния.
+- **Плагины:** нативные DLL и WebAssembly (через Wasmtime) – панели, VFS, диалоги, оверлеи, строки состояния.
 - **Обновления:** раз в сутки проверка новой версии на GitHub; загрузка (с проверкой SHA-256), установка
-  и перезапуск — только после вопроса пользователю. Меню **≡ → Обновления...**.
+  и перезапуск – только после вопроса пользователю. Меню **≡ → Обновления...**.
 
-Сейчас поддерживается Windows x64; POSIX PTY и сборки под macOS/Linux — в планах.
+Сейчас поддерживается Windows x64; POSIX PTY и сборки под macOS/Linux – в планах.
 
 ## Сборка
 
-Нужны RAD Studio 13 (Delphi, `Studio\37.0`) и Windows x64; для WASM-плагина `mtn.ws` — Rust.
+Нужны RAD Studio 13 (Delphi, `Studio\37.0`) и Windows x64; для WASM-плагина `mtn.ws` – Rust.
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # bin\MTN2.exe + bin\plugins\
 ./src/tests/run-tests.ps1                          # регрессионные тесты (DUnitX)
 ```
 
-Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Подробности — в [docs/BUILDING.md](docs/BUILDING.md).
+Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Подробности – в [docs/BUILDING.md](docs/BUILDING.md).
 
 ## Структура репозитория
 
@@ -56,11 +56,11 @@
 
 ## Документация
 
-- [SDS.md](docs/SDS.md) — полная спецификация: концепция, структуры данных, API, дорожная карта.
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — слои, потоки данных и инварианты.
-- [BUILDING.md](docs/BUILDING.md) — сборка, тесты, CI/CD.
-- [DAILY_USE.md](docs/DAILY_USE.md) — аудит повседневных сценариев и план.
-- [HELP.md](docs/HELP.md) — исходный текст справки пользователя одним файлом.
+- [SDS.md](docs/SDS.md) – полная спецификация: концепция, структуры данных, API, дорожная карта.
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) – слои, потоки данных и инварианты.
+- [BUILDING.md](docs/BUILDING.md) – сборка, тесты, CI/CD.
+- [DAILY_USE.md](docs/DAILY_USE.md) – аудит повседневных сценариев и план.
+- [HELP.md](docs/HELP.md) – исходный текст справки пользователя одним файлом.
 - Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md), [PANEL](docs/PANEL_PLUGIN.md),
   [DIALOG](docs/DIALOG_PLUGIN.md), [INPUT](docs/INPUT_PLUGIN.md), [OVERLAY](docs/OVERLAY_PLUGIN.md),
   [STATUS](docs/STATUS_PLUGIN.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.md),

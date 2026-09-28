@@ -8,7 +8,7 @@
 
 ## 1. Область и роли
 
-Toolbar (Button Bar) — ряд командных кнопок, привязанных к горячим клавишам. Чаще всего — нижняя/верхняя полоса Dual Panel или контекстная полоса Viewer/Editor.
+Toolbar (Button Bar) – ряд командных кнопок, привязанных к горячим клавишам. Чаще всего – нижняя/верхняя полоса Dual Panel или контекстная полоса Viewer/Editor.
 
 ```text
 TDualPanelWindow / TTerminalWindow
@@ -26,7 +26,7 @@ TDualPanelWindow / TTerminalWindow
 
 Системные F-клавиши (F3 Viewer, F5 Copy, …) может полностью задавать **ядро**; плагин расширяет или перекрывает пункты для своего режима.
 
-**MVP (сейчас):** нижняя F-строка Dual Panel — Host-only (`uFunctionBar.pas` + `ResolveChromeContext` в `uDualPanelStatus.pas`). Контекст зависит от оверлея (панели / диалог / stub / Change Drive / job). cdecl `mtn_toolbar_get_items_json` ещё не экспортируется.
+**MVP (сейчас):** нижняя F-строка Dual Panel – Host-only (`uFunctionBar.pas` + `ResolveChromeContext` в `uDualPanelStatus.pas`). Контекст зависит от оверлея (панели / диалог / stub / Change Drive / job). cdecl `mtn_toolbar_get_items_json` ещё не экспортируется.
 
 ---
 
@@ -89,10 +89,10 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 | Поле | Назначение |
 |---|---|
 | `id` | Стабильный `command_id`. |
-| `key` | Отображаемая клавиша (факт биндинга — Keymapper). |
-| `text` | Подпись кнопки (логическая; стиль — тема). |
+| `key` | Отображаемая клавиша (факт биндинга – Keymapper). |
+| `text` | Подпись кнопки (логическая; стиль – тема). |
 | `enabled` | Доступность. |
-| `owner` | `host` — выполняет ядро; `plugin` — `handle_event` плагину. |
+| `owner` | `host` – выполняет ядро; `plugin` – `handle_event` плагину. |
 
 MVP: Host может игнорировать `owner` и сам решать по таблице команд; поле нужно для пользовательских плагинов.
 
@@ -129,14 +129,14 @@ Payload (опционально):
 
 ## 6. Потоки
 
-* `get_items_json` — UI-поток, без I/O.
+* `get_items_json` – UI-поток, без I/O.
 * Обработчик команды плагина может стартовать Job; UI обновляется через invalidate.
 
 ---
 
 ## 7. Инварианты
 
-1. Плагин не рисует кнопки — только JSON items.
+1. Плагин не рисует кнопки – только JSON items.
 2. Системные файловые операции (Copy/Move/Delete) инициирует Host (Jobs), даже если подпись на bar обновил плагин.
 3. Смена Panel Tab / режима Viewer→Editor → Host шлёт `refresh` или сам переключает bar profile.
 4. Цвета «активной» F-клавиши задаёт тема, не плагин.

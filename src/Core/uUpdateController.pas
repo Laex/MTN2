@@ -62,6 +62,8 @@ type
     procedure RetryTick(Sender: TObject);
     procedure ShowMessageDlg(const AText, ADetails: string; const AOpenPage: Boolean = False);
     procedure StartCheck(AInteractive: Boolean);
+    /// <summary>The "checking github.com" toast (TNoticeRequest, Always).</summary>
+    procedure NoticeChecking(AInteractive: Boolean);
     procedure CheckDone(AInteractive, AOk: Boolean; const ARelease: TUpdateRelease;
       const AError: string);
     procedure ShowOffer;
@@ -260,7 +262,6 @@ end;
 procedure TUpdateController.StartupCheck;
 var
   Due: Boolean;
-  Req: TNoticeRequest;
 begin
   Due := (FCurrent <> '') and UpdateCheckDue(FSettings, Now);
   if not Due then
@@ -273,19 +274,26 @@ begin
       end);
     Exit;
   end;
-  // Going online unasked: say so, and how to turn it off. Shown even with
-  // notifications off; it has its own checkbox in Help > Updates.
-  if FSettings.ShowCheckNotice then
-  begin
-    Req := TNoticeRequest.Make(T('ui.update.checkingNotice',
-      'Checking github.com for MTN2 updates...'));
+  StartCheck(False);
+end;
+
+procedure TUpdateController.NoticeChecking(AInteractive: Boolean);
+var
+  Req: TNoticeRequest;
+begin
+  // Every check that goes online says so. Shown even with notifications off;
+  // it has its own checkbox in the Updates dialog. The startup check also
+  // says how to turn it off; a check the user started does not need that.
+  if not FSettings.ShowCheckNotice then
+    Exit;
+  Req := TNoticeRequest.Make(T('ui.update.checkingNotice',
+    'Checking github.com for MTN2 updates...'));
+  if not AInteractive then
     Req.Hint := T('ui.update.checkingHint',
       'Turn off: F9 > ' + #$2261 + ' > Check for updates');
-    Req.Always := True;
-    Req.DurationMs := cCheckNoticeMs;
-    NoticeRequest(Req);
-  end;
-  StartCheck(False);
+  Req.Always := True;
+  Req.DurationMs := cCheckNoticeMs;
+  NoticeRequest(Req);
 end;
 
 procedure TUpdateController.OpenUpdatesDialog;
@@ -322,6 +330,7 @@ begin
   FState := usChecking;
   Life := FLife;
   Interactive := AInteractive;
+  NoticeChecking(AInteractive);
   if not RunWorker(
     procedure
     var

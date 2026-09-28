@@ -27,6 +27,7 @@ Modern Terminal Navigator 2 – двухпанельный файловый ме
 - [Фоновые задания](jobs.md)
 - [Ассоциации файлов](associations.md)
 - [Настройки](settings.md)
+- [Обновления](updates.md)
 - [Настройка клавиш](keymap.md)
 - [Файлы настроек](configfiles.md)
 

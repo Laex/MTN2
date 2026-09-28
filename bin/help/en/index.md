@@ -27,6 +27,7 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 - [Background jobs](jobs.md)
 - [File associations](associations.md)
 - [Settings](settings.md)
+- [Updates](updates.md)
 - [Key bindings](keymap.md)
 - [Settings files](configfiles.md)
 

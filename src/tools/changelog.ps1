@@ -4,7 +4,7 @@
 #
 #   ./src/tools/changelog.ps1 -Stamp v0.3.8
 #       Before tagging (with the "Stamp 0.3.8." commit): "## Не выпущено"
-#       becomes "## v0.3.8 — <today>" and a new empty "## Не выпущено" goes
+#       becomes "## v0.3.8 – <today>" and a new empty "## Не выпущено" goes
 #       above it, and src/MTN2.dproj's version info becomes 0.3.8 (local
 #       builds without build.ps1 -Version report it; the updater compares it).
 #       Refuses when there is nothing unreleased to stamp.
@@ -116,9 +116,9 @@ if ($PSCmdlet.ParameterSetName -eq 'Stamp') {
     # (a..b with b < a counts down in PowerShell: slice only non-empty ranges)
     $Before = if ($Start -gt 0) { @($Lines[0..($Start - 1)]) } else { @() }
     $After = if ($End -lt $Lines.Count) { @($Lines[$End..($Lines.Count - 1)]) } else { @() }
-    $New = $Before + @($Unreleased, '', "## $Tag — $Date") + $Body + $After
+    $New = $Before + @($Unreleased, '', "## $Tag – $Date") + $Body + $After
     [IO.File]::WriteAllText($File, ($New -join "`n"), $Utf8)
-    Write-Host "CHANGELOG.md: '$Unreleased' is now '## $Tag — $Date'"
+    Write-Host "CHANGELOG.md: '$Unreleased' is now '## $Tag – $Date'"
     Set-ProjectVersion $Tag
     return
 }

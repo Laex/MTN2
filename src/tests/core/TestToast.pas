@@ -1,7 +1,7 @@
 unit TestToast;
 
-{ uToast text fitting and placement (pure functions; TToast itself owns an
-  FMX timer and is exercised in the running app). }
+{ uToast: text fitting and placement, and a TToast drawing the two-line
+  "Always" notice the update check uses. }
 
 interface
 
@@ -14,13 +14,14 @@ type
   public
     [Test] procedure TestFitText;
     [Test] procedure TestBounds;
+    [Test] procedure TestAlwaysNoticeDraws;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
-  uThemeTypes, uToast;
+  System.SysUtils, System.UITypes,
+  uThemeTypes, uTerminalTypes, uNotice, uToast;
 
 procedure TestFitText;
 const
@@ -80,6 +81,53 @@ begin
   Assert.IsTrue(R.Width <= 0, 'no room for the second line -> empty');
 end;
 
+function GridText(const AGrid: TTerminalGrid): string;
+var
+  X, Y: Integer;
+begin
+  Result := '';
+  for Y := 0 to High(AGrid) do
+  begin
+    for X := 0 to High(AGrid[Y]) do
+      Result := Result + AGrid[Y][X].CharValue;
+    Result := Result + #10;
+  end;
+end;
+
+procedure TestAlwaysNoticeDraws;
+var
+  Toast: TToast;
+  Grid: TTerminalGrid;
+  Req: TNoticeRequest;
+  Saved: Boolean;
+  Text: string;
+begin
+  Saved := GShowToasts;
+  Toast := TToast.Create(nil);
+  try
+    // The update check's notice: two lines, and shown with notices off.
+    GShowToasts := False;
+    Req := TNoticeRequest.Make('Checking github.com for MTN2 updates...');
+    Req.Hint := 'Turn off: F9 > menu > Check for updates';
+    Req.Always := True;
+    Toast.ShowRequest(Req);
+    Assert.IsTrue(Toast.Visible, 'Always notice shown with notifications off');
+    AllocTerminalGrid(Grid, 100, 30);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Toast.Draw(Grid, nil, 100, 30);
+    Text := GridText(Grid);
+    Assert.IsTrue(Pos('Checking github.com', Text) > 0, 'first line drawn');
+    Assert.IsTrue(Pos('Turn off: F9', Text) > 0, 'hint line drawn');
+    // A plain notice still obeys the switch.
+    Toast.Hide;
+    Toast.Show('Panel refreshed');
+    Assert.IsTrue(not Toast.Visible, 'ordinary notice suppressed with notifications off');
+  finally
+    GShowToasts := Saved;
+    Toast.Free;
+  end;
+end;
+
 { TTestToast }
 
 procedure TTestToast.TestFitText;
@@ -90,6 +138,11 @@ end;
 procedure TTestToast.TestBounds;
 begin
   TestToast.TestBounds;
+end;
+
+procedure TTestToast.TestAlwaysNoticeDraws;
+begin
+  TestToast.TestAlwaysNoticeDraws;
 end;
 
 initialization

@@ -78,9 +78,10 @@ begin
     hdkConsoleProfile:
       Result := 'cmdline.md';
     hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
-    hdkExternalTools,
-    hdkHost: // the updater's dialogs -- "Updates" section of settings.md
+    hdkExternalTools:
       Result := 'settings.md';
+    hdkHost: // the updater's dialogs
+      Result := 'updates.md';
     hdkColumnsConfig:
       Result := 'view.md';
     hdkArchivePassword:

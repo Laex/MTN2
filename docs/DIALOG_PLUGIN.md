@@ -19,7 +19,7 @@
 
 ## 1. Область и роли
 
-Dialog — контейнер, который Host собирает из декларации (JSON или Pascal-builder). Дочерние контролы — примитивы ядра.
+Dialog – контейнер, который Host собирает из декларации (JSON или Pascal-builder). Дочерние контролы – примитивы ядра.
 
 ```text
 TDialogHost
@@ -32,10 +32,10 @@ TDialogHost
 | Участник | Ответственность |
 |---|---|
 | **Host (`TDialogHost`)** | Парсинг/build, focus, modal overlay, отрисовка, Enter/Esc/клики → command. |
-| **Вызывающий код / будущий плагин** | Декларация layout, начальные значения, реакция на `command` (id + values). В **2.0** — явные `col`/`row`/`width`/`height` контролов. |
+| **Вызывающий код / будущий плагин** | Декларация layout, начальные значения, реакция на `command` (id + values). В **2.0** – явные `col`/`row`/`width`/`height` контролов. |
 | **IThemeRenderer** | `DrawDialogFrame` (white body / black text), `DrawButton`, `DrawCheckBox`, `ResolveDialogRowColors`. MDI windows still use `DrawWindowFrame`. |
 
-Плагин **не** создаёт виджеты императивно и не позиционирует пиксели — только cell-декларация и данные.
+Плагин **не** создаёт виджеты императивно и не позиционирует пиксели – только cell-декларация и данные.
 
 ---
 
@@ -61,9 +61,9 @@ sequenceDiagram
 | **declare** | Caller отдаёт `TDialogDeclaration` или JSON. |
 | **build** | Host копирует controls, clamp size (width ≥ 28, height ≥ 6), focus на первый focusable. |
 | **interact** | Только `command` (кнопка / Enter / Esc / Y-N / клик). Событий `change` / `close_query` в MVP нет. |
-| **close** | Caller вызывает `Close` после обработки команды (или Host остаётся открытым — например Find + Status). |
+| **close** | Caller вызывает `Close` после обработки команды (или Host остаётся открытым – например Find + Status). |
 
-DLL-этап добавит `dialog_get_declaration` / `dialog_opened` / `closed` / `ResultCode` — см. §9.
+DLL-этап добавит `dialog_get_declaration` / `dialog_opened` / `closed` / `ResultCode` – см. §9.
 
 ---
 
@@ -131,7 +131,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 
 ### 3.1a. Пример декларации (protocol 2.0)
 
-В **2.0** Host не делает flow-layout и не подгоняет высоту окна под контролы: только рисует каждый контрол в заданном box. Координаты — относительно **client area** внутри рамки (`(0,0)` = первая ячейка внутри border).
+В **2.0** Host не делает flow-layout и не подгоняет высоту окна под контролы: только рисует каждый контрол в заданном box. Координаты – относительно **client area** внутри рамки (`(0,0)` = первая ячейка внутри border).
 
 ```json
 {
@@ -153,7 +153,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 }
 ```
 
-Синонимы геометрии: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. Если `width`/`height` = 0 или отсутствуют — Host подставляет default по kind (кнопка по тексту, list/radio_group по числу строк, input — до правого края client).
+Синонимы геометрии: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. Если `width`/`height` = 0 или отсутствуют – Host подставляет default по kind (кнопка по тексту, list/radio_group по числу строк, input – до правого края client).
 
 ### 3.2. Поля корня
 
@@ -170,9 +170,9 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `version` | Layout |
 |---|---|
 | `"1.0"` | Последовательный flow: Host размещает контролы сверху вниз; кнопки в ряд с wrap. Геометрия контролов игнорируется. |
-| `"2.0"` | Абсолютный layout: каждый контрол — `col`/`row`/`width`/`height`; Host только отрисовывает в box. |
+| `"2.0"` | Абсолютный layout: каждый контрол – `col`/`row`/`width`/`height`; Host только отрисовывает в box. |
 
-`button_row` и вложенный `dialog` — только контейнеры: дети flatten в плоский `Controls[]` (в 2.0 у контейнера нет своей геометрии — задавайте box у детей).
+`button_row` и вложенный `dialog` – только контейнеры: дети flatten в плоский `Controls[]` (в 2.0 у контейнера нет своей геометрии – задавайте box у детей).
 
 ### 3.3. Дочерние типы (MVP)
 
@@ -182,12 +182,12 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `input` | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) / `TInputLine`; поля `id`, `value` |
 | `checkbox` | `id`, `text`, `checked`; Space / клик переключает |
 | `radio` / `radiobox` | `id`, `group`, `text`, `checked`; взаимное исключение внутри `group`; Space / клик выбирает |
-| `radio_group` / `radiogroup` | `id`, `text` (подпись), `items[]` или `children` из `radio`, `selected`, опционально `item_ids[]`; Up/Down / клик; в values — id пункта или текст |
+| `radio_group` / `radiogroup` | `id`, `text` (подпись), `items[]` или `children` из `radio`, `selected`, опционально `item_ids[]`; Up/Down / клик; в values – id пункта или текст |
 | `button` | `id`, `text`, `default`, `cancel` → command |
 | `button_row` | Группа кнопок в одну строку (дети flatten) |
-| `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN — вне Dialog MVP. |
-| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values — **текст** выбранного item |
-| `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values — **текст** |
+| `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне Dialog MVP. |
+| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item |
+| `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
 
 Не реализовано: `panel` (см. [PANEL_PLUGIN.md](PANEL_PLUGIN.md) отдельно), произвольный `set_control_json` кроме `SetStatus`.
 
@@ -208,7 +208,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `input` | string |
 | `checkbox` | bool |
 | `list` | selected **text** (не index) |
-| `dropdown` | selected **text** (не index); индекс — `GetListSelectedIndex` |
+| `dropdown` | selected **text** (не index); индекс – `GetListSelectedIndex` |
 | `radio_group` | selected **item id** (если задан `item_ids` / id у children), иначе text |
 | `radio` | один ключ на `group` → id (или text) выбранного radio |
 | `label` / `button` / `status` | нет |
@@ -230,12 +230,12 @@ Caller обычно закрывает диалог в handler; Host сам `Clo
 
 ### Клавиатура / мышь (кратко)
 
-- Tab / Shift+Tab — focus chain (input, checkbox, radio, radio_group, button, list, dropdown).
+- Tab / Shift+Tab – focus chain (input, checkbox, radio, radio_group, button, list, dropdown).
 - List / RadioGroup / DropDown (closed): Up/Down/Home/End.
-- DropDown: Space / Alt+Down / F4 / клик — открыть popup; Enter/клик по item — выбрать; Esc — свернуть.
+- DropDown: Space / Alt+Down / F4 / клик – открыть popup; Enter/клик по item – выбрать; Esc – свернуть.
 - Radio: Space / клик выбирает в группе.
 - Input: делегируется `InputLineHandleInput`; Submit → accept, Cancel → `cancel`.
-- Dual Panel: при видимом диалоге Enter может вызывать handler напрямую (`ok` / `btn_start`), минуя `FireDefault` — см. `TDualPanelWindow`.
+- Dual Panel: при видимом диалоге Enter может вызывать handler напрямую (`ok` / `btn_start`), минуя `FireDefault` – см. `TDualPanelWindow`.
 
 ---
 
@@ -261,9 +261,9 @@ if the resource is missing, fall back to an in-code layout (used by ExportDialog
 | `BuildWorkspaceLibraryDialog` / `DIALOG_WORKSPACES` | `workspaces.json` | Библиотека снимков `ws:///` (`Ctrl+Shift+D`) |
 | `BuildFileDiffDialog` / `DIALOG_FILEDIFF` | `filediff.json` | Построчный diff Compare Files (`Ctrl+Alt+C`) |
 
-Полный набор — **28** `DIALOG_*` в `src/MTN2Resource.rc` (hotlist, color coding, dirsync, filediff, theme, …). Runtime грузит **только RCDATA**; `src/dialogs/*.json` на диске не читаются. После правки JSON нужен `brcc32` (`src/build.ps1`). Канонический exe — `bin\MTN2.exe`.
+Полный набор – **28** `DIALOG_*` в `src/MTN2Resource.rc` (hotlist, color coding, dirsync, filediff, theme, …). Runtime грузит **только RCDATA**; `src/dialogs/*.json` на диске не читаются. После правки JSON нужен `brcc32` (`src/build.ps1`). Канонический exe – `bin\MTN2.exe`.
 
-JSON-файлы — UTF-8. Строковые литералы в `.pas` — кодовая страница компилятора (обычно Windows-1251): типографское тире в заголовке — `#$2014`, не символ `—` в кавычках (иначе в UI `вЂ"`).
+JSON-файлы – UTF-8. Строковые литералы в `.pas` – кодовая страница компилятора (обычно Windows-1251): типографское тире в заголовке – `#$2014`, не символ `—` в кавычках (иначе в UI `вЂ"`).
 
 Dual Panel chrome: `TDialogHost.ChromeContext` для списка даёт `fbcDialogList`; `ResolveChromeContext` мапит `THostDialogKind` на отдельные контексты F-bar (`fbcWorkspaceLibrary`, `fbcFolderHotlist`, `fbcColorCoding`, …). Видимый stub рисуется **поверх** диалога (`DispatchDrawOverlays`: dialog → stub → F9 submenu) и перехватывает ввод/клик раньше списка.
 
@@ -283,24 +283,24 @@ Edit layout with **Dialog Designer** (`tools/DialogDesigner`). Re-export from bu
 | Декларация, семантика команд, валидация | **Caller / плагин** |
 | Values во время ввода | **Host** (snapshot на command) |
 
-Динамика MVP: `SetStatus`. Полный `set_control_json` / пересборка — DLL stage.
+Динамика MVP: `SetStatus`. Полный `set_control_json` / пересборка – DLL stage.
 
 ---
 
 ## 7. Потоки
 
-* Декларация и values — UI-поток, без I/O.
-* Долгая работа по кнопке (поиск, copy job) — Jobs; диалог может оставаться открытым, Status — через `SetStatus` + invalidate.
+* Декларация и values – UI-поток, без I/O.
+* Долгая работа по кнопке (поиск, copy job) – Jobs; диалог может оставаться открытым, Status – через `SetStatus` + invalidate.
 
 ---
 
 ## 8. Инварианты
 
-1. Плагин не вызывает Canvas и не задаёт координаты в пикселях — только cell-геометрию в декларации (`width`/`height` окна; в **2.0** ещё `col`/`row`/`width`/`height` контролов).
+1. Плагин не вызывает Canvas и не задаёт координаты в пикселях – только cell-геометрию в декларации (`width`/`height` окна; в **2.0** ещё `col`/`row`/`width`/`height` контролов).
 2. Dialog блокирует ввод нижележащим окнам на уровне Host (не OS message-box).
 3. Кнопки `default` / `cancel` обрабатывает Host (Enter/Esc) → `command`.
 4. Вложенные примитивы подчиняются своим контрактам серии.
-5. `list` в values отдаёт текст item; индекс — через `GetListSelectedIndex` у Host.
+5. `list` в values отдаёт текст item; индекс – через `GetListSelectedIndex` у Host.
 6. В **2.0** Host не пересчитывает размер окна по содержимому и не делает flow-layout.
 
 ---

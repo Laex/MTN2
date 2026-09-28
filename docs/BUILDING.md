@@ -2,7 +2,7 @@
 
 ## Локальная сборка
 
-Требуется RAD Studio 13 (`Studio\37.0`), Windows x64. Опционально — Rust (`cargo`) для плагина `mtn.ws`.
+Требуется RAD Studio 13 (`Studio\37.0`), Windows x64. Опционально – Rust (`cargo`) для плагина `mtn.ws`.
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # -> bin\MTN2.exe + bin\plugins\
@@ -23,17 +23,17 @@
 или из `MTN2_7Z_DLL` и в релизный архив не входит.
 
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
-Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся — их собирает `build.ps1`
+Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся – их собирает `build.ps1`
 (и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.
 
-Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` — кадры и время кадра в заголовке, путь новой вкладкой, служебные `--wait-pid` и `--self-check`) — [ARCHITECTURE.md](ARCHITECTURE.md) §10.
+Запуск: `bin\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` – кадры и время кадра в заголовке, путь новой вкладкой, служебные `--wait-pid` и `--self-check`) – [ARCHITECTURE.md](ARCHITECTURE.md) §10.
 
 ## Тесты
 
 Тесты написаны на [DUnitX](https://github.com/VSoftTechnologies/DUnitX) (входит в RAD Studio). Каждый
-`src/tests/<группа>/TestXxx.pas` — модуль с фикстурой `[TestFixture] TTestXxx`, методы `[Test]` проверяют
+`src/tests/<группа>/TestXxx.pas` – модуль с фикстурой `[TestFixture] TTestXxx`, методы `[Test]` проверяют
 через `Assert.*`. Фикстуры группы собирает консольный раннер `<Группа>Tests.dpr` (например,
-`vfs/VfsTests.dpr`); общий `Main` — в `src/tests/common/uTestRunner.pas`. Группы:
+`vfs/VfsTests.dpr`); общий `Main` – в `src/tests/common/uTestRunner.pas`. Группы:
 
 | Группа | Что покрывает |
 |---|---|
@@ -42,7 +42,7 @@
 | `editor` | редактор, просмотрщики, Quick View, Markdown |
 | `dialogs` | JSON-диалоги, рендер, история ввода, отдельные диалоги |
 | `vfs` | файловые операции, VFS, архивы, SFTP, диски, длинные пути |
-| `plugins` | плагинный хост, загрузчик, 7z/tmp/WASM-плагины (`SamplePlugin.dpr` — фикстура) |
+| `plugins` | плагинный хост, загрузчик, 7z/tmp/WASM-плагины (`SamplePlugin.dpr` – фикстура) |
 | `core` | конфигурация, keymap, шина сообщений, строки, справка |
 
 ```powershell
@@ -58,18 +58,18 @@
 `src/tests/dcu/<Группа>Tests.xml`, CI сохраняет его артефактом. Раннер дольше `-TimeoutSec` (по умолчанию
 900 с) снимается и считается упавшим; прогон не останавливается на первой ошибке и в конце печатает сводку.
 
-Раннер группы можно запустить и напрямую (из папки группы) — ключи DUnitX: `-h` — справка,
-`--run:TestToast.TTestToast` — одна фикстура, `--exclude:Manual`, `--xmlfile:<путь>`.
+Раннер группы можно запустить и напрямую (из папки группы) – ключи DUnitX: `-h` – справка,
+`--run:TestToast.TTestToast` – одна фикстура, `--exclude:Manual`, `--xmlfile:<путь>`.
 
 Новый тест: `src/tests/<группа>/TestXxx.pas` по образцу соседних (фикстура регистрируется в `initialization`
-через `TDUnitX.RegisterTestFixture`), модули Core подключать без `in`-путей — их находит `-U` раннера.
+через `TDUnitX.RegisterTestFixture`), модули Core подключать без `in`-путей – их находит `-U` раннера.
 Модуль нужно добавить в `uses` раннера группы; `run-tests.ps1` падает, если какой-то `Test*.pas` там не
 указан. Ручные, интерактивные и зависящие от окружения фикстуры помечаются `[Category('Manual')]` с
-комментарием-причиной над атрибутом. Нет нужного окружения (7z.dll, wasmtime.dll) — тест завершается
+комментарием-причиной над атрибутом. Нет нужного окружения (7z.dll, wasmtime.dll) – тест завершается
 `Assert.Pass('SKIP: …')`.
 
 Внутри методов фикстуры `Writeln(…)` разрешается в хелпер DUnitX `TObject.WriteLn(msg)` (один
-строковый аргумент, пишет в лог раннера) — для обычного вывода в консоль пишите `System.Writeln`.
+строковый аргумент, пишет в лог раннера) – для обычного вывода в консоль пишите `System.Writeln`.
 
 ## CI/CD (GitHub Actions)
 
@@ -89,22 +89,22 @@ RAD Studio коммерческая и на GitHub-hosted раннерах от�
 2. Запускать раннер **интерактивно** (`run.cmd`, автозапуск при входе), а не как службу: часть тестов (ConPTY,
    буфер обмена, FMX) требует пользовательского сеанса.
 3. Нужны PowerShell 7 (`pwsh`), Git, опционально Rust с `wasm32-unknown-unknown`.
-4. *Settings → Secrets and variables → Actions → Variables*: `DELPHI_RUNNER = true` — включает job `delphi`
+4. *Settings → Secrets and variables → Actions → Variables*: `DELPHI_RUNNER = true` – включает job `delphi`
    (без неё CI не будет висеть в очереди в ожидании раннера).
 5. *Settings → Actions → General → Fork pull request workflows*: «Require approval for all outside collaborators».
    Job `delphi` и так не запускается для PR из форков.
 
 ### Что нового: `CHANGELOG.md`
 
-`CHANGELOG.md` в корне — для пользователей: что появилось, что исправлено, что изменилось в поведении, по-русски и без
+`CHANGELOG.md` в корне – для пользователей: что появилось, что исправлено, что изменилось в поведении, по-русски и без
 внутренней кухни (рефакторинг, тесты, CI туда не пишутся). Изменение, заметное пользователю, сразу записывается
 в раздел «Не выпущено» под «Новое», «Исправлено» или «Изменено». Файл кладётся в оба архива рядом с `LICENSE`.
 
 ### Релиз
 
 ```powershell
-./src/tools/changelog.ps1 -Stamp v0.3.0   # «Не выпущено» -> «v0.3.0 — <дата>», новый пустой «Не выпущено»
-                                          # и версия 0.3.0 в MTN2.dproj; оба файла — в коммит «Stamp 0.3.0.»
+./src/tools/changelog.ps1 -Stamp v0.3.0   # «Не выпущено» -> «v0.3.0 – <дата>», новый пустой «Не выпущено»
+                                          # и версия 0.3.0 в MTN2.dproj; оба файла – в коммит «Stamp 0.3.0.»
 git tag v0.3.0
 git push origin v0.3.0
 ```
