@@ -1,12 +1,12 @@
 unit TestDriveInfo;
 
-{ Covers the non-blocking layer added on top of uDriveInfo.pas's original
-  synchronous EnumLogicalDrives: EnumLogicalDrivesFast (letters/kind only,
-  no GetVolumeInformation/GetDiskFreeSpaceEx) and CachedDriveInfo /
-  TryCachedPathVolume (instant, background-refreshed). See the drive-bar
-  hang this was written to fix: DrawPanelDriveLetterBar used to call the
-  slow EnumLogicalDrives on every repaint, which could freeze the whole UI
-  thread for as long as an unresponsive network drive took to answer. }
+{ Covers the non-blocking layer on top of uDriveInfo.pas's synchronous
+  EnumLogicalDrives: EnumLogicalDrivesFast (letters/kind only, no
+  GetVolumeInformation/GetDiskFreeSpaceEx) and CachedDriveInfo /
+  TryCachedPathVolume (instant, background-refreshed). The drive bar is
+  repainted often; calling the slow EnumLogicalDrives there would freeze
+  the UI thread for as long as an unresponsive network drive takes to
+  answer. }
 
 interface
 
@@ -168,17 +168,14 @@ var
   J: Integer;
   CTotalBytes: Int64;
 begin
-  // Regression test for two bugs reported in the field after this cache
-  // shipped:
-  //  1. CachedDriveInfo used to kick a brand-new background EnumLogicalDrives
-  //     on EVERY call, including from within a just-finished refresh's own
-  //     completion callback re-reading the cache -- an unresponsive drive
-  //     (this machine has a flaky network P:) never let the pile of
-  //     concurrent background threads settle.
-  //  2. That one background pass queried every drive on a single thread, so
-  //     an unresponsive P: also meant C:/D:/... never got their real data
-  //     either -- the popup stayed on "letters only" forever.
-  // Fixed by per-drive workers (a stuck P: cannot block C:'s result) plus
+  // Regression test for two failure modes of the cache:
+  //  1. Kicking a new background EnumLogicalDrives on EVERY call (including
+  //     from a just-finished refresh's own completion callback re-reading
+  //     the cache) piles up threads that never settle while a drive is
+  //     unresponsive.
+  //  2. Querying every drive on a single thread lets one unresponsive drive
+  //     (say P:) keep C:/D:/... on "letters only" forever.
+  // Guarded by per-drive workers (a stuck P: cannot block C:'s result) plus
   // per-drive dedup (a drive that already answered, or is still being
   // asked, is never re-queried) -- both asserted here: many rapid repeat
   // calls must return instantly (no accidental synchronous work / pile-up)

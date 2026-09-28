@@ -8837,9 +8837,9 @@ begin
   else
     DrawPanelsContent(W, H);
   end;
-  // Submenu / dialogs sit on top of panels, Viewer/Editor, and Terminal.
-  // Document and Terminal used to skip this, so F9 dropdowns (including Edit)
-  // opened in state but were painted over by PaintEmbedded / Term.Paint.
+  // Submenu / dialogs sit on top of panels, Viewer/Editor, and Terminal:
+  // painted after PaintEmbedded / Term.Paint, or F9 dropdowns (including
+  // Edit) would open in state but be painted over.
   if Kind in [dckDocument, dckTerminal, dckPanels] then
   begin
     Snap := Default(TDrawOverlaySnapshot);

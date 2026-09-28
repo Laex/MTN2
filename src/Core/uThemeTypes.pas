@@ -41,12 +41,9 @@ type
   );
 
   /// <summary>Every field ResolveStandardPanelChromeColors needs to answer a
-  /// TPanelChromePart query. Every IThemeRenderer implementer's
-  /// ResolvePanelChromeColors had the exact same case statement,
-  /// differing only in which of its own private color constants filled each
-  /// role - so the branching now lives once here (same "shared here, no
-  /// uses-clause churn" reasoning as TMdSpanKind above) and each theme just
-  /// fills a palette from its own constants.</summary>
+  /// TPanelChromePart query. The branching lives once here (same "shared
+  /// here, no uses-clause churn" reasoning as TMdSpanKind above) and each
+  /// theme just fills a palette from its own constants.</summary>
   TPanelChromePalette = record
     TextFg, WindowBg: TAlphaColor;                           // pcpListBody/InfoStrip + fallback
     HeaderFg, HeaderBg: TAlphaColor;                          // pcpColumnHeader
@@ -84,12 +81,10 @@ type
     mskTableHeader
   );
 
-  /// <summary>Bug fix: TEditorWindow (F3 Viewer / F4 Editor) drew its whole
+  /// <summary>Colors for TEditorWindow's (F3 Viewer / F4 Editor) whole
   /// body - text, cursor, selection, status line, frame, scrollbar, find
-  /// highlight - with a fixed hard-coded NDN-blue palette, so switching the
-  /// active theme changed the window frame (via DrawWindowFrame) but never
-  /// the content inside it. Every field here mirrors a color TEditorWindow
-  /// used to hard-code locally; each implementer just re-exposes consts it
+  /// highlight - so a theme switch recolors the content, not only the
+  /// frame. Each implementer just re-exposes consts it
   /// already declares for the equivalent panel/chrome concept (cText/
   /// cWindowBg, cCursorFg/cCursorBg, cStatusFg/cStatusBg, cBorderFocus/
   /// cBorderNormal, cScrollFg/cScrollThumb, cToolKeyFg). SelFg/SelBg fill

@@ -1,7 +1,7 @@
 unit uDualPanelJobList;
 
 { Multi-job facade: file:// can run in parallel; zip/7z/sftp-authority and
-  overlapping URIs queue. Dual Panel talks to this the way it used to talk
+  overlapping URIs queue. Dual Panel talks to this with the same calls as
   to a single TPanelJobController. }
 
 interface

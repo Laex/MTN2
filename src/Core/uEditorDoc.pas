@@ -1037,7 +1037,7 @@ end;
        possible only because UTF-16 is BOM-only detected in this codebase
        (DetectAndDecodeText), which guarantees content starts 2-byte-aligned
        right after the 2-byte BOM. Binary samples open in Hex (up to
-       cEditorEditMaxBytes) instead of the old "File too large" error. }
+       cEditorEditMaxBytes) rather than failing with "File too large". }
 
 /// <summary>True when (AByte0, AByte1), read in AIsLE's byte order, is the
 /// UTF-16 code unit 0x000A (LF). LE stores it as [0x0A, 0x00]; BE as

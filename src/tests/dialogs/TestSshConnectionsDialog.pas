@@ -1,7 +1,7 @@
 unit TestSshConnectionsDialog;
 
 { Characterization tests for TSshConnectionsDialogController (Ctrl+O-adjacent
-  SSH/SFTP saved-connections dialog) -- previously untested. The data layer
+  SSH/SFTP saved-connections dialog). The data layer
   (uSshConnections.pas) already has TestSshConnections.pas; this covers the
   dialog controller built on top of it. Uses SshConnectionsUsePath to point
   the store at a throwaway temp file, so this run never touches the user's

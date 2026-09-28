@@ -35,9 +35,8 @@ type
     FViewOnly: Boolean;
     FHexMode: Boolean;
     FHexHighNibble: Boolean;
-    // Bug fix: was a fixed hard-coded NDN-blue palette (module consts below,
-    // now removed) - switching the active theme changed the window frame
-    // but never the body content. Refreshed from Theme.ResolveEditorColors
+    // Body colors come from the theme, so a theme switch recolors the
+    // content, not only the frame. Refreshed from Theme.ResolveEditorColors
     // at the top of every DrawContent call (cheap; mirrors how every other
     // window re-reads Theme fresh each frame rather than caching across a
     // live theme switch - see uThemeProxy.pas), so every Draw*Content /
@@ -901,8 +900,8 @@ begin
   // This bottom edge is Host-drawn (the F-key bar/status line occupy the
   // window's own bottom border, so Theme.DrawWindowFrame - which already
   // correctly picks single vs double line per theme for the top/sides -
-  // never reaches this row); it used to always close with double-line
-  // glyphs, which only matches NDN/TotalCommander/HighContrast. Same as the
+  // never reaches this row). Always closing it with double-line glyphs
+  // would only match NDN/TotalCommander/HighContrast. Same as the
   // panel divider: ask the theme, and only actually use
   // double-line while this window is the focused one (idle stays single
   // even on themes that support double, matching the rest of the app).
@@ -3473,7 +3472,7 @@ begin
   if (AKey = 10) or (AKey = 13) then
     AKey := vkReturn;
   // AskSave: resolve Yes/No/Cancel here so F-bar letter hints and dialog buttons
-  // cannot desync (dialog-only path previously swallowed outcome on Esc/outside).
+  // cannot desync (a dialog-only path would swallow the outcome on Esc/outside).
   if FConfirm = ecAskSave then
     Exit(FDialogs.HandleAskSaveInput(AKey, AShift, AKeyChar));
   if Assigned(FDialog) and FDialog.Visible then

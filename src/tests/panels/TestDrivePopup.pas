@@ -1,7 +1,7 @@
 unit TestDrivePopup;
 
 { Characterization tests for TDrivePopupController (Alt+F1/F2 Change Drive
-  overlay, uDualPanelDrivePopup.pas) - previously untested. Exercises the
+  overlay, uDualPanelDrivePopup.pas). Exercises the
   pure controller logic (Layout's width/height clamping, keyboard/mouse
   dispatch, Confirm's navigation) via injected callbacks, without touching
   the FMX grid (Draw is not exercised here).

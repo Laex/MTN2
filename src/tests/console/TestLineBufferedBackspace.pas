@@ -135,15 +135,11 @@ begin
     [AMarker, Buf.LineCount, Dump]);
 end;
 
-// Real ConPTY gives cmd a genuine console with real line-editing
-// and echo from conhost itself, so the app no longer buffers keystrokes
-// locally and constructs a line to submit on Enter (that used to be tested
-// here as "line-buffered submit after edit"). Keeping that local simulation
-// running on top of real echo double-echoed typed commands and corrupted the
-// primary buffer's prompt-tracking heuristics (confirmed by manual testing:
-// "dir" appearing twice, garbled `dir` output). cmd now uses the same raw
-// char-by-char passthrough WSL always used successfully; this test verifies
-// that still executes commands correctly end-to-end.
+// Real ConPTY gives cmd a genuine console with real line-editing and echo
+// from conhost itself, so the app does not buffer keystrokes locally: a
+// local line buffer on top of real echo would double-echo typed commands and
+// corrupt the primary buffer's prompt tracking. cmd uses raw char-by-char
+// passthrough; this test verifies it executes commands correctly end-to-end.
 procedure TestCmdRawPassthroughSmoke;
 var
   Buf: TConsoleBuffer;

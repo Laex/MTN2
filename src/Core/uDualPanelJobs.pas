@@ -1516,8 +1516,8 @@ begin
         if FJob.PendingBothDirs then
         begin
           // Folder-vs-folder prompt: "Skip" means "don't overwrite files
-          // that conflict inside it", not "abandon the folder" - the whole
-          // point of this fix (see ContinueJobItemAfterProbe). Route through
+          // that conflict inside it", not "abandon the folder" (see
+          // ContinueJobItemAfterProbe). Route through
           // ExecuteTransfer/CopyTree exactly like the Skip-mode fast path.
           ExecuteTransfer(SrcURI, DstURI, Idx, False, False);
           Exit;

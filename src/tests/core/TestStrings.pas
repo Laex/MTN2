@@ -225,7 +225,7 @@ var
 begin
   SetLocale('ru');
 
-  // Display: the 5 static captions that had no stable id before this batch
+  // Display: the static captions with a stable id
   // (Font/Size/Zoom/Interval/Language) -- confirms adding "id" to a JSON
   // label is enough to pick it up, no code change needed.
   Assert.IsTrue(TryLoadDialogResource(cResDialogDisplay, Decl), 'DIALOG_DISPLAY loads');

@@ -9,9 +9,9 @@ unit TestIOErrorAskDialog;
 
   Also covers the reason this dialog is actually useful: PendingSrcURI /
   the "path" shown in the dialog must name the one file that failed (via
-  AError.URI), not the top-level job source - the fix already made to
-  CopyFileWithProgress (uFileVfs.pas) so a recursive tree copy attributes an
-  I/O error to the file it actually happened on. }
+  AError.URI), not the top-level job source: CopyFileWithProgress
+  (uFileVfs.pas) attributes an I/O error in a recursive tree copy to the
+  file it actually happened on. }
 
 interface
 

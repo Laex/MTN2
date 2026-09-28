@@ -96,8 +96,8 @@ begin
     SetEvent(FStopEvent);
   // No Th.WaitFor/Th.Free here on purpose: if the thread is still inside
   // DirectoryExists/FindFirstChangeNotification (an unresponsive network
-  // drive), waiting for it would block the caller exactly like that
-  // synchronous call used to when it ran inline. FreeOnTerminate lets the
+  // drive), waiting for it would block the caller just like calling it
+  // synchronously. FreeOnTerminate lets the
   // TThread wrapper clean itself up whenever the underlying thread actually
   // finishes -- possibly never, harmlessly, if the drive never answers.
   FThread := nil;
@@ -163,10 +163,9 @@ begin
 
       // The slow part: DirectoryExists/FindFirstChangeNotification touch the
       // actual filesystem and can block for a long time on an unresponsive
-      // network drive. This used to run inline in StartWatcher, on whatever
-      // thread called SetPath -- TDualPanelWindow.SyncDirWatches, on every
-      // single navigation (called from NavigateSideTo/LoadSide), which is
-      // the UI thread. Runs here instead; setup completion/failure is
+      // network drive, and SetPath is called on the UI thread on every
+      // navigation (TDualPanelWindow.SyncDirWatches from NavigateSideTo/
+      // LoadSide). So it runs here, off the UI thread; setup completion/failure is
       // published back to the main thread below, matching
       // uPanelModel.TFilePanelModel's async pattern -- FPath/FStopEvent/
       // FChangeHandle/FGen are only ever written on the main thread, so

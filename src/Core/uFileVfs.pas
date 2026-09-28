@@ -241,8 +241,8 @@ end;
 // left untouched by Skip-mode conflict handling are supposed to differ, so
 // re-comparing sizes here adds nothing and actively misfires: a live source
 // (a log the owning application keeps appending to) is legitimately larger
-// now than the snapshot that was copied, and the resulting "size mismatch"
-// used to delete the whole freshly copied destination tree.
+// now than the snapshot that was copied, and a "size mismatch" there would
+// delete the whole freshly copied destination tree.
 procedure VerifyCopiedTree(const ASrc, ADst: string;
   var AError: TVfsError);
 var

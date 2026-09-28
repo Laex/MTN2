@@ -15,7 +15,7 @@ type
   /// <summary>dckColorSample: which panel row visual state an UNSET Fg/Bg
   /// channel should preview as the theme's own resolved color for (matching
   /// color-coding's own "0 = inherit" semantics) instead of falling back to
-  /// a fixed placeholder. cspsNone (JSON omits "panelState") keeps the old
+  /// a fixed placeholder. cspsNone (JSON omits "panelState") keeps a
   /// fixed black-on-gray fallback - e.g. the color picker's single-channel
   /// preview isn't tied to any one panel row.</summary>
   TColorSamplePanelState = (cspsNone, cspsNormal, cspsSelected, cspsCurrent);

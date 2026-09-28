@@ -56,9 +56,9 @@ begin
     OnOutput := procedure(const AText: string) begin GOutput := GOutput + AText; end;
     Assert.IsTrue(StartShell(cShellProfilePowerShell, GetCurrentDir, 80, 25), LastError);
     // Real ConPTY gives PowerShell a genuine console with real
-    // line-editing/echo from conhost, so the app no longer buffers
-    // keystrokes locally -- PowerShell now uses the same raw passthrough
-    // WSL always used. PsPipeSafeCommand's format-engine-hang mitigation
+    // line-editing/echo from conhost, so the app does not buffer
+    // keystrokes locally -- PowerShell uses raw passthrough.
+    // PsPipeSafeCommand's format-engine-hang mitigation
     // (tested below) is unrelated to that and still applies regardless.
     Assert.IsTrue(not ProfileUsesLineBufferedInput(cShellProfilePowerShell),
       'PowerShell must use raw passthrough now (real ConPTY gives it a genuine console)');

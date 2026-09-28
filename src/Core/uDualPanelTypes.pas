@@ -198,7 +198,7 @@ procedure TabSelectByNameStem(var ATab: TTab; const ARows: TPanelRows;
 function FileNameStem(const AName: string): string;
 /// <summary>Fit AText into AMaxLen. When the name has a real extension,
 /// keeps it visible: ``prefix...suffix.ext``. Otherwise mid-ellipsis.
-/// Replaces the old trailing ``~`` truncation used in panel lists/status.</summary>
+/// Used in panel lists and the status line.</summary>
 function EllipsizeKeepingExt(const AText: string; AMaxLen: Integer): string;
 function PanelRowMaskName(const ARow: TPanelRow): string;
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;

@@ -200,7 +200,7 @@ begin
     Result := Copy(Result, 1, cFindSnippetMaxLen) + #$2026;
 end;
 
-/// <summary>Reads APath (size-capped like the old FileContainsText) and scans
+/// <summary>Reads APath (size-capped) and scans
 /// it line by line for ANeedle - plain substring/whole-word, or (AUseRegex)
 /// a compiled regex. Returns the first matching line (1-based) and a
 /// trimmed copy of it. A malformed regex is caught per-file (defensive:

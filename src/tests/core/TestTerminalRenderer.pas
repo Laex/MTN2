@@ -184,7 +184,7 @@ begin
     Exit;
   end;
   Clipped := '';
-  // The sizes that used to lose the bottom pixel row.
+  // Sizes where centring the glyph in a line-high box cuts the bottom row.
   for Size in [12.0, 18.0, 20.0] do
   begin
     Measure := TBitmap.Create(16, 16);

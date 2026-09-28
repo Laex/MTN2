@@ -10,9 +10,8 @@ unit uRecycleBinVfs;
   Linux, a per-volume .Trashes on macOS) -- a port needs its own VFS backend
   behind the same recycle:// scheme, not a portable rewrite of this one.
 
-  Validated against the live Shell APIs by src/tests/vfs/TestRecycleBin.pas
-  before this was written (see that file's header for the exact findings).
-  Key facts that shape the design below:
+  The Shell API behavior this relies on is checked against the live APIs by
+  src/tests/vfs/TestRecycleBin.pas (see that file's header). Key facts that shape the design below:
   - IShellFolder2 bound to CSIDL_BITBUCKET enumerates real Recycle Bin
     entries. Column index 1 is "Original Location" on every locale/Windows
     version - the column ORDER is fixed by the shell even though the header

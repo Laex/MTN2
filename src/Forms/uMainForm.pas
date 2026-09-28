@@ -1477,8 +1477,7 @@ begin
     Exit;
   // ConsoleMode: Ctrl+O always restores panels - it must never stop a
   // running command (that's Ctrl+C's job). If the flag is set but the
-  // console window is not actually up (menu used to flip the flag only),
-  // show the console instead of restoring an already-blank Dual Panel.
+  // console window is not actually up, show the console instead of restoring an already-blank Dual Panel.
   if Assigned(FDualPanel) and FDualPanel.ConsoleMode then
   begin
     if Assigned(FConsole) and FConsole.Visible then

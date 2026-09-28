@@ -167,8 +167,7 @@ begin
       // Pack/unpack has no reliable per-file byte breakdown here (pack
       // counts files, unpack counts archive-wide bytes) - leave the item
       // fields empty so the job UI falls back to the tree-cumulative
-      // ADone/ATotal for its per-file bar, same as before this callback
-      // grew the item-level parameters.
+      // ADone/ATotal for its per-file bar.
       Cb(D, T, N, 0, 0, '', '');
     end);
 end;

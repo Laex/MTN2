@@ -476,9 +476,9 @@ begin
   // function runs on the UI thread: it's the first thing NavigateSideTo does
   // (via ResolveVfsUri/ResolveFileUri), on every single navigation --
   // including Change Drive and Ctrl+Left/Right, which always target a drive
-  // root. (Keeping mapped drive roots as letters here also matches the old
-  // behavior's own later check: expanding one via GetFinalPathName yields
-  // UNC and used to break URI round-trip with "Path not found".)
+  // root. (Keeping mapped drive roots as letters also keeps URI round-trip
+  // working: expanding one via GetFinalPathName yields UNC, which fails with
+  // "Path not found".)
   if IsWindowsDriveRoot(P) then
     Exit;
   if not LocalPathIsDirectory(P) then

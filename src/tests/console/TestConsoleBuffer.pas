@@ -381,7 +381,7 @@ procedure TestGridAutoReflowOnSizeMismatch;
 var
   Buf: TConsoleBuffer;
 begin
-  // Regression test: live testing found the grid still narrow (from an
+  // Regression test: the grid can still be narrow (from an
   // earlier resize) when a chunk of real PTY output already claiming a
   // WIDER size arrived first -- PTY output lands on the reader thread while
   // ResizePrimaryScreen is called separately from the UI thread's
@@ -413,15 +413,12 @@ var
   LineIdx, Col: Integer;
 begin
   // Regression test: real conhost always follows a freshly-drawn prompt with
-  // an OSC window-title sequence (ESC ]0;...BEL). FixPromptNewlines (a
-  // legacy-only workaround, mutating the raw byte stream before it even
-  // reaches the parser) used to run unconditionally and mistake that OSC
-  // sequence for "real command text glued onto the prompt", injecting a
-  // synthetic CRLF there -- confirmed via a byte-level trace: the cursor
-  // ended one row below the prompt's actual end even though the grid was
-  // already wide enough that no auto-wrap could explain it. Grid mode must
-  // trust the real byte stream's own CR/LF/CUP, not a legacy heuristic's
-  // rewrite of it.
+  // an OSC window-title sequence (ESC ]0;...BEL). FixPromptNewlines
+  // (a workaround that rewrites the raw byte stream before the parser)
+  // would mistake that OSC sequence for "real command text glued onto the
+  // prompt" and inject a synthetic CRLF, leaving the cursor one row below
+  // the prompt's end. Grid mode must trust the real byte stream's own
+  // CR/LF/CUP, not a heuristic's rewrite of it.
   Writeln('TestGridModePromptNotSplitByOscTitle');
   Buf := TConsoleBuffer.Create;
   try

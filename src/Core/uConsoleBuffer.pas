@@ -1025,16 +1025,13 @@ begin
     // Read FPendingEraseToEOL before parsing touches (and clears) it.
     // FixPromptNewlines mutates the actual byte stream fed to the parser
     // (it inserts a synthetic CRLF wherever it thinks a prompt has content
-    // glued onto it) -- a legacy-only workaround for the old headless-pipe
-    // backend's lack of real newlines. Grid mode must never let it run:
+    // glued onto it) -- a workaround for output without real newlines.
+    // Grid mode must never let it run:
     // real conhost always follows a freshly-drawn prompt with an OSC
     // window-title sequence (ESC ]0;...BEL), which this heuristic mistakes
     // for "real command text glued onto the prompt" and splits with a
-    // bogus synthetic newline -- confirmed via a byte-level trace: the
-    // prompt's own cursor ended one row below where it visually stopped,
-    // even though the grid was already the right width (so no wrap could
-    // explain it) -- exactly the synthetic-CRLF's LF advancing the row.
-    // Grid mode trusts the real byte stream's own CR/LF/CUP; it must not
+    // bogus synthetic newline whose LF moves the prompt's cursor one row
+    // below where it visually stops. Grid mode trusts the real byte stream's own CR/LF/CUP; it must not
     // also be fed a stream some other heuristic has silently rewritten.
     if AIsLocalInput or FGridEnabled then
       ProcessedText := AText

@@ -1,12 +1,9 @@
 unit TestTopMenuBar;
 
-{ Characterization tests for StringToTopMenuAction (uTopMenuBar.pas) --
-  previously untested and, until this refactor, a hand-written ~90-line
-  chain of "if AName = 'tmaXxx' then Exit(tmaXxx)" comparisons (one per
-  TTopMenuAction member) that could silently drift out of sync with the
-  enum. Now RTTI-driven (GetEnumValue + an exact-case GetEnumName
-  round-trip) -- this test exercises every enum member by name via RTTI
-  itself, so it stays correct even as menu actions are added later. }
+{ Tests for StringToTopMenuAction (uTopMenuBar.pas), which is RTTI-driven
+  (GetEnumValue + an exact-case GetEnumName round-trip). This test exercises
+  every TTopMenuAction member by name via RTTI itself, so it stays correct
+  as menu actions are added. }
 
 interface
 
@@ -65,8 +62,7 @@ end;
 
 procedure TestASampleOfKnownMappings;
 begin
-  // Spot-check a few concrete mappings the old 90-line chain hard-coded,
-  // as a readable cross-check independent of the exhaustive RTTI loop above.
+  // Spot-check a few concrete mappings, as a readable cross-check independent of the exhaustive RTTI loop above.
   Writeln('Spot-check known name -> action mappings');
   Assert.IsTrue(StringToTopMenuAction('tmaLeftDrive') = tmaLeftDrive, 'tmaLeftDrive');
   Assert.IsTrue(StringToTopMenuAction('tmaFileMkDir') = tmaFileMkDir, 'tmaFileMkDir');

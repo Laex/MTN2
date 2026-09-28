@@ -269,13 +269,11 @@ begin
 
   ClearSelection;
   // Real ConPTY gives the persistent shell a genuine console that
-  // echoes the command itself and draws its own prompt -- pre-echoing the
-  // command here (a synthetic yellow line, built for the old one-shot pipe
-  // era) now races the real async prompt/echo arriving via AppendOutput,
-  // corrupting the primary buffer's cursor/line state (confirmed by manual
-  // testing: doubled prompt, command detached from the real prompt line,
-  // glued-together output lines, prompt not starting on a new line after
-  // the command finishes). Let the real shell be the only source of truth,
+  // echoes the command itself and draws its own prompt. Pre-echoing the
+  // command here would race the real async prompt/echo arriving via
+  // AppendOutput and corrupt the primary buffer's cursor/line state
+  // (doubled prompt, command detached from the prompt line, glued output
+  // lines). Let the real shell be the only source of truth,
   // exactly like keystroke-level input already does.
 
   if not EnsureShell(WorkingDir) then

@@ -402,7 +402,7 @@ begin
 
   // Snap cell size to whole DEVICE pixels. The height also has to hold the
   // font's real ink: some fonts (Ubuntu Mono) draw descenders below the
-  // reported line height, which used to cut 1 px off g/j/p/q/y/[/]/_.
+  // reported line height, which would cut 1 px off g/j/p/q/y/[/]/_.
   if FSceneScale <= 0 then
     FSceneScale := 1.0;
   FCellWidth := Max(Round(FCellWidth * FSceneScale), 1) / FSceneScale;

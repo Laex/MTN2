@@ -200,13 +200,10 @@ begin
 end;
 
 const
-  // Single shadow strength shared by DrawDialogShadow and DrawButtonShadow
-  // (was two separate constants, each with its own Skia/non-Skia split, and
-  // DrawButtonShadow additionally graded a "near"/"far" pair - that second,
-  // lighter tone plus Skia's own glyph-edge antialiasing read as a shadow
-  // cast on top of a shadow. One strength, used the same way in both places,
-  // fixes that. Stronger under Skia where subpixel AA makes a softer strip
-  // read better than flat gray replacement.
+  // Single shadow strength shared by DrawDialogShadow and DrawButtonShadow:
+  // a second, lighter tone plus Skia's own glyph-edge antialiasing would
+  // read as a shadow cast on top of a shadow. Stronger under Skia where
+  // subpixel AA makes a softer strip read better than flat gray replacement.
   {$IFDEF SKIA}
   cShadowCover = 168;
   {$ELSE}

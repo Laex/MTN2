@@ -93,8 +93,8 @@ uses
 
 const
   // Points; half steps where terminals are usually set (8..12 pt). 6 and 24 pt
-  // are cDisplayMinFontSize / cDisplayMaxFontSize px. 10.5 pt = the old
-  // 14 px default, 11 pt = Windows Terminal's default.
+  // are cDisplayMinFontSize / cDisplayMaxFontSize px. 10.5 pt = 14 px (the
+  // default), 11 pt = Windows Terminal's default.
   cFontPoints: array[0..20] of Single =
     (6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13, 14, 15, 16,
      18, 20, 22, 24);

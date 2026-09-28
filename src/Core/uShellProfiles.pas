@@ -70,8 +70,8 @@ function ProfileInitCommand(const AProfileId: string): string;
 /// reaches TConPtySession, including cmd.exe's OEM866 console writes.</summary>
 function ProfileOutputEncoding(const AProfileId: string): Boolean;
 /// <summary>Always False: real ConPTY gives every profile genuine console
-/// line-editing/echo via conhost, so no profile needs the local
-/// line-buffer/echo simulation the old pipe backend required.</summary>
+/// line-editing/echo via conhost, so no profile needs a local
+/// line-buffer/echo simulation.</summary>
 function ProfileUsesLineBufferedInput(const AProfileId: string): Boolean;
 /// <summary>Rewrite a PS command so its top-level result never reaches the
 /// format engine - piped stdout (no real console) hangs indefinitely
@@ -574,10 +574,10 @@ end;
 
 function BuildInteractivePsCmdLine(const AExeName: string): string;
 begin
-  // Real ConPTY is a console: start an interactive host. The old pipe-backend
-  // line (-NoLogo -NoExit -File -) treated stdin as a script; `exit` then only
-  // ended that script and -NoExit dropped into a REPL, so the process never
-  // died and the background console could not RestartOnExit (cmd /k does).
+  // Real ConPTY is a console: start an interactive host. With -NoExit -File -
+  // stdin would be a script; `exit` would only end that script and -NoExit
+  // would drop into a REPL, so the process would never die and the
+  // background console could not RestartOnExit (cmd /k does).
   Result := AExeName + ' -NoLogo';
 end;
 
@@ -655,8 +655,7 @@ begin
     // submits exactly once.
     Result := #10
   else if (NormId = cShellProfilePowerShell) or (NormId = cShellProfilePwsh) then
-    // PowerShell/pwsh under real ConPTY (a genuine console, unlike the old
-    // piped-stdin backend this CRLF choice predates): a lone CR submits the
+    // PowerShell/pwsh under real ConPTY (a genuine console): a lone CR submits the
     // line correctly, and PSReadLine's own multi-line/predictive-text
     // machinery treats the extra trailing LF as its own edit keystroke
     // (matching Ctrl+J's raw byte) rather than a harmless second Enter --
@@ -685,23 +684,19 @@ begin
   // Real ConPTY normalizes every profile's console output to a
   // UTF-8 VT stream before it ever reaches TConPtySession's pipe -- conhost
   // translates cmd.exe's OEM866 console buffer writes the same way it
-  // translates PowerShell/WSL's native UTF-8, so there is no longer a
-  // profile-dependent choice to make here. Confirmed empirically: under the
-  // old pipe backend cmd emitted raw OEM866 (needed CP866 decode); under
-  // real ConPTY it emits UTF-8 (CP866 decode of it produces mojibake).
+  // translates PowerShell/WSL's native UTF-8, so there is no
+  // profile-dependent choice to make here (decoding cmd's output as CP866
+  // would produce mojibake).
   Result := True;
 end;
 
 function ProfileUsesLineBufferedInput(const AProfileId: string): Boolean;
 begin
   // Real ConPTY gives every profile a genuine console with real
-  // line-editing and character echo from conhost itself -- the local
-  // line-buffer/echo simulation below existed only because the old pipe
-  // backend had none at all. Keeping it running on top of real echo double-
-  // echoes typed commands and corrupts the primary buffer's prompt-tracking
-  // heuristics (confirmed by manual testing: "dir" appearing twice, garbled
-  // `dir` output). Every profile now uses the same raw-passthrough path WSL
-  // already used successfully under the old pipe backend.
+  // line-editing and character echo from conhost itself. A local
+  // line-buffer/echo on top of that would double-echo typed commands and
+  // corrupt the primary buffer's prompt tracking ("dir" appearing twice,
+  // garbled `dir` output). Every profile uses raw passthrough.
   Result := False;
 end;
 
@@ -791,18 +786,17 @@ begin
   // correctly (own internal buffer matches the visible line), the same way
   // WSL's bash/readline already did. See ProfileNeedsBackspaceWorkaround:
   // conhost's echo for a correctly-applied #127 is also the same simple,
-  // non-CUP "\b <space> \b" idiom WSL always used, so the CUP-based local
-  // echo workaround is no longer needed for any profile either.
+  // non-CUP "\b <space> \b" idiom WSL uses, so no profile needs the
+  // CUP-based local echo workaround.
   Result := #127;
 end;
 
 function ProfileNeedsBackspaceWorkaround(const AProfileId: string): Boolean;
 begin
-  // No longer needed for any profile: this workaround existed only because
-  // real conhost's erase-echo for a bare #8 (BS) used absolute cursor
-  // addressing (CUP) that this app's primary buffer couldn't map onto its
-  // own coordinates -- see ProfileBackspaceChar. Now that every profile
-  // sends #127 (DEL) instead, conhost applies it correctly to its own
+  // Not needed for any profile. Conhost's erase-echo for a bare #8 (BS)
+  // uses absolute cursor addressing (CUP) that the primary buffer cannot
+  // map onto its own coordinates -- see ProfileBackspaceChar. Every profile
+  // sends #127 (DEL) instead, which conhost applies correctly to its own
   // internal line-edit buffer AND echoes it the same simple, non-CUP
   // "\b <space> \b" way WSL's bash/readline always did, which the normal
   // (non-workaround) backspace path already handles correctly.
