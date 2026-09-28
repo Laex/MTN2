@@ -32,6 +32,9 @@ type
     /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
     ShowNotifications: Boolean;
     ShadowStyle: TShadowStyle;
+    /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
+    /// terminal window. Off by default: more rows fit.</summary>
+    LineSpacing: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -244,6 +247,7 @@ begin
   Result.ShowPanelIcons := True;
   Result.ShowNotifications := True;
   Result.ShadowStyle := ssClassic;
+  Result.LineSpacing := False;
   Result.Language := '';
 end;
 

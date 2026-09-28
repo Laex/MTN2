@@ -66,6 +66,7 @@ type
     ShowNotifications: Boolean;
     /// <summary>uDisplaySettings.ShadowStyleId: 'classic' / 'soft' / 'none'.</summary>
     ShadowStyle: string;
+    LineSpacing: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -513,6 +514,7 @@ begin
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
+      Root.AddPair('lineSpacing', TJSONBool.Create(ASession.LineSpacing));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -561,6 +563,7 @@ begin
   ASession.ShowPanelIcons := True;
   ASession.ShowNotifications := True;
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
+  ASession.LineSpacing := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -623,6 +626,7 @@ begin
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));
+      ASession.LineSpacing := JsonBool(Root, 'lineSpacing', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

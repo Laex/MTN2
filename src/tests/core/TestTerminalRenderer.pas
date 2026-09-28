@@ -18,6 +18,7 @@ type
     [Test] procedure TestFitSnapsTopToDevicePixel;
     [Test] procedure TestGlyphBitmapIsDeviceSized;
     [Test] procedure TestDescendersInsideCell;
+    [Test] procedure TestLineSpacing;
   end;
 
 implementation
@@ -205,6 +206,45 @@ begin
     end;
   end;
   Assert.IsTrue(Clipped = '', 'clipped:' + Clipped);
+end;
+
+procedure TTestTerminalRenderer.TestLineSpacing;
+const
+  cFont = 'Cascadia Mono';
+var
+  R: TTerminalRenderer;
+  Measure: TBitmap;
+  H, Top, Plain, Spaced, TopPlain, TopSpaced: Single;
+begin
+  // Extra height is added and split: the line stays centred.
+  H := FitGlyphLine(17.04, 1, 17, 1.0, Top, 2.2);
+  Assert.IsTrue(SameF(H, 19), Format('17.04 + 2.2 -> 19 rows of pixels, got %g', [H]));
+  Assert.IsTrue(Top >= 0.99, Format('gap above the text too, top %g', [Top]));
+
+  if not FontFamilyInstalled(cFont) then
+  begin
+    Assert.Pass(cFont + ' not installed');
+    Exit;
+  end;
+  Measure := TBitmap.Create(16, 16);
+  R := TTerminalRenderer.Create;
+  try
+    // 11 pt as Windows Terminal (and Far in it) uses by default.
+    R.SetFont(cFont, 11 * 96 / 72, 500, 150, Measure.Canvas);
+    Plain := R.CellHeight;
+    TopPlain := R.GlyphTop;
+    R.SetLineSpacing(True, 500, 150, Measure.Canvas);
+    Spaced := R.CellHeight;
+    TopSpaced := R.GlyphTop;
+    Assert.IsTrue(SameF(Plain, 17), Format('off: %g, want 17', [Plain]));
+    Assert.IsTrue(SameF(Spaced, 19), Format('on: %g, want 19 (Windows Terminal)', [Spaced]));
+    Assert.IsTrue(TopSpaced > TopPlain, 'text moved down into the middle');
+    R.SetLineSpacing(False, 500, 150, Measure.Canvas);
+    Assert.IsTrue(SameF(R.CellHeight, Plain), 'off again: back to the plain height');
+  finally
+    R.Free;
+    Measure.Free;
+  end;
 end;
 
 initialization

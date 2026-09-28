@@ -88,6 +88,7 @@ begin
   Result.ShowPanelIcons := False;
   Result.ShowNotifications := False;
   Result.ShadowStyle := 'soft';
+  Result.LineSpacing := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
   SetLength(Result.Panels.WorkspaceTabs, 1);
@@ -121,6 +122,7 @@ begin
     Assert.IsTrue(SameValue(Loaded.Zoom, 1.25), 'zoom still saved');
     Assert.IsTrue(Loaded.Language = 'ru', 'language saved');
     Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
+    Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -163,6 +165,9 @@ begin
     Pair := Root.RemovePair('shadowStyle');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('lineSpacing');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -177,6 +182,7 @@ begin
     Assert.IsTrue(Sess.ShowNotifications, 'missing showNotifications -> on');
     Assert.IsTrue(Sess.Language = '', 'missing language -> empty (English)');
     Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
+    Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

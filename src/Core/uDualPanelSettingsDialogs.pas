@@ -216,7 +216,7 @@ begin
     IndexOfDisplayFontSize(Cur.FontSize), IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
-    Cur.ShowNotifications, Ord(Cur.ShadowStyle)), FOnCommand);
+    Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing), FOnCommand);
   Notify;
 end;
 
@@ -363,6 +363,7 @@ begin
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
     Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
       Disp.ShadowStyle := TShadowStyle(ShadowIdx);

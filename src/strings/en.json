@@ -137,6 +137,7 @@
       "lbl_interval": "Interval",
       "lbl_language": "Language",
       "lbl_shadows": "Shadows",
+      "line_spacing": "Line spacing (as in a terminal)",
       "blink": "Blink cursor",
       "panel_icons": "Show panel icons",
       "notifications": "Show pop-up notifications",

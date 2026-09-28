@@ -1040,6 +1040,7 @@ begin
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
   Result.ShadowStyle := GShadowStyle;
+  Result.LineSpacing := FSession.LineSpacing;
   Result.Language := CurrentLocale;
 end;
 
@@ -1055,6 +1056,7 @@ begin
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
   FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
+  FSession.LineSpacing := ASettings.LineSpacing;
   GShadowStyle := ASettings.ShadowStyle;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
@@ -1072,6 +1074,7 @@ begin
     FRenderer.SetFont(ASettings.FontName, ASettings.FontSize,
       ClientWidth, ClientHeight, Canvas);
     FRenderer.SetZoom(ASettings.Zoom, ClientWidth, ClientHeight, Canvas);
+    FRenderer.SetLineSpacing(ASettings.LineSpacing, ClientWidth, ClientHeight, Canvas);
     FSession.FontName := FRenderer.FontName;
     FSession.FontSize := FRenderer.BaseFontSize;
   end
@@ -1129,6 +1132,7 @@ begin
   FCursorBlinkEnabled := Sess.CursorBlink;
   FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetZoom(Sess.Zoom, ClientWidth, ClientHeight, Canvas);
+  FRenderer.SetLineSpacing(Sess.LineSpacing, ClientWidth, ClientHeight, Canvas);
 end;
 
 procedure TMainForm.PersistSession;
@@ -1199,6 +1203,7 @@ begin
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
+  Sess.LineSpacing := FSession.LineSpacing;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever

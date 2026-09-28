@@ -70,6 +70,16 @@
     },
     {
       "type": "checkbox",
+      "id": "line_spacing",
+      "text": "Line spacing (as in a terminal)",
+      "checked": false,
+      "col": 1,
+      "row": 12,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
       "id": "blink",
       "text": "Blink cursor",
       "checked": true,

@@ -50,9 +50,16 @@ type
   /// logical px. Returns the cell height (whole device pixels: the rounded
   /// line height, or more if the ink needs it) and, in AGlyphTop, where the line top
   /// goes: centred like before, then shifted so the ink fits, on a whole
-  /// device pixel so the baseline is crisp.</summary>
+  /// device pixel so the baseline is crisp. AExtraH (line spacing) is added
+  /// to the line height; the text stays centred, so it splits top/bottom.</summary>
   function FitGlyphLine(ALineH, AInkTop, AInkBottom, AScale: Single;
-    out AGlyphTop: Single): Single;
+    out AGlyphTop: Single; AExtraH: Single = 0): Single;
+
+const
+  /// <summary>Line spacing option: extra row height as a fraction of the font
+  /// size. 0.15 is what Windows Terminal adds (Cascadia Mono 11 pt: 17 px of
+  /// ascent + descent, 19 px rows); fonts themselves report a zero line gap.</summary>
+  cLineSpacingEm = 0.15;
 
 type
   TTerminalRenderer = class
@@ -72,6 +79,7 @@ type
     FGlyphAdvW: Single;   // natural glyph advance width (logical, pre-snap)
     FGlyphAdvH: Single;   // natural glyph/line height (logical, pre-snap)
     FGlyphTop: Single;    // text line top inside the cell (logical, see FitGlyphLine)
+    FLineSpacing: Boolean; // Display "Line spacing": cLineSpacingEm of extra row height
     // MeasureInk result for this font/size/scale: Resize re-runs the metrics
     // on every window resize, the ink probe only has to run when these change.
     FInkKey: string;
@@ -104,6 +112,11 @@ type
     procedure Resize(AWidth, AHeight: Single; ACanvas: TCanvas);
     procedure SetSceneScale(AScale: Single; AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
     procedure SetZoom(AZoom: Single; AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
+    /// <summary>Display "Line spacing": rows cLineSpacingEm of the font size
+    /// taller, text centred, like a terminal window. Off = rows as tall as
+    /// the font's line (more rows on screen).</summary>
+    procedure SetLineSpacing(AOn: Boolean; AClientWidth, AClientHeight: Single;
+      ACanvas: TCanvas);
     procedure SetFont(const AFontName: string; ABaseSize: Single;
       AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
     procedure AdjustZoom(ADelta: Single; AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
@@ -120,6 +133,7 @@ type
     property CellWidth: Single read FCellWidth;
     property CellHeight: Single read FCellHeight;
     property GlyphTop: Single read FGlyphTop;
+    property LineSpacing: Boolean read FLineSpacing;
     property SceneScale: Single read FSceneScale;
     property FontName: string read FFontName;
     property BaseFontSize: Single read FBaseFontSize;
@@ -168,7 +182,7 @@ begin
 end;
 
 function FitGlyphLine(ALineH, AInkTop, AInkBottom, AScale: Single;
-  out AGlyphTop: Single): Single;
+  out AGlyphTop: Single; AExtraH: Single): Single;
 const
   // Metrics that land on a device pixel within float noise must not grow a
   // whole row (16.0000019 * 1.25 is 20, not 21).
@@ -181,7 +195,7 @@ begin
     AScale := 1.0;
   // The line height rounds as it always has (Consolas 16.4 stays 16 rows of
   // pixels: its leading is blank); only ink that does not fit grows the cell.
-  DevH := Max(Max(Round(ALineH * AScale),
+  DevH := Max(Max(Round((ALineH + Max(AExtraH, 0)) * AScale),
     Ceil((AInkBottom - AInkTop) * AScale - cEps)), 1);
   Result := DevH / AScale;
   // Centre the line (what TTextAlign.Center did), then pull the ink inside.
@@ -351,7 +365,7 @@ procedure TTerminalRenderer.CalculateCellMetrics(ACanvas: TCanvas);
 var
   Layout: TTextLayout;
   R: TRectF;
-  InkTop, InkBottom: Single;
+  InkTop, InkBottom, Extra: Single;
   InkKey: string;
 begin
   Layout := TTextLayoutManager.DefaultTextLayout.Create;
@@ -406,7 +420,11 @@ begin
     InkTop := 0;
     InkBottom := FGlyphAdvH;
   end;
-  FCellHeight := FitGlyphLine(FGlyphAdvH, InkTop, InkBottom, FSceneScale, FGlyphTop);
+  if FLineSpacing then
+    Extra := EffectiveFontSize * cLineSpacingEm
+  else
+    Extra := 0;
+  FCellHeight := FitGlyphLine(FGlyphAdvH, InkTop, InkBottom, FSceneScale, FGlyphTop, Extra);
 end;
 
 function TTerminalRenderer.MeasureInk(ALineH: Single; out AInkTop, AInkBottom: Single): Boolean;
@@ -537,6 +555,17 @@ begin
   if SameValue(AScale, FSceneScale) then
     Exit;
   FSceneScale := AScale;
+  FCols := 0;
+  FRows := 0;
+  Resize(AClientWidth, AClientHeight, ACanvas);
+end;
+
+procedure TTerminalRenderer.SetLineSpacing(AOn: Boolean; AClientWidth,
+  AClientHeight: Single; ACanvas: TCanvas);
+begin
+  if AOn = FLineSpacing then
+    Exit;
+  FLineSpacing := AOn;
   FCols := 0;
   FRows := 0;
   Resize(AClientWidth, AClientHeight, ACanvas);
