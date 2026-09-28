@@ -22,16 +22,16 @@
         "Consolas"
       ],
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 50,
-      "height": 8
+      "height": 7
     },
     {
       "type": "label",
       "text": "Size",
       "id": "lbl_size",
       "col": 1,
-      "row": 11,
+      "row": 8,
       "width": 8,
       "height": 1
     },
@@ -43,7 +43,7 @@
         "14 pt"
       ],
       "col": 10,
-      "row": 11,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -52,7 +52,7 @@
       "text": "Zoom",
       "id": "lbl_zoom",
       "col": 26,
-      "row": 11,
+      "row": 8,
       "width": 8,
       "height": 1
     },
@@ -64,7 +64,7 @@
         "100%"
       ],
       "col": 35,
-      "row": 11,
+      "row": 8,
       "width": 16,
       "height": 1
     },
@@ -74,8 +74,24 @@
       "text": "Line spacing (as in a terminal)",
       "checked": false,
       "col": 1,
-      "row": 12,
+      "row": 9,
       "width": 50,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "font_note",
+      "col": 1,
+      "row": 10,
+      "width": 50,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 11,
+      "width": 52,
       "height": 1
     },
     {
@@ -84,7 +100,7 @@
       "text": "Blink cursor",
       "checked": true,
       "col": 1,
-      "row": 13,
+      "row": 12,
       "width": 22,
       "height": 1
     },
@@ -93,7 +109,7 @@
       "text": "Interval",
       "id": "lbl_interval",
       "col": 24,
-      "row": 13,
+      "row": 12,
       "width": 10,
       "height": 1
     },
@@ -105,8 +121,15 @@
         "530 ms"
       ],
       "col": 35,
-      "row": 13,
+      "row": 12,
       "width": 16,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 13,
+      "width": 52,
       "height": 1
     },
     {
@@ -115,38 +138,18 @@
       "text": "Show panel icons",
       "checked": true,
       "col": 1,
-      "row": 15,
-      "width": 50,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "",
-      "id": "font_note",
-      "col": 1,
       "row": 14,
       "width": 50,
       "height": 1
     },
     {
-      "type": "label",
-      "text": "Language",
-      "id": "lbl_language",
+      "type": "checkbox",
+      "id": "notifications",
+      "text": "Show pop-up notifications",
+      "checked": true,
       "col": 1,
-      "row": 16,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "language",
-      "selected": 0,
-      "items": [
-        "English"
-      ],
-      "col": 13,
-      "row": 16,
-      "width": 20,
+      "row": 15,
+      "width": 50,
       "height": 1
     },
     {
@@ -154,7 +157,7 @@
       "text": "Shadows",
       "id": "lbl_shadows",
       "col": 1,
-      "row": 17,
+      "row": 16,
       "width": 12,
       "height": 1
     },
@@ -168,18 +171,43 @@
         "None"
       ],
       "col": 13,
-      "row": 17,
+      "row": 16,
       "width": 20,
       "height": 1
     },
     {
-      "type": "checkbox",
-      "id": "notifications",
-      "text": "Show pop-up notifications",
-      "checked": true,
+      "type": "separator",
+      "col": 0,
+      "row": 17,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Language",
+      "id": "lbl_language",
       "col": 1,
       "row": 18,
-      "width": 50,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "language",
+      "selected": 0,
+      "items": [
+        "English"
+      ],
+      "col": 13,
+      "row": 18,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 19,
+      "width": 52,
       "height": 1
     },
     {

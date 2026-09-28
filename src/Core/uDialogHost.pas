@@ -40,6 +40,9 @@ type
     FUpdateDirty: Boolean;
     function FirstFocusable: Integer;
     function NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
+    /// <summary>Joins full-width separator rules to the dialog frame:
+    /// ╟─╢ on a double frame, ├─┤ on a single one, +-+ on an ASCII one.</summary>
+    procedure JoinSeparatorsToFrame(const AGrid: TTerminalGrid);
     function FocusedIsInput: Boolean;
     /// <summary>Fires the first button whose command is Yes (AYes) or No.</summary>
     function TryYesNoButton(AYes: Boolean): Boolean;
@@ -1768,6 +1771,7 @@ begin
         DrawButtonControl(AGrid, R, I, C);
     end;
   end;
+  JoinSeparatorsToFrame(AGrid);
   // Half-block button shadows after faces (▄ right, ▀ below).
   for I := 0 to High(FDecl.Controls) do
   begin
@@ -1786,6 +1790,65 @@ begin
     DrawButtonShadow(AGrid, R);
   end;
   DrawDropDownPopup(AGrid);
+end;
+
+procedure TDialogHost.JoinSeparatorsToFrame(const AGrid: TTerminalGrid);
+var
+  I, X, Y: Integer;
+  R: TRectI;
+  Edge, LeftJoin, RightJoin, LineCh: Char;
+  Cell: TCharCell;
+begin
+  for I := 0 to High(FDecl.Controls) do
+  begin
+    if I > High(FControlBounds) then
+      Break;
+    if (FDecl.Controls[I].Kind <> dckLabel) or
+       not IsHRuleText(FDecl.Controls[I].Text) then
+      Continue;
+    R := FControlBounds[I];
+    Y := R.Top;
+    // Only a rule across the whole client area reaches the frame.
+    if (R.Left <> FBounds.Left + 1) or (R.Right <> FBounds.Right - 1) or
+       (Y <= FBounds.Top) or (Y >= FBounds.Bottom) or
+       (Y < 0) or (Y > High(AGrid)) or (FBounds.Left < 0) or
+       (FBounds.Right > High(AGrid[Y])) then
+      Continue;
+    // Match the frame the theme drew on this row.
+    Edge := AGrid[Y][FBounds.Left].CharValue;
+    if Edge = chDblV then
+    begin
+      LeftJoin := chDblVSingleHR;
+      RightJoin := chDblVSingleHL;
+      LineCh := chBoxH;
+    end
+    else if Edge = chBoxV then
+    begin
+      LeftJoin := chBoxVR;
+      RightJoin := chBoxVL;
+      LineCh := chBoxH;
+    end
+    else if Edge = '|' then
+    begin
+      LeftJoin := '+';
+      RightJoin := '+';
+      LineCh := '-';
+    end
+    else
+      Continue;
+    for X := R.Left to R.Right do
+    begin
+      Cell := AGrid[Y][X];
+      Cell.CharValue := LineCh;
+      AGrid[Y][X] := Cell;
+    end;
+    Cell := AGrid[Y][FBounds.Left];
+    Cell.CharValue := LeftJoin;
+    AGrid[Y][FBounds.Left] := Cell;
+    Cell := AGrid[Y][FBounds.Right];
+    Cell.CharValue := RightJoin;
+    AGrid[Y][FBounds.Right] := Cell;
+  end;
 end;
 
 function TDialogHost.ChromeContext: TFunctionBarContext;

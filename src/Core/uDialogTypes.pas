@@ -139,8 +139,12 @@ function MakeList(const AId: string; const AItems: TArray<string>;
 /// <summary>Collapsed combo: selected item + popup list (DropDownList).</summary>
 function MakeDropDown(const AId: string; const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogControl;
-/// <summary>Horizontal rule label (─ x width) for protocol 2.0 separators.</summary>
+/// <summary>Horizontal rule label (─ x width) for protocol 2.0 separators
+/// (JSON "separator"). Spanning the whole client width, TDialogHost joins
+/// its ends to the dialog frame.</summary>
 function MakeHRule(AWidth: Integer): TDialogControl;
+/// <summary>True for a MakeHRule caption (only ─).</summary>
+function IsHRuleText(const AText: string): Boolean;
 /// <summary>Protocol 2.0 helper: set absolute cell box (col/row/w/h).</summary>
 function WithControlBox(const ACtrl: TDialogControl; ACol, ARow, AWidth,
   AHeight: Integer): TDialogControl;
@@ -354,6 +358,16 @@ end;
 function MakeHRule(AWidth: Integer): TDialogControl;
 begin
   Result := MakeLabel(StringOfChar(chBoxH, Max(AWidth, 1)));
+end;
+
+function IsHRuleText(const AText: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := AText <> '';
+  for I := 1 to Length(AText) do
+    if AText[I] <> chBoxH then
+      Exit(False);
 end;
 
 function MakeLabel(const AText: string; const AId: string = ''): TDialogControl;

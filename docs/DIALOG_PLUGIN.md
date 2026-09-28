@@ -185,6 +185,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `radio_group` / `radiogroup` | `id`, `text` (подпись), `items[]` или `children` из `radio`, `selected`, опционально `item_ids[]`; Up/Down / клик; в values – id пункта или текст |
 | `button` | `id`, `text`, `default`, `cancel` → command |
 | `button_row` | Группа кнопок в одну строку (дети flatten) |
+| `separator` | Горизонтальная линия (`MakeHRule`): `row`, `col` 0 и `width` во всю клиентскую ширину. Такая линия смыкается с рамкой диалога – `╟─╢` у двойной рамки, `├─┤` у одинарной, `+-+` у ASCII-темы (`TDialogHost.JoinSeparatorsToFrame`); при расширении диалога под перевод растягивается вместе с ним. Не входит в values. |
 | `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне Dialog MVP. |
 | `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
@@ -211,7 +212,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `dropdown` | selected **text** (не index); индекс – `GetListSelectedIndex` |
 | `radio_group` | selected **item id** (если задан `item_ids` / id у children), иначе text |
 | `radio` | один ключ на `group` → id (или text) выбранного radio |
-| `label` / `button` / `status` | нет |
+| `label` / `separator` / `button` / `status` | нет |
 
 ---
 

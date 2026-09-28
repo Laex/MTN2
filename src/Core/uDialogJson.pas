@@ -137,6 +137,9 @@ begin
         JsonBool(AObj, 'cancel', False)), AObj)
   else if Typ = 'status' then
     AppendParsed(AList, MakeStatus(Id, Text), AObj)
+  else if Typ = 'separator' then
+    // A full-width rule: TDialogHost joins it to the frame (╟───╢).
+    AppendParsed(AList, MakeHRule(JsonInt(AObj, 'width', 1)), AObj)
   else if Typ = 'colorsample' then
     AppendParsed(AList,
       MakeColorSample(Id, Text, JsonStr(AObj, 'fgFrom'), JsonStr(AObj, 'bgFrom'),
@@ -360,6 +363,9 @@ begin
     C := ADecl.Controls[I];
     case C.Kind of
       dckLabel:
+        if IsHRuleText(C.Text) then
+          One := '{"type":"separator"'
+        else
         begin
           One := Format('{"type":"label","text":"%s"', [EscapeJson(C.Text)]);
           if C.Id <> '' then
