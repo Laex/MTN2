@@ -88,6 +88,7 @@ type
     FOnOpenEditor: TOpenEditorEvent;
     FOnShowProperties: TShowPropertiesEvent;
     FOnShellContextMenu: TShellContextMenuEvent;
+    FOnLaunchConsoleFile: TLaunchConsoleFileEvent;
     FOnQuitRequest: TQuitRequestEvent;
     FOnOpenUpdates: TQuitRequestEvent;
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
@@ -801,7 +802,9 @@ type
     /// <summary>After OleDragLocalFiles returns ? reload if shell moved files out.</summary>
     procedure FinishOleFileDrag(AEffect: LongInt);
     procedure OpenDocument(const AURI: string; AViewOnly: Boolean);
-    procedure OpenTerminal(const AProfileId, ACwd: string);
+    /// <summary>New terminal tab with AProfileId's shell in ACwd; ACommand,
+    /// when given, is typed into that shell.</summary>
+    procedure OpenTerminal(const AProfileId, ACwd: string; const ACommand: string = '');
     /// <summary>Opens APath (file or directory) in a new tab on
     /// the active side ? the single entry point single-instance IPC and the
     /// startup CLI-arg path both call. No-op for '' or a path that doesn't
@@ -822,6 +825,8 @@ type
     property OnShowProperties: TShowPropertiesEvent read FOnShowProperties write FOnShowProperties;
     property OnShellContextMenu: TShellContextMenuEvent read FOnShellContextMenu
       write FOnShellContextMenu;
+    property OnLaunchConsoleFile: TLaunchConsoleFileEvent read FOnLaunchConsoleFile
+      write FOnLaunchConsoleFile;
     property OnQuitRequest: TQuitRequestEvent read FOnQuitRequest write FOnQuitRequest;
     property OnOpenUpdates: TQuitRequestEvent read FOnOpenUpdates write FOnOpenUpdates;
     property OnRunCommand: TRunCommandEvent read FOnRunCommand write FOnRunCommand;
@@ -5879,6 +5884,13 @@ begin
   Path := FileUriToPath(Row.URI);
   if Path = '' then
     Exit;
+  // A console program runs in the built-in console or a terminal tab, so
+  // its output stays on screen; anything else is the Windows shell's.
+  if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(Path) then
+  begin
+    NotifyChanged;
+    Exit;
+  end;
   // Platform shell open (Windows ShellExecute today; xdg-open / open later).
   if not ShellOpenFile(Path) then
     OpenStub(skShellInfo, 'Shell open failed', Path)
@@ -7380,7 +7392,8 @@ begin
   end;
 end;
 
-procedure TDualPanelWindow.OpenTerminal(const AProfileId, ACwd: string);
+procedure TDualPanelWindow.OpenTerminal(const AProfileId, ACwd: string;
+  const ACommand: string);
 var
   I: Integer;
   Ws: TDualPanelWorkspaceTab;
@@ -7423,10 +7436,13 @@ begin
 
   Term.Start(AProfileId, ACwd);
   // Start() may fail synchronously and already have torn the tab down via
-  // TerminalCloseRequest (which picks its own fallback active tab) ? don't
+  // TerminalCloseRequest (which picks its own fallback active tab) - don't
   // touch ActiveWorkspaceIndex again if that happened.
   if not FTerminals.ContainsKey(Ws.Id) then
     Exit;
+  // The shell buffers what is typed before its first prompt.
+  if ACommand <> '' then
+    Term.SendCommand(ACommand);
 
   SyncWindowTitle;
   SyncDirWatches;

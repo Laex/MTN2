@@ -47,6 +47,9 @@ type
     function  EnsureShell(const ACwd: string): Boolean;
     procedure SyncWorkingDir(const APath: string);
     procedure RunCommand(const ACommand, AWorkingDir: string);
+    /// <summary>A command still runs in the persistent shell (it has a child
+    /// process). A shell not started yet is not busy.</summary>
+    function ShellBusy: Boolean;
     procedure CloseConsole;
     function  HandleInput(var AKey: Word; AShift: TShiftState;
                 var AKeyChar: Char): Boolean; override;
@@ -260,6 +263,11 @@ begin
     Exit;
   end;
   FLastSyncedCwd := Path;
+end;
+
+function TConsoleWindow.ShellBusy: Boolean;
+begin
+  Result := Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess;
 end;
 
 procedure TConsoleWindow.RunCommand(const ACommand, AWorkingDir: string);

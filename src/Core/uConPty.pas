@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.SyncObjs, Winapi.Windows,
-  uShellProfiles, uConPtyApi;
+  Winapi.TlHelp32, uShellProfiles, uConPtyApi;
 
 type
   TConPtyOutputEvent = reference to procedure(const AText: string);
@@ -117,6 +117,9 @@ type
     procedure Resize(ACols, ARows: Word);
     procedure Terminate;
     function IsRunning: Boolean;
+    /// <summary>The shell process has a child process: a command it started
+    /// is still running.</summary>
+    function HasChildProcess: Boolean;
     property LastError: string read FLastError;
     property Persistent: Boolean read FPersistent;
     property ProfileId: string read FProfileId write FProfileId;
@@ -678,6 +681,35 @@ begin
   Size.X := SmallInt(ACols);
   Size.Y := SmallInt(ARows);
   ResizePseudoConsole(FHPC, Size);
+end;
+
+function TConPtySession.HasChildProcess: Boolean;
+var
+  Pid: DWORD;
+  Snap: THandle;
+  Entry: TProcessEntry32;
+begin
+  Result := False;
+  if (FProcess = 0) or not IsRunning then
+    Exit;
+  Pid := GetProcessId(FProcess);
+  if Pid = 0 then
+    Exit;
+  Snap := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if Snap = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    Entry.dwSize := SizeOf(Entry);
+    if Process32First(Snap, Entry) then
+      repeat
+        // conhost.exe is the pseudoconsole's own host, not a command.
+        if (Entry.th32ParentProcessID = Pid) and
+           not SameText(ExtractFileName(Entry.szExeFile), 'conhost.exe') then
+          Exit(True);
+      until not Process32Next(Snap, Entry);
+  finally
+    CloseHandle(Snap);
+  end;
 end;
 
 function TConPtySession.IsRunning: Boolean;

@@ -10,6 +10,7 @@ type
   TTestPtyLifecycle = class
   public
     [Test] procedure TestTerminateClearsCallbacks;
+    [Test] procedure TestHasChildProcessWhileCommandRuns;
   end;
 
 implementation
@@ -38,6 +39,46 @@ begin
     end;
     CheckSynchronize;
     Sleep(5);
+  end;
+end;
+
+// A persistent shell at its prompt has no child process (conhost.exe is the
+// pseudoconsole's host and does not count); while a command runs it has one.
+procedure TestHasChildProcessWhileCommandRuns;
+var
+  Pty: TConPtySession;
+  Busy: Boolean;
+  UntilTick: UInt64;
+begin
+  Pty := TConPtySession.Create;
+  try
+    Pty.OnOutput := procedure(const AText: string)
+      begin
+      end;
+    Assert.IsTrue(Pty.StartShell(cShellProfileCmd, GetCurrentDir, 80, 25),
+      'StartShell failed: ' + Pty.LastError);
+    Pump(1500);
+    Assert.IsFalse(Pty.HasChildProcess, 'shell at its prompt is not busy');
+
+    Pty.WriteInput('ping -n 4 127.0.0.1' + #13#10);
+    Busy := False;
+    UntilTick := GetTickCount64 + 2000;
+    while not Busy and (GetTickCount64 < UntilTick) do
+    begin
+      Pump(100);
+      Busy := Pty.HasChildProcess;
+    end;
+    Assert.IsTrue(Busy, 'shell running ping is busy');
+
+    UntilTick := GetTickCount64 + 10000;
+    while Busy and (GetTickCount64 < UntilTick) do
+    begin
+      Pump(200);
+      Busy := Pty.HasChildProcess;
+    end;
+    Assert.IsFalse(Busy, 'free again once the command ends');
+  finally
+    Pty.Free;
   end;
 end;
 
@@ -85,6 +126,11 @@ end;
 procedure TTestPtyLifecycle.TestTerminateClearsCallbacks;
 begin
   TestPtyLifecycle.TestTerminateClearsCallbacks;
+end;
+
+procedure TTestPtyLifecycle.TestHasChildProcessWhileCommandRuns;
+begin
+  TestPtyLifecycle.TestHasChildProcessWhileCommandRuns;
 end;
 
 initialization

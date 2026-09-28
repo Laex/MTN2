@@ -105,6 +105,7 @@ uses
   uVfsRouter in 'Core\uVfsRouter.pas',
   uDriveInfo in 'Core\uDriveInfo.pas',
   uShellAssoc in 'Core\uShellAssoc.pas',
+  uConsoleLaunch in 'Core\uConsoleLaunch.pas',
   uShellIcons in 'Core\uShellIcons.pas',
   uColorCoding in 'Core\uColorCoding.pas',
   uOverlayRenderer in 'Core\uOverlayRenderer.pas',

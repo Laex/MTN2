@@ -191,6 +191,9 @@ type
   TShowPropertiesEvent = procedure(const APaths: TArray<string>) of object;
   /// <summary>Windows context menu for APaths, anchored at a Dual Panel
   /// local cell (the cursor row).</summary>
+  /// <summary>Enter on a local file: True when the host ran it as a console
+  /// program (uConsoleLaunch); False leaves it to the Windows shell.</summary>
+  TLaunchConsoleFileEvent = function(const APath: string): Boolean of object;
   TShellContextMenuEvent = procedure(const APaths: TArray<string>;
     ALocalCol, ALocalRow: Integer) of object;
   TRunCommandEvent = procedure(const ACommand, AWorkingDir: string) of object;

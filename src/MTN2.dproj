@@ -288,6 +288,7 @@
         <DCCReference Include="Core\uVfsRouter.pas"/>
         <DCCReference Include="Core\uDriveInfo.pas"/>
         <DCCReference Include="Core\uShellAssoc.pas"/>
+        <DCCReference Include="Core\uConsoleLaunch.pas"/>
         <DCCReference Include="Core\uShellIcons.pas"/>
         <DCCReference Include="Core\uColorCoding.pas"/>
         <DCCReference Include="Core\uOverlayRenderer.pas"/>

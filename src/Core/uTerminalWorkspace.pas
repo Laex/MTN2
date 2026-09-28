@@ -45,6 +45,8 @@ type
   public
     constructor Create(const ATheme: IThemeRenderer; AId: Cardinal);
     function  Start(const AProfileId, ACwd: string): Boolean;
+    /// <summary>Types ACommand and Enter into the tab's shell.</summary>
+    procedure SendCommand(const ACommand: string);
     procedure CloseWorkspace;
     function  HandleInput(var AKey: Word; AShift: TShiftState;
                 var AKeyChar: Char): Boolean; override;
@@ -207,6 +209,19 @@ begin
   FHistory.AppendStatus('[MTN2] ' + ShellProfileTitle(FProfileId) + ' ready');
   SyncTitle;
   Result := True;
+end;
+
+procedure TTerminalWorkspaceWindow.SendCommand(const ACommand: string);
+var
+  Line, Id: string;
+begin
+  if (Trim(ACommand) = '') or not Assigned(FPty) or not FPty.IsRunning then
+    Exit;
+  Line := ACommand;
+  Id := NormalizeShellProfileId(FProfileId);
+  if (Id = cShellProfilePowerShell) or (Id = cShellProfilePwsh) then
+    Line := PsPipeSafeCommand(Line);
+  FPty.WriteInput(Line + ProfileReturnSeq(FProfileId));
 end;
 
 { ---- AppendOutput override: follow tail cursor ----------------------------- }

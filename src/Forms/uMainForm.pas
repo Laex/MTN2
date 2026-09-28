@@ -13,7 +13,7 @@ uses
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing,
-  uDialogHost;
+  uDialogHost, uConsoleLaunch;
 
 type
   TMainForm = class(TForm)
@@ -158,7 +158,9 @@ type
     procedure DualPanelShellCwdSync(const APath: string);
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
+    procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
     function EnsureConsole: TConsoleWindow;
+    function DualPanelLaunchConsoleFile(const APath: string): Boolean;
     procedure ShowConsoleMode;
     procedure ShowPanelMode;
     procedure ApplyConsoleLayout;
@@ -809,6 +811,7 @@ begin
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
+  FDualPanel.OnLaunchConsoleFile := DualPanelLaunchConsoleFile;
   FDualPanel.OnSetConsoleProfile := ChangeConsoleProfile;
   FDualPanel.OnGetConsoleProfile := GetConsoleProfile;
   FDualPanel.OnGetConsoleStartOnLaunch := GetConsoleStartOnLaunch;
@@ -1580,14 +1583,43 @@ begin
   Recompose;
 end;
 
+function TMainForm.DualPanelLaunchConsoleFile(const APath: string): Boolean;
+var
+  Kind: TLaunchFileKind;
+  Cwd, Profile: string;
+begin
+  Kind := DetectLaunchFileKind(APath);
+  Result := Kind <> lfkOther;
+  if not Result then
+    Exit;
+  Cwd := ExtractFileDir(APath);
+  Profile := GetConsoleProfile;
+  case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy) of
+    cltConsole:
+      DualPanelRunCommand(BuildConsoleLaunchLine(APath, Kind, Profile), Cwd);
+    cltTerminal:
+      begin
+        Profile := TerminalProfileForLaunch(Kind);
+        DualPanelOpenTerminalWith(Profile, Cwd, BuildConsoleLaunchLine(APath, Kind, Profile));
+      end;
+  else
+    Result := False;
+  end;
+end;
+
 procedure TMainForm.DualPanelOpenTerminal(const AProfileId, ACwd: string);
+begin
+  DualPanelOpenTerminalWith(AProfileId, ACwd, '');
+end;
+
+procedure TMainForm.DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
 begin
   if (AProfileId = '') or not Assigned(FDualPanel) then
     Exit;
   // Leave panel console overlay if open.
   if FDualPanel.ConsoleMode then
     ShowPanelMode;
-  FDualPanel.OpenTerminal(AProfileId, ACwd);
+  FDualPanel.OpenTerminal(AProfileId, ACwd, ACommand);
   if Assigned(FMdi) then
     FMdi.Activate(FDualPanel);
   Recompose;
