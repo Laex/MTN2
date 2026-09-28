@@ -1,4 +1,4 @@
-# Selecting files
+## Selecting files
 
 | Key | Action |
 | --- | --- |

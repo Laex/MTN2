@@ -1,4 +1,4 @@
-# Settings files
+## Settings files
 
 The settings folder is `%APPDATA%\MTN2\`. If a `portable.dat` file lies next to `MTN2.exe`, settings are kept next to the program (portable mode).
 

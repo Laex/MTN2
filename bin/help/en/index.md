@@ -1,10 +1,10 @@
-# MTN2 — User Guide
+## MTN2 – User Guide
 
 Modern Terminal Navigator 2 is a dual-panel file manager in the spirit of NDN / FAR Manager with a built-in console, terminals, viewer and editor.
 
 Keys are given for the built-in profile; you can redefine them (see [Key bindings](keymap.md)).
 
-## Contents
+### Contents
 
 - [Program screen](screen.md)
 - [Panels and navigation](panels.md)
@@ -30,7 +30,7 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 - [Key bindings](keymap.md)
 - [Settings files](configfiles.md)
 
-## Using the help
+### Using the help
 
 | Key | Action |
 | --- | --- |
