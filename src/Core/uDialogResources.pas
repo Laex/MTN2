@@ -124,7 +124,8 @@ begin
   Result := LowerCase(S) + '.json';
 end;
 
-{ Loading from disk commented out per user request: dialogs must be loaded ONLY from resources }
+{ Disk lookup, kept disabled: built-in dialogs load only from resources, so a
+  stray dialogs\*.json can never replace a shipped layout. }
 (*
 function TryLoadDialogJsonFromFile(const AFileName: string;
   out AJson: string): Boolean;
@@ -233,7 +234,7 @@ begin
     AJson := '';
   end;
 
-  // Loading from disk disabled per user request:
+  // Disk lookup disabled (see TryFindDialogJsonFile above):
   // if TryFindDialogJsonFile(AResName, FilePath) and
   //    TryLoadDialogJsonFromFile(FilePath, AJson) then
   //   Exit(True);

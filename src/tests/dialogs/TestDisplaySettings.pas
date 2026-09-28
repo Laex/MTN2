@@ -1,4 +1,4 @@
-unit TestDisplaySettings;
+﻿unit TestDisplaySettings;
 
 { Clamp/index helpers, monospace fallback, session round-trip,
   GShowPanelIcons / PanelIconReserve. Also covers the Language field/picker
@@ -22,6 +22,7 @@ type
     [Test] procedure TestLanguagePicker;
     [Test] procedure TestPanelIconFlag;
     [Test] procedure TestShadowStyle;
+    [Test] procedure TestDialogShowsMarkedFiles;
   end;
 
 implementation
@@ -34,7 +35,8 @@ uses
   uConfigLocation,
   uDisplaySettings,
   uSession,
-  System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing;
+  System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing,
+  uStrings, uDialogTypes, uDialogHost, uNDNTheme;
 
 procedure TestClampAndIndex;
 begin
@@ -253,6 +255,52 @@ begin
   end;
 end;
 
+// The real Font / Display dialog, drawn: the "Marked files" row is on
+// screen with the saved choice, in English and in Russian.
+procedure TestDialogShowsMarkedFiles;
+
+  function DrawnText: string;
+  var
+    Host: TDialogHost;
+    Grid: TTerminalGrid;
+    X, Y: Integer;
+  begin
+    Host := TDialogHost.Create(TNDNTheme.Create);
+    try
+      Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
+        ['English'], 0, True, 0, False, Ord(mrsBand)), nil);
+      AllocTerminalGrid(Grid, 100, 40);
+      ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+      Host.Draw(Grid, 100, 40);
+      Result := '';
+      for Y := 0 to High(Grid) do
+      begin
+        for X := 0 to High(Grid[Y]) do
+          Result := Result + Grid[Y][X].CharValue;
+        Result := Result + #10;
+      end;
+    finally
+      Host.Free;
+    end;
+  end;
+
+var
+  Text: string;
+begin
+  try
+    SetLocale('');
+    Text := DrawnText;
+    Assert.IsTrue(Pos('Marked files', Text) > 0, 'label drawn');
+    Assert.IsTrue(Pos('Row background', Text) > 0, 'saved style shown');
+    SetLocale('ru');
+    Text := DrawnText;
+    Assert.IsTrue(Pos('Отмеченные файлы', Text) > 0, 'Russian label drawn in full');
+    Assert.IsTrue(Pos('Фон строки', Text) > 0, 'Russian style name');
+  finally
+    SetLocale('');
+  end;
+end;
+
 procedure TestLanguagePicker;
 var
   Codes: TArray<string>;
@@ -329,6 +377,11 @@ end;
 procedure TTestDisplaySettings.TestShadowStyle;
 begin
   TestDisplaySettings.TestShadowStyle;
+end;
+
+procedure TTestDisplaySettings.TestDialogShowsMarkedFiles;
+begin
+  TestDisplaySettings.TestDialogShowsMarkedFiles;
 end;
 
 procedure TTestDisplaySettings.TestPanelIconFlag;
