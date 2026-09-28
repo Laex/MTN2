@@ -4,14 +4,14 @@ The command line is always below the panels: just start typing. A command runs i
 
 | Key | Action |
 | --- | --- |
-| Enter | run the command (or go there if a path was typed) |
+| Enter | run the command (or go there if a path was typed); then the focus goes back to the panel and the arrows move the cursor again |
 | Ctrl+↓ / Ctrl+↑ | focus the command line / back to the panel |
-| ↑ / ↓ | command history |
+| ↑ / ↓ (while typing a command) | command history |
 | Tab | completion: a name from the panel, or a path from the disk when the word has `\`, `/` or `X:` (repeated presses cycle the matches) |
 | Ctrl+↓ / Alt+↓ (line focused) | command history as a list: Enter – put on the line, Del – remove from the history, Esc – close |
 | Ctrl+Enter | insert the name of the item under the cursor |
 | Ctrl+Shift+Enter | insert the full path of the item |
-| Esc | clear the line; with an empty line – show/hide the console |
+| Esc | step by step: clear the line → give the focus back to the panel → show the console. With an empty line the first step is skipped; with the focus on the panel Esc shows the console at once |
 | Ctrl+O | panels ↔ console |
 | Ctrl+Shift+O | synchronize the folder between the active panel and the console |
 | Ctrl+Alt+O | choose the shell of the background console (cmd, PowerShell, WSL, …) |

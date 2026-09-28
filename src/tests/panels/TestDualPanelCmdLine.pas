@@ -13,6 +13,8 @@ type
     [Test] procedure TestCompletionHelpers;
     [Test] procedure TestTabAndHistory;
     [Test] procedure TestCtrlUpReturnsToPanel;
+    [Test] procedure TestEnterReturnsFocusToPanel;
+    [Test] procedure TestEscClearsThenReturnsToPanel;
     [Test] procedure TestCommandLineDraw;
     [Test] procedure TestInputLineInsertCaret;
     [Test] procedure TestInputLineCutClearsText;
@@ -210,6 +212,62 @@ begin
   end;
 end;
 
+// Any command run from the command line (cd, a console command, a file)
+// leaves the arrows to the panel: the line loses the focus on Enter.
+procedure TestEnterReturnsFocusToPanel;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Key: Word;
+  Ch: Char;
+  FocusedInSubmit: Boolean;
+begin
+  FocusedInSubmit := True;
+  Mgr := nil;
+  Mgr := TDualPanelCmdLineManager.Create(
+    procedure(const ACommand: string)
+    begin
+      FocusedInSubmit := Mgr.Focused;
+    end,
+    nil);
+  try
+    Mgr.InsertText('cd ..');
+    Mgr.Focus;
+    Key := vkReturn;
+    Ch := #0;
+    Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'Enter handled');
+    Assert.IsFalse(Mgr.Focused, 'the panel has the focus after the command');
+    Assert.IsFalse(FocusedInSubmit, 'already unfocused while the command runs');
+  finally
+    Mgr.Free;
+  end;
+end;
+
+// Esc in the focused command line: clears the text first, then (empty line)
+// gives the focus back to the panel.
+procedure TestEscClearsThenReturnsToPanel;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Key: Word;
+  Ch: Char;
+begin
+  Mgr := TDualPanelCmdLineManager.Create(nil, nil);
+  try
+    Mgr.InsertText('dir');
+    Mgr.Focus;
+    Key := vkEscape;
+    Ch := #0;
+    Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'first Esc handled');
+    Assert.IsTrue(Mgr.Text = '', 'first Esc clears the line');
+    Assert.IsTrue(Mgr.Focused, 'the line keeps the focus');
+    Key := vkEscape;
+    Ch := #0;
+    Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'second Esc handled');
+    Assert.IsFalse(Mgr.Focused, 'second Esc gives the focus to the panel');
+  finally
+    Mgr.Free;
+  end;
+end;
+
 procedure TestCtrlUpReturnsToPanel;
 var
   Mgr: TDualPanelCmdLineManager;
@@ -359,6 +417,16 @@ end;
 procedure TTestDualPanelCmdLine.TestCtrlUpReturnsToPanel;
 begin
   TestDualPanelCmdLine.TestCtrlUpReturnsToPanel;
+end;
+
+procedure TTestDualPanelCmdLine.TestEnterReturnsFocusToPanel;
+begin
+  TestDualPanelCmdLine.TestEnterReturnsFocusToPanel;
+end;
+
+procedure TTestDualPanelCmdLine.TestEscClearsThenReturnsToPanel;
+begin
+  TestDualPanelCmdLine.TestEscClearsThenReturnsToPanel;
 end;
 
 procedure TTestDualPanelCmdLine.TestCommandLineDraw;

@@ -192,7 +192,6 @@ type
   TDualPanelFreeInputHost = record
     CancelDrivePreview: TKeymapProc;
     CloseQuickView: TKeymapProc;
-    ClearCmdLineOnEsc: TKeymapProc;
     HandleFilterInput: TKeymapInputFn;
     DispatchKeymapPrimary: TKeymapActionDispatchFn;
     PreviewCycleDrive: TKeymapDeltaProc;
@@ -1182,9 +1181,11 @@ var
 begin
   Result := True;
   Mods := AShift * cKeyMods;
-  // Command line focused (Ctrl+Down): every key is the command line's, the
-  // panel bindings included (- + * deselect / select / invert, F-keys, ...).
-  // Esc / Ctrl+Up there give the focus back to the panel.
+  // Command line focused (typing, Ctrl+Down): every key is the command
+  // line's, the panel bindings included (- + * deselect / select / invert,
+  // F-keys, ...). Esc there clears the text, and on an empty line gives the
+  // focus back to the panel; Ctrl+Up does that at once. Esc on the panel is
+  // the keymap's (ConsoleToggle by default), text or not.
   if ASnap.CmdFocused then
     Exit(AHost.HandleCmdLineInput(AKey, AShift, AKeyChar));
   if ASnap.DrivePreviewActive and (AKey = vkEscape) then
@@ -1197,12 +1198,6 @@ begin
   begin
     AHost.CloseQuickView();
     ConsumeKey(AKey, AKeyChar, False);
-    Exit;
-  end;
-  if Chord.Matches(vkEscape) and ASnap.CmdLineHasText then
-  begin
-    AHost.ClearCmdLineOnEsc();
-    ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
   if ASnap.FilterBoxActive then

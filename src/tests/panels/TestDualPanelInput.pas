@@ -80,7 +80,6 @@ type
     QuickHandled: Boolean;
     procedure CancelDrive;
     procedure CloseQV;
-    procedure ClearCmd;
     function HandleFilter(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function DispatchPrimary(AAction: TKeymapAction; var AKey: Word;
       var AKeyChar: Char): Boolean;
@@ -483,7 +482,6 @@ end;
 
 procedure TFreeInputSpy.CancelDrive; begin Last := 'canceldrive'; end;
 procedure TFreeInputSpy.CloseQV; begin Last := 'closeqv'; end;
-procedure TFreeInputSpy.ClearCmd; begin Last := 'clearcmd'; end;
 function TFreeInputSpy.HandleFilter(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
 begin
   Last := 'filter';
@@ -552,7 +550,6 @@ begin
   AHost := Default(TDualPanelFreeInputHost);
   AHost.CancelDrivePreview := ASpy.CancelDrive;
   AHost.CloseQuickView := ASpy.CloseQV;
-  AHost.ClearCmdLineOnEsc := ASpy.ClearCmd;
   AHost.HandleFilterInput := ASpy.HandleFilter;
   AHost.DispatchKeymapPrimary := ASpy.DispatchPrimary;
   AHost.PreviewCycleDrive := ASpy.Preview;
@@ -712,13 +709,16 @@ begin
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'QV Esc handled');
     Assert.IsTrue(Spy.Last = 'closeqv', 'QV Esc closes');
 
+    // Focus on the panel: Esc is the keymap's (the console), even with text
+    // left in the command line.
     Snap.QuickViewVisible := False;
     Snap.CmdLineHasText := True;
+    Spy.PrimaryHandled := True;
     Key := vkEscape;
     Ch := 'x';
-    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'cmdline Esc handled');
-    Assert.IsTrue(Spy.Last = 'clearcmd', 'cmdline Esc clears');
-    Assert.IsTrue(Ch = #0, 'cmdline Esc consumes AKeyChar');
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'panel Esc handled');
+    Assert.IsTrue(Spy.Last = 'primary', 'panel Esc goes to the keymap, not to the command line');
+    Spy.PrimaryHandled := False;
 
     Snap.CmdLineHasText := False;
     Snap.FilterBoxActive := True;

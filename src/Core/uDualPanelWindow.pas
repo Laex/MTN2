@@ -321,7 +321,6 @@ type
       AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
     procedure DrawHostFilesScroll(AX, ATop, ABottom, APos, ACount, AViewH: Integer);
     procedure PreviewCycleActiveDrive(ADelta: Integer);
-    procedure ClearCmdLineOnEsc;
     function TryPasteClipboardToCmdLine: Boolean;
     procedure HostRestoreGrayOpKey(var AKey: Word; var AKeyChar: Char);
     procedure CmdLineStripColors(out AFg, ABg: TAlphaColor);
@@ -1524,13 +1523,6 @@ begin
   PreviewCyclePanelDrive(ActiveWorkspace.State.ActiveSide, ADelta);
 end;
 
-procedure TDualPanelWindow.ClearCmdLineOnEsc;
-begin
-  FCmdLineMgr.Clear;
-  SetCmdFocused(False);
-  NotifyChanged;
-end;
-
 function TDualPanelWindow.TryPasteClipboardToCmdLine: Boolean;
 begin
   Result := Assigned(FCmdLineMgr);
@@ -1550,7 +1542,6 @@ procedure TDualPanelWindow.BindFreeInputHost;
 begin
   FFreeInputHost.CancelDrivePreview := CancelDrivePreview;
   FFreeInputHost.CloseQuickView := CloseQuickView;
-  FFreeInputHost.ClearCmdLineOnEsc := ClearCmdLineOnEsc;
   FFreeInputHost.HandleFilterInput := HandleFilterInput;
   FFreeInputHost.DispatchKeymapPrimary := HandleKeymapActionPrimary;
   FFreeInputHost.PreviewCycleDrive := PreviewCycleActiveDrive;

@@ -8,7 +8,7 @@ From top to bottom:
 - **F-key bar** – hints for the actions of the current mode; you can click them. While Shift / Ctrl / Alt is held, the bar shows the matching actions.
 - **Status line**.
 
-The **console** lives under the panels: **Ctrl+O** (or **Esc** with an empty command line) hides the panels and shows the command output.
+The **console** lives under the panels: **Ctrl+O** (or **Esc** with the focus on the panel) hides the panels and shows the command output.
 
 **Dialog buttons** press like real ones: a pressed button moves right and covers its shadow. With the mouse the command runs when the mouse button is released over the same button; move the pointer away and release there, and nothing happens. From the keyboard (Enter, Space, the underlined letter, Y / N) the button goes down for a moment and then fires. **Esc** closes the dialog at once.
 

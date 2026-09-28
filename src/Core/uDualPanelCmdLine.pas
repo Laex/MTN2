@@ -558,6 +558,9 @@ begin
     ilrSubmit:
       begin
         PushHistory(FCmd.Text);
+        // Whatever the command does (cd, a console command, a file), the
+        // arrows move the panel cursor again afterwards.
+        SetFocused(False);
         if Assigned(FOnSubmit) then
           FOnSubmit(FCmd.Text);
         Result := True;
