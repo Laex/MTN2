@@ -72,7 +72,7 @@
       "text": "Create",
       "default": true,
       "col": 14,
-      "row": 9,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -82,7 +82,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 39,
-      "row": 9,
+      "row": 8,
       "width": 14,
       "height": 1
     }

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "File Association",
   "width": 60,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "label",
@@ -71,7 +71,7 @@
       "text": "OK",
       "default": true,
       "col": 11,
-      "row": 10,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -81,7 +81,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 33,
-      "row": 10,
+      "row": 8,
       "width": 14,
       "height": 1
     }

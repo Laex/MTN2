@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Set attributes",
   "width": 56,
-  "height": 22,
+  "height": 23,
   "children": [
     {
       "type": "label",

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "New terminal",
   "width": 48,
-  "height": 18,
+  "height": 19,
   "children": [
     {
       "type": "label",

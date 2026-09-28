@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Color coding group",
   "width": 78,
-  "height": 19,
+  "height": 20,
   "children": [
     {
       "type": "label",

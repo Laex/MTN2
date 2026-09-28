@@ -101,7 +101,7 @@
       "text": "OK",
       "default": true,
       "col": 11,
-      "row": 12,
+      "row": 11,
       "width": 12,
       "height": 1
     },
@@ -111,7 +111,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 31,
-      "row": 12,
+      "row": 11,
       "width": 12,
       "height": 1
     }

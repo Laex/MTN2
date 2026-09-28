@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Font / Display",
   "width": 54,
-  "height": 25,
+  "height": 27,
   "children": [
     {
       "type": "label",
@@ -237,7 +237,7 @@
       "text": "OK",
       "default": true,
       "col": 11,
-      "row": 21,
+      "row": 22,
       "width": 12,
       "height": 1
     },
@@ -247,7 +247,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 29,
-      "row": 21,
+      "row": 22,
       "width": 12,
       "height": 1
     }

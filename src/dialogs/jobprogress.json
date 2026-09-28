@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Copy",
   "width": 76,
-  "height": 16,
+  "height": 15,
   "children": [
     {
       "type": "label",
@@ -91,7 +91,7 @@
       "id": "background",
       "text": "Background",
       "col": 10,
-      "row": 12,
+      "row": 10,
       "width": 14,
       "height": 1
     },
@@ -101,7 +101,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 52,
-      "row": 12,
+      "row": 10,
       "width": 12,
       "height": 1
     }

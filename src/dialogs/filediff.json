@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Compare files",
   "width": 76,
-  "height": 22,
+  "height": 24,
   "children": [
     {
       "type": "label",

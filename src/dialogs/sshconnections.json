@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "SSH/SFTP Connections",
   "width": 62,
-  "height": 15,
+  "height": 16,
   "children": [
     {
       "type": "label",

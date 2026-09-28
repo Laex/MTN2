@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "File history",
   "width": 72,
-  "height": 18,
+  "height": 21,
   "children": [
     {
       "type": "list",

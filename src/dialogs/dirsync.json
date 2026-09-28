@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Synchronize directories",
   "width": 72,
-  "height": 21,
+  "height": 22,
   "children": [
     {
       "type": "label",

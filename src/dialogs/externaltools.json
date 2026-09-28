@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "External Viewer / Editor",
   "width": 72,
-  "height": 14,
+  "height": 15,
   "children": [
     {
       "type": "label",

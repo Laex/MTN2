@@ -139,19 +139,26 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
   "version": "2.0",
   "title": "Find file",
   "width": 58,
-  "height": 12,
+  "height": 9,
   "children": [
     { "type": "label", "text": "Mask:", "col": 1, "row": 0, "width": 8, "height": 1 },
     { "type": "input", "id": "search_mask", "value": "*.*", "col": 10, "row": 0, "width": 44, "height": 1 },
     { "type": "checkbox", "id": "search_subdirs", "text": "Subfolders", "checked": true,
       "col": 1, "row": 2, "width": 20, "height": 1 },
     { "type": "button", "id": "btn_start", "text": "Find", "default": true,
-      "col": 20, "row": 9, "width": 12, "height": 1 },
+      "col": 20, "row": 4, "width": 12, "height": 1 },
     { "type": "button", "id": "btn_cancel", "text": "Cancel", "cancel": true,
-      "col": 34, "row": 9, "width": 12, "height": 1 }
+      "col": 34, "row": 4, "width": 12, "height": 1 }
   ]
 }
 ```
+
+**Ряд кнопок** (нижний ряд `button`) во всех встроенных диалогах раскладывается одинаково; `TestDialogButtonLayout` проверяет это на каждом ресурсе `DIALOG_*` на английском и русском:
+- над рядом – ровно одна пустая строка;
+- под рядом – строка тени (`▀`), одна пустая строка и рамка, то есть `row` кнопок = `height - 5`;
+- слева от первой кнопки и справа от тени (`▄`) последней – хотя бы одна пустая клетка до рамки: `col` ≥ 1 и `col + width + 1` ≤ `width диалога - 3`.
+
+Кнопка ниже клиентской области не рисуется вовсе (Host пропускает контролы на рамке).
 
 Синонимы геометрии: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. Если `width`/`height` = 0 или отсутствуют – Host подставляет default по kind (кнопка по тексту, list/radio_group по числу строк, input – до правого края client).
 
@@ -236,7 +243,9 @@ Caller обычно закрывает диалог в handler; Host сам `Clo
 - DropDown: Space / Alt+Down / F4 / клик – открыть popup; Enter/клик по item – выбрать; Esc – свернуть.
 - Radio: Space / клик выбирает в группе.
 - Input: делегируется `InputLineHandleInput`; Submit → accept, Cancel → `cancel`.
-- Dual Panel: при видимом диалоге Enter может вызывать handler напрямую (`ok` / `btn_start`), минуя `FireDefault` – см. `TDualPanelWindow`.
+- Dual Panel: при видимом диалоге Enter может вызывать handler напрямую (`ok` / `btn_start`), минуя `FireDefault` – см. `TDualPanelWindow`; нажатие кнопки при этом показывается через `TDialogHost.PressButtonThen`.
+
+**Нажатие кнопки.** Нажатая кнопка рисуется сдвинутой на клетку вправо, без тени. Мышь: на нажатии кнопка захватывается, команда выполняется при отпускании над той же кнопкой (увод указателя отжимает кнопку, отпускание вне её ничего не делает). Клавиатура (Enter, Space, мнемоника, `Y`/`N`): кнопка нажата `cDialogButtonPressMs` (100 мс), затем команда; следующая клавиша или щелчок сначала выполняет отложенную команду (`FlushDialogButtonPress`). Esc – сразу, без нажатия. Таймер и захват мыши подключает главная форма (`GDialogButtonPressStart`); без него (тесты, DialogDesigner) команды выполняются сразу. Владелец, которому после команды нужно что-то доделать (закрытие консоли по `PendingClose`), подписывается на `OnDeferredCommand`.
 
 ---
 

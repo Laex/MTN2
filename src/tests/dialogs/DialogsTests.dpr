@@ -12,6 +12,7 @@ uses
   TestAskSaveRoundTrip in 'TestAskSaveRoundTrip.pas',
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
+  TestDialogButtonLayout in 'TestDialogButtonLayout.pas',
   TestDialogCaptionFit in 'TestDialogCaptionFit.pas',
   TestDialogTranslation in 'TestDialogTranslation.pas',
   TestDialogJson in 'TestDialogJson.pas',

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Pick color",
   "width": 52,
-  "height": 21,
+  "height": 22,
   "children": [
     {
       "type": "label",

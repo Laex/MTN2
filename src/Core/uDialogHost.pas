@@ -206,6 +206,8 @@ type
     /// press animation is off or no button has that id. For hosts that pick
     /// a key's command themselves instead of passing the key to HandleInput.</summary>
     procedure PressButtonThen(const AId: string; const AAction: TProc);
+    /// <summary>The dialog frame after the last Draw / layout (grid cells).</summary>
+    property Bounds: TRectI read FBounds;
     /// <summary>Index of the button drawn pressed, -1 when none.</summary>
     property PressedButton: Integer read FPressIndex;
     property CursorVisible: Boolean read FCursorVisible;

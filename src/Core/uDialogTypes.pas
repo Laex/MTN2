@@ -1182,11 +1182,16 @@ end;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer; AStartOnLaunch: Boolean): TDialogDeclaration;
 var
-  I, N: Integer;
+  I, N, ButtonRow: Integer;
 begin
   Result := BuildShellProfileListDialog('Background console', ATitles, ASelectedIndex);
-  // Checkbox sits under the profile list; the shared terminal-profile
-  // resource has no room for it, so only this dialog grows.
+  // Checkbox takes the button row under the profile list and the buttons
+  // move two rows down (keeping the empty row above them); the shared
+  // terminal-profile resource has no room for it, so only this dialog grows.
+  ButtonRow := 0;
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Kind = dckButton then
+      ButtonRow := Max(ButtonRow, Result.Controls[I].Row);
   Result.Height := Result.Height + 2;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Kind = dckButton then
@@ -1197,7 +1202,7 @@ begin
     MakeCheckbox('start_on_launch',
       T('ui.consoleProfile.startOnLaunch', 'Start shell at program launch'),
       AStartOnLaunch),
-    1, 14, Result.Width - 4, 1);
+    1, ButtonRow, Result.Width - 4, 1);
 end;
 
 function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;

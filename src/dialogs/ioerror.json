@@ -4,7 +4,7 @@
   "style": "warning",
   "title": "Error",
   "width": 80,
-  "height": 13,
+  "height": 14,
   "children": [
     {
       "type": "label",
