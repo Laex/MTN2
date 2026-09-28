@@ -1,11 +1,11 @@
 ﻿unit uDualPanelSync;
 
 { Directory compare for Directory Sync.
-  Stage 19: one-way Active -> Inactive (missing | newer).
-  Stage 35: two-way <-> - copy direction follows whichever side is newer;
+  One-way Active -> Inactive (missing | newer).
+  Two-way <-> - copy direction follows whichever side is newer;
   conflicts (both sides changed since the last successful sync) stay
   unresolved and are listed for a manual choice.
-  Stage 34: optional content mode (size + byte compare) marks files that
+  Optional content mode (size + byte compare) marks files that
   share a timestamp but differ in bytes. Local file:// only. }
 
 interface

@@ -1,9 +1,9 @@
 unit uConPty;
 
 { Process bridge for Panel Console.
-  Stage 13: one-shot cmd /c via redirected pipes.
-  Stage 16: persistent cmd.exe session (StartShell + WriteInput).
-  Stage 22 prep: real Windows ConPTY (CreatePseudoConsole) backend.
+  One-shot cmd /c via redirected pipes.
+  Persistent cmd.exe session (StartShell + WriteInput).
+  Real Windows ConPTY (CreatePseudoConsole) backend.
 
   CROSS-PLATFORM (Этап 23, roadmap §7): this unit is the Windows-only PTY
   backend (ConPTY via uConPtyApi.pas). IPtySession below is the intended
@@ -23,7 +23,7 @@ type
   TConPtyExitEvent = reference to procedure(AExitCode: DWORD);
 
   /// <summary>Long-lived panel / workspace shell session (SDS §5.4).
-  /// Concrete Stage 16 impl: TConPtySession (pipes). ConPTY - Stage 17.</summary>
+  /// Implemented by TConPtySession.</summary>
   IPtySession = interface
     ['{A7C2E901-4B1D-4F0A-9C3E-2D8F6B1A0E55}']
     function StartShell(const AProfile, ACwd: string; ACols, ARows: Word): Boolean;

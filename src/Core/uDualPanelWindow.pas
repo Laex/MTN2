@@ -684,7 +684,7 @@ type
       ASide: TPanelSide; AActive: Boolean; AFrame, ABodyBg: TAlphaColor);
     procedure DrawPanelInfoContent(const ABounds: TRectI; ASide: TPanelSide;
       AFrame, ABodyBg: TAlphaColor);
-    /// <summary>Stage 24 redo: live preview of the active side's cursor row
+    /// <summary>Live preview of the active side's cursor row
     /// (NC/NDN/FAR/TC Ctrl+Q ? opposite panel, follows the cursor without
     /// re-pressing Ctrl+Q). Only reissues the async decode when the row's
     /// URI changes; every redraw still refreshes the stored bounds so a
@@ -798,7 +798,7 @@ type
     procedure FinishOleFileDrag(AEffect: LongInt);
     procedure OpenDocument(const AURI: string; AViewOnly: Boolean);
     procedure OpenTerminal(const AProfileId, ACwd: string);
-    /// <summary>Stage 28: opens APath (file or directory) in a new tab on
+    /// <summary>Opens APath (file or directory) in a new tab on
     /// the active side ? the single entry point single-instance IPC and the
     /// startup CLI-arg path both call. No-op for '' or a path that doesn't
     /// exist.</summary>
@@ -8236,9 +8236,9 @@ var
   Snap: TDrawPanelSnapshot;
   IsQV: Boolean;
 begin
-  // Quick View (Stage 24 redo, NC/NDN/FAR/TC convention): only the
+  // Quick View (NC/NDN/FAR/TC convention): only the
   // currently non-active side may show it. If ASide is somehow also the
-  // active side (e.g. a menu action force-focused it ? see SwitchSide's
+  // active side (e.g. a menu action force-focused it - see SwitchSide's
   // comment for the common path), self-heal by drawing it as a normal file
   // panel instead of a broken/self-referential preview.
   IsQV := uDualPanelPanelDraw.IsQuickViewTarget(APanel.ViewKind,

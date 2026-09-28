@@ -1,6 +1,6 @@
 unit TestStreamingViewer;
 
-{ Stage 24 regression: the line-indexed (streaming) Viewer path in uEditorDoc,
+{ The line-indexed (streaming) Viewer path in uEditorDoc,
   plus the UTF-8 sample-trim in uTextEncoding that feeds its encoding sniff.
 
   Source is deliberately pure ASCII - every non-ASCII test string is built from

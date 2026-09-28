@@ -1,6 +1,6 @@
 unit uSession;
 
-{ Persist Dual Panel session + zoom as JSON (Stage 12). Corrupt/missing files
+{ Persist Dual Panel session + zoom as JSON. Corrupt/missing files
   fall back to the built-in default session without blocking startup. }
 
 interface
@@ -57,7 +57,7 @@ type
     LastWorkspaceId: string;
     /// <summary>On startup, load LastWorkspaceId into the live ws:/// store.</summary>
     RestoreWorkspaceOnStart: Boolean;
-    /// <summary>Stage 55: display font family. '' = PreferMonoFontFamily.</summary>
+    /// <summary>Display font family. '' = PreferMonoFontFamily.</summary>
     FontName: string;
     FontSize: Single;
     CursorBlink: Boolean;

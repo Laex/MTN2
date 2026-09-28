@@ -1,6 +1,6 @@
 unit uZipVfs;
 
-{ ZIP Nested VFS (Stage 14). Lists / reads / extracts / packs via System.Zip.
+{ ZIP Nested VFS. Lists / reads / extracts / packs via System.Zip.
   Grammar: file:///.../archive.zip!/path and nested ...zip!/inner.zip!/...
   Write/delete supported for outer file-backed ZIP only (not nested layers).
   Listing: CD cached as prefix tree (invalidate on size/mtime and after writes). }

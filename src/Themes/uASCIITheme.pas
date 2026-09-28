@@ -1,6 +1,6 @@
 unit uASCIITheme;
 
-{ Stage 27, optional third look: same classic FAR/VGA palette as uNDNTheme,
+{ Optional third look: same classic FAR/VGA palette as uNDNTheme,
   but every glyph is plain 7-bit ASCII (+/-/|, ^v&lt;&gt;, #, :) instead of
   Unicode box-drawing/block characters - for terminals or fonts that don't
   carry the box-drawing block. Colours intentionally match uNDNTheme so

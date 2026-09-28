@@ -2,7 +2,7 @@ unit uPanelModel;
 
 { In-process file panel model (PANEL_PLUGIN Pull). Host owns layout/cursor;
   model owns URI list state and async VFS list.
-  Seams for stage 29: WindowId + OnInvalidate + GetRowJson (PANEL_PLUGIN ABI). }
+  Seams for WindowId + OnInvalidate + GetRowJson (PANEL_PLUGIN ABI). }
 
 interface
 

@@ -16,7 +16,7 @@ unit uPluginLoader;
   uPanelPluginRegistry.PanelPluginRegistry, uKeymapRegistry.KeymapRegistry,
   uMenuRegistry.MenuRegistry).
 
-  WASM (stage 30): every *.wat / *.wasm in the same subdirectory is loaded
+  WASM: every *.wat / *.wasm in the same subdirectory is loaded
   through uWasmPluginHost (optional wasmtime.dll). Guest code talks JSON /
   UTF-8 copies in linear memory - not THostApiTable pointers. Missing
   wasmtime.dll skips WASM modules without failing the host (same idea as

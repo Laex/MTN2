@@ -1,6 +1,6 @@
 unit uDraculaTheme;
 
-{ Stage 27: the canonical Dracula palette (draculatheme.com) applied to
+{ The canonical Dracula palette (draculatheme.com) applied to
   IThemeRenderer - #282a36 background, #f8f8f2 body text, purple focus
   chrome, pink cursor, cyan/green/orange/pink file-type colour coding.
   Single-line unicode box-drawing everywhere, like uModernUnicodeTheme, and

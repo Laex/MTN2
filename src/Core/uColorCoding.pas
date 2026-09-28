@@ -1,6 +1,6 @@
 unit uColorCoding;
 
-{ Panel row "color coding" - FAR Manager "File highlighting" style, Stage 37:
+{ Panel row "color coding" - FAR Manager "File highlighting" style:
   named groups (mask + per-state colors), checked top to bottom against a
   row's display name - first matching group wins, mirroring FAR's own
   highlight.hst structure (group name, mask, separate colors for the
@@ -10,9 +10,9 @@ unit uColorCoding;
   on top of the theme's normal per-filetype color. A group's Normal color
   overrides the theme unconditionally; its Selected/Current colors are
   opt-in - a group that only sets "normal" leaves selection/cursor
-  highlighting exactly as the theme draws it (this was Stage 37's original,
-  still-default precedence), while a group that *does* set "selected" or
-  "current" now wins there too, same as a FAR highlight group would. This
+  highlighting exactly as the theme draws it, while a group that *does* set
+  "selected" or "current" wins there too, same as a FAR highlight group
+  would. This
   unit only resolves colors; it draws nothing and knows nothing about
   selection state beyond the enum passed in.
 
@@ -411,7 +411,7 @@ begin
     ReloadColorCoding('');
   if AName = '' then
     Exit;
-  // First mask match wins outright (Stage 37's original resolution rule) -
+  // First mask match wins outright -
   // the winning group's color for AState governs even when it's unset
   // (Result = False then, i.e. "this group has no opinion here, defer to
   // the theme"); we don't fall through to a later group just because this

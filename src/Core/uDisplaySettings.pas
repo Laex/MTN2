@@ -1,6 +1,6 @@
 unit uDisplaySettings;
 
-{ Stage 55: font / zoom / cursor-blink / panel-icon settings used by the
+{ Font / zoom / cursor-blink / panel-icon settings used by the
   Display dialog, TTerminalRenderer.SetFont, and session.json. }
 
 interface

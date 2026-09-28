@@ -1,6 +1,6 @@
 unit uVfsTypes;
 
-{ Async VFS contract (SDS §5.1). Stage 5 implements ListDirectoryAsync for file://. }
+{ Async VFS contract (SDS §5.1). }
 
 interface
 
@@ -103,7 +103,7 @@ type
     procedure MoveAsync(const AFromURI, AToURI: string; ACancel: IJobCancelToken;
       AOnProgress: TVfsProgressCallback; AOnDone: TVfsBoolCallback;
       AOverwrite: Boolean = False; APreserveTimestamps: Boolean = False);
-    // Stage 10: whole-file text load/save for small Editor buffers.
+    // Whole-file text load/save for small Editor buffers.
     procedure ReadTextAsync(const AURI: string; AMaxBytes: Int64;
       ACancel: IJobCancelToken; AOnDone: TVfsTextCallback);
     procedure ReadBytesAsync(const AURI: string; AMaxBytes: Int64;

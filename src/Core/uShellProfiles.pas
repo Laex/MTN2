@@ -1,6 +1,6 @@
 unit uShellProfiles;
 
-{ Shell profile catalog for Terminal Workspaces (Stage 21).
+{ Shell profile catalog for Terminal Workspaces.
   Resolves profile id -> CreateProcess command line + working directory.
   Supports automatic discovery of Windows Subsystem for Linux (WSL/WSL2) distros.
 
@@ -66,7 +66,7 @@ function ProfileReturnSeq(const AProfileId: string): string;
 /// that hang (at the cost of not showing the error text).</summary>
 function ProfileInitCommand(const AProfileId: string): string;
 /// <summary>Output encoding by profile. Always True (UTF-8): real ConPTY
-/// (Stage 22) normalizes every profile's console output to UTF-8 before it
+/// normalizes every profile's console output to UTF-8 before it
 /// reaches TConPtySession, including cmd.exe's OEM866 console writes.</summary>
 function ProfileOutputEncoding(const AProfileId: string): Boolean;
 /// <summary>Always False: real ConPTY gives every profile genuine console
@@ -682,7 +682,7 @@ end;
 
 function ProfileOutputEncoding(const AProfileId: string): Boolean;
 begin
-  // Real ConPTY (Stage 22) normalizes every profile's console output to a
+  // Real ConPTY normalizes every profile's console output to a
   // UTF-8 VT stream before it ever reaches TConPtySession's pipe -- conhost
   // translates cmd.exe's OEM866 console buffer writes the same way it
   // translates PowerShell/WSL's native UTF-8, so there is no longer a
@@ -694,7 +694,7 @@ end;
 
 function ProfileUsesLineBufferedInput(const AProfileId: string): Boolean;
 begin
-  // Real ConPTY (Stage 22) gives every profile a genuine console with real
+  // Real ConPTY gives every profile a genuine console with real
   // line-editing and character echo from conhost itself -- the local
   // line-buffer/echo simulation below existed only because the old pipe
   // backend had none at all. Keeping it running on top of real echo double-

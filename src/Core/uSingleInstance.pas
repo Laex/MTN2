@@ -1,6 +1,6 @@
 unit uSingleInstance;
 
-{ Stage 28: single-instance IPC (mtn2 <path>). A named mutex detects whether
+{ Single-instance IPC (mtn2 <path>). A named mutex detects whether
   another MTN2 instance already holds it; the first instance publishes its
   own window handle into a small named file mapping (not FindWindow by class
   or caption -- FMX's window class name isn't a stable contract to hardcode

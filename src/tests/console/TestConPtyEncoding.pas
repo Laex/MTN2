@@ -57,11 +57,8 @@ end;
 
 // Real ConPTY normalizes every profile's console output to UTF-8 before it
 // reaches TConPtySession -- cmd.exe's OEM866 console buffer writes get
-// translated by conhost exactly like PowerShell/WSL's native UTF-8. This
-// replaces the old TestOemCmdChunk, which locked in the pre-Stage-22 pipe
-// backend's behavior (cmd emitted raw OEM866); under real ConPTY, decoding
-// cmd's actual bytes as CP866 produces mojibake -- confirmed by manual
-// testing of the Stage 22 alt-screen work.
+// translated by conhost exactly like PowerShell/WSL's native UTF-8: under
+// ConPTY, decoding cmd's bytes as CP866 would produce mojibake.
 procedure TestCmdProfileDecodesUtf8;
 var
   Pty: TConPtySession;

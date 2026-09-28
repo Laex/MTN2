@@ -1,7 +1,7 @@
 unit uDualPanelTypes;
 
 { Dual Panel state structures (SDS §3.3) and panel row model for the Pull
-  contract. Stage 5 fills rows from IVirtualFileSystem list results. }
+  contract; rows are filled from IVirtualFileSystem list results. }
 
 interface
 
@@ -42,7 +42,7 @@ type
     HistoryIndex: Integer;
     CursorIndex: Integer;
     ScrollOffset: Integer;
-    SelectedURIs: TArray<string>; // multi-select by row URI (Stage 6)
+    SelectedURIs: TArray<string>; // multi-select by row URI
     /// <summary>Ephemeral: ws:// folder this tab left via a dir-link Enter.
     /// Empty unless this tab (not the other panel) entered from Workspace.</summary>
     WorkspaceBackUri: string;

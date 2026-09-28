@@ -1,6 +1,6 @@
 unit TestWasmHost;
 
-{ Stage 30: Wasmtime host + demo WASM VFS. The runtime tests pass as skipped
+{ Wasmtime host + demo WASM VFS. The runtime tests pass as skipped
   when wasmtime.dll is not present (same pattern as TestSevenZipPlugin / 7z.dll). }
 
 interface

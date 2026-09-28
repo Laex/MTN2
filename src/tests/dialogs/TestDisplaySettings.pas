@@ -1,6 +1,6 @@
 unit TestDisplaySettings;
 
-{ Stage 55: clamp/index helpers, monospace fallback, session round-trip,
+{ Clamp/index helpers, monospace fallback, session round-trip,
   GShowPanelIcons / PanelIconReserve. Also covers the Language field/picker
   (uStrings.pas) added on top -- needs the embedded STRINGS_RU resource, see
   the $R above (uDisplaySettings.DisplayLanguageItems reads it indirectly

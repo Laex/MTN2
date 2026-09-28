@@ -1,6 +1,6 @@
 unit uThemeProxy;
 
-{ Stage 27: live theme switching. Every window/dialog/controller receives an
+{ Live theme switching. Every window/dialog/controller receives an
   IThemeRenderer once at construction time and stores that exact interface
   reference for its whole lifetime (constructor injection, never re-queried -
   see uMdiCompositor/uDualPanelWindow/uTopMenuBar/etc.). Recreating dozens of

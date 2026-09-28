@@ -1,9 +1,9 @@
 unit uFileCompare;
 
-{ File content comparison. v1 compared whole buffers and reported equal /
-  differs-at-offset. Stage 34 adds a line-based unified diff of two text
-  files (Ctrl+Alt+C) so the user sees which lines differ, not only that
-  they do. Binary files still fall back to the offset message. }
+{ File content comparison: equal / differs-at-offset for any two files, and
+  a line-based unified diff of two text files (Ctrl+Alt+C) so the user sees
+  which lines differ, not only that they do. Binary files get the offset
+  message. }
 
 interface
 

@@ -40,7 +40,7 @@ type
     procedure BringToFront(AWindow: TTerminalWindow);
 
     procedure Paint(const AGrid: TTerminalGrid; ACols, ARows: Integer);
-    // Cascaded demo layout for Stage 3 (>=2 overlapping windows).
+    // Cascaded demo layout (two or more overlapping windows).
     procedure LayoutCascade(ACols, ARows: Integer);
     // Single maximized window; ATopMargin reserves rows above (Dual Panel Tabs).
     procedure LayoutMaximized(ACols, ARows: Integer; ATopMargin: Integer = 0);

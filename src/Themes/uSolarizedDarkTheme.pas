@@ -1,6 +1,6 @@
 unit uSolarizedDarkTheme;
 
-{ Stage 27: the canonical Solarized Dark palette (Ethan Schoonover) applied
+{ The canonical Solarized Dark palette (Ethan Schoonover) applied
   to IThemeRenderer - base03 background, base0 body text, accent hues used
   exactly as the palette intends (blue = structure/focus, yellow = emphasis,
   orange/green/magenta = file-type colour coding). Single-line unicode

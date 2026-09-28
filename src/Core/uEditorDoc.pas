@@ -1,6 +1,6 @@
 unit uEditorDoc;
 
-{ In-memory text document for Editor (Stage 10). Loads/saves small files via
+{ In-memory text document for Editor. Loads/saves small files via
   async VFS. Dirty flag tracks unsaved edits. Raw bytes kept for F8 re-decode.
 
   Live reload: a local (non-streaming) file is watched via TDirectoryWatcher
@@ -56,7 +56,7 @@ type
     FSaveGen: Cardinal;
     FCancel: IJobCancelToken;
     FOnChanged: TNotifyEvent;
-    // Stage 24: streaming Viewer for local text files too big for whole-buffer
+    // Streaming Viewer for local text files too big for whole-buffer
     // load (cEditorMaxBytes). View-only - FReadOnly is forced True. FLines
     // stays empty in this mode; lines are seeked/decoded on demand from
     // FStreamPath using FLineOffsets and cached in FLineCache.
@@ -162,7 +162,7 @@ type
     property Dirty: Boolean read FDirty;
     property ReadOnly: Boolean read FReadOnly;
     property Binary: Boolean read FBinary;
-    /// <summary>Stage 24: line-indexed view of a file too big for the
+    /// <summary>Line-indexed view of a file too big for the
     /// whole-buffer load. Read-only until TryPromoteStreaming.</summary>
     property Streaming: Boolean read FStreaming;
     property StreamFileSize: Int64 read FStreamFileSize;
@@ -431,7 +431,7 @@ var
   Path: string;
   Gen: Cardinal;
 begin
-  // Streaming docs (Stage 24) are always view-only; StartStreamingOpen
+  // Streaming docs are always view-only; StartStreamingOpen
   // already forces FReadOnly := True and never calls this method, but keep
   // the guard for any future caller.
   if FStreaming then
@@ -439,7 +439,7 @@ begin
     FReadOnly := True;
     Exit;
   end;
-  // Archive entries cannot be written back (Stage 14).
+  // Archive entries cannot be written back.
   if HasArchiveChain(FURI) then
   begin
     FReadOnly := True;
@@ -594,7 +594,7 @@ end;
 
 // Only a genuine local file backs a real directory to watch - archive
 // entries and streamed-from-archive temp copies aren't worth following.
-// Streaming docs (Stage 24) are excluded too: reacting to an external
+// Streaming docs are excluded too: reacting to an external
 // change there means rescanning the whole file for FLineOffsets, a much
 // bigger job than a plain reload - out of scope for now.
 procedure TEditorDoc.StartWatchingCurrentFile;
@@ -922,7 +922,7 @@ begin
     begin
       if Gen <> FGen then
         Exit;
-      // Stage 24: a plain local file that's too big for the whole-buffer
+      // A plain local file that's too big for the whole-buffer
       // read gets a second chance as a streaming (line-indexed) doc instead
       // of surfacing "File too large". vecNotSupported from
       // TFileVirtualFileSystem.ReadBytesAsync means exactly "too large for
@@ -1022,7 +1022,7 @@ begin
   NotifyChanged;
 end;
 
-{ Stage 24: line-indexed streaming open for a local file that ReadBytesAsync
+{ Line-indexed streaming open for a local file that ReadBytesAsync
   refused as too large. Two phases, both off the UI thread:
     1. Sample the first cStreamSampleBytes to detect encoding/binary - reuses
        the exact same DetectAndDecodeText used for the whole-buffer path, so

@@ -1,6 +1,6 @@
 unit uThemeRegistry;
 
-{ Stage 27: catalog of built-in IThemeRenderer "looks" (chrome/skin), keyed
+{ Catalog of built-in IThemeRenderer "looks" (chrome/skin), keyed
   by a stable Id persisted in session.json (TMtnSession.ThemeName) - distinct
   from uColorCoding's on-disk fileColoring theme *file*, which is a separate,
   independent axis (see uColorCoding.pas header comment). Single source of

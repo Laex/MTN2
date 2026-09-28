@@ -8,9 +8,8 @@ unit TestLiveReload;
   open here - TFileVirtualFileSystem.ReadBytesAsync already opens with
   fmShareDenyNone and closes the handle immediately after each read.
 
-  Source is deliberately pure ASCII, matching the other Stage 24 test files
-  in this directory, so this unit's own encoding is never the thing under
-  test. }
+  Source is deliberately pure ASCII, so this unit's own encoding is never
+  the thing under test. }
 
 interface
 

@@ -2,7 +2,7 @@ unit uWasmPluginHost;
 
 { WASM plugin runtime on top of optional Wasmtime (uWasmtimeApi.pas).
 
-  Isolation contract (stage 30):
+  Isolation contract:
   - Each plugin gets its own store. Linear memory is the only guest-visible
     RAM; host never hands out process pointers, only i32 offsets into that
     memory, and copies UTF-8 in and out after a bounds check.

@@ -1,6 +1,6 @@
 ﻿unit uTerminalWorkspace;
 
-{ Stage 21 Terminal Workspace: full-area MDI window with its own shell session,
+{ Terminal Workspace: full-area MDI window with its own shell session,
   raw keyboard -> pipes, scrollback/selection chrome.
   Inherits buffer, PTY, selection, mouse and clipboard from TBaseConsoleWindow.
   Unique to this class:
@@ -260,7 +260,7 @@ begin
 
   CurRow := -1;
   CurCol := 0;
-  // Real PTY/grid cursor position (Phase D primary-buffer grid mode), not
+  // Real PTY/grid cursor position (primary-buffer grid mode), not
   // "end of last visible row" -- the shell prompt can land anywhere on the
   // grid, mirrors TConsoleWindow.DrawContent's cursor handling.
   ShowInputCursor := FCursorVisible and FHistory.GetInputCursor(CurRow, CurCol);

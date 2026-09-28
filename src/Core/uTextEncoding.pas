@@ -37,7 +37,7 @@ function DecodeTextWithEncoding(const ABytes: TBytes;
 function EncodeTextBytes(const AText: string; AEncoding: TTextFileEncoding): TBytes;
 /// <summary>Drop a trailing UTF-8 multi-byte sequence left incomplete by an
 /// arbitrary byte-count sample cut (not a real encoding error). Callers that
-/// sniff encoding from a prefix of a larger file (Stage 24 streaming Viewer)
+/// sniff encoding from a prefix of a larger file (the streaming Viewer)
 /// must trim the sample before IsLikelyUtf8/DetectAndDecodeText, or a cut
 /// landing mid-character makes a genuinely UTF-8 file look invalid and
 /// misdetects it as CP1251/CP866.</summary>

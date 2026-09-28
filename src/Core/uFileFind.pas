@@ -1,6 +1,6 @@
 unit uFileFind;
 
-{ Async file-name / content search (Stage 11). Walks the local filesystem off
+{ Async file-name / content search. Walks the local filesystem off
   the UI thread and reports progress / results via TThread.Queue. }
 
 interface

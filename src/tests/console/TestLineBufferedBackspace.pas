@@ -135,7 +135,7 @@ begin
     [AMarker, Buf.LineCount, Dump]);
 end;
 
-// Stage 22: real ConPTY gives cmd a genuine console with real line-editing
+// Real ConPTY gives cmd a genuine console with real line-editing
 // and echo from conhost itself, so the app no longer buffers keystrokes
 // locally and constructs a line to submit on Enter (that used to be tested
 // here as "line-buffered submit after edit"). Keeping that local simulation

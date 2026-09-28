@@ -297,12 +297,12 @@ var
   SelKeys: TArray<string>;
   Mode: TPanelColumnMode;
 
-  // Stage 37: FAR-style "file highlighting" groups (uColorCoding), layered
+  // FAR-style "file highlighting" groups (uColorCoding), layered
   // on top of the theme's normal per-filetype color. ResolveRowColors calls
   // this last with the row's visual state (Normal/Selected/Current); a
   // group only overrides a state it explicitly sets a color for, so a group
   // that defines just "normal" leaves selection/cursor highlighting exactly
-  // as the theme draws it - same precedence Stage 37 shipped with.
+  // as the theme draws it.
   procedure ApplyColorCoding;
   var
     Name: string;

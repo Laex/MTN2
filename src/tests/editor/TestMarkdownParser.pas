@@ -1,6 +1,6 @@
 ﻿unit TestMarkdownParser;
 
-{ Stage 25 regression: uMarkdownParser (pure line parsing) and
+{ UMarkdownParser (pure line parsing) and
   uMarkdownIndex.TMarkdownFenceIndex (lazy fence-state recovery for large
   documents). Source is deliberately pure ASCII for the same reason
   TestStreamingViewer.pas is - no literal non-ASCII, only explicit

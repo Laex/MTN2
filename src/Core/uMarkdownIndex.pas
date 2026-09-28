@@ -1,6 +1,6 @@
 unit uMarkdownIndex;
 
-{ Stage 25: lazy fence-state recovery for the Markdown Viewer.
+{ Lazy fence-state recovery for the Markdown Viewer.
 
   TMdFenceState (uMarkdownParser) is the only state ParseLine needs carried
   from the start of the document - but the Viewer only ever wants to paint

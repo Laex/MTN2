@@ -1,6 +1,6 @@
 unit uAssociations;
 
-{ Internal file associations for Enter on a file (Stage 8).
+{ Internal file associations for Enter on a file.
   Directories always navigate; files map to view / edit / shell.
   Shell-preferred media/docs always use the platform open (uShellAssoc);
   unknown extensions still probe HasShellOpen before Viewer fallback. }

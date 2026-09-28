@@ -1,6 +1,6 @@
 unit uHighContrastTheme;
 
-{ Stage 27: accessibility theme - pure black background, pure white/yellow
+{ Accessibility theme - pure black background, pure white/yellow
   text, fully saturated file-type colours, no dimmed/muted tones anywhere
   (a "hidden file" or "idle panel" still has to be legible, not merely
   present) and double-line box-drawing everywhere for maximum edge

@@ -1,6 +1,6 @@
 unit uTotalCommanderTheme;
 
-{ Stage 27: light "classic Windows file manager" look - silver/grey panels,
+{ Light "classic Windows file manager" look - silver/grey panels,
   navy-blue chrome, black text, red-text marks (Total Commander's signature
   "marked files turn red" instead of FAR's yellow-on-blue) - a deliberately
   light counterpoint to uNDNTheme's dark-blue VGA panels. Same IThemeRenderer

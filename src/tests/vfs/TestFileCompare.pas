@@ -1,6 +1,6 @@
 unit TestFileCompare;
 
-{ Stage 34: line-based text diff for Compare Files. }
+{ Line-based text diff for Compare Files. }
 
 interface
 

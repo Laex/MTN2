@@ -1,7 +1,7 @@
 ﻿unit uFileVfs;
 
 { Local file:// VFS provider. All I/O runs off the UI thread and results are
-  marshaled via TThread.Queue. Stage 7: Delete / Copy / Move with progress. }
+  marshaled via TThread.Queue. Delete / Copy / Move with progress. }
 
 interface
 

@@ -1,6 +1,6 @@
 unit uMarkdownPainter;
 
-{ Stage 25: paints one parsed TMdLine (uMarkdownParser) into a TTerminalRow.
+{ Paints one parsed TMdLine (uMarkdownParser) into a TTerminalRow.
   This is the "text + spans -> colored cells" primitive that didn't exist
   anywhere in the codebase before Markdown Viewer - every other renderer
   (TEditorPainter.DrawTextLine, panel row drawing) paints a whole line with

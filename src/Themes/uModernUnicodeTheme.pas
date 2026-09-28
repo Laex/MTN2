@@ -1,6 +1,6 @@
 unit uModernUnicodeTheme;
 
-{ Stage 27: second built-in look, alongside the classic FAR palette in
+{ Second built-in look, alongside the classic FAR palette in
   uNDNTheme.pas. Same widget-state logic (twFocused/twSelected/...), same
   IThemeRenderer contract, same close-button geometry (uThemeDrawing.
   WindowFrameCloseHit assumes a literal 3-cell '[x]' at Right-3, so every

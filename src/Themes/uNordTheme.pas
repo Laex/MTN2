@@ -1,6 +1,6 @@
 unit uNordTheme;
 
-{ Stage 27: the canonical Nord palette (nordtheme.com) applied to
+{ The canonical Nord palette (nordtheme.com) applied to
   IThemeRenderer - cold "polar night" backgrounds, "snow storm" body text,
   "frost" accent hues for chrome/focus, "aurora" hues for file-type colour
   coding. Single-line unicode box-drawing everywhere, like

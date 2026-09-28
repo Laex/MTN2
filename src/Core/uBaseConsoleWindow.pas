@@ -36,8 +36,8 @@ type
     /// <summary>Unfiltered Alt+F8 command history, captured when the dialog
     /// opens; FCmdHistItems is re-derived from this as FCmdHistFilter grows.</summary>
     FCmdHistAllItems:   TArray<string>;
-    /// <summary>Reverse-search substring typed into the open Alt+F8 dialog
-    /// (Stage 38); '' = unfiltered.</summary>
+    /// <summary>Reverse-search substring typed into the open Alt+F8 dialog;
+    /// '' = unfiltered.</summary>
     FCmdHistFilter:     string;
     /// <summary>True while the Alt+F8 command history dialog (specifically)
     /// is the one open in FDialog - distinguishes it from e.g. the
@@ -88,7 +88,7 @@ type
     function  PtyRows: Word;
     procedure SyncPtySize;
 
-    { Alternate screen (Stage 22): TUI apps like vim/htop draw via a fixed
+    { Alternate screen: TUI apps like vim/htop draw via a fixed
       cursor-addressable grid instead of scrollback; DrawContent/HandleInput
       in each subclass branch on this. }
     function AltScreenActive: Boolean;
@@ -158,8 +158,8 @@ type
     /// (there is no editable cmdline here to stage it in first).</summary>
     procedure OpenCmdHistoryDialog;
     /// <summary>Consumes a filter keystroke (printable char / Backspace)
-    /// while the Alt+F8 command history dialog is open (Stage 38 reverse-
-    /// search). Returns False (key not consumed) for anything else, so the
+    /// while the Alt+F8 command history dialog is open (reverse search).
+    /// Returns False (key not consumed) for anything else, so the
     /// subclass's own dialog-visible branch falls through to
     /// FDialog.HandleInput as usual. Call this before that fallthrough.</summary>
     function HandleCmdHistoryFilterInput(var AKey: Word; AShift: TShiftState;

@@ -1,8 +1,7 @@
 unit uKeymap;
 
-{ Keymap configuration, profile definitions (NDN / FAR), and JSON file loader.
-  Stage 15 (v0.2.1): customizable keybindings with multiple hot-keys per action,
-  expanded action set, and dynamic JSON loader. }
+{ Keymap configuration, profile definitions (NDN / FAR), and JSON file loader:
+  customizable keybindings with multiple hot-keys per action. }
 
 interface
 
@@ -564,7 +563,7 @@ begin
   AddBinding(Result, kaJobList, KeyBinding(Ord('J'), True, False, True));
   AddBinding(Result, kaNewTerminal, KeyBinding(Ord('N'), True, False, True));
 
-  // Stage 24: Ctrl+Q - Quick View (opposite panel; any file or directory).
+  // Ctrl+Q - Quick View (opposite panel; any file or directory).
   AddBinding(Result, kaQuickView, KeyBinding(Ord('Q'), False, False, True));
 
   // Ctrl+Shift+O - sync active panel dir <-> background console cwd

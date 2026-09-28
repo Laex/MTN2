@@ -268,7 +268,7 @@ begin
   end;
 
   ClearSelection;
-  // Stage 22: real ConPTY gives the persistent shell a genuine console that
+  // Real ConPTY gives the persistent shell a genuine console that
   // echoes the command itself and draws its own prompt -- pre-echoing the
   // command here (a synthetic yellow line, built for the old one-shot pipe
   // era) now races the real async prompt/echo arriving via AppendOutput,

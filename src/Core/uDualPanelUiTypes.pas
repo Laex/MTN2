@@ -201,7 +201,7 @@ type
   TGetConsoleStartOnLaunchEvent = function: Boolean of object;
   TSetConsoleStartOnLaunchEvent = procedure(AValue: Boolean) of object;
   TQuitRequestEvent = TNotifyEvent;
-  /// <summary>Stage 27: Theme dialog reports the uThemeRegistry id the user
+  /// <summary>Theme dialog reports the uThemeRegistry id the user
   /// picked / TMainForm reports which one is currently active.</summary>
   TThemeSelectEvent = procedure(const AThemeId: string) of object;
   TGetThemeIdEvent = function: string of object;

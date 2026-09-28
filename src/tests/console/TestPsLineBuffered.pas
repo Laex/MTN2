@@ -55,7 +55,7 @@ begin
     ProfileId := cShellProfilePowerShell;
     OnOutput := procedure(const AText: string) begin GOutput := GOutput + AText; end;
     Assert.IsTrue(StartShell(cShellProfilePowerShell, GetCurrentDir, 80, 25), LastError);
-    // Stage 22: real ConPTY gives PowerShell a genuine console with real
+    // Real ConPTY gives PowerShell a genuine console with real
     // line-editing/echo from conhost, so the app no longer buffers
     // keystrokes locally -- PowerShell now uses the same raw passthrough
     // WSL always used. PsPipeSafeCommand's format-engine-hang mitigation

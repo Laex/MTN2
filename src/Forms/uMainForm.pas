@@ -107,7 +107,7 @@ type
     /// <summary>Theme named AThemeName (uThemeRegistry id), or the default
     /// when AThemeName is blank or unrecognized.</summary>
     function CreateTheme(const AThemeName: string): IThemeRenderer;
-    /// <summary>Live theme switch (Stage 27): repoints FThemeProxy at a new
+    /// <summary>Live theme switch: repoints FThemeProxy at a new
     /// concrete theme - every open window/dialog picks it up on its next
     /// repaint, no recreation needed - and remembers AThemeId for
     /// PersistSession. No-op if AThemeId is already active.</summary>
@@ -258,11 +258,11 @@ type
     procedure StartOleFileDrag(const APaths: TArray<string>);
     procedure EnsureShutdownHook;
     procedure HookProcessWindowsForShutdown;
-    /// <summary>Stage 28: decodes the path from a WM_COPYDATA sent by a
+    /// <summary>Decodes the path from a WM_COPYDATA sent by a
     /// delegating second instance, restores/activates this window, and opens
     /// the path (empty path = activate only, no new tab).</summary>
     procedure HandleActivateRequest(ACds: PCopyDataStruct);
-    /// <summary>Stage 28: shared by the startup CLI-arg path (FormCreate,
+    /// <summary>Shared by the startup CLI-arg path (FormCreate,
     /// after TryRestoreSession) and HandleActivateRequest - opens APath in a
     /// new tab on the active side. No-op for '' or a path that doesn't
     /// exist.</summary>
@@ -1179,7 +1179,7 @@ begin
     Sess.AutoSyncConsoleCwd := FSession.AutoSyncConsoleCwd;
   end;
   Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
-  // Stage 27: FThemeName is the live theme (switched via the Theme dialog or
+  // FThemeName is the live theme (switched via the Theme dialog or
   // loaded from session.json at startup) - always the source of truth here.
   // ThemeFile (color-coding overrides) has no live-switch UI yet, so that
   // half keeps preserving whatever session.json had.
@@ -1619,7 +1619,7 @@ begin
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FCursorBlinkEnabled := True;
   TryRestoreSession;
-  // Stage 28: mtn2 <path> - a brand new tab for the CLI path, restored
+  // Mtn2 <path> - a brand new tab for the CLI path, restored
   // session tabs are left untouched. Updater switches (--wait-pid) are not paths.
   if StartupPathArgument <> '' then
     OpenPathFromArgument(StartupPathArgument);
@@ -1648,7 +1648,7 @@ begin
 
   CreateUpdater;
 
-  // Stage 24: Quick View decode/error lands async - repaint once it does.
+  // Quick View decode/error lands async - repaint once it does.
   SetOverlayRepaintHandler(
     procedure
     begin
@@ -1660,7 +1660,7 @@ end;
 procedure TMainForm.FormShow(Sender: TObject);
 begin
   EnsureShutdownHook;
-  // Stage 28: only now is the native handle valid for a second instance to
+  // Only now is the native handle valid for a second instance to
   // find and send WM_COPYDATA to.
   PublishInstanceWindow(HWND(NativeWindowHandle));
 end;
@@ -1803,14 +1803,14 @@ begin
       begin
         Recompose;
       end);
-  // Stage 24: Media Overlay (Ctrl+Q Quick View) - separate canvas pass on
+  // Media Overlay (Ctrl+Q Quick View) - separate canvas pass on
   // top of the grid, per OVERLAY_PLUGIN.md invariant 2 ("not TCharCell").
   // Gated by QuickViewVisible: the overlay's stored bounds only make sense
   // while Dual Panel is showing its wkPanels list, not Console/Viewer/
   // Editor/Terminal, and this Canvas pass has no other way to know that.
   if Assigned(FDualPanel) and FDualPanel.QuickViewVisible then
     DrawOverlayPreview(Canvas, FRenderer.CellWidth, FRenderer.CellHeight)
-  // Stage 25: Markdown Viewer image reuses the same Media Overlay singleton.
+  // Markdown Viewer image reuses the same Media Overlay singleton.
   // F3 opens the Viewer as a Dual Panel document tab, so FMdi.Active is
   // DualPanel - not TEditorWindow. Check the nested document first; keep
   // the standalone-editor branch for a future MDI editor window.

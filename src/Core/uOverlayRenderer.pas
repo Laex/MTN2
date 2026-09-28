@@ -1,8 +1,8 @@
 unit uOverlayRenderer;
 
-{ Stage 24: Media Overlay (Quick View, Ctrl+Q). Host-only MVP path per
-  OVERLAY_PLUGIN.md §4 ("Host сам по file_type/uri панели делает
-  overlay_request") - no plugin cdecl API yet, that's Post-MVP (stage 29+).
+{ Media Overlay (Quick View, Ctrl+Q). The host decides from the panel's
+  file_type/uri itself (OVERLAY_PLUGIN.md §4); there is no plugin cdecl API
+  for overlays.
 
   Threading: the VFS byte read is async/worker (uFileVfs.pas already
   marshals its callback onto the UI thread via TThread.Queue - see

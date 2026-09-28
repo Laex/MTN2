@@ -1,24 +1,17 @@
 unit TestCmdRepeatedDirNoLineLoss;
 
-{ Фаза D regression test: manual testing during Stage 22 found that running
-  `dir` twice in the same real cmd/ConPTY session could lose an output line
-  on the second run. Root cause: real conhost uses CUP (absolute cursor
-  positioning) for ordinary line-transitions, not just full-screen TUI apps;
-  the legacy primary scrollback had no row-cursor to interpret CUP against,
-  so two narrower heuristics (treat CUP's column as the cursor column; treat
-  a CUP row change as "start a new line") were each tried and reverted --
-  the second one fixed the first `dir`'s glued output but silently dropped a
-  real line on the *second* `dir` in the same session, because conhost's row
-  numbers wrap once its fixed viewport scrolls, which a row-change heuristic
-  alone can't distinguish from a genuine new line.
+{ Running `dir` twice in one real cmd/ConPTY session must not lose output
+  lines. Conhost positions the cursor with CUP (absolute row/column) even
+  for ordinary line transitions, and its row numbers wrap once its fixed
+  viewport scrolls, so a row change alone cannot tell a new line from a
+  wrapped one. TPrimaryScreenGrid (uPrimaryScreenGrid.pas) scrolls on the
+  same LF events conhost's viewport does, so "row N" from a CUP and "row N"
+  in the grid are the same visual line by construction.
 
-  TPrimaryScreenGrid (uPrimaryScreenGrid.pas) fixes this by keeping a grid
-  that scrolls on the exact same LF events conhost's own viewport does, so
-  "row N" from a CUP and "row N" in the grid are the same visual line by
-  construction, not by heuristic -- this test drives two `dir` runs in one
-  real cmd session (via TConsoleBuffer.AppendOutputEx with real PtyCols/
-  PtyRows, which is what latches grid mode) and asserts every per-file
-  listing line from the first run also survives, verbatim, in the second. }
+  This test drives two `dir` runs in one real cmd session (via
+  TConsoleBuffer.AppendOutputEx with real PtyCols/PtyRows, which is what
+  latches grid mode) and asserts every per-file listing line from the first
+  run also survives, verbatim, in the second. }
 
 interface
 

@@ -1,28 +1,23 @@
 unit uPrimaryScreenGrid;
 
 { Fixed-size PtyCols x PtyRows "active screen" grid with a real row/col
-  cursor, synchronized with real conhost's own fixed viewport (Stage 22
-  follow-up). Real Windows conhost (under ConPTY) uses VT cursor positioning
-  (CUP) even for ordinary, non-TUI shell interaction -- prompt redraws
-  between commands, in-place line editing -- not just for full-screen TUI
-  apps. TConsoleBuffer's primary scrollback used to be pure append-only with
-  no row cursor, which cannot represent CUP at all; two narrower heuristics
-  (mapping CUP's absolute column directly, then tracking row changes) were
-  tried and reverted, both because they tried to reconcile conhost's
-  fixed-viewport-with-scroll coordinate system with an unbounded scrollback
-  using guesswork rather than an equivalent model.
+  cursor, synchronized with real conhost's own fixed viewport. Windows
+  conhost (under ConPTY) uses VT cursor positioning (CUP) even for ordinary,
+  non-TUI shell interaction -- prompt redraws between commands, in-place
+  line editing -- not just for full-screen TUI apps, and an append-only
+  scrollback without a row cursor cannot represent CUP.
 
-  This grid IS that equivalent model for the primary buffer: it scrolls on
-  the same LF events conhost's own viewport does, so "row N" here and "row N"
-  from conhost's CUP always mean the same visual line by construction, not by
+  This grid is an equivalent model of conhost's viewport for the primary
+  buffer: it scrolls on the same LF events, so "row N" here and "row N" from
+  conhost's CUP always mean the same visual line by construction, not by
   heuristic. When a line scrolls off the top, TConsoleBuffer.ArchiveRowLocked
   (via OnArchiveRow) files it into the permanent FPlainLines/FCellLines
   archive, which is never edited in place again -- only the active grid is.
 
   Deliberately a separate class from TAltScreenGrid (not shared/reused),
-  even though the two are structurally close: isolates this newer, riskier
-  path from the alt-screen path already confirmed working for vim/htop/less,
-  per Stage 22's own design principle of not entangling the two buffers. }
+  even though the two are structurally close: the primary and alt-screen
+  buffers stay independent, so a change to one cannot break vim/htop/less
+  in the other. }
 
 interface
 

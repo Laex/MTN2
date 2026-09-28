@@ -58,7 +58,7 @@ type
     CloseMarkFg: TAlphaColor;                                 // pcpCloseMark (tab/window 'x')
   end;
 
-  /// <summary>Stage 25: logical style categories a Markdown Viewer span can
+  /// <summary>Logical style categories a Markdown Viewer span can
   /// carry. Lives here (not in uMarkdownParser) so every IThemeRenderer
   /// implementer already has it in scope via the uThemeTypes they use for
   /// the interface itself - no extra uses-clause churn across the 8 theme
@@ -165,7 +165,7 @@ type
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
-    /// <summary>Stage 25 Markdown Viewer: color/attribute for one span kind.
+    /// <summary>Markdown Viewer: color/attribute for one span kind.
     /// AAttr should only ever contain ccaBold in practice - the terminal
     /// renderer (uTerminalRenderer.TTerminalRenderer) paints ccaBold,
     /// ccaUnderline and ccaInsertCaret; ccaItalic has no visual effect, so

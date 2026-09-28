@@ -44,7 +44,7 @@ type
     // DrawScrollBar / DrawFunctionKeys / DrawAppStatusLine call reached from
     // within that same DrawContent sees the current theme's colors.
     FThemeColors: TEditorThemeColors;
-    // Stage 25: cell-aware Markdown render mode (F3 on .md, view-only).
+    // Cell-aware Markdown render mode (F3 on .md, view-only).
     // Mutually exclusive with FHexMode by construction - never both True.
     FMarkdownMode: Boolean;
     FMdFenceIdx: TMarkdownFenceIndex;
@@ -335,7 +335,7 @@ const
 
 const
   cMaxUndo     = 100;
-  // Stage 25: rows reserved for a standalone "![alt](path)" image line when
+  // Rows reserved for a standalone "![alt](path)" image line when
   // its extension/path resolve to something the Overlay can preview - the
   // one deliberate break from "one source line = one screen line" (see
   // uMarkdownParser header), because a 1-cell-tall image isn't useful.
@@ -751,7 +751,7 @@ begin
     FPositionRestored := True;
     RestoreSavedPosition;
     JustRestored := True;
-    // Stage 25: default F3 on a .md file to the rendered view - only on this
+    // Default F3 on a .md file to the rendered view - only on this
     // one-time "doc just became ready" tick, so a later Ctrl+M (raw text)
     // isn't silently undone by an unrelated DocChanged (dirty/saving state
     // changes fire this same event). Never for F4/Editor - raw source only.
@@ -902,8 +902,8 @@ begin
   // window's own bottom border, so Theme.DrawWindowFrame - which already
   // correctly picks single vs double line per theme for the top/sides -
   // never reaches this row); it used to always close with double-line
-  // glyphs, which only matches NDN/TotalCommander/HighContrast. Same fix as
-  // Stage 27 item 9's panel divider: ask the theme, and only actually use
+  // glyphs, which only matches NDN/TotalCommander/HighContrast. Same as the
+  // panel divider: ask the theme, and only actually use
   // double-line while this window is the focused one (idle stays single
   // even on themes that support double, matching the rest of the app).
   UseDouble := Assigned(Theme) and Theme.UsesDoubleLineForActivePanel and IsFocused;
@@ -3104,7 +3104,7 @@ begin
     // index over the whole document (as the plain Viewer's
     // MapDisplayRowToLine does): that scans every line on every call, which
     // would reintroduce exactly the "large file blocks the UI" problem
-    // Stage 25's lazy fence index exists to avoid.
+    // the lazy fence index (uMarkdownIndex) exists to avoid.
     DisplayLen := Length(MdLine.DisplayText);
     WrapStarts := MarkdownWrapStarts(MdLine, TextW);
     RowsForLine := Length(WrapStarts);

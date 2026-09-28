@@ -170,7 +170,7 @@ begin
   // first, or the single-instance check below would hand off to it and quit.
   WaitForPreviousInstanceFromCommandLine;
 
-  // Stage 28: mtn2 <path> with another instance already running forwards the
+  // Mtn2 <path> with another instance already running forwards the
   // path via WM_COPYDATA and exits here -- before Application.Initialize, so
   // the delegating second process never touches FMX/the platform layer.
   if TryAcquireSingleInstance(AlreadyRunning) and AlreadyRunning then

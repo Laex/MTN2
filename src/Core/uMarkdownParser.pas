@@ -1,6 +1,6 @@
 unit uMarkdownParser;
 
-{ Stage 25: Markdown Viewer parser. Pure, no I/O - turns one raw source line
+{ Markdown Viewer parser. Pure, no I/O - turns one raw source line
   plus carried fence state into a TMdLine (display text + non-overlapping
   style spans). Deliberately line-oriented: one source line always maps to
   one screen line of markdown content (no paragraph reflow/joining) - the
@@ -277,7 +277,7 @@ begin
   Result := (E = '.png') or (E = '.jpg') or (E = '.jpeg') or (E = '.bmp');
 end;
 
-// Whole (trimmed) line is exactly "![alt](path)" - Stage 25 Overlay shape.
+// Whole (trimmed) line is exactly "![alt](path)" - Overlay shape.
 // Inline images mid-paragraph stay out of scope (readme.md Этап 25).
 function TryParseCommonMarkImage(const T: string; out AAlt, APath: string): Boolean;
 var
@@ -510,7 +510,7 @@ end;
 // one span.
 // No nesting (e.g. an *italic* run inside **bold** is not separately
 // styled) and an unmatched opening marker is copied through as plain text
-// rather than consuming the rest of the line - deliberate MVP
+// rather than consuming the rest of the line - deliberate
 // simplifications for a TUI cell-grid viewer, not a CommonMark-conformant
 // inline parser.
 function ParseInline(const S: string): TMdInlineResult;

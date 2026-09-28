@@ -47,7 +47,7 @@ var
   /// session in uSession.pas, mutated by the Columns... dialog in
   /// uDualPanelWindow.pas.</summary>
   GCustomColumnsConfig: TCustomColumnsConfig;
-  /// <summary>Stage 55: leading shell-icon column. App-wide, like Theme/Zoom.
+  /// <summary>Leading shell-icon column. App-wide, like Theme/Zoom.
   /// False still leaves uShellIcons loaded; draw/hit-test just skip the
   /// reserve and do not enqueue icon work.</summary>
   GShowPanelIcons: Boolean;

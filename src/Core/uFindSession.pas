@@ -1,6 +1,6 @@
 unit uFindSession;
 
-{ In-memory find:// sessions for Alt+F7 results as a virtual panel (Stage 14+). }
+{ In-memory find:// sessions for Alt+F7 results as a virtual panel. }
 
 interface
 
