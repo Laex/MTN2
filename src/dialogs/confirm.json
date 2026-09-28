@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Confirm",
   "width": 48,
-  "height": 8,
+  "height": 7,
   "children": [
     {
       "type": "label",

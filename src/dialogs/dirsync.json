@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Synchronize directories",
   "width": 72,
-  "height": 22,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -91,7 +91,7 @@
       "text": "0 to copy",
       "col": 1,
       "row": 4,
-      "width": 70,
+      "width": 68,
       "height": 1
     },
     {
@@ -103,7 +103,7 @@
       ],
       "col": 1,
       "row": 6,
-      "width": 70,
+      "width": 68,
       "height": 8
     },
     {

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Select",
   "width": 48,
-  "height": 11,
+  "height": 10,
   "children": [
     {
       "type": "label",

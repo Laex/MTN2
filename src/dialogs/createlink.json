@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Create link",
   "width": 70,
-  "height": 13,
+  "height": 12,
   "children": [
     {
       "type": "label",

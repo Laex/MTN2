@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Custom columns",
   "width": 38,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "checkbox",

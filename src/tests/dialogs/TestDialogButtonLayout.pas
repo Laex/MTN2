@@ -7,7 +7,7 @@ unit TestDialogButtonLayout;
   - at least one empty cell between the frame and the leftmost face, and
     between the rightmost face's shadow and the frame;
   - exactly one empty row above it;
-  - below it the shadow row, one empty row, then the frame. }
+  - below it only the shadow row, then the frame. }
 
 interface
 
@@ -121,8 +121,8 @@ begin
     // Right + 1 is the shadow cell.
     if Frame.Right - (Right + 1) - 1 < 1 then
       Problems.Add(Format('right gap after the shadow %d', [Frame.Right - (Right + 1) - 1]));
-    if Top <> Frame.Bottom - 3 then
-      Problems.Add(Format('buttons %d rows above the frame (want 3: shadow, empty, frame)',
+    if Top <> Frame.Bottom - 2 then
+      Problems.Add(Format('buttons %d rows above the frame (want 2: shadow, frame)',
         [Frame.Bottom - Top]));
     if RowUsed(Top - 1) then
       Problems.Add('no empty row above the buttons')

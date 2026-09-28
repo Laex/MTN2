@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Font / Display",
   "width": 54,
-  "height": 27,
+  "height": 26,
   "children": [
     {
       "type": "label",
@@ -42,7 +42,7 @@
       "items": [
         "14 pt"
       ],
-      "col": 10,
+      "col": 18,
       "row": 9,
       "width": 12,
       "height": 1
@@ -51,7 +51,7 @@
       "type": "label",
       "text": "Zoom",
       "id": "lbl_zoom",
-      "col": 26,
+      "col": 33,
       "row": 9,
       "width": 8,
       "height": 1
@@ -63,9 +63,9 @@
       "items": [
         "100%"
       ],
-      "col": 35,
+      "col": 42,
       "row": 9,
-      "width": 16,
+      "width": 9,
       "height": 1
     },
     {
@@ -108,9 +108,9 @@
       "type": "label",
       "text": "Interval",
       "id": "lbl_interval",
-      "col": 24,
+      "col": 33,
       "row": 12,
-      "width": 10,
+      "width": 8,
       "height": 1
     },
     {
@@ -120,9 +120,9 @@
       "items": [
         "530 ms"
       ],
-      "col": 35,
+      "col": 42,
       "row": 12,
-      "width": 16,
+      "width": 9,
       "height": 1
     },
     {

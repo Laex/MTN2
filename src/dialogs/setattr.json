@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Set attributes",
   "width": 56,
-  "height": 23,
+  "height": 22,
   "children": [
     {
       "type": "label",
@@ -11,7 +11,7 @@
       "id": "summary",
       "col": 1,
       "row": 0,
-      "width": 54,
+      "width": 52,
       "height": 1
     },
     {
@@ -131,7 +131,7 @@
       "checked": false,
       "col": 1,
       "row": 6,
-      "width": 54,
+      "width": 52,
       "height": 1
     },
     {
@@ -140,7 +140,7 @@
       "value": "",
       "col": 1,
       "row": 7,
-      "width": 54,
+      "width": 52,
       "height": 1
     },
     {
@@ -220,8 +220,8 @@
       "text": "",
       "id": "date_error",
       "col": 1,
-      "row": 13,
-      "width": 54,
+      "row": 15,
+      "width": 52,
       "height": 1
     },
     {
@@ -231,7 +231,7 @@
       "checked": false,
       "col": 1,
       "row": 16,
-      "width": 54,
+      "width": 52,
       "height": 1
     },
     {

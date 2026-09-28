@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Compare files",
   "width": 76,
-  "height": 24,
+  "height": 23,
   "children": [
     {
       "type": "label",
@@ -11,7 +11,7 @@
       "text": "",
       "col": 1,
       "row": 0,
-      "width": 74,
+      "width": 72,
       "height": 1
     },
     {
@@ -20,7 +20,7 @@
       "text": "",
       "col": 1,
       "row": 1,
-      "width": 74,
+      "width": 72,
       "height": 1
     },
     {
@@ -29,7 +29,7 @@
       "text": "",
       "col": 1,
       "row": 2,
-      "width": 74,
+      "width": 72,
       "height": 1
     },
     {
@@ -41,7 +41,7 @@
       ],
       "col": 1,
       "row": 4,
-      "width": 74,
+      "width": 72,
       "height": 14
     },
     {

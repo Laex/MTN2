@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Pick color",
   "width": 52,
-  "height": 22,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -32,7 +32,7 @@
       "id": "lbl_custom",
       "col": 1,
       "row": 11,
-      "width": 48,
+      "width": 49,
       "height": 1
     },
     {

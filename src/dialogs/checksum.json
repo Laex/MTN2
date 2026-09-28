@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Checksums",
   "width": 78,
-  "height": 22,
+  "height": 21,
   "children": [
     {
       "type": "label",

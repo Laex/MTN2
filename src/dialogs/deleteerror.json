@@ -4,7 +4,7 @@
   "style": "warning",
   "title": "Error",
   "width": 80,
-  "height": 15,
+  "height": 14,
   "children": [
     {
       "type": "label",
@@ -12,7 +12,7 @@
       "text": "Cannot move item to the Recycle Bin",
       "col": 1,
       "row": 1,
-      "width": 78,
+      "width": 76,
       "height": 1
     },
     {
@@ -21,7 +21,7 @@
       "text": "path",
       "col": 1,
       "row": 2,
-      "width": 78,
+      "width": 76,
       "height": 1
     },
     {
@@ -30,7 +30,7 @@
       "text": "Try to delete it permanently?",
       "col": 1,
       "row": 3,
-      "width": 78,
+      "width": 76,
       "height": 1
     },
     {
@@ -47,7 +47,7 @@
       "text": "0x00000005 - Access denied",
       "col": 1,
       "row": 5,
-      "width": 78,
+      "width": 76,
       "height": 3
     },
     {

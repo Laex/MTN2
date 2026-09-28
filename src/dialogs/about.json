@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "About MTN2",
   "width": 56,
-  "height": 15,
+  "height": 14,
   "children": [
     {
       "type": "label",

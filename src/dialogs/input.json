@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Input",
   "width": 48,
-  "height": 9,
+  "height": 8,
   "children": [
     {
       "type": "label",

@@ -300,7 +300,8 @@ begin
   Assert.IsTrue(I >= 0, 'error_line label not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckLabel, 'error_line is not a label');
   Assert.IsTrue(LDecl.Controls[I].BoxH >= 3, 'error_line must wrap across at least 3 rows');
-  Assert.IsTrue(LDecl.Controls[I].BoxW >= 78, 'error_line uses the dialog body width');
+  // The client width less one clear cell on each side.
+  Assert.IsTrue(LDecl.Controls[I].BoxW = LDecl.Width - 4, 'error_line uses the dialog body width');
   I := FindControlById(LDecl, 'path');
   Assert.IsTrue(I >= 0, 'path label not found');
   Writeln('  deleteerror.json: error_line is a 3-row wrapping label');

@@ -3,17 +3,23 @@ unit uDialogLocaleLayout;
 { Widen a protocol-2 dialog after translation so captions fit.
 
   Cells are columns. The frame occupies one cell on each side, so the
-  client width is Decl.Width - 2. Each control keeps its row. Controls that
-  share a starting column grow by the same amount (the widest caption in
-  that column), and every column to the right shifts by the sum of those
-  growths. The original gap between columns is therefore unchanged, so a
-  longer caption cannot land on the next control. A control that already
-  reached the right client edge stretches with the dialog. The dialog width
-  grows to cover the new right edge, at least two client cells of right
-  padding for button ▄ shadow + gap before the frame (a rule that already
-  spanned the client keeps the same inset on the right as on the left), and the
-  title plus the frame's close mark. After button widths settle, each row
-  of buttons is recentered in the new client width. Width never shrinks. }
+  client width is Decl.Width - 2. Each control keeps its row.
+
+  Controls keep their columns: all controls that started in one column
+  still start in one column. A control with a neighbour right of it in its
+  row (a label and its field) pushes that neighbour's column so the grown
+  caption keeps its authored gap. So a longer label moves only the fields
+  after it, and they stay aligned under each other; columns that nothing
+  pushes stay where they were. A pushed field keeps its right edge and
+  narrows while it can. A control with nothing
+  to its right (a hint line, a list) grows in place. A control that reached
+  the right client edge stretches with the dialog and keeps its right inset.
+
+  Buttons take no part in the column shifts. Each button row is laid out on
+  its own: buttons grow to their captions, keep the gaps between them, and
+  the row is centered with its shadow, one cell clear of the frame on either
+  side. The dialog grows to fit all of this and the title plus the frame's
+  close mark. Width never shrinks. }
 
 interface
 
@@ -151,8 +157,14 @@ begin
     Result := Length(ATitle) + 7;
 end;
 
-/// <summary>Shift every button row so the group's faces sit in the middle of
-/// AClientW, leaving two cells free on the right for ▄ + gap.</summary>
+const
+  cCaptionKinds = [dckButton, dckCheckbox, dckRadio];
+  cFieldKinds = [dckInput, dckDropDown, dckList];
+  cMinFieldCells = 8;
+
+/// <summary>Center every button row in AClientW. The row's width counts the
+/// last face's shadow, and the row stays one cell clear of the frame on the
+/// left and after the shadow on the right when it fits.</summary>
 procedure CenterButtonRows(var ADecl: TDialogDeclaration; AClientW: Integer);
 var
   Rows: TArray<Integer>;
@@ -197,13 +209,13 @@ begin
     end;
     if (Left >= Right) or (Left = High(Integer)) then
       Continue;
-    Span := Right - Left;
-    // Equal margins around the faces; keep two cells after the group.
+    // Faces plus the last one's shadow.
+    Span := Right - Left + 1;
     Target := (AClientW - Span) div 2;
-    if Target + Span + 2 > AClientW then
-      Target := AClientW - 2 - Span;
-    if Target < 0 then
-      Target := 0;
+    if Target + Span + 1 > AClientW then
+      Target := AClientW - 1 - Span;
+    if Target < 1 then
+      Target := Min(1, Max(AClientW - Span, 0));
     Delta := Target - Left;
     if Delta = 0 then
       Continue;
@@ -214,14 +226,90 @@ begin
   end;
 end;
 
+/// <summary>Buttons of each row grow to their captions and keep the gaps
+/// between them, left to right from the row's first column. Returns the
+/// client width the widest row needs: faces, the last shadow and one clear
+/// cell on each side.</summary>
+function PackButtonRows(var ADecl: TDialogDeclaration): Integer;
+var
+  I, J, K, Tmp, Col, Gap: Integer;
+  Order: TArray<Integer>;
+  Done: TArray<Boolean>;
+begin
+  Result := 0;
+  SetLength(Done, Length(ADecl.Controls));
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    if (ADecl.Controls[I].Kind <> dckButton) or Done[I] then
+      Continue;
+    Order := nil;
+    for J := I to High(ADecl.Controls) do
+      if (ADecl.Controls[J].Kind = dckButton) and
+         (ADecl.Controls[J].Row = ADecl.Controls[I].Row) then
+      begin
+        Order := Order + [J];
+        Done[J] := True;
+      end;
+    for J := 1 to High(Order) do
+    begin
+      K := J;
+      while (K > 0) and (ADecl.Controls[Order[K]].Col < ADecl.Controls[Order[K - 1]].Col) do
+      begin
+        Tmp := Order[K];
+        Order[K] := Order[K - 1];
+        Order[K - 1] := Tmp;
+        Dec(K);
+      end;
+    end;
+    Col := Max(ADecl.Controls[Order[0]].Col, 0);
+    for J := 0 to High(Order) do
+    begin
+      K := Order[J];
+      if J > 0 then
+      begin
+        // The authored gap to the previous face, at least its shadow and
+        // one clear cell.
+        Gap := ADecl.Controls[K].Col -
+          (ADecl.Controls[Order[J - 1]].Col + Max(ADecl.Controls[Order[J - 1]].BoxW, 1));
+        Inc(Col, Max(Gap, 2));
+      end;
+      Tmp := Max(Max(ADecl.Controls[K].BoxW, 1), CaptionCells(ADecl.Controls[K]));
+      ADecl.Controls[K].Col := Col;
+      ADecl.Controls[K].BoxW := Tmp;
+      Inc(Col, Tmp);
+    end;
+    // Faces and the last shadow, one clear cell on each side.
+    Result := Max(Result, Col - ADecl.Controls[Order[0]].Col + 1 + 2);
+  end;
+end;
+
 procedure FitDialogToTranslatedText(var ADecl: TDialogDeclaration);
 var
-  I, J, ClientW, ContentRight, RightPad, NewClient, NewRight: Integer;
-  OrigCol, OrigW, NeedW, NewCol, NewW: TArray<Integer>;
+  I, J, ClientW, NewClient, Tmp, Lim: Integer;
+  OrigCol, OrigW, NeedW, NewCol, NewW, Inset: TArray<Integer>;
   Stretch, Rule: TArray<Boolean>;
-  Cols: TArray<Integer>;
-  Extra, Shift: TArray<Integer>;
-  Found: Boolean;
+  Next, Cols, Pos: TArray<Integer>;
+
+  function IsButton(AIndex: Integer): Boolean;
+  begin
+    Result := ADecl.Controls[AIndex].Kind = dckButton;
+  end;
+
+  function LastRow(AIndex: Integer): Integer;
+  begin
+    Result := ADecl.Controls[AIndex].Row + Max(ADecl.Controls[AIndex].BoxH, 1) - 1;
+  end;
+
+  function ColumnOf(ACol: Integer): Integer;
+  var
+    K: Integer;
+  begin
+    for K := 0 to High(Cols) do
+      if Cols[K] = ACol then
+        Exit(K);
+    Result := -1;
+  end;
+
 begin
   if not IsDialogProtocolV2(ADecl.Version) then
     Exit;
@@ -236,47 +324,39 @@ begin
   SetLength(NeedW, Length(ADecl.Controls));
   SetLength(NewCol, Length(ADecl.Controls));
   SetLength(NewW, Length(ADecl.Controls));
+  SetLength(Inset, Length(ADecl.Controls));
   SetLength(Stretch, Length(ADecl.Controls));
   SetLength(Rule, Length(ADecl.Controls));
-  SetLength(Cols, 0);
+  SetLength(Next, Length(ADecl.Controls));
+  Cols := nil;
 
   ClientW := ClientWidthOf(ADecl.Width);
-  ContentRight := 0;
   for I := 0 to High(ADecl.Controls) do
   begin
-    OrigCol[I] := ADecl.Controls[I].Col;
-    if OrigCol[I] < 0 then
-      OrigCol[I] := 0;
-    OrigW[I] := ADecl.Controls[I].BoxW;
-    if OrigW[I] < 1 then
-      OrigW[I] := 1;
+    OrigCol[I] := Max(ADecl.Controls[I].Col, 0);
+    OrigW[I] := Max(ADecl.Controls[I].BoxW, 1);
     Rule[I] := (ADecl.Controls[I].Kind in [dckLabel, dckStatus]) and
       IsRuleText(ADecl.Controls[I].Text);
     NeedW[I] := Max(OrigW[I], CaptionCells(ADecl.Controls[I]));
-    // Buttons keep caption width - do not stretch a rightmost Cancel into
-    // a full-width bar when the dialog grows.
-    Stretch[I] := (ADecl.Controls[I].Kind <> dckButton) and
-      (OrigCol[I] + OrigW[I] >= ClientW - 1);
-    if OrigCol[I] + OrigW[I] > ContentRight then
-      ContentRight := OrigCol[I] + OrigW[I];
-    Found := False;
-    for J := 0 to High(Cols) do
-      if Cols[J] = OrigCol[I] then
-      begin
-        Found := True;
-        Break;
-      end;
-    if not Found then
-    begin
-      SetLength(Cols, Length(Cols) + 1);
-      Cols[High(Cols)] := OrigCol[I];
-    end;
+    Inset[I] := Max(ClientW - (OrigCol[I] + OrigW[I]), 0);
+    Stretch[I] := not IsButton(I) and (Inset[I] <= 1);
+    if not IsButton(I) and (ColumnOf(OrigCol[I]) < 0) then
+      Cols := Cols + [OrigCol[I]];
   end;
-  if ContentRight > ClientW then
-    ContentRight := ClientW;
-  // At least two client cells past the rightmost control: one for the
-  // button's ▄ face shadow (Right+1) and one gap before the frame border.
-  RightPad := Max(2, ClientW - ContentRight);
+
+  // Next: the nearest non-button control right of each one in its rows.
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    Next[I] := -1;
+    if IsButton(I) then
+      Continue;
+    for J := 0 to High(ADecl.Controls) do
+      if (J <> I) and not IsButton(J) and (OrigCol[J] > OrigCol[I]) and
+         (ADecl.Controls[J].Row <= LastRow(I)) and
+         (ADecl.Controls[I].Row <= LastRow(J)) and
+         ((Next[I] < 0) or (OrigCol[J] < OrigCol[Next[I]])) then
+        Next[I] := J;
+  end;
 
   // Insertion-sort columns so shifts accumulate left to right.
   for I := 1 to High(Cols) do
@@ -284,76 +364,82 @@ begin
     J := I;
     while (J > 0) and (Cols[J] < Cols[J - 1]) do
     begin
-      NewRight := Cols[J];
+      Tmp := Cols[J];
       Cols[J] := Cols[J - 1];
-      Cols[J - 1] := NewRight;
+      Cols[J - 1] := Tmp;
       Dec(J);
     end;
   end;
 
-  SetLength(Extra, Length(Cols));
-  SetLength(Shift, Length(Cols));
-  for I := 0 to High(ADecl.Controls) do
-    for J := 0 to High(Cols) do
-      if Cols[J] = OrigCol[I] then
-      begin
-        Extra[J] := Max(Extra[J], NeedW[I] - OrigW[I]);
-        Break;
-      end;
-  for I := 0 to High(Cols) do
+  // New column positions, left to right: never left of the authored one,
+  // and past every grown control whose right neighbour starts here, by that
+  // control's authored gap. Columns of different rows do not push each
+  // other: controls on different rows cannot collide.
+  SetLength(Pos, Length(Cols));
+  for J := 0 to High(Cols) do
   begin
-    Shift[I] := 0;
-    for J := 0 to I - 1 do
-      Inc(Shift[I], Extra[J]);
+    Pos[J] := Cols[J];
+    for I := 0 to High(ADecl.Controls) do
+      if not IsButton(I) and (Next[I] >= 0) and (OrigCol[Next[I]] = Cols[J]) then
+      begin
+        Tmp := Max(Cols[J] - (OrigCol[I] + OrigW[I]), 1);
+        Pos[J] := Max(Pos[J], Pos[ColumnOf(OrigCol[I])] + NeedW[I] + Tmp);
+      end;
   end;
 
-  NewRight := 0;
+  NewClient := ClientW;
   for I := 0 to High(ADecl.Controls) do
   begin
-    NewCol[I] := OrigCol[I];
-    NewW[I] := OrigW[I];
-    for J := 0 to High(Cols) do
-      if Cols[J] = OrigCol[I] then
-      begin
-        NewCol[I] := OrigCol[I] + Shift[J];
-        NewW[I] := OrigW[I] + Extra[J];
-        Break;
-      end;
-    if NewCol[I] + NewW[I] > NewRight then
-      NewRight := NewCol[I] + NewW[I];
+    if IsButton(I) then
+      Continue;
+    NewCol[I] := Pos[ColumnOf(OrigCol[I])];
+    NewW[I] := NeedW[I];
+    // A field pushed right narrows only if it would pass the frame (its
+    // authored inset when it reached the edge, else one clear cell), and not
+    // below cMinFieldCells or its longest item.
+    if (ADecl.Controls[I].Kind in cFieldKinds) and (NewCol[I] > OrigCol[I]) then
+    begin
+      Tmp := cMinFieldCells;
+      if ADecl.Controls[I].Kind <> dckInput then
+        Tmp := Max(Tmp, CaptionCells(ADecl.Controls[I]));
+      if Stretch[I] then
+        Lim := ClientW - Inset[I] - NewCol[I]
+      else
+        Lim := ClientW - 1 - NewCol[I];
+      NewW[I] := Max(Min(OrigW[I], Lim), Min(Tmp, OrigW[I]));
+    end;
+    // A control that reached the right edge keeps its inset; any other one
+    // needs at least one clear cell before the frame.
+    if Stretch[I] then
+      NewClient := Max(NewClient, NewCol[I] + NewW[I] + Inset[I])
+    else
+      NewClient := Max(NewClient, NewCol[I] + NewW[I] + 1);
   end;
-
-  NewClient := Max(ClientW, NewRight + RightPad);
+  NewClient := Max(NewClient, PackButtonRows(ADecl));
   NewClient := Max(NewClient, TitleMinWidth(ADecl.Title) - 2);
 
   for I := 0 to High(ADecl.Controls) do
   begin
+    if IsButton(I) then
+      Continue;
     if Stretch[I] then
     begin
-      // A rule's left inset is its column. The right inset matches it, so a
-      // separator that started one cell in from the frame stays one cell in
-      // after the dialog grows. Other stretch controls keep RightPad so a
-      // button's ▄ + gap still fit.
+      // A rule keeps the same inset on both sides; any other control keeps
+      // its authored right inset.
       if Rule[I] then
         NewW[I] := Max(1, NewClient - 2 * NewCol[I])
       else
-        NewW[I] := Max(NewW[I], NewClient - RightPad - NewCol[I]);
+        NewW[I] := Max(NewW[I], NewClient - Inset[I] - NewCol[I]);
     end;
-    if NewW[I] < 1 then
-      NewW[I] := 1;
     ADecl.Controls[I].Col := NewCol[I];
-    ADecl.Controls[I].BoxW := NewW[I];
+    ADecl.Controls[I].BoxW := Max(NewW[I], 1);
     if Rule[I] and (ADecl.Controls[I].Text <> '') then
-      ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1], NewW[I]);
+      ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
+        ADecl.Controls[I].BoxW);
   end;
   ADecl.Width := Max(ADecl.Width, NewClient + 2);
   CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
 end;
-
-const
-  cCaptionKinds = [dckButton, dckCheckbox, dckRadio];
-  cFieldKinds = [dckInput, dckDropDown, dckList];
-  cMinFieldCells = 8;
 
 function DialogCaptionsOverflow(const ADecl: TDialogDeclaration): Boolean;
 var
