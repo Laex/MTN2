@@ -22,6 +22,7 @@ type
     [Test] procedure TestApply;
     [Test] procedure TestRollback;
     [Test] procedure TestSchedule;
+    [Test] procedure TestSettingsJson;
     [Test] procedure TestLiveGitHub;
   end;
 
@@ -239,6 +240,24 @@ begin
   Assert.IsTrue(not UpdateCheckDue(S, Now_), 'disabled -> never due');
 end;
 
+procedure TestSettingsJson;
+var
+  S: TUpdateSettings;
+begin
+  S := ParseUpdateSettingsJson('');
+  Assert.IsTrue(S.CheckOnStart and S.ShowCheckNotice, 'no file -> check and notify');
+  // update.json written before the notice existed: the notice is on.
+  S := ParseUpdateSettingsJson('{"checkOnStart":true,"skipVersion":"v0.3.7"}');
+  Assert.IsTrue(S.ShowCheckNotice, 'old file -> notice on');
+  Assert.IsTrue(S.SkipVersion = 'v0.3.7', 'other fields kept');
+  S.ShowCheckNotice := False;
+  S.CheckOnStart := False;
+  S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
+  Assert.IsTrue(not S.ShowCheckNotice and not S.CheckOnStart, 'both switches round-trip');
+  S := ParseUpdateSettingsJson('not json');
+  Assert.IsTrue(S.CheckOnStart and S.ShowCheckNotice, 'bad JSON -> defaults');
+end;
+
 procedure TestLiveGitHub;
 var
   R: TUpdateRelease;
@@ -304,6 +323,11 @@ end;
 procedure TTestUpdater.TestSchedule;
 begin
   TestUpdater.TestSchedule;
+end;
+
+procedure TTestUpdater.TestSettingsJson;
+begin
+  TestUpdater.TestSettingsJson;
 end;
 
 procedure TTestUpdater.TestLiveGitHub;

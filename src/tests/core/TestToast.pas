@@ -70,6 +70,14 @@ begin
   Assert.IsTrue(R.Width <= 0, 'no text -> empty');
 
   Assert.IsTrue(ToastMaxTextLen(100) + 4 + 2 < 100, 'max text leaves room for frame and margin');
+
+  // A hint line grows the box upwards; the bottom stays put.
+  R := ToastBounds(20, 100, 30, 2);
+  Assert.IsTrue(R.Height = 4, 'two text rows + frame');
+  Assert.IsTrue(R.Bottom = 25, 'same bottom as one line');
+  Assert.IsTrue(R.Width = 24, 'width from the longer line');
+  R := ToastBounds(20, 100, 10, 2);
+  Assert.IsTrue(R.Width <= 0, 'no room for the second line -> empty');
 end;
 
 { TTestToast }

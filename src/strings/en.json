@@ -23,6 +23,7 @@
     "DIALOG_UPDATES": {
       "$title": "Updates",
       "check_on_start": "Check for updates at startup",
+      "show_check_notice": "Show a notice when checking",
       "check": "Check now",
       "close": "Close"
     },    "DIALOG_ARCHIVEPASSWORD": {
@@ -484,6 +485,8 @@
     "update.busyDetails": "The update will be installed when MTN2 exits.",
     "update.upToDate": "You have the latest version (%s).",
     "update.current": "Installed version: %s.",
+    "update.checkingNotice": "Checking github.com for MTN2 updates...",
+    "update.checkingHint": "Turn off: F9 > ≡ > Check for updates",
     "about.version": "Version %s",
     "toast.copiedPath": "Full path \"%s\" copied to the clipboard",
     "toast.copiedName": "Name \"%s\" copied to the clipboard",

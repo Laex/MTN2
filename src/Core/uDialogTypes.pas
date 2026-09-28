@@ -249,10 +249,10 @@ function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDi
 /// OK that Esc also triggers.</summary>
 function BuildUpdateMessageDialog(const AMessage, ADetails, AOkText: string;
   AShowCancel: Boolean; const ACancelText: string = ''): TDialogDeclaration;
-/// <summary>Help > Updates: installed version, the check_on_start checkbox,
-/// buttons check / close (Esc).</summary>
+/// <summary>Help > Updates: installed version, the check_on_start and
+/// show_check_notice checkboxes, buttons check / close (Esc).</summary>
 function BuildUpdatesDialog(const ACurrentVersion: string;
-  ACheckOnStart: Boolean): TDialogDeclaration;
+  ACheckOnStart, AShowCheckNotice: Boolean): TDialogDeclaration;
 /// <summary>AItems are pre-formatted display labels — see
 /// ColorCodingDisplayLabel in uColorCodingEditHelpers.pas.</summary>
 function BuildColorCodingDialog(const AItems: TArray<string>;
@@ -1293,12 +1293,13 @@ begin
 end;
 
 function BuildUpdatesDialog(const ACurrentVersion: string;
-  ACheckOnStart: Boolean): TDialogDeclaration;
+  ACheckOnStart, AShowCheckNotice: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogUpdates, Result);
   DialogSetLabelText(Result, 'version', T('ui.update.current', 'Installed version: %s.',
     [ACurrentVersion]));
   DialogSetCheckbox(Result, 'check_on_start', ACheckOnStart);
+  DialogSetCheckbox(Result, 'show_check_notice', AShowCheckNotice);
 end;
 
 function BuildAboutDialog: TDialogDeclaration;

@@ -20,6 +20,7 @@
     "DIALOG_UPDATES": {
       "$title": "Обновления",
       "check_on_start": "Проверять обновления при запуске",
+      "show_check_notice": "Показывать уведомление о проверке",
       "check": "Проверить",
       "close": "Закрыть"
     },    "DIALOG_ARCHIVEPASSWORD": {
@@ -584,6 +585,8 @@
     "update.busyDetails": "Обновление установится при выходе из MTN2.",
     "update.upToDate": "У вас последняя версия (%s).",
     "update.current": "Установлена версия %s.",
+    "update.checkingNotice": "Проверка обновлений MTN2 на github.com...",
+    "update.checkingHint": "Отключить: F9 > ≡ > Обновления",
     "about.version": "Версия %s",
     "toast.copiedPath": "Полный путь «%s» скопирован в буфер обмена",
     "toast.copiedName": "Имя «%s» скопировано в буфер обмена",

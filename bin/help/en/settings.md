@@ -24,7 +24,7 @@ Commands that change nothing on screen confirm themselves with a short notice in
 - **Ctrl+Alt+D** — the folder added to the hotlist;
 - selection by mask (**Gray +/−**, **Ctrl+Gray +/−**, **Alt+Gray +/−**) that changed nothing — shown in red.
 
-Notices are turned off in **Options → Font / Display...** (“Show pop-up notifications”).
+Notices are turned off in **Options → Font / Display...** (“Show pop-up notifications”). The update-check notice is the exception: it has its own checkbox (see “Updates” below).
 
 ## Updates
 
@@ -33,6 +33,10 @@ A few seconds after startup, once a day, MTN2 checks GitHub for a new version. I
 After the download (the package is checked against its SHA-256) you choose **Restart** now or install **On exit**. While copy jobs are running, installation waits until exit. Only program files are replaced — settings, `7z.dll` and your other files stay as they are.
 
 **≡ → Check for updates...** shows the installed version, turns the startup check on or off and checks right away.
+
+When the startup check goes online, a notice “Checking github.com for MTN2 updates...” appears in the bottom right corner for a few seconds, with a hint on how to turn it off. It is shown even when other notices are off; the “Show a notice when checking” checkbox in the same dialog removes it.
+
+The check is a single HTTPS request to `api.github.com` for the latest release of the `Laex/MTN2` repository. It carries nothing but the MTN2 version in the `User-Agent` header — no file names, paths or settings. With “Check for updates at startup” off, MTN2 does not go online by itself.
 
 ---
 

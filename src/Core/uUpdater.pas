@@ -46,6 +46,9 @@ type
 
   TUpdateSettings = record
     CheckOnStart: Boolean;
+    /// <summary>Toast "checking github.com for updates" when the startup check
+    /// goes online, so the network access is never silent.</summary>
+    ShowCheckNotice: Boolean;
     LastCheck: TDateTime;   // 0 = never
     SkipVersion: string;    // '' = none
   end;
@@ -106,6 +109,10 @@ function FpsRequested: Boolean;
 function DefaultUpdateSettings: TUpdateSettings;
 function LoadUpdateSettings: TUpdateSettings;
 procedure SaveUpdateSettings(const ASettings: TUpdateSettings);
+/// <summary>update.json text -> settings; missing fields and bad JSON keep
+/// the defaults.</summary>
+function ParseUpdateSettingsJson(const AJson: string): TUpdateSettings;
+function UpdateSettingsToJson(const ASettings: TUpdateSettings): string;
 function UpdateCheckDue(const ASettings: TUpdateSettings; ANow: TDateTime): Boolean;
 
 implementation
@@ -589,11 +596,12 @@ end;
 function DefaultUpdateSettings: TUpdateSettings;
 begin
   Result.CheckOnStart := True;
+  Result.ShowCheckNotice := True;
   Result.LastCheck := 0;
   Result.SkipVersion := '';
 end;
 
-function LoadUpdateSettings: TUpdateSettings;
+function ParseUpdateSettingsJson(const AJson: string): TUpdateSettings;
 var
   Val: TJSONValue;
   Root: TJSONObject;
@@ -601,14 +609,13 @@ var
 begin
   Result := DefaultUpdateSettings;
   try
-    if not TFile.Exists(UpdateSettingsFile) then
-      Exit;
-    Val := TJSONObject.ParseJSONValue(TFile.ReadAllText(UpdateSettingsFile, TEncoding.UTF8));
+    Val := TJSONObject.ParseJSONValue(AJson);
     try
       if not (Val is TJSONObject) then
         Exit;
       Root := TJSONObject(Val);
       Result.CheckOnStart := Root.GetValue<Boolean>('checkOnStart', True);
+      Result.ShowCheckNotice := Root.GetValue<Boolean>('showCheckNotice', True);
       Result.SkipVersion := Root.GetValue<string>('skipVersion', '');
       S := Root.GetValue<string>('lastCheck', '');
       if S <> '' then
@@ -621,25 +628,42 @@ begin
   end;
 end;
 
-procedure SaveUpdateSettings(const ASettings: TUpdateSettings);
+function UpdateSettingsToJson(const ASettings: TUpdateSettings): string;
 var
   Root: TJSONObject;
 begin
   Root := TJSONObject.Create;
   try
     Root.AddPair('checkOnStart', TJSONBool.Create(ASettings.CheckOnStart));
+    Root.AddPair('showCheckNotice', TJSONBool.Create(ASettings.ShowCheckNotice));
     if ASettings.LastCheck > 0 then
       Root.AddPair('lastCheck', DateToISO8601(ASettings.LastCheck, False));
     if ASettings.SkipVersion <> '' then
       Root.AddPair('skipVersion', ASettings.SkipVersion);
-    try
-      ForceDirectories(ExtractFileDir(UpdateSettingsFile));
-      TFile.WriteAllText(UpdateSettingsFile, Root.ToJSON, TEncoding.UTF8);
-    except
-      // settings are a convenience; never fail the caller over them
-    end;
+    Result := Root.ToJSON;
   finally
     Root.Free;
+  end;
+end;
+
+function LoadUpdateSettings: TUpdateSettings;
+begin
+  Result := DefaultUpdateSettings;
+  try
+    if TFile.Exists(UpdateSettingsFile) then
+      Result := ParseUpdateSettingsJson(TFile.ReadAllText(UpdateSettingsFile, TEncoding.UTF8));
+  except
+    Result := DefaultUpdateSettings;
+  end;
+end;
+
+procedure SaveUpdateSettings(const ASettings: TUpdateSettings);
+begin
+  try
+    ForceDirectories(ExtractFileDir(UpdateSettingsFile));
+    TFile.WriteAllText(UpdateSettingsFile, UpdateSettingsToJson(ASettings), TEncoding.UTF8);
+  except
+    // settings are a convenience; never fail the caller over them
   end;
 end;
 

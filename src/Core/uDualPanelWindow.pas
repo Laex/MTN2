@@ -969,10 +969,10 @@ begin
   // over the Ctrl+O console: the toast is not painted there and would pop
   // up stale on return to the panels.
   SetNoticeHandler(
-    procedure(const ATemplate, AArg: string; AKind: TToastKind)
+    procedure(const ARequest: TNoticeRequest)
     begin
       if FAlive and not FConsoleMode and Assigned(FToast) then
-        FToast.Show(ATemplate, AArg, AKind);
+        FToast.ShowRequest(ARequest);
     end);
   FVfs := CreateDefaultVfs;
   FLeftModel := TFilePanelModel.Create(FVfs, cPanelWindowIdLeft);

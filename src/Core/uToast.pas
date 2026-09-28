@@ -26,6 +26,7 @@ type
     FKind: TToastKind;
     FTemplate: string;
     FArg: string;
+    FHint: string;
     FOnChanged: TProc;
     procedure TimerTick(Sender: TObject);
     procedure Changed;
@@ -38,6 +39,9 @@ type
     /// GShowToasts is off.</summary>
     procedure Show(const ATemplate: string; const AArg: string = '';
       AKind: TToastKind = tkInfo);
+    /// <summary>Show with a hint line / Always / duration (TNoticeRequest).
+    /// ARequest.Always shows it even while GShowToasts is off.</summary>
+    procedure ShowRequest(const ARequest: TNoticeRequest);
     procedure Hide;
     procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
       AWidth, AHeight: Integer);
@@ -55,11 +59,12 @@ var
 /// is cut only if the template alone is too long. A template without %s (or a
 /// bad translation) gets AArg appended.</summary>
 function ToastFitText(const ATemplate, AArg: string; AMaxLen: Integer): string;
-/// <summary>Box for a text of ATextLen chars in an AWidth x AHeight window:
-/// right-aligned, bottom frame row two rows above the command line so the
-/// shadow lands on the panel frame. Empty (Width 0) when the window is too
-/// small.</summary>
-function ToastBounds(ATextLen, AWidth, AHeight: Integer): TRectI;
+/// <summary>Box for ALines lines of up to ATextLen chars in an AWidth x
+/// AHeight window: right-aligned, bottom frame row two rows above the command
+/// line so the shadow lands on the panel frame; extra lines grow it upwards.
+/// Empty (Width 0) when the window is too small.</summary>
+function ToastBounds(ATextLen, AWidth, AHeight: Integer;
+  ALines: Integer = 1): TRectI;
 /// <summary>Longest text a toast can show in a window AWidth wide.</summary>
 function ToastMaxTextLen(AWidth: Integer): Integer;
 
@@ -117,18 +122,19 @@ begin
   Result := AWidth - cToastChrome - cToastRightMargin - 2;
 end;
 
-function ToastBounds(ATextLen, AWidth, AHeight: Integer): TRectI;
+function ToastBounds(ATextLen, AWidth, AHeight: Integer; ALines: Integer): TRectI;
 var
   BoxW, Right, Bottom: Integer;
 begin
   Result := TRectI.Make(0, 0, -1, -1);
-  if (AWidth < cToastMinWidth) or (AHeight < cToastMinHeight) or (ATextLen < 1) then
+  if (AWidth < cToastMinWidth) or (AHeight < cToastMinHeight) or (ATextLen < 1) or
+     (ALines < 1) or (AHeight < cToastMinHeight + ALines - 1) then
     Exit;
   BoxW := ATextLen + cToastChrome;
   Right := AWidth - 1 - cToastRightMargin;
   // H-1 status, H-2 F-keys, H-3 command line, H-4 panel bottom frame (shadow).
   Bottom := AHeight - 5;
-  Result := TRectI.Make(Right - BoxW + 1, Bottom - 2, Right, Bottom);
+  Result := TRectI.Make(Right - BoxW + 1, Bottom - 1 - ALines, Right, Bottom);
 end;
 
 { TToast }
@@ -157,15 +163,23 @@ end;
 
 procedure TToast.Show(const ATemplate, AArg: string; AKind: TToastKind);
 begin
-  if not GShowToasts or (ATemplate = '') then
+  ShowRequest(TNoticeRequest.Make(ATemplate, AArg, AKind));
+end;
+
+procedure TToast.ShowRequest(const ARequest: TNoticeRequest);
+begin
+  if not (GShowToasts or ARequest.Always) or (ARequest.Template = '') then
     Exit;
-  FTemplate := ATemplate;
-  FArg := AArg;
-  FKind := AKind;
+  FTemplate := ARequest.Template;
+  FArg := ARequest.Arg;
+  FHint := ARequest.Hint;
+  FKind := ARequest.Kind;
   FVisible := True;
   // Restart the countdown: a repeated command keeps the box up.
   FTimer.Enabled := False;
-  if AKind = tkWarning then
+  if ARequest.DurationMs > 0 then
+    FTimer.Interval := ARequest.DurationMs
+  else if ARequest.Kind = tkWarning then
     FTimer.Interval := cToastWarningDurationMs
   else
     FTimer.Interval := cToastDurationMs;
@@ -190,14 +204,24 @@ end;
 procedure TToast.Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
   AWidth, AHeight: Integer);
 var
-  Text: string;
+  Text, Hint: string;
   R: TRectI;
   Fg, Bg: TAlphaColor;
+  Lines, TextW: Integer;
 begin
   if not FVisible then
     Exit;
   Text := ToastFitText(FTemplate, FArg, ToastMaxTextLen(AWidth));
-  R := ToastBounds(Length(Text), AWidth, AHeight);
+  Hint := ToastFitText(FHint, '', ToastMaxTextLen(AWidth));
+  TextW := Length(Text);
+  Lines := 1;
+  if Hint <> '' then
+  begin
+    Lines := 2;
+    if Length(Hint) > TextW then
+      TextW := Length(Hint);
+  end;
+  R := ToastBounds(TextW, AWidth, AHeight, Lines);
   if R.Width < cToastChrome + 1 then
     Exit;
   // Plain double frame in the dialog colours: the theme's dialog frame adds
@@ -207,8 +231,12 @@ begin
   DrawPanelFrameGlyphs(AGrid, R, chDblTL, chDblTR, chDblBL, chDblBR, chDblH,
     chDblV, Fg, Fg, Bg);
   DrawDialogShadow(AGrid, R);
-  PutOverlayText(AGrid, ATheme, R.Left + 1, R.Top + 1, ' ' + Text + ' ',
-    False, FKind = tkWarning, False, cToastFg, cToastBg);
+  PutOverlayText(AGrid, ATheme, R.Left + 1, R.Top + 1,
+    ' ' + Text.PadRight(TextW) + ' ', False, FKind = tkWarning, False, cToastFg, cToastBg);
+  // The hint in the dialogs' hot-tip colour, so it reads as secondary.
+  if Hint <> '' then
+    PutOverlayText(AGrid, ATheme, R.Left + 1, R.Top + 2,
+      ' ' + Hint.PadRight(TextW) + ' ', True, False, False, cToastFg, cToastBg);
 end;
 
 end.

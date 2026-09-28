@@ -88,7 +88,12 @@ implementation
 
 uses
   Winapi.Windows, Winapi.ShellAPI, System.IOUtils, System.JSON,
-  uStrings;
+  uStrings, uNotice;
+
+const
+  /// <summary>The "checking for updates" toast stays up longer than a
+  /// "copied" one: it has a second line to read.</summary>
+  cCheckNoticeMs = 6000;
 
 type
   TUpdateLife = class(TInterfacedObject, IUpdateLife)
@@ -255,6 +260,7 @@ end;
 procedure TUpdateController.StartupCheck;
 var
   Due: Boolean;
+  Req: TNoticeRequest;
 begin
   Due := (FCurrent <> '') and UpdateCheckDue(FSettings, Now);
   if not Due then
@@ -267,16 +273,30 @@ begin
       end);
     Exit;
   end;
+  // Going online unasked: say so, and how to turn it off. Shown even with
+  // notifications off; it has its own checkbox in Help > Updates.
+  if FSettings.ShowCheckNotice then
+  begin
+    Req := TNoticeRequest.Make(T('ui.update.checkingNotice',
+      'Checking github.com for MTN2 updates...'));
+    Req.Hint := T('ui.update.checkingHint',
+      'Turn off: F9 > ' + #$2261 + ' > Check for updates');
+    Req.Always := True;
+    Req.DurationMs := cCheckNoticeMs;
+    NoticeRequest(Req);
+  end;
   StartCheck(False);
 end;
 
 procedure TUpdateController.OpenUpdatesDialog;
 begin
-  Show(BuildUpdatesDialog(FCurrent, FSettings.CheckOnStart),
+  Show(BuildUpdatesDialog(FCurrent, FSettings.CheckOnStart, FSettings.ShowCheckNotice),
     procedure(ACmd, AValues: string)
     begin
       FSettings.CheckOnStart := JsonBoolField(AValues, 'check_on_start',
         FSettings.CheckOnStart);
+      FSettings.ShowCheckNotice := JsonBoolField(AValues, 'show_check_notice',
+        FSettings.ShowCheckNotice);
       SaveSettings;
       if SameText(ACmd, 'check') then
         StartCheck(True);
