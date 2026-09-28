@@ -32,8 +32,6 @@ type
 
   TUserMenuActionEvent = reference to procedure(AAction: TUserMenuAction;
     AParent: TUserMenuItem; AIndex: Integer);
-  TMenuPanelBoundsEvent = reference to function(ASide: TPanelSide): TRectI;
-  TActiveSideEvent = reference to function: TPanelSide;
 
   TUserMenuController = class
   private

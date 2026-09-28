@@ -1,5 +1,12 @@
 program DialogDesigner;
 
+// RAD Studio 13 (Delphi 13, CompilerVersion 37) or later. Older compilers
+// fail deep inside the units with confusing errors, so stop here with a
+// clear message instead.
+{$IF CompilerVersion < 37.0}
+  {$MESSAGE FATAL 'MTN2 requires RAD Studio 13 (Delphi 13, Studio\37.0) or later. See docs/BUILDING.md.'}
+{$IFEND}
+
 uses
   System.StartUpCopy,
   FMX.Forms,

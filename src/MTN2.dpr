@@ -4,6 +4,13 @@ program MTN2;
 // Rollback: remove SKIA from DCC_Define and the FMX.Skia / GlobalUseSkia bits.
 // Runtime: --no-skia leaves the Skia-linked binary on the GDI/FMX canvas.
 
+// RAD Studio 13 (Delphi 13, CompilerVersion 37) or later. Older compilers
+// fail deep inside the units with confusing errors, so stop here with a
+// clear message instead.
+{$IF CompilerVersion < 37.0}
+  {$MESSAGE FATAL 'MTN2 requires RAD Studio 13 (Delphi 13, Studio\37.0) or later. See docs/BUILDING.md.'}
+{$IFEND}
+
 uses
   {$IFDEF SKIA}
   FMX.Skia,

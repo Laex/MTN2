@@ -11,8 +11,6 @@ uses
 
 type
   TColumnModeSelectEvent = reference to procedure(AMode: TPanelColumnMode);
-  TMenuPanelBoundsEvent = reference to function(ASide: TPanelSide): TRectI;
-  TActiveSideEvent = reference to function: TPanelSide;
 
   TColumnModeMenuController = class
   private

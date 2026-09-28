@@ -11,8 +11,6 @@ uses
 
 type
   TSortSelectEvent = reference to procedure(AColumn: TPanelSortColumn);
-  TMenuPanelBoundsEvent = reference to function(ASide: TPanelSide): TRectI;
-  TActiveSideEvent = reference to function: TPanelSide;
 
   TSortMenuController = class
   private

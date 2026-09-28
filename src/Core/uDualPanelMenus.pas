@@ -11,14 +11,14 @@ uses
   System.SysUtils, System.Classes, System.UITypes,
   uTerminalTypes, uThemeTypes, uDualPanelTypes, uDualPanelUiTypes,
   uUserMenu, uUserMenuController, uSortMenuController, uColumnModeMenuController,
-  uStubController;
+  uStubController, uDualPanelOverlays;
 
 type
   TUserMenuActionEvent = uUserMenuController.TUserMenuActionEvent;
   TSortSelectEvent = uSortMenuController.TSortSelectEvent;
   TColumnModeSelectEvent = uColumnModeMenuController.TColumnModeSelectEvent;
-  TMenuPanelBoundsEvent = uUserMenuController.TMenuPanelBoundsEvent;
-  TActiveSideEvent = uUserMenuController.TActiveSideEvent;
+  TMenuPanelBoundsEvent = uDualPanelOverlays.TMenuPanelBoundsEvent;
+  TActiveSideEvent = uDualPanelOverlays.TActiveSideEvent;
 
   TMenuStubController = class
   private

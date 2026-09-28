@@ -7,7 +7,14 @@ interface
 
 uses
   System.SysUtils, System.UITypes,
-  uTerminalTypes, uThemeTypes, uThemeDrawing;
+  uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes;
+
+type
+  /// <summary>Host callbacks shared by the F2 / Sort by / Column modes menu
+  /// controllers: bounds of a panel (the menu centres on it) and the active
+  /// side. Declared once so every controller takes the same type.</summary>
+  TMenuPanelBoundsEvent = reference to function(ASide: TPanelSide): TRectI;
+  TActiveSideEvent = reference to function: TPanelSide;
 
 const
   /// <summary>Menu hotkey letters in every menu (F9 bar and dropdowns, F2
