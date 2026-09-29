@@ -921,6 +921,10 @@ begin
     AddGuid(Result, CLSID_CFormatRar5);
     AddGuid(Result, CLSID_CFormatRar);
   end;
+  // An extension no format claims (a file opened as an archive on request,
+  // Ctrl+PgDn): every other format, each checking its own signature.
+  for Fmt in GFormats do
+    AddGuid(Result, Fmt.ClassID);
 end;
 
 function Create7zObject(const IID: TGUID; outObj: Pointer): HRESULT;

@@ -164,6 +164,7 @@ const
     'New file',
     'Quick view',
     'Sync folder with console',
+    'Open file as archive',
     'Console shell profile',
     'Show / hide hidden files',
     'Columns: Brief',

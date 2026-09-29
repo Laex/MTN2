@@ -14,7 +14,7 @@ uses
   TestPluginLoader in 'TestPluginLoader.pas',
   TestPluginManifest in 'TestPluginManifest.pas',
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',
-  TestSevenZipEncrypted in 'TestSevenZipEncrypted.pas',
+  TestSevenZipOpen in 'TestSevenZipOpen.pas',
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
   TestWasmHost in 'TestWasmHost.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas';

@@ -479,7 +479,12 @@ begin
         case AError.Code of
           vecAccessDenied: Msg := 'Access denied';
           vecNotFound: Msg := 'Path not found';
-          vecInvalidURI: Msg := 'Invalid path';
+          // The 7z plugin reports a file that no format opens this way.
+          vecInvalidURI:
+            if IsSevenZipUri(URI) then
+              Msg := 'Not a supported archive'
+            else
+              Msg := 'Invalid path';
           vecNotSupported: Msg := 'Not a directory';
           vecIOError: Msg := AError.Message;
         else

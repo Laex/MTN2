@@ -608,6 +608,11 @@ type
     /// shape as ToggleAdjacentInfoPanel/pvkInfo. Image overlay vs placeholder
     /// is decided later in DrawQuickViewContent as the cursor moves.</summary>
     procedure ToggleQuickView;
+    /// <summary>Ctrl+PgDn (FAR): enters the local file under the cursor as
+    /// an archive whatever its extension - a ZIP signature (docx, xlsx, odt)
+    /// in the built-in ZIP, anything else through the 7z plugin, which
+    /// finds the format by content.</summary>
+    procedure OpenAsArchive;
     procedure CloseQuickView;
     procedure CancelFolderSize;
     procedure CalculateFolderSizeUnderCursor;
@@ -1373,6 +1378,7 @@ begin
   FKeymapHost.ApplyColumnMode := ApplyColumnMode;
   FKeymapHost.ToggleAdjacentInfoPanel := ToggleAdjacentInfoPanel;
   FKeymapHost.ToggleQuickView := ToggleQuickView;
+  FKeymapHost.OpenAsArchive := OpenAsArchive;
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
@@ -5801,6 +5807,41 @@ begin
     RequestOpenEditor(Row.URI)
   else
     RequestOpenViewer(Row.URI);
+end;
+
+procedure TDualPanelWindow.OpenAsArchive;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Row: TPanelRow;
+  Idx: Integer;
+  Path: string;
+  Kind: TArchiveExtensionKind;
+begin
+  if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
+    Exit;
+  if Row.IsDirectory or Row.IsParent or (Row.URI = '') then
+    Exit;
+  if not Row.URI.StartsWith('file:', True) or HasArchiveChain(Row.URI) then
+  begin
+    FToast.Show(T('ui.toast.openAsArchiveLocal',
+      'Only a file on disk can be opened as an archive'), '', tkWarning);
+    Exit;
+  end;
+  Path := FileUriToPath(Row.URI);
+  if FileHasZipSignature(Path) then
+    NavigateActiveTo(EnsureArchiveRootUri(Row.URI))
+  else if GlobalVfsRegistry.TryResolveArchiveKind('x.7z', Kind) and (Kind = akSevenZip) then
+  begin
+    FSkipArchivePasswordUri := '';
+    FArchivePasswordRetry := False;
+    NavigateActiveTo(PathToSevenZipRootUri(Path));
+  end
+  else
+    FToast.Show(T('ui.toast.openAsArchiveNo7z',
+      'Not a ZIP archive, and the 7z plugin is not loaded'), '', tkWarning);
 end;
 
 procedure TDualPanelWindow.ToggleQuickView;

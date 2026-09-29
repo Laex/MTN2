@@ -127,6 +127,10 @@ begin
   Assert.IsTrue(Act = kaSelectConsoleProfile, 'Ctrl+Alt+O should match kaSelectConsoleProfile');
   Act := MatchAction(Profile, Ord('O'), [ssCtrl, ssShift]);
   Assert.IsTrue(Act = kaSyncConsoleDir, 'Ctrl+Shift+O should match kaSyncConsoleDir');
+  Act := MatchAction(Profile, vkNext, [ssCtrl]);
+  Assert.IsTrue(Act = kaOpenAsArchive, 'Ctrl+PgDn should match kaOpenAsArchive');
+  Act := MatchAction(Profile, vkNext, []);
+  Assert.IsTrue(Act = kaNone, 'plain PgDn stays page down');
   Act := MatchAction(Profile, Ord('O'), [ssCtrl]);
   Assert.IsTrue(Act = kaAppConsoleToggle, 'Ctrl+O should match kaAppConsoleToggle (Global)');
   Act := MatchAction(Profile, vkEscape, []);

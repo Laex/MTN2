@@ -189,6 +189,9 @@ function ResolveVfsUri(const AURI: string): string;
 function IsVfsUriNavigationRoot(const AURI: string): Boolean;
 function EnsureArchiveRootUri(const AZipFileUri: string): string;
 function IsZipFileName(const AName: string): Boolean;
+/// <summary>The local file starts like a ZIP archive, whatever its name
+/// (docx, xlsx, odt, jar are ZIP inside).</summary>
+function FileHasZipSignature(const APath: string): Boolean;
 function IsSevenZipFileName(const AName: string): Boolean;
 function IsSevenZipUri(const AURI: string): Boolean;
 function IsZipArchiveUri(const AURI: string): Boolean;
@@ -829,6 +832,30 @@ begin
   Result := (Ext = '.zip') or (Ext = '.jar') or (Ext = '.apk');
 end;
 
+function FileHasZipSignature(const APath: string): Boolean;
+var
+  S: TFileStream;
+  Sig: array[0..3] of Byte;
+begin
+  Result := False;
+  if not TFile.Exists(APath) then
+    Exit;
+  try
+    S := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      if S.Read(Sig, SizeOf(Sig)) <> SizeOf(Sig) then
+        Exit;
+    finally
+      S.Free;
+    end;
+  except
+    Exit;
+  end;
+  // PK 03 04: a local file header; PK 05 06: an empty archive.
+  Result := (Sig[0] = $50) and (Sig[1] = $4B) and
+    (((Sig[2] = 3) and (Sig[3] = 4)) or ((Sig[2] = 5) and (Sig[3] = 6)));
+end;
+
 function IsSevenZipFileName(const AName: string): Boolean;
 var
   Ext: string;
@@ -881,7 +908,11 @@ begin
     Exit;
   if not Base.StartsWith('file:', True) then
     Exit;
-  Result := IsZipFileName(TPath.GetFileName(FileUriToPath(Base)));
+  // By name, or by content for a ZIP under another name opened with
+  // Ctrl+PgDn (docx, odt). The content check keeps a folder whose name ends
+  // in '!' (D:\Work\Wow!\file.txt) on the file system.
+  Result := IsZipFileName(TPath.GetFileName(FileUriToPath(Base))) or
+    FileHasZipSignature(FileUriToPath(Base));
 end;
 
 function PathToSevenZipRootUri(const AArchivePath: string): string;

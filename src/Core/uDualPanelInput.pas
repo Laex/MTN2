@@ -85,6 +85,7 @@ type
     OpenTerminalProfileDialog: TKeymapProc;
     OpenConsoleProfileDialog: TKeymapProc;
     SyncConsoleDirNow: TKeymapProc;
+    OpenAsArchive: TKeymapProc;
     ToggleShowHidden: TKeymapSideProc;
     OpenColumnModeMenu: TKeymapProc;
     ApplyColumnMode: TKeymapColumnProc;
@@ -574,6 +575,12 @@ begin
     kaSyncConsoleDir:
       begin
         AHost.SyncConsoleDirNow();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaOpenAsArchive:
+      begin
+        AHost.OpenAsArchive();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

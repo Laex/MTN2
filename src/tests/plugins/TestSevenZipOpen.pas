@@ -1,10 +1,13 @@
-unit TestSevenZipEncrypted;
+unit TestSevenZipOpen;
 
-{ Password-protected 7z archives through uSevenZipApi, with every 7z.dll
-  found (7-Zip, Far ArcLite): an archive with encrypted headers reports
-  'Encrypted' until the right password is set, so the panel asks for it
-  instead of showing the archive as unsupported; an archive with plain
-  headers lists without a password and needs it only to extract. }
+{ Opening archives through uSevenZipApi, with every 7z.dll found (7-Zip,
+  Far ArcLite):
+  - an archive with encrypted headers reports 'Encrypted' until the right
+    password is set, so the panel asks for it instead of showing the
+    archive as unsupported; an archive with plain headers lists without a
+    password and needs it only to extract;
+  - a file whose extension no format claims opens by content (Ctrl+PgDn),
+    and a file that is not an archive reports 'Not a supported archive'. }
 
 interface
 
@@ -13,10 +16,11 @@ uses
 
 type
   [TestFixture]
-  TTestSevenZipEncrypted = class
+  TTestSevenZipOpen = class
   public
     [Test] procedure TestEncryptedHeaders;
     [Test] procedure TestEncryptedData;
+    [Test] procedure TestUnknownExtensionByContent;
   end;
 
 implementation
@@ -43,6 +47,8 @@ const
     'B92AAB84C92121010001000C130F00080A019A90312400000501190100111500' +
     '69006E006E00650072002E007400780074000000140A01009C6F5918E44FDD01' +
     '15060100200800000000';
+  // gzip of inner.txt ("gzip-payload"): a format past 7z and RAR
+  cGzip = '1F8B08080000000002FF696E6E65722E747874004BAFCA2CD02D48ACCCC94F4C01001C67F05B0C000000';
 
 function Engines: TArray<string>;
 const
@@ -91,7 +97,7 @@ begin
   Result := False;
 end;
 
-procedure TTestSevenZipEncrypted.TestEncryptedHeaders;
+procedure TTestSevenZipOpen.TestEncryptedHeaders;
 var
   Dll, Arc, Err, Tag: string;
 begin
@@ -118,7 +124,7 @@ begin
   end;
 end;
 
-procedure TTestSevenZipEncrypted.TestEncryptedData;
+procedure TTestSevenZipOpen.TestEncryptedData;
 var
   Dll, Arc, Err, Tag: string;
   Data: TBytes;
@@ -148,7 +154,32 @@ begin
   end;
 end;
 
+procedure TTestSevenZipOpen.TestUnknownExtensionByContent;
+var
+  Dll, Arc, Plain, Err, Tag: string;
+  Items: TArray<T7zItem>;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: 7z.dll not found');
+  Arc := WriteFixture('backup.dat', cGzip);
+  Plain := TPath.Combine(ExtractFilePath(Arc), 'notes.dat');
+  TFile.WriteAllText(Plain, 'just some text, not an archive');
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      Assert.IsTrue(SevenZipListArchive(Arc, Items, Err) and (Length(Items) = 1),
+        Tag + 'gzip named .dat lists: ' + Err);
+      Assert.IsFalse(Lists(Plain, Err), Tag + 'text is not an archive');
+      Assert.AreEqual('Not a supported archive', Err, Tag + 'text: reported as unsupported');
+    finally
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
 initialization
-  TDUnitX.RegisterTestFixture(TTestSevenZipEncrypted);
+  TDUnitX.RegisterTestFixture(TTestSevenZipOpen);
 
 end.

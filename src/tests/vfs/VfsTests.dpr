@@ -25,6 +25,7 @@ uses
   TestRecycleBin in 'TestRecycleBin.pas',
   TestResolveLocalDirPath in 'TestResolveLocalDirPath.pas',
   TestSevenZipUri in 'TestSevenZipUri.pas',
+  TestOpenAsArchive in 'TestOpenAsArchive.pas',
   TestSftpVfs in 'TestSftpVfs.pas',
   TestSshConnections in 'TestSshConnections.pas',
   TestUserAssociations in 'TestUserAssociations.pas',
