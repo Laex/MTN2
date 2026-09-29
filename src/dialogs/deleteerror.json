@@ -71,7 +71,7 @@
     {
       "type": "button",
       "id": "skip",
-      "text": "Skip",
+      "text": "&Skip",
       "col": 26,
       "row": 10,
       "width": 10,
@@ -80,7 +80,7 @@
     {
       "type": "button",
       "id": "skipall",
-      "text": "Skip all",
+      "text": "Skip &all",
       "col": 39,
       "row": 10,
       "width": 12,

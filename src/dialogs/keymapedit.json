@@ -72,7 +72,7 @@
     {
       "type": "button",
       "id": "reset",
-      "text": "Reset",
+      "text": "&Reset",
       "col": 28,
       "row": 10,
       "width": 12,

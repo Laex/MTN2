@@ -61,7 +61,7 @@
     {
       "type": "checkbox",
       "id": "remember",
-      "text": "Remember choice",
+      "text": "Remember &choice",
       "checked": false,
       "col": 1,
       "row": 6,
@@ -89,7 +89,7 @@
     {
       "type": "button",
       "id": "skip",
-      "text": "Skip",
+      "text": "&Skip",
       "col": 16,
       "row": 9,
       "width": 10,
@@ -98,7 +98,7 @@
     {
       "type": "button",
       "id": "rename",
-      "text": "Rename",
+      "text": "&Rename",
       "col": 29,
       "row": 9,
       "width": 10,
@@ -107,7 +107,7 @@
     {
       "type": "button",
       "id": "append",
-      "text": "Append",
+      "text": "&Append",
       "col": 42,
       "row": 9,
       "width": 10,

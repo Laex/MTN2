@@ -183,7 +183,7 @@ begin
   Assert.IsTrue(TryLoadDialogResource(cResDialogAskSave, Decl), 'DIALOG_ASKSAVE loads');
   Assert.IsTrue(Decl.Title = 'Save modified file?', 'title stays English');
   Assert.IsTrue(FindCtrlText(Decl, 'yes') = 'Yes', 'yes button stays English');
-  Assert.IsTrue(FindCtrlText(Decl, 'no') = 'No', 'no button stays English');
+  Assert.IsTrue(FindCtrlText(Decl, 'no') = '&No', 'no button stays English');
 end;
 
 procedure TestDialogTranslationRu;
@@ -198,7 +198,7 @@ begin
   Assert.IsTrue(TryLoadDialogResource(cResDialogAskSave, Decl), 'DIALOG_ASKSAVE loads');
   Assert.IsTrue(Decl.Title = 'Сохранить изменённый файл?', 'title translates');
   Assert.IsTrue(FindCtrlText(Decl, 'yes') = 'Да', 'yes button translates');
-  Assert.IsTrue(FindCtrlText(Decl, 'no') = 'Нет', 'no button translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'no') = '&Нет', 'no button translates');
   Assert.IsTrue(FindCtrlText(Decl, 'cancel') = 'Отмена', 'cancel button translates');
   // filename is always overwritten dynamically by BuildAskSaveDialog's own
   // caller (DialogSetLabelText), never a static caption -- confirms the
@@ -234,11 +234,11 @@ begin
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_zoom') = 'Масштаб', 'Zoom label translates');
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_interval') = 'Интервал', 'Interval label translates');
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_language') = 'Язык', 'Language label translates');
-  Assert.IsTrue(FindCtrlText(Decl, 'blink') = 'Мигающий курсор', 'Blink cursor checkbox translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'blink') = 'Мигающий &курсор', 'Blink cursor checkbox translates');
 
   Assert.IsTrue(TryLoadDialogResource(cResDialogSearch, Decl), 'DIALOG_SEARCH loads');
   Assert.IsTrue(Decl.Title = 'Поиск файла', 'title translates');
-  Assert.IsTrue(FindCtrlText(Decl, 'search_case') = 'Учитывать регистр', 'checkbox translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'search_case') = '&Учитывать регистр', 'checkbox translates');
   Assert.IsTrue(FindCtrlText(Decl, 'ok') = 'Найти', 'Find button translates');
 
   Assert.IsTrue(TryLoadDialogResource(cResDialogCopyMove, Decl), 'DIALOG_COPYMOVE loads');
@@ -246,7 +246,7 @@ begin
   // so it must NOT come from ru.json -- confirms dynamic-content ids were
   // correctly left out of the translation table, not just missed by accident.
   Assert.IsTrue(FindCtrlText(Decl, 'prompt') = 'Copy to:', 'dynamic prompt label is untouched by translation');
-  Assert.IsTrue(FindCtrlText(Decl, 'job_timestamps') = 'Сохранять все временные метки', 'static checkbox translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'job_timestamps') = '&Сохранять все временные метки', 'static checkbox translates');
   Assert.IsTrue(FindCtrlText(Decl, 'ok') = 'Копировать', 'Copy button translates');
 
   // total_rule's "Total" -> "Итого" substitution is length-for-length

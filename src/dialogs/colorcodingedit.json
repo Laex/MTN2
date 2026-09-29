@@ -67,7 +67,7 @@
     {
       "type": "checkbox",
       "id": "cc_enabled",
-      "text": "Enabled",
+      "text": "&Enabled",
       "checked": true,
       "col": 63,
       "row": 2,

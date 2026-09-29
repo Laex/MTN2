@@ -127,7 +127,7 @@
     {
       "type": "checkbox",
       "id": "change_owner",
-      "text": "Change owner",
+      "text": "&Change owner",
       "checked": false,
       "col": 1,
       "row": 6,
@@ -200,7 +200,7 @@
     {
       "type": "button",
       "id": "dates_now",
-      "text": "Current",
+      "text": "C&urrent",
       "col": 12,
       "row": 13,
       "width": 14,
@@ -209,7 +209,7 @@
     {
       "type": "button",
       "id": "dates_orig",
-      "text": "Original",
+      "text": "&Original",
       "col": 30,
       "row": 13,
       "width": 14,
@@ -227,7 +227,7 @@
     {
       "type": "checkbox",
       "id": "recurse",
-      "text": "Process subfolders",
+      "text": "&Process subfolders",
       "checked": false,
       "col": 1,
       "row": 16,

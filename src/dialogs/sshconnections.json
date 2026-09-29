@@ -39,7 +39,7 @@
     {
       "type": "button",
       "id": "browse",
-      "text": "Browse",
+      "text": "&Browse",
       "col": 20,
       "row": 11,
       "width": 12,

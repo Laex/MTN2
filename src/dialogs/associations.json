@@ -39,7 +39,7 @@
     {
       "type": "button",
       "id": "add",
-      "text": "Add",
+      "text": "&Add",
       "col": 22,
       "row": 12,
       "width": 12,

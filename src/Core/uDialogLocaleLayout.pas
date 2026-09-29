@@ -45,7 +45,7 @@ procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
 implementation
 
 uses
-  System.SysUtils, System.Math, uDialogRenderer;
+  System.SysUtils, System.Math, uThemeTypes, uDialogRenderer;
 
 function ClientWidthOf(AWidth: Integer): Integer;
 begin
@@ -129,7 +129,7 @@ function CaptionCells(const C: TDialogControl): Integer;
 begin
   case C.Kind of
     dckButton, dckCheckbox, dckRadio:
-      Result := Length(C.Text) + 4;
+      Result := Length(StripHotKeyMarker(C.Text)) + 4;
     dckLabel, dckStatus:
       if IsRuleText(C.Text) then
         Result := Max(C.BoxW, 1)

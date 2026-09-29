@@ -71,7 +71,7 @@
     {
       "type": "checkbox",
       "id": "line_spacing",
-      "text": "Line spacing (as in a terminal)",
+      "text": "&Line spacing (as in a terminal)",
       "checked": false,
       "col": 1,
       "row": 10,
@@ -97,7 +97,7 @@
     {
       "type": "checkbox",
       "id": "blink",
-      "text": "Blink cursor",
+      "text": "&Blink cursor",
       "checked": true,
       "col": 1,
       "row": 12,
@@ -135,7 +135,7 @@
     {
       "type": "checkbox",
       "id": "panel_icons",
-      "text": "Show panel icons",
+      "text": "Show panel &icons",
       "checked": true,
       "col": 1,
       "row": 14,
@@ -145,7 +145,7 @@
     {
       "type": "checkbox",
       "id": "notifications",
-      "text": "Show pop-up notifications",
+      "text": "Show &pop-up notifications",
       "checked": true,
       "col": 1,
       "row": 15,

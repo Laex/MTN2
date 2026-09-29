@@ -38,7 +38,7 @@
     {
       "type": "button",
       "id": "add",
-      "text": "Add",
+      "text": "&Add",
       "col": 1,
       "row": 17,
       "width": 9,
@@ -47,7 +47,7 @@
     {
       "type": "button",
       "id": "edit",
-      "text": "Edit",
+      "text": "&Edit",
       "col": 11,
       "row": 17,
       "width": 9,
@@ -56,7 +56,7 @@
     {
       "type": "button",
       "id": "delete",
-      "text": "Delete",
+      "text": "&Delete",
       "col": 21,
       "row": 17,
       "width": 10,
@@ -65,7 +65,7 @@
     {
       "type": "button",
       "id": "moveup",
-      "text": "Up",
+      "text": "&Up",
       "col": 32,
       "row": 17,
       "width": 7,
@@ -74,7 +74,7 @@
     {
       "type": "button",
       "id": "movedown",
-      "text": "Dn",
+      "text": "D&n",
       "col": 40,
       "row": 17,
       "width": 7,

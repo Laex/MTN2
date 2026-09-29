@@ -101,6 +101,14 @@ const
   cSelectedBg   = cBlue;
   cCursorFg     = cBlack;
   cCursorBg     = cCyan;
+  // Hotkey letter of a dialog button, checkbox or radio caption.
+  cDialogHotKeyFg = TAlphaColor($FFC00000);
+  cBtnHotFg      = cDialogHotKeyFg;
+  cBtnHotFgFocus = cDialogHotKeyFg;
+  cDialogHotFg   = cDialogHotKeyFg;
+  cCursorHotFg   = cDialogHotKeyFg;
+  cHotAttr: TCharCellAttributes = [];
+  cHotAttrFocus: TCharCellAttributes = [];
   // Inactive panel cursor: barely-visible wash over window blue.
   cCursorIdleBg = TAlphaColor($FF1A3A6A);
   // Marked-row band: bright VGA blue under the yellow mark colour.
@@ -260,7 +268,8 @@ end;
 procedure TNDNTheme.DrawButton(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Cap: string;
   StartX: Integer;
 begin
@@ -268,11 +277,15 @@ begin
   begin
     Fg := cBtnFgFocus;
     Bg := cBtnBgFocus;
+    Hot := cBtnHotFgFocus;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cBtnFg;
     Bg := cBtnBg;
+    Hot := cBtnHotFg;
+    HotAttr := cHotAttr;
   end;
   // Face only - Host paints ▄/▀ button shadow after all controls.
   FillGridRect(AGrid, ABounds.Left, ABounds.Top, ABounds.Right, ABounds.Bottom,
@@ -282,17 +295,18 @@ begin
     Cap := '< ' + AText + ' >'
   else
     Cap := '[ ' + AText + ' ]';
-  StartX := ABounds.Left + (ABounds.Width - Length(Cap)) div 2;
+  StartX := ABounds.Left + (ABounds.Width - Length(StripHotKeyMarker(Cap))) div 2;
   if StartX < ABounds.Left then
     StartX := ABounds.Left;
-  PutGridTextClipped(AGrid, StartX, ABounds.Top, ABounds.Right, Cap, Fg, Bg,
-    [ccaBold]);
+  PutGridHotTextClipped(AGrid, StartX, ABounds.Top, ABounds.Right, Cap, Fg, Bg,
+    Hot, [ccaBold], HotAttr);
 end;
 
 procedure TNDNTheme.DrawCheckBox(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AChecked: Boolean; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Mark: string;
 begin
   // Checkboxes live on dialog chrome: white body, cyan highlight when focused.
@@ -300,11 +314,15 @@ begin
   begin
     Fg := cCursorFg;
     Bg := cCursorBg;
+    Hot := cCursorHotFg;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cDialogFg;
     Bg := cDialogBg;
+    Hot := cDialogHotFg;
+    HotAttr := cHotAttr;
   end;
   if AChecked then
     Mark := '[x] '
@@ -312,32 +330,37 @@ begin
     Mark := '[ ] ';
   // Clip to the box. A longer translation must not paint dialog-white
   // cells past the control, over the frame or the desktop.
-  PutGridTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
-    Mark + AText, Fg, Bg);
+  PutGridHotTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
+    Mark + AText, Fg, Bg, Hot, [], HotAttr);
 end;
 
 procedure TNDNTheme.DrawRadioBox(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AChecked: Boolean; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Mark: string;
 begin
   if twFocused in AState then
   begin
     Fg := cCursorFg;
     Bg := cCursorBg;
+    Hot := cCursorHotFg;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cDialogFg;
     Bg := cDialogBg;
+    Hot := cDialogHotFg;
+    HotAttr := cHotAttr;
   end;
   if AChecked then
     Mark := '(*) '
   else
     Mark := '( ) ';
-  PutGridTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
-    Mark + AText, Fg, Bg);
+  PutGridHotTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
+    Mark + AText, Fg, Bg, Hot, [], HotAttr);
 end;
 
 procedure TNDNTheme.DrawScrollBar(const AGrid: TTerminalGrid; const ABounds: TRectI;

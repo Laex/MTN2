@@ -103,6 +103,13 @@ const
   cSelectedBg   = cWindowBg;
   cCursorFg     = cBlack;
   cCursorBg     = cYellow;
+  // Hotkey letter of a dialog button, checkbox or radio caption.
+  cBtnHotFg      = cRed;
+  cBtnHotFgFocus = cRed;
+  cDialogHotFg   = cWhite;
+  cCursorHotFg   = cRed;
+  cHotAttr: TCharCellAttributes = [ccaUnderline];
+  cHotAttrFocus: TCharCellAttributes = [ccaUnderline];
   cCursorIdleBg = cGreyPanel;
 
 function THighContrastTheme.DesktopColor: TAlphaColor;
@@ -254,7 +261,8 @@ end;
 procedure THighContrastTheme.DrawButton(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Cap: string;
   StartX: Integer;
 begin
@@ -262,11 +270,15 @@ begin
   begin
     Fg := cBtnFgFocus;
     Bg := cBtnBgFocus;
+    Hot := cBtnHotFgFocus;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cBtnFg;
     Bg := cBtnBg;
+    Hot := cBtnHotFg;
+    HotAttr := cHotAttr;
   end;
   FillGridRect(AGrid, ABounds.Left, ABounds.Top, ABounds.Right, ABounds.Bottom,
     ' ', Fg, Bg);
@@ -274,56 +286,69 @@ begin
     Cap := '< ' + AText + ' >'
   else
     Cap := '[ ' + AText + ' ]';
-  StartX := ABounds.Left + (ABounds.Width - Length(Cap)) div 2;
+  StartX := ABounds.Left + (ABounds.Width - Length(StripHotKeyMarker(Cap))) div 2;
   if StartX < ABounds.Left then
     StartX := ABounds.Left;
-  PutGridTextClipped(AGrid, StartX, ABounds.Top, ABounds.Right, Cap, Fg, Bg, [ccaBold]);
+  PutGridHotTextClipped(AGrid, StartX, ABounds.Top, ABounds.Right, Cap, Fg, Bg,
+    Hot, [ccaBold], HotAttr);
 end;
 
 procedure THighContrastTheme.DrawCheckBox(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AChecked: Boolean; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Mark: string;
 begin
   if twFocused in AState then
   begin
     Fg := cCursorFg;
     Bg := cCursorBg;
+    Hot := cCursorHotFg;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cDialogFg;
     Bg := cDialogBg;
+    Hot := cDialogHotFg;
+    HotAttr := cHotAttr;
   end;
   if AChecked then
     Mark := '[x] '
   else
     Mark := '[ ] ';
-  PutGridText(AGrid, ABounds.Left, ABounds.Top, Mark + AText, Fg, Bg, [ccaBold]);
+  PutGridHotTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
+    Mark + AText, Fg, Bg, Hot, [ccaBold], HotAttr);
 end;
 
 procedure THighContrastTheme.DrawRadioBox(const AGrid: TTerminalGrid; const ABounds: TRectI;
   const AText: string; AChecked: Boolean; AState: TThemeWidgetState);
 var
-  Fg, Bg: TAlphaColor;
+  Fg, Bg, Hot: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   Mark: string;
 begin
   if twFocused in AState then
   begin
     Fg := cCursorFg;
     Bg := cCursorBg;
+    Hot := cCursorHotFg;
+    HotAttr := cHotAttrFocus;
   end
   else
   begin
     Fg := cDialogFg;
     Bg := cDialogBg;
+    Hot := cDialogHotFg;
+    HotAttr := cHotAttr;
   end;
   if AChecked then
     Mark := '(*) '
   else
     Mark := '( ) ';
-  PutGridText(AGrid, ABounds.Left, ABounds.Top, Mark + AText, Fg, Bg, [ccaBold]);
+  PutGridHotTextClipped(AGrid, ABounds.Left, ABounds.Top, ABounds.Right,
+    Mark + AText, Fg, Bg, Hot, [ccaBold], HotAttr);
 end;
 
 procedure THighContrastTheme.DrawScrollBar(const AGrid: TTerminalGrid; const ABounds: TRectI;

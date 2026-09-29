@@ -13,7 +13,7 @@
       "$title": "MTN2 update",
       "update": "Update",
       "later": "Later",
-      "skip": "Skip this version"
+      "skip": "&Skip this version"
     },
     "DIALOG_UPDATEMSG": {
       "$title": "MTN2 update",
@@ -22,8 +22,8 @@
     },
     "DIALOG_UPDATES": {
       "$title": "Updates",
-      "check_on_start": "Check for updates at startup",
-      "show_check_notice": "Show a notice when checking",
+      "check_on_start": "&Check for updates at startup",
+      "show_check_notice": "&Show a notice when checking",
       "check": "Check now",
       "close": "Close"
     },    "DIALOG_ARCHIVEPASSWORD": {
@@ -34,7 +34,7 @@
     "DIALOG_ASKSAVE": {
       "$title": "Save modified file?",
       "yes": "Yes",
-      "no": "No",
+      "no": "&No",
       "cancel": "Cancel"
     },
     "DIALOG_ASSOCIATIONEDIT": {
@@ -45,7 +45,7 @@
     "DIALOG_ASSOCIATIONS": {
       "$title": "File Associations",
       "ok": "Edit",
-      "add": "Add",
+      "add": "&Add",
       "cancel": "Cancel"
     },
     "DIALOG_CMDHISTORY": {
@@ -56,17 +56,17 @@
     "DIALOG_COLORCODING": {
       "$title": "Color coding groups",
       "hint": "Ins=Add F4=Edit Del=Remove/Disable Ctrl+Space=Enable Ctrl+Up/Dn=Move",
-      "add": "Add",
-      "edit": "Edit",
-      "delete": "Delete",
-      "moveup": "Up",
-      "movedown": "Dn",
+      "add": "&Add",
+      "edit": "&Edit",
+      "delete": "&Delete",
+      "moveup": "&Up",
+      "movedown": "D&n",
       "ok": "Save",
       "cancel": "Cancel"
     },
     "DIALOG_COLORCODINGEDIT": {
       "$title": "Color coding group",
-      "cc_enabled": "Enabled",
+      "cc_enabled": "&Enabled",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -77,13 +77,13 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Custom columns",
-      "col_ext": "Extension",
-      "col_size": "Size",
-      "col_modified": "Modified date",
-      "col_created": "Created date",
-      "col_accessed": "Accessed date",
-      "col_type": "Type",
-      "col_attr": "Attributes",
+      "col_ext": "&Extension",
+      "col_size": "&Size",
+      "col_modified": "&Modified date",
+      "col_created": "&Created date",
+      "col_accessed": "&Accessed date",
+      "col_type": "&Type",
+      "col_attr": "Attri&butes",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -93,12 +93,12 @@
     },
     "DIALOG_COPYMOVE": {
       "$title": "Copy",
-      "job_timestamps": "Preserve all timestamps",
-      "job_only_newer": "Only newer files",
-      "job_symlinks": "Copy contents of symbolic links",
-      "job_filter": "Exclude mask:",
+      "job_timestamps": "&Preserve all timestamps",
+      "job_only_newer": "&Only newer files",
+      "job_symlinks": "Copy contents of &symbolic links",
+      "job_filter": "&Exclude mask:",
       "ok": "Copy",
-      "background": "Background",
+      "background": "&Background",
       "cancel": "Cancel"
     },
     "DIALOG_CREATELINK": {
@@ -107,25 +107,26 @@
       "cancel": "Cancel"
     },
     "DIALOG_DELETE": {
+      "background": "&Background",
       "ok": "Delete",
       "cancel": "Cancel"
     },
     "DIALOG_DELETEERROR": {
       "$title": "Error",
       "delete": "Delete",
-      "skip": "Skip",
-      "skipall": "Skip all",
+      "skip": "&Skip",
+      "skipall": "Skip &all",
       "cancel": "Cancel"
     },
     "DIALOG_DIRSYNC": {
       "$title": "Synchronize directories",
       "src_label": "Source:",
       "dst_label": "Target:",
-      "oneway": "One-way (→)",
-      "twoway": "Two-way (⇄)",
-      "bydate": "Date / size",
-      "bycontent": "Content",
-      "dry_run": "Dry run (report only)",
+      "oneway": "&One-way (→)",
+      "twoway": "&Two-way (⇄)",
+      "bydate": "&Date / size",
+      "bycontent": "&Content",
+      "dry_run": "Dry &run (report only)",
       "ok": "Synchronize",
       "cancel": "Cancel"
     },
@@ -138,10 +139,10 @@
       "lbl_language": "Language",
       "lbl_shadows": "Shadows",
       "lbl_marked_rows": "Marked files",
-      "line_spacing": "Line spacing (as in a terminal)",
-      "blink": "Blink cursor",
-      "panel_icons": "Show panel icons",
-      "notifications": "Show pop-up notifications",
+      "line_spacing": "&Line spacing (as in a terminal)",
+      "blink": "&Blink cursor",
+      "panel_icons": "Show panel &icons",
+      "notifications": "Show &pop-up notifications",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -152,8 +153,8 @@
       "cancel": "Cancel"
     },
     "DIALOG_CHECKSUM": {
-      "copy": "Copy",
-      "save": "Save",
+      "copy": "&Copy",
+      "save": "&Save",
       "close": "Close"
     },
     "DIALOG_EXTERNALTOOLS": {
@@ -205,27 +206,27 @@
     "DIALOG_IOERROR": {
       "$title": "Error",
       "retry": "Retry",
-      "skip": "Skip",
-      "skipall": "Skip all",
+      "skip": "&Skip",
+      "skipall": "Skip &all",
       "cancel": "Cancel"
     },
     "DIALOG_JOBLIST": {
       "$title": "Background jobs",
       "foreground": "Foreground",
-      "canceljob": "Cancel",
-      "cancelall": "Cancel all",
+      "canceljob": "&Cancel",
+      "cancelall": "Cancel &all",
       "cancel": "Close"
     },
     "DIALOG_JOBPROGRESS": {
       "$title": "Copy",
       "to": "to",
       "total_rule": "──────────────────────────────── Total ──────────────────────────────────",
-      "background": "Background",
+      "background": "&Background",
       "cancel": "Cancel"
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "Delete",
-      "background": "Background",
+      "background": "&Background",
       "cancel": "Cancel"
     },
     "DIALOG_JOBPROGRESSERROR": {
@@ -235,26 +236,26 @@
     "DIALOG_KEYMAP": {
       "$title": "Keymap - keyboard shortcuts",
       "hint": "Enter/F4=Edit hotkeys   Reset=this action   Reset all=whole profile",
-      "edit": "Edit",
-      "reset": "Reset",
-      "resetall": "Reset all",
+      "edit": "&Edit",
+      "reset": "&Reset",
+      "resetall": "Reset &all",
       "ok": "Save",
       "cancel": "Cancel"
     },
     "DIALOG_KEYMAPEDIT": {
       "$title": "Edit hotkeys",
       "ok": "OK",
-      "reset": "Reset",
+      "reset": "&Reset",
       "cancel": "Cancel"
     },
     "DIALOG_OVERWRITEASK": {
       "$title": "Warning",
       "subtitle": "File already exists",
-      "remember": "Remember choice",
+      "remember": "Remember &choice",
       "overwrite": "Overwrite",
-      "skip": "Skip",
-      "rename": "Rename",
-      "append": "Append",
+      "skip": "&Skip",
+      "rename": "&Rename",
+      "append": "&Append",
       "cancel": "Cancel"
     },
     "DIALOG_PLUGINLIST": {
@@ -264,22 +265,22 @@
     "DIALOG_REPLACE": {
       "$title": "Replace",
       "one": "Replace",
-      "all": "All",
+      "all": "&All",
       "cancel": "Cancel"
     },
     "DIALOG_SEARCH": {
       "$title": "Find file",
-      "search_case": "Case sensitive",
-      "search_words": "Whole words",
-      "search_folders": "Search for folders",
-      "search_regex": "Regex",
-      "search_subdirs": "Search in subfolders",
+      "search_case": "&Case sensitive",
+      "search_words": "&Whole words",
+      "search_folders": "Search for &folders",
+      "search_regex": "&Regex",
+      "search_subdirs": "Search in &subfolders",
       "ok": "Find",
       "cancel": "Cancel"
     },
     "DIALOG_SELECTMASK": {
       "$title": "Select",
-      "select_folders": "Select folders",
+      "select_folders": "&Select folders",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -290,13 +291,13 @@
       "lbl_a": "Archive",
       "lbl_s": "System",
       "lbl_owner": "Owner:",
-      "change_owner": "Change owner",
+      "change_owner": "&Change owner",
       "lbl_created": "Created",
       "lbl_modified": "Modified",
       "lbl_accessed": "Accessed",
-      "dates_now": "Current",
-      "dates_orig": "Original",
-      "recurse": "Process subfolders",
+      "dates_now": "C&urrent",
+      "dates_orig": "&Original",
+      "recurse": "&Process subfolders",
       "ok": "Set",
       "cancel": "Cancel"
     },
@@ -308,7 +309,7 @@
     "DIALOG_SSHCONNECTIONS": {
       "$title": "SSH/SFTP Connections",
       "ok": "Shell",
-      "browse": "Browse",
+      "browse": "&Browse",
       "cancel": "Cancel"
     },
     "DIALOG_TERMINALPROFILE": {
@@ -336,7 +337,7 @@
     "DIALOG_WORKSPACES": {
       "$title": "Workspaces",
       "ok": "Go",
-      "save": "Save",
+      "save": "&Save",
       "cancel": "Cancel"
     }
   },
@@ -721,7 +722,7 @@
     "terminalProfile.title": "New terminal",
     "shellProfiles.noneAvailable": "No shell profiles available",
     "consoleProfile.title": "Background console",
-    "consoleProfile.startOnLaunch": "Start shell at program launch"
+    "consoleProfile.startOnLaunch": "&Start shell at program launch"
   },
   "menu": {
     "category.Left": "Left",

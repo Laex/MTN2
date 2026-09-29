@@ -59,9 +59,10 @@ type
     function FocusedIsInput: Boolean;
     /// <summary>Fires the first button whose command is Yes (AYes) or No.</summary>
     function TryYesNoButton(AYes: Boolean): Boolean;
-    /// <summary>Activates the first control whose hotkey (ExtractControlHotkey)
-    /// is ACh: fires a button, toggles a checkbox, selects a radio, focuses
-    /// anything else.</summary>
+    /// <summary>Activates the button, checkbox or radio button whose caption
+    /// marks ACh with '&' (HotKeyCharOf): presses the button, toggles the
+    /// checkbox, selects the radio button. Captions without a marker have no
+    /// hotkey.</summary>
     function TryMnemonic(ACh: Char): Boolean;
     function FocusedIsButton: Boolean;
     function NormalizeAcceptKey(var AKey: Word; var AKeyChar: Char): Boolean;
@@ -92,6 +93,12 @@ type
     /// display, focused/open DropDown field) - FTheme.ResolveDialogRowColors
     /// when themed, else the fixed FAR/NDN black-on-cyan cursor row.</summary>
     procedure ResolveSelectedRowColors(out AFg, ABg: TAlphaColor);
+    /// <summary>Checkbox / radio colours where the theme does not draw them
+    /// (warning dialogs, no theme): the focused row uses the selection
+    /// colours and an underlined hotkey letter, others the label colours and
+    /// a yellow letter on the red warning body.</summary>
+    procedure ResolveFallbackItemColors(AFocused: Boolean; ALabelFg, ALabelBg: TAlphaColor;
+      out AFg, ABg, AHotFg: TAlphaColor; out AHotAttr: TCharCellAttributes);
     /// <summary>Themed vs fallback color for a list row that may or may not
     /// be selected - same rule as ResolveSelectedRowColors, but falls back
     /// to the caller's own ANormalFg/ANormalBg when not selected and no
@@ -265,6 +272,9 @@ implementation
 uses
   System.Character, uKeyChord, uDialogLocaleLayout;
 
+const
+  cWarningBodyBg = TAlphaColor($FFAA0000);
+
 var
   GPressHost: TDialogHost = nil;
   GPressHoldKey: Word = 0;
@@ -381,36 +391,9 @@ begin
   end;
 end;
 
-function ExtractControlHotkey(const AText, AId: string): Char;
-var
-  AmpPos: Integer;
-  Id: string;
-begin
-  Result := #0;
-  AmpPos := Pos('&', AText);
-  if (AmpPos > 0) and (AmpPos < Length(AText)) then
-    Exit(AText[AmpPos + 1].ToUpper);
-
-  Id := LowerCase(Trim(AId));
-  if Id = 'delete' then Exit('D');
-  if Id = 'skip' then Exit('S');
-  if Id = 'skipall' then Exit('A');
-  if Id = 'overwrite' then Exit('O');
-  if Id = 'rename' then Exit('R');
-  if Id = 'append' then Exit('A');
-  if Id = 'retry' then Exit('R');
-  if Id = 'cancel' then Exit('C');
-
-  if AText <> '' then
-    Exit(AText[1].ToUpper);
-
-  if AId <> '' then
-    Exit(AId[1].ToUpper);
-end;
-
 function ButtonCellWidth(const C: TDialogControl): Integer;
 begin
-  Result := Min(14, Max(Length(C.Text) + 6, 10));
+  Result := Min(14, Max(Length(StripHotKeyMarker(C.Text)) + 6, 10));
 end;
 
 function RadioGroupValueOf(const C: TDialogControl): string;
@@ -1638,7 +1621,7 @@ begin
     dckButton:
       Result := ButtonCellWidth(C);
     dckCheckbox, dckRadio:
-      Result := Min(AClientW, Max(Length(C.Text) + 4, 8));
+      Result := Min(AClientW, Max(Length(StripHotKeyMarker(C.Text)) + 4, 8));
     dckLabel, dckStatus:
       Result := Min(AClientW, Max(Length(C.Text), 1));
     dckDropDown:
@@ -1976,13 +1959,38 @@ begin
       TAlphaColor($FF000000), TAlphaColor($FF00AAAA));
 end;
 
+procedure TDialogHost.ResolveFallbackItemColors(AFocused: Boolean; ALabelFg, ALabelBg: TAlphaColor;
+  out AFg, ABg, AHotFg: TAlphaColor; out AHotAttr: TCharCellAttributes);
+begin
+  if AFocused then
+  begin
+    ResolveSelectedRowColors(AFg, ABg);
+    AHotFg := AFg;
+    AHotAttr := [ccaUnderline];
+    Exit;
+  end;
+  AFg := ALabelFg;
+  ABg := ALabelBg;
+  if ALabelBg = cWarningBodyBg then
+  begin
+    AHotFg := TAlphaColor($FFFFFF55);
+    AHotAttr := [];
+  end
+  else
+  begin
+    AHotFg := AFg;
+    AHotAttr := [ccaUnderline];
+  end;
+end;
+
 procedure TDialogHost.Draw(const AGrid: TTerminalGrid; AAreaW, AAreaH: Integer);
 var
   I: Integer;
   St: TThemeWidgetState;
   Colors: TInputLineColors;
   C: TDialogControl;
-  LabelFg, LabelBg, ItemFg, ItemBg: TAlphaColor;
+  LabelFg, LabelBg, ItemFg, ItemBg, HotFg: TAlphaColor;
+  HotAttr: TCharCellAttributes;
   R: TRectI;
 begin
   if not FVisible then
@@ -2006,7 +2014,7 @@ begin
   if FDecl.IsWarning then
   begin
     LabelFg := TAlphaColor($FFFFFFFF);
-    LabelBg := TAlphaColor($FFAA0000);
+    LabelBg := cWarningBodyBg;
   end
   else if Assigned(FTheme) then
     FTheme.ResolveDialogRowColors(False, LabelFg, LabelBg)
@@ -2055,16 +2063,11 @@ begin
           // worse after translation when the caption (and box) grow.
           if FDecl.IsWarning or not Assigned(FTheme) then
           begin
-            if I = FFocusIndex then
-              ResolveSelectedRowColors(ItemFg, ItemBg)
-            else
-            begin
-              ItemFg := LabelFg;
-              ItemBg := LabelBg;
-            end;
-            PutGridTextClipped(AGrid, R.Left, R.Top, R.Right,
+            ResolveFallbackItemColors(I = FFocusIndex, LabelFg, LabelBg,
+              ItemFg, ItemBg, HotFg, HotAttr);
+            PutGridHotTextClipped(AGrid, R.Left, R.Top, R.Right,
               IfThen(C.Checked, '[x] ', '[ ] ') + C.Text,
-              ItemFg, ItemBg);
+              ItemFg, ItemBg, HotFg, [], HotAttr);
           end
           else
             FTheme.DrawCheckBox(AGrid, R, C.Text, C.Checked, St);
@@ -2073,16 +2076,11 @@ begin
         begin
           if FDecl.IsWarning or not Assigned(FTheme) then
           begin
-            if I = FFocusIndex then
-              ResolveSelectedRowColors(ItemFg, ItemBg)
-            else
-            begin
-              ItemFg := LabelFg;
-              ItemBg := LabelBg;
-            end;
-            PutGridTextClipped(AGrid, R.Left, R.Top, R.Right,
+            ResolveFallbackItemColors(I = FFocusIndex, LabelFg, LabelBg,
+              ItemFg, ItemBg, HotFg, HotAttr);
+            PutGridHotTextClipped(AGrid, R.Left, R.Top, R.Right,
               IfThen(C.Checked, '(*) ', '( ) ') + C.Text,
-              ItemFg, ItemBg);
+              ItemFg, ItemBg, HotFg, [], HotAttr);
           end
           else
             FTheme.DrawRadioBox(AGrid, R, C.Text, C.Checked, St);
@@ -2508,40 +2506,31 @@ var
   I: Integer;
   C: TDialogControl;
 begin
+  if ACh = #0 then
+    Exit(False);
   Result := True;
   for I := 0 to High(FDecl.Controls) do
   begin
     C := FDecl.Controls[I];
-    if ExtractControlHotkey(C.Text, C.Id) = ACh then
-    begin
-      case C.Kind of
-        dckButton:
-          begin
-            PressButton(I);
-            Exit;
-          end;
-        dckCheckbox:
-          begin
-            FFocusIndex := I;
-            FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
-            NotifyChanged;
-            Exit;
-          end;
-        dckRadio:
-          begin
-            FFocusIndex := I;
-            SelectRadio(I);
-            NotifyChanged;
-            Exit;
-          end;
-        dckInput, dckList, dckDropDown, dckRadioGroup:
-          begin
-            FFocusIndex := I;
-            NotifyChanged;
-            Exit;
-          end;
-      end;
+    if not (C.Kind in [dckButton, dckCheckbox, dckRadio]) or
+       (HotKeyCharOf(C.Text) <> ACh) then
+      Continue;
+    FFocusIndex := I;
+    case C.Kind of
+      dckButton:
+        PressButton(I);
+      dckCheckbox:
+        begin
+          FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
+          NotifyChanged;
+        end;
+      dckRadio:
+        begin
+          SelectRadio(I);
+          NotifyChanged;
+        end;
     end;
+    Exit;
   end;
   Result := False;
 end;
@@ -2549,7 +2538,7 @@ end;
 function TDialogHost.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
-  I, ViewH, Last: Integer;
+  ViewH, Last: Integer;
   Ch: Char;
   C: TDialogControl;
   LineRes: TInputLineResult;
@@ -2734,13 +2723,15 @@ begin
           Exit;
         end;
     end;
-    // A mnemonic matches the typed letter first (any script: &Удалить takes
-    // у), then the physical key, so Latin mnemonics also work from another
-    // layout (the Russian ы on the S key takes &Skip).
+    // A hotkey matches the typed letter first (any script: &Удалить takes
+    // у), then the same key on the other layout (the Latin e on the У key
+    // takes &Удалить), then the physical key, so Latin hotkeys also work
+    // from a layout other than JCUKEN.
     Ch := #0;
     if AKeyChar.IsLetter then
       Ch := AKeyChar.ToUpper;
-    if (Ch <> #0) and TryMnemonic(Ch) then
+    if (Ch <> #0) and (TryMnemonic(Ch) or
+       TryMnemonic(TextKeyLayoutAlternate(AKeyChar).ToUpper)) then
     begin
       AKey := 0;
       AKeyChar := #0;

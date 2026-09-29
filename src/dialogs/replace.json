@@ -56,7 +56,7 @@
     {
       "type": "button",
       "id": "all",
-      "text": "All",
+      "text": "&All",
       "col": 18,
       "row": 6,
       "width": 12,

@@ -27,7 +27,7 @@
     {
       "type": "button",
       "id": "no",
-      "text": "No",
+      "text": "&No",
       "col": 16,
       "row": 3,
       "width": 10,

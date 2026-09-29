@@ -10,7 +10,7 @@
       "$title": "Обновление MTN2",
       "update": "Обновить",
       "later": "Позже",
-      "skip": "Пропустить версию"
+      "skip": "&Пропустить версию"
     },
     "DIALOG_UPDATEMSG": {
       "$title": "Обновление MTN2",
@@ -19,8 +19,8 @@
     },
     "DIALOG_UPDATES": {
       "$title": "Обновления",
-      "check_on_start": "Проверять обновления при запуске",
-      "show_check_notice": "Показывать уведомление о проверке",
+      "check_on_start": "&Проверять обновления при запуске",
+      "show_check_notice": "Показывать &уведомление о проверке",
       "check": "Проверить",
       "close": "Закрыть"
     },    "DIALOG_ARCHIVEPASSWORD": {
@@ -31,7 +31,7 @@
     "DIALOG_ASKSAVE": {
       "$title": "Сохранить изменённый файл?",
       "yes": "Да",
-      "no": "Нет",
+      "no": "&Нет",
       "cancel": "Отмена"
     },
     "DIALOG_ASSOCIATIONEDIT": {
@@ -52,7 +52,7 @@
       "assocHeader": "Расш.        Действие      Команда",
       "$title": "Ассоциации файлов",
       "ok": "Изменить",
-      "add": "Добавить",
+      "add": "&Добавить",
       "cancel": "Отмена"
     },
     "DIALOG_CMDHISTORY": {
@@ -64,11 +64,11 @@
       "header": "    Т Имя              Маска                    О В К",
       "$title": "Группы цветовой разметки",
       "hint": "Ins=Добавить F4=Изменить Del=Удалить/Отключить Ctrl+Space=Включить Ctrl+Up/Dn=Переместить",
-      "add": "Добавить",
-      "edit": "Изменить",
-      "delete": "Удалить",
-      "moveup": "Вверх",
-      "movedown": "Вниз",
+      "add": "&Добавить",
+      "edit": "&Изменить",
+      "delete": "&Удалить",
+      "moveup": "&Вверх",
+      "movedown": "В&низ",
       "ok": "Сохранить",
       "cancel": "Отмена"
     },
@@ -89,7 +89,7 @@
         "Dirs only": "Только папки"
       },
       "$title": "Группа цветовой разметки",
-      "cc_enabled": "Включено",
+      "cc_enabled": "&Включено",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -102,13 +102,13 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Настраиваемые колонки",
-      "col_ext": "Расширение",
-      "col_size": "Размер",
-      "col_modified": "Дата изменения",
-      "col_created": "Дата создания",
-      "col_accessed": "Дата доступа",
-      "col_type": "Тип",
-      "col_attr": "Атрибуты",
+      "col_ext": "&Расширение",
+      "col_size": "Ра&змер",
+      "col_modified": "Дата &изменения",
+      "col_created": "Дата &создания",
+      "col_accessed": "Дата &доступа",
+      "col_type": "&Тип",
+      "col_attr": "&Атрибуты",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -125,12 +125,12 @@
       "$title": "Копирование",
       "existing_label": "Существующие файлы:",
       "retry_label": "Повторов при ошибке:",
-      "job_timestamps": "Сохранять все временные метки",
-      "job_only_newer": "Только более новые файлы",
-      "job_symlinks": "Копировать содержимое симв. ссылок",
-      "job_filter": "Маска исключения:",
+      "job_timestamps": "&Сохранять все временные метки",
+      "job_only_newer": "&Только более новые файлы",
+      "job_symlinks": "&Копировать содержимое симв. ссылок",
+      "job_filter": "&Маска исключения:",
       "ok": "Копировать",
-      "background": "В фоне",
+      "background": "&В фоне",
       "cancel": "Отмена"
     },
     "DIALOG_CREATELINK": {
@@ -148,26 +148,26 @@
       "cancel": "Отмена"
     },
     "DIALOG_DELETE": {
-      "background": "В фоне",
+      "background": "&В фоне",
       "ok": "Удалить",
       "cancel": "Отмена"
     },
     "DIALOG_DELETEERROR": {
       "$title": "Ошибка",
       "delete": "Удалить",
-      "skip": "Пропустить",
-      "skipall": "Пропустить всё",
+      "skip": "&Пропустить",
+      "skipall": "Пропустить &всё",
       "cancel": "Отмена"
     },
     "DIALOG_DIRSYNC": {
       "$title": "Синхронизация папок",
       "src_label": "Источник:",
       "dst_label": "Назначение:",
-      "oneway": "В одну сторону (→)",
-      "twoway": "В обе стороны (⇄)",
-      "bydate": "Дата / размер",
-      "bycontent": "Содержимое",
-      "dry_run": "Пробный запуск (только отчёт)",
+      "oneway": "В &одну сторону (→)",
+      "twoway": "В о&бе стороны (⇄)",
+      "bydate": "&Дата / размер",
+      "bycontent": "&Содержимое",
+      "dry_run": "&Пробный запуск (только отчёт)",
       "ok": "Синхронизировать",
       "cancel": "Отмена"
     },
@@ -180,10 +180,10 @@
       "lbl_language": "Язык",
       "lbl_shadows": "Тени",
       "lbl_marked_rows": "Отмеченные файлы",
-      "line_spacing": "Межстрочный интервал (как в терминале)",
-      "blink": "Мигающий курсор",
-      "panel_icons": "Показывать значки в панелях",
-      "notifications": "Показывать всплывающие уведомления",
+      "line_spacing": "&Межстрочный интервал (как в терминале)",
+      "blink": "Мигающий &курсор",
+      "panel_icons": "Показывать &значки в панелях",
+      "notifications": "Показывать &всплывающие уведомления",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -194,8 +194,8 @@
       "cancel": "Отмена"
     },
     "DIALOG_CHECKSUM": {
-      "copy": "Копировать",
-      "save": "Сохранить",
+      "copy": "&Копировать",
+      "save": "&Сохранить",
       "close": "Закрыть"
     },
     "DIALOG_EXTERNALTOOLS": {
@@ -268,28 +268,28 @@
     "DIALOG_IOERROR": {
       "$title": "Ошибка",
       "retry": "Повторить",
-      "skip": "Пропустить",
-      "skipall": "Пропустить всё",
+      "skip": "&Пропустить",
+      "skipall": "Пропустить &всё",
       "cancel": "Отмена"
     },
     "DIALOG_JOBLIST": {
       "header": "Задание                                          Прогресс",
       "$title": "Фоновые задачи",
       "foreground": "На передний план",
-      "canceljob": "Отмена",
-      "cancelall": "Отменить все",
+      "canceljob": "&Отмена",
+      "cancelall": "Отменить &все",
       "cancel": "Закрыть"
     },
     "DIALOG_JOBPROGRESS": {
       "$title": "Копирование",
       "to": "в",
       "total_rule": "──────────────────────────────── Итого ──────────────────────────────────",
-      "background": "В фоне",
+      "background": "&В фоне",
       "cancel": "Отмена"
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "Удаление",
-      "background": "В фоне",
+      "background": "&В фоне",
       "cancel": "Отмена"
     },
     "DIALOG_JOBPROGRESSERROR": {
@@ -300,9 +300,9 @@
       "header": "  Действие                              Клавиши",
       "$title": "Раскладка клавиш",
       "hint": "Enter/F4=Изменить   Reset=это действие   Reset all=весь профиль",
-      "edit": "Изменить",
-      "reset": "Сброс",
-      "resetall": "Сбросить всё",
+      "edit": "&Изменить",
+      "reset": "&Сброс",
+      "resetall": "Сбросить &всё",
       "ok": "Сохранить",
       "cancel": "Отмена"
     },
@@ -312,17 +312,17 @@
       "lbl_hint_mods": "Модификаторы: Ctrl+ Alt+ Shift+ (напр. Ctrl+Shift+F5, Alt+F7)",
       "$title": "Изменение сочетаний клавиш",
       "ok": "ОК",
-      "reset": "Сброс",
+      "reset": "&Сброс",
       "cancel": "Отмена"
     },
     "DIALOG_OVERWRITEASK": {
       "$title": "Предупреждение",
       "subtitle": "Файл уже существует",
-      "remember": "Запомнить выбор",
+      "remember": "&Запомнить выбор",
       "overwrite": "Заменить",
-      "skip": "Пропустить",
-      "rename": "Переименовать",
-      "append": "Добавить в конец",
+      "skip": "&Пропустить",
+      "rename": "Пере&именовать",
+      "append": "&Добавить в конец",
       "cancel": "Отмена"
     },
     "DIALOG_PLUGINLIST": {
@@ -334,24 +334,24 @@
       "lbl_replace": "Заменить на:",
       "$title": "Замена",
       "one": "Заменить",
-      "all": "Все",
+      "all": "&Все",
       "cancel": "Отмена"
     },
     "DIALOG_SEARCH": {
       "lbl_mask": "Маска файла или несколько масок:",
       "lbl_text": "Содержащие текст:",
       "$title": "Поиск файла",
-      "search_case": "Учитывать регистр",
-      "search_words": "Только слово целиком",
-      "search_folders": "Искать папки",
-      "search_regex": "Рег. выражение",
-      "search_subdirs": "Искать во вложенных папках",
+      "search_case": "&Учитывать регистр",
+      "search_words": "&Только слово целиком",
+      "search_folders": "&Искать папки",
+      "search_regex": "&Рег. выражение",
+      "search_subdirs": "Искать во &вложенных папках",
       "ok": "Найти",
       "cancel": "Отмена"
     },
     "DIALOG_SELECTMASK": {
       "$title": "Выделение",
-      "select_folders": "Выделять папки",
+      "select_folders": "&Выделять папки",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -382,13 +382,13 @@
       "lbl_a": "Архивный",
       "lbl_s": "Системный",
       "lbl_owner": "Владелец:",
-      "change_owner": "Изменить владельца",
+      "change_owner": "&Изменить владельца",
       "lbl_created": "Создан",
       "lbl_modified": "Изменён",
       "lbl_accessed": "Доступ",
-      "dates_now": "Текущее",
-      "dates_orig": "Исходные",
-      "recurse": "Обрабатывать вложенные папки",
+      "dates_now": "&Текущее",
+      "dates_orig": "Ис&ходные",
+      "recurse": "&Обрабатывать вложенные папки",
       "ok": "Применить",
       "cancel": "Отмена"
     },
@@ -406,7 +406,7 @@
       "sshHeader": "Имя                                     Хост",
       "$title": "SSH/SFTP-соединения",
       "ok": "Оболочка",
-      "browse": "Обзор",
+      "browse": "О&бзор",
       "cancel": "Отмена"
     },
     "DIALOG_TERMINALPROFILE": {
@@ -436,7 +436,7 @@
       "wsHeader": "Имя                                             Ссылки",
       "$title": "Рабочие пространства",
       "ok": "Перейти",
-      "save": "Сохранить",
+      "save": "&Сохранить",
       "cancel": "Отмена"
     }
   },
@@ -821,7 +821,7 @@
     "terminalProfile.title": "Новый терминал",
     "shellProfiles.noneAvailable": "Нет доступных профилей оболочки",
     "consoleProfile.title": "Фоновая консоль",
-    "consoleProfile.startOnLaunch": "Запускать оболочку при старте программы"
+    "consoleProfile.startOnLaunch": "&Запускать оболочку при старте программы"
   },
   "menu": {
     "category.Left": "С&лева",

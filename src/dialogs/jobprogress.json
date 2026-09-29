@@ -89,7 +89,7 @@
     {
       "type": "button",
       "id": "background",
-      "text": "Background",
+      "text": "&Background",
       "col": 10,
       "row": 10,
       "width": 14,

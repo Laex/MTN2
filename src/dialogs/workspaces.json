@@ -39,7 +39,7 @@
     {
       "type": "button",
       "id": "save",
-      "text": "Save",
+      "text": "&Save",
       "col": 25,
       "row": 14,
       "width": 10,

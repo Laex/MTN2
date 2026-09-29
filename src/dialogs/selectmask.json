@@ -27,7 +27,7 @@
     {
       "type": "checkbox",
       "id": "select_folders",
-      "text": "Select folders",
+      "text": "&Select folders",
       "checked": false,
       "col": 1,
       "row": 4,

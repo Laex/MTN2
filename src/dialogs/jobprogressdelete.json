@@ -26,7 +26,7 @@
     {
       "type": "button",
       "id": "background",
-      "text": "Background",
+      "text": "&Background",
       "col": 10,
       "row": 5,
       "width": 14,

@@ -23,6 +23,9 @@ type
     [Test] procedure TestRussian;
   end;
 
+/// <summary>Names of the DIALOG_* resources linked into the test runner.</summary>
+function DialogResourceNames: TArray<string>;
+
 implementation
 
 uses
@@ -78,7 +81,7 @@ end;
 
 function Caption(const C: TDialogControl): string;
 begin
-  Result := StringReplace(C.Text, '&', '', [rfReplaceAll]);
+  Result := StripHotKeyMarker(C.Text);
 end;
 
 procedure CheckDeclaration(const AName: string; const ADecl: TDialogDeclaration;

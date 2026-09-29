@@ -193,7 +193,96 @@ procedure ResolveStandardPanelChromeColors(APart: TPanelChromePart; AActive: Boo
 procedure DrawPanelFrameGlyphs(const AGrid: TTerminalGrid; const ABounds: TRectI;
   ATL, ATR, ABL, ABR, AH, AV: Char; AFrameColor, AFillFg, AFillBg: TAlphaColor);
 
+/// <summary>Captions of dialog buttons, checkboxes and radio buttons mark
+/// their hotkey letter with '&' ("&Skip", "Re&name"); '&&' is a
+/// literal '&'. Returns the caption as drawn and the 1-based position of the
+/// hotkey letter in it, 0 when there is none.</summary>
+function StripHotKeyMarker(const AText: string; out AHotPos: Integer): string; overload;
+function StripHotKeyMarker(const AText: string): string; overload;
+/// <summary>The hotkey letter of a marked caption in upper case, #0 when
+/// the caption has no marker.</summary>
+function HotKeyCharOf(const AText: string): Char;
+/// <summary>PutGridTextClipped for a marked caption: the marker is not drawn
+/// and the hotkey letter gets AHotFg, with AHotAttr added to AAttr.</summary>
+procedure PutGridHotTextClipped(const AGrid: TTerminalGrid; AX, AY, AMaxX: Integer;
+  const AText: string; AFg, ABg, AHotFg: TAlphaColor;
+  AAttr: TCharCellAttributes = []; AHotAttr: TCharCellAttributes = []);
+
 implementation
+
+uses
+  System.SysUtils, System.Character;
+
+function StripHotKeyMarker(const AText: string; out AHotPos: Integer): string;
+var
+  I, N: Integer;
+  SB: TStringBuilder;
+begin
+  AHotPos := 0;
+  if Pos('&', AText) = 0 then
+    Exit(AText);
+  SB := TStringBuilder.Create(Length(AText));
+  try
+    N := Length(AText);
+    I := 1;
+    while I <= N do
+    begin
+      if AText[I] = '&' then
+      begin
+        if (I < N) and (AText[I + 1] = '&') then
+        begin
+          SB.Append('&');
+          Inc(I, 2);
+          Continue;
+        end;
+        // Only the first marker counts; a stray one is dropped.
+        if (AHotPos = 0) and (I < N) then
+          AHotPos := SB.Length + 1;
+        Inc(I);
+        Continue;
+      end;
+      SB.Append(AText[I]);
+      Inc(I);
+    end;
+    Result := SB.ToString;
+  finally
+    SB.Free;
+  end;
+end;
+
+function StripHotKeyMarker(const AText: string): string;
+var
+  Discard: Integer;
+begin
+  Result := StripHotKeyMarker(AText, Discard);
+end;
+
+function HotKeyCharOf(const AText: string): Char;
+var
+  Cap: string;
+  P: Integer;
+begin
+  Cap := StripHotKeyMarker(AText, P);
+  if P = 0 then
+    Exit(#0);
+  Result := Cap[P].ToUpper;
+end;
+
+procedure PutGridHotTextClipped(const AGrid: TTerminalGrid; AX, AY, AMaxX: Integer;
+  const AText: string; AFg, ABg, AHotFg: TAlphaColor;
+  AAttr: TCharCellAttributes; AHotAttr: TCharCellAttributes);
+var
+  Cap: string;
+  P, X: Integer;
+begin
+  Cap := StripHotKeyMarker(AText, P);
+  PutGridTextClipped(AGrid, AX, AY, AMaxX, Cap, AFg, ABg, AAttr);
+  if P = 0 then
+    Exit;
+  X := AX + P - 1;
+  if X <= AMaxX then
+    DrawGridChar(AGrid, X, AY, Cap[P], AHotFg, ABg, AAttr + AHotAttr);
+end;
 
 procedure DrawPanelFrameGlyphs(const AGrid: TTerminalGrid; const ABounds: TRectI;
   ATL, ATR, ABL, ABR, AH, AV: Char; AFrameColor, AFillFg, AFillBg: TAlphaColor);

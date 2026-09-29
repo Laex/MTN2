@@ -54,7 +54,7 @@
     {
       "type": "checkbox",
       "id": "search_case",
-      "text": "Case sensitive",
+      "text": "&Case sensitive",
       "checked": false,
       "col": 1,
       "row": 6,
@@ -64,7 +64,7 @@
     {
       "type": "checkbox",
       "id": "search_words",
-      "text": "Whole words",
+      "text": "&Whole words",
       "checked": false,
       "col": 26,
       "row": 6,
@@ -74,7 +74,7 @@
     {
       "type": "checkbox",
       "id": "search_folders",
-      "text": "Search for folders",
+      "text": "Search for &folders",
       "checked": false,
       "col": 1,
       "row": 7,
@@ -84,7 +84,7 @@
     {
       "type": "checkbox",
       "id": "search_regex",
-      "text": "Regex",
+      "text": "&Regex",
       "checked": false,
       "col": 32,
       "row": 7,
@@ -94,7 +94,7 @@
     {
       "type": "checkbox",
       "id": "search_subdirs",
-      "text": "Search in subfolders",
+      "text": "Search in &subfolders",
       "checked": true,
       "col": 1,
       "row": 8,

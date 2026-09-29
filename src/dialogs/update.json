@@ -46,7 +46,7 @@
     {
       "type": "button",
       "id": "skip",
-      "text": "Skip this version",
+      "text": "&Skip this version",
       "col": 33,
       "row": 4,
       "width": 21,

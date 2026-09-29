@@ -13,6 +13,7 @@ uses
   TestColorCodingMerge in 'TestColorCodingMerge.pas',
   TestColorSampleRender in 'TestColorSampleRender.pas',
   TestDialogButtonPress in 'TestDialogButtonPress.pas',
+  TestDialogHotKeyDraw in 'TestDialogHotKeyDraw.pas',
   TestDialogSeparator in 'TestDialogSeparator.pas',
   TestColumnModeMenuController in 'TestColumnModeMenuController.pas',
   TestDrivePopup in 'TestDrivePopup.pas',

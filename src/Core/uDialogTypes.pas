@@ -1200,7 +1200,7 @@ begin
   SetLength(Result.Controls, N + 1);
   Result.Controls[N] := WithControlBox(
     MakeCheckbox('start_on_launch',
-      T('ui.consoleProfile.startOnLaunch', 'Start shell at program launch'),
+      T('ui.consoleProfile.startOnLaunch', '&Start shell at program launch'),
       AStartOnLaunch),
     1, ButtonRow, Result.Width - 4, 1);
 end;
