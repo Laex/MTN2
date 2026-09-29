@@ -830,7 +830,7 @@ begin
       // Grid mode has no single "current open line" the way the legacy
       // scrollback does -- check the grid's real cursor row/col instead of
       // blindly assuming the buffer's bottom line, which need not be where
-      // the cursor actually is (e.g. after a mid-screen CUP redraw). This
+      // the cursor is (e.g. after a mid-screen CUP redraw). This
       // matters here specifically because status messages (process exit,
       // interrupt, cwd-sync failure) can land mid-session, while a real PTY
       // session -- and therefore grid mode -- is active.
@@ -1056,7 +1056,7 @@ begin
     // prompt-guessing heuristics -- built to compensate for the legacy
     // buffer's lack of a cursor -- are legacy-only; run them against a grid
     // session's frozen archive tail and they could force a bogus blank line
-    // into history, disconnected from what the live grid actually shows.
+    // into history, disconnected from what the live grid shows.
     if (not FGridEnabled) and not AIsLocalInput and (CurrLine <> '') and (CurrLine[Length(CurrLine)] = '>') and
        (Length(ProcessedText) > 0) and not CharInSet(ProcessedText[1], [#10, #13]) and
        LooksLikeDrivePrompt(ProcessedText) then

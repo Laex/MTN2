@@ -1,8 +1,7 @@
 unit TestButtonTextClip;
 
-{ Stage: button-caption clipping (PutGridTextClipped, used by every theme's
-  DrawButton). Guards against the overflow bug found when translating dialog
-  buttons to Russian: a fixed-width button box (sized from the dialog JSON's
+{ Button-caption clipping (PutGridTextClipped, used by every theme's
+  DrawButton): a fixed-width button box (sized from the dialog JSON's
   "width", never from caption length -- see uDialogJson.pas/uDialogHost.pas)
   whose translated caption is longer than the English one used to size it
   must clip at the box's own right edge instead of bleeding text into

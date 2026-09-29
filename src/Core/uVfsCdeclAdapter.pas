@@ -12,7 +12,7 @@ unit uVfsCdeclAdapter;
   used throughout uFileVfs.pas. Buffer-fill calls (ListDirectory/ReadText/
   ReadBytes) use a single fixed-size buffer - if the plugin reports the
   result doesn't fit (verNeedsBiggerBuffer), the call fails with vecIOError;
-  there is no retry-with-bigger-buffer loop in this first version. }
+  there is no retry with a bigger buffer. }
 
 interface
 

@@ -4,15 +4,12 @@ unit TestCopyLockedSource;
   for writing - an application log, a live SQLite/LevelDB store - must copy
   the whole tree instead of dying partway through.
 
-  Reported as "copying D:\Hiddify to P:\Hiddify shows an error at the end and
-  not all files are copied": the running Hiddify keeps app.log, box.log,
-  db.sqlite and clash.db open for write, and uFileVfs.CopyFileWithProgress
-  opened every source with fmShareDenyWrite. That raised EFOpenError on the
-  first such file, and since nothing between there and CopyAsync's outer
-  handler caught it, the exception unwound out of the whole recursive
-  CopyTree walk: everything after that point in the tree was silently left
-  uncopied, and the failure was reported against the top-level job URI rather
-  than the file that actually could not be opened.
+  A running program keeps its logs and database files open for write. A
+  source opened with fmShareDenyWrite fails on the first such file with
+  EFOpenError; if nothing below CopyAsync's outer handler catches it, the
+  exception unwinds the whole recursive CopyTree walk: everything after that
+  point in the tree stays uncopied, and the failure is reported against the
+  top-level job URI rather than the file that could not be opened.
 
   Two more failures of the same shape lived downstream: a source still being
   appended to grows past the size that was sampled when it was opened, so the
@@ -189,7 +186,7 @@ end;
 
 { ---- fixtures -------------------------------------------------------------- }
 
-/// <summary>Mirror of the reported layout: an ordinary tree with one file an
+/// <summary>An ordinary tree with one file an
 /// application is holding open (and, when AKeepAppending is set, actively
 /// writing to) and a large file after it in enumeration order, so the copy is
 /// still running long enough for the live file to grow underneath it.</summary>

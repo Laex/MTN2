@@ -47,7 +47,7 @@ type
   ///
   /// Buffer-fill functions (ListDirectory/ReadText/ReadBytes) write into a
   /// caller-supplied buffer of ABufSize bytes. On success (result = 0), the
-  /// plugin MUST set ANegotiatedSize to the number of bytes actually written.
+  /// plugin MUST set ANegotiatedSize to the number of bytes written.
   /// If the encoded result doesn't fit, the plugin must not write partial
   /// data, set ANegotiatedSize to the required size, and return
   /// verNeedsBiggerBuffer (see TVfsCdeclResult). The host adapter currently

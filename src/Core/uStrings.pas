@@ -157,7 +157,7 @@ begin
 
   // Same HInstance-then-MainInstance probe as
   // uDialogResources.TryLoadDialogResourceJson; the stream is opened on
-  // whichever module actually has it.
+  // whichever module has it.
   Module := HInstance;
   if FindResource(Module, PChar(ResName), RT_RCDATA) = 0 then
   begin

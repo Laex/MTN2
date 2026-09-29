@@ -92,7 +92,7 @@ type
     /// <summary>Estimated total bytes for the job (grows as sizes are learned).</summary>
     BytesTotal: Int64;
     FilesTotal: Integer;
-    /// <summary>Files actually finished transferring so far - counted per
+    /// <summary>Files finished transferring so far - counted per
     /// real file (including ones inside a recursive tree copy), not per
     /// top-level selected source. See TPanelJobController.NoteItemProgress /
     /// AdvanceJobAfterItem.</summary>
@@ -152,7 +152,7 @@ type
 
   /// <summary>Dialog-field values DialogCommand reads unconditionally before
   /// dispatching on FDialogKind - see DispatchDialogCommand. Each field is
-  /// only meaningful to the branches that actually use it.</summary>
+  /// only meaningful to the branches that use it.</summary>
   TDialogCommandFields = record
     Name, Mask, Containing, DestPath, ExcludeMask, Password: string;
     ExistingIdx, RetryIdx: Integer;

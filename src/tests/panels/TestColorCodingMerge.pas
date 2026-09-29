@@ -69,7 +69,7 @@ begin
   Assert.IsTrue(Ok, 'parses successfully with the alternate array key');
   Assert.IsTrue(Length(Groups) = 1, 'one group parsed');
 
-  // Wrong key for the shape actually in the JSON must not silently succeed.
+  // Wrong key for the shape in the JSON must not silently succeed.
   Ok := ParseColorCodingJson(
     '{"fileColoring":[{"name":"Archives","mask":"*.zip","normal":{"fg":"#FF55FF"}}]}',
     Groups); // default key 'groups' - not present in this JSON

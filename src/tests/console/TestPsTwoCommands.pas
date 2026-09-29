@@ -1,13 +1,12 @@
 unit TestPsTwoCommands;
 
-{ Regression test for two reported PS console bugs, both traced to
-  FixPromptNewlines inserting a synthetic CRLF right after the prompt's own
-  harmless trailing space ("PS D:\path> "), which then let the bare-CR
-  callback reset the write cursor to column 0 and let the next character
-  overwrite the prompt's first letter:
-  1. Cursor jumping to a fresh line below the prompt as soon as typing starts.
-  2. Second and later commands not executing (the corrupted prompt line no
-     longer matches FindPromptEndIndex, so GetInputAfterPrompt can't find it).
+{ FixPromptNewlines must not insert a synthetic CRLF right after the
+  prompt's own trailing space ("PS D:\path> "): the bare-CR callback would
+  then reset the write cursor to column 0 and the next character would
+  overwrite the prompt's first letter, so
+  1. the cursor would jump to a fresh line below the prompt on typing;
+  2. second and later commands would not run (the corrupted prompt line
+     would not match FindPromptEndIndex, so GetInputAfterPrompt misses it).
   Drives the real TConsoleBuffer exactly the way TConsoleWindow's
   line-buffered input path does: local-echo one character at a time, then on
   "Enter" extract + rewrite + send the whole line, twice in a row. }
@@ -119,7 +118,7 @@ begin
       'nothing pending before typing round 2 (prompt not corrupted by round 1)');
     TypeLocally('echo hello2');
     Assert.IsTrue(Trim(Buf.GetInputAfterPrompt) = 'echo hello2',
-      'round 2 local echo reads back as "echo hello2" (this is what fails without the fix)');
+      'round 2 local echo reads back as "echo hello2"');
     SubmitLine;
     Pump(4000);
     Assert.IsTrue(Pos('hello2', GOutput) > 0, 'round 2 echo actually ran');

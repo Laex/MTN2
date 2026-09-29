@@ -1,7 +1,7 @@
 unit uFunctionBar;
 
 { Shared F-key / letter hint bar. Labels follow held modifiers and only list
-  actions that the active view actually handles. }
+  actions that the active view handles. }
 
 interface
 

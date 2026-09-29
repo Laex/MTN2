@@ -12,7 +12,7 @@ unit TestDeleteProgress;
     - Permanent delete: uFileVfs.DeleteTree now reports (ADoneItems,
       ATotalItems) - files-plus-folders removed so far vs. a pre-walk count
       from EstimateTreeItemCount - after every individual file/folder it
-      actually removes.
+      removes.
     - Recycle Bin delete: uFileRecycleBin.DeleteToRecycleBinIFileOp now
       advises an IFileOperationProgressSink (the recycle runs with
       FOF_SILENT, so nothing else reports progress) and forwards its

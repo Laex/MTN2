@@ -4397,7 +4397,7 @@ begin
      FJobDialogs.TryHandleOverwriteRename(AControlId) then
     Exit;
   // Cancel on a running progress dialog keeps the window open until the
-  // worker actually stops; do not clear FDialogKind or the next Sync would
+  // worker stops; do not clear FDialogKind or the next Sync would
   // treat the leftover frame as a foreign modal.
   if (Kind = hdkJobProgress) and DialogCmdIsReject(AControlId) and
      Assigned(FJobs) and (FJobs.Phase = pjpRunning) then

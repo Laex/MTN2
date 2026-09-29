@@ -157,10 +157,8 @@ begin
 
     Buf.Clear;
     // Real PTY output that looks like a fresh prompt must still split onto a
-    // new line - the fix must not weaken this for genuine PTY chunks.
-    // FixPromptNewlines also splits the glued-on command off the new prompt,
-    // so "D:\Other>ls" itself lands on two rows (pre-existing, unrelated to
-    // the local-input fix).
+    // new line. FixPromptNewlines also splits the glued-on command off the
+    // new prompt, so "D:\Other>ls" itself lands on two rows.
     Buf.AppendOutput('D:\Work\Delphi>');
     Buf.AppendOutput('D:\Other>ls');
     Assert.AreEqual('D:\Work\Delphi>', Buf.GetLine(Buf.LineCount - 3), 'old prompt line untouched');
@@ -381,7 +379,7 @@ procedure TestGridAutoReflowOnSizeMismatch;
 var
   Buf: TConsoleBuffer;
 begin
-  // Regression test: the grid can still be narrow (from an
+  // The grid can still be narrow (from an
   // earlier resize) when a chunk of real PTY output already claiming a
   // WIDER size arrived first -- PTY output lands on the reader thread while
   // ResizePrimaryScreen is called separately from the UI thread's
@@ -412,7 +410,7 @@ var
   Buf: TConsoleBuffer;
   LineIdx, Col: Integer;
 begin
-  // Regression test: real conhost always follows a freshly-drawn prompt with
+  // Real conhost always follows a freshly-drawn prompt with
   // an OSC window-title sequence (ESC ]0;...BEL). FixPromptNewlines
   // (a workaround that rewrites the raw byte stream before the parser)
   // would mistake that OSC sequence for "real command text glued onto the

@@ -8,7 +8,7 @@ unit uConfigLocation;
   back to TPath.GetHomePath (no crash, no Winapi.* dependency here at all).
   Not yet XDG-correct though: on Linux this lands config files directly in
   $HOME/MTN2/ instead of $XDG_CONFIG_HOME (~/.config/MTN2/); cheap to fix
-  when a POSIX build actually exists -- no reason to do it blind now. }
+  when a POSIX build exists -- no reason to do it blind now. }
 
 interface
 

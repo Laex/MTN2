@@ -142,7 +142,7 @@ begin
     // by Windows/drive policy (files deleted there are purged immediately,
     // not recycled, independent of FOF_ALLOWUNDO) - use a normal
     // user-profile folder instead so the
-    // delete actually lands in the Recycle Bin this spike is testing.
+    // delete lands in the Recycle Bin this spike is testing.
     ScratchDir := TPath.Combine(TPath.Combine(GetEnvironmentVariable('USERPROFILE'),
       'Desktop'), 'mtn2_testrecyclebin');
     TDirectory.CreateDirectory(ScratchDir);

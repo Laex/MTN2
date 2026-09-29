@@ -868,7 +868,7 @@ begin
     ClearSelection;
 end;
 
-/// <summary>Called right before the window actually closes (ForceClose).</summary>
+/// <summary>Called right before the window closes (ForceClose).</summary>
 procedure TEditorWindow.SaveCurrentPosition;
 begin
   if FHelpMode or FChromeless or (Trim(FURI) = '') or not FDoc.Ready then
@@ -913,7 +913,7 @@ begin
   // correctly picks single vs double line per theme for the top/sides -
   // never reaches this row). Always closing it with double-line glyphs
   // would only match NDN/TotalCommander/HighContrast. Same as the
-  // panel divider: ask the theme, and only actually use
+  // panel divider: ask the theme, and only use
   // double-line while this window is the focused one (idle stays single
   // even on themes that support double, matching the rest of the app).
   UseDouble := Assigned(Theme) and Theme.UsesDoubleLineForActivePanel and IsFocused;
@@ -1108,18 +1108,13 @@ begin
     FLeftCol := 0;
 end;
 
-// Markdown lines can each expand into several physical screen rows now
-// (wrapped table cells), so "cursor's line index vs. FTopLine + ViewHeight"
-// (what the generic branch below still assumes: 1 line = 1 row) can no
-// longer tell whether the cursor's line is actually visible. FTopLine stays
-// a line index either way (DrawMarkdownContent always starts a fresh line
-// at the top of the viewport - see its own comment on why it's line-, not
-// row-, granular) - this only fixes how far FTopLine gets pushed to catch
-// up with the cursor. Both walks below are bounded by AViewH iterations at
-// most (every line is at least 1 row), independent of document size or how
-// far the cursor just jumped (arrow keys move 1 line, PageUp/Down move
-// ViewHeight lines, Goto/Home/End can jump the whole document - all handled
-// the same way, in the same bounded cost).
+// A Markdown line can take several screen rows (wrapped table cells), so
+// "cursor line vs. FTopLine + ViewHeight" (the plain-text rule: 1 line =
+// 1 row) cannot tell whether the cursor's line is visible. FTopLine stays a
+// line index (DrawMarkdownContent starts each frame at a line boundary);
+// this decides how far FTopLine moves to show the cursor. Both walks below
+// take at most AViewH steps (every line is at least 1 row), whatever the
+// document size or how far the cursor jumped.
 procedure TEditorWindow.EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
 var
   Line, RowsFromTop, Rows: Integer;
@@ -3035,7 +3030,7 @@ begin
     FMdImageSizeCache.Add(AImageUri, Sz);
   end;
   if (Sz.W <= 0) or (Sz.H <= 0) then
-    Exit(Min(cMdImageRows, Max(AViewH, 1))); // unknown format: old fixed block
+    Exit(Min(cMdImageRows, Max(AViewH, 1))); // unknown format: a fixed-height block
   Aspect := OverlayCellAspect;
   Result := Max(1, Ceil(ACols * (Sz.H / Sz.W) / Aspect));
   if Result > Max(AViewH, 1) then

@@ -816,7 +816,7 @@ begin
   begin
     // cmd.exe: a trailing \ immediately before the closing " escapes it, so
     // "C:\" is parsed as C:" and `cd /d` lands on the per-drive current dir
-    // instead of the root. Canonical fix: append "." so the path becomes
+    // instead of the root. Appending "." makes the path
     // "C:\.", which is the same directory and keeps the quote unescaped.
     // Only drive roots (X:\) and the bare root form are affected; ordinary
     // paths never end in \ once Trim is done.

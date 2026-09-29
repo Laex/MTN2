@@ -51,7 +51,7 @@ var
   Pty: TConPtySession;
   ExpectedPrompt: string;
 begin
-  // The prompt reflects wherever this .exe actually runs from - do not
+  // The prompt reflects wherever this .exe runs from - do not
   // hardcode the repo root; that only matches if launched from there.
   ExpectedPrompt := 'PS ' + ExcludeTrailingPathDelimiter(GetCurrentDir) + '> ';
   Buf := TConsoleBuffer.Create;

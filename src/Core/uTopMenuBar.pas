@@ -1050,7 +1050,7 @@ begin
   // idle tab shouldn't shout) - for a theme whose idle tone happens to be
   // close to another theme's (e.g. NDN and High Contrast both rest on
   // plain black), the always-visible top bar ended up looking unchanged
-  // even though the colour value genuinely did change a few shades.
+  // even though the colour value did change a few shades.
   // pcpPanelTabActive is every theme's vivid, unambiguous identity accent
   // (FAR/NDN's cyan bar, Dracula's purple, Nord's frost cyan, ...) and is
   // what this bar historically looked like before themes existed at all, so
@@ -1188,10 +1188,10 @@ begin
     PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
 
     // Mnemonic char in submenu: fixed dark red on whichever background the
-    // row already has (idle or selected) - no background inversion, at the
-    // user's explicit request. Restores the original FAR/NDN submenu look;
-    // never clashes since none of the eight themes' dialog/cursor colours
-    // are reddish. Disabled rows skip the accent so they stay uniformly dim.
+    // row already has (idle or selected) - no background inversion, as in
+    // the FAR/NDN submenu; never clashes since none of the eight themes'
+    // dialog/cursor colours are reddish. Disabled rows skip the accent so
+    // they stay uniformly dim.
     // HotPos is resolved once at load time (an '&' marker in a translated
     // caption can point past an earlier occurrence of the same letter).
     if (Item.HotChar <> #0) and (Item.HotPos > 0) and (Item.HotPos <= Length(Cap))

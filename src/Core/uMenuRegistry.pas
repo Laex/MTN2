@@ -7,7 +7,7 @@ unit uMenuRegistry;
   Unlike TTopMenuAction (closed enum, dispatched via a hardcoded handler),
   plugin items carry their own TProc callback (TTopMenuController.
   TPluginMenuItemDesc.OnClick / TSubmenuItem.PluginOnClick) - so a plugin
-  can wire up genuinely new behavior, not just rebind an existing command. }
+  can wire up new behavior, not just rebind an existing command. }
 
 interface
 

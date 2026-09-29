@@ -158,7 +158,7 @@ type
     procedure SetLabelText(const AId, AText: string);
     /// <summary>Coalesce OnChanged across a burst of live setters (progress
     /// labels). Nested; EndUpdate fires at most one notify if anything
-    /// actually changed.</summary>
+    /// changed.</summary>
     procedure BeginUpdate;
     procedure EndUpdate;
     /// <summary>Replace items of an already-open dckList (dirsync preview,
@@ -190,7 +190,7 @@ type
     /// <summary>Id of whichever control currently has keyboard focus (any
     /// kind), '' when none focused. Unlike FocusedOrDefaultButtonId this
     /// never falls back to a button - for callers that need "the field the
-    /// user is actually on" (e.g. F9 = pick a color for the focused hex
+    /// user is on" (e.g. F9 = pick a color for the focused hex
     /// input), a fallback would answer the wrong question.</summary>
     function FocusedControlId: string;
     function ChromeContext: TFunctionBarContext;
@@ -1754,7 +1754,7 @@ begin
   // unset channel previews as the THEME's own resolved color for
   // that row/state - the exact same "0 = inherit" meaning
   // TColorCodingColor.Fg/Bg=0 already has, so this shows what the
-  // panel would actually render, not a placeholder. Without a theme
+  // panel would render, not a placeholder. Without a theme
   // or a named state, falls back to fixed black-on-gray (still not
   // white - see dialog body note below).
   SampleFg := TAlphaColor($FF000000);

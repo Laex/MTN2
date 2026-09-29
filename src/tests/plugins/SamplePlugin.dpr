@@ -3,7 +3,7 @@ library SamplePlugin;
 { Minimal reference plugin DLL exercising the mtn_plugin_* ABI end-to-end:
   exports the three required entry points, and in mtn_plugin_init registers
   a "sample://" VFS scheme and one "Commands" menu item. Used by
-  TestPluginLoader.dpr to verify TPluginLoader actually LoadLibrary()s and
+  TestPluginLoader.dpr to verify TPluginLoader LoadLibrary()s and
   wires up a real DLL, not just an in-process unit call. }
 
 uses

@@ -236,7 +236,7 @@ begin
         [Actual, AExpectedSize]), PathToFileUri(ADst));
 end;
 
-// Presence-only walk. Every file this copy actually wrote was already
+// Presence-only walk. Every file this copy wrote was already
 // size-verified the moment it was written (CopyFileWithProgress), and files
 // left untouched by Skip-mode conflict handling are supposed to differ, so
 // re-comparing sizes here adds nothing and actively misfires: a live source
@@ -319,7 +319,7 @@ end;
 
 procedure PreserveFileAttributes(const ASrc, ADst: string);
 const
-  // Only the bits SetFileAttributes actually accepts (per WinAPI docs) -
+  // Only the bits SetFileAttributes accepts (per WinAPI docs) -
   // FILE_ATTRIBUTE_DIRECTORY/REPARSE_POINT/COMPRESSED/ENCRYPTED etc. are not
   // settable this way and would make the call fail or be silently ignored.
   AttrMask = FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or
@@ -546,8 +546,8 @@ begin
         // Skip mode (AOverwrite=False): one item already existing at the
         // destination is the expected, common case for a re-run/merge copy -
         // it must not abort the rest of the tree, or nothing past the first
-        // pre-existing name ever gets copied (the reported bug). Real
-        // failures and cancellation still stop the walk.
+        // pre-existing name would get copied. Real failures and cancellation
+        // still stop the walk.
         if (ChildErr.Code = vecAlreadyExists) and not AOverwrite then
         begin
           AAnySkipped := True;

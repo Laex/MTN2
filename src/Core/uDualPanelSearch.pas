@@ -335,7 +335,7 @@ begin
         Line := FSearch.CurrentDir;
         // Text starts at R.Left + 1 and the frame owns R.Left / R.Right, so
         // only R.Width - 2 cells are writable. Keep the tail: the deep end of
-        // the path is the part that actually changes while scanning.
+        // the path is the part that changes while scanning.
         MaxW := R.Width - 2;
         if (MaxW > 1) and (Length(Line) > MaxW) then
           Line := cEllipsis + Copy(Line, Length(Line) - MaxW + 2, MaxInt);

@@ -597,7 +597,7 @@ begin
   FJob.RetryLeft := FJob.RetryLimit;
   // Keep the progress dialog live while a run of items is being skipped
   // (excluded mask, reparse/newer skip, Skip overwrite mode) - without this,
-  // the bars only redraw once an item actually starts transferring bytes,
+  // the bars only redraw once an item starts transferring bytes,
   // so they look frozen during a skip streak.
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -902,10 +902,10 @@ begin
   // CopyTree has no way to prompt per file mid-recursion), but the answer
   // must become CopyTree's AOverwrite for a merge - it must never mean
   // "abandon this whole folder". Treating a pre-existing folder as an
-  // ordinary conflict is what silently dropped everything missing at the
+  // ordinary conflict would silently drop everything missing at the
   // destination under a folder-level "Skip", both from Skip mode directly
-  // and from clicking Skip on this exact prompt (reported on
-  // P:\_РП_ЛЕНА_2026 -> D:\_РП_ЛЕНА_2026, every nested folder pre-existing).
+  // and from clicking Skip on this prompt (every nested folder already
+  // existing at the destination).
   Result := False;
   if not AIsDirMerge then
     Exit;
@@ -1302,7 +1302,7 @@ begin
   FJob.PendingTransferOverwrite := AOverwrite;
   FJob.PendingTransferAppend := AAppend;
   FJob.PendingErrorMessage := AError.Message;
-  // AError.URI names the file that actually failed (a recursive tree copy
+  // AError.URI names the file that failed (a recursive tree copy
   // means this is rarely the top-level ASrcURI) - show that one, falling
   // back to ASrcURI only if the VFS layer left it blank.
   Path := JobErrorDisplayPath(AError, ASrcURI);

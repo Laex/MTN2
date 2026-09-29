@@ -94,7 +94,7 @@ type
     /// on its own (unlike Terminate, which forces that via TerminateProcess +
     /// ClosePseudoConsole). This watcher waits on its own duplicate of the
     /// process handle and closes the pseudoconsole once the process is
-    /// actually gone, unblocking ReadFile so ReaderLoop's normal exit path
+    /// gone, unblocking ReadFile so ReaderLoop's normal exit path
     /// (and QueueExit/OnExit) fires.</summary>
     procedure StartExitWatcher(AProcess: THandle; AHpc: HPCON; AWatchEpoch: Integer);
     /// <summary>Watcher side of a natural exit, called via FLife with the

@@ -951,7 +951,7 @@ begin
     Exit;
   if not IsSavedWindowPositionValid(AWindow) then
     Exit; // off-screen on every connected monitor - keep the default position
-  // Prefer the monitor the window was actually on last time - Screen.WorkAreaRect
+  // Prefer the monitor the window was on last time - Screen.WorkAreaRect
   // alone only clamps against the primary display, which silently relocates a
   // window that was deliberately placed on a secondary monitor whenever monitor
   // order/primary designation changes even though that monitor is still there.
@@ -1517,7 +1517,7 @@ begin
     Exit;
   // ConsoleMode: Ctrl+O always restores panels - it must never stop a
   // running command (that's Ctrl+C's job). If the flag is set but the
-  // console window is not actually up, show the console instead of restoring an already-blank Dual Panel.
+  // console window is not up, show the console instead of restoring an already-blank Dual Panel.
   if Assigned(FDualPanel) and FDualPanel.ConsoleMode then
   begin
     if Assigned(FConsole) and FConsole.Visible then
@@ -2312,7 +2312,7 @@ begin
 end;
 
 // AltGr = Right Alt + the synthetic Left Ctrl Windows adds for it, with no
-// Left Alt or Right Ctrl actually held.
+// Left Alt or Right Ctrl held.
 function TMainForm.IsAltGrDown: Boolean;
 begin
   Result := (GetKeyState(VK_RMENU) < 0) and (GetKeyState(VK_LCONTROL) < 0) and

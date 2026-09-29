@@ -62,7 +62,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: PutCell auto-wrap passed.');
 end;
 
 procedure TestNewLineScrollArchives;
@@ -93,7 +92,6 @@ begin
     Archived.Free;
     Grid.Free;
   end;
-  Writeln('  OK: NewLine scroll-with-archive passed.');
 end;
 
 procedure TestCarriageReturnAndBackspace;
@@ -121,7 +119,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: CarriageReturn and Backspace passed.');
 end;
 
 procedure TestDeleteCharBeforeCursor;
@@ -159,7 +156,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: DeleteCharBeforeCursor passed.');
 end;
 
 procedure TestMoveAbsClamp;
@@ -178,7 +174,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: MoveAbs clamping passed.');
 end;
 
 procedure TestSaveRestoreCursor;
@@ -204,7 +199,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: SaveCursor/RestoreCursor passed.');
 end;
 
 procedure TestEraseLineAndDisplay;
@@ -268,7 +262,6 @@ begin
   finally
     Grid.Free;
   end;
-  Writeln('  OK: EraseLine/EraseDisplay passed.');
 end;
 
 procedure TestReflowGrowth;
@@ -300,7 +293,6 @@ begin
     Archived.Free;
     Grid.Free;
   end;
-  Writeln('  OK: Reflow growth passed.');
 end;
 
 procedure TestReflowShrinkArchives;
@@ -334,7 +326,6 @@ begin
     Archived.Free;
     Grid.Free;
   end;
-  Writeln('  OK: Reflow shrink-with-archive passed.');
 end;
 
 procedure TestInsertCaretColor;
@@ -349,7 +340,6 @@ begin
     'light cell uses black caret');
   Assert.IsTrue(InsertCaretColor($FFF5F5F5) = TAlphaColors.Black,
     'near-white cell uses black caret');
-  Writeln('  OK: Insert caret color passed.');
 end;
 
 { TTestPrimaryScreenGrid }

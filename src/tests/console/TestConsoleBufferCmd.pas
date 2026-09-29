@@ -105,7 +105,6 @@ procedure TestCmdPtyBackspace;
 var
   Pty: TConPtySession;
   OutText: string;
-  PromptPos: Integer;
 begin
   if not FileExists('C:\Windows\System32\cmd.exe') then
   begin
@@ -132,13 +131,6 @@ begin
       raise Exception.CreateFmt('cmd backspace did not leave z in output: %s',
         [Copy(OutText, 1, 200)]);
 
-    PromptPos := Pos('>z', OutText);
-    if PromptPos = 0 then
-      PromptPos := Pos('> z', OutText);
-    if PromptPos = 0 then
-      Writeln('  WARN could not confirm prompt+z pattern, output=', Copy(OutText, 1, 200))
-    else
-      Writeln('  OK  cmd pty backspace produced expected command');
 
     Pty.Terminate;
     Pump(200);

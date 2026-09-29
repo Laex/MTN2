@@ -44,7 +44,7 @@ type
     procedure Close;
     property OnChanged: TDirWatchNotify read FOnChanged write FOnChanged;
     /// <summary>Main thread, once per SetPath, when the change notification
-    /// is actually armed (see Active). A change made between SetPath and this
+    /// is armed (see Active). A change made between SetPath and this
     /// raises no OnChanged, so a caller that must not miss one re-checks
     /// here.</summary>
     property OnArmed: TDirWatchNotify read FOnArmed write FOnArmed;
@@ -270,9 +270,8 @@ begin
   // GetFullPathName never touches an ordinary (non-drive-root) path's
   // target filesystem. NormalizeLocalPath already special-cases bare
   // drive letters and drive roots to skip that call entirely (see its own
-  // comment in uVfsTypes.pas); this is the exact same class of bug as
-  // ResolveLocalDirPath's GetFileAttributes reorder, just hiding behind a
-  // different Win32 call.
+  // comment in uVfsTypes.pas), as ResolveLocalDirPath does for
+  // GetFileAttributes.
   Path := NormalizeLocalPath(APath);
   if Path <> '' then
     Path := ExcludeTrailingPathDelimiter(Path);

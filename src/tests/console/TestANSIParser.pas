@@ -63,7 +63,6 @@ begin
   finally
     Parser.Free;
   end;
-  Writeln('  OK: Standard colors and attributes passed.');
 end;
 
 procedure TestTrueColorAnd256Color;
@@ -97,7 +96,6 @@ begin
   finally
     Parser.Free;
   end;
-  Writeln('  OK: TrueColor and 256-color passed.');
 end;
 
 procedure TestConsoleBufferRichOutput;
@@ -122,7 +120,6 @@ begin
   finally
     Buffer.Free;
   end;
-  Writeln('  OK: TConsoleBuffer rich output passed.');
 end;
 
 procedure TestScrollbackScaling10k;
@@ -166,7 +163,6 @@ begin
   finally
     Buffer.Free;
   end;
-  Writeln('  OK: 10,000 line scrollback scaling passed.');
 end;
 
 procedure TestEraseCommands;
@@ -185,7 +181,6 @@ begin
   finally
     Buffer.Free;
   end;
-  Writeln('  OK: Erase commands passed.');
 end;
 
 procedure TestCursorAddressingAndAltScreen;
@@ -269,7 +264,6 @@ begin
     Buffer.Free;
   end;
 
-  Writeln('  OK: Cursor addressing and alt-screen passed.');
 end;
 
 { TTestANSIParser }

@@ -83,7 +83,7 @@ begin
   // concurrent setup attempts (unrealistic, and on a flaky share it can
   // itself make the drive even slower to answer) -- one
   // abandoned P: attempt plus one real transition is what a user's Ctrl+Left/
-  // Right or Change Drive pick actually produces.
+  // Right or Change Drive pick produces.
   Writeln('Navigating away from an unresponsive drive right after landing on it stays fast');
   Watcher := TDirectoryWatcher.Create;
   try
@@ -119,7 +119,7 @@ begin
     Watcher.SetPath(TempDir);
 
     // Setup itself is now async even for a fast local dir -- give it a
-    // moment to actually publish FStopEvent/FChangeHandle before poking the
+    // moment to publish FStopEvent/FChangeHandle before poking the
     // filesystem, matching how a real caller (TDualPanelWindow) would just
     // let events arrive whenever they do.
     Assert.IsTrue(WaitUntil(

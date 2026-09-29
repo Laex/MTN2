@@ -69,7 +69,6 @@ begin
       if Pos('dir', OutText) > 0 then
         raise Exception.CreateFmt('dir failed after cd to %s: %s',
           [ACwd, Copy(OutText, 1, 300)]);
-    Writeln('  OK  ', ALabel);
     Pty.Terminate;
     Pump(200);
   finally

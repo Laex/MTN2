@@ -3,7 +3,7 @@ unit TestSetAttrDialog;
 { Ctrl+Shift+A dialog (TFileOpDialogController, setattr.json): the
   Created / Modified / Accessed fields. Buttons "Current" / "Original" and a
   typo keep the dialog open (and claim the dialog kind back from the host);
-  only fields the user actually changed end up in the plan. Works on
+  only fields the user changed end up in the plan. Works on
   throw-away files in %TEMP%. }
 
 interface

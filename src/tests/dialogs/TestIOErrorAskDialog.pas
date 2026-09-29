@@ -7,11 +7,11 @@ unit TestIOErrorAskDialog;
   automatic retry budget (RetryLeft, 0 unless the job confirm dialog's Retry
   dropdown was raised) runs out - see HandleTransferFailure.
 
-  Also covers the reason this dialog is actually useful: PendingSrcURI /
+  Also covers the reason this dialog is useful: PendingSrcURI /
   the "path" shown in the dialog must name the one file that failed (via
   AError.URI), not the top-level job source: CopyFileWithProgress
   (uFileVfs.pas) attributes an I/O error in a recursive tree copy to the
-  file it actually happened on. }
+  file it happened on. }
 
 interface
 

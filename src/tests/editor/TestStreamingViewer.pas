@@ -125,7 +125,7 @@ begin
   end;
 end;
 
-/// <summary>The regression that produced mojibake: a 2-byte UTF-8 sequence
+/// <summary>A 2-byte UTF-8 sequence
 /// straddling the cStreamSampleBytes cut. Without TrimUtf8SampleTail the
 /// sniffer sees a truncated sequence, rejects UTF-8, and falls back to
 /// CP1251/CP866 for the whole file.</summary>
@@ -316,7 +316,7 @@ begin
 
   // Untrimmed, the same sample is not valid UTF-8 and misdetects.
   Assert.IsTrue(not (DetectAndDecodeText(Bytes, Text, Enc, IsBin) and (Enc = tfeUtf8)),
-    'untrimmed dangling sample does NOT detect as UTF-8 (the original bug)');
+    'untrimmed dangling sample does NOT detect as UTF-8');
 
   // Complete 2-byte sequence must survive untouched.
   Bytes := TBytes.Create(Ord('a'), $D0, $A2);
@@ -450,7 +450,7 @@ begin
   try
     Assert.IsTrue(Doc.Ready and Doc.Streaming, 'streaming document is ready');
     Assert.IsTrue(Doc.Encoding = tfeUtf8,
-      'UTF-8 survives a sample cut mid-sequence (the mojibake regression)');
+      'UTF-8 survives a sample cut mid-sequence');
   finally
     Doc.Free;
   end;

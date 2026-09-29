@@ -1427,7 +1427,7 @@ begin
     Exit(UpCase(Path[1]) + ':');
   Path := ExcludeTrailingPathDelimiter(Path);
   if (Length(Path) < 2) or (Path[2] <> ':') then
-    Exit(VfsUriTitle(AURI)); // UNC or unexpected shape - keep old behavior
+    Exit(VfsUriTitle(AURI)); // UNC or unexpected shape: the plain URI title
   if AMaxLen < 1 then
     Exit('');
 

@@ -6,7 +6,7 @@ unit TestColorSampleRender;
   compiled in), sets cc_normal_fg's live text the way a user typing it would,
   opens it on a real TTerminalGrid, calls Draw, then inspects the actual
   cells the three sample swatches landed on - no screenshot needed to tell
-  whether the background fill / theme-driven fallback is actually happening. }
+  whether the background fill / theme-driven fallback is happening. }
 
 interface
 
@@ -113,11 +113,9 @@ begin
     Cells := FindSampleCells(Grid);
     Assert.IsTrue(Length(Cells) = 3, Format('expected 3 sample swatches, found %d', [Length(Cells)]));
     Cell := Grid[Cells[0].Y][Cells[0].X];
-    Writeln(Format('  Normal sample: Fg=$%s Bg=$%s', [IntToHex(Cell.FgColor, 8), IntToHex(Cell.BgColor, 8)]));
-    if (Cell.FgColor = TAlphaColor($FFFF55FF)) and (Cell.BgColor = TAlphaColor($FFC0C0C0)) then
-      Writeln('  OK: magenta text on neutral-gray fallback')
-    else
-      Writeln('  BUG: expected Fg=$FFFF55FF Bg=$FFC0C0C0');
+    Assert.IsTrue((Cell.FgColor = TAlphaColor($FFFF55FF)) and (Cell.BgColor = TAlphaColor($FFC0C0C0)),
+      Format('magenta text on the neutral-gray fallback, got Fg=$%s Bg=$%s',
+        [IntToHex(Cell.FgColor, 8), IntToHex(Cell.BgColor, 8)]));
   finally
     Host.Free;
   end;
@@ -149,24 +147,14 @@ begin
     NormalCell := Grid[Cells[0].Y][Cells[0].X];
     SelectedCell := Grid[Cells[1].Y][Cells[1].X];
     CurrentCell := Grid[Cells[2].Y][Cells[2].X];
-    Writeln(Format('  Normal:   Fg=$%s Bg=$%s', [IntToHex(NormalCell.FgColor, 8), IntToHex(NormalCell.BgColor, 8)]));
-    Writeln(Format('  Selected: Fg=$%s Bg=$%s', [IntToHex(SelectedCell.FgColor, 8), IntToHex(SelectedCell.BgColor, 8)]));
-    Writeln(Format('  Current:  Fg=$%s Bg=$%s', [IntToHex(CurrentCell.FgColor, 8), IntToHex(CurrentCell.BgColor, 8)]));
-
-    if NormalCell.BgColor = TAlphaColor($FFC0C0C0) then
-      Writeln('  BUG: Normal row still shows the generic gray fallback — theme branch did not fire')
-    else
-      Writeln('  OK: Normal row shows a theme color, not the generic gray fallback');
-
-    if (SelectedCell.BgColor <> NormalCell.BgColor) or (SelectedCell.FgColor <> NormalCell.FgColor) then
-      Writeln('  OK: Selected row differs from Normal row (theme distinguishes row states)')
-    else
-      Writeln('  BUG: Selected row is identical to Normal row — panelState is not reaching ResolveFileRowColors correctly');
-
-    if (CurrentCell.BgColor <> NormalCell.BgColor) or (CurrentCell.FgColor <> NormalCell.FgColor) then
-      Writeln('  OK: Current row differs from Normal row (theme distinguishes row states)')
-    else
-      Writeln('  BUG: Current row is identical to Normal row — panelState is not reaching ResolveFileRowColors correctly');
+    Assert.IsTrue(NormalCell.BgColor <> TAlphaColor($FFC0C0C0),
+      'Normal row shows a theme color, not the generic gray fallback');
+    Assert.IsTrue((SelectedCell.BgColor <> NormalCell.BgColor) or
+      (SelectedCell.FgColor <> NormalCell.FgColor),
+      'Selected row differs from Normal (panelState reaches ResolveFileRowColors)');
+    Assert.IsTrue((CurrentCell.BgColor <> NormalCell.BgColor) or
+      (CurrentCell.FgColor <> NormalCell.FgColor),
+      'Current row differs from Normal (panelState reaches ResolveFileRowColors)');
   finally
     Host.Free;
   end;
@@ -200,26 +188,19 @@ begin
     Host.Open(Decl, NoopCommand);
     Host.Draw(Grid, W, H);
 
-    if SameText(Host.FocusedControlId, 'picker_presets') then
-      Writeln('  OK: presets list has focus by default when the dialog opens (arrow keys work immediately)')
-    else
-      Writeln('  BUG: default focus is "' + Host.FocusedControlId + '", expected "picker_presets"');
+    Assert.IsTrue(SameText(Host.FocusedControlId, 'picker_presets'),
+      'the presets list has the focus when the dialog opens, got "' + Host.FocusedControlId + '"');
 
     Host.SetInputValue('picker_hex', '#123456');
-    if Host.GetInputValue('picker_hex') = '#123456' then
-      Writeln('  OK: SetInputValue on an already-open dialog is readable back via GetInputValue')
-    else
-      Writeln('  BUG: GetInputValue after SetInputValue returned "' + Host.GetInputValue('picker_hex') + '"');
+    Assert.AreEqual('#123456', Host.GetInputValue('picker_hex'),
+      'SetInputValue on an open dialog reads back via GetInputValue');
 
     Idx0 := Host.GetListSelectedIndex('picker_presets');
     Key := vkDown;
     Ch := #0;
     Host.HandleInput(Key, [], Ch);
     Idx1 := Host.GetListSelectedIndex('picker_presets');
-    if Idx1 = Idx0 + 1 then
-      Writeln(Format('  OK: Down arrow moves the presets list selection (%d -> %d)', [Idx0, Idx1]))
-    else
-      Writeln(Format('  BUG: selection after Down arrow: %d -> %d (expected +1)', [Idx0, Idx1]));
+    Assert.AreEqual(Idx0 + 1, Idx1, 'Down arrow moves the presets list selection');
   finally
     Host.Free;
   end;

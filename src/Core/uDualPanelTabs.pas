@@ -47,7 +47,7 @@ function PanelTabHeadX(const ABounds: TRectI): Integer;
 /// the panel's top-right corner) and the per-tab caption length budget for
 /// APanel's tab bar inside ABounds - shared by drawing (DrawPanel) and
 /// hit-testing (HitPanelTabAtCol) so a click always lands on what's
-/// actually on screen, including the close mark, even once captions are
+/// on screen, including the close mark, even once captions are
 /// dynamically truncated (see VfsUriDirTabTitle).</summary>
 procedure ComputePanelTabLayout(const APanel: TPanelState; const ABounds: TRectI;
   out ATabsRight, ATabMaxLen: Integer);

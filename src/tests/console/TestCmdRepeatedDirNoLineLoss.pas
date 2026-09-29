@@ -179,7 +179,7 @@ begin
     System.Writeln(Format('  round 2: %d per-file listing lines captured', [Length(Round2Lines)]));
     Assert.IsTrue(Length(Round2Lines) >= 5, 'round 2 dir produced real per-file output lines');
 
-    // The actual regression check: every per-file line round 1 saw must
+    // The check itself: every per-file line round 1 saw must
     // survive, verbatim, in round 2 -- against an unchanged directory these
     // are byte-identical if (and only if) no line was silently dropped.
     var Missing := 0;

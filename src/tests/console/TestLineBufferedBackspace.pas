@@ -106,7 +106,7 @@ end;
 // Matches the marker only on a line that is NOT the echoed "echo <marker>"
 // input line itself -- a real console echoes typed characters immediately,
 // so a naive substring search across all recent lines matches that echo
-// long before the command has actually executed and printed real output.
+// long before the command has executed and printed real output.
 procedure WaitForMarker(Buf: TConsoleBuffer; const AMarker: string; ATimeoutMs: Integer);
 var
   UntilTick: UInt64;
@@ -178,7 +178,6 @@ begin
     Pty.WriteInput(#13#10);
 
     WaitForMarker(Buf, DoneMarker, 15000);
-    Writeln('  OK  raw char-by-char passthrough executes command');
 
     Pty.Terminate;
     Pump(200);

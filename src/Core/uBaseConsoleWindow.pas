@@ -94,7 +94,7 @@ type
     function AltScreenActive: Boolean;
     /// <summary>While alt-screen is active, forward arrows/PgUp/PgDn/Home/
     /// End/Delete to the PTY instead of scrolling local history. Returns
-    /// True (and consumes AKey) only when it actually forwarded a key.</summary>
+    /// True (and consumes AKey) only when it forwarded a key.</summary>
     function HandleAltScreenNav(var AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Blit the alt-screen grid directly into Buffer (no scroll
     /// windowing). Shared by both subclasses' DrawContent.</summary>

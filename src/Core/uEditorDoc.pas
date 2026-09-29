@@ -609,7 +609,7 @@ end;
 
 // True when it's safe to (re-)read the current file from disk in place:
 // fully loaded, no load/save in flight, no unsaved edits, not a
-// streaming/binary doc, and there's actually a local path to read.
+// streaming/binary doc, and there's a local path to read.
 function TEditorDoc.CanReloadFromDisk: Boolean;
 begin
   Result := FReady and not FLoading and not FSaving and not FDirty and
@@ -644,7 +644,7 @@ begin
       // FKnownSize/FKnownWriteTime were set to match what we last loaded OR
       // saved - if the file on disk is still exactly that, there's nothing
       // to do (this is what makes SaveAsync's own write a no-op here too,
-      // not just a genuinely external one).
+      // not just an external one).
       if AExists and ((ASize <> FKnownSize) or (AWriteTime <> FKnownWriteTime)) then
         ReloadFromDisk;
     end);
@@ -1091,7 +1091,7 @@ begin
         FS.Read(Sample[0], SampleLen);
       // The cut at SampleLen is arbitrary, not an encoding boundary, unless
       // the sample is the whole file (real EOF) - drop a trailing incomplete
-      // UTF-8 sequence so it doesn't make a genuinely UTF-8 file look invalid
+      // UTF-8 sequence so it doesn't make a UTF-8 file look invalid
       // (see TrimUtf8SampleTail).
       if SampleLen < ASize then
         TrimUtf8SampleTail(Sample);

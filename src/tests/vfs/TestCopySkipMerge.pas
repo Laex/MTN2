@@ -6,11 +6,10 @@ unit TestCopySkipMerge;
   bailing out at the first "already exists" the way TDualPanelWindow's
   ExecuteTransfer(..., FJob.OverwriteMode <> jomSkip, ...) drives CopyAsync.
 
-  Root cause was in uFileVfs.pas's CopyTree: it treated "destination
-  directory already exists" as a hard conflict (same class of check as a
-  colliding file), so the very first recursive call - the top-level
-  destination folder itself, in the reported scenario - aborted the whole
-  tree copy before touching a single file. }
+  uFileVfs.pas's CopyTree must not treat "destination directory already
+  exists" as a hard conflict (like a colliding file): then the very first
+  recursive call - the top-level destination folder itself - would abort
+  the whole tree copy before touching a single file. }
 
 interface
 
@@ -114,7 +113,7 @@ end;
 
 { ---- fixtures --------------------------------------------------------------- }
 
-/// <summary>The reported scenario: source tree with 3 files, destination tree
+/// <summary>Source tree with 3 files, destination tree
 /// that already exists and already has 1 of the 3 (with different content,
 /// so an accidental overwrite would be detectable) plus one extra file the
 /// merge must not touch.</summary>
@@ -216,13 +215,12 @@ begin
     'locally-edited destination file survives the re-sync untouched');
 end;
 
-{ ---- job-controller level (what F5 actually drives) -------------------------- }
+{ ---- job-controller level (what F5 drives) -------------------------- }
 
 /// <summary>Run a real TPanelJobController copy the way the panel does:
 /// BeginJob -> ApplyCopyMoveOptions(Skip) -> ConfirmJob, pumping the UI queue
-/// until the finish callback fires. This is the layer the reported bug lived
-/// in - CopyAsync alone never saw the folder because the controller skipped
-/// the whole item before calling it.</summary>
+/// until the finish callback fires. The controller is where a folder-level
+/// Skip would drop the whole item before CopyAsync ever saw it.</summary>
 function RunJobCopy(const ASrcDir, ADestParentDir: string;
   AMode: TJobOverwriteMode; out ASuccess: Boolean): Boolean;
 var
@@ -279,8 +277,8 @@ var
   Ok, Ran: Boolean;
 begin
 
-  // Mirror of the reported layout: several levels deep, every level already
-  // present at the destination, with files missing only in the deepest one.
+  // Several levels deep, every level already present at the destination,
+  // with files missing only in the deepest one.
   Src := TPath.Combine(GRoot, 'job_src');
   DestParent := TPath.Combine(GRoot, 'job_dest');
   Dst := TPath.Combine(DestParent, 'job_src');
@@ -313,9 +311,9 @@ end;
 /// <summary>Ask-mode job, auto-answering every overwrite prompt with "Skip"
 /// (ARemember=False, exactly like a user clicking Skip on each popup rather
 /// than checking "remember"). Sources are every direct child of ASrcDir,
-/// mirroring the reported workflow: select everything *inside* the source
-/// folder and copy it onto an existing destination folder, rather than
-/// copying the single top folder as one item.</summary>
+/// as when everything inside the source folder is selected and copied onto
+/// an existing destination folder, rather than the single top folder as one
+/// item.</summary>
 function RunJobCopyAskAllSkip(const ASrcDir, ADestDir: string;
   out ASuccess: Boolean; out APromptCount: Integer): Boolean;
 var
@@ -413,8 +411,7 @@ begin
   WriteTextFile(TPath.Combine(Src, '__2026', 'ZNRM', '2026_new.txt'), 'src-2026-new');
 
   // Destination already has the folder tree (from an earlier sync) with the
-  // 2024/2025 files but not the newly added 2026 one - exactly the reported
-  // state of P:\..\ЗНРМ vs D:\..\ЗНРМ.
+  // 2024/2025 files but not the newly added 2026 one.
   TDirectory.CreateDirectory(TPath.Combine(Dst, TPath.Combine('__2026', 'ZNRM')));
   WriteTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2024.txt'), 'src-2024');
   WriteTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2025.txt'), 'src-2025');

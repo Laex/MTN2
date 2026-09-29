@@ -25,7 +25,7 @@ unit uPluginLoader;
 
   Stability note: LoadLibrary/GetProcAddress failures and ABI mismatches are
   handled without crashing the host (skip + log). Once mtn_plugin_init is
-  called, a genuinely misbehaving *native* plugin (e.g. an access violation
+  called, a misbehaving *native* plugin (e.g. an access violation
   inside its own code) can still crash the process - Win32/Delphi structured
   exception handling cannot fully sandbox a loaded native DLL. WASM guests
   are the in-process sandbox for untrusted native-contract plugins.
