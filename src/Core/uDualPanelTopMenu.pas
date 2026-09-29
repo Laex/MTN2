@@ -109,6 +109,14 @@ begin
     tmaFileSelectByExt: CallBool(AHost.ApplySelectByExtension, False);
     tmaFileUnselectByExt: CallBool(AHost.ApplySelectByExtension, True);
     tmaFileSelectAll: CallProc(AHost.SelectAllActive);
+    tmaFileUnselectAll: CallProc(AHost.UnselectAllActive);
+    tmaFileRestoreSelection: CallProc(AHost.RestoreSelection);
+    tmaFileDescribe: CallProc(AHost.DescribeItems);
+    tmaCmdTogglePassivePanel:
+      if AHost.ActiveSide() = psLeft then
+        AHost.TogglePanelVisible(psRight)
+      else
+        AHost.TogglePanelVisible(psLeft);
     tmaFileInvertSelect: CallProc(AHost.InvertSelectionActive);
     tmaFileCalcSize: CallProc(AHost.CalculateFolderSize);
     tmaFileCopyPath: CallProc(AHost.CopyFullPathToClipboard);

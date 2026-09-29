@@ -60,7 +60,8 @@ begin
   case AKind of
     hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkJobConfirm,
     hdkOverwriteAsk, hdkOverwriteRename, hdkDeleteError, hdkIOError,
-    hdkCreateLink, hdkSetAttributes, hdkChecksumOptions, hdkChecksumResult:
+    hdkCreateLink, hdkSetAttributes, hdkChecksumOptions, hdkChecksumResult,
+    hdkDescribe:
       Result := 'fileops.md';
     hdkJobList, hdkJobProgress:
       Result := 'jobs.md';

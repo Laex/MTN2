@@ -13,6 +13,7 @@ type
     [Test] procedure TestContexts;
     [Test] procedure NoChordIsBoundTwiceInOneContext;
     [Test] procedure OverridesHoldOnlyWhatChanged;
+    [Test] procedure ReservedChordsStayFree;
   end;
 
 implementation
@@ -128,12 +129,31 @@ begin
   Act := MatchAction(Profile, vkInsert, [ssShift]);
   Assert.IsTrue(Act = kaEditPaste, 'Shift+Ins should match kaEditPaste');
 
+  // FAR: Alt+Shift+Ins copies the full paths, Ctrl+Shift+Ins the names.
+  Act := MatchAction(Profile, vkInsert, [ssAlt, ssShift]);
+  Assert.IsTrue(Act = kaCopyFullPath, 'Alt+Shift+Ins should match kaCopyFullPath');
+  Act := MatchAction(Profile, vkInsert, [ssCtrl, ssShift]);
+  Assert.IsTrue(Act = kaCopyItemName, 'Ctrl+Shift+Ins should match kaCopyItemName');
+  Act := MatchAction(Profile, Ord('F'), [ssCtrl]);
+  Assert.IsTrue(Act = kaInsertItemPath, 'Ctrl+F should match kaInsertItemPath');
+  Act := MatchAction(Profile, vkReturn, [ssCtrl, ssShift]);
+  Assert.IsTrue(Act = kaInsertItemPath, 'Ctrl+Shift+Enter still inserts the path');
+  Act := MatchAction(Profile, Ord('M'), [ssCtrl]);
+  Assert.IsTrue(Act = kaRestoreSelection, 'Ctrl+M should match kaRestoreSelection');
+  Act := MatchAction(Profile, Ord('Z'), [ssCtrl]);
+  Assert.IsTrue(Act = kaDescribe, 'Ctrl+Z should match kaDescribe');
+  Act := MatchAction(Profile, Ord('P'), [ssCtrl]);
+  Assert.IsTrue(Act = kaTogglePassivePanel, 'Ctrl+P should match kaTogglePassivePanel');
   // FAR: Ctrl+A is the file attributes, Shift+Gray + selects all files,
   // Alt+F6 creates a link, Ctrl+I is the panel filter; Gray * inverts.
   Act := MatchAction(Profile, Ord('A'), [ssCtrl]);
   Assert.IsTrue(Act = kaSetAttributes, 'Ctrl+A should match kaSetAttributes');
   Act := MatchAction(Profile, vkAdd, [ssShift]);
   Assert.IsTrue(Act = kaSelectAll, 'Shift+Gray + should match kaSelectAll');
+  Act := MatchAction(Profile, vkSubtract, [ssShift]);
+  Assert.IsTrue(Act = kaUnselectAll, 'Shift+Gray - should match kaUnselectAll');
+  Act := MatchAction(Profile, vkMultiply, []);
+  Assert.IsTrue(Act = kaInvertSelection, 'Gray * should match kaInvertSelection');
   Act := MatchAction(Profile, vkAdd, []);
   Assert.IsTrue(Act = kaSelectByMask, 'Gray + still selects by mask');
   Act := MatchAction(Profile, vkF6, [ssAlt]);
@@ -311,11 +331,33 @@ begin
   Assert.IsTrue(MatchAction(Merged, vkF5, []) = kaCopy, 'the rest is the built-in keymap');
 end;
 
+procedure TestReservedChordsStayFree;
+var
+  Profile: TKeymapProfile;
+begin
+  // Kept for what is planned: archive commands, the plugin menu, network
+  // (UNC) paths and macro recording. No panel or global action takes them.
+  Profile := LoadDefaultKeymapProfile;
+  Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkF3, [ssShift]) = kaNone,
+    'Shift+F3 is reserved');
+  Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkF11, []) = kaNone,
+    'F11 is reserved');
+  Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkInsert, [ssCtrl, ssAlt]) = kaNone,
+    'Ctrl+Alt+Ins is reserved');
+  Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], 190 {vkOemPeriod}, [ssCtrl]) = kaNone,
+    'Ctrl+. is reserved');
+end;
+
 { TTestKeymap }
 
 procedure TTestKeymap.OverridesHoldOnlyWhatChanged;
 begin
   TestOverridesHoldOnlyWhatChanged;
+end;
+
+procedure TTestKeymap.ReservedChordsStayFree;
+begin
+  TestReservedChordsStayFree;
 end;
 
 procedure TTestKeymap.NoChordIsBoundTwiceInOneContext;

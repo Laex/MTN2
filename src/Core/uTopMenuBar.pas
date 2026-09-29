@@ -57,10 +57,13 @@ type
     tmaFileSelectByExt,
     tmaFileUnselectByExt,
     tmaFileSelectAll,
+    tmaFileUnselectAll,
     tmaFileInvertSelect,
+    tmaFileRestoreSelection,
     tmaFileCalcSize,
     tmaFileCopyPath,
     tmaFileCopyName,
+    tmaFileDescribe,
     tmaFileRunDetached,
     tmaFileNew,
     tmaCmdQuickView,
@@ -94,6 +97,7 @@ type
     tmaCmdAssociations,
     tmaCmdBranchView,
     tmaCmdLiveFilter,
+    tmaCmdTogglePassivePanel,
     tmaCmdRecycleBin,
     tmaCmdNextTab,
     tmaEditCopy,
@@ -313,6 +317,14 @@ begin
       Result := kaUnselectByMask;
     tmaFileSelectAll:
       Result := kaSelectAll;
+    tmaFileUnselectAll:
+      Result := kaUnselectAll;
+    tmaFileRestoreSelection:
+      Result := kaRestoreSelection;
+    tmaFileDescribe:
+      Result := kaDescribe;
+    tmaCmdTogglePassivePanel:
+      Result := kaTogglePassivePanel;
     tmaFileInvertSelect:
       Result := kaInvertSelection;
     tmaFileCopyPath:
@@ -735,7 +747,7 @@ begin
   FCategories[2].Title := 'Files';
   FCategories[2].HotChar := 'F';
   FCategories[2].HotPos := 1;
-  SetLength(FCategories[2].Items, 24);
+  SetLength(FCategories[2].Items, 27);
   FCategories[2].Items[0] := SubItem('View', 'V', 'F3', tmaFileView);
   FCategories[2].Items[1] := SubItem('Edit', 'E', 'F4', tmaFileEdit);
   FCategories[2].Items[2] := SubItem('Copy', 'C', 'F5', tmaFileCopy);
@@ -755,11 +767,14 @@ begin
   FCategories[2].Items[16] := SubItem('Unselect by extension', #0, 'Ctrl+-', tmaFileUnselectByExt);
   FCategories[2].Items[17] := SubItem('Select all', 'A', 'Shift+Num+', tmaFileSelectAll);
   FCategories[2].Items[18] := SubItem('Invert selection', 'I', 'Num*', tmaFileInvertSelect);
-  FCategories[2].Items[19] := Separator;
-  FCategories[2].Items[20] := SubItem('Calculate folder size', 'Z', 'F3', tmaFileCalcSize);
-  FCategories[2].Items[21] := SubItem('Copy full path', 'Y', 'Ctrl+Alt+Ins', tmaFileCopyPath);
-  FCategories[2].Items[22] := SubItem('Copy name', #0, 'Alt+Shift+Ins', tmaFileCopyName);
-  FCategories[2].Items[23] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
+  FCategories[2].Items[19] := SubItem('Unselect all', 'L', 'Shift+Num-', tmaFileUnselectAll);
+  FCategories[2].Items[20] := SubItem('Restore selection', 'T', 'Ctrl+M', tmaFileRestoreSelection);
+  FCategories[2].Items[21] := Separator;
+  FCategories[2].Items[22] := SubItem('Calculate folder size', 'Z', 'F3', tmaFileCalcSize);
+  FCategories[2].Items[23] := SubItem('Copy full path', 'Y', 'Alt+Shift+Ins', tmaFileCopyPath);
+  FCategories[2].Items[24] := SubItem('Copy name', #0, 'Ctrl+Shift+Ins', tmaFileCopyName);
+  FCategories[2].Items[25] := SubItem('Describe...', #0, 'Ctrl+Z', tmaFileDescribe);
+  FCategories[2].Items[26] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
 
   // 3: Edit (clipboard + document ops - not Files -> Edit / F4)
   FCategories[3].Title := 'Edit';
@@ -782,7 +797,7 @@ begin
   FCategories[4].Title := 'Commands';
   FCategories[4].HotChar := 'C';
   FCategories[4].HotPos := 1;
-  SetLength(FCategories[4].Items, 19);
+  SetLength(FCategories[4].Items, 20);
   FCategories[4].Items[0] := SubItem('Find file...', 'F', 'Alt+F7', tmaCmdFind);
   FCategories[4].Items[1] := SubItem('Synchronize dirs...', 'Y', 'Ctrl+Alt+S', tmaCmdDirSync);
   FCategories[4].Items[2] := SubItem('Background jobs...', 'J', 'Ctrl+Shift+J', tmaCmdJobList);
@@ -793,15 +808,16 @@ begin
   FCategories[4].Items[7] := SubItem('Refresh panel', 'E', 'Ctrl+R', tmaCmdRefresh);
   FCategories[4].Items[8] := Separator;
   FCategories[4].Items[9] := SubItem('Swap panels', 'S', 'Ctrl+U', tmaCmdSwapPanels);
-  FCategories[4].Items[10] := SubItem('Target := Active', 'T', 'Ctrl+]', tmaCmdEqualizeOther);
-  FCategories[4].Items[11] := SubItem('Active := Target', 'A', 'Ctrl+[', tmaCmdEqualizeActive);
-  FCategories[4].Items[12] := Separator;
-  FCategories[4].Items[13] := SubItem('Insert item name', 'N', 'Ctrl+Enter', tmaCmdInsertName);
-  FCategories[4].Items[14] := SubItem('Insert item path', 'P', 'Ctrl+Shift+Enter', tmaCmdInsertPath);
-  FCategories[4].Items[15] := SubItem('Console toggle', 'O', 'Ctrl+O', tmaCmdConsoleToggle);
-  FCategories[4].Items[16] := SubItem('Background console...', 'Q', 'Ctrl+Alt+O', tmaCmdConsoleProfile);
-  FCategories[4].Items[17] := SubItem('Sync console dir', 'I', 'Ctrl+Shift+O', tmaCmdSyncConsoleDir);
-  FCategories[4].Items[18] := SubItem('New terminal...', 'M', 'Ctrl+Shift+N', tmaCmdNewTerminal);
+  FCategories[4].Items[10] := SubItem('Hide / show passive panel', 'H', 'Ctrl+P', tmaCmdTogglePassivePanel);
+  FCategories[4].Items[11] := SubItem('Target := Active', 'T', 'Ctrl+]', tmaCmdEqualizeOther);
+  FCategories[4].Items[12] := SubItem('Active := Target', 'A', 'Ctrl+[', tmaCmdEqualizeActive);
+  FCategories[4].Items[13] := Separator;
+  FCategories[4].Items[14] := SubItem('Insert item name', 'N', 'Ctrl+Enter', tmaCmdInsertName);
+  FCategories[4].Items[15] := SubItem('Insert item path', 'P', 'Ctrl+Shift+Enter', tmaCmdInsertPath);
+  FCategories[4].Items[16] := SubItem('Console toggle', 'O', 'Ctrl+O', tmaCmdConsoleToggle);
+  FCategories[4].Items[17] := SubItem('Background console...', 'Q', 'Ctrl+Alt+O', tmaCmdConsoleProfile);
+  FCategories[4].Items[18] := SubItem('Sync console dir', 'I', 'Ctrl+Shift+O', tmaCmdSyncConsoleDir);
+  FCategories[4].Items[19] := SubItem('New terminal...', 'M', 'Ctrl+Shift+N', tmaCmdNewTerminal);
 
   // 5: Options
   FCategories[5].Title := 'Options';

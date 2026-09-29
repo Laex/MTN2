@@ -127,6 +127,8 @@ type
     NewPanelTab: TKeymapProc;
     NextPanelTab: TKeymapProc;
     PrevPanelTab: TKeymapProc;
+    RestoreSelection: TKeymapProc;
+    DescribeItems: TKeymapProc;
     NewWorkspace: TKeymapProc;
     ClosePanelTabOnSide: TKeymapSideProc;
     CalculateFolderSize: TKeymapProc;
@@ -155,6 +157,7 @@ type
     NavigateActiveToDriveRoot: TKeymapProc;
     RefreshActive: TKeymapProc;
     SelectAllActive: TKeymapProc;
+    UnselectAllActive: TKeymapProc;
     InvertSelectionActive: TKeymapProc;
     MoveCursor: TKeymapDeltaProc;
     MoveCursorWithSelect: TKeymapSelectDeltaProc;
@@ -203,9 +206,7 @@ type
     TryPasteClipboard: TKeymapTryFn;
     RestoreGrayOpKey: TKeymapRestoreGrayProc;
     BeginSelectByMask: TKeymapBoolProc;
-    InvertSelectionActive: TKeymapProc;
     ApplySelectByExtension: TKeymapBoolProc;
-    ApplySelectAllFiles: TKeymapBoolProc;
     ApplySelectByName: TKeymapBoolProc;
     HandleQuickSearchInput: TKeymapInputFn;
     HandleCmdLineInput: TKeymapInputFn;
@@ -519,6 +520,45 @@ begin
     kaPrevPanelTab:
       begin
         AHost.PrevPanelTab();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaSelectAll:
+      begin
+        AHost.SelectAllActive();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaUnselectAll:
+      begin
+        AHost.UnselectAllActive();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaInvertSelection:
+      begin
+        AHost.InvertSelectionActive();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaRestoreSelection:
+      begin
+        AHost.RestoreSelection();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaDescribe:
+      begin
+        AHost.DescribeItems();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaTogglePassivePanel:
+      begin
+        if AHost.ActiveSide() = psLeft then
+          AHost.TogglePanelVisible(psRight)
+        else
+          AHost.TogglePanelVisible(psLeft);
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
@@ -1305,12 +1345,6 @@ begin
       ConsumeKey(AKey, AKeyChar, True);
       Exit;
     end;
-    if AKey = vkMultiply then
-    begin
-      AHost.InvertSelectionActive();
-      ConsumeKey(AKey, AKeyChar, True);
-      Exit;
-    end;
   end;
   if Chord.HasMods([ssCtrl], [ssShift]) then
   begin
@@ -1323,21 +1357,6 @@ begin
     if IsMinusSelectKey(AKey, AKeyChar) then
     begin
       AHost.ApplySelectByExtension(True);
-      ConsumeKey(AKey, AKeyChar, True);
-      Exit;
-    end;
-  end;
-  if Mods = [ssShift] then
-  begin
-    if AKey = vkAdd then
-    begin
-      AHost.ApplySelectAllFiles(False);
-      ConsumeKey(AKey, AKeyChar, True);
-      Exit;
-    end;
-    if AKey = vkSubtract then
-    begin
-      AHost.ApplySelectAllFiles(True);
       ConsumeKey(AKey, AKeyChar, True);
       Exit;
     end;

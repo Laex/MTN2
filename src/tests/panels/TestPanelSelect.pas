@@ -17,6 +17,7 @@ type
     [Test] procedure TestSelectFoldersAndStem;
     [Test] procedure TestShiftNavRanges;
     [Test] procedure TestSelectionKeys;
+    [Test] procedure ClearedSelectionCanBeRestored;
   end;
 
 implementation
@@ -164,6 +165,30 @@ begin
   Assert.IsTrue(Length(Tab.SelectedURIs) = 2, 'no stray entries');
 end;
 
+procedure TestClearedSelectionCanBeRestored;
+var
+  Tab: TTab;
+begin
+  Tab := Default(TTab);
+  TabToggleSelected(Tab, 'file:///D:/Temp/a.txt');
+  TabToggleSelected(Tab, 'file:///D:/Temp/b.txt');
+  TabClearSelection(Tab);
+  Assert.AreEqual(0, Integer(Length(Tab.SelectedURIs)), 'cleared');
+  TabRestoreSelection(Tab);
+  Assert.AreEqual(2, Integer(Length(Tab.SelectedURIs)), 'the selection is back');
+  Assert.IsTrue(TabIsSelected(Tab, 'file:///D:/Temp/b.txt'), 'with its items');
+  // A second Ctrl+M brings back what was there before (nothing).
+  TabRestoreSelection(Tab);
+  Assert.AreEqual(0, Integer(Length(Tab.SelectedURIs)), 'the swap works both ways');
+  TabRestoreSelection(Tab);
+  Assert.AreEqual(2, Integer(Length(Tab.SelectedURIs)), 'and again');
+  // Clearing an empty selection leaves the remembered one alone.
+  TabClearSelection(Tab);
+  TabClearSelection(Tab);
+  TabRestoreSelection(Tab);
+  Assert.AreEqual(2, Integer(Length(Tab.SelectedURIs)), 'an empty clear forgets nothing');
+end;
+
 { TTestPanelSelect }
 
 procedure TTestPanelSelect.SetupFixture;
@@ -188,6 +213,11 @@ end;
 procedure TTestPanelSelect.TestShiftNavRanges;
 begin
   TestPanelSelect.TestShiftNavRanges;
+end;
+
+procedure TTestPanelSelect.ClearedSelectionCanBeRestored;
+begin
+  TestClearedSelectionCanBeRestored;
 end;
 
 procedure TTestPanelSelect.TestSelectionKeys;

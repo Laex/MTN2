@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Font / Display",
   "width": 54,
-  "height": 30,
+  "height": 31,
   "children": [
     {
       "type": "label",
@@ -233,9 +233,18 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "select_folders",
+      "text": "Select all also &folders",
+      "col": 1,
+      "row": 22,
+      "width": 50,
+      "height": 1
+    },
+    {
       "type": "separator",
       "col": 0,
-      "row": 22,
+      "row": 23,
       "width": 52,
       "height": 1
     },
@@ -244,7 +253,7 @@
       "text": "Language",
       "id": "lbl_language",
       "col": 1,
-      "row": 23,
+      "row": 24,
       "width": 16,
       "height": 1
     },
@@ -256,14 +265,14 @@
         "English"
       ],
       "col": 18,
-      "row": 23,
+      "row": 24,
       "width": 20,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 24,
+      "row": 25,
       "width": 52,
       "height": 1
     },
@@ -273,7 +282,7 @@
       "text": "OK",
       "default": true,
       "col": 11,
-      "row": 26,
+      "row": 27,
       "width": 12,
       "height": 1
     },
@@ -283,7 +292,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 29,
-      "row": 26,
+      "row": 27,
       "width": 12,
       "height": 1
     }

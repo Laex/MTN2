@@ -51,6 +51,9 @@ type
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
+    /// <summary>Select all / Deselect all and select by extension also take
+    /// folders (uDualPanelSelection.SelectFolders). Off by default, like Far.</summary>
+    SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -309,6 +312,7 @@ begin
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.LineSpacing := False;
+  Result.SelectFolders := False;
   Result.Language := '';
 end;
 

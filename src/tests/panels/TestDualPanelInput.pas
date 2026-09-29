@@ -56,6 +56,11 @@ type
     procedure NewTab;
     procedure NextTab;
     procedure PrevTab;
+    procedure RestoreSel;
+    procedure Describe;
+    procedure Invert;
+    procedure SelectAll;
+    procedure UnselectAll;
     procedure NewWorkspace;
     procedure CloseTab(ASide: TPanelSide);
     procedure TogglePanel(ASide: TPanelSide);
@@ -91,9 +96,7 @@ type
     function Paste: Boolean;
     procedure RestoreGray(var AKey: Word; var AKeyChar: Char);
     procedure SelectMask(AUnselect: Boolean);
-    procedure Invert;
     procedure SelectExt(AUnselect: Boolean);
-    procedure SelectAllFiles(AUnselect: Boolean);
     procedure SelectByName(AUnselect: Boolean);
     function QuickSearch(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function CmdLine(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
@@ -182,6 +185,31 @@ begin
   Last := 'nexttab';
 end;
 
+procedure TKeymapSpy.SelectAll;
+begin
+  Last := 'selectall';
+end;
+
+procedure TKeymapSpy.UnselectAll;
+begin
+  Last := 'unselectall';
+end;
+
+procedure TKeymapSpy.RestoreSel;
+begin
+  Last := 'restoresel';
+end;
+
+procedure TKeymapSpy.Invert;
+begin
+  Last := 'invert';
+end;
+
+procedure TKeymapSpy.Describe;
+begin
+  Last := 'describe';
+end;
+
 procedure TKeymapSpy.PrevTab;
 begin
   Last := 'prevtab';
@@ -260,6 +288,11 @@ begin
   AHost.NewPanelTab := ASpy.NewTab;
   AHost.NextPanelTab := ASpy.NextTab;
   AHost.PrevPanelTab := ASpy.PrevTab;
+  AHost.RestoreSelection := ASpy.RestoreSel;
+  AHost.SelectAllActive := ASpy.SelectAll;
+  AHost.UnselectAllActive := ASpy.UnselectAll;
+  AHost.DescribeItems := ASpy.Describe;
+  AHost.InvertSelectionActive := ASpy.Invert;
   AHost.NewWorkspace := ASpy.NewWorkspace;
   AHost.ClosePanelTabOnSide := ASpy.CloseTab;
   AHost.CopyFullPathToClipboard := ASpy.CopyFullPath;
@@ -395,6 +428,31 @@ begin
     Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaPrevPanelTab, Key, KeyChar),
       'kaPrevPanelTab is primary');
     Assert.AreEqual('prevtab', Spy.Last, 'PrevPanelTab cycles back');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaRestoreSelection, Key, KeyChar),
+      'kaRestoreSelection is primary');
+    Assert.AreEqual('restoresel', Spy.Last, 'Ctrl+M restores the selection');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaSelectAll, Key, KeyChar),
+      'kaSelectAll is primary');
+    Assert.AreEqual('selectall', Spy.Last, 'Shift+Gray + selects all files');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaUnselectAll, Key, KeyChar),
+      'kaUnselectAll is primary');
+    Assert.AreEqual('unselectall', Spy.Last, 'Shift+Gray - deselects all files');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaInvertSelection, Key, KeyChar),
+      'kaInvertSelection is primary');
+    Assert.AreEqual('invert', Spy.Last, 'Gray * inverts the selection');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaDescribe, Key, KeyChar),
+      'kaDescribe is primary');
+    Assert.AreEqual('describe', Spy.Last, 'Ctrl+Z describes');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaTogglePassivePanel, Key, KeyChar),
+      'kaTogglePassivePanel is primary');
+    Assert.AreEqual('toggle', Spy.Last, 'Ctrl+P toggles a panel');
+    Assert.IsTrue(Spy.Side <> Spy.ActiveSide, 'the inactive one');
     Spy.Last := '';
     Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaNewWorkspace, Key, KeyChar),
       'kaNewWorkspace is primary');
@@ -557,9 +615,7 @@ begin
   RestoreGrayOpKey(AKey, AKeyChar);
 end;
 procedure TFreeInputSpy.SelectMask(AUnselect: Boolean); begin Last := 'mask'; MaskUnselect := AUnselect; end;
-procedure TFreeInputSpy.Invert; begin Last := 'invert'; end;
 procedure TFreeInputSpy.SelectExt(AUnselect: Boolean); begin Last := 'ext'; MaskUnselect := AUnselect; end;
-procedure TFreeInputSpy.SelectAllFiles(AUnselect: Boolean); begin Last := 'allfiles'; MaskUnselect := AUnselect; end;
 procedure TFreeInputSpy.SelectByName(AUnselect: Boolean); begin Last := 'byname'; MaskUnselect := AUnselect; end;
 function TFreeInputSpy.QuickSearch(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
 begin
@@ -604,9 +660,7 @@ begin
   AHost.TryPasteClipboard := ASpy.Paste;
   AHost.RestoreGrayOpKey := ASpy.RestoreGray;
   AHost.BeginSelectByMask := ASpy.SelectMask;
-  AHost.InvertSelectionActive := ASpy.Invert;
   AHost.ApplySelectByExtension := ASpy.SelectExt;
-  AHost.ApplySelectAllFiles := ASpy.SelectAllFiles;
   AHost.ApplySelectByName := ASpy.SelectByName;
   AHost.HandleQuickSearchInput := ASpy.QuickSearch;
   AHost.HandleCmdLineInput := ASpy.CmdLine;

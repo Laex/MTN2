@@ -71,6 +71,7 @@ uses
   uDualPanelJobRules in 'Core\uDualPanelJobRules.pas',
   uDualPanelJobChips in 'Core\uDualPanelJobChips.pas',
   uWindowChrome in 'Core\uWindowChrome.pas',
+  uDescriptIon in 'Core\uDescriptIon.pas',
   uDualPanelJobList in 'Core\uDualPanelJobList.pas',
   uDualPanelSync in 'Core\uDualPanelSync.pas',
   uDualPanelSearch in 'Core\uDualPanelSearch.pas',

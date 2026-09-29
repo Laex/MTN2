@@ -73,6 +73,7 @@ type
     /// <summary>uDisplaySettings.MarkedRowStyleId: 'text' / 'band'.</summary>
     MarkedRows: string;
     LineSpacing: Boolean;
+    SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -526,6 +527,7 @@ begin
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
       Root.AddPair('markedRows', MarkedRowStyleId(MarkedRowStyleFromId(ASession.MarkedRows)));
   Root.AddPair('lineSpacing', TJSONBool.Create(ASession.LineSpacing));
+      Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -580,6 +582,7 @@ begin
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
   ASession.MarkedRows := MarkedRowStyleId(mrsText);
   ASession.LineSpacing := False;
+  ASession.SelectFolders := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -648,6 +651,7 @@ begin
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));
       ASession.MarkedRows := MarkedRowStyleId(MarkedRowStyleFromId(JsonStr(Root, 'markedRows', '')));
   ASession.LineSpacing := JsonBool(Root, 'lineSpacing', False);
+      ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

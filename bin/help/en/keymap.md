@@ -30,6 +30,10 @@ The `[+]` and `[x]` buttons in the tab rows and the top menu items do the same.
 
 The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones. The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update. A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own). An action without keys is written as an empty list.
 
+### Reserved keys
+
+Not taken yet and kept for planned features: **Shift+F3** (archive commands), **F11** (the plugin menu), **Ctrl+Alt+Ins** (network UNC paths), **Ctrl+.** (macro recording). An automatic check keeps the built-in keymap from taking them.
+
 ---
 
 [Contents](index.md)

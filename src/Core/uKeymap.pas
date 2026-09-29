@@ -102,6 +102,10 @@ type
     kaNewWorkspace, // Ctrl+Shift+W -- new workspace tab
     kaNextPanelTab, // Ctrl+Tab -- next tab of the active panel
     kaPrevPanelTab, // Ctrl+Shift+Tab -- previous tab of the active panel
+    kaRestoreSelection, // Ctrl+M -- selection as it was before it was last cleared
+    kaDescribe, // Ctrl+Z -- describe the item(s) (Descript.ion)
+    kaTogglePassivePanel, // Ctrl+P -- hide / show the inactive panel
+    kaUnselectAll, // Shift+Gray - -- deselect all files
     kaSetAttributes,
     kaProperties, // Alt+Enter -- OS Properties window
     kaSshConnections,
@@ -110,7 +114,7 @@ type
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
-    kaCopyItemName,   // Alt+Shift+Ins -- copy item name(s) only (no path)
+    kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
     kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
     // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
     // see KeymapActionContext).
@@ -528,8 +532,11 @@ begin
   AddBinding(Result, kaDriveLeft, KeyBinding(vkF1, False, True, False));
   AddBinding(Result, kaDriveRight, KeyBinding(vkF2, False, True, False));
   AddBinding(Result, kaRefresh, KeyBinding(Ord('R'), False, False, True));
-  // Shift+Gray + selects all files (FAR); Gray + / Gray - select and deselect by mask.
+  // Shift+Gray + / Shift+Gray - select and deselect all files (FAR); Gray + /
+  // Gray - select and deselect by mask.
   AddBinding(Result, kaSelectAll, KeyBinding(vkAdd, True, False, False));
+  AddBinding(Result, kaUnselectAll, KeyBinding(vkSubtract, True, False, False));
+  AddBinding(Result, kaInvertSelection, KeyBinding(vkMultiply, False, False, False));
   AddBinding(Result, kaSetAttributes, KeyBinding(Ord('A'), False, False, True));
   AddBinding(Result, kaProperties, KeyBinding(vkReturn, False, True, False));
   AddBinding(Result, kaHistoryBack, KeyBinding(vkLeft, False, True, False));
@@ -542,6 +549,9 @@ begin
   AddBinding(Result, kaWorkspaceLibrary, KeyBinding(Ord('D'), True, False, True));
   AddBinding(Result, kaWorkspaceSave, KeyBinding(Ord('D'), True, True, True));
   AddBinding(Result, kaNewWorkspace, KeyBinding(Ord('W'), True, False, True));
+  AddBinding(Result, kaRestoreSelection, KeyBinding(Ord('M'), False, False, True));
+  AddBinding(Result, kaDescribe, KeyBinding(Ord('Z'), False, False, True));
+  AddBinding(Result, kaTogglePassivePanel, KeyBinding(Ord('P'), False, False, True));
   AddBinding(Result, kaNextPanelTab, KeyBinding(vkTab, False, False, True));
   AddBinding(Result, kaPrevPanelTab, KeyBinding(vkTab, True, False, True));
   AddBinding(Result, kaSshConnections, KeyBinding(Ord('N'), True, True, True));
@@ -561,12 +571,15 @@ begin
   AddBinding(Result, kaSortByAccessed, KeyBinding(vkF9, False, False, True));
 
   // Clipboard & item insertion
-  AddBinding(Result, kaCopyFullPath, KeyBinding(vkInsert, False, True, True));
-  AddBinding(Result, kaCopyItemName, KeyBinding(vkInsert, True, True, False));
+  // FAR: Alt+Shift+Ins copies the full paths, Ctrl+Shift+Ins the names.
+  // Ctrl+Alt+Ins is kept free for network (UNC) paths.
+  AddBinding(Result, kaCopyFullPath, KeyBinding(vkInsert, True, True, False));
+  AddBinding(Result, kaCopyItemName, KeyBinding(vkInsert, True, False, True));
   AddBinding(Result, kaShellContextMenu, KeyBinding(vkF10, True, False, False));
   AddBinding(Result, kaShellContextMenu, KeyBinding(vkApps, False, False, False));
   AddBinding(Result, kaInsertItemName, KeyBinding(vkReturn, False, False, True));
   AddBinding(Result, kaInsertItemPath, KeyBinding(vkReturn, True, False, True));
+  AddBinding(Result, kaInsertItemPath, KeyBinding(Ord('F'), False, False, True));
   AddBinding(Result, kaRunDetached, KeyBinding(vkReturn, True, False, False));
   AddBinding(Result, kaFocusCmdLine, KeyBinding(vkDown, False, False, True));
 
@@ -881,6 +894,10 @@ const
     'NewWorkspace',          // kaNewWorkspace
     'NextPanelTab',          // kaNextPanelTab
     'PrevPanelTab',          // kaPrevPanelTab
+    'RestoreSelection',      // kaRestoreSelection
+    'Describe',              // kaDescribe
+    'TogglePassivePanel',    // kaTogglePassivePanel
+    'UnselectAll',           // kaUnselectAll
     'SetAttributes',         // kaSetAttributes
     'Properties',            // kaProperties
     'SshConnections',        // kaSshConnections

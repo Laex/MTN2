@@ -1528,6 +1528,7 @@ begin
   Result.ShadowStyle := GShadowStyle;
   Result.MarkedRowStyle := GMarkedRowStyle;
   Result.LineSpacing := FSession.LineSpacing;
+  Result.SelectFolders := FDualPanel.SelectFolders;
   Result.Language := CurrentLocale;
 end;
 
@@ -1550,6 +1551,8 @@ begin
   ApplyTitleBar(ASettings.ShowTitleBar);
   FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
   FSession.LineSpacing := ASettings.LineSpacing;
+  FSession.SelectFolders := ASettings.SelectFolders;
+  FDualPanel.SelectFolders := ASettings.SelectFolders;
   GShadowStyle := ASettings.ShadowStyle;
   FSession.MarkedRows := MarkedRowStyleId(ASettings.MarkedRowStyle);
   GMarkedRowStyle := ASettings.MarkedRowStyle;
@@ -1618,6 +1621,7 @@ begin
   FDualPanel.ApplySessionState(Sess.Panels);
   FDualPanel.TerminalCloseOnExit := Sess.TerminalCloseOnExit;
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
+  FDualPanel.SelectFolders := Sess.SelectFolders;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -1707,6 +1711,7 @@ begin
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
   Sess.MarkedRows := MarkedRowStyleId(GMarkedRowStyle);
   Sess.LineSpacing := FSession.LineSpacing;
+  Sess.SelectFolders := FDualPanel.SelectFolders;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever

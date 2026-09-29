@@ -2,7 +2,7 @@
 
 The **Options** menu (F9):
 - **Theme...** – appearance; changes at once.
-- **Font / Display...** – font, size, zoom, cursor blinking, file icons in the panel, **line spacing** (see below), pop-up notifications, the **window title bar, menu bar, F-key bar and status line** (a hidden row goes to the panels; with the menu bar hidden, F9 shows it over the top row while the menu is open; with the window title bar hidden the **[_] [□] [x]** buttons move to the right end of the menu bar, or of the tab bar when that is hidden too, the window title is shown in the free space of the tab bar, and the window is dragged by the free parts of the menu and tab bars and resized by its edges; a right click on a free spot of the tab bar opens the top menu, like F9), window and button **shadows** (Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them), how **marked files** look (“Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well) and the **interface language** (English / Русский); everything applies without a restart.
+- **Font / Display...** – font, size, zoom, cursor blinking, file icons in the panel, **line spacing** (see below), pop-up notifications, the **window title bar, menu bar, F-key bar and status line** (a hidden row goes to the panels; with the menu bar hidden, F9 shows it over the top row while the menu is open; with the window title bar hidden the **[_] [□] [x]** buttons move to the right end of the menu bar, or of the tab bar when that is hidden too, the window title is shown in the free space of the tab bar, and the window is dragged by the free parts of the menu and tab bars and resized by its edges; a right click on a free spot of the tab bar opens the top menu, like F9), window and button **shadows** (Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them), how **marked files** look (“Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well) and the **interface language** (English / Русский); everything applies without a restart. The **“Select all also folders”** box in the same dialog makes Shift+Gray + / Shift+Gray − and select by extension take folders too (files only by default, as in Far).
 - **Columns...** – the columns of the “Custom” mode.
 - **Color coding...** – row colors by name masks.
 - **Keymap...** – view and change keys.
@@ -39,7 +39,7 @@ With the classic Windows console (Far without Windows Terminal) they will not ma
 ### Notifications
 
 Commands that change nothing on screen confirm themselves with a short notice in the bottom right corner; it disappears after a few seconds and does not take keys. Notices appear for:
-- **Ctrl+Alt+Ins** / **Alt+Shift+Ins** – the path / name copied (or “Nothing to copy”);
+- **Alt+Shift+Ins** / **Ctrl+Shift+Ins** – the path / name copied (or “Nothing to copy”);
 - **Ctrl+C** / **Ctrl+X** (**Ctrl+Ins** / **Ctrl+Del**) on the panel – the files placed on the clipboard;
 - copying text in the viewer / editor (without a selection – the current line), in the command line and in a terminal;
 - **Ctrl+R** – the panel refreshed;

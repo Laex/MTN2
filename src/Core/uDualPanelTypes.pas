@@ -43,6 +43,8 @@ type
     CursorIndex: Integer;
     ScrollOffset: Integer;
     SelectedURIs: TArray<string>; // multi-select by row URI
+    /// <summary>The selection as it was before it was last cleared (Ctrl+M).</summary>
+    PrevSelectedURIs: TArray<string>;
     /// <summary>Ephemeral: ws:// folder this tab left via a dir-link Enter.
     /// Empty unless this tab (not the other panel) entered from Workspace.</summary>
     WorkspaceBackUri: string;
@@ -185,9 +187,11 @@ function SelectionKeysHas(const AKeys: TArray<string>; const AURI: string): Bool
 procedure TabToggleSelectedRange(var ATab: TTab; const ARows: TPanelRows;
   ALo, AHi: Integer);
 procedure TabClearSelection(var ATab: TTab);
+/// <summary>Swaps the selection with the one held before it was last cleared
+/// (Ctrl+M); a second call brings the first back.</summary>
+procedure TabRestoreSelection(var ATab: TTab);
 procedure TabToggleSelected(var ATab: TTab; const AURI: string);
 procedure TabSetSelected(var ATab: TTab; const AURI: string; ASelected: Boolean);
-procedure TabSelectAllVisible(var ATab: TTab; const ARows: TPanelRows);
 procedure TabSelectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean = False);
 procedure TabUnselectByMask(var ATab: TTab; const ARows: TPanelRows;
@@ -474,6 +478,7 @@ begin
     Inc(ANextId);
     Result.Tabs[I].History := Copy(APanel.Tabs[I].History);
     Result.Tabs[I].SelectedURIs := Copy(APanel.Tabs[I].SelectedURIs);
+    Result.Tabs[I].PrevSelectedURIs := Copy(APanel.Tabs[I].PrevSelectedURIs);
   end;
   if (Result.ActiveTabIndex < 0) or (Result.ActiveTabIndex > High(Result.Tabs)) then
     Result.ActiveTabIndex := 0;
@@ -779,7 +784,18 @@ end;
 
 procedure TabClearSelection(var ATab: TTab);
 begin
+  if Length(ATab.SelectedURIs) > 0 then
+    ATab.PrevSelectedURIs := ATab.SelectedURIs;
   SetLength(ATab.SelectedURIs, 0);
+end;
+
+procedure TabRestoreSelection(var ATab: TTab);
+var
+  Current: TArray<string>;
+begin
+  Current := ATab.SelectedURIs;
+  ATab.SelectedURIs := ATab.PrevSelectedURIs;
+  ATab.PrevSelectedURIs := Current;
 end;
 
 procedure TabToggleSelected(var ATab: TTab; const AURI: string);
@@ -809,22 +825,6 @@ begin
   if TabIsSelected(ATab, AURI) = ASelected then
     Exit;
   TabToggleSelected(ATab, AURI);
-end;
-
-procedure TabSelectAllVisible(var ATab: TTab; const ARows: TPanelRows);
-var
-  R: TPanelRow;
-  N: Integer;
-begin
-  SetLength(ATab.SelectedURIs, 0);
-  for R in ARows do
-  begin
-    if R.IsParent or (R.URI = '') then
-      Continue;
-    N := Length(ATab.SelectedURIs);
-    SetLength(ATab.SelectedURIs, N + 1);
-    ATab.SelectedURIs[N] := R.URI;
-  end;
 end;
 
 function PanelRowMaskName(const ARow: TPanelRow): string;

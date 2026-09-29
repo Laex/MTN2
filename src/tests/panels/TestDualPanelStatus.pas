@@ -373,8 +373,8 @@ begin
   Assert.IsTrue(Items[6] = '7Repl', 'editor Ctrl+F7 Replace in its slot');
   Assert.IsTrue((Length(Letters) > 0) and (Letters[0] = 'A:All'), 'editor Ctrl+A hint');
   FunctionBarGetItems(fbcPanels, [ssCtrl], Items, Letters);
-  Assert.IsTrue((Length(Letters) = 10) and (Letters[9] = 'SEnt:Path'),
-    'Ctrl+Shift+Enter shown under Ctrl as SEnt');
+  Assert.IsTrue((Length(Letters) = 10) and (Letters[9] = 'F:Path'),
+    'Ctrl+F (the first key of Path) shown under Ctrl');
   FunctionBarGetItems(fbcViewer, [ssCtrl, ssShift], Items, Letters);
   Assert.IsTrue(Length(Letters) = 0, 'Ctrl+Shift+A is not select all');
   Item := Default(TSubmenuItem);

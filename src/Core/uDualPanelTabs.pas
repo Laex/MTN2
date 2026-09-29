@@ -415,6 +415,7 @@ begin
   ATab.CursorIndex := 0;
   ATab.ScrollOffset := 0;
   SetLength(ATab.SelectedURIs, 0);
+  SetLength(ATab.PrevSelectedURIs, 0);
 end;
 
 class function TDualPanelTabManager.CanGoBack(const ATab: TTab): Boolean;

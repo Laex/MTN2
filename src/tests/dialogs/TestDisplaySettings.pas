@@ -105,6 +105,7 @@ begin
   Result.ShadowStyle := 'soft';
   Result.LineSpacing := True;
   Result.MarkedRows := 'band';
+  Result.SelectFolders := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
   SetLength(Result.Panels.WorkspaceTabs, 1);
@@ -144,6 +145,7 @@ begin
     Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
     Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
     Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
+    Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -201,6 +203,9 @@ begin
     Pair := Root.RemovePair('markedRows');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('selectFolders');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -220,6 +225,7 @@ begin
     Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
     Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
+    Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

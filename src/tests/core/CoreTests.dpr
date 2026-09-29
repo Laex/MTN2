@@ -10,6 +10,7 @@ program CoreTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestConfigLocation in 'TestConfigLocation.pas',
+  TestDescriptIon in 'TestDescriptIon.pas',
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
   TestKeymap in 'TestKeymap.pas',

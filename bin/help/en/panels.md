@@ -15,6 +15,7 @@
 | Ctrl+] | passive panel := folder of the active one |
 | Ctrl+[ | active panel := folder of the passive one |
 | Ctrl+F1 / Ctrl+F2 | hide / show the left / right panel |
+| Ctrl+P | hide / show the inactive panel |
 | Ctrl+L | information panel (drive, memory) on the other side |
 | Ctrl+H | show / hide hidden and system files |
 | Ctrl+R | refresh the panel |

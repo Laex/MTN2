@@ -16,7 +16,7 @@ uses
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
-  uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDualPanelSearch, uDualPanelMenus,
+  uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uPluginHost,
   uFolderHistory, uANSIParser,
@@ -61,6 +61,15 @@ type
     /// <summary>The panel filter in force (Ctrl+I): hides non-matching rows via
     /// IPanelModel.SetFilterMask; '' when there is none.</summary>
     FFilterMask: string;
+    /// <summary>Descript.ion of the active folder, for the status line: the folder,
+    /// its file's timestamp and when it was last looked at.</summary>
+    FDescDir: string;
+    FDescStamp: TDateTime;
+    FDescCheckedAt: UInt64;
+    FDescMap: TDictionary<string, string>;
+    /// <summary>The folder and file names of the open Describe dialog.</summary>
+    FDescribeDir: string;
+    FDescribeNames: TArray<string>;
     /// <summary>Checksums (Ctrl+Alt+H): the job's input, its cancel token
     /// while it runs, and the last result (Copy / Save in the result dialog).</summary>
     FChecksumPaths: TArray<string>;
@@ -293,6 +302,8 @@ type
     function HostInPanelsWorkspace: Boolean;
     function HostLastSelectMask: string;
     function HostSelectFolders: Boolean;
+    function GetSelectFolders: Boolean;
+    procedure SetSelectFolders(AValue: Boolean);
     function HostTryGetCursorItem(out AName, AUri, ATargetUri: string;
       out AIsParent: Boolean): Boolean;
     procedure HostRememberStubUri(const AUri: string);
@@ -427,6 +438,11 @@ type
     function HandlePanelFilterCommand(const AControlId: string): Boolean;
     procedure ApplyPanelFilter(const AMask: string);
     procedure ClearPanelFilter;
+    procedure RestoreSelection;
+    procedure DescribeItems;
+    function HandleDescribeCommand(const AControlId: string;
+      const AFields: TDialogCommandFields): Boolean;
+    function DescriptionOf(const ADirUri, AName: string): string;
     procedure ToggleInsertSelect;
     /// <summary>Shift+Up/Down/Left/Right/Home/End/Pg*: invert mark on rows, then
     /// move. Unit steps: leaving row only. AExcludeLanding (Brief Left/Right):
@@ -440,6 +456,7 @@ type
     procedure CopyFullPathToClipboard;
     procedure CopyItemNameToClipboard;
     procedure SelectAllActive;
+    procedure UnselectAllActive;
     procedure InvertSelectionActive;
     procedure BeginSelectByMask(AUnselect: Boolean);
     procedure ApplySelectMask(const AMask: string; AUnselect: Boolean;
@@ -946,6 +963,8 @@ type
     /// the console and the active panel then keep independent directories,
     /// synced only on demand via Ctrl+Shift+O (SyncConsoleDirNow).</summary>
     property AutoSyncConsoleCwd: Boolean read FAutoSyncConsoleCwd write FAutoSyncConsoleCwd;
+    /// <summary>Select all / Deselect all and select by extension also take folders.</summary>
+    property SelectFolders: Boolean read GetSelectFolders write SetSelectFolders;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -1199,6 +1218,7 @@ end;
 destructor TDualPanelWindow.Destroy;
 begin
   FAlive := False;
+  FreeAndNil(FDescMap);
   FreeAndNil(FArchivesUnlocked);
   ShellIconsSetOnReady(nil);
   if Assigned(FNavigateSub) then
@@ -1501,6 +1521,8 @@ begin
   FKeymapHost.NewPanelTab := NewPanelTab;
   FKeymapHost.NextPanelTab := NextPanelTab;
   FKeymapHost.PrevPanelTab := PrevPanelTab;
+  FKeymapHost.RestoreSelection := RestoreSelection;
+  FKeymapHost.DescribeItems := DescribeItems;
   FKeymapHost.NewWorkspace := NewWorkspace;
   FKeymapHost.ClosePanelTabOnSide := ClosePanelTabOnSide;
   FKeymapHost.CalculateFolderSize := CalculateFolderSizeUnderCursor;
@@ -1529,6 +1551,7 @@ begin
   FKeymapHost.NavigateActiveToDriveRoot := NavigateActiveToDriveRoot;
   FKeymapHost.RefreshActive := RefreshActive;
   FKeymapHost.SelectAllActive := SelectAllActive;
+  FKeymapHost.UnselectAllActive := UnselectAllActive;
   FKeymapHost.InvertSelectionActive := InvertSelectionActive;
   FKeymapHost.MoveCursor := MoveCursor;
   FKeymapHost.MoveCursorWithSelect := MoveCursorWithSelect;
@@ -1657,9 +1680,7 @@ begin
   FFreeInputHost.TryPasteClipboard := TryPasteClipboardToCmdLine;
   FFreeInputHost.RestoreGrayOpKey := HostRestoreGrayOpKey;
   FFreeInputHost.BeginSelectByMask := BeginSelectByMask;
-  FFreeInputHost.InvertSelectionActive := InvertSelectionActive;
   FFreeInputHost.ApplySelectByExtension := ApplySelectByExtension;
-  FFreeInputHost.ApplySelectAllFiles := ApplySelectAllFiles;
   FFreeInputHost.ApplySelectByName := ApplySelectByName;
   FFreeInputHost.HandleQuickSearchInput := HandleQuickSearchInput;
   FFreeInputHost.HandleCmdLineInput := HandleCmdLineInput;
@@ -1848,6 +1869,17 @@ begin
   Result := '*.*';
   if Assigned(FSelHelper) then
     Result := FSelHelper.LastSelectMask;
+end;
+
+function TDualPanelWindow.GetSelectFolders: Boolean;
+begin
+  Result := Assigned(FSelHelper) and FSelHelper.SelectFolders;
+end;
+
+procedure TDualPanelWindow.SetSelectFolders(AValue: Boolean);
+begin
+  if Assigned(FSelHelper) then
+    FSelHelper.SelectFolders := AValue;
 end;
 
 function TDualPanelWindow.HostSelectFolders: Boolean;
@@ -3835,19 +3867,13 @@ begin
 end;
 
 procedure TDualPanelWindow.SelectAllActive;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
 begin
-  Ws := ActiveWorkspace;
-  Panel := ActivePanel(Ws);
-  Tab := ActiveTab(Panel);
-  TabSelectAllVisible(Tab, RowsForSide(Ws.State.ActiveSide));
-  SetActiveTab(Panel, Tab);
-  SetActivePanel(Ws, Panel);
-  SaveActiveWorkspace(Ws);
-  Invalidate;
+  ApplySelectAllFiles(False);
+end;
+
+procedure TDualPanelWindow.UnselectAllActive;
+begin
+  ApplySelectAllFiles(True);
 end;
 
 procedure TDualPanelWindow.InvertSelectionActive;
@@ -4746,6 +4772,8 @@ begin
       Result := FFolderHistory.DispatchCommand(AControlId);
     hdkPanelFilter:
       Result := HandlePanelFilterCommand(AControlId);
+    hdkDescribe:
+      Result := HandleDescribeCommand(AControlId, AFields);
     hdkTheme, hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
     hdkExternalTools:
       Result := FSettings.DispatchCommand(AKind, AControlId);
@@ -5820,6 +5848,150 @@ begin
   SetLength(FFilterPresets, 0);
   if Apply then
     ApplyPanelFilter(Mask);
+end;
+
+procedure TDualPanelWindow.RestoreSelection;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  TabRestoreSelection(Tab);
+  SetActiveTab(Panel, Tab);
+  SetActivePanel(Ws, Panel);
+  SaveActiveWorkspace(Ws);
+  Invalidate;
+end;
+
+function TDualPanelWindow.DescriptionOf(const ADirUri, AName: string): string;
+var
+  Dir, Path: string;
+  Stamp: TDateTime;
+  Tick: UInt64;
+begin
+  Result := '';
+  Dir := FileUriToPath(ADirUri);
+  if (Dir = '') or (AName = '') then
+    Exit;
+  Tick := GetTickCount64;
+  if (not SameText(Dir, FDescDir)) or (FDescMap = nil) or (Tick - FDescCheckedAt > 1500) then
+  begin
+    // The timestamp is looked at every second or so, not on every frame.
+    Path := DescriptionsFilePath(Dir);
+    if not FileAge(Path, Stamp) then
+      Stamp := 0;
+    if (not SameText(Dir, FDescDir)) or (FDescMap = nil) or (Stamp <> FDescStamp) then
+    begin
+      FreeAndNil(FDescMap);
+      FDescMap := LoadDescriptions(Dir);
+      FDescDir := Dir;
+      FDescStamp := Stamp;
+    end;
+    FDescCheckedAt := Tick;
+  end;
+  if not FDescMap.TryGetValue(AName, Result) then
+    Result := '';
+end;
+
+procedure TDualPanelWindow.DescribeItems;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  R: TPanelRow;
+  Keys, Names: TArray<string>;
+  Dir, Value, Prompt: string;
+  Map: TDictionary<string, string>;
+
+  procedure AddName(const ARow: TPanelRow);
+  var
+    Full: string;
+  begin
+    if ARow.IsParent or (ARow.URI = '') then
+      Exit;
+    Full := PanelItemFullPath(ARow.URI, Tab.CurrentURI, False);
+    if Full <> '' then
+      Names := Names + [PathLastSegment(Full)];
+  end;
+
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  Dir := FileUriToPath(Tab.CurrentURI);
+  if (Dir = '') or not TDirectory.Exists(Dir) then
+  begin
+    FToast.Show(T('ui.toast.describeLocal', 'Descriptions need a folder on a local disk'));
+    Exit;
+  end;
+  Rows := RowsForSide(Ws.State.ActiveSide);
+  Names := nil;
+  if Length(Tab.SelectedURIs) > 0 then
+  begin
+    Keys := TabSelectionKeys(Tab);
+    for R in Rows do
+      if SelectionKeysHas(Keys, R.URI) then
+        AddName(R);
+  end
+  else if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
+    AddName(Rows[Tab.CursorIndex]);
+  if Length(Names) = 0 then
+  begin
+    FToast.Show(T('ui.toast.describeNothing', 'Nothing to describe'));
+    Exit;
+  end;
+  Value := '';
+  if Length(Names) = 1 then
+  begin
+    Prompt := Names[0];
+    Map := LoadDescriptions(Dir);
+    try
+      if not Map.TryGetValue(Names[0], Value) then
+        Value := '';
+    finally
+      Map.Free;
+    end;
+  end
+  else
+    Prompt := T('ui.describe.many', '%d items', [Length(Names)]);
+  FDescribeDir := Dir;
+  FDescribeNames := Names;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkDescribe;
+  FDialog.Open(BuildInputDialog(T('ui.describe.title', 'Describe'), Prompt, Value),
+    DialogCommand);
+end;
+
+function TDualPanelWindow.HandleDescribeCommand(const AControlId: string;
+  const AFields: TDialogCommandFields): Boolean;
+var
+  Name, Text: string;
+  Ok: Boolean;
+begin
+  Result := True;
+  if DialogCmdIsAccept(AControlId) then
+  begin
+    Text := Trim(AFields.Name);
+    Ok := True;
+    for Name in FDescribeNames do
+      Ok := StoreDescription(FDescribeDir, Name, Text) and Ok;
+    FDescCheckedAt := 0;
+    FDescStamp := -1;
+    if not Ok then
+      FToast.Show(T('ui.toast.describeFailed', 'Cannot write Descript.ion here'));
+  end;
+  FDialog.Close;
+  SetLength(FDescribeNames, 0);
 end;
 
 procedure TDualPanelWindow.ClearPanelFilter;
@@ -9171,7 +9343,7 @@ var
   Tab: TTab;
   Rows: TPanelRows;
   Count: Integer;
-  Path, SelText, CursorText: string;
+  Path, SelText, CursorText, Desc: string;
   Bytes: Int64;
   Files, Folders: Integer;
   M: IPanelModel;
@@ -9205,6 +9377,12 @@ begin
   else
     CursorText := '';
   Snap.ItemText := StatusItemText(HasSel, SelText, HasCursor, CursorText);
+  if (not HasSel) and HasCursor and (CursorText <> '') then
+  begin
+    Desc := DescriptionOf(Tab.CurrentURI, ExcludeTrailingPathDelimiter(CursorText));
+    if Desc <> '' then
+      Snap.ItemText := Snap.ItemText + ' - ' + TruncateStatusItem(Desc, 40);
+  end;
   RequestFreeSpace(Path);
   Snap.FreeText := FFreeText;
   Snap.Path := TruncateStatusPath(Path);
