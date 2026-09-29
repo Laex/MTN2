@@ -10,6 +10,7 @@ program EditorTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestEditorDialogs in 'TestEditorDialogs.pas',
+  TestFilePositions in 'TestFilePositions.pas',
   TestEditorInput in 'TestEditorInput.pas',
   TestEditorLayout in 'TestEditorLayout.pas',
   TestEditorPainter in 'TestEditorPainter.pas',

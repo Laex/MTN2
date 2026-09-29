@@ -855,6 +855,8 @@ var
 begin
   if FHelpMode or FChromeless or not TryGetFilePosition(FURI, Pos) then
     Exit;
+  if FViewOnly and (Pos.WordWrap <> fwwKeep) then
+    FWordWrap := Pos.WordWrap = fwwOn;
   FTopLine := Pos.TopLine;
   FLeftCol := Pos.LeftCol;
   FCursorRow := Pos.CursorRow;
@@ -870,11 +872,20 @@ end;
 
 /// <summary>Called right before the window closes (ForceClose).</summary>
 procedure TEditorWindow.SaveCurrentPosition;
+var
+  Wrap: TFileWordWrap;
 begin
   if FHelpMode or FChromeless or (Trim(FURI) = '') or not FDoc.Ready then
     Exit;
+  // Only the Viewer wraps lines (F2), so only it records the mode.
+  if not FViewOnly then
+    Wrap := fwwKeep
+  else if FWordWrap then
+    Wrap := fwwOn
+  else
+    Wrap := fwwOff;
   SaveFilePosition(FURI, FTopLine, FLeftCol, FCursorRow, FCursorCol,
-    HasSelection, FSelAnchorRow, FSelAnchorCol);
+    HasSelection, FSelAnchorRow, FSelAnchorCol, Wrap);
 end;
 
 function TEditorWindow.ViewHeight: Integer;

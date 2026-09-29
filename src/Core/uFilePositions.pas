@@ -3,7 +3,8 @@ unit uFilePositions;
 { Persistent per-file Viewer/Editor position (F3/F4): top-left scroll
   corner, cursor row/column, and - if one was active when the window
   closed - the selection range. Reopening the same file restores all of it,
-  in both Viewer and Editor. }
+  in both Viewer and Editor. The Viewer also keeps its line wrapping (F2)
+  per file; the Editor, which does not wrap, leaves the saved mode alone. }
 
 interface
 
@@ -11,6 +12,10 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>The Viewer's line wrapping for a file: fwwKeep when none was
+  /// saved (or, on save, to keep the one on record).</summary>
+  TFileWordWrap = (fwwKeep, fwwOff, fwwOn);
+
   TFilePosition = record
     TopLine: Integer;
     LeftCol: Integer;
@@ -21,11 +26,13 @@ type
     HasSelection: Boolean;
     SelAnchorRow: Integer;
     SelAnchorCol: Integer;
+    WordWrap: TFileWordWrap;
   end;
 
 /// <summary>F3/F4: remembers top-left scroll, cursor, and (if any) selection.</summary>
 procedure SaveFilePosition(const AURI: string; ATopLine, ALeftCol, ACursorRow,
-  ACursorCol: Integer; AHasSelection: Boolean; ASelAnchorRow, ASelAnchorCol: Integer);
+  ACursorCol: Integer; AHasSelection: Boolean; ASelAnchorRow, ASelAnchorCol: Integer;
+  AWordWrap: TFileWordWrap = fwwKeep);
 /// <summary>True if a saved position exists for AURI; APosition is zeroed
 /// (HasSelection = False) when no entry is found.</summary>
 function TryGetFilePosition(const AURI: string; out APosition: TFilePosition): Boolean;
@@ -60,7 +67,7 @@ var
   Obj: TJSONObject;
   Entry: TPosEntry;
   U: string;
-  RowVal, ColVal: TJSONValue;
+  RowVal, ColVal, WrapVal: TJSONValue;
 begin
   if GLoaded then
     Exit;
@@ -109,6 +116,16 @@ begin
           Entry.Position.SelAnchorRow := 0;
           Entry.Position.SelAnchorCol := 0;
         end;
+        WrapVal := Obj.Values['wordWrap'];
+        if WrapVal is TJSONBool then
+        begin
+          if TJSONBool(WrapVal).AsBoolean then
+            Entry.Position.WordWrap := fwwOn
+          else
+            Entry.Position.WordWrap := fwwOff;
+        end
+        else
+          Entry.Position.WordWrap := fwwKeep;
         GEntries.Add(Entry);
       end;
     finally
@@ -144,6 +161,8 @@ begin
         Obj.AddPair('selAnchorRow', TJSONNumber.Create(GEntries[I].Position.SelAnchorRow));
         Obj.AddPair('selAnchorCol', TJSONNumber.Create(GEntries[I].Position.SelAnchorCol));
       end;
+      if GEntries[I].Position.WordWrap <> fwwKeep then
+        Obj.AddPair('wordWrap', TJSONBool.Create(GEntries[I].Position.WordWrap = fwwOn));
       Arr.AddElement(Obj);
     end;
     TFile.WriteAllText(Path, Arr.ToJSON, TEncoding.UTF8);
@@ -184,12 +203,20 @@ begin
 end;
 
 procedure SaveFilePosition(const AURI: string; ATopLine, ALeftCol, ACursorRow,
-  ACursorCol: Integer; AHasSelection: Boolean; ASelAnchorRow, ASelAnchorCol: Integer);
+  ACursorCol: Integer; AHasSelection: Boolean; ASelAnchorRow, ASelAnchorCol: Integer;
+  AWordWrap: TFileWordWrap);
 var
-  Pos: TFilePosition;
+  Pos, Old: TFilePosition;
 begin
   if Trim(AURI) = '' then
     Exit;
+  if AWordWrap = fwwKeep then
+  begin
+    TryGetFilePosition(AURI, Old);
+    Pos.WordWrap := Old.WordWrap;
+  end
+  else
+    Pos.WordWrap := AWordWrap;
   Pos.TopLine := ATopLine;
   Pos.LeftCol := ALeftCol;
   Pos.CursorRow := ACursorRow;
@@ -226,6 +253,7 @@ begin
     APosition.HasSelection := False;
     APosition.SelAnchorRow := 0;
     APosition.SelAnchorCol := 0;
+    APosition.WordWrap := fwwKeep;
   end;
 end;
 
