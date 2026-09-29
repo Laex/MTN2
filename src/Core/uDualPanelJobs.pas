@@ -1258,18 +1258,18 @@ begin
   if AOfferPermanent then
   begin
     if IsDir then
-      Headline := 'Cannot move folder to the Recycle Bin'
+      Headline := T('ui.deleteError.recycleFolder', 'Cannot move folder to the Recycle Bin')
     else
-      Headline := 'Cannot move file to the Recycle Bin';
-    Question := 'Try to delete it permanently?';
+      Headline := T('ui.deleteError.recycleFile', 'Cannot move file to the Recycle Bin');
+    Question := T('ui.deleteError.permanentQuestion', 'Try to delete it permanently?');
   end
   else
   begin
     if IsDir then
-      Headline := 'Cannot delete folder'
+      Headline := T('ui.deleteError.folder', 'Cannot delete folder')
     else
-      Headline := 'Cannot delete file';
-    Question := 'Retry permanent delete?';
+      Headline := T('ui.deleteError.file', 'Cannot delete file');
+    Question := T('ui.deleteError.retryQuestion', 'Retry permanent delete?');
   end;
   ErrLine := FormatJobErrorLine(AError);
   FJob.AskPath := Path;

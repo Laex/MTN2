@@ -702,18 +702,18 @@ function BuildDeleteErrorDialog(const AHeadline, APath, AQuestion, AErrorLine: s
 begin
   RequireDialogResource(cResDialogDeleteError, Result);
   Result.IsWarning := True;
-  DialogSetTitle(Result, 'Error');
   DialogSetLabelText(Result, 'headline', AHeadline);
   DialogSetLabelText(Result, 'path', APath);
   DialogSetLabelText(Result, 'question', AQuestion);
   DialogSetLabelText(Result, 'error_line', AErrorLine);
   if AOfferPermanent then
-    DialogSetButtonText(Result, cDlgCmdDelete, 'Delete')
+    DialogSetButtonText(Result, cDlgCmdDelete, T('ui.deleteError.delete', 'Delete'))
   else
   begin
-    DialogSetButtonText(Result, cDlgCmdDelete, 'Retry');
+    DialogSetButtonText(Result, cDlgCmdDelete, T('ui.deleteError.retry', 'Retry'));
     if AQuestion = '' then
-      DialogSetLabelText(Result, 'question', 'Retry permanent delete?');
+      DialogSetLabelText(Result, 'question',
+        T('ui.deleteError.retryQuestion', 'Retry permanent delete?'));
   end;
 end;
 

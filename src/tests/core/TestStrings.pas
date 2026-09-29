@@ -205,6 +205,16 @@ begin
   // translation pass leaves it as whatever the raw JSON placeholder was
   // rather than mistranslating live/dynamic content.
   Assert.IsTrue(FindCtrlText(Decl, 'filename') <> '<missing:filename>', 'filename control exists untouched');
+
+  // The delete-error dialog fills its button and question in code: they
+  // follow the locale too, and the translated title stays.
+  Decl := BuildDeleteErrorDialog('h', 'p', '', 'e', True);
+  Assert.AreEqual('Ошибка', Decl.Title, 'delete error: title translates');
+  Assert.AreEqual('Удалить', FindCtrlText(Decl, cDlgCmdDelete), 'delete error: Delete translates');
+  Decl := BuildDeleteErrorDialog('h', 'p', '', 'e', False);
+  Assert.AreEqual('Повторить', FindCtrlText(Decl, cDlgCmdDelete), 'delete error: Retry translates');
+  Assert.AreEqual('Повторить удаление без корзины?', FindCtrlText(Decl, 'question'),
+    'delete error: the retry question translates');
   SetLocale('en');
 end;
 
