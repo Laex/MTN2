@@ -3,7 +3,9 @@ unit TestDialogButtonPress;
 { Dialog button press: a pressed button is drawn one cell right without its
   shadow; a key runs the command only when the press is released (the press
   timer is a counting stub here); the mouse runs it on release over the same
-  button; Esc and hosts without a press timer run commands at once. }
+  button; Esc and hosts without a press timer run commands at once. Enter
+  and Space hold the button until the key goes up; Esc lifts it without the
+  command. }
 
 interface
 
@@ -22,6 +24,8 @@ type
     [Test] procedure TestMouseRunsOnReleaseOverButton;
     [Test] procedure TestEscAndNoTimerRunAtOnce;
     [Test] procedure TestPressButtonThen;
+    [Test] procedure TestHeldKeyRunsOnKeyUp;
+    [Test] procedure TestCancelHeldPress;
   end;
 
 implementation
@@ -108,8 +112,20 @@ begin
   AHost.HandleInput(Key, [], Ch);
 end;
 
+procedure SendHeldKey(AHost: TDialogHost; AKey: Word; AChar: Char = #0);
+begin
+  GDialogPressHoldKey := AKey;
+  try
+    SendKey(AHost, AKey, AChar);
+  finally
+    GDialogPressHoldKey := 0;
+  end;
+end;
+
 procedure TTestDialogButtonPress.TearDown;
 begin
+  GDialogPressHoldKey := 0;
+  CancelDialogButtonPress;
   FlushDialogButtonPress;
   GDialogButtonPressStart := nil;
 end;
@@ -317,6 +333,69 @@ begin
       end);
     Assert.IsTrue(Ran = 2, 'no such button: runs at once');
     Assert.IsTrue(Fired = '', 'the host command is not involved');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogButtonPress.TestHeldKeyRunsOnKeyUp;
+var
+  Host: TDialogHost;
+begin
+  UsePressTimer;
+  Host := OpenHost;
+  try
+    SendHeldKey(Host, vkReturn);
+    Assert.AreEqual(ButtonIndex(Host, 'ok'), Host.PressedButton, 'Enter holds the default button');
+    Assert.AreEqual(Word(vkReturn), DialogButtonHoldKey, 'held by Enter');
+    Assert.AreEqual(0, Starts, 'a held button starts no press timer');
+    FlushDialogButtonPress;
+    Assert.AreEqual('', Fired, 'the press timer does not release a held button');
+    Assert.IsFalse(DialogButtonKeyUp(vkSpace), 'another key going up does not release it');
+    Assert.AreEqual('', Fired, 'still held');
+
+    Assert.IsTrue(DialogButtonKeyUp(vkReturn), 'Enter going up releases it');
+    Assert.AreEqual('ok;', Fired, 'command runs on key up');
+    Assert.AreEqual(-1, Host.PressedButton, 'button up');
+    Assert.AreEqual(Word(0), DialogButtonHoldKey, 'nothing held');
+    Assert.IsFalse(DialogButtonKeyUp(vkReturn), 'a second key up runs nothing');
+    Assert.AreEqual('ok;', Fired, 'runs once');
+
+    SendKey(Host, vkTab);
+    SendHeldKey(Host, vkSpace, ' ');
+    Assert.AreEqual(ButtonIndex(Host, 'cancel'), Host.PressedButton, 'Space holds the focused button');
+    Assert.IsTrue(DialogButtonKeyUp(vkSpace), 'Space going up releases it');
+    Assert.AreEqual('ok;cancel;', Fired, 'Space: command on key up');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogButtonPress.TestCancelHeldPress;
+var
+  Host: TDialogHost;
+begin
+  UsePressTimer;
+  Host := OpenHost;
+  try
+    SendHeldKey(Host, vkReturn);
+    CancelDialogButtonPress;
+    Assert.AreEqual(-1, Host.PressedButton, 'the button goes up');
+    Assert.AreEqual(Word(0), DialogButtonHoldKey, 'nothing held');
+    Assert.IsFalse(DialogButtonKeyUp(vkReturn), 'the key up after a cancel runs nothing');
+    Assert.AreEqual('', Fired, 'no command');
+    Assert.IsTrue(Host.Visible, 'the dialog stays open');
+
+    SendHeldKey(Host, vkReturn);
+    DialogButtonMouseDown(0, 0);
+    Assert.AreEqual(-1, Host.PressedButton, 'a click lifts the held button');
+    Assert.IsFalse(DialogButtonKeyUp(vkReturn), 'and its key up runs nothing');
+    Assert.AreEqual('', Fired, 'no command after the click');
+
+    SendHeldKey(Host, vkReturn);
+    Host.Close;
+    Assert.AreEqual(Word(0), DialogButtonHoldKey, 'closing the dialog drops the held press');
+    Assert.IsFalse(DialogButtonKeyUp(vkReturn), 'a closed dialog runs nothing');
   finally
     Host.Free;
   end;

@@ -228,6 +228,10 @@ var
   /// While nil (tests, DialogDesigner) buttons fire on mouse down and on the
   /// key itself, without the press.</summary>
   GDialogButtonPressStart: TProc = nil;
+  /// <summary>Set by the main form while it handles the key down of Enter or
+  /// Space: a button that key presses stays down until the key goes up
+  /// (DialogButtonKeyUp) instead of for cDialogButtonPressMs.</summary>
+  GDialogPressHoldKey: Word = 0;
 
 /// <summary>Releases the keyboard-pressed button, if any, and runs its
 /// command. The press timer calls it; so does the main form before handling
@@ -235,10 +239,17 @@ var
 procedure FlushDialogButtonPress;
 /// <summary>A button pressed from the keyboard is waiting for its release.</summary>
 function DialogButtonPressPending: Boolean;
+/// <summary>The key holding a pressed button (GDialogPressHoldKey), 0 when
+/// no button is held by a key.</summary>
+function DialogButtonHoldKey: Word;
+/// <summary>Key up: when AKey holds a button, releases it and runs its command.</summary>
+function DialogButtonKeyUp(AKey: Word): Boolean;
+/// <summary>The held or keyboard-pressed button goes up without its command.</summary>
+procedure CancelDialogButtonPress;
 /// <summary>A button holds the mouse (pressed, waiting for the release).</summary>
 function DialogButtonCaptured: Boolean;
-/// <summary>Main form, before routing a left mouse-down: completes a
-/// keyboard press (FlushDialogButtonPress) and remembers the screen cell, so
+/// <summary>Main form, before routing a left mouse-down: lifts a button held
+/// by a key, completes a timed keyboard press and remembers the screen cell, so
 /// a button this click captures maps later moves and the release to the
 /// dialog's own coordinates.</summary>
 procedure DialogButtonMouseDown(AAbsCol, AAbsRow: Integer);
@@ -256,6 +267,7 @@ uses
 
 var
   GPressHost: TDialogHost = nil;
+  GPressHoldKey: Word = 0;
   GCaptureHost: TDialogHost = nil;
   GCaptureDX: Integer = 0;
   GCaptureDY: Integer = 0;
@@ -267,7 +279,8 @@ var
   Host: TDialogHost;
 begin
   Host := GPressHost;
-  if Host = nil then
+  // A held button waits for its key to go up.
+  if (Host = nil) or (GPressHoldKey <> 0) then
     Exit;
   GPressHost := nil;
   Host.RunPendingPress;
@@ -278,6 +291,33 @@ begin
   Result := GPressHost <> nil;
 end;
 
+function DialogButtonHoldKey: Word;
+begin
+  if GPressHost = nil then
+    GPressHoldKey := 0;
+  Result := GPressHoldKey;
+end;
+
+function DialogButtonKeyUp(AKey: Word): Boolean;
+begin
+  Result := (DialogButtonHoldKey <> 0) and (AKey = GPressHoldKey);
+  if not Result then
+    Exit;
+  GPressHoldKey := 0;
+  FlushDialogButtonPress;
+end;
+
+procedure CancelDialogButtonPress;
+var
+  Host: TDialogHost;
+begin
+  Host := GPressHost;
+  if Host = nil then
+    Exit;
+  Host.DropPress;
+  Host.NotifyChanged;
+end;
+
 function DialogButtonCaptured: Boolean;
 begin
   Result := GCaptureHost <> nil;
@@ -285,6 +325,9 @@ end;
 
 procedure DialogButtonMouseDown(AAbsCol, AAbsRow: Integer);
 begin
+  // A click lifts a button held by a key; a timed press completes.
+  if DialogButtonHoldKey <> 0 then
+    CancelDialogButtonPress;
   FlushDialogButtonPress;
   GMouseDownCol := AAbsCol;
   GMouseDownRow := AAbsRow;
@@ -1243,7 +1286,10 @@ end;
 procedure TDialogHost.DropPress;
 begin
   if GPressHost = Self then
+  begin
     GPressHost := nil;
+    GPressHoldKey := 0;
+  end;
   if GCaptureHost = Self then
     GCaptureHost := nil;
   FPendingAction := nil;
@@ -1287,7 +1333,10 @@ begin
   FPendingGen := FOpenGen;
   GPressHost := Self;
   NotifyChanged;
-  GDialogButtonPressStart();
+  if GDialogPressHoldKey <> 0 then
+    GPressHoldKey := GDialogPressHoldKey
+  else
+    GDialogButtonPressStart();
 end;
 
 procedure TDialogHost.PressButton(AIndex: Integer);

@@ -2037,7 +2037,11 @@ begin
     DialogButtonMouseDown(Col, Row);
   end
   else
+  begin
+    if DialogButtonHoldKey <> 0 then
+      CancelDialogButtonPress;
     FlushDialogButtonPress;
+  end;
 
   FMdi.ActivateAt(Col, Row);
   if TryDispatchActiveMdiMouseDown(Col, Row, Shift, Button) then
@@ -2441,6 +2445,7 @@ procedure TMainForm.KeyDown(var Key: Word; var KeyChar: System.WideChar;
 var
   K: Word;
   C: Char;
+  Handled: Boolean;
 begin
   SyncKeyModifiers(Shift);
   K := Key;
@@ -2452,6 +2457,26 @@ begin
     KeyChar := #0;
     Exit;
   end;
+  // Enter variants -> vkReturn; AltGr+Enter -> Alt+Enter (Properties), not
+  // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.
+  NormalizeKeyInput(K, C, Shift, IsAltGrDown);
+  // A button held by Enter or Space: Esc lifts it without the command, other
+  // keys (autorepeat, the WM_CHAR twin) are swallowed. A key up lost to
+  // another window (GetKeyState says the key is up) lifts it too.
+  if DialogButtonHoldKey <> 0 then
+  begin
+    if (GetKeyState(DialogButtonHoldKey) >= 0) or (K = vkEscape) then
+    begin
+      CancelDialogButtonPress;
+      Recompose;
+    end;
+    if (DialogButtonHoldKey <> 0) or (K = vkEscape) then
+    begin
+      Key := 0;
+      KeyChar := #0;
+      Exit;
+    end;
+  end;
   // A dialog button still showing its keyboard press runs its command
   // before this key is handled.
   if DialogButtonPressPending then
@@ -2459,16 +2484,27 @@ begin
     FlushDialogButtonPress;
     Recompose;
   end;
-  // Enter variants -> vkReturn; AltGr+Enter -> Alt+Enter (Properties), not
-  // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.
-  NormalizeKeyInput(K, C, Shift, IsAltGrDown);
   if TryHandleZoom(K, C, Shift) then
   begin
     Key := 0;
     KeyChar := #0;
     Exit;
   end;
-  if DispatchTerminalKey(K, C, Shift) then
+  // Plain Enter / Space that presses a dialog button holds it until key up.
+  if Shift * [ssCtrl, ssAlt] <> [] then
+    GDialogPressHoldKey := 0
+  else if K = vkReturn then
+    GDialogPressHoldKey := vkReturn
+  else if (K = vkSpace) or ((K = 0) and (C = ' ')) then
+    GDialogPressHoldKey := vkSpace
+  else
+    GDialogPressHoldKey := 0;
+  try
+    Handled := DispatchTerminalKey(K, C, Shift);
+  finally
+    GDialogPressHoldKey := 0;
+  end;
+  if Handled then
   begin
     Key := 0;
     KeyChar := #0;
@@ -2483,6 +2519,13 @@ begin
   SyncKeyModifiers(Shift);
   if IsModifierOnlyKey(Key) then
   begin
+    Key := 0;
+    KeyChar := #0;
+    Exit;
+  end;
+  if DialogButtonKeyUp(Key) then
+  begin
+    Recompose;
     Key := 0;
     KeyChar := #0;
     Exit;

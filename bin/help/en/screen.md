@@ -10,7 +10,7 @@ From top to bottom:
 
 The **console** lives under the panels: **Ctrl+O** (or **Esc** with the focus on the panel) hides the panels and shows the command output.
 
-**Dialog buttons** press like real ones: a pressed button moves right and covers its shadow. With the mouse the command runs when the mouse button is released over the same button; move the pointer away and release there, and nothing happens. From the keyboard (Enter, Space, the underlined letter, Y / N) the button goes down for a moment and then fires. **Esc** closes the dialog at once.
+**Dialog buttons** press like real ones: a pressed button moves right and covers its shadow. With the mouse the command runs when the mouse button is released over the same button; move the pointer away and release there, and nothing happens. Enter and Space hold the button down until the key is released, and the command runs on release; pressing **Esc** meanwhile lifts the button without running the command and leaves the dialog open. The underlined letter and Y / N push the button down for a moment and then fire it. Otherwise **Esc** closes the dialog at once.
 
 **F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. **F10** – quit.
 
