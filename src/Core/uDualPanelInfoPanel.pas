@@ -15,6 +15,10 @@ procedure DrawPanelInfoContent(const ABuffer: TTerminalGrid;
   AFrame, ABodyBg: TAlphaColor; const APath: string;
   ABytes: Int64; AFiles, AFolders: Integer);
 
+/// <summary>A bar AWidth cells wide: APercent of it filled (full blocks),
+/// the rest light shade.</summary>
+function InfoPercentBar(APercent, AWidth: Integer): string;
+
 implementation
 
 uses
@@ -23,6 +27,20 @@ uses
 const
   cFileFg   = TAlphaColor($FFAAAAAA);
   cHeaderFg = TAlphaColor($FF55FFFF);
+  cBarFull  = #$2588;
+  cBarEmpty = #$2591;
+  /// <summary>Narrower room than this shows no bar.</summary>
+  cMinBarWidth = 4;
+
+function InfoPercentBar(APercent, AWidth: Integer): string;
+var
+  Full: Integer;
+begin
+  if AWidth <= 0 then
+    Exit('');
+  Full := EnsureRange(Round(EnsureRange(APercent, 0, 100) * AWidth / 100), 0, AWidth);
+  Result := StringOfChar(cBarFull, Full) + StringOfChar(cBarEmpty, AWidth - Full);
+end;
 
 procedure DrawPanelInfoContent(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
@@ -88,10 +106,12 @@ var
     Inc(Y);
   end;
 
-  procedure PutLR(const AKey, AValue: string);
+  // APercent >= 0 adds a bar between the key and the value, one blank
+  // cell away from each.
+  procedure PutLR(const AKey, AValue: string; APercent: Integer = -1);
   var
-    KeyPart, ValPart: string;
-    Gap, I: Integer;
+    KeyPart, ValPart, Bar: string;
+    Gap, I, Full: Integer;
     Line: string;
   begin
     if (AValue = '') or (Y > MaxY) then
@@ -113,6 +133,16 @@ var
       Line := Line + ' ';
     PutRaw(X, Y, Copy(Line, 1, Length(KeyPart) + Gap), Fg);
     PutRaw(X + Length(KeyPart) + Gap, Y, ValPart, ValFg);
+    if (APercent >= 0) and (Gap - 2 >= cMinBarWidth) then
+    begin
+      // Filled part in the value colour, the rest in the frame colour.
+      Bar := InfoPercentBar(APercent, Gap - 2);
+      Full := Pos(cBarEmpty, Bar) - 1;
+      if Full < 0 then
+        Full := Length(Bar);
+      PutRaw(X + Length(KeyPart) + 1, Y, Copy(Bar, 1, Full), ValFg);
+      PutRaw(X + Length(KeyPart) + 1 + Full, Y, Copy(Bar, Full + 1, MaxInt), AFrame);
+    end;
     Inc(Y);
   end;
 
@@ -202,8 +232,11 @@ begin
     if Used < 0 then
       Used := 0;
     PutLR(T('ui.info.spaceTotal', 'Space, total:'), FormatSizeFar(Info.TotalBytes));
-    PutLR(T('ui.info.spaceAvailable', 'Space, available:'), FormatPctSize(Info.FreeBytes, Info.TotalBytes));
-    PutLR(T('ui.info.spaceUsed', 'Space, used:'), FormatPctSize(Used, Info.TotalBytes));
+    PutLR(T('ui.info.spaceAvailable', 'Space, available:'),
+      FormatPctSize(Info.FreeBytes, Info.TotalBytes),
+      PercentOfTotal(Info.FreeBytes, Info.TotalBytes));
+    PutLR(T('ui.info.spaceUsed', 'Space, used:'), FormatPctSize(Used, Info.TotalBytes),
+      PercentOfTotal(Used, Info.TotalBytes));
     if Info.LabelOrPath <> '' then
       PutLR(T('ui.info.volumeLabel', 'Volume label:'), Info.LabelOrPath);
     Serial := FormatVolumeSerial(Info.SerialNumber);
@@ -224,7 +257,8 @@ begin
   if GlobalMemoryStatusEx(Mem) then
   begin
     PutSection(T('ui.info.memory', 'Memory'));
-    PutLR(T('ui.info.memoryLoad', 'Memory load:'), Format('%d%%', [Mem.dwMemoryLoad]));
+    PutLR(T('ui.info.memoryLoad', 'Memory load:'), Format('%d%%', [Mem.dwMemoryLoad]),
+      Integer(Mem.dwMemoryLoad));
     PutLR(T('ui.info.totalPhysical', 'Total Physical:'), FormatByteCount(Int64(Mem.ullTotalPhys)));
     PutLR(T('ui.info.availPhysical', 'Avail Physical:'), FormatByteCount(Int64(Mem.ullAvailPhys)));
     PutLR(T('ui.info.totalPageFile', 'Total PageFile:'), FormatByteCount(Int64(Mem.ullTotalPageFile)));

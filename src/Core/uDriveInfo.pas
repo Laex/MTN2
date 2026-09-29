@@ -70,6 +70,9 @@ function FormatByteCount(ABytes: Int64): string;
 /// <summary>FAR-style size: 10.0 GB / 63.2 MB / 1 234.</summary>
 function FormatSizeFar(ABytes: Int64): string;
 function FormatPctSize(APart, ATotal: Int64): string;
+/// <summary>APart of ATotal in whole percent, 0..100; -1 when ATotal is not
+/// positive. The same rounding as FormatPctSize.</summary>
+function PercentOfTotal(APart, ATotal: Int64): Integer;
 /// <summary>'C:\Work' -> 'C'; UNC / empty / relative -> #0.</summary>
 function DriveLetterFromPath(const APath: string): Char;
 function IndexOfDriveLetter(const ADrives: TDriveInfoArray; ALetter: Char): Integer;
@@ -281,14 +284,18 @@ begin
     Result := Format('%.2f TB', [ABytes / TB]);
 end;
 
+function PercentOfTotal(APart, ATotal: Int64): Integer;
+begin
+  if ATotal <= 0 then
+    Exit(-1);
+  Result := EnsureRange(Round(100.0 * APart / ATotal), 0, 100);
+end;
+
 function FormatPctSize(APart, ATotal: Int64): string;
-var
-  Pct: Integer;
 begin
   if ATotal <= 0 then
     Exit(FormatSizeFar(APart));
-  Pct := EnsureRange(Round(100.0 * APart / ATotal), 0, 100);
-  Result := Format('%d%%, %s', [Pct, FormatSizeFar(APart)]);
+  Result := Format('%d%%, %s', [PercentOfTotal(APart, ATotal), FormatSizeFar(APart)]);
 end;
 
 function FillVolumeDetails(var AInfo: TDriveInfo; ADriveType: Cardinal): Boolean;

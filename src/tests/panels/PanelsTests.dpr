@@ -11,6 +11,7 @@ uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestButtonTextClip in 'TestButtonTextClip.pas',
   TestChromeRows in 'TestChromeRows.pas',
+  TestInfoPanelBar in 'TestInfoPanelBar.pas',
   TestColorCodingMerge in 'TestColorCodingMerge.pas',
   TestColorSampleRender in 'TestColorSampleRender.pas',
   TestDialogButtonPress in 'TestDialogButtonPress.pas',
