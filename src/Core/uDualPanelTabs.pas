@@ -20,6 +20,8 @@ uses
 const
   /// <summary>Close-button character inside tab captions (ASCII 'x').</summary>
   cTabCloseChar = 'x';
+  /// <summary>The button after the last panel tab that adds a new one.</summary>
+  cPanelTabPlus = '[+]';
 
 { --- Caption helpers ------------------------------------------------------- }
 
@@ -55,6 +57,10 @@ function PanelTabHeadX(const ABounds: TRectI): Integer;
 procedure ComputePanelTabLayout(const APanel: TPanelState; const ABounds: TRectI;
   out ATabsRight, ATabMaxLen: Integer);
 
+/// <summary>Column of the [+] button after the last panel tab, -1 when the
+/// tabs fill the row and it does not fit.</summary>
+function PanelTabPlusCol(const APanel: TPanelState; const ABounds: TRectI): Integer;
+
 { --- Hit-testing ----------------------------------------------------------- }
 
 /// <summary>Find which workspace tab (if any) a column click falls on.
@@ -63,6 +69,10 @@ procedure ComputePanelTabLayout(const APanel: TPanelState; const ABounds: TRectI
 /// Returns True when hit; sets AIndex and AIsClose.</summary>
 function HitWorkspaceTabAtCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
   ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
+
+/// <summary>True when column ACol on the tab row is the panel's [+] button.</summary>
+function HitPanelPlusAtCol(const APanel: TPanelState; const ABounds: TRectI;
+  ACol: Integer): Boolean;
 
 /// <summary>Find which panel tab (if any) a column click within ABounds falls on.
 /// ABounds - outer frame rect of the panel.
@@ -219,7 +229,42 @@ begin
   if Length(APanel.Tabs) > 1 then
     Inc(ChromeLen, 2); // ' x'
   Inc(ChromeLen); // separator before the next tab
-  ATabMaxLen := Max((ATabsRight - PanelTabHeadX(ABounds)) div TabCount - ChromeLen, 3);
+  // The [+] button after the last tab takes its share of the row.
+  ATabMaxLen := Max((ATabsRight - PanelTabHeadX(ABounds) - Length(cPanelTabPlus) - 1) div
+    TabCount - ChromeLen, 3);
+end;
+
+function PanelTabPlusCol(const APanel: TPanelState; const ABounds: TRectI): Integer;
+var
+  I, HeadX, TabsRight, TabMaxLen: Integer;
+  Cap: string;
+  ShowClose: Boolean;
+begin
+  ShowClose := Length(APanel.Tabs) > 1;
+  HeadX := PanelTabHeadX(ABounds);
+  ComputePanelTabLayout(APanel, ABounds, TabsRight, TabMaxLen);
+  for I := 0 to High(APanel.Tabs) do
+  begin
+    Cap := PanelTabCaption(
+      VfsUriDirTabTitle(APanel.Tabs[I].CurrentURI, TabMaxLen), ShowClose);
+    if HeadX + Length(Cap) >= TabsRight then
+      Exit(-1);
+    Inc(HeadX, Length(Cap));
+    if (I < High(APanel.Tabs)) and (HeadX < TabsRight) then
+      Inc(HeadX);
+  end;
+  Result := HeadX + 1;
+  if Result + Length(cPanelTabPlus) > TabsRight then
+    Result := -1;
+end;
+
+function HitPanelPlusAtCol(const APanel: TPanelState; const ABounds: TRectI;
+  ACol: Integer): Boolean;
+var
+  Col: Integer;
+begin
+  Col := PanelTabPlusCol(APanel, ABounds);
+  Result := (Col >= 0) and (ACol >= Col) and (ACol < Col + Length(cPanelTabPlus));
 end;
 
 { =========================================================================

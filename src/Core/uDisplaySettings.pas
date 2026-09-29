@@ -39,8 +39,10 @@ type
     ShowPanelIcons: Boolean;
     /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
     ShowNotifications: Boolean;
-    /// <summary>Chrome rows (uChromeRows): the menu bar, the F-key bar and
-    /// the status line. A hidden row goes to the content.</summary>
+    /// <summary>Chrome (uChromeRows): the native title bar, the menu bar, the
+    /// F-key bar and the status line. A hidden row goes to the content; a
+    /// hidden title bar moves the window buttons into the menu or tab bar.</summary>
+    ShowTitleBar: Boolean;
     ShowMenuBar: Boolean;
     ShowKeyBar: Boolean;
     ShowStatusLine: Boolean;
@@ -300,6 +302,7 @@ begin
   Result.CursorBlinkMs := cDisplayDefaultBlinkMs;
   Result.ShowPanelIcons := True;
   Result.ShowNotifications := True;
+  Result.ShowTitleBar := True;
   Result.ShowMenuBar := True;
   Result.ShowKeyBar := True;
   Result.ShowStatusLine := True;

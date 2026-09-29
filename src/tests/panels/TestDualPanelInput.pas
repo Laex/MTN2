@@ -53,6 +53,11 @@ type
     procedure ExternalEdit;
     procedure CompareFolders;
     procedure RequestQuit;
+    procedure NewTab;
+    procedure NextTab;
+    procedure PrevTab;
+    procedure NewWorkspace;
+    procedure CloseTab(ASide: TPanelSide);
     procedure TogglePanel(ASide: TPanelSide);
     procedure BeginJob(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean);
     procedure OpenViewOrEdit(AEdit: Boolean);
@@ -97,10 +102,7 @@ type
     procedure SwitchSide;
     procedure GoToParent;
     procedure NewTab;
-    procedure NewWs;
     procedure NextTab;
-    procedure Refresh;
-    procedure SelectAll;
     function Hotlist(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function DispatchFunc(AAction: TKeymapAction; var AKey: Word;
       var AKeyChar: Char): Boolean;
@@ -172,6 +174,32 @@ begin
   Last := 'quit';
 end;
 
+procedure TKeymapSpy.NewTab;
+begin
+  Last := 'newtab';
+end;
+
+procedure TKeymapSpy.NextTab;
+begin
+  Last := 'nexttab';
+end;
+
+procedure TKeymapSpy.PrevTab;
+begin
+  Last := 'prevtab';
+end;
+
+procedure TKeymapSpy.NewWorkspace;
+begin
+  Last := 'newws';
+end;
+
+procedure TKeymapSpy.CloseTab(ASide: TPanelSide);
+begin
+  Last := 'closetab';
+  Side := ASide;
+end;
+
 procedure TKeymapSpy.TogglePanel(ASide: TPanelSide);
 begin
   Last := 'toggle';
@@ -231,6 +259,11 @@ procedure BindSpy(var AHost: TDualPanelKeymapHost; ASpy: TKeymapSpy);
 begin
   FillChar(AHost, SizeOf(AHost), 0);
   AHost.ActiveSide := ASpy.ActiveSide;
+  AHost.NewPanelTab := ASpy.NewTab;
+  AHost.NextPanelTab := ASpy.NextTab;
+  AHost.PrevPanelTab := ASpy.PrevTab;
+  AHost.NewWorkspace := ASpy.NewWorkspace;
+  AHost.ClosePanelTabOnSide := ASpy.CloseTab;
   AHost.CopyFullPathToClipboard := ASpy.CopyFullPath;
   AHost.CopyItemNameToClipboard := ASpy.CopyItemName;
   AHost.ShowProperties := ASpy.ShowProperties;
@@ -260,8 +293,9 @@ begin
   LAction := TDualPanelInputHandler.TranslateShortcut(vkF8, [], #0);
   Assert.IsTrue(LAction = iaDelete, 'F8 should translate to iaDelete');
 
-  LAction := TDualPanelInputHandler.TranslateShortcut(vkO, [ssCtrl], #0);
-  Assert.IsTrue(LAction = iaToggleConsole, 'Ctrl+O should translate to iaToggleConsole');
+  // Ctrl+O is the global AppConsoleToggle; the panels' own ConsoleToggle is Esc.
+  LAction := TDualPanelInputHandler.TranslateShortcut(vkEscape, [], #0);
+  Assert.IsTrue(LAction = iaToggleConsole, 'Esc should translate to iaToggleConsole');
 
   Assert.IsTrue(TDualPanelInputHandler.IsNavigationKey(vkUp), 'vkUp should be navigation key');
   Assert.IsTrue(not TDualPanelInputHandler.IsNavigationKey(vkF1), 'vkF1 should not be navigation key');
@@ -343,6 +377,30 @@ begin
     Assert.IsTrue(Spy.Last = 'quit', 'quit host called');
     Assert.IsTrue(Key = 0, 'kaQuit consumes AKey');
     Assert.IsTrue(KeyChar = 'X', 'kaQuit must not clear AKeyChar');
+
+    Key := Ord('W');
+    KeyChar := 'w';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaCloseTab, Key, KeyChar),
+      'kaCloseTab is primary');
+    Assert.AreEqual('closetab', Spy.Last, 'Ctrl+W closes a panel tab');
+    Assert.IsTrue(Spy.Side = Spy.ActiveSide, 'the tab of the active side');
+    Assert.AreEqual(Word(0), Key, 'kaCloseTab consumes the key');
+
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaNewTab, Key, KeyChar), 'kaNewTab is primary');
+    Assert.AreEqual('newtab', Spy.Last, 'NewTab opens a panel tab');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaNextPanelTab, Key, KeyChar),
+      'kaNextPanelTab is primary');
+    Assert.AreEqual('nexttab', Spy.Last, 'NextPanelTab cycles the panel tabs');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaPrevPanelTab, Key, KeyChar),
+      'kaPrevPanelTab is primary');
+    Assert.AreEqual('prevtab', Spy.Last, 'PrevPanelTab cycles back');
+    Spy.Last := '';
+    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaNewWorkspace, Key, KeyChar),
+      'kaNewWorkspace is primary');
+    Assert.AreEqual('newws', Spy.Last, 'NewWorkspace opens a workspace');
 
     Key := vkF1;
     KeyChar := 'L';
@@ -523,10 +581,7 @@ end;
 procedure TFreeInputSpy.SwitchSide; begin Last := 'switch'; end;
 procedure TFreeInputSpy.GoToParent; begin Last := 'parent'; end;
 procedure TFreeInputSpy.NewTab; begin Last := 'newtab'; end;
-procedure TFreeInputSpy.NewWs; begin Last := 'newws'; end;
 procedure TFreeInputSpy.NextTab; begin Last := 'nexttab'; end;
-procedure TFreeInputSpy.Refresh; begin Last := 'refresh'; end;
-procedure TFreeInputSpy.SelectAll; begin Last := 'selectall'; end;
 function TFreeInputSpy.Hotlist(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
 begin
   Result := HotlistHandled;
@@ -565,11 +620,6 @@ begin
   AHost.HandleCmdLineInput := ASpy.CmdLine;
   AHost.SwitchSide := ASpy.SwitchSide;
   AHost.GoToParent := ASpy.GoToParent;
-  AHost.NewPanelTab := ASpy.NewTab;
-  AHost.NewWorkspace := ASpy.NewWs;
-  AHost.NextPanelTab := ASpy.NextTab;
-  AHost.RefreshActive := ASpy.Refresh;
-  AHost.SelectAllActive := ASpy.SelectAll;
   AHost.TryHotlistJump := ASpy.Hotlist;
   AHost.DispatchKeymapFunctionKeys := ASpy.DispatchFunc;
   AHost.OpenViewOrEdit := ASpy.ViewEdit;
@@ -608,15 +658,17 @@ begin
   Assert.IsTrue(not ShouldOfferTopMenu(wkPanels, True), 'dialog hides top menu');
   Assert.IsTrue(not ShouldOfferTopMenu(wkDocument, True), 'dialog hides menu on document');
   P := GetDefaultNDNProfile;
-  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], False) = kaNextTab,
-    'Ctrl+Tab cycles');
-  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssAlt], False) = kaNextTab,
-    'Ctrl+Tab cycles with leftover Alt');
-  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssShift], False) = kaPrevTab,
-    'Ctrl+Shift+Tab cycles back');
-  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl, ssShift, ssAlt], False) =
-    kaPrevTab, 'Ctrl+Shift+Tab cycles back with leftover Alt');
-  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], True) = kaNone,
+  // Ctrl+Tab is the tabs of the active panel (a panels action, run through
+  // TDualPanelWindow.CycleTab); the workspaces are Ctrl+Alt+PgDn / PgUp.
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], False) = kaNone,
+    'Ctrl+Tab is not a global action');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkNext, #0, [ssCtrl, ssAlt], False) = kaNextTab,
+    'Ctrl+Alt+PgDn: next workspace');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkPrior, #0, [ssCtrl, ssAlt], False) = kaPrevTab,
+    'Ctrl+Alt+PgUp: previous workspace');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkNext, #0, [ssCtrl], False) = kaNone,
+    'Ctrl+PgDn is the panels'' folder down');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkNext, #0, [ssCtrl, ssAlt], True) = kaNone,
     'dialog blocks cycle');
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('O'), #0, [ssCtrl], False) =
     kaAppConsoleToggle, 'Ctrl+O console');
@@ -654,8 +706,8 @@ begin
     'F10 goes to the terminal');
   Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkF10, #0, [], False) = kaNone,
     'F10 closes a document');
-  Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkTab, #0, [ssCtrl], False) =
-    kaNextTab, 'Ctrl+Tab from a document');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkNext, #0, [ssCtrl, ssAlt], False) =
+    kaNextTab, 'Ctrl+Alt+PgDn from a document');
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('X'), #0, [ssAlt], True) = kaNone,
     'dialog blocks Alt+X');
   Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkF9, #0, [], False) = kaTopMenu, 'F9 menu');
@@ -945,11 +997,14 @@ begin
       'Ctrl+Tab is not a built-in panel key');
     Assert.IsTrue(Spy.Last <> 'switch', 'Ctrl+Tab does not switch panel side');
 
+    // The tab keys (Ctrl+T, Ctrl+Shift+T, Ctrl+W, Ctrl+Shift+W) are keymap
+    // actions, run by the primary keymap dispatch; not panel keys of their own.
     Key := Ord('T');
     Ch := 't';
-    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl, ssShift], Ch),
-      'Ctrl+Shift+T handled');
-    Assert.IsTrue(Spy.Last = 'newtab', 'Ctrl+Shift+T new panel tab');
+    Assert.IsTrue(not DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl, ssShift], Ch),
+      'Ctrl+Shift+T is not a built-in panel key');
+    Assert.IsTrue(not DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl], Ch),
+      'Ctrl+T is not a built-in panel key');
 
     Key := vkNumpad5;
     Ch := 'x';

@@ -26,7 +26,7 @@ procedure SkipFinalizationOnExit;
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils,
+  Winapi.Windows, System.SysUtils, System.IOUtils, uConfigLocation,
   DUnitX.TestFramework, DUnitX.Loggers.Console, DUnitX.Loggers.Xml.NUnit;
 
 var
@@ -41,7 +41,12 @@ procedure RunRegisteredTests;
 var
   Runner: ITestRunner;
   Results: IRunResults;
+  ConfigDir: string;
 begin
+  // Settings files come from an empty folder of their own, so a run sees the
+  // built-in defaults whatever keymap.json or session.json the machine has.
+  ConfigDir := TPath.Combine(TPath.GetTempPath, 'mtn2-tests-' + IntToStr(GetCurrentProcessId));
+  SetConfigDirectoryOverride(ConfigDir);
   try
     TDUnitX.CheckCommandLine;
     Runner := TDUnitX.CreateRunner;
@@ -66,6 +71,13 @@ begin
       Writeln(E.ClassName, ': ', E.Message);
       System.ExitCode := EXIT_ERRORS;
     end;
+  end;
+  SetConfigDirectoryOverride('');
+  try
+    if TDirectory.Exists(ConfigDir) then
+      TDirectory.Delete(ConfigDir, True);
+  except
+    // A file still held open by a stray worker thread; the temp folder stays.
   end;
   if GSkipFinalization then
   begin

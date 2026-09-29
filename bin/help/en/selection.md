@@ -4,8 +4,7 @@
 | --- | --- |
 | Ins | select / deselect and move down |
 | Shift+arrows, Shift+Home/End/PgUp/PgDn | select as the cursor moves |
-| Ctrl+A | select all |
-| Ctrl+I | invert the selection |
+| Shift+Gray + | select all |
 | Gray + / Gray − | select / deselect by mask (`*.txt`, `a*.*`) |
 | Gray * | invert the selection |
 | Ctrl+Gray + / Ctrl+Gray − | select / deselect files with the same extension as the one under the cursor |

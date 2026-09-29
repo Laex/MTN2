@@ -11,6 +11,8 @@ type
   public
     [Test] procedure Run;
     [Test] procedure TestContexts;
+    [Test] procedure NoChordIsBoundTwiceInOneContext;
+    [Test] procedure OverridesHoldOnlyWhatChanged;
   end;
 
 implementation
@@ -96,6 +98,22 @@ begin
   Assert.IsTrue(Act = kaWorkspaceLibrary, 'Ctrl+Shift+D should match kaWorkspaceLibrary');
   Act := MatchAction(Profile, Ord('D'), [ssCtrl, ssAlt, ssShift]);
   Assert.IsTrue(Act = kaWorkspaceSave, 'Ctrl+Alt+Shift+D should match kaWorkspaceSave');
+  Act := MatchAction(Profile, vkTab, [ssCtrl]);
+  Assert.IsTrue(Act = kaNextPanelTab, 'Ctrl+Tab should match kaNextPanelTab');
+  Act := MatchAction(Profile, vkTab, [ssCtrl, ssShift]);
+  Assert.IsTrue(Act = kaPrevPanelTab, 'Ctrl+Shift+Tab should match kaPrevPanelTab');
+  Act := MatchAction(Profile, Ord('T'), [ssCtrl]);
+  Assert.IsTrue(Act = kaNewTab, 'Ctrl+T should match kaNewTab');
+  Act := MatchAction(Profile, vkNext, [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaNextTab, 'Ctrl+Alt+PgDn should match kaNextTab');
+  Act := MatchAction(Profile, vkPrior, [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaPrevTab, 'Ctrl+Alt+PgUp should match kaPrevTab');
+  Act := MatchAction(Profile, Ord('W'), [ssCtrl]);
+  Assert.IsTrue(Act = kaCloseTab, 'Ctrl+W should match kaCloseTab');
+  Act := MatchAction(Profile, Ord('W'), [ssCtrl, ssShift]);
+  Assert.IsTrue(Act = kaNewWorkspace, 'Ctrl+Shift+W should match kaNewWorkspace');
+  Assert.IsTrue(TryKeymapActionByName('NewWorkspace', Act) and (Act = kaNewWorkspace),
+    'keymap.json name "NewWorkspace"');
 
   Act := MatchAction(Profile, Ord('C'), [ssCtrl]);
   Assert.IsTrue(Act = kaEditCopy, 'Ctrl+C should match kaEditCopy');
@@ -110,10 +128,18 @@ begin
   Act := MatchAction(Profile, vkInsert, [ssShift]);
   Assert.IsTrue(Act = kaEditPaste, 'Shift+Ins should match kaEditPaste');
 
+  // FAR: Ctrl+A is the file attributes, Shift+Gray + selects all files,
+  // Alt+F6 creates a link, Ctrl+I is the panel filter; Gray * inverts.
   Act := MatchAction(Profile, Ord('A'), [ssCtrl]);
-  Assert.IsTrue(Act = kaSelectAll, 'Ctrl+A should match kaSelectAll');
-  Act := MatchAction(Profile, Ord('A'), [ssCtrl, ssShift]);
-  Assert.IsTrue(Act = kaSetAttributes, 'Ctrl+Shift+A should match kaSetAttributes');
+  Assert.IsTrue(Act = kaSetAttributes, 'Ctrl+A should match kaSetAttributes');
+  Act := MatchAction(Profile, vkAdd, [ssShift]);
+  Assert.IsTrue(Act = kaSelectAll, 'Shift+Gray + should match kaSelectAll');
+  Act := MatchAction(Profile, vkAdd, []);
+  Assert.IsTrue(Act = kaSelectByMask, 'Gray + still selects by mask');
+  Act := MatchAction(Profile, vkF6, [ssAlt]);
+  Assert.IsTrue(Act = kaCreateLink, 'Alt+F6 should match kaCreateLink');
+  Act := MatchAction(Profile, Ord('I'), [ssCtrl]);
+  Assert.IsTrue(Act = kaLiveFilter, 'Ctrl+I should match kaLiveFilter');
 
   Act := MatchAction(Profile, 221 {vkOemCloseBrackets}, [ssCtrl]);
   Assert.IsTrue(Act = kaEqualizeOtherPanel, 'Ctrl+] should match kaEqualizeOtherPanel');
@@ -230,7 +256,72 @@ begin
   Assert.IsTrue(TryKeymapActionByName('DocHex', Act) and (Act = kaDocHex), 'names resolve');
 end;
 
+procedure TestNoChordIsBoundTwiceInOneContext;
+var
+  Profile: TKeymapProfile;
+  A, B: TKeymapAction;
+  I, J: Integer;
+  X, Y: TKeyBinding;
+  Clash: string;
+begin
+  // Two actions on one chord in the same window context: the first one in
+  // the action list would take the key and the other could never be pressed.
+  // A Global action sits above every window context, so it counts against all.
+  Profile := LoadDefaultKeymapProfile;
+  Clash := '';
+  for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+    for B := Succ(A) to High(TKeymapAction) do
+      if (KeymapActionContext(A) = KeymapActionContext(B)) or
+         (KeymapActionContext(A) = kcGlobal) or (KeymapActionContext(B) = kcGlobal) then
+        for I := 0 to High(Profile.Bindings[A]) do
+          for J := 0 to High(Profile.Bindings[B]) do
+          begin
+            X := Profile.Bindings[A][I];
+            Y := Profile.Bindings[B][J];
+            if SameKeyBinding(X, Y) and
+               ((KeymapActionContext(A) = KeymapActionContext(B)) or
+                (KeymapActionContext(A) = kcGlobal) or (KeymapActionContext(B) = kcGlobal)) then
+              Clash := Clash + KeymapActionDisplayName(A) + ' / ' +
+                KeymapActionDisplayName(B) + ' on ' + KeyBindingToStr(X) + '; ';
+          end;
+  Assert.AreEqual('', Clash, 'default keys bound twice');
+end;
+
+procedure TestOverridesHoldOnlyWhatChanged;
+var
+  Profile, Merged: TKeymapProfile;
+  Json: string;
+begin
+  Profile := LoadDefaultKeymapProfile;
+  Assert.AreEqual('{"bindings":{}}', KeymapOverridesToJson(Profile),
+    'the built-in keymap has nothing to override');
+
+  // One action moved, one left without a key.
+  Profile.Bindings[kaMkDir] := [KeyBinding(vkF9, False, True, False)];
+  SetLength(Profile.Bindings[kaWipe], 0);
+  Json := KeymapOverridesToJson(Profile);
+  Assert.IsTrue(Pos('"MkDir"', Json) > 0, 'the moved action is listed');
+  Assert.IsTrue(Pos('"Wipe"', Json) > 0, 'the unbound action is listed, with an empty list');
+  Assert.IsTrue(Pos('"Copy"', Json) = 0, 'an action left as it was is not');
+
+  // Read back on top of the built-in keymap it gives the same keys.
+  Merged := LoadDefaultKeymapProfile;
+  Assert.IsTrue(MergeKeymapJson(Json, Merged), 'the overrides parse');
+  Assert.IsTrue(MatchAction(Merged, vkF9, [ssAlt]) = kaMkDir, 'the moved key is in force');
+  Assert.IsTrue(MatchAction(Merged, vkF5, []) = kaCopy, 'the rest is the built-in keymap');
+end;
+
 { TTestKeymap }
+
+procedure TTestKeymap.OverridesHoldOnlyWhatChanged;
+begin
+  TestOverridesHoldOnlyWhatChanged;
+end;
+
+procedure TTestKeymap.NoChordIsBoundTwiceInOneContext;
+begin
+  TestNoChordIsBoundTwiceInOneContext;
+end;
 
 procedure TTestKeymap.Run;
 begin

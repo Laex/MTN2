@@ -78,7 +78,7 @@ type
     OpenSshConnectionsDialog: TKeymapProc;
     OpenUserAssociationsDialog: TKeymapProc;
     BeginBranchView: TKeymapProc;
-    BeginLiveFilter: TKeymapProc;
+    OpenPanelFilter: TKeymapProc;
     OpenSearchDialog: TKeymapProc;
     OpenDirSync: TKeymapProc;
     OpenJobList: TKeymapProc;
@@ -125,6 +125,9 @@ type
     RestoreCursorItemFromRecycleBin: TKeymapProc;
     ActivateSide: TKeymapSideProc;
     NewPanelTab: TKeymapProc;
+    NextPanelTab: TKeymapProc;
+    PrevPanelTab: TKeymapProc;
+    NewWorkspace: TKeymapProc;
     ClosePanelTabOnSide: TKeymapSideProc;
     CalculateFolderSize: TKeymapProc;
     TogglePanelConsoleMode: TKeymapProc;
@@ -213,11 +216,6 @@ type
     /// <summary>Up one level (Enter on ".."): Backspace with an empty
     /// command line.</summary>
     GoToParent: TKeymapProc;
-    NewPanelTab: TKeymapProc;
-    NewWorkspace: TKeymapProc;
-    NextPanelTab: TKeymapProc;
-    RefreshActive: TKeymapProc;
-    SelectAllActive: TKeymapProc;
     TryHotlistJump: TKeymapInputFn;
     DispatchKeymapFunctionKeys: TKeymapActionDispatchFn;
     OpenViewOrEdit: TKeymapBoolProc;
@@ -501,6 +499,36 @@ begin
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
+    kaNewWorkspace:
+      begin
+        AHost.NewWorkspace();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaNewTab:
+      begin
+        AHost.NewPanelTab();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaNextPanelTab:
+      begin
+        AHost.NextPanelTab();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaPrevPanelTab:
+      begin
+        AHost.PrevPanelTab();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaCloseTab:
+      begin
+        AHost.ClosePanelTabOnSide(AHost.ActiveSide());
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
     kaSshConnections:
       begin
         AHost.OpenSshConnectionsDialog();
@@ -552,7 +580,7 @@ begin
       end;
     kaLiveFilter:
       begin
-        AHost.BeginLiveFilter();
+        AHost.OpenPanelFilter();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
@@ -1357,36 +1385,6 @@ begin
     end;
     AHost.SwitchSide();
     ConsumeKey(AKey, AKeyChar, False);
-    Exit;
-  end;
-  if Chord.MatchesLetter('T', [ssCtrl, ssShift], [ssAlt]) then
-  begin
-    AHost.NewPanelTab();
-    ConsumeKey(AKey, AKeyChar, True);
-    Exit;
-  end;
-  if Chord.MatchesLetter('W', [ssCtrl, ssShift], [ssAlt]) then
-  begin
-    AHost.NewWorkspace();
-    ConsumeKey(AKey, AKeyChar, True);
-    Exit;
-  end;
-  if Chord.MatchesLetter('T', [ssCtrl], [ssAlt]) then
-  begin
-    AHost.NextPanelTab();
-    ConsumeKey(AKey, AKeyChar, True);
-    Exit;
-  end;
-  if Chord.MatchesLetter('R', [ssCtrl], [ssAlt]) then
-  begin
-    AHost.RefreshActive();
-    ConsumeKey(AKey, AKeyChar, True);
-    Exit;
-  end;
-  if Chord.MatchesLetter('A', [ssCtrl], [ssAlt]) then
-  begin
-    AHost.SelectAllActive();
-    ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
   if AHost.TryHotlistJump(AKey, AShift, AKeyChar) then

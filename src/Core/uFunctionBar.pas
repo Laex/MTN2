@@ -218,7 +218,7 @@ begin
     HintsFromKeymap([Hint(kaColumnMode, 'Modes'), Hint(kaSwapPanels, 'Swap'),
       Hint(kaInfoPanel, 'Info'), Hint(kaSortMenu, 'Sort'),
       Hint(kaAppConsoleToggle, 'Cons'), Hint(kaRefresh, 'Refr'),
-      Hint(kaSelectAll, 'All'), Hint(kaNewTab, 'PTab'),
+      Hint(kaSetAttributes, 'Attr'), Hint(kaNewTab, 'PTab'),
       Hint(kaInsertItemName, 'Name'), Hint(kaInsertItemPath, 'Path')], Mods, ALetters)
   else if (Mods = [ssAlt, ssShift]) and (ACtx = fbcTmpPanel) then
   begin

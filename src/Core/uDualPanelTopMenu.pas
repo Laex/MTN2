@@ -146,7 +146,7 @@ begin
     tmaCmdSshConnections: CallProc(AHost.OpenSshConnectionsDialog);
     tmaCmdAssociations: CallProc(AHost.OpenUserAssociationsDialog);
     tmaCmdBranchView: CallProc(AHost.BeginBranchView);
-    tmaCmdLiveFilter: CallProc(AHost.BeginLiveFilter);
+    tmaCmdLiveFilter: CallProc(AHost.OpenPanelFilter);
     tmaCmdRecycleBin: CallProc(AHost.NavigateToRecycleBin);
     tmaCmdNextTab: CallProc(AHost.NextWorkspace);
 

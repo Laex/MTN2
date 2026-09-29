@@ -1,13 +1,14 @@
 unit uChromeRows;
 
-{ Which chrome rows the screen shows: the menu bar on top, the F-key bar
-  and the status line at the bottom ("Font / screen" dialog, Ctrl+B for the
+{ Which chrome the screen shows: the native window title bar, the menu bar
+  on top, the F-key bar and the status line at the bottom ("Font / screen" dialog, Ctrl+B for the
   F-key bar). Every window that draws or hit-tests these rows takes their
   positions from here, so hiding one gives its row to the content. }
 
 interface
 
 var
+  GShowTitleBar: Boolean = True;
   GShowMenuBar: Boolean = True;
   GShowKeyBar: Boolean = True;
   GShowStatusLine: Boolean = True;

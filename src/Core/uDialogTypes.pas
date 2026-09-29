@@ -100,6 +100,7 @@ const
   cDlgCmdForeground = 'foreground';
   cDlgCmdCancelJob = 'canceljob';
   cDlgCmdCancelAll = 'cancelall';
+  cDlgCmdClearFilter = 'clear';
 
 function IsDialogProtocolV2(const AVersion: string): Boolean;
 function DialogCmdIs(const AId, AExpected: string): Boolean;
@@ -154,6 +155,10 @@ function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;
   AWarning: Boolean = False): TDialogDeclaration;
 function BuildHelpDialog: TDialogDeclaration;
 function BuildInputDialog(const ATitle, APrompt, AValue: string): TDialogDeclaration;
+/// <summary>Panel filter: AItems are the ready-made filters (the first one
+/// is "no filter"), ACurrentMask goes into the custom mask line.</summary>
+function BuildPanelFilterDialog(const AItems: TArray<string>;
+  const ACurrentMask: string): TDialogDeclaration;
 function BuildSelectMaskDialog(const ATitle, APrompt, AValue: string;
   ASelectFolders: Boolean): TDialogDeclaration;
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;
@@ -609,6 +614,14 @@ begin
   DialogSetLabelText(Result, 'prompt', APrompt);
   DialogSetInputValue(Result, 'name', AValue);
   DialogSetCheckbox(Result, 'select_folders', ASelectFolders);
+end;
+
+function BuildPanelFilterDialog(const AItems: TArray<string>;
+  const ACurrentMask: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogPanelFilter, Result);
+  DialogSetListItems(Result, 'presets', AItems, 0);
+  DialogSetInputValue(Result, 'mask', ACurrentMask);
 end;
 
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;

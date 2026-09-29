@@ -33,16 +33,14 @@ type
 /// <summary>True for a job that gets a chip: a queued or waiting one, or one
 /// running or failed out of sight. A job with its own progress dialog does not.</summary>
 function JobHasChip(const AJob: TPanelJobState): Boolean;
-/// <summary>One cell that tells the operations apart: copy, move, recycle,
-/// permanent delete, pack, unpack.</summary>
-function JobKindGlyph(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): Char;
 function JobChipTone(const AJob: TPanelJobState): TJobChipTone;
 /// <summary>"[glyph 45%]", or "[glyph ..]" queued, "[glyph ?]" waiting for an
 /// answer, "[glyph !]" failed.</summary>
 function JobChipCaption(const AJob: TPanelJobState): string;
 /// <summary>Chips right-aligned before the list button, which ends at the last
-/// column of AWidth. Chips that do not fit are left out; the button counts all
-/// of them. Nothing is laid out left of AFirstCol.</summary>
+/// column of AWidth, in job order. Chips that do not fit are left out, those
+/// waiting for an answer or failed last, and the button counts all of them.
+/// Nothing is laid out left of AFirstCol.</summary>
 function LayoutJobStrip(const AJobs: TArray<TPanelJobState>;
   AFirstCol, AWidth: Integer): TJobStrip;
 function HitJobStrip(const AStrip: TJobStrip; ACol: Integer;
@@ -54,12 +52,6 @@ uses
   uDualPanelJobRules;
 
 const
-  cGlyphCopy = #$00BB;
-  cGlyphMove = #$25BA;
-  cGlyphRecycle = #$25BC;
-  cGlyphDelete = #$203C;
-  cGlyphPack = #$25A0;
-  cGlyphUnpack = #$25A1;
   cGlyphList = #$2261;
 
 function JobHasChip(const AJob: TPanelJobState): Boolean;
@@ -71,23 +63,6 @@ begin
       Result := AJob.Presentation = jpBackground;
   else
     Result := False;
-  end;
-end;
-
-function JobKindGlyph(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): Char;
-begin
-  case AKind of
-    pjkCopy: Result := cGlyphCopy;
-    pjkMove: Result := cGlyphMove;
-    pjkPack: Result := cGlyphPack;
-    pjkUnpack: Result := cGlyphUnpack;
-    pjkDelete:
-      if ADeleteToRecycleBin then
-        Result := cGlyphRecycle
-      else
-        Result := cGlyphDelete;
-  else
-    Result := '?';
   end;
 end;
 
@@ -119,8 +94,9 @@ function LayoutJobStrip(const AJobs: TArray<TPanelJobState>;
   AFirstCol, AWidth: Integer): TJobStrip;
 var
   Shown: TArray<TPanelJobState>;
+  Picked: TArray<Boolean>;
   Job: TPanelJobState;
-  I, Used, Room, Count, X: Integer;
+  I, Pass, Used, Room, Count, X: Integer;
 begin
   Result := Default(TJobStrip);
   Shown := nil;
@@ -139,28 +115,35 @@ begin
   end;
   Result.ListWidth := Length(Result.ListCaption);
 
-  // Chips fill from the first job while they fit; each takes a spacer column.
+  // Jobs that need an answer or failed claim room first, then the others in
+  // job order; each chip takes a spacer column. Chips are placed in job order.
   Room := Result.ListLeft - AFirstCol;
+  SetLength(Picked, Length(Shown));
   Used := 0;
   Count := 0;
-  for I := 0 to High(Shown) do
-  begin
-    if Used + Length(JobChipCaption(Shown[I])) + 1 > Room then
-      Break;
-    Inc(Used, Length(JobChipCaption(Shown[I])) + 1);
-    Inc(Count);
-  end;
+  for Pass := 0 to 1 do
+    for I := 0 to High(Shown) do
+      if not Picked[I] and ((JobChipTone(Shown[I]) <> jctNormal) = (Pass = 0)) and
+         (Used + Length(JobChipCaption(Shown[I])) + 1 <= Room) then
+      begin
+        Picked[I] := True;
+        Inc(Used, Length(JobChipCaption(Shown[I])) + 1);
+        Inc(Count);
+      end;
   SetLength(Result.Chips, Count);
   X := Result.ListLeft - Used;
-  for I := 0 to Count - 1 do
-  begin
-    Result.Chips[I].JobId := Shown[I].Id;
-    Result.Chips[I].Caption := JobChipCaption(Shown[I]);
-    Result.Chips[I].Tone := JobChipTone(Shown[I]);
-    Result.Chips[I].Left := X;
-    Result.Chips[I].Width := Length(Result.Chips[I].Caption);
-    Inc(X, Result.Chips[I].Width + 1);
-  end;
+  Count := 0;
+  for I := 0 to High(Shown) do
+    if Picked[I] then
+    begin
+      Result.Chips[Count].JobId := Shown[I].Id;
+      Result.Chips[Count].Caption := JobChipCaption(Shown[I]);
+      Result.Chips[Count].Tone := JobChipTone(Shown[I]);
+      Result.Chips[Count].Left := X;
+      Result.Chips[Count].Width := Length(Result.Chips[Count].Caption);
+      Inc(X, Result.Chips[Count].Width + 1);
+      Inc(Count);
+    end;
 end;
 
 function HitJobStrip(const AStrip: TJobStrip; ACol: Integer;

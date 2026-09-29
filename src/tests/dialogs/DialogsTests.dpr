@@ -22,6 +22,7 @@ uses
   TestDisplaySettings in 'TestDisplaySettings.pas',
   TestHistoryDialogs in 'TestHistoryDialogs.pas',
   TestIOErrorAskDialog in 'TestIOErrorAskDialog.pas',
+  TestPanelFilterDialog in 'TestPanelFilterDialog.pas',
   TestSetAttrDialog in 'TestSetAttrDialog.pas',
   TestSshConnectionsDialog in 'TestSshConnectionsDialog.pas';
 

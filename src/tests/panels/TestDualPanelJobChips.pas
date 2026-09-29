@@ -18,6 +18,7 @@ type
     [Test] procedure ToneMarksAskAndError;
     [Test] procedure ChipsEndBeforeListButtonAtRightEdge;
     [Test] procedure ChipsThatDoNotFitAreLeftOut;
+    [Test] procedure OverflowKeepsAskAndFailedChips;
     [Test] procedure NoRoomLeavesNoStrip;
     [Test] procedure NothingToShowLeavesNoStrip;
     [Test] procedure HitFindsChipListAndGap;
@@ -28,6 +29,7 @@ implementation
 uses
   System.SysUtils,
   uDualPanelUiTypes,
+  uDualPanelJobRules,
   uDualPanelJobChips;
 
 function MakeJob(AId: Integer; AKind: TPanelJobKind; APhase: TPanelJobPhase;
@@ -142,6 +144,25 @@ begin
   Assert.AreEqual('[' + #$2261 + '3]', Strip.ListCaption,
     'the list button still counts all jobs');
   Assert.IsTrue(Strip.Chips[0].Left >= 0, 'nothing left of the first column');
+end;
+
+procedure TTestDualPanelJobChips.OverflowKeepsAskAndFailedChips;
+var
+  Strip: TJobStrip;
+  Jobs: TArray<TPanelJobState>;
+  ChipW: Integer;
+begin
+  Jobs := [MakeJob(1, pjkCopy, pjpRunning), MakeJob(2, pjkCopy, pjpRunning),
+    MakeJob(3, pjkCopy, pjpError), MakeJob(4, pjkCopy, pjpOverwriteAsk)];
+  ChipW := Length(JobChipCaption(Jobs[0]));
+  Strip := LayoutJobStrip(Jobs, 0, 4 + 1 + 3 * (ChipW + 1));
+  Assert.AreEqual(3, Integer(Length(Strip.Chips)), 'three chips fit');
+  Assert.AreEqual(1, Strip.Chips[0].JobId, 'the first running job takes the spare room');
+  Assert.AreEqual(3, Strip.Chips[1].JobId, 'failed job is kept');
+  Assert.AreEqual(4, Strip.Chips[2].JobId, 'job waiting for an answer is kept');
+  Assert.AreEqual('[' + #$2261 + '4]', Strip.ListCaption, 'button counts all jobs');
+  Assert.AreEqual(Strip.Chips[0].Left + Strip.Chips[0].Width + 1, Strip.Chips[1].Left,
+    'kept chips stay contiguous');
 end;
 
 procedure TTestDualPanelJobChips.NoRoomLeavesNoStrip;

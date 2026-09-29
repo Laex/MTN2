@@ -82,7 +82,9 @@ type
     SetCmdFocused: TKeymapBoolProc;
     /// <summary>Optional: click on the command-line row (caret / word / line).</summary>
     ClickCmdLine: TClickDocFn;
-    NewWorkspace: TKeymapProc;
+    /// <summary>Click on the [+] button after the last workspace tab or on a
+    /// window button (native title bar hidden). True when it hit one and acted.</summary>
+    ChromeClick: TClickColRowFn;
     ActivateSide: TKeymapSideProc;
     SelectPanelTabAtCol: TClickTabColFn;
     NewPanelTabOnSide: TKeymapSideProc;
@@ -260,11 +262,6 @@ begin
     Exit;
   end;
   AHandled := AHost.SelectWorkspaceAtCol(ALocalCol);
-  if (not AHandled) and ADoubleClick and Assigned(AHost.NewWorkspace) then
-  begin
-    AHost.NewWorkspace();
-    AHandled := True;
-  end;
 end;
 
 function DispatchWorkspaceBody(const AHost: TDualPanelClickHost;
@@ -347,6 +344,11 @@ var
 begin
   Result := True;
   AHandled := True;
+
+  if (not ASnap.DialogVisible) and (not ASnap.TopMenuActive) and
+     Assigned(AHost.ChromeClick) and
+     AHost.ChromeClick(ALocalCol, ALocalRow) then
+    Exit;
 
   // Row 0 is the Dual Panel menu bar for every workspace kind (panels,
   // Viewer/Editor, Terminal) when it is shown. Skip only while a modal

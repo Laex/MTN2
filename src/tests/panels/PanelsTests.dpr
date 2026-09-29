@@ -35,6 +35,7 @@ uses
   TestDualPanelSync in 'TestDualPanelSync.pas',
   TestDualPanelTabs in 'TestDualPanelTabs.pas',
   TestDualPanelTopMenu in 'TestDualPanelTopMenu.pas',
+  TestWindowChrome in 'TestWindowChrome.pas',
   TestHistoryPopup in 'TestHistoryPopup.pas',
   TestJobPopupLayout in 'TestJobPopupLayout.pas',
   TestMarkedRowColors in 'TestMarkedRowColors.pas',

@@ -15,12 +15,15 @@ type
     [Test] procedure TestEmbeddedWorkspace;
     [Test] procedure TestSessionExportFilter;
     [Test] procedure TestResolvePanelDriveUri;
+    [Test] procedure PanelPlusFollowsTheLastTab;
+    [Test] procedure PanelPlusNeedsRoom;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  uThemeTypes,
   uDualPanelTypes,
   uDualPanelTabs;
 
@@ -421,6 +424,46 @@ end;
 procedure TTestDualPanelTabs.TestSessionExportFilter;
 begin
   TestDualPanelTabs.TestSessionExportFilter;
+end;
+
+function TwoTabPanel: TPanelState;
+begin
+  Result := Default(TPanelState);
+  SetLength(Result.Tabs, 2);
+  Result.Tabs[0].CurrentURI := 'file:///C:/Left';
+  Result.Tabs[1].CurrentURI := 'file:///C:/Right';
+end;
+
+procedure TTestDualPanelTabs.PanelPlusFollowsTheLastTab;
+var
+  Panel: TPanelState;
+  Bounds: TRectI;
+  Col, Idx: Integer;
+  IsClose: Boolean;
+begin
+  Panel := TwoTabPanel;
+  Bounds := TRectI.Make(0, 0, 59, 10);
+  Col := PanelTabPlusCol(Panel, Bounds);
+  Assert.IsTrue(Col > 0, 'room for [+]');
+  Assert.IsTrue(HitPanelPlusAtCol(Panel, Bounds, Col) and
+    HitPanelPlusAtCol(Panel, Bounds, Col + 2), 'three columns');
+  Assert.IsFalse(HitPanelPlusAtCol(Panel, Bounds, Col - 1), 'left of it');
+  Assert.IsFalse(HitPanelPlusAtCol(Panel, Bounds, Col + 3), 'right of it');
+  Assert.IsFalse(HitPanelTabAtCol(Panel, Bounds, Col, Idx, IsClose),
+    'the [+] is not a tab');
+  Assert.IsTrue(HitPanelTabAtCol(Panel, Bounds, Col - 2, Idx, IsClose) and (Idx = 1),
+    'the last tab ends before it');
+end;
+
+procedure TTestDualPanelTabs.PanelPlusNeedsRoom;
+var
+  Panel: TPanelState;
+begin
+  Panel := TwoTabPanel;
+  Assert.AreEqual(-1, PanelTabPlusCol(Panel, TRectI.Make(0, 0, 14, 10)),
+    'a narrow panel has no [+]');
+  Assert.IsFalse(HitPanelPlusAtCol(Panel, TRectI.Make(0, 0, 14, 10), 5),
+    'and nothing to click');
 end;
 
 procedure TTestDualPanelTabs.TestResolvePanelDriveUri;

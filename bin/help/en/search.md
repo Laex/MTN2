@@ -3,7 +3,7 @@
 | Key | Action |
 | --- | --- |
 | Alt+F7 | find files (mask, contents, subfolders, case, whole words, regular expressions) |
-| Ctrl+F | filter the panel rows by a mask as you type; in the filter field Ctrl+↓ / Alt+↓ – earlier masks |
+| Ctrl+I | panel filter: a dialog with a list of ready-made filters and a line for your own mask; Enter or a double click on the list applies the filter, Clear removes it |
 | Ctrl+B | flat view: all files of the subtree in one list |
 | Alt+letter | quick search by name |
 

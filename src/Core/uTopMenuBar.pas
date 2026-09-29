@@ -215,6 +215,8 @@ type
 
     function HandleInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function HandleClick(ACol, ARow: Integer): Boolean;
+    /// <summary>First column after the category titles on the menu bar.</summary>
+    function LabelsEndCol: Integer;
 
     property Active: Boolean read FActive;
     property SubmenuOpen: Boolean read FSubmenuOpen;
@@ -739,7 +741,7 @@ begin
   FCategories[2].Items[2] := SubItem('Copy', 'C', 'F5', tmaFileCopy);
   FCategories[2].Items[3] := SubItem('Move / Rename', 'M', 'F6', tmaFileMove);
   FCategories[2].Items[4] := SubItem('Make directory', 'K', 'F7', tmaFileMkDir);
-  FCategories[2].Items[5] := SubItem('Set attributes...', 'B', 'Ctrl+Shift+A', tmaFileSetAttributes);
+  FCategories[2].Items[5] := SubItem('Set attributes...', 'B', 'Ctrl+A', tmaFileSetAttributes);
   FCategories[2].Items[6] := SubItem('Delete', 'D', 'F8', tmaFileDelete);
   FCategories[2].Items[7] := SubItem('Wipe file', 'W', 'Shift+F8', tmaFileWipe);
   FCategories[2].Items[8] := Separator;
@@ -751,8 +753,8 @@ begin
   FCategories[2].Items[14] := SubItem('Unselect by mask...', 'N', 'Num-', tmaFileUnselectMask);
   FCategories[2].Items[15] := SubItem('Select by extension', #0, 'Ctrl++', tmaFileSelectByExt);
   FCategories[2].Items[16] := SubItem('Unselect by extension', #0, 'Ctrl+-', tmaFileUnselectByExt);
-  FCategories[2].Items[17] := SubItem('Select all', 'A', 'Ctrl+A', tmaFileSelectAll);
-  FCategories[2].Items[18] := SubItem('Invert selection', 'I', 'Ctrl+I', tmaFileInvertSelect);
+  FCategories[2].Items[17] := SubItem('Select all', 'A', 'Shift+Num+', tmaFileSelectAll);
+  FCategories[2].Items[18] := SubItem('Invert selection', 'I', 'Num*', tmaFileInvertSelect);
   FCategories[2].Items[19] := Separator;
   FCategories[2].Items[20] := SubItem('Calculate folder size', 'Z', 'F3', tmaFileCalcSize);
   FCategories[2].Items[21] := SubItem('Copy full path', 'Y', 'Ctrl+Alt+Ins', tmaFileCopyPath);
@@ -1427,6 +1429,15 @@ begin
     FSubmenuIndex := Idx;
     ExecuteItem(FCategories[FCategoryIndex].Items[Idx]);
   end;
+end;
+
+function TTopMenuController.LabelsEndCol: Integer;
+var
+  I: Integer;
+begin
+  Result := 1;
+  for I := 0 to High(FCategories) do
+    Inc(Result, Length(FCategories[I].Title) + 2);
 end;
 
 function TTopMenuController.HandleClick(ACol, ARow: Integer): Boolean;

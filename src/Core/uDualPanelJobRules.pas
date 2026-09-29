@@ -13,6 +13,9 @@ const
   cMaxPanelJobs = 8;
 
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
+/// <summary>One cell that tells the operations apart: copy, move, recycle,
+/// permanent delete, pack, unpack. Used by the tab bar chips and the job list.</summary>
+function JobKindGlyph(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): Char;
 function JobOwnsInput(const AJob: TPanelJobState): Boolean;
 function JobBlocksPanelInput(const AJob: TPanelJobState): Boolean;
 function JobBlocksNewOperation(const AJob: TPanelJobState): Boolean;
@@ -83,6 +86,23 @@ begin
         Result := 'Delete';
   else
     Result := 'Job';
+  end;
+end;
+
+function JobKindGlyph(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): Char;
+begin
+  case AKind of
+    pjkCopy: Result := #$00BB;
+    pjkMove: Result := #$25BA;
+    pjkPack: Result := #$25A0;
+    pjkUnpack: Result := #$25A1;
+    pjkDelete:
+      if ADeleteToRecycleBin then
+        Result := #$25BC
+      else
+        Result := #$203C;
+  else
+    Result := '?';
   end;
 end;
 
@@ -372,7 +392,8 @@ begin
   else
     Phase := '';
   end;
-  Result := FormatJobProgressLine(AJob);
+  Result := JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' +
+    FormatJobProgressLine(AJob);
   if AJob.CurrentName <> '' then
     Result := Result + '  ' + AJob.CurrentName;
   if Phase <> '' then

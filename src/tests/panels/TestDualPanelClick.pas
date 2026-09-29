@@ -36,6 +36,7 @@ type
     MenuHit: Boolean;
     TabHit: Boolean;
     StripHit: Boolean;
+    ChromeHit: Boolean;
     StripCol: Integer;
     JobBounds: TRectI;
     SearchBounds: TRectI;
@@ -66,7 +67,7 @@ type
     procedure CancelDelete;
     procedure ReloadRows;
     procedure SetCmdFocused(AValue: Boolean);
-    procedure NewWorkspace;
+    function Chrome(ACol, ARow: Integer): Boolean;
     procedure ActivateSide(ASide: TPanelSide);
     function SelectPanelTab(ASide: TPanelSide; const ABounds: TRectI;
       ACol: Integer): Boolean;
@@ -223,9 +224,11 @@ begin
   Focused := AValue;
 end;
 
-procedure TClickSpy.NewWorkspace;
+function TClickSpy.Chrome(ACol, ARow: Integer): Boolean;
 begin
-  Last := Last + '+newws';
+  Result := ChromeHit;
+  if Result then
+    Last := Format('chrome:%d:%d', [ACol, ARow]);
 end;
 
 procedure TClickSpy.ActivateSide(ASide: TPanelSide);
@@ -290,7 +293,7 @@ begin
   AHost.CancelDeleteAsk := ASpy.CancelDelete;
   AHost.ReloadActiveRows := ASpy.ReloadRows;
   AHost.SetCmdFocused := ASpy.SetCmdFocused;
-  AHost.NewWorkspace := ASpy.NewWorkspace;
+  AHost.ChromeClick := ASpy.Chrome;
   AHost.ActivateSide := ASpy.ActivateSide;
   AHost.SelectPanelTabAtCol := ASpy.SelectPanelTab;
   AHost.NewPanelTabOnSide := ASpy.NewPanelTab;
@@ -480,9 +483,33 @@ begin
     Assert.IsTrue(Owned and Spy.Focused, 'cmdline row focuses');
 
     Spy.TabHit := False;
+    Spy.Last := '';
     Owned := DispatchClickOverlays(Host, Snap, 70, 1, [], True, Handled);
-    Assert.IsTrue(Owned and Handled and (Pos('+newws', Spy.Last) > 0),
-      'empty workspace row double-click clones');
+    Assert.IsTrue(Owned and (not Handled) and (Spy.Last = 'wstab'),
+      'a double-click on the free part of the tab row opens nothing');
+
+    Spy.ChromeHit := True;
+    Spy.Last := '';
+    Owned := DispatchClickOverlays(Host, Snap, 8, 1, [], False, Handled);
+    Assert.IsTrue(Owned and Handled and (Spy.Last = 'chrome:8:1'),
+      'the [+] button and the window buttons are checked first');
+    Snap.DialogVisible := True;
+    Spy.Last := '';
+    DispatchClickOverlays(Host, Snap, 8, 1, [], False, Handled);
+    Assert.IsTrue(Spy.Last <> 'chrome:8:1', 'a dialog keeps the chrome buttons from firing');
+    Snap.DialogVisible := False;
+    Snap.TopMenuActive := True;
+    Spy.Last := '';
+    DispatchClickOverlays(Host, Snap, 8, 1, [], False, Handled);
+    Assert.IsTrue(Spy.Last <> 'chrome:8:1', 'an open menu takes the click');
+    Snap.TopMenuActive := False;
+    Snap.ConsoleMode := True;
+    Spy.Last := '';
+    DispatchClickOverlays(Host, Snap, 8, 1, [], False, Handled);
+    Assert.AreEqual('chrome:8:1', Spy.Last,
+      'the console bar has window buttons too; the window decides where');
+    Snap.ConsoleMode := False;
+    Spy.ChromeHit := False;
   finally
     Spy.Free;
   end;

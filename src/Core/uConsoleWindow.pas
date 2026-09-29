@@ -99,7 +99,7 @@ begin
   FLastSyncedCwd     := '';
   FRestartOnExit     := True;
   LayoutBottomMargin := ChromeBottomRows; // shared Dual Panel F-keys / status below (no cmdline)
-  Title              := T('ui.window.console', 'Console');
+  Title              := TitleWithShell(T('ui.window.console', 'Console'), ProfileId);
   FDialog.OnDeferredCommand := DialogDeferredCommand;
 end;
 
@@ -117,11 +117,11 @@ end;
 procedure TConsoleWindow.SyncTitle;
 begin
   if Assigned(FPty) and FPty.IsRunning and FPty.Persistent then
-    Title := T('ui.window.consoleShell', 'Console [shell]')
+    Title := TitleWithShell(T('ui.window.consoleShell', 'Console [shell]'), ProfileId)
   else if Running then
-    Title := T('ui.window.consoleRunning', 'Console [running]')
+    Title := TitleWithShell(T('ui.window.consoleRunning', 'Console [running]'), ProfileId)
   else
-    Title := T('ui.window.console', 'Console');
+    Title := TitleWithShell(T('ui.window.console', 'Console'), ProfileId);
 end;
 
 { ---- View geometry --------------------------------------------------------- }

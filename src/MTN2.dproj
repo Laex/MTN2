@@ -253,6 +253,7 @@
         <DCCReference Include="Core\uDualPanelJobs.pas"/>
         <DCCReference Include="Core\uDualPanelJobRules.pas"/>
         <DCCReference Include="Core\uDualPanelJobChips.pas"/>
+        <DCCReference Include="Core\uWindowChrome.pas"/>
         <DCCReference Include="Core\uDualPanelJobList.pas"/>
         <DCCReference Include="Core\uDualPanelSync.pas"/>
         <DCCReference Include="Core\uDualPanelSearch.pas"/>

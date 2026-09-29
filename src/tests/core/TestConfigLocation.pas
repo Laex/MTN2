@@ -24,6 +24,10 @@ var
 begin
 
   Dir := GetConfigDirectory;
+  Assert.IsTrue(Pos('mtn2-tests-', Dir) > 0,
+    'the tests read their settings from a folder of their own: ' + Dir);
+  Assert.IsFalse(FileExists(GetConfigFilePath('keymap.json')),
+    'no keymap.json there, so the built-in keymap is in force');
   Assert.IsTrue(Dir <> '', 'Config directory should not be empty');
   Assert.IsTrue(DirectoryExists(Dir), 'Config directory should exist or be created');
 

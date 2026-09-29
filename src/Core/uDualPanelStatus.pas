@@ -136,7 +136,7 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkTheme, hdkColumnsConfig, hdkDisplay,
       hdkColorPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
-      hdkChecksumOptions, hdkChecksumResult:
+      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
       hdkSelectMask, hdkUnselectMask, hdkDirSync, hdkCreateLink,
@@ -266,6 +266,8 @@ end;
 function DialogListStatus(AKind: THostDialogKind): TArray<string>;
 begin
   case AKind of
+    hdkPanelFilter:
+      Result := TArray<string>.Create(S('Filter'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkFolderHistory:
       Result := TArray<string>.Create(S('Folders'), S('^v select'), H('Enter', 'Go', '='), H('Esc', 'Cancel', '='));
     hdkCmdHistory:

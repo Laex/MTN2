@@ -171,6 +171,8 @@ begin
   Assert.IsTrue(Pos('34%', FormatJobProgressLine(S)) > 0, 'progress line has percent');
   Assert.IsTrue(Pos(' '#$00B7' ', FormatJobProgressLine(S)) > 0,
     'the separator is a middle dot, not a mis-decoded byte pair');
+  Assert.IsTrue(Pos(JobKindGlyph(pjkCopy, False) + ' Copy 2/5', FormatJobListLine(S)) = 1,
+    'list line starts with the operation glyph');
 
   // Delete before the background count lands: five removed inside one
   // selected folder never reads "5/1"; the percent counts removed items.

@@ -10,10 +10,10 @@
 | F6 | move / rename |
 | Shift+F6 | rename the item under the cursor |
 | F7 | create a folder |
-| Shift+F7 | create a link (symbolic link, hard link, junction) |
+| Alt+F6 | create a link (symbolic link, hard link, junction) |
 | F8, Del | delete to the Recycle Bin |
 | Shift+F8, Shift+Del | delete permanently (wipe) |
-| Ctrl+Shift+A | attributes, owner and dates (created / modified / accessed) |
+| Ctrl+A | attributes, owner and dates (created / modified / accessed) |
 | Alt+Enter | the Windows “Properties” window (for the selection or the item under the cursor; files and folders on disk only) |
 | Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |
 | Ctrl+Alt+C | compare the files under the cursors of both panels |
@@ -24,7 +24,7 @@
 
 **Ctrl+Alt+Ins** and **Alt+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` – the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → Font / Display...**.
 
-In the **Ctrl+Shift+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional). An empty field keeps the date: that is how dates that differ between the selected files are shown. **Current** puts the current time into all three fields, **Original** restores the values read from the files. “Process subfolders” applies to the dates too.
+In the **Ctrl+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional). An empty field keeps the date: that is how dates that differ between the selected files are shown. **Current** puts the current time into all three fields, **Original** restores the values read from the files. “Process subfolders” applies to the dates too.
 
 **Windows context menu** – the same menu as a right click in Explorer: “Open with”, “Send to”, archiver, antivirus and version-control items and so on. It opens with **Shift+F10** or the **Menu** key at the cursor row, from **Files → Windows context menu**, or by holding the right mouse button on a file for about a second. From the keyboard and the menu it acts on the selection, or without one on the item under the cursor (on `..` – on the current folder); holding the mouse button opens the menu of the file under the mouse. Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 

@@ -85,8 +85,8 @@ end;
 
 procedure TTestKeyChord.TestTerminalHostPassthrough;
 begin
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkTab, [ssCtrl])), 'Ctrl+Tab');
-  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkTab, [ssCtrl, ssShift])), 'Ctrl+Shift+Tab');
+  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkNext, [ssCtrl, ssAlt])), 'Ctrl+Alt+PgDn');
+  Assert.IsTrue(IsTerminalHostPassthrough(KC(vkPrior, [ssCtrl, ssAlt])), 'Ctrl+Alt+PgUp');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkTab, [])), 'Tab goes to the shell');
   Assert.IsTrue(IsTerminalHostPassthrough(KC(vkN, [ssCtrl, ssShift])), 'Ctrl+Shift+N');
   Assert.IsFalse(IsTerminalHostPassthrough(KC(vkN, [ssCtrl])), 'Ctrl+N goes to the shell');

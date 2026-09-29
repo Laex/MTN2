@@ -16,7 +16,7 @@ uses
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
-  uDualPanelJobRules, uDualPanelJobChips, uDualPanelSearch, uDualPanelMenus,
+  uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uPluginHost,
   uFolderHistory, uANSIParser,
@@ -60,6 +60,8 @@ type
     /// (FQuickSearchActive): this hides non-matching rows via
     /// IPanelModel.SetFilterMask instead of just moving the cursor.</summary>
     FFilterBoxActive: Boolean;
+    /// <summary>The masks behind the entries of the open filter dialog's list.</summary>
+    FFilterPresets: TArray<string>;
     FFilterBoxText: string;
     /// <summary>Ctrl+F history drop-down (uDialogHistory key 'livefilter')
     /// and where the filter field was last drawn (it opens above it).</summary>
@@ -133,6 +135,12 @@ type
     FOnApplyDisplaySettings: TDisplaySettingsEvent;
     FOnGetDisplaySettings: TGetDisplaySettingsEvent;
     FConsoleMode: Boolean;
+    FWindowMaximized: Boolean;
+    FWindowTitleParts: TWindowTitleParts;
+    /// <summary>0 none, 1..3 a window button, 4 the [+] button.</summary>
+    FChromeHover: Integer;
+    /// <summary>Window button (1..3) the mouse went down on; it acts on release.</summary>
+    FChromePressed: Integer;
     FTerminalCloseOnExit: Boolean;
     FAutoSyncConsoleCwd: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
@@ -421,7 +429,9 @@ type
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
     procedure DrawQuickSearchField(const ABounds: TRectI);
-    procedure BeginLiveFilter;
+    procedure OpenPanelFilter;
+    function HandlePanelFilterCommand(const AControlId: string): Boolean;
+    procedure ApplyPanelFilter(const AMask: string);
     procedure ClearLiveFilter;
     function HandleFilterInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure DrawFilterField(const ABounds: TRectI);
@@ -703,6 +713,8 @@ type
       ACol: Integer): Boolean;
     function HitWorkspaceTabAtCol(ACol: Integer; out AIndex: Integer;
       out AIsClose: Boolean): Boolean;
+    function HitPanelPlusAtCol(ASide: TPanelSide; const ABounds: TRectI;
+      ACol: Integer): Boolean;
     function HitPanelTabAtCol(ASide: TPanelSide; const ABounds: TRectI;
       ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
     procedure ArmTabDrag(AKind, AFrom, ACol, ARow: Integer);
@@ -725,9 +737,16 @@ type
     procedure LayoutPanels(AWidth, AHeight: Integer);
     procedure DrawMenuBar(AWidth: Integer);
     procedure DrawWorkspaceTabBar(AWidth: Integer);
-    function JobStrip(AWidth: Integer): TJobStrip;
-    procedure DrawJobStrip(AWidth: Integer);
+    function ButtonsInTabRow: Boolean;
+    function ChromeDrawn: Boolean;
+    function TabBarChrome(AWidth: Integer): TTabBarChrome;
+    procedure DrawTabBarChrome(AWidth: Integer);
+    function ConsoleBarShown: Boolean;
+    procedure DrawWindowButtons(const AGrid: TTerminalGrid; AWidth: Integer;
+      AOnMenuBar: Boolean);
+    function ChromeHoverAt(ALocalCol, ALocalRow: Integer): Integer;
     function ClickJobStrip(ACol: Integer): Boolean;
+    function ClickChrome(ALocalCol, ALocalRow: Integer): Boolean;
     function SelectWorkspaceAtCol(ACol: Integer): Boolean;
     function BeginRenameWorkspaceAtCol(ACol: Integer): Boolean;
     procedure ApplyWorkspaceTabTitle(const AName: string);
@@ -825,6 +844,36 @@ type
     function HandleMouseDown(ALocalCol, ALocalRow: Integer;
       AShift: TShiftState): Boolean;
     function HandleMouseMove(ALocalCol, ALocalRow: Integer): Boolean;
+    /// <summary>Whether the window is maximized: picks the maximize button's glyph.</summary>
+    property WindowMaximized: Boolean read FWindowMaximized write FWindowMaximized;
+    /// <summary>Shown in the free part of the tab bar while the native title bar is hidden.</summary>
+    property WindowTitleParts: TWindowTitleParts read FWindowTitleParts
+      write FWindowTitleParts;
+    /// <summary>True where dragging moves the window: the free part of the
+    /// menu bar and tab bar rows while the native title bar is hidden.</summary>
+    /// <summary>Ctrl+Tab / Ctrl+Shift+Tab, which the main form intercepts before
+    /// FMX moves the focus.</summary>
+    procedure CycleTab(AReverse: Boolean);
+    function IsWindowDragZone(ALocalCol, ALocalRow: Integer): Boolean;
+    /// <summary>Tracks the button under the mouse (-1, -1 when it left the
+    /// window); True when the highlight changed and the screen needs a repaint.</summary>
+    function UpdateChromeHover(ALocalCol, ALocalRow: Integer): Boolean;
+    /// <summary>Right click on the free part of the tab or menu row while the
+    /// native title bar is hidden: opens or closes the top menu like F9.
+    /// False when the click is not for the menu (the system menu may follow).</summary>
+    function ToggleTopMenuFromTitle: Boolean;
+    /// <summary>Left mouse button released (-1, -1 when outside the window).
+    /// True when a window button was pressed and the release is consumed;
+    /// AActs says the mouse is still over that button, so its command is to be
+    /// run (after the button has been drawn released).</summary>
+    function ReleaseChromeButton(ALocalCol, ALocalRow: Integer;
+      out AButton: TWindowButton; out AActs: Boolean): Boolean;
+    /// <summary>With the native title bar hidden, paints the window buttons over
+    /// the top border of the console frame into AGrid (the composed scene, after
+    /// the console has been painted).</summary>
+    procedure PaintConsoleWindowButtons(const AGrid: TTerminalGrid; AWidth: Integer);
+    /// <summary>A click on those buttons; True when it hit one and acted.</summary>
+    function HandleConsoleFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
     function HandleMouseUp: Boolean;
     /// <summary>Arm drag after a list click (call from form after HandleClick).</summary>
     procedure ArmFileDragFromCursor;
@@ -1413,7 +1462,7 @@ begin
   FKeymapHost.OpenSshConnectionsDialog := OpenSshConnectionsDialog;
   FKeymapHost.OpenUserAssociationsDialog := OpenUserAssociationsDialog;
   FKeymapHost.BeginBranchView := BeginBranchView;
-  FKeymapHost.BeginLiveFilter := BeginLiveFilter;
+  FKeymapHost.OpenPanelFilter := OpenPanelFilter;
   FKeymapHost.OpenSearchDialog := OpenSearchDialog;
   FKeymapHost.OpenDirSync := OpenDirSync;
   FKeymapHost.OpenJobList := OpenJobList;
@@ -1460,6 +1509,9 @@ begin
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
   FKeymapHost.ActivateSide := ActivateSide;
   FKeymapHost.NewPanelTab := NewPanelTab;
+  FKeymapHost.NextPanelTab := NextPanelTab;
+  FKeymapHost.PrevPanelTab := PrevPanelTab;
+  FKeymapHost.NewWorkspace := NewWorkspace;
   FKeymapHost.ClosePanelTabOnSide := ClosePanelTabOnSide;
   FKeymapHost.CalculateFolderSize := CalculateFolderSizeUnderCursor;
   FKeymapHost.TogglePanelConsoleMode := TogglePanelConsoleMode;
@@ -1528,7 +1580,7 @@ begin
   FClickHost.ReloadActiveRows := ReloadActiveRows;
   FClickHost.SetCmdFocused := SetCmdFocused;
   FClickHost.ClickCmdLine := ClickCmdLine;
-  FClickHost.NewWorkspace := NewWorkspace;
+  FClickHost.ChromeClick := ClickChrome;
   FClickHost.ActivateSide := ActivateSide;
   FClickHost.SelectPanelTabAtCol := SelectPanelTabAtCol;
   FClickHost.NewPanelTabOnSide := NewPanelTabOnSide;
@@ -1625,11 +1677,6 @@ begin
   FFreeInputHost.FocusCommandLine := FocusCommandLine;
   FFreeInputHost.SwitchSide := SwitchSide;
   FFreeInputHost.GoToParent := GoToParent;
-  FFreeInputHost.NewPanelTab := NewPanelTab;
-  FFreeInputHost.NewWorkspace := NewWorkspace;
-  FFreeInputHost.NextPanelTab := NextPanelTab;
-  FFreeInputHost.RefreshActive := RefreshActive;
-  FFreeInputHost.SelectAllActive := SelectAllActive;
   FFreeInputHost.TryHotlistJump := FFolderHotlist.TryHandleHotkeyJump;
   FFreeInputHost.DispatchKeymapFunctionKeys := HandleKeymapActionFunctionKeys;
   FFreeInputHost.OpenViewOrEdit := OpenViewOrEdit;
@@ -4729,6 +4776,8 @@ begin
       FDialog.Close;
     hdkFolderHistory:
       Result := FFolderHistory.DispatchCommand(AControlId);
+    hdkPanelFilter:
+      Result := HandlePanelFilterCommand(AControlId);
     hdkTheme, hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
     hdkExternalTools:
       Result := FSettings.DispatchCommand(AKind, AControlId);
@@ -5718,13 +5767,92 @@ begin
   end;
 end;
 
-procedure TDualPanelWindow.BeginLiveFilter;
+procedure TDualPanelWindow.OpenPanelFilter;
+const
+  cPresets: array[0..3] of string = (
+    '*.txt;*.md;*.log',
+    '*.exe;*.dll;*.bat;*.cmd',
+    '*.jpg;*.jpeg;*.png;*.gif;*.bmp',
+    '*.zip;*.7z;*.rar;*.tar;*.gz');
+var
+  Items: TArray<string>;
+  Recent: TArray<string>;
+  Mask: string;
+  I: Integer;
+
+  procedure Add(const AMask: string);
+  var
+    J: Integer;
+  begin
+    if Trim(AMask) = '' then
+      Exit;
+    for J := 1 to High(FFilterPresets) do
+      if SameText(FFilterPresets[J], AMask) then
+        Exit;
+    FFilterPresets := FFilterPresets + [AMask];
+    Items := Items + [AMask];
+  end;
+
 begin
-  if FFilterBoxActive then
+  if ActiveWorkspace.Kind <> wkPanels then
     Exit;
-  FFilterBoxActive := True;
-  FFilterBoxText := '';
-  NotifyChanged;
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  // Entry 0 clears the filter; then the masks used before, then the stock ones.
+  FFilterPresets := [''];
+  Items := [T('ui.panelFilter.none', '(no filter)')];
+  Recent := DialogHistoryItems(cLiveFilterHistory);
+  for I := 0 to Min(High(Recent), 7) do
+    Add(Recent[I]);
+  for Mask in cPresets do
+    Add(Mask);
+  FDialogKind := hdkPanelFilter;
+  FDialog.Open(BuildPanelFilterDialog(Items, FFilterBoxText), DialogCommand);
+end;
+
+procedure TDualPanelWindow.ApplyPanelFilter(const AMask: string);
+begin
+  FFilterBoxActive := False;
+  if AMask = '' then
+    ClearLiveFilter
+  else
+  begin
+    SetLiveFilterText(AMask);
+    DialogHistoryAdd(cLiveFilterHistory, AMask);
+  end;
+end;
+
+function TDualPanelWindow.HandlePanelFilterCommand(const AControlId: string): Boolean;
+var
+  Idx: Integer;
+  Mask: string;
+  Apply: Boolean;
+begin
+  Result := True;
+  Apply := False;
+  Mask := '';
+  if DialogCmdIsListAccept(AControlId, 'presets') and not DialogCmdIsAccept(AControlId) then
+  begin
+    // Enter or a double click on the list picks that entry as it is.
+    Idx := FDialog.GetListSelectedIndex('presets');
+    if (Idx >= 0) and (Idx <= High(FFilterPresets)) then
+    begin
+      Mask := FFilterPresets[Idx];
+      Apply := True;
+    end;
+  end
+  else if DialogCmdIsAccept(AControlId) then
+  begin
+    Mask := Trim(FDialog.GetInputValue('mask'));
+    Apply := True;
+  end
+  else if DialogCmdIs(AControlId, cDlgCmdClearFilter) then
+    Apply := True;
+  FDialog.Close;
+  SetLength(FFilterPresets, 0);
+  if Apply then
+    ApplyPanelFilter(Mask);
 end;
 
 procedure TDualPanelWindow.ClearLiveFilter;
@@ -7843,9 +7971,7 @@ begin
   Next := TDualPanelTabManager.NextWorkspaceIndex(
     FState.ActiveWorkspaceIndex, Length(FState.WorkspaceTabs));
   if Next <> FState.ActiveWorkspaceIndex then
-    SelectWorkspace(Next)
-  else
-    NextPanelTab;
+    SelectWorkspace(Next);
 end;
 
 procedure TDualPanelWindow.PrevWorkspace;
@@ -7855,9 +7981,7 @@ begin
   Prev := TDualPanelTabManager.PrevWorkspaceIndex(
     FState.ActiveWorkspaceIndex, Length(FState.WorkspaceTabs));
   if Prev <> FState.ActiveWorkspaceIndex then
-    SelectWorkspace(Prev)
-  else
-    PrevPanelTab;
+    SelectWorkspace(Prev);
 end;
 
 procedure TDualPanelWindow.NewWorkspace;
@@ -7881,6 +8005,23 @@ begin
   SyncWindowTitle;
   ReloadActiveRows;
   Invalidate;
+end;
+
+procedure TDualPanelWindow.CycleTab(AReverse: Boolean);
+begin
+  // Ctrl+Tab: the tabs of the active panel; on a document or terminal
+  // workspace, which has no panel tabs, the workspaces.
+  if ActiveWorkspace.Kind = wkPanels then
+  begin
+    if AReverse then
+      PrevPanelTab
+    else
+      NextPanelTab;
+  end
+  else if AReverse then
+    PrevWorkspace
+  else
+    NextWorkspace;
 end;
 
 procedure TDualPanelWindow.NextPanelTab;
@@ -8031,6 +8172,18 @@ begin
   Invalidate;
 end;
 
+function TDualPanelWindow.HitPanelPlusAtCol(ASide: TPanelSide;
+  const ABounds: TRectI; ACol: Integer): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+begin
+  Ws := ActiveWorkspace;
+  if ASide = psLeft then
+    Result := uDualPanelTabs.HitPanelPlusAtCol(Ws.State.LeftPanel, ABounds, ACol)
+  else
+    Result := uDualPanelTabs.HitPanelPlusAtCol(Ws.State.RightPanel, ABounds, ACol);
+end;
+
 function TDualPanelWindow.HitPanelTabAtCol(ASide: TPanelSide;
   const ABounds: TRectI; ACol: Integer; out AIndex: Integer;
   out AIsClose: Boolean): Boolean;
@@ -8054,6 +8207,11 @@ var
   Ws: TDualPanelWorkspaceTab;
   TabCount: Integer;
 begin
+  if HitPanelPlusAtCol(ASide, ABounds, ACol) then
+  begin
+    NewPanelTabOnSide(ASide);
+    Exit(True);
+  end;
   Result := HitPanelTabAtCol(ASide, ABounds, ACol, Idx, IsClose);
   if not Result then
     Exit;
@@ -8271,31 +8429,62 @@ begin
     end;
     Inc(X, Length(Cap) + 1);
   end;
-  DrawJobStrip(AWidth);
+  DrawTabBarChrome(AWidth);
 end;
 
-function TDualPanelWindow.JobStrip(AWidth: Integer): TJobStrip;
+function TDualPanelWindow.ButtonsInTabRow: Boolean;
 begin
-  if Assigned(FJobs) then
-    Result := LayoutJobStrip(FJobs.States, WorkspaceTabsEndCol(FState.WorkspaceTabs),
-      AWidth)
-  else
-    Result := Default(TJobStrip);
+  Result := (not GShowTitleBar) and (not GShowMenuBar);
 end;
 
-procedure TDualPanelWindow.DrawJobStrip(AWidth: Integer);
+function TDualPanelWindow.ChromeDrawn: Boolean;
+begin
+  Result := ClassifyDrawContent(Area.Width, Area.Height, FConsoleMode,
+    ActiveWorkspace.Kind) in [dckPanels, dckDocument, dckTerminal];
+end;
+
+function TDualPanelWindow.TabBarChrome(AWidth: Integer): TTabBarChrome;
 var
-  Strip: TJobStrip;
-  Chip: TJobChip;
-  Fg, Bg, ChipFg, ChipBg: TAlphaColor;
+  Jobs: TArray<TPanelJobState>;
 begin
-  Strip := JobStrip(AWidth);
-  if Strip.ListWidth = 0 then
-    Exit;
+  Jobs := nil;
+  if Assigned(FJobs) then
+    Jobs := FJobs.States;
+  Result := LayoutTabBarChrome(WorkspaceTabsEndCol(FState.WorkspaceTabs), AWidth,
+    ButtonsInTabRow, Jobs);
+end;
+
+procedure TDualPanelWindow.DrawTabBarChrome(AWidth: Integer);
+var
+  Chrome: TTabBarChrome;
+  Chip: TJobChip;
+  Fg, Bg, ChipFg, ChipBg, ActFg, ActBg: TAlphaColor;
+  TitleW: Integer;
+begin
+  Chrome := TabBarChrome(AWidth);
   ResolveChrome(pcpWorkspaceTabIdle, False, Fg, Bg);
+  ResolveChrome(pcpWorkspaceTabActive, True, ActFg, ActBg);
+
+  if Chrome.PlusLeft >= 0 then
+  begin
+    // A filled block, like the chips: the active-tab colours, swapped under the mouse.
+    if FChromeHover = 4 then
+      PutGridText(Buffer, Chrome.PlusLeft, TabBarRow, cPlusCaption, ActBg, ActFg)
+    else
+      PutGridText(Buffer, Chrome.PlusLeft, TabBarRow, cPlusCaption, ActFg, ActBg);
+  end;
+
+  TitleW := Chrome.FreeRight - Chrome.FreeLeft;
+  if (not GShowTitleBar) and (TitleW >= cMinTitleWidth) then
+    PutGridText(Buffer, Chrome.FreeLeft, TabBarRow,
+      ComposeTitle(FWindowTitleParts, TitleW),
+      Fg, Bg);
+
+  if Chrome.Strip.ListWidth = 0 then
+    Exit;
   // Chips are filled blocks against the idle bar: the active-tab colours, or
   // black on yellow for a question and white on red for a failure.
-  for Chip in Strip.Chips do
+  for Chip in Chrome.Strip.Chips do
   begin
     case Chip.Tone of
       jctError:
@@ -8309,11 +8498,145 @@ begin
           ChipBg := cJobAskBg;
         end;
     else
-      ResolveChrome(pcpWorkspaceTabActive, True, ChipFg, ChipBg);
+      ChipFg := ActFg;
+      ChipBg := ActBg;
     end;
     PutGridText(Buffer, Chip.Left, TabBarRow, Chip.Caption, ChipFg, ChipBg);
   end;
-  PutGridText(Buffer, Strip.ListLeft, TabBarRow, Strip.ListCaption, Fg, Bg);
+  PutGridText(Buffer, Chrome.Strip.ListLeft, TabBarRow, Chrome.Strip.ListCaption,
+    Fg, Bg);
+end;
+
+function TDualPanelWindow.ConsoleBarShown: Boolean;
+begin
+  Result := (not GShowTitleBar) and (ClassifyDrawContent(Area.Width, Area.Height,
+    FConsoleMode, ActiveWorkspace.Kind) = dckConsole);
+end;
+
+procedure TDualPanelWindow.DrawWindowButtons(const AGrid: TTerminalGrid;
+  AWidth: Integer; AOnMenuBar: Boolean);
+var
+  Left: Integer;
+  Button: TWindowButton;
+  Fg, Bg, BtnFg, BtnBg: TAlphaColor;
+begin
+  Left := WindowButtonsLeft(AWidth);
+  if GShowTitleBar or (Left < 0) then
+    Exit;
+  // Filled blocks against the bar they sit on: the menu bar's colours
+  // inverted (also while a hidden menu is open), or the active-tab colours
+  // on the tab bar. Under the mouse they swap, and the close button turns red.
+  if AOnMenuBar then
+    ResolveChrome(pcpPanelTabActive, True, Bg, Fg)
+  else
+    ResolveChrome(pcpWorkspaceTabActive, True, Fg, Bg);
+  FillGridRect(AGrid, Left, 0, AWidth - 1, 0, ' ', Fg, Bg);
+  for Button := Low(TWindowButton) to High(TWindowButton) do
+  begin
+    BtnFg := Fg;
+    BtnBg := Bg;
+    if FChromeHover = Ord(Button) + 1 then
+      if Button = wbClose then
+      begin
+        BtnFg := cJobErrorFg;
+        BtnBg := cJobErrorBg;
+      end
+      else
+      begin
+        BtnFg := Bg;
+        BtnBg := Fg;
+      end;
+    PutGridText(AGrid, Left + Ord(Button) * 3, 0,
+      WindowButtonCaption(Button, FWindowMaximized), BtnFg, BtnBg);
+  end;
+end;
+
+procedure TDualPanelWindow.PaintConsoleWindowButtons(const AGrid: TTerminalGrid;
+  AWidth: Integer);
+begin
+  if ConsoleBarShown then
+    DrawWindowButtons(AGrid, AWidth, False);
+end;
+
+function TDualPanelWindow.HandleConsoleFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  Result := ConsoleBarShown and ClickChrome(ALocalCol, ALocalRow);
+end;
+
+function TDualPanelWindow.ReleaseChromeButton(ALocalCol, ALocalRow: Integer;
+  out AButton: TWindowButton; out AActs: Boolean): Boolean;
+var
+  Pressed: Integer;
+begin
+  Pressed := FChromePressed;
+  FChromePressed := 0;
+  AButton := wbMinimize;
+  AActs := False;
+  Result := Pressed <> 0;
+  if not Result then
+    Exit;
+  AButton := TWindowButton(Pressed - 1);
+  AActs := ChromeHoverAt(ALocalCol, ALocalRow) = Pressed;
+  // Drawn released until the mouse moves again.
+  FChromeHover := 0;
+end;
+
+function TDualPanelWindow.ToggleTopMenuFromTitle: Boolean;
+begin
+  Result := False;
+  if GShowTitleBar or not ChromeDrawn or not Assigned(FTopMenu) then
+    Exit;
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit;
+  FTopMenu.ToggleMenu;
+  NotifyChanged;
+  Result := True;
+end;
+
+function TDualPanelWindow.ChromeHoverAt(ALocalCol, ALocalRow: Integer): Integer;
+var
+  Button: TWindowButton;
+begin
+  Result := 0;
+  if (not GShowTitleBar) and (ALocalRow = 0) and (ChromeDrawn or ConsoleBarShown) and
+     HitWindowButton(Area.Width, ALocalCol, Button) then
+    Exit(Ord(Button) + 1);
+  if ChromeDrawn and (ALocalRow = TabBarRow) and
+     HitPlusButton(TabBarChrome(Area.Width), ALocalCol) then
+    Result := 4;
+end;
+
+function TDualPanelWindow.UpdateChromeHover(ALocalCol, ALocalRow: Integer): Boolean;
+var
+  Hover: Integer;
+begin
+  Hover := ChromeHoverAt(ALocalCol, ALocalRow);
+  Result := Hover <> FChromeHover;
+  FChromeHover := Hover;
+end;
+
+function TDualPanelWindow.IsWindowDragZone(ALocalCol, ALocalRow: Integer): Boolean;
+var
+  MenuEnd: Integer;
+begin
+  Result := False;
+  if GShowTitleBar then
+    Exit;
+  if ConsoleBarShown then
+    Exit((ALocalRow = 0) and InMenuBarFreeZone(0, Area.Width, ALocalCol));
+  if not ChromeDrawn then
+    Exit;
+  // A hidden menu bar opened with F9 covers the top row, which is the tab
+  // bar row then: the menu titles must get the clicks there.
+  if (ALocalRow = 0) and (GShowMenuBar or (Assigned(FTopMenu) and FTopMenu.Active)) then
+  begin
+    MenuEnd := 0;
+    if Assigned(FTopMenu) then
+      MenuEnd := FTopMenu.LabelsEndCol;
+    Exit(InMenuBarFreeZone(MenuEnd, Area.Width, ALocalCol));
+  end;
+  if ALocalRow = TabBarRow then
+    Result := InTabBarFreeZone(TabBarChrome(Area.Width), ALocalCol);
 end;
 
 function TDualPanelWindow.ClickJobStrip(ACol: Integer): Boolean;
@@ -8321,7 +8644,7 @@ var
   JobId: Integer;
 begin
   Result := True;
-  case HitJobStrip(JobStrip(Area.Width), ACol, JobId) of
+  case HitJobStrip(TabBarChrome(Area.Width).Strip, ACol, JobId) of
     jshChip:
       begin
         FJobs.RestoreJobById(JobId);
@@ -8331,6 +8654,26 @@ begin
       OpenJobList;
   else
     Result := False;
+  end;
+end;
+
+function TDualPanelWindow.ClickChrome(ALocalCol, ALocalRow: Integer): Boolean;
+var
+  Button: TWindowButton;
+begin
+  Result := False;
+  if (not GShowTitleBar) and (ALocalRow = 0) and (ChromeDrawn or ConsoleBarShown) and
+     HitWindowButton(Area.Width, ALocalCol, Button) then
+  begin
+    // A button counts as pressed only when the mouse is released over it.
+    FChromePressed := Ord(Button) + 1;
+    Exit(True);
+  end;
+  if ChromeDrawn and (ALocalRow = TabBarRow) and
+     HitPlusButton(TabBarChrome(Area.Width), ALocalCol) then
+  begin
+    NewWorkspace;
+    Result := True;
   end;
 end;
 
@@ -8346,14 +8689,20 @@ begin
 end;
 
 procedure TDualPanelWindow.DrawMenuBar(AWidth: Integer);
+var
+  BarWidth: Integer;
 begin
   // A hidden menu bar shows over the top row while the menu is open (F9).
   if not GShowMenuBar and not (Assigned(FTopMenu) and FTopMenu.Active) then
     Exit;
+  // The window buttons own the right end of the row.
+  BarWidth := AWidth;
+  if (not GShowTitleBar) and (WindowButtonsLeft(AWidth) >= 0) then
+    BarWidth := WindowButtonsLeft(AWidth);
   if Assigned(FTopMenu) then
-    FTopMenu.DrawTopBar(Buffer, AWidth)
+    FTopMenu.DrawTopBar(Buffer, BarWidth)
   else
-    FillGridRect(Buffer, 0, 0, AWidth - 1, 0, ' ', cMenuFg, cMenuBg);
+    FillGridRect(Buffer, 0, 0, BarWidth - 1, 0, ' ', cMenuFg, cMenuBg);
 end;
 
 procedure TDualPanelWindow.DrawScrollBar(AX, ATop, ABottom, APos, ACount,
@@ -9358,6 +9707,8 @@ begin
   else
     DrawPanelsContent(W, H);
   end;
+  if Kind in [dckDocument, dckTerminal, dckPanels] then
+    DrawWindowButtons(Buffer, W, GShowMenuBar or (Assigned(FTopMenu) and FTopMenu.Active));
   // Submenu / dialogs sit on top of panels, Viewer/Editor, and Terminal:
   // painted after PaintEmbedded / Term.Paint, or F9 dropdowns (including
   // Edit) would open in state but be painted over.

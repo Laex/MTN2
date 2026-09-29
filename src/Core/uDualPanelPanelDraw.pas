@@ -302,7 +302,7 @@ procedure DrawPanelEmbeddedTabs(const ABuffer: TTerminalGrid; const ABounds: TRe
   AFrame, ABodyBg: TAlphaColor; ADragHoverIndex: Integer;
   const AResolveChrome: TResolvePanelChromeProc);
 var
-  I, HeadX, TabsRight, TabMaxLen: Integer;
+  I, HeadX, TabsRight, TabMaxLen, PlusCol: Integer;
   Cap: string;
   CloseFg, TabFg, TabBg, Discard: TAlphaColor;
   DragHover: Boolean;
@@ -335,6 +335,12 @@ begin
       DrawGridChar(ABuffer, HeadX, ABounds.Top, ASepChar, AFrame, ABodyBg);
       Inc(HeadX);
     end;
+  end;
+  PlusCol := PanelTabPlusCol(APanel, ABounds);
+  if PlusCol >= 0 then
+  begin
+    AResolveChrome(pcpPanelTabActive, AActive, TabFg, TabBg);
+    PutGridText(ABuffer, PlusCol, ABounds.Top, cPanelTabPlus, TabFg, TabBg);
   end;
 end;
 

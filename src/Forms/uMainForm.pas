@@ -13,7 +13,7 @@ uses
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
-  uDialogHost, uConsoleLaunch;
+  uDialogHost, uConsoleLaunch, uWindowChrome;
 
 type
   TMainForm = class(TForm)
@@ -55,6 +55,15 @@ type
     FConsole: TConsoleWindow;
     FSession: TMtnSession;  // last loaded/saved session (includes BackgroundConsoleProfile)
     FLastScale: Single;
+    FTrackingMouseLeave: Boolean;
+    /// <summary>Set by a window command or a size change: no button is lit
+    /// until the mouse moves, even if the cursor rests over one.</summary>
+    FHoverSuppressed: Boolean;
+    FPaintCount: Integer;
+    /// <summary>A window command waits for the released button to be painted.</summary>
+    FChromeCommandPending: Boolean;
+    FGridSnapDone: Boolean;
+    FWasMaximized: Boolean;
     FNormalLeft: Single;
     FNormalTop: Single;
     FNormalWidth: Single;
@@ -97,6 +106,36 @@ type
     function TryHandleBoundAltF4: Boolean;
     procedure UpdateBlinkTimer;
     procedure UpdateCaption;
+    /// <summary>Applies the "Show window title bar" setting: with the native
+    /// title bar hidden the client area covers the whole window and the
+    /// character grid draws its own window buttons and drag zones.</summary>
+    procedure ApplyTitleBar(AVisible: Boolean);
+    procedure RefreshNativeFrame;
+    procedure HandleWindowCommand(AButton: TWindowButton);
+    /// <summary>WM_NCHITTEST answer while the native title bar is hidden: the
+    /// window edges resize, the free part of the menu / tab bar rows drags.</summary>
+    function NcHitTest(AHwnd: HWND; ALParam: LPARAM): LRESULT;
+    /// <summary>Right click on the caption zone of the window without its
+    /// native title bar: the top menu instead of the system menu.</summary>
+    function HandleCaptionRightClick(AHwnd: HWND; ALParam: LPARAM): Boolean;
+    procedure ClearChromeHover;
+    function SyncChromeHover: Boolean;
+    /// <summary>Paints the pending frame at once instead of on the next idle
+    /// pass, so a change shows before what follows it (a window command).</summary>
+    procedure PaintNow;
+    /// <summary>Runs AProc once the form has painted a frame after this call
+    /// (or after a short wait), so what was just composed is on screen first.</summary>
+    procedure RunAfterPaint(const AProc: TProc);
+    /// <summary>After the window is restored or maximized: the frame is
+    /// composed again, since FMX may not repaint a window whose size did
+    /// not change.</summary>
+    procedure RedrawAfterSizeChange;
+    /// <summary>Cell size in device pixels (fractional).</summary>
+    function CellPixels(out ACellW, ACellH: Double): Boolean;
+    /// <summary>WM_SIZING: the window is resized in whole character cells.</summary>
+    function HandleSizing(AHwnd: HWND; AEdge: WPARAM; ARect: PRect): Boolean;
+    /// <summary>Trims the window to a whole number of cells (not maximized).</summary>
+    procedure SnapWindowToGrid;
     procedure SyncRenderer;
     procedure ApplyZoomDelta(ADelta: Single);
     function TryHandleZoom(var AKey: Word; var AKeyChar: Char;
@@ -160,6 +199,10 @@ type
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
     function EnsureConsole: TConsoleWindow;
+    /// <summary>A hidden console is not laid out with the visible windows; it
+    /// takes the size it will have once shown, so a shell started in the
+    /// background begins at the right size and is not resized on first show.</summary>
+    procedure SyncHiddenConsoleArea(ACols, ARows: Integer);
     function DualPanelLaunchConsoleFile(const APath: string): Boolean;
     procedure ShowConsoleMode;
     procedure ShowPanelMode;
@@ -419,6 +462,58 @@ begin
     Include(Result, ssAlt);
 end;
 
+type
+  TGetDpiForWindowFn = function(AHwnd: HWND): UINT; stdcall;
+  TGetSystemMetricsForDpiFn = function(AIndex: Integer; ADpi: UINT): Integer; stdcall;
+
+const
+  cSmPaddedBorder = 92;
+  /// <summary>Width of the resize band along the window edges while the native
+  /// title bar (and with it the frame) is hidden, in 96 dpi pixels.</summary>
+  cResizeBorder = 5;
+
+/// <summary>Thickness of the sizing frame Windows gives a maximized window on
+/// its monitor, horizontally or vertically.</summary>
+function WindowFrameSize(AHwnd: HWND; AHorizontal: Boolean): Integer;
+var
+  User32: HMODULE;
+  GetDpi: TGetDpiForWindowFn;
+  GetMetric: TGetSystemMetricsForDpiFn;
+  Frame: Integer;
+  Dpi: UINT;
+begin
+  if AHorizontal then
+    Frame := SM_CXFRAME
+  else
+    Frame := SM_CYFRAME;
+  User32 := GetModuleHandle('user32.dll');
+  @GetDpi := GetProcAddress(User32, 'GetDpiForWindow');
+  @GetMetric := GetProcAddress(User32, 'GetSystemMetricsForDpi');
+  if Assigned(GetDpi) and Assigned(GetMetric) then
+  begin
+    Dpi := GetDpi(AHwnd);
+    Result := GetMetric(Frame, Dpi) + GetMetric(cSmPaddedBorder, Dpi);
+  end
+  else
+    Result := GetSystemMetrics(Frame) + GetSystemMetrics(cSmPaddedBorder);
+end;
+
+procedure InsetMaximizedRect(AHwnd: HWND; var ARect: TRect);
+begin
+  InflateRect(ARect, -WindowFrameSize(AHwnd, True), -WindowFrameSize(AHwnd, False));
+end;
+
+procedure TrackLeave(AHwnd: HWND);
+var
+  Track: TTrackMouseEvent;
+begin
+  Track.cbSize := SizeOf(Track);
+  Track.dwFlags := TME_LEAVE;
+  Track.hwndTrack := AHwnd;
+  Track.dwHoverTime := 0;
+  TrackMouseEvent(Track);
+end;
+
 // Alt+Enter as the user means it. Left Alt: Alt down, no Ctrl. Right Alt on
 // layouts with AltGr: Windows reports it as Right Alt + a synthetic Left Ctrl,
 // so "Right Alt and Left Ctrl, but neither Left Alt nor Right Ctrl" is AltGr,
@@ -496,12 +591,69 @@ begin
           else
             Result := DefWindowProc(AHwnd, AMsg, AWParam, ALParam);
           if LOWORD(AWParam) = WA_INACTIVE then
-            MainForm.SyncKeyModifiers([])
+          begin
+            MainForm.SyncKeyModifiers([]);
+            MainForm.ClearChromeHover;
+          end
           else
             MainForm.SyncKeyModifiers(KeyboardShiftState);
           Exit;
         end;
+      WM_SIZE:
+        begin
+          if MainForm.FPrevWndProc <> nil then
+            Result := CallWindowProc(MainForm.FPrevWndProc, AHwnd, AMsg, AWParam, ALParam)
+          else
+            Result := DefWindowProc(AHwnd, AMsg, AWParam, ALParam);
+          if (AWParam = SIZE_RESTORED) or (AWParam = SIZE_MAXIMIZED) then
+            MainForm.RedrawAfterSizeChange;
+          Exit;
+        end;
+      WM_NCCALCSIZE:
+        // Without the native title bar the client area is the whole window;
+        // maximized, it stops short of the overhang Windows gives the frame.
+        if (not GShowTitleBar) and (AWParam <> 0) then
+        begin
+          if IsZoomed(AHwnd) then
+            InsetMaximizedRect(AHwnd, PNCCalcSizeParams(ALParam)^.rgrc[0]);
+          Result := 0;
+          Exit;
+        end;
+      WM_NCHITTEST:
+        if not GShowTitleBar then
+        begin
+          Result := MainForm.NcHitTest(AHwnd, ALParam);
+          Exit;
+        end;
+      WM_NCRBUTTONUP:
+        if (not GShowTitleBar) and (AWParam = HTCAPTION) and
+           MainForm.HandleCaptionRightClick(AHwnd, ALParam) then
+        begin
+          Result := 0;
+          Exit;
+        end;
+      WM_SIZING:
+        if MainForm.HandleSizing(AHwnd, AWParam, PRect(ALParam)) then
+        begin
+          Result := 1;
+          Exit;
+        end;
+      WM_MOUSEMOVE:
+        if not MainForm.FTrackingMouseLeave then
+        begin
+          MainForm.FTrackingMouseLeave := True;
+          TrackLeave(AHwnd);
+        end;
+      WM_MOUSELEAVE:
+        begin
+          MainForm.FTrackingMouseLeave := False;
+          MainForm.ClearChromeHover;
+        end;
       WM_MOUSEACTIVATE:
+        // Without the native title bar a click on the caption zone or a window
+        // edge is a normal one, so the window can be dragged or resized while
+        // inactive; only client clicks are eaten.
+        if GShowTitleBar or (LOWORD(ALParam) = HTCLIENT) then
         begin
           // Windows only sends this while the window is still inactive.
           // Without MA_ACTIVATEANDEAT, the same click both activates the
@@ -565,6 +717,272 @@ begin
     SetWindowLongPtr(HWND(H), GWLP_WNDPROC, NativeInt(@MainFormWndProc));
   end;
   HookProcessWindowsForShutdown;
+  // A handle made while the title bar is hidden starts with the default frame.
+  if not GShowTitleBar then
+    RefreshNativeFrame;
+end;
+
+procedure TMainForm.RefreshNativeFrame;
+var
+  H: NativeUInt;
+begin
+  H := NativeWindowHandle;
+  if H <> 0 then
+    SetWindowPos(HWND(H), 0, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or
+      SWP_NOACTIVATE or SWP_FRAMECHANGED);
+end;
+
+procedure TMainForm.ApplyTitleBar(AVisible: Boolean);
+begin
+  if GShowTitleBar = AVisible then
+    Exit;
+  GShowTitleBar := AVisible;
+  RefreshNativeFrame;
+  if Assigned(FMdi) and Assigned(FRenderer) then
+    Recompose;
+end;
+
+function TMainForm.CellPixels(out ACellW, ACellH: Double): Boolean;
+var
+  Scale: Single;
+begin
+  ACellW := 0;
+  ACellH := 0;
+  Result := Assigned(FRenderer) and (FRenderer.CellWidth > 0) and
+    (FRenderer.CellHeight > 0);
+  if not Result then
+    Exit;
+  Scale := 1;
+  if FLastScale > 0 then
+    Scale := FLastScale;
+  ACellW := FRenderer.CellWidth * Scale;
+  ACellH := FRenderer.CellHeight * Scale;
+end;
+
+function TMainForm.HandleSizing(AHwnd: HWND; AEdge: WPARAM; ARect: PRect): Boolean;
+var
+  Win, Client: TRect;
+  CellW, CellH: Double;
+begin
+  Result := False;
+  if (ARect = nil) or IsZoomed(AHwnd) or not CellPixels(CellW, CellH) then
+    Exit;
+  if not (GetWindowRect(AHwnd, Win) and GetClientRect(AHwnd, Client)) then
+    Exit;
+  SnapSizingRect(Integer(AEdge), ARect^,
+    (Win.Right - Win.Left) - Client.Right, (Win.Bottom - Win.Top) - Client.Bottom,
+    CellW, CellH);
+  Result := True;
+end;
+
+procedure TMainForm.SnapWindowToGrid;
+var
+  H: NativeUInt;
+  Win, Client: TRect;
+  CellW, CellH: Double;
+  NcW, NcH, NewW, NewH: Integer;
+begin
+  H := NativeWindowHandle;
+  if (H = 0) or IsZoomed(HWND(H)) or IsIconic(HWND(H)) or not CellPixels(CellW, CellH) then
+    Exit;
+  if not (GetWindowRect(HWND(H), Win) and GetClientRect(HWND(H), Client)) then
+    Exit;
+  NcW := (Win.Right - Win.Left) - Client.Right;
+  NcH := (Win.Bottom - Win.Top) - Client.Bottom;
+  NewW := GridClientExtent(Client.Right, CellW, cMinGridCols, False) + NcW;
+  NewH := GridClientExtent(Client.Bottom, CellH, cMinGridRows, False) + NcH;
+  if (NewW <> Win.Right - Win.Left) or (NewH <> Win.Bottom - Win.Top) then
+    SetWindowPos(HWND(H), 0, 0, 0, NewW, NewH, SWP_NOMOVE or SWP_NOZORDER or
+      SWP_NOACTIVATE);
+end;
+
+procedure TMainForm.HandleWindowCommand(AButton: TWindowButton);
+begin
+  case AButton of
+    wbMinimize:
+      WindowState := System.UITypes.TWindowState.wsMinimized;
+    wbMaximize:
+      if WindowState = System.UITypes.TWindowState.wsMaximized then
+        WindowState := System.UITypes.TWindowState.wsNormal
+      else
+        WindowState := System.UITypes.TWindowState.wsMaximized;
+    wbClose:
+      Close;
+  end;
+  // The window changed under a resting mouse: no button is lit until it moves.
+  FHoverSuppressed := True;
+  ClearChromeHover;
+end;
+
+function TMainForm.NcHitTest(AHwnd: HWND; ALParam: LPARAM): LRESULT;
+var
+  R: TRect;
+  Pt: TPoint;
+  B, Col, Row: Integer;
+  Scale: Single;
+  OnLeft, OnRight, OnTop, OnBottom: Boolean;
+begin
+  Pt := Point(SmallInt(LOWORD(ALParam)), SmallInt(HIWORD(ALParam)));
+  Scale := 1;
+  if FLastScale > 1 then
+    Scale := FLastScale;
+  if (not IsZoomed(AHwnd)) and GetWindowRect(AHwnd, R) then
+  begin
+    B := Round(cResizeBorder * Scale);
+    OnLeft := Pt.X < R.Left + B;
+    OnRight := Pt.X >= R.Right - B;
+    OnTop := Pt.Y < R.Top + B;
+    OnBottom := Pt.Y >= R.Bottom - B;
+    if OnTop and OnLeft then
+      Exit(HTTOPLEFT);
+    if OnTop and OnRight then
+      Exit(HTTOPRIGHT);
+    if OnBottom and OnLeft then
+      Exit(HTBOTTOMLEFT);
+    if OnBottom and OnRight then
+      Exit(HTBOTTOMRIGHT);
+    if OnLeft then
+      Exit(HTLEFT);
+    if OnRight then
+      Exit(HTRIGHT);
+    if OnTop then
+      Exit(HTTOP);
+    if OnBottom then
+      Exit(HTBOTTOM);
+  end;
+  Result := HTCLIENT;
+  if not (Assigned(FDualPanel) and FDualPanel.Visible) then
+    Exit;
+  Winapi.Windows.ScreenToClient(AHwnd, Pt);
+  if PointToCell(Pt.X / Scale, Pt.Y / Scale, Col, Row) and
+     FDualPanel.IsWindowDragZone(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top) then
+    Result := HTCAPTION;
+end;
+
+function TMainForm.SyncChromeHover: Boolean;
+var
+  Pt: TPoint;
+  H: HWND;
+  Col, Row: Integer;
+  Scale: Single;
+begin
+  Result := False;
+  if not Assigned(FDualPanel) then
+    Exit;
+  // The highlight follows where the cursor is, not the last mouse event:
+  // a window minimized, restored or resized under the mouse sends none.
+  Col := -1;
+  Row := -1;
+  H := HWND(NativeWindowHandle);
+  if (not FHoverSuppressed) and (H <> 0) and (not IsIconic(H)) and GetCursorPos(Pt) and
+     (WindowFromPoint(Pt) = H) then
+  begin
+    Winapi.Windows.ScreenToClient(H, Pt);
+    Scale := 1;
+    if FLastScale > 1 then
+      Scale := FLastScale;
+    if PointToCell(Pt.X / Scale, Pt.Y / Scale, Col, Row) then
+    begin
+      Dec(Col, FDualPanel.Area.Left);
+      Dec(Row, FDualPanel.Area.Top);
+    end
+    else
+    begin
+      Col := -1;
+      Row := -1;
+    end;
+  end;
+  Result := FDualPanel.UpdateChromeHover(Col, Row);
+end;
+
+procedure TMainForm.PaintNow;
+var
+  H: NativeUInt;
+begin
+  Invalidate;
+  H := NativeWindowHandle;
+  if H <> 0 then
+    UpdateWindow(HWND(H));
+end;
+
+procedure TMainForm.RunAfterPaint(const AProc: TProc);
+const
+  cPollMs = 15;
+  cMaxPolls = 20;
+var
+  Start: Integer;
+  Poll: TProc<Integer>;
+begin
+  Start := FPaintCount;
+  PaintNow;
+  Poll :=
+    procedure(APolls: Integer)
+    begin
+      if csDestroying in ComponentState then
+        Exit;
+      if (FPaintCount <> Start) or (APolls >= cMaxPolls) then
+        AProc()
+      else
+        TThread.ForceQueue(nil,
+          procedure
+          begin
+            Poll(APolls + 1);
+          end, cPollMs);
+    end;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      Poll(0);
+    end, cPollMs);
+end;
+
+procedure TMainForm.RedrawAfterSizeChange;
+begin
+  if (csDestroying in ComponentState) or not Assigned(FRenderer) then
+    Exit;
+  FHoverSuppressed := True;
+  SyncChromeHover;
+  Recompose;
+  PaintNow;
+  // Once more when the layout has settled.
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if csDestroying in ComponentState then
+        Exit;
+      SyncChromeHover;
+      Recompose;
+    end);
+end;
+
+function TMainForm.HandleCaptionRightClick(AHwnd: HWND; ALParam: LPARAM): Boolean;
+var
+  Pt: TPoint;
+  Col, Row: Integer;
+  Scale: Single;
+begin
+  Result := False;
+  if not (Assigned(FDualPanel) and FDualPanel.Visible) then
+    Exit;
+  Pt := Point(SmallInt(LOWORD(ALParam)), SmallInt(HIWORD(ALParam)));
+  Winapi.Windows.ScreenToClient(AHwnd, Pt);
+  Scale := 1;
+  if FLastScale > 1 then
+    Scale := FLastScale;
+  if not PointToCell(Pt.X / Scale, Pt.Y / Scale, Col, Row) then
+    Exit;
+  if FDualPanel.IsWindowDragZone(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top) and
+     FDualPanel.ToggleTopMenuFromTitle then
+  begin
+    Recompose;
+    Result := True;
+  end;
+end;
+
+procedure TMainForm.ClearChromeHover;
+begin
+  if SyncChromeHover then
+    Recompose;
 end;
 
 procedure TMainForm.OpenPathFromArgument(const APath: string);
@@ -688,20 +1106,11 @@ begin
 end;
 
 procedure TMainForm.HandleCtrlTab(AReverse: Boolean);
-var
-  Key: Word;
-  Ch: Char;
-  Shift: TShiftState;
 begin
   if not Assigned(FDualPanel) or not FDualPanel.Visible then
     Exit;
-  Key := vkTab;
-  Ch := #0;
-  Shift := [ssCtrl];
-  if AReverse then
-    Include(Shift, ssShift);
-  if FDualPanel.HandleInput(Key, Shift, Ch) then
-    Recompose;
+  FDualPanel.CycleTab(AReverse);
+  Recompose;
 end;
 
 procedure TMainForm.CancelContextMenuHold;
@@ -774,19 +1183,25 @@ end;
 
 procedure TMainForm.UpdateCaption;
 var
-  ActiveTitle: string;
+  Parts: TWindowTitleParts;
 begin
-  ActiveTitle := '';
-  if Assigned(FMdi) and Assigned(FMdi.Active) then
-    ActiveTitle := '  [' + FMdi.Active.Title + ']';
+  Parts := Default(TWindowTitleParts);
+  Parts.FullName := AppTitle;
+  Parts.ShortName := AppName;
+  Parts.Version := 'v' + FAppVersion;
   if Assigned(FRenderer) then
-    Caption := Format('%s - %s v%s  [%dx%d  %s %.0f%%%s]',
-      [AppTitle, AppName, FAppVersion, FRenderer.Cols, FRenderer.Rows,
-       T('ui.window.zoom', 'zoom'), FRenderer.Zoom * 100, ActiveTitle])
-  else
-    Caption := Format('%s - %s v%s', [AppTitle, AppName, FAppVersion]);
-  if FFpsText <> '' then
-    Caption := Caption + '  [' + FFpsText + ']';
+  begin
+    Parts.SizeText := Format('%dx%d', [FRenderer.Cols, FRenderer.Rows]);
+    Parts.ZoomText := Format('%s %.0f%%', [T('ui.window.zoom', 'zoom'), FRenderer.Zoom * 100]);
+    if Assigned(FMdi) and Assigned(FMdi.Active) then
+      Parts.TabText := '[' + FMdi.Active.Title + ']';
+  end;
+  Parts.FpsText := FFpsText;
+  Caption := ComposeTitle(Parts, MaxInt);
+  // The frame rate is a native title bar detail; the grid title leaves it out.
+  Parts.FpsText := '';
+  if Assigned(FDualPanel) then
+    FDualPanel.WindowTitleParts := Parts;
 end;
 
 procedure TMainForm.FpsTimerTick(Sender: TObject);
@@ -801,6 +1216,14 @@ begin
     Exit;
   FRenderer.Resize(ClientWidth, ClientHeight, Canvas);
   UpdateCaption;
+  // The title and the maximize glyph live in the grid while the native
+  // title bar is hidden.
+  if Assigned(FDualPanel) and not GShowTitleBar then
+  begin
+    FDualPanel.WindowMaximized := WindowState = System.UITypes.TWindowState.wsMaximized;
+    SyncChromeHover;
+    Recompose;
+  end;
   Invalidate;
 end;
 
@@ -1027,6 +1450,7 @@ begin
   finally
     FRestoringBounds := False;
   end;
+  FGridSnapDone := False;
 end;
 
 function TMainForm.CreateTheme(const AThemeName: string): IThemeRenderer;
@@ -1097,6 +1521,7 @@ begin
     Result.CursorBlinkMs := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
+  Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -1117,10 +1542,12 @@ begin
   GShowPanelIcons := ASettings.ShowPanelIcons;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
+  FSession.ShowTitleBar := ASettings.ShowTitleBar;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
   ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
+  ApplyTitleBar(ASettings.ShowTitleBar);
   FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
   FSession.LineSpacing := ASettings.LineSpacing;
   GShadowStyle := ASettings.ShadowStyle;
@@ -1197,6 +1624,7 @@ begin
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
+  ApplyTitleBar(Sess.ShowTitleBar);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
   GMarkedRowStyle := MarkedRowStyleFromId(Sess.MarkedRows);
   FCursorBlinkEnabled := Sess.CursorBlink;
@@ -1272,6 +1700,7 @@ begin
     Sess.CursorBlinkMs := FSession.CursorBlinkMs;
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
+  Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
@@ -1433,8 +1862,16 @@ begin
     FConsole.Visible := False;
     if Assigned(FDualPanel) then
       FMdi.Activate(FDualPanel);
+    if Assigned(FRenderer) then
+      SyncHiddenConsoleArea(FRenderer.Cols, FRenderer.Rows);
   end;
   Result := FConsole;
+end;
+
+procedure TMainForm.SyncHiddenConsoleArea(ACols, ARows: Integer);
+begin
+  if Assigned(FConsole) and not FConsole.Visible and (ACols > 0) and (ARows > 1) then
+    FConsole.Area := TRectI.Make(0, 0, ACols - 1, Max(ARows - 1 - ChromeBottomRows, 1));
 end;
 
 procedure TMainForm.ChangeConsoleProfile(const AProfileId: string);
@@ -1745,6 +2182,7 @@ begin
   FSession.CursorBlinkMs := cBlinkIntervalMs;
   FSession.ShowPanelIcons := True;
   FSession.ShowNotifications := True;
+  FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
@@ -1891,7 +2329,11 @@ begin
   T0 := TStopwatch.GetTimeStamp;
   // Console keeps a bottom margin (LayoutBottomMargin) for the shared F-keys / status line.
   FMdi.LayoutMaximized(ACols, ARows);
+  SyncHiddenConsoleArea(ACols, ARows);
   FMdi.Paint(AGrid, ACols, ARows);
+  // The console frame is painted above the panel window: the window buttons go over it.
+  if Assigned(FDualPanel) then
+    FDualPanel.PaintConsoleWindowButtons(AGrid, ACols);
   if Assigned(FFpsTimer) then
     FFpsStats.Add(fsCompose, TStopwatch.GetTimeStamp - T0);
 end;
@@ -1912,8 +2354,9 @@ procedure TMainForm.Recompose;
 begin
   if (csDestroying in ComponentState) or not Assigned(FRenderer) then
     Exit;
-  FRenderer.Recompose;
+  SyncChromeHover;
   UpdateCaption;
+  FRenderer.Recompose;
   Invalidate;
 end;
 
@@ -1923,12 +2366,19 @@ var
 begin
   if not Assigned(FRenderer) then
     Exit;
+  Inc(FPaintCount);
   T0 := TStopwatch.GetTimeStamp;
   try
     PaintFrame(Canvas);
   finally
     if Assigned(FFpsTimer) then
       FFpsStats.Add(fsPaint, TStopwatch.GetTimeStamp - T0);
+  end;
+  // Cell metrics are known after the first frame: fit the window to the grid.
+  if not FGridSnapDone then
+  begin
+    FGridSnapDone := True;
+    TThread.ForceQueue(nil, SnapWindowToGrid);
   end;
 end;
 
@@ -1968,8 +2418,15 @@ begin
 end;
 
 procedure TMainForm.FormResize(Sender: TObject);
+var
+  Maximized: Boolean;
 begin
   CaptureNormalBounds;
+  // A window restored from full screen is trimmed to whole cells on the next paint.
+  Maximized := WindowState = System.UITypes.TWindowState.wsMaximized;
+  if FWasMaximized and not Maximized then
+    FGridSnapDone := False;
+  FWasMaximized := Maximized;
   SyncRenderer;
 end;
 
@@ -2095,6 +2552,15 @@ begin
       CancelContextMenuHold;
     Exit;
   end;
+  // The window buttons on the console frame sit above the console, which
+  // would take the click otherwise.
+  if (Button = TMouseButton.mbLeft) and Assigned(FDualPanel) and
+     FDualPanel.HandleConsoleFrameClick(Col - FDualPanel.Area.Left,
+       Row - FDualPanel.Area.Top) then
+  begin
+    Recompose;
+    Exit;
+  end;
   Dbl := (Button = TMouseButton.mbLeft) and (ssDouble in Shift);
   if Button = TMouseButton.mbLeft then
   begin
@@ -2183,6 +2649,12 @@ var
 begin
   if not Assigned(FMdi) then
     Exit;
+
+  if not FChromeCommandPending then
+    FHoverSuppressed := False;
+  if Assigned(FDualPanel) and (not FChromeCommandPending) and PointToCell(X, Y, Col, Row) and
+     FDualPanel.UpdateChromeHover(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top) then
+    Recompose;
 
   if DialogButtonCaptured then
   begin
@@ -2304,6 +2776,8 @@ procedure TMainForm.FormMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Single);
 var
   Col, Row: Integer;
+  Btn: TWindowButton;
+  Acts: Boolean;
 begin
   if Button = TMouseButton.mbRight then
   begin
@@ -2312,6 +2786,38 @@ begin
   end;
   if Button <> TMouseButton.mbLeft then
     Exit;
+  // A window button acts on release; outside the window it is cancelled.
+  if Assigned(FDualPanel) then
+  begin
+    if not PointToCell(X, Y, Col, Row) then
+    begin
+      Col := -1;
+      Row := -1;
+    end
+    else
+    begin
+      Dec(Col, FDualPanel.Area.Left);
+      Dec(Row, FDualPanel.Area.Top);
+    end;
+    if FDualPanel.ReleaseChromeButton(Col, Row, Btn, Acts) then
+    begin
+      // The button is drawn released first, then its command runs.
+      Recompose;
+      if Acts then
+      begin
+        FChromeCommandPending := True;
+        RunAfterPaint(
+          procedure
+          begin
+            FChromeCommandPending := False;
+            HandleWindowCommand(Btn);
+          end);
+      end
+      else
+        PaintNow;
+      Exit;
+    end;
+  end;
   if DialogButtonCaptured then
   begin
     if not PointToCell(X, Y, Col, Row) then

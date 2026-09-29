@@ -35,6 +35,8 @@ const
 function FileExistsInPath(const AExeName: string): Boolean;
 function EnumerateShellProfiles: TShellProfileArray;
 function ShellProfileTitle(const AProfileId: string): string;
+/// <summary>ABase and the shell of the profile: "Console - PowerShell".</summary>
+function TitleWithShell(const ABase, AProfileId: string): string;
 function ShellProfileAvailable(const AProfileId: string): Boolean;
 /// <summary>Resolve profile to a CreateProcess command line and cwd.
 /// Returns False when the profile is unknown or its executable is missing.</summary>
@@ -321,6 +323,11 @@ begin
   end;
 
   Result := False;
+end;
+
+function TitleWithShell(const ABase, AProfileId: string): string;
+begin
+  Result := ABase + ' - ' + ShellProfileTitle(AProfileId);
 end;
 
 function ShellProfileTitle(const AProfileId: string): string;

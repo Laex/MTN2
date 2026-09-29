@@ -146,6 +146,7 @@ type
     hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt,
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress,
     hdkWorkspaceTabRename, hdkExternalTools, hdkChecksumOptions, hdkChecksumResult,
+    hdkPanelFilter,
     // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
     // command goes back to the opener's callback.
     hdkHost);

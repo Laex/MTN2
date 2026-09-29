@@ -99,6 +99,9 @@ type
     kaEditPaste,
     kaWorkspaceLibrary,
     kaWorkspaceSave,
+    kaNewWorkspace, // Ctrl+Shift+W -- new workspace tab
+    kaNextPanelTab, // Ctrl+Tab -- next tab of the active panel
+    kaPrevPanelTab, // Ctrl+Shift+Tab -- previous tab of the active panel
     kaSetAttributes,
     kaProperties, // Alt+Enter -- OS Properties window
     kaSshConnections,
@@ -138,7 +141,7 @@ type
     // Global (context kcGlobal, with kaHelp, kaNextTab, kaNewTerminal and
     // kaSelectConsoleProfile): every window, unless its own context binds
     // the same keys.
-    kaPrevTab, // Ctrl+Shift+Tab -- previous workspace tab
+    kaPrevTab, // Ctrl+Alt+PgUp -- previous workspace
     kaTopMenu, // F9 -- top menu
     kaAppQuit, // Alt+X -- quit (kaQuit is F10 on the panels only)
     kaAppConsoleToggle, // Ctrl+O -- panels <-> console (kaConsoleToggle is Esc on the panels)
@@ -250,7 +253,12 @@ function GetDefaultKeymapPath: string;
 /// MergeKeymapJson read back (see ApplyBindingsFromRootObj) - the inverse of
 /// LoadKeymapFromFile's merge direction.</summary>
 function KeymapProfileToJson(const AProfile: TKeymapProfile): string;
-/// <summary>Writes KeymapProfileToJson(AProfile) to APath (GetDefaultKeymapPath
+/// <summary>Only the actions whose keys differ from the built-in profile, in
+/// the shape MergeKeymapJson reads back. An action left without keys is written
+/// as an empty list. Actions not listed keep whatever the built-in profile
+/// binds, also after an update that changes those defaults.</summary>
+function KeymapOverridesToJson(const AProfile: TKeymapProfile): string;
+/// <summary>Writes KeymapOverridesToJson(AProfile) to APath (GetDefaultKeymapPath
 /// when blank) as the user's keymap.json override; does not reload the cache
 /// (call ReloadKeymap after, if the change should take effect immediately).</summary>
 procedure SaveKeymapProfile(const AProfile: TKeymapProfile; const APath: string = '');
@@ -492,7 +500,7 @@ begin
   AddBinding(Result, kaRename, KeyBinding(vkF6, True, False, False));
   AddBinding(Result, kaCopyInPlace, KeyBinding(vkF5, True, False, False));
   AddBinding(Result, kaMkDir, KeyBinding(vkF7, False, False, False));
-  AddBinding(Result, kaCreateLink, KeyBinding(vkF7, True, False, False));
+  AddBinding(Result, kaCreateLink, KeyBinding(vkF6, False, True, False));
   AddBinding(Result, kaCompareFiles, KeyBinding(Ord('C'), False, True, True));
   AddBinding(Result, kaCompareFolders, KeyBinding(Ord('C'), True, False, True));
   AddBinding(Result, kaExternalView, KeyBinding(vkF3, False, True, False));
@@ -520,10 +528,10 @@ begin
   AddBinding(Result, kaDriveLeft, KeyBinding(vkF1, False, True, False));
   AddBinding(Result, kaDriveRight, KeyBinding(vkF2, False, True, False));
   AddBinding(Result, kaRefresh, KeyBinding(Ord('R'), False, False, True));
-  AddBinding(Result, kaSelectAll, KeyBinding(Ord('A'), False, False, True));
-  AddBinding(Result, kaSetAttributes, KeyBinding(Ord('A'), True, False, True));
+  // Shift+Gray + selects all files (FAR); Gray + / Gray - select and deselect by mask.
+  AddBinding(Result, kaSelectAll, KeyBinding(vkAdd, True, False, False));
+  AddBinding(Result, kaSetAttributes, KeyBinding(Ord('A'), False, False, True));
   AddBinding(Result, kaProperties, KeyBinding(vkReturn, False, True, False));
-  AddBinding(Result, kaInvertSelection, KeyBinding(Ord('I'), False, False, True));
   AddBinding(Result, kaHistoryBack, KeyBinding(vkLeft, False, True, False));
   AddBinding(Result, kaHistoryForward, KeyBinding(vkRight, False, True, False));
   AddBinding(Result, kaFolderHistory, KeyBinding(vkF12, False, True, False));
@@ -533,10 +541,13 @@ begin
   AddBinding(Result, kaFolderHotlistAdd, KeyBinding(Ord('D'), False, True, True));
   AddBinding(Result, kaWorkspaceLibrary, KeyBinding(Ord('D'), True, False, True));
   AddBinding(Result, kaWorkspaceSave, KeyBinding(Ord('D'), True, True, True));
+  AddBinding(Result, kaNewWorkspace, KeyBinding(Ord('W'), True, False, True));
+  AddBinding(Result, kaNextPanelTab, KeyBinding(vkTab, False, False, True));
+  AddBinding(Result, kaPrevPanelTab, KeyBinding(vkTab, True, False, True));
   AddBinding(Result, kaSshConnections, KeyBinding(Ord('N'), True, True, True));
   AddBinding(Result, kaAssociations, KeyBinding(Ord('A'), True, True, True));
   AddBinding(Result, kaBranchView, KeyBinding(Ord('B'), False, False, True));
-  AddBinding(Result, kaLiveFilter, KeyBinding(Ord('F'), False, False, True));
+  AddBinding(Result, kaLiveFilter, KeyBinding(Ord('I'), False, False, True));
   AddBinding(Result, kaTogglePanelLeft, KeyBinding(vkF1, False, False, True));
   AddBinding(Result, kaTogglePanelRight, KeyBinding(vkF2, False, False, True));
 
@@ -562,7 +573,6 @@ begin
   // Tab management
   AddBinding(Result, kaNewTab, KeyBinding(Ord('T'), False, False, True));
   AddBinding(Result, kaCloseTab, KeyBinding(Ord('W'), False, False, True));
-  AddBinding(Result, kaNextTab, KeyBinding(vkTab, False, False, True));
 
   // Mask selection
   AddBinding(Result, kaSelectByMask, KeyBinding(vkAdd, False, False, False));
@@ -645,11 +655,11 @@ begin
   AddBinding(Result, kaEditorDeleteToEol, KeyBinding(Ord('K'), False, False, True));
   AddBinding(Result, kaEditorInsertLine, KeyBinding(Ord('N'), False, False, True));
 
-  // Global. Ctrl(+Shift)+Alt+Tab too: after Ctrl+Alt+Enter FMX often still
-  // reports Alt down.
-  AddBinding(Result, kaNextTab, KeyBinding(vkTab, False, True, True));
-  AddBinding(Result, kaPrevTab, KeyBinding(vkTab, True, False, True));
-  AddBinding(Result, kaPrevTab, KeyBinding(vkTab, True, True, True));
+  // Global. Ctrl+Tab and Ctrl+Shift+Tab switch the tabs of the active panel
+  // (Total Commander); the workspaces, MTN2's own top-row tabs, take
+  // Ctrl+Alt+PgDn / Ctrl+Alt+PgUp.
+  AddBinding(Result, kaNextTab, KeyBinding(vkNext, False, True, True));
+  AddBinding(Result, kaPrevTab, KeyBinding(vkPrior, False, True, True));
   AddBinding(Result, kaTopMenu, KeyBinding(vkF9, False, False, False));
   AddBinding(Result, kaAppQuit, KeyBinding(Ord('X'), False, True, False));
   AddBinding(Result, kaAppConsoleToggle, KeyBinding(Ord('O'), False, False, True));
@@ -868,6 +878,9 @@ const
     'EditPaste',             // kaEditPaste
     'WorkspaceLibrary',      // kaWorkspaceLibrary
     'WorkspaceSave',         // kaWorkspaceSave
+    'NewWorkspace',          // kaNewWorkspace
+    'NextPanelTab',          // kaNextPanelTab
+    'PrevPanelTab',          // kaPrevPanelTab
     'SetAttributes',         // kaSetAttributes
     'Properties',            // kaProperties
     'SshConnections',        // kaSshConnections
@@ -937,7 +950,19 @@ begin
   Result := KEYMAP_ACTION_NAMES[AAction];
 end;
 
-function KeymapProfileToJson(const AProfile: TKeymapProfile): string;
+function SameBindings(const A, B: TArray<TKeyBinding>): Boolean;
+var
+  I: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if Result then
+    for I := 0 to High(A) do
+      if not SameKeyBinding(A[I], B[I]) then
+        Exit(False);
+end;
+
+function BindingsToJsonText(const AProfile: TKeymapProfile;
+  const ABaseline: TKeymapProfile; AOnlyChanged: Boolean): string;
 var
   Root, BindObj: TJSONObject;
   Act: TKeymapAction;
@@ -952,6 +977,8 @@ begin
     for Act := Low(TKeymapAction) to High(TKeymapAction) do
     begin
       if (Act = kaNone) or (KEYMAP_ACTION_NAMES[Act] = '') then
+        Continue;
+      if AOnlyChanged and SameBindings(AProfile.Bindings[Act], ABaseline.Bindings[Act]) then
         Continue;
       Arr := TJSONArray.Create;
       for I := 0 to High(AProfile.Bindings[Act]) do
@@ -972,6 +999,16 @@ begin
   finally
     Root.Free;
   end;
+end;
+
+function KeymapProfileToJson(const AProfile: TKeymapProfile): string;
+begin
+  Result := BindingsToJsonText(AProfile, AProfile, False);
+end;
+
+function KeymapOverridesToJson(const AProfile: TKeymapProfile): string;
+begin
+  Result := BindingsToJsonText(AProfile, LoadDefaultKeymapProfile, True);
 end;
 
 /// <summary>Applies BindObj's entry for one action (a single binding object,
@@ -1136,7 +1173,7 @@ begin
   ActualPath := APath;
   if ActualPath = '' then
     ActualPath := GetDefaultKeymapPath;
-  TFile.WriteAllText(ActualPath, KeymapProfileToJson(AProfile), TEncoding.UTF8);
+  TFile.WriteAllText(ActualPath, KeymapOverridesToJson(AProfile), TEncoding.UTF8);
 end;
 
 const

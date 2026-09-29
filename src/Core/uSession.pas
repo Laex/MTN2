@@ -64,6 +64,7 @@ type
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
     ShowNotifications: Boolean;
+    ShowTitleBar: Boolean;
     ShowMenuBar: Boolean;
     ShowKeyBar: Boolean;
     ShowStatusLine: Boolean;
@@ -518,6 +519,7 @@ begin
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
+      Root.AddPair('showTitleBar', TJSONBool.Create(ASession.ShowTitleBar));
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
       Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
@@ -571,6 +573,7 @@ begin
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
   ASession.ShowPanelIcons := True;
   ASession.ShowNotifications := True;
+  ASession.ShowTitleBar := True;
   ASession.ShowMenuBar := True;
   ASession.ShowKeyBar := True;
   ASession.ShowStatusLine := True;
@@ -638,6 +641,7 @@ begin
         ClampDisplayBlinkMs(JsonInt(Root, 'cursorBlinkMs', cDisplayDefaultBlinkMs));
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
+      ASession.ShowTitleBar := JsonBool(Root, 'showTitleBar', True);
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
       ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);

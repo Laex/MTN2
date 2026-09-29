@@ -14,6 +14,7 @@ type
     [Test] procedure TestResolveCmdLine;
     [Test] procedure TestEnumeration;
     [Test] procedure TestSshProfile;
+    [Test] procedure TestTitleWithShell;
   end;
 
 implementation
@@ -186,6 +187,16 @@ begin
   Writeln('OK: TestSshProfile passed');
 end;
 
+procedure TestTitleWithShell;
+begin
+  Assert.AreEqual('Console - PowerShell', TitleWithShell('Console', cShellProfilePwsh),
+    'the shell follows the window name');
+  Assert.AreEqual('Console [shell] - Command Prompt',
+    TitleWithShell('Console [shell]', cShellProfileCmd), 'state stays in the name');
+  Assert.AreEqual('Console - Windows PowerShell',
+    TitleWithShell('Console', cShellProfilePowerShell), 'Windows PowerShell differs from pwsh');
+end;
+
 { TTestShellProfiles }
 
 procedure TTestShellProfiles.TestNormalization;
@@ -206,6 +217,11 @@ end;
 procedure TTestShellProfiles.TestEnumeration;
 begin
   TestShellProfiles.TestEnumeration;
+end;
+
+procedure TTestShellProfiles.TestTitleWithShell;
+begin
+  TestShellProfiles.TestTitleWithShell;
 end;
 
 procedure TTestShellProfiles.TestSshProfile;

@@ -66,7 +66,7 @@ begin
       Result := 'jobs.md';
     hdkSearch, hdkTmpSaveList:
       Result := 'search.md';
-    hdkSelectMask, hdkUnselectMask:
+    hdkSelectMask, hdkUnselectMask, hdkPanelFilter:
       Result := 'selection.md';
     hdkFolderHistory, hdkCmdHistory, hdkFileHistory, hdkFolderHotlist,
     hdkFolderHotlistAdd, hdkFolderHotlistRename:

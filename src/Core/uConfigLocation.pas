@@ -16,10 +16,23 @@ uses
   System.SysUtils, System.IOUtils;
 
 function IsPortableMode: Boolean;
+/// <summary>Points every settings file (keymap.json, session.json, ...) at
+/// ADir instead of the user's folder; '' restores the normal choice. The test
+/// runner uses it so the tests see the built-in defaults, not a developer's
+/// own files.</summary>
+procedure SetConfigDirectoryOverride(const ADir: string);
 function GetConfigDirectory: string;
 function GetConfigFilePath(const AFileName: string): string;
 
 implementation
+
+var
+  GConfigDirOverride: string;
+
+procedure SetConfigDirectoryOverride(const ADir: string);
+begin
+  GConfigDirOverride := ADir;
+end;
 
 function IsPortableMode: Boolean;
 begin
@@ -34,7 +47,13 @@ function GetConfigDirectory: string;
 var
   AppDataDir: string;
 begin
-  if IsPortableMode then
+  if GConfigDirOverride <> '' then
+  begin
+    Result := GConfigDirOverride;
+    if not DirectoryExists(Result) then
+      ForceDirectories(Result);
+  end
+  else if IsPortableMode then
   begin
     Result := ExtractFilePath(ParamStr(0));
     if Result = '' then

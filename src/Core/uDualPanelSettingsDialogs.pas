@@ -229,6 +229,7 @@ begin
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
     Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
     Ord(Cur.MarkedRowStyle));
+  DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
   DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
@@ -383,6 +384,7 @@ begin
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
     Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
     Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
     Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
     Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
