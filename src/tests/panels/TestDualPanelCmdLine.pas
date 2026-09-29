@@ -59,6 +59,13 @@ begin
 
   Resolved := TryResolvePanelCommandPath('git checkout feature/bar', 'D:\Work', URI);
   Assert.IsTrue(not Resolved, 'git command with slash and spaces must NOT be resolved as a directory path');
+
+  // A name inserted by Ctrl+Enter: quoted when it has spaces.
+  Assert.AreEqual('my file.txt', UnquoteSingleToken('"my file.txt"'), 'one quoted token unquoted');
+  Assert.AreEqual('readme.md', UnquoteSingleToken('readme.md'), 'unquoted name unchanged');
+  Assert.AreEqual('"a b" "c"', UnquoteSingleToken('"a b" "c"'), 'two quoted tokens stay a command');
+  Resolved := TryResolvePanelCommandPath(UnquoteSingleToken('"D:\My Dir\a.txt"'), 'C:\', URI);
+  Assert.IsTrue(Resolved, 'a quoted full path resolves like an unquoted one');
 end;
 
 procedure TestCompletionHelpers;

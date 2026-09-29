@@ -11,6 +11,9 @@ uses
 { Resolves AText as a navigable path relative to ABaseDir (panel cwd).
   Returns True and a file:// URI when the text is a path that should navigate
   the panel; False means run as a shell command instead. }
+/// <summary>'"my file.txt"' -> 'my file.txt' when the whole line is one
+/// quoted token (as Ctrl+Enter inserts a name with spaces); else AText.</summary>
+function UnquoteSingleToken(const AText: string): string;
 function TryResolvePanelCommandPath(const AText, ABaseDir: string;
   out AURI: string): Boolean;
 
@@ -68,6 +71,18 @@ implementation
 
 uses
   Winapi.Windows, Winapi.ShLwApi, System.Generics.Collections, System.Generics.Defaults;
+
+function UnquoteSingleToken(const AText: string): string;
+var
+  S: string;
+begin
+  S := Trim(AText);
+  if (Length(S) >= 2) and (S[1] = '"') and (S[Length(S)] = '"') and
+     (Pos('"', Copy(S, 2, Length(S) - 2)) = 0) then
+    Result := Copy(S, 2, Length(S) - 2)
+  else
+    Result := AText;
+end;
 
 function ExpandEnvVars(const AText: string): string;
 var

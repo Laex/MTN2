@@ -4,7 +4,7 @@ The command line is always below the panels: just start typing. A command runs i
 
 | Key | Action |
 | --- | --- |
-| Enter | run the command (or go there if a path was typed); then the focus goes back to the panel and the arrows move the cursor again |
+| Enter | run the command; a typed folder path goes to the folder, a file (including a name put there by Ctrl+Enter) opens as with Enter in the panel. Then the focus goes back to the panel and the arrows move the cursor again |
 | Ctrl+↓ / Ctrl+↑ | focus the command line / back to the panel |
 | ↑ / ↓ (while typing a command) | command history |
 | Tab | completion: a name from the panel, or a path from the disk when the word has `\`, `/` or `X:` (repeated presses cycle the matches) |

@@ -551,7 +551,10 @@ type
       const AControlId, AValuesJson: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure RequestFreeSpace(const APath: string);
-    procedure ResolveRelativeCommandAsync(const AText, ABaseDir: string);
+    procedure ResolveRelativeCommandAsync(const AText, ABaseDir, ACommand: string);
+    /// <summary>A path typed into the command line: an existing file opens
+    /// (ActivateFileUri), anything else is navigated to.</summary>
+    procedure OpenOrNavigateAsync(const AURI: string);
     procedure ExecuteTopMenuAction(AAction: TTopMenuAction);
     procedure OpenAboutDialog;
     /// <summary>Help > Updates: forwarded to OnOpenUpdates (the updater lives
@@ -611,6 +614,12 @@ type
     function FolderSizeStubTitle: string;
     procedure InsertPanelItemToCmdLine(AFullPath: Boolean);
     procedure ShellOpenCurrent;
+    /// <summary>A local file by the Windows shell, or as a console program
+    /// (OnLaunchConsoleFile) when it is one.</summary>
+    procedure ShellOpenPath(const APath: string);
+    /// <summary>Enter on a file typed into the command line: the same as Enter
+    /// on it in the panel (associations, viewer / editor, console program).</summary>
+    procedure ActivateFileUri(const AURI: string);
     procedure RunUserCommandCurrent(const AURI, ACommandTemplate: string);
     procedure SetCmdFocused(AValue: Boolean);
     function ClickCmdLine(ACol, ARow: Integer; AShift: TShiftState): Boolean;
@@ -3798,7 +3807,7 @@ end;
 
 procedure TDualPanelWindow.SubmitCommandLine;
 var
-  URI, Text, Base, LowerText: string;
+  URI, Text, Token, Base, LowerText: string;
   Ws: TDualPanelWorkspaceTab;
 begin
   if not Assigned(FCmdLineMgr) then
@@ -3821,20 +3830,44 @@ begin
     Exit;
   end;
 
-  if TryResolveCommandPath(Text, URI) then
+  // A whole-line quoted name ("my file.txt", as Ctrl+Enter inserts one with
+  // spaces) is a path like an unquoted one.
+  Token := UnquoteSingleToken(Text);
+  if TryResolveCommandPath(Token, URI) then
   begin
     FCmdLineMgr.Clear;
-    NavigateActiveTo(URI);
+    OpenOrNavigateAsync(URI);
   end
-  else if (Pos(' ', Text) = 0) and (Pos(#9, Text) = 0) then
+  else if ((Pos(' ', Token) = 0) and (Pos(#9, Token) = 0)) or (Token <> Text) then
   begin
-    // Bare token - async Exists, then navigate or shell (no UI-thread disk I/O).
+    // Bare token - async Exists, then open / navigate or shell (no UI-thread
+    // disk I/O).
     Ws := ActiveWorkspace;
     Base := FileUriToPath(ActiveTab(ActivePanel(Ws)).CurrentURI);
-    ResolveRelativeCommandAsync(Text, Base);
+    ResolveRelativeCommandAsync(Token, Base, Text);
   end
   else
     RunConsoleCommand(Text);
+end;
+
+procedure TDualPanelWindow.OpenOrNavigateAsync(const AURI: string);
+begin
+  if not AURI.StartsWith('file:', True) then
+  begin
+    NavigateActiveTo(AURI);
+    Exit;
+  end;
+  FVfs.ExistsAsync(AURI, nil,
+    procedure(const AExists: Boolean; const AIsDirectory: Boolean;
+      const AError: TVfsError)
+    begin
+      if not FAlive then
+        Exit;
+      if AExists and (AError.Code = vecOk) and not AIsDirectory then
+        ActivateFileUri(AURI)
+      else
+        NavigateActiveTo(AURI);
+    end);
 end;
 
 function TDualPanelWindow.PanelCommandCwd: string;
@@ -4158,7 +4191,7 @@ begin
     ackEdit:
       RequestOpenEditor(ARow.URI);
     ackShell:
-      ShellOpenCurrent;
+      ShellOpenPath(FileUriToPath(ARow.URI));
     ackCommand:
       RunUserCommandCurrent(ARow.URI, UserCommand);
   end;
@@ -5305,14 +5338,15 @@ begin
     end);
 end;
 
-procedure TDualPanelWindow.ResolveRelativeCommandAsync(const AText, ABaseDir: string);
+procedure TDualPanelWindow.ResolveRelativeCommandAsync(const AText, ABaseDir,
+  ACommand: string);
 var
   Combined, URI, Cmd: string;
 begin
-  Cmd := Trim(AText);
-  if (Cmd = '') or (ABaseDir = '') then
+  Cmd := Trim(ACommand);
+  if (Trim(AText) = '') or (ABaseDir = '') then
     Exit;
-  Combined := TPath.Combine(ABaseDir, Cmd);
+  Combined := TPath.Combine(ABaseDir, Trim(AText));
   URI := PathToFileUri(Combined);
   FVfs.ExistsAsync(URI, nil,
     procedure(const AExists: Boolean; const AIsDirectory: Boolean;
@@ -5324,10 +5358,11 @@ begin
       begin
         if Assigned(FCmdLineMgr) then
           FCmdLineMgr.Clear;
+        // A folder is entered; a file opens as Enter on it in the panel.
         if AIsDirectory then
           NavigateActiveTo(URI)
         else
-          NavigateActiveTo(PathToFileUri(TPath.GetDirectoryName(Combined)));
+          ActivateFileUri(URI);
       end
       else
         RunConsoleCommand(Cmd);
@@ -5875,27 +5910,40 @@ var
   Row: TPanelRow;
   Idx: Integer;
   Panel: TPanelState;
-  Path: string;
 begin
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
   if Row.IsDirectory or Row.IsParent or (Row.URI = '') then
     Exit;
-  Path := FileUriToPath(Row.URI);
-  if Path = '' then
+  ShellOpenPath(FileUriToPath(Row.URI));
+end;
+
+procedure TDualPanelWindow.ShellOpenPath(const APath: string);
+begin
+  if APath = '' then
     Exit;
   // A console program runs in the built-in console or a terminal tab, so
   // its output stays on screen; anything else is the Windows shell's.
-  if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(Path) then
+  if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(APath) then
   begin
     NotifyChanged;
     Exit;
   end;
   // Platform shell open (Windows ShellExecute today; xdg-open / open later).
-  if not ShellOpenFile(Path) then
-    OpenStub(skShellInfo, 'Shell open failed', Path)
+  if not ShellOpenFile(APath) then
+    OpenStub(skShellInfo, 'Shell open failed', APath)
   else
     NotifyChanged;
+end;
+
+procedure TDualPanelWindow.ActivateFileUri(const AURI: string);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Row: TPanelRow;
+begin
+  Ws := ActiveWorkspace;
+  Row := MakePanelRow(ExtractFileName(FileUriToPath(AURI)), False, -1, '', '', AURI);
+  ActivateRow(ActiveTab(ActivePanel(Ws)), Row);
 end;
 
 procedure TDualPanelWindow.LaunchExternal(AEdit: Boolean);
