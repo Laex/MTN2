@@ -115,7 +115,7 @@ function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
 implementation
 
 uses
-  uThemeDrawing, uDualPanelDrawUtils, uJobPopupRenderer;
+  uThemeDrawing, uDualPanelDrawUtils, uJobPopupRenderer, uChromeRows;
 
 function PanelListBounds(const ABounds: TRectI): TRectI;
 begin
@@ -263,14 +263,14 @@ function DispatchWorkspaceBody(const AHost: TDualPanelClickHost;
   ADoubleClick: Boolean; var AHandled: Boolean): Boolean;
 begin
   Result := True;
-  if ALocalRow = 1 then
+  if ALocalRow = TabBarRow then
     DispatchWorkspaceTabRow(AHost, ALocalCol, ADoubleClick, AHandled)
-  else if ALocalRow >= 2 then
+  else if ALocalRow >= ContentTopRow then
   begin
     if AKind = wkDocument then
-      AHandled := AHost.HandleDocumentClick(ALocalCol, ALocalRow - 2, AShift)
+      AHandled := AHost.HandleDocumentClick(ALocalCol, ALocalRow - ContentTopRow, AShift)
     else
-      AHandled := AHost.HandleTerminalClick(ALocalCol, ALocalRow - 2, AShift);
+      AHandled := AHost.HandleTerminalClick(ALocalCol, ALocalRow - ContentTopRow, AShift);
   end;
 end;
 
@@ -340,12 +340,13 @@ begin
   AHandled := True;
 
   // Row 0 is the Dual Panel menu bar for every workspace kind (panels,
-  // Viewer/Editor, Terminal). Skip only while a modal dialog is open -
-  // otherwise the click would drive the menu behind the dialog. Document
-  // tabs go through here too: the document arm below only handles row 1 /
-  // >= 2, so row 0 would otherwise be swallowed.
+  // Viewer/Editor, Terminal) when it is shown. Skip only while a modal
+  // dialog is open - otherwise the click would drive the menu behind the
+  // dialog. Document tabs go through here too: the document arm below only
+  // handles the tab row and the rows under it, so row 0 would otherwise be
+  // swallowed.
   if ASnap.TopMenuAssigned and (not ASnap.DialogVisible) and
-     (ASnap.TopMenuActive or (ALocalRow = 0)) then
+     (ASnap.TopMenuActive or (GShowMenuBar and (ALocalRow = 0))) then
   begin
     if AHost.HandleTopMenuClick(ALocalCol, ALocalRow) then
     begin
@@ -361,7 +362,7 @@ begin
     Exit;
   end;
 
-  if (ALocalRow = ASnap.AreaHeight - 2) and (not ASnap.DialogVisible) and
+  if (ALocalRow = KeyBarRow(ASnap.AreaHeight)) and (not ASnap.DialogVisible) and
      (not ASnap.StubVisible) then
   begin
     AHandled := AHost.HandleFunctionBarClick(ALocalCol, AShift);
@@ -421,7 +422,7 @@ begin
     Exit;
   end;
 
-  if (ALocalRow = ASnap.AreaHeight - 1) and (not ASnap.DialogVisible) and
+  if (ALocalRow = StatusLineRow(ASnap.AreaHeight)) and (not ASnap.DialogVisible) and
      (not ASnap.StubVisible) and (ASnap.JobsPhase <> pjpNone) then
   begin
     if Assigned(AHost.OpenJobList) then
@@ -432,7 +433,7 @@ begin
   if TryDispatchJobOverlay(AHost, ASnap, ALocalCol, ALocalRow) then
     Exit;
 
-  if (not ASnap.ConsoleMode) and (ALocalRow = ASnap.AreaHeight - 3) then
+  if (not ASnap.ConsoleMode) and (ALocalRow = CmdLineRow(ASnap.AreaHeight)) then
   begin
     AHost.SetCmdFocused(True);
     if Assigned(AHost.ClickCmdLine) then
@@ -443,7 +444,7 @@ begin
   if ASnap.CmdFocused then
     AHost.SetCmdFocused(False);
 
-  if ALocalRow = 1 then
+  if ALocalRow = TabBarRow then
   begin
     DispatchWorkspaceTabRow(AHost, ALocalCol, ADoubleClick, AHandled);
     Exit;

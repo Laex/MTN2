@@ -57,6 +57,7 @@ uses
   uPanelModel in 'Core\uPanelModel.pas',
   uPanelColumns in 'Core\uPanelColumns.pas',
   uDisplaySettings in 'Core\uDisplaySettings.pas',
+  uChromeRows in 'Core\uChromeRows.pas',
   uDirWatch in 'Core\uDirWatch.pas',
   uDialogTypes in 'Core\uDialogTypes.pas',
   uDialogJson in 'Core\uDialogJson.pas',

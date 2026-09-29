@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing,
+  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
   uDialogHost, uConsoleLaunch;
 
 type
@@ -164,6 +164,9 @@ type
     procedure ShowConsoleMode;
     procedure ShowPanelMode;
     procedure ApplyConsoleLayout;
+    /// <summary>Shows or hides the menu bar, the F-key bar and the status
+    /// line (uChromeRows) and resizes the console to match.</summary>
+    procedure ApplyChromeRows(AMenuBar, AKeyBar, AStatusLine: Boolean);
     procedure ConsoleContentChanged(Sender: TObject);
     procedure ConsoleCloseRequest(Sender: TObject);
     procedure ConsoleBackToPanels(Sender: TObject);
@@ -1094,6 +1097,9 @@ begin
     Result.CursorBlinkMs := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
+  Result.ShowMenuBar := GShowMenuBar;
+  Result.ShowKeyBar := GShowKeyBar;
+  Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
   Result.MarkedRowStyle := GMarkedRowStyle;
   Result.LineSpacing := FSession.LineSpacing;
@@ -1111,6 +1117,10 @@ begin
   GShowPanelIcons := ASettings.ShowPanelIcons;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
+  FSession.ShowMenuBar := ASettings.ShowMenuBar;
+  FSession.ShowKeyBar := ASettings.ShowKeyBar;
+  FSession.ShowStatusLine := ASettings.ShowStatusLine;
+  ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
   FSession.ShadowStyle := ShadowStyleId(ASettings.ShadowStyle);
   FSession.LineSpacing := ASettings.LineSpacing;
   GShadowStyle := ASettings.ShadowStyle;
@@ -1186,6 +1196,7 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
+  ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
   GMarkedRowStyle := MarkedRowStyleFromId(Sess.MarkedRows);
   FCursorBlinkEnabled := Sess.CursorBlink;
@@ -1261,6 +1272,9 @@ begin
     Sess.CursorBlinkMs := FSession.CursorBlinkMs;
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
+  Sess.ShowMenuBar := GShowMenuBar;
+  Sess.ShowKeyBar := GShowKeyBar;
+  Sess.ShowStatusLine := GShowStatusLine;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
   Sess.MarkedRows := MarkedRowStyleId(GMarkedRowStyle);
   Sess.LineSpacing := FSession.LineSpacing;
@@ -1460,6 +1474,16 @@ begin
       FConsole.EnsureShell(FDualPanel.ActiveLocalPath);
   end;
   Recompose;
+end;
+
+procedure TMainForm.ApplyChromeRows(AMenuBar, AKeyBar, AStatusLine: Boolean);
+begin
+  GShowMenuBar := AMenuBar;
+  GShowKeyBar := AKeyBar;
+  GShowStatusLine := AStatusLine;
+  // The console sits right above the shared F-keys / status line.
+  if Assigned(FConsole) then
+    FConsole.LayoutBottomMargin := ChromeBottomRows;
 end;
 
 procedure TMainForm.ApplyConsoleLayout;
@@ -1721,6 +1745,9 @@ begin
   FSession.CursorBlinkMs := cBlinkIntervalMs;
   FSession.ShowPanelIcons := True;
   FSession.ShowNotifications := True;
+  FSession.ShowMenuBar := True;
+  FSession.ShowKeyBar := True;
+  FSession.ShowStatusLine := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
   FCursorBlinkEnabled := True;
@@ -1861,7 +1888,7 @@ begin
   if not Assigned(FMdi) then
     Exit;
   T0 := TStopwatch.GetTimeStamp;
-  // Console keeps a 2-row bottom margin (LayoutBottomMargin) for shared F-keys / status.
+  // Console keeps a bottom margin (LayoutBottomMargin) for the shared F-keys / status line.
   FMdi.LayoutMaximized(ACols, ARows);
   FMdi.Paint(AGrid, ACols, ARows);
   if Assigned(FFpsTimer) then

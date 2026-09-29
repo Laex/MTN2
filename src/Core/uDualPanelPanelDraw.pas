@@ -179,6 +179,9 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
 
 implementation
 
+uses
+  uChromeRows;
+
 function PanelModeTitleCaption(AViewKind: TPanelViewKind;
   AIsQuickViewTarget: Boolean): string;
 begin
@@ -433,10 +436,11 @@ var
   PanelW, PanelH, TopY, BottomY: Integer;
   LeftOn, RightOn: Boolean;
 begin
-  // Rows: 0 menu, 1 Dual Panel Tabs, 2..H-4 panels (no gap under tabs),
-  // H-3 cmdline, H-2 F-keys, H-1 status line.
-  TopY := 2;
-  BottomY := AHeight - 4;
+  // Rows (uChromeRows): menu, Dual Panel Tabs, panels (no gap under the
+  // tabs), cmdline, F-keys, status line; the menu, F-keys and status line
+  // can be hidden, and the panels take their rows.
+  TopY := ContentTopRow;
+  BottomY := CmdLineRow(AHeight) - 1;
   PanelH := BottomY - TopY + 1;
   if PanelH < 6 then
     PanelH := 6;
@@ -473,12 +477,13 @@ end;
 
 function EmbeddedDocumentPaintHeight(AClientHeight: Integer): Integer;
 begin
-  Result := AClientHeight - 2;
+  // The document draws its own F-keys and status line.
+  Result := AClientHeight - ContentTopRow;
 end;
 
 function EmbeddedTerminalPaintHeight(AClientHeight: Integer): Integer;
 begin
-  Result := AClientHeight - 4;
+  Result := AClientHeight - ContentTopRow - ChromeBottomRows;
 end;
 
 function CanPaintEmbeddedContent(AHeight: Integer): Boolean;

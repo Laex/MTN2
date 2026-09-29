@@ -39,6 +39,11 @@ type
     ShowPanelIcons: Boolean;
     /// <summary>Transient notices (uToast.GShowToasts), e.g. "path copied".</summary>
     ShowNotifications: Boolean;
+    /// <summary>Chrome rows (uChromeRows): the menu bar, the F-key bar and
+    /// the status line. A hidden row goes to the content.</summary>
+    ShowMenuBar: Boolean;
+    ShowKeyBar: Boolean;
+    ShowStatusLine: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
@@ -295,6 +300,9 @@ begin
   Result.CursorBlinkMs := cDisplayDefaultBlinkMs;
   Result.ShowPanelIcons := True;
   Result.ShowNotifications := True;
+  Result.ShowMenuBar := True;
+  Result.ShowKeyBar := True;
+  Result.ShowStatusLine := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.LineSpacing := False;

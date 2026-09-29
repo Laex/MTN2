@@ -92,6 +92,9 @@ type
 
 implementation
 
+uses
+  uDialogResources;
+
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
   const AOnNotify: TProc; const AOnCanStart: TSettingsCanStart;
@@ -187,6 +190,7 @@ end;
 procedure TSettingsDialogController.OpenDisplay;
 var
   Cur: TDisplaySettings;
+  Decl: TDialogDeclaration;
   Fonts: TArray<string>;
   ResolvedName, Note: string;
   FontIdx: Integer;
@@ -219,12 +223,16 @@ begin
   SetKind(hdkDisplay);
   FOpenFontSize := Cur.FontSize;
   FOpenFontSizeIdx := IndexOfDisplayFontSize(Cur.FontSize);
-  FDialog.Open(BuildDisplayDialog(Fonts, FontIdx,
+  Decl := BuildDisplayDialog(Fonts, FontIdx,
     FOpenFontSizeIdx, IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
     Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
-    Ord(Cur.MarkedRowStyle)), FOnCommand);
+    Ord(Cur.MarkedRowStyle));
+  DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
+  DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
+  DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
+  FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
 
@@ -375,6 +383,9 @@ begin
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
     Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
+    Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
+    Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
     Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then

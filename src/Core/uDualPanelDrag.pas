@@ -72,6 +72,9 @@ function ClassifyMouseDown(ARow: Integer; AKind: TWorkspaceKind): TMouseDownTarg
 
 implementation
 
+uses
+  uChromeRows;
+
 function CanArmTabDrag(AKind, AFrom, AWorkspaceCount: Integer): Boolean;
 begin
   Result := (AKind <> cTabDragNone) and (AFrom >= 0);
@@ -136,7 +139,7 @@ var
 begin
   case AKind of
     cTabDragWorkspace:
-      if ARow = 1 then
+      if ARow = TabBarRow then
         if AHost.HitWorkspaceTab(ACol, Idx, IsClose) then
           AHover := Idx;
     cTabDragPanelLeft, cTabDragPanelRight:
@@ -299,11 +302,11 @@ end;
 
 function ClassifyMouseDown(ARow: Integer; AKind: TWorkspaceKind): TMouseDownTarget;
 begin
-  if ARow = 0 then
+  if GShowMenuBar and (ARow = 0) then
     Exit(mdtTopMenu);
   if (AKind = wkTerminal) or (AKind = wkDocument) then
   begin
-    if ARow = 1 then
+    if ARow = TabBarRow then
       Exit(mdtWorkspaceTab);
     Exit(mdtEmbedded);
   end;

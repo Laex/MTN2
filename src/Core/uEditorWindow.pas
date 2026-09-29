@@ -325,7 +325,7 @@ implementation
 uses
   System.IOUtils, System.StrUtils, FMX.Platform,
   uOverlayRenderer, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord;
+  uShellAssoc, uKeyChord, uChromeRows;
 
 const
   /// <summary>uDialogHistory key of the F7 prompt; replace.json's Find field
@@ -879,11 +879,11 @@ end;
 
 function TEditorWindow.ViewHeight: Integer;
 begin
-  // Row 0 = title; ...; H-3 = bottom frame; H-2 = F-keys; H-1 = status.
-  // Chromeless: rows 1..H-2 inside the host's frame.
+  // Row 0 = title; ...; bottom frame; F-keys; status line (uChromeRows,
+  // each can be hidden). Chromeless: rows 1..H-2 inside the host's frame.
   if FChromeless then
     Exit(Max(Area.Height - 2, 1));
-  Result := Max(Area.Height - 4, 1);
+  Result := Max(Area.Height - 2 - ChromeBottomRows, 1);
 end;
 
 function TEditorWindow.ContentBottomRow: Integer;
@@ -3232,9 +3232,15 @@ begin
     Exit;
 
   // Frame closes above chrome: bottom border, then F-keys, then status.
-  DrawWindowBottomBorder(H - 3, W);
-  DrawFunctionKeys(H - 2, W);
-  DrawAppStatusLine(H - 1, W);
+  // A hidden status line still shows over the last row while it holds the
+  // Find prompt or a Y/N question.
+  DrawWindowBottomBorder(H - 1 - ChromeBottomRows, W);
+  if GShowKeyBar then
+    DrawFunctionKeys(KeyBarRow(H), W);
+  if GShowStatusLine then
+    DrawAppStatusLine(StatusLineRow(H), W)
+  else if FFindPrompt or (FConfirm <> ecNone) then
+    DrawAppStatusLine(H - 1, W);
   if FFindPrompt then
     FFindPopup.Draw(Buffer, Theme);
 
@@ -3281,7 +3287,7 @@ begin
   if Assigned(FDialog) and FDialog.Visible and
      FDialog.ContainsLocal(ALocalCol, ALocalRow) then
     Exit(FDialog.HandleClick(ALocalCol, ALocalRow, AShift));
-  if ALocalRow = Area.Height - 2 then
+  if ALocalRow = KeyBarRow(Area.Height) then
     Exit(HandleFunctionBarClick(ALocalCol, AShift));
   if Assigned(FDialog) and FDialog.Visible then
     Exit(FDialog.HandleClick(ALocalCol, ALocalRow));

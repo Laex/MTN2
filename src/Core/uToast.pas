@@ -74,7 +74,7 @@ function ToastMaxTextLen(AWidth: Integer): Integer;
 implementation
 
 uses
-  uDualPanelOverlays, uPanelUriLabels, uThemeDrawing;
+  uDualPanelOverlays, uPanelUriLabels, uThemeDrawing, uChromeRows;
 
 const
   cToastFg = TAlphaColor($FF000000);
@@ -135,8 +135,9 @@ begin
     Exit;
   BoxW := ATextLen + cToastChrome;
   Right := AWidth - 1 - cToastRightMargin;
-  // H-1 status, H-2 F-keys, H-3 command line, H-4 panel bottom frame (shadow).
-  Bottom := AHeight - 5;
+  // Above the panel bottom frame (and its shadow row), which sits right
+  // above the command line.
+  Bottom := CmdLineRow(AHeight) - 2;
   Result := TRectI.Make(Right - BoxW + 1, Bottom - 1 - ALines, Right, Bottom);
 end;
 

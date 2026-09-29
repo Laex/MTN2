@@ -143,6 +143,9 @@
       "blink": "&Blink cursor",
       "panel_icons": "Show panel &icons",
       "notifications": "Show &pop-up notifications",
+      "show_menu_bar": "Show &menu bar",
+      "show_key_bar": "Show F-&key bar",
+      "show_status_line": "Show &status line",
       "ok": "OK",
       "cancel": "Cancel"
     },

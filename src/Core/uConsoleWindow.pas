@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  FMX.Platform, uStrings, uKeyChord;
+  FMX.Platform, uStrings, uKeyChord, uChromeRows;
 
 const
   cTextFg      = TAlphaColor($FFE0E0E0);
@@ -98,7 +98,7 @@ begin
   inherited Create(ATheme, AId, AProfileId);
   FLastSyncedCwd     := '';
   FRestartOnExit     := True;
-  LayoutBottomMargin := 2; // shared Dual Panel F-keys / status below (no cmdline)
+  LayoutBottomMargin := ChromeBottomRows; // shared Dual Panel F-keys / status below (no cmdline)
   Title              := T('ui.window.console', 'Console');
   FDialog.OnDeferredCommand := DialogDeferredCommand;
 end;

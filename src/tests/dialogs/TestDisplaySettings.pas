@@ -98,6 +98,9 @@ begin
   Result.CursorBlinkMs := 300;
   Result.ShowPanelIcons := False;
   Result.ShowNotifications := False;
+  Result.ShowMenuBar := False;
+  Result.ShowKeyBar := False;
+  Result.ShowStatusLine := True;
   Result.ShadowStyle := 'soft';
   Result.LineSpacing := True;
   Result.MarkedRows := 'band';
@@ -131,6 +134,9 @@ begin
     Assert.IsTrue(Loaded.CursorBlinkMs = 300, 'cursorBlinkMs saved');
     Assert.IsTrue(not Loaded.ShowPanelIcons, 'showPanelIcons saved');
     Assert.IsTrue(not Loaded.ShowNotifications, 'showNotifications saved');
+    Assert.IsTrue(not Loaded.ShowMenuBar, 'showMenuBar saved');
+    Assert.IsTrue(not Loaded.ShowKeyBar, 'showKeyBar saved');
+    Assert.IsTrue(Loaded.ShowStatusLine, 'showStatusLine saved');
     Assert.IsTrue(SameValue(Loaded.Zoom, 1.25), 'zoom still saved');
     Assert.IsTrue(Loaded.Language = 'ru', 'language saved');
     Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
@@ -175,6 +181,12 @@ begin
     Pair := Root.RemovePair('language');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('showMenuBar');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('showKeyBar');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('shadowStyle');
     if Assigned(Pair) then
       Pair.Free;
@@ -196,6 +208,8 @@ begin
     Assert.IsTrue(Sess.CursorBlinkMs = cDisplayDefaultBlinkMs, 'missing blink ms -> 530');
     Assert.IsTrue(Sess.ShowPanelIcons, 'missing showPanelIcons -> on');
     Assert.IsTrue(Sess.ShowNotifications, 'missing showNotifications -> on');
+    Assert.IsTrue(Sess.ShowMenuBar, 'missing showMenuBar -> shown');
+    Assert.IsTrue(Sess.ShowKeyBar, 'missing showKeyBar -> shown');
     Assert.IsTrue(Sess.Language = '', 'missing language -> empty (English)');
     Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');

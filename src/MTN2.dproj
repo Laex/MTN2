@@ -239,6 +239,7 @@
         <DCCReference Include="Core\uPanelModel.pas"/>
         <DCCReference Include="Core\uPanelColumns.pas"/>
         <DCCReference Include="Core\uDisplaySettings.pas"/>
+        <DCCReference Include="Core\uChromeRows.pas"/>
         <DCCReference Include="Core\uDirWatch.pas"/>
         <DCCReference Include="Core\uDialogTypes.pas"/>
         <DCCReference Include="Core\uDialogJson.pas"/>

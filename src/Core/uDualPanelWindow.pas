@@ -739,6 +739,8 @@ type
     function ChromeContext: TFunctionBarContext;
     procedure DrawFunctionKeys(AY, AWidth: Integer);
     procedure DrawAppStatusLine(AY, AWidth: Integer);
+    /// <summary>The F-key bar and the status line, those that are shown.</summary>
+    procedure DrawBottomChrome(W, H: Integer);
   protected
     procedure DrawDocumentContent(W, H: Integer);
     procedure DrawTerminalContent(W, H: Integer);
@@ -910,7 +912,7 @@ implementation
 
 uses
   Winapi.Windows, Winapi.ActiveX,
-  uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare,
+  uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
   uExternalTools, uDialogHistory, uChecksums, uKeyChord;
 
 const
@@ -4229,11 +4231,11 @@ var
 begin
   if not Assigned(FCmdLineMgr) or FConsoleMode then
     Exit;
-  // The line is drawn at H - 3 (DrawContent); the list opens above it.
+  // The list opens above the command line (CmdLineRow).
   Ws := ActiveWorkspace;
   EditX := DualPanelCmdLineEditX(ActiveTab(ActivePanel(Ws)).CurrentURI, Area.Width);
   FCmdLineMgr.HistoryPopup.Open(FCmdLineMgr.GetHistoryItems, FCmdLineMgr.Text,
-    Area.Height - 3, EditX, Area.Width - 1, Area.Width, Area.Height);
+    CmdLineRow(Area.Height), EditX, Area.Width - 1, Area.Width, Area.Height);
   NotifyChanged;
 end;
 
@@ -7919,8 +7921,8 @@ begin
       Names[I] := FState.WorkspaceTabs[I].Title + ' ' + cTabCloseChar
     else
       Names[I] := FState.WorkspaceTabs[I].Title;
-  // Row 1: Dual Panel Tabs directly under the menu.
-  Theme.DrawTabBar(Buffer, TRectI.Make(0, 1, AWidth - 1, 1), Names,
+  // Dual Panel Tabs directly under the menu (the top row without it).
+  Theme.DrawTabBar(Buffer, TRectI.Make(0, TabBarRow, AWidth - 1, TabBarRow), Names,
     FState.ActiveWorkspaceIndex, WidgetState, tbkWorkspace);
   if ShowClose then
     ResolveChrome(pcpCloseMark, True, CloseFg, Discard);
@@ -7938,11 +7940,11 @@ begin
     else
       ResolveChrome(pcpWorkspaceTabIdle, False, TabFg, TabBg);
     if DragHover then
-      PutGridText(Buffer, X, 1, Cap, TabFg, TabBg);
+      PutGridText(Buffer, X, TabBarRow, Cap, TabFg, TabBg);
     if ShowClose then
     begin
       CloseCol := TabCaptionCloseCol(X, Cap, True, False);
-      PaintTabCloseMark(Buffer, CloseCol, 1,
+      PaintTabCloseMark(Buffer, CloseCol, TabBarRow,
         ContrastingGlyphFg(TabBg, CloseFg, TabFg), TabBg);
     end;
     Inc(X, Length(Cap) + 1);
@@ -7962,6 +7964,9 @@ end;
 
 procedure TDualPanelWindow.DrawMenuBar(AWidth: Integer);
 begin
+  // A hidden menu bar shows over the top row while the menu is open (F9).
+  if not GShowMenuBar and not (Assigned(FTopMenu) and FTopMenu.Active) then
+    Exit;
   if Assigned(FTopMenu) then
     FTopMenu.DrawTopBar(Buffer, AWidth)
   else
@@ -8875,14 +8880,16 @@ var
 begin
   LayoutPanels(W, H);
   SyncPanelScrollAfterLayout;
-  DrawMenuBar(W);
   DrawWorkspaceTabBar(W);
   Doc := ActiveDocument;
-  if not Assigned(Doc) then
-    Exit;
-  DocH := EmbeddedDocumentPaintHeight(H);
-  if CanPaintEmbeddedContent(DocH) then
-    Doc.PaintEmbedded(Buffer, 0, 2, W, DocH, Area.Left, Area.Top + 2);
+  if Assigned(Doc) then
+  begin
+    DocH := EmbeddedDocumentPaintHeight(H);
+    if CanPaintEmbeddedContent(DocH) then
+      Doc.PaintEmbedded(Buffer, 0, ContentTopRow, W, DocH, Area.Left,
+        Area.Top + ContentTopRow);
+  end;
+  DrawMenuBar(W);
 end;
 
 procedure TDualPanelWindow.DrawTerminalContent(W, H: Integer);
@@ -8892,7 +8899,6 @@ var
 begin
   LayoutPanels(W, H);
   SyncPanelScrollAfterLayout;
-  DrawMenuBar(W);
   DrawWorkspaceTabBar(W);
   Term := ActiveTerminal;
   if Assigned(Term) then
@@ -8900,13 +8906,13 @@ begin
     DocH := EmbeddedTerminalPaintHeight(H);
     if CanPaintEmbeddedContent(DocH) then
     begin
-      Term.Area := TRectI.Make(0, 2, W - 1, 2 + DocH - 1);
+      Term.Area := TRectI.Make(0, ContentTopRow, W - 1, ContentTopRow + DocH - 1);
       Term.IsFocused := True;
       Term.Paint(Buffer);
     end;
   end;
-  DrawFunctionKeys(H - 2, W);
-  DrawAppStatusLine(H - 1, W);
+  DrawBottomChrome(W, H);
+  DrawMenuBar(W);
 end;
 
 procedure TDualPanelWindow.DrawPanelsContent(W, H: Integer);
@@ -8915,7 +8921,6 @@ var
 begin
   LayoutPanels(W, H);
   SyncPanelScrollAfterLayout;
-  DrawMenuBar(W);
   DrawWorkspaceTabBar(W);
   Ws := ActiveWorkspace;
   if Ws.State.LeftVisible then
@@ -8924,9 +8929,17 @@ begin
   if Ws.State.RightVisible then
     DrawPanel(FRightBounds, Ws.State.RightPanel, psRight,
       Ws.State.ActiveSide = psRight);
-  DrawCommandLine(H - 3, W);
-  DrawFunctionKeys(H - 2, W);
-  DrawAppStatusLine(H - 1, W);
+  DrawCommandLine(CmdLineRow(H), W);
+  DrawBottomChrome(W, H);
+  DrawMenuBar(W);
+end;
+
+procedure TDualPanelWindow.DrawBottomChrome(W, H: Integer);
+begin
+  if GShowKeyBar then
+    DrawFunctionKeys(KeyBarRow(H), W);
+  if GShowStatusLine then
+    DrawAppStatusLine(StatusLineRow(H), W);
 end;
 
 procedure TDualPanelWindow.DrawContent;
@@ -8946,10 +8959,7 @@ begin
     dckTooSmall:
       Exit;
     dckConsole:
-      begin
-        DrawFunctionKeys(H - 2, W);
-        DrawAppStatusLine(H - 1, W);
-      end;
+      DrawBottomChrome(W, H);
     dckDocument:
       DrawDocumentContent(W, H);
     dckTerminal:
@@ -9349,12 +9359,12 @@ begin
     Term := ActiveTerminal;
     if not Assigned(Term) or (ALocalRow < 2) then
       Exit(True);
-    Exit(Term.HandleMouseDown(ALocalCol, ALocalRow - 2, AShift));
+    Exit(Term.HandleMouseDown(ALocalCol, ALocalRow - ContentTopRow, AShift));
   end;
   Doc := ActiveDocument;
   if not Assigned(Doc) or (ALocalRow < 2) then
     Exit(True);
-  Result := Doc.HandleMouseDown(ALocalCol, ALocalRow - 2, AShift);
+  Result := Doc.HandleMouseDown(ALocalCol, ALocalRow - ContentTopRow, AShift);
 end;
 
 function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
@@ -9559,14 +9569,14 @@ begin
     Term := ActiveTerminal;
     if not Assigned(Term) or (ALocalRow < 2) then
       Exit;
-    Exit(Term.HandleMouseMove(ALocalCol, ALocalRow - 2));
+    Exit(Term.HandleMouseMove(ALocalCol, ALocalRow - ContentTopRow));
   end;
   if ActiveWorkspace.Kind <> wkDocument then
     Exit;
   Doc := ActiveDocument;
   if not Assigned(Doc) or (ALocalRow < 2) then
     Exit;
-  Result := Doc.HandleMouseMove(ALocalCol, ALocalRow - 2);
+  Result := Doc.HandleMouseMove(ALocalCol, ALocalRow - ContentTopRow);
 end;
 
 function TDualPanelWindow.HandleMouseUp: Boolean;

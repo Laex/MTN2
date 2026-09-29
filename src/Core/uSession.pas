@@ -64,6 +64,9 @@ type
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
     ShowNotifications: Boolean;
+    ShowMenuBar: Boolean;
+    ShowKeyBar: Boolean;
+    ShowStatusLine: Boolean;
     /// <summary>uDisplaySettings.ShadowStyleId: 'classic' / 'soft' / 'none'.</summary>
     ShadowStyle: string;
     /// <summary>uDisplaySettings.MarkedRowStyleId: 'text' / 'band'.</summary>
@@ -515,6 +518,9 @@ begin
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
+      Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
+      Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
+      Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
       Root.AddPair('markedRows', MarkedRowStyleId(MarkedRowStyleFromId(ASession.MarkedRows)));
   Root.AddPair('lineSpacing', TJSONBool.Create(ASession.LineSpacing));
@@ -565,6 +571,9 @@ begin
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
   ASession.ShowPanelIcons := True;
   ASession.ShowNotifications := True;
+  ASession.ShowMenuBar := True;
+  ASession.ShowKeyBar := True;
+  ASession.ShowStatusLine := True;
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
   ASession.MarkedRows := MarkedRowStyleId(mrsText);
   ASession.LineSpacing := False;
@@ -629,6 +638,9 @@ begin
         ClampDisplayBlinkMs(JsonInt(Root, 'cursorBlinkMs', cDisplayDefaultBlinkMs));
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
+      ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
+      ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
+      ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));
       ASession.MarkedRows := MarkedRowStyleId(MarkedRowStyleFromId(JsonStr(Root, 'markedRows', '')));
   ASession.LineSpacing := JsonBool(Root, 'lineSpacing', False);
