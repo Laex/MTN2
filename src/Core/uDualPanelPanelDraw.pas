@@ -141,8 +141,8 @@ procedure DrawPanelDropHighlight(const ABuffer: TTerminalGrid;
 procedure DispatchDrawPanelBody(const AHost: TDualPanelPanelHost;
   const ASnap: TDrawPanelSnapshot);
 procedure DispatchPanelSearchFields(const ABounds: TRectI;
-  ASide, AActiveSide: TPanelSide; AQuickSearch, AFilter: Boolean;
-  const ADrawQuick, ADrawFilter: TDrawBoundsProc);
+  ASide, AActiveSide: TPanelSide; AQuickSearch: Boolean;
+  const ADrawQuick: TDrawBoundsProc);
 
 type
   TDrawFilesHeadersProc = procedure(const ABounds: TRectI;
@@ -161,7 +161,7 @@ type
     Frame, BodyBg, FooterFg, DropFg, DropBg: TAlphaColor;
     Count, PageSize: Integer;
     Footer, InfoLine: string;
-    HasTheme, ThemeDouble, DropHighlight, QuickSearch, Filter: Boolean;
+    HasTheme, ThemeDouble, DropHighlight, QuickSearch: Boolean;
   end;
 
   TDualPanelFilesDrawHost = record
@@ -171,7 +171,6 @@ type
     DrawList: TDrawFilesListProc;
     DrawScrollBar: TDrawFilesScrollProc;
     DrawQuickSearch: TDrawBoundsProc;
-    DrawFilter: TDrawBoundsProc;
   end;
 
 procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
@@ -648,13 +647,11 @@ begin
 end;
 
 procedure DispatchPanelSearchFields(const ABounds: TRectI;
-  ASide, AActiveSide: TPanelSide; AQuickSearch, AFilter: Boolean;
-  const ADrawQuick, ADrawFilter: TDrawBoundsProc);
+  ASide, AActiveSide: TPanelSide; AQuickSearch: Boolean;
+  const ADrawQuick: TDrawBoundsProc);
 begin
   if AQuickSearch and (ASide = AActiveSide) then
     ADrawQuick(ABounds);
-  if AFilter and (ASide = AActiveSide) then
-    ADrawFilter(ABounds);
 end;
 
 procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
@@ -677,7 +674,7 @@ begin
   AHost.DrawScrollBar(ASnap.Bounds.Right - 1, ASnap.Bounds.Top + 2,
     ASnap.Bounds.Bottom - 3, ASnap.Tab.ScrollOffset, ASnap.Count, ASnap.PageSize);
   DispatchPanelSearchFields(ASnap.Bounds, ASnap.Side, ASnap.ActiveSide,
-    ASnap.QuickSearch, ASnap.Filter, AHost.DrawQuickSearch, AHost.DrawFilter);
+    ASnap.QuickSearch, AHost.DrawQuickSearch);
 end;
 
 end.

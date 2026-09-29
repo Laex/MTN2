@@ -187,7 +187,6 @@ type
     DrivePreviewActive: Boolean;
     QuickViewVisible: Boolean;
     CmdLineHasText: Boolean;
-    FilterBoxActive: Boolean;
     CmdFocused: Boolean;
     ViewH, Cols, PageSize: Integer;
     /// <summary>Active panel is in Brief mode: Left/Right move between its
@@ -198,7 +197,6 @@ type
   TDualPanelFreeInputHost = record
     CancelDrivePreview: TKeymapProc;
     CloseQuickView: TKeymapProc;
-    HandleFilterInput: TKeymapInputFn;
     DispatchKeymapPrimary: TKeymapActionDispatchFn;
     PreviewCycleDrive: TKeymapDeltaProc;
     NavigateActiveToDriveRoot: TKeymapProc;
@@ -273,9 +271,10 @@ function ApplyQuickSearchMatch(var ATab: TTab; const ARows: TPanelRows;
 function RecoverPrintableKeyChar(AKey: Word; AKeyChar: Char): Char;
 
 type
-  TNeedleBoxAction = (nbaUnhandled, nbaClear, nbaConfirm, nbaBackspace, nbaAppend);
+  TNeedleBoxAction = (nbaUnhandled, nbaClear, nbaBackspace, nbaAppend);
 
-function ClassifyNeedleBoxKey(AKey: Word; AKeyChar: Char; AReturnClears: Boolean;
+/// <summary>Esc and Enter close the box; Backspace and printable keys edit it.</summary>
+function ClassifyNeedleBoxKey(AKey: Word; AKeyChar: Char;
   out AChar: Char): TNeedleBoxAction;
 function NeedleBackspace(var AText: string): Boolean;
 function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
@@ -1166,18 +1165,12 @@ begin
   end;
 end;
 
-function ClassifyNeedleBoxKey(AKey: Word; AKeyChar: Char; AReturnClears: Boolean;
+function ClassifyNeedleBoxKey(AKey: Word; AKeyChar: Char;
   out AChar: Char): TNeedleBoxAction;
 begin
   AChar := #0;
-  if AKey = vkEscape then
+  if (AKey = vkEscape) or (AKey = vkReturn) then
     Exit(nbaClear);
-  if AKey = vkReturn then
-  begin
-    if AReturnClears then
-      Exit(nbaClear);
-    Exit(nbaConfirm);
-  end;
   if AKey = vkBack then
     Exit(nbaBackspace);
   AChar := RecoverPrintableKeyChar(AKey, AKeyChar);
@@ -1248,11 +1241,6 @@ begin
     AHost.CloseQuickView();
     ConsumeKey(AKey, AKeyChar, False);
     Exit;
-  end;
-  if ASnap.FilterBoxActive then
-  begin
-    if AHost.HandleFilterInput(AKey, AShift, AKeyChar) then
-      Exit(True);
   end;
   if AHost.DispatchKeymapPrimary(MatchActiveAction(AKey, AShift), AKey, AKeyChar) then
     Exit;

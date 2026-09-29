@@ -68,7 +68,6 @@ type
     procedure Files(const ABounds: TRectI; const APanel: TPanelState;
       ASide: TPanelSide; AActive: Boolean; AFrame, ABodyBg: TAlphaColor);
     procedure QuickSearch(const ABounds: TRectI);
-    procedure Filter(const ABounds: TRectI);
     procedure ResolveChrome(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
   end;
@@ -93,7 +92,6 @@ type
       AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
     procedure Scroll(AX, ATop, ABottom, APos, ACount, AViewH: Integer);
     procedure Quick(const ABounds: TRectI);
-    procedure Filter(const ABounds: TRectI);
   end;
 
 procedure TDrawSpy.Tree;
@@ -183,11 +181,6 @@ begin
   Last := Last + 'quick,';
 end;
 
-procedure TPanelSpy.Filter(const ABounds: TRectI);
-begin
-  Last := Last + 'filter,';
-end;
-
 procedure TPanelSpy.ResolveChrome(APart: TPanelChromePart; AActive: Boolean;
   out AFg, ABg: TAlphaColor);
 begin
@@ -263,11 +256,6 @@ end;
 procedure TFilesSpy.Quick(const ABounds: TRectI);
 begin
   Last := Last + 'quick,';
-end;
-
-procedure TFilesSpy.Filter(const ABounds: TRectI);
-begin
-  Last := Last + 'filter,';
 end;
 
 procedure TestCaptionsAndFooters;
@@ -673,12 +661,10 @@ begin
     Assert.IsTrue(Spy.Last = 'files,', 'files body');
 
     Spy.Last := '';
-    DispatchPanelSearchFields(Bounds, psLeft, psRight, True, True,
-      Spy.QuickSearch, Spy.Filter);
-    Assert.IsTrue(Spy.Last = '', 'search fields only on active side');
-    DispatchPanelSearchFields(Bounds, psLeft, psLeft, True, True,
-      Spy.QuickSearch, Spy.Filter);
-    Assert.IsTrue(Spy.Last = 'quick,filter,', 'quick search then filter');
+    DispatchPanelSearchFields(Bounds, psLeft, psRight, True, Spy.QuickSearch);
+    Assert.IsTrue(Spy.Last = '', 'the search field only on the active side');
+    DispatchPanelSearchFields(Bounds, psLeft, psLeft, True, Spy.QuickSearch);
+    Assert.IsTrue(Spy.Last = 'quick,', 'quick search on the active side');
 
     AllocTerminalGrid(Grid, 20, 8);
     ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
@@ -725,7 +711,6 @@ begin
     Host.DrawList := Spy.List;
     Host.DrawScrollBar := Spy.Scroll;
     Host.DrawQuickSearch := Spy.Quick;
-    Host.DrawFilter := Spy.Filter;
 
     AllocTerminalGrid(Grid, 20, 8);
     ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
@@ -744,7 +729,6 @@ begin
     Snap.Tab.ScrollOffset := 2;
     Snap.DropHighlight := True;
     Snap.QuickSearch := True;
-    Snap.Filter := True;
     Snap.Panel.SortColumn := pscName;
     Snap.Panel.SortDescending := False;
     DispatchDrawPanelFiles(Grid, nil, Host, Snap);
@@ -771,8 +755,8 @@ begin
     Snap.ActiveSide := psRight;
     Snap.DropHighlight := False;
     DispatchDrawPanelFiles(Grid, nil, Host, Snap);
-    Assert.IsTrue(Spy.Last = 'drive,headers,list,scroll,quick,filter,',
-      'search fields on active side');
+    Assert.IsTrue(Spy.Last = 'drive,headers,list,scroll,quick,',
+      'the search field on the active side');
   finally
     Spy.Free;
   end;

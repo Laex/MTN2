@@ -56,17 +56,11 @@ type
     FWatchPending: array[TPanelSide] of Boolean;
     FQuickSearchActive: Boolean;
     FQuickSearchText: string;
-    /// <summary>Ctrl+F live filter box - distinct from Alt Quick Search
-    /// (FQuickSearchActive): this hides non-matching rows via
-    /// IPanelModel.SetFilterMask instead of just moving the cursor.</summary>
-    FFilterBoxActive: Boolean;
     /// <summary>The masks behind the entries of the open filter dialog's list.</summary>
     FFilterPresets: TArray<string>;
-    FFilterBoxText: string;
-    /// <summary>Ctrl+F history drop-down (uDialogHistory key 'livefilter')
-    /// and where the filter field was last drawn (it opens above it).</summary>
-    FFilterPopup: THistoryPopup;
-    FFilterFieldBounds: TRectI;
+    /// <summary>The panel filter in force (Ctrl+I): hides non-matching rows via
+    /// IPanelModel.SetFilterMask; '' when there is none.</summary>
+    FFilterMask: string;
     /// <summary>Checksums (Ctrl+Alt+H): the job's input, its cancel token
     /// while it runs, and the last result (Copy / Save in the result dialog).</summary>
     FChecksumPaths: TArray<string>;
@@ -432,9 +426,7 @@ type
     procedure OpenPanelFilter;
     function HandlePanelFilterCommand(const AControlId: string): Boolean;
     procedure ApplyPanelFilter(const AMask: string);
-    procedure ClearLiveFilter;
-    function HandleFilterInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
-    procedure DrawFilterField(const ABounds: TRectI);
+    procedure ClearPanelFilter;
     procedure ToggleInsertSelect;
     /// <summary>Shift+Up/Down/Left/Right/Home/End/Pg*: invert mark on rows, then
     /// move. Unit steps: leaving row only. AExcludeLanding (Brief Left/Right):
@@ -675,8 +667,7 @@ type
     /// <summary>A click while the command-line history list is open: True
     /// when it landed on the list.</summary>
     function ClickCmdHistoryPopup(ACol, ARow: Integer): Boolean;
-    function ClickFilterHistoryPopup(ACol, ARow: Integer): Boolean;
-    procedure SetLiveFilterText(const AText: string);
+    procedure SetPanelFilterMask(const AText: string);
     function HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure SetConsoleMode(AValue: Boolean);
@@ -1291,7 +1282,6 @@ begin
   end;
   SetNoticeHandler(nil);
   FreeAndNil(FToast);
-  FreeAndNil(FFilterPopup);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
   if Assigned(FQuickText) then
@@ -1661,7 +1651,6 @@ procedure TDualPanelWindow.BindFreeInputHost;
 begin
   FFreeInputHost.CancelDrivePreview := CancelDrivePreview;
   FFreeInputHost.CloseQuickView := CloseQuickView;
-  FFreeInputHost.HandleFilterInput := HandleFilterInput;
   FFreeInputHost.DispatchKeymapPrimary := HandleKeymapActionPrimary;
   FFreeInputHost.PreviewCycleDrive := PreviewCycleActiveDrive;
   FFreeInputHost.NavigateActiveToDriveRoot := NavigateActiveToDriveRoot;
@@ -1731,7 +1720,6 @@ begin
   FFilesDrawHost.DrawList := DrawHostFilesList;
   FFilesDrawHost.DrawScrollBar := DrawHostFilesScroll;
   FFilesDrawHost.DrawQuickSearch := DrawQuickSearchField;
-  FFilesDrawHost.DrawFilter := DrawFilterField;
 end;
 
 procedure TDualPanelWindow.HostSetDialogKind(AKind: THostDialogKind);
@@ -2378,12 +2366,6 @@ begin
   FCmdLineMgr := TDualPanelCmdLineManager.Create(HostCmdLineSubmit, NotifyChanged);
   FCmdLineMgr.OnGetNames := HostCmdLineNames;
   FChecksumAlgoIndex := Ord(caSHA256);
-  FFilterPopup := THistoryPopup.Create;
-  FFilterPopup.OnRemove :=
-    procedure(AMask: string)
-    begin
-      DialogHistoryRemove(cLiveFilterHistory, AMask);
-    end;
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
   FCmdLineMgr.OnOpenHistoryPopup := OpenCmdHistoryPopup;
   FPendingSelectName := '';
@@ -4572,20 +4554,6 @@ begin
   NotifyChanged;
 end;
 
-function TDualPanelWindow.ClickFilterHistoryPopup(ACol, ARow: Integer): Boolean;
-var
-  Picked: string;
-  Valid: Boolean;
-begin
-  Result := False;
-  if not FFilterPopup.Visible then
-    Exit;
-  Result := FFilterPopup.HandleClick(ACol, ARow, Picked, Valid);
-  if Valid then
-    SetLiveFilterText(Picked);
-  NotifyChanged;
-end;
-
 function TDualPanelWindow.ClickCmdHistoryPopup(ACol, ARow: Integer): Boolean;
 var
   Picked: string;
@@ -5727,7 +5695,7 @@ var
   Ch: Char;
 begin
   Result := True;
-  case ClassifyNeedleBoxKey(AKey, AKeyChar, True, Ch) of
+  case ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) of
     nbaClear:
       begin
         ClearQuickSearch;
@@ -5808,17 +5776,16 @@ begin
   for Mask in cPresets do
     Add(Mask);
   FDialogKind := hdkPanelFilter;
-  FDialog.Open(BuildPanelFilterDialog(Items, FFilterBoxText), DialogCommand);
+  FDialog.Open(BuildPanelFilterDialog(Items, FFilterMask), DialogCommand);
 end;
 
 procedure TDualPanelWindow.ApplyPanelFilter(const AMask: string);
 begin
-  FFilterBoxActive := False;
   if AMask = '' then
-    ClearLiveFilter
+    ClearPanelFilter
   else
   begin
-    SetLiveFilterText(AMask);
+    SetPanelFilterMask(AMask);
     DialogHistoryAdd(cLiveFilterHistory, AMask);
   end;
 end;
@@ -5855,113 +5822,28 @@ begin
     ApplyPanelFilter(Mask);
 end;
 
-procedure TDualPanelWindow.ClearLiveFilter;
+procedure TDualPanelWindow.ClearPanelFilter;
 var
   M: IPanelModel;
 begin
-  if not FFilterBoxActive and (FFilterBoxText = '') then
+  if FFilterMask = '' then
     Exit;
-  FFilterBoxActive := False;
-  FFilterBoxText := '';
-  FFilterPopup.Close;
+  FFilterMask := '';
   M := ModelForSide(ActiveWorkspace.State.ActiveSide);
   if Assigned(M) then
     M.SetFilterMask('');
   NotifyChanged;
 end;
 
-procedure TDualPanelWindow.SetLiveFilterText(const AText: string);
+procedure TDualPanelWindow.SetPanelFilterMask(const AText: string);
 var
   M: IPanelModel;
 begin
-  FFilterBoxText := AText;
+  FFilterMask := AText;
   M := ModelForSide(ActiveWorkspace.State.ActiveSide);
   if Assigned(M) then
-    M.SetFilterMask(FFilterBoxText);
+    M.SetFilterMask(FFilterMask);
   NotifyChanged;
-end;
-
-procedure TDualPanelWindow.DrawFilterField(const ABounds: TRectI);
-const
-  cFilterPrefix = ' Filter: ';
-begin
-  // ABounds is the panel; the field is its info strip (DrawSearchInfoBox).
-  FFilterFieldBounds := TRectI.Make(ABounds.Left + 1 + Length(cFilterPrefix),
-    ABounds.Bottom - 1, ABounds.Right - 2, ABounds.Bottom - 1);
-  // Same FAR-style info-strip box as DrawQuickSearchField, different label.
-  DrawSearchInfoBox(Buffer, ABounds, ' Filter: ', FFilterBoxText, FCursorVisible);
-end;
-
-function TDualPanelWindow.HandleFilterInput(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  M: IPanelModel;
-  Ch: Char;
-  Picked: string;
-begin
-  Result := True;
-  // Open history list owns the arrows, Enter, Del and Esc.
-  case FFilterPopup.HandleKey(AKey, AShift, AKeyChar, Picked) of
-    hpkHandled:
-      begin
-        NotifyChanged;
-        Exit;
-      end;
-    hpkPicked:
-      begin
-        SetLiveFilterText(Picked);
-        Exit;
-      end;
-  end;
-  // Ctrl+Down / Alt+Down: earlier masks as a drop-down above the field.
-  if IsHistoryDropDownChord(TKeyChord.Make(AKey, AKeyChar, AShift)) then
-  begin
-    FFilterPopup.Open(DialogHistoryItems(cLiveFilterHistory), FFilterBoxText,
-      FFilterFieldBounds.Top, FFilterFieldBounds.Left, FFilterFieldBounds.Right,
-      Area.Width, Area.Height);
-    AKey := 0;
-    AKeyChar := #0;
-    NotifyChanged;
-    Exit;
-  end;
-  case ClassifyNeedleBoxKey(AKey, AKeyChar, False, Ch) of
-    nbaClear:
-      begin
-        ClearLiveFilter;
-        AKey := 0;
-        AKeyChar := #0;
-      end;
-    nbaConfirm:
-      begin
-        FFilterBoxActive := False;
-        DialogHistoryAdd(cLiveFilterHistory, FFilterBoxText);
-        AKey := 0;
-        AKeyChar := #0;
-        NotifyChanged;
-      end;
-    nbaBackspace:
-      begin
-        NeedleBackspace(FFilterBoxText);
-        M := ModelForSide(ActiveWorkspace.State.ActiveSide);
-        if Assigned(M) then
-          M.SetFilterMask(FFilterBoxText);
-        AKey := 0;
-        AKeyChar := #0;
-        NotifyChanged;
-      end;
-    nbaAppend:
-      begin
-        FFilterBoxText := FFilterBoxText + Ch;
-        M := ModelForSide(ActiveWorkspace.State.ActiveSide);
-        if Assigned(M) then
-          M.SetFilterMask(FFilterBoxText);
-        AKey := 0;
-        AKeyChar := #0;
-        NotifyChanged;
-      end;
-  else
-    Result := False;
-  end;
 end;
 
 procedure TDualPanelWindow.ApplyPendingSelect(ASide: TPanelSide;
@@ -9185,7 +9067,6 @@ begin
   Snap.ThemeDouble := Assigned(Theme) and Theme.UsesDoubleLineForActivePanel;
   Snap.DropHighlight := FDropHighlightActive and (FDropHighlightSide = ASide);
   Snap.QuickSearch := FQuickSearchActive;
-  Snap.Filter := FFilterBoxActive;
   ViewH := Snap.ListBounds.Height;
   Snap.PageSize := BriefPageSize(Max(ViewH, 1),
     PanelListColumnCount(APanel.ColumnMode, Snap.ListBounds.Width));
@@ -9722,8 +9603,6 @@ begin
     DispatchDrawOverlays(FDrawHost, Snap);
     if (Kind = dckPanels) and Assigned(FCmdLineMgr) then
       FCmdLineMgr.HistoryPopup.Draw(Buffer, Theme);
-    if (Kind = dckPanels) and FFilterBoxActive then
-      FFilterPopup.Draw(Buffer, Theme);
     if HelpVisible then
       FHelp.Paint(Buffer, W, H, Area.Left, Area.Top);
     // Last and only over a screen without a dialog / Help: a notice must
@@ -9941,7 +9820,6 @@ begin
   Snap.DrivePreviewActive := FDrivePreviewActive;
   Snap.QuickViewVisible := QuickViewVisible;
   Snap.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
-  Snap.FilterBoxActive := FFilterBoxActive;
   Snap.CmdFocused := CmdFocused;
   Snap.ViewH := ViewH;
   Snap.Cols := Cols;
@@ -10031,8 +9909,6 @@ begin
   // Open command-line history list: a click on it picks; elsewhere it
   // closes and the click goes on as usual.
   if ClickCmdHistoryPopup(ALocalCol, ALocalRow) then
-    Exit(True);
-  if ClickFilterHistoryPopup(ALocalCol, ALocalRow) then
     Exit(True);
 
   if DispatchClickOverlays(FClickHost, ClickOverlaySnapshot, ALocalCol, ALocalRow,

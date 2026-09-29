@@ -76,7 +76,6 @@ type
     Delta: Integer;
     MaskUnselect: Boolean;
     GrayCalls: Integer;
-    FilterHandled: Boolean;
     PasteOk: Boolean;
     CmdHandled: Boolean;
     PrimaryHandled: Boolean;
@@ -85,7 +84,6 @@ type
     QuickHandled: Boolean;
     procedure CancelDrive;
     procedure CloseQV;
-    function HandleFilter(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function DispatchPrimary(AAction: TKeymapAction; var AKey: Word;
       var AKeyChar: Char): Boolean;
     procedure Preview(ADelta: Integer);
@@ -540,11 +538,6 @@ end;
 
 procedure TFreeInputSpy.CancelDrive; begin Last := 'canceldrive'; end;
 procedure TFreeInputSpy.CloseQV; begin Last := 'closeqv'; end;
-function TFreeInputSpy.HandleFilter(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
-begin
-  Last := 'filter';
-  Result := FilterHandled;
-end;
 function TFreeInputSpy.DispatchPrimary(AAction: TKeymapAction; var AKey: Word;
   var AKeyChar: Char): Boolean;
 begin
@@ -605,7 +598,6 @@ begin
   AHost := Default(TDualPanelFreeInputHost);
   AHost.CancelDrivePreview := ASpy.CancelDrive;
   AHost.CloseQuickView := ASpy.CloseQV;
-  AHost.HandleFilterInput := ASpy.HandleFilter;
   AHost.DispatchKeymapPrimary := ASpy.DispatchPrimary;
   AHost.PreviewCycleDrive := ASpy.Preview;
   AHost.NavigateActiveToDriveRoot := ASpy.NavRoot;
@@ -734,7 +726,7 @@ begin
   Assert.IsTrue(not IsAltQuickSearchChord(vkMultiply, [ssAlt]), 'Alt+Gray* is not quick search');
   Assert.IsTrue(not IsAltQuickSearchChord(vkEqual, [ssAlt]), 'Alt+OEM= is not quick search');
   // A key without a character reaches quick search but adds nothing to it.
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkInsert, #0, True, Ch) = nbaUnhandled,
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkInsert, #0, Ch) = nbaUnhandled,
     'Alt+Ins is not typed into quick search');
 
   Spy := TFreeInputSpy.Create;
@@ -773,13 +765,6 @@ begin
     Spy.PrimaryHandled := False;
 
     Snap.CmdLineHasText := False;
-    Snap.FilterBoxActive := True;
-    Spy.FilterHandled := True;
-    Key := vkEscape;
-    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'filter handled');
-    Assert.IsTrue(Spy.Last = 'filter', 'filter box gets Esc');
-
-    Snap.FilterBoxActive := False;
     Spy.PrimaryHandled := True;
     Key := vkF10;
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'primary handled');
@@ -1143,16 +1128,14 @@ begin
   Assert.IsTrue(RecoverPrintableKeyChar(vkNumpad1, #0) = #0, 'Num1 (= Ord(''a'')) is not a letter');
   Assert.IsTrue(RecoverPrintableKeyChar(Ord('A'), 'b') = 'b', 'KeyChar wins when printable');
 
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkEscape, 'x', True, Ch) = nbaClear, 'Esc clears search');
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkReturn, 'x', True, Ch) = nbaClear, 'Enter clears search');
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkReturn, 'x', False, Ch) = nbaConfirm, 'Enter confirms filter');
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkEscape, 'x', False, Ch) = nbaClear, 'Esc still clears filter');
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkBack, #0, False, Ch) = nbaBackspace, 'Backspace');
-  Assert.IsTrue(ClassifyNeedleBoxKey(0, 'a', True, Ch) = nbaAppend, 'printable appends');
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkEscape, 'x', Ch) = nbaClear, 'Esc clears search');
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkReturn, 'x', Ch) = nbaClear, 'Enter clears search');
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkBack, #0, Ch) = nbaBackspace, 'Backspace');
+  Assert.IsTrue(ClassifyNeedleBoxKey(0, 'a', Ch) = nbaAppend, 'printable appends');
   Assert.IsTrue(Ch = 'a', 'append char is recovered');
-  Assert.IsTrue(ClassifyNeedleBoxKey(Ord('Z'), #0, True, Ch) = nbaAppend, 'Alt letter appends');
+  Assert.IsTrue(ClassifyNeedleBoxKey(Ord('Z'), #0, Ch) = nbaAppend, 'Alt letter appends');
   Assert.IsTrue(Ch = 'Z', 'Alt letter char');
-  Assert.IsTrue(ClassifyNeedleBoxKey(vkDown, #0, True, Ch) = nbaUnhandled, 'arrows unhandled');
+  Assert.IsTrue(ClassifyNeedleBoxKey(vkDown, #0, Ch) = nbaUnhandled, 'arrows unhandled');
 
   S := 'ab';
   Assert.IsTrue(NeedleBackspace(S) and (S = 'a'), 'backspace shortens');
