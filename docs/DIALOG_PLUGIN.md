@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт модального диалогового окна (декларативный UI).  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [readme.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) §6; дочерние примитивы: [INPUT_PLUGIN.md](INPUT_PLUGIN.md), [STATUS_PLUGIN.md](STATUS_PLUGIN.md).
+> **Контекст:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) §6; дочерние примитивы: [INPUT_PLUGIN.md](INPUT_PLUGIN.md), [STATUS_PLUGIN.md](STATUS_PLUGIN.md).
 
 ---
 

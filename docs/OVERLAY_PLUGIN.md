@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт графического оверлея (растровое превью поверх текстовой сетки) с плагином.  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [readme.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) (Overlay Renderer).
+> **Контекст:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) (Overlay Renderer).
 
 ---
 

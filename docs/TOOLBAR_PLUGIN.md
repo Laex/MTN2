@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт панели инструментов (обычно F1–F12) с плагином.  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [readme.md](SDS.md) §6.2, `IThemeRenderer.DrawToolBar`.
+> **Контекст:** [SDS.md](SDS.md) §6.2, `IThemeRenderer.DrawToolBar`.
 
 ---
 

@@ -81,6 +81,17 @@
   [STATUS](docs/STATUS_PLUGIN.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.md),
   [UI_PRIMITIVES](docs/UI_PRIMITIVES.md), [PLUGIN_TRANSITION](docs/PLUGIN_TRANSITION.md).
 
+## Как создавался проект
+
+При разработке MTN2 использовались ИИ-ассистенты, в том числе собственной разработки. С их помощью созданы:
+
+- предпроектная документация – спецификация ([SDS.md](docs/SDS.md)), обзор архитектуры, описания протоколов
+  плагинов в `docs/`;
+- отслеживание дорожной карты и планов работ;
+- большинство комментариев в коде;
+- регрессионные тесты на DUnitX (`src/tests`);
+- выходная текстовая документация: справка F1 (`bin/help`), [CHANGELOG.md](CHANGELOG.md), описания выпусков.
+
 ## Лицензия
 
 [Mozilla Public License 2.0](LICENSE).

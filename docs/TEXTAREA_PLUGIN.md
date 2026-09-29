@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт многострочной текстовой области с плагином (просмотр и редактирование).  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [readme.md](SDS.md) §5–6, [ARCHITECTURE.md](ARCHITECTURE.md) (потоковый Viewer).
+> **Контекст:** [SDS.md](SDS.md) §5–6, [ARCHITECTURE.md](ARCHITECTURE.md) (потоковый Viewer).
 
 ---
 

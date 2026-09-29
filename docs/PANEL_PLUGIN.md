@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт одной файловой панели (одна сторона Dual Panel, активный Panel Tab) с плагином-поставщиком данных.  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md) (примитив Panel).  
-> **Контекст:** [readme.md](SDS.md) (SDS §3.3, §6), [ARCHITECTURE.md](ARCHITECTURE.md) (§3, §6).  
+> **Контекст:** [SDS.md](SDS.md) (SDS §3.3, §6), [ARCHITECTURE.md](ARCHITECTURE.md) (§3, §6).  
 > **Связанные примитивы:** [STATUS_PLUGIN.md](STATUS_PLUGIN.md), [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md), [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md).
 
 ---

@@ -2,7 +2,7 @@
 
 > **Роль документа:** контракт строки состояния (Status Line / Status Bar) с плагином.  
 > **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [readme.md](SDS.md) §6.2, `IThemeRenderer.DrawStatusLine`; часто рядом с [PANEL_PLUGIN.md](PANEL_PLUGIN.md).
+> **Контекст:** [SDS.md](SDS.md) §6.2, `IThemeRenderer.DrawStatusLine`; часто рядом с [PANEL_PLUGIN.md](PANEL_PLUGIN.md).
 
 ---
 
