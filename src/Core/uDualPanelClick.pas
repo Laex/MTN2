@@ -39,6 +39,7 @@ type
     SortMenuVisible: Boolean;
     ColumnModeMenuVisible: Boolean;
     DrivePopupVisible: Boolean;
+    FolderTreeVisible: Boolean;
     JobsPhase: TPanelJobPhase;
     JobsKind: TPanelJobKind;
     JobsShowsOverlay: Boolean;
@@ -65,6 +66,7 @@ type
     HandleSortMenuClick: TClickColRowFn;
     HandleColumnModeMenuClick: TClickColRowFn;
     HandleDrivePopupClick: TClickColRowFn;
+    HandleFolderTreeClick: TClickColRowFn;
     LayoutJobPopup: TClickLayoutProc;
     JobBounds: TClickBoundsFn;
     RequestJobCancel: TKeymapProc;
@@ -413,6 +415,13 @@ begin
   if ASnap.ColumnModeMenuVisible then
   begin
     ConsumeMenuClick(AHost.HandleColumnModeMenuClick, AHost, ALocalCol, ALocalRow);
+    Exit;
+  end;
+
+  // A click on the tree goes to it; elsewhere it reaches the panels.
+  if ASnap.FolderTreeVisible and AHost.HandleFolderTreeClick(ALocalCol, ALocalRow) then
+  begin
+    AHandled := True;
     Exit;
   end;
 

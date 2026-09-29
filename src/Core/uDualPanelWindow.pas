@@ -15,7 +15,7 @@ uses
   uHistoryPopup,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
-  uDualPanelDrivePopup, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
+  uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uPluginHost,
@@ -95,6 +95,7 @@ type
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
     FDrivePopupCtrl: TDrivePopupController;
+    FFolderTreeCtrl: TFolderTreeController;
     /// <summary>Ctrl+Left/Right preview: highlight only; navigate on Ctrl release.</summary>
     FDrivePreviewActive: Boolean;
     FDrivePreviewSide: TPanelSide;
@@ -326,6 +327,9 @@ type
     procedure HostLeftDirWatch;
     procedure HostRightDirWatch;
     procedure HostNavigateSide(ASide: TPanelSide; const AURI: string);
+    /// <summary>Folder tree navigation: moves ASide without taking the focus
+    /// from the side that has it.</summary>
+    procedure HostTreeNavigate(ASide: TPanelSide; const AURI: string);
     procedure DrawHostFilesHeaders(const ABounds: TRectI; const APanel: TPanelState);
     procedure DrawHostFilesList(const AListBounds: TRectI; const ATab: TTab;
       AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
@@ -472,6 +476,18 @@ type
     procedure NotifyChanged;
     procedure CloseDrivePopup;
     procedure ToggleDrivePopup(ASide: TPanelSide);
+    /// <summary>The tree is open over a panel of this workspace, focused or not.</summary>
+    function FolderTreeShown: Boolean;
+    /// <summary>The tree is open and its side is the active one.</summary>
+    function OverlayFolderTreeVisible: Boolean;
+    function HandleFolderTreeInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
+    function HandleFolderTreeClick(ALocalCol, ALocalRow: Integer): Boolean;
+    procedure DrawFolderTree;
+    /// <summary>Alt+F10: the folder tree of the active panel's drive, or
+    /// closes it.</summary>
+    procedure ToggleFolderTree;
+    procedure CloseFolderTree;
     function HandleDrivePopupInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function HandleDrivePopupClick(ALocalCol, ALocalRow: Integer): Boolean;
@@ -1174,6 +1190,7 @@ begin
   FreeAndNil(FSelHelper);
   FreeAndNil(FCmdLineMgr);
   FreeAndNil(FDrivePopupCtrl);
+  FreeAndNil(FFolderTreeCtrl);
   FreeAndNil(FHistoryPopupCtrl);
   FreeAndNil(FDirSync);
   FreeAndNil(FSearchDlg);
@@ -1402,6 +1419,7 @@ begin
   FKeymapHost.ToggleAdjacentInfoPanel := ToggleAdjacentInfoPanel;
   FKeymapHost.ToggleQuickView := ToggleQuickView;
   FKeymapHost.OpenAsArchive := OpenAsArchive;
+  FKeymapHost.ToggleFolderTree := ToggleFolderTree;
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
@@ -1489,6 +1507,7 @@ begin
   FClickHost.HandleSortMenuClick := FMenus.HandleSortMenuClick;
   FClickHost.HandleColumnModeMenuClick := FMenus.HandleColumnModeMenuClick;
   FClickHost.HandleDrivePopupClick := HandleDrivePopupClick;
+  FClickHost.HandleFolderTreeClick := HandleFolderTreeClick;
   FClickHost.LayoutJobPopup := ClickLayoutJob;
   FClickHost.JobBounds := ClickJobBounds;
   FClickHost.RequestJobCancel := FJobs.RequestCancel;
@@ -1512,6 +1531,7 @@ end;
 procedure TDualPanelWindow.BindDrawHost;
 begin
   FDrawHost.DrawDrivePopup := DrawDrivePopup;
+  FDrawHost.DrawFolderTree := DrawFolderTree;
   FDrawHost.DrawHistoryPopup := DrawHistoryPopup;
   FDrawHost.DrawJobPopup := DrawJobPopup;
   FDrawHost.DrawUserMenu := DrawUserMenu;
@@ -2138,6 +2158,7 @@ end;
 
 procedure TDualPanelWindow.HostPrepareSearchUi;
 begin
+  CloseFolderTree;
   if Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible then
     CloseDrivePopup;
   if Assigned(FMenus) and FMenus.UserMenuVisible then
@@ -2215,6 +2236,24 @@ end;
 procedure TDualPanelWindow.HostNavigateSide(ASide: TPanelSide; const AURI: string);
 begin
   NavigateSideTo(ASide, AURI);
+end;
+
+procedure TDualPanelWindow.HostTreeNavigate(ASide: TPanelSide; const AURI: string);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Active: TPanelSide;
+begin
+  // NavigateSideTo activates the side it moves; the other panel following
+  // the tree cursor must leave the focus where it is.
+  Active := ActiveWorkspace.State.ActiveSide;
+  NavigateSideTo(ASide, AURI);
+  Ws := ActiveWorkspace;
+  if Ws.State.ActiveSide <> Active then
+  begin
+    Ws.State.ActiveSide := Active;
+    SaveActiveWorkspace(Ws);
+  end;
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.BindDialogControllers;
@@ -2305,6 +2344,10 @@ begin
     HostPanelBounds, HostPanelPath, HostPanelDriveDirs, HostNavigateSide);
   FHistoryPopupCtrl := THistoryPopupController.Create(Theme, Invalidate,
     HostPanelBounds);
+  // NotifyChanged, not Invalidate: listings land from a background thread
+  // with no key press to repaint the screen after them.
+  FFolderTreeCtrl := TFolderTreeController.Create(Theme, NotifyChanged,
+    HostPanelBounds, HostPanelPath, HostTreeNavigate);
   FJobs := TPanelJobList.Create(Theme, FVfs, NotifyChanged,
     HostOpenJobConfirm, HostOpenOverwriteAsk, HostOpenDeleteError,
     HostOpenIOErrorAsk, HostJobFinished, HostReloadJobPanels, HostClearJobSelection,
@@ -2332,7 +2375,8 @@ begin
     TInputOverlayEntry.Make(OverlayUserMenuVisible, HandleUserMenuInput),
     TInputOverlayEntry.Make(OverlaySortMenuVisible, HandleSortMenuInput),
     TInputOverlayEntry.Make(OverlayColumnModeMenuVisible, HandleColumnModeMenuInput),
-    TInputOverlayEntry.Make(OverlayDrivePopupVisible, HandleDrivePopupInput)
+    TInputOverlayEntry.Make(OverlayDrivePopupVisible, HandleDrivePopupInput),
+    TInputOverlayEntry.Make(OverlayFolderTreeVisible, HandleFolderTreeInput)
   ];
   FTopMenu := TTopMenuController.Create(Theme, Invalidate, ExecuteTopMenuAction);
   FTopMenu.OnIsActionEnabled :=
@@ -2432,6 +2476,7 @@ begin
   Result.SortMenuVisible := Assigned(FMenus) and FMenus.SortMenuVisible;
   Result.ColumnModeMenuVisible := Assigned(FMenus) and FMenus.ColumnModeMenuVisible;
   Result.DrivePopupVisible := Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible;
+  Result.FolderTreeVisible := FolderTreeShown;
   if Assigned(FJobs) then
   begin
     Result.JobsPhase := FJobs.Phase;
@@ -4209,6 +4254,83 @@ begin
     Result := False;
 end;
 
+function TDualPanelWindow.FolderTreeShown: Boolean;
+begin
+  // Only over panels: another workspace or the console leaves it closed.
+  Result := Assigned(FFolderTreeCtrl) and FFolderTreeCtrl.Visible and
+    not FConsoleMode and (ActiveWorkspace.Kind = wkPanels);
+end;
+
+function TDualPanelWindow.OverlayFolderTreeVisible: Boolean;
+begin
+  // The tree owns the keys only while its side is the active one.
+  Result := FolderTreeShown and
+    (ActiveWorkspace.State.ActiveSide = FFolderTreeCtrl.Side);
+end;
+
+function TDualPanelWindow.HandleFolderTreeInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+begin
+  // Tab hands the focus to the other panel; the tree stays.
+  if (AKey = vkTab) and (AShift * [ssCtrl, ssAlt, ssShift] = []) then
+  begin
+    FFolderTreeCtrl.StopFollow;
+    SwitchSide;
+    AKey := 0;
+    AKeyChar := #0;
+    NotifyChanged;
+    Exit(True);
+  end;
+  Result := FFolderTreeCtrl.HandleInput(AKey, AShift, AKeyChar);
+end;
+
+function TDualPanelWindow.HandleFolderTreeClick(ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  if not FolderTreeShown then
+    Exit(False);
+  case FFolderTreeCtrl.HandleClick(ALocalCol, ALocalRow) of
+    ftcOutside:
+      Exit(False);
+    ftcFocusTree:
+      ActivateSide(FFolderTreeCtrl.Side);
+    ftcFocusFiles:
+      ActivateSide(OppositeSide(FFolderTreeCtrl.Side));
+  end;
+  NotifyChanged;
+  Result := True;
+end;
+
+procedure TDualPanelWindow.DrawFolderTree;
+begin
+  if not Assigned(FFolderTreeCtrl) or not FFolderTreeCtrl.Visible then
+    Exit;
+  if not FolderTreeShown then
+  begin
+    FFolderTreeCtrl.Close;
+    Exit;
+  end;
+  FFolderTreeCtrl.Draw(Buffer, OverlayFolderTreeVisible);
+end;
+
+procedure TDualPanelWindow.ToggleFolderTree;
+begin
+  if not Assigned(FFolderTreeCtrl) or (ActiveWorkspace.Kind <> wkPanels) then
+    Exit;
+  if not FFolderTreeCtrl.Visible then
+  begin
+    CloseDrivePopup;
+    SetCmdFocused(False);
+  end;
+  FFolderTreeCtrl.Toggle(ActiveWorkspace.State.ActiveSide);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.CloseFolderTree;
+begin
+  if Assigned(FFolderTreeCtrl) then
+    FFolderTreeCtrl.Close;
+end;
+
 function TDualPanelWindow.HandleDrivePopupClick(ALocalCol, ALocalRow: Integer): Boolean;
 begin
   if Assigned(FDrivePopupCtrl) then
@@ -4477,6 +4599,7 @@ end;
 
 procedure TDualPanelWindow.CloseTransientUiBeforeDialog;
 begin
+  CloseFolderTree;
   if Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible then
     CloseDrivePopup;
   if Assigned(FMenus) and FMenus.UserMenuVisible then
@@ -6074,6 +6197,16 @@ var
   Bounds: TRectI;
 begin
   Result := False;
+  // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
+  if FolderTreeShown and not (Assigned(FDialog) and FDialog.Visible) and
+     FFolderTreeCtrl.Bounds.Contains(ALocalCol, ALocalRow) then
+  begin
+    if AWheelDelta > 0 then
+      FFolderTreeCtrl.ScrollBy(-3)
+    else
+      FFolderTreeCtrl.ScrollBy(3);
+    Exit(True);
+  end;
   if not QuickViewVisible or not Assigned(FQuickText) or (FQuickText.Uri = '') then
     Exit;
   if Assigned(FDialog) and FDialog.Visible then
@@ -8657,6 +8790,7 @@ begin
   if S.DialogVisible then
     S.DialogChrome := FDialog.ChromeContext;
   S.DrivePopupVisible := Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible;
+  S.FolderTreeVisible := OverlayFolderTreeVisible;
   S.UserMenuVisible := Assigned(FMenus) and FMenus.UserMenuVisible;
   S.SortMenuVisible := Assigned(FMenus) and FMenus.SortMenuVisible;
   S.ColumnModeMenuVisible := Assigned(FMenus) and FMenus.ColumnModeMenuVisible;

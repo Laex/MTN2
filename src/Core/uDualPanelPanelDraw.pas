@@ -73,6 +73,7 @@ type
   end;
 
   TDualPanelDrawHost = record
+    DrawFolderTree: TDrawProc;
     DrawDrivePopup: TDrawProc;
     DrawHistoryPopup: TDrawProc;
     DrawJobPopup: TDrawProc;
@@ -511,6 +512,7 @@ end;
 procedure DispatchDrawOverlays(const AHost: TDualPanelDrawHost;
   const ASnap: TDrawOverlaySnapshot);
 begin
+  AHost.DrawFolderTree();
   AHost.DrawDrivePopup();
   AHost.DrawHistoryPopup();
   AHost.DrawJobPopup();

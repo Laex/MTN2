@@ -86,6 +86,8 @@ begin
   Info.StubText := 'Stub';
   Info.StubDetail := 'Detail';
 
+  Assert.IsTrue(TryFormatChromeStatus(fbcFolderTree, Info, Segs) and (Segs[0] = 'Tree'),
+    'folder tree status names the tree');
   Assert.IsTrue(TryFormatChromeStatus(fbcDrive, Info, Segs) and (Segs[0] = 'Drive'),
     'drive chrome');
   Assert.IsTrue(TryFormatChromeStatus(fbcJob, Info, Segs) and (Segs[0] = 'Copy') and
@@ -161,6 +163,10 @@ begin
   S := Default(TChromeOverlayState);
   S.DrivePopupVisible := True;
   Assert.IsTrue(ResolveChromeContext(S) = fbcDrive, 'drive popup');
+  S.DrivePopupVisible := False;
+  S.FolderTreeVisible := True;
+  Assert.IsTrue(ResolveChromeContext(S) = fbcFolderTree, 'folder tree');
+  S.FolderTreeVisible := False;
   S.DrivePopupVisible := False;
   S.SortMenuVisible := True;
   Assert.IsTrue(ResolveChromeContext(S) = fbcUserMenu, 'sort menu');

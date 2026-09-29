@@ -1,8 +1,9 @@
 ﻿unit TestInfoPanelBar;
 
-{ Ctrl+L information panel: a line with a percentage (free / used disk
+{ Ctrl+L information panel: a line with a usage percentage (used disk
   space, memory load) shows a bar between the caption and the value, one
-  blank cell away from each, filled in proportion to the percentage. }
+  blank cell away from each, filled in proportion to the percentage; all
+  such bars start in one column and have one width. }
 
 interface
 
@@ -26,7 +27,7 @@ uses
 
 const
   cFull = #$2588;
-  cEmpty = #$2591;
+  cEmpty = #$2592;
 
 procedure TTestInfoPanelBar.TestBarText;
 begin
@@ -54,35 +55,68 @@ const
   H = 40;
 var
   Grid: TTerminalGrid;
-  Y, X, KeyEnd, ValStart, BarStart, BarEnd: Integer;
+  Y, X, Found: Integer;
   Line: string;
+  First, Last: array[0..1] of Integer;
+
+  function IsBar(ACh: Char): Boolean;
+  begin
+    Result := (ACh = cFull) or (ACh = cEmpty);
+  end;
+
+  procedure CheckLine(AIndex: Integer; const ACaption: string);
+  var
+    I: Integer;
+  begin
+    First[AIndex] := 0;
+    Last[AIndex] := 0;
+    for I := 1 to Length(Line) do
+      if IsBar(Line[I]) then
+      begin
+        if First[AIndex] = 0 then
+          First[AIndex] := I;
+        Last[AIndex] := I;
+      end;
+    Assert.IsTrue(First[AIndex] > Length(ACaption) + 2, ACaption + ' bar after the caption');
+    Assert.AreEqual(' ', Line[First[AIndex] - 1], ACaption + ' blank before the bar');
+    Assert.AreEqual(' ', Line[Last[AIndex] + 1], ACaption + ' blank after the bar');
+    for I := First[AIndex] to Last[AIndex] do
+      Assert.IsTrue(IsBar(Line[I]), ACaption + ' bar is one piece');
+    Assert.IsTrue(Pos('%', Copy(Line, Last[AIndex] + 1, MaxInt)) > 0,
+      ACaption + ' value after the bar');
+  end;
+
 begin
   AllocTerminalGrid(Grid, W, H);
   ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Navy, ' ');
   DrawPanelInfoContent(Grid, nil, TRectI.Make(0, 0, W - 1, H - 1),
-    TAlphaColors.Silver, TAlphaColors.Navy, 'C:\', 0, 0, 0);
+    TAlphaColors.Silver, TAlphaColors.Navy, 'C:', 0, 0, 0);
+  Found := 0;
   for Y := 0 to H - 1 do
   begin
     Line := '';
     for X := 0 to W - 1 do
       Line := Line + Grid[Y][X].CharValue;
-    if Pos('Memory load:', Line) <> 2 then
-      Continue;
-    KeyEnd := 1 + Length('Memory load:');            // last cell of the caption
-    ValStart := Pos('%', Line);
-    while (ValStart > 1) and CharInSet(Line[ValStart - 1], ['0'..'9']) do
-      Dec(ValStart);
-    BarStart := KeyEnd + 2;
-    BarEnd := ValStart - 2;
-    Assert.AreEqual(' ', Line[KeyEnd + 1], 'blank after the caption');
-    Assert.AreEqual(' ', Line[ValStart - 1], 'blank before the value');
-    Assert.IsTrue(BarEnd - BarStart + 1 >= 4, 'room for a bar');
-    for X := BarStart to BarEnd do
-      Assert.IsTrue((Line[X] = cFull) or (Line[X] = cEmpty),
-        Format('bar cell %d is "%s"', [X, Line[X]]));
-    Exit;
+    // Disk figures come from a background refresh and may not be there
+    // yet: the used line has a bar only once it shows a percentage.
+    if (Pos('Space, used:', Line) = 2) and (Pos('%', Line) > 0) then
+    begin
+      CheckLine(0, 'Space, used:');
+      Inc(Found);
+    end
+    else if Pos('Memory load:', Line) = 2 then
+    begin
+      CheckLine(1, 'Memory load:');
+      Inc(Found, 2);
+    end;
   end;
-  Assert.Fail('no Memory load line');
+  Assert.IsTrue(Found >= 2, 'memory load line with a bar');
+  Assert.IsTrue(Last[1] - First[1] + 1 >= 4, 'room for a bar');
+  if Found = 3 then
+  begin
+    Assert.AreEqual(First[0], First[1], 'bars start in one column');
+    Assert.AreEqual(Last[0], Last[1], 'bars have one width');
+  end;
 end;
 
 initialization

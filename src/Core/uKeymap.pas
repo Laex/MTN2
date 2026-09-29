@@ -79,6 +79,7 @@ type
     kaQuickView,
     kaSyncConsoleDir,      // Ctrl+Shift+O - push active panel's dir into the console
     kaOpenAsArchive,       // Ctrl+PgDn - enter the file under the cursor as an archive
+    kaFolderTree,          // Alt+F10 - folder tree of the drive over the active panel
     kaSelectConsoleProfile, // Ctrl+Alt+O - pick shell for the Ctrl+O background console
     kaToggleHidden,        // Ctrl+H - show/hide Hidden & System files in panel listing
     // Ctrl+Shift+F1..F6 - jump straight to a column mode, no menu needed
@@ -581,6 +582,8 @@ begin
   // Ctrl+PgDn - enter the file under the cursor as an archive, whatever its
   // extension (FAR).
   AddBinding(Result, kaOpenAsArchive, KeyBinding(vkNext, False, False, True));
+  // Alt+F10 - folder tree of the drive (FAR's folder tree key).
+  AddBinding(Result, kaFolderTree, KeyBinding(vkF10, False, True, False));
 
   // Ctrl+H - show/hide Hidden & System files (Total Commander habit).
   AddBinding(Result, kaToggleHidden, KeyBinding(Ord('H'), False, False, True));
@@ -846,6 +849,7 @@ const
     'QuickView',             // kaQuickView
     'SyncConsoleDir',        // kaSyncConsoleDir
     'OpenAsArchive',         // kaOpenAsArchive
+    'FolderTree',            // kaFolderTree
     'SelectConsoleProfile',  // kaSelectConsoleProfile
     'ToggleHidden',          // kaToggleHidden
     'ColumnBrief',           // kaColumnBrief

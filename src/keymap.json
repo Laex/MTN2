@@ -92,6 +92,7 @@
     "NewTerminal": { "key": "N", "ctrl": true, "shift": true, "description": "Open Terminal Workspace (profile picker)" },
     "SyncConsoleDir": { "key": "O", "ctrl": true, "shift": true, "description": "Sync directory between active panel and background console" },
     "OpenAsArchive": { "key": "PgDn", "ctrl": true, "description": "Enter the file under the cursor as an archive, whatever its extension" },
+    "FolderTree": { "key": "F10", "alt": true, "description": "Folder tree of the drive over the active panel" },
     "SelectConsoleProfile": { "key": "O", "ctrl": true, "alt": true, "description": "Choose shell profile for the background console under the panels" },
     "ToggleHidden": { "key": "H", "ctrl": true, "description": "Show/Hide Hidden and System files in the active panel" },
     "ColumnBrief": { "key": "F1", "ctrl": true, "shift": true, "description": "Column Mode: Brief" },

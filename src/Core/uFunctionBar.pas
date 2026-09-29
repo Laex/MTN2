@@ -21,6 +21,7 @@ type
     fbcEditor,
     fbcEditorAskSave,
     fbcDrive,
+    fbcFolderTree, // Alt+F10 folder tree over a panel
     fbcUserMenu,
     fbcUserMenuEdit, // F2 user menu: also Ins/F4/Del editing keys
     fbcStub,
@@ -446,6 +447,13 @@ begin
         SetLength(ALetters, 2);
         ALetters[0] := 'Enter:Go';
         ALetters[1] := 'Esc:Cancel';
+      end;
+
+    fbcFolderTree:
+      begin
+        SetLength(ALetters, 2);
+        ALetters[0] := 'Enter:Go';
+        ALetters[1] := 'Esc:Close';
       end;
 
     fbcUserMenu:

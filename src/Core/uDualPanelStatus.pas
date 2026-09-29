@@ -30,6 +30,7 @@ type
     DialogKind: THostDialogKind;
     DialogChrome: TFunctionBarContext;
     DrivePopupVisible: Boolean;
+    FolderTreeVisible: Boolean;
     UserMenuVisible: Boolean;
     SortMenuVisible: Boolean;
     ColumnModeMenuVisible: Boolean;
@@ -152,6 +153,8 @@ begin
   end;
   if AState.DrivePopupVisible then
     Exit(fbcDrive);
+  if AState.FolderTreeVisible then
+    Exit(fbcFolderTree);
   if AState.UserMenuVisible then
     Exit(fbcUserMenuEdit);
   if AState.SortMenuVisible or AState.ColumnModeMenuVisible then
@@ -297,6 +300,9 @@ begin
       ASegs := TArray<string>.Create(S('Console'), AInfo.Path, H('Esc', 'Stop', '='), H('Esc', 'Panels', '='));
     fbcDrive:
       ASegs := TArray<string>.Create(S('Drive'), S('^v select'), H('Enter', 'Go', '='), H('Esc', 'Cancel', '='));
+    fbcFolderTree:
+      ASegs := TArray<string>.Create(S('Tree'), S('^v select'), S(#$2190#$2192' open/close'),
+        H('Enter', 'Go', '='), H('Esc', 'Close', '='));
     fbcUserMenu:
       ASegs := TArray<string>.Create(S('User menu'), H('Enter', 'Run', '='), H('Esc', 'Close', '='));
     fbcUserMenuEdit:

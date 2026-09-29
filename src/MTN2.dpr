@@ -65,6 +65,7 @@ uses
   uDialogHost in 'Core\uDialogHost.pas',
   uDualPanelOverlays in 'Core\uDualPanelOverlays.pas',
   uDualPanelDrivePopup in 'Core\uDualPanelDrivePopup.pas',
+  uDualPanelFolderTree in 'Core\uDualPanelFolderTree.pas',
   uDualPanelHistoryPopup in 'Core\uDualPanelHistoryPopup.pas',
   uDualPanelJobs in 'Core\uDualPanelJobs.pas',
   uDualPanelJobRules in 'Core\uDualPanelJobRules.pas',

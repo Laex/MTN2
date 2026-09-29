@@ -43,6 +43,7 @@ type
   public
     Last: string;
     DialogW, DialogH, SubW: Integer;
+    procedure Tree;
     procedure Drive;
     procedure History;
     procedure Job;
@@ -94,6 +95,11 @@ type
     procedure Quick(const ABounds: TRectI);
     procedure Filter(const ABounds: TRectI);
   end;
+
+procedure TDrawSpy.Tree;
+begin
+  Last := Last + 'tree,';
+end;
 
 procedure TDrawSpy.Drive;
 begin
@@ -555,6 +561,7 @@ begin
   Spy := TDrawSpy.Create;
   try
     Host := Default(TDualPanelDrawHost);
+    Host.DrawFolderTree := Spy.Tree;
     Host.DrawDrivePopup := Spy.Drive;
     Host.DrawHistoryPopup := Spy.History;
     Host.DrawJobPopup := Spy.Job;
@@ -569,13 +576,13 @@ begin
     Snap.AreaWidth := 80;
     Snap.AreaHeight := 24;
     DispatchDrawOverlays(Host, Snap);
-    Assert.IsTrue(Spy.Last = 'drive,history,job,user,sort,cols,search,stub,',
+    Assert.IsTrue(Spy.Last = 'tree,drive,history,job,user,sort,cols,search,stub,',
       'overlay order without dialog');
     Snap.DialogVisible := True;
     Snap.SubmenuOpen := True;
     Spy.Last := '';
     DispatchDrawOverlays(Host, Snap);
-    Assert.IsTrue(Spy.Last = 'drive,history,job,user,sort,cols,search,dialog,stub,sub,',
+    Assert.IsTrue(Spy.Last = 'tree,drive,history,job,user,sort,cols,search,dialog,stub,sub,',
       'dialog then stub then submenu last');
     Assert.IsTrue((Spy.DialogW = 80) and (Spy.DialogH = 24) and (Spy.SubW = 80),
       'dialog/submenu sizes');

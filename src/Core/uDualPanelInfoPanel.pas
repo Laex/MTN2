@@ -16,7 +16,7 @@ procedure DrawPanelInfoContent(const ABuffer: TTerminalGrid;
   ABytes: Int64; AFiles, AFolders: Integer);
 
 /// <summary>A bar AWidth cells wide: APercent of it filled (full blocks),
-/// the rest light shade.</summary>
+/// the rest medium shade.</summary>
 function InfoPercentBar(APercent, AWidth: Integer): string;
 
 implementation
@@ -28,9 +28,11 @@ const
   cFileFg   = TAlphaColor($FFAAAAAA);
   cHeaderFg = TAlphaColor($FF55FFFF);
   cBarFull  = #$2588;
-  cBarEmpty = #$2591;
+  cBarEmpty = #$2592;
   /// <summary>Narrower room than this shows no bar.</summary>
   cMinBarWidth = 4;
+  /// <summary>Room kept right of every bar for its value, "100%, 1023.99 GB".</summary>
+  cBarValueRoom = 16;
 
 function InfoPercentBar(APercent, AWidth: Integer): string;
 var
@@ -61,6 +63,7 @@ var
   IsElev: Boolean;
   Tick: UInt64;
   Days, Hours, Mins: Integer;
+  BarLeft, BarWidth: Integer;
 
   procedure PutRaw(AX, AY: Integer; const AText: string; AFg: TAlphaColor);
   var
@@ -106,8 +109,9 @@ var
     Inc(Y);
   end;
 
-  // APercent >= 0 adds a bar between the key and the value, one blank
-  // cell away from each.
+  // APercent >= 0 adds a bar between the key and the value. Every bar has
+  // the same place and width (BarLeft, BarWidth): past the longest caption
+  // that has a bar, with room for the value on the right.
   procedure PutLR(const AKey, AValue: string; APercent: Integer = -1);
   var
     KeyPart, ValPart, Bar: string;
@@ -133,15 +137,17 @@ var
       Line := Line + ' ';
     PutRaw(X, Y, Copy(Line, 1, Length(KeyPart) + Gap), Fg);
     PutRaw(X + Length(KeyPart) + Gap, Y, ValPart, ValFg);
-    if (APercent >= 0) and (Gap - 2 >= cMinBarWidth) then
+    if (APercent >= 0) and (BarWidth >= cMinBarWidth) and
+       (BarLeft > X + Length(KeyPart)) and
+       (BarLeft + BarWidth < X + Length(KeyPart) + Gap) then
     begin
-      // Filled part in the value colour, the rest in the frame colour.
-      Bar := InfoPercentBar(APercent, Gap - 2);
+      // Filled part in the value colour, the rest in the caption colour.
+      Bar := InfoPercentBar(APercent, BarWidth);
       Full := Pos(cBarEmpty, Bar) - 1;
       if Full < 0 then
         Full := Length(Bar);
-      PutRaw(X + Length(KeyPart) + 1, Y, Copy(Bar, 1, Full), ValFg);
-      PutRaw(X + Length(KeyPart) + 1 + Full, Y, Copy(Bar, Full + 1, MaxInt), AFrame);
+      PutRaw(BarLeft, Y, Copy(Bar, 1, Full), ValFg);
+      PutRaw(BarLeft + Full, Y, Copy(Bar, Full + 1, MaxInt), Fg);
     end;
     Inc(Y);
   end;
@@ -158,6 +164,9 @@ begin
   X := ABounds.Left + 1;
   Y := ABounds.Top + 1;
   MaxY := ABounds.Bottom - 1;
+  BarLeft := X + Max(Length(T('ui.info.spaceUsed', 'Space, used:')),
+    Length(T('ui.info.memoryLoad', 'Memory load:'))) + 1;
+  BarWidth := X + InnerW - cBarValueRoom - 1 - BarLeft;
   if Assigned(ATheme) then
   begin
     ATheme.ResolvePanelChromeColors(pcpListBody, True, Fg, DiscardBg);
@@ -232,9 +241,9 @@ begin
     if Used < 0 then
       Used := 0;
     PutLR(T('ui.info.spaceTotal', 'Space, total:'), FormatSizeFar(Info.TotalBytes));
+    // One bar per disk: the used share (free is the rest of the same bar).
     PutLR(T('ui.info.spaceAvailable', 'Space, available:'),
-      FormatPctSize(Info.FreeBytes, Info.TotalBytes),
-      PercentOfTotal(Info.FreeBytes, Info.TotalBytes));
+      FormatPctSize(Info.FreeBytes, Info.TotalBytes));
     PutLR(T('ui.info.spaceUsed', 'Space, used:'), FormatPctSize(Used, Info.TotalBytes),
       PercentOfTotal(Used, Info.TotalBytes));
     if Info.LabelOrPath <> '' then

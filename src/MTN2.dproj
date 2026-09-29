@@ -248,6 +248,7 @@
         <DCCReference Include="Core\uDialogHost.pas"/>
         <DCCReference Include="Core\uDualPanelOverlays.pas"/>
         <DCCReference Include="Core\uDualPanelDrivePopup.pas"/>
+        <DCCReference Include="Core\uDualPanelFolderTree.pas"/>
         <DCCReference Include="Core\uDualPanelHistoryPopup.pas"/>
         <DCCReference Include="Core\uDualPanelJobs.pas"/>
         <DCCReference Include="Core\uDualPanelJobRules.pas"/>

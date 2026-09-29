@@ -148,7 +148,7 @@ type
     procedure DualPanelShowProperties(const APaths: TArray<string>);
     procedure DualPanelShellContextMenu(const APaths: TArray<string>;
       ALocalCol, ALocalRow: Integer);
-    function TryDualPanelQuickViewWheel(AWheelDelta: Integer): Boolean;
+    function TryDualPanelOverlayWheel(AWheelDelta: Integer): Boolean;
     procedure DualPanelQuitRequest(Sender: TObject);
     procedure DualPanelOpenUpdates(Sender: TObject);
     procedure UpdateTimerTick(Sender: TObject);
@@ -1356,15 +1356,15 @@ begin
   Recompose;
 end;
 
-// Wheel over the Ctrl+Q text preview scrolls the preview; FMX gives the
-// wheel no position, so take the cursor's.
-function TMainForm.TryDualPanelQuickViewWheel(AWheelDelta: Integer): Boolean;
+// Wheel over the Ctrl+Q text preview or the Alt+F10 folder tree scrolls it;
+// FMX gives the wheel no position, so take the cursor's.
+function TMainForm.TryDualPanelOverlayWheel(AWheelDelta: Integer): Boolean;
 var
   P: TPointF;
   Col, Row: Integer;
 begin
   Result := False;
-  if not (Assigned(FDualPanel) and FDualPanel.Visible and FDualPanel.QuickViewVisible) then
+  if not (Assigned(FDualPanel) and FDualPanel.Visible) then
     Exit;
   P := ScreenToClient(Screen.MousePos);
   if not PointToCell(P.X, P.Y, Col, Row) then
@@ -1986,7 +1986,7 @@ begin
       ApplyZoomDelta(-0.1);
     Handled := True;
   end
-  else if TryDualPanelQuickViewWheel(WheelDelta) then
+  else if TryDualPanelOverlayWheel(WheelDelta) then
   begin
     Recompose;
     Handled := True;
