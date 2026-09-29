@@ -673,9 +673,8 @@ end;
 
 function ProfileInitCommand(const AProfileId: string): string;
 begin
-  // PowerShell/pwsh sessions used to set $ErrorActionPreference =
-  // 'SilentlyContinue' on start; confirmed everything works correctly
-  // without it, so no profile sends an init command anymore.
+  // No profile needs a command at shell start; PowerShell / pwsh keep their
+  // own $ErrorActionPreference.
   Result := '';
 end;
 

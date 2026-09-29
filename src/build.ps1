@@ -1,4 +1,4 @@
-# Build MTN2 (Stage 0+) via RAD Studio MSBuild
+# Build MTN2 via RAD Studio MSBuild
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Config = 'Debug',

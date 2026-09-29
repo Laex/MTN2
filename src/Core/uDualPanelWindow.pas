@@ -36,7 +36,7 @@ type
     var AKeyChar: Char): Boolean of object;
 
   /// <summary>One row of TDualPanelWindow.FInputOverlays: IsActive is
-  /// re-evaluated on every keypress (no persisted push/pop state ? see the
+  /// re-evaluated on every keypress (no persisted push/pop state - see the
   /// FInputOverlays field comment for why), and the first row whose
   /// IsActive returns True gets to fully own that keypress via Handle.</summary>
   TInputOverlayEntry = record
@@ -56,7 +56,7 @@ type
     FWatchPending: array[TPanelSide] of Boolean;
     FQuickSearchActive: Boolean;
     FQuickSearchText: string;
-    /// <summary>Ctrl+F live filter box ? distinct from Alt Quick Search
+    /// <summary>Ctrl+F live filter box - distinct from Alt Quick Search
     /// (FQuickSearchActive): this hides non-matching rows via
     /// IPanelModel.SetFilterMask instead of just moving the cursor.</summary>
     FFilterBoxActive: Boolean;
@@ -179,12 +179,12 @@ type
     FModalInputHost: TDualPanelModalInputHost;
     FFilesDrawHost: TDualPanelFilesDrawHost;
     /// <summary>Ordered "which overlay currently owns keyboard input" table
-    /// consulted by HandleInput ? see TInputOverlayEntry. Recomputed from
+    /// consulted by HandleInput - see TInputOverlayEntry. Recomputed from
     /// live state on every keypress rather than push/pop: FDialog routinely
     /// opens on top of an already-active FJobs (e.g. hdkJobConfirm), and a
     /// persisted stack would need a Pop at every one of FDialog.Open's many
     /// call sites to avoid leaving a stale entry that swallows all future
-    /// input ? this table can't desync because it has no state to desync.
+    /// input - this table can't desync because it has no state to desync.
     /// Built once in Create, after the overlay objects it closes over exist.</summary>
     FInputOverlays: TArray<TInputOverlayEntry>;
     FFreeText: string;
@@ -363,7 +363,7 @@ type
     function TopMenuActionIsEnabled(AAction: TTopMenuAction): Boolean;
     /// <summary>Builds a fresh single-tab-per-URI panel with this app's
     /// default view settings (full columns, unsorted, hidden files shown)
-    /// ? used by Create to seed the two initial workspaces.</summary>
+    /// - used by Create to seed the two initial workspaces.</summary>
     function MakePanelState(const AUris: array of string): TPanelState;
     procedure ModelInvalidated(AWindowId: Integer);
     procedure MaybeAskArchivePassword(ASide: TPanelSide);
@@ -405,7 +405,7 @@ type
     procedure ToggleInsertSelect;
     /// <summary>Shift+Up/Down/Left/Right/Home/End/Pg*: invert mark on rows, then
     /// move. Unit steps: leaving row only. AExcludeLanding (Brief Left/Right):
-    /// invert [From..To) ? includes the row before landing, not the landing.</summary>
+    /// invert [From..To) - includes the row before landing, not the landing.</summary>
     procedure MoveCursorWithSelect(ADelta: Integer;
       AExcludeLanding: Boolean = False);
     /// <summary>Selected items (or the cursor item) to the clipboard, one per
@@ -501,7 +501,7 @@ type
     procedure CloseStub;
     /// <summary>Closes the drive popup and any open top-menu-bar overlay
     /// (user menu, sort menu, column-mode menu, stub) and unfocuses the
-    /// command line ? the shared "make way for a dialog" step run before
+    /// command line - the shared "make way for a dialog" step run before
     /// most Open*Dialog handlers.</summary>
     procedure CloseTransientUiBeforeDialog;
     procedure DrawStub;
@@ -543,7 +543,7 @@ type
     procedure ConfirmCopyInPlace(const AName: string);
     procedure DialogChanged(Sender: TObject);
     procedure DialogCommand(const AControlId, AValuesJson: string);
-    /// <summary>DialogCommand's `case FDialogKind of` ? one branch per
+    /// <summary>DialogCommand's `case FDialogKind of` - one branch per
     /// THostDialogKind. Returns False from the (rare) branches that must
     /// skip DialogCommand's trailing NotifyChanged/FlushDirWatchPending
     /// (matches those branches' original bare `Exit;`).</summary>
@@ -600,7 +600,7 @@ type
     procedure ShowChecksumResult(const ATitle, AStatus: string;
       const ALines: TArray<string>; AVerify: Boolean);
     procedure DispatchChecksumCommand(AKind: THostDialogKind; const AControlId: string);
-    /// <summary>Ctrl+Q: NC/NDN/FAR/TC convention ? puts the opposite panel
+    /// <summary>Ctrl+Q: NC/NDN/FAR/TC convention - puts the opposite panel
     /// into pvkQuickView for any cursor row (file or directory), same toggle
     /// shape as ToggleAdjacentInfoPanel/pvkInfo. Image overlay vs placeholder
     /// is decided later in DrawQuickViewContent as the cursor moves.</summary>
@@ -648,7 +648,7 @@ type
     procedure NextPanelTab;
     procedure PrevPanelTab;
     procedure NewPanelTab;
-    /// <summary>Ctrl+Shift+T for an explicitly named side ? used by the
+    /// <summary>Ctrl+Shift+T for an explicitly named side - used by the
     /// double-click-on-empty-panel-tab-row path, where the panel that was
     /// clicked is not necessarily the active one yet.</summary>
     procedure NewPanelTabOnSide(ASide: TPanelSide);
@@ -690,7 +690,7 @@ type
     procedure DrawPanelInfoContent(const ABounds: TRectI; ASide: TPanelSide;
       AFrame, ABodyBg: TAlphaColor);
     /// <summary>Live preview of the active side's cursor row
-    /// (NC/NDN/FAR/TC Ctrl+Q ? opposite panel, follows the cursor without
+    /// (NC/NDN/FAR/TC Ctrl+Q - opposite panel, follows the cursor without
     /// re-pressing Ctrl+Q). Only reissues the async decode when the row's
     /// URI changes; every redraw still refreshes the stored bounds so a
     /// resize doesn't leave the image scaled/positioned against stale
@@ -748,18 +748,18 @@ type
     function SetKeyModifiers(AShift: TShiftState): Boolean; override;
     function HandleInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean; override;
-    /// <summary>Free (non-modal) keymap bindings shared by most of the app ?
+    /// <summary>Free (non-modal) keymap bindings shared by most of the app -
     /// see HandleInput's first `case MatchActiveAction(...)` block. Returns
     /// True (and has already reset AKey/AKeyChar) if AAction was handled;
     /// False if the caller should keep looking.</summary>
     function HandleKeymapActionPrimary(AAction: TKeymapAction;
       var AKey: Word; var AKeyChar: Char): Boolean;
-    /// <summary>Function-key/panel-operation keymap bindings ? see
+    /// <summary>Function-key/panel-operation keymap bindings - see
     /// HandleInput's second `case MatchActiveAction(...)` block. Same
     /// True/False contract as HandleKeymapActionPrimary.</summary>
     function HandleKeymapActionFunctionKeys(AAction: TKeymapAction;
       var AKey: Word; var AKeyChar: Char): Boolean;
-    /// <summary>HandleInput's modal-dialog-open branch ? in-place list
+    /// <summary>HandleInput's modal-dialog-open branch - in-place list
     /// shortcuts for the directory hotlist / color-coding dialogs, F9 color
     /// picker, Enter-activates-default-button, then falls through to
     /// FDialog.HandleInput. Caller must already know FDialog.Visible.</summary>
@@ -799,14 +799,14 @@ type
     /// <summary>Accept dropped local paths into DestURI (Copy or Move).</summary>
     procedure AcceptDroppedFiles(const APaths: TArray<string>; const ADestDirURI: string;
       AMove: Boolean);
-    /// <summary>After OleDragLocalFiles returns ? reload if shell moved files out.</summary>
+    /// <summary>After OleDragLocalFiles returns - reload if shell moved files out.</summary>
     procedure FinishOleFileDrag(AEffect: LongInt);
     procedure OpenDocument(const AURI: string; AViewOnly: Boolean);
     /// <summary>New terminal tab with AProfileId's shell in ACwd; ACommand,
     /// when given, is typed into that shell.</summary>
     procedure OpenTerminal(const AProfileId, ACwd: string; const ACommand: string = '');
     /// <summary>Opens APath (file or directory) in a new tab on
-    /// the active side ? the single entry point single-instance IPC and the
+    /// the active side - the single entry point single-instance IPC and the
     /// startup CLI-arg path both call. No-op for '' or a path that doesn't
     /// exist.</summary>
     procedure OpenPathAsNewTab(const APath: string);
@@ -880,7 +880,7 @@ type
     /// <summary>Dismiss overlays/jobs so Windows shutdown is not blocked.</summary>
     procedure PrepareForSystemShutdown;
     /// <summary>False while Console is shown over the panels, or the active
-    /// Dual Panel Tab is a Viewer/Editor/Terminal (wkDocument/wkTerminal) ?
+    /// Dual Panel Tab is a Viewer/Editor/Terminal (wkDocument/wkTerminal) -
     /// the overlay's stored bounds are only meaningful for the wkPanels
     /// list layout that requested them, and it's a plain Canvas pass drawn
     /// unconditionally from FormPaint, so Host must gate it here rather
@@ -930,7 +930,7 @@ end;
 
 const
   { Fallback FAR VGA palette when Theme is nil. With Theme assigned, chrome
-    goes through IThemeRenderer ? do not add new c* uses on Theme paths. }
+    goes through IThemeRenderer - do not add new c* uses on Theme paths. }
   cCursorFg = TAlphaColor($FF000000);
   cCursorBg = TAlphaColor($FF00AAAA);
   cDirFg    = TAlphaColor($FFFFFFFF);
@@ -1212,7 +1212,7 @@ begin
     Desk := Theme.DesktopColor
   else
     Desk := cDesktopBg;
-  // No outer MDI frame ? Host fills desktop; Theme owns Dual Panel chrome.
+  // No outer MDI frame - Host fills desktop; Theme owns Dual Panel chrome.
   FillGridRect(Buffer, 0, 0, Area.Width - 1, Area.Height - 1, ' ', cFileFg, Desk);
   DrawContent;
   FNeedRebuild := False;
@@ -2791,7 +2791,7 @@ begin
   else
     InvalidatePlainTotals;
   end;
-  // Wait for the target side's list to finish ? Open() first notifies with
+  // Wait for the target side's list to finish - Open() first notifies with
   // LoadingRows, and applying then would clear FPendingSelectName too early.
   if FPendingSelectName <> '' then
   begin
@@ -2801,7 +2801,7 @@ begin
   end
   else
   begin
-    // After delete/move CursorIndex may be past EOF ? without clamp the
+    // After delete/move CursorIndex may be past EOF - without clamp the
     // cursor highlight disappears (no row matches Idx = CursorIndex).
     case AWindowId of
       cPanelWindowIdLeft:
@@ -3058,7 +3058,7 @@ begin
   else
     M.SetWorkspaceReturnUri('');
   RememberPanelDriveDir(Panel.DriveDirs, Tab.CurrentURI);
-  // Must write back to ASide ? SetActivePanel follows ActiveSide and would
+  // Must write back to ASide - SetActivePanel follows ActiveSide and would
   // corrupt the other panel when reloading the inactive side (dir-watch).
   if ASide = psLeft then
     Ws.State.LeftPanel := Panel
@@ -3163,7 +3163,7 @@ begin
   else
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
-  // find:// is an in-memory snapshot ? disk-watch SoftReload races with a
+  // find:// is an in-memory snapshot - disk-watch SoftReload races with a
   // second Alt+F7 (CloseSearchUi flush > Open(old) > Navigate(new)).
   if IsFindUri(Tab.CurrentURI) then
   begin
@@ -3266,7 +3266,7 @@ begin
   begin
     if SameVfsUri(Canon, ParentVfsUri(Tab.CurrentURI)) then
     begin
-      // find:// parent is session root file URI ? match via FindSessionParentFileUri
+      // find:// parent is session root file URI - match via FindSessionParentFileUri
       if IsFindUri(Tab.CurrentURI) then
       begin
         if SameVfsUri(Canon, FindSessionParentFileUri(Tab.CurrentURI)) then
@@ -3828,7 +3828,7 @@ begin
   end
   else if (Pos(' ', Text) = 0) and (Pos(#9, Text) = 0) then
   begin
-    // Bare token ? async Exists, then navigate or shell (no UI-thread disk I/O).
+    // Bare token - async Exists, then navigate or shell (no UI-thread disk I/O).
     Ws := ActiveWorkspace;
     Base := FileUriToPath(ActiveTab(ActivePanel(Ws)).CurrentURI);
     ResolveRelativeCommandAsync(Text, Base);
@@ -4715,8 +4715,8 @@ begin
   end;
   FPendingSelectName := SelectName;
   FPendingSelectSide := Ws.State.ActiveSide;
-  // Link creation is a single fast filesystem-metadata call ? not routed
-  // through IVirtualFileSystem (local-disk only, no VFS scheme needs it) ?
+  // Link creation is a single fast filesystem-metadata call - not routed
+  // through IVirtualFileSystem (local-disk only, no VFS scheme needs it) -
   // but still off the UI thread per the "no blocking I/O on the UI thread"
   // invariant, same as CreateDirectoryAsync above.
   TThread.CreateAnonymousThread(
@@ -5577,7 +5577,7 @@ begin
   if ViewH < 1 then
   begin
     // Layout not ready yet (startup / session restore before first paint).
-    // Only clamp indices ? do not pull ScrollOffset to CursorIndex with ViewH=1.
+    // Only clamp indices - do not pull ScrollOffset to CursorIndex with ViewH=1.
     if Length(Rows) <= 0 then
     begin
       Tab.CursorIndex := 0;
@@ -6503,7 +6503,7 @@ begin
 
   Opts := DefaultFindOptions(RootPath, '*.*', True);
   Token := TJobCancelToken.Create;
-  // No live progress UI for v1 ? the walk is off-thread and the panel just
+  // No live progress UI for v1 - the walk is off-thread and the panel just
   // navigates to the flat result list once it finishes, same as Find without
   // its dialog/overlay (see FSearchUi's AOnNavigateFindResults callback,
   // which this mirrors: RegisterFindSession + NavigateActiveTo the session
@@ -6696,7 +6696,7 @@ end;
 
 function TDualPanelWindow.ListViewHeight: Integer;
 begin
-  // FListTop/Bottom stay 0,0 until LayoutPanels ? treating that as ViewH=1 would
+  // FListTop/Bottom stay 0,0 until LayoutPanels - treating that as ViewH=1 would
   // force ScrollOffset := CursorIndex on async list load and hide all rows above.
   if (Area.Height < 6) or (FListBottom <= FListTop) then
     Exit(0);
@@ -6821,7 +6821,7 @@ begin
     Exit;
   Ws.State.ActiveSide := Other;
   SaveActiveWorkspace(Ws);
-  // Tabbing into the panel currently showing a live Quick View exits it ?
+  // Tabbing into the panel currently showing a live Quick View exits it -
   // that panel becomes the one you navigate, matching FAR's Ctrl+Q/Tab
   // interplay (a panel can't simultaneously drive the cursor and mirror
   // it). DrawPanel's IsQuickViewTarget guard would also self-heal this
@@ -6909,7 +6909,7 @@ begin
     Exit;
 
   NavigateSideTo(Other, URI, True);
-  // NavigateSideTo focuses the destination side ? keep focus on the active panel.
+  // NavigateSideTo focuses the destination side - keep focus on the active panel.
   Ws := ActiveWorkspace;
   Ws.State.ActiveSide := Active;
   SaveActiveWorkspace(Ws);
@@ -7556,7 +7556,7 @@ begin
     MakeTab(FNextTabId, FileUriTitle(URI), URI);
   Inc(FNextTabId);
   Panel.ActiveTabIndex := High(Panel.Tabs);
-  // Creating a tab on a side also makes that side active ? matches what
+  // Creating a tab on a side also makes that side active - matches what
   // clicking its tab row already does, and keeps LoadSide/cursor consistent.
   Ws.State.ActiveSide := ASide;
   if ASide = psLeft then
@@ -8233,7 +8233,7 @@ begin
     ABounds.Right - 1, ABounds.Bottom - 1, ' ', cFileFg, ABodyBg);
 
   // The active side always drives what's previewed, regardless of which
-  // side is physically drawing this panel ? only reached when ASide isn't
+  // side is physically drawing this panel - only reached when ASide isn't
   // the active side (IsQuickViewTarget guards that in DrawPanel).
   HasRow := GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx);
   Previewable := IsQuickViewPreviewable(HasRow,
@@ -8273,8 +8273,8 @@ begin
   if Assigned(FQuickText) then
     FQuickText.Clear;
 
-  // Interior only (Left+1/Right-1/Top+1/Bottom-1) ? same inset as the
-  // FillGridRect above ? so the image doesn't paint over the frame
+  // Interior only (Left+1/Right-1/Top+1/Bottom-1) - same inset as the
+  // FillGridRect above - so the image doesn't paint over the frame
   // characters at ABounds.Left/Right/Top/Bottom. Cell bounds here are
   // window-local (like all DrawPanel geometry); the overlay Canvas pass in
   // uMainForm.FormPaint works in absolute grid cells, so offset by this
@@ -8452,7 +8452,7 @@ var
   Discard: TAlphaColor;
 begin
   FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters);
-  // Themed F-key bar colours ? DrawFunctionBar already forwards to
+  // Themed F-key bar colours - DrawFunctionBar already forwards to
   // Theme.DrawToolBar for the numbered tool-item segment on the right; these
   // cover the mnemonic-hint segment on the left and the base row fill (there
   // is no bare "toolbar colour" getter on IThemeRenderer, only the full
@@ -8944,7 +8944,7 @@ begin
   // FAR: commit Ctrl+Left/Right drive preview when Ctrl is released.
   if CtrlJustReleased then
     CommitDrivePreview;
-  // Alt Quick Search lives only while Alt is held ? clear needle on release.
+  // Alt Quick Search lives only while Alt is held - clear needle on release.
   if AltJustReleased and (FQuickSearchActive or (FQuickSearchText <> '')) then
   begin
     FQuickSearchActive := False;
@@ -9084,7 +9084,7 @@ begin
     Exit;
 
   // Embedded Viewer/Editor: document input (and its dialogs) before Dual Panel
-  // host dialogs ? matches HandleClick order so Enter reaches Editor Code page.
+  // host dialogs - matches HandleClick order so Enter reaches Editor Code page.
   // Still yields to a host-level dialog if one is open (e.g. Help/About/Theme
   // opened via the top menu while a document tab is active).
   case ClassifyEmbeddedInputOwner(ActiveWorkspace.Kind, DialogVis, FConsoleMode) of
@@ -9110,10 +9110,9 @@ begin
       Exit(False);
   end;
 
-  // Alt+F1/F2 drive list is included below ? before Esc>Console so Esc
-  // closes the popup ? via the same FInputOverlays table as the dialog/
-  // search/job/menu overlays above it (same priority order they used to
-  // be checked in as a chain of ifs).
+  // Alt+F1/F2 drive list is included below - before Esc>Console so Esc
+  // closes the popup - via the same FInputOverlays table as the dialog/
+  // search/job/menu overlays above it, in that priority order.
   for OverlayIdx := 0 to High(FInputOverlays) do
     if FInputOverlays[OverlayIdx].IsActive() then
       Exit(FInputOverlays[OverlayIdx].Handle(AKey, AShift, AKeyChar));

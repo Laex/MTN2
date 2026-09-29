@@ -159,8 +159,8 @@ end;
 
 procedure TTerminalWorkspaceWindow.AskCloseWorkspace;
 begin
-  // No dialog host (shouldn't happen) - fall back to the old direct close
-  // rather than leaving Esc dead.
+  // No dialog host (shouldn't happen) - close directly rather than leaving
+  // Esc dead.
   if not Assigned(FDialog) then
   begin
     DoCloseWorkspace;

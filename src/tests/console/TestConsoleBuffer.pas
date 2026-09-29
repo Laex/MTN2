@@ -141,8 +141,8 @@ begin
   Buf := TConsoleBuffer.Create;
   try
     // Pasting a "X:\..." path via the local-input path must land on the same
-    // prompt line, not be mistaken for an incoming shell prompt (regression:
-    // Shift+Insert paste used to jump to a new line below the prompt).
+    // prompt line, not be mistaken for an incoming shell prompt (a Shift+Insert
+    // paste must not jump to a new line below the prompt).
     Buf.AppendOutput('C:\Users\user\AppData\Roaming\MTN2>');
     Buf.AppendLocalInput('D:\Work\Delphi\MTN2\ARCHITECTURE.md');
     Assert.AreEqual('C:\Users\user\AppData\Roaming\MTN2>D:\Work\Delphi\MTN2\ARCHITECTURE.md', Buf.GetLine(Buf.LineCount - 1), 'pasted path stays on prompt line');

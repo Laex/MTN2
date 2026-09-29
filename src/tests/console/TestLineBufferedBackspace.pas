@@ -169,8 +169,8 @@ begin
     WaitForPromptReady(Buf, 15000);
 
     // Type "echo <marker>" one character at a time -- exactly what SendRaw
-    // does per keystroke now that cmd is on the same raw-passthrough path
-    // as WSL; no local buffering happens on the app side anymore.
+    // does per keystroke: cmd is on the same raw-passthrough path as WSL,
+    // with no local buffering on the app side.
     DoneMarker := 'MTN2_DONE_' + IntToStr(GetTickCount64);
     CmdText := 'echo ' + DoneMarker;
     for Ci := 1 to Length(CmdText) do

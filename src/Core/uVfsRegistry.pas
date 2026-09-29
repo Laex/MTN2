@@ -188,8 +188,8 @@ begin
 end;
 
 type
-  /// <summary>Unknown named scheme (tmp:// without its plugin, etc.). File VFS
-  /// used to catch these via default-file and show "Invalid path".</summary>
+  /// <summary>Unknown named scheme (tmp:// without its plugin, etc.), so it
+  /// does not fall through to the file VFS and its "Invalid path".</summary>
   TMissingSchemeVfs = class(TInterfacedObject, IVirtualFileSystem)
     procedure ListDirectoryAsync(const AURI: string; ACancel: IJobCancelToken;
       AOnDone: TVfsListCallback);

@@ -114,9 +114,9 @@ end;
 
 type
   /// <summary>Holds a file open exactly the way an application's log writer
-  /// does: read/write access, readers allowed, other writers denied. That is
-  /// what made the old fmShareDenyWrite source open fail - our own request to
-  /// deny writers collided with the holder's existing write handle.</summary>
+  /// does: read/write access, readers allowed, other writers denied. A source
+  /// opened with fmShareDenyWrite fails against it - the request to deny
+  /// writers collides with the holder's existing write handle.</summary>
   TLiveWriter = class
   private
     FStream: TFileStream;

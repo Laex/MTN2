@@ -139,9 +139,9 @@ begin
   try
     // 1) Create + recycle a scratch file so we have a known needle.
     // NOTE: some temp-classified folders are excluded from the Recycle Bin
-    // by Windows/drive policy (confirmed on this machine's D:\Temp - files
-    // deleted there are purged immediately, not recycled, independent of
-    // FOF_ALLOWUNDO) - use a normal user-profile folder instead so the
+    // by Windows/drive policy (files deleted there are purged immediately,
+    // not recycled, independent of FOF_ALLOWUNDO) - use a normal
+    // user-profile folder instead so the
     // delete actually lands in the Recycle Bin this spike is testing.
     ScratchDir := TPath.Combine(TPath.Combine(GetEnvironmentVariable('USERPROFILE'),
       'Desktop'), 'mtn2_testrecyclebin');

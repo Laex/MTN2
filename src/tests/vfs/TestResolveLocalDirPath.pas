@@ -1,13 +1,13 @@
 unit TestResolveLocalDirPath;
 
-{ Covers uVfsTypes.ResolveLocalDirPath's drive-root fast path: it used to
-  call LocalPathIsDirectory (GetFileAttributes) unconditionally before even
-  checking whether the path was a drive root, and this function is the
-  first thing NavigateSideTo does (via ResolveVfsUri/ResolveFileUri) on
-  EVERY navigation -- including Change Drive and Ctrl+Left/Right, which
-  always target a drive root. On an unresponsive network drive (P: on the
-  dev machine) that made the whole app freeze the instant you picked the
-  drive, before the async listing (and its own watchdog) ever started. }
+{ Covers uVfsTypes.ResolveLocalDirPath's drive-root fast path: a drive root
+  resolves without calling LocalPathIsDirectory (GetFileAttributes). This
+  function is the first thing NavigateSideTo does (via ResolveVfsUri /
+  ResolveFileUri) on EVERY navigation -- including Change Drive and
+  Ctrl+Left/Right, which always target a drive root -- so a disk call here
+  on an unresponsive network drive would freeze the whole app the instant
+  the drive is picked, before the async listing (and its own watchdog)
+  ever starts. }
 
 interface
 
@@ -36,9 +36,8 @@ var
   ElapsedMs: UInt64;
   Result_: string;
 begin
-  // C: is always fast on this machine; P: is the flaky network drive that
-  // exposed the bug. Either way, a drive root must resolve in effectively
-  // zero time -- IsWindowsDriveRoot is checked (pure string logic) before
+  // Whether the drive is local or an unresponsive network share, a drive
+  // root must resolve in effectively zero time -- IsWindowsDriveRoot is checked (pure string logic) before
   // any Win32 call, not after.
   Start := TThread.GetTickCount64;
   Result_ := ResolveLocalDirPath('P:\');

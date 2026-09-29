@@ -80,8 +80,8 @@ begin
   // stuck in DirectoryExists, orphaned), then navigates to a normal folder
   // right after -- exactly what TDualPanelWindow.SyncDirWatches does on
   // every navigation. Deliberately NOT a tight loop hammering P: with many
-  // concurrent setup attempts (unrealistic and, on this machine's actual
-  // flaky share, can itself make the drive even slower to answer) -- one
+  // concurrent setup attempts (unrealistic, and on a flaky share it can
+  // itself make the drive even slower to answer) -- one
   // abandoned P: attempt plus one real transition is what a user's Ctrl+Left/
   // Right or Change Drive pick actually produces.
   Writeln('Navigating away from an unresponsive drive right after landing on it stays fast');

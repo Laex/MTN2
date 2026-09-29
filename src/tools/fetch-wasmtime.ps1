@@ -1,4 +1,4 @@
-# Optional Wasmtime C API runtime for stage 30 (not committed; Apache-2.0).
+# Optional Wasmtime C API runtime for WASM plugins (not committed; Apache-2.0).
 # Downloads wasmtime.dll into this folder so TestWasmHost / MTN2 can LoadLibrary it.
 param(
     [string]$Version = 'v26.0.1'

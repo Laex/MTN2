@@ -493,9 +493,8 @@ end;
 // action string (see the enum declaration above), so this is RTTI name
 // lookup rather than 90-odd hand-maintained comparisons that could drift
 // out of sync with the enum. GetEnumValue itself is case-insensitive; the
-// GetEnumName round-trip re-enforces the exact-case match the old chain of
-// "=" comparisons made, so an unrecognized or wrongly-cased name still
-// falls back to tmaNone exactly as before.
+// GetEnumName round-trip requires the exact case, so an unrecognized or
+// wrongly-cased name falls back to tmaNone.
 function StringToTopMenuAction(const AName: string): TTopMenuAction;
 var
   V: Integer;

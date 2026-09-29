@@ -452,10 +452,10 @@ begin
   Assert.IsTrue(Wide.DisplayText = Unbounded.DisplayText,
     'a table that already fits the available width is untouched (identical to the unbounded call)');
 
-  // Regression: a table with enough columns that even 1 text column per
-  // column plus borders/padding doesn't fit AAvailWidth used to clamp
-  // AvailForText up to ColCount anyway, which made the rendered physical
-  // row WIDER than AAvailWidth - breaking the "every physical row is
+  // A table with enough columns that even 1 text column per column plus
+  // borders/padding doesn't fit AAvailWidth must not clamp AvailForText up
+  // to ColCount anyway: that would make the rendered physical row WIDER
+  // than AAvailWidth - breaking the "every physical row is
   // exactly AAvailWidth long" invariant ComputeHardWrapStarts's fixed-width
   // slicing depends on, so the Viewer would slice a table's rows at the
   // wrong offsets (garbled/misaligned rendering). 5 columns need at least
