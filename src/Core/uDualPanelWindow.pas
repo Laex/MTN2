@@ -552,8 +552,8 @@ type
       const AFields: TDialogCommandFields): Boolean;
     procedure RequestFreeSpace(const APath: string);
     procedure ResolveRelativeCommandAsync(const AText, ABaseDir, ACommand: string);
-    /// <summary>A path typed into the command line: an existing file opens
-    /// (ActivateFileUri), anything else is navigated to.</summary>
+    /// <summary>A path typed into the command line: an existing file runs
+    /// (ShellOpenPath), anything else is navigated to.</summary>
     procedure OpenOrNavigateAsync(const AURI: string);
     procedure ExecuteTopMenuAction(AAction: TTopMenuAction);
     procedure OpenAboutDialog;
@@ -617,9 +617,6 @@ type
     /// <summary>A local file by the Windows shell, or as a console program
     /// (OnLaunchConsoleFile) when it is one.</summary>
     procedure ShellOpenPath(const APath: string);
-    /// <summary>Enter on a file typed into the command line: the same as Enter
-    /// on it in the panel (associations, viewer / editor, console program).</summary>
-    procedure ActivateFileUri(const AURI: string);
     procedure RunUserCommandCurrent(const AURI, ACommandTemplate: string);
     procedure SetCmdFocused(AValue: Boolean);
     function ClickCmdLine(ACol, ARow: Integer; AShift: TShiftState): Boolean;
@@ -3864,7 +3861,7 @@ begin
       if not FAlive then
         Exit;
       if AExists and (AError.Code = vecOk) and not AIsDirectory then
-        ActivateFileUri(AURI)
+        ShellOpenPath(FileUriToPath(AURI))
       else
         NavigateActiveTo(AURI);
     end);
@@ -5358,11 +5355,14 @@ begin
       begin
         if Assigned(FCmdLineMgr) then
           FCmdLineMgr.Clear;
-        // A folder is entered; a file opens as Enter on it in the panel.
+        // A folder is entered; a file runs as a command would: a console
+        // program in the built-in console, anything else with its Windows
+        // program. The panel's own associations (viewer, editor) are F3 / F4
+        // and Enter on the file itself.
         if AIsDirectory then
           NavigateActiveTo(URI)
         else
-          ActivateFileUri(URI);
+          ShellOpenPath(Combined);
       end
       else
         RunConsoleCommand(Cmd);
@@ -5936,15 +5936,6 @@ begin
     NotifyChanged;
 end;
 
-procedure TDualPanelWindow.ActivateFileUri(const AURI: string);
-var
-  Ws: TDualPanelWorkspaceTab;
-  Row: TPanelRow;
-begin
-  Ws := ActiveWorkspace;
-  Row := MakePanelRow(ExtractFileName(FileUriToPath(AURI)), False, -1, '', '', AURI);
-  ActivateRow(ActiveTab(ActivePanel(Ws)), Row);
-end;
 
 procedure TDualPanelWindow.LaunchExternal(AEdit: Boolean);
 var
