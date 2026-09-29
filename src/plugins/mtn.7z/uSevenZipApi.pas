@@ -203,23 +203,25 @@ type
     property Overflow: Boolean read FOverflow;
   end;
 
-  T7zOpenQuiet = class(TInterfacedObject, IArchiveOpenCallback)
-  public
-    function SetTotal(files, bytes: PUInt64): HRESULT; stdcall;
-    function SetCompleted(files, bytes: PUInt64): HRESULT; stdcall;
-  end;
-
-  T7zOpenAuthed = class(TInterfacedObject, IArchiveOpenCallback,
+  /// <summary>Open callback that answers 7z.dll's password request.
+  /// Asked records the request: 7z.dll cannot tell a missing or wrong
+  /// password from damaged data, so the request itself is what marks an
+  /// archive with encrypted headers. Without a password the request aborts
+  /// the open at once.</summary>
+  T7zOpenCallback = class(TInterfacedObject, IArchiveOpenCallback,
     ICryptoGetTextPassword, ICryptoGetTextPassword2)
   private
     FPassword: string;
+    FHasPassword: Boolean;
+    FAsked: Boolean;
   public
-    constructor Create(const APassword: string);
+    constructor Create(AHasPassword: Boolean; const APassword: string);
     function SetTotal(files, bytes: PUInt64): HRESULT; stdcall;
     function SetCompleted(files, bytes: PUInt64): HRESULT; stdcall;
     function CryptoGetTextPassword(out password: TBStr): HRESULT; stdcall;
     function CryptoGetTextPassword2(out passwordIsDefined: Int32;
       out password: TBStr): HRESULT; stdcall;
+    property Asked: Boolean read FAsked;
   end;
 
   T7zExtractCallback = class(TInterfacedObject, IProgress, IArchiveExtractCallback,
@@ -228,8 +230,11 @@ type
     FOut: T7zMemOutStream;
     FOpRes: Int32;
     FPassword: string;
+    FHasPassword: Boolean;
+    FAsked: Boolean;
   public
-    constructor Create(AOut: T7zMemOutStream; const APassword: string);
+    constructor Create(AOut: T7zMemOutStream; AHasPassword: Boolean;
+      const APassword: string);
     function SetTotal(total: UInt64): HRESULT; stdcall;
     function SetCompleted(completeValue: PUInt64): HRESULT; stdcall;
     function GetStream(index: UInt32; out outStream: ISequentialOutStream;
@@ -240,6 +245,8 @@ type
     function CryptoGetTextPassword2(out passwordIsDefined: Int32;
       out password: TBStr): HRESULT; stdcall;
     property OpRes: Int32 read FOpRes;
+    /// <summary>7z.dll asked for the password: the item is encrypted.</summary>
+    property Asked: Boolean read FAsked;
   end;
 
   T7zUpdateCallback = class(TInterfacedObject, IProgress, IArchiveUpdateCallback)
@@ -506,49 +513,46 @@ begin
   Result := S_OK;
 end;
 
-function T7zOpenQuiet.SetTotal(files, bytes: PUInt64): HRESULT;
-begin
-  Result := S_OK;
-end;
-
-function T7zOpenQuiet.SetCompleted(files, bytes: PUInt64): HRESULT;
-begin
-  Result := S_OK;
-end;
-
-constructor T7zOpenAuthed.Create(const APassword: string);
+constructor T7zOpenCallback.Create(AHasPassword: Boolean; const APassword: string);
 begin
   inherited Create;
+  FHasPassword := AHasPassword;
   FPassword := APassword;
 end;
 
-function T7zOpenAuthed.SetTotal(files, bytes: PUInt64): HRESULT;
+function T7zOpenCallback.SetTotal(files, bytes: PUInt64): HRESULT;
 begin
   Result := S_OK;
 end;
 
-function T7zOpenAuthed.SetCompleted(files, bytes: PUInt64): HRESULT;
+function T7zOpenCallback.SetCompleted(files, bytes: PUInt64): HRESULT;
 begin
   Result := S_OK;
 end;
 
-function T7zOpenAuthed.CryptoGetTextPassword(out password: TBStr): HRESULT;
+function T7zOpenCallback.CryptoGetTextPassword(out password: TBStr): HRESULT;
 begin
+  FAsked := True;
+  password := nil;
+  if not FHasPassword then
+    Exit(E_ABORT);
   Result := AllocPassword(FPassword, password);
 end;
 
-function T7zOpenAuthed.CryptoGetTextPassword2(out passwordIsDefined: Int32;
+function T7zOpenCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
   out password: TBStr): HRESULT;
 begin
-  passwordIsDefined := 1;
-  Result := AllocPassword(FPassword, password);
+  passwordIsDefined := Ord(FHasPassword);
+  Result := CryptoGetTextPassword(password);
 end;
 
-constructor T7zExtractCallback.Create(AOut: T7zMemOutStream; const APassword: string);
+constructor T7zExtractCallback.Create(AOut: T7zMemOutStream; AHasPassword: Boolean;
+  const APassword: string);
 begin
   inherited Create;
   FOut := AOut;
   FOpRes := 0;
+  FHasPassword := AHasPassword;
   FPassword := APassword;
 end;
 
@@ -587,14 +591,19 @@ end;
 
 function T7zExtractCallback.CryptoGetTextPassword(out password: TBStr): HRESULT;
 begin
+  // Without a password, decrypting would only produce a data error: stop.
+  FAsked := True;
+  password := nil;
+  if not FHasPassword then
+    Exit(E_ABORT);
   Result := AllocPassword(FPassword, password);
 end;
 
 function T7zExtractCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
   out password: TBStr): HRESULT;
 begin
-  passwordIsDefined := 1;
-  Result := AllocPassword(FPassword, password);
+  passwordIsDefined := Ord(FHasPassword);
+  Result := CryptoGetTextPassword(password);
 end;
 
 constructor T7zUpdateCallback.Create(const ASourceFile: string);
@@ -929,6 +938,7 @@ var
   I: Integer;
   Hr: HRESULT;
   Dummy, MaxCheck: UInt64;
+  Cb: T7zOpenCallback;
   OpenCb: IArchiveOpenCallback;
   SawEncrypted, HasPassword: Boolean;
   Password: string;
@@ -950,12 +960,8 @@ begin
   Ids := CollectClassIds(AArchivePath);
   MaxCheck := 1 shl 22;
   HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
-  { Quiet (no ICryptoGetTextPassword) makes encrypted-header Open return
-    E_NOTIMPL. Authed QIs crypto, so a missing/wrong password is S_FALSE. }
-  if HasPassword then
-    OpenCb := T7zOpenAuthed.Create(Password)
-  else
-    OpenCb := T7zOpenQuiet.Create;
+  Cb := T7zOpenCallback.Create(HasPassword, Password);
+  OpenCb := Cb;
   SawEncrypted := False;
   for I := 0 to High(Ids) do
   begin
@@ -971,12 +977,15 @@ begin
     Hr := AArc.Open(St, @MaxCheck, OpenCb);
     if Hr = S_OK then
       Exit(True);
-    if Hr = E_NOTIMPL then
-      SawEncrypted := True
-    else if HasPassword and (Hr = S_FALSE) then
-      SawEncrypted := True;
     AArc.Close;
     AArc := nil;
+    // The handler that asked for the password is the archive's own format:
+    // no other handler will open it either.
+    if Cb.Asked or (Hr = E_NOTIMPL) then
+    begin
+      SawEncrypted := True;
+      Break;
+    end;
   end;
   if SawEncrypted then
     AError := 'Encrypted'
@@ -1137,6 +1146,7 @@ var
     HoldCb: IArchiveExtractCallback;
     Hr: HRESULT;
     Password: string;
+    HasPassword: Boolean;
 begin
   Result := False;
   SetLength(ABytes, 0);
@@ -1171,9 +1181,8 @@ begin
       Exit;
     Mem := T7zMemOutStream.Create(AMaxBytes);
     Hold := Mem;
-    if not SevenZipTryGetPassword(AArchivePath, Password) then
-      Password := '';
-    Cb := T7zExtractCallback.Create(Mem, Password);
+    HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
+    Cb := T7zExtractCallback.Create(Mem, HasPassword, Password);
     HoldCb := Cb;
     Hr := Arc.Extract(@Idx, 1, 0, HoldCb);
     if Mem.Overflow then
@@ -1184,7 +1193,7 @@ begin
     end;
     if (not HResOk(Hr)) or (Cb.OpRes <> 0) then
     begin
-      if Cb.OpRes = 9 then
+      if Cb.Asked or (Cb.OpRes = 9) then
         AError := 'Encrypted'
       else
         AError := 'Extract failed';
