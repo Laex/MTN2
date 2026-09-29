@@ -721,7 +721,7 @@ end;
 procedure TEditorWindow.DocChanged(Sender: TObject);
 var
   Star: string;
-  JustRestored: Boolean;
+  JustRestored, Replaced: Boolean;
 begin
   if not FAlive then
     Exit;
@@ -731,7 +731,8 @@ begin
   // otherwise keep serving stale parses for lines whose text didn't shift
   // but whose meaning did (or worse, serve a cached table block that no
   // longer matches its (now different) source rows).
-  if FDoc.Ready and (FDoc.ContentGen <> FLastMdContentGen) then
+  Replaced := FDoc.Ready and (FDoc.ContentGen <> FLastMdContentGen);
+  if Replaced then
   begin
     FLastMdContentGen := FDoc.ContentGen;
     FMdFenceIdx.Reset;
@@ -757,14 +758,24 @@ begin
     if (not FDoc.Binary) and FViewOnly and IsMarkdownFile then
       FMarkdownMode := True;
   end;
-  ClampCursor;
-  // EnsureCursorVisible re-anchors FTopLine/FLeftCol to keep the cursor in
-  // view - exactly the opposite of what a just-restored position wants: the
-  // saved top-left corner is authoritative, the cursor is drawn wherever it
-  // falls relative to it (it was saved from the same session, so normally
-  // it's already inside that view). Skip it for this one tick only.
-  if not JustRestored then
-    EnsureCursorVisible;
+  // The editor's own edits (SetLine / InsertLine / DeleteLine inside a
+  // command) fire this too, halfway through: the line is already changed but
+  // the command has not moved the cursor yet. Clamping then would move the
+  // cursor a second time (Backspace at the end of a line would land one column
+  // short). Each command places the cursor itself; only content replaced
+  // underneath it (load, reload) needs clamping here.
+  if Replaced or JustRestored or not FDoc.Ready then
+  begin
+    ClampCursor;
+    // EnsureCursorVisible re-anchors FTopLine/FLeftCol to keep the cursor in
+    // view - exactly the opposite of what a just-restored position wants:
+    // the saved top-left corner is authoritative, the cursor is drawn
+    // wherever it falls relative to it (it was saved from the same session,
+    // so normally it's already inside that view). Skip it for this one tick
+    // only.
+    if not JustRestored then
+      EnsureCursorVisible;
+  end;
   if (not FViewOnly) and FDoc.Dirty then
     Star := '* '
   else
