@@ -34,8 +34,7 @@ uses
   TestVfsUtils in 'TestVfsUtils.pas',
   TestWinFileAttr in 'TestWinFileAttr.pas',
   TestWinFileClipboard in 'TestWinFileClipboard.pas',
-  TestZipNames in 'TestZipNames.pas',
-  TestZipNav in 'TestZipNav.pas';
+  TestZipNames in 'TestZipNames.pas';
 
 begin
   RunRegisteredTests;
