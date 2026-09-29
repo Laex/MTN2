@@ -522,8 +522,6 @@
     "toast.selectionUnchanged": "Selection unchanged (mask \"%s\")",
     "toast.hotlistAdded": "\"%s\" added to the folder hotlist (Ctrl+D)",
     "toast.nothingToCopy": "Nothing to copy",
-    "toast.openAsArchiveLocal": "Only a file on disk can be opened as an archive",
-    "toast.openAsArchiveNo7z": "Not a ZIP archive, and the 7z plugin is not loaded",
     "about.engine.skia": "Graphics Engine: Skia (mono AA + modal dim)",
     "about.engine.gdi": "Graphics Engine: Standard GDI/FMX Renderer",
     "update.failed": "Could not update MTN2.",

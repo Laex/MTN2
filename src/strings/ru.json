@@ -621,8 +621,6 @@
     "toast.selectionUnchanged": "Выделение не изменилось (маска «%s»)",
     "toast.hotlistAdded": "Добавлено в избранные папки: «%s» (Ctrl+D)",
     "toast.nothingToCopy": "Нечего копировать",
-    "toast.openAsArchiveLocal": "Как архив открывается только файл на диске",
-    "toast.openAsArchiveNo7z": "Это не ZIP-архив, а плагин 7z не загружен",
     "about.engine.skia": "Графический движок: Skia (монохромное сглаживание + затемнение диалогов)",
     "about.engine.gdi": "Графический движок: стандартный рендерер GDI/FMX",
     "update.failed": "Не удалось обновить MTN2.",

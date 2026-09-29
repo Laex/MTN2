@@ -142,7 +142,16 @@ begin
       Assert.IsFalse(SevenZipExtractFile(Arc, 'inner.txt', 1 shl 20, Data, Err),
         Tag + 'no password: not extracted');
       Assert.AreEqual('Encrypted', Err, Tag + 'no password: extraction reports encrypted');
+      // The panel checks a password by reading the start of a file: a wrong
+      // one fails as encrypted, the right one only runs out of room.
+      SevenZipSetPassword(Arc, '2');
+      Assert.IsFalse(SevenZipExtractFile(Arc, 'inner.txt', 4, Data, Err),
+        Tag + 'wrong password: not extracted');
+      Assert.AreEqual('Encrypted', Err, Tag + 'wrong password: reported as encrypted');
       SevenZipSetPassword(Arc, '1');
+      Assert.IsFalse(SevenZipExtractFile(Arc, 'inner.txt', 4, Data, Err),
+        Tag + 'right password, 4 bytes: does not fit');
+      Assert.AreEqual('Too large', Err, Tag + 'right password: only too large');
       Assert.IsTrue(SevenZipExtractFile(Arc, 'inner.txt', 1 shl 20, Data, Err),
         Tag + 'right password extracts: ' + Err);
       Assert.IsTrue(TEncoding.ASCII.GetString(Data).StartsWith('secret-payload'),

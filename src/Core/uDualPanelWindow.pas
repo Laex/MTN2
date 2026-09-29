@@ -150,6 +150,15 @@ type
     FArchivePasswordUri: string;
     FArchivePasswordSide: TPanelSide;
     FArchivePasswordRetry: Boolean;
+    /// <summary>Archives (lower-case paths) whose password was checked in
+    /// this session: F3 / F5 on their encrypted files asks no more.</summary>
+    FArchivesUnlocked: TDictionary<string, Boolean>;
+    /// <summary>What F3 / F4 / F5 / Enter do once the password of the
+    /// archive they read from is checked; nil when the password dialog asks
+    /// for a listing instead.</summary>
+    FArchiveAction: TProc;
+    FArchiveActionPath: string;
+    FArchiveProbeUri: string;
     FNavigateSub: ISubscription;
     FReloadSub: ISubscription;
     FColorCoding: TColorCodingDialogController;
@@ -371,6 +380,16 @@ type
     procedure HandlePluginReload(const ATopic: string; const APayload: TObject);
     procedure ReloadSidesShowing(const AUri: string);
     procedure HandleArchivePasswordCommand(const AControlId, APassword: string);
+    /// <summary>The smallest encrypted file among AURIs in the 7z archive the
+    /// active panel shows, when that archive has no checked password yet.</summary>
+    function FindLockedArchiveFile(const AURIs: TArray<string>;
+      out AArchivePath, AProbeUri: string): Boolean;
+    /// <summary>Runs AAction at once, or - when AURIs include an encrypted
+    /// file of a 7z archive with no checked password - after the password is
+    /// entered and checked on the smallest such file. Esc drops AAction.</summary>
+    procedure RunWithArchivePassword(const AURIs: TArray<string>; const AAction: TProc);
+    procedure OpenArchiveActionPrompt(AWrong: Boolean);
+    procedure CheckArchiveActionPassword;
     procedure LoadSide(ASide: TPanelSide);
     procedure ReloadActiveRows;
     procedure SyncDirWatches;
@@ -968,6 +987,7 @@ constructor TDualPanelWindow.Create(const ATheme: IThemeRenderer; AId: Cardinal)
 begin
   inherited Create(ATheme, AId);
   FAlive := True;
+  FArchivesUnlocked := TDictionary<string, Boolean>.Create;
   ShellIconsSetOnReady(
     procedure
     begin
@@ -1116,6 +1136,7 @@ end;
 destructor TDualPanelWindow.Destroy;
 begin
   FAlive := False;
+  FreeAndNil(FArchivesUnlocked);
   ShellIconsSetOnReady(nil);
   if Assigned(FNavigateSub) then
   begin
@@ -2918,7 +2939,12 @@ begin
   if M.GetLastError.Code <> vecAccessDenied then
   begin
     if SameVfsUri(URI, FArchivePasswordUri) then
+    begin
+      // Listed with the password just entered: its files open without asking.
+      if FArchivePasswordRetry and (M.GetLastError.Code = vecOk) then
+        FArchivesUnlocked.AddOrSetValue(LowerCase(ArchiveBasePath(URI)), True);
       FArchivePasswordRetry := False;
+    end;
     Exit;
   end;
   CloseTransientUiBeforeDialog;
@@ -2942,6 +2968,22 @@ var
   M: IPanelModel;
 begin
   FDialog.Close;
+  if Assigned(FArchiveAction) then
+  begin
+    if not DialogCmdIsAccept(AControlId) then
+    begin
+      FArchiveAction := nil;
+      Exit;
+    end;
+    if not HostSetPluginSecret('mtn.7z', FArchiveActionPath, APassword) then
+    begin
+      FArchiveAction := nil;
+      OpenStub(skShellInfo, 'Archive password', 'Cannot pass password to plugin');
+      Exit;
+    end;
+    CheckArchiveActionPassword;
+    Exit;
+  end;
   ArchPath := ArchiveBasePath(FArchivePasswordUri);
   if DialogCmdIsReject(AControlId) then
   begin
@@ -2968,6 +3010,103 @@ begin
   M := ModelForSide(FArchivePasswordSide);
   if Assigned(M) then
     M.Refresh;
+end;
+
+function TDualPanelWindow.FindLockedArchiveFile(const AURIs: TArray<string>;
+  out AArchivePath, AProbeUri: string): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  S: string;
+  R: TPanelRow;
+  Best: Int64;
+begin
+  Result := False;
+  AArchivePath := '';
+  AProbeUri := '';
+  if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
+    Exit;
+  if not IsSevenZipUri(Tab.CurrentURI) then
+    Exit;
+  AArchivePath := ArchiveBasePath(Tab.CurrentURI);
+  if (AArchivePath = '') or FArchivesUnlocked.ContainsKey(LowerCase(AArchivePath)) then
+    Exit;
+  Best := -1;
+  for S in AURIs do
+    for R in Rows do
+      if R.IsEncrypted and not R.IsDirectory and not R.IsParent and
+         SameVfsUri(R.URI, S) and ((Best < 0) or (R.Size < Best)) then
+      begin
+        Best := R.Size;
+        AProbeUri := R.URI;
+      end;
+  Result := Best >= 0;
+end;
+
+procedure TDualPanelWindow.RunWithArchivePassword(const AURIs: TArray<string>;
+  const AAction: TProc);
+var
+  ArchPath, Probe: string;
+begin
+  if not FindLockedArchiveFile(AURIs, ArchPath, Probe) then
+  begin
+    AAction();
+    Exit;
+  end;
+  FArchiveAction := AAction;
+  FArchiveActionPath := ArchPath;
+  FArchiveProbeUri := Probe;
+  OpenArchiveActionPrompt(False);
+end;
+
+procedure TDualPanelWindow.OpenArchiveActionPrompt(AWrong: Boolean);
+var
+  Prompt, ArchName: string;
+begin
+  CloseTransientUiBeforeDialog;
+  if AWrong then
+    Prompt := 'Wrong password:'
+  else
+    Prompt := 'Password:';
+  ArchName := TPath.GetFileName(FArchiveActionPath);
+  FDialogKind := hdkArchivePassword;
+  FDialog.Open(BuildArchivePasswordDialog(ArchName, Prompt), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.CheckArchiveActionPassword;
+const
+  // A wrong key breaks decoding within the first bytes, so the start of the
+  // smallest encrypted file is enough to check the password.
+  cProbeBytes = 64 * 1024;
+var
+  Backend: IVirtualFileSystem;
+begin
+  if not GlobalVfsRegistry.TryResolve(FArchiveProbeUri, Backend) then
+  begin
+    FArchiveAction := nil;
+    Exit;
+  end;
+  Backend.ReadBytesAsync(FArchiveProbeUri, cProbeBytes, nil,
+    procedure(const ABytes: TBytes; const AError: TVfsError)
+    var
+      Action: TProc;
+    begin
+      if not FAlive or not Assigned(FArchiveAction) then
+        Exit;
+      if AError.Code = vecAccessDenied then
+      begin
+        OpenArchiveActionPrompt(True);
+        Exit;
+      end;
+      FArchivesUnlocked.AddOrSetValue(LowerCase(FArchiveActionPath), True);
+      Action := FArchiveAction;
+      FArchiveAction := nil;
+      Action();
+      NotifyChanged;
+    end);
 end;
 
 procedure TDualPanelWindow.InvalidatePlainTotals;
@@ -4159,8 +4298,9 @@ procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
 var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
-  UserCommand: string;
+  UserCommand, Uri: string;
 begin
+  Uri := ARow.URI;
   // Ask the registry which extensions currently navigate as an archive
   // (built-in zip/jar/apk plus whatever a loaded plugin's manifest declared
   // - see uVfsRegistry.RegisterArchiveExtension) instead of hardcoding the
@@ -4191,9 +4331,17 @@ begin
       else
         NavigateActiveTo(EnsureArchiveRootUri(ARow.URI));
     ackView:
-      RequestOpenViewer(ARow.URI);
+      RunWithArchivePassword([Uri],
+        procedure
+        begin
+          RequestOpenViewer(Uri);
+        end);
     ackEdit:
-      RequestOpenEditor(ARow.URI);
+      RunWithArchivePassword([Uri],
+        procedure
+        begin
+          RequestOpenEditor(Uri);
+        end);
     ackShell:
       ShellOpenPath(FileUriToPath(ARow.URI));
     ackCommand:
@@ -5806,9 +5954,17 @@ begin
     Exit;
   end;
   if AEdit then
-    RequestOpenEditor(Row.URI)
+    RunWithArchivePassword([Row.URI],
+      procedure
+      begin
+        RequestOpenEditor(Row.URI);
+      end)
   else
-    RequestOpenViewer(Row.URI);
+    RunWithArchivePassword([Row.URI],
+      procedure
+      begin
+        RequestOpenViewer(Row.URI);
+      end);
 end;
 
 procedure TDualPanelWindow.OpenAsArchive;
@@ -5819,31 +5975,46 @@ var
   Rows: TPanelRows;
   Row: TPanelRow;
   Idx: Integer;
-  Path: string;
-  Kind: TArchiveExtensionKind;
+  FileUri, ArcUri: string;
+  Backend: IVirtualFileSystem;
 begin
+  // A file that is not an archive gets no reaction at all (FAR).
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
   if Row.IsDirectory or Row.IsParent or (Row.URI = '') then
     Exit;
   if not Row.URI.StartsWith('file:', True) or HasArchiveChain(Row.URI) then
+    Exit;
+  if FileHasZipSignature(FileUriToPath(Row.URI)) then
   begin
-    FToast.Show(T('ui.toast.openAsArchiveLocal',
-      'Only a file on disk can be opened as an archive'), '', tkWarning);
+    NavigateActiveTo(EnsureArchiveRootUri(Row.URI));
     Exit;
   end;
-  Path := FileUriToPath(Row.URI);
-  if FileHasZipSignature(Path) then
-    NavigateActiveTo(EnsureArchiveRootUri(Row.URI))
-  else if GlobalVfsRegistry.TryResolveArchiveKind('x.7z', Kind) and (Kind = akSevenZip) then
-  begin
-    FSkipArchivePasswordUri := '';
-    FArchivePasswordRetry := False;
-    NavigateActiveTo(PathToSevenZipRootUri(Path));
-  end
-  else
-    FToast.Show(T('ui.toast.openAsArchiveNo7z',
-      'Not a ZIP archive, and the 7z plugin is not loaded'), '', tkWarning);
+  // The 7z plugin finds the format by content; enter only once it lists
+  // the file (or asks for its password).
+  FileUri := Row.URI;
+  ArcUri := PathToSevenZipRootUri(FileUriToPath(FileUri));
+  if not GlobalVfsRegistry.TryResolve(ArcUri, Backend) then
+    Exit;
+  Backend.ListDirectoryAsync(ArcUri, nil,
+    procedure(const AItems: TArray<TVfsEntry>; const AError: TVfsError)
+    var
+      W: TDualPanelWorkspaceTab;
+      P: TPanelState;
+      Tb: TTab;
+      Rs: TPanelRows;
+      Cur: TPanelRow;
+      I: Integer;
+    begin
+      if not (AError.Code in [vecOk, vecAccessDenied]) then
+        Exit;
+      // The cursor moved on while the plugin was reading: stay put.
+      if not GetActiveRow(W, P, Tb, Rs, Cur, I) or not SameVfsUri(Cur.URI, FileUri) then
+        Exit;
+      FSkipArchivePasswordUri := '';
+      FArchivePasswordRetry := False;
+      NavigateActiveTo(ArcUri);
+    end);
 end;
 
 procedure TDualPanelWindow.ToggleQuickView;
@@ -8732,7 +8903,7 @@ var
   Ws: TDualPanelWorkspaceTab;
   DestSide: TPanelSide;
   Sources: TArray<string>;
-  DestURI, Reason: string;
+  DestURI, Reason, ArchPath, Probe: string;
 begin
   if not CanBeginAnotherJob then
     Exit;
@@ -8742,6 +8913,17 @@ begin
   Sources := CollectActiveSources;
   if Length(Sources) = 0 then
     Exit;
+
+  // Copying out of an archive reads its encrypted files: password first.
+  if (AKind in [pjkCopy, pjkMove]) and FindLockedArchiveFile(Sources, ArchPath, Probe) then
+  begin
+    RunWithArchivePassword(Sources,
+      procedure
+      begin
+        BeginJob(AKind, ADeleteToRecycleBin);
+      end);
+    Exit;
+  end;
 
   if (AKind = pjkDelete) and ActivePanelIsWorkspace then
   begin
