@@ -12,6 +12,7 @@ type
     [Test] procedure TestGeometry;
     [Test] procedure TestOverlays;
     [Test] procedure TestChromeClick;
+    [Test] procedure TestJobStripClick;
     [Test] procedure TestListClickPair;
   end;
 
@@ -34,12 +35,15 @@ type
     Focused: Boolean;
     MenuHit: Boolean;
     TabHit: Boolean;
+    StripHit: Boolean;
+    StripCol: Integer;
     JobBounds: TRectI;
     SearchBounds: TRectI;
     procedure Invalidate;
     procedure NotifyChanged;
     function HandleTopMenu(ACol, ARow: Integer): Boolean;
     function SelectWorkspace(ACol: Integer): Boolean;
+    function JobStrip(ACol: Integer): Boolean;
     function HandleDocument(ACol, ARow: Integer; AShift: TShiftState): Boolean;
     function HandleTerminal(ACol, ARow: Integer; AShift: TShiftState): Boolean;
     function HandleFunctionBar(ACol: Integer; AShift: TShiftState): Boolean;
@@ -91,6 +95,13 @@ function TClickSpy.SelectWorkspace(ACol: Integer): Boolean;
 begin
   Last := 'wstab';
   Result := TabHit;
+end;
+
+function TClickSpy.JobStrip(ACol: Integer): Boolean;
+begin
+  Last := 'jobstrip';
+  StripCol := ACol;
+  Result := StripHit;
 end;
 
 function TClickSpy.HandleDocument(ACol, ARow: Integer; AShift: TShiftState): Boolean;
@@ -256,6 +267,7 @@ begin
   AHost.NotifyChanged := ASpy.NotifyChanged;
   AHost.HandleTopMenuClick := ASpy.HandleTopMenu;
   AHost.SelectWorkspaceAtCol := ASpy.SelectWorkspace;
+  AHost.JobStripClick := ASpy.JobStrip;
   AHost.HandleDocumentClick := ASpy.HandleDocument;
   AHost.HandleTerminalClick := ASpy.HandleTerminal;
   AHost.HandleFunctionBarClick := ASpy.HandleFunctionBar;
@@ -506,6 +518,44 @@ begin
   end;
 end;
 
+procedure TestJobStripClick;
+var
+  Spy: TClickSpy;
+  Host: TDualPanelClickHost;
+  Snap: TClickOverlaySnapshot;
+  Handled: Boolean;
+begin
+  Spy := TClickSpy.Create;
+  try
+    BindSpy(Host, Spy);
+    Snap := Default(TClickOverlaySnapshot);
+    Snap.WorkspaceKind := wkPanels;
+    Snap.AreaHeight := 24;
+    Snap.AreaWidth := 80;
+
+    Spy.StripHit := True;
+    Spy.TabHit := True;
+    Handled := False;
+    Assert.IsTrue(DispatchClickOverlays(Host, Snap, 75, 1, [], False, Handled),
+      'tab row click reaches the strip');
+    Assert.IsTrue(Handled and (Spy.Last = 'jobstrip') and (Spy.StripCol = 75),
+      'a hit on the strip does not select a tab');
+
+    Spy.StripHit := False;
+    Handled := False;
+    DispatchClickOverlays(Host, Snap, 3, 1, [], False, Handled);
+    Assert.IsTrue(Handled and (Spy.Last = 'wstab'),
+      'a miss on the strip falls through to the tabs');
+
+    Spy.Last := '';
+    Handled := False;
+    DispatchClickOverlays(Host, Snap, 75, 2, [], False, Handled);
+    Assert.IsTrue(Spy.Last <> 'jobstrip', 'only the tab row is the strip');
+  finally
+    Spy.Free;
+  end;
+end;
+
 procedure TestListClickPair;
 var
   LastCol, LastRow: Integer;
@@ -557,6 +607,11 @@ end;
 procedure TTestDualPanelClick.TestChromeClick;
 begin
   TestDualPanelClick.TestChromeClick;
+end;
+
+procedure TTestDualPanelClick.TestJobStripClick;
+begin
+  TestDualPanelClick.TestJobStripClick;
 end;
 
 procedure TTestDualPanelClick.TestListClickPair;

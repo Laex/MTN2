@@ -281,6 +281,13 @@ begin
     PanelUri := PathToFileUri('D:\Work');
     Ctl.CheckOwner;
     Assert.IsFalse(Ctl.Visible, 'the panel under it went elsewhere: closed');
+    Ctl.Open(psRight);
+    WaitIdle(Ctl);
+    Ctl.SwapSide;
+    Assert.IsTrue(Ctl.Visible and (Ctl.Side = psLeft), 'Ctrl+U: the tree moves with its panel');
+    Ctl.CheckOwner;
+    Assert.IsTrue(Ctl.Visible, 'the panel under it still shows the same folder');
+    Ctl.Close;
     PanelUri := 'sftp://host/home';
     Ctl.Open(psRight);
     Assert.IsFalse(Ctl.Visible, 'no tree for a folder that is not on a local disk');

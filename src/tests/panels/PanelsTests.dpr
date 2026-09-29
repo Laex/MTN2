@@ -25,6 +25,7 @@ uses
   TestDualPanelCommands in 'TestDualPanelCommands.pas',
   TestDualPanelDrag in 'TestDualPanelDrag.pas',
   TestDualPanelInput in 'TestDualPanelInput.pas',
+  TestDualPanelJobChips in 'TestDualPanelJobChips.pas',
   TestDualPanelJobDialogs in 'TestDualPanelJobDialogs.pas',
   TestDualPanelJobRules in 'TestDualPanelJobRules.pas',
   TestDualPanelJobsManager in 'TestDualPanelJobsManager.pas',

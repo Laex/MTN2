@@ -16,7 +16,7 @@ uses
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
-  uDualPanelJobRules, uDualPanelSearch, uDualPanelMenus,
+  uDualPanelJobRules, uDualPanelJobChips, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uPluginHost,
   uFolderHistory, uANSIParser,
@@ -725,6 +725,9 @@ type
     procedure LayoutPanels(AWidth, AHeight: Integer);
     procedure DrawMenuBar(AWidth: Integer);
     procedure DrawWorkspaceTabBar(AWidth: Integer);
+    function JobStrip(AWidth: Integer): TJobStrip;
+    procedure DrawJobStrip(AWidth: Integer);
+    function ClickJobStrip(ACol: Integer): Boolean;
     function SelectWorkspaceAtCol(ACol: Integer): Boolean;
     function BeginRenameWorkspaceAtCol(ACol: Integer): Boolean;
     procedure ApplyWorkspaceTabTitle(const AName: string);
@@ -990,6 +993,10 @@ const
   cMenuFg      = TAlphaColor($FF000000);
   cMenuBg      = TAlphaColor($FF00AAAA);
   cMenuHot     = TAlphaColor($FFFFFF55);
+  cJobErrorFg  = TAlphaColor($FFFFFFFF);
+  cJobErrorBg  = TAlphaColor($FFCC0000);
+  cJobAskFg    = TAlphaColor($FF000000);
+  cJobAskBg    = TAlphaColor($FFFFFF55);
   cScrollFg    = TAlphaColor($FFAAAAAA);
   cScrollThumb = TAlphaColor($FF00AAAA);
   cCmdFg       = TAlphaColor($FFAAAAAA);
@@ -1495,6 +1502,7 @@ begin
   FClickHost.HandleTopMenuClick := ClickHandleTopMenu;
   FClickHost.SelectWorkspaceAtCol := SelectWorkspaceAtCol;
   FClickHost.BeginRenameWorkspaceAtCol := BeginRenameWorkspaceAtCol;
+  FClickHost.JobStripClick := ClickJobStrip;
   FClickHost.HandleDocumentClick := ClickHandleDocument;
   FClickHost.HandleTerminalClick := ClickHandleTerminal;
   FClickHost.HandleFunctionBarClick := HandleFunctionBarClick;
@@ -1518,7 +1526,6 @@ begin
   FClickHost.CancelDeleteAsk := ClickCancelDelete;
   FClickHost.CancelIOErrorAsk := ClickCancelIOError;
   FClickHost.ReloadActiveRows := ReloadActiveRows;
-  FClickHost.OpenJobList := OpenJobList;
   FClickHost.SetCmdFocused := SetCmdFocused;
   FClickHost.ClickCmdLine := ClickCmdLine;
   FClickHost.NewWorkspace := NewWorkspace;
@@ -4280,6 +4287,14 @@ begin
     AKey := 0;
     AKeyChar := #0;
     NotifyChanged;
+    Exit(True);
+  end;
+  // Ctrl+U swaps the panels with the tree too.
+  if MatchActiveAction(AKey, AShift) = kaSwapPanels then
+  begin
+    SwapPanels;
+    AKey := 0;
+    AKeyChar := #0;
     Exit(True);
   end;
   Result := FFolderTreeCtrl.HandleInput(AKey, AShift, AKeyChar);
@@ -7221,16 +7236,20 @@ procedure TDualPanelWindow.SwapPanels;
 var
   Ws: TDualPanelWorkspaceTab;
   TmpPanel: TPanelState;
-  TmpPending: Boolean;
+  TmpPending, TreeFocused: Boolean;
 begin
   Ws := ActiveWorkspace;
   if not CanStartPanelLayoutChange(Ws) then
     Exit;
 
+  TreeFocused := OverlayFolderTreeVisible;
   TmpPanel := Ws.State.LeftPanel;
   Ws.State.LeftPanel := Ws.State.RightPanel;
   Ws.State.RightPanel := TmpPanel;
-  // ActiveSide stays on the same physical panel (FAR Ctrl+U).
+  // ActiveSide stays on the same physical panel (FAR Ctrl+U); a focused
+  // folder tree keeps the focus on its new side.
+  if TreeFocused then
+    Ws.State.ActiveSide := OppositeSide(Ws.State.ActiveSide);
 
   TmpPending := FWatchPending[psLeft];
   FWatchPending[psLeft] := FWatchPending[psRight];
@@ -7242,6 +7261,9 @@ begin
 
   InvalidatePlainTotals;
   SaveActiveWorkspace(Ws);
+  // The tree moves with its panel once the swap is saved.
+  if Assigned(FFolderTreeCtrl) then
+    FFolderTreeCtrl.SwapSide;
   LoadSide(psLeft);
   LoadSide(psRight);
   NotifyShellCwdSync;
@@ -8249,6 +8271,67 @@ begin
     end;
     Inc(X, Length(Cap) + 1);
   end;
+  DrawJobStrip(AWidth);
+end;
+
+function TDualPanelWindow.JobStrip(AWidth: Integer): TJobStrip;
+begin
+  if Assigned(FJobs) then
+    Result := LayoutJobStrip(FJobs.States, WorkspaceTabsEndCol(FState.WorkspaceTabs),
+      AWidth)
+  else
+    Result := Default(TJobStrip);
+end;
+
+procedure TDualPanelWindow.DrawJobStrip(AWidth: Integer);
+var
+  Strip: TJobStrip;
+  Chip: TJobChip;
+  Fg, Bg, ChipFg, ChipBg: TAlphaColor;
+begin
+  Strip := JobStrip(AWidth);
+  if Strip.ListWidth = 0 then
+    Exit;
+  ResolveChrome(pcpWorkspaceTabIdle, False, Fg, Bg);
+  // Chips are filled blocks against the idle bar: the active-tab colours, or
+  // black on yellow for a question and white on red for a failure.
+  for Chip in Strip.Chips do
+  begin
+    case Chip.Tone of
+      jctError:
+        begin
+          ChipFg := cJobErrorFg;
+          ChipBg := cJobErrorBg;
+        end;
+      jctAsk:
+        begin
+          ChipFg := cJobAskFg;
+          ChipBg := cJobAskBg;
+        end;
+    else
+      ResolveChrome(pcpWorkspaceTabActive, True, ChipFg, ChipBg);
+    end;
+    PutGridText(Buffer, Chip.Left, TabBarRow, Chip.Caption, ChipFg, ChipBg);
+  end;
+  PutGridText(Buffer, Strip.ListLeft, TabBarRow, Strip.ListCaption, Fg, Bg);
+end;
+
+function TDualPanelWindow.ClickJobStrip(ACol: Integer): Boolean;
+var
+  JobId: Integer;
+begin
+  Result := True;
+  case HitJobStrip(JobStrip(Area.Width), ACol, JobId) of
+    jshChip:
+      begin
+        FJobs.RestoreJobById(JobId);
+        NotifyChanged;
+      end;
+    jshList:
+      OpenJobList;
+  else
+    Result := False;
+  end;
 end;
 
 procedure TDualPanelWindow.LayoutPanels(AWidth, AHeight: Integer);
@@ -8892,9 +8975,6 @@ begin
   else
     CursorText := '';
   Snap.ItemText := StatusItemText(HasSel, SelText, HasCursor, CursorText);
-  if Assigned(FJobs) and FJobs.HasBusyJob and not FJobs.ShowsOverlay then
-    Snap.JobStatus := FJobs.FormatStatus;
-
   RequestFreeSpace(Path);
   Snap.FreeText := FFreeText;
   Snap.Path := TruncateStatusPath(Path);
@@ -8918,7 +8998,6 @@ begin
     Result.JobTitle := FJobs.Title;
     Result.JobMessage := FJobs.State.Message;
     Result.JobCurrent := FJobs.State.CurrentName;
-    Result.JobStatus := FJobs.FormatStatus;
   end;
   if Assigned(FSearchUi) then
   begin

@@ -180,6 +180,9 @@ type
     /// <summary>Closes the tree when the panel under it no longer shows the
     /// folder it was opened over.</summary>
     procedure CheckOwner;
+    /// <summary>The panels swapped places (Ctrl+U): the tree moves with the
+    /// panel it is over.</summary>
+    procedure SwapSide;
     /// <summary>AFocused: the tree's side is the active one.</summary>
     procedure Draw(const AGrid: TTerminalGrid; AFocused: Boolean);
     /// <summary>Drops a pending follow of the opposite panel (the focus
@@ -793,6 +796,16 @@ procedure TFolderTreeController.CheckOwner;
 begin
   if FVisible and not SameText(FGetPanelUri(FSide), FOwnerUri) then
     Close;
+end;
+
+procedure TFolderTreeController.SwapSide;
+begin
+  if not FVisible then
+    Exit;
+  // No repaint request here: the caller repaints once both panels have
+  // moved, or CheckOwner would see the other panel's folder and close.
+  FSide := OtherSide(FSide);
+  FBounds := FGetPanelBounds(FSide);
 end;
 
 procedure TFolderTreeController.FollowTick(Sender: TObject);

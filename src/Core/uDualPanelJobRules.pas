@@ -31,8 +31,6 @@ function JobIsAskPhase(APhase: TPanelJobPhase): Boolean;
 function JobIsBusy(const AJob: TPanelJobState): Boolean;
 function JobProgressPercent(const AJob: TPanelJobState): Integer;
 function FormatJobProgressLine(const AJob: TPanelJobState): string;
-function FormatJobListStatus(ACount: Integer; const ALead: TPanelJobState;
-  AHasAsk: Boolean): string;
 function FormatJobListLine(const AJob: TPanelJobState): string;
 
 function JobOriginSrcDir(const ASources: TArray<string>): string;
@@ -355,22 +353,6 @@ begin
     FilesTotal := FilesDone;
   Pct := JobProgressPercent(AJob);
   Result := Format('%s %d/%d '#$00B7' %d%%', [Title, FilesDone, FilesTotal, Pct]);
-end;
-
-function FormatJobListStatus(ACount: Integer; const ALead: TPanelJobState;
-  AHasAsk: Boolean): string;
-begin
-  Result := '';
-  if ACount <= 0 then
-    Exit;
-  if ACount = 1 then
-    Result := FormatJobProgressLine(ALead)
-  else
-    Result := Format('%d jobs '#$00B7' %s %d%%', [ACount,
-      JobKindTitle(ALead.Kind, ALead.DeleteToRecycleBin),
-      JobProgressPercent(ALead)]);
-  if AHasAsk then
-    Result := Result + ' '#$00B7' Ask';
 end;
 
 function FormatJobListLine(const AJob: TPanelJobState): string;

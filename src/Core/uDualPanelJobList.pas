@@ -50,6 +50,7 @@ type
       AOriginDst: string);
     procedure OnJobClearSel(AJob: TPanelJobController; const AOriginSrc: string);
     procedure OnJobAfterClose(AJob: TPanelJobController);
+    procedure ReplayAsk(AJob: TPanelJobController);
     procedure QueuePruneIdle;
     procedure PruneIdleJobs;
     function ConflictsWithRunning(AJob: TPanelJobController): Boolean;
@@ -80,9 +81,10 @@ type
     function HasBusyJob: Boolean;
     function HasAsk: Boolean;
     function Count: Integer;
-    function FormatStatus: string;
     function ListLines: TArray<string>;
     function JobIdAt(AIndex: Integer): Integer;
+    /// <summary>States of every job that is not idle, in list order.</summary>
+    function States: TArray<TPanelJobState>;
     procedure TryOpenNextAsk;
     procedure ReplayCurrentAsk;
     procedure CloseJobUi;
@@ -102,6 +104,9 @@ type
     procedure BackgroundJob;
     procedure ForegroundJob;
     procedure ForegroundJobByIndex(AIndex: Integer);
+    /// <summary>Brings job AId back: its progress or error dialog, or its
+    /// pending question when it is waiting for an answer.</summary>
+    procedure RestoreJobById(AId: Integer);
     function IsForegroundRunning: Boolean;
     function TryProgressDialogState(out AJob: TPanelJobState): Boolean;
     procedure ResolveOverwriteAsk(AAction: TJobConflictAction; ARemember: Boolean;
@@ -367,16 +372,6 @@ begin
     Result := Job.Title;
 end;
 
-function TPanelJobList.FormatStatus: string;
-var
-  Lead: TPanelJobController;
-begin
-  Lead := ActiveJob;
-  if Lead = nil then
-    Exit('');
-  Result := FormatJobListStatus(Count, Lead.State, HasAsk);
-end;
-
 function TPanelJobList.ListLines: TArray<string>;
 var
   Job: TPanelJobController;
@@ -407,6 +402,16 @@ begin
         Exit(Job.State.Id);
       Inc(N);
     end;
+end;
+
+function TPanelJobList.States: TArray<TPanelJobState>;
+var
+  Job: TPanelJobController;
+begin
+  Result := nil;
+  for Job in FItems do
+    if JobIsBusy(Job.State) then
+      Result := Result + [Job.State];
 end;
 
 function TPanelJobList.SpawnJob: TPanelJobController;
@@ -580,18 +585,12 @@ begin
       FItems.Delete(I);
 end;
 
-procedure TPanelJobList.ReplayCurrentAsk;
+procedure TPanelJobList.ReplayAsk(AJob: TPanelJobController);
 var
-  Job: TPanelJobController;
   St: TPanelJobState;
 begin
-  Job := AskJob;
-  if Job = nil then
-    Job := FirstWaitingAsk;
-  if Job = nil then
-    Exit;
-  FAskJobId := Job.State.Id;
-  St := Job.State;
+  FAskJobId := AJob.State.Id;
+  St := AJob.State;
   case St.Phase of
     pjpOverwriteAsk:
       if Assigned(FOnOverwriteAsk) then
@@ -606,10 +605,20 @@ begin
   end;
 end;
 
+procedure TPanelJobList.ReplayCurrentAsk;
+var
+  Job: TPanelJobController;
+begin
+  Job := AskJob;
+  if Job = nil then
+    Job := FirstWaitingAsk;
+  if Job <> nil then
+    ReplayAsk(Job);
+end;
+
 procedure TPanelJobList.TryOpenNextAsk;
 var
   Job: TPanelJobController;
-  St: TPanelJobState;
 begin
   if FAskJobId <> 0 then
   begin
@@ -619,22 +628,8 @@ begin
     FAskJobId := 0;
   end;
   Job := FirstWaitingAsk;
-  if Job = nil then
-    Exit;
-  FAskJobId := Job.State.Id;
-  St := Job.State;
-  case St.Phase of
-    pjpOverwriteAsk:
-      if Assigned(FOnOverwriteAsk) then
-        FOnOverwriteAsk(St.AskPath, St.AskNewLine, St.AskExistingLine);
-    pjpDeleteAsk:
-      if Assigned(FOnDeleteAsk) then
-        FOnDeleteAsk(St.AskPath, St.AskHeadline, St.AskQuestion,
-          St.AskErrorLine, St.AskOfferPermanent);
-    pjpIOErrorAsk:
-      if Assigned(FOnIOErrorAsk) then
-        FOnIOErrorAsk(St.AskHeadline, St.AskPath, St.AskErrorLine);
-  end;
+  if Job <> nil then
+    ReplayAsk(Job);
 end;
 
 procedure TPanelJobList.BeginJob(const ASources: TArray<string>;
@@ -728,6 +723,19 @@ var
 begin
   Job := JobById(JobIdAt(AIndex));
   if Job <> nil then
+    Job.ForegroundJob;
+end;
+
+procedure TPanelJobList.RestoreJobById(AId: Integer);
+var
+  Job: TPanelJobController;
+begin
+  Job := JobById(AId);
+  if Job = nil then
+    Exit;
+  if JobIsAskPhase(Job.Phase) then
+    ReplayAsk(Job)
+  else
     Job.ForegroundJob;
 end;
 

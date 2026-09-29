@@ -21,7 +21,6 @@ type
     SearchResultCount: Integer;
     StubText: string;
     StubDetail: string;
-    JobStatus: string;
     DialogKind: THostDialogKind;
   end;
 
@@ -61,7 +60,7 @@ type
 
   TStatusOverlaySnapshot = record
     DialogKind: THostDialogKind;
-    JobTitle, JobMessage, JobCurrent, JobStatus: string;
+    JobTitle, JobMessage, JobCurrent: string;
     SearchMask, SearchDir: string;
     SearchFound, SearchResultCount: Integer;
     StubText, StubDetail: string;
@@ -71,7 +70,7 @@ type
     Kind: TWorkspaceKind;
     TermAssigned, TermRunning: Boolean;
     TermTitle: string;
-    SideLabel, Path, PosText, ColMode, ItemText, FreeText, JobStatus: string;
+    SideLabel, Path, PosText, ColMode, ItemText, FreeText: string;
     CmdFocused: Boolean;
     Chrome: TPanelChromeStatus;
   end;
@@ -435,7 +434,6 @@ begin
   Result.SearchResultCount := ASnap.SearchResultCount;
   Result.StubText := ASnap.StubText;
   Result.StubDetail := ASnap.StubDetail;
-  Result.JobStatus := ASnap.JobStatus;
 end;
 
 function AssembleStatusSegments(const AHost: TDualPanelStatusHost;
@@ -448,10 +446,6 @@ begin
   Result := FormatDefaultPanelStatus(ASnap.SideLabel, ASnap.Path, ASnap.PosText,
     ASnap.ColMode, ASnap.ItemText, ASnap.FreeText, ASnap.Kind = wkPanels,
     ASnap.CmdFocused);
-  if ASnap.JobStatus <> '' then
-    Result := Result + [ASnap.JobStatus]
-  else if ASnap.Chrome.JobStatus <> '' then
-    Result := Result + [ASnap.Chrome.JobStatus];
 end;
 
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;

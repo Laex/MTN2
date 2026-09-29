@@ -69,6 +69,7 @@ uses
   uDualPanelHistoryPopup in 'Core\uDualPanelHistoryPopup.pas',
   uDualPanelJobs in 'Core\uDualPanelJobs.pas',
   uDualPanelJobRules in 'Core\uDualPanelJobRules.pas',
+  uDualPanelJobChips in 'Core\uDualPanelJobChips.pas',
   uDualPanelJobList in 'Core\uDualPanelJobList.pas',
   uDualPanelSync in 'Core\uDualPanelSync.pas',
   uDualPanelSearch in 'Core\uDualPanelSearch.pas',

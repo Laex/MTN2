@@ -53,6 +53,9 @@ type
     /// <summary>Double-click on a workspace tab caption (not the close mark).
     /// Returns True when a tab was hit and the rename dialog opened.</summary>
     BeginRenameWorkspaceAtCol: TClickIntFn;
+    /// <summary>Click on a background-job chip or the job list button at the
+    /// right of the tab bar. Returns True when it hit one and acted.</summary>
+    JobStripClick: TClickIntFn;
     HandleDocumentClick: TClickDocFn;
     HandleTerminalClick: TClickDocFn;
     HandleFunctionBarClick: TClickColShiftFn;
@@ -76,7 +79,6 @@ type
     CancelDeleteAsk: TKeymapProc;
     CancelIOErrorAsk: TKeymapProc;
     ReloadActiveRows: TKeymapProc;
-    OpenJobList: TKeymapProc;
     SetCmdFocused: TKeymapBoolProc;
     /// <summary>Optional: click on the command-line row (caret / word / line).</summary>
     ClickCmdLine: TClickDocFn;
@@ -246,6 +248,11 @@ function DispatchWorkspaceTabRow(const AHost: TDualPanelClickHost;
   ALocalCol: Integer; ADoubleClick: Boolean; var AHandled: Boolean): Boolean;
 begin
   Result := True;
+  if Assigned(AHost.JobStripClick) and AHost.JobStripClick(ALocalCol) then
+  begin
+    AHandled := True;
+    Exit;
+  end;
   if ADoubleClick and Assigned(AHost.BeginRenameWorkspaceAtCol) and
      AHost.BeginRenameWorkspaceAtCol(ALocalCol) then
   begin
@@ -428,14 +435,6 @@ begin
   if ASnap.DrivePopupVisible then
   begin
     AHandled := AHost.HandleDrivePopupClick(ALocalCol, ALocalRow);
-    Exit;
-  end;
-
-  if (ALocalRow = StatusLineRow(ASnap.AreaHeight)) and (not ASnap.DialogVisible) and
-     (not ASnap.StubVisible) and (ASnap.JobsPhase <> pjpNone) then
-  begin
-    if Assigned(AHost.OpenJobList) then
-      AHost.OpenJobList();
     Exit;
   end;
 

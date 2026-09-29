@@ -184,8 +184,6 @@ begin
     'done never above the total: ' + FormatJobProgressLine(S));
   S.FilesTotal := 20;
   Assert.AreEqual(25, JobProgressPercent(S), 'delete percent from items, not bytes');
-  Assert.IsTrue(Pos('2 jobs', FormatJobListStatus(2, S, False)) > 0, 'multi-job status');
-  Assert.IsTrue(Pos('Ask', FormatJobListStatus(1, S, True)) > 0, 'ask suffix');
   Assert.IsTrue(JobOriginSrcDir(TArray<string>.Create('file:///C:/src/a.txt')) <> '',
     'origin src from parent');
   Assert.IsTrue(JobReloadTouchesUri('file:///C:/src', 'file:///C:/src'),

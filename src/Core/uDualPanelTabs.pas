@@ -31,6 +31,9 @@ function WorkspaceTabCaption(const ATitle: string; AShowClose: Boolean): string;
 /// Example: '[ home ]' or '[ home x ]'.</summary>
 function PanelTabCaption(const ATitle: string; AShowClose: Boolean): string;
 
+/// <summary>First column right of the workspace tabs and the gap after them.</summary>
+function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>): Integer;
+
 /// <summary>Column index of the close mark within a tab caption string.
 /// Returns -1 when AShowClose is False.</summary>
 function TabCaptionCloseCol(ATabLeft: Integer; const ACap: string;
@@ -156,6 +159,17 @@ begin
     Result := '[' + ATitle + ' ' + cTabCloseChar + ']'
   else
     Result := '[' + ATitle + ']';
+end;
+
+function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>): Integer;
+var
+  Tab: TDualPanelWorkspaceTab;
+  ShowClose: Boolean;
+begin
+  ShowClose := Length(AWorkspaceTabs) > 1;
+  Result := 0;
+  for Tab in AWorkspaceTabs do
+    Inc(Result, Length(WorkspaceTabCaption(Tab.Title, ShowClose)) + 1);
 end;
 
 function PanelTabCaption(const ATitle: string; AShowClose: Boolean): string;

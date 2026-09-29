@@ -15,6 +15,7 @@ type
     [Test] procedure TestListFacade;
     [Test] procedure TestBackgroundReloadsPanels;
     [Test] procedure TestCancelConfirm;
+    [Test] procedure TestRestoreJobById;
   end;
 
 implementation
@@ -155,6 +156,31 @@ begin
   end;
 end;
 
+procedure TestRestoreJobById;
+var
+  Jobs: TPanelJobList;
+  Id: Integer;
+  States: TArray<TPanelJobState>;
+begin
+  Jobs := MakeList;
+  try
+    Jobs.BeginJob(TArray<string>.Create('file:///C:/src/c.txt'),
+      'file:///D:/dst/', pjkCopy);
+    Id := Jobs.JobIdAt(0);
+    States := Jobs.States;
+    Assert.AreEqual(1, Integer(Length(States)), 'states list the busy job');
+    Assert.AreEqual(Id, States[0].Id, 'state carries the job id');
+
+    Jobs.RestoreJobById(Id + 100);
+    Assert.IsTrue(Jobs.Phase = pjpConfirm, 'unknown id changes nothing');
+    Jobs.RestoreJobById(Id);
+    Assert.IsTrue(Jobs.Phase = pjpConfirm, 'a job in confirm stays in confirm');
+    Jobs.CloseJobUi;
+  finally
+    Jobs.Free;
+  end;
+end;
+
 { TTestDualPanelJobsManager }
 
 procedure TTestDualPanelJobsManager.TestListFacade;
@@ -170,6 +196,11 @@ end;
 procedure TTestDualPanelJobsManager.TestCancelConfirm;
 begin
   TestDualPanelJobsManager.TestCancelConfirm;
+end;
+
+procedure TTestDualPanelJobsManager.TestRestoreJobById;
+begin
+  TestDualPanelJobsManager.TestRestoreJobById;
 end;
 
 initialization
