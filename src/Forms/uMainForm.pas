@@ -404,6 +404,18 @@ begin
   HookWindowForShutdown(AHwnd);
 end;
 
+/// <summary>Shift / Ctrl / Alt as they are down now.</summary>
+function KeyboardShiftState: TShiftState;
+begin
+  Result := [];
+  if GetKeyState(VK_SHIFT) < 0 then
+    Include(Result, ssShift);
+  if GetKeyState(VK_CONTROL) < 0 then
+    Include(Result, ssCtrl);
+  if GetKeyState(VK_MENU) < 0 then
+    Include(Result, ssAlt);
+end;
+
 // Alt+Enter as the user means it. Left Alt: Alt down, no Ctrl. Right Alt on
 // layouts with AltGr: Windows reports it as Right Alt + a synthetic Left Ctrl,
 // so "Right Alt and Left Ctrl, but neither Left Alt nor Right Ctrl" is AltGr,
@@ -460,6 +472,31 @@ begin
             Result := 0;
             Exit;
           end;
+        end;
+      WM_SYSKEYUP:
+        // FMX never calls KeyUp for a released Alt: with no main menu it
+        // enters its menu loop instead, and the F-bar would stay on the Alt
+        // actions. The form has no menu to open, so the release only
+        // updates the modifiers. Not chained.
+        if AWParam = VK_MENU then
+        begin
+          MainForm.SyncKeyModifiers(KeyboardShiftState);
+          Result := 0;
+          Exit;
+        end;
+      WM_ACTIVATE:
+        // A modifier released in another window never reaches this one:
+        // take the keyboard state as it is on activation and deactivation.
+        begin
+          if MainForm.FPrevWndProc <> nil then
+            Result := CallWindowProc(MainForm.FPrevWndProc, AHwnd, AMsg, AWParam, ALParam)
+          else
+            Result := DefWindowProc(AHwnd, AMsg, AWParam, ALParam);
+          if LOWORD(AWParam) = WA_INACTIVE then
+            MainForm.SyncKeyModifiers([])
+          else
+            MainForm.SyncKeyModifiers(KeyboardShiftState);
+          Exit;
         end;
       WM_MOUSEACTIVATE:
         begin
