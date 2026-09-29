@@ -613,7 +613,6 @@ type
     procedure CalculateFolderSizeUnderCursor;
     function FolderSizeStubTitle: string;
     procedure InsertPanelItemToCmdLine(AFullPath: Boolean);
-    procedure ShellOpenCurrent;
     /// <summary>A local file by the Windows shell, or as a console program
     /// (OnLaunchConsoleFile) when it is one.</summary>
     procedure ShellOpenPath(const APath: string);
@@ -5900,22 +5899,6 @@ begin
     not (Assigned(FDialog) and FDialog.Visible) and
     not (Assigned(FTopMenu) and FTopMenu.Active) and
     Doc.MarkdownImageOverlayVisible;
-end;
-
-procedure TDualPanelWindow.ShellOpenCurrent;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Tab: TTab;
-  Rows: TPanelRows;
-  Row: TPanelRow;
-  Idx: Integer;
-  Panel: TPanelState;
-begin
-  if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
-    Exit;
-  if Row.IsDirectory or Row.IsParent or (Row.URI = '') then
-    Exit;
-  ShellOpenPath(FileUriToPath(Row.URI));
 end;
 
 procedure TDualPanelWindow.ShellOpenPath(const APath: string);
