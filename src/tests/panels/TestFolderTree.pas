@@ -109,12 +109,12 @@ begin
   try
     Tree.OpenAt('C:\Apps\Tools');
     Assert.AreEqual('', Tree.LinePrefix(0), 'root');
-    Assert.AreEqual(#$251C'[-]', Tree.LinePrefix(1), 'Apps: open, siblings below');
-    Assert.AreEqual(#$2502'   '#$251C#$2500#$2500#$2500, Tree.LinePrefix(2), 'Games: no subfolders');
-    Assert.AreEqual(#$2502'   '#$2514'[-]', Tree.LinePrefix(3), 'Tools: open, last in Apps');
-    Assert.AreEqual(#$2502'       '#$2514#$2500#$2500#$2500, Tree.LinePrefix(4), 'Bin: under a last sibling');
-    Assert.AreEqual(#$251C'[+]', Tree.LinePrefix(5), 'Users: closed, has subfolders');
-    Assert.AreEqual(#$2514#$2500#$2500#$2500, Tree.LinePrefix(6), 'Windows: last, no subfolders');
+    Assert.AreEqual(#$251C'[-]'#$2500' ', Tree.LinePrefix(1), 'Apps: open, siblings below');
+    Assert.AreEqual(#$2502'   '#$251C#$2500#$2500' ', Tree.LinePrefix(2), 'Games: no subfolders');
+    Assert.AreEqual(#$2502'   '#$2514'[-]'#$2500' ', Tree.LinePrefix(3), 'Tools: open, last in Apps');
+    Assert.AreEqual(#$2502'       '#$2514#$2500#$2500' ', Tree.LinePrefix(4), 'Bin: under a last sibling');
+    Assert.AreEqual(#$251C'[+]'#$2500' ', Tree.LinePrefix(5), 'Users: closed, has subfolders');
+    Assert.AreEqual(#$2514#$2500#$2500' ', Tree.LinePrefix(6), 'Windows: last, no subfolders');
   finally
     Tree.Free;
   end;

@@ -306,6 +306,13 @@ var
   Done, Total: Int64;
 begin
   Result := 0;
+  // Delete reports each removed file and folder, not bytes: count those.
+  if AJob.Kind = pjkDelete then
+  begin
+    if AJob.FilesTotal > 0 then
+      Result := EnsureRange(Integer(Int64(AJob.FilesDone) * 100 div AJob.FilesTotal), 0, 100);
+    Exit;
+  end;
   Total := AJob.BytesTotal;
   Done := AJob.BytesDoneBase + AJob.ProgressDone;
   if Total > 0 then
@@ -342,8 +349,12 @@ begin
     FilesTotal := 1;
   if FilesDone < 0 then
     FilesDone := 0;
+  // Until the background count lands the total is only the selected items;
+  // never show more done than there is in all.
+  if FilesDone > FilesTotal then
+    FilesTotal := FilesDone;
   Pct := JobProgressPercent(AJob);
-  Result := Format('%s %d/%d · %d%%', [Title, FilesDone, FilesTotal, Pct]);
+  Result := Format('%s %d/%d '#$00B7' %d%%', [Title, FilesDone, FilesTotal, Pct]);
 end;
 
 function FormatJobListStatus(ACount: Integer; const ALead: TPanelJobState;
@@ -355,11 +366,11 @@ begin
   if ACount = 1 then
     Result := FormatJobProgressLine(ALead)
   else
-    Result := Format('%d jobs · %s %d%%', [ACount,
+    Result := Format('%d jobs '#$00B7' %s %d%%', [ACount,
       JobKindTitle(ALead.Kind, ALead.DeleteToRecycleBin),
       JobProgressPercent(ALead)]);
   if AHasAsk then
-    Result := Result + ' · Ask';
+    Result := Result + ' '#$00B7' Ask';
 end;
 
 function FormatJobListLine(const AJob: TPanelJobState): string;

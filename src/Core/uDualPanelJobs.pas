@@ -306,7 +306,8 @@ begin
     FOnAfterClose;
 end;
 
-function EstimateLocalUriBytes(const AURI: string; out AFileCount: Integer): Int64;
+function EstimateLocalUriBytes(const AURI: string; out AFileCount: Integer;
+  ACountFolders: Boolean = False): Int64;
 var
   Path: string;
 
@@ -335,7 +336,11 @@ var
         if (SR.Name <> '.') and (SR.Name <> '..') then
         begin
           if (SR.Attr and faDirectory) <> 0 then
-            Inc(Result, Walk(TPath.Combine(APath, SR.Name)))
+          begin
+            if ACountFolders then
+              Inc(AFileCount);
+            Inc(Result, Walk(TPath.Combine(APath, SR.Name)));
+          end
           else
           begin
             Inc(AFileCount);
@@ -791,6 +796,7 @@ end;
 procedure TPanelJobController.StartJobExecution;
 var
   CapSources: TArray<string>;
+  CountFolders: Boolean;
 begin
   if Assigned(FOnBeforeExecute) then
     FOnBeforeExecute;
@@ -809,10 +815,12 @@ begin
   // Also counts real files recursively so "Files: N / Total" reflects files
   // inside a folder being copied, not just the number of selected top-level
   // items (which would stay e.g. "1/1" for the whole duration of a single
-  // folder copy).
-  if FJob.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack] then
+  // folder copy). Delete reports every removed file and folder, so it counts
+  // folders too and leaves the bytes alone.
+  if FJob.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack, pjkDelete] then
   begin
     CapSources := Copy(FJob.Sources);
+    CountFolders := FJob.Kind = pjkDelete;
     TThread.CreateAnonymousThread(
       procedure
       var
@@ -823,15 +831,18 @@ begin
         FileCount := 0;
         for I := 0 to High(CapSources) do
         begin
-          Inc(Total, EstimateLocalUriBytes(CapSources[I], SubCount));
+          Inc(Total, EstimateLocalUriBytes(CapSources[I], SubCount, CountFolders));
           Inc(FileCount, SubCount);
+          // The selected folder itself is deleted too.
+          if CountFolders and DirectoryExists(FileUriToPath(CapSources[I])) then
+            Inc(FileCount);
         end;
         TThread.Queue(nil,
           procedure
           begin
             if not FAlive or (FJob.Phase <> pjpRunning) then
               Exit;
-            if Total > FJob.BytesTotal then
+            if not CountFolders and (Total > FJob.BytesTotal) then
               FJob.BytesTotal := Total;
             if FileCount > FJob.FilesTotal then
               FJob.FilesTotal := FileCount;

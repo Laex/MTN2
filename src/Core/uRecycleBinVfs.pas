@@ -593,7 +593,7 @@ procedure TRecycleBinVirtualFileSystem.CopyAsync(const AFromURI, AToURI: string;
   AOverwrite, APreserveTimestamps: Boolean);
 begin
   QueueBool(AOnDone, False, TVfsError.Make(vecNotSupported,
-    'Copy from Recycle Bin is not supported — use Restore', AFromURI));
+    'Copy from Recycle Bin is not supported - use Restore', AFromURI));
 end;
 
 procedure TRecycleBinVirtualFileSystem.MoveAsync(const AFromURI, AToURI: string;

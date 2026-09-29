@@ -4,12 +4,25 @@ unit uFileRecycleBin;
   IFileOperation Shell API with a legacy SHFileOperation fallback. Isolated
   from uFileVfs.pas because this is the only code in the local VFS provider
   that needs COM / Shell headers (Winapi.ShellAPI/ShlObj/ActiveX) - permanent
-  delete (uFileVfs.DeleteTree) is plain filesystem I/O and doesn't. }
+  delete (uFileVfs.DeleteTree) is plain filesystem I/O and doesn't.
+
+  The Shell runs with its own error UI off (FOF_NOERRORUI): an item it cannot
+  recycle is left in place and the whole operation reports "aborted". The
+  failed item and its error are taken from the progress sink and returned as
+  an error, so the caller can offer a permanent delete; "cancelled" is only
+  an abort with no failed item (the user said No to a Shell prompt).
+  FOF_WANTNUKEWARNING makes the Shell ask before deleting permanently what
+  does not fit in the Recycle Bin. }
 
 interface
 
 uses
   uVfsTypes;
+
+var
+  /// <summary>Owner of the Shell's own prompts (the too-big-for-the-Recycle-
+  /// Bin warning, UAC): the main window, set by the main form.</summary>
+  GRecycleOwnerWindow: NativeUInt = 0;
 
 procedure DeleteToRecycleBin(const APath: string; var AError: TVfsError;
   AOnProgress: TVfsProgressCallback = nil);
@@ -30,8 +43,13 @@ type
   private
     FOnProgress: TVfsProgressCallback;
     FLastPath: string;
+    FFailedPath: string;
+    FFailedHR: HResult;
   public
     constructor Create(AOnProgress: TVfsProgressCallback);
+    /// <summary>First item the Shell could not delete, '' when none.</summary>
+    property FailedPath: string read FFailedPath;
+    property FailedHR: HResult read FFailedHR;
     function StartOperations: HResult; stdcall;
     function FinishOperations(hrResult: HResult): HResult; stdcall;
     function PreRenameItem(dwFlags: DWORD; const psiItem: IShellItem;
@@ -124,6 +142,10 @@ begin
   Result := S_OK;
 end;
 
+const
+  /// <summary>COPYENGINE_E_USER_CANCELLED.</summary>
+  cCopyEngineUserCancelled = DWORD($80270000);
+
 function TDeleteProgressSink.PostDeleteItem(dwFlags: DWORD; const psiItem: IShellItem;
   hrDelete: HResult; const psiNewlyCreated: IShellItem): HResult;
 var
@@ -139,6 +161,14 @@ begin
   begin
     FLastPath := PathPtr;
     CoTaskMemFree(PathPtr);
+  end;
+  // The user's No to a Shell prompt is a cancel, not a failed item.
+  if Failed(hrDelete) and (FFailedPath = '') and
+     (DWORD(hrDelete) <> cCopyEngineUserCancelled) and
+     ((DWORD(hrDelete) and $FFFF) <> ERROR_CANCELLED) then
+  begin
+    FFailedPath := FLastPath;
+    FFailedHR := hrDelete;
   end;
 end;
 
@@ -199,7 +229,7 @@ begin
     $75: // DE_OPCANCELLED
       Result := 'Cancelled';
     $78: // DE_ACCESSDENIEDSRC
-      Result := 'Access denied — cannot move to Recycle Bin ' +
+      Result := 'Access denied - cannot move to Recycle Bin ' +
         '(run as Administrator, or Shift+F8 for permanent delete)';
     $79: // DE_PATHTOODEEP
       Result := 'Path too deep for Recycle Bin';
@@ -222,7 +252,7 @@ begin
     Code := DWORD(AHR) and $FFFF;
     case Code of
       ERROR_ACCESS_DENIED:
-        Exit('Access denied — cannot move to Recycle Bin ' +
+        Exit('Access denied - cannot move to Recycle Bin ' +
           '(run as Administrator, or Shift+F8 for permanent delete)');
       ERROR_SHARING_VIOLATION:
         Exit('File is in use by another process');
@@ -244,6 +274,7 @@ var
   Op: IFileOperation;
   Item: IShellItem;
   Sink: IFileOperationProgressSink;
+  SinkObj: TDeleteProgressSink;
   Cookie: DWORD;
   Advised: Boolean;
   HR: HRESULT;
@@ -251,7 +282,6 @@ var
   Full: string;
 begin
   Result := False;
-  Advised := False;
   Cookie := 0;
   Full := TPath.GetFullPath(APath);
   HR := CoCreateInstance(CLSID_FileOperation, nil, CLSCTX_INPROC_SERVER,
@@ -262,7 +292,9 @@ begin
   // FOFX_SHOWELEVATIONPROMPT: allow UAC when deleting protected folders
   // (e.g. C:\inetpub) even with FOF_NOERRORUI.
   HR := Op.SetOperationFlags(FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or
-    FOF_NOERRORUI or FOFX_SHOWELEVATIONPROMPT);
+    FOF_NOERRORUI or FOF_WANTNUKEWARNING or FOFX_SHOWELEVATIONPROMPT);
+  if GRecycleOwnerWindow <> 0 then
+    Op.SetOwnerWindow(HWND(GRecycleOwnerWindow));
   if Failed(HR) then
   begin
     AError := TVfsError.Make(vecIOError, HResultDeleteErrorMessage(HR),
@@ -286,21 +318,32 @@ begin
     Exit;
   end;
 
-  if Assigned(AOnProgress) then
-  begin
-    Sink := TDeleteProgressSink.Create(AOnProgress);
-    Advised := Succeeded(Op.Advise(Sink, Cookie));
-  end;
+  // Always advised: the sink also records the item the Shell failed on.
+  SinkObj := TDeleteProgressSink.Create(AOnProgress);
+  Sink := SinkObj;
+  Advised := Succeeded(Op.Advise(Sink, Cookie));
   try
     HR := Op.PerformOperations;
   finally
     if Advised then
       Op.Unadvise(Cookie);
   end;
+  if not (LocalPathIsFile(Full) or LocalPathIsDirectory(Full)) then
+    Exit(True); // gone despite HRESULT noise
+  // An item the Shell could not recycle: an error for the caller to act on,
+  // whatever the operation as a whole reports.
+  if SinkObj.FailedPath <> '' then
+  begin
+    if (DWORD(SinkObj.FailedHR) and $FFFF) = ERROR_ACCESS_DENIED then
+      AError := TVfsError.Make(vecAccessDenied, HResultDeleteErrorMessage(SinkObj.FailedHR),
+        PathToFileUri(SinkObj.FailedPath))
+    else
+      AError := TVfsError.Make(vecIOError, HResultDeleteErrorMessage(SinkObj.FailedHR),
+        PathToFileUri(SinkObj.FailedPath));
+    Exit;
+  end;
   if Failed(HR) then
   begin
-    if not (LocalPathIsFile(Full) or LocalPathIsDirectory(Full)) then
-      Exit(True); // gone despite HRESULT noise
     if (DWORD(HR) and $FFFF) = ERROR_CANCELLED then
       AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Full))
     else if (DWORD(HR) and $FFFF) = ERROR_ACCESS_DENIED then
@@ -314,8 +357,6 @@ begin
 
   Aborted := False;
   Op.GetAnyOperationsAborted(Aborted);
-  if not (LocalPathIsFile(Full) or LocalPathIsDirectory(Full)) then
-    Exit(True);
   if Aborted then
   begin
     AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Full));
@@ -376,16 +417,19 @@ begin
     Buf[Len + 1] := #0;
 
     FillChar(Op, SizeOf(Op), 0);
-    Op.Wnd := 0;
+    Op.Wnd := HWND(GRecycleOwnerWindow);
     Op.wFunc := FO_DELETE;
     Op.pFrom := Buf;
     Op.pTo := nil;
-    Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
+    Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI or
+      FOF_WANTNUKEWARNING;
 
     Res := SHFileOperationW(Op);
     if not (LocalPathIsFile(Path) or LocalPathIsDirectory(Path)) then
       Exit;
-    if Op.fAnyOperationsAborted then
+    // Without a per-item report the legacy API cannot tell a user No from a
+    // failed item: an abort with an error code is an error, not a cancel.
+    if Op.fAnyOperationsAborted and (Res = 0) then
     begin
       AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Path));
       Exit;

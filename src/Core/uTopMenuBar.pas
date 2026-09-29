@@ -774,7 +774,7 @@ begin
   FCategories[3].Items[7] := SubItem('Encoding...', 'N', 'Shift+F8', tmaEditEncoding);
   FCategories[3].Items[8] := SubItem('Undo', 'U', 'Ctrl+Z', tmaEditUndo);
   FCategories[3].Items[9] := SubItem('Redo', 'D', 'Ctrl+Shift+Z', tmaEditRedo);
-  FCategories[3].Items[10] := SubItem('Hex↔Text', 'H', 'Ctrl+H', tmaEditHexToggle);
+  FCategories[3].Items[10] := SubItem('Hex'#$2194'Text', 'H', 'Ctrl+H', tmaEditHexToggle);
 
   // 4: Commands
   FCategories[4].Title := 'Commands';

@@ -74,9 +74,10 @@ type
     function ParentIndex(AIndex: Integer): Integer;
     function IsLastSibling(AIndex: Integer): Boolean;
     /// <summary>Box-drawing lines before the name: one four-cell column per
-    /// level ("│   " or blank), then "├" / "└" and a three-cell mark: "───"
-    /// for a folder without subfolders, "[+]" / "[-]" for a closed / open
-    /// branch.</summary>
+    /// level ("│   " or blank), then "├" / "└" and a mark ending in a blank:
+    /// "── " for a folder without subfolders, "[+]─ " / "[-]─ " for a
+    /// closed / open branch. The children's line runs down from the "─"
+    /// after the branch mark.</summary>
     function LinePrefix(AIndex: Integer): string;
     /// <summary>Opens a closed branch, listing it; False when it has no
     /// subfolders.</summary>
@@ -225,10 +226,10 @@ const
   cHorz = #$2500;
   cTee = #$251C;
   cCorner = #$2514;
-  cClosed = '[+]';
-  cOpen = '[-]';
+  cClosed = '[+]' + #$2500 + ' ';
+  cOpen = '[-]' + #$2500 + ' ';
   /// <summary>A folder without subfolders: as wide as the branch marks.</summary>
-  cLeaf = #$2500#$2500#$2500;
+  cLeaf = #$2500#$2500' ';
 
 function IsSubfolderEntry(const ASr: TSearchRec): Boolean;
 begin
@@ -1098,7 +1099,7 @@ end;
 
 function TFolderTreeController.HandleClick(ALocalCol, ALocalRow: Integer): TFolderTreeClick;
 var
-  Idx, ListTop, ListBottom, MarkEnd: Integer;
+  Idx, ListTop, ListBottom, MarkStart: Integer;
   N: TFolderTreeNode;
 begin
   if not FVisible or not FBounds.Contains(ALocalCol, ALocalRow) then
@@ -1118,10 +1119,11 @@ begin
   if Idx >= FTree.Count then
     Exit(ftcKeep);
   N := FTree.Node(Idx);
-  // "[+]" / "[-]" are the last three cells of the line prefix.
-  MarkEnd := FBounds.Left + Length(FTree.LinePrefix(Idx));
-  if (N.Depth > 0) and N.HasChildren and (ALocalCol >= MarkEnd - 2) and
-     (ALocalCol <= MarkEnd) then
+  // "[+]" / "[-]" sit right after the connector: four cells per level
+  // before it, the row text starting one cell right of the frame.
+  MarkStart := FBounds.Left + 1 + (N.Depth - 1) * 4 + 1;
+  if (N.Depth > 0) and N.HasChildren and (ALocalCol >= MarkStart) and
+     (ALocalCol <= MarkStart + 2) then
   begin
     if N.Expanded then
       FTree.Collapse(Idx)

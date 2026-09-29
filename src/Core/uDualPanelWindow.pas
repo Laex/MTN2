@@ -643,11 +643,11 @@ type
     /// shape as ToggleAdjacentInfoPanel/pvkInfo. Image overlay vs placeholder
     /// is decided later in DrawQuickViewContent as the cursor moves.</summary>
     procedure ToggleQuickView;
-    /// <summary>Ctrl+PgDn (FAR): enters the local file under the cursor as
-    /// an archive whatever its extension - a ZIP signature (docx, xlsx, odt)
-    /// in the built-in ZIP, anything else through the 7z plugin, which
-    /// finds the format by content.</summary>
-    procedure OpenAsArchive;
+    /// <summary>Ctrl+PgDn (FAR): enters the folder under the cursor, like
+    /// Enter; a local file it enters as an archive whatever its extension -
+    /// a ZIP signature (docx, xlsx, odt) in the built-in ZIP, anything else
+    /// through the 7z plugin, which finds the format by content.</summary>
+    procedure FolderDown;
     procedure CloseQuickView;
     procedure CancelFolderSize;
     procedure CalculateFolderSizeUnderCursor;
@@ -1418,7 +1418,8 @@ begin
   FKeymapHost.ApplyColumnMode := ApplyColumnMode;
   FKeymapHost.ToggleAdjacentInfoPanel := ToggleAdjacentInfoPanel;
   FKeymapHost.ToggleQuickView := ToggleQuickView;
-  FKeymapHost.OpenAsArchive := OpenAsArchive;
+  FKeymapHost.FolderDown := FolderDown;
+  FKeymapHost.GoToParent := GoToParent;
   FKeymapHost.ToggleFolderTree := ToggleFolderTree;
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
@@ -5559,25 +5560,15 @@ begin
     OpenStub(skShellInfo, 'Copy failed', 'Choose a different name to copy into the same folder');
     Exit;
   end;
+  if not CanBeginAnotherJob then
+    Exit;
   Side := ActiveWorkspace.State.ActiveSide;
   FPendingSelectName := CleanName;
   FPendingSelectSide := Side;
-  FVfs.CopyAsync(FromURI, ToURI, nil, nil,
-    procedure(const ASuccess: Boolean; const AError: TVfsError)
-    begin
-      if not FAlive then
-        Exit;
-      if not ASuccess then
-      begin
-        FPendingSelectName := '';
-        OpenStub(skShellInfo, 'Copy failed', AError.Message)
-      end
-      else
-      begin
-        ReloadActiveRows;
-        NotifyChanged;
-      end;
-    end);
+  // A job like F5: progress, the job list, Esc to cancel, and the usual
+  // question when a file inside fails.
+  FJobs.BeginJobPairs([FromURI], [ToURI], pjkCopy);
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.RequestFreeSpace(const APath: string);
@@ -6090,7 +6081,7 @@ begin
       end);
 end;
 
-procedure TDualPanelWindow.OpenAsArchive;
+procedure TDualPanelWindow.FolderDown;
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -6104,8 +6095,13 @@ begin
   // A file that is not an archive gets no reaction at all (FAR).
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
-  if Row.IsDirectory or Row.IsParent or (Row.URI = '') then
+  if Row.IsParent or (Row.URI = '') then
     Exit;
+  if Row.IsDirectory then
+  begin
+    ActivateRow(Tab, Row);
+    Exit;
+  end;
   if not Row.URI.StartsWith('file:', True) or HasArchiveChain(Row.URI) then
     Exit;
   if FileHasZipSignature(FileUriToPath(Row.URI)) then

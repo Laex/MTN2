@@ -169,6 +169,21 @@ begin
   S := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
   Assert.IsTrue(Pos('Copy 2/5', FormatJobProgressLine(S)) > 0, 'progress line has counts');
   Assert.IsTrue(Pos('34%', FormatJobProgressLine(S)) > 0, 'progress line has percent');
+  Assert.IsTrue(Pos(' '#$00B7' ', FormatJobProgressLine(S)) > 0,
+    'the separator is a middle dot, not a mis-decoded byte pair');
+
+  // Delete before the background count lands: five removed inside one
+  // selected folder never reads "5/1"; the percent counts removed items.
+  S := Default(TPanelJobState);
+  S.Kind := pjkDelete;
+  S.Sources := ['file:///C:/big'];
+  S.FilesTotal := 1;
+  S.FilesDone := 5;
+  S.BytesTotal := 1000;
+  Assert.IsTrue(Pos('Delete 5/5', FormatJobProgressLine(S)) > 0,
+    'done never above the total: ' + FormatJobProgressLine(S));
+  S.FilesTotal := 20;
+  Assert.AreEqual(25, JobProgressPercent(S), 'delete percent from items, not bytes');
   Assert.IsTrue(Pos('2 jobs', FormatJobListStatus(2, S, False)) > 0, 'multi-job status');
   Assert.IsTrue(Pos('Ask', FormatJobListStatus(1, S, True)) > 0, 'ask suffix');
   Assert.IsTrue(JobOriginSrcDir(TArray<string>.Create('file:///C:/src/a.txt')) <> '',

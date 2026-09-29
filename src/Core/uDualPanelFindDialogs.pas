@@ -249,9 +249,9 @@ begin
   Gen := FCompareGen;
   ByContent := FByContent;
   if Assigned(FDialog) and FDialog.Visible then
-    FDialog.SetLabelText('status', 'Comparing…')
+    FDialog.SetLabelText('status', 'Comparing...')
   else if Assigned(FOnOpenStub) then
-    FOnOpenStub('Synchronize', 'Comparing directories… Esc=wait');
+    FOnOpenStub('Synchronize', 'Comparing directories... Esc=wait');
   Snap := LoadDirSyncSnapshot(FSrcRoot, FDstRoot);
   CompareDirsTwoWayAsync(FSrcRoot, FDstRoot, Snap,
     procedure(const AItems: TArray<TSyncItem>; const AError: string)

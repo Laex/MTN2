@@ -85,7 +85,8 @@ type
     OpenTerminalProfileDialog: TKeymapProc;
     OpenConsoleProfileDialog: TKeymapProc;
     SyncConsoleDirNow: TKeymapProc;
-    OpenAsArchive: TKeymapProc;
+    FolderDown: TKeymapProc;
+    GoToParent: TKeymapProc;
     ToggleFolderTree: TKeymapProc;
     ToggleShowHidden: TKeymapSideProc;
     OpenColumnModeMenu: TKeymapProc;
@@ -579,9 +580,15 @@ begin
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
-    kaOpenAsArchive:
+    kaFolderUp:
       begin
-        AHost.OpenAsArchive();
+        AHost.GoToParent();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaFolderDown:
+      begin
+        AHost.FolderDown();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

@@ -309,7 +309,7 @@ implementation
 uses
   System.Diagnostics,
   FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes,
-  uKeyChord;
+  uKeyChord, uFileRecycleBin;
 
 const
   cBlinkIntervalMs = 530;   // standard Windows cursor blink rate
@@ -1806,6 +1806,7 @@ begin
   // Only now is the native handle valid for a second instance to
   // find and send WM_COPYDATA to.
   PublishInstanceWindow(HWND(NativeWindowHandle));
+  GRecycleOwnerWindow := NativeUInt(NativeWindowHandle);
 end;
 
 procedure TMainForm.ReleaseTaskbarButton;

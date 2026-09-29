@@ -23,6 +23,7 @@ uses
   TestFileVfsScanner in 'TestFileVfsScanner.pas',
   TestLongPaths in 'TestLongPaths.pas',
   TestRecycleBin in 'TestRecycleBin.pas',
+  TestRecycleBinFailure in 'TestRecycleBinFailure.pas',
   TestResolveLocalDirPath in 'TestResolveLocalDirPath.pas',
   TestSevenZipUri in 'TestSevenZipUri.pas',
   TestOpenAsArchive in 'TestOpenAsArchive.pas',
