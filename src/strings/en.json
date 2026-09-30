@@ -24,7 +24,7 @@
       "$title": "Updates",
       "check_on_start": "&Check for updates at startup",
       "show_check_notice": "&Show a notice when checking",
-      "dev_channel": "&Development builds (after every push)",
+      "dev_channel": "&Update from the dev channel (after every push)",
       "check": "Check now",
       "close": "Close"
     },    "DIALOG_ARCHIVEPASSWORD": {

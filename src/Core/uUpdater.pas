@@ -24,7 +24,7 @@ uses
 const
   cUpdateRepo = 'Laex/MTN2';
   // Development builds live in their own repository, in one rolling
-  // prerelease under cUpdateDevTag (.github/workflows/dev.yml).
+  // prerelease under cUpdateDevTag (.github/workflows/ci.yml).
   cUpdateDevRepo = 'Laex/MTN2-dev';
   cUpdateDevTag = 'dev';
   // Package name: <prefix><tag><suffix>, as src\tools\package-release.ps1

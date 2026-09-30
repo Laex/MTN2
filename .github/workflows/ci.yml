@@ -72,12 +72,30 @@ jobs:
        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, windows, delphi]
     timeout-minutes: 60
+    env:
+      DEV_REPO: Laex/MTN2-dev
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Dev version
+        # A push to main is also published as a development build of
+        # Laex/MTN2-dev (last stamped version in MTN2.dproj + run number:
+        # above that release, below the next one).
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $Dproj = Get-Content src/MTN2.dproj -Raw
+          $Nums = foreach ($Key in 'MajorVer', 'MinorVer', 'Release') {
+            if ($Dproj -notmatch "<VerInfo_$Key>(\d+)</VerInfo_$Key>") { throw "VerInfo_$Key not found in MTN2.dproj" }
+            $Matches[1]
+          }
+          "DEV_VERSION=v$($Nums -join '.').$env:GITHUB_RUN_NUMBER" | Add-Content $env:GITHUB_ENV
+
       - name: Build
         shell: pwsh
-        run: ./src/build.ps1 -Config Release -Platform Win64
+        run: |
+          if ($env:DEV_VERSION) { ./src/build.ps1 -Config Release -Platform Win64 -Version $env:DEV_VERSION }
+          else { ./src/build.ps1 -Config Release -Platform Win64 }
 
       - name: Tests
         shell: pwsh
@@ -96,10 +114,55 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}"
+        run: ./src/tools/package-release.ps1 -Version ($env:DEV_VERSION ?? "ci-${{ github.sha }}")
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: MTN2-win64
           path: dist/*.zip
           retention-days: 14
+
+      - name: Check packages
+        if: env.DEV_VERSION != ''
+        shell: pwsh
+        run: ./src/tools/check-release.ps1 -Version $env:DEV_VERSION
+
+      - name: Publish dev release
+        if: env.DEV_VERSION != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.DEV_RELEASE_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN) { throw 'secret DEV_RELEASE_TOKEN is not set' }
+          $Zips = @(Get-ChildItem dist -Filter *.zip | ForEach-Object FullName)
+          if ($Zips.Count -ne 2) { throw "expected 2 packages in dist, found $($Zips.Count)" }
+
+          # A release needs a commit to tag: seed an empty repository.
+          if ([int](gh api "repos/$env:DEV_REPO/branches" --jq length) -eq 0) {
+            $Readme = "# MTN2 development builds`n`nRolling prerelease built from every push to https://github.com/Laex/MTN2. Enable it in MTN2: Help > Updates > Update from the dev channel.`n"
+            $B64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Readme))
+            gh api -X PUT "repos/$env:DEV_REPO/contents/README.md" -f message='Add README' -f content=$B64 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "seeding $env:DEV_REPO failed: $LASTEXITCODE" }
+          }
+
+          $Notes = "Development build $env:DEV_VERSION of ${{ github.sha }}.`nNot a release: may be unstable."
+          gh release view dev --repo $env:DEV_REPO *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create dev --repo $env:DEV_REPO --prerelease --latest=false `
+              --title 'MTN2 dev' --notes $Notes
+            if ($LASTEXITCODE -ne 0) { throw "gh release create failed: $LASTEXITCODE" }
+          } else {
+            gh release edit dev --repo $env:DEV_REPO --prerelease --latest=false --notes $Notes
+            if ($LASTEXITCODE -ne 0) { throw "gh release edit failed: $LASTEXITCODE" }
+          }
+
+          # Upload first, then drop the previous build's packages, so the
+          # updater never finds the release without a package for long.
+          gh release upload dev @Zips --repo $env:DEV_REPO --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload failed: $LASTEXITCODE" }
+          $Keep = $Zips | ForEach-Object { Split-Path $_ -Leaf }
+          foreach ($Old in (gh release view dev --repo $env:DEV_REPO --json assets --jq '.assets[].name')) {
+            if ($Old -and ($Keep -notcontains $Old)) {
+              gh release delete-asset dev $Old --repo $env:DEV_REPO --yes
+            }
+          }

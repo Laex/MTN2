@@ -37,7 +37,7 @@
     {
       "type": "checkbox",
       "id": "dev_channel",
-      "text": "&Development builds (after every push)",
+      "text": "&Update from the dev channel (after every push)",
       "checked": false,
       "col": 1,
       "row": 5,
