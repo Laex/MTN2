@@ -8,10 +8,16 @@ param(
     # build adds a build number: 0.3.2.57). Stamped into the
     # exe's version resource, which is what MTN2 reports and the updater compares.
     # Empty: keep the version written in MTN2.dproj.
-    [string]$Version = ''
+    [string]$Version = '',
+    # Development build: the version is tools\dev-version.ps1 (the last
+    # release plus the commits since its tag). Ignored when -Version is given.
+    [switch]$Dev
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Dev -and -not $Version) {
+    $Version = (& (Join-Path $PSScriptRoot 'tools\dev-version.ps1')) | Select-Object -Last 1
+}
 $Studio = 'C:\Program Files (x86)\Embarcadero\Studio\37.0'
 $RsVars = Join-Path $Studio 'bin\rsvars.bat'
 $Project = Join-Path $PSScriptRoot 'MTN2.dproj'

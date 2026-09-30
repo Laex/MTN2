@@ -121,6 +121,7 @@ type
     tmaOptZoomIn,
     tmaOptZoomOut,
     tmaOptResetZoom,
+    tmaOptRestoreHiddenDialogs,
     tmaHelpContents,
     tmaHelpAbout,
     tmaHelpUpdates,
@@ -823,7 +824,7 @@ begin
   FCategories[5].Title := 'Options';
   FCategories[5].HotChar := 'O';
   FCategories[5].HotPos := 1;
-  SetLength(FCategories[5].Items, 11);
+  SetLength(FCategories[5].Items, 12);
   FCategories[5].Items[0] := SubItem('Reload keymap', 'K', 'Ctrl+Alt+K', tmaOptReloadKeymap);
   FCategories[5].Items[1] := SubItem('Plugins...', 'P', '', tmaOptShowPlugins);
   FCategories[5].Items[2] := SubItem('Color coding...', 'C', '', tmaOptColorCoding);
@@ -835,6 +836,7 @@ begin
   FCategories[5].Items[8] := SubItem('Zoom In', 'I', 'Ctrl+Wheel', tmaOptZoomIn);
   FCategories[5].Items[9] := SubItem('Zoom Out', 'O', 'Ctrl+Wheel', tmaOptZoomOut);
   FCategories[5].Items[10] := SubItem('Reset Zoom', 'R', 'Ctrl+0', tmaOptResetZoom);
+  FCategories[5].Items[11] := SubItem('Restore hidden dialogs', 'H', '', tmaOptRestoreHiddenDialogs);
 
   // 6: Right
   FCategories[6].Title := 'Right';

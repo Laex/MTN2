@@ -336,6 +336,7 @@
         <DCCReference Include="Core\uSelfCheck.pas"/>
         <DCCReference Include="Core\uUpdateController.pas"/>
         <DCCReference Include="Core\uNotice.pas"/>
+        <DCCReference Include="Core\uHiddenDialogs.pas"/>
         <DCCReference Include="Core\uToast.pas"/>
         <DCCReference Include="Core\uFrameStats.pas"/>
         <DCCReference Include="Forms\uMainForm.pas">

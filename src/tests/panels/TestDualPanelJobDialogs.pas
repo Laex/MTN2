@@ -94,8 +94,12 @@ begin
   Assert.IsTrue(JobDestRejectedReason(pjkCopy, '7z:///C:/a.7z!/') = '',
     'copy into 7z:// allowed');
   Assert.IsTrue(JobDestRejectedReason(pjkDelete, 'zip://x') = '', 'delete ignores dest');
-  Assert.IsTrue(JobDestRejectedReason(pjkCopy, 'file:///C:/a.zip!/inner') <> '',
-    'copy into archive rejected');
+  Assert.IsTrue(JobDestRejectedReason(pjkCopy, 'file:///C:/a.zip!/inner') = '',
+    'copy into a zip is written by the built-in ZIP layer');
+  Assert.IsTrue(JobDestRejectedReason(pjkMove, 'file:///C:/a.zip!/') = '',
+    'move into a zip allowed');
+  Assert.IsTrue(JobDestRejectedReason(pjkCopy, 'file:///C:/a.zip!/b.zip!/x') <> '',
+    'copy into a nested archive rejected');
   Assert.IsTrue(JobDestRejectedReason(pjkCopy, 'sys://folders') <> '', 'copy into sys folders rejected');
   Assert.IsTrue(JobDestRejectedReason(pjkCopy, 'sftp://u@h/path') = '',
     'copy onto sftp:// is allowed');

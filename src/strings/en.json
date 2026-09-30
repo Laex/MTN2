@@ -15,6 +15,11 @@
       "later": "Later",
       "skip": "&Skip this version"
     },
+    "DIALOG_HIDEABLEMSG": {
+      "$title": "MTN2",
+      "hide": "&Don't show this again",
+      "ok": "OK"
+    },
     "DIALOG_UPDATEMSG": {
       "$title": "MTN2 update",
       "ok": "OK",
@@ -527,6 +532,9 @@
     "display.pt": "pt",
     "update.checkingNotice": "Checking github.com for MTN2 updates...",
     "update.checkingHint": "Turn off: F9 > ≡ > Check for updates",
+    "sevenZip.missing": "7z.dll not found.",
+    "sevenZip.missingDetails": "7z, RAR and encrypted ZIP archives cannot be opened.",
+    "sevenZip.missingHint": "Copy 7z.dll to plugins\\mtn.7z\\ next to MTN2.exe",
     "about.version": "Version %s",
     "toast.copiedPath": "Full path \"%s\" copied to the clipboard",
     "toast.copiedName": "Name \"%s\" copied to the clipboard",
@@ -550,7 +558,12 @@
     "about.engine.gdi": "Graphics Engine: Standard GDI/FMX Renderer",
     "update.failed": "Could not update MTN2.",
     "update.noWrite": "The program folder is not writable.",
-    "update.openPage": "Open page",    "delete.promptOne": "Delete item \"%s\"?",
+    "update.openPage": "Open page",
+    "toast.noHiddenDialogs": "No dialogs are hidden",
+    "toast.hiddenDialogsRestored": "Hidden dialogs will be shown again: %s",
+    "update.installed": "MTN2 has been updated to version %s.",
+    "update.openChangelog": "Open changelog",
+    "update.close": "Close",    "delete.promptOne": "Delete item \"%s\"?",
     "delete.promptMany": "Delete %d selected items?",
     "delete.okRecycle": "Recycle",
     "delete.okWipe": "Wipe",
@@ -880,7 +893,8 @@
     "tmaOptColumnsConfig": "Columns...",
     "tmaOptZoomIn": "Zoom In",
     "tmaOptZoomOut": "Zoom Out",
-    "tmaOptResetZoom": "Reset Zoom"
+    "tmaOptResetZoom": "Reset Zoom",
+    "tmaOptRestoreHiddenDialogs": "Restore hidden dialogs"
   },
   "fbar": {
     "Help": "Help",

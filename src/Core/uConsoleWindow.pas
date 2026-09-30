@@ -487,6 +487,11 @@ begin
   if HandleAltScreenNav(AKey, AShift) then
     Exit;
 
+  // At the live bottom the arrows belong to the shell (line editing, command
+  // history); scrolled back they scroll.
+  if HandleShellNav(AKey, AShift) then
+    Exit;
+
   // Shift+arrows select, bare navigation scrolls.
   if HandleSelectionKeys(AKey, AShift) or HandleScrollKeys(AKey, AShift) then
     Exit;

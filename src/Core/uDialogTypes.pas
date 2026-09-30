@@ -259,6 +259,9 @@ function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDi
 /// OK that Esc also triggers.</summary>
 function BuildUpdateMessageDialog(const AMessage, ADetails, AOkText: string;
   AShowCancel: Boolean; const ACancelText: string = ''): TDialogDeclaration;
+/// <summary>A notice with three text lines and a "Don't show this again"
+/// checkbox (id hide); one OK button that Esc also triggers.</summary>
+function BuildHideableMessageDialog(const AMessage, ADetails, AHint: string): TDialogDeclaration;
 /// <summary>Help > Updates: installed version, the check_on_start,
 /// show_check_notice and dev_channel checkboxes, buttons check / close (Esc).</summary>
 function BuildUpdatesDialog(const ACurrentVersion: string;
@@ -1327,6 +1330,14 @@ begin
       Result.Controls[I].Col := (Result.Width - 2 - Result.Controls[I].BoxW) div 2;
       Result.Controls[I].IsCancel := True;
     end;
+end;
+
+function BuildHideableMessageDialog(const AMessage, ADetails, AHint: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogHideableMsg, Result);
+  DialogSetLabelText(Result, 'message', AMessage);
+  DialogSetLabelText(Result, 'details', ADetails);
+  DialogSetLabelText(Result, 'hint', AHint);
 end;
 
 function BuildUpdatesDialog(const ACurrentVersion: string;

@@ -32,6 +32,12 @@ begin
   Assert.IsTrue(not IsZipArchiveUri('7z:///C:/a.7z!/x'), '7z chain is not core zip');
   Assert.IsTrue(not IsZipArchiveUri('file:///C:/a.7z!/x'), '.7z file:// chain is not core zip');
 
+  Assert.AreEqual('7z:///C:/Work/a.zip!/dir/f.txt',
+    ZipEntryToSevenZipUri('file:///C:/Work/a.zip!/dir/f.txt'), 'zip entry through 7z');
+  Assert.AreEqual('', ZipEntryToSevenZipUri('file:///C:/Work/plain/f.txt'), 'not an archive entry');
+  Assert.AreEqual('', ZipEntryToSevenZipUri('file:///C:/Work/a.zip!/b.zip!/f.txt'),
+    'nested archives are not mapped');
+
   Assert.IsTrue(SameText(ArchiveBaseLocalPath('7z:///C:/Work/a.7z'),
     'C:\Work\a.7z'), '7z base path');
   Assert.IsTrue(PathToSevenZipRootUri('C:\Work\a.7z') = '7z:///C:/Work/a.7z!/',

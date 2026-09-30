@@ -153,6 +153,7 @@ uses
   uSelfCheck in 'Core\uSelfCheck.pas',
   uUpdateController in 'Core\uUpdateController.pas',
   uNotice in 'Core\uNotice.pas',
+  uHiddenDialogs in 'Core\uHiddenDialogs.pas',
   uToast in 'Core\uToast.pas',
   uFrameStats in 'Core\uFrameStats.pas',
   uMainForm in 'Forms\uMainForm.pas' {MainForm};

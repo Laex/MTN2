@@ -13,7 +13,7 @@ uses
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
-  uDialogHost, uConsoleLaunch, uWindowChrome;
+  uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
 
 type
   TMainForm = class(TForm)
@@ -79,6 +79,8 @@ type
     /// <summary>Self-update (Help > Updates, quiet check shortly after start).</summary>
     FUpdater: TUpdateController;
     FUpdateTimer: TTimer;
+    /// <summary>One-shot: warns shortly after start when 7z.dll is missing.</summary>
+    FSevenZipTimer: TTimer;
     FAppVersion: string;
     /// <summary>--fps only (nil otherwise): once a second moves FFpsStats
     /// into FFpsText, which UpdateCaption appends to the caption.</summary>
@@ -191,6 +193,7 @@ type
     procedure DualPanelQuitRequest(Sender: TObject);
     procedure DualPanelOpenUpdates(Sender: TObject);
     procedure UpdateTimerTick(Sender: TObject);
+    procedure SevenZipTimerTick(Sender: TObject);
     procedure FpsTimerTick(Sender: TObject);
     procedure CreateUpdater;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
@@ -1749,6 +1752,37 @@ begin
     FUpdater.StartupCheck;
 end;
 
+procedure TMainForm.SevenZipTimerTick(Sender: TObject);
+const
+  cHideId = 'sevenzip-missing';
+var
+  Decl: TDialogDeclaration;
+begin
+  if not HostSevenZipDllMissing or DialogHidden(cHideId) then
+  begin
+    FSevenZipTimer.Enabled := False;
+    Exit;
+  end;
+  Decl := BuildHideableMessageDialog(
+    T('ui.sevenZip.missing', '7z.dll not found.'),
+    T('ui.sevenZip.missingDetails', '7z, RAR and encrypted ZIP archives cannot be opened.'),
+    T('ui.sevenZip.missingHint', 'Copy 7z.dll to plugins\mtn.7z\ next to MTN2.exe'));
+  // Only over the panels; while another dialog is up or an editor is in
+  // front the next tick tries again.
+  if Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
+     FDualPanel.Visible and
+     FDualPanel.ShowHostDialog(Decl,
+       procedure(ACmd, AValues: string)
+       begin
+         if DialogValuesChecked(AValues, 'hide') then
+           HideDialog(cHideId);
+       end) then
+  begin
+    FSevenZipTimer.Enabled := False;
+    Recompose;
+  end;
+end;
+
 procedure TMainForm.CreateUpdater;
 var
   Host: TUpdateHost;
@@ -1773,11 +1807,22 @@ begin
     begin
       Close;
     end;
+  Host.OpenFile :=
+    procedure(APath: string)
+    begin
+      DualPanelOpenViewer(PathToFileUri(APath));
+    end;
   FUpdater := TUpdateController.Create(Host);
   FUpdateTimer := TTimer.Create(Self);
   FUpdateTimer.Interval := 5000;
   FUpdateTimer.OnTimer := UpdateTimerTick;
   FUpdateTimer.Enabled := True;
+  // Before the update check's own notice (5 s), so the two do not replace
+  // each other.
+  FSevenZipTimer := TTimer.Create(Self);
+  FSevenZipTimer.Interval := 1500;
+  FSevenZipTimer.OnTimer := SevenZipTimerTick;
+  FSevenZipTimer.Enabled := True;
 end;
 
 procedure TMainForm.DualPanelOpenViewer(const AURI: string);
@@ -2288,6 +2333,7 @@ begin
     ReleaseTaskbarButton;
   // Before the panel window goes: the updater's dialogs live there.
   FreeAndNil(FUpdateTimer);
+  FreeAndNil(FSevenZipTimer);
   FreeAndNil(FFpsTimer);
   FreeAndNil(FUpdater);
   StopPluginHost;

@@ -12,6 +12,7 @@ uses
   TestPanelPluginRegistry in 'TestPanelPluginRegistry.pas',
   TestPluginHostAbi in 'TestPluginHostAbi.pas',
   TestPluginLoader in 'TestPluginLoader.pas',
+  TestSevenZipDllWarning in 'TestSevenZipDllWarning.pas',
   TestPluginManifest in 'TestPluginManifest.pas',
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',
   TestSevenZipOpen in 'TestSevenZipOpen.pas',

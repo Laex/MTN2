@@ -76,20 +76,18 @@ jobs:
       DEV_REPO: Laex/MTN2-dev
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       - name: Dev version
         # A push to main is also published as a development build of
-        # Laex/MTN2-dev (last stamped version in MTN2.dproj + run number:
-        # above that release, below the next one).
+        # Laex/MTN2-dev (see src/tools/dev-version.ps1 for the numbering).
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         run: |
-          $Dproj = Get-Content src/MTN2.dproj -Raw
-          $Nums = foreach ($Key in 'MajorVer', 'MinorVer', 'Release') {
-            if ($Dproj -notmatch "<VerInfo_$Key>(\d+)</VerInfo_$Key>") { throw "VerInfo_$Key not found in MTN2.dproj" }
-            $Matches[1]
-          }
-          "DEV_VERSION=v$($Nums -join '.').$env:GITHUB_RUN_NUMBER" | Add-Content $env:GITHUB_ENV
+          $Version = ./src/tools/dev-version.ps1
+          if (-not $Version) { throw 'dev-version.ps1 printed nothing' }
+          "DEV_VERSION=$Version" | Add-Content $env:GITHUB_ENV
 
       - name: Build
         shell: pwsh

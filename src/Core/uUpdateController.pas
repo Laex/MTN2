@@ -32,6 +32,8 @@ type
     HasBusyJob: TFunc<Boolean>;
     /// <summary>Closes the main form through its normal exit path.</summary>
     RequestClose: TProc;
+    /// <summary>Opens a file in the viewer (the changelog after an update).</summary>
+    OpenFile: TProc<string>;
   end;
 
   TUpdateState = (usIdle, usChecking, usDownloading, usReady, usApplied);
@@ -72,6 +74,9 @@ type
     procedure ShowReady;
     procedure RestartNow;
     procedure SaveSettings;
+    /// <summary>After the program was updated: once, a dialog naming the new
+    /// version with a button that opens CHANGELOG.md in the viewer.</summary>
+    procedure AnnounceUpdate;
   public
     constructor Create(const AHost: TUpdateHost);
     destructor Destroy; override;
@@ -262,10 +267,41 @@ begin
   SaveUpdateSettings(FSettings);
 end;
 
+procedure TUpdateController.AnnounceUpdate;
+var
+  Changelog: string;
+  Updated: Boolean;
+begin
+  if (FCurrent = '') or (FSettings.LastRunVersion = FCurrent) then
+    Exit;
+  Updated := (FSettings.LastRunVersion <> '') and
+    IsNewerVersion(FCurrent, FSettings.LastRunVersion);
+  FSettings.LastRunVersion := FCurrent;
+  SaveSettings;
+  if not Updated then
+    Exit;
+  Changelog := TPath.Combine(AppDir, 'CHANGELOG.md');
+  if Assigned(FHost.OpenFile) and TFile.Exists(Changelog) then
+    Show(BuildUpdateMessageDialog(
+      T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]), '',
+      T('ui.update.openChangelog', 'Open changelog'), True,
+      T('ui.update.close', 'Close')),
+      procedure(ACmd, AValues: string)
+      begin
+        if SameText(ACmd, cDlgCmdOk) then
+          FHost.OpenFile(Changelog);
+      end)
+  else
+    Show(BuildUpdateMessageDialog(
+      T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]), '',
+      '', False), nil);
+end;
+
 procedure TUpdateController.StartupCheck;
 var
   Due: Boolean;
 begin
+  AnnounceUpdate;
   Due := (FCurrent <> '') and UpdateCheckDue(FSettings, Now);
   if not Due then
   begin

@@ -14,6 +14,7 @@ uses
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
   TestFolderHotlist in 'TestFolderHotlist.pas',
+  TestHiddenDialogs in 'TestHiddenDialogs.pas',
   TestKeymap in 'TestKeymap.pas',
   TestKeyChord in 'TestKeyChord.pas',
   TestLiveReload in 'TestLiveReload.pas',

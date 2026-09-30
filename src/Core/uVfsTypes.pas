@@ -196,6 +196,11 @@ function IsSevenZipFileName(const AName: string): Boolean;
 function IsSevenZipUri(const AURI: string): Boolean;
 function IsZipArchiveUri(const AURI: string): Boolean;
 function PathToSevenZipRootUri(const AArchivePath: string): string;
+/// <summary>The same entry of an on-disk ZIP addressed through the 7z://
+/// backend (file:///C:/a.zip!/dir/f.txt -> 7z:///C:/a.zip!/dir/f.txt). The
+/// built-in ZIP layer cannot decrypt AES or unpack some methods; 7z.dll can.
+/// '' for anything that is not an entry one level deep in a local ZIP.</summary>
+function ZipEntryToSevenZipUri(const AEntryUri: string): string;
 function ArchiveBaseLocalPath(const ABaseUri: string): string;
 function IsFindUri(const AURI: string): Boolean;
 function IsSystemFoldersUri(const AURI: string): Boolean;
@@ -924,6 +929,19 @@ begin
     Exit('');
   P := StringReplace(P, '\', '/', [rfReplaceAll]);
   Result := '7z:///' + P + '!/';
+end;
+
+function ZipEntryToSevenZipUri(const AEntryUri: string): string;
+var
+  Base: string;
+  Segs: TArray<string>;
+begin
+  Result := '';
+  if not SplitArchiveUri(AEntryUri, Base, Segs) then
+    Exit;
+  if not Base.StartsWith('file:', True) or (Length(Segs) <> 1) then
+    Exit;
+  Result := JoinVfsUri(PathToSevenZipRootUri(FileUriToPath(Base)), Segs[0]);
 end;
 
 function FormatVfsAttrText(AReadOnly, AHidden, ASystem, AArchive,

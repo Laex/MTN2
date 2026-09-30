@@ -10,6 +10,9 @@ uses
 
 procedure StartPluginHost(const APluginsDir: string);
 procedure StopPluginHost;
+/// <summary>True when the mtn.7z plugin is installed but has no 7z.dll next to
+/// it, so 7z / RAR / encrypted archives cannot be opened.</summary>
+function HostSevenZipDllMissing: Boolean;
 function HostLoadedPluginIds: TArray<string>;
 /// <summary>Load the catalogued plugin that owns AScheme, if any.
 /// No-op when that plugin is already loaded. Used from VFS resolve.</summary>
@@ -47,6 +50,15 @@ begin
   // Catalog only. DLLs load on the first scheme/archive use, or when the
   // menu / plugin list needs the rest of the registrations.
   PluginLoader.CatalogPlugins(APluginsDir);
+end;
+
+function HostSevenZipDllMissing: Boolean;
+var
+  Dir: string;
+begin
+  Dir := TPath.Combine(GPluginsDir, 'mtn.7z');
+  Result := (GPluginsDir <> '') and TDirectory.Exists(Dir) and
+    not TFile.Exists(TPath.Combine(Dir, '7z.dll'));
 end;
 
 function HostEnsurePluginScheme(const AScheme: string): Boolean;

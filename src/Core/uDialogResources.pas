@@ -37,6 +37,7 @@ const
   cResDialogTerminalProfile = 'DIALOG_TERMINALPROFILE';
   cResDialogAbout = 'DIALOG_ABOUT';
   cResDialogUpdate = 'DIALOG_UPDATE';
+  cResDialogHideableMsg = 'DIALOG_HIDEABLEMSG';
   cResDialogUpdateMsg = 'DIALOG_UPDATEMSG';
   cResDialogUpdates = 'DIALOG_UPDATES';
   cResDialogPluginList = 'DIALOG_PLUGINLIST';

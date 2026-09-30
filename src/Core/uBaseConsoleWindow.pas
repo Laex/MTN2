@@ -96,6 +96,10 @@ type
     /// End/Delete to the PTY instead of scrolling local history. Returns
     /// True (and consumes AKey) only when it forwarded a key.</summary>
     function HandleAltScreenNav(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Arrow keys and Delete go to the shell while the view is at the
+    /// live bottom of the output, so its line editing and command history
+    /// work; False when scrolled back or in a full-screen app.</summary>
+    function HandleShellNav(var AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Blit the alt-screen grid directly into Buffer (no scroll
     /// windowing). Shared by both subclasses' DrawContent.</summary>
     procedure DrawAltScreenGrid(ATextW, AViewH: Integer);
@@ -331,6 +335,29 @@ begin
     vkNext:   SendRaw(#27'[6~');
     vkHome:   SendRaw(#27'[H');
     vkEnd:    SendRaw(#27'[F');
+    vkDelete: SendRaw(#27'[3~');
+  else
+    Exit;
+  end;
+  AKey := 0;
+  Result := True;
+end;
+
+function TBaseConsoleWindow.HandleShellNav(var AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := False;
+  // Scrolled back into the output: the arrows scroll it (HandleScrollKeys).
+  if AltScreenActive or not FHistory.FollowTail then
+    Exit;
+  if AShift * cKeyMods <> [] then
+    Exit;
+  // At the prompt the shell owns line editing and its own command history
+  // (Up/Down); PageUp/PageDown, Home/End and the mouse wheel still scroll.
+  case AKey of
+    vkLeft:   SendRaw(#27'[D');
+    vkRight:  SendRaw(#27'[C');
+    vkUp:     SendRaw(#27'[A');
+    vkDown:   SendRaw(#27'[B');
     vkDelete: SendRaw(#27'[3~');
   else
     Exit;

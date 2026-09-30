@@ -61,7 +61,7 @@ procedure ApplyJobProgressToDialog(ADialog: TDialogHost;
 implementation
 
 uses
-  uDialogResources, uStrings;
+  System.IOUtils, uDialogResources, uStrings;
 
 const
   cJobProgressInnerW = 72;
@@ -216,16 +216,35 @@ begin
     IsSystemFoldersUri(ADestURI);
 end;
 
+// A .zip file on disk opened one level deep: the built-in ZIP layer adds and
+// removes entries there (not inside a nested archive).
+function DestIsOuterZip(const ADestURI: string): Boolean;
+var
+  Base: string;
+  Segs: TArray<string>;
+begin
+  Result := False;
+  if not HasArchiveChain(ADestURI) then
+    Exit;
+  if Length(ADestURI.Split(['!/'])) <> 2 then
+    Exit;
+  if not SplitArchiveUri(ADestURI, Base, Segs) then
+    Exit;
+  Result := Base.StartsWith('file:', True) and
+    IsZipFileName(TPath.GetFileName(FileUriToPath(Base)));
+end;
+
 function JobDestRejectedReason(AKind: TPanelJobKind; const ADestURI: string): string;
 begin
   Result := '';
   case AKind of
     pjkDelete: ;
     pjkCopy:
-      if (not IsSevenZipUri(ADestURI)) and DestIsArchiveOrVirtual(ADestURI) then
+      if (not IsSevenZipUri(ADestURI)) and (not DestIsOuterZip(ADestURI)) and
+         DestIsArchiveOrVirtual(ADestURI) then
         Result := 'Opposite panel must be a local folder';
     pjkMove:
-      if DestIsArchiveOrVirtual(ADestURI) then
+      if (not DestIsOuterZip(ADestURI)) and DestIsArchiveOrVirtual(ADestURI) then
         Result := 'Opposite panel must be a local folder';
     pjkPack:
       if (not IsSevenZipUri(ADestURI)) and

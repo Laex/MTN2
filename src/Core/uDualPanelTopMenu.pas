@@ -178,6 +178,7 @@ begin
     tmaOptDisplay: CallProc(AHost.OpenDisplayDialog);
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
     tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom: ;
+    tmaOptRestoreHiddenDialogs: CallProc(AHost.RestoreHiddenDialogs);
 
     tmaHelpContents: CallProc(AHost.OpenHelp);
     tmaHelpAbout: CallProc(AHost.OpenAboutDialog);
@@ -199,6 +200,7 @@ begin
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
     tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
+    tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile:
       Exit(True);
 

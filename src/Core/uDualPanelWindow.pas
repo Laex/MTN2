@@ -29,7 +29,7 @@ uses
   uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
-  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast;
+  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -614,6 +614,8 @@ type
     /// <summary>Help > Updates: forwarded to OnOpenUpdates (the updater lives
     /// in the form, not in the panel window).</summary>
     procedure OpenUpdates;
+    /// <summary>Options > Restore hidden dialogs.</summary>
+    procedure RestoreHiddenDialogsNow;
     procedure OpenPluginListDialog;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
@@ -675,6 +677,8 @@ type
     /// <summary>A local file by the Windows shell, or as a console program
     /// (OnLaunchConsoleFile) when it is one.</summary>
     procedure ShellOpenPath(const APath: string);
+    procedure ShellOpenArchiveEntry(const AURI, AName: string);
+    procedure ShellOpenSevenZipEntry(const ASevenUri, ADst: string; ARetried: Boolean);
     procedure RunUserCommandCurrent(const AURI, ACommandTemplate: string);
     procedure SetCmdFocused(AValue: Boolean);
     function ClickCmdLine(ACol, ARow: Integer; AShift: TShiftState): Boolean;
@@ -1538,6 +1542,7 @@ begin
   FKeymapHost.OpenDisplayDialog := OpenDisplayDialog;
   FKeymapHost.OpenAboutDialog := OpenAboutDialog;
   FKeymapHost.OpenUpdates := OpenUpdates;
+  FKeymapHost.RestoreHiddenDialogs := RestoreHiddenDialogsNow;
   FKeymapHost.EditGotoLine := EditGotoLine;
   FKeymapHost.EditFind := EditFind;
   FKeymapHost.EditFindReplace := EditFindReplace;
@@ -1723,8 +1728,11 @@ end;
 procedure TDualPanelWindow.DrawHostFilesList(const AListBounds: TRectI;
   const ATab: TTab; AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
 begin
+  // While the command line has the focus neither panel is being driven, so
+  // both draw the cursor row like an inactive panel.
   uDualPanelDrawUtils.DrawPanelList(
-    Buffer, AListBounds, ATab, AActive, AMode, ModelForSide(ASide), Theme);
+    Buffer, AListBounds, ATab, AActive and not CmdFocused, AMode,
+    ModelForSide(ASide), Theme);
 end;
 
 procedure TDualPanelWindow.DrawHostFilesScroll(AX, ATop, ABottom, APos, ACount,
@@ -4536,7 +4544,14 @@ begin
           RequestOpenEditor(Uri);
         end);
     ackShell:
-      ShellOpenPath(FileUriToPath(ARow.URI));
+      if HasArchiveChain(Uri) or IsSevenZipUri(Uri) then
+        RunWithArchivePassword([Uri],
+          procedure
+          begin
+            ShellOpenArchiveEntry(Uri, ARow.Text);
+          end)
+      else
+        ShellOpenPath(FileUriToPath(ARow.URI));
     ackCommand:
       RunUserCommandCurrent(ARow.URI, UserCommand);
   end;
@@ -6460,6 +6475,89 @@ begin
 end;
 
 
+// A file inside an archive has no path the Windows shell can open: unpack it
+// into a fresh temp folder and open the copy. Folders left by earlier calls
+// are purged after a day.
+procedure TDualPanelWindow.ShellOpenArchiveEntry(const AURI, AName: string);
+var
+  Root, Dir, Dst, LeafName: string;
+  Old: string;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-open');
+  try
+    if TDirectory.Exists(Root) then
+      for Old in TDirectory.GetDirectories(Root) do
+        if TDirectory.GetCreationTime(Old) < Now - 1 then
+          TDirectory.Delete(Old, True);
+  except
+    // a folder still in use by the program it was opened in stays
+  end;
+  LeafName := TPath.GetFileName(StringReplace(AName, '/', PathDelim, [rfReplaceAll]));
+  if LeafName = '' then
+    Exit;
+  Dir := TPath.Combine(Root, TGUID.NewGuid.ToString.Trim(['{', '}']));
+  Dst := TPath.Combine(Dir, LeafName);
+  try
+    ForceDirectories(Dir);
+  except
+    OpenStub(skShellInfo, 'Shell open failed', Dir);
+    Exit;
+  end;
+  FVfs.CopyAsync(AURI, PathToFileUri(Dst), nil, nil,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if not FAlive then
+        Exit;
+      if ASuccess then
+        ShellOpenPath(Dst)
+      else if IsZipArchiveUri(AURI) and (ZipEntryToSevenZipUri(AURI) <> '') then
+      begin
+        // The built-in ZIP layer cannot decrypt AES or unpack every method;
+        // 7z.dll can.
+        if HostSevenZipDllMissing then
+          OpenStub(skShellInfo, 'Shell open failed',
+            AError.Message + '. Put 7z.dll into plugins\mtn.7z\ to open such files.')
+        else
+          ShellOpenSevenZipEntry(ZipEntryToSevenZipUri(AURI), Dst, False);
+      end
+      else
+        OpenStub(skShellInfo, 'Shell open failed', AError.Message);
+    end, True);
+end;
+
+// Unpacks an entry through the 7z:// backend and opens the copy. A password
+// request is answered through the archive password dialog, then the unpack
+// is repeated once.
+procedure TDualPanelWindow.ShellOpenSevenZipEntry(const ASevenUri, ADst: string;
+  ARetried: Boolean);
+begin
+  FVfs.CopyAsync(ASevenUri, PathToFileUri(ADst), nil, nil,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if not FAlive then
+        Exit;
+      if ASuccess then
+      begin
+        ShellOpenPath(ADst);
+        Exit;
+      end;
+      if (AError.Code = vecAccessDenied) and not ARetried then
+      begin
+        FArchiveActionPath := ArchiveBasePath(ASevenUri);
+        FArchiveProbeUri := ASevenUri;
+        FArchiveAction :=
+          procedure
+          begin
+            ShellOpenSevenZipEntry(ASevenUri, ADst, True);
+          end;
+        OpenArchiveActionPrompt(False);
+        NotifyChanged;
+      end
+      else
+        OpenStub(skShellInfo, 'Shell open failed', AError.Message);
+    end, True);
+end;
+
 procedure TDualPanelWindow.LaunchExternal(AEdit: Boolean);
 var
   Ws: TDualPanelWorkspaceTab;
@@ -6787,6 +6885,18 @@ procedure TDualPanelWindow.OpenUpdates;
 begin
   if Assigned(FOnOpenUpdates) then
     FOnOpenUpdates(Self);
+end;
+
+procedure TDualPanelWindow.RestoreHiddenDialogsNow;
+var
+  Count: Integer;
+begin
+  Count := uHiddenDialogs.RestoreHiddenDialogs;
+  if Count = 0 then
+    Notice(T('ui.toast.noHiddenDialogs', 'No dialogs are hidden'))
+  else
+    Notice(T('ui.toast.hiddenDialogsRestored', 'Hidden dialogs will be shown again: %s'),
+      IntToStr(Count));
 end;
 
 function TDualPanelWindow.ShowHostDialog(const ADecl: TDialogDeclaration;

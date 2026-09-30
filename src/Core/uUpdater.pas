@@ -57,6 +57,9 @@ type
     SkipVersion: string;    // '' = none
     /// <summary>Follow the development builds instead of the releases.</summary>
     DevChannel: Boolean;
+    /// <summary>Version that ran last: a newer running version means the
+    /// program was updated since, and the "updated" dialog is due.</summary>
+    LastRunVersion: string;
   end;
 
   /// <summary>Progress/abort hook for DownloadAsset: return False to abort.</summary>
@@ -727,6 +730,7 @@ begin
   Result.LastCheck := 0;
   Result.SkipVersion := '';
   Result.DevChannel := False;
+  Result.LastRunVersion := '';
 end;
 
 function ParseUpdateSettingsJson(const AJson: string): TUpdateSettings;
@@ -746,6 +750,7 @@ begin
       Result.ShowCheckNotice := Root.GetValue<Boolean>('showCheckNotice', True);
       Result.SkipVersion := Root.GetValue<string>('skipVersion', '');
       Result.DevChannel := Root.GetValue<Boolean>('devChannel', False);
+      Result.LastRunVersion := Root.GetValue<string>('lastRunVersion', '');
       S := Root.GetValue<string>('lastCheck', '');
       if S <> '' then
         Result.LastCheck := ISO8601ToDate(S, False);
@@ -766,6 +771,8 @@ begin
     Root.AddPair('checkOnStart', TJSONBool.Create(ASettings.CheckOnStart));
     Root.AddPair('showCheckNotice', TJSONBool.Create(ASettings.ShowCheckNotice));
     Root.AddPair('devChannel', TJSONBool.Create(ASettings.DevChannel));
+    if ASettings.LastRunVersion <> '' then
+      Root.AddPair('lastRunVersion', ASettings.LastRunVersion);
     if ASettings.LastCheck > 0 then
       Root.AddPair('lastCheck', DateToISO8601(ASettings.LastCheck, False));
     if ASettings.SkipVersion <> '' then

@@ -144,6 +144,7 @@ type
     OpenDisplayDialog: TKeymapProc;
     OpenAboutDialog: TKeymapProc;
     OpenUpdates: TKeymapProc;
+    RestoreHiddenDialogs: TKeymapProc;
     EditGotoLine: TKeymapProc;
     EditFind: TKeymapProc;
     EditFindReplace: TKeymapProc;

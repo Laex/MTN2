@@ -293,6 +293,10 @@ begin
   S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
   Assert.IsTrue(not S.ShowCheckNotice and not S.CheckOnStart, 'both switches round-trip');
   Assert.IsTrue(not S.DevChannel, 'old file -> release channel');
+  Assert.AreEqual('', S.LastRunVersion, 'old file -> no last run version');
+  S.LastRunVersion := '0.3.12.4';
+  S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
+  Assert.AreEqual('0.3.12.4', S.LastRunVersion, 'last run version round-trips');
   S.DevChannel := True;
   S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
   Assert.IsTrue(S.DevChannel, 'dev channel round-trips');

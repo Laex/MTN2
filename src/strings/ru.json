@@ -12,6 +12,11 @@
       "later": "Позже",
       "skip": "&Пропустить версию"
     },
+    "DIALOG_HIDEABLEMSG": {
+      "$title": "MTN2",
+      "hide": "&Больше не показывать",
+      "ok": "ОК"
+    },
     "DIALOG_UPDATEMSG": {
       "$title": "Обновление MTN2",
       "ok": "ОК",
@@ -626,6 +631,9 @@
     "display.pt": "пт",
     "update.checkingNotice": "Проверка обновлений MTN2 на github.com...",
     "update.checkingHint": "Отключить: F9 > ≡ > Обновления",
+    "sevenZip.missing": "Не найден 7z.dll.",
+    "sevenZip.missingDetails": "Архивы 7z, RAR и ZIP с шифрованием не открываются.",
+    "sevenZip.missingHint": "Положите 7z.dll в plugins\\mtn.7z\\ рядом с MTN2.exe",
     "about.version": "Версия %s",
     "toast.copiedPath": "Полный путь «%s» скопирован в буфер обмена",
     "toast.copiedName": "Имя «%s» скопировано в буфер обмена",
@@ -649,7 +657,12 @@
     "about.engine.gdi": "Графический движок: стандартный рендерер GDI/FMX",
     "update.failed": "Не удалось обновить MTN2.",
     "update.noWrite": "Нет прав на запись в папку программы.",
-    "update.openPage": "Открыть страницу",    "delete.promptOne": "Удалить объект «%s»?",
+    "update.openPage": "Открыть страницу",
+    "toast.noHiddenDialogs": "Скрытых диалогов нет",
+    "toast.hiddenDialogsRestored": "Скрытые диалоги снова будут показаны: %s",
+    "update.installed": "MTN2 обновлён до версии %s.",
+    "update.openChangelog": "Открыть список изменений",
+    "update.close": "Закрыть",    "delete.promptOne": "Удалить объект «%s»?",
     "delete.promptMany": "Удалить выбранные объекты (%d)?",
     "delete.okRecycle": "В корзину",
     "delete.okWipe": "Затереть",
@@ -979,7 +992,8 @@
     "tmaOptColumnsConfig": "&Колонки...",
     "tmaOptZoomIn": "&Увеличить масштаб",
     "tmaOptZoomOut": "Уменьшить &масштаб",
-    "tmaOptResetZoom": "&Сбросить масштаб"
+    "tmaOptResetZoom": "&Сбросить масштаб",
+    "tmaOptRestoreHiddenDialogs": "Показать скрытые &диалоги"
   },
   "fbar": {
     "Help": "Помощь",
