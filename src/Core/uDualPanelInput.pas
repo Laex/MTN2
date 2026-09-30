@@ -120,6 +120,7 @@ type
     BeginCompareFiles: TKeymapProc;
     CompareFolders: TKeymapProc;
     OpenExternalToolsDialog: TKeymapProc;
+    OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
@@ -234,7 +235,7 @@ type
     HandleCmdHistoryFilter: TKeymapInputFn;
     HandleFileHistoryList: TKeymapInputFn;
     HandleDialogWidget: TKeymapInputFn;
-    SyncColorPickerHex: TKeymapProc;
+    HandleMarkdownColors: TKeymapInputFn;
     /// <summary>A dialog DropDown / history list is open: Enter picks from it.</summary>
     DialogDropDownOpen: TKeymapTryFn;
     /// <summary>TDialogHost.RecordInputHistory for the Enter shortcut below.</summary>
@@ -1484,6 +1485,11 @@ begin
     if AHost.HandleColorEdit(AKey, AShift, AKeyChar) then
       Exit(True);
   end;
+  if AKind = hdkMarkdownColors then
+  begin
+    if AHost.HandleMarkdownColors(AKey, AShift, AKeyChar) then
+      Exit(True);
+  end;
   if AKind = hdkKeymap then
   begin
     if AHost.HandleKeymapList(AKey, AShift, AKeyChar) then
@@ -1493,8 +1499,6 @@ begin
      AHost.HandleCmdHistoryFilter(AKey, AShift, AKeyChar) then
     Exit(True);
   Result := AHost.HandleDialogWidget(AKey, AShift, AKeyChar);
-  if AKind = hdkColorPicker then
-    AHost.SyncColorPickerHex();
 end;
 
 end.

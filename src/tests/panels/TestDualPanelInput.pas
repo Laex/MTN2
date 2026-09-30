@@ -115,7 +115,6 @@ type
     Last: string;
     CmdId: string;
     Hotlist, ColorList, ColorEdit, Filter, Widget: Boolean;
-    Synced: Boolean;
     DropOpen: Boolean;
     HistoryFor: string;
     function DropIsOpen: Boolean;
@@ -127,7 +126,6 @@ type
     function EditIn(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function FilterIn(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     function WidgetIn(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
-    procedure SyncHex;
   end;
 
 function TKeymapSpy.ActiveSide: TPanelSide;
@@ -1072,7 +1070,6 @@ function TModalSpy.FilterIn(var AKey: Word; AShift: TShiftState; var AKeyChar: C
 begin Result := Filter; if Result then Last := 'filter'; end;
 function TModalSpy.WidgetIn(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
 begin Result := Widget; Last := 'widget'; end;
-procedure TModalSpy.SyncHex; begin Synced := True; end;
 
 procedure TestModalDialogInput;
 var
@@ -1091,7 +1088,6 @@ begin
     Host.HandleColorEdit := Spy.EditIn;
     Host.HandleCmdHistoryFilter := Spy.FilterIn;
     Host.HandleDialogWidget := Spy.WidgetIn;
-    Host.SyncColorPickerHex := Spy.SyncHex;
     Host.DialogDropDownOpen := Spy.DropIsOpen;
     Host.RecordDialogHistory := Spy.RecordHistory;
 
@@ -1126,7 +1122,6 @@ begin
     Spy.Widget := True;
     Key := vkDown;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkColorPicker, Key, [], Ch), 'picker widget');
-    Assert.IsTrue(Spy.Synced, 'picker syncs hex after widget');
 
     Writeln('OK: TestModalDialogInput passed');
   finally

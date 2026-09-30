@@ -2444,7 +2444,7 @@ begin
   FRenderer.Draw(Canvas, RectF(0, 0, ClientWidth, ClientHeight));
   // Markdown image blocks are sized in cells from the pixel cell aspect;
   // after a font/scale change re-lay out once so the next frame uses it.
-  if SetOverlayCellMetrics(FRenderer.CellWidth, FRenderer.CellHeight) then
+  if SetOverlayCellMetrics(FRenderer.CellWidth, FRenderer.CellHeight, FLastScale) then
     TThread.ForceQueue(nil,
       procedure
       begin

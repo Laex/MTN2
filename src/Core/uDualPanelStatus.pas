@@ -135,7 +135,7 @@ begin
       hdkColorCodingEdit:
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkTheme, hdkColumnsConfig, hdkDisplay,
-      hdkColorPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
+      hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
@@ -144,7 +144,7 @@ begin
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
-      hdkExternalTools:
+      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport:
         Exit(fbcStubEdit);
     else
       Exit(AState.DialogChrome);
@@ -280,7 +280,7 @@ begin
       Result := TArray<string>.Create(S('Display'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColumnsConfig:
       Result := TArray<string>.Create(S('Columns'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
-    hdkColorPicker:
+    hdkColorPicker, hdkMarkdownPicker:
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));

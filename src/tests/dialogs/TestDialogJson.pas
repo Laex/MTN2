@@ -84,14 +84,9 @@ begin
   Assert.IsTrue(TryParseDialogJson(
     TFile.ReadAllText('..\..\dialogs\colorpicker.json', TEncoding.UTF8), LDecl),
     'colorpicker.json failed to parse');
-  I := FindControlById(LDecl, 'preview');
-  Assert.IsTrue(I >= 0, 'preview control not found in colorpicker.json');
-  Assert.IsTrue(LDecl.Controls[I].Kind = dckColorSample, 'preview is not dckColorSample');
-  // fgFrom/bgFrom are left blank in the JSON itself - BuildColorPickerDialog
-  // patches them at open time via DialogSetColorSampleSources (AIsBg-dependent).
-  Assert.IsTrue(LDecl.Controls[I].FgSourceId = '', 'preview.FgSourceId should start blank (patched at Build time)');
-  Assert.IsTrue(LDecl.Controls[I].BgSourceId = '', 'preview.BgSourceId should start blank (patched at Build time)');
-  Writeln('  colorpicker.json''s preview: Kind=dckColorSample, sources blank until BuildColorPickerDialog patches them');
+  I := FindControlById(LDecl, 'picker');
+  Assert.IsTrue(I >= 0, 'picker control not found in colorpicker.json');
+  Assert.IsTrue(LDecl.Controls[I].Kind = dckColorPicker, 'picker is not dckColorPicker');
 
   Writeln('OK: colorsample control parsing verified');
 end;

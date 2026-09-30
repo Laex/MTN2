@@ -29,6 +29,7 @@ type
     [Test] procedure TestTableLayoutReuse;
     [Test] procedure TestWrapStarts;
     [Test] procedure TestPainter;
+    [Test] procedure TestPainterUserColors;
     [Test] procedure TestFenceIndex;
   end;
 
@@ -54,7 +55,8 @@ uses
   uEditorDoc,
   uMarkdownParser,
   uMarkdownIndex,
-  uMarkdownPainter;
+  uMarkdownPainter,
+  uMarkdownColors;
 
 var
   GTempDir: string;
@@ -238,6 +240,7 @@ begin
   Assert.IsTrue(IsSingleFullSpan(L, mskBoldItalic), '***both*** -> single mskBoldItalic span, not bold+leftover');
 
   L := TMarkdownParser.ParseLine('~~gone~~', State);
+  Assert.IsTrue(L.DisplayText = 'gone', '~~gone~~ delimiters are stripped');
   Assert.IsTrue(IsSingleFullSpan(L, mskStrike), '~~gone~~ -> mskStrike');
 
   L := TMarkdownParser.ParseLine('[text](http://example.com)', State);
@@ -324,9 +327,27 @@ begin
   Assert.IsTrue(L.ImageAlt = 'Pasted image 20250312221414',
     'wiki image alt is the file name without extension');
 
+  Assert.IsTrue((L.ImageWidth = 0) and (L.ImageHeight = 0),
+    'a non-numeric |suffix requests no size');
+
   L := TMarkdownParser.ParseLine('![[cat.png]]', State);
   Assert.IsTrue(L.IsImage and (L.ImagePath = 'cat.png'),
     'Obsidian ![[file.png]] without a size suffix is IsImage');
+  Assert.IsTrue((L.ImageWidth = 0) and (L.ImageHeight = 0), 'no suffix requests no size');
+
+  L := TMarkdownParser.ParseLine('![[docs/cat.png|300]]', State);
+  Assert.IsTrue(L.IsImage and (L.ImagePath = 'docs/cat.png') and
+    (L.ImageWidth = 300) and (L.ImageHeight = 0), '|300 requests a width of 300');
+
+  L := TMarkdownParser.ParseLine('![[cat.png|300x200]]', State);
+  Assert.IsTrue((L.ImageWidth = 300) and (L.ImageHeight = 200), '|300x200 requests width and height');
+
+  L := TMarkdownParser.ParseLine('![[cat.png|My cat|150]]', State);
+  Assert.IsTrue(L.IsImage and (L.ImageWidth = 150), 'the size is the last |segment after an alias');
+
+  L := TMarkdownParser.ParseLine('![a cat|250](images/cat.png)', State);
+  Assert.IsTrue(L.IsImage and (L.ImageWidth = 250) and (L.ImageAlt = 'a cat') and
+    (L.ImagePath = 'images/cat.png'), '![alt|250](path) requests a width and keeps the alt text');
 
   L := TMarkdownParser.ParseLine('![[OtherNote]]', State);
   Assert.IsTrue(not L.IsImage, 'Obsidian note transclusion ![[OtherNote]] is not an image');
@@ -773,6 +794,49 @@ begin
   SetLength(Result, AWidth + 1);
 end;
 
+// The "text" background is the document background: elements whose theme
+// background is the plain-text one follow it, elements with a user background
+// keep theirs, and user foregrounds replace the theme's.
+procedure TestPainterUserColors;
+var
+  State: TMdFenceState;
+  L: TMdLine;
+  Row: TTerminalRow;
+  Colors, None: TMdColorSet;
+  Theme: IThemeRenderer;
+begin
+  Theme := TFakeTheme.Create;
+  State.InFence := False;
+  MdColorSetClear(Colors);
+  Colors[mskText].HasBg := True;
+  Colors[mskText].Bg := TAlphaColor($FF202020);
+  Colors[mskInlineCode].HasBg := True;
+  Colors[mskInlineCode].Bg := TAlphaColor($FF303030);
+  Colors[mskBold].HasFg := True;
+  Colors[mskBold].Fg := TAlphaColor($FF112233);
+  MdStyleChoiceApply(Colors[mskBold], 3); // italic replaces the theme's bold
+  MdStyleChoiceApply(Colors[mskLink], 1); // plain removes the link underline
+  SetGlobalMarkdownColors(Colors);
+  try
+    L := TMarkdownParser.ParseLine('ab **bold** `code`', State);
+    Row := MakeRow(20);
+    TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
+    Assert.IsTrue(Row[1].BgColor = TAlphaColor($FF202020), 'plain text takes the document background');
+    Assert.IsTrue(Row[4].BgColor = TAlphaColor($FF202020), 'bold follows the document background');
+    Assert.IsTrue(Row[4].FgColor = TAlphaColor($FF112233), 'bold takes the user foreground');
+    Assert.IsTrue(Row[9].BgColor = TAlphaColor($FF303030), 'inline code keeps its own background');
+    Assert.IsTrue(Row[20].BgColor = TAlphaColor($FF202020), 'padding takes the document background');
+    Assert.IsTrue(Row[4].Attributes = [ccaItalic], 'the user style replaces the theme attributes');
+    L := TMarkdownParser.ParseLine('[link](x.md)', State);
+    Row := MakeRow(12);
+    TMarkdownPainter.DrawLine(Row, 1, 12, L, Theme);
+    Assert.IsTrue(Row[1].Attributes = [], 'a plain style removes the default link underline');
+  finally
+    MdColorSetClear(None);
+    SetGlobalMarkdownColors(None);
+  end;
+end;
+
 procedure TestPainter;
 var
   State: TMdFenceState;
@@ -1021,6 +1085,11 @@ end;
 procedure TTestMarkdownParser.TestPainter;
 begin
   TestMarkdownParser.TestPainter;
+end;
+
+procedure TTestMarkdownParser.TestPainterUserColors;
+begin
+  TestMarkdownParser.TestPainterUserColors;
 end;
 
 procedure TTestMarkdownParser.TestFenceIndex;

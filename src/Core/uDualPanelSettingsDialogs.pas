@@ -6,9 +6,9 @@ unit uDualPanelSettingsDialogs;
 interface
 
 uses
-  System.SysUtils, System.Classes,
+  System.SysUtils, System.Classes, System.UITypes,
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uThemeRegistry, uPanelColumns,
-  uShellProfiles, uDisplaySettings, uStrings, uExternalTools;
+  uShellProfiles, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
   TSettingsKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -47,6 +47,13 @@ type
     FOnApplyDisplay: TSettingsApplyDisplay;
     FThemeIds: TArray<string>;
     FProfileIds: TArray<string>;
+    /// <summary>Markdown colors dialog: the edited set while the import
+    /// dialog is on top, and the import dialog's last path / palette.</summary>
+    FMdWorking: TMdColorSet;
+    FMdImportPath: string;
+    FMdImportPalette: Integer;
+    /// <summary>Id of the color field the color picker is editing.</summary>
+    FMdPickField: string;
     FLanguageCodes: TArray<string>;
     /// <summary>Display dialog: the size it opened with (pixels) and its
     /// list row. OK without touching the size keeps the exact value -- a
@@ -55,6 +62,12 @@ type
     FOpenFontSizeIdx: Integer;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
+    procedure ShowMarkdownColors(const ASet: TMdColorSet; const AStatus: string;
+      const AFocusId: string = '');
+    function FindMarkdownColorField(const AFieldId: string; out AKind: TMdSpanKind;
+      out AIsBg: Boolean): Boolean;
+    procedure BeginMarkdownPicker(const AFieldId: string);
+    function ReadMarkdownColorFields(out ASet: TMdColorSet): Boolean;
     function CollectAvailableProfiles(out ATitles, AIds: TArray<string>;
       const APreferId: string; out ASel: Integer): Boolean;
   public
@@ -74,6 +87,7 @@ type
     procedure OpenColumns;
     procedure OpenDisplay;
     procedure OpenExternalTools;
+    procedure OpenMarkdownColors;
     procedure OpenTerminalProfiles;
     procedure OpenConsoleProfiles;
     property OnGetConsoleStartOnLaunch: TFunc<Boolean>
@@ -84,6 +98,12 @@ type
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
+    procedure DispatchMarkdownColorsCommand(const AControlId: string);
+    procedure DispatchMarkdownImportCommand(const AControlId: string);
+    procedure DispatchMarkdownPickerCommand(const AControlId: string);
+    /// <summary>F9 on a color field of the Markdown colors dialog opens the picker.</summary>
+    function HandleMarkdownColorsInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     procedure DispatchTerminalProfileCommand(const AControlId: string);
     procedure DispatchConsoleProfileCommand(const AControlId: string);
     function DispatchCommand(AKind: THostDialogKind;
@@ -93,7 +113,7 @@ type
 implementation
 
 uses
-  uDialogResources;
+  uDialogResources, uColorCoding, uColorPickerControl;
 
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
@@ -426,6 +446,253 @@ begin
   Notify;
 end;
 
+procedure TSettingsDialogController.ShowMarkdownColors(const ASet: TMdColorSet;
+  const AStatus: string; const AFocusId: string);
+var
+  Decl: TDialogDeclaration;
+  Kind: TMdSpanKind;
+  Key: string;
+  Styles, StyleAttrs: TArray<string>;
+  I: Integer;
+begin
+  Decl := BuildMarkdownColorsDialog;
+  SetLength(Styles, MdStyleChoiceCount);
+  SetLength(StyleAttrs, MdStyleChoiceCount);
+  for I := 0 to High(Styles) do
+  begin
+    Styles[I] := T('ui.markdownColors.style.' + MdStyleChoiceKey(I), MdStyleChoiceKey(I));
+    StyleAttrs[I] := MdStyleChoiceAttrs(I);
+  end;
+  for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do
+  begin
+    Key := MdSpanKindKey(Kind);
+    DialogSetListItems(Decl, 'md_' + Key + '_style', Styles, MdStyleChoiceOf(ASet[Kind]));
+    DialogSetListItemIds(Decl, 'md_' + Key + '_style', StyleAttrs);
+    if ASet[Kind].HasFg then
+      DialogSetInputValue(Decl, 'md_' + Key + '_fg', ColorToHex(ASet[Kind].Fg));
+    if ASet[Kind].HasBg then
+      DialogSetInputValue(Decl, 'md_' + Key + '_bg', ColorToHex(ASet[Kind].Bg));
+  end;
+  if AStatus <> '' then
+    DialogSetLabelText(Decl, 'status', AStatus);
+  SetKind(hdkMarkdownColors);
+  FDialog.Open(Decl, FOnCommand);
+  if AFocusId <> '' then
+    FDialog.FocusControlById(AFocusId);
+  Notify;
+end;
+
+function TSettingsDialogController.FindMarkdownColorField(const AFieldId: string;
+  out AKind: TMdSpanKind; out AIsBg: Boolean): Boolean;
+var
+  Kind: TMdSpanKind;
+begin
+  Result := False;
+  for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do
+    if SameText(AFieldId, 'md_' + MdSpanKindKey(Kind) + '_fg') or
+       SameText(AFieldId, 'md_' + MdSpanKindKey(Kind) + '_bg') then
+    begin
+      AKind := Kind;
+      AIsBg := SameText(Copy(AFieldId, Length(AFieldId) - 2, 3), '_bg');
+      Exit(True);
+    end;
+end;
+
+procedure TSettingsDialogController.BeginMarkdownPicker(const AFieldId: string);
+var
+  Kind: TMdSpanKind;
+  IsBg: Boolean;
+  Start: TAlphaColor;
+  Title: string;
+begin
+  if not FindMarkdownColorField(AFieldId, Kind, IsBg) then
+    Exit;
+  // Fields that do not parse yet are left unset; the picker only needs the others.
+  ReadMarkdownColorFields(FMdWorking);
+  FMdPickField := AFieldId;
+  Start := cPickerNoColor;
+  if IsBg and FMdWorking[Kind].HasBg then
+    Start := FMdWorking[Kind].Bg
+  else if not IsBg and FMdWorking[Kind].HasFg then
+    Start := FMdWorking[Kind].Fg;
+  if IsBg then
+    Title := T('ui.colorPicker.background', 'Pick background color')
+  else
+    Title := T('ui.colorPicker.foreground', 'Pick foreground color');
+  SetKind(hdkMarkdownPicker);
+  FDialog.Open(BuildColorPickerDialog(Title, Start), FOnCommand);
+  Notify;
+end;
+
+function TSettingsDialogController.HandleMarkdownColorsInput(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Kind: TMdSpanKind;
+  IsBg: Boolean;
+begin
+  Result := (AKey = vkF9) and
+    FindMarkdownColorField(FDialog.FocusedControlId, Kind, IsBg);
+  if Result then
+  begin
+    BeginMarkdownPicker(FDialog.FocusedControlId);
+    AKey := 0;
+    AKeyChar := #0;
+  end;
+end;
+
+procedure TSettingsDialogController.DispatchMarkdownPickerCommand(
+  const AControlId: string);
+var
+  Kind: TMdSpanKind;
+  IsBg: Boolean;
+  Picked: TAlphaColor;
+  Clear: Boolean;
+begin
+  Clear := DialogCmdIs(AControlId, 'clear');
+  if (DialogCmdIsAccept(AControlId) or Clear) and
+     FindMarkdownColorField(FMdPickField, Kind, IsBg) then
+  begin
+    if not Clear then
+      HexToColor(FDialog.GetColorPickerHex('picker'), Picked);
+    if IsBg then
+    begin
+      FMdWorking[Kind].HasBg := not Clear;
+      if not Clear then
+        FMdWorking[Kind].Bg := Picked;
+    end
+    else
+    begin
+      FMdWorking[Kind].HasFg := not Clear;
+      if not Clear then
+        FMdWorking[Kind].Fg := Picked;
+    end;
+  end;
+  ShowMarkdownColors(FMdWorking, '', FMdPickField);
+end;
+
+// False when a field holds something other than #RRGGBB or blank.
+function TSettingsDialogController.ReadMarkdownColorFields(
+  out ASet: TMdColorSet): Boolean;
+var
+  Kind: TMdSpanKind;
+  Key, Fg, Bg: string;
+begin
+  MdColorSetClear(ASet);
+  Result := True;
+  for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do
+  begin
+    Key := MdSpanKindKey(Kind);
+    Fg := Trim(FDialog.GetInputValue('md_' + Key + '_fg'));
+    Bg := Trim(FDialog.GetInputValue('md_' + Key + '_bg'));
+    // Kinds without a style list (rules, table borders) keep whatever they had.
+    if FDialog.HasControl('md_' + Key + '_style') then
+      MdStyleChoiceApply(ASet[Kind], FDialog.GetListSelectedIndex('md_' + Key + '_style'))
+    else
+      MdStyleChoiceApply(ASet[Kind], 0);
+    if Fg <> '' then
+    begin
+      ASet[Kind].HasFg := HexToColor(Fg, ASet[Kind].Fg);
+      if not ASet[Kind].HasFg then
+        Result := False;
+    end;
+    if Bg <> '' then
+    begin
+      ASet[Kind].HasBg := HexToColor(Bg, ASet[Kind].Bg);
+      if not ASet[Kind].HasBg then
+        Result := False;
+    end;
+  end;
+end;
+
+procedure TSettingsDialogController.OpenMarkdownColors;
+begin
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  if Assigned(FOnPrepareUi) then
+    FOnPrepareUi();
+  ShowMarkdownColors(GlobalMarkdownColors, '');
+end;
+
+procedure TSettingsDialogController.DispatchMarkdownColorsCommand(
+  const AControlId: string);
+var
+  Colors: TMdColorSet;
+  BadColors, PickField: string;
+begin
+  if DialogCmdIsPick(AControlId, PickField) then
+  begin
+    BeginMarkdownPicker(PickField);
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, 'reset') then
+  begin
+    MdColorSetClear(Colors);
+    ShowMarkdownColors(Colors, '');
+    Exit;
+  end;
+  if DialogCmdIsReject(AControlId) then
+  begin
+    FDialog.Close;
+    Exit;
+  end;
+  BadColors := T('ui.markdownColors.badColor', 'Colors must be #RRGGBB, or blank.');
+  if not ReadMarkdownColorFields(Colors) then
+  begin
+    FDialog.SetStatus('status', BadColors);
+    SetKind(hdkMarkdownColors);
+    Notify;
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, 'import') then
+  begin
+    FMdWorking := Colors;
+    SetKind(hdkMarkdownImport);
+    FDialog.Open(BuildMarkdownImportDialog(FMdImportPath, FMdImportPalette), FOnCommand);
+    Notify;
+    Exit;
+  end;
+  FDialog.Close;
+  // The colors are in effect either way; only persisting can fail.
+  if not SetGlobalMarkdownColors(Colors) and Assigned(FOnShowStub) then
+    FOnShowStub(T('ui.markdownColors.title', 'Markdown colors'),
+      T('ui.markdownColors.saveFailed', 'Could not save') + ' ' +
+      DefaultMarkdownColorsFilePath);
+  Notify;
+end;
+
+procedure TSettingsDialogController.DispatchMarkdownImportCommand(
+  const AControlId: string);
+var
+  Colors: TMdColorSet;
+  Failure: TMdImportError;
+  Path, Msg: string;
+  Palette: Integer;
+begin
+  if DialogCmdIsAccept(AControlId) then
+  begin
+    Path := Trim(FDialog.GetInputValue('obs_path'));
+    Palette := FDialog.GetListSelectedIndex('obs_palette');
+    if not LoadObsidianTheme(Path, Palette = 0, Colors, Failure) then
+    begin
+      case Failure of
+        mieNoPath: Msg := T('ui.markdownColors.import.noPath', 'Enter the path to theme.css.');
+        mieNotFound: Msg := T('ui.markdownColors.import.notFound', 'File not found.');
+        mieUnreadable: Msg := T('ui.markdownColors.import.unreadable', 'Could not read the file.');
+      else
+        Msg := T('ui.markdownColors.import.noColors', 'No Obsidian colors found in the file.');
+      end;
+      FDialog.SetStatus('status', Msg);
+      SetKind(hdkMarkdownImport);
+      Notify;
+      Exit;
+    end;
+    FMdImportPath := Path;
+    FMdImportPalette := Palette;
+    FMdWorking := Colors;
+  end;
+  ShowMarkdownColors(FMdWorking, '');
+end;
+
 procedure TSettingsDialogController.DispatchExternalToolsCommand(
   const AControlId: string);
 var
@@ -496,6 +763,9 @@ begin
     hdkColumnsConfig: DispatchColumnsCommand(AControlId);
     hdkDisplay: DispatchDisplayCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);
+    hdkMarkdownColors: DispatchMarkdownColorsCommand(AControlId);
+    hdkMarkdownImport: DispatchMarkdownImportCommand(AControlId);
+    hdkMarkdownPicker: DispatchMarkdownPickerCommand(AControlId);
     hdkTerminalProfile: DispatchTerminalProfileCommand(AControlId);
     hdkConsoleProfile: DispatchConsoleProfileCommand(AControlId);
   else

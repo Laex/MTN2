@@ -60,7 +60,6 @@ type
     HandleTerminalClick: TClickDocFn;
     HandleFunctionBarClick: TClickColShiftFn;
     HandleDialogClick: TClickDocFn;
-    SyncColorPickerHex: TKeymapProc;
     LayoutSearchUi: TClickLayoutProc;
     SearchBounds: TClickBoundsFn;
     CloseSearchUi: TKeymapProc;
@@ -390,8 +389,6 @@ begin
   if ASnap.DialogVisible then
   begin
     AHandled := AHost.HandleDialogClick(ALocalCol, ALocalRow, AShift);
-    if ASnap.DialogKind = hdkColorPicker then
-      AHost.SyncColorPickerHex();
     Exit;
   end;
 

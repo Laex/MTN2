@@ -6,11 +6,12 @@ interface
 
 uses
   System.SysUtils, System.Math,
-  uInputLine, uTextEncoding, uTerminalTypes;
+  System.UITypes,
+  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl;
 
 type
   TDialogControlKind = (dckLabel, dckInput, dckCheckbox, dckButton, dckStatus,
-    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample);
+    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample, dckColorPicker);
 
   /// <summary>dckColorSample: which panel row visual state an UNSET Fg/Bg
   /// channel should preview as the theme's own resolved color for (matching
@@ -47,8 +48,25 @@ type
     BgSourceId: string;
     /// <summary>dckColorSample only - see TColorSamplePanelState.</summary>
     PanelState: TColorSamplePanelState;
+    /// <summary>dckColorSample only: id of a dckDropDown whose selected item's
+    /// ItemId ("bold+italic", "none") gives the text attributes the sample is
+    /// drawn with; an empty ItemId shows BaseStyle.</summary>
+    StyleSourceId: string;
+    /// <summary>dckColorSample only: attributes ("bold", "underline") shown
+    /// while StyleSourceId selects nothing of its own.</summary>
+    BaseStyle: string;
+    /// <summary>dckColorSample only: ids of inputs whose color stands in for the
+    /// foreground / background while the sample's own source is blank or not a
+    /// color (the document colors behind a Markdown element).</summary>
+    FgFallbackId, BgFallbackId: string;
+    /// <summary>dckColorPicker: the whole picker (uColorPickerControl).</summary>
+    Picker: TColorPickerState;
     /// <summary>dckInput: draw '*' instead of the stored characters.</summary>
     Password: Boolean;
+    /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
+    /// last cell (filled with the color); clicking it fires the command
+    /// DialogPickCommand(Id).</summary>
+    ColorPick: Boolean;
     /// <summary>dckInput: uDialogHistory key ('' = none). Such a field shows
     /// ↓ in its last cell and drops down Items (the key's history, filled by
     /// TDialogHost.Open) like a dckDropDown.</summary>
@@ -101,9 +119,15 @@ const
   cDlgCmdCancelJob = 'canceljob';
   cDlgCmdCancelAll = 'cancelall';
   cDlgCmdClearFilter = 'clear';
+  /// <summary>Suffix of the command a color field's pick button fires.</summary>
+  cDlgPickSuffix = ':pick';
 
 function IsDialogProtocolV2(const AVersion: string): Boolean;
 function DialogCmdIs(const AId, AExpected: string): Boolean;
+/// <summary>The command a pick button on input AFieldId fires.</summary>
+function DialogPickCommand(const AFieldId: string): string;
+/// <summary>True for a pick-button command; AFieldId is the input it belongs to.</summary>
+function DialogCmdIsPick(const AId: string; out AFieldId: string): Boolean;
 function DialogCmdIsOk(const AId: string): Boolean;
 function DialogCmdIsCancel(const AId: string): Boolean;
 function DialogCmdIsYes(const AId: string): Boolean;
@@ -132,6 +156,8 @@ function MakeStatus(const AId, AText: string): TDialogControl;
 /// <summary>Live color-swatch preview - see TDialogControl.FgSourceId/BgSourceId.</summary>
 function MakeColorSample(const AId, AText, AFgSourceId, ABgSourceId: string;
   APanelState: TColorSamplePanelState = cspsNone): TDialogControl;
+/// <summary>The color picker control (swatch grid, sliders, hex field).</summary>
+function MakeColorPicker(const AId: string): TDialogControl;
 /// <summary>"normal"/"selected"/"current" -> TColorSamplePanelState; anything
 /// else (including '') -> cspsNone.</summary>
 function ColorSamplePanelStateFromStr(const AStr: string): TColorSamplePanelState;
@@ -240,6 +266,13 @@ function BuildDisplayDialog(const AFontNames: TArray<string>;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
+/// <summary>Options > Markdown colors...: a foreground / background hex
+/// input per Markdown span kind (ids md_<key>_fg / md_<key>_bg, see
+/// uMarkdownColors.MdSpanKindKey); the caller fills them in.</summary>
+function BuildMarkdownColorsDialog: TDialogDeclaration;
+/// <summary>Import of an Obsidian theme into the Markdown colors: path of
+/// theme.css and the palette (0 = dark, 1 = light).</summary>
+function BuildMarkdownImportDialog(const APath: string; APaletteIndex: Integer): TDialogDeclaration;
 /// <summary>Files > Checksums...: algorithm dropdown (index into
 /// uChecksums.TChecksumAlgo order: MD5, SHA-1, SHA-256, SHA-512).</summary>
 function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
@@ -274,13 +307,9 @@ function BuildColorCodingEditDialog(const AName, AMask: string;
   AApplyToIndex: Integer; AEnabled: Boolean;
   const ANormalFg, ANormalBg, ASelectedFg, ASelectedBg,
   ACurrentFg, ACurrentBg: string): TDialogDeclaration;
-/// <summary>APresetLabels are pre-formatted display labels (name + hex -
-/// see ColorPickerPresets in uColorCodingEditHelpers.pas); APresetIndex is which one
-/// starts selected. AIsBg wires the live preview to show ACurrentHex as the
-/// background (picking a Bg field) or foreground (picking a Fg field).</summary>
-function BuildColorPickerDialog(const ATitle, ACurrentHex: string;
-  const APresetLabels: TArray<string>; APresetIndex: Integer;
-  AIsBg: Boolean): TDialogDeclaration;
+/// <summary>The color picker dialog, starting on AColor (which is also what
+/// its "was" swatch shows).</summary>
+function BuildColorPickerDialog(const ATitle: string; AColor: TAlphaColor): TDialogDeclaration;
 /// <summary>AItems are pre-formatted "Action  Hotkeys" rows - see
 /// TKeymapDialogController.ActionRowLabel in uDualPanelKeymapDialog.pas.</summary>
 function BuildKeymapDialog(const AItems: TArray<string>;
@@ -311,6 +340,21 @@ var
 begin
   V := Trim(AVersion);
   Result := SameText(V, cDialogProtocolV2) or SameText(V, '2');
+end;
+
+function DialogPickCommand(const AFieldId: string): string;
+begin
+  Result := AFieldId + cDlgPickSuffix;
+end;
+
+function DialogCmdIsPick(const AId: string; out AFieldId: string): Boolean;
+begin
+  Result := (Length(AId) > Length(cDlgPickSuffix)) and
+    SameText(Copy(AId, Length(AId) - Length(cDlgPickSuffix) + 1, MaxInt), cDlgPickSuffix);
+  if Result then
+    AFieldId := Copy(AId, 1, Length(AId) - Length(cDlgPickSuffix))
+  else
+    AFieldId := '';
 end;
 
 function DialogCmdIs(const AId, AExpected: string): Boolean;
@@ -407,6 +451,7 @@ begin
   InputLineSetText(Result.Edit, AValue);
   InputLineSelectAll(Result.Edit);
   Result.Password := False;
+  Result.ColorPick := False;
   Result.History := '';
   SetLength(Result.Items, 0);
   SetLength(Result.ItemIds, 0);
@@ -498,6 +543,28 @@ begin
   Result.SelectedIndex := 0;
   Result.FgSourceId := '';
   Result.BgSourceId := '';
+  ClearControlLayout(Result);
+end;
+
+function MakeColorPicker(const AId: string): TDialogControl;
+begin
+  Result.Kind := dckColorPicker;
+  Result.Id := AId;
+  Result.Text := '';
+  Result.Group := '';
+  Result.Checked := False;
+  Result.IsDefault := False;
+  Result.IsCancel := False;
+  Result.Edit := InputLineEmpty;
+  Result.Picker := ColorPickerEmpty;
+  SetLength(Result.Items, 0);
+  SetLength(Result.ItemIds, 0);
+  Result.SelectedIndex := 0;
+  Result.FgSourceId := '';
+  Result.BgSourceId := '';
+  Result.PanelState := cspsNone;
+  Result.Password := False;
+  Result.History := '';
   ClearControlLayout(Result);
 end;
 
@@ -1074,6 +1141,18 @@ begin
   DialogSetCheckbox(Result, 'col_attr', AShowAttr);
 end;
 
+function BuildMarkdownColorsDialog: TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogMarkdownColors, Result);
+end;
+
+function BuildMarkdownImportDialog(const APath: string; APaletteIndex: Integer): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogMarkdownImport, Result);
+  DialogSetInputValue(Result, 'obs_path', APath);
+  DialogSetDropDownSelected(Result, 'obs_palette', APaletteIndex);
+end;
+
 function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogChecksumOpts, Result);
@@ -1279,18 +1358,11 @@ begin
   DialogSetInputValue(Result, 'cc_current_bg', ACurrentBg);
 end;
 
-function BuildColorPickerDialog(const ATitle, ACurrentHex: string;
-  const APresetLabels: TArray<string>; APresetIndex: Integer;
-  AIsBg: Boolean): TDialogDeclaration;
+function BuildColorPickerDialog(const ATitle: string; AColor: TAlphaColor): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogColorPicker, Result);
   DialogSetTitle(Result, ATitle);
-  DialogSetListItems(Result, 'picker_presets', APresetLabels, APresetIndex);
-  DialogSetInputValue(Result, 'picker_hex', ACurrentHex);
-  if AIsBg then
-    DialogSetColorSampleSources(Result, 'preview', '', 'picker_hex')
-  else
-    DialogSetColorSampleSources(Result, 'preview', 'picker_hex', '');
+  DialogSetColorPicker(Result, 'picker', AColor);
 end;
 
 function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;

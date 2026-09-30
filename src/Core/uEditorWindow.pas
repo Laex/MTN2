@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap;
+  uMarkdownColors, uHistoryPopup, uKeymap;
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
@@ -167,12 +167,14 @@ type
     procedure CacheMdLine(AIndex: Integer; const AValue: TMdLine);
     function MarkdownWrapStarts(const ALine: TMdLine; ATextW: Integer): TArray<Integer>;
     function ResolveMarkdownImageUri(const AImagePath: string): string;
-    /// <summary>Screen block for a standalone image: ACols = 2/3 of the
-    /// window width (within the text area), rows from the image's aspect
-    /// ratio and the cell aspect; capped to AViewH (the width then shrinks
-    /// to keep the proportions).</summary>
-    function MarkdownImageBlock(const AImageUri: string; ATextW, AViewH: Integer;
-      out ACols: Integer): Integer;
+    /// <summary>Screen block for a standalone image. The image is shown at
+    /// its own pixel size, or at the size the line requests (ReqW/ReqH,
+    /// pixels); when that is wider than the text area (ATextW) it shrinks
+    /// proportionally to it. Rows follow from the result and are capped to
+    /// AViewH (the width then shrinks to keep the proportions). AScale is
+    /// the device-pixel scale to draw at (0 when the image size is unknown).</summary>
+    function MarkdownImageBlock(const AImageUri: string; AReqW, AReqH, ATextW, AViewH: Integer;
+      out ACols: Integer; out AScale: Single): Integer;
     procedure DrawMarkdownContent;
     procedure LeaveMarkdownOverlay;
     procedure EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
@@ -996,13 +998,15 @@ var
   MdLine: TMdLine;
   ImgUri: string;
   ImgCols: Integer;
+  ImgScale: Single;
 begin
   MdLine := GetMdLine(ALineIdx);
   if MdLine.IsImage and not FChromeless then
   begin
     ImgUri := ResolveMarkdownImageUri(MdLine.ImagePath);
     if (ImgUri <> '') and IsOverlayImageExtension(ExtractFileExt(MdLine.ImagePath)) then
-      Exit(Min(MarkdownImageBlock(ImgUri, ATextW, ViewHeight, ImgCols),
+      Exit(Min(MarkdownImageBlock(ImgUri, MdLine.ImageWidth, MdLine.ImageHeight,
+        ATextW, ViewHeight, ImgCols, ImgScale),
         Max(ARemainRows, 1)));
   end;
   Result := Length(MarkdownWrapStarts(MdLine, ATextW));
@@ -3024,13 +3028,15 @@ begin
   FMdImageUriCache.Add(AImagePath, Result);
 end;
 
-function TEditorWindow.MarkdownImageBlock(const AImageUri: string; ATextW, AViewH: Integer;
-  out ACols: Integer): Integer;
+function TEditorWindow.MarkdownImageBlock(const AImageUri: string; AReqW, AReqH, ATextW, AViewH: Integer;
+  out ACols: Integer; out AScale: Single): Integer;
 var
   Sz: TMdImageSize;
   Aspect: Single;
+  NatCols, NatRows: Integer;
 begin
-  ACols := EnsureRange(Round(Area.Width * 2 / 3), 1, Max(ATextW, 1));
+  ACols := Max(ATextW, 1);
+  AScale := 0;
   if not FMdImageSizeCache.TryGetValue(AImageUri, Sz) then
   begin
     if not ReadImagePixelSize(FileUriToPath(AImageUri), Sz.W, Sz.H) then
@@ -3043,7 +3049,23 @@ begin
   if (Sz.W <= 0) or (Sz.H <= 0) then
     Exit(Min(cMdImageRows, Max(AViewH, 1))); // unknown format: a fixed-height block
   Aspect := OverlayCellAspect;
-  Result := Max(1, Ceil(ACols * (Sz.H / Sz.W) / Aspect));
+  AScale := 1;
+  if (AReqW > 0) and (AReqH > 0) then
+    AScale := Min(AReqW / Sz.W, AReqH / Sz.H)
+  else if AReqW > 0 then
+    AScale := AReqW / Sz.W
+  else if AReqH > 0 then
+    AScale := AReqH / Sz.H;
+  if OverlayNativeCellSize(Ceil(Sz.W * AScale), Ceil(Sz.H * AScale), NatCols, NatRows) and
+     (NatCols <= ACols) then
+  begin
+    // Fits the width: shown at the requested (or its own) pixel size.
+    ACols := NatCols;
+    Result := NatRows;
+  end
+  else
+    // Wider than the viewer: scaled down proportionally to the full width.
+    Result := Max(1, Ceil(ACols * (Sz.H / Sz.W) / Aspect));
   if Result > Max(AViewH, 1) then
   begin
     // Taller than the viewport: fit the height, narrow the block to match so
@@ -3056,6 +3078,8 @@ end;
 procedure TEditorWindow.DrawMarkdownContent;
 var
   W, ViewH, TextW, Y, LineIdx, Reserved, ImgCols, ImgRows: Integer;
+  ImgScale: Single;
+  BodyFg, BodyBg: TAlphaColor;
   MdLine: TMdLine;
   ImgUri: string;
   AbsBounds, AbsClip: TRectI;
@@ -3068,6 +3092,10 @@ begin
   ViewH := ViewHeight;
   TextW := TextWidth;
   ShowingOverlay := False;
+  // The document colors (Options > Markdown colors) replace the viewer's body colors here only.
+  BodyFg := FThemeColors.BodyFg;
+  BodyBg := FThemeColors.BodyBg;
+  ApplyMarkdownColorOverride(mskText, BodyFg, BodyBg);
 
   Y := 0;
   LineIdx := FTopLine;
@@ -3075,7 +3103,7 @@ begin
   begin
     if LineIdx >= FDoc.LineCount then
     begin
-      FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
+      FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', BodyFg, BodyBg);
       Inc(Y);
       Inc(LineIdx);
       Continue;
@@ -3088,9 +3116,10 @@ begin
       ImgUri := ResolveMarkdownImageUri(MdLine.ImagePath);
       if (ImgUri <> '') and IsOverlayImageExtension(ExtractFileExt(MdLine.ImagePath)) then
       begin
-        ImgRows := MarkdownImageBlock(ImgUri, TextW, ViewH, ImgCols);
+        ImgRows := MarkdownImageBlock(ImgUri, MdLine.ImageWidth, MdLine.ImageHeight,
+          TextW, ViewH, ImgCols, ImgScale);
         Reserved := Min(ImgRows, ViewH - Y);
-        FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y + Reserved - 1, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
+        FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y + Reserved - 1, ' ', BodyFg, BodyBg);
         // Area is compositor-absolute (PaintEmbedded sets DualPanel.Area +
         // dest inset; a standalone editor's Area is the MDI window). Overlay
         // FormPaint uses the same absolute cells as Quick View.
@@ -3101,9 +3130,9 @@ begin
         AbsClip := TRectI.Make(1 + Area.Left, 1 + Y + Area.Top,
           ImgCols + Area.Left, 1 + Y + Reserved - 1 + Area.Top);
         if OverlayCurrentURI <> ImgUri then
-          RequestOverlayPreview(ImgUri, AbsBounds, AbsClip)
+          RequestOverlayPreview(ImgUri, AbsBounds, AbsClip, ImgScale)
         else
-          UpdateOverlayBounds(AbsBounds, AbsClip);
+          UpdateOverlayBounds(AbsBounds, AbsClip, ImgScale);
         ShowingOverlay := True;
         Inc(Y, Reserved);
         Inc(LineIdx);
@@ -3134,7 +3163,7 @@ begin
         ChunkEnd := WrapStarts[RowInLine + 1] - 1
       else
         ChunkEnd := DisplayLen;
-      FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
+      FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', BodyFg, BodyBg);
       if (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
       begin
         TMarkdownPainter.DrawLine(Buffer[1 + Y], 1, TextW, MdLine, Theme, ChunkStart, ChunkEnd);

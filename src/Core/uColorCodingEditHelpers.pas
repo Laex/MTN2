@@ -59,13 +59,6 @@ function ColorCodingFieldValue(const AFields: TColorCodingEditFields;
 procedure ColorCodingSetFieldValue(var AFields: TColorCodingEditFields;
   const AFieldId, AValue: string);
 
-/// <summary>16 named ANSI presets (uANSIParser.TANSIParser.StandardAnsiColor
-/// - the same 16 colors the terminal itself uses for SGR 30-37/90-97, so
-/// the picker offers exactly the palette this app already renders with,
-/// not an invented one) as pre-formatted "Name           #RRGGBB" labels
-/// for the picker's list, plus the matching hex strings in the same order.</summary>
-procedure ColorPickerPresets(out ALabels, AHexes: TArray<string>);
-
 implementation
 
 uses
@@ -195,24 +188,6 @@ begin
   else if SameText(AFieldId, 'cc_selected_bg') then AFields.SelectedBg := AValue
   else if SameText(AFieldId, 'cc_current_fg') then AFields.CurrentFg := AValue
   else if SameText(AFieldId, 'cc_current_bg') then AFields.CurrentBg := AValue;
-end;
-
-procedure ColorPickerPresets(out ALabels, AHexes: TArray<string>);
-const
-  cNames: array[0..7] of string = ('Black', 'Red', 'Green', 'Yellow',
-    'Blue', 'Magenta', 'Cyan', 'White');
-var
-  I: Integer;
-begin
-  SetLength(ALabels, 16);
-  SetLength(AHexes, 16);
-  for I := 0 to 7 do
-  begin
-    AHexes[I] := ColorToHex(TANSIParser.StandardAnsiColor(I, False));
-    ALabels[I] := PadRight(cNames[I], 14) + ' ' + AHexes[I];
-    AHexes[I + 8] := ColorToHex(TANSIParser.StandardAnsiColor(I, True));
-    ALabels[I + 8] := PadRight('Bright ' + cNames[I], 14) + ' ' + AHexes[I + 8];
-  end;
 end;
 
 end.

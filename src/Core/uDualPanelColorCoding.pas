@@ -47,7 +47,6 @@ type
     procedure SnapshotEditFields;
     procedure ReopenEditFromFields;
     procedure BeginPicker(const AFieldId: string);
-    procedure SyncHexFromPreset;
     function HandleListInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function HandleEditInput(var AKey: Word; AShift: TShiftState;
@@ -63,7 +62,7 @@ type
 implementation
 
 uses
-  uStrings, uKeyChord;
+  uStrings, uKeyChord, uColorPickerControl;
 
 constructor TColorCodingDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TColorCodingKindSetter;
@@ -300,46 +299,19 @@ end;
 
 procedure TColorCodingDialogController.BeginPicker(const AFieldId: string);
 var
-  CurrentHex, Title: string;
-  IsBg: Boolean;
-  Labels, Hexes: TArray<string>;
-  PresetIdx, I: Integer;
+  Title: string;
+  Start: TAlphaColor;
 begin
   SnapshotEditFields;
   FPickerFieldId := AFieldId;
-  CurrentHex := ColorCodingFieldValue(FEditFields, AFieldId);
-  IsBg := ColorCodingFieldIsBg(AFieldId);
-  if IsBg then
+  if not HexToColor(ColorCodingFieldValue(FEditFields, AFieldId), Start) then
+    Start := cPickerNoColor;
+  if ColorCodingFieldIsBg(AFieldId) then
     Title := T('ui.colorPicker.background', 'Pick background color')
   else
     Title := T('ui.colorPicker.foreground', 'Pick foreground color');
-  ColorPickerPresets(Labels, Hexes);
-  PresetIdx := 0;
-  if CurrentHex <> '' then
-    for I := 0 to High(Hexes) do
-      if SameText(Hexes[I], CurrentHex) then
-      begin
-        PresetIdx := I;
-        Break;
-      end;
   SetKind(hdkColorPicker);
-  FDialog.Open(BuildColorPickerDialog(Title, CurrentHex, Labels, PresetIdx, IsBg),
-    FOnCommand);
-  Notify;
-end;
-
-procedure TColorCodingDialogController.SyncHexFromPreset;
-var
-  Labels, Hexes: TArray<string>;
-  Idx: Integer;
-begin
-  if not SameText(FDialog.FocusedControlId, 'picker_presets') then
-    Exit;
-  Idx := FDialog.GetListSelectedIndex('picker_presets');
-  ColorPickerPresets(Labels, Hexes);
-  if (Idx < 0) or (Idx > High(Hexes)) then
-    Exit;
-  FDialog.SetInputValue('picker_hex', Hexes[Idx]);
+  FDialog.Open(BuildColorPickerDialog(Title, Start), FOnCommand);
   Notify;
 end;
 
@@ -448,7 +420,13 @@ function TColorCodingDialogController.DispatchEditCommand(
   const AControlId: string): Boolean;
 var
   SelectAfter: Integer;
+  PickField: string;
 begin
+  if DialogCmdIsPick(AControlId, PickField) then
+  begin
+    BeginPicker(PickField);
+    Exit(True);
+  end;
   SelectAfter := FEditIndex;
   if DialogCmdIsAccept(AControlId) then
   begin
@@ -470,33 +448,12 @@ end;
 
 function TColorCodingDialogController.DispatchPickerCommand(
   const AControlId: string): Boolean;
-var
-  PickedHex: string;
-  PresetIdx: Integer;
-  PresetLabels, PresetHexes: TArray<string>;
-  DummyColor: TAlphaColor;
 begin
   if DialogCmdIsAccept(AControlId) then
-  begin
-    PickedHex := Trim(FDialog.GetInputValue('picker_hex'));
-    if PickedHex = '' then
-    begin
-      // Nothing typed - fall back to whichever preset is highlighted.
-      PresetIdx := FDialog.GetListSelectedIndex('picker_presets');
-      ColorPickerPresets(PresetLabels, PresetHexes);
-      if (PresetIdx >= 0) and (PresetIdx <= High(PresetHexes)) then
-        PickedHex := PresetHexes[PresetIdx];
-    end
-    else if not HexToColor(PickedHex, DummyColor) then
-    begin
-      FDialog.SetStatus('status',
-        'Enter a valid #RRGGBB color, or leave blank to use the preset above.');
-      SetKind(hdkColorPicker);
-      Notify;
-      Exit(False);
-    end;
-    ColorCodingSetFieldValue(FEditFields, FPickerFieldId, PickedHex);
-  end;
+    ColorCodingSetFieldValue(FEditFields, FPickerFieldId,
+      FDialog.GetColorPickerHex('picker'))
+  else if DialogCmdIs(AControlId, 'clear') then
+    ColorCodingSetFieldValue(FEditFields, FPickerFieldId, '');
   FDialog.Close;
   ReopenEditFromFields;
   Result := True;

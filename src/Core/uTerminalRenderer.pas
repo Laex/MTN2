@@ -963,10 +963,11 @@ begin
 
         if RunStr <> '' then
         begin
+          TargetStyle := [];
           if ccaBold in RunAttr then
-            TargetStyle := [TFontStyle.fsBold]
-          else
-            TargetStyle := [];
+            Include(TargetStyle, TFontStyle.fsBold);
+          if ccaItalic in RunAttr then
+            Include(TargetStyle, TFontStyle.fsItalic);
 
           for I := 1 to Length(RunStr) do
           begin
@@ -1015,6 +1016,27 @@ begin
         DevB := Round(FYTop[Y + 1] * Sc) - Max(1, Round(FCellHeight * Sc * 0.08));
         Canvas.Fill.Color := FGrid[Y][X].FgColor;
         Canvas.FillRect(RectF(DevL / Sc, (DevB - ulDev) / Sc, DevR / Sc, DevB / Sc),
+          0, 0, [], 1);
+      end;
+    end;
+
+    // Strikethrough (Markdown ~~text~~): a 1 CSS-px bar in the glyph colour
+    // through the middle of the cell, spaces included.
+    for Y := 0 to FRows - 1 do
+    begin
+      if Y > High(FGrid) then
+        Break;
+      for X := 0 to FCols - 1 do
+      begin
+        if X > High(FGrid[Y]) then
+          Break;
+        if not (ccaStrike in FGrid[Y][X].Attributes) then
+          Continue;
+        DevL := Round(FXLeft[X] * Sc);
+        DevR := Round(FXLeft[X + 1] * Sc);
+        DevT := Round((FYTop[Y] + FCellHeight * 0.55) * Sc);
+        Canvas.Fill.Color := FGrid[Y][X].FgColor;
+        Canvas.FillRect(RectF(DevL / Sc, DevT / Sc, DevR / Sc, (DevT + ulDev) / Sc),
           0, 0, [], 1);
       end;
     end;

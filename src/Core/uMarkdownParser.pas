@@ -8,13 +8,13 @@ unit uMarkdownParser;
   (uEditorWindow.DrawMarkdownContent), it never merges two source lines into
   one.
 
-  DisplayText is not always the raw source line any more: **bold**/__bold__,
-  *italic*/_italic_, and ***bold+italic*** have their delimiters stripped
-  (just the inner text is kept, styled), since showing literal markers
-  around already-colored emphasis reads as noise. [text](url) shows just
-  "text" as one mskLink span; the url travels in TMdSpan.Target (the Help
-  viewer follows it). `code` and ~~strike~~ keep their delimiters - colored
-  as one span covering the whole token - and ATX headings still get their leading #'s + following space
+  DisplayText is not always the raw source line: **bold**/__bold__,
+  *italic*/_italic_, ***bold+italic***, and ~~strike~~ have their delimiters
+  stripped (just the inner text is kept, styled), since showing literal
+  markers around already-styled emphasis reads as noise. [text](url) shows
+  just "text" as one mskLink span; the url travels in TMdSpan.Target (the
+  Help viewer follows it). `code` keeps its delimiters - colored as one span
+  covering the whole token - and ATX headings get their leading #'s + following space
   stripped (a heading is always a single-style whole line, so there's no
   delimiter/content split to preserve). Standalone image lines become a
   "[image: alt]" placeholder,
@@ -82,6 +82,9 @@ type
     IsImage: Boolean;
     ImageAlt: string;
     ImagePath: string;
+    /// <summary>Requested display size in pixels from "![[f.png|300]]",
+    /// "![[f.png|300x200]]" or "![alt|300](f.png)"; 0 = not given.</summary>
+    ImageWidth, ImageHeight: Integer;
     IsTable: Boolean;
   end;
 
@@ -277,15 +280,48 @@ begin
   Result := (E = '.png') or (E = '.jpg') or (E = '.jpeg') or (E = '.bmp');
 end;
 
+// Obsidian size suffix: "300" (width) or "300x200" (width x height).
+function TryParseImageSize(const S: string; out AW, AH: Integer): Boolean;
+var
+  X: Integer;
+  WPart, HPart: string;
+begin
+  AW := 0;
+  AH := 0;
+  Result := False;
+  X := Pos('x', LowerCase(S));
+  if X > 0 then
+  begin
+    WPart := Copy(S, 1, X - 1);
+    HPart := Copy(S, X + 1, MaxInt);
+  end
+  else
+  begin
+    WPart := S;
+    HPart := '';
+  end;
+  if StrToIntDef(WPart, -1) <= 0 then
+    Exit;
+  if (X > 0) and (StrToIntDef(HPart, -1) <= 0) then
+    Exit;
+  AW := StrToInt(WPart);
+  if X > 0 then
+    AH := StrToInt(HPart);
+  Result := True;
+end;
+
 // Whole (trimmed) line is exactly "![alt](path)" - Overlay shape.
 // Inline images mid-paragraph stay out of scope.
-function TryParseCommonMarkImage(const T: string; out AAlt, APath: string): Boolean;
+function TryParseCommonMarkImage(const T: string; out AAlt, APath: string;
+  out AW, AH: Integer): Boolean;
 var
-  N, CloseBracket, CloseParen, Gt, Sp: Integer;
+  N, CloseBracket, CloseParen, Gt, Sp, Bar: Integer;
 begin
   Result := False;
   AAlt := '';
   APath := '';
+  AW := 0;
+  AH := 0;
   N := Length(T);
   if (N < 5) or (T[1] <> '!') or (T[2] <> '[') then
     Exit;
@@ -319,19 +355,26 @@ begin
       APath := Copy(APath, 1, Sp - 1);
   end;
   AAlt := Copy(T, 3, CloseBracket - 3);
+  // Obsidian: "![alt|300](path)" - a numeric last segment is the size.
+  Bar := LastDelimiter('|', AAlt);
+  if (Bar > 0) and TryParseImageSize(Copy(AAlt, Bar + 1, MaxInt), AW, AH) then
+    AAlt := Copy(AAlt, 1, Bar - 1);
   Result := True;
 end;
 
 // Obsidian embed on its own line: ![[file.png]] or ![[file.png|wsmall]].
 // Only image extensions - ![[OtherNote]] is a note transclusion, not Overlay.
-function TryParseWikiImage(const T: string; out AAlt, APath: string): Boolean;
+function TryParseWikiImage(const T: string; out AAlt, APath: string;
+  out AW, AH: Integer): Boolean;
 var
-  N, Pipe: Integer;
+  N, Pipe, Bar: Integer;
   Inner, NamePart: string;
 begin
   Result := False;
   AAlt := '';
   APath := '';
+  AW := 0;
+  AH := 0;
   N := Length(T);
   if (N < 8) or (Copy(T, 1, 3) <> '![[') or (Copy(T, N - 1, 2) <> ']]') then
     Exit;
@@ -343,18 +386,24 @@ begin
     NamePart := Trim(Inner);
   if (NamePart = '') or not IsMdImageExt(ExtractFileExt(NamePart)) then
     Exit;
+  if Pipe > 0 then
+  begin
+    Bar := LastDelimiter('|', Inner);
+    TryParseImageSize(Trim(Copy(Inner, Bar + 1, MaxInt)), AW, AH);
+  end;
   APath := NamePart;
   AAlt := ChangeFileExt(LastPathSegment(NamePart), '');
   Result := True;
 end;
 
-function TryParseStandaloneImage(const ARaw: string; out AAlt, APath: string): Boolean;
+function TryParseStandaloneImage(const ARaw: string; out AAlt, APath: string;
+  out AW, AH: Integer): Boolean;
 var
   T: string;
 begin
   T := Trim(ARaw);
-  Result := TryParseCommonMarkImage(T, AAlt, APath) or
-    TryParseWikiImage(T, AAlt, APath);
+  Result := TryParseCommonMarkImage(T, AAlt, APath, AW, AH) or
+    TryParseWikiImage(T, AAlt, APath, AW, AH);
 end;
 
 // "%20" etc. in a CommonMark destination are percent-encoded UTF-8 bytes.
@@ -503,11 +552,10 @@ end;
 // Single left-to-right pass: at each position, try each inline construct in
 // precedence order (code > ***bold+italic*** > **bold** > __bold__ >
 // ~~strike~~ > [link](url) > *italic* > _italic_); first match wins. Bold,
-// italic, and bold+italic are STRIPPED (only the inner text is copied to
-// the output, the * / ** / *** / _ / __ delimiters are dropped); a link
-// keeps only its [text] (the url goes to TMdSpan.Target); every other
-// construct is copied through verbatim (delimiters included) and colored as
-// one span.
+// italic, bold+italic, and strike are STRIPPED (only the inner text is copied
+// to the output, the * / ** / *** / _ / __ / ~~ delimiters are dropped); a
+// link keeps only its [text] (the url goes to TMdSpan.Target); inline code is
+// copied through verbatim (delimiters included) and colored as one span.
 // No nesting (e.g. an *italic* run inside **bold** is not separately
 // styled) and an unmatched opening marker is copied through as plain text
 // rather than consuming the rest of the line - deliberate
@@ -606,7 +654,7 @@ begin
       if TryMarker('***', '***', mskBoldItalic, True) then Continue;
       if TryMarker('**', '**', mskBold, True) then Continue;
       if TryMarker('__', '__', mskBold, True, True) then Continue;
-      if TryMarker('~~', '~~', mskStrike, False) then Continue;
+      if TryMarker('~~', '~~', mskStrike, True) then Continue;
       if TryLink then Continue;
       if TryMarker('*', '*', mskItalic, True) then Continue;
       if TryMarker('_', '_', mskItalic, True, True) then Continue;
@@ -645,12 +693,15 @@ var
   Trimmed: string;
   HeadLevel, Ws, MarkerLen: Integer;
   Alt, Path: string;
+  ImgW, ImgH: Integer;
   InlineRes: TMdInlineResult;
 begin
   Result.DisplayText := ARaw;
   Result.IsImage := False;
   Result.ImageAlt := '';
   Result.ImagePath := '';
+  Result.ImageWidth := 0;
+  Result.ImageHeight := 0;
   Result.IsTable := False;
   Result.Spans := nil;
 
@@ -673,11 +724,13 @@ begin
     Exit;
   end;
 
-  if TryParseStandaloneImage(ARaw, Alt, Path) then
+  if TryParseStandaloneImage(ARaw, Alt, Path, ImgW, ImgH) then
   begin
     Result.IsImage := True;
     Result.ImageAlt := Alt;
     Result.ImagePath := Path;
+    Result.ImageWidth := ImgW;
+    Result.ImageHeight := ImgH;
     if Alt <> '' then
       Result.DisplayText := '[image: ' + Alt + ']'
     else
@@ -1153,6 +1206,8 @@ begin
   Result.IsImage := False;
   Result.ImageAlt := '';
   Result.ImagePath := '';
+  Result.ImageWidth := 0;
+  Result.ImageHeight := 0;
   Result.IsTable := True;
   for C := 0 to AColCount - 1 do
   begin
@@ -1241,6 +1296,8 @@ begin
   Result.IsImage := False;
   Result.ImageAlt := '';
   Result.ImagePath := '';
+  Result.ImageWidth := 0;
+  Result.ImageHeight := 0;
   Result.IsTable := False;
   ColCount := ALayout.ColCount;
   if (ColCount < 1) or (AIndexInBlock < 0) then

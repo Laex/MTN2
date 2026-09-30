@@ -120,6 +120,7 @@ begin
     C.Password := JsonBool(AObj, 'password', False);
     if not C.Password then
       C.History := JsonStr(AObj, 'history');
+    C.ColorPick := JsonBool(AObj, 'colorpick', False);
     AppendParsed(AList, C, AObj);
   end
   else if Typ = 'checkbox' then
@@ -141,9 +142,17 @@ begin
     // A full-width rule: TDialogHost joins it to the frame (╟───╢).
     AppendParsed(AList, MakeHRule(JsonInt(AObj, 'width', 1)), AObj)
   else if Typ = 'colorsample' then
-    AppendParsed(AList,
-      MakeColorSample(Id, Text, JsonStr(AObj, 'fgFrom'), JsonStr(AObj, 'bgFrom'),
-        ColorSamplePanelStateFromStr(JsonStr(AObj, 'panelState'))), AObj)
+  begin
+    C := MakeColorSample(Id, Text, JsonStr(AObj, 'fgFrom'), JsonStr(AObj, 'bgFrom'),
+      ColorSamplePanelStateFromStr(JsonStr(AObj, 'panelState')));
+    C.StyleSourceId := JsonStr(AObj, 'styleFrom');
+    C.BaseStyle := JsonStr(AObj, 'baseStyle');
+    C.FgFallbackId := JsonStr(AObj, 'fgFallback');
+    C.BgFallbackId := JsonStr(AObj, 'bgFallback');
+    AppendParsed(AList, C, AObj);
+  end
+  else if Typ = 'colorpicker' then
+    AppendParsed(AList, MakeColorPicker(Id), AObj)
   else if Typ = 'list' then
   begin
     SetLength(Items, 0);
@@ -379,6 +388,8 @@ begin
             One := One + ',"password":true';
           if C.History <> '' then
             One := One + Format(',"history":"%s"', [EscapeJson(C.History)]);
+          if C.ColorPick then
+            One := One + ',"colorpick":true';
         end;
       dckCheckbox:
         if C.Checked then
@@ -399,6 +410,8 @@ begin
       dckStatus:
         One := Format('{"type":"status","id":"%s","text":"%s"',
           [EscapeJson(C.Id), EscapeJson(C.Text)]);
+      dckColorPicker:
+        One := Format('{"type":"colorpicker","id":"%s"', [EscapeJson(C.Id)]);
       dckColorSample:
         begin
           One := Format('{"type":"colorsample","id":"%s","text":"%s"',
@@ -407,6 +420,14 @@ begin
             One := One + Format(',"fgFrom":"%s"', [EscapeJson(C.FgSourceId)]);
           if C.BgSourceId <> '' then
             One := One + Format(',"bgFrom":"%s"', [EscapeJson(C.BgSourceId)]);
+          if C.StyleSourceId <> '' then
+            One := One + Format(',"styleFrom":"%s"', [EscapeJson(C.StyleSourceId)]);
+          if C.BaseStyle <> '' then
+            One := One + Format(',"baseStyle":"%s"', [EscapeJson(C.BaseStyle)]);
+          if C.FgFallbackId <> '' then
+            One := One + Format(',"fgFallback":"%s"', [EscapeJson(C.FgFallbackId)]);
+          if C.BgFallbackId <> '' then
+            One := One + Format(',"bgFallback":"%s"', [EscapeJson(C.BgFallbackId)]);
         end;
       dckList:
         begin

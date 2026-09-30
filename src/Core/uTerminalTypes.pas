@@ -7,7 +7,7 @@ uses
 
 type
   TCharCellAttribute = (ccaBold, ccaItalic, ccaUnderline, ccaBlink, ccaReverse,
-    ccaInsertCaret);
+    ccaInsertCaret, ccaStrike);
   TCharCellAttributes = set of TCharCellAttribute;
 
   TCharCell = record

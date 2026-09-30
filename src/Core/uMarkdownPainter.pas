@@ -12,7 +12,7 @@ interface
 
 uses
   System.UITypes, System.Math,
-  uTerminalTypes, uThemeTypes, uMarkdownParser;
+  uTerminalTypes, uThemeTypes, uMarkdownParser, uMarkdownColors;
 
 type
   TMarkdownPainter = class
@@ -51,11 +51,31 @@ var
   I, ColIdx, CharIdx, N, LastChunkChar: Integer;
   St: TResolvedMdStyle;
   Ch: Char;
+  ThemeTextBg: TAlphaColor;
+  FollowsText: Boolean;
 begin
   for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do
     ATheme.ResolveMarkdownStyleColors(Kind, Styles[Kind].Fg, Styles[Kind].Bg, Styles[Kind].Attr);
-  // Links are underlined in every theme (the renderer draws ccaUnderline).
+  // Links are underlined and italic / strike elements are slanted / struck in
+  // every theme; the themes only choose the colors. The user's style replaces
+  // these too.
   Include(Styles[mskLink].Attr, ccaUnderline);
+  Include(Styles[mskItalic].Attr, ccaItalic);
+  Include(Styles[mskBoldItalic].Attr, ccaItalic);
+  Include(Styles[mskStrike].Attr, ccaStrike);
+  // A kind whose theme background is the plain-text background has none of its
+  // own: it follows the user's document background.
+  ThemeTextBg := Styles[mskText].Bg;
+  ApplyMarkdownColorOverride(mskText, Styles[mskText].Fg, Styles[mskText].Bg);
+  ApplyMarkdownStyleOverride(mskText, Styles[mskText].Attr);
+  for Kind := Succ(Low(TMdSpanKind)) to High(TMdSpanKind) do
+  begin
+    FollowsText := Styles[Kind].Bg = ThemeTextBg;
+    ApplyMarkdownColorOverride(Kind, Styles[Kind].Fg, Styles[Kind].Bg);
+    ApplyMarkdownStyleOverride(Kind, Styles[Kind].Attr);
+    if FollowsText and not MarkdownColorOverride(Kind).HasBg then
+      Styles[Kind].Bg := Styles[mskText].Bg;
+  end;
 
   N := Length(ALine.DisplayText);
   SetLength(Kinds, N);

@@ -118,6 +118,7 @@ type
     tmaOptColumnsConfig,
     tmaOptDisplay,
     tmaOptExternalTools,
+    tmaOptMarkdownColors,
     tmaOptZoomIn,
     tmaOptZoomOut,
     tmaOptResetZoom,

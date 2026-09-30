@@ -10,6 +10,7 @@ program DialogsTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestAskSaveRoundTrip in 'TestAskSaveRoundTrip.pas',
+  TestColorPickerControl in 'TestColorPickerControl.pas',
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogAlignment in 'TestDialogAlignment.pas',

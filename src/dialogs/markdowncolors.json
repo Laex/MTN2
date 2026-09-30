@@ -1,0 +1,1027 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Markdown colors",
+  "width": 84,
+  "height": 26,
+  "children": [
+    {
+      "type": "label",
+      "id": "lbl_element",
+      "text": "Element",
+      "col": 1,
+      "row": 0,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_fg",
+      "text": "Foreground",
+      "col": 21,
+      "row": 0,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_bg",
+      "text": "Background",
+      "col": 32,
+      "row": 0,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_sample",
+      "text": "Sample",
+      "col": 43,
+      "row": 0,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_text",
+      "text": "Text / document",
+      "col": 1,
+      "row": 1,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_text_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 1,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_text_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 1,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_text_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_text_fg",
+      "bgFrom": "md_text_bg",
+      "styleFrom": "md_text_style",
+      "col": 43,
+      "row": 1,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_h1",
+      "text": "Heading 1",
+      "col": 1,
+      "row": 2,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h1_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 2,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h1_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 2,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_h1_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_h1_fg",
+      "bgFrom": "md_h1_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_h1_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 2,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_h2",
+      "text": "Heading 2",
+      "col": 1,
+      "row": 3,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h2_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 3,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h2_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 3,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_h2_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_h2_fg",
+      "bgFrom": "md_h2_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_h2_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 3,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_h3to6",
+      "text": "Headings 3-6",
+      "col": 1,
+      "row": 4,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h3to6_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 4,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_h3to6_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 4,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_h3to6_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_h3to6_fg",
+      "bgFrom": "md_h3to6_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_h3to6_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 4,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_bold",
+      "text": "Bold",
+      "col": 1,
+      "row": 5,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_bold_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 5,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_bold_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 5,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_bold_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_bold_fg",
+      "bgFrom": "md_bold_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_bold_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 5,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_italic",
+      "text": "Italic",
+      "col": 1,
+      "row": 6,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_italic_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 6,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_italic_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 6,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_italic_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_italic_fg",
+      "bgFrom": "md_italic_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_italic_style",
+      "baseStyle": "italic",
+      "col": 43,
+      "row": 6,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_boldItalic",
+      "text": "Bold italic",
+      "col": 1,
+      "row": 7,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_boldItalic_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 7,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_boldItalic_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 7,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_boldItalic_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_boldItalic_fg",
+      "bgFrom": "md_boldItalic_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_boldItalic_style",
+      "baseStyle": "bold+italic",
+      "col": 43,
+      "row": 7,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_strike",
+      "text": "Strikethrough",
+      "col": 1,
+      "row": 8,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_strike_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 8,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_strike_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 8,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_strike_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_strike_fg",
+      "bgFrom": "md_strike_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_strike_style",
+      "baseStyle": "strike",
+      "col": 43,
+      "row": 8,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_inlineCode",
+      "text": "Inline code",
+      "col": 1,
+      "row": 9,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_inlineCode_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 9,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_inlineCode_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 9,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_inlineCode_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_inlineCode_fg",
+      "bgFrom": "md_inlineCode_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_inlineCode_style",
+      "col": 43,
+      "row": 9,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_codeBlock",
+      "text": "Code block",
+      "col": 1,
+      "row": 10,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_codeBlock_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 10,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_codeBlock_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 10,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_codeBlock_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_codeBlock_fg",
+      "bgFrom": "md_codeBlock_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_codeBlock_style",
+      "col": 43,
+      "row": 10,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_quote",
+      "text": "Quote",
+      "col": 1,
+      "row": 11,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_quote_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 11,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_quote_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 11,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_quote_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_quote_fg",
+      "bgFrom": "md_quote_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_quote_style",
+      "col": 43,
+      "row": 11,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_listMarker",
+      "text": "List marker",
+      "col": 1,
+      "row": 12,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_listMarker_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 12,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_listMarker_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 12,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_listMarker_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_listMarker_fg",
+      "bgFrom": "md_listMarker_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_listMarker_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 12,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_hrule",
+      "text": "Horizontal rule",
+      "col": 1,
+      "row": 13,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_hrule_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 13,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_hrule_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 13,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_hrule_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_hrule_fg",
+      "bgFrom": "md_hrule_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "col": 43,
+      "row": 13,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_link",
+      "text": "Link",
+      "col": 1,
+      "row": 14,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_link_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 14,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_link_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 14,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_link_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_link_fg",
+      "bgFrom": "md_link_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_link_style",
+      "baseStyle": "underline",
+      "col": 43,
+      "row": 14,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_imageMarker",
+      "text": "Image placeholder",
+      "col": 1,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_imageMarker_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 15,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_imageMarker_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 15,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_imageMarker_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_imageMarker_fg",
+      "bgFrom": "md_imageMarker_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_imageMarker_style",
+      "col": 43,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_tableBorder",
+      "text": "Table border",
+      "col": 1,
+      "row": 16,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_tableBorder_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 16,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_tableBorder_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 16,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_tableBorder_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_tableBorder_fg",
+      "bgFrom": "md_tableBorder_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "col": 43,
+      "row": 16,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_tableHeader",
+      "text": "Table header",
+      "col": 1,
+      "row": 17,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_tableHeader_fg",
+      "value": "",
+      "colorpick": true,
+      "col": 21,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "md_tableHeader_bg",
+      "value": "",
+      "colorpick": true,
+      "col": 32,
+      "row": 17,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "colorsample",
+      "id": "md_tableHeader_sample",
+      "text": "Abc Абв",
+      "fgFrom": "md_tableHeader_fg",
+      "bgFrom": "md_tableHeader_bg",
+      "fgFallback": "md_text_fg",
+      "bgFallback": "md_text_bg",
+      "styleFrom": "md_tableHeader_style",
+      "baseStyle": "bold",
+      "col": 43,
+      "row": 17,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "F9 or [...] - pick a color; empty = the theme's color",
+      "col": 1,
+      "row": 19,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 20,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 1,
+      "row": 22,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 12,
+      "row": 22,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "import",
+      "text": "&Import from Obsidian...",
+      "col": 26,
+      "row": 22,
+      "width": 28,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "reset",
+      "text": "&Reset",
+      "col": 54,
+      "row": 22,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_style",
+      "text": "Style",
+      "col": 62,
+      "row": 0,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_text_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 1,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h1_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 2,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h2_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 3,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h3to6_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 4,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_bold_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 5,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_italic_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 6,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_boldItalic_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 7,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_strike_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 8,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_inlineCode_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 9,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_codeBlock_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 10,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_quote_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 11,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_listMarker_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 12,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_link_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 14,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_imageMarker_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_tableHeader_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 62,
+      "row": 17,
+      "width": 18,
+      "height": 1
+    }
+  ]
+}

@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
-  uInputLine, uFunctionBar, uColorCoding, uDialogHistory;
+  uInputLine, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl;
 
 type
   TDialogHost = class
@@ -124,6 +124,8 @@ type
     procedure EnsureDropHoverInView;
     procedure DrawDropDownPopup(const AGrid: TTerminalGrid);
     function CommitDropDown: Boolean;
+    procedure DrawColorPickButton(const AGrid: TTerminalGrid; ACol, ARow: Integer;
+      const AFieldColors: TInputLineColors; const AText: string);
     procedure DrawColorSampleControl(const AGrid: TTerminalGrid; const R: TRectI;
       const C: TDialogControl);
     procedure DrawRadioGroupControl(const AGrid: TTerminalGrid; const R: TRectI;
@@ -147,6 +149,12 @@ type
     function Visible: Boolean;
     function GetValuesJson: string;
     function GetInputValue(const AId: string): string;
+    /// <summary>True when the open dialog has a control with AId.</summary>
+    function HasControl(const AId: string): Boolean;
+    /// <summary>"#RRGGBB" the dckColorPicker with AId currently holds ('' if none).</summary>
+    function GetColorPickerHex(const AId: string): string;
+    /// <summary>Moves the focus to the control with AId (no-op when absent).</summary>
+    procedure FocusControlById(const AId: string);
     /// <summary>Live-updates a dckInput's text on the already-open dialog
     /// (cursor moves to the end) - the setter counterpart to GetInputValue,
     /// for cross-field sync (e.g. picking a list preset fills a hex field)
@@ -386,6 +394,8 @@ begin
         if Result < 1 then
           Result := 1;
       end;
+    dckColorPicker:
+      Result := cPickerHeight;
   else
     Result := 1;
   end;
@@ -482,7 +492,7 @@ var
 begin
   for I := 0 to High(FDecl.Controls) do
     if FDecl.Controls[I].Kind in [dckInput, dckCheckbox, dckRadio, dckRadioGroup,
-      dckButton, dckList, dckDropDown] then
+      dckButton, dckList, dckDropDown, dckColorPicker] then
       Exit(I);
   Result := -1;
 end;
@@ -502,7 +512,7 @@ begin
     else
       Result := (Result + N - 1) mod N;
     if FDecl.Controls[Result].Kind in [dckInput, dckCheckbox, dckRadio,
-      dckRadioGroup, dckButton, dckList, dckDropDown] then
+      dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker] then
       Exit;
   end;
   Result := AFrom;
@@ -511,7 +521,42 @@ end;
 function TDialogHost.FocusedIsInput: Boolean;
 begin
   Result := (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
-    (FDecl.Controls[FFocusIndex].Kind = dckInput);
+    ((FDecl.Controls[FFocusIndex].Kind = dckInput) or
+     ((FDecl.Controls[FFocusIndex].Kind = dckColorPicker) and
+      (FDecl.Controls[FFocusIndex].Picker.Line = cPickerLineHex)));
+end;
+
+function TDialogHost.HasControl(const AId: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if SameText(FDecl.Controls[I].Id, AId) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TDialogHost.FocusControlById(const AId: string);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if SameText(FDecl.Controls[I].Id, AId) then
+    begin
+      FFocusIndex := I;
+      NotifyChanged;
+      Exit;
+    end;
+end;
+
+function TDialogHost.GetColorPickerHex(const AId: string): string;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckColorPicker) and SameText(FDecl.Controls[I].Id, AId) then
+      Exit(ColorPickerHex(FDecl.Controls[I].Picker));
+  Result := '';
 end;
 
 function TDialogHost.FocusedIsButton: Boolean;
@@ -1632,6 +1677,8 @@ begin
             Result := Length(C.Items[I]) + 2;
         Result := Min(AClientW, Max(Result, 8));
       end;
+    dckColorPicker:
+      Result := Min(AClientW, cPickerWidth);
   else
     Result := Max(AClientW, 1);
   end;
@@ -1644,6 +1691,8 @@ begin
       Result := ControlRowSpan(C);
     dckDropDown:
       Result := 1;
+    dckColorPicker:
+      Result := cPickerHeight;
   else
     Result := 1;
   end;
@@ -1770,11 +1819,30 @@ begin
   end;
 end;
 
+// "bold+italic" -> attributes; unknown words are ignored.
+function StyleAttrsFromText(const AText: string): TCharCellAttributes;
+var
+  Part: string;
+begin
+  Result := [];
+  for Part in LowerCase(AText).Split(['+', ',', ' ']) do
+    if Part = 'bold' then
+      Include(Result, ccaBold)
+    else if Part = 'italic' then
+      Include(Result, ccaItalic)
+    else if Part = 'underline' then
+      Include(Result, ccaUnderline)
+    else if Part = 'strike' then
+      Include(Result, ccaStrike);
+end;
+
 procedure TDialogHost.DrawColorSampleControl(const AGrid: TTerminalGrid;
   const R: TRectI; const C: TDialogControl);
 var
   SampleFg, SampleBg: TAlphaColor;
-  SrcIdx: Integer;
+  SrcIdx, I: Integer;
+  Attrs: TCharCellAttributes;
+  StyleText: string;
 begin
   // Re-resolved every Draw from the live (possibly uncommitted) text
   // of the source input(s) - no rebuild/reopen needed as the user
@@ -1796,14 +1864,36 @@ begin
       C.PanelState = cspsSelected, C.PanelState = cspsCurrent, True,
       SampleFg, SampleBg);
   SrcIdx := FindInputIndexById(C.FgSourceId);
-  if SrcIdx >= 0 then
-    HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleFg);
+  if (SrcIdx < 0) or not HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleFg) then
+  begin
+    SrcIdx := FindInputIndexById(C.FgFallbackId);
+    if SrcIdx >= 0 then
+      HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleFg);
+  end;
   SrcIdx := FindInputIndexById(C.BgSourceId);
-  if SrcIdx >= 0 then
-    HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleBg);
+  if (SrcIdx < 0) or not HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleBg) then
+  begin
+    SrcIdx := FindInputIndexById(C.BgFallbackId);
+    if SrcIdx >= 0 then
+      HexToColor(FDecl.Controls[SrcIdx].Edit.Text, SampleBg);
+  end;
+  // The attributes come from a drop-down's selected item (its id), or BaseStyle
+  // while that item has none of its own.
+  StyleText := C.BaseStyle;
+  if C.StyleSourceId <> '' then
+    for I := 0 to High(FDecl.Controls) do
+      if SameText(FDecl.Controls[I].Id, C.StyleSourceId) then
+      begin
+        if (FDecl.Controls[I].SelectedIndex >= 0) and
+           (FDecl.Controls[I].SelectedIndex <= High(FDecl.Controls[I].ItemIds)) and
+           (FDecl.Controls[I].ItemIds[FDecl.Controls[I].SelectedIndex] <> '') then
+          StyleText := FDecl.Controls[I].ItemIds[FDecl.Controls[I].SelectedIndex];
+        Break;
+      end;
+  Attrs := StyleAttrsFromText(StyleText);
   FillGridRect(AGrid, R.Left, R.Top, R.Right, R.Bottom, ' ', SampleFg, SampleBg);
   PutGridText(AGrid, R.Left, R.Top, Copy(C.Text, 1, Max(R.Width, 1)),
-    SampleFg, SampleBg);
+    SampleFg, SampleBg, Attrs);
 end;
 
 procedure TDialogHost.DrawRadioGroupControl(const AGrid: TTerminalGrid;
@@ -1899,6 +1989,25 @@ procedure TDialogHost.DrawDropArrow(const AGrid: TTerminalGrid; ACol, ARow: Inte
 begin
   // Inverse of the field it belongs to: stands out as a button in any theme.
   PutGridText(AGrid, ACol, ARow, WideChar($2193), AFieldColors.Bg, AFieldColors.Fg);
+end;
+
+// A swatch of the field's color with an ellipsis; inverse of the field when it holds no color.
+procedure TDialogHost.DrawColorPickButton(const AGrid: TTerminalGrid; ACol, ARow: Integer;
+  const AFieldColors: TInputLineColors; const AText: string);
+var
+  Swatch, Mark: TAlphaColor;
+begin
+  if HexToColor(AText, Swatch) then
+  begin
+    if (TAlphaColorRec(Swatch).R * 299 + TAlphaColorRec(Swatch).G * 587 +
+        TAlphaColorRec(Swatch).B * 114) > 140000 then
+      Mark := TAlphaColor($FF000000)
+    else
+      Mark := TAlphaColor($FFFFFFFF);
+    PutGridText(AGrid, ACol, ARow, WideChar($2026), Mark, Swatch);
+  end
+  else
+    PutGridText(AGrid, ACol, ARow, WideChar($2026), AFieldColors.Bg, AFieldColors.Fg);
 end;
 
 procedure TDialogHost.DrawDropDownControl(const AGrid: TTerminalGrid;
@@ -2041,10 +2150,21 @@ begin
         TDialogRenderer.DrawLabel(AGrid, R, C.Text, LabelFg, LabelBg);
       dckColorSample:
         DrawColorSampleControl(AGrid, R, C);
+      dckColorPicker:
+        ColorPickerDraw(AGrid, R.Left, R.Top, FDecl.Controls[I].Picker,
+          I = FFocusIndex, FCursorVisible, LabelFg, LabelBg);
       dckInput:
         begin
           Colors := InputLineDialogColors(I = FFocusIndex);
-          if IsHistoryInput(I) and (R.Width >= 3) then
+          if C.ColorPick and (R.Width >= 3) then
+          begin
+            // Last cell: the pick button.
+            InputLineDraw(AGrid, R.Left, R.Top, R.Width - 1,
+              FDecl.Controls[I].Edit, I = FFocusIndex, Colors, FCursorVisible, False);
+            DrawColorPickButton(AGrid, R.Left + R.Width - 1, R.Top, Colors,
+              FDecl.Controls[I].Edit.Text);
+          end
+          else if IsHistoryInput(I) and (R.Width >= 3) then
           begin
             // Last cell: ↓ opens the history (like a dckDropDown field).
             InputLineDraw(AGrid, R.Left, R.Top, R.Width - 1,
@@ -2379,6 +2499,12 @@ begin
       dckInput:
         begin
           FFocusIndex := I;
+          if C.ColorPick and (R.Width >= 3) and (ALocalCol = R.Left + R.Width - 1) then
+          begin
+            NotifyChanged;
+            FireCommand(DialogPickCommand(C.Id));
+            Exit(True);
+          end;
           if IsHistoryInput(I) and (R.Width >= 3) and
              (ALocalCol = R.Left + R.Width - 1) then
           begin
@@ -2406,6 +2532,14 @@ begin
             CloseDropDown
           else
             OpenDropDown(I);
+          Exit(True);
+        end;
+      dckColorPicker:
+        begin
+          FFocusIndex := I;
+          ColorPickerClick(FDecl.Controls[I].Picker, ALocalCol - R.Left,
+            ALocalRow - R.Top, FClicks.Hit(ALocalCol, ALocalRow));
+          NotifyChanged;
           Exit(True);
         end;
       dckList:
@@ -2743,6 +2877,15 @@ begin
       AKeyChar := #0;
       Exit;
     end;
+  end;
+
+  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckColorPicker) then
+  begin
+    ColorPickerHandleKey(FDecl.Controls[FFocusIndex].Picker, AKey, AShift, AKeyChar);
+    AKey := 0;
+    AKeyChar := #0;
+    NotifyChanged;
+    Exit;
   end;
 
   if (FFocusIndex >= 0) and

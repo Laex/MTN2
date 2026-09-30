@@ -32,14 +32,18 @@ function IsOverlayImageExtension(const AExt: string): Boolean;
 procedure RequestOverlayPreview(const AURI: string; const ABounds: TRectI); overload;
 /// <summary>As above, but the image is fitted into ABounds and only the
 /// part inside AClip (grid cells, inclusive) is painted - a block that runs
-/// past the viewport edge is cut off instead of shrunk.</summary>
-procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI); overload;
+/// past the viewport edge is cut off instead of shrunk. ANative draws the
+/// image at AImageScale device pixels per image pixel (1 = its own size),
+/// anchored to the top-left of ABounds, and only shrinks it when ABounds is
+/// smaller; 0 fits and centers it.</summary>
+procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI;
+  AImageScale: Single = 0); overload;
 /// <summary>Cheap, no decode/network - just moves where Draw paints the
 /// already-loaded (or loading) preview. Call every redraw from the panel
 /// that owns the Quick View bounds so a resize/reflow doesn't leave the
 /// image positioned against stale geometry between URI changes.</summary>
 procedure UpdateOverlayBounds(const ABounds: TRectI); overload;
-procedure UpdateOverlayBounds(const ABounds, AClip: TRectI); overload;
+procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single = 0); overload;
 procedure ClearOverlayPreview;
 function OverlayActive: Boolean;
 /// <summary>URI of the current/last preview request; '' if none.</summary>
@@ -52,10 +56,14 @@ procedure DrawOverlayPreview(ACanvas: TCanvas; ACellWidth, ACellHeight: Single);
 procedure SetOverlayRepaintHandler(AHandler: TThreadProcedure);
 /// <summary>Host reports the grid's cell size in pixels (every paint). Lets
 /// layout code size an image block in cells without knowing the font.
-/// Returns True when the metrics changed.</summary>
-function SetOverlayCellMetrics(ACellWidth, ACellHeight: Single): Boolean;
+/// ACellWidth/ACellHeight are in canvas units, APixelScale is device pixels
+/// per canvas unit. Returns True when the metrics changed.</summary>
+function SetOverlayCellMetrics(ACellWidth, ACellHeight: Single;
+  APixelScale: Single = 1): Boolean;
 /// <summary>Cell height / cell width in pixels; 2.0 until the host reports.</summary>
 function OverlayCellAspect: Single;
+/// <summary>Size of an AImageW x AImageH device-pixel area in grid cells. False until the host reports metrics.</summary>
+function OverlayNativeCellSize(AImageW, AImageH: Integer; out ACols, ARows: Integer): Boolean;
 /// <summary>Pixel size from the file header only (PNG, JPEG, GIF, BMP,
 /// WebP) - no decode, reads at most 64 KB. False for other formats or a
 /// broken header.</summary>
@@ -79,6 +87,7 @@ type
     FURI: string;
     FBounds: TRectI;
     FClip: TRectI; // painted part of FBounds (= FBounds when not clipped)
+    FImageScale: Single; // device pixels per image pixel, top-left anchored; 0 = fit
     FBitmap: TBitmap;
     FRepaint: TThreadProcedure;
     procedure DecodeAndStore(const ABytes: TBytes; AGen: Cardinal);
@@ -86,8 +95,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Request(const AURI: string; const ABounds, AClip: TRectI);
-    procedure UpdateBounds(const ABounds, AClip: TRectI);
+    procedure Request(const AURI: string; const ABounds, AClip: TRectI; AImageScale: Single);
+    procedure UpdateBounds(const ABounds, AClip: TRectI; AImageScale: Single);
     procedure Clear;
     function Active: Boolean;
     procedure Draw(ACanvas: TCanvas; ACellWidth, ACellHeight: Single);
@@ -97,6 +106,9 @@ type
 
 var
   GHost: TOverlayHost;
+  GCellW: Single = 0;
+  GCellH: Single = 0;
+  GPixelScale: Single = 1;
 
 function Host: TOverlayHost;
 begin
@@ -139,7 +151,8 @@ begin
     FRepaint;
 end;
 
-procedure TOverlayHost.Request(const AURI: string; const ABounds, AClip: TRectI);
+procedure TOverlayHost.Request(const AURI: string; const ABounds, AClip: TRectI;
+  AImageScale: Single);
 var
   Gen: Cardinal;
   Vfs: IVirtualFileSystem;
@@ -152,6 +165,7 @@ begin
   FURI := AURI;
   FBounds := ABounds;
   FClip := AClip;
+  FImageScale := AImageScale;
   FState := osLoading;
   FreeAndNil(FBitmap);
   Vfs := FVfs;
@@ -172,10 +186,11 @@ begin
     end);
 end;
 
-procedure TOverlayHost.UpdateBounds(const ABounds, AClip: TRectI);
+procedure TOverlayHost.UpdateBounds(const ABounds, AClip: TRectI; AImageScale: Single);
 begin
   FBounds := ABounds;
   FClip := AClip;
+  FImageScale := AImageScale;
 end;
 
 procedure TOverlayHost.DecodeAndStore(const ABytes: TBytes; AGen: Cardinal);
@@ -253,10 +268,20 @@ begin
   if (SrcW <= 0) or (SrcH <= 0) then
     Exit;
 
-  // fit: contain - scale to fit inside bounds, preserve aspect, center.
+  // fit: contain - scale to fit inside bounds, preserve aspect, center
+  // (fixed scale: never above FImageScale, top-left anchored).
   Scale := Min(BW / SrcW, BH / SrcH);
-  CX := BoundsPx.Left + (BW - SrcW * Scale) / 2;
-  CY := BoundsPx.Top + (BH - SrcH * Scale) / 2;
+  if FImageScale > 0 then
+  begin
+    Scale := Min(Scale, FImageScale / GPixelScale);
+    CX := BoundsPx.Left;
+    CY := BoundsPx.Top;
+  end
+  else
+  begin
+    CX := BoundsPx.Left + (BW - SrcW * Scale) / 2;
+    CY := BoundsPx.Top + (BH - SrcH * Scale) / 2;
+  end;
   Fitted := RectF(CX, CY, CX + SrcW * Scale, CY + SrcH * Scale);
 
   ClipPx := RectF(FClip.Left * ACellWidth, FClip.Top * ACellHeight,
@@ -281,24 +306,25 @@ end;
 
 procedure RequestOverlayPreview(const AURI: string; const ABounds: TRectI);
 begin
-  Host.Request(AURI, ABounds, ABounds);
+  Host.Request(AURI, ABounds, ABounds, 0);
 end;
 
-procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI);
+procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI;
+  AImageScale: Single);
 begin
-  Host.Request(AURI, ABounds, AClip);
+  Host.Request(AURI, ABounds, AClip, AImageScale);
 end;
 
 procedure UpdateOverlayBounds(const ABounds: TRectI);
 begin
   if Assigned(GHost) then
-    GHost.UpdateBounds(ABounds, ABounds);
+    GHost.UpdateBounds(ABounds, ABounds, 0);
 end;
 
-procedure UpdateOverlayBounds(const ABounds, AClip: TRectI);
+procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single);
 begin
   if Assigned(GHost) then
-    GHost.UpdateBounds(ABounds, AClip);
+    GHost.UpdateBounds(ABounds, AClip, AImageScale);
 end;
 
 procedure ClearOverlayPreview;
@@ -331,18 +357,30 @@ begin
   Host.RepaintHandler := AHandler;
 end;
 
-var
-  GCellW: Single = 0;
-  GCellH: Single = 0;
-
-function SetOverlayCellMetrics(ACellWidth, ACellHeight: Single): Boolean;
+function SetOverlayCellMetrics(ACellWidth, ACellHeight, APixelScale: Single): Boolean;
 begin
+  if APixelScale <= 0 then
+    APixelScale := 1;
   Result := (ACellWidth > 0) and (ACellHeight > 0) and
-    (not SameValue(ACellWidth, GCellW) or not SameValue(ACellHeight, GCellH));
+    (not SameValue(ACellWidth, GCellW) or not SameValue(ACellHeight, GCellH) or
+     not SameValue(APixelScale, GPixelScale));
   if Result then
   begin
     GCellW := ACellWidth;
     GCellH := ACellHeight;
+    GPixelScale := APixelScale;
+  end;
+end;
+
+function OverlayNativeCellSize(AImageW, AImageH: Integer; out ACols, ARows: Integer): Boolean;
+begin
+  ACols := 0;
+  ARows := 0;
+  Result := (GCellW > 0) and (GCellH > 0) and (AImageW > 0) and (AImageH > 0);
+  if Result then
+  begin
+    ACols := Max(1, Ceil(AImageW / GPixelScale / GCellW));
+    ARows := Max(1, Ceil(AImageH / GPixelScale / GCellH));
   end;
 end;
 

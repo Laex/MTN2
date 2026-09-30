@@ -25,6 +25,7 @@ uses
   uHelpContext in 'Core\uHelpContext.pas',
   uPanelCompare in 'Core\uPanelCompare.pas',
   uExternalTools in 'Core\uExternalTools.pas',
+  uMarkdownColors in 'Core\uMarkdownColors.pas',
   uDialogHistory in 'Core\uDialogHistory.pas',
   uHistoryPopup in 'Core\uHistoryPopup.pas',
   uChecksums in 'Core\uChecksums.pas',

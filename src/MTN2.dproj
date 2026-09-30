@@ -207,6 +207,7 @@
         <DCCReference Include="Core\uHelpContext.pas"/>
         <DCCReference Include="Core\uPanelCompare.pas"/>
         <DCCReference Include="Core\uExternalTools.pas"/>
+        <DCCReference Include="Core\uMarkdownColors.pas"/>
         <DCCReference Include="Core\uDialogHistory.pas"/>
         <DCCReference Include="Core\uHistoryPopup.pas"/>
         <DCCReference Include="Core\uChecksums.pas"/>
@@ -382,6 +383,8 @@
         <None Include="dialogs\terminalprofile.json"/>
         <None Include="dialogs\pluginlist.json"/>
         <None Include="dialogs\theme.json"/>
+        <None Include="dialogs\markdowncolors.json"/>
+        <None Include="dialogs\markdownimport.json"/>
         <None Include="dialogs\archivepassword.json"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

@@ -177,6 +177,7 @@ begin
     tmaOptColumnsConfig: CallProc(AHost.OpenColumnsConfigDialog);
     tmaOptDisplay: CallProc(AHost.OpenDisplayDialog);
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
+    tmaOptMarkdownColors: CallProc(AHost.OpenMarkdownColorsDialog);
     tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom: ;
     tmaOptRestoreHiddenDialogs: CallProc(AHost.RestoreHiddenDialogs);
 
@@ -199,7 +200,7 @@ begin
     tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
-    tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
+    tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile:
       Exit(True);

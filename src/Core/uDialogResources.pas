@@ -7,7 +7,7 @@
 interface
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.UITypes,
   uDialogTypes;
 
 const
@@ -48,6 +48,8 @@ const
   cResDialogColumnsConfig = 'DIALOG_COLUMNSCONFIG';
   cResDialogDisplay = 'DIALOG_DISPLAY';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';
+  cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
+  cResDialogMarkdownImport = 'DIALOG_MARKDOWNIMPORT';
   cResDialogChecksumOpts = 'DIALOG_CHECKSUMOPTS';
   cResDialogChecksum = 'DIALOG_CHECKSUM';
   cResDialogArchivePassword = 'DIALOG_ARCHIVEPASSWORD';
@@ -90,6 +92,9 @@ procedure TranslateDialogDeclaration(const ANamespace: string;
 procedure DialogSetTitle(var ADecl: TDialogDeclaration; const ATitle: string);
 procedure DialogSetLabelText(var ADecl: TDialogDeclaration; const AId, AText: string);
 procedure DialogSetInputValue(var ADecl: TDialogDeclaration; const AId, AValue: string);
+/// <summary>Starts a dckColorPicker on AColor ("was" shows it too).</summary>
+procedure DialogSetColorPicker(var ADecl: TDialogDeclaration; const AId: string;
+  AColor: TAlphaColor);
 /// <summary>Gives a dckInput a uDialogHistory key (for shared resources like
 /// the generic input dialog, where the key depends on the caller).</summary>
 procedure DialogSetInputHistory(var ADecl: TDialogDeclaration; const AId, AKey: string);
@@ -104,6 +109,9 @@ procedure DialogSetDropDownSelected(var ADecl: TDialogDeclaration; const AId: st
   ASelectedIndex: Integer);
 procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;
   const AItems: TArray<string>; ASelectedIndex: Integer = 0);
+/// <summary>Sets the ids of a list / drop-down's items (call after DialogSetListItems).</summary>
+procedure DialogSetListItemIds(var ADecl: TDialogDeclaration; const AId: string;
+  const AItemIds: TArray<string>);
 /// <summary>Repoints a dckColorSample control's live-preview sources - e.g.
 /// the color picker's single "preview" control is reused for either a Fg or
 /// a Bg pick by wiring it to 'picker_hex' on whichever side is being edited.</summary>
@@ -114,7 +122,7 @@ implementation
 
 uses
   System.Classes, System.Math, System.IOUtils, Winapi.Windows,
-  uDialogJson, uDialogLocaleLayout, uInputLine, uStrings;
+  uDialogJson, uDialogLocaleLayout, uInputLine, uStrings, uColorPickerControl;
 
 function DialogResNameToJsonFile(const AResName: string): string;
 var
@@ -477,6 +485,16 @@ begin
   end;
 end;
 
+procedure DialogSetColorPicker(var ADecl: TDialogDeclaration; const AId: string;
+  AColor: TAlphaColor);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind = dckColorPicker) then
+    ColorPickerInit(ADecl.Controls[I].Picker, AColor, AColor);
+end;
+
 procedure DialogSetButtonText(var ADecl: TDialogDeclaration; const AId, AText: string);
 var
   I: Integer;
@@ -523,6 +541,16 @@ begin
   else
     ADecl.Controls[I].SelectedIndex :=
       EnsureRange(ASelectedIndex, 0, High(AItems));
+end;
+
+procedure DialogSetListItemIds(var ADecl: TDialogDeclaration; const AId: string;
+  const AItemIds: TArray<string>);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind in [dckList, dckDropDown, dckRadioGroup]) then
+    ADecl.Controls[I].ItemIds := Copy(AItemIds);
 end;
 
 end.

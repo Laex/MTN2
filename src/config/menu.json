@@ -137,6 +137,7 @@
         { "caption": "Theme...", "hotChar": "T", "shortcut": "", "action": "tmaOptTheme" },
         { "caption": "Font / Display...", "hotChar": "F", "shortcut": "", "action": "tmaOptDisplay" },
         { "caption": "External viewer/editor...", "hotChar": "E", "shortcut": "", "action": "tmaOptExternalTools" },
+        { "caption": "Markdown colors...", "hotChar": "A", "shortcut": "", "action": "tmaOptMarkdownColors" },
         { "caption": "Columns...", "hotChar": "L", "shortcut": "Ctrl+Shift+F7", "action": "tmaOptColumnsConfig" },
         { "isSeparator": true },
         { "caption": "Zoom In", "hotChar": "I", "shortcut": "Ctrl+Wheel", "action": "tmaOptZoomIn" },

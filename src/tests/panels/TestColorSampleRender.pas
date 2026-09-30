@@ -19,19 +19,23 @@ type
   public
     [Test] procedure TestFixedGrayFallbackNoTheme;
     [Test] procedure TestThemeDrivenFallbackPerRow;
-    [Test] procedure TestColorPickerPresetSync;
+    [Test] procedure TestColorPickerControl;
+    [Test] procedure TestColorPickButton;
+    [Test] procedure TestSampleStyle;
+    [Test] procedure TestSampleFallbackColors;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.UITypes, System.IOUtils, System.Types,
+  System.SysUtils, System.Classes, System.UITypes, System.IOUtils, System.Types,
   uTerminalTypes,
   uThemeTypes,
   uInputLine,
   uDialogTypes,
   uDialogJson,
   uDialogHost,
+  uDialogResources,
   uNDNTheme;
 
 const
@@ -160,27 +164,22 @@ begin
   end;
 end;
 
-procedure TestColorPickerPresetSync;
+procedure TestColorPickerControl;
 var
   Grid: TTerminalGrid;
   Host: TDialogHost;
   Decl: TDialogDeclaration;
   Key: Word;
   Ch: Char;
-  Idx0, Idx1: Integer;
+  Idx, I: Integer;
+  Before, After: string;
 begin
   Assert.IsTrue(TryParseDialogJson(
     TFile.ReadAllText('..\..\dialogs\colorpicker.json', TEncoding.UTF8), Decl),
     'colorpicker.json failed to parse');
-
-  // Raw parse leaves picker_presets at its JSON placeholder ("(no presets)",
-  // one item) - real opens go through BuildColorPickerDialog's
-  // DialogSetListItems, which this console tool can't reach (no RCDATA).
-  // Fill in a few items by hand so Down-arrow has somewhere to move to.
-  Idx0 := FindControlById(Decl, 'picker_presets');
-  Assert.IsTrue(Idx0 >= 0, 'picker_presets not found');
-  Decl.Controls[Idx0].Items := TArray<string>.Create('Black    #000000', 'Red      #C00000', 'Green    #00C000');
-  Decl.Controls[Idx0].SelectedIndex := 0;
+  Idx := FindControlById(Decl, 'picker');
+  Assert.IsTrue(Idx >= 0, 'picker not found');
+  DialogSetColorPicker(Decl, 'picker', TAlphaColor($FF336699));
 
   FillGrid(Grid);
   Host := TDialogHost.Create(nil);
@@ -188,19 +187,144 @@ begin
     Host.Open(Decl, NoopCommand);
     Host.Draw(Grid, W, H);
 
-    Assert.IsTrue(SameText(Host.FocusedControlId, 'picker_presets'),
-      'the presets list has the focus when the dialog opens, got "' + Host.FocusedControlId + '"');
+    Assert.IsTrue(SameText(Host.FocusedControlId, 'picker'),
+      'the picker has the focus when the dialog opens, got "' + Host.FocusedControlId + '"');
+    Assert.AreEqual('#336699', Host.GetColorPickerHex('picker'), 'the picker starts on its color');
 
-    Host.SetInputValue('picker_hex', '#123456');
-    Assert.AreEqual('#123456', Host.GetInputValue('picker_hex'),
-      'SetInputValue on an open dialog reads back via GetInputValue');
+    // Down walks to the hex line and stops there; three Ups reach the R slider,
+    // where Shift+Right raises red by 10.
+    Ch := #0;
+    for I := 1 to 20 do
+    begin
+      Key := vkDown;
+      Host.HandleInput(Key, [], Ch);
+    end;
+    Assert.IsTrue(SameText(Host.FocusedControlId, 'picker'), 'Down stays inside the picker');
+    for I := 1 to 3 do
+    begin
+      Key := vkUp;
+      Host.HandleInput(Key, [], Ch);
+    end;
+    Before := Host.GetColorPickerHex('picker');
+    Key := vkRight;
+    Host.HandleInput(Key, [ssShift], Ch);
+    After := Host.GetColorPickerHex('picker');
+    // Walking down the grid picks cells, so Before is the gray-ramp cell the walk ended on.
+    Assert.AreEqual(Format('#%.2X%s', [StrToInt('$' + Copy(Before, 2, 2)) + 10, Copy(Before, 4, 4)]),
+      After, 'Shift+Right on the R slider adds 10 to red (from ' + Before + ')');
+  finally
+    Host.Free;
+  end;
+end;
 
-    Idx0 := Host.GetListSelectedIndex('picker_presets');
+// A color field shows a pick button in its last cell; a click there fires
+// the field's pick command, a click elsewhere in the field does not.
+procedure TestColorPickButton;
+var
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Decl: TDialogDeclaration;
+  Idx: Integer;
+  R: TRectI;
+  Fired: string;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    TFile.ReadAllText('..\..\dialogs\markdowncolors.json', TEncoding.UTF8), Decl),
+    'markdowncolors.json failed to parse');
+  Idx := FindControlById(Decl, 'md_h1_fg');
+  Assert.IsTrue((Idx >= 0) and Decl.Controls[Idx].ColorPick, 'the color field has a pick button');
+  Fired := '';
+  FillGrid(Grid);
+  Host := TDialogHost.Create(nil);
+  try
+    Host.Open(Decl,
+      procedure(const AControlId, AValuesJson: string)
+      begin
+        Fired := AControlId;
+      end);
+    Host.Draw(Grid, W, H);
+    R := Host.ControlBoundsAt(Idx);
+    Host.HandleClick(R.Left + 1, R.Top, []);
+    Assert.AreEqual('', Fired, 'a click inside the field is not a pick');
+    Host.HandleClick(R.Right, R.Top, []);
+    Assert.AreEqual('md_h1_fg:pick', Fired, 'a click on the last cell fires the pick command');
+  finally
+    Host.Free;
+  end;
+end;
+
+// The Markdown colors sample is drawn with the attributes of the style list's
+// selected item, or with its base style while the theme item is selected.
+procedure TestSampleStyle;
+var
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Decl: TDialogDeclaration;
+  Smp, Lst: Integer;
+  R: TRectI;
+  Key: Word;
+  Ch: Char;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    TFile.ReadAllText('..\..\dialogs\markdowncolors.json', TEncoding.UTF8), Decl),
+    'markdowncolors.json failed to parse');
+  Smp := FindControlById(Decl, 'md_h1_sample');
+  Lst := FindControlById(Decl, 'md_h1_style');
+  Assert.IsTrue((Smp >= 0) and (Lst >= 0), 'sample and style list exist');
+  Assert.AreEqual('md_h1_style', Decl.Controls[Smp].StyleSourceId, 'the sample reads the style list');
+  Decl.Controls[Lst].Items := TArray<string>.Create('Theme', 'Plain', 'Italic');
+  Decl.Controls[Lst].ItemIds := TArray<string>.Create('', 'none', 'italic');
+  FillGrid(Grid);
+  Host := TDialogHost.Create(nil);
+  try
+    Host.Open(Decl, NoopCommand);
+    Host.Draw(Grid, W, H);
+    R := Host.ControlBoundsAt(Smp);
+    Assert.IsTrue(Grid[R.Top][R.Left].Attributes = [ccaBold], 'the theme item shows the base style (bold for a heading)');
+    Host.FocusControlById('md_h1_style');
     Key := vkDown;
     Ch := #0;
     Host.HandleInput(Key, [], Ch);
-    Idx1 := Host.GetListSelectedIndex('picker_presets');
-    Assert.AreEqual(Idx0 + 1, Idx1, 'Down arrow moves the presets list selection');
+    Host.Draw(Grid, W, H);
+    Assert.IsTrue(Grid[R.Top][R.Left].Attributes = [], 'plain shows no attributes');
+    Key := vkDown;
+    Host.HandleInput(Key, [], Ch);
+    Host.Draw(Grid, W, H);
+    Assert.IsTrue(Grid[R.Top][R.Left].Attributes = [ccaItalic], 'italic shows italic');
+  finally
+    Host.Free;
+  end;
+end;
+
+// A sample with no color of its own takes the document colors of the text row.
+procedure TestSampleFallbackColors;
+var
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Decl: TDialogDeclaration;
+  Smp, Txt, TxtBg: Integer;
+  R: TRectI;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    TFile.ReadAllText('..\..\dialogs\markdowncolors.json', TEncoding.UTF8), Decl),
+    'markdowncolors.json failed to parse');
+  Smp := FindControlById(Decl, 'md_bold_sample');
+  Txt := FindControlById(Decl, 'md_text_fg');
+  TxtBg := FindControlById(Decl, 'md_text_bg');
+  Assert.IsTrue((Smp >= 0) and (Txt >= 0) and (TxtBg >= 0), 'controls exist');
+  InputLineSetText(Decl.Controls[Txt].Edit, '#C6C6C6');
+  InputLineSetText(Decl.Controls[TxtBg].Edit, '#202020');
+  FillGrid(Grid);
+  Host := TDialogHost.Create(nil);
+  try
+    Host.Open(Decl, NoopCommand);
+    Host.Draw(Grid, W, H);
+    R := Host.ControlBoundsAt(Smp);
+    Assert.AreEqual(TAlphaColor($FFC6C6C6), Grid[R.Top][R.Left].FgColor, 'text color comes from the text row');
+    Assert.AreEqual(TAlphaColor($FF202020), Grid[R.Top][R.Left].BgColor, 'background comes from the text row');
+    Host.SetInputValue('md_bold_bg', '#112233');
+    Host.Draw(Grid, W, H);
+    Assert.AreEqual(TAlphaColor($FF112233), Grid[R.Top][R.Left].BgColor, 'its own color wins');
   finally
     Host.Free;
   end;
@@ -218,9 +342,24 @@ begin
   TestColorSampleRender.TestThemeDrivenFallbackPerRow;
 end;
 
-procedure TTestColorSampleRender.TestColorPickerPresetSync;
+procedure TTestColorSampleRender.TestColorPickerControl;
 begin
-  TestColorSampleRender.TestColorPickerPresetSync;
+  TestColorSampleRender.TestColorPickerControl;
+end;
+
+procedure TTestColorSampleRender.TestColorPickButton;
+begin
+  TestColorSampleRender.TestColorPickButton;
+end;
+
+procedure TTestColorSampleRender.TestSampleStyle;
+begin
+  TestColorSampleRender.TestSampleStyle;
+end;
+
+procedure TTestColorSampleRender.TestSampleFallbackColors;
+begin
+  TestColorSampleRender.TestSampleFallbackColors;
 end;
 
 initialization

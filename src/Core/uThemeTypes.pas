@@ -166,10 +166,11 @@ type
       out AFg, ABg: TAlphaColor);
     /// <summary>Markdown Viewer: color/attribute for one span kind.
     /// AAttr should only ever contain ccaBold in practice - the terminal
-    /// renderer (uTerminalRenderer.TTerminalRenderer) paints ccaBold,
-    /// ccaUnderline and ccaInsertCaret; ccaItalic has no visual effect, so
-    /// implementers should lean on AFg/ABg (and ccaBold) to convey style.
-    /// TMarkdownPainter adds ccaUnderline to mskLink itself.</summary>
+    /// renderer (uTerminalRenderer.TTerminalRenderer) also paints ccaItalic,
+    /// ccaUnderline, ccaStrike and ccaInsertCaret, but TMarkdownPainter adds
+    /// ccaUnderline (mskLink), ccaItalic (mskItalic, mskBoldItalic) and
+    /// ccaStrike (mskStrike) itself, so implementers only pick AFg/ABg
+    /// (and ccaBold).</summary>
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
       out AFg, ABg: TAlphaColor; out AAttr: TCharCellAttributes);
     /// <summary>TEditorWindow (F3/F4) body chrome - see TEditorThemeColors.</summary>

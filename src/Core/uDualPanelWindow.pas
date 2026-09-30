@@ -361,7 +361,6 @@ type
     function ClickHandleDocument(ACol, ARow: Integer; AShift: TShiftState): Boolean;
     function ClickHandleTerminal(ACol, ARow: Integer; AShift: TShiftState): Boolean;
     function ClickHandleDialog(ACol, ARow: Integer; AShift: TShiftState): Boolean;
-    procedure ClickSyncColorPicker;
     procedure ClickLayoutSearch(AWidth, AHeight: Integer);
     function ClickSearchBounds: TRectI;
     procedure ClickLayoutJob(AWidth, AHeight: Integer);
@@ -654,6 +653,7 @@ type
     procedure ExternalView;
     procedure ExternalEdit;
     procedure OpenExternalToolsDialog;
+    procedure OpenMarkdownColorsDialog;
     procedure BeginChecksums;
     procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
     procedure ShowChecksumResult(const ATitle, AStatus: string;
@@ -1518,6 +1518,7 @@ begin
   FKeymapHost.BeginCompareFiles := BeginCompareFiles;
   FKeymapHost.CompareFolders := CompareFolders;
   FKeymapHost.OpenExternalToolsDialog := OpenExternalToolsDialog;
+  FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
@@ -1577,7 +1578,6 @@ begin
   FClickHost.HandleTerminalClick := ClickHandleTerminal;
   FClickHost.HandleFunctionBarClick := HandleFunctionBarClick;
   FClickHost.HandleDialogClick := ClickHandleDialog;
-  FClickHost.SyncColorPickerHex := ClickSyncColorPicker;
   FClickHost.LayoutSearchUi := ClickLayoutSearch;
   FClickHost.SearchBounds := ClickSearchBounds;
   FClickHost.CloseSearchUi := CloseSearchUi;
@@ -1714,7 +1714,7 @@ begin
   FModalInputHost.DialogDropDownOpen := FDialog.DropDownOpen;
   FModalInputHost.RecordDialogHistory := FDialog.RecordInputHistory;
   FModalInputHost.PressDialogButton := FDialog.PressButtonThen;
-  FModalInputHost.SyncColorPickerHex := FColorCoding.SyncHexFromPreset;
+  FModalInputHost.HandleMarkdownColors := FSettings.HandleMarkdownColorsInput;
 end;
 
 procedure TDualPanelWindow.DrawHostFilesHeaders(const ABounds: TRectI;
@@ -2603,11 +2603,6 @@ end;
 function TDualPanelWindow.ClickHandleDialog(ACol, ARow: Integer; AShift: TShiftState): Boolean;
 begin
   Result := FDialog.HandleClick(ACol, ARow, AShift);
-end;
-
-procedure TDualPanelWindow.ClickSyncColorPicker;
-begin
-  FColorCoding.SyncHexFromPreset;
 end;
 
 procedure TDualPanelWindow.ClickLayoutSearch(AWidth, AHeight: Integer);
@@ -4790,7 +4785,7 @@ begin
     hdkDescribe:
       Result := HandleDescribeCommand(AControlId, AFields);
     hdkTheme, hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
-    hdkExternalTools:
+    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
       Result := FSettings.DispatchCommand(AKind, AControlId);
     hdkCmdHistory:
       Result := FCmdHistory.DispatchCommand(AControlId);
@@ -7133,6 +7128,11 @@ end;
 procedure TDualPanelWindow.OpenExternalToolsDialog;
 begin
   FSettings.OpenExternalTools;
+end;
+
+procedure TDualPanelWindow.OpenMarkdownColorsDialog;
+begin
+  FSettings.OpenMarkdownColors;
 end;
 
 procedure TDualPanelWindow.OpenColorCodingDialog;

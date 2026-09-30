@@ -49,7 +49,6 @@ type
     function HandleTerminal(ACol, ARow: Integer; AShift: TShiftState): Boolean;
     function HandleFunctionBar(ACol: Integer; AShift: TShiftState): Boolean;
     function HandleDialog(ACol, ARow: Integer; AShift: TShiftState): Boolean;
-    procedure SyncHex;
     procedure LayoutSearch(AWidth, AHeight: Integer);
     function GetSearchBounds: TRectI;
     procedure CloseSearch;
@@ -127,11 +126,6 @@ function TClickSpy.HandleDialog(ACol, ARow: Integer; AShift: TShiftState): Boole
 begin
   Last := 'dialog';
   Result := True;
-end;
-
-procedure TClickSpy.SyncHex;
-begin
-  Last := Last + '+hex';
 end;
 
 procedure TClickSpy.LayoutSearch(AWidth, AHeight: Integer);
@@ -275,7 +269,6 @@ begin
   AHost.HandleTerminalClick := ASpy.HandleTerminal;
   AHost.HandleFunctionBarClick := ASpy.HandleFunctionBar;
   AHost.HandleDialogClick := ASpy.HandleDialog;
-  AHost.SyncColorPickerHex := ASpy.SyncHex;
   AHost.LayoutSearchUi := ASpy.LayoutSearch;
   AHost.SearchBounds := ASpy.GetSearchBounds;
   AHost.CloseSearchUi := ASpy.CloseSearch;
@@ -424,7 +417,7 @@ begin
     Snap.DialogVisible := True;
     Snap.DialogKind := hdkColorPicker;
     Owned := DispatchClickOverlays(Host, Snap, 2, 10, [], False, Handled);
-    Assert.IsTrue(Owned and (Spy.Last = 'dialog+hex'), 'color picker syncs hex');
+    Assert.IsTrue(Owned and (Spy.Last = 'dialog'), 'color picker click goes to the dialog');
 
     Snap.DialogVisible := False;
     Snap.SearchPhase := spRunning;
