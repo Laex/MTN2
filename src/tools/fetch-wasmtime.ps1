@@ -10,6 +10,16 @@ if (Test-Path $Dll) {
     Write-Host "OK: $Dll"
     exit 0
 }
+# A copy kept outside the source tree (see cache-dir.ps1) saves the download
+# after a clean checkout; the version is part of its path.
+$Cache = & (Join-Path $PSScriptRoot 'cache-dir.ps1')
+$CachedDll = if ($Cache) { Join-Path $Cache "wasmtime-$Version\wasmtime.dll" }
+if ($CachedDll -and (Test-Path $CachedDll)) {
+    New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+    Copy-Item $CachedDll $Dll -Force
+    Write-Host "OK: $Dll (from $CachedDll)"
+    exit 0
+}
 $ZipName = "wasmtime-$Version-x86_64-windows-c-api.zip"
 $Url = "https://github.com/bytecodealliance/wasmtime/releases/download/$Version/$ZipName"
 $Tmp = Join-Path $env:TEMP $ZipName
@@ -33,4 +43,8 @@ $Found = Get-ChildItem -Path $Extract -Filter 'wasmtime.dll' -Recurse | Select-O
 if (-not $Found) { throw "wasmtime.dll missing from $ZipName" }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Copy-Item $Found.FullName $Dll -Force
+if ($CachedDll) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $CachedDll) | Out-Null
+    Copy-Item $Found.FullName $CachedDll -Force
+}
 Write-Host "OK: $Dll"

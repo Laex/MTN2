@@ -106,11 +106,15 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src" -N"$PluginDcu" -E"$
         if ($Cargo) {
             Push-Location $Src
             try {
-                $env:CARGO_TARGET_DIR = Join-Path $Src 'target'
+                # Outside the source tree when a cache folder is configured
+                # (tools\cache-dir.ps1), so a clean checkout does not rebuild it.
+                $BuildCache = & (Join-Path $PSScriptRoot 'tools\cache-dir.ps1')
+                $CargoTarget = if ($BuildCache) { Join-Path $BuildCache "cargo-target\$Name" } else { Join-Path $Src 'target' }
+                $env:CARGO_TARGET_DIR = $CargoTarget
                 rustup target add wasm32-unknown-unknown | Out-Null
                 cargo build --target wasm32-unknown-unknown --release
                 if ($LASTEXITCODE -ne 0) { throw "$Name cargo build failed: $LASTEXITCODE" }
-                $RelWasm = Join-Path $Src 'target\wasm32-unknown-unknown\release'
+                $RelWasm = Join-Path $CargoTarget 'wasm32-unknown-unknown\release'
                 $Built = Get-ChildItem $RelWasm -Filter '*.wasm' -File -ErrorAction SilentlyContinue |
                     Where-Object { $_.Name -notlike '*.d.wasm' } |
                     Select-Object -First 1

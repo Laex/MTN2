@@ -5,19 +5,25 @@
 #   ./src/tests/run-tests.ps1 -Test TestPty*     # fixture units by name (wildcards)
 #   ./src/tests/run-tests.ps1 -All               # include [Category('Manual')] fixtures
 #   ./src/tests/run-tests.ps1 -List              # show what would run
+#   ./src/tests/run-tests.ps1 -Jobs 1            # one group at a time (default: all at once)
 #
 # Each group folder holds Test*.pas fixture units and a <Group>Tests.dpr that
 # lists them. The runner is compiled with dcc64 into src\tests\dcu and run with
 # its group folder as the current directory; its NUnit XML report lands next to
 # it as <Group>Tests.xml. A runner that outlives -TimeoutSec is killed and
 # counted as failed, so CI never hangs on e.g. an unreachable network drive.
+# The groups are independent (each has its own .dcu folder, settings folder and
+# exe), so they are built and run at the same time; the results are listed in
+# group order when they are all in.
 # -Test names a fixture explicitly, so it runs even when tagged Manual.
 param(
     [string[]]$Group,
     [string[]]$Test,
     [switch]$All,
     [switch]$List,
-    [int]$TimeoutSec = 900
+    [int]$TimeoutSec = 900,
+    # Groups built and run at the same time; 0 = all of them.
+    [int]$Jobs = 0
 )
 $ErrorActionPreference = 'Stop'
 # `pwsh -File run-tests.ps1 -Test A,B` passes "A,B" as one string.
@@ -61,7 +67,7 @@ $Groups = foreach ($Dir in Get-ChildItem $Tests -Directory) {
         }
     }
     if (-not $Fx) { continue }
-    [pscustomobject]@{ Name = $Dir.Name; Dir = $Dir.FullName; Dpr = $Dpr; Fixtures = @($Fx) }
+    [pscustomobject]@{ Name = $Dir.Name; Runner = (Get-RunnerName $Dir.Name); Dir = $Dir.FullName; Dpr = $Dpr; Fixtures = @($Fx) }
 }
 
 if ($List) {
@@ -101,11 +107,13 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     if (Get-Command cargo -ErrorAction SilentlyContinue) {
         Push-Location $WsSrc
         try {
-            $env:CARGO_TARGET_DIR = Join-Path $WsSrc 'target'
+            $BuildCache = & (Join-Path $Src 'tools\cache-dir.ps1')
+            $CargoTarget = if ($BuildCache) { Join-Path $BuildCache 'cargo-target\mtn.ws' } else { Join-Path $WsSrc 'target' }
+            $env:CARGO_TARGET_DIR = $CargoTarget
             rustup target add wasm32-unknown-unknown 2>&1 | Out-Null
             cargo build --target wasm32-unknown-unknown --release 2>&1 | Out-Null
             if ($LASTEXITCODE -eq 0) {
-                Copy-Item (Join-Path $WsSrc 'target\wasm32-unknown-unknown\release\mtn_ws.wasm') `
+                Copy-Item (Join-Path $CargoTarget 'wasm32-unknown-unknown\release\mtn_ws.wasm') `
                     (Join-Path $WsSrc 'plugin.wasm') -Force
             } else { Write-Host 'WARN: mtn.ws cargo build failed; TestWorkspacePlugin may SKIP' }
         } finally { Pop-Location }
@@ -115,17 +123,34 @@ if ($Groups | Where-Object Name -eq 'plugins') {
 $UnitPath = @('Core', 'Themes', 'plugins\mtn.7z', 'plugins\mtn.tmp', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
-function Invoke-Dcc([string]$Dpr) {
-    $Out = & dcc64 -B -Q "-U$UnitPath" "-N$Dcu" "-E$Dcu" `
-        '-NSSystem;System.Win;Winapi;System.IOUtils' $Dpr 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        return ($Out | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 10) -join "`n"
-    }
-    return $null
+$Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }
+$Indexed = for ($I = 0; $I -lt $Groups.Count; $I++) {
+    [pscustomobject]@{ Order = $I; Group = $Groups[$I] }
 }
 
-$Results = foreach ($G in $Groups) {
-    $Runner = Get-RunnerName $G.Name
+$Results = $Indexed | ForEach-Object -ThrottleLimit $Throttle -Parallel {
+    $G = $_.Group
+    $Dcu = $using:Dcu
+    $UnitPath = $using:UnitPath
+    $Fixtures = $using:Fixtures
+    $All = $using:All
+    $Test = $using:Test
+    $TimeoutSec = $using:TimeoutSec
+    $Runner = $G.Runner
+    # Compiled units stay per group: runners compiling into one folder at the
+    # same time would overwrite each other's .dcu files.
+    $Obj = Join-Path $Dcu "obj\$($G.Name)"
+    New-Item -ItemType Directory -Force -Path $Obj | Out-Null
+
+    function Invoke-Dcc([string]$Dpr) {
+        $Out = & dcc64 -B -Q "-U$UnitPath" "-N$Obj" "-E$Dcu" `
+            '-NSSystem;System.Win;Winapi;System.IOUtils' $Dpr 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return ($Out | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 10) -join "`n"
+        }
+        return $null
+    }
+
     $Sw = [Diagnostics.Stopwatch]::StartNew()
     $Status = 'PASS'
     $Detail = ''
@@ -169,9 +194,19 @@ $Results = foreach ($G in $Groups) {
     }
 
     $Secs = [Math]::Round($Sw.Elapsed.TotalSeconds, 1)
-    Write-Host ('{0,-7} {1,-8} {2} ({3}s)' -f $Status, $G.Name, $Counts, $Secs)
-    if ($Detail) { $Detail -split "`n" | ForEach-Object { Write-Host "        $_" } }
-    [pscustomobject]@{ Name = $G.Name; Status = $Status }
+    [pscustomobject]@{
+        Order  = $_.Order
+        Name   = $G.Name
+        Status = $Status
+        Line   = ('{0,-7} {1,-8} {2} ({3}s)' -f $Status, $G.Name, $Counts, $Secs)
+        Detail = $Detail
+    }
+}
+
+$Results = @($Results | Sort-Object Order)
+foreach ($R in $Results) {
+    Write-Host $R.Line
+    if ($R.Detail) { $R.Detail -split "`n" | ForEach-Object { Write-Host "        $_" } }
 }
 
 $Failed = @($Results | Where-Object Status -ne 'PASS')

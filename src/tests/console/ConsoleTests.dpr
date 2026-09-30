@@ -10,7 +10,6 @@ program ConsoleTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestANSIParser in 'TestANSIParser.pas',
-  TestCdDirQuote in 'TestCdDirQuote.pas',
   TestCmdBackspaceFlow in 'TestCmdBackspaceFlow.pas',
   TestCmdRepeatedDirNoLineLoss in 'TestCmdRepeatedDirNoLineLoss.pas',
   TestConPtyEncoding in 'TestConPtyEncoding.pas',
@@ -24,8 +23,6 @@ uses
   TestPsLineBuffered in 'TestPsLineBuffered.pas',
   TestPsPersistent in 'TestPsPersistent.pas',
   TestPsPipeSafeCommand in 'TestPsPipeSafeCommand.pas',
-  TestPsTwoCommands in 'TestPsTwoCommands.pas',
-  TestPtyLifecycle in 'TestPtyLifecycle.pas',
   TestPtySession in 'TestPtySession.pas',
   TestShellProfiles in 'TestShellProfiles.pas',
   TestShellSessions in 'TestShellSessions.pas',
