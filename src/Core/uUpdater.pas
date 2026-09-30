@@ -92,7 +92,7 @@ function ParseLatestReleaseJson(const AJson, AAssetSuffix: string;
 /// <summary>Parses the dev channel's rolling prerelease: the version comes from
 /// the package name MTN2-v&lt;M.m.p.build&gt;-win64.zip (the tag is the fixed
 /// cUpdateDevTag); the highest one wins. False for drafts and when no package
-/// carries a build number.</summary>
+/// carries four numbers (build 0 is the first build after a release tag).</summary>
 function ParseDevReleaseJson(const AJson, AAssetSuffix: string;
   out ARelease: TUpdateRelease): Boolean;
 function FetchLatestRelease(out ARelease: TUpdateRelease; out AError: string): Boolean; overload;
@@ -316,7 +316,7 @@ begin
         Continue;
       Middle := Copy(Name, Length(cUpdateAssetPrefix) + 1,
         Length(Name) - Length(cUpdateAssetPrefix) - Length(AAssetSuffix));
-      if not TryParseVersionBuild(Middle, M, N, P, B) or (B <= 0) or
+      if not TryParseVersionBuild(Middle, M, N, P, B) or
         (Length(Middle.Split(['.'])) <> 4) then
         Continue;
       if (Best.AssetUrl <> '') and

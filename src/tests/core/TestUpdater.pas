@@ -149,6 +149,10 @@ begin
   Assert.IsTrue(not ParseDevReleaseJson(StringReplace(cDevJson, '0.3.12.', '0.3.12-', [rfReplaceAll]),
     cUpdateAssetSuffix, R), 'package without a build number ignored');
   Assert.IsTrue(not ParseDevReleaseJson('not json', cUpdateAssetSuffix, R), 'garbage ignored');
+  Assert.IsTrue(ParseDevReleaseJson(StringReplace(StringReplace(cDevJson, '0.3.12.9', '0.3.13.0',
+    [rfReplaceAll]), '0.3.12.10', '0.3.13.0', [rfReplaceAll]), cUpdateAssetSuffix, R),
+    'build 0, the first build after a release, is a valid dev package');
+  Assert.AreEqual('0.3.13.0', R.Version, 'build 0 version');
 end;
 
 procedure TestSha256;
