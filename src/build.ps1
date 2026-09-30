@@ -4,7 +4,8 @@ param(
     [string]$Config = 'Debug',
     [ValidateSet('Win32', 'Win64')]
     [string]$Platform = 'Win64',
-    # Release version (e.g. 0.3.2 or v0.3.2, from the git tag). Stamped into the
+    # Release version (e.g. 0.3.2 or v0.3.2, from the git tag; a development
+    # build adds a build number: 0.3.2.57). Stamped into the
     # exe's version resource, which is what MTN2 reports and the updater compares.
     # Empty: keep the version written in MTN2.dproj.
     [string]$Version = ''
@@ -29,17 +30,24 @@ if (Test-Path $Brcc) {
 
 $VerProps = ''
 if ($Version) {
-    if ($Version -notmatch '^v?(\d+)\.(\d+)\.(\d+)$') {
-        throw "Version must look like 1.2.3 or v1.2.3, got '$Version'"
+    if ($Version -notmatch '^v?(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$') {
+        throw "Version must look like 1.2.3, v1.2.3 or 1.2.3.45, got '$Version'"
     }
     $Major, $Minor, $Patch = $Matches[1], $Matches[2], $Matches[3]
+    # The 4th number is the build of a development build (0 for a release);
+    # the version resource stores each number in 16 bits.
+    $Build = if ($Matches[4]) { [int]$Matches[4] } else { 0 }
+    if ($Build -gt 65535) {
+        throw "Build number $Build does not fit the version resource (max 65535)"
+    }
     $Plain = "$Major.$Minor.$Patch"
+    if ($Build -gt 0) { $Plain = "$Plain.$Build" }
     # ';' separates properties on the msbuild command line -- escape it.
-    $Keys = ("CompanyName=MTN2;FileDescription=MTN2;FileVersion=$Plain.0;InternalName=MTN2;" +
+    $Keys = ("CompanyName=MTN2;FileDescription=MTN2;FileVersion=$Major.$Minor.$Patch.$Build;InternalName=MTN2;" +
         "LegalCopyright=;LegalTrademarks=;OriginalFilename=MTN2.exe;ProgramID=com.embarcadero.MTN2;" +
         "ProductName=Modern Terminal Navigator 2;ProductVersion=$Plain;Comments=v$Plain") -replace ';', '%3B'
     $VerProps = "/p:VerInfo_IncludeVerInfo=true /p:VerInfo_MajorVer=$Major /p:VerInfo_MinorVer=$Minor " +
-        "/p:VerInfo_Release=$Patch /p:VerInfo_Build=0 `"/p:VerInfo_Keys=$Keys`""
+        "/p:VerInfo_Release=$Patch /p:VerInfo_Build=$Build `"/p:VerInfo_Keys=$Keys`""
 }
 
 $Cmd = @"

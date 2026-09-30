@@ -302,13 +302,16 @@ end;
 
 procedure TUpdateController.OpenUpdatesDialog;
 begin
-  Show(BuildUpdatesDialog(FCurrent, FSettings.CheckOnStart, FSettings.ShowCheckNotice),
+  Show(BuildUpdatesDialog(FCurrent, FSettings.CheckOnStart, FSettings.ShowCheckNotice,
+      FSettings.DevChannel),
     procedure(ACmd, AValues: string)
     begin
       FSettings.CheckOnStart := JsonBoolField(AValues, 'check_on_start',
         FSettings.CheckOnStart);
       FSettings.ShowCheckNotice := JsonBoolField(AValues, 'show_check_notice',
         FSettings.ShowCheckNotice);
+      FSettings.DevChannel := JsonBoolField(AValues, 'dev_channel',
+        FSettings.DevChannel);
       SaveSettings;
       if SameText(ACmd, 'check') then
         StartCheck(True);
@@ -318,7 +321,7 @@ end;
 procedure TUpdateController.StartCheck(AInteractive: Boolean);
 var
   Life: IUpdateLife;
-  Interactive: Boolean;
+  Interactive, Dev: Boolean;
 begin
   case FState of
     usChecking, usDownloading:
@@ -334,6 +337,7 @@ begin
   FState := usChecking;
   Life := FLife;
   Interactive := AInteractive;
+  Dev := FSettings.DevChannel;
   NoticeChecking(AInteractive);
   if not RunWorker(
     procedure
@@ -343,7 +347,7 @@ begin
       Ok: Boolean;
     begin
       CleanupOldFiles(AppDir);
-      Ok := FetchLatestRelease(Rel, Err);
+      Ok := FetchLatestRelease(Dev, Rel, Err);
       TThread.Queue(nil,
         procedure
         begin

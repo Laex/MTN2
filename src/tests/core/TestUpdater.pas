@@ -17,6 +17,7 @@ type
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestVersions;
     [Test] procedure TestReleaseJson;
+    [Test] procedure TestDevReleaseJson;
     [Test] procedure TestSha256;
     [Test] procedure TestExtract;
     [Test] procedure TestApply;
@@ -48,7 +49,7 @@ end;
 
 procedure TestVersions;
 var
-  M, N, P: Integer;
+  M, N, P, B: Integer;
 begin
   Assert.IsTrue(TryParseVersion('v0.3.1', M, N, P) and (M = 0) and (N = 3) and (P = 1), 'v0.3.1 parses');
   Assert.IsTrue(TryParseVersion('10.20.30', M, N, P) and (P = 30), 'plain 10.20.30 parses');
@@ -63,6 +64,13 @@ begin
   Assert.IsTrue(not IsNewerVersion('0.3.0', '0.3.1'), 'older is not newer');
   Assert.IsTrue(IsNewerVersion('0.3.1', ''), 'any version beats an unknown current one');
   Assert.IsTrue(not IsNewerVersion('garbage', '0.3.1'), 'unparsable candidate never offered');
+  Assert.IsTrue(IsNewerVersion('0.3.1.5', '0.3.1'), 'a dev build is newer than its release');
+  Assert.IsTrue(IsNewerVersion('0.3.1.10', 'v0.3.1.9'), 'build numbers compare numerically');
+  Assert.IsTrue(IsNewerVersion('0.3.2', '0.3.1.999'), 'the next release is newer than any dev build');
+  Assert.IsTrue(not IsNewerVersion('0.3.1', '0.3.1.5'), 'the release is not newer than its dev build');
+  Assert.IsTrue(CompareVersions('0.3.1.0', '0.3.1') = 0, 'build 0 equals no build');
+  Assert.IsTrue(not TryParseVersionBuild('0.3.1.2.3', M, N, P, B), 'five numbers rejected');
+  Assert.IsTrue(not TryParseVersion('0.3.1.5', M, N, P), 'three-number parser still takes exactly three');
 end;
 
 const
@@ -111,6 +119,36 @@ begin
   Assert.IsTrue(not ParseLatestReleaseJson(StringReplace(cReleaseJson, 'MTN2-v0.3.2-win64.zip',
     'MTN2-v0.3.1-win64.zip', [rfReplaceAll]), cUpdateAssetSuffix, R),
     'a package named for another tag is not this release''s package');
+end;
+
+const
+  cDevJson =
+    '{"tag_name":"dev","draft":false,"prerelease":true,' +
+    '"html_url":"https://github.com/Laex/MTN2-dev/releases/tag/dev","assets":[' +
+    '{"name":"MTN2-v0.3.12.9-win64-portable.zip","size":1,"browser_download_url":"https://x/p9.zip"},' +
+    '{"name":"MTN2-v0.3.12.9-win64.zip","size":10,"digest":"sha256:ABCD",' +
+    '"browser_download_url":"https://x/9.zip"},' +
+    '{"name":"MTN2-v0.3.12.10-win64.zip","size":11,' +
+    '"browser_download_url":"https://x/10.zip"}]}';
+
+procedure TestDevReleaseJson;
+var
+  R: TUpdateRelease;
+begin
+  Assert.IsTrue(ParseDevReleaseJson(cDevJson, cUpdateAssetSuffix, R), 'parses the rolling prerelease');
+  Assert.AreEqual('0.3.12.10', R.Version, 'highest build wins, compared numerically');
+  Assert.AreEqual('MTN2-v0.3.12.10-win64.zip', R.AssetName);
+  Assert.AreEqual('https://x/10.zip', R.AssetUrl);
+  Assert.AreEqual('v0.3.12.10', R.Tag);
+  Assert.IsTrue(ParseDevReleaseJson(StringReplace(cDevJson, 'MTN2-v0.3.12.10-win64.zip',
+    'MTN2-v0.3.12.10-win64-x.zip', []), cUpdateAssetSuffix, R), 'other packages skipped');
+  Assert.AreEqual('0.3.12.9', R.Version, 'portable and foreign names are not taken');
+  Assert.AreEqual('abcd', R.AssetSha256, 'digest lowercased');
+  Assert.IsTrue(not ParseDevReleaseJson(StringReplace(cDevJson, '"draft":false', '"draft":true', []),
+    cUpdateAssetSuffix, R), 'draft ignored');
+  Assert.IsTrue(not ParseDevReleaseJson(StringReplace(cDevJson, '0.3.12.', '0.3.12-', [rfReplaceAll]),
+    cUpdateAssetSuffix, R), 'package without a build number ignored');
+  Assert.IsTrue(not ParseDevReleaseJson('not json', cUpdateAssetSuffix, R), 'garbage ignored');
 end;
 
 procedure TestSha256;
@@ -254,8 +292,12 @@ begin
   S.CheckOnStart := False;
   S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
   Assert.IsTrue(not S.ShowCheckNotice and not S.CheckOnStart, 'both switches round-trip');
+  Assert.IsTrue(not S.DevChannel, 'old file -> release channel');
+  S.DevChannel := True;
+  S := ParseUpdateSettingsJson(UpdateSettingsToJson(S));
+  Assert.IsTrue(S.DevChannel, 'dev channel round-trips');
   S := ParseUpdateSettingsJson('not json');
-  Assert.IsTrue(S.CheckOnStart and S.ShowCheckNotice, 'bad JSON -> defaults');
+  Assert.IsTrue(S.CheckOnStart and S.ShowCheckNotice and not S.DevChannel, 'bad JSON -> defaults');
 end;
 
 procedure TestLiveGitHub;
@@ -298,6 +340,11 @@ end;
 procedure TTestUpdater.TestReleaseJson;
 begin
   TestUpdater.TestReleaseJson;
+end;
+
+procedure TTestUpdater.TestDevReleaseJson;
+begin
+  TestUpdater.TestDevReleaseJson;
 end;
 
 procedure TTestUpdater.TestSha256;

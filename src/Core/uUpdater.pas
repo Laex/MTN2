@@ -23,6 +23,10 @@ uses
 
 const
   cUpdateRepo = 'Laex/MTN2';
+  // Development builds live in their own repository, in one rolling
+  // prerelease under cUpdateDevTag (.github/workflows/dev.yml).
+  cUpdateDevRepo = 'Laex/MTN2-dev';
+  cUpdateDevTag = 'dev';
   // Package name: <prefix><tag><suffix>, as src\tools\package-release.ps1
   // writes it.
   cUpdateAssetPrefix = 'MTN2-';
@@ -35,8 +39,8 @@ const
 
 type
   TUpdateRelease = record
-    Tag: string;            // 'v0.3.2'
-    Version: string;        // '0.3.2'
+    Tag: string;            // 'v0.3.2' (dev channel: 'v0.3.2.57')
+    Version: string;        // '0.3.2' (dev channel: '0.3.2.57')
     HtmlUrl: string;        // release page
     AssetName: string;
     AssetUrl: string;
@@ -51,6 +55,8 @@ type
     ShowCheckNotice: Boolean;
     LastCheck: TDateTime;   // 0 = never
     SkipVersion: string;    // '' = none
+    /// <summary>Follow the development builds instead of the releases.</summary>
+    DevChannel: Boolean;
   end;
 
   /// <summary>Progress/abort hook for DownloadAsset: return False to abort.</summary>
@@ -58,11 +64,17 @@ type
 
 /// <summary>'v1.2.3' / '1.2.3' -> 1,2,3. False for anything else.</summary>
 function TryParseVersion(const AText: string; out AMajor, AMinor, APatch: Integer): Boolean;
+/// <summary>'v1.2.3' / '1.2.3.45' -> 1,2,3,45 (build 0 when absent). The build
+/// number is only set by development builds, which therefore sort above the
+/// release they branch from and below the next one.</summary>
+function TryParseVersionBuild(const AText: string; out AMajor, AMinor, APatch,
+  ABuild: Integer): Boolean;
 /// <summary>-1 / 0 / 1 like CompareStr. Unparsable sorts lowest.</summary>
 function CompareVersions(const A, B: string): Integer;
 function IsNewerVersion(const ACandidate, ACurrent: string): Boolean;
 
-/// <summary>Major.Minor.Release of AExeFile's version resource ('' if none).</summary>
+/// <summary>Major.Minor.Release of AExeFile's version resource, plus .Build
+/// when it is not 0 ('' if none).</summary>
 function FileVersionString(const AExeFile: string): string;
 function AppVersionString: string;
 
@@ -74,7 +86,15 @@ function AppVersionString: string;
 /// picked up in its place.</summary>
 function ParseLatestReleaseJson(const AJson, AAssetSuffix: string;
   out ARelease: TUpdateRelease): Boolean;
-function FetchLatestRelease(out ARelease: TUpdateRelease; out AError: string): Boolean;
+/// <summary>Parses the dev channel's rolling prerelease: the version comes from
+/// the package name MTN2-v&lt;M.m.p.build&gt;-win64.zip (the tag is the fixed
+/// cUpdateDevTag); the highest one wins. False for drafts and when no package
+/// carries a build number.</summary>
+function ParseDevReleaseJson(const AJson, AAssetSuffix: string;
+  out ARelease: TUpdateRelease): Boolean;
+function FetchLatestRelease(out ARelease: TUpdateRelease; out AError: string): Boolean; overload;
+function FetchLatestRelease(ADevChannel: Boolean; out ARelease: TUpdateRelease;
+  out AError: string): Boolean; overload;
 
 function FileSha256(const AFileName: string): string;
 function DownloadAsset(const ARelease: TUpdateRelease; const ADestFile: string;
@@ -139,26 +159,48 @@ begin
     (AMajor >= 0) and (AMinor >= 0) and (APatch >= 0);
 end;
 
+function TryParseVersionBuild(const AText: string; out AMajor, AMinor, APatch,
+  ABuild: Integer): Boolean;
+var
+  S: string;
+  Parts: TArray<string>;
+begin
+  AMajor := 0;
+  AMinor := 0;
+  APatch := 0;
+  ABuild := 0;
+  S := Trim(AText);
+  if (S <> '') and CharInSet(S[1], ['v', 'V']) then
+    Delete(S, 1, 1);
+  Parts := S.Split(['.']);
+  Result := (Length(Parts) in [3, 4]) and TryStrToInt(Parts[0], AMajor) and
+    TryStrToInt(Parts[1], AMinor) and TryStrToInt(Parts[2], APatch) and
+    (AMajor >= 0) and (AMinor >= 0) and (APatch >= 0);
+  if Result and (Length(Parts) = 4) then
+    Result := TryStrToInt(Parts[3], ABuild) and (ABuild >= 0);
+end;
+
 function CompareVersions(const A, B: string): Integer;
 var
-  A1, A2, A3, B1, B2, B3: Integer;
+  A1, A2, A3, A4, B1, B2, B3, B4: Integer;
   OkA, OkB: Boolean;
 begin
-  OkA := TryParseVersion(A, A1, A2, A3);
-  OkB := TryParseVersion(B, B1, B2, B3);
+  OkA := TryParseVersionBuild(A, A1, A2, A3, A4);
+  OkB := TryParseVersionBuild(B, B1, B2, B3, B4);
   if not OkA or not OkB then
     Exit(Ord(OkA) - Ord(OkB));
   if A1 <> B1 then Exit(Ord(A1 > B1) * 2 - 1);
   if A2 <> B2 then Exit(Ord(A2 > B2) * 2 - 1);
   if A3 <> B3 then Exit(Ord(A3 > B3) * 2 - 1);
+  if A4 <> B4 then Exit(Ord(A4 > B4) * 2 - 1);
   Result := 0;
 end;
 
 function IsNewerVersion(const ACandidate, ACurrent: string): Boolean;
 var
-  M, N, P: Integer;
+  M, N, P, B: Integer;
 begin
-  Result := TryParseVersion(ACandidate, M, N, P) and
+  Result := TryParseVersionBuild(ACandidate, M, N, P, B) and
     (CompareVersions(ACandidate, ACurrent) > 0);
 end;
 
@@ -179,6 +221,8 @@ begin
     Exit;
   Result := Format('%d.%d.%d', [HiWord(Info.dwFileVersionMS), LoWord(Info.dwFileVersionMS),
     HiWord(Info.dwFileVersionLS)]);
+  if LoWord(Info.dwFileVersionLS) <> 0 then
+    Result := Result + '.' + IntToStr(LoWord(Info.dwFileVersionLS));
 end;
 
 function AppVersionString: string;
@@ -232,6 +276,74 @@ begin
   end;
 end;
 
+function ParseDevReleaseJson(const AJson, AAssetSuffix: string;
+  out ARelease: TUpdateRelease): Boolean;
+var
+  Val: TJSONValue;
+  Root, Asset: TJSONObject;
+  Assets: TJSONArray;
+  I, M, N, P, B, BestM, BestN, BestP, BestB: Integer;
+  Name, Middle, Digest: string;
+  Best: TUpdateRelease;
+begin
+  Result := False;
+  ARelease := Default(TUpdateRelease);
+  Best := Default(TUpdateRelease);
+  BestM := 0;
+  BestN := 0;
+  BestP := 0;
+  BestB := 0;
+  Val := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (Val is TJSONObject) then
+      Exit;
+    Root := TJSONObject(Val);
+    if Root.GetValue<Boolean>('draft', False) then
+      Exit;
+    if not Root.TryGetValue<TJSONArray>('assets', Assets) then
+      Exit;
+    for I := 0 to Assets.Count - 1 do
+    begin
+      if not (Assets.Items[I] is TJSONObject) then
+        Continue;
+      Asset := TJSONObject(Assets.Items[I]);
+      Name := Asset.GetValue<string>('name', '');
+      if not (Name.StartsWith(cUpdateAssetPrefix + 'v', True) and
+        Name.EndsWith(AAssetSuffix, True)) then
+        Continue;
+      Middle := Copy(Name, Length(cUpdateAssetPrefix) + 1,
+        Length(Name) - Length(cUpdateAssetPrefix) - Length(AAssetSuffix));
+      if not TryParseVersionBuild(Middle, M, N, P, B) or (B <= 0) or
+        (Length(Middle.Split(['.'])) <> 4) then
+        Continue;
+      if (Best.AssetUrl <> '') and
+        (CompareVersions(Middle, Format('%d.%d.%d.%d', [BestM, BestN, BestP, BestB])) <= 0) then
+        Continue;
+      BestM := M;
+      BestN := N;
+      BestP := P;
+      BestB := B;
+      Best.Version := Format('%d.%d.%d.%d', [M, N, P, B]);
+      Best.Tag := 'v' + Best.Version;
+      Best.HtmlUrl := Root.GetValue<string>('html_url', '');
+      Best.AssetName := Name;
+      Best.AssetUrl := Asset.GetValue<string>('browser_download_url', '');
+      Best.AssetSize := Asset.GetValue<Int64>('size', 0);
+      Best.AssetSha256 := '';
+      Digest := Asset.GetValue<string>('digest', '');
+      if Digest.StartsWith('sha256:', True) then
+        Best.AssetSha256 := LowerCase(Copy(Digest, 8, MaxInt));
+    end;
+    if Best.AssetUrl <> '' then
+    begin
+      ARelease := Best;
+      Result := True;
+    end;
+  finally
+    Val.Free;
+  end;
+end;
+
 function NewHttpClient(AResponseTimeoutMs: Integer): THTTPClient;
 begin
   Result := THTTPClient.Create;
@@ -242,25 +354,40 @@ begin
 end;
 
 function FetchLatestRelease(out ARelease: TUpdateRelease; out AError: string): Boolean;
+begin
+  Result := FetchLatestRelease(False, ARelease, AError);
+end;
+
+function FetchLatestRelease(ADevChannel: Boolean; out ARelease: TUpdateRelease;
+  out AError: string): Boolean;
 var
   Http: THTTPClient;
   Resp: IHTTPResponse;
+  Url, Body: string;
 begin
   Result := False;
   AError := '';
   ARelease := Default(TUpdateRelease);
+  if ADevChannel then
+    Url := Format('https://api.github.com/repos/%s/releases/tags/%s',
+      [cUpdateDevRepo, cUpdateDevTag])
+  else
+    Url := Format('https://api.github.com/repos/%s/releases/latest', [cUpdateRepo]);
   Http := NewHttpClient(20000);
   try
     try
-      Resp := Http.Get(Format('https://api.github.com/repos/%s/releases/latest', [cUpdateRepo]),
-        nil, [TNetHeader.Create('Accept', 'application/vnd.github+json')]);
+      Resp := Http.Get(Url, nil,
+        [TNetHeader.Create('Accept', 'application/vnd.github+json')]);
       if Resp.StatusCode <> 200 then
       begin
         AError := Format('GitHub: HTTP %d', [Resp.StatusCode]);
         Exit;
       end;
-      Result := ParseLatestReleaseJson(Resp.ContentAsString(TEncoding.UTF8),
-        cUpdateAssetSuffix, ARelease);
+      Body := Resp.ContentAsString(TEncoding.UTF8);
+      if ADevChannel then
+        Result := ParseDevReleaseJson(Body, cUpdateAssetSuffix, ARelease)
+      else
+        Result := ParseLatestReleaseJson(Body, cUpdateAssetSuffix, ARelease);
       if not Result then
         AError := 'GitHub: no suitable release package';
     except
@@ -599,6 +726,7 @@ begin
   Result.ShowCheckNotice := True;
   Result.LastCheck := 0;
   Result.SkipVersion := '';
+  Result.DevChannel := False;
 end;
 
 function ParseUpdateSettingsJson(const AJson: string): TUpdateSettings;
@@ -617,6 +745,7 @@ begin
       Result.CheckOnStart := Root.GetValue<Boolean>('checkOnStart', True);
       Result.ShowCheckNotice := Root.GetValue<Boolean>('showCheckNotice', True);
       Result.SkipVersion := Root.GetValue<string>('skipVersion', '');
+      Result.DevChannel := Root.GetValue<Boolean>('devChannel', False);
       S := Root.GetValue<string>('lastCheck', '');
       if S <> '' then
         Result.LastCheck := ISO8601ToDate(S, False);
@@ -636,6 +765,7 @@ begin
   try
     Root.AddPair('checkOnStart', TJSONBool.Create(ASettings.CheckOnStart));
     Root.AddPair('showCheckNotice', TJSONBool.Create(ASettings.ShowCheckNotice));
+    Root.AddPair('devChannel', TJSONBool.Create(ASettings.DevChannel));
     if ASettings.LastCheck > 0 then
       Root.AddPair('lastCheck', DateToISO8601(ASettings.LastCheck, False));
     if ASettings.SkipVersion <> '' then

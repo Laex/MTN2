@@ -79,8 +79,32 @@
 | `ci.yml` → `wasm-plugin` | GitHub-hosted (ubuntu) | `cargo build` плагина `mtn.ws` под `wasm32` |
 | `ci.yml` → `delphi` | self-hosted `delphi` | `build.ps1` + `run-tests.ps1` + zip-артефакт |
 | `release.yml` | self-hosted `delphi` | по тегу `v*`: сборка, тесты, GitHub Release с zip и разделом из `CHANGELOG.md` |
+| `dev.yml` | self-hosted `delphi` | по пушу в `main`: сборка, тесты, zip в скользящий prerelease `dev` репозитория `Laex/MTN2-dev` |
 
 RAD Studio коммерческая и на GitHub-hosted раннерах отсутствует, поэтому Delphi-часть идёт на своей машине.
+
+### Сборки разработки (канал dev)
+
+`dev.yml` после каждого пуша в `main` собирает exe с версией `<версия из MTN2.dproj>.<номер запуска>` (например,
+`0.3.12.57`) и кладёт пакеты в единственный prerelease `dev` репозитория `Laex/MTN2-dev`; пакеты предыдущей сборки
+удаляются. Отдельный репозиторий нужен потому, что в `Laex/MTN2` включены неизменяемые релизы: опубликованный релиз там
+перезаписать нельзя. В `Laex/MTN2-dev` неизменяемые релизы и rulesets на теги включать не нужно.
+
+Версия из четырёх чисел старше релиза, от которого отсчитывается, и младше следующего (`0.3.13 > 0.3.12.999`).
+Поэтому с канала dev на релизы встроенное обновление перейдёт только с выходом следующего релиза.
+
+Настройка GitHub, один раз:
+
+1. Репозиторий `Laex/MTN2-dev` (публичный). Пустой – workflow сам добавит `README.md`, чтобы было что помечать тегом.
+2. *Settings → Developer settings → Personal access tokens → Fine-grained tokens*: доступ только к `Laex/MTN2-dev`,
+   *Repository permissions → Contents: Read and write*. Срок действия – по желанию, при истечении сборки dev
+   останавливаются.
+3. В `Laex/MTN2`: *Settings → Secrets and variables → Actions → New repository secret* с именем `DEV_RELEASE_TOKEN`
+   и значением токена. Переменная `DELPHI_RUNNER=true` уже нужна для `ci.yml` и включает и `dev.yml`.
+
+`dev.yml` запускается только на пуш в `main` и вручную, не на pull request'ы: секрет недоступен коду из форков.
+Приложение ищет сборку по `releases/tags/dev` и берёт пакет с наибольшим номером в имени
+`MTN2-v<мажор>.<минор>.<патч>.<сборка>-win64.zip`.
 
 ### Подключение self-hosted раннера
 
