@@ -42,7 +42,7 @@ jobs:
       - name: Package
         shell: pwsh
         # Regular and portable zip (the updater only ever takes the regular one).
-        run: ./src/tools/package-release.ps1 -Version $env:TAG
+        run: ./src/tools/package-release.ps1 -Version $env:TAG -RequireWasmtime
 
       - name: Check packages
         shell: pwsh

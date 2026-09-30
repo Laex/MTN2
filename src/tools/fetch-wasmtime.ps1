@@ -13,8 +13,19 @@ if (Test-Path $Dll) {
 $ZipName = "wasmtime-$Version-x86_64-windows-c-api.zip"
 $Url = "https://github.com/bytecodealliance/wasmtime/releases/download/$Version/$ZipName"
 $Tmp = Join-Path $env:TEMP $ZipName
-Write-Host "Downloading $Url"
-Invoke-WebRequest -Uri $Url -OutFile $Tmp -UseBasicParsing
+# The download is retried: a dropped connection must not leave a package
+# without the runtime.
+for ($Attempt = 1; $Attempt -le 4; $Attempt++) {
+    Write-Host "Downloading $Url (attempt $Attempt)"
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $Tmp -UseBasicParsing
+        break
+    } catch {
+        if ($Attempt -eq 4) { throw }
+        Write-Host "WARN: download failed: $_"
+        Start-Sleep -Seconds (5 * $Attempt)
+    }
+}
 $Extract = Join-Path $env:TEMP ("wasmtime-" + $Version + "-c-api")
 if (Test-Path $Extract) { Remove-Item $Extract -Recurse -Force }
 Expand-Archive -Path $Tmp -DestinationPath $Extract -Force

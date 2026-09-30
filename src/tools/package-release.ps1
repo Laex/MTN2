@@ -8,7 +8,10 @@
 # ending in anything but "-win64.zip".
 param(
     [Parameter(Mandatory)]
-    [string]$Version
+    [string]$Version,
+    # Published packages (release, dev build) must carry wasmtime.dll; a
+    # missing one stops the packaging instead of shipping without WASM plugins.
+    [switch]$RequireWasmtime
 )
 $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -23,6 +26,7 @@ foreach ($Required in 'MTN2.exe', 'sk4d.dll') {
     }
 }
 if (-not (Test-Path (Join-Path $Bin 'wasmtime.dll'))) {
+    if ($RequireWasmtime) { throw 'bin\wasmtime.dll not found; run src\tools\fetch-wasmtime.ps1 and build again' }
     Write-Host 'WARN: bin\wasmtime.dll missing -- WASM plugins will not load from this package'
 }
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }

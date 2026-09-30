@@ -112,7 +112,11 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: ./src/tools/package-release.ps1 -Version ($env:DEV_VERSION ?? "ci-${{ github.sha }}")
+        # A published dev build must carry wasmtime.dll; a build that is only
+        # checked may go without it.
+        run: |
+          if ($env:DEV_VERSION) { ./src/tools/package-release.ps1 -Version $env:DEV_VERSION -RequireWasmtime }
+          else { ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}" }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
