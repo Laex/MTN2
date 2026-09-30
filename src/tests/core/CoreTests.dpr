@@ -13,6 +13,7 @@ uses
   TestDescriptIon in 'TestDescriptIon.pas',
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
+  TestFolderHotlist in 'TestFolderHotlist.pas',
   TestKeymap in 'TestKeymap.pas',
   TestKeyChord in 'TestKeyChord.pas',
   TestLiveReload in 'TestLiveReload.pas',

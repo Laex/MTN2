@@ -234,6 +234,8 @@
     "DIALOG_FOLDERHOTLIST": {
       "hotlistHeader": "Имя                  Путь                         Клавиша",
       "$title": "Избранные папки",
+      "hint_hotkey": "Ctrl+1..Ctrl+0  назначить клавишу (повторно - снять)",
+      "hint_keys": "F2 переименовать   Del удалить   Ctrl+Вверх/Вниз порядок",
       "ok": "Перейти",
       "cancel": "Отмена"
     },
@@ -641,7 +643,7 @@
     "toast.refreshed": "Панель обновлена",
     "toast.restored": "Восстановлено из корзины: «%s»",
     "toast.selectionUnchanged": "Выделение не изменилось (маска «%s»)",
-    "toast.hotlistAdded": "Добавлено в избранные папки: «%s» (Ctrl+D)",
+    "toast.hotlistAdded": "Добавлено в избранные папки: «%s»",
     "toast.nothingToCopy": "Нечего копировать",
     "about.engine.skia": "Графический движок: Skia (монохромное сглаживание + затемнение диалогов)",
     "about.engine.gdi": "Графический движок: стандартный рендерер GDI/FMX",

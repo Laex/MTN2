@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  uNotice, uKeyChord;
+  uNotice, uKeyChord, uKeymap;
 
 constructor TFolderHotlistDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFolderHotlistKindSetter;
@@ -127,10 +127,9 @@ var
 begin
   if not (Assigned(FDialog) and FDialog.Visible) then
     Exit;
-  // Re-sorting (FolderHotlistGetEntries orders by hotkey) can move the
-  // entry the cursor was on to a different row - follow it by URI rather
-  // than keeping the same numeric row, which would land on whatever
-  // unrelated entry happens to sort into that slot now.
+  // Moving or deleting an entry changes the row the cursor was on - follow
+  // the entry by URI rather than keeping the same numeric row, which would
+  // land on whatever unrelated entry sits in that slot now.
   Sel := FDialog.GetListSelectedIndex('hotlist');
   SelUri := '';
   if (Sel >= 0) and (Sel <= High(FEntries)) then
@@ -228,6 +227,19 @@ begin
     AKeyChar := #0;
     Exit(True);
   end;
+  // Ctrl+Up / Ctrl+Down: move the selected entry one place; the cursor
+  // follows it (RefreshList tracks the entry by URI).
+  if ((AKey = vkUp) or (AKey = vkDown)) and
+     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl], [ssShift, ssAlt]) then
+  begin
+    HotIdx := FDialog.GetListSelectedIndex('hotlist');
+    if (HotIdx >= 0) and (HotIdx <= High(FEntries)) and
+       FolderHotlistMoveByUri(FEntries[HotIdx].URI, Ord(AKey = vkDown) * 2 - 1) then
+      RefreshList;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   // Ctrl+1..Ctrl+9,Ctrl+0: toggle-assign that hotkey to the selected entry.
   // Pressing the digit already owning it clears it; pressing one owned by
   // another entry steals it (FolderHotlistSetHotKey enforces uniqueness).
@@ -301,7 +313,7 @@ procedure TFolderHotlistDialogController.DispatchAddCommand(
   const AControlId: string);
 var
   Accepted: Boolean;
-  NameVal, ActiveUri: string;
+  NameVal, ActiveUri, Template, Keys: string;
 begin
   Accepted := not DialogCmdIsReject(AControlId);
   NameVal := FDialog.GetInputValue('name');
@@ -312,8 +324,13 @@ begin
     FolderHotlistAdd(NameVal, ActiveUri);
     if Trim(NameVal) = '' then
       NameVal := VfsUriTitle(ActiveUri);
-    Notice(T('ui.toast.hotlistAdded', '"%s" added to the folder hotlist (Ctrl+D)'),
-      Trim(NameVal));
+    // The hint names the key that opens the hotlist in the active keymap,
+    // which the user may have rebound.
+    Template := T('ui.toast.hotlistAdded', '"%s" added to the folder hotlist');
+    Keys := KeymapShortcutText(ActiveKeymap, kaFolderHotlist, 1);
+    if Keys <> '' then
+      Template := Template + ' (' + Keys + ')';
+    Notice(Template, Trim(NameVal));
   end;
 end;
 

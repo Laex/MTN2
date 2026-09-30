@@ -27,7 +27,12 @@ procedure FolderHotlistRename(AIndex: Integer; const ANewName: string);
 procedure FolderHotlistSetHotKey(AIndex, AHotKey: Integer);
 /// <summary>Index of the entry bound to AHotKey (1..10), or -1 if none.</summary>
 function FolderHotlistFindByHotKey(AHotKey: Integer): Integer;
+/// <summary>The entries in the order the user arranged them (new ones go to
+/// the end, FolderHotlistMoveByUri reorders).</summary>
 function FolderHotlistGetEntries: TArray<TFolderHotlistEntry>;
+/// <summary>Moves the entry ADelta places up (negative) or down; False when
+/// it is not found or would leave the list.</summary>
+function FolderHotlistMoveByUri(const AUri: string; ADelta: Integer): Boolean;
 procedure FolderHotlistClear;
 /// <summary>Display label for AHotKey (1..10): 'Ctrl+1'..'Ctrl+9', 'Ctrl+0'; '' for 0.</summary>
 function FolderHotlistKeyLabel(AHotKey: Integer): string;
@@ -42,8 +47,8 @@ function FolderHotlistKeyFromVKey(AKey: Word): Integer;
 /// or -1 if none.</summary>
 function FolderHotlistFindByUri(const AUri: string): Integer;
 /// <summary>Remove/rename/set-hotkey by URI rather than raw storage index -
-/// safe to call with an entry taken from FolderHotlistGetEntries's result,
-/// which is sorted by hotkey and so no longer matches storage order.</summary>
+/// safe to call with an entry taken from FolderHotlistGetEntries's result
+/// whatever index it has in a list the caller has since changed.</summary>
 procedure FolderHotlistRemoveByUri(const AUri: string);
 procedure FolderHotlistRenameByUri(const AUri, ANewName: string);
 procedure FolderHotlistSetHotKeyByUri(const AUri: string; AHotKey: Integer);
@@ -285,24 +290,6 @@ begin
   FolderHotlistSetHotKey(FolderHotlistFindByUri(AUri), AHotKey);
 end;
 
-function CompareHotlistEntries(const A, B: TFolderHotlistEntry): Integer;
-var
-  KeyA, KeyB: Integer;
-begin
-  // Assigned hotkeys (1..10) sort first in that order; unassigned (0) sort
-  // after, alphabetically by name - so the list mirrors the Ctrl+1..Ctrl+0
-  // jump order the user just set up in the dialog.
-  KeyA := A.HotKey;
-  if KeyA = 0 then
-    KeyA := MaxInt;
-  KeyB := B.HotKey;
-  if KeyB = 0 then
-    KeyB := MaxInt;
-  Result := KeyA - KeyB;
-  if Result = 0 then
-    Result := CompareText(A.Name, B.Name);
-end;
-
 function FolderHotlistGetEntries: TArray<TFolderHotlistEntry>;
 var
   I: Integer;
@@ -311,8 +298,25 @@ begin
   SetLength(Result, GEntries.Count);
   for I := 0 to GEntries.Count - 1 do
     Result[I] := GEntries[I];
-  TArray.Sort<TFolderHotlistEntry>(Result,
-    TComparer<TFolderHotlistEntry>.Construct(CompareHotlistEntries));
+end;
+
+function FolderHotlistMoveByUri(const AUri: string; ADelta: Integer): Boolean;
+var
+  From, Dest: Integer;
+begin
+  Result := False;
+  From := FolderHotlistFindByUri(AUri);
+  if From < 0 then
+    Exit;
+  Dest := From + ADelta;
+  if (Dest < 0) or (Dest >= GEntries.Count) or (Dest = From) then
+    Exit;
+  GEntries.Move(From, Dest);
+  Result := True;
+  try
+    SaveLocked;
+  except
+  end;
 end;
 
 procedure FolderHotlistClear;

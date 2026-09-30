@@ -192,6 +192,8 @@
     },
     "DIALOG_FOLDERHOTLIST": {
       "$title": "Directory hotlist",
+      "hint_hotkey": "Ctrl+1..Ctrl+0  assign the hotkey (again - clear it)",
+      "hint_keys": "F2 rename   Del delete   Ctrl+Up/Down move",
       "ok": "Go",
       "cancel": "Cancel"
     },
@@ -542,7 +544,7 @@
     "toast.refreshed": "Panel refreshed",
     "toast.restored": "\"%s\" restored from the Recycle Bin",
     "toast.selectionUnchanged": "Selection unchanged (mask \"%s\")",
-    "toast.hotlistAdded": "\"%s\" added to the folder hotlist (Ctrl+D)",
+    "toast.hotlistAdded": "\"%s\" added to the folder hotlist",
     "toast.nothingToCopy": "Nothing to copy",
     "about.engine.skia": "Graphics Engine: Skia (mono AA + modal dim)",
     "about.engine.gdi": "Graphics Engine: Standard GDI/FMX Renderer",

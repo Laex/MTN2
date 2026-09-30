@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Directory hotlist",
   "width": 62,
-  "height": 18,
+  "height": 20,
   "children": [
     {
       "type": "label",
@@ -27,12 +27,30 @@
       "height": 11
     },
     {
+      "type": "label",
+      "id": "hint_hotkey",
+      "text": "Ctrl+1..Ctrl+0  assign the hotkey (again - clear it)",
+      "col": 1,
+      "row": 13,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint_keys",
+      "text": "F2 rename   Del delete   Ctrl+Up/Down move",
+      "col": 1,
+      "row": 14,
+      "width": 58,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Go",
       "default": true,
       "col": 16,
-      "row": 14,
+      "row": 16,
       "width": 10,
       "height": 1
     },
@@ -42,7 +60,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 34,
-      "row": 14,
+      "row": 16,
       "width": 10,
       "height": 1
     }

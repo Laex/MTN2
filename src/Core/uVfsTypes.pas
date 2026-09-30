@@ -1165,7 +1165,8 @@ var
   Segs: TArray<string>;
   I: Integer;
 begin
-  Name := Trim(AName);
+  // Not trimmed: a file name may start with a space.
+  Name := AName;
   if Name = '' then
     Exit(ADirURI);
   Name := StringReplace(Name, '\', '/', [rfReplaceAll]);
