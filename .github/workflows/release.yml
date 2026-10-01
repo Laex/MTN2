@@ -42,7 +42,7 @@ jobs:
       - name: Package
         shell: pwsh
         # Regular and portable zip (the updater only ever takes the regular one).
-        run: ./src/tools/package-release.ps1 -Version $env:TAG -RequireWasmtime
+        run: ./src/tools/package-release.ps1 -Version $env:TAG -RequireWasmtime -Require7z
 
       - name: Check packages
         shell: pwsh
@@ -63,7 +63,7 @@ jobs:
             throw "Release $env:TAG is already published and immutable; tag a new version"
           } else {
             # What's new (the tag's CHANGELOG.md section, with a link to the
-            # whole file), then the install/7z.dll notes
+            # whole file), then the install notes
             # (.github/release-notes.md, {{TAG}} = the tag), then GitHub's
             # generated compare link.
             $Notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'

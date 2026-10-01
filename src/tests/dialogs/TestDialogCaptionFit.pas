@@ -19,13 +19,14 @@ type
     [Test] procedure TestCheckboxPushesField;
     [Test] procedure TestFittingDialogUnchanged;
     [Test] procedure TestNoResourceOverflows;
+    [Test] procedure TestConsoleProfileCheckboxesFit;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uDialogTypes, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost;
+  uDialogTypes, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost, uStrings;
 
 function Ctl(const AKind: TDialogControlKind; const AId, AText: string;
   ACol, ARow, AW: Integer): TDialogControl;
@@ -136,6 +137,20 @@ end;
 
 // The English dialogs\*.json must fit their own captions; Open fixes an
 // overflow at run time, but the authored layout should not need it.
+procedure TTestDialogCaptionFit.TestConsoleProfileCheckboxesFit;
+var
+  D: TDialogDeclaration;
+begin
+  SetLocale('ru');
+  try
+    D := BuildConsoleProfileDialog(['cmd'], 0, False, True);
+    Assert.IsFalse(DialogCaptionsOverflow(D), 'the translated checkbox captions fit their boxes');
+    Assert.AreEqual('Фоновая консоль', D.Title, 'the title is translated');
+  finally
+    SetLocale('');
+  end;
+end;
+
 procedure TTestDialogCaptionFit.TestNoResourceOverflows;
 var
   F, Bad: string;

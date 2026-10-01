@@ -6,7 +6,7 @@ MTN2 can update itself: it finds a new version on GitHub, downloads and installs
 
 A few seconds after startup, once a day, MTN2 checks GitHub for a new version. If there is one, it asks: **Update**, **Later** or **Skip this version** (a skipped version is not offered again). Nothing is downloaded or installed without an answer.
 
-After the download (the package is checked against its SHA-256) MTN2 offers to **Restart** now or install **On exit**. While copy jobs are running, installation waits until exit. Only program files are replaced – settings, `7z.dll` and other user files stay as they are.
+After the download (the package is checked against its SHA-256) MTN2 offers to **Restart** now or install **On exit**. While copy jobs are running, installation waits until exit. Only program files are replaced (including `7z.dll`, which comes with the package) – settings and other user files stay as they are.
 
 ### Check settings
 

@@ -122,10 +122,14 @@ type
     FSearchUi: TSearchController;
     FMenus: TMenuStubController;
     FPendingSelectName: string;
+    /// <summary>Temp folders holding archive entries opened with the shell;
+    /// removed when the window goes away.</summary>
+    FOpenTempDirs: TStringList;
     FPendingSelectSide: TPanelSide;
     /// <summary>Helper for Gray+/Gray? select dialogs (FAR).</summary>
     FSelHelper: TDualPanelSelectionHelper;
     FOnRunCommand: TRunCommandEvent;
+    FOnReturnWhenDone: TNotifyEvent;
     FOnShellCwdSync: TShellCwdSyncEvent;
     FOnToggleConsole: TQuitRequestEvent;
     FOnOpenTerminal: TOpenTerminalEvent;
@@ -133,6 +137,8 @@ type
     FOnGetConsoleProfile: TGetConsoleProfileEvent;
     FOnGetConsoleStartOnLaunch: TGetConsoleStartOnLaunchEvent;
     FOnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent;
+    FOnGetConsoleCwdToPanels: TGetConsoleStartOnLaunchEvent;
+    FOnSetConsoleCwdToPanels: TSetConsoleStartOnLaunchEvent;
     FOnThemeSelect: TThemeSelectEvent;
     FOnThemePreview: TThemePreviewEvent;
     FOnGetActiveThemeId: TGetThemeIdEvent;
@@ -301,6 +307,8 @@ type
     function HostGetConsoleProfile: string;
     function HostGetConsoleStartOnLaunch: Boolean;
     procedure HostSetConsoleStartOnLaunch(AValue: Boolean);
+    function HostGetConsoleCwdToPanels: Boolean;
+    procedure HostSetConsoleCwdToPanels(AValue: Boolean);
     function HostActivePanelUri: string;
     function HostInPanelsWorkspace: Boolean;
     function HostLastSelectMask: string;
@@ -543,7 +551,7 @@ type
     procedure HostUserMenuAction(AAction: TUserMenuAction; AParent: TUserMenuItem;
       AIndex: Integer);
     function HostUserMenuContext: TUserMenuContext;
-    procedure HostRunUserMenuCommand(const ACommand: string);
+    procedure HostRunUserMenuCommand(const ACommand: string; AReturnToPanels: Boolean);
     procedure DrawUserMenu;
     procedure DrawSortMenu;
     procedure DrawColumnModeMenu;
@@ -946,6 +954,9 @@ type
     property OnQuitRequest: TQuitRequestEvent read FOnQuitRequest write FOnQuitRequest;
     property OnOpenUpdates: TQuitRequestEvent read FOnOpenUpdates write FOnOpenUpdates;
     property OnRunCommand: TRunCommandEvent read FOnRunCommand write FOnRunCommand;
+    /// <summary>Asks the host to go back to the panels once the command it
+    /// was just given has finished.</summary>
+    property OnReturnWhenDone: TNotifyEvent read FOnReturnWhenDone write FOnReturnWhenDone;
     property OnShellCwdSync: TShellCwdSyncEvent read FOnShellCwdSync write FOnShellCwdSync;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
     property OnOpenTerminal: TOpenTerminalEvent read FOnOpenTerminal write FOnOpenTerminal;
@@ -957,6 +968,10 @@ type
       read FOnGetConsoleStartOnLaunch write FOnGetConsoleStartOnLaunch;
     property OnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent
       read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
+    property OnGetConsoleCwdToPanels: TGetConsoleStartOnLaunchEvent
+      read FOnGetConsoleCwdToPanels write FOnGetConsoleCwdToPanels;
+    property OnSetConsoleCwdToPanels: TSetConsoleStartOnLaunchEvent
+      read FOnSetConsoleCwdToPanels write FOnSetConsoleCwdToPanels;
     property OnThemeSelect: TThemeSelectEvent read FOnThemeSelect write FOnThemeSelect;
     property OnThemePreview: TThemePreviewEvent read FOnThemePreview write FOnThemePreview;
     property OnGetActiveThemeId: TGetThemeIdEvent read FOnGetActiveThemeId write FOnGetActiveThemeId;
@@ -1226,8 +1241,21 @@ begin
 end;
 
 destructor TDualPanelWindow.Destroy;
+var
+  Dir: string;
 begin
   FAlive := False;
+  if Assigned(FOpenTempDirs) then
+  begin
+    for Dir in FOpenTempDirs do
+      try
+        if TDirectory.Exists(Dir) then
+          TDirectory.Delete(Dir, True);
+      except
+        // a copy still open in another program stays; the age purge gets it
+      end;
+    FreeAndNil(FOpenTempDirs);
+  end;
   FreeAndNil(FDescMap);
   FreeAndNil(FArchivesUnlocked);
   ShellIconsSetOnReady(nil);
@@ -1878,6 +1906,20 @@ begin
     FOnSetConsoleStartOnLaunch(AValue);
 end;
 
+function TDualPanelWindow.HostGetConsoleCwdToPanels: Boolean;
+begin
+  if Assigned(FOnGetConsoleCwdToPanels) then
+    Result := FOnGetConsoleCwdToPanels()
+  else
+    Result := True;
+end;
+
+procedure TDualPanelWindow.HostSetConsoleCwdToPanels(AValue: Boolean);
+begin
+  if Assigned(FOnSetConsoleCwdToPanels) then
+    FOnSetConsoleCwdToPanels(AValue);
+end;
+
 function TDualPanelWindow.HostActivePanelUri: string;
 var
   Ws: TDualPanelWorkspaceTab;
@@ -2405,6 +2447,8 @@ begin
     HostGetDisplaySettings, HostApplyDisplaySettings);
   FSettings.OnGetConsoleStartOnLaunch := HostGetConsoleStartOnLaunch;
   FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
+  FSettings.OnGetConsoleCwdToPanels := HostGetConsoleCwdToPanels;
+  FSettings.OnSetConsoleCwdToPanels := HostSetConsoleCwdToPanels;
   FThemeDlg := TThemeDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostGetActiveThemeId, HostSelectTheme,
@@ -6505,7 +6549,8 @@ end;
 
 
 // A file inside an archive has no path the Windows shell can open: unpack it
-// into a fresh temp folder and open the copy. Folders left by earlier calls
+// into a fresh temp folder and open the copy. The folders are removed when the
+// window is destroyed; any left over (a copy still open elsewhere, a crash)
 // are purged after a day.
 procedure TDualPanelWindow.ShellOpenArchiveEntry(const AURI, AName: string);
 var
@@ -6532,6 +6577,9 @@ begin
     OpenStub(skShellInfo, 'Shell open failed', Dir);
     Exit;
   end;
+  if not Assigned(FOpenTempDirs) then
+    FOpenTempDirs := TStringList.Create;
+  FOpenTempDirs.Add(Dir);
   FVfs.CopyAsync(AURI, PathToFileUri(Dst), nil, nil,
     procedure(const ASuccess: Boolean; const AError: TVfsError)
     begin
@@ -7335,7 +7383,8 @@ begin
     Result.Passive := PanelInfo(psLeft);
 end;
 
-procedure TDualPanelWindow.HostRunUserMenuCommand(const ACommand: string);
+procedure TDualPanelWindow.HostRunUserMenuCommand(const ACommand: string;
+  AReturnToPanels: Boolean);
 begin
   // Like a typed command, minus clearing the command line: whatever the
   // user was typing there stays.
@@ -7343,6 +7392,8 @@ begin
   NotifyChanged;
   if Assigned(FOnRunCommand) then
     FOnRunCommand(ACommand, PanelCommandCwd);
+  if AReturnToPanels and Assigned(FOnReturnWhenDone) then
+    FOnReturnWhenDone(Self);
 end;
 
 procedure TDualPanelWindow.DrawUserMenu;

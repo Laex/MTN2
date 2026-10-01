@@ -20,7 +20,9 @@
 сравнивает автообновление. Без параметра берётся версия из `MTN2.dproj`; релизная сборка передаёт тег.
 
 `wasmtime.dll` скачивается `src/tools/fetch-wasmtime.ps1` (копия хранится в папке кэша: `MTN2_CACHE`, а на раннере GitHub Actions – в его tool cache; там же лежит папка `target` Rust-плагина, чтобы чистый `checkout` не стирал их); `7z.dll` (x64) берётся из установленного 7-Zip
-или из `MTN2_7Z_DLL` и в релизный архив не входит.
+или из `MTN2_7Z_DLL`, лежит в `bin\plugins\mtn.7z\` и входит в пакеты вместе с текстом лицензии
+(`src/plugins/mtn.7z/7-Zip-license.txt` -> `plugins\mtn.7z\license.txt`) и `THIRD-PARTY.md`; `package-release.ps1 -Require7z`
+останавливает упаковку, если её нет.
 
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
 Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся – их собирает `build.ps1`

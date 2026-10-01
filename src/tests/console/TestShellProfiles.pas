@@ -15,6 +15,7 @@ type
     [Test] procedure TestEnumeration;
     [Test] procedure TestSshProfile;
     [Test] procedure TestTitleWithShell;
+    [Test] procedure TestShellCwdFromPrompt;
   end;
 
 implementation
@@ -199,6 +200,23 @@ end;
 
 { TTestShellProfiles }
 
+procedure TestShellCwdFromPrompt;
+var
+  Path: string;
+begin
+  Assert.IsTrue(ShellCwdFromPrompt('cmd', 'C:\Temp>', Path) and (Path = 'C:\Temp'), 'cmd prompt');
+  Assert.IsTrue(ShellCwdFromPrompt('cmd', 'D:\My Folder\a.b>dir', Path) and
+    (Path = 'D:\My Folder\a.b'), 'cmd prompt with typed text');
+  Assert.IsTrue(ShellCwdFromPrompt('pwsh', 'PS D:\Work\Delphi\MTN2> set-Location', Path) and
+    (Path = 'D:\Work\Delphi\MTN2'), 'pwsh prompt with typed text');
+  Assert.IsTrue(ShellCwdFromPrompt('powershell', 'PS C:\> ', Path) and (Path = 'C:\'), 'drive root');
+  Assert.IsFalse(ShellCwdFromPrompt('pwsh', 'PS HKLM:\> ', Path), 'not a drive path');
+  Assert.IsFalse(ShellCwdFromPrompt('pwsh', 'C:\Temp>', Path), 'pwsh prompt starts with PS');
+  Assert.IsFalse(ShellCwdFromPrompt('pwsh', 'PS C:\Temp>x', Path), 'PowerShell prompt ends with a space');
+  Assert.IsFalse(ShellCwdFromPrompt('wsl', 'C:\Temp>', Path), 'other profiles are not parsed');
+  Assert.IsFalse(ShellCwdFromPrompt('cmd', 'hello world', Path), 'plain output');
+end;
+
 procedure TTestShellProfiles.TestNormalization;
 begin
   TestShellProfiles.TestNormalization;
@@ -227,6 +245,11 @@ end;
 procedure TTestShellProfiles.TestSshProfile;
 begin
   TestShellProfiles.TestSshProfile;
+end;
+
+procedure TTestShellProfiles.TestShellCwdFromPrompt;
+begin
+  TestShellProfiles.TestShellCwdFromPrompt;
 end;
 
 initialization

@@ -23,7 +23,8 @@ uses
 type
   TUserMenuKindSetter = reference to procedure(AKind: THostDialogKind);
   TUserMenuContextFn = reference to function: TUserMenuContext;
-  TUserMenuRunProc = reference to procedure(const ACommand: string);
+  TUserMenuRunProc = reference to procedure(const ACommand: string;
+    AReturnToPanels: Boolean);
   TUserMenuShowProc = reference to procedure(ARoot: TUserMenuItem;
     const ATitle: string);
   TUserMenuFolderFn = reference to function: string;
@@ -38,6 +39,7 @@ type
     FOnNotify: TProc;
     FGetContext: TUserMenuContextFn;
     FRun: TUserMenuRunProc;
+    FRunReturn: Boolean;
     FShowMenu: TUserMenuShowProc;
     FItemsChanged: TUserMenuChangedProc;
     FGetFolder: TUserMenuFolderFn;
@@ -250,7 +252,7 @@ begin
   begin
     Item := AParent.Items[AIndex];
     FDialog.Open(BuildUserMenuEditDialog(Item.HotKey, Item.Caption, Item.Command,
-      KindToIndex(Item.Kind)), FOnCommand);
+      KindToIndex(Item.Kind), Item.ReturnToPanels), FOnCommand);
   end;
   Notify;
 end;
@@ -289,6 +291,7 @@ begin
   else
     FRunContext := Default(TUserMenuContext);
   FRunTemplate := AItem.Command;
+  FRunReturn := AItem.ReturnToPanels;
   FRunTitle := AItem.Caption;
   FRunPrompts := ParseUserMenuPrompts(FRunTemplate);
   FRunAnswers := nil;
@@ -314,7 +317,7 @@ begin
   Cmd := Trim(ExpandUserMenuCommand(FRunTemplate, FRunContext, FRunAnswers));
   FRunTemplate := '';
   if (Cmd <> '') and Assigned(FRun) then
-    FRun(Cmd);
+    FRun(Cmd, FRunReturn);
   Notify;
 end;
 
@@ -322,6 +325,7 @@ procedure TUserMenuDialogController.DispatchEditCommand(const AControlId: string
 var
   Accepted: Boolean;
   HotKey, Caption, Command: string;
+  ReturnToPanels: Boolean;
   Kind: TUserMenuKind;
   Item: TUserMenuItem;
 begin
@@ -329,6 +333,7 @@ begin
   HotKey := Copy(Trim(FDialog.GetInputValue('hotkey')), 1, 1);
   Caption := Trim(FDialog.GetInputValue('caption'));
   Command := Trim(FDialog.GetInputValue('command'));
+  ReturnToPanels := FDialog.GetCheckbox('return_panels');
   Kind := IndexToKind(FDialog.GetListSelectedIndex('kind'));
   FDialog.Close;
   if not Accepted or not Assigned(FEditParent) then
@@ -358,12 +363,14 @@ begin
     Item.HotKey := '';
     Item.Caption := '';
     Item.Command := '';
+    Item.ReturnToPanels := False;
   end
   else
   begin
     Item.HotKey := HotKey;
     Item.Caption := Caption;
     Item.Command := Command;
+    Item.ReturnToPanels := ReturnToPanels and (Kind = umkCommand);
   end;
   Save;
   MenuChanged(FEditIndex);

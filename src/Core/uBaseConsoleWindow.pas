@@ -152,7 +152,9 @@ type
     /// <summary>Reports ACommand (already trimmed by the caller) to the host
     /// via OnCommandExecuted, unless empty or an alt-screen TUI app (vim/htop)
     /// is running -- an Enter there isn't a shell command.</summary>
-    procedure NoteCommandSubmitted(const ACommand: string);
+    procedure NoteCommandSubmitted(const ACommand: string); virtual;
+    /// <summary>Called after each chunk of shell output reached the buffer.</summary>
+    procedure OutputAppended; virtual;
     /// <summary>Writes ACommand + the profile's return sequence straight to
     /// the PTY, as if the user had typed and submitted it, and records it via
     /// NoteCommandSubmitted. Used by the Alt+F8 history picker.</summary>
@@ -452,6 +454,11 @@ begin
   Deleted := FHistory.AppendOutputEx(AText, PtyCols, PtyRows);
   AdjustSelectionForTrim(Deleted);
   NotifyHostThrottled;
+  OutputAppended;
+end;
+
+procedure TBaseConsoleWindow.OutputAppended;
+begin
 end;
 
 procedure TBaseConsoleWindow.AppendLocalInput(const AText: string);

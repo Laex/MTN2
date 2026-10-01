@@ -178,6 +178,8 @@ type
     function GetConsoleProfile: string;
     function GetConsoleStartOnLaunch: Boolean;
     procedure SetConsoleStartOnLaunch(AValue: Boolean);
+    function GetConsoleCwdToPanels: Boolean;
+    procedure SetConsoleCwdToPanels(AValue: Boolean);
     function GetDisplaySettings: TDisplaySettings;
     procedure ApplyDisplaySettings(const ASettings: TDisplaySettings);
     /// <summary>Theme to instantiate (session.json's 'theme') and the
@@ -207,6 +209,7 @@ type
     procedure FpsTimerTick(Sender: TObject);
     procedure CreateUpdater;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
+    procedure DualPanelReturnWhenDone(Sender: TObject);
     procedure DualPanelShellCwdSync(const APath: string);
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
@@ -1284,6 +1287,7 @@ begin
   FDualPanel.OnQuitRequest := DualPanelQuitRequest;
   FDualPanel.OnOpenUpdates := DualPanelOpenUpdates;
   FDualPanel.OnRunCommand := DualPanelRunCommand;
+  FDualPanel.OnReturnWhenDone := DualPanelReturnWhenDone;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
@@ -1292,6 +1296,8 @@ begin
   FDualPanel.OnGetConsoleProfile := GetConsoleProfile;
   FDualPanel.OnGetConsoleStartOnLaunch := GetConsoleStartOnLaunch;
   FDualPanel.OnSetConsoleStartOnLaunch := SetConsoleStartOnLaunch;
+  FDualPanel.OnGetConsoleCwdToPanels := GetConsoleCwdToPanels;
+  FDualPanel.OnSetConsoleCwdToPanels := SetConsoleCwdToPanels;
   FDualPanel.OnThemeSelect := ThemeSelected;
   FDualPanel.OnThemePreview := ThemePreview;
   FDualPanel.OnGetActiveThemeId := GetActiveThemeId;
@@ -1554,6 +1560,16 @@ begin
   FSession.ConsoleStartOnLaunch := AValue;
 end;
 
+function TMainForm.GetConsoleCwdToPanels: Boolean;
+begin
+  Result := FSession.ConsoleCwdToPanels;
+end;
+
+procedure TMainForm.SetConsoleCwdToPanels(AValue: Boolean);
+begin
+  FSession.ConsoleCwdToPanels := AValue;
+end;
+
 function TMainForm.GetDisplaySettings: TDisplaySettings;
 begin
   Result := DefaultDisplaySettings;
@@ -1730,6 +1746,7 @@ begin
     Sess.AutoSyncConsoleCwd := FSession.AutoSyncConsoleCwd;
   end;
   Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
+  Sess.ConsoleCwdToPanels := FSession.ConsoleCwdToPanels;
   // FThemeName is the live theme (switched via the Theme dialog or
   // loaded from session.json at startup) - always the source of truth here.
   Sess.ThemeName := FThemeName;
@@ -2050,7 +2067,14 @@ begin
 end;
 
 procedure TMainForm.ShowPanelMode;
+var
+  Cwd: string;
 begin
+  // Commands run in the console (a user-menu command, a typed cd) can leave
+  // the shell in another folder; the active panel follows it.
+  if Assigned(FConsole) and Assigned(FDualPanel) and FSession.ConsoleCwdToPanels and
+     FConsole.TakeCwdChange(Cwd) then
+    FDualPanel.SetActivePanelDir(Cwd);
   if Assigned(FConsole) then
     FConsole.Visible := False;
   if Assigned(FDualPanel) then
@@ -2073,6 +2097,12 @@ begin
   Recompose;
 end;
 
+procedure TMainForm.DualPanelReturnWhenDone(Sender: TObject);
+begin
+  if Assigned(FConsole) then
+    FConsole.ReturnToPanelsWhenDone;
+end;
+
 procedure TMainForm.DualPanelShellCwdSync(const APath: string);
 begin
   // Lazy: only push cd into an already-running persistent shell.
@@ -2082,10 +2112,15 @@ begin
 end;
 
 procedure TMainForm.ConsoleSyncDirToPanels(Sender: TObject);
+var
+  Cwd: string;
 begin
   if not Assigned(FConsole) or not Assigned(FDualPanel) then
     Exit;
-  FDualPanel.SetActivePanelDir(FConsole.WorkingDir);
+  Cwd := FConsole.PromptCwd;
+  if Cwd = '' then
+    Cwd := FConsole.WorkingDir;
+  FDualPanel.SetActivePanelDir(Cwd);
   Recompose;
 end;
 
@@ -2264,6 +2299,7 @@ begin
   FSession.ConsoleRestartOnExit := True;
   FSession.TerminalCloseOnExit := True;
   FSession.AutoSyncConsoleCwd := False;
+  FSession.ConsoleCwdToPanels := True;
   FSession.ConsoleStartOnLaunch := False;
   FSession.RestoreWorkspaceOnStart := True;
   FSession.FontSize := cDisplayDefaultFontSize;

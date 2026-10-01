@@ -19,6 +19,7 @@ type
     [Test] procedure CancelRollsBackEdits;
     [Test] procedure AcceptKeepsEdits;
     [Test] procedure FoldingHidesGroupEntries;
+    [Test] procedure KeysOpenGroupsAndGoToEntries;
     [Test] procedure SaveKeepsEditsBeforeCancel;
     [Test] procedure CtrlUpTakesLastEntryOutOfGroup;
   end;
@@ -215,6 +216,43 @@ begin
   end;
 end;
 
+procedure TTestFolderHotlistDialog.KeysOpenGroupsAndGoToEntries;
+var
+  Dialog: TDialogHost;
+  C: TFolderHotlistDialogController;
+  Key: Word;
+  Ch: Char;
+begin
+  FolderHotlistRenameByUri(cA, '&Alpha');
+  FolderHotlistRenameByUri(cC, '&Cee');
+  FolderHotlistSetGroupByUri(cA, '&One');
+  FolderHotlistSetGroupByUri(cB, '&One');
+  FolderHotlistSetGroupByUri(cC, '&Two');
+  Dialog := TDialogHost.Create(nil);
+  try
+    C := MakeController(Dialog);
+    try
+      C.OpenList;
+      Key := 0;
+      // The Russian layout's key for T (the Latin key of Two).
+      Ch := WideChar($0435);
+      Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'a group key is handled on the other layout too');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]') and Dialog.GetListSelectedText('hotlist').EndsWith('Two'), 'Two is open');
+      Ch := 'a';
+      Assert.IsFalse(C.HandleListInput(Key, [], Ch), 'an entry of the folded group is not on show');
+      Assert.AreEqual('', GNavigated);
+      Ch := 'c';
+      Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'an entry key is handled');
+      Assert.IsFalse(Dialog.Visible, 'an entry key closes the list');
+      Assert.AreEqual(cC, GNavigated, 'and jumps to the entry');
+    finally
+      C.Free;
+    end;
+  finally
+    Dialog.Free;
+  end;
+end;
+
 procedure TTestFolderHotlistDialog.FoldingHidesGroupEntries;
 var
   Dialog: TDialogHost;
@@ -231,18 +269,18 @@ begin
     try
       C.OpenList;
       // rows: [G], a, b, c - the cursor is on the group header.
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-] G'));
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]'));
       Key := vkLeft;
       Ch := #0;
       Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'Left is handled');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+] G'), 'Left folds the group');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+]'), 'Left folds the group');
       Key := vkRight;
       Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'Right is handled');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-] G'), 'Right unfolds it');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]'), 'Right unfolds it');
       Assert.IsTrue(C.DispatchCommand(hdkFolderHotlist, 'hotlist'));
       Assert.IsTrue(Dialog.Visible, 'a double-click on a header does not close the list');
       Assert.IsTrue(GKind = hdkFolderHotlist, 'the list keeps its dialog kind');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+] G'), 'a double-click folds the group');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+]'), 'a double-click folds the group');
       C.DispatchCommand(hdkFolderHotlist, 'cancel');
     finally
       C.Free;

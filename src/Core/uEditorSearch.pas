@@ -27,16 +27,16 @@ type
   public
     class function FindInText(const ALines: TArray<string>; const AQuery: string;
       AStartLine, AStartCol: Integer; const AOptions: TSearchOptions): TSearchResult;
-    /// <summary>Forward from (AStartLine, AStartCol), then wrap to the start
-    /// of the buffer. Same match rules as FindInText.</summary>
+    /// <summary>Forward from (AStartLine, AStartCol), then (with AWrap) wrap to
+    /// the start of the buffer. Same match rules as FindInText.</summary>
     class function FindNextWrapped(const ALines: TArray<string>;
       const AQuery: string; AStartLine, AStartCol: Integer;
-      const AOptions: TSearchOptions): TSearchResult;
-    /// <summary>Backward before (AStartLine, AStartColExclusive), then wrap
-    /// to the last match in the buffer.</summary>
+      const AOptions: TSearchOptions; AWrap: Boolean = True): TSearchResult;
+    /// <summary>Backward before (AStartLine, AStartColExclusive), then (with AWrap)
+    /// wrap to the last match in the buffer.</summary>
     class function FindPrevWrapped(const ALines: TArray<string>;
       const AQuery: string; AStartLine, AStartColExclusive: Integer;
-      const AOptions: TSearchOptions): TSearchResult;
+      const AOptions: TSearchOptions; AWrap: Boolean = True): TSearchResult;
     class function ReplaceInLine(const ALine, AQuery, AReplacement: string;
       AColIndex: Integer; AMatchCase: Boolean): string;
   end;
@@ -92,10 +92,10 @@ end;
 
 class function TEditorSearchEngine.FindNextWrapped(const ALines: TArray<string>;
   const AQuery: string; AStartLine, AStartCol: Integer;
-  const AOptions: TSearchOptions): TSearchResult;
+  const AOptions: TSearchOptions; AWrap: Boolean): TSearchResult;
 begin
   Result := FindInText(ALines, AQuery, AStartLine, AStartCol, AOptions);
-  if Result.Found then
+  if Result.Found or not AWrap then
     Exit;
   if (AStartLine <= 0) and (AStartCol <= 0) then
     Exit;
@@ -132,7 +132,7 @@ end;
 
 class function TEditorSearchEngine.FindPrevWrapped(const ALines: TArray<string>;
   const AQuery: string; AStartLine, AStartColExclusive: Integer;
-  const AOptions: TSearchOptions): TSearchResult;
+  const AOptions: TSearchOptions; AWrap: Boolean): TSearchResult;
 var
   Query, Line: string;
   I, Limit, Idx, Last: Integer;
@@ -171,6 +171,8 @@ begin
     end;
     Dec(I);
   end;
+  if not AWrap then
+    Exit;
 
   Last := High(ALines);
   if AOptions.MatchCase then

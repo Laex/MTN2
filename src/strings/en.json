@@ -238,7 +238,7 @@
     },
     "DIALOG_FOLDERHOTLIST": {
       "$title": "Directory hotlist",
-      "hint_hotkey": "Ctrl+1..Ctrl+0  assign the hotkey (again - clear it)",
+      "hint_hotkey": "Ctrl+1..0 global hotkey   &x in a name or group: key x in this list",
       "hint_keys": "F2 rename  F4 group  Del delete  Ctrl+Up/Down move  Left [-]  Right [+]",
       "ok": "Go",
       "save": "&Save",
@@ -439,6 +439,7 @@
       "lbl_kind": "Type:",
       "lbl_caption": "Caption:",
       "lbl_command": "Command:",
+      "return_panels": "&Return to the panels when done",
       "help1": "F1 - macros: !.!  !&  !#  !^  !?Question?default!",
       "ok": "OK",
       "cancel": "Cancel"
@@ -688,6 +689,7 @@
     "hotlist.renameTitle": "Rename hotlist entry",
     "toast.hotlistSaved": "Folder hotlist saved",
     "hotlist.groupTitle": "Hotlist entry group",
+    "hotlist.groupNamePrompt": "Group name:",
     "hotlist.groupPrompt": "Group (empty - none):",
 
     "tmpSaveList.title": "Save file list as",
@@ -705,6 +707,8 @@
     "editor.reloadEncodingMsg": "Discard unsaved changes and re-decode?",
     "editor.readOnlyTitle": "Read-only file",
     "editor.readOnlyMsg": "Clear the OS read-only attribute and edit?",
+    "editor.notFoundTitle": "Search",
+    "editor.notFoundMsg": "Could not find the string",
     "editor.openLinkTitle": "Open link",
     "editor.openLinkMsg": "Open the link in the default application?",
     "editor.openLinkOk": "Open",
@@ -1095,7 +1099,8 @@
     "terminalProfile.title": "New terminal",
     "shellProfiles.noneAvailable": "No shell profiles available",
     "consoleProfile.title": "Background console",
-    "consoleProfile.startOnLaunch": "&Start shell at program launch"
+    "consoleProfile.startOnLaunch": "&Start shell at program launch",
+    "consoleProfile.cwdToPanels": "&Panel follows the console folder after commands"
   },
   "menu": {
     "category.Left": "Left",

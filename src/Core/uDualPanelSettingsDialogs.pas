@@ -38,6 +38,8 @@ type
     FOnGetConsoleProfile: TSettingsGetConsoleProfile;
     FOnGetConsoleStartOnLaunch: TFunc<Boolean>;
     FOnSetConsoleStartOnLaunch: TProc<Boolean>;
+    FOnGetConsoleCwdToPanels: TFunc<Boolean>;
+    FOnSetConsoleCwdToPanels: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
     FOnApplyDisplay: TSettingsApplyDisplay;
@@ -96,6 +98,10 @@ type
       read FOnGetConsoleStartOnLaunch write FOnGetConsoleStartOnLaunch;
     property OnSetConsoleStartOnLaunch: TProc<Boolean>
       read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
+    property OnGetConsoleCwdToPanels: TFunc<Boolean>
+      read FOnGetConsoleCwdToPanels write FOnGetConsoleCwdToPanels;
+    property OnSetConsoleCwdToPanels: TProc<Boolean>
+      read FOnSetConsoleCwdToPanels write FOnSetConsoleCwdToPanels;
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
@@ -284,7 +290,7 @@ var
   Ids: TArray<string>;
   Sel: Integer;
   CurId: string;
-  StartOnLaunch: Boolean;
+  StartOnLaunch, CwdToPanels: Boolean;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -306,9 +312,13 @@ begin
   StartOnLaunch := False;
   if Assigned(FOnGetConsoleStartOnLaunch) then
     StartOnLaunch := FOnGetConsoleStartOnLaunch();
+  CwdToPanels := True;
+  if Assigned(FOnGetConsoleCwdToPanels) then
+    CwdToPanels := FOnGetConsoleCwdToPanels();
   FProfileIds := Ids;
   SetKind(hdkConsoleProfile);
-  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch), FOnCommand);
+  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch, CwdToPanels),
+    FOnCommand);
   Notify;
 end;
 
@@ -690,14 +700,17 @@ procedure TSettingsDialogController.DispatchConsoleProfileCommand(
   const AControlId: string);
 var
   Idx: Integer;
-  Accepted, StartOnLaunch: Boolean;
+  Accepted, StartOnLaunch, CwdToPanels: Boolean;
 begin
   Idx := FDialog.GetListSelectedIndex('profiles');
   StartOnLaunch := FDialog.GetCheckbox('start_on_launch');
+  CwdToPanels := FDialog.GetCheckbox('cwd_to_panels');
   Accepted := DialogCmdIsListAccept(AControlId, 'profiles');
   FDialog.Close;
   if Accepted and Assigned(FOnSetConsoleStartOnLaunch) then
     FOnSetConsoleStartOnLaunch(StartOnLaunch);
+  if Accepted and Assigned(FOnSetConsoleCwdToPanels) then
+    FOnSetConsoleCwdToPanels(CwdToPanels);
   if Accepted and (Idx >= 0) and (Idx <= High(FProfileIds)) and
      Assigned(FOnSetConsoleProfile) then
     FOnSetConsoleProfile(FProfileIds[Idx]);

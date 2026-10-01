@@ -278,9 +278,9 @@
       "cancel": "Отмена"
     },
     "DIALOG_FOLDERHOTLIST": {
-      "hotlistHeader": "    Группа         Имя                  Путь                       Клавиша",
+      "hotlistHeader": "    К Группа         Имя                  Путь                       Клавиша",
       "$title": "Избранные папки",
-      "hint_hotkey": "Ctrl+1..Ctrl+0  назначить клавишу (повторно - снять)",
+      "hint_hotkey": "Ctrl+1..0 глобальная клавиша   &х в имени или группе: клавиша в списке",
       "hint_keys": "F2 имя  F4 группа  Del удалить  Ctrl+Up/Dn порядок  Left [-]  Right [+]",
       "ok": "Перейти",
       "save": "&Сохранить",
@@ -537,6 +537,7 @@
       "lbl_kind": "Тип:",
       "lbl_caption": "Название:",
       "lbl_command": "Команда:",
+      "return_panels": "&Вернуться в панели по завершении",
       "help1": "F1 - макросы: !.!  !&  !#  !^  !?Вопрос?ответ!",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -787,6 +788,7 @@
     "hotlist.renameTitle": "Переименование записи избранного",
     "toast.hotlistSaved": "Избранные папки сохранены",
     "hotlist.groupTitle": "Группа записи избранного",
+    "hotlist.groupNamePrompt": "Имя группы:",
     "hotlist.groupPrompt": "Группа (пусто - без группы):",
 
     "tmpSaveList.title": "Сохранить список файлов как",
@@ -804,6 +806,8 @@
     "editor.reloadEncodingMsg": "Отменить несохранённые изменения и перекодировать?",
     "editor.readOnlyTitle": "Файл только для чтения",
     "editor.readOnlyMsg": "Снять атрибут «только для чтения» и редактировать?",
+    "editor.notFoundTitle": "Поиск",
+    "editor.notFoundMsg": "Строка не найдена",
     "editor.openLinkTitle": "Открыть ссылку",
     "editor.openLinkMsg": "Открыть ссылку в программе по умолчанию?",
     "editor.openLinkOk": "Открыть",
@@ -1194,7 +1198,8 @@
     "terminalProfile.title": "Новый терминал",
     "shellProfiles.noneAvailable": "Нет доступных профилей оболочки",
     "consoleProfile.title": "Фоновая консоль",
-    "consoleProfile.startOnLaunch": "&Запускать оболочку при старте программы"
+    "consoleProfile.startOnLaunch": "&Запускать оболочку при старте программы",
+    "consoleProfile.cwdToPanels": "&Панель следует за папкой консоли после команд"
   },
   "menu": {
     "category.Left": "С&лева",

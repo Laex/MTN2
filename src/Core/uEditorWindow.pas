@@ -22,7 +22,7 @@ uses
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
-    ecOpenLink);
+    ecOpenLink, ecNotFound);
 
   TMdImageSize = record
     W, H: Integer; // pixels; 0 = unknown
@@ -309,6 +309,7 @@ type
     procedure OpenExternalLink(const AUrl: string);
     /// <summary>A modal dialog (e.g. the open-link question) owns the input.</summary>
     function DialogOpen: Boolean;
+    procedure NotFoundMessage(const ANeedle: string);
     property HelpMode: Boolean read FHelpMode write FHelpMode;
     property Chromeless: Boolean read FChromeless write FChromeless;
     /// <summary>Drops the document (cancels a load in flight, stops the file
@@ -2723,17 +2724,17 @@ begin
   begin
     if FMatchLine >= 0 then
       Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FMatchLine,
-        FMatchCol + Length(Needle), Opts)
+        FMatchCol + Length(Needle), Opts, False)
     else
       Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FCursorRow,
-        FCursorCol, Opts);
+        FCursorCol, Opts, False);
   end
   else if FMatchLine >= 0 then
     Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, FMatchLine,
-      FMatchCol, Opts)
+      FMatchCol, Opts, False)
   else
     Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, FCursorRow,
-      FCursorCol, Opts);
+      FCursorCol, Opts, False);
 
   if Hit.Found then
   begin
@@ -2751,9 +2752,32 @@ begin
   end;
 
   FFindStatus := 'not found';
+  // The search stops at the end (or start) of the text; the next search
+  // starts over from the cursor.
   FMatchLine := -1;
   FMatchCol := -1;
+  NotFoundMessage(Needle);
   NotifyHost;
+end;
+
+procedure TEditorWindow.NotFoundMessage(const ANeedle: string);
+var
+  Decl: TDialogDeclaration;
+begin
+  if FChromeless or (FConfirm <> ecNone) or FDialog.Visible then
+    Exit;
+  Decl := BuildUpdateMessageDialog(
+    T('ui.editor.notFoundMsg', 'Could not find the string'),
+    '"' + ANeedle + '"', '', False);
+  DialogSetTitle(Decl, T('ui.editor.notFoundTitle', 'Search'));
+  FConfirm := ecNotFound;
+  FDialog.Open(Decl,
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      FDialog.Close;
+      FConfirm := ecNone;
+      NotifyHost;
+    end);
 end;
 
 procedure TEditorWindow.DrawFunctionKeys(AY, AWidth: Integer);

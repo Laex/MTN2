@@ -138,7 +138,7 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src" -N"$PluginDcu" -E"$
     Write-Host "OK: staged $Name -> $Dest"
 }
 
-# Native 7z:// needs a replaceable x64 7z.dll (LGPL, gitignored).
+# Native 7z:// needs a replaceable x64 7z.dll (LGPL, gitignored; packaged by package-release.ps1).
 $Dest7z = Join-Path $PluginsOut 'mtn.7z\7z.dll'
 $7zCandidates = @($env:MTN2_7Z_DLL,
     'C:\Program Files\7-Zip\7z.dll',

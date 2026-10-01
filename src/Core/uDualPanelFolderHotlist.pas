@@ -43,11 +43,19 @@ type
     FRenameUri: string;
     /// <summary>True while the rename input edits the group, not the name.</summary>
     FEditGroup: Boolean;
+    /// <summary>The group being renamed by the rename input; '' = an entry is.</summary>
+    FRenameGroupOld: string;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     procedure BuildRows(out AItems: TArray<string>);
     function RowEntry(ARow: Integer): Integer;
     procedure SetGroupFolded(const AGroup: string; AFolded: Boolean);
+    /// <summary>Unfolds AGroup and folds every other one.</summary>
+    procedure OpenOnly(const AGroup: string);
+    procedure NavigateEntry(AEntryIdx: Integer);
+    /// <summary>A plain character picks the entry or group whose name
+    /// declares it as its key (&x), also from the other keyboard layout.</summary>
+    function TryPressKey(AKeyChar: Char): Boolean;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TFolderHotlistKindSetter; const AOnNotify: TProc;
@@ -66,6 +74,7 @@ type
     procedure BeginAdd;
     procedure BeginRename(AIndex: Integer);
     procedure BeginGroup(AIndex: Integer);
+    procedure BeginRenameGroup(const AGroup: string);
     procedure NavigateToHotkey(ADigit: Integer);
     function HandleListInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -83,7 +92,7 @@ type
 implementation
 
 uses
-  uNotice, uKeyChord, uKeymap;
+  uNotice, uKeyChord, uKeymap, uInputLine;
 
 constructor TFolderHotlistDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFolderHotlistKindSetter;
@@ -267,10 +276,85 @@ begin
     Exit;
   FRenameUri := FEntries[AIndex].URI;
   FEditGroup := False;
+  FRenameGroupOld := '';
   SetKind(hdkFolderHotlistRename);
   FDialog.Open(BuildInputDialog(T('ui.hotlist.renameTitle', 'Rename hotlist entry'),
     T('ui.hotlist.namePrompt', 'Name:'), FEntries[AIndex].Name), FOnCommand);
   Notify;
+end;
+
+procedure TFolderHotlistDialogController.BeginRenameGroup(const AGroup: string);
+begin
+  if AGroup = '' then
+    Exit;
+  FRenameGroupOld := AGroup;
+  FEditGroup := False;
+  SetKind(hdkFolderHotlistRename);
+  FDialog.Open(BuildInputDialog(T('ui.hotlist.groupTitle', 'Hotlist entry group'),
+    T('ui.hotlist.groupNamePrompt', 'Group name:'), AGroup), FOnCommand);
+  Notify;
+end;
+
+procedure TFolderHotlistDialogController.OpenOnly(const AGroup: string);
+var
+  I: Integer;
+begin
+  FCollapsed.Clear;
+  for I := 0 to High(FEntries) do
+    if (FEntries[I].Group <> '') and not SameText(FEntries[I].Group, AGroup) and
+       (FCollapsed.IndexOf(FEntries[I].Group) < 0) then
+      FCollapsed.Add(FEntries[I].Group);
+  RefreshList(AGroup);
+end;
+
+procedure TFolderHotlistDialogController.NavigateEntry(AEntryIdx: Integer);
+var
+  Uri: string;
+begin
+  Uri := FEntries[AEntryIdx].URI;
+  // Like Go: the edits made so far stay.
+  FInSession := False;
+  SetLength(FSnapshot, 0);
+  SetKind(hdkNone);
+  FDialog.Close;
+  SetLength(FEntries, 0);
+  SetLength(FRowEntry, 0);
+  SetLength(FRowGroup, 0);
+  Notify;
+  if (Uri <> '') and Assigned(FOnNavigate) then
+    FOnNavigate(Uri);
+end;
+
+function TFolderHotlistDialogController.TryPressKey(AKeyChar: Char): Boolean;
+var
+  Pass, I: Integer;
+  Want: Char;
+begin
+  Result := False;
+  if AKeyChar <= ' ' then
+    Exit;
+  for Pass := 0 to 1 do
+  begin
+    if Pass = 0 then
+      Want := UpCase(AKeyChar)
+    else
+      Want := UpCase(TextKeyLayoutAlternate(AKeyChar));
+    if Want = #0 then
+      Continue;
+    // Entries on show first, then group headers.
+    for I := 0 to High(FRowEntry) do
+      if (FRowEntry[I] >= 0) and (HotlistKeyOf(FEntries[FRowEntry[I]].Name) = Want) then
+      begin
+        NavigateEntry(FRowEntry[I]);
+        Exit(True);
+      end;
+    for I := 0 to High(FRowEntry) do
+      if (FRowEntry[I] < 0) and (HotlistKeyOf(FRowGroup[I]) = Want) then
+      begin
+        OpenOnly(FRowGroup[I]);
+        Exit(True);
+      end;
+  end;
 end;
 
 procedure TFolderHotlistDialogController.BeginGroup(AIndex: Integer);
@@ -279,6 +363,7 @@ begin
     Exit;
   FRenameUri := FEntries[AIndex].URI;
   FEditGroup := True;
+  FRenameGroupOld := '';
   SetKind(hdkFolderHotlistRename);
   FDialog.Open(BuildInputDialog(T('ui.hotlist.groupTitle', 'Hotlist entry group'),
     T('ui.hotlist.groupPrompt', 'Group (empty - none):'), FEntries[AIndex].Group),
@@ -355,9 +440,12 @@ begin
   end;
   if AKey = vkF2 then
   begin
-    HotIdx := RowEntry(FDialog.GetListSelectedIndex('hotlist'));
+    Row := FDialog.GetListSelectedIndex('hotlist');
+    HotIdx := RowEntry(Row);
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
-      BeginRename(HotIdx);
+      BeginRename(HotIdx)
+    else if (Row >= 0) and (Row <= High(FRowGroup)) then
+      BeginRenameGroup(FRowGroup[Row]);
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -410,6 +498,12 @@ begin
         FolderHotlistSetHotKeyByUri(FEntries[HotIdx].URI, HotKeyDigit);
       RefreshList;
     end;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AShift * [ssCtrl, ssAlt] = []) and (AKeyChar > ' ') and TryPressKey(AKeyChar) then
+  begin
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -533,7 +627,9 @@ begin
   NameVal := FDialog.GetInputValue('name');
   FDialog.Close;
   if Accepted then
-    if FEditGroup then
+    if FRenameGroupOld <> '' then
+      FolderHotlistRenameGroup(FRenameGroupOld, NameVal)
+    else if FEditGroup then
       FolderHotlistSetGroupByUri(FRenameUri, NameVal)
     else
       FolderHotlistRenameByUri(FRenameUri, NameVal);

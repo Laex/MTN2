@@ -25,6 +25,7 @@ uses
   TestPsPipeSafeCommand in 'TestPsPipeSafeCommand.pas',
   TestPtySession in 'TestPtySession.pas',
   TestPtyCtrlC in 'TestPtyCtrlC.pas',
+  TestPtyPromptCount in 'TestPtyPromptCount.pas',
   TestShellProfiles in 'TestShellProfiles.pas',
   TestShellSessions in 'TestShellSessions.pas',
   TestWorkspaceLibrary in 'TestWorkspaceLibrary.pas';

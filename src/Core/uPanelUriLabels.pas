@@ -23,11 +23,11 @@ function FolderHistoryDisplayLabel(const AURI: string): string;
 /// Non-path labels keep a short head and the tail.</summary>
 function FitFolderHistoryLabel(const ALabel: string; AMaxLen: Integer): string;
 
-/// <summary>List row of an entry: fold marker and group columns blank, then
-/// name, path and hotkey.</summary>
+/// <summary>List row of an entry: fold marker blank, the key its name
+/// declares, group blank, then name, path and hotkey.</summary>
 function FolderHotlistDisplayLabel(const AEntry: TFolderHotlistEntry): string;
-/// <summary>List row of a group header: "[-]" (open) or "[+]" (folded) and the
-/// group name.</summary>
+/// <summary>List row of a group header: "[-]" (open) or "[+]" (folded), the
+/// key its name declares and the group name.</summary>
 function FolderHotlistGroupLabel(const AGroup: string; AFolded: Boolean): string;
 
 implementation
@@ -150,10 +150,19 @@ const
     width minus 1 for TDialogHost's own scrollbar column), so the row
     padding TDialogHost adds leaves one blank column before the scrollbar. }
   cHotlistMarkW = 3;
+  cHotlistKeyW = 1;
   cHotlistGroupW = 14;
   cHotlistNameW = 20;
   cHotlistPathW = 26;
   cHotlistHotkeyW = 6;
+
+function KeyText(AKey: Char): string;
+begin
+  if AKey = #0 then
+    Result := ''
+  else
+    Result := AKey;
+end;
 
 function FolderHotlistDisplayLabel(const AEntry: TFolderHotlistEntry): string;
 var
@@ -167,19 +176,24 @@ begin
       Path := AEntry.URI;
   end;
   Result := PadRight('', cHotlistMarkW) + ' ' +
+    PadRight(KeyText(HotlistKeyOf(AEntry.Name)), cHotlistKeyW) + ' ' +
     PadRight('', cHotlistGroupW) + ' ' +
-    PadRight(AEntry.Name, cHotlistNameW) + ' ' +
+    PadRight(HotlistStripKey(AEntry.Name), cHotlistNameW) + ' ' +
     PadRight(Path, cHotlistPathW) + ' ' +
     PadLeft(FolderHotlistKeyLabel(AEntry.HotKey), cHotlistHotkeyW);
 end;
 
 function FolderHotlistGroupLabel(const AGroup: string; AFolded: Boolean): string;
+var
+  Mark: string;
 begin
   if AFolded then
-    Result := '[+]'
+    Mark := '[+]'
   else
-    Result := '[-]';
-  Result := Result + ' ' + AGroup;
+    Mark := '[-]';
+  Result := PadRight(Mark, cHotlistMarkW) + ' ' +
+    PadRight(KeyText(HotlistKeyOf(AGroup)), cHotlistKeyW) + ' ' +
+    HotlistStripKey(AGroup);
 end;
 
 end.

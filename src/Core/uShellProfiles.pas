@@ -60,6 +60,10 @@ function BuildSshCommandLine(const AProfileId: string; out ACmdLine: string): Bo
 /// resolved path is needed rather than a bare exe name.</summary>
 function GetGitBashExePath(out AGitBashExe: string): Boolean;
 function ProfileReturnSeq(const AProfileId: string): string;
+/// <summary>The folder shown by the default prompt of a cmd / PowerShell /
+/// pwsh line ("C:\Tools>" or "PS C:\Tools> "); False for other profiles,
+/// custom prompts and non-file-system locations.</summary>
+function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;
 /// <summary>Silent setup line sent once right after the shell starts, before
 /// the user can type anything; '' if the profile needs none. PowerShell/pwsh
 /// piped stdin (no real console) hangs indefinitely when a command reports a
@@ -777,6 +781,42 @@ begin
     Result := T + ' | % {"$_"}'
   else
     Result := T;
+end;
+
+function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;
+var
+  Id, S, P: string;
+  GT: Integer;
+begin
+  Result := False;
+  APath := '';
+  Id := NormalizeShellProfileId(AProfileId);
+  S := TrimLeft(ALine);
+  if Id = cShellProfileCmd then
+    P := S
+  else if (Id = cShellProfilePowerShell) or (Id = cShellProfilePwsh) then
+  begin
+    if not S.StartsWith('PS ') then
+      Exit;
+    P := Copy(S, 4, MaxInt);
+  end
+  else
+    Exit;
+  // A drive path: a single letter, ':' and a backslash.
+  if (Length(P) < 3) or not CharInSet(P[1], ['A'..'Z', 'a'..'z']) or
+     (P[2] <> ':') or (P[3] <> '\') then
+    Exit;
+  GT := Pos('>', P);
+  if GT < 4 then
+    Exit;
+  // The prompt ends at the first '>'; PowerShell follows it with a space.
+  if (Id <> cShellProfileCmd) and (GT < Length(P)) and (P[GT + 1] <> ' ') then
+    Exit;
+  P := Copy(P, 1, GT - 1);
+  if P.IndexOfAny(['<', '|', '"', '?', '*']) >= 0 then
+    Exit;
+  APath := P;
+  Result := True;
 end;
 
 function ProfileBackspaceChar(const AProfileId: string): Char;

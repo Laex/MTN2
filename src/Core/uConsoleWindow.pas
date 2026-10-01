@@ -24,17 +24,25 @@ type
   TConsoleWindow = class(TBaseConsoleWindow)
   private
     FLastSyncedCwd: string;
+    /// <summary>The prompt folder when the first command since the last
+    /// TakeCwdChange was submitted; '' = none pending.</summary>
+    FCwdBeforeCommand: string;
+    FReturnPending: Boolean;
+    FPromptsAtStart: Integer;
     FRestartOnExit: Boolean;
     FOnBackToPanels:     TNotifyEvent;
     FOnDismissConsole:   TNotifyEvent;
     FOnFocusCommandLine: TNotifyEvent;
     FOnSyncDirToPanels:  TNotifyEvent;
+    function CountPrompts: Integer;
     procedure DoCloseConsole;
     /// <summary>A dialog button released after the click or key returned:
     /// the close its command asked for, as HandleInput / HandleClick do.</summary>
     procedure DialogDeferredCommand(Sender: TObject);
   protected
     procedure ProcessExited(AExitCode: Cardinal); override;
+    procedure NoteCommandSubmitted(const ACommand: string); override;
+    procedure OutputAppended; override;
     procedure SyncTitle; override;
     function ViewHeight: Integer; override;
     function TextWidth:  Integer; override;
@@ -47,6 +55,15 @@ type
     function  EnsureShell(const ACwd: string): Boolean;
     procedure SyncWorkingDir(const APath: string);
     procedure RunCommand(const ACommand, AWorkingDir: string);
+    /// <summary>The folder the shell's latest prompt shows ('' when the prompt
+    /// is not a recognizable cmd / PowerShell one).</summary>
+    function PromptCwd: string;
+    /// <summary>True once when commands submitted since the previous call
+    /// moved the shell to another folder; APath is that folder.</summary>
+    function TakeCwdChange(out APath: string): Boolean;
+    /// <summary>Goes back to the panels (OnBackToPanels) as soon as the shell
+    /// shows another prompt, i.e. when the command just given has finished.</summary>
+    procedure ReturnToPanelsWhenDone;
     /// <summary>A command still runs in the persistent shell (it has a child
     /// process). A shell not started yet is not busy.</summary>
     function ShellBusy: Boolean;
@@ -164,6 +181,7 @@ begin
   WorkingDir := '';
   FLastSyncedCwd := '';
   FRunning := False;
+  FReturnPending := False;
   FHistory.AppendStatus(Format('[MTN2] process exited with code %d', [AExitCode]));
   if FRestartOnExit then
   begin
@@ -270,6 +288,67 @@ begin
   Result := Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess;
 end;
 
+function TConsoleWindow.PromptCwd: string;
+const
+  cScanLines = 60;
+var
+  I, Last: Integer;
+begin
+  Result := '';
+  Last := FHistory.LineCount - 1;
+  // The prompt is the last prompt-looking line; blank grid rows may follow it.
+  for I := Last downto Max(0, Last - cScanLines) do
+    if ShellCwdFromPrompt(ProfileId, FHistory.GetLine(I), Result) then
+      Exit;
+  Result := '';
+end;
+
+procedure TConsoleWindow.NoteCommandSubmitted(const ACommand: string);
+begin
+  if FCwdBeforeCommand = '' then
+    FCwdBeforeCommand := PromptCwd;
+  inherited;
+end;
+
+function TConsoleWindow.CountPrompts: Integer;
+const
+  cScanLines = 400;
+var
+  I, Last: Integer;
+  Path: string;
+begin
+  Result := 0;
+  Last := FHistory.LineCount - 1;
+  for I := Max(0, Last - cScanLines) to Last do
+    if ShellCwdFromPrompt(ProfileId, FHistory.GetLine(I), Path) then
+      Inc(Result);
+end;
+
+procedure TConsoleWindow.ReturnToPanelsWhenDone;
+begin
+  FPromptsAtStart := CountPrompts;
+  FReturnPending := True;
+end;
+
+procedure TConsoleWindow.OutputAppended;
+begin
+  if not FReturnPending or (CountPrompts <= FPromptsAtStart) then
+    Exit;
+  FReturnPending := False;
+  if Assigned(FOnBackToPanels) then
+    FOnBackToPanels(Self);
+end;
+
+function TConsoleWindow.TakeCwdChange(out APath: string): Boolean;
+var
+  Before: string;
+begin
+  Before := FCwdBeforeCommand;
+  FCwdBeforeCommand := '';
+  APath := PromptCwd;
+  Result := (Before <> '') and (APath <> '') and not SamePathNorm(Before, APath);
+end;
+
 procedure TConsoleWindow.RunCommand(const ACommand, AWorkingDir: string);
 var
   Cmd, Line, NormId: string;
@@ -305,6 +384,14 @@ begin
   if (NormId = cShellProfilePowerShell) or (NormId = cShellProfilePwsh) then
     Line := PsPipeSafeCommand(Cmd);
   Line := Line + ProfileReturnSeq(ProfileId);
+
+  // The shell was just moved to the panel's folder; that is where the
+  // command starts.
+  if FCwdBeforeCommand = '' then
+    if AWorkingDir <> '' then
+      FCwdBeforeCommand := AWorkingDir
+    else
+      FCwdBeforeCommand := PromptCwd;
 
   FPty.WriteInput(Line);
   if FPty.LastError <> '' then

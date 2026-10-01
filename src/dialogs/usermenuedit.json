@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "User Menu Item",
   "width": 72,
-  "height": 14,
+  "height": 15,
   "children": [
     {
       "type": "label",
@@ -83,11 +83,21 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "return_panels",
+      "text": "&Return to the panels when done",
+      "checked": false,
+      "col": 1,
+      "row": 8,
+      "width": 68,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "help1",
       "text": "F1 - macros: !.!  !&  !#  !^  !?Question?default!",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 68,
       "height": 1
     },
@@ -97,7 +107,7 @@
       "text": "OK",
       "default": true,
       "col": 18,
-      "row": 10,
+      "row": 11,
       "width": 14,
       "height": 1
     },
@@ -107,7 +117,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 10,
+      "row": 11,
       "width": 14,
       "height": 1
     }

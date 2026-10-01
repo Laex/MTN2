@@ -39,6 +39,8 @@ type
     HotKey: string;
     Caption: string;
     Command: string;
+    /// <summary>Go back to the panels once the command has finished.</summary>
+    ReturnToPanels: Boolean;
     constructor Create(AKind: TUserMenuKind = umkCommand);
     destructor Destroy; override;
     /// <summary>Submenu children. Allocated for every item so a kind change
@@ -257,6 +259,7 @@ begin
     Item.HotKey := Copy(JsonStr(Obj, 'hotkey'), 1, 1);
     Item.Caption := JsonStr(Obj, 'caption');
     Item.Command := JsonStr(Obj, 'command');
+    Item.ReturnToPanels := (Obj.GetValue('returnToPanels') is TJSONTrue);
     if (Item.Kind = umkSubmenu) and (Sub is TJSONArray) then
       ReadItems(TJSONArray(Sub), Item);
     AParent.Items.Add(Item);
@@ -301,7 +304,12 @@ begin
       Obj.AddPair('caption', Item.Caption);
     end;
     case Item.Kind of
-      umkCommand: Obj.AddPair('command', Item.Command);
+      umkCommand:
+        begin
+          Obj.AddPair('command', Item.Command);
+          if Item.ReturnToPanels then
+            Obj.AddPair('returnToPanels', TJSONTrue.Create);
+        end;
       umkSubmenu: Obj.AddPair('items', ItemsToJson(Item));
     end;
     Result.Add(Obj);

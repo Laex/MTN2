@@ -11,7 +11,9 @@ param(
     [string]$Version,
     # Published packages (release, dev build) must carry wasmtime.dll; a
     # missing one stops the packaging instead of shipping without WASM plugins.
-    [switch]$RequireWasmtime
+    [switch]$RequireWasmtime,
+    # Published packages must also carry 7z.dll (and its license text).
+    [switch]$Require7z
 )
 $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -29,6 +31,10 @@ if (-not (Test-Path (Join-Path $Bin 'wasmtime.dll'))) {
     if ($RequireWasmtime) { throw 'bin\wasmtime.dll not found; run src\tools\fetch-wasmtime.ps1 and build again' }
     Write-Host 'WARN: bin\wasmtime.dll missing -- WASM plugins will not load from this package'
 }
+if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.7z\7z.dll'))) {
+    if ($Require7z) { throw 'bin\plugins\mtn.7z\7z.dll not found; install 7-Zip (x64) or set MTN2_7Z_DLL and build again' }
+    Write-Host 'WARN: 7z.dll missing -- 7z archives will not open from this package'
+}
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
@@ -36,8 +42,9 @@ New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 # keymap, theme, dialogs, strings and icons are embedded resources
 # (MTN2Resource.rc). Debug/IDE by-products (*.map, *.rsm, *.drc) and dev
 # tools stay out.
-# 7z.dll is not ours to ship (LGPL + unRAR terms): users drop their own x64
-# copy into plugins\mtn.7z\, as build.ps1 does from a local 7-Zip install.
+# 7z.dll (LGPL, BSD and the unRAR restriction) ships as a separate file next
+# to its license text (plugins\mtn.7z\license.txt) and THIRD-PARTY.md; a user
+# can replace it with their own x64 copy.
 # No keymap.json or other settings: they are the user's overrides (and in
 # portable mode live in this very folder), so a package -- and the updater,
 # which replaces whatever the package contains -- must never carry one.
@@ -49,8 +56,11 @@ foreach ($Dir in 'help', 'plugins') {
     $Src = Join-Path $Bin $Dir
     if (Test-Path $Src) { Copy-Item $Src (Join-Path $Stage $Dir) -Recurse }
 }
-Get-ChildItem $Stage -Recurse -File -Filter '7z.dll' | Remove-Item -Force
+if (Test-Path (Join-Path $Stage 'plugins\mtn.7z')) {
+    Copy-Item (Join-Path $Root 'src\plugins\mtn.7z\7-Zip-license.txt') (Join-Path $Stage 'plugins\mtn.7z\license.txt')
+}
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
+Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 # What's new for the user, version by version (also linked from the release page).
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage
 

@@ -18,13 +18,12 @@ $Regular = Join-Path $Dist "MTN2-$Safe-win64.zip"
 $Portable = Join-Path $Dist "MTN2-$Safe-win64-portable.zip"
 
 # Settings and history the app writes (uConfigLocation) -- a package carrying
-# one would overwrite the user's copy on every update. Plus build by-products
-# and 7z.dll, which is not ours to ship.
+# one would overwrite the user's copy on every update. Plus build by-products.
 $Forbidden = @(
     'keymap.json', 'session.json', 'history.json', 'dialoghistory.json',
     'dirsync-state.json', 'fileposition.json', 'filehistory.json',
     'folderhistory.json', 'folderhotlist.json', 'sshconnections.json',
-    'workspaces.json', 'usermenu.json', 'update.json', '7z.dll',
+    'workspaces.json', 'usermenu.json', 'update.json',
     '*.map', '*.rsm', '*.drc', '*.dcu'
 )
 
@@ -43,6 +42,10 @@ function Test-Package([string]$Zip, [bool]$ExpectPortable) {
         foreach ($Pattern in $Forbidden) {
             $Hit = $Files | Where-Object { (Split-Path $_ -Leaf) -like $Pattern }
             if ($Hit) { throw "${Name}: must not contain $($Hit -join ', ')" }
+        }
+        # 7z.dll goes with its license text (the license requires it).
+        foreach ($Needed in 'plugins\mtn.7z\7z.dll', 'plugins\mtn.7z\license.txt', 'THIRD-PARTY.md') {
+            if ($Files -notcontains $Needed) { throw "${Name}: must contain $Needed" }
         }
         $HasPortable = $Files -contains 'portable.dat'
         if ($HasPortable -ne $ExpectPortable) {

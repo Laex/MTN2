@@ -22,6 +22,8 @@ type
     [Test] procedure SetEntriesRestoresSnapshot;
     [Test] procedure EmptiedGroupStaysUntilRemoved;
     [Test] procedure LastEntryLeavesGroupAtListEnds;
+    [Test] procedure KeyMarkersInNames;
+    [Test] procedure GroupKeepsItsKeyMarker;
   end;
 
 implementation
@@ -164,6 +166,32 @@ begin
   Assert.IsTrue(FolderHotlistMoveByUri(cC, 1), 'leaves the group at the end of the list');
   Assert.AreEqual('', FolderHotlistGetEntries[FolderHotlistFindByUri(cC)].Group);
   Assert.AreEqual(1, GroupCount('H'), 'one entry is left in the group');
+end;
+
+procedure TTestFolderHotlist.KeyMarkersInNames;
+begin
+  Assert.AreEqual('H', string(HotlistKeyOf('&Home')));
+  Assert.AreEqual('H', string(HotlistKeyOf('&home')), 'the key is upper-cased');
+  Assert.AreEqual('X', string(HotlistKeyOf('a&Xb')));
+  Assert.AreEqual<Integer>(0, Ord(HotlistKeyOf('A&&B')), '&& is a literal ampersand');
+  Assert.AreEqual<Integer>(0, Ord(HotlistKeyOf('Home&')), 'a trailing & declares nothing');
+  Assert.AreEqual('Home', HotlistStripKey('&Home'));
+  Assert.AreEqual('A&B', HotlistStripKey('A&&B'));
+end;
+
+procedure TTestFolderHotlist.GroupKeepsItsKeyMarker;
+begin
+  FolderHotlistSetGroupByUri(cA, '&Net');
+  FolderHotlistSetGroupByUri(cB, 'net');
+  Assert.AreEqual('&Net', FolderHotlistGetEntries[FolderHotlistFindByUri(cB)].Group,
+    'a group typed without the marker joins the existing one');
+  FolderHotlistSetGroupByUri(cC, 'N&et');
+  Assert.AreEqual('N&et', FolderHotlistGetEntries[FolderHotlistFindByUri(cA)].Group,
+    'retyping with a new marker renames the whole group');
+  Assert.AreEqual('N&et', FolderHotlistGetEntries[FolderHotlistFindByUri(cB)].Group);
+  Assert.IsTrue(FolderHotlistRenameGroup('net', 'Web'), 'rename by the plain name');
+  Assert.AreEqual('Web', FolderHotlistGetEntries[FolderHotlistFindByUri(cC)].Group);
+  Assert.IsFalse(FolderHotlistRenameGroup('missing', 'x'));
 end;
 
 end.

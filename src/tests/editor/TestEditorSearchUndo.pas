@@ -77,6 +77,10 @@ begin
   Assert.IsTrue(LRes.Found and (LRes.ColIndex = 4), 'Alt+F7 previous foo on the same line');
   LRes := TEditorSearchEngine.FindPrevWrapped(LLines, 'foo', 0, 0, LOptions);
   Assert.IsTrue(LRes.Found and (LRes.ColIndex = 8), 'prev wrap to last foo');
+  LRes := TEditorSearchEngine.FindNextWrapped(LLines, 'foo', 0, 11, LOptions, False);
+  Assert.IsFalse(LRes.Found, 'no wrap: forward search stops at the end');
+  LRes := TEditorSearchEngine.FindPrevWrapped(LLines, 'foo', 0, 0, LOptions, False);
+  Assert.IsFalse(LRes.Found, 'no wrap: backward search stops at the start');
 
   Writeln('OK: TestEditorSearch passed');
 end;

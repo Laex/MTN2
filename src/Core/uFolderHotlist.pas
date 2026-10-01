@@ -69,6 +69,14 @@ procedure FolderHotlistSetHotKeyByUri(const AUri: string; AHotKey: Integer);
 /// the other entries of that group (to the end of the group's block), so a
 /// group's entries stay adjacent in the list.</summary>
 procedure FolderHotlistSetGroupByUri(const AUri, AGroup: string);
+/// <summary>The key a name or group name declares with '&' before a character
+/// ("&Home" -> 'H'), upper-cased; #0 when there is none. "&&" is a literal '&'.</summary>
+function HotlistKeyOf(const AText: string): Char;
+/// <summary>AText as it is displayed: the '&' key marker removed.</summary>
+function HotlistStripKey(const AText: string): string;
+/// <summary>Renames the group AOld (matched without its '&' marker) to ANew
+/// on every entry of it; False when the group does not exist or ANew is empty.</summary>
+function FolderHotlistRenameGroup(const AOld, ANew: string): Boolean;
 /// <summary>Deletes the placeholder of an empty group; False when the group
 /// still has entries or does not exist.</summary>
 function FolderHotlistRemoveEmptyGroup(const AGroup: string): Boolean;
@@ -86,13 +94,52 @@ var
 const
   cFileName = 'folderhotlist.json';
 
+function HotlistKeyOf(const AText: string): Char;
+var
+  I: Integer;
+begin
+  Result := #0;
+  I := 1;
+  while I < Length(AText) do
+  begin
+    if AText[I] = '&' then
+    begin
+      if AText[I + 1] <> '&' then
+        Exit(UpCase(AText[I + 1]));
+      Inc(I);
+    end;
+    Inc(I);
+  end;
+end;
+
+function HotlistStripKey(const AText: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  I := 1;
+  while I <= Length(AText) do
+  begin
+    if (AText[I] = '&') and (I < Length(AText)) then
+      Inc(I);
+    Result := Result + AText[I];
+    Inc(I);
+  end;
+end;
+
+// Groups are told apart by their name without the key marker, ignoring case.
+function SameGroup(const A, B: string): Boolean;
+begin
+  Result := SameText(HotlistStripKey(A), HotlistStripKey(B));
+end;
+
 function RealCount(const AGroup: string): Integer;
 var
   I: Integer;
 begin
   Result := 0;
   for I := 0 to GEntries.Count - 1 do
-    if (GEntries[I].URI <> '') and SameText(GEntries[I].Group, AGroup) then
+    if (GEntries[I].URI <> '') and SameGroup(GEntries[I].Group, AGroup) then
       Inc(Result);
 end;
 
@@ -107,7 +154,7 @@ end;
 function FindPlaceholder(const AGroup: string): Integer;
 begin
   for Result := 0 to GEntries.Count - 1 do
-    if (GEntries[Result].URI = '') and SameText(GEntries[Result].Group, AGroup) then
+    if (GEntries[Result].URI = '') and SameGroup(GEntries[Result].Group, AGroup) then
       Exit;
   Result := -1;
 end;
@@ -371,6 +418,46 @@ begin
   FolderHotlistSetHotKey(FolderHotlistFindByUri(AUri), AHotKey);
 end;
 
+procedure SaveSafe;
+begin
+  try
+    SaveLocked;
+  except
+  end;
+end;
+
+// The spelling to use for a group named G: an existing group keeps its own
+// (so its key survives), unless G brings a key marker - then every entry of
+// the group takes G.
+function CanonicalGroup(const G: string): string;
+var
+  I: Integer;
+  Existing: string;
+  Entry: TFolderHotlistEntry;
+begin
+  Result := G;
+  if G = '' then
+    Exit;
+  Existing := '';
+  for I := 0 to GEntries.Count - 1 do
+    if SameGroup(GEntries[I].Group, G) then
+    begin
+      Existing := GEntries[I].Group;
+      Break;
+    end;
+  if Existing = '' then
+    Exit;
+  if (HotlistKeyOf(G) = #0) or (Existing = G) then
+    Exit(Existing);
+  for I := 0 to GEntries.Count - 1 do
+    if SameGroup(GEntries[I].Group, G) then
+    begin
+      Entry := GEntries[I];
+      Entry.Group := G;
+      GEntries[I] := Entry;
+    end;
+end;
+
 procedure FolderHotlistSetGroupByUri(const AUri, AGroup: string);
 var
   From, I, Dest: Integer;
@@ -380,10 +467,15 @@ begin
   From := FolderHotlistFindByUri(AUri);
   if From < 0 then
     Exit;
-  G := Trim(AGroup);
+  G := CanonicalGroup(Trim(AGroup));
   Entry := GEntries[From];
-  if SameText(Entry.Group, G) then
+  if SameGroup(Entry.Group, G) then
+  begin
+    // Retyping a group with a new key marker still renames it.
+    if Entry.Group <> G then
+      SaveSafe;
     Exit;
+  end;
   // The emptied group stays, as a placeholder, where the entry was.
   if (Entry.Group <> '') and (RealCount(Entry.Group) = 1) then
     GEntries[From] := Placeholder(Entry.Group)
@@ -395,7 +487,7 @@ begin
   Dest := GEntries.Count;
   if G <> '' then
     for I := GEntries.Count - 1 downto 0 do
-      if SameText(GEntries[I].Group, G) then
+      if SameGroup(GEntries[I].Group, G) then
       begin
         Dest := I + 1;
         Break;
@@ -406,6 +498,29 @@ begin
     SaveLocked;
   except
   end;
+end;
+
+function FolderHotlistRenameGroup(const AOld, ANew: string): Boolean;
+var
+  I: Integer;
+  N: string;
+  Entry: TFolderHotlistEntry;
+begin
+  EnsureLoaded;
+  N := Trim(ANew);
+  Result := False;
+  if N = '' then
+    Exit;
+  for I := 0 to GEntries.Count - 1 do
+    if SameGroup(GEntries[I].Group, AOld) then
+    begin
+      Entry := GEntries[I];
+      Entry.Group := N;
+      GEntries[I] := Entry;
+      Result := True;
+    end;
+  if Result then
+    SaveSafe;
 end;
 
 function FolderHotlistRemoveEmptyGroup(const AGroup: string): Boolean;
@@ -450,7 +565,7 @@ begin
     Exit;
   Entry := GEntries[From];
   OutOfRange := (Dest < 0) or (Dest >= GEntries.Count);
-  if not OutOfRange and SameText(GEntries[Dest].Group, Entry.Group) then
+  if not OutOfRange and SameGroup(GEntries[Dest].Group, Entry.Group) then
     GEntries.Move(From, Dest)
   else if Entry.Group <> '' then
   begin

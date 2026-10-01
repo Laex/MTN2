@@ -252,7 +252,7 @@ function BuildAssociationEditDialog(const AExtension: string; AActionIndex: Inte
 /// <summary>User menu (F2) item editor, uDualPanelUserMenu.pas. AKindIndex:
 /// 0 command, 1 submenu, 2 separator.</summary>
 function BuildUserMenuEditDialog(const AHotKey, ACaption, ACommand: string;
-  AKindIndex: Integer): TDialogDeclaration;
+  AKindIndex: Integer; AReturnToPanels: Boolean = False): TDialogDeclaration;
 function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   const APreview: TArray<string>; ADryRun: Boolean = False;
   ATwoWay: Boolean = False; AByContent: Boolean = False): TDialogDeclaration;
@@ -289,7 +289,8 @@ function BuildChecksumResultDialog(const ATitle, AStatus: string;
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer = 0; AStartOnLaunch: Boolean = False): TDialogDeclaration;
+  ASelectedIndex: Integer = 0; AStartOnLaunch: Boolean = False;
+  ACwdToPanels: Boolean = True): TDialogDeclaration;
 function BuildAboutDialog: TDialogDeclaration;
 /// <summary>Update offer: buttons update / later (Esc) / skip.</summary>
 function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;
@@ -1030,12 +1031,13 @@ begin
 end;
 
 function BuildUserMenuEditDialog(const AHotKey, ACaption, ACommand: string;
-  AKindIndex: Integer): TDialogDeclaration;
+  AKindIndex: Integer; AReturnToPanels: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogUserMenuEdit, Result);
   DialogSetInputValue(Result, 'hotkey', AHotKey);
   DialogSetInputValue(Result, 'caption', ACaption);
   DialogSetInputValue(Result, 'command', ACommand);
+  DialogSetCheckbox(Result, 'return_panels', AReturnToPanels);
   // Dropdown items are user-facing choices, not static captions, so the
   // translation pass skips them; translate here.
   DialogSetListItems(Result, 'kind', [
@@ -1268,29 +1270,37 @@ begin
 end;
 
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer; AStartOnLaunch: Boolean): TDialogDeclaration;
+  ASelectedIndex: Integer; AStartOnLaunch, ACwdToPanels: Boolean): TDialogDeclaration;
 var
   I, N, ButtonRow: Integer;
 begin
-  Result := BuildShellProfileListDialog('Background console', ATitles, ASelectedIndex);
-  // Checkbox takes the button row under the profile list and the buttons
-  // move two rows down (keeping the empty row above them); the shared
+  Result := BuildShellProfileListDialog(
+    T('ui.consoleProfile.title', 'Background console'), ATitles, ASelectedIndex);
+  // Two checkboxes take the button row under the profile list and the buttons
+  // move three rows down (keeping the empty row above them); the shared
   // terminal-profile resource has no room for it, so only this dialog grows.
   ButtonRow := 0;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Kind = dckButton then
       ButtonRow := Max(ButtonRow, Result.Controls[I].Row);
-  Result.Height := Result.Height + 2;
+  Result.Height := Result.Height + 3;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Kind = dckButton then
-      Inc(Result.Controls[I].Row, 2);
+      Inc(Result.Controls[I].Row, 3);
   N := Length(Result.Controls);
-  SetLength(Result.Controls, N + 1);
+  SetLength(Result.Controls, N + 2);
   Result.Controls[N] := WithControlBox(
     MakeCheckbox('start_on_launch',
       T('ui.consoleProfile.startOnLaunch', '&Start shell at program launch'),
       AStartOnLaunch),
     1, ButtonRow, Result.Width - 4, 1);
+  Result.Controls[N + 1] := WithControlBox(
+    MakeCheckbox('cwd_to_panels',
+      T('ui.consoleProfile.cwdToPanels', '&Panel follows the console folder after commands'),
+      ACwdToPanels),
+    1, ButtonRow + 1, Result.Width - 4, 1);
+  // The checkbox captions are set here, after the resource was fitted.
+  FitDialogCaptions(Result);
 end;
 
 function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;
