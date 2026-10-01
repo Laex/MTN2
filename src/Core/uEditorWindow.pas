@@ -1709,7 +1709,7 @@ begin
   begin
     FHexMode := False;
     // Re-decoded line text invalidates every cached TMdLine (spans point
-    // into the old decode) and the fence-state checkpoints (built by
+    // into the previous decode) and the fence-state checkpoints (built by
     // scanning that old text) alike.
     FMdFenceIdx.Reset;
     FMdLineCache.Clear;
@@ -3224,7 +3224,7 @@ begin
     Inc(LineIdx);
   end;
 
-  // LeaveMarkdownOverlay reads the *previous* FMdOverlayShowing to decide
+  // LeaveMarkdownOverlay reads the previous FMdOverlayShowing to decide
   // whether a ClearOverlayPreview is even needed - set the new flag only
   // in the branch that doesn't call it.
   if ShowingOverlay then

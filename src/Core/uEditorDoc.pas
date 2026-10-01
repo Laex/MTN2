@@ -108,7 +108,7 @@ type
     // call TFile.Exists/GetSize/GetLastWriteTime directly here (see
     // RefreshReadOnly's note on why). Silently reports AExists=False on any
     // stat failure (e.g. a momentarily-locked/unreachable path) rather than
-    // raising, and drops the result entirely if AGen no longer matches
+    // raising, and drops the result entirely if AGen differs from
     // FGen (a newer Open/Close/reload started while the stat was in flight).
     procedure StatFileAsync(const APath: string; AGen: Cardinal; const AOnDone: TFileStatCallback);
     procedure RecordKnownFileStat;

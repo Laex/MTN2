@@ -720,7 +720,7 @@ end;
 ///     control-flow/function body).
 ///   - a literal '=' (PowerShell has no '==' for comparison, so any '=' is
 ///     almost certainly assignment - appending "| % {"$_"}" to
-///     "$x = 5" would pipe 5 through the wrapper *before* assigning it,
+///     "$x = 5" would pipe 5 through the wrapper before assigning it,
 ///     silently turning $x from Int32 into the string "5").
 ///   - starts with a keyword that begins a statement rather than an
 ///     expression (if/for/function/etc.) - piping those is invalid or

@@ -129,7 +129,7 @@ type
     /// <summary>Calls optional mtn_plugin_set_secret. Empty AValue is a valid
     /// secret. Returns False if the plugin is not loaded or has no export.</summary>
     function TrySetSecret(const APluginId, AKey, AValue: string): Boolean;
-    /// <summary>Clears a previously set secret (AValueUtf8 = nil).</summary>
+    /// <summary>Clears a secret set earlier (AValueUtf8 = nil).</summary>
     function TryClearSecret(const APluginId, AKey: string): Boolean;
     property OnLog: TPluginLoadLogEvent read FOnLog write FOnLog;
   end;

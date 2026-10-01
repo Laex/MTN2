@@ -1348,7 +1348,7 @@ begin
 end;
 
 /// <summary>Work-area rect (Windows coords) of the monitor named ADevice,
-/// if it is still connected. Used to restore a window onto the same
+/// if it is still connected. For restoring a window onto the same
 /// physical display it was closed on, even if the primary monitor or
 /// monitor order changed meanwhile.</summary>
 function TryFindMonitorWorkRect(const ADevice: string; out ARect: TRectF): Boolean;

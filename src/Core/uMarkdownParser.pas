@@ -533,7 +533,7 @@ end;
 type
   // Inline parsing both re-flows the text (emphasis delimiters are dropped)
   // and produces spans into that new text, so the two have to travel together -
-  // a bare TArray<TMdSpan> result is no longer enough on its own.
+  // a bare TArray<TMdSpan> result is not enough on its own.
   TMdInlineResult = record
     Text: string;
     Spans: TArray<TMdSpan>;

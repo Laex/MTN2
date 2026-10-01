@@ -572,7 +572,7 @@ begin
     Result := True;
   finally
     if not Result then
-      // Roll back in reverse: drop the new file, put the old one back.
+      // Roll back in reverse: drop the new file, put the previous one back.
       for I := High(Done) downto 0 do
       begin
         System.SysUtils.DeleteFile(Done[I].Target);

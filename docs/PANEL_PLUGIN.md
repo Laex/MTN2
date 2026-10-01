@@ -181,7 +181,7 @@ Host не парсит произвольный текст ошибки для �
 procedure mtn_panel_set_uri(WindowId: Integer; const URI: PAnsiChar); cdecl;
 ```
 
-Либо Host вызывает `mtn_panel_close` + `mtn_panel_open` с новым URI (проще для MVP).
+Либо Host вызывает `mtn_panel_close` + `mtn_panel_open` с новым URI (проще).
 
 ### 4.1. Сценарий: вход в каталог
 
@@ -238,7 +238,7 @@ sequenceDiagram
 |---|---|---|
 | `CurrentURI`, History, HistoryIndex | **Host (`TTab`)** | Источник истины для пути вкладки |
 | CursorIndex, ScrollOffset, Selection | **Host** | Чисто UI |
-| Порядок/фильтр/сортировка списка | **Плагин** (или Host через команды – см. §7) | MVP: сортировка может жить в системном file-плагине |
+| Порядок/фильтр/сортировка списка | **Плагин** (или Host через команды – см. §7) | Сейчас: сортировка может жить в системном file-плагине |
 | Кэш сырых `TFileAttributes` | **Плагин** | Не в UI-потоке при заполнении |
 | Цвета, рамка, колонки layout | **Host + Theme** | Плагин не участвует |
 | Pending CancelToken list-job | **Плагин** | Обязательная отмена при `close` / новом list |
@@ -252,15 +252,15 @@ sequenceDiagram
 1. `get_item_count` / `get_row_json` вызываются из **UI-потока** во время rebuild/paint подготовки → должны быть **O(1) / O(visible)** без I/O и без блокировок на сеть/диск.
 2. Любой VFS – только в worker; результат кладётся в структуру модели плагина, затем `mtn_host_invalidate` через `TThread.Queue`.
 3. Запрещено: читать каталог внутри `get_row_json`.
-4. Рекомендуемый кэш плагина: `TArray` или chunked pages; для MVP достаточно полного списка директории в памяти после list.
+4. Рекомендуемый кэш плагина: `TArray` или chunked pages; пока достаточно полного списка директории в памяти после list.
 
 ---
 
 ## 7. Колонки и сортировка (контракт расширения)
 
-MVP: Host рисует фиксированный набор колонок (Name, Size, Date, Attr), заполняя их из JSON полей. Текущий режим сортировки Host показывает сам: FAR-глиф в левом верхнем углу рабочего поля файловой панели (`DrawPanelSortLetter` / `PanelSortModeLetter`; не на рамке; контраст из `ResolvePanelChromeColors`). Плагин отвечает только за порядок строк в Pull после события `sort`.
+Сейчас: Host рисует фиксированный набор колонок (Name, Size, Date, Attr), заполняя их из JSON полей. Текущий режим сортировки Host показывает сам: FAR-глиф в левом верхнем углу рабочего поля файловой панели (`DrawPanelSortLetter` / `PanelSortModeLetter`; не на рамке; контраст из `ResolvePanelChromeColors`). Плагин отвечает только за порядок строк в Pull после события `sort`.
 
-Post-MVP (опционально): плагин может объявить схему колонок при `open`:
+Позже (опционально): плагин может объявить схему колонок при `open`:
 
 ```json
 {
@@ -293,13 +293,13 @@ Post-MVP (опционально): плагин может объявить сх
 |---|---|---|
 | `panel.model.changed` | Список перестроен | `{"window_id": 3, "uri": "file:///D:/Work", "count": 120}` |
 | `panel.uri.changed` | Плагин сам сменил URI (редко; предпочтителен Host) | `{"window_id": 3, "uri": "…"}` |
-| `vfs.directory.changed` | Внешнее изменение (watcher, Post-MVP) | `{"uri": "file:///D:/Work"}` |
+| `vfs.directory.changed` | Внешнее изменение (watcher, позже) | `{"uri": "file:///D:/Work"}` |
 
 Host, подписанный на `vfs.directory.changed`, для tab с совпадающим URI шлёт плагину `refresh`.
 
 ---
 
-## 10. Минимальный сценарий MVP (системный Local FS plugin)
+## 10. Минимальный сценарий (системный Local FS plugin)
 
 1. Host открывает tab с `file:///C:/` → `mtn_panel_open`.
 2. Плагин → `ListDirectoryAsync` → наполняет массив → `invalidate`.

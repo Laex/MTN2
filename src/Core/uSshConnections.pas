@@ -26,7 +26,7 @@ type
 
 function SshConnectionsGet: TArray<TSshConnection>;
 function SshConnectionsFindById(const AId: string; out AConn: TSshConnection): Boolean;
-/// <summary>Best-effort match by host/port/user, used to recover a saved
+/// <summary>Best-effort match by host/port/user, for recovering a saved
 /// IdentityFile for a "sftp://user@host:port/path" URI that was typed
 /// directly rather than opened via the Connections dialog. No match is not
 /// an error -- callers fall back to ssh-agent / ~/.ssh/config, same as a

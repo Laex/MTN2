@@ -175,7 +175,7 @@ end;
 // AppendOutputEx(text, cols, rows) with real geometry -- that's what latches
 // TConsoleBuffer's grid mode (EnableGridModeLocked). A 1-row grid is used for
 // the single-line editing scenarios so "the current line" (row 0) is always
-// also the *last* logical line (Buf.LineCount - 1), letting the exact same
+// also the last logical line (Buf.LineCount - 1), letting the exact same
 // GetLine(Buf.LineCount - 1)-style assertions carry over unchanged from the
 // legacy versions above -- the point of these tests is that behavior is
 // unchanged, not that the addressing trick is exercised.
@@ -304,7 +304,7 @@ begin
     Assert.AreEqual('C:\Users\user>cd D:\Work\Delphi\MTN2', Buf.GetLine(Buf.LineCount - 1), 'paste onto an already-started command stays on the same line (grid)');
 
     // Note: the legacy suite's third sub-scenario (a bare PTY chunk that
-    // *looks* like a fresh prompt forcing a line split) is intentionally not
+    // looks like a fresh prompt forcing a line split) is intentionally not
     // duplicated here -- that heuristic is legacy-only by design (see
     // AppendOutputEx's "(not FGridEnabled) and" guards); grid mode instead
     // relies on the real byte stream's own CR/LF/CUP to separate lines.

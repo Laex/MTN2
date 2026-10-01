@@ -158,4 +158,4 @@ Host показывает popup-список (примитив Panel в режи
 
 1. Плагин не рисует каретку и не задаёт цвета поля.
 2. Submit всегда идёт через Host (клавиша/кнопка), не через прямой вызов UI плагином.
-3. Командная строка Dual Panel – тот же контракт; `submit` маршрутизируется в PTY / внутренние команды ядра по решению Host+ассоциаций. Канон панельной консоли (persistent shell + sync cwd) – [SDS.md](SDS.md) §5.4, [ARCHITECTURE.md](ARCHITECTURE.md) §8; Tab-complete / вставка путей – roadmap этап 18.
+3. Командная строка Dual Panel – тот же контракт; `submit` маршрутизируется в PTY / внутренние команды ядра по решению Host+ассоциаций. Канон панельной консоли (persistent shell + sync cwd) – [SDS.md](SDS.md) §5.4, [ARCHITECTURE.md](ARCHITECTURE.md) §8; Tab-complete / вставка путей – roadmap «Cmdline UX: Tab-complete и вставка путей».

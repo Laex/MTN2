@@ -26,7 +26,7 @@ TDualPanelWindow / TTerminalWindow
 
 Системные F-клавиши (F3 Viewer, F5 Copy, …) может полностью задавать **ядро**; плагин расширяет или перекрывает пункты для своего режима.
 
-**MVP (сейчас):** нижняя F-строка Dual Panel – Host-only (`uFunctionBar.pas` + `ResolveChromeContext` в `uDualPanelStatus.pas`). Контекст зависит от оверлея (панели / диалог / stub / Change Drive / job). cdecl `mtn_toolbar_get_items_json` ещё не экспортируется.
+**Сейчас:** нижняя F-строка Dual Panel – Host-only (`uFunctionBar.pas` + `ResolveChromeContext` в `uDualPanelStatus.pas`). Контекст зависит от оверлея (панели / диалог / stub / Change Drive / job). cdecl `mtn_toolbar_get_items_json` ещё не экспортируется.
 
 ---
 
@@ -94,7 +94,7 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 | `enabled` | Доступность. |
 | `owner` | `host` – выполняет ядро; `plugin` – `handle_event` плагину. |
 
-MVP: Host может игнорировать `owner` и сам решать по таблице команд; поле нужно для пользовательских плагинов.
+Сейчас: Host может игнорировать `owner` и сам решать по таблице команд; поле нужно для пользовательских плагинов.
 
 ---
 

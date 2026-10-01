@@ -23,7 +23,7 @@ TTerminalWindow (Viewer | Editor)
 | **Host** | Layout, scroll offset, курсор, selection, keymap (F3/F4, Save, Search), отрисовка видимых строк через тему; **вертикальная полоса прокрутки** (клик ▲/▼/трек) и chrome (F-keys, status). |
 | **Плагин** | Документ: число строк/символов, выдача видимого диапазона, save/load через VFS, dirty-флаг. |
 | **Async VFS** | Потоковое чтение/запись; файлы > 10 МБ не грузятся целиком в RAM. |
-| **IThemeRenderer** | Рамка окна, gutter, **`DrawScrollBar`**, статусы/toolbar; подсветка синтаксиса – логические токены от плагина, цвета от темы (Post-MVP). |
+| **IThemeRenderer** | Рамка окна, gutter, **`DrawScrollBar`**, статусы/toolbar; подсветка синтаксиса – логические токены от плагина, цвета от темы (позже). |
 
 ---
 
@@ -118,9 +118,9 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-Плагин **не** возвращает цвета токенов в MVP. Post-MVP: массив логических spans `{ "start", "len", "token": "keyword" }` – тему мапит в цвета.
+Плагин **не** возвращает цвета токенов сейчас. Позже: массив логических spans `{ "start", "len", "token": "keyword" }` – тему мапит в цвета.
 
-**Markdown Viewer (Post-MVP, cell-aware):** отдельный режим Text Area для `.md`. Плагин парсит разметку в worker и отдаёт видимые строки со spans (`heading`, `emphasis`, `code`, `link`, `list_item`, `quote`, …); Host/тема стилизуют ячейки. Изображения из MD – заявки Overlay ([OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md)). Это рендеринг в `TTerminalGrid`, не HTML/WYSIWYG-preview. См. roadmap SDS, Post-MVP.
+**Markdown Viewer (позже, cell-aware):** отдельный режим Text Area для `.md`. Плагин парсит разметку в worker и отдаёт видимые строки со spans (`heading`, `emphasis`, `code`, `link`, `list_item`, `quote`, …); Host/тема стилизуют ячейки. Изображения из MD – заявки Overlay ([OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md)). Это рендеринг в `TTerminalGrid`, не HTML/WYSIWYG-preview. См. roadmap SDS.
 
 ---
 
@@ -144,7 +144,7 @@ procedure mtn_host_get_event_payload(WindowId: Integer;
   OutBuffer: PAnsiChar; MaxLen: Integer); cdecl;
 ```
 
-MVP Editor: допустимо упростить – Host держит буфер малого файла целиком и дергает плагин только для load/save; контракт выше – целевой для крупных файлов и единообразия Pull.
+Простой Editor: допустимо упростить – Host держит буфер малого файла целиком и дергает плагин только для load/save; контракт выше – целевой для крупных файлов и единообразия Pull.
 
 ---
 
@@ -156,7 +156,7 @@ MVP Editor: допустимо упростить – Host держит буфе
 | Содержимое / индекс строк / dirty / encoding | **Плагин** |
 | URI окна | **Host** (источник истины для заголовка/сессии) |
 
-**Scrollbar (MVP):** Host рисует вертикальную полосу в правом столбце тела окна (`Theme.DrawScrollBar`); позиция бегунка = `TopLine / max(0, LineCount − ViewHeight)`. Плагин не рисует scrollbar и не обрабатывает клики по нему. Viewer find и Editor clipboard/undo – Host.
+**Scrollbar (сейчас):** Host рисует вертикальную полосу в правом столбце тела окна (`Theme.DrawScrollBar`); позиция бегунка = `TopLine / max(0, LineCount − ViewHeight)`. Плагин не рисует scrollbar и не обрабатывает клики по нему. Viewer find и Editor clipboard/undo – Host.
 
 Инвариант Architecture: файлы > 10 МБ – потоково; `get_line_json` не читает весь файл.
 
@@ -178,7 +178,7 @@ Host открывает Text Area по F3/F4 / ассоциациям. Плаг�
 
 ## 8. Инварианты
 
-1. Нет Canvas у плагина; нет цветов строк в MVP.
+1. Нет Canvas у плагина; нет цветов строк сейчас.
 2. Pull только видимого диапазона.
 3. Dirty + `close_query`: Host показывает confirm-диалог (примитив Dialog), не плагин напрямую.
 4. При `close` – cancel всех job документа.

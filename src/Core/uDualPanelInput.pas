@@ -1082,8 +1082,8 @@ function GlobalKeymapAction(const AProfile: TKeymapProfile;
   AShift: TShiftState; ADialogVisible: Boolean): TKeymapAction;
 begin
   // A dialog owns every key: cycling the workspace or opening the console
-  // under Rename / Search params would leave it on a panel it no longer
-  // matches.
+  // under Rename / Search params would leave it on a panel it does not
+  // match.
   if ADialogVisible then
     Exit(kaNone);
   Result := MatchGlobalActionIn(AProfile, AChain, AKey, AKeyChar, AShift);

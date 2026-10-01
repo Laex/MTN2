@@ -1138,8 +1138,8 @@ end;
 
 /// <summary>Overrides hotkeys on top of an already-loaded AProfile - only
 /// actions present in AJsonText's "bindings" are replaced; the rest of
-/// AProfile (typically the resource-loaded default) is untouched. Used to
-/// apply a user's config-dir keymap.json over the embedded default.</summary>
+/// AProfile (typically the resource-loaded default) is untouched. For
+/// applying a user's config-dir keymap.json over the embedded default.</summary>
 function MergeKeymapJson(const AJsonText: string; var AProfile: TKeymapProfile): Boolean;
 var
   RootVal: TJSONValue;

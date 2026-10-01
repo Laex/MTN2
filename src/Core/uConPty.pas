@@ -1151,7 +1151,7 @@ begin
     Exit;
   end;
 
-  // ConPTY duplicated what it needs internally; our copies are no longer needed.
+  // ConPTY duplicated what it needs internally; our copies are not needed.
   CloseHandle(PtyInRead);
   CloseHandle(PtyOutWrite);
 

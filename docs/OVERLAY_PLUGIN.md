@@ -57,7 +57,7 @@ sequenceDiagram
 | **present** | Отрисовка поверх grid на каждом кадре / при dirty. |
 | **clear** | Снятие оверлея при смене URI, ресайзе, закрытии QV. |
 
-Плагин **не** передаёт сырые пиксели в MVP (слишком тяжёлый маршалинг). Он передаёт URI; декод – в ядре. Post-MVP: опциональный shared-memory / host-side cache id.
+Плагин **не** передаёт сырые пиксели сейчас (слишком тяжёлый маршалинг). Он передаёт URI; декод – в ядре. Позже: опциональный shared-memory / host-side cache id.
 
 ---
 
@@ -132,7 +132,7 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 | 102 | `bounds_changed` | 0 | 0 | Dynamic grid resize – плагин может переиздать request |
 | 103 | `overlay_failed` | 0 | 0 | Декод/VFS ошибка; детали в status JSON |
 
-Частый MVP-путь **без** плагина превью: Host сам по `file_type`/`uri` панели делает `overlay_request` для Quick View. Плагинный путь нужен для нестандартных источников (DB blob, генерация диаграммы).
+Простой путь **без** плагина превью: Host сам по `file_type`/`uri` панели делает `overlay_request` для Quick View. Плагинный путь нужен для нестандартных источников (DB blob, генерация диаграммы).
 
 ---
 
@@ -171,4 +171,4 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 2. Оверлей не заменяет текстовую сетку и не участвует в `TCharCell`.
 3. Клиппинг и z-order относительно MDI – за Host (оверлей обычно в пределах окна Quick View / панели).
 4. Ошибка декода не обязана ломать панель – status `error` + текстовый fallback в Status Line.
-5. Post-MVP WASM: только URI/request JSON через Host API, без shared framebuffer от модуля.
+5. WASM (позже): только URI/request JSON через Host API, без shared framebuffer от модуля.

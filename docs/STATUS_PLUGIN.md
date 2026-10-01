@@ -24,7 +24,7 @@ TDualPanelWindow / Dialog / Viewer
 | **Плагин** | Опциональные сегменты и значения (`message`, custom metrics); invalidate при изменении. |
 | **IThemeRenderer** | Разделители, цвета сегментов по *ролям* (normal/warn/error), не по произвольному RGB от плагина. |
 
-**MVP (сейчас):** строка статуса Dual Panel – Host-only (`TryFormatChromeStatus` / `ResolveChromeContext` в `uDualPanelStatus.pas`). cdecl pull сегментов ещё не экспортируется.
+**Сейчас:** строка статуса Dual Panel – Host-only (`TryFormatChromeStatus` / `ResolveChromeContext` в `uDualPanelStatus.pas`). cdecl pull сегментов ещё не экспортируется.
 
 ---
 

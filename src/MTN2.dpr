@@ -170,7 +170,7 @@ begin
     Exit;
   end;
 
-  // Restarted by the updater (--wait-pid): let the old process finish exiting
+  // Restarted by the updater (--wait-pid): let the previous process finish exiting
   // first, or the single-instance check below would hand off to it and quit.
   WaitForPreviousInstanceFromCommandLine;
 

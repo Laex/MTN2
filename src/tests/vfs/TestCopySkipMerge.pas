@@ -127,9 +127,9 @@ begin
   WriteTextFile(TPath.Combine(ASrc, 'b.txt'), 'src-b');
   WriteTextFile(TPath.Combine(ASrc, 'sub', 'c.txt'), 'src-c');
 
-  // Destination already exists (this is exactly what made CopyTree bail
-  // immediately, before the bug fix) and already has 'a.txt' with DIFFERENT
-  // content than the source - Skip mode must leave it exactly as-is.
+  // Destination already exists (CopyTree must not stop at an existing
+  // destination) and already has 'a.txt' with DIFFERENT
+  // content than the source - Skip mode must leave it as it is.
   TDirectory.CreateDirectory(ADst);
   WriteTextFile(TPath.Combine(ADst, 'a.txt'), 'dst-a-preexisting');
   WriteTextFile(TPath.Combine(ADst, 'unrelated.txt'), 'dst-only');
@@ -195,7 +195,7 @@ begin
   WriteTextFile(TPath.Combine(Src, 'sub', 'new.txt'), 'fresh');
   WriteTextFile(TPath.Combine(Src, 'sub', 'old.txt'), 'src-old');
   // Dst does NOT exist yet, but its 'sub' equivalent will be created fresh by
-  // the copy itself down one level - instead pre-seed a *second* copy run
+  // the copy itself down one level - instead pre-seed a second copy run
   // into the same destination to prove re-running Skip against an already-
   // merged tree keeps working (the realistic "re-sync" workflow).
   Ok := RunCopy(Src, Dst, False, Err);
@@ -402,7 +402,7 @@ begin
   Writeln('  inside the source folder, Ask mode, click Skip on the folder prompt)');
 
   // Mirrors "select all files/folders inside P:\_.. and copy to D:\_.." -
-  // Src's *children* become FJob.Sources, not Src itself.
+  // Src's children become FJob.Sources, not Src itself.
   Src := TPath.Combine(GRoot, 'ask_src');
   Dst := TPath.Combine(GRoot, 'ask_dst');
   TDirectory.CreateDirectory(TPath.Combine(Src, TPath.Combine('__2026', 'ZNRM')));

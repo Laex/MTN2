@@ -241,7 +241,7 @@ begin
     end, 5000), 'the new, unrelated model finishes normally');
 
   // Give the original (orphaned) model's watchdog time to fire and prove it
-  // is a no-op against a *different* IPanelModel instance -- nothing to
+  // is a no-op against a different IPanelModel instance -- nothing to
   // assert on Model here since it's a fresh instance; this just exercises
   // the code path without crashing.
   Sleep(9000);

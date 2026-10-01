@@ -45,7 +45,7 @@ function FolderHotlistMoveByUri(const AUri: string; ADelta: Integer): Boolean;
 procedure FolderHotlistClear;
 /// <summary>Writes the list to disk now.</summary>
 procedure FolderHotlistSave;
-/// <summary>Replaces the whole list (used to roll back a cancelled edit).</summary>
+/// <summary>Replaces the whole list (for rolling back a cancelled edit).</summary>
 procedure FolderHotlistSetEntries(const AEntries: TArray<TFolderHotlistEntry>);
 /// <summary>Display label for AHotKey (1..10): 'Ctrl+1'..'Ctrl+9', 'Ctrl+0'; '' for 0.</summary>
 function FolderHotlistKeyLabel(AHotKey: Integer): string;

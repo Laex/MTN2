@@ -43,7 +43,7 @@ type
     FProgressInvalidateQueued: Boolean;
     FProgressInvalidateDirty: Boolean;
     /// <summary>Full source path of the file the last progress report was
-    /// about - used to detect "file finished, next one started" transitions
+    /// about - for detecting "file finished, next one started" transitions
     /// inside a recursive tree copy so FJob.FilesDone can count real files
     /// instead of top-level selected items.</summary>
     FLastItemSrcPath: string;

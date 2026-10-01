@@ -1,6 +1,6 @@
 unit uWorkspaceVfs;
 
-{ Built-in backend for ws:/// - a panel of *links* to real files and folders.
+{ Built-in backend for ws:/// - a panel of links to real files and folders.
   Originals stay on disk. F5 records a reference; F8 drops it. Virtual folders
   (F7) exist only inside the panel. Change Drive 4 is always visible, so this
   lives in core rather than depending on the optional WASM plugin. }

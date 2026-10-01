@@ -432,7 +432,7 @@ begin
     Changed := ColorCodingGroupsToJson(FGroups) <> ColorCodingGroupsToJson(FOriginal);
     SetLength(FGroups, 0);
     SetLength(FOriginal, 0);
-    // Only hand the list over if it actually changed; comparing the
+    // Only hand the list over if it changed; comparing the
     // serialized JSON is as exact as a field-by-field diff.
     if Changed and Assigned(FOnSave) then
       FOnSave(Edited);

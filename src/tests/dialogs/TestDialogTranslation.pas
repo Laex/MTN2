@@ -119,7 +119,7 @@ begin
     Host.Free;
   end;
 
-  // Replaced items drop the ids of the old ones.
+  // Replaced items drop the ids of the replaced ones.
   DialogSetListItems(D, 'job_existing', ['a', 'b']);
   I := IndexOfId(D, 'job_existing');
   Assert.IsTrue(Length(D.Controls[I].ItemIds) = 0, 'DialogSetListItems clears ItemIds');

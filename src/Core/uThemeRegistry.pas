@@ -565,7 +565,7 @@ begin
   Doc.Extends := [Base];
   if HasColoring then
   begin
-    // The old file was merged over the default groups by name, as a theme is.
+    // A file in the earlier format is merged over the default groups by name, as a theme is.
     Doc.HasFileColoring := True;
     Doc.FileColoring := Groups;
   end;

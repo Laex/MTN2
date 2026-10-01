@@ -98,7 +98,7 @@ begin
   // DirectoryExists/FindFirstChangeNotification (an unresponsive network
   // drive), waiting for it would block the caller just like calling it
   // synchronously. FreeOnTerminate lets the
-  // TThread wrapper clean itself up whenever the underlying thread actually
+  // TThread wrapper clean itself up whenever the underlying thread
   // finishes -- possibly never, harmlessly, if the drive never answers.
   FThread := nil;
   if (FChangeHandle <> 0) and (FChangeHandle <> INVALID_HANDLE_VALUE) then

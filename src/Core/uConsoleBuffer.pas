@@ -1053,8 +1053,8 @@ begin
       // PTY output arrives on the reader thread; ResizePrimaryScreen is
       // called separately from the UI thread's SyncPtySize. If a resized
       // chunk of real output reaches here before that call lands, the grid
-      // is still the OLD (narrower) size while conhost is already drawing
-      // for the NEW one -- e.g. a 35-char prompt wraps mid-string onto a
+      // is still the narrower previous size while conhost is already drawing
+      // for the new one -- e.g. a 35-char prompt wraps mid-string onto a
       // second row because the grid still thinks it's ~35 cols wide,
       // confirmed via a byte-level trace (grid cursor ends at row+1 col0
       // right where the prompt text ends, with ACols=183 already claimed).

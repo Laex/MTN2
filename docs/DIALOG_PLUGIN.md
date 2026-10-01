@@ -10,7 +10,7 @@
 
 | Слой | Состояние |
 |---|---|
-| **MVP (сейчас)** | In-process: `TDialogHost` + `uDialogJson` + builders `uDialogTypes`. JSON-декларация и values snapshot уже совпадают с будущим cdecl-швом. |
+| **Сейчас** | In-process: `TDialogHost` + `uDialogJson` + builders `uDialogTypes`. JSON-декларация и values snapshot уже совпадают с будущим cdecl-швом. |
 | **DLL stage (цель)** | Экспорты `mtn_dialog_*` / `mtn_plugin_handle_event` (см. §9). Семантика JSON и command-callback не меняется. |
 
 Код: `src/Core/uDialogHost.pas`, `uDialogTypes.pas`, `uDialogJson.pas`. Потребители: Dual Panel, Viewer/Editor (через Host window).
@@ -39,7 +39,7 @@ TDialogHost
 
 ---
 
-## 2. Жизненный цикл (MVP)
+## 2. Жизненный цикл (сейчас)
 
 ```mermaid
 sequenceDiagram
@@ -60,10 +60,10 @@ sequenceDiagram
 |---|---|
 | **declare** | Caller отдаёт `TDialogDeclaration` или JSON. |
 | **build** | Host копирует controls, clamp size (width ≥ 28, height ≥ 6), focus на первый focusable. |
-| **interact** | Только `command` (кнопка / Enter / Esc / Y-N / клик). Событий `change` / `close_query` в MVP нет. |
+| **interact** | Только `command` (кнопка / Enter / Esc / Y-N / клик). Событий `change` / `close_query` сейчас нет. |
 | **close** | Caller вызывает `Close` после обработки команды (или Host остаётся открытым – например Find + Status). |
 
-DLL-этап добавит `dialog_get_declaration` / `dialog_opened` / `closed` / `ResultCode` – см. §9.
+DLL-версия добавит `dialog_get_declaration` / `dialog_opened` / `closed` / `ResultCode` – см. §9.
 
 ---
 
@@ -168,7 +168,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 
 ### 3.2. Поля корня
 
-| Поле | MVP |
+| Поле | Сейчас |
 |---|---|
 | `type` | `"dialog"` (опционально для корня) |
 | `version` | `"1.0"` (default) или `"2.0"` |
@@ -185,7 +185,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 
 `button_row` и вложенный `dialog` – только контейнеры: дети flatten в плоский `Controls[]` (в 2.0 у контейнера нет своей геометрии – задавайте box у детей).
 
-### 3.3. Дочерние типы (MVP)
+### 3.3. Дочерние типы (сейчас)
 
 | `type` | Поведение |
 |---|---|
@@ -197,7 +197,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `button` | `id`, `text`, `default`, `cancel` → command |
 | `button_row` | Группа кнопок в одну строку (дети flatten) |
 | `separator` | Горизонтальная линия (`MakeHRule`): `row`, `col` 0 и `width` во всю клиентскую ширину. Такая линия смыкается с рамкой диалога – `╟─╢` у двойной рамки, `├─┤` у одинарной, `+-+` у ASCII-темы (`TDialogHost.JoinSeparatorsToFrame`); при расширении диалога под перевод растягивается вместе с ним. Не входит в values. |
-| `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне Dialog MVP. |
+| `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне текущего Dialog. |
 | `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
 
@@ -227,7 +227,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 
 ---
 
-## 4. Команды и ввод (MVP)
+## 4. Команды и ввод (сейчас)
 
 Единственное событие: `TDialogCommandEvent(controlId, valuesJson)`.
 
@@ -298,7 +298,7 @@ Edit layout with **Dialog Designer** (`tools/DialogDesigner`). Re-export from bu
 | Декларация, семантика команд, валидация | **Caller / плагин** |
 | Values во время ввода | **Host** (snapshot на command) |
 
-Динамика MVP: `SetStatus`. Полный `set_control_json` / пересборка – DLL stage.
+Динамика сейчас: `SetStatus`. Полный `set_control_json` / пересборка – в DLL-версии.
 
 ---
 
@@ -347,7 +347,7 @@ procedure mtn_host_close_dialog(WindowId: Integer; ResultCode: Integer); cdecl;
 
 ### Планируемые EventType
 
-| EventType | Имя | MVP сейчас |
+| EventType | Имя | Сейчас |
 |---|---|---|
 | 60 | `command` | Да (через callback, не cdecl) |
 | 61 | `change` | Нет |
@@ -368,4 +368,4 @@ Payload command (цель):
 | 1 | `cancel` |
 | ≥ 100 | custom |
 
-В MVP закрытие идентифицируется строковым `controlId` (`ok`, `cancel`, `btn_start`, …), не числовым ResultCode.
+Сейчас закрытие идентифицируется строковым `controlId` (`ok`, `cancel`, `btn_start`, …), не числовым ResultCode.

@@ -2,7 +2,7 @@
 #![no_main]
 #![allow(static_mut_refs)]
 
-//! Workspace panel: empty virtual VFS of *links* to real files and folders.
+//! Workspace panel: empty virtual VFS of links to real files and folders.
 //! Originals stay on disk. F5 records a reference; F8 drops the reference.
 
 use core::ptr;

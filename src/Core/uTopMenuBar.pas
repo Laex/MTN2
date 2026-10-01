@@ -556,7 +556,7 @@ begin
       // Categories have no stable id in menu.json (unlike items, which key
       // off their Action's own enum name) -- the untranslated title is the
       // best available key. Renaming a category's English text in menu.json
-      // orphans any translation keyed to the old text; give categories a
+      // orphans any translation keyed to the previous text; give categories a
       // real id there first if that turns out to matter in practice.
       CatTitle := T('menu.category.' + CatTitle, CatTitle);
 
@@ -863,7 +863,7 @@ var
   NewItem: TSubmenuItem;
   Kept: TArray<TSubmenuItem>;
 begin
-  // Strip previously-inserted plugin items first, so this is safe to call
+  // Strip plugin items inserted earlier first, so this is safe to call
   // repeatedly (e.g. after every SetPluginMenuItems / menu reload).
   for I := 0 to High(FCategories) do
   begin

@@ -177,7 +177,7 @@ type
     /// one over ASide.</summary>
     procedure Toggle(ASide: TPanelSide);
     procedure Close;
-    /// <summary>Closes the tree when the panel under it no longer shows the
+    /// <summary>Closes the tree when the panel under it stops showing the
     /// folder it was opened over.</summary>
     procedure CheckOwner;
     /// <summary>The panels swapped places (Ctrl+U): the tree moves with the

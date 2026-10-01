@@ -4518,7 +4518,7 @@ var
   Path, Dir, Name: string;
 begin
   // A found directory arrives with no trailing separator from uFindVfs, but
-  // strip it anyway so ExtractFilePath yields the *parent* either way rather
+  // strip it anyway so ExtractFilePath yields the parent either way rather
   // than the directory itself.
   Path := ExcludeTrailingPathDelimiter(Trim(AFilePath));
   if Path = '' then
@@ -5248,7 +5248,7 @@ begin
     Exit;
   end;
   Diff := ComparePanelRows(RowsForSide(psLeft), RowsForSide(psRight));
-  // The new selection replaces the old one on both sides, as in FAR.
+  // The new selection replaces the previous one on both sides, as in FAR.
   LeftTab := ActiveTab(Ws.State.LeftPanel);
   LeftTab.SelectedURIs := Diff.LeftUris;
   SetActiveTab(Ws.State.LeftPanel, LeftTab);
@@ -8190,7 +8190,7 @@ begin
   Inc(FNextTabId);
   Ws.TermProfileId := AProfileId;
 
-  // Register the tab/dictionary entry *before* Start: unlike Ed.Open, PTY
+  // Register the tab/dictionary entry before Start: unlike Ed.Open, PTY
   // Start can fail synchronously and fire ProcessExited -> DoCloseWorkspace
   // -> OnCloseRequest -> TerminalCloseRequest before control returns here,
   // and that handler needs to find this tab to clean it up correctly.

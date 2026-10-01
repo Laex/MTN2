@@ -1,6 +1,6 @@
 # План перехода на родную плагинную систему
 
-> **Роль:** операционный план этапа 29 (родные DLL/SO) и этапа 30 (WASM host).  
+> **Роль:** операционный план «Родные плагины: Plugin Manager + DLL/SO» (родные DLL/SO) и «WASM Host для родных плагинов» (WASM host).  
 > **Контракты примитивов:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
 > **Слои и инварианты:** [ARCHITECTURE.md](ARCHITECTURE.md) §6.  
 > **Продуктовый порядок:** SDS §6.0 – родные плагины → WASM → Far → Total Commander.
@@ -11,7 +11,7 @@
 
 ## 1. Принцип
 
-Не резать `TDualPanelWindow`. Панель, Viewer, Overlay, тема остаются Host. Плагин на этапе 29 – **поставщик данных и команд**:
+Не резать `TDualPanelWindow`. Панель, Viewer, Overlay, тема остаются Host. Плагин на «Родные плагины: Plugin Manager + DLL/SO» – **поставщик данных и команд**:
 
 ```text
 DLL  ──cdecl──►  THostApiTable (uPluginHostAbi)
@@ -26,26 +26,26 @@ DLL  ──cdecl──►  THostApiTable (uPluginHostAbi)
 TFilePanelModel  ──Pull──►  IVirtualFileSystem  (CreateDefaultVfs)
 ```
 
-Вынос самой панели в DLL – фаза 5, отдельный cdecl Pull (`get_row_json` / `handle_event`), не этот коммит.
+Вынос самой панели в DLL – отдельный шаг, cdecl Pull (`get_row_json` / `handle_event`), не этот коммит.
 
 ---
 
-## 2. Фазы
+## 2. Шаги перехода
 
-| Фаза | Что | Критерий готовности | Статус |
+| Шаг | Что | Критерий готовности | Статус |
 |---|---|---|---|
-| **0 – швы Host** | Unregister VFS/panel, Copy/Move на plugin-owned backend, `plugin.json`, фасад `uPluginHost`, Dual Panel регистрирует `mtn_host_invalidate` | UnloadAll не оставляет cdecl; F5 на `sample://`→`sample://` зовёт плагин | сделано |
-| **1 – demo VFS DLL** | Родной `mtn.7z` (`7z://`, list/exists/read через локальный `7z.dll`). ZIP остаётся in-process. Pack в `.7z` – этап 49. | Ядро стартует без DLL; Enter на `.7z` монтирует схему с диска | сделано |
-| **2 – invalidate + PluginId** | `IPanelModel.PluginId`; HostInvalidate реально перерисовывает | Плагин зовёт invalidate – панель dirty | сделано (`panel.reload` / `mtn_host_invalidate`) |
-| **3 – cdecl Pull-адаптер** | Рядом с `TFilePanelModel`, Dual Panel не режется | Smoke list/navigate на DLL-панели | не начинать раньше 1–2 |
-| **4 – copy bridge** | Cross-scheme plugin→file через ReadBytes + запись на диск; file→`7z://` через plugin `CopyItem` | F5 из `7z://` на диск; Pack/F5 в открытый `.7z` | сделано |
-| **5 – overlay / textarea / dialog cdecl** | Только если появится второй потребитель примитива | SDS этап 29 не требует | отложено |
-| **6 – WASM** | Этап 30 | Wasmtime + demo `wasmdemo://`; ловушка/OOB/WASI не валят ядро | сделано |
-| **7 – Far / TC** | Этапы 31–32 | После стабильного родного API + WASM | отложено |
+| **Швы Host** | Unregister VFS/panel, Copy/Move на plugin-owned backend, `plugin.json`, фасад `uPluginHost`, Dual Panel регистрирует `mtn_host_invalidate` | UnloadAll не оставляет cdecl; F5 на `sample://`→`sample://` зовёт плагин | сделано |
+| **Demo VFS DLL** | Родной `mtn.7z` (`7z://`, list/exists/read через локальный `7z.dll`). ZIP остаётся in-process. Pack в `.7z` – «Pack в `7z://`». | Ядро стартует без DLL; Enter на `.7z` монтирует схему с диска | сделано |
+| **Invalidate + PluginId** | `IPanelModel.PluginId`; HostInvalidate реально перерисовывает | Плагин зовёт invalidate – панель dirty | сделано (`panel.reload` / `mtn_host_invalidate`) |
+| **Cdecl Pull-адаптер** | Рядом с `TFilePanelModel`, Dual Panel не режется | Smoke list/navigate на DLL-панели | не начинать раньше 1–2 |
+| **Copy bridge** | Cross-scheme plugin→file через ReadBytes + запись на диск; file→`7z://` через plugin `CopyItem` | F5 из `7z://` на диск; Pack/F5 в открытый `.7z` | сделано |
+| **Overlay / textarea / dialog cdecl** | Только если появится второй потребитель примитива | SDS «Родные плагины: Plugin Manager + DLL/SO» не требует | отложено |
+| **WASM** | «WASM Host для родных плагинов» | Wasmtime + demo `wasmdemo://`; ловушка/OOB/WASI не валят ядро | сделано |
+| **Far / TC** | «Far API Wrapper» – «Total Commander plugin bridge» | После стабильного родного API + WASM | отложено |
 
 ---
 
-## 3. Правила швов (фаза 0)
+## 3. Правила швов
 
 1. **Plugin-owned URI.** Схема, зарегистрированная через `RegisterPluginScheme`, принадлежит плагину. `file` / `zip` / `find` / `sys` / `recycle` / `ws` – ядро, Copy/Move как раньше. WASM `register_vfs_scheme` для `file` / `recycle` / `sys` / `find` / `ws` хост принимает и игнорирует (схема остаётся ядерной).
 2. **Same-backend transfer.** Copy/Move, где оба URI plugin-owned и резолвятся в один backend, идут в этот backend. Copy plugin→`file://` идёт хостовым extract-мостом (`vtrPluginExtract`: ReadBytes плагина → запись на диск). Остальной cross-scheme (plugin→zip, move plugin↔file) – `vecNotSupported`.
@@ -66,7 +66,7 @@ TFilePanelModel  ──Pull──►  IVirtualFileSystem  (CreateDefaultVfs)
 
 ---
 
-## 5. Проверка фазы 0
+## 5. Проверка швов
 
 - `TestVfsRegistry` – classify + unregister + plugin-owned Copy route. `7z://` без плагина → `vtrNotSupported` (не zip-ядро). plugin→file при живом плагине → `vtrPluginExtract`.
 - `TestPanelPluginRegistry` – UnregisterPlugin.
@@ -81,7 +81,7 @@ TFilePanelModel  ──Pull──►  IVirtualFileSystem  (CreateDefaultVfs)
 
 ---
 
-## 6. Фаза 1 – `mtn.7z`
+## 6. `mtn.7z`
 
 Раскладка: `<exe>\plugins\mtn.7z\SevenZipPlugin.dll` + `plugin.json` + `7z.dll` (LGPL, подкладывается при сборке или вручную).
 
@@ -91,6 +91,6 @@ ABI v1: list / exists / read. F5 extract на диск делает хост (`v
 
 ---
 
-## 7. Фаза 6 – WASM и ядерные схемы
+## 7. WASM и ядерные схемы
 
 `ws:///` – встроенный VFS (`uWorkspaceVfs.pas`), не модуль `mtn.ws`. WASM в `src/plugins/mtn.ws` только регистрирует меню (**Commands → Workspace** / **Clear workspace**), если есть `wasmtime.dll`. Справка по панели ссылок и библиотеке снимков: `src/plugins/mtn.ws/readme.md`.

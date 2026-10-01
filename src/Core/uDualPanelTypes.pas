@@ -553,7 +553,7 @@ begin
     // dispatch even starts (uPanelModel.pas.Open) -- selecting such a drive
     // in Change Drive / Ctrl+Left+Right would freeze the window right here,
     // never even reaching Open's own async handling or slow-navigation
-    // watchdog. If the remembered folder no longer exists, the async
+    // watchdog. If the remembered folder is gone, the async
     // listing reports "Path not found" the same way any other missing-folder
     // navigation does -- no need to duplicate that check synchronously.
     Exit(PathToFileUri(Mem));

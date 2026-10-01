@@ -208,7 +208,7 @@ const
   // Deliberately much shorter than the 120s given to the stuck P: elsewhere
   // in this file: with one shared
   // background thread looping over drives in enumeration order (C, D, E, F,
-  // O, P, X), a stuck P: meant every drive *after* it (X: here) never got
+  // O, P, X), a stuck P: meant every drive after it (X: here) never got
   // its data either, forever. Per-drive workers must let X: answer on its
   // own regardless of what P: is doing.
   cWaitMs = 20000;

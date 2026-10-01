@@ -243,7 +243,7 @@ begin
   FDialog.Close;
   if Accepted and (ExtVal <> '') then
   begin
-    // Renaming the extension while editing: drop the old row first so
+    // Renaming the extension while editing: drop the previous row first so
     // the upsert below does not leave a stale duplicate behind.
     if (FEditExtension <> '') and
        not SameText(NormalizeAssocExtension(ExtVal), FEditExtension) then

@@ -511,7 +511,7 @@ begin
   else if DialogCmdIsAccept(AControlId) then
   begin
     FDialog.Close;
-    // Only touch keymap.json if the effective bindings actually
+    // Only touch keymap.json if the effective bindings
     // changed - comparing serialized JSON is simpler and just as
     // correct as a field-by-field diff.
     if KeymapProfileToJson(FProfile) <> KeymapProfileToJson(FOriginal) then
