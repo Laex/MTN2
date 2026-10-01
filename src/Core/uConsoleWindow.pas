@@ -604,6 +604,8 @@ begin
           ClearSelection;
           NotifyHost;
         end
+        else if EscGoesToProgram then
+          SendRaw(#27)
         else if Assigned(FOnDismissConsole) then
           FOnDismissConsole(Self)
         else if Assigned(FOnBackToPanels) then

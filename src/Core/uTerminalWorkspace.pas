@@ -429,6 +429,8 @@ begin
           ClearSelection;
           NotifyHost;
         end
+        else if EscGoesToProgram then
+          SendRaw(#27)
         else
           AskCloseWorkspace;
         AKey := 0;

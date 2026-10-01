@@ -92,6 +92,10 @@ type
       cursor-addressable grid instead of scrollback; DrawContent/HandleInput
       in each subclass branch on this. }
     function AltScreenActive: Boolean;
+    /// <summary>Esc belongs to the program in the PTY rather than to the
+    /// window: a full-screen app is up or the shell has a running child
+    /// process. At a bare shell prompt it is False.</summary>
+    function EscGoesToProgram: Boolean;
     /// <summary>While alt-screen is active, forward arrows/PgUp/PgDn/Home/
     /// End/Delete to the PTY instead of scrolling local history. Returns
     /// True (and consumes AKey) only when it forwarded a key.</summary>
@@ -321,6 +325,12 @@ end;
 function TBaseConsoleWindow.AltScreenActive: Boolean;
 begin
   Result := Assigned(FHistory) and FHistory.AltScreenActive;
+end;
+
+function TBaseConsoleWindow.EscGoesToProgram: Boolean;
+begin
+  Result := AltScreenActive or
+    (Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess);
 end;
 
 function TBaseConsoleWindow.HandleAltScreenNav(var AKey: Word; AShift: TShiftState): Boolean;
