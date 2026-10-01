@@ -120,7 +120,7 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     }
 }
 
-$UnitPath = @('Core', 'Themes', 'plugins\mtn.7z', 'plugins\mtn.tmp', 'tests\common' |
+$UnitPath = @('Core', 'plugins\mtn.7z', 'plugins\mtn.tmp', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 $Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }

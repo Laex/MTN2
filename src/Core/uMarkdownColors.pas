@@ -1,13 +1,13 @@
 unit uMarkdownColors;
 
-{ User colors for the Markdown Viewer. Every span kind (heading, bold, code,
-  link, ...) can carry a foreground and a background that replace the ones
-  the active theme picks (TMarkdownPainter applies them on top of
-  IThemeRenderer.ResolveMarkdownStyleColors); an unset channel keeps the
-  theme's color. The "text" kind is the document itself: its background
-  fills the whole Markdown view and every element without a background of its
-  own follows it. Stored in <config>\markdown-colors.json; a missing or
-  corrupt file means nothing is overridden.
+{ Markdown styles as a color set: for every span kind (heading, bold, code,
+  link, ...) a foreground, a background and a text style, each optionally
+  unset. This is the form the Markdown colors dialog edits; the colors
+  themselves live in the theme (uThemeSpec converts between a theme and a set).
+  The "text" kind is the document itself: its background fills the whole
+  Markdown view and every element without a background of its own follows it.
+  markdown-colors.json of earlier versions is read only to import it into a
+  theme.
 
   The colors can be imported from an Obsidian theme (theme.css): the dark or
   light palette is read from its CSS custom properties (--h1-color,
@@ -43,17 +43,8 @@ function MdColorSetToJson(const ASet: TMdColorSet): string;
 /// unparsable colors are skipped.</summary>
 function MdColorSetFromJson(const AJson: string; out ASet: TMdColorSet): Boolean;
 
+/// <summary>Where earlier versions kept the Markdown colors (config dir).</summary>
 function DefaultMarkdownColorsFilePath: string;
-/// <summary>Process-wide colors, loaded from the default file on first use.</summary>
-function GlobalMarkdownColors: TMdColorSet;
-/// <summary>Replaces the global colors and writes the default file.</summary>
-function SetGlobalMarkdownColors(const ASet: TMdColorSet): Boolean;
-/// <summary>The user's colors for AKind (HasFg / HasBg say which are set).</summary>
-function MarkdownColorOverride(AKind: TMdSpanKind): TMdColorPair;
-/// <summary>Replaces AFg / ABg with the user's colors for AKind, where set.</summary>
-procedure ApplyMarkdownColorOverride(AKind: TMdSpanKind; var AFg, ABg: TAlphaColor);
-/// <summary>Replaces AAttr with the user's style for AKind, where set.</summary>
-procedure ApplyMarkdownStyleOverride(AKind: TMdSpanKind; var AAttr: TCharCellAttributes);
 
 /// <summary>The text styles the dialog offers, index 0 = the theme's own
 /// (nothing overridden).</summary>
@@ -280,78 +271,9 @@ begin
   end;
 end;
 
-var
-  GLoaded: Boolean;
-  GColors: TMdColorSet;
-
 function DefaultMarkdownColorsFilePath: string;
 begin
   Result := GetConfigFilePath('markdown-colors.json');
-end;
-
-procedure EnsureLoaded;
-var
-  Path: string;
-begin
-  if GLoaded then
-    Exit;
-  GLoaded := True;
-  MdColorSetClear(GColors);
-  Path := DefaultMarkdownColorsFilePath;
-  if not TFile.Exists(Path) then
-    Exit;
-  try
-    MdColorSetFromJson(TFile.ReadAllText(Path, TEncoding.UTF8), GColors);
-  except
-    MdColorSetClear(GColors);
-  end;
-end;
-
-function GlobalMarkdownColors: TMdColorSet;
-begin
-  EnsureLoaded;
-  Result := GColors;
-end;
-
-function SetGlobalMarkdownColors(const ASet: TMdColorSet): Boolean;
-var
-  Path, Dir: string;
-begin
-  GLoaded := True;
-  GColors := ASet;
-  Result := False;
-  Path := DefaultMarkdownColorsFilePath;
-  try
-    Dir := ExtractFilePath(Path);
-    if Dir <> '' then
-      ForceDirectories(Dir);
-    TFile.WriteAllText(Path, MdColorSetToJson(ASet), TEncoding.UTF8);
-    Result := True;
-  except
-    { the colors stay in effect for this session; only persisting failed }
-  end;
-end;
-
-function MarkdownColorOverride(AKind: TMdSpanKind): TMdColorPair;
-begin
-  EnsureLoaded;
-  Result := GColors[AKind];
-end;
-
-procedure ApplyMarkdownColorOverride(AKind: TMdSpanKind; var AFg, ABg: TAlphaColor);
-begin
-  EnsureLoaded;
-  if GColors[AKind].HasFg then
-    AFg := GColors[AKind].Fg;
-  if GColors[AKind].HasBg then
-    ABg := GColors[AKind].Bg;
-end;
-
-procedure ApplyMarkdownStyleOverride(AKind: TMdSpanKind; var AAttr: TCharCellAttributes);
-begin
-  EnsureLoaded;
-  if GColors[AKind].HasStyle then
-    AAttr := GColors[AKind].Style;
 end;
 
 { ---- Obsidian theme import -------------------------------------------------- }

@@ -23,7 +23,7 @@ implementation
 uses
   System.SysUtils, System.UITypes, System.IOUtils,
   uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost,
-  uNDNTheme, uASCIITheme;
+  uThemeRegistry;
 
 const
   W = 100;
@@ -88,7 +88,7 @@ procedure TTestDialogSeparator.TestDoubleFrameJoins;
 var
   Grid: TTerminalGrid;
 begin
-  Render(TNDNTheme.Create, Grid);
+  Render(CreateThemeByName('NDN'), Grid);
   Assert.IsTrue(CountJoinedRows(Grid, chDblVSingleHR, chDblVSingleHL, chBoxH) = cSeparators,
     'every separator joins the double frame');
 end;
@@ -97,7 +97,7 @@ procedure TTestDialogSeparator.TestAsciiFrameJoins;
 var
   Grid: TTerminalGrid;
 begin
-  Render(TASCIIOnlyTheme.Create, Grid);
+  Render(CreateThemeByName('ASCII'), Grid);
   Assert.IsTrue(CountJoinedRows(Grid, '+', '+', '-') >= cSeparators,
     'every separator joins the ASCII frame');
 end;

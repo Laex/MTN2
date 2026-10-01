@@ -16,18 +16,14 @@ unit uColorCoding;
   unit only resolves colors; it draws nothing and knows nothing about
   selection state beyond the enum passed in.
 
-  Effective group list = one merge-by-name pass, embedded THEME_DEFAULT
-  ("fileColoring", the baked-in NDN theme) merged with whichever theme file
-  is active on disk - colors are theme-owned on purpose: a mask's color has
-  to be picked to not clash with that theme's own selection/cursor palette
-  (e.g. Archives is magenta, not yellow, because yellow reads as the NDN
-  selection color), so there is no separate theme-agnostic user layer that
-  could silently clash after a theme switch. The active file defaults to
-  NDNtheme.json in the config dir; TMtnSession.ThemeFile can point it at a
-  different file (e.g. FARtheme.json) independent of which IThemeRenderer
-  Pascal class is instantiated - see SetActiveThemeFileName / uMainForm.
-
-    GGroups := Merge(THEME_DEFAULT.fileColoring, <active theme file>.fileColoring)
+  The groups are part of the active theme (TThemeSpec.FileColoring in
+  uThemeSpec): a mask's color has to be picked to not clash with that theme's
+  own selection/cursor palette (e.g. Archives is magenta, not yellow,
+  because yellow reads as the NDN selection color), so there is no separate
+  theme-agnostic user layer that could silently clash after a theme switch.
+  Activating a theme hands its merged groups to SetActiveColorCodingGroups;
+  a theme file that extends another lists only the groups it adds or
+  changes.
 
   Merge(base, override) is by Name: an override entry whose Name matches a
   base entry replaces it in place (same priority/position); a new Name is
@@ -47,6 +43,11 @@ type
   TColorCodingColor = record
     Fg: TAlphaColor; // 0 = unset (leave to theme / to the state below it)
     Bg: TAlphaColor; // 0 = unset (leave to theme / to the state below it)
+    /// <summary>A color written as a reference ("@cursor.bg" - a theme role -
+    /// or a palette name) instead of "#RRGGBB". The theme resolves it into
+    /// Fg / Bg when it is activated; until then Fg / Bg are 0.</summary>
+    FgRef: string;
+    BgRef: string;
   end;
 
   /// <summary>Which rows a group is even considered for - TC-style row-kind
@@ -62,9 +63,9 @@ type
     /// <summary>Soft-delete flag (FAR-style "disable without deleting").
     /// A disabled group is skipped entirely during matching - as if it
     /// weren't in the list - but stays present so the color-coding editor
-    /// dialog can turn a THEME_DEFAULT-supplied group off via an override
-    /// entry, since MergeColorCodingGroups has no way to remove a base
-    /// entry outright (override-by-name only ever replaces or adds).
+    /// dialog can turn a base theme's group off via an override entry,
+    /// since MergeColorCodingGroups has no way to remove a base entry
+    /// outright (override-by-name only ever replaces or adds).
     /// Defaults to True (JSON omits "enabled" in the common case).</summary>
     Enabled: Boolean;
     /// <summary>Restricts matching to files, directories, or both (default).</summary>
@@ -93,19 +94,9 @@ function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
 /// first crack at matching, since first mask match wins). Exposed so the
 /// active theme's fileColoring loader can reuse the same algorithm.</summary>
 function MergeColorCodingGroups(const ABase, AOverride: TArray<TColorCodingGroup>): TArray<TColorCodingGroup>;
-/// <summary>Reloads the effective group list: THEME_DEFAULT's "fileColoring"
-/// merged with the active theme file's "fileColoring" (AFileName, or the
-/// active theme file set via SetActiveThemeFileName - NDNtheme.json by
-/// default - when AFileName is blank), read from the config dir. Result =
-/// True when that file was found and applied.</summary>
-function ReloadColorCoding(const AFileName: string = ''): Boolean;
-/// <summary>Cached groups - loaded lazily on first use via ReloadColorCoding.</summary>
-function ActiveColorCodingLoaded: Boolean;
-/// <summary>Sets the theme file name (in the config dir) ReloadColorCoding
-/// reads when called with a blank AFileName - the file a running theme's
-/// on-disk override lives in (e.g. 'FARtheme.json'). Empty AFileName resets
-/// to the default, 'NDNtheme.json'. Does not itself trigger a reload.</summary>
-procedure SetActiveThemeFileName(const AFileName: string);
+/// <summary>Makes AGroups the effective list the panels draw with (the
+/// active theme's merged file coloring).</summary>
+procedure SetActiveColorCodingGroups(const AGroups: TArray<TColorCodingGroup>);
 /// <summary>Parses a {"groups":[...]}-shaped document (or {"<AArrayKey>":[...]}
 /// with a different array key - theme files use "fileColoring") into
 /// AGroups. Exposed for reuse by the theme loader and for testing.</summary>
@@ -118,32 +109,46 @@ function HexToColor(const AHex: string; out AColor: TAlphaColor): Boolean;
 /// editor dialog's prefill/round-trip counterpart to HexToColor.</summary>
 function ColorToHex(AColor: TAlphaColor): string;
 /// <summary>Serializes AGroups back to a {"fileColoring":[...]} document,
-/// the same shape ParseColorCodingJson(..., 'fileColoring') reads - the
-/// write-side counterpart that never existed before the color-coding editor
-/// dialog needed to persist edits.</summary>
+/// the same shape ParseColorCodingJson(..., 'fileColoring') reads.</summary>
 function ColorCodingGroupsToJson(const AGroups: TArray<TColorCodingGroup>): string;
+/// <summary>The color as written in a file: its reference when it has one,
+/// "#RRGGBB" otherwise ('' for an unset color).</summary>
+function ColorCodingColorText(AColor: TAlphaColor; const ARef: string): string;
+/// <summary>True when two groups are written identically.</summary>
+function ColorCodingGroupSame(const A, B: TColorCodingGroup): Boolean;
+function ColorCodingNames(const AGroups: TArray<TColorCodingGroup>): TArray<string>;
+/// <summary>Reorders AGroups so the groups named in AOrder come first, in that
+/// order; the others follow in their own order. An empty AOrder changes nothing.</summary>
+procedure ColorCodingApplyOrder(var AGroups: TArray<TColorCodingGroup>;
+  const AOrder: TArray<string>);
+/// <summary>What a theme has to store so that merging it over ABase gives
+/// AEdited: the groups that differ from the base (or are new), a disabled copy
+/// of every base group AEdited dropped, and the order when the merge would
+/// not already give it.</summary>
+procedure ColorCodingDiff(const ABase, AEdited: TArray<TColorCodingGroup>;
+  out AChanges: TArray<TColorCodingGroup>; out AOrder: TArray<string>);
 /// <summary>Effective (already merged) groups the panels are currently
 /// drawing with - a copy, safe for a caller (the editor dialog) to mutate.
-/// Forces a load via ReloadColorCoding if nothing has loaded yet.</summary>
+/// Until a theme is activated these come from the defaults provider.</summary>
 function GetActiveColorCodingGroups: TArray<TColorCodingGroup>;
-/// <summary>The theme file name ReloadColorCoding('') currently resolves to
-/// (see SetActiveThemeFileName) - where the editor dialog's Save writes.</summary>
-function GetActiveThemeFileName: string;
-/// <summary>Writes AGroups as the active theme file's "fileColoring"
-/// (GetConfigFilePath(GetActiveThemeFileName)), then reloads so panel
-/// drawing picks the change up immediately. Best-effort: False on any I/O
-/// error, nothing partially written (TFile.WriteAllText is whole-file).</summary>
-function SaveActiveThemeFileColoring(const AGroups: TArray<TColorCodingGroup>): Boolean;
+
+type
+  TColorCodingDefaultsProvider = function: TArray<TColorCodingGroup>;
+
+/// <summary>The source of the groups used until a theme is activated (the
+/// default theme's); installed by the theme registry.</summary>
+procedure SetColorCodingDefaultsProvider(AProvider: TColorCodingDefaultsProvider);
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.JSON, System.IOUtils, System.Generics.Collections,
-  Winapi.Windows, uConfigLocation, uFileFind;
+  System.SysUtils, System.Classes, System.JSON, System.Generics.Collections,
+  uFileFind;
 
 var
   GLoaded: Boolean = False;
   GGroups: TArray<TColorCodingGroup>;
+  GDefaultsProvider: TColorCodingDefaultsProvider;
 
 function HexToColor(const AHex: string; out AColor: TAlphaColor): Boolean;
 var
@@ -170,11 +175,24 @@ end;
 /// <summary>Parses one optional {"fg":"#..","bg":"#.."} state block. Missing
 /// entirely, or present with unparsable colors, both just leave AColor at
 /// its zeroed default (caller pre-zeroes) - "unset", not an error.</summary>
+procedure ParseColorField(AObj: TJSONObject; const AKey: string;
+  var AColor: TAlphaColor; var ARef: string);
+var
+  Text: string;
+begin
+  if not AObj.TryGetValue<string>(AKey, Text) then
+    Exit;
+  Text := Trim(Text);
+  if HexToColor(Text, AColor) then
+    ARef := ''
+  else if Text <> '' then
+    ARef := Text;
+end;
+
 procedure ParseStateBlock(AObj: TJSONObject; const AKey: string; var AColor: TColorCodingColor);
 var
   StateVal: TJSONValue;
   StateObj: TJSONObject;
-  HexVal: string;
 begin
   if not Assigned(AObj) then
     Exit;
@@ -182,10 +200,8 @@ begin
   if not (StateVal is TJSONObject) then
     Exit;
   StateObj := TJSONObject(StateVal);
-  if StateObj.TryGetValue<string>('fg', HexVal) then
-    HexToColor(HexVal, AColor.Fg);
-  if StateObj.TryGetValue<string>('bg', HexVal) then
-    HexToColor(HexVal, AColor.Bg);
+  ParseColorField(StateObj, 'fg', AColor.Fg, AColor.FgRef);
+  ParseColorField(StateObj, 'bg', AColor.Bg, AColor.BgRef);
 end;
 
 function ApplyToFromStr(const AStr: string): TColorCodingApplyTo;
@@ -265,6 +281,8 @@ begin
         begin
           Group.Colors[S].Fg := 0;
           Group.Colors[S].Bg := 0;
+          Group.Colors[S].FgRef := '';
+          Group.Colors[S].BgRef := '';
         end;
         ParseStateBlock(Obj, 'normal', Group.Colors[ccsNormal]);
         ParseStateBlock(Obj, 'selected', Group.Colors[ccsSelected]);
@@ -281,49 +299,6 @@ begin
     SetLength(AGroups, 0);
     Result := False;
   end;
-end;
-
-const
-  cResThemeDefault = 'THEME_DEFAULT';
-  cDefaultThemeFileName = 'NDNtheme.json';
-
-var
-  GActiveThemeFileName: string = cDefaultThemeFileName;
-
-function TryLoadRCDataJson(const AResName: string; out AJson: string): Boolean;
-var
-  RS: TResourceStream;
-  Bytes: TBytes;
-begin
-  AJson := '';
-  Result := False;
-  if FindResource(HInstance, PChar(AResName), RT_RCDATA) = 0 then
-    Exit;
-  try
-    RS := TResourceStream.Create(HInstance, AResName, RT_RCDATA);
-    try
-      SetLength(Bytes, RS.Size);
-      if RS.Size > 0 then
-        RS.ReadBuffer(Bytes[0], RS.Size);
-      AJson := TEncoding.UTF8.GetString(Bytes);
-      if (Length(AJson) > 0) and (Ord(AJson[1]) = $FEFF) then
-        Delete(AJson, 1, 1);
-      Result := Trim(AJson) <> '';
-    finally
-      RS.Free;
-    end;
-  except
-    AJson := '';
-    Result := False;
-  end;
-end;
-
-procedure SetActiveThemeFileName(const AFileName: string);
-begin
-  if Trim(AFileName) = '' then
-    GActiveThemeFileName := cDefaultThemeFileName
-  else
-    GActiveThemeFileName := AFileName;
 end;
 
 function MergeColorCodingGroups(const ABase, AOverride: TArray<TColorCodingGroup>): TArray<TColorCodingGroup>;
@@ -361,42 +336,26 @@ begin
   Result := NewEntries + Merged;
 end;
 
-function ReloadColorCoding(const AFileName: string): Boolean;
-var
-  Json: string;
-  ActualFileName, ActualPath: string;
-  BaseGroups, OverrideGroups: TArray<TColorCodingGroup>;
+procedure SetColorCodingDefaultsProvider(AProvider: TColorCodingDefaultsProvider);
 begin
-  Result := False;
-  SetLength(BaseGroups, 0);
-  if TryLoadRCDataJson(cResThemeDefault, Json) then
-    ParseColorCodingJson(Json, BaseGroups, 'fileColoring');
+  GDefaultsProvider := AProvider;
+end;
 
-  ActualFileName := AFileName;
-  if ActualFileName = '' then
-    ActualFileName := GActiveThemeFileName;
-  ActualPath := GetConfigFilePath(ActualFileName);
-  if TFile.Exists(ActualPath) then
-  begin
-    try
-      Json := TFile.ReadAllText(ActualPath, TEncoding.UTF8);
-      if ParseColorCodingJson(Json, OverrideGroups, 'fileColoring') then
-      begin
-        BaseGroups := MergeColorCodingGroups(BaseGroups, OverrideGroups);
-        Result := True;
-      end;
-    except
-      // Corrupt/unreadable theme file - keep the embedded THEME_DEFAULT groups.
-    end;
-  end;
-
-  GGroups := BaseGroups;
+procedure SetActiveColorCodingGroups(const AGroups: TArray<TColorCodingGroup>);
+begin
+  GGroups := Copy(AGroups);
   GLoaded := True;
 end;
 
-function ActiveColorCodingLoaded: Boolean;
+procedure EnsureGroups;
 begin
-  Result := GLoaded;
+  if GLoaded then
+    Exit;
+  if Assigned(GDefaultsProvider) then
+    GGroups := GDefaultsProvider()
+  else
+    SetLength(GGroups, 0);
+  GLoaded := True;
 end;
 
 function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
@@ -407,8 +366,7 @@ begin
   AFg := 0;
   ABg := 0;
   Result := False;
-  if not GLoaded then
-    ReloadColorCoding('');
+  EnsureGroups;
   if AName = '' then
     Exit;
   // First mask match wins outright -
@@ -433,6 +391,101 @@ begin
       Exit((AFg <> 0) or (ABg <> 0));
     end;
   end;
+end;
+
+function ColorCodingColorText(AColor: TAlphaColor; const ARef: string): string;
+begin
+  if ARef <> '' then
+    Result := ARef
+  else
+    Result := ColorToHex(AColor);
+end;
+
+function ColorCodingGroupSame(const A, B: TColorCodingGroup): Boolean;
+begin
+  Result := ColorCodingGroupsToJson([A]) = ColorCodingGroupsToJson([B]);
+end;
+
+function ColorCodingNames(const AGroups: TArray<TColorCodingGroup>): TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(AGroups));
+  for I := 0 to High(AGroups) do
+    Result[I] := AGroups[I].Name;
+end;
+
+function FindGroup(const AGroups: TArray<TColorCodingGroup>; const AName: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(AGroups) do
+    if SameText(AGroups[I].Name, AName) then
+      Exit(I);
+  Result := -1;
+end;
+
+procedure ColorCodingApplyOrder(var AGroups: TArray<TColorCodingGroup>;
+  const AOrder: TArray<string>);
+var
+  Sorted: TArray<TColorCodingGroup>;
+  Taken: TArray<Boolean>;
+  I, J: Integer;
+begin
+  if Length(AOrder) = 0 then
+    Exit;
+  SetLength(Taken, Length(AGroups));
+  SetLength(Sorted, 0);
+  for I := 0 to High(AOrder) do
+  begin
+    J := FindGroup(AGroups, AOrder[I]);
+    if (J >= 0) and not Taken[J] then
+    begin
+      Taken[J] := True;
+      Sorted := Sorted + [AGroups[J]];
+    end;
+  end;
+  for I := 0 to High(AGroups) do
+    if not Taken[I] then
+      Sorted := Sorted + [AGroups[I]];
+  AGroups := Sorted;
+end;
+
+procedure ColorCodingDiff(const ABase, AEdited: TArray<TColorCodingGroup>;
+  out AChanges: TArray<TColorCodingGroup>; out AOrder: TArray<string>);
+var
+  I, J: Integer;
+  Gone: TColorCodingGroup;
+  Natural: TArray<TColorCodingGroup>;
+  Same: Boolean;
+begin
+  SetLength(AChanges, 0);
+  SetLength(AOrder, 0);
+  for I := 0 to High(AEdited) do
+  begin
+    J := FindGroup(ABase, AEdited[I].Name);
+    if (J < 0) or not ColorCodingGroupSame(ABase[J], AEdited[I]) then
+      AChanges := AChanges + [AEdited[I]];
+  end;
+  // A merge cannot remove a base group: one the editor dropped is kept off.
+  for J := 0 to High(ABase) do
+    if FindGroup(AEdited, ABase[J].Name) < 0 then
+    begin
+      Gone := ABase[J];
+      Gone.Enabled := False;
+      AChanges := AChanges + [Gone];
+    end;
+  Natural := MergeColorCodingGroups(ABase, AChanges);
+  Same := Length(Natural) = Length(AEdited);
+  if Same then
+    for I := 0 to High(Natural) do
+      if not SameText(Natural[I].Name, AEdited[I].Name) then
+      begin
+        Same := False;
+        Break;
+      end;
+  if not Same then
+    AOrder := ColorCodingNames(AEdited);
 end;
 
 function ColorToHex(AColor: TAlphaColor): string;
@@ -468,7 +521,8 @@ begin
         Obj.AddPair('applyTo', ApplyToToStr(AGroups[I].ApplyTo));
       for S := Low(TColorCodingState) to High(TColorCodingState) do
       begin
-        if (AGroups[I].Colors[S].Fg = 0) and (AGroups[I].Colors[S].Bg = 0) then
+        if (AGroups[I].Colors[S].Fg = 0) and (AGroups[I].Colors[S].Bg = 0) and
+           (AGroups[I].Colors[S].FgRef = '') and (AGroups[I].Colors[S].BgRef = '') then
           Continue;
         case S of
           ccsNormal: StateKey := 'normal';
@@ -477,10 +531,10 @@ begin
           StateKey := 'current';
         end;
         StateObj := TJSONObject.Create;
-        FgHex := ColorToHex(AGroups[I].Colors[S].Fg);
+        FgHex := ColorCodingColorText(AGroups[I].Colors[S].Fg, AGroups[I].Colors[S].FgRef);
         if FgHex <> '' then
           StateObj.AddPair('fg', FgHex);
-        BgHex := ColorToHex(AGroups[I].Colors[S].Bg);
+        BgHex := ColorCodingColorText(AGroups[I].Colors[S].Bg, AGroups[I].Colors[S].BgRef);
         if BgHex <> '' then
           StateObj.AddPair('bg', BgHex);
         Obj.AddPair(StateKey, StateObj);
@@ -495,25 +549,8 @@ end;
 
 function GetActiveColorCodingGroups: TArray<TColorCodingGroup>;
 begin
-  if not GLoaded then
-    ReloadColorCoding('');
+  EnsureGroups;
   Result := Copy(GGroups);
-end;
-
-function GetActiveThemeFileName: string;
-begin
-  Result := GActiveThemeFileName;
-end;
-
-function SaveActiveThemeFileColoring(const AGroups: TArray<TColorCodingGroup>): Boolean;
-begin
-  try
-    TFile.WriteAllText(GetConfigFilePath(GActiveThemeFileName),
-      ColorCodingGroupsToJson(AGroups), TEncoding.UTF8);
-    Result := True;
-  except
-    Result := False;
-  end;
 end;
 
 end.

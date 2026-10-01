@@ -36,7 +36,7 @@ uses
   uDialogJson,
   uDialogHost,
   uDialogResources,
-  uNDNTheme;
+  uThemeRegistry;
 
 const
   W = 80;
@@ -141,7 +141,7 @@ begin
   // back to that row's theme-resolved color, not the generic gray.
 
   FillGrid(Grid);
-  Theme := TNDNTheme.Create;
+  Theme := CreateThemeByName('NDN');
   Host := TDialogHost.Create(Theme);
   try
     Host.Open(Decl, NoopCommand);

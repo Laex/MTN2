@@ -10,7 +10,7 @@ The settings folder is `%APPDATA%\MTN2\`. If a `portable.dat` file lies next to 
 | `folderhistory.json` | folder history |
 | `filehistory.json` | file history (Alt+F11) |
 | `externaltools.json` | external viewer and editor (Alt+F3 / Alt+F4) |
-| `markdown-colors.json` | colors of the Markdown view (Options → Markdown colors...) |
+| `themes\*.theme.json` | your themes (Settings → Theme...) |
 | `dialoghistory.json` | dialog input field history |
 | `workspaces.json` | saved workspaces |
 | `sshconnections.json` | SSH/SFTP connections |

@@ -164,13 +164,8 @@ type
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
-    /// <summary>Markdown Viewer: color/attribute for one span kind.
-    /// AAttr should only ever contain ccaBold in practice - the terminal
-    /// renderer (uTerminalRenderer.TTerminalRenderer) also paints ccaItalic,
-    /// ccaUnderline, ccaStrike and ccaInsertCaret, but TMarkdownPainter adds
-    /// ccaUnderline (mskLink), ccaItalic (mskItalic, mskBoldItalic) and
-    /// ccaStrike (mskStrike) itself, so implementers only pick AFg/ABg
-    /// (and ccaBold).</summary>
+    /// <summary>Markdown Viewer: color and text attributes (bold, italic,
+    /// underline, strikethrough) for one span kind, used as they are.</summary>
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
       out AFg, ABg: TAlphaColor; out AAttr: TCharCellAttributes);
     /// <summary>TEditorWindow (F3/F4) body chrome - see TEditorThemeColors.</summary>

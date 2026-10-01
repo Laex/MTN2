@@ -25,17 +25,19 @@ implementation
 uses
   System.SysUtils, System.UITypes,
   uTerminalTypes, uThemeTypes,
-  uNDNTheme, uASCIITheme, uDraculaTheme, uHighContrastTheme, uModernUnicodeTheme,
-  uNordTheme, uSolarizedDarkTheme, uTotalCommanderTheme;
+  uThemeRegistry, uThemeSpec, uDataTheme;
 
 const
   cW = 30;
 
 function Themes: TArray<IThemeRenderer>;
+var
+  Info: TThemeInfo;
 begin
-  Result := [TNDNTheme.Create, TASCIIOnlyTheme.Create, TDraculaTheme.Create,
-    THighContrastTheme.Create, TModernUnicodeTheme.Create, TNordTheme.Create,
-    TSolarizedDarkTheme.Create, TTotalCommanderTheme.Create];
+  SetLength(Result, 0);
+  for Info in GetAvailableThemes do
+    if Info.BuiltIn then
+      Result := Result + [CreateThemeByName(Info.Id)];
 end;
 
 function RowText(const AGrid: TTerminalGrid): string;
@@ -106,7 +108,7 @@ begin
   Box := TRectI.Make(2, 0, 16, 0);
   for Theme in Themes do
   begin
-    Name := (Theme as TObject).ClassName;
+    Name := (Theme as TDataTheme).Spec.Id;
     for State in [[], [twFocused], [twSelected]] do
     begin
       Grid := NewGrid;
@@ -140,7 +142,7 @@ begin
     Plain := NewGrid;
     Theme.DrawButton(Plain, Box, 'Skip', []);
     Assert.AreEqual(RowText(Plain), RowText(Marked),
-      (Theme as TObject).ClassName + ': same cells with and without the marker');
+      (Theme as TDataTheme).Spec.Id + ': same cells with and without the marker');
   end;
 end;
 

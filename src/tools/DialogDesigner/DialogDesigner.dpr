@@ -7,6 +7,8 @@ program DialogDesigner;
   {$MESSAGE FATAL 'MTN2 requires RAD Studio 13 (Delphi 13, Studio\37.0) or later. See docs/BUILDING.md.'}
 {$IFEND}
 
+{$R '..\..\MTN2.dres'}
+
 uses
   System.StartUpCopy,
   FMX.Forms,
@@ -19,7 +21,9 @@ uses
   uDialogJson in '..\..\Core\uDialogJson.pas',
   uDialogResources in '..\..\Core\uDialogResources.pas',
   uDialogHost in '..\..\Core\uDialogHost.pas',
-  uNDNTheme in '..\..\Themes\uNDNTheme.pas',
+  uThemeSpec in '..\..\Core\uThemeSpec.pas',
+  uDataTheme in '..\..\Core\uDataTheme.pas',
+  uThemeRegistry in '..\..\Core\uThemeRegistry.pas',
   uTerminalRenderer in '..\..\Core\uTerminalRenderer.pas',
   uDialogDesignerForm in 'uDialogDesignerForm.pas';
 

@@ -28,7 +28,7 @@ uses
   System.UITypes,
   uTerminalTypes,
   uThemeTypes,
-  uNDNTheme;
+  uThemeRegistry;
 
 function RowText(const AGrid: TTerminalGrid; AY, AFrom, ATo: Integer): string;
 var
@@ -76,7 +76,7 @@ var
   Bounds: TRectI;
   RightNeighbor, ShadowCol: Char;
 begin
-  Theme := TNDNTheme.Create as IThemeRenderer;
+  Theme := CreateThemeByName('NDN');
 
   // Mirrors the real DIALOG_OVERWRITEASK 'append' button: box width 10,
   // English caption 'Append' fits ('[ Append ]' = 10 chars); the Russian

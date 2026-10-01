@@ -234,7 +234,7 @@
     },
     {
       "type": "label",
-      "text": "Colors are #RRGGBB (e.g. #FF55FF) or RRGGBB.",
+      "text": "Colors: #RRGGBB, @role.key (theme role) or a palette name.",
       "id": "lbl_hint_format",
       "col": 1,
       "row": 11,

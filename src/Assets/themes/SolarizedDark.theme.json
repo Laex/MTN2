@@ -1,0 +1,165 @@
+{
+  "schema": 2,
+  "name": "Solarized Dark",
+  "extends": "NDN",
+  "palette": {
+    "base03": "#002B36",
+    "base02": "#073642",
+    "base01": "#586E75",
+    "base00": "#657B83",
+    "base0": "#839496",
+    "base1": "#93A1A1",
+    "base2": "#EEE8D5",
+    "base3": "#FDF6E3",
+    "yellow": "#B58900",
+    "orange": "#CB4B16",
+    "red": "#DC322F",
+    "magenta": "#D33682",
+    "violet": "#6C71C4",
+    "blue": "#268BD2",
+    "cyan": "#2AA198",
+    "green": "#859900",
+    "idleCursor": "#0D3A46"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "base03"
+    },
+    "window": {
+      "fg": "base0",
+      "bg": "base03",
+      "borderFocus": "blue",
+      "borderNormal": "base01",
+      "titleFgFocus": "base03",
+      "titleBgFocus": "blue",
+      "titleFgNormal": "base01",
+      "titleBgNormal": "base02",
+      "closeAccent": "red"
+    },
+    "dialog": {
+      "fg": "base1",
+      "bg": "base02",
+      "border": "blue",
+      "hotFg": "yellow"
+    },
+    "button": {
+      "fg": "base1",
+      "bg": "base02",
+      "focusFg": "base03",
+      "focusBg": "blue",
+      "hotFocusFg": "base03"
+    },
+    "cursor": {
+      "fg": "base03",
+      "bg": "blue",
+      "idleBg": "idleCursor",
+      "hotFg": "base03",
+      "markedBg": "yellow"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandFg": "base2",
+      "bandBg": "base02"
+    },
+    "file": {
+      "dir": "blue",
+      "archive": "orange",
+      "executable": "green",
+      "media": "magenta",
+      "hidden": "base01",
+      "hiddenDir": "base01",
+      "hiddenArchive": "base01",
+      "hiddenExecutable": "base01",
+      "hiddenMedia": "base01"
+    },
+    "status": {
+      "fg": "base1",
+      "bg": "base02",
+      "separator": "base01"
+    },
+    "toolbar": {
+      "fg": "base0",
+      "bg": "base02",
+      "keyFg": "yellow"
+    },
+    "tab": {
+      "activeFg": "base03",
+      "activeBg": "blue",
+      "normalFg": "base01",
+      "normalBg": "base02"
+    },
+    "panel": {
+      "tabActiveFg": "base03",
+      "tabActiveBg": "blue",
+      "tabNormalFg": "base01",
+      "headerFg": "blue"
+    },
+    "scroll": {
+      "fg": "base01",
+      "thumb": "blue"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "blue"
+    },
+    "h2": {
+      "fg": "yellow"
+    },
+    "h3to6": {
+      "fg": "green"
+    },
+    "bold": {
+      "fg": "base1"
+    },
+    "italic": {
+      "fg": "magenta"
+    },
+    "boldItalic": {
+      "fg": "magenta"
+    },
+    "strike": {
+      "fg": "base01"
+    },
+    "inlineCode": {
+      "fg": "cyan",
+      "bg": "base02"
+    },
+    "codeBlock": {
+      "fg": "base0",
+      "bg": "base02"
+    },
+    "quote": {
+      "fg": "base01"
+    },
+    "listMarker": {
+      "fg": "yellow"
+    },
+    "hrule": {
+      "fg": "base01"
+    },
+    "link": {
+      "fg": "cyan"
+    },
+    "imageMarker": {
+      "fg": "base01"
+    },
+    "tableBorder": {
+      "fg": "base01"
+    },
+    "tableHeader": {
+      "fg": "yellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  }
+}

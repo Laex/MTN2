@@ -360,7 +360,7 @@ begin
   Result := False;
   if AY <> ABounds.Top then
     Exit;
-  // Match TNDNTheme.DrawWindowFrame: BtnX := Right - Length('[x]').
+  // Same placement as TDataTheme.DrawTitledFrame: BtnX := Right - 3.
   BtnX := ABounds.Right - cCloseW;
   if BtnX <= ABounds.Left + 2 then
     Exit; // no room - theme skips the mark

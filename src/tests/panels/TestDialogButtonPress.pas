@@ -32,7 +32,7 @@ implementation
 
 uses
   System.SysUtils, System.UITypes,
-  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost, uNDNTheme;
+  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost, uThemeRegistry;
 
 const
   W = 60;
@@ -56,7 +56,7 @@ var
   Decl: TDialogDeclaration;
 begin
   Assert.IsTrue(TryParseDialogJson(cDialogJson, Decl), 'dialog json');
-  Result := TDialogHost.Create(TNDNTheme.Create);
+  Result := TDialogHost.Create(CreateThemeByName('NDN'));
   Result.Open(Decl,
     procedure(const AControlId, AValuesJson: string)
     begin

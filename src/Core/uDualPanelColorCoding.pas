@@ -29,6 +29,7 @@ type
     FEditIndex: Integer;
     FEditFields: TColorCodingEditFields;
     FPickerFieldId: string;
+    FOnSave: TProc<TArray<TColorCodingGroup>>;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
   public
@@ -51,12 +52,16 @@ type
       var AKeyChar: Char): Boolean;
     function HandleEditInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    function GroupSwatches: TArray<TListSwatch>;
     function TryParseColorFields(var G: TColorCodingGroup): Boolean;
     procedure DispatchListCommand(const AControlId: string);
     function DispatchEditCommand(const AControlId: string): Boolean;
     function DispatchPickerCommand(const AControlId: string): Boolean;
     function DispatchCommand(AKind: THostDialogKind;
       const AControlId: string): Boolean;
+    /// <summary>Receives the edited list when it differs from the active one;
+    /// the theme owns where it is stored.</summary>
+    property OnSave: TProc<TArray<TColorCodingGroup>> read FOnSave write FOnSave;
   end;
 
 implementation
@@ -91,6 +96,21 @@ begin
     FOnNotify();
 end;
 
+// The "Sample" column of the group list: a text cell in each group's normal colors.
+function TColorCodingDialogController.GroupSwatches: TArray<TListSwatch>;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(FGroups));
+  for I := 0 to High(FGroups) do
+  begin
+    Result[I].Col := cCCSampleCol;
+    Result[I].Text := cCCSampleText;
+    Result[I].Fg := FGroups[I].Colors[ccsNormal].Fg;
+    Result[I].Bg := FGroups[I].Colors[ccsNormal].Bg;
+  end;
+end;
+
 procedure TColorCodingDialogController.OpenList;
 var
   Items: TArray<string>;
@@ -108,7 +128,7 @@ begin
     Items[I] := ColorCodingDisplayLabel(FGroups[I]);
 
   SetKind(hdkColorCoding);
-  FDialog.Open(BuildColorCodingDialog(Items, 0), FOnCommand);
+  FDialog.Open(BuildColorCodingDialog(Items, 0, GroupSwatches), FOnCommand);
   Notify;
 end;
 
@@ -131,7 +151,7 @@ begin
   if Sel < 0 then
     Sel := 0;
   SetKind(hdkColorCoding);
-  FDialog.Open(BuildColorCodingDialog(Items, Sel), FOnCommand);
+  FDialog.Open(BuildColorCodingDialog(Items, Sel, GroupSwatches), FOnCommand);
   Notify;
 end;
 
@@ -162,9 +182,12 @@ begin
   SetKind(hdkColorCodingEdit);
   FDialog.Open(BuildColorCodingEditDialog(G.Name, string.Join(';', G.Masks),
     ApplyToIdx, G.Enabled,
-    ColorToHex(G.Colors[ccsNormal].Fg), ColorToHex(G.Colors[ccsNormal].Bg),
-    ColorToHex(G.Colors[ccsSelected].Fg), ColorToHex(G.Colors[ccsSelected].Bg),
-    ColorToHex(G.Colors[ccsCurrent].Fg), ColorToHex(G.Colors[ccsCurrent].Bg)),
+    ColorCodingColorText(G.Colors[ccsNormal].Fg, G.Colors[ccsNormal].FgRef),
+    ColorCodingColorText(G.Colors[ccsNormal].Bg, G.Colors[ccsNormal].BgRef),
+    ColorCodingColorText(G.Colors[ccsSelected].Fg, G.Colors[ccsSelected].FgRef),
+    ColorCodingColorText(G.Colors[ccsSelected].Bg, G.Colors[ccsSelected].BgRef),
+    ColorCodingColorText(G.Colors[ccsCurrent].Fg, G.Colors[ccsCurrent].FgRef),
+    ColorCodingColorText(G.Colors[ccsCurrent].Bg, G.Colors[ccsCurrent].BgRef)),
     FOnCommand);
   Notify;
 end;
@@ -224,12 +247,18 @@ function TColorCodingDialogController.TryParseColorFields(
   var G: TColorCodingGroup): Boolean;
 begin
   Result :=
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_normal_fg'), G.Colors[ccsNormal].Fg) and
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_normal_bg'), G.Colors[ccsNormal].Bg) and
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_selected_fg'), G.Colors[ccsSelected].Fg) and
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_selected_bg'), G.Colors[ccsSelected].Bg) and
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_current_fg'), G.Colors[ccsCurrent].Fg) and
-    ColorCodingParseHexField(FDialog.GetInputValue('cc_current_bg'), G.Colors[ccsCurrent].Bg);
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_normal_fg'),
+      G.Colors[ccsNormal].Fg, G.Colors[ccsNormal].FgRef) and
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_normal_bg'),
+      G.Colors[ccsNormal].Bg, G.Colors[ccsNormal].BgRef) and
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_selected_fg'),
+      G.Colors[ccsSelected].Fg, G.Colors[ccsSelected].FgRef) and
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_selected_bg'),
+      G.Colors[ccsSelected].Bg, G.Colors[ccsSelected].BgRef) and
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_current_fg'),
+      G.Colors[ccsCurrent].Fg, G.Colors[ccsCurrent].FgRef) and
+    ColorCodingParseColorField(FDialog.GetInputValue('cc_current_bg'),
+      G.Colors[ccsCurrent].Bg, G.Colors[ccsCurrent].BgRef);
 end;
 
 function TColorCodingDialogController.CommitEdit: Boolean;
@@ -260,7 +289,7 @@ begin
   G.Enabled := FDialog.GetCheckbox('cc_enabled');
   if not TryParseColorFields(G) then
   begin
-    FDialog.SetStatus('status', 'Colors must be #RRGGBB, or blank.');
+    FDialog.SetStatus('status', 'Colors must be #RRGGBB, @role or a palette name, or blank.');
     Exit;
   end;
   if FEditIndex < 0 then
@@ -382,6 +411,9 @@ end;
 
 procedure TColorCodingDialogController.DispatchListCommand(
   const AControlId: string);
+var
+  Edited: TArray<TColorCodingGroup>;
+  Changed: Boolean;
 begin
   if DialogCmdIs(AControlId, 'add') then
     BeginAdd
@@ -396,16 +428,14 @@ begin
   else if DialogCmdIsAccept(AControlId) then
   begin
     FDialog.Close;
-    // Only touch the theme file if the effective group list actually
-    // changed - comparing serialized JSON is simpler and just as
-    // correct as a field-by-field diff (uColorCoding.GetActiveThemeFileName).
-    if ColorCodingGroupsToJson(FGroups) <> ColorCodingGroupsToJson(FOriginal) then
-    begin
-      SaveActiveThemeFileColoring(FGroups);
-      ReloadColorCoding('');
-    end;
+    Edited := Copy(FGroups);
+    Changed := ColorCodingGroupsToJson(FGroups) <> ColorCodingGroupsToJson(FOriginal);
     SetLength(FGroups, 0);
     SetLength(FOriginal, 0);
+    // Only hand the list over if it actually changed; comparing the
+    // serialized JSON is as exact as a field-by-field diff.
+    if Changed and Assigned(FOnSave) then
+      FOnSave(Edited);
   end
   else
   begin

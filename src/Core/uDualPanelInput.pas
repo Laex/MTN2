@@ -236,6 +236,7 @@ type
     HandleFileHistoryList: TKeymapInputFn;
     HandleDialogWidget: TKeymapInputFn;
     HandleMarkdownColors: TKeymapInputFn;
+    HandleThemeColor: TKeymapInputFn;
     /// <summary>A dialog DropDown / history list is open: Enter picks from it.</summary>
     DialogDropDownOpen: TKeymapTryFn;
     /// <summary>TDialogHost.RecordInputHistory for the Enter shortcut below.</summary>
@@ -1488,6 +1489,12 @@ begin
   if AKind = hdkMarkdownColors then
   begin
     if AHost.HandleMarkdownColors(AKey, AShift, AKeyChar) then
+      Exit(True);
+  end;
+  if AKind = hdkThemeColors then
+  begin
+    if Assigned(AHost.HandleThemeColor) and
+       AHost.HandleThemeColor(AKey, AShift, AKeyChar) then
       Exit(True);
   end;
   if AKind = hdkKeymap then

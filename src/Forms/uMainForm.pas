@@ -9,7 +9,7 @@ uses
   FMX.Controls.Presentation, FMX.StdCtrls, FMX.Menus,
   Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.MultiMon,
   uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow,
-  uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeProxy,
+  uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
@@ -50,6 +50,9 @@ type
     /// <summary>uThemeRegistry id of the active theme (session.json's
     /// 'theme'); kept in sync with FThemeProxy by SwitchTheme.</summary>
     FThemeName: string;
+    /// <summary>Id of the session's theme that could not be loaded at start
+    /// ('' = it loaded); reported once the window exists.</summary>
+    FMissingThemeId: string;
     FMdi: TMdiCompositor;
     FDualPanel: TDualPanelWindow;
     FConsole: TConsoleWindow;
@@ -150,17 +153,25 @@ type
     procedure EnsureDemoWindows;
     procedure CaptureNormalBounds;
     procedure ApplySessionWindow(const AWindow: TMtnWindowBounds);
-    /// <summary>Theme named AThemeName (uThemeRegistry id), or the default
-    /// when AThemeName is blank or unrecognized.</summary>
-    function CreateTheme(const AThemeName: string): IThemeRenderer;
-    /// <summary>Live theme switch: repoints FThemeProxy at a new
-    /// concrete theme - every open window/dialog picks it up on its next
-    /// repaint, no recreation needed - and remembers AThemeId for
-    /// PersistSession. No-op if AThemeId is already active.</summary>
+    /// <summary>Loads the session's theme (uThemeRegistry id) at startup.
+    /// A missing theme falls back to the default one and is remembered in
+    /// FMissingThemeId; the coloring and Markdown color files of earlier
+    /// versions are imported as a user theme first.</summary>
+    procedure LoadStartupTheme(const AThemeId, ALegacyThemeFile: string);
+    /// <summary>Points FThemeProxy at ASpec and hands its file coloring to
+    /// the panels.</summary>
+    procedure ApplyThemeSpec(const ASpec: TThemeSpec);
+    /// <summary>Live theme switch: repoints FThemeProxy at the theme
+    /// AThemeId - every open window/dialog picks it up on its next repaint,
+    /// no recreation needed - and remembers it for PersistSession. An
+    /// unknown id selects the default theme.</summary>
     procedure SwitchTheme(const AThemeId: string);
     /// <summary>FDualPanel.OnThemeSelect handler: the Theme dialog (Options
     /// menu) reports the id the user picked.</summary>
     procedure ThemeSelected(const AThemeId: string);
+    /// <summary>FDualPanel.OnThemePreview handler: shows ASpec without
+    /// changing the selected theme.</summary>
+    procedure ThemePreview(const ASpec: TThemeSpec);
     /// <summary>FDualPanel.OnGetActiveThemeId: lets the Theme dialog
     /// preselect the currently active theme without owning that state itself.</summary>
     function GetActiveThemeId: string;
@@ -170,11 +181,10 @@ type
     function GetDisplaySettings: TDisplaySettings;
     procedure ApplyDisplaySettings(const ASettings: TDisplaySettings);
     /// <summary>Theme to instantiate (session.json's 'theme') and the
-    /// on-disk theme file to load fileColoring/palette overrides from
-    /// (session.json's 'themeFile', independent of AThemeName - see
-    /// TMtnSession.ThemeFile) for this run. Peeks session.json without
-    /// applying the rest of the session (that still happens later, in
-    /// TryRestoreSession, once FDualPanel/FRenderer exist).</summary>
+    /// legacy coloring file (session.json's 'themeFile') for this run.
+    /// Peeks session.json without applying the rest of the session (that
+    /// still happens later, in TryRestoreSession, once FDualPanel/FRenderer
+    /// exist).</summary>
     procedure PeekSessionTheme(out AThemeName, AThemeFile: string);
     /// <summary>Same idea as PeekSessionTheme, for the UI locale: the top
     /// menu bar (built once, inside EnsureDemoWindows/TTopMenuController.
@@ -1283,6 +1293,7 @@ begin
   FDualPanel.OnGetConsoleStartOnLaunch := GetConsoleStartOnLaunch;
   FDualPanel.OnSetConsoleStartOnLaunch := SetConsoleStartOnLaunch;
   FDualPanel.OnThemeSelect := ThemeSelected;
+  FDualPanel.OnThemePreview := ThemePreview;
   FDualPanel.OnGetActiveThemeId := GetActiveThemeId;
   FDualPanel.OnGetDisplaySettings := GetDisplaySettings;
   FDualPanel.OnApplyDisplaySettings := ApplyDisplaySettings;
@@ -1456,24 +1467,59 @@ begin
   FGridSnapDone := False;
 end;
 
-function TMainForm.CreateTheme(const AThemeName: string): IThemeRenderer;
+procedure TMainForm.ApplyThemeSpec(const ASpec: TThemeSpec);
 begin
-  Result := uThemeRegistry.CreateThemeByName(AThemeName);
+  FThemeProxy.SetInner(uThemeRegistry.CreateThemeFromSpec(ASpec));
+  uColorCoding.SetActiveColorCodingGroups(ASpec.FileColoring);
+end;
+
+procedure TMainForm.LoadStartupTheme(const AThemeId, ALegacyThemeFile: string);
+var
+  Id, ImportedId: string;
+  Spec: TThemeSpec;
+begin
+  Id := AThemeId;
+  if Id = '' then
+    Id := uThemeRegistry.DefaultThemeId;
+  if uThemeRegistry.ImportLegacyFiles(Id, ALegacyThemeFile, ImportedId) then
+    Id := ImportedId;
+  FMissingThemeId := '';
+  if not uThemeRegistry.TryLoadThemeSpec(Id, Spec) then
+  begin
+    FMissingThemeId := Id;
+    Id := uThemeRegistry.DefaultThemeId;
+    if not uThemeRegistry.TryLoadThemeSpec(Id, Spec) then
+      Spec := ResolveThemeSpec(nil);
+  end;
+  FThemeName := Id;
+  FThemeProxy := TThemeProxy.Create(uThemeRegistry.CreateThemeFromSpec(Spec));
+  uColorCoding.SetActiveColorCodingGroups(Spec.FileColoring);
 end;
 
 procedure TMainForm.SwitchTheme(const AThemeId: string);
 var
   Id: string;
+  Spec: TThemeSpec;
 begin
   if not Assigned(FThemeProxy) then
     Exit;
   Id := AThemeId;
-  if Id = '' then
+  if not uThemeRegistry.TryLoadThemeSpec(Id, Spec) then
+  begin
     Id := uThemeRegistry.DefaultThemeId;
-  if SameText(Id, FThemeName) then
-    Exit;
-  FThemeProxy.SetInner(CreateTheme(Id));
+    if not uThemeRegistry.TryLoadThemeSpec(Id, Spec) then
+      Exit;
+  end;
+  ApplyThemeSpec(Spec);
   FThemeName := Id;
+  Recompose;
+end;
+
+procedure TMainForm.ThemePreview(const ASpec: TThemeSpec);
+begin
+  if not Assigned(FThemeProxy) then
+    Exit;
+  ApplyThemeSpec(ASpec);
   Recompose;
 end;
 
@@ -1686,10 +1732,8 @@ begin
   Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
   // FThemeName is the live theme (switched via the Theme dialog or
   // loaded from session.json at startup) - always the source of truth here.
-  // ThemeFile (color-coding overrides) has no live-switch UI yet, so that
-  // half keeps preserving whatever session.json had.
   Sess.ThemeName := FThemeName;
-  Sess.ThemeFile := FSession.ThemeFile;
+  Sess.ThemeFile := '';
   if Assigned(FRenderer) then
   begin
     Sess.FontName := FRenderer.FontName;
@@ -2200,12 +2244,7 @@ begin
 
   SetLocale(PeekSessionLanguage);
   PeekSessionTheme(SessionThemeNameValue, SessionThemeFileValue);
-  uColorCoding.SetActiveThemeFileName(SessionThemeFileValue);
-  uColorCoding.ReloadColorCoding('');
-  FThemeName := SessionThemeNameValue;
-  if FThemeName = '' then
-    FThemeName := uThemeRegistry.DefaultThemeId;
-  FThemeProxy := TThemeProxy.Create(CreateTheme(FThemeName));
+  LoadStartupTheme(SessionThemeNameValue, SessionThemeFileValue);
   FTheme := FThemeProxy;
   FMdi := TMdiCompositor.Create(FTheme);
   EnsureDemoWindows;
@@ -2245,6 +2284,11 @@ begin
   if StartupPathArgument <> '' then
     OpenPathFromArgument(StartupPathArgument);
   SyncRenderer;
+  if (FMissingThemeId <> '') and Assigned(FDualPanel) then
+    FDualPanel.ShowInfo(T('ui.theme.title', 'Theme'),
+      Format(T('ui.theme.notFound',
+        'Theme "%s" was not found; the classic Far theme is used.'),
+        [FMissingThemeId]));
 
   // Optional pre-warm (Commands -> Background console, "Start shell at
   // program launch"). Off by default: the shell starts on the first Ctrl+O

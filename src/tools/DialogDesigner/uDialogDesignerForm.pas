@@ -11,7 +11,7 @@ uses
   FMX.Edit, FMX.Layouts, FMX.Memo, FMX.Memo.Types, FMX.ScrollBox, FMX.Menus,
   FMX.ListBox, FMX.Controls.Presentation, FMX.Objects, FMX.DialogService.Sync,
   uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost,
-  uDialogResources, uNDNTheme, uTerminalRenderer, uInputLine, uStrings;
+  uDialogResources, uThemeRegistry, uTerminalRenderer, uInputLine, uStrings;
 
 type
   /// <summary>Property-panel field edit: mutates the selected control's
@@ -241,7 +241,7 @@ begin
   FPreviewFocus := False;
   FTestMode := False;
   FSelectedIndex := -1;
-  FTheme := TNDNTheme.Create;
+  FTheme := CreateThemeByName(DefaultThemeId);
   FRenderer := TTerminalRenderer.Create;
   FRenderer.OnCompose := ComposeScene;
   FDialog := TDialogHost.Create(FTheme);

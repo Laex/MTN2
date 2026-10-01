@@ -39,16 +39,13 @@ type
     /// When False (default), the shell starts on the first Ctrl+O or the
     /// first command submitted from the Dual Panel command line.</summary>
     ConsoleStartOnLaunch: Boolean;
-    /// <summary>IThemeRenderer implementation to instantiate (e.g. 'NDN').
-    /// '' = unspecified - caller falls back to the default theme.</summary>
+    /// <summary>Id of the theme (uThemeRegistry): a built-in id such as 'NDN',
+    /// or the file name of a user theme. '' = unspecified - caller falls back
+    /// to the default theme.</summary>
     ThemeName: string;
-    /// <summary>Theme JSON file (in the config dir, uColorCoding's active
-    /// theme file - see SetActiveThemeFileName) whose "fileColoring" (and,
-    /// eventually, palette/roles) overrides ThemeName's embedded defaults.
-    /// Independent of ThemeName on purpose: lets a JSON-only reskin (e.g.
-    /// 'FARtheme.json') run through the existing IThemeRenderer before a
-    /// dedicated Pascal class exists for it. '' = unspecified - caller
-    /// falls back to 'NDNtheme.json'.</summary>
+    /// <summary>Per-file coloring file of earlier versions (in the config dir,
+    /// 'NDNtheme.json' when blank). Only read, so the file can be imported as
+    /// a user theme (uThemeRegistry.ImportLegacyFiles); never written.</summary>
     ThemeFile: string;
     /// <summary>Options > Columns... selection - which fields pcmCustom
     /// shows. App-wide, like ThemeName/Zoom (not per-panel).</summary>

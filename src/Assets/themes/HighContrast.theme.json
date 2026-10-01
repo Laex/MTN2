@@ -1,0 +1,188 @@
+{
+  "schema": 2,
+  "name": "High Contrast (accessibility)",
+  "extends": "NDN",
+  "palette": {
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "yellow": "#FFFF00",
+    "cyan": "#00FFFF",
+    "green": "#00FF00",
+    "magenta": "#FF00FF",
+    "orange": "#FF8000",
+    "red": "#FF0000",
+    "greyPanel": "#303030",
+    "greyFg": "#C0C0C0",
+    "navy": "#000080"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "black"
+    },
+    "window": {
+      "fg": "white",
+      "bg": "black",
+      "borderFocus": "yellow",
+      "borderNormal": "white",
+      "titleFgFocus": "black",
+      "titleBgFocus": "yellow",
+      "titleFgNormal": "black",
+      "titleBgNormal": "white",
+      "closeAccent": "red"
+    },
+    "dialog": {
+      "fg": "yellow",
+      "bg": "black",
+      "border": "yellow",
+      "hotFg": "white"
+    },
+    "button": {
+      "fg": "black",
+      "bg": "white",
+      "focusFg": "black",
+      "focusBg": "yellow",
+      "hotFg": "red",
+      "hotFocusFg": "red"
+    },
+    "cursor": {
+      "fg": "black",
+      "bg": "yellow",
+      "idleBg": "greyPanel",
+      "hotFg": "red",
+      "markedBg": "cyan"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandBg": "navy"
+    },
+    "file": {
+      "dir": "cyan",
+      "archive": "orange",
+      "executable": "green",
+      "media": "magenta",
+      "hidden": "greyFg",
+      "hiddenDir": "greyFg",
+      "hiddenArchive": "greyFg",
+      "hiddenExecutable": "greyFg",
+      "hiddenMedia": "greyFg"
+    },
+    "status": {
+      "fg": "black",
+      "bg": "yellow"
+    },
+    "toolbar": {
+      "fg": "white",
+      "bg": "black",
+      "keyFg": "yellow"
+    },
+    "menu": {
+      "hotFg": "red"
+    },
+    "tab": {
+      "activeFg": "black",
+      "activeBg": "yellow",
+      "normalFg": "white",
+      "normalBg": "black"
+    },
+    "panel": {
+      "tabActiveFg": "black",
+      "tabActiveBg": "yellow",
+      "tabNormalFg": "white",
+      "headerFg": "yellow"
+    },
+    "scroll": {
+      "fg": "white",
+      "thumb": "yellow"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "yellow"
+    },
+    "h2": {
+      "fg": "cyan"
+    },
+    "h3to6": {
+      "fg": "green"
+    },
+    "bold": {
+      "fg": "white"
+    },
+    "italic": {
+      "fg": "magenta"
+    },
+    "boldItalic": {
+      "fg": "magenta"
+    },
+    "strike": {
+      "fg": "greyFg"
+    },
+    "inlineCode": {
+      "fg": "green",
+      "bg": "greyPanel"
+    },
+    "codeBlock": {
+      "fg": "white",
+      "bg": "greyPanel"
+    },
+    "quote": {
+      "fg": "greyFg"
+    },
+    "listMarker": {
+      "fg": "yellow"
+    },
+    "hrule": {
+      "fg": "greyFg"
+    },
+    "link": {
+      "fg": "cyan"
+    },
+    "imageMarker": {
+      "fg": "greyFg"
+    },
+    "tableBorder": {
+      "fg": "greyFg"
+    },
+    "tableHeader": {
+      "fg": "cyan"
+    }
+  },
+  "attrs": {
+    "windowTitle": [
+      "bold"
+    ],
+    "dialogTitle": [
+      "bold"
+    ],
+    "check": [
+      "bold"
+    ],
+    "tab": [
+      "bold"
+    ],
+    "toolbar": [
+      "bold"
+    ],
+    "status": [
+      "bold"
+    ],
+    "menu": [
+      "bold"
+    ],
+    "hot": [
+      "underline"
+    ],
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "glyphs": {
+    "statusSeparator": "║"
+  },
+  "frames": {
+    "window": "double",
+    "dialog": "double",
+    "panelActive": "double",
+    "panelIdle": "single"
+  }
+}

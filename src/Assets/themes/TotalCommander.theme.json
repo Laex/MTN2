@@ -1,0 +1,155 @@
+{
+  "schema": 2,
+  "name": "Total Commander (light)",
+  "extends": "NDN",
+  "palette": {
+    "greyDesktop": "#404040",
+    "silver": "#C0C0C0",
+    "silverDark": "#A0A0A0",
+    "grey": "#808080",
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "navy": "#000080",
+    "navyLight": "#B0B0C8",
+    "maroon": "#800000",
+    "darkGreen": "#008000",
+    "purple": "#800080",
+    "red": "#FF0000",
+    "lightRed": "#FF8080",
+    "paleYellow": "#FFFFC0",
+    "faceHighlight": "#D4D0C8"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "greyDesktop"
+    },
+    "window": {
+      "fg": "black",
+      "bg": "silver",
+      "borderFocus": "navy",
+      "borderNormal": "grey",
+      "titleFgFocus": "white",
+      "titleBgFocus": "navy",
+      "titleFgNormal": "faceHighlight",
+      "titleBgNormal": "grey",
+      "closeAccent": "red"
+    },
+    "dialog": {
+      "fg": "black",
+      "bg": "silver",
+      "border": "grey",
+      "hotFg": "maroon"
+    },
+    "button": {
+      "fg": "black",
+      "bg": "silver",
+      "focusFg": "white",
+      "focusBg": "navy",
+      "hotFocusFg": "paleYellow"
+    },
+    "cursor": {
+      "fg": "white",
+      "bg": "navy",
+      "idleBg": "navyLight",
+      "hotFg": "paleYellow",
+      "markedFg": "lightRed",
+      "markedBg": "navy"
+    },
+    "mark": {
+      "fg": "maroon",
+      "bandBg": "paleYellow"
+    },
+    "file": {
+      "dir": "navy",
+      "archive": "maroon",
+      "executable": "darkGreen",
+      "media": "purple",
+      "hidden": "grey",
+      "hiddenDir": "grey",
+      "hiddenArchive": "grey",
+      "hiddenExecutable": "grey",
+      "hiddenMedia": "grey"
+    },
+    "status": {
+      "fg": "white",
+      "bg": "navy"
+    },
+    "toolbar": {
+      "fg": "black",
+      "bg": "silver",
+      "keyFg": "maroon"
+    },
+    "menu": {
+      "hotFg": "faceHighlight"
+    },
+    "tab": {
+      "activeFg": "white",
+      "activeBg": "navy",
+      "normalFg": "black",
+      "normalBg": "silverDark"
+    },
+    "panel": {
+      "tabActiveFg": "white",
+      "tabActiveBg": "navy",
+      "tabNormalFg": "black",
+      "headerFg": "black",
+      "headerBg": "faceHighlight"
+    },
+    "scroll": {
+      "fg": "grey",
+      "thumb": "navy"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "navy"
+    },
+    "h2": {
+      "fg": "maroon"
+    },
+    "h3to6": {
+      "fg": "darkGreen"
+    },
+    "bold": {
+      "fg": "black"
+    },
+    "italic": {
+      "fg": "purple"
+    },
+    "boldItalic": {
+      "fg": "purple"
+    },
+    "strike": {
+      "fg": "grey"
+    },
+    "inlineCode": {
+      "fg": "darkGreen",
+      "bg": "faceHighlight"
+    },
+    "codeBlock": {
+      "fg": "black",
+      "bg": "faceHighlight"
+    },
+    "quote": {
+      "fg": "grey"
+    },
+    "listMarker": {
+      "fg": "navy"
+    },
+    "hrule": {
+      "fg": "silverDark"
+    },
+    "link": {
+      "fg": "navy"
+    },
+    "imageMarker": {
+      "fg": "grey"
+    },
+    "tableBorder": {
+      "fg": "silverDark"
+    },
+    "tableHeader": {
+      "fg": "maroon"
+    }
+  }
+}

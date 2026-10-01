@@ -57,7 +57,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_UnitSearchPath>..\..\Core;..\..\Themes;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\..\Core;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
@@ -167,7 +167,9 @@
         <DCCReference Include="..\..\Core\uDialogResources.pas"/>
         <DCCReference Include="..\..\Core\uDialogLocaleLayout.pas"/>
         <DCCReference Include="..\..\Core\uDialogHost.pas"/>
-        <DCCReference Include="..\..\Themes\uNDNTheme.pas"/>
+        <DCCReference Include="..\..\Core\uThemeSpec.pas"/>
+        <DCCReference Include="..\..\Core\uDataTheme.pas"/>
+        <DCCReference Include="..\..\Core\uThemeRegistry.pas"/>
         <DCCReference Include="..\..\Core\uTerminalRenderer.pas"/>
         <DCCReference Include="uDialogDesignerForm.pas"/>
         <BuildConfiguration Include="Base">

@@ -43,7 +43,7 @@ uses
 
 const
   cRequiredResources: array[0..3] of string =
-    ('MENU_MAIN', 'KEYMAP_DEFAULT', 'THEME_DEFAULT', 'ICON_PARENT_UP');
+    ('MENU_MAIN', 'KEYMAP_DEFAULT', 'THEME_NDN', 'ICON_PARENT_UP');
 
 function SelfCheckRequested: Boolean;
 var

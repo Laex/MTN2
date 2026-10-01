@@ -33,6 +33,11 @@ procedure RestoreGrayOpKey(var AKey: Word; const AKeyChar: Char);
 function ColorCodingApplyToChar(AApplyTo: TColorCodingApplyTo): Char;
 function ColorCodingStateMarker(const AColor: TColorCodingColor): Char;
 
+const
+  /// <summary>Column (in the row text) and text of the sample cell of the group list.</summary>
+  cCCSampleCol = 58;
+  cCCSampleText = '  Aa    ';
+
 // Row layout mirrors dialogs/colorcoding.json's "header" label:
 //   "    T Name             Mask                     N S C"
 // [x]/[ ] = Enabled; T = ApplyTo (B/F/D); N/S/C = Normal/Selected/Current,
@@ -43,10 +48,12 @@ function ColorCodingNameExistsIn(const AGroups: TArray<TColorCodingGroup>;
   const AName: string): Boolean;
 procedure ColorCodingArrayDelete(var AGroups: TArray<TColorCodingGroup>; AIndex: Integer);
 
-/// <summary>Blank AText = unset (True, AColor left at 0). Non-blank must
-/// parse via uColorCoding.HexToColor or this fails - a typo should be
-/// rejected, not silently dropped to "unset".</summary>
-function ColorCodingParseHexField(const AText: string; out AColor: TAlphaColor): Boolean;
+/// <summary>Blank AText = unset (True, AColor 0, ARef ''). "#RRGGBB" gives
+/// AColor; "@role.key" (a theme role) or a palette name gives ARef, which the
+/// theme resolves. Anything else fails - a typo should be rejected, not
+/// silently dropped to "unset".</summary>
+function ColorCodingParseColorField(const AText: string; out AColor: TAlphaColor;
+  out ARef: string): Boolean;
 
 /// <summary>True for a field id ending "_bg" (vs. "_fg") - used both to
 /// route hdkColorPicker's live preview and to know which half of a pair to
@@ -103,7 +110,8 @@ end;
 
 function ColorCodingStateMarker(const AColor: TColorCodingColor): Char;
 begin
-  if (AColor.Fg <> 0) or (AColor.Bg <> 0) then
+  if (AColor.Fg <> 0) or (AColor.Bg <> 0) or (AColor.FgRef <> '') or
+     (AColor.BgRef <> '') then
     Result := '#'
   else
     Result := '.';
@@ -146,12 +154,26 @@ begin
   SetLength(AGroups, Length(AGroups) - 1);
 end;
 
-function ColorCodingParseHexField(const AText: string; out AColor: TAlphaColor): Boolean;
+function ColorCodingParseColorField(const AText: string; out AColor: TAlphaColor;
+  out ARef: string): Boolean;
+var
+  Text: string;
+  I: Integer;
 begin
   AColor := 0;
-  if Trim(AText) = '' then
+  ARef := '';
+  Text := Trim(AText);
+  if Text = '' then
     Exit(True);
-  Result := HexToColor(AText, AColor);
+  if HexToColor(Text, AColor) then
+    Exit(True);
+  // A reference: "@role.key" or a palette name (letters, digits, '_', '.', '-').
+  for I := 1 to Length(Text) do
+    if not (CharInSet(Text[I], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '-']) or
+            ((I = 1) and (Text[I] = '@'))) then
+      Exit(False);
+  ARef := Text;
+  Result := True;
 end;
 
 function ColorCodingFieldIsBg(const AFieldId: string): Boolean;

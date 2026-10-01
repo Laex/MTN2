@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.DateUtils,
   System.IOUtils, System.Generics.Collections,
-  uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
+  uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindSession, uEditorWindow, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup,
@@ -26,7 +26,7 @@ uses
   uDualPanelWorkspaceLibrary, uWorkspaceLibrary,
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
-  uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelFileDialogs,
+  uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs;
@@ -134,6 +134,7 @@ type
     FOnGetConsoleStartOnLaunch: TGetConsoleStartOnLaunchEvent;
     FOnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent;
     FOnThemeSelect: TThemeSelectEvent;
+    FOnThemePreview: TThemePreviewEvent;
     FOnGetActiveThemeId: TGetThemeIdEvent;
     FOnApplyDisplaySettings: TDisplaySettingsEvent;
     FOnGetDisplaySettings: TGetDisplaySettingsEvent;
@@ -184,6 +185,7 @@ type
     FCmdHistory: TCmdHistoryDialogController;
     FFileHistory: TFileHistoryDialogController;
     FSettings: TSettingsDialogController;
+    FThemeDlg: TThemeDialogController;
     FFileOps: TFileOpDialogController;
     FJobDialogs: TJobDialogController;
     FSearchDlg: TSearchDialogController;
@@ -291,6 +293,7 @@ type
     procedure HostApplyCmdHistory(const ACommand: string);
     function HostGetActiveThemeId: string;
     procedure HostSelectTheme(const AThemeId: string);
+    procedure HostPreviewTheme(const ASpec: TThemeSpec);
     function HostGetDisplaySettings: TDisplaySettings;
     procedure HostApplyDisplaySettings(const ASettings: TDisplaySettings);
     procedure HostOpenTerminal(const AProfileId, ACwd: string);
@@ -821,6 +824,8 @@ type
     /// <summary>Opens ADecl for a caller outside the panel window. False (and
     /// nothing opens) while another dialog is up. AOnCommand runs after the
     /// dialog has closed, so it may open the next one.</summary>
+    /// <summary>Shows an informational message box.</summary>
+    procedure ShowInfo(const ATitle, ADetail: string);
     function ShowHostDialog(const ADecl: TDialogDeclaration;
       const AOnCommand: TProc<string, string>): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
@@ -953,6 +958,7 @@ type
     property OnSetConsoleStartOnLaunch: TSetConsoleStartOnLaunchEvent
       read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
     property OnThemeSelect: TThemeSelectEvent read FOnThemeSelect write FOnThemeSelect;
+    property OnThemePreview: TThemePreviewEvent read FOnThemePreview write FOnThemePreview;
     property OnGetActiveThemeId: TGetThemeIdEvent read FOnGetActiveThemeId write FOnGetActiveThemeId;
     property OnApplyDisplaySettings: TDisplaySettingsEvent read FOnApplyDisplaySettings write FOnApplyDisplaySettings;
     property OnGetDisplaySettings: TGetDisplaySettingsEvent read FOnGetDisplaySettings write FOnGetDisplaySettings;
@@ -1270,6 +1276,7 @@ begin
   FreeAndNil(FSearchUi);
   FreeAndNil(FFileOps);
   FreeAndNil(FSettings);
+  FreeAndNil(FThemeDlg);
   FreeAndNil(FCmdHistory);
   FreeAndNil(FFileHistory);
   FreeAndNil(FFolderHistory);
@@ -1715,6 +1722,7 @@ begin
   FModalInputHost.RecordDialogHistory := FDialog.RecordInputHistory;
   FModalInputHost.PressDialogButton := FDialog.PressButtonThen;
   FModalInputHost.HandleMarkdownColors := FSettings.HandleMarkdownColorsInput;
+  FModalInputHost.HandleThemeColor := FThemeDlg.HandleColorInput;
 end;
 
 procedure TDualPanelWindow.DrawHostFilesHeaders(const ABounds: TRectI;
@@ -1766,6 +1774,11 @@ begin
   OpenStub(skShellInfo, ATitle, ADetail);
 end;
 
+procedure TDualPanelWindow.ShowInfo(const ATitle, ADetail: string);
+begin
+  OpenStub(skShellInfo, ATitle, ADetail);
+end;
+
 procedure TDualPanelWindow.HostWorkspaceEmptySave;
 begin
   OpenStub(skShellInfo, 'Workspace', 'Nothing to save');
@@ -1809,6 +1822,12 @@ procedure TDualPanelWindow.HostSelectTheme(const AThemeId: string);
 begin
   if Assigned(FOnThemeSelect) then
     FOnThemeSelect(AThemeId);
+end;
+
+procedure TDualPanelWindow.HostPreviewTheme(const ASpec: TThemeSpec);
+begin
+  if Assigned(FOnThemePreview) then
+    FOnThemePreview(ASpec);
 end;
 
 function TDualPanelWindow.HostGetDisplaySettings: TDisplaySettings;
@@ -2387,12 +2406,31 @@ begin
     CloseTransientUiBeforeDialog, HostOpenHistoryFile, HostGotoHistoryFile);
   FSettings := TSettingsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
-    CloseTransientUiBeforeDialog, HostGetActiveThemeId, HostSelectTheme,
+    CloseTransientUiBeforeDialog,
     ActiveLocalPath, HostOpenTerminal, HostSetConsoleProfile, HostGetConsoleProfile,
     HostShowShellStub,
     HostGetDisplaySettings, HostApplyDisplaySettings);
   FSettings.OnGetConsoleStartOnLaunch := HostGetConsoleStartOnLaunch;
   FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
+  FThemeDlg := TThemeDialogController.Create(FDialog,
+    DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
+    CloseTransientUiBeforeDialog, HostGetActiveThemeId, HostSelectTheme,
+    HostPreviewTheme, HostShowShellStub);
+  FSettings.OnGetMarkdown :=
+    function: TMdColorSet
+    begin
+      Result := FThemeDlg.ActiveMarkdownSet;
+    end;
+  FSettings.OnSaveMarkdown :=
+    procedure(AInitial, AEdited: TMdColorSet)
+    begin
+      FThemeDlg.SaveMarkdown(AInitial, AEdited);
+    end;
+  FColorCoding.OnSave :=
+    procedure(AGroups: TArray<TColorCodingGroup>)
+    begin
+      FThemeDlg.SaveColoring(AGroups);
+    end;
   FFileOps := TFileOpDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     HostUnfocusCmd, HostActivePanelUri, HostInPanelsWorkspace,
@@ -4784,7 +4822,10 @@ begin
       Result := HandlePanelFilterCommand(AControlId);
     hdkDescribe:
       Result := HandleDescribeCommand(AControlId, AFields);
-    hdkTheme, hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
+    hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
+    hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
+      Result := FThemeDlg.DispatchCommand(AKind, AControlId);
+    hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
       Result := FSettings.DispatchCommand(AKind, AControlId);
     hdkCmdHistory:
@@ -7112,7 +7153,7 @@ end;
 
 procedure TDualPanelWindow.OpenThemeDialog;
 begin
-  FSettings.OpenTheme;
+  FThemeDlg.OpenPicker;
 end;
 
 procedure TDualPanelWindow.OpenColumnsConfigDialog;

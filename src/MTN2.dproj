@@ -71,7 +71,7 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\dcu\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>..\bin</DCC_ExeOutput>
-        <DCC_UnitSearchPath>.\Core;.\Forms;.\Themes;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>.\Core;.\Forms;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
         <DCC_S>false</DCC_S>
@@ -270,6 +270,7 @@
         <DCCReference Include="Core\uDualPanelFolderHotlist.pas"/>
         <DCCReference Include="Core\uDualPanelHistoryDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelSettingsDialogs.pas"/>
+        <DCCReference Include="Core\uDualPanelThemeDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelFileDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelJobDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelFindDialogs.pas"/>
@@ -319,14 +320,9 @@
         <DCCReference Include="Core\uTerminalWorkspace.pas"/>
         <DCCReference Include="Core\uSession.pas"/>
         <DCCReference Include="Core\uMdiCompositor.pas"/>
-        <DCCReference Include="Themes\uNDNTheme.pas"/>
-        <DCCReference Include="Themes\uModernUnicodeTheme.pas"/>
-        <DCCReference Include="Themes\uASCIITheme.pas"/>
-        <DCCReference Include="Themes\uTotalCommanderTheme.pas"/>
-        <DCCReference Include="Themes\uSolarizedDarkTheme.pas"/>
-        <DCCReference Include="Themes\uDraculaTheme.pas"/>
-        <DCCReference Include="Themes\uNordTheme.pas"/>
-        <DCCReference Include="Themes\uHighContrastTheme.pas"/>
+        <DCCReference Include="Core\uThemeSpec.pas"/>
+        <DCCReference Include="Core\uThemeNames.pas"/>
+        <DCCReference Include="Core\uDataTheme.pas"/>
         <DCCReference Include="Core\uThemeRegistry.pas"/>
         <DCCReference Include="Core\uThemeProxy.pas"/>
         <DCCReference Include="Core\uTerminalRenderer.pas"/>

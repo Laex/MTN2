@@ -1944,7 +1944,7 @@ procedure TDialogHost.DrawListControl(const AGrid: TTerminalGrid; const R: TRect
 var
   J, Span, Idx, TextW, Count, SelIdx: Integer;
   Line: string;
-  RowFg, RowBg: TAlphaColor;
+  RowFg, RowBg, SwFg, SwBg: TAlphaColor;
 begin
   Span := ListViewHeight(AIndex);
   SelIdx := ListSelectedIndexOf(C.Id);
@@ -1978,6 +1978,22 @@ begin
       Line := PadGridLine(Line, TextW);
       ResolveRowHighlight(Idx = SelIdx, ALabelFg, ALabelBg, RowFg, RowBg);
       PutGridText(AGrid, R.Left, R.Top + J, Line, RowFg, RowBg);
+      if (Idx <= High(C.ItemSwatches)) and (C.ItemSwatches[Idx].Text <> '') and
+         (C.ItemSwatches[Idx].Col + Length(C.ItemSwatches[Idx].Text) <= TextW) then
+      begin
+        // An unset channel shows the theme's own file-row color.
+        SwFg := RowFg;
+        SwBg := RowBg;
+        if Assigned(FTheme) then
+          FTheme.ResolveFileRowColors(False, False, False, '', False, False, True,
+            SwFg, SwBg);
+        if C.ItemSwatches[Idx].Fg <> 0 then
+          SwFg := C.ItemSwatches[Idx].Fg;
+        if C.ItemSwatches[Idx].Bg <> 0 then
+          SwBg := C.ItemSwatches[Idx].Bg;
+        PutGridText(AGrid, R.Left + C.ItemSwatches[Idx].Col, R.Top + J,
+          C.ItemSwatches[Idx].Text, SwFg, SwBg);
+      end;
     end;
     DrawDialogScrollBar(AGrid, R.Right, R.Top, R.Bottom,
       FListScrollTop, Count, Span);

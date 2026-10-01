@@ -1,0 +1,159 @@
+{
+  "schema": 2,
+  "name": "Dracula",
+  "extends": "NDN",
+  "palette": {
+    "background": "#282A36",
+    "currentLine": "#44475A",
+    "foreground": "#F8F8F2",
+    "comment": "#6272A4",
+    "cyan": "#8BE9FD",
+    "green": "#50FA7B",
+    "orange": "#FFB86C",
+    "pink": "#FF79C6",
+    "purple": "#BD93F9",
+    "red": "#FF5555",
+    "yellow": "#F1FA8C",
+    "idleCursor": "#3A3C4E"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "background"
+    },
+    "window": {
+      "fg": "foreground",
+      "bg": "background",
+      "borderFocus": "purple",
+      "borderNormal": "comment",
+      "titleFgFocus": "background",
+      "titleBgFocus": "purple",
+      "titleFgNormal": "comment",
+      "titleBgNormal": "currentLine",
+      "closeAccent": "red"
+    },
+    "dialog": {
+      "fg": "foreground",
+      "bg": "currentLine",
+      "border": "purple",
+      "hotFg": "orange"
+    },
+    "button": {
+      "fg": "foreground",
+      "bg": "currentLine",
+      "focusFg": "background",
+      "focusBg": "purple",
+      "hotFocusFg": "background"
+    },
+    "cursor": {
+      "fg": "background",
+      "bg": "pink",
+      "idleBg": "idleCursor",
+      "hotFg": "background",
+      "markedBg": "yellow"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandBg": "currentLine"
+    },
+    "file": {
+      "dir": "cyan",
+      "archive": "orange",
+      "executable": "green",
+      "media": "pink",
+      "hidden": "comment",
+      "hiddenDir": "comment",
+      "hiddenArchive": "comment",
+      "hiddenExecutable": "comment",
+      "hiddenMedia": "comment"
+    },
+    "status": {
+      "fg": "foreground",
+      "bg": "currentLine",
+      "separator": "comment"
+    },
+    "toolbar": {
+      "fg": "foreground",
+      "bg": "currentLine",
+      "keyFg": "pink"
+    },
+    "tab": {
+      "activeFg": "background",
+      "activeBg": "purple",
+      "normalFg": "comment",
+      "normalBg": "currentLine"
+    },
+    "panel": {
+      "tabActiveFg": "background",
+      "tabActiveBg": "purple",
+      "tabNormalFg": "comment",
+      "headerFg": "purple"
+    },
+    "scroll": {
+      "fg": "comment",
+      "thumb": "purple"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "purple"
+    },
+    "h2": {
+      "fg": "yellow"
+    },
+    "h3to6": {
+      "fg": "green"
+    },
+    "bold": {
+      "fg": "foreground"
+    },
+    "italic": {
+      "fg": "pink"
+    },
+    "boldItalic": {
+      "fg": "pink"
+    },
+    "strike": {
+      "fg": "comment"
+    },
+    "inlineCode": {
+      "fg": "green",
+      "bg": "currentLine"
+    },
+    "codeBlock": {
+      "fg": "foreground",
+      "bg": "currentLine"
+    },
+    "quote": {
+      "fg": "comment"
+    },
+    "listMarker": {
+      "fg": "yellow"
+    },
+    "hrule": {
+      "fg": "comment"
+    },
+    "link": {
+      "fg": "cyan"
+    },
+    "imageMarker": {
+      "fg": "comment"
+    },
+    "tableBorder": {
+      "fg": "comment"
+    },
+    "tableHeader": {
+      "fg": "yellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  }
+}

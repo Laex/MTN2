@@ -136,7 +136,8 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkTheme, hdkColumnsConfig, hdkDisplay,
       hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
-      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter:
+      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter,
+      hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
       hdkSelectMask, hdkUnselectMask, hdkDirSync, hdkCreateLink,
@@ -144,7 +145,9 @@ begin
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
-      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport:
+      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport,
+      hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeColors, hdkThemeText,
+      hdkThemeChoice:
         Exit(fbcStubEdit);
     else
       Exit(AState.DialogChrome);
@@ -276,11 +279,13 @@ begin
       Result := TArray<string>.Create(S('Commands'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTheme:
       Result := TArray<string>.Create(S('Theme'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkThemeEditor, hdkThemeItems:
+      Result := TArray<string>.Create(S('Theme'), S('^v select'), H('Enter', 'Edit', '='), H('Esc', 'Back', '='));
     hdkDisplay:
       Result := TArray<string>.Create(S('Display'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColumnsConfig:
       Result := TArray<string>.Create(S('Columns'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
-    hdkColorPicker, hdkMarkdownPicker:
+    hdkColorPicker, hdkMarkdownPicker, hdkThemePicker:
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));

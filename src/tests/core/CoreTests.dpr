@@ -23,6 +23,7 @@ uses
   TestStrings in 'TestStrings.pas',
   TestConsoleLaunch in 'TestConsoleLaunch.pas',
   TestTerminalRenderer in 'TestTerminalRenderer.pas',
+  TestThemeSpec in 'TestThemeSpec.pas',
   TestToast in 'TestToast.pas',
   TestUpdater in 'TestUpdater.pas';
 

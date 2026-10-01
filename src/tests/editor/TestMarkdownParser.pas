@@ -29,7 +29,7 @@ type
     [Test] procedure TestTableLayoutReuse;
     [Test] procedure TestWrapStarts;
     [Test] procedure TestPainter;
-    [Test] procedure TestPainterUserColors;
+    [Test] procedure TestPainterThemeStyles;
     [Test] procedure TestFenceIndex;
   end;
 
@@ -56,7 +56,8 @@ uses
   uMarkdownParser,
   uMarkdownIndex,
   uMarkdownPainter,
-  uMarkdownColors;
+  uThemeSpec,
+  uThemeRegistry;
 
 var
   GTempDir: string;
@@ -772,10 +773,15 @@ begin
   // this cell" from a TCharCell without needing real theme colors.
   AFg := TAlphaColor($FF000000 or (Ord(AKind) and $FF));
   ABg := TAlphaColor($FF101010);
+  AAttr := [];
   if AKind in [mskH1, mskH2, mskH3to6, mskBold, mskBoldItalic, mskListMarker, mskTableHeader] then
-    AAttr := [ccaBold]
-  else
-    AAttr := [];
+    Include(AAttr, ccaBold);
+  if AKind in [mskItalic, mskBoldItalic] then
+    Include(AAttr, ccaItalic);
+  if AKind = mskLink then
+    Include(AAttr, ccaUnderline);
+  if AKind = mskStrike then
+    Include(AAttr, ccaStrike);
 end;
 
 procedure TFakeTheme.ResolveEditorColors(out AColors: TEditorThemeColors);
@@ -794,47 +800,38 @@ begin
   SetLength(Result, AWidth + 1);
 end;
 
-// The "text" background is the document background: elements whose theme
-// background is the plain-text one follow it, elements with a user background
-// keep theirs, and user foregrounds replace the theme's.
-procedure TestPainterUserColors;
+// Markdown styles come straight from the theme: the text background fills the
+// padding, an element draws the colors and attributes the theme gives it.
+procedure TestPainterThemeStyles;
 var
   State: TMdFenceState;
   L: TMdLine;
   Row: TTerminalRow;
-  Colors, None: TMdColorSet;
+  Spec: TThemeSpec;
   Theme: IThemeRenderer;
 begin
-  Theme := TFakeTheme.Create;
+  Assert.IsTrue(TryLoadThemeSpec('NDN', Spec), 'the default theme loads');
+  Spec.MdBg[mskText] := TAlphaColor($FF202020);
+  Spec.MdBg[mskBold] := TAlphaColor($FF202020);
+  Spec.MdBg[mskInlineCode] := TAlphaColor($FF303030);
+  Spec.MdFg[mskBold] := TAlphaColor($FF112233);
+  Spec.MdAttrs[mskBold] := [ccaItalic];
+  Spec.MdAttrs[mskLink] := [];
+  Theme := CreateThemeFromSpec(Spec);
   State.InFence := False;
-  MdColorSetClear(Colors);
-  Colors[mskText].HasBg := True;
-  Colors[mskText].Bg := TAlphaColor($FF202020);
-  Colors[mskInlineCode].HasBg := True;
-  Colors[mskInlineCode].Bg := TAlphaColor($FF303030);
-  Colors[mskBold].HasFg := True;
-  Colors[mskBold].Fg := TAlphaColor($FF112233);
-  MdStyleChoiceApply(Colors[mskBold], 3); // italic replaces the theme's bold
-  MdStyleChoiceApply(Colors[mskLink], 1); // plain removes the link underline
-  SetGlobalMarkdownColors(Colors);
-  try
-    L := TMarkdownParser.ParseLine('ab **bold** `code`', State);
-    Row := MakeRow(20);
-    TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
-    Assert.IsTrue(Row[1].BgColor = TAlphaColor($FF202020), 'plain text takes the document background');
-    Assert.IsTrue(Row[4].BgColor = TAlphaColor($FF202020), 'bold follows the document background');
-    Assert.IsTrue(Row[4].FgColor = TAlphaColor($FF112233), 'bold takes the user foreground');
-    Assert.IsTrue(Row[9].BgColor = TAlphaColor($FF303030), 'inline code keeps its own background');
-    Assert.IsTrue(Row[20].BgColor = TAlphaColor($FF202020), 'padding takes the document background');
-    Assert.IsTrue(Row[4].Attributes = [ccaItalic], 'the user style replaces the theme attributes');
-    L := TMarkdownParser.ParseLine('[link](x.md)', State);
-    Row := MakeRow(12);
-    TMarkdownPainter.DrawLine(Row, 1, 12, L, Theme);
-    Assert.IsTrue(Row[1].Attributes = [], 'a plain style removes the default link underline');
-  finally
-    MdColorSetClear(None);
-    SetGlobalMarkdownColors(None);
-  end;
+  L := TMarkdownParser.ParseLine('ab **bold** `code`', State);
+  Row := MakeRow(20);
+  TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
+  Assert.IsTrue(Row[1].BgColor = TAlphaColor($FF202020), 'plain text takes the document background');
+  Assert.IsTrue(Row[4].BgColor = TAlphaColor($FF202020), 'bold has the document background');
+  Assert.IsTrue(Row[4].FgColor = TAlphaColor($FF112233), 'bold takes its own foreground');
+  Assert.IsTrue(Row[9].BgColor = TAlphaColor($FF303030), 'inline code keeps its own background');
+  Assert.IsTrue(Row[20].BgColor = TAlphaColor($FF202020), 'padding takes the document background');
+  Assert.IsTrue(Row[4].Attributes = [ccaItalic], 'the theme attributes are used as they are');
+  L := TMarkdownParser.ParseLine('[link](x.md)', State);
+  Row := MakeRow(12);
+  TMarkdownPainter.DrawLine(Row, 1, 12, L, Theme);
+  Assert.IsTrue(Row[1].Attributes = [], 'a link without attributes in the theme is not underlined');
 end;
 
 procedure TestPainter;
@@ -1087,9 +1084,9 @@ begin
   TestMarkdownParser.TestPainter;
 end;
 
-procedure TTestMarkdownParser.TestPainterUserColors;
+procedure TTestMarkdownParser.TestPainterThemeStyles;
 begin
-  TestMarkdownParser.TestPainterUserColors;
+  TestMarkdownParser.TestPainterThemeStyles;
 end;
 
 procedure TTestMarkdownParser.TestFenceIndex;

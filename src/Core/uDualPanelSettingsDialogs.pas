@@ -1,21 +1,19 @@
 unit uDualPanelSettingsDialogs;
 
-{ Theme / columns / terminal-profile pick-list dialogs. Extracted from
+{ Columns / display / Markdown colors / terminal-profile dialogs. Extracted from
   TDualPanelWindow so the host keeps only thin Open forwards. }
 
 interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uThemeRegistry, uPanelColumns,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns,
   uShellProfiles, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
   TSettingsKindSetter = reference to procedure(AKind: THostDialogKind);
   TSettingsCanStart = reference to function: Boolean;
   TSettingsPrepareUi = reference to procedure;
-  TSettingsGetThemeId = reference to function: string;
-  TSettingsSelectTheme = reference to procedure(const AThemeId: string);
   TSettingsGetLocalPath = reference to function: string;
   TSettingsOpenTerminal = reference to procedure(const AProfileId, ACwd: string);
   /// <summary>Apply the picked profile to the host's persistent background
@@ -34,8 +32,6 @@ type
     FOnNotify: TProc;
     FOnCanStart: TSettingsCanStart;
     FOnPrepareUi: TSettingsPrepareUi;
-    FOnGetThemeId: TSettingsGetThemeId;
-    FOnSelectTheme: TSettingsSelectTheme;
     FOnGetLocalPath: TSettingsGetLocalPath;
     FOnOpenTerminal: TSettingsOpenTerminal;
     FOnSetConsoleProfile: TSettingsSetConsoleProfile;
@@ -45,11 +41,15 @@ type
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
     FOnApplyDisplay: TSettingsApplyDisplay;
-    FThemeIds: TArray<string>;
     FProfileIds: TArray<string>;
     /// <summary>Markdown colors dialog: the edited set while the import
     /// dialog is on top, and the import dialog's last path / palette.</summary>
     FMdWorking: TMdColorSet;
+    /// <summary>The set the Markdown dialog opened with; what the user changed
+    /// is the difference to it.</summary>
+    FMdInitial: TMdColorSet;
+    FOnGetMarkdown: TFunc<TMdColorSet>;
+    FOnSaveMarkdown: TProc<TMdColorSet, TMdColorSet>;
     FMdImportPath: string;
     FMdImportPalette: Integer;
     /// <summary>Id of the color field the color picker is editing.</summary>
@@ -74,8 +74,6 @@ type
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TSettingsKindSetter; const AOnNotify: TProc;
       const AOnCanStart: TSettingsCanStart; const AOnPrepareUi: TSettingsPrepareUi;
-      const AOnGetThemeId: TSettingsGetThemeId;
-      const AOnSelectTheme: TSettingsSelectTheme;
       const AOnGetLocalPath: TSettingsGetLocalPath;
       const AOnOpenTerminal: TSettingsOpenTerminal;
       const AOnSetConsoleProfile: TSettingsSetConsoleProfile;
@@ -83,18 +81,21 @@ type
       const AOnShowStub: TSettingsShowStub;
       const AOnGetDisplay: TSettingsGetDisplay;
       const AOnApplyDisplay: TSettingsApplyDisplay);
-    procedure OpenTheme;
     procedure OpenColumns;
     procedure OpenDisplay;
     procedure OpenExternalTools;
     procedure OpenMarkdownColors;
     procedure OpenTerminalProfiles;
     procedure OpenConsoleProfiles;
+    /// <summary>The Markdown styles of the active theme, and where the edited
+    /// ones go (initial set, edited set).</summary>
+    property OnGetMarkdown: TFunc<TMdColorSet> read FOnGetMarkdown write FOnGetMarkdown;
+    property OnSaveMarkdown: TProc<TMdColorSet, TMdColorSet>
+      read FOnSaveMarkdown write FOnSaveMarkdown;
     property OnGetConsoleStartOnLaunch: TFunc<Boolean>
       read FOnGetConsoleStartOnLaunch write FOnGetConsoleStartOnLaunch;
     property OnSetConsoleStartOnLaunch: TProc<Boolean>
       read FOnSetConsoleStartOnLaunch write FOnSetConsoleStartOnLaunch;
-    procedure DispatchThemeCommand(const AControlId: string);
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
@@ -118,8 +119,7 @@ uses
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
   const AOnNotify: TProc; const AOnCanStart: TSettingsCanStart;
-  const AOnPrepareUi: TSettingsPrepareUi; const AOnGetThemeId: TSettingsGetThemeId;
-  const AOnSelectTheme: TSettingsSelectTheme;
+  const AOnPrepareUi: TSettingsPrepareUi;
   const AOnGetLocalPath: TSettingsGetLocalPath;
   const AOnOpenTerminal: TSettingsOpenTerminal;
   const AOnSetConsoleProfile: TSettingsSetConsoleProfile;
@@ -135,8 +135,6 @@ begin
   FOnNotify := AOnNotify;
   FOnCanStart := AOnCanStart;
   FOnPrepareUi := AOnPrepareUi;
-  FOnGetThemeId := AOnGetThemeId;
-  FOnSelectTheme := AOnSelectTheme;
   FOnGetLocalPath := AOnGetLocalPath;
   FOnOpenTerminal := AOnOpenTerminal;
   FOnSetConsoleProfile := AOnSetConsoleProfile;
@@ -156,39 +154,6 @@ procedure TSettingsDialogController.Notify;
 begin
   if Assigned(FOnNotify) then
     FOnNotify();
-end;
-
-procedure TSettingsDialogController.OpenTheme;
-var
-  Infos: TArray<TThemeInfo>;
-  Items: TArray<string>;
-  I, Sel: Integer;
-  CurId: string;
-begin
-  if Assigned(FOnCanStart) and not FOnCanStart() then
-    Exit;
-  if Assigned(FOnPrepareUi) then
-    FOnPrepareUi();
-
-  Infos := uThemeRegistry.GetAvailableThemes;
-  if Assigned(FOnGetThemeId) then
-    CurId := FOnGetThemeId()
-  else
-    CurId := '';
-  SetLength(Items, Length(Infos));
-  SetLength(FThemeIds, Length(Infos));
-  Sel := 0;
-  for I := 0 to High(Infos) do
-  begin
-    Items[I] := Infos[I].DisplayName;
-    FThemeIds[I] := Infos[I].Id;
-    if SameText(Infos[I].Id, CurId) then
-      Sel := I;
-  end;
-
-  SetKind(hdkTheme);
-  FDialog.Open(BuildThemeDialog(Items, Sel), FOnCommand);
-  Notify;
 end;
 
 procedure TSettingsDialogController.OpenColumns;
@@ -345,21 +310,6 @@ begin
   SetKind(hdkConsoleProfile);
   FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch), FOnCommand);
   Notify;
-end;
-
-procedure TSettingsDialogController.DispatchThemeCommand(
-  const AControlId: string);
-var
-  Idx: Integer;
-  Accepted: Boolean;
-begin
-  Idx := FDialog.GetListSelectedIndex('themes');
-  Accepted := DialogCmdIsListAccept(AControlId, 'themes');
-  FDialog.Close;
-  if Accepted and (Idx >= 0) and (Idx <= High(FThemeIds)) and
-     (FThemeIds[Idx] <> '') and Assigned(FOnSelectTheme) then
-    FOnSelectTheme(FThemeIds[Idx]);
-  SetLength(FThemeIds, 0);
 end;
 
 procedure TSettingsDialogController.DispatchColumnsCommand(
@@ -610,7 +560,10 @@ begin
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
-  ShowMarkdownColors(GlobalMarkdownColors, '');
+  MdColorSetClear(FMdInitial);
+  if Assigned(FOnGetMarkdown) then
+    FMdInitial := FOnGetMarkdown();
+  ShowMarkdownColors(FMdInitial, '');
 end;
 
 procedure TSettingsDialogController.DispatchMarkdownColorsCommand(
@@ -652,11 +605,8 @@ begin
     Exit;
   end;
   FDialog.Close;
-  // The colors are in effect either way; only persisting can fail.
-  if not SetGlobalMarkdownColors(Colors) and Assigned(FOnShowStub) then
-    FOnShowStub(T('ui.markdownColors.title', 'Markdown colors'),
-      T('ui.markdownColors.saveFailed', 'Could not save') + ' ' +
-      DefaultMarkdownColorsFilePath);
+  if Assigned(FOnSaveMarkdown) then
+    FOnSaveMarkdown(FMdInitial, Colors);
   Notify;
 end;
 
@@ -759,7 +709,6 @@ function TSettingsDialogController.DispatchCommand(AKind: THostDialogKind;
 begin
   Result := True;
   case AKind of
-    hdkTheme: DispatchThemeCommand(AControlId);
     hdkColumnsConfig: DispatchColumnsCommand(AControlId);
     hdkDisplay: DispatchDisplayCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);

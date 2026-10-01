@@ -21,6 +21,14 @@ type
   /// preview isn't tied to any one panel row.</summary>
   TColorSamplePanelState = (cspsNone, cspsNormal, cspsSelected, cspsCurrent);
 
+  /// <summary>A colored cell drawn over a dckList row at column Col of the
+  /// row text; an unset (0) channel keeps the row's own color.</summary>
+  TListSwatch = record
+    Col: Integer;
+    Text: string;
+    Fg, Bg: TAlphaColor;
+  end;
+
   TDialogControl = record
     Kind: TDialogControlKind;
     Id: string;
@@ -34,6 +42,8 @@ type
     IsCancel: Boolean;
     Edit: TInputLine;
     Items: TArray<string>;
+    /// <summary>dckList: one optional swatch per item (same index as Items).</summary>
+    ItemSwatches: TArray<TListSwatch>;
     /// <summary>Optional ids for radio_group items (values use id when set).</summary>
     ItemIds: TArray<string>;
     SelectedIndex: Integer;
@@ -207,10 +217,6 @@ function BuildFolderHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildJobListDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
-/// <summary>AItems are display names from uThemeRegistry.GetAvailableThemes,
-/// parallel to the ids TDualPanelWindow keeps in FThemeIds.</summary>
-function BuildThemeDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildCmdHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 /// <summary>Alt+F11: AItems are "mode mark + path" labels, newest first.</summary>
@@ -302,7 +308,8 @@ function BuildUpdatesDialog(const ACurrentVersion: string;
 /// <summary>AItems are pre-formatted display labels - see
 /// ColorCodingDisplayLabel in uColorCodingEditHelpers.pas.</summary>
 function BuildColorCodingDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0;
+  const ASwatches: TArray<TListSwatch> = nil): TDialogDeclaration;
 function BuildColorCodingEditDialog(const AName, AMask: string;
   AApplyToIndex: Integer; AEnabled: Boolean;
   const ANormalFg, ANormalBg, ASelectedFg, ASelectedBg,
@@ -859,20 +866,6 @@ begin
   DialogSetListItems(Result, 'jobs', Items, Sel);
 end;
 
-function BuildThemeDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Sel: Integer;
-begin
-  RequireDialogResource(cResDialogTheme, Result);
-  Sel := ASelectedIndex;
-  if Sel < 0 then
-    Sel := 0;
-  if Sel > High(AItems) then
-    Sel := High(AItems);
-  DialogSetListItems(Result, 'themes', AItems, Sel);
-end;
-
 function BuildFileHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
 var
@@ -1316,7 +1309,7 @@ begin
 end;
 
 function BuildColorCodingDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
 var
   Items: TArray<string>;
   Sel: Integer;
@@ -1338,6 +1331,7 @@ begin
       Sel := High(Items);
   end;
   DialogSetListItems(Result, 'groups', Items, Sel);
+  DialogSetListSwatches(Result, 'groups', ASwatches);
 end;
 
 function BuildColorCodingEditDialog(const AName, AMask: string;

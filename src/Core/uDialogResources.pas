@@ -45,6 +45,13 @@ const
   cResDialogColorCodingEdit = 'DIALOG_COLORCODINGEDIT';
   cResDialogColorPicker = 'DIALOG_COLORPICKER';
   cResDialogTheme = 'DIALOG_THEME';
+  cResDialogThemeNew = 'DIALOG_THEMENEW';
+  cResDialogThemeName = 'DIALOG_THEMENAME';
+  cResDialogThemeEditor = 'DIALOG_THEMEEDITOR';
+  cResDialogThemeItems = 'DIALOG_THEMEITEMS';
+  cResDialogThemeColors = 'DIALOG_THEMECOLORS';
+  cResDialogThemeText = 'DIALOG_THEMETEXT';
+  cResDialogThemeChoice = 'DIALOG_THEMECHOICE';
   cResDialogColumnsConfig = 'DIALOG_COLUMNSCONFIG';
   cResDialogDisplay = 'DIALOG_DISPLAY';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';
@@ -109,6 +116,9 @@ procedure DialogSetDropDownSelected(var ADecl: TDialogDeclaration; const AId: st
   ASelectedIndex: Integer);
 procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;
   const AItems: TArray<string>; ASelectedIndex: Integer = 0);
+/// <summary>Sets the per-item swatches of a list (call after DialogSetListItems).</summary>
+procedure DialogSetListSwatches(var ADecl: TDialogDeclaration; const AId: string;
+  const ASwatches: TArray<TListSwatch>);
 /// <summary>Sets the ids of a list / drop-down's items (call after DialogSetListItems).</summary>
 procedure DialogSetListItemIds(var ADecl: TDialogDeclaration; const AId: string;
   const AItemIds: TArray<string>);
@@ -524,6 +534,16 @@ procedure DialogSetDropDownSelected(var ADecl: TDialogDeclaration; const AId: st
   ASelectedIndex: Integer);
 begin
   DialogSetListSelected(ADecl, AId, ASelectedIndex);
+end;
+
+procedure DialogSetListSwatches(var ADecl: TDialogDeclaration; const AId: string;
+  const ASwatches: TArray<TListSwatch>);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind = dckList) then
+    ADecl.Controls[I].ItemSwatches := Copy(ASwatches);
 end;
 
 procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;

@@ -1,0 +1,264 @@
+{
+  "schema": 2,
+  "name": "Far Classic",
+  "palette": {
+    "black": "#000000",
+    "blue": "#0000AA",
+    "cyan": "#00AAAA",
+    "darkCyan": "#008888",
+    "lightGray": "#AAAAAA",
+    "darkGray": "#555555",
+    "hiddenGray": "#888888",
+    "white": "#FFFFFF",
+    "yellow": "#FFFF55",
+    "lightCyan": "#55FFFF",
+    "green": "#00AA00",
+    "lightGreen": "#55FF55",
+    "lightMagenta": "#FF55FF",
+    "hotKeyRed": "#C00000",
+    "idleCursor": "#1A3A6A",
+    "markBand": "#0000FF",
+    "hiddenMedia": "#AA55AA"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "black"
+    },
+    "window": {
+      "fg": "lightGray",
+      "bg": "blue",
+      "borderFocus": "lightCyan",
+      "borderNormal": "lightGray",
+      "titleFgFocus": "black",
+      "titleBgFocus": "cyan",
+      "titleFgNormal": "black",
+      "titleBgNormal": "lightGray",
+      "closeAccent": "lightMagenta"
+    },
+    "dialog": {
+      "fg": "black",
+      "bg": "white",
+      "border": "black",
+      "hotFg": "hotKeyRed"
+    },
+    "button": {
+      "fg": "black",
+      "bg": "cyan",
+      "focusFg": "black",
+      "focusBg": "lightCyan",
+      "hotFocusFg": "hotKeyRed"
+    },
+    "cursor": {
+      "fg": "black",
+      "bg": "cyan",
+      "idleBg": "idleCursor",
+      "hotFg": "hotKeyRed",
+      "markedBg": "yellow"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandBg": "markBand"
+    },
+    "file": {
+      "dir": "white",
+      "archive": "green",
+      "executable": "lightGreen",
+      "media": "lightMagenta",
+      "hidden": "hiddenGray",
+      "hiddenDir": "lightGray",
+      "hiddenArchive": "darkCyan",
+      "hiddenExecutable": "green",
+      "hiddenMedia": "hiddenMedia"
+    },
+    "status": {
+      "fg": "black",
+      "bg": "cyan"
+    },
+    "toolbar": {
+      "fg": "lightGray",
+      "bg": "blue",
+      "keyFg": "yellow"
+    },
+    "tab": {
+      "activeFg": "black",
+      "activeBg": "cyan",
+      "normalFg": "lightGray",
+      "normalBg": "black"
+    },
+    "panel": {
+      "tabActiveFg": "black",
+      "tabActiveBg": "cyan",
+      "tabNormalFg": "lightGray",
+      "headerFg": "lightCyan"
+    },
+    "scroll": {
+      "fg": "lightGray",
+      "thumb": "cyan"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "lightCyan",
+      "attrs": [
+        "bold"
+      ]
+    },
+    "h2": {
+      "fg": "yellow",
+      "attrs": [
+        "bold"
+      ]
+    },
+    "h3to6": {
+      "fg": "lightGreen",
+      "attrs": [
+        "bold"
+      ]
+    },
+    "bold": {
+      "fg": "white",
+      "attrs": [
+        "bold"
+      ]
+    },
+    "italic": {
+      "fg": "lightMagenta",
+      "attrs": [
+        "italic"
+      ]
+    },
+    "boldItalic": {
+      "fg": "lightMagenta",
+      "attrs": [
+        "bold",
+        "italic"
+      ]
+    },
+    "strike": {
+      "fg": "hiddenGray",
+      "attrs": [
+        "strike"
+      ]
+    },
+    "inlineCode": {
+      "fg": "lightGreen",
+      "bg": "darkGray"
+    },
+    "codeBlock": {
+      "fg": "lightGray",
+      "bg": "darkGray"
+    },
+    "quote": {
+      "fg": "hiddenGray"
+    },
+    "listMarker": {
+      "fg": "yellow",
+      "attrs": [
+        "bold"
+      ]
+    },
+    "hrule": {
+      "fg": "lightGray"
+    },
+    "link": {
+      "fg": "lightCyan",
+      "attrs": [
+        "underline"
+      ]
+    },
+    "imageMarker": {
+      "fg": "hiddenGray"
+    },
+    "tableBorder": {
+      "fg": "lightGray"
+    },
+    "tableHeader": {
+      "fg": "yellow",
+      "attrs": [
+        "bold"
+      ]
+    }
+  },
+  "attrs": {
+    "button": [
+      "bold"
+    ],
+    "toolbarKey": [
+      "bold"
+    ],
+    "menuHot": [
+      "bold"
+    ]
+  },
+  "glyphs": {
+    "checkOn": "[x] ",
+    "checkOff": "[ ] ",
+    "radioOn": "(*) ",
+    "radioOff": "( ) ",
+    "buttonNormal": "[ {0} ]",
+    "buttonDefault": "< {0} >",
+    "tabWorkspace": "[{0}]",
+    "tabPanel": " {0} ",
+    "statusSeparator": "│",
+    "closeLeft": "[",
+    "closeMark": "x",
+    "closeRight": "]",
+    "desktopFill": " ",
+    "scrollUp": "▲",
+    "scrollDown": "▼",
+    "scrollLeft": "◄",
+    "scrollRight": "►",
+    "scrollShade": "░",
+    "scrollBlock": "█"
+  },
+  "frames": {
+    "window": "double",
+    "dialog": "double",
+    "panelActive": "double",
+    "panelIdle": "single"
+  },
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": {
+        "fg": "#FF55FF"
+      }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": {
+        "fg": "#55FF55"
+      }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": {
+        "fg": "#AAAAAA"
+      }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": {
+        "fg": "#00AAAA"
+      }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": {
+        "fg": "#55FFFF"
+      }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": {
+        "fg": "#FF5555"
+      }
+    }
+  ]
+}

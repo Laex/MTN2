@@ -34,7 +34,7 @@
 |---|---|---|
 | Layout / Focus / Z-order / MDI-композитор | `uMdiCompositor`, `TDualPanelWindow`, `TMainForm` | Инвариант 13; «Не резать `TDualPanelWindow`» (PLUGIN_TRANSITION.md §1) |
 | Рендеринг (double buffering, dynamic grid) | `uTerminalRenderer.pas`, `TTerminalGrid` | Плагину никогда не отдаётся `TCanvas` (общий инвариант всех примитивов, UI_PRIMITIVES.md) |
-| Тема (`IThemeRenderer`) | `src/Themes/*.pas` (8 встроенных тем) | Роль «Тема» отдельна от «Плагина» в самом паттерне (§6); альтернативные темы – Pascal-классы, «не loadable-плагины – это отдельный, более поздний этап» (ARCHITECTURE.md §6) |
+| Тема (`IThemeRenderer`) | `uDataTheme.pas` + файлы тем `src/Assets/themes/*.theme.json` (8 встроенных) | Роль «Тема» отдельна от «Плагина» в самом паттерне (§6); альтернативные темы – Pascal-классы, «не loadable-плагины – это отдельный, более поздний этап» (ARCHITECTURE.md §6) |
 | Keymap-диспетчер и активный keymap | `uKeymap.pas` | Плагину доступен только rebind существующих действий через `IKeymapRegistry` – «Новые keymap-действия не вводим через DLL: enum закрыт» (PLUGIN_TRANSITION.md §3.6) |
 | Jobs Manager / фоновые задачи | `uDualPanelJobList.pas`, `TPanelJobController` | Инвариант 1: весь I/O – только через async VFS/Jobs ядра |
 | VFS Core & маршрутизация (`uVfsRegistry`) | `uVfsRegistry.pas` | Сам registry, классификация transfer-маршрутов, `plugin.json`-загрузка – ядро; отдельные VFS-**провайдеры** могут быть плагинами (см. §3) |

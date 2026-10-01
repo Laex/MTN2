@@ -36,7 +36,7 @@ uses
   uDisplaySettings,
   uSession,
   System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing,
-  uStrings, uDialogTypes, uDialogHost, uNDNTheme;
+  uStrings, uDialogTypes, uDialogHost, uThemeRegistry;
 
 procedure TestClampAndIndex;
 begin
@@ -291,7 +291,7 @@ procedure TestDialogShowsMarkedFiles;
     Grid: TTerminalGrid;
     X, Y: Integer;
   begin
-    Host := TDialogHost.Create(TNDNTheme.Create);
+    Host := TDialogHost.Create(CreateThemeByName('NDN'));
     try
       Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
         ['English'], 0, True, 0, False, Ord(mrsBand)), nil);

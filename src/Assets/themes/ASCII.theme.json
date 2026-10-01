@@ -1,0 +1,28 @@
+{
+  "schema": 2,
+  "name": "ASCII (no box-drawing glyphs)",
+  "extends": "NDN",
+  "markdown": {
+    "inlineCode": {
+      "bg": "#008888"
+    },
+    "codeBlock": {
+      "bg": "#008888"
+    }
+  },
+  "glyphs": {
+    "statusSeparator": "|",
+    "scrollUp": "^",
+    "scrollDown": "v",
+    "scrollLeft": "<",
+    "scrollRight": ">",
+    "scrollShade": ":",
+    "scrollBlock": "#"
+  },
+  "frames": {
+    "window": "ascii",
+    "dialog": "ascii",
+    "panelActive": "ascii",
+    "panelIdle": "ascii"
+  }
+}

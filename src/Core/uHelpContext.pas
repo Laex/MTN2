@@ -79,7 +79,9 @@ begin
     hdkConsoleProfile:
       Result := 'cmdline.md';
     hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
-    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
+    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
+    hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
+    hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := 'settings.md';
     hdkHost: // the updater's dialogs
       Result := 'updates.md';

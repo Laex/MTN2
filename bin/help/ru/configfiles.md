@@ -10,7 +10,7 @@
 | `folderhistory.json` | история папок |
 | `filehistory.json` | история файлов (Alt+F11) |
 | `externaltools.json` | внешний просмотрщик и редактор (Alt+F3 / Alt+F4) |
-| `markdown-colors.json` | цвета Markdown-просмотра (Настройки → Цвета Markdown...) |
+| `themes\*.theme.json` | ваши темы (Настройки → Тема...) |
 | `dialoghistory.json` | история полей ввода в диалогах |
 | `workspaces.json` | сохранённые рабочие пространства |
 | `sshconnections.json` | SSH/SFTP-подключения |

@@ -22,7 +22,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
-  uTerminalTypes, uVfsTypes, uNDNTheme, uEditorWindow;
+  uTerminalTypes, uVfsTypes, uThemeRegistry, uEditorWindow;
 
 const
   W = 60;
@@ -91,7 +91,7 @@ begin
   ForceDirectories(Dir);
   Path := TPath.Combine(Dir, 'a.txt');
   TFile.WriteAllText(Path, 'hello' + sLineBreak + 'world' + sLineBreak, TEncoding.UTF8);
-  View := TEditorWindow.Create(TNDNTheme.Create, 1);
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
   try
     View.Open(PathToFileUri(Path), False);
     Pump;
@@ -140,7 +140,7 @@ begin
   Path := TPath.Combine(Dir, 'b.txt');
   TFile.WriteAllText(Path, 'hello world' + sLineBreak + 'x' + sLineBreak + 'end' + sLineBreak,
     TEncoding.UTF8);
-  View := TEditorWindow.Create(TNDNTheme.Create, 1);
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
   try
     View.Open(PathToFileUri(Path), False);
     Pump;

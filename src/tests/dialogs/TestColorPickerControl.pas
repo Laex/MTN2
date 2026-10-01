@@ -201,8 +201,8 @@ begin
   Assert.AreEqual(ColorPickerGridColor(0, 0, S.GridSat), Grid[1][1].BgColor, 'the grid starts at the control origin');
   Assert.AreEqual('[', string(Grid[1 + 4][1 + 3 * 2].CharValue), 'the cursor cell is bracketed');
   Assert.AreEqual(ColorPickerGridColor(3, 4, S.GridSat), Grid[1 + 4][1 + 3 * 2].BgColor, 'on its own color');
-  Assert.AreEqual(Rgb(9, 9, 9), Grid[1 + cPickerLineHex][1 + 18].BgColor, 'the "was" swatch shows the original');
-  Assert.AreEqual(Rgb(10, 20, 30), Grid[1 + cPickerLineHex][1 + 28].BgColor, 'the "now" swatch shows the color');
+  Assert.AreEqual(Rgb(9, 9, 9), Grid[1 + cPickerLineHex][1 + 19].BgColor, 'the "was" swatch shows the original');
+  Assert.AreEqual(Rgb(10, 20, 30), Grid[1 + cPickerLineHex][1 + 30].BgColor, 'the "now" swatch shows the color');
 end;
 
 initialization

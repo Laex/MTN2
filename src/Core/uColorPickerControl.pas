@@ -76,7 +76,7 @@ function ColorPickerClick(var S: TColorPickerState; ARelCol, ARelRow,
 implementation
 
 uses
-  System.SysUtils, System.Math, uColorCoding;
+  System.SysUtils, System.Math, uColorCoding, uStrings;
 
 const
   cBarLeft = 2;
@@ -85,9 +85,9 @@ const
   cHexLabelW = 4;
   cHexInputW = 9;
   cWasLabelLeft = 14;
-  cWasLeft = 18;
+  cWasLeft = 19;
   cNowLabelLeft = 24;
-  cNowLeft = 28;
+  cNowLeft = 30;
   cSwatchW = 4;
   cSliderLines = 6;
 
@@ -388,10 +388,10 @@ begin
   Colors := InputLineDialogColors(AFocused and (S.Line = cPickerLineHex));
   InputLineDraw(AGrid, ALeft + cHexLabelW, Row, cHexInputW, S.HexEdit,
     AFocused and (S.Line = cPickerLineHex), Colors, ACursorVisible, False);
-  PutGridText(AGrid, ALeft + cWasLabelLeft, Row, 'was', ALabelFg, ALabelBg);
+  PutGridText(AGrid, ALeft + cWasLabelLeft, Row, T('ui.colorPicker.was', 'was'), ALabelFg, ALabelBg);
   FillGridRect(AGrid, ALeft + cWasLeft, Row, ALeft + cWasLeft + cSwatchW - 1, Row, ' ',
     ALabelFg, S.Orig);
-  PutGridText(AGrid, ALeft + cNowLabelLeft, Row, 'now', ALabelFg, ALabelBg);
+  PutGridText(AGrid, ALeft + cNowLabelLeft, Row, T('ui.colorPicker.now', 'now'), ALabelFg, ALabelBg);
   FillGridRect(AGrid, ALeft + cNowLeft, Row, ALeft + cNowLeft + cSwatchW - 1, Row, ' ',
     ALabelFg, S.Color);
 end;

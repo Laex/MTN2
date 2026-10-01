@@ -8,7 +8,7 @@
     {
       "type": "label",
       "id": "header",
-      "text": "    T Name             Mask                     N S C",
+      "text": "    T Name             Mask                     N  S  C   Sample",
       "col": 1,
       "row": 1,
       "width": 74,

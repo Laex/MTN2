@@ -13,14 +13,17 @@ MENU_MAIN RCDATA "config\\menu.json"
    A user keymap.json in the config dir overrides individual hotkeys on top of this. */
 KEYMAP_DEFAULT RCDATA "keymap.json"
 
-/* Default (NDN) theme - edit NDNtheme.json's "fileColoring" (panel color-
-   coding rules; colors are theme-owned - pick them to not clash with this
-   theme's own selection/cursor palette). A theme file in the config dir
-   (named by TMtnSession.ThemeFile, e.g. FARtheme.json - 'NDNtheme.json'
-   when unspecified) merges on top by group Name
-   (uColorCoding.MergeColorCodingGroups / ReloadColorCoding), so it only
-   needs to list the groups it adds or changes. */
-THEME_DEFAULT RCDATA "NDNtheme.json"
+/* Built-in themes (read-only) - edit Assets\themes\*.theme.json. A theme file
+   lists what it sets and "extends" another theme for the rest; the user's own
+   themes live in <config dir>\themes. See uThemeSpec / uThemeRegistry. */
+THEME_NDN RCDATA "Assets\\themes\\NDN.theme.json"
+THEME_MODERNUNICODE RCDATA "Assets\\themes\\ModernUnicode.theme.json"
+THEME_ASCII RCDATA "Assets\\themes\\ASCII.theme.json"
+THEME_TOTALCOMMANDER RCDATA "Assets\\themes\\TotalCommander.theme.json"
+THEME_SOLARIZEDDARK RCDATA "Assets\\themes\\SolarizedDark.theme.json"
+THEME_DRACULA RCDATA "Assets\\themes\\Dracula.theme.json"
+THEME_NORD RCDATA "Assets\\themes\\Nord.theme.json"
+THEME_HIGHCONTRAST RCDATA "Assets\\themes\\HighContrast.theme.json"
 
 /* DIALOG_PLUGIN JSON layouts - edit with tools/DialogDesigner, re-export via ExportDialogJson */
 DIALOG_CONFIRM  RCDATA "dialogs\\confirm.json"
@@ -57,6 +60,13 @@ DIALOG_COLORCODING RCDATA "dialogs\\colorcoding.json"
 DIALOG_COLORCODINGEDIT RCDATA "dialogs\\colorcodingedit.json"
 DIALOG_COLORPICKER RCDATA "dialogs\\colorpicker.json"
 DIALOG_THEME RCDATA "dialogs\\theme.json"
+DIALOG_THEMENEW RCDATA "dialogs\\themenew.json"
+DIALOG_THEMENAME RCDATA "dialogs\\themename.json"
+DIALOG_THEMEEDITOR RCDATA "dialogs\\themeeditor.json"
+DIALOG_THEMEITEMS RCDATA "dialogs\\themeitems.json"
+DIALOG_THEMECOLORS RCDATA "dialogs\\themecolors.json"
+DIALOG_THEMETEXT RCDATA "dialogs\\themetext.json"
+DIALOG_THEMECHOICE RCDATA "dialogs\\themechoice.json"
 DIALOG_COLUMNSCONFIG RCDATA "dialogs\\columnsconfig.json"
 DIALOG_DISPLAY RCDATA "dialogs\\display.json"
 DIALOG_EXTERNALTOOLS RCDATA "dialogs\\externaltools.json"

@@ -31,14 +31,7 @@ uses
   uThemeDrawing,
   uDualPanelUiTypes,
   uJobPopupRenderer,
-  uDraculaTheme,
-  uNDNTheme,
-  uNordTheme,
-  uSolarizedDarkTheme,
-  uHighContrastTheme,
-  uModernUnicodeTheme,
-  uTotalCommanderTheme,
-  uASCIITheme;
+  uThemeRegistry;
 
 function MakeJob(APhase: TPanelJobPhase; AKind: TPanelJobKind): TPanelJobState;
 begin
@@ -164,7 +157,7 @@ var
 begin
   AllocTerminalGrid(Grid, W, H);
   ClearTerminalGrid(Grid, TAlphaColor($FFAAAAAA), TAlphaColor($FF000000), ' ');
-  Theme := TDraculaTheme.Create;
+  Theme := CreateThemeByName('Dracula');
   Job := MakeJob(pjpRunning, pjkCopy);
   Job.Bounds := TJobPopupRenderer.ComputeLayout(Job, W, H);
   Job.FileProgressDone := 42;
@@ -234,7 +227,7 @@ var
 begin
   AllocTerminalGrid(Grid, 80, 25);
   ClearTerminalGrid(Grid, TAlphaColor($FFAAAAAA), TAlphaColor($FF000000), ' ');
-  Theme := TDraculaTheme.Create;
+  Theme := CreateThemeByName('Dracula');
   Job := MakeJob(pjpRunning, pjkDelete);
   Job.Bounds := TJobPopupRenderer.ComputeLayout(Job, 80, 25);
   TJobPopupRenderer.Draw(Grid, Theme, Job, 'Delete');
@@ -267,14 +260,14 @@ var
   Job: TPanelJobState;
   Y: Integer;
 begin
-  RenderRichCopy(TNDNTheme.Create, Grid, Job);
+  RenderRichCopy(CreateThemeByName('NDN'), Grid, Job);
   Y := Job.Bounds.Top + 7;
   Assert.IsTrue(Grid[Y][Job.Bounds.Left].CharValue = chDblVSingleHR,
     'NDN Total left tee is double-vertical ╟');
   Assert.IsTrue(Grid[Y][Job.Bounds.Right].CharValue = chDblVSingleHL,
     'NDN Total right tee is double-vertical ╢');
 
-  RenderRichCopy(TASCIIOnlyTheme.Create, Grid, Job);
+  RenderRichCopy(CreateThemeByName('ASCII'), Grid, Job);
   Y := Job.Bounds.Top + 7;
   Assert.IsTrue(Grid[Y][Job.Bounds.Left].CharValue = '+',
     'ASCII Total left tee is +');
@@ -314,15 +307,12 @@ begin
 end;
 
 procedure TestTabCloseContrastAcrossThemes;
+var
+  Info: TThemeInfo;
 begin
-  CheckThemeTabClose('NDN', TNDNTheme.Create);
-  CheckThemeTabClose('Dracula', TDraculaTheme.Create);
-  CheckThemeTabClose('Nord', TNordTheme.Create);
-  CheckThemeTabClose('Solarized', TSolarizedDarkTheme.Create);
-  CheckThemeTabClose('HighContrast', THighContrastTheme.Create);
-  CheckThemeTabClose('Modern', TModernUnicodeTheme.Create);
-  CheckThemeTabClose('TotalCommander', TTotalCommanderTheme.Create);
-  CheckThemeTabClose('ASCII', TASCIIOnlyTheme.Create);
+  for Info in GetAvailableThemes do
+    if Info.BuiltIn then
+      CheckThemeTabClose(Info.Id, CreateThemeByName(Info.Id));
 end;
 
 { TTestJobPopupLayout }

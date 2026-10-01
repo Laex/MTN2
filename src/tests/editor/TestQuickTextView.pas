@@ -22,7 +22,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uTerminalTypes, uThemeTypes, uDualPanelTypes, uVfsTypes, uNDNTheme, uQuickTextView;
+  uTerminalTypes, uThemeTypes, uDualPanelTypes, uVfsTypes, uThemeRegistry, uQuickTextView;
 
 var
   Grid: TTerminalGrid;
@@ -157,7 +157,7 @@ begin
 
   Bounds := TRectI.Make(5, 2, 44, 20);
   Sink := TSink.Create;
-  QV := TQuickTextView.Create(TNDNTheme.Create);
+  QV := TQuickTextView.Create(CreateThemeByName('NDN'));
   try
     QV.OnChanged := Sink.Changed;
 

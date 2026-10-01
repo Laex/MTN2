@@ -7,7 +7,7 @@ interface
 
 uses
   System.Classes,
-  uThemeTypes, uDualPanelTypes, uVfsTypes, uDriveInfo, uFileFind, uDisplaySettings;
+  uThemeTypes, uThemeSpec, uDualPanelTypes, uVfsTypes, uDriveInfo, uFileFind, uDisplaySettings;
 
 type
   TDrivePopupState = record
@@ -137,7 +137,9 @@ type
     hdkDeleteError, hdkFolderHistory, hdkDirSync, hdkTerminalProfile,
     hdkConsoleProfile, hdkCmdHistory, hdkFileHistory,
     hdkFolderHotlist, hdkFolderHotlistAdd, hdkFolderHotlistRename, hdkCreateLink,
-    hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker,     hdkTheme,
+    hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme,
+    hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
+    hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker,
     hdkColumnsConfig, hdkDisplay, hdkArchivePassword, hdkTmpSaveList,
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename, hdkWorkspaceConfirm,
     hdkSetAttributes,
@@ -213,6 +215,8 @@ type
   /// <summary>Theme dialog reports the uThemeRegistry id the user
   /// picked / TMainForm reports which one is currently active.</summary>
   TThemeSelectEvent = procedure(const AThemeId: string) of object;
+  /// <summary>The theme editor shows a theme being edited without selecting it.</summary>
+  TThemePreviewEvent = procedure(const ASpec: TThemeSpec) of object;
   TGetThemeIdEvent = function: string of object;
   TDisplaySettingsEvent = procedure(const ASettings: TDisplaySettings) of object;
   TGetDisplaySettingsEvent = function: TDisplaySettings of object;

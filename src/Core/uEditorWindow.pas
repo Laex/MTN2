@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uMarkdownColors, uHistoryPopup, uKeymap;
+  uHistoryPopup, uKeymap;
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
@@ -3080,6 +3080,7 @@ var
   W, ViewH, TextW, Y, LineIdx, Reserved, ImgCols, ImgRows: Integer;
   ImgScale: Single;
   BodyFg, BodyBg: TAlphaColor;
+  TextAttr: TCharCellAttributes;
   MdLine: TMdLine;
   ImgUri: string;
   AbsBounds, AbsClip: TRectI;
@@ -3092,10 +3093,11 @@ begin
   ViewH := ViewHeight;
   TextW := TextWidth;
   ShowingOverlay := False;
-  // The document colors (Options > Markdown colors) replace the viewer's body colors here only.
+  // The Markdown view's body colors are the theme's colors of plain Markdown text.
   BodyFg := FThemeColors.BodyFg;
   BodyBg := FThemeColors.BodyBg;
-  ApplyMarkdownColorOverride(mskText, BodyFg, BodyBg);
+  if Assigned(Theme) then
+    Theme.ResolveMarkdownStyleColors(mskText, BodyFg, BodyBg, TextAttr);
 
   Y := 0;
   LineIdx := FTopLine;

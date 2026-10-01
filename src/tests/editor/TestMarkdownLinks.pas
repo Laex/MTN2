@@ -24,7 +24,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
-  uTerminalTypes, uVfsTypes, uNDNTheme, uEditorWindow;
+  uTerminalTypes, uVfsTypes, uThemeRegistry, uEditorWindow;
 
 procedure Pump(AMs: Integer = 600);
 var
@@ -89,7 +89,7 @@ begin
   SetLength(Grid, 24);
   for Y := 0 to High(Grid) do
     SetLength(Grid[Y], 80);
-  View := TEditorWindow.Create(TNDNTheme.Create, 1);
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
   try
     View.Open(PathToFileUri(Md), True);
     Pump;

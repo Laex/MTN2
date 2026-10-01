@@ -25,7 +25,7 @@
 - **Просмотр и редактирование:** встроенные Viewer (текст, hex, потоковое чтение больших файлов), Editor,
   Quick View (`Ctrl+Q`), просмотр Markdown, внешние просмотрщик/редактор.
 - **Виртуальные ФС:** архивы как папки (zip, 7z через `7z.dll`), SFTP по SSH, плагинные VFS.
-- **Настройка:** переопределяемые клавиши (`keymap.json`), темы (Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast и др.),
+- **Настройка:** переопределяемые клавиши (`keymap.json`), темы из файлов (Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast и др.; свои – в редакторе тем),
   меню пользователя (F2), ассоциации файлов, контекстная справка F1 на русском и английском.
 - **Плагины:** нативные DLL и WebAssembly (через Wasmtime) – свои VFS-схемы и панели для них, пункты меню,
   привязки клавиш, шина сообщений. Протоколы диалогов, оверлеев и строк состояния для плагинов описаны,
@@ -62,7 +62,7 @@
 | Путь | Содержимое |
 |---|---|
 | `src/Core` | ядро: панели, VFS, ConPTY, консоль, редактор, диалоги, плагинный хост |
-| `src/Forms`, `src/Themes`, `src/dialogs`, `src/strings` | главная форма, темы, JSON-диалоги, локализация |
+| `src/Forms`, `src/dialogs`, `src/strings`, `src/Assets/themes` | главная форма, JSON-диалоги, локализация, встроенные темы |
 | `src/plugins` | встроенные плагины (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM-демо) |
 | `src/tests` | регрессионные тесты DUnitX по группам и раннер `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, группа проектов `Group.groupproj`, служебные скрипты |
@@ -75,6 +75,7 @@
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) – слои, потоки данных и инварианты.
 - [BUILDING.md](docs/BUILDING.md) – сборка, тесты, CI/CD.
 - [DAILY_USE.md](docs/DAILY_USE.md) – аудит повседневных сценариев и план.
+- [THEMES.md](docs/THEMES.md) – формат файла темы и роли цветов.
 - [HELP.md](docs/HELP.md) – исходный текст справки пользователя одним файлом.
 - Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md), [PANEL](docs/PANEL_PLUGIN.md),
   [DIALOG](docs/DIALOG_PLUGIN.md), [INPUT](docs/INPUT_PLUGIN.md), [OVERLAY](docs/OVERLAY_PLUGIN.md),
