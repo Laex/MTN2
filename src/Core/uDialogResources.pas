@@ -119,6 +119,10 @@ procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;
 /// <summary>Sets the per-item swatches of a list (call after DialogSetListItems).</summary>
 procedure DialogSetListSwatches(var ADecl: TDialogDeclaration; const AId: string;
   const ASwatches: TArray<TListSwatch>);
+/// <summary>Sets the accent-colored stretches of a list's rows (call after
+/// DialogSetListItems).</summary>
+procedure DialogSetListAccents(var ADecl: TDialogDeclaration; const AId: string;
+  const AAccents: TArray<TListAccent>);
 /// <summary>Sets the ids of a list / drop-down's items (call after DialogSetListItems).</summary>
 procedure DialogSetListItemIds(var ADecl: TDialogDeclaration; const AId: string;
   const AItemIds: TArray<string>);
@@ -544,6 +548,16 @@ begin
   I := FindControl(ADecl, AId);
   if (I >= 0) and (ADecl.Controls[I].Kind = dckList) then
     ADecl.Controls[I].ItemSwatches := Copy(ASwatches);
+end;
+
+procedure DialogSetListAccents(var ADecl: TDialogDeclaration; const AId: string;
+  const AAccents: TArray<TListAccent>);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind = dckList) then
+    ADecl.Controls[I].ItemAccents := Copy(AAccents);
 end;
 
 procedure DialogSetListItems(var ADecl: TDialogDeclaration; const AId: string;

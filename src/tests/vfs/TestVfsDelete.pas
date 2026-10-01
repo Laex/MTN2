@@ -61,7 +61,6 @@ begin
     end;
   end;
   CheckSynchronize;
-  Writeln('Success=', Ok, ' Msg=', ErrMsg);
 end;
 
 { TTestVfsDelete }

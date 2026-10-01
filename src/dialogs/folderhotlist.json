@@ -8,7 +8,7 @@
     {
       "type": "label",
       "id": "hotlistHeader",
-      "text": "    K Group          Name                 Path                       Hotkey",
+      "text": "K     Group          Name                 Path                       Hotkey",
       "col": 1,
       "row": 1,
       "width": 77,

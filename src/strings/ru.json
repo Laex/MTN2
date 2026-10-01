@@ -278,7 +278,7 @@
       "cancel": "Отмена"
     },
     "DIALOG_FOLDERHOTLIST": {
-      "hotlistHeader": "    К Группа         Имя                  Путь                       Клавиша",
+      "hotlistHeader": "К     Группа         Имя                  Путь                       Клавиша",
       "$title": "Избранные папки",
       "hint_hotkey": "Ctrl+1..0 глобальная клавиша   &х в имени или группе: клавиша в списке",
       "hint_keys": "F2 имя  F4 группа  Del удалить  Ctrl+Up/Dn порядок  Left [-]  Right [+]",

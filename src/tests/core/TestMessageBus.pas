@@ -46,7 +46,6 @@ begin
   MessageBus.Publish('test.topic');
   Assert.IsTrue(not LReceived, 'Unsubscribed listener should not receive messages');
 
-  Writeln('OK: TestBasicPubSub passed');
 end;
 
 { TTestMessageBus }

@@ -24,12 +24,13 @@ type
     [Test] procedure LastEntryLeavesGroupAtListEnds;
     [Test] procedure KeyMarkersInNames;
     [Test] procedure GroupKeepsItsKeyMarker;
+    [Test] procedure AccentsCoverKeyAndHotkeyCells;
   end;
 
 implementation
 
 uses
-  System.SysUtils, uFolderHotlist;
+  System.SysUtils, uFolderHotlist, uPanelUriLabels;
 
 const
   cA = 'file:///C:/hotlist-a';
@@ -192,6 +193,27 @@ begin
   Assert.IsTrue(FolderHotlistRenameGroup('net', 'Web'), 'rename by the plain name');
   Assert.AreEqual('Web', FolderHotlistGetEntries[FolderHotlistFindByUri(cC)].Group);
   Assert.IsFalse(FolderHotlistRenameGroup('missing', 'x'));
+end;
+
+procedure TTestFolderHotlist.AccentsCoverKeyAndHotkeyCells;
+var
+  E: TFolderHotlistEntry;
+  Row: string;
+  Spans: TArray<THotlistAccent>;
+begin
+  E := Default(TFolderHotlistEntry);
+  E.Name := '&Home';
+  E.URI := cA;
+  E.HotKey := 3;
+  Row := FolderHotlistDisplayLabel(E);
+  Spans := FolderHotlistEntryAccents(E);
+  Assert.AreEqual<Integer>(2, Length(Spans), 'the key and the Ctrl+digit');
+  Assert.AreEqual('H', Copy(Row, Spans[0].Col + 1, Spans[0].Len), 'the key is the first column');
+  Assert.AreEqual('Ctrl+3', Copy(Row, Spans[1].Col + 1, Spans[1].Len), 'the hotkey cells');
+  E.Name := 'Home';
+  E.HotKey := 0;
+  Assert.AreEqual<Integer>(0, Length(FolderHotlistEntryAccents(E)), 'nothing to accent');
+  Assert.AreEqual<Integer>(1, Length(FolderHotlistGroupAccents('&Net')));
 end;
 
 end.

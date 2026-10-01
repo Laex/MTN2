@@ -237,7 +237,7 @@ begin
       // The Russian layout's key for T (the Latin key of Two).
       Ch := WideChar($0435);
       Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'a group key is handled on the other layout too');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]') and Dialog.GetListSelectedText('hotlist').EndsWith('Two'), 'Two is open');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').Contains('[-]') and Dialog.GetListSelectedText('hotlist').EndsWith('Two'), 'Two is open');
       Ch := 'a';
       Assert.IsFalse(C.HandleListInput(Key, [], Ch), 'an entry of the folded group is not on show');
       Assert.AreEqual('', GNavigated);
@@ -269,18 +269,18 @@ begin
     try
       C.OpenList;
       // rows: [G], a, b, c - the cursor is on the group header.
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]'));
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').Contains('[-]'));
       Key := vkLeft;
       Ch := #0;
       Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'Left is handled');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+]'), 'Left folds the group');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').Contains('[+]'), 'Left folds the group');
       Key := vkRight;
       Assert.IsTrue(C.HandleListInput(Key, [], Ch), 'Right is handled');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[-]'), 'Right unfolds it');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').Contains('[-]'), 'Right unfolds it');
       Assert.IsTrue(C.DispatchCommand(hdkFolderHotlist, 'hotlist'));
       Assert.IsTrue(Dialog.Visible, 'a double-click on a header does not close the list');
       Assert.IsTrue(GKind = hdkFolderHotlist, 'the list keeps its dialog kind');
-      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').StartsWith('[+]'), 'a double-click folds the group');
+      Assert.IsTrue(Dialog.GetListSelectedText('hotlist').Contains('[+]'), 'a double-click folds the group');
       C.DispatchCommand(hdkFolderHotlist, 'cancel');
     finally
       C.Free;

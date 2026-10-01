@@ -35,7 +35,6 @@ begin
   Assert.IsTrue(CompareNaturalText('folder2', 'folder10') < 0, 'folder2 < folder10');
   Assert.IsTrue(CompareNaturalText('file2', 'file02') < 0, 'file2 < file02 (fewer zeros first)');
   Assert.IsTrue(CompareNaturalText('abc', 'abd') < 0, 'lexicographic fallback');
-  Writeln('OK: TestCompareNaturalText passed');
 end;
 
 // Non-ASCII names: case-insensitive, alphabet order of the locale (the
@@ -50,7 +49,6 @@ begin
   Assert.IsTrue(CompareNaturalText('ёлка', 'ель') < 0, 'ё compares as е (dictionary order): ёлка < ель');
   Assert.IsTrue(CompareNaturalText('Отчёт 2', 'отчёт 10') < 0, 'digit runs inside Cyrillic names');
   Assert.IsTrue(CompareNaturalText('a-b', 'ab') <> 0, 'hyphen stays significant');
-  Writeln('OK: TestCompareNaturalTextUnicode passed');
 end;
 
 // A consistent (transitive) order: sorting the list and its reversed copy
@@ -94,7 +92,6 @@ begin
   Assert.IsTrue(Pos('Жук', Joined) < Pos('Яблоко', Joined), 'Жук before Яблоко');
   Assert.IsTrue(Pos('ёлка', Joined) < Pos('ель', Joined), 'ёлка before ель');
   Assert.IsTrue(Pos('ель', Joined) < Pos('Жук', Joined), 'ель before Жук');
-  Writeln('OK: TestNaturalSortOrder passed');
 end;
 
 procedure TestVfsUtilsFunctions;
@@ -113,7 +110,6 @@ begin
 
   Assert.IsTrue(TVfsUtils.IsFileUri('file:///C:/Folder'), 'Should be file URI');
 
-  Writeln('OK: TestVfsUtilsFunctions passed');
 end;
 
 { TTestVfsUtils }

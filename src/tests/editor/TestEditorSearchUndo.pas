@@ -82,7 +82,6 @@ begin
   LRes := TEditorSearchEngine.FindPrevWrapped(LLines, 'foo', 0, 0, LOptions, False);
   Assert.IsFalse(LRes.Found, 'no wrap: backward search stops at the start');
 
-  Writeln('OK: TestEditorSearch passed');
 end;
 
 procedure TestEditorUndo;
@@ -115,7 +114,6 @@ begin
     LBuffer.Free;
   end;
 
-  Writeln('OK: TestEditorUndo passed');
 end;
 
 { TTestEditorSearchUndo }

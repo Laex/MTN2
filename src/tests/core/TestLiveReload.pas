@@ -59,7 +59,7 @@ procedure WriteFileText(const APath, AText: string);
 begin
   // Explicit bytes (no TEncoding.UTF8 BOM) so re-reads land on the same
   // encoding every time - a BOM appearing/disappearing between writes would
-  // be its own (unrelated) source of flaky diffs here.
+  // be a spurious difference here.
   TFile.WriteAllText(APath, AText, TEncoding.ASCII);
 end;
 

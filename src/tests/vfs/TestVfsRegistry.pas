@@ -138,7 +138,6 @@ begin
     False, False, False, Reason) = vtrSftp, 'file to sftp move');
   Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a.zip!/x', 'sftp://u@h/b', False,
     False, False, False, Reason) = vtrNotSupported, 'archive to sftp');
-  Writeln('OK: TestClassify');
 end;
 
 procedure TestPluginOwnedAndUnload;
@@ -162,7 +161,6 @@ begin
   finally
     Reg.Free;
   end;
-  Writeln('OK: TestPluginOwnedAndUnload');
 end;
 
 procedure TestArchiveExtensions;
@@ -193,7 +191,6 @@ begin
   finally
     Reg.Free;
   end;
-  Writeln('OK: TestArchiveExtensions');
 end;
 
 { TTestVfsRegistry }

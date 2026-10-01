@@ -44,7 +44,6 @@ begin
   Assert.IsTrue(LReceivedPayload = '{"x":1}', 'Subscriber should receive the payload JSON');
   LSub.Unsubscribe;
 
-  Writeln('OK: TestHostAbiCall passed');
 end;
 
 procedure TestHostInvalidate;
@@ -69,7 +68,6 @@ begin
   LRes := mtn_host_invalidate(LWindowId);
   Assert.IsTrue(LRes <> 0, 'mtn_host_invalidate should fail for an unregistered window');
 
-  Writeln('OK: TestHostInvalidate passed');
 end;
 
 { TTestPluginHostAbi }

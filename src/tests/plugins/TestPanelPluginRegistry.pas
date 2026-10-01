@@ -38,7 +38,6 @@ begin
   Assert.IsTrue(LRegistry.ResolvePlugin('sample://x') = cDefaultPanelPluginId,
     'unregister restores default');
 
-  Writeln('OK: TestPluginRegistry passed');
 end;
 
 { TTestPanelPluginRegistry }

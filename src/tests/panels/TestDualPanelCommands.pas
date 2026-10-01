@@ -35,7 +35,6 @@ begin
   LTarget := TDualPanelCommandHandler.PrepareCopyMoveTarget('file:///C:/', 'file:///D:/');
   Assert.IsTrue(LTarget = 'file:///D:/', 'Target should prioritize opposite panel URI');
 
-  Writeln('OK: TestCommandHandler passed');
 end;
 
 { TTestDualPanelCommands }

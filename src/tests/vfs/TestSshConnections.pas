@@ -86,7 +86,6 @@ begin
       TFile.Delete(TempFile);
     SshConnectionsResetForTests;
   end;
-  Writeln('OK: TestCrudRoundtrip passed');
 end;
 
 procedure TestConnectionArgs;
@@ -113,7 +112,6 @@ begin
   Assert.IsTrue(Length(Args) = 1, 'Expected bare host-only arg when port/identity/user unset');
   Assert.IsTrue(Args[0] = 'plain.example.com', 'Bare host arg mismatch');
 
-  Writeln('OK: TestConnectionArgs passed');
 end;
 
 { TTestSshConnections }

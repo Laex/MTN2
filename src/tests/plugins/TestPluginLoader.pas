@@ -101,7 +101,6 @@ begin
   Assert.IsTrue(GlobalVfsRegistry.IsPluginOwned('sample://test-file.txt'),
     'sample:// is plugin-owned while loaded');
 
-  Writeln('OK: TestLoadAndResolveSamplePlugin passed');
 end;
 
 procedure TestArchiveExtensionsFromManifest;
@@ -111,7 +110,6 @@ begin
   Assert.IsTrue(GlobalVfsRegistry.TryResolveArchiveKind('data.samplearchive', Kind),
     'plugin.json archiveExtensions must reach GlobalVfsRegistry on load');
   Assert.IsTrue(Kind = akSevenZip, 'plugin-declared archive extensions register as akSevenZip');
-  Writeln('OK: TestArchiveExtensionsFromManifest passed');
 end;
 
 procedure TestUnloadIsIdempotent;
@@ -124,7 +122,6 @@ begin
   Assert.IsTrue(not GlobalVfsRegistry.TryResolveArchiveKind('data.samplearchive', Kind),
     'unloading the plugin must drop its archive extensions too');
   PluginLoader.UnloadAll; // must not raise on a second call
-  Writeln('OK: TestUnloadIsIdempotent passed');
 end;
 
 procedure TestCatalogLoadsOnDemand;
@@ -154,7 +151,6 @@ begin
   Assert.IsTrue(GlobalVfsRegistry.TryResolve('sample://x', Backend),
     'sample:// resolves after EnsureScheme');
   PluginLoader.UnloadAll;
-  Writeln('OK: TestCatalogLoadsOnDemand passed');
 end;
 
 { TTestPluginLoader }

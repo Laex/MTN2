@@ -211,7 +211,6 @@ begin
   PluginLoader.UnloadAll;
   Assert.IsTrue(not GlobalVfsRegistry.IsPluginOwned('wasmdemo:///'),
     'wasmdemo:// not plugin-owned after unload');
-  Writeln('OK: TestDemoPull');
 end;
 
 procedure TestTrapIsolated;
@@ -246,7 +245,6 @@ begin
     'failure must be a guest trap, not a parse error: ' + Msg);
   Assert.IsTrue(Length(PluginLoader.LoadedPluginIds) = 0, 'trapped module must not stay loaded');
   PluginLoader.UnloadAll;
-  Writeln('OK: TestTrapIsolated (process still alive)');
 end;
 
 procedure TestNoWasi;
@@ -283,7 +281,6 @@ begin
     'failure must be a missing WASI import: ' + Msg);
   Assert.IsTrue(Length(PluginLoader.LoadedPluginIds) = 0, 'WASI module must not load');
   PluginLoader.UnloadAll;
-  Writeln('OK: TestNoWasi');
 end;
 
 procedure TestOobRegisterIsolated;
@@ -316,7 +313,6 @@ begin
   Assert.IsTrue(not GlobalVfsRegistry.IsPluginOwned('wasmdemo:///'),
     'OOB scheme pointer must not register a host object');
   PluginLoader.UnloadAll;
-  Writeln('OK: TestOobRegisterIsolated');
 end;
 
 { TTestWasmHost }

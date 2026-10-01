@@ -205,8 +205,8 @@ end;
 
 procedure TestSlowDriveDoesNotBlockOthers;
 const
-  // Deliberately much shorter than the 120s given to the flaky P: elsewhere
-  // in this file -- this is the actual bug report: with one shared
+  // Deliberately much shorter than the 120s given to the stuck P: elsewhere
+  // in this file: with one shared
   // background thread looping over drives in enumeration order (C, D, E, F,
   // O, P, X), a stuck P: meant every drive *after* it (X: here) never got
   // its data either, forever. Per-drive workers must let X: answer on its

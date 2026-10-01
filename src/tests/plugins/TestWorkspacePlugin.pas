@@ -332,7 +332,6 @@ begin
   Assert.IsTrue(TDirectory.Exists(SrcDir), 'clear does not delete the real folder');
   Assert.IsTrue(TFile.Exists(TPath.Combine(SrcDir, 'inside.txt')),
     'real folder contents untouched');
-  System.Writeln('OK: core workspace VFS');
 
   WasmPath := TPath.Combine(PluginSrcDir, 'plugin.wasm');
   JsonPath := TPath.Combine(PluginSrcDir, 'plugin.json');

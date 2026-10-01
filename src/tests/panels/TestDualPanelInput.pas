@@ -329,7 +329,6 @@ begin
   Assert.IsTrue(TDualPanelInputHandler.IsNavigationKey(vkUp), 'vkUp should be navigation key');
   Assert.IsTrue(not TDualPanelInputHandler.IsNavigationKey(vkF1), 'vkF1 should not be navigation key');
 
-  Writeln('OK: TestInputTranslation passed');
 end;
 
 procedure TestKeymapDispatchConsume;
@@ -494,7 +493,6 @@ begin
     Assert.IsTrue(Spy.Edit, 'kaEdit opens editor');
     Assert.IsTrue(KeyChar = 'e', 'kaEdit must not clear AKeyChar');
 
-    Writeln('OK: TestKeymapDispatchConsume passed');
   finally
     Spy.Free;
   end;
@@ -586,7 +584,6 @@ begin
       'printable goes to cmdline');
     Assert.IsTrue(Spy.Last = 'focus+cmd', 'printable focuses then feeds cmdline');
 
-    Writeln('OK: TestNavDispatch passed');
   finally
     Spy.Free;
   end;
@@ -1049,7 +1046,6 @@ begin
     Assert.IsTrue(Spy.Last = 'view', 'Numpad5 opens viewer');
     Assert.IsTrue(Ch = #0, 'Numpad5 consumes AKeyChar');
 
-    Writeln('OK: TestClassifyAndFreeInput passed');
   finally
     NavSpy.Free;
     Spy.Free;
@@ -1123,7 +1119,6 @@ begin
     Key := vkDown;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkColorPicker, Key, [], Ch), 'picker widget');
 
-    Writeln('OK: TestModalDialogInput passed');
   finally
     Spy.Free;
   end;
@@ -1142,7 +1137,6 @@ begin
   Assert.IsTrue(QuickSearchMatchIndex(Rows, 'SRC') = 1, 'dir match is case-insensitive');
   Assert.IsTrue(QuickSearchMatchIndex(Rows, 'z') = -1, 'no match');
   Assert.IsTrue(QuickSearchMatchIndex(Rows, '') = -1, 'empty needle');
-  Writeln('OK: TestQuickSearchMatch passed');
 end;
 
 procedure TestApplyQuickSearchMatch;
@@ -1162,7 +1156,6 @@ begin
   Assert.IsTrue(not ApplyQuickSearchMatch(Tab, Rows, 'z', 5, 1), 'miss leaves cursor');
   Assert.IsTrue(Tab.CursorIndex = 2, 'cursor unchanged on miss');
   Assert.IsTrue(not ApplyQuickSearchMatch(Tab, Rows, '', 5, 1), 'empty needle is miss');
-  Writeln('OK: TestApplyQuickSearchMatch passed');
 end;
 
 procedure TestNeedleBox;
@@ -1190,7 +1183,6 @@ begin
   Assert.IsTrue(NeedleBackspace(S) and (S = 'a'), 'backspace shortens');
   Assert.IsTrue(NeedleBackspace(S) and (S = ''), 'backspace last char');
   Assert.IsTrue(not NeedleBackspace(S) and (S = ''), 'empty backspace is no-op');
-  Writeln('OK: TestNeedleBox passed');
 end;
 
 procedure TestPendingSelectMatch;
@@ -1208,7 +1200,6 @@ begin
   Assert.IsTrue(PendingSelectMatchIndex(Rows, '..') = -1, 'parent is skipped');
   Assert.IsTrue(PendingSelectMatchIndex(Rows, '') = -1, 'empty want');
   Assert.IsTrue(PendingSelectMatchIndex(Rows, 'missing') = -1, 'no match');
-  Writeln('OK: TestPendingSelectMatch passed');
 end;
 
 procedure TestRowNameHelpers;
@@ -1228,7 +1219,6 @@ begin
   Assert.IsTrue(Length(Names) = 2, 'parent skipped');
   Assert.IsTrue(Names[0] = 'src', 'visible dir name');
   Assert.IsTrue(Names[1] = 'readme.md', 'visible file name');
-  Writeln('OK: TestRowNameHelpers passed');
 end;
 
 { TTestDualPanelInput }

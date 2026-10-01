@@ -5,7 +5,7 @@ unit TestDirWatchSlowDrive;
   inline, on whatever thread called SetPath -- TDualPanelWindow.
   SyncDirWatches, called from LoadSide on EVERY navigation (including
   Change Drive / Ctrl+Left+Right, which always land on a drive root).
-  On an unresponsive network drive (P: on the dev machine) that froze the
+  On an unresponsive network drive (for example a mapped share that is offline) that froze the
   whole UI thread the instant a navigation landed, even after the earlier
   ResolveLocalDirPath/ResolvePanelDriveUri fixes removed the other
   synchronous filesystem touches on that same path -- SyncDirWatches runs
@@ -80,8 +80,8 @@ begin
   // stuck in DirectoryExists, orphaned), then navigates to a normal folder
   // right after -- exactly what TDualPanelWindow.SyncDirWatches does on
   // every navigation. Deliberately NOT a tight loop hammering P: with many
-  // concurrent setup attempts (unrealistic, and on a flaky share it can
-  // itself make the drive even slower to answer) -- one
+  // concurrent setup attempts (unrealistic, and it can itself slow
+  // the drive's answers) -- one
   // abandoned P: attempt plus one real transition is what a user's Ctrl+Left/
   // Right or Change Drive pick produces.
   Writeln('Navigating away from an unresponsive drive right after landing on it stays fast');

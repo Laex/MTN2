@@ -32,7 +32,6 @@ begin
   Assert.IsTrue(NormalizeShellProfileId('pwsh.exe') = cShellProfilePwsh, 'pwsh.exe normalization failed');
   Assert.IsTrue(NormalizeShellProfileId('wsl.exe') = cShellProfileWsl, 'wsl.exe normalization failed');
   Assert.IsTrue(NormalizeShellProfileId('WSL:Ubuntu-24.04') = 'wsl:Ubuntu-24.04', 'wsl:Ubuntu-24.04 normalization failed');
-  Writeln('OK: TestNormalization passed');
 end;
 
 procedure TestInteractiveWslDistro;
@@ -44,7 +43,6 @@ begin
   Assert.IsTrue(not IsInteractiveWslDistro(''), 'empty name is not interactive');
   Assert.IsTrue(not ShellProfileAvailable('wsl:docker-desktop'),
     'docker-desktop must not be an available shell profile');
-  Writeln('OK: TestInteractiveWslDistro passed');
 end;
 
 procedure TestResolveCmdLine;
@@ -103,7 +101,6 @@ begin
     Assert.IsTrue(WorkingDir = '', 'WSL distro working dir mismatch');
   end;
 
-  Writeln('OK: TestResolveCmdLine passed');
 end;
 
 procedure TestEnumeration;
@@ -126,7 +123,6 @@ begin
   end;
   Assert.IsTrue(FoundCmd, 'Cmd profile not found in enumeration');
   Assert.IsTrue(FoundWsl, 'WSL profile not found in enumeration');
-  Writeln('OK: TestEnumeration passed');
 end;
 
 procedure TestSshProfile;
@@ -185,7 +181,6 @@ begin
       TFile.Delete(TempFile);
     SshConnectionsResetForTests;
   end;
-  Writeln('OK: TestSshProfile passed');
 end;
 
 procedure TestTitleWithShell;

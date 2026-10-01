@@ -28,7 +28,6 @@ begin
   Assert.IsTrue(LSuccess, 'Should scan current directory successfully');
   Assert.IsTrue(Length(LEntries) > 0, 'Current directory should contain entries');
 
-  Writeln('OK: TestScanner passed');
 end;
 
 { TTestFileVfsScanner }

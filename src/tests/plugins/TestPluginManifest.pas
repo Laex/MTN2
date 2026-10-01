@@ -49,7 +49,6 @@ begin
   Assert.IsTrue(Length(M.Schemes) = 2, 'schemes count');
   Assert.IsTrue(M.Schemes[0] = 'tmp', 'schemes[0]');
   Assert.IsTrue(M.Schemes[1] = 'tmp', 'schemes lowercased');
-  Writeln('OK: TestParse');
 end;
 
 procedure TestListLabel;
@@ -82,7 +81,6 @@ begin
   finally
     TDirectory.Delete(Dir, True);
   end;
-  Writeln('OK: TestListLabel');
 end;
 
 { TTestPluginManifest }

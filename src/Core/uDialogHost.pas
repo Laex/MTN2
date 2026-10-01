@@ -1939,10 +1939,15 @@ begin
   end;
 end;
 
+const
+  // Hotkey cells of a list row (the favorites' keys and Ctrl+digits): the
+  // menus' hotkey red (cMenuHotKeyFg in uDualPanelOverlays).
+  cListAccentFg = TAlphaColor($FFC00000);
+
 procedure TDialogHost.DrawListControl(const AGrid: TTerminalGrid; const R: TRectI;
   AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
 var
-  J, Span, Idx, TextW, Count, SelIdx: Integer;
+  J, K, Span, Idx, TextW, Count, SelIdx: Integer;
   Line: string;
   RowFg, RowBg, SwFg, SwBg: TAlphaColor;
 begin
@@ -1994,6 +1999,14 @@ begin
         PutGridText(AGrid, R.Left + C.ItemSwatches[Idx].Col, R.Top + J,
           C.ItemSwatches[Idx].Text, SwFg, SwBg);
       end;
+      // Accent stretches (hotkey cells) keep the row's background.
+      for K := 0 to High(C.ItemAccents) do
+        if (C.ItemAccents[K].Item = Idx) and (C.ItemAccents[K].Len > 0) and
+           (C.ItemAccents[K].Col >= 0) and (C.ItemAccents[K].Col < TextW) then
+          PutGridText(AGrid, R.Left + C.ItemAccents[K].Col, R.Top + J,
+            Copy(Line, C.ItemAccents[K].Col + 1,
+              Min(C.ItemAccents[K].Len, TextW - C.ItemAccents[K].Col)),
+            cListAccentFg, RowBg, [ccaBold]);
     end;
     DrawDialogScrollBar(AGrid, R.Right, R.Top, R.Bottom,
       FListScrollTop, Count, Span);

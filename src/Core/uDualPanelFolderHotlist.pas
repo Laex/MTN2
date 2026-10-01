@@ -47,7 +47,7 @@ type
     FRenameGroupOld: string;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
-    procedure BuildRows(out AItems: TArray<string>);
+    procedure BuildRows(out AItems: TArray<string>; out AAccents: TArray<TListAccent>);
     function RowEntry(ARow: Integer): Integer;
     procedure SetGroupFolded(const AGroup: string; AFolded: Boolean);
     /// <summary>Unfolds AGroup and folds every other one.</summary>
@@ -122,13 +122,30 @@ begin
   inherited;
 end;
 
-procedure TFolderHotlistDialogController.BuildRows(out AItems: TArray<string>);
+procedure AddAccents(var AAccents: TArray<TListAccent>; AItem: Integer;
+  const ASpans: TArray<THotlistAccent>);
+var
+  A: TListAccent;
+  S: THotlistAccent;
+begin
+  for S in ASpans do
+  begin
+    A.Item := AItem;
+    A.Col := S.Col;
+    A.Len := S.Len;
+    AAccents := AAccents + [A];
+  end;
+end;
+
+procedure TFolderHotlistDialogController.BuildRows(out AItems: TArray<string>;
+  out AAccents: TArray<TListAccent>);
 var
   I, N: Integer;
   Prev: string;
   Folded: Boolean;
 begin
   FEntries := FolderHotlistGetEntries;
+  AAccents := nil;
   SetLength(AItems, Length(FEntries) * 2);
   SetLength(FRowEntry, Length(FEntries) * 2);
   SetLength(FRowGroup, Length(FEntries) * 2);
@@ -140,6 +157,7 @@ begin
     begin
       AItems[N] := FolderHotlistGroupLabel(FEntries[I].Group,
         FCollapsed.IndexOf(FEntries[I].Group) >= 0);
+      AddAccents(AAccents, N, FolderHotlistGroupAccents(FEntries[I].Group));
       FRowEntry[N] := -1;
       FRowGroup[N] := FEntries[I].Group;
       Inc(N);
@@ -150,6 +168,7 @@ begin
     if Folded or (FEntries[I].URI = '') then
       Continue;
     AItems[N] := FolderHotlistDisplayLabel(FEntries[I]);
+    AddAccents(AAccents, N, FolderHotlistEntryAccents(FEntries[I]));
     FRowEntry[N] := I;
     FRowGroup[N] := FEntries[I].Group;
     Inc(N);
@@ -203,20 +222,22 @@ end;
 procedure TFolderHotlistDialogController.ReopenList;
 var
   Items: TArray<string>;
+  Accents: TArray<TListAccent>;
 begin
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
-  BuildRows(Items);
+  BuildRows(Items, Accents);
 
   SetKind(hdkFolderHotlist);
-  FDialog.Open(BuildFolderHotlistDialog(Items, 0), FOnCommand);
+  FDialog.Open(BuildFolderHotlistDialog(Items, 0, Accents), FOnCommand);
   Notify;
 end;
 
 procedure TFolderHotlistDialogController.RefreshList(const ASelectGroup: string);
 var
   Items: TArray<string>;
+  Accents: TArray<TListAccent>;
   I, Sel, E: Integer;
   SelUri, SelGroup: string;
 begin
@@ -233,7 +254,7 @@ begin
     SelUri := FEntries[E].URI
   else if (Sel >= 0) and (Sel <= High(FRowGroup)) then
     SelGroup := FRowGroup[Sel];
-  BuildRows(Items);
+  BuildRows(Items, Accents);
   if ASelectGroup <> '' then
   begin
     SelUri := '';
@@ -248,7 +269,7 @@ begin
         Sel := I;
         Break;
       end;
-  FDialog.Open(BuildFolderHotlistDialog(Items, Sel), FOnCommand);
+  FDialog.Open(BuildFolderHotlistDialog(Items, Sel, Accents), FOnCommand);
   Notify;
 end;
 

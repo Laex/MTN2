@@ -67,7 +67,6 @@ begin
   Assert.IsTrue(Length(LTabs) = 1, 'Tabs length should be 1 after closing');
   Assert.IsTrue(not TDualPanelTabManager.CloseTab(LTabs, LActiveIndex, 0), 'Should not close the last tab');
 
-  Writeln('OK: TestTabManager passed');
 end;
 
 procedure TestClonePanelAndWorkspaceTitle;
@@ -125,7 +124,6 @@ begin
   Assert.IsTrue(MakePanelsWorkspaceTitle(State) = 'Docs',
     'Hidden left → right caption only');
 
-  Writeln('OK: TestClonePanelAndWorkspaceTitle passed');
 end;
 
 function MakeWs(AId: Cardinal; AKind: TWorkspaceKind; AOrigin: Cardinal = 0): TDualPanelWorkspaceTab;
@@ -201,7 +199,6 @@ begin
   Assert.IsTrue(Dst.OriginWorkspaceId = 0, 'clone has no origin');
   Assert.IsTrue(Dst.Title <> '', 'clone has a title');
 
-  Writeln('OK: TestWorkspaceLifecycle passed');
 end;
 
 procedure TCloseSpy.CloseDocument(AIndex: Integer);
@@ -294,7 +291,6 @@ begin
     Spy.Free;
   end;
 
-  Writeln('OK: TestEmbeddedWorkspace passed');
 end;
 
 procedure TestSessionExportFilter;
@@ -361,7 +357,6 @@ begin
   TDualPanelTabManager.RestoreBothVisibleIfHidden(Ws);
   Assert.IsTrue((not Ws.State.LeftVisible) and Ws.State.RightVisible,
     'one hidden is left as-is');
-  Writeln('OK: TestSessionExportFilter passed');
 end;
 
 procedure TestResolvePanelDriveUri;
@@ -396,7 +391,6 @@ begin
   Uri := ResolvePanelDriveUri(Dirs, #1, 'D:\');
   Assert.IsTrue(Uri = 'file:///D:/', 'non A-Z letter falls back to the given root');
 
-  Writeln('OK: TestResolvePanelDriveUri passed');
 end;
 
 { TTestDualPanelTabs }

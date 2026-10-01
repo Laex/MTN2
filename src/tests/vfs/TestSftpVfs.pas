@@ -49,7 +49,6 @@ begin
   Assert.IsTrue(MakeSftpUri('bob@host:2222', '/a/b/') = 'sftp://bob@host:2222/a/b',
     'MakeSftpUri should strip trailing slash');
 
-  Writeln('OK: TestUriParsing passed');
 end;
 
 procedure TestVfsUriIntegration;
@@ -86,7 +85,6 @@ begin
   Assert.IsTrue(ResolveVfsUri('sftp://bob@host:2222/docs') = 'sftp://bob@host:2222/docs',
     'ResolveVfsUri should pass sftp:// through unchanged');
 
-  Writeln('OK: TestVfsUriIntegration passed');
 end;
 
 procedure TestLsLineParsing;
@@ -124,7 +122,6 @@ begin
   Assert.IsTrue(not ParseSftpLsLine('', E), 'blank line must be rejected');
   Assert.IsTrue(not ParseSftpLsLine('sftp> ls -la /', E), 'non-listing line must be rejected');
 
-  Writeln('OK: TestLsLineParsing passed');
 end;
 
 procedure TestLsDateParsing;
@@ -145,7 +142,6 @@ begin
 
   Assert.IsTrue(ParseSftpLsDate('Nope', '1', '10:00') = 0, 'Unknown month should yield 0');
 
-  Writeln('OK: TestLsDateParsing passed');
 end;
 
 procedure TestClassifySftpFailure;
@@ -200,7 +196,6 @@ begin
   E := ClassifySftpFailure('Authentication failed.', 255, False, False, 'sftp://u@h/');
   Assert.IsTrue(E.Code = vecAccessDenied, 'authentication failed is access denied');
 
-  Writeln('OK: TestClassifySftpFailure passed');
 end;
 
 { TTestSftpVfs }

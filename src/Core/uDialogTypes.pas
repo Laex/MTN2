@@ -29,6 +29,12 @@ type
     Fg, Bg: TAlphaColor;
   end;
 
+  /// <summary>An accent-colored stretch of a dckList row: Len cells from
+  /// column Col of item Item's text.</summary>
+  TListAccent = record
+    Item, Col, Len: Integer;
+  end;
+
   TDialogControl = record
     Kind: TDialogControlKind;
     Id: string;
@@ -44,6 +50,8 @@ type
     Items: TArray<string>;
     /// <summary>dckList: one optional swatch per item (same index as Items).</summary>
     ItemSwatches: TArray<TListSwatch>;
+    /// <summary>dckList: accent-colored stretches of the rows.</summary>
+    ItemAccents: TArray<TListAccent>;
     /// <summary>Optional ids for radio_group items (values use id when set).</summary>
     ItemIds: TArray<string>;
     SelectedIndex: Integer;
@@ -228,7 +236,8 @@ function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration
 /// <summary>AItems are pre-formatted display labels ("Name  -  path" or
 /// bare path when unnamed) - see FolderHotlistDisplayLabel.</summary>
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0;
+  const AAccents: TArray<TListAccent> = nil): TDialogDeclaration;
 function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer; const ALiveCaption: string): TDialogDeclaration;
 function BuildCreateLinkDialog(const ALinkName, ATarget: string;
@@ -906,7 +915,7 @@ begin
 end;
 
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; const AAccents: TArray<TListAccent>): TDialogDeclaration;
 var
   Items: TArray<string>;
   Sel: Integer;
@@ -928,6 +937,7 @@ begin
       Sel := High(Items);
   end;
   DialogSetListItems(Result, 'hotlist', Items, Sel);
+  DialogSetListAccents(Result, 'hotlist', AAccents);
 end;
 
 function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;

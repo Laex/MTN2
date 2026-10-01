@@ -52,7 +52,6 @@ begin
     Writeln('  Validated dialog: ', ExtractFileName(LFile), ' (title: "', LDecl.Title, '", controls: ', Length(LDecl.Controls), ')');
   end;
 
-  Writeln(Format('OK: Validated all %d dialog JSON files successfully', [LCount]));
 end;
 
 function FindControlById(const ADecl: TDialogDeclaration; const AId: string): Integer;
@@ -88,7 +87,6 @@ begin
   Assert.IsTrue(I >= 0, 'picker control not found in colorpicker.json');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckColorPicker, 'picker is not dckColorPicker');
 
-  Writeln('OK: colorsample control parsing verified');
 end;
 
 procedure TestDirSyncRadios;
@@ -121,7 +119,6 @@ begin
   Assert.IsTrue(not LDecl.Controls[I].Checked, 'bycontent starts unchecked');
   Writeln('  dirsync.json: one-way/two-way radios share group sync_mode');
   Writeln('  dirsync.json: date/content radios share group compare_by');
-  Writeln('OK: dirsync two-way radio parsing verified');
 end;
 
 procedure TestFileDiffDialog;
@@ -138,7 +135,6 @@ begin
   I := FindControlById(LDecl, 'left_name');
   Assert.IsTrue(I >= 0, 'left_name label not found');
   Writeln('  filediff.json: list + left/right name labels');
-  Writeln('OK: filediff dialog parsing verified');
 end;
 
 procedure TestArchivePasswordParsing;
@@ -154,7 +150,6 @@ begin
   Assert.IsTrue(LDecl.Controls[I].Kind = dckInput, 'password is not dckInput');
   Assert.IsTrue(LDecl.Controls[I].Password, 'password control must have Password=True');
   Writeln('  archivepassword.json: password input is masked');
-  Writeln('OK: archive password dialog parsing verified');
 end;
 
 procedure TestSelectMaskDialog;
@@ -171,7 +166,6 @@ begin
   Assert.IsTrue(I >= 0, 'select_folders checkbox not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, 'select_folders is not checkbox');
   Writeln('  selectmask.json: mask input + Select folders checkbox');
-  Writeln('OK: select mask dialog parsing verified');
 end;
 
 procedure TestSetAttrDialog;
@@ -196,7 +190,6 @@ begin
   I := FindControlById(LDecl, 'owner');
   Assert.IsTrue(I >= 0, 'owner input not found');
   Writeln('  setattr.json: Keep/Set/Clear dropdowns + owner + recurse');
-  Writeln('OK: set attributes dialog parsing verified');
 end;
 
 procedure TestDisplayDialog;
@@ -226,7 +219,6 @@ begin
   Assert.IsTrue(I >= 0, 'panel_icons checkbox not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, 'panel_icons is not checkbox');
   Writeln('  display.json: fonts, font_size, zoom, blink, blink_ms, panel_icons');
-  Writeln('OK: display dialog parsing verified');
 end;
 
 procedure TestJobProgressDialogs;
@@ -279,7 +271,6 @@ begin
   I := FindControlById(LDecl, 'ok');
   Assert.IsTrue(I >= 0, 'error close');
   Writeln('  jobprogresserror.json: message + Close');
-  Writeln('OK: job progress dialogs parse');
 end;
 
 procedure TestDeleteErrorDialog;
@@ -300,7 +291,6 @@ begin
   I := FindControlById(LDecl, 'path');
   Assert.IsTrue(I >= 0, 'path label not found');
   Writeln('  deleteerror.json: error_line is a 3-row wrapping label');
-  Writeln('OK: delete error dialog wrapping layout verified');
 end;
 
 { TTestDialogJson }

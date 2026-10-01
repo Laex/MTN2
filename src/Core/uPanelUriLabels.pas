@@ -23,11 +23,22 @@ function FolderHistoryDisplayLabel(const AURI: string): string;
 /// Non-path labels keep a short head and the tail.</summary>
 function FitFolderHistoryLabel(const ALabel: string; AMaxLen: Integer): string;
 
-/// <summary>List row of an entry: fold marker blank, the key its name
-/// declares, group blank, then name, path and hotkey.</summary>
+type
+  /// <summary>A stretch of a hotlist row drawn in the accent color: Len cells
+  /// from column Col of the row text.</summary>
+  THotlistAccent = record
+    Col, Len: Integer;
+  end;
+
+/// <summary>List row of an entry: the key its name declares, fold marker blank,
+/// group blank, then name, path and hotkey.</summary>
 function FolderHotlistDisplayLabel(const AEntry: TFolderHotlistEntry): string;
-/// <summary>List row of a group header: "[-]" (open) or "[+]" (folded), the
-/// key its name declares and the group name.</summary>
+/// <summary>The cells of an entry row to accent: its key and its Ctrl+digit.</summary>
+function FolderHotlistEntryAccents(const AEntry: TFolderHotlistEntry): TArray<THotlistAccent>;
+/// <summary>The cells of a group header row to accent: its key.</summary>
+function FolderHotlistGroupAccents(const AGroup: string): TArray<THotlistAccent>;
+/// <summary>List row of a group header: the key its name declares, "[-]"
+/// (open) or "[+]" (folded) and the group name.</summary>
 function FolderHotlistGroupLabel(const AGroup: string; AFolded: Boolean): string;
 
 implementation
@@ -156,6 +167,12 @@ const
   cHotlistPathW = 26;
   cHotlistHotkeyW = 6;
 
+function Accent(ACol, ALen: Integer): THotlistAccent;
+begin
+  Result.Col := ACol;
+  Result.Len := ALen;
+end;
+
 function KeyText(AKey: Char): string;
 begin
   if AKey = #0 then
@@ -175,8 +192,8 @@ begin
     if Path = '' then
       Path := AEntry.URI;
   end;
-  Result := PadRight('', cHotlistMarkW) + ' ' +
-    PadRight(KeyText(HotlistKeyOf(AEntry.Name)), cHotlistKeyW) + ' ' +
+  Result := PadRight(KeyText(HotlistKeyOf(AEntry.Name)), cHotlistKeyW) + ' ' +
+    PadRight('', cHotlistMarkW) + ' ' +
     PadRight('', cHotlistGroupW) + ' ' +
     PadRight(HotlistStripKey(AEntry.Name), cHotlistNameW) + ' ' +
     PadRight(Path, cHotlistPathW) + ' ' +
@@ -191,9 +208,34 @@ begin
     Mark := '[+]'
   else
     Mark := '[-]';
-  Result := PadRight(Mark, cHotlistMarkW) + ' ' +
-    PadRight(KeyText(HotlistKeyOf(AGroup)), cHotlistKeyW) + ' ' +
+  Result := PadRight(KeyText(HotlistKeyOf(AGroup)), cHotlistKeyW) + ' ' +
+    PadRight(Mark, cHotlistMarkW) + ' ' +
     HotlistStripKey(AGroup);
+end;
+
+function FolderHotlistGroupAccents(const AGroup: string): TArray<THotlistAccent>;
+begin
+  SetLength(Result, 0);
+  if HotlistKeyOf(AGroup) <> #0 then
+    Result := [Accent(0, cHotlistKeyW)];
+end;
+
+function FolderHotlistEntryAccents(const AEntry: TFolderHotlistEntry): TArray<THotlistAccent>;
+var
+  Label_: string;
+  HotCol: Integer;
+begin
+  SetLength(Result, 0);
+  if HotlistKeyOf(AEntry.Name) <> #0 then
+    Result := Result + [Accent(0, cHotlistKeyW)];
+  Label_ := FolderHotlistKeyLabel(AEntry.HotKey);
+  if Label_ <> '' then
+  begin
+    // The hotkey column is the last one, right-aligned.
+    HotCol := cHotlistKeyW + 1 + cHotlistMarkW + 1 + cHotlistGroupW + 1 +
+      cHotlistNameW + 1 + cHotlistPathW + 1 + cHotlistHotkeyW - Length(Label_);
+    Result := Result + [Accent(HotCol, Length(Label_))];
+  end;
 end;
 
 end.
