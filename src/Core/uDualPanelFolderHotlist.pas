@@ -316,7 +316,7 @@ var
 begin
   Result := False;
   // Left folds the selected group (its header or any of its entries),
-  // Right unfolds it. Only plain keys: Shift/Ctrl/Alt+arrows stay with the list.
+  // Right unfolds it. With Shift, Ctrl or Alt the arrows stay with the list.
   if ((AKey = vkLeft) or (AKey = vkRight)) and
      TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift, ssAlt, ssCtrl]) then
   begin
