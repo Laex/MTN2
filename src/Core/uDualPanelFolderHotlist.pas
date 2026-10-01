@@ -31,9 +31,23 @@ type
     FOnNavigate: TFolderHotlistNavigate;
     FOnUnfocusCmd: TFolderHotlistUnfocusCmd;
     FEntries: TArray<TFolderHotlistEntry>;
+    /// <summary>Per list row: index into FEntries, or -1 for a group header.</summary>
+    FRowEntry: TArray<Integer>;
+    /// <summary>Per list row: the group the row belongs to ('' = ungrouped).</summary>
+    FRowGroup: TArray<string>;
+    /// <summary>Names of the groups shown folded.</summary>
+    FCollapsed: TStringList;
+    /// <summary>The list as the dialog opened it (or as last saved); Cancel restores it.</summary>
+    FSnapshot: TArray<TFolderHotlistEntry>;
+    FInSession: Boolean;
     FRenameUri: string;
+    /// <summary>True while the rename input edits the group, not the name.</summary>
+    FEditGroup: Boolean;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
+    procedure BuildRows(out AItems: TArray<string>);
+    function RowEntry(ARow: Integer): Integer;
+    procedure SetGroupFolded(const AGroup: string; AFolded: Boolean);
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TFolderHotlistKindSetter; const AOnNotify: TProc;
@@ -42,15 +56,22 @@ type
       const AOnGetActiveUri: TFolderHotlistGetActiveUri;
       const AOnNavigate: TFolderHotlistNavigate;
       const AOnUnfocusCmd: TFolderHotlistUnfocusCmd);
+    destructor Destroy; override;
     procedure OpenList;
-    procedure RefreshList;
+    /// <summary>Shows the list again within the running edit session (after
+    /// the rename / group input), keeping the snapshot taken by OpenList.</summary>
+    procedure ReopenList;
+    /// <summary>ASelectGroup names a group whose header takes the cursor.</summary>
+    procedure RefreshList(const ASelectGroup: string = '');
     procedure BeginAdd;
     procedure BeginRename(AIndex: Integer);
+    procedure BeginGroup(AIndex: Integer);
     procedure NavigateToHotkey(ADigit: Integer);
     function HandleListInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function TryHandleHotkeyJump(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    /// <summary>AIdx is a list row; group headers never navigate.</summary>
     function ShouldNavigateOnAccept(AAccepted: Boolean; AIdx: Integer): Boolean;
     procedure DispatchListCommand(const AControlId: string);
     procedure DispatchAddCommand(const AControlId: string);
@@ -82,6 +103,71 @@ begin
   FOnGetActiveUri := AOnGetActiveUri;
   FOnNavigate := AOnNavigate;
   FOnUnfocusCmd := AOnUnfocusCmd;
+  FCollapsed := TStringList.Create;
+  FCollapsed.CaseSensitive := False;
+end;
+
+destructor TFolderHotlistDialogController.Destroy;
+begin
+  FCollapsed.Free;
+  inherited;
+end;
+
+procedure TFolderHotlistDialogController.BuildRows(out AItems: TArray<string>);
+var
+  I, N: Integer;
+  Prev: string;
+  Folded: Boolean;
+begin
+  FEntries := FolderHotlistGetEntries;
+  SetLength(AItems, Length(FEntries) * 2);
+  SetLength(FRowEntry, Length(FEntries) * 2);
+  SetLength(FRowGroup, Length(FEntries) * 2);
+  N := 0;
+  Prev := '';
+  for I := 0 to High(FEntries) do
+  begin
+    if (FEntries[I].Group <> '') and not SameText(FEntries[I].Group, Prev) then
+    begin
+      AItems[N] := FolderHotlistGroupLabel(FEntries[I].Group,
+        FCollapsed.IndexOf(FEntries[I].Group) >= 0);
+      FRowEntry[N] := -1;
+      FRowGroup[N] := FEntries[I].Group;
+      Inc(N);
+    end;
+    Prev := FEntries[I].Group;
+    Folded := (FEntries[I].Group <> '') and (FCollapsed.IndexOf(FEntries[I].Group) >= 0);
+    // An empty group is only its header.
+    if Folded or (FEntries[I].URI = '') then
+      Continue;
+    AItems[N] := FolderHotlistDisplayLabel(FEntries[I]);
+    FRowEntry[N] := I;
+    FRowGroup[N] := FEntries[I].Group;
+    Inc(N);
+  end;
+  SetLength(AItems, N);
+  SetLength(FRowEntry, N);
+  SetLength(FRowGroup, N);
+end;
+
+function TFolderHotlistDialogController.RowEntry(ARow: Integer): Integer;
+begin
+  if (ARow >= 0) and (ARow <= High(FRowEntry)) then
+    Result := FRowEntry[ARow]
+  else
+    Result := -1;
+end;
+
+procedure TFolderHotlistDialogController.SetGroupFolded(const AGroup: string;
+  AFolded: Boolean);
+var
+  I: Integer;
+begin
+  I := FCollapsed.IndexOf(AGroup);
+  if AFolded and (I < 0) then
+    FCollapsed.Add(AGroup)
+  else if not AFolded and (I >= 0) then
+    FCollapsed.Delete(I);
 end;
 
 procedure TFolderHotlistDialogController.SetKind(AKind: THostDialogKind);
@@ -97,33 +183,33 @@ begin
 end;
 
 procedure TFolderHotlistDialogController.OpenList;
-var
-  Entries: TArray<TFolderHotlistEntry>;
-  Items: TArray<string>;
-  I: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
+  FSnapshot := FolderHotlistGetEntries;
+  FInSession := True;
+  ReopenList;
+end;
+
+procedure TFolderHotlistDialogController.ReopenList;
+var
+  Items: TArray<string>;
+begin
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
-  Entries := FolderHotlistGetEntries;
-  FEntries := Entries;
-  SetLength(Items, Length(Entries));
-  for I := 0 to High(Entries) do
-    Items[I] := FolderHotlistDisplayLabel(Entries[I]);
+  BuildRows(Items);
 
   SetKind(hdkFolderHotlist);
   FDialog.Open(BuildFolderHotlistDialog(Items, 0), FOnCommand);
   Notify;
 end;
 
-procedure TFolderHotlistDialogController.RefreshList;
+procedure TFolderHotlistDialogController.RefreshList(const ASelectGroup: string);
 var
-  Entries: TArray<TFolderHotlistEntry>;
   Items: TArray<string>;
-  I, Sel: Integer;
-  SelUri: string;
+  I, Sel, E: Integer;
+  SelUri, SelGroup: string;
 begin
   if not (Assigned(FDialog) and FDialog.Visible) then
     Exit;
@@ -132,16 +218,23 @@ begin
   // land on whatever unrelated entry sits in that slot now.
   Sel := FDialog.GetListSelectedIndex('hotlist');
   SelUri := '';
-  if (Sel >= 0) and (Sel <= High(FEntries)) then
-    SelUri := FEntries[Sel].URI;
-  Entries := FolderHotlistGetEntries;
-  FEntries := Entries;
-  SetLength(Items, Length(Entries));
-  for I := 0 to High(Entries) do
-    Items[I] := FolderHotlistDisplayLabel(Entries[I]);
-  if SelUri <> '' then
-    for I := 0 to High(Entries) do
-      if SameVfsUri(Entries[I].URI, SelUri) then
+  SelGroup := '';
+  E := RowEntry(Sel);
+  if E >= 0 then
+    SelUri := FEntries[E].URI
+  else if (Sel >= 0) and (Sel <= High(FRowGroup)) then
+    SelGroup := FRowGroup[Sel];
+  BuildRows(Items);
+  if ASelectGroup <> '' then
+  begin
+    SelUri := '';
+    SelGroup := ASelectGroup;
+  end;
+  if (SelUri <> '') or (SelGroup <> '') then
+    for I := 0 to High(FRowEntry) do
+      if ((SelUri <> '') and (FRowEntry[I] >= 0) and
+          SameVfsUri(FEntries[FRowEntry[I]].URI, SelUri)) or
+         ((SelUri = '') and (FRowEntry[I] < 0) and SameText(FRowGroup[I], SelGroup)) then
       begin
         Sel := I;
         Break;
@@ -173,9 +266,23 @@ begin
   if (AIndex < 0) or (AIndex > High(FEntries)) then
     Exit;
   FRenameUri := FEntries[AIndex].URI;
+  FEditGroup := False;
   SetKind(hdkFolderHotlistRename);
   FDialog.Open(BuildInputDialog(T('ui.hotlist.renameTitle', 'Rename hotlist entry'),
     T('ui.hotlist.namePrompt', 'Name:'), FEntries[AIndex].Name), FOnCommand);
+  Notify;
+end;
+
+procedure TFolderHotlistDialogController.BeginGroup(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FEntries)) then
+    Exit;
+  FRenameUri := FEntries[AIndex].URI;
+  FEditGroup := True;
+  SetKind(hdkFolderHotlistRename);
+  FDialog.Open(BuildInputDialog(T('ui.hotlist.groupTitle', 'Hotlist entry group'),
+    T('ui.hotlist.groupPrompt', 'Group (empty - none):'), FEntries[AIndex].Group),
+    FOnCommand);
   Notify;
 end;
 
@@ -202,13 +309,41 @@ end;
 function TFolderHotlistDialogController.HandleListInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
-  HotIdx: Integer;
+  HotIdx, Row: Integer;
   HotKeyDigit: Integer;
+  Uri: string;
+  Moved: TArray<TFolderHotlistEntry>;
 begin
   Result := False;
+  // Left folds the selected group (its header or any of its entries),
+  // Right unfolds it. Only plain keys: Shift/Ctrl/Alt+arrows stay with the list.
+  if ((AKey = vkLeft) or (AKey = vkRight)) and
+     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift, ssAlt, ssCtrl]) then
+  begin
+    Row := FDialog.GetListSelectedIndex('hotlist');
+    if (Row >= 0) and (Row <= High(FRowGroup)) and (FRowGroup[Row] <> '') then
+    begin
+      SetGroupFolded(FRowGroup[Row], AKey = vkLeft);
+      // The cursor stays on the group header, as folding hides its entries.
+      RefreshList(FRowGroup[Row]);
+    end;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   if AKey = vkDelete then
   begin
-    HotIdx := FDialog.GetListSelectedIndex('hotlist');
+    Row := FDialog.GetListSelectedIndex('hotlist');
+    // Del on a group header removes the group when it is empty.
+    if (Row >= 0) and (Row <= High(FRowEntry)) and (FRowEntry[Row] < 0) and
+       FolderHotlistRemoveEmptyGroup(FRowGroup[Row]) then
+    begin
+      RefreshList;
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
+    end;
+    HotIdx := RowEntry(Row);
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
     begin
       FolderHotlistRemoveByUri(FEntries[HotIdx].URI);
@@ -220,22 +355,39 @@ begin
   end;
   if AKey = vkF2 then
   begin
-    HotIdx := FDialog.GetListSelectedIndex('hotlist');
+    HotIdx := RowEntry(FDialog.GetListSelectedIndex('hotlist'));
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
       BeginRename(HotIdx);
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
   end;
-  // Ctrl+Up / Ctrl+Down: move the selected entry one place; the cursor
-  // follows it (RefreshList tracks the entry by URI).
+  if AKey = vkF4 then
+  begin
+    HotIdx := RowEntry(FDialog.GetListSelectedIndex('hotlist'));
+    if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
+      BeginGroup(HotIdx);
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  // Ctrl+Up / Ctrl+Down: move the selected entry one place; at a group
+  // border it leaves or enters the group. The cursor follows the entry
+  // (RefreshList tracks it by URI); a folded group it joins is unfolded.
   if ((AKey = vkUp) or (AKey = vkDown)) and
      TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl], [ssShift, ssAlt]) then
   begin
-    HotIdx := FDialog.GetListSelectedIndex('hotlist');
+    HotIdx := RowEntry(FDialog.GetListSelectedIndex('hotlist'));
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) and
        FolderHotlistMoveByUri(FEntries[HotIdx].URI, Ord(AKey = vkDown) * 2 - 1) then
+    begin
+      Uri := FEntries[HotIdx].URI;
+      Moved := FolderHotlistGetEntries;
+      HotIdx := FolderHotlistFindByUri(Uri);
+      if (HotIdx >= 0) and (Moved[HotIdx].Group <> '') then
+        SetGroupFolded(Moved[HotIdx].Group, False);
       RefreshList;
+    end;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -248,7 +400,7 @@ begin
   if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl], [ssShift, ssAlt]) and
      (FolderHotlistKeyFromVKey(AKey) <> 0) then
   begin
-    HotIdx := FDialog.GetListSelectedIndex('hotlist');
+    HotIdx := RowEntry(FDialog.GetListSelectedIndex('hotlist'));
     if (HotIdx >= 0) and (HotIdx <= High(FEntries)) then
     begin
       HotKeyDigit := FolderHotlistKeyFromVKey(AKey);
@@ -289,24 +441,61 @@ end;
 
 function TFolderHotlistDialogController.ShouldNavigateOnAccept(
   AAccepted: Boolean; AIdx: Integer): Boolean;
+var
+  Idx: Integer;
 begin
-  Result := AAccepted and (AIdx >= 0) and (AIdx <= High(FEntries)) and
-    (FEntries[AIdx].URI <> '') and Assigned(FOnNavigate);
+  Idx := RowEntry(AIdx);
+  Result := AAccepted and (Idx >= 0) and
+    (FEntries[Idx].URI <> '') and Assigned(FOnNavigate);
 end;
 
 procedure TFolderHotlistDialogController.DispatchListCommand(
   const AControlId: string);
 var
   Idx: Integer;
-  Accepted: Boolean;
+  Accepted, Nav: Boolean;
 begin
   // Snapshot before Close.
   Idx := FDialog.GetListSelectedIndex('hotlist');
   Accepted := DialogCmdIsListAccept(AControlId, 'hotlist');
+  // Save keeps the edits and leaves the list open.
+  if DialogCmdIs(AControlId, 'save') then
+  begin
+    FolderHotlistSave;
+    FSnapshot := FolderHotlistGetEntries;
+    SetKind(hdkFolderHotlist);
+    if (Idx >= 0) and (Idx <= High(FRowEntry)) and (FRowEntry[Idx] < 0) then
+      RefreshList(FRowGroup[Idx])
+    else
+      RefreshList;
+    Notice(T('ui.toast.hotlistSaved', 'Folder hotlist saved'));
+    Exit;
+  end;
+  // A double-click on a group header folds / unfolds it instead of closing
+  // the list.
+  if DialogCmdIs(AControlId, 'hotlist') and (Idx >= 0) and
+     (Idx <= High(FRowEntry)) and (FRowEntry[Idx] < 0) then
+  begin
+    SetGroupFolded(FRowGroup[Idx], FCollapsed.IndexOf(FRowGroup[Idx]) < 0);
+    // The host cleared the dialog kind while dispatching this command.
+    SetKind(hdkFolderHotlist);
+    RefreshList(FRowGroup[Idx]);
+    Exit;
+  end;
+  Nav := ShouldNavigateOnAccept(Accepted, Idx);
+  Idx := RowEntry(Idx);
   FDialog.Close;
-  if ShouldNavigateOnAccept(Accepted, Idx) then
+  // Edits (delete, rename, group, order, hotkeys) apply as they are made;
+  // anything but a jump to an entry rolls them back.
+  if FInSession and not Accepted then
+    FolderHotlistSetEntries(FSnapshot);
+  FInSession := False;
+  SetLength(FSnapshot, 0);
+  if Nav then
     FOnNavigate(FEntries[Idx].URI);
   SetLength(FEntries, 0);
+  SetLength(FRowEntry, 0);
+  SetLength(FRowGroup, 0);
 end;
 
 procedure TFolderHotlistDialogController.DispatchAddCommand(
@@ -344,9 +533,12 @@ begin
   NameVal := FDialog.GetInputValue('name');
   FDialog.Close;
   if Accepted then
-    FolderHotlistRenameByUri(FRenameUri, NameVal);
+    if FEditGroup then
+      FolderHotlistSetGroupByUri(FRenameUri, NameVal)
+    else
+      FolderHotlistRenameByUri(FRenameUri, NameVal);
   // Return to the list dialog so Del/F2 can keep operating on it.
-  OpenList;
+  ReopenList;
 end;
 
 function TFolderHotlistDialogController.DispatchCommand(AKind: THostDialogKind;

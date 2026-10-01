@@ -42,6 +42,10 @@ function JobOverwriteModeFromIndex(AIdx: Integer): TJobOverwriteMode;
 function JobRetryLimitFromIndex(AIdx: Integer): Integer;
 function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
   AFallbackUri: string): string;
+/// <summary>The destination as the Copy / Move / Pack dialog shows it: a
+/// local path for a folder on disk, the URI itself for anything else (an
+/// archive, tmp:///), so that JobConfirmDestUri reads it back unchanged.</summary>
+function JobConfirmDestText(AKind: TPanelJobKind; const ADestDirURI: string): string;
 function JobConflictActionFromCommand(const AControlId: string): TJobConflictAction;
 function JobDeleteFailActionFromCommand(const AControlId: string;
   AToRecycleBin: Boolean): TJobDeleteFailAction;
@@ -164,6 +168,19 @@ begin
       DestPath := DestPath + '.zip';
   end;
   Result := PathToFileUri(ExcludeTrailingPathDelimiter(DestPath));
+end;
+
+function JobConfirmDestText(AKind: TPanelJobKind; const ADestDirURI: string): string;
+begin
+  // file:///C:/a.zip!/ maps to a path on disk only by dropping the archive
+  // marker, which would turn the archive into a folder.
+  if HasArchiveChain(ADestDirURI) then
+    Exit(ADestDirURI);
+  Result := FileUriToPath(ADestDirURI);
+  if Result = '' then
+    Exit(ADestDirURI);
+  if AKind <> pjkPack then
+    Result := IncludeTrailingPathDelimiter(Result);
 end;
 
 function JobConflictActionFromCommand(const AControlId: string): TJobConflictAction;

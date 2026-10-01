@@ -27,6 +27,7 @@ type
     [Test] procedure TestGridAutoReflowOnSizeMismatch;
     [Test] procedure TestGridModePromptNotSplitByOscTitle;
     [Test] procedure TestGetInputCursorAfterUnfollow;
+    [Test] procedure TestEraseCharsBlanksPredictionAtCursor;
   end;
 
 implementation
@@ -453,6 +454,28 @@ end;
 
 { TTestConsoleBuffer }
 
+procedure TestEraseCharsBlanksPredictionAtCursor;
+var
+  Buffer: TConsoleBuffer;
+  I: Integer;
+  Found: string;
+begin
+  // PSReadLine draws a dim prediction after the typed text and, once the
+  // input is gone, blanks it with ECH (CSI n X) at the cursor.
+  Buffer := TConsoleBuffer.Create;
+  try
+    Buffer.AppendOutputEx('PS> set-Location', 80, 25);
+    Buffer.AppendOutputEx(#27'[1;5H'#27'[12X', 80, 25);
+    Found := '';
+    for I := 0 to Buffer.LineCount - 1 do
+      if Pos('PS>', Buffer.GetLine(I)) = 1 then
+        Found := Buffer.GetLine(I);
+    Assert.AreEqual('PS>', TrimRight(Found), 'the prediction is blanked');
+  finally
+    Buffer.Free;
+  end;
+end;
+
 procedure TTestConsoleBuffer.TestEchoBackspace;
 begin
   TestConsoleBuffer.TestEchoBackspace;
@@ -541,6 +564,11 @@ end;
 procedure TTestConsoleBuffer.TestGetInputCursorAfterUnfollow;
 begin
   TestConsoleBuffer.TestGetInputCursorAfterUnfollow;
+end;
+
+procedure TTestConsoleBuffer.TestEraseCharsBlanksPredictionAtCursor;
+begin
+  TestConsoleBuffer.TestEraseCharsBlanksPredictionAtCursor;
 end;
 
 initialization

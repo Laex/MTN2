@@ -23,7 +23,12 @@ function FolderHistoryDisplayLabel(const AURI: string): string;
 /// Non-path labels keep a short head and the tail.</summary>
 function FitFolderHistoryLabel(const ALabel: string; AMaxLen: Integer): string;
 
+/// <summary>List row of an entry: fold marker and group columns blank, then
+/// name, path and hotkey.</summary>
 function FolderHotlistDisplayLabel(const AEntry: TFolderHotlistEntry): string;
+/// <summary>List row of a group header: "[-]" (open) or "[+]" (folded) and the
+/// group name.</summary>
+function FolderHotlistGroupLabel(const AGroup: string; AFolded: Boolean): string;
 
 implementation
 
@@ -140,14 +145,14 @@ const
   { Column widths for the "Directory hotlist" list - it has no native
     multi-column support (dckList is one string per row), so rows and the
     header (dialogs/folderhotlist.json) are hand-aligned to these same
-    widths via uPanelColumns.PadRight/PadLeft. Name + 1 + Path + 1 + Hotkey
-    is 1 short of the list's usable text width - its declared width (58)
-    minus 1 for TDialogHost's own scrollbar column (uDialogHost.pas
-    reserves R.Width - 1), i.e. 57 usable - so TDialogHost's own
-    right-padding (it pads every row out to that full width) leaves one
-    blank column between the Hotkey text and the scrollbar. }
+    widths via uPanelColumns.PadRight/PadLeft. The columns plus their
+    separators are 1 short of the list's usable text width (its declared
+    width minus 1 for TDialogHost's own scrollbar column), so the row
+    padding TDialogHost adds leaves one blank column before the scrollbar. }
+  cHotlistMarkW = 3;
+  cHotlistGroupW = 14;
   cHotlistNameW = 20;
-  cHotlistPathW = 28;
+  cHotlistPathW = 26;
   cHotlistHotkeyW = 6;
 
 function FolderHotlistDisplayLabel(const AEntry: TFolderHotlistEntry): string;
@@ -161,9 +166,20 @@ begin
     if Path = '' then
       Path := AEntry.URI;
   end;
-  Result := PadRight(AEntry.Name, cHotlistNameW) + ' ' +
+  Result := PadRight('', cHotlistMarkW) + ' ' +
+    PadRight('', cHotlistGroupW) + ' ' +
+    PadRight(AEntry.Name, cHotlistNameW) + ' ' +
     PadRight(Path, cHotlistPathW) + ' ' +
     PadLeft(FolderHotlistKeyLabel(AEntry.HotKey), cHotlistHotkeyW);
+end;
+
+function FolderHotlistGroupLabel(const AGroup: string; AFolded: Boolean): string;
+begin
+  if AFolded then
+    Result := '[+]'
+  else
+    Result := '[-]';
+  Result := Result + ' ' + AGroup;
 end;
 
 end.

@@ -21,6 +21,7 @@ uses
   TestDialogJson in 'TestDialogJson.pas',
   TestDialogRenderer in 'TestDialogRenderer.pas',
   TestDisplaySettings in 'TestDisplaySettings.pas',
+  TestFolderHotlistDialog in 'TestFolderHotlistDialog.pas',
   TestHistoryDialogs in 'TestHistoryDialogs.pas',
   TestIOErrorAskDialog in 'TestIOErrorAskDialog.pas',
   TestPanelFilterDialog in 'TestPanelFilterDialog.pas',

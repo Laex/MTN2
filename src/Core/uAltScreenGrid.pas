@@ -35,6 +35,8 @@ type
     procedure RestoreCursor;
     procedure EraseDisplay(AMode: Integer; AFg, ABg: TAlphaColor);
     procedure EraseLine(AMode: Integer; AFg, ABg: TAlphaColor);
+    /// <summary>ECH: blanks ACount cells from the cursor; the cursor stays.</summary>
+    procedure EraseChars(ACount: Integer; AFg, ABg: TAlphaColor);
     property Grid: TTerminalGrid read FGrid;
     property Cols: Integer read FCols;
     property Rows: Integer read FRows;
@@ -202,6 +204,14 @@ begin
   else // 0: cursor to end of line
     FillGridRect(FGrid, FCursorCol, FCursorRow, FCols - 1, FCursorRow, ' ', AFg, ABg);
   end;
+end;
+
+procedure TAltScreenGrid.EraseChars(ACount: Integer; AFg, ABg: TAlphaColor);
+begin
+  if ACount < 1 then
+    ACount := 1;
+  FillGridRect(FGrid, FCursorCol, FCursorRow, Min(FCursorCol + ACount - 1, FCols - 1),
+    FCursorRow, ' ', AFg, ABg);
 end;
 
 end.

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "User Menu Item",
   "width": 72,
-  "height": 16,
+  "height": 14,
   "children": [
     {
       "type": "label",
@@ -85,27 +85,9 @@
     {
       "type": "label",
       "id": "help1",
-      "text": "!.! file name   ! name w/o extension   !\\ folder   !: drive",
+      "text": "F1 - macros: !.!  !&  !#  !^  !?Question?default!",
       "col": 1,
       "row": 8,
-      "width": 68,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "help2",
-      "text": "!& selected names   !@! list file   !?Question?default! ask",
-      "col": 1,
-      "row": 9,
-      "width": 68,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "help3",
-      "text": "!# passive panel   !^ active panel   !! the ! character",
-      "col": 1,
-      "row": 10,
       "width": 68,
       "height": 1
     },
@@ -115,7 +97,7 @@
       "text": "OK",
       "default": true,
       "col": 18,
-      "row": 12,
+      "row": 10,
       "width": 14,
       "height": 1
     },
@@ -125,7 +107,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 12,
+      "row": 10,
       "width": 14,
       "height": 1
     }

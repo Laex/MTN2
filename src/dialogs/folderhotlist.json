@@ -2,16 +2,16 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Directory hotlist",
-  "width": 62,
+  "width": 79,
   "height": 20,
   "children": [
     {
       "type": "label",
       "id": "hotlistHeader",
-      "text": "Name                 Path                         Hotkey",
+      "text": "    Group          Name                 Path                       Hotkey",
       "col": 1,
       "row": 1,
-      "width": 58,
+      "width": 75,
       "height": 1
     },
     {
@@ -23,7 +23,7 @@
       ],
       "col": 1,
       "row": 2,
-      "width": 58,
+      "width": 75,
       "height": 11
     },
     {
@@ -32,16 +32,16 @@
       "text": "Ctrl+1..Ctrl+0  assign the hotkey (again - clear it)",
       "col": 1,
       "row": 13,
-      "width": 58,
+      "width": 75,
       "height": 1
     },
     {
       "type": "label",
       "id": "hint_keys",
-      "text": "F2 rename   Del delete   Ctrl+Up/Down move",
+      "text": "F2 rename  F4 group  Del delete  Ctrl+Up/Down move  Left [-]  Right [+]",
       "col": 1,
       "row": 14,
-      "width": 58,
+      "width": 75,
       "height": 1
     },
     {
@@ -49,9 +49,18 @@
       "id": "ok",
       "text": "Go",
       "default": true,
-      "col": 16,
+      "col": 18,
       "row": 16,
       "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "save",
+      "text": "&Save",
+      "col": 32,
+      "row": 16,
+      "width": 14,
       "height": 1
     },
     {
@@ -59,7 +68,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 34,
+      "col": 50,
       "row": 16,
       "width": 10,
       "height": 1

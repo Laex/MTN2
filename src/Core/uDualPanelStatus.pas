@@ -305,7 +305,7 @@ begin
   Result := True;
   case ACtx of
     fbcConsole:
-      ASegs := TArray<string>.Create(S('Console'), AInfo.Path, H('Esc', 'Stop', '='), H('Esc', 'Panels', '='));
+      ASegs := TArray<string>.Create(S('Console'), AInfo.Path, H('Ctrl+C', 'Stop', '='), H('Esc', 'Panels', '='));
     fbcDrive:
       ASegs := TArray<string>.Create(S('Drive'), S('^v select'), H('Enter', 'Go', '='), H('Esc', 'Cancel', '='));
     fbcFolderTree:
@@ -339,7 +339,7 @@ begin
       ASegs := TArray<string>.Create(S('Workspaces'), H('Enter', 'Go', '='), H('Ins', 'Save', '='), H('F2', 'Ren', '='),
         H('Del', 'Del', '='));
     fbcFolderHotlist:
-      ASegs := TArray<string>.Create(S('Hotlist'), H('Enter', 'Go', '='), H('F2', 'Ren', '='), H('Del', 'Del', '='));
+      ASegs := TArray<string>.Create(S('Hotlist'), H('Enter', 'Go', '='), H('F2', 'Ren', '='), H('F4', 'Grp', '='), H('Del', 'Del', '='));
     fbcFileHistory:
       ASegs := TArray<string>.Create(S('File history'), H('Enter', 'Open', '='),
         H('F3', 'View', '='), H('F4', 'Edit', '='), H('Ctrl+Enter', 'Go', '='),

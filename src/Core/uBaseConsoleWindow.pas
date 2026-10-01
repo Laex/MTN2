@@ -209,6 +209,8 @@ type
       const AProfileId: string = '');
     destructor Destroy; override;
     procedure Resize(AWidth, AHeight: Integer); override;
+    /// <summary>Ctrl+C for the running command; the shell itself keeps running.</summary>
+    procedure SendCtrlC;
     procedure Interrupt; virtual;
     /// <summary>Windows logoff/shutdown: stop PTY without close-request UI.</summary>
     procedure ShutdownForSessionEnd;
@@ -494,10 +496,15 @@ begin
     Evt(Self);
 end;
 
-procedure TBaseConsoleWindow.Interrupt;
+procedure TBaseConsoleWindow.SendCtrlC;
 begin
   if Assigned(FPty) and FPty.IsRunning then
     FPty.WriteInput(#3);
+end;
+
+procedure TBaseConsoleWindow.Interrupt;
+begin
+  SendCtrlC;
 end;
 
 procedure TBaseConsoleWindow.ShutdownForSessionEnd;
@@ -1078,7 +1085,7 @@ begin
       if HasSelection then
         CopySelection
       else if Running then
-        Interrupt;
+        SendCtrlC;
     kaShellCopy:
       CopySelection;
     kaShellPaste:

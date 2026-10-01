@@ -239,8 +239,9 @@
     "DIALOG_FOLDERHOTLIST": {
       "$title": "Directory hotlist",
       "hint_hotkey": "Ctrl+1..Ctrl+0  assign the hotkey (again - clear it)",
-      "hint_keys": "F2 rename   Del delete   Ctrl+Up/Down move",
+      "hint_keys": "F2 rename  F4 group  Del delete  Ctrl+Up/Down move  Left [-]  Right [+]",
       "ok": "Go",
+      "save": "&Save",
       "cancel": "Cancel"
     },
     "DIALOG_GOTOLINE": {
@@ -438,9 +439,7 @@
       "lbl_kind": "Type:",
       "lbl_caption": "Caption:",
       "lbl_command": "Command:",
-      "help1": "!.! file name   ! name w/o extension   !\\ folder   !: drive",
-      "help2": "!& selected names   !@! list file   !?Question?default! ask",
-      "help3": "!# passive panel   !^ active panel   !! the ! character",
+      "help1": "F1 - macros: !.!  !&  !#  !^  !?Question?default!",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -687,6 +686,9 @@
     "hotlist.addTitle": "Add to hotlist",
     "hotlist.namePrompt": "Name:",
     "hotlist.renameTitle": "Rename hotlist entry",
+    "toast.hotlistSaved": "Folder hotlist saved",
+    "hotlist.groupTitle": "Hotlist entry group",
+    "hotlist.groupPrompt": "Group (empty - none):",
 
     "tmpSaveList.title": "Save file list as",
     "tmpSaveList.prompt": "File name:",

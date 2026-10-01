@@ -230,6 +230,8 @@ type
     procedure DoDelete;
     procedure DoEnter;
     procedure ClearHistory;
+    /// <summary>Fills an empty Find field with the latest saved search.</summary>
+    procedure SeedFindFromHistory;
     procedure PushUndo;
     procedure ApplySnapshot(const AEntry: TEditorUndoEntry);
     procedure BreakInsertCoalesce;
@@ -1422,7 +1424,21 @@ end;
 
 function TEditorWindow.FindNeedleEmpty: Boolean;
 begin
+  SeedFindFromHistory;
   Result := Trim(FFind.Text) = '';
+end;
+
+procedure TEditorWindow.SeedFindFromHistory;
+var
+  Items: TArray<string>;
+begin
+  if Trim(FFind.Text) <> '' then
+    Exit;
+  // Nothing typed in this editor yet: start from the latest search, which
+  // includes the "Containing text" of a file search (Alt+F7).
+  Items := DialogHistoryItems(cEditFindHistory);
+  if Length(Items) > 0 then
+    InputLineSetText(FFind, Items[0]);
 end;
 
 function TEditorWindow.EditorIsViewOnly: Boolean;
@@ -2664,6 +2680,7 @@ begin
   FFindStatus := '';
   FMatchLine := -1;
   FMatchCol := -1;
+  SeedFindFromHistory;
   InputLineSelectAll(FFind);
   NotifyHost;
 end;

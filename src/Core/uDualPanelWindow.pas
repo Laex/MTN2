@@ -2018,14 +2018,7 @@ begin
   FDialogKind := hdkJobConfirm;
   if Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) then
   begin
-    DestPath := FileUriToPath(FJobs.State.DestDirURI);
-    if DestPath <> '' then
-    begin
-      if FJobs.Kind <> pjkPack then
-        DestPath := IncludeTrailingPathDelimiter(DestPath);
-    end
-    else
-      DestPath := FJobs.State.DestDirURI;
+    DestPath := JobConfirmDestText(FJobs.Kind, FJobs.State.DestDirURI);
     FDialog.Open(BuildCopyMoveDialog(ATitle, AMessage, DestPath), DialogCommand);
   end
   else if Assigned(FJobs) and (FJobs.Kind = pjkDelete) then

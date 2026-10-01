@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.IOUtils,
   uDialogHost, uDialogTypes, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
-  uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession;
+  uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory;
 
 type
   TFindKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -165,6 +165,9 @@ begin
     if FSearch.Mask = '' then
       FSearch.Mask := '*.*';
     FSearch.ContainingText := AFields.Containing;
+    // The editor's F7 starts from this text (a regex is not a plain needle).
+    if not AFields.UseRegex then
+      DialogHistoryAdd('editfind', Trim(AFields.Containing));
     FSearch.CaseSensitive := AFields.CaseSens;
     FSearch.WholeWords := AFields.WholeWords;
     FSearch.SearchFolders := AFields.SearchFolders;

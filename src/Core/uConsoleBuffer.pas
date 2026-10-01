@@ -105,6 +105,8 @@ type
     /// shifted cell and corrupt everything right of the cursor).</summary>
     procedure BackspaceEraseLocked(AIsLocalInput: Boolean);
     procedure EraseLineLocked(AElMode: Integer; AFg, ABg: TAlphaColor);
+    /// <summary>ECH target: blanks ACount cells at the cursor (cursor stays).</summary>
+    procedure EraseCharsLocked(ACount: Integer; AFg, ABg: TAlphaColor);
     /// <summary>CUP callback target. Grid-mode-only in effect (legacy has no
     /// row-cursor to address, so the else-branch is a no-op, matching
     /// today's outside-alt-screen behavior).</summary>
@@ -261,6 +263,19 @@ begin
   FPlainLines := TStringList.Create;
   FCellLines := TList<TConsoleRow>.Create;
   FAnsiParser := TANSIParser.Create;
+  FAnsiParser.OnEraseChars :=
+    procedure(ACount: Integer)
+    begin
+      if FAltActive then
+      begin
+        FAltGrid.EraseChars(ACount, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+        Exit;
+      end;
+      if FSuppressingBackspaceEcho then
+        Exit;
+      FPendingCR := False;
+      EraseCharsLocked(ACount, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+    end;
   FAltGrid := TAltScreenGrid.Create;
   FAltActive := False;
   FGridEnabled := False;
@@ -551,6 +566,35 @@ begin
     FActiveGrid.EraseLine(AElMode, AFg, ABg)
   else
     EraseFromCursorLocked(AElMode);
+end;
+
+procedure TConsoleBuffer.EraseCharsLocked(ACount: Integer; AFg, ABg: TAlphaColor);
+var
+  N, I: Integer;
+  Row: TConsoleRow;
+  LineStr: string;
+begin
+  if FGridEnabled then
+  begin
+    FActiveGrid.EraseChars(ACount, AFg, ABg);
+    Exit;
+  end;
+  EnsureCurrentLineLocked;
+  N := FPlainLines.Count - 1;
+  LineStr := FPlainLines[N];
+  if FCursorCol + ACount >= Length(LineStr) then
+  begin
+    // Blanking through the end of the line is the same as erasing to it.
+    EraseFromCursorLocked(0);
+    Exit;
+  end;
+  Row := FCellLines[N];
+  for I := FCursorCol + 1 to FCursorCol + ACount do
+    LineStr[I] := ' ';
+  FPlainLines[N] := LineStr;
+  for I := FCursorCol to Min(FCursorCol + ACount, Length(Row)) - 1 do
+    Row[I].CharValue := ' ';
+  FCellLines[N] := Row;
 end;
 
 procedure TConsoleBuffer.CursorPosLocked(ARow, ACol: Integer);

@@ -85,6 +85,16 @@ begin
     'copy onto workspace panel is allowed');
   Assert.IsTrue(SameVfsUri('tmp:///', 'tmp://foo'), 'tmp URIs compare as one root');
   Assert.IsTrue(not SameVfsUri('tmp:///', 'sys://folders'), 'tmp is not sys');
+  Assert.AreEqual('file:///C:/a.zip!/', JobConfirmDestText(pjkCopy, 'file:///C:/a.zip!/'),
+    'an archive destination is shown as its URI');
+  Assert.AreEqual('file:///C:/a.zip!/', JobConfirmDestUri(pjkCopy,
+    JobConfirmDestText(pjkCopy, 'file:///C:/a.zip!/'), ''),
+    'the shown archive URI is read back unchanged');
+  Assert.AreEqual('tmp:///', JobConfirmDestText(pjkCopy, 'tmp:///'));
+  Assert.AreEqual(IncludeTrailingPathDelimiter('C:\dst'),
+    JobConfirmDestText(pjkCopy, PathToFileUri('C:\dst')), 'a folder keeps the trailing slash');
+  Assert.AreEqual('C:\out\pack.zip', JobConfirmDestText(pjkPack, PathToFileUri('C:\out\pack.zip')),
+    'a pack target has no trailing slash');
   Assert.IsTrue(JobConfirmDestUri(pjkPack, 'C:\out\pack', 'file:///C:/dst/') =
     PathToFileUri('C:\out\pack.zip'), 'pack dest gains .zip');
   Assert.IsTrue(JobConfirmDestUri(pjkPack, 'C:\out\a.7z', 'file:///C:/dst/') =

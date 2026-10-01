@@ -33,6 +33,7 @@ type
     FCurrentAttrs: TCharCellAttributes;
     FDefaultFg: TAlphaColor;
     FDefaultBg: TAlphaColor;
+    FOnEraseChars: TProc<Integer>;
     procedure ResetState;
     procedure ProcessSgr;
     function ParseParams(const AParamStr: string): TArray<Integer>;
@@ -49,6 +50,8 @@ type
     class function Ansi256ToAlphaColor(AIndex: Byte): TAlphaColor;
     class function StandardAnsiColor(AIndex: Byte; ABright: Boolean = False): TAlphaColor;
 
+    /// <summary>ECH (CSI n X): blank n cells at the cursor without moving it.</summary>
+    property OnEraseChars: TProc<Integer> read FOnEraseChars write FOnEraseChars;
     property CurrentFg: TAlphaColor read FCurrentFg write FCurrentFg;
     property CurrentBg: TAlphaColor read FCurrentBg write FCurrentBg;
     property CurrentAttrs: TCharCellAttributes read FCurrentAttrs write FCurrentAttrs;
@@ -306,6 +309,12 @@ begin
                     ElMode := FCsiParams[0];
                   if Assigned(AOnEraseLine) then
                     AOnEraseLine(ElMode);
+                end;
+              'X':
+                begin
+                  if Length(FCsiParams) >= 1 then N := Max(FCsiParams[0], 1) else N := 1;
+                  if Assigned(FOnEraseChars) then
+                    FOnEraseChars(N);
                 end;
               'J':
                 begin
