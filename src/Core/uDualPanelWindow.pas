@@ -10325,6 +10325,15 @@ begin
     EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
     SetActiveTab(Panel, Tab);
     HitList := True;
+  end
+  else if HitPanelListEmptyArea(ListBounds, Panel.ColumnMode, Tab.ScrollOffset,
+    ALocalCol, ALocalRow, Length(Rows)) then
+  begin
+    // The empty space after the last item puts the cursor on that item. It
+    // is not a hit on a row, so a double-click there opens nothing.
+    Tab.CursorIndex := High(Rows);
+    EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+    SetActiveTab(Panel, Tab);
   end;
 
   SetActivePanel(Ws, Panel);

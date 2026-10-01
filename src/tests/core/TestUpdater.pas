@@ -69,6 +69,13 @@ begin
   Assert.IsTrue(IsNewerVersion('0.3.2', '0.3.1.999'), 'the next release is newer than any dev build');
   Assert.IsTrue(not IsNewerVersion('0.3.1', '0.3.1.5'), 'the release is not newer than its dev build');
   Assert.IsTrue(CompareVersions('0.3.1.0', '0.3.1') = 0, 'build 0 equals no build');
+  Assert.AreEqual('45%', DownloadProgressText(450, 1000));
+  Assert.AreEqual('100%', DownloadProgressText(2000, 1000), 'capped at 100');
+  Assert.AreEqual('1.5 MB', DownloadProgressText(1572864, 0), 'megabytes when the size is unknown');
+  Assert.IsTrue(IsDevVersion('0.3.13.9'), 'a build number marks a dev build');
+  Assert.IsFalse(IsDevVersion('0.3.13'), 'a release has no build number');
+  Assert.IsFalse(IsDevVersion('0.3.13.0'), 'build 0 is the release itself');
+  Assert.IsFalse(IsDevVersion('garbage'), 'unparsable is not a dev build');
   Assert.IsTrue(not TryParseVersionBuild('0.3.1.2.3', M, N, P, B), 'five numbers rejected');
   Assert.IsTrue(not TryParseVersion('0.3.1.5', M, N, P), 'three-number parser still takes exactly three');
 end;

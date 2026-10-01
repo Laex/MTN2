@@ -332,6 +332,14 @@ begin
   Assert.IsTrue(not HitPanelListIndex(ListB, pcmFull, 0, 5, 6, 0, Idx),
     'empty list misses');
 
+  // The empty space after the last item is the list area minus the items.
+  Assert.IsTrue(HitPanelListEmptyArea(ListB, pcmFull, 0, 5, 12, 3),
+    'below the last item of a short list');
+  Assert.IsFalse(HitPanelListEmptyArea(ListB, pcmFull, 0, 5, 5, 3), 'a row of the list is not empty');
+  Assert.IsFalse(HitPanelListEmptyArea(ListB, pcmFull, 0, 0, 12, 3), 'the frame is outside the list');
+  Assert.IsFalse(HitPanelListEmptyArea(ListB, pcmFull, 0, 5, 12, 0), 'an empty list has no last item');
+  Assert.IsFalse(HitPanelListEmptyArea(ListB, pcmFull, 0, 5, 14, 3), 'below the list area');
+
   // PanelListIndexCell (anchor of the Shift+F10 context menu) is the inverse
   // of HitPanelListIndex, in single-column and Brief layouts alike.
   for Mode in [pcmFull, pcmBrief] do

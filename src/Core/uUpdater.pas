@@ -75,6 +75,11 @@ function TryParseVersionBuild(const AText: string; out AMajor, AMinor, APatch,
 /// <summary>-1 / 0 / 1 like CompareStr. Unparsable sorts lowest.</summary>
 function CompareVersions(const A, B: string): Integer;
 function IsNewerVersion(const ACandidate, ACurrent: string): Boolean;
+/// <summary>Progress of a download for a notice: "45%", or megabytes
+/// ("12.3 MB") when the total size is unknown.</summary>
+function DownloadProgressText(ADone, ATotal: Int64): string;
+/// <summary>True for a development build: a version with a build number above 0.</summary>
+function IsDevVersion(const AVersion: string): Boolean;
 
 /// <summary>Major.Minor.Release of AExeFile's version resource, plus .Build
 /// when it is not 0 ('' if none).</summary>
@@ -141,7 +146,7 @@ function UpdateCheckDue(const ASettings: TUpdateSettings; ANow: TDateTime): Bool
 implementation
 
 uses
-  Winapi.Windows, System.IOUtils, System.JSON, System.Hash, System.Generics.Collections,
+  Winapi.Windows, System.Math, System.IOUtils, System.JSON, System.Hash, System.Generics.Collections,
   System.Zip, System.DateUtils, System.Net.HttpClient, System.Net.URLClient,
   uSession;
 
@@ -197,6 +202,21 @@ begin
   if A3 <> B3 then Exit(Ord(A3 > B3) * 2 - 1);
   if A4 <> B4 then Exit(Ord(A4 > B4) * 2 - 1);
   Result := 0;
+end;
+
+function DownloadProgressText(ADone, ATotal: Int64): string;
+begin
+  if ATotal > 0 then
+    Result := IntToStr(EnsureRange(ADone * 100 div ATotal, 0, 100)) + '%'
+  else
+    Result := FormatFloat('0.0', ADone / (1024 * 1024)) + ' MB';
+end;
+
+function IsDevVersion(const AVersion: string): Boolean;
+var
+  M, N, P, B: Integer;
+begin
+  Result := TryParseVersionBuild(AVersion, M, N, P, B) and (B > 0);
 end;
 
 function IsNewerVersion(const ACandidate, ACurrent: string): Boolean;

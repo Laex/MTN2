@@ -100,6 +100,10 @@ function ClassifyPanelClickZone(ALocalRow: Integer; const ABounds: TRectI;
 function HitPanelListIndex(const AListBounds: TRectI; AMode: TPanelColumnMode;
   AScrollOffset, ALocalCol, ALocalRow, ARowCount: Integer;
   out AIndex: Integer): Boolean;
+/// <summary>A click inside the list area that lands on no item (the empty
+/// space after the last one) in a list with ARowCount > 0 items.</summary>
+function HitPanelListEmptyArea(const AListBounds: TRectI; AMode: TPanelColumnMode;
+  AScrollOffset, ALocalCol, ALocalRow, ARowCount: Integer): Boolean;
 /// <summary>Inverse of HitPanelListIndex: the cell where list item AIndex
 /// starts, or False when it is scrolled out of view.</summary>
 function PanelListIndexCell(const AListBounds: TRectI; AMode: TPanelColumnMode;
@@ -180,6 +184,18 @@ begin
   Result := (AIndex >= 0) and (AIndex < ARowCount);
   if not Result then
     AIndex := -1;
+end;
+
+function HitPanelListEmptyArea(const AListBounds: TRectI; AMode: TPanelColumnMode;
+  AScrollOffset, ALocalCol, ALocalRow, ARowCount: Integer): Boolean;
+var
+  Idx: Integer;
+begin
+  Result := (ARowCount > 0) and
+    (ALocalRow >= AListBounds.Top) and (ALocalRow <= AListBounds.Bottom) and
+    (ALocalCol >= AListBounds.Left) and (ALocalCol <= AListBounds.Right) and
+    not HitPanelListIndex(AListBounds, AMode, AScrollOffset, ALocalCol, ALocalRow,
+      ARowCount, Idx);
 end;
 
 function PanelListIndexCell(const AListBounds: TRectI; AMode: TPanelColumnMode;

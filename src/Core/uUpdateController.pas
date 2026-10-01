@@ -55,6 +55,8 @@ type
     FRelease: TUpdateRelease;
     FApplyOnExit: Boolean;
     FWorker: TThread;
+    /// <summary>Cancelled by the user to stop the download in flight.</summary>
+    FDownloadLife: IUpdateLife;
     FRetryTimer: TTimer;
     /// <summary>A dialog that could not open (another one was up) and is
     /// retried by FRetryTimer.</summary>
@@ -70,6 +72,9 @@ type
       const AError: string);
     procedure ShowOffer;
     procedure StartDownload;
+    procedure NoticeDownload(const AProgress: string);
+    procedure AskCancelDownload;
+    procedure CancelDownload;
     procedure DownloadDone(AOk: Boolean; const AError: string);
     procedure ShowReady;
     procedure RestartNow;
@@ -100,10 +105,12 @@ uses
 const
   /// <summary>The "checking for updates" toast stays up longer than a
   /// "copied" one: it has a second line to read.</summary>
+  cDownloadNoticeMs = 3000;
   cCheckNoticeMs = 6000;
   /// <summary>TNoticeRequest.Tag of that toast: CheckDone takes it down as
   /// soon as GitHub has answered.</summary>
   cCheckNoticeTag = 'update.check';
+  cDownloadNoticeTag = 'update.download';
 
 type
   TUpdateLife = class(TInterfacedObject, IUpdateLife)
@@ -269,7 +276,7 @@ end;
 
 procedure TUpdateController.AnnounceUpdate;
 var
-  Changelog: string;
+  Changelog, Installed: string;
   Updated: Boolean;
 begin
   if (FCurrent = '') or (FSettings.LastRunVersion = FCurrent) then
@@ -281,9 +288,14 @@ begin
   if not Updated then
     Exit;
   Changelog := TPath.Combine(AppDir, 'CHANGELOG.md');
+  if IsDevVersion(FCurrent) then
+    Installed := T('ui.update.installedDev',
+      'MTN2 has been updated to development build %s.', [FCurrent])
+  else
+    Installed := T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]);
   if Assigned(FHost.OpenFile) and TFile.Exists(Changelog) then
     Show(BuildUpdateMessageDialog(
-      T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]), '',
+      Installed, '',
       T('ui.update.openChangelog', 'Open changelog'), True,
       T('ui.update.close', 'Close')),
       procedure(ACmd, AValues: string)
@@ -292,9 +304,7 @@ begin
           FHost.OpenFile(Changelog);
       end)
   else
-    Show(BuildUpdateMessageDialog(
-      T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]), '',
-      '', False), nil);
+    Show(BuildUpdateMessageDialog(Installed, '', '', False), nil);
 end;
 
 procedure TUpdateController.StartupCheck;
@@ -360,8 +370,16 @@ var
   Interactive, Dev: Boolean;
 begin
   case FState of
-    usChecking, usDownloading:
+    usChecking:
       Exit;
+    usDownloading:
+      begin
+        // The Updates dialog's "Check now" while a download runs offers to
+        // stop it; a background check does not bother the user.
+        if AInteractive then
+          AskCancelDownload;
+        Exit;
+      end;
     usReady:
       begin
         ShowReady;
@@ -440,7 +458,7 @@ end;
 
 procedure TUpdateController.StartDownload;
 var
-  Life: IUpdateLife;
+  Life, DownLife: IUpdateLife;
   Rel: TUpdateRelease;
 begin
   if FState <> usIdle then
@@ -453,20 +471,54 @@ begin
   end;
   FState := usDownloading;
   Life := FLife;
+  DownLife := TUpdateLife.Create;
+  FDownloadLife := DownLife;
   Rel := FRelease;
+  NoticeDownload('0%');
   if not RunWorker(
     procedure
     var
       Zip, Err: string;
       Ok: Boolean;
+      LastTick: UInt64;
     begin
       Zip := DownloadFileName(Rel);
+      LastTick := GetTickCount64;
       Ok := DownloadAsset(Rel, Zip,
         function(ADone, ATotal: Int64): Boolean
+        var
+          Text: string;
         begin
-          Result := not Life.Cancelled;
-        end, Err) and ExtractUpdate(Zip, StagingDir, Err);
+          Result := not Life.Cancelled and not DownLife.Cancelled;
+          // Once a second: the toast shows the progress.
+          if Result and (GetTickCount64 - LastTick >= 1000) then
+          begin
+            LastTick := GetTickCount64;
+            Text := DownloadProgressText(ADone, ATotal);
+            TThread.Queue(nil,
+              procedure
+              begin
+                if Life.Alive and (FState = usDownloading) then
+                  NoticeDownload(Text);
+              end);
+          end;
+        end, Err);
+      if Ok and not DownLife.Cancelled then
+      begin
+        TThread.Queue(nil,
+          procedure
+          begin
+            if Life.Alive then
+              NoticeDownload(T('ui.update.unpacking', 'unpacking...'));
+          end);
+        Ok := ExtractUpdate(Zip, StagingDir, Err);
+      end;
       System.SysUtils.DeleteFile(Zip);
+      if DownLife.Cancelled then
+      begin
+        Ok := False;
+        Err := 'cancelled';
+      end;
       TThread.Queue(nil,
         procedure
         begin
@@ -477,8 +529,51 @@ begin
     FState := usIdle;
 end;
 
+procedure TUpdateController.NoticeDownload(const AProgress: string);
+var
+  Req: TNoticeRequest;
+begin
+  // Always shown: a download that cannot be seen cannot be stopped either.
+  Req := TNoticeRequest.Make(T('ui.update.downloading', 'Downloading the update: %s'),
+    AProgress);
+  Req.Hint := T('ui.update.downloadHint',
+    'Cancel: F9 > ' + #$2261 + ' > Check for updates');
+  Req.Always := True;
+  Req.DurationMs := cDownloadNoticeMs;
+  Req.Tag := cDownloadNoticeTag;
+  NoticeRequest(Req);
+end;
+
+procedure TUpdateController.AskCancelDownload;
+begin
+  Show(BuildUpdateMessageDialog(
+    T('ui.update.downloadingAsk', 'The update is being downloaded.'),
+    T('ui.update.cancelAsk', 'Cancel the download?'),
+    T('ui.update.cancelDownload', 'Cancel download'), True,
+    T('ui.update.keepDownloading', 'Keep downloading')),
+    procedure(ACmd, AValues: string)
+    begin
+      if SameText(ACmd, cDlgCmdOk) then
+        CancelDownload;
+    end);
+end;
+
+procedure TUpdateController.CancelDownload;
+begin
+  if (FState = usDownloading) and Assigned(FDownloadLife) then
+    FDownloadLife.Kill;
+end;
+
 procedure TUpdateController.DownloadDone(AOk: Boolean; const AError: string);
 begin
+  NoticeDismiss(cDownloadNoticeTag);
+  FDownloadLife := nil;
+  if not AOk and SameText(AError, 'cancelled') then
+  begin
+    FState := usIdle;
+    Notice(T('ui.update.cancelled', 'Update download cancelled.'));
+    Exit;
+  end;
   if not AOk then
   begin
     FState := usIdle;
