@@ -133,6 +133,8 @@ type
     FOnShellCwdSync: TShellCwdSyncEvent;
     FOnSaveConsoleOutput: TSaveConsoleOutputEvent;
     FOnClearConsoleBuffer: TNotifyEvent;
+    FOnExportSettings: TSettingsFileEvent;
+    FOnImportSettings: TSettingsFileEvent;
     FOnToggleConsole: TQuitRequestEvent;
     FOnOpenTerminal: TOpenTerminalEvent;
     FOnSetConsoleProfile: TSetConsoleProfileEvent;
@@ -670,6 +672,10 @@ type
     procedure OpenConsoleOptionsDialog;
     procedure BeginSaveConsoleOutput;
     procedure ClearConsoleBuffer;
+    procedure BeginExportSettings;
+    procedure BeginImportSettings;
+    function HandleSettingsFileCommand(AKind: THostDialogKind;
+      const AControlId: string; const AFields: TDialogCommandFields): Boolean;
     function HandleConsoleSaveCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
@@ -977,6 +983,12 @@ type
     /// <summary>Commands > Clear console buffer.</summary>
     property OnClearConsoleBuffer: TNotifyEvent
       read FOnClearConsoleBuffer write FOnClearConsoleBuffer;
+    /// <summary>Options > Export / Import settings: the form saves its session
+    /// first (export) and keeps it from overwriting an import at exit.</summary>
+    property OnExportSettings: TSettingsFileEvent
+      read FOnExportSettings write FOnExportSettings;
+    property OnImportSettings: TSettingsFileEvent
+      read FOnImportSettings write FOnImportSettings;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
     property OnOpenTerminal: TOpenTerminalEvent read FOnOpenTerminal write FOnOpenTerminal;
     property OnSetConsoleProfile: TSetConsoleProfileEvent
@@ -1575,6 +1587,8 @@ begin
   FKeymapHost.OpenExternalToolsDialog := OpenExternalToolsDialog;
   FKeymapHost.OpenConsoleOptionsDialog := OpenConsoleOptionsDialog;
   FKeymapHost.BeginSaveConsoleOutput := BeginSaveConsoleOutput;
+  FKeymapHost.BeginExportSettings := BeginExportSettings;
+  FKeymapHost.BeginImportSettings := BeginImportSettings;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
@@ -4885,6 +4899,8 @@ begin
       Result := HandleDescribeCommand(AControlId, AFields);
     hdkConsoleSave:
       Result := HandleConsoleSaveCommand(AControlId, AFields);
+    hdkSettingsExport, hdkSettingsImport:
+      Result := HandleSettingsFileCommand(AKind, AControlId, AFields);
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
@@ -7274,6 +7290,69 @@ begin
     Exit;
   end;
   FDialog.Close;
+end;
+
+procedure TDualPanelWindow.BeginExportSettings;
+begin
+  if not Assigned(FOnExportSettings) or not CanStartOperation then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkSettingsExport;
+  FDialog.Open(BuildInputDialog(T('ui.settings.exportTitle', 'Export settings'),
+    T('ui.settings.exportPrompt', 'Write the settings to the file:'),
+    TPath.Combine(TPath.GetDocumentsPath, 'mtn2-settings.zip')), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.BeginImportSettings;
+begin
+  if not Assigned(FOnImportSettings) or not CanStartOperation then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkSettingsImport;
+  FDialog.Open(BuildInputDialog(T('ui.settings.importTitle', 'Import settings'),
+    T('ui.settings.importPrompt', 'Read the settings from the file:'),
+    TPath.Combine(TPath.GetDocumentsPath, 'mtn2-settings.zip')), DialogCommand);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.HandleSettingsFileCommand(AKind: THostDialogKind;
+  const AControlId: string; const AFields: TDialogCommandFields): Boolean;
+var
+  Path, Err: string;
+  Done: Boolean;
+begin
+  Result := True;
+  Path := Trim(AFields.Name);
+  if not (DialogCmdIsAccept(AControlId) and (Path <> '')) then
+  begin
+    FDialog.Close;
+    Exit;
+  end;
+  FDialog.Close;
+  if AKind = hdkSettingsExport then
+  begin
+    if not Assigned(FOnExportSettings) then
+      Exit;
+    Done := FOnExportSettings(Path, Err);
+    if Done then
+      FToast.Show(T('ui.toast.settingsExported', 'Settings written: %s'), Path)
+    else
+      FToast.Show(T('ui.toast.settingsExportFailed', 'Could not export the settings') +
+        ': ' + Err, '', tkWarning);
+  end
+  else
+  begin
+    if not Assigned(FOnImportSettings) then
+      Exit;
+    Done := FOnImportSettings(Path, Err);
+    if Done then
+      FToast.Show(T('ui.toast.settingsImported',
+        'Settings imported. Restart MTN2 to apply them.'))
+    else
+      FToast.Show(T('ui.toast.settingsImportFailed', 'Could not import the settings') +
+        ': ' + Err, '', tkWarning);
+  end;
 end;
 
 procedure TDualPanelWindow.ClearConsoleBuffer;

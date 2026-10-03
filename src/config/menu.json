@@ -147,7 +147,10 @@
         { "caption": "Zoom Out", "hotChar": "O", "shortcut": "Ctrl+Wheel", "action": "tmaOptZoomOut" },
         { "caption": "Reset Zoom", "hotChar": "R", "shortcut": "Ctrl+0", "action": "tmaOptResetZoom" },
         { "isSeparator": true },
-        { "caption": "Restore hidden dialogs", "hotChar": "H", "shortcut": "", "action": "tmaOptRestoreHiddenDialogs" }
+        { "caption": "Restore hidden dialogs", "hotChar": "H", "shortcut": "", "action": "tmaOptRestoreHiddenDialogs" },
+        { "isSeparator": true },
+        { "caption": "Export settings...", "hotChar": "X", "shortcut": "", "action": "tmaOptExportSettings" },
+        { "caption": "Import settings...", "hotChar": "P", "shortcut": "", "action": "tmaOptImportSettings" }
       ]
     },
     {

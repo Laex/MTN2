@@ -154,6 +154,7 @@ type
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkChecksumOptions, hdkChecksumResult,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
+    hdkSettingsExport, hdkSettingsImport,
     // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
     // command goes back to the opener's callback.
     hdkHost);
@@ -209,6 +210,9 @@ type
   /// <summary>Writes the background console's scrollback to APath; AError says
   /// why not (or that there is no console yet).</summary>
   TSaveConsoleOutputEvent = function(const APath: string;
+    out AError: string): Boolean of object;
+  /// <summary>Writes (export) or reads (import) the settings zip at APath.</summary>
+  TSettingsFileEvent = function(const APath: string;
     out AError: string): Boolean of object;
   TOpenTerminalEvent = procedure(const AProfileId, ACwd: string) of object;
   /// <summary>Background console dialog: TMainForm switches the persistent

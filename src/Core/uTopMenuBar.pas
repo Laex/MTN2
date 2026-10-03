@@ -121,6 +121,8 @@ type
     tmaOptDisplay,
     tmaOptExternalTools,
     tmaOptConsoleOptions,
+    tmaOptExportSettings,
+    tmaOptImportSettings,
     tmaOptMarkdownColors,
     tmaOptZoomIn,
     tmaOptZoomOut,

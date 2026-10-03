@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uConsoleSettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
+  uDisplaySettings, uConsoleSettings, uSettingsTransfer, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
 
 type
@@ -96,6 +96,8 @@ type
     FContextHoldShown: Boolean;
     FPrevWndProc: Pointer;
     FSystemShutdown: Boolean;
+    /// <summary>Settings were imported: PersistSession keeps the imported files.</summary>
+    FSettingsImported: Boolean;
     procedure PrepareForSystemShutdown;
     procedure ReleaseTaskbarButton;
     procedure BlinkTick(Sender: TObject);
@@ -213,6 +215,8 @@ type
     procedure DualPanelShellCwdSync(const APath: string);
     function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
     procedure DualPanelClearConsoleBuffer(Sender: TObject);
+    function DualPanelExportSettings(const APath: string; out AError: string): Boolean;
+    function DualPanelImportSettings(const APath: string; out AError: string): Boolean;
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
@@ -1299,6 +1303,8 @@ begin
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
+  FDualPanel.OnExportSettings := DualPanelExportSettings;
+  FDualPanel.OnImportSettings := DualPanelImportSettings;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
   FDualPanel.OnLaunchConsoleFile := DualPanelLaunchConsoleFile;
@@ -1736,7 +1742,7 @@ procedure TMainForm.PersistSession;
 var
   Sess: TMtnSession;
 begin
-  if not Assigned(FDualPanel) then
+  if not Assigned(FDualPanel) or FSettingsImported then
     Exit;
   CaptureNormalBounds;
   Sess.Version := cSessionVersion;
@@ -2158,6 +2164,28 @@ begin
     Exit(False);
   end;
   Result := FConsole.SaveOutputToFile(APath, AError);
+end;
+
+function TMainForm.DualPanelExportSettings(const APath: string;
+  out AError: string): Boolean;
+var
+  Count: Integer;
+begin
+  // The session file is what the settings dialogs changed since start.
+  PersistSession;
+  Result := ExportSettings(APath, Count, AError);
+end;
+
+function TMainForm.DualPanelImportSettings(const APath: string;
+  out AError: string): Boolean;
+var
+  Count: Integer;
+begin
+  Result := ImportSettings(APath, Count, AError);
+  // The imported session.json must not be overwritten by the running state
+  // when the program closes: the new settings take effect at the next start.
+  if Result then
+    FSettingsImported := True;
 end;
 
 procedure TMainForm.DualPanelClearConsoleBuffer(Sender: TObject);
