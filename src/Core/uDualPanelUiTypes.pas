@@ -27,11 +27,12 @@ type
   /// <summary>Per-file conflict answer when OverwriteMode=jomAsk.</summary>
   TJobConflictAction = (jcaOverwrite, jcaSkip, jcaRename, jcaAppend, jcaCancel);
   /// <summary>Answer when a delete item fails (Recycle Bin / permanent).</summary>
-  TJobDeleteFailAction = (jdaPermanent, jdaRetry, jdaSkip, jdaSkipAll, jdaCancel);
+  TJobDeleteFailAction = (jdaPermanent, jdaRetry, jdaSkip, jdaSkipAll, jdaCancel,
+    jdaElevate);
   /// <summary>Answer when a copy/move transfer fails with an I/O error (not a
   /// name conflict - those go through TJobConflictAction) after the job's
   /// automatic retry budget (RetryLimit/RetryLeft) is exhausted.</summary>
-  TJobIOErrorAction = (jioRetry, jioSkip, jioSkipAll, jioCancel);
+  TJobIOErrorAction = (jioRetry, jioSkip, jioSkipAll, jioCancel, jioElevate);
 
   TPanelJobState = record
     Phase: TPanelJobPhase;
@@ -44,6 +45,9 @@ type
     DeleteToRecycleBin: Boolean;
     /// <summary>Skip remaining delete errors without prompting.</summary>
     SkipAllDeleteErrors: Boolean;
+    /// <summary>The delete / I/O error prompt offers to repeat the rest of the
+    /// job with administrator rights (access denied on a local path).</summary>
+    AskOfferElevate: Boolean;
     /// <summary>Skip remaining copy/move I/O errors without prompting, for
     /// the rest of this job only (reset on the next BeginJob).</summary>
     SkipAllIOErrors: Boolean;

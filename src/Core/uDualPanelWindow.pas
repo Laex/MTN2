@@ -2108,7 +2108,7 @@ begin
   FJobAskDeferred := False;
   FDialogKind := hdkDeleteError;
   FDialog.Open(BuildDeleteErrorDialog(AHeadline, APath, AQuestion, AErrorLine,
-    AOfferPermanent), DialogCommand);
+    AOfferPermanent, FJobs.State.AskOfferElevate), DialogCommand);
 end;
 
 procedure TDualPanelWindow.HostOpenIOErrorAsk(const AHeadline, APath,
@@ -2124,7 +2124,8 @@ begin
   end;
   FJobAskDeferred := False;
   FDialogKind := hdkIOError;
-  FDialog.Open(BuildIOErrorDialog(AHeadline, APath, AErrorLine), DialogCommand);
+  FDialog.Open(BuildIOErrorDialog(AHeadline, APath, AErrorLine,
+    FJobs.State.AskOfferElevate), DialogCommand);
 end;
 
 procedure TDualPanelWindow.HostJobFinished(ASuccess: Boolean);

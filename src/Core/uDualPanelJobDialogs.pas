@@ -207,6 +207,8 @@ begin
     else
       Result := jdaRetry;
   end
+  else if DialogCmdIs(AControlId, cDlgCmdElevate) then
+    Result := jdaElevate
   else if DialogCmdIs(AControlId, cDlgCmdSkip) then
     Result := jdaSkip
   else if DialogCmdIs(AControlId, cDlgCmdSkipAll) then
@@ -219,6 +221,8 @@ function JobIOErrorActionFromCommand(const AControlId: string): TJobIOErrorActio
 begin
   if DialogCmdIs(AControlId, cDlgCmdRetry) or DialogCmdIsOk(AControlId) then
     Result := jioRetry
+  else if DialogCmdIs(AControlId, cDlgCmdElevate) then
+    Result := jioElevate
   else if DialogCmdIs(AControlId, cDlgCmdSkip) then
     Result := jioSkip
   else if DialogCmdIs(AControlId, cDlgCmdSkipAll) then

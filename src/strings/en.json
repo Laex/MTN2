@@ -675,6 +675,7 @@
     "deleteError.delete": "Delete",
     "deleteError.retry": "Retry",
 
+    "job.elevate": "&Elevate",
     "job.titleCopy": "Copy",
     "job.titleMove": "Move",
     "job.titlePack": "Pack",

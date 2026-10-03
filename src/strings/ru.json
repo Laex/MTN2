@@ -774,6 +774,7 @@
     "deleteError.delete": "Удалить",
     "deleteError.retry": "Повторить",
 
+    "job.elevate": "&Админ",
     "job.titleCopy": "Копирование",
     "job.titleMove": "Перемещение",
     "job.titlePack": "Упаковка",
