@@ -768,6 +768,7 @@ type
     function WaitExists(const AURI: string; out AExists, AIsDir: Boolean): Boolean;
     function WaitList(const AURI: string; out AItems: TArray<TVfsEntry>): Boolean;
     function WaitBytes(const AURI: string; out AData: TBytes): Boolean;
+    function WaitCopyFile(const ASrcURI, ADestPath: string): Boolean;
     function ExtractNode(const ASrcURI, ADestPath: string): Boolean;
   public
     constructor Create(const ABackend: IVirtualFileSystem;
@@ -895,6 +896,36 @@ begin
   end;
 end;
 
+function TPluginExtractOp.WaitCopyFile(const ASrcURI, ADestPath: string): Boolean;
+var
+  Ev: TEvent;
+  Ok: Boolean;
+  WaitErr: TVfsError;
+begin
+  Result := False;
+  Ev := TEvent.Create(nil, True, False, '');
+  try
+    FBackend.CopyAsync(ASrcURI, PathToFileUri(ADestPath), FCancel, nil,
+      procedure(const ASuccess: Boolean; const AError: TVfsError)
+      begin
+        Ok := ASuccess;
+        WaitErr := AError;
+        Ev.SetEvent;
+      end, FOverwrite, False);
+    // A large unpack takes as long as it takes; only cancel ends the wait.
+    while Ev.WaitFor(200) <> wrSignaled do
+      if JobCancelRequested(FCancel) then
+      begin
+        FErr := TVfsError.Make(vecCancelled, 'Cancelled', ASrcURI);
+        Exit;
+      end;
+    Result := Ok;
+    FErr := WaitErr;
+  finally
+    Ev.Free;
+  end;
+end;
+
 function TPluginExtractOp.ExtractNode(const ASrcURI, ADestPath: string): Boolean;
 var
   Exists, IsDir: Boolean;
@@ -947,6 +978,14 @@ begin
     FErr := TVfsError.Make(vecAlreadyExists, 'Already exists', FToURI);
     Exit;
   end;
+  // Let the plugin write the file itself first: its buffer caps what
+  // ReadBytes can return. A plugin without file extraction falls back to bytes.
+  if WaitCopyFile(ASrcURI, ADestPath) then
+    Exit(True);
+  if FErr.Code in [vecOk, vecNotSupported] then
+    FErr := TVfsError.Ok
+  else
+    Exit;
   if not WaitBytes(ASrcURI, Data) then
     Exit;
   try

@@ -132,6 +132,22 @@ var
 begin
   FromURI := UTF8ToString(AFromURI);
   ToURI := UTF8ToString(AToURI);
+  // Unpack an entry straight to a local file: no plugin-buffer size limit.
+  if ParseSevenZipUri(FromURI, ArchivePath, Inner) then
+  begin
+    FromPath := FileUriToPath(ToURI);
+    if (FromPath = '') or ParseSevenZipUri(ToURI, Dummy, Dummy) then
+      Exit(Int64(verNotSupported));
+    if (AOverwrite = 0) and TFile.Exists(FromPath) then
+      Exit(Int64(verAlreadyExists));
+    if SevenZipExtractToFile(ArchivePath, Inner, FromPath, Err) then
+      Exit(Int64(verOk));
+    if Err = 'Not found' then
+      Exit(Int64(verNotFound));
+    if Err = 'Encrypted' then
+      Exit(Int64(verAccessDenied));
+    Exit(Int64(verIOError));
+  end;
   if not ParseSevenZipUri(ToURI, ArchivePath, Inner) then
     Exit(Int64(verNotSupported));
   if ParseSevenZipUri(FromURI, Dummy, Dummy) then
