@@ -52,16 +52,16 @@
       "items": [
         "14 pt"
       ],
-      "col": 8,
+      "col": 18,
       "row": 11,
-      "width": 12,
+      "width": 10,
       "height": 1
     },
     {
       "type": "label",
       "text": "Zoom",
       "id": "lbl_zoom",
-      "col": 23,
+      "col": 29,
       "row": 11,
       "width": 8,
       "height": 1
@@ -73,9 +73,9 @@
       "items": [
         "100%"
       ],
-      "col": 32,
+      "col": 37,
       "row": 11,
-      "width": 9,
+      "width": 8,
       "height": 1
     },
     {
