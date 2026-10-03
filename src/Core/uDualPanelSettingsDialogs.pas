@@ -219,7 +219,7 @@ begin
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
     Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
     Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
-    Ord(Cur.MarkedRowStyle));
+    Ord(Cur.MarkedRowStyle), Cur.SnapFontSize, ClampTextContrast(Cur.TextContrast));
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
@@ -370,6 +370,8 @@ begin
     Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
     Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
     Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
+    Disp.SnapFontSize := FDialog.GetCheckbox('snap_font_size');
+    Disp.TextContrast := ClampTextContrast(FDialog.GetListSelectedIndex('text_contrast'));
     Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then

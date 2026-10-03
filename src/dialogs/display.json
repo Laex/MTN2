@@ -2,8 +2,8 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Font / Display",
-  "width": 54,
-  "height": 31,
+  "width": 96,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -11,7 +11,7 @@
       "id": "lbl_font",
       "col": 1,
       "row": 0,
-      "width": 50,
+      "width": 44,
       "height": 1
     },
     {
@@ -23,16 +23,25 @@
       ],
       "col": 1,
       "row": 1,
-      "width": 50,
-      "height": 7
+      "width": 44,
+      "height": 8
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "font_note",
+      "col": 1,
+      "row": 9,
+      "width": 44,
+      "height": 1
     },
     {
       "type": "label",
       "text": "Size",
       "id": "lbl_size",
       "col": 1,
-      "row": 9,
-      "width": 8,
+      "row": 10,
+      "width": 6,
       "height": 1
     },
     {
@@ -42,8 +51,8 @@
       "items": [
         "14 pt"
       ],
-      "col": 18,
-      "row": 9,
+      "col": 8,
+      "row": 10,
       "width": 12,
       "height": 1
     },
@@ -51,8 +60,8 @@
       "type": "label",
       "text": "Zoom",
       "id": "lbl_zoom",
-      "col": 33,
-      "row": 9,
+      "col": 23,
+      "row": 10,
       "width": 8,
       "height": 1
     },
@@ -63,8 +72,8 @@
       "items": [
         "100%"
       ],
-      "col": 42,
-      "row": 9,
+      "col": 32,
+      "row": 10,
       "width": 9,
       "height": 1
     },
@@ -74,24 +83,42 @@
       "text": "&Line spacing (as in a terminal)",
       "checked": false,
       "col": 1,
-      "row": 10,
-      "width": 50,
+      "row": 11,
+      "width": 44,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "snap_font_size",
+      "text": "Snap font size to &device pixels",
+      "checked": false,
+      "col": 1,
+      "row": 12,
+      "width": 44,
       "height": 1
     },
     {
       "type": "label",
-      "text": "",
-      "id": "font_note",
+      "text": "Text contrast",
+      "id": "lbl_text_contrast",
       "col": 1,
-      "row": 8,
-      "width": 50,
+      "row": 13,
+      "width": 16,
       "height": 1
     },
     {
-      "type": "separator",
-      "col": 0,
-      "row": 11,
-      "width": 52,
+      "type": "dropdown",
+      "id": "text_contrast",
+      "selected": 0,
+      "items": [
+        "Off",
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "col": 18,
+      "row": 13,
+      "width": 14,
       "height": 1
     },
     {
@@ -99,8 +126,8 @@
       "id": "blink",
       "text": "&Blink cursor",
       "checked": true,
-      "col": 1,
-      "row": 12,
+      "col": 47,
+      "row": 0,
       "width": 22,
       "height": 1
     },
@@ -108,9 +135,9 @@
       "type": "label",
       "text": "Interval",
       "id": "lbl_interval",
-      "col": 33,
-      "row": 12,
-      "width": 8,
+      "col": 71,
+      "row": 0,
+      "width": 9,
       "height": 1
     },
     {
@@ -120,16 +147,16 @@
       "items": [
         "530 ms"
       ],
-      "col": 42,
-      "row": 12,
-      "width": 9,
+      "col": 81,
+      "row": 0,
+      "width": 10,
       "height": 1
     },
     {
       "type": "separator",
-      "col": 0,
-      "row": 13,
-      "width": 52,
+      "col": 46,
+      "row": 1,
+      "width": 47,
       "height": 1
     },
     {
@@ -137,9 +164,9 @@
       "id": "panel_icons",
       "text": "Show panel &icons",
       "checked": true,
-      "col": 1,
-      "row": 14,
-      "width": 50,
+      "col": 47,
+      "row": 2,
+      "width": 46,
       "height": 1
     },
     {
@@ -147,53 +174,60 @@
       "id": "notifications",
       "text": "Show &pop-up notifications",
       "checked": true,
-      "col": 1,
-      "row": 15,
-      "width": 50,
+      "col": 47,
+      "row": 3,
+      "width": 46,
       "height": 1
     },
     {
       "type": "checkbox",
       "id": "show_title_bar",
       "text": "Show window &title bar",
-      "col": 1,
-      "row": 16,
-      "width": 50,
+      "col": 47,
+      "row": 4,
+      "width": 46,
       "height": 1
     },
     {
       "type": "checkbox",
       "id": "show_menu_bar",
       "text": "Show &menu bar",
-      "col": 1,
-      "row": 17,
-      "width": 50,
+      "col": 47,
+      "row": 5,
+      "width": 46,
       "height": 1
     },
     {
       "type": "checkbox",
       "id": "show_key_bar",
       "text": "Show F-&key bar",
-      "col": 1,
-      "row": 18,
-      "width": 50,
+      "col": 47,
+      "row": 6,
+      "width": 46,
       "height": 1
     },
     {
       "type": "checkbox",
       "id": "show_status_line",
       "text": "Show &status line",
-      "col": 1,
-      "row": 19,
-      "width": 50,
+      "col": 47,
+      "row": 7,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 46,
+      "row": 8,
+      "width": 47,
       "height": 1
     },
     {
       "type": "label",
       "text": "Shadows",
       "id": "lbl_shadows",
-      "col": 1,
-      "row": 20,
+      "col": 47,
+      "row": 9,
       "width": 16,
       "height": 1
     },
@@ -206,8 +240,8 @@
         "Soft",
         "None"
       ],
-      "col": 18,
-      "row": 20,
+      "col": 64,
+      "row": 9,
       "width": 20,
       "height": 1
     },
@@ -215,8 +249,8 @@
       "type": "label",
       "text": "Marked files",
       "id": "lbl_marked_rows",
-      "col": 1,
-      "row": 21,
+      "col": 47,
+      "row": 10,
       "width": 16,
       "height": 1
     },
@@ -227,8 +261,8 @@
       "items": [
         "Text color"
       ],
-      "col": 18,
-      "row": 21,
+      "col": 64,
+      "row": 10,
       "width": 20,
       "height": 1
     },
@@ -236,24 +270,24 @@
       "type": "checkbox",
       "id": "select_folders",
       "text": "Select all also &folders",
-      "col": 1,
-      "row": 22,
-      "width": 50,
+      "col": 47,
+      "row": 11,
+      "width": 46,
       "height": 1
     },
     {
       "type": "separator",
-      "col": 0,
-      "row": 23,
-      "width": 52,
+      "col": 46,
+      "row": 12,
+      "width": 47,
       "height": 1
     },
     {
       "type": "label",
       "text": "Language",
       "id": "lbl_language",
-      "col": 1,
-      "row": 24,
+      "col": 47,
+      "row": 13,
       "width": 16,
       "height": 1
     },
@@ -264,16 +298,16 @@
       "items": [
         "English"
       ],
-      "col": 18,
-      "row": 24,
+      "col": 64,
+      "row": 13,
       "width": 20,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 25,
-      "width": 52,
+      "row": 15,
+      "width": 94,
       "height": 1
     },
     {
@@ -281,8 +315,8 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 11,
-      "row": 27,
+      "col": 33,
+      "row": 17,
       "width": 12,
       "height": 1
     },
@@ -291,8 +325,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 29,
-      "row": 27,
+      "col": 49,
+      "row": 17,
       "width": 12,
       "height": 1
     }

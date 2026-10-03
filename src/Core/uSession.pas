@@ -71,6 +71,10 @@ type
     /// <summary>uDisplaySettings.MarkedRowStyleId: 'text' / 'band'.</summary>
     MarkedRows: string;
     LineSpacing: Boolean;
+    /// <summary>Display "snap font size to device pixels".</summary>
+    SnapFontSize: Boolean;
+    /// <summary>Display "text contrast" level, 0..3.</summary>
+    TextContrast: Integer;
     SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
@@ -526,6 +530,8 @@ begin
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
       Root.AddPair('markedRows', MarkedRowStyleId(MarkedRowStyleFromId(ASession.MarkedRows)));
   Root.AddPair('lineSpacing', TJSONBool.Create(ASession.LineSpacing));
+      Root.AddPair('snapFontSize', TJSONBool.Create(ASession.SnapFontSize));
+      Root.AddPair('textContrast', TJSONNumber.Create(ClampTextContrast(ASession.TextContrast)));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
@@ -582,6 +588,8 @@ begin
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
   ASession.MarkedRows := MarkedRowStyleId(mrsText);
   ASession.LineSpacing := False;
+  ASession.SnapFontSize := False;
+  ASession.TextContrast := 0;
   ASession.SelectFolders := False;
   ASession.Language := '';
 
@@ -653,6 +661,8 @@ begin
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));
       ASession.MarkedRows := MarkedRowStyleId(MarkedRowStyleFromId(JsonStr(Root, 'markedRows', '')));
   ASession.LineSpacing := JsonBool(Root, 'lineSpacing', False);
+      ASession.SnapFontSize := JsonBool(Root, 'snapFontSize', False);
+      ASession.TextContrast := ClampTextContrast(JsonInt(Root, 'textContrast', 0));
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);

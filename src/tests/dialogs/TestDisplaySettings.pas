@@ -23,6 +23,7 @@ type
     [Test] procedure TestPanelIconFlag;
     [Test] procedure TestShadowStyle;
     [Test] procedure TestDialogShowsMarkedFiles;
+    [Test] procedure TestFontQualitySettings;
   end;
 
 implementation
@@ -327,6 +328,69 @@ begin
   end;
 end;
 
+// Font quality options: defaults, clamping, session round-trip, and the
+// two-column Font / Display dialog showing them next to the cursor options.
+procedure TestFontQualitySettings;
+var
+  Path, Text, Line: string;
+  Saved, Loaded: TMtnSession;
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  X, Y: Integer;
+  SameRow: Boolean;
+begin
+  Assert.IsFalse(DefaultDisplaySettings.SnapFontSize, 'snapping is off by default');
+  Assert.AreEqual(0, DefaultDisplaySettings.TextContrast, 'contrast is off by default');
+  Assert.AreEqual(0, ClampTextContrast(-3), 'contrast min');
+  Assert.AreEqual(cDisplayMaxTextContrast, ClampTextContrast(9), 'contrast max');
+  Assert.AreEqual(cDisplayMaxTextContrast + 1, Length(DisplayTextContrastItems),
+    'one dropdown item per level');
+
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-fontquality-session-test.json');
+  Saved := MakeUsableSession;
+  Saved.SnapFontSize := True;
+  Saved.TextContrast := 2;
+  Assert.IsTrue(SaveSession(Path, Saved), 'save session');
+  try
+    Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
+    Assert.IsTrue(Loaded.SnapFontSize, 'snapFontSize saved');
+    Assert.AreEqual(2, Loaded.TextContrast, 'textContrast saved');
+  finally
+    if TFile.Exists(Path) then
+      TFile.Delete(Path);
+  end;
+
+  SetLocale('');
+  Host := TDialogHost.Create(CreateThemeByName('NDN'));
+  try
+    Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
+      ['English'], 0, True, 0, False, 0, True, 2), nil);
+    AllocTerminalGrid(Grid, 120, 40);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 120, 40);
+    Text := '';
+    SameRow := False;
+    for Y := 0 to High(Grid) do
+    begin
+      Line := '';
+      for X := 0 to High(Grid[Y]) do
+        Line := Line + Grid[Y][X].CharValue;
+      Text := Text + Line + #10;
+      // Two columns: the font list and the cursor options share a row.
+      if (Pos('Font', Line) > 0) and (Pos('Blink cursor', Line) > 0) then
+        SameRow := True;
+    end;
+    Assert.IsTrue(SameRow, 'font and cursor options sit side by side');
+    Assert.IsTrue(Pos('Text contrast', Text) > 0, 'contrast label drawn');
+    Assert.IsTrue(Pos('Medium', Text) > 0, 'saved contrast level shown');
+    Assert.IsTrue(Pos('Snap font size', Text) > 0, 'snap checkbox drawn');
+    Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
+    Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
+  finally
+    Host.Free;
+  end;
+end;
+
 procedure TestLanguagePicker;
 var
   Codes: TArray<string>;
@@ -408,6 +472,11 @@ end;
 procedure TTestDisplaySettings.TestDialogShowsMarkedFiles;
 begin
   TestDisplaySettings.TestDialogShowsMarkedFiles;
+end;
+
+procedure TTestDisplaySettings.TestFontQualitySettings;
+begin
+  TestDisplaySettings.TestFontQualitySettings;
 end;
 
 procedure TTestDisplaySettings.TestPanelIconFlag;
