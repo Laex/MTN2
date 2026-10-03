@@ -28,7 +28,7 @@ uses
 const
   W = 100;
   H = 40;
-  cSeparators = 4;
+  cSeparators = 1;
 
 procedure NoopCommand(const AControlId, AValuesJson: string);
 begin
