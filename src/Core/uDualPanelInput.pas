@@ -123,6 +123,8 @@ type
     OpenExternalToolsDialog: TKeymapProc;
     OpenConsoleOptionsDialog: TKeymapProc;
     BeginSaveConsoleOutput: TKeymapProc;
+    BeginExportSettings: TKeymapProc;
+    BeginImportSettings: TKeymapProc;
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;

@@ -178,6 +178,8 @@ begin
     tmaOptDisplay: CallProc(AHost.OpenDisplayDialog);
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
     tmaOptConsoleOptions: CallProc(AHost.OpenConsoleOptionsDialog);
+    tmaOptExportSettings: CallProc(AHost.BeginExportSettings);
+    tmaOptImportSettings: CallProc(AHost.BeginImportSettings);
     tmaCmdSaveConsoleOutput: CallProc(AHost.BeginSaveConsoleOutput);
     tmaCmdClearConsole: CallProc(AHost.ClearConsoleBuffer);
     tmaOptMarkdownColors: CallProc(AHost.OpenMarkdownColorsDialog);
@@ -206,7 +208,8 @@ begin
     tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile,
-    tmaCmdSaveConsoleOutput, tmaCmdClearConsole:
+    tmaCmdSaveConsoleOutput, tmaCmdClearConsole,
+    tmaOptExportSettings, tmaOptImportSettings:
       Exit(True);
 
     tmaEditCopy:

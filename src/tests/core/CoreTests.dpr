@@ -20,6 +20,7 @@ uses
   TestLiveReload in 'TestLiveReload.pas',
   TestMessageBus in 'TestMessageBus.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
+  TestSettingsTransfer in 'TestSettingsTransfer.pas',
   TestStrings in 'TestStrings.pas',
   TestConsoleLaunch in 'TestConsoleLaunch.pas',
   TestTerminalRenderer in 'TestTerminalRenderer.pas',

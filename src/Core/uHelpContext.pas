@@ -80,7 +80,7 @@ begin
       Result := 'cmdline.md';
     hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
-    hdkConsoleOptions,
+    hdkConsoleOptions, hdkSettingsExport, hdkSettingsImport,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := 'settings.md';
