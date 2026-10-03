@@ -343,13 +343,13 @@ begin
   Assert.AreEqual(0, DefaultDisplaySettings.TextContrast, 'contrast is off by default');
   Assert.AreEqual(0, ClampTextContrast(-3), 'contrast min');
   Assert.AreEqual(cDisplayMaxTextContrast, ClampTextContrast(9), 'contrast max');
-  Assert.AreEqual(cDisplayMaxTextContrast + 1, Length(DisplayTextContrastItems),
+  Assert.AreEqual(Integer(cDisplayMaxTextContrast + 1), Integer(Length(DisplayTextContrastItems)),
     'one dropdown item per level');
   Assert.AreEqual(0, DefaultDisplaySettings.CellWidthExtra, 'no extra cell width by default');
   Assert.AreEqual(0, DefaultDisplaySettings.CellHeightExtra, 'no extra cell height by default');
   Assert.AreEqual(0, ClampCellExtra(-1), 'cell extra min');
   Assert.AreEqual(cDisplayMaxCellExtra, ClampCellExtra(50), 'cell extra max');
-  Assert.AreEqual(cDisplayMaxCellExtra + 1, Length(DisplayCellExtraItems), 'one item per pixel count');
+  Assert.AreEqual(Integer(cDisplayMaxCellExtra + 1), Integer(Length(DisplayCellExtraItems)), 'one item per pixel count');
 
   Path := TPath.Combine(TPath.GetTempPath, 'mtn2-fontquality-session-test.json');
   Saved := MakeUsableSession;
