@@ -119,6 +119,10 @@ type
     constructor Create(AMaxLines: Integer = 10000);
     destructor Destroy; override;
     procedure Clear;
+    /// <summary>Lines kept above the screen (at least 100); lowering it drops the
+    /// oldest lines with the next output.</summary>
+    procedure SetMaxLines(AValue: Integer);
+    property MaxLines: Integer read FMaxLines write SetMaxLines;
     procedure AppendOutput(const AText: string);
     /// <summary>Local keyboard/paste echo onto the current input line. Unlike
     /// AppendOutput, never reinterprets the text as an incoming shell prompt
@@ -289,6 +293,11 @@ begin
   FInputLineStart := 0;
   FPlainLines.Add('');
   FCellLines.Add(nil);
+end;
+
+procedure TConsoleBuffer.SetMaxLines(AValue: Integer);
+begin
+  FMaxLines := Max(AValue, 100);
 end;
 
 destructor TConsoleBuffer.Destroy;

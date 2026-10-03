@@ -289,6 +289,10 @@ function BuildDisplayDialog(const AFontNames: TArray<string>;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
+/// <summary>Options > Console...: scrollback size (index in
+/// uConsoleSettings.ScrollbackItems), paste confirmation, trimming of spaces.</summary>
+function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
+  ATrimCopy, ATrimPaste: Boolean): TDialogDeclaration;
 /// <summary>Options > Markdown colors...: a foreground / background hex
 /// input per Markdown span kind (ids md_<key>_fg / md_<key>_bg, see
 /// uMarkdownColors.MdSpanKindKey); the caller fills them in.</summary>
@@ -345,7 +349,7 @@ function BuildKeymapEditDialog(const AActionName, AKeysText,
 implementation
 
 uses
-  uDialogResources, uDialogLocaleLayout, uDisplaySettings, uStrings, uUpdater
+  uDialogResources, uDialogLocaleLayout, uDisplaySettings, uConsoleSettings, uStrings, uUpdater
   {$IFDEF SKIA}
   , FMX.Skia
   {$ENDIF}
@@ -1245,6 +1249,16 @@ begin
     for I := High(Result.Controls) downto 0 do
       if Result.Controls[I].Id = 'save' then
         Delete(Result.Controls, I, 1);
+end;
+
+function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
+  ATrimCopy, ATrimPaste: Boolean): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogConsoleOptions, Result);
+  DialogSetListItems(Result, 'scrollback', ScrollbackItems, AScrollbackIndex);
+  DialogSetCheckbox(Result, 'confirm_paste', AConfirmPaste);
+  DialogSetCheckbox(Result, 'trim_copy', ATrimCopy);
+  DialogSetCheckbox(Result, 'trim_paste', ATrimPaste);
 end;
 
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;

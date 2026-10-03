@@ -76,10 +76,11 @@ begin
       Result := 'sync.md';
     hdkTerminalProfile:
       Result := 'terminals.md';
-    hdkConsoleProfile:
+    hdkConsoleProfile, hdkConsoleSave:
       Result := 'cmdline.md';
     hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
+    hdkConsoleOptions,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := 'settings.md';

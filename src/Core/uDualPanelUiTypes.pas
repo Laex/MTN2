@@ -153,7 +153,7 @@ type
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkChecksumOptions, hdkChecksumResult,
-    hdkPanelFilter, hdkDescribe,
+    hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
     // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
     // command goes back to the opener's callback.
     hdkHost);
@@ -206,6 +206,10 @@ type
     ALocalCol, ALocalRow: Integer) of object;
   TRunCommandEvent = procedure(const ACommand, AWorkingDir: string) of object;
   TShellCwdSyncEvent = procedure(const APath: string) of object;
+  /// <summary>Writes the background console's scrollback to APath; AError says
+  /// why not (or that there is no console yet).</summary>
+  TSaveConsoleOutputEvent = function(const APath: string;
+    out AError: string): Boolean of object;
   TOpenTerminalEvent = procedure(const AProfileId, ACwd: string) of object;
   /// <summary>Background console dialog: TMainForm switches the persistent
   /// Ctrl+O console to this profile.</summary>

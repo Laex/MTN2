@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
+  uDisplaySettings, uConsoleSettings, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
 
 type
@@ -211,6 +211,8 @@ type
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelReturnWhenDone(Sender: TObject);
     procedure DualPanelShellCwdSync(const APath: string);
+    function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
+    procedure DualPanelClearConsoleBuffer(Sender: TObject);
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
@@ -1295,6 +1297,8 @@ begin
   FDualPanel.OnRunCommand := DualPanelRunCommand;
   FDualPanel.OnReturnWhenDone := DualPanelReturnWhenDone;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
+  FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
+  FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
   FDualPanel.OnLaunchConsoleFile := DualPanelLaunchConsoleFile;
@@ -1722,6 +1726,10 @@ begin
   FRenderer.SetTextContrast(Sess.TextContrast, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetCellExtra(Sess.CellWidthExtra, Sess.CellHeightExtra, ClientWidth,
     ClientHeight, Canvas);
+  GConsoleSettings.ScrollbackLines := ClampScrollbackLines(Sess.ConsoleScrollback);
+  GConsoleSettings.ConfirmMultiLinePaste := Sess.ConsoleConfirmPaste;
+  GConsoleSettings.TrimCopiedSpaces := Sess.ConsoleTrimCopy;
+  GConsoleSettings.TrimPastedSpaces := Sess.ConsoleTrimPaste;
 end;
 
 procedure TMainForm.PersistSession;
@@ -1801,6 +1809,10 @@ begin
   Sess.TextContrast := ClampTextContrast(FSession.TextContrast);
   Sess.CellWidthExtra := ClampCellExtra(FSession.CellWidthExtra);
   Sess.CellHeightExtra := ClampCellExtra(FSession.CellHeightExtra);
+  Sess.ConsoleScrollback := GConsoleSettings.ScrollbackLines;
+  Sess.ConsoleConfirmPaste := GConsoleSettings.ConfirmMultiLinePaste;
+  Sess.ConsoleTrimCopy := GConsoleSettings.TrimCopiedSpaces;
+  Sess.ConsoleTrimPaste := GConsoleSettings.TrimPastedSpaces;
   Sess.SelectFolders := FDualPanel.SelectFolders;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
@@ -2135,6 +2147,25 @@ begin
   if not Assigned(FConsole) then
     Exit;
   FConsole.SyncWorkingDir(APath);
+end;
+
+function TMainForm.DualPanelSaveConsoleOutput(const APath: string;
+  out AError: string): Boolean;
+begin
+  if not Assigned(FConsole) then
+  begin
+    AError := T('ui.toast.noConsole', 'The background console has not been started yet');
+    Exit(False);
+  end;
+  Result := FConsole.SaveOutputToFile(APath, AError);
+end;
+
+procedure TMainForm.DualPanelClearConsoleBuffer(Sender: TObject);
+begin
+  if not Assigned(FConsole) then
+    Exit;
+  FConsole.ClearOutputBuffer;
+  Recompose;
 end;
 
 procedure TMainForm.ConsoleSyncDirToPanels(Sender: TObject);

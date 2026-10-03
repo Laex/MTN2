@@ -122,6 +122,8 @@
         { "caption": "Console toggle", "hotChar": "O", "shortcut": "Ctrl+O", "action": "tmaCmdConsoleToggle" },
         { "caption": "Background console...", "hotChar": "Q", "shortcut": "Ctrl+Alt+O", "action": "tmaCmdConsoleProfile" },
         { "caption": "Sync console dir", "hotChar": "I", "shortcut": "Ctrl+Shift+O", "action": "tmaCmdSyncConsoleDir" },
+        { "caption": "Save console output...", "hotChar": "V", "shortcut": "", "action": "tmaCmdSaveConsoleOutput" },
+        { "caption": "Clear console buffer", "hotChar": "B", "shortcut": "", "action": "tmaCmdClearConsole" },
         { "caption": "New terminal...", "hotChar": "M", "shortcut": "Ctrl+Shift+N", "action": "tmaCmdNewTerminal" },
         { "caption": "Next tab", "hotChar": "X", "shortcut": "Ctrl+Tab", "action": "tmaCmdNextTab" }
       ]
@@ -137,6 +139,7 @@
         { "caption": "Theme...", "hotChar": "T", "shortcut": "", "action": "tmaOptTheme" },
         { "caption": "Font / Display...", "hotChar": "F", "shortcut": "", "action": "tmaOptDisplay" },
         { "caption": "External viewer/editor...", "hotChar": "E", "shortcut": "", "action": "tmaOptExternalTools" },
+        { "caption": "Console...", "hotChar": "N", "shortcut": "", "action": "tmaOptConsoleOptions" },
         { "caption": "Markdown colors...", "hotChar": "A", "shortcut": "", "action": "tmaOptMarkdownColors" },
         { "caption": "Columns...", "hotChar": "L", "shortcut": "Ctrl+Shift+F7", "action": "tmaOptColumnsConfig" },
         { "isSeparator": true },
