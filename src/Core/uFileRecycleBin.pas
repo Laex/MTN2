@@ -242,10 +242,26 @@ begin
   end;
 end;
 
+const
+  // The Shell copy engine reports its own HRESULTs (facility 0x27), not
+  // 0x8007xxxx: COPYENGINE_E_ACCESS_DENIED_SRC / _DEST.
+  cCopyEngineAccessDeniedSrc = HRESULT($80270021);
+  cCopyEngineAccessDeniedDest = HRESULT($80270022);
+
+function HResultIsAccessDenied(AHR: HRESULT): Boolean;
+begin
+  Result := ((DWORD(AHR) and $FFFF0000) = $80070000) and
+      ((DWORD(AHR) and $FFFF) = ERROR_ACCESS_DENIED) or
+    (AHR = cCopyEngineAccessDeniedSrc) or (AHR = cCopyEngineAccessDeniedDest);
+end;
+
 function HResultDeleteErrorMessage(AHR: HRESULT): string;
 var
   Code: DWORD;
 begin
+  if HResultIsAccessDenied(AHR) then
+    Exit('Access denied - cannot move to Recycle Bin ' +
+      '(run as Administrator, or Shift+F8 for permanent delete)');
   // HRESULT with FACILITY_WIN32: 0x8007xxxx
   if (DWORD(AHR) and $FFFF0000) = $80070000 then
   begin
@@ -335,7 +351,7 @@ begin
   // whatever the operation as a whole reports.
   if SinkObj.FailedPath <> '' then
   begin
-    if (DWORD(SinkObj.FailedHR) and $FFFF) = ERROR_ACCESS_DENIED then
+    if HResultIsAccessDenied(SinkObj.FailedHR) then
       AError := TVfsError.Make(vecAccessDenied, HResultDeleteErrorMessage(SinkObj.FailedHR),
         PathToFileUri(SinkObj.FailedPath))
     else
@@ -347,7 +363,7 @@ begin
   begin
     if (DWORD(HR) and $FFFF) = ERROR_CANCELLED then
       AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Full))
-    else if (DWORD(HR) and $FFFF) = ERROR_ACCESS_DENIED then
+    else if HResultIsAccessDenied(HR) then
       AError := TVfsError.Make(vecAccessDenied, HResultDeleteErrorMessage(HR),
         PathToFileUri(Full))
     else
