@@ -215,6 +215,18 @@ begin
   Assert.AreEqual('Повторить', FindCtrlText(Decl, cDlgCmdDelete), 'delete error: Retry translates');
   Assert.AreEqual('Повторить удаление без корзины?', FindCtrlText(Decl, 'question'),
     'delete error: the retry question translates');
+
+  // The administrator button of the error prompts exists only when offered
+  // and takes the locale.
+  Decl := BuildIOErrorDialog('h', 'p', 'e');
+  Assert.AreEqual('<missing:elevate>', FindCtrlText(Decl, cDlgCmdElevate),
+    'io error: no Elevate button unless offered');
+  Decl := BuildIOErrorDialog('h', 'p', 'e', True);
+  Assert.AreEqual('&Админ', FindCtrlText(Decl, cDlgCmdElevate),
+    'io error: Elevate translates');
+  Decl := BuildDeleteErrorDialog('h', 'p', '', 'e', True, True);
+  Assert.AreEqual('&Админ', FindCtrlText(Decl, cDlgCmdElevate),
+    'delete error: Elevate translates');
   SetLocale('en');
 end;
 

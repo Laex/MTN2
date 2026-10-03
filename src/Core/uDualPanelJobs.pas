@@ -9,7 +9,7 @@ uses
   Winapi.Windows,
   uTerminalTypes, uThemeTypes, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelOverlays, uDualPanelJobRules, uVfsTypes, uFileFind, uJobPopupRenderer,
-  uStrings;
+  uStrings, uElevatedFileOps, uFileRecycleBin;
 
 type
   TJobConfirmDialogEvent = reference to procedure(const ATitle, AMessage: string);
@@ -59,6 +59,8 @@ type
     procedure HandleErrorKeys(var AKey: Word; var AKeyChar: Char);
     procedure StartJobExecution;
     procedure RunJobItem;
+    function CanOfferElevate(const AError: TVfsError; AFromIndex: Integer): Boolean;
+    procedure RunElevatedRemainder(AFromIndex: Integer; ARecycle: Boolean);
     procedure ProbeJobItemAsync(const ASrcURI, ADstURI: string; AIndex: Integer;
       AKind: TPanelJobKind; AFollowSymlinks, AOnlyNewer, AOverwriteAsk: Boolean);
     function ProbeSkipReparse(AKind: TPanelJobKind; AFollowSymlinks: Boolean;
@@ -1288,6 +1290,7 @@ begin
   FJob.AskQuestion := Question;
   FJob.AskErrorLine := ErrLine;
   FJob.AskOfferPermanent := AOfferPermanent;
+  FJob.AskOfferElevate := CanOfferElevate(AError, FJob.Index);
   FJob.AskNewLine := '';
   FJob.AskExistingLine := '';
   if Assigned(FOnDeleteAsk) then
@@ -1332,6 +1335,7 @@ begin
   FJob.AskNewLine := '';
   FJob.AskExistingLine := '';
   FJob.AskOfferPermanent := False;
+  FJob.AskOfferElevate := CanOfferElevate(AError, AIndex);
   if Assigned(FOnIOErrorAsk) then
     FOnIOErrorAsk(Headline, Path, ErrLine)
   else
@@ -1406,6 +1410,104 @@ begin
     end);
 end;
 
+// Access denied on a local path: the Shell can redo the rest of the job with one
+// UAC prompt, so the error prompt offers that. Not for archives and virtual
+// folders, and not when MTN2 already runs elevated.
+function TPanelJobController.CanOfferElevate(const AError: TVfsError;
+  AFromIndex: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if (AError.Code <> vecAccessDenied) or
+     not (FJob.Kind in [pjkCopy, pjkMove, pjkDelete]) then
+    Exit;
+  if (AFromIndex < 0) or (AFromIndex > High(FJob.Sources)) or IsProcessElevated then
+    Exit;
+  for I := AFromIndex to High(FJob.Sources) do
+    if HasArchiveChain(FJob.Sources[I]) or (FileUriToPath(FJob.Sources[I]) = '') then
+      Exit;
+  if FJob.Kind <> pjkDelete then
+  begin
+    if Length(FJob.DestURIs) = Length(FJob.Sources) then
+    begin
+      for I := AFromIndex to High(FJob.DestURIs) do
+        if HasArchiveChain(FJob.DestURIs[I]) or (FileUriToPath(FJob.DestURIs[I]) = '') then
+          Exit;
+    end
+    else if HasArchiveChain(FJob.DestDirURI) or (FileUriToPath(FJob.DestDirURI) = '') then
+      Exit;
+  end;
+  Result := True;
+end;
+
+// Repeats the failed item and all that follow in one Shell operation with a
+// single UAC prompt (the way Explorer does); the Shell shows its own progress.
+procedure TPanelJobController.RunElevatedRemainder(AFromIndex: Integer;
+  ARecycle: Boolean);
+var
+  Srcs, Dsts: TArray<string>;
+  I, N: Integer;
+  Op: TElevatedFileOp;
+  Overwrite: Boolean;
+  Owner: NativeUInt;
+  FirstURI: string;
+begin
+  FJob.Phase := pjpRunning;
+  FJob.Index := AFromIndex;
+  N := Length(FJob.Sources) - AFromIndex;
+  if N <= 0 then
+  begin
+    FinishJob(True, TVfsError.Ok);
+    Exit;
+  end;
+  case FJob.Kind of
+    pjkMove: Op := efoMove;
+    pjkDelete: Op := efoDelete;
+  else
+    Op := efoCopy;
+  end;
+  SetLength(Srcs, N);
+  SetLength(Dsts, N);
+  for I := 0 to N - 1 do
+  begin
+    Srcs[I] := ExcludeTrailingPathDelimiter(FileUriToPath(FJob.Sources[AFromIndex + I]));
+    if Op = efoDelete then
+      Continue;
+    if Length(FJob.DestURIs) = Length(FJob.Sources) then
+      Dsts[I] := FileUriToPath(FJob.DestURIs[AFromIndex + I])
+    else
+      Dsts[I] := TPath.Combine(FileUriToPath(FJob.DestDirURI),
+        TPath.GetFileName(Srcs[I]));
+  end;
+  FirstURI := FJob.Sources[AFromIndex];
+  Overwrite := FJob.OverwriteMode = jomOverwrite;
+  Owner := GRecycleOwnerWindow;
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Ok, Cancelled: Boolean;
+      Msg: string;
+    begin
+      Ok := ElevatedFileBatch(Op, Srcs, Dsts, ARecycle, Overwrite, Owner, Msg,
+        Cancelled);
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not FAlive or (FJob.Phase <> pjpRunning) then
+            Exit;
+          if Ok then
+            FinishJob(True, TVfsError.Ok)
+          else if Cancelled then
+            FinishJob(False, TVfsError.Make(vecCancelled, 'Cancelled', FirstURI))
+          else
+            FinishJob(False, TVfsError.Make(vecIOError, Msg, FirstURI));
+        end);
+    end).Start;
+end;
+
 procedure TPanelJobController.ResolveDeleteAsk(AAction: TJobDeleteFailAction);
 var
   SrcURI, RootSrcURI: string;
@@ -1430,6 +1532,8 @@ begin
           FOnInvalidate;
         ExecuteDeleteItem(RootSrcURI, Idx, True);
       end;
+    jdaElevate:
+      RunElevatedRemainder(Idx, FJob.AskOfferPermanent);
     jdaSkip:
       begin
         FJob.Phase := pjpRunning;
@@ -1475,6 +1579,8 @@ begin
           FOnInvalidate;
         ExecuteTransfer(SrcURI, DstURI, Idx, Overwrite, Append);
       end;
+    jioElevate:
+      RunElevatedRemainder(Idx, False);
     jioSkip:
       begin
         FJob.Phase := pjpRunning;

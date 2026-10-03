@@ -132,6 +132,8 @@ const
   cDlgCmdRename = 'rename';
   cDlgCmdDelete = 'delete';
   cDlgCmdRetry = 'retry';
+  /// <summary>Error prompt: repeat the rest of the job with administrator rights.</summary>
+  cDlgCmdElevate = 'elevate';
   cDlgCmdBackground = 'background';
   cDlgCmdForeground = 'foreground';
   cDlgCmdCancelJob = 'canceljob';
@@ -219,8 +221,9 @@ function BuildEncodingDialog(ACurrent: string): TDialogDeclaration;
 function BuildReplaceDialog(const AFind, AReplace: string): TDialogDeclaration;
 function BuildOverwriteAskDialog(const APath, ANewLine, AExistingLine: string): TDialogDeclaration;
 function BuildDeleteErrorDialog(const AHeadline, APath, AQuestion, AErrorLine: string;
-  AOfferPermanent: Boolean): TDialogDeclaration;
-function BuildIOErrorDialog(const AHeadline, APath, AErrorLine: string): TDialogDeclaration;
+  AOfferPermanent: Boolean; AOfferElevate: Boolean = False): TDialogDeclaration;
+function BuildIOErrorDialog(const AHeadline, APath, AErrorLine: string;
+  AOfferElevate: Boolean = False): TDialogDeclaration;
 function BuildFolderHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildJobListDialog(const AItems: TArray<string>;
@@ -797,8 +800,58 @@ begin
   DialogSetCheckbox(Result, 'remember', False);
 end;
 
+// Adds the "Elevate" button after the first button of the dialog's button row
+// and spreads the row evenly (the JSON layout has no room for it).
+procedure DialogAddElevateButton(var ADecl: TDialogDeclaration);
+const
+  cGap = 3;
+var
+  Row, First, I, J, Count, Total, Left: Integer;
+  Btn: TDialogControl;
+begin
+  Row := -1;
+  First := -1;
+  for I := 0 to High(ADecl.Controls) do
+    if ADecl.Controls[I].Kind = dckButton then
+    begin
+      Row := ADecl.Controls[I].Row;
+      First := I;
+      Break;
+    end;
+  if First < 0 then
+    Exit;
+  Btn := Default(TDialogControl);
+  Btn.Kind := dckButton;
+  Btn.Id := cDlgCmdElevate;
+  Btn.Text := T('ui.job.elevate', '&Elevate');
+  Btn.Row := Row;
+  Btn.Col := 0;
+  Btn.BoxW := Length(Btn.Text) + 4;
+  Btn.BoxH := 1;
+  SetLength(ADecl.Controls, Length(ADecl.Controls) + 1);
+  for J := High(ADecl.Controls) downto First + 2 do
+    ADecl.Controls[J] := ADecl.Controls[J - 1];
+  ADecl.Controls[First + 1] := Btn;
+  Count := 0;
+  Total := 0;
+  for I := 0 to High(ADecl.Controls) do
+    if (ADecl.Controls[I].Kind = dckButton) and (ADecl.Controls[I].Row = Row) then
+    begin
+      Inc(Count);
+      Inc(Total, ADecl.Controls[I].BoxW);
+    end;
+  Inc(Total, cGap * (Count - 1));
+  Left := Max((ADecl.Width - 2 - Total) div 2, 1);
+  for I := 0 to High(ADecl.Controls) do
+    if (ADecl.Controls[I].Kind = dckButton) and (ADecl.Controls[I].Row = Row) then
+    begin
+      ADecl.Controls[I].Col := Left;
+      Inc(Left, ADecl.Controls[I].BoxW + cGap);
+    end;
+end;
+
 function BuildDeleteErrorDialog(const AHeadline, APath, AQuestion, AErrorLine: string;
-  AOfferPermanent: Boolean): TDialogDeclaration;
+  AOfferPermanent: Boolean; AOfferElevate: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogDeleteError, Result);
   Result.IsWarning := True;
@@ -815,15 +868,20 @@ begin
       DialogSetLabelText(Result, 'question',
         T('ui.deleteError.retryQuestion', 'Retry permanent delete?'));
   end;
+  if AOfferElevate then
+    DialogAddElevateButton(Result);
 end;
 
-function BuildIOErrorDialog(const AHeadline, APath, AErrorLine: string): TDialogDeclaration;
+function BuildIOErrorDialog(const AHeadline, APath, AErrorLine: string;
+  AOfferElevate: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogIOError, Result);
   Result.IsWarning := True;
   DialogSetLabelText(Result, 'headline', AHeadline);
   DialogSetLabelText(Result, 'path', APath);
   DialogSetLabelText(Result, 'error_line', AErrorLine);
+  if AOfferElevate then
+    DialogAddElevateButton(Result);
 end;
 
 function BuildFolderHistoryDialog(const AItems: TArray<string>;
