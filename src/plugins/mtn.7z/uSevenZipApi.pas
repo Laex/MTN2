@@ -32,92 +32,6 @@ function SevenZipExtractFile(const AArchivePath, AInnerPath: string; AMaxBytes: 
 /// bounded by the plugin buffer. A failed unpack removes the partial file.</summary>
 function SevenZipExtractToFile(const AArchivePath, AInnerPath, ADestPath: string;
   out AError: string): Boolean;
-function SevenZipExtractToFile(const AArchivePath, AInnerPath, ADestPath: string;
-  out AError: string): Boolean;
-var
-  Arc: IInArchive;
-  Items: TArray<T7zItem>;
-  Dummy: string;
-  I: Integer;
-  Idx: UInt32;
-  Want, ParentDir: string;
-  Dst: T7zFileStream;
-  Hold: ISequentialOutStream;
-  Cb: T7zExtractCallback;
-  HoldCb: IArchiveExtractCallback;
-  Hr: HRESULT;
-  Password: string;
-  HasPassword, Done: Boolean;
-begin
-  Result := False;
-  AError := '';
-  Want := SevenZipNormInner(AInnerPath);
-  if Want = '' then
-  begin
-    AError := 'Empty inner path';
-    Exit;
-  end;
-  if not SevenZipListArchive(AArchivePath, Items, Dummy) then
-  begin
-    AError := Dummy;
-    Exit;
-  end;
-  Idx := $FFFFFFFF;
-  for I := 0 to High(Items) do
-    if (not Items[I].IsDir) and SameText(Items[I].Path, Want) then
-    begin
-      Idx := Items[I].Index;
-      Break;
-    end;
-  if Idx = $FFFFFFFF then
-  begin
-    AError := 'Not found';
-    Exit;
-  end;
-
-  ParentDir := ExtractFilePath(ADestPath);
-  if ParentDir <> '' then
-    ForceDirectories(ParentDir);
-  Done := False;
-  GLock.Acquire;
-  try
-    if not OpenArchive(AArchivePath, Arc, AError) then
-      Exit;
-    try
-      Dst := T7zFileStream.Create(ADestPath, fmCreate);
-    except
-      on E: Exception do
-      begin
-        AError := E.Message;
-        Arc.Close;
-        Exit;
-      end;
-    end;
-    Hold := Dst;
-    HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
-    Cb := T7zExtractCallback.Create(Hold, HasPassword, Password);
-    HoldCb := Cb;
-    Hr := Arc.Extract(@Idx, 1, 0, HoldCb);
-    Arc.Close;
-    if (not HResOk(Hr)) or (Cb.OpRes <> 0) then
-    begin
-      if Cb.Asked or (Cb.OpRes = 9) then
-        AError := 'Encrypted'
-      else
-        AError := 'Extract failed';
-      Exit;
-    end;
-    Done := True;
-    Result := True;
-  finally
-    HoldCb := nil;
-    Hold := nil;
-    GLock.Release;
-    if not Done then
-      DeleteFile(PChar(ADestPath));
-  end;
-end;
-
 function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;
   out AError: string): Boolean;
 function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string;
@@ -1298,6 +1212,92 @@ begin
     Arc.Close;
   finally
     GLock.Release;
+  end;
+end;
+
+function SevenZipExtractToFile(const AArchivePath, AInnerPath, ADestPath: string;
+  out AError: string): Boolean;
+var
+  Arc: IInArchive;
+  Items: TArray<T7zItem>;
+  Dummy: string;
+  I: Integer;
+  Idx: UInt32;
+  Want, ParentDir: string;
+  Dst: T7zFileStream;
+  Hold: ISequentialOutStream;
+  Cb: T7zExtractCallback;
+  HoldCb: IArchiveExtractCallback;
+  Hr: HRESULT;
+  Password: string;
+  HasPassword, Done: Boolean;
+begin
+  Result := False;
+  AError := '';
+  Want := SevenZipNormInner(AInnerPath);
+  if Want = '' then
+  begin
+    AError := 'Empty inner path';
+    Exit;
+  end;
+  if not SevenZipListArchive(AArchivePath, Items, Dummy) then
+  begin
+    AError := Dummy;
+    Exit;
+  end;
+  Idx := $FFFFFFFF;
+  for I := 0 to High(Items) do
+    if (not Items[I].IsDir) and SameText(Items[I].Path, Want) then
+    begin
+      Idx := Items[I].Index;
+      Break;
+    end;
+  if Idx = $FFFFFFFF then
+  begin
+    AError := 'Not found';
+    Exit;
+  end;
+
+  ParentDir := ExtractFilePath(ADestPath);
+  if ParentDir <> '' then
+    ForceDirectories(ParentDir);
+  Done := False;
+  GLock.Acquire;
+  try
+    if not OpenArchive(AArchivePath, Arc, AError) then
+      Exit;
+    try
+      Dst := T7zFileStream.Create(ADestPath, fmCreate);
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Arc.Close;
+        Exit;
+      end;
+    end;
+    Hold := Dst;
+    HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
+    Cb := T7zExtractCallback.Create(Hold, HasPassword, Password);
+    HoldCb := Cb;
+    Hr := Arc.Extract(@Idx, 1, 0, HoldCb);
+    Arc.Close;
+    if (not HResOk(Hr)) or (Cb.OpRes <> 0) then
+    begin
+      if Cb.Asked or (Cb.OpRes = 9) then
+        AError := 'Encrypted'
+      else
+        AError := 'Extract failed';
+      Exit;
+    end;
+    Done := True;
+    Result := True;
+  finally
+    HoldCb := nil;
+    Hold := nil;
+    GLock.Release;
+    if not Done then
+      DeleteFile(PChar(ADestPath));
   end;
 end;
 
