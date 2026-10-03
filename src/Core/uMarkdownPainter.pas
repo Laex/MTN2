@@ -79,6 +79,11 @@ begin
   LastChunkChar := Min(N, AEndCharIndex);
   if LastChunkChar > 0 then
     TrailKind := Kinds[LastChunkChar - 1]
+  else if (N = 0) and (Length(ALine.Spans) > 0) then
+    // An empty line inside a code fence has a zero-length span and no glyph
+    // to read the kind from; without this it falls back to plain text and
+    // breaks the code block's background.
+    TrailKind := ALine.Spans[0].Kind
   else
     TrailKind := mskText;
   if not (TrailKind in [mskH1, mskH2, mskH3to6, mskCodeBlock, mskHRule]) then

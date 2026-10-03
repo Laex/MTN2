@@ -911,6 +911,25 @@ begin
   TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
   Assert.IsTrue((Row[20].FgColor and $FF) = Cardinal(Ord(mskH1)),
     'heading padding still uses mskH1 out to the painted width');
+
+  // An empty line inside a code fence keeps the code block style across the
+  // whole row, so the block has no gaps.
+  State.InFence := False;
+  TMarkdownParser.ParseLine('```', State);
+  L := TMarkdownParser.ParseLine('', State);
+  Assert.IsTrue(State.InFence, 'the fence is still open after an empty line');
+  Row := MakeRow(20);
+  TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
+  Assert.IsTrue((Row[1].FgColor and $FF) = Cardinal(Ord(mskCodeBlock)),
+    'an empty line in a fence is painted as code block');
+  Assert.IsTrue((Row[20].FgColor and $FF) = Cardinal(Ord(mskCodeBlock)),
+    'an empty line in a fence is code block out to the painted width');
+  State.InFence := False;
+  L := TMarkdownParser.ParseLine('', State);
+  Row := MakeRow(20);
+  TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
+  Assert.IsTrue((Row[1].FgColor and $FF) = Cardinal(Ord(mskText)),
+    'an empty line outside a fence stays plain text');
 end;
 
 { ---- TMarkdownFenceIndex: lazy incremental fence-state recovery ------------ }

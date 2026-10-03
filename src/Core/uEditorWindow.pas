@@ -92,6 +92,9 @@ type
     // Overlay belongs to the picture Quick View).
     FChromeless: Boolean;
     FTopLine: Integer;
+    /// <summary>Markdown view only: screen row inside FTopLine's wrapped
+    /// rows where the view starts, so scrolling goes by rows, not paragraphs.</summary>
+    FTopSubRow: Integer;
     FLeftCol: Integer;
     FCursorRow: Integer;
     FCursorCol: Integer;
@@ -155,6 +158,11 @@ type
     function MapDisplayRowToLine(ADisplayRow, ATextW: Integer; out ALineIdx, ACharOffset: Integer): Boolean;
     function MapLineToDisplayRow(ALineIdx, ACharOffset, ATextW: Integer): Integer;
     function MarkdownLineScreenRows(ALineIdx, ATextW, ARemainRows: Integer): Integer;
+    function MarkdownTopSubRow: Integer;
+    function MarkdownCursorChunk(ALineIdx, ACol, ATextW: Integer): Integer;
+    function MarkdownChunkCount(ALineIdx, ATextW: Integer): Integer;
+    procedure ScrollMarkdownRows(ADelta: Integer);
+    procedure MoveMarkdownCursorRows(ARowDelta, ATextW: Integer);
     function MapMarkdownViewToPos(AViewRow, AViewCol: Integer;
       out ALineIdx, ACol: Integer): Boolean;
     procedure ToggleWordWrap;
@@ -826,6 +834,7 @@ begin
   FMdImageSizeCache.Clear;
   LeaveMarkdownOverlay;
   FTopLine := 0;
+  FTopSubRow := 0;
   FLeftCol := 0;
   FCursorRow := 0;
   FCursorCol := 0;
@@ -863,6 +872,7 @@ begin
   if FViewOnly and (Pos.WordWrap <> fwwKeep) then
     FWordWrap := Pos.WordWrap = fwwOn;
   FTopLine := Pos.TopLine;
+  FTopSubRow := 0;
   FLeftCol := Pos.LeftCol;
   FCursorRow := Pos.CursorRow;
   FCursorCol := Pos.CursorCol;
@@ -1017,6 +1027,119 @@ begin
     Result := 1;
 end;
 
+// Rows a line is scrolled and walked by: the wrapped rows of its text; a
+// picture is one step.
+function TEditorWindow.MarkdownChunkCount(ALineIdx, ATextW: Integer): Integer;
+var
+  MdLine: TMdLine;
+begin
+  MdLine := GetMdLine(ALineIdx);
+  if MdLine.IsImage and not FChromeless then
+    Exit(1);
+  Result := Max(Length(MarkdownWrapStarts(MdLine, ATextW)), 1);
+end;
+
+// FTopSubRow kept inside the top line's rows (the width may have changed).
+function TEditorWindow.MarkdownTopSubRow: Integer;
+begin
+  if (FTopLine < 0) or (FTopLine >= FDoc.LineCount) then
+    Exit(0);
+  Result := EnsureRange(FTopSubRow, 0, MarkdownChunkCount(FTopLine, TextWidth) - 1);
+end;
+
+// Index of the wrapped row of a line that holds column ACol.
+function TEditorWindow.MarkdownCursorChunk(ALineIdx, ACol, ATextW: Integer): Integer;
+var
+  MdLine: TMdLine;
+  Starts: TArray<Integer>;
+  I: Integer;
+begin
+  Result := 0;
+  MdLine := GetMdLine(ALineIdx);
+  if MdLine.IsImage and not FChromeless then
+    Exit;
+  Starts := MarkdownWrapStarts(MdLine, ATextW);
+  for I := High(Starts) downto 0 do
+    if Starts[I] <= ACol + 1 then
+      Exit(I);
+end;
+
+// Up/Down/PgUp/PgDn in the Markdown view walk screen rows, keeping the
+// column inside the wrapped row, so a long paragraph is read to its end.
+procedure TEditorWindow.MoveMarkdownCursorRows(ARowDelta, ATextW: Integer);
+var
+  Line, Pos, Rows, SegCol, ChunkEnd, Remaining: Integer;
+  MdLine: TMdLine;
+  Starts: TArray<Integer>;
+begin
+  Line := EnsureRange(FCursorRow, 0, Max(FDoc.LineCount - 1, 0));
+  Pos := MarkdownCursorChunk(Line, FCursorCol, ATextW);
+  MdLine := GetMdLine(Line);
+  Starts := MarkdownWrapStarts(MdLine, ATextW);
+  if Pos <= High(Starts) then
+    SegCol := FCursorCol - (Starts[Pos] - 1)
+  else
+    SegCol := FCursorCol;
+  Remaining := ARowDelta;
+  while Remaining > 0 do
+  begin
+    Rows := MarkdownChunkCount(Line, ATextW);
+    if Pos + Remaining < Rows then
+    begin
+      Inc(Pos, Remaining);
+      Remaining := 0;
+    end
+    else if Line >= FDoc.LineCount - 1 then
+    begin
+      Pos := Rows - 1;
+      Remaining := 0;
+    end
+    else
+    begin
+      Dec(Remaining, Rows - Pos);
+      Inc(Line);
+      Pos := 0;
+    end;
+  end;
+  while Remaining < 0 do
+  begin
+    if Pos + Remaining >= 0 then
+    begin
+      Inc(Pos, Remaining);
+      Remaining := 0;
+    end
+    else if Line = 0 then
+    begin
+      Pos := 0;
+      Remaining := 0;
+    end
+    else
+    begin
+      Inc(Remaining, Pos + 1);
+      Dec(Line);
+      Pos := MarkdownChunkCount(Line, ATextW) - 1;
+    end;
+  end;
+  MdLine := GetMdLine(Line);
+  FCursorRow := Line;
+  if MdLine.IsImage and not FChromeless then
+  begin
+    FCursorCol := 0;
+    Exit;
+  end;
+  Starts := MarkdownWrapStarts(MdLine, ATextW);
+  if (Pos > High(Starts)) or (Length(Starts) = 0) then
+  begin
+    FCursorCol := 0;
+    Exit;
+  end;
+  if Pos < High(Starts) then
+    ChunkEnd := Starts[Pos + 1] - 2
+  else
+    ChunkEnd := Length(MdLine.DisplayText);
+  FCursorCol := Min(Starts[Pos] - 1 + Max(SegCol, 0), ChunkEnd);
+end;
+
 function TEditorWindow.MapMarkdownViewToPos(AViewRow, AViewCol: Integer;
   out ALineIdx, ACol: Integer): Boolean;
 var
@@ -1031,7 +1154,7 @@ begin
     Exit;
   TextW := TextWidth;
   ViewH := ViewHeight;
-  Y := 0;
+  Y := -MarkdownTopSubRow;
   LineIdx := FTopLine;
   while (Y < ViewH) and (LineIdx < FDoc.LineCount) do
   begin
@@ -1068,6 +1191,7 @@ begin
   FWordWrap := not FWordWrap;
   FLeftCol := 0;
   FTopLine := 0;
+  FTopSubRow := 0;
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -1102,15 +1226,72 @@ begin
     ATop := 0;
   if ATop > MaxTop then
     ATop := MaxTop;
-  if ATop = FTopLine then
+  if (ATop = FTopLine) and (FTopSubRow = 0) then
     Exit;
   FTopLine := ATop;
+  FTopSubRow := 0;
   NotifyHost;
 end;
 
 procedure TEditorWindow.ScrollBy(ADelta: Integer);
 begin
-  ScrollTo(FTopLine + ADelta);
+  if FMarkdownMode and FDoc.Ready and not FHexMode then
+    ScrollMarkdownRows(ADelta)
+  else
+    ScrollTo(FTopLine + ADelta);
+end;
+
+// A Markdown paragraph wraps into several screen rows; the wheel and the
+// cursor keys move the view one row at a time instead of one paragraph.
+procedure TEditorWindow.ScrollMarkdownRows(ADelta: Integer);
+var
+  TextW, Rows, OldTop, OldSub: Integer;
+begin
+  OldTop := FTopLine;
+  OldSub := FTopSubRow;
+  TextW := TextWidth;
+  FTopSubRow := MarkdownTopSubRow;
+  while ADelta > 0 do
+  begin
+    Rows := MarkdownChunkCount(FTopLine, TextW);
+    if FTopSubRow + ADelta < Rows then
+    begin
+      Inc(FTopSubRow, ADelta);
+      ADelta := 0;
+    end
+    else if FTopLine >= FDoc.LineCount - 1 then
+    begin
+      FTopSubRow := Rows - 1;
+      ADelta := 0;
+    end
+    else
+    begin
+      Dec(ADelta, Rows - FTopSubRow);
+      Inc(FTopLine);
+      FTopSubRow := 0;
+    end;
+  end;
+  while ADelta < 0 do
+  begin
+    if FTopSubRow + ADelta >= 0 then
+    begin
+      Inc(FTopSubRow, ADelta);
+      ADelta := 0;
+    end
+    else if FTopLine = 0 then
+    begin
+      FTopSubRow := 0;
+      ADelta := 0;
+    end
+    else
+    begin
+      Inc(ADelta, FTopSubRow + 1);
+      Dec(FTopLine);
+      FTopSubRow := MarkdownChunkCount(FTopLine, TextW) - 1;
+    end;
+  end;
+  if (FTopLine <> OldTop) or (FTopSubRow <> OldSub) then
+    NotifyHost;
 end;
 
 procedure TEditorWindow.ClampCursor;
@@ -1135,14 +1316,17 @@ end;
 // document size or how far the cursor jumped.
 procedure TEditorWindow.EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
 var
-  Line, RowsFromTop, Rows: Integer;
+  Line, RowsFromTop, Rows, Sub, Remaining, CursorChunk: Integer;
 begin
-  if FCursorRow <= FTopLine then
+  CursorChunk := MarkdownCursorChunk(FCursorRow, FCursorCol, ATextW);
+  Sub := MarkdownTopSubRow;
+  if (FCursorRow < FTopLine) or ((FCursorRow = FTopLine) and (CursorChunk < Sub)) then
   begin
     FTopLine := FCursorRow;
+    FTopSubRow := CursorChunk;
     Exit;
   end;
-  RowsFromTop := 0;
+  RowsFromTop := -Sub;
   Line := FTopLine;
   while Line < FCursorRow do
   begin
@@ -1151,23 +1335,35 @@ begin
     Inc(RowsFromTop, MarkdownLineScreenRows(Line, ATextW, MaxInt));
     Inc(Line);
   end;
-  if (Line = FCursorRow) and (RowsFromTop < AViewH) then
-    Exit; // cursor's line already starts within the visible window
-
-  // Not visible: walk backward from the cursor's own line, folding in
-  // whole preceding lines while they still fit within AViewH rows, to land
-  // on the furthest-forward FTopLine that still shows the cursor's line.
-  Line := FCursorRow;
-  RowsFromTop := MarkdownLineScreenRows(Line, ATextW, MaxInt);
-  while Line > 0 do
+  if (Line = FCursorRow) and (RowsFromTop + CursorChunk < AViewH) then
   begin
-    Rows := MarkdownLineScreenRows(Line - 1, ATextW, MaxInt);
-    if RowsFromTop + Rows > AViewH then
+    FTopSubRow := Sub;
+    Exit; // the cursor's row is already inside the visible window
+  end;
+
+  // Not visible: walk back from the cursor's own row until it is the last
+  // row of the window.
+  Line := FCursorRow;
+  Sub := CursorChunk;
+  Remaining := AViewH - 1;
+  while Remaining > 0 do
+  begin
+    if Sub >= Remaining then
+    begin
+      Dec(Sub, Remaining);
+      Break;
+    end;
+    Dec(Remaining, Sub);
+    Sub := 0;
+    if (Remaining = 0) or (Line = 0) then
       Break;
     Dec(Line);
-    Inc(RowsFromTop, Rows);
+    Dec(Remaining);
+    Rows := MarkdownChunkCount(Line, ATextW);
+    Sub := Rows - 1;
   end;
   FTopLine := Line;
+  FTopSubRow := Sub;
 end;
 
 procedure TEditorWindow.EnsureCursorVisible;
@@ -1640,6 +1836,7 @@ begin
   if not IsMarkdownFile then
     Exit;
   FMarkdownMode := not FMarkdownMode;
+  FTopSubRow := 0;
   if not FMarkdownMode then
     LeaveMarkdownOverlay;
   CloseFindPrompt;
@@ -1969,6 +2166,7 @@ begin
   FDoc.Close;
   FURI := '';
   FTopLine := 0;
+  FTopSubRow := 0;
   FLeftCol := 0;
   FCursorRow := 0;
   FCursorCol := 0;
@@ -2028,6 +2226,7 @@ begin
   FCursorCol := ACol;
   ClampCursor;
   FTopLine := EnsureRange(ATopLine, 0, Max(FDoc.LineCount - 1, 0));
+  FTopSubRow := 0;
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -2305,7 +2504,12 @@ begin
     ClearSelection;
 
   TextW := TextWidth;
-  if FWordWrap and FViewOnly and (TextW > 0) and (ARowDelta <> 0) then
+  if FMarkdownMode and FDoc.Ready and (TextW > 0) and (ARowDelta <> 0) then
+  begin
+    MoveMarkdownCursorRows(ARowDelta, TextW);
+    Inc(FCursorCol, AColDelta);
+  end
+  else if FWordWrap and FViewOnly and (TextW > 0) and (ARowDelta <> 0) then
   begin
     CurDisp := MapLineToDisplayRow(FCursorRow, FCursorCol, TextW);
     TargetDisp := CurDisp + ARowDelta;
@@ -3126,7 +3330,7 @@ var
   ImgUri: string;
   AbsBounds, AbsClip: TRectI;
   ShowingOverlay: Boolean;
-  DisplayLen, RowsForLine, RowInLine, ChunkStart, ChunkEnd, DrawCol: Integer;
+  DisplayLen, RowsForLine, RowInLine, ChunkStart, ChunkEnd, DrawCol, SkipRows: Integer;
   WrapStarts: TArray<Integer>;
   Vis: string;
 begin
@@ -3142,6 +3346,7 @@ begin
 
   Y := 0;
   LineIdx := FTopLine;
+  SkipRows := MarkdownTopSubRow;
   while Y < ViewH do
   begin
     if LineIdx >= FDoc.LineCount then
@@ -3179,6 +3384,7 @@ begin
         ShowingOverlay := True;
         Inc(Y, Reserved);
         Inc(LineIdx);
+        SkipRows := 0;
         Continue;
       end;
     end;
@@ -3197,7 +3403,7 @@ begin
     WrapStarts := MarkdownWrapStarts(MdLine, TextW);
     RowsForLine := Length(WrapStarts);
 
-    for RowInLine := 0 to RowsForLine - 1 do
+    for RowInLine := Min(SkipRows, RowsForLine - 1) to RowsForLine - 1 do
     begin
       if Y >= ViewH then
         Break;
@@ -3221,6 +3427,7 @@ begin
       end;
       Inc(Y);
     end;
+    SkipRows := 0;
     Inc(LineIdx);
   end;
 
