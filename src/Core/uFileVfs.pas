@@ -334,6 +334,21 @@ begin
     SetFileAttributes(PChar(WinApiPath(ADst)), Attr and AttrMask);
 end;
 
+// A failed create/write/move raises an exception that carries the Win32 error
+// only as text ("Cannot create file ...: Access denied"). Access denied must
+// stay an access-denied error: the job offers an administrator pass for it.
+function VfsErrorFromException(E: Exception; const AURI: string): TVfsError;
+var
+  Denied: string;
+begin
+  Denied := SysErrorMessage(ERROR_ACCESS_DENIED);
+  if ((E is EOSError) and (EOSError(E).ErrorCode = ERROR_ACCESS_DENIED)) or
+     ((Denied <> '') and (Pos(LowerCase(Denied), LowerCase(E.Message)) > 0)) then
+    Result := TVfsError.Make(vecAccessDenied, E.Message, AURI)
+  else
+    Result := TVfsError.Make(vecIOError, E.Message, AURI);
+end;
+
 procedure RemoveExistingPath(const APath: string; var AError: TVfsError);
 begin
   try
@@ -343,7 +358,7 @@ begin
       TFile.Delete(WinApiPath(APath));
   except
     on E: Exception do
-      AError := TVfsError.Make(vecIOError, E.Message, PathToFileUri(APath));
+      AError := VfsErrorFromException(E, PathToFileUri(APath));
   end;
 end;
 
@@ -426,7 +441,7 @@ begin
       on E: Exception do
       begin
         Raised := True;
-        AError := TVfsError.Make(vecIOError, E.Message, PathToFileUri(ASrc));
+        AError := VfsErrorFromException(E, PathToFileUri(ASrc));
       end;
     end;
   finally
@@ -1135,7 +1150,7 @@ begin
             except
               on E: Exception do
               begin
-                Err := TVfsError.Make(vecIOError, E.Message, ToURI);
+                Err := VfsErrorFromException(E, ToURI);
               end;
             end;
             if Err.Code = vecOk then
@@ -1169,7 +1184,7 @@ begin
         end;
       except
         on E: Exception do
-          Err := TVfsError.Make(vecIOError, E.Message, FromURI);
+          Err := VfsErrorFromException(E, FromURI);
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;
@@ -1241,7 +1256,7 @@ begin
               EnsureDestParentDir(Dst);
             except
               on E: Exception do
-                Err := TVfsError.Make(vecIOError, E.Message, ToURI);
+                Err := VfsErrorFromException(E, ToURI);
             end;
           end;
           if Err.Code = vecOk then
@@ -1260,7 +1275,7 @@ begin
                 QueueProgress(OnProgress, 1, 1, TPath.GetFileName(Dst), 1, 1, Src, Dst);
               except
                 on E: Exception do
-                  Err := TVfsError.Make(vecIOError, E.Message, FromURI);
+                  Err := VfsErrorFromException(E, FromURI);
               end;
               if Err.Code = vecOk then
                 VerifyMoveResult(Src, Dst, WasDirectory, Err);
@@ -1300,7 +1315,7 @@ begin
                     TFile.Delete(WinApiPath(Src));
                 except
                   on E: Exception do
-                    Err := TVfsError.Make(vecIOError, E.Message, FromURI);
+                    Err := VfsErrorFromException(E, FromURI);
                 end;
               end;
             end;
@@ -1308,7 +1323,7 @@ begin
         end;
       except
         on E: Exception do
-          Err := TVfsError.Make(vecIOError, E.Message, FromURI);
+          Err := VfsErrorFromException(E, FromURI);
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;
