@@ -56,6 +56,7 @@ const
   cResDialogDisplay = 'DIALOG_DISPLAY';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';
   cResDialogConsoleOptions = 'DIALOG_CONSOLEOPTIONS';
+  cResDialogSettingsFile = 'DIALOG_SETTINGSFILE';
   cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
   cResDialogMarkdownImport = 'DIALOG_MARKDOWNIMPORT';
   cResDialogChecksumOpts = 'DIALOG_CHECKSUMOPTS';

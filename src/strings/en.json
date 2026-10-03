@@ -181,6 +181,11 @@
       "ok": "OK",
       "cancel": "Cancel"
     },
+    "DIALOG_SETTINGSFILE": {
+      "$title": "Settings file",
+      "ok": "OK",
+      "cancel": "Cancel"
+    },
     "DIALOG_EXTERNALTOOLS": {
       "$title": "External Viewer / Editor",
       "lbl_viewer": "Viewer (Alt+F3):",

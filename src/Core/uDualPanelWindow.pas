@@ -674,6 +674,9 @@ type
     procedure ClearConsoleBuffer;
     procedure BeginExportSettings;
     procedure BeginImportSettings;
+    /// <summary>mtn2-settings.zip in the folder of the active panel (the
+    /// documents folder when that is not a plain folder).</summary>
+    function SettingsFileDefaultPath: string;
     function HandleSettingsFileCommand(AKind: THostDialogKind;
       const AControlId: string; const AFields: TDialogCommandFields): Boolean;
     function HandleConsoleSaveCommand(const AControlId: string;
@@ -7292,15 +7295,25 @@ begin
   FDialog.Close;
 end;
 
+function TDualPanelWindow.SettingsFileDefaultPath: string;
+var
+  Dir: string;
+begin
+  Dir := PanelCommandCwd;
+  if (Dir = '') or not TDirectory.Exists(Dir) then
+    Dir := TPath.GetDocumentsPath;
+  Result := TPath.Combine(Dir, 'mtn2-settings.zip');
+end;
+
 procedure TDualPanelWindow.BeginExportSettings;
 begin
   if not Assigned(FOnExportSettings) or not CanStartOperation then
     Exit;
   CloseTransientUiBeforeDialog;
   FDialogKind := hdkSettingsExport;
-  FDialog.Open(BuildInputDialog(T('ui.settings.exportTitle', 'Export settings'),
+  FDialog.Open(BuildSettingsFileDialog(T('ui.settings.exportTitle', 'Export settings'),
     T('ui.settings.exportPrompt', 'Write the settings to the file:'),
-    TPath.Combine(TPath.GetDocumentsPath, 'mtn2-settings.zip')), DialogCommand);
+    SettingsFileDefaultPath), DialogCommand);
   NotifyChanged;
 end;
 
@@ -7310,9 +7323,9 @@ begin
     Exit;
   CloseTransientUiBeforeDialog;
   FDialogKind := hdkSettingsImport;
-  FDialog.Open(BuildInputDialog(T('ui.settings.importTitle', 'Import settings'),
+  FDialog.Open(BuildSettingsFileDialog(T('ui.settings.importTitle', 'Import settings'),
     T('ui.settings.importPrompt', 'Read the settings from the file:'),
-    TPath.Combine(TPath.GetDocumentsPath, 'mtn2-settings.zip')), DialogCommand);
+    SettingsFileDefaultPath), DialogCommand);
   NotifyChanged;
 end;
 
