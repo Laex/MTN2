@@ -65,6 +65,7 @@ type
     procedure CloseTab(ASide: TPanelSide);
     procedure TogglePanel(ASide: TPanelSide);
     procedure BeginJob(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean);
+    procedure BeginDeleteCursor;
     procedure OpenViewOrEdit(AEdit: Boolean);
     procedure MoveCursor(ADelta: Integer);
     procedure MoveCursorWithSelect(ADelta: Integer; AExcludeLanding: Boolean);
@@ -237,6 +238,11 @@ begin
   Recycle := ADeleteToRecycleBin;
 end;
 
+procedure TKeymapSpy.BeginDeleteCursor;
+begin
+  Last := 'delcursor';
+end;
+
 procedure TKeymapSpy.OpenViewOrEdit(AEdit: Boolean);
 begin
   Last := 'viewedit';
@@ -303,6 +309,7 @@ begin
   AHost.RequestQuit := ASpy.RequestQuit;
   AHost.TogglePanelVisible := ASpy.TogglePanel;
   AHost.BeginJob := ASpy.BeginJob;
+  AHost.BeginDeleteCursor := ASpy.BeginDeleteCursor;
   AHost.OpenViewOrEdit := ASpy.OpenViewOrEdit;
   AHost.MoveCursor := ASpy.MoveCursor;
   AHost.MoveCursorWithSelect := ASpy.MoveCursorWithSelect;
@@ -476,8 +483,15 @@ begin
     KeyChar := 'w';
     Assert.IsTrue(DispatchKeymapActionFunctionKeys(Host, kaWipe, Key, KeyChar),
       'kaWipe is a function-key action');
-    Assert.IsTrue((Spy.Job = pjkDelete) and (not Spy.Recycle), 'kaWipe deletes without recycle');
+    Assert.IsTrue(Spy.Last = 'delcursor', 'kaWipe (Shift+F8) deletes the cursor item only');
     Assert.IsTrue(KeyChar = #0, 'kaWipe consumes AKeyChar');
+
+    Key := vkDelete;
+    KeyChar := 'x';
+    Assert.IsTrue(DispatchKeymapActionFunctionKeys(Host, kaDeletePermanent, Key, KeyChar),
+      'kaDeletePermanent is a function-key action');
+    Assert.IsTrue((Spy.Job = pjkDelete) and (not Spy.Recycle), 'kaDeletePermanent deletes without recycle');
+    Assert.IsTrue(KeyChar = #0, 'kaDeletePermanent consumes AKeyChar');
 
     Key := vkF3;
     KeyChar := 'v';

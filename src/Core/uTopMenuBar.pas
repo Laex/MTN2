@@ -757,7 +757,7 @@ begin
   FCategories[2].Items[4] := SubItem('Make directory', 'K', 'F7', tmaFileMkDir);
   FCategories[2].Items[5] := SubItem('Set attributes...', 'B', 'Ctrl+A', tmaFileSetAttributes);
   FCategories[2].Items[6] := SubItem('Delete', 'D', 'F8', tmaFileDelete);
-  FCategories[2].Items[7] := SubItem('Wipe file', 'W', 'Shift+F8', tmaFileWipe);
+  FCategories[2].Items[7] := SubItem('Delete cursor item', 'E', 'Shift+F8', tmaFileWipe);
   FCategories[2].Items[8] := Separator;
   FCategories[2].Items[9] := SubItem('Pack archive', 'P', 'Shift+F1', tmaFilePack);
   FCategories[2].Items[10] := SubItem('Unpack archive', 'U', 'Shift+F2', tmaFileUnpack);

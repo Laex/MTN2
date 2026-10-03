@@ -108,6 +108,7 @@ type
     OpenViewOrEdit: TKeymapBoolProc;
     BeginNewFile: TKeymapProc;
     BeginJob: TKeymapJobProc;
+    BeginDeleteCursor: TKeymapProc;
     BeginRename: TKeymapProc;
     BeginCopyInPlace: TKeymapProc;
     BeginMkDir: TKeymapProc;
@@ -314,7 +315,7 @@ begin
     kaCopy: Exit(iaCopy);
     kaMove: Exit(iaMove);
     kaMkDir: Exit(iaMakeDir);
-    kaDelete, kaWipe: Exit(iaDelete);
+    kaDelete, kaWipe, kaDeletePermanent: Exit(iaDelete);
     kaFind: Exit(iaSearch);
     kaQuit: Exit(iaQuit);
     kaConsoleToggle: Exit(iaToggleConsole);
@@ -938,6 +939,13 @@ begin
         Exit;
       end;
     kaWipe:
+      begin
+        if Assigned(AHost.BeginDeleteCursor) then
+          AHost.BeginDeleteCursor();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaDeletePermanent:
       begin
         AHost.BeginJob(pjkDelete, False);
         ConsumeKey(AKey, AKeyChar, True);

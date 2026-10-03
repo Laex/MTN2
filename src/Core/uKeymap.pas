@@ -29,6 +29,7 @@ type
     kaRestore,
     kaDelete,
     kaWipe,
+    kaDeletePermanent,      // Shift+Del - delete selected items bypassing the Recycle Bin
     kaQuit,
     kaFind,
     kaSwapPanels,
@@ -515,7 +516,7 @@ begin
   AddBinding(Result, kaDelete, KeyBinding(vkF8, False, False, False));
   AddBinding(Result, kaDelete, KeyBinding(vkDelete, False, False, False));
   AddBinding(Result, kaWipe, KeyBinding(vkF8, True, False, False));
-  AddBinding(Result, kaWipe, KeyBinding(vkDelete, True, False, False));
+  AddBinding(Result, kaDeletePermanent, KeyBinding(vkDelete, True, False, False));
   
   // kaQuit: F10 on the panels (NDN/FAR habit); Alt+X is kaAppQuit, everywhere.
   AddBinding(Result, kaQuit, KeyBinding(vkF10, False, False, False));
@@ -825,6 +826,7 @@ const
     'Restore',               // kaRestore
     'Delete',                // kaDelete
     'Wipe',                  // kaWipe
+    'DeletePermanent',       // kaDeletePermanent
     'Quit',                  // kaQuit
     'Find',                  // kaFind
     'SwapPanels',            // kaSwapPanels
@@ -1091,9 +1093,9 @@ begin
       ApplyBindingsForAction(BindObj, Act, AProfile);
   end;
 
-  // Ensure Del / Shift+Del are always available for Delete / Wipe.
+  // Ensure Del / Shift+Del are always available for Delete / permanent delete.
   EnsureBindingPresent(AProfile, kaDelete, KeyBinding(vkDelete, False, False, False));
-  EnsureBindingPresent(AProfile, kaWipe, KeyBinding(vkDelete, True, False, False));
+  EnsureBindingPresent(AProfile, kaDeletePermanent, KeyBinding(vkDelete, True, False, False));
 end;
 
 function ParseKeymapJson(const AJsonText: string; out AProfile: TKeymapProfile): Boolean;
@@ -1324,6 +1326,7 @@ begin
     kaSetAttributes: Result := 'Attr';
     kaDelete: Result := 'Del';
     kaWipe: Result := 'Wipe';
+    kaDeletePermanent: Result := 'DelPerm';
     kaQuit: Result := 'Quit';
     kaFind: Result := 'Find';
     kaTogglePanelLeft: Result := 'Left';

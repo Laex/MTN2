@@ -1,4 +1,4 @@
-﻿{
+{
   "dialogs": {
     "DIALOG_ABOUT": {
       "$title": "О программе MTN2",
@@ -296,7 +296,7 @@
       "line0": "F2 Меню   F3 Просмотр/размер папок   F4 Правка   F5 Копия",
       "line1": "F6 Перенос   F7 Папка   F8 Удалить   F10 Выход",
       "line2": "Shift+F1 Упаковать ZIP   Shift+F2 Распаковать   Shift+F6 Имя",
-      "line3": "Shift+F8 Уничтожить   Alt+F1/F2 Диск   Alt+F7 Поиск",
+      "line3": "Shift+F8 Удалить под курсором   Alt+F1/F2 Диск   Alt+F7 Поиск",
       "line4": "Серые +/-/* Выделение   Shift+стрелки/Home/End/Pg инверсия",
       "line5": "Ctrl+O/Esc Консоль   Ctrl+Down ком.строка   Ctrl+R обновить",
       "line6": "Ctrl+Enter имя  Ctrl+Shift+Enter путь  Tab дополн.  ↑↓ ист.",
@@ -763,7 +763,7 @@
     "update.close": "Закрыть",    "delete.promptOne": "Удалить объект «%s»?",
     "delete.promptMany": "Удалить выбранные объекты (%d)?",
     "delete.okRecycle": "В корзину",
-    "delete.okWipe": "Затереть",
+    "delete.okWipe": "Удалить",
     "delete.okDefault": "Удалить",
     "deleteError.recycleFolder": "Не удалось переместить папку в корзину",
     "deleteError.recycleFile": "Не удалось переместить файл в корзину",
@@ -1259,7 +1259,7 @@
     "tmaFileChecksums": "Контрольные суммы...",
     "tmaFileRestore": "&Восстановить из корзины",
     "tmaFileDelete": "Уда&лить",
-    "tmaFileWipe": "&Затереть файл",
+    "tmaFileWipe": "Удалить под курсором",
     "tmaFilePack": "&Упаковать в архив",
     "tmaFileUnpack": "Распаковать ар&хив",
     "tmaFileSelectMask": "Выделить по &маске...",
@@ -1349,7 +1349,7 @@
     "Unpk": "Распак",
     "CopyH": "Копия",
     "Renam": "Переим",
-    "Wipe": "Затер",
+    "Wipe": "Удалить под курсором",
     "Link": "Ссылка",
     "Attr": "Атриб",
     "Find": "Поиск",

@@ -114,6 +114,7 @@ const
     'Recycle Bin',
     'Restore from Recycle Bin',
     'Delete to Recycle Bin',
+    'Delete cursor item',
     'Delete permanently',
     'Quit (panels)',
     'Find files',

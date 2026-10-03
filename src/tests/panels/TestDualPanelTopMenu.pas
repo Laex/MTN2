@@ -38,6 +38,7 @@ type
     procedure ToggleDrive(ASide: TPanelSide);
     procedure CloseTab(ASide: TPanelSide);
     procedure BeginJob(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean);
+    procedure BeginDeleteCursor;
     procedure OpenViewOrEdit(AEdit: Boolean);
     procedure RequestQuit;
     procedure ToggleConsoleMode;
@@ -76,6 +77,11 @@ begin
   Last := 'job';
   Job := AKind;
   Recycle := ADeleteToRecycleBin;
+end;
+
+procedure TMenuSpy.BeginDeleteCursor;
+begin
+  Last := 'delcursor';
 end;
 
 procedure TMenuSpy.OpenViewOrEdit(AEdit: Boolean);
@@ -133,6 +139,7 @@ begin
   AHost.ToggleDrivePopup := ASpy.ToggleDrive;
   AHost.ClosePanelTabOnSide := ASpy.CloseTab;
   AHost.BeginJob := ASpy.BeginJob;
+  AHost.BeginDeleteCursor := ASpy.BeginDeleteCursor;
   AHost.OpenViewOrEdit := ASpy.OpenViewOrEdit;
   AHost.RequestQuit := ASpy.RequestQuit;
   AHost.ToggleConsole := ASpy.ToggleConsoleMode;
@@ -171,9 +178,8 @@ begin
     Assert.IsTrue(Spy.Job = pjkCopy, 'copy job kind');
     Assert.IsTrue(Spy.Recycle, 'copy recycle default true');
 
-    Assert.IsTrue(DispatchTopMenuAction(Host, tmaFileWipe), 'wipe handled');
-    Assert.IsTrue(Spy.Job = pjkDelete, 'wipe is delete job');
-    Assert.IsTrue(not Spy.Recycle, 'wipe is not recycle');
+    Assert.IsTrue(DispatchTopMenuAction(Host, tmaFileWipe), 'Shift+F8 handled');
+    Assert.IsTrue(Spy.Last = 'delcursor', 'Shift+F8 deletes the cursor item only');
 
     Assert.IsTrue(DispatchTopMenuAction(Host, tmaFileEdit), 'edit handled');
     Assert.IsTrue(Spy.Edit, 'edit opens editor');

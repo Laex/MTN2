@@ -1,4 +1,4 @@
-﻿unit uDualPanelWindow;
+unit uDualPanelWindow;
 
 { Dual Panel Host: menu + clock, Dual Panel Tabs, two panel frames
   (double-line = active), Panel Tabs, scrollbars, command line, F-bar, status.
@@ -527,6 +527,7 @@ type
     procedure CloseJobUi;
     function CanBeginAnotherJob: Boolean;
     procedure BeginJob(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean = True);
+    procedure BeginDeleteCursor;
     procedure BeginTransferJob(const ASources: TArray<string>; const ADestDirURI: string;
       AKind: TPanelJobKind);
     procedure BeginPackZip;
@@ -1541,6 +1542,7 @@ begin
   FKeymapHost.OpenViewOrEdit := OpenViewOrEdit;
   FKeymapHost.BeginNewFile := BeginNewFile;
   FKeymapHost.BeginJob := BeginJob;
+  FKeymapHost.BeginDeleteCursor := BeginDeleteCursor;
   FKeymapHost.BeginRename := BeginRename;
   FKeymapHost.BeginCopyInPlace := BeginCopyInPlace;
   FKeymapHost.BeginMkDir := BeginMkDir;
@@ -2069,7 +2071,7 @@ begin
       FDialog.Open(BuildDeleteDialog(ATitle, AMessage, T('ui.delete.okRecycle', 'Recycle'), False),
         DialogCommand)
     else
-      FDialog.Open(BuildDeleteDialog(ATitle, AMessage, T('ui.delete.okWipe', 'Wipe'), True),
+      FDialog.Open(BuildDeleteDialog(ATitle, AMessage, T('ui.delete.okWipe', 'Delete'), True),
         DialogCommand);
   end
   else
@@ -9762,6 +9764,26 @@ begin
   end;
 
   FJobs.BeginJob(Sources, DestURI, AKind, ADeleteToRecycleBin);
+end;
+
+procedure TDualPanelWindow.BeginDeleteCursor;
+var
+  Name, Uri, TargetUri: string;
+  IsParent: Boolean;
+begin
+  if not CanBeginAnotherJob then
+    Exit;
+  if Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible then
+    CloseDrivePopup;
+  // Workspace panels keep their own "unlink selected" semantics.
+  if ActivePanelIsWorkspace then
+  begin
+    BeginJob(pjkDelete, True);
+    Exit;
+  end;
+  if (not HostTryGetCursorItem(Name, Uri, TargetUri, IsParent)) or IsParent or (Uri = '') then
+    Exit;
+  FJobs.BeginJob([Uri], '', pjkDelete, True);
 end;
 
 procedure TDualPanelWindow.BeginTransferJob(const ASources: TArray<string>;

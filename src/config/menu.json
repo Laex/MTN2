@@ -48,7 +48,7 @@
         { "caption": "Checksums...", "hotChar": "H", "shortcut": "Ctrl+Alt+H", "action": "tmaFileChecksums" },
         { "caption": "Restore from Recycle Bin", "hotChar": "T", "shortcut": "Ctrl+Alt+R", "action": "tmaFileRestore" },
         { "caption": "Delete", "hotChar": "D", "shortcut": "F8", "action": "tmaFileDelete" },
-        { "caption": "Wipe file", "hotChar": "W", "shortcut": "Shift+F8", "action": "tmaFileWipe" },
+        { "caption": "Delete cursor item", "hotChar": "E", "shortcut": "Shift+F8", "action": "tmaFileWipe" },
         { "isSeparator": true },
         { "caption": "Pack archive", "hotChar": "P", "shortcut": "Shift+F1", "action": "tmaFilePack" },
         { "caption": "Unpack archive", "hotChar": "U", "shortcut": "Shift+F2", "action": "tmaFileUnpack" },

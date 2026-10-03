@@ -27,8 +27,10 @@
       { "key": "Delete", "description": "Delete to Recycle Bin (Del)" }
     ],
     "Wipe": [
-      { "key": "F8", "shift": true, "description": "Permanent Wipe Delete (Shift+F8)" },
-      { "key": "Delete", "shift": true, "description": "Permanent Wipe Delete (Shift+Del)" }
+      { "key": "F8", "shift": true, "description": "Delete cursor item only (Shift+F8)" }
+    ],
+    "DeletePermanent": [
+      { "key": "Delete", "shift": true, "description": "Delete permanently, bypassing the Recycle Bin (Shift+Del)" }
     ],
     "Quit": { "key": "F10", "description": "Exit Application (F10)" },
     "Find": { "key": "F7", "alt": true, "description": "Find / Search Files" },

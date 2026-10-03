@@ -100,7 +100,7 @@ begin
     tmaFileChecksums: CallProc(AHost.BeginChecksums);
     tmaFileRestore: CallProc(AHost.RestoreCursorItemFromRecycleBin);
     tmaFileDelete: CallJob(AHost.BeginJob, pjkDelete, True);
-    tmaFileWipe: CallJob(AHost.BeginJob, pjkDelete, False);
+    tmaFileWipe: CallProc(AHost.BeginDeleteCursor);
     tmaFilePack: CallProc(AHost.BeginPackZip);
     tmaFileUnpack: CallProc(AHost.BeginUnpackZip);
     tmaFileJobList: CallProc(AHost.OpenJobList);
