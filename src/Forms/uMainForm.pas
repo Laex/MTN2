@@ -305,6 +305,12 @@ type
     /// named check instead of four.</summary>
     function IsConsoleMouseTarget(Col, Row: Integer): Boolean;
     function TryDispatchConsoleMouseDown(Col, Row: Integer; Shift: TShiftState): Boolean;
+    /// <summary>A click on the function bar while the console covers the panels
+    /// acts as the key it shows (Esc:Panels), through the keyboard path. The
+    /// bar belongs to Dual Panel, which ignores keys in console mode, so the
+    /// click used to hide the console and leave the panels unpainted.</summary>
+    function TryDispatchConsoleFunctionBarClick(Col, Row: Integer;
+      Shift: TShiftState): Boolean;
     /// <summary>Dual Panel's click handling: a right-click arms the context
     /// menu (and reports handled, so FormMouseDown exits); a left-click just
     /// forwards to HandleClick/ArmFileDragFromCursor and lets FormMouseDown
@@ -2645,6 +2651,23 @@ begin
   Result := FConsole.HandleMouseDown(LocalCol, LocalRow, Shift);
 end;
 
+function TMainForm.TryDispatchConsoleFunctionBarClick(Col, Row: Integer;
+  Shift: TShiftState): Boolean;
+var
+  Key: Word;
+  KeyChar: Char;
+  KeyShift: TShiftState;
+begin
+  Result := False;
+  if not (Assigned(FDualPanel) and FDualPanel.Visible and FDualPanel.ConsoleMode and
+          Assigned(FConsole) and FConsole.Visible and FDualPanel.HitTest(Col, Row)) then
+    Exit;
+  if not FDualPanel.FunctionBarClickKey(Col - FDualPanel.Area.Left,
+       Row - FDualPanel.Area.Top, Shift, Key, KeyChar, KeyShift) then
+    Exit;
+  Result := DispatchTerminalKey(Key, KeyChar, KeyShift);
+end;
+
 function TMainForm.TryDispatchDualPanelMouseDown(Col, Row: Integer; Dbl: Boolean;
   Shift: TShiftState; AButton: TMouseButton; const AScreenPt: TPointF): Boolean;
 var
@@ -2705,6 +2728,13 @@ begin
     FlushDialogButtonPress;
   end;
 
+  // Before ActivateAt: the bar is Dual Panel's, and activating it while the
+  // console shows would hide the console and leave the panels blank.
+  if (Button = TMouseButton.mbLeft) and TryDispatchConsoleFunctionBarClick(Col, Row, Shift) then
+  begin
+    Recompose;
+    Exit;
+  end;
   FMdi.ActivateAt(Col, Row);
   if TryDispatchActiveMdiMouseDown(Col, Row, Shift, Button) then
   begin

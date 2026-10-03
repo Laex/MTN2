@@ -900,6 +900,11 @@ type
     procedure PaintConsoleWindowButtons(const AGrid: TTerminalGrid; AWidth: Integer);
     /// <summary>A click on those buttons; True when it hit one and acted.</summary>
     function HandleConsoleFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
+    /// <summary>The key a click on the function bar stands for (Esc for
+    /// "Esc:Panels"), False when the click is not on a bar item. Lets the main
+    /// form send it down the keyboard path while the console covers the panels.</summary>
+    function FunctionBarClickKey(ALocalCol, ALocalRow: Integer; AShift: TShiftState;
+      out AKey: Word; out AKeyChar: Char; out AKeyShift: TShiftState): Boolean;
     function HandleMouseUp: Boolean;
     /// <summary>Arm drag after a list click (call from form after HandleClick).</summary>
     procedure ArmFileDragFromCursor;
@@ -8813,6 +8818,25 @@ end;
 function TDualPanelWindow.HandleConsoleFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
 begin
   Result := ConsoleBarShown and ClickChrome(ALocalCol, ALocalRow);
+end;
+
+function TDualPanelWindow.FunctionBarClickKey(ALocalCol, ALocalRow: Integer;
+  AShift: TShiftState; out AKey: Word; out AKeyChar: Char;
+  out AKeyShift: TShiftState): Boolean;
+var
+  Items, Letters: TArray<string>;
+  Hit: TFunctionBarHit;
+begin
+  AKey := 0;
+  AKeyChar := #0;
+  AKeyShift := [];
+  Result := False;
+  if ALocalRow <> KeyBarRow(Area.Height) then
+    Exit;
+  FunctionBarGetItems(ChromeContext, AShift, Items, Letters);
+  Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
+    Assigned(Theme));
+  Result := FunctionBarHitToInput(Hit, AShift, AKey, AKeyChar, AKeyShift);
 end;
 
 function TDualPanelWindow.ReleaseChromeButton(ALocalCol, ALocalRow: Integer;
