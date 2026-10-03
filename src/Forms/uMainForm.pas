@@ -1601,6 +1601,8 @@ begin
   Result.LineSpacing := FSession.LineSpacing;
   Result.SnapFontSize := FSession.SnapFontSize;
   Result.TextContrast := ClampTextContrast(FSession.TextContrast);
+  Result.CellWidthExtra := ClampCellExtra(FSession.CellWidthExtra);
+  Result.CellHeightExtra := ClampCellExtra(FSession.CellHeightExtra);
   Result.SelectFolders := FDualPanel.SelectFolders;
   Result.Language := CurrentLocale;
 end;
@@ -1626,6 +1628,8 @@ begin
   FSession.LineSpacing := ASettings.LineSpacing;
   FSession.SnapFontSize := ASettings.SnapFontSize;
   FSession.TextContrast := ClampTextContrast(ASettings.TextContrast);
+  FSession.CellWidthExtra := ClampCellExtra(ASettings.CellWidthExtra);
+  FSession.CellHeightExtra := ClampCellExtra(ASettings.CellHeightExtra);
   FSession.SelectFolders := ASettings.SelectFolders;
   FDualPanel.SelectFolders := ASettings.SelectFolders;
   GShadowStyle := ASettings.ShadowStyle;
@@ -1650,6 +1654,8 @@ begin
     FRenderer.SetLineSpacing(ASettings.LineSpacing, ClientWidth, ClientHeight, Canvas);
     FRenderer.SetSnapFontSize(ASettings.SnapFontSize, ClientWidth, ClientHeight, Canvas);
     FRenderer.SetTextContrast(ASettings.TextContrast, ClientWidth, ClientHeight, Canvas);
+    FRenderer.SetCellExtra(ASettings.CellWidthExtra, ASettings.CellHeightExtra,
+      ClientWidth, ClientHeight, Canvas);
     FSession.FontName := FRenderer.FontName;
     FSession.FontSize := FRenderer.BaseFontSize;
   end
@@ -1714,6 +1720,8 @@ begin
   FRenderer.SetLineSpacing(Sess.LineSpacing, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetSnapFontSize(Sess.SnapFontSize, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetTextContrast(Sess.TextContrast, ClientWidth, ClientHeight, Canvas);
+  FRenderer.SetCellExtra(Sess.CellWidthExtra, Sess.CellHeightExtra, ClientWidth,
+    ClientHeight, Canvas);
 end;
 
 procedure TMainForm.PersistSession;
@@ -1791,6 +1799,8 @@ begin
   Sess.LineSpacing := FSession.LineSpacing;
   Sess.SnapFontSize := FSession.SnapFontSize;
   Sess.TextContrast := ClampTextContrast(FSession.TextContrast);
+  Sess.CellWidthExtra := ClampCellExtra(FSession.CellWidthExtra);
+  Sess.CellHeightExtra := ClampCellExtra(FSession.CellHeightExtra);
   Sess.SelectFolders := FDualPanel.SelectFolders;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/

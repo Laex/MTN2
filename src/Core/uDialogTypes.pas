@@ -284,7 +284,8 @@ function BuildDisplayDialog(const AFontNames: TArray<string>;
   const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
   AShowNotifications: Boolean = True; AShadowIndex: Integer = 0;
   ALineSpacing: Boolean = False; AMarkedRowIndex: Integer = 0;
-  ASnapFontSize: Boolean = False; ATextContrastIndex: Integer = 0): TDialogDeclaration;
+  ASnapFontSize: Boolean = False; ATextContrastIndex: Integer = 0;
+  ACellWidthExtra: Integer = 0; ACellHeightExtra: Integer = 0): TDialogDeclaration;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
@@ -1259,7 +1260,8 @@ function BuildDisplayDialog(const AFontNames: TArray<string>;
   const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
   AShowNotifications: Boolean; AShadowIndex: Integer;
   ALineSpacing: Boolean; AMarkedRowIndex: Integer;
-  ASnapFontSize: Boolean; ATextContrastIndex: Integer): TDialogDeclaration;
+  ASnapFontSize: Boolean; ATextContrastIndex: Integer;
+  ACellWidthExtra, ACellHeightExtra: Integer): TDialogDeclaration;
 var
   Fonts, Languages: TArray<string>;
   Sel: Integer;
@@ -1292,6 +1294,8 @@ begin
   DialogSetCheckbox(Result, 'line_spacing', ALineSpacing);
   DialogSetCheckbox(Result, 'snap_font_size', ASnapFontSize);
   DialogSetListItems(Result, 'text_contrast', DisplayTextContrastItems, ATextContrastIndex);
+  DialogSetListItems(Result, 'cell_w', DisplayCellExtraItems, ACellWidthExtra);
+  DialogSetListItems(Result, 'cell_h', DisplayCellExtraItems, ACellHeightExtra);
   DialogSetLabelText(Result, 'font_note', ANote);
 
   if Length(ALanguageNames) = 0 then

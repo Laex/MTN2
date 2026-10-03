@@ -21,6 +21,9 @@ const
   /// <summary>Text contrast levels: 0 = off, 1..3 = a stronger second pass
   /// over each glyph (uTerminalRenderer.TGlyphCache.Contrast).</summary>
   cDisplayMaxTextContrast = 3;
+  /// <summary>Extra cell width / height in device pixels (Display dialog
+  /// "Cell width" / "Cell height"): 0..cDisplayMaxCellExtra.</summary>
+  cDisplayMaxCellExtra = 4;
   cDisplayMaxZoom = 3.0;
 
 type
@@ -60,6 +63,11 @@ type
     /// <summary>0..cDisplayMaxTextContrast: heavier glyph edges for thin text
     /// (TTerminalRenderer.SetTextContrast).</summary>
     TextContrast: Integer;
+    /// <summary>Device pixels added to every cell's width / height
+    /// (TTerminalRenderer.SetCellExtra): looser letters or rows for a font
+    /// that is cramped. 0 = the font's own cell.</summary>
+    CellWidthExtra: Integer;
+    CellHeightExtra: Integer;
     /// <summary>Select all / Deselect all and select by extension also take
     /// folders (uDualPanelSelection.SelectFolders). Off by default, like Far.</summary>
     SelectFolders: Boolean;
@@ -78,6 +86,9 @@ function ClampDisplayFontSize(ASize: Single): Single;
 function ClampDisplayZoom(AZoom: Single): Single;
 function ClampDisplayBlinkMs(AMs: Integer): Integer;
 function ClampTextContrast(ALevel: Integer): Integer;
+function ClampCellExtra(APixels: Integer): Integer;
+/// <summary>Display dialog "Cell width" / "Cell height" dropdown ("0 px" ... "4 px").</summary>
+function DisplayCellExtraItems: TArray<string>;
 /// <summary>Display dialog "Text contrast" dropdown, level order.</summary>
 function DisplayTextContrastItems: TArray<string>;
 /// <summary>Display dialog size list, in points ("10.5 pt"; the decimal
@@ -290,6 +301,20 @@ begin
   Result := EnsureRange(ALevel, 0, cDisplayMaxTextContrast);
 end;
 
+function ClampCellExtra(APixels: Integer): Integer;
+begin
+  Result := EnsureRange(APixels, 0, cDisplayMaxCellExtra);
+end;
+
+function DisplayCellExtraItems: TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, cDisplayMaxCellExtra + 1);
+  for I := 0 to cDisplayMaxCellExtra do
+    Result[I] := Format('%d %s', [I, T('ui.display.px', 'px')]);
+end;
+
 function DisplayShadowItems: TArray<string>;
 begin
   Result := [T('ui.display.shadowClassic', 'Classic'),
@@ -339,6 +364,8 @@ begin
   Result.LineSpacing := False;
   Result.SnapFontSize := False;
   Result.TextContrast := 0;
+  Result.CellWidthExtra := 0;
+  Result.CellHeightExtra := 0;
   Result.SelectFolders := False;
   Result.Language := '';
 end;

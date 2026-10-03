@@ -75,6 +75,9 @@ type
     SnapFontSize: Boolean;
     /// <summary>Display "text contrast" level, 0..3.</summary>
     TextContrast: Integer;
+    /// <summary>Display "cell width / height": extra device pixels, 0..4.</summary>
+    CellWidthExtra: Integer;
+    CellHeightExtra: Integer;
     SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
@@ -532,6 +535,8 @@ begin
   Root.AddPair('lineSpacing', TJSONBool.Create(ASession.LineSpacing));
       Root.AddPair('snapFontSize', TJSONBool.Create(ASession.SnapFontSize));
       Root.AddPair('textContrast', TJSONNumber.Create(ClampTextContrast(ASession.TextContrast)));
+      Root.AddPair('cellWidthExtra', TJSONNumber.Create(ClampCellExtra(ASession.CellWidthExtra)));
+      Root.AddPair('cellHeightExtra', TJSONNumber.Create(ClampCellExtra(ASession.CellHeightExtra)));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
@@ -590,6 +595,8 @@ begin
   ASession.LineSpacing := False;
   ASession.SnapFontSize := False;
   ASession.TextContrast := 0;
+  ASession.CellWidthExtra := 0;
+  ASession.CellHeightExtra := 0;
   ASession.SelectFolders := False;
   ASession.Language := '';
 
@@ -663,6 +670,8 @@ begin
   ASession.LineSpacing := JsonBool(Root, 'lineSpacing', False);
       ASession.SnapFontSize := JsonBool(Root, 'snapFontSize', False);
       ASession.TextContrast := ClampTextContrast(JsonInt(Root, 'textContrast', 0));
+      ASession.CellWidthExtra := ClampCellExtra(JsonInt(Root, 'cellWidthExtra', 0));
+      ASession.CellHeightExtra := ClampCellExtra(JsonInt(Root, 'cellHeightExtra', 0));
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);

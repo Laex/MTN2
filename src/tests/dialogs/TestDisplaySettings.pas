@@ -345,16 +345,25 @@ begin
   Assert.AreEqual(cDisplayMaxTextContrast, ClampTextContrast(9), 'contrast max');
   Assert.AreEqual(cDisplayMaxTextContrast + 1, Length(DisplayTextContrastItems),
     'one dropdown item per level');
+  Assert.AreEqual(0, DefaultDisplaySettings.CellWidthExtra, 'no extra cell width by default');
+  Assert.AreEqual(0, DefaultDisplaySettings.CellHeightExtra, 'no extra cell height by default');
+  Assert.AreEqual(0, ClampCellExtra(-1), 'cell extra min');
+  Assert.AreEqual(cDisplayMaxCellExtra, ClampCellExtra(50), 'cell extra max');
+  Assert.AreEqual(cDisplayMaxCellExtra + 1, Length(DisplayCellExtraItems), 'one item per pixel count');
 
   Path := TPath.Combine(TPath.GetTempPath, 'mtn2-fontquality-session-test.json');
   Saved := MakeUsableSession;
   Saved.SnapFontSize := True;
   Saved.TextContrast := 2;
+  Saved.CellWidthExtra := 1;
+  Saved.CellHeightExtra := 3;
   Assert.IsTrue(SaveSession(Path, Saved), 'save session');
   try
     Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
     Assert.IsTrue(Loaded.SnapFontSize, 'snapFontSize saved');
     Assert.AreEqual(2, Loaded.TextContrast, 'textContrast saved');
+    Assert.AreEqual(1, Loaded.CellWidthExtra, 'cellWidthExtra saved');
+    Assert.AreEqual(3, Loaded.CellHeightExtra, 'cellHeightExtra saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -364,7 +373,7 @@ begin
   Host := TDialogHost.Create(CreateThemeByName('NDN'));
   try
     Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
-      ['English'], 0, True, 0, False, 0, True, 2), nil);
+      ['English'], 0, True, 0, False, 0, True, 2, 1, 3), nil);
     AllocTerminalGrid(Grid, 120, 40);
     ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
     Host.Draw(Grid, 120, 40);
@@ -386,6 +395,8 @@ begin
     Assert.IsTrue(Pos('Text contrast', Text) > 0, 'contrast label drawn');
     Assert.IsTrue(Pos('Medium', Text) > 0, 'saved contrast level shown');
     Assert.IsTrue(Pos('Snap font size', Text) > 0, 'snap checkbox drawn');
+    Assert.IsTrue(Pos('Cell width', Text) > 0, 'cell width row drawn');
+    Assert.IsTrue(Pos('3 px', Text) > 0, 'saved cell height shown');
     Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
   finally
