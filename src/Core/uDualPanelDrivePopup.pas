@@ -7,7 +7,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uDualPanelUiTypes,
-  uDualPanelOverlays, uDriveInfo, uVfsTypes, uDualPanelDrawUtils;
+  uDualPanelOverlays, uDriveInfo, uVfsTypes, uDualPanelDrawUtils, uInputLine;
 
 type
   TPanelBoundsEvent = reference to function(ASide: TPanelSide): TRectI;
@@ -431,6 +431,9 @@ begin
   // Letter virtual keys are uppercase only ('a'..'z' codes are numpad/F-keys).
   if ((Ch < 'A') or (Ch > 'Z')) and (AKey >= Ord('A')) and (AKey <= Ord('Z')) then
     Ch := Char(AKey);
+  // A Cyrillic letter picks the drive on the same physical key (ф = A, ы = S).
+  if (Ch < 'A') or (Ch > 'Z') then
+    Ch := TextKeyLayoutAlternate(AKeyChar);
   if (Ch >= 'A') and (Ch <= 'Z') then
   begin
     for I := 0 to High(FState.Drives) do

@@ -12,6 +12,7 @@ type
     [Test] procedure TestPathResolve;
     [Test] procedure TestCompletionHelpers;
     [Test] procedure TestTabAndHistory;
+    [Test] procedure TestHistoryKeepsCurrentLine;
     [Test] procedure TestCtrlUpReturnsToPanel;
     [Test] procedure TestEnterReturnsFocusToPanel;
     [Test] procedure TestEscClearsThenReturnsToPanel;
@@ -275,6 +276,49 @@ begin
   end;
 end;
 
+// Up and Down walk the history with the line being typed as its newest
+// entry: up-up-down-down comes back to it, or to an empty line.
+procedure TestHistoryKeepsCurrentLine;
+var
+  Mgr: TDualPanelCmdLineManager;
+
+  procedure Press(AKey: Word);
+  var
+    Key: Word;
+    Ch: Char;
+  begin
+    Key := AKey;
+    Ch := #0;
+    Mgr.HandleInput(Key, [], Ch);
+  end;
+
+begin
+  Mgr := TDualPanelCmdLineManager.Create(procedure(const ACommand: string) begin end, nil);
+  try
+    Mgr.InsertText('first');
+    Press(vkReturn);
+    Mgr.Clear;
+    Mgr.InsertText('second');
+    Press(vkReturn);
+    Mgr.Clear;
+    Press(vkUp);
+    Press(vkUp);
+    Assert.AreEqual('first', Mgr.Text, 'two Up reach the older command');
+    Press(vkDown);
+    Press(vkDown);
+    Assert.AreEqual('', Mgr.Text, 'two Down return to the empty line');
+
+    Mgr.InsertText('draft');
+    Press(vkUp);
+    Press(vkUp);
+    Press(vkDown);
+    Press(vkDown);
+    Assert.AreEqual('draft', Mgr.Text, 'two Down return to what was being typed');
+  finally
+    Mgr.Free;
+  end;
+end;
+
 procedure TestCtrlUpReturnsToPanel;
 var
   Mgr: TDualPanelCmdLineManager;
@@ -419,6 +463,11 @@ end;
 procedure TTestDualPanelCmdLine.TestTabAndHistory;
 begin
   TestDualPanelCmdLine.TestTabAndHistory;
+end;
+
+procedure TTestDualPanelCmdLine.TestHistoryKeepsCurrentLine;
+begin
+  TestDualPanelCmdLine.TestHistoryKeepsCurrentLine;
 end;
 
 procedure TTestDualPanelCmdLine.TestCtrlUpReturnsToPanel;
