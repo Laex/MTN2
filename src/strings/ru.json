@@ -222,6 +222,11 @@
       "ok": "ОК",
       "cancel": "Отмена"
     },
+    "DIALOG_SETTINGSFILE": {
+      "$title": "Файл настроек",
+      "ok": "ОК",
+      "cancel": "Отмена"
+    },
     "DIALOG_EXTERNALTOOLS": {
       "$title": "Внешний просмотрщик / редактор",
       "lbl_viewer": "Просмотрщик (Alt+F3):",

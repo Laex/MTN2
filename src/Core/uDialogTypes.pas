@@ -293,6 +293,9 @@ function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclar
 /// uConsoleSettings.ScrollbackItems), paste confirmation, trimming of spaces.</summary>
 function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
   ATrimCopy, ATrimPaste: Boolean): TDialogDeclaration;
+/// <summary>Export / import of the settings: a path field with a drop-down list
+/// of the files used before (input history "settingsfile").</summary>
+function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;
 /// <summary>Options > Markdown colors...: a foreground / background hex
 /// input per Markdown span kind (ids md_<key>_fg / md_<key>_bg, see
 /// uMarkdownColors.MdSpanKindKey); the caller fills them in.</summary>
@@ -1259,6 +1262,14 @@ begin
   DialogSetCheckbox(Result, 'confirm_paste', AConfirmPaste);
   DialogSetCheckbox(Result, 'trim_copy', ATrimCopy);
   DialogSetCheckbox(Result, 'trim_paste', ATrimPaste);
+end;
+
+function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogSettingsFile, Result);
+  DialogSetTitle(Result, ATitle);
+  DialogSetLabelText(Result, 'prompt', APrompt);
+  DialogSetInputValue(Result, 'name', APath);
 end;
 
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
