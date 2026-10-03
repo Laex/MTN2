@@ -153,13 +153,6 @@
       "height": 1
     },
     {
-      "type": "separator",
-      "col": 46,
-      "row": 1,
-      "width": 47,
-      "height": 1
-    },
-    {
       "type": "checkbox",
       "id": "panel_icons",
       "text": "Show panel &icons",
@@ -216,13 +209,6 @@
       "height": 1
     },
     {
-      "type": "separator",
-      "col": 46,
-      "row": 8,
-      "width": 47,
-      "height": 1
-    },
-    {
       "type": "label",
       "text": "Shadows",
       "id": "lbl_shadows",
@@ -273,13 +259,6 @@
       "col": 47,
       "row": 11,
       "width": 46,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 46,
-      "row": 12,
-      "width": 47,
       "height": 1
     },
     {
