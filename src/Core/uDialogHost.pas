@@ -130,6 +130,8 @@ type
       const C: TDialogControl);
     procedure DrawRadioGroupControl(const AGrid: TTerminalGrid; const R: TRectI;
       AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
+    procedure DrawListFrame(const AGrid: TTerminalGrid; const R: TRectI;
+      AFg, ABg: TAlphaColor);
     procedure DrawListControl(const AGrid: TTerminalGrid; const R: TRectI;
       AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
     /// <summary>↓ of a DropDown / history field, in the field's colors inverted.</summary>
@@ -1944,6 +1946,28 @@ const
   // menus' hotkey red (cMenuHotKeyFg in uDualPanelOverlays).
   cListAccentFg = TAlphaColor($FFC00000);
 
+// A single-line frame one cell outside the list's box.
+procedure TDialogHost.DrawListFrame(const AGrid: TTerminalGrid; const R: TRectI;
+  AFg, ABg: TAlphaColor);
+var
+  X, Y: Integer;
+begin
+  for X := R.Left to R.Right do
+  begin
+    DrawGridChar(AGrid, X, R.Top - 1, chBoxH, AFg, ABg);
+    DrawGridChar(AGrid, X, R.Bottom + 1, chBoxH, AFg, ABg);
+  end;
+  for Y := R.Top to R.Bottom do
+  begin
+    DrawGridChar(AGrid, R.Left - 1, Y, chBoxV, AFg, ABg);
+    DrawGridChar(AGrid, R.Right + 1, Y, chBoxV, AFg, ABg);
+  end;
+  DrawGridChar(AGrid, R.Left - 1, R.Top - 1, chBoxTL, AFg, ABg);
+  DrawGridChar(AGrid, R.Right + 1, R.Top - 1, chBoxTR, AFg, ABg);
+  DrawGridChar(AGrid, R.Left - 1, R.Bottom + 1, chBoxBL, AFg, ABg);
+  DrawGridChar(AGrid, R.Right + 1, R.Bottom + 1, chBoxBR, AFg, ABg);
+end;
+
 procedure TDialogHost.DrawListControl(const AGrid: TTerminalGrid; const R: TRectI;
   AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
 var
@@ -1953,6 +1977,8 @@ var
 begin
   Span := ListViewHeight(AIndex);
   SelIdx := ListSelectedIndexOf(C.Id);
+  if C.Framed and (Span > 1) then
+    DrawListFrame(AGrid, R, ALabelFg, ALabelBg);
   if Span <= 1 then
   begin
     // Height 1: combo-style - show selected item (not items[0]).
