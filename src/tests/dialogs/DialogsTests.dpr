@@ -11,6 +11,7 @@ uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestAskSaveRoundTrip in 'TestAskSaveRoundTrip.pas',
   TestColorPickerControl in 'TestColorPickerControl.pas',
+  TestConsoleSettings in 'TestConsoleSettings.pas',
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogAlignment in 'TestDialogAlignment.pas',

@@ -28,6 +28,7 @@ type
     [Test] procedure TestGridModePromptNotSplitByOscTitle;
     [Test] procedure TestGetInputCursorAfterUnfollow;
     [Test] procedure TestEraseCharsBlanksPredictionAtCursor;
+    [Test] procedure TestMaxLines;
   end;
 
 implementation
@@ -476,6 +477,28 @@ begin
   end;
 end;
 
+// The scrollback size is a setting: lines above it are dropped, never below 100.
+procedure TestMaxLines;
+var
+  Buf: TConsoleBuffer;
+  I: Integer;
+begin
+  Buf := TConsoleBuffer.Create(1000);
+  try
+    for I := 1 to 3000 do
+      Buf.AppendOutput('line ' + IntToStr(I) + #13#10);
+    Assert.IsTrue(Buf.LineCount <= 1001, 'scrollback keeps at most MaxLines lines');
+    Assert.IsTrue(Buf.LineCount > 900, 'scrollback keeps the recent lines');
+    Buf.MaxLines := 200;
+    Buf.AppendOutput('after' + #13#10);
+    Assert.IsTrue(Buf.LineCount <= 201, 'a lowered size drops the oldest lines');
+    Buf.MaxLines := 5;
+    Assert.AreEqual(100, Buf.MaxLines, 'the size never goes below 100');
+  finally
+    Buf.Free;
+  end;
+end;
+
 procedure TTestConsoleBuffer.TestEchoBackspace;
 begin
   TestConsoleBuffer.TestEchoBackspace;
@@ -569,6 +592,11 @@ end;
 procedure TTestConsoleBuffer.TestEraseCharsBlanksPredictionAtCursor;
 begin
   TestConsoleBuffer.TestEraseCharsBlanksPredictionAtCursor;
+end;
+
+procedure TTestConsoleBuffer.TestMaxLines;
+begin
+  TestConsoleBuffer.TestMaxLines;
 end;
 
 initialization

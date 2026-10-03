@@ -357,6 +357,10 @@ begin
   Saved.TextContrast := 2;
   Saved.CellWidthExtra := 1;
   Saved.CellHeightExtra := 3;
+  Saved.ConsoleScrollback := 25000;
+  Saved.ConsoleConfirmPaste := True;
+  Saved.ConsoleTrimCopy := True;
+  Saved.ConsoleTrimPaste := True;
   Assert.IsTrue(SaveSession(Path, Saved), 'save session');
   try
     Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
@@ -364,6 +368,10 @@ begin
     Assert.AreEqual(2, Loaded.TextContrast, 'textContrast saved');
     Assert.AreEqual(1, Loaded.CellWidthExtra, 'cellWidthExtra saved');
     Assert.AreEqual(3, Loaded.CellHeightExtra, 'cellHeightExtra saved');
+    Assert.AreEqual(25000, Loaded.ConsoleScrollback, 'consoleScrollback saved');
+    Assert.IsTrue(Loaded.ConsoleConfirmPaste, 'consoleConfirmPaste saved');
+    Assert.IsTrue(Loaded.ConsoleTrimCopy, 'consoleTrimCopy saved');
+    Assert.IsTrue(Loaded.ConsoleTrimPaste, 'consoleTrimPaste saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

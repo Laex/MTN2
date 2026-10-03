@@ -121,6 +121,9 @@ type
     BeginCompareFiles: TKeymapProc;
     CompareFolders: TKeymapProc;
     OpenExternalToolsDialog: TKeymapProc;
+    OpenConsoleOptionsDialog: TKeymapProc;
+    BeginSaveConsoleOutput: TKeymapProc;
+    ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;

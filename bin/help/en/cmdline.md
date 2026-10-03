@@ -20,6 +20,10 @@ The command line is always below the panels: just start typing. A command runs i
 
 **In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](text.md)).
 
+**Options → Console...** sets the scrollback size of the console and terminals (1000 – 50,000 lines, 10,000 by default), the confirmation of a multi-line paste (off; a full-screen program such as vim never asks) and the removal of trailing spaces on copy and on paste. Changes apply at once, to open consoles too.
+
+**Commands → Save console output...** writes the background console's scrollback (Ctrl+O) to a UTF-8 text file; **Clear console buffer** erases it, the shell keeps running.
+
 ---
 
 [Contents](index.md)

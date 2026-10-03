@@ -15,7 +15,7 @@ uses
   FMX.Platform,
   Winapi.Windows,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uConsoleBuffer, uConPty,
-  uShellProfiles, uDialogTypes, uDialogHost, uInputLine, uKeyChord;
+  uShellProfiles, uDialogTypes, uDialogHost, uInputLine, uKeyChord, uConsoleSettings;
 
 type
   TConsoleCommandEvent = reference to procedure(const ACommand: string);
@@ -43,6 +43,10 @@ type
     /// is the one open in FDialog - distinguishes it from e.g. the
     /// TTerminalWorkspaceWindow close-confirm dialog, which also uses FDialog.</summary>
     FCmdHistDialogOpen: Boolean;
+    /// <summary>Multi-line text waiting for the paste confirmation.</summary>
+    FPendingPaste: string;
+    procedure PasteConfirmCommand(const AControlId, AValuesJson: string);
+    procedure WritePasteText(const AText: string);
     procedure CmdHistoryDialogCommand(const AControlId, AValuesJson: string);
     procedure RefreshCmdHistoryDialog;
     { Private helpers. }
@@ -221,6 +225,11 @@ type
     /// <summary>Windows logoff/shutdown: stop PTY without close-request UI.</summary>
     procedure ShutdownForSessionEnd;
     function  IsRunning: Boolean;
+    /// <summary>Writes the whole scrollback (without trailing blank lines) to a
+    /// UTF-8 text file; AError carries the reason when it cannot.</summary>
+    function SaveOutputToFile(const APath: string; out AError: string): Boolean;
+    /// <summary>Empties the scrollback and the selection; the shell keeps running.</summary>
+    procedure ClearOutputBuffer;
 
     /// <summary>Mouse wheel scrolls local scrollback (never CSI to the shell).</summary>
     function HandleMouseWheel(WheelDelta: Integer): Boolean; virtual;
@@ -461,6 +470,8 @@ var
 begin
   if not FAlive or not Assigned(FHistory) then
     Exit;
+  // The Console options dialog changes the size for consoles that are open.
+  FHistory.MaxLines := GConsoleSettings.ScrollbackLines;
   Deleted := FHistory.AppendOutputEx(AText, PtyCols, PtyRows);
   AdjustSelectionForTrim(Deleted);
   NotifyHostThrottled;
@@ -806,12 +817,43 @@ begin
 end;
 
 procedure TBaseConsoleWindow.CopySelection;
+var
+  Text: string;
 begin
   if HasSelection then
   begin
-    ClipboardSetText(SelectedText);
+    Text := SelectedText;
+    if GConsoleSettings.TrimCopiedSpaces then
+      Text := TrimTrailingSpaces(Text);
+    ClipboardSetText(Text);
     Notice(T('ui.toast.copiedSelection', 'Selected text copied to the clipboard'));
   end;
+end;
+
+procedure TBaseConsoleWindow.WritePasteText(const AText: string);
+begin
+  if AText = '' then
+    Exit;
+  if ProfileUsesLineBufferedInput(ProfileId) then
+    AppendLocalInput(AText)
+  else
+    SendRaw(AText);
+end;
+
+procedure TBaseConsoleWindow.PasteConfirmCommand(const AControlId, AValuesJson: string);
+var
+  Confirmed: Boolean;
+  Text: string;
+begin
+  // Read the id before Close: it points into the declaration Close releases.
+  Confirmed := DialogCmdIsOk(AControlId);
+  Text := FPendingPaste;
+  FPendingPaste := '';
+  if Assigned(FDialog) then
+    FDialog.Close;
+  if Confirmed then
+    WritePasteText(Text);
+  NotifyHost;
 end;
 
 procedure TBaseConsoleWindow.PasteClipboard;
@@ -821,10 +863,63 @@ begin
   Text := ClipboardGetText;
   if Text = '' then
     Exit;
-  if ProfileUsesLineBufferedInput(ProfileId) then
-    AppendLocalInput(Text)
-  else
-    SendRaw(Text);
+  if GConsoleSettings.TrimPastedSpaces then
+    Text := TrimTrailingSpaces(Text);
+  // A full-screen program (vim, htop) takes pasted text as typing; only the
+  // shell prompt, where every line runs, asks first.
+  if GConsoleSettings.ConfirmMultiLinePaste and IsMultiLineText(Text) and
+     not AltScreenActive and Assigned(FDialog) and not FDialog.Visible then
+  begin
+    FPendingPaste := Text;
+    FDialog.Open(BuildConfirmDialog(T('ui.console.pasteTitle', 'Paste'),
+      T('ui.console.pasteConfirm', 'Paste %d lines into the console?',
+        [CountTextLines(Text)])), PasteConfirmCommand);
+    NotifyHost;
+    Exit;
+  end;
+  WritePasteText(Text);
+end;
+
+function TBaseConsoleWindow.SaveOutputToFile(const APath: string;
+  out AError: string): Boolean;
+var
+  I, Last: Integer;
+  Lines: TStringList;
+  Enc: TEncoding;
+begin
+  Result := False;
+  AError := '';
+  Lines := TStringList.Create;
+  try
+    Last := FHistory.LineCount - 1;
+    while (Last >= 0) and (TrimRight(FHistory.GetLine(Last)) = '') do
+      Dec(Last);
+    for I := 0 to Last do
+      Lines.Add(TrimRight(FHistory.GetLine(I)));
+    Enc := TUTF8Encoding.Create(False);
+    try
+      try
+        Lines.SaveToFile(APath, Enc);
+        Result := True;
+      except
+        on E: Exception do
+          AError := E.Message;
+      end;
+    finally
+      Enc.Free;
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TBaseConsoleWindow.ClearOutputBuffer;
+begin
+  ClearSelection;
+  FHistory.Clear;
+  FCursorRow := 0;
+  FCursorCol := 0;
+  NotifyHost;
 end;
 
 { ---- Raw PTY write --------------------------------------------------------- }

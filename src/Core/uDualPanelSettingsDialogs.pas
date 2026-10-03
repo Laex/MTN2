@@ -86,6 +86,7 @@ type
     procedure OpenColumns;
     procedure OpenDisplay;
     procedure OpenExternalTools;
+    procedure OpenConsoleOptions;
     procedure OpenMarkdownColors;
     procedure OpenTerminalProfiles;
     procedure OpenConsoleProfiles;
@@ -105,6 +106,7 @@ type
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
+    procedure DispatchConsoleOptionsCommand(const AControlId: string);
     procedure DispatchMarkdownColorsCommand(const AControlId: string);
     procedure DispatchMarkdownImportCommand(const AControlId: string);
     procedure DispatchMarkdownPickerCommand(const AControlId: string);
@@ -120,7 +122,7 @@ type
 implementation
 
 uses
-  uDialogResources, uColorCoding, uColorPickerControl;
+  uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings;
 
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
@@ -409,6 +411,39 @@ begin
   FDialog.Open(BuildExternalToolsDialog(Tools.ViewerCommand, Tools.EditorCommand),
     FOnCommand);
   Notify;
+end;
+
+procedure TSettingsDialogController.OpenConsoleOptions;
+begin
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  if Assigned(FOnPrepareUi) then
+    FOnPrepareUi();
+  SetKind(hdkConsoleOptions);
+  FDialog.Open(BuildConsoleOptionsDialog(
+    ScrollbackIndexOf(GConsoleSettings.ScrollbackLines),
+    GConsoleSettings.ConfirmMultiLinePaste, GConsoleSettings.TrimCopiedSpaces,
+    GConsoleSettings.TrimPastedSpaces), FOnCommand);
+  Notify;
+end;
+
+procedure TSettingsDialogController.DispatchConsoleOptionsCommand(
+  const AControlId: string);
+var
+  Accepted: Boolean;
+begin
+  Accepted := DialogCmdIsAccept(AControlId);
+  if Accepted then
+  begin
+    GConsoleSettings.ScrollbackLines :=
+      ScrollbackAt(FDialog.GetListSelectedIndex('scrollback'));
+    GConsoleSettings.ConfirmMultiLinePaste := FDialog.GetCheckbox('confirm_paste');
+    GConsoleSettings.TrimCopiedSpaces := FDialog.GetCheckbox('trim_copy');
+    GConsoleSettings.TrimPastedSpaces := FDialog.GetCheckbox('trim_paste');
+  end;
+  FDialog.Close;
+  if Accepted then
+    Notify;
 end;
 
 procedure TSettingsDialogController.ShowMarkdownColors(const ASet: TMdColorSet;
@@ -730,6 +765,7 @@ begin
     hdkColumnsConfig: DispatchColumnsCommand(AControlId);
     hdkDisplay: DispatchDisplayCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);
+    hdkConsoleOptions: DispatchConsoleOptionsCommand(AControlId);
     hdkMarkdownColors: DispatchMarkdownColorsCommand(AControlId);
     hdkMarkdownImport: DispatchMarkdownImportCommand(AControlId);
     hdkMarkdownPicker: DispatchMarkdownPickerCommand(AControlId);

@@ -131,6 +131,8 @@ type
     FOnRunCommand: TRunCommandEvent;
     FOnReturnWhenDone: TNotifyEvent;
     FOnShellCwdSync: TShellCwdSyncEvent;
+    FOnSaveConsoleOutput: TSaveConsoleOutputEvent;
+    FOnClearConsoleBuffer: TNotifyEvent;
     FOnToggleConsole: TQuitRequestEvent;
     FOnOpenTerminal: TOpenTerminalEvent;
     FOnSetConsoleProfile: TSetConsoleProfileEvent;
@@ -665,6 +667,11 @@ type
     procedure ExternalView;
     procedure ExternalEdit;
     procedure OpenExternalToolsDialog;
+    procedure OpenConsoleOptionsDialog;
+    procedure BeginSaveConsoleOutput;
+    procedure ClearConsoleBuffer;
+    function HandleConsoleSaveCommand(const AControlId: string;
+      const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
     procedure BeginChecksums;
     procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
@@ -964,6 +971,12 @@ type
     /// was just given has finished.</summary>
     property OnReturnWhenDone: TNotifyEvent read FOnReturnWhenDone write FOnReturnWhenDone;
     property OnShellCwdSync: TShellCwdSyncEvent read FOnShellCwdSync write FOnShellCwdSync;
+    /// <summary>Commands > Save console output: the form writes the console's scrollback.</summary>
+    property OnSaveConsoleOutput: TSaveConsoleOutputEvent
+      read FOnSaveConsoleOutput write FOnSaveConsoleOutput;
+    /// <summary>Commands > Clear console buffer.</summary>
+    property OnClearConsoleBuffer: TNotifyEvent
+      read FOnClearConsoleBuffer write FOnClearConsoleBuffer;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
     property OnOpenTerminal: TOpenTerminalEvent read FOnOpenTerminal write FOnOpenTerminal;
     property OnSetConsoleProfile: TSetConsoleProfileEvent
@@ -1560,6 +1573,9 @@ begin
   FKeymapHost.BeginCompareFiles := BeginCompareFiles;
   FKeymapHost.CompareFolders := CompareFolders;
   FKeymapHost.OpenExternalToolsDialog := OpenExternalToolsDialog;
+  FKeymapHost.OpenConsoleOptionsDialog := OpenConsoleOptionsDialog;
+  FKeymapHost.BeginSaveConsoleOutput := BeginSaveConsoleOutput;
+  FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
@@ -4867,11 +4883,14 @@ begin
       Result := HandlePanelFilterCommand(AControlId);
     hdkDescribe:
       Result := HandleDescribeCommand(AControlId, AFields);
+    hdkConsoleSave:
+      Result := HandleConsoleSaveCommand(AControlId, AFields);
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
     hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
-    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
+    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
+    hdkConsoleOptions:
       Result := FSettings.DispatchCommand(AKind, AControlId);
     hdkCmdHistory:
       Result := FCmdHistory.DispatchCommand(AControlId);
@@ -7218,6 +7237,49 @@ end;
 procedure TDualPanelWindow.OpenExternalToolsDialog;
 begin
   FSettings.OpenExternalTools;
+end;
+
+procedure TDualPanelWindow.OpenConsoleOptionsDialog;
+begin
+  FSettings.OpenConsoleOptions;
+end;
+
+procedure TDualPanelWindow.BeginSaveConsoleOutput;
+begin
+  if not Assigned(FOnSaveConsoleOutput) or not CanStartOperation then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkConsoleSave;
+  FDialog.Open(BuildInputDialog(T('ui.console.saveTitle', 'Save console output'),
+    T('ui.console.savePrompt', 'File:'),
+    TPath.Combine(TPath.GetDocumentsPath, 'console-output.txt')), DialogCommand);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.HandleConsoleSaveCommand(const AControlId: string;
+  const AFields: TDialogCommandFields): Boolean;
+var
+  Path, Err: string;
+begin
+  Result := True;
+  Path := Trim(AFields.Name);
+  if DialogCmdIsAccept(AControlId) and (Path <> '') and Assigned(FOnSaveConsoleOutput) then
+  begin
+    FDialog.Close;
+    if FOnSaveConsoleOutput(Path, Err) then
+      FToast.Show(T('ui.toast.consoleSaved', 'Console output saved: %s'), Path)
+    else
+      FToast.Show(T('ui.toast.consoleSaveFailed', 'Could not save the console output') +
+        ': ' + Err, '', tkWarning);
+    Exit;
+  end;
+  FDialog.Close;
+end;
+
+procedure TDualPanelWindow.ClearConsoleBuffer;
+begin
+  if Assigned(FOnClearConsoleBuffer) then
+    FOnClearConsoleBuffer(Self);
 end;
 
 procedure TDualPanelWindow.OpenMarkdownColorsDialog;

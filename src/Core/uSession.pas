@@ -78,6 +78,11 @@ type
     /// <summary>Display "cell width / height": extra device pixels, 0..4.</summary>
     CellWidthExtra: Integer;
     CellHeightExtra: Integer;
+    /// <summary>Options > Console: uConsoleSettings values.</summary>
+    ConsoleScrollback: Integer;
+    ConsoleConfirmPaste: Boolean;
+    ConsoleTrimCopy: Boolean;
+    ConsoleTrimPaste: Boolean;
     SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
@@ -92,7 +97,7 @@ implementation
 
 uses
   System.Classes, System.Generics.Collections, System.IOUtils, System.JSON,
-  System.Math, uConfigLocation, uDisplaySettings;
+  System.Math, uConfigLocation, uDisplaySettings, uConsoleSettings;
 
 function DefaultSessionFilePath: string;
 begin
@@ -537,6 +542,10 @@ begin
       Root.AddPair('textContrast', TJSONNumber.Create(ClampTextContrast(ASession.TextContrast)));
       Root.AddPair('cellWidthExtra', TJSONNumber.Create(ClampCellExtra(ASession.CellWidthExtra)));
       Root.AddPair('cellHeightExtra', TJSONNumber.Create(ClampCellExtra(ASession.CellHeightExtra)));
+      Root.AddPair('consoleScrollback', TJSONNumber.Create(ClampScrollbackLines(ASession.ConsoleScrollback)));
+      Root.AddPair('consoleConfirmPaste', TJSONBool.Create(ASession.ConsoleConfirmPaste));
+      Root.AddPair('consoleTrimCopy', TJSONBool.Create(ASession.ConsoleTrimCopy));
+      Root.AddPair('consoleTrimPaste', TJSONBool.Create(ASession.ConsoleTrimPaste));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
@@ -597,6 +606,10 @@ begin
   ASession.TextContrast := 0;
   ASession.CellWidthExtra := 0;
   ASession.CellHeightExtra := 0;
+  ASession.ConsoleScrollback := cDefaultScrollbackLines;
+  ASession.ConsoleConfirmPaste := False;
+  ASession.ConsoleTrimCopy := False;
+  ASession.ConsoleTrimPaste := False;
   ASession.SelectFolders := False;
   ASession.Language := '';
 
@@ -672,6 +685,10 @@ begin
       ASession.TextContrast := ClampTextContrast(JsonInt(Root, 'textContrast', 0));
       ASession.CellWidthExtra := ClampCellExtra(JsonInt(Root, 'cellWidthExtra', 0));
       ASession.CellHeightExtra := ClampCellExtra(JsonInt(Root, 'cellHeightExtra', 0));
+      ASession.ConsoleScrollback := ClampScrollbackLines(JsonInt(Root, 'consoleScrollback', cDefaultScrollbackLines));
+      ASession.ConsoleConfirmPaste := JsonBool(Root, 'consoleConfirmPaste', False);
+      ASession.ConsoleTrimCopy := JsonBool(Root, 'consoleTrimCopy', False);
+      ASession.ConsoleTrimPaste := JsonBool(Root, 'consoleTrimPaste', False);
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
