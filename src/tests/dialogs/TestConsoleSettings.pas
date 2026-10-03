@@ -39,7 +39,7 @@ begin
   Assert.AreEqual(25000, ScrollbackAt(3), 'size at an index');
   Assert.AreEqual(1000, ScrollbackAt(-5), 'index below the list');
   Assert.AreEqual(50000, ScrollbackAt(99), 'index above the list');
-  Assert.AreEqual(Length(cScrollbackChoices), Length(ScrollbackItems), 'one item per size');
+  Assert.AreEqual(Integer(Length(cScrollbackChoices)), Integer(Length(ScrollbackItems)), 'one item per size');
 end;
 
 procedure TTestConsoleSettings.TestLineCounting;
