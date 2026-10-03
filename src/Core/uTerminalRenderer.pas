@@ -88,6 +88,8 @@ type
     FLineSpacing: Boolean; // Display "Line spacing": cLineSpacingEm of extra row height
     FSnapFontSize: Boolean; // Display "snap font size": whole device pixels
     FTextContrast: Integer; // Display "text contrast" level, see TGlyphCache.Contrast
+    FCellWidthExtra: Integer;  // Display "cell width": device pixels added to every cell
+    FCellHeightExtra: Integer; // Display "cell height": same for the row height
     // MeasureInk result for this font/size/scale: Resize re-runs the metrics
     // on every window resize, the ink probe only has to run when these change.
     FInkKey: string;
@@ -130,6 +132,10 @@ type
     /// size can change with it.</summary>
     procedure SetSnapFontSize(AOn: Boolean; AClientWidth, AClientHeight: Single;
       ACanvas: TCanvas);
+    /// <summary>Display "cell width / height": device pixels added to the cell
+    /// (0..cDisplayMaxCellExtra). Glyphs stay centred, frames fill the cell.</summary>
+    procedure SetCellExtra(AWidth, AHeight: Integer; AClientWidth, AClientHeight: Single;
+      ACanvas: TCanvas);
     /// <summary>Display "text contrast", 0..3 (TGlyphCache.Contrast).</summary>
     procedure SetTextContrast(ALevel: Integer; AClientWidth, AClientHeight: Single;
       ACanvas: TCanvas);
@@ -151,6 +157,8 @@ type
     property GlyphTop: Single read FGlyphTop;
     property LineSpacing: Boolean read FLineSpacing;
     property SnapFontSize: Boolean read FSnapFontSize;
+    property CellWidthExtra: Integer read FCellWidthExtra;
+    property CellHeightExtra: Integer read FCellHeightExtra;
     /// <summary>The logical size the glyphs are drawn at: base size x zoom, and
     /// with SnapFontSize rounded to whole device pixels.</summary>
     property GlyphFontSize: Single read EffectiveFontSize;
@@ -447,7 +455,7 @@ begin
   // reported line height, which would cut 1 px off g/j/p/q/y/[/]/_.
   if FSceneScale <= 0 then
     FSceneScale := 1.0;
-  FCellWidth := Max(Round(FCellWidth * FSceneScale), 1) / FSceneScale;
+  FCellWidth := (Max(Round(FCellWidth * FSceneScale), 1) + FCellWidthExtra) / FSceneScale;
   InkKey := Format('%s|%g|%g|%g|%g', [FFontName, EffectiveFontSize, FSceneScale,
     FGlyphAdvW, FGlyphAdvH]);
   if InkKey <> FInkKey then
@@ -466,6 +474,7 @@ begin
     Extra := EffectiveFontSize * cLineSpacingEm
   else
     Extra := 0;
+  Extra := Extra + FCellHeightExtra / FSceneScale;
   FCellHeight := FitGlyphLine(FGlyphAdvH, InkTop, InkBottom, FSceneScale, FGlyphTop, Extra);
 end;
 
@@ -621,6 +630,21 @@ begin
   if AOn = FSnapFontSize then
     Exit;
   FSnapFontSize := AOn;
+  FGlyphCache.Clear;
+  FCols := 0;
+  FRows := 0;
+  Resize(AClientWidth, AClientHeight, ACanvas);
+end;
+
+procedure TTerminalRenderer.SetCellExtra(AWidth, AHeight: Integer; AClientWidth,
+  AClientHeight: Single; ACanvas: TCanvas);
+begin
+  AWidth := ClampCellExtra(AWidth);
+  AHeight := ClampCellExtra(AHeight);
+  if (AWidth = FCellWidthExtra) and (AHeight = FCellHeightExtra) then
+    Exit;
+  FCellWidthExtra := AWidth;
+  FCellHeightExtra := AHeight;
   FGlyphCache.Clear;
   FCols := 0;
   FRows := 0;

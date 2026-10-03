@@ -21,6 +21,7 @@ type
     [Test] procedure TestLineSpacing;
     [Test] procedure TestSnapFontSize;
     [Test] procedure TestTextContrast;
+    [Test] procedure TestCellExtra;
     [Test] procedure TestRecomposeRastersOncePerFrame;
   end;
 
@@ -290,6 +291,40 @@ begin
     Assert.IsTrue(Abs(R.GlyphFontSize * cScale - 18) < 0.001, '18.33 rounds to 18');
     R.SetSnapFontSize(False, 500, 150, Measure.Canvas);
     Assert.IsTrue(Abs(R.GlyphFontSize - 11 * 96 / 72) < 0.001, 'snapping off gives the size back');
+  finally
+    R.Free;
+    Measure.Free;
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestCellExtra;
+const
+  cScale = 1.25;
+var
+  R: TTerminalRenderer;
+  Measure: TBitmap;
+  W0, H0, DevW, DevH: Single;
+begin
+  Measure := TBitmap.Create(16, 16);
+  R := TTerminalRenderer.Create;
+  try
+    R.SetSceneScale(cScale, 500, 150, Measure.Canvas);
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+    W0 := R.CellWidth;
+    H0 := R.CellHeight;
+    R.SetCellExtra(3, 2, 500, 150, Measure.Canvas);
+    DevW := R.CellWidth * cScale - W0 * cScale;
+    DevH := R.CellHeight * cScale - H0 * cScale;
+    Assert.IsTrue(Abs(DevW - 3) < 0.01, 'the cell is 3 device pixels wider');
+    Assert.IsTrue(Abs(R.CellHeight * cScale - Round(R.CellHeight * cScale)) < 0.01,
+      'the row height stays whole device pixels');
+    Assert.IsTrue((DevH >= 1) and (DevH <= 3), 'the row is taller by about 2 device pixels');
+    Assert.AreEqual(3, R.CellWidthExtra, 'width extra kept');
+    R.SetCellExtra(99, -4, 500, 150, Measure.Canvas);
+    Assert.AreEqual(cDisplayMaxCellExtra, R.CellWidthExtra, 'width extra is clamped');
+    Assert.AreEqual(0, R.CellHeightExtra, 'height extra is clamped');
+    R.SetCellExtra(0, 0, 500, 150, Measure.Canvas);
+    Assert.IsTrue(SameF(R.CellWidth, W0) and SameF(R.CellHeight, H0), 'zero is the font''s own cell');
   finally
     R.Free;
     Measure.Free;
