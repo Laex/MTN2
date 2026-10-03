@@ -35,10 +35,16 @@ type
     FCellH: Single;
     FScale: Single;
     FGlyphTop: Single;
+    FContrast: Integer;
+    procedure SetContrast(ALevel: Integer);
   public
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
+    /// <summary>0 = off; 1..3 draw the glyph a second time with growing
+    /// opacity, which fills in the faint anti-aliased fringe: thin light text
+    /// on a dark background reads firmer. Changing it clears the cache.</summary>
+    property Contrast: Integer read FContrast write SetContrast;
     function GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
       ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
       AFontSize: Single): TBitmap;
@@ -80,6 +86,8 @@ type
     FGlyphAdvH: Single;   // natural glyph/line height (logical, pre-snap)
     FGlyphTop: Single;    // text line top inside the cell (logical, see FitGlyphLine)
     FLineSpacing: Boolean; // Display "Line spacing": cLineSpacingEm of extra row height
+    FSnapFontSize: Boolean; // Display "snap font size": whole device pixels
+    FTextContrast: Integer; // Display "text contrast" level, see TGlyphCache.Contrast
     // MeasureInk result for this font/size/scale: Resize re-runs the metrics
     // on every window resize, the ink probe only has to run when these change.
     FInkKey: string;
@@ -117,6 +125,14 @@ type
     /// the font's line (more rows on screen).</summary>
     procedure SetLineSpacing(AOn: Boolean; AClientWidth, AClientHeight: Single;
       ACanvas: TCanvas);
+    /// <summary>Display "snap font size": the glyph size is rounded to whole
+    /// device pixels (strokes of equal weight on a scaled display). The cell
+    /// size can change with it.</summary>
+    procedure SetSnapFontSize(AOn: Boolean; AClientWidth, AClientHeight: Single;
+      ACanvas: TCanvas);
+    /// <summary>Display "text contrast", 0..3 (TGlyphCache.Contrast).</summary>
+    procedure SetTextContrast(ALevel: Integer; AClientWidth, AClientHeight: Single;
+      ACanvas: TCanvas);
     procedure SetFont(const AFontName: string; ABaseSize: Single;
       AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
     procedure AdjustZoom(ADelta: Single; AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
@@ -134,6 +150,11 @@ type
     property CellHeight: Single read FCellHeight;
     property GlyphTop: Single read FGlyphTop;
     property LineSpacing: Boolean read FLineSpacing;
+    property SnapFontSize: Boolean read FSnapFontSize;
+    /// <summary>The logical size the glyphs are drawn at: base size x zoom, and
+    /// with SnapFontSize rounded to whole device pixels.</summary>
+    property GlyphFontSize: Single read EffectiveFontSize;
+    property TextContrast: Integer read FTextContrast;
     property SceneScale: Single read FSceneScale;
     property FontName: string read FFontName;
     property BaseFontSize: Single read FBaseFontSize;
@@ -170,6 +191,15 @@ begin
   Clear;
   FMap.Free;
   inherited Destroy;
+end;
+
+procedure TGlyphCache.SetContrast(ALevel: Integer);
+begin
+  ALevel := EnsureRange(ALevel, 0, 3);
+  if ALevel = FContrast then
+    Exit;
+  FContrast := ALevel;
+  Clear;
 end;
 
 procedure TGlyphCache.Clear;
@@ -212,6 +242,10 @@ begin
     Top := Ceil(-AInkTop * AScale - cEps) / AScale;
   AGlyphTop := Top;
 end;
+
+const
+  // Opacity of the second glyph pass per TGlyphCache.Contrast level.
+  cContrastPassOpacity: array[1..3] of Single = (0.4, 0.7, 1.0);
 
 function TGlyphCache.GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
   ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
@@ -269,6 +303,10 @@ begin
       // measured to fit it.
       R := RectF(0, AGlyphTop, ACellW, AGlyphTop + 3 * ACellH);
       Bmp.Canvas.FillText(R, string(ACh), False, 1, [], TTextAlign.Center, TTextAlign.Leading);
+      // Second pass over the same ink: a' = a + (1 - a) * a * opacity.
+      if FContrast > 0 then
+        Bmp.Canvas.FillText(R, string(ACh), False, cContrastPassOpacity[FContrast], [],
+          TTextAlign.Center, TTextAlign.Leading);
     finally
       Bmp.Canvas.EndScene;
     end;
@@ -359,6 +397,10 @@ end;
 function TTerminalRenderer.EffectiveFontSize: Single;
 begin
   Result := EnsureRange(FBaseFontSize * FZoom, 8.0, 48.0);
+  // Whole device pixels: a fractional size (11 pt = 14.67 px, or any size at
+  // 125% / 150% scaling) gives strokes of uneven weight.
+  if FSnapFontSize and (FSceneScale > 0) then
+    Result := Max(Round(Result * FSceneScale), 1) / FSceneScale;
 end;
 
 procedure TTerminalRenderer.CalculateCellMetrics(ACanvas: TCanvas);
@@ -568,6 +610,31 @@ begin
   if AOn = FLineSpacing then
     Exit;
   FLineSpacing := AOn;
+  FCols := 0;
+  FRows := 0;
+  Resize(AClientWidth, AClientHeight, ACanvas);
+end;
+
+procedure TTerminalRenderer.SetSnapFontSize(AOn: Boolean; AClientWidth,
+  AClientHeight: Single; ACanvas: TCanvas);
+begin
+  if AOn = FSnapFontSize then
+    Exit;
+  FSnapFontSize := AOn;
+  FGlyphCache.Clear;
+  FCols := 0;
+  FRows := 0;
+  Resize(AClientWidth, AClientHeight, ACanvas);
+end;
+
+procedure TTerminalRenderer.SetTextContrast(ALevel: Integer; AClientWidth,
+  AClientHeight: Single; ACanvas: TCanvas);
+begin
+  ALevel := ClampTextContrast(ALevel);
+  if ALevel = FTextContrast then
+    Exit;
+  FTextContrast := ALevel;
+  FGlyphCache.Contrast := ALevel;
   FCols := 0;
   FRows := 0;
   Resize(AClientWidth, AClientHeight, ACanvas);

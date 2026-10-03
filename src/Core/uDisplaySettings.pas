@@ -18,6 +18,9 @@ const
   cDisplayPxPerPt = 96 / 72;
   cDisplayDefaultBlinkMs = 530;
   cDisplayMinZoom = 0.5;
+  /// <summary>Text contrast levels: 0 = off, 1..3 = a stronger second pass
+  /// over each glyph (uTerminalRenderer.TGlyphCache.Contrast).</summary>
+  cDisplayMaxTextContrast = 3;
   cDisplayMaxZoom = 3.0;
 
 type
@@ -51,6 +54,12 @@ type
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
+    /// <summary>The glyph size is rounded to whole device pixels
+    /// (TTerminalRenderer.SetSnapFontSize): evener strokes on scaled displays.</summary>
+    SnapFontSize: Boolean;
+    /// <summary>0..cDisplayMaxTextContrast: heavier glyph edges for thin text
+    /// (TTerminalRenderer.SetTextContrast).</summary>
+    TextContrast: Integer;
     /// <summary>Select all / Deselect all and select by extension also take
     /// folders (uDualPanelSelection.SelectFolders). Off by default, like Far.</summary>
     SelectFolders: Boolean;
@@ -68,6 +77,9 @@ function DefaultDisplaySettings: TDisplaySettings;
 function ClampDisplayFontSize(ASize: Single): Single;
 function ClampDisplayZoom(AZoom: Single): Single;
 function ClampDisplayBlinkMs(AMs: Integer): Integer;
+function ClampTextContrast(ALevel: Integer): Integer;
+/// <summary>Display dialog "Text contrast" dropdown, level order.</summary>
+function DisplayTextContrastItems: TArray<string>;
 /// <summary>Display dialog size list, in points ("10.5 pt"; the decimal
 /// separator follows the Windows locale).</summary>
 function DisplayFontSizeItems: TArray<string>;
@@ -265,6 +277,19 @@ begin
   Result := ssClassic;
 end;
 
+function DisplayTextContrastItems: TArray<string>;
+begin
+  Result := [T('ui.display.contrastOff', 'Off'),
+    T('ui.display.contrastLow', 'Low'),
+    T('ui.display.contrastMedium', 'Medium'),
+    T('ui.display.contrastHigh', 'High')];
+end;
+
+function ClampTextContrast(ALevel: Integer): Integer;
+begin
+  Result := EnsureRange(ALevel, 0, cDisplayMaxTextContrast);
+end;
+
 function DisplayShadowItems: TArray<string>;
 begin
   Result := [T('ui.display.shadowClassic', 'Classic'),
@@ -312,6 +337,8 @@ begin
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.LineSpacing := False;
+  Result.SnapFontSize := False;
+  Result.TextContrast := 0;
   Result.SelectFolders := False;
   Result.Language := '';
 end;

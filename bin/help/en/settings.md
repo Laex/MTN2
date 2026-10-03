@@ -21,6 +21,10 @@ The **Line spacing (as in a terminal)** checkbox in **Options → Font / Display
 
 Font size is in typographic points, as in Windows Terminal and the Windows console: 6 to 24 pt, in half-point steps from 8 to 12 pt. At 100% Windows scaling 1 pt = 4/3 pixel: 10.5 pt is 14 pixels (the former default), 11 pt is 14.7 pixels.
 
+Two more options in the same dialog make the text crisper:
+- **Snap font size to device pixels** rounds the letter size to whole physical screen pixels. With 125% or 150% Windows scaling and fractional sizes (11 pt) the strokes then have an equal weight. The cell size can change slightly. Off by default.
+- **Text contrast** (Off, Low, Medium, High) fills in the faint anti-aliased fringe: thin light text on a dark background reads firmer. Off by default.
+
 #### Why text looks different from Far
 
 Far does not draw its text itself: the console window it runs in does – Windows Terminal or the classic Windows console – with its own font and rules. Compared with the same font, size and colours, MTN2 and Far draw the same letters: stroke weight and antialiasing match. The differences come from settings:

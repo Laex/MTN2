@@ -19,6 +19,8 @@ type
     [Test] procedure TestGlyphBitmapIsDeviceSized;
     [Test] procedure TestDescendersInsideCell;
     [Test] procedure TestLineSpacing;
+    [Test] procedure TestSnapFontSize;
+    [Test] procedure TestTextContrast;
     [Test] procedure TestRecomposeRastersOncePerFrame;
   end;
 
@@ -28,6 +30,23 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Math,
   FMX.Types, FMX.Graphics,
   uTerminalTypes, uTerminalRenderer, uDisplaySettings;
+
+// Total coverage of the glyph: how much ink there is, faint edge included.
+function AlphaSum(ABmp: TBitmap): Int64;
+var
+  Data: TBitmapData;
+  X, Y: Integer;
+begin
+  Result := 0;
+  if ABmp.Map(TMapAccess.Read, Data) then
+  try
+    for Y := 0 to ABmp.Height - 1 do
+      for X := 0 to ABmp.Width - 1 do
+        Inc(Result, TAlphaColorRec(Data.GetPixel(X, Y)).A);
+  finally
+    ABmp.Unmap(Data);
+  end;
+end;
 
 function SameF(A, B: Single): Boolean;
 begin
@@ -250,6 +269,66 @@ end;
 
 // Input recomposes the grid many times between two frames (a held arrow key);
 // only the painted frame rasterizes it, once.
+procedure TTestTerminalRenderer.TestSnapFontSize;
+const
+  cScale = 1.25;
+var
+  R: TTerminalRenderer;
+  Measure: TBitmap;
+begin
+  Measure := TBitmap.Create(16, 16);
+  R := TTerminalRenderer.Create;
+  try
+    R.SetSceneScale(cScale, 500, 150, Measure.Canvas);
+    // 11 pt = 14.67 px: 18.33 device pixels at 125%.
+    R.SetFont('Consolas', 11 * 96 / 72, 500, 150, Measure.Canvas);
+    Assert.IsTrue(Abs(R.GlyphFontSize * cScale - Round(R.GlyphFontSize * cScale)) > 0.01,
+      'without snapping the size is fractional in device pixels');
+    R.SetSnapFontSize(True, 500, 150, Measure.Canvas);
+    Assert.IsTrue(Abs(R.GlyphFontSize * cScale - Round(R.GlyphFontSize * cScale)) < 0.001,
+      'with snapping the size is whole device pixels');
+    Assert.IsTrue(Abs(R.GlyphFontSize * cScale - 18) < 0.001, '18.33 rounds to 18');
+    R.SetSnapFontSize(False, 500, 150, Measure.Canvas);
+    Assert.IsTrue(Abs(R.GlyphFontSize - 11 * 96 / 72) < 0.001, 'snapping off gives the size back');
+  finally
+    R.Free;
+    Measure.Free;
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestTextContrast;
+var
+  R: TTerminalRenderer;
+  Cache: TGlyphCache;
+  Measure: TBitmap;
+  Level: Integer;
+  Sum, Prev: Int64;
+begin
+  Measure := TBitmap.Create(16, 16);
+  R := TTerminalRenderer.Create;
+  Cache := TGlyphCache.Create;
+  try
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+    Prev := -1;
+    for Level := 0 to 3 do
+    begin
+      Cache.Contrast := Level;
+      Sum := AlphaSum(Cache.GetGlyph('e', TAlphaColorRec.White, [], R.CellWidth,
+        R.CellHeight, 1.0, R.GlyphTop, R.FontName, 14));
+      Assert.IsTrue(Sum > Prev, Format('contrast %d adds ink over the level below', [Level]));
+      Prev := Sum;
+    end;
+    // Back to off: the cache was cleared, the glyph is the plain one again.
+    Cache.Contrast := 0;
+    Assert.IsTrue(AlphaSum(Cache.GetGlyph('e', TAlphaColorRec.White, [], R.CellWidth,
+      R.CellHeight, 1.0, R.GlyphTop, R.FontName, 14)) < Prev, 'contrast off is the lightest');
+  finally
+    Cache.Free;
+    R.Free;
+    Measure.Free;
+  end;
+end;
+
 procedure TTestTerminalRenderer.TestRecomposeRastersOncePerFrame;
 var
   R: TTerminalRenderer;
