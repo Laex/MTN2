@@ -376,11 +376,13 @@ begin
       for X := 0 to High(Grid[Y]) do
         Line := Line + Grid[Y][X].CharValue;
       Text := Text + Line + #10;
-      // Two columns: the font list and the cursor options share a row.
-      if (Pos('Font', Line) > 0) and (Pos('Blink cursor', Line) > 0) then
+      // Two columns: the right one starts a row under the "Font" caption, level
+      // with the top edge of the framed font list.
+      if (Pos(chBoxTL, Line) > 0) and (Pos('Blink cursor', Line) > 0) then
         SameRow := True;
     end;
-    Assert.IsTrue(SameRow, 'font and cursor options sit side by side');
+    Assert.IsTrue(SameRow, 'cursor options sit level with the top of the font list');
+    Assert.IsTrue(Pos(chBoxBR, Text) > 0, 'the font list has a frame');
     Assert.IsTrue(Pos('Text contrast', Text) > 0, 'contrast label drawn');
     Assert.IsTrue(Pos('Medium', Text) > 0, 'saved contrast level shown');
     Assert.IsTrue(Pos('Snap font size', Text) > 0, 'snap checkbox drawn');

@@ -167,7 +167,9 @@ begin
           Items[I] := '';
     end;
     Sel := JsonInt(AObj, 'selected', 0);
-    AppendParsed(AList, MakeList(Id, Items, Sel), AObj);
+    C := MakeList(Id, Items, Sel);
+    C.Framed := JsonBool(AObj, 'frame', False);
+    AppendParsed(AList, C, AObj);
   end
   else if (Typ = 'dropdown') or (Typ = 'dropdownlist') or (Typ = 'drop_down') or
     (Typ = 'combo') then

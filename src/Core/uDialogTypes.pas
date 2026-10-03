@@ -79,6 +79,9 @@ type
     FgFallbackId, BgFallbackId: string;
     /// <summary>dckColorPicker: the whole picker (uColorPickerControl).</summary>
     Picker: TColorPickerState;
+    /// <summary>dckList: a single-line frame is drawn around the list, one cell
+    /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
+    Framed: Boolean;
     /// <summary>dckInput: draw '*' instead of the stored characters.</summary>
     Password: Boolean;
     /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
