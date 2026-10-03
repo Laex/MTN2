@@ -29,6 +29,7 @@ type
     [Test] procedure TestToggleAndEscape;
     [Test] procedure TestDigitShortcuts;
     [Test] procedure TestLetterShortcut;
+    [Test] procedure TestLetterShortcutCyrillicLayout;
     [Test] procedure TestCursorMovement;
     [Test] procedure TestHandleClickScrollbar;
     [Test] procedure TestHandleClickCloseAndOutside;
@@ -195,6 +196,27 @@ begin
     ExpectedUri := PathToFileUri('C:' + PathDelim);
     Assert.IsTrue(GNavUri = ExpectedUri, 'C key navigates to C:\ as a file URI');
     Assert.IsTrue(not C.Visible, 'C key closes the popup');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestLetterShortcutCyrillicLayout;
+var
+  C: TDrivePopupController;
+  Key: Word;
+  KeyChar: Char;
+begin
+  C := MakeController(TRectI.Make(0, 0, 79, 24));
+  try
+    C.Open(psLeft);
+    Key := 0;
+    KeyChar := #$0441; // Russian layout: the key of Latin C
+    C.HandleInput(Key, [], KeyChar);
+    Assert.IsTrue(GNavCalled, 'the Russian letter on the C key triggers navigation');
+    Assert.IsTrue(GNavUri = PathToFileUri('C:' + PathDelim),
+      'the Russian letter on the C key navigates to C:\');
+    Assert.IsTrue(not C.Visible, 'the Russian letter closes the popup');
   finally
     C.Free;
   end;
@@ -371,6 +393,11 @@ end;
 procedure TTestDrivePopup.TestLetterShortcut;
 begin
   TestDrivePopup.TestLetterShortcut;
+end;
+
+procedure TTestDrivePopup.TestLetterShortcutCyrillicLayout;
+begin
+  TestDrivePopup.TestLetterShortcutCyrillicLayout;
 end;
 
 procedure TTestDrivePopup.TestCursorMovement;
