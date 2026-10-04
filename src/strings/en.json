@@ -337,10 +337,34 @@
       "$title": "Loaded plugins",
       "ok": "  OK  "
     },
+    "DIALOG_EDITFIND": {
+      "$title": "Search",
+      "ok": "Search",
+      "opt_case": "&Case sensitive",
+      "opt_words": "&Whole words",
+      "opt_regex": "Reg&ular expressions",
+      "opt_reverse": "Re&verse search",
+      "word": "Wo&rd",
+      "selection": "Se&lection",
+      "cancel": "Cancel"
+    },
+    "DIALOG_REPLACEASK": {
+      "$title": "Replace",
+      "replace": "Replace",
+      "all": "&All",
+      "skip": "&Skip",
+      "cancel": "Cancel"
+    },
     "DIALOG_REPLACE": {
       "$title": "Replace",
+      "opt_case": "&Case sensitive",
+      "opt_words": "&Whole words",
+      "opt_regex": "Reg&ular expressions",
+      "opt_reverse": "Re&verse search",
       "one": "Replace",
       "all": "&All",
+      "word": "Wo&rd",
+      "selection": "Se&lection",
       "cancel": "Cancel"
     },
     "DIALOG_SEARCH": {
@@ -766,6 +790,14 @@
     "editor.readOnlyMsg": "Clear the OS read-only attribute and edit?",
     "editor.notFoundTitle": "Search",
     "editor.notFoundMsg": "Could not find the string",
+    "editor.badPatternMsg": "Invalid regular expression",
+    "editor.replaceAskReplace": "Replace",
+    "editor.replaceAskFind": "Find:",
+    "editor.replaceAskWith": "Replace with:",
+    "editor.replaceAskLine": "Line %d:",
+    "editor.replaceWrapForward": "Continue from the beginning?",
+    "editor.replaceWrapBackward": "Continue from the end?",
+    "editor.replacedCount": "Replaced: %d",
     "editor.openLinkTitle": "Open link",
     "editor.openLinkMsg": "Open the link in the default application?",
     "editor.openLinkOk": "Open",

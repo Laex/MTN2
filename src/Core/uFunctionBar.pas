@@ -17,7 +17,6 @@ type
     fbcViewer,
     fbcViewerHex,
     fbcViewerMarkdown,
-    fbcViewerFind,
     fbcEditor,
     fbcEditorAskSave,
     fbcDrive,
@@ -423,13 +422,6 @@ begin
 
     fbcHelp, fbcHelpSearch:
       FunctionBarItemsForHelp(Mods, ACtx = fbcHelpSearch, AItems, ALetters);
-
-    fbcViewerFind:
-      begin
-        SetLength(ALetters, 2);
-        ALetters[0] := 'Enter:Next';
-        ALetters[1] := 'Esc:Cancel';
-      end;
 
     fbcEditor:
       FunctionBarItemsForEditor(Mods, AItems, ALetters);

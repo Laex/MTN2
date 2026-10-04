@@ -85,6 +85,10 @@ type
     ConsoleTrimPaste: Boolean;
     ConsoleReturnToPanels: Boolean;
     ConsoleBackgroundShowMs: Integer;
+    /// <summary>Editor / viewer Find and Replace options (uEditorSearch).</summary>
+    EditorSearchCase: Boolean;
+    EditorSearchWords: Boolean;
+    EditorSearchRegex: Boolean;
     SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
@@ -550,6 +554,9 @@ begin
       Root.AddPair('consoleTrimPaste', TJSONBool.Create(ASession.ConsoleTrimPaste));
       Root.AddPair('consoleReturnToPanels', TJSONBool.Create(ASession.ConsoleReturnToPanels));
       Root.AddPair('consoleBackgroundShowMs', TJSONNumber.Create(ClampBackgroundShowMs(ASession.ConsoleBackgroundShowMs)));
+      Root.AddPair('editorSearchCase', TJSONBool.Create(ASession.EditorSearchCase));
+      Root.AddPair('editorSearchWords', TJSONBool.Create(ASession.EditorSearchWords));
+      Root.AddPair('editorSearchRegex', TJSONBool.Create(ASession.EditorSearchRegex));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
@@ -616,6 +623,9 @@ begin
   ASession.ConsoleTrimPaste := False;
   ASession.ConsoleReturnToPanels := False;
   ASession.ConsoleBackgroundShowMs := cDefaultBackgroundShowMs;
+  ASession.EditorSearchCase := False;
+  ASession.EditorSearchWords := False;
+  ASession.EditorSearchRegex := False;
   ASession.SelectFolders := False;
   ASession.Language := '';
 
@@ -697,6 +707,9 @@ begin
       ASession.ConsoleTrimPaste := JsonBool(Root, 'consoleTrimPaste', False);
       ASession.ConsoleReturnToPanels := JsonBool(Root, 'consoleReturnToPanels', False);
       ASession.ConsoleBackgroundShowMs := ClampBackgroundShowMs(JsonInt(Root, 'consoleBackgroundShowMs', cDefaultBackgroundShowMs));
+      ASession.EditorSearchCase := JsonBool(Root, 'editorSearchCase', False);
+      ASession.EditorSearchWords := JsonBool(Root, 'editorSearchWords', False);
+      ASession.EditorSearchRegex := JsonBool(Root, 'editorSearchRegex', False);
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);

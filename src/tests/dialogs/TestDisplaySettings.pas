@@ -363,6 +363,9 @@ begin
   Saved.ConsoleTrimPaste := True;
   Saved.ConsoleReturnToPanels := True;
   Saved.ConsoleBackgroundShowMs := 5000;
+  Saved.EditorSearchCase := True;
+  Saved.EditorSearchWords := True;
+  Saved.EditorSearchRegex := True;
   Assert.IsTrue(SaveSession(Path, Saved), 'save session');
   try
     Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
@@ -376,6 +379,8 @@ begin
     Assert.IsTrue(Loaded.ConsoleTrimPaste, 'consoleTrimPaste saved');
     Assert.IsTrue(Loaded.ConsoleReturnToPanels, 'consoleReturnToPanels saved');
     Assert.AreEqual(5000, Loaded.ConsoleBackgroundShowMs, 'consoleBackgroundShowMs saved');
+    Assert.IsTrue(Loaded.EditorSearchCase and Loaded.EditorSearchWords and
+      Loaded.EditorSearchRegex, 'editor search options saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

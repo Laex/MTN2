@@ -31,9 +31,7 @@ begin
   LLines[0] := 'Hello World';
   LLines[1] := 'Modern Terminal Navigator';
 
-  LOptions.MatchCase := False;
-  LOptions.WholeWord := False;
-  LOptions.SearchBackwards := False;
+  LOptions := DefaultSearchOptions;
 
   LRes := TEditorSearchEngine.FindInText(LLines, 'terminal', 0, 0, LOptions);
   Assert.IsTrue(LRes.Found, 'Should find substring "terminal"');

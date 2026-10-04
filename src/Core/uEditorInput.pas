@@ -32,7 +32,7 @@ type
     CycleEncoding: TEditorProc;
     OpenGotoDialog: TEditorProc;
     OpenReplaceDialog: TEditorProc;
-    OpenFindPrompt: TEditorProc;
+    OpenFindDialog: TEditorProc;
     FindNextOrPrev: TEditorFindProc;
     SaveDoc: TEditorProc;
     ToggleWordWrap: TEditorProc;
@@ -132,7 +132,7 @@ end;
 procedure FindAgain(const AHost: TEditorKeymapHost; AForward: Boolean);
 begin
   if HostFindEmpty(AHost) then
-    AHost.OpenFindPrompt()
+    AHost.OpenFindDialog()
   else
     AHost.FindNextOrPrev(AForward);
 end;
@@ -162,7 +162,7 @@ begin
     kaDocGotoLine:
       AHost.OpenGotoDialog();
     kaDocFind:
-      AHost.OpenFindPrompt();
+      AHost.OpenFindDialog();
     kaDocFindNext:
       FindAgain(AHost, True);
     kaDocFindPrev:
@@ -225,7 +225,7 @@ begin
   // numpad 5 closes like F10.
   if HostViewOnly(AHost) and (K.Ch = '/') and K.HasMods([], [ssShift]) then
   begin
-    AHost.OpenFindPrompt();
+    AHost.OpenFindDialog();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;

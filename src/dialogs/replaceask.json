@@ -1,0 +1,122 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Replace",
+  "width": 62,
+  "height": 11,
+  "children": [
+    {
+      "type": "label",
+      "text": "Find:",
+      "id": "cap_find",
+      "col": 1,
+      "row": 1,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "val_find",
+      "accent": true,
+      "col": 16,
+      "row": 1,
+      "width": 42,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Replace with:",
+      "id": "cap_repl",
+      "col": 1,
+      "row": 3,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "val_repl",
+      "accent": true,
+      "col": 16,
+      "row": 3,
+      "width": 42,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Line:",
+      "id": "cap_line",
+      "col": 1,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "ctx_pre",
+      "col": 16,
+      "row": 5,
+      "width": 1,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "ctx_hit",
+      "accent": true,
+      "col": 17,
+      "row": 5,
+      "width": 1,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "ctx_post",
+      "col": 18,
+      "row": 5,
+      "width": 1,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "replace",
+      "text": "Replace",
+      "default": true,
+      "col": 10,
+      "row": 7,
+      "width": 11,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "all",
+      "text": "&All",
+      "col": 22,
+      "row": 7,
+      "width": 7,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "skip",
+      "text": "&Skip",
+      "col": 30,
+      "row": 7,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 39,
+      "row": 7,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

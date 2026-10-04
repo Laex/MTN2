@@ -1,13 +1,13 @@
 unit uEditorDialogs;
 
-{ Ask-save / encoding / goto / replace dialogs. Extracted from TEditorWindow
+{ Ask-save / encoding / goto / find / replace dialogs. Extracted from TEditorWindow
   so the host keeps thin Open* forwards and Confirm* callbacks. }
 
 interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson, uTextEncoding;
+  uDialogHost, uDialogTypes, uDialogJson, uTextEncoding, uEditorSearch;
 
 type
   TEditorAskSaveAction = (esaCancel, esaYes, esaNo);
@@ -18,6 +18,10 @@ type
   TEditorRequestEncodingProc = reference to procedure(AEncoding: TTextFileEncoding);
   TEditorReplaceProc = reference to procedure(const AFind, AReplace: string;
     AAll: Boolean);
+  /// <summary>The Find dialog was accepted; the search options are already in
+  /// GEditorSearchOptions.</summary>
+  TEditorFindTextProc = reference to procedure(const AFind: string);
+  TEditorTextFn = reference to function: string;
 
   TEditorDialogController = class
   private
@@ -30,7 +34,17 @@ type
     FOnApplyPendingEncoding: TEditorNotifyProc;
     FOnRequestEncoding: TEditorRequestEncodingProc;
     FOnReplace: TEditorReplaceProc;
+    FOnFind: TEditorFindTextProc;
+    FOnWordAtCursor: TEditorTextFn;
+    FOnSelectionText: TEditorTextFn;
     procedure Notify;
+    /// <summary>The four option check boxes of the open dialog into
+    /// GEditorSearchOptions.</summary>
+    procedure ReadSearchOptions;
+    /// <summary>Word / Selection buttons: puts the text under the cursor into
+    /// the Find field (escaped when regular expressions are on) and keeps the
+    /// dialog open. False when AControlId is another control.</summary>
+    function FillFindFromButton(const AControlId: string): Boolean;
     procedure ClearConfirm;
     procedure CloseDialog;
     /// <summary>Shows the Save? button ACmd pressed, then runs it.</summary>
@@ -42,17 +56,21 @@ type
       const AOnGotoLine: TEditorGotoLineProc;
       const AOnApplyPendingEncoding: TEditorNotifyProc;
       const AOnRequestEncoding: TEditorRequestEncodingProc;
-      const AOnReplace: TEditorReplaceProc);
+      const AOnReplace: TEditorReplaceProc;
+      const AOnFind: TEditorFindTextProc;
+      const AOnWordAtCursor, AOnSelectionText: TEditorTextFn);
     procedure OpenAskSave(const AFileName: string);
     procedure OpenDiscardEncoding;
     procedure OpenGoto(ALine1Based: Integer);
     procedure OpenEncoding(const ACurrentName: string);
     procedure OpenReplace(const AFindText: string);
+    procedure OpenFind(const AFindText: string);
     procedure AskSaveCommand(const AControlId, AValuesJson: string);
     procedure DiscardEncodingCommand(const AControlId, AValuesJson: string);
     procedure GotoLineCommand(const AControlId, AValuesJson: string);
     procedure EncodingDialogCommand(const AControlId, AValuesJson: string);
     procedure ReplaceDialogCommand(const AControlId, AValuesJson: string);
+    procedure FindDialogCommand(const AControlId, AValuesJson: string);
     function HandleAskSaveInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
   end;
@@ -68,7 +86,7 @@ procedure EditorMergeEncodingJson(const AValuesJson: string; var AName: string;
 implementation
 
 uses
-  System.JSON, uStrings;
+  System.JSON, System.RegularExpressions, uStrings;
 
 function EditorAskSaveHotkey(AKey: Word; AKeyChar: Char): string;
 var
@@ -156,7 +174,9 @@ constructor TEditorDialogController.Create(ADialog: TDialogHost;
   const AOnGotoLine: TEditorGotoLineProc;
   const AOnApplyPendingEncoding: TEditorNotifyProc;
   const AOnRequestEncoding: TEditorRequestEncodingProc;
-  const AOnReplace: TEditorReplaceProc);
+  const AOnReplace: TEditorReplaceProc;
+  const AOnFind: TEditorFindTextProc;
+  const AOnWordAtCursor, AOnSelectionText: TEditorTextFn);
 begin
   inherited Create;
   FDialog := ADialog;
@@ -168,6 +188,9 @@ begin
   FOnApplyPendingEncoding := AOnApplyPendingEncoding;
   FOnRequestEncoding := AOnRequestEncoding;
   FOnReplace := AOnReplace;
+  FOnFind := AOnFind;
+  FOnWordAtCursor := AOnWordAtCursor;
+  FOnSelectionText := AOnSelectionText;
 end;
 
 procedure TEditorDialogController.Notify;
@@ -220,7 +243,42 @@ end;
 
 procedure TEditorDialogController.OpenReplace(const AFindText: string);
 begin
-  FDialog.Open(BuildReplaceDialog(AFindText, ''), ReplaceDialogCommand);
+  FDialog.Open(BuildReplaceDialog(AFindText, '', GEditorSearchOptions.MatchCase,
+    GEditorSearchOptions.WholeWord, GEditorSearchOptions.UseRegex,
+    GEditorSearchOptions.SearchBackwards), ReplaceDialogCommand);
+  Notify;
+end;
+
+procedure TEditorDialogController.OpenFind(const AFindText: string);
+begin
+  FDialog.Open(BuildEditFindDialog(AFindText, GEditorSearchOptions.MatchCase,
+    GEditorSearchOptions.WholeWord, GEditorSearchOptions.UseRegex,
+    GEditorSearchOptions.SearchBackwards), FindDialogCommand);
+  Notify;
+end;
+
+procedure TEditorDialogController.ReadSearchOptions;
+begin
+  GEditorSearchOptions.MatchCase := FDialog.GetCheckbox('opt_case');
+  GEditorSearchOptions.WholeWord := FDialog.GetCheckbox('opt_words');
+  GEditorSearchOptions.UseRegex := FDialog.GetCheckbox('opt_regex');
+  GEditorSearchOptions.SearchBackwards := FDialog.GetCheckbox('opt_reverse');
+end;
+
+function TEditorDialogController.FillFindFromButton(const AControlId: string): Boolean;
+var
+  Text: string;
+begin
+  Result := True;
+  if DialogCmdIs(AControlId, 'word') and Assigned(FOnWordAtCursor) then
+    Text := FOnWordAtCursor()
+  else if DialogCmdIs(AControlId, 'selection') and Assigned(FOnSelectionText) then
+    Text := FOnSelectionText()
+  else
+    Exit(False);
+  if FDialog.GetCheckbox('opt_regex') then
+    Text := TRegEx.Escape(Text);
+  FDialog.SetInputValue('find', Text);
   Notify;
 end;
 
@@ -298,6 +356,8 @@ var
   FindText, ReplText: string;
   Act: TEditorReplaceAction;
 begin
+  if FillFindFromButton(AControlId) then
+    Exit;
   FindText := FDialog.GetInputValue('find');
   ReplText := FDialog.GetInputValue('replace');
   if not EditorReplaceShouldRun(AControlId, FindText) then
@@ -307,10 +367,38 @@ begin
     Notify;
     Exit;
   end;
+  ReadSearchOptions;
   CloseDialog;
   Act := EditorReplaceAction(AControlId);
   if Assigned(FOnReplace) then
     FOnReplace(FindText, ReplText, Act = eraAll);
+  Notify;
+end;
+
+procedure TEditorDialogController.FindDialogCommand(const AControlId,
+  AValuesJson: string);
+var
+  FindText: string;
+begin
+  if FillFindFromButton(AControlId) then
+    Exit;
+  FindText := FDialog.GetInputValue('find');
+  if DialogCmdIsReject(AControlId) then
+  begin
+    CloseDialog;
+    Notify;
+    Exit;
+  end;
+  // An empty field keeps the dialog open: there is nothing to look for.
+  if Trim(FindText) = '' then
+  begin
+    Notify;
+    Exit;
+  end;
+  ReadSearchOptions;
+  CloseDialog;
+  if Assigned(FOnFind) then
+    FOnFind(FindText);
   Notify;
 end;
 

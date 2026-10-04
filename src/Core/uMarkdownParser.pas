@@ -86,6 +86,11 @@ type
     /// "![[f.png|300x200]]" or "![alt|300](f.png)"; 0 = not given.</summary>
     ImageWidth, ImageHeight: Integer;
     IsTable: Boolean;
+    /// <summary>Table row: width of one physical row of DisplayText, which
+    /// is the rows concatenated (a cell with several lines makes several).
+    /// The Viewer cuts DisplayText into rows of this width; 0 = not a table
+    /// row.</summary>
+    TableRowWidth: Integer;
   end;
 
   TMdTableAlign = (mtaLeft, mtaCenter, mtaRight);
@@ -703,6 +708,7 @@ begin
   Result.ImageWidth := 0;
   Result.ImageHeight := 0;
   Result.IsTable := False;
+  Result.TableRowWidth := 0;
   Result.Spans := nil;
 
   Trimmed := TrimLeft(ARaw);
@@ -1218,6 +1224,7 @@ begin
       Result.DisplayText := Result.DisplayText + chBoxVL;
   end;
   Result.Spans := SingleSpan(1, Length(Result.DisplayText), mskTableBorder);
+  Result.TableRowWidth := Length(Result.DisplayText);
 end;
 
 class function TMarkdownParser.FormatPipeTableLine(const ABlock: TArray<string>;
@@ -1299,6 +1306,7 @@ begin
   Result.ImageWidth := 0;
   Result.ImageHeight := 0;
   Result.IsTable := False;
+  Result.TableRowWidth := 0;
   ColCount := ALayout.ColCount;
   if (ColCount < 1) or (AIndexInBlock < 0) then
     Exit;
@@ -1365,6 +1373,7 @@ begin
     Spans.Free;
   end;
   Result.IsTable := True;
+  Result.TableRowWidth := Length(Result.DisplayText) div Max(RowLines, 1);
 end;
 
 // Word-wrap break points: whitespace plus the punctuation a line most

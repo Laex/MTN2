@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uConsoleSettings, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
 
 type
@@ -1750,6 +1750,9 @@ begin
   GConsoleSettings.TrimPastedSpaces := Sess.ConsoleTrimPaste;
   GConsoleSettings.ReturnToPanels := Sess.ConsoleReturnToPanels;
   GConsoleSettings.BackgroundShowMs := ClampBackgroundShowMs(Sess.ConsoleBackgroundShowMs);
+  GEditorSearchOptions.MatchCase := Sess.EditorSearchCase;
+  GEditorSearchOptions.WholeWord := Sess.EditorSearchWords;
+  GEditorSearchOptions.UseRegex := Sess.EditorSearchRegex;
 end;
 
 procedure TMainForm.PersistSession;
@@ -1835,6 +1838,9 @@ begin
   Sess.ConsoleTrimPaste := GConsoleSettings.TrimPastedSpaces;
   Sess.ConsoleReturnToPanels := GConsoleSettings.ReturnToPanels;
   Sess.ConsoleBackgroundShowMs := GConsoleSettings.BackgroundShowMs;
+  Sess.EditorSearchCase := GEditorSearchOptions.MatchCase;
+  Sess.EditorSearchWords := GEditorSearchOptions.WholeWord;
+  Sess.EditorSearchRegex := GEditorSearchOptions.UseRegex;
   Sess.SelectFolders := FDualPanel.SelectFolders;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/

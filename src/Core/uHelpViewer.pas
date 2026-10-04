@@ -334,9 +334,9 @@ begin
     AKey := vkTab;
   Mods := AShift * [ssShift, ssAlt, ssCtrl];
   try
-    // The F7 prompt and the open-link question own every key until
+    // The Find dialog and the open-link question own every key until
     // Enter/Esc.
-    if FViewer.FindPromptOpen or FViewer.DialogOpen then
+    if FViewer.DialogOpen then
     begin
       FViewer.HandleInput(AKey, AShift, AKeyChar);
       Exit;
@@ -420,7 +420,7 @@ begin
     Changed;
     Exit;
   end;
-  if (LR = FBounds.Height - 2) and not FViewer.FindPromptOpen then
+  if (LR = FBounds.Height - 2) and not FViewer.DialogOpen then
   begin
     if FViewer.SearchEmpty then
       FunctionBarGetItems(fbcHelp, AShift, Items, Letters)

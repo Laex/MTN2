@@ -2202,7 +2202,13 @@ begin
       Include(St, twFocused);
     case C.Kind of
       dckLabel, dckStatus:
-        TDialogRenderer.DrawLabel(AGrid, R, C.Text, LabelFg, LabelBg);
+        if (C.Kind = dckLabel) and C.Accent then
+          // Dark red on a light dialog, yellow on a dark one.
+          PutGridText(AGrid, R.Left, R.Top, Copy(C.Text, 1, Max(R.Width, 1)),
+            ContrastingGlyphFg(LabelBg, cListAccentFg, TAlphaColor($FFFFFF55)),
+            LabelBg, [ccaBold])
+        else
+          TDialogRenderer.DrawLabel(AGrid, R, C.Text, LabelFg, LabelBg);
       dckColorSample:
         DrawColorSampleControl(AGrid, R, C);
       dckColorPicker:

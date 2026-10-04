@@ -79,6 +79,9 @@ type
     FgFallbackId, BgFallbackId: string;
     /// <summary>dckColorPicker: the whole picker (uColorPickerControl).</summary>
     Picker: TColorPickerState;
+    /// <summary>dckLabel: drawn in bold with the dialog's accent color, for the
+    /// values a caption introduces (JSON "accent": true).</summary>
+    Accent: Boolean;
     /// <summary>dckList: a single-line frame is drawn around the list, one cell
     /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
     Framed: Boolean;
@@ -221,7 +224,21 @@ function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   const AExcludeMask: string = '*.tmp;*.bak;~*'): TDialogDeclaration;
 function BuildGotoLineDialog(ALine: Integer): TDialogDeclaration;
 function BuildEncodingDialog(ACurrent: string): TDialogDeclaration;
-function BuildReplaceDialog(const AFind, AReplace: string): TDialogDeclaration;
+/// <summary>F7 in the editor and viewer: the text to find, its search options
+/// (case, whole words, regular expression, reverse direction) and the Word /
+/// Selection buttons that fill the field from the text under the cursor.</summary>
+function BuildEditFindDialog(const AFind: string; AMatchCase: Boolean = False;
+  AWholeWord: Boolean = False; ARegex: Boolean = False;
+  AReverse: Boolean = False): TDialogDeclaration;
+/// <summary>The question of a step-by-step replace: the text looked for, what
+/// it is replaced with (both in the accent style) and the line that holds the
+/// match, with the match itself in the accent style (APre + AHit + APost),
+/// buttons Replace / All / Skip / Cancel.</summary>
+function BuildReplaceAskDialog(const AFind, AReplacement: string; ALineNo: Integer;
+  const APre, AHit, APost: string): TDialogDeclaration;
+function BuildReplaceDialog(const AFind, AReplace: string; AMatchCase: Boolean = False;
+  AWholeWord: Boolean = False; ARegex: Boolean = False;
+  AReverse: Boolean = False): TDialogDeclaration;
 function BuildOverwriteAskDialog(const APath, ANewLine, AExistingLine: string): TDialogDeclaration;
 function BuildDeleteErrorDialog(const AHeadline, APath, AQuestion, AErrorLine: string;
   AOfferPermanent: Boolean; AOfferElevate: Boolean = False): TDialogDeclaration;
@@ -459,6 +476,7 @@ end;
 function MakeLabel(const AText: string; const AId: string = ''): TDialogControl;
 begin
   Result.Kind := dckLabel;
+  Result.Accent := False;
   Result.Id := AId;
   Result.Text := AText;
   Result.Group := '';
@@ -797,11 +815,58 @@ begin
   DialogSetListItems(Result, 'encoding', Items, Sel);
 end;
 
-function BuildReplaceDialog(const AFind, AReplace: string): TDialogDeclaration;
+function BuildEditFindDialog(const AFind: string; AMatchCase, AWholeWord, ARegex,
+  AReverse: Boolean): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogEditFind, Result);
+  DialogSetInputValue(Result, 'find', AFind);
+  DialogSetCheckbox(Result, 'opt_case', AMatchCase);
+  DialogSetCheckbox(Result, 'opt_words', AWholeWord);
+  DialogSetCheckbox(Result, 'opt_regex', ARegex);
+  DialogSetCheckbox(Result, 'opt_reverse', AReverse);
+end;
+
+function BuildReplaceAskDialog(const AFind, AReplacement: string; ALineNo: Integer;
+  const APre, AHit, APost: string): TDialogDeclaration;
+const
+  cContextCol = 16;
+
+  procedure Place(const AId, AText: string; ACol: Integer);
+  var
+    I: Integer;
+  begin
+    for I := 0 to High(Result.Controls) do
+      if SameText(Result.Controls[I].Id, AId) then
+      begin
+        Result.Controls[I].Text := AText;
+        Result.Controls[I].Col := ACol;
+        Result.Controls[I].BoxW := Max(Length(AText), 1);
+        Break;
+      end;
+  end;
+
+begin
+  RequireDialogResource(cResDialogReplaceAsk, Result);
+  DialogSetLabelText(Result, 'cap_find', T('ui.editor.replaceAskFind', 'Find:'));
+  DialogSetLabelText(Result, 'val_find', '"' + AFind + '"');
+  DialogSetLabelText(Result, 'cap_repl', T('ui.editor.replaceAskWith', 'Replace with:'));
+  DialogSetLabelText(Result, 'val_repl', '"' + AReplacement + '"');
+  DialogSetLabelText(Result, 'cap_line', T('ui.editor.replaceAskLine', 'Line %d:', [ALineNo]));
+  Place('ctx_pre', APre, cContextCol);
+  Place('ctx_hit', AHit, cContextCol + Length(APre));
+  Place('ctx_post', APost, cContextCol + Length(APre) + Length(AHit));
+end;
+
+function BuildReplaceDialog(const AFind, AReplace: string; AMatchCase, AWholeWord,
+  ARegex, AReverse: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogReplace, Result);
   DialogSetInputValue(Result, 'find', AFind);
   DialogSetInputValue(Result, 'replace', AReplace);
+  DialogSetCheckbox(Result, 'opt_case', AMatchCase);
+  DialogSetCheckbox(Result, 'opt_words', AWholeWord);
+  DialogSetCheckbox(Result, 'opt_regex', ARegex);
+  DialogSetCheckbox(Result, 'opt_reverse', AReverse);
 end;
 
 function BuildOverwriteAskDialog(const APath, ANewLine, AExistingLine: string): TDialogDeclaration;

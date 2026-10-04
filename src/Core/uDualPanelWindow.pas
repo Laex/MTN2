@@ -2851,7 +2851,7 @@ end;
 procedure TDualPanelWindow.EditFind;
 begin
   if ActiveDocument <> nil then
-    ActiveDocument.OpenFindPrompt;
+    ActiveDocument.OpenFindDialog;
 end;
 
 procedure TDualPanelWindow.EditFindReplace;

@@ -189,7 +189,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 
 | `type` | Поведение |
 |---|---|
-| `label` | Статический текст; без `id` в values |
+| `label` | Статический текст; без `id` в values. `"accent": true` рисует его жирным акцентным цветом (значения, которые вводит подпись рядом) |
 | `input` | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) / `TInputLine`; поля `id`, `value` |
 | `checkbox` | `id`, `text`, `checked`; Space / клик переключает |
 | `radio` / `radiobox` | `id`, `group`, `text`, `checked`; взаимное исключение внутри `group`; Space / клик выбирает |

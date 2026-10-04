@@ -404,12 +404,37 @@
       "$title": "Загруженные плагины",
       "ok": "  ОК  "
     },
+    "DIALOG_EDITFIND": {
+      "lbl_find": "Найти:",
+      "$title": "Поиск",
+      "ok": "Найти",
+      "opt_case": "Учитывать &регистр",
+      "opt_words": "&Слова целиком",
+      "opt_regex": "Регулярные &выражения",
+      "opt_reverse": "&Обратный поиск",
+      "word": "С&лово",
+      "selection": "В&ыделение",
+      "cancel": "Отмена"
+    },
+    "DIALOG_REPLACEASK": {
+      "$title": "Замена",
+      "replace": "Заменить",
+      "all": "&Все",
+      "skip": "&Пропустить",
+      "cancel": "Отмена"
+    },
     "DIALOG_REPLACE": {
       "lbl_find": "Найти:",
       "lbl_replace": "Заменить на:",
       "$title": "Замена",
+      "opt_case": "Учитывать &регистр",
+      "opt_words": "&Слова целиком",
+      "opt_regex": "Регулярные &выражения",
+      "opt_reverse": "&Обратный поиск",
       "one": "Заменить",
-      "all": "&Все",
+      "all": "Вс&е",
+      "word": "С&лово",
+      "selection": "В&ыделение",
       "cancel": "Отмена"
     },
     "DIALOG_SEARCH": {
@@ -865,6 +890,14 @@
     "editor.readOnlyMsg": "Снять атрибут «только для чтения» и редактировать?",
     "editor.notFoundTitle": "Поиск",
     "editor.notFoundMsg": "Строка не найдена",
+    "editor.badPatternMsg": "Неверное регулярное выражение",
+    "editor.replaceAskReplace": "Заменить",
+    "editor.replaceAskFind": "Найти:",
+    "editor.replaceAskWith": "Заменить на:",
+    "editor.replaceAskLine": "Строка %d:",
+    "editor.replaceWrapForward": "Продолжить с начала?",
+    "editor.replaceWrapBackward": "Продолжить с конца?",
+    "editor.replacedCount": "Выполнено замен: %d",
     "editor.openLinkTitle": "Открыть ссылку",
     "editor.openLinkMsg": "Открыть ссылку в программе по умолчанию?",
     "editor.openLinkOk": "Открыть",

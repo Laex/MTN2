@@ -22,7 +22,32 @@ uses
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
-    ecOpenLink, ecNotFound);
+    ecOpenLink, ecNotFound, ecReplaceAsk, ecReplaceWrap);
+
+  /// <summary>A step-by-step replace in progress (the Replace button of the
+  /// Replace dialog): one match is shown at a time and answered with Replace,
+  /// All, Skip or Cancel.</summary>
+  TReplaceSession = record
+    Active: Boolean;
+    /// <summary>All was answered: the rest is replaced without asking.</summary>
+    AllMode: Boolean;
+    Forward: Boolean;
+    /// <summary>The pass that went on from the other end of the text.</summary>
+    Wrapped: Boolean;
+    /// <summary>The undo entry of the whole session was made.</summary>
+    UndoPushed: Boolean;
+    /// <summary>A match was shown at least once.</summary>
+    AnyMatch: Boolean;
+    Find, Repl: string;
+    Opts: TSearchOptions;
+    Count: Integer;
+    /// <summary>Where the search began (after the wrap it stops there) and
+    /// where the cursor was, which is put back at the end.</summary>
+    StartRow, StartCol, SavedRow, SavedCol: Integer;
+    /// <summary>Where the next match is looked for from.</summary>
+    PosRow, PosCol: Integer;
+    MatchRow, MatchCol, MatchLen: Integer;
+  end;
 
   TMdImageSize = record
     W, H: Integer; // pixels; 0 = unknown
@@ -108,16 +133,13 @@ type
     FCloseAfterSave: Boolean;
     FUndoBuffer: TEditorUndoBuffer;
     FCoalesceInsert: Boolean;
-    FFindPrompt: Boolean;
-    /// <summary>F7 "Find:" history drop-down (uDialogHistory 'editfind',
-    /// shared with the Replace dialog's Find field) and the field's cells
-    /// as last drawn in the status line.</summary>
-    FFindPopup: THistoryPopup;
-    FFindFieldRow, FFindFieldLeft, FFindFieldRight: Integer;
-    FFind: TInputLine;
+    /// <summary>Text of the last search, which F3 / Shift+F3 look for again.
+    /// The Find and Replace dialogs fill it; when nothing was searched in this
+    /// editor yet it starts from the latest saved search (uDialogHistory
+    /// 'editfind').</summary>
+    FFindText: string;
     FFindStatus: string;
-    FMatchLine: Integer;
-    FMatchCol: Integer;
+    FRepl: TReplaceSession;
     FMouseSelecting: Boolean;
     // Markdown link under a plain mouse press; the release on the same link
     // (no drag selection in between) follows it.
@@ -209,6 +231,9 @@ type
     procedure EnsureSelAnchor;
     procedure GetSelRange(out ARow1, ACol1, ARow2, ACol2: Integer);
     function SelectedText: string;
+    /// <summary>The text cursor columns count in: the displayed text in the
+    /// Markdown view (marks hidden, table rows padded), the source line otherwise.</summary>
+    function CursorLineText(ALineIdx: Integer): string;
     function DeleteSelection: Boolean;
     procedure SelectAll;
     function IsCellSelected(ARow, ACol: Integer): Boolean;
@@ -227,12 +252,24 @@ type
     procedure DeleteCurrentLine;
     procedure DeleteToEndOfLine;
     procedure InsertBlankLineBelow;
-    /// <summary>Applies one ReplaceInLine hit at (ALineIdx, AMatchPos) and
-    /// moves the cursor to just past the replacement - the shared "apply
-    /// and land the cursor" step of ReplaceInDocument's forward-then-wrap
-    /// search.</summary>
-    procedure ReplaceOccurrenceAt(ALineIdx, AMatchPos: Integer; const ALine, ANeedle, AReplace: string);
     procedure ReplaceInDocument(const AFind, AReplace: string; AAll: Boolean);
+    procedure BeginReplaceSession(const AFind, AReplace: string);
+    /// <summary>Looks for the next match from FRepl.Pos and asks about it (or
+    /// replaces it when All was answered); at the end of the text asks to go
+    /// on from the other end, then finishes.</summary>
+    procedure ReplaceNextMatch;
+    function ReplaceFindMatch(out AHit: TSearchResult): Boolean;
+    function ReplaceCanWrap: Boolean;
+    procedure ReplaceAsk;
+    procedure ReplaceAskCommand(const AControlId: string);
+    procedure ReplaceWrapAsk;
+    procedure ReplaceCurrentMatch;
+    procedure ReplaceSkipMatch;
+    procedure EndReplaceSession;
+    /// <summary>The line of the match cut to the room of the question: the text
+    /// before the match, the match and the text after it.</summary>
+    procedure ReplaceContext(ARow, ACol, ALen: Integer; out APre, AHit, APost: string);
+    procedure SearchMessage(const AMessage, ADetails: string);
     procedure InsertChar(ACh: Char);
     procedure DoBackspace;
     procedure DoDelete;
@@ -245,8 +282,14 @@ type
     procedure BreakInsertCoalesce;
     function ClipboardGetText: string;
     procedure ClipboardSetText(const AText: string);
-    procedure CloseFindPrompt;
     function FindMatch(AForward: Boolean): Boolean;
+    /// <summary>The word under the cursor (Word button of the Find dialogs).</summary>
+    function WordAtCursor: string;
+    /// <summary>First line of the selection, or the current line when nothing
+    /// is selected (Selection button of the Find dialogs).</summary>
+    function SelectionForSearch: string;
+    /// <summary>Says why a regular expression cannot be searched.</summary>
+    procedure BadPatternMessage(const AError: string);
   protected
     procedure DrawContent; override;
   public
@@ -280,7 +323,7 @@ type
     procedure ToggleMarkdownMode;
     function MarkdownImageOverlayVisible: Boolean;
     procedure OpenGotoDialog;
-    procedure OpenFindPrompt;
+    procedure OpenFindDialog;
     procedure OpenReplaceDialog;
     procedure OpenEncodingDialog;
     procedure UndoEdit;
@@ -294,13 +337,14 @@ type
     function MenuCanUndo: Boolean;
     function MenuCanRedo: Boolean;
     function HasSelection: Boolean;
+    /// <summary>The selected text; in the Markdown view it is the displayed text.</summary>
+    function SelectionText: string;
     // Help viewer API (uHelpViewer). Positions are line index / display
     // column in Markdown mode.
     function DocReady: Boolean;
     function LineCount: Integer;
     function LineText(AIndex: Integer): string;
-    function FindPromptOpen: Boolean;
-    /// <summary>Nothing searched for yet (F7 prompt never submitted text).</summary>
+    /// <summary>Nothing searched for yet (the Find dialog never took text).</summary>
     function SearchEmpty: Boolean;
     procedure GetViewPos(out ATopLine, ARow, ACol: Integer);
     procedure SetViewPos(ATopLine, ARow, ACol: Integer);
@@ -341,7 +385,7 @@ uses
   uShellAssoc, uKeyChord, uChromeRows;
 
 const
-  /// <summary>uDialogHistory key of the F7 prompt; replace.json's Find field
+  /// <summary>uDialogHistory key of the Find dialog; replace.json's Find field
   /// uses the same one.</summary>
   cEditFindHistory = 'editfind';
 
@@ -359,12 +403,6 @@ constructor TEditorWindow.Create(const ATheme: IThemeRenderer; AId: Cardinal);
 begin
   inherited Create(ATheme, AId);
   FAlive := True;
-  FFindPopup := THistoryPopup.Create;
-  FFindPopup.OnRemove :=
-    procedure(AText: string)
-    begin
-      DialogHistoryRemove(cEditFindHistory, AText);
-    end;
   FDoc := TEditorDoc.Create;
   FDoc.OnChanged := DocChanged;
   FDialog := TDialogHost.Create(ATheme);
@@ -384,11 +422,9 @@ begin
   FMdLineCacheWidth := -1;
   FLastMdContentGen := 0;
   FMdOverlayShowing := False;
-  FFind := InputLineEmpty;
-  FFindPrompt := False;
+  FFindText := '';
   FFindStatus := '';
-  FMatchLine := -1;
-  FMatchCol := -1;
+  FRepl := Default(TReplaceSession);
   FMouseSelecting := False;
   FEmbedded := False;
   Title := T('ui.window.editor', 'Editor');
@@ -411,6 +447,19 @@ begin
     procedure(const AFind, ARepl: string; AAll: Boolean)
     begin
       ReplaceInDocument(AFind, ARepl, AAll);
+    end,
+    procedure(const AFind: string)
+    begin
+      FFindText := AFind;
+      FindMatch(True);
+    end,
+    function: string
+    begin
+      Result := WordAtCursor;
+    end,
+    function: string
+    begin
+      Result := SelectionForSearch;
     end);
   BindKeymapHost;
 end;
@@ -680,8 +729,6 @@ begin
       Exit(fbcStubEdit);
     Exit(FDialog.ChromeContext);
   end;
-  if FFindPrompt then
-    Exit(fbcViewerFind);
   if FHelpMode then
   begin
     if FindNeedleEmpty then
@@ -705,7 +752,6 @@ begin
   FAlive := False;
   if FMdOverlayShowing then
     ClearOverlayPreview;
-  FreeAndNil(FFindPopup);
   FreeAndNil(FDialogs);
   if Assigned(FDialog) then
   begin
@@ -848,11 +894,9 @@ begin
   FCloseAfterSave := False;
   FCoalesceInsert := False;
   FCursorVisible := not FChromeless;
-  FFindPrompt := False;
   FFindStatus := '';
-  FMatchLine := -1;
-  FMatchCol := -1;
-  FFind := InputLineEmpty;
+  FFindText := '';
+  FRepl.Active := False;
   FMouseSelecting := False;
   ClearHistory;
   Title := ModeTitle + ' - ' + FileUriTitle(AURI);
@@ -1316,9 +1360,13 @@ end;
 // document size or how far the cursor jumped.
 procedure TEditorWindow.EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
 var
-  Line, RowsFromTop, Rows, Sub, Remaining, CursorChunk: Integer;
+  Line, RowsFromTop, Rows, Sub, Remaining, CursorChunk, Below: Integer;
 begin
   CursorChunk := MarkdownCursorChunk(FCursorRow, FCursorCol, ATextW);
+  // A picture is one step for the cursor but several rows on the screen: with
+  // the cursor on it, its rows below the first one must be in view too.
+  Below := Min(Max(MarkdownLineScreenRows(FCursorRow, ATextW, AViewH) -
+    MarkdownChunkCount(FCursorRow, ATextW), 0), Max(AViewH - 1, 0));
   Sub := MarkdownTopSubRow;
   if (FCursorRow < FTopLine) or ((FCursorRow = FTopLine) and (CursorChunk < Sub)) then
   begin
@@ -1335,7 +1383,7 @@ begin
     Inc(RowsFromTop, MarkdownLineScreenRows(Line, ATextW, MaxInt));
     Inc(Line);
   end;
-  if (Line = FCursorRow) and (RowsFromTop + CursorChunk < AViewH) then
+  if (Line = FCursorRow) and (RowsFromTop + CursorChunk + Below < AViewH) then
   begin
     FTopSubRow := Sub;
     Exit; // the cursor's row is already inside the visible window
@@ -1345,7 +1393,7 @@ begin
   // row of the window.
   Line := FCursorRow;
   Sub := CursorChunk;
-  Remaining := AViewH - 1;
+  Remaining := AViewH - 1 - Below;
   while Remaining > 0 do
   begin
     if Sub >= Remaining then
@@ -1358,9 +1406,21 @@ begin
     if (Remaining = 0) or (Line = 0) then
       Break;
     Dec(Line);
+    Rows := MarkdownLineScreenRows(Line, ATextW, MaxInt);
+    if Rows > MarkdownChunkCount(Line, ATextW) then
+    begin
+      // A picture is shown whole or not at all: when it does not fit above
+      // the cursor the window starts just below it.
+      if Rows > Remaining then
+      begin
+        Inc(Line);
+        Break;
+      end;
+      Dec(Remaining, Rows);
+      Continue;
+    end;
     Dec(Remaining);
-    Rows := MarkdownChunkCount(Line, ATextW);
-    Sub := Rows - 1;
+    Sub := MarkdownChunkCount(Line, ATextW) - 1;
   end;
   FTopLine := Line;
   FTopSubRow := Sub;
@@ -1445,7 +1505,12 @@ begin
     ARow := 0;
   if ARow >= FDoc.LineCount then
     ARow := FDoc.LineCount - 1;
-  LineLen := Length(FDoc.GetLine(ARow));
+  // The Markdown view walks columns of the displayed text, which can be
+  // longer than the source line (a wrapped table row).
+  if FMarkdownMode and not FHexMode then
+    LineLen := Length(GetMdLine(ARow).DisplayText)
+  else
+    LineLen := Length(FDoc.GetLine(ARow));
   if ACol < 0 then
     ACol := 0;
   if ACol > LineLen then
@@ -1460,7 +1525,7 @@ begin
   Result := False;
   ARow := 0;
   ACol := 0;
-  if not FDoc.Ready or FFindPrompt or (FConfirm <> ecNone) then
+  if not FDoc.Ready or (FConfirm <> ecNone) then
     Exit;
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
@@ -1544,7 +1609,7 @@ var
 begin
   ClampDocPos(ARow, ACol);
   BreakInsertCoalesce;
-  Line := FDoc.GetLine(ARow);
+  Line := CursorLineText(ARow);
   if AWholeLine then
   begin
     FSelAnchorRow := ARow;
@@ -1594,7 +1659,6 @@ var
 begin
   if FDoc.Saving or FDoc.Loading then
     Exit;
-  CloseFindPrompt;
   if (not FViewOnly) and FDoc.Dirty then
   begin
     FConfirm := ecAskSave;
@@ -1622,20 +1686,20 @@ end;
 function TEditorWindow.FindNeedleEmpty: Boolean;
 begin
   SeedFindFromHistory;
-  Result := Trim(FFind.Text) = '';
+  Result := Trim(FFindText) = '';
 end;
 
 procedure TEditorWindow.SeedFindFromHistory;
 var
   Items: TArray<string>;
 begin
-  if Trim(FFind.Text) <> '' then
+  if Trim(FFindText) <> '' then
     Exit;
-  // Nothing typed in this editor yet: start from the latest search, which
+  // Nothing searched in this editor yet: start from the latest search, which
   // includes the "Containing text" of a file search (Alt+F7).
   Items := DialogHistoryItems(cEditFindHistory);
   if Length(Items) > 0 then
-    InputLineSetText(FFind, Items[0]);
+    FFindText := Items[0];
 end;
 
 function TEditorWindow.EditorIsViewOnly: Boolean;
@@ -1682,7 +1746,7 @@ begin
   else
   begin
     FCursorRow := Max(FDoc.LineCount - 1, 0);
-    FCursorCol := Length(FDoc.GetLine(FCursorRow));
+    FCursorCol := Length(CursorLineText(FCursorRow));
   end;
   ClampCursor;
   EnsureCursorVisible;
@@ -1709,7 +1773,7 @@ begin
     EnsureSelAnchor
   else
     ClearSelection;
-  FCursorCol := Length(FDoc.GetLine(FCursorRow));
+  FCursorCol := Length(CursorLineText(FCursorRow));
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -1727,7 +1791,7 @@ begin
   FKeymapHost.CycleEncoding := CycleEncoding;
   FKeymapHost.OpenGotoDialog := OpenGotoDialog;
   FKeymapHost.OpenReplaceDialog := OpenReplaceDialog;
-  FKeymapHost.OpenFindPrompt := OpenFindPrompt;
+  FKeymapHost.OpenFindDialog := OpenFindDialog;
   FKeymapHost.FindNextOrPrev := FindNextOrPrev;
   FKeymapHost.SaveDoc := SaveDoc;
   FKeymapHost.ToggleWordWrap := ToggleWordWrap;
@@ -1820,7 +1884,6 @@ begin
     if (not FDoc.Binary) and (not FHexMode) and IsMarkdownFile then
       FMarkdownMode := True;
   end;
-  CloseFindPrompt;
   Title := ModeTitle + ' - ' + ExtractFileName(FDoc.Path);
   NotifyHost;
 end;
@@ -1839,7 +1902,6 @@ begin
   FTopSubRow := 0;
   if not FMarkdownMode then
     LeaveMarkdownOverlay;
-  CloseFindPrompt;
   Title := ModeTitle + ' - ' + ExtractFileName(FDoc.Path);
   NotifyHost;
 end;
@@ -1877,7 +1939,6 @@ begin
     FHexMode := True;
     FMarkdownMode := False;
     LeaveMarkdownOverlay;
-    CloseFindPrompt;
     ClearSelection;
     FLeftCol := 0;
   end;
@@ -1896,7 +1957,6 @@ begin
     // Re-decode from raw bytes would drop unsaved edits - ask first.
     FPendingEncoding := AEncoding;
     FConfirm := ecDiscardEncoding;
-    CloseFindPrompt;
     FDialogs.OpenDiscardEncoding;
     Exit;
   end;
@@ -1934,7 +1994,6 @@ procedure TEditorWindow.OpenEncodingDialog;
 begin
   if not FDoc.Ready then
     Exit;
-  CloseFindPrompt;
   FDialogs.OpenEncoding(TextEncodingName(FDoc.Encoding));
 end;
 
@@ -1942,7 +2001,6 @@ procedure TEditorWindow.OpenGotoDialog;
 begin
   if not FDoc.Ready then
     Exit;
-  CloseFindPrompt;
   FDialogs.OpenGoto(FCursorRow + 1);
 end;
 
@@ -1950,8 +2008,8 @@ procedure TEditorWindow.OpenReplaceDialog;
 begin
   if not CanEdit then
     Exit;
-  CloseFindPrompt;
-  FDialogs.OpenReplace(Trim(FFind.Text));
+  SeedFindFromHistory;
+  FDialogs.OpenReplace(FFindText);
 end;
 
 // Ctrl+Left/Right (Shift grows/shrinks the selection from its anchor): one
@@ -1972,7 +2030,7 @@ begin
   ClampCursor;
   Row := FCursorRow;
   Col := FCursorCol;
-  Line := FDoc.GetLine(Row);
+  Line := CursorLineText(Row);
   if AForward then
   begin
     if Col >= Length(Line) then
@@ -1993,7 +2051,7 @@ begin
       if Row > 0 then
       begin
         Dec(Row);
-        Col := Length(FDoc.GetLine(Row));
+        Col := Length(CursorLineText(Row));
       end;
     end
     else
@@ -2067,80 +2125,385 @@ begin
   NotifyHost;
 end;
 
-procedure TEditorWindow.ReplaceOccurrenceAt(ALineIdx, AMatchPos: Integer;
-  const ALine, ANeedle, AReplace: string);
-begin
-  FDoc.SetLine(ALineIdx, TEditorSearchEngine.ReplaceInLine(ALine, ANeedle, AReplace, AMatchPos - 1, False));
-  FCursorRow := ALineIdx;
-  FCursorCol := AMatchPos - 1 + Length(AReplace);
-end;
-
 procedure TEditorWindow.ReplaceInDocument(const AFind, AReplace: string; AAll: Boolean);
 var
-  Needle, Line, NewLine: string;
-  I, Count: Integer;
-  Changed: Boolean;
-  Lines: TArray<string>;
+  Err, NewLine: string;
+  I, Count, N: Integer;
+  Lines, Fresh: TArray<string>;
   Opts: TSearchOptions;
-  Hit: TSearchResult;
 begin
   if not CanEdit then
     Exit;
-  Needle := AFind;
-  if Needle = '' then
+  if AFind = '' then
     Exit;
+  Opts := GEditorSearchOptions;
+  Err := TEditorSearchEngine.QueryError(AFind, Opts);
+  if Err <> '' then
+  begin
+    BadPatternMessage(Err);
+    Exit;
+  end;
+  FFindText := AFind;
+  if not AAll then
+  begin
+    BeginReplaceSession(AFind, AReplace);
+    Exit;
+  end;
+
+  // Every match of the text at once; the cursor stays where it was.
   BreakInsertCoalesce;
-  PushUndo;
   Count := 0;
-  Changed := False;
-  if AAll then
+  SetLength(Lines, FDoc.LineCount);
+  for I := 0 to FDoc.LineCount - 1 do
+    Lines[I] := FDoc.GetLine(I);
+  Fresh := Copy(Lines);
+  for I := 0 to High(Lines) do
   begin
-    for I := 0 to FDoc.LineCount - 1 do
+    NewLine := TEditorSearchEngine.ReplaceAllInLine(Lines[I], AFind, AReplace,
+      Opts, N);
+    if N > 0 then
     begin
-      Line := FDoc.GetLine(I);
-      NewLine := StringReplace(Line, Needle, AReplace, [rfReplaceAll]);
-      if NewLine <> Line then
-      begin
-        FDoc.SetLine(I, NewLine);
-        Changed := True;
-        Inc(Count);
-      end;
-    end;
-  end
-  else
-  begin
-    ClampCursor;
-    SetLength(Lines, FDoc.LineCount);
-    for I := 0 to FDoc.LineCount - 1 do
-      Lines[I] := FDoc.GetLine(I);
-    Opts.MatchCase := True;
-    Opts.WholeWord := False;
-    Opts.SearchBackwards := False;
-    Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FCursorRow,
-      FCursorCol, Opts);
-    if Hit.Found then
-    begin
-      Line := FDoc.GetLine(Hit.LineIndex);
-      ReplaceOccurrenceAt(Hit.LineIndex, Hit.ColIndex + 1, Line, Needle, AReplace);
-      Changed := True;
-      Inc(Count);
+      Fresh[I] := NewLine;
+      Inc(Count, N);
     end;
   end;
-  if Changed then
+  if Count > 0 then
   begin
-    if AAll then
-      FFindStatus := Format('replaced %d', [Count])
-    else
-      FFindStatus := 'replaced';
+    PushUndo;
+    for I := 0 to High(Lines) do
+      if Fresh[I] <> Lines[I] then
+        FDoc.SetLine(I, Fresh[I]);
+    FFindStatus := Format('replaced %d', [Count]);
     ClearSelection;
     ClampCursor;
     EnsureCursorVisible;
   end
   else
     FFindStatus := 'not found';
-  // Keep find text for Shift+F7.
-  InputLineSetText(FFind, Needle);
   NotifyHost;
+  if Count > 0 then
+    SearchMessage(T('ui.editor.replacedCount', 'Replaced: %d', [Count]), '')
+  else
+    NotFoundMessage(AFind);
+end;
+
+procedure TEditorWindow.BeginReplaceSession(const AFind, AReplace: string);
+var
+  R1, C1, R2, C2: Integer;
+begin
+  ClampCursor;
+  FRepl := Default(TReplaceSession);
+  FRepl.Active := True;
+  FRepl.Find := AFind;
+  FRepl.Repl := AReplace;
+  FRepl.Opts := GEditorSearchOptions;
+  FRepl.Forward := not FRepl.Opts.SearchBackwards;
+  FRepl.SavedRow := FCursorRow;
+  FRepl.SavedCol := FCursorCol;
+  FRepl.StartRow := FCursorRow;
+  FRepl.StartCol := FCursorCol;
+  // A found match is selected with the cursor at its end; backwards the
+  // search goes on from the start of the selection.
+  if (not FRepl.Forward) and HasSelection then
+  begin
+    GetSelRange(R1, C1, R2, C2);
+    FRepl.StartRow := R1;
+    FRepl.StartCol := C1;
+  end;
+  FRepl.PosRow := FRepl.StartRow;
+  FRepl.PosCol := FRepl.StartCol;
+  ReplaceNextMatch;
+end;
+
+function TEditorWindow.ReplaceFindMatch(out AHit: TSearchResult): Boolean;
+var
+  I, C, Len, Start, Limit: Integer;
+  Line: string;
+begin
+  AHit := Default(TSearchResult);
+  if FRepl.Forward then
+  begin
+    for I := FRepl.PosRow to FDoc.LineCount - 1 do
+    begin
+      Line := FDoc.GetLine(I);
+      if I = FRepl.PosRow then
+        Start := FRepl.PosCol
+      else
+        Start := 0;
+      if TEditorSearchEngine.FindInLine(Line, FRepl.Find, Start, FRepl.Opts, C, Len) then
+      begin
+        AHit.Found := True;
+        AHit.LineIndex := I;
+        AHit.ColIndex := C;
+        AHit.Length := Len;
+        Break;
+      end;
+    end;
+  end
+  else
+    for I := Min(FRepl.PosRow, FDoc.LineCount - 1) downto 0 do
+    begin
+      Line := FDoc.GetLine(I);
+      if I = FRepl.PosRow then
+        Limit := FRepl.PosCol
+      else
+        Limit := Length(Line);
+      if TEditorSearchEngine.FindLastInLine(Line, FRepl.Find, Limit, FRepl.Opts, C, Len) then
+      begin
+        AHit.Found := True;
+        AHit.LineIndex := I;
+        AHit.ColIndex := C;
+        AHit.Length := Len;
+        Break;
+      end;
+    end;
+  Result := AHit.Found;
+  // After the wrap only the part not looked at yet counts.
+  if Result and FRepl.Wrapped then
+  begin
+    if FRepl.Forward then
+      Result := (AHit.LineIndex < FRepl.StartRow) or
+        ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex < FRepl.StartCol))
+    else
+      Result := (AHit.LineIndex > FRepl.StartRow) or
+        ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex >= FRepl.StartCol));
+  end;
+end;
+
+function TEditorWindow.ReplaceCanWrap: Boolean;
+begin
+  if FRepl.Wrapped then
+    Exit(False);
+  if FRepl.Forward then
+    Result := (FRepl.StartRow > 0) or (FRepl.StartCol > 0)
+  else
+    Result := (FRepl.StartRow < FDoc.LineCount - 1) or
+      (FRepl.StartCol < Length(FDoc.GetLine(FRepl.StartRow)));
+end;
+
+procedure TEditorWindow.ReplaceNextMatch;
+var
+  Hit: TSearchResult;
+begin
+  while FRepl.Active do
+  begin
+    if not ReplaceFindMatch(Hit) then
+    begin
+      if ReplaceCanWrap then
+        ReplaceWrapAsk
+      else
+        EndReplaceSession;
+      Exit;
+    end;
+    FRepl.AnyMatch := True;
+    FRepl.MatchRow := Hit.LineIndex;
+    FRepl.MatchCol := Hit.ColIndex;
+    FRepl.MatchLen := Hit.Length;
+    if FRepl.AllMode then
+      ReplaceCurrentMatch
+    else
+    begin
+      // The match is shown selected, behind the question.
+      FSelAnchorRow := Hit.LineIndex;
+      FSelAnchorCol := Hit.ColIndex;
+      FCursorRow := Hit.LineIndex;
+      FCursorCol := Hit.ColIndex + Hit.Length;
+      EnsureCursorVisible;
+      ReplaceAsk;
+      Exit;
+    end;
+  end;
+end;
+
+function ClipForDialog(const AText: string; AWidth: Integer): string;
+begin
+  Result := StringReplace(AText, #9, ' ', [rfReplaceAll]);
+  if Length(Result) > AWidth then
+    Result := Copy(Result, 1, AWidth - 3) + '...';
+end;
+
+procedure TEditorWindow.ReplaceContext(ARow, ACol, ALen: Integer;
+  out APre, AHit, APost: string);
+const
+  cRoom = 42;
+  cPreMax = 14;
+  cHitMax = 24;
+var
+  Line: string;
+  PreLen, PostRoom: Integer;
+begin
+  Line := StringReplace(FDoc.GetLine(ARow), #9, ' ', [rfReplaceAll]);
+  AHit := Copy(Line, ACol + 1, ALen);
+  if Length(AHit) > cHitMax then
+    AHit := Copy(AHit, 1, cHitMax - 3) + '...';
+  PreLen := Min(ACol, Min(cPreMax, cRoom - Length(AHit)));
+  if ACol > PreLen then
+    APre := '...' + Copy(Line, ACol - PreLen + 4, PreLen - 3)
+  else
+    APre := Copy(Line, ACol - PreLen + 1, PreLen);
+  PostRoom := cRoom - Length(APre) - Length(AHit);
+  APost := Copy(Line, ACol + ALen + 1, PostRoom);
+  if ACol + ALen + PostRoom < Length(Line) then
+    APost := Copy(APost, 1, Max(Length(APost) - 3, 0)) + '...';
+end;
+
+procedure TEditorWindow.ReplaceAsk;
+var
+  Line, NewLine, Pre, Hit, Post: string;
+  NewLen: Integer;
+begin
+  Line := FDoc.GetLine(FRepl.MatchRow);
+  NewLine := TEditorSearchEngine.ReplaceMatch(Line, FRepl.Find, FRepl.Repl,
+    FRepl.MatchCol, FRepl.MatchLen, FRepl.Opts, NewLen);
+  ReplaceContext(FRepl.MatchRow, FRepl.MatchCol, FRepl.MatchLen, Pre, Hit, Post);
+  FConfirm := ecReplaceAsk;
+  FDialog.Open(BuildReplaceAskDialog(ClipForDialog(FRepl.Find, 40),
+    ClipForDialog(Copy(NewLine, FRepl.MatchCol + 1, NewLen), 40),
+    FRepl.MatchRow + 1, Pre, Hit, Post),
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      ReplaceAskCommand(AControlId);
+    end);
+  NotifyHost;
+end;
+
+procedure TEditorWindow.ReplaceAskCommand(const AControlId: string);
+begin
+  FDialog.Close;
+  FConfirm := ecNone;
+  if not FRepl.Active then
+  begin
+    NotifyHost;
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, 'replace') then
+  begin
+    ReplaceCurrentMatch;
+    ReplaceNextMatch;
+  end
+  else if DialogCmdIs(AControlId, 'skip') then
+  begin
+    ReplaceSkipMatch;
+    ReplaceNextMatch;
+  end
+  else if DialogCmdIs(AControlId, 'all') then
+  begin
+    FRepl.AllMode := True;
+    ReplaceCurrentMatch;
+    ReplaceNextMatch;
+  end
+  else
+    EndReplaceSession;
+end;
+
+procedure TEditorWindow.ReplaceWrapAsk;
+var
+  Msg: string;
+begin
+  if FRepl.Forward then
+    Msg := T('ui.editor.replaceWrapForward', 'Continue from the beginning?')
+  else
+    Msg := T('ui.editor.replaceWrapBackward', 'Continue from the end?');
+  FConfirm := ecReplaceWrap;
+  FDialog.Open(BuildConfirmDialog(T('ui.editor.replaceAskReplace', 'Replace'), Msg),
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      FDialog.Close;
+      FConfirm := ecNone;
+      if not FRepl.Active then
+      begin
+        NotifyHost;
+        Exit;
+      end;
+      if not DialogCmdIsAccept(AControlId) then
+      begin
+        EndReplaceSession;
+        Exit;
+      end;
+      FRepl.Wrapped := True;
+      if FRepl.Forward then
+      begin
+        FRepl.PosRow := 0;
+        FRepl.PosCol := 0;
+      end
+      else
+      begin
+        FRepl.PosRow := FDoc.LineCount - 1;
+        FRepl.PosCol := Length(FDoc.GetLine(FRepl.PosRow));
+      end;
+      ReplaceNextMatch;
+    end);
+  NotifyHost;
+end;
+
+procedure TEditorWindow.ReplaceCurrentMatch;
+var
+  Line, NewLine: string;
+  NewLen, Delta: Integer;
+begin
+  Line := FDoc.GetLine(FRepl.MatchRow);
+  NewLine := TEditorSearchEngine.ReplaceMatch(Line, FRepl.Find, FRepl.Repl,
+    FRepl.MatchCol, FRepl.MatchLen, FRepl.Opts, NewLen);
+  if not FRepl.UndoPushed then
+  begin
+    BreakInsertCoalesce;
+    PushUndo;
+    FRepl.UndoPushed := True;
+  end;
+  FDoc.SetLine(FRepl.MatchRow, NewLine);
+  Inc(FRepl.Count);
+  Delta := NewLen - FRepl.MatchLen;
+  // A replacement before the start of the search or the saved cursor on the
+  // same line moves them along.
+  if (FRepl.MatchRow = FRepl.StartRow) and (FRepl.MatchCol < FRepl.StartCol) then
+    Inc(FRepl.StartCol, Delta);
+  if (FRepl.MatchRow = FRepl.SavedRow) and (FRepl.MatchCol < FRepl.SavedCol) then
+    Inc(FRepl.SavedCol, Delta);
+  FRepl.PosRow := FRepl.MatchRow;
+  if FRepl.Forward then
+    FRepl.PosCol := FRepl.MatchCol + NewLen
+  else
+    FRepl.PosCol := FRepl.MatchCol;
+end;
+
+procedure TEditorWindow.ReplaceSkipMatch;
+begin
+  FRepl.PosRow := FRepl.MatchRow;
+  if FRepl.Forward then
+    FRepl.PosCol := FRepl.MatchCol + FRepl.MatchLen
+  else
+    FRepl.PosCol := FRepl.MatchCol;
+end;
+
+procedure TEditorWindow.EndReplaceSession;
+var
+  Count: Integer;
+  AllMode, AnyMatch: Boolean;
+  Find: string;
+begin
+  if not FRepl.Active then
+    Exit;
+  Count := FRepl.Count;
+  AllMode := FRepl.AllMode;
+  AnyMatch := FRepl.AnyMatch;
+  Find := FRepl.Find;
+  FRepl.Active := False;
+  FFindText := Find;
+  // The cursor goes back to where it was before the replace.
+  FCursorRow := FRepl.SavedRow;
+  FCursorCol := FRepl.SavedCol;
+  ClearSelection;
+  ClampCursor;
+  EnsureCursorVisible;
+  if Count > 0 then
+    FFindStatus := Format('replaced %d', [Count])
+  else
+    FFindStatus := 'not found';
+  NotifyHost;
+  if not AnyMatch then
+    NotFoundMessage(Find)
+  else if AllMode and (Count > 0) then
+    SearchMessage(T('ui.editor.replacedCount', 'Replaced: %d', [Count]), '');
 end;
 
 procedure TEditorWindow.DialogChanged(Sender: TObject);
@@ -2198,11 +2561,6 @@ begin
     Result := FDoc.GetLine(AIndex)
   else
     Result := '';
-end;
-
-function TEditorWindow.FindPromptOpen: Boolean;
-begin
-  Result := FFindPrompt;
 end;
 
 function TEditorWindow.SearchEmpty: Boolean;
@@ -2419,6 +2777,19 @@ begin
       PutGridText(Buffer, I, AY, AVis[I], FThemeColors.SelFg, FThemeColors.SelBg);
 end;
 
+function TEditorWindow.SelectionText: string;
+begin
+  Result := SelectedText;
+end;
+
+function TEditorWindow.CursorLineText(ALineIdx: Integer): string;
+begin
+  if FMarkdownMode and not FHexMode then
+    Result := GetMdLine(ALineIdx).DisplayText
+  else
+    Result := FDoc.GetLine(ALineIdx);
+end;
+
 function TEditorWindow.SelectedText: string;
 var
   R1, C1, R2, C2, R: Integer;
@@ -2431,16 +2802,16 @@ begin
   GetSelRange(R1, C1, R2, C2);
   if R1 = R2 then
   begin
-    Line := FDoc.GetLine(R1);
+    Line := CursorLineText(R1);
     Result := Copy(Line, C1 + 1, C2 - C1);
     Exit;
   end;
   SetLength(Parts, R2 - R1 + 1);
-  Line := FDoc.GetLine(R1);
+  Line := CursorLineText(R1);
   Parts[0] := Copy(Line, C1 + 1, MaxInt);
   for R := R1 + 1 to R2 - 1 do
-    Parts[R - R1] := FDoc.GetLine(R);
-  Line := FDoc.GetLine(R2);
+    Parts[R - R1] := CursorLineText(R);
+  Line := CursorLineText(R2);
   Parts[R2 - R1] := Copy(Line, 1, C2);
   Result := string.Join(#10, Parts);
 end;
@@ -2486,7 +2857,7 @@ begin
   else
   begin
     FCursorRow := Max(FDoc.LineCount - 1, 0);
-    FCursorCol := Length(FDoc.GetLine(FCursorRow));
+    FCursorCol := Length(CursorLineText(FCursorRow));
   end;
   ClampCursor;
   EnsureCursorVisible;
@@ -2877,102 +3248,64 @@ begin
   NotifyHost;
 end;
 
-procedure TEditorWindow.OpenFindPrompt;
+procedure TEditorWindow.OpenFindDialog;
 begin
   if not FDoc.Ready then
     Exit;
-  FFindPrompt := True;
   FFindStatus := '';
-  FMatchLine := -1;
-  FMatchCol := -1;
   SeedFindFromHistory;
-  InputLineSelectAll(FFind);
+  FDialogs.OpenFind(FFindText);
   NotifyHost;
 end;
 
-procedure TEditorWindow.CloseFindPrompt;
-begin
-  if not FFindPrompt then
-    Exit;
-  FFindPrompt := False;
-  FFindPopup.Close;
-  NotifyHost;
-end;
-
-function TEditorWindow.FindMatch(AForward: Boolean): Boolean;
+function TEditorWindow.WordAtCursor: string;
 var
-  Needle: string;
-  I: Integer;
-  Lines: TArray<string>;
-  Opts: TSearchOptions;
-  Hit: TSearchResult;
+  Line: string;
+  WStart, WEnd: Integer;
 begin
-  Result := False;
-  Needle := Trim(FFind.Text);
-  if (Needle = '') or not FDoc.Ready or (FDoc.LineCount = 0) then
-  begin
-    FFindStatus := 'not found';
-    FMatchLine := -1;
-    FMatchCol := -1;
-    NotifyHost;
+  Result := '';
+  if not FDoc.Ready then
     Exit;
-  end;
+  ClampCursor;
+  Line := CursorLineText(FCursorRow);
+  TextWordRangeAt(Line, FCursorCol, WStart, WEnd);
+  Result := Copy(Line, WStart + 1, WEnd - WStart);
+end;
 
-  SetLength(Lines, FDoc.LineCount);
-  for I := 0 to FDoc.LineCount - 1 do
-    Lines[I] := FDoc.GetLine(I);
-  Opts.MatchCase := False;
-  Opts.WholeWord := False;
-  Opts.SearchBackwards := not AForward;
-  if AForward then
+function TEditorWindow.SelectionForSearch: string;
+var
+  P: Integer;
+begin
+  if HasSelection then
+    Result := SelectedText
+  else if FDoc.Ready then
   begin
-    if FMatchLine >= 0 then
-      Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FMatchLine,
-        FMatchCol + Length(Needle), Opts, False)
-    else
-      Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FCursorRow,
-        FCursorCol, Opts, False);
+    ClampCursor;
+    Result := CursorLineText(FCursorRow);
   end
-  else if FMatchLine >= 0 then
-    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, FMatchLine,
-      FMatchCol, Opts, False)
   else
-    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, FCursorRow,
-      FCursorCol, Opts, False);
+    Result := '';
+  // A search never spans a line break: the first line of a multi-line
+  // selection is what can be found.
+  P := Pos(#10, Result);
+  if P > 0 then
+    Result := Copy(Result, 1, P - 1);
+end;
 
-  if Hit.Found then
-  begin
-    FMatchLine := Hit.LineIndex;
-    FMatchCol := Hit.ColIndex;
-    FCursorRow := Hit.LineIndex;
-    FCursorCol := Hit.ColIndex;
-    ClearSelection;
-    EnsureCursorVisible;
-    FFindStatus := Format('found %d/%d', [Hit.LineIndex + 1, FDoc.LineCount]);
-    FFindPrompt := False;
-    Result := True;
-    NotifyHost;
-    Exit;
-  end;
-
-  FFindStatus := 'not found';
-  // The search stops at the end (or start) of the text; the next search
-  // starts over from the cursor.
-  FMatchLine := -1;
-  FMatchCol := -1;
-  NotFoundMessage(Needle);
+procedure TEditorWindow.BadPatternMessage(const AError: string);
+begin
+  FFindStatus := 'bad pattern';
+  SearchMessage(T('ui.editor.badPatternMsg', 'Invalid regular expression'), AError);
   NotifyHost;
 end;
 
-procedure TEditorWindow.NotFoundMessage(const ANeedle: string);
+procedure TEditorWindow.SearchMessage(const AMessage, ADetails: string);
 var
   Decl: TDialogDeclaration;
 begin
   if FChromeless or (FConfirm <> ecNone) or FDialog.Visible then
     Exit;
-  Decl := BuildUpdateMessageDialog(
-    T('ui.editor.notFoundMsg', 'Could not find the string'),
-    '"' + ANeedle + '"', '', False);
+  Decl := BuildUpdateMessageDialog(AMessage, ADetails, '', False);
   DialogSetTitle(Decl, T('ui.editor.notFoundTitle', 'Search'));
   FConfirm := ecNotFound;
   FDialog.Open(Decl,
@@ -2982,6 +3315,76 @@ begin
       FConfirm := ecNone;
       NotifyHost;
     end);
+end;
+
+function TEditorWindow.FindMatch(AForward: Boolean): Boolean;
+var
+  Needle, Err: string;
+  I, Row, Col, R2, C2: Integer;
+  Lines: TArray<string>;
+  Opts: TSearchOptions;
+  Hit: TSearchResult;
+  Forward: Boolean;
+begin
+  Result := False;
+  Needle := FFindText;
+  if (Trim(Needle) = '') or not FDoc.Ready or (FDoc.LineCount = 0) then
+  begin
+    FFindStatus := 'not found';
+    NotifyHost;
+    Exit;
+  end;
+  Opts := GEditorSearchOptions;
+  Err := TEditorSearchEngine.QueryError(Needle, Opts);
+  if Err <> '' then
+  begin
+    BadPatternMessage(Err);
+    Exit;
+  end;
+
+  SetLength(Lines, FDoc.LineCount);
+  for I := 0 to FDoc.LineCount - 1 do
+    Lines[I] := CursorLineText(I);
+  ClampCursor;
+  // The key (F3 or Shift+F3) against the Reverse box of the Find dialog.
+  Forward := AForward <> Opts.SearchBackwards;
+  if Forward then
+    // A found match is selected with the cursor at its end, so the next
+    // search starts after it.
+    Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FCursorRow,
+      FCursorCol, Opts, False)
+  else
+  begin
+    Row := FCursorRow;
+    Col := FCursorCol;
+    if HasSelection then
+      GetSelRange(Row, Col, R2, C2);
+    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, Row, Col, Opts,
+      False);
+  end;
+
+  if Hit.Found then
+  begin
+    FSelAnchorRow := Hit.LineIndex;
+    FSelAnchorCol := Hit.ColIndex;
+    FCursorRow := Hit.LineIndex;
+    FCursorCol := Hit.ColIndex + Hit.Length;
+    EnsureCursorVisible;
+    FFindStatus := Format('found %d/%d', [Hit.LineIndex + 1, FDoc.LineCount]);
+    Result := True;
+    NotifyHost;
+    Exit;
+  end;
+
+  FFindStatus := 'not found';
+  NotFoundMessage(Needle);
+  NotifyHost;
+end;
+
+procedure TEditorWindow.NotFoundMessage(const ANeedle: string);
+begin
+  SearchMessage(T('ui.editor.notFoundMsg', 'Could not find the string'),
+    '"' + ANeedle + '"');
 end;
 
 procedure TEditorWindow.DrawFunctionKeys(AY, AWidth: Integer);
@@ -3008,28 +3411,6 @@ begin
   if Name = '' then
     Name := FileUriTitle(FURI);
   Name := EditorDirtyName(Name, (not FViewOnly) and FDoc.Dirty);
-
-  if FFindPrompt then
-  begin
-    FillGridRect(Buffer, 0, AY, AWidth - 1, AY, ' ', FThemeColors.HintFg, FThemeColors.BodyBg);
-    Prefix := ' Find: ';
-    PutGridText(Buffer, 0, AY, Prefix, FThemeColors.HintFg, FThemeColors.BodyBg);
-    PrefixLen := Length(Prefix);
-    EditW := Max(AWidth - PrefixLen - 22, 8);
-    Colors.Fg := FThemeColors.HintFg;
-    Colors.Bg := FThemeColors.BodyBg;
-    Colors.SelFg := FThemeColors.MatchFg;
-    Colors.SelBg := FThemeColors.MatchBg;
-    Colors.CaretFg := FThemeColors.MatchFg;
-    Colors.CaretBg := FThemeColors.MatchBg;
-    InputLineDraw(Buffer, PrefixLen, AY, EditW, FFind, True, Colors, FCursorVisible);
-    FFindFieldRow := AY;
-    FFindFieldLeft := PrefixLen;
-    FFindFieldRight := PrefixLen + EditW - 1;
-    PutGridText(Buffer, PrefixLen + EditW + 1, AY, 'Enter=Next Esc=Cancel',
-      FThemeColors.HintFg, FThemeColors.BodyBg);
-    Exit;
-  end;
 
   EditorPosAndLinesText(FDoc.Ready, FDoc.Loading, FHexMode, FCursorRow, FCursorCol,
     HexBytesPerRow, FDoc.ByteCount, FDoc.LineCount, FDoc.Error, PosText, LinesText);
@@ -3231,9 +3612,18 @@ begin
 end;
 
 function TEditorWindow.MarkdownWrapStarts(const ALine: TMdLine; ATextW: Integer): TArray<Integer>;
+var
+  RowW: Integer;
 begin
   if ALine.IsTable then
-    Result := TMarkdownParser.ComputeHardWrapStarts(ALine.DisplayText, ATextW)
+  begin
+    // The rows of a table line are cut where they were joined; a table that
+    // is wider than the window has no such seam and is cut at the window width.
+    RowW := ALine.TableRowWidth;
+    if (RowW <= 0) or (RowW > ATextW) then
+      RowW := ATextW;
+    Result := TMarkdownParser.ComputeHardWrapStarts(ALine.DisplayText, RowW);
+  end
   else
     Result := TMarkdownParser.ComputeWrapStarts(ALine.DisplayText, ATextW);
 end;
@@ -3529,10 +3919,8 @@ begin
     DrawFunctionKeys(KeyBarRow(H), W);
   if GShowStatusLine then
     DrawAppStatusLine(StatusLineRow(H), W)
-  else if FFindPrompt or (FConfirm <> ecNone) then
+  else if FConfirm <> ecNone then
     DrawAppStatusLine(H - 1, W);
-  if FFindPrompt then
-    FFindPopup.Draw(Buffer, Theme);
 
   if Assigned(FDialog) and FDialog.Visible then
     FDialog.Draw(Buffer, W, H);
@@ -3590,12 +3978,6 @@ begin
     RequestClose;
     Exit(True);
   end;
-  if FFindPrompt then
-  begin
-    CloseFindPrompt;
-    Result := True;
-  end;
-
   W := Area.Width;
   Bottom := ContentBottomRow;
   if (W < 8) or (Bottom < 1) then
@@ -3759,8 +4141,6 @@ end;
 
 function TEditorWindow.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
-var
-  Picked: string;
 begin
   Result := True;
   if not FCursorVisible then
@@ -3786,46 +4166,6 @@ begin
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
-  end;
-
-  if FFindPrompt then
-  begin
-    // Open history list owns the arrows, Enter, Del and Esc.
-    case FFindPopup.HandleKey(AKey, AShift, AKeyChar, Picked) of
-      hpkHandled:
-        begin
-          NotifyHost;
-          Exit;
-        end;
-      hpkPicked:
-        begin
-          InputLineSetText(FFind, Picked);
-          NotifyHost;
-          Exit;
-        end;
-    end;
-    // Ctrl+Down / Alt+Down: earlier searches above the field.
-    if IsHistoryDropDownChord(TKeyChord.Make(AKey, AKeyChar, AShift)) then
-    begin
-      FFindPopup.Open(DialogHistoryItems(cEditFindHistory), FFind.Text,
-        FFindFieldRow, FFindFieldLeft, FFindFieldRight, Area.Width, Area.Height);
-      AKey := 0;
-      AKeyChar := #0;
-      NotifyHost;
-      Exit;
-    end;
-    case InputLineHandleInput(FFind, AKey, AShift, AKeyChar) of
-      ilrSubmit:
-        begin
-          DialogHistoryAdd(cEditFindHistory, Trim(FFind.Text));
-          FindMatch(True);
-        end;
-      ilrCancel:
-        CloseFindPrompt;
-    else
-      NotifyHost;
-    end;
-    Exit;
   end;
 
   // Markdown Viewer: Tab / Shift+Tab select the next / previous link.

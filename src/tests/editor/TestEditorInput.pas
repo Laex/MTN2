@@ -43,7 +43,7 @@ type
     procedure CycleEncoding;
     procedure OpenGotoDialog;
     procedure OpenReplaceDialog;
-    procedure OpenFindPrompt;
+    procedure OpenFindDialog;
     procedure FindNextOrPrev(AForward: Boolean);
     procedure SaveDoc;
     procedure ToggleWordWrap;
@@ -127,7 +127,7 @@ begin
   Last := 'replace';
 end;
 
-procedure TEditorSpy.OpenFindPrompt;
+procedure TEditorSpy.OpenFindDialog;
 begin
   Last := 'find';
 end;
@@ -287,7 +287,7 @@ begin
   AHost.CycleEncoding := ASpy.CycleEncoding;
   AHost.OpenGotoDialog := ASpy.OpenGotoDialog;
   AHost.OpenReplaceDialog := ASpy.OpenReplaceDialog;
-  AHost.OpenFindPrompt := ASpy.OpenFindPrompt;
+  AHost.OpenFindDialog := ASpy.OpenFindDialog;
   AHost.FindNextOrPrev := ASpy.FindNextOrPrev;
   AHost.SaveDoc := ASpy.SaveDoc;
   AHost.ToggleWordWrap := ASpy.ToggleWordWrap;

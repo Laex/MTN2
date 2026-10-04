@@ -23,6 +23,8 @@ const
   cResDialogGotoLine = 'DIALOG_GOTOLINE';
   cResDialogEncoding = 'DIALOG_ENCODING';
   cResDialogReplace  = 'DIALOG_REPLACE';
+  cResDialogEditFind = 'DIALOG_EDITFIND';
+  cResDialogReplaceAsk = 'DIALOG_REPLACEASK';
   cResDialogOverwriteAsk = 'DIALOG_OVERWRITEASK';
   cResDialogDeleteError = 'DIALOG_DELETEERROR';
   cResDialogIOError = 'DIALOG_IOERROR';
