@@ -16,12 +16,13 @@ type
     [Test] procedure TestBackgroundReloadsPanels;
     [Test] procedure TestCancelConfirm;
     [Test] procedure TestRestoreJobById;
+    [Test] procedure TestQueuedPruneAfterListFreed;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.IOUtils,
+  System.SysUtils, System.Classes, System.IOUtils,
   uVfsTypes,
   uFileVfs,
   uZipVfs,
@@ -85,6 +86,31 @@ begin
   finally
     Jobs.Free;
   end;
+end;
+
+// Closing a job queues the removal of the idle controller; a list freed before
+// the queue runs (its window closed) must leave that queued call harmless.
+procedure TestQueuedPruneAfterListFreed;
+var
+  Jobs: TPanelJobList;
+  I: Integer;
+begin
+  Jobs := MakeList;
+  try
+    Jobs.BeginJob(TArray<string>.Create('file:///C:/src/a.txt'),
+      'file:///D:/dst/', pjkCopy);
+    Jobs.CloseJobUi;
+  finally
+    Jobs.Free;
+  end;
+  // Reuse the freed memory, then run what is queued.
+  for I := 1 to 64 do
+    TObject.Create.Free;
+  Assert.WillNotRaise(
+    procedure
+    begin
+      CheckSynchronize(100);
+    end, nil, 'the queued prune of a freed list does nothing');
 end;
 
 procedure TestBackgroundReloadsPanels;
@@ -196,6 +222,11 @@ end;
 procedure TTestDualPanelJobsManager.TestCancelConfirm;
 begin
   TestDualPanelJobsManager.TestCancelConfirm;
+end;
+
+procedure TTestDualPanelJobsManager.TestQueuedPruneAfterListFreed;
+begin
+  TestDualPanelJobsManager.TestQueuedPruneAfterListFreed;
 end;
 
 procedure TTestDualPanelJobsManager.TestRestoreJobById;

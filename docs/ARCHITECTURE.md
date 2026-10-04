@@ -374,6 +374,21 @@ file:///D:/data/bundle.zip!/nested.zip!/a.txt
 
 **Не в списке специально:** десятки файлов, где `Winapi.Windows` встречается только ради `VK_*`-констант клавиш или мелких системных вызовов (`uKeymap.pas`, `uTopMenuBar.pas`, `uDualPanelWindow.pas` и т.п.) – это не архитектурная связность, а мелкие точки, которые обычная FMX-кроссплатформенная сборка (Linux/macOS таргеты уже поддерживаются FireMonkey) сама заставит поправить при первой POSIX-компиляции; помечать их заранее – шум, не сигнал.
 
+### 8.5. Возврат в панели и фоновый запуск
+
+Три случая не пересекаются: возврат по завершению команды, возврат по таймеру и «остаться в консоли».
+
+| Случай | Откуда запущена команда | Как устроено |
+|---|---|---|
+| Возврат по завершению | Командная строка под панелями, обычный Enter, при включённом `GConsoleSettings.ReturnToPanels`; пункт F2 с `umrReturn` или с `umrDefault` при том же флажке | `TDualPanelWindow.RunConsoleCommand` вызывает `OnReturnWhenDone`; `TConsoleWindow.ReturnToPanelsWhenDone` запоминает число приглашений оболочки (`CountPrompts`), а `OutputAppended` возвращает панели, когда оно выросло |
+| Возврат по таймеру | Alt+Shift+Enter (`kaRunInBackground`) | `TDualPanelWindow.RunInBackground` отправляет команду через `SendConsoleCommand` (без `OnReturnWhenDone`) и вызывает `OnRunInBackground`; `TMainForm.FPeekTimer` работает `GConsoleSettings.BackgroundShowMs` (0,5–10 с), `PeekTimerTick` возвращает панели, если консоль ещё впереди. Нажатие клавиши (`FormKeyDown`) или щелчок (`FormMouseDown`) гасят таймер. Окончание команды раньше срока ничего не меняет |
+| Остаться в консоли | Команда набрана в самой консоли (в `RunConsoleCommand` не попадает); обычный Enter при выключенном флажке; пункт F2 с `umrStay` | Ни один из двух механизмов не включается |
+
+Прочее:
+- Командная строка при фокусе принимает любое сочетание с Enter за Enter (`InputLineHandleInput`), поэтому `TDualPanelWindow.HandleCmdLineInput` сначала спрашивает keymap (`MatchActiveAction`), не привязан ли этот ввод к `kaRunInBackground`.
+- Вставка в консоль (`TBaseConsoleWindow.WritePasteText`) переводит LF и CRLF в CR (`LineBreaksToEnter`): голый LF оболочка (PSReadLine) принимает за «добавить строку», и после вставленной команды остаётся приглашение продолжения.
+- Настройки в `session.json`: `consoleReturnToPanels`, `consoleBackgroundShowMs`. У пункта меню пользователя ключ `returnToPanels`: `true` – вернуться, `false` – остаться, нет ключа – как в настройках консоли (`TUserMenuReturnMode`).
+
 ---
 
 ## 9. Ключевые инварианты архитектуры

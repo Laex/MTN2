@@ -90,6 +90,7 @@
       { "key": "F", "ctrl": true, "description": "Insert Selected Item Path into Command Line (FAR)" }
     ],
     "RunDetached": { "key": "Enter", "shift": true, "description": "Run File or Command in Detached OS Window" },
+    "RunInBackground": { "key": "Enter", "shift": true, "alt": true, "description": "Run the Command Line in the Console, Show It Briefly, Return to the Panels" },
     "FocusCmdLine": { "key": "Down", "ctrl": true, "description": "Focus Command Line" },
     "NewTab": { "key": "T", "ctrl": true, "description": "Open New Panel Tab" },
     "CloseTab": { "key": "W", "ctrl": true, "description": "Close Active Panel Tab" },

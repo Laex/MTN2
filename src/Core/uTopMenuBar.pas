@@ -65,6 +65,7 @@ type
     tmaFileCopyName,
     tmaFileDescribe,
     tmaFileRunDetached,
+    tmaFileRunInBackground,
     tmaFileNew,
     tmaCmdQuickView,
     tmaCmdFind,
@@ -340,6 +341,8 @@ begin
       Result := kaCopyItemName;
     tmaFileRunDetached:
       Result := kaRunDetached;
+    tmaFileRunInBackground:
+      Result := kaRunInBackground;
     tmaFileNew:
       Result := kaNewFile;
     tmaCmdQuickView:

@@ -122,6 +122,7 @@ begin
     tmaFileCopyPath: CallProc(AHost.CopyFullPathToClipboard);
     tmaFileCopyName: CallProc(AHost.CopyItemNameToClipboard);
     tmaFileRunDetached: CallProc(AHost.RunDetached);
+    tmaFileRunInBackground: CallProc(AHost.RunInBackground);
     tmaFileNew: CallProc(AHost.BeginNewFile);
     tmaCmdQuickView: CallProc(AHost.ToggleQuickView);
 

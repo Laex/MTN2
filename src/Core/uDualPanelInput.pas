@@ -98,6 +98,7 @@ type
     EqualizeActivePanelFromOther: TKeymapProc;
     FocusCommandLine: TKeymapProc;
     RunDetached: TKeymapProc;
+    RunInBackground: TKeymapProc;
     InsertPanelItemToCmdLine: TKeymapBoolProc;
     BeginSelectByMask: TKeymapBoolProc;
     ApplySelectByExtension: TKeymapBoolProc;
@@ -767,6 +768,12 @@ begin
     kaRunDetached:
       begin
         AHost.RunDetached();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaRunInBackground:
+      begin
+        AHost.RunInBackground();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

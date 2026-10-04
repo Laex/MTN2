@@ -83,13 +83,26 @@
       "height": 1
     },
     {
-      "type": "checkbox",
-      "id": "return_panels",
-      "text": "&Return to the panels when done",
-      "checked": false,
+      "type": "label",
+      "id": "lbl_return",
+      "text": "After run:",
       "col": 1,
       "row": 8,
-      "width": 68,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "return_mode",
+      "selected": 0,
+      "items": [
+        "As in the console options",
+        "Return to the panels",
+        "Stay in the console"
+      ],
+      "col": 12,
+      "row": 8,
+      "width": 30,
       "height": 1
     },
     {

@@ -136,6 +136,7 @@ type
     FSelHelper: TDualPanelSelectionHelper;
     FOnRunCommand: TRunCommandEvent;
     FOnReturnWhenDone: TNotifyEvent;
+    FOnRunInBackground: TNotifyEvent;
     FOnShellCwdSync: TShellCwdSyncEvent;
     FOnSaveConsoleOutput: TSaveConsoleOutputEvent;
     FOnClearConsoleBuffer: TNotifyEvent;
@@ -495,12 +496,18 @@ type
       const AMask: string);
     procedure SubmitCommandLine;
     procedure RunConsoleCommand(const ACommand: string);
+    /// <summary>Clears the command line and hands ACommand to the console;
+    /// False when there is nothing to run.</summary>
+    function SendConsoleCommand(const ACommand: string): Boolean;
     /// <summary>FAR Shift+Enter: cmdline or cursor file as a separate OS process.</summary>
     procedure RunDetachedFromCmdLine(const AText, ACwd: string);
     procedure RunDetachedOpenFolder(const AUri: string; const ATab: TTab;
       AIsParent: Boolean);
     procedure RunDetachedFile(const AUri: string);
     procedure RunDetached;
+    /// <summary>The command line runs in the console, which shows it for a
+    /// moment (OnRunInBackground, Options > Console...) and gives the panels back.</summary>
+    procedure RunInBackground;
     function PanelCommandCwd: string;
     /// <summary>Shared active-panel-dir -> console push, used by both the
     /// gated auto-sync (NotifyShellCwdSync) and the unconditional hotkey
@@ -994,6 +1001,7 @@ type
     /// <summary>Asks the host to go back to the panels once the command it
     /// was just given has finished.</summary>
     property OnReturnWhenDone: TNotifyEvent read FOnReturnWhenDone write FOnReturnWhenDone;
+    property OnRunInBackground: TNotifyEvent read FOnRunInBackground write FOnRunInBackground;
     property OnShellCwdSync: TShellCwdSyncEvent read FOnShellCwdSync write FOnShellCwdSync;
     /// <summary>Commands > Save console output: the form writes the console's scrollback.</summary>
     property OnSaveConsoleOutput: TSaveConsoleOutputEvent
@@ -1088,7 +1096,7 @@ implementation
 uses
   Winapi.Windows, Winapi.ActiveX,
   uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
-  uExternalTools, uDialogHistory, uChecksums, uKeyChord;
+  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -1594,6 +1602,7 @@ begin
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
   FKeymapHost.FocusCommandLine := FocusCommandLine;
   FKeymapHost.RunDetached := RunDetached;
+  FKeymapHost.RunInBackground := RunInBackground;
   FKeymapHost.InsertPanelItemToCmdLine := InsertPanelItemToCmdLine;
   FKeymapHost.BeginSelectByMask := BeginSelectByMask;
   FKeymapHost.ApplySelectByExtension := ApplySelectByExtension;
@@ -4342,9 +4351,28 @@ begin
 end;
 
 procedure TDualPanelWindow.RunConsoleCommand(const ACommand: string);
+begin
+  if SendConsoleCommand(ACommand) then
+    // Only a command typed under the panels sends the program back to them;
+    // one typed in the background console stays in the console.
+    if GConsoleSettings.ReturnToPanels and Assigned(FOnReturnWhenDone) then
+      FOnReturnWhenDone(Self);
+end;
+
+procedure TDualPanelWindow.RunInBackground;
+begin
+  if not Assigned(FCmdLineMgr) or (Trim(FCmdLineMgr.Text) = '') then
+    Exit;
+  FCmdLineMgr.RememberCommand(FCmdLineMgr.Text);
+  if SendConsoleCommand(FCmdLineMgr.Text) and Assigned(FOnRunInBackground) then
+    FOnRunInBackground(Self);
+end;
+
+function TDualPanelWindow.SendConsoleCommand(const ACommand: string): Boolean;
 var
   Cmd, Cwd: string;
 begin
+  Result := False;
   Cmd := Trim(ACommand);
   if Cmd = '' then
     Exit;
@@ -4356,6 +4384,7 @@ begin
   NotifyChanged;
   if Assigned(FOnRunCommand) then
     FOnRunCommand(Cmd, Cwd);
+  Result := True;
 end;
 
 procedure TDualPanelWindow.RunDetachedFromCmdLine(const AText, ACwd: string);
@@ -4753,6 +4782,15 @@ end;
 function TDualPanelWindow.HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
+  // The command line takes every Enter chord as Enter itself; the background
+  // run is the one with its own binding.
+  if (AKey = vkReturn) and (MatchActiveAction(AKey, AShift) = kaRunInBackground) then
+  begin
+    RunInBackground;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   if Assigned(FCmdLineMgr) then
     Result := FCmdLineMgr.HandleInput(AKey, AShift, AKeyChar)
   else

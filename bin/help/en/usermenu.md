@@ -56,6 +56,8 @@ The command runs in the shell chosen for the console (cmd, PowerShell, WSL) – 
 
 Until the main menu has been saved even once, it shows examples. Menu files can also be edited by hand – changes are picked up the next time the menu opens.
 
+**After run** in the item dialog says where the program goes once a command has finished: **As in the console options** (the **Always return to the panels** box in **Options → Console...**), **Return to the panels** or **Stay in the console**.
+
 ---
 
 [Contents](index.md)

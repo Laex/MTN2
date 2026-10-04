@@ -84,6 +84,9 @@ type
     FUpdateTimer: TTimer;
     /// <summary>One-shot: warns shortly after start when 7z.dll is missing.</summary>
     FSevenZipTimer: TTimer;
+    /// <summary>Runs out when a command started in the background has been
+    /// shown long enough; a key before that keeps the console.</summary>
+    FPeekTimer: TTimer;
     FAppVersion: string;
     /// <summary>--fps only (nil otherwise): once a second moves FFpsStats
     /// into FFpsText, which UpdateCaption appends to the caption.</summary>
@@ -212,6 +215,8 @@ type
     procedure CreateUpdater;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelReturnWhenDone(Sender: TObject);
+    procedure DualPanelRunInBackground(Sender: TObject);
+    procedure PeekTimerTick(Sender: TObject);
     procedure DualPanelShellCwdSync(const APath: string);
     function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
     procedure DualPanelClearConsoleBuffer(Sender: TObject);
@@ -1305,6 +1310,7 @@ begin
   FDualPanel.OnOpenUpdates := DualPanelOpenUpdates;
   FDualPanel.OnRunCommand := DualPanelRunCommand;
   FDualPanel.OnReturnWhenDone := DualPanelReturnWhenDone;
+  FDualPanel.OnRunInBackground := DualPanelRunInBackground;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
@@ -1742,6 +1748,8 @@ begin
   GConsoleSettings.ConfirmMultiLinePaste := Sess.ConsoleConfirmPaste;
   GConsoleSettings.TrimCopiedSpaces := Sess.ConsoleTrimCopy;
   GConsoleSettings.TrimPastedSpaces := Sess.ConsoleTrimPaste;
+  GConsoleSettings.ReturnToPanels := Sess.ConsoleReturnToPanels;
+  GConsoleSettings.BackgroundShowMs := ClampBackgroundShowMs(Sess.ConsoleBackgroundShowMs);
 end;
 
 procedure TMainForm.PersistSession;
@@ -1825,6 +1833,8 @@ begin
   Sess.ConsoleConfirmPaste := GConsoleSettings.ConfirmMultiLinePaste;
   Sess.ConsoleTrimCopy := GConsoleSettings.TrimCopiedSpaces;
   Sess.ConsoleTrimPaste := GConsoleSettings.TrimPastedSpaces;
+  Sess.ConsoleReturnToPanels := GConsoleSettings.ReturnToPanels;
+  Sess.ConsoleBackgroundShowMs := GConsoleSettings.BackgroundShowMs;
   Sess.SelectFolders := FDualPanel.SelectFolders;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
@@ -1930,6 +1940,9 @@ begin
   FUpdateTimer.Enabled := True;
   // Before the update check's own notice (5 s), so the two do not replace
   // each other.
+  FPeekTimer := TTimer.Create(Self);
+  FPeekTimer.Enabled := False;
+  FPeekTimer.OnTimer := PeekTimerTick;
   FSevenZipTimer := TTimer.Create(Self);
   FSevenZipTimer.Interval := 1500;
   FSevenZipTimer.OnTimer := SevenZipTimerTick;
@@ -2145,6 +2158,20 @@ begin
   ApplyConsoleLayout;
   FConsole.RunCommand(ACommand, AWorkingDir);
   Recompose;
+end;
+
+procedure TMainForm.DualPanelRunInBackground(Sender: TObject);
+begin
+  FPeekTimer.Enabled := False;
+  FPeekTimer.Interval := ClampBackgroundShowMs(GConsoleSettings.BackgroundShowMs);
+  FPeekTimer.Enabled := True;
+end;
+
+procedure TMainForm.PeekTimerTick(Sender: TObject);
+begin
+  FPeekTimer.Enabled := False;
+  if IsConsoleActiveInConsoleMode then
+    ConsoleBackToPanels(Self);
 end;
 
 procedure TMainForm.DualPanelReturnWhenDone(Sender: TObject);
@@ -2788,6 +2815,8 @@ var
   Col, Row: Integer;
   Dbl: Boolean;
 begin
+  // A click, like a key, takes the console over from a background command.
+  FPeekTimer.Enabled := False;
   if not Assigned(FMdi) then
     Exit;
   if not PointToCell(X, Y, Col, Row) then
@@ -3360,6 +3389,10 @@ procedure TMainForm.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Cha
 begin
   // Zoom shortcuts only; Tab/panels handled in KeyDown override (before FMX).
   SyncKeyModifiers(Shift);
+  // Typing takes the console over: a command started in the background no
+  // longer sends the program back to the panels.
+  if (Key <> vkShift) and (Key <> vkControl) and (Key <> vkMenu) then
+    FPeekTimer.Enabled := False;
 
   // ReloadKeymap (Ctrl+Alt+K) - reload keymap.json from config dir.
   // Checked BEFORE DispatchTerminalKey: the Dual Panel cmdline and panels

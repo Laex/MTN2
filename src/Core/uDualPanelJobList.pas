@@ -12,8 +12,17 @@ uses
   uDualPanelJobs, uDualPanelJobRules, uVfsTypes;
 
 type
+  /// <summary>Tells a closure queued on the main thread whether the list that
+  /// queued it still exists: the closure holds this, not the list.</summary>
+  IJobListLife = interface
+    ['{5B0F6C2E-3D41-4E8A-9A7C-1E2D4F6A8B90}']
+    function IsAlive: Boolean;
+    procedure Die;
+  end;
+
   TPanelJobList = class
   private
+    FLife: IJobListLife;
     FItems: TObjectList<TPanelJobController>;
     FTheme: IThemeRenderer;
     FVfs: IVirtualFileSystem;
@@ -133,6 +142,32 @@ type
 
 implementation
 
+type
+  TJobListLife = class(TInterfacedObject, IJobListLife)
+  private
+    FAlive: Boolean;
+  public
+    constructor Create;
+    function IsAlive: Boolean;
+    procedure Die;
+  end;
+
+constructor TJobListLife.Create;
+begin
+  inherited Create;
+  FAlive := True;
+end;
+
+function TJobListLife.IsAlive: Boolean;
+begin
+  Result := FAlive;
+end;
+
+procedure TJobListLife.Die;
+begin
+  FAlive := False;
+end;
+
 constructor TPanelJobList.Create(const ATheme: IThemeRenderer;
   const AVfs: IVirtualFileSystem; const AOnInvalidate: TProc;
   const AOnOpenConfirmDialog: TJobConfirmDialogEvent;
@@ -158,6 +193,7 @@ begin
   FOnClearSelection := AOnClearSelection;
   FOnAfterClose := AOnAfterClose;
   FOnBeforeExecute := AOnBeforeExecute;
+  FLife := TJobListLife.Create;
   FItems := TObjectList<TPanelJobController>.Create(True);
   FNextId := 0;
   FAskJobId := 0;
@@ -165,6 +201,7 @@ end;
 
 destructor TPanelJobList.Destroy;
 begin
+  FLife.Die;
   FItems.Free;
   inherited;
 end;
@@ -571,10 +608,13 @@ begin
 end;
 
 procedure TPanelJobList.QueuePruneIdle;
+var
+  Life: IJobListLife;
 begin
   if FPruneQueued then
     Exit;
   FPruneQueued := True;
+  Life := FLife;
   // Queue on the main thread runs the proc before it returns (ForceQueue is
   // what defers). Prune frees controllers whose phase is already
   // pjpNone, and CloseJobUi reaches this from inside FinishJob - an immediate
@@ -583,6 +623,9 @@ begin
   TThread.ForceQueue(nil,
     procedure
     begin
+      // The list may be gone by the time the queue runs (a window closed).
+      if not Life.IsAlive then
+        Exit;
       FPruneQueued := False;
       PruneIdleJobs;
     end);

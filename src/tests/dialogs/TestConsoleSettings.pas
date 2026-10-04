@@ -15,6 +15,8 @@ type
     [Test] procedure TestScrollbackChoices;
     [Test] procedure TestLineCounting;
     [Test] procedure TestTrimTrailingSpaces;
+    [Test] procedure TestLineBreaksToEnter;
+    [Test] procedure TestBackgroundShowChoices;
     [Test] procedure TestConsoleOptionsDialog;
   end;
 
@@ -31,6 +33,7 @@ begin
   Assert.IsFalse(DefaultConsoleSettings.ConfirmMultiLinePaste, 'no paste prompt by default');
   Assert.IsFalse(DefaultConsoleSettings.TrimCopiedSpaces, 'no trimming on copy by default');
   Assert.IsFalse(DefaultConsoleSettings.TrimPastedSpaces, 'no trimming on paste by default');
+  Assert.IsFalse(DefaultConsoleSettings.ReturnToPanels, 'the console stays in front by default');
   Assert.AreEqual(1000, ClampScrollbackLines(1), 'below the list goes to the first size');
   Assert.AreEqual(5000, ClampScrollbackLines(7000), 'the nearest size');
   Assert.AreEqual(10000, ClampScrollbackLines(10000), 'a listed size stays');
@@ -67,6 +70,34 @@ begin
   Assert.AreEqual(#10#10, TrimTrailingSpaces('  '#10' '#10), 'blank lines stay blank');
 end;
 
+procedure TTestConsoleSettings.TestBackgroundShowChoices;
+var
+  Items: TArray<string>;
+begin
+  SetLocale('');
+  Assert.AreEqual(cDefaultBackgroundShowMs, DefaultConsoleSettings.BackgroundShowMs, 'default time');
+  Assert.AreEqual(500, ClampBackgroundShowMs(1), 'below the list goes to the first time');
+  Assert.AreEqual(2000, ClampBackgroundShowMs(2200), 'the nearest time');
+  Assert.AreEqual(10000, ClampBackgroundShowMs(99999), 'above the list goes to the last time');
+  Assert.AreEqual(2, BackgroundShowIndexOf(2000), 'index of a listed time');
+  Assert.AreEqual(3000, BackgroundShowAt(3), 'time at an index');
+  Assert.AreEqual(10000, BackgroundShowAt(99), 'index above the list');
+  Items := BackgroundShowItems;
+  Assert.AreEqual(Integer(Length(cBackgroundShowChoices)), Integer(Length(Items)), 'one item per time');
+  Assert.AreEqual('0.5 s', Items[0], 'half a second');
+  Assert.AreEqual('2 s', Items[2], 'whole seconds without a fraction');
+end;
+
+procedure TTestConsoleSettings.TestLineBreaksToEnter;
+begin
+  Assert.AreEqual('', LineBreaksToEnter(''), 'empty');
+  Assert.AreEqual('ls', LineBreaksToEnter('ls'), 'no break');
+  Assert.AreEqual('a'#13'b'#13, LineBreaksToEnter('a'#10'b'#10), 'LF becomes Enter');
+  Assert.AreEqual('a'#13'b'#13, LineBreaksToEnter('a'#13#10'b'#13#10), 'CRLF is one Enter');
+  Assert.AreEqual('a'#13'b', LineBreaksToEnter('a'#13'b'), 'CR stays');
+  Assert.AreEqual(#13#13, LineBreaksToEnter(#10#10), 'blank lines stay');
+end;
+
 procedure TTestConsoleSettings.TestConsoleOptionsDialog;
 var
   Host: TDialogHost;
@@ -77,7 +108,7 @@ begin
   SetLocale('');
   Host := TDialogHost.Create(CreateThemeByName('NDN'));
   try
-    Host.Open(BuildConsoleOptionsDialog(3, True, False, True), nil);
+    Host.Open(BuildConsoleOptionsDialog(3, True, False, True, True, 4), nil);
     AllocTerminalGrid(Grid, 100, 30);
     ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
     Host.Draw(Grid, 100, 30);
@@ -93,6 +124,9 @@ begin
     Assert.IsTrue(Pos('Confirm multi-line paste', Text) > 0, 'paste confirmation drawn');
     Assert.IsTrue(Pos('on copy', Text) > 0, 'copy trimming drawn');
     Assert.IsTrue(Pos('on paste', Text) > 0, 'paste trimming drawn');
+    Assert.IsTrue(Pos('return to the panels', Text) > 0, 'return to the panels drawn');
+    Assert.IsTrue(Pos('Background run:', Text) > 0, 'background time label drawn');
+    Assert.IsTrue(Pos('5 s', Text) > 0, 'saved time shown');
   finally
     Host.Free;
   end;

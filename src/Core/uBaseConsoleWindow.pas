@@ -837,7 +837,7 @@ begin
   if ProfileUsesLineBufferedInput(ProfileId) then
     AppendLocalInput(AText)
   else
-    SendRaw(AText);
+    SendRaw(LineBreaksToEnter(AText));
 end;
 
 procedure TBaseConsoleWindow.PasteConfirmCommand(const AControlId, AValuesJson: string);

@@ -361,6 +361,8 @@ begin
   Saved.ConsoleConfirmPaste := True;
   Saved.ConsoleTrimCopy := True;
   Saved.ConsoleTrimPaste := True;
+  Saved.ConsoleReturnToPanels := True;
+  Saved.ConsoleBackgroundShowMs := 5000;
   Assert.IsTrue(SaveSession(Path, Saved), 'save session');
   try
     Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
@@ -372,6 +374,8 @@ begin
     Assert.IsTrue(Loaded.ConsoleConfirmPaste, 'consoleConfirmPaste saved');
     Assert.IsTrue(Loaded.ConsoleTrimCopy, 'consoleTrimCopy saved');
     Assert.IsTrue(Loaded.ConsoleTrimPaste, 'consoleTrimPaste saved');
+    Assert.IsTrue(Loaded.ConsoleReturnToPanels, 'consoleReturnToPanels saved');
+    Assert.AreEqual(5000, Loaded.ConsoleBackgroundShowMs, 'consoleBackgroundShowMs saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

@@ -153,6 +153,7 @@ const
     'Name to command line',
     'Path to command line',
     'Run in a separate window',
+    'Run in the background',
     'Go to command line',
     'New panel tab',
     'Close panel tab',

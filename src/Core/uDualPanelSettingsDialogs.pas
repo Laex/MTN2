@@ -423,7 +423,8 @@ begin
   FDialog.Open(BuildConsoleOptionsDialog(
     ScrollbackIndexOf(GConsoleSettings.ScrollbackLines),
     GConsoleSettings.ConfirmMultiLinePaste, GConsoleSettings.TrimCopiedSpaces,
-    GConsoleSettings.TrimPastedSpaces), FOnCommand);
+    GConsoleSettings.TrimPastedSpaces, GConsoleSettings.ReturnToPanels,
+    BackgroundShowIndexOf(GConsoleSettings.BackgroundShowMs)), FOnCommand);
   Notify;
 end;
 
@@ -440,6 +441,9 @@ begin
     GConsoleSettings.ConfirmMultiLinePaste := FDialog.GetCheckbox('confirm_paste');
     GConsoleSettings.TrimCopiedSpaces := FDialog.GetCheckbox('trim_copy');
     GConsoleSettings.TrimPastedSpaces := FDialog.GetCheckbox('trim_paste');
+    GConsoleSettings.ReturnToPanels := FDialog.GetCheckbox('return_panels');
+    GConsoleSettings.BackgroundShowMs :=
+      BackgroundShowAt(FDialog.GetListSelectedIndex('bg_show'));
   end;
   FDialog.Close;
   if Accepted then

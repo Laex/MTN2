@@ -58,6 +58,9 @@ type
     /// (Shift+click) extends the selection to the clicked cell.</summary>
     procedure HandleClick(ARelCol: Integer; AExtendSel: Boolean = False);
     procedure Clear;
+    /// <summary>Puts ACommand into the command history, as a submitted
+    /// command goes there.</summary>
+    procedure RememberCommand(const ACommand: string);
     procedure Reset;
     procedure InsertText(const AText: string);
     procedure CopyToClipboard;
@@ -360,6 +363,11 @@ begin
   finally
     Arr.Free;
   end;
+end;
+
+procedure TDualPanelCmdLineManager.RememberCommand(const ACommand: string);
+begin
+  PushHistory(ACommand);
 end;
 
 procedure TDualPanelCmdLineManager.PushHistory(const ACommand: string);

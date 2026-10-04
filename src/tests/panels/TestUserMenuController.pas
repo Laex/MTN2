@@ -259,12 +259,16 @@ var
 begin
   Root := SampleMenu;
   try
-    Root.Items[0].ReturnToPanels := True;
+    Root.Items[0].ReturnMode := umrReturn;
+    Root.Items[3].ReturnMode := umrStay;
+    Root.Items[2].Items[0].ReturnMode := umrDefault;
     Back := UserMenuFromJson(UserMenuToJson(Root));
     try
       Assert.IsTrue(Assigned(Back) and (Back.Items.Count = 4), 'same number of items');
-      Assert.IsTrue(Back.Items[0].ReturnToPanels, 'return-to-panels flag kept');
-      Assert.IsFalse(Back.Items[3].ReturnToPanels, 'the flag is off unless set');
+      Assert.IsTrue(Back.Items[0].ReturnMode = umrReturn, 'return to the panels kept');
+      Assert.IsTrue(Back.Items[3].ReturnMode = umrStay, 'stay in the console kept');
+      Assert.IsTrue(Back.Items[2].Items[0].ReturnMode = umrDefault,
+        'as in the console options when not set');
       Assert.IsTrue(Back.Items[1].Kind = umkSeparator, 'separator kept');
       Assert.IsTrue((Back.Items[2].Kind = umkSubmenu) and (Back.Items[2].Items.Count = 1) and
         (Back.Items[2].Items[0].Command = 'echo x'), 'submenu and its items kept');

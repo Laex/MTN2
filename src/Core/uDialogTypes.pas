@@ -267,7 +267,7 @@ function BuildAssociationEditDialog(const AExtension: string; AActionIndex: Inte
 /// <summary>User menu (F2) item editor, uDualPanelUserMenu.pas. AKindIndex:
 /// 0 command, 1 submenu, 2 separator.</summary>
 function BuildUserMenuEditDialog(const AHotKey, ACaption, ACommand: string;
-  AKindIndex: Integer; AReturnToPanels: Boolean = False): TDialogDeclaration;
+  AKindIndex: Integer; AReturnModeIndex: Integer = 0): TDialogDeclaration;
 function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   const APreview: TArray<string>; ADryRun: Boolean = False;
   ATwoWay: Boolean = False; AByContent: Boolean = False): TDialogDeclaration;
@@ -290,9 +290,11 @@ function BuildDisplayDialog(const AFontNames: TArray<string>;
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
 /// <summary>Options > Console...: scrollback size (index in
-/// uConsoleSettings.ScrollbackItems), paste confirmation, trimming of spaces.</summary>
+/// uConsoleSettings.ScrollbackItems), paste confirmation, trimming of spaces,
+/// return to the panels after a command from the panels' command line.</summary>
 function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
-  ATrimCopy, ATrimPaste: Boolean): TDialogDeclaration;
+  ATrimCopy, ATrimPaste: Boolean; AReturnToPanels: Boolean = False;
+  ABackgroundShowIndex: Integer = 2): TDialogDeclaration;
 /// <summary>Export / import of the settings: a path field with a drop-down list
 /// of the files used before (input history "settingsfile").</summary>
 function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;
@@ -1111,19 +1113,22 @@ begin
 end;
 
 function BuildUserMenuEditDialog(const AHotKey, ACaption, ACommand: string;
-  AKindIndex: Integer; AReturnToPanels: Boolean): TDialogDeclaration;
+  AKindIndex: Integer; AReturnModeIndex: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogUserMenuEdit, Result);
   DialogSetInputValue(Result, 'hotkey', AHotKey);
   DialogSetInputValue(Result, 'caption', ACaption);
   DialogSetInputValue(Result, 'command', ACommand);
-  DialogSetCheckbox(Result, 'return_panels', AReturnToPanels);
   // Dropdown items are user-facing choices, not static captions, so the
   // translation pass skips them; translate here.
   DialogSetListItems(Result, 'kind', [
     T('ui.userMenu.kindCommand', 'Command'),
     T('ui.userMenu.kindSubmenu', 'Submenu'),
     T('ui.userMenu.kindSeparator', 'Separator')], AKindIndex);
+  DialogSetListItems(Result, 'return_mode', [
+    T('ui.userMenu.returnDefault', 'As in the console options'),
+    T('ui.userMenu.returnPanels', 'Return to the panels'),
+    T('ui.userMenu.returnStay', 'Stay in the console')], AReturnModeIndex);
 end;
 
 function BuildCreateLinkDialog(const ALinkName, ATarget: string;
@@ -1255,13 +1260,16 @@ begin
 end;
 
 function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
-  ATrimCopy, ATrimPaste: Boolean): TDialogDeclaration;
+  ATrimCopy, ATrimPaste: Boolean; AReturnToPanels: Boolean;
+  ABackgroundShowIndex: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogConsoleOptions, Result);
   DialogSetListItems(Result, 'scrollback', ScrollbackItems, AScrollbackIndex);
   DialogSetCheckbox(Result, 'confirm_paste', AConfirmPaste);
   DialogSetCheckbox(Result, 'trim_copy', ATrimCopy);
   DialogSetCheckbox(Result, 'trim_paste', ATrimPaste);
+  DialogSetCheckbox(Result, 'return_panels', AReturnToPanels);
+  DialogSetListItems(Result, 'bg_show', BackgroundShowItems, ABackgroundShowIndex);
 end;
 
 function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;

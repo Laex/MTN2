@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Console",
   "width": 56,
-  "height": 11,
+  "height": 14,
   "children": [
     {
       "type": "label",
@@ -61,12 +61,48 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "return_panels",
+      "text": "Always &return to the panels when a command ends",
+      "checked": false,
+      "col": 1,
+      "row": 6,
+      "width": 52,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_bg_show",
+      "text": "Background run:",
+      "col": 1,
+      "row": 8,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "bg_show",
+      "selected": 2,
+      "items": [
+        "0.5 s",
+        "1 s",
+        "2 s",
+        "3 s",
+        "5 s",
+        "10 s"
+      ],
+      "col": 18,
+      "row": 8,
+      "width": 12,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 14,
-      "row": 7,
+      "row": 10,
       "width": 12,
       "height": 1
     },
@@ -76,7 +112,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 29,
-      "row": 7,
+      "row": 10,
       "width": 12,
       "height": 1
     }

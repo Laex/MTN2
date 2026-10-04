@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Math,
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uUserMenu, uUserMenuController,
-  uStrings;
+  uStrings, uConsoleSettings;
 
 type
   TUserMenuKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -252,7 +252,7 @@ begin
   begin
     Item := AParent.Items[AIndex];
     FDialog.Open(BuildUserMenuEditDialog(Item.HotKey, Item.Caption, Item.Command,
-      KindToIndex(Item.Kind), Item.ReturnToPanels), FOnCommand);
+      KindToIndex(Item.Kind), Ord(Item.ReturnMode)), FOnCommand);
   end;
   Notify;
 end;
@@ -291,7 +291,12 @@ begin
   else
     FRunContext := Default(TUserMenuContext);
   FRunTemplate := AItem.Command;
-  FRunReturn := AItem.ReturnToPanels;
+  case AItem.ReturnMode of
+    umrReturn: FRunReturn := True;
+    umrStay: FRunReturn := False;
+  else
+    FRunReturn := GConsoleSettings.ReturnToPanels;
+  end;
   FRunTitle := AItem.Caption;
   FRunPrompts := ParseUserMenuPrompts(FRunTemplate);
   FRunAnswers := nil;
@@ -325,7 +330,7 @@ procedure TUserMenuDialogController.DispatchEditCommand(const AControlId: string
 var
   Accepted: Boolean;
   HotKey, Caption, Command: string;
-  ReturnToPanels: Boolean;
+  ReturnMode: TUserMenuReturnMode;
   Kind: TUserMenuKind;
   Item: TUserMenuItem;
 begin
@@ -333,7 +338,8 @@ begin
   HotKey := Copy(Trim(FDialog.GetInputValue('hotkey')), 1, 1);
   Caption := Trim(FDialog.GetInputValue('caption'));
   Command := Trim(FDialog.GetInputValue('command'));
-  ReturnToPanels := FDialog.GetCheckbox('return_panels');
+  ReturnMode := TUserMenuReturnMode(EnsureRange(FDialog.GetListSelectedIndex('return_mode'),
+    Ord(Low(TUserMenuReturnMode)), Ord(High(TUserMenuReturnMode))));
   Kind := IndexToKind(FDialog.GetListSelectedIndex('kind'));
   FDialog.Close;
   if not Accepted or not Assigned(FEditParent) then
@@ -363,14 +369,17 @@ begin
     Item.HotKey := '';
     Item.Caption := '';
     Item.Command := '';
-    Item.ReturnToPanels := False;
+    Item.ReturnMode := umrDefault;
   end
   else
   begin
     Item.HotKey := HotKey;
     Item.Caption := Caption;
     Item.Command := Command;
-    Item.ReturnToPanels := ReturnToPanels and (Kind = umkCommand);
+    if Kind = umkCommand then
+      Item.ReturnMode := ReturnMode
+    else
+      Item.ReturnMode := umrDefault;
   end;
   Save;
   MenuChanged(FEditIndex);

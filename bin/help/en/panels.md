@@ -8,6 +8,7 @@
 | Backspace | up one level, like Enter on `..` (with an empty command line; otherwise it erases a character there) |
 | Ctrl+PgUp / Ctrl+PgDn | up one level / enter the folder under the cursor, as in FAR; on a file Ctrl+PgDn opens it as an archive (see [Archives](archives.md)) |
 | Shift+Enter | run a file or command in a separate OS window |
+| Alt+Shift+Enter | run the command line in the background: the console shows it for a moment, then the panels come back |
 | Tab | switch the active panel |
 | Ctrl+\\ | go to the drive root (inside an archive – leave the archive) |
 | Alt+← / Alt+→ | back / forward through the folder history |

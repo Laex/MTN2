@@ -29,6 +29,9 @@ uses
 
 type
   TUserMenuKind = (umkCommand, umkSubmenu, umkSeparator);
+  /// <summary>Where the program goes once a command has finished: as the
+  /// console options say, back to the panels, or on showing the console.</summary>
+  TUserMenuReturnMode = (umrDefault, umrReturn, umrStay);
 
   TUserMenuItem = class
   private
@@ -39,8 +42,7 @@ type
     HotKey: string;
     Caption: string;
     Command: string;
-    /// <summary>Go back to the panels once the command has finished.</summary>
-    ReturnToPanels: Boolean;
+    ReturnMode: TUserMenuReturnMode;
     constructor Create(AKind: TUserMenuKind = umkCommand);
     destructor Destroy; override;
     /// <summary>Submenu children. Allocated for every item so a kind change
@@ -259,7 +261,10 @@ begin
     Item.HotKey := Copy(JsonStr(Obj, 'hotkey'), 1, 1);
     Item.Caption := JsonStr(Obj, 'caption');
     Item.Command := JsonStr(Obj, 'command');
-    Item.ReturnToPanels := (Obj.GetValue('returnToPanels') is TJSONTrue);
+    if Obj.GetValue('returnToPanels') is TJSONTrue then
+      Item.ReturnMode := umrReturn
+    else if Obj.GetValue('returnToPanels') is TJSONFalse then
+      Item.ReturnMode := umrStay;
     if (Item.Kind = umkSubmenu) and (Sub is TJSONArray) then
       ReadItems(TJSONArray(Sub), Item);
     AParent.Items.Add(Item);
@@ -307,8 +312,10 @@ begin
       umkCommand:
         begin
           Obj.AddPair('command', Item.Command);
-          if Item.ReturnToPanels then
-            Obj.AddPair('returnToPanels', TJSONTrue.Create);
+          case Item.ReturnMode of
+            umrReturn: Obj.AddPair('returnToPanels', TJSONTrue.Create);
+            umrStay: Obj.AddPair('returnToPanels', TJSONFalse.Create);
+          end;
         end;
       umkSubmenu: Obj.AddPair('items', ItemsToJson(Item));
     end;

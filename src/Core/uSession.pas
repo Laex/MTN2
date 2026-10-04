@@ -83,6 +83,8 @@ type
     ConsoleConfirmPaste: Boolean;
     ConsoleTrimCopy: Boolean;
     ConsoleTrimPaste: Boolean;
+    ConsoleReturnToPanels: Boolean;
+    ConsoleBackgroundShowMs: Integer;
     SelectFolders: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
@@ -546,6 +548,8 @@ begin
       Root.AddPair('consoleConfirmPaste', TJSONBool.Create(ASession.ConsoleConfirmPaste));
       Root.AddPair('consoleTrimCopy', TJSONBool.Create(ASession.ConsoleTrimCopy));
       Root.AddPair('consoleTrimPaste', TJSONBool.Create(ASession.ConsoleTrimPaste));
+      Root.AddPair('consoleReturnToPanels', TJSONBool.Create(ASession.ConsoleReturnToPanels));
+      Root.AddPair('consoleBackgroundShowMs', TJSONNumber.Create(ClampBackgroundShowMs(ASession.ConsoleBackgroundShowMs)));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
@@ -610,6 +614,8 @@ begin
   ASession.ConsoleConfirmPaste := False;
   ASession.ConsoleTrimCopy := False;
   ASession.ConsoleTrimPaste := False;
+  ASession.ConsoleReturnToPanels := False;
+  ASession.ConsoleBackgroundShowMs := cDefaultBackgroundShowMs;
   ASession.SelectFolders := False;
   ASession.Language := '';
 
@@ -689,6 +695,8 @@ begin
       ASession.ConsoleConfirmPaste := JsonBool(Root, 'consoleConfirmPaste', False);
       ASession.ConsoleTrimCopy := JsonBool(Root, 'consoleTrimCopy', False);
       ASession.ConsoleTrimPaste := JsonBool(Root, 'consoleTrimPaste', False);
+      ASession.ConsoleReturnToPanels := JsonBool(Root, 'consoleReturnToPanels', False);
+      ASession.ConsoleBackgroundShowMs := ClampBackgroundShowMs(JsonInt(Root, 'consoleBackgroundShowMs', cDefaultBackgroundShowMs));
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
