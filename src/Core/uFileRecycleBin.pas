@@ -307,7 +307,7 @@ begin
 
   // No UAC prompt here: this runs once per selected item, so a protected
   // folder would ask for every file. An access-denied item comes back as an
-  // error and the job offers one elevated pass for the rest (uElevatedFileOps).
+  // error and the job offers to repeat the rest with administrator rights (uElevatedVfs).
   HR := Op.SetOperationFlags(FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or
     FOF_NOERRORUI or FOF_WANTNUKEWARNING);
   if GRecycleOwnerWindow <> 0 then

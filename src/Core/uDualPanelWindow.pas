@@ -27,7 +27,7 @@ uses
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
-  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus,
+  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs;
 
@@ -86,6 +86,12 @@ type
     FListTop: Integer;
     FListBottom: Integer;
     FVfs: IVirtualFileSystem;
+    /// <summary>File operations through the administrator helper: the job
+    /// error prompts, new folder and rename offer them after "access denied".</summary>
+    FElevatedVfs: TElevatedFileVfs;
+    FElevatedIntf: IVirtualFileSystem;
+    FHelperActive: Boolean;
+    FOnHelperActiveChanged: TNotifyEvent;
     FAlive: Boolean;
     FHostWindowId: Int64;
     FOnContentChanged: TNotifyEvent;
@@ -631,6 +637,15 @@ type
     procedure OpenUpdates;
     /// <summary>Options > Restore hidden dialogs.</summary>
     procedure RestoreHiddenDialogsNow;
+    procedure HelperActiveChanged(AActive: Boolean);
+    procedure RunMkDir(const AVfs: IVirtualFileSystem; const AURI, ASelectName: string;
+      AMayElevate: Boolean);
+    procedure RunRename(const AVfs: IVirtualFileSystem; const AFromURI, AToURI,
+      ANewName: string; AMayElevate: Boolean);
+    function CanElevateLocal(const AURI: string): Boolean;
+    /// <summary>Asks whether to repeat a failed operation with administrator
+    /// rights; AAction runs after a yes (the UAC prompt follows).</summary>
+    procedure OfferElevated(const AAction: TProc);
     procedure OpenPluginListDialog;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
@@ -988,6 +1003,10 @@ type
       read FOnClearConsoleBuffer write FOnClearConsoleBuffer;
     /// <summary>Options > Export / Import settings: the form saves its session
     /// first (export) and keeps it from overwriting an import at exit.</summary>
+    /// <summary>True while the administrator helper runs; the title shows it.</summary>
+    property HelperActive: Boolean read FHelperActive;
+    property OnHelperActiveChanged: TNotifyEvent
+      read FOnHelperActiveChanged write FOnHelperActiveChanged;
     property OnExportSettings: TSettingsFileEvent
       read FOnExportSettings write FOnExportSettings;
     property OnImportSettings: TSettingsFileEvent
@@ -1164,6 +1183,9 @@ begin
         FToast.HideTag(ATag);
     end);
   FVfs := CreateDefaultVfs;
+  FElevatedVfs := TElevatedFileVfs.Create(FVfs);
+  FElevatedIntf := FElevatedVfs;
+  FElevatedVfs.OnActiveChanged := HelperActiveChanged;
   FLeftModel := TFilePanelModel.Create(FVfs, cPanelWindowIdLeft);
   FRightModel := TFilePanelModel.Create(FVfs, cPanelWindowIdRight);
   FLeftModel.SetOnInvalidate(ModelInvalidated);
@@ -1384,6 +1406,13 @@ begin
   end;
   FLeftModel := nil;
   FRightModel := nil;
+  if Assigned(FElevatedVfs) then
+  begin
+    FElevatedVfs.OnActiveChanged := nil;
+    FElevatedVfs.Shutdown;
+  end;
+  FElevatedVfs := nil;
+  FElevatedIntf := nil;
   FVfs := nil;
   inherited Destroy;
 end;
@@ -2545,6 +2574,7 @@ begin
     HostOpenJobConfirm, HostOpenOverwriteAsk, HostOpenDeleteError,
     HostOpenIOErrorAsk, HostJobFinished, HostReloadJobPanels, HostClearJobSelection,
     HostJobUiClosed, PauseDirWatchesForJob);
+  FJobs.SetElevatedVfs(FElevatedIntf);
   FJobAskDeferred := False;
   FJobDialogs := TJobDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind);
@@ -5040,24 +5070,35 @@ begin
   URI := JoinFileUri(URI, CleanName);
   FPendingSelectName := SelectName;
   FPendingSelectSide := Ws.State.ActiveSide;
-  FVfs.CreateDirectoryAsync(URI, nil,
+  RunMkDir(FVfs, URI, SelectName, True);
+end;
+
+procedure TDualPanelWindow.RunMkDir(const AVfs: IVirtualFileSystem;
+  const AURI, ASelectName: string; AMayElevate: Boolean);
+begin
+  AVfs.CreateDirectoryAsync(AURI, nil,
     procedure(const ASuccess: Boolean; const AError: TVfsError)
     begin
       if not FAlive then
         Exit;
-      if not ASuccess then
-      begin
-        FPendingSelectName := '';
-        if AError.Message <> '' then
-          OpenStub(skShellInfo, 'MkDir failed', AError.Message)
-        else
-          OpenStub(skShellInfo, 'MkDir failed', 'Unknown error');
-      end
-      else
+      if ASuccess then
       begin
         ReloadActiveRows;
         NotifyChanged;
+        Exit;
       end;
+      FPendingSelectName := '';
+      if AMayElevate and (AError.Code = vecAccessDenied) and CanElevateLocal(AURI) then
+        OfferElevated(
+          procedure
+          begin
+            FPendingSelectName := ASelectName;
+            RunMkDir(FElevatedIntf, AURI, ASelectName, False);
+          end)
+      else if AError.Message <> '' then
+        OpenStub(skShellInfo, 'MkDir failed', AError.Message)
+      else
+        OpenStub(skShellInfo, 'MkDir failed', 'Unknown error');
     end);
 end;
 
@@ -5710,21 +5751,34 @@ begin
   Side := ActiveWorkspace.State.ActiveSide;
   FPendingSelectName := CleanName;
   FPendingSelectSide := Side;
-  FVfs.MoveAsync(FromURI, ToURI, nil, nil,
+  RunRename(FVfs, FromURI, ToURI, CleanName, True);
+end;
+
+procedure TDualPanelWindow.RunRename(const AVfs: IVirtualFileSystem;
+  const AFromURI, AToURI, ANewName: string; AMayElevate: Boolean);
+begin
+  AVfs.MoveAsync(AFromURI, AToURI, nil, nil,
     procedure(const ASuccess: Boolean; const AError: TVfsError)
     begin
       if not FAlive then
         Exit;
-      if not ASuccess then
-      begin
-        FPendingSelectName := '';
-        OpenStub(skShellInfo, 'Rename failed', AError.Message)
-      end
-      else
+      if ASuccess then
       begin
         ReloadActiveRows;
         NotifyChanged;
+        Exit;
       end;
+      FPendingSelectName := '';
+      if AMayElevate and (AError.Code = vecAccessDenied) and
+         CanElevateLocal(AFromURI) and CanElevateLocal(AToURI) then
+        OfferElevated(
+          procedure
+          begin
+            FPendingSelectName := ANewName;
+            RunRename(FElevatedIntf, AFromURI, AToURI, ANewName, False);
+          end)
+      else
+        OpenStub(skShellInfo, 'Rename failed', AError.Message);
     end);
 end;
 
@@ -7020,6 +7074,42 @@ begin
   else
     Notice(T('ui.toast.hiddenDialogsRestored', 'Hidden dialogs will be shown again: %s'),
       IntToStr(Count));
+end;
+
+procedure TDualPanelWindow.HelperActiveChanged(AActive: Boolean);
+begin
+  if not FAlive then
+    Exit;
+  FHelperActive := AActive;
+  if AActive then
+    FToast.Show(T('ui.toast.adminHelperOn',
+      'Administrator helper started: file operations run with administrator rights'),
+      '', tkWarning)
+  else
+    FToast.Show(T('ui.toast.adminHelperOff', 'Administrator helper stopped'));
+  if Assigned(FOnHelperActiveChanged) then
+    FOnHelperActiveChanged(Self);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.CanElevateLocal(const AURI: string): Boolean;
+begin
+  Result := Assigned(FElevatedIntf) and not IsProcessElevated and
+    not HasArchiveChain(AURI) and (FileUriToPath(AURI) <> '');
+end;
+
+procedure TDualPanelWindow.OfferElevated(const AAction: TProc);
+begin
+  if not ShowHostDialog(BuildConfirmDialog(
+       T('ui.admin.title', 'Administrator rights'),
+       T('ui.admin.confirm', 'Access denied. Repeat as administrator?')),
+     procedure(ACmd, AValues: string)
+     begin
+       if FAlive and DialogCmdIsAccept(ACmd) then
+         AAction();
+     end) then
+    Exit;
+  NotifyChanged;
 end;
 
 function TDualPanelWindow.ShowHostDialog(const ADecl: TDialogDeclaration;

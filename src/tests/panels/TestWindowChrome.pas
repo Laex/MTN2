@@ -26,6 +26,7 @@ type
     [Test] procedure TitleWithoutRoomIsNotDrawn;
     [Test] procedure TitleLosesPartsInOrder;
     [Test] procedure TitleSkipsEmptyParts;
+    [Test] procedure TitleShowsAdministratorRights;
     [Test] procedure ClientSnapsToWholeCells;
     [Test] procedure FractionalCellsKeepEveryColumn;
     [Test] procedure ResizeKeepsTheEdgeNotDragged;
@@ -240,6 +241,22 @@ begin
   Assert.AreEqual('MTN2', ComposeTitle(P, 13), 'then the frame rate');
   Assert.AreEqual('MTN2', ComposeTitle(P, 4), 'the short name stays');
   Assert.AreEqual('MT' + #$2026, ComposeTitle(P, 3), 'and is cut only below that');
+end;
+
+procedure TTestWindowChrome.TitleShowsAdministratorRights;
+var
+  P: TWindowTitleParts;
+begin
+  P := SampleTitle;
+  P.RightsText := 'Administrator';
+  Assert.AreEqual('Modern Terminal Navigator 2 - MTN2 v0.3.10  ' +
+    '[120x30  zoom 100%  [Docs]]  [Administrator]  [60 fps]', ComposeTitle(P, 200),
+    'the rights come before the frame rate');
+  P.FpsText := '';
+  Assert.AreEqual('MTN2 v0.3.10  [Administrator]', ComposeTitle(P, 30),
+    'the rights stay when the size, zoom and tab name are dropped');
+  P.RightsText := '';
+  Assert.AreEqual('MTN2 v0.3.10  [120x30]', ComposeTitle(P, 30), 'nothing for an ordinary user');
 end;
 
 procedure TTestWindowChrome.TitleSkipsEmptyParts;

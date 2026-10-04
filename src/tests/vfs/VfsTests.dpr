@@ -9,6 +9,7 @@ program VfsTests;
 
 uses
   uTestRunner in '..\common\uTestRunner.pas',
+  uElevatedHelper,
   TestChecksums in 'TestChecksums.pas',
   TestCopyIntoSelf in 'TestCopyIntoSelf.pas',
   TestCopyLockedSource in 'TestCopyLockedSource.pas',
@@ -17,6 +18,7 @@ uses
   TestDeleteProgress in 'TestDeleteProgress.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',
+  TestElevatedHelper in 'TestElevatedHelper.pas',
   TestExternalTools in 'TestExternalTools.pas',
   TestFileCompare in 'TestFileCompare.pas',
   TestFileFind in 'TestFileFind.pas',
@@ -39,5 +41,11 @@ uses
   TestZipNames in 'TestZipNames.pas';
 
 begin
+  // TestElevatedHelper starts this program again as the helper process.
+  if ElevatedHelperRequested then
+  begin
+    ExitCode := RunElevatedHelper;
+    Exit;
+  end;
   RunRegisteredTests;
 end.

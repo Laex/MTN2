@@ -25,6 +25,8 @@ type
     ZoomText: string;
     TabText: string;
     FpsText: string;
+    /// <summary>"Administrator" or "Admin helper"; '' for an ordinary user.</summary>
+    RightsText: string;
   end;
 
   TTabBarChrome = record
@@ -205,6 +207,8 @@ begin
     AddInner(AParts.TabText);
   if Inner <> '' then
     Result := Result + '  [' + Inner + ']';
+  if (ALevel <= 5) and (AParts.RightsText <> '') then
+    Result := Result + '  [' + AParts.RightsText + ']';
   if (ALevel <= 5) and (AParts.FpsText <> '') then
     Result := Result + '  [' + AParts.FpsText + ']';
 end;

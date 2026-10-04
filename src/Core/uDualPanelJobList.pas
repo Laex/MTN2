@@ -17,6 +17,7 @@ type
     FItems: TObjectList<TPanelJobController>;
     FTheme: IThemeRenderer;
     FVfs: IVirtualFileSystem;
+    FElevatedVfs: IVirtualFileSystem;
     FOnInvalidate: TProc;
     FOnOpenConfirmDialog: TJobConfirmDialogEvent;
     FOnOverwriteAsk: TJobOverwriteAskEvent;
@@ -74,6 +75,9 @@ type
     destructor Destroy; override;
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetVfs(const AVfs: IVirtualFileSystem);
+    /// <summary>Provider that runs the file operations with administrator
+    /// rights; a job uses it after the user picks "Admin" in an error prompt.</summary>
+    procedure SetElevatedVfs(const AVfs: IVirtualFileSystem);
     function CanStartAnother: Boolean;
     function BlocksNewOperation: Boolean;
     function OwnsInput: Boolean;
@@ -181,6 +185,15 @@ begin
   FVfs := AVfs;
   for Job in FItems do
     Job.SetVfs(AVfs);
+end;
+
+procedure TPanelJobList.SetElevatedVfs(const AVfs: IVirtualFileSystem);
+var
+  Job: TPanelJobController;
+begin
+  FElevatedVfs := AVfs;
+  for Job in FItems do
+    Job.SetElevatedVfs(AVfs);
 end;
 
 function TPanelJobList.BusyCount: Integer;
@@ -452,6 +465,7 @@ begin
       OnJobAfterClose(Job);
     end,
     FOnBeforeExecute);
+  Job.SetElevatedVfs(FElevatedVfs);
   Result := Job;
 end;
 

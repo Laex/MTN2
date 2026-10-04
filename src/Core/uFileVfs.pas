@@ -1093,7 +1093,7 @@ begin
         end;
       except
         on E: Exception do
-          Err := TVfsError.Make(vecIOError, E.Message, URI);
+          Err := VfsErrorFromException(E, URI);
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;

@@ -80,7 +80,7 @@ uses
 
 const
   cIndexTopic = 'index.md';
-  cMargin = 10;   // cells between the host edges and the window, each side
+  cMargin = 5; // cells between the host edges and the window, each side
   cMinWidth = 24;
   cMinHeight = 8;
 

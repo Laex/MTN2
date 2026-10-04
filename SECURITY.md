@@ -18,7 +18,8 @@ Areas of particular interest:
 - plugin loading (native DLL and WebAssembly plugins);
 - SSH/SFTP connections and stored connection settings;
 - archive handling (path traversal, malformed archives);
-- ConPTY / terminal escape-sequence parsing.
+- ConPTY / terminal escape-sequence parsing;
+- the administrator helper (pipe handshake and access checks, the file operations it runs).
 
 You should get a reply within a week. Once a fix is released, the advisory is published
 with credit to the reporter unless you prefer otherwise.

@@ -148,6 +148,7 @@ uses
   uSingleInstance in 'Core\uSingleInstance.pas',
   uUpdater in 'Core\uUpdater.pas',
   uSelfCheck in 'Core\uSelfCheck.pas',
+  uElevatedHelper in 'Core\uElevatedHelper.pas',
   uUpdateController in 'Core\uUpdateController.pas',
   uNotice in 'Core\uNotice.pas',
   uHiddenDialogs in 'Core\uHiddenDialogs.pas',
@@ -167,6 +168,14 @@ begin
   if SelfCheckRequested then
   begin
     ExitCode := RunSelfCheckToStdOut;
+    Exit;
+  end;
+
+  // --elevated-helper: the administrator helper of a running program (UAC
+  // prompt, no window); it serves file operations over pipes and exits.
+  if ElevatedHelperRequested then
+  begin
+    ExitCode := RunElevatedHelper;
     Exit;
   end;
 

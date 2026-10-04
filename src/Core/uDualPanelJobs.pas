@@ -9,7 +9,7 @@ uses
   Winapi.Windows,
   uTerminalTypes, uThemeTypes, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelOverlays, uDualPanelJobRules, uVfsTypes, uFileFind, uJobPopupRenderer,
-  uStrings, uElevatedFileOps, uFileRecycleBin;
+  uStrings, uElevation, uFileRecycleBin;
 
 type
   TJobConfirmDialogEvent = reference to procedure(const ATitle, AMessage: string);
@@ -27,6 +27,10 @@ type
   private
     FTheme: IThemeRenderer;
     FVfs: IVirtualFileSystem;
+    FElevatedVfs: IVirtualFileSystem;
+    /// <summary>The rest of the job runs through FElevatedVfs (the user picked
+    /// "Admin"); reset when the job starts.</summary>
+    FUseElevated: Boolean;
     FOnInvalidate: TProc;
     FOnOpenConfirmDialog: TJobConfirmDialogEvent;
     FOnOverwriteAsk: TJobOverwriteAskEvent;
@@ -60,7 +64,8 @@ type
     procedure StartJobExecution;
     procedure RunJobItem;
     function CanOfferElevate(const AError: TVfsError; AFromIndex: Integer): Boolean;
-    procedure RunElevatedRemainder(AFromIndex: Integer; ARecycle: Boolean);
+    function ActiveVfs: IVirtualFileSystem;
+    procedure RunElevatedRemainder(AFromIndex: Integer);
     procedure ProbeJobItemAsync(const ASrcURI, ADstURI: string; AIndex: Integer;
       AKind: TPanelJobKind; AFollowSymlinks, AOnlyNewer, AOverwriteAsk: Boolean);
     function ProbeSkipReparse(AKind: TPanelJobKind; AFollowSymlinks: Boolean;
@@ -121,6 +126,7 @@ type
     destructor Destroy; override;
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetVfs(const AVfs: IVirtualFileSystem);
+    procedure SetElevatedVfs(const AVfs: IVirtualFileSystem);
     procedure CloseJobUi;
     procedure LayoutJobPopup(const AClientWidth, AClientHeight: Integer);
     procedure DrawJobPopup(const AGrid: TTerminalGrid;
@@ -237,6 +243,19 @@ end;
 procedure TPanelJobController.SetVfs(const AVfs: IVirtualFileSystem);
 begin
   FVfs := AVfs;
+end;
+
+procedure TPanelJobController.SetElevatedVfs(const AVfs: IVirtualFileSystem);
+begin
+  FElevatedVfs := AVfs;
+end;
+
+function TPanelJobController.ActiveVfs: IVirtualFileSystem;
+begin
+  if FUseElevated and Assigned(FElevatedVfs) then
+    Result := FElevatedVfs
+  else
+    Result := FVfs;
 end;
 
 function TPanelJobController.GetActive: Boolean;
@@ -803,6 +822,7 @@ begin
   if Assigned(FOnBeforeExecute) then
     FOnBeforeExecute;
   FJob.Cancel := TJobCancelToken.Create;
+  FUseElevated := False;
   FJob.Phase := pjpRunning;
   FJob.Index := 0;
   FJob.BytesDoneBase := 0;
@@ -1363,7 +1383,7 @@ begin
   else
     DelMode := vdmRecycleBin;
 
-  FVfs.DeleteAsync(SrcURI, DelMode, Cancel,
+  ActiveVfs.DeleteAsync(SrcURI, DelMode, Cancel,
     procedure(const ADone, ATotal: Int64; const ACurrentName: string;
       const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
     begin
@@ -1410,8 +1430,8 @@ begin
     end);
 end;
 
-// Access denied on a local path: the Shell can redo the rest of the job with one
-// UAC prompt, so the error prompt offers that. Not for archives and virtual
+// Access denied on a local path: the administrator helper can redo the rest of
+// the job, so the error prompt offers that. Not for archives and virtual
 // folders, and not when MTN2 already runs elevated.
 function TPanelJobController.CanOfferElevate(const AError: TVfsError;
   AFromIndex: Integer): Boolean;
@@ -1422,7 +1442,8 @@ begin
   if (AError.Code <> vecAccessDenied) or
      not (FJob.Kind in [pjkCopy, pjkMove, pjkDelete]) then
     Exit;
-  if (AFromIndex < 0) or (AFromIndex > High(FJob.Sources)) or IsProcessElevated then
+  if (AFromIndex < 0) or (AFromIndex > High(FJob.Sources)) or IsProcessElevated or
+     FUseElevated or not Assigned(FElevatedVfs) then
     Exit;
   for I := AFromIndex to High(FJob.Sources) do
     if HasArchiveChain(FJob.Sources[I]) or (FileUriToPath(FJob.Sources[I]) = '') then
@@ -1441,71 +1462,19 @@ begin
   Result := True;
 end;
 
-// Repeats the failed item and all that follow in one Shell operation with a
-// single UAC prompt (the way Explorer does); the Shell shows its own progress.
-procedure TPanelJobController.RunElevatedRemainder(AFromIndex: Integer;
-  ARecycle: Boolean);
-var
-  Srcs, Dsts: TArray<string>;
-  I, N: Integer;
-  Op: TElevatedFileOp;
-  Overwrite: Boolean;
-  Owner: NativeUInt;
-  FirstURI: string;
+// Repeats the failed item through the administrator helper; the rest of the job
+// then runs there too. The UAC prompt appears when the helper starts.
+procedure TPanelJobController.RunElevatedRemainder(AFromIndex: Integer);
 begin
+  FUseElevated := True;
   FJob.Phase := pjpRunning;
-  FJob.Index := AFromIndex;
-  N := Length(FJob.Sources) - AFromIndex;
-  if N <= 0 then
-  begin
-    FinishJob(True, TVfsError.Ok);
-    Exit;
-  end;
-  case FJob.Kind of
-    pjkMove: Op := efoMove;
-    pjkDelete: Op := efoDelete;
-  else
-    Op := efoCopy;
-  end;
-  SetLength(Srcs, N);
-  SetLength(Dsts, N);
-  for I := 0 to N - 1 do
-  begin
-    Srcs[I] := ExcludeTrailingPathDelimiter(FileUriToPath(FJob.Sources[AFromIndex + I]));
-    if Op = efoDelete then
-      Continue;
-    if Length(FJob.DestURIs) = Length(FJob.Sources) then
-      Dsts[I] := FileUriToPath(FJob.DestURIs[AFromIndex + I])
-    else
-      Dsts[I] := TPath.Combine(FileUriToPath(FJob.DestDirURI),
-        TPath.GetFileName(Srcs[I]));
-  end;
-  FirstURI := FJob.Sources[AFromIndex];
-  Overwrite := FJob.OverwriteMode = jomOverwrite;
-  Owner := GRecycleOwnerWindow;
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Ok, Cancelled: Boolean;
-      Msg: string;
-    begin
-      Ok := ElevatedFileBatch(Op, Srcs, Dsts, ARecycle, Overwrite, Owner, Msg,
-        Cancelled);
-      TThread.Queue(nil,
-        procedure
-        begin
-          if not FAlive or (FJob.Phase <> pjpRunning) then
-            Exit;
-          if Ok then
-            FinishJob(True, TVfsError.Ok)
-          else if Cancelled then
-            FinishJob(False, TVfsError.Make(vecCancelled, 'Cancelled', FirstURI))
-          else
-            FinishJob(False, TVfsError.Make(vecIOError, Msg, FirstURI));
-        end);
-    end).Start;
+  if FJob.Kind = pjkDelete then
+    ExecuteDeleteItem(FJob.Sources[AFromIndex], AFromIndex, not FJob.AskOfferPermanent)
+  else
+    ExecuteTransfer(FJob.PendingSrcURI, FJob.PendingDstURI, AFromIndex,
+      FJob.PendingTransferOverwrite, FJob.PendingTransferAppend);
 end;
 
 procedure TPanelJobController.ResolveDeleteAsk(AAction: TJobDeleteFailAction);
@@ -1533,7 +1502,7 @@ begin
         ExecuteDeleteItem(RootSrcURI, Idx, True);
       end;
     jdaElevate:
-      RunElevatedRemainder(Idx, FJob.AskOfferPermanent);
+      RunElevatedRemainder(Idx);
     jdaSkip:
       begin
         FJob.Phase := pjpRunning;
@@ -1580,7 +1549,7 @@ begin
         ExecuteTransfer(SrcURI, DstURI, Idx, Overwrite, Append);
       end;
     jioElevate:
-      RunElevatedRemainder(Idx, False);
+      RunElevatedRemainder(Idx);
     jioSkip:
       begin
         FJob.Phase := pjpRunning;
@@ -1688,6 +1657,17 @@ begin
   // (CopyAsync/MoveAsync), not on the UI thread.
 
   if AAppend and (Kind = pjkCopy) and not HasArchiveChain(SrcURI) and
+     not HasArchiveChain(DstURI) and FUseElevated then
+  begin
+    // The append path streams the file in this process; the helper has no
+    // append, and overwriting would destroy what the user asked to keep.
+    HandleTransferFailure(SrcURI, DstURI, Idx, DoOverwrite, False,
+      TVfsError.Make(vecNotSupported,
+        'Append is not available with administrator rights', SrcURI));
+    Exit;
+  end;
+
+  if AAppend and (Kind = pjkCopy) and not HasArchiveChain(SrcURI) and
      not HasArchiveChain(DstURI) then
   begin
     SrcPath := FileUriToPath(SrcURI);
@@ -1701,7 +1681,7 @@ begin
   end;
 
   if (Kind = pjkCopy) or (Kind = pjkPack) or (Kind = pjkUnpack) then
-    FVfs.CopyAsync(SrcURI, DstURI, Cancel,
+    ActiveVfs.CopyAsync(SrcURI, DstURI, Cancel,
       procedure(const ADone, ATotal: Int64; const ACurrentName: string;
         const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
       begin
@@ -1724,7 +1704,7 @@ begin
         AdvanceJobAfterItem(Idx);
       end, DoOverwrite, FJob.PreserveTimestamps)
   else if Kind = pjkMove then
-    FVfs.MoveAsync(SrcURI, DstURI, Cancel,
+    ActiveVfs.MoveAsync(SrcURI, DstURI, Cancel,
       procedure(const ADone, ATotal: Int64; const ACurrentName: string;
         const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
       begin

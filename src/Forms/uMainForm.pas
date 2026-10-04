@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uConsoleSettings, uSettingsTransfer, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
+  uDisplaySettings, uConsoleSettings, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
 
 type
@@ -215,6 +215,7 @@ type
     procedure DualPanelShellCwdSync(const APath: string);
     function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
     procedure DualPanelClearConsoleBuffer(Sender: TObject);
+    procedure DualPanelHelperActiveChanged(Sender: TObject);
     function DualPanelExportSettings(const APath: string; out AError: string): Boolean;
     function DualPanelImportSettings(const APath: string; out AError: string): Boolean;
     procedure DualPanelToggleConsole(Sender: TObject);
@@ -1225,6 +1226,10 @@ begin
       Parts.TabText := '[' + FMdi.Active.Title + ']';
   end;
   Parts.FpsText := FFpsText;
+  if IsProcessElevated then
+    Parts.RightsText := T('ui.window.admin', 'Administrator')
+  else if Assigned(FDualPanel) and FDualPanel.HelperActive then
+    Parts.RightsText := T('ui.window.adminHelper', 'Admin helper');
   Caption := ComposeTitle(Parts, MaxInt);
   // The frame rate is a native title bar detail; the grid title leaves it out.
   Parts.FpsText := '';
@@ -1303,6 +1308,7 @@ begin
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
+  FDualPanel.OnHelperActiveChanged := DualPanelHelperActiveChanged;
   FDualPanel.OnExportSettings := DualPanelExportSettings;
   FDualPanel.OnImportSettings := DualPanelImportSettings;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
@@ -2164,6 +2170,11 @@ begin
     Exit(False);
   end;
   Result := FConsole.SaveOutputToFile(APath, AError);
+end;
+
+procedure TMainForm.DualPanelHelperActiveChanged(Sender: TObject);
+begin
+  UpdateCaption;
 end;
 
 function TMainForm.DualPanelExportSettings(const APath: string;

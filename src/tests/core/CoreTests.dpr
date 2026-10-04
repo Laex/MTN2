@@ -11,6 +11,7 @@ uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestConfigLocation in 'TestConfigLocation.pas',
   TestDescriptIon in 'TestDescriptIon.pas',
+  TestElevatedProtocol in 'TestElevatedProtocol.pas',
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
   TestFolderHotlist in 'TestFolderHotlist.pas',
