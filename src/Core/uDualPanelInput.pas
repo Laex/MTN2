@@ -99,6 +99,7 @@ type
     FocusCommandLine: TKeymapProc;
     RunDetached: TKeymapProc;
     RunInBackground: TKeymapProc;
+    RunInNewTab: TKeymapProc;
     InsertPanelItemToCmdLine: TKeymapBoolProc;
     BeginSelectByMask: TKeymapBoolProc;
     ApplySelectByExtension: TKeymapBoolProc;
@@ -774,6 +775,12 @@ begin
     kaRunInBackground:
       begin
         AHost.RunInBackground();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaRunInNewTab:
+      begin
+        AHost.RunInNewTab();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

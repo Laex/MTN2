@@ -123,6 +123,7 @@ begin
     tmaFileCopyName: CallProc(AHost.CopyItemNameToClipboard);
     tmaFileRunDetached: CallProc(AHost.RunDetached);
     tmaFileRunInBackground: CallProc(AHost.RunInBackground);
+    tmaFileRunInNewTab: CallProc(AHost.RunInNewTab);
     tmaFileNew: CallProc(AHost.BeginNewFile);
     tmaCmdQuickView: CallProc(AHost.ToggleQuickView);
 

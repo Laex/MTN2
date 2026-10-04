@@ -91,6 +91,7 @@
     ],
     "RunDetached": { "key": "Enter", "shift": true, "description": "Run File or Command in Detached OS Window" },
     "RunInBackground": { "key": "Enter", "shift": true, "alt": true, "description": "Run the Command Line in the Console, Show It Briefly, Return to the Panels" },
+    "RunInNewTab": { "key": "Enter", "ctrl": true, "alt": true, "description": "Run the Command Line in a New Terminal Tab with the Background Console Shell" },
     "FocusCmdLine": { "key": "Down", "ctrl": true, "description": "Focus Command Line" },
     "NewTab": { "key": "T", "ctrl": true, "description": "Open New Panel Tab" },
     "CloseTab": { "key": "W", "ctrl": true, "description": "Close Active Panel Tab" },

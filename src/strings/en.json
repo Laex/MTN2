@@ -538,6 +538,7 @@
     "keymap.action.InsertItemPath": "Path to command line",
     "keymap.action.RunDetached": "Run in a separate window",
     "keymap.action.RunInBackground": "Run in the background",
+    "keymap.action.RunInNewTab": "Run in a new tab",
     "keymap.action.FocusCmdLine": "Go to command line",
     "keymap.action.NewTab": "New panel tab",
     "keymap.action.CloseTab": "Close panel tab",
@@ -1231,6 +1232,7 @@
     "tmaFileCopyName": "Copy name",
     "tmaFileRunDetached": "Run detached (OS)",
     "tmaFileRunInBackground": "Run in &background",
+    "tmaFileRunInNewTab": "Run in ne&w tab",
 
     "tmaEditCopy": "Copy",
     "tmaEditCut": "Cut",

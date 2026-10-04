@@ -154,6 +154,7 @@ const
     'Path to command line',
     'Run in a separate window',
     'Run in the background',
+    'Run in a new tab',
     'Go to command line',
     'New panel tab',
     'Close panel tab',

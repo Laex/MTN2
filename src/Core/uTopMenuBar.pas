@@ -66,6 +66,7 @@ type
     tmaFileDescribe,
     tmaFileRunDetached,
     tmaFileRunInBackground,
+    tmaFileRunInNewTab,
     tmaFileNew,
     tmaCmdQuickView,
     tmaCmdFind,
@@ -343,6 +344,8 @@ begin
       Result := kaRunDetached;
     tmaFileRunInBackground:
       Result := kaRunInBackground;
+    tmaFileRunInNewTab:
+      Result := kaRunInNewTab;
     tmaFileNew:
       Result := kaNewFile;
     tmaCmdQuickView:

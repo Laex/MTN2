@@ -12,6 +12,7 @@ The command line is always below the panels: just start typing. A command runs i
 | Ctrl+Enter | insert the name of the item under the cursor |
 | Ctrl+F, Ctrl+Shift+Enter | insert the full path of the item |
 | Alt+Shift+Enter | run the command line in the background: the console shows the start for a moment, then the panels come back (**Options → Console...** below) |
+| Ctrl+Alt+Enter | run the command line in a new terminal tab: a new workspace tab with the shell of the background console (cmd, PowerShell, WSL, ...), the command starts there and the tab stays open |
 | Esc | step by step: clear the line → give the focus back to the panel → show the console. With an empty line the first step is skipped; with the focus on the panel Esc shows the console at once |
 | Ctrl+O | panels ↔ console |
 | Ctrl+Shift+O | synchronize the folder between the active panel and the console |

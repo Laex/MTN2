@@ -637,6 +637,7 @@
     "keymap.action.InsertItemPath": "Путь в командную строку",
     "keymap.action.RunDetached": "Запуск в отдельном окне",
     "keymap.action.RunInBackground": "Запуск в фоне",
+    "keymap.action.RunInNewTab": "Запуск в новой вкладке",
     "keymap.action.FocusCmdLine": "Перейти в командную строку",
     "keymap.action.NewTab": "Новая вкладка панели",
     "keymap.action.CloseTab": "Закрыть вкладку панели",
@@ -1330,6 +1331,7 @@
     "tmaFileCopyName": "Скопировать имя",
     "tmaFileRunDetached": "Запустить &отдельно (ОС)",
     "tmaFileRunInBackground": "Запустить в &фоне",
+    "tmaFileRunInNewTab": "Запустить в &новой вкладке",
 
     "tmaEditCopy": "&Копировать",
     "tmaEditCut": "Вы&резать",

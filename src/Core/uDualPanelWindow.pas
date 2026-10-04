@@ -508,6 +508,9 @@ type
     /// <summary>The command line runs in the console, which shows it for a
     /// moment (OnRunInBackground, Options > Console...) and gives the panels back.</summary>
     procedure RunInBackground;
+    /// <summary>The command line runs in a new terminal tab, in the shell of the
+    /// background console.</summary>
+    procedure RunInNewTab;
     function PanelCommandCwd: string;
     /// <summary>Shared active-panel-dir -> console push, used by both the
     /// gated auto-sync (NotifyShellCwdSync) and the unconditional hotkey
@@ -1603,6 +1606,7 @@ begin
   FKeymapHost.FocusCommandLine := FocusCommandLine;
   FKeymapHost.RunDetached := RunDetached;
   FKeymapHost.RunInBackground := RunInBackground;
+  FKeymapHost.RunInNewTab := RunInNewTab;
   FKeymapHost.InsertPanelItemToCmdLine := InsertPanelItemToCmdLine;
   FKeymapHost.BeginSelectByMask := BeginSelectByMask;
   FKeymapHost.ApplySelectByExtension := ApplySelectByExtension;
@@ -4359,6 +4363,23 @@ begin
       FOnReturnWhenDone(Self);
 end;
 
+procedure TDualPanelWindow.RunInNewTab;
+var
+  Cmd, Profile: string;
+begin
+  if not Assigned(FCmdLineMgr) then
+    Exit;
+  Cmd := Trim(FCmdLineMgr.Text);
+  if Cmd = '' then
+    Exit;
+  FCmdLineMgr.RememberCommand(Cmd);
+  FCmdLineMgr.Clear;
+  Profile := HostGetConsoleProfile;
+  if Profile = '' then
+    Profile := cShellProfileCmd;
+  OpenTerminal(Profile, PanelCommandCwd, Cmd);
+end;
+
 procedure TDualPanelWindow.RunInBackground;
 begin
   if not Assigned(FCmdLineMgr) or (Trim(FCmdLineMgr.Text) = '') then
@@ -4782,15 +4803,25 @@ end;
 function TDualPanelWindow.HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
-  // The command line takes every Enter chord as Enter itself; the background
-  // run is the one with its own binding.
-  if (AKey = vkReturn) and (MatchActiveAction(AKey, AShift) = kaRunInBackground) then
-  begin
-    RunInBackground;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
+  // The command line takes every Enter chord as Enter itself; the runs that
+  // have a binding of their own are looked up first.
+  if AKey = vkReturn then
+    case MatchActiveAction(AKey, AShift) of
+      kaRunInBackground:
+        begin
+          RunInBackground;
+          AKey := 0;
+          AKeyChar := #0;
+          Exit(True);
+        end;
+      kaRunInNewTab:
+        begin
+          RunInNewTab;
+          AKey := 0;
+          AKeyChar := #0;
+          Exit(True);
+        end;
+    end;
   if Assigned(FCmdLineMgr) then
     Result := FCmdLineMgr.HandleInput(AKey, AShift, AKeyChar)
   else

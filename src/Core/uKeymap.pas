@@ -68,6 +68,7 @@ type
     kaInsertItemPath,
     kaRunDetached,
     kaRunInBackground,
+    kaRunInNewTab,
     kaFocusCmdLine,
     kaNewTab,
     kaCloseTab,
@@ -584,6 +585,7 @@ begin
   AddBinding(Result, kaInsertItemPath, KeyBinding(Ord('F'), False, False, True));
   AddBinding(Result, kaRunDetached, KeyBinding(vkReturn, True, False, False));
   AddBinding(Result, kaRunInBackground, KeyBinding(vkReturn, True, True, False));
+  AddBinding(Result, kaRunInNewTab, KeyBinding(vkReturn, False, True, True));
   AddBinding(Result, kaFocusCmdLine, KeyBinding(vkDown, False, False, True));
 
   // Tab management
@@ -867,6 +869,7 @@ const
     'InsertItemPath',        // kaInsertItemPath
     'RunDetached',           // kaRunDetached
     'RunInBackground',       // kaRunInBackground
+    'RunInNewTab',           // kaRunInNewTab
     'FocusCmdLine',          // kaFocusCmdLine
     'NewTab',                // kaNewTab
     'CloseTab',              // kaCloseTab

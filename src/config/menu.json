@@ -67,7 +67,8 @@
         { "caption": "Copy name", "hotChar": "", "shortcut": "Ctrl+Shift+Ins", "action": "tmaFileCopyName" },
         { "caption": "Describe...", "hotChar": "", "shortcut": "Ctrl+Z", "action": "tmaFileDescribe" },
         { "caption": "Run detached (OS)", "hotChar": "O", "shortcut": "Shift+Enter", "action": "tmaFileRunDetached" },
-        { "caption": "Run in background", "hotChar": "B", "shortcut": "Alt+Shift+Enter", "action": "tmaFileRunInBackground" }
+        { "caption": "Run in background", "hotChar": "B", "shortcut": "Alt+Shift+Enter", "action": "tmaFileRunInBackground" },
+        { "caption": "Run in new tab", "hotChar": "W", "shortcut": "Ctrl+Alt+Enter", "action": "tmaFileRunInNewTab" }
       ]
     },
     {

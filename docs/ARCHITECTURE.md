@@ -384,8 +384,10 @@ file:///D:/data/bundle.zip!/nested.zip!/a.txt
 | Возврат по таймеру | Alt+Shift+Enter (`kaRunInBackground`) | `TDualPanelWindow.RunInBackground` отправляет команду через `SendConsoleCommand` (без `OnReturnWhenDone`) и вызывает `OnRunInBackground`; `TMainForm.FPeekTimer` работает `GConsoleSettings.BackgroundShowMs` (0,5–10 с), `PeekTimerTick` возвращает панели, если консоль ещё впереди. Нажатие клавиши (`FormKeyDown`) или щелчок (`FormMouseDown`) гасят таймер. Окончание команды раньше срока ничего не меняет |
 | Остаться в консоли | Команда набрана в самой консоли (в `RunConsoleCommand` не попадает); обычный Enter при выключенном флажке; пункт F2 с `umrStay` | Ни один из двух механизмов не включается |
 
+Отдельно от трёх случаев – **Ctrl+Alt+Enter** (`kaRunInNewTab`): `TDualPanelWindow.RunInNewTab` открывает вкладку терминала (`OpenTerminal`) с оболочкой фоновой консоли (`OnGetConsoleProfile`, по умолчанию cmd) и отправляет туда команду (`TTerminalWorkspaceWindow.SendCommand`); консоль и возврат в панели не участвуют, вкладка остаётся открытой.
+
 Прочее:
-- Командная строка при фокусе принимает любое сочетание с Enter за Enter (`InputLineHandleInput`), поэтому `TDualPanelWindow.HandleCmdLineInput` сначала спрашивает keymap (`MatchActiveAction`), не привязан ли этот ввод к `kaRunInBackground`.
+- Командная строка при фокусе принимает любое сочетание с Enter за Enter (`InputLineHandleInput`), поэтому `TDualPanelWindow.HandleCmdLineInput` сначала спрашивает keymap (`MatchActiveAction`), не привязан ли этот ввод к `kaRunInBackground` или `kaRunInNewTab`.
 - Вставка в консоль (`TBaseConsoleWindow.WritePasteText`) переводит LF и CRLF в CR (`LineBreaksToEnter`): голый LF оболочка (PSReadLine) принимает за «добавить строку», и после вставленной команды остаётся приглашение продолжения.
 - Настройки в `session.json`: `consoleReturnToPanels`, `consoleBackgroundShowMs`. У пункта меню пользователя ключ `returnToPanels`: `true` – вернуться, `false` – остаться, нет ключа – как в настройках консоли (`TUserMenuReturnMode`).
 
