@@ -12,6 +12,10 @@ type
     [Test] procedure TestClassify;
     [Test] procedure TestPluginOwnedAndUnload;
     [Test] procedure TestArchiveExtensions;
+    [Test] procedure TestReservedSchemesCannotBePlugged;
+    [Test] procedure TestPluginCannotTakeBuiltInSchemeWithoutGrant;
+    [Test] procedure TestGrantedOverrideReplacesBuiltInScheme;
+    [Test] procedure TestArchiveExtensionOverride;
   end;
 
 implementation
@@ -181,9 +185,9 @@ begin
   Reg := TVfsRegistry.Create;
   try
     Assert.IsTrue(not Reg.TryResolveArchiveKind('pack.7z', Kind), 'fresh registry has no .7z');
-    Reg.RegisterArchiveExtension('mtn.7z', '7z', akSevenZip, 100);
-    Assert.IsTrue(Reg.TryResolveArchiveKind('pack.7z', Kind) and (Kind = akSevenZip),
-      'plugin-declared .7z resolves to akSevenZip');
+    Reg.RegisterArchiveExtension('mtn.7z', '7z', akPluginScheme, 100);
+    Assert.IsTrue(Reg.TryResolveArchiveKind('pack.7z', Kind) and (Kind = akPluginScheme),
+      'plugin-declared .7z resolves to akPluginScheme');
     Reg.UnregisterPlugin('mtn.7z');
     Assert.IsTrue(not Reg.TryResolveArchiveKind('pack.7z', Kind),
       'unloading the plugin drops its archive extensions');
@@ -193,7 +197,125 @@ begin
   end;
 end;
 
+procedure TestReservedSchemesCannotBePlugged;
+var
+  Reg: TVfsRegistry;
+  Scheme: string;
+begin
+  Reg := TVfsRegistry.Create;
+  try
+    for Scheme in ['file', 'sys', 'recycle', 'find', 'ws', 'FILE'] do
+    begin
+      Reg.GrantOverrides('p', [Scheme]);
+      Reg.RegisterPluginScheme('p', Scheme, TStubVfs.Create, 1);
+      Assert.IsTrue(not Reg.IsPluginOwned(Scheme + '://x'),
+        Scheme + ' stays with the host even with a grant');
+      Assert.IsTrue(not Reg.IsOverrideGranted('p', Scheme),
+        Scheme + ' cannot be granted');
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TestPluginCannotTakeBuiltInSchemeWithoutGrant;
+var
+  Reg: TVfsRegistry;
+  Builtin, Hijack, Resolved: IVirtualFileSystem;
+begin
+  Reg := TVfsRegistry.Create;
+  Builtin := TStubVfs.Create;
+  Hijack := TStubVfs.Create;
+  try
+    Reg.RegisterScheme('sftp', Builtin, 15);
+    Reg.RegisterPluginScheme('p', 'sftp', Hijack, 1);
+    Assert.IsTrue(Reg.TryResolve('sftp://h/x', Resolved) and (Resolved = Builtin),
+      'built-in sftp wins over an ungranted plugin asking for priority 1');
+    Assert.IsTrue(not Reg.IsPluginOwned('sftp://h/x'), 'sftp is not plugin-owned');
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TestGrantedOverrideReplacesBuiltInScheme;
+var
+  Reg: TVfsRegistry;
+  Builtin, Replacement, Resolved: IVirtualFileSystem;
+begin
+  Reg := TVfsRegistry.Create;
+  Builtin := TStubVfs.Create;
+  Replacement := TStubVfs.Create;
+  try
+    Reg.RegisterScheme('sftp', Builtin, 15);
+    Reg.GrantOverrides('p', ['SFTP']);
+    Assert.IsTrue(Reg.IsOverrideGranted('p', 'sftp'), 'grant is case-insensitive');
+    Assert.IsTrue(not Reg.IsOverrideGranted('other', 'sftp'), 'grant is per plugin');
+    Reg.RegisterPluginScheme('p', 'sftp', Replacement, 100);
+    Assert.IsTrue(Reg.TryResolve('sftp://h/x', Resolved) and (Resolved = Replacement),
+      'granted plugin replaces the built-in scheme');
+    Assert.IsTrue(Reg.IsPluginOwned('sftp://h/x'), 'sftp is plugin-owned while granted');
+    Reg.UnregisterPlugin('p');
+    Assert.IsTrue(Reg.TryResolve('sftp://h/x', Resolved) and (Resolved = Builtin),
+      'unloading the plugin restores the built-in scheme');
+    Assert.IsTrue(not Reg.IsOverrideGranted('p', 'sftp'), 'unload drops the grant');
+    Reg.RegisterPluginScheme('p', 'sftp', Replacement, 1);
+    Assert.IsTrue(Reg.TryResolve('sftp://h/x', Resolved) and (Resolved = Builtin),
+      'a reloaded plugin needs a new grant');
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TestArchiveExtensionOverride;
+var
+  Reg: TVfsRegistry;
+  Kind: TArchiveExtensionKind;
+  Scheme: string;
+begin
+  Reg := TVfsRegistry.Create;
+  try
+    Reg.RegisterArchiveExtension('', '.zip', akZipChain, 50);
+    Reg.RegisterArchiveExtension('p', '.zip', akPluginScheme, 1, 'zipx');
+    Assert.IsTrue(Reg.TryResolveArchive('a.zip', Kind, Scheme) and (Kind = akZipChain),
+      'ungranted plugin does not take .zip');
+    Reg.UnregisterPlugin('p');
+    Reg.GrantOverrides('p', ['.zip']);
+    Reg.RegisterArchiveExtension('p', 'zip', akPluginScheme, 100, 'ZipX');
+    Assert.IsTrue(Reg.TryResolveArchive('a.ZIP', Kind, Scheme) and
+      (Kind = akPluginScheme) and (Scheme = 'zipx'),
+      'granted plugin takes .zip and navigates into its scheme');
+    Reg.UnregisterPlugin('p');
+    Assert.IsTrue(Reg.TryResolveArchive('a.zip', Kind, Scheme) and (Kind = akZipChain)
+      and (Scheme = ''), 'built-in .zip is back after unload');
+    Reg.RegisterArchiveExtension('q', '.7z', akPluginScheme);
+    Assert.IsTrue(Reg.TryResolveArchive('a.7z', Kind, Scheme) and (Scheme = '7z'),
+      'plugin scheme defaults to 7z');
+  finally
+    Reg.Free;
+  end;
+end;
+
 { TTestVfsRegistry }
+
+procedure TTestVfsRegistry.TestReservedSchemesCannotBePlugged;
+begin
+  TestVfsRegistry.TestReservedSchemesCannotBePlugged;
+end;
+
+procedure TTestVfsRegistry.TestPluginCannotTakeBuiltInSchemeWithoutGrant;
+begin
+  TestVfsRegistry.TestPluginCannotTakeBuiltInSchemeWithoutGrant;
+end;
+
+procedure TTestVfsRegistry.TestGrantedOverrideReplacesBuiltInScheme;
+begin
+  TestVfsRegistry.TestGrantedOverrideReplacesBuiltInScheme;
+end;
+
+procedure TTestVfsRegistry.TestArchiveExtensionOverride;
+begin
+  TestVfsRegistry.TestArchiveExtensionOverride;
+end;
 
 procedure TTestVfsRegistry.TestClassify;
 begin

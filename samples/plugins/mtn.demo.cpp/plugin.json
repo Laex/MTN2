@@ -1,0 +1,7 @@
+{
+  "id": "mtn.demo.cpp",
+  "name": "Demo: operation counter (C++)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true
+}

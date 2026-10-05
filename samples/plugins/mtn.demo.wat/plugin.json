@@ -1,0 +1,7 @@
+{
+  "id": "mtn.demo.wat",
+  "name": "Demo: counter (WAT)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true
+}

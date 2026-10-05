@@ -16,6 +16,7 @@ type
     [Test] procedure TestAssembleAndPaint;
     [Test] procedure TestReplaceHintMapsToF7;
     [Test] procedure TestFBarFollowsKeymap;
+    [Test] procedure TestPluginChromeInPanelsBars;
   end;
 
 implementation
@@ -31,6 +32,8 @@ uses
   uDualPanelUiTypes,
   uDualPanelStatus,
   uTopMenuBar,
+  uCommandRegistry,
+  uPluginChrome,
   uDualPanelKeymapDialog,
   System.IOUtils;
 
@@ -344,7 +347,58 @@ begin
     'Del hint maps to vkDelete');
 end;
 
+procedure TestPluginChromeInPanelsBars;
+var
+  Spy: TChromeSpy;
+  Host: TDualPanelStatusHost;
+  Snap: TPanelStatusSnapshot;
+  Segs, Items, Letters: TArray<string>;
+  Base: Integer;
+begin
+  Spy := TChromeSpy.Create;
+  Spy.Ctx := fbcPanels;
+  Host := Default(TDualPanelStatusHost);
+  Host.ChromeContext := Spy.Get;
+  Snap := Default(TPanelStatusSnapshot);
+  Snap.Kind := wkPanels;
+  Snap.SideLabel := 'Left';
+  Snap.Path := 'C:\';
+  Snap.PosText := '1/2';
+  Snap.ColMode := 'Full';
+  try
+    Base := Length(AssembleStatusSegments(Host, Snap));
+    PluginChrome.SetStatusSegment('t.bars', 'mode', 'REC');
+    Segs := AssembleStatusSegments(Host, Snap);
+    Assert.IsTrue((Length(Segs) = Base + 1) and (Segs[High(Segs)] = 'REC'),
+      'the plugin segment follows the host''s own');
+    Snap.Kind := wkTerminal;
+    Assert.IsTrue(Length(AssembleStatusSegments(Host, Snap)) = 1,
+      'a terminal status line stays the host''s');
+
+    CommandRegistry.RegisterCommand('t.bars', 't.bars.run', procedure begin end);
+    CommandRegistry.SetCommandCaption('t.bars', 't.bars.run', 'PlugCmd');
+    CommandRegistry.RegisterCommandBinding('t.bars', 't.bars.run', 'Ctrl+Alt+F10');
+    FunctionBarGetItems(fbcPanels, [ssCtrl, ssAlt], Items, Letters);
+    Assert.IsTrue(Items[9] = '10PlugCmd', 'a plugin command shows on its free F-key: ' + Items[9]);
+    FunctionBarGetItems(fbcPanels, [], Items, Letters);
+    Assert.IsTrue(Pos('PlugCmd', Items[9]) = 0, 'it does not show without its modifiers');
+    CommandRegistry.RegisterCommandBinding('t.bars', 't.bars.run', 'F5');
+    FunctionBarGetItems(fbcPanels, [], Items, Letters);
+    Assert.IsTrue(Pos('Copy', Items[4]) > 0, 'F5 keeps the built-in Copy label');
+  finally
+    PluginChrome.UnregisterPlugin('t.bars');
+    CommandRegistry.UnregisterPlugin('t.bars');
+    Spy.Free;
+  end;
+end;
+
 { TTestDualPanelStatus }
+
+procedure TTestDualPanelStatus.TestPluginChromeInPanelsBars;
+begin
+  TestDualPanelStatus.TestPluginChromeInPanelsBars;
+end;
+
 
 // The F-bar and the menu show the keys the keymap has now.
 procedure TestFBarFollowsKeymap;

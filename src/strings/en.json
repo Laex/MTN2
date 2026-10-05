@@ -334,7 +334,10 @@
       "cancel": "Cancel"
     },
     "DIALOG_PLUGINLIST": {
-      "$title": "Loaded plugins",
+      "$title": "Plugins",
+      "toggle": "&Toggle",
+      "override": "&Replace",
+      "settings": "&Settings",
       "ok": "  OK  "
     },
     "DIALOG_EDITFIND": {
@@ -840,6 +843,8 @@
     "fileHistory.viewMark": "V",
     "fileHistory.editMark": "E",
     "fileHistory.missingTitle": "File not found",
+    "plugins.noSettingsTitle": "Plugin settings",
+    "plugins.noSettings": "The plugin %s has no settings.",
     "properties.title": "Properties",
     "properties.unavailable": "Only for files and folders on disk",
     "compareFolders.title": "Compare folders",

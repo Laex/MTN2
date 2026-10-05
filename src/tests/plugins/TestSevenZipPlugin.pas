@@ -13,6 +13,7 @@ type
   TTestSevenZipPlugin = class
   public
     [Test] procedure Run;
+    [Test] procedure TestZipOverrideOnlyWhenAllowed;
   end;
 
 implementation
@@ -37,7 +38,8 @@ uses
   uPluginHostAbi,
   uVfsCdeclAdapter,
   uPluginLoader,
-  uSevenZipApi;
+  uSevenZipApi,
+  System.Zip;
 
 function Find7zDll: string;
 const
@@ -287,6 +289,80 @@ begin
   PluginLoader.UnloadAll;
   Assert.IsTrue(not GlobalVfsRegistry.IsPluginOwned('7z:///C:/x.7z!/'),
     '7z:// not plugin-owned after unload');
+end;
+
+procedure TTestSevenZipPlugin.TestZipOverrideOnlyWhenAllowed;
+var
+  Dll, DllPath, Root, Work, ZipPath, ZipScheme: string;
+  Kind: TArchiveExtensionKind;
+  ZipBackend: IVirtualFileSystem;
+  Entries: TArray<TVfsEntry>;
+  ListErr: TVfsError;
+  Zip: TZipFile;
+  HasInside: Boolean;
+  N: Integer;
+begin
+  Dll := Find7zDll;
+  if Dll = '' then
+    Assert.Pass('SKIP: 7z.dll not found (set MTN2_7Z_DLL or install 7-Zip / Far ArcLite)');
+  DllPath := TPath.Combine(ExtractFilePath(ParamStr(0)), 'SevenZipPlugin.dll');
+  if not TFile.Exists(DllPath) then
+    raise Exception.Create('SevenZipPlugin.dll not found next to the test exe: ' + DllPath);
+
+  Work := TPath.Combine(TPath.GetTempPath, 'mtn2-7z-zip-override');
+  TDirectory.CreateDirectory(Work);
+  ZipPath := TPath.Combine(Work, 'sample.zip');
+  if TFile.Exists(ZipPath) then
+    TFile.Delete(ZipPath);
+  TFile.WriteAllText(TPath.Combine(Work, 'inside.txt'), 'zip-payload', TEncoding.UTF8);
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmWrite);
+    Zip.Add(TPath.Combine(Work, 'inside.txt'), 'inside.txt');
+    Zip.Close;
+  finally
+    Zip.Free;
+  end;
+
+  // The manifest that ships with the plugin: it asks to replace .zip.
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-7z-override');
+  if TDirectory.Exists(Root) then
+    TDirectory.Delete(Root, True);
+  TDirectory.CreateDirectory(TPath.Combine(Root, 'mtn.7z'));
+  TFile.Copy(DllPath, TPath.Combine(Root, 'mtn.7z\SevenZipPlugin.dll'), True);
+  TFile.Copy(Dll, TPath.Combine(Root, 'mtn.7z\7z.dll'), True);
+  TFile.Copy(ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
+    '..\..\plugins\mtn.7z\plugin.json')), TPath.Combine(Root, 'mtn.7z\plugin.json'), True);
+  try
+    PluginLoader.SetOverrideAllowList([]);
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Length(PluginLoader.LoadedPluginIds) = 1, 'mtn.7z loads');
+    Assert.IsTrue(GlobalVfsRegistry.TryResolveArchive('sample.zip', Kind, ZipScheme) and
+      (Kind = akZipChain), 'without the user''s permission .zip stays with the built-in module');
+    Assert.IsTrue(GlobalVfsRegistry.TryResolveArchive('sample.7z', Kind, ZipScheme) and
+      (Kind = akPluginScheme) and (ZipScheme = '7z'), '.7z goes to the plugin');
+    PluginLoader.UnloadAll;
+
+    PluginLoader.SetOverrideAllowList(['mtn.7z']);
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(GlobalVfsRegistry.TryResolveArchive('sample.zip', Kind, ZipScheme) and
+      (Kind = akPluginScheme) and (ZipScheme = '7z'), 'with permission .zip goes to the plugin');
+    Assert.IsTrue(GlobalVfsRegistry.TryResolve(PathToArchiveRootUri(ZipScheme, ZipPath), ZipBackend),
+      'the plugin serves the archive root URI');
+    WaitList(ZipBackend, PathToArchiveRootUri(ZipScheme, ZipPath), Entries, ListErr);
+    Assert.IsTrue(ListErr.Code = vecOk, 'list the zip through the plugin: ' + ListErr.Message);
+    HasInside := False;
+    for N := 0 to High(Entries) do
+      if SameText(Entries[N].Name, 'inside.txt') then
+        HasInside := True;
+    Assert.IsTrue(HasInside, 'the plugin lists the content of the zip');
+    PluginLoader.UnloadAll;
+    Assert.IsTrue(GlobalVfsRegistry.TryResolveArchive('sample.zip', Kind, ZipScheme) and
+      (Kind = akZipChain), 'unloading the plugin gives .zip back to the built-in module');
+  finally
+    PluginLoader.UnloadAll;
+    PluginLoader.SetOverrideAllowList([]);
+  end;
 end;
 
 initialization

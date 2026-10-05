@@ -253,9 +253,10 @@ function BuildCmdHistoryDialog(const AItems: TArray<string>;
 /// <summary>Alt+F11: AItems are "mode mark + path" labels, newest first.</summary>
 function BuildFileHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
-/// <summary>AItems are pre-formatted display labels (id, name, version),
-/// see HostPluginListDisplayLabels in uPluginHost.pas.</summary>
-function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;
+/// <summary>AItems are pre-formatted rows (on/off mark, id, name, version),
+/// see HostPluginRows in uPluginHost.pas.</summary>
+function BuildPluginListDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer = 0): TDialogDeclaration;
 /// <summary>AItems are pre-formatted display labels ("Name  -  path" or
 /// bare path when unnamed) - see FolderHotlistDisplayLabel.</summary>
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
@@ -1480,7 +1481,8 @@ begin
   FitDialogCaptions(Result);
 end;
 
-function BuildPluginListDialog(const AItems: TArray<string>): TDialogDeclaration;
+function BuildPluginListDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer): TDialogDeclaration;
 var
   Items: TArray<string>;
 begin
@@ -1488,11 +1490,13 @@ begin
   if Length(AItems) = 0 then
   begin
     SetLength(Items, 1);
-    Items[0] := '(no plugins loaded)';
+    Items[0] := '(no plugins)';
   end
   else
     Items := AItems;
-  DialogSetListItems(Result, 'plugins', Items, 0);
+  if (ASelectedIndex < 0) or (ASelectedIndex > High(Items)) then
+    ASelectedIndex := 0;
+  DialogSetListItems(Result, 'plugins', Items, ASelectedIndex);
 end;
 
 function BuildColorCodingDialog(const AItems: TArray<string>;

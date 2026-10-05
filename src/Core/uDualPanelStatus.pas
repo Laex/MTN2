@@ -94,7 +94,7 @@ procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
 implementation
 
 uses
-  uVfsTypes, uStrings;
+  uVfsTypes, uStrings, uPluginChrome;
 
 // Status line captions are translated where they are built, never as whole
 // segments: a segment can also be a path or a file name, and a file called
@@ -455,6 +455,9 @@ begin
   Result := FormatDefaultPanelStatus(ASnap.SideLabel, ASnap.Path, ASnap.PosText,
     ASnap.ColMode, ASnap.ItemText, ASnap.FreeText, ASnap.Kind = wkPanels,
     ASnap.CmdFocused);
+  // Text segments plugins set (SetStatusSegment) follow the host's own.
+  if ASnap.Kind = wkPanels then
+    Result := Result + PluginChrome.StatusSegments;
 end;
 
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;

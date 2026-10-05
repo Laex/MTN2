@@ -155,6 +155,8 @@ type
     hdkChecksumOptions, hdkChecksumResult,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport,
+    // The Plugins list (Options > Plugins): switch plugins on and off.
+    hdkPluginList,
     // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
     // command goes back to the opener's callback.
     hdkHost);

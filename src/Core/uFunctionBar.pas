@@ -76,6 +76,9 @@ function FunctionBarHitToInput(const AHit: TFunctionBarHit; AMods: TShiftState;
 
 implementation
 
+uses
+  uCommandRegistry;
+
 function EmptyItems: TArray<string>;
 begin
   SetLength(Result, 10);
@@ -210,8 +213,20 @@ end;
 
 procedure FunctionBarItemsForPanels(ACtx: TFunctionBarContext; Mods: TShiftState;
   var AItems, ALetters: TArray<string>);
+var
+  N: Integer;
+  PluginLbl: string;
 begin
   FKeysFromKeymap(ACtx, [kcPanels, kcGlobal], cAllFBarActions, Mods, AItems);
+  // A plugin command on a free F-key chord shows its caption in the slot (a
+  // free slot holds just its number).
+  for N := 1 to 10 do
+    if AItems[N - 1] = IntToStr(N) then
+    begin
+      PluginLbl := PluginFBarLabel(vkF1 + N - 1, Mods);
+      if PluginLbl <> '' then
+        AItems[N - 1] := IntToStr(N) + Copy(PluginLbl, 1, 7);
+    end;
   if Mods = [ssCtrl] then
     // Letter hints: actions not on F1-F10 (F12 / Enter / letters).
     HintsFromKeymap([Hint(kaColumnMode, 'Modes'), Hint(kaSwapPanels, 'Swap'),

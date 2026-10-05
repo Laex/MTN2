@@ -26,6 +26,9 @@ function TopMenuActionEnabled(AAction: TTopMenuAction;
 
 implementation
 
+uses
+  uCommandRegistry;
+
 procedure CallProc(const AProc: TKeymapProc);
 begin
   if Assigned(AProc) then
@@ -62,6 +65,12 @@ function DispatchTopMenuAction(const AHost: TDualPanelKeymapHost;
   AAction: TTopMenuAction): Boolean;
 begin
   Result := True;
+  // Plugin hooks on built-in commands run before the menu runs the command.
+  // Calculate size shares View's keymap action only for the shortcut it shows,
+  // so a View hook must not swallow it.
+  if (AAction <> tmaNone) and (AAction <> tmaFileCalcSize) and
+     InterceptKeymapAction(TopMenuKeymapAction(AAction), 'menu') then
+    Exit;
   case AAction of
     tmaNone:
       Result := False;

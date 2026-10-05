@@ -2,6 +2,7 @@
 
 > **Роль документа:** классификация существующей и планируемой функциональности MTN2 по трём зонам ответственности – что обязано остаться в ядре, что поставляется продуктом как «системный» плагин, что относится к экосистеме сторонних «пользовательских» плагинов.
 > **Источники:** [ARCHITECTURE.md](ARCHITECTURE.md) §6 (паттерн Ядро–Тема–Плагин, инварианты 13–14), [PLUGIN_TRANSITION.md](PLUGIN_TRANSITION.md) (шаги перехода), [SDS.md](SDS.md) §6.0/§6.8 (продуктовый приоритет и Far/TC мосты), [UI_PRIMITIVES.md](UI_PRIMITIVES.md) и связанные `*_PLUGIN.md`.
+> Как писать плагин и заменять встроенное: [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md).
 > Ничего нового не проектирует – сводит уже принятые решения в одну таблицу, чтобы разделение было видно целиком, а не по кускам в разных файлах.
 
 ---
@@ -77,10 +78,14 @@
 
 | Возможность | Host API | Ограничение |
 |---|---|---|
-| Зарегистрировать VFS-схему | `RegisterPluginScheme` / `RegisterVfsScheme` | Нельзя перехватить `file`/`recycle`/`sys`/`find`/`ws` – хост игнорирует такую попытку |
+| Зарегистрировать VFS-схему | `RegisterPluginScheme` / `RegisterVfsScheme` | Нельзя перехватить `file`/`recycle`/`sys`/`find`/`ws` – хост игнорирует такую попытку. Схему со встроенным обработчиком (`sftp`) без разрешения плагин не занимает |
+| Заменить встроенную схему или расширение архива | `overrides` в `plugin.json` + `plugins\overrides.json` | Только по явному разрешению пользователя; зарезервированные схемы не заменяются; `.zip` меняет переход по Enter, не внутренний `!/`-путь (PLUGIN_TRANSITION.md §3.7) |
 | Зарегистрировать панель для своей схемы | `RegisterPanelPlugin` → `IPanelPluginRegistry` | Идентификация плагина для схемы; сама отрисовка панели всё ещё через `TFilePanelModel` ядра (Pull cdecl для панели – шаг «cdecl Pull-адаптер», не начат) |
 | Добавить пункт меню | `RegisterMenuItem` → `IMenuRegistry` | Новые пункты – да; новые *действия* keymap – нет |
-| Перебиндить существующий хоткей | `RegisterKeyBinding` → `IKeymapRegistry` | Только rebind, не новое действие |
+| Перебиндить существующий хоткей | `RegisterKeyBinding` → `IKeymapRegistry` | Только rebind существующего действия; сочетание для своей команды – см. ниже |
+| Перехватить встроенную команду | `RegisterCommandHook` → `ICommandRegistry` | Команды панелей, верхнего меню, просмотрщика и редактора; перехватчик может отменить команду (PLUGIN_TRANSITION.md §3.9) |
+| Открывать файлы типа в F3 / F4 по-своему | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | Плагин открывает файл сам, подсовывает встроенному окну другой URI или пропускает; окно просмотра и редактора остаётся хостовым (PLUGIN_TRANSITION.md §3.11) |
+| Добавить свою команду и сочетание клавиш | `RegisterCommand` + `RegisterKeyBinding` | Сочетание, занятое встроенным действием, остаётся за ним |
 | Опубликовать событие / подписаться | `HostPublish` / `mtn_host_publish` → `IMessageBus` | – |
 | Запросить перерисовку окна | `HostInvalidate` / `mtn_host_invalidate` | – |
 | Скопировать/переместить через свой backend | `ClassifyVfsTransfer` | plugin-owned Copy/Move остаются в backend плагина; cross-scheme кроме `plugin→file` – `vecNotSupported` |
@@ -91,11 +96,11 @@
 
 | Примитив | Документ | Текущий статус |
 |---|---|---|
-| Панель (полный cdecl Pull: `get_row_json`/`handle_event`) | [PANEL_PLUGIN.md](PANEL_PLUGIN.md) | Протокол описан, не экспортирован – PLUGIN_TRANSITION.md, шаг «cdecl Pull-адаптер» |
-| Диалог | [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) | `mtn_dialog_*` не экспортирован – шаг «overlay / textarea / dialog cdecl» |
+| Панель (полный cdecl Pull: `get_row_json`/`handle_event`) | [PANEL_PLUGIN.md](PANEL_PLUGIN.md) | Строки панели плагина поставляет его VFS-схема; доступна реакция на активацию строки (`RegisterPanelActivate`). Полный `get_row_json` / `handle_event` не экспортирован |
+| Диалог | [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) | Доступен одноразовый модальный диалог (`ShowDialog`: JSON-декларация, ответ – id контрола и values); отдельные `mtn_dialog_*` для живого диалога не экспортированы |
 | Text Area (Viewer/Editor) | [TEXTAREA_PLUGIN.md](TEXTAREA_PLUGIN.md) | Host-only, «until a second multiline consumer appears» – шаг «overlay / textarea / dialog cdecl» |
-| Toolbar / F-bar | [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md) | Host-only – шаг «overlay / textarea / dialog cdecl» |
-| Status line | [STATUS_PLUGIN.md](STATUS_PLUGIN.md) | Host-only – шаг «overlay / textarea / dialog cdecl» |
+| Toolbar / F-bar | [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md) | Плагин задаёт подпись своей команды (`SetCommandCaption`) для F-клавиши с модификаторами; набор кнопок остаётся хостовым |
+| Status line | [STATUS_PLUGIN.md](STATUS_PLUGIN.md) | Плагин добавляет именованный текстовый сегмент (`SetStatusSegment`) в строку состояния панелей; состав и вид задаёт хост |
 | Graphic Overlay | [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md) | Host-only, Canvas не отдаётся – шаг «overlay / textarea / dialog cdecl» |
 | Input Line | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) | Общий примитив диалогов/cmdline, отдельного cdecl нет |
 

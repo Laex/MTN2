@@ -8,9 +8,9 @@ unit uKeymapRegistry;
 
   TKeymapAction stays a closed compile-time enum (uKeymap.pas) - plugins can
   only rebind keys to *existing* actions, not introduce new ones. That is
-  a deliberate scope limit: dispatch for each action is still hardcoded
-  elsewhere in the app, so a "new action" would need a matching dispatch
-  handler to do anything. }
+  a deliberate scope limit: dispatch for each action is hardcoded elsewhere
+  in the app. A command that a plugin defines itself, and the chord that runs
+  it, live in uCommandRegistry.pas. }
 
 interface
 

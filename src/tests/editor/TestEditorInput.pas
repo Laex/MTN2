@@ -11,13 +11,14 @@ type
   public
     [Test] procedure TestDispatch;
     [Test] procedure TestRebinding;
+    [Test] procedure TestPluginHooksOnDocumentCommands;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uKeymap, uEditorInput;
+  uKeymap, uEditorInput, uCommandRegistry;
 
 type
   TEditorSpy = class
@@ -538,7 +539,63 @@ begin
   end;
 end;
 
+procedure TestPluginHooksOnDocumentCommands;
+var
+  Spy: TEditorSpy;
+  Host: TEditorKeymapHost;
+  Key: Word;
+  KeyChar: Char;
+  Hooked, Bound: Integer;
+  Handle: Boolean;
+begin
+  Hooked := 0;
+  Bound := 0;
+  Handle := True;
+  Spy := TEditorSpy.Create;
+  try
+    BindSpy(Host, Spy);
+    Spy.CanEditVal := True;
+    Spy.ViewOnlyVal := False;
+    Spy.FindEmptyVal := True;
+    CommandRegistry.RegisterHook('t.doc', 'DocViewEdit',
+      function(const ACommand, AOrigin: string): Boolean
+      begin
+        Inc(Hooked);
+        Result := Handle;
+      end);
+
+    Key := vkF6;
+    KeyChar := 'x';
+    Assert.IsTrue(DispatchEditorKeys(Host, Key, [], KeyChar, 10), 'hooked key handled');
+    Assert.IsTrue(Hooked = 1, 'the hook ran for F6');
+    Assert.IsTrue(Spy.Last = '', 'a handled hook skips the built-in command');
+    Assert.IsTrue((Key = 0) and (KeyChar = #0), 'the key is consumed');
+
+    Handle := False;
+    Key := vkF6;
+    KeyChar := 'x';
+    Assert.IsTrue(DispatchEditorKeys(Host, Key, [], KeyChar, 10), 'passed-through key handled');
+    Assert.IsTrue((Hooked = 2) and (Spy.Last = 'view'), 'a hook that passes lets the command run');
+
+    CommandRegistry.RegisterCommand('t.doc', 't.doc.run', procedure begin Inc(Bound); end);
+    CommandRegistry.RegisterCommandBinding('t.doc', 't.doc.run', 'Ctrl+Alt+F12');
+    Assert.IsTrue(MatchActiveAction(vkF12, [ssCtrl, ssAlt]) = kaNone, 'Ctrl+Alt+F12 is free');
+    Key := vkF12;
+    KeyChar := #0;
+    Assert.IsTrue(DispatchEditorKeys(Host, Key, [ssCtrl, ssAlt], KeyChar, 10), 'bound chord handled');
+    Assert.IsTrue((Bound = 1) and (Key = 0), 'the plugin command ran and the key is consumed');
+  finally
+    CommandRegistry.UnregisterPlugin('t.doc');
+    Spy.Free;
+  end;
+end;
+
 { TTestEditorInput }
+
+procedure TTestEditorInput.TestPluginHooksOnDocumentCommands;
+begin
+  TestEditorInput.TestPluginHooksOnDocumentCommands;
+end;
 
 // Commands follow the keymap: a rebound action moves to its new key.
 procedure TTestEditorInput.TestRebinding;

@@ -19,6 +19,8 @@ type
     [Test] procedure TestNeedleBox;
     [Test] procedure TestPendingSelectMatch;
     [Test] procedure TestRowNameHelpers;
+    [Test] procedure TestPluginHooksOnPanelInput;
+    [Test] procedure TestPluginHooksOnTopMenu;
   end;
 
 implementation
@@ -26,6 +28,9 @@ implementation
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uKeymap,
+  uCommandRegistry,
+  uTopMenuBar,
+  uDualPanelTopMenu,
   uDualPanelTypes,
   uDualPanelUiTypes,
   uDualPanelInput,
@@ -1235,7 +1240,129 @@ begin
   Assert.IsTrue(Names[1] = 'readme.md', 'visible file name');
 end;
 
+procedure TestPluginHooksOnPanelInput;
+var
+  Spy: TFreeInputSpy;
+  NavSpy: TKeymapSpy;
+  Host: TDualPanelFreeInputHost;
+  Keymap: TDualPanelKeymapHost;
+  Snap: TPanelFreeInputSnap;
+  Key: Word;
+  Ch: Char;
+  Hooked, Bound: Integer;
+  Handle: Boolean;
+begin
+  Hooked := 0;
+  Bound := 0;
+  Handle := True;
+  Spy := TFreeInputSpy.Create;
+  NavSpy := TKeymapSpy.Create;
+  try
+    BindFree(Host, Spy);
+    BindSpy(Keymap, NavSpy);
+    Snap := Default(TPanelFreeInputSnap);
+    Snap.ViewH := 10;
+    Snap.Cols := 1;
+    Snap.PageSize := 10;
+    Spy.PrimaryHandled := True;
+    CommandRegistry.RegisterHook('t.panel', 'Copy',
+      function(const ACommand, AOrigin: string): Boolean
+      begin
+        Inc(Hooked);
+        Result := Handle;
+      end);
+
+    Assert.IsTrue(MatchActiveAction(vkF5, []) = kaCopy, 'F5 is Copy');
+    Key := vkF5;
+    Ch := #0;
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'hooked key handled');
+    Assert.IsTrue(Hooked = 1, 'the hook ran for F5');
+    Assert.IsTrue(Spy.Last = '', 'a handled hook skips the built-in dispatch');
+    Assert.IsTrue(Key = 0, 'a handled hook consumes the key');
+
+    Handle := False;
+    Key := vkF5;
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'passed-through key handled');
+    Assert.IsTrue(Hooked = 2, 'the hook ran again');
+    Assert.IsTrue(Spy.Last = 'primary', 'a hook that passes lets the built-in dispatch run');
+
+    Spy.Last := '';
+    Key := vkF8;
+    DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch);
+    Assert.IsTrue(Hooked = 2, 'a hook on Copy does not see F8');
+
+    CommandRegistry.RegisterCommand('t.panel', 't.panel.run', procedure begin Inc(Bound); end);
+    CommandRegistry.RegisterCommandBinding('t.panel', 't.panel.run', 'Ctrl+Alt+F12');
+    Assert.IsTrue(MatchActiveAction(vkF12, [ssCtrl, ssAlt]) = kaNone, 'Ctrl+Alt+F12 is free');
+    Spy.Last := '';
+    Key := vkF12;
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl, ssAlt], Ch),
+      'bound chord handled');
+    Assert.IsTrue(Bound = 1, 'the plugin command ran');
+    Assert.IsTrue(Spy.Last = '', 'a bound chord does not reach the built-in dispatch');
+    Assert.IsTrue(Key = 0, 'a bound chord consumes the key');
+
+    // A chord a built-in action owns stays with that action.
+    CommandRegistry.RegisterCommandBinding('t.panel', 't.panel.run', 'F5');
+    Handle := False;
+    Key := vkF5;
+    DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch);
+    Assert.IsTrue(Bound = 1, 'F5 still belongs to Copy');
+  finally
+    CommandRegistry.UnregisterPlugin('t.panel');
+    NavSpy.Free;
+    Spy.Free;
+  end;
+end;
+
+procedure TestPluginHooksOnTopMenu;
+var
+  NavSpy: TKeymapSpy;
+  Keymap: TDualPanelKeymapHost;
+  Seen: string;
+begin
+  NavSpy := TKeymapSpy.Create;
+  try
+    BindSpy(Keymap, NavSpy);
+    CommandRegistry.RegisterHook('t.menu', 'View',
+      function(const ACommand, AOrigin: string): Boolean
+      begin
+        Seen := Seen + ACommand + '/' + AOrigin + ';';
+        Result := True;
+      end);
+    CommandRegistry.RegisterHook('t.menu', 'Copy',
+      function(const ACommand, AOrigin: string): Boolean
+      begin
+        Result := False;
+      end);
+
+    Assert.IsTrue(DispatchTopMenuAction(Keymap, tmaFileView), 'View menu item dispatched');
+    Assert.IsTrue(Seen = 'View/menu;', 'the menu runs the View hook with origin menu');
+    Assert.IsTrue(NavSpy.Last = '', 'a handled hook skips the menu command');
+
+    Seen := '';
+    DispatchTopMenuAction(Keymap, tmaFileCalcSize);
+    Assert.IsTrue(Seen = '', 'Calculate size is not the View command');
+
+    DispatchTopMenuAction(Keymap, tmaFileCopy);
+    Assert.IsTrue(NavSpy.Last = 'job', 'a hook that passes lets the menu command run');
+  finally
+    CommandRegistry.UnregisterPlugin('t.menu');
+    NavSpy.Free;
+  end;
+end;
+
 { TTestDualPanelInput }
+
+procedure TTestDualPanelInput.TestPluginHooksOnPanelInput;
+begin
+  TestDualPanelInput.TestPluginHooksOnPanelInput;
+end;
+
+procedure TTestDualPanelInput.TestPluginHooksOnTopMenu;
+begin
+  TestDualPanelInput.TestPluginHooksOnTopMenu;
+end;
 
 procedure TTestDualPanelInput.TestInputTranslation;
 begin

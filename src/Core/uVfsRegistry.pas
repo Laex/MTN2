@@ -15,10 +15,20 @@ type
   /// <summary>Which URI shape Enter should build to navigate into a file
   /// registered via RegisterArchiveExtension. akZipChain appends "!/" to the
   /// file:// URI (built-in zip backend, priority 20 in GlobalVfsRegistry);
-  /// akSevenZip rewrites it to "7z:///&lt;path&gt;!/" (mtn.7z-style plugin
-  /// scheme, declared by the plugin's manifest, see uPluginManifest.pas).</summary>
-  TArchiveExtensionKind = (akZipChain, akSevenZip);
+  /// akPluginScheme rewrites it to "&lt;scheme&gt;:///&lt;path&gt;!/" where the
+  /// scheme belongs to a plugin (mtn.7z: "7z"; declared by the plugin's
+  /// manifest, see uPluginManifest.pas).</summary>
+  TArchiveExtensionKind = (akZipChain, akPluginScheme);
 
+const
+  /// <summary>Plugin entries never sort ahead of the built-in backends
+  /// (find 10, sys/recycle/ws/sftp 15, archive 20, archive extensions 50)
+  /// unless the plugin holds an override grant for that scheme or extension.</summary>
+  cPluginMinPriority = 60;
+  /// <summary>Priority ceiling of a granted override: ahead of every built-in.</summary>
+  cOverridePriority = 5;
+
+type
   /// <summary>How TVfsRegistryRoot should dispatch Copy/Move. Pure function
   /// of URIs + plugin-ownership flags so tests do not need a live VFS.</summary>
   TVfsTransferRoute = (vtrNotSupported, vtrFile, vtrZip, vtrSftp,
@@ -31,16 +41,30 @@ type
     procedure RegisterScheme(const AScheme: string;
       const ABackend: IVirtualFileSystem; APriority: Integer = 100);
     /// <summary>Like RegisterScheme, tagged with APluginId so UnloadAll can
-    /// drop the entry before FreeLibrary. Built-in schemes must not use this.</summary>
+    /// drop the entry before FreeLibrary. Built-in schemes must not use this.
+    /// Reserved schemes (IsReservedVfsScheme) are ignored. Without an override
+    /// grant the priority is raised to at least cPluginMinPriority, so the
+    /// plugin cannot take over a scheme a built-in backend already serves;
+    /// with a grant it is lowered to at most cOverridePriority.</summary>
     procedure RegisterPluginScheme(const APluginId, AScheme: string;
       const ABackend: IVirtualFileSystem; APriority: Integer = 100);
     /// <summary>Declares that a file name extension (".7z", ".zip", ...)
     /// should navigate as an archive on Enter. APluginId '' marks a built-in,
     /// permanent entry; a non-empty id is dropped by UnregisterPlugin, so a
     /// plugin that fails to load (or is unloaded) stops claiming its
-    /// extensions instead of leaving a stale hardcoded association.</summary>
+    /// extensions instead of leaving a stale hardcoded association.
+    /// AScheme is the plugin scheme Enter navigates to for akPluginScheme
+    /// ('' = "7z"). Plugin priorities follow the same grant rule as
+    /// RegisterPluginScheme.</summary>
     procedure RegisterArchiveExtension(const APluginId, AExtension: string;
-      AKind: TArchiveExtensionKind; APriority: Integer = 100);
+      AKind: TArchiveExtensionKind; APriority: Integer = 100;
+      const AScheme: string = '');
+    /// <summary>Allows APluginId to replace the built-in handler of each entry
+    /// in AKeys, a scheme ("sftp") or a file name extension (".zip"). Reserved schemes
+    /// cannot be granted. Dropped by UnregisterPlugin. Grant before the
+    /// plugin registers, since the priority is decided at registration.</summary>
+    procedure GrantOverrides(const APluginId: string; const AKeys: TArray<string>);
+    function IsOverrideGranted(const APluginId, AKey: string): Boolean;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
     function Resolve(const AURI: string): IVirtualFileSystem;
@@ -49,6 +73,10 @@ type
     /// RegisterArchiveExtension (built-in or a currently-loaded plugin).</summary>
     function TryResolveArchiveKind(const AFileName: string;
       out AKind: TArchiveExtensionKind): Boolean;
+    /// <summary>Like TryResolveArchiveKind, also returning the plugin scheme
+    /// for akPluginScheme ('' for akZipChain).</summary>
+    function TryResolveArchive(const AFileName: string;
+      out AKind: TArchiveExtensionKind; out AScheme: string): Boolean;
   end;
 
   TVfsRegistry = class(TInterfacedObject, IVfsRegistry)
@@ -65,13 +93,22 @@ type
         PluginId: string;
         Extension: string;
         Kind: TArchiveExtensionKind;
+        Scheme: string;
         Priority: Integer;
+      end;
+      TOverrideGrant = record
+        PluginId: string;
+        Key: string;
       end;
     var
       FEntries: TList<TEntry>;
       FArchiveExts: TList<TArchiveExtEntry>;
+      FGrants: TList<TOverrideGrant>;
     procedure SortByPriority;
     procedure SortArchiveExtsByPriority;
+    /// <summary>Priority a plugin entry gets after the grant rule of RegisterPluginScheme.</summary>
+    function EffectivePluginPriority(const APluginId, AKey: string;
+      ARequested: Integer): Integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -82,13 +119,18 @@ type
     procedure RegisterPluginScheme(const APluginId, AScheme: string;
       const ABackend: IVirtualFileSystem; APriority: Integer = 100);
     procedure RegisterArchiveExtension(const APluginId, AExtension: string;
-      AKind: TArchiveExtensionKind; APriority: Integer = 100);
+      AKind: TArchiveExtensionKind; APriority: Integer = 100;
+      const AScheme: string = '');
+    procedure GrantOverrides(const APluginId: string; const AKeys: TArray<string>);
+    function IsOverrideGranted(const APluginId, AKey: string): Boolean;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
     function Resolve(const AURI: string): IVirtualFileSystem;
     function TryResolve(const AURI: string; out ABackend: IVirtualFileSystem): Boolean;
     function TryResolveArchiveKind(const AFileName: string;
       out AKind: TArchiveExtensionKind): Boolean;
+    function TryResolveArchive(const AFileName: string;
+      out AKind: TArchiveExtensionKind; out AScheme: string): Boolean;
   end;
 
   /// <summary>Composite IVirtualFileSystem rooted on a registry (Copy/Move rules included).</summary>
@@ -139,6 +181,14 @@ function CreateDefaultVfs: IVirtualFileSystem;
 function CreateDefaultVfsRegistry: IVfsRegistry;
 function UriSchemeOf(const AURI: string): string;
 
+/// <summary>Schemes only the host may serve: file, sys, recycle, find, ws.
+/// A plugin cannot register or override them.</summary>
+function IsReservedVfsScheme(const AScheme: string): Boolean;
+
+/// <summary>Lower-case, trimmed override key. A key starting with "." is a
+/// file name extension (".zip"), anything else is a scheme ("sftp").</summary>
+function NormalizeOverrideKey(const AKey: string): string;
+
 function ClassifyVfsTransfer(const AFromURI, AToURI: string; AIsMove: Boolean;
   APluginOwnedFrom, APluginOwnedTo, ASamePluginBackend: Boolean;
   out AReason: string): TVfsTransferRoute;
@@ -160,7 +210,7 @@ procedure SetVfsLazyLoad(AEnsureScheme, AEnsureArchiveExt: TVfsLazyLoadFunc);
 implementation
 
 uses
-  System.IOUtils, System.SyncObjs,
+  System.IOUtils, System.SyncObjs, System.Math,
   uFileVfs, uZipVfs, uFindVfs, uSysFoldersVfs, uRecycleBinVfs, uWorkspaceVfs,
   uSftpVfs;
 
@@ -185,6 +235,20 @@ begin
     Result := LowerCase(Copy(S, 1, P - 1))
   else
     Result := '';
+end;
+
+function IsReservedVfsScheme(const AScheme: string): Boolean;
+var
+  S: string;
+begin
+  S := LowerCase(Trim(AScheme));
+  Result := (S = 'file') or (S = 'sys') or (S = 'recycle') or (S = 'find') or
+    (S = 'ws');
+end;
+
+function NormalizeOverrideKey(const AKey: string): string;
+begin
+  Result := LowerCase(Trim(AKey));
 end;
 
 type
@@ -470,13 +534,55 @@ begin
   inherited Create;
   FEntries := TList<TEntry>.Create;
   FArchiveExts := TList<TArchiveExtEntry>.Create;
+  FGrants := TList<TOverrideGrant>.Create;
 end;
 
 destructor TVfsRegistry.Destroy;
 begin
   FreeAndNil(FEntries);
   FreeAndNil(FArchiveExts);
+  FreeAndNil(FGrants);
   inherited Destroy;
+end;
+
+procedure TVfsRegistry.GrantOverrides(const APluginId: string;
+  const AKeys: TArray<string>);
+var
+  Key: string;
+  G: TOverrideGrant;
+begin
+  G.PluginId := Trim(APluginId);
+  if G.PluginId = '' then
+    Exit;
+  for Key in AKeys do
+  begin
+    G.Key := NormalizeOverrideKey(Key);
+    if (G.Key = '') or IsReservedVfsScheme(G.Key) or
+       IsOverrideGranted(G.PluginId, G.Key) then
+      Continue;
+    FGrants.Add(G);
+  end;
+end;
+
+function TVfsRegistry.IsOverrideGranted(const APluginId, AKey: string): Boolean;
+var
+  I: Integer;
+  Key: string;
+begin
+  Key := NormalizeOverrideKey(AKey);
+  for I := 0 to FGrants.Count - 1 do
+    if SameText(FGrants[I].PluginId, Trim(APluginId)) and (FGrants[I].Key = Key) then
+      Exit(True);
+  Result := False;
+end;
+
+function TVfsRegistry.EffectivePluginPriority(const APluginId, AKey: string;
+  ARequested: Integer): Integer;
+begin
+  if IsOverrideGranted(APluginId, AKey) then
+    Result := Min(ARequested, cOverridePriority)
+  else
+    Result := Max(ARequested, cPluginMinPriority);
 end;
 
 procedure TVfsRegistry.SortByPriority;
@@ -558,7 +664,8 @@ var
 begin
   PluginId := Trim(APluginId);
   Scheme := LowerCase(Trim(AScheme));
-  if (PluginId = '') or (Scheme = '') or not Assigned(ABackend) then
+  if (PluginId = '') or (Scheme = '') or not Assigned(ABackend) or
+     IsReservedVfsScheme(Scheme) then
     Exit;
   E.Id := 'plugin:' + PluginId + ':scheme:' + Scheme;
   E.PluginId := PluginId;
@@ -568,13 +675,13 @@ begin
       Result := UriSchemeOf(AURI) = Scheme;
     end;
   E.Backend := ABackend;
-  E.Priority := APriority;
+  E.Priority := EffectivePluginPriority(PluginId, Scheme, APriority);
   FEntries.Add(E);
   SortByPriority;
 end;
 
 procedure TVfsRegistry.RegisterArchiveExtension(const APluginId, AExtension: string;
-  AKind: TArchiveExtensionKind; APriority: Integer);
+  AKind: TArchiveExtensionKind; APriority: Integer; const AScheme: string);
 var
   Ext: string;
   E: TArchiveExtEntry;
@@ -587,13 +694,19 @@ begin
   E.PluginId := Trim(APluginId);
   E.Extension := Ext;
   E.Kind := AKind;
-  E.Priority := APriority;
+  E.Scheme := LowerCase(Trim(AScheme));
+  if (E.Kind = akPluginScheme) and (E.Scheme = '') then
+    E.Scheme := '7z';
+  if E.PluginId <> '' then
+    E.Priority := EffectivePluginPriority(E.PluginId, Ext, APriority)
+  else
+    E.Priority := APriority;
   FArchiveExts.Add(E);
   SortArchiveExtsByPriority;
 end;
 
-function TVfsRegistry.TryResolveArchiveKind(const AFileName: string;
-  out AKind: TArchiveExtensionKind): Boolean;
+function TVfsRegistry.TryResolveArchive(const AFileName: string;
+  out AKind: TArchiveExtensionKind; out AScheme: string): Boolean;
 
   function Match: Boolean;
   var
@@ -601,6 +714,7 @@ function TVfsRegistry.TryResolveArchiveKind(const AFileName: string;
     I: Integer;
   begin
     AKind := akZipChain;
+    AScheme := '';
     Ext := LowerCase(TPath.GetExtension(AFileName));
     if Ext = '' then
       Exit(False);
@@ -608,6 +722,7 @@ function TVfsRegistry.TryResolveArchiveKind(const AFileName: string;
       if FArchiveExts[I].Extension = Ext then
       begin
         AKind := FArchiveExts[I].Kind;
+        AScheme := FArchiveExts[I].Scheme;
         Exit(True);
       end;
     Result := False;
@@ -623,6 +738,14 @@ begin
   Result := False;
 end;
 
+function TVfsRegistry.TryResolveArchiveKind(const AFileName: string;
+  out AKind: TArchiveExtensionKind): Boolean;
+var
+  Scheme: string;
+begin
+  Result := TryResolveArchive(AFileName, AKind, Scheme);
+end;
+
 procedure TVfsRegistry.UnregisterPlugin(const APluginId: string);
 var
   I: Integer;
@@ -635,6 +758,9 @@ begin
   for I := FArchiveExts.Count - 1 downto 0 do
     if SameText(FArchiveExts[I].PluginId, APluginId) then
       FArchiveExts.Delete(I);
+  for I := FGrants.Count - 1 downto 0 do
+    if SameText(FGrants[I].PluginId, Trim(APluginId)) then
+      FGrants.Delete(I);
 end;
 
 function TVfsRegistry.IsPluginOwned(const AURI: string): Boolean;

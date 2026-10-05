@@ -42,7 +42,10 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
   Winapi.Windows,
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
-  uKeymapRegistry, uMenuRegistry, uPluginManifest, uWasmPluginHost;
+  uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi,
+  uPluginChrome, uPluginSettings,
+  uPluginManifest,
+  uWasmPluginHost;
 
 type
   TPluginLoadKind = (lpkNative, lpkWasm);
@@ -73,6 +76,8 @@ type
         /// <summary>Heap copy of the table passed to mtn_plugin_init. The
         /// plugin may stash this pointer until mtn_plugin_shutdown.</summary>
         HostApi: PHostApiTable;
+        /// <summary>The manifest says "keepLoaded": FreeLibrary is skipped.</summary>
+        KeepLoaded: Boolean;
       end;
     type
       TCatalogedPlugin = record
@@ -81,6 +86,14 @@ type
         ArchiveExtensions: TArray<string>;
         Files: TArray<string>;
         Attempted: Boolean;
+        /// <summary>Loaded at CatalogPlugins: the manifest asks for "startup",
+        /// or asks to override built-ins and the user allowed it.</summary>
+        LoadAtStart: Boolean;
+        /// <summary>The user switched the plugin off: it is neither loaded nor
+        /// offered to the lazy triggers.</summary>
+        Disabled: Boolean;
+        /// <summary>The manifest's "overrides" (built-ins the plugin asks to replace).</summary>
+        Overrides: TArray<string>;
       end;
     var
       FLoaded: TList<TLoadedPlugin>;
@@ -88,7 +101,14 @@ type
       FOnLog: TPluginLoadLogEvent;
       FEnsuring: Boolean;
       FAllEnsured: Boolean;
+      FOverrideAllow: TArray<string>;
+      FDisabled: TArray<string>;
     function BuildHostApiTable: THostApiTable;
+    function IsOverrideAllowed(const APluginId: string): Boolean;
+    function IsDisabled(const APluginId: string): Boolean;
+    procedure UnloadAt(AIndex: Integer);
+    procedure GrantManifestOverrides(const APluginId: string;
+      const AManifest: TPluginManifest);
     function TryLoadOne(const AFileName, APluginId: string): Boolean;
     function TryLoadOneWasm(const AFileName, APluginId: string): Boolean;
     function PluginIsLoaded(const APluginId: string): Boolean;
@@ -104,9 +124,39 @@ type
     /// individual modules are logged (see OnLog) and skipped - one bad
     /// plugin never stops the others or the host.</summary>
     procedure LoadPluginsFrom(const ADir: string);
+    /// <summary>Plugin ids the user trusts to replace built-in schemes and
+    /// archive extensions. Applies to plugins loaded afterwards; a plugin
+    /// outside the list keeps its "overrides" manifest entry inert.</summary>
+    procedure SetOverrideAllowList(const AIds: TArray<string>);
+    /// <summary>Plugin ids the user switched off. Applies to plugins catalogued
+    /// or loaded afterwards; SetPluginEnabled changes it on the fly.</summary>
+    procedure SetDisabledPlugins(const AIds: TArray<string>);
+    function DisabledPlugins: TArray<string>;
+    /// <summary>Switches a plugin off (it is unloaded now) or on (it is loaded
+    /// now). False when nothing in the catalog has that id.</summary>
+    function SetPluginEnabled(const APluginId: string; AEnabled: Boolean): Boolean;
+    /// <summary>Unloads every loaded module of APluginId, dropping its
+    /// registrations first. The catalog entry stays.</summary>
+    procedure UnloadPlugin(const APluginId: string);
+    function IsPluginLoaded(const APluginId: string): Boolean;
+    function IsPluginDisabled(const APluginId: string): Boolean;
+    /// <summary>Built-ins the catalogued plugin asks to replace (its manifest
+    /// "overrides"); empty when it asks for none.</summary>
+    function PluginOverrides(const APluginId: string): TArray<string>;
+    function IsOverrideGranted(const APluginId: string): Boolean;
+    function OverrideAllowList: TArray<string>;
+    /// <summary>Lets the plugin replace the built-ins its manifest names (or takes
+    /// that back). A loaded plugin is reloaded at once, since the priority of its
+    /// registrations is decided when it registers. False when the catalog has no
+    /// such plugin or it asks for no replacement.</summary>
+    function SetPluginOverrideAllowed(const APluginId: string; AAllowed: Boolean): Boolean;
     /// <summary>Scans ADir the same way as LoadPluginsFrom but does not
     /// call LoadLibrary. Schemes and archive extensions come from
-    /// plugin.json so a later Ensure* can load just that plugin.</summary>
+    /// plugin.json so a later Ensure* can load just that plugin. A plugin
+    /// whose manifest says "startup": true, or that is allowed to override
+    /// built-ins, is loaded right away: the lazy triggers never fire for a
+    /// scheme or extension a built-in handler already answers, nor for a
+    /// plugin that only hooks commands.</summary>
     procedure CatalogPlugins(const ADir: string);
     /// <summary>Loads the catalogued plugin that declared AScheme, if it
     /// is not loaded yet. False when nothing in the catalog owns it, or
@@ -144,19 +194,30 @@ implementation
   since a single cdecl function pointer is shared by every loaded plugin. }
 
 { A manifest's archiveExtensions (mtn.7z's plugin.json etc.) become
-  akSevenZip entries in GlobalVfsRegistry - the only pluggable archive
-  kind today (see TArchiveExtensionKind in uVfsRegistry.pas); the built-in
+  akPluginScheme entries in GlobalVfsRegistry that navigate into the plugin's
+  first declared scheme ("7z" when the manifest declares none); the built-in
   zip/jar/apk entries are registered once in GlobalVfsRegistry itself, not
   here. Tagging with APluginId means UnloadAll's UnregisterPlugin call
   drops these along with the plugin's VFS scheme. }
 procedure RegisterManifestArchiveExtensions(const APluginId: string;
   const AManifest: TPluginManifest);
 var
-  Ext: string;
+  Ext, Scheme: string;
 begin
+  if Length(AManifest.Schemes) > 0 then
+    Scheme := AManifest.Schemes[0]
+  else
+    Scheme := '7z';
   for Ext in AManifest.ArchiveExtensions do
-    GlobalVfsRegistry.RegisterArchiveExtension(APluginId, Ext, akSevenZip);
+    GlobalVfsRegistry.RegisterArchiveExtension(APluginId, Ext, akPluginScheme,
+      100, Scheme);
 end;
+
+{ A plugin may replace a built-in scheme or extension only when its manifest
+  asks for it ("overrides") and the user trusts it (plugins\overrides.json).
+  The grant is made before mtn_plugin_init because the registry decides the
+  priority of an entry when it is registered (see
+  TPluginLoader.GrantManifestOverrides). }
 
 function ThunkRegisterVfsScheme(APluginId, AScheme: PAnsiChar;
   ACallbacks: PVfsCallbacksCdecl; AUserData: Pointer; APriority: Int64): Int64; cdecl;
@@ -165,6 +226,8 @@ var
 begin
   try
     if (APluginId = nil) or (AScheme = nil) or (ACallbacks = nil) then
+      Exit(-1);
+    if IsReservedVfsScheme(UTF8ToString(AScheme)) then
       Exit(-1);
     Backend := TCdeclVfsBackend.Create(ACallbacks^, AUserData);
     GlobalVfsRegistry.RegisterPluginScheme(UTF8ToString(APluginId),
@@ -187,14 +250,316 @@ begin
   end;
 end;
 
+{ AAction names either a built-in keymap action (rebind) or a command the
+  plugin registered with RegisterCommand (a chord that runs it). }
 function ThunkRegisterKeyBinding(APluginId, AAction, AKeyCombo: PAnsiChar): Int64; cdecl;
+var
+  PluginId, Action, Combo: string;
 begin
   try
     if (APluginId = nil) or (AAction = nil) or (AKeyCombo = nil) then
       Exit(-1);
-    KeymapRegistry.RegisterBinding(UTF8ToString(APluginId), UTF8ToString(AAction),
-      UTF8ToString(AKeyCombo));
+    PluginId := UTF8ToString(APluginId);
+    Action := UTF8ToString(AAction);
+    Combo := UTF8ToString(AKeyCombo);
+    if CommandRegistry.HasCommand(Action) then
+      CommandRegistry.RegisterCommandBinding(PluginId, Action, Combo)
+    else
+      KeymapRegistry.RegisterBinding(PluginId, Action, Combo);
     Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterCommand(APluginId, ACommandId: PAnsiChar;
+  AOnRun: THostCommandCallback; AUserData: Pointer): Int64; cdecl;
+var
+  PluginId, CommandId: string;
+  Callback: THostCommandCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or (ACommandId = nil) or not Assigned(AOnRun) then
+      Exit(-1);
+    PluginId := UTF8ToString(APluginId);
+    CommandId := UTF8ToString(ACommandId);
+    Callback := AOnRun;
+    UserData := AUserData;
+    CommandRegistry.RegisterCommand(PluginId, CommandId,
+      procedure
+      begin
+        Callback(UserData);
+      end);
+    if CommandRegistry.HasCommand(CommandId) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterCommandHook(APluginId, ACommand: PAnsiChar;
+  AHook: THostCommandHookCallback; AUserData: Pointer; APriority: Int64): Int64; cdecl;
+var
+  PluginId: string;
+  Callback: THostCommandHookCallback;
+  UserData: Pointer;
+  Act: TKeymapAction;
+begin
+  try
+    if (APluginId = nil) or (ACommand = nil) or not Assigned(AHook) then
+      Exit(-1);
+    if not TryKeymapActionByName(UTF8ToString(ACommand), Act) then
+      Exit(-1);
+    PluginId := UTF8ToString(APluginId);
+    Callback := AHook;
+    UserData := AUserData;
+    CommandRegistry.RegisterHook(PluginId, UTF8ToString(ACommand),
+      function(const ACommandName, AOrigin: string): Boolean
+      var
+        CommandU, OriginU: UTF8String;
+      begin
+        CommandU := UTF8String(ACommandName);
+        OriginU := UTF8String(AOrigin);
+        Result := Callback(UserData, PAnsiChar(CommandU), PAnsiChar(OriginU)) = 1;
+      end, Integer(APriority));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterDocumentProvider(APluginId, AExtensions: PAnsiChar;
+  AModes: Int64; AHandler: THostDocumentProviderCallback; AUserData: Pointer;
+  APriority: Int64): Int64; cdecl;
+var
+  PluginId: string;
+  Modes: TDocumentModes;
+  Callback: THostDocumentProviderCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or (AExtensions = nil) or not Assigned(AHandler) then
+      Exit(-1);
+    Modes := [];
+    if (AModes and 1) <> 0 then
+      Include(Modes, dmView);
+    if (AModes and 2) <> 0 then
+      Include(Modes, dmEdit);
+    if Modes = [] then
+      Exit(-1);
+    PluginId := UTF8ToString(APluginId);
+    Callback := AHandler;
+    UserData := AUserData;
+    DocumentProviders.RegisterProvider(PluginId, 'native', UTF8ToString(AExtensions), Modes,
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      var
+        UriU, ModeU: UTF8String;
+        Buf: array[0..4095] of AnsiChar;
+        Answer: Int64;
+      begin
+        ARedirectURI := '';
+        UriU := UTF8String(AURI);
+        if AViewOnly then
+          ModeU := 'view'
+        else
+          ModeU := 'edit';
+        Buf[0] := #0;
+        Answer := Callback(UserData, PAnsiChar(UriU), PAnsiChar(ModeU), @Buf[0], SizeOf(Buf));
+        Buf[High(Buf)] := #0;
+        case Answer of
+          1: Result := dokHandled;
+          2:
+            begin
+              ARedirectURI := UTF8ToString(PAnsiChar(@Buf[0]));
+              Result := dokRedirect;
+            end;
+        else
+          Result := dokPass;
+        end;
+      end, Integer(APriority));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkShowDialog(APluginId, ADeclJson: PAnsiChar;
+  AOnCommand: THostDialogCommandCallback; AUserData: Pointer): Int64; cdecl;
+var
+  Callback: THostDialogCommandCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or (ADeclJson = nil) or not Assigned(AOnCommand) then
+      Exit(-1);
+    Callback := AOnCommand;
+    UserData := AUserData;
+    if PluginShowDialog(UTF8ToString(APluginId), UTF8ToString(ADeclJson),
+      procedure(const AControlId, AValuesJson: string)
+      var
+        IdU, ValuesU: UTF8String;
+      begin
+        IdU := UTF8String(AControlId);
+        ValuesU := UTF8String(AValuesJson);
+        Callback(UserData, PAnsiChar(IdU), PAnsiChar(ValuesU));
+      end) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterPanelActivate(APluginId, AScheme: PAnsiChar;
+  AHandler: THostPanelActivateCallback; AUserData: Pointer): Int64; cdecl;
+var
+  Callback: THostPanelActivateCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or (AScheme = nil) or not Assigned(AHandler) then
+      Exit(-1);
+    Callback := AHandler;
+    UserData := AUserData;
+    PanelPluginRegistry.RegisterActivateHandler(UTF8ToString(APluginId),
+      UTF8ToString(AScheme),
+      function(const APanelURI, ARowURI: string; AIsDirectory: Boolean): Boolean
+      var
+        PanelU, RowU: UTF8String;
+      begin
+        PanelU := UTF8String(APanelURI);
+        RowU := UTF8String(ARowURI);
+        Result := Callback(UserData, PAnsiChar(PanelU), PAnsiChar(RowU),
+          Ord(AIsDirectory)) = 1;
+      end);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetCommandCaption(APluginId, ACommandId, ACaption: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (ACommandId = nil) then
+      Exit(-1);
+    if ACaption = nil then
+      CommandRegistry.SetCommandCaption(UTF8ToString(APluginId), UTF8ToString(ACommandId), '')
+    else
+      CommandRegistry.SetCommandCaption(UTF8ToString(APluginId), UTF8ToString(ACommandId),
+        UTF8ToString(ACaption));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetStatusSegment(APluginId, ASegmentId, AText: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (ASegmentId = nil) then
+      Exit(-1);
+    if AText = nil then
+      PluginChrome.SetStatusSegment(UTF8ToString(APluginId), UTF8ToString(ASegmentId), '')
+    else
+      PluginChrome.SetStatusSegment(UTF8ToString(APluginId), UTF8ToString(ASegmentId),
+        UTF8ToString(AText));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterSettings(APluginId: PAnsiChar; AOnConfigure: THostCommandCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  Callback: THostCommandCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or not Assigned(AOnConfigure) then
+      Exit(-1);
+    Callback := AOnConfigure;
+    UserData := AUserData;
+    PluginSettings.RegisterConfigure(UTF8ToString(APluginId),
+      procedure
+      begin
+        Callback(UserData);
+      end);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkGetSetting(APluginId, AKey: PAnsiChar; ABuf: PAnsiChar;
+  ABufSize: Int64): Int64; cdecl;
+var
+  Value: string;
+  Bytes: UTF8String;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) then
+      Exit(-1);
+    if not PluginSettings.TryGetValue(UTF8ToString(APluginId), UTF8ToString(AKey), Value) then
+      Exit(-1);
+    Bytes := UTF8String(Value);
+    if (ABuf = nil) or (Int64(Length(Bytes)) + 1 > ABufSize) then
+      Exit(-2);
+    if Length(Bytes) > 0 then
+      Move(Bytes[1], ABuf^, Length(Bytes));
+    PByte(ABuf)[Length(Bytes)] := 0;
+    Result := Length(Bytes);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetSetting(APluginId, AKey, AValue: PAnsiChar): Int64; cdecl;
+var
+  Value: string;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) then
+      Exit(-1);
+    if AValue = nil then
+      Value := ''
+    else
+      Value := UTF8ToString(AValue);
+    if PluginSettings.SetValue(UTF8ToString(APluginId), UTF8ToString(AKey), Value) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkOpenExternal(AURI: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AURI <> nil) and OpenUriWithSystem(UTF8ToString(AURI)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkExecuteCommand(ACommandId: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if ACommandId = nil then
+      Exit(-1);
+    if CommandRegistry.TryExecute(UTF8ToString(ACommandId)) then
+      Result := 0
+    else
+      Result := -1;
   except
     Result := -1;
   end;
@@ -318,6 +683,159 @@ begin
     FOnLog(AFileName, AResult, AMessage);
 end;
 
+function TPluginLoader.IsDisabled(const APluginId: string): Boolean;
+var
+  Id: string;
+begin
+  for Id in FDisabled do
+    if SameText(Id, APluginId) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TPluginLoader.SetDisabledPlugins(const AIds: TArray<string>);
+var
+  I: Integer;
+  E: TCatalogedPlugin;
+begin
+  FDisabled := Copy(AIds);
+  for I := 0 to FCatalog.Count - 1 do
+  begin
+    E := FCatalog[I];
+    E.Disabled := IsDisabled(E.PluginId);
+    FCatalog[I] := E;
+  end;
+end;
+
+function TPluginLoader.DisabledPlugins: TArray<string>;
+begin
+  Result := Copy(FDisabled);
+end;
+
+function TPluginLoader.PluginOverrides(const APluginId: string): TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, 0);
+  for I := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[I].PluginId, APluginId) then
+      Exit(Copy(FCatalog[I].Overrides));
+end;
+
+function TPluginLoader.IsOverrideGranted(const APluginId: string): Boolean;
+begin
+  Result := IsOverrideAllowed(APluginId);
+end;
+
+function TPluginLoader.OverrideAllowList: TArray<string>;
+begin
+  Result := Copy(FOverrideAllow);
+end;
+
+function TPluginLoader.SetPluginOverrideAllowed(const APluginId: string;
+  AAllowed: Boolean): Boolean;
+var
+  I, J: Integer;
+  List: TList<string>;
+  E: TCatalogedPlugin;
+  WasLoaded: Boolean;
+begin
+  Result := False;
+  for I := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[I].PluginId, APluginId) then
+    begin
+      if Length(FCatalog[I].Overrides) = 0 then
+        Exit;
+      List := TList<string>.Create;
+      try
+        for J := 0 to High(FOverrideAllow) do
+          if not SameText(FOverrideAllow[J], APluginId) then
+            List.Add(FOverrideAllow[J]);
+        if AAllowed then
+          List.Add(FCatalog[I].PluginId);
+        FOverrideAllow := List.ToArray;
+      finally
+        List.Free;
+      end;
+      WasLoaded := PluginIsLoaded(FCatalog[I].PluginId);
+      if WasLoaded then
+      begin
+        UnloadPlugin(FCatalog[I].PluginId);
+        E := FCatalog[I];
+        E.Attempted := False;
+        FCatalog[I] := E;
+        if not FCatalog[I].Disabled then
+          EnsureIndex(I);
+      end;
+      Exit(True);
+    end;
+end;
+
+function TPluginLoader.IsPluginDisabled(const APluginId: string): Boolean;
+begin
+  Result := IsDisabled(APluginId);
+end;
+
+function TPluginLoader.IsPluginLoaded(const APluginId: string): Boolean;
+begin
+  Result := PluginIsLoaded(APluginId);
+end;
+
+function TPluginLoader.SetPluginEnabled(const APluginId: string; AEnabled: Boolean): Boolean;
+var
+  I, J: Integer;
+  E: TCatalogedPlugin;
+  List: TList<string>;
+begin
+  Result := False;
+  for I := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[I].PluginId, APluginId) then
+    begin
+      List := TList<string>.Create;
+      try
+        for J := 0 to High(FDisabled) do
+          if not SameText(FDisabled[J], APluginId) then
+            List.Add(FDisabled[J]);
+        if not AEnabled then
+          List.Add(FCatalog[I].PluginId);
+        FDisabled := List.ToArray;
+      finally
+        List.Free;
+      end;
+      E := FCatalog[I];
+      E.Disabled := not AEnabled;
+      E.Attempted := False;
+      FCatalog[I] := E;
+      if AEnabled then
+        EnsureIndex(I)
+      else
+        UnloadPlugin(E.PluginId);
+      Exit(True);
+    end;
+end;
+
+procedure TPluginLoader.SetOverrideAllowList(const AIds: TArray<string>);
+begin
+  FOverrideAllow := Copy(AIds);
+end;
+
+function TPluginLoader.IsOverrideAllowed(const APluginId: string): Boolean;
+var
+  Id: string;
+begin
+  for Id in FOverrideAllow do
+    if SameText(Id, APluginId) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TPluginLoader.GrantManifestOverrides(const APluginId: string;
+  const AManifest: TPluginManifest);
+begin
+  if (Length(AManifest.Overrides) > 0) and IsOverrideAllowed(APluginId) then
+    GlobalVfsRegistry.GrantOverrides(APluginId, AManifest.Overrides);
+end;
+
 function TPluginLoader.BuildHostApiTable: THostApiTable;
 begin
   InitHostApiTableCore(Result);
@@ -325,6 +843,18 @@ begin
   Result.RegisterPanelPlugin := @ThunkRegisterPanelPlugin;
   Result.RegisterKeyBinding := @ThunkRegisterKeyBinding;
   Result.RegisterMenuItem := @ThunkRegisterMenuItem;
+  Result.RegisterCommand := @ThunkRegisterCommand;
+  Result.RegisterCommandHook := @ThunkRegisterCommandHook;
+  Result.ExecuteCommand := @ThunkExecuteCommand;
+  Result.RegisterDocumentProvider := @ThunkRegisterDocumentProvider;
+  Result.OpenExternal := @ThunkOpenExternal;
+  Result.ShowDialog := @ThunkShowDialog;
+  Result.RegisterPanelActivate := @ThunkRegisterPanelActivate;
+  Result.SetCommandCaption := @ThunkSetCommandCaption;
+  Result.SetStatusSegment := @ThunkSetStatusSegment;
+  Result.RegisterSettings := @ThunkRegisterSettings;
+  Result.GetSetting := @ThunkGetSetting;
+  Result.SetSetting := @ThunkSetSetting;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -343,10 +873,10 @@ begin
 
   if TryReadPluginManifest(ExtractFileDir(AFileName), Manifest) then
   begin
-    if Manifest.HasAbi and (Manifest.AbiVersion <> cPluginAbiVersion) then
+    if Manifest.HasAbi and not IsSupportedPluginAbi(Manifest.AbiVersion) then
     begin
       Log(AFileName, plrAbiMismatch,
-        Format('plugin.json abi %d != host %d', [Manifest.AbiVersion, cPluginAbiVersion]));
+        Format('plugin.json abi %d is outside host range %d..%d', [Manifest.AbiVersion, cPluginMinAbiVersion, cPluginAbiVersion]));
       Exit;
     end;
   end;
@@ -381,14 +911,15 @@ begin
     end;
   end;
 
-  if AbiVersion <> cPluginAbiVersion then
+  if not IsSupportedPluginAbi(AbiVersion) then
   begin
     Log(AFileName, plrAbiMismatch,
-      Format('Plugin ABI version %d != host %d', [AbiVersion, cPluginAbiVersion]));
+      Format('Plugin ABI version %d is outside host range %d..%d', [AbiVersion, cPluginMinAbiVersion, cPluginAbiVersion]));
     FreeLibrary(Module);
     Exit;
   end;
 
+  GrantManifestOverrides(APluginId, Manifest);
   New(HostApi);
   HostApi^ := BuildHostApiTable;
   try
@@ -418,6 +949,7 @@ begin
   Loaded.Shutdown := ShutdownFn;
   Loaded.SetSecret := TPluginSetSecretFn(GetProcAddress(Module, 'mtn_plugin_set_secret'));
   Loaded.HostApi := HostApi;
+  Loaded.KeepLoaded := Manifest.KeepLoaded;
   FLoaded.Add(Loaded);
   RegisterManifestArchiveExtensions(APluginId, Manifest);
   Log(AFileName, plrLoaded, 'OK');
@@ -435,10 +967,10 @@ begin
 
   if TryReadPluginManifest(ExtractFileDir(AFileName), Manifest) then
   begin
-    if Manifest.HasAbi and (Manifest.AbiVersion <> cPluginAbiVersion) then
+    if Manifest.HasAbi and not IsSupportedPluginAbi(Manifest.AbiVersion) then
     begin
       Log(AFileName, plrAbiMismatch,
-        Format('plugin.json abi %d != host %d', [Manifest.AbiVersion, cPluginAbiVersion]));
+        Format('plugin.json abi %d is outside host range %d..%d', [Manifest.AbiVersion, cPluginMinAbiVersion, cPluginAbiVersion]));
       Exit;
     end;
   end;
@@ -449,7 +981,9 @@ begin
     Exit;
   end;
 
+  GrantManifestOverrides(APluginId, Manifest);
   Inst := TWasmPluginInstance.Create(APluginId);
+  Inst.Wasi := Manifest.Wasi;
   if not Inst.LoadFromFile(AFileName, Err) then
   begin
     Inst.Free;
@@ -475,6 +1009,7 @@ begin
   Loaded.Shutdown := nil;
   Loaded.SetSecret := nil;
   Loaded.HostApi := nil;
+  Loaded.KeepLoaded := False;
   FLoaded.Add(Loaded);
   RegisterManifestArchiveExtensions(APluginId, Manifest);
   Log(AFileName, plrLoaded, 'OK (wasm)');
@@ -546,6 +1081,8 @@ begin
   if (AIndex < 0) or (AIndex >= FCatalog.Count) then
     Exit(False);
   E := FCatalog[AIndex];
+  if E.Disabled then
+    Exit(False);
   if PluginIsLoaded(E.PluginId) then
     Exit(True);
   // A nested resolve from inside mtn_plugin_init must not start a second load.
@@ -569,6 +1106,7 @@ end;
 procedure TPluginLoader.CatalogPlugins(const ADir: string);
 var
   PluginDir, PluginId: string;
+  I: Integer;
   E: TCatalogedPlugin;
   Manifest: TPluginManifest;
 begin
@@ -582,10 +1120,16 @@ begin
     E.PluginId := PluginId;
     E.Files := CollectPluginModules(PluginDir);
     E.Attempted := PluginIsLoaded(PluginId);
+    E.Disabled := IsDisabled(PluginId);
+    E.LoadAtStart := False;
+    SetLength(E.Overrides, 0);
     if TryReadPluginManifest(PluginDir, Manifest) then
     begin
       E.Schemes := Manifest.Schemes;
       E.ArchiveExtensions := Manifest.ArchiveExtensions;
+      E.Overrides := Manifest.Overrides;
+      E.LoadAtStart := Manifest.Startup or
+        ((Length(Manifest.Overrides) > 0) and IsOverrideAllowed(PluginId));
     end
     else
     begin
@@ -594,6 +1138,9 @@ begin
     end;
     FCatalog.Add(E);
   end;
+  for I := 0 to FCatalog.Count - 1 do
+    if FCatalog[I].LoadAtStart and not FCatalog[I].Disabled then
+      EnsureIndex(I);
 end;
 
 function TPluginLoader.EnsureScheme(const AScheme: string): Boolean;
@@ -659,6 +1206,8 @@ begin
   for PluginDir in TDirectory.GetDirectories(ADir, '*', TSearchOption.soTopDirectoryOnly) do
   begin
     PluginId := TPath.GetFileName(PluginDir);
+    if IsDisabled(PluginId) then
+      Continue;
     // dll, then wat, then wasm - same order as before the single scan.
     Modules := CollectPluginModules(PluginDir);
     for FileName in Modules do
@@ -669,38 +1218,58 @@ begin
   end;
 end;
 
+procedure TPluginLoader.UnloadAt(AIndex: Integer);
+begin
+  // Drop registry entries before FreeLibrary so new resolves cannot call
+  // into a module that is about to disappear.
+  KeymapRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  CommandRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  DocumentProviders.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  PluginUiUnregister(FLoaded[AIndex].PluginId);
+  PluginChrome.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  PluginSettings.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  MenuRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  GlobalVfsRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  PanelPluginRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  try
+    if FLoaded[AIndex].Kind = lpkWasm then
+    begin
+      if FLoaded[AIndex].WasmInst <> nil then
+      begin
+        FLoaded[AIndex].WasmInst.ShutdownPlugin;
+        FLoaded[AIndex].WasmInst.Free;
+      end;
+    end
+    else if Assigned(FLoaded[AIndex].Shutdown) then
+      FLoaded[AIndex].Shutdown();
+  except
+    // A misbehaving plugin's shutdown must not block unloading the rest.
+  end;
+  if FLoaded[AIndex].HostApi <> nil then
+    Dispose(FLoaded[AIndex].HostApi);
+  if (FLoaded[AIndex].ModuleHandle <> 0) and not FLoaded[AIndex].KeepLoaded then
+    FreeLibrary(FLoaded[AIndex].ModuleHandle);
+end;
+
+procedure TPluginLoader.UnloadPlugin(const APluginId: string);
+var
+  I: Integer;
+begin
+  for I := FLoaded.Count - 1 downto 0 do
+    if SameText(FLoaded[I].PluginId, APluginId) then
+    begin
+      UnloadAt(I);
+      FLoaded.Delete(I);
+    end;
+end;
+
 procedure TPluginLoader.UnloadAll;
 var
   I: Integer;
   E: TCatalogedPlugin;
 begin
   for I := FLoaded.Count - 1 downto 0 do
-  begin
-    // Drop registry entries before FreeLibrary so new resolves cannot call
-    // into a module that is about to disappear.
-    KeymapRegistry.UnregisterPlugin(FLoaded[I].PluginId);
-    MenuRegistry.UnregisterPlugin(FLoaded[I].PluginId);
-    GlobalVfsRegistry.UnregisterPlugin(FLoaded[I].PluginId);
-    PanelPluginRegistry.UnregisterPlugin(FLoaded[I].PluginId);
-    try
-      if FLoaded[I].Kind = lpkWasm then
-      begin
-        if FLoaded[I].WasmInst <> nil then
-        begin
-          FLoaded[I].WasmInst.ShutdownPlugin;
-          FLoaded[I].WasmInst.Free;
-        end;
-      end
-      else if Assigned(FLoaded[I].Shutdown) then
-        FLoaded[I].Shutdown();
-    except
-      // A misbehaving plugin's shutdown must not block unloading the rest.
-    end;
-    if FLoaded[I].HostApi <> nil then
-      Dispose(FLoaded[I].HostApi);
-    if FLoaded[I].ModuleHandle <> 0 then
-      FreeLibrary(FLoaded[I].ModuleHandle);
-  end;
+    UnloadAt(I);
   FLoaded.Clear;
   for I := 0 to FCatalog.Count - 1 do
   begin

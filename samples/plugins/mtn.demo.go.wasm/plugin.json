@@ -1,0 +1,8 @@
+{
+  "id": "mtn.demo.go.wasm",
+  "name": "Demo: safe delete (Go, WASM)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "wasi": true
+}

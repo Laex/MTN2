@@ -18,7 +18,7 @@ uses
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
-  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uPluginHost,
+  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost,
   uFolderHistory, uANSIParser,
   uLinkUtils, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
   uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
@@ -102,6 +102,9 @@ type
     FOnLaunchConsoleFile: TLaunchConsoleFileEvent;
     FOnQuitRequest: TQuitRequestEvent;
     FOnOpenUpdates: TQuitRequestEvent;
+    /// <summary>Row of the Plugins list to come back to when the settings dialog of
+    /// that plugin is closed; -1 = none.</summary>
+    FPluginListReturnRow: Integer;
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
@@ -657,6 +660,8 @@ type
     /// rights; AAction runs after a yes (the UAC prompt follows).</summary>
     procedure OfferElevated(const AAction: TProc);
     procedure OpenPluginListDialog;
+    procedure ShowPluginList(ASelectedIndex: Integer);
+    function HandlePluginListCommand(const AControlId: string): Boolean;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
     procedure HostOpenHistoryFile(const AURI: string; AEdit: Boolean);
@@ -972,7 +977,14 @@ type
       AMove: Boolean);
     /// <summary>After OleDragLocalFiles returns - reload if shell moved files out.</summary>
     procedure FinishOleFileDrag(AEffect: LongInt);
+    /// <summary>Opens AURI in the viewer (AViewOnly) or the editor. A plugin
+    /// provider registered for the file type (uDocumentProviders) is asked
+    /// first: it may open the file itself or name another URI for the built-in
+    /// window.</summary>
     procedure OpenDocument(const AURI: string; AViewOnly: Boolean);
+    /// <summary>The built-in viewer / editor tab for AURI, without asking the
+    /// document providers.</summary>
+    procedure OpenBuiltInDocument(const AURI: string; AViewOnly: Boolean);
     /// <summary>New terminal tab with AProfileId's shell in ACwd; ACommand,
     /// when given, is typed into that shell.</summary>
     procedure OpenTerminal(const AProfileId, ACwd: string; const ACommand: string = '');
@@ -1214,6 +1226,7 @@ begin
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
   FDialogKind := hdkNone;
+  FPluginListReturnRow := -1;
   BindDialogControllers;
   FFreeText := '';
   FFreeRoot := '';
@@ -4690,15 +4703,19 @@ procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
 var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
-  UserCommand, Uri: string;
+  UserCommand, Uri, ArchiveScheme: string;
 begin
   Uri := ARow.URI;
+  // A plugin that serves this panel's scheme may take the activation itself.
+  if (not ARow.IsParent) and (ARow.URI <> '') and
+     PanelPluginRegistry.TryActivate(ATab.CurrentURI, ARow.URI, ARow.IsDirectory) then
+    Exit;
   // Ask the registry which extensions currently navigate as an archive
   // (built-in zip/jar/apk plus whatever a loaded plugin's manifest declared
   // - see uVfsRegistry.RegisterArchiveExtension) instead of hardcoding the
   // extension list here.
   IsArchiveFile := (ARow.URI <> '') and
-    GlobalVfsRegistry.TryResolveArchiveKind(ARow.Text, ArchiveKind);
+    GlobalVfsRegistry.TryResolveArchive(ARow.Text, ArchiveKind, ArchiveScheme);
   case ClassifyActivateCurrent(
     IsFindUri(ATab.CurrentURI) and (not ARow.IsParent) and (ARow.URI <> ''),
     ARow.IsParent and (IsSystemFoldersUri(ATab.CurrentURI) or
@@ -4714,11 +4731,11 @@ begin
       if ARow.URI <> '' then
         NavigateActiveTo(ARow.URI);
     ackZipNavigate:
-      if (ArchiveKind = akSevenZip) and (not HasArchiveChain(ARow.URI)) then
+      if (ArchiveKind = akPluginScheme) and (not HasArchiveChain(ARow.URI)) then
       begin
         FSkipArchivePasswordUri := '';
         FArchivePasswordRetry := False;
-        NavigateActiveTo(PathToSevenZipRootUri(FileUriToPath(ARow.URI)))
+        NavigateActiveTo(PathToArchiveRootUri(ArchiveScheme, FileUriToPath(ARow.URI)))
       end
       else
         NavigateActiveTo(EnsureArchiveRootUri(ARow.URI));
@@ -4980,6 +4997,7 @@ function TDualPanelWindow.DispatchDialogCommand(AKind: THostDialogKind;
   const AControlId, AValuesJson: string; const AFields: TDialogCommandFields): Boolean;
 var
   HostCmd: TProc<string, string>;
+  ReturnRow: Integer;
 begin
   Result := True;
   case AKind of
@@ -4993,6 +5011,8 @@ begin
       Result := FSearchDlg.DispatchCommand(AControlId, AFields);
     hdkHelp:
       FDialog.Close;
+    hdkPluginList:
+      Result := HandlePluginListCommand(AControlId);
     hdkFolderHistory:
       Result := FFolderHistory.DispatchCommand(AControlId);
     hdkPanelFilter:
@@ -5037,6 +5057,14 @@ begin
         FHostDialogCommand := nil;
         if Assigned(HostCmd) then
           HostCmd(AControlId, AValuesJson);
+        // A plugin's settings dialog is over: back to the Plugins list, unless the
+        // plugin chained another dialog (the list waits for that one).
+        if (FPluginListReturnRow >= 0) and not FDialog.Visible then
+        begin
+          ReturnRow := FPluginListReturnRow;
+          FPluginListReturnRow := -1;
+          ShowPluginList(ReturnRow);
+        end;
       end;
     hdkDirSync:
       Result := FDirSync.DispatchCommand(AControlId, AFields);
@@ -7205,10 +7233,59 @@ begin
     Exit;
   CloseTransientUiBeforeDialog;
   HostEnsureAllPlugins;
+  ShowPluginList(0);
+end;
 
-  FDialogKind := hdkHelp;
-  FDialog.Open(BuildPluginListDialog(HostPluginListDisplayLabels), DialogCommand);
+procedure TDualPanelWindow.ShowPluginList(ASelectedIndex: Integer);
+begin
+  FDialogKind := hdkPluginList;
+  FDialog.Open(BuildPluginListDialog(HostPluginRows, ASelectedIndex), DialogCommand);
   NotifyChanged;
+end;
+
+function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
+var
+  Row: Integer;
+begin
+  Result := True;
+  if (AControlId <> 'toggle') and (AControlId <> 'override') and (AControlId <> 'settings') then
+  begin
+    FDialog.Close;
+    Exit;
+  end;
+  Row := FDialog.GetListSelectedIndex('plugins');
+  FDialog.Close;
+  if AControlId = 'settings' then
+  begin
+    // The plugin shows its own dialog and the list comes back when it is closed;
+    // one without settings gets a message.
+    FPluginListReturnRow := Row;
+    if HostConfigurePlugin(Row) then
+    begin
+      if Assigned(FDialog) and FDialog.Visible then
+        Exit;
+      FPluginListReturnRow := -1;
+    end
+    else
+    begin
+      // A message dialog; closing it brings the list back (hdkHost branch).
+      if not ShowHostDialog(BuildConfirmDialog(T('ui.plugins.noSettingsTitle', 'Plugin settings'),
+           Format(T('ui.plugins.noSettings', 'The plugin %s has no settings.'),
+             [HostPluginIdAt(Row)])), nil) then
+      begin
+        FPluginListReturnRow := -1;
+        ShowPluginList(Row);
+      end;
+      Exit;
+    end;
+  end
+  else if AControlId = 'toggle' then
+    HostTogglePlugin(Row)
+  else
+    HostTogglePluginOverride(Row);
+  // The list is rebuilt so the marks show the new state; the menu is rebuilt
+  // too, since a plugin that left or arrived takes its items with it.
+  ShowPluginList(Row);
 end;
 
 function TDualPanelWindow.CurrentHelpScreen: THelpScreen;
@@ -8342,6 +8419,29 @@ begin
 end;
 
 procedure TDualPanelWindow.OpenDocument(const AURI: string; AViewOnly: Boolean);
+var
+  Redirect: string;
+begin
+  if AURI = '' then
+    Exit;
+  case DocumentProviders.TryOpen(AURI, AViewOnly, Redirect) of
+    dokHandled:
+      begin
+        FileHistoryPush(AURI, not AViewOnly);
+        Exit;
+      end;
+    // The redirect target is not offered to the providers again.
+    dokRedirect:
+      begin
+        FileHistoryPush(AURI, not AViewOnly);
+        OpenBuiltInDocument(Redirect, AViewOnly);
+        Exit;
+      end;
+  end;
+  OpenBuiltInDocument(AURI, AViewOnly);
+end;
+
+procedure TDualPanelWindow.OpenBuiltInDocument(const AURI: string; AViewOnly: Boolean);
 var
   I: Integer;
   Ws: TDualPanelWorkspaceTab;
@@ -10507,6 +10607,12 @@ begin
     end;
   end;
 
+  if InterceptKeymapAction(GlobalAct, 'key') then
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+    Exit;
+  end;
   if DispatchGlobalAction(FKeymapHost, GlobalAct, AKey, AKeyChar) then
     Exit;
 

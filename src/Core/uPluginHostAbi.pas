@@ -33,10 +33,17 @@ uses
 {$ALIGN 8} // 64-bit 8-byte structure alignment
 
 const
-  /// <summary>Bumped whenever THostApiTable's layout changes. Plugins must
+  /// <summary>Bumped whenever THostApiTable gains fields. The table only
+  /// grows at the end, so a plugin built against an older version reads a
+  /// prefix of the table the host hands out and keeps working. Plugins must
   /// check this via mtn_plugin_get_abi_version before trusting the table
-  /// (see uPluginLoader.TPluginLoader.LoadPluginsFrom).</summary>
-  cPluginAbiVersion: Int64 = 1;
+  /// (see uPluginLoader.TPluginLoader.LoadPluginsFrom).
+  /// 2: RegisterCommand, RegisterCommandHook, ExecuteCommand,
+  /// RegisterDocumentProvider, OpenExternal, ShowDialog, RegisterPanelActivate,
+  /// SetCommandCaption, SetStatusSegment, RegisterSettings, GetSetting, SetSetting.</summary>
+  cPluginAbiVersion: Int64 = 2;
+  /// <summary>Oldest plugin ABI version the host still loads.</summary>
+  cPluginMinAbiVersion: Int64 = 1;
 
 type
   /// <summary>C-compatible VFS callbacks table (cdecl calling convention).
@@ -100,6 +107,87 @@ type
   THostRegisterMenuItemCallback = procedure(AUserData: Pointer); cdecl;
   THostRegisterMenuItemFn = function(APluginId, AParentPath, AItemId, ACaption: PAnsiChar;
     AOnClick: THostRegisterMenuItemCallback; AUserData: Pointer; APriority: Int64): Int64; cdecl;
+  /// <summary>Handler of a plugin command (see RegisterCommand).</summary>
+  THostCommandCallback = procedure(AUserData: Pointer); cdecl;
+  /// <summary>Hook on a built-in command (see RegisterCommandHook). ACommand
+  /// is the built-in command name ("Copy"), AOrigin is "key" or "menu".
+  /// Returns 1 when the plugin handled the command (the built-in handler is
+  /// skipped), 0 to let it run.</summary>
+  THostCommandHookCallback = function(AUserData: Pointer;
+    ACommand, AOrigin: PAnsiChar): Int64; cdecl;
+  /// <summary>Adds the plugin command ACommandId. Run from ExecuteCommand and
+  /// from a key chord bound with RegisterKeyBinding, whose AAction is then
+  /// this command id. 0 = ok, -1 = refused (empty id, built-in name, id owned
+  /// by another plugin).</summary>
+  THostRegisterCommandFn = function(APluginId, ACommandId: PAnsiChar;
+    AOnRun: THostCommandCallback; AUserData: Pointer): Int64; cdecl;
+  /// <summary>Hooks the built-in command ACommand (a keymap action name such
+  /// as "Copy", "View", "Delete"): the hook runs before the built-in handler,
+  /// ascending APriority. 0 = ok, -1 = unknown command name.</summary>
+  THostRegisterCommandHookFn = function(APluginId, ACommand: PAnsiChar;
+    AHook: THostCommandHookCallback; AUserData: Pointer; APriority: Int64): Int64; cdecl;
+  /// <summary>Runs a plugin command by id. 0 = ran, -1 = no such command or it
+  /// failed.</summary>
+  THostExecuteCommandFn = function(ACommandId: PAnsiChar): Int64; cdecl;
+  /// <summary>Asked when the host opens a file the provider registered for.
+  /// AMode is "view" or "edit". Returns 0 = not mine (the next provider, then
+  /// the built-in window, runs), 1 = the plugin opened the file itself,
+  /// 2 = open the URI the plugin wrote into ARedirect (UTF-8, NUL-terminated,
+  /// at most ARedirectCap bytes) in the built-in window instead.</summary>
+  THostDocumentProviderCallback = function(AUserData: Pointer; AURI, AMode: PAnsiChar;
+    ARedirect: PAnsiChar; ARedirectCap: Int64): Int64; cdecl;
+  /// <summary>Registers a provider for the file name extensions in
+  /// AExtensions (comma-separated, ".md,.markdown"; "*" = all files).
+  /// AModes: bit 0 = view (F3), bit 1 = edit (F4). Providers run in ascending
+  /// APriority before the built-in viewer / editor. 0 = ok, -1 = refused.</summary>
+  THostRegisterDocumentProviderFn = function(APluginId, AExtensions: PAnsiChar;
+    AModes: Int64; AHandler: THostDocumentProviderCallback; AUserData: Pointer;
+    APriority: Int64): Int64; cdecl;
+  /// <summary>Answer of a plugin dialog: the control id that closed it and the
+  /// values of the dialog as JSON (see DIALOG_PLUGIN.md).</summary>
+  THostDialogCommandCallback = procedure(AUserData: Pointer;
+    AControlId, AValuesJson: PAnsiChar); cdecl;
+  /// <summary>Shows a modal dialog described by ADeclJson (the declaration
+  /// format of the built-in dialogs). Any button, Enter or Esc closes it and
+  /// calls AOnCommand once, on the main thread. 0 = shown, -1 = invalid
+  /// declaration or no dialog can be shown now (another one is open, the host
+  /// is not over the panels).</summary>
+  THostShowDialogFn = function(APluginId, ADeclJson: PAnsiChar;
+    AOnCommand: THostDialogCommandCallback; AUserData: Pointer): Int64; cdecl;
+  /// <summary>Asked when the user activates a row of a panel whose URI has the
+  /// registered scheme (Enter, double click; not the ".." row). Returns 1 when
+  /// the plugin dealt with the row (the host does nothing more), 0 to let the
+  /// host go on.</summary>
+  THostPanelActivateCallback = function(AUserData: Pointer;
+    APanelURI, ARowURI: PAnsiChar; AIsDirectory: Int64): Int64; cdecl;
+  /// <summary>Registers the activation handler for panels showing AScheme
+  /// ("file" for local folders). 0 = ok, -1 = refused.</summary>
+  THostRegisterPanelActivateFn = function(APluginId, AScheme: PAnsiChar;
+    AHandler: THostPanelActivateCallback; AUserData: Pointer): Int64; cdecl;
+  /// <summary>Sets the short label the function bar shows for the plugin
+  /// command ACommandId (the F-key its chord is bound to). Empty clears it.
+  /// 0 = ok, -1 = unknown command or not owned by the plugin.</summary>
+  THostSetCommandCaptionFn = function(APluginId, ACommandId, ACaption: PAnsiChar): Int64; cdecl;
+  /// <summary>Sets (empty text removes) a named segment of the status line of
+  /// the file panels. The host draws it; colors stay the theme's. 0 = ok.</summary>
+  THostSetStatusSegmentFn = function(APluginId, ASegmentId, AText: PAnsiChar): Int64; cdecl;
+  /// <summary>Registers the handler the Plugins dialog calls when the user presses
+  /// "Settings" for this plugin. The handler shows the plugin's dialog (ShowDialog)
+  /// and stores the result with SetSetting. 0 = ok.</summary>
+  THostRegisterSettingsFn = function(APluginId: PAnsiChar;
+    AOnConfigure: THostCommandCallback; AUserData: Pointer): Int64; cdecl;
+  /// <summary>Reads a value of the plugin's own key/value store (the host keeps it
+  /// in the settings folder). Writes the UTF-8 value and a NUL into ABuf and returns
+  /// the value's length in bytes; -1 = never set, -2 = ABuf (ABufSize bytes) is too
+  /// small.</summary>
+  THostGetSettingFn = function(APluginId, AKey: PAnsiChar; ABuf: PAnsiChar;
+    ABufSize: Int64): Int64; cdecl;
+  /// <summary>Stores a value in the plugin's key/value store. 0 = stored, -1 = the
+  /// settings file could not be written (the value holds for this run).</summary>
+  THostSetSettingFn = function(APluginId, AKey, AValue: PAnsiChar): Int64; cdecl;
+  /// <summary>Opens a local file:// URI with the program the system associates
+  /// with it (native plugins only). 0 = started, -1 = refused or failed.</summary>
+  THostOpenExternalFn = function(AURI: PAnsiChar): Int64; cdecl;
 
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
@@ -111,6 +199,19 @@ type
     RegisterPanelPlugin: THostRegisterPanelPluginFn;
     RegisterKeyBinding: THostRegisterKeyBindingFn;
     RegisterMenuItem: THostRegisterMenuItemFn;
+    // ABI 2
+    RegisterCommand: THostRegisterCommandFn;
+    RegisterCommandHook: THostRegisterCommandHookFn;
+    ExecuteCommand: THostExecuteCommandFn;
+    RegisterDocumentProvider: THostRegisterDocumentProviderFn;
+    OpenExternal: THostOpenExternalFn;
+    ShowDialog: THostShowDialogFn;
+    RegisterPanelActivate: THostRegisterPanelActivateFn;
+    SetCommandCaption: THostSetCommandCaptionFn;
+    SetStatusSegment: THostSetStatusSegmentFn;
+    RegisterSettings: THostRegisterSettingsFn;
+    GetSetting: THostGetSettingFn;
+    SetSetting: THostSetSettingFn;
   end;
   PHostApiTable = ^THostApiTable;
 
@@ -133,6 +234,9 @@ type
 
 function mtn_host_publish(APluginId, ATopicUtf8, APayloadJsonUtf8: PAnsiChar): Int64; cdecl;
 function mtn_host_invalidate(AWindowId: Int64): Int64; cdecl;
+
+/// <summary>True when a plugin built against AAbi can be loaded by this host.</summary>
+function IsSupportedPluginAbi(AAbi: Int64): Boolean;
 
 /// <summary>Registers a window (by an opaque host-assigned Int64 id) so a
 /// plugin can later request a repaint via mtn_host_invalidate. Returns the
@@ -211,6 +315,11 @@ begin
   except
     Result := -1;
   end;
+end;
+
+function IsSupportedPluginAbi(AAbi: Int64): Boolean;
+begin
+  Result := (AAbi >= cPluginMinAbiVersion) and (AAbi <= cPluginAbiVersion);
 end;
 
 procedure InitHostApiTableCore(var ATable: THostApiTable);

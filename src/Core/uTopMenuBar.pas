@@ -11,7 +11,8 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.JSON, System.IOUtils,
   System.Generics.Collections, System.TypInfo, System.Character, Winapi.Windows,
-  uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uDualPanelOverlays, uStrings;
+  uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uDualPanelOverlays, uStrings,
+  uKeymap;
 
 type
   TTopMenuAction = (
@@ -248,11 +249,14 @@ function StringToTopMenuAction(const AName: string): TTopMenuAction;
 /// runs, so a rebound key shows in the menu; menu.json's own "shortcut" text
 /// for items with no keymap action (and plugin items).</summary>
 function TopMenuItemShortcut(const AItem: TSubmenuItem): string;
+/// <summary>The keymap action (built-in command) a menu item runs; kaNone for
+/// items with no keymap action.</summary>
+function TopMenuKeymapAction(AAction: TTopMenuAction): TKeymapAction;
 
 implementation
 
 uses
-  uInputLine, uKeymap;
+  uInputLine;
 
 /// <summary>The keymap action a menu item runs, whose keys it shows as its
 /// shortcut; kaNone for items with no keymap action (their menu.json

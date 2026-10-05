@@ -1,0 +1,8 @@
+{
+  "id": "mtn.demo.go",
+  "name": "Demo: JSON viewer (Go)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "keepLoaded": true
+}

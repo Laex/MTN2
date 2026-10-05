@@ -3,6 +3,7 @@
   "name": "7-Zip archives",
   "version": "0.1.0",
   "abi": 1,
-  "archiveExtensions": ["7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "iso", "cab", "wim"],
-  "schemes": ["7z"]
+  "archiveExtensions": ["7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "iso", "cab", "wim", "zip"],
+  "schemes": ["7z"],
+  "overrides": [".zip"]
 }

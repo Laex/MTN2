@@ -11,6 +11,10 @@ type
   public
     [Test] procedure TestParse;
     [Test] procedure TestListLabel;
+    [Test] procedure TestOverrides;
+    [Test] procedure TestOverrideAllowList;
+    [Test] procedure TestDisabledPluginsFile;
+    [Test] procedure TestShippedSevenZipOffersZipOverride;
   end;
 
 implementation
@@ -83,7 +87,111 @@ begin
   end;
 end;
 
+procedure TestOverrides;
+var
+  M: TPluginManifest;
+begin
+  Assert.IsTrue(TryParsePluginManifestJson('{"id":"x"}', M), 'id only');
+  Assert.IsTrue(Length(M.Overrides) = 0, 'overrides optional');
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"mtn.zip","overrides":["SFTP"," .ZIP ","",7]}', M), 'overrides json');
+  Assert.IsTrue(Length(M.Overrides) = 2, 'blank and non-string entries dropped');
+  Assert.IsTrue(M.Overrides[0] = 'sftp', 'scheme lowercased');
+  Assert.IsTrue(M.Overrides[1] = '.zip', 'extension trimmed and lowercased');
+  Assert.IsTrue(not M.Startup, 'startup is off by default');
+  Assert.IsTrue(TryParsePluginManifestJson('{"id":"x","startup":true}', M), 'startup json');
+  Assert.IsTrue(M.Startup, 'startup on');
+  Assert.IsTrue(TryParsePluginManifestJson('{"id":"x","startup":"yes"}', M), 'startup non-bool');
+  Assert.IsTrue(not M.Startup, 'only a JSON boolean turns startup on');
+end;
+
+procedure TestShippedSevenZipOffersZipOverride;
+var
+  Dir: string;
+  M: TPluginManifest;
+  Ext: string;
+  HasZip: Boolean;
+begin
+  Dir := ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)), '..\..\plugins\mtn.7z'));
+  Assert.IsTrue(TryReadPluginManifest(Dir, M), 'the shipped mtn.7z manifest is readable');
+  HasZip := False;
+  for Ext in M.ArchiveExtensions do
+    if SameText(Ext, 'zip') then
+      HasZip := True;
+  Assert.IsTrue(HasZip, 'mtn.7z can serve .zip archives');
+  Assert.IsTrue((Length(M.Overrides) = 1) and (M.Overrides[0] = '.zip'),
+    'mtn.7z asks to replace the built-in .zip handling only when the user allows it');
+  Assert.IsTrue((Length(M.Schemes) = 1) and (M.Schemes[0] = '7z'), 'its scheme');
+end;
+
+procedure TestDisabledPluginsFile;
+var
+  Dir, FileName: string;
+  Ids: TArray<string>;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-disabled-' + IntToStr(Random(MaxInt)));
+  FileName := TPath.Combine(Dir, 'sub\disabled-plugins.json');
+  try
+    Assert.IsTrue(not TryReadDisabledPlugins(FileName, Ids) and (Length(Ids) = 0), 'missing file');
+    WriteDisabledPlugins(FileName, ['mtn.7z', 'mtn.ws']);
+    Assert.IsTrue(TryReadDisabledPlugins(FileName, Ids), 'written file reads back');
+    Assert.IsTrue((Length(Ids) = 2) and (Ids[0] = 'mtn.7z') and (Ids[1] = 'mtn.ws'), 'ids round-trip');
+    TFile.WriteAllText(FileName, 'not json', TEncoding.UTF8);
+    Assert.IsTrue(not TryReadDisabledPlugins(FileName, Ids) and (Length(Ids) = 0), 'invalid file');
+    WriteDisabledPlugins(FileName, []);
+    Assert.IsTrue(not TFile.Exists(FileName), 'an empty list removes the file');
+  finally
+    if TDirectory.Exists(Dir) then
+      TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TestOverrideAllowList;
+var
+  Dir: string;
+  Ids: TArray<string>;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-allow-' +
+    IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Assert.IsTrue(not TryReadOverrideAllowList(Dir, Ids), 'missing file');
+    Assert.IsTrue(Length(Ids) = 0, 'missing file allows nothing');
+    TFile.WriteAllText(TPath.Combine(Dir, 'overrides.json'), 'not json', TEncoding.UTF8);
+    Assert.IsTrue(not TryReadOverrideAllowList(Dir, Ids), 'invalid file');
+    Assert.IsTrue(Length(Ids) = 0, 'invalid file allows nothing');
+    TFile.WriteAllText(TPath.Combine(Dir, 'overrides.json'),
+      '{"allow":["mtn.zip"," mtn.sftp ",""]}', TEncoding.UTF8);
+    Assert.IsTrue(TryReadOverrideAllowList(Dir, Ids), 'valid file');
+    Assert.IsTrue(Length(Ids) = 2, 'blank ids dropped');
+    Assert.IsTrue(Ids[0] = 'mtn.zip', 'first id');
+    Assert.IsTrue(Ids[1] = 'mtn.sftp', 'ids trimmed');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
 { TTestPluginManifest }
+
+procedure TTestPluginManifest.TestShippedSevenZipOffersZipOverride;
+begin
+  TestPluginManifest.TestShippedSevenZipOffersZipOverride;
+end;
+
+procedure TTestPluginManifest.TestDisabledPluginsFile;
+begin
+  TestPluginManifest.TestDisabledPluginsFile;
+end;
+
+procedure TTestPluginManifest.TestOverrides;
+begin
+  TestPluginManifest.TestOverrides;
+end;
+
+procedure TTestPluginManifest.TestOverrideAllowList;
+begin
+  TestPluginManifest.TestOverrideAllowList;
+end;
 
 procedure TTestPluginManifest.TestParse;
 begin

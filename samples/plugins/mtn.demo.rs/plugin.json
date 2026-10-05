@@ -1,0 +1,7 @@
+{
+  "id": "mtn.demo.rs",
+  "name": "Demo: CSV table viewer (Rust)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true
+}

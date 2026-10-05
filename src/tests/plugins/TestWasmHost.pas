@@ -18,12 +18,14 @@ type
     [Test] procedure TestTrapIsolated;
     [Test] procedure TestNoWasi;
     [Test] procedure TestOobRegisterIsolated;
+    [Test] procedure TestCommandApiFromWasm;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.SyncObjs, System.TypInfo,
+  System.UITypes,
   Winapi.Windows,
   uVfsTypes,
   uTextEncoding,
@@ -39,6 +41,12 @@ uses
   uTopMenuBar,
   uMenuRegistry,
   uMessageBus,
+  uCommandRegistry,
+  uDocumentProviders,
+  uPluginUi,
+  uPluginSettings,
+  uPluginChrome,
+  uDialogTypes,
   uPluginHostAbi,
   uVfsCdeclAdapter,
   uWasmtimeApi,
@@ -315,6 +323,153 @@ begin
   PluginLoader.UnloadAll;
 end;
 
+procedure TestCommandApiFromWasm;
+const
+  cDialogJson = '{"type":"dialog","title":"T","children":[' +
+    '{"type":"button","id":"ok","text":"OK","default":true}]}';
+var
+  Root, Redirect, Answers, DialogData, SettingValue, SettingsDir: string;
+  Loaded: Boolean;
+  Pending: TProc<string, string>;
+  Sub: ISubscription;
+begin
+  Loaded := False;
+  Answers := '';
+  SettingsDir := TPath.Combine(TPath.GetTempPath, 'mtn2-wasm-settings');
+  TDirectory.CreateDirectory(SettingsDir);
+  SetPluginSettingsDirectory(SettingsDir);
+  DialogData := StringReplace(cDialogJson, '"', '\22', [rfReplaceAll]);
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      Writeln(Format('  [cmd] %s: %s (%s)', [ExtractFileName(AFileName),
+        GetEnumName(TypeInfo(TPluginLoadResult), Ord(AResult)), AMessage]));
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-cmd');
+  StageDir(Root, 'mtn.wasm.cmd',
+    '(module' + sLineBreak +
+    '  (import "mtn_host" "register_command_hook"' + sLineBreak +
+    '    (func $hook (param i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "register_command"' + sLineBreak +
+    '    (func $cmd (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "register_document_provider"' + sLineBreak +
+    '    (func $doc (param i32 i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "show_dialog"' + sLineBreak +
+    '    (func $dlg (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "publish"' + sLineBreak +
+    '    (func $pub (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "register_settings"' + sLineBreak +
+    '    (func $rs (param i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "set_setting"' + sLineBreak +
+    '    (func $ss (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "get_setting"' + sLineBreak +
+    '    (func $gs (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "register_panel_activate"' + sLineBreak +
+    '    (func $pa (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "set_command_caption"' + sLineBreak +
+    '    (func $cap (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "set_status_segment"' + sLineBreak +
+    '    (func $st (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (memory (export "memory") 1)' + sLineBreak +
+    '  (data (i32.const 700) "wasmpanel")' + sLineBreak +
+    '  (data (i32.const 820) "on_cfg")' + sLineBreak +
+    '  (data (i32.const 840) "mode")' + sLineBreak +
+    '  (data (i32.const 848) "wasm-v")' + sLineBreak +
+    '  (data (i32.const 720) "row_open")' + sLineBreak +
+    '  (data (i32.const 740) "WCap")' + sLineBreak +
+    '  (data (i32.const 760) "seg")' + sLineBreak +
+    '  (data (i32.const 780) "wasm-st")' + sLineBreak +
+    '  (data (i32.const 112) "wasm.dialog")' + sLineBreak +
+    '  (data (i32.const 400) "dlg_answer")' + sLineBreak +
+    '  (data (i32.const 512) "' + DialogData + '")' + sLineBreak +
+    '  (data (i32.const 80) ".wasmdoc")' + sLineBreak +
+    '  (data (i32.const 96) "doc_open")' + sLineBreak +
+    '  (data (i32.const 16) "Delete")' + sLineBreak +
+    '  (data (i32.const 32) "hook_delete")' + sLineBreak +
+    '  (data (i32.const 48) "wasm.cmd")' + sLineBreak +
+    '  (data (i32.const 64) "cmd_run")' + sLineBreak +
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))' + sLineBreak +
+    '  (func (export "mtn_plugin_init") (result i32)' + sLineBreak +
+    '    (drop (call $hook (i32.const 16) (i32.const 6) (i32.const 32) (i32.const 11) (i32.const 7)))' + sLineBreak +
+    '    (drop (call $cmd (i32.const 48) (i32.const 8) (i32.const 64) (i32.const 7)))' + sLineBreak +
+    '    (drop (call $pa (i32.const 700) (i32.const 9) (i32.const 720) (i32.const 8)))' + sLineBreak +
+    '    (drop (call $rs (i32.const 820) (i32.const 6)))' + sLineBreak +
+    '    (drop (call $cap (i32.const 48) (i32.const 8) (i32.const 740) (i32.const 4)))' + sLineBreak +
+    '    (drop (call $st (i32.const 760) (i32.const 3) (i32.const 780) (i32.const 7)))' + sLineBreak +
+    '    (drop (call $doc (i32.const 80) (i32.const 8) (i32.const 96) (i32.const 8)' +
+    ' (i32.const 3) (i32.const 5)))' + sLineBreak +
+    '    (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_shutdown"))' + sLineBreak +
+    '  (func (export "hook_delete") (result i32) (i32.const 1))' + sLineBreak +
+    '  (func (export "doc_open") (param i32 i32) (result i64) (i64.const 1))' + sLineBreak +
+    '  (func (export "row_open") (param i32 i32) (result i64) (i64.const 1))' + sLineBreak +
+    '  (func (export "on_cfg")' + sLineBreak +
+    '    (drop (call $ss (i32.const 840) (i32.const 4) (i32.const 848) (i32.const 6)))' + sLineBreak +
+    '    (if (i32.ne (call $gs (i32.const 840) (i32.const 4) (i32.const 900) (i32.const 16))' + sLineBreak +
+    '                (i32.const 6)) (then unreachable)))' + sLineBreak +
+    '  (func (export "cmd_run")' + sLineBreak +
+    '    (drop (call $dlg (i32.const 512) (i32.const ' + IntToStr(Length(cDialogJson)) +
+    ') (i32.const 400) (i32.const 10))))' + sLineBreak +
+    '  (func (export "dlg_answer") (param i32 i32 i32 i32)' + sLineBreak +
+    '    (drop (call $pub (i32.const 112) (i32.const 11) (local.get 0) (local.get 1)))))');
+  Sub := MessageBus.Subscribe('wasm.dialog',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Answers := Answers + TPluginPayload(APayload).Json + ';';
+    end);
+  SetPluginDialogHost(
+    function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>): Boolean
+    begin
+      Pending := AOnCommand;
+      Result := True;
+    end);
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Loaded, 'module using the ABI 2 imports loads');
+    Assert.IsTrue(CommandRegistry.TryIntercept('Delete', 'key'),
+      'the guest hook export returning 1 handles the command');
+    Assert.IsTrue(not CommandRegistry.TryIntercept('Copy', 'key'), 'other commands are not hooked');
+    Assert.IsTrue(CommandRegistry.HasCommand('wasm.cmd'), 'guest command registered');
+    Assert.IsTrue(CommandRegistry.TryExecute('wasm.cmd'), 'guest command export runs');
+    Assert.IsTrue(Assigned(Pending), 'the guest asked the host for a dialog');
+    Pending('ok', '{}');
+    Assert.IsTrue(Answers = 'ok;', 'the answer reaches the guest export: ' + Answers);
+    Assert.IsTrue(DocumentProviders.TryOpen('file:///C:/a.wasmdoc', True, Redirect) = dokHandled,
+      'the guest document provider handles its extension');
+    Assert.IsTrue(DocumentProviders.TryOpen('file:///C:/a.txt', True, Redirect) = dokPass,
+      'other extensions are not offered to the guest');
+    Assert.IsTrue(PanelPluginRegistry.TryActivate('wasmpanel:///', 'wasmpanel:///x', False),
+      'the guest takes the activation of rows of its scheme');
+    Assert.IsTrue(not PanelPluginRegistry.TryActivate('file:///C:/', 'file:///C:/x', False),
+      'the guest is asked for its own scheme only');
+    Assert.IsTrue(PluginSettings.HasConfigure('mtn.wasm.cmd'), 'the guest registered a settings handler');
+    Assert.IsTrue(PluginSettings.TryConfigure('mtn.wasm.cmd'),
+      'the guest stored a setting and read it back (a wrong length would trap)');
+    Assert.IsTrue(PluginSettings.TryGetValue('mtn.wasm.cmd', 'mode', SettingValue) and
+      (SettingValue = 'wasm-v'), 'the host holds the guest''s value');
+    Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'wasm-st',
+      'the guest status segment');
+    CommandRegistry.RegisterCommandBinding('mtn.wasm.cmd', 'wasm.cmd', 'Ctrl+Alt+F11');
+    Assert.IsTrue(PluginFBarLabel(vkF11, [ssCtrl, ssAlt]) = 'WCap',
+      'the guest command caption labels the chord');
+    PluginLoader.UnloadAll;
+    Assert.IsTrue(DocumentProviders.TryOpen('file:///C:/a.wasmdoc', True, Redirect) = dokPass,
+      'unload drops the guest provider');
+    Assert.IsTrue(not CommandRegistry.TryIntercept('Delete', 'key'), 'unload drops the guest hook');
+    Assert.IsTrue(not CommandRegistry.HasCommand('wasm.cmd'), 'unload drops the guest command');
+    Assert.IsTrue(Length(PluginChrome.StatusSegments) = 0, 'unload drops the guest status segment');
+    Assert.IsTrue(not PanelPluginRegistry.TryActivate('wasmpanel:///', 'wasmpanel:///x', False),
+      'unload drops the guest activation handler');
+  finally
+    SetPluginSettingsDirectory('');
+    SetPluginDialogHost(nil);
+    Sub.Unsubscribe;
+    PluginLoader.UnloadAll;
+  end;
+end;
+
 { TTestWasmHost }
 
 var
@@ -360,6 +515,12 @@ procedure TTestWasmHost.TestOobRegisterIsolated;
 begin
   SkipWithoutRuntime;
   TestWasmHost.TestOobRegisterIsolated;
+end;
+
+procedure TTestWasmHost.TestCommandApiFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestWasmHost.TestCommandApiFromWasm;
 end;
 
 initialization

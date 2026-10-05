@@ -21,6 +21,36 @@ unit uWasmPluginHost;
     register_menu_item(parent_ptr, parent_len, id_ptr, id_len,
       caption_ptr, caption_len, export_ptr, export_len, priority) -> i32
     publish(topic_ptr, topic_len, json_ptr, json_len) -> i32
+    register_command(id_ptr, id_len, export_ptr, export_len) -> i32
+      // plugin command; the guest export "export" takes no arguments
+    register_command_hook(cmd_ptr, cmd_len, export_ptr, export_len, priority) -> i32
+      // hook on a built-in command ("Copy", "View", ...); the guest export
+      // takes no arguments and returns i32: 1 = handled (built-in skipped)
+    execute_command(id_ptr, id_len) -> i32            // plugin command by id
+    register_panel_activate(scheme_ptr, scheme_len, export_ptr, export_len) -> i32
+      // Enter on a row of a panel with that scheme; the guest export takes
+      // (row_uri_ptr, row_uri_len) -> i64: 1 = the plugin dealt with the row
+    set_command_caption(id_ptr, id_len, caption_ptr, caption_len) -> i32
+      // function bar label of a plugin command bound to an F-key chord
+    set_status_segment(id_ptr, id_len, text_ptr, text_len) -> i32
+      // named text segment of the panels' status line; empty text removes it
+    register_settings(export_ptr, export_len) -> i32
+      // the guest export takes no arguments; the Plugins dialog calls it for Settings
+    get_setting(key_ptr, key_len, out_ptr, out_cap) -> i32
+      // the value's length in bytes (no NUL written); -1 = never set, -2 = out_cap too small
+    set_setting(key_ptr, key_len, value_ptr, value_len) -> i32   // 0 = stored
+    register_key_binding(action_ptr, action_len, combo_ptr, combo_len) -> i32
+      // "Ctrl+Alt+F7" for a plugin command or for a built-in action name
+    show_dialog(json_ptr, json_len, export_ptr, export_len) -> i32
+      // dialog declaration JSON; the guest export takes
+      // (id_ptr, id_len, values_ptr, values_len) with the control id and the
+      // values JSON of the answer (values over 2 KiB arrive empty)
+    register_document_provider(ext_ptr, ext_len, export_ptr, export_len,
+      modes, priority) -> i32
+      // extensions ".md,.markdown" or "*"; modes bit 0 = view, bit 1 = edit;
+      // the guest export takes (uri_ptr, uri_len) -> i64: 0 = not mine,
+      // 1 = the plugin handled the file. A guest cannot redirect or launch
+      // programs (no open_external import): that stays native-only.
   Exports:
     mtn_plugin_get_abi_version() -> i64
     mtn_plugin_init() -> i32
@@ -51,6 +81,8 @@ type
     FModule: PWasmtimeModule;
     FInstance: TWasmtimeInstance;
     FHasInstance: Boolean;
+    FWasi: Boolean;
+    FScratchBase: Integer;
     FUriOff: Integer;
     FUriSlot: Integer;
     FOutOff: Integer;
@@ -83,8 +115,17 @@ type
     function CallCopyExport(const AFromURI, AToURI: string; AIsDir, AOverwrite: Boolean;
       out AStatus: Int64; out AError: string): Boolean;
     function InvokeVoidExport(const AName: string; out AError: string): Boolean;
+    function InvokeI32Export(const AName: string; out AValue: Integer;
+      out AError: string): Boolean;
+    /// <summary>Calls a guest export (ptr_a, len_a, ptr_b, len_b) with no
+    /// result, the two strings copied into the guest scratch area (each must
+    /// stay under 2 KiB).</summary>
+    function InvokeTwoStringExport(const AName, A, B: string; out AError: string): Boolean;
     property PluginId: string read FPluginId;
     property Dead: Boolean read FDead;
+    /// <summary>The module may import WASI preview1 (empty: no files, no
+    /// environment). Set before LoadFromFile.</summary>
+    property Wasi: Boolean read FWasi write FWasi;
   end;
 
 function EnsureWasmEngine(out AError: string): Boolean;
@@ -95,7 +136,8 @@ implementation
 uses
   System.Classes, System.IOUtils,
   uVfsTypes, uTextEncoding, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
-  uMenuRegistry;
+  uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi, uPluginChrome, uKeymap,
+  uKeymapRegistry, uPluginSettings;
 
 const
   cFuelPerCall: UInt64 = 50000000;
@@ -108,10 +150,26 @@ const
   cRegPanel: AnsiString = 'register_panel_plugin';
   cRegMenu: AnsiString = 'register_menu_item';
   cPublish: AnsiString = 'publish';
+  cRegCommand: AnsiString = 'register_command';
+  cRegCommandHook: AnsiString = 'register_command_hook';
+  cExecCommand: AnsiString = 'execute_command';
+  cRegDocProvider: AnsiString = 'register_document_provider';
+  cShowDialog: AnsiString = 'show_dialog';
+  cRegPanelActivate: AnsiString = 'register_panel_activate';
+  cRegKeyBinding: AnsiString = 'register_key_binding';
+  cRegSettings: AnsiString = 'register_settings';
+  cGetSetting: AnsiString = 'get_setting';
+  cSetSetting: AnsiString = 'set_setting';
+  cSetCaption: AnsiString = 'set_command_caption';
+  cSetStatusSegment: AnsiString = 'set_status_segment';
 
 var
   GEngine: PWasmEngine = nil;
   GLinker: PWasmtimeLinker = nil;
+  /// <summary>Linker for plugins whose manifest asks for WASI: the same host
+  /// imports plus an empty WASI (no files, no environment, no arguments).</summary>
+  GWasiLinker: PWasmtimeLinker = nil;
+  GDefineLinker: PWasmtimeLinker = nil;
 
 type
   TValBuf = array[0..8] of TWasmtimeVal;
@@ -249,6 +307,37 @@ begin
   end;
 end;
 
+/// <summary>Copies ABytes into guest memory at APtr (at most ACap bytes).</summary>
+function WriteGuestBytes(Caller: PWasmtimeCaller; APtr, ACap: Integer;
+  const ABytes: TBytes): Boolean;
+var
+  Ctx: PWasmtimeContext;
+  Ext: TWasmtimeExtern;
+  Data: PByte;
+  Size: NativeUInt;
+begin
+  Result := False;
+  if (Caller = nil) or (APtr < 0) or (ACap < 0) or (Length(ABytes) > ACap) then
+    Exit;
+  Ctx := Wasmtime.CallerContext(Caller);
+  FillChar(Ext, SizeOf(Ext), 0);
+  if not Wasmtime.CallerExportGet(Caller, 'memory', 6, @Ext) then
+    Exit;
+  try
+    if Ext.Kind <> WASMTIME_EXTERN_MEMORY then
+      Exit;
+    Data := Wasmtime.MemoryData(Ctx, @Ext.Of_.Memory);
+    Size := Wasmtime.MemoryDataSize(Ctx, @Ext.Of_.Memory);
+    if (Data = nil) or (NativeUInt(APtr) + NativeUInt(Length(ABytes)) > Size) then
+      Exit;
+    if Length(ABytes) > 0 then
+      Move(ABytes[0], Data[APtr], Length(ABytes));
+    Result := True;
+  finally
+    Wasmtime.ExternDelete(@Ext);
+  end;
+end;
+
 function HostRegVfs(Env: Pointer; Caller: PWasmtimeCaller;
   Args: PWasmtimeVal; NArgs: NativeUInt;
   Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
@@ -275,9 +364,7 @@ begin
   // Drive-bar schemes (ws, recycle, ...) are built-in. A WASM module may still
   // call register_vfs_scheme; ignore it so File VFS / the core backend stay
   // in charge and an empty panel does not become "Invalid path".
-  if SameText(Scheme, 'file') or SameText(Scheme, 'recycle') or
-     SameText(Scheme, 'sys') or SameText(Scheme, 'find') or
-     SameText(Scheme, 'ws') then
+  if IsReservedVfsScheme(Scheme) then
   begin
     SetI32Result(Results, NResults, 0);
     Exit;
@@ -379,12 +466,389 @@ begin
   SetI32Result(Results, NResults, 0);
 end;
 
+function HostRegCommand(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  CommandId, ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, CommandId) or
+     (CommandId = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  CommandRegistry.RegisterCommand(Inst.PluginId, CommandId,
+    procedure
+    var
+      Err: string;
+    begin
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Inst.InvokeVoidExport(ExportName, Err);
+    end);
+  if CommandRegistry.HasCommand(CommandId) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostRegCommandHook(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Command, ExportName: string;
+  Prio: Integer;
+  Act: TKeymapAction;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 5 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Command) or
+     not TryKeymapActionByName(Command, Act) then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  Prio := Vals^[4].Of_.I32;
+  CommandRegistry.RegisterHook(Inst.PluginId, Command,
+    function(const ACommand, AOrigin: string): Boolean
+    var
+      Handled: Integer;
+      Err: string;
+    begin
+      Result := False;
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Result := Inst.InvokeI32Export(ExportName, Handled, Err) and (Handled = 1);
+    end, Prio);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostExecCommand(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  CommandId: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, CommandId) or
+     (CommandId = '') then
+    Exit;
+  if CommandRegistry.TryExecute(CommandId) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostRegDocProvider(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Extensions, ExportName: string;
+  ModeBits, Prio: Integer;
+  Modes: TDocumentModes;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 6 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Extensions) or
+     (Extensions = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  ModeBits := Vals^[4].Of_.I32;
+  Prio := Vals^[5].Of_.I32;
+  Modes := [];
+  if (ModeBits and 1) <> 0 then
+    Include(Modes, dmView);
+  if (ModeBits and 2) <> 0 then
+    Include(Modes, dmEdit);
+  if Modes = [] then
+    Exit;
+  DocumentProviders.RegisterProvider(Inst.PluginId, 'wasm:' + ExportName, Extensions, Modes,
+    function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+    var
+      Status: Int64;
+      Err: string;
+    begin
+      ARedirectURI := '';
+      Result := dokPass;
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      if Inst.CallStatusExport(ExportName, AURI, Status, Err) and (Status = 1) then
+        Result := dokHandled;
+    end, Prio);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostShowDialog(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Json, ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Json) or (Json = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  if PluginShowDialog(Inst.PluginId, Json,
+    procedure(const AControlId, AValuesJson: string)
+    var
+      Err, Values: string;
+    begin
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Values := AValuesJson;
+      if Length(UTF8String(Values)) >= 2047 then
+        Values := '';
+      Inst.InvokeTwoStringExport(ExportName, AControlId, Values, Err);
+    end) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostRegSettings(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  PluginSettings.RegisterConfigure(Inst.PluginId,
+    procedure
+    var
+      Err: string;
+    begin
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Inst.InvokeVoidExport(ExportName, Err);
+    end);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostGetSetting(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Key, Value: string;
+  Bytes: TBytes;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Key) or (Key = '') then
+    Exit;
+  if not PluginSettings.TryGetValue(Inst.PluginId, Key, Value) then
+    Exit;
+  Bytes := TEncoding.UTF8.GetBytes(Value);
+  if WriteGuestBytes(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Bytes) then
+    SetI32Result(Results, NResults, Length(Bytes))
+  else
+    SetI32Result(Results, NResults, -2);
+end;
+
+function HostSetSetting(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Key, Value: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Key) or (Key = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Value) then
+    Exit;
+  if PluginSettings.SetValue(Inst.PluginId, Key, Value) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostRegKeyBinding(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Action, Combo: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Action) or (Action = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Combo) or (Combo = '') then
+    Exit;
+  if CommandRegistry.HasCommand(Action) then
+    CommandRegistry.RegisterCommandBinding(Inst.PluginId, Action, Combo)
+  else
+    KeymapRegistry.RegisterBinding(Inst.PluginId, Action, Combo);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostRegPanelActivate(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Scheme, ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Scheme) or (Scheme = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  PanelPluginRegistry.RegisterActivateHandler(Inst.PluginId, Scheme,
+    function(const APanelURI, ARowURI: string; AIsDirectory: Boolean): Boolean
+    var
+      Status: Int64;
+      Err: string;
+    begin
+      Result := False;
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Result := Inst.CallStatusExport(ExportName, ARowURI, Status, Err) and (Status = 1);
+    end);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostSetCommandCaption(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  CommandId, Caption: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, CommandId) or
+     (CommandId = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Caption) then
+    Caption := '';
+  CommandRegistry.SetCommandCaption(Inst.PluginId, CommandId, Caption);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostSetStatusSegment(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  SegmentId, Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, SegmentId) or
+     (SegmentId = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Text) then
+    Text := '';
+  PluginChrome.SetStatusSegment(Inst.PluginId, SegmentId, Text);
+  SetI32Result(Results, NResults, 0);
+end;
+
 function DefineHostImport(const AName: AnsiString; Ty: PWasmFunctype; ACb: Pointer;
   out AError: string): Boolean;
 var
   Err: PWasmtimeError;
 begin
-  Err := Wasmtime.LinkerDefineFunc(GLinker, PAnsiChar(cHostModule), Length(cHostModule),
+  Err := Wasmtime.LinkerDefineFunc(GDefineLinker, PAnsiChar(cHostModule), Length(cHostModule),
     PAnsiChar(AName), Length(AName), Ty, ACb, nil, nil);
   if Err <> nil then
   begin
@@ -395,10 +859,87 @@ begin
   Result := True;
 end;
 
+/// <summary>Defines every mtn_host import on ALinker.</summary>
+function DefineAllHostImports(ALinker: PWasmtimeLinker; out AError: string): Boolean;
+var
+  Ty2, Ty3, Ty4, Ty5, Ty6, Ty9: PWasmFunctype;
+begin
+  Result := False;
+  AError := '';
+  GDefineLinker := ALinker;
+  Ty2 := MakeFuncType([WASM_I32, WASM_I32], [WASM_I32]);
+  Ty3 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty4 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty5 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty6 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty9 := MakeFuncType(
+    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32],
+    [WASM_I32]);
+  if (Ty2 = nil) or (Ty3 = nil) or (Ty4 = nil) or (Ty5 = nil) or (Ty6 = nil) or
+     (Ty9 = nil) then
+  begin
+    if Ty6 <> nil then
+      Wasmtime.FunctypeDelete(Ty6);
+    if Ty2 <> nil then
+      Wasmtime.FunctypeDelete(Ty2);
+    if Ty3 <> nil then
+      Wasmtime.FunctypeDelete(Ty3);
+    if Ty4 <> nil then
+      Wasmtime.FunctypeDelete(Ty4);
+    if Ty5 <> nil then
+      Wasmtime.FunctypeDelete(Ty5);
+    if Ty9 <> nil then
+      Wasmtime.FunctypeDelete(Ty9);
+    AError := 'wasm_functype_new failed';
+    Exit(False);
+  end;
+  try
+    if not DefineHostImport(cRegCommand, Ty4, @HostRegCommand, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegCommandHook, Ty5, @HostRegCommandHook, AError) then
+      Exit(False);
+    if not DefineHostImport(cExecCommand, Ty2, @HostExecCommand, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegDocProvider, Ty6, @HostRegDocProvider, AError) then
+      Exit(False);
+    if not DefineHostImport(cShowDialog, Ty4, @HostShowDialog, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegPanelActivate, Ty4, @HostRegPanelActivate, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegKeyBinding, Ty4, @HostRegKeyBinding, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegSettings, Ty2, @HostRegSettings, AError) then
+      Exit(False);
+    if not DefineHostImport(cGetSetting, Ty4, @HostGetSetting, AError) then
+      Exit(False);
+    if not DefineHostImport(cSetSetting, Ty4, @HostSetSetting, AError) then
+      Exit(False);
+    if not DefineHostImport(cSetCaption, Ty4, @HostSetCommandCaption, AError) then
+      Exit(False);
+    if not DefineHostImport(cSetStatusSegment, Ty4, @HostSetStatusSegment, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegVfs, Ty3, @HostRegVfs, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegPanel, Ty3, @HostRegPanel, AError) then
+      Exit(False);
+    if not DefineHostImport(cPublish, Ty4, @HostPublish, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegMenu, Ty9, @HostRegMenu, AError) then
+      Exit(False);
+  finally
+    Wasmtime.FunctypeDelete(Ty2);
+    Wasmtime.FunctypeDelete(Ty3);
+    Wasmtime.FunctypeDelete(Ty4);
+    Wasmtime.FunctypeDelete(Ty5);
+    Wasmtime.FunctypeDelete(Ty6);
+    Wasmtime.FunctypeDelete(Ty9);
+  end;
+  Result := True;
+end;
+
 function EnsureWasmEngine(out AError: string): Boolean;
 var
   Cfg: PWasmConfig;
-  Ty3, Ty4, Ty9: PWasmFunctype;
 begin
   AError := '';
   if (GEngine <> nil) and (GLinker <> nil) then
@@ -429,35 +970,41 @@ begin
     AError := 'wasmtime_linker_new failed';
     Exit(False);
   end;
-  Ty3 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty4 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty9 := MakeFuncType(
-    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32],
-    [WASM_I32]);
-  if (Ty3 = nil) or (Ty4 = nil) or (Ty9 = nil) then
+  Result := DefineAllHostImports(GLinker, AError);
+end;
+
+/// <summary>The linker of plugins that ask for WASI (plugin.json "wasi": true):
+/// the host imports plus an empty WASI preview1. A module cannot reach files,
+/// environment, arguments or the network through it: the WASI context of each
+/// store is created without any of them.</summary>
+function EnsureWasiLinker(out AError: string): Boolean;
+var
+  Err: PWasmtimeError;
+begin
+  if not EnsureWasmEngine(AError) then
+    Exit(False);
+  if GWasiLinker <> nil then
+    Exit(True);
+  if not Assigned(Wasmtime.WasiConfigNew) or not Assigned(Wasmtime.ContextSetWasi) or
+     not Assigned(Wasmtime.LinkerDefineWasi) then
   begin
-    if Ty3 <> nil then
-      Wasmtime.FunctypeDelete(Ty3);
-    if Ty4 <> nil then
-      Wasmtime.FunctypeDelete(Ty4);
-    if Ty9 <> nil then
-      Wasmtime.FunctypeDelete(Ty9);
-    AError := 'wasm_functype_new failed';
+    AError := 'this wasmtime.dll has no WASI support';
     Exit(False);
   end;
-  try
-    if not DefineHostImport(cRegVfs, Ty3, @HostRegVfs, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegPanel, Ty3, @HostRegPanel, AError) then
-      Exit(False);
-    if not DefineHostImport(cPublish, Ty4, @HostPublish, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegMenu, Ty9, @HostRegMenu, AError) then
-      Exit(False);
-  finally
-    Wasmtime.FunctypeDelete(Ty3);
-    Wasmtime.FunctypeDelete(Ty4);
-    Wasmtime.FunctypeDelete(Ty9);
+  GWasiLinker := Wasmtime.LinkerNew(GEngine);
+  if GWasiLinker = nil then
+  begin
+    AError := 'wasmtime_linker_new failed';
+    Exit(False);
+  end;
+  if not DefineAllHostImports(GWasiLinker, AError) then
+    Exit(False);
+  Err := Wasmtime.LinkerDefineWasi(GWasiLinker);
+  if Err <> nil then
+  begin
+    AError := 'define wasi: ' + WasmtimeErrorMessage(Err);
+    WasmtimeClearError(Err);
+    Exit(False);
   end;
   Result := True;
 end;
@@ -665,6 +1212,7 @@ function TWasmPluginInstance.RefreshScratch(out AError: string): Boolean;
 var
   MemExt: TWasmtimeExtern;
   Size: NativeUInt;
+  Func: TWasmtimeFunc;
 begin
   Result := False;
   AError := '';
@@ -681,6 +1229,25 @@ begin
       Exit;
     end;
     Size := Wasmtime.MemoryDataSize(FContext, @MemExt.Of_.Memory);
+    // A guest whose runtime uses all of its linear memory (Go) exports
+    // mtn_scratch_ptr: the address of a 32 KiB buffer it keeps for the host.
+    if GetExportFunc('mtn_scratch_ptr', Func) then
+    begin
+      if FScratchBase = 0 then
+        if not CallNoArgsI32('mtn_scratch_ptr', FScratchBase, AError) then
+          Exit;
+      if (FScratchBase <= 0) or (NativeUInt(FScratchBase) + NativeUInt(cScratchTail) > Size) then
+      begin
+        AError := 'mtn_scratch_ptr is outside guest memory';
+        Exit;
+      end;
+      FOutOff := FScratchBase;
+      FOutCap := cScratchOutBytes;
+      FUriOff := FScratchBase + cScratchOutBytes;
+      FUriSlot := cScratchUriSlot;
+      Result := True;
+      Exit;
+    end;
     if Size < NativeUInt(cScratchTail) then
     begin
       AError := 'guest memory too small for host scratch';
@@ -883,6 +1450,8 @@ begin
     Exit;
   end;
 
+  if FWasi and not EnsureWasiLinker(AError) then
+    Exit;
   FStore := Wasmtime.StoreNew(GEngine, Self, nil);
   if FStore = nil then
   begin
@@ -890,7 +1459,24 @@ begin
     Exit;
   end;
   FContext := Wasmtime.StoreContext(FStore);
-  Wasmtime.StoreLimiter(FStore, 1024 * 1024, 64, 1, 1, 1);
+  if FWasi then
+  begin
+    // A Go or Rust runtime needs room: tens of MiB of memory and a table with
+    // thousands of entries; the module count stays at one.
+    Wasmtime.StoreLimiter(FStore, 128 * 1024 * 1024, 200000, 1, 1, 1);
+    // Default WASI config: no preopened directories, no environment, no
+    // arguments, no inherited stdio.
+    Err := Wasmtime.ContextSetWasi(FContext, Wasmtime.WasiConfigNew());
+    if Err <> nil then
+    begin
+      AError := 'set wasi: ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      ReleaseEngineObjects;
+      Exit;
+    end;
+  end
+  else
+    Wasmtime.StoreLimiter(FStore, 1024 * 1024, 64, 1, 1, 1);
 
   FillChar(Wasm, SizeOf(Wasm), 0);
   Ext := LowerCase(ExtractFileExt(AFileName));
@@ -928,7 +1514,10 @@ begin
   end;
 
   Trap := nil;
-  Err := Wasmtime.LinkerInstantiate(GLinker, FContext, FModule, @FInstance, @Trap);
+  if FWasi then
+    Err := Wasmtime.LinkerInstantiate(GWasiLinker, FContext, FModule, @FInstance, @Trap)
+  else
+    Err := Wasmtime.LinkerInstantiate(GLinker, FContext, FModule, @FInstance, @Trap);
   if Err <> nil then
   begin
     AError := 'instantiate: ' + WasmtimeErrorMessage(Err);
@@ -945,6 +1534,17 @@ begin
     Exit;
   end;
   FHasInstance := True;
+  // A reactor module (Go, Rust with a C ABI) wants its runtime started once
+  // before any other export runs.
+  if FWasi and not CallNoArgsVoid('_initialize', AError) then
+  begin
+    if Pos('export missing', AError) = 0 then
+    begin
+      ReleaseEngineObjects;
+      Exit;
+    end;
+    AError := '';
+  end;
   Result := True;
 end;
 
@@ -963,9 +1563,9 @@ begin
     end;
     if not CallNoArgsI64('mtn_plugin_get_abi_version', Abi, AError) then
       Exit;
-    if Abi <> cPluginAbiVersion then
+    if not IsSupportedPluginAbi(Abi) then
     begin
-      AError := Format('Plugin ABI version %d != host %d', [Abi, cPluginAbiVersion]);
+      AError := Format('Plugin ABI version %d is outside host range %d..%d', [Abi, cPluginMinAbiVersion, cPluginAbiVersion]);
       Exit;
     end;
     if not CallNoArgsI32('mtn_plugin_init', InitRes, AError) then
@@ -1258,6 +1858,80 @@ begin
       Exit(False);
     end;
     Result := CallNoArgsVoid(AName, AError);
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.InvokeTwoStringExport(const AName, A, B: string;
+  out AError: string): Boolean;
+var
+  Func: TWasmtimeFunc;
+  Args: TValBuf;
+  Err: PWasmtimeError;
+  Trap: PWasmTrap;
+  PtrA, LenA, PtrB, LenB: Integer;
+begin
+  Result := False;
+  AError := '';
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit;
+    end;
+    if not GetExportFunc(AName, Func) then
+    begin
+      AError := AName + ' export missing';
+      Exit;
+    end;
+    if not WriteTwoUris(A, B, PtrA, LenA, PtrB, LenB, AError) then
+      Exit;
+    if not Refuel(AError) then
+      Exit;
+    FillChar(Args, SizeOf(Args), 0);
+    Args[0].Kind := WASMTIME_I32;
+    Args[0].Of_.I32 := PtrA;
+    Args[1].Kind := WASMTIME_I32;
+    Args[1].Of_.I32 := LenA;
+    Args[2].Kind := WASMTIME_I32;
+    Args[2].Of_.I32 := PtrB;
+    Args[3].Kind := WASMTIME_I32;
+    Args[3].Of_.I32 := LenB;
+    Trap := nil;
+    Err := Wasmtime.FuncCall(FContext, @Func, @Args[0], 4, nil, 0, @Trap);
+    if Err <> nil then
+    begin
+      AError := AName + ': ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    if Trap <> nil then
+    begin
+      AError := AName + ' trap: ' + WasmtimeTrapMessage(Trap);
+      WasmtimeClearTrap(Trap);
+      Exit;
+    end;
+    Result := True;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.InvokeI32Export(const AName: string; out AValue: Integer;
+  out AError: string): Boolean;
+begin
+  AError := '';
+  AValue := -1;
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit(False);
+    end;
+    Result := CallNoArgsI32(AName, AValue, AError);
   finally
     FLock.Release;
   end;

@@ -401,7 +401,10 @@
       "cancel": "Отмена"
     },
     "DIALOG_PLUGINLIST": {
-      "$title": "Загруженные плагины",
+      "$title": "Плагины",
+      "toggle": "&Вкл/выкл",
+      "override": "&Замена",
+      "settings": "&Настройки",
       "ok": "  ОК  "
     },
     "DIALOG_EDITFIND": {
@@ -940,6 +943,8 @@
     "fileHistory.viewMark": "П",
     "fileHistory.editMark": "Р",
     "fileHistory.missingTitle": "Файл не найден",
+    "plugins.noSettingsTitle": "Настройки плагина",
+    "plugins.noSettings": "У плагина %s нет настроек.",
     "properties.title": "Свойства",
     "properties.unavailable": "Только для файлов и папок на диске",
     "compareFolders.title": "Сравнение папок",

@@ -76,7 +76,7 @@ function DispatchEditorKeysWith(const AProfile: TKeymapProfile;
 implementation
 
 uses
-  uKeyChord;
+  uKeyChord, uCommandRegistry;
 
 procedure ConsumeKey(var AKey: Word; var AKeyChar: Char; AClearChar: Boolean);
 begin
@@ -303,6 +303,18 @@ begin
   K := TKeyChord.Make(AKey, AKeyChar, AShift);
   Act := MatchActionIn(AProfile, DocumentChain(AHost),
     KeymapLookupKey(AKey, AKeyChar), AShift);
+  // Plugin hooks on the viewer / editor commands, and plugin commands bound to a
+  // chord no document action owns, come before the built-in handlers.
+  if (Act <> kaNone) and InterceptKeymapAction(Act, 'key') then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit(True);
+  end;
+  if (Act = kaNone) and TryRunBoundCommand(AKey, AShift) then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit(True);
+  end;
   if Act <> kaNone then
     case RunAction(AHost, Act) of
       arReject:

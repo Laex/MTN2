@@ -9,9 +9,15 @@ program PluginsTests;
 
 uses
   uTestRunner in '..\common\uTestRunner.pas',
+  TestCommandRegistry in 'TestCommandRegistry.pas',
+  TestDocumentProviders in 'TestDocumentProviders.pas',
   TestPanelPluginRegistry in 'TestPanelPluginRegistry.pas',
   TestPluginHostAbi in 'TestPluginHostAbi.pas',
+  TestPluginChrome in 'TestPluginChrome.pas',
   TestPluginLoader in 'TestPluginLoader.pas',
+  TestPluginSettings in 'TestPluginSettings.pas',
+  TestPluginUi in 'TestPluginUi.pas',
+  TestSamplePlugins in 'TestSamplePlugins.pas',
   TestSevenZipDllWarning in 'TestSevenZipDllWarning.pas',
   TestPluginManifest in 'TestPluginManifest.pas',
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',

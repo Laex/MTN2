@@ -1,4 +1,4 @@
-﻿unit uMainForm;
+unit uMainForm;
 
 interface
 
@@ -13,7 +13,7 @@ uses
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
-  uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs;
+  uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome;
 
 type
   TMainForm = class(TForm)
@@ -2488,6 +2488,29 @@ begin
 
   CreateUpdater;
 
+  // Dialogs a plugin asks for: only over the panels, like the updater's, so a
+  // plugin never pops one up inside an editor, viewer or terminal.
+  SetPluginDialogHost(
+    function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>): Boolean
+    begin
+      Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+      if Result then
+        Recompose;
+    end);
+
+  // A plugin changing its status-line text repaints the panels.
+  SetPluginChromeChanged(
+    procedure
+    begin
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not (csDestroying in ComponentState) then
+            Recompose;
+        end);
+    end);
+
   // Quick View decode/error lands async - repaint once it does.
   SetOverlayRepaintHandler(
     procedure
@@ -2545,6 +2568,8 @@ begin
   FreeAndNil(FSevenZipTimer);
   FreeAndNil(FFpsTimer);
   FreeAndNil(FUpdater);
+  SetPluginDialogHost(nil);
+  SetPluginChromeChanged(nil);
   StopPluginHost;
   FreeAndNil(FBlinkTimer);
   GDialogButtonPressStart := nil;

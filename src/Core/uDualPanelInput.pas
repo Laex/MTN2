@@ -299,7 +299,7 @@ function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;
 implementation
 
 uses
-  uKeyChord;
+  uKeyChord, uCommandRegistry;
 
 procedure ConsumeKey(var AKey: Word; var AKeyChar: Char; AClearChar: Boolean);
 begin
@@ -1290,6 +1290,7 @@ function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
 
 var
   Mods: TShiftState;
+  Act: TKeymapAction;
 begin
   Result := True;
   Mods := AShift * cKeyMods;
@@ -1312,7 +1313,20 @@ begin
     ConsumeKey(AKey, AKeyChar, False);
     Exit;
   end;
-  if AHost.DispatchKeymapPrimary(MatchActiveAction(AKey, AShift), AKey, AKeyChar) then
+  // Plugin hooks on built-in commands, and plugin commands bound to a chord no
+  // built-in action owns, come before the built-in handlers.
+  Act := MatchActiveAction(AKey, AShift);
+  if (Act <> kaNone) and InterceptKeymapAction(Act, 'key') then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if (Act = kaNone) and TryRunBoundCommand(AKey, AShift) then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if AHost.DispatchKeymapPrimary(Act, AKey, AKeyChar) then
     Exit;
   // Backspace with an empty command line: up one level, like Enter on "..".
   // With text in it, Backspace edits the command line (DispatchPanelNavKeys).

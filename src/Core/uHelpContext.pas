@@ -86,6 +86,8 @@ begin
       Result := 'settings.md';
     hdkHost: // the updater's dialogs
       Result := 'updates.md';
+    hdkPluginList:
+      Result := 'settings.md';
     hdkColumnsConfig:
       Result := 'view.md';
     hdkArchivePassword:

@@ -195,6 +195,9 @@ function FileHasZipSignature(const APath: string): Boolean;
 function IsSevenZipFileName(const AName: string): Boolean;
 function IsSevenZipUri(const AURI: string): Boolean;
 function IsZipArchiveUri(const AURI: string): Boolean;
+/// <summary>"&lt;scheme&gt;:///&lt;path&gt;!/" - root of the archive file AArchivePath
+/// as served by the plugin owning AScheme. '' when either part is empty.</summary>
+function PathToArchiveRootUri(const AScheme, AArchivePath: string): string;
 function PathToSevenZipRootUri(const AArchivePath: string): string;
 /// <summary>The same entry of an on-disk ZIP addressed through the 7z://
 /// backend (file:///C:/a.zip!/dir/f.txt -> 7z:///C:/a.zip!/dir/f.txt). The
@@ -920,15 +923,20 @@ begin
     FileHasZipSignature(FileUriToPath(Base));
 end;
 
-function PathToSevenZipRootUri(const AArchivePath: string): string;
+function PathToArchiveRootUri(const AScheme, AArchivePath: string): string;
 var
   P: string;
 begin
   P := ExcludeTrailingPathDelimiter(Trim(AArchivePath));
-  if P = '' then
+  if (P = '') or (Trim(AScheme) = '') then
     Exit('');
   P := StringReplace(P, '\', '/', [rfReplaceAll]);
-  Result := '7z:///' + P + '!/';
+  Result := LowerCase(Trim(AScheme)) + ':///' + P + '!/';
+end;
+
+function PathToSevenZipRootUri(const AArchivePath: string): string;
+begin
+  Result := PathToArchiveRootUri('7z', AArchivePath);
 end;
 
 function ZipEntryToSevenZipUri(const AEntryUri: string): string;

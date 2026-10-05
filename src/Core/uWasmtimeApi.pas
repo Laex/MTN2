@@ -8,9 +8,10 @@ unit uWasmtimeApi;
     https://github.com/bytecodealliance/wasmtime/releases
 
   Layout of TWasmtimeVal / TWasmtimeExtern matches the C structs on Win64
-  (kind byte + 7 pad + 16-byte union = 24). WASI is never linked: a module
-  that imports wasi_snapshot_preview1 fails instantiation instead of seeing
-  the host filesystem. }
+  (kind byte + 7 pad + 16-byte union = 24). WASI is linked only for a plugin
+  whose manifest asks for it, and then as an empty preview1: no files, no
+  environment, no arguments. Any other module that imports
+  wasi_snapshot_preview1 fails instantiation. }
 
 interface
 
@@ -118,6 +119,11 @@ type
       Tables, Memories: Int64); cdecl;
     ContextGetData: function(Ctx: PWasmtimeContext): Pointer; cdecl;
     ContextSetFuel: function(Ctx: PWasmtimeContext; Fuel: UInt64): PWasmtimeError; cdecl;
+    /// <summary>The three WASI entry points are optional (nil if the DLL lacks
+    /// them): they serve only plugins whose manifest asks for WASI.</summary>
+    WasiConfigNew: function: Pointer; cdecl;
+    ContextSetWasi: function(Ctx: PWasmtimeContext; Config: Pointer): PWasmtimeError; cdecl;
+    LinkerDefineWasi: function(L: PWasmtimeLinker): PWasmtimeError; cdecl;
     Wat2Wasm: function(Wat: PAnsiChar; WatLen: NativeUInt; Ret: PWasmByteVec): PWasmtimeError; cdecl;
     ModuleNew: function(E: PWasmEngine; Wasm: Pointer; WasmLen: NativeUInt;
       Ret: PPointer): PWasmtimeError; cdecl;
@@ -207,6 +213,9 @@ begin
   if not Need('wasm_config_delete', GFns.ConfigDelete) then Exit;
   if not Need('wasmtime_config_consume_fuel_set', GFns.ConfigConsumeFuelSet) then Exit;
   Need('wasmtime_config_parallel_compilation_set', GFns.ConfigParallelCompilationSet); // optional
+  Need('wasi_config_new', GFns.WasiConfigNew); // optional
+  Need('wasmtime_context_set_wasi', GFns.ContextSetWasi); // optional
+  Need('wasmtime_linker_define_wasi', GFns.LinkerDefineWasi); // optional
   if not Need('wasm_engine_new_with_config', GFns.EngineNewWithConfig) then Exit;
   if not Need('wasm_engine_delete', GFns.EngineDelete) then Exit;
   if not Need('wasmtime_store_new', GFns.StoreNew) then Exit;
