@@ -1,9 +1,13 @@
 name: CI
 
 on:
+  # A change that touches only documentation or the samples (they are not
+  # built here) runs nothing: no hosted minutes, no dev release.
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '*.md', 'samples/**']
   pull_request:
+    paths-ignore: ['docs/**', '*.md', 'samples/**']
   workflow_dispatch:
 
 permissions:
@@ -46,19 +50,52 @@ jobs:
         working-directory: src/plugins/mtn.ws
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          fetch-depth: 0
+
+      # The Rust build is skipped (the job still ends in about a minute) unless
+      # the plugin or this workflow changed in the push / pull request.
+      - name: Did the plugin change?
+        id: scope
+        working-directory: .
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          changed=true
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] && [ -n "$base" ] \
+             && ! echo "$base" | grep -qE '^0+$' && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            if git diff --name-only "$base" "$GITHUB_SHA" \
+               | grep -qE '^(src/plugins/mtn\.ws/|\.github/workflows/ci\.yml$)'; then
+              changed=true
+            else
+              changed=false
+            fi
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "mtn.ws changed: $changed"
+
+      - if: steps.scope.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           # Pinned by SHA, so the toolchain can't come from the ref name.
           toolchain: stable
           targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - if: steps.scope.outputs.changed == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: src/plugins/mtn.ws
-      - run: cargo build --locked --release --target wasm32-unknown-unknown
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - if: steps.scope.outputs.changed == 'true'
+        run: cargo build --locked --release --target wasm32-unknown-unknown
+      - if: steps.scope.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mtn.ws-plugin.wasm
           path: src/plugins/mtn.ws/target/wasm32-unknown-unknown/release/mtn_ws.wasm
+          retention-days: 3
 
   # RAD Studio is commercial and absent from hosted runners, so the Delphi
   # build runs on a self-hosted runner labelled `delphi` (see docs/BUILDING.md).
@@ -108,7 +145,7 @@ jobs:
             src/tests/dcu/*Tests.xml
             src/tests/dcu/*Tests.log
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 3
 
       - name: Package
         shell: pwsh
@@ -122,7 +159,7 @@ jobs:
         with:
           name: MTN2-win64
           path: dist/*.zip
-          retention-days: 14
+          retention-days: 3
 
       - name: Check packages
         if: env.DEV_VERSION != ''
