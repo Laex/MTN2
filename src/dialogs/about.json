@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "About MTN2",
   "width": 56,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "label",
       "text": "Modern Terminal Navigator 2 (MTN2)",
       "id": "lbl_title",
       "col": 2,
-      "row": 1,
+      "row": 0,
       "width": 52,
       "height": 1
     },
@@ -18,7 +18,7 @@
       "type": "label",
       "text": "────────────────────────────────────────────────────",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 52,
       "height": 1
     },
@@ -27,7 +27,7 @@
       "text": "High-Performance Dual Panel File Manager",
       "id": "lbl_sub",
       "col": 2,
-      "row": 4,
+      "row": 3,
       "width": 52,
       "height": 1
     },
@@ -36,7 +36,7 @@
       "text": "Graphics Engine: Standard GDI/FMX Renderer",
       "id": "lbl_skia",
       "col": 2,
-      "row": 5,
+      "row": 4,
       "width": 52,
       "height": 1
     },
@@ -45,7 +45,7 @@
       "text": "Platform: Win64 | ConPty Persistent Shell",
       "id": "lbl_pty",
       "col": 2,
-      "row": 6,
+      "row": 5,
       "width": 52,
       "height": 1
     },
@@ -54,7 +54,7 @@
       "text": "Version",
       "id": "lbl_version",
       "col": 2,
-      "row": 7,
+      "row": 6,
       "width": 52,
       "height": 1
     },
@@ -62,7 +62,7 @@
       "type": "label",
       "text": "──────────────────────────────────────────────────────",
       "col": 1,
-      "row": 8,
+      "row": 7,
       "width": 52,
       "height": 1
     },
@@ -73,7 +73,7 @@
       "default": true,
       "cancel": true,
       "col": 22,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     }

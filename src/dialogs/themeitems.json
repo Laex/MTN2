@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Theme",
   "width": 66,
-  "height": 24,
+  "height": 23,
   "children": [
     {
       "type": "list",
@@ -13,7 +13,7 @@
         "Items"
       ],
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 62,
       "height": 16
     },
@@ -22,7 +22,7 @@
       "id": "hint",
       "text": "* - set by this theme; the rest is inherited.",
       "col": 1,
-      "row": 18,
+      "row": 17,
       "width": 62,
       "height": 1
     },
@@ -32,7 +32,7 @@
       "text": "Edit...",
       "default": true,
       "col": 1,
-      "row": 20,
+      "row": 19,
       "width": 12,
       "height": 1
     },
@@ -41,7 +41,7 @@
       "id": "inherit",
       "text": "&Inherit",
       "col": 15,
-      "row": 20,
+      "row": 19,
       "width": 12,
       "height": 1
     },
@@ -51,7 +51,7 @@
       "text": "Back",
       "cancel": true,
       "col": 29,
-      "row": 20,
+      "row": 19,
       "width": 10,
       "height": 1
     }

@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Settings file",
   "width": 72,
-  "height": 8,
+  "height": 7,
   "children": [
     {
       "type": "label",
       "id": "prompt",
       "text": "File:",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 68,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "value": "",
       "history": "settingsfile",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 68,
       "height": 1
     },
@@ -30,7 +30,7 @@
       "text": "OK",
       "default": true,
       "col": 24,
-      "row": 4,
+      "row": 3,
       "width": 10,
       "height": 1
     },
@@ -40,7 +40,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 37,
-      "row": 4,
+      "row": 3,
       "width": 10,
       "height": 1
     }

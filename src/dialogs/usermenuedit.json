@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "User Menu Item",
   "width": 72,
-  "height": 15,
+  "height": 14,
   "children": [
     {
       "type": "label",
       "id": "lbl_hotkey",
       "text": "Hotkey:",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 10,
       "height": 1
     },
@@ -19,7 +19,7 @@
       "id": "hotkey",
       "value": "",
       "col": 12,
-      "row": 1,
+      "row": 0,
       "width": 4,
       "height": 1
     },
@@ -28,7 +28,7 @@
       "id": "lbl_kind",
       "text": "Type:",
       "col": 20,
-      "row": 1,
+      "row": 0,
       "width": 8,
       "height": 1
     },
@@ -42,7 +42,7 @@
         "Separator"
       ],
       "col": 29,
-      "row": 1,
+      "row": 0,
       "width": 22,
       "height": 1
     },
@@ -51,7 +51,7 @@
       "id": "lbl_caption",
       "text": "Caption:",
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 10,
       "height": 1
     },
@@ -60,7 +60,7 @@
       "id": "caption",
       "value": "",
       "col": 12,
-      "row": 3,
+      "row": 2,
       "width": 57,
       "height": 1
     },
@@ -69,7 +69,7 @@
       "id": "lbl_command",
       "text": "Command:",
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 68,
       "height": 1
     },
@@ -78,7 +78,7 @@
       "id": "command",
       "value": "",
       "col": 1,
-      "row": 6,
+      "row": 5,
       "width": 68,
       "height": 1
     },
@@ -87,7 +87,7 @@
       "id": "lbl_return",
       "text": "After run:",
       "col": 1,
-      "row": 8,
+      "row": 7,
       "width": 10,
       "height": 1
     },
@@ -101,7 +101,7 @@
         "Stay in the console"
       ],
       "col": 12,
-      "row": 8,
+      "row": 7,
       "width": 30,
       "height": 1
     },
@@ -110,7 +110,7 @@
       "id": "help1",
       "text": "F1 - macros: !.!  !&  !#  !^  !?Question?default!",
       "col": 1,
-      "row": 9,
+      "row": 8,
       "width": 68,
       "height": 1
     },
@@ -120,7 +120,7 @@
       "text": "OK",
       "default": true,
       "col": 18,
-      "row": 11,
+      "row": 10,
       "width": 14,
       "height": 1
     },
@@ -130,7 +130,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 11,
+      "row": 10,
       "width": 14,
       "height": 1
     }

@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "New terminal",
   "width": 48,
-  "height": 18,
+  "height": 17,
   "children": [
     {
       "type": "label",
       "text": "Select shell profile:",
       "id": "lbl_prompt",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 44,
       "height": 1
     },
@@ -22,7 +22,7 @@
         "Command Prompt"
       ],
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 44,
       "height": 10
     },
@@ -32,7 +32,7 @@
       "text": "OK",
       "default": true,
       "col": 10,
-      "row": 14,
+      "row": 13,
       "width": 10,
       "height": 1
     },
@@ -42,7 +42,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 26,
-      "row": 14,
+      "row": 13,
       "width": 10,
       "height": 1
     }

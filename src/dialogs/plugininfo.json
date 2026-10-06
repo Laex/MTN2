@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Plugin",
   "width": 78,
-  "height": 22,
+  "height": 21,
   "children": [
     {
       "type": "list",
@@ -13,7 +13,7 @@
         ""
       ],
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 74,
       "height": 16
     },
@@ -22,7 +22,7 @@
       "id": "help",
       "text": "&Help",
       "col": 24,
-      "row": 18,
+      "row": 17,
       "width": 12,
       "height": 1
     },
@@ -33,7 +33,7 @@
       "default": true,
       "cancel": true,
       "col": 40,
-      "row": 18,
+      "row": 17,
       "width": 10,
       "height": 1
     }

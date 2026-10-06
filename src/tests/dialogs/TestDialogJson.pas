@@ -282,7 +282,7 @@ begin
   Assert.IsTrue(TryParseDialogJson(
     TFile.ReadAllText('..\..\dialogs\deleteerror.json', TEncoding.UTF8), LDecl),
     'deleteerror.json failed to parse');
-  Assert.IsTrue(LDecl.Height >= 14, 'deleteerror dialog is tall enough for a wrapped OS message');
+  Assert.IsTrue(LDecl.Height >= 13, 'deleteerror dialog is tall enough for a wrapped OS message');
   I := FindControlById(LDecl, 'error_line');
   Assert.IsTrue(I >= 0, 'error_line label not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckLabel, 'error_line is not a label');

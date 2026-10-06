@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Theme",
   "width": 56,
-  "height": 23,
+  "height": 22,
   "children": [
     {
       "type": "list",
@@ -13,7 +13,7 @@
         "Sections"
       ],
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 52,
       "height": 14
     },
@@ -22,7 +22,7 @@
       "id": "hint",
       "text": "Enter opens a section; changes show at once.",
       "col": 1,
-      "row": 16,
+      "row": 15,
       "width": 52,
       "height": 1
     },
@@ -31,7 +31,7 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 17,
+      "row": 16,
       "width": 52,
       "height": 1
     },
@@ -41,7 +41,7 @@
       "text": "Edit...",
       "default": true,
       "col": 1,
-      "row": 19,
+      "row": 18,
       "width": 12,
       "height": 1
     },
@@ -50,7 +50,7 @@
       "id": "save",
       "text": "&Save",
       "col": 14,
-      "row": 19,
+      "row": 18,
       "width": 10,
       "height": 1
     },
@@ -59,7 +59,7 @@
       "id": "saveas",
       "text": "Save &as...",
       "col": 25,
-      "row": 19,
+      "row": 18,
       "width": 14,
       "height": 1
     },
@@ -69,7 +69,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 19,
+      "row": 18,
       "width": 12,
       "height": 1
     }

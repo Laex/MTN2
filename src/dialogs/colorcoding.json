@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Color coding groups",
   "width": 78,
-  "height": 21,
+  "height": 20,
   "children": [
     {
       "type": "label",
       "id": "header",
       "text": "    T Name             Mask                     N  S  C   Sample",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 74,
       "height": 1
     },
@@ -22,7 +22,7 @@
         "(no groups)"
       ],
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 74,
       "height": 12
     },
@@ -31,7 +31,7 @@
       "id": "hint",
       "text": "Ins=Add F4=Edit Del=Remove/Disable Ctrl+Space=Enable Ctrl+Up/Dn=Move",
       "col": 1,
-      "row": 15,
+      "row": 14,
       "width": 74,
       "height": 1
     },
@@ -40,7 +40,7 @@
       "id": "add",
       "text": "&Add",
       "col": 1,
-      "row": 17,
+      "row": 16,
       "width": 9,
       "height": 1
     },
@@ -49,7 +49,7 @@
       "id": "edit",
       "text": "&Edit",
       "col": 11,
-      "row": 17,
+      "row": 16,
       "width": 9,
       "height": 1
     },
@@ -58,7 +58,7 @@
       "id": "delete",
       "text": "&Delete",
       "col": 21,
-      "row": 17,
+      "row": 16,
       "width": 10,
       "height": 1
     },
@@ -67,7 +67,7 @@
       "id": "moveup",
       "text": "&Up",
       "col": 32,
-      "row": 17,
+      "row": 16,
       "width": 7,
       "height": 1
     },
@@ -76,7 +76,7 @@
       "id": "movedown",
       "text": "D&n",
       "col": 40,
-      "row": 17,
+      "row": 16,
       "width": 7,
       "height": 1
     },
@@ -86,7 +86,7 @@
       "text": "Save",
       "default": true,
       "col": 54,
-      "row": 17,
+      "row": 16,
       "width": 9,
       "height": 1
     },
@@ -96,7 +96,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 64,
-      "row": 17,
+      "row": 16,
       "width": 10,
       "height": 1
     }

@@ -4,14 +4,14 @@
   "style": "warning",
   "title": "Error",
   "width": 80,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "label",
       "id": "headline",
       "text": "Cannot move item to the Recycle Bin",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 76,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "id": "path",
       "text": "path",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 76,
       "height": 1
     },
@@ -29,7 +29,7 @@
       "id": "question",
       "text": "Try to delete it permanently?",
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 76,
       "height": 1
     },
@@ -37,7 +37,7 @@
       "type": "label",
       "text": "──────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 4,
+      "row": 3,
       "width": 78,
       "height": 1
     },
@@ -46,7 +46,7 @@
       "id": "error_line",
       "text": "0x00000005 - Access denied",
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 76,
       "height": 3
     },
@@ -54,7 +54,7 @@
       "type": "label",
       "text": "──────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 8,
+      "row": 7,
       "width": 78,
       "height": 1
     },
@@ -64,7 +64,7 @@
       "text": "Delete",
       "default": true,
       "col": 13,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     },
@@ -73,7 +73,7 @@
       "id": "skip",
       "text": "&Skip",
       "col": 26,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     },
@@ -82,7 +82,7 @@
       "id": "skipall",
       "text": "Skip &all",
       "col": 39,
-      "row": 10,
+      "row": 9,
       "width": 12,
       "height": 1
     },
@@ -92,7 +92,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 54,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     }

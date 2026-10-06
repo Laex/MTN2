@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Custom columns",
   "width": 38,
-  "height": 13,
+  "height": 12,
   "children": [
     {
       "type": "checkbox",
@@ -11,7 +11,7 @@
       "text": "&Extension",
       "checked": false,
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 34,
       "height": 1
     },
@@ -21,7 +21,7 @@
       "text": "&Size",
       "checked": true,
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 34,
       "height": 1
     },
@@ -31,7 +31,7 @@
       "text": "&Modified date",
       "checked": true,
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 34,
       "height": 1
     },
@@ -41,7 +41,7 @@
       "text": "&Created date",
       "checked": false,
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 34,
       "height": 1
     },
@@ -51,7 +51,7 @@
       "text": "&Accessed date",
       "checked": false,
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 34,
       "height": 1
     },
@@ -61,7 +61,7 @@
       "text": "&Type",
       "checked": false,
       "col": 1,
-      "row": 6,
+      "row": 5,
       "width": 34,
       "height": 1
     },
@@ -71,7 +71,7 @@
       "text": "Attri&butes",
       "checked": true,
       "col": 1,
-      "row": 7,
+      "row": 6,
       "width": 34,
       "height": 1
     },
@@ -81,7 +81,7 @@
       "text": "OK",
       "default": true,
       "col": 4,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -91,7 +91,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 19,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     }

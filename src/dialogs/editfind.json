@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Search",
   "width": 60,
-  "height": 12,
+  "height": 11,
   "children": [
     {
       "type": "label",
       "text": "Find:",
       "id": "lbl_find",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 56,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "history": "editfind",
       "value": "",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 56,
       "height": 1
     },
@@ -30,7 +30,7 @@
       "text": "&Case sensitive",
       "checked": false,
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 27,
       "height": 1
     },
@@ -40,7 +40,7 @@
       "text": "&Whole words",
       "checked": false,
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 27,
       "height": 1
     },
@@ -50,7 +50,7 @@
       "text": "Reg&ular expressions",
       "checked": false,
       "col": 30,
-      "row": 4,
+      "row": 3,
       "width": 27,
       "height": 1
     },
@@ -60,14 +60,14 @@
       "text": "Re&verse search",
       "checked": false,
       "col": 30,
-      "row": 5,
+      "row": 4,
       "width": 27,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 6,
+      "row": 5,
       "width": 58,
       "height": 1
     },
@@ -77,7 +77,7 @@
       "text": "Search",
       "default": true,
       "col": 1,
-      "row": 8,
+      "row": 7,
       "width": 12,
       "height": 1
     },
@@ -86,7 +86,7 @@
       "id": "word",
       "text": "Wo&rd",
       "col": 14,
-      "row": 8,
+      "row": 7,
       "width": 10,
       "height": 1
     },
@@ -95,7 +95,7 @@
       "id": "selection",
       "text": "Se&lection",
       "col": 25,
-      "row": 8,
+      "row": 7,
       "width": 14,
       "height": 1
     },
@@ -105,7 +105,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 46,
-      "row": 8,
+      "row": 7,
       "width": 10,
       "height": 1
     }

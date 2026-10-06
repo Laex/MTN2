@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Go to line",
   "width": 36,
-  "height": 8,
+  "height": 7,
   "children": [
     {
       "type": "label",
       "text": "Line number:",
       "id": "lbl_line",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 32,
       "height": 1
     },
@@ -19,7 +19,7 @@
       "id": "line",
       "value": "1",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 32,
       "height": 1
     },
@@ -29,7 +29,7 @@
       "text": "OK",
       "default": true,
       "col": 6,
-      "row": 4,
+      "row": 3,
       "width": 10,
       "height": 1
     },
@@ -39,7 +39,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 18,
-      "row": 4,
+      "row": 3,
       "width": 10,
       "height": 1
     }

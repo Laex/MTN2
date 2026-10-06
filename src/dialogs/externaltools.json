@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "External Viewer / Editor",
   "width": 72,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "label",
       "id": "lbl_viewer",
       "text": "Viewer (Alt+F3):",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 68,
       "height": 1
     },
@@ -19,7 +19,7 @@
       "id": "viewer",
       "value": "",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 68,
       "height": 1
     },
@@ -28,7 +28,7 @@
       "id": "lbl_editor",
       "text": "Editor (Alt+F4):",
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 68,
       "height": 1
     },
@@ -37,7 +37,7 @@
       "id": "editor",
       "value": "",
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 68,
       "height": 1
     },
@@ -46,7 +46,7 @@
       "id": "help1",
       "text": "%1 - file path; without %1 the path is added at the end",
       "col": 1,
-      "row": 7,
+      "row": 6,
       "width": 68,
       "height": 1
     },
@@ -55,7 +55,7 @@
       "id": "help2",
       "text": "Empty: the Windows program for the file (editor: Edit, else Notepad)",
       "col": 1,
-      "row": 8,
+      "row": 7,
       "width": 68,
       "height": 1
     },
@@ -65,7 +65,7 @@
       "text": "OK",
       "default": true,
       "col": 18,
-      "row": 10,
+      "row": 9,
       "width": 14,
       "height": 1
     },
@@ -75,7 +75,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 10,
+      "row": 9,
       "width": 14,
       "height": 1
     }

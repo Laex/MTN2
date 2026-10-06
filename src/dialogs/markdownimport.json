@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Import Obsidian theme",
   "width": 66,
-  "height": 12,
+  "height": 11,
   "children": [
     {
       "type": "label",
       "id": "lbl_path",
       "text": "Obsidian theme file (theme.css):",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 62,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "value": "",
       "history": "obsidiantheme",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 62,
       "height": 1
     },
@@ -29,7 +29,7 @@
       "id": "lbl_palette",
       "text": "Palette:",
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 10,
       "height": 1
     },
@@ -42,7 +42,7 @@
         "Light"
       ],
       "col": 12,
-      "row": 4,
+      "row": 3,
       "width": 14
     },
     {
@@ -50,7 +50,7 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 6,
+      "row": 5,
       "width": 62,
       "height": 1
     },
@@ -60,7 +60,7 @@
       "text": "Import",
       "default": true,
       "col": 16,
-      "row": 8,
+      "row": 7,
       "width": 12,
       "height": 1
     },
@@ -70,7 +70,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 34,
-      "row": 8,
+      "row": 7,
       "width": 12,
       "height": 1
     }

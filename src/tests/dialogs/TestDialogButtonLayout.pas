@@ -3,11 +3,15 @@ unit TestDialogButtonLayout;
 { Every built-in dialog (each DIALOG_* resource), laid out as the program
   shows it - translated and with captions fitted - in English and Russian.
   Also the dialogs code builds on top of a resource (the background-console
-  profile picker, a one-button update message). The bottom button row keeps:
+  profile picker, a one-button update message). The content starts on the
+  row right under the title bar. The bottom button row keeps:
   - at least one empty cell between the frame and the leftmost face, and
     between the rightmost face's shadow and the frame;
-  - exactly one empty row above it;
-  - below it only the shadow row, then the frame. }
+  - exactly one empty row above it (a separator rule, if any, sits above
+    that empty row);
+  - below it the shadow row, then the frame.
+  A block of two button rows (a shadow row apart) has an empty row above the
+  block and the same space below it. }
 
 interface
 
@@ -68,8 +72,24 @@ var
   Host: TDialogHost;
   Grid: TTerminalGrid;
   Frame, R: TRectI;
-  I, Top, Left, Right: Integer;
+  I, Top, Left, Right, BlockTop: Integer;
+  RuleAbove: Boolean;
   Problems: TStringList;
+
+  function RuleAt(ARow: Integer): Boolean;
+  var
+    J: Integer;
+    B: TRectI;
+  begin
+    Result := False;
+    for J := 0 to Host.ControlCount - 1 do
+    begin
+      B := Host.ControlBoundsAt(J);
+      if (B.Top = ARow) and (Host.GetControl(J).Kind = dckLabel) and
+         IsHRuleText(Host.GetControl(J).Text) then
+        Exit(True);
+    end;
+  end;
 
   function RowUsed(ARow: Integer): Boolean;
   var
@@ -80,7 +100,7 @@ var
     for J := 0 to Host.ControlCount - 1 do
     begin
       B := Host.ControlBoundsAt(J);
-      if (Host.GetControl(J).Kind = dckButton) and (B.Top = Top) then
+      if (Host.GetControl(J).Kind = dckButton) and (B.Top >= BlockTop) then
         Continue;
       if (B.Top <= ARow) and (B.Bottom >= ARow) then
         Exit(True);
@@ -104,6 +124,13 @@ begin
     if Top < 0 then
       Exit; // no buttons
 
+    BlockTop := Top;
+    for I := 0 to Host.ControlCount - 1 do
+      if (Host.GetControl(I).Kind = dckButton) and
+         (Host.ControlBoundsAt(I).Top = Top - 2) then
+        BlockTop := Top - 2;
+    RuleAbove := (not RowUsed(BlockTop - 1)) and RuleAt(BlockTop - 2);
+
     Left := MaxInt;
     Right := -1;
     for I := 0 to Host.ControlCount - 1 do
@@ -124,10 +151,13 @@ begin
     if Top <> Frame.Bottom - 2 then
       Problems.Add(Format('buttons %d rows above the frame (want 2: shadow, frame)',
         [Frame.Bottom - Top]));
-    if RowUsed(Top - 1) then
+    if RowUsed(BlockTop - 1) then
       Problems.Add('no empty row above the buttons')
-    else if (Top - 2 > Frame.Top) and not RowUsed(Top - 2) then
+    else if (not RuleAbove) and (BlockTop - 2 > Frame.Top) and
+      not RowUsed(BlockTop - 2) then
       Problems.Add('more than one empty row above the buttons');
+    if not RowUsed(Frame.Top + 1) then
+      Problems.Add('empty row under the title');
     if RowUsed(Top + 1) then
       Problems.Add('controls on the shadow row');
     if Problems.Count > 0 then

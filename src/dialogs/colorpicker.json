@@ -3,13 +3,13 @@
   "version": "2.0",
   "title": "Pick color",
   "width": 54,
-  "height": 25,
+  "height": 24,
   "children": [
     {
       "type": "colorpicker",
       "id": "picker",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 50,
       "height": 17
     },
@@ -18,7 +18,7 @@
       "id": "hint",
       "text": "Arrows move, Shift+Left/Right by 10, Tab next",
       "col": 1,
-      "row": 19,
+      "row": 18,
       "width": 50,
       "height": 1
     },
@@ -28,7 +28,7 @@
       "text": "Use",
       "default": true,
       "col": 1,
-      "row": 21,
+      "row": 20,
       "width": 10,
       "height": 1
     },
@@ -37,7 +37,7 @@
       "id": "clear",
       "text": "&Theme color",
       "col": 13,
-      "row": 21,
+      "row": 20,
       "width": 18,
       "height": 1
     },
@@ -47,7 +47,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 33,
-      "row": 21,
+      "row": 20,
       "width": 12,
       "height": 1
     }

@@ -4,14 +4,14 @@
   "style": "warning",
   "title": "Error",
   "width": 80,
-  "height": 13,
+  "height": 12,
   "children": [
     {
       "type": "label",
       "id": "headline",
       "text": "Copy failed",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 76,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "id": "path",
       "text": "path",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 76,
       "height": 1
     },
@@ -28,7 +28,7 @@
       "type": "label",
       "text": "──────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 3,
+      "row": 2,
       "width": 78,
       "height": 1
     },
@@ -37,7 +37,7 @@
       "id": "error_line",
       "text": "0x00000005 - Access denied",
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 76,
       "height": 3
     },
@@ -45,7 +45,7 @@
       "type": "label",
       "text": "──────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 7,
+      "row": 6,
       "width": 78,
       "height": 1
     },
@@ -55,7 +55,7 @@
       "text": "Retry",
       "default": true,
       "col": 13,
-      "row": 9,
+      "row": 8,
       "width": 10,
       "height": 1
     },
@@ -64,7 +64,7 @@
       "id": "skip",
       "text": "&Skip",
       "col": 26,
-      "row": 9,
+      "row": 8,
       "width": 10,
       "height": 1
     },
@@ -73,7 +73,7 @@
       "id": "skipall",
       "text": "Skip &all",
       "col": 39,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -83,7 +83,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 54,
-      "row": 9,
+      "row": 8,
       "width": 10,
       "height": 1
     }

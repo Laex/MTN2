@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Glyph",
   "width": 58,
-  "height": 13,
+  "height": 12,
   "children": [
     {
       "type": "label",
       "id": "lbl_item",
       "text": "",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 54,
       "height": 1
     },
@@ -19,7 +19,7 @@
       "id": "value",
       "value": "",
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 40,
       "height": 1
     },
@@ -28,7 +28,7 @@
       "id": "lbl_inherited",
       "text": "",
       "col": 1,
-      "row": 5,
+      "row": 4,
       "width": 54,
       "height": 1
     },
@@ -37,7 +37,7 @@
       "id": "hint",
       "text": "",
       "col": 1,
-      "row": 6,
+      "row": 5,
       "width": 54,
       "height": 1
     },
@@ -46,7 +46,7 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 7,
+      "row": 6,
       "width": 54,
       "height": 1
     },
@@ -56,7 +56,7 @@
       "text": "OK",
       "default": true,
       "col": 1,
-      "row": 9,
+      "row": 8,
       "width": 10,
       "height": 1
     },
@@ -65,7 +65,7 @@
       "id": "inherit",
       "text": "&Inherit",
       "col": 13,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -75,7 +75,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 27,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     }

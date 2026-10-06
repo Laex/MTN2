@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Replace",
   "width": 60,
-  "height": 14,
+  "height": 13,
   "children": [
     {
       "type": "label",
       "text": "Find:",
       "id": "lbl_find",
       "col": 1,
-      "row": 1,
+      "row": 0,
       "width": 56,
       "height": 1
     },
@@ -20,7 +20,7 @@
       "history": "editfind",
       "value": "",
       "col": 1,
-      "row": 2,
+      "row": 1,
       "width": 56,
       "height": 1
     },
@@ -29,7 +29,7 @@
       "text": "Replace with:",
       "id": "lbl_replace",
       "col": 1,
-      "row": 3,
+      "row": 2,
       "width": 56,
       "height": 1
     },
@@ -39,7 +39,7 @@
       "history": "editreplace",
       "value": "",
       "col": 1,
-      "row": 4,
+      "row": 3,
       "width": 56,
       "height": 1
     },
@@ -49,7 +49,7 @@
       "text": "&Case sensitive",
       "checked": false,
       "col": 1,
-      "row": 6,
+      "row": 5,
       "width": 27,
       "height": 1
     },
@@ -59,7 +59,7 @@
       "text": "&Whole words",
       "checked": false,
       "col": 1,
-      "row": 7,
+      "row": 6,
       "width": 27,
       "height": 1
     },
@@ -69,7 +69,7 @@
       "text": "Reg&ular expressions",
       "checked": false,
       "col": 30,
-      "row": 6,
+      "row": 5,
       "width": 27,
       "height": 1
     },
@@ -79,14 +79,14 @@
       "text": "Re&verse search",
       "checked": false,
       "col": 30,
-      "row": 7,
+      "row": 6,
       "width": 27,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 8,
+      "row": 7,
       "width": 58,
       "height": 1
     },
@@ -96,7 +96,7 @@
       "text": "Replace",
       "default": true,
       "col": 1,
-      "row": 10,
+      "row": 9,
       "width": 11,
       "height": 1
     },
@@ -105,7 +105,7 @@
       "id": "all",
       "text": "&All",
       "col": 13,
-      "row": 10,
+      "row": 9,
       "width": 7,
       "height": 1
     },
@@ -114,7 +114,7 @@
       "id": "word",
       "text": "Wo&rd",
       "col": 21,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     },
@@ -123,7 +123,7 @@
       "id": "selection",
       "text": "Se&lection",
       "col": 32,
-      "row": 10,
+      "row": 9,
       "width": 14,
       "height": 1
     },
@@ -133,7 +133,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 46,
-      "row": 10,
+      "row": 9,
       "width": 10,
       "height": 1
     }
