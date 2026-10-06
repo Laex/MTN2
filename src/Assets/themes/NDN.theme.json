@@ -42,8 +42,9 @@
       "hotFg": "hotKeyRed"
     },
     "button": {
-      "fg": "black",
-      "bg": "cyan",
+      "fg": "white",
+      "bg": "darkGray",
+      "hotFg": "yellow",
       "focusFg": "black",
       "focusBg": "lightCyan",
       "hotFocusFg": "hotKeyRed"
