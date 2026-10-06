@@ -44,6 +44,13 @@ procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI
 /// image positioned against stale geometry between URI changes.</summary>
 procedure UpdateOverlayBounds(const ABounds: TRectI); overload;
 procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single = 0); overload;
+/// <summary>Shows a picture the caller already holds as AWidth x AHeight pixels
+/// (B, G, R, A bytes, rows top to bottom, no padding), copied; AURI names it
+/// for OverlayCurrentURI. Fitted and centered in ABounds, painted inside AClip
+/// like RequestOverlayPreview. Calling it again with the same URI replaces the
+/// pixels (a video frame) and reuses the bitmap while the size stays.</summary>
+procedure SetOverlayPixels(const AURI: string; AWidth, AHeight: Integer; APixels: PByte;
+  const ABounds, AClip: TRectI);
 procedure ClearOverlayPreview;
 function OverlayActive: Boolean;
 /// <summary>URI of the current/last preview request; '' if none.</summary>
@@ -72,7 +79,7 @@ function ReadImagePixelSize(const APath: string; out AWidth, AHeight: Integer): 
 implementation
 
 uses
-  System.Math, System.Types,
+  System.Math, System.Types, FMX.Types,
   uVfsTypes, uVfsRegistry;
 
 type
@@ -97,6 +104,8 @@ type
     destructor Destroy; override;
     procedure Request(const AURI: string; const ABounds, AClip: TRectI; AImageScale: Single);
     procedure UpdateBounds(const ABounds, AClip: TRectI; AImageScale: Single);
+    procedure SetPixels(const AURI: string; AWidth, AHeight: Integer; APixels: PByte;
+      const ABounds, AClip: TRectI);
     procedure Clear;
     function Active: Boolean;
     procedure Draw(ACanvas: TCanvas; ACellWidth, ACellHeight: Single);
@@ -191,6 +200,49 @@ begin
   FBounds := ABounds;
   FClip := AClip;
   FImageScale := AImageScale;
+end;
+
+procedure TOverlayHost.SetPixels(const AURI: string; AWidth, AHeight: Integer;
+  APixels: PByte; const ABounds, AClip: TRectI);
+var
+  Data: TBitmapData;
+  Y, X: Integer;
+  Row: PByte;
+begin
+  if (AWidth <= 0) or (AHeight <= 0) or (APixels = nil) then
+    Exit;
+  if Assigned(FCancel) then
+    FCancel.Cancel;
+  FCancel := nil;
+  Inc(FGen); // orphan any in-flight decode
+  FURI := AURI;
+  FBounds := ABounds;
+  FClip := AClip;
+  FImageScale := 0;
+  if not Assigned(FBitmap) or (FBitmap.Width <> AWidth) or (FBitmap.Height <> AHeight) then
+  begin
+    FreeAndNil(FBitmap);
+    FBitmap := TBitmap.Create(AWidth, AHeight);
+  end;
+  if FBitmap.Map(TMapAccess.Write, Data) then
+    try
+      for Y := 0 to AHeight - 1 do
+      begin
+        Row := APixels + Y * AWidth * 4;
+        if Data.PixelFormat = TPixelFormat.BGRA then
+          Move(Row^, Data.GetScanline(Y)^, AWidth * 4)
+        else
+          for X := 0 to AWidth - 1 do
+            Data.SetPixel(X, Y, TAlphaColor((Cardinal(Row[X * 4 + 3]) shl 24) or
+              (Cardinal(Row[X * 4 + 2]) shl 16) or (Cardinal(Row[X * 4 + 1]) shl 8) or
+              Row[X * 4]));
+      end;
+    finally
+      FBitmap.Unmap(Data);
+    end;
+  // No repaint request: the caller sets the pixels while the frame is built, so the
+  // Canvas pass of the same frame draws them.
+  FState := osReady;
 end;
 
 procedure TOverlayHost.DecodeAndStore(const ABytes: TBytes; AGen: Cardinal);
@@ -313,6 +365,12 @@ procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI
   AImageScale: Single);
 begin
   Host.Request(AURI, ABounds, AClip, AImageScale);
+end;
+
+procedure SetOverlayPixels(const AURI: string; AWidth, AHeight: Integer; APixels: PByte;
+  const ABounds, AClip: TRectI);
+begin
+  Host.SetPixels(AURI, AWidth, AHeight, APixels, ABounds, AClip);
 end;
 
 procedure UpdateOverlayBounds(const ABounds: TRectI);

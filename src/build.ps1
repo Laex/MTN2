@@ -131,7 +131,7 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src" -N"$PluginDcu" -E"$
     }
 
     Get-ChildItem -Path $Src -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Extension -in '.json', '.wat', '.wasm' } |
+        Where-Object { $_.Extension -in '.json', '.wat', '.wasm', '.md' } |
         ForEach-Object {
             Copy-Item $_.FullName (Join-Path $Dest $_.Name) -Force
         }

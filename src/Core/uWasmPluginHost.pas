@@ -45,6 +45,71 @@ unit uWasmPluginHost;
       // dialog declaration JSON; the guest export takes
       // (id_ptr, id_len, values_ptr, values_len) with the control id and the
       // values JSON of the answer (values over 2 KiB arrive empty)
+    surface_open(title_ptr, title_len, key_ptr, key_len, tick_ptr, tick_len,
+      closed_ptr, closed_len) -> i32
+      // opens a viewer tab for a picture the guest supplies; returns the
+      // handle (above 0) or -1. The guest exports named by key / tick /
+      // closed (empty name = none): key takes (key_ptr, key_len) with a name
+      // like "Left", "Space", "Ctrl+C" and returns i64 (1 = the key was used);
+      // tick and closed take no arguments (closed is not called when the
+      // guest closed the tab itself). Esc and F10 always close the tab.
+    surface_set_frame(handle, width, height, pixels_ptr, pixels_len) -> i32
+      // width x height pixels of 4 bytes in B, G, R, A order, rows top to
+      // bottom without padding; the host copies them. 0 = shown
+    surface_set_info(handle, title_ptr, title_len, status_ptr, status_len) -> i32
+      // tab title and status line text
+    surface_set_timer(handle, interval_ms) -> i32
+      // tick every interval_ms milliseconds while the tab is on screen; 0 stops
+    surface_close(handle) -> i32
+    surface_open_ex(title_ptr, title_len, mode, key_ptr, key_len, tick_ptr, tick_len,
+      closed_ptr, closed_len, mouse_ptr, mouse_len) -> i32
+      // as surface_open with a place (mode 0 tab, 1 full screen, 2 the panel opposite the
+      // active one; no native windows for guests) and a mouse export taking
+      // (kind, x, y, width, height, button, extra, shift) and returning i64 (1 = used);
+      // kinds: 0 down, 1 up, 2 move while a button is held, 3 wheel, 4 double click
+    surface_set_fullscreen(handle, on) -> i32
+    panel_list(side, out_ptr, out_cap) -> i32     // JSON rows of a panel
+    panel_set_cursor(side, uri_ptr, uri_len) -> i32
+    panel_select(side, mode, arg_ptr, arg_len) -> i32 // 0 select mask, 1 unselect mask,
+      // 2 clear, 3 select URI, 4 unselect URI
+    doc_set_selection(row1, col1, row2, col2) -> i32
+    doc_line(index, out_ptr, out_cap) -> i32
+    progress_set(id_ptr, id_len, text_ptr, text_len, percent) -> i32 // percent < 0: none
+    progress_end(id_ptr, id_len) -> i32
+    register_highlighter(ext_ptr, ext_len, export_ptr, export_len) -> i32
+      // colors lines of files with those extensions: the guest export takes
+      // (line_ptr, line_len, out_ptr, out_cap) with out_cap spans of three 32-bit
+      // integers (start byte, byte length, class 0..11) and returns the number written
+    vfs_list(uri_ptr, uri_len, export_ptr, export_len) -> i32
+    vfs_exists(uri_ptr, uri_len, export_ptr, export_len) -> i32
+    vfs_read(uri_ptr, uri_len, max_bytes, export_ptr, export_len) -> i32
+      // need the permission "vfs.read" (manifest + the user's grant). Each starts the job and
+      // returns a handle (above 0), -1 for bad arguments or -2 without the permission. Later,
+      // on the main thread, the guest export takes (handle, status) and returns nothing;
+      // status 0 = ok, 1 not found, 2 denied, 3 not supported or too large, 4 cancelled,
+      // 5 I/O error, 6 invalid URI
+    vfs_result(handle, out_ptr, out_cap) -> i32
+      // the result of a finished job (JSON for vfs_list and vfs_exists, the bytes for
+      // vfs_read): its length; copied only when length <= out_cap (a longer result stays
+      // for another call with a bigger buffer), and then the handle is released; -1 = no such result
+    host_info(out_ptr, out_cap) -> i32            // JSON with "version" and "language"
+    doc_info(out_ptr, out_cap) -> i32             // JSON about the active text document
+    doc_get_text(what, out_ptr, out_cap) -> i32   // 0 selection, 1 whole document (LF), 2 cursor line
+    doc_replace(what, text_ptr, text_len) -> i32  // as doc_get_text; one undo step; 0 = done
+    doc_set_cursor(row, col) -> i32
+    panel_info(out_ptr, out_cap) -> i32           // JSON about both file panels
+    panel_goto(side, uri_ptr, uri_len) -> i32     // side 0 left, 1 right, -1 active; 0 = done
+    panel_refresh() -> i32
+    clipboard_get(out_ptr, out_cap) -> i32
+    clipboard_set(text_ptr, text_len) -> i32
+    show_message(text_ptr, text_len, kind) -> i32 // kind 0 information, 1 warning
+      // Text results: the length in bytes (no NUL written); the text is written only
+      // when length <= out_cap, so a longer result means "call again with a bigger
+      // buffer"; -1 = not available.
+    subscribe(topic_ptr, topic_len, export_ptr, export_len) -> i32
+      // host events "doc.opened", "doc.saved", "doc.closed" ("*" = all); the guest
+      // export takes (topic_ptr, topic_len, payload_ptr, payload_len) with the
+      // payload JSON holding the document "uri" (payloads over 2 KiB arrive empty)
     register_document_provider(ext_ptr, ext_len, export_ptr, export_len,
       modes, priority) -> i32
       // extensions ".md,.markdown" or "*"; modes bit 0 = view, bit 1 = edit;
@@ -67,7 +132,7 @@ unit uWasmPluginHost;
 interface
 
 uses
-  System.SysUtils, System.SyncObjs,
+  System.SysUtils, System.SyncObjs, System.Generics.Collections,
   uWasmtimeApi, uPluginHostAbi;
 
 type
@@ -87,6 +152,8 @@ type
     FUriSlot: Integer;
     FOutOff: Integer;
     FOutCap: Integer;
+    FVfsResults: TDictionary<Integer, TBytes>;
+    FVfsNext: Integer;
     procedure ReleaseEngineObjects;
     function Refuel(out AError: string): Boolean;
     function GetExportFunc(const AName: string; out AFunc: TWasmtimeFunc): Boolean;
@@ -114,6 +181,21 @@ type
       out AError: string): Boolean;
     function CallCopyExport(const AFromURI, AToURI: string; AIsDir, AOverwrite: Boolean;
       out AStatus: Int64; out AError: string): Boolean;
+    /// <summary>Calls a guest export taking 32-bit integers and returning i64.</summary>
+    function CallIntsExport(const AExport: string; const AArgs: array of Integer;
+      out AStatus: Int64; out AError: string): Boolean;
+    /// <summary>Asks a highlighter export (line_ptr, line_len, out_ptr, out_cap) for the
+    /// spans of ALine: 12 bytes each, ACount of them.</summary>
+    function CallHighlightExport(const AExport, ALine: string; out ASpans: TBytes;
+      out ACount: Integer; out AError: string): Boolean;
+    /// <summary>Calls a guest export taking 32-bit integers and returning nothing.</summary>
+    function CallIntsVoidExport(const AExport: string; const AArgs: array of Integer;
+      out AError: string): Boolean;
+    /// <summary>Handle for a file system job whose result the guest will fetch later.</summary>
+    function ReserveVfsHandle: Integer;
+    procedure StoreVfsResult(AHandle: Integer; const AData: TBytes);
+    /// <summary>The result stays for another try when it does not fit ACap.</summary>
+    function TakeVfsResult(AHandle, ACap: Integer; out AData: TBytes): Integer;
     function InvokeVoidExport(const AName: string; out AError: string): Boolean;
     function InvokeI32Export(const AName: string; out AValue: Integer;
       out AError: string): Boolean;
@@ -134,10 +216,11 @@ function WasmEngineAvailable: Boolean;
 implementation
 
 uses
-  System.Classes, System.IOUtils,
+  System.Classes, System.IOUtils, System.Math,
   uVfsTypes, uTextEncoding, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
   uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi, uPluginChrome, uKeymap,
-  uKeymapRegistry, uPluginSettings;
+  uKeymapRegistry, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
+  uPluginVfs;
 
 const
   cFuelPerCall: UInt64 = 50000000;
@@ -155,6 +238,37 @@ const
   cExecCommand: AnsiString = 'execute_command';
   cRegDocProvider: AnsiString = 'register_document_provider';
   cShowDialog: AnsiString = 'show_dialog';
+  cSurfaceOpen: AnsiString = 'surface_open';
+  cSurfaceSetFrame: AnsiString = 'surface_set_frame';
+  cSurfaceSetInfo: AnsiString = 'surface_set_info';
+  cSurfaceSetTimer: AnsiString = 'surface_set_timer';
+  cSurfaceClose: AnsiString = 'surface_close';
+  cSurfaceOpenEx: AnsiString = 'surface_open_ex';
+  cSurfaceSetFullscreen: AnsiString = 'surface_set_fullscreen';
+  cPanelList: AnsiString = 'panel_list';
+  cPanelSetCursor: AnsiString = 'panel_set_cursor';
+  cPanelSelect: AnsiString = 'panel_select';
+  cDocSetSelection: AnsiString = 'doc_set_selection';
+  cDocLine: AnsiString = 'doc_line';
+  cProgressSet: AnsiString = 'progress_set';
+  cProgressEnd: AnsiString = 'progress_end';
+  cRegHighlighter: AnsiString = 'register_highlighter';
+  cVfsList: AnsiString = 'vfs_list';
+  cVfsExists: AnsiString = 'vfs_exists';
+  cVfsRead: AnsiString = 'vfs_read';
+  cVfsResult: AnsiString = 'vfs_result';
+  cHostInfo: AnsiString = 'host_info';
+  cDocInfo: AnsiString = 'doc_info';
+  cDocGetText: AnsiString = 'doc_get_text';
+  cDocReplace: AnsiString = 'doc_replace';
+  cDocSetCursor: AnsiString = 'doc_set_cursor';
+  cPanelInfo: AnsiString = 'panel_info';
+  cPanelGoto: AnsiString = 'panel_goto';
+  cPanelRefresh: AnsiString = 'panel_refresh';
+  cClipboardGet: AnsiString = 'clipboard_get';
+  cClipboardSet: AnsiString = 'clipboard_set';
+  cShowMessage: AnsiString = 'show_message';
+  cSubscribe: AnsiString = 'subscribe';
   cRegPanelActivate: AnsiString = 'register_panel_activate';
   cRegKeyBinding: AnsiString = 'register_key_binding';
   cRegSettings: AnsiString = 'register_settings';
@@ -301,6 +415,38 @@ begin
     SetLength(Bytes, ALen);
     Move(Data[APtr], Bytes[0], ALen);
     AText := TEncoding.UTF8.GetString(Bytes);
+    Result := True;
+  finally
+    Wasmtime.ExternDelete(@Ext);
+  end;
+end;
+
+/// <summary>Copies ALen bytes of guest memory at APtr into ABytes.</summary>
+function ReadGuestBytes(Caller: PWasmtimeCaller; APtr, ALen: Integer;
+  out ABytes: TBytes): Boolean;
+var
+  Ctx: PWasmtimeContext;
+  Ext: TWasmtimeExtern;
+  Data: PByte;
+  Size: NativeUInt;
+begin
+  Result := False;
+  ABytes := nil;
+  if (Caller = nil) or (APtr < 0) or (ALen <= 0) then
+    Exit;
+  Ctx := Wasmtime.CallerContext(Caller);
+  FillChar(Ext, SizeOf(Ext), 0);
+  if not Wasmtime.CallerExportGet(Caller, 'memory', 6, @Ext) then
+    Exit;
+  try
+    if Ext.Kind <> WASMTIME_EXTERN_MEMORY then
+      Exit;
+    Data := Wasmtime.MemoryData(Ctx, @Ext.Of_.Memory);
+    Size := Wasmtime.MemoryDataSize(Ctx, @Ext.Of_.Memory);
+    if (Data = nil) or (NativeUInt(APtr) + NativeUInt(ALen) > Size) then
+      Exit;
+    SetLength(ABytes, ALen);
+    Move(Data[APtr], ABytes[0], ALen);
     Result := True;
   finally
     Wasmtime.ExternDelete(@Ext);
@@ -648,6 +794,770 @@ begin
     SetI32Result(Results, NResults, 0);
 end;
 
+/// <summary>Result of a text-returning import: its length; the text itself is
+/// written to the guest only when it fits.</summary>
+procedure ReturnGuestText(Caller: PWasmtimeCaller; APtr, ACap: Integer; const AText: string;
+  Results: PWasmtimeVal; NResults: NativeUInt);
+var
+  Bytes: TBytes;
+begin
+  Bytes := TEncoding.UTF8.GetBytes(AText);
+  if Length(Bytes) > ACap then
+  begin
+    SetI32Result(Results, NResults, Length(Bytes));
+    Exit;
+  end;
+  if (Length(Bytes) = 0) or WriteGuestBytes(Caller, APtr, ACap, Bytes) then
+    SetI32Result(Results, NResults, Length(Bytes));
+end;
+
+function HostHostInfo(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  ReturnGuestText(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, PluginHostInfoJson, Results, NResults);
+end;
+
+function HostDocInfo(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Json: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginDocInfo(Json) then
+    ReturnGuestText(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Json, Results, NResults);
+end;
+
+function HostDocGetText(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginDocGetText(Vals^[0].Of_.I32, Text) then
+    ReturnGuestText(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Text, Results, NResults);
+end;
+
+function HostDocReplace(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Text) and
+     PluginDocReplace(Vals^[0].Of_.I32, Text) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostDocSetCursor(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginDocSetCursor(Vals^[0].Of_.I32, Vals^[1].Of_.I32) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostPanelInfo(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Json: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginPanelInfo(Json) then
+    ReturnGuestText(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Json, Results, NResults);
+end;
+
+function HostPanelGoto(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Uri: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Uri) and
+     PluginPanelGoto(Vals^[0].Of_.I32, Uri) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostPanelRefresh(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if PluginPanelRefresh then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostClipboardGet(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginClipboardGet(Text) then
+    ReturnGuestText(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Text, Results, NResults);
+end;
+
+function HostClipboardSet(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Text) and
+     PluginClipboardSet(Text) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostShowMessage(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Text) then
+  begin
+    PluginShowMessage(Text, Vals^[2].Of_.I32);
+    SetI32Result(Results, NResults, 0);
+  end;
+end;
+
+function HostSubscribe(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Topic, ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Topic) or (Topic = '') or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  PluginSubscribe(Inst.PluginId, Topic,
+    procedure(const ATopic, APayloadJson: string)
+    var
+      Err, Payload: string;
+    begin
+      if (Inst = nil) or Inst.Dead then
+        Exit;
+      Payload := APayloadJson;
+      if Length(UTF8String(Payload)) >= 2047 then
+        Payload := '';
+      Inst.InvokeTwoStringExport(ExportName, ATopic, Payload, Err);
+    end);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostSurfaceOpenEx(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Title, KeyExport, TickExport, ClosedExport, MouseExport: string;
+  Mode: Integer;
+  OnKey: TSurfaceKeyCallback;
+  OnTick, OnClosed: TProc;
+  OnMouse: TSurfaceMouseCallback;
+  Handle: Integer;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 11 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  Mode := Vals^[2].Of_.I32;
+  // Native windows belong to native plugins.
+  if (Mode and cSurfaceNativeFlag) <> 0 then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Title) or
+     not ReadGuestUtf8(Caller, Vals^[3].Of_.I32, Vals^[4].Of_.I32, KeyExport) or
+     not ReadGuestUtf8(Caller, Vals^[5].Of_.I32, Vals^[6].Of_.I32, TickExport) or
+     not ReadGuestUtf8(Caller, Vals^[7].Of_.I32, Vals^[8].Of_.I32, ClosedExport) or
+     not ReadGuestUtf8(Caller, Vals^[9].Of_.I32, Vals^[10].Of_.I32, MouseExport) then
+    Exit;
+  OnKey := nil;
+  OnTick := nil;
+  OnClosed := nil;
+  OnMouse := nil;
+  if KeyExport <> '' then
+    OnKey := function(const AKey: string): Boolean
+      var
+        Status: Int64;
+        Err: string;
+      begin
+        Result := (Inst <> nil) and not Inst.Dead and
+          Inst.CallStatusExport(KeyExport, AKey, Status, Err) and (Status = 1);
+      end;
+  if TickExport <> '' then
+    OnTick := procedure
+      var
+        Err: string;
+      begin
+        if (Inst <> nil) and not Inst.Dead then
+          Inst.InvokeVoidExport(TickExport, Err);
+      end;
+  if ClosedExport <> '' then
+    OnClosed := procedure
+      var
+        Err: string;
+      begin
+        if (Inst <> nil) and not Inst.Dead then
+          Inst.InvokeVoidExport(ClosedExport, Err);
+      end;
+  if MouseExport <> '' then
+    OnMouse := function(AKind, AX, AY, AWidth, AHeight, AButton, AExtra, AShift: Integer): Boolean
+      var
+        Status: Int64;
+        Err: string;
+      begin
+        Result := (Inst <> nil) and not Inst.Dead and
+          Inst.CallIntsExport(MouseExport, [AKind, AX, AY, AWidth, AHeight, AButton, AExtra, AShift],
+            Status, Err) and (Status = 1);
+      end;
+  Handle := PluginSurfaceOpenEx(Inst.PluginId, Title, Mode, OnKey, OnTick, OnClosed, OnMouse);
+  if Handle > 0 then
+    SetI32Result(Results, NResults, Handle);
+end;
+
+function HostSurfaceSetFullscreen(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginSurfaceSetFullscreen(Vals^[0].Of_.I32, Vals^[1].Of_.I32 <> 0) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostPanelList(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Json: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginPanelList(Vals^[0].Of_.I32, Json) then
+    ReturnGuestText(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Json, Results, NResults);
+end;
+
+function HostPanelSetCursor(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Uri: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Uri) and
+     PluginPanelSetCursor(Vals^[0].Of_.I32, Uri) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostPanelSelect(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Arg: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Arg) and
+     PluginPanelSelect(Vals^[0].Of_.I32, Vals^[1].Of_.I32, Arg) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostDocSetSelection(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginDocSetSelection(Vals^[0].Of_.I32, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Vals^[3].Of_.I32) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostDocLine(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginDocLine(Vals^[0].Of_.I32, Text) then
+    ReturnGuestText(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Text, Results, NResults);
+end;
+
+function HostProgressSet(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Id, Text: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 5 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Id) and
+     ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Text) then
+  begin
+    PluginProgressSet(Inst.PluginId, Id, Text, Vals^[4].Of_.I32);
+    SetI32Result(Results, NResults, 0);
+  end;
+end;
+
+function HostProgressEnd(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Id: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Id) then
+  begin
+    PluginProgressEnd(Inst.PluginId, Id);
+    SetI32Result(Results, NResults, 0);
+  end;
+end;
+
+/// <summary>Starts a file system job for the guest: AKind 0 list, 1 exists, 2 read. The
+/// guest export named by the last two arguments hears (handle, status) when it is done.</summary>
+function StartGuestVfs(Caller: PWasmtimeCaller; Args: PWasmtimeVal; NArgs: NativeUInt;
+  AKind: Integer): Integer;
+var
+  Inst: TWasmPluginInstance;
+  Uri, ExportName: string;
+  Vals: ^TValBuf;
+  ExpIdx, Handle, Rc: Integer;
+  MaxBytes: Int64;
+  Finish: TPluginVfsDataDone;
+begin
+  Result := -1;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if AKind = 2 then
+  begin
+    if NArgs < 5 then
+      Exit;
+    ExpIdx := 3;
+    MaxBytes := Vals^[2].Of_.I32;
+  end
+  else
+  begin
+    if NArgs < 4 then
+      Exit;
+    ExpIdx := 2;
+    MaxBytes := 0;
+  end;
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Uri) or (Uri = '') or
+     not ReadGuestUtf8(Caller, Vals^[ExpIdx].Of_.I32, Vals^[ExpIdx + 1].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  Handle := Inst.ReserveVfsHandle;
+  Finish :=
+    procedure(AStatus: Integer; const AData: TBytes)
+    var
+      Err: string;
+    begin
+      if Inst.Dead then
+        Exit;
+      if AStatus = 0 then
+        Inst.StoreVfsResult(Handle, AData);
+      Inst.CallIntsVoidExport(ExportName, [Handle, AStatus], Err);
+    end;
+  case AKind of
+    0:
+      Rc := PluginVfsList(Inst.PluginId, Uri,
+        procedure(AStatus: Integer; const AText: string)
+        begin
+          Finish(AStatus, TEncoding.UTF8.GetBytes(AText));
+        end);
+    1:
+      Rc := PluginVfsExists(Inst.PluginId, Uri,
+        procedure(AStatus: Integer; const AText: string)
+        begin
+          Finish(AStatus, TEncoding.UTF8.GetBytes(AText));
+        end);
+  else
+    Rc := PluginVfsRead(Inst.PluginId, Uri, MaxBytes,
+      procedure(AStatus: Integer; const AData: TBytes)
+      begin
+        Finish(AStatus, AData);
+      end);
+  end;
+  if Rc = 0 then
+    Result := Handle
+  else
+    Result := Rc;
+end;
+
+function HostVfsList(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, StartGuestVfs(Caller, Args, NArgs, 0));
+end;
+
+function HostVfsExists(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, StartGuestVfs(Caller, Args, NArgs, 1));
+end;
+
+function HostVfsRead(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, StartGuestVfs(Caller, Args, NArgs, 2));
+end;
+
+function HostVfsResult(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Data: TBytes;
+  Vals: ^TValBuf;
+  Len: Integer;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 3 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  Len := Inst.TakeVfsResult(Vals^[0].Of_.I32, Vals^[2].Of_.I32, Data);
+  if Len < 0 then
+    Exit;
+  if Len <= Vals^[2].Of_.I32 then
+  begin
+    if (Len > 0) and not WriteGuestBytes(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Data) then
+      Exit;
+  end;
+  SetI32Result(Results, NResults, Len);
+end;
+
+function HostRegHighlighter(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Extensions, ExportName: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Extensions) or (Extensions = '') or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or (ExportName = '') then
+    Exit;
+  RegisterHighlighter(Inst.PluginId, Extensions,
+    function(const ALine: string; out ASpans: THighlightSpans): Boolean
+    var
+      Bytes: TBytes;
+      Count, I, B, Units: Integer;
+      U: UTF8String;
+      Map: TArray<Integer>;
+      Start, Stop, Len, Kind: Integer;
+      Err: string;
+    begin
+      ASpans := nil;
+      Result := False;
+      if (Inst = nil) or Inst.Dead or
+         not Inst.CallHighlightExport(ExportName, ALine, Bytes, Count, Err) or (Count <= 0) then
+        Exit;
+      // The guest counts bytes; the program counts UTF-16 characters.
+      U := UTF8String(ALine);
+      SetLength(Map, Length(U) + 1);
+      Units := 0;
+      for B := 0 to Length(U) - 1 do
+      begin
+        Map[B] := Units;
+        if (Byte(U[B + 1]) and $C0) <> $80 then
+        begin
+          if Byte(U[B + 1]) >= $F0 then
+            Inc(Units, 2)
+          else
+            Inc(Units);
+        end;
+      end;
+      Map[Length(U)] := Units;
+      for I := 0 to Count - 1 do
+      begin
+        B := PInteger(@Bytes[I * 12])^;
+        Len := PInteger(@Bytes[I * 12 + 4])^;
+        Kind := PInteger(@Bytes[I * 12 + 8])^;
+        if (B < 0) or (B >= Length(U)) or (Len <= 0) then
+          Continue;
+        Start := Map[B];
+        Stop := Map[Min(B + Len, Length(U))];
+        if Stop <= Start then
+          Continue;
+        SetLength(ASpans, Length(ASpans) + 1);
+        ASpans[High(ASpans)].Start := Start;
+        ASpans[High(ASpans)].Len := Stop - Start;
+        ASpans[High(ASpans)].Kind := Kind;
+      end;
+      Result := Length(ASpans) > 0;
+    end);
+  SetI32Result(Results, NResults, 0);
+end;
+
+function HostSurfaceOpen(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Title, KeyExport, TickExport, ClosedExport: string;
+  OnKey: TSurfaceKeyCallback;
+  OnTick, OnClosed: TProc;
+  Handle: Integer;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 8 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Title) or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, KeyExport) or
+     not ReadGuestUtf8(Caller, Vals^[4].Of_.I32, Vals^[5].Of_.I32, TickExport) or
+     not ReadGuestUtf8(Caller, Vals^[6].Of_.I32, Vals^[7].Of_.I32, ClosedExport) then
+    Exit;
+  OnKey := nil;
+  OnTick := nil;
+  OnClosed := nil;
+  if KeyExport <> '' then
+    OnKey := function(const AKey: string): Boolean
+      var
+        Status: Int64;
+        Err: string;
+      begin
+        Result := (Inst <> nil) and not Inst.Dead and
+          Inst.CallStatusExport(KeyExport, AKey, Status, Err) and (Status = 1);
+      end;
+  if TickExport <> '' then
+    OnTick := procedure
+      var
+        Err: string;
+      begin
+        if (Inst <> nil) and not Inst.Dead then
+          Inst.InvokeVoidExport(TickExport, Err);
+      end;
+  if ClosedExport <> '' then
+    OnClosed := procedure
+      var
+        Err: string;
+      begin
+        if (Inst <> nil) and not Inst.Dead then
+          Inst.InvokeVoidExport(ClosedExport, Err);
+      end;
+  Handle := PluginSurfaceOpen(Inst.PluginId, Title, OnKey, OnTick, OnClosed);
+  if Handle > 0 then
+    SetI32Result(Results, NResults, Handle);
+end;
+
+function HostSurfaceSetFrame(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Pixels: TBytes;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 5 then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestBytes(Caller, Vals^[3].Of_.I32, Vals^[4].Of_.I32, Pixels) then
+    Exit;
+  if PluginSurfaceSetFrame(Vals^[0].Of_.I32, Vals^[1].Of_.I32, Vals^[2].Of_.I32, @Pixels[0],
+    Length(Pixels)) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostSurfaceSetInfo(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Title, Status: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 5 then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Title) or
+     not ReadGuestUtf8(Caller, Vals^[3].Of_.I32, Vals^[4].Of_.I32, Status) then
+    Exit;
+  if PluginSurfaceSetInfo(Vals^[0].Of_.I32, Title, Status) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostSurfaceSetTimer(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 2 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginSurfaceSetTimer(Vals^[0].Of_.I32, Vals^[1].Of_.I32) then
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostSurfaceClose(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Vals := Pointer(Args);
+  if PluginSurfaceClose(Vals^[0].Of_.I32) then
+    SetI32Result(Results, NResults, 0);
+end;
+
 function HostRegSettings(Env: Pointer; Caller: PWasmtimeCaller;
   Args: PWasmtimeVal; NArgs: NativeUInt;
   Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
@@ -862,24 +1772,39 @@ end;
 /// <summary>Defines every mtn_host import on ALinker.</summary>
 function DefineAllHostImports(ALinker: PWasmtimeLinker; out AError: string): Boolean;
 var
-  Ty2, Ty3, Ty4, Ty5, Ty6, Ty9: PWasmFunctype;
+  Ty0, Ty1, Ty2, Ty3, Ty4, Ty5, Ty6, Ty8, Ty9, Ty11: PWasmFunctype;
 begin
   Result := False;
   AError := '';
   GDefineLinker := ALinker;
+  Ty0 := MakeFuncType([], [WASM_I32]);
+  Ty1 := MakeFuncType([WASM_I32], [WASM_I32]);
   Ty2 := MakeFuncType([WASM_I32, WASM_I32], [WASM_I32]);
   Ty3 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
   Ty4 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
   Ty5 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
   Ty6 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty8 := MakeFuncType(
+    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
+  Ty11 := MakeFuncType(
+    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32,
+     WASM_I32, WASM_I32], [WASM_I32]);
   Ty9 := MakeFuncType(
     [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32],
     [WASM_I32]);
-  if (Ty2 = nil) or (Ty3 = nil) or (Ty4 = nil) or (Ty5 = nil) or (Ty6 = nil) or
+  if (Ty11 = nil) or (Ty0 = nil) or (Ty1 = nil) or (Ty8 = nil) or (Ty2 = nil) or (Ty3 = nil) or (Ty4 = nil) or (Ty5 = nil) or (Ty6 = nil) or
      (Ty9 = nil) then
   begin
     if Ty6 <> nil then
       Wasmtime.FunctypeDelete(Ty6);
+    if Ty11 <> nil then
+      Wasmtime.FunctypeDelete(Ty11);
+    if Ty0 <> nil then
+      Wasmtime.FunctypeDelete(Ty0);
+    if Ty1 <> nil then
+      Wasmtime.FunctypeDelete(Ty1);
+    if Ty8 <> nil then
+      Wasmtime.FunctypeDelete(Ty8);
     if Ty2 <> nil then
       Wasmtime.FunctypeDelete(Ty2);
     if Ty3 <> nil then
@@ -904,6 +1829,68 @@ begin
       Exit(False);
     if not DefineHostImport(cShowDialog, Ty4, @HostShowDialog, AError) then
       Exit(False);
+    if not DefineHostImport(cSurfaceOpenEx, Ty11, @HostSurfaceOpenEx, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceSetFullscreen, Ty2, @HostSurfaceSetFullscreen, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelList, Ty3, @HostPanelList, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelSetCursor, Ty3, @HostPanelSetCursor, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelSelect, Ty4, @HostPanelSelect, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocSetSelection, Ty4, @HostDocSetSelection, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocLine, Ty3, @HostDocLine, AError) then
+      Exit(False);
+    if not DefineHostImport(cProgressSet, Ty5, @HostProgressSet, AError) then
+      Exit(False);
+    if not DefineHostImport(cProgressEnd, Ty2, @HostProgressEnd, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegHighlighter, Ty4, @HostRegHighlighter, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsList, Ty4, @HostVfsList, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsExists, Ty4, @HostVfsExists, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsRead, Ty5, @HostVfsRead, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsResult, Ty3, @HostVfsResult, AError) then
+      Exit(False);
+    if not DefineHostImport(cHostInfo, Ty2, @HostHostInfo, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocInfo, Ty2, @HostDocInfo, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocGetText, Ty3, @HostDocGetText, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocReplace, Ty3, @HostDocReplace, AError) then
+      Exit(False);
+    if not DefineHostImport(cDocSetCursor, Ty2, @HostDocSetCursor, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelInfo, Ty2, @HostPanelInfo, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelGoto, Ty3, @HostPanelGoto, AError) then
+      Exit(False);
+    if not DefineHostImport(cPanelRefresh, Ty0, @HostPanelRefresh, AError) then
+      Exit(False);
+    if not DefineHostImport(cClipboardGet, Ty2, @HostClipboardGet, AError) then
+      Exit(False);
+    if not DefineHostImport(cClipboardSet, Ty2, @HostClipboardSet, AError) then
+      Exit(False);
+    if not DefineHostImport(cShowMessage, Ty3, @HostShowMessage, AError) then
+      Exit(False);
+    if not DefineHostImport(cSubscribe, Ty4, @HostSubscribe, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceOpen, Ty8, @HostSurfaceOpen, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceSetFrame, Ty5, @HostSurfaceSetFrame, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceSetInfo, Ty5, @HostSurfaceSetInfo, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceSetTimer, Ty2, @HostSurfaceSetTimer, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceClose, Ty1, @HostSurfaceClose, AError) then
+      Exit(False);
     if not DefineHostImport(cRegPanelActivate, Ty4, @HostRegPanelActivate, AError) then
       Exit(False);
     if not DefineHostImport(cRegKeyBinding, Ty4, @HostRegKeyBinding, AError) then
@@ -927,6 +1914,10 @@ begin
     if not DefineHostImport(cRegMenu, Ty9, @HostRegMenu, AError) then
       Exit(False);
   finally
+    Wasmtime.FunctypeDelete(Ty11);
+    Wasmtime.FunctypeDelete(Ty0);
+    Wasmtime.FunctypeDelete(Ty1);
+    Wasmtime.FunctypeDelete(Ty8);
     Wasmtime.FunctypeDelete(Ty2);
     Wasmtime.FunctypeDelete(Ty3);
     Wasmtime.FunctypeDelete(Ty4);
@@ -1021,11 +2012,13 @@ begin
   inherited Create;
   FPluginId := APluginId;
   FLock := TCriticalSection.Create;
+  FVfsResults := TDictionary<Integer, TBytes>.Create;
 end;
 
 destructor TWasmPluginInstance.Destroy;
 begin
   ShutdownPlugin;
+  FVfsResults.Free;
   FLock.Free;
   inherited Destroy;
 end;
@@ -1777,6 +2770,205 @@ begin
     end;
     AStatus := WasmResultI64(Rets[0]);
     Result := True;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.CallIntsExport(const AExport: string; const AArgs: array of Integer;
+  out AStatus: Int64; out AError: string): Boolean;
+var
+  Func: TWasmtimeFunc;
+  Args: TValBuf;
+  Rets: TValBuf;
+  Err: PWasmtimeError;
+  Trap: PWasmTrap;
+  I: Integer;
+begin
+  Result := False;
+  AStatus := 0;
+  AError := '';
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit;
+    end;
+    if (Length(AArgs) > 12) or not GetExportFunc(AExport, Func) then
+    begin
+      AError := AExport + ' export missing';
+      Exit;
+    end;
+    if not Refuel(AError) then
+      Exit;
+    FillChar(Args, SizeOf(Args), 0);
+    FillChar(Rets, SizeOf(Rets), 0);
+    for I := 0 to High(AArgs) do
+    begin
+      Args[I].Kind := WASMTIME_I32;
+      Args[I].Of_.I32 := AArgs[I];
+    end;
+    Trap := nil;
+    Err := Wasmtime.FuncCall(FContext, @Func, @Args[0], Length(AArgs), @Rets[0], 1, @Trap);
+    if Err <> nil then
+    begin
+      AError := AExport + ': ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    if Trap <> nil then
+    begin
+      AError := AExport + ' trap: ' + WasmtimeTrapMessage(Trap);
+      WasmtimeClearTrap(Trap);
+      Exit;
+    end;
+    AStatus := WasmResultI64(Rets[0]);
+    Result := True;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.CallIntsVoidExport(const AExport: string;
+  const AArgs: array of Integer; out AError: string): Boolean;
+var
+  Func: TWasmtimeFunc;
+  Args: TValBuf;
+  Err: PWasmtimeError;
+  Trap: PWasmTrap;
+  I: Integer;
+begin
+  Result := False;
+  AError := '';
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit;
+    end;
+    if (Length(AArgs) > 12) or not GetExportFunc(AExport, Func) then
+    begin
+      AError := AExport + ' export missing';
+      Exit;
+    end;
+    if not Refuel(AError) then
+      Exit;
+    FillChar(Args, SizeOf(Args), 0);
+    for I := 0 to High(AArgs) do
+    begin
+      Args[I].Kind := WASMTIME_I32;
+      Args[I].Of_.I32 := AArgs[I];
+    end;
+    Trap := nil;
+    Err := Wasmtime.FuncCall(FContext, @Func, @Args[0], Length(AArgs), nil, 0, @Trap);
+    if Err <> nil then
+    begin
+      AError := AExport + ': ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    if Trap <> nil then
+    begin
+      AError := AExport + ' trap: ' + WasmtimeTrapMessage(Trap);
+      WasmtimeClearTrap(Trap);
+      Exit;
+    end;
+    Result := True;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.ReserveVfsHandle: Integer;
+begin
+  Inc(FVfsNext);
+  if FVfsNext <= 0 then
+    FVfsNext := 1;
+  Result := FVfsNext;
+end;
+
+procedure TWasmPluginInstance.StoreVfsResult(AHandle: Integer; const AData: TBytes);
+begin
+  FVfsResults.AddOrSetValue(AHandle, AData);
+end;
+
+function TWasmPluginInstance.TakeVfsResult(AHandle, ACap: Integer; out AData: TBytes): Integer;
+begin
+  AData := nil;
+  if not FVfsResults.TryGetValue(AHandle, AData) then
+    Exit(-1);
+  Result := Length(AData);
+  if Result <= ACap then
+    FVfsResults.Remove(AHandle);
+end;
+
+function TWasmPluginInstance.CallHighlightExport(const AExport, ALine: string;
+  out ASpans: TBytes; out ACount: Integer; out AError: string): Boolean;
+const
+  cSpanBytes = 12;
+var
+  Func: TWasmtimeFunc;
+  Args: TValBuf;
+  Rets: TValBuf;
+  Err: PWasmtimeError;
+  Trap: PWasmTrap;
+  LinePtr, LineLen, Cap: Integer;
+begin
+  Result := False;
+  ACount := 0;
+  SetLength(ASpans, 0);
+  AError := '';
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit;
+    end;
+    if not GetExportFunc(AExport, Func) then
+    begin
+      AError := AExport + ' export missing';
+      Exit;
+    end;
+    if not WriteUriScratch(ALine, LinePtr, LineLen, AError) then
+      Exit;
+    if not Refuel(AError) then
+      Exit;
+    Cap := FOutCap div cSpanBytes;
+    if Cap > 256 then
+      Cap := 256;
+    FillChar(Args, SizeOf(Args), 0);
+    FillChar(Rets, SizeOf(Rets), 0);
+    Args[0].Kind := WASMTIME_I32;
+    Args[0].Of_.I32 := LinePtr;
+    Args[1].Kind := WASMTIME_I32;
+    Args[1].Of_.I32 := LineLen;
+    Args[2].Kind := WASMTIME_I32;
+    Args[2].Of_.I32 := FOutOff;
+    Args[3].Kind := WASMTIME_I32;
+    Args[3].Of_.I32 := Cap;
+    Trap := nil;
+    Err := Wasmtime.FuncCall(FContext, @Func, @Args[0], 4, @Rets[0], 1, @Trap);
+    if Err <> nil then
+    begin
+      AError := AExport + ': ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    if Trap <> nil then
+    begin
+      AError := AExport + ' trap: ' + WasmtimeTrapMessage(Trap);
+      WasmtimeClearTrap(Trap);
+      Exit;
+    end;
+    ACount := Integer(WasmResultI64(Rets[0]));
+    if ACount > Cap then
+      ACount := Cap;
+    if ACount <= 0 then
+      Exit(True);
+    Result := ReadScratchOut(Int64(ACount) * cSpanBytes, ASpans, AError);
   finally
     FLock.Release;
   end;

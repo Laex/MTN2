@@ -1,0 +1,13 @@
+{
+  "id": "mtn.demo.img",
+  "name": "Demo: picture viewer (Rust)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "F3 on a picture (JPEG, PNG, BMP, GIF, TIFF, WebP) shows it in a viewer tab: wheel zoom, drag, rotate, full screen; arrow keys browse the folder; Ctrl+Shift+V shows the picture under the cursor in the other panel.",
+    "ru": "F3 на картинке (JPEG, PNG, BMP, GIF, TIFF, WebP) показывает её во вкладке просмотра: масштаб колесом, перетаскивание, поворот, полный экран; стрелки листают картинки папки; Ctrl+Shift+V показывает картинку под курсором в соседней панели."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

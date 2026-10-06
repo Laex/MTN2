@@ -18,17 +18,22 @@ type
     [Test] procedure TestUnknownAndMalformedNames;
     [Test] procedure TestASampleOfKnownMappings;
     [Test] procedure TestHandleClickRouting;
+    [Test] procedure TestF9OpensTheMenuOfTheActivePanel;
+    [Test] procedure TestHomeEndPageKeysMoveInsideTheMenu;
+    [Test] procedure TestReleaseOutsideAnItemRunsNothing;
+    [Test] procedure TestAnItemRunsOnReleaseNotOnPress;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.TypInfo,
+  System.SysUtils, System.TypInfo, System.UITypes,
   uTerminalTypes,
   uThemeTypes,
   uThemeDrawing,
   uDualPanelTypes,
   uDualPanelOverlays,
+  uThemeRegistry,
   uTopMenuBar;
 
 procedure TestEveryEnumMemberRoundTrips;
@@ -132,6 +137,123 @@ begin
   end;
 end;
 
+procedure TestF9OpensTheMenuOfTheActivePanel;
+var
+  C: TTopMenuController;
+  RightActive: Boolean;
+begin
+  C := MakeController;
+  try
+    RightActive := False;
+    C.OnIsRightPanelActive :=
+      function: Boolean
+      begin
+        Result := RightActive;
+      end;
+    Assert.IsTrue(C.PanelCategory = 1, 'the left panel is active: Left');
+    C.ToggleMenu;
+    Assert.IsTrue(C.CategoryIndex = 1, 'F9 opens Left');
+    C.ToggleMenu;
+    RightActive := True;
+    Assert.IsTrue(C.PanelCategory = 6, 'the right panel is active: Right, the last category');
+    C.ToggleMenu;
+    Assert.IsTrue(C.Active and (C.CategoryIndex = 6), 'F9 opens Right');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestHomeEndPageKeysMoveInsideTheMenu;
+var
+  C: TTopMenuController;
+  Key: Word;
+  Ch: Char;
+  Last: Integer;
+
+  procedure Press(AKey: Word);
+  begin
+    Key := AKey;
+    Ch := #0;
+    C.HandleInput(Key, [], Ch);
+  end;
+
+begin
+  C := MakeController;
+  try
+    C.ActivateMenu(2, True);
+    Press(vkEnd);
+    Last := C.SubmenuIndex;
+    Assert.IsTrue(Last > 0, 'End goes to the last item');
+    Press(vkHome);
+    Assert.IsTrue(C.SubmenuIndex < Last, 'Home goes to the first');
+    Press(vkNext);
+    Assert.IsTrue(C.SubmenuIndex = Last, 'PgDn goes to the last item too');
+    Press(vkPrior);
+    Assert.IsTrue(C.SubmenuIndex < Last, 'PgUp to the first');
+    Assert.IsTrue(C.Active and C.SubmenuOpen, 'the menu stays open');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestReleaseOutsideAnItemRunsNothing;
+var
+  C: TTopMenuController;
+begin
+  C := MakeController;
+  try
+    C.HandleClick(1, 0);
+    Assert.IsFalse(C.HandleMouseUp(-1, -1), 'letting go outside the menu does nothing');
+    Assert.IsTrue(C.Active, 'and leaves it open');
+    Assert.IsFalse(C.HandleMouseUp(1, 0), 'a second release has no press to finish');
+    Assert.IsTrue(GExecutedCount = 0, 'no action ran');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestAnItemRunsOnReleaseNotOnPress;
+var
+  C: TTopMenuController;
+  Grid: TTerminalGrid;
+  Y: Integer;
+begin
+  GInvalidateCount := 0;
+  GExecutedAction := tmaNone;
+  GExecutedCount := 0;
+  C := TTopMenuController.Create(CreateThemeByName('NDN'),
+    procedure
+    begin
+      Inc(GInvalidateCount);
+    end,
+    procedure(AAction: TTopMenuAction)
+    begin
+      GExecutedAction := AAction;
+      Inc(GExecutedCount);
+    end);
+  try
+    SetLength(Grid, 30);
+    for Y := 0 to High(Grid) do
+      SetLength(Grid[Y], 100);
+    C.ActivateMenu(1, True);
+    C.DrawSubmenu(Grid, 100);
+    // The first item of the open dropdown sits on row 2, inside its box.
+    Assert.IsTrue(C.HandleClick(10, 2), 'the press is handled');
+    Assert.IsTrue(GExecutedCount = 0, 'a press runs nothing');
+    Assert.IsTrue(C.Active, 'and the menu stays open');
+    Assert.IsTrue(C.HandleMouseUp(10, 2), 'releasing over the item runs it');
+    Assert.IsTrue(GExecutedCount = 1, 'exactly once');
+
+    C.ActivateMenu(1, True);
+    C.DrawSubmenu(Grid, 100);
+    C.HandleClick(10, 2);
+    Assert.IsFalse(C.HandleMouseUp(-1, -1), 'releasing outside runs nothing');
+    Assert.IsTrue(GExecutedCount = 1, 'still one run');
+  finally
+    C.Free;
+  end;
+end;
+
 { TTestTopMenuBar }
 
 procedure TTestTopMenuBar.TestEveryEnumMemberRoundTrips;
@@ -152,6 +274,26 @@ end;
 procedure TTestTopMenuBar.TestHandleClickRouting;
 begin
   TestTopMenuBar.TestHandleClickRouting;
+end;
+
+procedure TTestTopMenuBar.TestF9OpensTheMenuOfTheActivePanel;
+begin
+  TestTopMenuBar.TestF9OpensTheMenuOfTheActivePanel;
+end;
+
+procedure TTestTopMenuBar.TestHomeEndPageKeysMoveInsideTheMenu;
+begin
+  TestTopMenuBar.TestHomeEndPageKeysMoveInsideTheMenu;
+end;
+
+procedure TTestTopMenuBar.TestAnItemRunsOnReleaseNotOnPress;
+begin
+  TestTopMenuBar.TestAnItemRunsOnReleaseNotOnPress;
+end;
+
+procedure TTestTopMenuBar.TestReleaseOutsideAnItemRunsNothing;
+begin
+  TestTopMenuBar.TestReleaseOutsideAnItemRunsNothing;
 end;
 
 initialization

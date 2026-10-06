@@ -43,6 +43,9 @@ type
     procedure RegisterProvider(const APluginId, AProviderId, AExtensions: string;
       AModes: TDocumentModes; AHandler: TDocumentOpenHandler; APriority: Integer = 100);
     /// <summary>Removes the providers of APluginId.</summary>
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     /// <summary>Asks the matching providers in order; the first answer other
     /// than dokPass wins. dokPass when none matches or none takes the file.</summary>
@@ -66,6 +69,7 @@ function OpenUriWithSystem(const AURI: string): Boolean;
 implementation
 
 uses
+  uStrings,
   System.IOUtils, Winapi.Windows, Winapi.ShellAPI,
   uVfsTypes;
 
@@ -89,6 +93,7 @@ type
     destructor Destroy; override;
     procedure RegisterProvider(const APluginId, AProviderId, AExtensions: string;
       AModes: TDocumentModes; AHandler: TDocumentOpenHandler; APriority: Integer = 100);
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function TryOpen(const AURI: string; AViewOnly: Boolean;
       out ARedirectURI: string): TDocumentOpenKind;
@@ -201,6 +206,42 @@ begin
     end;
   FEntries.Add(E);
   SortEntries;
+end;
+
+function TDocumentProviderRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TProviderEntry;
+  Lines: TList<string>;
+  Keys, Exts: string;
+  Ext: string;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FEntries do
+      if SameText(E.PluginId, APluginId) then
+      begin
+        Exts := '';
+        for Ext in E.Extensions do
+        begin
+          if Exts <> '' then
+            Exts := Exts + ' ';
+          if Ext = '*' then
+            Exts := Exts + T('ui.plugininfo.anyFile', 'any file')
+          else
+            Exts := Exts + Ext;
+        end;
+        if (dmView in E.Modes) and (dmEdit in E.Modes) then
+          Keys := 'F3, F4'
+        else if dmView in E.Modes then
+          Keys := 'F3'
+        else
+          Keys := 'F4';
+        Lines.Add(T('ui.plugininfo.opens', 'Opens files (%s): %s', [Keys, Exts]));
+      end;
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TDocumentProviderRegistry.UnregisterPlugin(const APluginId: string);

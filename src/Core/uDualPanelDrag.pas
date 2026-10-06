@@ -47,6 +47,12 @@ function StepTabDrag(const AHost: TDualPanelDragHost;
 
 function CanArmFileDragSources(APanelsWorkspace, ADialogVisible,
   AJobBusy: Boolean): Boolean;
+var
+  /// <summary>Options > Display: files can be dragged out of the panels with the mouse.</summary>
+  GFileDragEnabled: Boolean = True;
+
+/// <summary>The pointer has left the cell of the press by at least two cells: a
+/// slip of the hand while clicking does not start a drag.</summary>
 function FileDragPastThreshold(ACol, ARow, AStartCol, AStartRow: Integer): Boolean;
 function ShouldStartFileDrag(ATabDragBusy, AArmed: Boolean;
   ACol, ARow, AStartCol, AStartRow: Integer): Boolean;
@@ -186,12 +192,12 @@ end;
 function CanArmFileDragSources(APanelsWorkspace, ADialogVisible,
   AJobBusy: Boolean): Boolean;
 begin
-  Result := APanelsWorkspace and (not ADialogVisible) and (not AJobBusy);
+  Result := GFileDragEnabled and APanelsWorkspace and (not ADialogVisible) and (not AJobBusy);
 end;
 
 function FileDragPastThreshold(ACol, ARow, AStartCol, AStartRow: Integer): Boolean;
 begin
-  Result := not ((Abs(ACol - AStartCol) < 1) and (Abs(ARow - AStartRow) < 1));
+  Result := (Abs(ACol - AStartCol) >= 2) or (Abs(ARow - AStartRow) >= 2);
 end;
 
 function ShouldStartFileDrag(ATabDragBusy, AArmed: Boolean;

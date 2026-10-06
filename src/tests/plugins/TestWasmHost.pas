@@ -19,6 +19,9 @@ type
     [Test] procedure TestNoWasi;
     [Test] procedure TestOobRegisterIsolated;
     [Test] procedure TestCommandApiFromWasm;
+    [Test] procedure TestPictureSurfaceFromWasm;
+    [Test] procedure TestExtendedApiFromWasm;
+    [Test] procedure TestFileSystemReadFromWasm;
   end;
 
 implementation
@@ -28,6 +31,11 @@ uses
   System.UITypes,
   Winapi.Windows,
   uVfsTypes,
+  uPluginSurface,
+  uPluginServices,
+  uPluginHighlight,
+  uPluginPermissions,
+  uNotice,
   uTextEncoding,
   uVfsRegistry,
   uPanelModel,
@@ -481,6 +489,294 @@ begin
     Assert.Pass(GSkip);
 end;
 
+procedure TestFileSystemRead;
+var
+  Root, Dir, Sent, Told: string;
+  Loaded: Boolean;
+  LastLog: string;
+  Sub: ISubscription;
+  I: Integer;
+begin
+  Loaded := False;
+  Told := '';
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      LastLog := AMessage;
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-wasmvfs-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'wasm reads this', TEncoding.ASCII);
+  Sent := 'file:///' + StringReplace(TPath.Combine(Dir, 'a.txt'), PathDelim, '/', [rfReplaceAll]);
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-vfs');
+  // The guest asks for the file at init; when its export hears that the read is done it
+  // fetches the bytes with vfs_result and publishes them as an event.
+  StageDir(Root, 'mtn.wasm.vfs',
+    '(module' + sLineBreak +
+    '  (import "mtn_host" "vfs_read"' + sLineBreak +
+    '    (func $rd (param i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "vfs_result"' + sLineBreak +
+    '    (func $res (param i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "publish"' + sLineBreak +
+    '    (func $pub (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (memory (export "memory") 1)' + sLineBreak +
+    '  (data (i32.const 8) "done")' + sLineBreak +
+    '  (data (i32.const 128) "wasm.vfs")' + sLineBreak +
+    '  (data (i32.const 1200) "' + Sent + '")' + sLineBreak +
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))' + sLineBreak +
+    '  (func (export "mtn_plugin_init") (result i32)' + sLineBreak +
+    '    (if (i32.le_s (call $rd (i32.const 1200) (i32.const ' + IntToStr(TEncoding.UTF8.GetByteCount(Sent)) +
+    ') (i32.const 0) (i32.const 8) (i32.const 4)) (i32.const 0)) (then unreachable))' + sLineBreak +
+    '    (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_shutdown"))' + sLineBreak +
+    '  (func (export "done") (param i32 i32)' + sLineBreak +
+    '    (local $len i32)' + sLineBreak +
+    '    (if (i32.eqz (local.get 1)) (then' + sLineBreak +
+    '      (local.set $len (call $res (local.get 0) (i32.const 600) (i32.const 64)))' + sLineBreak +
+    '      (drop (call $pub (i32.const 128) (i32.const 8) (i32.const 600) (local.get $len)))))))');
+  WriteUtf8NoBom(TPath.Combine(TPath.Combine(Root, 'mtn.wasm.vfs'), 'plugin.json'),
+    '{"id":"mtn.wasm.vfs","abi":2,"permissions":["vfs.read"]}');
+  Sub := MessageBus.Subscribe('wasm.vfs',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Told := Told + TPluginPayload(APayload).Json + ';';
+    end);
+  PluginPermissionGrant('mtn.wasm.vfs', cPermVfsRead, True);
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Loaded, 'the module loads (its init checked that vfs_read returned a handle): ' + LastLog);
+    for I := 1 to 100 do
+    begin
+      CheckSynchronize(30);
+      if Told <> '' then
+        Break;
+    end;
+    Assert.AreEqual('wasm reads this;', Told, 'the guest was called back and fetched the bytes');
+  finally
+    PluginPermissionGrant('mtn.wasm.vfs', cPermVfsRead, False);
+    Sub.Unsubscribe;
+    PluginLoader.UnloadAll;
+    if TDirectory.Exists(Dir) then
+      TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TestExtendedApi;
+var
+  Root, Notes: string;
+  Loaded: Boolean;
+  Handle, SelSide, SelMode: Integer;
+  SelArg, Told: string;
+  Id: Integer;
+  Spans: THighlightSpans;
+  Svc: TPluginHostServices;
+  Sub: ISubscription;
+begin
+  Loaded := False;
+  Handle := 0;
+  Notes := '';
+  Told := '';
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-ext');
+  StageDir(Root, 'mtn.wasm.ext',
+    '(module' + sLineBreak +
+    '  (import "mtn_host" "surface_open_ex"' + sLineBreak +
+    '    (func $so (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "panel_select"' + sLineBreak +
+    '    (func $ps (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "doc_line"' + sLineBreak +
+    '    (func $dl (param i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "progress_set"' + sLineBreak +
+    '    (func $pset (param i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "progress_end"' + sLineBreak +
+    '    (func $pend (param i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "register_highlighter"' + sLineBreak +
+    '    (func $rh (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "publish"' + sLineBreak +
+    '    (func $pub (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (memory (export "memory") 1)' + sLineBreak +
+    '  (data (i32.const 16) "Wasm full")' + sLineBreak +
+    '  (data (i32.const 32) "on_mouse")' + sLineBreak +
+    '  (data (i32.const 48) "*.md")' + sLineBreak +
+    '  (data (i32.const 64) "job")' + sLineBreak +
+    '  (data (i32.const 72) "Working")' + sLineBreak +
+    '  (data (i32.const 96) ".hl")' + sLineBreak +
+    '  (data (i32.const 112) "hl")' + sLineBreak +
+    '  (data (i32.const 128) "wasm.ext")' + sLineBreak +
+    '  (data (i32.const 144) "line")' + sLineBreak +
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))' + sLineBreak +
+    '  (func (export "mtn_plugin_init") (result i32)' + sLineBreak +
+    '    (drop (call $so (i32.const 16) (i32.const 9) (i32.const 1) (i32.const 0) (i32.const 0)' +
+    ' (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 32) (i32.const 8)))' + sLineBreak +
+    '    (drop (call $ps (i32.const -1) (i32.const 0) (i32.const 48) (i32.const 4)))' + sLineBreak +
+    '    (drop (call $pset (i32.const 64) (i32.const 3) (i32.const 72) (i32.const 7) (i32.const 50)))' + sLineBreak +
+    '    (drop (call $pend (i32.const 64) (i32.const 3)))' + sLineBreak +
+    '    (drop (call $rh (i32.const 96) (i32.const 3) (i32.const 112) (i32.const 2)))' + sLineBreak +
+    '    (if (i32.ne (call $dl (i32.const 4) (i32.const 700) (i32.const 64)) (i32.const 4)) (then unreachable))' + sLineBreak +
+    '    (drop (call $pub (i32.const 128) (i32.const 8) (i32.const 700) (i32.const 4)))' + sLineBreak +
+    '    (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_shutdown"))' + sLineBreak +
+    '  (func (export "on_mouse") (param i32 i32 i32 i32 i32 i32 i32 i32) (result i64)' + sLineBreak +
+    '    (i64.extend_i32_u (i32.eq (local.get 0) (i32.const 3))))' + sLineBreak +
+    '  (func (export "hl") (param i32 i32 i32 i32) (result i32)' + sLineBreak +
+    '    (i32.store (local.get 2) (i32.const 1))' + sLineBreak +
+    '    (i32.store (i32.add (local.get 2) (i32.const 4)) (i32.const 2))' + sLineBreak +
+    '    (i32.store (i32.add (local.get 2) (i32.const 8)) (i32.const 4))' + sLineBreak +
+    '    (i32.const 1)))');
+  Svc := Default(TPluginHostServices);
+  Svc.PanelSelect :=
+    function(ASide, AMode: Integer; const AArg: string): Boolean
+    begin
+      SelSide := ASide;
+      SelMode := AMode;
+      SelArg := AArg;
+      Result := True;
+    end;
+  Svc.DocLine :=
+    function(AIndex: Integer; out AText: string): Boolean
+    begin
+      AText := 'line';
+      Result := AIndex = 4;
+    end;
+  SetPluginHostServices(Svc);
+  SetNoticeHandler(
+    procedure(const ARequest: TNoticeRequest)
+    begin
+      Notes := Notes + ARequest.Arg + '|';
+    end,
+    procedure(const ATag: string)
+    begin
+      Notes := Notes + 'end:' + ATag + '|';
+    end);
+  Sub := MessageBus.Subscribe('wasm.ext',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Told := Told + TPluginPayload(APayload).Json + ';';
+    end);
+  SetPluginSurfaceHost(
+    function(AHandle: Integer): Boolean
+    begin
+      Handle := AHandle;
+      SurfaceAttach(AHandle, procedure begin end, procedure begin SurfaceTabClosed(AHandle); end);
+      Result := True;
+    end);
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Loaded, 'module using the extended imports loads');
+    Assert.IsTrue(Handle > 0, 'surface_open_ex opened a surface');
+    Assert.IsTrue(SurfaceFullscreen(Handle), 'in full screen, as asked');
+    Assert.IsTrue(SurfaceDeliverMouse(Handle, 3, 1, 2, 3, 4, 3, 1, 0), 'the guest mouse export uses a wheel event');
+    Assert.IsFalse(SurfaceDeliverMouse(Handle, 0, 1, 2, 3, 4, 1, 0, 0), 'and not a click');
+    Assert.IsTrue((SelSide = -1) and (SelMode = 0) and (SelArg = '*.md'), 'panel_select reached the window');
+    Assert.AreEqual('Working  50%|end:mtn.wasm.ext:job|', Notes, 'progress_set and progress_end');
+    Assert.AreEqual('line;', Told, 'doc_line gave the guest the line of the window');
+    Id := HighlighterFor('.hl');
+    Assert.IsTrue(Id <> 0, 'register_highlighter registered');
+    Assert.IsTrue(HighlightLine(Id, 'abcdef', Spans) and (Length(Spans) = 1) and (Spans[0].Start = 1) and
+      (Spans[0].Len = 2) and (Spans[0].Kind = cHighlightKeyword), 'the guest highlighter answers with a span');
+    PluginLoader.UnloadAll;
+    Assert.AreEqual(0, HighlighterFor('.hl'), 'unloading drops the highlighter');
+    Assert.IsFalse(SurfaceExists(Handle), 'and the surface');
+  finally
+    SetPluginSurfaceHost(nil);
+    SetPluginHostServices(Default(TPluginHostServices));
+    SetNoticeHandler(nil);
+    Sub.Unsubscribe;
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+procedure TestPictureSurface;
+var
+  Root, Told: string;
+  Loaded: Boolean;
+  Handle, W, H: Integer;
+  Gen: Cardinal;
+  Pixels: PByte;
+  Sub: ISubscription;
+begin
+  Loaded := False;
+  Told := '';
+  Handle := 0;
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-surface');
+  StageDir(Root, 'mtn.wasm.surface',
+    '(module' + sLineBreak +
+    '  (import "mtn_host" "surface_open"' + sLineBreak +
+    '    (func $so (param i32 i32 i32 i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "surface_set_frame"' + sLineBreak +
+    '    (func $sf (param i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "surface_set_info"' + sLineBreak +
+    '    (func $si (param i32 i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "surface_set_timer"' + sLineBreak +
+    '    (func $stm (param i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "publish"' + sLineBreak +
+    '    (func $pub (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (memory (export "memory") 1)' + sLineBreak +
+    '  (data (i32.const 16) "Wasm pic")' + sLineBreak +
+    '  (data (i32.const 32) "on_key")' + sLineBreak +
+    '  (data (i32.const 48) "on_closed")' + sLineBreak +
+    '  (data (i32.const 64) "wasm.surface")' + sLineBreak +
+    '  (data (i32.const 80) "closed")' + sLineBreak +
+    '  (data (i32.const 96) "\ff\80\40\ff")' + sLineBreak +
+    '  (data (i32.const 112) "st")' + sLineBreak +
+    '  (global $h (mut i32) (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))' + sLineBreak +
+    '  (func (export "mtn_plugin_init") (result i32)' + sLineBreak +
+    '    (global.set $h (call $so (i32.const 16) (i32.const 8) (i32.const 32) (i32.const 6)' +
+    ' (i32.const 0) (i32.const 0) (i32.const 48) (i32.const 9)))' + sLineBreak +
+    '    (drop (call $sf (global.get $h) (i32.const 1) (i32.const 1) (i32.const 96) (i32.const 4)))' + sLineBreak +
+    '    (drop (call $si (global.get $h) (i32.const 16) (i32.const 8) (i32.const 112) (i32.const 2)))' + sLineBreak +
+    '    (drop (call $stm (global.get $h) (i32.const 20)))' + sLineBreak +
+    '    (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_shutdown"))' + sLineBreak +
+    '  (func (export "on_key") (param i32 i32) (result i64) (i64.const 1))' + sLineBreak +
+    '  (func (export "on_closed")' + sLineBreak +
+    '    (drop (call $pub (i32.const 64) (i32.const 12) (i32.const 80) (i32.const 6)))))');
+  Sub := MessageBus.Subscribe('wasm.surface',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Told := Told + TPluginPayload(APayload).Json + ';';
+    end);
+  SetPluginSurfaceHost(
+    function(AHandle: Integer): Boolean
+    begin
+      Handle := AHandle;
+      SurfaceAttach(AHandle, procedure begin end, procedure begin SurfaceTabClosed(AHandle); end);
+      Result := True;
+    end);
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Loaded, 'module using the surface imports loads');
+    Assert.IsTrue(Handle > 0, 'the guest opened a surface');
+    Assert.IsTrue(SurfaceFrame(Handle, W, H, Gen, Pixels), 'the guest sent a frame');
+    Assert.IsTrue((W = 1) and (H = 1) and (Pixels[0] = $FF) and (Pixels[1] = $80) and
+      (Pixels[2] = $40) and (Pixels[3] = $FF), 'the pixels were read from guest memory');
+    Assert.AreEqual('Wasm pic', SurfaceTitle(Handle), 'title');
+    Assert.AreEqual('st', SurfaceStatus(Handle), 'status');
+    Assert.IsTrue(SurfaceDeliverKey(Handle, vkRight, [], #0), 'the guest key export is called');
+    SurfaceTabClosed(Handle);
+    Assert.AreEqual('closed;', Told, 'the guest hears that the tab closed');
+    PluginLoader.UnloadAll;
+  finally
+    SetPluginSurfaceHost(nil);
+    Sub.Unsubscribe;
+    PluginLoader.UnloadAll;
+  end;
+end;
+
 procedure TTestWasmHost.SetupFixture;
 begin
   if FindWasmtimeDll = '' then
@@ -521,6 +817,24 @@ procedure TTestWasmHost.TestCommandApiFromWasm;
 begin
   SkipWithoutRuntime;
   TestWasmHost.TestCommandApiFromWasm;
+end;
+
+procedure TTestWasmHost.TestFileSystemReadFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestFileSystemRead;
+end;
+
+procedure TTestWasmHost.TestExtendedApiFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestExtendedApi;
+end;
+
+procedure TTestWasmHost.TestPictureSurfaceFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestPictureSurface;
 end;
 
 initialization

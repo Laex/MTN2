@@ -9,6 +9,12 @@
 # whose toolchain is missing is skipped with a note, not a failure.
 #
 #   mtn.demo.cpp     C++     MSVC (cl) from a Visual Studio installation
+#   mtn.demo.video   C++     MSVC (cl), Media Foundation (source reader, waveOut)
+#   mtn.demo.texttools C++   MSVC (cl)
+#   mtn.demo.panelkit Rust   cargo (serde_json)
+#   mtn.demo.highlight Rust  cargo
+#   mtn.demo.wc      Go      go (GOOS=wasip1, needs "wasi": true in plugin.json)
+#   mtn.demo.img     Rust    cargo (image crate + GDI window)
 #   mtn.demo.rs      Rust    cargo, x86_64-pc-windows-msvc
 #   mtn.demo.go      Go      go + a 64-bit gcc (cgo, -buildmode=c-shared)
 #   mtn.demo.go.wasm Go      go (GOOS=wasip1, needs "wasi": true in plugin.json)
@@ -58,6 +64,9 @@ function Want([string]$Id) { return (-not $Only) -or ($Only -contains $Id) }
 function Stage-Common([string]$Id, [string]$Out) {
     New-Item -ItemType Directory -Force -Path $Out | Out-Null
     Copy-Item (Join-Path $Samples "$Id\plugin.json") $Out -Force
+    # The help pages named by "help" in plugin.json (help.md, help.ru.md).
+    Get-ChildItem (Join-Path $Samples $Id) -Filter 'help*.md' -ErrorAction SilentlyContinue |
+        Copy-Item -Destination $Out -Force
 }
 
 function Build-Cpp {
@@ -73,6 +82,94 @@ function Build-Cpp {
     return $true
 }
 
+function Build-Video {
+    $id = 'mtn.demo.video'
+    if (-not $VcVars) { Write-Host "skip $id : Visual Studio (vcvars64.bat) not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $src = Join-Path $Samples "$id\plugin.cpp"
+    $cmd = "call `"$VcVars`" >nul && cl /nologo /LD /EHsc /O2 /std:c++17 /I`"$Include`" `"$src`" /Fo`"$out\\`" /Fe`"$out\mtn_demo_video.dll`""
+    cmd /c $cmd | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    Get-ChildItem $out -Include *.exp, *.lib, *.obj -Recurse | Remove-Item -Force
+    return $true
+}
+
+function Build-TextTools {
+    $id = 'mtn.demo.texttools'
+    if (-not $VcVars) { Write-Host "skip $id : Visual Studio (vcvars64.bat) not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $src = Join-Path $Samples "$id\plugin.cpp"
+    $cmd = "call `"$VcVars`" >nul && cl /nologo /LD /EHsc /O2 /std:c++17 /I`"$Include`" `"$src`" /Fo`"$out\\`" /Fe`"$out\mtn_demo_texttools.dll`""
+    cmd /c $cmd | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    Get-ChildItem $out -Include *.exp, *.lib, *.obj -Recurse | Remove-Item -Force
+    return $true
+}
+
+function Build-NativeView {
+    $id = 'mtn.demo.nativeview'
+    if (-not $VcVars) { Write-Host "skip $id : Visual Studio (vcvars64.bat) not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $src = Join-Path $Samples "$id\plugin.cpp"
+    $cmd = "call `"$VcVars`" >nul && cl /nologo /LD /EHsc /O2 /std:c++17 /I`"$Include`" `"$src`" /Fo`"$out\\`" /Fe`"$out\mtn_demo_nativeview.dll`""
+    cmd /c $cmd | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    Get-ChildItem $out -Include *.exp, *.lib, *.obj -Recurse | Remove-Item -Force
+    return $true
+}
+
+function Build-PanelKit {
+    $id = 'mtn.demo.panelkit'
+    if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $env:CARGO_TARGET_DIR = Join-Path $BuildRoot "cargo\$id"
+    Push-Location (Join-Path $Samples $id)
+    try {
+        & $Cargo build --release
+        if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    } finally { Pop-Location }
+    Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\mtn_demo_panelkit.dll') $out -Force
+    return $true
+}
+
+function Build-WordCount {
+    $id = 'mtn.demo.wc'
+    if (-not $Go) { Write-Host "skip $id : go not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $env:GOOS = 'wasip1'
+    $env:GOARCH = 'wasm'
+    Push-Location (Join-Path $Samples $id)
+    try {
+        & $Go build -buildmode=c-shared -o (Join-Path $out 'plugin.wasm') .
+        if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    } finally {
+        Pop-Location
+        $env:GOOS = $null
+        $env:GOARCH = $null
+    }
+    return $true
+}
+
+function Build-Highlight {
+    $id = 'mtn.demo.highlight'
+    if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $env:CARGO_TARGET_DIR = Join-Path $BuildRoot "cargo\$id"
+    Push-Location (Join-Path $Samples $id)
+    try {
+        & $Cargo build --release
+        if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    } finally { Pop-Location }
+    Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\mtn_demo_highlight.dll') $out -Force
+    return $true
+}
+
 function Build-Rust {
     $id = 'mtn.demo.rs'
     if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
@@ -85,6 +182,21 @@ function Build-Rust {
         if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
     } finally { Pop-Location }
     Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\mtn_demo_rs.dll') $out -Force
+    return $true
+}
+
+function Build-Image {
+    $id = 'mtn.demo.img'
+    if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $env:CARGO_TARGET_DIR = Join-Path $BuildRoot "cargo\$id"
+    Push-Location (Join-Path $Samples $id)
+    try {
+        & $Cargo build --release
+        if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    } finally { Pop-Location }
+    Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\mtn_demo_img.dll') $out -Force
     return $true
 }
 
@@ -150,6 +262,13 @@ function Build-Wat {
 $built = @()
 foreach ($step in @(
         @{ Id = 'mtn.demo.cpp'; Run = { Build-Cpp } },
+        @{ Id = 'mtn.demo.video'; Run = { Build-Video } },
+        @{ Id = 'mtn.demo.img'; Run = { Build-Image } },
+        @{ Id = 'mtn.demo.texttools'; Run = { Build-TextTools } },
+        @{ Id = 'mtn.demo.nativeview'; Run = { Build-NativeView } },
+        @{ Id = 'mtn.demo.panelkit'; Run = { Build-PanelKit } },
+        @{ Id = 'mtn.demo.wc'; Run = { Build-WordCount } },
+        @{ Id = 'mtn.demo.highlight'; Run = { Build-Highlight } },
         @{ Id = 'mtn.demo.rs'; Run = { Build-Rust } },
         @{ Id = 'mtn.demo.go'; Run = { Build-Go } },
         @{ Id = 'mtn.demo.go.wasm'; Run = { Build-GoWasm } },

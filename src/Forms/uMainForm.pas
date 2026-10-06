@@ -12,8 +12,9 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeProxy,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows,
-  uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome;
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
+  uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
+  uPluginSurface, uPluginServices;
 
 type
   TMainForm = class(TForm)
@@ -58,6 +59,8 @@ type
     FConsole: TConsoleWindow;
     FSession: TMtnSession;  // last loaded/saved session (includes BackgroundConsoleProfile)
     FLastScale: Single;
+    // Surface that holds the mouse while a button is down on it (0 = none).
+    FSurfaceMouseHandle: Integer;
     FTrackingMouseLeave: Boolean;
     /// <summary>Set by a window command or a size change: no button is lit
     /// until the mouse moves, even if the cursor rests over one.</summary>
@@ -84,6 +87,10 @@ type
     FUpdateTimer: TTimer;
     /// <summary>One-shot: warns shortly after start when 7z.dll is missing.</summary>
     FSevenZipTimer: TTimer;
+    /// <summary>Alt went down on its own and nothing else happened since: releasing it
+    /// opens the menu. The form gets no key-up for Alt, so FAltTimer watches the key.</summary>
+    FAltArmed: Boolean;
+    FAltTimer: TTimer;
     /// <summary>Runs out when a command started in the background has been
     /// shown long enough; a key before that keeps the console.</summary>
     FPeekTimer: TTimer;
@@ -211,8 +218,17 @@ type
     procedure DualPanelOpenUpdates(Sender: TObject);
     procedure UpdateTimerTick(Sender: TObject);
     procedure SevenZipTimerTick(Sender: TObject);
+    procedure AltTimerTick(Sender: TObject);
     procedure FpsTimerTick(Sender: TObject);
     procedure CreateUpdater;
+    function PluginServicesOfPanels: TPluginHostServices;
+    /// <summary>Hands a mouse event on a plugin surface to the plugin (positions in device
+    /// pixels of its area); True when the plugin used it.</summary>
+    function TrySurfaceMouse(AKind: Integer; X, Y: Single; AButton: TMouseButton;
+      AExtra: Integer; Shift: TShiftState): Boolean;
+    /// <summary>Keeps the native windows of plugin surfaces over their areas.</summary>
+    procedure SyncNativeSurfaces;
+    procedure QueueSurfaceSize(AHandle, AWidth, AHeight: Integer);
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelReturnWhenDone(Sender: TObject);
     procedure DualPanelRunInBackground(Sender: TObject);
@@ -385,7 +401,7 @@ implementation
 
 uses
   System.Diagnostics,
-  FMX.Platform.Win, uOverlayRenderer, uSingleInstance, uUpdater, uDialogTypes,
+  FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes,
   uKeyChord, uFileRecycleBin;
 
 const
@@ -1616,6 +1632,7 @@ begin
   Result.ShowNotifications := GShowToasts;
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
+  Result.FileDrag := GFileDragEnabled;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -1642,6 +1659,8 @@ begin
   GShowToasts := ASettings.ShowNotifications;
   FSession.ShowTitleBar := ASettings.ShowTitleBar;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
+  FSession.FileDrag := ASettings.FileDrag;
+  GFileDragEnabled := ASettings.FileDrag;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
   ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
@@ -1732,6 +1751,7 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
+  GFileDragEnabled := Sess.FileDrag;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
@@ -1823,6 +1843,7 @@ begin
   Sess.ShowNotifications := GShowToasts;
   Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
+  Sess.FileDrag := GFileDragEnabled;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
@@ -1879,21 +1900,61 @@ begin
     FUpdater.StartupCheck;
 end;
 
+procedure TMainForm.AltTimerTick(Sender: TObject);
+var
+  Key: Word;
+  KeyChar: Char;
+begin
+  if not FAltArmed then
+  begin
+    FAltTimer.Enabled := False;
+    Exit;
+  end;
+  // Still held: wait.
+  if (GetAsyncKeyState(VK_MENU) and $8000) <> 0 then
+    Exit;
+  FAltTimer.Enabled := False;
+  FAltArmed := False;
+  // Released while another window had the focus (Alt+Tab): not ours.
+  if not Active then
+    Exit;
+  Key := 0;
+  KeyChar := #0;
+  DispatchTerminalKey(Key, KeyChar, [ssAlt]);
+  Recompose;
+end;
+
 procedure TMainForm.SevenZipTimerTick(Sender: TObject);
 const
   cHideId = 'sevenzip-missing';
+  cOffId = 'plugins-off';
 var
   Decl: TDialogDeclaration;
+  HideId: string;
 begin
-  if not HostSevenZipDllMissing or DialogHidden(cHideId) then
+  // One start-up hint at a time: that every plugin is off (a fresh install), else
+  // that 7z.dll is missing for a plugin that is on.
+  if HostAllPluginsOff and not DialogHidden(cOffId) then
+  begin
+    HideId := cOffId;
+    Decl := BuildHideableMessageDialog(
+      T('ui.pluginsOff.title', 'Plugins are switched off.'),
+      T('ui.pluginsOff.details', '7z archives, workspaces and other extras are off.'),
+      T('ui.pluginsOff.hint', 'Switch them on: Options - Plugins...'));
+  end
+  else if HostSevenZipDllMissing and not DialogHidden(cHideId) then
+  begin
+    HideId := cHideId;
+    Decl := BuildHideableMessageDialog(
+      T('ui.sevenZip.missing', '7z.dll not found.'),
+      T('ui.sevenZip.missingDetails', '7z, RAR and encrypted ZIP archives cannot be opened.'),
+      T('ui.sevenZip.missingHint', 'Copy 7z.dll to plugins\mtn.7z\ next to MTN2.exe'));
+  end
+  else
   begin
     FSevenZipTimer.Enabled := False;
     Exit;
   end;
-  Decl := BuildHideableMessageDialog(
-    T('ui.sevenZip.missing', '7z.dll not found.'),
-    T('ui.sevenZip.missingDetails', '7z, RAR and encrypted ZIP archives cannot be opened.'),
-    T('ui.sevenZip.missingHint', 'Copy 7z.dll to plugins\mtn.7z\ next to MTN2.exe'));
   // Only over the panels; while another dialog is up or an editor is in
   // front the next tick tries again.
   if Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
@@ -1902,12 +1963,218 @@ begin
        procedure(ACmd, AValues: string)
        begin
          if DialogValuesChecked(AValues, 'hide') then
-           HideDialog(cHideId);
+           HideDialog(HideId);
        end) then
   begin
     FSevenZipTimer.Enabled := False;
     Recompose;
   end;
+end;
+
+function SurfaceShiftBits(Shift: TShiftState): Integer;
+begin
+  Result := 0;
+  if ssShift in Shift then
+    Result := Result or 1;
+  if ssCtrl in Shift then
+    Result := Result or 2;
+  if ssAlt in Shift then
+    Result := Result or 4;
+end;
+
+function TMainForm.TrySurfaceMouse(AKind: Integer; X, Y: Single; AButton: TMouseButton;
+  AExtra: Integer; Shift: TShiftState): Boolean;
+var
+  H, Btn, Cand: Integer;
+  B: TRectI;
+  Left, Top, Right, Bottom, Scale: Single;
+begin
+  Result := False;
+  if not Assigned(FDualPanel) or not Assigned(FRenderer) or (FRenderer.CellWidth <= 0) or
+     (FRenderer.CellHeight <= 0) then
+    Exit;
+  Scale := FLastScale;
+  if Scale <= 0 then
+    Scale := 1;
+  H := FSurfaceMouseHandle;
+  if H = 0 then
+    for Cand in FDualPanel.VisibleSurfaces do
+    begin
+      if not FDualPanel.SurfaceViewport(Cand, B) then
+        Continue;
+      Left := B.Left * FRenderer.CellWidth;
+      Top := B.Top * FRenderer.CellHeight;
+      Right := (B.Right + 1) * FRenderer.CellWidth;
+      Bottom := (B.Bottom + 1) * FRenderer.CellHeight;
+      if (X >= Left) and (X < Right) and (Y >= Top) and (Y < Bottom) then
+      begin
+        H := Cand;
+        Break;
+      end;
+    end;
+  if (H = 0) or not FDualPanel.SurfaceViewport(H, B) or SurfaceIsNative(H) then
+  begin
+    FSurfaceMouseHandle := 0;
+    Exit;
+  end;
+  Left := B.Left * FRenderer.CellWidth;
+  Top := B.Top * FRenderer.CellHeight;
+  Right := (B.Right + 1) * FRenderer.CellWidth;
+  Bottom := (B.Bottom + 1) * FRenderer.CellHeight;
+  case AButton of
+    TMouseButton.mbRight: Btn := 2;
+    TMouseButton.mbMiddle: Btn := 3;
+  else
+    Btn := 1;
+  end;
+  Result := SurfaceDeliverMouse(H, AKind, Round((X - Left) * Scale), Round((Y - Top) * Scale),
+    Round((Right - Left) * Scale), Round((Bottom - Top) * Scale), Btn, AExtra,
+    SurfaceShiftBits(Shift));
+  if (AKind = 0) or (AKind = 4) then
+  begin
+    if Result then
+      FSurfaceMouseHandle := H;
+  end
+  else if AKind = 1 then
+    FSurfaceMouseHandle := 0;
+end;
+
+procedure TMainForm.QueueSurfaceSize(AHandle, AWidth, AHeight: Integer);
+begin
+  if (AWidth < 1) or (AHeight < 1) then
+    Exit;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if not (csDestroying in ComponentState) then
+        SurfaceReportSize(AHandle, AWidth, AHeight);
+    end);
+end;
+
+procedure TMainForm.SyncNativeSurfaces;
+var
+  H: Integer;
+  B: TRectI;
+  Scale: Single;
+  Wnd: HWND;
+  Visible: Boolean;
+begin
+  if not Assigned(FDualPanel) or not Assigned(FRenderer) then
+    Exit;
+  Scale := FLastScale;
+  if Scale <= 0 then
+    Scale := 1;
+  for H in SurfaceHandles do
+  begin
+    Visible := FDualPanel.Visible and FDualPanel.SurfaceViewport(H, B);
+    if Visible then
+      // The plugin learns the size of its area (a drawn picture is sized to it). Not from
+      // inside the paint: the plugin answers with a new frame, which repaints.
+      QueueSurfaceSize(H, Round((B.Right - B.Left + 1) * FRenderer.CellWidth * Scale),
+        Round((B.Bottom - B.Top + 1) * FRenderer.CellHeight * Scale));
+    if not SurfaceIsNative(H) then
+      Continue;
+    Wnd := HWND(PluginSurfaceNativeHandle(H));
+    if Visible then
+      NativeSurfaceMove(Wnd, Round(B.Left * FRenderer.CellWidth * Scale),
+        Round(B.Top * FRenderer.CellHeight * Scale),
+        Round((B.Right - B.Left + 1) * FRenderer.CellWidth * Scale),
+        Round((B.Bottom - B.Top + 1) * FRenderer.CellHeight * Scale), True)
+    else
+      NativeSurfaceMove(Wnd, 0, 0, 0, 0, False);
+  end;
+end;
+
+function TMainForm.PluginServicesOfPanels: TPluginHostServices;
+begin
+  Result := Default(TPluginHostServices);
+  Result.DocInfo :=
+    function: string
+    begin
+      if Assigned(FDualPanel) and (Assigned(FMdi) and (FMdi.Active = FDualPanel)) then
+        Result := FDualPanel.PluginDocInfoJson
+      else
+        Result := '';
+    end;
+  Result.DocGetText :=
+    function(AWhat: Integer; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := Assigned(FDualPanel) and FDualPanel.PluginDocGetText(AWhat, AText);
+    end;
+  Result.DocReplace :=
+    function(AWhat: Integer; const AText: string): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginDocReplace(AWhat, AText);
+      if Result then
+        Recompose;
+    end;
+  Result.DocSetCursor :=
+    function(ARow, ACol: Integer): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginDocSetCursor(ARow, ACol);
+      if Result then
+        Recompose;
+    end;
+  Result.PanelInfo :=
+    function: string
+    begin
+      if Assigned(FDualPanel) then
+        Result := FDualPanel.PluginPanelInfoJson
+      else
+        Result := '';
+    end;
+  Result.PanelGoto :=
+    function(ASide: Integer; const AURI: string): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginPanelGoto(ASide, AURI);
+      if Result then
+        Recompose;
+    end;
+  Result.PanelRefresh :=
+    procedure
+    begin
+      if Assigned(FDualPanel) then
+      begin
+        FDualPanel.PluginPanelRefresh;
+        Recompose;
+      end;
+    end;
+  Result.PanelList :=
+    function(ASide: Integer): string
+    begin
+      if Assigned(FDualPanel) then
+        Result := FDualPanel.PluginPanelListJson(ASide)
+      else
+        Result := '';
+    end;
+  Result.PanelSetCursor :=
+    function(ASide: Integer; const AURI: string): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginPanelSetCursor(ASide, AURI);
+      if Result then
+        Recompose;
+    end;
+  Result.PanelSelect :=
+    function(ASide, AMode: Integer; const AArg: string): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginPanelSelect(ASide, AMode, AArg);
+      if Result then
+        Recompose;
+    end;
+  Result.DocSetSelection :=
+    function(ARow1, ACol1, ARow2, ACol2: Integer): Boolean
+    begin
+      Result := Assigned(FDualPanel) and FDualPanel.PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2);
+      if Result then
+        Recompose;
+    end;
+  Result.DocLine :=
+    function(AIndex: Integer; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := Assigned(FDualPanel) and FDualPanel.PluginDocLine(AIndex, AText);
+    end;
 end;
 
 procedure TMainForm.CreateUpdater;
@@ -1949,6 +2216,10 @@ begin
   FPeekTimer := TTimer.Create(Self);
   FPeekTimer.Enabled := False;
   FPeekTimer.OnTimer := PeekTimerTick;
+  FAltTimer := TTimer.Create(Self);
+  FAltTimer.Interval := 30;
+  FAltTimer.Enabled := False;
+  FAltTimer.OnTimer := AltTimerTick;
   FSevenZipTimer := TTimer.Create(Self);
   FSevenZipTimer.Interval := 1500;
   FSevenZipTimer.OnTimer := SevenZipTimerTick;
@@ -2438,6 +2709,7 @@ begin
   FSession.ShowNotifications := True;
   FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
+  FSession.FileDrag := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
@@ -2498,6 +2770,30 @@ begin
       if Result then
         Recompose;
     end);
+
+  // Picture tabs a plugin opens (uPluginSurface): like dialogs, only from the panels.
+  SetPluginSurfaceHost(
+    function(AHandle: Integer): Boolean
+    begin
+      Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
+        FDualPanel.Visible and FDualPanel.OpenSurfaceTab(AHandle);
+      if Result then
+        Recompose;
+    end);
+
+  // Native windows for plugin surfaces: children of this window kept over their cells.
+  SetSurfaceNativeHooks(
+    function(AHandle: Integer): Int64
+    begin
+      Result := Int64(NativeSurfaceCreate(WindowHandleToPlatform(Handle).Wnd));
+    end,
+    procedure(AHandle: Integer; AWindow: Int64)
+    begin
+      NativeSurfaceDestroy(HWND(AWindow));
+    end);
+
+  // What plugins may ask of the documents and panels on screen.
+  SetPluginHostServices(PluginServicesOfPanels);
 
   // A plugin changing its status-line text repaints the panels.
   SetPluginChromeChanged(
@@ -2565,10 +2861,14 @@ begin
     ReleaseTaskbarButton;
   // Before the panel window goes: the updater's dialogs live there.
   FreeAndNil(FUpdateTimer);
+  FreeAndNil(FAltTimer);
   FreeAndNil(FSevenZipTimer);
   FreeAndNil(FFpsTimer);
   FreeAndNil(FUpdater);
   SetPluginDialogHost(nil);
+  SetPluginSurfaceHost(nil);
+  SetSurfaceNativeHooks(nil, nil);
+  SetPluginHostServices(Default(TPluginHostServices));
   SetPluginChromeChanged(nil);
   StopPluginHost;
   FreeAndNil(FBlinkTimer);
@@ -2659,6 +2959,7 @@ begin
     if Assigned(FFpsTimer) then
       FFpsStats.Add(fsPaint, TStopwatch.GetTimeStamp - T0);
   end;
+  SyncNativeSurfaces;
   // Cell metrics are known after the first frame: fit the window to the grid.
   if not FGridSnapDone then
   begin
@@ -2720,7 +3021,16 @@ procedure TMainForm.FormMouseWheel(Sender: TObject; Shift: TShiftState;
 var
   K: Word;
   C: Char;
+  P: TPointF;
 begin
+  // The wheel over a plugin surface is the plugin's (clicks, away from the user positive).
+  P := ScreenToClient(Screen.MousePos);
+  if TrySurfaceMouse(3, P.X, P.Y, TMouseButton.mbMiddle, WheelDelta div 120, Shift) then
+  begin
+    Recompose;
+    Handled := True;
+    Exit;
+  end;
   if ssCtrl in Shift then
   begin
     if WheelDelta > 0 then
@@ -2821,6 +3131,7 @@ function TMainForm.TryDispatchDualPanelMouseDown(Col, Row: Integer; Dbl: Boolean
 var
   LocalCol, LocalRow: Integer;
   Path: string;
+  MenuClick: Boolean;
 begin
   Result := False;
   if not (Assigned(FDualPanel) and FDualPanel.Visible and FDualPanel.HitTest(Col, Row)) then
@@ -2835,8 +3146,14 @@ begin
       ArmContextMenuHold(Path, Round(AScreenPt.X), Round(AScreenPt.Y));
     Exit(True);
   end;
+  // A click on the menu bar, inside an open menu or on a dialog never starts a file
+  // drag (the drop would copy the cursor file).
+  MenuClick := FDualPanel.TopMenuOpen or (LocalRow = 0) or FDualPanel.HasOpenDialog;
   FDualPanel.HandleClick(LocalCol, LocalRow, Dbl, Shift);
-  if (AButton = TMouseButton.mbLeft) and not Dbl then
+  // Only a press on a file row can become a drag: not one that closed a dialog or hit
+  // the menu, the tab row, the key bar or empty space.
+  if (AButton = TMouseButton.mbLeft) and not Dbl and not MenuClick and
+     FDualPanel.HitTestListItemLocalPath(LocalCol, LocalRow, Path) then
     FDualPanel.ArmFileDragFromCursor;
 end;
 
@@ -2846,10 +3163,17 @@ var
   Col, Row: Integer;
   Dbl: Boolean;
 begin
+  FAltArmed := False;
   // A click, like a key, takes the console over from a background command.
   FPeekTimer.Enabled := False;
   if not Assigned(FMdi) then
     Exit;
+  if TrySurfaceMouse(IfThen((Button = TMouseButton.mbLeft) and (ssDouble in Shift), 4, 0), X, Y,
+       Button, 0, Shift) then
+  begin
+    Recompose;
+    Exit;
+  end;
   if not PointToCell(X, Y, Col, Row) then
   begin
     if Button = TMouseButton.mbRight then
@@ -2922,6 +3246,13 @@ begin
     Exit;
   LocalCol := Col - FDualPanel.Area.Left;
   LocalRow := Row - FDualPanel.Area.Top;
+  // Dragging through an open menu moves its selection; no file drag starts.
+  if FDualPanel.TopMenuOpen then
+  begin
+    if FDualPanel.HandleMouseMove(LocalCol, LocalRow) then
+      Recompose;
+    Exit(True);
+  end;
   // Inside the panel: try its own move handling (e.g. a selection drag)
   // first. Outside it, or declined -- but still armed from an earlier
   // mouse-down -- start the OS file drag toward wherever the cursor went.
@@ -2957,9 +3288,23 @@ end;
 procedure TMainForm.FormMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
 var
   Col, Row: Integer;
+  Btn: TMouseButton;
 begin
   if not Assigned(FMdi) then
     Exit;
+  // A plugin surface sees the moves of a button held on it.
+  if FSurfaceMouseHandle <> 0 then
+  begin
+    if ssRight in Shift then
+      Btn := TMouseButton.mbRight
+    else if ssMiddle in Shift then
+      Btn := TMouseButton.mbMiddle
+    else
+      Btn := TMouseButton.mbLeft;
+    if TrySurfaceMouse(2, X, Y, Btn, 0, Shift) then
+      Recompose;
+    Exit;
+  end;
 
   if not FChromeCommandPending then
     FHoverSuppressed := False;
@@ -3090,6 +3435,13 @@ var
   Btn: TWindowButton;
   Acts: Boolean;
 begin
+  if FSurfaceMouseHandle <> 0 then
+  begin
+    TrySurfaceMouse(1, X, Y, Button, 0, Shift);
+    FSurfaceMouseHandle := 0;
+    Recompose;
+    Exit;
+  end;
   if Button = TMouseButton.mbRight then
   begin
     CancelContextMenuHold;
@@ -3109,6 +3461,11 @@ begin
     begin
       Dec(Col, FDualPanel.Area.Left);
       Dec(Row, FDualPanel.Area.Top);
+    end;
+    if FDualPanel.HandleMenuMouseUp(Col, Row) then
+    begin
+      Recompose;
+      Exit;
     end;
     if FDualPanel.ReleaseChromeButton(Col, Row, Btn, Acts) then
     begin
@@ -3335,10 +3692,15 @@ begin
   // Modifier-only press: update F-bar and swallow so the menu does not steal Alt.
   if IsModifierOnlyKey(K) then
   begin
+    // Alt alone arms the menu; Ctrl or Shift joining it (AltGr, a layout switch)
+    // disarms it, like any other key below.
+    FAltArmed := ((K = vkMenu) or (K = vkLMenu)) and ([ssCtrl, ssShift] * Shift = []);
+    FAltTimer.Enabled := FAltArmed;
     Key := 0;
     KeyChar := #0;
     Exit;
   end;
+  FAltArmed := False;
   // Enter variants -> vkReturn; AltGr+Enter -> Alt+Enter (Properties), not
   // Ctrl+Alt+Enter (reveal on the other panel). See uKeyChord.
   NormalizeKeyInput(K, C, Shift, IsAltGrDown);

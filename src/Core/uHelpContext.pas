@@ -86,7 +86,7 @@ begin
       Result := 'settings.md';
     hdkHost: // the updater's dialogs
       Result := 'updates.md';
-    hdkPluginList:
+    hdkPluginList, hdkPluginInfo, hdkPluginPerms:
       Result := 'settings.md';
     hdkColumnsConfig:
       Result := 'view.md';

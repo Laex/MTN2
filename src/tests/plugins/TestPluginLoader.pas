@@ -28,6 +28,7 @@ type
     [Test] procedure TestCommandApiFromNativePlugin;
     [Test] procedure TestDisabledPluginIsNotLoaded;
     [Test] procedure TestOverridePermissionCanBeChangedAtRuntime;
+    [Test] procedure TestLoadOrderFollowsTheUsersList;
   end;
 
 implementation
@@ -408,9 +409,63 @@ begin
   TestPluginLoader.TestOverridesNeedAllowList;
 end;
 
+procedure TestLoadOrder;
+var
+  Root, Id: string;
+  Ids: TArray<string>;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-order-' + IntToStr(Random(MaxInt)));
+  try
+    for Id in ['aaa', 'bbb', 'ccc'] do
+    begin
+      TDirectory.CreateDirectory(TPath.Combine(Root, Id));
+      TFile.WriteAllText(TPath.Combine(Root, Id + '\plugin.json'),
+        '{"id":"' + Id + '","abi":2}', TEncoding.UTF8);
+    end;
+    PluginLoader.SetPluginOrder([]);
+    PluginLoader.CatalogPlugins(Root);
+    Assert.AreEqual('aaa,bbb,ccc', string.Join(',', PluginLoader.CatalogPluginIds), 'folder order by default');
+
+    PluginLoader.SetPluginOrder(['CCC', 'aaa']);
+    PluginLoader.CatalogPlugins(Root);
+    Assert.AreEqual('ccc,aaa,bbb', string.Join(',', PluginLoader.CatalogPluginIds),
+      'listed plugins first (case-insensitive), the rest after them');
+
+    PluginLoader.SetPluginOrder(['gone', 'bbb']);
+    PluginLoader.CatalogPlugins(Root);
+    Assert.AreEqual('bbb,aaa,ccc', string.Join(',', PluginLoader.CatalogPluginIds),
+      'an id with no plugin is ignored');
+
+    Assert.IsTrue(PluginLoader.MovePlugin('aaa', 1), 'moved down');
+    Assert.AreEqual('bbb,ccc,aaa', string.Join(',', PluginLoader.CatalogPluginIds), 'the new order');
+    Assert.IsFalse(PluginLoader.MovePlugin('aaa', 1), 'the last one cannot go down');
+    Assert.IsFalse(PluginLoader.MovePlugin('bbb', -1), 'the first one cannot go up');
+    Assert.IsFalse(PluginLoader.MovePlugin('nope', 1), 'an unknown id');
+    Assert.IsTrue(PluginLoader.MovePlugin('aaa', -2), 'moved up by two');
+    Assert.AreEqual('aaa,bbb,ccc', string.Join(',', PluginLoader.CatalogPluginIds), 'back at the top');
+
+    // The move is what a restart reads back.
+    PluginLoader.MovePlugin('aaa', 2);
+    Ids := PluginLoader.CatalogPluginIds;
+    PluginLoader.SetPluginOrder(Ids);
+    PluginLoader.CatalogPlugins(Root);
+    Assert.AreEqual('bbb,ccc,aaa', string.Join(',', PluginLoader.CatalogPluginIds), 'the order survives a re-catalog');
+  finally
+    PluginLoader.SetPluginOrder([]);
+    PluginLoader.UnloadAll;
+    if TDirectory.Exists(Root) then
+      TDirectory.Delete(Root, True);
+  end;
+end;
+
 procedure TTestPluginLoader.TestCommandApiFromNativePlugin;
 begin
   TestPluginLoader.TestCommandApiFromNativePlugin;
+end;
+
+procedure TTestPluginLoader.TestLoadOrderFollowsTheUsersList;
+begin
+  TestLoadOrder;
 end;
 
 procedure TTestPluginLoader.TestLoadAndResolveSamplePlugin;

@@ -14,6 +14,7 @@ type
     [Test] procedure TestOverrides;
     [Test] procedure TestOverrideAllowList;
     [Test] procedure TestDisabledPluginsFile;
+    [Test] procedure TestPluginOrderFile;
     [Test] procedure TestShippedSevenZipOffersZipOverride;
   end;
 
@@ -146,6 +147,28 @@ begin
   end;
 end;
 
+procedure TestPluginOrderFile;
+var
+  Dir, FileName: string;
+  Ids: TArray<string>;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-order-file-' + IntToStr(Random(MaxInt)));
+  FileName := TPath.Combine(Dir, 'sub\plugin-order.json');
+  try
+    Assert.IsTrue(not TryReadPluginOrder(FileName, Ids) and (Length(Ids) = 0), 'missing file');
+    WritePluginOrder(FileName, ['mtn.ws', 'mtn.7z', 'mtn.tmp']);
+    Assert.IsTrue(TryReadPluginOrder(FileName, Ids), 'written file reads back');
+    Assert.AreEqual('mtn.ws,mtn.7z,mtn.tmp', string.Join(',', Ids), 'the order round-trips');
+    TFile.WriteAllText(FileName, 'not json', TEncoding.UTF8);
+    Assert.IsTrue(not TryReadPluginOrder(FileName, Ids) and (Length(Ids) = 0), 'invalid file');
+    WritePluginOrder(FileName, []);
+    Assert.IsTrue(not TFile.Exists(FileName), 'an empty list removes the file');
+  finally
+    if TDirectory.Exists(Dir) then
+      TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TestOverrideAllowList;
 var
   Dir: string;
@@ -181,6 +204,11 @@ end;
 procedure TTestPluginManifest.TestDisabledPluginsFile;
 begin
   TestPluginManifest.TestDisabledPluginsFile;
+end;
+
+procedure TTestPluginManifest.TestPluginOrderFile;
+begin
+  TestPluginManifest.TestPluginOrderFile;
 end;
 
 procedure TTestPluginManifest.TestOverrides;

@@ -3,5 +3,10 @@
   "name": "WASM demo VFS",
   "version": "0.1.0",
   "abi": 1,
+  "description": {
+    "en": "A tiny demonstration of a plugin written in WebAssembly: a read-only fake folder wasmdemo:// with one text file. Useful as a template for your own plugins.",
+    "ru": "Небольшая демонстрация плагина на WebAssembly: фиктивная папка wasmdemo:// только для чтения с одним текстовым файлом. Пригодится как заготовка для собственных плагинов."
+  },
+  "author": "MTN2",
   "schemes": ["wasmdemo"]
 }

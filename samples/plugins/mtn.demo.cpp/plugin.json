@@ -3,5 +3,11 @@
   "name": "Demo: operation counter (C++)",
   "version": "0.1.0",
   "abi": 2,
-  "startup": true
+  "startup": true,
+  "description": {
+    "en": "Counts how many times Copy, Move and Delete were used and shows the total in the status line.",
+    "ru": "Считает, сколько раз использовались Copy, Move и Delete, и показывает сумму в строке состояния."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
 }

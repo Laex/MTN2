@@ -26,6 +26,9 @@ type
     /// Silently ignored if AAction/AKeyCombo cannot be parsed.</summary>
     procedure RegisterBinding(const APluginId, AAction, AKeyCombo: string);
     /// <summary>Removes all bindings registered by APluginId.</summary>
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
   end;
 
@@ -36,6 +39,9 @@ function KeymapRegistry: IKeymapRegistry;
 function TryParseKeyCombo(const ACombo: string; out ABinding: TKeyBinding): Boolean;
 
 implementation
+
+uses
+  uStrings;
 
 type
   TOverlayEntry = record
@@ -52,6 +58,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure RegisterBinding(const APluginId, AAction, AKeyCombo: string);
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
   end;
 
@@ -119,6 +126,23 @@ begin
   // Reapply immediately so a plugin registering after startup takes effect
   // without requiring a manual keymap reload.
   ReloadKeymap('');
+end;
+
+function TKeymapRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TOverlayEntry;
+  Lines: TList<string>;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FEntries do
+      if SameText(E.PluginId, APluginId) then
+        Lines.Add(T('ui.plugininfo.key', 'Extra key %s for %s',
+          [KeyBindingToStr(E.Binding), KeymapActionDisplayName(E.Action)]));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TKeymapRegistry.UnregisterPlugin(const APluginId: string);

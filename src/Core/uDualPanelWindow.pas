@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.DateUtils,
-  System.IOUtils, System.Generics.Collections,
+  System.IOUtils, System.Generics.Collections, System.JSON,
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindSession, uEditorWindow, uHelpViewer, uHelpContext, uQuickTextView,
@@ -18,7 +18,7 @@ uses
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
-  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost,
+  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInfo, uPluginServices, uPluginSurface,
   uFolderHistory, uANSIParser,
   uLinkUtils, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
   uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
@@ -93,6 +93,11 @@ type
     FHelperActive: Boolean;
     FOnHelperActiveChanged: TNotifyEvent;
     FAlive: Boolean;
+    // Plugin picture shown in the Quick View panel (0 = none).
+    FSurfacePanelHandle: Integer;
+    FSurfacePanelGen: Cardinal;
+    // Folder and cursor row last reported to the plugins (panel.dir / panel.cursor).
+    FPanelEventUri, FPanelEventCursor: array[TPanelSide] of string;
     FHostWindowId: Int64;
     FOnContentChanged: TNotifyEvent;
     FOnOpenViewer: TOpenViewerEvent;
@@ -105,6 +110,13 @@ type
     /// <summary>Row of the Plugins list to come back to when the settings dialog of
     /// that plugin is closed; -1 = none.</summary>
     FPluginListReturnRow: Integer;
+    /// <summary>The plugin information dialog: the list row it came from and the help
+    /// page of that plugin ('' when it has none).</summary>
+    FPluginInfoRow: Integer;
+    FPluginInfoHelp: string;
+    FPluginPermsRow: Integer;
+    FPluginPermsCount: Integer;
+    FPluginPermsHasOverride: Boolean;
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
@@ -448,6 +460,7 @@ type
     /// results dialog (its Goto button) and by Enter inside a find:// panel.</summary>
     procedure GotoFileLocation(const AFilePath: string);
     procedure HistoryBack;
+    procedure GoHistoryBack(AShowPopup: Boolean);
     procedure HistoryForward;
     procedure ActivateCurrent;
     /// <summary>Enter on ARow of ATab's listing: open, enter, run, go back.</summary>
@@ -661,6 +674,10 @@ type
     procedure OfferElevated(const AAction: TProc);
     procedure OpenPluginListDialog;
     procedure ShowPluginList(ASelectedIndex: Integer);
+    procedure ShowPluginInfo(ARow: Integer);
+    procedure ShowPluginPermissions(ARow: Integer);
+    function HandlePluginPermsCommand(const AControlId: string): Boolean;
+    function HandlePluginInfoCommand(const AControlId: string): Boolean;
     function HandlePluginListCommand(const AControlId: string): Boolean;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
@@ -881,6 +898,32 @@ type
     /// dialog has closed, so it may open the next one.</summary>
     /// <summary>Shows an informational message box.</summary>
     procedure ShowInfo(const ATitle, ADetail: string);
+    /// <summary>Opens a viewer tab for plugin picture AHandle (uPluginSurface).</summary>
+    function OpenSurfaceTab(AHandle: Integer): Boolean;
+    /// <summary>The cells a visible plugin surface covers (compositor-absolute, inclusive):
+    /// False for one that is not on screen or is covered by a dialog or the menu.</summary>
+    function SurfaceViewport(AHandle: Integer; out ABounds: TRectI): Boolean;
+    /// <summary>The surface whose area is under the mouse, if the plugin wants the mouse.</summary>
+    function VisibleSurfaces: TArray<Integer>;
+    /// <summary>Closes the Quick View surface when Quick View has been switched off.</summary>
+    procedure SyncSurfacePanel;
+    /// <summary>The plugin API (uPluginServices): the text document on screen and
+    /// the file panels. The document calls fail while no text document is the
+    /// active tab.</summary>
+    function PluginDocInfoJson: string;
+    function PluginDocGetText(AWhat: Integer; out AText: string): Boolean;
+    function PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
+    function PluginDocSetCursor(ARow, ACol: Integer): Boolean;
+    function PluginPanelInfoJson: string;
+    function PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
+    procedure PluginPanelRefresh;
+    procedure PublishPanelEvents;
+    procedure DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
+    function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+    function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
+    function PluginPanelListJson(ASide: Integer): string;
+    function PluginPanelSetCursor(ASide: Integer; const AURI: string): Boolean;
+    function PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
     function ShowHostDialog(const ADecl: TDialogDeclaration;
       const AOnCommand: TProc<string, string>): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
@@ -967,6 +1010,13 @@ type
     /// <summary>Map cell > drop directory URI (panel list / folder under cursor).</summary>
     function HitTestDropTarget(ALocalCol, ALocalRow: Integer;
       out ADestURI: string; out ASide: TPanelSide; out AHighlightRow: Integer): Boolean;
+    /// <summary>The F9 menu is open.</summary>
+    function TopMenuOpen: Boolean;
+    /// <summary>A dialog is on screen over the panels.</summary>
+    function HasOpenDialog: Boolean;
+    /// <summary>The left button went up (cell in this window's coordinates, -1 when
+    /// outside): a press that began on a menu title and ends over an item runs it.</summary>
+    function HandleMenuMouseUp(ALocalCol, ALocalRow: Integer): Boolean;
     /// <summary>Map cell > local filesystem path for a list row (file:// only).</summary>
     function HitTestListItemLocalPath(ALocalCol, ALocalRow: Integer;
       out ALocalPath: string): Boolean;
@@ -1227,6 +1277,7 @@ begin
   FDialog.OnChanged := DialogChanged;
   FDialogKind := hdkNone;
   FPluginListReturnRow := -1;
+  FPluginInfoRow := -1;
   BindDialogControllers;
   FFreeText := '';
   FFreeRoot := '';
@@ -2628,6 +2679,11 @@ begin
     TInputOverlayEntry.Make(OverlayFolderTreeVisible, HandleFolderTreeInput)
   ];
   FTopMenu := TTopMenuController.Create(Theme, Invalidate, ExecuteTopMenuAction);
+  FTopMenu.OnIsRightPanelActive :=
+    function: Boolean
+    begin
+      Result := ActiveWorkspace.State.ActiveSide = psRight;
+    end;
   FTopMenu.OnIsActionEnabled :=
     function(AAction: TTopMenuAction): Boolean
     begin
@@ -3096,6 +3152,8 @@ begin
   Invalidate;
   if Assigned(FOnContentChanged) then
     FOnContentChanged(Self);
+  SyncSurfacePanel;
+  PublishPanelEvents;
 end;
 
 procedure TDualPanelWindow.ModelInvalidated(AWindowId: Integer);
@@ -3863,6 +3921,11 @@ begin
 end;
 
 procedure TDualPanelWindow.HistoryBack;
+begin
+  GoHistoryBack(True);
+end;
+
+procedure TDualPanelWindow.GoHistoryBack(AShowPopup: Boolean);
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -3875,7 +3938,11 @@ begin
   Tab := ActiveTab(Panel);
   if Tab.HistoryIndex <= 0 then
   begin
-    ShowHistoryPopup(Side, Tab);
+    if AShowPopup then
+      ShowHistoryPopup(Side, Tab)
+    else
+      // ".." out of a virtual folder with nothing to go back to: the home folder.
+      NavigateActiveTo(PathToFileUri(TPath.GetHomePath));
     Exit;
   end;
   Dec(Tab.HistoryIndex);
@@ -3883,7 +3950,8 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   NavigateSideTo(Side, Tab.History[Tab.HistoryIndex], False);
-  ShowHistoryPopup(Side, Tab);
+  if AShowPopup then
+    ShowHistoryPopup(Side, Tab);
 end;
 
 procedure TDualPanelWindow.HistoryForward;
@@ -4726,7 +4794,7 @@ begin
     ackFindGoto:
       GotoFileLocation(FileUriToPath(ARow.URI));
     ackHistoryBack:
-      HistoryBack;
+      GoHistoryBack(False);
     ackNavigate:
       if ARow.URI <> '' then
         NavigateActiveTo(ARow.URI);
@@ -5013,6 +5081,10 @@ begin
       FDialog.Close;
     hdkPluginList:
       Result := HandlePluginListCommand(AControlId);
+    hdkPluginInfo:
+      Result := HandlePluginInfoCommand(AControlId);
+    hdkPluginPerms:
+      Result := HandlePluginPermsCommand(AControlId);
     hdkFolderHistory:
       Result := FFolderHistory.DispatchCommand(AControlId);
     hdkPanelFilter:
@@ -7233,6 +7305,7 @@ begin
     Exit;
   CloseTransientUiBeforeDialog;
   HostEnsureAllPlugins;
+  HostPluginsBegin;
   ShowPluginList(0);
 end;
 
@@ -7243,18 +7316,131 @@ begin
   NotifyChanged;
 end;
 
-function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
+procedure TDualPanelWindow.ShowPluginInfo(ARow: Integer);
 var
-  Row: Integer;
+  Info: TPluginInfo;
+begin
+  if not HostPluginInfo(ARow, Info) then
+  begin
+    ShowPluginList(ARow);
+    Exit;
+  end;
+  FPluginInfoRow := ARow;
+  FPluginInfoHelp := Info.HelpFile;
+  FDialogKind := hdkPluginInfo;
+  FDialog.Open(BuildPluginInfoDialog(Info.Name, PluginInfoLines(Info, 72),
+    Info.HelpFile <> ''), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.ShowPluginPermissions(ARow: Integer);
+var
+  Name, Intro: string;
+  Over, Perms, Texts: TArray<string>;
+  OverOn: Boolean;
+  Granted: TArray<Boolean>;
+  I: Integer;
+begin
+  if not HostPluginPermissions(ARow, Name, Over, OverOn, Perms, Granted) then
+  begin
+    ShowPluginList(ARow);
+    Exit;
+  end;
+  SetLength(Texts, Length(Perms));
+  for I := 0 to High(Perms) do
+    Texts[I] := PermissionDescription(Perms[I]);
+  FPluginPermsRow := ARow;
+  FPluginPermsCount := Length(Perms);
+  FPluginPermsHasOverride := Length(Over) > 0;
+  FDialogKind := hdkPluginPerms;
+  if (Length(Over) > 0) or (Length(Perms) > 0) then
+    Intro := T('ui.plugins.permsIntro', 'The plugin asks to be allowed to:')
+  else
+    Intro := T('ui.plugins.permsNone', 'The plugin asks for no permissions.');
+  FDialog.Open(BuildPluginPermissionsDialog(Name, Intro,
+    Format(T('ui.plugins.permsOverride', 'replace the built-in handlers: %s'),
+      [string.Join(' ', Over)]),
+    Length(Over) > 0, OverOn, Texts, Granted), DialogCommand);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.HandlePluginPermsCommand(const AControlId: string): Boolean;
+var
+  Row, I: Integer;
+  Granted: TArray<Boolean>;
+  OverOn: Boolean;
 begin
   Result := True;
-  if (AControlId <> 'toggle') and (AControlId <> 'override') and (AControlId <> 'settings') then
+  Row := FPluginPermsRow;
+  if DialogCmdIsAccept(AControlId) then
   begin
+    SetLength(Granted, FPluginPermsCount);
+    for I := 0 to High(Granted) do
+      Granted[I] := FDialog.GetCheckbox('perm_' + IntToStr(I));
+    OverOn := FPluginPermsHasOverride and FDialog.GetCheckbox('perm_override');
     FDialog.Close;
+    HostApplyPluginPermissions(Row, OverOn, Granted);
+  end
+  else
+    FDialog.Close;
+  ShowPluginList(Row);
+end;
+
+function TDualPanelWindow.HandlePluginInfoCommand(const AControlId: string): Boolean;
+var
+  Row: Integer;
+  HelpFile: string;
+begin
+  Result := True;
+  Row := FPluginInfoRow;
+  HelpFile := FPluginInfoHelp;
+  FDialog.Close;
+  if (AControlId = 'help') and (HelpFile <> '') then
+  begin
+    // The help page opens in the viewer; the Plugins list is not brought back.
+    RequestOpenViewer(PathToFileUri(HelpFile));
+    Exit;
+  end;
+  ShowPluginList(Row);
+end;
+
+function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
+var
+  Row, Delta: Integer;
+begin
+  Result := True;
+  if (AControlId <> 'toggle') and (AControlId <> 'permissions') and
+     (AControlId <> 'settings') and (AControlId <> 'info') and (AControlId <> 'up') and
+     (AControlId <> 'down') then
+  begin
+    // OK applies the pending on/off choices; Cancel, Esc and the close box drop them.
+    FDialog.Close;
+    if DialogCmdIsAccept(AControlId) then
+      HostPluginsCommit
+    else
+      HostPluginsCancel;
+    NotifyChanged;
     Exit;
   end;
   Row := FDialog.GetListSelectedIndex('plugins');
   FDialog.Close;
+  if (AControlId = 'up') or (AControlId = 'down') then
+  begin
+    // The selection follows the plugin to its new place.
+    if AControlId = 'up' then
+      Delta := -1
+    else
+      Delta := 1;
+    if HostMovePlugin(Row, Delta) then
+      Inc(Row, Delta);
+    ShowPluginList(Row);
+    Exit;
+  end;
+  if AControlId = 'info' then
+  begin
+    ShowPluginInfo(Row);
+    Exit;
+  end;
   if AControlId = 'settings' then
   begin
     // The plugin shows its own dialog and the list comes back when it is closed;
@@ -7279,10 +7465,13 @@ begin
       Exit;
     end;
   end
-  else if AControlId = 'toggle' then
-    HostTogglePlugin(Row)
+  else if AControlId = 'permissions' then
+  begin
+    ShowPluginPermissions(Row);
+    Exit;
+  end
   else
-    HostTogglePluginOverride(Row);
+    HostTogglePlugin(Row);
   // The list is rebuilt so the marks show the new state; the menu is rebuilt
   // too, since a plugin that left or arrived takes its items with it.
   ShowPluginList(Row);
@@ -8485,6 +8674,472 @@ begin
   SyncWindowTitle;
   SyncDirWatches;
   NotifyChanged;
+end;
+
+function TDualPanelWindow.VisibleSurfaces: TArray<Integer>;
+var
+  H: Integer;
+  B: TRectI;
+begin
+  Result := [];
+  for H in SurfaceHandles do
+    if SurfaceViewport(H, B) then
+      Result := Result + [H];
+end;
+
+function TDualPanelWindow.SurfaceViewport(AHandle: Integer; out ABounds: TRectI): Boolean;
+var
+  Doc: TEditorWindow;
+  Side: TPanelSide;
+  PanelBounds: TRectI;
+begin
+  Result := False;
+  ABounds := TRectI.Make(0, 0, -1, -1);
+  if not FAlive or FConsoleMode or HelpVisible or (Assigned(FDialog) and FDialog.Visible) or
+     (Assigned(FTopMenu) and FTopMenu.Active) then
+    Exit;
+  if SurfaceMode(AHandle) = cSurfaceModePanel then
+  begin
+    if (AHandle <> FSurfacePanelHandle) or not QuickViewVisible then
+      Exit;
+    Side := OppositeSide(ActiveWorkspace.State.ActiveSide);
+    if PanelViewKind(Side) <> pvkQuickView then
+      Exit;
+    if Side = psLeft then
+      PanelBounds := FLeftBounds
+    else
+      PanelBounds := FRightBounds;
+    ABounds := QuickViewInteriorAbsBounds(PanelBounds, Area);
+    Exit(ABounds.Right >= ABounds.Left);
+  end;
+  if ActiveWorkspace.Kind <> wkDocument then
+    Exit;
+  Doc := ActiveDocument;
+  Result := Assigned(Doc) and (Doc.SurfaceHandle = AHandle) and Doc.SurfaceBounds(ABounds);
+end;
+
+procedure TDualPanelWindow.SyncSurfacePanel;
+var
+  H: Integer;
+begin
+  if FSurfacePanelHandle = 0 then
+    Exit;
+  if (PanelViewKind(psLeft) = pvkQuickView) or (PanelViewKind(psRight) = pvkQuickView) then
+    Exit;
+  // Quick View was switched off: the plugin hears it like a closed tab.
+  H := FSurfacePanelHandle;
+  FSurfacePanelHandle := 0;
+  SurfaceTabClosed(H);
+end;
+
+function TDualPanelWindow.OpenSurfaceTab(AHandle: Integer): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Ed: TEditorWindow;
+  Uri: string;
+  Other: TPanelSide;
+begin
+  Result := False;
+  if not FAlive then
+    Exit;
+  if SurfaceMode(AHandle) = cSurfaceModePanel then
+  begin
+    // Shown where Quick View shows a file: the panel opposite the active one.
+    Ws := ActiveWorkspace;
+    if (Ws.Kind <> wkPanels) or (FSurfacePanelHandle <> 0) then
+      Exit;
+    Other := OppositeSide(Ws.State.ActiveSide);
+    if PanelViewKind(Other) <> pvkQuickView then
+      ToggleQuickView;
+    if PanelViewKind(Other) <> pvkQuickView then
+      Exit;
+    FSurfacePanelHandle := AHandle;
+    SurfaceAttach(AHandle,
+      procedure
+      begin
+        Invalidate;
+      end,
+      procedure
+      begin
+        if FSurfacePanelHandle = AHandle then
+        begin
+          FSurfacePanelHandle := 0;
+          SurfaceTabClosed(AHandle);
+          CloseQuickView;
+        end;
+      end);
+    NotifyChanged;
+    Exit(True);
+  end;
+  Uri := 'plugin-surface:' + IntToStr(AHandle);
+  Ed := TEditorWindow.Create(Theme, FNextTabId);
+  Ed.Embedded := True;
+  Ed.OnContentChanged := DocumentContentChanged;
+  Ed.OnCloseRequest := DocumentCloseRequest;
+  Ed.OpenSurface(AHandle);
+
+  Ws := TDualPanelTabManager.MakeEmbeddedWorkspaceTab(
+    FNextTabId, TDualPanelTabManager.EmbeddedDocumentTitle(Ed.TabCaption, 'Picture'),
+    wkDocument, ActiveWorkspace.Id);
+  Inc(FNextTabId);
+  Ws.DocURI := Uri;
+  Ws.ViewOnly := True;
+
+  FDocuments.AddOrSetValue(Ws.Id, Ed);
+  TDualPanelTabManager.InsertWorkspaceAfterActive(
+    FState.WorkspaceTabs, FState.ActiveWorkspaceIndex, Ws);
+  SyncWindowTitle;
+  NotifyChanged;
+  Result := True;
+end;
+
+function TDualPanelWindow.PluginDocInfoJson: string;
+var
+  Doc: TEditorWindow;
+begin
+  Doc := ActiveDocument;
+  if (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) then
+    Result := Doc.PluginDocInfoJson
+  else
+    Result := '';
+end;
+
+function TDualPanelWindow.PluginDocGetText(AWhat: Integer; out AText: string): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  AText := '';
+  Doc := ActiveDocument;
+  Result := (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) and
+    Doc.PluginDocGetText(AWhat, AText);
+end;
+
+function TDualPanelWindow.PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  Doc := ActiveDocument;
+  Result := (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) and
+    Doc.PluginDocReplace(AWhat, AText);
+end;
+
+function TDualPanelWindow.PluginDocSetCursor(ARow, ACol: Integer): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  Doc := ActiveDocument;
+  Result := (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) and
+    Doc.PluginDocSetCursor(ARow, ACol);
+end;
+
+function TDualPanelWindow.PluginPanelInfoJson: string;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Root, SideObj: TJSONObject;
+  Sel: TJSONArray;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Idx: Integer;
+  U: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit('');
+  Root := TJSONObject.Create;
+  try
+    if Ws.State.ActiveSide = psLeft then
+      Root.AddPair('active', 'left')
+    else
+      Root.AddPair('active', 'right');
+    for Side := psLeft to psRight do
+    begin
+      if Side = psLeft then
+        Panel := Ws.State.LeftPanel
+      else
+        Panel := Ws.State.RightPanel;
+      Tab := ActiveTab(Panel);
+      SideObj := TJSONObject.Create;
+      SideObj.AddPair('uri', Tab.CurrentURI);
+      Rows := RowsForSide(Side);
+      Idx := Tab.CursorIndex;
+      if (Idx >= 0) and (Idx <= High(Rows)) and not Rows[Idx].IsParent then
+      begin
+        SideObj.AddPair('cursor', Rows[Idx].URI);
+        SideObj.AddPair('cursorIsDirectory', TJSONBool.Create(Rows[Idx].IsDirectory));
+      end;
+      Sel := TJSONArray.Create;
+      for U in Tab.SelectedURIs do
+        Sel.Add(U);
+      SideObj.AddPair('selected', Sel);
+      if Side = psLeft then
+        Root.AddPair('left', SideObj)
+      else
+        Root.AddPair('right', SideObj);
+    end;
+    Result := Root.ToJSON;
+  finally
+    Root.Free;
+  end;
+end;
+
+function TDualPanelWindow.PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  Doc := ActiveDocument;
+  Result := (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) and
+    Doc.PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2);
+end;
+
+function TDualPanelWindow.PluginDocLine(AIndex: Integer; out AText: string): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  AText := '';
+  Doc := ActiveDocument;
+  Result := (ActiveWorkspace.Kind = wkDocument) and Assigned(Doc) and
+    Doc.PluginDocLine(AIndex, AText);
+end;
+
+function TDualPanelWindow.PluginPanelListJson(ASide: Integer): string;
+const
+  cMaxRows = 10000;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Root, RowObj: TJSONObject;
+  RowsArr: TJSONArray;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  I, N: Integer;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit('');
+  case ASide of
+    0: Side := psLeft;
+    1: Side := psRight;
+  else
+    Side := Ws.State.ActiveSide;
+  end;
+  if Side = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Side);
+  Root := TJSONObject.Create;
+  try
+    Root.AddPair('uri', Tab.CurrentURI);
+    RowsArr := TJSONArray.Create;
+    N := 0;
+    for I := 0 to High(Rows) do
+    begin
+      if Rows[I].IsParent then
+        Continue;
+      if N >= cMaxRows then
+      begin
+        Root.AddPair('truncated', TJSONBool.Create(True));
+        Break;
+      end;
+      RowObj := TJSONObject.Create;
+      RowObj.AddPair('uri', Rows[I].URI);
+      RowObj.AddPair('name', Rows[I].Text);
+      RowObj.AddPair('dir', TJSONBool.Create(Rows[I].IsDirectory));
+      RowObj.AddPair('size', TJSONNumber.Create(Rows[I].Size));
+      RowsArr.Add(RowObj);
+      // The cursor is reported as an index into this list (the ".." row is not in it).
+      if I = Tab.CursorIndex then
+        Root.AddPair('cursor', TJSONNumber.Create(N));
+      Inc(N);
+    end;
+    Root.AddPair('rows', RowsArr);
+    Result := Root.ToJSON;
+  finally
+    Root.Free;
+  end;
+end;
+
+function TDualPanelWindow.PluginPanelSetCursor(ASide: Integer; const AURI: string): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  I, Found: Integer;
+  Parent: string;
+begin
+  Result := False;
+  Ws := ActiveWorkspace;
+  if (Ws.Kind <> wkPanels) or (Assigned(FDialog) and FDialog.Visible) then
+    Exit;
+  case ASide of
+    0: Side := psLeft;
+    1: Side := psRight;
+  else
+    Side := Ws.State.ActiveSide;
+  end;
+  Rows := RowsForSide(Side);
+  Found := -1;
+  for I := 0 to High(Rows) do
+    if not Rows[I].IsParent and SameVfsUri(Rows[I].URI, AURI) then
+    begin
+      Found := I;
+      Break;
+    end;
+  if Found < 0 then
+  begin
+    // A row of another folder: go there, the cursor follows when it is listed.
+    Parent := ParentVfsUri(AURI);
+    if Parent = '' then
+      Exit;
+    FPendingSelectName := VfsUriTitle(AURI);
+    FPendingSelectSide := Side;
+    NavigateSideTo(Side, Parent, True);
+    Exit(True);
+  end;
+  if Side = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Tab.CursorIndex := Found;
+  SetActiveTab(Panel, Tab);
+  if Side = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+  ClampCursorSide(Side);
+  NotifyChanged;
+  Result := True;
+end;
+
+function TDualPanelWindow.PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+begin
+  Ws := ActiveWorkspace;
+  Result := (Ws.Kind = wkPanels) and not (Assigned(FDialog) and FDialog.Visible);
+  if not Result then
+    Exit;
+  case ASide of
+    0: Side := psLeft;
+    1: Side := psRight;
+  else
+    Side := Ws.State.ActiveSide;
+  end;
+  if Side = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Side);
+  case AMode of
+    0: TabSelectByMask(Tab, Rows, AArg, False);
+    1: TabUnselectByMask(Tab, Rows, AArg, False);
+    2: TabClearSelection(Tab);
+    3: TabSetSelected(Tab, AArg, True);
+    4: TabSetSelected(Tab, AArg, False);
+  else
+    Exit(False);
+  end;
+  SetActiveTab(Panel, Tab);
+  if Side = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.PublishPanelEvents;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Obj: TJSONObject;
+  Cur: string;
+  DirChanged: Boolean;
+begin
+  if not PluginHasSubscribers then
+    Exit;
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  for Side := psLeft to psRight do
+  begin
+    if Side = psLeft then
+      Panel := Ws.State.LeftPanel
+    else
+      Panel := Ws.State.RightPanel;
+    Tab := ActiveTab(Panel);
+    Rows := RowsForSide(Side);
+    // A folder that is still being listed has no cursor row to report yet.
+    if Length(Rows) = 0 then
+      Continue;
+    Cur := '';
+    if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) and
+       not Rows[Tab.CursorIndex].IsParent then
+      Cur := Rows[Tab.CursorIndex].URI;
+    DirChanged := Tab.CurrentURI <> FPanelEventUri[Side];
+    if not DirChanged and (Cur = FPanelEventCursor[Side]) then
+      Continue;
+    FPanelEventUri[Side] := Tab.CurrentURI;
+    FPanelEventCursor[Side] := Cur;
+    Obj := TJSONObject.Create;
+    try
+      if Side = psLeft then
+        Obj.AddPair('side', 'left')
+      else
+        Obj.AddPair('side', 'right');
+      Obj.AddPair('uri', Tab.CurrentURI);
+      Obj.AddPair('cursor', Cur);
+      if DirChanged then
+        PluginPublishEvent('panel.dir', Obj.ToJSON)
+      else
+        PluginPublishEvent('panel.cursor', Obj.ToJSON);
+    finally
+      Obj.Free;
+    end;
+  end;
+end;
+
+function TDualPanelWindow.PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
+var
+  Side, Previous: TPanelSide;
+begin
+  Result := (ActiveWorkspace.Kind = wkPanels) and not (Assigned(FDialog) and FDialog.Visible);
+  if not Result then
+    Exit;
+  Previous := ActiveWorkspace.State.ActiveSide;
+  case ASide of
+    0: Side := psLeft;
+    1: Side := psRight;
+  else
+    Side := Previous;
+  end;
+  NavigateSideTo(Side, AURI, True);
+  // Showing a folder in the other panel does not move the focus there.
+  if Side <> Previous then
+    ActivateSide(Previous);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.PluginPanelRefresh;
+begin
+  if ActiveWorkspace.Kind = wkPanels then
+    RefreshActive;
 end;
 
 function TDualPanelWindow.TerminalForWorkspace(AIndex: Integer): TTerminalWorkspaceWindow;
@@ -9706,6 +10361,30 @@ begin
     Path, Bytes, Files, Folders);
 end;
 
+procedure TDualPanelWindow.DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
+var
+  W, H: Integer;
+  Gen: Cardinal;
+  Pixels: PByte;
+  AbsBounds: TRectI;
+  Uri: string;
+begin
+  SurfaceSeen(FSurfacePanelHandle);
+  if SurfaceIsNative(FSurfacePanelHandle) then
+    Exit;
+  if not SurfaceFrame(FSurfacePanelHandle, W, H, Gen, Pixels) then
+    Exit;
+  AbsBounds := QuickViewInteriorAbsBounds(ABounds, Area);
+  Uri := 'plugin-surface:' + IntToStr(FSurfacePanelHandle);
+  if (OverlayCurrentURI <> Uri) or (Gen <> FSurfacePanelGen) then
+  begin
+    SetOverlayPixels(Uri, W, H, Pixels, AbsBounds, AbsBounds);
+    FSurfacePanelGen := Gen;
+  end
+  else
+    UpdateOverlayBounds(AbsBounds);
+end;
+
 procedure TDualPanelWindow.DrawQuickViewContent(const ABounds: TRectI;
   ASide: TPanelSide; AFrame, ABodyBg: TAlphaColor);
 var
@@ -9720,6 +10399,13 @@ var
 begin
   FillGridRect(Buffer, ABounds.Left + 1, ABounds.Top + 1,
     ABounds.Right - 1, ABounds.Bottom - 1, ' ', cFileFg, ABodyBg);
+
+  // A plugin shows its own picture here instead of the file under the cursor.
+  if (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
+  begin
+    DrawSurfacePanel(ABounds, ABodyBg);
+    Exit;
+  end;
 
   // The active side always drives what's previewed, regardless of which
   // side is physically drawing this panel - only reached when ASide isn't
@@ -10334,8 +11020,14 @@ var
 begin
   LayoutPanels(W, H);
   SyncPanelScrollAfterLayout;
-  DrawWorkspaceTabBar(W);
   Doc := ActiveDocument;
+  // A plugin picture in full screen covers the menu, the tabs and the key bar too.
+  if Assigned(Doc) and Doc.IsSurfaceFullscreen then
+  begin
+    Doc.PaintEmbedded(Buffer, 0, 0, W, H, Area.Left, Area.Top);
+    Exit;
+  end;
+  DrawWorkspaceTabBar(W);
   if Assigned(Doc) then
   begin
     DocH := EmbeddedDocumentPaintHeight(H);
@@ -10592,7 +11284,7 @@ begin
     if not FTopMenu.Active and (GlobalAct = kaTopMenu) then
     begin
       HostEnsureAllPlugins;
-      FTopMenu.ActivateMenu(1, True);
+      FTopMenu.ActivateMenu(FTopMenu.PanelCategory, True);
       AKey := 0;
       AKeyChar := #0;
       Invalidate;
@@ -11020,6 +11712,23 @@ begin
   NotifyChanged;
 end;
 
+function TDualPanelWindow.HasOpenDialog: Boolean;
+begin
+  Result := Assigned(FDialog) and FDialog.Visible;
+end;
+
+function TDualPanelWindow.TopMenuOpen: Boolean;
+begin
+  Result := Assigned(FTopMenu) and FTopMenu.Active;
+end;
+
+function TDualPanelWindow.HandleMenuMouseUp(ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  Result := Assigned(FTopMenu) and FTopMenu.HandleMouseUp(ALocalCol, ALocalRow);
+  if Result then
+    NotifyChanged;
+end;
+
 function TDualPanelWindow.HandleMouseMove(ALocalCol, ALocalRow: Integer): Boolean;
 var
   Doc: TEditorWindow;
@@ -11027,6 +11736,9 @@ var
 begin
   if HelpVisible then
     Exit(FHelp.HandleMouseMove(ALocalCol, ALocalRow));
+  // Dragging through an open menu only moves its selection.
+  if Assigned(FTopMenu) and FTopMenu.Active then
+    Exit(FTopMenu.HandleMouseMove(ALocalCol, ALocalRow));
   if TabDragBusy(FTabDragArmed, FTabDragActive) then
     Exit(UpdateTabDrag(ALocalCol, ALocalRow));
   Result := False;

@@ -10,6 +10,7 @@ type
   TTestDialogJson = class
   public
     [Test] procedure TestValidateAllDialogs;
+    [Test] procedure TestListFlagsSurviveARoundTrip;
     [Test] procedure TestColorSampleParsing;
     [Test] procedure TestDirSyncRadios;
     [Test] procedure TestFileDiffDialog;
@@ -294,6 +295,33 @@ begin
 end;
 
 { TTestDialogJson }
+
+procedure TTestDialogJson.TestListFlagsSurviveARoundTrip;
+var
+  Decl, Back: TDialogDeclaration;
+  I: Integer;
+  Json: string;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    '{"type":"dialog","version":"2.0","title":"T","width":40,"height":10,"children":[' +
+    '{"type":"list","id":"l","selected":0,"items":["a","b"],"frame":true,"keycommands":true,' +
+    '"col":1,"row":1,"width":30,"height":5},' +
+    '{"type":"list","id":"p","selected":0,"items":["a"],"col":1,"row":7,"width":30,"height":2}]}',
+    Decl), 'parses');
+  Json := DeclarationToJson(Decl);
+  Assert.IsTrue(TryParseDialogJson(Json, Back), 'the written JSON parses again');
+  for I := 0 to High(Back.Controls) do
+    if Back.Controls[I].Id = 'l' then
+    begin
+      Assert.IsTrue(Back.Controls[I].Framed, 'the frame is written');
+      Assert.IsTrue(Back.Controls[I].KeyCommands, 'the key commands flag is written');
+    end
+    else if Back.Controls[I].Id = 'p' then
+    begin
+      Assert.IsFalse(Back.Controls[I].Framed, 'no frame stays no frame');
+      Assert.IsFalse(Back.Controls[I].KeyCommands, 'and no key commands');
+    end;
+end;
 
 procedure TTestDialogJson.TestValidateAllDialogs;
 begin

@@ -1,4 +1,4 @@
-﻿unit uDialogResources;
+unit uDialogResources;
 
 { Load DIALOG_PLUGIN JSON from RCDATA (MTN2.rc). Layouts live in src/dialogs/*.json.
   Application loads only from embedded resources. Tools/tests may fall back to
@@ -43,6 +43,8 @@ const
   cResDialogUpdateMsg = 'DIALOG_UPDATEMSG';
   cResDialogUpdates = 'DIALOG_UPDATES';
   cResDialogPluginList = 'DIALOG_PLUGINLIST';
+  cResDialogPluginInfo = 'DIALOG_PLUGININFO';
+  cResDialogPluginPerms = 'DIALOG_PLUGINPERMS';
   cResDialogColorCoding = 'DIALOG_COLORCODING';
   cResDialogColorCodingEdit = 'DIALOG_COLORCODINGEDIT';
   cResDialogColorPicker = 'DIALOG_COLORPICKER';

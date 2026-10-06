@@ -1,0 +1,13 @@
+{
+  "id": "mtn.demo.video",
+  "name": "Demo: video player (C++)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "F3 on a video file plays it, with sound, in a viewer tab; Space pauses, arrows seek.",
+    "ru": "F3 на видеофайле проигрывает его со звуком во вкладке просмотра; пробел – пауза, стрелки – перемотка."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

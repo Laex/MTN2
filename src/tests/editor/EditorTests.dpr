@@ -22,6 +22,8 @@ uses
   TestMarkdownColors in 'TestMarkdownColors.pas',
   TestEditorTyping in 'TestEditorTyping.pas',
   TestMarkdownLinks in 'TestMarkdownLinks.pas',
+  TestEditorSurface in 'TestEditorSurface.pas',
+  TestEditorPluginApi in 'TestEditorPluginApi.pas',
   TestQuickTextView in 'TestQuickTextView.pas',
   TestStreamingArchiveViewer in 'TestStreamingArchiveViewer.pas',
   TestStreamingViewer in 'TestStreamingViewer.pas';

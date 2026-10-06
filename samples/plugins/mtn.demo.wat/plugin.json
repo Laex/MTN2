@@ -3,5 +3,11 @@
   "name": "Demo: counter (WAT)",
   "version": "0.1.0",
   "abi": 2,
-  "startup": true
+  "startup": true,
+  "description": {
+    "en": "The smallest useful plugin, written in WebAssembly text: Ctrl+Alt+F7 adds one to a counter shown in the status line.",
+    "ru": "Самый маленький полезный плагин на тексте WebAssembly: Ctrl+Alt+F7 прибавляет единицу к счётчику в строке состояния."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
 }

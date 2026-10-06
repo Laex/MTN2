@@ -23,6 +23,9 @@ type
   IPanelPluginRegistry = interface
     ['{E8F1A2B3-C4D5-4E6F-8A9B-0C1D2E3F4A5B}']
     procedure RegisterPlugin(const APluginId, AScheme: string; APriority: Int64 = 100);
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function ResolvePlugin(const AURI: string): string;
     /// <summary>Adds the activation handler of APluginId for panels showing
@@ -56,6 +59,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure RegisterPlugin(const APluginId, AScheme: string; APriority: Int64 = 100);
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function ResolvePlugin(const AURI: string): string;
     procedure RegisterActivateHandler(const APluginId, AScheme: string;
@@ -66,6 +70,9 @@ type
 function PanelPluginRegistry: IPanelPluginRegistry;
 
 implementation
+
+uses
+  uStrings;
 
 constructor TPanelPluginRegistry.Create;
 begin
@@ -187,6 +194,22 @@ begin
   end;
 
   Result := cDefaultPanelPluginId;
+end;
+
+function TPanelPluginRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TActivateEntry;
+  Lines: TList<string>;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FActivate do
+      if SameText(E.PluginId, APluginId) then
+        Lines.Add(T('ui.plugininfo.activate', 'Handles Enter on panels showing %s://', [E.Scheme]));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TPanelPluginRegistry.UnregisterPlugin(const APluginId: string);

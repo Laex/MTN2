@@ -107,6 +107,14 @@ type
     // (MarkdownImageOverlayVisible) to decide whether to run the Overlay
     // Canvas pass for this window, mirroring TDualPanelWindow.QuickViewVisible.
     FMdOverlayShowing: Boolean;
+    // Handle of the plugin picture this window shows (uPluginSurface); 0 = a
+    // text document. FSurfaceGen is the frame last given to the Overlay.
+    FSurfaceHandle: Integer;
+    FSurfaceGen: Cardinal;
+    // The document was being saved at the last DocChanged (to see a save finish).
+    FWasSaving: Boolean;
+    // A "doc.changed" event is queued (edits of one command are sent as one).
+    FChangedEventQueued: Boolean;
     FEmbedded: Boolean;
     // F1 Help window (uHelpViewer): fbcHelp chrome, "Help" title, no saved
     // file position (the host positions the topic itself).
@@ -207,6 +215,10 @@ type
       out ACols: Integer; out AScale: Single): Integer;
     procedure DrawMarkdownContent;
     procedure LeaveMarkdownOverlay;
+    /// <summary>Plugin picture tab (uPluginSurface): the frame, drawn through
+    /// the Media Overlay, in place of a document.</summary>
+    procedure DrawSurfaceContent;
+    function SurfaceInput(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
     procedure EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
     procedure EnsureCursorVisible;
     procedure ClampCursor;
@@ -271,6 +283,13 @@ type
     procedure ReplaceContext(ARow, ACol, ALen: Integer; out APre, AHit, APost: string);
     procedure SearchMessage(const AMessage, ADetails: string);
     procedure InsertChar(ACh: Char);
+    /// <summary>Puts AText (LF or CRLF line breaks) at the cursor, replacing the
+    /// selection, as one undo step. The caller has checked CanEdit.</summary>
+    procedure InsertText(const AText: string);
+    /// <summary>Recolors the cells of row ARow with the spans a plugin highlighter gives for
+    /// ALine; AFirstChar is the 1-based index in ALine of the first visible character.</summary>
+    procedure ApplyHighlight(ARow: Integer; const ALine: string; AFirstChar, AWidth: Integer;
+      AHighlightId: Integer);
     procedure DoBackspace;
     procedure DoDelete;
     procedure DoEnter;
@@ -297,6 +316,23 @@ type
     destructor Destroy; override;
     procedure RebuildBuffer; override;
     procedure Open(const AURI: string; AViewOnly: Boolean = False);
+    /// <summary>Shows plugin picture AHandle (uPluginSurface) instead of a document.</summary>
+    procedure OpenSurface(AHandle: Integer);
+    /// <summary>The plugin API of the document (uPluginServices): a JSON
+    /// description, text by kind (0 selection, 1 all, 2 cursor line), replacing
+    /// it as one undo step, moving the cursor. False for a document that has no
+    /// such text (loading, hex view, plugin picture) or cannot be edited.</summary>
+    function PluginDocInfoJson: string;
+    function PluginDocGetText(AWhat: Integer; out AText: string): Boolean;
+    function PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
+    function PluginDocSetCursor(ARow, ACol: Integer): Boolean;
+    function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+    function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
+    property SurfaceHandle: Integer read FSurfaceHandle;
+    /// <summary>The plugin picture fills the whole window (no frame, key bar or status line).</summary>
+    function IsSurfaceFullscreen: Boolean;
+    /// <summary>The cells (compositor-absolute, inclusive) the plugin picture is shown in.</summary>
+    function SurfaceBounds(out ABounds: TRectI): Boolean;
     procedure BeginClose;
     /// <summary>Blit this editor into a Dual Panel workspace. ADestLeft/Top
     /// are window-local cells in ADest; AAbsLeft/Top are the same origin in
@@ -381,7 +417,7 @@ implementation
 
 uses
   System.IOUtils, System.StrUtils, FMX.Platform,
-  uOverlayRenderer, uStrings, uDialogHistory, uDialogResources, uNotice,
+  System.JSON, uOverlayRenderer, uPluginSurface, uPluginServices, uPluginHighlight, uStrings, uDialogHistory, uDialogResources, uNotice,
   uShellAssoc, uKeyChord, uChromeRows;
 
 const
@@ -483,7 +519,7 @@ begin
   end;
   Local := TRectI.Make(0, 0, Area.Width - 1, Area.Height - 1);
   ClearBodyBuffer;
-  if Assigned(Theme) and not FChromeless then
+  if Assigned(Theme) and not FChromeless and not IsSurfaceFullscreen then
     Theme.DrawWindowFrame(Buffer, Local, Title, WidgetState);
   DrawContent;
   FNeedRebuild := False;
@@ -527,6 +563,8 @@ function TEditorWindow.TabCaption: string;
 var
   Name: string;
 begin
+  if FSurfaceHandle <> 0 then
+    Exit(SurfaceTitle(FSurfaceHandle));
   Name := ExtractFileName(FDoc.Path);
   if Name = '' then
     Name := FileUriTitle(FURI);
@@ -729,6 +767,8 @@ begin
       Exit(fbcStubEdit);
     Exit(FDialog.ChromeContext);
   end;
+  if FSurfaceHandle <> 0 then
+    Exit(fbcSurface);
   if FHelpMode then
   begin
     if FindNeedleEmpty then
@@ -750,6 +790,11 @@ end;
 destructor TEditorWindow.Destroy;
 begin
   FAlive := False;
+  if FSurfaceHandle <> 0 then
+  begin
+    SurfaceTabClosed(FSurfaceHandle);
+    FSurfaceHandle := 0;
+  end;
   if FMdOverlayShowing then
     ClearOverlayPreview;
   FreeAndNil(FDialogs);
@@ -810,6 +855,8 @@ begin
     FPositionRestored := True;
     RestoreSavedPosition;
     JustRestored := True;
+    if not (FHelpMode or FChromeless) then
+      PluginPublishEvent('doc.opened', PluginUriPayload(FURI));
     // Default F3 on a .md file to the rendered view - only on this
     // one-time "doc just became ready" tick, so a later Ctrl+M (raw text)
     // isn't silently undone by an unrelated DocChanged (dirty/saving state
@@ -852,6 +899,23 @@ begin
   else
     Title := ModeTitle;
 
+  if FWasSaving and (not FDoc.Saving) and (FDoc.Error = '') and not (FHelpMode or FChromeless) then
+    PluginPublishEvent('doc.saved', PluginUriPayload(FURI));
+  if FDoc.Ready and FDoc.Dirty and not FChangedEventQueued and PluginHasSubscribers and
+     not (FHelpMode or FChromeless) then
+  begin
+    // One event for the edits of a command (a command changes lines one by one).
+    FChangedEventQueued := True;
+    TThread.ForceQueue(nil,
+      procedure
+      begin
+        if not FAlive then
+          Exit;
+        FChangedEventQueued := False;
+        PluginPublishEvent('doc.changed', PluginUriPayload(FURI));
+      end);
+  end;
+  FWasSaving := FDoc.Saving;
   if FCloseAfterSave and (not FDoc.Saving) then
   begin
     if (not FDoc.Dirty) and (FDoc.Error = '') then
@@ -901,6 +965,181 @@ begin
   ClearHistory;
   Title := ModeTitle + ' - ' + FileUriTitle(AURI);
   FDoc.OpenAsync(AURI, not AViewOnly);
+  NotifyHost;
+end;
+
+function TEditorWindow.IsSurfaceFullscreen: Boolean;
+begin
+  Result := (FSurfaceHandle <> 0) and SurfaceFullscreen(FSurfaceHandle);
+end;
+
+function TEditorWindow.SurfaceBounds(out ABounds: TRectI): Boolean;
+begin
+  Result := (FSurfaceHandle <> 0) and (Area.Width >= 2) and (Area.Height >= 2);
+  if not Result then
+    Exit;
+  if IsSurfaceFullscreen then
+    ABounds := TRectI.Make(Area.Left, Area.Top, Area.Left + Area.Width - 1, Area.Top + Area.Height - 1)
+  else
+    // Area is compositor-absolute (PaintEmbedded), like the Markdown image bounds.
+    ABounds := TRectI.Make(1 + Area.Left, 1 + Area.Top, TextWidth + Area.Left, ViewHeight + Area.Top);
+end;
+
+function TEditorWindow.PluginDocInfoJson: string;
+var
+  Obj: TJSONObject;
+begin
+  if (FSurfaceHandle <> 0) or FHelpMode or FChromeless or not FDoc.Ready then
+    Exit('');
+  Obj := TJSONObject.Create;
+  try
+    Obj.AddPair('uri', FURI);
+    Obj.AddPair('path', FDoc.Path);
+    Obj.AddPair('viewOnly', TJSONBool.Create(FViewOnly));
+    Obj.AddPair('canEdit', TJSONBool.Create(CanEdit and not FHexMode));
+    Obj.AddPair('hex', TJSONBool.Create(FHexMode));
+    Obj.AddPair('markdown', TJSONBool.Create(FMarkdownMode));
+    Obj.AddPair('dirty', TJSONBool.Create(IsDirty));
+    Obj.AddPair('lines', TJSONNumber.Create(FDoc.LineCount));
+    Obj.AddPair('row', TJSONNumber.Create(FCursorRow));
+    Obj.AddPair('col', TJSONNumber.Create(FCursorCol));
+    Obj.AddPair('hasSelection', TJSONBool.Create(HasSelection));
+    Result := Obj.ToJSON;
+  finally
+    Obj.Free;
+  end;
+end;
+
+function TEditorWindow.PluginDocGetText(AWhat: Integer; out AText: string): Boolean;
+var
+  I: Integer;
+  Lines: TArray<string>;
+begin
+  AText := '';
+  if (FSurfaceHandle <> 0) or FHelpMode or FChromeless or not FDoc.Ready or FHexMode then
+    Exit(False);
+  case AWhat of
+    0:
+      if HasSelection then
+        AText := SelectedText;
+    1:
+      begin
+        SetLength(Lines, FDoc.LineCount);
+        for I := 0 to High(Lines) do
+          Lines[I] := FDoc.GetLine(I);
+        AText := string.Join(#10, Lines);
+      end;
+    2:
+      if (FCursorRow >= 0) and (FCursorRow < FDoc.LineCount) then
+        AText := FDoc.GetLine(FCursorRow);
+  else
+    Exit(False);
+  end;
+  Result := True;
+end;
+
+function TEditorWindow.PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
+var
+  Text: string;
+  Parts: TArray<string>;
+  I: Integer;
+begin
+  Result := False;
+  if (FSurfaceHandle <> 0) or FHelpMode or FChromeless or not FDoc.Ready or FHexMode or
+     not CanEdit then
+    Exit;
+  Text := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
+  Text := StringReplace(Text, #13, #10, [rfReplaceAll]);
+  case AWhat of
+    0:
+      InsertText(Text);
+    1:
+      begin
+        BreakInsertCoalesce;
+        PushUndo;
+        Parts := Text.Split([#10]);
+        FDoc.RestoreLines(Parts, True);
+        ClearSelection;
+        ClampCursor;
+        EnsureCursorVisible;
+        NotifyHost;
+      end;
+    2:
+      begin
+        ClampCursor;
+        BreakInsertCoalesce;
+        PushUndo;
+        Parts := Text.Split([#10]);
+        FDoc.SetLine(FCursorRow, Parts[0]);
+        for I := 1 to High(Parts) do
+          FDoc.InsertLine(FCursorRow + I, Parts[I]);
+        Inc(FCursorRow, High(Parts));
+        FCursorCol := Length(Parts[High(Parts)]);
+        ClearSelection;
+        EnsureCursorVisible;
+        NotifyHost;
+      end;
+  else
+    Exit;
+  end;
+  Result := True;
+end;
+
+function TEditorWindow.PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+begin
+  Result := (FSurfaceHandle = 0) and not (FHelpMode or FChromeless) and FDoc.Ready and
+    not FHexMode;
+  if not Result then
+    Exit;
+  ClampDocPos(ARow1, ACol1);
+  ClampDocPos(ARow2, ACol2);
+  FSelAnchorRow := ARow1;
+  FSelAnchorCol := ACol1;
+  FCursorRow := ARow2;
+  FCursorCol := ACol2;
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+function TEditorWindow.PluginDocLine(AIndex: Integer; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := (FSurfaceHandle = 0) and not (FHelpMode or FChromeless) and FDoc.Ready and
+    not FHexMode and (AIndex >= 0) and (AIndex < FDoc.LineCount);
+  if Result then
+    AText := FDoc.GetLine(AIndex);
+end;
+
+function TEditorWindow.PluginDocSetCursor(ARow, ACol: Integer): Boolean;
+begin
+  Result := (FSurfaceHandle = 0) and not (FHelpMode or FChromeless) and FDoc.Ready and
+    not FHexMode;
+  if not Result then
+    Exit;
+  SetCursorPos(ARow, ACol, False);
+  ClearSelection;
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.OpenSurface(AHandle: Integer);
+begin
+  FSurfaceHandle := AHandle;
+  FSurfaceGen := 0;
+  FURI := 'plugin-surface:' + IntToStr(AHandle);
+  FViewOnly := True;
+  FCursorVisible := False;
+  Title := SurfaceTitle(AHandle);
+  SurfaceAttach(AHandle,
+    procedure
+    begin
+      Title := SurfaceTitle(FSurfaceHandle);
+      NotifyHost;
+    end,
+    procedure
+    begin
+      ForceClose;
+    end);
   NotifyHost;
 end;
 
@@ -1646,6 +1885,13 @@ begin
   FConfirm := ecNone;
   FMouseSelecting := False;
   LeaveMarkdownOverlay;
+  if FDoc.Ready and (FSurfaceHandle = 0) and not (FHelpMode or FChromeless) then
+    PluginPublishEvent('doc.closed', PluginUriPayload(FURI));
+  if FSurfaceHandle <> 0 then
+  begin
+    SurfaceTabClosed(FSurfaceHandle);
+    FSurfaceHandle := 0;
+  end;
   if Assigned(FDialog) then
     FDialog.Close;
   FDoc.Close;
@@ -1910,7 +2156,7 @@ function TEditorWindow.MarkdownImageOverlayVisible: Boolean;
 begin
   // The Overlay is a Canvas pass on top of the whole grid: it would cover a
   // dialog (open-link question, Go to line, ...) drawn into the cells.
-  Result := FMarkdownMode and FMdOverlayShowing and not DialogOpen;
+  Result := ((FMarkdownMode and FMdOverlayShowing) or (FSurfaceHandle <> 0)) and not DialogOpen;
 end;
 
 procedure TEditorWindow.ToggleHexMode;
@@ -3045,15 +3291,23 @@ end;
 
 procedure TEditorWindow.PasteText;
 var
-  Text, Line, Left, Right, Piece: string;
-  Parts: TArray<string>;
-  I: Integer;
+  Text: string;
 begin
   if not CanEdit then
     Exit;
   Text := ClipboardGetText;
   if Text = '' then
     Exit;
+  InsertText(Text);
+end;
+
+procedure TEditorWindow.InsertText(const AText: string);
+var
+  Text, Line, Left, Right, Piece: string;
+  Parts: TArray<string>;
+  I: Integer;
+begin
+  Text := AText;
   ClampCursor;
   BreakInsertCoalesce;
   PushUndo;
@@ -3406,6 +3660,18 @@ var
   Colors: TInputLineColors;
   Prefix: string;
 begin
+  if FSurfaceHandle <> 0 then
+  begin
+    Segs := TArray<string>.Create(SurfaceTitle(FSurfaceHandle));
+    if SurfaceStatus(FSurfaceHandle) <> '' then
+      Segs := Segs + [SurfaceStatus(FSurfaceHandle)];
+    if Assigned(Theme) then
+      Theme.DrawStatusLine(Buffer, TRectI.Make(0, AY, AWidth - 1, AY), Segs, [])
+    else
+      PutGridText(Buffer, 1, AY, string.Join('  ', Segs), FThemeColors.StatusFg,
+        FThemeColors.StatusBg);
+    Exit;
+  end;
   Mode := ModeTitle;
   Name := ExtractFileName(FDoc.Path);
   if Name = '' then
@@ -3830,9 +4096,90 @@ begin
     LeaveMarkdownOverlay;
 end;
 
+procedure TEditorWindow.ApplyHighlight(ARow: Integer; const ALine: string; AFirstChar,
+  AWidth, AHighlightId: Integer);
+var
+  Spans: THighlightSpans;
+  Span: THighlightSpan;
+  First, Last, I, Col: Integer;
+  Color: TAlphaColor;
+begin
+  if (ARow < 0) or (ARow > High(Buffer)) or not HighlightLine(AHighlightId, ALine, Spans) then
+    Exit;
+  for Span in Spans do
+  begin
+    if Span.Kind = cHighlightPlain then
+      Continue;
+    // Both ends as 1-based indexes in the line, clipped to the visible part.
+    First := Max(Span.Start + 1, AFirstChar);
+    Last := Min(Span.Start + Span.Len, AFirstChar + AWidth - 1);
+    Color := HighlightColor(Span.Kind, FThemeColors.BodyBg);
+    for I := First to Last do
+    begin
+      Col := 1 + I - AFirstChar;
+      if (Col >= 0) and (Col <= High(Buffer[ARow])) then
+        Buffer[ARow][Col].FgColor := Color;
+    end;
+  end;
+end;
+
+procedure TEditorWindow.DrawSurfaceContent;
+var
+  W, Y, FrameW, FrameH: Integer;
+  Gen: Cardinal;
+  Pixels: PByte;
+  Bounds: TRectI;
+  Uri: string;
+begin
+  W := Area.Width;
+  SurfaceSeen(FSurfaceHandle);
+  if IsSurfaceFullscreen then
+    for Y := 0 to Area.Height - 1 do
+      FillGridRect(Buffer, 0, Y, W - 1, Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg)
+  else
+    for Y := 0 to ViewHeight - 1 do
+      FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
+  // A native surface is a window of the plugin over the cells: nothing to draw here.
+  if SurfaceIsNative(FSurfaceHandle) then
+    Exit;
+  Uri := FURI;
+  if not SurfaceFrame(FSurfaceHandle, FrameW, FrameH, Gen, Pixels) then
+  begin
+    PutGridText(Buffer, 1, 1, T('ui.surface.waiting', 'Loading...'), FThemeColors.HintFg,
+      FThemeColors.BodyBg);
+    Exit;
+  end;
+  if not SurfaceBounds(Bounds) then
+    Exit;
+  if (OverlayCurrentURI <> Uri) or (Gen <> FSurfaceGen) then
+  begin
+    SetOverlayPixels(Uri, FrameW, FrameH, Pixels, Bounds, Bounds);
+    FSurfaceGen := Gen;
+  end
+  else
+    UpdateOverlayBounds(Bounds);
+end;
+
+function TEditorWindow.SurfaceInput(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  // Esc and F10 close the tab (Esc leaves full screen first); every other key is the plugin's.
+  if (AKey = vkEscape) and IsSurfaceFullscreen then
+  begin
+    PluginSurfaceSetFullscreen(FSurfaceHandle, False);
+    Exit;
+  end;
+  if (AKey = vkEscape) or (AKey = vkF10) then
+  begin
+    ForceClose;
+    Exit;
+  end;
+  SurfaceDeliverKey(FSurfaceHandle, AKey, AShift, AKeyChar);
+end;
+
 procedure TEditorWindow.DrawContent;
 var
-  W, H, ViewH, TextW, Y, LineIdx, CharOffset, DrawCol: Integer;
+  W, H, ViewH, TextW, Y, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
   Line, Vis: string;
 begin
   if Assigned(Theme) then
@@ -3844,8 +4191,13 @@ begin
 
   ViewH := ViewHeight;
   TextW := TextWidth;
+  HighlightId := 0;
+  if (FSurfaceHandle = 0) and FDoc.Ready and not FHelpMode then
+    HighlightId := HighlighterFor(ExtractFileExt(FDoc.Path));
 
-  if FDoc.Loading then
+  if FSurfaceHandle <> 0 then
+    DrawSurfaceContent
+  else if FDoc.Loading then
     PutGridText(Buffer, 1, 1, 'Loading...', FThemeColors.HintFg, FThemeColors.BodyBg)
   else if (not FDoc.Ready) and (FDoc.Error <> '') then
     PutGridText(Buffer, 1, 1, FDoc.Error, FThemeColors.HintFg, FThemeColors.BodyBg)
@@ -3888,6 +4240,13 @@ begin
       FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
       if (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
         TEditorPainter.DrawTextLine(Buffer[1 + Y], 1, TextW, Vis, 1, FThemeColors.BodyFg, FThemeColors.BodyBg);
+      if (HighlightId <> 0) and (Line <> '') then
+      begin
+        if FWordWrap and FViewOnly and (TextW > 0) then
+          ApplyHighlight(1 + Y, Line, CharOffset + 1, TextW, HighlightId)
+        else
+          ApplyHighlight(1 + Y, Line, FLeftCol + 1, TextW, HighlightId);
+      end;
       if FWordWrap and FViewOnly and (TextW > 0) then
         PaintVisibleSelection(1 + Y, LineIdx, CharOffset, Vis)
       else
@@ -3907,8 +4266,9 @@ begin
     end;
   end;
 
-  DrawScrollBar;
-  if FChromeless then
+  if FSurfaceHandle = 0 then
+    DrawScrollBar;
+  if FChromeless or IsSurfaceFullscreen then
     Exit;
 
   // Frame closes above chrome: bottom border, then F-keys, then status.
@@ -4159,6 +4519,8 @@ begin
     Exit(FDialogs.HandleAskSaveInput(AKey, AShift, AKeyChar));
   if Assigned(FDialog) and FDialog.Visible then
     Exit(FDialog.HandleInput(AKey, AShift, AKeyChar));
+  if FSurfaceHandle <> 0 then
+    Exit(SurfaceInput(AKey, AShift, AKeyChar));
 
   if FHexMode and (AKey = vkInsert) and (AShift = []) then
   begin

@@ -171,6 +171,7 @@ begin
     Sel := JsonInt(AObj, 'selected', 0);
     C := MakeList(Id, Items, Sel);
     C.Framed := JsonBool(AObj, 'frame', False);
+    C.KeyCommands := JsonBool(AObj, 'keycommands', False);
     AppendParsed(AList, C, AObj);
   end
   else if (Typ = 'dropdown') or (Typ = 'dropdownlist') or (Typ = 'drop_down') or
@@ -446,6 +447,10 @@ begin
             One := One + '"' + EscapeJson(C.Items[J]) + '"';
           end;
           One := One + ']';
+          if C.Framed then
+            One := One + ',"frame":true';
+          if C.KeyCommands then
+            One := One + ',"keycommands":true';
         end;
       dckDropDown:
         begin

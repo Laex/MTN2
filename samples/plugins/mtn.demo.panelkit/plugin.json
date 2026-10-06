@@ -1,0 +1,16 @@
+{
+  "id": "mtn.demo.panelkit",
+  "name": "Demo: panel tools (Rust)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "Ctrl+Shift+P copies the full paths of the selected files to the clipboard; Ctrl+Shift+M shows the active folder in the other panel; Ctrl+Shift+X selects the files with the extension of the cursor file; Ctrl+Shift+L reads the cursor file through the host and tells its size and first line (needs the Permissions grant); Ctrl+Shift+K counts the files of the folder in the background; a notice appears when a file is saved in the editor.",
+    "ru": "Ctrl+Shift+P копирует полные пути выбранных файлов в буфер обмена; Ctrl+Shift+M показывает папку активной панели в другой панели; Ctrl+Shift+X выбирает файлы с расширением файла под курсором; Ctrl+Shift+L читает файл под курсором через хост и сообщает размер и первую строку (нужно разрешение в «Правах»); Ctrl+Shift+K считает файлы папки в фоне; при сохранении файла в редакторе появляется уведомление."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md",
+  "permissions": [
+    "vfs.read"
+  ]
+}

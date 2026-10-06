@@ -65,6 +65,9 @@ type
     /// plugin registers, since the priority is decided at registration.</summary>
     procedure GrantOverrides(const APluginId: string; const AKeys: TArray<string>);
     function IsOverrideGranted(const APluginId, AKey: string): Boolean;
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
     function Resolve(const AURI: string): IVirtualFileSystem;
@@ -123,6 +126,7 @@ type
       const AScheme: string = '');
     procedure GrantOverrides(const APluginId: string; const AKeys: TArray<string>);
     function IsOverrideGranted(const APluginId, AKey: string): Boolean;
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
     function Resolve(const AURI: string): IVirtualFileSystem;
@@ -210,6 +214,7 @@ procedure SetVfsLazyLoad(AEnsureScheme, AEnsureArchiveExt: TVfsLazyLoadFunc);
 implementation
 
 uses
+  uStrings,
   System.IOUtils, System.SyncObjs, System.Math,
   uFileVfs, uZipVfs, uFindVfs, uSysFoldersVfs, uRecycleBinVfs, uWorkspaceVfs,
   uSftpVfs;
@@ -744,6 +749,46 @@ var
   Scheme: string;
 begin
   Result := TryResolveArchive(AFileName, AKind, Scheme);
+end;
+
+function TVfsRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TEntry;
+  A: TArchiveExtEntry;
+  G: TOverrideGrant;
+  Lines: TList<string>;
+  Exts, Replaced: string;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FEntries do
+      if SameText(E.PluginId, APluginId) and E.Id.Contains(':scheme:') then
+        Lines.Add(T('ui.plugininfo.scheme', 'Provides folders of the kind %s://',
+          [Copy(E.Id, Pos(':scheme:', E.Id) + 8, MaxInt)]));
+    Exts := '';
+    for A in FArchiveExts do
+      if SameText(A.PluginId, APluginId) then
+      begin
+        if Exts <> '' then
+          Exts := Exts + ' ';
+        Exts := Exts + A.Extension;
+      end;
+    if Exts <> '' then
+      Lines.Add(T('ui.plugininfo.archives', 'Opens as archives: %s', [Exts]));
+    Replaced := '';
+    for G in FGrants do
+      if SameText(G.PluginId, APluginId) then
+      begin
+        if Replaced <> '' then
+          Replaced := Replaced + ' ';
+        Replaced := Replaced + G.Key;
+      end;
+    if Replaced <> '' then
+      Lines.Add(T('ui.plugininfo.replaces', 'Replaces built-in handling of: %s', [Replaced]));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TVfsRegistry.UnregisterPlugin(const APluginId: string);

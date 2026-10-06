@@ -1,0 +1,13 @@
+{
+  "id": "mtn.demo.texttools",
+  "name": "Demo: text tools (C++)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "Editor tools on Ctrl+Shift+U / L / S / R (case, sort lines, remove repeated lines) and tidy-on-save that hooks the editor's Save.",
+    "ru": "Инструменты редактора на Ctrl+Shift+U / L / S / R (регистр, сортировка строк, удаление повторов) и «прибрать при сохранении», перехватывающее сохранение редактора."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

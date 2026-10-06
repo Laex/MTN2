@@ -2445,6 +2445,7 @@ var
   C: TDialogControl;
   R, Popup: TRectI;
   NeedBar: Boolean;
+  Clicks: Integer;
 begin
   Result := False;
   if not FVisible then
@@ -2640,7 +2641,11 @@ begin
           begin
             FFocusIndex := I;
             SetListSelectedIndex(I, Idx);
+            Clicks := FClicks.Hit(ALocalCol, ALocalRow);
             NotifyChanged;
+            // A double click on a row is Enter on it.
+            if Clicks = 2 then
+              FireAccept;
             Exit(True);
           end;
         end;
@@ -2738,6 +2743,8 @@ var
   C: TDialogControl;
   LineRes: TInputLineResult;
   K: TKeyChord;
+  KeyCmd: string;
+  BtnIdx: Integer;
 begin
   Result := False;
   if not FVisible then
@@ -2947,6 +2954,39 @@ begin
     AKeyChar := #0;
     NotifyChanged;
     Exit;
+  end;
+
+  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckList) and
+     FDecl.Controls[FFocusIndex].KeyCommands then
+  begin
+    KeyCmd := '';
+    if (AKey = vkSpace) or (AKeyChar = ' ') then
+      KeyCmd := 'toggle'
+    else if K.MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
+      KeyCmd := 'up'
+    else if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
+      KeyCmd := 'down';
+    if KeyCmd <> '' then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      FireCommand(KeyCmd);
+      Exit;
+    end;
+  end;
+
+  // Del in a list does what the dialog's Delete button does.
+  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckList) and
+     (AKey = vkDelete) and (AShift * [ssShift, ssCtrl, ssAlt] = []) then
+  begin
+    BtnIdx := ButtonIndexById(cDlgCmdDelete);
+    if BtnIdx >= 0 then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      PressButton(BtnIdx);
+      Exit;
+    end;
   end;
 
   if (FFocusIndex >= 0) and

@@ -40,7 +40,13 @@ const
   /// (see uPluginLoader.TPluginLoader.LoadPluginsFrom).
   /// 2: RegisterCommand, RegisterCommandHook, ExecuteCommand,
   /// RegisterDocumentProvider, OpenExternal, ShowDialog, RegisterPanelActivate,
-  /// SetCommandCaption, SetStatusSegment, RegisterSettings, GetSetting, SetSetting.</summary>
+  /// SetCommandCaption, SetStatusSegment, RegisterSettings, GetSetting, SetSetting,
+  /// SurfaceOpen, SurfaceSetFrame, SurfaceSetInfo, SurfaceSetTimer, SurfaceClose,
+  /// HostInfo, DocInfo, DocGetText, DocReplace, DocSetCursor, PanelInfo, PanelGoto,
+  /// PanelRefresh, ClipboardGet, ClipboardSet, ShowMessage, Subscribe, PanelList,
+  /// PanelSetCursor, PanelSelect, DocSetSelection, DocLine, PostToMain, ProgressSet,
+  /// ProgressEnd, SurfaceOpenEx, SurfaceSetFullscreen, SurfaceNativeHandle,
+  /// RegisterHighlighter, VfsList, VfsExists, VfsRead.</summary>
   cPluginAbiVersion: Int64 = 2;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
@@ -189,6 +195,152 @@ type
   /// with it (native plugins only). 0 = started, -1 = refused or failed.</summary>
   THostOpenExternalFn = function(AURI: PAnsiChar): Int64; cdecl;
 
+  /// <summary>A key pressed on a picture surface, named like "Left", "Space", "Ctrl+C",
+  /// "+". Returns 1 when the plugin used the key.</summary>
+  THostSurfaceKeyCallback = function(AUserData: Pointer; AKey: PAnsiChar): Int64; cdecl;
+  /// <summary>Timer tick of a picture surface (see SurfaceSetTimer).</summary>
+  THostSurfaceTickCallback = procedure(AUserData: Pointer); cdecl;
+  /// <summary>The user closed the surface's tab. Not called when the plugin closed it.</summary>
+  THostSurfaceClosedCallback = procedure(AUserData: Pointer); cdecl;
+  /// <summary>Opens a viewer tab that shows a picture the plugin supplies (see
+  /// SurfaceSetFrame). Any of the callbacks may be nil. Returns the surface handle
+  /// (above 0), or -1 when no tab can be opened now (the host is not over the
+  /// panels).</summary>
+  THostSurfaceOpenFn = function(APluginId, ATitle: PAnsiChar; AOnKey: THostSurfaceKeyCallback;
+    AOnTick: THostSurfaceTickCallback; AOnClosed: THostSurfaceClosedCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Replaces the picture: AWidth x AHeight pixels of 4 bytes in B, G, R, A
+  /// order, rows top to bottom without padding, ALength bytes in all. The host
+  /// copies them, fits the picture into the tab and centers it. 0 = shown,
+  /// -1 = unknown handle or the length does not match the size.</summary>
+  THostSurfaceSetFrameFn = function(AHandle, AWidth, AHeight: Int64; APixels: PByte;
+    ALength: Int64): Int64; cdecl;
+  /// <summary>Sets the tab title and the text of the status line (either may be empty).
+  /// 0 = ok, -1 = unknown handle.</summary>
+  THostSurfaceSetInfoFn = function(AHandle: Int64; ATitle, AStatus: PAnsiChar): Int64; cdecl;
+  /// <summary>Calls the tick callback every AIntervalMs milliseconds while the tab is
+  /// on screen (a video player pulls its next frame there); 0 stops it. 0 = ok,
+  /// -1 = unknown handle.</summary>
+  THostSurfaceSetTimerFn = function(AHandle, AIntervalMs: Int64): Int64; cdecl;
+  /// <summary>Closes the tab; no callback follows. 0 = closed, -1 = unknown handle.</summary>
+  THostSurfaceCloseFn = function(AHandle: Int64): Int64; cdecl;
+
+  /// <summary>Functions that return text (HostInfo, DocInfo, DocGetText, PanelInfo,
+  /// ClipboardGet) share one convention: the result is the length of the UTF-8
+  /// text in bytes; the text and a NUL are written to ABuf only when
+  /// length < ABufSize, so a result >= ABufSize means "too small, call again with
+  /// ABufSize above the result" (a nil ABuf measures). -1 = not available.</summary>
+  THostTextOutFn = function(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Text of the active document in the viewer / editor: AWhat 0 = the
+  /// selection (empty when nothing is selected), 1 = the whole document with LF
+  /// line breaks, 2 = the line with the cursor. -1 = no text document on screen
+  /// (the panels, a picture tab, the hex view).</summary>
+  THostDocGetTextFn = function(AWhat: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Replaces that text as one undo step (AWhat 0 with no selection inserts at
+  /// the cursor; 1 replaces the document; 2 the cursor line). 0 = done, -1 = no
+  /// editable text document.</summary>
+  THostDocReplaceFn = function(AWhat: Int64; AText: PAnsiChar): Int64; cdecl;
+  /// <summary>Moves the cursor of the document (0-based line and column). 0 = done.</summary>
+  THostDocSetCursorFn = function(ARow, ACol: Int64): Int64; cdecl;
+  /// <summary>Opens a URI in a file panel: ASide 0 = left, 1 = right, -1 = the active one.
+  /// 0 = done, -1 = the panels are not on screen or a dialog is open.</summary>
+  THostPanelGotoFn = function(ASide: Int64; AURI: PAnsiChar): Int64; cdecl;
+  THostPanelRefreshFn = function: Int64; cdecl;
+  /// <summary>Puts plain text on the system clipboard. 0 = done.</summary>
+  THostClipboardSetFn = function(AText: PAnsiChar): Int64; cdecl;
+  /// <summary>Shows a short notice (AKind 0 = information, 1 = warning). 0 = shown.</summary>
+  THostShowMessageFn = function(AText: PAnsiChar; AKind: Int64): Int64; cdecl;
+  /// <summary>A host event: "doc.opened", "doc.saved" or "doc.closed" with the payload
+  /// {"uri": "..."}.</summary>
+  THostEventCallback = procedure(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); cdecl;
+  /// <summary>Calls AOnEvent for the events of ATopic ("*" = all of them). The same
+  /// plugin subscribing to a topic again replaces its callback. 0 = ok.</summary>
+  THostSubscribeFn = function(APluginId, ATopic: PAnsiChar; AOnEvent: THostEventCallback;
+    AUserData: Pointer): Int64; cdecl;
+
+  /// <summary>JSON list of the rows of a panel (ASide 0 = left, 1 = right, -1 = active):
+  /// "uri" of the folder, "cursor" (index in "rows"), "rows" of {uri, name, dir, size}.
+  /// Text-out convention as above; -1 = the panels are not on screen.</summary>
+  THostPanelListFn = function(ASide: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Puts the cursor of a panel on the row AURI. A row of another folder is
+  /// shown by going to that folder; the cursor follows when it is listed. 0 = done.</summary>
+  THostPanelSetCursorFn = function(ASide: Int64; AURI: PAnsiChar): Int64; cdecl;
+  /// <summary>Selection of a panel: AMode 0 = select the files matching the mask AArg
+  /// ("*.txt"), 1 = unselect them, 2 = clear, 3 = select the row AArg (URI), 4 = unselect it.
+  /// 0 = done.</summary>
+  THostPanelSelectFn = function(ASide, AMode: Int64; AArg: PAnsiChar): Int64; cdecl;
+  /// <summary>Selects from (row1, col1) to (row2, col2), 0-based; the cursor goes to the end.</summary>
+  THostDocSetSelectionFn = function(ARow1, ACol1, ARow2, ACol2: Int64): Int64; cdecl;
+  /// <summary>One line of the document by index (text-out convention).</summary>
+  THostDocLineFn = function(AIndex: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Called on the main thread by PostToMain.</summary>
+  THostMainCallback = procedure(AUserData: Pointer); cdecl;
+  /// <summary>Runs ACallback on the main thread; the only host function that may be called
+  /// from any thread. Dropped when the plugin has been unloaded. 0 = queued.</summary>
+  THostPostToMainFn = function(APluginId: PAnsiChar; ACallback: THostMainCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>A progress notice for background work (main thread only; from another thread
+  /// call it through PostToMain). APercent below 0 shows no percentage. One notice per
+  /// AId; it stays until ProgressEnd. 0 = shown.</summary>
+  THostProgressSetFn = function(APluginId, AId, AText: PAnsiChar; APercent: Int64): Int64; cdecl;
+  THostProgressEndFn = function(APluginId, AId: PAnsiChar): Int64; cdecl;
+  /// <summary>Mouse on the surface (pixels of the picture area; the position is the
+  /// distance from its top-left corner): AKind 0 = button down, 1 = button up, 2 = move
+  /// (only while a button is held), 3 = wheel (AExtra = clicks, positive away from the user),
+  /// 4 = double click, 5 = the size of the area changed (AWidth, AHeight; sent before the
+  /// first picture is needed and whenever the window or the layout changes). AButton 1 = left, 2 = right, 3 = middle. AShift is a bit set:
+  /// 1 = Shift, 2 = Ctrl, 4 = Alt. AWidth / AHeight are the size of the area. Returns 1
+  /// when the plugin used the event.</summary>
+  THostSurfaceMouseCallback = function(AUserData: Pointer; AKind, AX, AY, AWidth, AHeight,
+    AButton, AExtra, AShift: Int64): Int64; cdecl;
+  /// <summary>As SurfaceOpen, with a place and mouse events. AMode: 0 = a tab of its own,
+  /// 1 = the same, full screen (no menu, tabs or key bar), 2 = the panel opposite to the
+  /// active one (like Quick View; closing Quick View closes it); add 256 for a native
+  /// window: the host creates a child window over the area (see SurfaceNativeHandle)
+  /// instead of drawing frames.</summary>
+  THostSurfaceOpenExFn = function(APluginId, ATitle: PAnsiChar; AMode: Int64;
+    AOnKey: THostSurfaceKeyCallback; AOnTick: THostSurfaceTickCallback;
+    AOnClosed: THostSurfaceClosedCallback; AOnMouse: THostSurfaceMouseCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Switches a tab surface between normal and full screen. 0 = done.</summary>
+  THostSurfaceSetFullscreenFn = function(AHandle, AOn: Int64): Int64; cdecl;
+  /// <summary>The window handle (HWND on Windows) of a native surface; 0 when the surface
+  /// has none. The host keeps it over the area, hides it under dialogs and menus and
+  /// resizes the windows inside it to fill it; the plugin draws in it (or hands it to a
+  /// player as the output window). It receives its own mouse messages.</summary>
+  THostSurfaceNativeHandleFn = function(AHandle: Int64): Int64; cdecl;
+  /// <summary>Colors a line of text in the viewer and editor: for the file name extensions
+  /// the plugin registered (".json,.ini"), the host calls it with a line (UTF-8) and room
+  /// for ASpanCap spans of three 32-bit integers each: start (byte offset in the line),
+  /// length (bytes) and class (0 plain, 1 comment, 2 string, 3 number, 4 keyword, 5 type,
+  /// 6 function, 7 operator, 8 preprocessor, 9 constant, 10 key, 11 error). Returns the
+  /// number of spans written. 0 = registered.</summary>
+  THostHighlightCallback = function(AUserData: Pointer; ALine: PAnsiChar; ASpans: PInteger;
+    ASpanCap: Int64): Int64; cdecl;
+  THostRegisterHighlighterFn = function(APluginId, AExtensions: PAnsiChar;
+    AHandler: THostHighlightCallback; AUserData: Pointer): Int64; cdecl;
+
+  /// <summary>Result of VfsList or VfsExists: AStatus 0 = ok (AText is JSON), else
+  /// 1 not found, 2 access denied, 3 not supported (or too large), 4 cancelled, 5 I/O error,
+  /// 6 invalid URI. Runs once, on the main thread; AText is valid during the call.</summary>
+  THostVfsTextCallback = procedure(AUserData: Pointer; AStatus: Int64; AText: PAnsiChar); cdecl;
+  /// <summary>Result of VfsRead: the status as above and the bytes of the file (valid during
+  /// the call). Runs once, on the main thread.</summary>
+  THostVfsDataCallback = procedure(AUserData: Pointer; AStatus: Int64; AData: PByte;
+    ALength: Int64); cdecl;
+  /// <summary>Starts listing a folder (permission "vfs.read"). 0 = started and the callback
+  /// follows; -1 = bad arguments; -2 = the plugin has no such permission (no callback). The
+  /// JSON holds uri and entries of name, uri, dir, size and modified (seconds since 1970).
+  /// Main thread only.</summary>
+  THostVfsListFn = function(APluginId, AUri: PAnsiChar; ACallback: THostVfsTextCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Starts an existence check (JSON: exists, dir); results as VfsList.</summary>
+  THostVfsExistsFn = function(APluginId, AUri: PAnsiChar; ACallback: THostVfsTextCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Starts reading a whole file of at most AMaxBytes (0 = 2 MB, at most 64 MB).</summary>
+  THostVfsReadFn = function(APluginId, AUri: PAnsiChar; AMaxBytes: Int64;
+    ACallback: THostVfsDataCallback; AUserData: Pointer): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -212,6 +364,38 @@ type
     RegisterSettings: THostRegisterSettingsFn;
     GetSetting: THostGetSettingFn;
     SetSetting: THostSetSettingFn;
+    SurfaceOpen: THostSurfaceOpenFn;
+    SurfaceSetFrame: THostSurfaceSetFrameFn;
+    SurfaceSetInfo: THostSurfaceSetInfoFn;
+    SurfaceSetTimer: THostSurfaceSetTimerFn;
+    SurfaceClose: THostSurfaceCloseFn;
+    HostInfo: THostTextOutFn;
+    DocInfo: THostTextOutFn;
+    DocGetText: THostDocGetTextFn;
+    DocReplace: THostDocReplaceFn;
+    DocSetCursor: THostDocSetCursorFn;
+    PanelInfo: THostTextOutFn;
+    PanelGoto: THostPanelGotoFn;
+    PanelRefresh: THostPanelRefreshFn;
+    ClipboardGet: THostTextOutFn;
+    ClipboardSet: THostClipboardSetFn;
+    ShowMessage: THostShowMessageFn;
+    Subscribe: THostSubscribeFn;
+    PanelList: THostPanelListFn;
+    PanelSetCursor: THostPanelSetCursorFn;
+    PanelSelect: THostPanelSelectFn;
+    DocSetSelection: THostDocSetSelectionFn;
+    DocLine: THostDocLineFn;
+    PostToMain: THostPostToMainFn;
+    ProgressSet: THostProgressSetFn;
+    ProgressEnd: THostProgressEndFn;
+    SurfaceOpenEx: THostSurfaceOpenExFn;
+    SurfaceSetFullscreen: THostSurfaceSetFullscreenFn;
+    SurfaceNativeHandle: THostSurfaceNativeHandleFn;
+    RegisterHighlighter: THostRegisterHighlighterFn;
+    VfsList: THostVfsListFn;
+    VfsExists: THostVfsExistsFn;
+    VfsRead: THostVfsReadFn;
   end;
   PHostApiTable = ^THostApiTable;
 

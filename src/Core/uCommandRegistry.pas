@@ -53,6 +53,9 @@ type
     /// command has a caption.</summary>
     function TryGetFBarLabel(AKey: Word; AShift: TShiftState; out ALabel: string): Boolean;
     /// <summary>Removes the hooks, commands and bindings of APluginId.</summary>
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     /// <summary>Runs the hooks of ACommand. True when one of them handled it.
     /// A hook that runs the command again (directly or not) is not asked a
@@ -84,6 +87,7 @@ function PluginFBarLabel(AKey: Word; AMods: TShiftState): string;
 implementation
 
 uses
+  uStrings,
   uKeymapRegistry;
 
 type
@@ -124,6 +128,7 @@ type
     procedure RegisterCommandBinding(const APluginId, ACommandId, AKeyCombo: string);
     procedure SetCommandCaption(const APluginId, ACommandId, ACaption: string);
     function TryGetFBarLabel(AKey: Word; AShift: TShiftState; out ALabel: string): Boolean;
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function TryIntercept(const ACommand, AOrigin: string): Boolean;
     function TryExecute(const ACommandId: string): Boolean;
@@ -281,6 +286,50 @@ begin
     Exit(False);
   ALabel := FCommands[I].Caption;
   Result := True;
+end;
+
+function TCommandRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TCommandEntry;
+  B: TBindingEntry;
+  H: THookEntry;
+  Lines: TList<string>;
+  Chords, Hooked, Line: string;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FCommands do
+      if SameText(E.PluginId, APluginId) then
+      begin
+        Chords := '';
+        for B in FBindings do
+          if SameText(B.PluginId, APluginId) and SameText(B.CommandId, E.CommandId) then
+          begin
+            if Chords <> '' then
+              Chords := Chords + ', ';
+            Chords := Chords + KeyBindingToStr(B.Binding);
+          end;
+        Line := T('ui.plugininfo.command', 'Command %s', [E.CommandId]);
+        if Chords <> '' then
+          Line := Line + T('ui.plugininfo.commandKey', ', key %s', [Chords]);
+        if E.Caption <> '' then
+          Line := Line + T('ui.plugininfo.commandLabel', ', bar label "%s"', [E.Caption]);
+        Lines.Add(Line);
+      end;
+    Hooked := '';
+    for H in FHooks do
+      if SameText(H.PluginId, APluginId) then
+      begin
+        if Hooked <> '' then
+          Hooked := Hooked + ', ';
+        Hooked := Hooked + H.Command;
+      end;
+    if Hooked <> '' then
+      Lines.Add(T('ui.plugininfo.hooks', 'Watches or replaces commands: %s', [Hooked]));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TCommandRegistry.UnregisterPlugin(const APluginId: string);

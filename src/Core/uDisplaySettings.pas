@@ -52,6 +52,8 @@ type
     ShowMenuBar: Boolean;
     ShowKeyBar: Boolean;
     ShowStatusLine: Boolean;
+    /// <summary>Files can be dragged out of the panels with the mouse.</summary>
+    FileDrag: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
@@ -359,6 +361,7 @@ begin
   Result.ShowMenuBar := True;
   Result.ShowKeyBar := True;
   Result.ShowStatusLine := True;
+  Result.FileDrag := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.LineSpacing := False;

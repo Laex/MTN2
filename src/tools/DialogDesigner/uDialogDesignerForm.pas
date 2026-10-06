@@ -69,13 +69,15 @@ type
     FPropPanel: TVertScrollBox;
     FPropHeader: TLabel;
     FPropRowText, FPropRowValue, FPropRowGroup, FPropRowChecked,
-      FPropRowDefault, FPropRowCancel, FPropRowPassword, FPropRowItems,
+      FPropRowDefault, FPropRowCancel, FPropRowPassword, FPropRowAccent,
+      FPropRowFrame, FPropRowKeyCmds, FPropRowItems,
       FPropRowSelIndex, FPropRowFgSrc, FPropRowBgSrc, FPropRowPanelState,
       FPropRowCol, FPropRowRow, FPropRowW, FPropRowH: TLayout;
     FPropEditId, FPropEditText, FPropEditValue, FPropEditGroup,
       FPropEditSelIndex, FPropEditFgSrc, FPropEditBgSrc,
       FPropEditCol, FPropEditRow, FPropEditW, FPropEditH: TEdit;
-    FPropChkChecked, FPropChkDefault, FPropChkCancel, FPropChkPassword: TCheckBox;
+    FPropChkChecked, FPropChkDefault, FPropChkCancel, FPropChkPassword,
+      FPropChkAccent, FPropChkFrame, FPropChkKeyCmds: TCheckBox;
     FPropMemoItems: TMemo;
     FPropCmbPanelState: TComboBox;
     FMenu: TMainMenu;
@@ -137,6 +139,9 @@ type
     procedure ChkDefaultChange(Sender: TObject);
     procedure ChkCancelChange(Sender: TObject);
     procedure ChkPasswordChange(Sender: TObject);
+    procedure ChkAccentChange(Sender: TObject);
+    procedure ChkFrameChange(Sender: TObject);
+    procedure ChkKeyCmdsChange(Sender: TObject);
     procedure MemoItemsChange(Sender: TObject);
     procedure CmbPanelStateChange(Sender: TObject);
     procedure ChkTestModeChange(Sender: TObject);
@@ -417,6 +422,7 @@ begin
   FCmbAddKind.Items.Add('List');
   FCmbAddKind.Items.Add('Dropdown');
   FCmbAddKind.Items.Add('Radio group');
+  FCmbAddKind.Items.Add('Separator');
   FCmbAddKind.ItemIndex := 0;
   X := X + FCmbAddKind.Width + 6;
 
@@ -600,6 +606,36 @@ begin
   FPropChkPassword.Align := TAlignLayout.Client;
   FPropChkPassword.Text := 'Password';
   FPropChkPassword.OnChange := ChkPasswordChange;
+
+  FPropRowAccent := TLayout.Create(FPropPanel);
+  FPropRowAccent.Parent := FPropPanel;
+  FPropRowAccent.Align := TAlignLayout.Top;
+  FPropRowAccent.Height := 24;
+  FPropChkAccent := TCheckBox.Create(FPropRowAccent);
+  FPropChkAccent.Parent := FPropRowAccent;
+  FPropChkAccent.Align := TAlignLayout.Client;
+  FPropChkAccent.Text := 'Accent (bold, accent color)';
+  FPropChkAccent.OnChange := ChkAccentChange;
+
+  FPropRowFrame := TLayout.Create(FPropPanel);
+  FPropRowFrame.Parent := FPropPanel;
+  FPropRowFrame.Align := TAlignLayout.Top;
+  FPropRowFrame.Height := 24;
+  FPropChkFrame := TCheckBox.Create(FPropRowFrame);
+  FPropChkFrame.Parent := FPropRowFrame;
+  FPropChkFrame.Align := TAlignLayout.Client;
+  FPropChkFrame.Text := 'Frame around the list';
+  FPropChkFrame.OnChange := ChkFrameChange;
+
+  FPropRowKeyCmds := TLayout.Create(FPropPanel);
+  FPropRowKeyCmds.Parent := FPropPanel;
+  FPropRowKeyCmds.Align := TAlignLayout.Top;
+  FPropRowKeyCmds.Height := 24;
+  FPropChkKeyCmds := TCheckBox.Create(FPropRowKeyCmds);
+  FPropChkKeyCmds.Parent := FPropRowKeyCmds;
+  FPropChkKeyCmds.Align := TAlignLayout.Client;
+  FPropChkKeyCmds.Text := 'Key commands (Space, Ctrl+Up/Down)';
+  FPropChkKeyCmds.OnChange := ChkKeyCmdsChange;
 
   FPropRowSelIndex := AddPropRow('Selected #');
   FPropEditSelIndex := TEdit.Create(FPropRowSelIndex);
@@ -1006,6 +1042,9 @@ begin
       FPropRowDefault.Visible := False;
       FPropRowCancel.Visible := False;
       FPropRowPassword.Visible := False;
+      FPropRowAccent.Visible := False;
+      FPropRowFrame.Visible := False;
+      FPropRowKeyCmds.Visible := False;
       FPropRowItems.Visible := False;
       FPropRowSelIndex.Visible := False;
       FPropRowFgSrc.Visible := False;
@@ -1054,6 +1093,18 @@ begin
     FPropRowPassword.Visible := C.Kind = dckInput;
     if FPropRowPassword.Visible then
       FPropChkPassword.IsChecked := C.Password;
+
+    FPropRowAccent.Visible := C.Kind = dckLabel;
+    if FPropRowAccent.Visible then
+      FPropChkAccent.IsChecked := C.Accent;
+
+    FPropRowFrame.Visible := C.Kind = dckList;
+    if FPropRowFrame.Visible then
+      FPropChkFrame.IsChecked := C.Framed;
+
+    FPropRowKeyCmds.Visible := C.Kind = dckList;
+    if FPropRowKeyCmds.Visible then
+      FPropChkKeyCmds.IsChecked := C.KeyCommands;
 
     FPropRowItems.Visible := C.Kind in [dckList, dckDropDown, dckRadioGroup];
     if FPropRowItems.Visible then
@@ -1253,6 +1304,27 @@ begin
     procedure(var C: TDialogControl) begin C.Password := FPropChkPassword.IsChecked; end);
 end;
 
+procedure TDialogDesignerForm.ChkAccentChange(Sender: TObject);
+begin
+  if FPropApplying then Exit;
+  MutateSelectedControl(
+    procedure(var C: TDialogControl) begin C.Accent := FPropChkAccent.IsChecked; end);
+end;
+
+procedure TDialogDesignerForm.ChkFrameChange(Sender: TObject);
+begin
+  if FPropApplying then Exit;
+  MutateSelectedControl(
+    procedure(var C: TDialogControl) begin C.Framed := FPropChkFrame.IsChecked; end);
+end;
+
+procedure TDialogDesignerForm.ChkKeyCmdsChange(Sender: TObject);
+begin
+  if FPropApplying then Exit;
+  MutateSelectedControl(
+    procedure(var C: TDialogControl) begin C.KeyCommands := FPropChkKeyCmds.IsChecked; end);
+end;
+
 procedure TDialogDesignerForm.MemoItemsChange(Sender: TObject);
 begin
   if FPropApplying then Exit;
@@ -1318,11 +1390,18 @@ begin
     5: NewCtrl := MakeList(Id, TArray<string>.Create('Item 1', 'Item 2'));
     6: NewCtrl := MakeDropDown(Id, TArray<string>.Create('Item 1', 'Item 2'));
     7: NewCtrl := MakeRadioGroup(Id, 'Options', TArray<string>.Create('Option 1', 'Option 2'));
+    8: NewCtrl := MakeHRule(Max(Decl.Width - 2, 1));
   else
     Exit;
   end;
   if IsDialogProtocolV2(Decl.Version) then
-    NewCtrl := WithControlBox(NewCtrl, 0, N, 0, 0);
+  begin
+    if FCmbAddKind.ItemIndex = 8 then
+      // A rule spans the whole client width and joins the dialog frame.
+      NewCtrl := WithControlBox(NewCtrl, 0, N, Max(Decl.Width - 2, 1), 1)
+    else
+      NewCtrl := WithControlBox(NewCtrl, 0, N, 0, 0);
+  end;
   SetLength(Decl.Controls, N + 1);
   Decl.Controls[N] := NewCtrl;
   FApplying := True;

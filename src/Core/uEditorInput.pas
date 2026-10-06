@@ -310,7 +310,7 @@ begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit(True);
   end;
-  if (Act = kaNone) and TryRunBoundCommand(AKey, AShift) then
+  if (Act = kaNone) and TryRunBoundCommand(KeymapLookupKey(AKey, AKeyChar), AShift) then
   begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit(True);

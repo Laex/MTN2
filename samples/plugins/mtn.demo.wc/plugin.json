@@ -1,0 +1,14 @@
+{
+  "id": "mtn.demo.wc",
+  "name": "Demo: word count (Go, WASM)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "wasi": true,
+  "description": {
+    "en": "Ctrl+Shift+E counts the lines, words and characters of the selection or the whole document and shows them in a notice.",
+    "ru": "Ctrl+Shift+E считает строки, слова и символы выделения или всего документа и показывает их в уведомлении."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

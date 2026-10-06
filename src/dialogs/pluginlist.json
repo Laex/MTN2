@@ -2,46 +2,79 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Plugins",
-  "width": 70,
-  "height": 18,
+  "width": 98,
+  "height": 21,
   "children": [
     {
       "type": "list",
       "id": "plugins",
       "selected": 0,
+      "keycommands": true,
       "items": [
         "(no plugins)"
       ],
       "col": 1,
       "row": 1,
-      "width": 66,
-      "height": 12
+      "width": 94,
+      "height": 11
     },
     {
-      "type": "button",
-      "id": "toggle",
-      "text": "&Toggle",
-      "col": 2,
-      "row": 14,
-      "width": 12,
+      "type": "separator",
+      "col": 0,
+      "row": 12,
+      "width": 96,
       "height": 1
     },
     {
-      "type": "button",
-      "id": "override",
-      "text": "&Replace",
-      "col": 16,
+      "type": "label",
+      "text": "Space switches the plugin on or off, Ctrl+Up / Ctrl+Down move it in the load order.",
+      "id": "lbl_keyhint",
+      "col": 2,
+      "row": 13,
+      "width": 92,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "On and off apply after OK; the load order applies from the next start.",
+      "id": "lbl_orderhint",
+      "col": 2,
       "row": 14,
-      "width": 14,
+      "width": 92,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 15,
+      "width": 96,
       "height": 1
     },
     {
       "type": "button",
       "id": "settings",
       "text": "&Settings",
-      "col": 32,
-      "row": 14,
+      "col": 2,
+      "row": 17,
       "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "permissions",
+      "text": "&Permissions...",
+      "col": 18,
+      "row": 17,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "info",
+      "text": "&Info",
+      "col": 40,
+      "row": 17,
+      "width": 10,
       "height": 1
     },
     {
@@ -49,9 +82,18 @@
       "id": "ok",
       "text": "  OK  ",
       "default": true,
+      "col": 72,
+      "row": 17,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
       "cancel": true,
-      "col": 48,
-      "row": 14,
+      "col": 84,
+      "row": 17,
       "width": 10,
       "height": 1
     }

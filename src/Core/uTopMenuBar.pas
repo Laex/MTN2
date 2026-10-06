@@ -182,6 +182,10 @@ type
     FSubmenuIndex: Integer;
     FCategories: TArray<TTopMenuCategory>;
     FSubmenuBounds: TRectI;
+    FOnIsRightPanelActive: TFunc<Boolean>;
+    /// <summary>The left button went down on a menu title or an item and is still held:
+    /// letting go over an item runs it.</summary>
+    FBarPressed: Boolean;
     FPluginItems: TArray<TPluginMenuItemDesc>;
     procedure LayoutSubmenu(AClientWidth: Integer);
     function FindHotCategory(AChar: Char): Integer;
@@ -190,6 +194,8 @@ type
     function IsItemEnabled(const AItem: TSubmenuItem): Boolean;
     procedure ExecuteItem(const AItem: TSubmenuItem);
     procedure MoveSubmenuCursor(ADelta: Integer);
+    procedure MoveSubmenuToEdge(AFirst: Boolean);
+    function SubmenuItemAt(ACol, ARow: Integer): Integer;
     procedure SnapSubmenuToSelectable;
     function HandleTopBarClick(ACol: Integer): Boolean;
     function HandleSubmenuClick(ACol, ARow: Integer): Boolean;
@@ -223,6 +229,20 @@ type
     procedure ActivateMenu(ACategoryIndex: Integer = 1; AOpenSubmenu: Boolean = True);
     procedure DeactivateMenu;
     procedure ToggleMenu;
+    /// <summary>The category F9 opens: the menu of the active panel (Left or Right),
+    /// as in Far.</summary>
+    function PanelCategory: Integer;
+    /// <summary>Mouse moved with the button held while the menu is open: the item
+    /// under the pointer is selected. True when the selection changed.</summary>
+    function HandleMouseMove(ACol, ARow: Integer): Boolean;
+    /// <summary>The button went up: a press that began on a menu title or an item and
+    /// ends over an item runs that item (also a drag through the menu). True when it
+    /// ran something.</summary>
+    function HandleMouseUp(ACol, ARow: Integer): Boolean;
+    /// <summary>Tells whether the right panel is the active one; read when the menu
+    /// is opened from the keyboard.</summary>
+    property OnIsRightPanelActive: TFunc<Boolean> read FOnIsRightPanelActive
+      write FOnIsRightPanelActive;
 
     procedure DrawTopBar(const AGrid: TTerminalGrid; AWidth: Integer);
     procedure DrawSubmenu(const AGrid: TTerminalGrid; AClientWidth: Integer);
@@ -1027,12 +1047,91 @@ begin
     FOnInvalidate;
 end;
 
+function TTopMenuController.PanelCategory: Integer;
+begin
+  // Categories: the system menu, Left, ..., Right (always the last).
+  if Assigned(FOnIsRightPanelActive) and FOnIsRightPanelActive() then
+    Result := High(FCategories)
+  else
+    Result := 1;
+end;
+
 procedure TTopMenuController.ToggleMenu;
 begin
   if FActive then
     DeactivateMenu
   else
-    ActivateMenu(1, True);
+    ActivateMenu(PanelCategory, True);
+end;
+
+procedure TTopMenuController.MoveSubmenuToEdge(AFirst: Boolean);
+var
+  Items: TArray<TSubmenuItem>;
+  I: Integer;
+begin
+  if (FCategoryIndex < 0) or (FCategoryIndex > High(FCategories)) then
+    Exit;
+  Items := FCategories[FCategoryIndex].Items;
+  if AFirst then
+  begin
+    for I := 0 to High(Items) do
+      if IsItemEnabled(Items[I]) then
+      begin
+        FSubmenuIndex := I;
+        Exit;
+      end;
+  end
+  else
+    for I := High(Items) downto 0 do
+      if IsItemEnabled(Items[I]) then
+      begin
+        FSubmenuIndex := I;
+        Exit;
+      end;
+end;
+
+function TTopMenuController.SubmenuItemAt(ACol, ARow: Integer): Integer;
+begin
+  Result := -1;
+  if not (FActive and FSubmenuOpen) or not FSubmenuBounds.Contains(ACol, ARow) then
+    Exit;
+  Result := ARow - (FSubmenuBounds.Top + 1);
+  if (Result < 0) or (Result > High(FCategories[FCategoryIndex].Items)) or
+     FCategories[FCategoryIndex].Items[Result].IsSeparator then
+    Result := -1;
+end;
+
+function TTopMenuController.HandleMouseMove(ACol, ARow: Integer): Boolean;
+var
+  Idx: Integer;
+begin
+  Result := False;
+  Idx := SubmenuItemAt(ACol, ARow);
+  if (Idx >= 0) and (Idx <> FSubmenuIndex) and
+     IsItemEnabled(FCategories[FCategoryIndex].Items[Idx]) then
+  begin
+    FSubmenuIndex := Idx;
+    Result := True;
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+  end;
+end;
+
+function TTopMenuController.HandleMouseUp(ACol, ARow: Integer): Boolean;
+var
+  Idx: Integer;
+begin
+  Result := False;
+  if not FBarPressed then
+    Exit;
+  FBarPressed := False;
+  Idx := SubmenuItemAt(ACol, ARow);
+  if (Idx >= 0) and IsItemEnabled(FCategories[FCategoryIndex].Items[Idx]) then
+  begin
+    FSubmenuIndex := Idx;
+    ExecuteItem(FCategories[FCategoryIndex].Items[Idx]);
+    Result := True;
+  end;
 end;
 
 procedure TTopMenuController.LayoutSubmenu(AClientWidth: Integer);
@@ -1291,7 +1390,7 @@ begin
     // keymap's TopMenu key (F9) is the host's (TDualPanelWindow.HandleInput).
     if (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
     begin
-      ActivateMenu(1, True);
+      ActivateMenu(PanelCategory, True);
       AKey := 0;
       Result := True;
       Exit;
@@ -1334,6 +1433,26 @@ begin
       FCategoryIndex := 0;
     FSubmenuIndex := 0;
     SnapSubmenuToSelectable;
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+    AKey := 0;
+    Exit;
+  end;
+
+  // Home / End / PgUp / PgDn: first or last item of an open dropdown, else the first
+  // or last category on the bar.
+  if (AKey = vkHome) or (AKey = vkEnd) or (AKey = vkPrior) or (AKey = vkNext) then
+  begin
+    if FSubmenuOpen then
+      MoveSubmenuToEdge((AKey = vkHome) or (AKey = vkPrior))
+    else
+    begin
+      if (AKey = vkHome) or (AKey = vkPrior) then
+        FCategoryIndex := 0
+      else
+        FCategoryIndex := High(FCategories);
+      FSubmenuIndex := 0;
+    end;
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;
@@ -1437,7 +1556,10 @@ begin
       if FActive and (FCategoryIndex = I) and FSubmenuOpen then
         DeactivateMenu
       else
+      begin
         ActivateMenu(I, True);
+        FBarPressed := True;
+      end;
       Exit;
     end;
     Inc(X, ItemW);
@@ -1456,12 +1578,14 @@ begin
     DeactivateMenu;
     Exit;
   end;
+  // An item runs when the button is released over it (HandleMouseUp), so the press
+  // only selects it and a drag can still move to another item.
   Idx := ARow - (FSubmenuBounds.Top + 1);
   if (Idx >= 0) and (Idx <= High(FCategories[FCategoryIndex].Items)) and
      not FCategories[FCategoryIndex].Items[Idx].IsSeparator then
   begin
     FSubmenuIndex := Idx;
-    ExecuteItem(FCategories[FCategoryIndex].Items[Idx]);
+    FBarPressed := True;
   end;
 end;
 

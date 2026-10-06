@@ -198,7 +198,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `button_row` | Группа кнопок в одну строку (дети flatten) |
 | `separator` | Горизонтальная линия (`MakeHRule`): `row`, `col` 0 и `width` во всю клиентскую ширину. Такая линия смыкается с рамкой диалога – `╟─╢` у двойной рамки, `├─┤` у одинарной, `+-+` у ASCII-темы (`TDialogHost.JoinSeparatorsToFrame`); при расширении диалога под перевод растягивается вместе с ним. Не входит в values. |
 | `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне текущего Dialog. |
-| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item |
+| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item. `"frame": true` обводит список одинарной рамкой на одну ячейку вокруг его области. `"keycommands": true` отдаёт владельцу диалога Пробел (команда `toggle`) и Ctrl+Вверх / Ctrl+Вниз (команды `up` и `down`) вместо кнопок, пока список в фокусе; обычные стрелки по-прежнему двигают выбор |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
 
 Не реализовано: `panel` (см. [PANEL_PLUGIN.md](PANEL_PLUGIN.md) отдельно), произвольный `set_control_json` кроме `SetStatus`.

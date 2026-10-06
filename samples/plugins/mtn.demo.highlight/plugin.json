@@ -1,0 +1,13 @@
+{
+  "id": "mtn.demo.highlight",
+  "name": "Demo: syntax colors (Rust)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "Colors JSON, INI and similar files (strings, numbers, constants, keys, sections, comments) in the viewer and the editor.",
+    "ru": "Раскрашивает файлы JSON, INI и подобные (строки, числа, константы, ключи, разделы, комментарии) в просмотрщике и редакторе."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

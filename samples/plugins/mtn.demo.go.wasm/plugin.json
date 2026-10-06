@@ -4,5 +4,11 @@
   "version": "0.1.0",
   "abi": 2,
   "startup": true,
-  "wasi": true
+  "wasi": true,
+  "description": {
+    "en": "Blocks permanent delete (Shift+Del and Wipe) and explains why; the normal Delete to the recycle bin works as usual.",
+    "ru": "Блокирует безвозвратное удаление (Shift+Del и Wipe) и объясняет причину; обычное удаление в корзину работает как раньше."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
 }

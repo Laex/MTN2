@@ -50,6 +50,11 @@ type
       AFontSize: Single): TBitmap;
   end;
 
+  /// <summary>Device pixels an italic glyph's bitmap extends past the cell on each
+  /// side: the slanted strokes overhang the advance width and a cell-wide bitmap
+  /// would cut them off. The renderer draws such a glyph over the neighbours.</summary>
+  function ItalicGlyphPadDev(ACellW, AScale: Single): Integer;
+
   /// <summary>Vertical placement of the text line inside a cell.
   /// ALineH: the font's line height; AInkTop / AInkBottom: extent of the
   /// probe glyphs' ink relative to the line top (bottom exclusive); all in
@@ -251,6 +256,13 @@ begin
   AGlyphTop := Top;
 end;
 
+function ItalicGlyphPadDev(ACellW, AScale: Single): Integer;
+begin
+  if AScale <= 0 then
+    AScale := 1.0;
+  Result := Max(2, Round(ACellW * AScale * 0.25));
+end;
+
 const
   // Opacity of the second glyph pass per TGlyphCache.Contrast level.
   cContrastPassOpacity: array[1..3] of Single = (0.4, 0.7, 1.0);
@@ -261,7 +273,7 @@ function TGlyphCache.GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TF
 var
   Key: TGlyphKey;
   Bmp: TBitmap;
-  W, H: Integer;
+  W, H, PadDev: Integer;
   R: TRectF;
 begin
   if AScale <= 0 then
@@ -293,6 +305,10 @@ begin
   // of the glyph's DestRect on the frame.
   W := Max(Round(ACellW * AScale), 1);
   H := Max(Round(ACellH * AScale), 1);
+  PadDev := 0;
+  if TFontStyle.fsItalic in AStyle then
+    PadDev := ItalicGlyphPadDev(ACellW, AScale);
+  W := W + 2 * PadDev;
 
   Bmp := TBitmap.Create;
   Bmp.SetSize(W, H);
@@ -309,7 +325,9 @@ begin
       // FillText drops a line that does not fit its rect, so the rect runs
       // well past the cell; the bitmap edge is the only clip, and the ink was
       // measured to fit it.
-      R := RectF(0, AGlyphTop, ACellW, AGlyphTop + 3 * ACellH);
+      // The text rect spans the whole bitmap, pad included, so the layout does not
+      // clip the overhang of a slanted glyph; centring keeps the glyph where it was.
+      R := RectF(0, AGlyphTop, W / AScale, AGlyphTop + 3 * ACellH);
       Bmp.Canvas.FillText(R, string(ACh), False, 1, [], TTextAlign.Center, TTextAlign.Leading);
       // Second pass over the same ink: a' = a + (1 - a) * a * opacity.
       if FContrast > 0 then
@@ -906,7 +924,7 @@ var
   RunAttr: TCharCellAttributes;
   GlyphBmp: TBitmap;
   DestRect: TRectF;
-  Sc: Single;
+  Sc, PadPx: Single;
   tDev, DevL, DevT, DevB, DevR, ulDev: Integer;
   CaretColor: TAlphaColor;
 begin
@@ -1069,6 +1087,12 @@ begin
             begin
               SrcRect := RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height);
               DestRect := RectF(FXLeft[X + I - 1], FYTop[Y], FXLeft[X + I], FYTop[Y + 1]);
+              if TFontStyle.fsItalic in TargetStyle then
+              begin
+                PadPx := ItalicGlyphPadDev(FCellWidth, FSceneScale) / FSceneScale;
+                DestRect.Left := DestRect.Left - PadPx;
+                DestRect.Right := DestRect.Right + PadPx;
+              end;
               Canvas.DrawBitmap(GlyphBmp, SrcRect, DestRect, 1.0, True);
             end;
           end;

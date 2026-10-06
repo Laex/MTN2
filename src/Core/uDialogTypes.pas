@@ -85,6 +85,10 @@ type
     /// <summary>dckList: a single-line frame is drawn around the list, one cell
     /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
     Framed: Boolean;
+    /// <summary>dckList: Space fires the command "toggle", Ctrl+Up / Ctrl+Down the
+    /// commands "up" / "down" (JSON "keycommands": true), so the owner can act on the
+    /// selected row without a button for it.</summary>
+    KeyCommands: Boolean;
     /// <summary>dckInput: draw '*' instead of the stored characters.</summary>
     Password: Boolean;
     /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
@@ -257,6 +261,17 @@ function BuildFileHistoryDialog(const AItems: TArray<string>;
 /// see HostPluginRows in uPluginHost.pas.</summary>
 function BuildPluginListDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
+/// <summary>The information dialog of one plugin: ATitle (its name), ALines are the
+/// rows of the read-only text; without AHasHelp the Help button is dropped.</summary>
+function BuildPluginInfoDialog(const ATitle: string; const ALines: TArray<string>;
+  AHasHelp: Boolean): TDialogDeclaration;
+/// <summary>What the user may allow a plugin: AOverrideText is the checkbox of replacing
+/// built-in handlers (dropped when AHasOverride is False), APermTexts the checkboxes of
+/// its permissions (ids perm_0, perm_1, ...; at most two). The checkboxes that stay are
+/// packed from the top.</summary>
+function BuildPluginPermissionsDialog(const ATitle, AIntro, AOverrideText: string;
+  AHasOverride, AOverrideOn: Boolean; const APermTexts: TArray<string>;
+  const AGranted: TArray<Boolean>): TDialogDeclaration;
 /// <summary>AItems are pre-formatted display labels ("Name  -  path" or
 /// bare path when unnamed) - see FolderHotlistDisplayLabel.</summary>
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
@@ -1497,6 +1512,93 @@ begin
   if (ASelectedIndex < 0) or (ASelectedIndex > High(Items)) then
     ASelectedIndex := 0;
   DialogSetListItems(Result, 'plugins', Items, ASelectedIndex);
+end;
+
+function BuildPluginPermissionsDialog(const ATitle, AIntro, AOverrideText: string;
+  AHasOverride, AOverrideOn: Boolean; const APermTexts: TArray<string>;
+  const AGranted: TArray<Boolean>): TDialogDeclaration;
+const
+  cSlots: array[0..2] of string = ('perm_override', 'perm_0', 'perm_1');
+var
+  Slot, I, J, Row: Integer;
+  Keep: Boolean;
+  Text: string;
+  On_: Boolean;
+begin
+  RequireDialogResource(cResDialogPluginPerms, Result);
+  if ATitle <> '' then
+    DialogSetTitle(Result, ATitle);
+  DialogSetLabelText(Result, 'intro', AIntro);
+  Row := 3;
+  for Slot := 0 to High(cSlots) do
+  begin
+    Keep := False;
+    Text := '';
+    On_ := False;
+    if Slot = 0 then
+    begin
+      Keep := AHasOverride;
+      Text := AOverrideText;
+      On_ := AOverrideOn;
+    end
+    else if Slot - 1 <= High(APermTexts) then
+    begin
+      Keep := True;
+      Text := APermTexts[Slot - 1];
+      if Slot - 1 <= High(AGranted) then
+        On_ := AGranted[Slot - 1];
+    end;
+    for I := High(Result.Controls) downto 0 do
+      if SameText(Result.Controls[I].Id, cSlots[Slot]) then
+      begin
+        if Keep then
+        begin
+          Result.Controls[I].Text := Text;
+          Result.Controls[I].Checked := On_;
+          Result.Controls[I].Row := Row;
+        end
+        else
+        begin
+          for J := I to High(Result.Controls) - 1 do
+            Result.Controls[J] := Result.Controls[J + 1];
+          SetLength(Result.Controls, Length(Result.Controls) - 1);
+        end;
+        Break;
+      end;
+    if Keep then
+      Inc(Row);
+  end;
+  if not AHasOverride then
+    for I := High(Result.Controls) downto 0 do
+      if SameText(Result.Controls[I].Id, 'hint') then
+      begin
+        for J := I to High(Result.Controls) - 1 do
+          Result.Controls[J] := Result.Controls[J + 1];
+        SetLength(Result.Controls, Length(Result.Controls) - 1);
+      end;
+end;
+
+function BuildPluginInfoDialog(const ATitle: string; const ALines: TArray<string>;
+  AHasHelp: Boolean): TDialogDeclaration;
+var
+  I, J: Integer;
+begin
+  RequireDialogResource(cResDialogPluginInfo, Result);
+  if ATitle <> '' then
+    DialogSetTitle(Result, ATitle);
+  DialogSetListItems(Result, 'info', ALines, 0);
+  if AHasHelp then
+    Exit;
+  // No help page: drop the Help button and centre OK.
+  for I := High(Result.Controls) downto 0 do
+    if SameText(Result.Controls[I].Id, 'help') then
+    begin
+      for J := I to High(Result.Controls) - 1 do
+        Result.Controls[J] := Result.Controls[J + 1];
+      SetLength(Result.Controls, Length(Result.Controls) - 1);
+    end
+    else if SameText(Result.Controls[I].Id, 'ok') then
+      Result.Controls[I].Col := (Result.Width - 2 - Result.Controls[I].BoxW) div 2;
 end;
 
 function BuildColorCodingDialog(const AItems: TArray<string>;

@@ -3,5 +3,11 @@
   "name": "Demo: CSV table viewer (Rust)",
   "version": "0.1.0",
   "abi": 2,
-  "startup": true
+  "startup": true,
+  "description": {
+    "en": "F3 on a .csv file shows it as an aligned table instead of raw text. F4 still opens the editor.",
+    "ru": "F3 на файле .csv показывает его выровненной таблицей вместо сырого текста. F4 по-прежнему открывает редактор."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
 }

@@ -3,5 +3,10 @@
   "name": "Temporary panel",
   "version": "0.1.0",
   "abi": 1,
+  "description": {
+    "en": "A panel that holds a list of files collected from anywhere (like the Far Manager temporary panel); the files themselves stay where they are.",
+    "ru": "Панель со списком файлов, собранных из разных мест (как временная панель в Far Manager); сами файлы остаются на своих местах."
+  },
+  "author": "MTN2",
   "schemes": ["tmp"]
 }

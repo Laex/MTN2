@@ -4,5 +4,11 @@
   "version": "0.1.0",
   "abi": 2,
   "startup": true,
-  "keepLoaded": true
+  "keepLoaded": true,
+  "description": {
+    "en": "F3 on a .json file shows it pretty-printed. Settings: the indent width.",
+    "ru": "F3 на файле .json показывает его с отступами. В настройках задаётся ширина отступа."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
 }

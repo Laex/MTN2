@@ -1,0 +1,13 @@
+{
+  "id": "mtn.demo.nativeview",
+  "name": "Demo: native window (C++)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "Ctrl+Shift+G opens a tab whose area is a window of the plugin itself (an animation drawn with GDI): the way to embed a player such as libmpv.",
+    "ru": "Ctrl+Shift+G открывает вкладку, область которой – окно самого плагина (анимация, нарисованная через GDI): так встраивается проигрыватель, например libmpv."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

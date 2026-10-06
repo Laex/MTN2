@@ -17,6 +17,7 @@ type
     [Test] procedure TestFitGrowsForInk;
     [Test] procedure TestFitSnapsTopToDevicePixel;
     [Test] procedure TestGlyphBitmapIsDeviceSized;
+    [Test] procedure TestItalicGlyphHasRoomForTheOverhang;
     [Test] procedure TestDescendersInsideCell;
     [Test] procedure TestLineSpacing;
     [Test] procedure TestSnapFontSize;
@@ -179,6 +180,40 @@ begin
         Format('scale %g: glyph height', [Scale]));
       Assert.IsTrue(SameF(Glyph.BitmapScale, Scale), Format('scale %g: bitmap scale', [Scale]));
       Assert.IsTrue(InkRows(Glyph) > 0, Format('scale %g: glyph drawn', [Scale]));
+    finally
+      Cache.Free;
+      R.Free;
+      Measure.Free;
+    end;
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestItalicGlyphHasRoomForTheOverhang;
+var
+  R: TTerminalRenderer;
+  Cache: TGlyphCache;
+  Measure, Plain, Slanted: TBitmap;
+  Scale: Single;
+  Pad: Integer;
+begin
+  for Scale in [1.0, 1.25, 2.0] do
+  begin
+    Measure := TBitmap.Create(16, 16);
+    R := TTerminalRenderer.Create;
+    Cache := TGlyphCache.Create;
+    try
+      R.SetSceneScale(Scale, 500, 150, Measure.Canvas);
+      R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+      Plain := Cache.GetGlyph('f', TAlphaColorRec.White, [], R.CellWidth, R.CellHeight,
+        Scale, R.GlyphTop, R.FontName, 14);
+      Slanted := Cache.GetGlyph('f', TAlphaColorRec.White, [TFontStyle.fsItalic], R.CellWidth,
+        R.CellHeight, Scale, R.GlyphTop, R.FontName, 14);
+      Pad := ItalicGlyphPadDev(R.CellWidth, Scale);
+      Assert.IsTrue(Pad >= 2, Format('scale %g: some room', [Scale]));
+      Assert.IsTrue(Slanted.Width = Plain.Width + 2 * Pad,
+        Format('scale %g: the italic bitmap is wider by the pad on both sides', [Scale]));
+      Assert.IsTrue(Slanted.Height = Plain.Height, Format('scale %g: same height', [Scale]));
+      Assert.IsTrue(InkRows(Slanted) > 0, Format('scale %g: italic glyph drawn', [Scale]));
     finally
       Cache.Free;
       R.Free;

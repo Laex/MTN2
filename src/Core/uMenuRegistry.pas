@@ -25,6 +25,9 @@ type
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
     /// <summary>Removes all items registered by APluginId.</summary>
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     /// <summary>Binds the registry to the live menu controller so future
     /// Register/Unregister calls take effect immediately. Call once after
@@ -35,6 +38,9 @@ type
 function MenuRegistry: IMenuRegistry;
 
 implementation
+
+uses
+  uStrings;
 
 type
   TRegEntry = record
@@ -56,6 +62,7 @@ type
     destructor Destroy; override;
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     procedure AttachController(AController: TTopMenuController);
   end;
@@ -101,6 +108,22 @@ begin
 
   FEntries.Add(Entry);
   Reapply;
+end;
+
+function TMenuRegistry.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  E: TRegEntry;
+  Lines: TList<string>;
+begin
+  Lines := TList<string>.Create;
+  try
+    for E in FEntries do
+      if SameText(E.PluginId, APluginId) then
+        Lines.Add(T('ui.plugininfo.menu', 'Menu item: %s > %s', [E.ParentPath, E.Caption]));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TMenuRegistry.UnregisterPlugin(const APluginId: string);

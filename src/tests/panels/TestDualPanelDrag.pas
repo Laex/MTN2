@@ -182,10 +182,21 @@ begin
   Assert.IsTrue(not CanArmFileDragSources(False, False, False), 'not panels');
   Assert.IsTrue(not CanArmFileDragSources(True, True, False), 'dialog blocks');
   Assert.IsTrue(not CanArmFileDragSources(True, False, True), 'job blocks');
+  Assert.IsTrue(CanArmFileDragSources(True, False, False), 'panels, no dialog, no job: allowed');
+  GFileDragEnabled := False;
+  try
+    Assert.IsTrue(not CanArmFileDragSources(True, False, False), 'switched off in Options: never');
+  finally
+    GFileDragEnabled := True;
+  end;
   Assert.IsTrue(CanArmFileDragSources(True, False, False), 'panels idle');
 
   Assert.IsTrue(not FileDragPastThreshold(3, 3, 3, 3), 'file no move');
-  Assert.IsTrue(FileDragPastThreshold(4, 3, 3, 3), 'file one cell');
+  Assert.IsTrue(not FileDragPastThreshold(4, 3, 3, 3), 'one cell sideways is still a click');
+  Assert.IsTrue(not FileDragPastThreshold(3, 4, 3, 3), 'one row down is still a click');
+  Assert.IsTrue(FileDragPastThreshold(5, 3, 3, 3), 'two cells sideways starts a drag');
+  Assert.IsTrue(FileDragPastThreshold(3, 5, 3, 3), 'two rows down starts a drag');
+  Assert.IsTrue(FileDragPastThreshold(1, 3, 3, 3), 'and to the left');
   Assert.IsTrue(not ShouldStartFileDrag(True, True, 10, 10, 0, 0), 'tab drag wins');
   Assert.IsTrue(not ShouldStartFileDrag(False, False, 10, 10, 0, 0), 'not armed');
   Assert.IsTrue(ShouldStartFileDrag(False, True, 10, 10, 0, 0), 'armed and moved');

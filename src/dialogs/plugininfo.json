@@ -1,0 +1,41 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Plugin",
+  "width": 78,
+  "height": 22,
+  "children": [
+    {
+      "type": "list",
+      "id": "info",
+      "selected": 0,
+      "items": [
+        ""
+      ],
+      "col": 1,
+      "row": 1,
+      "width": 74,
+      "height": 16
+    },
+    {
+      "type": "button",
+      "id": "help",
+      "text": "&Help",
+      "col": 24,
+      "row": 18,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "  OK  ",
+      "default": true,
+      "cancel": true,
+      "col": 40,
+      "row": 18,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

@@ -2,5 +2,11 @@
   "id": "mtn.ws",
   "name": "Workspace panel",
   "version": "0.1.0",
-  "abi": 1
+  "abi": 1,
+  "description": {
+    "en": "Adds Workspace commands to the Commands menu: a panel of links to files and folders, and a library of saved sets of links.",
+    "ru": "Добавляет в меню «Команды» работу с рабочим набором: панель ссылок на файлы и папки и библиотеку сохранённых наборов."
+  },
+  "author": "MTN2",
+  "help": "readme.md"
 }

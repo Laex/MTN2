@@ -29,7 +29,8 @@ uses
   TestPanelFilterDialog in 'TestPanelFilterDialog.pas',
   TestSetAttrDialog in 'TestSetAttrDialog.pas',
   TestThemeDialogs in 'TestThemeDialogs.pas',
-  TestSshConnectionsDialog in 'TestSshConnectionsDialog.pas';
+  TestSshConnectionsDialog in 'TestSshConnectionsDialog.pas',
+  TestPluginDialogs in 'TestPluginDialogs.pas';
 
 begin
   RunRegisteredTests;

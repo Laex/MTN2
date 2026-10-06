@@ -23,6 +23,9 @@ type
     /// <summary>The texts to append to the status line, in first-set order.</summary>
     function StatusSegments: TArray<string>;
     /// <summary>Removes every segment of APluginId.</summary>
+    /// <summary>One line per thing the plugin registered, for the plugin's information
+    /// dialog (already in the user's language).</summary>
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
   end;
 
@@ -33,6 +36,9 @@ function PluginChrome: IPluginChrome;
 procedure SetPluginChromeChanged(const AHandler: TProc);
 
 implementation
+
+uses
+  uStrings;
 
 const
   cMaxSegmentChars = 40;
@@ -53,6 +59,7 @@ type
     destructor Destroy; override;
     procedure SetStatusSegment(const APluginId, ASegmentId, AText: string);
     function StatusSegments: TArray<string>;
+    function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
   end;
 
@@ -128,6 +135,26 @@ begin
   SetLength(Result, FSegments.Count);
   for I := 0 to FSegments.Count - 1 do
     Result[I] := FSegments[I].Text;
+end;
+
+function TPluginChrome.DescribePlugin(const APluginId: string): TArray<string>;
+var
+  S: TSegment;
+  Lines: TList<string>;
+  Count: Integer;
+begin
+  Lines := TList<string>.Create;
+  try
+    Count := 0;
+    for S in FSegments do
+      if SameText(S.PluginId, APluginId) then
+        Inc(Count);
+    if Count > 0 then
+      Lines.Add(T('ui.plugininfo.status', 'Shows text in the status line'));
+    Result := Lines.ToArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TPluginChrome.UnregisterPlugin(const APluginId: string);

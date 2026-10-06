@@ -3,6 +3,11 @@
   "name": "7-Zip archives",
   "version": "0.1.0",
   "abi": 1,
+  "description": {
+    "en": "Opens 7z, RAR, TAR, GZ, ISO, CAB and other archives like folders (Enter on the file) and unpacks them with F5. Can also pack into 7z. Uses 7z.dll from this folder.",
+    "ru": "Открывает архивы 7z, RAR, TAR, GZ, ISO, CAB и другие как папки (Enter на файле) и распаковывает их по F5. Умеет упаковывать в 7z. Использует 7z.dll из этой папки."
+  },
+  "author": "MTN2",
   "archiveExtensions": ["7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "iso", "cab", "wim", "zip"],
   "schemes": ["7z"],
   "overrides": [".zip"]

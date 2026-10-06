@@ -41,7 +41,8 @@ type
     fbcColorCoding,
     fbcColorCodingEdit,
     fbcHelp, // F1 Help window (Markdown viewer with link navigation)
-    fbcHelpSearch // fbcHelp after an F7 search: also next/previous match
+    fbcHelpSearch, // fbcHelp after an F7 search: also next/previous match
+    fbcSurface // plugin picture tab: only Esc closes it, the rest is the plugin's
   );
 
   TFunctionBarColors = record
@@ -425,6 +426,13 @@ begin
 
     fbcTerminal:
       FunctionBarItemsForTerminal(Mods, ALetters);
+
+    fbcSurface:
+      if Mods = [] then
+      begin
+        SetLength(ALetters, 1);
+        ALetters[0] := 'Esc:Close';
+      end;
 
     fbcViewer:
       FunctionBarItemsForViewer(Mods, AItems, ALetters);

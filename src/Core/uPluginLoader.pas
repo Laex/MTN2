@@ -39,12 +39,12 @@ unit uPluginLoader;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections,
   Winapi.Windows,
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi,
-  uPluginChrome, uPluginSettings,
-  uPluginManifest,
+  uPluginChrome, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
+  uPluginManifest, uPluginPermissions, uPluginVfs,
   uWasmPluginHost;
 
 type
@@ -103,9 +103,11 @@ type
       FAllEnsured: Boolean;
       FOverrideAllow: TArray<string>;
       FDisabled: TArray<string>;
+      FOrder: TArray<string>;
     function BuildHostApiTable: THostApiTable;
     function IsOverrideAllowed(const APluginId: string): Boolean;
     function IsDisabled(const APluginId: string): Boolean;
+    procedure SortCatalogByOrder;
     procedure UnloadAt(AIndex: Integer);
     procedure GrantManifestOverrides(const APluginId: string;
       const AManifest: TPluginManifest);
@@ -132,6 +134,15 @@ type
     /// or loaded afterwards; SetPluginEnabled changes it on the fly.</summary>
     procedure SetDisabledPlugins(const AIds: TArray<string>);
     function DisabledPlugins: TArray<string>;
+    /// <summary>The load order the user set: plugin ids, first loaded first.
+    /// CatalogPlugins puts the plugins in this order (those not listed follow, in
+    /// folder order); with equal priorities the plugin loaded first is asked first.</summary>
+    procedure SetPluginOrder(const AIds: TArray<string>);
+    /// <summary>Moves a plugin of the catalog ADelta places up (negative) or down.
+    /// The catalog order changes now - plugins not loaded yet follow it - while
+    /// plugins already loaded keep their registrations until the next start.
+    /// False when the id is unknown or the move would leave the list.</summary>
+    function MovePlugin(const APluginId: string; ADelta: Integer): Boolean;
     /// <summary>Switches a plugin off (it is unloaded now) or on (it is loaded
     /// now). False when nothing in the catalog has that id.</summary>
     function SetPluginEnabled(const APluginId: string; AEnabled: Boolean): Boolean;
@@ -539,6 +550,571 @@ begin
   end;
 end;
 
+// Writes AText (UTF-8 and a NUL) into ABuf when it fits; the result is the length
+// in bytes either way (see THostTextOutFn).
+function CopyUtf8Out(const AText: string; ABuf: PAnsiChar; ABufSize: Int64): Int64;
+var
+  U: UTF8String;
+begin
+  U := UTF8String(AText);
+  Result := Length(U);
+  if (ABuf <> nil) and (ABufSize > Result) then
+    Move(PAnsiChar(U)^, ABuf^, Result + 1);
+end;
+
+function ThunkHostInfo(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  try
+    Result := CopyUtf8Out(PluginHostInfoJson, ABuf, ABufSize);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocInfo(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Json: string;
+begin
+  try
+    if PluginDocInfo(Json) then
+      Result := CopyUtf8Out(Json, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocGetText(AWhat: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Text: string;
+begin
+  try
+    if PluginDocGetText(AWhat, Text) then
+      Result := CopyUtf8Out(Text, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocReplace(AWhat: Int64; AText: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AText <> nil) and PluginDocReplace(AWhat, UTF8ToString(AText)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocSetCursor(ARow, ACol: Int64): Int64; cdecl;
+begin
+  try
+    if PluginDocSetCursor(ARow, ACol) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelInfo(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Json: string;
+begin
+  try
+    if PluginPanelInfo(Json) then
+      Result := CopyUtf8Out(Json, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelGoto(ASide: Int64; AURI: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AURI <> nil) and PluginPanelGoto(ASide, UTF8ToString(AURI)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelRefresh: Int64; cdecl;
+begin
+  try
+    if PluginPanelRefresh then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkClipboardGet(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Text: string;
+begin
+  try
+    if PluginClipboardGet(Text) then
+      Result := CopyUtf8Out(Text, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkClipboardSet(AText: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AText <> nil) and PluginClipboardSet(UTF8ToString(AText)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkShowMessage(AText: PAnsiChar; AKind: Int64): Int64; cdecl;
+begin
+  try
+    if AText = nil then
+      Exit(-1);
+    PluginShowMessage(UTF8ToString(AText), AKind);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSubscribe(APluginId, ATopic: PAnsiChar; AOnEvent: THostEventCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (ATopic = nil) or not Assigned(AOnEvent) then
+      Exit(-1);
+    PluginSubscribe(UTF8ToString(APluginId), UTF8ToString(ATopic),
+      procedure(const ATopicName, APayloadJson: string)
+      var
+        TopicU, PayloadU: UTF8String;
+      begin
+        TopicU := UTF8String(ATopicName);
+        PayloadU := UTF8String(APayloadJson);
+        AOnEvent(AUserData, PAnsiChar(TopicU), PAnsiChar(PayloadU));
+      end);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelList(ASide: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Json: string;
+begin
+  try
+    if PluginPanelList(ASide, Json) then
+      Result := CopyUtf8Out(Json, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelSetCursor(ASide: Int64; AURI: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AURI <> nil) and PluginPanelSetCursor(ASide, UTF8ToString(AURI)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPanelSelect(ASide, AMode: Int64; AArg: PAnsiChar): Int64; cdecl;
+var
+  Arg: string;
+begin
+  try
+    if AArg <> nil then
+      Arg := UTF8ToString(AArg)
+    else
+      Arg := '';
+    if PluginPanelSelect(ASide, AMode, Arg) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocSetSelection(ARow1, ACol1, ARow2, ACol2: Int64): Int64; cdecl;
+begin
+  try
+    if PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkDocLine(AIndex: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Text: string;
+begin
+  try
+    if PluginDocLine(AIndex, Text) then
+      Result := CopyUtf8Out(Text, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkPostToMain(APluginId: PAnsiChar; ACallback: THostMainCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  // May run on any thread: nothing here touches the registries.
+  try
+    if (APluginId = nil) or not Assigned(ACallback) then
+      Exit(-1);
+    PluginPostToMain(UTF8ToString(APluginId),
+      procedure
+      begin
+        ACallback(AUserData);
+      end);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkProgressSet(APluginId, AId, AText: PAnsiChar; APercent: Int64): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AId = nil) or (AText = nil) then
+      Exit(-1);
+    PluginProgressSet(UTF8ToString(APluginId), UTF8ToString(AId), UTF8ToString(AText), APercent);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkProgressEnd(APluginId, AId: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AId = nil) then
+      Exit(-1);
+    PluginProgressEnd(UTF8ToString(APluginId), UTF8ToString(AId));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceOpen(APluginId, ATitle: PAnsiChar; AOnKey: THostSurfaceKeyCallback;
+  AOnTick: THostSurfaceTickCallback; AOnClosed: THostSurfaceClosedCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  OnKey: TSurfaceKeyCallback;
+  OnTick, OnClosed: TProc;
+  Handle: Integer;
+begin
+  try
+    if APluginId = nil then
+      Exit(-1);
+    OnKey := nil;
+    OnTick := nil;
+    OnClosed := nil;
+    if Assigned(AOnKey) then
+      OnKey := function(const AKey: string): Boolean
+        var
+          KeyU: UTF8String;
+        begin
+          KeyU := UTF8String(AKey);
+          Result := AOnKey(AUserData, PAnsiChar(KeyU)) = 1;
+        end;
+    if Assigned(AOnTick) then
+      OnTick := procedure
+        begin
+          AOnTick(AUserData);
+        end;
+    if Assigned(AOnClosed) then
+      OnClosed := procedure
+        begin
+          AOnClosed(AUserData);
+        end;
+    Handle := PluginSurfaceOpen(UTF8ToString(APluginId), UTF8ToString(ATitle), OnKey, OnTick,
+      OnClosed);
+    if Handle > 0 then
+      Result := Handle
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkVfsText(AList: Boolean; APluginId, AUri: PAnsiChar; ACallback: THostVfsTextCallback;
+  AUserData: Pointer): Int64;
+var
+  Done: TPluginVfsTextDone;
+begin
+  try
+    if (APluginId = nil) or (AUri = nil) or not Assigned(ACallback) then
+      Exit(-1);
+    Done :=
+      procedure(AStatus: Integer; const AText: string)
+      var
+        U: UTF8String;
+      begin
+        U := UTF8String(AText);
+        ACallback(AUserData, AStatus, PAnsiChar(U));
+      end;
+    if AList then
+      Result := PluginVfsList(UTF8ToString(APluginId), UTF8ToString(AUri), Done)
+    else
+      Result := PluginVfsExists(UTF8ToString(APluginId), UTF8ToString(AUri), Done);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkVfsList(APluginId, AUri: PAnsiChar; ACallback: THostVfsTextCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  Result := ThunkVfsText(True, APluginId, AUri, ACallback, AUserData);
+end;
+
+function ThunkVfsExists(APluginId, AUri: PAnsiChar; ACallback: THostVfsTextCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  Result := ThunkVfsText(False, APluginId, AUri, ACallback, AUserData);
+end;
+
+function ThunkVfsRead(APluginId, AUri: PAnsiChar; AMaxBytes: Int64;
+  ACallback: THostVfsDataCallback; AUserData: Pointer): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AUri = nil) or not Assigned(ACallback) then
+      Exit(-1);
+    Result := PluginVfsRead(UTF8ToString(APluginId), UTF8ToString(AUri), AMaxBytes,
+      procedure(AStatus: Integer; const AData: TBytes)
+      begin
+        if Length(AData) > 0 then
+          ACallback(AUserData, AStatus, @AData[0], Length(AData))
+        else
+          ACallback(AUserData, AStatus, nil, 0);
+      end);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterHighlighter(APluginId, AExtensions: PAnsiChar;
+  AHandler: THostHighlightCallback; AUserData: Pointer): Int64; cdecl;
+const
+  cMaxSpans = 256;
+begin
+  try
+    if (APluginId = nil) or (AExtensions = nil) or not Assigned(AHandler) then
+      Exit(-1);
+    RegisterHighlighter(UTF8ToString(APluginId), UTF8ToString(AExtensions),
+      function(const ALine: string; out ASpans: THighlightSpans): Boolean
+      var
+        U: UTF8String;
+        Buf: array[0..cMaxSpans * 3 - 1] of Integer;
+        Map: TArray<Integer>;
+        N, I, B, Units, Start, Stop: Integer;
+      begin
+        ASpans := nil;
+        U := UTF8String(ALine);
+        N := Integer(AHandler(AUserData, PAnsiChar(U), @Buf[0], cMaxSpans));
+        if N <= 0 then
+          Exit(False);
+        if N > cMaxSpans then
+          N := cMaxSpans;
+        // The plugin counts bytes; the program counts UTF-16 characters.
+        SetLength(Map, Length(U) + 1);
+        Units := 0;
+        for B := 0 to Length(U) - 1 do
+        begin
+          if (Byte(U[B + 1]) and $C0) = $80 then
+            Map[B] := Units
+          else
+          begin
+            Map[B] := Units;
+            if Byte(U[B + 1]) >= $F0 then
+              Inc(Units, 2)
+            else
+              Inc(Units);
+          end;
+        end;
+        Map[Length(U)] := Units;
+        SetLength(ASpans, 0);
+        for I := 0 to N - 1 do
+        begin
+          B := Buf[I * 3];
+          if (B < 0) or (B >= Length(U)) or (Buf[I * 3 + 1] <= 0) then
+            Continue;
+          Start := Map[B];
+          Stop := Map[Min(B + Buf[I * 3 + 1], Length(U))];
+          if Stop <= Start then
+            Continue;
+          SetLength(ASpans, Length(ASpans) + 1);
+          ASpans[High(ASpans)].Start := Start;
+          ASpans[High(ASpans)].Len := Stop - Start;
+          ASpans[High(ASpans)].Kind := Buf[I * 3 + 2];
+        end;
+        Result := Length(ASpans) > 0;
+      end);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceOpenEx(APluginId, ATitle: PAnsiChar; AMode: Int64;
+  AOnKey: THostSurfaceKeyCallback; AOnTick: THostSurfaceTickCallback;
+  AOnClosed: THostSurfaceClosedCallback; AOnMouse: THostSurfaceMouseCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  OnKey: TSurfaceKeyCallback;
+  OnTick, OnClosed: TProc;
+  OnMouse: TSurfaceMouseCallback;
+  Handle: Integer;
+begin
+  try
+    if APluginId = nil then
+      Exit(-1);
+    OnKey := nil;
+    OnTick := nil;
+    OnClosed := nil;
+    OnMouse := nil;
+    if Assigned(AOnKey) then
+      OnKey := function(const AKey: string): Boolean
+        var
+          KeyU: UTF8String;
+        begin
+          KeyU := UTF8String(AKey);
+          Result := AOnKey(AUserData, PAnsiChar(KeyU)) = 1;
+        end;
+    if Assigned(AOnTick) then
+      OnTick := procedure
+        begin
+          AOnTick(AUserData);
+        end;
+    if Assigned(AOnClosed) then
+      OnClosed := procedure
+        begin
+          AOnClosed(AUserData);
+        end;
+    if Assigned(AOnMouse) then
+      OnMouse := function(AKind, AX, AY, AWidth, AHeight, AButton, AExtra, AShift: Integer): Boolean
+        begin
+          Result := AOnMouse(AUserData, AKind, AX, AY, AWidth, AHeight, AButton, AExtra, AShift) = 1;
+        end;
+    Handle := PluginSurfaceOpenEx(UTF8ToString(APluginId), UTF8ToString(ATitle), AMode, OnKey,
+      OnTick, OnClosed, OnMouse);
+    if Handle > 0 then
+      Result := Handle
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceSetFullscreen(AHandle, AOn: Int64): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceSetFullscreen(AHandle, AOn <> 0) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceNativeHandle(AHandle: Int64): Int64; cdecl;
+begin
+  try
+    Result := PluginSurfaceNativeHandle(AHandle);
+  except
+    Result := 0;
+  end;
+end;
+
+function ThunkSurfaceSetFrame(AHandle, AWidth, AHeight: Int64; APixels: PByte;
+  ALength: Int64): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceSetFrame(AHandle, AWidth, AHeight, APixels, ALength) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceSetInfo(AHandle: Int64; ATitle, AStatus: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceSetInfo(AHandle, UTF8ToString(ATitle), UTF8ToString(AStatus)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceSetTimer(AHandle, AIntervalMs: Int64): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceSetTimer(AHandle, AIntervalMs) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceClose(AHandle: Int64): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceClose(AHandle) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkOpenExternal(AURI: PAnsiChar): Int64; cdecl;
 begin
   try
@@ -691,6 +1267,37 @@ begin
     if SameText(Id, APluginId) then
       Exit(True);
   Result := False;
+end;
+
+procedure TPluginLoader.SetPluginOrder(const AIds: TArray<string>);
+begin
+  FOrder := Copy(AIds);
+end;
+
+function TPluginLoader.MovePlugin(const APluginId: string; ADelta: Integer): Boolean;
+var
+  I, J: Integer;
+  Ids: TArray<string>;
+begin
+  Result := False;
+  I := -1;
+  for J := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[J].PluginId, APluginId) then
+    begin
+      I := J;
+      Break;
+    end;
+  if I < 0 then
+    Exit;
+  J := I + ADelta;
+  if (ADelta = 0) or (J < 0) or (J >= FCatalog.Count) then
+    Exit;
+  FCatalog.Move(I, J);
+  SetLength(Ids, FCatalog.Count);
+  for J := 0 to FCatalog.Count - 1 do
+    Ids[J] := FCatalog[J].PluginId;
+  FOrder := Ids;
+  Result := True;
 end;
 
 procedure TPluginLoader.SetDisabledPlugins(const AIds: TArray<string>);
@@ -855,6 +1462,38 @@ begin
   Result.RegisterSettings := @ThunkRegisterSettings;
   Result.GetSetting := @ThunkGetSetting;
   Result.SetSetting := @ThunkSetSetting;
+  Result.SurfaceOpen := @ThunkSurfaceOpen;
+  Result.SurfaceSetFrame := @ThunkSurfaceSetFrame;
+  Result.SurfaceSetInfo := @ThunkSurfaceSetInfo;
+  Result.SurfaceSetTimer := @ThunkSurfaceSetTimer;
+  Result.SurfaceClose := @ThunkSurfaceClose;
+  Result.HostInfo := @ThunkHostInfo;
+  Result.DocInfo := @ThunkDocInfo;
+  Result.DocGetText := @ThunkDocGetText;
+  Result.DocReplace := @ThunkDocReplace;
+  Result.DocSetCursor := @ThunkDocSetCursor;
+  Result.PanelInfo := @ThunkPanelInfo;
+  Result.PanelGoto := @ThunkPanelGoto;
+  Result.PanelRefresh := @ThunkPanelRefresh;
+  Result.ClipboardGet := @ThunkClipboardGet;
+  Result.ClipboardSet := @ThunkClipboardSet;
+  Result.ShowMessage := @ThunkShowMessage;
+  Result.Subscribe := @ThunkSubscribe;
+  Result.PanelList := @ThunkPanelList;
+  Result.PanelSetCursor := @ThunkPanelSetCursor;
+  Result.PanelSelect := @ThunkPanelSelect;
+  Result.DocSetSelection := @ThunkDocSetSelection;
+  Result.DocLine := @ThunkDocLine;
+  Result.PostToMain := @ThunkPostToMain;
+  Result.ProgressSet := @ThunkProgressSet;
+  Result.ProgressEnd := @ThunkProgressEnd;
+  Result.SurfaceOpenEx := @ThunkSurfaceOpenEx;
+  Result.SurfaceSetFullscreen := @ThunkSurfaceSetFullscreen;
+  Result.SurfaceNativeHandle := @ThunkSurfaceNativeHandle;
+  Result.RegisterHighlighter := @ThunkRegisterHighlighter;
+  Result.VfsList := @ThunkVfsList;
+  Result.VfsExists := @ThunkVfsExists;
+  Result.VfsRead := @ThunkVfsRead;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -920,6 +1559,7 @@ begin
   end;
 
   GrantManifestOverrides(APluginId, Manifest);
+  PluginPermissionsDeclare(APluginId, Manifest.Permissions);
   New(HostApi);
   HostApi^ := BuildHostApiTable;
   try
@@ -982,6 +1622,7 @@ begin
   end;
 
   GrantManifestOverrides(APluginId, Manifest);
+  PluginPermissionsDeclare(APluginId, Manifest.Permissions);
   Inst := TWasmPluginInstance.Create(APluginId);
   Inst.Wasi := Manifest.Wasi;
   if not Inst.LoadFromFile(AFileName, Err) then
@@ -1103,6 +1744,38 @@ begin
   Result := PluginIsLoaded(E.PluginId);
 end;
 
+// Plugins named in FOrder come first, in that order; the others keep their
+// folder order after them.
+procedure TPluginLoader.SortCatalogByOrder;
+var
+  Sorted: TList<TCatalogedPlugin>;
+  Taken: TArray<Boolean>;
+  Id: string;
+  I: Integer;
+begin
+  if Length(FOrder) = 0 then
+    Exit;
+  Sorted := TList<TCatalogedPlugin>.Create;
+  try
+    SetLength(Taken, FCatalog.Count);
+    for Id in FOrder do
+      for I := 0 to FCatalog.Count - 1 do
+        if not Taken[I] and SameText(FCatalog[I].PluginId, Id) then
+        begin
+          Taken[I] := True;
+          Sorted.Add(FCatalog[I]);
+          Break;
+        end;
+    for I := 0 to FCatalog.Count - 1 do
+      if not Taken[I] then
+        Sorted.Add(FCatalog[I]);
+    FCatalog.Clear;
+    FCatalog.AddRange(Sorted);
+  finally
+    Sorted.Free;
+  end;
+end;
+
 procedure TPluginLoader.CatalogPlugins(const ADir: string);
 var
   PluginDir, PluginId: string;
@@ -1128,6 +1801,7 @@ begin
       E.Schemes := Manifest.Schemes;
       E.ArchiveExtensions := Manifest.ArchiveExtensions;
       E.Overrides := Manifest.Overrides;
+      PluginPermissionsDeclare(PluginId, Manifest.Permissions);
       E.LoadAtStart := Manifest.Startup or
         ((Length(Manifest.Overrides) > 0) and IsOverrideAllowed(PluginId));
     end
@@ -1135,9 +1809,11 @@ begin
     begin
       SetLength(E.Schemes, 0);
       SetLength(E.ArchiveExtensions, 0);
+      PluginPermissionsDeclare(PluginId, nil);
     end;
     FCatalog.Add(E);
   end;
+  SortCatalogByOrder;
   for I := 0 to FCatalog.Count - 1 do
     if FCatalog[I].LoadAtStart and not FCatalog[I].Disabled then
       EnsureIndex(I);
@@ -1226,6 +1902,9 @@ begin
   CommandRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   DocumentProviders.UnregisterPlugin(FLoaded[AIndex].PluginId);
   PluginUiUnregister(FLoaded[AIndex].PluginId);
+  PluginSurfaceUnregister(FLoaded[AIndex].PluginId);
+  PluginEventsUnregister(FLoaded[AIndex].PluginId);
+  UnregisterHighlighter(FLoaded[AIndex].PluginId);
   PluginChrome.UnregisterPlugin(FLoaded[AIndex].PluginId);
   PluginSettings.UnregisterPlugin(FLoaded[AIndex].PluginId);
   MenuRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
