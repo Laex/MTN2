@@ -345,8 +345,10 @@ function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
 /// lines are OK / FAILED marks, not a checksum file).</summary>
 function BuildChecksumResultDialog(const ATitle, AStatus: string;
   const ALines: TArray<string>; AVerify: Boolean): TDialogDeclaration;
+/// <summary>AAccents: the quick-launch key cells of the rows.</summary>
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0;
+  const AAccents: TArray<TListAccent> = nil): TDialogDeclaration;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0; AStartOnLaunch: Boolean = False;
   ACwdToPanels: Boolean = True): TDialogDeclaration;
@@ -1457,9 +1459,44 @@ begin
 end;
 
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; const AAccents: TArray<TListAccent>): TDialogDeclaration;
+const
+  cExtraWidth = 12;
+var
+  I, N: Integer;
 begin
-  Result := BuildShellProfileListDialog('New terminal', ATitles, ASelectedIndex);
+  Result := BuildShellProfileListDialog(
+    T('ui.terminalProfile.title', 'New terminal'), ATitles, ASelectedIndex);
+  // Wider than the shared resource so the key mode at the end of a row is
+  // never cut; two hint rows under the rule, the buttons move down for them.
+  Result.Width := Result.Width + cExtraWidth;
+  Result.Height := Result.Height + 2;
+  for I := 0 to High(Result.Controls) do
+    case Result.Controls[I].Kind of
+      dckList:
+        Inc(Result.Controls[I].BoxW, cExtraWidth);
+      dckLabel:
+        if IsHRuleText(Result.Controls[I].Text) then
+          Result.Controls[I] := WithControlBox(
+            MakeHRule(Result.Controls[I].BoxW + cExtraWidth),
+            Result.Controls[I].Col, Result.Controls[I].Row,
+            Result.Controls[I].BoxW + cExtraWidth, 1);
+      dckButton:
+        begin
+          Inc(Result.Controls[I].Row, 2);
+          Inc(Result.Controls[I].Col, cExtraWidth div 2);
+        end;
+    end;
+  DialogSetListAccents(Result, 'profiles', AAccents);
+  N := Length(Result.Controls);
+  SetLength(Result.Controls, N + 2);
+  Result.Controls[N] := WithControlBox(
+    MakeLabel(T('ui.terminalProfile.hint1', 'Ins - copy profile   Del - delete copy')),
+    1, 13, Result.Width - 4, 1);
+  Result.Controls[N + 1] := WithControlBox(
+    MakeLabel(T('ui.terminalProfile.hint2', 'Ctrl+Up/Down - order   F4 - keys mode')),
+    1, 14, Result.Width - 4, 1);
+  FitDialogCaptions(Result);
 end;
 
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;

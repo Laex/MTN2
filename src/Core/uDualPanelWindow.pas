@@ -159,6 +159,7 @@ type
     FOnImportSettings: TSettingsFileEvent;
     FOnToggleConsole: TQuitRequestEvent;
     FOnOpenTerminal: TOpenTerminalEvent;
+    FOnQueryConsoleKeyCapture: TFunc<Boolean>;
     FOnSetConsoleProfile: TSetConsoleProfileEvent;
     FOnGetConsoleProfile: TGetConsoleProfileEvent;
     FOnGetConsoleStartOnLaunch: TGetConsoleStartOnLaunchEvent;
@@ -1086,6 +1087,14 @@ type
       read FOnImportSettings write FOnImportSettings;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
     property OnOpenTerminal: TOpenTerminalEvent read FOnOpenTerminal write FOnOpenTerminal;
+    /// <summary>True while the Ctrl+O console hands the keys to its program
+    /// (see TBaseConsoleWindow.KeysToProgram).</summary>
+    property OnQueryConsoleKeyCapture: TFunc<Boolean>
+      read FOnQueryConsoleKeyCapture write FOnQueryConsoleKeyCapture;
+    /// <summary>The active terminal tab or the console hands the keys the
+    /// host also binds (F1, F9, Alt+letter, ...) to its program; the keys that
+    /// leave the console (IsKeyboardCaptureExitAction) are not among them.</summary>
+    function ProgramCapturesKeys: Boolean;
     property OnSetConsoleProfile: TSetConsoleProfileEvent
       read FOnSetConsoleProfile write FOnSetConsoleProfile;
     property OnGetConsoleProfile: TGetConsoleProfileEvent
@@ -1888,6 +1897,7 @@ begin
   FModalInputHost.HandleHotlistList := FFolderHotlist.HandleListInput;
   FModalInputHost.HandleWorkspaceList := FWorkspaceLibrary.HandleListInput;
   FModalInputHost.HandleSshConnectionsList := FSshConnections.HandleListInput;
+  FModalInputHost.HandleTerminalProfileList := FSettings.HandleTerminalProfileInput;
   FModalInputHost.HandleAssociationsList := FUserAssociations.HandleListInput;
   FModalInputHost.HandleColorList := FColorCoding.HandleListInput;
   FModalInputHost.HandleColorEdit := FColorCoding.HandleEditInput;
@@ -11217,6 +11227,22 @@ begin
     AKeyChar);
 end;
 
+function TDualPanelWindow.ProgramCapturesKeys: Boolean;
+var
+  Term: TTerminalWorkspaceWindow;
+begin
+  Result := False;
+  if (Assigned(FDialog) and FDialog.Visible) or HelpVisible then
+    Exit;
+  if ActiveWorkspace.Kind = wkTerminal then
+  begin
+    Term := TerminalForWorkspace(FState.ActiveWorkspaceIndex);
+    Result := Assigned(Term) and Term.KeysToProgram;
+  end
+  else if FConsoleMode then
+    Result := Assigned(FOnQueryConsoleKeyCapture) and FOnQueryConsoleKeyCapture();
+end;
+
 function TDualPanelWindow.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
@@ -11228,6 +11254,7 @@ var
   DialogVis: Boolean;
   Chain: TArray<TKeymapContext>;
   GlobalAct: TKeymapAction;
+  ProgramKeys: Boolean;
 begin
   Result := True;
   SetKeyModifiers(AShift);
@@ -11277,6 +11304,12 @@ begin
       Chain := [kcPanels];
   end;
   GlobalAct := GlobalKeymapAction(ActiveKeymap, Chain, AKey, AKeyChar, AShift, DialogVis);
+  // A console in program-keys mode: the host keeps only the keys that leave
+  // the console; its menu, help and the rest of the global keys go to the
+  // program (an open top menu still takes its keys).
+  ProgramKeys := ProgramCapturesKeys and not (Assigned(FTopMenu) and FTopMenu.Active);
+  if ProgramKeys and not IsKeyboardCaptureExitAction(GlobalAct) then
+    GlobalAct := kaNone;
 
   // Top menu: its key (F9) opens and closes the bar, so does an Alt
   // release; an open bar takes every key, and Alt+letter hotkeys that match
@@ -11284,7 +11317,8 @@ begin
   // Viewer/Editor tabs as on panels: a row 0 click reaches the menu via
   // DispatchClickOverlays. Not while a modal dialog is open, or F9 would win
   // over dialog bindings (hdkColorCodingEdit's "pick a color").
-  if Assigned(FTopMenu) and ShouldOfferTopMenu(ActiveWorkspace.Kind, DialogVis) then
+  if Assigned(FTopMenu) and not ProgramKeys and
+     ShouldOfferTopMenu(ActiveWorkspace.Kind, DialogVis) then
   begin
     if FTopMenu.Active and (MatchActiveActionIn([kcGlobal],
       KeymapLookupKey(AKey, AKeyChar), AShift) = kaTopMenu) then

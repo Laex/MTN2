@@ -362,7 +362,8 @@ file:///D:/data/bundle.zip!/nested.zip!/a.txt
 
 **C. Функциональность целиком Windows-специфична – порт не переиспользует внутренности, только контракт/схему**
 - `uConPtyApi.pas`, `uConPty.pas` – ConPTY; POSIX-эквивалент: `forkpty`/`termios`, за тем же `IPtySession` (см. пункт A).
-- `uShellProfiles.pas` – каталог профилей (cmd/PowerShell/pwsh/WSL) сам по себе Windows-специфичен, не только процесс запуска; POSIX – свой каталог (bash/zsh/fish) той же формы (`TShellProfileInfo`/`TShellProfileArray`).
+- `uShellProfiles.pas` – каталог профилей (cmd/PowerShell/pwsh/WSL) сам по себе Windows-специфичен, не только процесс запуска; POSIX – свой каталог (bash/zsh/fish) той же формы (`TShellProfileInfo`/`TShellProfileArray`). Копия профиля – идентификатор `<профиль>#N`: `NormalizeShellProfileId` сводит его к профилю (оболочка и поведение те же), `CanonicalShellProfileId` оставляет суффикс.
+- `uShellProfileOptions.pas` – `shellprofiles.json`: копии профилей, порядок списка и режим клавиш профиля (авто / терминал / хост). `TBaseConsoleWindow.KeysToProgram` решает, получает ли программа клавиши, которые окно тоже занимает (F1, F9, Alt+буква); оставляет окну только `IsKeyboardCaptureExitAction` (выход из консоли, полный экран, вкладки, новый терминал). `uTerminalKeys.pas` кодирует F-клавиши, Alt/Ctrl-сочетания и стрелки с модификаторами в xterm-последовательности.
 - `uDriveInfo.pas` – буквы дисков не обобщаются на POSIX; там другая UI-модель (примонтированные ФС под одним `/`), не просто другой источник данных.
 - `uWinFileDragDrop.pas` – OLE drag-out; на других платформах – опциональная деградация (no-op), не редизайн.
 - `uShellIcons.pas` – иконки из Windows Shell; на Linux – freedesktop icon theme, на macOS – `NSWorkspace`; общий контракт – кэш по `IconId`.

@@ -236,6 +236,7 @@ type
     HandleHotlistList: TKeymapInputFn;
     HandleWorkspaceList: TKeymapInputFn;
     HandleSshConnectionsList: TKeymapInputFn;
+    HandleTerminalProfileList: TKeymapInputFn;
     HandleAssociationsList: TKeymapInputFn;
     HandleColorList: TKeymapInputFn;
     HandleColorEdit: TKeymapInputFn;
@@ -1507,6 +1508,12 @@ begin
   begin
     if Assigned(AHost.HandleWorkspaceList) and
        AHost.HandleWorkspaceList(AKey, AShift, AKeyChar) then
+      Exit(True);
+  end;
+  if AKind = hdkTerminalProfile then
+  begin
+    if Assigned(AHost.HandleTerminalProfileList) and
+       AHost.HandleTerminalProfileList(AKey, AShift, AKeyChar) then
       Exit(True);
   end;
   if AKind = hdkSshConnections then

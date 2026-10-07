@@ -200,7 +200,7 @@ end;
 function TTerminalWorkspaceWindow.Start(const AProfileId, ACwd: string): Boolean;
 begin
   Result     := False;
-  FProfileId := NormalizeShellProfileId(AProfileId);
+  FProfileId := CanonicalShellProfileId(AProfileId);
   WorkingDir := Trim(ACwd);
 
   if not StartShellSession then
@@ -374,7 +374,7 @@ var
 begin
   K := TKeyChord.Make(AKey, AKeyChar, AShift);
   // Let host handle its own global hotkeys first.
-  if IsTerminalHostPassthrough(K) then
+  if IsTerminalHostPassthrough(K) and not ProgramOwnsKey(AKey, AKeyChar, AShift) then
     Exit(False);
 
   Result := True;
@@ -402,6 +402,10 @@ begin
   // Alt+F8, Ctrl+A, Ctrl+C (copy or interrupt), Ctrl+Insert, Ctrl+V /
   // Shift+Insert.
   if HandleSharedKeys(AKey, AShift, AKeyChar) then
+    Exit;
+
+  // F-keys and Alt / Ctrl combinations of a console in program-keys mode.
+  if HandleProgramKey(AKey, AShift, AKeyChar) then
     Exit;
 
   // Alt-screen (TUI app running): forward navigation keys to the PTY instead

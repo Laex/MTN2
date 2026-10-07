@@ -211,6 +211,10 @@ function KeymapLookupKey(AKey: Word; AKeyChar: Char): Word;
 function MatchGlobalActionIn(const AProfile: TKeymapProfile;
   const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
   AShiftState: TShiftState): TKeymapAction;
+/// <summary>The Global actions that stay with the host window while a console
+/// hands every other key to its program: leaving the console, full screen,
+/// switching tabs and opening a new terminal.</summary>
+function IsKeyboardCaptureExitAction(AAction: TKeymapAction): Boolean;
 /// <summary>MatchActionIn against ActiveKeymap.</summary>
 function MatchActiveActionIn(const AChain: array of TKeymapContext; AKey: Word;
   AShiftState: TShiftState): TKeymapAction;
@@ -780,6 +784,12 @@ begin
     KeymapLookupKey(AKey, AKeyChar), AShiftState);
   if (Result <> kaNone) and (KeymapActionContext(Result) <> kcGlobal) then
     Result := kaNone;
+end;
+
+function IsKeyboardCaptureExitAction(AAction: TKeymapAction): Boolean;
+begin
+  Result := AAction in [kaAppConsoleToggle, kaToggleFullscreen, kaNextTab, kaPrevTab,
+    kaNewTerminal, kaSelectConsoleProfile];
 end;
 
 function MatchAction(const AProfile: TKeymapProfile; AKey: Word; AShiftState: TShiftState): TKeymapAction;

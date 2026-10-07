@@ -15,7 +15,8 @@ uses
   FMX.Platform,
   Winapi.Windows,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uConsoleBuffer, uConPty,
-  uShellProfiles, uDialogTypes, uDialogHost, uInputLine, uKeyChord, uConsoleSettings;
+  uShellProfiles, uShellProfileOptions, uTerminalKeys, uDialogTypes, uDialogHost,
+  uInputLine, uKeyChord, uConsoleSettings;
 
 type
   TConsoleCommandEvent = reference to procedure(const ACommand: string);
@@ -100,10 +101,19 @@ type
     /// window: a full-screen app is up or the shell has a running child
     /// process. At a bare shell prompt it is False.</summary>
     function EscGoesToProgram: Boolean;
+    /// <summary>KeysToProgram, and AKey is not one of those exit keys.</summary>
+    function ProgramOwnsKey(AKey: Word; AKeyChar: Char; AShift: TShiftState): Boolean;
+    /// <summary>Arrow/Home/End sequence for AFinal: ESC O x when the program
+    /// set DECCKM, otherwise ESC [ x.</summary>
+    function CursorKeySeq(AFinal: Char): string;
     /// <summary>While alt-screen is active, forward arrows/PgUp/PgDn/Home/
     /// End/Delete to the PTY instead of scrolling local history. Returns
     /// True (and consumes AKey) only when it forwarded a key.</summary>
     function HandleAltScreenNav(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Sends a key that has an xterm sequence (F-keys, Alt/Ctrl
+    /// combinations, modified arrows) to the program when KeysToProgram.</summary>
+    function HandleProgramKey(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     /// <summary>Arrow keys and Delete go to the shell while the view is at the
     /// live bottom of the output, so its line editing and command history
     /// work; False when scrolled back or in a full-screen app.</summary>
@@ -236,6 +246,11 @@ type
 
     procedure SetCursorVisible(AVisible: Boolean);
 
+    /// <summary>The program gets the keys the host window also binds: the
+    /// profile's key mode is Program, or Auto with a full-screen program up.
+    /// The keys that leave the console (IsKeyboardCaptureExitAction) stay
+    /// with the host.</summary>
+    function KeysToProgram: Boolean;
     property ProfileId:  string read FProfileId;
     property WorkingDir: string read FWorkingDir write FWorkingDir;
     property Running:    Boolean read FRunning;
@@ -270,7 +285,7 @@ begin
   FHistory            := TConsoleBuffer.Create;
   FPty                := TConPtySession.Create;
   FRunning            := False;
-  FProfileId          := NormalizeShellProfileId(
+  FProfileId          := CanonicalShellProfileId(
                            AProfileId);
   if FProfileId = '' then
     FProfileId        := cShellProfileCmd;
@@ -342,6 +357,57 @@ begin
     (Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess);
 end;
 
+function TBaseConsoleWindow.CursorKeySeq(AFinal: Char): string;
+begin
+  if Assigned(FHistory) and FHistory.AppCursorKeys then
+    Result := #27'O' + AFinal
+  else
+    Result := #27'[' + AFinal;
+end;
+
+function TBaseConsoleWindow.KeysToProgram: Boolean;
+begin
+  if not Assigned(FPty) or not FPty.IsRunning then
+    Exit(False);
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit(False);
+  case ProfileKeyMode(FProfileId) of
+    pkmProgram: Result := True;
+    pkmHost: Result := False;
+  else
+    Result := AltScreenActive;
+  end;
+end;
+
+function TBaseConsoleWindow.ProgramOwnsKey(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+begin
+  Result := KeysToProgram and not IsKeyboardCaptureExitAction(
+    MatchGlobalActionIn(ActiveKeymap, [kcShell], AKey, AKeyChar, AShift));
+end;
+
+function TBaseConsoleWindow.HandleProgramKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+var
+  Seq: string;
+begin
+  Result := False;
+  if not KeysToProgram then
+    Exit;
+  // At a shell prompt a bare navigation key still scrolls or edits through
+  // the handlers below; only a full-screen program takes those too.
+  if not AltScreenActive and ([ssCtrl, ssAlt] * AShift = []) and
+     (AKey in [vkUp, vkDown, vkLeft, vkRight, vkPrior, vkNext, vkHome, vkEnd,
+       vkInsert, vkDelete]) then
+    Exit;
+  if not EncodeTerminalKey(AKey, AShift, AKeyChar, FHistory.AppCursorKeys, Seq) then
+    Exit;
+  SendRaw(Seq);
+  AKey := 0;
+  AKeyChar := #0;
+  Result := True;
+end;
+
 function TBaseConsoleWindow.HandleAltScreenNav(var AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := False;
@@ -350,14 +416,14 @@ begin
   if AShift * cKeyMods <> [] then
     Exit;
   case AKey of
-    vkLeft:   SendRaw(#27'[D');
-    vkRight:  SendRaw(#27'[C');
-    vkUp:     SendRaw(#27'[A');
-    vkDown:   SendRaw(#27'[B');
+    vkLeft:   SendRaw(CursorKeySeq('D'));
+    vkRight:  SendRaw(CursorKeySeq('C'));
+    vkUp:     SendRaw(CursorKeySeq('A'));
+    vkDown:   SendRaw(CursorKeySeq('B'));
     vkPrior:  SendRaw(#27'[5~');
     vkNext:   SendRaw(#27'[6~');
-    vkHome:   SendRaw(#27'[H');
-    vkEnd:    SendRaw(#27'[F');
+    vkHome:   SendRaw(CursorKeySeq('H'));
+    vkEnd:    SendRaw(CursorKeySeq('F'));
     vkDelete: SendRaw(#27'[3~');
   else
     Exit;
@@ -1190,9 +1256,15 @@ begin
     // History picker (like the panels' CmdHistory); an entry picked runs
     // at once in this console.
     kaShellHistory:
-      OpenCmdHistoryDialog;
+      if KeysToProgram then
+        Exit(False)
+      else
+        OpenCmdHistoryDialog;
     kaShellSelectAll:
-      SelectAll;
+      if KeysToProgram then
+        Exit(False)
+      else
+        SelectAll;
     kaShellCopyOrInterrupt:
       if HasSelection then
         CopySelection

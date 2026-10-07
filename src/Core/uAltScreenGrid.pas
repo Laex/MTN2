@@ -19,6 +19,9 @@ type
     FCursorRow, FCursorCol: Integer;
     FSavedRow, FSavedCol: Integer;
     FHasSaved: Boolean;
+    // Last column written: the wrap to the next line happens on the next
+    // printable character, not on this one (xterm semantics).
+    FWrapPending: Boolean;
     procedure ScrollUpOne(AFg, ABg: TAlphaColor);
     procedure ClampCursor;
   public
@@ -60,6 +63,7 @@ begin
   FCursorRow := 0;
   FCursorCol := 0;
   FHasSaved := False;
+  FWrapPending := False;
 end;
 
 procedure TAltScreenGrid.Reflow(ACols, ARows: Integer);
@@ -80,6 +84,7 @@ begin
   FGrid := NewGrid;
   FCols := NewCols;
   FRows := NewRows;
+  FWrapPending := False;
   ClampCursor;
 end;
 
@@ -88,6 +93,7 @@ begin
   ClearTerminalGrid(FGrid, AFg, ABg);
   FCursorRow := 0;
   FCursorCol := 0;
+  FWrapPending := False;
 end;
 
 procedure TAltScreenGrid.ScrollUpOne(AFg, ABg: TAlphaColor);
@@ -112,17 +118,21 @@ procedure TAltScreenGrid.PutCell(ACh: Char; AFg, ABg: TAlphaColor; AAttrs: TChar
 begin
   if (FCols <= 0) or (FRows <= 0) then
     Exit;
-  DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
-  Inc(FCursorCol);
-  if FCursorCol >= FCols then
+  if FWrapPending then
   begin
     FCursorCol := 0;
     NewLine(AFg, ABg);
   end;
+  DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
+  if FCursorCol >= FCols - 1 then
+    FWrapPending := True
+  else
+    Inc(FCursorCol);
 end;
 
 procedure TAltScreenGrid.NewLine(AFg, ABg: TAlphaColor);
 begin
+  FWrapPending := False;
   if FCursorRow < FRows - 1 then
     Inc(FCursorRow)
   else
@@ -131,17 +141,20 @@ end;
 
 procedure TAltScreenGrid.CarriageReturn;
 begin
+  FWrapPending := False;
   FCursorCol := 0;
 end;
 
 procedure TAltScreenGrid.Backspace;
 begin
+  FWrapPending := False;
   if FCursorCol > 0 then
     Dec(FCursorCol);
 end;
 
 procedure TAltScreenGrid.MoveAbs(ARow, ACol: Integer);
 begin
+  FWrapPending := False;
   FCursorRow := ARow;
   FCursorCol := ACol;
   ClampCursor;
@@ -149,6 +162,7 @@ end;
 
 procedure TAltScreenGrid.MoveRel(ADir: Char; ACount: Integer);
 begin
+  FWrapPending := False;
   case ADir of
     'A': Dec(FCursorRow, ACount);
     'B': Inc(FCursorRow, ACount);
@@ -169,6 +183,7 @@ procedure TAltScreenGrid.RestoreCursor;
 begin
   if not FHasSaved then
     Exit;
+  FWrapPending := False;
   FCursorRow := FSavedRow;
   FCursorCol := FSavedCol;
   ClampCursor;

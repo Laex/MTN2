@@ -26,6 +26,7 @@ uses
   TestPtySession in 'TestPtySession.pas',
   TestPtyCtrlC in 'TestPtyCtrlC.pas',
   TestPtyPromptCount in 'TestPtyPromptCount.pas',
+  TestShellProfileOptions in 'TestShellProfileOptions.pas',
   TestShellProfiles in 'TestShellProfiles.pas',
   TestShellSessions in 'TestShellSessions.pas',
   TestWorkspaceLibrary in 'TestWorkspaceLibrary.pas';

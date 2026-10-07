@@ -15,6 +15,8 @@ type
     [Test] procedure TestScrollbackScaling10k;
     [Test] procedure TestEraseCommands;
     [Test] procedure TestCursorAddressingAndAltScreen;
+    [Test] procedure TestAltScreenDeferredWrapAtLastColumn;
+    [Test] procedure TestApplicationCursorKeysMode;
   end;
 
 implementation
@@ -266,6 +268,50 @@ begin
 
 end;
 
+procedure TestAltScreenDeferredWrapAtLastColumn;
+var
+  Buffer: TConsoleBuffer;
+begin
+  Buffer := TConsoleBuffer.Create(100);
+  try
+    Buffer.AppendOutputEx(#27'[?1049h', 5, 4);
+    // A line filled to the last column followed by CR LF occupies one row:
+    // the wrap happens on the next printable character, not on the last one.
+    Buffer.AppendOutputEx('ABCDE'#13#10'FGHIJ'#13#10'K', 5, 4);
+    Assert.AreEqual('E', string(Buffer.AltScreen.Grid[0][4].CharValue));
+    Assert.AreEqual('F', string(Buffer.AltScreen.Grid[1][0].CharValue));
+    Assert.AreEqual('K', string(Buffer.AltScreen.Grid[2][0].CharValue));
+    Assert.AreEqual(2, Buffer.AltScreen.CursorRow);
+
+    // A printable character after a full line wraps onto the next row.
+    Buffer.AppendOutputEx(#27'[4;1HABCDEZ', 5, 4);
+    Assert.AreEqual('E', string(Buffer.AltScreen.Grid[2][4].CharValue),
+      'writing past the last column of the bottom row scrolls');
+    Assert.AreEqual('Z', string(Buffer.AltScreen.Grid[3][0].CharValue));
+  finally
+    Buffer.Free;
+  end;
+end;
+
+procedure TestApplicationCursorKeysMode;
+var
+  Buffer: TConsoleBuffer;
+begin
+  Buffer := TConsoleBuffer.Create(100);
+  try
+    Assert.IsFalse(Buffer.AppCursorKeys);
+    Buffer.AppendOutputEx(#27'[?1049h'#27'[?1h', 20, 5);
+    Assert.IsTrue(Buffer.AppCursorKeys);
+    Buffer.AppendOutputEx(#27'[?1l', 20, 5);
+    Assert.IsFalse(Buffer.AppCursorKeys);
+    Buffer.AppendOutputEx(#27'[?1h', 20, 5);
+    Buffer.AppendOutputEx(#27'[?1049l', 20, 5);
+    Assert.IsFalse(Buffer.AppCursorKeys, 'leaving the alt screen resets the mode');
+  finally
+    Buffer.Free;
+  end;
+end;
+
 { TTestANSIParser }
 
 procedure TTestANSIParser.TestStandardColorsAndAttributes;
@@ -296,6 +342,16 @@ end;
 procedure TTestANSIParser.TestCursorAddressingAndAltScreen;
 begin
   TestANSIParser.TestCursorAddressingAndAltScreen;
+end;
+
+procedure TTestANSIParser.TestAltScreenDeferredWrapAtLastColumn;
+begin
+  TestANSIParser.TestAltScreenDeferredWrapAtLastColumn;
+end;
+
+procedure TTestANSIParser.TestApplicationCursorKeysMode;
+begin
+  TestANSIParser.TestApplicationCursorKeysMode;
 end;
 
 initialization

@@ -72,6 +72,8 @@ type
     function ReadMarkdownColorFields(out ASet: TMdColorSet): Boolean;
     function CollectAvailableProfiles(out ATitles, AIds: TArray<string>;
       const APreferId: string; out ASel: Integer): Boolean;
+    procedure ShowTerminalProfiles(const ASelectId: string);
+    procedure LaunchTerminalProfile(AIndex: Integer);
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TSettingsKindSetter; const AOnNotify: TProc;
@@ -114,6 +116,10 @@ type
     function HandleMarkdownColorsInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure DispatchTerminalProfileCommand(const AControlId: string);
+    /// <summary>Quick-launch keys, Ins / Del / Ctrl+Up / Ctrl+Down / F4 of the
+    /// New terminal list.</summary>
+    function HandleTerminalProfileInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     procedure DispatchConsoleProfileCommand(const AControlId: string);
     function DispatchCommand(AKind: THostDialogKind;
       const AControlId: string): Boolean;
@@ -122,7 +128,8 @@ type
 implementation
 
 uses
-  uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings;
+  uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
+  uShellProfileOptions;
 
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
@@ -237,55 +244,175 @@ function TSettingsDialogController.CollectAvailableProfiles(
   out ATitles, AIds: TArray<string>; const APreferId: string;
   out ASel: Integer): Boolean;
 var
-  Profiles: TShellProfileArray;
+  Entries: TProfileEntries;
   I: Integer;
   Prefer: string;
-  IsPreferredMatch: Boolean;
 begin
   SetLength(ATitles, 0);
   SetLength(AIds, 0);
   ASel := 0;
-  Prefer := Trim(APreferId);
-  Profiles := EnumerateShellProfiles;
-  for I := 0 to High(Profiles) do
+  Prefer := CanonicalShellProfileId(APreferId);
+  if Trim(APreferId) = '' then
+    Prefer := cShellProfileCmd;
+  Entries := ProfileEntriesOrdered;
+  for I := 0 to High(Entries) do
   begin
-    if not Profiles[I].Available then
-      Continue;
-    ATitles := ATitles + [Profiles[I].Title];
-    AIds := AIds + [Profiles[I].Id];
-    if Prefer <> '' then
-      IsPreferredMatch := SameText(Profiles[I].Id, Prefer)
-    else
-      IsPreferredMatch := Profiles[I].Id = cShellProfileCmd;
-    if IsPreferredMatch then
-      ASel := High(ATitles);
+    ATitles := ATitles + [Entries[I].Title];
+    AIds := AIds + [Entries[I].Id];
+    if SameText(Entries[I].Id, Prefer) then
+      ASel := I;
   end;
   Result := Length(ATitles) > 0;
 end;
 
-procedure TSettingsDialogController.OpenTerminalProfiles;
+procedure TSettingsDialogController.ShowTerminalProfiles(const ASelectId: string);
 var
-  Titles: TArray<string>;
-  Ids: TArray<string>;
-  Sel: Integer;
+  Entries: TProfileEntries;
+  Items: TArray<string>;
+  Accents: TArray<TListAccent>;
+  Accent: TListAccent;
+  I, Sel: Integer;
+  Hot: string;
+  Prefer: string;
+begin
+  Entries := ProfileEntriesOrdered;
+  SetLength(Items, Length(Entries));
+  SetLength(FProfileIds, Length(Entries));
+  Prefer := ASelectId;
+  if Prefer = '' then
+    Prefer := cShellProfileCmd;
+  Sel := 0;
+  for I := 0 to High(Entries) do
+  begin
+    FProfileIds[I] := Entries[I].Id;
+    if ProfileHotkeyChar(I) <> #0 then
+    begin
+      Hot := ProfileHotkeyChar(I);
+      Accent.Item := I;
+      Accent.Col := 0;
+      Accent.Len := 1;
+      Accents := Accents + [Accent];
+    end
+    else
+      Hot := ' ';
+    Items[I] := Format('%s  %-30s [%s]', [Hot, Entries[I].Title,
+      ProfileKeyModeTitle(Entries[I].KeyMode)]);
+    if SameText(Entries[I].Id, Prefer) then
+      Sel := I;
+  end;
+  SetKind(hdkTerminalProfile);
+  FDialog.Open(BuildTerminalProfileDialog(Items, Sel, Accents), FOnCommand);
+  Notify;
+end;
+
+procedure TSettingsDialogController.OpenTerminalProfiles;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
-  if not CollectAvailableProfiles(Titles, Ids, '', Sel) then
+  if Length(ProfileEntriesOrdered) = 0 then
   begin
     if Assigned(FOnShowStub) then
       FOnShowStub(T('ui.terminalProfile.title', 'New terminal'),
         T('ui.shellProfiles.noneAvailable', 'No shell profiles available'));
     Exit;
   end;
+  ShowTerminalProfiles('');
+end;
 
-  FProfileIds := Ids;
-  SetKind(hdkTerminalProfile);
-  FDialog.Open(BuildTerminalProfileDialog(Titles, Sel), FOnCommand);
-  Notify;
+procedure TSettingsDialogController.LaunchTerminalProfile(AIndex: Integer);
+var
+  Cwd: string;
+begin
+  Cwd := '';
+  if Assigned(FOnGetLocalPath) then
+    Cwd := FOnGetLocalPath();
+  FDialog.Close;
+  if (AIndex >= 0) and (AIndex <= High(FProfileIds)) and Assigned(FOnOpenTerminal) then
+    FOnOpenTerminal(FProfileIds[AIndex], Cwd);
+  SetLength(FProfileIds, 0);
+end;
+
+function TSettingsDialogController.HandleTerminalProfileInput(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Idx, HotIdx: Integer;
+  Id, NewId: string;
+  Ch: Char;
+
+  procedure Consume;
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+  end;
+
+begin
+  Result := False;
+  Idx := FDialog.GetListSelectedIndex('profiles');
+  if (Idx < 0) or (Idx > High(FProfileIds)) then
+    Exit;
+  Id := FProfileIds[Idx];
+
+  if (AKey in [vkUp, vkDown]) and ([ssCtrl] * AShift <> []) and
+     ([ssAlt, ssShift] * AShift = []) then
+  begin
+    if AKey = vkUp then
+      ProfileMove(Id, -1)
+    else
+      ProfileMove(Id, 1);
+    ShowTerminalProfiles(Id);
+    Consume;
+    Exit(True);
+  end;
+  if AShift * [ssCtrl, ssAlt, ssShift] <> [] then
+    Exit;
+  case AKey of
+    vkInsert:
+      begin
+        NewId := ProfileCopyAdd(Id);
+        ShowTerminalProfiles(NewId);
+        Consume;
+        Exit(True);
+      end;
+    vkDelete:
+      begin
+        if ProfileCopyDelete(Id) then
+        begin
+          if Idx > 0 then
+            ShowTerminalProfiles(FProfileIds[Idx - 1])
+          else
+            ShowTerminalProfiles('');
+        end;
+        Consume;
+        Exit(True);
+      end;
+    vkF4:
+      begin
+        SetProfileKeyMode(Id, NextProfileKeyMode(ProfileKeyMode(Id)));
+        ShowTerminalProfiles(Id);
+        Consume;
+        Exit(True);
+      end;
+  end;
+
+  // A profile's number or letter starts it at once.
+  if (AKey >= vk0) and (AKey <= vk9) then
+    Ch := Char(AKey)
+  else if (AKey >= vkNumpad0) and (AKey <= vkNumpad9) then
+    Ch := Char(Ord('0') + AKey - vkNumpad0)
+  else if (AKey >= vkA) and (AKey <= vkZ) then
+    Ch := Char(AKey)
+  else
+    Ch := AKeyChar;
+  HotIdx := ProfileHotkeyIndex(Ch);
+  if (HotIdx >= 0) and (HotIdx <= High(FProfileIds)) then
+  begin
+    LaunchTerminalProfile(HotIdx);
+    Consume;
+    Exit(True);
+  end;
 end;
 
 procedure TSettingsDialogController.OpenConsoleProfiles;
@@ -727,19 +854,15 @@ procedure TSettingsDialogController.DispatchTerminalProfileCommand(
   const AControlId: string);
 var
   Idx: Integer;
-  Accepted: Boolean;
-  Cwd: string;
 begin
   Idx := FDialog.GetListSelectedIndex('profiles');
-  Accepted := DialogCmdIsListAccept(AControlId, 'profiles');
-  FDialog.Close;
-  Cwd := '';
-  if Assigned(FOnGetLocalPath) then
-    Cwd := FOnGetLocalPath();
-  if Accepted and (Idx >= 0) and (Idx <= High(FProfileIds)) and
-     Assigned(FOnOpenTerminal) then
-    FOnOpenTerminal(FProfileIds[Idx], Cwd);
-  SetLength(FProfileIds, 0);
+  if DialogCmdIsListAccept(AControlId, 'profiles') then
+    LaunchTerminalProfile(Idx)
+  else
+  begin
+    FDialog.Close;
+    SetLength(FProfileIds, 0);
+  end;
 end;
 
 procedure TSettingsDialogController.DispatchConsoleProfileCommand(

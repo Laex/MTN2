@@ -562,6 +562,10 @@ begin
   if HandleSharedKeys(AKey, AShift, AKeyChar) then
     Exit;
 
+  // F-keys and Alt / Ctrl combinations of a console in program-keys mode.
+  if HandleProgramKey(AKey, AShift, AKeyChar) then
+    Exit;
+
   // Ctrl+Down - unused (panel cmdline is hidden while console is open).
   if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
   begin

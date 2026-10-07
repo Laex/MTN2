@@ -1246,6 +1246,12 @@
     "setAttr.badDate": "Invalid date: %s",
 
     "terminalProfile.title": "New terminal",
+    "terminalProfile.hint1": "Ins - copy profile   Del - delete copy",
+    "terminalProfile.hint2": "Ctrl+Up/Down - order   F4 - keys mode",
+    "profileKeys.auto": "auto",
+    "profileKeys.program": "terminal",
+    "profileKeys.host": "host",
+    "shellProfiles.copyTitle": "%s (copy %s)",
     "shellProfiles.noneAvailable": "No shell profiles available",
     "consoleProfile.title": "Background console",
     "consoleProfile.startOnLaunch": "&Start shell at program launch",

@@ -42,7 +42,14 @@ function ShellProfileAvailable(const AProfileId: string): Boolean;
 /// Returns False when the profile is unknown or its executable is missing.</summary>
 function ResolveShellCmdLine(const AProfileId, ACwd: string;
   out ACmdLine, AWorkingDir: string): Boolean;
+/// <summary>The profile whose shell AProfileId starts: a copy of a profile
+/// ("wsl:Ubuntu#2") resolves to the profile it was copied from.</summary>
 function NormalizeShellProfileId(const AProfileId: string): string;
+/// <summary>Like NormalizeShellProfileId, but a copy keeps its "#N" suffix, so
+/// per-copy settings can be looked up.</summary>
+function CanonicalShellProfileId(const AProfileId: string): string;
+/// <summary>The "#N" suffix of a profile copy id, '' for a profile.</summary>
+function ShellProfileCopySuffix(const AProfileId: string): string;
 function GetInstalledWslDistros: TArray<string>;
 /// <summary>False for utility VMs that register as WSL distros but are not
 /// interactive user shells (Docker Desktop engine/data, etc.).</summary>
@@ -255,12 +262,34 @@ begin
   end;
 end;
 
+function ShellProfileCopySuffix(const AProfileId: string): string;
+var
+  S: string;
+  I: Integer;
+begin
+  Result := '';
+  S := Trim(AProfileId);
+  I := Length(S);
+  while (I > 0) and CharInSet(S[I], ['0'..'9']) do
+    Dec(I);
+  if (I > 1) and (I < Length(S)) and (S[I] = '#') then
+    Result := Copy(S, I, MaxInt);
+end;
+
+function CanonicalShellProfileId(const AProfileId: string): string;
+begin
+  Result := NormalizeShellProfileId(AProfileId) + ShellProfileCopySuffix(AProfileId);
+end;
+
 function NormalizeShellProfileId(const AProfileId: string): string;
 var
-  Trimmed, Lower: string;
+  Trimmed, Lower, Suffix: string;
   DistroName, RealName: string;
 begin
   Trimmed := Trim(AProfileId);
+  Suffix := ShellProfileCopySuffix(Trimmed);
+  if Suffix <> '' then
+    Trimmed := Copy(Trimmed, 1, Length(Trimmed) - Length(Suffix));
   Lower := LowerCase(Trimmed);
   if (Lower = '') or (Lower = 'cmd.exe') or (Lower = cShellProfileCmd) then
     Exit(cShellProfileCmd);

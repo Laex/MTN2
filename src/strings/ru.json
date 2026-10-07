@@ -1349,6 +1349,12 @@
     "setAttr.badDate": "Неверная дата: %s",
 
     "terminalProfile.title": "Новый терминал",
+    "terminalProfile.hint1": "Ins - копия профиля   Del - удалить копию",
+    "terminalProfile.hint2": "Ctrl+Вверх/Вниз - порядок   F4 - режим клавиш",
+    "profileKeys.auto": "авто",
+    "profileKeys.program": "терминал",
+    "profileKeys.host": "хост",
+    "shellProfiles.copyTitle": "%s (копия %s)",
     "shellProfiles.noneAvailable": "Нет доступных профилей оболочки",
     "consoleProfile.title": "Фоновая консоль",
     "consoleProfile.startOnLaunch": "&Запускать оболочку при старте программы",

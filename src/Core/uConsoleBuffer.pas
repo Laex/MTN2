@@ -34,6 +34,7 @@ type
     FAnsiParser: TANSIParser;
     FAltGrid: TAltScreenGrid;
     FAltActive: Boolean;
+    FAppCursorKeys: Boolean;
     /// <summary>Set right after a local backspace erase (NotePendingLocalBackspace),
     /// cleared once the matching real-echo suppression window opens or a
     /// newline arrives without one ever starting (stale-guard). See
@@ -171,6 +172,9 @@ type
     property AnsiParser: TANSIParser read FAnsiParser;
     property AltScreenActive: Boolean read FAltActive;
     property AltScreen: TAltScreenGrid read FAltGrid;
+    /// <summary>DECCKM (ESC[?1h): the program wants arrows and Home/End as
+    /// ESC O x instead of ESC [ x.</summary>
+    property AppCursorKeys: Boolean read FAppCursorKeys;
   end;
 
 implementation
@@ -1248,6 +1252,8 @@ begin
       end,
       procedure(AMode: Integer; ASet: Boolean)
       begin
+        if AMode = 1 then
+          FAppCursorKeys := ASet;
         // The only callback that must act regardless of FAltActive -- it's
         // what flips the flag. 1049 and 47 are treated identically (enter/
         // exit the same grid, no distinct cursor save/restore for 1049) --
@@ -1266,7 +1272,10 @@ begin
             // (AppendOutput/AppendLocalInput's 1-arg wrappers pass 0,0).
           end
           else if (not ASet) and FAltActive then
+          begin
             FAltActive := False;
+            FAppCursorKeys := False;
+          end;
           Exit;
         end;
         // Mode 25 (cursor visibility): real conhost line-editing brackets its

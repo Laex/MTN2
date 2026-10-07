@@ -1318,6 +1318,9 @@ begin
   // (Ctrl+0) resets it. Checked above every window, like ReloadKeymap.
   Result := MatchActionIn(ActiveKeymap, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
     AShift) = kaZoomReset;
+  // A console that hands every key to its program keeps Ctrl+0 for it.
+  if Result and Assigned(FDualPanel) and FDualPanel.ProgramCapturesKeys then
+    Result := False;
   if not Result then
     Exit;
   if Assigned(FRenderer) then
@@ -1355,6 +1358,12 @@ begin
   FDualPanel.OnImportSettings := DualPanelImportSettings;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
+  FDualPanel.OnQueryConsoleKeyCapture :=
+    function: Boolean
+    begin
+      Result := IsConsoleActiveInConsoleMode and Assigned(FConsole) and
+        FConsole.KeysToProgram;
+    end;
   FDualPanel.OnLaunchConsoleFile := DualPanelLaunchConsoleFile;
   FDualPanel.OnSetConsoleProfile := ChangeConsoleProfile;
   FDualPanel.OnGetConsoleProfile := GetConsoleProfile;
@@ -1609,7 +1618,7 @@ begin
     Result := FConsole.ProfileId
   else
     Result := FSession.BackgroundConsoleProfile;
-  Result := NormalizeShellProfileId(Result);
+  Result := CanonicalShellProfileId(Result);
   if Result = '' then
     Result := cShellProfileCmd;
 end;
@@ -2364,7 +2373,7 @@ var
   ProfileId: string;
   WasVisible, HadConsole: Boolean;
 begin
-  ProfileId := NormalizeShellProfileId(AProfileId);
+  ProfileId := CanonicalShellProfileId(AProfileId);
   if ProfileId = '' then
     ProfileId := cShellProfileCmd;
   FSession.BackgroundConsoleProfile := ProfileId;
@@ -3753,7 +3762,8 @@ begin
   begin
     // Alt alone arms the menu; Ctrl or Shift joining it (AltGr, a layout switch)
     // disarms it, like any other key below.
-    FAltArmed := ((K = vkMenu) or (K = vkLMenu)) and ([ssCtrl, ssShift] * Shift = []);
+    FAltArmed := ((K = vkMenu) or (K = vkLMenu)) and ([ssCtrl, ssShift] * Shift = []) and
+      not (Assigned(FDualPanel) and FDualPanel.ProgramCapturesKeys);
     FAltTimer.Enabled := FAltArmed;
     Key := 0;
     KeyChar := #0;
