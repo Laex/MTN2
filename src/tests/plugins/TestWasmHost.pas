@@ -22,6 +22,7 @@ type
     [Test] procedure TestPictureSurfaceFromWasm;
     [Test] procedure TestExtendedApiFromWasm;
     [Test] procedure TestFileSystemReadFromWasm;
+    [Test] procedure TestFileSystemStreamFromWasm;
   end;
 
 implementation
@@ -563,6 +564,96 @@ begin
   end;
 end;
 
+procedure TestFileSystemStream;
+var
+  Root, Dir, Sent, Told: string;
+  Loaded: Boolean;
+  LastLog: string;
+  Sub: ISubscription;
+  I: Integer;
+begin
+  Loaded := False;
+  Told := '';
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      LastLog := AMessage;
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-wasmstream-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'wasm reads this', TEncoding.ASCII);
+  Sent := 'file:///' + StringReplace(TPath.Combine(Dir, 'a.txt'), PathDelim, '/', [rfReplaceAll]);
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-stream');
+  // The guest opens the file at init and checks that an unknown job and an unknown surface
+  // answer -1; when its export hears that the file is open it reads ten
+  // bytes from offset 5, publishes them, closes the file and publishes "closed" when the
+  // size of the closed file is -1.
+  StageDir(Root, 'mtn.wasm.stream',
+    '(module' + sLineBreak +
+    '  (import "mtn_host" "vfs_open"' + sLineBreak +
+    '    (func $open (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "vfs_size"' + sLineBreak +
+    '    (func $sz (param i32) (result i64)))' + sLineBreak +
+    '  (import "mtn_host" "vfs_read_at"' + sLineBreak +
+    '    (func $rat (param i32 i64 i32 i32) (result i64)))' + sLineBreak +
+    '  (import "mtn_host" "vfs_close"' + sLineBreak +
+    '    (func $cls (param i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "vfs_cancel"' + sLineBreak +
+    '    (func $can (param i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "surface_get_fullscreen"' + sLineBreak +
+    '    (func $gfs (param i32) (result i32)))' + sLineBreak +
+    '  (import "mtn_host" "publish"' + sLineBreak +
+    '    (func $pub (param i32 i32 i32 i32) (result i32)))' + sLineBreak +
+    '  (memory (export "memory") 1)' + sLineBreak +
+    '  (data (i32.const 8) "done")' + sLineBreak +
+    '  (data (i32.const 128) "wasm.strm")' + sLineBreak +
+    '  (data (i32.const 160) "closed")' + sLineBreak +
+    '  (data (i32.const 1200) "' + Sent + '")' + sLineBreak +
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))' + sLineBreak +
+    '  (func (export "mtn_plugin_init") (result i32)' + sLineBreak +
+    '    (if (i32.le_s (call $open (i32.const 1200) (i32.const ' + IntToStr(TEncoding.UTF8.GetByteCount(Sent)) +
+    ') (i32.const 8) (i32.const 4)) (i32.const 0)) (then unreachable))' + sLineBreak +
+    '    (if (i32.ne (call $can (i32.const 987654)) (i32.const -1)) (then unreachable))' + sLineBreak +
+    '    (if (i32.ne (call $gfs (i32.const 987654)) (i32.const -1)) (then unreachable))' + sLineBreak +
+    '    (i32.const 0))' + sLineBreak +
+    '  (func (export "mtn_plugin_shutdown"))' + sLineBreak +
+    '  (func (export "done") (param i32 i32 i32)' + sLineBreak +
+    '    (local $n i64)' + sLineBreak +
+    '    (if (i32.eqz (local.get 1)) (then' + sLineBreak +
+    '      (local.set $n (call $rat (local.get 2) (i64.const 5) (i32.const 600) (i32.const 64)))' + sLineBreak +
+    '      (drop (call $pub (i32.const 128) (i32.const 9) (i32.const 600) (i32.wrap_i64 (local.get $n))))' + sLineBreak +
+    '      (drop (call $cls (local.get 2)))' + sLineBreak +
+    '      (if (i64.eq (call $sz (local.get 2)) (i64.const -1)) (then' + sLineBreak +
+    '        (drop (call $pub (i32.const 128) (i32.const 9) (i32.const 160) (i32.const 6)))))))))');
+  WriteUtf8NoBom(TPath.Combine(TPath.Combine(Root, 'mtn.wasm.stream'), 'plugin.json'),
+    '{"id":"mtn.wasm.stream","abi":2,"permissions":["vfs.read"]}');
+  Sub := MessageBus.Subscribe('wasm.strm',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Told := Told + TPluginPayload(APayload).Json + ';';
+    end);
+  PluginPermissionGrant('mtn.wasm.stream', cPermVfsRead, True);
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.IsTrue(Loaded, 'the module loads (its init checked that vfs_open returned a job): ' + LastLog);
+    for I := 1 to 100 do
+    begin
+      CheckSynchronize(30);
+      if Pos('closed', Told) > 0 then
+        Break;
+    end;
+    Assert.AreEqual('reads this;closed;', Told, 'the guest read a piece, closed the file and saw it gone');
+  finally
+    PluginPermissionGrant('mtn.wasm.stream', cPermVfsRead, False);
+    Sub.Unsubscribe;
+    PluginLoader.UnloadAll;
+    if TDirectory.Exists(Dir) then
+      TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TestExtendedApi;
 var
   Root, Notes: string;
@@ -817,6 +908,11 @@ procedure TTestWasmHost.TestCommandApiFromWasm;
 begin
   SkipWithoutRuntime;
   TestWasmHost.TestCommandApiFromWasm;
+end;
+
+procedure TTestWasmHost.TestFileSystemStreamFromWasm;
+begin
+  TestFileSystemStream;
 end;
 
 procedure TTestWasmHost.TestFileSystemReadFromWasm;

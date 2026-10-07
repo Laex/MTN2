@@ -155,11 +155,14 @@ type
     procedure SnapWindowToGrid;
     procedure SyncRenderer;
     procedure ApplyZoomDelta(ADelta: Single);
+    function TryHandleFullscreen(var AKey: Word; var AKeyChar: Char;
+      AShift: TShiftState): Boolean;
     function TryHandleZoom(var AKey: Word; var AKeyChar: Char;
       AShift: TShiftState): Boolean;
     procedure ComposeScene(const AGrid: TTerminalGrid; ACols, ARows: Integer);
     /// <summary>FormPaint's body; split out so --fps can time it whole.</summary>
     procedure PaintFrame(Canvas: TCanvas);
+    procedure PaintSurfaceFullscreenFrame(Canvas: TCanvas);
     function PointToCell(X, Y: Single; out ACol, ARow: Integer): Boolean;
     procedure Recompose;
     procedure EnsureDemoWindows;
@@ -229,6 +232,9 @@ type
     /// <summary>Keeps the native windows of plugin surfaces over their areas.</summary>
     procedure SyncNativeSurfaces;
     procedure QueueSurfaceSize(AHandle, AWidth, AHeight: Integer);
+    /// <summary>The area of a plugin surface in canvas units: its cells, or the whole
+    /// client area while the picture is full screen.</summary>
+    function SurfaceCanvasRect(AHandle: Integer; const ABounds: TRectI): TRectF;
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelReturnWhenDone(Sender: TObject);
     procedure DualPanelRunInBackground(Sender: TObject);
@@ -1290,6 +1296,20 @@ begin
   Invalidate;
 end;
 
+/// <summary>The ToggleFullscreen key (F11 by default) puts the window to full screen and back,
+/// checked above every window like the zoom reset.</summary>
+function TMainForm.TryHandleFullscreen(var AKey: Word; var AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+begin
+  Result := MatchActionIn(ActiveKeymap, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
+    AShift) = kaToggleFullscreen;
+  if not Result then
+    Exit;
+  FullScreen := not FullScreen;
+  AKey := 0;
+  AKeyChar := #0;
+end;
+
 function TMainForm.TryHandleZoom(var AKey: Word; var AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
@@ -1461,7 +1481,7 @@ procedure TMainForm.CaptureNormalBounds;
 begin
   if FRestoringBounds then
     Exit;
-  if WindowState <> System.UITypes.TWindowState.wsNormal then
+  if (WindowState <> System.UITypes.TWindowState.wsNormal) or FullScreen then
     Exit;
   FNormalLeft := Left;
   FNormalTop := Top;
@@ -1987,6 +2007,7 @@ function TMainForm.TrySurfaceMouse(AKind: Integer; X, Y: Single; AButton: TMouse
 var
   H, Btn, Cand: Integer;
   B: TRectI;
+  Area: TRectF;
   Left, Top, Right, Bottom, Scale: Single;
 begin
   Result := False;
@@ -2002,10 +2023,11 @@ begin
     begin
       if not FDualPanel.SurfaceViewport(Cand, B) then
         Continue;
-      Left := B.Left * FRenderer.CellWidth;
-      Top := B.Top * FRenderer.CellHeight;
-      Right := (B.Right + 1) * FRenderer.CellWidth;
-      Bottom := (B.Bottom + 1) * FRenderer.CellHeight;
+      Area := SurfaceCanvasRect(Cand, B);
+      Left := Area.Left;
+      Top := Area.Top;
+      Right := Area.Right;
+      Bottom := Area.Bottom;
       if (X >= Left) and (X < Right) and (Y >= Top) and (Y < Bottom) then
       begin
         H := Cand;
@@ -2017,10 +2039,11 @@ begin
     FSurfaceMouseHandle := 0;
     Exit;
   end;
-  Left := B.Left * FRenderer.CellWidth;
-  Top := B.Top * FRenderer.CellHeight;
-  Right := (B.Right + 1) * FRenderer.CellWidth;
-  Bottom := (B.Bottom + 1) * FRenderer.CellHeight;
+  Area := SurfaceCanvasRect(H, B);
+  Left := Area.Left;
+  Top := Area.Top;
+  Right := Area.Right;
+  Bottom := Area.Bottom;
   case AButton of
     TMouseButton.mbRight: Btn := 2;
     TMouseButton.mbMiddle: Btn := 3;
@@ -2051,10 +2074,20 @@ begin
     end);
 end;
 
+function TMainForm.SurfaceCanvasRect(AHandle: Integer; const ABounds: TRectI): TRectF;
+begin
+  if (SurfaceMode(AHandle) <> cSurfaceModePanel) and SurfaceFullscreen(AHandle) then
+    Result := RectF(0, 0, ClientWidth, ClientHeight)
+  else
+    Result := RectF(ABounds.Left * FRenderer.CellWidth, ABounds.Top * FRenderer.CellHeight,
+      (ABounds.Right + 1) * FRenderer.CellWidth, (ABounds.Bottom + 1) * FRenderer.CellHeight);
+end;
+
 procedure TMainForm.SyncNativeSurfaces;
 var
   H: Integer;
   B: TRectI;
+  Area: TRectF;
   Scale: Single;
   Wnd: HWND;
   Visible: Boolean;
@@ -2067,19 +2100,20 @@ begin
   for H in SurfaceHandles do
   begin
     Visible := FDualPanel.Visible and FDualPanel.SurfaceViewport(H, B);
+    Area := RectF(0, 0, 0, 0);
     if Visible then
+    begin
+      Area := SurfaceCanvasRect(H, B);
       // The plugin learns the size of its area (a drawn picture is sized to it). Not from
       // inside the paint: the plugin answers with a new frame, which repaints.
-      QueueSurfaceSize(H, Round((B.Right - B.Left + 1) * FRenderer.CellWidth * Scale),
-        Round((B.Bottom - B.Top + 1) * FRenderer.CellHeight * Scale));
+      QueueSurfaceSize(H, Round(Area.Width * Scale), Round(Area.Height * Scale));
+    end;
     if not SurfaceIsNative(H) then
       Continue;
     Wnd := HWND(PluginSurfaceNativeHandle(H));
     if Visible then
-      NativeSurfaceMove(Wnd, Round(B.Left * FRenderer.CellWidth * Scale),
-        Round(B.Top * FRenderer.CellHeight * Scale),
-        Round((B.Right - B.Left + 1) * FRenderer.CellWidth * Scale),
-        Round((B.Bottom - B.Top + 1) * FRenderer.CellHeight * Scale), True)
+      NativeSurfaceMove(Wnd, Round(Area.Left * Scale), Round(Area.Top * Scale),
+        Round(Area.Width * Scale), Round(Area.Height * Scale), True)
     else
       NativeSurfaceMove(Wnd, 0, 0, 0, 0, False);
   end;
@@ -2968,6 +3002,30 @@ begin
   end;
 end;
 
+/// <summary>A full-screen plugin picture covers the pixels the whole cells leave over at the right
+/// and bottom edge: they get the picture's background, and the overlay is painted over the
+/// whole client area.</summary>
+procedure TMainForm.PaintSurfaceFullscreenFrame(Canvas: TCanvas);
+var
+  Background: TAlphaColor;
+  GridW, GridH: Single;
+begin
+  if not (Assigned(FDualPanel) and FDualPanel.SurfaceFullscreenBackground(Background)) then
+  begin
+    ClearOverlayPixelArea;
+    Exit;
+  end;
+  GridW := FRenderer.Cols * FRenderer.CellWidth;
+  GridH := FRenderer.Rows * FRenderer.CellHeight;
+  Canvas.Fill.Kind := TBrushKind.Solid;
+  Canvas.Fill.Color := Background;
+  if GridW < ClientWidth then
+    Canvas.FillRect(RectF(GridW, 0, ClientWidth, ClientHeight), 0, 0, [], 1);
+  if GridH < ClientHeight then
+    Canvas.FillRect(RectF(0, GridH, ClientWidth, ClientHeight), 0, 0, [], 1);
+  SetOverlayPixelArea(RectF(0, 0, ClientWidth, ClientHeight));
+end;
+
 procedure TMainForm.PaintFrame(Canvas: TCanvas);
 begin
   if (Canvas.Scale > 0) and (Canvas.Scale <> FLastScale) then
@@ -2977,6 +3035,7 @@ begin
     UpdateCaption;
   end;
   FRenderer.Draw(Canvas, RectF(0, 0, ClientWidth, ClientHeight));
+  PaintSurfaceFullscreenFrame(Canvas);
   // Markdown image blocks are sized in cells from the pixel cell aspect;
   // after a font/scale change re-lay out once so the next frame uses it.
   if SetOverlayCellMetrics(FRenderer.CellWidth, FRenderer.CellHeight, FLastScale) then
@@ -3009,7 +3068,7 @@ var
 begin
   CaptureNormalBounds;
   // A window restored from full screen is trimmed to whole cells on the next paint.
-  Maximized := WindowState = System.UITypes.TWindowState.wsMaximized;
+  Maximized := (WindowState = System.UITypes.TWindowState.wsMaximized) or FullScreen;
   if FWasMaximized and not Maximized then
     FGridSnapDone := False;
   FWasMaximized := Maximized;
@@ -3728,7 +3787,7 @@ begin
     FlushDialogButtonPress;
     Recompose;
   end;
-  if TryHandleZoom(K, C, Shift) then
+  if TryHandleZoom(K, C, Shift) or TryHandleFullscreen(K, C, Shift) then
   begin
     Key := 0;
     KeyChar := #0;
@@ -3805,7 +3864,7 @@ begin
     Exit;
   end;
 
-  if TryHandleZoom(Key, KeyChar, Shift) then
+  if TryHandleZoom(Key, KeyChar, Shift) or TryHandleFullscreen(Key, KeyChar, Shift) then
     Exit;
 
   if DispatchTerminalKey(Key, KeyChar, Shift) then

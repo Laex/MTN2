@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Save theme",
   "width": 52,
-  "height": 8,
+  "height": 9,
   "children": [
     {
       "type": "label",
@@ -33,12 +33,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 3,
+      "width": 50,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 12,
-      "row": 4,
+      "row": 5,
       "width": 10,
       "height": 1
     },
@@ -48,7 +55,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 24,
-      "row": 4,
+      "row": 5,
       "width": 12,
       "height": 1
     }

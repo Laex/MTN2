@@ -331,6 +331,8 @@ type
     property SurfaceHandle: Integer read FSurfaceHandle;
     /// <summary>The plugin picture fills the whole window (no frame, key bar or status line).</summary>
     function IsSurfaceFullscreen: Boolean;
+    /// <summary>The background of the area around a plugin picture.</summary>
+    function SurfaceBackground: TAlphaColor;
     /// <summary>The cells (compositor-absolute, inclusive) the plugin picture is shown in.</summary>
     function SurfaceBounds(out ABounds: TRectI): Boolean;
     procedure BeginClose;
@@ -971,6 +973,11 @@ end;
 function TEditorWindow.IsSurfaceFullscreen: Boolean;
 begin
   Result := (FSurfaceHandle <> 0) and SurfaceFullscreen(FSurfaceHandle);
+end;
+
+function TEditorWindow.SurfaceBackground: TAlphaColor;
+begin
+  Result := FThemeColors.BodyBg;
 end;
 
 function TEditorWindow.SurfaceBounds(out ABounds: TRectI): Boolean;

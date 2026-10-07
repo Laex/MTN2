@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Copy",
   "width": 76,
-  "height": 14,
+  "height": 15,
   "children": [
     {
       "type": "label",
@@ -87,11 +87,18 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 9,
+      "width": 74,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "background",
       "text": "&Background",
       "col": 10,
-      "row": 10,
+      "row": 11,
       "width": 14,
       "height": 1
     },
@@ -101,7 +108,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 52,
-      "row": 10,
+      "row": 11,
       "width": 12,
       "height": 1
     }

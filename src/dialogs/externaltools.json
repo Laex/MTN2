@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "External Viewer / Editor",
   "width": 72,
-  "height": 13,
+  "height": 14,
   "children": [
     {
       "type": "label",
@@ -42,6 +42,13 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 5,
+      "width": 70,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "help1",
       "text": "%1 - file path; without %1 the path is added at the end",
@@ -60,12 +67,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 8,
+      "width": 70,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 18,
-      "row": 9,
+      "row": 10,
       "width": 14,
       "height": 1
     },
@@ -75,7 +89,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 9,
+      "row": 10,
       "width": 14,
       "height": 1
     }

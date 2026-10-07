@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Color coding group",
   "width": 78,
-  "height": 19,
+  "height": 18,
   "children": [
     {
       "type": "label",
@@ -215,6 +215,13 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 8,
+      "width": 76,
+      "height": 1
+    },
+    {
       "type": "label",
       "text": "F9 or [...] = pick a color for the Fg/Bg field above.",
       "id": "lbl_hint_pick",
@@ -246,7 +253,7 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 12,
+      "row": 13,
       "width": 60,
       "height": 1
     },
@@ -254,7 +261,7 @@
       "type": "label",
       "text": "────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 13,
+      "row": 12,
       "width": 76,
       "height": 1
     },
@@ -264,7 +271,7 @@
       "text": "OK",
       "default": true,
       "col": 25,
-      "row": 15,
+      "row": 14,
       "width": 12,
       "height": 1
     },
@@ -274,7 +281,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 39,
-      "row": 15,
+      "row": 14,
       "width": 12,
       "height": 1
     }

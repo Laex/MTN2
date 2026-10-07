@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Error",
   "width": 56,
-  "height": 7,
+  "height": 8,
   "children": [
     {
       "type": "label",
@@ -15,13 +15,20 @@
       "height": 2
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 2,
+      "width": 54,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Close",
       "default": true,
       "cancel": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 12,
       "height": 1
     }

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Edit hotkeys",
   "width": 70,
-  "height": 13,
+  "height": 12,
   "children": [
     {
       "type": "label",
@@ -30,6 +30,13 @@
       "col": 12,
       "row": 2,
       "width": 56,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 3,
+      "width": 68,
       "height": 1
     },
     {
@@ -60,12 +67,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 6,
+      "width": 68,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 14,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -74,7 +88,7 @@
       "id": "reset",
       "text": "&Reset",
       "col": 28,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     },
@@ -84,7 +98,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 42,
-      "row": 9,
+      "row": 8,
       "width": 12,
       "height": 1
     }

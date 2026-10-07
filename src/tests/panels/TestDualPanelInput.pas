@@ -777,6 +777,10 @@ begin
     'Ctrl+0 zoom reset');
   Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkNumpad0, #0, [ssCtrl], False) = kaZoomReset,
     'Ctrl+Num0 zoom reset');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcTerminal], vkF11, #0, [], False) = kaToggleFullscreen,
+    'F11 full screen');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkF11, #0, [ssAlt], False) = kaNone,
+    'Alt+F11 is the file history, not full screen');
   P.Bindings[kaDocHex] := [KeyBinding(vkF9)];
   Assert.IsTrue(GlobalKeymapAction(P, [kcViewer, kcDocument], vkF9, #0, [], False) = kaNone,
     'a document binding wins over Global');
@@ -1128,6 +1132,18 @@ begin
     Key := vkReturn;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkOverwriteAsk, Key, [], Ch), 'Enter overwrite');
     Assert.IsTrue(Spy.CmdId = 'delete', 'Enter uses focused button id');
+
+    // A running job's dialog: Enter on Cancel is swallowed, on Background it
+    // sends the job to the background.
+    Spy.CmdId := '';
+    Spy.Last := 'cancel';
+    Key := vkReturn;
+    Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on job progress');
+    Assert.IsTrue(Spy.CmdId = '', 'Enter on Cancel does not cancel the job');
+    Spy.Last := 'background';
+    Key := vkReturn;
+    Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on Background');
+    Assert.IsTrue(Spy.CmdId = 'background', 'Enter on Background sends the job to the background');
 
     Spy.Hotlist := True;
     Key := vkDelete;

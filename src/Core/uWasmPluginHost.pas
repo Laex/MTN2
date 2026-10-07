@@ -68,6 +68,7 @@ unit uWasmPluginHost;
       // (kind, x, y, width, height, button, extra, shift) and returning i64 (1 = used);
       // kinds: 0 down, 1 up, 2 move while a button is held, 3 wheel, 4 double click
     surface_set_fullscreen(handle, on) -> i32
+    surface_get_fullscreen(handle) -> i32         // 1 full screen, 0 not, -1 unknown handle
     panel_list(side, out_ptr, out_cap) -> i32     // JSON rows of a panel
     panel_set_cursor(side, uri_ptr, uri_len) -> i32
     panel_select(side, mode, arg_ptr, arg_len) -> i32 // 0 select mask, 1 unselect mask,
@@ -92,6 +93,22 @@ unit uWasmPluginHost;
       // the result of a finished job (JSON for vfs_list and vfs_exists, the bytes for
       // vfs_read): its length; copied only when length <= out_cap (a longer result stays
       // for another call with a bigger buffer), and then the handle is released; -1 = no such result
+    vfs_open(uri_ptr, uri_len, export_ptr, export_len) -> i32
+      // reads a file of any size in pieces (permission "vfs.read"). Returns a job handle (above
+      // 0), -1 for bad arguments, -2 without the permission or -3 when 16 files are already
+      // open or opening. Later, on the main thread, the guest export takes (job, status, file)
+      // and returns nothing; status as for vfs_read, file is the handle for the calls below
+      // (above 0 when the status is 0). A local file is opened in place; any other URI is
+      // first copied to a temporary file, and the host shows a progress notice meanwhile
+    vfs_cancel(job) -> i32
+      // cancels a vfs_open that has not finished: its export still follows once, with status 4.
+      // 0 = cancelled, -1 = no such job
+    vfs_size(file) -> i64                         // bytes; -1 = unknown handle
+    vfs_read_at(file, offset_i64, out_ptr, out_cap) -> i64
+      // reads up to out_cap bytes (at most 16 MiB per call) from offset; returns the number
+      // read, 0 at the end of the file, a negative number on an error
+    vfs_close(file) -> i32                        // 0 = closed, -1 = unknown handle; a
+      // plugin's open files are closed when it is unloaded
     host_info(out_ptr, out_cap) -> i32            // JSON with "version" and "language"
     doc_info(out_ptr, out_cap) -> i32             // JSON about the active text document
     doc_get_text(what, out_ptr, out_cap) -> i32   // 0 selection, 1 whole document (LF), 2 cursor line
@@ -257,6 +274,12 @@ const
   cVfsExists: AnsiString = 'vfs_exists';
   cVfsRead: AnsiString = 'vfs_read';
   cVfsResult: AnsiString = 'vfs_result';
+  cVfsOpen: AnsiString = 'vfs_open';
+  cVfsSize: AnsiString = 'vfs_size';
+  cVfsReadAt: AnsiString = 'vfs_read_at';
+  cVfsClose: AnsiString = 'vfs_close';
+  cVfsCancel: AnsiString = 'vfs_cancel';
+  cSurfaceGetFullscreen: AnsiString = 'surface_get_fullscreen';
   cHostInfo: AnsiString = 'host_info';
   cDocInfo: AnsiString = 'doc_info';
   cDocGetText: AnsiString = 'doc_get_text';
@@ -361,6 +384,15 @@ begin
   FillChar(Results^, SizeOf(TWasmtimeVal), 0);
   Results^.Kind := WASMTIME_I32;
   Results^.Of_.I32 := AValue;
+end;
+
+procedure SetI64Result(Results: PWasmtimeVal; NResults: NativeUInt; AValue: Int64);
+begin
+  if (Results = nil) or (NResults = 0) then
+    Exit;
+  FillChar(Results^, SizeOf(TWasmtimeVal), 0);
+  Results^.Kind := WASMTIME_I64;
+  Results^.Of_.I64 := AValue;
 end;
 
 function WasmResultI64(const AVal: TWasmtimeVal): Int64;
@@ -1362,6 +1394,157 @@ begin
   SetI32Result(Results, NResults, Len);
 end;
 
+function HostVfsOpen(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Uri, ExportName: string;
+  Vals: ^TValBuf;
+  Job: Int64;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Uri) or (Uri = '') or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  // The callback runs after this call returned, so Job is set by then.
+  Job := PluginVfsOpen(Inst.PluginId, Uri,
+    procedure(AStatus: Integer; AHandle: Int64)
+    var
+      Err: string;
+    begin
+      if Inst.Dead then
+      begin
+        if AHandle > 0 then
+          PluginVfsClose(Inst.PluginId, AHandle);
+        Exit;
+      end;
+      Inst.CallIntsVoidExport(ExportName, [Integer(Job), AStatus, Integer(AHandle)], Err);
+    end);
+  SetI32Result(Results, NResults, Integer(Job));
+end;
+
+function HostVfsCancel(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  SetI32Result(Results, NResults, Integer(PluginVfsCancel(Inst.PluginId, Vals^[0].Of_.I32)));
+end;
+
+function HostSurfaceGetFullscreen(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Vals := Pointer(Args);
+  if not SurfaceExists(Vals^[0].Of_.I32) then
+    Exit;
+  if SurfaceFullscreen(Vals^[0].Of_.I32) then
+    SetI32Result(Results, NResults, 1)
+  else
+    SetI32Result(Results, NResults, 0);
+end;
+
+function HostVfsSize(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI64Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  SetI64Result(Results, NResults, PluginVfsSize(Inst.PluginId, Vals^[0].Of_.I32));
+end;
+
+function HostVfsReadAt(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+const
+  cMaxChunk = 16 * 1024 * 1024;
+var
+  Inst: TWasmPluginInstance;
+  Vals: ^TValBuf;
+  Buf: TBytes;
+  Cap: Integer;
+  N: Int64;
+begin
+  Result := nil;
+  SetI64Result(Results, NResults, -1);
+  if NArgs < 4 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  Cap := Vals^[3].Of_.I32;
+  if Cap < 0 then
+    Exit;
+  if Cap > cMaxChunk then
+    Cap := cMaxChunk;
+  SetLength(Buf, Cap);
+  if Cap > 0 then
+    N := PluginVfsReadAt(Inst.PluginId, Vals^[0].Of_.I32, Vals^[1].Of_.I64, @Buf[0], Cap)
+  else
+    N := PluginVfsReadAt(Inst.PluginId, Vals^[0].Of_.I32, Vals^[1].Of_.I64, @Cap, 0);
+  if N <= 0 then
+  begin
+    SetI64Result(Results, NResults, N);
+    Exit;
+  end;
+  SetLength(Buf, N);
+  if WriteGuestBytes(Caller, Vals^[2].Of_.I32, Cap, Buf) then
+    SetI64Result(Results, NResults, N);
+end;
+
+function HostVfsClose(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  SetI32Result(Results, NResults, Integer(PluginVfsClose(Inst.PluginId, Vals^[0].Of_.I32)));
+end;
+
 function HostRegHighlighter(Env: Pointer; Caller: PWasmtimeCaller;
   Args: PWasmtimeVal; NArgs: NativeUInt;
   Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
@@ -1772,7 +1955,7 @@ end;
 /// <summary>Defines every mtn_host import on ALinker.</summary>
 function DefineAllHostImports(ALinker: PWasmtimeLinker; out AError: string): Boolean;
 var
-  Ty0, Ty1, Ty2, Ty3, Ty4, Ty5, Ty6, Ty8, Ty9, Ty11: PWasmFunctype;
+  Ty0, Ty1, Ty2, Ty3, Ty4, Ty5, Ty6, Ty8, Ty9, Ty11, TySize, TyReadAt: PWasmFunctype;
 begin
   Result := False;
   AError := '';
@@ -1818,7 +2001,26 @@ begin
     AError := 'wasm_functype_new failed';
     Exit(False);
   end;
+  TySize := MakeFuncType([WASM_I32], [WASM_I64]);
+  TyReadAt := MakeFuncType([WASM_I32, WASM_I64, WASM_I32, WASM_I32], [WASM_I64]);
   try
+    if (TySize = nil) or (TyReadAt = nil) then
+    begin
+      AError := 'wasm_functype_new failed';
+      Exit(False);
+    end;
+    if not DefineHostImport(cVfsOpen, Ty4, @HostVfsOpen, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsSize, TySize, @HostVfsSize, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsReadAt, TyReadAt, @HostVfsReadAt, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsClose, Ty1, @HostVfsClose, AError) then
+      Exit(False);
+    if not DefineHostImport(cVfsCancel, Ty1, @HostVfsCancel, AError) then
+      Exit(False);
+    if not DefineHostImport(cSurfaceGetFullscreen, Ty1, @HostSurfaceGetFullscreen, AError) then
+      Exit(False);
     if not DefineHostImport(cRegCommand, Ty4, @HostRegCommand, AError) then
       Exit(False);
     if not DefineHostImport(cRegCommandHook, Ty5, @HostRegCommandHook, AError) then
@@ -1914,6 +2116,10 @@ begin
     if not DefineHostImport(cRegMenu, Ty9, @HostRegMenu, AError) then
       Exit(False);
   finally
+    if TySize <> nil then
+      Wasmtime.FunctypeDelete(TySize);
+    if TyReadAt <> nil then
+      Wasmtime.FunctypeDelete(TyReadAt);
     Wasmtime.FunctypeDelete(Ty11);
     Wasmtime.FunctypeDelete(Ty0);
     Wasmtime.FunctypeDelete(Ty1);

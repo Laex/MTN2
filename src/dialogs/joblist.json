@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Background jobs",
   "width": 72,
-  "height": 16,
+  "height": 17,
   "children": [
     {
       "type": "label",
@@ -27,12 +27,19 @@
       "height": 10
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 11,
+      "width": 70,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "foreground",
       "text": "Foreground",
       "default": true,
       "col": 3,
-      "row": 12,
+      "row": 13,
       "width": 14,
       "height": 1
     },
@@ -41,7 +48,7 @@
       "id": "canceljob",
       "text": "&Cancel",
       "col": 19,
-      "row": 12,
+      "row": 13,
       "width": 10,
       "height": 1
     },
@@ -50,7 +57,7 @@
       "id": "cancelall",
       "text": "Cancel &all",
       "col": 31,
-      "row": 12,
+      "row": 13,
       "width": 14,
       "height": 1
     },
@@ -60,7 +67,7 @@
       "text": "Close",
       "cancel": true,
       "col": 57,
-      "row": 12,
+      "row": 13,
       "width": 10,
       "height": 1
     }

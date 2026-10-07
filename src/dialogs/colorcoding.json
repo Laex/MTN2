@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Color coding groups",
   "width": 78,
-  "height": 20,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -27,6 +27,13 @@
       "height": 12
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 13,
+      "width": 76,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "hint",
       "text": "Ins=Add F4=Edit Del=Remove/Disable Ctrl+Space=Enable Ctrl+Up/Dn=Move",
@@ -36,11 +43,18 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 15,
+      "width": 76,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "add",
       "text": "&Add",
       "col": 1,
-      "row": 16,
+      "row": 17,
       "width": 9,
       "height": 1
     },
@@ -49,7 +63,7 @@
       "id": "edit",
       "text": "&Edit",
       "col": 11,
-      "row": 16,
+      "row": 17,
       "width": 9,
       "height": 1
     },
@@ -58,7 +72,7 @@
       "id": "delete",
       "text": "&Delete",
       "col": 21,
-      "row": 16,
+      "row": 17,
       "width": 10,
       "height": 1
     },
@@ -67,7 +81,7 @@
       "id": "moveup",
       "text": "&Up",
       "col": 32,
-      "row": 16,
+      "row": 17,
       "width": 7,
       "height": 1
     },
@@ -76,7 +90,7 @@
       "id": "movedown",
       "text": "D&n",
       "col": 40,
-      "row": 16,
+      "row": 17,
       "width": 7,
       "height": 1
     },
@@ -86,7 +100,7 @@
       "text": "Save",
       "default": true,
       "col": 54,
-      "row": 16,
+      "row": 17,
       "width": 9,
       "height": 1
     },
@@ -96,7 +110,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 64,
-      "row": 16,
+      "row": 17,
       "width": 10,
       "height": 1
     }

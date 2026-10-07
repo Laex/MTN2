@@ -231,6 +231,7 @@ const
     'Panels <-> console',
     'Zoom 100%',
     'Reload keymap.json',
+    'Full screen',
     'Command history',
     'Select all',
     'Copy, or interrupt the command',

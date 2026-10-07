@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Custom columns",
   "width": 38,
-  "height": 12,
+  "height": 13,
   "children": [
     {
       "type": "checkbox",
@@ -76,12 +76,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 7,
+      "width": 36,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 4,
-      "row": 8,
+      "row": 9,
       "width": 12,
       "height": 1
     },
@@ -91,7 +98,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 19,
-      "row": 8,
+      "row": 9,
       "width": 12,
       "height": 1
     }

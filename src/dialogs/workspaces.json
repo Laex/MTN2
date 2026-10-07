@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Workspaces",
   "width": 62,
-  "height": 17,
+  "height": 18,
   "children": [
     {
       "type": "label",
@@ -27,12 +27,19 @@
       "height": 11
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 12,
+      "width": 60,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Go",
       "default": true,
       "col": 7,
-      "row": 13,
+      "row": 14,
       "width": 10,
       "height": 1
     },
@@ -41,7 +48,7 @@
       "id": "save",
       "text": "&Save",
       "col": 25,
-      "row": 13,
+      "row": 14,
       "width": 10,
       "height": 1
     },
@@ -51,7 +58,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 43,
-      "row": 13,
+      "row": 14,
       "width": 10,
       "height": 1
     }

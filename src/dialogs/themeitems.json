@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Theme",
   "width": 66,
-  "height": 23,
+  "height": 24,
   "children": [
     {
       "type": "list",
@@ -18,6 +18,13 @@
       "height": 16
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 16,
+      "width": 64,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "hint",
       "text": "* - set by this theme; the rest is inherited.",
@@ -27,12 +34,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 18,
+      "width": 64,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "edit",
       "text": "Edit...",
       "default": true,
       "col": 1,
-      "row": 19,
+      "row": 20,
       "width": 12,
       "height": 1
     },
@@ -41,7 +55,7 @@
       "id": "inherit",
       "text": "&Inherit",
       "col": 15,
-      "row": 19,
+      "row": 20,
       "width": 12,
       "height": 1
     },
@@ -51,7 +65,7 @@
       "text": "Back",
       "cancel": true,
       "col": 29,
-      "row": 19,
+      "row": 20,
       "width": 10,
       "height": 1
     }

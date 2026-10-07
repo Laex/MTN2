@@ -7,9 +7,11 @@ unit TestDialogButtonLayout;
   row right under the title bar. The bottom button row keeps:
   - at least one empty cell between the frame and the leftmost face, and
     between the rightmost face's shadow and the frame;
-  - exactly one empty row above it (a separator rule, if any, sits above
-    that empty row);
-  - below it the shadow row, then the frame.
+  - exactly one empty row above it, and a separator rule on the row above
+    that empty row;
+  - below it the shadow row, then the frame;
+  - a block of explanatory text lines (labels whose id has "hint" or "help")
+    starts right under a separator rule and ends right above one.
   A block of two button rows (a shadow row apart) has an empty row above the
   block and the same space below it. }
 
@@ -29,7 +31,8 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, System.Math, Winapi.Windows,
+  System.SysUtils, System.StrUtils, System.Classes, System.UITypes, System.Math,
+  Winapi.Windows,
   uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogHost;
 
 const
@@ -91,7 +94,26 @@ var
     end;
   end;
 
-  function RowUsed(ARow: Integer): Boolean;
+  function IsHintLabel(AIndex: Integer): Boolean;
+  var
+    C: TDialogControl;
+  begin
+    C := Host.GetControl(AIndex);
+    Result := (C.Kind = dckLabel) and (Trim(C.Text) <> '') and
+      (ContainsText(C.Id, 'hint') or ContainsText(C.Id, 'help'));
+  end;
+
+  function HintAt(ARow: Integer): Boolean;
+  var
+    J: Integer;
+  begin
+    Result := False;
+    for J := 0 to Host.ControlCount - 1 do
+      if IsHintLabel(J) and (Host.ControlBoundsAt(J).Top = ARow) then
+        Exit(True);
+  end;
+
+  function RowUsed(ARow: Integer; AIgnoreEmptyLabels: Boolean = False): Boolean;
   var
     J: Integer;
     B: TRectI;
@@ -101,6 +123,10 @@ var
     begin
       B := Host.ControlBoundsAt(J);
       if (Host.GetControl(J).Kind = dckButton) and (B.Top >= BlockTop) then
+        Continue;
+      // An empty label (a status line with no message) leaves its row blank.
+      if AIgnoreEmptyLabels and (Host.GetControl(J).Kind = dckLabel) and
+         (Trim(Host.GetControl(J).Text) = '') then
         Continue;
       if (B.Top <= ARow) and (B.Bottom >= ARow) then
         Exit(True);
@@ -129,7 +155,7 @@ begin
       if (Host.GetControl(I).Kind = dckButton) and
          (Host.ControlBoundsAt(I).Top = Top - 2) then
         BlockTop := Top - 2;
-    RuleAbove := (not RowUsed(BlockTop - 1)) and RuleAt(BlockTop - 2);
+    RuleAbove := (not RowUsed(BlockTop - 1, True)) and RuleAt(BlockTop - 2);
 
     Left := MaxInt;
     Right := -1;
@@ -151,11 +177,19 @@ begin
     if Top <> Frame.Bottom - 2 then
       Problems.Add(Format('buttons %d rows above the frame (want 2: shadow, frame)',
         [Frame.Bottom - Top]));
-    if RowUsed(BlockTop - 1) then
+    if RowUsed(BlockTop - 1, True) then
       Problems.Add('no empty row above the buttons')
-    else if (not RuleAbove) and (BlockTop - 2 > Frame.Top) and
-      not RowUsed(BlockTop - 2) then
-      Problems.Add('more than one empty row above the buttons');
+    else if not RuleAbove then
+      Problems.Add('no separator rule above the buttons');
+    for I := 0 to Host.ControlCount - 1 do
+      if IsHintLabel(I) then
+      begin
+        R := Host.ControlBoundsAt(I);
+        if (not HintAt(R.Top - 1)) and (not RuleAt(R.Top - 1)) then
+          Problems.Add('no separator rule above the hint ' + Host.GetControl(I).Id);
+        if (not HintAt(R.Top + 1)) and (not RuleAt(R.Top + 1)) then
+          Problems.Add('no separator rule below the hint ' + Host.GetControl(I).Id);
+      end;
     if not RowUsed(Frame.Top + 1) then
       Problems.Add('empty row under the title');
     if RowUsed(Top + 1) then

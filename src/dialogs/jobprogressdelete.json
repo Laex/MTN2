@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Delete",
   "width": 76,
-  "height": 8,
+  "height": 9,
   "children": [
     {
       "type": "label",
@@ -24,11 +24,18 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 3,
+      "width": 74,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "background",
       "text": "&Background",
       "col": 10,
-      "row": 4,
+      "row": 5,
       "width": 14,
       "height": 1
     },
@@ -38,7 +45,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 52,
-      "row": 4,
+      "row": 5,
       "width": 12,
       "height": 1
     }

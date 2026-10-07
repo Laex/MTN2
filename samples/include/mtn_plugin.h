@@ -65,6 +65,9 @@ typedef int64_t (*mtn_highlight_cb)(void *user, const char *line, int32_t *spans
  * the main thread, after the start call returned; text and data are valid only during the call. */
 typedef void (*mtn_vfs_text_cb)(void *user, int64_t status, const char *json);
 typedef void (*mtn_vfs_data_cb)(void *user, int64_t status, const uint8_t *data, int64_t length);
+/* Result of vfs_open: status as above and, when it is 0, the handle of the open file. Runs once, on
+ * the main thread, after the start call returned. */
+typedef void (*mtn_vfs_open_cb)(void *user, int64_t status, int64_t handle);
 
 typedef struct MtnHostApi {
     int64_t abi_version;
@@ -174,9 +177,32 @@ typedef struct MtnHostApi {
     int64_t (*vfs_list)(const char *plugin_id, const char *uri, mtn_vfs_text_cb done, void *user);
     /* JSON: {"exists": bool, "dir": bool}. */
     int64_t (*vfs_exists)(const char *plugin_id, const char *uri, mtn_vfs_text_cb done, void *user);
-    /* Reads a whole file of at most max_bytes (0 = 2 MB, at most 64 MB). */
+    /* Reads a whole file of at most max_bytes (0 = 2 MB, at most 64 MB); larger files go through
+     * vfs_open. */
     int64_t (*vfs_read)(const char *plugin_id, const char *uri, int64_t max_bytes, mtn_vfs_data_cb done,
                         void *user);
+    /* Reading a file in pieces, with no size limit (permission "vfs.read"). Check each field for NULL
+     * on an older host.
+     * vfs_open starts opening the file and returns the number of the job (above 0; done follows on the
+     * main thread), -1 (bad arguments), -2 (no permission) or -3 (16 files are already open or opening). A local file
+     * is opened in place. Any other URI (archive, sftp://, schemes of other plugins) is first copied
+     * to a temporary file; the host shows a progress notice while that takes a while. Main thread only. */
+    int64_t (*vfs_open)(const char *plugin_id, const char *uri, mtn_vfs_open_cb done, void *user);
+    /* The three calls below work from any thread, like post_to_main. */
+    /* Size in bytes; -1 for an unknown handle. */
+    int64_t (*vfs_size)(int64_t handle);
+    /* Reads up to size bytes from offset into buf. Returns the bytes read, 0 at the end of the file,
+     * a negative number on an error. Blocks only the calling thread. */
+    int64_t (*vfs_read_at)(int64_t handle, int64_t offset, uint8_t *buf, int64_t size);
+    /* Closes the file and deletes a temporary copy; 0 = closed, -1 = unknown handle. A read in
+     * progress on another thread finishes first. The host closes what a plugin leaves open when it
+     * is unloaded. */
+    int64_t (*vfs_close)(int64_t handle);
+    /* Cancels a vfs_open that has not finished; done still follows once, with status 4. 0 = cancelled,
+     * -1 = no such job (unknown, finished or another plugin's). Main thread only. */
+    int64_t (*vfs_cancel)(int64_t job);
+    /* 1 when the surface is full screen, 0 when it is not, -1 for an unknown handle. */
+    int64_t (*surface_get_fullscreen)(int64_t handle);
 } MtnHostApi;
 
 /* Entry points every plugin DLL exports. */

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "SSH/SFTP Connections",
   "width": 62,
-  "height": 14,
+  "height": 15,
   "children": [
     {
       "type": "label",
@@ -27,12 +27,19 @@
       "height": 8
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 9,
+      "width": 60,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Shell",
       "default": true,
       "col": 4,
-      "row": 10,
+      "row": 11,
       "width": 12,
       "height": 1
     },
@@ -41,7 +48,7 @@
       "id": "browse",
       "text": "&Browse",
       "col": 20,
-      "row": 10,
+      "row": 11,
       "width": 12,
       "height": 1
     },
@@ -51,7 +58,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 44,
-      "row": 10,
+      "row": 11,
       "width": 12,
       "height": 1
     }

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Checksums",
   "width": 44,
-  "height": 6,
+  "height": 7,
   "children": [
     {
       "type": "label",
@@ -30,12 +30,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 1,
+      "width": 42,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "OK",
       "default": true,
       "col": 6,
-      "row": 2,
+      "row": 3,
       "width": 12,
       "height": 1
     },
@@ -45,7 +52,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 22,
-      "row": 2,
+      "row": 3,
       "width": 12,
       "height": 1
     }

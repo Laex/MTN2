@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Set attributes",
   "width": 56,
-  "height": 22,
+  "height": 23,
   "children": [
     {
       "type": "label",
@@ -235,12 +235,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 17,
+      "width": 54,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Set",
       "default": true,
       "col": 11,
-      "row": 18,
+      "row": 19,
       "width": 12,
       "height": 1
     },
@@ -250,7 +257,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 31,
-      "row": 18,
+      "row": 19,
       "width": 12,
       "height": 1
     }

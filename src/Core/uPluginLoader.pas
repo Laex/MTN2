@@ -931,6 +931,58 @@ begin
   end;
 end;
 
+function ThunkVfsOpen(APluginId, AUri: PAnsiChar; ACallback: THostVfsOpenCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AUri = nil) or not Assigned(ACallback) then
+      Exit(-1);
+    Result := PluginVfsOpen(UTF8ToString(APluginId), UTF8ToString(AUri),
+      procedure(AStatus: Integer; AHandle: Int64)
+      begin
+        ACallback(AUserData, AStatus, AHandle);
+      end);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkVfsCancel(AJob: Int64): Int64; cdecl;
+begin
+  try
+    Result := PluginVfsCancel('', AJob);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkVfsSize(AHandle: Int64): Int64; cdecl;
+begin
+  try
+    Result := PluginVfsSize('', AHandle);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkVfsReadAt(AHandle, AOffset: Int64; ABuf: PByte; ASize: Int64): Int64; cdecl;
+begin
+  try
+    Result := PluginVfsReadAt('', AHandle, AOffset, ABuf, ASize);
+  except
+    Result := -5;
+  end;
+end;
+
+function ThunkVfsClose(AHandle: Int64): Int64; cdecl;
+begin
+  try
+    Result := PluginVfsClose('', AHandle);
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkRegisterHighlighter(APluginId, AExtensions: PAnsiChar;
   AHandler: THostHighlightCallback; AUserData: Pointer): Int64; cdecl;
 const
@@ -1052,6 +1104,20 @@ begin
       Result := 0
     else
       Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSurfaceGetFullscreen(AHandle: Int64): Int64; cdecl;
+begin
+  try
+    if not SurfaceExists(AHandle) then
+      Result := -1
+    else if SurfaceFullscreen(AHandle) then
+      Result := 1
+    else
+      Result := 0;
   except
     Result := -1;
   end;
@@ -1494,6 +1560,12 @@ begin
   Result.VfsList := @ThunkVfsList;
   Result.VfsExists := @ThunkVfsExists;
   Result.VfsRead := @ThunkVfsRead;
+  Result.VfsOpen := @ThunkVfsOpen;
+  Result.VfsSize := @ThunkVfsSize;
+  Result.VfsReadAt := @ThunkVfsReadAt;
+  Result.VfsClose := @ThunkVfsClose;
+  Result.VfsCancel := @ThunkVfsCancel;
+  Result.SurfaceGetFullscreen := @ThunkSurfaceGetFullscreen;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -1904,6 +1976,7 @@ begin
   PluginUiUnregister(FLoaded[AIndex].PluginId);
   PluginSurfaceUnregister(FLoaded[AIndex].PluginId);
   PluginEventsUnregister(FLoaded[AIndex].PluginId);
+  PluginVfsStreamsRelease(FLoaded[AIndex].PluginId);
   UnregisterHighlighter(FLoaded[AIndex].PluginId);
   PluginChrome.UnregisterPlugin(FLoaded[AIndex].PluginId);
   PluginSettings.UnregisterPlugin(FLoaded[AIndex].PluginId);

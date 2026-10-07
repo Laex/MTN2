@@ -133,6 +133,15 @@ pub struct HostApi {
     surface_set_fullscreen: Option<unsafe extern "C" fn(handle: i64, on: i64) -> i64>,
     surface_native_handle: *const c_void,
     register_highlighter: *const c_void,
+    vfs_list: *const c_void,
+    vfs_exists: *const c_void,
+    vfs_read: *const c_void,
+    vfs_open: *const c_void,
+    vfs_size: *const c_void,
+    vfs_read_at: *const c_void,
+    vfs_close: *const c_void,
+    vfs_cancel: *const c_void,
+    surface_get_fullscreen: *const c_void,
 }
 
 /// A decoded picture: top-down BGRA.

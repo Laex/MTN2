@@ -335,13 +335,11 @@ procedure TestReservedChordsStayFree;
 var
   Profile: TKeymapProfile;
 begin
-  // Kept for what is planned: archive commands, the plugin menu, network
+  // Kept for what is planned: archive commands, network
   // (UNC) paths and macro recording. No panel or global action takes them.
   Profile := LoadDefaultKeymapProfile;
   Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkF3, [ssShift]) = kaNone,
     'Shift+F3 is reserved');
-  Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkF11, []) = kaNone,
-    'F11 is reserved');
   Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], vkInsert, [ssCtrl, ssAlt]) = kaNone,
     'Ctrl+Alt+Ins is reserved');
   Assert.IsTrue(MatchActionIn(Profile, [kcPanels, kcGlobal], 190 {vkOemPeriod}, [ssCtrl]) = kaNone,

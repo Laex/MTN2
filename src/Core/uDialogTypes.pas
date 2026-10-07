@@ -1469,16 +1469,17 @@ var
 begin
   Result := BuildShellProfileListDialog(
     T('ui.consoleProfile.title', 'Background console'), ATitles, ASelectedIndex);
-  // Two checkboxes take the button row under the profile list and the buttons
-  // move three rows down (keeping the empty row above them); the shared
-  // terminal-profile resource has no room for it, so only this dialog grows.
+  // Two checkboxes take the rows under the profile list that hold the rule
+  // and the empty row above the buttons; the rule and the buttons move three
+  // rows down. The shared terminal-profile resource has no room for it, so
+  // only this dialog grows.
   ButtonRow := 0;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Kind = dckButton then
       ButtonRow := Max(ButtonRow, Result.Controls[I].Row);
   Result.Height := Result.Height + 3;
   for I := 0 to High(Result.Controls) do
-    if Result.Controls[I].Kind = dckButton then
+    if Result.Controls[I].Row >= ButtonRow - 2 then
       Inc(Result.Controls[I].Row, 3);
   N := Length(Result.Controls);
   SetLength(Result.Controls, N + 2);
@@ -1486,12 +1487,12 @@ begin
     MakeCheckbox('start_on_launch',
       T('ui.consoleProfile.startOnLaunch', '&Start shell at program launch'),
       AStartOnLaunch),
-    1, ButtonRow, Result.Width - 4, 1);
+    1, ButtonRow - 2, Result.Width - 4, 1);
   Result.Controls[N + 1] := WithControlBox(
     MakeCheckbox('cwd_to_panels',
       T('ui.consoleProfile.cwdToPanels', '&Panel follows the console folder after commands'),
       ACwdToPanels),
-    1, ButtonRow + 1, Result.Width - 4, 1);
+    1, ButtonRow - 1, Result.Width - 4, 1);
   // The checkbox captions are set here, after the resource was fitted.
   FitDialogCaptions(Result);
 end;

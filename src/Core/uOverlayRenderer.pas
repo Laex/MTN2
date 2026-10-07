@@ -17,7 +17,7 @@ unit uOverlayRenderer;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, FMX.Graphics,
+  System.SysUtils, System.Classes, System.Types, System.UITypes, FMX.Graphics,
   uThemeTypes;
 
 const
@@ -44,6 +44,11 @@ procedure RequestOverlayPreview(const AURI: string; const ABounds, AClip: TRectI
 /// image positioned against stale geometry between URI changes.</summary>
 procedure UpdateOverlayBounds(const ABounds: TRectI); overload;
 procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single = 0); overload;
+/// <summary>Paints the picture over ARect (canvas units) instead of the cell bounds, so a
+/// full-screen plugin picture also covers the pixels that whole cells leave over at the right
+/// and bottom edge of the window. Stays in force until ClearOverlayPixelArea.</summary>
+procedure SetOverlayPixelArea(const ARect: TRectF);
+procedure ClearOverlayPixelArea;
 /// <summary>Shows a picture the caller already holds as AWidth x AHeight pixels
 /// (B, G, R, A bytes, rows top to bottom, no padding), copied; AURI names it
 /// for OverlayCurrentURI. Fitted and centered in ABounds, painted inside AClip
@@ -79,7 +84,7 @@ function ReadImagePixelSize(const APath: string; out AWidth, AHeight: Integer): 
 implementation
 
 uses
-  System.Math, System.Types, FMX.Types,
+  System.Math, FMX.Types,
   uVfsTypes, uVfsRegistry;
 
 type
@@ -115,6 +120,8 @@ type
 
 var
   GHost: TOverlayHost;
+  GAreaOn: Boolean = False;
+  GArea: TRectF;
   GCellW: Single = 0;
   GCellH: Single = 0;
   GPixelScale: Single = 1;
@@ -308,8 +315,11 @@ begin
   if (ACellWidth <= 0) or (ACellHeight <= 0) then
     Exit;
 
-  BoundsPx := RectF(FBounds.Left * ACellWidth, FBounds.Top * ACellHeight,
-    (FBounds.Right + 1) * ACellWidth, (FBounds.Bottom + 1) * ACellHeight);
+  if GAreaOn then
+    BoundsPx := GArea
+  else
+    BoundsPx := RectF(FBounds.Left * ACellWidth, FBounds.Top * ACellHeight,
+      (FBounds.Right + 1) * ACellWidth, (FBounds.Bottom + 1) * ACellHeight);
   BW := BoundsPx.Right - BoundsPx.Left;
   BH := BoundsPx.Bottom - BoundsPx.Top;
   if (BW <= 0) or (BH <= 0) then
@@ -336,8 +346,11 @@ begin
   end;
   Fitted := RectF(CX, CY, CX + SrcW * Scale, CY + SrcH * Scale);
 
-  ClipPx := RectF(FClip.Left * ACellWidth, FClip.Top * ACellHeight,
-    (FClip.Right + 1) * ACellWidth, (FClip.Bottom + 1) * ACellHeight);
+  if GAreaOn then
+    ClipPx := GArea
+  else
+    ClipPx := RectF(FClip.Left * ACellWidth, FClip.Top * ACellHeight,
+      (FClip.Right + 1) * ACellWidth, (FClip.Bottom + 1) * ACellHeight);
   if (ClipPx.Width <= 0) or (ClipPx.Height <= 0) then
     Exit;
   if ClipPx.Contains(Fitted) then
@@ -383,6 +396,17 @@ procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single)
 begin
   if Assigned(GHost) then
     GHost.UpdateBounds(ABounds, AClip, AImageScale);
+end;
+
+procedure SetOverlayPixelArea(const ARect: TRectF);
+begin
+  GArea := ARect;
+  GAreaOn := True;
+end;
+
+procedure ClearOverlayPixelArea;
+begin
+  GAreaOn := False;
 end;
 
 procedure ClearOverlayPreview;

@@ -33,6 +33,13 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 16,
+      "width": 66,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "hint",
       "text": "F9 or [...] - pick; blank = inherit from the base theme.",
@@ -46,8 +53,15 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 18,
+      "row": 19,
       "width": 64,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 18,
+      "width": 66,
       "height": 1
     },
     {

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "File Associations",
   "width": 64,
-  "height": 15,
+  "height": 16,
   "children": [
     {
       "type": "label",
@@ -27,12 +27,19 @@
       "height": 9
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 10,
+      "width": 62,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Edit",
       "default": true,
       "col": 4,
-      "row": 11,
+      "row": 12,
       "width": 12,
       "height": 1
     },
@@ -41,7 +48,7 @@
       "id": "add",
       "text": "&Add",
       "col": 22,
-      "row": 11,
+      "row": 12,
       "width": 12,
       "height": 1
     },
@@ -51,7 +58,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 46,
-      "row": 11,
+      "row": 12,
       "width": 12,
       "height": 1
     }

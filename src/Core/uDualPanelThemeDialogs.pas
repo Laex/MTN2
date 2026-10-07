@@ -1383,7 +1383,7 @@ var
   Decl: TDialogDeclaration;
   Head, Rows, Tail: TDialogControls;
   Ctrl: TDialogControl;
-  I, N, Row: Integer;
+  I, N, Row, RuleCount: Integer;
   Md: Boolean;
   Styles, StyleAttrs: TArray<string>;
   Spec: TThemeSpec;
@@ -1480,14 +1480,21 @@ begin
         50, Row, 14)];
     end;
   end;
-  // Hint, status and the buttons below the rows.
+  // Rule, hint, rule, status and the buttons below the rows.
+  RuleCount := 0;
   for I := 0 to High(Tail) do
   begin
     Id := Tail[I].Id;
     if SameText(Id, 'hint') then
       Tail[I] := WithControlBox(Tail[I], 1, N + 2, IfThen(Md, 80, 64), 1)
     else if SameText(Id, 'status') then
-      Tail[I] := WithControlBox(Tail[I], 1, N + 3, IfThen(Md, 80, 64), 1)
+      Tail[I] := WithControlBox(Tail[I], 1, N + 4, IfThen(Md, 80, 64), 1)
+    else if IsHRuleText(Tail[I].Text) then
+    begin
+      Tail[I] := WithControlBox(Tail[I], 0, IfThen(RuleCount = 0, N + 1, N + 3),
+        IfThen(Md, 84, 68) - 2, 1);
+      Inc(RuleCount);
+    end
     else if SameText(Id, 'ok') then
       Tail[I] := WithControlBox(Tail[I], 1, N + 5, 10, 1)
     else if SameText(Id, 'cancel') then

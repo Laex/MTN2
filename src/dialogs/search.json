@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Find file",
   "width": 58,
-  "height": 13,
+  "height": 14,
   "children": [
     {
       "type": "label",
@@ -102,12 +102,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 8,
+      "width": 56,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Find",
       "default": true,
       "col": 15,
-      "row": 9,
+      "row": 10,
       "width": 12,
       "height": 1
     },
@@ -117,7 +124,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 29,
-      "row": 9,
+      "row": 10,
       "width": 12,
       "height": 1
     }

@@ -1154,6 +1154,9 @@ type
     /// Viewer with an image Overlay in the viewport. Host FormPaint uses
     /// this because FMdi.Active is DualPanel, not the nested TEditorWindow.</summary>
     function MarkdownImageOverlayVisible: Boolean;
+    /// <summary>True while a plugin picture covers the whole window; ABackground is the color
+    /// to paint around it.</summary>
+    function SurfaceFullscreenBackground(out ABackground: TAlphaColor): Boolean;
   end;
 
 implementation
@@ -6783,6 +6786,19 @@ begin
   // The Help window covers the panels; the image Overlay would paint over it.
   Result := (not FConsoleMode) and (not HelpVisible) and (ActiveWorkspace.Kind = wkPanels) and
     ((PanelViewKind(psLeft) = pvkQuickView) or (PanelViewKind(psRight) = pvkQuickView));
+end;
+
+function TDualPanelWindow.SurfaceFullscreenBackground(out ABackground: TAlphaColor): Boolean;
+var
+  Doc: TEditorWindow;
+begin
+  ABackground := 0;
+  Doc := ActiveDocument;
+  Result := FAlive and not FConsoleMode and not HelpVisible and Assigned(Doc) and
+    (ActiveWorkspace.Kind = wkDocument) and Doc.IsSurfaceFullscreen and
+    not (Assigned(FDialog) and FDialog.Visible);
+  if Result then
+    ABackground := Doc.SurfaceBackground;
 end;
 
 function TDualPanelWindow.MarkdownImageOverlayVisible: Boolean;

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Replace",
   "width": 62,
-  "height": 10,
+  "height": 11,
   "children": [
     {
       "type": "label",
@@ -81,12 +81,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 5,
+      "width": 60,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "replace",
       "text": "Replace",
       "default": true,
       "col": 10,
-      "row": 6,
+      "row": 7,
       "width": 11,
       "height": 1
     },
@@ -95,7 +102,7 @@
       "id": "all",
       "text": "&All",
       "col": 22,
-      "row": 6,
+      "row": 7,
       "width": 7,
       "height": 1
     },
@@ -104,7 +111,7 @@
       "id": "skip",
       "text": "&Skip",
       "col": 30,
-      "row": 6,
+      "row": 7,
       "width": 8,
       "height": 1
     },
@@ -114,7 +121,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 39,
-      "row": 6,
+      "row": 7,
       "width": 10,
       "height": 1
     }

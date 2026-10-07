@@ -23,6 +23,7 @@ type
     [Test] procedure TestHighlightPluginNamesClassesOfALine;
     [Test] procedure TestPanelKitSelectsAndCountsInTheBackground;
     [Test] procedure TestPanelKitPeeksAFileOnlyWithThePermission;
+    [Test] procedure TestPanelKitChecksumsAFileInPieces;
     [Test] procedure TestNativeViewGivesThePluginAWindow;
     [Test] procedure TestPictureViewerFillsASurface;
     [Test] procedure TestRustCsvViewer;
@@ -559,6 +560,60 @@ begin
     end;
     Assert.IsTrue(Pos('Peek: 7 bytes, 2 lines. First line: abc', GNotices) > 0,
       'the plugin read the file through the host: ' + GNotices);
+  finally
+    PluginPermissionGrant('mtn.demo.panelkit', cPermVfsRead, False);
+    RemoveFakeServices;
+    if TDirectory.Exists(Root) then
+      TDirectory.Delete(Root, True);
+  end;
+end;
+
+{$R-}{$Q-}
+function Fnv1a(const AData: TBytes): UInt64;
+var
+  B: Byte;
+begin
+  Result := UInt64($CBF29CE484222325);
+  for B in AData do
+    Result := (Result xor B) * UInt64($100000001B3);
+end;
+{$R+}{$Q+}
+
+procedure TTestSamplePlugins.TestPanelKitChecksumsAFileInPieces;
+var
+  Root: string;
+  I: Integer;
+  Data: TBytes;
+begin
+  if not TDirectory.Exists(BuiltSample('mtn.demo.panelkit')) then
+    Assert.Pass('SKIP: mtn.demo.panelkit is not built (run samples\build-samples.ps1)');
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-hash-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Root);
+  // Larger than the plugin's 1 MiB piece, so the file is read in several calls.
+  SetLength(Data, 2600000);
+  for I := 0 to High(Data) do
+    Data[I] := Byte((I * 13 + 5) mod 253);
+  TFile.WriteAllBytes(TPath.Combine(Root, 'big.bin'), Data);
+  InstallFakeServices;
+  try
+    Assert.IsTrue(StageAndLoad('mtn.demo.panelkit'), 'the panel tools plugin loads');
+    GPanelJson := '{"active":"left","left":{"uri":"' + FileUri(Root) + '","cursor":"' +
+      FileUri(TPath.Combine(Root, 'big.bin')) + '"},"right":{"uri":"file:///C:/x"}}';
+    GNotices := '';
+    Assert.IsTrue(CommandRegistry.TryExecute('panelkit.hash'), 'the command runs');
+    Assert.IsTrue(Pos('permission', GNotices) > 0, 'without the grant the plugin says so: ' + GNotices);
+
+    PluginPermissionGrant('mtn.demo.panelkit', cPermVfsRead, True);
+    GNotices := '';
+    Assert.IsTrue(CommandRegistry.TryExecute('panelkit.hash'), 'the command runs again');
+    for I := 1 to 200 do
+    begin
+      CheckSynchronize(30);
+      if Pos('FNV-1a', GNotices) > 0 then
+        Break;
+    end;
+    Assert.IsTrue(Pos('FNV-1a ' + LowerCase(IntToHex(Fnv1a(Data), 16)) + ', ' + IntToStr(Length(Data)) +
+      ' bytes', GNotices) > 0, 'the thread read the whole file in pieces: ' + GNotices);
   finally
     PluginPermissionGrant('mtn.demo.panelkit', cPermVfsRead, False);
     RemoveFakeServices;

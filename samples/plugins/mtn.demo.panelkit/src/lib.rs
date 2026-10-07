@@ -8,18 +8,21 @@
 //!                 progress notice; press it again while it runs to stop it
 //!   Ctrl+Shift+L  read the file under the cursor through the host (any scheme: a folder, an archive,
 //!                 sftp://) and tell its size and first line; needs the permission "vfs.read"
+//!   Ctrl+Shift+H  checksum (FNV-1a) of the file under the cursor, any size and any scheme, read in
+//!                 pieces by a background thread; press it again to stop
 //!
 //! It also listens to the "doc.saved" event and shows a notice when a file was saved in the editor.
 //!
 //! Shows: the panel API (panel_info, panel_goto, panel_select), the clipboard, show_message, host
-//! events (subscribe), background work (post_to_main, progress_set / progress_end) and the file system
-//! read (vfs_read, which the user must allow in Plugins - Permissions). The JSON the
-//! host hands over is read with serde_json.
+//! events (subscribe), background work (post_to_main, progress_set / progress_end), the file system
+//! read (vfs_read, which the user must allow in Plugins - Permissions) and reading in pieces from another
+//! thread (vfs_open, vfs_size, vfs_read_at, vfs_close, vfs_cancel). The JSON the host hands over is read
+//! with serde_json.
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -29,11 +32,14 @@ use serde_json::Value;
 const ABI_VERSION: i64 = 2;
 const PLUGIN_ID: &[u8] = b"mtn.demo.panelkit\0";
 const JOB_ID: &[u8] = b"count\0";
+const HASH_ID: &[u8] = b"hash\0";
 
 type CommandCb = unsafe extern "C" fn(user: *mut c_void);
 /// Called once on the main thread when a `vfs_read` is done: status 0 = ok, then the bytes of the file
 /// (valid only during the call).
 type VfsDataCb = unsafe extern "C" fn(user: *mut c_void, status: i64, data: *const u8, length: i64);
+/// Called once on the main thread when a `vfs_open` is done: status 0 = ok, then the handle of the file.
+type VfsOpenCb = unsafe extern "C" fn(user: *mut c_void, status: i64, handle: i64);
 type EventCb = unsafe extern "C" fn(user: *mut c_void, topic: *const c_char, payload: *const c_char);
 
 /// Mirror of `THostApiTable` (src/Core/uPluginHostAbi.pas). Fields this plugin does not call are
@@ -107,12 +113,26 @@ pub struct HostApi {
             user: *mut c_void,
         ) -> i64,
     >,
+    vfs_open: Option<
+        unsafe extern "C" fn(plugin_id: *const c_char, uri: *const c_char, on_done: VfsOpenCb, user: *mut c_void) -> i64,
+    >,
+    vfs_size: Option<unsafe extern "C" fn(handle: i64) -> i64>,
+    vfs_read_at: Option<unsafe extern "C" fn(handle: i64, offset: i64, buf: *mut u8, size: i64) -> i64>,
+    vfs_close: Option<unsafe extern "C" fn(handle: i64) -> i64>,
+    vfs_cancel: Option<unsafe extern "C" fn(job: i64) -> i64>,
+    surface_get_fullscreen: *const c_void,
 }
 
 // The host table is copied once at init and stays valid until shutdown.
 static HOST: Mutex<usize> = Mutex::new(0);
 static CANCEL: AtomicBool = AtomicBool::new(false);
 static JOB: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
+// The checksum: the number of the vfs_open that has not finished (0 = none), whether a thread is reading
+// and whether it was asked to stop.
+static HASH_OPENING: AtomicI64 = AtomicI64::new(0);
+static HASH_RUNNING: AtomicBool = AtomicBool::new(false);
+static HASH_CANCEL: AtomicBool = AtomicBool::new(false);
+static HASH_JOB: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
 
 fn host() -> Option<&'static HostApi> {
     let address = *HOST.lock().ok()?;
@@ -273,19 +293,21 @@ unsafe extern "C" fn peek_file(_user: *mut c_void) {
     }
 }
 
-/// What the counting thread tells the main thread.
+/// What a background thread tells the main thread.
 struct Report {
+    /// The progress notice this report belongs to (JOB_ID or HASH_ID).
+    id: &'static [u8],
     text: String,
     done: bool,
 }
 
-/// Runs on the main thread (posted by the counting thread): shows or ends the progress notice.
+/// Runs on the main thread (posted by a background thread): shows or ends the progress notice.
 unsafe extern "C" fn show_report(user: *mut c_void) {
     let report = Box::from_raw(user as *mut Report);
     let Some(h) = host() else {
         return;
     };
-    let id = JOB_ID.as_ptr() as *const c_char;
+    let id = report.id.as_ptr() as *const c_char;
     let plugin = PLUGIN_ID.as_ptr() as *const c_char;
     if report.done {
         if let Some(end) = h.progress_end {
@@ -331,7 +353,11 @@ fn count_tree(root: &Path) -> Option<(u64, u64, u64)> {
             }
             if last.elapsed() > Duration::from_millis(250) {
                 last = Instant::now();
-                post(Report { text: format!("Counting... {} files, {} folders", files, folders), done: false });
+                post(Report {
+                    id: JOB_ID,
+                    text: format!("Counting... {} files, {} folders", files, folders),
+                    done: false,
+                });
             }
         }
     }
@@ -367,8 +393,112 @@ unsafe extern "C" fn count_in_background(_user: *mut c_void) {
             }
             None => "Counting stopped".to_owned(),
         };
-        post(Report { text, done: true });
+        post(Report { id: JOB_ID, text, done: true });
     }));
+}
+
+/// FNV-1a over the whole file, read in 1 MiB pieces with `vfs_read_at`. Runs in its own thread: the
+/// host functions it calls may be used from any thread, so the main thread is never blocked.
+fn hash_stream(handle: i64) {
+    let api = host();
+    let text = match api.and_then(|h| Some((h.vfs_size?, h.vfs_read_at?))) {
+        None => "Checksum: this version of MTN2 cannot read files in pieces.".to_owned(),
+        Some((size, read_at)) => {
+            let total = unsafe { size(handle) };
+            let mut buf = vec![0u8; 1 << 20];
+            let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+            let mut offset: i64 = 0;
+            let mut last = Instant::now();
+            loop {
+                if HASH_CANCEL.load(Ordering::Relaxed) {
+                    break "Checksum stopped".to_owned();
+                }
+                let n = unsafe { read_at(handle, offset, buf.as_mut_ptr(), buf.len() as i64) };
+                if n < 0 {
+                    break format!("Checksum: read error {}", n);
+                }
+                if n == 0 {
+                    break format!("FNV-1a {:016x}, {} bytes", hash, offset);
+                }
+                for byte in &buf[..n as usize] {
+                    hash = (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3);
+                }
+                offset += n;
+                if last.elapsed() > Duration::from_millis(250) {
+                    last = Instant::now();
+                    post(Report {
+                        id: HASH_ID,
+                        text: format!("Checksum... {} of {} MB", offset >> 20, total >> 20),
+                        done: false,
+                    });
+                }
+            }
+        }
+    };
+    if let Some(close) = api.and_then(|h| h.vfs_close) {
+        unsafe { close(handle) };
+    }
+    HASH_RUNNING.store(false, Ordering::Relaxed);
+    post(Report { id: HASH_ID, text, done: true });
+}
+
+/// The host opened the file (main thread): the thread that reads it starts here.
+unsafe extern "C" fn hash_opened(_user: *mut c_void, status: i64, handle: i64) {
+    HASH_OPENING.store(0, Ordering::Relaxed);
+    if status != 0 {
+        let why = match status {
+            1 => "the file was not found",
+            2 => "access was denied",
+            4 => "stopped",
+            _ => "the file could not be opened",
+        };
+        say(&format!("Checksum: {}.", why), 1);
+        return;
+    }
+    let mut job = HASH_JOB.lock().unwrap();
+    if let Some(finished) = job.take() {
+        let _ = finished.join();
+    }
+    HASH_CANCEL.store(false, Ordering::Relaxed);
+    HASH_RUNNING.store(true, Ordering::Relaxed);
+    *job = Some(std::thread::spawn(move || hash_stream(handle)));
+}
+
+unsafe extern "C" fn hash_file(_user: *mut c_void) {
+    let Some(h) = host() else {
+        return;
+    };
+    // A second press stops the opening (a file from an archive or sftp is copied first) or the reading.
+    let opening = HASH_OPENING.load(Ordering::Relaxed);
+    if opening > 0 {
+        if let Some(cancel) = h.vfs_cancel {
+            cancel(opening);
+        }
+        return;
+    }
+    if HASH_RUNNING.load(Ordering::Relaxed) {
+        HASH_CANCEL.store(true, Ordering::Relaxed);
+        return;
+    }
+    let Some(open) = h.vfs_open else {
+        say("This version of MTN2 cannot read files in pieces.", 1);
+        return;
+    };
+    let Some(info) = panel_info() else {
+        say("The file panels are not on screen.", 1);
+        return;
+    };
+    let side = info["active"].as_str().unwrap_or("left");
+    let Some(uri) = info[side]["cursor"].as_str().and_then(|u| CString::new(u).ok()) else {
+        say("Put the cursor on a file.", 1);
+        return;
+    };
+    match open(PLUGIN_ID.as_ptr() as *const c_char, uri.as_ptr(), hash_opened, null_mut()) {
+        job if job > 0 => HASH_OPENING.store(job, Ordering::Relaxed),
+        -2 => say("Checksum needs the permission to read files: Parameters - Plugins - Permissions...", 1),
+        -3 => say("Too many files are open.", 1),
+        _ => say("Checksum could not start.", 1),
+    }
 }
 
 unsafe extern "C" fn on_event(_user: *mut c_void, _topic: *const c_char, payload: *const c_char) {
@@ -412,12 +542,13 @@ pub unsafe extern "C" fn mtn_plugin_init(host: *const HostApi) -> i64 {
     };
     *HOST.lock().unwrap() = host as usize;
     let id = PLUGIN_ID.as_ptr() as *const c_char;
-    let commands: [(&[u8], CommandCb, &[u8]); 5] = [
+    let commands: [(&[u8], CommandCb, &[u8]); 6] = [
         (b"panelkit.copypaths\0", copy_paths, b"Ctrl+Shift+P\0"),
         (b"panelkit.mirror\0", mirror_folder, b"Ctrl+Shift+M\0"),
         (b"panelkit.selectext\0", select_same_extension, b"Ctrl+Shift+X\0"),
         (b"panelkit.count\0", count_in_background, b"Ctrl+Shift+K\0"),
         (b"panelkit.peek\0", peek_file, b"Ctrl+Shift+L\0"),
+        (b"panelkit.hash\0", hash_file, b"Ctrl+Shift+H\0"),
     ];
     for (name, run, chord) in commands {
         register(id, name.as_ptr() as *const c_char, run, null_mut());
@@ -427,11 +558,17 @@ pub unsafe extern "C" fn mtn_plugin_init(host: *const HostApi) -> i64 {
     0
 }
 
-/// Stops the counting thread before the DLL goes.
+/// Stops the counting and checksum threads before the DLL goes.
 #[no_mangle]
 pub extern "C" fn mtn_plugin_shutdown() {
     CANCEL.store(true, Ordering::Relaxed);
+    HASH_CANCEL.store(true, Ordering::Relaxed);
     if let Ok(mut job) = JOB.lock() {
+        if let Some(running) = job.take() {
+            let _ = running.join();
+        }
+    }
+    if let Ok(mut job) = HASH_JOB.lock() {
         if let Some(running) = job.take() {
             let _ = running.join();
         }

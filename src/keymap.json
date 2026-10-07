@@ -191,6 +191,7 @@
       { "key": "Num0", "ctrl": true, "description": "Reset zoom to 100%" }
     ],
     "ReloadKeymap": { "key": "K", "ctrl": true, "alt": true, "description": "Reload keymap.json" },
+    "ToggleFullscreen": { "key": "F11", "description": "Toggle full screen (from any window)" },
     "ShellHistory": { "key": "F8", "alt": true, "description": "Console / terminal: command history" },
     "ShellSelectAll": [
       { "key": "A", "ctrl": true, "description": "Console / terminal: select all" },

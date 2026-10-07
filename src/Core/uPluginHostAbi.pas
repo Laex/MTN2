@@ -46,7 +46,8 @@ const
   /// PanelRefresh, ClipboardGet, ClipboardSet, ShowMessage, Subscribe, PanelList,
   /// PanelSetCursor, PanelSelect, DocSetSelection, DocLine, PostToMain, ProgressSet,
   /// ProgressEnd, SurfaceOpenEx, SurfaceSetFullscreen, SurfaceNativeHandle,
-  /// RegisterHighlighter, VfsList, VfsExists, VfsRead.</summary>
+  /// RegisterHighlighter, VfsList, VfsExists, VfsRead, VfsOpen, VfsSize, VfsReadAt,
+  /// VfsClose, VfsCancel, SurfaceGetFullscreen.</summary>
   cPluginAbiVersion: Int64 = 2;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
@@ -304,6 +305,8 @@ type
     AUserData: Pointer): Int64; cdecl;
   /// <summary>Switches a tab surface between normal and full screen. 0 = done.</summary>
   THostSurfaceSetFullscreenFn = function(AHandle, AOn: Int64): Int64; cdecl;
+  /// <summary>1 when the surface is full screen, 0 when it is not, -1 for an unknown handle.</summary>
+  THostSurfaceGetFullscreenFn = function(AHandle: Int64): Int64; cdecl;
   /// <summary>The window handle (HWND on Windows) of a native surface; 0 when the surface
   /// has none. The host keeps it over the area, hides it under dialogs and menus and
   /// resizes the windows inside it to fill it; the plugin draws in it (or hands it to a
@@ -340,6 +343,26 @@ type
   /// <summary>Starts reading a whole file of at most AMaxBytes (0 = 2 MB, at most 64 MB).</summary>
   THostVfsReadFn = function(APluginId, AUri: PAnsiChar; AMaxBytes: Int64;
     ACallback: THostVfsDataCallback; AUserData: Pointer): Int64; cdecl;
+  /// <summary>Result of VfsOpen: the status as above and, when it is 0, the handle of the open
+  /// file. Runs once, on the main thread.</summary>
+  THostVfsOpenCallback = procedure(AUserData: Pointer; AStatus: Int64; AHandle: Int64); cdecl;
+  /// <summary>Opens a file for reading in pieces (permission "vfs.read"). Returns the number of
+  /// the job (above 0) and the callback follows; -1 = bad arguments; -2 = no permission; -3 = too
+  /// many open files (16 per plugin). A file that is not local is copied to a temporary file first, with a progress
+  /// notice. Main thread only.</summary>
+  THostVfsOpenFn = function(APluginId, AUri: PAnsiChar; ACallback: THostVfsOpenCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Cancels a VfsOpen that has not finished: its callback still follows once, with status
+  /// 4. 0 = cancelled, -1 = no such job. Main thread only.</summary>
+  THostVfsCancelFn = function(AJob: Int64): Int64; cdecl;
+  /// <summary>Size of an open file in bytes; -1 for an unknown handle. Any thread.</summary>
+  THostVfsSizeFn = function(AHandle: Int64): Int64; cdecl;
+  /// <summary>Reads up to ASize bytes from AOffset into ABuf. Returns the bytes read, 0 at the
+  /// end of the file, a negative number on an error. Blocks only the calling thread; any
+  /// thread.</summary>
+  THostVfsReadAtFn = function(AHandle, AOffset: Int64; ABuf: PByte; ASize: Int64): Int64; cdecl;
+  /// <summary>Closes an open file. 0 = closed, -1 = unknown handle. Any thread.</summary>
+  THostVfsCloseFn = function(AHandle: Int64): Int64; cdecl;
 
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
@@ -396,6 +419,12 @@ type
     VfsList: THostVfsListFn;
     VfsExists: THostVfsExistsFn;
     VfsRead: THostVfsReadFn;
+    VfsOpen: THostVfsOpenFn;
+    VfsSize: THostVfsSizeFn;
+    VfsReadAt: THostVfsReadAtFn;
+    VfsClose: THostVfsCloseFn;
+    VfsCancel: THostVfsCancelFn;
+    SurfaceGetFullscreen: THostSurfaceGetFullscreenFn;
   end;
   PHostApiTable = ^THostApiTable;
 

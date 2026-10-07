@@ -18,11 +18,18 @@
       "height": 10
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 10,
+      "width": 52,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 10,
+      "row": 11,
       "width": 50,
       "height": 1
     },

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Create link",
   "width": 70,
-  "height": 12,
+  "height": 13,
   "children": [
     {
       "type": "label",
@@ -67,12 +67,19 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 7,
+      "width": 68,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Create",
       "default": true,
       "col": 14,
-      "row": 8,
+      "row": 9,
       "width": 14,
       "height": 1
     },
@@ -82,7 +89,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 39,
-      "row": 8,
+      "row": 9,
       "width": 14,
       "height": 1
     }

@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Directory hotlist",
   "width": 81,
-  "height": 19,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -27,11 +27,18 @@
       "height": 11
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 12,
+      "width": 79,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "hint_hotkey",
       "text": "Ctrl+1..0 global hotkey   &x in a name or group: key x in this list",
       "col": 1,
-      "row": 12,
+      "row": 13,
       "width": 77,
       "height": 1
     },
@@ -40,8 +47,15 @@
       "id": "hint_keys",
       "text": "F2 rename  F4 group  Del delete  Ctrl+Up/Down move  Left [-]  Right [+]",
       "col": 1,
-      "row": 13,
+      "row": 14,
       "width": 77,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 15,
+      "width": 79,
       "height": 1
     },
     {
@@ -50,7 +64,7 @@
       "text": "Go",
       "default": true,
       "col": 19,
-      "row": 15,
+      "row": 17,
       "width": 10,
       "height": 1
     },
@@ -59,7 +73,7 @@
       "id": "save",
       "text": "&Save",
       "col": 33,
-      "row": 15,
+      "row": 17,
       "width": 14,
       "height": 1
     },
@@ -69,7 +83,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 51,
-      "row": 15,
+      "row": 17,
       "width": 10,
       "height": 1
     }
