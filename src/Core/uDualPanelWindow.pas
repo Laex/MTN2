@@ -435,13 +435,20 @@ type
     procedure ReloadSidesShowing(const AUri: string);
     procedure HandleArchivePasswordCommand(const AControlId, APassword: string);
     /// <summary>The smallest encrypted file among AURIs in the 7z archive the
-    /// active panel shows, when that archive has no checked password yet.</summary>
+    /// active panel shows, when that archive has no checked password yet.
+    /// With AIncludeZip an encrypted entry of a local ZIP counts too; it is
+    /// probed through the 7z backend, since the built-in ZIP layer cannot
+    /// decrypt.</summary>
     function FindLockedArchiveFile(const AURIs: TArray<string>;
-      out AArchivePath, AProbeUri: string): Boolean;
+      out AArchivePath, AProbeUri: string; AIncludeZip: Boolean = False): Boolean;
+    /// <summary>The URI to read ARow from: the 7z:// twin of an encrypted ZIP
+    /// entry (when 7z.dll is there), otherwise the row's own URI.</summary>
+    function ReadableRowUri(const ARow: TPanelRow): string;
     /// <summary>Runs AAction at once, or - when AURIs include an encrypted
     /// file of a 7z archive with no checked password - after the password is
     /// entered and checked on the smallest such file. Esc drops AAction.</summary>
-    procedure RunWithArchivePassword(const AURIs: TArray<string>; const AAction: TProc);
+    procedure RunWithArchivePassword(const AURIs: TArray<string>; const AAction: TProc;
+      AIncludeZip: Boolean = False);
     procedure OpenArchiveActionPrompt(AWrong: Boolean);
     procedure CheckArchiveActionPassword;
     procedure LoadSide(ASide: TPanelSide);
@@ -1173,7 +1180,7 @@ implementation
 uses
   Winapi.Windows, Winapi.ActiveX,
   uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
-  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings;
+  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -2214,7 +2221,8 @@ end;
 
 procedure TDualPanelWindow.HostOpenJobConfirm(const ATitle, AMessage: string);
 var
-  DestPath: string;
+  DestPath, OkText, Prefix, ItemName, Suffix: string;
+  Recycle: Boolean;
 begin
   FDialogKind := hdkJobConfirm;
   if Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) then
@@ -2224,12 +2232,17 @@ begin
   end
   else if Assigned(FJobs) and (FJobs.Kind = pjkDelete) then
   begin
-    if FJobs.State.DeleteToRecycleBin then
-      FDialog.Open(BuildDeleteDialog(ATitle, AMessage, T('ui.delete.okRecycle', 'Recycle'), False),
+    Recycle := FJobs.State.DeleteToRecycleBin;
+    if Recycle then
+      OkText := T('ui.delete.okRecycle', 'Recycle')
+    else
+      OkText := T('ui.delete.okWipe', 'Delete');
+    if (Length(FJobs.State.Sources) = 1) and
+       JobDeleteOneParts(FJobs.State.Sources[0], Recycle, Prefix, ItemName, Suffix) then
+      FDialog.Open(BuildDeleteNameDialog(ATitle, Prefix, ItemName, Suffix, OkText, not Recycle),
         DialogCommand)
     else
-      FDialog.Open(BuildDeleteDialog(ATitle, AMessage, T('ui.delete.okWipe', 'Delete'), True),
-        DialogCommand);
+      FDialog.Open(BuildDeleteDialog(ATitle, AMessage, OkText, not Recycle), DialogCommand);
   end
   else
     FDialog.Open(BuildConfirmDialog(ATitle, AMessage), DialogCommand);
@@ -3372,8 +3385,47 @@ begin
     M.Refresh;
 end;
 
-function TDualPanelWindow.FindLockedArchiveFile(const AURIs: TArray<string>;
+// An encrypted file at or under one of AURIs, entries of the local ZIP the
+// panel at ATabUri shows. The built-in ZIP layer cannot decrypt, so the file
+// is addressed through the 7z backend (AProbeUri).
+function ZipEncryptedProbe(const ATabUri: string; const AURIs: TArray<string>;
   out AArchivePath, AProbeUri: string): Boolean;
+var
+  S, Base, Probe: string;
+  Segs: TArray<string>;
+  Backend: IVirtualFileSystem;
+begin
+  Result := False;
+  AArchivePath := '';
+  AProbeUri := '';
+  if not IsZipArchiveUri(ATabUri) or HostSevenZipDllMissing then
+    Exit;
+  AArchivePath := ArchiveBasePath(ATabUri);
+  if (AArchivePath = '') or
+     not GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(AArchivePath), Backend) then
+    Exit;
+  for S in AURIs do
+    if SplitArchiveUri(S, Base, Segs) and (Length(Segs) = 1) and
+       ZipFindEncryptedEntry(ArchiveBaseLocalPath(Base), Segs[0], Probe) then
+    begin
+      AProbeUri := JoinVfsUri(PathToSevenZipRootUri(AArchivePath), Probe);
+      Exit(True);
+    end;
+end;
+
+function TDualPanelWindow.ReadableRowUri(const ARow: TPanelRow): string;
+var
+  Backend: IVirtualFileSystem;
+begin
+  Result := ARow.URI;
+  if ARow.IsEncrypted and not ARow.IsDirectory and IsZipArchiveUri(ARow.URI) and
+     not HostSevenZipDllMissing and
+     GlobalVfsRegistry.TryResolve(ZipEntryToSevenZipUri(ARow.URI), Backend) then
+    Result := ZipEntryToSevenZipUri(ARow.URI);
+end;
+
+function TDualPanelWindow.FindLockedArchiveFile(const AURIs: TArray<string>;
+  out AArchivePath, AProbeUri: string; AIncludeZip: Boolean): Boolean;
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -3388,6 +3440,12 @@ begin
   AProbeUri := '';
   if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
     Exit;
+  if AIncludeZip and IsZipArchiveUri(Tab.CurrentURI) then
+  begin
+    Result := ZipEncryptedProbe(Tab.CurrentURI, AURIs, AArchivePath, AProbeUri) and
+      not FArchivesUnlocked.ContainsKey(LowerCase(AArchivePath));
+    Exit;
+  end;
   if not IsSevenZipUri(Tab.CurrentURI) then
     Exit;
   AArchivePath := ArchiveBasePath(Tab.CurrentURI);
@@ -3406,11 +3464,11 @@ begin
 end;
 
 procedure TDualPanelWindow.RunWithArchivePassword(const AURIs: TArray<string>;
-  const AAction: TProc);
+  const AAction: TProc; AIncludeZip: Boolean);
 var
   ArchPath, Probe: string;
 begin
-  if not FindLockedArchiveFile(AURIs, ArchPath, Probe) then
+  if not FindLockedArchiveFile(AURIs, ArchPath, Probe, AIncludeZip) then
   begin
     AAction();
     Exit;
@@ -4824,14 +4882,14 @@ begin
       RunWithArchivePassword([Uri],
         procedure
         begin
-          RequestOpenViewer(Uri);
-        end);
+          RequestOpenViewer(ReadableRowUri(ARow));
+        end, True);
     ackEdit:
       RunWithArchivePassword([Uri],
         procedure
         begin
-          RequestOpenEditor(Uri);
-        end);
+          RequestOpenEditor(ReadableRowUri(ARow));
+        end, True);
     ackShell:
       if HasArchiveChain(Uri) or IsSevenZipUri(Uri) then
         RunWithArchivePassword([Uri],
@@ -6638,14 +6696,14 @@ begin
     RunWithArchivePassword([Row.URI],
       procedure
       begin
-        RequestOpenEditor(Row.URI);
-      end)
+        RequestOpenEditor(ReadableRowUri(Row));
+      end, True)
   else
     RunWithArchivePassword([Row.URI],
       procedure
       begin
-        RequestOpenViewer(Row.URI);
-      end);
+        RequestOpenViewer(ReadableRowUri(Row));
+      end, True);
 end;
 
 procedure TDualPanelWindow.FolderDown;
@@ -10868,6 +10926,10 @@ var
   DestSide: TPanelSide;
   Sources: TArray<string>;
   DestURI, Reason, ArchPath, Probe: string;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  I: Integer;
 begin
   if not CanBeginAnotherJob then
     Exit;
@@ -10879,15 +10941,22 @@ begin
     Exit;
 
   // Copying out of an archive reads its encrypted files: password first.
-  if (AKind in [pjkCopy, pjkMove]) and FindLockedArchiveFile(Sources, ArchPath, Probe) then
+  if (AKind in [pjkCopy, pjkMove]) and
+     FindLockedArchiveFile(Sources, ArchPath, Probe, True) then
   begin
     RunWithArchivePassword(Sources,
       procedure
       begin
         BeginJob(AKind, ADeleteToRecycleBin);
-      end);
+      end, True);
     Exit;
   end;
+  // Encrypted ZIP entries are read through the 7z backend, which decrypts.
+  if (AKind in [pjkCopy, pjkMove]) and GetActiveRowContext(Ws, Panel, Tab, Rows) and
+     ZipEncryptedProbe(Tab.CurrentURI, Sources, ArchPath, Probe) then
+    for I := 0 to High(Sources) do
+      if ZipEntryToSevenZipUri(Sources[I]) <> '' then
+        Sources[I] := ZipEntryToSevenZipUri(Sources[I]);
 
   if (AKind = pjkDelete) and ActivePanelIsWorkspace then
   begin

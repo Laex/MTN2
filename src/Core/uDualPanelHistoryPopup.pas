@@ -47,7 +47,8 @@ implementation
 
 const
   cPreferredViewRows = 21;
-  cPreferredWidth = 56;
+  cPanelMargin = 3;
+  cMinWidth = 20;
   cListFg      = TAlphaColor($FFAAAAAA);
   cPanelBg     = TAlphaColor($FF0000AA);
   cCursorFg    = TAlphaColor($FF000000);
@@ -110,17 +111,13 @@ end;
 
 procedure THistoryPopupController.Layout;
 var
-  PanelBounds, LeftB, RightB: TRectI;
-  W, H, MaxList, ViewRows, SharedInner: Integer;
+  PanelBounds: TRectI;
+  W, H, MaxList, ViewRows: Integer;
 begin
   PanelBounds := FGetPanelBounds(FSide);
-  LeftB := FGetPanelBounds(psLeft);
-  RightB := FGetPanelBounds(psRight);
-  SharedInner := Min(LeftB.Width, RightB.Width);
-  // Same width on both sides: do not size from the current panel's labels.
-  W := Min(cPreferredWidth, Max(SharedInner - 2, 20));
-  if W > PanelBounds.Width - 1 then
-    W := Max(PanelBounds.Width - 1, 20);
+  // The panel's width less cPanelMargin cells on each side; a narrow panel
+  // keeps a usable minimum, never wider than the panel itself.
+  W := Max(PanelBounds.Width - 2 * cPanelMargin, Min(cMinWidth, PanelBounds.Width));
   MaxList := Max(PanelBounds.Height - 4, 3);
   ViewRows := Min(MaxList, cPreferredViewRows);
   H := ViewRows + 2;
@@ -129,9 +126,9 @@ begin
   if H > PanelBounds.Height - 1 then
     H := Max(PanelBounds.Height - 1, 4);
   FBounds := TRectI.Make(
-    PanelBounds.Left + Max((PanelBounds.Width - W) div 2, 1),
+    PanelBounds.Left + (PanelBounds.Width - W) div 2,
     PanelBounds.Top + Max((PanelBounds.Height - H) div 2, 1),
-    PanelBounds.Left + Max((PanelBounds.Width - W) div 2, 1) + W - 1,
+    PanelBounds.Left + (PanelBounds.Width - W) div 2 + W - 1,
     PanelBounds.Top + Max((PanelBounds.Height - H) div 2, 1) + H - 1);
   EnsureView;
 end;
@@ -190,7 +187,8 @@ begin
       Idx := I - FListTopPad;
     if (Idx >= 0) and (Idx <= High(FItems)) then
     begin
-      Line := FitFolderHistoryLabel(FItems[Idx], InnerW);
+      // One blank cell between the text and the scroll bar.
+      Line := FitFolderHistoryLabel(FItems[Idx], InnerW - 1);
       if Length(Line) < InnerW then
         Line := Line + StringOfChar(' ', InnerW - Length(Line));
       if Idx = FCursorIndex then

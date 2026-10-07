@@ -14,6 +14,7 @@ type
     [Test] procedure TestProgressFields;
     [Test] procedure TestParallel;
     [Test] procedure TestStatusAndOrigin;
+    [Test] procedure TestDeleteOneParts;
   end;
 
 implementation
@@ -227,6 +228,18 @@ end;
 procedure TTestDualPanelJobRules.TestStatusAndOrigin;
 begin
   TestDualPanelJobRules.TestStatusAndOrigin;
+end;
+
+procedure TTestDualPanelJobRules.TestDeleteOneParts;
+var
+  Prefix, Name, Suffix: string;
+begin
+  Assert.IsTrue(JobDeleteOneParts('file:///C:/NoSuchDir/a b.zip', True, Prefix, Name, Suffix));
+  Assert.IsTrue(Pos('a b.zip', Name) > 0, 'name line holds the name');
+  Assert.IsTrue(Pos('%s', Prefix + Name + Suffix) = 0, 'no placeholder left');
+  Assert.IsTrue((Prefix <> '') and (Suffix <> ''), 'words around the name');
+  Assert.IsTrue(Pos('a b.zip', Prefix + Suffix) = 0, 'name only on its own line');
+  Assert.IsFalse(JobDeleteOneParts('', False, Prefix, Name, Suffix), 'no name');
 end;
 
 initialization

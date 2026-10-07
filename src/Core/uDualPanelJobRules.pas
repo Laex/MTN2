@@ -25,6 +25,11 @@ function JobProgressResourceName(const AJob: TPanelJobState): string;
 function FormatJobProgressBar(AWidth, APct: Integer): string;
 function JobProgressSrcLine(const AJob: TPanelJobState; AMaxLen: Integer): string;
 function JobProgressDstLine(const AJob: TPanelJobState; AMaxLen: Integer): string;
+/// <summary>The question for deleting one item split in three: the words
+/// before the name, the quoted name, the words after it ("Move file", "name" in
+/// quotes, "to Recycle Bin?"). False when ASource has no name.</summary>
+function JobDeleteOneParts(const ASource: string; ARecycle: Boolean;
+  out APrefix, AName, ASuffix: string): Boolean;
 function JobProgressVerb(AKind: TPanelJobKind): string;
 function JobProgressCountLine(const ALabel: string; ADone, ATotal: Int64;
   AInnerW: Integer): string;
@@ -70,7 +75,57 @@ function BuildJobProgressSnapshot(const AJob: TPanelJobState;
 implementation
 
 uses
-  uDialogTypes, uDialogResources;
+  System.IOUtils, uDialogTypes, uDialogResources, uStrings;
+
+function JobDeleteOneParts(const ASource: string; ARecycle: Boolean;
+  out APrefix, AName, ASuffix: string): Boolean;
+var
+  Path, Kind, Text, Open, Close: string;
+  P: Integer;
+begin
+  AName := FileUriTitle(ASource);
+  if (AName <> '') and (AName[Length(AName)] = '/') then
+    Delete(AName, Length(AName), 1);
+  APrefix := '';
+  ASuffix := '';
+  Result := AName <> '';
+  if not Result then
+    Exit;
+  Path := FileUriToPath(ASource);
+  if HasArchiveChain(ASource) or (Path = '') then
+    Kind := T('ui.job.kindItem', 'item')
+  else if TDirectory.Exists(WinApiPath(Path)) then
+    Kind := T('ui.job.kindFolder', 'folder')
+  else
+    Kind := T('ui.job.kindFile', 'file');
+  if ARecycle then
+    Text := T('ui.job.confirmRecycleOne', 'Move %s "%s" to Recycle Bin?', [Kind, '%s'])
+  else
+    Text := T('ui.job.confirmDeletePermanentOne', 'Permanently delete %s "%s"?', [Kind, '%s']);
+  P := Pos('%s', Text);
+  if P = 0 then
+  begin
+    APrefix := Text;
+    Exit;
+  end;
+  APrefix := Copy(Text, 1, P - 1);
+  ASuffix := Copy(Text, P + 2, MaxInt);
+  Open := '';
+  Close := '';
+  if (APrefix <> '') and CharInSet(APrefix[Length(APrefix)], ['"', '`', #$00AB]) then
+  begin
+    Open := APrefix[Length(APrefix)];
+    Delete(APrefix, Length(APrefix), 1);
+  end;
+  if (ASuffix <> '') and CharInSet(ASuffix[1], ['"', '`', #$00BB]) then
+  begin
+    Close := ASuffix[1];
+    Delete(ASuffix, 1, 1);
+  end;
+  APrefix := Trim(APrefix);
+  ASuffix := Trim(ASuffix);
+  AName := Open + AName + Close;
+end;
 
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
 begin

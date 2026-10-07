@@ -42,6 +42,12 @@ type
 procedure CalculateZipFolderSize(const AURI: string; ACancel: IJobCancelToken;
   out ABytes: Int64; out AFiles, AFolders: Integer; out AError: TVfsError);
 
+/// <summary>The smallest encrypted file at or under AInnerPath (a file or a
+/// folder; '' = whole archive) of the local ZIP AZipPath; AProbeInner is its
+/// path inside the archive. False when there is none.</summary>
+function ZipFindEncryptedEntry(const AZipPath, AInnerPath: string;
+  out AProbeInner: string): Boolean;
+
 implementation
 
 uses
@@ -248,6 +254,8 @@ type
       ACancel: IJobCancelToken; out AExists, AIsDir: Boolean;
       out AError: TVfsError): Boolean; static;
     class procedure Invalidate(const AZipPath: string); static;
+    class function FindEncrypted(const AZipPath, AInnerPath: string;
+      out AProbeInner: string; out ASize: Int64): Boolean; static;
     class function SumPrefix(ACache: TZipCdCache; const APrefix: string;
       ACancel: IJobCancelToken; out ABytes: Int64; out AFiles, AFolders: Integer;
       out AError: TVfsError): Boolean; static;
@@ -286,7 +294,7 @@ begin
   Result.IsSystem := False;
   Result.IsArchive := False;
   Result.IsCompressed := False;
-  Result.IsEncrypted := False;
+  Result.IsEncrypted := (AHeader.Flag and 1) <> 0;
   Result.IsTemporary := False;
   Result.IsOffline := False;
   Result.IsLink := False;
@@ -738,6 +746,88 @@ begin
   end;
 end;
 
+class function TZipCdCacheHub.FindEncrypted(const AZipPath, AInnerPath: string;
+  out AProbeInner: string; out ASize: Int64): Boolean;
+var
+  Cache: TZipCdCache;
+  Err: TVfsError;
+  Inner, Leaf: string;
+  Slash: Integer;
+
+  procedure Consider(const AItem: TVfsEntry; const AReal: string);
+  begin
+    if AItem.IsEncrypted and ((not Result) or (AItem.Size < ASize)) then
+    begin
+      Result := True;
+      ASize := AItem.Size;
+      AProbeInner := AReal;
+    end;
+  end;
+
+  procedure Visit(const AKey, AReal: string);
+  var
+    List: TList<TVfsEntry>;
+    Item: TVfsEntry;
+    ChildReal, ChildKey: string;
+  begin
+    if not Cache.Children.TryGetValue(AKey, List) then
+      Exit;
+    for Item in List do
+    begin
+      if AReal = '' then
+        ChildReal := Item.Name
+      else
+        ChildReal := AReal + '/' + Item.Name;
+      if Item.IsDirectory then
+      begin
+        if AKey = '' then
+          ChildKey := LowerCase(Item.Name)
+        else
+          ChildKey := AKey + '/' + LowerCase(Item.Name);
+        Visit(ChildKey, ChildReal);
+      end
+      else
+        Consider(Item, ChildReal);
+    end;
+  end;
+
+var
+  List: TList<TVfsEntry>;
+  Item: TVfsEntry;
+  ParentKey: string;
+begin
+  Result := False;
+  ASize := 0;
+  AProbeInner := '';
+  if not GetOrBuild(AZipPath, nil, Cache, Err) then
+    Exit;
+  Inner := NormZipName(AInnerPath);
+  TMonitor.Enter(FLock);
+  try
+    if Inner = '' then
+    begin
+      Visit('', '');
+      Exit;
+    end;
+    Slash := LastDelimiter('/', Inner);
+    ParentKey := LowerCase(Copy(Inner, 1, Slash - 1));
+    Leaf := Copy(Inner, Slash + 1, MaxInt);
+    if not Cache.Children.TryGetValue(ParentKey, List) then
+      Exit;
+    for Item in List do
+      if SameText(Item.Name, Leaf) then
+      begin
+        if Item.IsDirectory then
+          Visit(LowerCase(Inner), Inner)
+        else
+          Consider(Item, Inner);
+        Break;
+      end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 class function TZipCdCacheHub.ExistsInFileZip(const AZipPath, AInnerPath: string;
   ACancel: IJobCancelToken; out AExists, AIsDir: Boolean;
   out AError: TVfsError): Boolean;
@@ -1066,6 +1156,14 @@ begin
   end;
 end;
 
+function ZipFindEncryptedEntry(const AZipPath, AInnerPath: string;
+  out AProbeInner: string): Boolean;
+var
+  Size: Int64;
+begin
+  Result := TZipCdCacheHub.FindEncrypted(AZipPath, AInnerPath, AProbeInner, Size);
+end;
+
 procedure CalculateZipFolderSize(const AURI: string; ACancel: IJobCancelToken;
   out ABytes: Int64; out AFiles, AFolders: Integer; out AError: TVfsError);
 var
@@ -1187,7 +1285,7 @@ begin
         E.IsSystem := False;
         E.IsArchive := False;
         E.IsCompressed := False;
-        E.IsEncrypted := False;
+        E.IsEncrypted := (H.Flag and 1) <> 0;
         E.IsTemporary := False;
         E.IsOffline := False;
         E.IsLink := False;

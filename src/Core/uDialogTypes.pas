@@ -209,6 +209,10 @@ function WithControlBox(const ACtrl: TDialogControl; ACol, ARow, AWidth,
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
 function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;
   AWarning: Boolean = False): TDialogDeclaration;
+/// <summary>The delete confirmation for one item: APrefix, AName (accent
+/// color) and ASuffix on three lines; the dialog is as wide as the longest.</summary>
+function BuildDeleteNameDialog(const ATitle, APrefix, AName, ASuffix, AOkText: string;
+  AWarning: Boolean = False): TDialogDeclaration;
 function BuildHelpDialog: TDialogDeclaration;
 function BuildInputDialog(const ATitle, APrompt, AValue: string): TDialogDeclaration;
 /// <summary>Panel filter: AItems are the ready-made filters (the first one
@@ -731,6 +735,43 @@ begin
   DialogSetLabelText(Result, 'message', AMessage);
   DialogSetButtonText(Result, cDlgCmdOk, OkCaption);
   Result.IsWarning := AWarning;
+end;
+
+function BuildDeleteNameDialog(const ATitle, APrefix, AName, ASuffix, AOkText: string;
+  AWarning: Boolean): TDialogDeclaration;
+const
+  cMaxName = 90;
+var
+  I, N, Delta, TextW: Integer;
+  Name: string;
+begin
+  Result := BuildDeleteDialog(ATitle, APrefix, AOkText, AWarning);
+  Name := AName;
+  if Length(Name) > cMaxName then
+    Name := Copy(Name, 1, (cMaxName - 3) div 2) + '...' +
+      Copy(Name, Length(Name) - (cMaxName - 3) div 2 + 1, MaxInt);
+  TextW := Max(Length(APrefix), Max(Length(Name), Length(ASuffix)));
+  Delta := Max(0, TextW + 4 - Result.Width);
+  Result.Width := Result.Width + Delta;
+  Result.Height := Result.Height + 2;
+  for I := 0 to High(Result.Controls) do
+    case Result.Controls[I].Kind of
+      dckLabel:
+        Result.Controls[I].BoxW := Result.Width - 4;
+      dckButton:
+        begin
+          Inc(Result.Controls[I].Row, 2);
+          Inc(Result.Controls[I].Col, Delta div 2);
+        end;
+    end;
+  N := Length(Result.Controls);
+  SetLength(Result.Controls, N + 2);
+  // The client area is two cells narrower than the frame.
+  Result.Controls[N] := WithControlBox(MakeLabel(Name, 'name'),
+    Max(1, (Result.Width - 2 - Length(Name)) div 2), 2, Min(Length(Name), Result.Width - 4), 1);
+  Result.Controls[N].Accent := True;
+  Result.Controls[N + 1] := WithControlBox(MakeLabel(ASuffix, 'suffix'), 1, 3,
+    Result.Width - 4, 1);
 end;
 
 function BuildHelpDialog: TDialogDeclaration;

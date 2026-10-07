@@ -407,7 +407,7 @@ procedure TPanelJobController.BeginJob(const ASources: TArray<string>;
   ADeleteToRecycleBin: Boolean);
 var
   ConfirmMsg: string;
-  SrcName: string;
+  SrcName, Prefix, Suffix: string;
 begin
   if FJob.Phase <> pjpNone then
     Exit;
@@ -453,7 +453,10 @@ begin
 
   if AKind = pjkDelete then
   begin
-    if ADeleteToRecycleBin then
+    if (Length(ASources) = 1) and
+       JobDeleteOneParts(ASources[0], ADeleteToRecycleBin, Prefix, SrcName, Suffix) then
+      ConfirmMsg := Prefix + ' ' + SrcName + ' ' + Suffix
+    else if ADeleteToRecycleBin then
       ConfirmMsg := T('ui.job.confirmRecycle', 'Move %d item(s) to Recycle Bin?', [Length(ASources)])
     else
       ConfirmMsg := T('ui.job.confirmDeletePermanent', 'Permanently delete %d item(s)?', [Length(ASources)]);

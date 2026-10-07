@@ -18,6 +18,7 @@ uses
   TestDialogButtonPress in 'TestDialogButtonPress.pas',
   TestDialogHotKeyDraw in 'TestDialogHotKeyDraw.pas',
   TestDialogSeparator in 'TestDialogSeparator.pas',
+  TestDirHistoryPopup in 'TestDirHistoryPopup.pas',
   TestColumnModeMenuController in 'TestColumnModeMenuController.pas',
   TestDrivePopup in 'TestDrivePopup.pas',
   TestDualPanelClick in 'TestDualPanelClick.pas',

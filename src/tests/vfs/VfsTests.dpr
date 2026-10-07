@@ -28,6 +28,7 @@ uses
   TestRecycleBinFailure in 'TestRecycleBinFailure.pas',
   TestResolveLocalDirPath in 'TestResolveLocalDirPath.pas',
   TestSevenZipUri in 'TestSevenZipUri.pas',
+  TestZipEncryptedEntries in 'TestZipEncryptedEntries.pas',
   TestSpacedNames in 'TestSpacedNames.pas',
   TestOpenAsArchive in 'TestOpenAsArchive.pas',
   TestSftpVfs in 'TestSftpVfs.pas',

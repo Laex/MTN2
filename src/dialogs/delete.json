@@ -10,15 +10,8 @@
       "text": "Delete selected item(s)?",
       "id": "message",
       "col": 1,
-      "row": 0,
-      "width": 52,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
       "row": 1,
-      "width": 54,
+      "width": 52,
       "height": 1
     },
     {

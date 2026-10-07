@@ -13,7 +13,9 @@ unit TestDialogButtonLayout;
   - a block of explanatory text lines (labels whose id has "hint" or "help")
     starts right under a separator rule and ends right above one.
   A block of two button rows (a shadow row apart) has an empty row above the
-  block and the same space below it. }
+  block and the same space below it.
+  A message dialog - text lines and the buttons, nothing else - has no rule:
+  an empty row under the title, the lines, an empty row, the buttons. }
 
 interface
 
@@ -75,8 +77,8 @@ var
   Host: TDialogHost;
   Grid: TTerminalGrid;
   Frame, R: TRectI;
-  I, Top, Left, Right, BlockTop: Integer;
-  RuleAbove: Boolean;
+  I, Top, Left, Right, BlockTop, Texts: Integer;
+  RuleAbove, MessageOnly: Boolean;
   Problems: TStringList;
 
   function RuleAt(ARow: Integer): Boolean;
@@ -156,6 +158,20 @@ begin
          (Host.ControlBoundsAt(I).Top = Top - 2) then
         BlockTop := Top - 2;
     RuleAbove := (not RowUsed(BlockTop - 1, True)) and RuleAt(BlockTop - 2);
+    Texts := 0;
+    MessageOnly := True;
+    for I := 0 to Host.ControlCount - 1 do
+      case Host.GetControl(I).Kind of
+        dckButton: ;
+        dckLabel:
+          if IsHRuleText(Host.GetControl(I).Text) then
+            MessageOnly := False
+          else if Trim(Host.GetControl(I).Text) <> '' then
+            Inc(Texts);
+      else
+        MessageOnly := False;
+      end;
+    MessageOnly := MessageOnly and (Texts >= 1);
 
     Left := MaxInt;
     Right := -1;
@@ -179,6 +195,11 @@ begin
         [Frame.Bottom - Top]));
     if RowUsed(BlockTop - 1, True) then
       Problems.Add('no empty row above the buttons')
+    else if MessageOnly then
+    begin
+      if RuleAbove then
+        Problems.Add('separator rule in a message dialog');
+    end
     else if not RuleAbove then
       Problems.Add('no separator rule above the buttons');
     for I := 0 to Host.ControlCount - 1 do
@@ -190,7 +211,12 @@ begin
         if (not HintAt(R.Top + 1)) and (not RuleAt(R.Top + 1)) then
           Problems.Add('no separator rule below the hint ' + Host.GetControl(I).Id);
       end;
-    if not RowUsed(Frame.Top + 1) then
+    if MessageOnly then
+    begin
+      if RowUsed(Frame.Top + 1) then
+        Problems.Add('no empty row under the title of a message dialog');
+    end
+    else if not RowUsed(Frame.Top + 1) then
       Problems.Add('empty row under the title');
     if RowUsed(Top + 1) then
       Problems.Add('controls on the shadow row');
@@ -234,6 +260,9 @@ begin
         Add(CheckDialog(Name));
       Add(CheckDeclaration('console profile',
         BuildConsoleProfileDialog(['Command Prompt', 'PowerShell'], 0, False)));
+      Add(CheckDeclaration('delete one item',
+        BuildDeleteNameDialog('Delete', 'Move file', '"A long file name.txt"',
+          'to Recycle Bin?', 'Recycle')));
       Add(CheckDeclaration('update message, one button',
         BuildUpdateMessageDialog('Message', 'Details', '', False)));
     finally
