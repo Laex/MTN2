@@ -15,7 +15,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math,
-  uDualPanelTypes, uThemeTypes, uTerminalTypes, uVfsTypes;
+  uDualPanelTypes, uThemeTypes, uTerminalTypes, uVfsTypes, uCharWidth;
 
 const
   /// <summary>Close-button character inside tab captions (ASCII 'x').</summary>
@@ -179,7 +179,7 @@ begin
   ShowClose := Length(AWorkspaceTabs) > 1;
   Result := 0;
   for Tab in AWorkspaceTabs do
-    Inc(Result, Length(WorkspaceTabCaption(Tab.Title, ShowClose)) + 1);
+    Inc(Result, TextDisplayWidth(WorkspaceTabCaption(Tab.Title, ShowClose)) + 1);
 end;
 
 function PanelTabCaption(const ATitle: string; AShowClose: Boolean): string;
@@ -198,9 +198,9 @@ begin
   if not AShowClose then
     Exit;
   if APanelStyle then
-    Result := ATabLeft + Length(ACap) - 3
+    Result := ATabLeft + TextDisplayWidth(ACap) - 3
   else
-    Result := ATabLeft + Length(ACap) - 2;
+    Result := ATabLeft + TextDisplayWidth(ACap) - 2;
 end;
 
 procedure PaintTabCloseMark(const AGrid: TTerminalGrid; ACol, ARow: Integer;
@@ -247,9 +247,9 @@ begin
   begin
     Cap := PanelTabCaption(
       VfsUriDirTabTitle(APanel.Tabs[I].CurrentURI, TabMaxLen), ShowClose);
-    if HeadX + Length(Cap) >= TabsRight then
+    if HeadX + TextDisplayWidth(Cap) >= TabsRight then
       Exit(-1);
-    Inc(HeadX, Length(Cap));
+    Inc(HeadX, TextDisplayWidth(Cap));
     if (I < High(APanel.Tabs)) and (HeadX < TabsRight) then
       Inc(HeadX);
   end;
@@ -286,7 +286,7 @@ begin
   for I := 0 to High(AWorkspaceTabs) do
   begin
     Cap := WorkspaceTabCaption(AWorkspaceTabs[I].Title, ShowClose);
-    if (ACol >= X) and (ACol < X + Length(Cap)) then
+    if (ACol >= X) and (ACol < X + TextDisplayWidth(Cap)) then
     begin
       CloseCol := TabCaptionCloseCol(X, Cap, ShowClose, False);
       AIndex   := I;
@@ -294,7 +294,7 @@ begin
       Result   := True;
       Exit;
     end;
-    Inc(X, Length(Cap) + 1);
+    Inc(X, TextDisplayWidth(Cap) + 1);
   end;
 end;
 
@@ -315,9 +315,9 @@ begin
   begin
     Cap := PanelTabCaption(
       VfsUriDirTabTitle(APanel.Tabs[I].CurrentURI, TabMaxLen), ShowClose);
-    if HeadX + Length(Cap) >= TabsRight then
+    if HeadX + TextDisplayWidth(Cap) >= TabsRight then
       Break;
-    if (ACol >= HeadX) and (ACol < HeadX + Length(Cap)) then
+    if (ACol >= HeadX) and (ACol < HeadX + TextDisplayWidth(Cap)) then
     begin
       CloseCol := TabCaptionCloseCol(HeadX, Cap, ShowClose, True);
       AIndex   := I;
@@ -325,7 +325,7 @@ begin
       Result   := True;
       Exit;
     end;
-    Inc(HeadX, Length(Cap));
+    Inc(HeadX, TextDisplayWidth(Cap));
     if (I < High(APanel.Tabs)) and (HeadX < TabsRight) then
       Inc(HeadX);
   end;

@@ -21,6 +21,7 @@ type
   public
     [Test] procedure TestEnglish;
     [Test] procedure TestRussian;
+    [Test] procedure TestGerman;
   end;
 
 /// <summary>Names of the DIALOG_* resources linked into the test runner.</summary>
@@ -233,6 +234,11 @@ end;
 procedure TTestDialogAlignment.TestRussian;
 begin
   CheckAll('ru');
+end;
+
+procedure TTestDialogAlignment.TestGerman;
+begin
+  CheckAll('de');
 end;
 
 initialization

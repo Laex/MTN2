@@ -19,6 +19,7 @@ type
     Ch: Char;
     FgColor: TAlphaColor;
     Style: TFontStyles;
+    Wide: Boolean;
   end;
 
   /// <summary>One bitmap per (char, colour, style), rasterized at the scene
@@ -45,9 +46,11 @@ type
     /// opacity, which fills in the faint anti-aliased fringe: thin light text
     /// on a dark background reads firmer. Changing it clears the cache.</summary>
     property Contrast: Integer read FContrast write SetContrast;
+    /// <summary>AWide: the bitmap spans two cells (a CJK character); ACellW is
+    /// still the width of one cell.</summary>
     function GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
       ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
-      AFontSize: Single): TBitmap;
+      AFontSize: Single; AWide: Boolean = False): TBitmap;
   end;
 
   /// <summary>Device pixels an italic glyph's bitmap extends past the cell on each
@@ -269,7 +272,7 @@ const
 
 function TGlyphCache.GetGlyph(const ACh: Char; AFgColor: TAlphaColor; AStyle: TFontStyles;
   ACellW, ACellH, AScale, AGlyphTop: Single; const AFontName: string;
-  AFontSize: Single): TBitmap;
+  AFontSize: Single; AWide: Boolean): TBitmap;
 var
   Key: TGlyphKey;
   Bmp: TBitmap;
@@ -291,19 +294,24 @@ begin
     FGlyphTop := AGlyphTop;
   end;
 
+  FillChar(Key, SizeOf(Key), 0);
   Key.Ch := ACh;
   Key.FgColor := AFgColor;
   Key.Style := AStyle;
+  Key.Wide := AWide;
 
   if FMap.TryGetValue(Key, Result) then
     Exit;
 
-  if FMap.Count > 512 then
+  // CJK text brings thousands of distinct glyphs.
+  if FMap.Count > 4096 then
     Clear;
 
   // Device pixels: the cell is snapped to them, so this is exactly the size
   // of the glyph's DestRect on the frame.
   W := Max(Round(ACellW * AScale), 1);
+  if AWide then
+    W := W * 2;
   H := Max(Round(ACellH * AScale), 1);
   PadDev := 0;
   if TFontStyle.fsItalic in AStyle then
@@ -980,6 +988,24 @@ begin
         if X > High(FGrid[Y]) then
           Break;
         Cell := FGrid[Y][X];
+
+        if (ccaWide in Cell.Attributes) and (Cell.IconId = 0) and
+           (X + 1 < FCols) and (Cell.CharValue > ' ') then
+        begin
+          // No italic slant: a wide glyph fills its two cells exactly.
+          TargetStyle := [];
+          if ccaBold in Cell.Attributes then
+            Include(TargetStyle, TFontStyle.fsBold);
+          GlyphBmp := FGlyphCache.GetGlyph(Cell.CharValue, Cell.FgColor, TargetStyle,
+            FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontName,
+            EffectiveFontSize, True);
+          Canvas.SetMatrix(SavedMatrix);
+          if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
+            Canvas.DrawBitmap(GlyphBmp, RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height),
+              RectF(FXLeft[X], FYTop[Y], FXLeft[X + 2], FYTop[Y + 1]), 1.0, True);
+          Inc(X, 2);
+          Continue;
+        end;
 
         if Cell.IconId > 0 then
         begin

@@ -60,6 +60,7 @@ procedure LayOutPackage(const ADir: string);
 begin
   WriteText(TPath.Combine(ADir, 'help\en\index.md'), '# MTN2');
   WriteText(TPath.Combine(ADir, 'help\ru\index.md'), '# MTN2');
+  WriteText(TPath.Combine(ADir, 'help\de\index.md'), '# MTN2');
   WriteText(TPath.Combine(ADir, 'plugins\mtn.demo\plugin.json'),
     '{"id":"mtn.demo","name":"Demo","version":"0.1.0","abi":1}');
   WriteText(TPath.Combine(ADir, 'plugins\mtn.demo\plugin.wat'), '(module)');
@@ -78,6 +79,8 @@ begin
     Assert.IsTrue(HasLine(Report, 'FAIL', 'help\en\index.md'), 'missing en help reported');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'help\ru\index.md'),
       'missing help for the embedded ru locale reported');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'help\de\index.md'),
+      'missing help for the embedded de locale reported');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'sk4d.dll'), 'missing sk4d.dll reported');
     Assert.IsTrue(HasLine(Report, 'WARN', 'wasmtime.dll'), 'missing wasmtime.dll is only a warning');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'plugins\ is missing'), 'missing plugins folder reported');
@@ -96,6 +99,7 @@ begin
     LayOutPackage(Dir);
     RunSelfCheck(Dir, Report);
     Assert.IsTrue(HasLine(Report, 'OK', 'help\ru\index.md'), 'ru help found');
+    Assert.IsTrue(HasLine(Report, 'OK', 'help\de\index.md'), 'de help found');
     Assert.IsTrue(HasLine(Report, 'OK', 'plugin mtn.demo'), 'plugin with manifest and module passes');
     Assert.AreEqual(1, FailCount(Report),
       'only sk4d.dll (not copied into the temp folder) fails: ' + string.Join(' | ', Report));

@@ -22,7 +22,7 @@ unit uPrimaryScreenGrid;
 interface
 
 uses
-  System.UITypes, System.Math, uTerminalTypes;
+  System.UITypes, System.Math, uTerminalTypes, uCharWidth;
 
 type
   TArchiveRowEvent = reference to procedure(const ARow: TTerminalRow);
@@ -159,11 +159,21 @@ begin
 end;
 
 procedure TPrimaryScreenGrid.PutCell(ACh: Char; AFg, ABg: TAlphaColor; AAttrs: TCharCellAttributes);
+var
+  W: Integer;
 begin
   if (FCols <= 0) or (FRows <= 0) then
     Exit;
+  W := CharDisplayWidth(ACh);
+  // A wide character that does not fit the last column moves to the next line.
+  if (W = 2) and (FCursorCol >= FCols - 1) and (FCols > 1) then
+  begin
+    DrawGridChar(FGrid, FCursorCol, FCursorRow, ' ', AFg, ABg, AAttrs);
+    FCursorCol := 0;
+    NewLine(AFg, ABg);
+  end;
   DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
-  Inc(FCursorCol);
+  Inc(FCursorCol, W);
   if FCursorCol >= FCols then
   begin
     FCursorCol := 0;
@@ -193,7 +203,7 @@ end;
 function TPrimaryScreenGrid.DeleteCharBeforeCursor(APromptGuardCol: Integer;
   AFg, ABg: TAlphaColor): Boolean;
 var
-  X: Integer;
+  X, Count: Integer;
   Row: TTerminalRow;
 begin
   Result := False;
@@ -207,11 +217,16 @@ begin
   if (APromptGuardCol > 0) and (FCursorCol <= APromptGuardCol) then
     Exit;
   Row := FGrid[FCursorRow];
-  for X := FCursorCol - 1 to FCols - 2 do
-    Row[X] := Row[X + 1];
-  Row[FCols - 1] := TCharCell.Make(' ', AFg, ABg);
+  // The filler of a wide character goes together with its first half.
+  Count := 1;
+  if (ccaWideTail in Row[FCursorCol - 1].Attributes) and (FCursorCol >= 2) then
+    Count := 2;
+  for X := FCursorCol - Count to FCols - 1 - Count do
+    Row[X] := Row[X + Count];
+  for X := FCols - Count to FCols - 1 do
+    Row[X] := TCharCell.Make(' ', AFg, ABg);
   FGrid[FCursorRow] := Row;
-  Dec(FCursorCol);
+  Dec(FCursorCol, Count);
   Result := True;
 end;
 

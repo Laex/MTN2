@@ -10,7 +10,7 @@ interface
 
 uses
   System.UITypes, System.SysUtils, System.Math,
-  uTerminalTypes, uThemeTypes, uThemeSpec;
+  uTerminalTypes, uThemeTypes, uThemeSpec, uCharWidth;
 
 type
   TDataTheme = class(TInterfacedObject, IThemeRenderer)
@@ -142,16 +142,16 @@ begin
     Cap := ' ' + ATitle + ' ';
     if BtnX < ABounds.Right then
     begin
-      if Length(Cap) > BtnX - (ABounds.Left + 1) then
-        Cap := Copy(Cap, 1, Max(BtnX - (ABounds.Left + 1), 1));
+      if TextDisplayWidth(Cap) > BtnX - (ABounds.Left + 1) then
+        Cap := Copy(Cap, 1, Max(TextFitChars(Cap, BtnX - (ABounds.Left + 1)), 1));
     end
-    else if Length(Cap) > W - 2 then
-      Cap := Copy(Cap, 1, Max(W - 2, 1));
-    StartX := ABounds.Left + (W - Length(Cap)) div 2;
+    else if TextDisplayWidth(Cap) > W - 2 then
+      Cap := Copy(Cap, 1, Max(TextFitChars(Cap, W - 2), 1));
+    StartX := ABounds.Left + (W - TextDisplayWidth(Cap)) div 2;
     if StartX < ABounds.Left + 1 then
       StartX := ABounds.Left + 1;
-    if (BtnX < ABounds.Right) and (StartX + Length(Cap) > BtnX) then
-      StartX := Max(ABounds.Left + 1, BtnX - Length(Cap));
+    if (BtnX < ABounds.Right) and (StartX + TextDisplayWidth(Cap) > BtnX) then
+      StartX := Max(ABounds.Left + 1, BtnX - TextDisplayWidth(Cap));
     PutGridText(AGrid, StartX, ABounds.Top, Cap, ATitleFg, ATitleBg, ATitleAttr);
   end;
 end;
@@ -373,7 +373,7 @@ begin
     if X > ABounds.Right then
       Break;
     PutGridText(AGrid, X, ABounds.Top, Cap, Fg, Bg, FSpec.Attrs[tasTab]);
-    Inc(X, Length(Cap) + 1);
+    Inc(X, TextDisplayWidth(Cap) + 1);
   end;
 end;
 
@@ -408,7 +408,7 @@ begin
     end
     else
       PutGridText(AGrid, X, ABounds.Top, Item, Fg, Bg, FSpec.Attrs[tasToolbar]);
-    Inc(X, Length(Item) + 1);
+    Inc(X, TextDisplayWidth(Item) + 1);
   end;
 end;
 
@@ -428,7 +428,7 @@ begin
     if X > ABounds.Right then
       Break;
     PutGridText(AGrid, X, ABounds.Top, ASegments[I], Fg, Bg, FSpec.Attrs[tasStatus]);
-    Inc(X, Length(ASegments[I]));
+    Inc(X, TextDisplayWidth(ASegments[I]));
     if I < High(ASegments) then
     begin
       DrawGridChar(AGrid, X + 1, ABounds.Top, GlyphChar(tgStatusSeparator),

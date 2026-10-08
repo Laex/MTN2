@@ -18,6 +18,7 @@ uses
   TestFindEncoding in 'TestFindEncoding.pas',
   TestLineBufferedBackspace in 'TestLineBufferedBackspace.pas',
   TestPrimaryScreenGrid in 'TestPrimaryScreenGrid.pas',
+  TestWideChars in 'TestWideChars.pas',
   TestPsBackspaceFlow in 'TestPsBackspaceFlow.pas',
   TestPsCharByChar in 'TestPsCharByChar.pas',
   TestPsLineBuffered in 'TestPsLineBuffered.pas',

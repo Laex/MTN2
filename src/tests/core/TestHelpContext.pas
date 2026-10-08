@@ -114,7 +114,7 @@ var
   Missing: Integer;
 begin
   Missing := 0;
-  for Lang in ['en', 'ru'] do
+  for Lang in ['en', 'ru', 'de'] do
   begin
     Assert.IsTrue(TDirectory.Exists(HelpDir(Lang)), 'help folder ' + HelpDir(Lang));
     for K := Succ(hdkNone) to High(THostDialogKind) do

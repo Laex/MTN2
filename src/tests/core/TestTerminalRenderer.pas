@@ -24,6 +24,8 @@ type
     [Test] procedure TestTextContrast;
     [Test] procedure TestCellExtra;
     [Test] procedure TestRecomposeRastersOncePerFrame;
+    [Test] procedure TestWideGlyphBitmapSpansTwoCells;
+    [Test] procedure TestWideCharacterFillsTwoCellsOfTheFrame;
   end;
 
 implementation
@@ -436,6 +438,93 @@ begin
     finally
       Target.Canvas.EndScene;
     end;
+  finally
+    R.Free;
+    Target.Free;
+    Measure.Free;
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestWideGlyphBitmapSpansTwoCells;
+var
+  R: TTerminalRenderer;
+  Cache: TGlyphCache;
+  Measure, Narrow, Wide: TBitmap;
+  Scale: Single;
+begin
+  for Scale in [1.0, 1.5] do
+  begin
+    Measure := TBitmap.Create(16, 16);
+    R := TTerminalRenderer.Create;
+    Cache := TGlyphCache.Create;
+    try
+      R.SetSceneScale(Scale, 500, 150, Measure.Canvas);
+      R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+      Narrow := Cache.GetGlyph(#$6F22, TAlphaColorRec.White, [], R.CellWidth, R.CellHeight,
+        Scale, R.GlyphTop, R.FontName, 14);
+      Wide := Cache.GetGlyph(#$6F22, TAlphaColorRec.White, [], R.CellWidth, R.CellHeight,
+        Scale, R.GlyphTop, R.FontName, 14, True);
+      Assert.AreEqual(2 * Narrow.Width, Wide.Width, Format('scale %g: two cells wide', [Scale]));
+      Assert.AreEqual(Narrow.Height, Wide.Height, Format('scale %g: one cell high', [Scale]));
+      Assert.IsTrue(InkRows(Wide) > 0, Format('scale %g: glyph drawn', [Scale]));
+    finally
+      Cache.Free;
+      R.Free;
+      Measure.Free;
+    end;
+  end;
+end;
+
+// Pixels of the frame inside a column span of one row that differ from the background.
+function InkInColumns(AFrame: TBitmap; AX0, AX1, AY0, AY1: Integer): Integer;
+var
+  Data: TBitmapData;
+  X, Y: Integer;
+  Back: TAlphaColor;
+begin
+  Result := 0;
+  if AFrame.Map(TMapAccess.Read, Data) then
+  try
+    Back := Data.GetPixel(0, 0);
+    for Y := AY0 to AY1 - 1 do
+      for X := AX0 to AX1 - 1 do
+        if Data.GetPixel(X, Y) <> Back then
+          Inc(Result);
+  finally
+    AFrame.Unmap(Data);
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestWideCharacterFillsTwoCellsOfTheFrame;
+var
+  R: TTerminalRenderer;
+  Measure, Target: TBitmap;
+  CW, CH: Integer;
+begin
+  Measure := TBitmap.Create(16, 16);
+  Target := TBitmap.Create(500, 150);
+  R := TTerminalRenderer.Create;
+  try
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+    R.Resize(500, 150, Measure.Canvas);
+    R.OnCompose :=
+      procedure(const AGrid: TTerminalGrid; ACols, ARows: Integer)
+      begin
+        DrawGridChar(AGrid, 2, 1, #$6F22, TAlphaColorRec.White, TAlphaColorRec.Black);
+      end;
+    R.Recompose;
+    Assert.IsTrue(Target.Canvas.BeginScene, 'target canvas');
+    try
+      R.Draw(Target.Canvas, RectF(0, 0, 500, 150));
+    finally
+      Target.Canvas.EndScene;
+    end;
+    CW := Round(R.CellWidth);
+    CH := Round(R.CellHeight);
+    Assert.IsTrue(InkInColumns(Target, 2 * CW, 3 * CW, CH, 2 * CH) > 0, 'ink in the first cell');
+    Assert.IsTrue(InkInColumns(Target, 3 * CW, 4 * CW, CH, 2 * CH) > 0, 'ink in the second cell');
+    Assert.AreEqual(0, InkInColumns(Target, 0, 2 * CW, CH, 2 * CH), 'nothing to the left');
+    Assert.AreEqual(0, InkInColumns(Target, 4 * CW, 8 * CW, CH, 2 * CH), 'nothing to the right');
   finally
     R.Free;
     Target.Free;

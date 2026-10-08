@@ -1187,7 +1187,8 @@ implementation
 uses
   Winapi.Windows, Winapi.ActiveX,
   uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
-  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs;
+  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
+  uCharWidth;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -9943,7 +9944,7 @@ begin
       PaintTabCloseMark(Buffer, CloseCol, TabBarRow,
         ContrastingGlyphFg(TabBg, CloseFg, TabFg), TabBg);
     end;
-    Inc(X, Length(Cap) + 1);
+    Inc(X, TextDisplayWidth(Cap) + 1);
   end;
   DrawTabBarChrome(AWidth);
 end;

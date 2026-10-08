@@ -268,7 +268,7 @@ type
 implementation
 
 uses
-  uStrings, uNotice, uKeymap;
+  uStrings, uNotice, uKeymap, uCharWidth;
 
 { ---- helpers --------------------------------------------------------------- }
 
@@ -470,6 +470,8 @@ begin
     for X := 0 to Cols - 1 do
     begin
       Cell := FHistory.AltScreen.Grid[Y][X];
+      if ccaWideTail in Cell.Attributes then
+        Continue;
       Ch := Cell.CharValue;
       Fg := Cell.FgColor;
       Bg := Cell.BgColor;
@@ -695,16 +697,16 @@ begin
   if R1 = R2 then
   begin
     Line   := FHistory.GetLine(R1);
-    Result := Copy(Line, C1 + 1, C2 - C1);
+    Result := StripWideFillers(Copy(Line, C1 + 1, C2 - C1));
     Exit;
   end;
   SetLength(Parts, R2 - R1 + 1);
   Line    := FHistory.GetLine(R1);
-  Parts[0] := Copy(Line, C1 + 1, MaxInt);
+  Parts[0] := StripWideFillers(Copy(Line, C1 + 1, MaxInt));
   for R := R1 + 1 to R2 - 1 do
-    Parts[R - R1] := FHistory.GetLine(R);
+    Parts[R - R1] := StripWideFillers(FHistory.GetLine(R));
   Line              := FHistory.GetLine(R2);
-  Parts[R2 - R1]    := Copy(Line, 1, C2);
+  Parts[R2 - R1]    := StripWideFillers(Copy(Line, 1, C2));
   Result := string.Join(#10, Parts);
 end;
 

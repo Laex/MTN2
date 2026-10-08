@@ -10,7 +10,7 @@ interface
 uses
   System.SysUtils, System.Math, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uVfsTypes,
-  uDualPanelTabs, uPanelColumns;
+  uDualPanelTabs, uPanelColumns, uCharWidth;
 
 type
   TResolvePanelChromeProc = procedure(APart: TPanelChromePart; AActive: Boolean;
@@ -220,16 +220,13 @@ begin
     if ARow.DateText <> '' then
       MetaPart := MetaPart + ' ' + ARow.DateText;
   end;
-  MaxName := Max(AWidth - Length(MetaPart) - 1, 4);
-  if Length(NamePart) > MaxName then
+  MaxName := Max(AWidth - TextDisplayWidth(MetaPart) - 1, 4);
+  if TextDisplayWidth(NamePart) > MaxName then
     NamePart := EllipsizeKeepingExt(NamePart, MaxName);
-  if Length(NamePart) < MaxName then
-    NamePart := NamePart + StringOfChar(' ', MaxName - Length(NamePart))
-  else if Length(NamePart) > MaxName then
-    NamePart := Copy(NamePart, 1, MaxName);
+  NamePart := Copy(NamePart, 1, TextFitChars(NamePart, MaxName));
+  NamePart := NamePart + StringOfChar(' ', MaxName - TextDisplayWidth(NamePart));
   Result := NamePart + ' ' + MetaPart;
-  if Length(Result) > AWidth then
-    Result := Copy(Result, 1, AWidth);
+  Result := Copy(Result, 1, TextFitChars(Result, AWidth));
 end;
 
 function FormatQuickViewPlaceholder(AHasRow: Boolean; const ARow: TPanelRow): string;
@@ -317,7 +314,7 @@ begin
     Cap := PanelTabCaption(
       VfsUriDirTabTitle(APanel.Tabs[I].CurrentURI, TabMaxLen),
       Length(APanel.Tabs) > 1);
-    if HeadX + Length(Cap) >= TabsRight then
+    if HeadX + TextDisplayWidth(Cap) >= TabsRight then
       Break;
     DragHover := I = ADragHoverIndex;
     if (I = APanel.ActiveTabIndex) or DragHover then
@@ -328,7 +325,7 @@ begin
     if Length(APanel.Tabs) > 1 then
       PaintTabCloseMark(ABuffer, TabCaptionCloseCol(HeadX, Cap, True, True),
         ABounds.Top, ContrastingGlyphFg(TabBg, CloseFg, TabFg), TabBg);
-    Inc(HeadX, Length(Cap));
+    Inc(HeadX, TextDisplayWidth(Cap));
     if (I < High(APanel.Tabs)) and (HeadX < TabsRight) then
     begin
       DrawGridChar(ABuffer, HeadX, ABounds.Top, ASepChar, AFrame, ABodyBg);

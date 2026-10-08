@@ -31,6 +31,7 @@ type
   public
     [Test] procedure TestEnglish;
     [Test] procedure TestRussian;
+    [Test] procedure TestGerman;
   end;
 
 implementation
@@ -311,6 +312,11 @@ end;
 procedure TTestDialogButtonLayout.TestRussian;
 begin
   CheckAll('ru');
+end;
+
+procedure TTestDialogButtonLayout.TestGerman;
+begin
+  CheckAll('de');
 end;
 
 initialization

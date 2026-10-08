@@ -200,6 +200,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="Core\uCharWidth.pas"/>
         <DCCReference Include="Core\uTerminalTypes.pas"/>
         <DCCReference Include="Core\uConfigLocation.pas"/>
         <DCCReference Include="Core\uFolderHistory.pas"/>

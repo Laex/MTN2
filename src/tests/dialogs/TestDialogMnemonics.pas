@@ -22,6 +22,7 @@ type
     [Test] procedure TestCheckboxHotKey;
     [Test] procedure TestResourceHotKeysEnglish;
     [Test] procedure TestResourceHotKeysRussian;
+    [Test] procedure TestResourceHotKeysGerman;
   end;
 
 implementation
@@ -221,6 +222,11 @@ end;
 procedure TTestDialogMnemonics.TestResourceHotKeysRussian;
 begin
   CheckResourceHotKeys('ru');
+end;
+
+procedure TTestDialogMnemonics.TestResourceHotKeysGerman;
+begin
+  CheckResourceHotKeys('de');
 end;
 
 initialization

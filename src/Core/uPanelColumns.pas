@@ -135,7 +135,8 @@ function PadRight(const S: string; AWidth: Integer): string;
 implementation
 
 uses
-  System.Generics.Collections, System.Generics.Defaults, uVfsUtils, uStrings;
+  System.Generics.Collections, System.Generics.Defaults, uVfsUtils, uStrings,
+  uCharWidth;
 
 const
   cSizeW = 8;
@@ -363,11 +364,14 @@ begin
 end;
 
 function PadRight(const S: string; AWidth: Integer): string;
+var
+  Fit, W: Integer;
 begin
-  if Length(S) >= AWidth then
-    Result := Copy(S, 1, AWidth)
-  else
-    Result := S + StringOfChar(' ', AWidth - Length(S));
+  Fit := TextFitChars(S, AWidth);
+  Result := Copy(S, 1, Fit);
+  W := TextDisplayWidth(Result);
+  if W < AWidth then
+    Result := Result + StringOfChar(' ', AWidth - W);
 end;
 
 function DefaultCustomColumnsConfig: TCustomColumnsConfig;
@@ -703,17 +707,18 @@ begin
     Result := Copy(Result, 1, Length(Result) - Length(ARow.Extension));
     // Extension lives in its own column - end-ellipsis only, do not re-parse
     // dots inside the stem as a fake extension.
-    if Length(Result) > ANameW then
+    if TextDisplayWidth(Result) > ANameW then
     begin
       if ANameW < 4 then
-        Result := Copy(Result, 1, ANameW)
+        Result := Copy(Result, 1, TextFitChars(Result, ANameW))
       else
-        Result := Copy(Result, 1, ANameW - 3) + '...';
+        Result := Copy(Result, 1, TextFitChars(Result, ANameW - 3)) + '...';
+      Result := PadRight(Result, ANameW);
     end
     else
       Result := PadRight(Result, ANameW);
   end
-  else if Length(Result) > ANameW then
+  else if TextDisplayWidth(Result) > ANameW then
     Result := PadRight(EllipsizeKeepingExt(Result, ANameW), ANameW)
   else
     Result := PadRight(Result, ANameW);

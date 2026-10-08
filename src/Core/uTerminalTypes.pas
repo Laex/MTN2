@@ -3,11 +3,14 @@ unit uTerminalTypes;
 interface
 
 uses
-  System.UITypes;
+  System.UITypes, uCharWidth;
 
 type
   TCharCellAttribute = (ccaBold, ccaItalic, ccaUnderline, ccaBlink, ccaReverse,
-    ccaInsertCaret, ccaStrike);
+    ccaInsertCaret, ccaStrike,
+    // A wide (two-cell) character sits in the first cell; the second cell is
+    // its filler (a blank that the renderer skips).
+    ccaWide, ccaWideTail);
   TCharCellAttributes = set of TCharCellAttribute;
 
   TCharCell = record
@@ -72,6 +75,9 @@ procedure PutTerminalText(var AGrid: TTerminalGrid; AX, AY: Integer;
 // Element-level helpers that accept a `const` grid: dynamic arrays are
 // references, so cell assignment is allowed while the array itself stays fixed.
 // These are used by IThemeRenderer implementations and TTerminalWindow.
+/// <summary>Writes one character. A wide character also fills the cell to its
+/// right with a filler; overwriting either half of an existing wide character
+/// blanks the other half. A wide character in the last column becomes a blank.</summary>
 procedure DrawGridChar(const AGrid: TTerminalGrid; AX, AY: Integer;
   const ACh: Char; AFg, ABg: TAlphaColor; AAttr: TCharCellAttributes = []);
 /// <summary>Place a shell-icon cell (fallback glyph if renderer has no bitmap).</summary>
@@ -150,28 +156,54 @@ procedure PutTerminalText(var AGrid: TTerminalGrid; AX, AY: Integer;
   const AText: string; AFg, ABg: TAlphaColor;
   AAttributes: TCharCellAttributes);
 var
-  I, X, Cols, Rows: Integer;
+  I, X, Rows: Integer;
 begin
   Rows := Length(AGrid);
   if (Rows = 0) or (AY < 0) or (AY >= Rows) then
     Exit;
-  Cols := Length(AGrid[AY]);
+  X := AX;
   for I := 1 to Length(AText) do
   begin
-    X := AX + I - 1;
-    if (X < 0) or (X >= Cols) then
-      Continue;
-    AGrid[AY][X] := TCharCell.Make(AText[I], AFg, ABg, AAttributes);
+    DrawGridChar(AGrid, X, AY, AText[I], AFg, ABg, AAttributes);
+    Inc(X, CharDisplayWidth(AText[I]));
   end;
 end;
 
 procedure DrawGridChar(const AGrid: TTerminalGrid; AX, AY: Integer;
   const ACh: Char; AFg, ABg: TAlphaColor; AAttr: TCharCellAttributes);
+var
+  OldAttr: TCharCellAttributes;
 begin
   if (AY < 0) or (AY > High(AGrid)) then
     Exit;
   if (AX < 0) or (AX > High(AGrid[AY])) then
     Exit;
+  OldAttr := AGrid[AY][AX].Attributes;
+  if (ccaWide in OldAttr) and (AX < High(AGrid[AY])) then
+    AGrid[AY][AX + 1] := TCharCell.Make(' ', AGrid[AY][AX + 1].FgColor,
+      AGrid[AY][AX + 1].BgColor)
+  else if (ccaWideTail in OldAttr) and (AX > 0) then
+    AGrid[AY][AX - 1] := TCharCell.Make(' ', AGrid[AY][AX - 1].FgColor,
+      AGrid[AY][AX - 1].BgColor);
+  AAttr := AAttr - [ccaWide, ccaWideTail];
+  if CharDisplayWidth(ACh) = 2 then
+  begin
+    if AX < High(AGrid[AY]) then
+    begin
+      // The right half may itself be half of another wide character.
+      if ccaWide in AGrid[AY][AX + 1].Attributes then
+      begin
+        if AX + 2 <= High(AGrid[AY]) then
+          AGrid[AY][AX + 2] := TCharCell.Make(' ', AGrid[AY][AX + 2].FgColor,
+            AGrid[AY][AX + 2].BgColor);
+      end;
+      AGrid[AY][AX] := TCharCell.Make(ACh, AFg, ABg, AAttr + [ccaWide]);
+      AGrid[AY][AX + 1] := TCharCell.Make(' ', AFg, ABg, AAttr + [ccaWideTail]);
+    end
+    else
+      AGrid[AY][AX] := TCharCell.Make(' ', AFg, ABg, AAttr);
+    Exit;
+  end;
   AGrid[AY][AX] := TCharCell.Make(ACh, AFg, ABg, AAttr);
 end;
 
@@ -202,23 +234,29 @@ end;
 procedure PutGridText(const AGrid: TTerminalGrid; AX, AY: Integer;
   const AText: string; AFg, ABg: TAlphaColor; AAttr: TCharCellAttributes);
 var
-  I: Integer;
+  I, X: Integer;
 begin
+  X := AX;
   for I := 1 to Length(AText) do
-    DrawGridChar(AGrid, AX + I - 1, AY, AText[I], AFg, ABg, AAttr);
+  begin
+    DrawGridChar(AGrid, X, AY, AText[I], AFg, ABg, AAttr);
+    Inc(X, CharDisplayWidth(AText[I]));
+  end;
 end;
 
 procedure PutGridTextClipped(const AGrid: TTerminalGrid; AX, AY, AMaxX: Integer;
   const AText: string; AFg, ABg: TAlphaColor; AAttr: TCharCellAttributes);
 var
-  I, X: Integer;
+  I, X, W: Integer;
 begin
+  X := AX;
   for I := 1 to Length(AText) do
   begin
-    X := AX + I - 1;
-    if X > AMaxX then
+    W := CharDisplayWidth(AText[I]);
+    if X + W - 1 > AMaxX then
       Break;
     DrawGridChar(AGrid, X, AY, AText[I], AFg, ABg, AAttr);
+    Inc(X, W);
   end;
 end;
 

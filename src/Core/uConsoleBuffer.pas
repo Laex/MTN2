@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.SyncObjs, System.Math, System.UITypes,
   System.Generics.Collections, uTerminalTypes, uANSIParser, uAltScreenGrid,
-  uPrimaryScreenGrid;
+  uPrimaryScreenGrid, uCharWidth;
 
 type
   TConsoleRow = TArray<TCharCell>;
@@ -508,6 +508,11 @@ procedure TConsoleBuffer.PutCharLocked(AChar: Char; AFg, ABg: TAlphaColor; AAttr
 begin
   if FGridEnabled then
     FActiveGrid.PutCell(AChar, AFg, ABg, AAttrs)
+  else if CharDisplayWidth(AChar) = 2 then
+  begin
+    PutCellAtCursorLocked(AChar, AFg, ABg, AAttrs + [ccaWide]);
+    PutCellAtCursorLocked(' ', AFg, ABg, AAttrs + [ccaWideTail]);
+  end
   else
     PutCellAtCursorLocked(AChar, AFg, ABg, AAttrs);
 end;

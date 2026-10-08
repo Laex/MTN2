@@ -305,6 +305,8 @@ begin
       if AbsCol < Length(Row) then
       begin
         Cell := Row[AbsCol];
+        if ccaWideTail in Cell.Attributes then
+          Continue;
         Ch   := Cell.CharValue;
         Fg   := Cell.FgColor;
         Bg   := Cell.BgColor;

@@ -18,6 +18,7 @@ uses
   System.StartUpCopy,
   Winapi.Windows,
   FMX.Forms,
+  uCharWidth in 'Core\uCharWidth.pas',
   uTerminalTypes in 'Core\uTerminalTypes.pas',
   uConfigLocation in 'Core\uConfigLocation.pas',
   uFolderHistory in 'Core\uFolderHistory.pas',

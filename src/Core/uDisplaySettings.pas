@@ -544,6 +544,8 @@ begin
     Result := 'English'
   else if SameText(ALocale, 'ru') then
     Result := #$0420 + #$0443 + #$0441 + #$0441 + #$043A + #$0438 + #$0439 // Русский
+  else if SameText(ALocale, 'de') then
+    Result := 'Deutsch'
   else if Trim(ALocale) = '' then
     Result := 'English'
   else

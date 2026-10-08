@@ -235,7 +235,7 @@ function FormatVfsAttrText(const AEntry: TVfsEntry): string; overload;
 implementation
 
 uses
-  Winapi.Windows, System.StrUtils, System.Math;
+  Winapi.Windows, System.StrUtils, System.Math, uCharWidth;
 
 class function TVfsError.Ok: TVfsError;
 begin
@@ -1469,7 +1469,8 @@ begin
     Result := TPath.GetFileName(ArchiveBaseLocalPath(Base));
 end;
 
-function VfsUriDirTabTitle(const AURI: string; AMaxLen: Integer): string;
+// Shortens by characters; VfsUriDirTabTitle then accounts for wide ones.
+function VfsUriDirTabTitleChars(const AURI: string; AMaxLen: Integer): string;
 var
   Path, Drive, Tail, Full, Rest: string;
   Avail: Integer;
@@ -1514,6 +1515,21 @@ begin
   else
     Rest := Copy('\' + Tail, 1, Avail);
   Result := Drive + Rest;
+end;
+
+function VfsUriDirTabTitle(const AURI: string; AMaxLen: Integer): string;
+var
+  N: Integer;
+begin
+  Result := VfsUriDirTabTitleChars(AURI, AMaxLen);
+  // Wide characters take two cells each: shrink the character budget until
+  // the title fits the cells.
+  N := AMaxLen;
+  while (N > 1) and (TextDisplayWidth(Result) > AMaxLen) do
+  begin
+    Dec(N);
+    Result := VfsUriDirTabTitleChars(AURI, N);
+  end;
 end;
 
 function ResolveVfsUri(const AURI: string): string;

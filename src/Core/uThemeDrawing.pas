@@ -10,7 +10,7 @@ interface
 
 uses
   System.UITypes, System.Math,
-  uTerminalTypes, uThemeTypes, uDisplaySettings;
+  uTerminalTypes, uThemeTypes, uDisplaySettings, uCharWidth;
 
 var
   /// <summary>Display dialog "Shadows"; persisted in session.json
@@ -130,9 +130,9 @@ begin
   if ATitle <> '' then
   begin
     Cap := ' ' + ATitle + ' ';
-    if Length(Cap) > W - 5 then
-      Cap := Copy(Cap, 1, Max(W - 5, 1));
-    StartX := ABounds.Left + (W - Length(Cap)) div 2;
+    if TextDisplayWidth(Cap) > W - 5 then
+      Cap := Copy(Cap, 1, Max(TextFitChars(Cap, W - 5), 1));
+    StartX := ABounds.Left + (W - TextDisplayWidth(Cap)) div 2;
     if StartX < ABounds.Left + 1 then
       StartX := ABounds.Left + 1;
     PutGridText(AGrid, StartX, ABounds.Top, Cap, cTitleFg, cTitleBg);

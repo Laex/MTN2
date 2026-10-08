@@ -9,7 +9,7 @@ unit uAltScreenGrid;
 interface
 
 uses
-  System.UITypes, System.Math, uTerminalTypes;
+  System.UITypes, System.Math, uTerminalTypes, uCharWidth;
 
 type
   TAltScreenGrid = class
@@ -115,6 +115,8 @@ begin
 end;
 
 procedure TAltScreenGrid.PutCell(ACh: Char; AFg, ABg: TAlphaColor; AAttrs: TCharCellAttributes);
+var
+  W: Integer;
 begin
   if (FCols <= 0) or (FRows <= 0) then
     Exit;
@@ -123,11 +125,22 @@ begin
     FCursorCol := 0;
     NewLine(AFg, ABg);
   end;
+  W := CharDisplayWidth(ACh);
+  // A wide character that does not fit the last column moves to the next line.
+  if (W = 2) and (FCursorCol >= FCols - 1) and (FCols > 1) then
+  begin
+    DrawGridChar(FGrid, FCursorCol, FCursorRow, ' ', AFg, ABg, AAttrs);
+    FCursorCol := 0;
+    NewLine(AFg, ABg);
+  end;
   DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
-  if FCursorCol >= FCols - 1 then
-    FWrapPending := True
+  if FCursorCol + W >= FCols then
+  begin
+    FCursorCol := FCols - 1;
+    FWrapPending := True;
+  end
   else
-    Inc(FCursorCol);
+    Inc(FCursorCol, W);
 end;
 
 procedure TAltScreenGrid.NewLine(AFg, ABg: TAlphaColor);

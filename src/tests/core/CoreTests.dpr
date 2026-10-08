@@ -9,6 +9,8 @@ program CoreTests;
 
 uses
   uTestRunner in '..\common\uTestRunner.pas',
+  TestCharWidth in 'TestCharWidth.pas',
+  TestGermanStrings in 'TestGermanStrings.pas',
   TestConfigLocation in 'TestConfigLocation.pas',
   TestDescriptIon in 'TestDescriptIon.pas',
   TestElevatedProtocol in 'TestElevatedProtocol.pas',

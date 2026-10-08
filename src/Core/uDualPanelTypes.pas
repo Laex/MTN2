@@ -219,7 +219,8 @@ function ShiftNavInvertRange(AFrom, ATo, ADelta: Integer; AExcludeLanding: Boole
 implementation
 
 uses
-  System.Generics.Collections, System.Generics.Defaults, uFindSession, uFileFind;
+  System.Generics.Collections, System.Generics.Defaults, uFindSession, uFileFind,
+  uCharWidth;
 
 function MakeTab(AId: Cardinal; const ATitle, AURI: string): TTab;
 begin
@@ -846,7 +847,8 @@ begin
     Result := AName;
 end;
 
-function EllipsizeKeepingExt(const AText: string; AMaxLen: Integer): string;
+// Shortens by characters; EllipsizeKeepingExt then accounts for wide ones.
+function EllipsizeKeepingExtChars(const AText: string; AMaxLen: Integer): string;
 var
   Ext, Stem: string;
   Budget, PrefixLen, SuffixLen: Integer;
@@ -896,6 +898,21 @@ begin
   end;
   Result := Copy(Stem, 1, PrefixLen) + '...' +
     Copy(Stem, Length(Stem) - SuffixLen + 1, SuffixLen) + Ext;
+end;
+
+function EllipsizeKeepingExt(const AText: string; AMaxLen: Integer): string;
+var
+  N: Integer;
+begin
+  Result := EllipsizeKeepingExtChars(AText, AMaxLen);
+  // Wide characters take two cells each: shrink the character budget until
+  // the shortened text fits the cells.
+  N := AMaxLen;
+  while (N > 1) and (TextDisplayWidth(Result) > AMaxLen) do
+  begin
+    Dec(N);
+    Result := EllipsizeKeepingExtChars(AText, N);
+  end;
 end;
 
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;

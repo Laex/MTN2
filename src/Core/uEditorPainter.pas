@@ -6,7 +6,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math,
-  uTerminalTypes;
+  uTerminalTypes, uCharWidth;
 
 type
   TEditorPainter = class
@@ -22,20 +22,42 @@ implementation
 class procedure TEditorPainter.DrawTextLine(var ARow: TTerminalRow; AStartCol, AWidth: Integer;
   const ALineText: string; AStartCharIndex: Integer; AFg, ABg: TAlphaColor);
 var
-  ColIdx, CharIdx: Integer;
+  ColIdx, CharIdx, EndCol: Integer;
+  Ch: Char;
+  Wide: Boolean;
 begin
   ColIdx := AStartCol;
   CharIdx := AStartCharIndex;
-  while (ColIdx < AStartCol + AWidth) and (ColIdx <= High(ARow)) do
+  EndCol := Min(AStartCol + AWidth, High(ARow) + 1);
+  while ColIdx < EndCol do
   begin
     if (CharIdx >= 1) and (CharIdx <= Length(ALineText)) then
-      ARow[ColIdx].CharValue := ALineText[CharIdx]
+      Ch := ALineText[CharIdx]
     else
-      ARow[ColIdx].CharValue := ' ';
+      Ch := ' ';
+    // A wide character takes two cells; at the right edge, where its second
+    // half would be clipped, it is left blank.
+    Wide := CharDisplayWidth(Ch) = 2;
+    if Wide and (ColIdx + 1 >= EndCol) then
+    begin
+      Ch := ' ';
+      Wide := False;
+    end;
+    ARow[ColIdx].CharValue := Ch;
     ARow[ColIdx].FgColor := AFg;
     ARow[ColIdx].BgColor := ABg;
+    ARow[ColIdx].Attributes := ARow[ColIdx].Attributes - [ccaWide, ccaWideTail];
     Inc(ColIdx);
     Inc(CharIdx);
+    if Wide then
+    begin
+      Include(ARow[ColIdx - 1].Attributes, ccaWide);
+      ARow[ColIdx].CharValue := ' ';
+      ARow[ColIdx].FgColor := AFg;
+      ARow[ColIdx].BgColor := ABg;
+      ARow[ColIdx].Attributes := ARow[ColIdx].Attributes - [ccaWide] + [ccaWideTail];
+      Inc(ColIdx);
+    end;
   end;
 end;
 
