@@ -34,10 +34,12 @@ type
 /// <summary>Registers (or, with nil, removes) the window that shows dialogs.</summary>
 procedure SetPluginDialogHost(const AHost: TPluginDialogHost);
 
-/// <summary>Parses ADeclJson and shows it. False when the JSON is not a valid
-/// dialog declaration, there is no host window, or the host cannot show a
-/// dialog now. AOnCommand runs at most once, on the main thread, and not at
-/// all after UnregisterPlugin(APluginId).</summary>
+/// <summary>Shows a plugin dialog. ADeclJson is either the declaration itself
+/// (starts with an opening brace) or the bare name of a file in the plugin's
+/// own folder, plugins\&lt;id&gt;\dialogs\&lt;name&gt;.json. False when the JSON is not
+/// a valid dialog declaration, the named file is missing, there is no host
+/// window, or the host cannot show a dialog now. AOnCommand runs at most once,
+/// on the main thread, and not at all after UnregisterPlugin(APluginId).</summary>
 function PluginShowDialog(const APluginId, ADeclJson: string;
   const AOnCommand: TPluginDialogCallback): Boolean;
 
@@ -47,7 +49,7 @@ procedure PluginUiUnregister(const APluginId: string);
 implementation
 
 uses
-  uDialogJson;
+  uDialogJson, uDialogResources;
 
 const
   cMaxDeclarationChars = 256 * 1024;
@@ -72,7 +74,7 @@ function PluginShowDialog(const APluginId, ADeclJson: string;
 var
   Decl: TDialogDeclaration;
   Gen: Integer;
-  Id: string;
+  Id, Json: string;
   Answered: Boolean;
 begin
   Result := False;
@@ -81,7 +83,11 @@ begin
     Exit;
   if (ADeclJson = '') or (Length(ADeclJson) > cMaxDeclarationChars) then
     Exit;
-  if not TryParseDialogJson(ADeclJson, Decl) then
+  Json := ADeclJson;
+  if not TrimLeft(Json).StartsWith('{') then
+    if not TryLoadPluginDialogJson(Id, Trim(Json), Json) then
+      Exit;
+  if not TryParseDialogJson(Json, Decl) then
     Exit;
   Gen := GenerationOf(Id);
   Answered := False;

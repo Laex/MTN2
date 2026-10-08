@@ -21,6 +21,10 @@ var
   /// <summary>Display dialog "Marked files"; persisted in session.json
   /// (markedRows). Read by ResolvePanelRowColors.</summary>
   GMarkedRowStyle: TMarkedRowStyle = mrsText;
+  /// <summary>Display dialog "cursor in the passive panel"; persisted in
+  /// session.json (passiveCursor). Off: the cursor row of the panel that does
+  /// not have the focus is drawn as an ordinary row.</summary>
+  GShowPassiveCursor: Boolean = True;
 
 /// <summary>IThemeRenderer.ResolveFileRowColors, with a marked row away
 /// from the cursor taking the theme's band under mrsBand.</summary>
@@ -228,6 +232,7 @@ procedure ResolvePanelRowColors(const ATheme: IThemeRenderer;
   ASelected, ACursor, ASideActive: Boolean; AStyle: TMarkedRowStyle;
   out AFg, ABg: TAlphaColor);
 begin
+  ACursor := ACursor and (ASideActive or GShowPassiveCursor);
   if ASelected and not ACursor and (AStyle = mrsBand) then
     ATheme.ResolveMarkedRowBand(AFg, ABg)
   else

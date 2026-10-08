@@ -62,7 +62,7 @@
       "type": "button",
       "id": "edit",
       "text": "&Edit",
-      "col": 11,
+      "col": 12,
       "row": 17,
       "width": 9,
       "height": 1
@@ -71,7 +71,7 @@
       "type": "button",
       "id": "delete",
       "text": "&Delete",
-      "col": 21,
+      "col": 23,
       "row": 17,
       "width": 10,
       "height": 1
@@ -80,7 +80,7 @@
       "type": "button",
       "id": "moveup",
       "text": "&Up",
-      "col": 32,
+      "col": 35,
       "row": 17,
       "width": 7,
       "height": 1
@@ -89,7 +89,7 @@
       "type": "button",
       "id": "movedown",
       "text": "D&n",
-      "col": 40,
+      "col": 44,
       "row": 17,
       "width": 7,
       "height": 1
@@ -99,7 +99,7 @@
       "id": "ok",
       "text": "Save",
       "default": true,
-      "col": 54,
+      "col": 53,
       "row": 17,
       "width": 9,
       "height": 1

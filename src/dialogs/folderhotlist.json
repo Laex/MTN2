@@ -63,16 +63,16 @@
       "id": "ok",
       "text": "Go",
       "default": true,
-      "col": 19,
+      "col": 16,
       "row": 17,
-      "width": 10,
+      "width": 14,
       "height": 1
     },
     {
       "type": "button",
       "id": "save",
       "text": "&Save",
-      "col": 33,
+      "col": 32,
       "row": 17,
       "width": 14,
       "height": 1
@@ -82,9 +82,9 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 51,
+      "col": 48,
       "row": 17,
-      "width": 10,
+      "width": 14,
       "height": 1
     }
   ]

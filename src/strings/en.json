@@ -156,6 +156,7 @@
       "show_title_bar": "Show window &title bar",
       "show_menu_bar": "Show &menu bar",
       "file_drag": "Dr&ag files with the mouse",
+      "passive_cursor": "Cursor in the inacti&ve panel",
       "show_key_bar": "Show F-&key bar",
       "show_status_line": "Show &status line",
       "select_folders": "Select all also &folders",

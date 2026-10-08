@@ -45,7 +45,7 @@
       "id": "edit",
       "text": "Edit...",
       "default": true,
-      "col": 1,
+      "col": 12,
       "row": 20,
       "width": 12,
       "height": 1
@@ -54,7 +54,7 @@
       "type": "button",
       "id": "inherit",
       "text": "&Inherit",
-      "col": 15,
+      "col": 26,
       "row": 20,
       "width": 12,
       "height": 1
@@ -64,9 +64,9 @@
       "id": "back",
       "text": "Back",
       "cancel": true,
-      "col": 29,
+      "col": 40,
       "row": 20,
-      "width": 10,
+      "width": 12,
       "height": 1
     }
   ]

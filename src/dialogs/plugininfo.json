@@ -28,7 +28,7 @@
       "type": "button",
       "id": "help",
       "text": "&Help",
-      "col": 24,
+      "col": 25,
       "row": 18,
       "width": 12,
       "height": 1
@@ -39,9 +39,9 @@
       "text": "  OK  ",
       "default": true,
       "cancel": true,
-      "col": 40,
+      "col": 39,
       "row": 18,
-      "width": 10,
+      "width": 12,
       "height": 1
     }
   ]

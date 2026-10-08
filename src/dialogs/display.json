@@ -314,6 +314,16 @@
     },
     {
       "type": "checkbox",
+      "id": "passive_cursor",
+      "text": "Cursor in the inacti&ve panel",
+      "checked": true,
+      "col": 47,
+      "row": 15,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
       "id": "file_drag",
       "text": "Dr&ag files with the mouse",
       "checked": true,
@@ -355,7 +365,7 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 33,
+      "col": 34,
       "row": 20,
       "width": 12,
       "height": 1
@@ -365,7 +375,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 49,
+      "col": 48,
       "row": 20,
       "width": 12,
       "height": 1

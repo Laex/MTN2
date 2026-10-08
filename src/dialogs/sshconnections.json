@@ -38,7 +38,7 @@
       "id": "ok",
       "text": "Shell",
       "default": true,
-      "col": 4,
+      "col": 10,
       "row": 11,
       "width": 12,
       "height": 1
@@ -47,7 +47,7 @@
       "type": "button",
       "id": "browse",
       "text": "&Browse",
-      "col": 20,
+      "col": 24,
       "row": 11,
       "width": 12,
       "height": 1
@@ -57,7 +57,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 44,
+      "col": 38,
       "row": 11,
       "width": 12,
       "height": 1

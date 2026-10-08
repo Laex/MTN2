@@ -269,6 +269,33 @@ begin
   end;
 end;
 
+procedure QueueFindProgress(const AOnProgress: TFindProgressCallback;
+  ACount: Integer; const ADir: string);
+begin
+  if not Assigned(AOnProgress) then
+    Exit;
+  TThread.Queue(nil,
+    procedure
+    begin
+      AOnProgress(ACount, ADir);
+    end);
+end;
+
+{ Name-only searches (empty ContainingText) match every file. }
+function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
+  out ALine: Integer; out ASnippet: string): Boolean;
+begin
+  if AOptions.ContainingText = '' then
+  begin
+    ALine := 0;
+    ASnippet := '';
+    Exit(True);
+  end;
+  Result := FileContentMatch(AFilePath, AOptions.ContainingText,
+    AOptions.CaseSensitive, AOptions.WholeWords, AOptions.UseRegex, ALine,
+    ASnippet);
+end;
+
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
   AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback);
 var
@@ -306,36 +333,6 @@ begin
       HitLine: Integer;
       HitSnippet: string;
 
-      procedure EmitProgress(ACount: Integer; const ADir: string);
-      var
-        CapCount: Integer;
-        CapDir: string;
-      begin
-        if not Assigned(OnProgress) then
-          Exit;
-        CapCount := ACount;
-        CapDir := ADir;
-        TThread.Queue(nil,
-          procedure
-          begin
-            if Assigned(OnProgress) then
-              OnProgress(CapCount, CapDir);
-          end);
-      end;
-
-      function ContentMatch(const AFilePath: string; out ALine: Integer;
-        out ASnippet: string): Boolean;
-      begin
-        if Needle = '' then
-        begin
-          ALine := 0;
-          ASnippet := '';
-          Exit(True);
-        end;
-        Result := FileContentMatch(AFilePath, Needle, Opts.CaseSensitive,
-          Opts.WholeWords, Opts.UseRegex, ALine, ASnippet);
-      end;
-
     begin
       Err := TVfsError.Ok;
       List := TList<TFindHit>.Create;
@@ -359,7 +356,7 @@ begin
                  (TThread.GetTickCount - LastProgressTick >= 80) then
               begin
                 LastProgressTick := TThread.GetTickCount;
-                EmitProgress(List.Count, Dir);
+                QueueFindProgress(OnProgress, List.Count, Dir);
               end;
 
               Code := FindFirst(TPath.Combine(Dir, '*'), faAnyFile, SR);
@@ -388,7 +385,7 @@ begin
                     end
                     else if NameMatchesAnyMask(Name, Masks) then
                     begin
-                      if ContentMatch(Full, HitLine, HitSnippet) then
+                      if FindContentMatch(Full, Opts, HitLine, HitSnippet) then
                       begin
                         Hit.Path := Full;
                         Hit.Line := HitLine;

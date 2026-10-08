@@ -15,12 +15,13 @@ type
     [Test] procedure TestHostThatCannotShowReportsFailure;
     [Test] procedure TestUnloadedPluginGetsNoAnswer;
     [Test] procedure TestFaultyCallbackIsContained;
+    [Test] procedure TestDialogLoadsFromPluginFolderByName;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.IOUtils,
   uDialogTypes,
   uPluginUi;
 
@@ -160,6 +161,30 @@ begin
   TestPluginUi.TestNoHostShowsNothing;
 end;
 
+procedure TestDialogLoadsFromPluginFolderByName;
+var
+  Dir: string;
+  Noop: TPluginDialogCallback;
+begin
+  Noop := procedure(const AControlId, AValuesJson: string) begin end;
+  Dir := TPath.Combine(TPath.Combine(TPath.Combine(
+    ExtractFilePath(ParamStr(0)), 'plugins'), 't.ui.file'), 'dialogs');
+  TDirectory.CreateDirectory(Dir);
+  InstallHost(True);
+  try
+    TFile.WriteAllText(TPath.Combine(Dir, 'ask.json'), cDialogJson, TEncoding.UTF8);
+    Assert.IsTrue(PluginShowDialog('t.ui.file', 'ask', Noop), 'named file shown');
+    Assert.AreEqual('Ask', GTitle);
+    Assert.IsTrue(not PluginShowDialog('t.ui.file', 'missing', Noop), 'missing file');
+    Assert.IsTrue(not PluginShowDialog('t.ui.file', '..sk', Noop), 'path escape refused');
+    Assert.IsTrue(not PluginShowDialog('t.ui.other', 'ask', Noop),
+      'another plugin cannot read the file');
+  finally
+    SetPluginDialogHost(nil);
+    TDirectory.Delete(TPath.GetDirectoryName(Dir), True);
+  end;
+end;
+
 procedure TTestPluginUi.TestInvalidDeclarationIsRefused;
 begin
   TestPluginUi.TestInvalidDeclarationIsRefused;
@@ -183,6 +208,11 @@ end;
 procedure TTestPluginUi.TestFaultyCallbackIsContained;
 begin
   TestPluginUi.TestFaultyCallbackIsContained;
+end;
+
+procedure TTestPluginUi.TestDialogLoadsFromPluginFolderByName;
+begin
+  TestPluginUi.TestDialogLoadsFromPluginFolderByName;
 end;
 
 initialization

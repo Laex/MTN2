@@ -113,7 +113,7 @@
       "checked": false,
       "col": 1,
       "row": 15,
-      "width": 36,
+      "width": 68,
       "height": 1
     },
     {
@@ -128,7 +128,7 @@
       "id": "ok",
       "text": "Synchronize",
       "default": true,
-      "col": 16,
+      "col": 18,
       "row": 18,
       "width": 16,
       "height": 1
@@ -138,9 +138,9 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 42,
+      "col": 36,
       "row": 18,
-      "width": 12,
+      "width": 16,
       "height": 1
     }
   ]

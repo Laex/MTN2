@@ -20,7 +20,7 @@
       "value": "",
       "col": 1,
       "row": 2,
-      "width": 40,
+      "width": 54,
       "height": 1
     },
     {
@@ -62,16 +62,16 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 1,
+      "col": 8,
       "row": 9,
-      "width": 10,
+      "width": 12,
       "height": 1
     },
     {
       "type": "button",
       "id": "inherit",
       "text": "&Inherit",
-      "col": 13,
+      "col": 22,
       "row": 9,
       "width": 12,
       "height": 1
@@ -81,7 +81,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 27,
+      "col": 36,
       "row": 9,
       "width": 12,
       "height": 1

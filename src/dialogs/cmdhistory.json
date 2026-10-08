@@ -29,7 +29,7 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 16,
+      "col": 19,
       "row": 14,
       "width": 10,
       "height": 1
@@ -39,7 +39,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 34,
+      "col": 31,
       "row": 14,
       "width": 10,
       "height": 1

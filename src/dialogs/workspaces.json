@@ -38,7 +38,7 @@
       "id": "ok",
       "text": "Go",
       "default": true,
-      "col": 7,
+      "col": 13,
       "row": 14,
       "width": 10,
       "height": 1
@@ -57,7 +57,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 43,
+      "col": 37,
       "row": 14,
       "width": 10,
       "height": 1

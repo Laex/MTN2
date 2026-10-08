@@ -4,21 +4,21 @@
   "style": "warning",
   "title": "Cancel operation",
   "width": 60,
-  "height": 7,
+  "height": 9,
   "children": [
     {
       "type": "label",
       "id": "question",
       "text": "Cancel the current operation?",
       "col": 1,
-      "row": 0,
+      "row": 1,
       "width": 56,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 1,
+      "row": 3,
       "width": 58,
       "height": 1
     },
@@ -26,9 +26,9 @@
       "type": "button",
       "id": "yes",
       "text": "&Stop",
-      "col": 8,
-      "row": 3,
-      "width": 14,
+      "col": 12,
+      "row": 5,
+      "width": 16,
       "height": 1
     },
     {
@@ -38,7 +38,7 @@
       "default": true,
       "cancel": true,
       "col": 30,
-      "row": 3,
+      "row": 5,
       "width": 16,
       "height": 1
     }

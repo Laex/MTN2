@@ -309,7 +309,7 @@ var
   GDefineLinker: PWasmtimeLinker = nil;
 
 type
-  TValBuf = array[0..8] of TWasmtimeVal;
+  TValBuf = array[0..11] of TWasmtimeVal;
 
   TWasmVfsBackend = class(TInterfacedObject, IVirtualFileSystem)
   private

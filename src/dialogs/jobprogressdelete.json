@@ -34,7 +34,7 @@
       "type": "button",
       "id": "background",
       "text": "&Background",
-      "col": 10,
+      "col": 22,
       "row": 5,
       "width": 14,
       "height": 1
@@ -44,9 +44,9 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 52,
+      "col": 38,
       "row": 5,
-      "width": 12,
+      "width": 14,
       "height": 1
     }
   ]

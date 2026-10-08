@@ -158,7 +158,7 @@
       "value": "",
       "col": 14,
       "row": 9,
-      "width": 22,
+      "width": 39,
       "height": 1
     },
     {
@@ -176,7 +176,7 @@
       "value": "",
       "col": 14,
       "row": 10,
-      "width": 22,
+      "width": 39,
       "height": 1
     },
     {
@@ -194,7 +194,7 @@
       "value": "",
       "col": 14,
       "row": 11,
-      "width": 22,
+      "width": 39,
       "height": 1
     },
     {
@@ -246,7 +246,7 @@
       "id": "ok",
       "text": "Set",
       "default": true,
-      "col": 11,
+      "col": 14,
       "row": 19,
       "width": 12,
       "height": 1
@@ -256,7 +256,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 31,
+      "col": 28,
       "row": 19,
       "width": 12,
       "height": 1

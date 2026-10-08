@@ -65,7 +65,7 @@
       "checked": false,
       "col": 1,
       "row": 6,
-      "width": 64,
+      "width": 66,
       "height": 1
     },
     {
@@ -81,7 +81,7 @@
       "id": "overwrite",
       "text": "Overwrite",
       "default": true,
-      "col": 1,
+      "col": 3,
       "row": 9,
       "width": 13,
       "height": 1
@@ -90,7 +90,7 @@
       "type": "button",
       "id": "skip",
       "text": "&Skip",
-      "col": 16,
+      "col": 18,
       "row": 9,
       "width": 10,
       "height": 1
@@ -99,7 +99,7 @@
       "type": "button",
       "id": "rename",
       "text": "&Rename",
-      "col": 29,
+      "col": 30,
       "row": 9,
       "width": 10,
       "height": 1
@@ -118,7 +118,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 55,
+      "col": 54,
       "row": 9,
       "width": 10,
       "height": 1

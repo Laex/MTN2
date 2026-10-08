@@ -65,6 +65,8 @@ type
     ShowTitleBar: Boolean;
     ShowMenuBar: Boolean;
     FileDrag: Boolean;
+    /// <summary>uDisplaySettings.PassiveCursor.</summary>
+    PassiveCursor: Boolean;
     ShowKeyBar: Boolean;
     ShowStatusLine: Boolean;
     /// <summary>uDisplaySettings.ShadowStyleId: 'classic' / 'soft' / 'none'.</summary>
@@ -541,6 +543,7 @@ begin
       Root.AddPair('showTitleBar', TJSONBool.Create(ASession.ShowTitleBar));
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
+      Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
       Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
@@ -611,6 +614,7 @@ begin
   ASession.ShowTitleBar := True;
   ASession.ShowMenuBar := True;
   ASession.FileDrag := True;
+  ASession.PassiveCursor := True;
   ASession.ShowKeyBar := True;
   ASession.ShowStatusLine := True;
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
@@ -696,6 +700,7 @@ begin
       ASession.ShowTitleBar := JsonBool(Root, 'showTitleBar', True);
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);
+      ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
       ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));

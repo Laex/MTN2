@@ -20,7 +20,7 @@
       "value": "",
       "col": 16,
       "row": 0,
-      "width": 32,
+      "width": 33,
       "height": 1
     },
     {
@@ -46,7 +46,7 @@
       "default": true,
       "col": 12,
       "row": 5,
-      "width": 10,
+      "width": 12,
       "height": 1
     },
     {
@@ -54,7 +54,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 24,
+      "col": 26,
       "row": 5,
       "width": 12,
       "height": 1

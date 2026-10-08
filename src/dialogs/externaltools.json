@@ -78,7 +78,7 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 18,
+      "col": 20,
       "row": 10,
       "width": 14,
       "height": 1
@@ -88,7 +88,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 40,
+      "col": 36,
       "row": 10,
       "width": 14,
       "height": 1

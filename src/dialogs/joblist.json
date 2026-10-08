@@ -38,7 +38,7 @@
       "id": "foreground",
       "text": "Foreground",
       "default": true,
-      "col": 3,
+      "col": 4,
       "row": 13,
       "width": 14,
       "height": 1
@@ -47,16 +47,16 @@
       "type": "button",
       "id": "canceljob",
       "text": "&Cancel",
-      "col": 19,
+      "col": 20,
       "row": 13,
-      "width": 10,
+      "width": 14,
       "height": 1
     },
     {
       "type": "button",
       "id": "cancelall",
       "text": "Cancel &all",
-      "col": 31,
+      "col": 36,
       "row": 13,
       "width": 14,
       "height": 1
@@ -66,9 +66,9 @@
       "id": "cancel",
       "text": "Close",
       "cancel": true,
-      "col": 57,
+      "col": 52,
       "row": 13,
-      "width": 10,
+      "width": 14,
       "height": 1
     }
   ]

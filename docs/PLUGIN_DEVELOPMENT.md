@@ -55,7 +55,7 @@
 | Перехватчик встроенной команды | `RegisterCommandHook` | `register_command_hook` | Вызов до встроенной команды; ответ 1 отменяет её |
 | Открытие файлов | `RegisterDocumentProvider` | `register_document_provider` | Решение по F3 / F4 для своих расширений: открыть самому, подсунуть другой URI (только нативный), пропустить |
 | Запуск программой системы | `OpenExternal` | – | Открытие локального файла ассоциированной программой (только нативный) |
-| Диалог | `ShowDialog` | `show_dialog` | Одноразовый модальный диалог по JSON-описанию |
+| Диалог | `ShowDialog` | `show_dialog` | Одноразовый модальный диалог по JSON-описанию; вместо текста JSON можно передать имя файла из `plugins\<id>\dialogs\<имя>.json` |
 | Активация строки панели | `RegisterPanelActivate` | `register_panel_activate` | Реакцию на Enter / двойной щелчок по строке панели своей схемы |
 | Подпись команды | `SetCommandCaption` | `set_command_caption` | Подпись в нижней строке клавиш |
 | Текст в статусе | `SetStatusSegment` | `set_status_segment` | Именованный сегмент строки состояния панелей |

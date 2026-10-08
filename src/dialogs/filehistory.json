@@ -45,7 +45,7 @@
       "id": "ok",
       "text": "Open",
       "default": true,
-      "col": 21,
+      "col": 24,
       "row": 16,
       "width": 10,
       "height": 1
@@ -55,7 +55,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 39,
+      "col": 36,
       "row": 16,
       "width": 10,
       "height": 1

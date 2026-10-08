@@ -92,7 +92,7 @@
       "id": "replace",
       "text": "Replace",
       "default": true,
-      "col": 10,
+      "col": 5,
       "row": 7,
       "width": 11,
       "height": 1
@@ -101,18 +101,18 @@
       "type": "button",
       "id": "all",
       "text": "&All",
-      "col": 22,
+      "col": 18,
       "row": 7,
-      "width": 7,
+      "width": 11,
       "height": 1
     },
     {
       "type": "button",
       "id": "skip",
       "text": "&Skip",
-      "col": 30,
+      "col": 31,
       "row": 7,
-      "width": 8,
+      "width": 11,
       "height": 1
     },
     {
@@ -120,9 +120,9 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 39,
+      "col": 44,
       "row": 7,
-      "width": 10,
+      "width": 11,
       "height": 1
     }
   ]

@@ -27,7 +27,7 @@
       ],
       "col": 18,
       "row": 0,
-      "width": 18,
+      "width": 35,
       "height": 1
     },
     {
@@ -93,7 +93,7 @@
       ],
       "col": 18,
       "row": 7,
-      "width": 12,
+      "width": 35,
       "height": 1
     },
     {
@@ -118,7 +118,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 29,
+      "col": 28,
       "row": 10,
       "width": 12,
       "height": 1

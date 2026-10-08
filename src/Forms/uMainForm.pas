@@ -1684,6 +1684,7 @@ begin
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
+  Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -1712,6 +1713,8 @@ begin
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.FileDrag := ASettings.FileDrag;
   GFileDragEnabled := ASettings.FileDrag;
+  FSession.PassiveCursor := ASettings.PassiveCursor;
+  GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
   ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
@@ -1803,6 +1806,7 @@ begin
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
   GFileDragEnabled := Sess.FileDrag;
+  GShowPassiveCursor := Sess.PassiveCursor;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
@@ -1895,6 +1899,7 @@ begin
   Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.FileDrag := GFileDragEnabled;
+  Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
@@ -2775,6 +2780,7 @@ begin
   FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
   FSession.FileDrag := True;
+  FSession.PassiveCursor := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);

@@ -4,8 +4,8 @@ unit TestDialogTranslatedFit;
   field right of it pushes that field's column (and so every field in it)
   just past its caption; a line with nothing
   right of it grows in place and moves nothing else; buttons grow to their
-  captions, keep their gaps and are centered with their shadow one cell clear
-  of the frame; a dialog whose captions fit keeps its width. }
+  captions, keep their gaps and are centered by their faces (the shadow not
+  counted), one cell clear of the frame; a dialog whose captions fit keeps its width. }
 
 interface
 
@@ -160,8 +160,8 @@ begin
   Assert.IsTrue(Ok.Col >= 1, 'one clear cell left of the row');
   // Cancel.Col + BoxW is its shadow cell.
   Assert.IsTrue(Cancel.Col + Cancel.BoxW + 1 <= ClientW - 1, 'one clear cell after the shadow');
-  Assert.IsTrue(Abs(Ok.Col - (ClientW - (Cancel.Col + Cancel.BoxW + 1))) <= 1,
-    'row centered with its shadow');
+  Assert.AreEqual((ClientW - (Cancel.Col + Cancel.BoxW - Ok.Col)) div 2, Ok.Col,
+    'row centered by its faces, shadow not counted');
 end;
 
 initialization

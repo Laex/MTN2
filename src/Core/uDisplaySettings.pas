@@ -56,6 +56,9 @@ type
     FileDrag: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
+    /// <summary>The cursor row is highlighted in the passive panel too
+    /// (uThemeDrawing.GShowPassiveCursor).</summary>
+    PassiveCursor: Boolean;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
@@ -364,6 +367,7 @@ begin
   Result.FileDrag := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
+  Result.PassiveCursor := True;
   Result.LineSpacing := False;
   Result.SnapFontSize := False;
   Result.TextContrast := 0;

@@ -17,7 +17,7 @@ unit uDialogLocaleLayout;
 
   Buttons take no part in the column shifts. Each button row is laid out on
   its own: buttons grow to their captions, keep the gaps between them, and
-  the row is centered with its shadow, one cell clear of the frame on either
+  the row is centered by its faces, one cell clear of the frame on either
   side. The dialog grows to fit all of this and the title plus the frame's
   close mark. Width never shrinks. }
 
@@ -162,9 +162,9 @@ const
   cFieldKinds = [dckInput, dckDropDown, dckList];
   cMinFieldCells = 8;
 
-/// <summary>Center every button row in AClientW. The row's width counts the
-/// last face's shadow, and the row stays one cell clear of the frame on the
-/// left and after the shadow on the right when it fits.</summary>
+/// <summary>Center every button row in AClientW by its faces, not counting the
+/// last face's shadow; the row stays one cell clear of the frame on the left
+/// and after the shadow on the right when it fits.</summary>
 procedure CenterButtonRows(var ADecl: TDialogDeclaration; AClientW: Integer);
 var
   Rows: TArray<Integer>;
@@ -209,13 +209,14 @@ begin
     end;
     if (Left >= Right) or (Left = High(Integer)) then
       Continue;
-    // Faces plus the last one's shadow.
-    Span := Right - Left + 1;
+    // Centered by the faces alone; the last one's shadow hangs to the right
+    // and must still fit before the frame.
+    Span := Right - Left;
     Target := (AClientW - Span) div 2;
     if Target + Span + 1 > AClientW then
       Target := AClientW - 1 - Span;
     if Target < 1 then
-      Target := Min(1, Max(AClientW - Span, 0));
+      Target := Min(1, Max(AClientW - Span - 1, 0));
     Delta := Target - Left;
     if Delta = 0 then
       Continue;

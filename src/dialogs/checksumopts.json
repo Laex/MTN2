@@ -3,14 +3,14 @@
   "version": "2.0",
   "title": "Checksums",
   "width": 44,
-  "height": 7,
+  "height": 9,
   "children": [
     {
       "type": "label",
       "id": "lbl_algo",
       "text": "Algorithm:",
       "col": 1,
-      "row": 0,
+      "row": 1,
       "width": 12,
       "height": 1
     },
@@ -25,14 +25,14 @@
         "SHA-512"
       ],
       "col": 14,
-      "row": 0,
-      "width": 16,
+      "row": 1,
+      "width": 27,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 1,
+      "row": 3,
       "width": 42,
       "height": 1
     },
@@ -41,8 +41,8 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 6,
-      "row": 3,
+      "col": 8,
+      "row": 5,
       "width": 12,
       "height": 1
     },
@@ -52,7 +52,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 22,
-      "row": 3,
+      "row": 5,
       "width": 12,
       "height": 1
     }

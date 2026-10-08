@@ -21,6 +21,7 @@ type
     [Test] procedure TestSessionMissingKeys;
     [Test] procedure TestLanguagePicker;
     [Test] procedure TestPanelIconFlag;
+    [Test] procedure TestPassiveCursorSwitch;
     [Test] procedure TestShadowStyle;
     [Test] procedure TestDialogShowsMarkedFiles;
     [Test] procedure TestFontQualitySettings;
@@ -106,6 +107,7 @@ begin
   Result.ShadowStyle := 'soft';
   Result.LineSpacing := True;
   Result.MarkedRows := 'band';
+  Result.PassiveCursor := False;
   Result.SelectFolders := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
@@ -146,6 +148,7 @@ begin
     Assert.IsTrue(Loaded.ShadowStyle = 'soft', 'shadowStyle saved');
     Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
     Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
+    Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
   finally
     if TFile.Exists(Path) then
@@ -204,6 +207,9 @@ begin
     Pair := Root.RemovePair('markedRows');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('passiveCursor');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -226,6 +232,7 @@ begin
     Assert.IsTrue(Sess.ShadowStyle = 'classic', 'missing shadowStyle -> classic');
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
     Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
+    Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
   finally
     if TFile.Exists(Path) then
@@ -479,6 +486,41 @@ begin
   TestDisplaySettings.TestFontEnum;
 end;
 
+procedure TestPassiveCursorSwitch;
+var
+  Theme: IThemeRenderer;
+  Saved: Boolean;
+  PlainFg, PlainBg, CurFg, CurBg, Fg, Bg: TAlphaColor;
+begin
+  Assert.IsTrue(DefaultDisplaySettings.PassiveCursor, 'the cursor shows in the passive panel by default');
+  Theme := CreateThemeByName('NDN');
+  Saved := GShowPassiveCursor;
+  try
+    ResolvePanelRowColors(Theme, False, False, False, '', False, False, True,
+      GMarkedRowStyle, PlainFg, PlainBg);
+    ResolvePanelRowColors(Theme, False, False, False, '', False, True, True,
+      GMarkedRowStyle, CurFg, CurBg);
+    Assert.IsTrue((PlainBg <> CurBg) or (PlainFg <> CurFg), 'the cursor row differs from a plain row');
+
+    GShowPassiveCursor := True;
+    ResolvePanelRowColors(Theme, False, False, False, '', False, True, False,
+      GMarkedRowStyle, Fg, Bg);
+    Assert.IsTrue((Fg <> PlainFg) or (Bg <> PlainBg), 'passive cursor shown when the option is on');
+
+    GShowPassiveCursor := False;
+    ResolvePanelRowColors(Theme, False, False, False, '', False, True, False,
+      GMarkedRowStyle, Fg, Bg);
+    ResolvePanelRowColors(Theme, False, False, False, '', False, False, False,
+      GMarkedRowStyle, PlainFg, PlainBg);
+    Assert.IsTrue((Fg = PlainFg) and (Bg = PlainBg), 'passive cursor row is a plain row when the option is off');
+    ResolvePanelRowColors(Theme, False, False, False, '', False, True, True,
+      GMarkedRowStyle, Fg, Bg);
+    Assert.IsTrue((Fg = CurFg) and (Bg = CurBg), 'the active panel keeps its cursor');
+  finally
+    GShowPassiveCursor := Saved;
+  end;
+end;
+
 procedure TTestDisplaySettings.TestSessionRoundTrip;
 begin
   TestDisplaySettings.TestSessionRoundTrip;
@@ -512,6 +554,11 @@ end;
 procedure TTestDisplaySettings.TestPanelIconFlag;
 begin
   TestDisplaySettings.TestPanelIconFlag;
+end;
+
+procedure TTestDisplaySettings.TestPassiveCursorSwitch;
+begin
+  TestDisplaySettings.TestPassiveCursorSwitch;
 end;
 
 initialization

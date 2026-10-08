@@ -43,7 +43,7 @@
       ],
       "col": 12,
       "row": 3,
-      "width": 14
+      "width": 51
     },
     {
       "type": "label",
@@ -66,7 +66,7 @@
       "id": "ok",
       "text": "Import",
       "default": true,
-      "col": 16,
+      "col": 19,
       "row": 8,
       "width": 12,
       "height": 1
@@ -76,7 +76,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 34,
+      "col": 33,
       "row": 8,
       "width": 12,
       "height": 1

@@ -52,7 +52,7 @@
       ],
       "col": 26,
       "row": 3,
-      "width": 20,
+      "width": 47,
       "height": 1
     },
     {
@@ -75,7 +75,7 @@
       ],
       "col": 26,
       "row": 4,
-      "width": 10,
+      "width": 47,
       "height": 1
     },
     {
@@ -95,7 +95,7 @@
       "checked": false,
       "col": 38,
       "row": 5,
-      "width": 34,
+      "width": 35,
       "height": 1
     },
     {
@@ -149,9 +149,9 @@
       "id": "ok",
       "text": "Copy",
       "default": true,
-      "col": 10,
+      "col": 14,
       "row": 11,
-      "width": 12,
+      "width": 14,
       "height": 1
     },
     {
@@ -168,9 +168,9 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 52,
+      "col": 46,
       "row": 11,
-      "width": 12,
+      "width": 14,
       "height": 1
     }
   ]

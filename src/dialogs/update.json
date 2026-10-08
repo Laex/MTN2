@@ -35,7 +35,7 @@
       "id": "update",
       "text": "Update",
       "default": true,
-      "col": 3,
+      "col": 2,
       "row": 4,
       "width": 14,
       "height": 1
@@ -45,7 +45,7 @@
       "id": "later",
       "text": "Later",
       "cancel": true,
-      "col": 19,
+      "col": 18,
       "row": 4,
       "width": 12,
       "height": 1
@@ -54,7 +54,7 @@
       "type": "button",
       "id": "skip",
       "text": "&Skip this version",
-      "col": 33,
+      "col": 32,
       "row": 4,
       "width": 21,
       "height": 1

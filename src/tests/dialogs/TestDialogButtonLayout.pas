@@ -15,7 +15,10 @@ unit TestDialogButtonLayout;
   A block of two button rows (a shadow row apart) has an empty row above the
   block and the same space below it.
   A message dialog - text lines and the buttons, nothing else - has no rule:
-  an empty row under the title, the lines, an empty row, the buttons. }
+  an empty row under the title, the lines, an empty row, the buttons.
+  A dialog whose content is a single line (a caption with its field, one
+  question) has an empty row under the title and another between that line
+  and the separator rule. }
 
 interface
 
@@ -77,8 +80,8 @@ var
   Host: TDialogHost;
   Grid: TTerminalGrid;
   Frame, R: TRectI;
-  I, Top, Left, Right, BlockTop, Texts: Integer;
-  RuleAbove, MessageOnly: Boolean;
+  I, Top, Left, Right, BlockTop, Texts, ContentTop, ContentBottom: Integer;
+  RuleAbove, MessageOnly, SingleLine: Boolean;
   Problems: TStringList;
 
   function RuleAt(ARow: Integer): Boolean;
@@ -173,6 +176,23 @@ begin
       end;
     MessageOnly := MessageOnly and (Texts >= 1);
 
+    // The rows of the content proper: not buttons or rules. An empty label is
+    // a line the program fills in later, so it counts.
+    ContentTop := MaxInt;
+    ContentBottom := -1;
+    for I := 0 to Host.ControlCount - 1 do
+    begin
+      if (Host.GetControl(I).Kind = dckButton) or
+         ((Host.GetControl(I).Kind = dckLabel) and
+          IsHRuleText(Host.GetControl(I).Text)) then
+        Continue;
+      R := Host.ControlBoundsAt(I);
+      ContentTop := Min(ContentTop, R.Top);
+      ContentBottom := Max(ContentBottom, R.Bottom);
+    end;
+    SingleLine := (not MessageOnly) and (ContentBottom >= 0) and
+      (ContentTop = ContentBottom);
+
     Left := MaxInt;
     Right := -1;
     for I := 0 to Host.ControlCount - 1 do
@@ -215,6 +235,15 @@ begin
     begin
       if RowUsed(Frame.Top + 1) then
         Problems.Add('no empty row under the title of a message dialog');
+    end
+    else if SingleLine then
+    begin
+      if RowUsed(Frame.Top + 1) then
+        Problems.Add('no empty row under the title of a single-line dialog');
+      if ContentTop <> Frame.Top + 2 then
+        Problems.Add('single line is not on the second row');
+      if RowUsed(ContentBottom + 1) or not RuleAt(ContentBottom + 2) then
+        Problems.Add('single line needs an empty row, then the rule, below it');
     end
     else if not RowUsed(Frame.Top + 1) then
       Problems.Add('empty row under the title');

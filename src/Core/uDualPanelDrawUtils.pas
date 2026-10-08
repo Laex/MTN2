@@ -311,7 +311,7 @@ var
   begin
     if Row.IsParent then
       Exit;
-    if Idx = ATab.CursorIndex then
+    if (Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor) then
       State := ccsCurrent
     else if Selected then
       State := ccsSelected
@@ -336,7 +336,8 @@ var
         GMarkedRowStyle, Fg, Bg)
     else
       FallbackFileRowColors(Row.IsDirectory, Row.IsParent, Row.IsHidden,
-        Selected, Idx = ATab.CursorIndex, ASideActive, Fg, Bg);
+        Selected, (Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor),
+        ASideActive, Fg, Bg);
     ApplyColorCoding;
   end;
 

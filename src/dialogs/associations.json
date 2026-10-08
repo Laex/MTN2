@@ -38,7 +38,7 @@
       "id": "ok",
       "text": "Edit",
       "default": true,
-      "col": 4,
+      "col": 11,
       "row": 12,
       "width": 12,
       "height": 1
@@ -47,7 +47,7 @@
       "type": "button",
       "id": "add",
       "text": "&Add",
-      "col": 22,
+      "col": 25,
       "row": 12,
       "width": 12,
       "height": 1
@@ -57,7 +57,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 46,
+      "col": 39,
       "row": 12,
       "width": 12,
       "height": 1
