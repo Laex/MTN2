@@ -32,6 +32,7 @@ procedure TestResourceMatchesCodeDefaults;
 var
   Code, Res: TKeymapProfile;
   A: TKeymapAction;
+  K: Word;
 begin
   Code := GetDefaultNDNProfile;
   Res := LoadDefaultKeymapProfile;
@@ -49,6 +50,11 @@ begin
   Assert.IsTrue(StringToVK('menu') = vkApps, 'key name Menu, any case');
   Assert.IsTrue(VKToDisplayString(vkApps) = 'Menu', 'Menu key shown as Menu');
   Assert.IsTrue(StringToVK(VKToDisplayString(vkApps)) = vkApps, 'Menu key round-trips');
+  Assert.IsTrue(StringToVK('/') = vkSlash, 'slash key name');
+  Assert.IsTrue(StringToVK('Slash') = vkSlash, 'slash key word');
+  for K in [vkSlash, vkComma, vkPeriod, vkSemicolon, vkQuote, vkEqual, vkMinus] do
+    Assert.IsTrue(StringToVK(VKToDisplayString(K)) = K, 'punctuation key round-trips: ' + VKToDisplayString(K));
+  Assert.IsTrue(StringToVK('-') = vkSubtract, 'bare minus stays the numpad key');
   Assert.IsTrue(MatchAction(Res, vkF11, [ssAlt]) = kaFileHistory, 'resource: Alt+F11 = FileHistory');
   Assert.IsTrue(MatchAction(Res, vkF3, [ssAlt]) = kaExternalView, 'resource: Alt+F3 = ExternalView');
   Assert.IsTrue(MatchAction(Res, vkF4, [ssAlt]) = kaExternalEdit, 'resource: Alt+F4 = ExternalEdit');

@@ -21,6 +21,7 @@ type
     FOnGoto: TSearchGotoEvent;
     FOnNavigateFindResults: TSearchFindNavigateEvent;
     FOnAfterClose: TProc;
+    FOnStopRequest: TProc;
     FSearch: TSearchState;
     FAlive: Boolean;
     procedure HandleSearchInputDialog(var AKey: Word; AShift: TShiftState;
@@ -60,6 +61,9 @@ type
     property Bounds: TRectI read FSearch.Bounds;
     property Active: Boolean read GetActive;
     property State: TSearchState read FSearch;
+    /// <summary>Called on Esc while a search runs. When assigned, the owner
+    /// decides whether to call CancelSearch (the window asks for confirmation).</summary>
+    property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
   end;
 
 implementation
@@ -459,7 +463,10 @@ procedure TSearchController.HandleSearchInputRunning(var AKey: Word;
 begin
   if AKey = vkEscape then
   begin
-    CancelSearch;
+    if Assigned(FOnStopRequest) then
+      FOnStopRequest
+    else
+      CancelSearch;
     AKey := 0;
   end
   else

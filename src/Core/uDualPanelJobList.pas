@@ -28,6 +28,7 @@ type
     FVfs: IVirtualFileSystem;
     FElevatedVfs: IVirtualFileSystem;
     FOnInvalidate: TProc;
+    FOnStopRequest: TProc;
     FOnOpenConfirmDialog: TJobConfirmDialogEvent;
     FOnOverwriteAsk: TJobOverwriteAskEvent;
     FOnDeleteAsk: TJobDeleteAskEvent;
@@ -64,6 +65,7 @@ type
     procedure QueuePruneIdle;
     procedure PruneIdleJobs;
     function ConflictsWithRunning(AJob: TPanelJobController): Boolean;
+    function FindJobCoveringUris(const ASources: TArray<string>): TPanelJobController;
     procedure TryStartQueued;
     function GetPhase: TPanelJobPhase;
     function GetKind: TPanelJobKind;
@@ -127,6 +129,9 @@ type
     procedure ResolveDeleteAsk(AAction: TJobDeleteFailAction);
     procedure ResolveIOErrorAsk(AAction: TJobIOErrorAction);
     procedure RequestCancel;
+    /// <summary>Set before jobs are spawned; passed to every job so that Esc
+    /// on a foreground job goes through the owner's stop confirmation.</summary>
+    property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
     procedure CancelJobByIndex(AIndex: Integer);
     procedure CancelAll;
     function HandleJobInput(var AKey: Word; AShift: TShiftState;
@@ -503,6 +508,7 @@ begin
     end,
     FOnBeforeExecute);
   Job.SetElevatedVfs(FElevatedVfs);
+  Job.OnStopRequest := FOnStopRequest;
   Result := Job;
 end;
 
@@ -525,6 +531,32 @@ begin
       pjpDeleteAsk, pjpIOErrorAsk, pjpError]) then
       if not CanRunParallel(AJob.State, Other.State) then
         Exit(True);
+end;
+
+function TPanelJobList.FindJobCoveringUris(
+  const ASources: TArray<string>): TPanelJobController;
+var
+  Job: TPanelJobController;
+  ExistingUris: TArray<string>;
+  I, J: Integer;
+begin
+  Result := nil;
+  if Length(ASources) = 0 then
+    Exit;
+  for Job in FItems do
+  begin
+    if Job.Phase = pjpNone then
+      Continue;
+    ExistingUris := CollectJobTouchUris(Job.State);
+    for I := 0 to High(ASources) do
+    begin
+      if ASources[I] = '' then
+        Continue;
+      for J := 0 to High(ExistingUris) do
+        if JobUrisOverlap(ASources[I], ExistingUris[J]) then
+          Exit(Job);
+    end;
+  end;
 end;
 
 procedure TPanelJobList.TryStartQueued;
@@ -694,7 +726,14 @@ procedure TPanelJobList.BeginJob(const ASources: TArray<string>;
   ADeleteToRecycleBin: Boolean);
 var
   Job: TPanelJobController;
+  Conflict: TPanelJobController;
 begin
+  Conflict := FindJobCoveringUris(ASources);
+  if Conflict <> nil then
+  begin
+    RestoreJobById(Conflict.State.Id);
+    Exit;
+  end;
   if not CanStartAnother then
     Exit;
   Job := SpawnJob;
@@ -708,7 +747,14 @@ procedure TPanelJobList.BeginJobPairs(const ASources, ADestURIs: TArray<string>;
   AKind: TPanelJobKind);
 var
   Job: TPanelJobController;
+  Conflict: TPanelJobController;
 begin
+  Conflict := FindJobCoveringUris(ASources);
+  if Conflict <> nil then
+  begin
+    RestoreJobById(Conflict.State.Id);
+    Exit;
+  end;
   if not CanStartAnother then
     Exit;
   Job := SpawnJob;

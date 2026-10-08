@@ -20,6 +20,7 @@ type
     [Test] procedure TestDialogFieldEditing;
     [Test] procedure TestRealSearchAndResultsNavigation;
     [Test] procedure TestCancelRunningSearch;
+    [Test] procedure TestRunningSearchEscAsksOwnerFirst;
   end;
 
 implementation
@@ -305,6 +306,53 @@ begin
   end;
 end;
 
+procedure TestRunningSearchEscAsksOwnerFirst;
+var
+  C: TSearchController;
+  TempDir: string;
+  Key: Word;
+  KeyChar: Char;
+  Asked: Integer;
+begin
+  TempDir := TPath.Combine(TPath.GetTempPath, 'MTN2_TestSearchControllerStopAsk');
+  if not TDirectory.Exists(TempDir) then
+    TDirectory.CreateDirectory(TempDir);
+  TFile.WriteAllText(TPath.Combine(TempDir, 'x.txt'), 'x');
+
+  C := MakeController;
+  try
+    C.Phase := spDialog;
+    C.RootPath := TempDir;
+    C.Mask := '*.txt';
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    Assert.IsTrue(C.Phase = spRunning, 'search started');
+
+    Asked := 0;
+    C.OnStopRequest :=
+      procedure
+      begin
+        Inc(Asked);
+      end;
+    Key := vkEscape;
+    C.HandleSearchInput(Key, [], KeyChar);
+    Assert.IsTrue(Asked = 1, 'Escape hands the stop decision to the owner');
+    Assert.IsTrue(C.Phase = spRunning, 'the search keeps running until the owner cancels it');
+
+    C.CancelSearch;
+    WaitWhile(
+      function: Boolean
+      begin
+        Result := C.Phase = spRunning;
+      end);
+    Assert.IsTrue(C.Phase = spNone, 'an owner-confirmed cancel ends the search');
+  finally
+    C.Free;
+    TDirectory.Delete(TempDir, True);
+  end;
+end;
+
 { TTestSearchController }
 
 procedure TTestSearchController.TestStartSearchGuards;
@@ -325,6 +373,11 @@ end;
 procedure TTestSearchController.TestCancelRunningSearch;
 begin
   TestSearchController.TestCancelRunningSearch;
+end;
+
+procedure TTestSearchController.TestRunningSearchEscAsksOwnerFirst;
+begin
+  TestSearchController.TestRunningSearchEscAsksOwnerFirst;
 end;
 
 initialization

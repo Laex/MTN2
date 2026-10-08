@@ -9,6 +9,8 @@
 
 Search results open as a panel – the usual operations work on them.
 
+Esc while a search runs asks “Stop the search?”: **Stop** ends the search, **Continue** (Esc) lets it keep running.
+
 ---
 
 [Contents](index.md)

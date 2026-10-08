@@ -110,6 +110,9 @@ type
     /// <summary>Optional (nil if the DLL lacks it): Wasmtime otherwise
     /// compiles on a thread pool as wide as the CPU.</summary>
     ConfigParallelCompilationSet: procedure(C: PWasmConfig; Enable: Byte); cdecl;
+    /// <summary>Optional (nil if the DLL lacks it): turns on Wasmtime's on-disk
+    /// cache of compiled modules (default location when Path is nil).</summary>
+    ConfigCacheConfigLoad: function(C: PWasmConfig; Path: PAnsiChar): PWasmtimeError; cdecl;
     EngineNewWithConfig: function(C: PWasmConfig): PWasmEngine; cdecl;
     EngineDelete: procedure(E: PWasmEngine); cdecl;
     StoreNew: function(E: PWasmEngine; Data: Pointer; Finalizer: Pointer): PWasmtimeStore; cdecl;
@@ -213,6 +216,7 @@ begin
   if not Need('wasm_config_delete', GFns.ConfigDelete) then Exit;
   if not Need('wasmtime_config_consume_fuel_set', GFns.ConfigConsumeFuelSet) then Exit;
   Need('wasmtime_config_parallel_compilation_set', GFns.ConfigParallelCompilationSet); // optional
+  Need('wasmtime_config_cache_config_load', GFns.ConfigCacheConfigLoad); // optional
   Need('wasi_config_new', GFns.WasiConfigNew); // optional
   Need('wasmtime_context_set_wasi', GFns.ContextSetWasi); // optional
   Need('wasmtime_linker_define_wasi', GFns.LinkerDefineWasi); // optional

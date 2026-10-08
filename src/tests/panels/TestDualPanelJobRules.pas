@@ -145,6 +145,14 @@ begin
   Snap := BuildJobProgressSnapshot(S, 72);
   Assert.IsTrue((not Snap.IsError) and (Snap.Verb = 'Copying the file'), 'copy snapshot verb');
   Assert.IsTrue(Pos('50%', Snap.FileBar) > 0, 'snapshot file bar');
+  S.Cancel := TJobCancelToken.Create;
+  Assert.IsTrue(BuildJobProgressSnapshot(S, 72).Verb = 'Copying the file',
+    'a job nobody asked to stop keeps its verb');
+  S.Cancel.Cancel;
+  Snap := BuildJobProgressSnapshot(S, 72);
+  Assert.IsTrue((Snap.Verb <> '') and (Snap.Verb <> 'Copying the file'),
+    'a stop request replaces the verb until the worker finishes');
+  S.Cancel := nil;
   S.Kind := pjkDelete;
   Assert.IsTrue(JobProgressResourceName(S) = 'DIALOG_JOBPROGRESSDELETE', 'delete resource');
   S.Phase := pjpError;

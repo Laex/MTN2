@@ -400,6 +400,13 @@ begin
   else if (UpperS = 'NUMPAD+') or (UpperS = 'NUM+') or (UpperS = '+') or (UpperS = 'ADD') then Result := vkAdd
   else if (UpperS = 'NUMPAD-') or (UpperS = 'NUM-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
   else if (UpperS = 'NUMPAD*') or (UpperS = 'NUM*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
+  else if (UpperS = '/') or (UpperS = 'SLASH') or (UpperS = 'OEM2') then Result := vkSlash
+  else if (UpperS = ',') or (UpperS = 'COMMA') then Result := vkComma
+  else if (UpperS = '.') or (UpperS = 'PERIOD') or (UpperS = 'DOT') then Result := vkPeriod
+  else if (UpperS = 'SEMICOLON') or (UpperS = 'OEM1') then Result := vkSemicolon
+  else if (UpperS = '''') or (UpperS = 'QUOTE') or (UpperS = 'OEM7') then Result := vkQuote
+  else if (UpperS = '=') or (UpperS = 'EQUAL') or (UpperS = 'EQUALS') then Result := vkEqual
+  else if UpperS = 'MINUS' then Result := vkMinus
   else if (UpperS = 'BACKSPACE') or (UpperS = 'BKSP') then Result := vkBack
   else if (UpperS = 'APPS') or (UpperS = 'MENU') or (UpperS = 'CONTEXTMENU') then Result := vkApps
   else if Length(UpperS) = 1 then Result := Ord(UpperS[1])
@@ -443,6 +450,15 @@ begin
     vkMultiply: Result := '*';
     vkNumpad0..vkNumpad9: Result := 'Num' + Chr(Ord('0') + AKey - vkNumpad0);
     vkApps: Result := 'Menu';
+    // '-' parses as the numpad key and ';' separates bindings in the key
+    // field, so those two use names.
+    vkSlash: Result := '/';
+    vkComma: Result := ',';
+    vkPeriod: Result := '.';
+    vkSemicolon: Result := 'Semicolon';
+    vkQuote: Result := '''';
+    vkEqual: Result := '=';
+    vkMinus: Result := 'Minus';
   else
     if (AKey >= Ord('0')) and (AKey <= Ord('9')) then
       Result := Chr(AKey)

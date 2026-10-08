@@ -13,6 +13,7 @@ type
   TTestDualPanelJobChips = class
   public
     [Test] procedure OnlyJobsOutOfSightGetChips;
+    [Test] procedure StoppingJobHasNoChip;
     [Test] procedure EveryOperationHasItsOwnGlyph;
     [Test] procedure CaptionShowsProgressOrState;
     [Test] procedure ToneMarksAskAndError;
@@ -28,6 +29,7 @@ implementation
 
 uses
   System.SysUtils,
+  uVfsTypes,
   uDualPanelUiTypes,
   uDualPanelJobRules,
   uDualPanelJobChips;
@@ -62,6 +64,17 @@ begin
   Assert.IsFalse(JobHasChip(MakeJob(1, pjkCopy, pjpConfirm, jpBackground)),
     'confirm is a dialog');
   Assert.IsFalse(JobHasChip(MakeJob(1, pjkCopy, pjpNone, jpBackground)), 'idle');
+end;
+
+procedure TTestDualPanelJobChips.StoppingJobHasNoChip;
+var
+  Job: TPanelJobState;
+begin
+  Job := MakeJob(1, pjkCopy, pjpRunning, jpBackground);
+  Job.Cancel := TJobCancelToken.Create;
+  Assert.IsTrue(JobHasChip(Job), 'a job nobody asked to stop keeps its chip');
+  Job.Cancel.Cancel;
+  Assert.IsFalse(JobHasChip(Job), 'a job told to stop drops its chip');
 end;
 
 procedure TTestDualPanelJobChips.EveryOperationHasItsOwnGlyph;

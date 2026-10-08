@@ -150,7 +150,7 @@ type
     hdkSshConnections, hdkSshConnectionEdit, hdkSshConnectionConfirm,
     hdkAssociations, hdkAssociationEdit, hdkAssociationConfirm,
     hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt,
-    hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress,
+    hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkChecksumOptions, hdkChecksumResult,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,

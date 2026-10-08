@@ -2137,6 +2137,7 @@ end;
 function EnsureWasmEngine(out AError: string): Boolean;
 var
   Cfg: PWasmConfig;
+  CacheErr: PWasmtimeError;
 begin
   AError := '';
   if (GEngine <> nil) and (GLinker <> nil) then
@@ -2155,6 +2156,15 @@ begin
   // session -- pointless for a couple of small plugin modules.
   if Assigned(Wasmtime.ConfigParallelCompilationSet) then
     Wasmtime.ConfigParallelCompilationSet(Cfg, 0);
+  // Compiled modules are kept on disk, so a large module (a Go build, for
+  // one) is compiled on the first start only and loaded from the cache after.
+  // A failure to set the cache up only costs the speed-up.
+  if Assigned(Wasmtime.ConfigCacheConfigLoad) then
+  begin
+    CacheErr := Wasmtime.ConfigCacheConfigLoad(Cfg, nil);
+    if CacheErr <> nil then
+      Wasmtime.ErrorDelete(CacheErr);
+  end;
   GEngine := Wasmtime.EngineNewWithConfig(Cfg);
   if GEngine = nil then
   begin

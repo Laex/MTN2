@@ -139,6 +139,8 @@ type
     FJobs: TPanelJobList;
     FJobAskDeferred: Boolean;
     FJobProgressRes: string;
+    FStopAccept: TProc;
+    FStopReject: TProc;
     FSyncingJobProgress: Boolean;
     FSearchUi: TSearchController;
     FMenus: TMenuStubController;
@@ -299,6 +301,11 @@ type
     procedure SyncJobProgressDialog;
     procedure OpenJobProgress(const AJob: TPanelJobState);
     function CloseJobProgressForReplacement: Boolean;
+    procedure RequestStopConfirm(const AQuestion: string; const AOnAccept, AOnReject: TProc);
+    procedure AnswerStopConfirm(AAccepted: Boolean);
+    procedure RequestJobListCancel(AIndex: Integer; AAll: Boolean);
+    procedure HostRequestJobStop;
+    procedure HostRequestSearchStop;
     procedure OpenJobList;
     function KeymapActiveSide: TPanelSide;
     procedure KeymapToggleConsole;
@@ -2302,6 +2309,14 @@ procedure TDualPanelWindow.HostJobFinished(ASuccess: Boolean);
 begin
   if FDialogKind = hdkJobProgress then
     CloseJobProgressForReplacement;
+  // A stop question left open after the job ended has nothing left to stop.
+  if (FDialogKind = hdkStopConfirm) and Assigned(FDialog) and FDialog.Visible then
+  begin
+    FDialog.Close;
+    FDialogKind := hdkNone;
+    FStopAccept := nil;
+    FStopReject := nil;
+  end;
   if (FDialogKind in [hdkJobConfirm, hdkOverwriteAsk, hdkOverwriteRename,
       hdkDeleteError, hdkIOError]) and
      not (Assigned(FDialog) and FDialog.Visible) then
@@ -2366,6 +2381,81 @@ begin
   FDialogKind := hdkJobProgress;
   FJobProgressRes := JobProgressResourceName(AJob);
   FDialog.Open(BuildJobProgressDialog(AJob), DialogCommand);
+end;
+
+procedure TDualPanelWindow.RequestStopConfirm(const AQuestion: string;
+  const AOnAccept, AOnReject: TProc);
+begin
+  if not Assigned(FDialog) then
+    Exit;
+  // The question replaces whatever dialog is open rather than stacking on it.
+  // The progress dialog is closed here; the worker's updates are ignored while
+  // FDialogKind is hdkStopConfirm, and the accept/reject callbacks bring it back.
+  CloseJobProgressForReplacement;
+  if FDialog.Visible then
+    FDialog.Close;
+  FStopAccept := AOnAccept;
+  FStopReject := AOnReject;
+  FDialogKind := hdkStopConfirm;
+  FDialog.Open(BuildStopConfirmDialog(AQuestion), DialogCommand);
+end;
+
+procedure TDualPanelWindow.AnswerStopConfirm(AAccepted: Boolean);
+var
+  OnAccept, OnReject: TProc;
+begin
+  OnAccept := FStopAccept;
+  OnReject := FStopReject;
+  FStopAccept := nil;
+  FStopReject := nil;
+  FDialogKind := hdkNone;
+  if FDialog.Visible then
+    FDialog.Close;
+  if AAccepted then
+  begin
+    if Assigned(OnAccept) then
+      OnAccept();
+  end
+  else if Assigned(OnReject) then
+    OnReject();
+end;
+
+procedure TDualPanelWindow.RequestJobListCancel(AIndex: Integer; AAll: Boolean);
+begin
+  // The job list closes while the question is up; "Continue" reopens it.
+  if AAll then
+    RequestStopConfirm(T('ui.stop.all', 'Cancel all operations?'),
+      procedure begin FJobs.CancelAll; end,
+      procedure begin OpenJobList; end)
+  else
+    RequestStopConfirm(T('ui.stop.selected', 'Cancel the selected operation?'),
+      procedure begin FJobs.CancelJobByIndex(AIndex); end,
+      procedure begin OpenJobList; end);
+end;
+
+procedure TDualPanelWindow.HostRequestJobStop;
+var
+  Job: TPanelJobState;
+begin
+  // Already told to stop and waiting for the worker: nothing left to ask.
+  if Assigned(FJobs) and FJobs.TryProgressDialogState(Job) and
+     Assigned(Job.Cancel) and Job.Cancel.IsCancellationRequested then
+    Exit;
+  RequestStopConfirm(T('ui.stop.progress', 'Cancel the current operation?'),
+    procedure
+    begin
+      // The worker stops at its next cancellation check; the progress dialog
+      // does not wait for it. The job finishes out of sight, as a background job.
+      FJobs.RequestCancel;
+      FJobs.BackgroundJob;
+    end,
+    procedure begin SyncJobProgressDialog; end);
+end;
+
+procedure TDualPanelWindow.HostRequestSearchStop;
+begin
+  RequestStopConfirm(T('ui.stop.search', 'Stop the search?'),
+    procedure begin FSearchUi.CancelSearch; end, nil);
 end;
 
 procedure TDualPanelWindow.SyncJobProgressDialog;
@@ -2679,10 +2769,12 @@ begin
     HostJobUiClosed, PauseDirWatchesForJob);
   FJobs.SetElevatedVfs(FElevatedIntf);
   FJobAskDeferred := False;
+  FJobs.OnStopRequest := HostRequestJobStop;
   FJobDialogs := TJobDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind);
   FSearchUi := TSearchController.Create(Theme, NotifyChanged, GotoFileLocation,
     HostApplyFindResults, FlushDirWatchPending);
+  FSearchUi.OnStopRequest := HostRequestSearchStop;
   FSearchDlg := TSearchDialogController.Create(FDialog, FSearchUi, DialogCommand,
     HostSetDialogKind, HostSearchBlocked, HostPrepareSearchUi,
     HostActivePanelUri, NotifyChanged);
@@ -5112,14 +5204,29 @@ begin
   if (Kind = hdkOverwriteAsk) and Assigned(FJobDialogs) and
      FJobDialogs.TryHandleOverwriteRename(AControlId) then
     Exit;
-  // Cancel on a running progress dialog keeps the window open until the
-  // worker stops; do not clear FDialogKind or the next Sync would
-  // treat the leftover frame as a foreign modal.
+  // Every user-initiated stop asks first; the operation is interrupted only
+  // from the question's Stop button.
   if (Kind = hdkJobProgress) and DialogCmdIsReject(AControlId) and
      Assigned(FJobs) and (FJobs.Phase = pjpRunning) then
   begin
-    FJobs.RequestCancel;
+    HostRequestJobStop;
     NotifyChanged;
+    Exit;
+  end;
+  if (Kind = hdkJobList) and Assigned(FJobs) and
+     (DialogCmdIs(AControlId, cDlgCmdCancelJob) or DialogCmdIs(AControlId, cDlgCmdCancelAll)) then
+  begin
+    RequestJobListCancel(FDialog.GetListSelectedIndex('jobs'),
+      DialogCmdIs(AControlId, cDlgCmdCancelAll));
+    NotifyChanged;
+    Exit;
+  end;
+  if Kind = hdkStopConfirm then
+  begin
+    AnswerStopConfirm(DialogCmdIsAccept(AControlId));
+    NotifyChanged;
+    FlushDirWatchPending;
+    FlushPendingJobAsk;
     Exit;
   end;
   // Close after reading fields, but run job confirm before Close's Notify

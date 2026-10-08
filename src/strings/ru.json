@@ -372,6 +372,12 @@
       "$title": "Ошибка",
       "ok": "Закрыть"
     },
+    "DIALOG_STOPCONFIRM": {
+      "$title": "Отмена операции",
+      "question": "Прервать текущую операцию?",
+      "yes": "&Прервать",
+      "no": "Продолжить"
+    },
     "DIALOG_KEYMAP": {
       "header": "  Действие                              Клавиши",
       "$title": "Раскладка клавиш",
@@ -957,6 +963,11 @@
     "window.admin": "Администратор",
     "window.adminHelper": "Помощник администратора",
     "search.running": "Поиск",
+    "job.cancelling": "Прерывание...",
+    "stop.progress": "Прервать текущую операцию?",
+    "stop.selected": "Прервать выбранную операцию?",
+    "stop.all": "Прервать все операции?",
+    "stop.search": "Остановить поиск?",
     "search.results": "Найдено: %d",
     "search.title": "Поиск файлов",
     "workspace.home": "Дом",

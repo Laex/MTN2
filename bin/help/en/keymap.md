@@ -10,6 +10,8 @@ In the console (Ctrl+O) and a terminal the commands named `Shell…` can be rebo
 
 **Settings → Keymap** groups the actions by window – global, file panels, viewer and editor, console and terminal – under readable names; the `keymap.json` name shows in the edit window. The F-key labels at the bottom, hints such as `A:All` and the shortcuts in the top menu come from the keymap: after a rebinding they show the new key.
 
+An action can have several shortcuts: list them separated by `;` in the edit window, or as separate entries in `keymap.json`. Besides letters, digits and special keys, the signs `/`, `,`, `.`, `'`, `=` can be assigned; write semicolon and the main-block minus as `Semicolon` and `Minus` (`-`, `+` and `*` mean the numeric keypad keys).
+
 Modifiers must match exactly: Ctrl+Shift+A is not Ctrl+A. Arrows, Home/End, typing and `/` in the viewer are not configurable.
 
 ### Tab keys

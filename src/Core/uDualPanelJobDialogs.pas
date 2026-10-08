@@ -57,6 +57,9 @@ function SourcesContainArchive(const ASources: TArray<string>): Boolean;
 function UnpackSourcesAreValid(const ASources: TArray<string>;
   out AError: string): Boolean;
 function BuildJobProgressDialog(const AJob: TPanelJobState): TDialogDeclaration;
+/// <summary>Stop question for a running operation. "Continue" is the default
+/// and the Esc target, so Esc and Enter keep the operation running.</summary>
+function BuildStopConfirmDialog(const AQuestion: string): TDialogDeclaration;
 procedure ApplyJobProgressToDecl(var ADecl: TDialogDeclaration;
   const AJob: TPanelJobState);
 procedure ApplyJobProgressToDialog(ADialog: TDialogHost;
@@ -125,6 +128,13 @@ function BuildJobProgressDialog(const AJob: TPanelJobState): TDialogDeclaration;
 begin
   RequireDialogResource(JobProgressResourceName(AJob), Result);
   ApplyJobProgressToDecl(Result, AJob);
+end;
+
+function BuildStopConfirmDialog(const AQuestion: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogStopConfirm, Result);
+  Result.IsWarning := True;
+  DialogSetLabelText(Result, 'question', AQuestion);
 end;
 
 function JobOverwriteModeFromIndex(AIdx: Integer): TJobOverwriteMode;
@@ -472,16 +482,6 @@ begin
   begin
     if Assigned(FJobs) and Assigned(FDialog) then
       FJobs.ForegroundJobByIndex(FDialog.GetListSelectedIndex('jobs'));
-  end
-  else if DialogCmdIs(AControlId, cDlgCmdCancelJob) then
-  begin
-    if Assigned(FJobs) and Assigned(FDialog) then
-      FJobs.CancelJobByIndex(FDialog.GetListSelectedIndex('jobs'));
-  end
-  else if DialogCmdIs(AControlId, cDlgCmdCancelAll) then
-  begin
-    if Assigned(FJobs) then
-      FJobs.CancelAll;
   end;
   FDialog.Close;
 end;

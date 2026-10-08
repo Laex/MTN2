@@ -32,6 +32,7 @@ type
     /// "Admin"); reset when the job starts.</summary>
     FUseElevated: Boolean;
     FOnInvalidate: TProc;
+    FOnStopRequest: TProc;
     FOnOpenConfirmDialog: TJobConfirmDialogEvent;
     FOnOverwriteAsk: TJobOverwriteAskEvent;
     FOnDeleteAsk: TJobDeleteAskEvent;
@@ -160,6 +161,9 @@ type
     property Phase: TPanelJobPhase read FJob.Phase;
     property Kind: TPanelJobKind read FJob.Kind;
     property State: TPanelJobState read FJob;
+    /// <summary>Called on Esc while the job runs in the foreground. When
+    /// assigned, the owner decides whether to call RequestCancel.</summary>
+    property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
     property Bounds: TRectI read FJob.Bounds;
     property Active: Boolean read GetActive;
   end;
@@ -1909,7 +1913,9 @@ begin
   end
   else if AKey = vkEscape then
   begin
-    if Assigned(FJob.Cancel) then
+    if Assigned(FOnStopRequest) then
+      FOnStopRequest
+    else if Assigned(FJob.Cancel) then
       FJob.Cancel.Cancel;
     AKey := 0;
   end

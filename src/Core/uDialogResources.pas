@@ -78,6 +78,7 @@ const
   cResDialogJobProgress = 'DIALOG_JOBPROGRESS';
   cResDialogJobProgressDelete = 'DIALOG_JOBPROGRESSDELETE';
   cResDialogJobProgressError = 'DIALOG_JOBPROGRESSERROR';
+  cResDialogStopConfirm = 'DIALOG_STOPCONFIRM';
 
 function TryLoadDialogResourceJson(const AResName: string;
   out AJson: string): Boolean;

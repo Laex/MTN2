@@ -50,6 +50,7 @@ function UriIsSameOrAncestor(const AMaybeAncestor, AUri: string): Boolean;
 function JobArchiveKey(const AURI: string): string;
 function JobSftpAuthority(const AURI: string): string;
 function JobUrisOverlap(const A, B: string): Boolean;
+function CollectJobTouchUris(const AJob: TPanelJobState): TArray<string>;
 function CanRunParallel(const ANew, AExisting: TPanelJobState): Boolean;
 
 function CanStartAnotherJob(ABusyCount: Integer): Boolean;
@@ -265,7 +266,12 @@ begin
       Result.Message := 'Error';
     Exit;
   end;
-  Result.Verb := JobProgressVerb(AJob.Kind);
+  // The worker stops at its next cancellation check, which can take a while
+  // on a large file; the dialog says so instead of looking like it still works.
+  if Assigned(AJob.Cancel) and AJob.Cancel.IsCancellationRequested then
+    Result.Verb := T('ui.job.cancelling', 'Cancelling...')
+  else
+    Result.Verb := JobProgressVerb(AJob.Kind);
   Result.Src := JobProgressSrcLine(AJob, InnerW);
   Result.Dst := JobProgressDstLine(AJob, InnerW);
   if AJob.Kind = pjkDelete then

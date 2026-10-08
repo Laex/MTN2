@@ -82,6 +82,9 @@ type
     /// <summary>One-shot, cDialogButtonPressMs: releases a dialog button
     /// pressed from the keyboard (uDialogHost.GDialogButtonPressStart).</summary>
     FButtonPressTimer: TTimer;
+    /// <summary>Polls a dialog button held by Enter or Space: lifts it (running
+    /// its command) once GetKeyState shows the key up, whatever KeyUp delivered.</summary>
+    FButtonHoldTimer: TTimer;
     /// <summary>Self-update (Help > Updates, quiet check shortly after start).</summary>
     FUpdater: TUpdateController;
     FUpdateTimer: TTimer;
@@ -112,6 +115,7 @@ type
     procedure ReleaseTaskbarButton;
     procedure BlinkTick(Sender: TObject);
     procedure ButtonPressTick(Sender: TObject);
+    procedure ButtonHoldTick(Sender: TObject);
     procedure ContextMenuHoldTick(Sender: TObject);
     procedure CancelContextMenuHold;
     procedure ArmContextMenuHold(const APath: string; AScreenX, AScreenY: Integer);
@@ -1126,6 +1130,24 @@ begin
   FButtonPressTimer.Enabled := False;
   FlushDialogButtonPress;
   Recompose;
+end;
+
+procedure TMainForm.ButtonHoldTick(Sender: TObject);
+var
+  Hold: Word;
+begin
+  Hold := DialogButtonHoldKey;
+  if Hold = 0 then
+  begin
+    FButtonHoldTimer.Enabled := False;
+    Exit;
+  end;
+  if GetKeyState(Hold) >= 0 then
+  begin
+    FButtonHoldTimer.Enabled := False;
+    DialogButtonKeyUp(Hold);
+    Recompose;
+  end;
 end;
 
 procedure TMainForm.BlinkTick(Sender: TObject);
@@ -2789,6 +2811,10 @@ begin
   FButtonPressTimer.Interval := cDialogButtonPressMs;
   FButtonPressTimer.OnTimer := ButtonPressTick;
   FButtonPressTimer.Enabled := False;
+  FButtonHoldTimer := TTimer.Create(Self);
+  FButtonHoldTimer.Interval := 30;
+  FButtonHoldTimer.OnTimer := ButtonHoldTick;
+  FButtonHoldTimer.Enabled := False;
   GDialogButtonPressStart :=
     procedure
     begin
@@ -2917,6 +2943,7 @@ begin
   FreeAndNil(FBlinkTimer);
   GDialogButtonPressStart := nil;
   FreeAndNil(FButtonPressTimer);
+  FreeAndNil(FButtonHoldTimer);
   if not FSystemShutdown then
     PersistSession;
   if Assigned(FConsole) then
@@ -3817,6 +3844,8 @@ begin
   finally
     GDialogPressHoldKey := 0;
   end;
+  if DialogButtonHoldKey <> 0 then
+    FButtonHoldTimer.Enabled := True;
   if Handled then
   begin
     Key := 0;
@@ -3828,6 +3857,9 @@ end;
 
 procedure TMainForm.KeyUp(var Key: Word; var KeyChar: System.WideChar;
   Shift: TShiftState);
+var
+  K: Word;
+  C: Char;
 begin
   SyncKeyModifiers(Shift);
   if IsModifierOnlyKey(Key) then
@@ -3836,7 +3868,14 @@ begin
     KeyChar := #0;
     Exit;
   end;
-  if DialogButtonKeyUp(Key) then
+  // The same key mapping as KeyDown, so the release matches the key that
+  // pressed the button (Space may arrive with no virtual code, only as a space char).
+  K := Key;
+  C := Char(KeyChar);
+  NormalizeKeyInput(K, C, Shift, IsAltGrDown);
+  if (K = 0) and (C = ' ') then
+    K := vkSpace;
+  if DialogButtonKeyUp(K) then
   begin
     Recompose;
     Key := 0;

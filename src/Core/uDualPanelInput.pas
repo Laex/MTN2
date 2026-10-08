@@ -1466,11 +1466,13 @@ begin
   if (AKind = hdkFileHistory) and Assigned(AHost.HandleFileHistoryList) and
      AHost.HandleFileHistoryList(AKey, AShift, AKeyChar) then
     Exit(True);
-  // Enter must not cancel a running job, but on "Background" it sends the job
-  // to the background like a click does.
+  // Enter presses the focused "Background" or "Cancel" button like a click
+  // does (Cancel only asks whether to stop). With no button focused it is
+  // swallowed, so it never acts on the job by accident.
   if (AKey = vkReturn) and (AKind = hdkJobProgress) and
      not (Assigned(AHost.FocusedOrDefaultButtonId) and
-          DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdBackground)) then
+          (DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdBackground) or
+           DialogCmdIsCancel(AHost.FocusedOrDefaultButtonId()))) then
   begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit(True);

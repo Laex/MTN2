@@ -201,6 +201,8 @@ begin
   GlobalUseSkia := not NoSkiaRequested;
   {$ENDIF}
   Application.Initialize;
+  // The taskbar button shows this until the main window gets its own caption.
+  Application.Title := 'Modern Terminal Navigator 2';
   Application.CreateForm(TMainForm, MainForm);
   Application.Run;
 end.

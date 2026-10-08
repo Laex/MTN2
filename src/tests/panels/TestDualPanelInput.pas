@@ -1133,13 +1133,18 @@ begin
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkOverwriteAsk, Key, [], Ch), 'Enter overwrite');
     Assert.IsTrue(Spy.CmdId = 'delete', 'Enter uses focused button id');
 
-    // A running job's dialog: Enter on Cancel is swallowed, on Background it
-    // sends the job to the background.
+    // A running job's dialog: Enter presses the focused Cancel (which asks
+    // before stopping) or Background; with no button focused it is swallowed.
     Spy.CmdId := '';
-    Spy.Last := 'cancel';
+    Spy.Last := '';
     Key := vkReturn;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on job progress');
-    Assert.IsTrue(Spy.CmdId = '', 'Enter on Cancel does not cancel the job');
+    Assert.IsTrue(Spy.CmdId = '', 'Enter with no button focused does nothing');
+    Spy.Last := 'cancel';
+    Key := vkReturn;
+    Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on Cancel');
+    Assert.IsTrue(Spy.CmdId = 'cancel', 'Enter on Cancel presses it');
+    Spy.CmdId := '';
     Spy.Last := 'background';
     Key := vkReturn;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on Background');

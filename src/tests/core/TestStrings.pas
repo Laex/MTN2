@@ -279,6 +279,11 @@ begin
   Assert.IsTrue(Length(FindCtrlText(Decl, 'total_rule')) = Length('──────────────────────────────── Total ──────────────────────────────────'),
     'translated separator keeps the exact same rendered width as the English default');
 
+  // The stop question's default answer keeps the job running.
+  Assert.IsTrue(TryLoadDialogResource(cResDialogStopConfirm, Decl), 'DIALOG_STOPCONFIRM loads');
+  Assert.IsTrue(FindCtrlText(Decl, 'no').Contains('Продолжить'), 'Continue button translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'yes').Contains('Прервать'), 'Stop button translates');
+
   // A multi-column list header (assocHeader) is padded to line up with
   // data-row offsets baked into the Pascal renderer, so its translation must
   // start every column exactly where the English one does.

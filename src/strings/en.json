@@ -309,6 +309,12 @@
       "$title": "Error",
       "ok": "Close"
     },
+    "DIALOG_STOPCONFIRM": {
+      "$title": "Cancel operation",
+      "question": "Cancel the current operation?",
+      "yes": "&Stop",
+      "no": "Continue"
+    },
     "DIALOG_KEYMAP": {
       "$title": "Keymap - keyboard shortcuts",
       "hint": "Enter/F4=Edit hotkeys   Reset=this action   Reset all=whole profile",
@@ -854,6 +860,11 @@
     "window.admin": "Administrator",
     "window.adminHelper": "Admin helper",
     "search.running": "Searching",
+    "job.cancelling": "Cancelling...",
+    "stop.progress": "Cancel the current operation?",
+    "stop.selected": "Cancel the selected operation?",
+    "stop.all": "Cancel all operations?",
+    "stop.search": "Stop the search?",
     "search.results": "Results: %d",
     "search.title": "Find",
     "workspace.home": "Home",

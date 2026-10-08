@@ -63,7 +63,7 @@ begin
     hdkCreateLink, hdkSetAttributes, hdkChecksumOptions, hdkChecksumResult,
     hdkDescribe:
       Result := 'fileops.md';
-    hdkJobList, hdkJobProgress:
+    hdkJobList, hdkJobProgress, hdkStopConfirm:
       Result := 'jobs.md';
     hdkSearch, hdkTmpSaveList:
       Result := 'search.md';

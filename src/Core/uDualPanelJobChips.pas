@@ -59,7 +59,12 @@ begin
   case AJob.Phase of
     pjpQueued, pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk:
       Result := True;
-    pjpRunning, pjpError:
+    pjpRunning:
+      // A job told to stop is only waiting for its worker to notice; it has
+      // nothing to show or to open.
+      Result := (AJob.Presentation = jpBackground) and
+        not (Assigned(AJob.Cancel) and AJob.Cancel.IsCancellationRequested);
+    pjpError:
       Result := AJob.Presentation = jpBackground;
   else
     Result := False;
