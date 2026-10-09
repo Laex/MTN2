@@ -22,6 +22,8 @@ const
   cTabCloseChar = 'x';
   /// <summary>The button after the last panel tab that adds a new one.</summary>
   cPanelTabPlus = '[+]';
+  /// <summary>Shortest workspace tab title once the tab bar runs out of room.</summary>
+  cMinWorkspaceTabTitle = 3;
 
 { --- Caption helpers ------------------------------------------------------- }
 
@@ -29,12 +31,24 @@ const
 /// Example: '[Home]' or '[Home x]'.</summary>
 function WorkspaceTabCaption(const ATitle: string; AShowClose: Boolean): string;
 
+/// <summary>AText cut to AMaxCols cells with a trailing ellipsis; unchanged
+/// when it fits or AMaxCols is 0 (no limit).</summary>
+function WorkspaceTabTitleFit(const ATitle: string; AMaxCols: Integer): string;
+
 /// <summary>Format panel tab caption with optional close mark.
 /// Example: '[ home ]' or '[ home x ]'.</summary>
 function PanelTabCaption(const ATitle: string; AShowClose: Boolean): string;
 
-/// <summary>First column right of the workspace tabs and the gap after them.</summary>
-function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>): Integer;
+/// <summary>First column right of the workspace tabs and the gap after them,
+/// with every title cut to AMaxTitle cells (0 - not cut).</summary>
+function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
+  AMaxTitle: Integer = 0): Integer;
+
+/// <summary>The longest title, in cells, that lets the tabs end by ARoom
+/// columns: 0 when whole titles fit, cMinWorkspaceTabTitle when even the
+/// shortest cut does not (the tabs then run past ARoom).</summary>
+function WorkspaceTabsMaxTitle(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
+  ARoom: Integer): Integer;
 
 /// <summary>Column index of the close mark within a tab caption string.
 /// Returns -1 when AShowClose is False.</summary>
@@ -68,7 +82,8 @@ function PanelTabPlusCol(const APanel: TPanelState; const ABounds: TRectI): Inte
 /// AShowClose - whether close marks are visible.
 /// Returns True when hit; sets AIndex and AIsClose.</summary>
 function HitWorkspaceTabAtCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
-  ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
+  ACol: Integer; out AIndex: Integer; out AIsClose: Boolean;
+  AMaxTitle: Integer = 0): Boolean;
 
 /// <summary>True when column ACol on the tab row is the panel's [+] button.</summary>
 function HitPanelPlusAtCol(const APanel: TPanelState; const ABounds: TRectI;
@@ -171,7 +186,17 @@ begin
     Result := '[' + ATitle + ']';
 end;
 
-function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>): Integer;
+function WorkspaceTabTitleFit(const ATitle: string; AMaxCols: Integer): string;
+begin
+  if (AMaxCols <= 0) or (TextDisplayWidth(ATitle) <= AMaxCols) then
+    Exit(ATitle);
+  if AMaxCols = 1 then
+    Exit(#$2026);
+  Result := Copy(ATitle, 1, TextFitChars(ATitle, AMaxCols - 1)) + #$2026;
+end;
+
+function WorkspaceTabsEndCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
+  AMaxTitle: Integer): Integer;
 var
   Tab: TDualPanelWorkspaceTab;
   ShowClose: Boolean;
@@ -179,7 +204,25 @@ begin
   ShowClose := Length(AWorkspaceTabs) > 1;
   Result := 0;
   for Tab in AWorkspaceTabs do
-    Inc(Result, TextDisplayWidth(WorkspaceTabCaption(Tab.Title, ShowClose)) + 1);
+    Inc(Result, TextDisplayWidth(
+      WorkspaceTabCaption(WorkspaceTabTitleFit(Tab.Title, AMaxTitle), ShowClose)) + 1);
+end;
+
+function WorkspaceTabsMaxTitle(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
+  ARoom: Integer): Integer;
+var
+  Tab: TDualPanelWorkspaceTab;
+  Longest, Len: Integer;
+begin
+  if WorkspaceTabsEndCol(AWorkspaceTabs) <= ARoom then
+    Exit(0);
+  Longest := 0;
+  for Tab in AWorkspaceTabs do
+    Longest := Max(Longest, TextDisplayWidth(Tab.Title));
+  for Len := Longest - 1 downto cMinWorkspaceTabTitle do
+    if WorkspaceTabsEndCol(AWorkspaceTabs, Len) <= ARoom then
+      Exit(Len);
+  Result := cMinWorkspaceTabTitle;
 end;
 
 function PanelTabCaption(const ATitle: string; AShowClose: Boolean): string;
@@ -272,7 +315,8 @@ end;
   ========================================================================= }
 
 function HitWorkspaceTabAtCol(const AWorkspaceTabs: TArray<TDualPanelWorkspaceTab>;
-  ACol: Integer; out AIndex: Integer; out AIsClose: Boolean): Boolean;
+  ACol: Integer; out AIndex: Integer; out AIsClose: Boolean;
+  AMaxTitle: Integer): Boolean;
 var
   I, X, CloseCol: Integer;
   Cap: string;
@@ -285,7 +329,8 @@ begin
   X := 0;
   for I := 0 to High(AWorkspaceTabs) do
   begin
-    Cap := WorkspaceTabCaption(AWorkspaceTabs[I].Title, ShowClose);
+    Cap := WorkspaceTabCaption(
+      WorkspaceTabTitleFit(AWorkspaceTabs[I].Title, AMaxTitle), ShowClose);
     if (ACol >= X) and (ACol < X + TextDisplayWidth(Cap)) then
     begin
       CloseCol := TabCaptionCloseCol(X, Cap, ShowClose, False);

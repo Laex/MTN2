@@ -1,7 +1,7 @@
 # Разработка плагинов MTN2
 
 > **Роль документа:** справочник автора плагина – что лежит в каталоге плагина, что описывает манифест, какие точки расширения есть у хоста и как плагин может заменить встроенную функцию.
-> **Связанные документы:** [PLUGIN_BOUNDARIES.md](PLUGIN_BOUNDARIES.md) (что остаётся в ядре), [PLUGIN_TRANSITION.md](PLUGIN_TRANSITION.md) (правила и устройство швов), [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) (формат диалогов).
+> **Связанные документы:** [PLUGIN_BOUNDARIES.md](PLUGIN_BOUNDARIES.md) (что остаётся в ядре), [ARCHITECTURE.md](ARCHITECTURE.md) §6 (правила и устройство швов), [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) (формат диалогов).
 
 ---
 

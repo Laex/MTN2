@@ -43,6 +43,9 @@ function JobChipCaption(const AJob: TPanelJobState): string;
 /// Nothing is laid out left of AFirstCol.</summary>
 function LayoutJobStrip(const AJobs: TArray<TPanelJobState>;
   AFirstCol, AWidth: Integer): TJobStrip;
+/// <summary>Columns the strip takes with every chip shown: the list button, and
+/// each chip with its spacer; 0 when no job gets a chip.</summary>
+function JobStripFullWidth(const AJobs: TArray<TPanelJobState>): Integer;
 function HitJobStrip(const AStrip: TJobStrip; ACol: Integer;
   out AJobId: Integer): TJobStripHit;
 
@@ -93,6 +96,23 @@ begin
     Mark := IntToStr(JobProgressPercent(AJob)) + '%';
   end;
   Result := '[' + JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' + Mark + ']';
+end;
+
+function JobStripFullWidth(const AJobs: TArray<TPanelJobState>): Integer;
+var
+  Job: TPanelJobState;
+  Count: Integer;
+begin
+  Result := 0;
+  Count := 0;
+  for Job in AJobs do
+    if JobHasChip(Job) then
+    begin
+      Inc(Count);
+      Inc(Result, Length(JobChipCaption(Job)) + 1);
+    end;
+  if Count > 0 then
+    Inc(Result, Length('[' + cGlyphList + IntToStr(Count) + ']'));
 end;
 
 function LayoutJobStrip(const AJobs: TArray<TPanelJobState>;

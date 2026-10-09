@@ -346,7 +346,7 @@ type
     /// <summary>A click on the function bar while the console covers the panels
     /// acts as the key it shows (Esc:Panels), through the keyboard path. The
     /// bar belongs to Dual Panel, which ignores keys in console mode, so the
-    /// click used to hide the console and leave the panels unpainted.</summary>
+    /// click would hide the console and leave the panels unpainted.</summary>
     function TryDispatchConsoleFunctionBarClick(Col, Row: Integer;
       Shift: TShiftState): Boolean;
     /// <summary>Dual Panel's click handling: a right-click arms the context

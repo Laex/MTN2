@@ -41,6 +41,10 @@ type
     History: TArray<string>;
     HistoryIndex: Integer;
     CursorIndex: Integer;
+    /// <summary>Ephemeral: name of the row under the cursor when the tab was
+    /// left. The list is read again on return, and the cursor goes back to this
+    /// row. Empty when nothing is waiting to be restored.</summary>
+    CursorName: string;
     ScrollOffset: Integer;
     SelectedURIs: TArray<string>; // multi-select by row URI
     /// <summary>The selection as it was before it was last cleared (Ctrl+M).</summary>

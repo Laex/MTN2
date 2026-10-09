@@ -103,8 +103,8 @@ type
     kaWorkspaceLibrary,
     kaWorkspaceSave,
     kaNewWorkspace, // Ctrl+Shift+W -- new workspace tab
-    kaNextPanelTab, // Ctrl+Tab -- next tab of the active panel
-    kaPrevPanelTab, // Ctrl+Shift+Tab -- previous tab of the active panel
+    kaNextPanelTab, // Alt+PgDn -- next tab of the active panel
+    kaPrevPanelTab, // Alt+PgUp -- previous tab of the active panel
     kaRestoreSelection, // Ctrl+M -- selection as it was before it was last cleared
     kaDescribe, // Ctrl+Z -- describe the item(s) (Descript.ion)
     kaTogglePassivePanel, // Ctrl+P -- hide / show the inactive panel
@@ -576,8 +576,8 @@ begin
   AddBinding(Result, kaRestoreSelection, KeyBinding(Ord('M'), False, False, True));
   AddBinding(Result, kaDescribe, KeyBinding(Ord('Z'), False, False, True));
   AddBinding(Result, kaTogglePassivePanel, KeyBinding(Ord('P'), False, False, True));
-  AddBinding(Result, kaNextPanelTab, KeyBinding(vkTab, False, False, True));
-  AddBinding(Result, kaPrevPanelTab, KeyBinding(vkTab, True, False, True));
+  AddBinding(Result, kaNextPanelTab, KeyBinding(vkNext, False, True, False));
+  AddBinding(Result, kaPrevPanelTab, KeyBinding(vkPrior, False, True, False));
   AddBinding(Result, kaSshConnections, KeyBinding(Ord('N'), True, True, True));
   AddBinding(Result, kaAssociations, KeyBinding(Ord('A'), True, True, True));
   AddBinding(Result, kaBranchView, KeyBinding(Ord('B'), False, False, True));
@@ -694,9 +694,10 @@ begin
   AddBinding(Result, kaEditorDeleteToEol, KeyBinding(Ord('K'), False, False, True));
   AddBinding(Result, kaEditorInsertLine, KeyBinding(Ord('N'), False, False, True));
 
-  // Global. Ctrl+Tab and Ctrl+Shift+Tab switch the tabs of the active panel
-  // (Total Commander); the workspaces, MTN2's own top-row tabs, take
-  // Ctrl+Alt+PgDn / Ctrl+Alt+PgUp.
+  // Global. The workspaces, MTN2's own top-row tabs, take Ctrl+Alt+PgDn /
+  // Ctrl+Alt+PgUp, and Ctrl+Tab / Ctrl+Shift+Tab (handled by the main form
+  // before focus traversal) in every kind of workspace; the tabs of the
+  // active panel take Alt+PgDn / Alt+PgUp.
   AddBinding(Result, kaNextTab, KeyBinding(vkNext, False, True, True));
   AddBinding(Result, kaPrevTab, KeyBinding(vkPrior, False, True, True));
   AddBinding(Result, kaTopMenu, KeyBinding(vkF9, False, False, False));

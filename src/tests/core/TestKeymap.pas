@@ -105,10 +105,10 @@ begin
   Assert.IsTrue(Act = kaWorkspaceLibrary, 'Ctrl+Shift+D should match kaWorkspaceLibrary');
   Act := MatchAction(Profile, Ord('D'), [ssCtrl, ssAlt, ssShift]);
   Assert.IsTrue(Act = kaWorkspaceSave, 'Ctrl+Alt+Shift+D should match kaWorkspaceSave');
-  Act := MatchAction(Profile, vkTab, [ssCtrl]);
-  Assert.IsTrue(Act = kaNextPanelTab, 'Ctrl+Tab should match kaNextPanelTab');
-  Act := MatchAction(Profile, vkTab, [ssCtrl, ssShift]);
-  Assert.IsTrue(Act = kaPrevPanelTab, 'Ctrl+Shift+Tab should match kaPrevPanelTab');
+  Act := MatchAction(Profile, vkNext, [ssAlt]);
+  Assert.IsTrue(Act = kaNextPanelTab, 'Alt+PgDn should match kaNextPanelTab');
+  Act := MatchAction(Profile, vkPrior, [ssAlt]);
+  Assert.IsTrue(Act = kaPrevPanelTab, 'Alt+PgUp should match kaPrevPanelTab');
   Act := MatchAction(Profile, Ord('T'), [ssCtrl]);
   Assert.IsTrue(Act = kaNewTab, 'Ctrl+T should match kaNewTab');
   Act := MatchAction(Profile, vkNext, [ssCtrl, ssAlt]);

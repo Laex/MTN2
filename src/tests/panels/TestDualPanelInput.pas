@@ -718,8 +718,8 @@ begin
   Assert.IsTrue(not ShouldOfferTopMenu(wkPanels, True), 'dialog hides top menu');
   Assert.IsTrue(not ShouldOfferTopMenu(wkDocument, True), 'dialog hides menu on document');
   P := GetDefaultNDNProfile;
-  // Ctrl+Tab is the tabs of the active panel (a panels action, run through
-  // TDualPanelWindow.CycleTab); the workspaces are Ctrl+Alt+PgDn / PgUp.
+  // Ctrl+Tab walks the workspaces (run through TDualPanelWindow.CycleTab, not
+  // the keymap); Ctrl+Alt+PgDn / PgUp do the same.
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkTab, #0, [ssCtrl], False) = kaNone,
     'Ctrl+Tab is not a global action');
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], vkNext, #0, [ssCtrl, ssAlt], False) = kaNextTab,

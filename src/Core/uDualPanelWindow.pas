@@ -718,6 +718,13 @@ type
     procedure OpenSearchDialog;
     procedure CloseSearchUi;
     procedure ApplyPendingSelect(ASide: TPanelSide; const ARows: TPanelRows);
+    /// <summary>Notes the row under the cursor of ASide's active tab, so the
+    /// cursor can return to it once the list is read again.</summary>
+    procedure RememberCursorName(ASide: TPanelSide);
+    procedure RememberCursorNames;
+    /// <summary>Puts the cursor of ASide's active tab on the row it remembers,
+    /// when the list has been read.</summary>
+    procedure RestoreTabCursorSide(ASide: TPanelSide);
     procedure ClampCursorSide(ASide: TPanelSide);
     procedure DrawSearchUi;
     function HandleSearchInput(var AKey: Word; AShift: TShiftState;
@@ -842,6 +849,7 @@ type
     function ButtonsInTabRow: Boolean;
     function ChromeDrawn: Boolean;
     function TabBarChrome(AWidth: Integer): TTabBarChrome;
+    function WorkspaceTabMaxTitle(AWidth: Integer): Integer;
     procedure DrawTabBarChrome(AWidth: Integer);
     function ConsoleBarShown: Boolean;
     procedure DrawWindowButtons(const AGrid: TTerminalGrid; AWidth: Integer;
@@ -3291,6 +3299,17 @@ begin
   else
     InvalidatePlainTotals;
   end;
+  case AWindowId of
+    cPanelWindowIdLeft:
+      RestoreTabCursorSide(psLeft);
+    cPanelWindowIdRight:
+      RestoreTabCursorSide(psRight);
+  else
+    begin
+      RestoreTabCursorSide(psLeft);
+      RestoreTabCursorSide(psRight);
+    end;
+  end;
   // Wait for the target side's list to finish - Open() first notifies with
   // LoadingRows, and applying then would clear FPendingSelectName too early.
   if FPendingSelectName <> '' then
@@ -3972,6 +3991,7 @@ begin
   else
     Tab.Title := VfsUriTitle(Canon);
   Tab.CursorIndex := 0;
+  Tab.CursorName := '';
   Tab.ScrollOffset := 0;
   TabClearSelection(Tab);
   FolderHistoryPush(Canon);
@@ -6591,6 +6611,83 @@ begin
   SaveActiveWorkspace(Ws);
 end;
 
+procedure TDualPanelWindow.RememberCursorName(ASide: TPanelSide);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  M: IPanelModel;
+  Name: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  M := ModelForSide(ASide);
+  if not Assigned(M) or M.IsLoading then
+    Exit;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Name := PendingSelectNameAtCursor(RowsForSide(ASide), Tab.CursorIndex);
+  if Name = '' then
+    Exit;
+  Tab.CursorName := Name;
+  SetActiveTab(Panel, Tab);
+  if ASide = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+end;
+
+procedure TDualPanelWindow.RememberCursorNames;
+begin
+  RememberCursorName(psLeft);
+  RememberCursorName(psRight);
+end;
+
+procedure TDualPanelWindow.RestoreTabCursorSide(ASide: TPanelSide);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  M: IPanelModel;
+  Rows: TPanelRows;
+  I, ViewH: Integer;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  M := ModelForSide(ASide);
+  if not Assigned(M) or M.IsLoading then
+    Exit;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  if Tab.CursorName = '' then
+    Exit;
+  Rows := RowsForSide(ASide);
+  I := PendingSelectMatchIndex(Rows, Tab.CursorName);
+  Tab.CursorName := '';
+  if I >= 0 then
+  begin
+    Tab.CursorIndex := I;
+    ViewH := ListViewHeight;
+    if ViewH > 0 then
+      EnsureCursorVisible(Tab, Length(Rows), ViewH, ListColCountForSide(ASide));
+  end;
+  SetActiveTab(Panel, Tab);
+  if ASide = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+end;
+
 procedure TDualPanelWindow.ClampCursorSide(ASide: TPanelSide);
 var
   Ws: TDualPanelWorkspaceTab;
@@ -8282,6 +8379,7 @@ var
   Rows: TPanelRows;
   OldScroll, OldCursor: Integer;
   Changed: Boolean;
+  M: IPanelModel;
 begin
   ViewH := ListViewHeight;
   if ViewH < 1 then
@@ -8296,6 +8394,11 @@ begin
       Panel := Ws.State.LeftPanel
     else
       Panel := Ws.State.RightPanel;
+    // While the list is read, the model holds a one-row placeholder: fitting
+    // the cursor to it would drop the saved position to the first row.
+    M := ModelForSide(Side);
+    if Assigned(M) and M.IsLoading then
+      Continue;
     Tab := ActiveTab(Panel);
     OldScroll := Tab.ScrollOffset;
     OldCursor := Tab.CursorIndex;
@@ -8605,6 +8708,7 @@ begin
     Exit;
   if AIndex = FState.ActiveWorkspaceIndex then
     Exit;
+  RememberCursorNames;
   FState.ActiveWorkspaceIndex := AIndex;
   SyncWindowTitle;
   Ws := ActiveWorkspace;
@@ -9506,6 +9610,7 @@ var
   Src, Dst: TDualPanelWorkspaceTab;
   N, I: Integer;
 begin
+  RememberCursorNames;
   Src := ActiveWorkspace;
   if Src.Kind <> wkPanels then
   begin
@@ -9526,16 +9631,9 @@ end;
 
 procedure TDualPanelWindow.CycleTab(AReverse: Boolean);
 begin
-  // Ctrl+Tab: the tabs of the active panel; on a document or terminal
-  // workspace, which has no panel tabs, the workspaces.
-  if ActiveWorkspace.Kind = wkPanels then
-  begin
-    if AReverse then
-      PrevPanelTab
-    else
-      NextPanelTab;
-  end
-  else if AReverse then
+  // Ctrl+Tab walks the workspaces from every kind of workspace, so the key
+  // that leaves a viewer, editor or terminal also leads back to it.
+  if AReverse then
     PrevWorkspace
   else
     NextWorkspace;
@@ -9644,6 +9742,14 @@ begin
   Ws.State.ActiveSide := ASide;
   if Panel.ActiveTabIndex <> AIndex then
   begin
+    RememberCursorName(ASide);
+    // The note is stored in the workspace; take it into the local copy.
+    Ws := ActiveWorkspace;
+    Ws.State.ActiveSide := ASide;
+    if ASide = psLeft then
+      Panel := Ws.State.LeftPanel
+    else
+      Panel := Ws.State.RightPanel;
     Panel.ActiveTabIndex := AIndex;
     if ASide = psLeft then
       Ws.State.LeftPanel := Panel
@@ -9756,7 +9862,7 @@ function TDualPanelWindow.HitWorkspaceTabAtCol(ACol: Integer; out AIndex: Intege
   out AIsClose: Boolean): Boolean;
 begin
   Result := uDualPanelTabs.HitWorkspaceTabAtCol(FState.WorkspaceTabs,
-    ACol, AIndex, AIsClose);
+    ACol, AIndex, AIsClose, WorkspaceTabMaxTitle(Area.Width));
 end;
 
 procedure TDualPanelWindow.ArmTabDrag(AKind, AFrom, ACol, ARow: Integer);
@@ -9903,7 +10009,7 @@ end;
 procedure TDualPanelWindow.DrawWorkspaceTabBar(AWidth: Integer);
 var
   Names: TArray<string>;
-  I, X, CloseCol: Integer;
+  I, X, CloseCol, MaxTitle: Integer;
   ShowClose: Boolean;
   Cap: string;
   TabFg, TabBg, CloseFg, Discard: TAlphaColor;
@@ -9912,12 +10018,14 @@ begin
   if not Assigned(Theme) then
     Exit;
   ShowClose := Length(FState.WorkspaceTabs) > 1;
+  MaxTitle := WorkspaceTabMaxTitle(AWidth);
   SetLength(Names, Length(FState.WorkspaceTabs));
   for I := 0 to High(FState.WorkspaceTabs) do
+  begin
+    Names[I] := WorkspaceTabTitleFit(FState.WorkspaceTabs[I].Title, MaxTitle);
     if ShowClose then
-      Names[I] := FState.WorkspaceTabs[I].Title + ' ' + cTabCloseChar
-    else
-      Names[I] := FState.WorkspaceTabs[I].Title;
+      Names[I] := Names[I] + ' ' + cTabCloseChar;
+  end;
   // Dual Panel Tabs directly under the menu (the top row without it).
   Theme.DrawTabBar(Buffer, TRectI.Make(0, TabBarRow, AWidth - 1, TabBarRow), Names,
     FState.ActiveWorkspaceIndex, WidgetState, tbkWorkspace);
@@ -9927,7 +10035,8 @@ begin
   X := 0;
   for I := 0 to High(FState.WorkspaceTabs) do
   begin
-    Cap := WorkspaceTabCaption(FState.WorkspaceTabs[I].Title, ShowClose);
+    Cap := WorkspaceTabCaption(
+      WorkspaceTabTitleFit(FState.WorkspaceTabs[I].Title, MaxTitle), ShowClose);
     DragHover := FTabDragActive and (FTabDragKind = cTabDragWorkspace) and
       (I = FTabDragHover) and (I <> FState.ActiveWorkspaceIndex);
     if I = FState.ActiveWorkspaceIndex then
@@ -9960,6 +10069,17 @@ begin
     ActiveWorkspace.Kind) in [dckPanels, dckDocument, dckTerminal];
 end;
 
+function TDualPanelWindow.WorkspaceTabMaxTitle(AWidth: Integer): Integer;
+var
+  Jobs: TArray<TPanelJobState>;
+begin
+  Jobs := nil;
+  if Assigned(FJobs) then
+    Jobs := FJobs.States;
+  Result := WorkspaceTabsMaxTitle(FState.WorkspaceTabs,
+    TabBarTabsRoom(AWidth, ButtonsInTabRow, Jobs));
+end;
+
 function TDualPanelWindow.TabBarChrome(AWidth: Integer): TTabBarChrome;
 var
   Jobs: TArray<TPanelJobState>;
@@ -9967,8 +10087,9 @@ begin
   Jobs := nil;
   if Assigned(FJobs) then
     Jobs := FJobs.States;
-  Result := LayoutTabBarChrome(WorkspaceTabsEndCol(FState.WorkspaceTabs), AWidth,
-    ButtonsInTabRow, Jobs);
+  Result := LayoutTabBarChrome(
+    WorkspaceTabsEndCol(FState.WorkspaceTabs, WorkspaceTabMaxTitle(AWidth)),
+    AWidth, ButtonsInTabRow, Jobs);
 end;
 
 procedure TDualPanelWindow.DrawTabBarChrome(AWidth: Integer);

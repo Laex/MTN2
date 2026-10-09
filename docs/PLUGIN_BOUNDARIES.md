@@ -1,7 +1,7 @@
 # Разделение функциональности: Ядро / Системные плагины / Пользовательские плагины
 
 > **Роль документа:** классификация существующей и планируемой функциональности MTN2 по трём зонам ответственности – что обязано остаться в ядре, что поставляется продуктом как «системный» плагин, что относится к экосистеме сторонних «пользовательских» плагинов.
-> **Источники:** [ARCHITECTURE.md](ARCHITECTURE.md) §6 (паттерн Ядро–Тема–Плагин, инварианты 13–14), [PLUGIN_TRANSITION.md](PLUGIN_TRANSITION.md) (шаги перехода), [SDS.md](SDS.md) §6.0/§6.8 (продуктовый приоритет и Far/TC мосты), [UI_PRIMITIVES.md](UI_PRIMITIVES.md) и связанные `*_PLUGIN.md`.
+> **Источники:** [ARCHITECTURE.md](ARCHITECTURE.md) §6 (паттерн Ядро–Тема–Плагин, инварианты 13–14), [SDS.md](SDS.md) §6.0/§6.8 (продуктовый приоритет и Far/TC мосты), [UI_PRIMITIVES.md](UI_PRIMITIVES.md) и связанные `*_PLUGIN.md`.
 > Как писать плагин и заменять встроенное: [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md).
 > Ничего нового не проектирует – сводит уже принятые решения в одну таблицу, чтобы разделение было видно целиком, а не по кускам в разных файлах.
 
@@ -33,13 +33,13 @@
 
 | Подсистема | Модули | Почему это ядро |
 |---|---|---|
-| Layout / Focus / Z-order / MDI-композитор | `uMdiCompositor`, `TDualPanelWindow`, `TMainForm` | Инвариант 13; «Не резать `TDualPanelWindow`» (PLUGIN_TRANSITION.md §1) |
+| Layout / Focus / Z-order / MDI-композитор | `uMdiCompositor`, `TDualPanelWindow`, `TMainForm` | Инвариант 13; «Не резать `TDualPanelWindow`» (ARCHITECTURE.md §6, «Правила швов плагинной системы») |
 | Рендеринг (double buffering, dynamic grid) | `uTerminalRenderer.pas`, `TTerminalGrid` | Плагину никогда не отдаётся `TCanvas` (общий инвариант всех примитивов, UI_PRIMITIVES.md) |
 | Тема (`IThemeRenderer`) | `uDataTheme.pas` + файлы тем `src/Assets/themes/*.theme.json` (8 встроенных) | Роль «Тема» отдельна от «Плагина» в самом паттерне (§6); альтернативные темы – Pascal-классы, «не loadable-плагины – это отдельная, более поздняя работа» (ARCHITECTURE.md §6) |
-| Keymap-диспетчер и активный keymap | `uKeymap.pas` | Плагину доступен только rebind существующих действий через `IKeymapRegistry` – «Новые keymap-действия не вводим через DLL: enum закрыт» (PLUGIN_TRANSITION.md §3.6) |
+| Keymap-диспетчер и активный keymap | `uKeymap.pas` | Плагину доступен только rebind существующих действий через `IKeymapRegistry` – «Новые keymap-действия не вводим через DLL: enum закрыт» (ARCHITECTURE.md §6, правило 6) |
 | Jobs Manager / фоновые задачи | `uDualPanelJobList.pas`, `TPanelJobController` | Инвариант 1: весь I/O – только через async VFS/Jobs ядра |
 | VFS Core & маршрутизация (`uVfsRegistry`) | `uVfsRegistry.pas` | Сам registry, классификация transfer-маршрутов, `plugin.json`-загрузка – ядро; отдельные VFS-**провайдеры** могут быть плагинами (см. §3) |
-| Ядерные VFS-схемы: `file`, `zip`, `sys`, `recycle`, `find`, `ws` | `uFileVfs`, `uZipVirtualFileSystem`, `uSysFoldersVfs`, `uRecycleBinVfs`, `uFindVfs`, `uWorkspaceVfs` | Явно защищены от перехвата: «WASM `register_vfs_scheme` для `file`/`recycle`/`sys`/`find`/`ws` хост принимает и игнорирует» (PLUGIN_TRANSITION.md §3.1) |
+| Ядерные VFS-схемы: `file`, `zip`, `sys`, `recycle`, `find`, `ws` | `uFileVfs`, `uZipVirtualFileSystem`, `uSysFoldersVfs`, `uRecycleBinVfs`, `uFindVfs`, `uWorkspaceVfs` | Явно защищены от перехвата: «WASM `register_vfs_scheme` для `file`/`recycle`/`sys`/`find`/`ws` хост принимает и игнорирует» (ARCHITECTURE.md §6, правило 1) |
 | `sftp://` | `uSftpVfs.pas` | Сейчас in-process провайдер ядра, не вынесен в плагин (ARCHITECTURE.md §1) – кандидат на будущий системный плагин, см. §4 |
 | Dialog Host (движок диалогов) | `uDialogHost.pas`, `uDialogTypes.pas`, `uDialogJson.pas` | Layout/focus/modal-overlay – Host; cdecl `mtn_dialog_*` для контента ещё не экспортирован (DIALOG_PLUGIN.md «Статус реализации») |
 | Overlay Renderer | `uOverlayRenderer.pas` | «Canvas плагину не отдаётся»; плагин только публикует логический запрос превью (ARCHITECTURE.md §6, OVERLAY_PLUGIN.md) |
@@ -54,7 +54,7 @@
 
 ## 3. Системные плагины – что уже вынесено или явно спланировано как «плагин первой партии»
 
-Источник: PLUGIN_TRANSITION.md §6–7, ARCHITECTURE.md таблица «Plugin seams».
+Источник: ARCHITECTURE.md §6 (таблица «Plugin seams», «Правила швов плагинной системы»).
 
 | Плагин | Схема/точка входа | Статус | Роль |
 |---|---|---|---|
@@ -79,12 +79,12 @@
 | Возможность | Host API | Ограничение |
 |---|---|---|
 | Зарегистрировать VFS-схему | `RegisterPluginScheme` / `RegisterVfsScheme` | Нельзя перехватить `file`/`recycle`/`sys`/`find`/`ws` – хост игнорирует такую попытку. Схему со встроенным обработчиком (`sftp`) без разрешения плагин не занимает |
-| Заменить встроенную схему или расширение архива | `overrides` в `plugin.json` + `plugins\overrides.json` | Только по явному разрешению пользователя; зарезервированные схемы не заменяются; `.zip` меняет переход по Enter, не внутренний `!/`-путь (PLUGIN_TRANSITION.md §3.7) |
+| Заменить встроенную схему или расширение архива | `overrides` в `plugin.json` + `plugins\overrides.json` | Только по явному разрешению пользователя; зарезервированные схемы не заменяются; `.zip` меняет переход по Enter, не внутренний `!/`-путь (ARCHITECTURE.md §6, правило 7) |
 | Зарегистрировать панель для своей схемы | `RegisterPanelPlugin` → `IPanelPluginRegistry` | Идентификация плагина для схемы; сама отрисовка панели всё ещё через `TFilePanelModel` ядра (Pull cdecl для панели – шаг «cdecl Pull-адаптер», не начат) |
 | Добавить пункт меню | `RegisterMenuItem` → `IMenuRegistry` | Новые пункты – да; новые *действия* keymap – нет |
 | Перебиндить существующий хоткей | `RegisterKeyBinding` → `IKeymapRegistry` | Только rebind существующего действия; сочетание для своей команды – см. ниже |
-| Перехватить встроенную команду | `RegisterCommandHook` → `ICommandRegistry` | Команды панелей, верхнего меню, просмотрщика и редактора; перехватчик может отменить команду (PLUGIN_TRANSITION.md §3.9) |
-| Открывать файлы типа в F3 / F4 по-своему | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | Плагин открывает файл сам, подсовывает встроенному окну другой URI или пропускает; окно просмотра и редактора остаётся хостовым (PLUGIN_TRANSITION.md §3.11) |
+| Перехватить встроенную команду | `RegisterCommandHook` → `ICommandRegistry` | Команды панелей, верхнего меню, просмотрщика и редактора; перехватчик может отменить команду (ARCHITECTURE.md §6, правило 8) |
+| Открывать файлы типа в F3 / F4 по-своему | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | Плагин открывает файл сам, подсовывает встроенному окну другой URI или пропускает; окно просмотра и редактора остаётся хостовым (ARCHITECTURE.md §6, правило 9) |
 | Добавить свою команду и сочетание клавиш | `RegisterCommand` + `RegisterKeyBinding` | Сочетание, занятое встроенным действием, остаётся за ним |
 | Опубликовать событие / подписаться | `HostPublish` / `mtn_host_publish` → `IMessageBus` | – |
 | Запросить перерисовку окна | `HostInvalidate` / `mtn_host_invalidate` | – |
@@ -119,14 +119,14 @@
 | **Системные плагины (готово)** | `mtn.7z` (7z-архивы), `mtn.ws` (workspace-меню), `mtn.tmp`/`mtn.wasm.demo` (демо) | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp`, `src/plugins/mtn.wasm.demo` | Сделано, покрыто тестами |
 | **Системные плагины (запланировано)** | SFTP как отдельный плагин, Far API Wrapper, TC Plugin Bridge | – | Не начато («Far API Wrapper» – «Total Commander plugin bridge» «отложено»; SFTP-вынос не начат) |
 | **Пользовательские плагины (доступно)** | VFS-схема + панель (идентификация) + пункты меню + rebind хоткеев + pub/sub + invalidate | Host API (`uPluginHostAbi.pas`) | Работает уже сейчас, тем же путём что `mtn.7z` |
-| **Пользовательские плагины (запланировано)** | Полный Pull для панели, диалоги, F-bar/status/overlay/text-area как плагин-контент | `PANEL_PLUGIN.md` и другие `*_PLUGIN.md` | Контракт описан, cdecl не экспортирован – шаги «cdecl Pull-адаптер» и «overlay / textarea / dialog cdecl» в PLUGIN_TRANSITION.md |
+| **Пользовательские плагины (запланировано)** | Полный Pull для панели, диалоги, F-bar/status/overlay/text-area как плагин-контент | `PANEL_PLUGIN.md` и другие `*_PLUGIN.md` | Контракт описан, cdecl не экспортирован: Pull для самой панели, overlay и text area (см. §6) |
 | **Не ABI-плагин (отдельный механизм)** | Макросы/скриптинг пользователя | – | Не путать с DLL/WASM-плагинами |
 
 ---
 
-## 6. Как это соотносится с текущим планом (PLUGIN_TRANSITION.md)
+## 6. Состояние реализации
 
-- Шаги «швы Host», «demo VFS DLL», «invalidate + PluginId», «copy bridge» и «WASM» (швы Host, `mtn.7z`, invalidate+PluginId, copy-bridge, WASM-host) закрывают колонку «Системные плагины (готово)» и базовый набор «Пользовательские плагины (доступно)» из §5.
-- Шаги «cdecl Pull-адаптер» (Pull для самой панели) и «overlay / textarea / dialog cdecl» – это именно то, что должно случиться, чтобы строки §4.2 переехали из «описано, не экспортировано» в «доступно».
-- Шаг «Far / TC» (мосты) закрывает последнюю строку §3.
-- Эти три шага сознательно **отложены** до закрытия daily-use очереди – само разделение на зоны в этом документе не меняется от того, когда шаги будут реализованы, но столбец «Готовность» в §5 будет обновляться по мере их закрытия.
+- Готово: швы хоста, родной VFS-плагин `mtn.7z`, идентификатор плагина панели и перерисовка (`mtn_host_invalidate`), мост копирования, WASM-хост. Это колонка «Системные плагины (готово)» и базовый набор «Пользовательские плагины (доступно)» из §5. Диалог плагина (`ShowDialog`), подпись команды и сегмент статуса тоже готовы.
+- Не готово: Pull для самой панели (cdecl `get_row_json` / `handle_event`) и cdecl для overlay и text area. Именно они переводят строки §4.2 из «описано, не экспортировано» в «доступно»; overlay и text area отложены до появления второго потребителя примитива.
+- Мосты Far и Total Commander закрывают последнюю строку §3 и откладываются до стабильного родного API и WASM.
+- Эти шаги сознательно отложены до закрытия очереди повседневных функций. Разделение на зоны от сроков не меняется, столбец «Готовность» в §5 обновляется по мере их закрытия.

@@ -87,13 +87,12 @@ Dev-сборки содержат свежие изменения и могут 
 - [SDS.md](docs/SDS.md) – полная спецификация: концепция, структуры данных, API, дорожная карта.
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) – слои, потоки данных и инварианты.
 - [BUILDING.md](docs/BUILDING.md) – сборка, тесты, CI/CD.
-- [DAILY_USE.md](docs/DAILY_USE.md) – аудит повседневных сценариев и план.
 - [THEMES.md](docs/THEMES.md) – формат файла темы и роли цветов.
 - [HELP.md](docs/HELP.md) – исходный текст справки пользователя одним файлом.
 - Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md), [PANEL](docs/PANEL_PLUGIN.md),
   [DIALOG](docs/DIALOG_PLUGIN.md), [INPUT](docs/INPUT_PLUGIN.md), [OVERLAY](docs/OVERLAY_PLUGIN.md),
   [STATUS](docs/STATUS_PLUGIN.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.md),
-  [UI_PRIMITIVES](docs/UI_PRIMITIVES.md), [PLUGIN_TRANSITION](docs/PLUGIN_TRANSITION.md).
+  [UI_PRIMITIVES](docs/UI_PRIMITIVES.md).
 
 ## Как создавался проект
 

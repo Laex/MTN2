@@ -22,6 +22,10 @@ type
     [Test] procedure FreeZoneSitsBetweenPlusAndChips;
     [Test] procedure PlusDisappearsWhenTabsFillTheRow;
     [Test] procedure MenuRowFreeZoneStopsAtTheButtons;
+    [Test] procedure ShortTabTitlesAreNotCut;
+    [Test] procedure LongTabTitlesAreCutToFitTheRow;
+    [Test] procedure JobChipsTakeRoomFromTabTitles;
+    [Test] procedure TabTitlesStopShrinkingAtTheMinimum;
     [Test] procedure TitleNeverOverlapsOtherChrome;
     [Test] procedure TitleWithoutRoomIsNotDrawn;
     [Test] procedure TitleLosesPartsInOrder;
@@ -36,8 +40,11 @@ implementation
 
 uses
   System.SysUtils, System.Types, System.Math,
+  uCharWidth,
   uDualPanelUiTypes,
   uDualPanelJobChips,
+  uDualPanelTypes,
+  uDualPanelTabs,
   uWindowChrome;
 
 function BackgroundJob(AId: Integer): TPanelJobState;
@@ -167,6 +174,72 @@ begin
   Assert.IsTrue(InMenuBarFreeZone(40, 80, 40), 'right of the titles');
   Assert.IsTrue(InMenuBarFreeZone(40, 80, 70), 'up to the buttons');
   Assert.IsFalse(InMenuBarFreeZone(40, 80, 71), 'a window button');
+end;
+
+function SampleTabs(ACount: Integer; const ATitle: string): TArray<TDualPanelWorkspaceTab>;
+var
+  I: Integer;
+begin
+  SetLength(Result, ACount);
+  for I := 0 to ACount - 1 do
+    Result[I].Title := ATitle;
+end;
+
+procedure TTestWindowChrome.ShortTabTitlesAreNotCut;
+var
+  Tabs: TArray<TDualPanelWorkspaceTab>;
+begin
+  Tabs := SampleTabs(3, 'Home');
+  Assert.AreEqual(0, WorkspaceTabsMaxTitle(Tabs, TabBarTabsRoom(80, True, nil)),
+    'whole titles fit');
+  Assert.AreEqual('Home', WorkspaceTabTitleFit('Home', 0), 'no limit leaves the title');
+end;
+
+procedure TTestWindowChrome.LongTabTitlesAreCutToFitTheRow;
+var
+  Tabs: TArray<TDualPanelWorkspaceTab>;
+  Room, MaxTitle: Integer;
+  Chrome: TTabBarChrome;
+begin
+  Tabs := SampleTabs(6, 'A rather long session name');
+  Room := TabBarTabsRoom(80, True, nil);
+  MaxTitle := WorkspaceTabsMaxTitle(Tabs, Room);
+  Assert.IsTrue(MaxTitle >= cMinWorkspaceTabTitle, 'titles are cut');
+  Assert.IsTrue(WorkspaceTabsEndCol(Tabs, MaxTitle) <= Room, 'tabs fit the room');
+  Assert.IsTrue(WorkspaceTabsEndCol(Tabs, MaxTitle + 1) > Room, 'no more than needed is cut');
+  Assert.AreEqual(MaxTitle, TextDisplayWidth(WorkspaceTabTitleFit(Tabs[0].Title, MaxTitle)),
+    'a cut title takes the whole budget');
+  Assert.IsTrue(WorkspaceTabTitleFit(Tabs[0].Title, MaxTitle).EndsWith(#$2026),
+    'a cut title ends with an ellipsis');
+  Chrome := LayoutTabBarChrome(WorkspaceTabsEndCol(Tabs, MaxTitle), 80, True, nil);
+  Assert.IsTrue(Chrome.PlusLeft >= 0, '[+] stays on the row');
+end;
+
+procedure TTestWindowChrome.JobChipsTakeRoomFromTabTitles;
+var
+  Tabs: TArray<TDualPanelWorkspaceTab>;
+  Jobs: TArray<TPanelJobState>;
+  NoJobsLen, JobsLen: Integer;
+  Chrome: TTabBarChrome;
+begin
+  Tabs := SampleTabs(5, 'Session name');
+  Jobs := [BackgroundJob(1), BackgroundJob(2), BackgroundJob(3)];
+  NoJobsLen := WorkspaceTabsMaxTitle(Tabs, TabBarTabsRoom(80, True, nil));
+  JobsLen := WorkspaceTabsMaxTitle(Tabs, TabBarTabsRoom(80, True, Jobs));
+  Assert.IsTrue(JobsLen < NoJobsLen, 'tab titles give way to the chips');
+  Chrome := LayoutTabBarChrome(WorkspaceTabsEndCol(Tabs, JobsLen), 80, True, Jobs);
+  Assert.AreEqual(3, Integer(Length(Chrome.Strip.Chips)), 'every chip is shown');
+  Assert.IsTrue(Chrome.PlusLeft >= 0, '[+] is shown');
+end;
+
+procedure TTestWindowChrome.TabTitlesStopShrinkingAtTheMinimum;
+var
+  Tabs: TArray<TDualPanelWorkspaceTab>;
+begin
+  Tabs := SampleTabs(30, 'Session name');
+  Assert.AreEqual(cMinWorkspaceTabTitle,
+    WorkspaceTabsMaxTitle(Tabs, TabBarTabsRoom(80, True, nil)),
+    'titles never get shorter than the minimum');
 end;
 
 procedure TTestWindowChrome.TitleNeverOverlapsOtherChrome;

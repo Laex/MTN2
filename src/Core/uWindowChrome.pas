@@ -85,6 +85,11 @@ procedure SnapSizingRect(AEdge: Integer; var ARect: TRect; ANcW, ANcH: Integer;
   ACellW, ACellH: Double);
 function LayoutTabBarChrome(ATabsEnd, AWidth: Integer; AButtonsInRow: Boolean;
   const AJobs: TArray<TPanelJobState>): TTabBarChrome;
+/// <summary>Columns left for the tabs (the column the last tab and its gap may
+/// reach): the row less the window buttons, the [+] button, and the job chips
+/// with their list button, so a long tab list gives way to them.</summary>
+function TabBarTabsRoom(AWidth: Integer; AButtonsInRow: Boolean;
+  const AJobs: TArray<TPanelJobState>): Integer;
 function HitPlusButton(const AChrome: TTabBarChrome; ACol: Integer): Boolean;
 /// <summary>True for a column of the free part of the tab bar row.</summary>
 function InTabBarFreeZone(const AChrome: TTabBarChrome; ACol: Integer): Boolean;
@@ -255,6 +260,20 @@ begin
   end;
   if Result.FreeRight < Result.FreeLeft then
     Result.FreeRight := Result.FreeLeft;
+end;
+
+function TabBarTabsRoom(AWidth: Integer; AButtonsInRow: Boolean;
+  const AJobs: TArray<TPanelJobState>): Integer;
+var
+  JobsW: Integer;
+begin
+  Result := AWidth;
+  if AButtonsInRow and (WindowButtonsLeft(AWidth) >= 0) then
+    Result := WindowButtonsLeft(AWidth) - 1;
+  Dec(Result, Length(cPlusCaption));
+  JobsW := JobStripFullWidth(AJobs);
+  if JobsW > 0 then
+    Dec(Result, JobsW + 1);
 end;
 
 function HitPlusButton(const AChrome: TTabBarChrome; ACol: Integer): Boolean;
