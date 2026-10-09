@@ -1,5 +1,7 @@
 # Modern Terminal Navigator 2 (MTN2)
 
+[English](README.en.md) | [Deutsch](README.de.md) | **Русский** | [中文](README.zh.md) | [한국어](README.ko.md)
+
 Двухпанельный файловый менеджер в духе **Necromancer's DOS Navigator** и **Far Manager** со встроенной консолью,
 терминалами, просмотрщиком и редактором. Интерфейс – текстовый (TUI), но рисуется в обычном GUI-окне:
 виртуальная сетка символов на холсте Delphi FireMonkey (Skia, с откатом на стандартный холст по `--no-skia`)
