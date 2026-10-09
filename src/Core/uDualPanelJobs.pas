@@ -136,7 +136,8 @@ type
       AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean = True);
     /// <summary>Copy/move with explicit per-source destinations (Sync).</summary>
     procedure BeginJobPairs(const ASources, ADestURIs: TArray<string>;
-      AKind: TPanelJobKind; AAutoStart: Boolean = True);
+      AKind: TPanelJobKind; AAutoStart: Boolean = True;
+      AOverwriteMode: TJobOverwriteMode = jomOverwrite);
     procedure ApplyCopyMoveOptions(const ADestDirURI: string;
       AOverwriteMode: TJobOverwriteMode; APreserveTimestamps: Boolean;
       AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
@@ -526,7 +527,7 @@ begin
 end;
 
 procedure TPanelJobController.BeginJobPairs(const ASources, ADestURIs: TArray<string>;
-  AKind: TPanelJobKind; AAutoStart: Boolean);
+  AKind: TPanelJobKind; AAutoStart: Boolean; AOverwriteMode: TJobOverwriteMode);
 begin
   if FJob.Phase <> pjpNone then
     Exit;
@@ -544,7 +545,7 @@ begin
   FJob.Sources := ASources;
   FJob.DestURIs := ADestURIs;
   FJob.DestDirURI := '';
-  FJob.OverwriteMode := jomOverwrite;
+  FJob.OverwriteMode := AOverwriteMode;
   FJob.PreserveTimestamps := True;
   FJob.OnlyNewer := False;
   FJob.FollowSymlinks := False;

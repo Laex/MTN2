@@ -110,7 +110,7 @@ type
     procedure BeginJob(const ASources: TArray<string>; const ADestDirURI: string;
       AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean = True);
     procedure BeginJobPairs(const ASources, ADestURIs: TArray<string>;
-      AKind: TPanelJobKind);
+      AKind: TPanelJobKind; AOverwriteMode: TJobOverwriteMode = jomOverwrite);
     procedure ApplyCopyMoveOptions(const ADestDirURI: string;
       AOverwriteMode: TJobOverwriteMode; APreserveTimestamps: Boolean;
       AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
@@ -744,7 +744,7 @@ begin
 end;
 
 procedure TPanelJobList.BeginJobPairs(const ASources, ADestURIs: TArray<string>;
-  AKind: TPanelJobKind);
+  AKind: TPanelJobKind; AOverwriteMode: TJobOverwriteMode);
 var
   Job: TPanelJobController;
   Conflict: TPanelJobController;
@@ -759,7 +759,7 @@ begin
     Exit;
   Job := SpawnJob;
   HookJob(Job);
-  Job.BeginJobPairs(ASources, ADestURIs, AKind, False);
+  Job.BeginJobPairs(ASources, ADestURIs, AKind, False, AOverwriteMode);
   if Job.Phase = pjpNone then
     QueuePruneIdle
   else if ConflictsWithRunning(Job) then

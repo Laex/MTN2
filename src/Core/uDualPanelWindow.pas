@@ -6119,7 +6119,22 @@ begin
   Side := ActiveWorkspace.State.ActiveSide;
   FPendingSelectName := CleanName;
   FPendingSelectSide := Side;
-  RunRename(FVfs, FromURI, ToURI, CleanName, True);
+  // An existing target goes through a move job so the usual overwrite
+  // question is asked instead of replacing it silently.
+  FVfs.ExistsAsync(ToURI, nil,
+    procedure(const AExists: Boolean; const AIsDirectory: Boolean;
+      const AError: TVfsError)
+    begin
+      if not FAlive then
+        Exit;
+      if AExists and (AError.Code = vecOk) and CanBeginAnotherJob then
+      begin
+        FJobs.BeginJobPairs([FromURI], [ToURI], pjkMove, jomAsk);
+        NotifyChanged;
+      end
+      else
+        RunRename(FVfs, FromURI, ToURI, CleanName, True);
+    end);
 end;
 
 procedure TDualPanelWindow.RunRename(const AVfs: IVirtualFileSystem;
@@ -6183,7 +6198,7 @@ begin
   FPendingSelectSide := Side;
   // A job like F5: progress, the job list, Esc to cancel, and the usual
   // question when a file inside fails.
-  FJobs.BeginJobPairs([FromURI], [ToURI], pjkCopy);
+  FJobs.BeginJobPairs([FromURI], [ToURI], pjkCopy, jomAsk);
   NotifyChanged;
 end;
 
