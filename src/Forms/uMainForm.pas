@@ -385,6 +385,8 @@ type
   protected
     procedure CreateHandle; override;
     procedure DestroyHandle; override;
+    procedure DetachSurfaceWindows;
+    procedure AttachSurfaceWindows;
   public
     function CloseQuery: Boolean; override;
     procedure DragOver(const Data: TDragObject; const Point: TPointF;
@@ -1082,6 +1084,7 @@ begin
   // restored FPrevWndProc; reinstall the form subclass and the process-wide
   // QUERYENDSESSION allow-hooks on the new handle.
   EnsureShutdownHook;
+  AttachSurfaceWindows;
 end;
 
 procedure TMainForm.DestroyHandle;
@@ -1094,7 +1097,30 @@ begin
     SetWindowLongPtr(HWND(H), GWLP_WNDPROC, NativeInt(FPrevWndProc));
     FPrevWndProc := nil;
   end;
+  DetachSurfaceWindows;
   inherited DestroyHandle;
+end;
+
+procedure TMainForm.DetachSurfaceWindows;
+var
+  Surface: Integer;
+begin
+  // The windows of plugin surfaces are children of the form's window and would be
+  // destroyed with it; they wait unparented until the new window exists.
+  for Surface in SurfaceHandles do
+    NativeSurfaceDetach(HWND(PluginSurfaceNativeHandle(Surface)));
+end;
+
+procedure TMainForm.AttachSurfaceWindows;
+var
+  Surface: Integer;
+  Wnd: HWND;
+begin
+  Wnd := HWND(NativeWindowHandle);
+  for Surface in SurfaceHandles do
+    NativeSurfaceAttach(HWND(PluginSurfaceNativeHandle(Surface)), Wnd);
+  if Assigned(FDualPanel) then
+    Invalidate;
 end;
 
 function TMainForm.CloseQuery: Boolean;

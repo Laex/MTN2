@@ -21,6 +21,7 @@ type
     [Test] procedure TestSymlinkFile;
     [Test] procedure TestSymlinkDir;
     [Test] procedure TestJunction;
+    [Test] procedure TestSuggestedLinkType;
   end;
 
 implementation
@@ -110,6 +111,28 @@ begin
     Writeln('    error: ', Err.Message);
 end;
 
+procedure TestSuggestedLinkType;
+var
+  Dir, Src: string;
+  Can: Boolean;
+begin
+  Dir := TPath.Combine(GRoot, 'suggestdir');
+  Src := TPath.Combine(GRoot, 'suggest.txt');
+  TDirectory.CreateDirectory(Dir);
+  TFile.WriteAllText(Src, 'x');
+  Can := CanCreateSymlinks;
+  if Can then
+  begin
+    Assert.AreEqual(Ord(lkSymlinkDir), SuggestLinkTypeIndex(Dir, GRoot), 'folder -> directory symlink');
+    Assert.AreEqual(Ord(lkSymlinkFile), SuggestLinkTypeIndex(Src, GRoot), 'file -> file symlink');
+  end
+  else
+  begin
+    Assert.AreEqual(Ord(lkJunction), SuggestLinkTypeIndex(Dir, GRoot), 'folder -> junction');
+    Assert.AreEqual(Ord(lkHardlink), SuggestLinkTypeIndex(Src, GRoot), 'file on same drive -> hard link');
+  end;
+end;
+
 { TTestCreateLink }
 
 procedure TTestCreateLink.SetupFixture;
@@ -145,6 +168,11 @@ end;
 procedure TTestCreateLink.TestJunction;
 begin
   TestCreateLink.TestJunction;
+end;
+
+procedure TTestCreateLink.TestSuggestedLinkType;
+begin
+  TestCreateLink.TestSuggestedLinkType;
 end;
 
 initialization

@@ -32,10 +32,20 @@ type
 function CreateFileLink(const ALinkPath, ATargetPath: string; AKind: TLinkKind;
   out AError: TVfsError): Boolean;
 
+/// <summary>True when this process can create symbolic links: Developer Mode
+/// is on, or the token holds SeCreateSymbolicLinkPrivilege (elevated
+/// administrator). Junctions and hard links need neither.</summary>
+function CanCreateSymlinks: Boolean;
+
+/// <summary>Index of the "Create link" dropdown entry that fits the target:
+/// a symlink when the process may create one, otherwise a junction for a
+/// folder, or a hard link for a file on the same drive as the link folder.</summary>
+function SuggestLinkTypeIndex(const ATargetPath, ALinkFolder: string): Integer;
+
 implementation
 
 uses
-  Winapi.Windows, System.IOUtils;
+  Winapi.Windows, System.IOUtils, System.Win.Registry;
 
 const
   SYMBOLIC_LINK_FLAG_DIRECTORY = $1;
@@ -68,10 +78,83 @@ begin
   Result := SysErrorMessage(GetLastError);
 end;
 
+function DeveloperModeOn: Boolean;
+var
+  Reg: TRegistry;
+begin
+  Result := False;
+  Reg := TRegistry.Create(KEY_READ or KEY_WOW64_64KEY);
+  try
+    Reg.RootKey := HKEY_LOCAL_MACHINE;
+    if Reg.OpenKeyReadOnly('\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock') then
+      try
+        Result := Reg.ValueExists('AllowDevelopmentWithoutDevLicense') and
+          (Reg.ReadInteger('AllowDevelopmentWithoutDevLicense') = 1);
+      finally
+        Reg.CloseKey;
+      end;
+  except
+    Result := False;
+  end;
+  Reg.Free;
+end;
+
+function TokenHasSymlinkPrivilege: Boolean;
+var
+  Token: THandle;
+  Luid: TLargeInteger;
+  Size: DWORD;
+  Buf: TBytes;
+  Privs: PTokenPrivileges;
+  I: Integer;
+begin
+  Result := False;
+  if not LookupPrivilegeValue(nil, 'SeCreateSymbolicLinkPrivilege', Luid) then
+    Exit;
+  if not OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, Token) then
+    Exit;
+  try
+    Size := 0;
+    GetTokenInformation(Token, TokenPrivileges, nil, 0, Size);
+    if Size = 0 then
+      Exit;
+    SetLength(Buf, Size);
+    if not GetTokenInformation(Token, TokenPrivileges, @Buf[0], Size, Size) then
+      Exit;
+    Privs := PTokenPrivileges(@Buf[0]);
+    for I := 0 to Integer(Privs^.PrivilegeCount) - 1 do
+      if Int64(Privs^.Privileges[I].Luid) = Luid then
+        Exit(True);
+  finally
+    CloseHandle(Token);
+  end;
+end;
+
+function CanCreateSymlinks: Boolean;
+begin
+  Result := DeveloperModeOn or TokenHasSymlinkPrivilege;
+end;
+
+function SuggestLinkTypeIndex(const ATargetPath, ALinkFolder: string): Integer;
+var
+  IsDir: Boolean;
+begin
+  IsDir := TDirectory.Exists(ATargetPath);
+  if CanCreateSymlinks then
+    Exit(Ord(IsDir));
+  if IsDir then
+    Exit(Ord(lkJunction));
+  if (ALinkFolder <> '') and SameText(TPath.GetPathRoot(ATargetPath),
+       TPath.GetPathRoot(ALinkFolder)) then
+    Exit(Ord(lkHardlink));
+  Result := Ord(lkSymlinkFile);
+end;
+
 function DoCreateSymlink(const ALinkPath, ATargetPath: string; ADirectory: Boolean;
   out AError: TVfsError): Boolean;
 var
   Flags: DWORD;
+  Msg: string;
 begin
   Flags := SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
   if ADirectory then
@@ -84,8 +167,12 @@ begin
     Result := Win32CreateSymbolicLinkW(PWideChar(ALinkPath), PWideChar(ATargetPath),
       Flags and not SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE);
   if not Result then
-    AError := TVfsError.Make(vecIOError, 'Cannot create symbolic link: ' + LastErrorMessage,
-      PathToFileUri(ALinkPath));
+  begin
+    Msg := 'Cannot create symbolic link: ' + LastErrorMessage;
+    if GetLastError = ERROR_PRIVILEGE_NOT_HELD then
+      Msg := Msg + '. Enable Developer Mode, run as administrator, or use a junction for folders';
+    AError := TVfsError.Make(vecIOError, Msg, PathToFileUri(ALinkPath));
+  end;
 end;
 
 function DoCreateHardlink(const ALinkPath, ATargetPath: string;

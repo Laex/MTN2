@@ -19,6 +19,12 @@ function NativeSurfaceCreate(AParent: HWND): HWND;
 procedure NativeSurfaceMove(AWindow: HWND; ALeft, ATop, AWidth, AHeight: Integer;
   AVisible: Boolean);
 procedure NativeSurfaceDestroy(AWindow: HWND);
+/// <summary>Hides the window and takes it off its parent so that the parent can be
+/// destroyed without taking it along.</summary>
+procedure NativeSurfaceDetach(AWindow: HWND);
+/// <summary>Makes the window a child of AParent again (a new window handle of the program's
+/// main window); it stays hidden until NativeSurfaceMove shows it.</summary>
+procedure NativeSurfaceAttach(AWindow, AParent: HWND);
 
 implementation
 
@@ -101,6 +107,21 @@ procedure NativeSurfaceDestroy(AWindow: HWND);
 begin
   if (AWindow <> 0) and IsWindow(AWindow) then
     DestroyWindow(AWindow);
+end;
+
+procedure NativeSurfaceDetach(AWindow: HWND);
+begin
+  if (AWindow = 0) or not IsWindow(AWindow) then
+    Exit;
+  ShowWindow(AWindow, SW_HIDE);
+  SetParent(AWindow, 0);
+end;
+
+procedure NativeSurfaceAttach(AWindow, AParent: HWND);
+begin
+  if (AWindow = 0) or (AParent = 0) or not IsWindow(AWindow) then
+    Exit;
+  SetParent(AWindow, AParent);
 end;
 
 end.

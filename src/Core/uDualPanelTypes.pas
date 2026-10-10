@@ -54,6 +54,11 @@ type
     WorkspaceBackUri: string;
     /// <summary>file:// of that dir-link target. `..` rewrites only here.</summary>
     WorkspaceBackTarget: string;
+    /// <summary>Ephemeral: name of the junction/symlink this tab entered when
+    /// WorkspaceBackUri is the folder containing it (the panel shows the
+    /// resolved target, `..` returns to the link's own folder). Empty for a
+    /// workspace back marker.</summary>
+    JunctionBackName: string;
   end;
 
   TPanelSide = (psLeft, psRight);
@@ -239,6 +244,7 @@ begin
   SetLength(Result.SelectedURIs, 0);
   Result.WorkspaceBackUri := '';
   Result.WorkspaceBackTarget := '';
+  Result.JunctionBackName := '';
 end;
 
 function IsExecutablePanelFileExt(const AExt: string): Boolean;

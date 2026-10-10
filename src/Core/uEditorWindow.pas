@@ -4170,18 +4170,17 @@ end;
 function TEditorWindow.SurfaceInput(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
 begin
   Result := True;
-  // Esc and F10 close the tab (Esc leaves full screen first); every other key is the plugin's.
+  // The plugin sees every key first; Esc and F10 it does not use close the tab (Esc leaves
+  // full screen first).
+  if SurfaceDeliverKey(FSurfaceHandle, AKey, AShift, AKeyChar) then
+    Exit;
   if (AKey = vkEscape) and IsSurfaceFullscreen then
   begin
     PluginSurfaceSetFullscreen(FSurfaceHandle, False);
     Exit;
   end;
   if (AKey = vkEscape) or (AKey = vkF10) then
-  begin
     ForceClose;
-    Exit;
-  end;
-  SurfaceDeliverKey(FSurfaceHandle, AKey, AShift, AKeyChar);
 end;
 
 procedure TEditorWindow.DrawContent;

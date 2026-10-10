@@ -344,6 +344,8 @@ type
     function HostGetConsoleCwdToPanels: Boolean;
     procedure HostSetConsoleCwdToPanels(AValue: Boolean);
     function HostActivePanelUri: string;
+    function LinkSide: TPanelSide;
+    function LinkFolderUri: string;
     function HostInPanelsWorkspace: Boolean;
     function HostLastSelectMask: string;
     function HostSelectFolders: Boolean;
@@ -2110,6 +2112,37 @@ begin
   Result := ActiveTab(ActivePanel(Ws)).CurrentURI;
 end;
 
+// Side whose folder receives a new link: the opposite panel when it shows a
+// plain local folder (as for copy), otherwise the active one.
+function TDualPanelWindow.LinkSide: TPanelSide;
+var
+  Ws: TDualPanelWorkspaceTab;
+  OppUri: string;
+begin
+  Ws := ActiveWorkspace;
+  Result := Ws.State.ActiveSide;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  if Result = psLeft then
+    OppUri := ActiveTab(Ws.State.RightPanel).CurrentURI
+  else
+    OppUri := ActiveTab(Ws.State.LeftPanel).CurrentURI;
+  if (FileUriToPath(OppUri) <> '') and not HasArchiveChain(OppUri) and
+     not IsFindUri(OppUri) then
+    Result := OppositeSide(Result);
+end;
+
+function TDualPanelWindow.LinkFolderUri: string;
+var
+  Ws: TDualPanelWorkspaceTab;
+begin
+  Ws := ActiveWorkspace;
+  if LinkSide = psLeft then
+    Result := ActiveTab(Ws.State.LeftPanel).CurrentURI
+  else
+    Result := ActiveTab(Ws.State.RightPanel).CurrentURI;
+end;
+
 function TDualPanelWindow.HostInPanelsWorkspace: Boolean;
 begin
   Result := ActiveWorkspace.Kind = wkPanels;
@@ -2746,6 +2779,7 @@ begin
     HostShowShellStub, HostLastSelectMask, HostSelectFolders, HostTryGetCursorItem,
     HostRememberStubUri, ConfirmMkDir, ConfirmNewFile, ConfirmRename,
     ConfirmCopyInPlace, ApplySelectMask, ConfirmCreateLink, ApplySetAttributes);
+  FFileOps.OnGetLinkFolderUri := LinkFolderUri;
 end;
 
 procedure TDualPanelWindow.BindRuntimeControllers;
@@ -3908,6 +3942,7 @@ var
   Panel: TPanelState;
   Tab: TTab;
   Canon, OldPath, NewPath, ParentPath: string;
+  OldBackUri, LinkUri, LinkParent: string;
   OldIsArch, NewIsArch, EitherSideIsVirtualView: Boolean;
 begin
   if AURI = '' then
@@ -3941,7 +3976,10 @@ begin
      SameVfsUri(Tab.CurrentURI, Tab.WorkspaceBackTarget) and
      SameVfsUri(Canon, Tab.WorkspaceBackUri) then
   begin
-    FPendingSelectName := WorkspaceLinkNameForTarget(Tab.CurrentURI);
+    if Tab.JunctionBackName <> '' then
+      FPendingSelectName := Tab.JunctionBackName
+    else
+      FPendingSelectName := WorkspaceLinkNameForTarget(Tab.CurrentURI);
     FPendingSelectSide := ASide;
   end
   else if EitherSideIsVirtualView then
@@ -3983,8 +4021,27 @@ begin
     end;
   end;
 
+  OldBackUri := Tab.WorkspaceBackUri;
   UpdateWorkspaceBackMarker(Tab.WorkspaceBackUri, Tab.WorkspaceBackTarget,
     Tab.CurrentURI, Canon);
+  if Tab.WorkspaceBackUri <> OldBackUri then
+    Tab.JunctionBackName := '';
+  // Entering a junction/symlink shows its resolved target; `..` there must
+  // lead back to the folder that holds the link, not to the target's parent.
+  if ((Tab.WorkspaceBackUri = '') or (Tab.JunctionBackName <> '')) and
+     not EitherSideIsVirtualView and not IsWorkspaceUri(AURI) and
+     not IsWorkspaceUri(Tab.CurrentURI) then
+  begin
+    LinkUri := PathToFileUri(FileUriToPath(AURI));
+    LinkParent := ParentFileUri(LinkUri);
+    if (LinkParent <> '') and not SameVfsUri(LinkUri, Canon) and
+       not SameVfsUri(LinkParent, ParentFileUri(Canon)) then
+    begin
+      Tab.WorkspaceBackUri := LinkParent;
+      Tab.WorkspaceBackTarget := Canon;
+      Tab.JunctionBackName := FileUriTitle(LinkUri);
+    end;
+  end;
   Tab.CurrentURI := Canon;
   if IsFindUri(Canon) then
     Tab.Title := FindSessionTitle(Canon)
@@ -5601,7 +5658,7 @@ procedure TDualPanelWindow.ConfirmCreateLink(const ALinkName, ATarget: string;
   AKind: TLinkKind);
 var
   Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
+  Side: TPanelSide;
   URI, LinkPath, TargetPath, CleanName, SelectName, ErrorMsg: string;
 begin
   if not TDualPanelOperationsController.ValidateFolderSegments(ALinkName, CleanName,
@@ -5611,8 +5668,8 @@ begin
     Exit;
   end;
   Ws := ActiveWorkspace;
-  Panel := ActivePanel(Ws);
-  URI := ActiveTab(Panel).CurrentURI;
+  Side := LinkSide;
+  URI := LinkFolderUri;
   if HasArchiveChain(URI) or IsFindUri(URI) then
   begin
     OpenStub(skShellInfo, 'Create link failed', 'Cannot create a link here');
@@ -5626,7 +5683,7 @@ begin
     Exit;
   end;
   FPendingSelectName := SelectName;
-  FPendingSelectSide := Ws.State.ActiveSide;
+  FPendingSelectSide := Side;
   // Link creation is a single fast filesystem-metadata call - not routed
   // through IVirtualFileSystem (local-disk only, no VFS scheme needs it) -
   // but still off the UI thread per the "no blocking I/O on the UI thread"
@@ -5653,7 +5710,7 @@ begin
           end
           else
           begin
-            ReloadActiveRows;
+            ReloadSidesShowing(URI);
             NotifyChanged;
           end;
         end);

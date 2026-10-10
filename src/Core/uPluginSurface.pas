@@ -583,6 +583,7 @@ begin
     vkReturn: Base := 'Enter';
     vkSpace: Base := 'Space';
     vkTab: Base := 'Tab';
+    vkEscape: Base := 'Esc';
     vkBack: Base := 'Backspace';
     vkDelete: Base := 'Delete';
     vkInsert: Base := 'Insert';

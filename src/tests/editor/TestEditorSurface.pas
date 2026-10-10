@@ -22,6 +22,7 @@ type
     [Test] procedure TestDestroyingTheTabTellsThePlugin;
     [Test] procedure TestFullscreenCoversTheWholeWindow;
     [Test] procedure TestEscLeavesFullscreenBeforeClosing;
+    [Test] procedure TestPluginCanTakeEscAndF10;
   end;
 
 implementation
@@ -169,7 +170,7 @@ begin
     function(const AKey: string): Boolean
     begin
       Keys := Keys + AKey + ',';
-      Result := True;
+      Result := AKey <> 'Esc';
     end, nil, nil);
   SendKey(GView, vkRight, #0);
   SendKey(GView, vkSpace, ' ');
@@ -177,7 +178,8 @@ begin
   Assert.AreEqual('Right,Space,+,', Keys, 'the plugin gets the keys');
   Assert.AreEqual(0, GCloseRequests, 'they do not close the tab');
   SendKey(GView, vkEscape, #27);
-  Assert.AreEqual(1, GCloseRequests, 'Esc asks the host to close the tab');
+  Assert.AreEqual('Right,Space,+,Esc,', Keys, 'the plugin is offered Esc first');
+  Assert.AreEqual(1, GCloseRequests, 'Esc it does not use asks the host to close the tab');
   Assert.IsFalse(SurfaceExists(Handle), 'the surface is gone');
 end;
 
@@ -229,6 +231,27 @@ begin
   SendKey(GView, vkEscape, #27);
   Assert.AreEqual(1, GCloseRequests, 'the second closes it');
   Assert.IsFalse(SurfaceExists(Handle), 'the surface is gone');
+end;
+
+procedure TTestEditorSurface.TestPluginCanTakeEscAndF10;
+var
+  Handle: Integer;
+  Keys: string;
+begin
+  InstallHost;
+  Keys := '';
+  Handle := PluginSurfaceOpenEx('t.surface', 'Pic', cSurfaceModeFullscreen,
+    function(const AKey: string): Boolean
+    begin
+      Keys := Keys + AKey + ',';
+      Result := True;
+    end, nil, nil, nil);
+  SendKey(GView, vkEscape, #27);
+  SendKey(GView, vkF10, #0);
+  Assert.AreEqual('Esc,F10,', Keys, 'the plugin gets both keys');
+  Assert.IsTrue(GView.IsSurfaceFullscreen, 'full screen stays as it is');
+  Assert.AreEqual(0, GCloseRequests, 'the host does not close the tab');
+  Assert.IsTrue(SurfaceExists(Handle), 'the surface stays');
 end;
 
 procedure TTestEditorSurface.TestDestroyingTheTabTellsThePlugin;

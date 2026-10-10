@@ -53,6 +53,7 @@ type
     FOnConfirmSelect: TFileOpConfirmSelect;
     FOnConfirmLink: TFileOpConfirmLink;
     FOnApplySetAttr: TFileOpApplySetAttr;
+    FOnGetLinkFolderUri: TFileOpGetActiveUri;
     FAttrPaths: TArray<string>;
     // Date text the dialog opened with (date_created / _modified / _accessed):
     // an unchanged field is not written, so seconds-truncated display text
@@ -80,6 +81,10 @@ type
       const AOnConfirmSelect: TFileOpConfirmSelect;
       const AOnConfirmLink: TFileOpConfirmLink;
       const AOnApplySetAttr: TFileOpApplySetAttr);
+    /// <summary>Folder a new link is created in (the opposite panel, like copy);
+    /// the dialog uses it to pick a link type that works across drives.</summary>
+    property OnGetLinkFolderUri: TFileOpGetActiveUri read FOnGetLinkFolderUri
+      write FOnGetLinkFolderUri;
     procedure BeginMkDir;
     procedure BeginNewFile;
     procedure BeginSelectByMask(AUnselect: Boolean);
@@ -318,8 +323,9 @@ end;
 
 procedure TFileOpDialogController.BeginCreateLink;
 var
-  Name, Uri, TargetUri, TargetPath, Suggested: string;
+  Name, Uri, TargetUri, TargetPath, Suggested, LinkFolder: string;
   IsParent: Boolean;
+  LinkTypeIdx: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -333,9 +339,21 @@ begin
   if TargetPath = '' then
     Exit;
   Suggested := 'link_' + Name;
+  // Dropdown order matches TLinkKind: file symlink, directory symlink, hard link, junction.
+  LinkFolder := '';
+  if Assigned(FOnGetLinkFolderUri) then
+    LinkFolder := FileUriToPath(FOnGetLinkFolderUri())
+  else if Assigned(FOnGetActiveUri) then
+    LinkFolder := FileUriToPath(FOnGetActiveUri());
+  LinkTypeIdx := SuggestLinkTypeIndex(TargetPath, LinkFolder);
+  // Same name as the source when the link lands in another folder; a prefix
+  // only when it would collide with the source itself.
+  if (LinkFolder <> '') and not SameText(ExcludeTrailingPathDelimiter(LinkFolder),
+       ExcludeTrailingPathDelimiter(ExtractFilePath(ExcludeTrailingPathDelimiter(TargetPath)))) then
+    Suggested := Name;
   UnfocusCmd;
   SetKind(hdkCreateLink);
-  FDialog.Open(BuildCreateLinkDialog(Suggested, TargetPath, 0), FOnCommand);
+  FDialog.Open(BuildCreateLinkDialog(Suggested, TargetPath, LinkTypeIdx), FOnCommand);
   Notify;
 end;
 

@@ -394,6 +394,7 @@ begin
   SetLength(Result.SelectedURIs, 0);
   Result.WorkspaceBackUri := '';
   Result.WorkspaceBackTarget := '';
+  Result.JunctionBackName := '';
 end;
 
 class function TDualPanelTabManager.FindTabById(const ATabs: TArray<TTab>;
