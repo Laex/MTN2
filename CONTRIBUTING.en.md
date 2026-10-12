@@ -52,7 +52,26 @@ Build only through `src/build.ps1`. The Linux version is built with `src/build-l
 - Platform code belongs in `src/Platform/Windows` and `src/Platform/Posix`. Shared code accesses the platform through
   matching modules rather than `{$IFDEF}` blocks.
 - Commit messages are in English, imperative, about 60 characters or fewer, and have no period at the end.
-- Markdown documentation uses an en dash – (U+2013).
+
+## Documentation guidelines
+
+Applies to `README*.md`, `CONTRIBUTING*.md`, `docs/`, the built-in help, and `CHANGELOG.md`.
+
+- **Describe how things work now.** No change logs ("fixed", "used to be"), plan stage numbers, or notes about how a
+  change was tested. Refer to plans by feature name or version.
+- **Markup.** Markdown, UTF-8, en dash – (U+2013) rather than the em dash; no trailing period in headings; code and
+  commands in fenced blocks with a language (`powershell`, `text`).
+- **Tone.** Neutral. `CHANGELOG.md` is written in Russian in the third person, describing what the user sees. Menu and
+  dialog names match the interface in the chosen language.
+- **Links.** Relative, pointing to existing files and anchors; check that they open before submitting.
+- **Translations.** A translation sits next to the original with a language suffix: `FAQ.md` – `FAQ.en.md`. Meaning and
+  structure match the original; when you change one version, update the other or note it in the pull request.
+- **Cross-language links.** If a document needs a link and there is no version in the reader's language, link to the
+  Russian version and mark it in the link text: "[FAQ](docs/FAQ.md) (in Russian)". Never link to a file that does
+  not exist yet; replace the link once the translation appears.
+- **AI assistants.** You may use them to prepare text, but the pull request author is responsible for it. Read the
+  whole text before submitting: check facts, names, commands and links, remove filler, and compare a translation with
+  the original. Text the author has not proofread will not be accepted.
 
 ## License
 

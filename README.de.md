@@ -14,7 +14,7 @@ nehmen zwei Spalten ein, genau wie in anderen modernen Terminals.
 ![MTN2: Panels mit Tabs](docs/images/mtn2-panels.png)
 
 [Neueste Version herunterladen](https://github.com/Laex/MTN2/releases/latest) ·
-[Neuerungen](CHANGELOG.md) · [FAQ](docs/FAQ.md) (auf Russisch) ·
+[Neuerungen](CHANGELOG.md) · [FAQ](docs/FAQ.md) (auf Russisch) · [Mitwirken](CONTRIBUTING.md) (auf Russisch) ·
 [Diskussionen](https://github.com/Laex/MTN2/discussions) ·
 [Artikel auf Habr](https://habr.com/ru/articles/1087174/) (auf Russisch)
 

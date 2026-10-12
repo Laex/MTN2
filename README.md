@@ -14,7 +14,7 @@
 ![MTN2: панели с вкладками](docs/images/mtn2-panels.png)
 
 [Скачать последнюю версию](https://github.com/Laex/MTN2/releases/latest) ·
-[Что нового](CHANGELOG.md) · [Частые вопросы](docs/FAQ.md) ·
+[Что нового](CHANGELOG.md) · [Частые вопросы](docs/FAQ.md) · [Участие в проекте](CONTRIBUTING.md) ·
 [Обсуждения](https://github.com/Laex/MTN2/discussions) ·
 [Статья на Хабре](https://habr.com/ru/articles/1087174/)
 
