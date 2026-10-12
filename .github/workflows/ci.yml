@@ -167,15 +167,16 @@ jobs:
         if: ${{ vars.LINUX_BUILD == 'true' }}
         shell: pwsh
         run: |
-          ./src/build-linux.ps1 -Rebuild -Sdl
+          # Shipped binaries are rebuilt from scratch; plain CI runs reuse the units compiled earlier.
+          if ($env:DEV_VERSION) { ./src/build-linux.ps1 -Rebuild -Sdl } else { ./src/build-linux.ps1 -Sdl }
           ./src/tests/run-tests-linux.ps1
           # A failed test run must stop the step; the script's exit code alone does not.
           if ($LASTEXITCODE -ne 0) { throw "Linux tests failed ($LASTEXITCODE)" }
-          $LinuxVersion = if ($env:DEV_VERSION) { $env:DEV_VERSION } else { "0.0.0-ci" }
-          ./src/tools/package-linux.ps1 -Version $LinuxVersion
+          # Packages are only published with dev builds.
+          if ($env:DEV_VERSION) { ./src/tools/package-linux.ps1 -Version $env:DEV_VERSION }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        if: ${{ vars.LINUX_BUILD == 'true' }}
+        if: ${{ vars.LINUX_BUILD == 'true' && env.DEV_VERSION != '' }}
         with:
           name: MTN2-linux-x64
           path: |
