@@ -63,6 +63,7 @@ type
     FChromeCommandPending: Boolean;
     FGridSnapDone: Boolean;
     FWasMaximized: Boolean;
+    FFullscreenFromMaximized: Boolean;
     FNormalLeft: Single;
     FNormalTop: Single;
     FNormalWidth: Single;
@@ -1305,7 +1306,22 @@ begin
     AShift) = kaToggleFullscreen;
   if not Result then
     Exit;
-  FullScreen := not FullScreen;
+  if not FullScreen then
+  begin
+    FFullscreenFromMaximized := WindowState = System.UITypes.TWindowState.wsMaximized;
+    FullScreen := True;
+  end
+  else
+  begin
+    FullScreen := False;
+    // FMX only restores the frame when it saved a normal-state size on entry,
+    // so a window that was maximized would stay without a title bar.
+    if FFullscreenFromMaximized and (BorderStyle = TFmxFormBorderStyle.None) then
+    begin
+      BorderStyle := TFmxFormBorderStyle.Sizeable;
+      WindowState := System.UITypes.TWindowState.wsMaximized;
+    end;
+  end;
   AKey := 0;
   AKeyChar := #0;
 end;
