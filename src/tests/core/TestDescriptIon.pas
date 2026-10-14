@@ -15,6 +15,7 @@ type
     [Test] procedure LinesFormatQuotedWhenTheNameHasSpaces;
     [Test] procedure StoreReadReplaceAndRemove;
     [Test] procedure FileNameCaseAndOtherLinesAreKept;
+    [Test] procedure SiblingWithControlCharsInNameDoesNotBreakLookup;
     [Test] procedure Utf8AndAnsiFilesKeepTheirEncoding;
   end;
 
@@ -22,7 +23,7 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils, System.Generics.Collections,
-  uDescriptIon;
+  uDescriptIon, uVfsTypes;
 
 function NewDir: string;
 begin
@@ -102,6 +103,26 @@ begin
     Assert.AreEqual('added', DescriptionOf(Dir, 'new.txt'));
     Assert.AreEqual('also kept', DescriptionOf(Dir, 'two words.doc'));
     Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(Dir))), 'the same file, not a second one');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestDescriptIon.SiblingWithControlCharsInNameDoesNotBreakLookup;
+var
+  Dir: string;
+  H: THandle;
+begin
+  Dir := NewDir;
+  try
+    // The folder has no Descript.ion yet, so the lookup scans every name.
+    H := FileCreate(SafeCombinePath(Dir, 'a' + #10 + 'b.txt'));
+    if H = THandle(-1) then
+      Assert.Pass('the file system rejects control characters in names');
+    FileClose(H);
+    Assert.AreEqual('<none>', DescriptionOf(Dir, 'a.txt'));
+    Assert.IsTrue(StoreDescription(Dir, 'a.txt', 'first'));
+    Assert.AreEqual('first', DescriptionOf(Dir, 'a.txt'));
   finally
     TDirectory.Delete(Dir, True);
   end;

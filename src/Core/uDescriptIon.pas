@@ -31,16 +31,25 @@ const
 
 function DescriptionsFilePath(const ADir: string): string;
 var
-  Found: string;
+  SR: TSearchRec;
 begin
   Result := SafeCombinePath(ADir, cFileName);
   if TFile.Exists(Result) then
     Exit;
-  if TDirectory.Exists(ADir) then
-    // Every file is looked at: a name pattern is case-sensitive on Linux.
-    for Found in TDirectory.GetFiles(ADir) do
-      if SameText(ExtractFileName(Found), cFileName) then
-        Exit(Found);
+  if not TDirectory.Exists(ADir) then
+    Exit;
+  // Every file is looked at: a name pattern is case-sensitive on Linux.
+  // FindFirst rather than TDirectory.GetFiles, which raises on a sibling
+  // whose name holds a control character.
+  if FindFirst(SafeCombinePath(ADir, '*'), faAnyFile, SR) = 0 then
+  try
+    repeat
+      if SameText(SR.Name, cFileName) then
+        Exit(SafeCombinePath(ADir, SR.Name));
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
 end;
 
 function ParseDescriptionLine(const ALine: string; out AName, ADescription: string): Boolean;

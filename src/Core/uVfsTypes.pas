@@ -332,12 +332,16 @@ begin
     Result := SameText(A, B);
 end;
 
-function HasControlChars(const S: string): Boolean;
+function HasRtlInvalidPathChars(const S: string): Boolean;
 var
   C: Char;
 begin
+  // The characters System.IOUtils.TPath refuses in a path: control characters
+  // everywhere, plus the quote, angle brackets and bar on Windows (cloud-drive
+  // volumes show such names).
   for C in S do
-    if Ord(C) < 32 then
+    if (Ord(C) < 32) or
+       (not PlatformPosixPaths and ((C = '"') or (C = '<') or (C = '>') or (C = '|'))) then
       Exit(True);
   Result := False;
 end;
@@ -359,16 +363,22 @@ function NormalizeLocalPath(const APath: string): string;
 var
   P: string;
 begin
+  // TPath.GetFullPath raises on control characters, valid in a Linux name and
+  // in names on cloud-drive volumes; such a path is kept as is (Trim would eat
+  // a trailing line feed that belongs to the name).
+  if HasRtlInvalidPathChars(APath) then
+  begin
+    Result := ExpandFileName(APath);
+    if Length(Result) > 1 then
+      Result := ExcludeTrailingPathDelimiter(Result);
+    Exit;
+  end;
   P := Trim(APath);
   if P = '' then
     Exit('');
   if PlatformPosixPaths then
   begin
-    // TPath.GetFullPath raises on control characters, valid in a Linux name.
-    if HasControlChars(P) then
-      Result := ExpandFileName(P)
-    else
-      Result := TPath.GetFullPath(P);
+    Result := TPath.GetFullPath(P);
     if Length(Result) > 1 then
       Result := ExcludeTrailingPathDelimiter(Result);
     Exit;
@@ -547,7 +557,7 @@ end;
 
 function SafeFileName(const APath: string): string;
 begin
-  if not HasControlChars(APath) then
+  if not HasRtlInvalidPathChars(APath) then
     Exit(TPath.GetFileName(APath));
   Result := Copy(APath, LastPathSeparator(APath) + 1, MaxInt);
 end;
@@ -557,7 +567,7 @@ var
   Name: string;
   I: Integer;
 begin
-  if not HasControlChars(APath) then
+  if not HasRtlInvalidPathChars(APath) then
     Exit(TPath.GetExtension(APath));
   Name := SafeFileName(APath);
   I := Length(Name);
@@ -573,7 +583,7 @@ function SafeDirectoryName(const APath: string): string;
 var
   I: Integer;
 begin
-  if not HasControlChars(APath) then
+  if not HasRtlInvalidPathChars(APath) then
     Exit(TPath.GetDirectoryName(APath));
   I := LastPathSeparator(APath);
   if I <= 1 then
@@ -584,7 +594,7 @@ end;
 
 function SafeCombinePath(const ADir, AName: string): string;
 begin
-  if not (HasControlChars(ADir) or HasControlChars(AName)) then
+  if not (HasRtlInvalidPathChars(ADir) or HasRtlInvalidPathChars(AName)) then
     Exit(TPath.Combine(ADir, AName));
   if (ADir = '') or (AName = '') then
     Exit(ADir + AName);
