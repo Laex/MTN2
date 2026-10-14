@@ -14,7 +14,7 @@ uses
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns,
   uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
-  uPluginSurface, uPluginServices;
+  uPluginSurface, uPluginServices, uTaskbarProgress;
 
 type
   TMainForm = class(TForm)
@@ -97,6 +97,7 @@ type
     FFpsTimer: TTimer;
     FFpsStats: TFrameStats;
     FFpsText: string;
+    FTaskbarProgress: TTaskbarProgress;
     FContextHoldPath: string;
     FContextHoldScreenX: Integer;
     FContextHoldScreenY: Integer;
@@ -107,6 +108,7 @@ type
     FSettingsImported: Boolean;
     procedure PrepareForSystemShutdown;
     procedure ReleaseTaskbarButton;
+    procedure UpdateTaskbarProgress;
     procedure BlinkTick(Sender: TObject);
     procedure ButtonPressTick(Sender: TObject);
     procedure ButtonHoldTick(Sender: TObject);
@@ -367,7 +369,7 @@ implementation
 uses
   System.Diagnostics,
   FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes,
-  uKeyChord, uFileRecycleBin;
+  uKeyChord, uFileRecycleBin, uDualPanelJobRules;
 
 const
   cBlinkIntervalMs = 530;   // standard Windows cursor blink rate
@@ -2817,6 +2819,7 @@ begin
   FreeAndNil(FSevenZipTimer);
   FreeAndNil(FFpsTimer);
   FreeAndNil(FUpdater);
+  FreeAndNil(FTaskbarProgress);
   SetPluginDialogHost(nil);
   SetPluginSurfaceHost(nil);
   SetSurfaceNativeHooks(nil, nil);
@@ -2894,8 +2897,23 @@ begin
     Exit;
   SyncChromeHover;
   UpdateCaption;
+  UpdateTaskbarProgress;
   FRenderer.Recompose;
   Invalidate;
+end;
+
+procedure TMainForm.UpdateTaskbarProgress;
+var
+  State: TJobTaskbarState;
+  Percent: Integer;
+begin
+  if not Assigned(FDualPanel) then
+    Exit;
+  if not Assigned(FTaskbarProgress) then
+    FTaskbarProgress := TTaskbarProgress.Create;
+  State := JobTaskbarProgress(FDualPanel.JobStates, Percent);
+  // The taskbar button belongs to FMX's application window, not to the form.
+  FTaskbarProgress.Update(ApplicationHWND, State, Percent);
 end;
 
 procedure TMainForm.FormPaint(Sender: TObject; Canvas: TCanvas; const ARect: TRectF);

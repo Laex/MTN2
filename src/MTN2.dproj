@@ -352,6 +352,7 @@
         <DCCReference Include="Platform\Windows\uWinFileDragDrop.pas"/>
         <DCCReference Include="Core\uWinFileAttr.pas"/>
         <DCCReference Include="Platform\Windows\uSingleInstance.pas"/>
+        <DCCReference Include="Platform\Windows\uTaskbarProgress.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>
         <DCCReference Include="Core\uSelfCheck.pas"/>
         <DCCReference Include="Platform\Windows\uElevatedHelper.pas"/>

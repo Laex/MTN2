@@ -957,6 +957,8 @@ type
       const AOnCommand: TProc<string, string>): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
     function HasBusyJob: Boolean;
+    /// <summary>States of every job that is not idle, for the taskbar button.</summary>
+    function JobStates: TArray<TPanelJobState>;
     procedure RebuildBuffer; override;
     function SetKeyModifiers(AShift: TShiftState): Boolean; override;
     /// <summary>True while a Ctrl+Left/Right drive choice waits for Ctrl to be
@@ -7768,6 +7770,14 @@ end;
 function TDualPanelWindow.HasBusyJob: Boolean;
 begin
   Result := Assigned(FJobs) and FJobs.HasBusyJob;
+end;
+
+function TDualPanelWindow.JobStates: TArray<TPanelJobState>;
+begin
+  if Assigned(FJobs) then
+    Result := FJobs.States
+  else
+    Result := nil;
 end;
 
 procedure TDualPanelWindow.OpenPluginListDialog;

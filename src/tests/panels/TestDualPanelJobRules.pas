@@ -15,6 +15,7 @@ type
     [Test] procedure TestParallel;
     [Test] procedure TestStatusAndOrigin;
     [Test] procedure TestDeleteOneParts;
+    [Test] procedure TestTaskbarProgress;
   end;
 
 implementation
@@ -248,6 +249,43 @@ begin
   Assert.IsTrue((Prefix <> '') and (Suffix <> ''), 'words around the name');
   Assert.IsTrue(Pos('a b.zip', Prefix + Suffix) = 0, 'name only on its own line');
   Assert.IsFalse(JobDeleteOneParts('', False, Prefix, Name, Suffix), 'no name');
+end;
+
+procedure TTestDualPanelJobRules.TestTaskbarProgress;
+var
+  Jobs: TArray<TPanelJobState>;
+  A, B: TPanelJobState;
+  Pct: Integer;
+begin
+  Assert.IsTrue(JobTaskbarProgress(nil, Pct) = jtsNone, 'no jobs');
+
+  A := FileJob('file:///C:/src/a.txt', 'file:///C:/dst');
+  Jobs := [A];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsNormal, 'running job');
+  Assert.AreEqual(34, Pct, 'percent of the job');
+
+  B := A;
+  B.Id := 2;
+  B.BytesDoneBase := 66;
+  Jobs := [A, B];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsNormal, 'two running jobs');
+  Assert.AreEqual(50, Pct, 'mean percent of running jobs');
+
+  B.Phase := pjpQueued;
+  Jobs := [B];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsIndeterminate, 'only queued');
+
+  B.Phase := pjpConfirm;
+  Jobs := [B];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsNone, 'confirm dialog only');
+
+  B.Phase := pjpError;
+  Jobs := [A, B];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsError, 'failed job');
+
+  B.Phase := pjpOverwriteAsk;
+  Jobs := [A, B];
+  Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsPaused, 'waiting for an answer');
 end;
 
 initialization

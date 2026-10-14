@@ -169,6 +169,7 @@ uses
   uWinFileDragDrop in 'Platform\Windows\uWinFileDragDrop.pas',
   uWinFileAttr in 'Core\uWinFileAttr.pas',
   uSingleInstance in 'Platform\Windows\uSingleInstance.pas',
+  uTaskbarProgress in 'Platform\Windows\uTaskbarProgress.pas',
   uUpdater in 'Core\uUpdater.pas',
   uSelfCheck in 'Core\uSelfCheck.pas',
   uElevatedHelper in 'Platform\Windows\uElevatedHelper.pas',

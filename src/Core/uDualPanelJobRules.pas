@@ -41,6 +41,16 @@ function JobProgressPercent(const AJob: TPanelJobState): Integer;
 function FormatJobProgressLine(const AJob: TPanelJobState): string;
 function FormatJobListLine(const AJob: TPanelJobState): string;
 
+type
+  TJobTaskbarState = (jtsNone, jtsIndeterminate, jtsNormal, jtsPaused, jtsError);
+
+/// <summary>What the application's taskbar button shows for the jobs in AJobs:
+/// a job waiting for an answer is "paused", a failed one "error", running ones
+/// "normal" with their mean percent in APercent, queued ones only "indeterminate".
+/// Jobs still on their confirm dialog count for nothing.</summary>
+function JobTaskbarProgress(const AJobs: TArray<TPanelJobState>;
+  out APercent: Integer): TJobTaskbarState;
+
 function JobOriginSrcDir(const ASources: TArray<string>): string;
 function JobOriginDstDir(const ADestDirURI: string;
   const ADestURIs: TArray<string>): string;
@@ -412,6 +422,48 @@ begin
       Done := AJob.FilesTotal;
     Result := Integer((Done * 100) div AJob.FilesTotal);
   end;
+end;
+
+function JobTaskbarProgress(const AJobs: TArray<TPanelJobState>;
+  out APercent: Integer): TJobTaskbarState;
+var
+  Job: TPanelJobState;
+  Running, Sum: Integer;
+  HasAsk, HasError, HasQueued: Boolean;
+begin
+  Running := 0;
+  Sum := 0;
+  HasAsk := False;
+  HasError := False;
+  HasQueued := False;
+  for Job in AJobs do
+    case Job.Phase of
+      pjpRunning:
+        begin
+          Inc(Running);
+          Inc(Sum, JobProgressPercent(Job));
+        end;
+      pjpQueued:
+        HasQueued := True;
+      pjpError:
+        HasError := True;
+      pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk:
+        HasAsk := True;
+    end;
+  if Running > 0 then
+    APercent := Sum div Running
+  else
+    APercent := 0;
+  if HasAsk then
+    Result := jtsPaused
+  else if HasError then
+    Result := jtsError
+  else if Running > 0 then
+    Result := jtsNormal
+  else if HasQueued then
+    Result := jtsIndeterminate
+  else
+    Result := jtsNone;
 end;
 
 function FormatJobProgressLine(const AJob: TPanelJobState): string;

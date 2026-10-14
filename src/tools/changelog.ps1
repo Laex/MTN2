@@ -8,6 +8,12 @@
 #       above it, and src/MTN2.dproj's version info becomes 0.3.8 (local
 #       builds without build.ps1 -Version report it; the updater compares it).
 #       Refuses when there is nothing unreleased to stamp.
+#   ./src/tools/changelog.ps1 -DevStamp v0.4.0.5
+#       With the commit that becomes development build v0.4.0.5 (the number
+#       src/tools/dev-version.ps1 gives it): "## Не выпущено" entries move under
+#       "## Dev v0.4.0.5 – <today>". Does nothing when there are none. A later
+#       -Stamp folds all Dev sections above the previous release into the
+#       release section, merging their Новое / Изменено / Исправлено lists.
 #   ./src/tools/changelog.ps1 -ProjectVersion v0.3.8
 #       Only the MTN2.dproj part of -Stamp.
 #   ./src/tools/changelog.ps1 -Section v0.3.8 -OutFile notes.md
@@ -17,7 +23,10 @@
 param(
     [Parameter(Mandatory, ParameterSetName = 'Stamp')]
     [string]$Stamp,
+    [Parameter(Mandatory, ParameterSetName = 'Dev')]
+    [string]$DevStamp,
     [Parameter(ParameterSetName = 'Stamp')]
+    [Parameter(ParameterSetName = 'Dev')]
     [string]$Date = (Get-Date -Format 'yyyy-MM-dd'),
     [Parameter(Mandatory, ParameterSetName = 'Section')]
     [string]$Section,
@@ -92,33 +101,85 @@ function Has-Entries([int]$Start, [int]$End) {
     $false
 }
 
+# The "### " subsections of Lines[Start+1 .. End-1] as name -> entry lines
+# (blank lines dropped), in order of appearance.
+function Read-Subsections([int]$Start, [int]$End, $Into) {
+    $Name = $null
+    for ($I = $Start + 1; $I -lt $End; $I++) {
+        if ($Lines[$I].StartsWith('### ')) {
+            $Name = $Lines[$I].Substring(4).Trim()
+            if (-not $Into.Contains($Name)) { $Into[$Name] = [Collections.Generic.List[string]]::new() }
+        } elseif ($Name -and $Lines[$I].Trim()) {
+            $Into[$Name].Add($Lines[$I])
+        }
+    }
+}
+function Format-Subsections($Subs) {
+    $Out = [Collections.Generic.List[string]]::new()
+    foreach ($Name in $Subs.Keys) {
+        if ($Subs[$Name].Count -eq 0) { continue }
+        $Out.Add("### $Name"); $Out.Add('')
+        foreach ($Line in $Subs[$Name]) { $Out.Add($Line) }
+        $Out.Add('')
+    }
+    $Out
+}
+# Subsections in the order the changelog uses; others follow.
+function Sort-Subsections($Subs) {
+    $Sorted = [ordered]@{}
+    foreach ($Name in 'Новое', 'Изменено', 'Исправлено') {
+        if ($Subs.Contains($Name)) { $Sorted[$Name] = $Subs[$Name] }
+    }
+    foreach ($Name in $Subs.Keys) { if (-not $Sorted.Contains($Name)) { $Sorted[$Name] = $Subs[$Name] } }
+    $Sorted
+}
+function Write-Changelog($Before, $Middle, $After) {
+    [IO.File]::WriteAllText($File, ((@($Before) + @($Middle) + @($After)) -join "`n"), $Utf8)
+}
+
+if ($PSCmdlet.ParameterSetName -eq 'Dev') {
+    # A development build: what is unreleased moves under its own
+    # "## Dev <version> - <date>" heading; nothing to move means nothing to do.
+    if ($DevStamp -notmatch '^v?(\d+\.\d+\.\d+\.\d+)$') { throw "Dev version must look like v1.2.3.4, got '$DevStamp'" }
+    $Ver = "v$($Matches[1])"
+    if ((Find-Heading "^## Dev $([regex]::Escape($Ver))\b") -ge 0) { throw "CHANGELOG.md already has a Dev $Ver section" }
+    $Start = Find-Heading "^$Unreleased\s*$"
+    if ($Start -lt 0) { throw "CHANGELOG.md has no '$Unreleased' section" }
+    $End = Section-End $Start
+    if (-not (Has-Entries $Start $End)) { Write-Host "CHANGELOG.md: nothing unreleased, no Dev $Ver section"; return }
+    $Subs = [ordered]@{}
+    Read-Subsections $Start $End $Subs
+    $Before = if ($Start -gt 0) { @($Lines[0..($Start - 1)]) } else { @() }
+    $After = if ($End -lt $Lines.Count) { @($Lines[$End..($Lines.Count - 1)]) } else { @() }
+    Write-Changelog $Before (@($Unreleased, '', "## Dev $Ver – $Date", '') + @(Format-Subsections (Sort-Subsections $Subs))) $After
+    Write-Host "CHANGELOG.md: unreleased entries are now '## Dev $Ver – $Date'"
+    return
+}
+
 if ($PSCmdlet.ParameterSetName -eq 'Stamp') {
+    # A release: the unreleased entries and every Dev section above the
+    # previous release become the one section of the new version.
     $Tag = Normalize-Tag $Stamp
     if ((Find-Heading "^## $([regex]::Escape($Tag))\b") -ge 0) { throw "CHANGELOG.md already has a $Tag section" }
     $Start = Find-Heading "^$Unreleased\s*$"
     if ($Start -lt 0) { throw "CHANGELOG.md has no '$Unreleased' section" }
     $End = Section-End $Start
-    if (-not (Has-Entries $Start $End)) { throw "'$Unreleased' is empty: describe the changes for users first" }
-    # Drop the empty subsections ("### Новое" with nothing under it).
-    $Body = [Collections.Generic.List[string]]::new()
-    for ($I = $Start + 1; $I -lt $End; $I++) {
-        if ($Lines[$I].StartsWith('### ')) {
-            $J = $I + 1
-            while ($J -lt $End -and -not $Lines[$J].StartsWith('### ')) { $J++ }
-            if (Has-Entries ($I) $J) {
-                for ($K = $I; $K -lt $J; $K++) { $Body.Add($Lines[$K]) }
-            }
-            $I = $J - 1
-        } else {
-            $Body.Add($Lines[$I])
-        }
+    $Pending = [Collections.Generic.List[object]]::new()
+    $Pending.Add(@($Start, $End))
+    while ($End -lt $Lines.Count -and $Lines[$End] -match '^## Dev ') {
+        $Next = Section-End $End
+        $Pending.Add(@($End, $Next))
+        $End = $Next
     }
-    # (a..b with b < a counts down in PowerShell: slice only non-empty ranges)
+    $Any = $false
+    foreach ($Range in $Pending) { if (Has-Entries $Range[0] $Range[1]) { $Any = $true } }
+    if (-not $Any) { throw "'$Unreleased' is empty: describe the changes for users first" }
+    $Subs = [ordered]@{}
+    foreach ($Range in $Pending) { Read-Subsections $Range[0] $Range[1] $Subs }
     $Before = if ($Start -gt 0) { @($Lines[0..($Start - 1)]) } else { @() }
     $After = if ($End -lt $Lines.Count) { @($Lines[$End..($Lines.Count - 1)]) } else { @() }
-    $New = $Before + @($Unreleased, '', "## $Tag – $Date") + $Body + $After
-    [IO.File]::WriteAllText($File, ($New -join "`n"), $Utf8)
-    Write-Host "CHANGELOG.md: '$Unreleased' is now '## $Tag – $Date'"
+    Write-Changelog $Before (@($Unreleased, '', "## $Tag – $Date", '') + @(Format-Subsections (Sort-Subsections $Subs))) $After
+    Write-Host "CHANGELOG.md: '$Unreleased' and $($Pending.Count - 1) Dev section(s) are now '## $Tag – $Date'"
     Set-ProjectVersion $Tag
     return
 }
