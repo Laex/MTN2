@@ -81,15 +81,15 @@ type
     procedure ProbeJobItemAsync(const ASrcURI, ADstURI: string; AIndex: Integer;
       AKind: TPanelJobKind; AFollowSymlinks, AOnlyNewer, AOverwriteAsk: Boolean;
       const ALife: IJobLife);
-    function ProbeSkipReparse(AKind: TPanelJobKind; AFollowSymlinks: Boolean;
-      const ASrcURI, ASrcPath: string): Boolean;
-    function ProbeSkipNewer(AOnlyNewer, ASkipReparse: Boolean;
+    function ProbeLinkSource(AKind: TPanelJobKind; AFollowSymlinks: Boolean;
       const ASrcURI, ADstURI, ASrcPath, ADstPath: string): Boolean;
-    procedure ProbeDestOverlap(ASkipReparse, ASkipNewer: Boolean;
+    function ProbeSkipNewer(AOnlyNewer, ASrcIsLink: Boolean;
+      const ASrcURI, ADstURI, ASrcPath, ADstPath: string): Boolean;
+    procedure ProbeDestOverlap(ASrcIsLink, ASkipNewer: Boolean;
       const ASrcURI, ADstURI, ASrcPath, ADstPath: string;
       out ADestExists, ABothDirs: Boolean);
     procedure ContinueJobItemAfterProbe(const ASrcURI, ADstURI: string;
-      AIndex: Integer; AKind: TPanelJobKind; ASkipReparse, ASkipNewer,
+      AIndex: Integer; AKind: TPanelJobKind; ASrcIsLink, ASkipNewer,
       ADestExists: Boolean; ABothDirs: Boolean; const ANewLine: string = '';
       const AExistingLine: string = '');
     procedure StartTransferInvalidate(const ASrcURI, ADstURI: string;
@@ -109,12 +109,13 @@ type
       AOverwrite, AAppend: Boolean);
     procedure RunAppendCopyThread(const ASrcURI, ADstURI, ASrcPath, ADstPath: string;
       AIndex: Integer; const ACancel: IJobCancelToken);
+    procedure RunLinkTransferThread(const ASrcURI, ADstURI: string; AIndex: Integer;
+      AMove, AOverwrite: Boolean);
     procedure AdvanceJobAfterItem(AIndex: Integer);
     procedure HandleTransferFailure(const ASrcURI, ADstURI: string; AIndex: Integer;
       AOverwrite, AAppend: Boolean; const AError: TVfsError);
     procedure FinishJob(ASuccess: Boolean; const AError: TVfsError);
     function JobItemExcluded(const AName: string): Boolean;
-    function PathIsReparsePoint(const APath: string): Boolean;
     function FormatConflictFileLine(const ALabel, APath: string): string;
     procedure PromptOverwriteAsk(const ASrcURI, ADstURI: string; AIndex: Integer;
       const ANewLine: string = ''; const AExistingLine: string = '');
@@ -182,6 +183,9 @@ type
   end;
 
 implementation
+
+uses
+  uLinkUtils;
 
 type
   TJobLife = class(TInterfacedObject, IJobLife)
@@ -364,7 +368,7 @@ begin
 end;
 
 function EstimateLocalUriBytes(const AURI: string; out AFileCount: Integer;
-  ACountFolders: Boolean = False): Int64;
+  ACountFolders: Boolean = False; ALinkAsItem: Boolean = False): Int64;
 var
   Path: string;
 
@@ -420,6 +424,11 @@ begin
   Path := FileUriToPath(AURI);
   if Path = '' then
     Exit;
+  if ALinkAsItem and IsRecreatableLink(Path) then
+  begin
+    AFileCount := 1;
+    Exit;
+  end;
   Result := Walk(Path);
 end;
 
@@ -626,11 +635,6 @@ begin
     FExcludeMasksReady := True;
   end;
   Result := NameMatchesAnyMask(AName, FExcludeMasks);
-end;
-
-function TPanelJobController.PathIsReparsePoint(const APath: string): Boolean;
-begin
-  Result := (APath <> '') and PlatformIsReparsePoint(APath);
 end;
 
 procedure TPanelJobController.AdvanceJobAfterItem(AIndex: Integer);
@@ -849,7 +853,7 @@ end;
 procedure TPanelJobController.StartJobExecution;
 var
   CapSources: TArray<string>;
-  CountFolders: Boolean;
+  CountFolders, LinkAsItem: Boolean;
   Life: IJobLife;
 begin
   Life := FLife;
@@ -877,6 +881,7 @@ begin
   begin
     CapSources := Copy(FJob.Sources);
     CountFolders := FJob.Kind = pjkDelete;
+    LinkAsItem := (FJob.Kind in [pjkCopy, pjkMove]) and not FJob.FollowSymlinks;
     TThread.CreateAnonymousThread(
       procedure
       var
@@ -887,7 +892,8 @@ begin
         FileCount := 0;
         for I := 0 to High(CapSources) do
         begin
-          Inc(Total, EstimateLocalUriBytes(CapSources[I], SubCount, CountFolders));
+          Inc(Total, EstimateLocalUriBytes(CapSources[I], SubCount, CountFolders,
+            LinkAsItem));
           Inc(FileCount, SubCount);
           // The selected folder itself is deleted too.
           if CountFolders and DirectoryExists(FileUriToPath(CapSources[I])) then
@@ -1028,7 +1034,7 @@ begin
 end;
 
 procedure TPanelJobController.ContinueJobItemAfterProbe(const ASrcURI, ADstURI: string;
-  AIndex: Integer; AKind: TPanelJobKind; ASkipReparse, ASkipNewer,
+  AIndex: Integer; AKind: TPanelJobKind; ASrcIsLink, ASkipNewer,
   ADestExists: Boolean; ABothDirs: Boolean; const ANewLine, AExistingLine: string);
 var
   IsDirMerge: Boolean;
@@ -1040,7 +1046,8 @@ begin
   if FJob.Index <> AIndex then
     Exit;
 
-  if ASkipReparse or ASkipNewer then
+  FJob.CurrentIsLink := ASrcIsLink;
+  if ASkipNewer then
   begin
     AdvanceJobAfterItem(AIndex);
     Exit;
@@ -1168,18 +1175,24 @@ end;
 // Runs off the UI thread (called from the anonymous thread started by
 // RunJobItem): Exists/GetFileAttributes/mtime can block on network/OneDrive
 // sources, so all pre-transfer probing happens here before hopping back.
-function TPanelJobController.ProbeSkipReparse(AKind: TPanelJobKind;
-  AFollowSymlinks: Boolean; const ASrcURI, ASrcPath: string): Boolean;
+// A symbolic link or junction is transferred as a link (recreated at the
+// destination) unless the job copies link contents. Only local sources and
+// destinations qualify, and not in elevated mode: the helper process copies
+// contents.
+function TPanelJobController.ProbeLinkSource(AKind: TPanelJobKind;
+  AFollowSymlinks: Boolean; const ASrcURI, ADstURI, ASrcPath, ADstPath: string): Boolean;
 begin
   Result := (AKind in [pjkCopy, pjkMove]) and (not AFollowSymlinks) and
-    (not HasArchiveChain(ASrcURI)) and PathIsReparsePoint(ASrcPath);
+    (not FUseElevated) and (ASrcPath <> '') and (ADstPath <> '') and
+    (not HasArchiveChain(ASrcURI)) and (not HasArchiveChain(ADstURI)) and
+    IsRecreatableLink(ASrcPath);
 end;
 
-function TPanelJobController.ProbeSkipNewer(AOnlyNewer, ASkipReparse: Boolean;
+function TPanelJobController.ProbeSkipNewer(AOnlyNewer, ASrcIsLink: Boolean;
   const ASrcURI, ADstURI, ASrcPath, ADstPath: string): Boolean;
 begin
   Result := False;
-  if (not AOnlyNewer) or ASkipReparse or HasArchiveChain(ASrcURI) or
+  if (not AOnlyNewer) or ASrcIsLink or HasArchiveChain(ASrcURI) or
      HasArchiveChain(ADstURI) then
     Exit;
   if (ASrcPath <> '') and (ADstPath <> '') and TFile.Exists(WinApiPath(ASrcPath)) and
@@ -1190,16 +1203,17 @@ end;
 
 // Probed here, off the UI thread: TDirectory.Exists on a network source
 // (P:\) can block for a while.
-procedure TPanelJobController.ProbeDestOverlap(ASkipReparse, ASkipNewer: Boolean;
+procedure TPanelJobController.ProbeDestOverlap(ASrcIsLink, ASkipNewer: Boolean;
   const ASrcURI, ADstURI, ASrcPath, ADstPath: string;
   out ADestExists, ABothDirs: Boolean);
 begin
   ADestExists := False;
   ABothDirs := False;
-  if ASkipReparse or ASkipNewer or HasArchiveChain(ADstURI) or (ADstPath = '') then
+  if ASkipNewer or HasArchiveChain(ADstURI) or (ADstPath = '') then
     Exit;
   ADestExists := TFile.Exists(WinApiPath(ADstPath)) or TDirectory.Exists(WinApiPath(ADstPath));
-  ABothDirs := ADestExists and (ASrcPath <> '') and
+  // A link replaces whatever sits at the destination; it never merges.
+  ABothDirs := ADestExists and (not ASrcIsLink) and (ASrcPath <> '') and
     TDirectory.Exists(WinApiPath(ASrcPath)) and TDirectory.Exists(WinApiPath(ADstPath)) and
     (not HasArchiveChain(ASrcURI));
 end;
@@ -1208,10 +1222,10 @@ procedure TPanelJobController.ProbeJobItemAsync(const ASrcURI, ADstURI: string;
   AIndex: Integer; AKind: TPanelJobKind; AFollowSymlinks, AOnlyNewer,
   AOverwriteAsk: Boolean; const ALife: IJobLife);
 var
-  SkipReparse, SkipNewer, DestExists, BothDirs: Boolean;
+  SrcIsLink, SkipNewer, DestExists, BothDirs: Boolean;
   SrcPath, DstPath, NewLine, ExistingLine: string;
 begin
-  SkipReparse := False;
+  SrcIsLink := False;
   SkipNewer := False;
   DestExists := False;
   BothDirs := False;
@@ -1220,9 +1234,9 @@ begin
   try
     SrcPath := FileUriToPath(ASrcURI);
     DstPath := FileUriToPath(ADstURI);
-    SkipReparse := ProbeSkipReparse(AKind, AFollowSymlinks, ASrcURI, SrcPath);
-    SkipNewer := ProbeSkipNewer(AOnlyNewer, SkipReparse, ASrcURI, ADstURI, SrcPath, DstPath);
-    ProbeDestOverlap(SkipReparse, SkipNewer, ASrcURI, ADstURI, SrcPath, DstPath,
+    SrcIsLink := ProbeLinkSource(AKind, AFollowSymlinks, ASrcURI, ADstURI, SrcPath, DstPath);
+    SkipNewer := ProbeSkipNewer(AOnlyNewer, SrcIsLink, ASrcURI, ADstURI, SrcPath, DstPath);
+    ProbeDestOverlap(SrcIsLink, SkipNewer, ASrcURI, ADstURI, SrcPath, DstPath,
       DestExists, BothDirs);
     if DestExists and AOverwriteAsk then
     begin
@@ -1238,7 +1252,7 @@ begin
       if not ALife.Alive then
         Exit;
       ContinueJobItemAfterProbe(ASrcURI, ADstURI, AIndex, AKind,
-        SkipReparse, SkipNewer, DestExists, BothDirs, NewLine, ExistingLine);
+        SrcIsLink, SkipNewer, DestExists, BothDirs, NewLine, ExistingLine);
     end);
 end;
 
@@ -1703,6 +1717,12 @@ begin
   // Parent-directory creation for nested DestURIs runs inside the VFS worker
   // (CopyAsync/MoveAsync), not on the UI thread.
 
+  if FJob.CurrentIsLink and (Kind in [pjkCopy, pjkMove]) and not FUseElevated then
+  begin
+    RunLinkTransferThread(SrcURI, DstURI, Idx, Kind = pjkMove, DoOverwrite);
+    Exit;
+  end;
+
   if AAppend and (Kind = pjkCopy) and not HasArchiveChain(SrcURI) and
      not HasArchiveChain(DstURI) and FUseElevated then
   begin
@@ -1773,6 +1793,56 @@ begin
         end;
         AdvanceJobAfterItem(Idx);
       end, DoOverwrite, FJob.PreserveTimestamps);
+end;
+
+// Recreates a symbolic link or junction at the destination (Move also removes
+// the source link); the link target is never opened or copied.
+procedure TPanelJobController.RunLinkTransferThread(const ASrcURI, ADstURI: string;
+  AIndex: Integer; AMove, AOverwrite: Boolean);
+var
+  Life: IJobLife;
+begin
+  Life := FLife;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      SrcPath, DstPath, Parent: string;
+      Err, DelErr: TVfsError;
+    begin
+      Err := TVfsError.Ok;
+      try
+        SrcPath := FileUriToPath(ASrcURI);
+        DstPath := FileUriToPath(ADstURI);
+        if (SrcPath = '') or (DstPath = '') then
+          Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', ASrcURI)
+        else
+        begin
+          Parent := ExtractFilePath(DstPath);
+          if (Parent <> '') and not TDirectory.Exists(WinApiPath(Parent)) then
+            ForceDirectories(WinApiPath(Parent));
+          if CopyLinkNode(SrcPath, DstPath, AOverwrite, Err) and AMove then
+            if not DeleteLinkNode(SrcPath, DelErr) then
+              Err := DelErr;
+        end;
+      except
+        on E: Exception do
+          Err := TVfsError.Make(vecIOError, E.Message, ASrcURI);
+      end;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not Life.Alive then
+            Exit;
+          if FJob.Phase <> pjpRunning then
+            Exit;
+          if Err.Code <> vecOk then
+          begin
+            HandleTransferFailure(ASrcURI, ADstURI, AIndex, AOverwrite, False, Err);
+            Exit;
+          end;
+          AdvanceJobAfterItem(AIndex);
+        end);
+    end).Start;
 end;
 
 // Fast path for "append to an existing plain file" (Copy only, no archives):

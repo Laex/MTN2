@@ -74,6 +74,9 @@ type
     /// prompt means "merge, don't overwrite conflicting files", not
     /// "abandon the whole subtree" - see ResolveOverwriteAsk.</summary>
     PendingBothDirs: Boolean;
+    /// <summary>True when the current Copy/Move item is a symbolic link or
+    /// junction that is recreated at the destination instead of copied.</summary>
+    CurrentIsLink: Boolean;
     /// <summary>Error text for pjpDeleteAsk / pjpIOErrorAsk / pjpError.</summary>
     PendingErrorMessage: string;
     /// <summary>Overwrite/Append flags the failed transfer was run with, so

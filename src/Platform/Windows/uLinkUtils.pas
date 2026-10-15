@@ -42,6 +42,20 @@ function CanCreateSymlinks: Boolean;
 /// folder, or a hard link for a file on the same drive as the link folder.</summary>
 function SuggestLinkTypeIndex(const ATargetPath, ALinkFolder: string): Integer;
 
+/// <summary>True for a symbolic link or junction whose target can be read and
+/// recreated elsewhere. Other reparse points (cloud placeholders, dedup
+/// stubs) are plain content for a copy and report False.</summary>
+function IsRecreatableLink(const APath: string): Boolean;
+
+/// <summary>Creates at ADst a link of the same kind and target as the link
+/// at ASrc, replacing an existing node when AOverwrite is set. The target is
+/// not followed or copied.</summary>
+function CopyLinkNode(const ASrc, ADst: string; AOverwrite: Boolean;
+  out AError: TVfsError): Boolean;
+
+/// <summary>Removes the link node at APath itself, not its target.</summary>
+function DeleteLinkNode(const APath: string; out AError: TVfsError): Boolean;
+
 implementation
 
 uses
@@ -51,7 +65,9 @@ const
   SYMBOLIC_LINK_FLAG_DIRECTORY = $1;
   SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = $2;
   FSCTL_SET_REPARSE_POINT = $000900A4;
+  FSCTL_GET_REPARSE_POINT = $000900A8;
   IO_REPARSE_TAG_MOUNT_POINT = DWORD($A0000003);
+  IO_REPARSE_TAG_SYMLINK = DWORD($A000000C);
   cMaxReparseDataSize = 16 * 1024;
 
 function Win32CreateSymbolicLinkW(lpSymlinkFileName, lpTargetFileName: LPCWSTR;
@@ -262,6 +278,130 @@ begin
     Result := False;
     AError := TVfsError.Make(vecNotSupported, 'Unknown link kind', PathToFileUri(ALinkPath));
   end;
+end;
+
+// Reads the reparse data of the link node itself (the target is not opened).
+// Offsets follow REPARSE_DATA_BUFFER: both the mount point and the symlink
+// layout keep four name offset/length words at byte 8; the path buffer starts
+// at byte 16 for a junction and at byte 20 for a symlink (after the flags).
+function ReadLinkInfo(const APath: string; out ATarget: string;
+  out AKind: TLinkKind): Boolean;
+var
+  Handle: THandle;
+  Buf: TBytes;
+  Returned, Tag, Attr: DWORD;
+  SubOffset, SubLength, PathStart: Integer;
+begin
+  Result := False;
+  ATarget := '';
+  Attr := GetFileAttributes(PChar(WinApiPath(APath)));
+  if (Attr = INVALID_FILE_ATTRIBUTES) or ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) = 0) then
+    Exit;
+  Handle := CreateFileW(PWideChar(WinApiPath(APath)), 0,
+    FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
+    FILE_FLAG_OPEN_REPARSE_POINT or FILE_FLAG_BACKUP_SEMANTICS, 0);
+  if Handle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    SetLength(Buf, cMaxReparseDataSize);
+    if not DeviceIoControl(Handle, FSCTL_GET_REPARSE_POINT, nil, 0, @Buf[0],
+         Length(Buf), Returned, nil) then
+      Exit;
+  finally
+    CloseHandle(Handle);
+  end;
+  if Returned < 20 then
+    Exit;
+  Tag := PDWORD(@Buf[0])^;
+  if Tag = IO_REPARSE_TAG_MOUNT_POINT then
+  begin
+    PathStart := 16;
+    AKind := lkJunction;
+  end
+  else if Tag = IO_REPARSE_TAG_SYMLINK then
+  begin
+    PathStart := 20;
+    if (Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+      AKind := lkSymlinkDir
+    else
+      AKind := lkSymlinkFile;
+  end
+  else
+    Exit;
+  SubOffset := PWord(@Buf[8])^;
+  SubLength := PWord(@Buf[10])^;
+  if (SubLength < SizeOf(WideChar)) or
+     (PathStart + SubOffset + SubLength > Integer(Returned)) then
+    Exit;
+  SetString(ATarget, PWideChar(@Buf[PathStart + SubOffset]), SubLength div SizeOf(WideChar));
+  // The substitute name of an absolute target carries the NT namespace prefix.
+  if ATarget.StartsWith('\??\UNC\', True) then
+    ATarget := '\\' + Copy(ATarget, 9, MaxInt)
+  else if ATarget.StartsWith('\??\', True) then
+    ATarget := Copy(ATarget, 5, MaxInt);
+  Result := ATarget <> '';
+end;
+
+function IsRecreatableLink(const APath: string): Boolean;
+var
+  Target: string;
+  Kind: TLinkKind;
+begin
+  Result := (APath <> '') and ReadLinkInfo(APath, Target, Kind);
+end;
+
+function CopyLinkNode(const ASrc, ADst: string; AOverwrite: Boolean;
+  out AError: TVfsError): Boolean;
+var
+  Target: string;
+  Kind: TLinkKind;
+  Attr: DWORD;
+  Removed: Boolean;
+begin
+  AError := TVfsError.Ok;
+  if not ReadLinkInfo(ASrc, Target, Kind) then
+  begin
+    AError := TVfsError.Make(vecIOError, 'Cannot read the link target', PathToFileUri(ASrc));
+    Exit(False);
+  end;
+  Attr := GetFileAttributes(PChar(WinApiPath(ADst)));
+  if Attr <> INVALID_FILE_ATTRIBUTES then
+  begin
+    if not AOverwrite then
+    begin
+      AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists',
+        PathToFileUri(ADst));
+      Exit(False);
+    end;
+    if (Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+      Removed := RemoveDirectory(PChar(WinApiPath(ADst)))
+    else
+      Removed := Winapi.Windows.DeleteFile(PChar(WinApiPath(ADst)));
+    if not Removed then
+    begin
+      AError := TVfsError.Make(vecIOError, 'Cannot replace the destination: ' +
+        LastErrorMessage, PathToFileUri(ADst));
+      Exit(False);
+    end;
+  end;
+  Result := CreateFileLink(ADst, Target, Kind, AError);
+end;
+
+function DeleteLinkNode(const APath: string; out AError: TVfsError): Boolean;
+var
+  Attr: DWORD;
+begin
+  AError := TVfsError.Ok;
+  Attr := GetFileAttributes(PChar(WinApiPath(APath)));
+  if Attr = INVALID_FILE_ATTRIBUTES then
+    Exit(True);
+  if (Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+    Result := RemoveDirectory(PChar(WinApiPath(APath)))
+  else
+    Result := Winapi.Windows.DeleteFile(PChar(WinApiPath(APath)));
+  if not Result then
+    AError := TVfsError.Make(vecIOError, 'Cannot remove the link: ' + LastErrorMessage,
+      PathToFileUri(APath));
 end;
 
 end.

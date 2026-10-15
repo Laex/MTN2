@@ -22,6 +22,7 @@ type
     [Test] procedure TestSymlinkDir;
     [Test] procedure TestJunction;
     [Test] procedure TestSuggestedLinkType;
+    [Test] procedure TestCopyLinkNode;
   end;
 
 implementation
@@ -119,6 +120,45 @@ begin
     Writeln('    error: ', Err.Message);
 end;
 
+procedure TestCopyLinkNode;
+var
+  SrcDir, LinkDir, CopyDir, NotLink: string;
+  Err: TVfsError;
+  Kind: TLinkKind;
+begin
+  if PlatformPosixPaths then
+    Kind := lkSymlinkDir
+  else
+    Kind := lkJunction;
+  SrcDir := TPath.Combine(GRoot, 'copylink_target');
+  LinkDir := TPath.Combine(GRoot, 'copylink_src');
+  CopyDir := TPath.Combine(GRoot, 'copylink_dst');
+  TDirectory.CreateDirectory(SrcDir);
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'inside.txt'), 'x');
+  Assert.IsTrue(CreateFileLink(LinkDir, SrcDir, Kind, Err), 'link is created');
+  Assert.IsTrue(IsRecreatableLink(LinkDir), 'a link is recognised');
+  Assert.IsFalse(IsRecreatableLink(SrcDir), 'a plain folder is not a link');
+
+  Assert.IsTrue(CopyLinkNode(LinkDir, CopyDir, False, Err), 'link is recreated');
+  Assert.IsTrue(IsRecreatableLink(CopyDir), 'the copy is a link, not a folder copy');
+  Assert.IsTrue(TFile.Exists(TPath.Combine(CopyDir, 'inside.txt')), 'the copy points at the same target');
+
+  Assert.IsFalse(CopyLinkNode(LinkDir, CopyDir, False, Err), 'an existing destination is refused');
+  Assert.AreEqual(Ord(vecAlreadyExists), Ord(Err.Code), 'as already exists');
+  Assert.IsTrue(CopyLinkNode(LinkDir, CopyDir, True, Err), 'an existing destination is replaced');
+  Assert.IsTrue(IsRecreatableLink(CopyDir), 'the replacement is a link');
+
+  Assert.IsTrue(DeleteLinkNode(CopyDir, Err), 'the link is removed');
+  Assert.IsFalse(IsRecreatableLink(CopyDir) or TDirectory.Exists(CopyDir), 'the link is gone');
+  Assert.IsTrue(TFile.Exists(TPath.Combine(SrcDir, 'inside.txt')), 'removing the link keeps its target');
+
+  NotLink := TPath.Combine(GRoot, 'copylink_plain.txt');
+  TFile.WriteAllText(NotLink, 'x');
+  Assert.IsFalse(CopyLinkNode(NotLink, TPath.Combine(GRoot, 'copylink_none'), False, Err),
+    'a plain file is not copied as a link');
+  Assert.IsTrue(TFile.Exists(TPath.Combine(SrcDir, 'inside.txt')), 'the target is untouched');
+end;
+
 procedure TestSuggestedLinkType;
 var
   Dir, Src: string;
@@ -181,6 +221,11 @@ end;
 procedure TTestCreateLink.TestSuggestedLinkType;
 begin
   TestCreateLink.TestSuggestedLinkType;
+end;
+
+procedure TTestCreateLink.TestCopyLinkNode;
+begin
+  TestCreateLink.TestCopyLinkNode;
 end;
 
 initialization
