@@ -224,7 +224,7 @@ begin
     Cap := ThemeApplyTemplate(FSpec.Glyphs[tgButtonDefault], AText)
   else
     Cap := ThemeApplyTemplate(FSpec.Glyphs[tgButtonNormal], AText);
-  StartX := ABounds.Left + (ABounds.Width - Length(StripHotKeyMarker(Cap))) div 2;
+  StartX := ABounds.Left + (ABounds.Width - TextDisplayWidth(StripHotKeyMarker(Cap))) div 2;
   if StartX < ABounds.Left then
     StartX := ABounds.Left;
   PutGridHotTextClipped(AGrid, StartX, ABounds.Top, ABounds.Right, Cap, Fg, Bg,

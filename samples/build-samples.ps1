@@ -285,7 +285,7 @@ if ($Install) {
     foreach ($id in $built) {
         $dest = Join-Path $PluginsOut $id
         New-Item -ItemType Directory -Force -Path $dest | Out-Null
-        Copy-Item (Join-Path $BuildRoot "$id\*") $dest -Force
+        Copy-Item (Join-Path $BuildRoot "$id\*") $dest -Recurse -Force
         Write-Host "OK: installed $id -> $dest"
     }
 }

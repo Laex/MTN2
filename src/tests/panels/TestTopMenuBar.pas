@@ -22,6 +22,7 @@ type
     [Test] procedure TestHomeEndPageKeysMoveInsideTheMenu;
     [Test] procedure TestReleaseOutsideAnItemRunsNothing;
     [Test] procedure TestAnItemRunsOnReleaseNotOnPress;
+    [Test] procedure TestWideCaptionsKeepTheHotLetterOnItsCell;
   end;
 
 implementation
@@ -254,6 +255,40 @@ begin
   end;
 end;
 
+procedure TestWideCaptionsKeepTheHotLetterOnItsCell;
+const
+  cJson =
+    '{"categories":[{"title":"X","hotChar":"X","items":[' +
+    '{"caption":"复制(&C)","hotChar":"C","shortcut":"F5","action":"tmaFileCopy"}' +
+    ']}]}';
+var
+  C: TTopMenuController;
+  Grid: TTerminalGrid;
+  X, Y, Hot, HotX: Integer;
+begin
+  C := TTopMenuController.Create(CreateThemeByName('NDN'), nil, nil);
+  try
+    Assert.IsTrue(C.LoadMenuFromJson(cJson), 'menu JSON parses');
+    SetLength(Grid, 10);
+    for Y := 0 to High(Grid) do
+      SetLength(Grid[Y], 60);
+    C.ActivateMenu(0, True);
+    C.DrawSubmenu(Grid, 60);
+    Hot := 0;
+    HotX := -1;
+    for X := 0 to High(Grid[2]) do
+      if Grid[2][X].FgColor = cMenuHotKeyFg then
+      begin
+        Inc(Hot);
+        HotX := X;
+      end;
+    Assert.AreEqual(1, Hot, 'one highlighted cell in the item row');
+    Assert.AreEqual('C', string(Grid[2][HotX].CharValue), 'it is the letter in the "(&C)" marker');
+  finally
+    C.Free;
+  end;
+end;
+
 { TTestTopMenuBar }
 
 procedure TTestTopMenuBar.TestEveryEnumMemberRoundTrips;
@@ -289,6 +324,11 @@ end;
 procedure TTestTopMenuBar.TestAnItemRunsOnReleaseNotOnPress;
 begin
   TestTopMenuBar.TestAnItemRunsOnReleaseNotOnPress;
+end;
+
+procedure TTestTopMenuBar.TestWideCaptionsKeepTheHotLetterOnItsCell;
+begin
+  TestTopMenuBar.TestWideCaptionsKeepTheHotLetterOnItsCell;
 end;
 
 procedure TTestTopMenuBar.TestReleaseOutsideAnItemRunsNothing;

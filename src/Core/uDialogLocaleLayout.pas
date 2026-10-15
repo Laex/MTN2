@@ -45,7 +45,7 @@ procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
 implementation
 
 uses
-  System.SysUtils, System.Math, uThemeTypes, uDialogRenderer;
+  System.SysUtils, System.Math, uThemeTypes, uDialogRenderer, uCharWidth;
 
 function ClientWidthOf(AWidth: Integer): Integer;
 begin
@@ -65,7 +65,7 @@ begin
     Start := I;
     while (I <= Length(AText)) and (AText[I] <> #10) and (AText[I] <> #13) do
       Inc(I);
-    N := I - Start;
+    N := TextDisplayWidth(Copy(AText, Start, I - Start));
     if N > Result then
       Result := N;
     if (I <= Length(AText)) and (AText[I] = #13) then
@@ -119,7 +119,7 @@ begin
   Result := 1 + AExtra;
   for I := 0 to High(AItems) do
   begin
-    N := Length(AItems[I]) + AExtra;
+    N := TextDisplayWidth(AItems[I]) + AExtra;
     if N > Result then
       Result := N;
   end;
@@ -129,7 +129,7 @@ function CaptionCells(const C: TDialogControl): Integer;
 begin
   case C.Kind of
     dckButton, dckCheckbox, dckRadio:
-      Result := Length(StripHotKeyMarker(C.Text)) + 4;
+      Result := TextDisplayWidth(StripHotKeyMarker(C.Text)) + 4;
     dckLabel, dckStatus:
       if IsRuleText(C.Text) then
         Result := Max(C.BoxW, 1)
@@ -140,7 +140,7 @@ begin
     dckDropDown, dckList:
       Result := MaxItemCells(C.Items, 1);
     dckRadioGroup:
-      Result := Max(MaxItemCells(C.Items, 4), Length(C.Text));
+      Result := Max(MaxItemCells(C.Items, 4), TextDisplayWidth(C.Text));
   else
     Result := Max(C.BoxW, 1);
   end;
@@ -154,7 +154,7 @@ begin
   if ATitle = '' then
     Result := 1
   else
-    Result := Length(ATitle) + 7;
+    Result := TextDisplayWidth(ATitle) + 7;
 end;
 
 const

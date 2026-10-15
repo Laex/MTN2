@@ -62,7 +62,7 @@ it is one more two-panel manager with its own habits.
 - **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, plugin VFS.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), file associations, F1 context help.
-- **Languages:** UI and help available in English, Russian, and German; language is selected in **Options → Font / Display...**
+- **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → Font / Display...**
   and applied on the fly without restarting; the first start uses the Windows language when a translation for it exists. A custom language is added as a `resource\<language>\` folder next to `MTN2.exe` (`locale.json`, `strings.json`, help in `help\`); no recompilation is needed. Only English is built into the program.
 - **Unicode:** CJK ideographs (BMP), Hiragana, Katakana, Hangul, and full-width forms
   render across console, panels, tabs, and headers in two columns; missing glyphs fall back to system fonts.
@@ -132,7 +132,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 | `src/tests` | DUnitX regression tests by group and test runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` project group, utility scripts |
 | `bin/win64`, `bin/linux64` | Build output by platform |
-| `bin/win64/resource` | Language packs: interface strings and F1 help (en/ru/de), bundled with the application |
+| `bin/win64/resource` | Language packs: interface strings and F1 help (en/ru/de/zh), bundled with the application |
 | `docs` | Developer documentation, screenshots (`docs/images`) |
 
 ## Documentation

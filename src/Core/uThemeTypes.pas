@@ -207,7 +207,7 @@ procedure PutGridHotTextClipped(const AGrid: TTerminalGrid; AX, AY, AMaxX: Integ
 implementation
 
 uses
-  System.SysUtils, System.Character;
+  System.SysUtils, System.Character, uCharWidth;
 
 function StripHotKeyMarker(const AText: string; out AHotPos: Integer): string;
 var
@@ -275,7 +275,7 @@ begin
   PutGridTextClipped(AGrid, AX, AY, AMaxX, Cap, AFg, ABg, AAttr);
   if P = 0 then
     Exit;
-  X := AX + P - 1;
+  X := AX + TextDisplayWidth(Copy(Cap, 1, P - 1));
   if X <= AMaxX then
     DrawGridChar(AGrid, X, AY, Cap[P], AHotFg, ABg, AAttr + AHotAttr);
 end;

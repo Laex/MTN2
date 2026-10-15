@@ -276,7 +276,7 @@ function TopMenuKeymapAction(AAction: TTopMenuAction): TKeymapAction;
 implementation
 
 uses
-  uInputLine;
+  uInputLine, uCharWidth;
 
 /// <summary>The keymap action a menu item runs, whose keys it shows as its
 /// shortcut; kaNone for items with no keymap action (their menu.json
@@ -1144,7 +1144,7 @@ begin
   // Calculate X position of top bar title
   X := 1;
   for I := 0 to FCategoryIndex - 1 do
-    Inc(X, Length(FCategories[I].Title) + 2);
+    Inc(X, TextDisplayWidth(FCategories[I].Title) + 2);
 
   MaxCapW := 10;
   MaxShortW := 0;
@@ -1152,7 +1152,7 @@ begin
   begin
     if Cat.Items[I].IsSeparator then
       Continue;
-    MaxCapW := Max(MaxCapW, Length(Cat.Items[I].Caption));
+    MaxCapW := Max(MaxCapW, TextDisplayWidth(Cat.Items[I].Caption));
     MaxShortW := Max(MaxShortW, Length(TopMenuItemShortcut(Cat.Items[I])));
   end;
 
@@ -1221,10 +1221,10 @@ begin
     // "this is a shortcut" colour across the whole menu instead of a
     // per-bar accent.
     if (FCategories[I].HotPos > 0) and (FCategories[I].HotPos <= Length(FCategories[I].Title)) then
-      PutGridText(AGrid, X + FCategories[I].HotPos, 0,
+      PutGridText(AGrid, X + 1 + TextDisplayWidth(Copy(FCategories[I].Title, 1, FCategories[I].HotPos - 1)), 0,
         FCategories[I].Title[FCategories[I].HotPos], cSubmenuHotFg, Bg, [ccaBold]);
 
-    Inc(X, Length(Title));
+    Inc(X, TextDisplayWidth(Title));
   end;
 
   // Render live clock at right side
@@ -1288,17 +1288,16 @@ begin
     if ShortText <> '' then
       CapW := Max(CapW - Length(ShortText) - 1, 4);
 
-    if Length(Cap) > CapW then
-      Cap := Copy(Cap, 1, CapW)
-    else
-      while Length(Cap) < CapW do
-        Cap := Cap + ' ';
+    if TextDisplayWidth(Cap) > CapW then
+      Cap := Copy(Cap, 1, TextFitChars(Cap, CapW));
+    while TextDisplayWidth(Cap) < CapW do
+      Cap := Cap + ' ';
 
     Line := ' ' + Cap;
     if ShortText <> '' then
       Line := Line + ' ' + ShortText;
 
-    while Length(Line) < InnerW do
+    while TextDisplayWidth(Line) < InnerW do
       Line := Line + ' ';
 
     IsSel := I = FSubmenuIndex;
@@ -1329,7 +1328,7 @@ begin
     // caption can point past an earlier occurrence of the same letter).
     if (Item.HotChar <> #0) and (Item.HotPos > 0) and (Item.HotPos <= Length(Cap))
       and IsItemEnabled(Item) then
-      PutGridText(AGrid, R.Left + 2 + Item.HotPos - 1, Y,
+      PutGridText(AGrid, R.Left + 2 + TextDisplayWidth(Copy(Item.Caption, 1, Item.HotPos - 1)), Y,
         Item.Caption[Item.HotPos], cSubmenuHotFg, Bg, [ccaBold]);
   end;
 end;
@@ -1548,7 +1547,7 @@ begin
   for I := 0 to High(FCategories) do
   begin
     Title := ' ' + FCategories[I].Title + ' ';
-    ItemW := Length(Title);
+    ItemW := TextDisplayWidth(Title);
     if (ACol >= X) and (ACol < X + ItemW) then
     begin
       if FActive and (FCategoryIndex = I) and FSubmenuOpen then
@@ -1593,7 +1592,7 @@ var
 begin
   Result := 1;
   for I := 0 to High(FCategories) do
-    Inc(Result, Length(FCategories[I].Title) + 2);
+    Inc(Result, TextDisplayWidth(FCategories[I].Title) + 2);
 end;
 
 function TTopMenuController.HandleClick(ACol, ARow: Integer): Boolean;

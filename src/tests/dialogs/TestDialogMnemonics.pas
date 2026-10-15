@@ -23,6 +23,7 @@ type
     [Test] procedure TestResourceHotKeysEnglish;
     [Test] procedure TestResourceHotKeysRussian;
     [Test] procedure TestResourceHotKeysGerman;
+    [Test] procedure TestResourceHotKeysChinese;
   end;
 
 implementation
@@ -227,6 +228,11 @@ end;
 procedure TTestDialogMnemonics.TestResourceHotKeysGerman;
 begin
   CheckResourceHotKeys('de');
+end;
+
+procedure TTestDialogMnemonics.TestResourceHotKeysChinese;
+begin
+  CheckResourceHotKeys('zh');
 end;
 
 initialization

@@ -13,6 +13,7 @@ type
   TTestSafePath = class
   public
     [Test] procedure TestPlainPathsFollowTPath;
+    [Test] procedure TestEmptyPathHasNoDirectory;
     [Test] procedure TestControlCharsInTheName;
     [Test] procedure TestControlCharsWithoutExtensionOrFolder;
     [Test] procedure TestCombineWithControlChars;
@@ -39,6 +40,13 @@ begin
     Assert.AreEqual(TPath.GetExtension(P), SafeExtension(P), P);
     Assert.AreEqual(TPath.GetDirectoryName(P), SafeDirectoryName(P), P);
   end;
+end;
+
+procedure TTestSafePath.TestEmptyPathHasNoDirectory;
+begin
+  // A virtual URI such as sys://folders has no local path; TPath.GetDirectoryName raises on it.
+  Assert.AreEqual('', SafeDirectoryName(''));
+  Assert.AreEqual('', SafeDirectoryName('   '));
 end;
 
 procedure TTestSafePath.TestControlCharsInTheName;

@@ -282,7 +282,7 @@ procedure DialogButtonCaptureRelease(AAbsCol, AAbsRow: Integer);
 implementation
 
 uses
-  System.Character, uKeyChord, uDialogLocaleLayout;
+  System.Character, uKeyChord, uDialogLocaleLayout, uCharWidth;
 
 const
   cWarningBodyBg = TAlphaColor($FFAA0000);
@@ -407,7 +407,7 @@ end;
 
 function ButtonCellWidth(const C: TDialogControl): Integer;
 begin
-  Result := Min(14, Max(Length(StripHotKeyMarker(C.Text)) + 6, 10));
+  Result := Min(14, Max(TextDisplayWidth(StripHotKeyMarker(C.Text)) + 6, 10));
 end;
 
 function RadioGroupValueOf(const C: TDialogControl): string;
@@ -904,9 +904,7 @@ begin
       Line := ''
     else
       Line := C.Items[Idx];
-    while Length(Line) < TextW do
-      Line := Line + ' ';
-    Line := Copy(Line, 1, Max(TextW, 1));
+    Line := PadGridLine(Line, Max(TextW, 1));
     ResolveRowHighlight(Idx = FDropHover, FrameFg, FrameBg, RowFg, RowBg);
     PutGridText(AGrid, Content.Left, Content.Top + J, Line, RowFg, RowBg);
   end;
@@ -975,9 +973,9 @@ function TDialogHost.PadGridLine(const AText: string; AWidth: Integer): string;
 begin
   if AWidth < 1 then
     Exit('');
-  if Length(AText) >= AWidth then
-    Exit(Copy(AText, 1, AWidth));
-  Result := AText + StringOfChar(' ', AWidth - Length(AText));
+  // AWidth is in cells: a wide character takes two.
+  Result := Copy(AText, 1, TextFitChars(AText, AWidth));
+  Result := Result + StringOfChar(' ', AWidth - TextDisplayWidth(Result));
 end;
 
 procedure TDialogHost.SelectRadio(AControlIndex: Integer);
@@ -1682,15 +1680,15 @@ begin
     dckButton:
       Result := ButtonCellWidth(C);
     dckCheckbox, dckRadio:
-      Result := Min(AClientW, Max(Length(StripHotKeyMarker(C.Text)) + 4, 8));
+      Result := Min(AClientW, Max(TextDisplayWidth(StripHotKeyMarker(C.Text)) + 4, 8));
     dckLabel, dckStatus:
-      Result := Min(AClientW, Max(Length(C.Text), 1));
+      Result := Min(AClientW, Max(TextDisplayWidth(C.Text), 1));
     dckDropDown:
       begin
         Result := 12;
         for I := 0 to High(C.Items) do
-          if Length(C.Items[I]) + 2 > Result then
-            Result := Length(C.Items[I]) + 2;
+          if TextDisplayWidth(C.Items[I]) + 2 > Result then
+            Result := TextDisplayWidth(C.Items[I]) + 2;
         Result := Min(AClientW, Max(Result, 8));
       end;
     dckColorPicker:
@@ -2000,9 +1998,10 @@ begin
       Line := C.Items[SelIdx]
     else
       Line := '';
-    Line := PadGridLine(Line, Max(R.Width, 1));
     if R.Width >= 2 then
-      Line[R.Width] := WideChar($2193); // ↓
+      Line := PadGridLine(Line, R.Width - 1) + WideChar($2193) // ↓
+    else
+      Line := PadGridLine(Line, Max(R.Width, 1));
     ResolveSelectedRowColors(RowFg, RowBg);
     PutGridText(AGrid, R.Left, R.Top, Line, RowFg, RowBg);
   end

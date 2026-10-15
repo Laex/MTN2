@@ -583,6 +583,10 @@ function SafeDirectoryName(const APath: string): string;
 var
   I: Integer;
 begin
+  // TPath.GetDirectoryName raises on an empty path; a virtual URI (sys://, tmp://)
+  // has no local path and so no directory.
+  if Trim(APath) = '' then
+    Exit('');
   if not HasRtlInvalidPathChars(APath) then
     Exit(TPath.GetDirectoryName(APath));
   I := LastPathSeparator(APath);

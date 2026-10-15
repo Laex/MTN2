@@ -11,6 +11,7 @@ uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestAnsiFrame in 'TestAnsiFrame.pas',
   TestCharWidth in 'TestCharWidth.pas',
+  TestChineseStrings in 'TestChineseStrings.pas',
   TestGermanStrings in 'TestGermanStrings.pas',
   TestConfigLocation in 'TestConfigLocation.pas',
   TestDescriptIon in 'TestDescriptIon.pas',

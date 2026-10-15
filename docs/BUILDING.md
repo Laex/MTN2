@@ -25,7 +25,7 @@
 останавливает упаковку, если её нет.
 
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
-Ресурсы `src/MTN2.dres` (диалоги, строки, клавиши, меню) в git не хранятся – их собирает `build.ps1`
+Ресурсы `src/MTN2.dres` (диалоги, клавиши, меню, темы) в git не хранятся – их собирает `build.ps1`
 (и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.
 
 Запуск: `bin\win64\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` – кадры и время кадра в заголовке, путь новой вкладкой, служебные `--wait-pid` и `--self-check`) – [ARCHITECTURE.md](ARCHITECTURE.md) §10.
