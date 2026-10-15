@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTN2 – двухпанельный файловый менеджер с терминалом</title>
+<meta name="description" content="Modern Terminal Navigator 2: двухпанельный файловый менеджер в духе DOS Navigator и Far Manager со встроенной консолью, терминалами, просмотрщиком, редактором и плагинами. Windows и Linux, открытый код.">
+<link rel="icon" href="../images/icon.png">
+<link rel="stylesheet" href="../style.css">
+<link rel="alternate" hreflang="en" href="../en/">
+<link rel="alternate" hreflang="ru" href="./">
+<link rel="alternate" hreflang="de" href="../de/">
+<link rel="alternate" hreflang="zh" href="../zh/">
+<meta property="og:title" content="MTN2 – двухпанельный файловый менеджер с терминалом">
+<meta property="og:description" content="Двухпанельный файловый менеджер в духе DOS Navigator и Far Manager. Windows и Linux, открытый код.">
+<meta property="og:image" content="https://laex.github.io/MTN2/images/mtn2-panels.png">
+<meta property="og:type" content="website">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
+    <nav class="links">
+      <a href="#features">Возможности</a>
+      <a href="#screenshots">Скриншоты</a>
+      <a href="#start">Как начать</a>
+      <a href="#projects">Другие проекты</a>
+      <a href="https://github.com/Laex/MTN2">GitHub</a>
+      <a href="../en/">English</a>
+      <span class="lang">Русский</span>
+      <a href="../de/">Deutsch</a>
+      <a href="../zh/">中文</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Двухпанельный менеджер файлов с настоящим терминалом</h1>
+      <p class="lead">Modern Terminal Navigator 2: привычные клавиши DOS Navigator и Far Manager, вкладки, консоль на ConPTY, просмотрщик, редактор и плагины. Интерфейс текстовый, окно обычное.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/Laex/MTN2/releases/latest">Скачать</a>
+        <a class="btn secondary" href="https://github.com/Laex/MTN2">Исходный код</a>
+      </div>
+      <p class="fine">Windows x64 и Linux x86-64 · Бесплатно, MPL-2.0 · Без установщика и прав администратора</p>
+    </div>
+    <div class="shot">
+      <img src="../images/mtn2-panels.png" alt="MTN2: две панели с вкладками, тема Far Classic" width="1216" height="513">
+    </div>
+  </div>
+
+  <section id="features">
+    <h2>Что умеет</h2>
+    <div class="cards">
+      <div class="card"><h3>Панели и вкладки</h3><p>Две панели с вкладками, режимы Brief и Full, быстрый поиск, живой фильтр, сравнение каталогов, избранные папки, длинные пути.</p></div>
+      <div class="card"><h3>Настоящий терминал</h3><p>Консоль на ConPTY: cmd, PowerShell, Git Bash, WSL, SSH. ANSI/VT, альтернативный экран для TUI-программ, рабочие пространства.</p></div>
+      <div class="card"><h3>Архивы как папки</h3><p>zip и 7z открываются как обычные каталоги. SFTP по SSH подключается как виртуальная файловая система.</p></div>
+      <div class="card"><h3>Просмотр и редактор</h3><p>Текст, hex, большие файлы потоком, просмотр Markdown с таблицами, быстрый просмотр на Ctrl+Q, редактор с подсветкой от плагинов.</p></div>
+      <div class="card"><h3>Фоновые операции</h3><p>Копирование, перенос и удаление идут заданиями с прогрессом, в том числе на кнопке в панели задач. Корзина, контрольные суммы, синхронизация.</p></div>
+      <div class="card"><h3>Клавиатура прежде всего</h3><p>Раскладка клавиш близка к Far Manager и целиком переопределяется файлом <code>keymap.json</code>. Меню пользователя на F2.</p></div>
+      <div class="card"><h3>Темы</h3><p>Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast. Свои темы собираются в редакторе тем, это обычные JSON-файлы.</p></div>
+      <div class="card"><h3>Плагины</h3><p>Нативные DLL и WebAssembly: свои файловые системы, панели, команды, пункты меню, привязки клавиш и подсветка.</p></div>
+      <div class="card"><h3>Unicode и языки</h3><p>CJK-иероглифы занимают две колонки, как в других терминалах. Интерфейс на русском, английском и немецком, язык меняется без перезапуска.</p></div>
+      <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> занимает весь терминал и работает по SSH и в tmux. <code>mtn2-sdl</code> показывает то же окно в SDL2 на X11 и Wayland.</p></div>
+      <div class="card"><h3>Переносимость</h3><p>Один каталог, никаких записей в реестре. В переносной версии настройки лежат рядом с <code>MTN2.exe</code>.</p></div>
+      <div class="card"><h3>Приватность</h3><p>Без телеметрии и облачных функций. Единственное обращение к сети – проверка новой версии на GitHub, её можно отключить.</p></div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <h2>Скриншоты</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-panels.png"><img loading="lazy" src="../images/mtn2-panels.png" alt="Панели с вкладками, тема Far Classic" width="1216" height="513"></a><figcaption>Панели с вкладками, тема Far Classic</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-archive.png"><img loading="lazy" src="../images/mtn2-archive.png" alt="Архив открыт как папка" width="1216" height="513"></a><figcaption>Архив открывается как папка</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-markdown.png"><img loading="lazy" src="../images/mtn2-markdown.png" alt="Просмотр Markdown с таблицей" width="1216" height="513"></a><figcaption>Просмотр Markdown с таблицами</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-editor.png"><img loading="lazy" src="../images/mtn2-editor.png" alt="Редактор с подсветкой JSON" width="1216" height="513"></a><figcaption>Редактор, подсветку даёт плагин</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-dracula.png"><img loading="lazy" src="../images/mtn2-dracula.png" alt="Тема Dracula" width="1216" height="473"></a><figcaption>Тема Dracula</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>Как начать</h2>
+    <ol class="steps">
+      <li><strong>Скачайте</strong> архив со страницы <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a>: <code>win64.zip</code> (настройки в <code>%APPDATA%\MTN2</code>), <code>win64-portable.zip</code> (всё рядом с программой), <code>linux-x64.tar.gz</code> или <code>.deb</code>.</li>
+      <li><strong>Распакуйте</strong> в любую папку и запустите <code>MTN2.exe</code>. В Linux: <code>./mtn2/install.sh</code> или <code>sudo apt install ./MTN2-*-linux-x64.deb</code>, затем <code>mtn2</code>.</li>
+      <li><strong>Нажмите F1</strong>: справка рассказывает про клавиши и настройки. Дальше программа обновляется сама (<kbd>≡</kbd> → Обновления) и всегда спрашивает перед установкой.</li>
+    </ol>
+    <p class="note">При первом запуске Windows SmartScreen может предупредить о неизвестном издателе: нажмите «Подробнее» → «Выполнить в любом случае». Контрольные суммы загрузок проверяются по SHA-256, подробности – в <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.md">FAQ</a>.</p>
+  </section>
+  <section id="projects">
+    <h2>Другие проекты</h2>
+    <div class="cards">
+      <a class="card" href="https://laex.github.io/Ghbdtn/ru/"><h3>Ghbdtn</h3><p>Автоматическое исправление раскладки клавиатуры RU/EN для Windows: ghbdtn становится «привет». Работает в фоне, без сети.</p></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/Laex/MTN2/blob/main/CHANGELOG.md">Что нового</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.md">Частые вопросы</a>
+    <a href="https://github.com/Laex/MTN2/discussions">Обсуждения</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/CONTRIBUTING.md">Участие в проекте</a>
+    <a href="https://habr.com/ru/articles/1087174/">Статья на Хабре</a>
+    <span>Лицензия <a href="https://github.com/Laex/MTN2/blob/main/LICENSE">MPL-2.0</a></span>
+  </div>
+</footer>
+</body>
+</html>

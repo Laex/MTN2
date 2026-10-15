@@ -5,9 +5,9 @@ on:
   # built here) runs nothing: no hosted minutes, no dev release.
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '*.md', 'samples/**']
+    paths-ignore: ['docs/**', 'site/**', '*.md', 'samples/**']
   pull_request:
-    paths-ignore: ['docs/**', '*.md', 'samples/**']
+    paths-ignore: ['docs/**', 'site/**', '*.md', 'samples/**']
   workflow_dispatch:
 
 permissions:

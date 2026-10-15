@@ -13,6 +13,7 @@ TrueType 폰트, 유니코드 및 32비트 트루컬러를 지원하는 Delphi F
 
 ![MTN2: 탭이 있는 듀얼 패널](docs/images/mtn2-panels.png)
 
+[프로젝트 웹사이트](https://laex.github.io/MTN2/en/)(영어) ·
 [최신 버전 다운로드](https://github.com/Laex/MTN2/releases/latest) ·
 [변경 사항](CHANGELOG.md) · [FAQ](docs/FAQ.md)(러시아어) · [기여 안내](CONTRIBUTING.md)(러시아어) ·
 [토론](https://github.com/Laex/MTN2/discussions) ·

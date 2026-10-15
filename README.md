@@ -13,6 +13,7 @@
 
 ![MTN2: панели с вкладками](docs/images/mtn2-panels.png)
 
+[Страница проекта](https://laex.github.io/MTN2/ru/) ·
 [Скачать последнюю версию](https://github.com/Laex/MTN2/releases/latest) ·
 [Что нового](CHANGELOG.md) · [Частые вопросы](docs/FAQ.md) · [Участие в проекте](CONTRIBUTING.md) ·
 [Обсуждения](https://github.com/Laex/MTN2/discussions) ·

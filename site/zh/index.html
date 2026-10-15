@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTN2 – 带真实终端的双面板文件管理器</title>
+<meta name="description" content="Modern Terminal Navigator 2：受 DOS Navigator 和 Far Manager 启发的双面板文件管理器，内置控制台、终端、查看器、编辑器和插件。支持 Windows 和 Linux，开源。">
+<link rel="icon" href="../images/icon.png">
+<link rel="stylesheet" href="../style.css">
+<link rel="alternate" hreflang="en" href="../en/">
+<link rel="alternate" hreflang="ru" href="../ru/">
+<link rel="alternate" hreflang="de" href="../de/">
+<link rel="alternate" hreflang="zh" href="./">
+<meta property="og:title" content="MTN2 – 带真实终端的双面板文件管理器">
+<meta property="og:description" content="受 DOS Navigator 和 Far Manager 启发的双面板文件管理器。支持 Windows 和 Linux，开源。">
+<meta property="og:image" content="https://laex.github.io/MTN2/images/mtn2-panels.png">
+<meta property="og:type" content="website">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
+    <nav class="links">
+      <a href="#features">功能</a>
+      <a href="#screenshots">截图</a>
+      <a href="#start">开始使用</a>
+      <a href="#projects">其他项目</a>
+      <a href="https://github.com/Laex/MTN2">GitHub</a>
+      <a href="../en/">English</a>
+      <a href="../ru/">Русский</a>
+      <a href="../de/">Deutsch</a>
+      <span class="lang">中文</span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <h1>带真实终端的双面板文件管理器</h1>
+      <p class="lead">Modern Terminal Navigator 2：沿用 DOS Navigator 和 Far Manager 熟悉的按键，提供标签页、基于 ConPTY 的控制台、查看器、编辑器和插件。界面是文本式的，窗口则是普通窗口。</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/Laex/MTN2/releases/latest">下载</a>
+        <a class="btn secondary" href="https://github.com/Laex/MTN2">源代码</a>
+      </div>
+      <p class="fine">Windows x64 和 Linux x86-64 · 免费，MPL-2.0 · 无需安装程序和管理员权限</p>
+    </div>
+    <div class="shot">
+      <img src="../images/mtn2-panels.png" alt="MTN2：带标签页的双面板，Far Classic 主题" width="1216" height="513">
+    </div>
+  </div>
+
+  <section id="features">
+    <h2>功能</h2>
+    <div class="cards">
+      <div class="card"><h3>面板与标签页</h3><p>双面板带标签页，Brief 和 Full 显示模式，快速搜索，实时过滤，目录比较，收藏文件夹，支持超长路径。</p></div>
+      <div class="card"><h3>真实的终端</h3><p>基于 ConPTY 的控制台：cmd、PowerShell、Git Bash、WSL、SSH。支持 ANSI/VT，TUI 程序使用的备用屏幕，以及终端工作区。</p></div>
+      <div class="card"><h3>压缩包当作文件夹</h3><p>zip 和 7z 像普通目录一样打开。通过 SSH 的 SFTP 作为虚拟文件系统挂载。</p></div>
+      <div class="card"><h3>查看器与编辑器</h3><p>文本、十六进制、大文件流式读取，带表格的 Markdown 预览，Ctrl+Q 快速查看，编辑器的语法高亮由插件提供。</p></div>
+      <div class="card"><h3>后台任务</h3><p>复制、移动和删除作为带进度的任务运行，进度也显示在任务栏按钮上。支持回收站、校验和、目录同步。</p></div>
+      <div class="card"><h3>键盘优先</h3><p>按键布局接近 Far Manager，可通过 <code>keymap.json</code> 完全自定义。F2 为用户菜单。</p></div>
+      <div class="card"><h3>主题</h3><p>Far Classic、Total Commander、Dracula、Nord、Solarized、High Contrast。可在主题编辑器中制作自己的主题，主题就是普通的 JSON 文件。</p></div>
+      <div class="card"><h3>插件</h3><p>原生 DLL 和 WebAssembly：自定义文件系统、面板、命令、菜单项、按键绑定和语法高亮。</p></div>
+      <div class="card"><h3>Unicode 与语言</h3><p>中日韩字符与其他终端一样占两列。界面提供英语、俄语和德语，切换语言无需重启。</p></div>
+      <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> 占满整个终端，可通过 SSH 和 tmux 使用。<code>mtn2-sdl</code> 在 X11 和 Wayland 下用 SDL2 显示同样的窗口。</p></div>
+      <div class="card"><h3>便携</h3><p>单个文件夹，不写注册表。便携版把设置保存在 <code>MTN2.exe</code> 旁边。</p></div>
+      <div class="card"><h3>隐私</h3><p>没有遥测，没有云功能。唯一的网络请求是在 GitHub 上检查更新，可以关闭。</p></div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <h2>截图</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-panels.png"><img loading="lazy" src="../images/mtn2-panels.png" alt="带标签页的面板，Far Classic 主题" width="1216" height="513"></a><figcaption>带标签页的面板，Far Classic 主题</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-archive.png"><img loading="lazy" src="../images/mtn2-archive.png" alt="作为文件夹打开的压缩包" width="1216" height="513"></a><figcaption>压缩包当作文件夹打开</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-markdown.png"><img loading="lazy" src="../images/mtn2-markdown.png" alt="带表格的 Markdown 预览" width="1216" height="513"></a><figcaption>带表格的 Markdown 预览</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-editor.png"><img loading="lazy" src="../images/mtn2-editor.png" alt="带 JSON 高亮的编辑器" width="1216" height="513"></a><figcaption>编辑器，高亮由插件提供</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-dracula.png"><img loading="lazy" src="../images/mtn2-dracula.png" alt="Dracula 主题" width="1216" height="473"></a><figcaption>Dracula 主题</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>开始使用</h2>
+    <ol class="steps">
+      <li><strong>下载：</strong>从 <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a> 页面获取压缩包：<code>win64.zip</code>（设置保存在 <code>%APPDATA%\MTN2</code>）、<code>win64-portable.zip</code>（全部放在程序旁边）、<code>linux-x64.tar.gz</code> 或 <code>.deb</code>。</li>
+      <li><strong>解压：</strong>解压到任意文件夹并运行 <code>MTN2.exe</code>。在 Linux 上：<code>./mtn2/install.sh</code> 或 <code>sudo apt install ./MTN2-*-linux-x64.deb</code>，然后运行 <code>mtn2</code>。</li>
+      <li><strong>按 F1：</strong>帮助介绍按键和设置。之后程序会自行更新（<kbd>≡</kbd> → 更新），安装前总会先询问。</li>
+    </ol>
+    <p class="note">首次运行时，Windows SmartScreen 可能提示未知发布者：点击“更多信息”→“仍要运行”。下载文件通过 SHA-256 校验，详见 <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a>（英文）。</p>
+  </section>
+  <section id="projects">
+    <h2>其他项目</h2>
+    <div class="cards">
+      <a class="card" href="https://laex.github.io/Ghbdtn/zh/"><h3>Ghbdtn</h3><p>Windows 上的 RU/EN 键盘布局自动纠正：ghbdtn 变成“привет”。后台运行，无需联网。</p></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/Laex/MTN2/blob/main/CHANGELOG.md">更新日志</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a>
+    <a href="https://github.com/Laex/MTN2/discussions">讨论</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/CONTRIBUTING.en.md">参与项目</a>
+    <span>许可证 <a href="https://github.com/Laex/MTN2/blob/main/LICENSE">MPL-2.0</a></span>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTN2 – Zwei-Fenster-Dateimanager mit echtem Terminal</title>
+<meta name="description" content="Modern Terminal Navigator 2: ein Zwei-Fenster-Dateimanager im Stil von DOS Navigator und Far Manager mit integrierter Konsole, Terminals, Viewer, Editor und Plugins. Windows und Linux, Open Source.">
+<link rel="icon" href="../images/icon.png">
+<link rel="stylesheet" href="../style.css">
+<link rel="alternate" hreflang="en" href="../en/">
+<link rel="alternate" hreflang="ru" href="../ru/">
+<link rel="alternate" hreflang="de" href="./">
+<link rel="alternate" hreflang="zh" href="../zh/">
+<meta property="og:title" content="MTN2 – Zwei-Fenster-Dateimanager mit echtem Terminal">
+<meta property="og:description" content="Ein Zwei-Fenster-Dateimanager im Stil von DOS Navigator und Far Manager. Windows und Linux, Open Source.">
+<meta property="og:image" content="https://laex.github.io/MTN2/images/mtn2-panels.png">
+<meta property="og:type" content="website">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
+    <nav class="links">
+      <a href="#features">Funktionen</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#start">Erste Schritte</a>
+      <a href="#projects">Weitere Projekte</a>
+      <a href="https://github.com/Laex/MTN2">GitHub</a>
+      <a href="../en/">English</a>
+      <a href="../ru/">Русский</a>
+      <span class="lang">Deutsch</span>
+      <a href="../zh/">中文</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Ein Zwei-Fenster-Dateimanager mit echtem Terminal</h1>
+      <p class="lead">Modern Terminal Navigator 2: die vertrauten Tasten von DOS Navigator und Far Manager, Tabs, eine ConPTY-Konsole, Viewer, Editor und Plugins. Die Oberfläche ist textbasiert, das Fenster ein normales.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/Laex/MTN2/releases/latest">Herunterladen</a>
+        <a class="btn secondary" href="https://github.com/Laex/MTN2">Quellcode</a>
+      </div>
+      <p class="fine">Windows x64 und Linux x86-64 · Kostenlos, MPL-2.0 · Ohne Installer und Administratorrechte</p>
+    </div>
+    <div class="shot">
+      <img src="../images/mtn2-panels.png" alt="MTN2: zwei Fenster mit Tabs, Far-Classic-Thema" width="1216" height="513">
+    </div>
+  </div>
+
+  <section id="features">
+    <h2>Funktionen</h2>
+    <div class="cards">
+      <div class="card"><h3>Fenster und Tabs</h3><p>Zwei Fenster mit Tabs, Brief- und Full-Modus, Schnellsuche, Live-Filter, Ordnervergleich, Favoriten, lange Pfade.</p></div>
+      <div class="card"><h3>Ein echtes Terminal</h3><p>Konsole auf ConPTY: cmd, PowerShell, Git Bash, WSL, SSH. ANSI/VT, alternativer Bildschirm für TUI-Programme, Terminal-Arbeitsbereiche.</p></div>
+      <div class="card"><h3>Archive als Ordner</h3><p>zip und 7z öffnen sich wie gewöhnliche Verzeichnisse. SFTP über SSH wird als virtuelles Dateisystem eingebunden.</p></div>
+      <div class="card"><h3>Viewer und Editor</h3><p>Text, Hex, große Dateien als Stream, Markdown-Vorschau mit Tabellen, Schnellansicht mit Strg+Q, Editor mit Syntaxhervorhebung per Plugin.</p></div>
+      <div class="card"><h3>Hintergrundaufgaben</h3><p>Kopieren, Verschieben und Löschen laufen als Aufgaben mit Fortschritt, auch auf der Taskleistenschaltfläche. Papierkorb, Prüfsummen, Ordnersynchronisation.</p></div>
+      <div class="card"><h3>Tastatur zuerst</h3><p>Die Tastenbelegung ähnelt Far Manager und lässt sich über <code>keymap.json</code> vollständig ändern. Benutzermenü auf F2.</p></div>
+      <div class="card"><h3>Themen</h3><p>Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast. Eigene Themen entstehen im Themen-Editor, es sind einfache JSON-Dateien.</p></div>
+      <div class="card"><h3>Plugins</h3><p>Native DLLs und WebAssembly: eigene Dateisysteme, Fenster, Befehle, Menüpunkte, Tastenbelegungen und Hervorhebung.</p></div>
+      <div class="card"><h3>Unicode und Sprachen</h3><p>CJK-Zeichen belegen zwei Spalten wie in anderen Terminals. Die Oberfläche gibt es auf Englisch, Russisch und Deutsch, der Wechsel erfolgt ohne Neustart.</p></div>
+      <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> füllt das ganze Terminal und läuft über SSH und in tmux. <code>mtn2-sdl</code> zeigt dasselbe Fenster in SDL2 unter X11 und Wayland.</p></div>
+      <div class="card"><h3>Portabel</h3><p>Ein Ordner, keine Registry-Einträge. Die portable Version legt ihre Einstellungen neben <code>MTN2.exe</code> ab.</p></div>
+      <div class="card"><h3>Datenschutz</h3><p>Keine Telemetrie, keine Cloud-Funktionen. Die einzige Netzwerkanfrage ist die Update-Prüfung auf GitHub, sie lässt sich abschalten.</p></div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <h2>Screenshots</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-panels.png"><img loading="lazy" src="../images/mtn2-panels.png" alt="Fenster mit Tabs, Far-Classic-Thema" width="1216" height="513"></a><figcaption>Fenster mit Tabs, Far-Classic-Thema</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-archive.png"><img loading="lazy" src="../images/mtn2-archive.png" alt="Archiv als Ordner geöffnet" width="1216" height="513"></a><figcaption>Ein Archiv öffnet sich als Ordner</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-markdown.png"><img loading="lazy" src="../images/mtn2-markdown.png" alt="Markdown-Vorschau mit Tabelle" width="1216" height="513"></a><figcaption>Markdown-Vorschau mit Tabellen</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-editor.png"><img loading="lazy" src="../images/mtn2-editor.png" alt="Editor mit JSON-Hervorhebung" width="1216" height="513"></a><figcaption>Der Editor, die Hervorhebung liefert ein Plugin</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-dracula.png"><img loading="lazy" src="../images/mtn2-dracula.png" alt="Dracula-Thema" width="1216" height="473"></a><figcaption>Dracula-Thema</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>Erste Schritte</h2>
+    <ol class="steps">
+      <li><strong>Laden Sie</strong> ein Archiv von der Seite <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a> herunter: <code>win64.zip</code> (Einstellungen in <code>%APPDATA%\MTN2</code>), <code>win64-portable.zip</code> (alles neben dem Programm), <code>linux-x64.tar.gz</code> oder <code>.deb</code>.</li>
+      <li><strong>Entpacken Sie</strong> es in einen beliebigen Ordner und starten Sie <code>MTN2.exe</code>. Unter Linux: <code>./mtn2/install.sh</code> oder <code>sudo apt install ./MTN2-*-linux-x64.deb</code>, dann <code>mtn2</code>.</li>
+      <li><strong>Drücken Sie F1</strong>: Die Hilfe erklärt Tasten und Einstellungen. Danach aktualisiert sich das Programm selbst (<kbd>≡</kbd> → Updates) und fragt vor der Installation immer nach.</li>
+    </ol>
+    <p class="note">Beim ersten Start warnt Windows SmartScreen möglicherweise vor einem unbekannten Herausgeber: „Weitere Informationen“ → „Trotzdem ausführen“. Downloads werden per SHA-256 geprüft, Details in den <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a> (englisch).</p>
+  </section>
+  <section id="projects">
+    <h2>Weitere Projekte</h2>
+    <div class="cards">
+      <a class="card" href="https://laex.github.io/Ghbdtn/de/"><h3>Ghbdtn</h3><p>Automatische RU/EN-Layout-Korrektur für Windows: ghbdtn wird zu „привет“. Läuft im Hintergrund, offline.</p></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/Laex/MTN2/blob/main/CHANGELOG.md">Neuigkeiten</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a>
+    <a href="https://github.com/Laex/MTN2/discussions">Diskussionen</a>
+    <a href="https://github.com/Laex/MTN2/blob/main/CONTRIBUTING.en.md">Mitmachen</a>
+    <span>Lizenz <a href="https://github.com/Laex/MTN2/blob/main/LICENSE">MPL-2.0</a></span>
+  </div>
+</footer>
+</body>
+</html>

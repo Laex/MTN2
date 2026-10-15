@@ -13,6 +13,7 @@ occupy two columns, matching standard terminal behavior.
 
 ![MTN2: panels with tabs](docs/images/mtn2-panels.png)
 
+[Project website](https://laex.github.io/MTN2/en/) ·
 [Download the latest version](https://github.com/Laex/MTN2/releases/latest) ·
 [What's new](CHANGELOG.md) · [FAQ](docs/FAQ.en.md) · [Contributing](CONTRIBUTING.en.md) ·
 [Discussions](https://github.com/Laex/MTN2/discussions) ·

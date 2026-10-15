@@ -9,6 +9,7 @@
 
 ![MTN2：带标签页的双面板](docs/images/mtn2-panels.png)
 
+[项目主页](https://laex.github.io/MTN2/zh/) ·
 [下载最新版本](https://github.com/Laex/MTN2/releases/latest) ·
 [更新日志](CHANGELOG.md) · [常见问题](docs/FAQ.md)（俄语） · [参与贡献](CONTRIBUTING.md)（俄语） ·
 [讨论区](https://github.com/Laex/MTN2/discussions) ·
