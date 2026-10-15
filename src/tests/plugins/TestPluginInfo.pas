@@ -49,6 +49,18 @@ begin
   Assert.IsTrue((ManifestDescription(M, 'en') = '') and (M.Author = ''), 'wrong types are ignored');
 end;
 
+/// <summary>Path of the page help.md in the plugin pack ADir\resource\<locale>\help.</summary>
+function HelpPagePath(const ADir, ALocale: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(PluginResourceDir(ADir, ALocale), 'help'), 'help.md');
+end;
+
+procedure WritePage(const ADir, ALocale, AText: string);
+begin
+  TDirectory.CreateDirectory(ExtractFilePath(HelpPagePath(ADir, ALocale)));
+  TFile.WriteAllText(HelpPagePath(ADir, ALocale), AText, TEncoding.UTF8);
+end;
+
 procedure TestManifestHelpFileStaysInThePluginFolder;
 var
   Dir: string;
@@ -57,11 +69,12 @@ begin
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-help-' + IntToStr(Random(MaxInt)));
   TDirectory.CreateDirectory(Dir);
   try
-    TFile.WriteAllText(TPath.Combine(Dir, 'help.md'), '# Help');
-    TFile.WriteAllText(TPath.Combine(Dir, 'help.ru.md'), '# Справка', TEncoding.UTF8);
+    WritePage(Dir, 'en', '# Help');
+    WritePage(Dir, 'ru', '# Справка');
+    TFile.WriteAllText(TPath.Combine(Dir, 'help.md'), '# Not a pack page');
     TryParsePluginManifestJson('{"id":"x","help":"help.md"}', M);
-    Assert.IsTrue(ManifestHelpFile(M, Dir, 'ru') = TPath.Combine(Dir, 'help.ru.md'), 'the language''s page first');
-    Assert.IsTrue(ManifestHelpFile(M, Dir, 'de') = TPath.Combine(Dir, 'help.md'), 'then the page as named');
+    Assert.IsTrue(ManifestHelpFile(M, Dir, 'ru') = HelpPagePath(Dir, 'ru'), 'the language''s page first');
+    Assert.IsTrue(ManifestHelpFile(M, Dir, 'de') = HelpPagePath(Dir, 'en'), 'then the English page');
     Assert.IsTrue(ManifestHelpFile(M, '', 'en') = '', 'no folder');
     TryParsePluginManifestJson('{"id":"x","help":"missing.md"}', M);
     Assert.IsTrue(ManifestHelpFile(M, Dir, 'en') = '', 'a missing page is not offered');
@@ -134,12 +147,12 @@ begin
     TFile.WriteAllText(TPath.Combine(Dir, 'plugin.json'),
       '{"id":"t.info","name":"Info plugin","version":"1.2","description":"Does useful things.",' +
       '"author":"Somebody","help":"help.md"}', TEncoding.UTF8);
-    TFile.WriteAllText(TPath.Combine(Dir, 'help.md'), '# Help');
+    WritePage(Dir, 'en', '# Help');
     RegisterSomething('t.info');
     Info := BuildPluginInfo('t.info', Dir);
     Assert.IsTrue((Info.Name = 'Info plugin') and (Info.Version = '1.2'), 'name and version');
     Assert.IsTrue(Info.Description = 'Does useful things.', 'description');
-    Assert.IsTrue(Info.HelpFile = TPath.Combine(Dir, 'help.md'), 'help page');
+    Assert.IsTrue(Info.HelpFile = HelpPagePath(Dir, 'en'), 'help page');
     Assert.IsTrue(Info.HasSettings, 'settings noticed');
     Assert.IsTrue(Length(Info.Provides) >= 6, 'the registrations are listed: ' + Joined(Info.Provides));
     Text := Joined(PluginInfoLines(Info, 60));

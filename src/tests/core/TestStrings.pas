@@ -3,11 +3,10 @@
 { Characterization tests for uStrings.pas (the UI-translation mechanism)
   and its two hooks: uDialogResources.TryLoadDialogResource's static-caption
   translation pass, and TTopMenuController.LoadMenuFromJson's menu-caption/
-  category-title translation. Exercises the real embedded STRINGS_RU
-  resource (strings/ru.json) against the real embedded DIALOG_CONFIRM/
-  DIALOG_ASKSAVE dialogs, plus a temp on-disk locale for the loose-file
-  override path and the Format-argument-mismatch fallback, which nothing
-  shipped exercises on its own. }
+  category-title translation. Exercises the shipped resource\ru pack
+  against the real embedded DIALOG_CONFIRM/DIALOG_ASKSAVE dialogs, plus temp
+  pack folders for the pack version control and the Format-argument-mismatch
+  fallback, which nothing shipped exercises on its own. }
 
 interface
 
@@ -20,10 +19,12 @@ type
   public
     [Test] procedure TestLocaleBasics;
     [Test] procedure TestAvailableLocales;
+    [Test] procedure TestPickLocale;
+    [Test] procedure TestSystemDefaultLocaleIsAvailable;
     [Test] procedure TestPlainLookup;
     [Test] procedure TestFormatArgs;
-    [Test] procedure TestLooseFileOverrideAndBadFormatFallback;
-    [Test] procedure TestLooseFileLayersOverEmbedded;
+    [Test] procedure TestPackLoadsFromResourceRootAndBadFormatFallback;
+    [Test] procedure TestPackVersionControl;
     [Test] procedure TestDialogTranslationEn;
     [Test] procedure TestDialogTranslationRu;
     [Test] procedure TestDialogTranslationBroadSweep;
@@ -91,7 +92,7 @@ begin
     if SameText(Locales[I], 'ru') then HasRu := True;
   end;
   Assert.IsTrue(HasEn, 'en is always listed');
-  Assert.IsTrue(HasRu, 'ru is discovered from the embedded STRINGS_RU resource');
+  Assert.IsTrue(HasRu, 'ru is discovered from the shipped resource\ru pack');
   Assert.IsTrue(SameText(Locales[0], 'en'), 'en is always first');
 end;
 
@@ -105,7 +106,7 @@ begin
   Assert.IsTrue(T('menu.tmaFileCopy', 'Copy') = '&Копировать',
     'a real key translates once ru is active (raw, with its menu mnemonic marker)');
   Assert.IsTrue(T('this.key.does.not.exist', 'Fallback') = 'Fallback',
-    'a key absent from ru.json still falls back to ADefault (partial translation never shows a raw key)');
+    'a key absent from the ru pack still falls back to ADefault (partial translation never shows a raw key)');
   SetLocale('en');
 end;
 
@@ -121,53 +122,126 @@ begin
   SetLocale('en');
 end;
 
-procedure TestLooseFileOverrideAndBadFormatFallback;
+/// <summary>Writes a locale pack ARoot\ALocale with the given locale.json
+/// version (a negative AVersion writes no locale.json) and strings.json text.</summary>
+procedure WritePack(const ARoot, ALocale: string; AVersion: Integer; const AStrings: string);
 var
-  Dir, FilePath: string;
+  Dir: string;
 begin
-  Dir := TPath.Combine(ExtractFilePath(ParamStr(0)), 'strings');
+  Dir := TPath.Combine(ARoot, ALocale);
   ForceDirectories(Dir);
-  FilePath := TPath.Combine(Dir, 'zz.json');
+  if AVersion >= 0 then
+    TFile.WriteAllText(TPath.Combine(Dir, 'locale.json'),
+      '{"version":' + IntToStr(AVersion) + ',"name":"Zed"}', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(Dir, 'strings.json'), AStrings, TEncoding.UTF8);
+end;
+
+function TempPackRoot: string;
+begin
+  Result := TPath.Combine(TPath.GetTempPath, 'mtn2-packs-' + TGUID.NewGuid.ToString);
+  ForceDirectories(Result);
+end;
+
+function HasLocale(const ALocale: string): Boolean;
+var
+  Have: string;
+begin
+  Result := False;
+  for Have in AvailableLocales do
+    if SameText(Have, ALocale) then
+      Exit(True);
+end;
+
+procedure TestPackLoadsFromResourceRootAndBadFormatFallback;
+var
+  Root, Saved: string;
+begin
+  Root := TempPackRoot;
+  Saved := ResourceRoot;
   // "zz.badfmt" asks for two args but T() below only supplies one -- unlike
   // an unused extra arg (which Format() tolerates silently), a placeholder
   // with nothing to fill it raises EConvertError, which T() must catch and
   // recover from by formatting ADefault instead of propagating it.
-  TFile.WriteAllText(FilePath,
-    '{"zz":{"ok":"ZZ-OK","badfmt":"%d and %d"}}', TEncoding.UTF8);
+  WritePack(Root, 'zz', ResourceVersion, '{"zz":{"ok":"ZZ-OK","badfmt":"%d and %d"}}');
   try
+    SetResourceRoot(Root);
     SetLocale('zz');
-    Assert.IsTrue(CurrentLocale = 'zz', 'switched to the on-disk-only locale');
-    Assert.IsTrue(T('zz.ok', 'fallback') = 'ZZ-OK',
-      'a locale with no embedded STRINGS_ZZ resource still loads from strings\zz.json next to the exe');
+    Assert.IsTrue(CurrentLocale = 'zz', 'switched to a locale that only exists as a pack folder');
+    Assert.IsTrue(T('zz.ok', 'fallback') = 'ZZ-OK', 'the pack''s strings.json is read');
+    Assert.IsTrue(T('zz.missing', 'fallback') = 'fallback', 'a key the pack lacks gives the default');
     Assert.IsTrue(T('zz.badfmt', 'value: %d', [42]) = 'value: 42',
       'a translated string whose placeholders don''t match AArgs formats ADefault instead of raising');
+    Assert.IsTrue(HasLocale('zz'), 'the pack is offered in the picker');
   finally
     SetLocale('en');
-    TFile.Delete(FilePath);
+    SetResourceRoot(Saved);
+    TDirectory.Delete(Root, True);
   end;
 end;
 
-procedure TestLooseFileLayersOverEmbedded;
+procedure TestPackVersionControl;
 var
-  Dir, FilePath: string;
+  Root, Saved: string;
+  Exe: Integer;
+  Pack: TStringPack;
 begin
-  Dir := TPath.Combine(ExtractFilePath(ParamStr(0)), 'strings');
-  ForceDirectories(Dir);
-  FilePath := TPath.Combine(Dir, 'ru.json');
-  Assert.IsFalse(TFile.Exists(FilePath), 'no stray strings\ru.json next to the test exe');
-  TFile.WriteAllText(FilePath,
-    '{"menu":{"tmaFileCopy":"COPY-FIX"},"zz":{"extra":"ZZ-EXTRA"}}', TEncoding.UTF8);
+  Exe := ResourceVersion;
+  Assert.IsTrue(Exe > 0, 'the exe carries RESOURCE_VERSION');
+  Root := TempPackRoot;
+  Saved := ResourceRoot;
+  WritePack(Root, 'cur', Exe, '{"k":"CUR"}');
+  WritePack(Root, 'old', Exe - 1, '{"k":"OLD"}');
+  WritePack(Root, 'new', Exe + 1, '{"k":"NEW"}');
+  WritePack(Root, 'nover', -1, '{"k":"NOVER"}');
+  TDirectory.CreateDirectory(TPath.Combine(Root, 'bad'));
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(Root, 'bad'), 'locale.json'), '{"version":"x"}');
   try
-    SetLocale('ru');
-    Assert.IsTrue(T('menu.tmaFileCopy', 'Copy') = 'COPY-FIX',
-      'a key in the loose strings\ru.json overrides the embedded STRINGS_RU text');
-    Assert.IsTrue(T('menu.tmaFileMove', 'Move') = 'П&ереместить',
-      'a key the loose file lacks keeps the embedded translation, not English');
-    Assert.IsTrue(T('zz.extra', 'fallback') = 'ZZ-EXTRA',
-      'a key only the loose file has is added');
+    SetResourceRoot(Root);
+    Assert.IsTrue(LocalePackInfo('cur').Status = lpsCurrent, 'same version: current');
+    Assert.IsTrue(LocalePackInfo('old').Status = lpsOlder, 'older version: older');
+    Assert.IsTrue(LocalePackInfo('new').Status = lpsNewer, 'newer version: newer');
+    Assert.IsTrue(LocalePackInfo('nover').Status = lpsMissing, 'no locale.json: missing');
+    Assert.IsTrue(LocalePackInfo('bad').Status = lpsInvalid, 'non-numeric version: invalid');
+    Assert.AreEqual('Zed', LocalePackInfo('cur').Name, 'display name comes from locale.json');
+
+    SetLocale('old');
+    Assert.AreEqual('OLD', T('k', 'en'), 'an older pack is still applied');
+    Assert.AreEqual('en', T('other', 'en'), 'and keys it lacks show English');
+    SetLocale('new');
+    Assert.AreEqual('en', T('k', 'en'), 'a newer pack is ignored');
+    SetLocale('nover');
+    Assert.AreEqual('en', T('k', 'en'), 'a folder without locale.json is ignored');
+    SetLocale('en');
+
+    Assert.IsTrue(HasLocale('old'), 'older pack is offered');
+    Assert.IsFalse(HasLocale('new'), 'newer pack is not offered');
+    Assert.IsFalse(HasLocale('nover'), 'pack without locale.json is not offered');
+    Assert.IsFalse(HasLocale('bad'), 'invalid pack is not offered');
+
+    // A plugin pack is checked against the plugin's own revision, and 0 means
+    // the plugin declares none.
+    Pack := TStringPack.Create(Root, 'new', Exe + 1);
+    try
+      Assert.AreEqual('NEW', Pack.Lookup('k', 'en'), 'pack matching the plugin revision applies');
+    finally
+      Pack.Free;
+    end;
+    Pack := TStringPack.Create(Root, 'new', 0);
+    try
+      Assert.AreEqual('NEW', Pack.Lookup('k', 'en'), 'expected version 0 accepts any pack');
+    finally
+      Pack.Free;
+    end;
+    Pack := TStringPack.Create(Root, 'new', Exe);
+    try
+      Assert.AreEqual('en', Pack.Lookup('k', 'en'), 'pack newer than the plugin revision is ignored');
+    finally
+      Pack.Free;
+    end;
   finally
     SetLocale('en');
-    TFile.Delete(FilePath);
+    SetResourceRoot(Saved);
+    TDirectory.Delete(Root, True);
   end;
 end;
 
@@ -361,6 +435,43 @@ begin
   TestStrings.TestAvailableLocales;
 end;
 
+procedure TTestStrings.TestPickLocale;
+var
+  Have, Empty: TArray<string>;
+begin
+  SetLength(Empty, 0);
+  Have := TArray<string>.Create('en', 'ru', 'de', 'zh');
+  Assert.AreEqual('ru', PickLocale(TArray<string>.Create('ru-RU'), Have), 'region dropped');
+  Assert.AreEqual('ru', PickLocale(TArray<string>.Create('ru'), Have), 'bare language');
+  Assert.AreEqual('de', PickLocale(TArray<string>.Create('DE_at'), Have), 'case and underscore');
+  Assert.AreEqual('zh', PickLocale(TArray<string>.Create('zh-Hans-CN'), Have), 'script and region dropped');
+  Assert.AreEqual('en', PickLocale(TArray<string>.Create('fr-FR'), Have), 'no translation: English');
+  Assert.AreEqual('en', PickLocale(Empty, Have), 'nothing known: English');
+  Assert.AreEqual('en', PickLocale(TArray<string>.Create('ru-RU'), TArray<string>.Create('en')),
+    'language without a strings file: English');
+  Assert.AreEqual('ru', PickLocale(TArray<string>.Create('fr-FR', 'ru-RU', 'de-DE'), Have),
+    'the first preferred language that has a translation');
+  Assert.AreEqual('en', PickLocale(TArray<string>.Create('en-US', 'ru-RU'), Have),
+    'English ahead of the others stays English');
+  Assert.AreEqual('zh-tw', PickLocale(TArray<string>.Create('zh-TW'),
+    TArray<string>.Create('en', 'zh', 'zh-tw')), 'the whole tag wins over the language');
+  Assert.AreEqual('zh', PickLocale(TArray<string>.Create('zh-HK'),
+    TArray<string>.Create('en', 'zh', 'zh-tw')), 'falls back to the language');
+end;
+
+procedure TTestStrings.TestSystemDefaultLocaleIsAvailable;
+var
+  Locale, Have: string;
+  Found: Boolean;
+begin
+  Locale := SystemDefaultLocale;
+  Found := False;
+  for Have in AvailableLocales do
+    if SameText(Have, Locale) then
+      Found := True;
+  Assert.IsTrue(Found, 'the default locale has strings: ' + Locale);
+end;
+
 procedure TTestStrings.TestPlainLookup;
 begin
   TestStrings.TestPlainLookup;
@@ -371,14 +482,14 @@ begin
   TestStrings.TestFormatArgs;
 end;
 
-procedure TTestStrings.TestLooseFileOverrideAndBadFormatFallback;
+procedure TTestStrings.TestPackLoadsFromResourceRootAndBadFormatFallback;
 begin
-  TestStrings.TestLooseFileOverrideAndBadFormatFallback;
+  TestStrings.TestPackLoadsFromResourceRootAndBadFormatFallback;
 end;
 
-procedure TTestStrings.TestLooseFileLayersOverEmbedded;
+procedure TTestStrings.TestPackVersionControl;
 begin
-  TestStrings.TestLooseFileLayersOverEmbedded;
+  TestStrings.TestPackVersionControl;
 end;
 
 procedure TTestStrings.TestDialogTranslationEn;

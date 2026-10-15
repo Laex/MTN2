@@ -63,7 +63,7 @@ it is one more two-panel manager with its own habits.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), file associations, F1 context help.
 - **Languages:** UI and help available in English, Russian, and German; language is selected in **Options → Font / Display...**
-  and applied on the fly without restarting. Custom languages can be added via `strings\<language>.json` placed next to `MTN2.exe`.
+  and applied on the fly without restarting; the first start uses the Windows language when a translation for it exists. A custom language is added as a `resource\<language>\` folder next to `MTN2.exe` (`locale.json`, `strings.json`, help in `help\`); no recompilation is needed. Only English is built into the program.
 - **Unicode:** CJK ideographs (BMP), Hiragana, Katakana, Hangul, and full-width forms
   render across console, panels, tabs, and headers in two columns; missing glyphs fall back to system fonts.
 - **Plugins:** native DLLs and WebAssembly (via Wasmtime) – custom VFS schemes and dedicated panels, menu items,
@@ -127,12 +127,12 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 | `src/Core` | Core engine: panels, VFS, console, editor, dialogs, plugin host |
 | `src/Platform` | Platform abstraction layer: `Windows` and `Posix` modules |
 | `src/Hosts` | Shell hosts: `Ansi` – text terminal version |
-| `src/Forms`, `src/dialogs`, `src/strings`, `src/Assets/themes` | Main form, JSON dialogs, localization, built-in themes |
+| `src/Forms`, `src/dialogs`, `src/Assets/themes` | Main form, JSON dialogs, built-in themes |
 | `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM demo) |
 | `src/tests` | DUnitX regression tests by group and test runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` project group, utility scripts |
 | `bin/win64`, `bin/linux64` | Build output by platform |
-| `bin/win64/help` | F1 help files (en/ru/de), bundled with the application |
+| `bin/win64/resource` | Language packs: interface strings and F1 help (en/ru/de), bundled with the application |
 | `docs` | Developer documentation, screenshots (`docs/images`) |
 
 ## Documentation
@@ -158,7 +158,7 @@ MTN2 was developed with the assistance of AI coding assistants, including in-hou
 - Roadmap tracking and task planning;
 - Most source code comments;
 - DUnitX regression tests (`src/tests`);
-- User-facing text documentation: F1 help (`bin/win64/help`), [CHANGELOG.md](CHANGELOG.md), and release notes.
+- User-facing text documentation: F1 help (`bin/win64/resource/<language>/help`), [CHANGELOG.md](CHANGELOG.md), and release notes.
 
 ## License
 

@@ -89,6 +89,18 @@ procedure PluginShowMessage(const AText: string; AKind: Integer);
 /// <summary>JSON about the program: version, language.</summary>
 function PluginHostInfoJson: string;
 
+/// <summary>Tells the host where the plugin keeps its language packs
+/// (APluginDir\resource\<locale>\strings.json) and which pack revision it was
+/// written for (0 = it declares none and any pack is accepted).</summary>
+procedure PluginSetResources(const APluginId, APluginDir: string; AResourceVersion: Integer);
+/// <summary>The text of AKey from the plugin's pack for the program language, or
+/// ADefault (the plugin's English text) when the language is English, the plugin
+/// has no usable pack or the pack lacks the key.</summary>
+function PluginTranslate(const APluginId, AKey, ADefault: string): string;
+/// <summary>Publishes "language.changed" ({"language":"ru"}) after the program
+/// language was switched, so a plugin can rebuild the texts it already showed.</summary>
+procedure PluginAnnounceLanguage;
+
 /// <summary>Calls AHandler for every event of ATopic ("*" = all). The same
 /// plugin subscribing to the same topic again replaces its handler.</summary>
 procedure PluginSubscribe(const APluginId, ATopic: string; const AHandler: TPluginEventHandler);
@@ -116,7 +128,7 @@ implementation
 
 uses
   System.Classes, System.Rtti, System.SyncObjs, System.Math, System.Generics.Collections,
-  System.JSON,
+  System.IOUtils, System.JSON,
   uClipboardService,
   uNotice, uStrings, uUpdater;
 
@@ -127,12 +139,30 @@ type
     Handler: TPluginEventHandler;
   end;
 
+  /// <summary>Where one plugin's language packs are, and the pack loaded for
+  /// PackLocale.</summary>
+  TPluginResources = class
+  public
+    RootDir: string;
+    Version: Integer;
+    PackLocale: string;
+    Pack: TStringPack;
+    destructor Destroy; override;
+  end;
+
 var
   GServices: TPluginHostServices;
   GSubscriptions: TList<TSubscription>;
+  GResources: TObjectDictionary<string, TPluginResources>;
   // Changes when a plugin goes; work posted by that plugin earlier is dropped.
   GGenerations: TDictionary<string, Integer>;
   GGenerationLock: TCriticalSection;
+
+destructor TPluginResources.Destroy;
+begin
+  Pack.Free;
+  inherited;
+end;
 
 procedure SetPluginHostServices(const AServices: TPluginHostServices);
 begin
@@ -255,6 +285,47 @@ begin
   end;
 end;
 
+procedure PluginSetResources(const APluginId, APluginDir: string; AResourceVersion: Integer);
+var
+  Res: TPluginResources;
+begin
+  Res := TPluginResources.Create;
+  Res.RootDir := TPath.Combine(APluginDir, 'resource');
+  Res.Version := AResourceVersion;
+  GResources.AddOrSetValue(LowerCase(Trim(APluginId)), Res);
+end;
+
+function PluginTranslate(const APluginId, AKey, ADefault: string): string;
+var
+  Res: TPluginResources;
+begin
+  Result := ADefault;
+  if SameText(CurrentLocale, 'en') or not GResources.TryGetValue(LowerCase(Trim(APluginId)), Res) then
+    Exit;
+  // The pack is read again whenever the program language differs from the one
+  // it was read for.
+  if (Res.Pack = nil) or not SameText(Res.PackLocale, CurrentLocale) then
+  begin
+    Res.Pack.Free;
+    Res.PackLocale := CurrentLocale;
+    Res.Pack := TStringPack.Create(Res.RootDir, CurrentLocale, Res.Version);
+  end;
+  Result := Res.Pack.Lookup(AKey, ADefault);
+end;
+
+procedure PluginAnnounceLanguage;
+var
+  Obj: TJSONObject;
+begin
+  Obj := TJSONObject.Create;
+  try
+    Obj.AddPair('language', CurrentLocale);
+    PluginPublishEvent('language.changed', Obj.ToJSON);
+  finally
+    Obj.Free;
+  end;
+end;
+
 procedure PluginSubscribe(const APluginId, ATopic: string; const AHandler: TPluginEventHandler);
 var
   Sub: TSubscription;
@@ -345,6 +416,7 @@ var
   I: Integer;
 begin
   Key := LowerCase(Trim(APluginId));
+  GResources.Remove(Key);
   GGenerationLock.Enter;
   try
     GGenerations.AddOrSetValue(Key, GenerationOf(Key) + 1);
@@ -400,12 +472,14 @@ end;
 
 initialization
   GSubscriptions := TList<TSubscription>.Create;
+  GResources := TObjectDictionary<string, TPluginResources>.Create([doOwnsValues]);
   GGenerations := TDictionary<string, Integer>.Create;
   GGenerationLock := TCriticalSection.Create;
 
 finalization
   GServices := Default(TPluginHostServices);
   FreeAndNil(GSubscriptions);
+  FreeAndNil(GResources);
   FreeAndNil(GGenerations);
   FreeAndNil(GGenerationLock);
 

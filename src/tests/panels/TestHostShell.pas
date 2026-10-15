@@ -26,6 +26,12 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Generics.Collections,
   uTerminalTypes, uTermInput, uHostShell;
 
+// Without a saved session a shell follows the OS language; the checks read English text.
+function NewShell: THostShell;
+begin
+  Result := THostShell.Create(100, 30, 'en');
+end;
+
 function ScreenText(const AGrid: TTerminalGrid): string;
 var
   Y, X: Integer;
@@ -63,7 +69,7 @@ var
   Shell: THostShell;
   Text: string;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   try
     Text := ScreenText(Shell.Compose);
     Assert.IsTrue(Text.Contains('Left'), 'the menu bar');
@@ -80,7 +86,7 @@ procedure TTestHostShell.TestKeysDriveTheWindows;
 var
   Shell: THostShell;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   try
     Shell.Compose;
     Shell.HandleEvent(KeyEvent(vkF7));
@@ -99,7 +105,7 @@ var
   Shell: THostShell;
   Grid: TTerminalGrid;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   try
     Shell.Resize(70, 20);
     Assert.IsTrue(Shell.Dirty, 'a new size asks for a new frame');
@@ -118,7 +124,7 @@ procedure TTestHostShell.TestQuitKey;
 var
   Shell: THostShell;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   try
     Assert.IsFalse(Shell.Quit);
     Shell.HandleEvent(KeyEvent(vkF10));
@@ -136,7 +142,7 @@ var
   Bytes: TBytes;
   E: TTermEvent;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   Parser := TTermInputParser.Create;
   Events := TList<TTermEvent>.Create;
   try
@@ -164,7 +170,7 @@ procedure TTestHostShell.TestMouseClickOpensAMenu;
 var
   Shell: THostShell;
 begin
-  Shell := THostShell.Create(100, 30);
+  Shell := NewShell;
   try
     Shell.Compose;
     // The first menu item sits at the left end of the top row.

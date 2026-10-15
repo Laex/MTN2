@@ -39,9 +39,9 @@ if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
 # Only what MTN2.exe reads at run time and does not carry itself: menu,
-# keymap, theme, dialogs, strings and icons are embedded resources
-# (MTN2Resource.rc). Debug/IDE by-products (*.map, *.rsm, *.drc) and dev
-# tools stay out.
+# keymap, theme, dialogs and icons are embedded resources (MTN2Resource.rc);
+# the language packs (strings and F1 help) are the resource folder.
+# Debug/IDE by-products (*.map, *.rsm, *.drc) and dev tools stay out.
 # 7z.dll (LGPL, BSD and the unRAR restriction) ships as a separate file next
 # to its license text (plugins\mtn.7z\license.txt) and THIRD-PARTY.md; a user
 # can replace it with their own x64 copy.
@@ -52,7 +52,7 @@ foreach ($Name in 'MTN2.exe', 'sk4d.dll', 'wasmtime.dll') {
     $Src = Join-Path $Bin $Name
     if (Test-Path $Src) { Copy-Item $Src $Stage }
 }
-foreach ($Dir in 'help', 'plugins') {
+foreach ($Dir in 'resource', 'plugins') {
     $Src = Join-Path $Bin $Dir
     if (Test-Path $Src) { Copy-Item $Src (Join-Path $Stage $Dir) -Recurse }
 }

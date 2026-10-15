@@ -66,8 +66,8 @@ try {
     Pop-Location
 }
 
-$Help = Join-Path $Root 'bin\win64\help'
-if (Test-Path $Help) { Copy-Item $Help $OutDir -Recurse -Force }
+$Packs = Join-Path $Root 'bin\win64\resource'
+if (Test-Path $Packs) { Copy-Item $Packs $OutDir -Recurse -Force }
 
 if (-not $NoPlugins) {
     $PluginsOut = Join-Path $OutDir 'plugins'
@@ -88,6 +88,8 @@ if (-not $NoPlugins) {
         }
         Get-ChildItem $Plugin.FullName -File | Where-Object { $_.Extension -in '.json', '.wat', '.wasm', '.md', '.txt' } |
             ForEach-Object { Copy-Item $_.FullName (Join-Path $Dest $_.Name) -Force }
+        $PluginRes = Join-Path $Plugin.FullName 'resource'
+        if (Test-Path $PluginRes) { Copy-Item $PluginRes $Dest -Recurse -Force }
     }
     & (Join-Path $Src 'tools\fetch-wasmtime.ps1') -Linux | Out-Null
     $Wasmtime = Join-Path $Src 'tools\wasmtime\linux64\libwasmtime.so'

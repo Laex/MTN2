@@ -1,7 +1,7 @@
 unit TestHelpContext;
 
 { Context F1: the help topic chosen for what is on screen, and that every
-  topic named exists in both shipped languages (bin\win64\help\en, bin\win64\help\ru). }
+  topic named exists in both shipped languages (bin\win64\resource\en\help, bin\win64\resource\ru\help). }
 
 interface
 
@@ -45,7 +45,7 @@ end;
 function HelpDir(const ALang: string): string;
 begin
   Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(ParamStr(0)),
-    NativePath('../../../bin/win64/help/') + ALang)); // exe in src\tests\dcu
+    NativePath('../../../bin/win64/resource/') + ALang + NativePath('/help'))); // exe in src\tests\dcu
 end;
 
 procedure TestScreens;

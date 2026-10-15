@@ -1,7 +1,7 @@
 # Pack the terminal program and, when it was built (build-linux.ps1 -Sdl), the
 # window program (after src\build-linux.ps1) into
 #   dist\MTN2-<Version>-linux-x64.tar.gz
-# The archive holds a folder mtn2\ with the program, the F1 help, the plugins
+# The archive holds a folder mtn2\ with the program, the language packs (strings and F1 help), the plugins
 # built by build-linux.ps1 (native .so libraries, manifests, WASM modules) and
 # libwasmtime.so, a version file, the license texts and the Linux notes. tar runs in WSL so that the program keeps its execute bit.
 param(
@@ -29,8 +29,8 @@ $PluginsBuilt = Join-Path $Bin 'linux64\plugins'
 if (Test-Path $PluginsBuilt) { Copy-Item (Join-Path $PluginsBuilt '*') (Join-Path $Stage 'plugins') -Recurse -Force }
 $Wasmtime = Join-Path $Bin 'linux64\libwasmtime.so'
 if (Test-Path $Wasmtime) { Copy-Item $Wasmtime $Stage }
-$Help = Join-Path $Bin 'linux64\help'
-if (Test-Path $Help) { Copy-Item $Help (Join-Path $Stage 'help') -Recurse }
+$Packs = Join-Path $Bin 'linux64\resource'
+if (Test-Path $Packs) { Copy-Item $Packs (Join-Path $Stage 'resource') -Recurse }
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
 Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage

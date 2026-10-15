@@ -10,6 +10,10 @@ interface
 /// Russian system); 65001 where there is no such notion.</summary>
 function PlatformOemCodePage: Integer;
 
+/// <summary>Languages the user prefers for the OS interface, best first, as
+/// BCP 47 style tags ("ru-RU", "zh-Hans-CN"); empty when unknown.</summary>
+function PlatformPreferredUiLanguages: TArray<string>;
+
 /// <summary>Maximum delay in milliseconds between the clicks of a double
 /// click.</summary>
 function PlatformDoubleClickMs: Cardinal;
@@ -178,6 +182,39 @@ end;
 function PlatformOemCodePage: Integer;
 begin
   Result := 65001;
+end;
+
+// LANGUAGE is a colon-separated list; LC_ALL, LC_MESSAGES and LANG hold one
+// locale name ("ru_RU.UTF-8", "zh_CN@modifier"). "C" and "POSIX" name no language.
+function PlatformPreferredUiLanguages: TArray<string>;
+var
+  Name, Item, Tag: string;
+  Items: TArray<string>;
+  Dot: Integer;
+
+  procedure Add(const AValue: string);
+  begin
+    Tag := AValue;
+    Dot := Pos('.', Tag);
+    if Dot > 0 then
+      Tag := Copy(Tag, 1, Dot - 1);
+    Dot := Pos('@', Tag);
+    if Dot > 0 then
+      Tag := Copy(Tag, 1, Dot - 1);
+    Tag := StringReplace(Trim(Tag), '_', '-', [rfReplaceAll]);
+    if (Tag = '') or SameText(Tag, 'C') or SameText(Tag, 'POSIX') then
+      Exit;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Tag;
+  end;
+
+begin
+  SetLength(Result, 0);
+  Items := GetEnvironmentVariable('LANGUAGE').Split([':']);
+  for Item in Items do
+    Add(Item);
+  for Name in TArray<string>.Create('LC_ALL', 'LC_MESSAGES', 'LANG') do
+    Add(GetEnvironmentVariable(Name));
 end;
 
 function PlatformDoubleClickMs: Cardinal;

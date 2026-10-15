@@ -105,7 +105,9 @@ type
     function ConsoleGetCmdHistory: TArray<string>;
     procedure ConsoleCommandExecuted(const ACommand: string);
   public
-    constructor Create(ACols, ARows: Integer);
+    /// <summary>ANewSessionLocale is the language of a first start (no saved
+    /// session); '' follows the OS interface language.</summary>
+    constructor Create(ACols, ARows: Integer; const ANewSessionLocale: string = '');
     destructor Destroy; override;
     procedure Resize(ACols, ARows: Integer);
     /// <summary>The composed screen; valid until the next call.</summary>
@@ -152,7 +154,7 @@ const
   cDriveCommitMs = 700;
   cAltReleaseMs = 1500;
 
-constructor THostShell.Create(ACols, ARows: Integer);
+constructor THostShell.Create(ACols, ARows: Integer; const ANewSessionLocale: string);
 begin
   inherited Create;
   FCols := Max(ACols, 20);
@@ -190,7 +192,11 @@ begin
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
 
   if TryLoadSession(DefaultSessionFilePath, FSession) then
-    SetLocale(FSession.Language);
+    SetLocale(FSession.Language)
+  else if ANewSessionLocale <> '' then
+    SetLocale(ANewSessionLocale)
+  else
+    SetLocale(SystemDefaultLocale);
   FThemes := TThemeController.Create(FSession.ThemeName);
   FTheme := FThemes.Theme;
   FMdi := TMdiCompositor.Create(FTheme);
@@ -362,6 +368,7 @@ begin
   begin
     SetLocale(ASettings.Language);
     FDualPanel.ReloadMenuStructure;
+    PluginAnnounceLanguage;
   end;
   Recompose;
 end;

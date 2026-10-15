@@ -17,13 +17,14 @@ type
     [Test] procedure TestEmptyFolder;
     [Test] procedure TestCompleteLayout;
     [Test] procedure TestBrokenPlugin;
+    [Test] procedure TestLocalePackVersions;
   end;
 
 implementation
 
 uses
   uTestPaths,
-  System.SysUtils, System.IOUtils, uSelfCheck, uPlatformInfo;
+  System.SysUtils, System.IOUtils, uSelfCheck, uPlatformInfo, uStrings;
 
 function NewTempDir: string;
 begin
@@ -57,11 +58,20 @@ begin
       Inc(Result);
 end;
 
+/// <summary>A language pack resource\<ALocale> written for pack revision AVersion.</summary>
+procedure LayOutPack(const ADir, ALocale: string; AVersion: Integer);
+begin
+  WriteText(TPath.Combine(ADir, NativePath('resource/' + ALocale + '/locale.json')),
+    '{"version":' + IntToStr(AVersion) + '}');
+  WriteText(TPath.Combine(ADir, NativePath('resource/' + ALocale + '/strings.json')), '{}');
+  WriteText(TPath.Combine(ADir, NativePath('resource/' + ALocale + '/help/index.md')), '# MTN2');
+end;
+
 procedure LayOutPackage(const ADir: string);
 begin
-  WriteText(TPath.Combine(ADir, NativePath('help/en/index.md')), '# MTN2');
-  WriteText(TPath.Combine(ADir, NativePath('help/ru/index.md')), '# MTN2');
-  WriteText(TPath.Combine(ADir, NativePath('help/de/index.md')), '# MTN2');
+  WriteText(TPath.Combine(ADir, NativePath('resource/en/help/index.md')), '# MTN2');
+  LayOutPack(ADir, 'ru', ResourceVersion);
+  LayOutPack(ADir, 'de', ResourceVersion);
   WriteText(TPath.Combine(ADir, NativePath('plugins/mtn.demo/plugin.json')),
     '{"id":"mtn.demo","name":"Demo","version":"0.1.0","abi":1}');
   WriteText(TPath.Combine(ADir, NativePath('plugins/mtn.demo/plugin.wat')), '(module)');
@@ -77,11 +87,10 @@ begin
     Assert.IsFalse(RunSelfCheck(Dir, Report), 'an empty folder is not a runnable copy');
     Assert.IsTrue(HasLine(Report, 'OK', 'resource MENU_MAIN'), 'embedded menu found');
     Assert.IsTrue(HasLine(Report, 'OK', 'dialog resources'), 'embedded dialogs found');
-    Assert.IsTrue(HasLine(Report, 'FAIL', 'help' + PathDelim + 'en' + PathDelim + 'index.md'), 'missing en help reported');
-    Assert.IsTrue(HasLine(Report, 'FAIL', 'help' + PathDelim + 'ru' + PathDelim + 'index.md'),
-      'missing help for the embedded ru locale reported');
-    Assert.IsTrue(HasLine(Report, 'FAIL', 'help' + PathDelim + 'de' + PathDelim + 'index.md'),
-      'missing help for the embedded de locale reported');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource RESOURCE_VERSION'), 'embedded pack revision found');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'resource' + PathDelim + 'en' + PathDelim + 'help' + PathDelim + 'index.md'),
+      'missing en help reported');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'resource' + PathDelim + ' is missing'), 'missing resource folder reported');
     // Only a program that draws through Skia needs its library.
     Assert.AreEqual(PlatformRenderLibrary <> '', HasLine(Report, 'FAIL', 'sk4d.dll'),
       'missing Skia library reported where it is needed');
@@ -101,8 +110,11 @@ begin
   try
     LayOutPackage(Dir);
     RunSelfCheck(Dir, Report);
-    Assert.IsTrue(HasLine(Report, 'OK', 'help' + PathDelim + 'ru' + PathDelim + 'index.md'), 'ru help found');
-    Assert.IsTrue(HasLine(Report, 'OK', 'help' + PathDelim + 'de' + PathDelim + 'index.md'), 'de help found');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'en' + PathDelim + 'help' + PathDelim + 'index.md'), 'en help found');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'ru' + PathDelim + 'locale.json'), 'ru pack version accepted');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'ru' + PathDelim + 'strings.json'), 'ru strings found');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'ru' + PathDelim + 'help' + PathDelim + 'index.md'), 'ru help found');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'de' + PathDelim + 'help' + PathDelim + 'index.md'), 'de help found');
     Assert.IsTrue(HasLine(Report, 'OK', 'plugin mtn.demo'), 'plugin with manifest and module passes');
     // The Skia library, where one is needed, is not copied into the temp folder.
     Assert.AreEqual(Integer(Ord(PlatformRenderLibrary <> '')), Integer(FailCount(Report)),
@@ -130,6 +142,27 @@ begin
     Assert.IsTrue(HasLine(Report, 'FAIL', 'mtn.nomodule' + PathDelim + ' has no module'), 'plugin without a module');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'mtn.wrongid' + PathDelim + 'plugin.json names id'), 'manifest id mismatch');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'mtn.nomanifest' + PathDelim + 'plugin.json is missing'), 'missing manifest');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSelfCheck.TestLocalePackVersions;
+var
+  Dir: string;
+  Report: TSelfCheckReport;
+begin
+  Dir := NewTempDir;
+  try
+    LayOutPackage(Dir);
+    LayOutPack(Dir, 'old', ResourceVersion - 1);
+    LayOutPack(Dir, 'new', ResourceVersion + 1);
+    WriteText(TPath.Combine(Dir, NativePath('resource/nover/strings.json')), '{}');
+    RunSelfCheck(Dir, Report);
+    Assert.IsTrue(HasLine(Report, 'WARN', 'old' + PathDelim + 'locale.json version'), 'an older pack is only a warning');
+    Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'old' + PathDelim + 'strings.json'), 'an older pack is still checked');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'new' + PathDelim + 'locale.json version'), 'a newer pack fails');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'nover' + PathDelim + 'locale.json is missing'), 'a pack without locale.json fails');
   finally
     TDirectory.Delete(Dir, True);
   end;

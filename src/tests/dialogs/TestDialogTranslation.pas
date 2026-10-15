@@ -40,7 +40,7 @@ begin
   SetLocale('');
 end;
 
-// A caption without an id has no key in strings\<locale>.json and stays
+// A caption without an id has no key in resource\<locale>\strings.json and stays
 // English. Rules (─── separators) are exempt.
 procedure TTestDialogTranslation.TestEveryCaptionHasId;
 var

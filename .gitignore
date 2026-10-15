@@ -52,10 +52,6 @@ src/MTN2Tui.index.txt
 
 # Project build outputs (see MTN2.dproj: DCC_ExeOutput / DCC_DcuOutput)
 /bin/*
-!/bin/win64/
-/bin/win64/*
-# F1 help topics are sources, not build output
-!/bin/win64/help/
 /dcu/
 src/dcu/
 src/tools/dcu/
@@ -78,6 +74,13 @@ Linux*/
 __history/
 __recovery/
 modules/
+
+# After the Win64/ rule above, which would hide the whole folder: bin\win64
+# holds build output (ignored) and the language packs (sources, strings and
+# F1 help topics).
+!/bin/win64/
+/bin/win64/*
+!/bin/win64/resource/
 
 # Dot-files and dot-folders are local tooling unless listed here
 .*

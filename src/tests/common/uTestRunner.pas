@@ -26,7 +26,7 @@ procedure SkipFinalizationOnExit;
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, uConfigLocation, uPlatformInfo, uPlatformHostInfo,
+  System.SysUtils, System.IOUtils, uConfigLocation, uPlatformInfo, uPlatformHostInfo, uStrings,
   DUnitX.TestFramework, DUnitX.Loggers.Console, DUnitX.Loggers.Xml.NUnit;
 
 var
@@ -47,6 +47,8 @@ begin
   // built-in defaults whatever keymap.json or session.json the machine has.
   ConfigDir := TPath.Combine(TPath.GetTempPath, 'mtn2-tests-' + IntToStr(PlatformHostInfo.ProcessId));
   SetConfigDirectoryOverride(ConfigDir);
+  // The runners live in src\tests\dcu, not next to the shipped language packs.
+  SetResourceRoot(TPath.Combine(ExtractFilePath(ParamStr(0)), '../../../bin/win64/resource'));
   try
     TDUnitX.CheckCommandLine;
     Runner := TDUnitX.CreateRunner;

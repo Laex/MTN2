@@ -51,7 +51,8 @@ type
 constructor THostRig.Create;
 begin
   inherited Create;
-  FShell := THostShell.Create(100, 30);
+  // Without a saved session a shell follows the OS language; the checks read English text.
+  FShell := THostShell.Create(100, 30, 'en');
   FMapper := TSdlInputMapper.Create;
   FGrid := TPixelGridRenderer.Create(TFakeGlyphs.Create);
   FMapper.SetCellSize(FGrid.CellWidth, FGrid.CellHeight);

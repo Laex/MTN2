@@ -247,10 +247,16 @@ type
     /// <summary>The text cursor columns count in: the displayed text in the
     /// Markdown view (marks hidden, table rows padded), the source line otherwise.</summary>
     function CursorLineText(ALineIdx: Integer): string;
+    /// <summary>The text of line ALineIdx, empty when there is no such line.</summary>
+    function DocLineOrEmpty(ALineIdx: Integer): string;
     function DeleteSelection: Boolean;
     procedure SelectAll;
     function IsCellSelected(ARow, ACol: Integer): Boolean;
     procedure PaintVisibleSelection(AY, ALineIdx, AAbsBase: Integer; const AVis: string);
+    /// <summary>Selection colors for a plain-text row in which a wide character
+    /// takes two cells; AVis starts at character AAbsBase of line ALineIdx.</summary>
+    procedure PaintTextSelection(AY, ALineIdx, AAbsBase: Integer; const AVis: string;
+      ATextW: Integer);
     procedure MoveCursor(ARowDelta, AColDelta: Integer; AExtendSel: Boolean = False);
     procedure MoveWord(AForward: Boolean; AExtendSel: Boolean);
     procedure GotoLine(ALine1Based: Integer);
@@ -421,7 +427,7 @@ implementation
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
   System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uPluginHighlight, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord, uChromeRows;
+  uShellAssoc, uKeyChord, uChromeRows, uCharWidth;
 
 const
   /// <summary>uDialogHistory key of the Find dialog; replace.json's Find field
@@ -1275,18 +1281,18 @@ end;
 function TEditorWindow.GetWrappedRowCount(ATextW: Integer): Integer;
 begin
   Result := CountWrappedRows(FDoc.LineCount, ATextW,
-    function(AIndex: Integer): Integer
+    function(AIndex: Integer): string
     begin
-      Result := Length(FDoc.GetLine(AIndex));
+      Result := FDoc.GetLine(AIndex);
     end);
 end;
 
 function TEditorWindow.MapDisplayRowToLine(ADisplayRow, ATextW: Integer; out ALineIdx, ACharOffset: Integer): Boolean;
 begin
   Result := MapWrappedDisplayToLine(FDoc.LineCount, ADisplayRow, ATextW,
-    function(AIndex: Integer): Integer
+    function(AIndex: Integer): string
     begin
-      Result := Length(FDoc.GetLine(AIndex));
+      Result := FDoc.GetLine(AIndex);
     end, ALineIdx, ACharOffset);
 end;
 
@@ -1295,9 +1301,9 @@ begin
   if not FDoc.Ready then
     Exit(0);
   Result := MapWrappedLineToDisplay(FDoc.LineCount, ALineIdx, ACharOffset, ATextW,
-    function(AIndex: Integer): Integer
+    function(AIndex: Integer): string
     begin
-      Result := Length(FDoc.GetLine(AIndex));
+      Result := FDoc.GetLine(AIndex);
     end);
 end;
 
@@ -1679,7 +1685,8 @@ end;
 
 procedure TEditorWindow.EnsureCursorVisible;
 var
-  ViewH, TextW, TargetRow: Integer;
+  ViewH, TextW, TargetRow, Used: Integer;
+  Line: string;
 begin
   ViewH := ViewHeight;
   TextW := TextWidth;
@@ -1712,10 +1719,28 @@ begin
     FLeftCol := 0;
     Exit;
   end;
+  // FLeftCol is a character index; the cursor must fit TextW cells counted
+  // from it, where a wide character takes two.
+  Line := DocLineOrEmpty(FCursorRow);
   if FCursorCol < FLeftCol then
-    FLeftCol := FCursorCol;
-  if FCursorCol >= FLeftCol + TextW then
-    FLeftCol := FCursorCol - TextW + 1;
+    FLeftCol := FCursorCol
+  else
+  begin
+    if FCursorCol < Length(Line) then
+      Used := CharDisplayWidth(Line[FCursorCol + 1])
+    else
+      Used := 1;
+    if CellsBetween(Line, FLeftCol, FCursorCol) + Used > TextW then
+    begin
+      FLeftCol := FCursorCol;
+      while (FLeftCol > 0) and (FLeftCol <= Length(Line)) and
+        (Used + CharDisplayWidth(Line[FLeftCol]) <= TextW) do
+      begin
+        Inc(Used, CharDisplayWidth(Line[FLeftCol]));
+        Dec(FLeftCol);
+      end;
+    end;
+  end;
   if FLeftCol < 0 then
     FLeftCol := 0;
 end;
@@ -1823,7 +1848,7 @@ begin
   begin
     if MapDisplayRowToLine(FTopLine + (ALocalRow - 1), TextW, ARow, CharOffset) then
     begin
-      ACol := CharOffset + (ALocalCol - 1);
+      ACol := CharOffset + CharAtCell(FDoc.GetLine(ARow), CharOffset, ALocalCol - 1);
       ClampDocPos(ARow, ACol);
       Result := True;
       Exit;
@@ -1831,7 +1856,7 @@ begin
   end;
 
   ARow := FTopLine + (ALocalRow - 1);
-  ACol := FLeftCol + (ALocalCol - 1);
+  ACol := FLeftCol + CharAtCell(DocLineOrEmpty(ARow), FLeftCol, ALocalCol - 1);
   ClampDocPos(ARow, ACol);
   Result := True;
 end;
@@ -3035,9 +3060,51 @@ begin
       PutGridText(Buffer, I, AY, AVis[I], FThemeColors.SelFg, FThemeColors.SelBg);
 end;
 
+procedure TEditorWindow.PaintTextSelection(AY, ALineIdx, AAbsBase: Integer;
+  const AVis: string; ATextW: Integer);
+var
+  Cell, Idx, W, K: Integer;
+  Ch: Char;
+begin
+  if (AY < 0) or (AY > High(Buffer)) or not HasSelection then
+    Exit;
+  Cell := 0;
+  Idx := 0;
+  while Cell < ATextW do
+  begin
+    // Cells past the end of the text stand for the line break and the blank
+    // area, one cell per position.
+    if Idx < Length(AVis) then
+      Ch := AVis[Idx + 1]
+    else
+      Ch := ' ';
+    W := CharDisplayWidth(Ch);
+    // A wide character cut by the right edge is drawn blank, one cell.
+    if Cell + W > ATextW then
+      W := 1;
+    if IsCellSelected(ALineIdx, AAbsBase + Idx) then
+      for K := 0 to W - 1 do
+        if 1 + Cell + K <= High(Buffer[AY]) then
+        begin
+          Buffer[AY][1 + Cell + K].FgColor := FThemeColors.SelFg;
+          Buffer[AY][1 + Cell + K].BgColor := FThemeColors.SelBg;
+        end;
+    Inc(Cell, W);
+    Inc(Idx);
+  end;
+end;
+
 function TEditorWindow.SelectionText: string;
 begin
   Result := SelectedText;
+end;
+
+function TEditorWindow.DocLineOrEmpty(ALineIdx: Integer): string;
+begin
+  if FDoc.Ready and (ALineIdx >= 0) and (ALineIdx < FDoc.LineCount) then
+    Result := FDoc.GetLine(ALineIdx)
+  else
+    Result := '';
 end;
 
 function TEditorWindow.CursorLineText(ALineIdx: Integer): string;
@@ -4102,24 +4169,29 @@ procedure TEditorWindow.ApplyHighlight(ARow: Integer; const ALine: string; AFirs
 var
   Spans: THighlightSpans;
   Span: THighlightSpan;
-  First, Last, I, Col: Integer;
+  First, Last, I, K, Col, W, Fit: Integer;
   Color: TAlphaColor;
 begin
   if (ARow < 0) or (ARow > High(Buffer)) or not HighlightLine(AHighlightId, ALine, Spans) then
     Exit;
+  // The characters that fit AWidth cells from AFirstChar; a wide one takes two.
+  Fit := TextFitChars(Copy(ALine, AFirstChar, AWidth), AWidth);
   for Span in Spans do
   begin
     if Span.Kind = cHighlightPlain then
       Continue;
     // Both ends as 1-based indexes in the line, clipped to the visible part.
     First := Max(Span.Start + 1, AFirstChar);
-    Last := Min(Span.Start + Span.Len, AFirstChar + AWidth - 1);
+    Last := Min(Min(Span.Start + Span.Len, AFirstChar + Fit - 1), Length(ALine));
     Color := HighlightColor(Span.Kind, FThemeColors.BodyBg);
+    Col := 1 + CellsBetween(ALine, AFirstChar - 1, First - 1);
     for I := First to Last do
     begin
-      Col := 1 + I - AFirstChar;
-      if (Col >= 0) and (Col <= High(Buffer[ARow])) then
-        Buffer[ARow][Col].FgColor := Color;
+      W := CharDisplayWidth(ALine[I]);
+      for K := 0 to W - 1 do
+        if (Col + K >= 0) and (Col + K <= High(Buffer[ARow])) then
+          Buffer[ARow][Col + K].FgColor := Color;
+      Inc(Col, W);
     end;
   end;
 end;
@@ -4181,6 +4253,7 @@ procedure TEditorWindow.DrawContent;
 var
   W, H, ViewH, TextW, Y, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
   Line, Vis: string;
+  CaretHere: Boolean;
 begin
   if Assigned(Theme) then
     Theme.ResolveEditorColors(FThemeColors);
@@ -4214,7 +4287,7 @@ begin
         if MapDisplayRowToLine(FTopLine + Y, TextW, LineIdx, CharOffset) then
         begin
           Line := FDoc.GetLine(LineIdx);
-          Vis := Copy(Line, CharOffset + 1, TextW);
+          Vis := Copy(Line, CharOffset + 1, WrapChunkLen(Line, CharOffset, TextW));
         end
         else
         begin
@@ -4230,13 +4303,8 @@ begin
           Line := FDoc.GetLine(LineIdx)
         else
           Line := '';
-        if FLeftCol >= Length(Line) then
-          Vis := ''
-        else
-          Vis := Copy(Line, FLeftCol + 1, TextW);
+        Vis := Copy(Line, FLeftCol + 1, WrapChunkLen(Line, FLeftCol, TextW));
       end;
-      if Length(Vis) < TextW then
-        Vis := Vis + StringOfChar(' ', TextW - Length(Vis));
       FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
       if (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
         TEditorPainter.DrawTextLine(Buffer[1 + Y], 1, TextW, Vis, 1, FThemeColors.BodyFg, FThemeColors.BodyBg);
@@ -4248,19 +4316,30 @@ begin
           ApplyHighlight(1 + Y, Line, FLeftCol + 1, TextW, HighlightId);
       end;
       if FWordWrap and FViewOnly and (TextW > 0) then
-        PaintVisibleSelection(1 + Y, LineIdx, CharOffset, Vis)
+        PaintTextSelection(1 + Y, LineIdx, CharOffset, Vis, TextW)
       else
-        PaintVisibleSelection(1 + Y, LineIdx, FLeftCol, Vis);
+        PaintTextSelection(1 + Y, LineIdx, FLeftCol, Vis, TextW);
 
       // Cursor on this line (drawn over selection).
       if (LineIdx = FCursorRow) and (FConfirm = ecNone) and FCursorVisible then
       begin
         if FWordWrap and FViewOnly and (TextW > 0) then
-          DrawCol := FCursorCol - CharOffset
+        begin
+          // The caret belongs to this row when its character is in the chunk;
+          // a caret at the end of the line stays on the last chunk.
+          CaretHere := (FCursorCol >= CharOffset) and
+            ((FCursorCol < CharOffset + Length(Vis)) or
+             ((FCursorCol = CharOffset + Length(Vis)) and
+              (CharOffset + Length(Vis) >= Length(Line))));
+          DrawCol := CellsBetween(Line, CharOffset, FCursorCol);
+        end
         else
-          DrawCol := FCursorCol - FLeftCol;
+        begin
+          CaretHere := FCursorCol >= FLeftCol;
+          DrawCol := CellsBetween(Line, FLeftCol, FCursorCol);
+        end;
 
-        if (DrawCol >= 0) and (DrawCol < TextW) then
+        if CaretHere and (DrawCol >= 0) and (DrawCol < TextW) then
           MarkGridInsertCaret(Buffer, 1 + DrawCol, 1 + Y);
       end;
     end;
@@ -4426,7 +4505,7 @@ begin
     if FWordWrap and FViewOnly and (TextWidth > 0) then
     begin
       if MapDisplayRowToLine(FTopLine, TextWidth, Row, CharOffset) then
-        Col := CharOffset + Max(ALocalCol - 1, 0)
+        Col := CharOffset + CharAtCell(DocLineOrEmpty(Row), CharOffset, Max(ALocalCol - 1, 0))
       else
       begin
         Row := 0;
@@ -4436,7 +4515,7 @@ begin
     else
     begin
       Row := FTopLine;
-      Col := FLeftCol + Max(ALocalCol - 1, 0);
+      Col := FLeftCol + CharAtCell(DocLineOrEmpty(Row), FLeftCol, Max(ALocalCol - 1, 0));
     end;
     ClampDocPos(Row, Col);
     FCursorRow := Row;
@@ -4449,7 +4528,7 @@ begin
     if FWordWrap and FViewOnly and (TextWidth > 0) then
     begin
       if MapDisplayRowToLine(FTopLine + ViewHeight - 1, TextWidth, Row, CharOffset) then
-        Col := CharOffset + Max(ALocalCol - 1, 0)
+        Col := CharOffset + CharAtCell(DocLineOrEmpty(Row), CharOffset, Max(ALocalCol - 1, 0))
       else
       begin
         Row := Max(FDoc.LineCount - 1, 0);
@@ -4459,7 +4538,7 @@ begin
     else
     begin
       Row := Min(FTopLine + ViewHeight - 1, Max(FDoc.LineCount - 1, 0));
-      Col := FLeftCol + Max(ALocalCol - 1, 0);
+      Col := FLeftCol + CharAtCell(DocLineOrEmpty(Row), FLeftCol, Max(ALocalCol - 1, 0));
     end;
     ClampDocPos(Row, Col);
     FCursorRow := Row;

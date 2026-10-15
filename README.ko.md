@@ -58,7 +58,7 @@ MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하�
 - **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 파일 연결 설정, F1 컨텍스트 도움말.
 - **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어로 제공됩니다. 언어는 **옵션 → 글꼴 / 화면...** (Options → Font / Display...)에서 선택할 수 있으며
-  재시작 없이 즉시 적용됩니다. `MTN2.exe` 파일 옆에 `strings\<언어코드>.json` 파일을 추가하여 사용자 언어를 확장할 수 있습니다.
+  재시작 없이 즉시 적용됩니다. `MTN2.exe` 파일 옆에 `resource\<언어코드>\` 폴더(`locale.json`, `strings.json`, `help\`의 도움말)를 추가하여 사용자 언어를 확장할 수 있으며 다시 컴파일할 필요가 없습니다. 프로그램에는 영어만 내장되어 있습니다.
 - **유니코드:** CJK 한자(기본 다국어 평면 BMP), 히라가나, 가타카나, 한글 및 전각 문자가
   콘솔, 패널, 탭, 제목 표시줄에서 2열 너비로 표시되며, 누락된 글꼴은 시스템 폰트로 대체 렌더링됩니다.
 - **플러그인:** 네이티브 DLL 및 WebAssembly(Wasmtime 기반) – 커스텀 VFS 스키마 및 전용 패널, 메뉴 항목,
@@ -116,12 +116,12 @@ Linux 버전은 Windows에서 `dcclinux64` 컴파일러로 크로스 컴파일�
 | `src/Core` | 핵심: 패널, VFS, 콘솔, 에디터, 대화 상자, 플러그인 호스트 |
 | `src/Platform` | 플랫폼 추상화 계층: `Windows` 및 `Posix` 모듈 |
 | `src/Hosts` | 셸 호스트: `Ansi` – 텍스트 터미널 버전 |
-| `src/Forms`, `src/dialogs`, `src/strings`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 다국어 리소스, 기본 내장 테마 |
+| `src/Forms`, `src/dialogs`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 기본 내장 테마 |
 | `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM 데모) |
 | `src/tests` | 그룹별 DUnitX 회귀 테스트 및 실행 스크립트 `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` 프로젝트 그룹, 유틸리티 스크립트 |
 | `bin/win64`, `bin/linux64` | 플랫폼별 빌드 결과물 |
-| `bin/win64/help` | F1 도움말 파일(en/ru/de), 프로그램과 함께 배포 |
+| `bin/win64/resource` | 언어 팩: 인터페이스 문자열과 F1 도움말(en/ru/de), 프로그램과 함께 배포 |
 | `docs` | 개발자 문서, 스크린샷 (`docs/images`) |
 
 ## 문서
@@ -145,7 +145,7 @@ MTN2 개발에는 자체 개발 도구를 포함한 AI 어시스턴트가 적극
 - 로드맵 추적 및 작업 계획 수립;
 - 대부분의 소스 코드 주석 작성;
 - DUnitX 기반 회귀 테스트 슈트 개발(`src/tests`);
-- 사용자 문서 작성: F1 도움말(`bin/win64/help`), [CHANGELOG.md](CHANGELOG.md), 릴리스 노트.
+- 사용자 문서 작성: F1 도움말(`bin/win64/resource/<언어코드>/help`), [CHANGELOG.md](CHANGELOG.md), 릴리스 노트.
 
 ## 라이선스
 

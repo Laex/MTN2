@@ -1,8 +1,10 @@
 unit uTextEncoding;
 
 { Detect / decode / encode text for Viewer/Editor VFS load-save.
-  Detect: BOM -> UTF-8/16; else valid UTF-8; else CP1251 vs CP866 by
-  Cyrillic letter hits + scaled score margin (OEM only when clearly ahead).
+  Detect: BOM -> UTF-8/16; else valid UTF-8; else GBK / GB18030 / Big5 when
+  the bytes form well-formed double-byte (or GB18030 four-byte) sequences that
+  do not look like Cyrillic text; else CP1251 vs CP866 by Cyrillic letter hits
+  + scaled score margin (OEM only when clearly ahead).
   F8 cycles encodings; OEM uses the Windows OEM code page. }
 
 interface
@@ -18,7 +20,10 @@ type
     tfeUtf16LE,   // UTF-16 LE (BOM on write)
     tfeUtf16BE,   // UTF-16 BE (BOM on write)
     tfeAnsi,      // system ANSI code page (CP1251 on typical RU Windows)
-    tfeOem        // system OEM code page (CP866 on typical RU Windows)
+    tfeOem,       // system OEM code page (CP866 on typical RU Windows)
+    tfeGbk,       // Simplified Chinese, code page 936
+    tfeGb18030,   // Chinese national standard, code page 54936
+    tfeBig5       // Traditional Chinese, code page 950
   );
 
 function TextEncodingName(AEncoding: TTextFileEncoding): string;
@@ -47,6 +52,11 @@ implementation
 
 uses
   uPlatformInfo;
+
+const
+  cCpGbk = 936;
+  cCpBig5 = 950;
+  cCpGb18030 = 54936;
 
 function OemEncoding: TEncoding;
 begin
@@ -107,6 +117,60 @@ begin
   end;
 end;
 
+function CodePageOf(AEncoding: TTextFileEncoding): Integer;
+begin
+  case AEncoding of
+    tfeGbk:     Result := cCpGbk;
+    tfeGb18030: Result := cCpGb18030;
+    tfeBig5:    Result := cCpBig5;
+  else
+    Result := 0;
+  end;
+end;
+
+// A code page the platform cannot provide leaves the bytes as Latin-1 on
+// decoding and as the low bytes of the characters on encoding, like any other
+// mapping failure.
+function DecodeCodePage(const ABytes: TBytes; ACodePage: Integer): string;
+var
+  Enc: TEncoding;
+begin
+  try
+    Enc := TEncoding.GetEncoding(ACodePage);
+  except
+    on E: Exception do
+      Exit(BytesAsLatin1(ABytes, 0, Length(ABytes)));
+  end;
+  try
+    Result := SafeGetString(Enc, ABytes);
+  finally
+    Enc.Free;
+  end;
+end;
+
+function EncodeCodePage(const AText: string; ACodePage: Integer): TBytes;
+var
+  Enc: TEncoding;
+  I: Integer;
+begin
+  try
+    Enc := TEncoding.GetEncoding(ACodePage);
+  except
+    on E: Exception do
+    begin
+      SetLength(Result, Length(AText));
+      for I := 1 to Length(AText) do
+        Result[I - 1] := Byte(Ord(AText[I]) and $FF);
+      Exit;
+    end;
+  end;
+  try
+    Result := SafeGetBytes(Enc, AText);
+  finally
+    Enc.Free;
+  end;
+end;
+
 function TextEncodingName(AEncoding: TTextFileEncoding): string;
 begin
   case AEncoding of
@@ -116,6 +180,9 @@ begin
     tfeUtf16BE: Result := 'UTF-16 BE';
     tfeAnsi:    Result := 'ANSI';
     tfeOem:     Result := 'OEM';
+    tfeGbk:     Result := 'GBK';
+    tfeGb18030: Result := 'GB18030';
+    tfeBig5:    Result := 'Big5';
   else
     Result := 'UTF-8';
   end;
@@ -129,7 +196,10 @@ begin
     tfeUtf16LE: Result := tfeUtf16BE;
     tfeUtf16BE: Result := tfeAnsi;
     tfeAnsi:    Result := tfeOem;
-    tfeOem:     Result := tfeUtf8;
+    tfeOem:     Result := tfeGbk;
+    tfeGbk:     Result := tfeGb18030;
+    tfeGb18030: Result := tfeBig5;
+    tfeBig5:    Result := tfeUtf8;
   else
     Result := tfeUtf8;
   end;
@@ -138,7 +208,8 @@ end;
 function TextEncodingListItems: TArray<string>;
 begin
   Result := TArray<string>.Create(
-    'UTF-8', 'UTF-8 BOM', 'UTF-16 LE', 'UTF-16 BE', 'ANSI', 'OEM');
+    'UTF-8', 'UTF-8 BOM', 'UTF-16 LE', 'UTF-16 BE', 'ANSI', 'OEM',
+    'GBK', 'GB18030', 'Big5');
 end;
 
 function TryTextEncodingFromName(const AName: string;
@@ -166,6 +237,9 @@ begin
     3: AEncoding := tfeUtf16BE;
     4: AEncoding := tfeAnsi;
     5: AEncoding := tfeOem;
+    6: AEncoding := tfeGbk;
+    7: AEncoding := tfeGb18030;
+    8: AEncoding := tfeBig5;
   else
     begin
       Result := False;
@@ -366,6 +440,124 @@ begin
   end;
 end;
 
+/// <summary>True when the bytes are well-formed GBK / GB18030 / Big5 text with
+/// enough double-byte characters, and not Cyrillic text in CP1251 or CP866 (whose
+/// letters also form valid lead/trail pairs).</summary>
+function DetectChineseMultiByte(const ABytes: TBytes;
+  out AEncoding: TTextFileEncoding): Boolean;
+var
+  I, N, B, B2: Integer;
+  Pairs, HighTrail, LowTrail, Four, Errors, HighBytes, MidBytes, LowerLike: Integer;
+  Big5Ok: Boolean;
+
+  procedure CountHigh(AByte: Integer);
+  begin
+    Inc(HighBytes);
+    if (AByte >= $A1) and (AByte <= $DF) then
+      Inc(MidBytes);
+    if ((AByte >= $A0) and (AByte <= $AF)) or (AByte >= $E0) then
+      Inc(LowerLike);
+  end;
+
+begin
+  Result := False;
+  AEncoding := tfeGbk;
+  N := SampleLen(ABytes);
+  Pairs := 0;
+  HighTrail := 0;
+  LowTrail := 0;
+  Four := 0;
+  Errors := 0;
+  HighBytes := 0;
+  MidBytes := 0;
+  LowerLike := 0;
+  Big5Ok := True;
+  I := 0;
+  while I < N do
+  begin
+    B := ABytes[I];
+    if B < $80 then
+    begin
+      Inc(I);
+      Continue;
+    end;
+    if (B = $80) or (B = $FF) then
+    begin
+      Inc(Errors);
+      Inc(I);
+      Continue;
+    end;
+    // The sample may end inside a character.
+    if I + 1 >= N then
+      Break;
+    B2 := ABytes[I + 1];
+    if (B2 >= $30) and (B2 <= $39) then
+    begin
+      if I + 3 >= N then
+        Break;
+      if (ABytes[I + 2] >= $81) and (ABytes[I + 2] <= $FE) and
+         (ABytes[I + 3] >= $30) and (ABytes[I + 3] <= $39) then
+      begin
+        Inc(Four);
+        CountHigh(B);
+        CountHigh(ABytes[I + 2]);
+        Inc(I, 4);
+      end
+      else
+      begin
+        Inc(Errors);
+        Inc(I);
+      end;
+      Continue;
+    end;
+    if ((B2 >= $40) and (B2 <= $7E)) or ((B2 >= $80) and (B2 <= $FE)) then
+    begin
+      Inc(Pairs);
+      CountHigh(B);
+      if B2 >= $80 then
+      begin
+        Inc(HighTrail);
+        CountHigh(B2);
+      end
+      else
+        Inc(LowTrail);
+      if (B < $A1) or (B > $F9) or ((B2 >= $7F) and (B2 <= $A0)) then
+        Big5Ok := False;
+      Inc(I, 2);
+    end
+    else
+    begin
+      Inc(Errors);
+      Inc(I);
+    end;
+  end;
+
+  if (Pairs + Four < 2) or (Errors * 50 > Pairs + Four) then
+    Exit;
+  // At least a third of the double-byte characters carry a high trail byte;
+  // a symbol followed by a Latin letter (a degree sign and C) does not count.
+  if (HighTrail + Four) * 3 < Pairs + Four then
+    Exit;
+  // The bulk of hanzi bytes lies in A1..DF.
+  if (HighBytes = 0) or (MidBytes * 100 < HighBytes * 40) then
+    Exit;
+  // Traditional Chinese uses trail bytes 40..7E for a large share of its
+  // characters; GB2312-range simplified text uses none.
+  if (Four = 0) and Big5Ok and (LowTrail * 5 >= Pairs) then
+  begin
+    AEncoding := tfeBig5;
+    Exit(True);
+  end;
+  // Cyrillic text is mostly lowercase letters in A0..AF / E0..FF.
+  if LowerLike * 100 >= HighBytes * 55 then
+    Exit;
+  if Four > 0 then
+    AEncoding := tfeGb18030
+  else
+    AEncoding := tfeGbk;
+  Result := True;
+end;
+
 function HasNul(const ABytes: TBytes): Boolean;
 var
   B: Byte;
@@ -430,6 +622,13 @@ begin
     // ASCII-only: still UTF-8 (compatible with ANSI/OEM for 7-bit).
     AEncoding := tfeUtf8;
     AText := SafeGetString(TEncoding.UTF8, ABytes);
+    Exit(True);
+  end;
+
+  // Well-formed Chinese double-byte text.
+  if DetectChineseMultiByte(ABytes, AEncoding) then
+  begin
+    AText := DecodeCodePage(ABytes, CodePageOf(AEncoding));
     Exit(True);
   end;
 
@@ -503,6 +702,8 @@ begin
           Enc.Free;
         end;
       end;
+    tfeGbk, tfeGb18030, tfeBig5:
+      Result := DecodeCodePage(ABytes, CodePageOf(AEncoding));
   else
     // tfeUtf8
     begin
@@ -552,6 +753,11 @@ begin
         finally
           Enc.Free;
         end;
+      end;
+    tfeGbk, tfeGb18030, tfeBig5:
+      begin
+        SetLength(Bom, 0);
+        Body := EncodeCodePage(AText, CodePageOf(AEncoding));
       end;
   else
     // tfeUtf8 - no BOM

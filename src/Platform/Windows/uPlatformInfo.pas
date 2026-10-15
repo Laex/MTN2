@@ -10,6 +10,10 @@ interface
 /// Russian system); 65001 where there is no such notion.</summary>
 function PlatformOemCodePage: Integer;
 
+/// <summary>Languages the user prefers for the OS interface, best first, as
+/// BCP 47 style tags ("ru-RU", "zh-Hans-CN"); empty when unknown.</summary>
+function PlatformPreferredUiLanguages: TArray<string>;
+
 /// <summary>Maximum delay in milliseconds between the clicks of a double
 /// click.</summary>
 function PlatformDoubleClickMs: Cardinal;
@@ -84,6 +88,36 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils, Winapi.Windows, Winapi.ShLwApi;
+
+function MtnGetUserPreferredUILanguages(AFlags: DWORD; ANumLanguages: PULONG;
+  ALanguagesBuffer: PWideChar; ABufferChars: PULONG): BOOL; stdcall;
+  external kernel32 name 'GetUserPreferredUILanguages';
+
+function PlatformPreferredUiLanguages: TArray<string>;
+const
+  cMuiLanguageName = $8;
+var
+  Num, Len: ULONG;
+  Buf: TArray<WideChar>;
+  P: PWideChar;
+begin
+  SetLength(Result, 0);
+  Num := 0;
+  Len := 0;
+  if not MtnGetUserPreferredUILanguages(cMuiLanguageName, @Num, nil, @Len) or (Len = 0) then
+    Exit;
+  SetLength(Buf, Len);
+  if not MtnGetUserPreferredUILanguages(cMuiLanguageName, @Num, PWideChar(Buf), @Len) then
+    Exit;
+  // A list of zero-terminated names closed by an empty one.
+  P := PWideChar(Buf);
+  while P^ <> #0 do
+  begin
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := P;
+    Inc(P, StrLen(P) + 1);
+  end;
+end;
 
 function PlatformCompareTextRun(const ALeft: string; ALeftStart, ALeftLen: Integer;
   const ARight: string; ARightStart, ARightLen: Integer): Integer;

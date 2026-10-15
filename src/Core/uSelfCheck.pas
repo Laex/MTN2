@@ -8,10 +8,12 @@ unit uSelfCheck;
 
   Checked:
   - the embedded RCDATA the app cannot start without (menu, default keymap,
-    default theme, parent-up icon), and every DIALOG_* / STRINGS_* resource
-    parses as JSON;
-  - help\<locale>\index.md next to the exe for every locale the language
-    picker offers (uStrings.AvailableLocales);
+    default theme, parent-up icon), and every DIALOG_* resource parses as
+    JSON;
+  - the language packs under resource\: help\index.md for English, and for
+    every other folder a locale.json whose version matches the program
+    (an older one is a warning, a newer or unreadable one a failure), a
+    strings.json and help\index.md;
   - sk4d.dll loads (FMX renders through Skia);
   - every plugins\<id>\ has a parsable plugin.json naming that id and at
     least one module (*.dll / *.wasm / *.wat).
@@ -42,8 +44,8 @@ uses
   System.JSON, uStrings, uPluginManifest, uResourceAccess, uPlatformInfo;
 
 const
-  cRequiredResources: array[0..3] of string =
-    ('MENU_MAIN', 'KEYMAP_DEFAULT', 'THEME_NDN', 'ICON_PARENT_UP');
+  cRequiredResources: array[0..4] of string =
+    ('MENU_MAIN', 'KEYMAP_DEFAULT', 'THEME_NDN', 'ICON_PARENT_UP', 'RESOURCE_VERSION');
 
 function SelfCheckRequested: Boolean;
 var
@@ -112,10 +114,10 @@ procedure CheckResources(var AReport: TSelfCheckReport);
 var
   Names: TStringList;
   Name, Text: string;
-  Dialogs, Locales: Integer;
+  Dialogs: Integer;
 begin
   // Presence only: ICON_PARENT_UP is a PNG, the JSON ones are parsed by
-  // their own loaders (and DIALOG_* / STRINGS_* just below).
+  // their own loaders (and DIALOG_* just below).
   for Name in cRequiredResources do
     if ResourceSize(Name) > 0 then
       Add(AReport, 'OK  ', 'resource ' + Name)
@@ -123,18 +125,14 @@ begin
       Add(AReport, 'FAIL', 'resource ' + Name + ' is not embedded');
 
   Dialogs := 0;
-  Locales := 0;
   Names := TStringList.Create;
   try
     ListRcDataNames('', Names);
     for Name in Names do
     begin
-      if Name.StartsWith('DIALOG_') then
-        Inc(Dialogs)
-      else if Name.StartsWith('STRINGS_') then
-        Inc(Locales)
-      else
+      if not Name.StartsWith('DIALOG_') then
         Continue;
+      Inc(Dialogs);
       try
         if not (ResourceText(Name, Text) and IsJsonObject(Text)) then
           Add(AReport, 'FAIL', 'resource ' + Name + ' is not a JSON object');
@@ -149,21 +147,62 @@ begin
   if Dialogs = 0 then
     Add(AReport, 'FAIL', 'no DIALOG_* resources embedded')
   else
-    Add(AReport, 'OK  ', Format('%d dialog resources, %d embedded locales', [Dialogs, Locales]));
+    Add(AReport, 'OK  ', Format('%d dialog resources', [Dialogs]));
 end;
 
-procedure CheckHelp(const AAppDir: string; var AReport: TSelfCheckReport);
+procedure CheckHelpIndex(const AAppDir, ALocale: string; var AReport: TSelfCheckReport);
 var
-  Locale, Index: string;
+  Rel: string;
 begin
-  for Locale in AvailableLocales do
+  Rel := 'resource' + PathDelim + ALocale + PathDelim + 'help' + PathDelim + 'index.md';
+  if TFile.Exists(TPath.Combine(AAppDir, Rel)) then
+    Add(AReport, 'OK  ', Rel)
+  else
+    Add(AReport, 'FAIL', Rel + ' is missing');
+end;
+
+procedure CheckLocalePacks(const AAppDir: string; var AReport: TSelfCheckReport);
+var
+  Root, Locale, Rel: string;
+  Info: TLocalePackInfo;
+  Expected: Integer;
+begin
+  Root := TPath.Combine(AAppDir, 'resource');
+  Expected := ResourceVersion;
+  CheckHelpIndex(AAppDir, 'en', AReport);
+  if not TDirectory.Exists(Root) then
   begin
-    Index := TPath.Combine(TPath.Combine(TPath.Combine(AAppDir, 'help'),
-      LowerCase(Locale)), 'index.md');
-    if TFile.Exists(Index) then
-      Add(AReport, 'OK  ', 'help' + PathDelim + LowerCase(Locale) + PathDelim + 'index.md')
-    else
-      Add(AReport, 'FAIL', 'help' + PathDelim + LowerCase(Locale) + PathDelim + 'index.md is missing');
+    Add(AReport, 'FAIL', 'resource' + PathDelim + ' is missing');
+    Exit;
+  end;
+  for Locale in TDirectory.GetDirectories(Root) do
+  begin
+    Info := InspectLocalePack(Root, ExtractFileName(Locale), Expected);
+    if Info.Locale = 'en' then
+      Continue;
+    Rel := 'resource' + PathDelim + Info.Locale + PathDelim;
+    case Info.Status of
+      lpsMissing:
+        Add(AReport, 'FAIL', Rel + 'locale.json is missing');
+      lpsInvalid:
+        Add(AReport, 'FAIL', Rel + 'locale.json is not {"version": N}');
+      lpsNewer:
+        Add(AReport, 'FAIL', Format('%slocale.json version %d is newer than the program (%d): pack ignored',
+          [Rel, Info.Version, Expected]));
+      lpsOlder, lpsCurrent:
+      begin
+        if Info.Status = lpsOlder then
+          Add(AReport, 'WARN', Format('%slocale.json version %d is older than the program (%d): missing keys show English',
+            [Rel, Info.Version, Expected]))
+        else
+          Add(AReport, 'OK  ', Rel + 'locale.json version ' + IntToStr(Info.Version));
+        if TFile.Exists(TPath.Combine(Info.Dir, 'strings.json')) then
+          Add(AReport, 'OK  ', Rel + 'strings.json')
+        else
+          Add(AReport, 'FAIL', Rel + 'strings.json is missing');
+        CheckHelpIndex(AAppDir, Info.Locale, AReport);
+      end;
+    end;
   end;
 end;
 
@@ -233,7 +272,7 @@ begin
     try
       case Step of
         0: CheckResources(AReport);
-        1: CheckHelp(AAppDir, AReport);
+        1: CheckLocalePacks(AAppDir, AReport);
         2:
           if PlatformRenderLibrary <> '' then
             CheckDll(AAppDir, PlatformRenderLibrary, True, AReport);

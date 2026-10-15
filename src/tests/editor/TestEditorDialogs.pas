@@ -105,23 +105,25 @@ var
   Ch: Char;
   I: Integer;
   Items: TArray<string>;
+  Last: string;
 begin
   Host := TDialogHost.Create(nil);
   try
     Items := TextEncodingListItems;
+    Last := Items[High(Items)];
     Decl.Version := cDialogProtocolV2;
     Decl.Title := 'Code page';
     Decl.Width := 28;
-    Decl.Height := 9;
+    Decl.Height := 12;
     Decl.IsWarning := False;
     SetLength(Decl.Controls, 1);
-    Decl.Controls[0] := WithControlBox(MakeList('encoding', Items, 0), 1, 1, 24, 6);
+    Decl.Controls[0] := WithControlBox(MakeList('encoding', Items, 0), 1, 1, 24, 9);
     Host.Open(Decl, NoopDialogCommand);
 
     AllocTerminalGrid(Grid, 80, 25);
     ClearTerminalGrid(Grid, $FF000000, $FFFFFFFF, ' ');
     Host.Draw(Grid, 80, 25);
-    Assert.IsTrue(GridHasText(Grid, 'OEM'), 'all 6 encodings visible including last (OEM)');
+    Assert.IsTrue(GridHasText(Grid, Last), 'every encoding is visible, the last one included');
 
     for I := 1 to High(Items) do
     begin
@@ -132,11 +134,11 @@ begin
     Key := vkDown;
     Ch := #0;
     Host.HandleInput(Key, [], Ch);
-    Assert.IsTrue(Host.GetListSelectedText('encoding') = 'OEM',
-      'Down past last item stays on OEM');
+    Assert.IsTrue(Host.GetListSelectedText('encoding') = Last,
+      'Down past last item stays on the last encoding');
     ClearTerminalGrid(Grid, $FF000000, $FFFFFFFF, ' ');
     Host.Draw(Grid, 80, 25);
-    Assert.IsTrue(GridHasText(Grid, 'OEM'), 'OEM still drawn after Down on last row');
+    Assert.IsTrue(GridHasText(Grid, Last), 'last encoding still drawn after Down on last row');
 
     SetLength(Items, 10);
     for I := 0 to High(Items) do

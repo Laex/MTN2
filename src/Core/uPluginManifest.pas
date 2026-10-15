@@ -56,10 +56,15 @@ type
     /// <summary>Optional "author" and "homepage" (shown as given).</summary>
     Author: string;
     Homepage: string;
-    /// <summary>Optional "help": file name of a Markdown page in the plugin's
-    /// folder ("help.md"). For the language "ru" the host looks for
-    /// "help.ru.md" first, then the name as given.</summary>
+    /// <summary>Optional "help": file name of a Markdown page ("help.md"). The
+    /// host looks for it in the plugin's resource\<locale>\help\ for the
+    /// current language, then in resource\en\help\.</summary>
     Help: string;
+    /// <summary>Optional "resources": the revision of the plugin's key set and
+    /// pack layout, compared with the "version" in each
+    /// resource\<locale>\locale.json (see uStrings.TStringPack). 0 = the plugin
+    /// declares none and any pack is accepted.</summary>
+    ResourceVersion: Integer;
     /// <summary>Optional "permissions": ["vfs.read"] - what the plugin asks the
     /// user to allow (see uPluginPermissions). Names are lower-cased; unknown
     /// ones are kept here and ignored by the permission check.</summary>
@@ -76,8 +81,12 @@ function TryReadOverrideAllowList(const APluginsDir: string;
 /// <summary>The description in ALocale ("ru"), else English, else the plain
 /// string, else the first one given; '' when the manifest has none.</summary>
 function ManifestDescription(const AManifest: TPluginManifest; const ALocale: string): string;
-/// <summary>Full path of the plugin's help page for ALocale, or '' when the
-/// manifest names none or the file is missing. APluginDir is the plugin's folder.</summary>
+/// <summary><APluginDir>\resource\<ALocale>: the plugin's pack for one language
+/// (locale.json, strings.json, help\).</summary>
+function PluginResourceDir(const APluginDir, ALocale: string): string;
+/// <summary>Full path of the plugin's help page for ALocale, falling back to
+/// English, or '' when the manifest names none or no file exists.
+/// APluginDir is the plugin's folder.</summary>
 function ManifestHelpFile(const AManifest: TPluginManifest; const APluginDir,
   ALocale: string): string;
 /// <summary>Writes plugins\overrides.json; an empty list removes the file.</summary>
@@ -125,6 +134,7 @@ begin
   AManifest.Author := '';
   AManifest.Homepage := '';
   AManifest.Help := '';
+  AManifest.ResourceVersion := 0;
   SetLength(AManifest.Permissions, 0);
 end;
 
@@ -250,6 +260,9 @@ begin
     N := Obj.Values['help'];
     if N is TJSONString then
       AManifest.Help := Trim(TJSONString(N).Value);
+    N := Obj.Values['resources'];
+    if N is TJSONNumber then
+      AManifest.ResourceVersion := TJSONNumber(N).AsInt;
     AManifest.Permissions := ReadTrimmedStrings(Obj.Values['permissions'], True);
     Result := AManifest.Id <> '';
   finally
@@ -336,22 +349,27 @@ end;
 function ManifestHelpFile(const AManifest: TPluginManifest; const APluginDir,
   ALocale: string): string;
 var
-  Name, Localized: string;
+  Name, Lang, Candidate: string;
 begin
   Result := '';
   Name := Trim(AManifest.Help);
   // A plugin cannot point the host at a file outside its own folder.
   if (Name = '') or (APluginDir = '') or (Name <> ExtractFileName(Name)) then
     Exit;
-  if Trim(ALocale) <> '' then
+  for Lang in TArray<string>.Create(LowerCase(Trim(ALocale)), 'en') do
   begin
-    Localized := TPath.Combine(APluginDir, ChangeFileExt(Name, '') + '.' +
-      LowerCase(Trim(ALocale)) + ExtractFileExt(Name));
-    if TFile.Exists(Localized) then
-      Exit(Localized);
+    if Lang = '' then
+      Continue;
+    Candidate := TPath.Combine(PluginResourceDir(APluginDir, Lang), 'help');
+    Candidate := TPath.Combine(Candidate, Name);
+    if TFile.Exists(Candidate) then
+      Exit(Candidate);
   end;
-  if TFile.Exists(TPath.Combine(APluginDir, Name)) then
-    Result := TPath.Combine(APluginDir, Name);
+end;
+
+function PluginResourceDir(const APluginDir, ALocale: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(APluginDir, 'resource'), LowerCase(Trim(ALocale)));
 end;
 
 procedure WriteOverrideAllowList(const APluginsDir: string; const AIds: TArray<string>);

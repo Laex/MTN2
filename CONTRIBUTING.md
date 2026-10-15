@@ -18,11 +18,12 @@
 ## Что можно сделать без знания Delphi
 
 - **Темы.** Файл темы – JSON ([docs/THEMES.md](docs/THEMES.md)); готовой темой можно поделиться в Discussions.
-- **Язык интерфейса.** Строки лежат в `src/strings/<язык>.json`; свой язык добавляется файлом `strings\<язык>.json`
-  рядом с `MTN2.exe`.
+- **Язык интерфейса.** Строки лежат в `bin/win64/resource/<язык>/strings.json` (шаблон со всеми ключами – `src/strings/en.json`);
+  свой язык добавляется папкой `resource\<язык>\` рядом с `MTN2.exe`. В `locale.json` папки указана версия набора ключей;
+  при изменении ключей поднимите `src/resource.version` и версии пакетов.
 - **Плагины.** Нативные DLL и WebAssembly (C, C++, Rust, Go и другие); контракты описаны в
   [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md), образцы лежат в [samples](samples).
-- **Документация и справка.** Тексты в `docs/` и `bin/win64/help`.
+- **Документация и справка.** Тексты в `docs/` и `bin/win64/resource/<язык>/help`.
 
 ## Сборка и тесты
 

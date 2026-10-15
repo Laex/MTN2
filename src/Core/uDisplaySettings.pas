@@ -117,9 +117,8 @@ procedure EnsureFontInList(var ANames: TArray<string>; const AName: string);
 /// uStrings.AvailableLocales(), 'en' always first.</summary>
 function DisplayLanguageItems: TArray<string>;
 /// <summary>Human-readable name for a locale code (e.g. 'ru' -> 'Русский'),
-/// for populating the Display dialog's dropdown. Falls back to the
-/// uppercased code itself for a locale with no curated name yet (e.g. a
-/// community locale dropped into strings\ without an app update).</summary>
+/// for populating the Display dialog's dropdown: the "name" in the pack's
+/// locale.json, or the uppercased code itself when the pack gives none.</summary>
 function DisplayLanguageName(const ALocale: string): string;
 /// <summary>session.json id: 'classic' / 'soft' / 'none'.</summary>
 function ShadowStyleId(AStyle: TShadowStyle): string;
@@ -469,15 +468,10 @@ end;
 
 function DisplayLanguageName(const ALocale: string): string;
 begin
-  if SameText(ALocale, 'en') then
-    Result := 'English'
-  else if SameText(ALocale, 'ru') then
-    Result := #$0420 + #$0443 + #$0441 + #$0441 + #$043A + #$0438 + #$0439 // Русский
-  else if SameText(ALocale, 'de') then
-    Result := 'Deutsch'
-  else if Trim(ALocale) = '' then
-    Result := 'English'
-  else
+  if SameText(ALocale, 'en') or (Trim(ALocale) = '') then
+    Exit('English');
+  Result := LocalePackInfo(ALocale).Name;
+  if Result = '' then
     Result := UpperCase(ALocale);
 end;
 

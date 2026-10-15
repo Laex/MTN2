@@ -24,18 +24,22 @@ type
     [Test] procedure TestPostedWorkRunsOnTheMainThread;
     [Test] procedure TestPostedWorkOfAnUnloadedPluginIsDropped;
     [Test] procedure TestProgressStaysUntilEnded;
+    [Test] procedure TestPluginTextsFollowTheProgramLanguage;
+    [Test] procedure TestLanguageChangeIsAnnounced;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, uPluginServices, uNotice;
+  System.SysUtils, System.Classes, System.IOUtils, uPluginServices, uNotice, uStrings;
 
 procedure TTestPluginServices.TearDown;
 begin
   SetPluginHostServices(Default(TPluginHostServices));
   PluginEventsUnregister('t.one');
   PluginEventsUnregister('t.two');
+  PluginEventsUnregister('t.text');
+  SetLocale('en');
 end;
 
 procedure TTestPluginServices.TestWithoutAWindowEveryServiceFails;
@@ -311,6 +315,57 @@ begin
   end;
 end;
 
+procedure TTestPluginServices.TestPluginTextsFollowTheProgramLanguage;
+var
+  Dir, Saved, PackDir: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-text-' + TGUID.NewGuid.ToString);
+  Saved := ResourceRoot;
+  PackDir := TPath.Combine(Dir, 'resource' + PathDelim + 'ru');
+  ForceDirectories(PackDir);
+  TFile.WriteAllText(TPath.Combine(PackDir, 'locale.json'), '{"version":4}', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(PackDir, 'strings.json'), '{"dlg":{"title":"Заголовок"}}', TEncoding.UTF8);
+  // The application's own pack of the same language must not leak into a plugin.
+  SetResourceRoot(TPath.Combine(Dir, 'app'));
+  try
+    PluginSetResources('t.text', Dir, 4);
+    SetLocale('en');
+    Assert.AreEqual('Title', PluginTranslate('t.text', 'dlg.title', 'Title'), 'English: the default');
+    SetLocale('ru');
+    Assert.AreEqual('Заголовок', PluginTranslate('t.text', 'dlg.title', 'Title'), 'the pack of the program language');
+    Assert.AreEqual('Other', PluginTranslate('t.text', 'dlg.other', 'Other'), 'a key the pack lacks: the default');
+    Assert.AreEqual('Title', PluginTranslate('t.unknown', 'dlg.title', 'Title'), 'a plugin without resources: the default');
+    SetLocale('de');
+    Assert.AreEqual('Title', PluginTranslate('t.text', 'dlg.title', 'Title'), 'a language the plugin has no pack for');
+    PluginSetResources('t.text', Dir, 3);
+    SetLocale('ru');
+    Assert.AreEqual('Title', PluginTranslate('t.text', 'dlg.title', 'Title'), 'a pack newer than the plugin revision is ignored');
+    PluginSetResources('t.text', Dir, 0);
+    Assert.AreEqual('Заголовок', PluginTranslate('t.text', 'dlg.title', 'Title'), 'revision 0: any pack is accepted');
+    PluginEventsUnregister('t.text');
+    Assert.AreEqual('Title', PluginTranslate('t.text', 'dlg.title', 'Title'), 'an unloaded plugin: the default');
+  finally
+    SetLocale('en');
+    SetResourceRoot(Saved);
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestPluginServices.TestLanguageChangeIsAnnounced;
+var
+  Topic, Payload: string;
+begin
+  PluginSubscribe('t.one', 'language.changed',
+    procedure(const ATopic, APayloadJson: string)
+    begin
+      Topic := ATopic;
+      Payload := APayloadJson;
+    end);
+  SetLocale('ru');
+  PluginAnnounceLanguage;
+  Assert.AreEqual('language.changed', Topic, 'topic');
+  Assert.AreEqual('{"language":"ru"}', Payload, 'payload names the new language');
+end;
 procedure TTestPluginServices.TestHostInfoNamesTheVersion;
 begin
   Assert.IsTrue(Pos('"version"', PluginHostInfoJson) > 0, PluginHostInfoJson);

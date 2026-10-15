@@ -1692,6 +1692,7 @@ begin
     SetLocale(ASettings.Language);
     if Assigned(FDualPanel) then
       FDualPanel.ReloadMenuStructure;
+    PluginAnnounceLanguage;
   end;
   if Assigned(FBlinkTimer) then
     FBlinkTimer.Interval := FSession.CursorBlinkMs;
@@ -1735,9 +1736,11 @@ function TMainForm.PeekSessionLanguage: string;
 var
   Sess: TMtnSession;
 begin
-  Result := '';
+  // No session file yet: the first start follows the OS interface language.
   if TryLoadSession(DefaultSessionFilePath, Sess) then
-    Result := Sess.Language;
+    Result := Sess.Language
+  else
+    Result := SystemDefaultLocale;
 end;
 
 procedure TMainForm.TryRestoreSession;

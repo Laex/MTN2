@@ -110,6 +110,11 @@ unit uWasmPluginHost;
     vfs_close(file) -> i32                        // 0 = closed, -1 = unknown handle; a
       // plugin's open files are closed when it is unloaded
     host_info(out_ptr, out_cap) -> i32            // JSON with "version" and "language"
+    translate(key_ptr, key_len, def_ptr, def_len, out_ptr, out_cap) -> i32
+      // the text of the key from the plugin's resource\<language>\strings.json for the
+      // program language, or the default (the plugin's English text) when the language is
+      // English or there is no such pack or key; text result as for host_info. The host
+      // event "language.changed" (payload JSON with the new "language") says when to ask again.
     doc_info(out_ptr, out_cap) -> i32             // JSON about the active text document
     doc_get_text(what, out_ptr, out_cap) -> i32   // 0 selection, 1 whole document (LF), 2 cursor line
     doc_replace(what, text_ptr, text_len) -> i32  // as doc_get_text; one undo step; 0 = done
@@ -281,6 +286,7 @@ const
   cVfsCancel: AnsiString = 'vfs_cancel';
   cSurfaceGetFullscreen: AnsiString = 'surface_get_fullscreen';
   cHostInfo: AnsiString = 'host_info';
+  cTranslate: AnsiString = 'translate';
   cDocInfo: AnsiString = 'doc_info';
   cDocGetText: AnsiString = 'doc_get_text';
   cDocReplace: AnsiString = 'doc_replace';
@@ -855,6 +861,30 @@ begin
     Exit;
   Vals := Pointer(Args);
   ReturnGuestText(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, PluginHostInfoJson, Results, NResults);
+end;
+
+function HostTranslate(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Key, Default: string;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 6 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Key) or (Key = '') then
+    Exit;
+  if not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Default) then
+    Exit;
+  ReturnGuestText(Caller, Vals^[4].Of_.I32, Vals^[5].Of_.I32,
+    PluginTranslate(Inst.PluginId, Key, Default), Results, NResults);
 end;
 
 function HostDocInfo(Env: Pointer; Caller: PWasmtimeCaller;
@@ -2060,6 +2090,8 @@ begin
     if not DefineHostImport(cVfsResult, Ty3, @HostVfsResult, AError) then
       Exit(False);
     if not DefineHostImport(cHostInfo, Ty2, @HostHostInfo, AError) then
+      Exit(False);
+    if not DefineHostImport(cTranslate, Ty6, @HostTranslate, AError) then
       Exit(False);
     if not DefineHostImport(cDocInfo, Ty2, @HostDocInfo, AError) then
       Exit(False);

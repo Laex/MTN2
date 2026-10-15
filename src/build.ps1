@@ -135,6 +135,9 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src;$Src\Windows" -N"$Pl
         ForEach-Object {
             Copy-Item $_.FullName (Join-Path $Dest $_.Name) -Force
         }
+    # The plugin's language packs (resource\<locale>\strings.json, help\).
+    $PluginRes = Join-Path $Src 'resource'
+    if (Test-Path $PluginRes) { Copy-Item $PluginRes $Dest -Recurse -Force }
     Write-Host "OK: staged $Name -> $Dest"
 }
 

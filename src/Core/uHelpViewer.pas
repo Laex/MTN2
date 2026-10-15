@@ -1,8 +1,8 @@
 ﻿unit uHelpViewer;
 
-{ F1 Help window. Topics are Markdown files in <exe dir>\help\<language>\
-  (index.md is the title page; languages without a folder fall back to en,
-  then ru). One embedded TEditorWindow in HelpMode renders the current topic
+{ F1 Help window. Topics are Markdown files in <exe dir>\resource\<language>\help\
+  (index.md is the title page; languages without a folder fall back to en).
+  One embedded TEditorWindow in HelpMode renders the current topic
   inside a modal window that the Dual Panel host paints over everything.
 
   Links ([text](target)): "topic.md", "topic.md#anchor" or "#anchor", where
@@ -110,10 +110,10 @@ class function THelpViewer.TopicDir: string;
 var
   Root, Lang: string;
 begin
-  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'help');
-  for Lang in TArray<string>.Create(CurrentLocale, 'en', 'ru') do
+  Root := ResourceRoot;
+  for Lang in TArray<string>.Create(CurrentLocale, 'en') do
   begin
-    Result := TPath.Combine(Root, Lang);
+    Result := TPath.Combine(TPath.Combine(Root, Lang), 'help');
     if FileExists(TPath.Combine(Result, cIndexTopic)) then
       Exit;
   end;

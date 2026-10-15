@@ -47,7 +47,7 @@ MTN2 面向在 DOS Navigator 与 Far Manager 陪伴下成长、习惯用键盘�
 - **查看与编辑：** 内置 Viewer（文本、十六进制、大文件流式加载）、Editor、快速查看（`Ctrl+Q`）、Markdown 预览、支持外部查看器与编辑器。
 - **虚拟文件系统（VFS）：** 压缩包浏览（zip、基于 `7z.dll` 的 7z）、SSH 上的 SFTP、插件扩展 VFS。
 - **个性化设置：** 可自定义快捷键映射（`keymap.json`）、基于文件的主题系统（Far Classic、Total Commander、Dracula、Nord、Solarized、High Contrast 等；可通过内置主题编辑器创建自定义主题）、用户菜单（F2）、文件关联、F1 上下文帮助。
-- **多语言：** 界面和帮助文档支持英语、俄语和德语；语言可在 **选项 → 字体 / 显示...**（Options → Font / Display...）中选择并实时生效，无需重启。可通过在 `MTN2.exe` 同级目录下放置 `strings\<语言代码>.json` 文件添加自定义语言。
+- **多语言：** 界面和帮助文档支持英语、俄语和德语；语言可在 **选项 → 字体 / 显示...**（Options → Font / Display...）中选择并实时生效，无需重启。可通过在 `MTN2.exe` 同级目录下放置 `resource\<语言代码>\` 文件夹（`locale.json`、`strings.json`，帮助文档在 `help\` 中）添加自定义语言，无需重新编译。程序内仅内置英语。
 - **Unicode：** CJK 汉字（基本多语言平面）、平假名、片假名、谚文及全角字符在控制台、面板、标签页和标题中均以双列宽度显示；缺失字符自动使用系统字体回退渲染。
 - **插件系统：** 原生 DLL 与 WebAssembly（基于 Wasmtime）—— 支持自定义 VFS 方案及专属面板、菜单项、按键绑定、消息总线。已定义对话框、覆盖层与状态栏的插件协议，目前由主程序内部使用——详见 [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md)。
 - **自动更新：** 每日自动检查 GitHub 上的新版本；下载（包含 SHA-256 校验）、安装及重启均需用户确认。菜单入口：**≡ → 检查更新...**。
@@ -92,12 +92,12 @@ Linux 版本在 Windows 环境下通过 `dcclinux64` 编译器进行交叉编译
 | `src/Core` | 核心引擎：面板、VFS、控制台、编辑器、对话框、插件宿主 |
 | `src/Platform` | 平台适配层：包含同名模块的 `Windows` 与 `Posix` |
 | `src/Hosts` | 外壳宿主：`Ansi` – 文本终端版本 |
-| `src/Forms`, `src/dialogs`, `src/strings`, `src/Assets/themes` | 主窗体、JSON 对话框、多语言本地化、内置主题 |
+| `src/Forms`, `src/dialogs`, `src/Assets/themes` | 主窗体、JSON 对话框、内置主题 |
 | `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.ws`、WASM 演示） |
 | `src/tests` | 按组划分的 DUnitX 回归测试及运行脚本 `run-tests.ps1` |
 | `src/tools` | DialogDesigner、ExportDialogJson、`Group.groupproj` 项目组、工具脚本 |
 | `bin/win64`, `bin/linux64` | 各平台构建输出目录 |
-| `bin/win64/help` | F1 帮助文档（en/ru/de），随程序一同发布 |
+| `bin/win64/resource` | 语言包：界面文本和 F1 帮助文档（en/ru/de），随程序一同发布 |
 | `docs` | 开发者文档、截图（`docs/images`） |
 
 ## 相关文档
@@ -121,7 +121,7 @@ Linux 版本在 Windows 环境下通过 `dcclinux64` 编译器进行交叉编译
 - 路线图跟踪与任务规划；
 - 代码中绝大多数注释的编写；
 - 基于 DUnitX 的回归测试套件（`src/tests`）；
-- 面向用户的文本文档：F1 帮助（`bin/win64/help`）、[CHANGELOG.md](CHANGELOG.md) 以及版本发布说明。
+- 面向用户的文本文档：F1 帮助（`bin/win64/resource/<语言代码>/help`）、[CHANGELOG.md](CHANGELOG.md) 以及版本发布说明。
 
 ## 许可证
 

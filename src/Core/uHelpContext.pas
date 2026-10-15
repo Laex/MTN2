@@ -1,6 +1,6 @@
 unit uHelpContext;
 
-{ Context F1: which help topic (a file in <exe>\help\<language>\) fits what
+{ Context F1: which help topic (a file in <exe>\resource\<language>\help\) fits what
   is on screen. Pure mapping -- TDualPanelWindow.OpenHelp fills THelpScreen
   from its state, so the choice is testable without a window.
 

@@ -1,6 +1,6 @@
 unit TestGermanStrings;
 
-{ The German locale (strings/de.json, embedded as STRINGS_DE): it is
+{ The German locale (the shipped resource\de pack): it is
   discovered, translates, and covers every key of the Russian translation
   with the same format placeholders. }
 
@@ -44,15 +44,15 @@ begin
     AInto.AddOrSetValue(APath, AValue.Value);
 end;
 
-function LoadFlat(const AFileName: string): TFlatStrings;
+function LoadFlat(const ALocale: string): TFlatStrings;
 var
   Root: TJSONValue;
 begin
   Result := TFlatStrings.Create;
   Root := TJSONObject.ParseJSONValue(
-    TFile.ReadAllText(TPath.Combine('../../strings', AFileName), TEncoding.UTF8));
+    TFile.ReadAllText(TPath.Combine(TPath.Combine('../../../bin/win64/resource', ALocale), 'strings.json'), TEncoding.UTF8));
   try
-    Assert.IsNotNull(Root, AFileName + ' parses');
+    Assert.IsNotNull(Root, ALocale + ' strings.json parses');
     Flatten(Root, '', Result);
   finally
     Root.Free;
@@ -81,7 +81,7 @@ begin
   for Locale in AvailableLocales do
     if SameText(Locale, 'de') then
       Found := True;
-  Assert.IsTrue(Found, 'de is discovered from the embedded STRINGS_DE resource');
+  Assert.IsTrue(Found, 'de is discovered from the shipped resource\de pack');
   Assert.AreEqual('Deutsch', DisplayLanguageName('de'));
 end;
 
@@ -92,7 +92,7 @@ begin
     Assert.AreEqual('&Kopieren', T('menu.tmaFileCopy', 'Copy'));
     Assert.AreEqual('Abbrechen', T('status.Cancel', 'Cancel'));
     Assert.AreEqual('Fallback', T('this.key.does.not.exist', 'Fallback'),
-      'a key absent from de.json falls back to the default text');
+      'a key absent from the de pack falls back to the default text');
   finally
     SetLocale('en');
   end;
@@ -104,8 +104,8 @@ var
   Key: string;
   Missing: string;
 begin
-  Ru := LoadFlat('ru.json');
-  De := LoadFlat('de.json');
+  Ru := LoadFlat('ru');
+  De := LoadFlat('de');
   try
     Missing := '';
     for Key in Ru.Keys do
@@ -125,8 +125,8 @@ var
   Ru, De: TFlatStrings;
   Key, Mark, Bad: string;
 begin
-  Ru := LoadFlat('ru.json');
-  De := LoadFlat('de.json');
+  Ru := LoadFlat('ru');
+  De := LoadFlat('de');
   try
     Bad := '';
     for Key in Ru.Keys do
@@ -146,8 +146,8 @@ var
   Ru, De: TFlatStrings;
   Key, Bad: string;
 begin
-  Ru := LoadFlat('ru.json');
-  De := LoadFlat('de.json');
+  Ru := LoadFlat('ru');
+  De := LoadFlat('de');
   try
     Bad := '';
     for Key in Ru.Keys do

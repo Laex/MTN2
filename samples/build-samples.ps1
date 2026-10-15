@@ -64,9 +64,9 @@ function Want([string]$Id) { return (-not $Only) -or ($Only -contains $Id) }
 function Stage-Common([string]$Id, [string]$Out) {
     New-Item -ItemType Directory -Force -Path $Out | Out-Null
     Copy-Item (Join-Path $Samples "$Id\plugin.json") $Out -Force
-    # The help pages named by "help" in plugin.json (help.md, help.ru.md).
-    Get-ChildItem (Join-Path $Samples $Id) -Filter 'help*.md' -ErrorAction SilentlyContinue |
-        Copy-Item -Destination $Out -Force
+    # The language packs: resource\<locale>\help\ holds the page named by "help" in plugin.json.
+    $Res = Join-Path $Samples "$Id\resource"
+    if (Test-Path $Res) { Copy-Item $Res $Out -Recurse -Force }
 }
 
 function Build-Cpp {

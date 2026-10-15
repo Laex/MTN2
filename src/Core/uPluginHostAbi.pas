@@ -47,8 +47,9 @@ const
   /// PanelSetCursor, PanelSelect, DocSetSelection, DocLine, PostToMain, ProgressSet,
   /// ProgressEnd, SurfaceOpenEx, SurfaceSetFullscreen, SurfaceNativeHandle,
   /// RegisterHighlighter, VfsList, VfsExists, VfsRead, VfsOpen, VfsSize, VfsReadAt,
-  /// VfsClose, VfsCancel, SurfaceGetFullscreen.</summary>
-  cPluginAbiVersion: Int64 = 2;
+  /// VfsClose, VfsCancel, SurfaceGetFullscreen.
+  /// 3: Translate.</summary>
+  cPluginAbiVersion: Int64 = 3;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -363,6 +364,14 @@ type
   THostVfsReadAtFn = function(AHandle, AOffset: Int64; ABuf: PByte; ASize: Int64): Int64; cdecl;
   /// <summary>Closes an open file. 0 = closed, -1 = unknown handle. Any thread.</summary>
   THostVfsCloseFn = function(AHandle: Int64): Int64; cdecl;
+  /// <summary>The text of AKey from the plugin's resource\<language>\strings.json
+  /// for the program language, or ADefault (the plugin's English text) when the
+  /// language is English or the pack or the key is missing. Text result as for
+  /// THostTextOutFn: the length in bytes, the text written to ABuf only when it
+  /// fits (a nil ABuf measures). -1 = bad arguments. The host event
+  /// "language.changed" (payload {"language":"ru"}) says when to ask again.</summary>
+  THostTranslateFn = function(APluginId, AKey, ADefault: PAnsiChar;
+    ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
 
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
@@ -425,6 +434,8 @@ type
     VfsClose: THostVfsCloseFn;
     VfsCancel: THostVfsCancelFn;
     SurfaceGetFullscreen: THostSurfaceGetFullscreenFn;
+    // ABI 3
+    Translate: THostTranslateFn;
   end;
   PHostApiTable = ^THostApiTable;
 

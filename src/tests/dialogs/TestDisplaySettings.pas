@@ -2,9 +2,9 @@
 
 { Clamp/index helpers, monospace fallback, session round-trip,
   GShowPanelIcons / PanelIconReserve. Also covers the Language field/picker
-  (uStrings.pas) added on top -- needs the embedded STRINGS_RU resource, see
-  the $R above (uDisplaySettings.DisplayLanguageItems reads it indirectly
-  through uStrings.AvailableLocales). }
+  (uStrings.pas) added on top -- needs the shipped resource\ru pack, which the
+  test runner points uStrings at (uDisplaySettings.DisplayLanguageItems reads
+  it through uStrings.AvailableLocales). }
 
 interface
 
@@ -445,7 +445,7 @@ begin
     if SameText(Codes[I], 'ru') then HasRu := True;
   end;
   Assert.IsTrue(HasEn, 'en is always offered');
-  Assert.IsTrue(HasRu, 'ru is offered (embedded STRINGS_RU resource)');
+  Assert.IsTrue(HasRu, 'ru is offered (shipped resource\ru pack)');
 
   Assert.IsTrue(DisplayLanguageName('en') = 'English', 'en -> English');
   Assert.IsTrue(DisplayLanguageName('') = 'English', 'blank -> English');

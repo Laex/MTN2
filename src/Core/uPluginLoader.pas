@@ -570,6 +570,25 @@ begin
   end;
 end;
 
+function ThunkTranslate(APluginId, AKey, ADefault: PAnsiChar;
+  ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Default: string;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) then
+      Exit(-1);
+    if ADefault = nil then
+      Default := ''
+    else
+      Default := UTF8ToString(ADefault);
+    Result := CopyUtf8Out(PluginTranslate(UTF8ToString(APluginId), UTF8ToString(AKey), Default),
+      ABuf, ABufSize);
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkDocInfo(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
 var
   Json: string;
@@ -1565,6 +1584,7 @@ begin
   Result.VfsClose := @ThunkVfsClose;
   Result.VfsCancel := @ThunkVfsCancel;
   Result.SurfaceGetFullscreen := @ThunkSurfaceGetFullscreen;
+  Result.Translate := @ThunkTranslate;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -1631,6 +1651,7 @@ begin
 
   GrantManifestOverrides(APluginId, Manifest);
   PluginPermissionsDeclare(APluginId, Manifest.Permissions);
+  PluginSetResources(APluginId, ExtractFileDir(AFileName), Manifest.ResourceVersion);
   New(HostApi);
   HostApi^ := BuildHostApiTable;
   try
@@ -1694,6 +1715,7 @@ begin
 
   GrantManifestOverrides(APluginId, Manifest);
   PluginPermissionsDeclare(APluginId, Manifest.Permissions);
+  PluginSetResources(APluginId, ExtractFileDir(AFileName), Manifest.ResourceVersion);
   Inst := TWasmPluginInstance.Create(APluginId);
   Inst.Wasi := Manifest.Wasi;
   if not Inst.LoadFromFile(AFileName, Err) then

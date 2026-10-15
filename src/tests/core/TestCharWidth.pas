@@ -18,6 +18,9 @@ type
     [Test] procedure TestTextDisplayWidth;
     [Test] procedure TestTextFitCharsNeverSplitsWideCharacter;
     [Test] procedure TestStripWideFillers;
+    [Test] procedure TestTextHasWide;
+    [Test] procedure TestCellsBetween;
+    [Test] procedure TestCharAtCell;
   end;
 
 implementation
@@ -101,6 +104,41 @@ begin
   Assert.AreEqual(cHan + cHira, StripWideFillers(cHan + ' ' + cHira + ' '));
   Assert.AreEqual(cHan, StripWideFillers(cHan), 'filler cut off by the end of the line');
   Assert.AreEqual('', StripWideFillers(''));
+end;
+
+procedure TTestCharWidth.TestTextHasWide;
+begin
+  Assert.IsFalse(TextHasWide(''));
+  Assert.IsFalse(TextHasWide('abc ' + #$0416));
+  Assert.IsTrue(TextHasWide('abc' + cHan));
+  Assert.IsTrue(TextHasWide(cHangul));
+end;
+
+procedure TTestCharWidth.TestCellsBetween;
+begin
+  // cHan cHira a b c = 2 + 2 + 3 cells.
+  Assert.AreEqual(4, CellsBetween(cHan + cHira + 'abc', 0, 2));
+  Assert.AreEqual(3, CellsBetween(cHan + cHira + 'abc', 1, 3));
+  Assert.AreEqual(7, CellsBetween(cHan + cHira + 'abc', 0, 5));
+  Assert.AreEqual(7, CellsBetween(cHan + cHira + 'abc', -3, 99), 'ends are clamped');
+  Assert.AreEqual(0, CellsBetween(cHan, 1, 1));
+  Assert.AreEqual(0, CellsBetween('', 0, 4));
+end;
+
+procedure TTestCharWidth.TestCharAtCell;
+const
+  cText = cHan + cHira + 'abc';
+begin
+  Assert.AreEqual(0, CharAtCell(cText, 0, 0), 'first half of the first character');
+  Assert.AreEqual(0, CharAtCell(cText, 0, 1), 'second half of the first character');
+  Assert.AreEqual(1, CharAtCell(cText, 0, 2));
+  Assert.AreEqual(2, CharAtCell(cText, 0, 4), 'first narrow character');
+  Assert.AreEqual(4, CharAtCell(cText, 0, 6));
+  Assert.AreEqual(5, CharAtCell(cText, 0, 7), 'just past the end');
+  Assert.AreEqual(8, CharAtCell(cText, 0, 10), 'every cell past the end is a character');
+  Assert.AreEqual(0, CharAtCell(cText, 1, 1), 'counted from the start character');
+  Assert.AreEqual(1, CharAtCell(cText, 1, 2));
+  Assert.AreEqual(3, CharAtCell('abc', 0, 3));
 end;
 
 end.

@@ -26,7 +26,9 @@ uses
   TestEditorPluginApi in 'TestEditorPluginApi.pas',
   TestQuickTextView in 'TestQuickTextView.pas',
   TestStreamingArchiveViewer in 'TestStreamingArchiveViewer.pas',
-  TestStreamingViewer in 'TestStreamingViewer.pas';
+  TestStreamingViewer in 'TestStreamingViewer.pas',
+  TestTextEncoding in 'TestTextEncoding.pas',
+  TestEditorWideChars in 'TestEditorWideChars.pas';
 
 begin
   RunRegisteredTests;

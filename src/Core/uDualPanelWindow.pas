@@ -8008,7 +8008,7 @@ begin
     NotifyChanged;
     Exit;
   end;
-  // No help\<language>\index.md next to the exe: the built-in key summary.
+  // No resource\<language>\help\index.md next to the exe: the built-in key summary.
   if not CanStartOperation then
     Exit;
   CloseTransientUiBeforeDialog;

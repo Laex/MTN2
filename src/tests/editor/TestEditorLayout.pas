@@ -11,6 +11,7 @@ type
   public
     [Test] procedure TestModeAndEdit;
     [Test] procedure TestWrap;
+    [Test] procedure TestWrapWideCharacters;
     [Test] procedure TestStatus;
     [Test] procedure TestCaretDrawCol;
     [Test] procedure TestHexCells;
@@ -23,9 +24,23 @@ uses
   uEditorLayout,
   uEditorHexView;
 
-function Lens(const A: TArray<Integer>): TEditorLineLenFn;
+const
+  // Han characters (U+4E2D, U+6587): two cells each.
+  cZhong = #$4E2D;
+  cWen = #$6587;
+
+// Lines of the given lengths made of narrow characters.
+function Lens(const A: TArray<Integer>): TEditorLineTextFn;
 begin
-  Result := function(AIndex: Integer): Integer
+  Result := function(AIndex: Integer): string
+    begin
+      Result := StringOfChar('a', A[AIndex]);
+    end;
+end;
+
+function TextLines(const A: TArray<string>): TEditorLineTextFn;
+begin
+  Result := function(AIndex: Integer): string
     begin
       Result := A[AIndex];
     end;
@@ -84,6 +99,43 @@ begin
   Assert.IsTrue(MapWrappedLineToDisplay(3, 1, 15, 10, Lens(L)) = 1 + 1,
     'line 1 col 15 -> display row 2');
   Assert.IsTrue(MapWrappedLineToDisplay(3, 0, 0, 10, Lens(L)) = 0, 'start of file');
+end;
+
+procedure TestWrapWideCharacters;
+var
+  LineIdx, Off: Integer;
+  Lines: TArray<string>;
+  Wide5: string;
+begin
+  Wide5 := StringOfChar(cZhong, 5);
+  Assert.AreEqual(2, WrapChunkLen(Wide5, 0, 5), 'two wide characters fit five cells');
+  Assert.AreEqual(2, WrapChunkLen(Wide5, 2, 4));
+  Assert.AreEqual(1, WrapChunkLen(Wide5, 4, 4), 'last character');
+  Assert.AreEqual(1, WrapChunkLen(Wide5, 0, 1), 'a character wider than the row still advances');
+  Assert.AreEqual(0, WrapChunkLen('abc', 3, 10), 'nothing left');
+  Assert.AreEqual(10, WrapChunkLen(StringOfChar('a', 25), 0, 10), 'narrow characters fill the row');
+
+  Assert.AreEqual(3, WrappedLineRows(Wide5, 4), '2 + 2 + 1 characters');
+  Assert.AreEqual(1, WrappedLineRows(Wide5, 10), 'ten cells fit one row');
+  Assert.AreEqual(2, WrappedLineRows(Wide5, 9), 'the fifth character moves down');
+  Assert.AreEqual(2, WrappedLineRows('a' + cZhong + 'b' + cWen, 3), 'a+wide, b+wide');
+  Assert.AreEqual(1, WrappedLineRows('', 5), 'empty line is one row');
+  Assert.AreEqual(0, WrappedLineRows(Wide5, 0), 'zero width');
+
+  Lines := TArray<string>.Create('ab', Wide5, 'c');
+  Assert.AreEqual(1 + 3 + 1, CountWrappedRows(3, 4, TextLines(Lines)), 'rows of mixed lines');
+  Assert.IsTrue(MapWrappedDisplayToLine(3, 2, 4, TextLines(Lines), LineIdx, Off) and
+    (LineIdx = 1) and (Off = 2), 'row 2 is the second chunk of the wide line');
+  Assert.IsTrue(MapWrappedDisplayToLine(3, 3, 4, TextLines(Lines), LineIdx, Off) and
+    (LineIdx = 1) and (Off = 4), 'row 3 starts at the fifth character');
+  Assert.IsTrue(MapWrappedDisplayToLine(3, 4, 4, TextLines(Lines), LineIdx, Off) and
+    (LineIdx = 2) and (Off = 0), 'row 4 is the last line');
+  Assert.AreEqual(1 + 1, MapWrappedLineToDisplay(3, 1, 3, 4, TextLines(Lines)),
+    'character 3 of the wide line is on its second row');
+  Assert.AreEqual(1 + 2, MapWrappedLineToDisplay(3, 1, 4, 4, TextLines(Lines)),
+    'character 4 starts the third row');
+  Assert.AreEqual(1 + 3, MapWrappedLineToDisplay(3, 2, 0, 4, TextLines(Lines)),
+    'rows before the last line count by cells');
 end;
 
 procedure TestStatus;
@@ -165,6 +217,11 @@ end;
 procedure TTestEditorLayout.TestWrap;
 begin
   TestEditorLayout.TestWrap;
+end;
+
+procedure TTestEditorLayout.TestWrapWideCharacters;
+begin
+  TestEditorLayout.TestWrapWideCharacters;
 end;
 
 procedure TTestEditorLayout.TestStatus;

@@ -21,6 +21,15 @@ function TextFitChars(const AText: string; AMaxCols: Integer): Integer;
 /// <summary>AText without the filler cell that follows each wide character in
 /// a cell-aligned line (one character per cell).</summary>
 function StripWideFillers(const AText: string): string;
+/// <summary>True when AText has a character that can take two cells.</summary>
+function TextHasWide(const AText: string): Boolean;
+/// <summary>Cells taken by the characters AFrom..ATo-1 (0-based, ATo exclusive);
+/// both ends are clamped to the text.</summary>
+function CellsBetween(const AText: string; AFrom, ATo: Integer): Integer;
+/// <summary>Character index (0-based, relative to AStart) of the character that
+/// covers cell ACell (0-based) when AText is laid out from character AStart.
+/// Past the end of the text every further cell counts as one character.</summary>
+function CharAtCell(const AText: string; AStart, ACell: Integer): Integer;
 
 implementation
 
@@ -114,6 +123,49 @@ begin
     Inc(I);
   end;
   SetLength(Result, N);
+end;
+
+function TextHasWide(const AText: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 1 to Length(AText) do
+    if (AText[I] >= cFirstWideChar) and IsWideChar(AText[I]) then
+      Exit(True);
+  Result := False;
+end;
+
+function CellsBetween(const AText: string; AFrom, ATo: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  if AFrom < 0 then
+    AFrom := 0;
+  if ATo > Length(AText) then
+    ATo := Length(AText);
+  for I := AFrom + 1 to ATo do
+    Inc(Result, CharDisplayWidth(AText[I]));
+end;
+
+function CharAtCell(const AText: string; AStart, ACell: Integer): Integer;
+var
+  I, Used, W: Integer;
+begin
+  if AStart < 0 then
+    AStart := 0;
+  Used := 0;
+  Result := 0;
+  for I := AStart + 1 to Length(AText) do
+  begin
+    W := CharDisplayWidth(AText[I]);
+    if ACell < Used + W then
+      Exit;
+    Inc(Used, W);
+    Inc(Result);
+  end;
+  // Past the end: the cell beyond the last character is one more character.
+  Inc(Result, ACell - Used);
 end;
 
 end.
