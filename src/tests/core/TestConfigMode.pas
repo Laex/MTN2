@@ -63,23 +63,29 @@ begin
   Result := TPath.Combine(ProgramDir, cPortableMarkerName);
 end;
 
+// Relative names are written with backslashes and become the platform separator.
+function Native(const ARel: string): string;
+begin
+  Result := StringReplace(ARel, #92, PathDelim, [rfReplaceAll]);
+end;
+
 procedure Put(const ADir, ARel, AText: string);
 var
   Path: string;
 begin
-  Path := TPath.Combine(ADir, ARel);
+  Path := TPath.Combine(ADir, Native(ARel));
   ForceDirectories(ExtractFilePath(Path));
   TFile.WriteAllText(Path, AText);
 end;
 
 function Get(const ADir, ARel: string): string;
 begin
-  Result := TFile.ReadAllText(TPath.Combine(ADir, ARel));
+  Result := TFile.ReadAllText(TPath.Combine(ADir, Native(ARel)));
 end;
 
 function Has(const ADir, ARel: string): Boolean;
 begin
-  Result := TFile.Exists(TPath.Combine(ADir, ARel));
+  Result := TFile.Exists(TPath.Combine(ADir, Native(ARel)));
 end;
 
 procedure TTestConfigMode.TestStandardToPortableMovesSettings;
