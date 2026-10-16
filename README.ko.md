@@ -55,7 +55,7 @@ MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하�
 - **보기 및 편집:** 내장 뷰어(텍스트, 16진수 hex, 대용량 파일 스트리밍 로딩), 에디터,
   빠른 보기(`Ctrl+Q`), Markdown 미리보기, 외부 뷰어/에디터 연동.
 - **가상 파일 시스템(VFS):** 압축 파일을 폴더처럼 탐색(zip, `7z.dll`을 통한 7z), SSH 기반 SFTP, 플러그인 VFS.
-- **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Total Commander, Dracula, Nord, Solarized, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
+- **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 파일 연결 설정, F1 컨텍스트 도움말.
 - **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어, 중국어 간체로 제공됩니다. 언어는 **옵션 → 글꼴 / 화면...** (Options → Font / Display...)에서 선택할 수 있으며
   재시작 없이 즉시 적용됩니다. `MTN2.exe` 파일 옆에 `resource\<언어코드>\` 폴더(`locale.json`, `strings.json`, `help\`의 도움말)를 추가하여 사용자 언어를 확장할 수 있으며 다시 컴파일할 필요가 없습니다. 프로그램에는 영어만 내장되어 있습니다.
@@ -116,12 +116,12 @@ Linux 버전은 Windows에서 `dcclinux64` 컴파일러로 크로스 컴파일�
 | `src/Core` | 핵심: 패널, VFS, 콘솔, 에디터, 대화 상자, 플러그인 호스트 |
 | `src/Platform` | 플랫폼 추상화 계층: `Windows` 및 `Posix` 모듈 |
 | `src/Hosts` | 셸 호스트: `Ansi` – 텍스트 터미널 버전 |
-| `src/Forms`, `src/dialogs`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 기본 내장 테마 |
+| `src/Forms`, `src/dialogs`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 기본 테마 |
 | `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM 데모) |
 | `src/tests` | 그룹별 DUnitX 회귀 테스트 및 실행 스크립트 `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` 프로젝트 그룹, 유틸리티 스크립트 |
 | `bin/win64`, `bin/linux64` | 플랫폼별 빌드 결과물 |
-| `bin/win64/resource` | 언어 팩: 인터페이스 문자열과 F1 도움말(en/ru/de/zh), 프로그램과 함께 배포 |
+| `bin/win64/resource` | 언어 팩(인터페이스 문자열과 F1 도움말: en/ru/de/zh)과 기본 제공 테마(`themes/`), 프로그램과 함께 배포 |
 | `docs` | 개발자 문서, 스크린샷 (`docs/images`) |
 
 ## 문서

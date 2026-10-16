@@ -160,6 +160,7 @@ type
     FOnClearConsoleBuffer: TNotifyEvent;
     FOnExportSettings: TSettingsFileEvent;
     FOnImportSettings: TSettingsFileEvent;
+    FOnSwitchConfigMode: TSwitchConfigModeEvent;
     FOnToggleConsole: TQuitRequestEvent;
     FOnOpenTerminal: TOpenTerminalEvent;
     FOnQueryConsoleKeyCapture: TFunc<Boolean>;
@@ -749,6 +750,8 @@ type
     procedure ClearConsoleBuffer;
     procedure BeginExportSettings;
     procedure BeginImportSettings;
+    procedure BeginConfigLocation;
+    function HandleConfigLocationCommand(const AControlId: string): Boolean;
     /// <summary>mtn2-settings.zip in the folder of the active panel (the
     /// documents folder when that is not a plain folder).</summary>
     function SettingsFileDefaultPath: string;
@@ -1121,6 +1124,10 @@ type
       read FOnExportSettings write FOnExportSettings;
     property OnImportSettings: TSettingsFileEvent
       read FOnImportSettings write FOnImportSettings;
+    /// <summary>Options > Settings location: the form saves its session
+    /// first, then the settings move to the other place.</summary>
+    property OnSwitchConfigMode: TSwitchConfigModeEvent
+      read FOnSwitchConfigMode write FOnSwitchConfigMode;
     property OnToggleConsole: TQuitRequestEvent read FOnToggleConsole write FOnToggleConsole;
     property OnOpenTerminal: TOpenTerminalEvent read FOnOpenTerminal write FOnOpenTerminal;
     /// <summary>True while the Ctrl+O console hands the keys to its program
@@ -1209,7 +1216,7 @@ implementation
 uses
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
   uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
-  uCharWidth;
+  uCharWidth, uConfigMode;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -1752,6 +1759,7 @@ begin
   FKeymapHost.BeginSaveConsoleOutput := BeginSaveConsoleOutput;
   FKeymapHost.BeginExportSettings := BeginExportSettings;
   FKeymapHost.BeginImportSettings := BeginImportSettings;
+  FKeymapHost.BeginConfigLocation := BeginConfigLocation;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
@@ -5373,6 +5381,8 @@ begin
       Result := HandleConsoleSaveCommand(AControlId, AFields);
     hdkSettingsExport, hdkSettingsImport:
       Result := HandleSettingsFileCommand(AKind, AControlId, AFields);
+    hdkConfigLocation:
+      Result := HandleConfigLocationCommand(AControlId);
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
@@ -8233,6 +8243,55 @@ begin
     T('ui.settings.importPrompt', 'Read the settings from the file:'),
     SettingsFileDefaultPath), DialogCommand);
   NotifyChanged;
+end;
+
+procedure TDualPanelWindow.BeginConfigLocation;
+var
+  Plan: TConfigModePlan;
+  OkText: string;
+begin
+  if not Assigned(FOnSwitchConfigMode) or not CanStartOperation then
+    Exit;
+  CloseTransientUiBeforeDialog;
+  Plan := PlanConfigModeSwitch;
+  if Plan.CanSwitch then
+    OkText := T('ui.configMode.switch', 'Switch')
+  else
+    OkText := T('ui.configMode.close', 'Close');
+  FDialogKind := hdkConfigLocation;
+  FDialog.Open(BuildConfigLocationDialog(T('ui.configMode.title', 'Settings location'),
+    ConfigModeSummaryLines(Plan), OkText), DialogCommand);
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.HandleConfigLocationCommand(const AControlId: string): Boolean;
+var
+  Plan: TConfigModePlan;
+  Leftover: Integer;
+  Err, Msg: string;
+begin
+  Result := True;
+  FDialog.Close;
+  if not DialogCmdIsAccept(AControlId) or not Assigned(FOnSwitchConfigMode) then
+    Exit;
+  // The files may have changed while the dialog was open.
+  Plan := PlanConfigModeSwitch;
+  if not Plan.CanSwitch then
+    Exit;
+  if FOnSwitchConfigMode(Leftover, Err) then
+  begin
+    if Plan.ToMode = cmPortable then
+      Msg := T('ui.toast.configModePortable', 'Portable mode is on: the settings are next to the program.')
+    else
+      Msg := T('ui.toast.configModeStandard', 'Standard mode is on: the settings are in the user folder.');
+    if Leftover > 0 then
+      Msg := Msg + ' ' + Format(T('ui.toast.configModeLeftover',
+        '%d old files could not be deleted.'), [Leftover]);
+    FToast.Show('%s', Msg);
+  end
+  else
+    FToast.Show(T('ui.toast.configModeFailed',
+      'Could not switch the mode; the settings stay where they were') + ': ' + Err, '', tkWarning);
 end;
 
 function TDualPanelWindow.HandleSettingsFileCommand(AKind: THostDialogKind;

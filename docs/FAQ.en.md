@@ -40,7 +40,7 @@ extract it to any folder, and run `MTN2.exe`. Two archives contain the same appl
 - `MTN2-<version>-win64-portable.zip` – settings are stored next to `MTN2.exe` (useful for a USB drive or a folder
   you carry with you).
 
-Portable mode is enabled by placing `portable.dat` next to `MTN2.exe`. The program does not write to the registry.
+Portable mode is enabled by placing `portable.dat` next to `MTN2.exe`. Options > "Settings location..." switches between the modes: the program moves the files itself, checks the write access and leaves everything as it was if something fails. The program does not write to the registry.
 
 ### Windows shows a SmartScreen warning or an antivirus complains. What should I do?
 
@@ -90,8 +90,8 @@ and 150% scaling. If that does not help, attach a screenshot to an issue and inc
 
 ### How do I change the colors? Is there a DN palette?
 
-Open **Settings → Theme...**. Built-in themes include Far Classic, Total Commander, Dracula, Nord, Solarized, High
-Contrast, and ASCII, and custom themes can be created in the theme editor or as a file. The format is documented in
+Open **Settings → Theme...**. Built-in themes include Far Classic, Norton Commander, Midnight Commander, Total
+Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, light ones, High Contrast and ASCII, and custom themes can be created in the theme editor or as a file. The format is documented in
 [THEMES.md](THEMES.md). Button shadow style can be changed in **Settings → Font / display...**.
 
 ### How do I remap keys?

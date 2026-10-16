@@ -1,0 +1,225 @@
+{
+  "schema": 2,
+  "name": "Midnight Commander",
+  "extends": "NDN",
+  "palette": {
+    "bgDeep": "#000000",
+    "bg": "#0000AA",
+    "bg1": "#00AAAA",
+    "bg2": "#AAAAAA",
+    "line": "#AAAAAA",
+    "fg": "#AAAAAA",
+    "fg2": "#FFFFFF",
+    "mute": "#8c8cdc",
+    "acc": "#00AAAA",
+    "accFg": "#000000",
+    "hot": "#0000AA",
+    "cRed": "#FF5555",
+    "cGreen": "#55FF55",
+    "cYellow": "#FFFF55",
+    "cBlue": "#55FFFF",
+    "cMagenta": "#FF55FF",
+    "cCyan": "#55FFFF",
+    "cOrange": "#FFFF55",
+    "dlg": "#AAAAAA",
+    "dlgFg": "#000000",
+    "btn": "#C8C8C8",
+    "btnFg": "#000000",
+    "white": "#FFFFFF",
+    "bar": "#00AAAA",
+    "barFg": "#000000",
+    "barKey": "#0000AA",
+    "navyBand": "#0000FF",
+    "idle": "#1A3A6A"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "bgDeep"
+    },
+    "window": {
+      "fg": "fg",
+      "bg": "bg",
+      "borderFocus": "cBlue",
+      "borderNormal": "fg",
+      "titleFgFocus": "accFg",
+      "titleBgFocus": "acc",
+      "titleFgNormal": "accFg",
+      "titleBgNormal": "line",
+      "closeAccent": "cRed"
+    },
+    "dialog": {
+      "fg": "dlgFg",
+      "bg": "dlg",
+      "border": "accFg",
+      "hotFg": "hot"
+    },
+    "button": {
+      "fg": "btnFg",
+      "bg": "btn",
+      "focusFg": "accFg",
+      "focusBg": "acc",
+      "hotFocusFg": "accFg"
+    },
+    "cursor": {
+      "fg": "accFg",
+      "bg": "acc",
+      "idleBg": "idle",
+      "hotFg": "accFg",
+      "markedFg": "bg",
+      "markedBg": "cYellow"
+    },
+    "mark": {
+      "fg": "cYellow",
+      "bandBg": "navyBand"
+    },
+    "file": {
+      "dir": "white",
+      "archive": "cMagenta",
+      "executable": "cGreen",
+      "media": "cMagenta",
+      "hidden": "mute",
+      "hiddenDir": "mute",
+      "hiddenArchive": "mute",
+      "hiddenExecutable": "mute",
+      "hiddenMedia": "mute"
+    },
+    "status": {
+      "fg": "barFg",
+      "bg": "bar",
+      "separator": "barFg"
+    },
+    "toolbar": {
+      "fg": "barFg",
+      "bg": "bar",
+      "keyFg": "barKey"
+    },
+    "menu": {
+      "fg": "barFg",
+      "bg": "bar",
+      "hotFg": "barKey"
+    },
+    "tab": {
+      "activeFg": "accFg",
+      "activeBg": "acc",
+      "normalFg": "fg",
+      "normalBg": "bgDeep"
+    },
+    "panel": {
+      "tabActiveFg": "accFg",
+      "tabActiveBg": "acc",
+      "tabNormalFg": "fg",
+      "headerFg": "cYellow"
+    },
+    "scroll": {
+      "fg": "line",
+      "thumb": "acc"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "cYellow"
+    },
+    "h2": {
+      "fg": "cYellow"
+    },
+    "h3to6": {
+      "fg": "cGreen"
+    },
+    "bold": {
+      "fg": "fg2"
+    },
+    "italic": {
+      "fg": "cMagenta"
+    },
+    "boldItalic": {
+      "fg": "cMagenta"
+    },
+    "strike": {
+      "fg": "mute"
+    },
+    "inlineCode": {
+      "fg": "cGreen",
+      "bg": "bgDeep"
+    },
+    "codeBlock": {
+      "fg": "fg2",
+      "bg": "bgDeep"
+    },
+    "quote": {
+      "fg": "mute"
+    },
+    "listMarker": {
+      "fg": "cYellow"
+    },
+    "hrule": {
+      "fg": "fg"
+    },
+    "link": {
+      "fg": "cCyan"
+    },
+    "imageMarker": {
+      "fg": "mute"
+    },
+    "tableBorder": {
+      "fg": "fg"
+    },
+    "tableHeader": {
+      "fg": "cYellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  },
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": {
+        "fg": "@file.archive"
+      }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": {
+        "fg": "@file.executable"
+      }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": {
+        "fg": "@file.hidden"
+      }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": {
+        "fg": "cCyan"
+      }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": {
+        "fg": "cCyan"
+      }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": {
+        "fg": "cRed"
+      }
+    }
+  ]
+}

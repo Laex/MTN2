@@ -14,6 +14,9 @@ unit uSelfCheck;
     every other folder a locale.json whose version matches the program
     (an older one is a warning, a newer or unreadable one a failure), a
     strings.json and help\index.md;
+  - the shipped themes under resource\themes: each *.theme.json parses (an
+    unparsable one fails, a missing folder leaves only the embedded default
+    theme and is a warning);
   - sk4d.dll loads (FMX renders through Skia);
   - every plugins\<id>\ has a parsable plugin.json naming that id and at
     least one module (*.dll / *.wasm / *.wat).
@@ -41,7 +44,8 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  System.JSON, uStrings, uPluginManifest, uResourceAccess, uPlatformInfo;
+  System.JSON, uStrings, uPluginManifest, uResourceAccess, uPlatformInfo,
+  uThemeSpec;
 
 const
   cRequiredResources: array[0..4] of string =
@@ -177,6 +181,9 @@ begin
   end;
   for Locale in TDirectory.GetDirectories(Root) do
   begin
+    // resource\themes holds the shipped themes, not a language.
+    if SameText(ExtractFileName(Locale), 'themes') then
+      Continue;
     Info := InspectLocalePack(Root, ExtractFileName(Locale), Expected);
     if Info.Locale = 'en' then
       Continue;
@@ -204,6 +211,36 @@ begin
       end;
     end;
   end;
+end;
+
+procedure CheckShippedThemes(const AAppDir: string; var AReport: TSelfCheckReport);
+var
+  Dir, FileName, Text, Err, Rel: string;
+  Doc: TThemeDoc;
+  Count: Integer;
+begin
+  Dir := TPath.Combine(TPath.Combine(AAppDir, 'resource'), 'themes');
+  Rel := 'resource' + PathDelim + 'themes' + PathDelim;
+  if not TDirectory.Exists(Dir) then
+  begin
+    Add(AReport, 'WARN', Rel + ' is missing: only the default theme is available');
+    Exit;
+  end;
+  Count := 0;
+  for FileName in TDirectory.GetFiles(Dir, '*' + cThemeFileExt) do
+  begin
+    Text := '';
+    try
+      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    except
+      Text := '';
+    end;
+    if (Trim(Text) <> '') and TryParseThemeDoc(Text, Doc, Err) then
+      Inc(Count)
+    else
+      Add(AReport, 'FAIL', Rel + ExtractFileName(FileName) + ' is not a valid theme file');
+  end;
+  Add(AReport, 'OK  ', Format('%d shipped themes', [Count]));
 end;
 
 procedure CheckDll(const AAppDir, AName: string; ARequired: Boolean;
@@ -268,7 +305,7 @@ var
 begin
   AReport := nil;
   // Each group on its own, so one raising doesn't hide the others' results.
-  for Step := 0 to 4 do
+  for Step := 0 to 5 do
     try
       case Step of
         0: CheckResources(AReport);
@@ -278,6 +315,7 @@ begin
             CheckDll(AAppDir, PlatformRenderLibrary, True, AReport);
         3: CheckDll(AAppDir, PlatformSharedLibName('wasmtime'), False, AReport);
         4: CheckPlugins(AAppDir, AReport);
+        5: CheckShippedThemes(AAppDir, AReport);
       end;
     except
       on E: Exception do

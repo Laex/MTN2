@@ -268,7 +268,9 @@ begin
   List := TStringList.Create;
   try
     for Dir in TDirectory.GetDirectories(Root) do
-      List.Add(LowerCase(ExtractFileName(Dir)));
+      // resource\themes holds the shipped themes, not a language.
+      if not SameText(ExtractFileName(Dir), 'themes') then
+        List.Add(LowerCase(ExtractFileName(Dir)));
     List.Sort;
     Result := List.ToStringArray;
   finally

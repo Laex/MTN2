@@ -18,6 +18,7 @@ type
     [Test] procedure TestCompleteLayout;
     [Test] procedure TestBrokenPlugin;
     [Test] procedure TestLocalePackVersions;
+    [Test] procedure TestShippedThemes;
   end;
 
 implementation
@@ -163,6 +164,28 @@ begin
     Assert.IsTrue(HasLine(Report, 'OK', 'resource' + PathDelim + 'old' + PathDelim + 'strings.json'), 'an older pack is still checked');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'new' + PathDelim + 'locale.json version'), 'a newer pack fails');
     Assert.IsTrue(HasLine(Report, 'FAIL', 'nover' + PathDelim + 'locale.json is missing'), 'a pack without locale.json fails');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSelfCheck.TestShippedThemes;
+var
+  Dir: string;
+  Report: TSelfCheckReport;
+begin
+  Dir := NewTempDir;
+  try
+    LayOutPackage(Dir);
+    RunSelfCheck(Dir, Report);
+    Assert.IsTrue(HasLine(Report, 'WARN', 'themes' + PathDelim + ' is missing'),
+      'no theme folder leaves only the default theme');
+    WriteText(TPath.Combine(Dir, NativePath('resource/themes/Good.theme.json')), '{"schema":2,"name":"Good"}');
+    WriteText(TPath.Combine(Dir, NativePath('resource/themes/Bad.theme.json')), '{ not json');
+    RunSelfCheck(Dir, Report);
+    Assert.IsFalse(HasLine(Report, 'FAIL', 'themes' + PathDelim + 'locale.json'), 'the theme folder is not a language pack');
+    Assert.IsTrue(HasLine(Report, 'OK', '1 shipped themes'), 'the valid theme counts');
+    Assert.IsTrue(HasLine(Report, 'FAIL', 'Bad.theme.json is not a valid theme file'), 'an unparsable theme fails');
   finally
     TDirectory.Delete(Dir, True);
   end;

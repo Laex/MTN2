@@ -157,7 +157,7 @@ type
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkChecksumOptions, hdkChecksumResult,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
-    hdkSettingsExport, hdkSettingsImport,
+    hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.
     hdkPluginList, hdkPluginInfo, hdkPluginPerms,
     // Opened by the form (updater) via TDualPanelWindow.ShowHostDialog; the
@@ -218,6 +218,10 @@ type
     out AError: string): Boolean of object;
   /// <summary>Writes (export) or reads (import) the settings zip at APath.</summary>
   TSettingsFileEvent = function(const APath: string;
+    out AError: string): Boolean of object;
+  /// <summary>Moves the settings to the other place (standard folder or the
+  /// program's own); ALeftover counts the originals that could not be deleted.</summary>
+  TSwitchConfigModeEvent = function(out ALeftover: Integer;
     out AError: string): Boolean of object;
   TOpenTerminalEvent = procedure(const AProfileId, ACwd: string) of object;
   /// <summary>Background console dialog: TMainForm switches the persistent

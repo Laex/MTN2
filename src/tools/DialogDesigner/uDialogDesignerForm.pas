@@ -69,7 +69,7 @@ type
     FPropPanel: TVertScrollBox;
     FPropHeader: TLabel;
     FPropRowText, FPropRowValue, FPropRowGroup, FPropRowChecked,
-      FPropRowDefault, FPropRowCancel, FPropRowPassword, FPropRowAccent,
+      FPropRowDefault, FPropRowCancel, FPropRowPassword, FPropRowAccent, FPropRowMarked,
       FPropRowFrame, FPropRowKeyCmds, FPropRowItems,
       FPropRowSelIndex, FPropRowFgSrc, FPropRowBgSrc, FPropRowPanelState,
       FPropRowCol, FPropRowRow, FPropRowW, FPropRowH: TLayout;
@@ -77,7 +77,7 @@ type
       FPropEditSelIndex, FPropEditFgSrc, FPropEditBgSrc,
       FPropEditCol, FPropEditRow, FPropEditW, FPropEditH: TEdit;
     FPropChkChecked, FPropChkDefault, FPropChkCancel, FPropChkPassword,
-      FPropChkAccent, FPropChkFrame, FPropChkKeyCmds: TCheckBox;
+      FPropChkAccent, FPropChkMarked, FPropChkFrame, FPropChkKeyCmds: TCheckBox;
     FPropMemoItems: TMemo;
     FPropCmbPanelState: TComboBox;
     FMenu: TMainMenu;
@@ -140,6 +140,7 @@ type
     procedure ChkCancelChange(Sender: TObject);
     procedure ChkPasswordChange(Sender: TObject);
     procedure ChkAccentChange(Sender: TObject);
+    procedure ChkMarkedChange(Sender: TObject);
     procedure ChkFrameChange(Sender: TObject);
     procedure ChkKeyCmdsChange(Sender: TObject);
     procedure MemoItemsChange(Sender: TObject);
@@ -612,6 +613,16 @@ begin
   FPropChkAccent.Text := 'Accent (bold, accent color)';
   FPropChkAccent.OnChange := ChkAccentChange;
 
+  FPropRowMarked := TLayout.Create(FPropPanel);
+  FPropRowMarked.Parent := FPropPanel;
+  FPropRowMarked.Align := TAlignLayout.Top;
+  FPropRowMarked.Height := 24;
+  FPropChkMarked := TCheckBox.Create(FPropRowMarked);
+  FPropChkMarked.Parent := FPropRowMarked;
+  FPropChkMarked.Align := TAlignLayout.Client;
+  FPropChkMarked.Text := 'Marked (bold cyan, for paths)';
+  FPropChkMarked.OnChange := ChkMarkedChange;
+
   FPropRowFrame := TLayout.Create(FPropPanel);
   FPropRowFrame.Parent := FPropPanel;
   FPropRowFrame.Align := TAlignLayout.Top;
@@ -1038,6 +1049,7 @@ begin
       FPropRowCancel.Visible := False;
       FPropRowPassword.Visible := False;
       FPropRowAccent.Visible := False;
+      FPropRowMarked.Visible := False;
       FPropRowFrame.Visible := False;
       FPropRowKeyCmds.Visible := False;
       FPropRowItems.Visible := False;
@@ -1092,6 +1104,10 @@ begin
     FPropRowAccent.Visible := C.Kind = dckLabel;
     if FPropRowAccent.Visible then
       FPropChkAccent.IsChecked := C.Accent;
+
+    FPropRowMarked.Visible := C.Kind = dckLabel;
+    if FPropRowMarked.Visible then
+      FPropChkMarked.IsChecked := C.Marked;
 
     FPropRowFrame.Visible := C.Kind = dckList;
     if FPropRowFrame.Visible then
@@ -1304,6 +1320,13 @@ begin
   if FPropApplying then Exit;
   MutateSelectedControl(
     procedure(var C: TDialogControl) begin C.Accent := FPropChkAccent.IsChecked; end);
+end;
+
+procedure TDialogDesignerForm.ChkMarkedChange(Sender: TObject);
+begin
+  if FPropApplying then Exit;
+  MutateSelectedControl(
+    procedure(var C: TDialogControl) begin C.Marked := FPropChkMarked.IsChecked; end);
 end;
 
 procedure TDialogDesignerForm.ChkFrameChange(Sender: TObject);

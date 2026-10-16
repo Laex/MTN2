@@ -1,4 +1,4 @@
-﻿unit TestThemeSpec;
+unit TestThemeSpec;
 
 { Theme files: parsing and writing, role fallbacks, "extends" chains, and the
   registry of built-in and user themes. User themes live in a throwaway config
@@ -33,6 +33,9 @@ type
     [Test] procedure TestThemeIdFromName;
     [Test] procedure TestUserThemeRoundTrip;
     [Test] procedure TestBuiltInCannotBeOverwritten;
+    [Test] procedure TestShippedThemesComeFromResourceFolder;
+    [Test] procedure TestEveryBuiltInThemeIsReadable;
+    [Test] procedure TestUserFileCannotShadowShippedTheme;
     [Test] procedure TestMissingAndCircularBases;
     [Test] procedure TestLegacyColoringImport;
     [Test] procedure TestRoleTitles;
@@ -41,7 +44,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, System.UITypes,
+  System.SysUtils, System.IOUtils, System.UITypes, System.Math,
   uTerminalTypes, uThemeTypes, uThemeSpec, uThemeRegistry, uColorCoding,
   uConfigLocation, uMarkdownColors, uThemeNames, uStrings;
 
@@ -531,7 +534,7 @@ begin
       Assert.IsTrue(Spec.BuiltIn, Info.Id);
       Assert.IsTrue(Length(Spec.FileColoring) > 0, Info.Id + ' inherits the file coloring');
     end;
-  Assert.AreEqual(8, Builtin);
+  Assert.AreEqual(20, Builtin);
   Assert.AreEqual('NDN', Infos[0].Id, 'the classic theme comes first');
   Assert.AreEqual('NDN', DefaultThemeId);
 end;
@@ -637,6 +640,137 @@ begin
 
     Assert.IsTrue(DeleteUserTheme(Doc.Id));
     Assert.IsFalse(ThemeExists(Doc.Id));
+  finally
+    Cfg.Free;
+  end;
+end;
+
+function Luminance(AColor: TAlphaColor): Double;
+  function Channel(AValue: Byte): Double;
+  var
+    C: Double;
+  begin
+    C := AValue / 255;
+    if C <= 0.03928 then
+      Result := C / 12.92
+    else
+      Result := Power((C + 0.055) / 1.055, 2.4);
+  end;
+begin
+  Result := 0.2126 * Channel(TAlphaColorRec(AColor).R) +
+    0.7152 * Channel(TAlphaColorRec(AColor).G) + 0.0722 * Channel(TAlphaColorRec(AColor).B);
+end;
+
+function ContrastRatio(A, B: TAlphaColor): Double;
+var
+  LA, LB: Double;
+begin
+  LA := Luminance(A);
+  LB := Luminance(B);
+  if LA < LB then
+  begin
+    LA := LB;
+    LB := Luminance(A);
+  end;
+  Result := (LA + 0.05) / (LB + 0.05);
+end;
+
+procedure TTestThemeSpec.TestEveryBuiltInThemeIsReadable;
+type
+  TPair = record
+    Fg, Bg: TThemeColorRole;
+    Min: Double;
+  end;
+const
+  cPairs: array[0..16] of TPair = (
+    (Fg: trWindowFg; Bg: trWindowBg; Min: 3),
+    (Fg: trCursorFg; Bg: trCursorBg; Min: 3),
+    (Fg: trDialogFg; Bg: trDialogBg; Min: 3),
+    (Fg: trButtonFg; Bg: trButtonBg; Min: 3),
+    (Fg: trButtonFocusFg; Bg: trButtonFocusBg; Min: 3),
+    (Fg: trStatusFg; Bg: trStatusBg; Min: 3),
+    (Fg: trToolFg; Bg: trToolBg; Min: 3),
+    (Fg: trToolKeyFg; Bg: trToolBg; Min: 3),
+    (Fg: trTabActiveFg; Bg: trTabActiveBg; Min: 3),
+    (Fg: trTitleFgFocus; Bg: trTitleBgFocus; Min: 3),
+    (Fg: trFileDir; Bg: trWindowBg; Min: 2.5),
+    (Fg: trFileArchive; Bg: trWindowBg; Min: 2.5),
+    (Fg: trFileExecutable; Bg: trWindowBg; Min: 2.5),
+    (Fg: trFileMedia; Bg: trWindowBg; Min: 2.5),
+    (Fg: trMarkFg; Bg: trWindowBg; Min: 2.5),
+    (Fg: trWindowFg; Bg: trCursorIdleBg; Min: 2.5),
+    (Fg: trDialogHotFg; Bg: trDialogBg; Min: 2.5));
+var
+  Info: TThemeInfo;
+  Spec: TThemeSpec;
+  I: Integer;
+  Problems: string;
+  Ratio: Double;
+begin
+  Problems := '';
+  for Info in GetAvailableThemes do
+    if Info.BuiltIn then
+    begin
+      Assert.IsTrue(TryLoadThemeSpec(Info.Id, Spec), Info.Id);
+      for I := 0 to High(cPairs) do
+      begin
+        Ratio := ContrastRatio(Spec.Colors[cPairs[I].Fg], Spec.Colors[cPairs[I].Bg]);
+        if Ratio < cPairs[I].Min then
+          Problems := Problems + Format('%s: role %d on %d is %.2f; ',
+            [Info.Id, Ord(cPairs[I].Fg), Ord(cPairs[I].Bg), Ratio]);
+      end;
+    end;
+  Assert.AreEqual('', Problems, 'text must stay readable in every shipped theme');
+end;
+
+procedure TTestThemeSpec.TestShippedThemesComeFromResourceFolder;
+var
+  Info: TThemeInfo;
+  Infos: TArray<TThemeInfo>;
+  Ids: string;
+begin
+  Infos := GetAvailableThemes;
+  for Info in Infos do
+    if Info.BuiltIn then
+    begin
+      Ids := Ids + Info.Id + ';';
+      if SameText(Info.Id, DefaultThemeId) then
+        Assert.AreEqual('', Info.FileName, 'the default theme is embedded in the exe')
+      else
+        Assert.AreEqual(
+          LowerCase(TPath.Combine(ShippedThemesDirectory, Info.Id + '.theme.json')),
+          LowerCase(Info.FileName), Info.Id + ' is a file under resource\themes');
+    end;
+  Assert.AreEqual('NDN;NortonCommander;MidnightCommander;ModernUnicode;ASCII;TotalCommander;' +
+    'Monochrome;HighContrast;SolarizedDark;SolarizedLight;Dracula;Nord;GruvboxDark;Monokai;' +
+    'TokyoNight;OneDark;DarkPlus;Light;GreenPhosphor;AmberPhosphor;', Ids, 'picker order');
+  Assert.AreEqual(0, Integer(Length(InvalidShippedThemes)), 'every shipped file parses');
+end;
+
+procedure TTestThemeSpec.TestUserFileCannotShadowShippedTheme;
+var
+  Cfg: TTempConfig;
+  Info: TThemeInfo;
+  Count: Integer;
+  Shadowed: TArray<string>;
+begin
+  Cfg := TTempConfig.Create;
+  try
+    TDirectory.CreateDirectory(TPath.Combine(Cfg.Dir, 'themes'));
+    TFile.WriteAllText(TPath.Combine(TPath.Combine(Cfg.Dir, 'themes'), 'Nord.theme.json'),
+      '{"schema":2,"name":"Fake Nord"}');
+    Shadowed := ShadowedUserThemes;
+    Assert.AreEqual(1, Integer(Length(Shadowed)));
+    Assert.AreEqual('Nord', Shadowed[0]);
+    Count := 0;
+    for Info in GetAvailableThemes do
+      if SameText(Info.Id, 'Nord') then
+      begin
+        Inc(Count);
+        Assert.IsTrue(Info.BuiltIn, 'the shipped theme wins');
+        Assert.AreNotEqual('Fake Nord', Info.DisplayName);
+      end;
+    Assert.AreEqual(1, Count, 'listed once');
   finally
     Cfg.Free;
   end;

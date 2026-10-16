@@ -126,6 +126,7 @@ type
     tmaOptConsoleOptions,
     tmaOptExportSettings,
     tmaOptImportSettings,
+    tmaOptConfigLocation,
     tmaOptMarkdownColors,
     tmaOptZoomIn,
     tmaOptZoomOut,

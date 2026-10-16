@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns,
-  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
   uPluginSurface, uPluginServices, uTaskbarProgress;
 
@@ -237,6 +237,7 @@ type
     procedure DualPanelHelperActiveChanged(Sender: TObject);
     function DualPanelExportSettings(const APath: string; out AError: string): Boolean;
     function DualPanelImportSettings(const APath: string; out AError: string): Boolean;
+    function DualPanelSwitchConfigMode(out ALeftover: Integer; out AError: string): Boolean;
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
@@ -1374,6 +1375,7 @@ begin
   FDualPanel.OnHelperActiveChanged := DualPanelHelperActiveChanged;
   FDualPanel.OnExportSettings := DualPanelExportSettings;
   FDualPanel.OnImportSettings := DualPanelImportSettings;
+  FDualPanel.OnSwitchConfigMode := DualPanelSwitchConfigMode;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;
   FDualPanel.OnOpenTerminal := DualPanelOpenTerminal;
   FDualPanel.OnQueryConsoleKeyCapture :=
@@ -2453,6 +2455,15 @@ begin
   // when the program closes: the new settings take effect at the next start.
   if Result then
     FSettingsImported := True;
+end;
+
+function TMainForm.DualPanelSwitchConfigMode(out ALeftover: Integer;
+  out AError: string): Boolean;
+begin
+  // The session file moves with the other settings, so it has to hold the
+  // current state first. Afterwards every save goes to the new place.
+  PersistSession;
+  Result := SwitchConfigMode(ALeftover, AError);
 end;
 
 procedure TMainForm.DualPanelClearConsoleBuffer(Sender: TObject);

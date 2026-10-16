@@ -1,13 +1,18 @@
 unit uThemeRegistry;
 
-{ Catalog of themes: the built-in ones, shipped inside the exe as RCDATA
-  (Assets\themes\<Id>.theme.json, resource THEME_<ID>), and the user's own,
-  files in <config dir>\themes\<name>.theme.json. A theme is identified by a
-  stable Id persisted in session.json (TMtnSession.ThemeName): the built-in
+{ Catalog of themes from three places: the default theme NDN, embedded in the
+  exe as RCDATA (Assets\themes\NDN.theme.json, resource THEME_NDN) so the
+  program always has a look; the shipped themes, files in
+  resource\themes\<Id>.theme.json next to the exe (the same folder tree as the
+  language packs); and the user's own, files in <config dir>\themes\<name>.theme.json
+  (the exe's folder in portable mode). A theme is identified by a stable Id
+  persisted in session.json (TMtnSession.ThemeName): the default or shipped
   id, or the file name of a user theme without ".theme.json".
 
-  Built-in themes are read-only: saving a customized theme always writes a
-  new user file (SaveUserTheme), never a built-in one. This is independent
+  The default and shipped themes are read-only: saving a customized theme
+  always writes a new user file (SaveUserTheme), never one of those. A user
+  file named like a shipped theme is ignored (ShadowedUserThemes lists them).
+  A shipped file that does not parse is skipped. This is independent
   of uColorCoding's per-file-type coloring rules, which are part of the
   theme (TThemeSpec.FileColoring) and handed to uColorCoding on activation.
 
@@ -24,14 +29,16 @@ type
   TThemeInfo = record
     Id: string;
     DisplayName: string;
+    /// <summary>True for the default and the shipped themes: read-only.</summary>
     BuiltIn: Boolean;
     /// <summary>Id of the theme this one extends ('' for the default theme).</summary>
     Extends: string;
-    /// <summary>Full path of a user theme's file; '' for a built-in theme.</summary>
+    /// <summary>Full path of the theme's file; '' for the embedded default theme.</summary>
     FileName: string;
   end;
 
-/// <summary>Built-in themes in picker order, then the user's themes by name.</summary>
+/// <summary>The default theme, the shipped themes in picker order, then the
+/// user's themes by name.</summary>
 function GetAvailableThemes: TArray<TThemeInfo>;
 /// <summary>Id of the classic Far theme: the fallback for everything.</summary>
 function DefaultThemeId: string;
@@ -61,6 +68,14 @@ function CreateThemeByName(const AId: string): IThemeRenderer;
 function CreateThemeFromSpec(const ASpec: TThemeSpec): IThemeRenderer;
 
 function UserThemesDirectory: string;
+/// <summary>The folder of the shipped themes: resource\themes under
+/// uStrings.ResourceRoot.</summary>
+function ShippedThemesDirectory: string;
+/// <summary>Ids of user theme files that carry the id of a default or shipped
+/// theme and are therefore never listed or loaded.</summary>
+function ShadowedUserThemes: TArray<string>;
+/// <summary>Files in the shipped folder that are not valid theme files.</summary>
+function InvalidShippedThemes: TArray<string>;
 /// <summary>File-name-safe id for a theme name typed by the user; '' when
 /// nothing usable is left.</summary>
 function ThemeIdFromName(const AName: string): string;
@@ -82,31 +97,47 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
   System.Generics.Defaults,
-  uResourceAccess, uConfigLocation, uDataTheme, uColorCoding, uMarkdownColors;
+  uResourceAccess, uConfigLocation, uStrings, uDataTheme, uColorCoding,
+  uMarkdownColors;
+
+type
+  TReadOnlyTheme = record
+    Doc: TThemeDoc;
+    FileName: string;
+  end;
 
 const
   cDefaultThemeId = 'NDN';
   cMaxChainDepth = 8;
   cThemesDirName = 'themes';
-  cBuiltInIds: array[0..7] of string = (
-    'NDN', 'ModernUnicode', 'ASCII', 'TotalCommander', 'SolarizedDark',
-    'Dracula', 'Nord', 'HighContrast');
+  // Shipped themes the picker lists first, in this order; any other shipped
+  // theme follows by name.
+  cPickerOrder: array[0..18] of string = (
+    'NortonCommander', 'MidnightCommander', 'ModernUnicode', 'ASCII',
+    'TotalCommander', 'Monochrome', 'HighContrast', 'SolarizedDark',
+    'SolarizedLight', 'Dracula', 'Nord', 'GruvboxDark', 'Monokai', 'TokyoNight',
+    'OneDark', 'DarkPlus', 'Light', 'GreenPhosphor', 'AmberPhosphor');
 
 var
-  GBuiltInDocs: TArray<TThemeDoc>;
-  GBuiltInLoaded: Boolean = False;
+  // The default theme first, then the shipped ones in picker order.
+  GReadOnly: TArray<TReadOnlyTheme>;
+  GReadOnlyLoaded: Boolean = False;
+  GInvalidShipped: TArray<string>;
 
 function DefaultThemeId: string;
 begin
   Result := cDefaultThemeId;
 end;
 
+procedure EnsureReadOnly; forward;
+
 function IsBuiltInId(const AId: string): Boolean;
 var
   I: Integer;
 begin
-  for I := 0 to High(cBuiltInIds) do
-    if SameText(cBuiltInIds[I], AId) then
+  EnsureReadOnly;
+  for I := 0 to High(GReadOnly) do
+    if SameText(GReadOnly[I].Doc.Id, AId) then
       Exit(True);
   Result := False;
 end;
@@ -114,6 +145,11 @@ end;
 function UserThemesDirectory: string;
 begin
   Result := TPath.Combine(GetConfigDirectory, cThemesDirName);
+end;
+
+function ShippedThemesDirectory: string;
+begin
+  Result := TPath.Combine(ResourceRoot, cThemesDirName);
 end;
 
 function TryLoadResourceText(const AResName: string; out AText: string): Boolean;
@@ -162,36 +198,88 @@ begin
   Result := TPath.Combine(UserThemesDirectory, AId + cThemeFileExt);
 end;
 
-function LoadBuiltInDoc(const AId: string; out ADoc: TThemeDoc): Boolean;
-var
-  Text, Err: string;
+function IdOfThemeFile(const AFile: string): string;
 begin
-  Result := TryLoadResourceText('THEME_' + UpperCase(AId), Text);
-  // Next to the exe for programs that do not link the resources.
-  if not Result then
-    Result := TryReadFileText(TPath.Combine(TPath.Combine(
-      ExtractFilePath(ParamStr(0)), cThemesDirName), AId + cThemeFileExt), Text);
-  Result := Result and TryParseThemeDoc(Text, ADoc, Err);
-  if Result then
-    ADoc.Id := AId;
+  Result := ExtractFileName(AFile);
+  Result := Copy(Result, 1, Length(Result) - Length(cThemeFileExt));
 end;
 
-procedure EnsureBuiltIns;
-var
-  I: Integer;
-  Doc: TThemeDoc;
+function PickerRank(const AId: string): Integer;
 begin
-  if GBuiltInLoaded then
+  for Result := 0 to High(cPickerOrder) do
+    if SameText(cPickerOrder[Result], AId) then
+      Exit;
+  Result := Length(cPickerOrder);
+end;
+
+procedure EnsureReadOnly;
+var
+  Text, Err, Id, Dir: string;
+  Entry: TReadOnlyTheme;
+  Files: TArray<string>;
+  Shipped: TList<TReadOnlyTheme>;
+  I: Integer;
+begin
+  if GReadOnlyLoaded then
     Exit;
-  SetLength(GBuiltInDocs, 0);
-  for I := 0 to High(cBuiltInIds) do
-    if LoadBuiltInDoc(cBuiltInIds[I], Doc) then
-    begin
-      if Doc.Name = '' then
-        Doc.Name := cBuiltInIds[I];
-      GBuiltInDocs := GBuiltInDocs + [Doc];
+  GReadOnlyLoaded := True;
+  SetLength(GReadOnly, 0);
+  SetLength(GInvalidShipped, 0);
+  if TryLoadResourceText('THEME_' + UpperCase(cDefaultThemeId), Text) and
+     TryParseThemeDoc(Text, Entry.Doc, Err) then
+  begin
+    Entry.Doc.Id := cDefaultThemeId;
+    if Entry.Doc.Name = '' then
+      Entry.Doc.Name := cDefaultThemeId;
+    Entry.FileName := '';
+    GReadOnly := [Entry];
+  end;
+
+  Dir := ShippedThemesDirectory;
+  SetLength(Files, 0);
+  if TDirectory.Exists(Dir) then
+    try
+      Files := TDirectory.GetFiles(Dir, '*' + cThemeFileExt);
+    except
+      SetLength(Files, 0);
     end;
-  GBuiltInLoaded := True;
+  Shipped := TList<TReadOnlyTheme>.Create;
+  try
+    for I := 0 to High(Files) do
+    begin
+      Id := IdOfThemeFile(Files[I]);
+      if SameText(Id, cDefaultThemeId) then
+        Continue;
+      if not (TryReadFileText(Files[I], Text) and
+              TryParseThemeDoc(Text, Entry.Doc, Err)) then
+      begin
+        GInvalidShipped := GInvalidShipped + [Id];
+        Continue;
+      end;
+      Entry.Doc.Id := Id;
+      if Entry.Doc.Name = '' then
+        Entry.Doc.Name := Id;
+      Entry.FileName := Files[I];
+      Shipped.Add(Entry);
+    end;
+    Shipped.Sort(TComparer<TReadOnlyTheme>.Construct(
+      function(const A, B: TReadOnlyTheme): Integer
+      begin
+        Result := PickerRank(A.Doc.Id) - PickerRank(B.Doc.Id);
+        if Result = 0 then
+          Result := CompareText(A.Doc.Name, B.Doc.Name);
+      end));
+    for Entry in Shipped do
+      GReadOnly := GReadOnly + [Entry];
+  finally
+    Shipped.Free;
+  end;
+end;
+
+function InvalidShippedThemes: TArray<string>;
+begin
+  EnsureReadOnly;
+  Result := GInvalidShipped;
 end;
 
 function TryLoadThemeDoc(const AId: string; out ADoc: TThemeDoc): Boolean;
@@ -203,17 +291,13 @@ begin
   Result := False;
   if Trim(AId) = '' then
     Exit;
-  if IsBuiltInId(AId) then
-  begin
-    EnsureBuiltIns;
-    for I := 0 to High(GBuiltInDocs) do
-      if SameText(GBuiltInDocs[I].Id, AId) then
-      begin
-        ADoc := GBuiltInDocs[I];
-        Exit(True);
-      end;
-    Exit;
-  end;
+  EnsureReadOnly;
+  for I := 0 to High(GReadOnly) do
+    if SameText(GReadOnly[I].Doc.Id, AId) then
+    begin
+      ADoc := GReadOnly[I].Doc;
+      Exit(True);
+    end;
   if not TryReadFileText(UserThemePath(AId), Text) then
     Exit;
   if not TryParseThemeDoc(Text, ADoc, Err) then
@@ -358,10 +442,10 @@ var
   User: TList<TThemeInfo>;
   Info: TThemeInfo;
 begin
-  EnsureBuiltIns;
+  EnsureReadOnly;
   SetLength(Result, 0);
-  for I := 0 to High(GBuiltInDocs) do
-    Result := Result + [InfoOf(GBuiltInDocs[I], True, '')];
+  for I := 0 to High(GReadOnly) do
+    Result := Result + [InfoOf(GReadOnly[I].Doc, True, GReadOnly[I].FileName)];
 
   User := TList<TThemeInfo>.Create;
   try
@@ -374,8 +458,7 @@ begin
       end;
       for I := 0 to High(Files) do
       begin
-        Id := ExtractFileName(Files[I]);
-        Id := Copy(Id, 1, Length(Id) - Length(cThemeFileExt));
+        Id := IdOfThemeFile(Files[I]);
         if IsBuiltInId(Id) or not TryLoadThemeDoc(Id, Doc) then
           Continue;
         User.Add(InfoOf(Doc, False, Files[I]));
@@ -390,6 +473,28 @@ begin
       Result := Result + [Info];
   finally
     User.Free;
+  end;
+end;
+
+function ShadowedUserThemes: TArray<string>;
+var
+  Files: TArray<string>;
+  I: Integer;
+  Id: string;
+begin
+  SetLength(Result, 0);
+  if not TDirectory.Exists(UserThemesDirectory) then
+    Exit;
+  try
+    Files := TDirectory.GetFiles(UserThemesDirectory, '*' + cThemeFileExt);
+  except
+    Exit;
+  end;
+  for I := 0 to High(Files) do
+  begin
+    Id := IdOfThemeFile(Files[I]);
+    if IsBuiltInId(Id) then
+      Result := Result + [Id];
   end;
 end;
 

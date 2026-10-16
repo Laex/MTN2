@@ -114,6 +114,7 @@ begin
   begin
     C := MakeLabel(Text, Id);
     C.Accent := JsonBool(AObj, 'accent', False);
+    C.Marked := JsonBool(AObj, 'marked', False);
     AppendParsed(AList, C, AObj)
   end
   else if Typ = 'input' then
@@ -386,6 +387,8 @@ begin
             One := One + Format(',"id":"%s"', [EscapeJson(C.Id)]);
           if C.Accent then
             One := One + ',"accent":true';
+          if C.Marked then
+            One := One + ',"marked":true';
         end;
       dckInput:
         begin

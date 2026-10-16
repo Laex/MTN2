@@ -2216,6 +2216,11 @@ begin
           PutGridText(AGrid, R.Left, R.Top, Copy(C.Text, 1, Max(R.Width, 1)),
             ContrastingGlyphFg(LabelBg, cListAccentFg, TAlphaColor($FFFFFF55)),
             LabelBg, [ccaBold])
+        else if (C.Kind = dckLabel) and C.Marked then
+          // Dark blue on a light dialog, bright cyan on a dark one.
+          PutGridText(AGrid, R.Left, R.Top, Copy(C.Text, 1, TextFitChars(C.Text, Max(R.Width, 1))),
+            ContrastingGlyphFg(LabelBg, TAlphaColor($FF000080), TAlphaColor($FF55FFFF)),
+            LabelBg, [ccaBold])
         else
           TDialogRenderer.DrawLabel(AGrid, R, C.Text, LabelFg, LabelBg);
       dckColorSample:

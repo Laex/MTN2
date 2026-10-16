@@ -191,6 +191,7 @@ begin
     tmaOptConsoleOptions: CallProc(AHost.OpenConsoleOptionsDialog);
     tmaOptExportSettings: CallProc(AHost.BeginExportSettings);
     tmaOptImportSettings: CallProc(AHost.BeginImportSettings);
+    tmaOptConfigLocation: CallProc(AHost.BeginConfigLocation);
     tmaCmdSaveConsoleOutput: CallProc(AHost.BeginSaveConsoleOutput);
     tmaCmdClearConsole: CallProc(AHost.ClearConsoleBuffer);
     tmaOptMarkdownColors: CallProc(AHost.OpenMarkdownColorsDialog);
@@ -220,7 +221,7 @@ begin
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile,
     tmaCmdSaveConsoleOutput, tmaCmdClearConsole,
-    tmaOptExportSettings, tmaOptImportSettings:
+    tmaOptExportSettings, tmaOptImportSettings, tmaOptConfigLocation:
       Exit(True);
 
     tmaEditCopy:

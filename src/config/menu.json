@@ -152,7 +152,8 @@
         { "caption": "Restore hidden dialogs", "hotChar": "H", "shortcut": "", "action": "tmaOptRestoreHiddenDialogs" },
         { "isSeparator": true },
         { "caption": "Export settings...", "hotChar": "X", "shortcut": "", "action": "tmaOptExportSettings" },
-        { "caption": "Import settings...", "hotChar": "P", "shortcut": "", "action": "tmaOptImportSettings" }
+        { "caption": "Import settings...", "hotChar": "P", "shortcut": "", "action": "tmaOptImportSettings" },
+        { "caption": "Settings location...", "hotChar": "S", "shortcut": "", "action": "tmaOptConfigLocation" }
       ]
     },
     {

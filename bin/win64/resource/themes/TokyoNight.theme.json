@@ -1,0 +1,210 @@
+{
+  "schema": 2,
+  "name": "Tokyo Night",
+  "extends": "NDN",
+  "palette": {
+    "bgDeep": "#16161e",
+    "bg": "#1a1b26",
+    "bg1": "#24283b",
+    "bg2": "#2f3549",
+    "line": "#4f5a85",
+    "fg": "#c0caf5",
+    "fg2": "#a9b1d6",
+    "mute": "#6b74a0",
+    "acc": "#7aa2f7",
+    "accFg": "#1a1b26",
+    "hot": "#e0af68",
+    "cRed": "#f7768e",
+    "cGreen": "#9ece6a",
+    "cYellow": "#e0af68",
+    "cBlue": "#7aa2f7",
+    "cMagenta": "#bb9af7",
+    "cCyan": "#7dcfff",
+    "cOrange": "#ff9e64"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "bgDeep"
+    },
+    "window": {
+      "fg": "fg",
+      "bg": "bg",
+      "borderFocus": "acc",
+      "borderNormal": "line",
+      "titleFgFocus": "accFg",
+      "titleBgFocus": "acc",
+      "titleFgNormal": "fg2",
+      "titleBgNormal": "bg2",
+      "closeAccent": "cRed"
+    },
+    "dialog": {
+      "fg": "fg",
+      "bg": "bg1",
+      "border": "acc",
+      "hotFg": "hot"
+    },
+    "button": {
+      "fg": "fg",
+      "bg": "bg2",
+      "focusFg": "accFg",
+      "focusBg": "acc",
+      "hotFocusFg": "accFg"
+    },
+    "cursor": {
+      "fg": "accFg",
+      "bg": "acc",
+      "idleBg": "bg2",
+      "hotFg": "accFg",
+      "markedFg": "bg",
+      "markedBg": "cYellow"
+    },
+    "mark": {
+      "fg": "cYellow",
+      "bandBg": "bg2"
+    },
+    "file": {
+      "dir": "cBlue",
+      "archive": "cOrange",
+      "executable": "cGreen",
+      "media": "cMagenta",
+      "hidden": "mute",
+      "hiddenDir": "mute",
+      "hiddenArchive": "mute",
+      "hiddenExecutable": "mute",
+      "hiddenMedia": "mute"
+    },
+    "status": {
+      "fg": "fg",
+      "bg": "bg1",
+      "separator": "mute"
+    },
+    "toolbar": {
+      "fg": "fg2",
+      "bg": "bg1",
+      "keyFg": "cCyan"
+    },
+    "tab": {
+      "activeFg": "accFg",
+      "activeBg": "acc",
+      "normalFg": "mute",
+      "normalBg": "bg1"
+    },
+    "panel": {
+      "tabActiveFg": "accFg",
+      "tabActiveBg": "acc",
+      "tabNormalFg": "mute",
+      "headerFg": "cCyan"
+    },
+    "scroll": {
+      "fg": "line",
+      "thumb": "acc"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "cCyan"
+    },
+    "h2": {
+      "fg": "cYellow"
+    },
+    "h3to6": {
+      "fg": "cGreen"
+    },
+    "bold": {
+      "fg": "fg2"
+    },
+    "italic": {
+      "fg": "cMagenta"
+    },
+    "boldItalic": {
+      "fg": "cMagenta"
+    },
+    "strike": {
+      "fg": "mute"
+    },
+    "inlineCode": {
+      "fg": "cGreen",
+      "bg": "bg1"
+    },
+    "codeBlock": {
+      "fg": "fg",
+      "bg": "bg1"
+    },
+    "quote": {
+      "fg": "mute"
+    },
+    "listMarker": {
+      "fg": "cYellow"
+    },
+    "hrule": {
+      "fg": "line"
+    },
+    "link": {
+      "fg": "cBlue"
+    },
+    "imageMarker": {
+      "fg": "mute"
+    },
+    "tableBorder": {
+      "fg": "line"
+    },
+    "tableHeader": {
+      "fg": "cYellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  },
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": {
+        "fg": "@file.archive"
+      }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": {
+        "fg": "@file.executable"
+      }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": {
+        "fg": "@file.hidden"
+      }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": {
+        "fg": "cCyan"
+      }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": {
+        "fg": "cBlue"
+      }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": {
+        "fg": "cRed"
+      }
+    }
+  ]
+}

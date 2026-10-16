@@ -14,6 +14,7 @@ uses
   TestChineseStrings in 'TestChineseStrings.pas',
   TestGermanStrings in 'TestGermanStrings.pas',
   TestConfigLocation in 'TestConfigLocation.pas',
+  TestConfigMode in 'TestConfigMode.pas',
   TestDescriptIon in 'TestDescriptIon.pas',
   TestElevatedProtocol in 'TestElevatedProtocol.pas',
   TestFrameStats in 'TestFrameStats.pas',

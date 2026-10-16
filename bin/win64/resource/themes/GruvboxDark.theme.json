@@ -1,0 +1,210 @@
+{
+  "schema": 2,
+  "name": "Gruvbox Dark",
+  "extends": "NDN",
+  "palette": {
+    "bgDeep": "#1d2021",
+    "bg": "#282828",
+    "bg1": "#3c3836",
+    "bg2": "#504945",
+    "line": "#665c54",
+    "fg": "#ebdbb2",
+    "fg2": "#d5c4a1",
+    "mute": "#928374",
+    "acc": "#8ec07c",
+    "accFg": "#282828",
+    "hot": "#fe8019",
+    "cRed": "#fb4934",
+    "cGreen": "#b8bb26",
+    "cYellow": "#fabd2f",
+    "cBlue": "#83a598",
+    "cMagenta": "#d3869b",
+    "cCyan": "#8ec07c",
+    "cOrange": "#fe8019"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "bgDeep"
+    },
+    "window": {
+      "fg": "fg",
+      "bg": "bg",
+      "borderFocus": "acc",
+      "borderNormal": "line",
+      "titleFgFocus": "accFg",
+      "titleBgFocus": "acc",
+      "titleFgNormal": "fg2",
+      "titleBgNormal": "bg2",
+      "closeAccent": "cRed"
+    },
+    "dialog": {
+      "fg": "fg",
+      "bg": "bg1",
+      "border": "acc",
+      "hotFg": "hot"
+    },
+    "button": {
+      "fg": "fg",
+      "bg": "bg2",
+      "focusFg": "accFg",
+      "focusBg": "acc",
+      "hotFocusFg": "accFg"
+    },
+    "cursor": {
+      "fg": "accFg",
+      "bg": "acc",
+      "idleBg": "bg2",
+      "hotFg": "accFg",
+      "markedFg": "bg",
+      "markedBg": "cYellow"
+    },
+    "mark": {
+      "fg": "cYellow",
+      "bandBg": "bg2"
+    },
+    "file": {
+      "dir": "cBlue",
+      "archive": "cOrange",
+      "executable": "cGreen",
+      "media": "cMagenta",
+      "hidden": "mute",
+      "hiddenDir": "mute",
+      "hiddenArchive": "mute",
+      "hiddenExecutable": "mute",
+      "hiddenMedia": "mute"
+    },
+    "status": {
+      "fg": "fg",
+      "bg": "bg1",
+      "separator": "mute"
+    },
+    "toolbar": {
+      "fg": "fg2",
+      "bg": "bg1",
+      "keyFg": "cYellow"
+    },
+    "tab": {
+      "activeFg": "accFg",
+      "activeBg": "acc",
+      "normalFg": "mute",
+      "normalBg": "bg1"
+    },
+    "panel": {
+      "tabActiveFg": "accFg",
+      "tabActiveBg": "acc",
+      "tabNormalFg": "mute",
+      "headerFg": "cCyan"
+    },
+    "scroll": {
+      "fg": "line",
+      "thumb": "acc"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "cCyan"
+    },
+    "h2": {
+      "fg": "cYellow"
+    },
+    "h3to6": {
+      "fg": "cGreen"
+    },
+    "bold": {
+      "fg": "fg2"
+    },
+    "italic": {
+      "fg": "cMagenta"
+    },
+    "boldItalic": {
+      "fg": "cMagenta"
+    },
+    "strike": {
+      "fg": "mute"
+    },
+    "inlineCode": {
+      "fg": "cGreen",
+      "bg": "bg1"
+    },
+    "codeBlock": {
+      "fg": "fg",
+      "bg": "bg1"
+    },
+    "quote": {
+      "fg": "mute"
+    },
+    "listMarker": {
+      "fg": "cYellow"
+    },
+    "hrule": {
+      "fg": "line"
+    },
+    "link": {
+      "fg": "cBlue"
+    },
+    "imageMarker": {
+      "fg": "mute"
+    },
+    "tableBorder": {
+      "fg": "line"
+    },
+    "tableHeader": {
+      "fg": "cYellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  },
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": {
+        "fg": "@file.archive"
+      }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": {
+        "fg": "@file.executable"
+      }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": {
+        "fg": "@file.hidden"
+      }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": {
+        "fg": "cCyan"
+      }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": {
+        "fg": "cBlue"
+      }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": {
+        "fg": "cRed"
+      }
+    }
+  ]
+}

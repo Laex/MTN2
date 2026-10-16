@@ -82,6 +82,9 @@ type
     /// <summary>dckLabel: drawn in bold with the dialog's accent color, for the
     /// values a caption introduces (JSON "accent": true).</summary>
     Accent: Boolean;
+    /// <summary>dckLabel: drawn in bold cyan (dark blue on a light dialog), for
+    /// paths and other values that must stand out from the text (JSON "marked": true).</summary>
+    Marked: Boolean;
     /// <summary>dckList: a single-line frame is drawn around the list, one cell
     /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
     Framed: Boolean;
@@ -339,6 +342,16 @@ function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
 /// <summary>Export / import of the settings: a path field with a drop-down list
 /// of the files used before (input history "settingsfile").</summary>
 function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;
+const
+  /// <summary>Text lines of the settings location dialog, and the cells each holds.</summary>
+  cConfigLocationLines = 8;
+  cConfigLocationTextWidth = 72;
+
+/// <summary>Options > Settings location...: up to cConfigLocationLines
+/// ready-made text lines (the dialog does not wrap them) and the caption of
+/// the default button.</summary>
+function BuildConfigLocationDialog(const ATitle: string;
+  const ALines: TArray<string>; const AOkText: string): TDialogDeclaration;
 /// <summary>Options > Markdown colors...: a foreground / background hex
 /// input per Markdown span kind (ids md_<key>_fg / md_<key>_bg, see
 /// uMarkdownColors.MdSpanKindKey); the caller fills them in.</summary>
@@ -500,6 +513,7 @@ function MakeLabel(const AText: string; const AId: string = ''): TDialogControl;
 begin
   Result.Kind := dckLabel;
   Result.Accent := False;
+  Result.Marked := False;
   Result.Id := AId;
   Result.Text := AText;
   Result.Group := '';
@@ -1408,6 +1422,45 @@ begin
   DialogSetCheckbox(Result, 'trim_paste', ATrimPaste);
   DialogSetCheckbox(Result, 'return_panels', AReturnToPanels);
   DialogSetListItems(Result, 'bg_show', BackgroundShowItems, ABackgroundShowIndex);
+end;
+
+function BuildConfigLocationDialog(const ATitle: string;
+  const ALines: TArray<string>; const AOkText: string): TDialogDeclaration;
+var
+  I, J, Used, Delta, LastRow: Integer;
+  Kept: TArray<TDialogControl>;
+begin
+  RequireDialogResource(cResDialogConfigLocation, Result);
+  DialogSetTitle(Result, ATitle);
+  Used := Min(Length(ALines), cConfigLocationLines);
+  for I := 0 to Used - 1 do
+    DialogSetLabelText(Result, 'line' + IntToStr(I + 1), ALines[I]);
+  DialogSetButtonText(Result, cDlgCmdOk, AOkText);
+
+  // The text lines that are not needed disappear with their rows: the rule
+  // and the buttons move up and the dialog gets shorter.
+  Delta := cConfigLocationLines - Used;
+  if Delta = 0 then
+    Exit;
+  LastRow := 0;
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Id = 'line' + IntToStr(cConfigLocationLines) then
+      LastRow := Result.Controls[I].Row;
+  SetLength(Kept, 0);
+  for I := 0 to High(Result.Controls) do
+  begin
+    J := 0;
+    if (Result.Controls[I].Kind = dckLabel) and
+       (Copy(Result.Controls[I].Id, 1, 4) = 'line') then
+      J := StrToIntDef(Copy(Result.Controls[I].Id, 5, MaxInt), 0);
+    if J > Used then
+      Continue;
+    if Result.Controls[I].Row > LastRow then
+      Dec(Result.Controls[I].Row, Delta);
+    Kept := Kept + [Result.Controls[I]];
+  end;
+  Result.Controls := Kept;
+  Dec(Result.Height, Delta);
 end;
 
 function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;

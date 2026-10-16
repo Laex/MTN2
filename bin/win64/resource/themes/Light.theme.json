@@ -1,0 +1,210 @@
+{
+  "schema": 2,
+  "name": "Light",
+  "extends": "NDN",
+  "palette": {
+    "bgDeep": "#d0d7de",
+    "bg": "#ffffff",
+    "bg1": "#f6f8fa",
+    "bg2": "#eaeef2",
+    "line": "#afb8c1",
+    "fg": "#1f2328",
+    "fg2": "#424a53",
+    "mute": "#6e7781",
+    "acc": "#0969da",
+    "accFg": "#ffffff",
+    "hot": "#bc4c00",
+    "cRed": "#cf222e",
+    "cGreen": "#1a7f37",
+    "cYellow": "#9a6700",
+    "cBlue": "#0969da",
+    "cMagenta": "#8250df",
+    "cCyan": "#1b7c83",
+    "cOrange": "#bc4c00"
+  },
+  "colors": {
+    "desktop": {
+      "bg": "bgDeep"
+    },
+    "window": {
+      "fg": "fg",
+      "bg": "bg",
+      "borderFocus": "acc",
+      "borderNormal": "line",
+      "titleFgFocus": "accFg",
+      "titleBgFocus": "acc",
+      "titleFgNormal": "fg2",
+      "titleBgNormal": "bg2",
+      "closeAccent": "cRed"
+    },
+    "dialog": {
+      "fg": "fg",
+      "bg": "bg1",
+      "border": "acc",
+      "hotFg": "hot"
+    },
+    "button": {
+      "fg": "fg",
+      "bg": "bg2",
+      "focusFg": "accFg",
+      "focusBg": "acc",
+      "hotFocusFg": "accFg"
+    },
+    "cursor": {
+      "fg": "accFg",
+      "bg": "acc",
+      "idleBg": "bg2",
+      "hotFg": "accFg",
+      "markedFg": "bg",
+      "markedBg": "cRed"
+    },
+    "mark": {
+      "fg": "cRed",
+      "bandBg": "bg2"
+    },
+    "file": {
+      "dir": "cBlue",
+      "archive": "cOrange",
+      "executable": "cGreen",
+      "media": "cMagenta",
+      "hidden": "mute",
+      "hiddenDir": "mute",
+      "hiddenArchive": "mute",
+      "hiddenExecutable": "mute",
+      "hiddenMedia": "mute"
+    },
+    "status": {
+      "fg": "fg",
+      "bg": "bg1",
+      "separator": "mute"
+    },
+    "toolbar": {
+      "fg": "fg2",
+      "bg": "bg1",
+      "keyFg": "cBlue"
+    },
+    "tab": {
+      "activeFg": "accFg",
+      "activeBg": "acc",
+      "normalFg": "mute",
+      "normalBg": "bg1"
+    },
+    "panel": {
+      "tabActiveFg": "accFg",
+      "tabActiveBg": "acc",
+      "tabNormalFg": "mute",
+      "headerFg": "cBlue"
+    },
+    "scroll": {
+      "fg": "line",
+      "thumb": "acc"
+    }
+  },
+  "markdown": {
+    "h1": {
+      "fg": "cBlue"
+    },
+    "h2": {
+      "fg": "cYellow"
+    },
+    "h3to6": {
+      "fg": "cGreen"
+    },
+    "bold": {
+      "fg": "fg2"
+    },
+    "italic": {
+      "fg": "cMagenta"
+    },
+    "boldItalic": {
+      "fg": "cMagenta"
+    },
+    "strike": {
+      "fg": "mute"
+    },
+    "inlineCode": {
+      "fg": "cGreen",
+      "bg": "bg1"
+    },
+    "codeBlock": {
+      "fg": "fg",
+      "bg": "bg1"
+    },
+    "quote": {
+      "fg": "mute"
+    },
+    "listMarker": {
+      "fg": "cYellow"
+    },
+    "hrule": {
+      "fg": "line"
+    },
+    "link": {
+      "fg": "cBlue"
+    },
+    "imageMarker": {
+      "fg": "mute"
+    },
+    "tableBorder": {
+      "fg": "line"
+    },
+    "tableHeader": {
+      "fg": "cYellow"
+    }
+  },
+  "attrs": {
+    "hotFocus": [
+      "underline"
+    ]
+  },
+  "frames": {
+    "window": "single",
+    "dialog": "single",
+    "panelActive": "single",
+    "panelIdle": "single"
+  },
+  "fileColoring": [
+    {
+      "name": "Archives",
+      "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "normal": {
+        "fg": "@file.archive"
+      }
+    },
+    {
+      "name": "Executables",
+      "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "normal": {
+        "fg": "@file.executable"
+      }
+    },
+    {
+      "name": "Temporary",
+      "mask": "*.tmp;*.bak;*.old",
+      "normal": {
+        "fg": "@file.hidden"
+      }
+    },
+    {
+      "name": "Documents",
+      "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "normal": {
+        "fg": "cCyan"
+      }
+    },
+    {
+      "name": "Object Pascal",
+      "mask": "*.pas;*.dpr;*.dproj",
+      "normal": {
+        "fg": "cBlue"
+      }
+    },
+    {
+      "name": "Markdown",
+      "mask": "*.md",
+      "normal": {
+        "fg": "cRed"
+      }
+    }
+  ]
+}

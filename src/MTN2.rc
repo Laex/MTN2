@@ -13,17 +13,11 @@ MENU_MAIN RCDATA "config\\menu.json"
    A user keymap.json in the config dir overrides individual hotkeys on top of this. */
 KEYMAP_DEFAULT RCDATA "keymap.json"
 
-/* Built-in themes (read-only) - edit Assets\themes\*.theme.json. A theme file
-   lists what it sets and "extends" another theme for the rest; the user's own
-   themes live in <config dir>\themes. See uThemeSpec / uThemeRegistry. */
+/* Default theme (read-only), the root every other theme extends. A theme file
+   lists what it sets and "extends" another theme for the rest; the shipped
+   themes live in resource\themes, the user's own in <config dir>\themes.
+   See uThemeSpec / uThemeRegistry. */
 THEME_NDN RCDATA "Assets\\themes\\NDN.theme.json"
-THEME_MODERNUNICODE RCDATA "Assets\\themes\\ModernUnicode.theme.json"
-THEME_ASCII RCDATA "Assets\\themes\\ASCII.theme.json"
-THEME_TOTALCOMMANDER RCDATA "Assets\\themes\\TotalCommander.theme.json"
-THEME_SOLARIZEDDARK RCDATA "Assets\\themes\\SolarizedDark.theme.json"
-THEME_DRACULA RCDATA "Assets\\themes\\Dracula.theme.json"
-THEME_NORD RCDATA "Assets\\themes\\Nord.theme.json"
-THEME_HIGHCONTRAST RCDATA "Assets\\themes\\HighContrast.theme.json"
 
 /* DIALOG_PLUGIN JSON layouts - edit with tools/DialogDesigner, re-export via ExportDialogJson */
 DIALOG_CONFIRM  RCDATA "dialogs\\confirm.json"
@@ -76,6 +70,7 @@ DIALOG_DISPLAY RCDATA "dialogs\\display.json"
 DIALOG_EXTERNALTOOLS RCDATA "dialogs\\externaltools.json"
 DIALOG_CONSOLEOPTIONS RCDATA "dialogs\\consoleoptions.json"
 DIALOG_SETTINGSFILE RCDATA "dialogs\\settingsfile.json"
+DIALOG_CONFIGLOCATION RCDATA "dialogs\\configlocation.json"
 DIALOG_MARKDOWNCOLORS RCDATA "dialogs\\markdowncolors.json"
 DIALOG_MARKDOWNIMPORT RCDATA "dialogs\\markdownimport.json"
 DIALOG_CHECKSUMOPTS RCDATA "dialogs\\checksumopts.json"
