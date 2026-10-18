@@ -131,6 +131,7 @@ type
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;
+    BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
     ActivateSide: TKeymapSideProc;
@@ -162,6 +163,12 @@ type
     EditUndo: TKeymapProc;
     EditRedo: TKeymapProc;
     EditHexToggle: TKeymapProc;
+    EditSortLines: TKeymapProc;
+    EditSortLinesDesc: TKeymapProc;
+    EditUniqueLines: TKeymapProc;
+    EditReflow: TKeymapProc;
+    EditShiftRight: TKeymapProc;
+    EditShiftLeft: TKeymapProc;
     EditCopy: TKeymapProc;
     EditCut: TKeymapProc;
     EditPaste: TKeymapProc;
@@ -938,6 +945,13 @@ begin
       begin
         if Assigned(AHost.BeginChecksums) then
           AHost.BeginChecksums();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaMultiRename:
+      begin
+        if Assigned(AHost.BeginMultiRename) then
+          AHost.BeginMultiRename();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

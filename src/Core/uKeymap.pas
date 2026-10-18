@@ -117,6 +117,7 @@ type
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
+    kaMultiRename,    // Ctrl+Alt+N -- rename the selected items by rules
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
     kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
     // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
@@ -145,6 +146,12 @@ type
     kaEditorDeleteLine, // Ctrl+Y / Ctrl+D -- delete line (Far)
     kaEditorDeleteToEol, // Ctrl+K -- delete to end of line
     kaEditorInsertLine, // Ctrl+N -- insert a blank line below
+    kaEditorSortLines, // Ctrl+Alt+S -- sort lines of the selection (or file) ascending
+    kaEditorSortLinesDesc, // Ctrl+Alt+Shift+S -- sort descending
+    kaEditorUniqueLines, // Ctrl+Alt+U -- remove repeated lines
+    kaEditorReflow, // Ctrl+Alt+F -- fill paragraphs to a width
+    kaEditorShiftRight, // Alt+Right -- indent the lines
+    kaEditorShiftLeft, // Alt+Left -- outdent the lines
     // Global (context kcGlobal, with kaHelp, kaNextTab, kaNewTerminal and
     // kaSelectConsoleProfile): every window, unless its own context binds
     // the same keys.
@@ -534,6 +541,7 @@ begin
   AddBinding(Result, kaExternalView, KeyBinding(vkF3, False, True, False));
   AddBinding(Result, kaExternalEdit, KeyBinding(vkF4, False, True, False));
   AddBinding(Result, kaChecksums, KeyBinding(Ord('H'), False, True, True));
+  AddBinding(Result, kaMultiRename, KeyBinding(Ord('N'), False, True, True));
   AddBinding(Result, kaRecycleBin, KeyBinding(vkF8, False, True, True));
   AddBinding(Result, kaRestore, KeyBinding(Ord('R'), False, True, True));
   AddBinding(Result, kaDelete, KeyBinding(vkF8, False, False, False));
@@ -693,6 +701,12 @@ begin
   AddBinding(Result, kaEditorDeleteLine, KeyBinding(Ord('D'), False, False, True));
   AddBinding(Result, kaEditorDeleteToEol, KeyBinding(Ord('K'), False, False, True));
   AddBinding(Result, kaEditorInsertLine, KeyBinding(Ord('N'), False, False, True));
+  AddBinding(Result, kaEditorSortLines, KeyBinding(Ord('S'), False, True, True));
+  AddBinding(Result, kaEditorSortLinesDesc, KeyBinding(Ord('S'), True, True, True));
+  AddBinding(Result, kaEditorUniqueLines, KeyBinding(Ord('U'), False, True, True));
+  AddBinding(Result, kaEditorReflow, KeyBinding(Ord('F'), False, True, True));
+  AddBinding(Result, kaEditorShiftRight, KeyBinding(vkRight, False, True, False));
+  AddBinding(Result, kaEditorShiftLeft, KeyBinding(vkLeft, False, True, False));
 
   // Global. The workspaces, MTN2's own top-row tabs, take Ctrl+Alt+PgDn /
   // Ctrl+Alt+PgUp, and Ctrl+Tab / Ctrl+Shift+Tab (handled by the main form
@@ -742,7 +756,9 @@ begin
     kaMarkdownSource:
       Result := kcMarkdown;
     kaEditorSave, kaEditorReplace, kaEditorPaste, kaEditorCut, kaEditorUndo,
-    kaEditorRedo, kaEditorDeleteLine, kaEditorDeleteToEol, kaEditorInsertLine:
+    kaEditorRedo, kaEditorDeleteLine, kaEditorDeleteToEol, kaEditorInsertLine,
+    kaEditorSortLines, kaEditorSortLinesDesc, kaEditorUniqueLines, kaEditorReflow,
+    kaEditorShiftRight, kaEditorShiftLeft:
       Result := kcEditor;
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
     kaTopMenu, kaAppQuit, kaAppConsoleToggle, kaZoomReset, kaReloadKeymap,
@@ -944,6 +960,7 @@ const
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
     'Checksums',             // kaChecksums
+    'MultiRename',           // kaMultiRename
     'CopyItemName',          // kaCopyItemName
     'ShellContextMenu',      // kaShellContextMenu
     'DocViewEdit',           // kaDocToggleEdit
@@ -970,6 +987,12 @@ const
     'EditorDeleteLine',      // kaEditorDeleteLine
     'EditorDeleteToEol',     // kaEditorDeleteToEol
     'EditorInsertLine',      // kaEditorInsertLine
+    'EditorSortLines',       // kaEditorSortLines
+    'EditorSortLinesDesc',   // kaEditorSortLinesDesc
+    'EditorUniqueLines',     // kaEditorUniqueLines
+    'EditorReflow',          // kaEditorReflow
+    'EditorShiftRight',      // kaEditorShiftRight
+    'EditorShiftLeft',       // kaEditorShiftLeft
     'PrevTab',               // kaPrevTab
     'TopMenu',               // kaTopMenu
     'AppQuit',               // kaAppQuit
@@ -1380,7 +1403,7 @@ begin
     kaShellContextMenu: Result := 'Shell';
     kaDriveLeft: Result := 'Left';
     kaDriveRight: Result := 'Right';
-    kaNewFile: Result := 'Edit';
+    kaNewFile: Result := 'New';
     kaDocToggleEdit: Result := 'Edit';
     kaDocHex: Result := 'Hex';
     kaDocMarkdown, kaMarkdownSource: Result := 'Raw';
@@ -1393,6 +1416,17 @@ begin
     kaViewerWordWrap: Result := 'Wrap';
     kaEditorSave: Result := 'Save';
     kaEditorReplace: Result := 'Repl';
+    kaTopMenu: Result := 'TopMn';
+    kaCmdHistory: Result := 'CmdHs';
+    kaFolderTree: Result := 'Tree';
+    kaRecycleBin: Result := 'RecBn';
+    kaColumnBrief: Result := 'Brief';
+    kaColumnSize: Result := 'Size';
+    kaColumnDate: Result := 'Date';
+    kaColumnFull: Result := 'Full';
+    kaColumnCreated: Result := 'Creat';
+    kaColumnTypes: Result := 'Types';
+    kaColumnCustom: Result := 'Cust';
   else
     Result := '';
   end;

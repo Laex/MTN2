@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap;
+  uHistoryPopup, uKeymap, uStatusSegments;
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
@@ -148,6 +148,8 @@ type
     /// 'editfind').</summary>
     FFindText: string;
     FFindStatus: string;
+    FStatusSegs: TArray<string>;
+    FStatusKinds: TArray<TStatusSegKind>;
     FRepl: TReplaceSession;
     FMouseSelecting: Boolean;
     // Markdown link under a plain mouse press; the release on the same link
@@ -271,6 +273,14 @@ type
     procedure DeleteCurrentLine;
     procedure DeleteToEndOfLine;
     procedure InsertBlankLineBelow;
+    /// <summary>The lines a whole-line command works on: those the selection
+    /// touches (not a last line it only enters at column 0), or the whole
+    /// file without a selection. False when the document cannot take it.</summary>
+    function LineCommandRange(out AFrom, ATo: Integer): Boolean;
+    /// <summary>Replaces lines AFrom..ATo with ANew as one undo step; a
+    /// selection stays on the resulting lines.</summary>
+    procedure ApplyLineCommand(AFrom, ATo: Integer; const ANew: TArray<string>);
+    procedure ReflowLines(AWidth: Integer);
     procedure ReplaceInDocument(const AFind, AReplace: string; AAll: Boolean);
     procedure BeginReplaceSession(const AFind, AReplace: string);
     /// <summary>Looks for the next match from FRepl.Pos and asks about it (or
@@ -351,6 +361,7 @@ type
       ADestLeft, ADestTop, AWidth, AHeight, AAbsLeft, AAbsTop: Integer);
     function TabCaption: string;
     function IsDirty: Boolean;
+    function HandleStatusLineClick(ALocalCol: Integer; AShift: TShiftState): Boolean;
     function HandleFunctionBarClick(ALocalCol: Integer;
       AShift: TShiftState): Boolean;
     function HandleClick(ALocalCol, ALocalRow: Integer;
@@ -373,6 +384,12 @@ type
     procedure OpenEncodingDialog;
     procedure UndoEdit;
     procedure RedoEdit;
+    /// <summary>Whole-line commands on the selected lines (the whole file
+    /// without a selection); no-ops while the document cannot be edited.</summary>
+    procedure SortLines(AAscending: Boolean);
+    procedure UniqueLines;
+    procedure ShiftLines(AToRight: Boolean);
+    procedure OpenReflowDialog;
     procedure CopySelectionOrLine;
     procedure CutSelectionOrLine;
     procedure PasteText;
@@ -427,7 +444,11 @@ implementation
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
   System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uPluginHighlight, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord, uChromeRows, uCharWidth;
+  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps;
+
+var
+  /// <summary>Width the last Format text command used; the dialog opens with it.</summary>
+  GEditorReflowWidth: Integer = 72;
 
 const
   /// <summary>uDialogHistory key of the Find dialog; replace.json's Find field
@@ -481,6 +502,7 @@ begin
     procedure begin SaveAndMaybeClose; end,
     procedure begin ForceClose; end,
     procedure(ALine: Integer) begin GotoLine(ALine); end,
+    procedure(AWidth: Integer) begin ReflowLines(AWidth); end,
     procedure
     begin
       FDoc.ApplyEncoding(FPendingEncoding, True);
@@ -2089,6 +2111,10 @@ begin
   FKeymapHost.DeleteCurrentLine := DeleteCurrentLine;
   FKeymapHost.DeleteToEndOfLine := DeleteToEndOfLine;
   FKeymapHost.InsertBlankLineBelow := InsertBlankLineBelow;
+  FKeymapHost.SortLines := SortLines;
+  FKeymapHost.UniqueLines := UniqueLines;
+  FKeymapHost.OpenReflowDialog := OpenReflowDialog;
+  FKeymapHost.ShiftLines := ShiftLines;
   FKeymapHost.MoveWord := MoveWord;
   FKeymapHost.MoveCursor := MoveCursor;
   FKeymapHost.BreakInsertCoalesce := BreakInsertCoalesce;
@@ -2406,6 +2432,125 @@ begin
   ClearSelection;
   EnsureCursorVisible;
   NotifyHost;
+end;
+
+function TEditorWindow.LineCommandRange(out AFrom, ATo: Integer): Boolean;
+var
+  R1, C1, R2, C2: Integer;
+begin
+  AFrom := 0;
+  ATo := -1;
+  Result := CanEdit and not FHexMode and (FDoc.LineCount > 0);
+  if not Result then
+    Exit;
+  if HasSelection then
+  begin
+    GetSelRange(R1, C1, R2, C2);
+    AFrom := R1;
+    ATo := R2;
+    if (C2 = 0) and (R2 > R1) then
+      Dec(ATo);
+  end
+  else
+    ATo := FDoc.LineCount - 1;
+  if ATo > FDoc.LineCount - 1 then
+    ATo := FDoc.LineCount - 1;
+  Result := ATo >= AFrom;
+end;
+
+procedure TEditorWindow.ApplyLineCommand(AFrom, ATo: Integer;
+  const ANew: TArray<string>);
+var
+  Lines: TArray<string>;
+  Last: Integer;
+  Keep: Boolean;
+begin
+  Keep := HasSelection;
+  BreakInsertCoalesce;
+  PushUndo;
+  Lines := FDoc.SnapshotLines;
+  Lines := Copy(Lines, 0, AFrom) + ANew + Copy(Lines, ATo + 1, MaxInt);
+  if Length(Lines) = 0 then
+    Lines := [''];
+  FDoc.RestoreLines(Lines, True);
+  ClearSelection;
+  FCursorRow := AFrom;
+  FCursorCol := 0;
+  if Keep and (Length(ANew) > 0) then
+  begin
+    Last := AFrom + Length(ANew) - 1;
+    FSelAnchorRow := AFrom;
+    FSelAnchorCol := 0;
+    if Last + 1 < FDoc.LineCount then
+    begin
+      FCursorRow := Last + 1;
+      FCursorCol := 0;
+    end
+    else
+    begin
+      FCursorRow := Last;
+      FCursorCol := Length(FDoc.GetLine(Last));
+    end;
+  end;
+  ClampCursor;
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.SortLines(AAscending: Boolean);
+var
+  First, Last: Integer;
+begin
+  if not LineCommandRange(First, Last) then
+    Exit;
+  ApplyLineCommand(First, Last,
+    SortedLines(FDoc.SnapshotLines, First, Last, not AAscending));
+end;
+
+procedure TEditorWindow.UniqueLines;
+var
+  First, Last: Integer;
+begin
+  if not LineCommandRange(First, Last) then
+    Exit;
+  ApplyLineCommand(First, Last,
+    uEditorLineOps.UniqueLines(FDoc.SnapshotLines, First, Last));
+end;
+
+// Without a selection only the cursor line moves, not the whole file.
+procedure TEditorWindow.ShiftLines(AToRight: Boolean);
+var
+  First, Last: Integer;
+begin
+  if not LineCommandRange(First, Last) then
+    Exit;
+  if not HasSelection then
+  begin
+    First := FCursorRow;
+    Last := FCursorRow;
+  end;
+  ApplyLineCommand(First, Last,
+    ShiftedLines(FDoc.SnapshotLines, First, Last, AToRight));
+end;
+
+procedure TEditorWindow.OpenReflowDialog;
+var
+  First, Last: Integer;
+begin
+  if not LineCommandRange(First, Last) then
+    Exit;
+  FDialogs.OpenReflow(GEditorReflowWidth);
+end;
+
+procedure TEditorWindow.ReflowLines(AWidth: Integer);
+var
+  First, Last: Integer;
+begin
+  if (AWidth < 1) or not LineCommandRange(First, Last) then
+    Exit;
+  GEditorReflowWidth := AWidth;
+  ApplyLineCommand(First, Last,
+    ReflowedLines(FDoc.SnapshotLines, First, Last, AWidth));
 end;
 
 procedure TEditorWindow.ReplaceInDocument(const AFind, AReplace: string; AAll: Boolean);
@@ -3724,6 +3869,7 @@ procedure TEditorWindow.DrawAppStatusLine(AY, AWidth: Integer);
 var
   Segs: TArray<string>;
   Name, PosText, LinesText, Flag, Mode: string;
+  Kinds: TArray<TStatusSegKind>;
   PrefixLen, EditW: Integer;
   Colors: TInputLineColors;
   Prefix: string;
@@ -3759,21 +3905,45 @@ begin
   else
   begin
     Segs := TArray<string>.Create(Mode);
+    Kinds := [sskNone];
     if Name <> '' then
+    begin
       Segs := Segs + [Name];
+      Kinds := Kinds + [sskNone];
+    end;
     if PosText <> '' then
+    begin
       Segs := Segs + [PosText];
+      Kinds := Kinds + [sskPosition];
+    end;
     if HasSelection then
-      Segs := Segs + ['Sel']
+    begin
+      Segs := Segs + ['Sel'];
+      Kinds := Kinds + [sskNone];
+    end
     else if LinesText <> '' then
+    begin
       Segs := Segs + [LinesText];
+      Kinds := Kinds + [sskNone];
+    end;
     if Flag <> '' then
+    begin
       Segs := Segs + [Flag];
+      Kinds := Kinds + [sskNone];
+    end;
     if FDoc.Ready and not FHexMode then
+    begin
       Segs := Segs + [TextEncodingName(FDoc.Encoding)];
+      Kinds := Kinds + [sskEncoding];
+    end;
     if FFindStatus <> '' then
+    begin
       Segs := Segs + [FFindStatus];
+      Kinds := Kinds + [sskFind];
+    end;
   end;
+  FStatusSegs := Segs;
+  FStatusKinds := Kinds;
 
   if Assigned(Theme) then
     Theme.DrawStatusLine(Buffer, TRectI.Make(0, AY, AWidth - 1, AY), Segs, [])
@@ -4383,6 +4553,27 @@ begin
   Result := HandleInput(Key, Shift, KeyChar);
 end;
 
+function TEditorWindow.HandleStatusLineClick(ALocalCol: Integer;
+  AShift: TShiftState): Boolean;
+var
+  Idx: Integer;
+begin
+  Result := False;
+  if (FConfirm <> ecNone) or (FSurfaceHandle <> 0) then
+    Exit;
+  Idx := StatusSegmentAt(FStatusSegs, ALocalCol, Assigned(Theme));
+  if (Idx < 0) or (Idx > High(FStatusKinds)) then
+    Exit;
+  case FStatusKinds[Idx] of
+    sskPosition: OpenGotoDialog;
+    sskEncoding: OpenEncodingDialog;
+    sskFind: OpenFindDialog;
+  else
+    Exit;
+  end;
+  Result := True;
+end;
+
 function TEditorWindow.HandleClick(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 begin
@@ -4406,6 +4597,8 @@ begin
     Exit(FDialog.HandleClick(ALocalCol, ALocalRow, AShift));
   if ALocalRow = KeyBarRow(Area.Height) then
     Exit(HandleFunctionBarClick(ALocalCol, AShift));
+  if (ALocalRow = StatusLineRow(Area.Height)) and ((FDialog = nil) or not FDialog.Visible) then
+    Exit(HandleStatusLineClick(ALocalCol, AShift));
   if Assigned(FDialog) and FDialog.Visible then
     Exit(FDialog.HandleClick(ALocalCol, ALocalRow));
   if FConfirm <> ecNone then

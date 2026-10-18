@@ -27,7 +27,7 @@ uses
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
-  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelStatus, uElevatedVfs, uElevation,
+  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs;
 
@@ -227,6 +227,7 @@ type
     FJobDialogs: TJobDialogController;
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
+    FMultiRename: TMultiRenameController;
     FKeymapHost: TDualPanelKeymapHost;
     FClickHost: TDualPanelClickHost;
     FDrawHost: TDualPanelDrawHost;
@@ -235,6 +236,7 @@ type
     FEmbeddedHost: TDualPanelEmbeddedHost;
     FCmdLineDrawHost: TDualPanelCmdLineDrawHost;
     FStatusHost: TDualPanelStatusHost;
+    FStatusKinds: TArray<TStatusSegKind>;
     FFreeInputHost: TDualPanelFreeInputHost;
     FModalInputHost: TDualPanelModalInputHost;
     FFilesDrawHost: TDualPanelFilesDrawHost;
@@ -428,6 +430,12 @@ type
     procedure EditUndo;
     procedure EditRedo;
     procedure EditHexToggle;
+    procedure EditSortLines;
+    procedure EditSortLinesDesc;
+    procedure EditUniqueLines;
+    procedure EditReflow;
+    procedure EditShiftRight;
+    procedure EditShiftLeft;
     procedure EditCopy;
     procedure EditCut;
     procedure EditPaste;
@@ -761,6 +769,8 @@ type
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
     procedure BeginChecksums;
+    procedure BeginMultiRename;
+    procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
     procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
     procedure ShowChecksumResult(const ATitle, AStatus: string;
       const ALines: TArray<string>; AVerify: Boolean);
@@ -989,6 +999,7 @@ type
     /// FDialog.HandleInput. Caller must already know FDialog.Visible.</summary>
     function HandleModalDialogInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    function HandleStatusLineClick(ALocalCol: Integer; AShift: TShiftState): Boolean;
     function HandleFunctionBarClick(ALocalCol: Integer;
       AShift: TShiftState): Boolean;
     function HandleClick(ALocalCol, ALocalRow: Integer;
@@ -1490,6 +1501,7 @@ begin
   FreeAndNil(FFolderTreeCtrl);
   FreeAndNil(FHistoryPopupCtrl);
   FreeAndNil(FDirSync);
+  FreeAndNil(FMultiRename);
   FreeAndNil(FSearchDlg);
   FreeAndNil(FJobDialogs);
   FreeAndNil(FJobs);
@@ -1763,6 +1775,7 @@ begin
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
+  FKeymapHost.BeginMultiRename := BeginMultiRename;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
   FKeymapHost.ActivateSide := ActivateSide;
@@ -1794,6 +1807,12 @@ begin
   FKeymapHost.EditUndo := EditUndo;
   FKeymapHost.EditRedo := EditRedo;
   FKeymapHost.EditHexToggle := EditHexToggle;
+  FKeymapHost.EditSortLines := EditSortLines;
+  FKeymapHost.EditSortLinesDesc := EditSortLinesDesc;
+  FKeymapHost.EditUniqueLines := EditUniqueLines;
+  FKeymapHost.EditReflow := EditReflow;
+  FKeymapHost.EditShiftRight := EditShiftRight;
+  FKeymapHost.EditShiftLeft := EditShiftLeft;
   FKeymapHost.EditCopy := EditCopy;
   FKeymapHost.EditCut := EditCut;
   FKeymapHost.EditPaste := EditPaste;
@@ -1820,6 +1839,7 @@ begin
   FClickHost.HandleDocumentClick := ClickHandleDocument;
   FClickHost.HandleTerminalClick := ClickHandleTerminal;
   FClickHost.HandleFunctionBarClick := HandleFunctionBarClick;
+  FClickHost.HandleStatusLineClick := HandleStatusLineClick;
   FClickHost.HandleDialogClick := ClickHandleDialog;
   FClickHost.LayoutSearchUi := ClickLayoutSearch;
   FClickHost.SearchBounds := ClickSearchBounds;
@@ -2849,6 +2869,13 @@ begin
   FDirSync := TDirSyncDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
+  FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
+    HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
+    StartMultiRenameJob, NotifyChanged,
+    function: Integer
+    begin
+      Result := Area.Width;
+    end);
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
@@ -3131,6 +3158,42 @@ procedure TDualPanelWindow.EditRedo;
 begin
   if ActiveDocument <> nil then
     ActiveDocument.RedoEdit;
+end;
+
+procedure TDualPanelWindow.EditSortLines;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.SortLines(True);
+end;
+
+procedure TDualPanelWindow.EditSortLinesDesc;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.SortLines(False);
+end;
+
+procedure TDualPanelWindow.EditUniqueLines;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.UniqueLines;
+end;
+
+procedure TDualPanelWindow.EditReflow;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.OpenReflowDialog;
+end;
+
+procedure TDualPanelWindow.EditShiftRight;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ShiftLines(True);
+end;
+
+procedure TDualPanelWindow.EditShiftLeft;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ShiftLines(False);
 end;
 
 procedure TDualPanelWindow.EditHexToggle;
@@ -5278,6 +5341,8 @@ procedure TDualPanelWindow.DialogChanged(Sender: TObject);
 begin
   if (FDialogKind = hdkDirSync) and Assigned(FDirSync) then
     FDirSync.NotifyDialogChanged;
+  if (FDialogKind = hdkMultiRename) and Assigned(FMultiRename) then
+    FMultiRename.NotifyDialogChanged;
   NotifyChanged;
 end;
 
@@ -5428,6 +5493,8 @@ begin
       end;
     hdkDirSync:
       Result := FDirSync.DispatchCommand(AControlId, AFields);
+    hdkMultiRename:
+      Result := FMultiRename.DispatchCommand(AControlId);
     hdkArchivePassword:
       begin
         HandleArchivePasswordCommand(AControlId, AFields.Password);
@@ -7385,6 +7452,26 @@ begin
   end
   else
     NotifyChanged;
+end;
+
+procedure TDualPanelWindow.BeginMultiRename;
+var
+  Ws: TDualPanelWorkspaceTab;
+begin
+  if not HostInPanelsWorkspace or not CanStartOperation or not Assigned(FMultiRename) then
+    Exit;
+  Ws := ActiveWorkspace;
+  FMultiRename.Open(CollectActiveSources, RowsForSide(Ws.State.ActiveSide));
+end;
+
+// Conflicts are ruled out by the dialog, so the batch is a plain move of
+// each item to its new name in the same folder.
+procedure TDualPanelWindow.StartMultiRenameJob(const ASources, ADests: TArray<string>);
+begin
+  if not CanBeginAnotherJob then
+    Exit;
+  FJobs.BeginJobPairs(ASources, ADests, pjkMove, jomAsk);
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.BeginChecksums;
@@ -11315,6 +11402,7 @@ var
   Overlay: TStatusOverlaySnapshot;
 begin
   Ws := ActiveWorkspace;
+  FStatusKinds := nil;
   if Ws.Kind = wkTerminal then
     Exit(BuildTerminalStatusSegments);
 
@@ -11324,7 +11412,30 @@ begin
   PopulatePanelStatusSnap(Snap, Ws);
   Overlay := BuildStatusOverlaySnap(Snap.Path);
   Snap.Chrome := MakeChromeStatus(Snap.Path, Overlay);
-  Result := AssembleStatusSegments(FStatusHost, Snap);
+  Result := AssembleStatusLine(FStatusHost, Snap, FStatusKinds);
+end;
+
+function TDualPanelWindow.HandleStatusLineClick(ALocalCol: Integer;
+  AShift: TShiftState): Boolean;
+var
+  Segs: TArray<string>;
+  Idx: Integer;
+begin
+  Result := False;
+  Segs := BuildPanelStatusSegments;
+  Idx := StatusSegmentAt(Segs, ALocalCol, Assigned(Theme));
+  if (Idx < 0) or (Idx > High(FStatusKinds)) then
+    Exit;
+  case FStatusKinds[Idx] of
+    sskSide, sskFree: ToggleDrivePopup(ActiveWorkspace.State.ActiveSide);
+    sskPath: OpenFolderHistoryDialog;
+    sskColumnMode: OpenColumnModeMenu;
+    sskItem: ShowProperties;
+  else
+    Exit;
+  end;
+  Invalidate;
+  Result := True;
 end;
 
 procedure TDualPanelWindow.DrawAppStatusLine(AY, AWidth: Integer);

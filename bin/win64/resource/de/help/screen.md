@@ -6,7 +6,7 @@ Von oben nach unten:
 - **Zwei Dateipanels** – das aktive ist durch seinen Rahmen hervorgehoben; **Tab** wechselt die Seite. Laufwerksbuchstaben stehen am unteren Rand eines Panels.
 - **Befehlszeile** – ein Prompt mit dem aktuellen Ordner.
 - **F-Tastenleiste** – Hinweise zu den Aktionen des aktuellen Modus; sie lassen sich anklicken. Solange Shift / Ctrl / Alt gedrückt ist, zeigt die Leiste die passenden Aktionen.
-- **Statuszeile**.
+- **Statuszeile** – Angaben zum Panel; ein Klick auf einen Abschnitt öffnet den zugehörigen Dialog: Seite und freier Platz öffnen die Laufwerkliste, der Pfad den Ordnerverlauf, der Spaltenmodus das Modusmenü, Element oder Auswahl die Eigenschaften. In Anzeige und Editor: die Position öffnet „Zu Zeile gehen“, die Kodierung die Kodierungsliste, das Suchergebnis „Suchen“.
 
 Die **Konsole** liegt unter den Panels: **Ctrl+O** (oder **Esc** bei Fokus auf dem Panel) blendet die Panels aus und zeigt die Befehlsausgabe.
 

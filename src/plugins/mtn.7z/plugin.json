@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "abi": 1,
   "description": {
-    "en": "Opens 7z, RAR, TAR, GZ, ISO, CAB and other archives like folders (Enter on the file) and unpacks them with F5. Can also pack into 7z. Uses 7z.dll from this folder on Windows or the 7zz / 7z program on Linux.",
-    "ru": "Открывает архивы 7z, RAR, TAR, GZ, ISO, CAB и другие как папки (Enter на файле) и распаковывает их по F5. Умеет упаковывать в 7z. Использует 7z.dll из этой папки в Windows или программу 7zz / 7z в Linux."
+    "en": "Opens 7z, RAR, TAR, GZ, ISO, CAB and other archives like folders (Enter on the file) and unpacks them with F5. Can also pack into 7z and delete entries from archives. Uses 7z.dll from this folder on Windows or the 7zz / 7z program on Linux.",
+    "ru": "Открывает архивы 7z, RAR, TAR, GZ, ISO, CAB и другие как папки (Enter на файле) и распаковывает их по F5. Умеет упаковывать в 7z и удалять записи из архивов. Использует 7z.dll из этой папки в Windows или программу 7zz / 7z в Linux."
   },
   "author": "MTN2",
   "archiveExtensions": ["7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "iso", "cab", "wim", "zip"],

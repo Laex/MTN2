@@ -55,7 +55,8 @@ function IsHistoryDropDownChord(const K: TKeyChord): Boolean;
 
 /// <summary>Enter arrives as #13/#10, raw 13/10 or vkAccept depending on the
 /// source; all become vkReturn. vkTab is left alone even with a stray CR/LF
-/// character (it would turn Ctrl+Tab into Ctrl+Enter).</summary>
+/// character (it would turn Ctrl+Tab into Ctrl+Enter), and so are letter
+/// keys (Ctrl+M and Ctrl+J type CR and LF but stay Ctrl+M and Ctrl+J).</summary>
 procedure NormalizeEnterKey(var AKey: Word; AKeyChar: Char);
 
 /// <summary>Entry-point normalization, applied once before any handler sees
@@ -113,7 +114,7 @@ end;
 
 procedure NormalizeEnterKey(var AKey: Word; AKeyChar: Char);
 begin
-  if AKey = vkTab then
+  if (AKey = vkTab) or ((AKey >= vkA) and (AKey <= vkZ)) then
     Exit;
   if (AKeyChar = #13) or (AKeyChar = #10) or (AKey = 10) or (AKey = vkAccept) then
     AKey := vkReturn;

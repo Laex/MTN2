@@ -38,6 +38,10 @@ function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;
   out AError: string): Boolean;
 function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string;
   AOverwrite: Boolean; out AError: string): Boolean;
+/// <summary>Removes one entry, or a whole folder with its contents, from an
+/// existing archive. The archive is rewritten; it stays unchanged on failure.</summary>
+function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
+  out AError: string): Boolean;
 function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
@@ -625,6 +629,53 @@ begin
   finally
     DropTempDir(Stage);
   end;
+end;
+
+function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
+  out AError: string): Boolean;
+var
+  Items: TArray<T7zItem>;
+  Item: T7zItem;
+  Want, Dummy, Output: string;
+  Code: Cardinal;
+  Found: Boolean;
+begin
+  Result := False;
+  AError := '';
+  Want := SevenZipNormInner(AInnerPath);
+  if (Want = '') or not FileExists(AArchivePath) then
+  begin
+    AError := 'Not found';
+    Exit;
+  end;
+  if not SevenZipEngineLoaded then
+  begin
+    AError := '7-Zip is not available';
+    Exit;
+  end;
+  Found := False;
+  if SevenZipListArchive(AArchivePath, Items, Dummy) then
+    for Item in Items do
+      if (Item.Path = Want) or Item.Path.StartsWith(Want + '/') then
+      begin
+        Found := True;
+        Break;
+      end;
+  if not Found then
+  begin
+    AError := 'Not found';
+    Exit;
+  end;
+  if not RunEngine(['d'] + CommonArgs(AArchivePath, True) +
+       ['--', AArchivePath, Want, Want + '/*'], Output, Code) or (Code > 1) then
+  begin
+    if LooksEncrypted(Output, AArchivePath) then
+      AError := 'Encrypted'
+    else
+      AError := 'Cannot write archive';
+    Exit;
+  end;
+  Result := True;
 end;
 
 initialization

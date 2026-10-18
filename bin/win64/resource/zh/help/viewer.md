@@ -21,6 +21,10 @@
 | Ctrl+Y, Ctrl+D | 删除行 |
 | Ctrl+K | 删除到行尾 |
 | Ctrl+N | 在下方插入空行 |
+| Ctrl+Alt+S / Ctrl+Alt+Shift+S | 按升序 / 降序排序选中的行(无选择时为整个文件) |
+| Ctrl+Alt+U | 删除重复行 |
+| Ctrl+Alt+F | 按指定宽度重排文本(段落以空行分隔) |
+| Alt+→ / Alt+← | 将选中的行(无选择时为当前行)右移 / 左移 |
 | Ctrl+Home / Ctrl+End | 到文件开头 / 末尾 |
 | Ctrl+C / Ctrl+X / Ctrl+V | 复制(没有选区时复制整行) / 剪切 / 粘贴 |
 | Esc, F10(在查看器中还有小键盘 5) | 关闭 |

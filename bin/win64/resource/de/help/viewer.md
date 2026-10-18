@@ -21,6 +21,10 @@
 | Ctrl+Y, Ctrl+D | die Zeile löschen |
 | Ctrl+K | bis zum Zeilenende löschen |
 | Ctrl+N | eine leere Zeile darunter einfügen |
+| Ctrl+Alt+S / Ctrl+Alt+Shift+S | ausgewählte Zeilen (ohne Auswahl die ganze Datei) auf- / absteigend sortieren |
+| Ctrl+Alt+U | doppelte Zeilen entfernen |
+| Ctrl+Alt+F | Text auf eine vorgegebene Breite umbrechen (Absätze trennen Leerzeilen) |
+| Alt+→ / Alt+← | ausgewählte Zeilen (ohne Auswahl die aktuelle) nach rechts / links einrücken |
 | Ctrl+Home / Ctrl+End | zum Anfang / Ende der Datei |
 | Ctrl+C / Ctrl+X / Ctrl+V | kopieren (ohne Auswahl – die Zeile) / ausschneiden / einfügen |
 | Esc, F10 (im Viewer auch 5 auf dem Ziffernblock) | schließen |

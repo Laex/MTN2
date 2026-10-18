@@ -18,6 +18,7 @@
 | Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |
 | Ctrl+Alt+C | compare the files under the cursors of both panels |
 | Ctrl+Alt+H | checksums (MD5, SHA-1, SHA-256, SHA-512) of the selected files and folders; on a `.md5` / `.sha1` / `.sha256` / `.sha512` file – verify it |
+| Ctrl+Alt+M | rename the selected items in one go: name and extension masks, counter, search and replace, letter case |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy / cut / paste files through the clipboard |
 | Alt+Shift+Ins | copy the full path to the clipboard |
 | Ctrl+Shift+Ins | copy only the name (no path) to the clipboard |
@@ -32,6 +33,8 @@ In the **Ctrl+A** dialog dates are typed in the system date format, time as `hh:
 The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
 **Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
+
+**Multi-rename.** The name and extension masks understand `[N]` (the old name without extension), `[E]` (the old extension) and `[C]` (a counter with the given start, step and number of digits); other text stays as typed. Search and Replace work on the new name and extension, and the letter case comes from the list. The list under the fields shows the "old -> new" pairs as you type. A name that is empty, invalid, used twice or already taken in the folder (also by another item of the batch) is marked with `!`, and **Rename** does nothing while any is left. Only items of one folder can be chosen. The renaming runs as a background job, like a move.
 
 ---
 

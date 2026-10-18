@@ -107,6 +107,7 @@ begin
     tmaFileShellMenu: CallProc(AHost.ShellContextMenu);
     tmaFileCompare: CallProc(AHost.BeginCompareFiles);
     tmaFileChecksums: CallProc(AHost.BeginChecksums);
+    tmaFileMultiRename: CallProc(AHost.BeginMultiRename);
     tmaFileRestore: CallProc(AHost.RestoreCursorItemFromRecycleBin);
     tmaFileDelete: CallJob(AHost.BeginJob, pjkDelete, True);
     tmaFileWipe: CallProc(AHost.BeginDeleteCursor);
@@ -179,6 +180,12 @@ begin
     tmaEditUndo: CallProc(AHost.EditUndo);
     tmaEditRedo: CallProc(AHost.EditRedo);
     tmaEditHexToggle: CallProc(AHost.EditHexToggle);
+    tmaEditSortLines: CallProc(AHost.EditSortLines);
+    tmaEditSortLinesDesc: CallProc(AHost.EditSortLinesDesc);
+    tmaEditUniqueLines: CallProc(AHost.EditUniqueLines);
+    tmaEditReflow: CallProc(AHost.EditReflow);
+    tmaEditShiftRight: CallProc(AHost.EditShiftRight);
+    tmaEditShiftLeft: CallProc(AHost.EditShiftLeft);
 
     tmaOptReloadKeymap: CallProc(AHost.ReloadKeymapProfile);
     tmaOptShowPlugins: CallProc(AHost.OpenPluginListDialog);
@@ -242,6 +249,10 @@ begin
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanRedo);
     tmaEditHexToggle:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady);
+    // The line commands change the text: only an editor can take them.
+    tmaEditSortLines, tmaEditSortLinesDesc, tmaEditUniqueLines, tmaEditReflow,
+    tmaEditShiftRight, tmaEditShiftLeft:
+      Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanEdit);
   else
     // Left / Right / Files / remaining Commands need a file list.
     Result := ACtx.Kind = wkPanels;

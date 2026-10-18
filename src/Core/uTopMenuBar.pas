@@ -47,6 +47,7 @@ type
     tmaFileShellMenu,
     tmaFileCompare,
     tmaFileChecksums,
+    tmaFileMultiRename,
     tmaFileRestore,
     tmaFileDelete,
     tmaFileWipe,
@@ -115,6 +116,12 @@ type
     tmaEditUndo,
     tmaEditRedo,
     tmaEditHexToggle,
+    tmaEditSortLines,
+    tmaEditSortLinesDesc,
+    tmaEditUniqueLines,
+    tmaEditReflow,
+    tmaEditShiftRight,
+    tmaEditShiftLeft,
     tmaOptReloadKeymap,
     tmaOptShowPlugins,
     tmaOptColorCoding,
@@ -333,6 +340,8 @@ begin
       Result := kaCompareFiles;
     tmaFileChecksums:
       Result := kaChecksums;
+    tmaFileMultiRename:
+      Result := kaMultiRename;
     tmaFileRestore:
       Result := kaRestore;
     tmaFileDelete:
@@ -457,6 +466,18 @@ begin
       Result := kaEditorRedo;
     tmaEditHexToggle:
       Result := kaDocHex;
+    tmaEditSortLines:
+      Result := kaEditorSortLines;
+    tmaEditSortLinesDesc:
+      Result := kaEditorSortLinesDesc;
+    tmaEditUniqueLines:
+      Result := kaEditorUniqueLines;
+    tmaEditReflow:
+      Result := kaEditorReflow;
+    tmaEditShiftRight:
+      Result := kaEditorShiftRight;
+    tmaEditShiftLeft:
+      Result := kaEditorShiftLeft;
     tmaOptReloadKeymap:
       Result := kaReloadKeymap;
     tmaOptResetZoom:
@@ -816,7 +837,7 @@ begin
   FCategories[3].Title := 'Edit';
   FCategories[3].HotChar := 'E';
   FCategories[3].HotPos := 1;
-  SetLength(FCategories[3].Items, 11);
+  SetLength(FCategories[3].Items, 18);
   FCategories[3].Items[0] := SubItem('Copy', 'C', 'Ctrl+C / Ctrl+Ins', tmaEditCopy);
   FCategories[3].Items[1] := SubItem('Cut', 'T', 'Ctrl+X / Ctrl+Del', tmaEditCut);
   FCategories[3].Items[2] := SubItem('Paste', 'P', 'Ctrl+V / Shift+Ins', tmaEditPaste);
@@ -828,6 +849,13 @@ begin
   FCategories[3].Items[8] := SubItem('Undo', 'U', 'Ctrl+Z', tmaEditUndo);
   FCategories[3].Items[9] := SubItem('Redo', 'D', 'Ctrl+Shift+Z', tmaEditRedo);
   FCategories[3].Items[10] := SubItem('Hex'#$2194'Text', 'H', 'Ctrl+H', tmaEditHexToggle);
+  FCategories[3].Items[11] := Separator;
+  FCategories[3].Items[12] := SubItem('Sort lines ascending', 'A', 'Ctrl+Alt+S', tmaEditSortLines);
+  FCategories[3].Items[13] := SubItem('Sort lines descending', 'O', 'Ctrl+Alt+Shift+S', tmaEditSortLinesDesc);
+  FCategories[3].Items[14] := SubItem('Remove repeated lines', 'L', 'Ctrl+Alt+U', tmaEditUniqueLines);
+  FCategories[3].Items[15] := SubItem('Format text to width...', 'W', 'Ctrl+Alt+F', tmaEditReflow);
+  FCategories[3].Items[16] := SubItem('Shift lines right', 'I', 'Alt+Right', tmaEditShiftRight);
+  FCategories[3].Items[17] := SubItem('Shift lines left', 'E', 'Alt+Left', tmaEditShiftLeft);
 
   // 4: Commands
   FCategories[4].Title := 'Commands';

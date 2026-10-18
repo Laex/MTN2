@@ -248,6 +248,10 @@ begin
     SetLength(ALetters, 1);
     ALetters[0] := 'Ent:GoTo';
   end
+  else if Mods = [ssCtrl, ssAlt] then
+    HintsFromKeymap([Hint(kaMultiRename, 'MRen'), Hint(kaCompareFiles, 'Cmp'),
+      Hint(kaChecksums, 'Sum'), Hint(kaDirSync, 'Sync'), Hint(kaRestore, 'Restore')],
+      Mods, ALetters)
   else if Mods = [] then
   begin
     if ACtx = fbcTmpPanel then

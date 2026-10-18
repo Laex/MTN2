@@ -15,6 +15,7 @@ type
   TEditorBoolFn = function: Boolean of object;
   TEditorExtendProc = procedure(AExtendSel: Boolean) of object;
   TEditorFindProc = procedure(AForward: Boolean) of object;
+  TEditorLineDirProc = procedure(AAscendingOrRight: Boolean) of object;
   TEditorMoveProc = procedure(ARowDelta, AColDelta: Integer;
     AExtendSel: Boolean) of object;
   TEditorWordProc = procedure(AForward, AExtendSel: Boolean) of object;
@@ -47,6 +48,10 @@ type
     DeleteCurrentLine: TEditorProc;
     DeleteToEndOfLine: TEditorProc;
     InsertBlankLineBelow: TEditorProc;
+    SortLines: TEditorLineDirProc;
+    UniqueLines: TEditorProc;
+    OpenReflowDialog: TEditorProc;
+    ShiftLines: TEditorLineDirProc;
     MoveWord: TEditorWordProc;
     MoveCursor: TEditorMoveProc;
     BreakInsertCoalesce: TEditorProc;
@@ -206,6 +211,18 @@ begin
         AHost.DeleteToEndOfLine();
       kaEditorInsertLine:
         AHost.InsertBlankLineBelow();
+      kaEditorSortLines:
+        AHost.SortLines(True);
+      kaEditorSortLinesDesc:
+        AHost.SortLines(False);
+      kaEditorUniqueLines:
+        AHost.UniqueLines();
+      kaEditorReflow:
+        AHost.OpenReflowDialog();
+      kaEditorShiftRight:
+        AHost.ShiftLines(True);
+      kaEditorShiftLeft:
+        AHost.ShiftLines(False);
     else
       Result := arPass;
     end;

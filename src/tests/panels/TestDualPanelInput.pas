@@ -1,4 +1,4 @@
-unit TestDualPanelInput;
+﻿unit TestDualPanelInput;
 
 interface
 
@@ -20,6 +20,7 @@ type
     [Test] procedure TestPendingSelectMatch;
     [Test] procedure TestRowNameHelpers;
     [Test] procedure TestPluginHooksOnPanelInput;
+    [Test] procedure TestMultiRenameChordReachesTheCommand;
     [Test] procedure TestPluginHooksOnTopMenu;
   end;
 
@@ -91,6 +92,7 @@ type
     CmdHandled: Boolean;
     PrimaryHandled: Boolean;
     FuncHandled: Boolean;
+    FuncAction: TKeymapAction;
     HotlistHandled: Boolean;
     QuickHandled: Boolean;
     procedure CancelDrive;
@@ -654,6 +656,7 @@ end;
 function TFreeInputSpy.DispatchFunc(AAction: TKeymapAction; var AKey: Word;
   var AKeyChar: Char): Boolean;
 begin
+  FuncAction := AAction;
   Result := FuncHandled;
   if Result then
   begin
@@ -1374,6 +1377,42 @@ begin
 end;
 
 { TTestDualPanelInput }
+
+procedure TestMultiRenameChordReachesTheCommand;
+var
+  Spy: TFreeInputSpy;
+  NavSpy: TKeymapSpy;
+  Host: TDualPanelFreeInputHost;
+  Keymap: TDualPanelKeymapHost;
+  Snap: TPanelFreeInputSnap;
+  Key: Word;
+  Ch: Char;
+begin
+  Spy := TFreeInputSpy.Create;
+  NavSpy := TKeymapSpy.Create;
+  try
+    BindFree(Host, Spy);
+    BindSpy(Keymap, NavSpy);
+    Snap := Default(TPanelFreeInputSnap);
+    Snap.ViewH := 10;
+    Snap.Cols := 1;
+    Snap.PageSize := 10;
+    Spy.FuncAction := kaNone;
+    Key := Ord('N');
+    Ch := #0;
+    DispatchPanelFreeInput(Host, Keymap, Snap, Key, [ssCtrl, ssAlt], Ch);
+    Assert.IsTrue(Spy.FuncAction = kaMultiRename,
+      'Ctrl+Alt+N reaches the panel dispatcher as multi-rename');
+  finally
+    NavSpy.Free;
+    Spy.Free;
+  end;
+end;
+
+procedure TTestDualPanelInput.TestMultiRenameChordReachesTheCommand;
+begin
+  TestDualPanelInput.TestMultiRenameChordReachesTheCommand;
+end;
 
 procedure TTestDualPanelInput.TestPluginHooksOnPanelInput;
 begin

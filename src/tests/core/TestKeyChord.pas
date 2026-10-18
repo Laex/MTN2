@@ -82,6 +82,12 @@ begin
   K := vkA; S := [ssCtrl, ssAlt];
   NormalizeKeyInput(K, 'a', S, True);
   Assert.IsTrue((K = vkA) and (S = [ssCtrl, ssAlt]), 'only Enter is touched');
+  K := vkM; S := [ssCtrl, ssAlt];
+  NormalizeKeyInput(K, #13, S, False);
+  Assert.IsTrue((K = vkM) and (S = [ssCtrl, ssAlt]), 'Ctrl+Alt+M types CR but is not Enter');
+  K := vkJ; S := [ssCtrl];
+  NormalizeKeyInput(K, #10, S, False);
+  Assert.IsTrue((K = vkJ) and (S = [ssCtrl]), 'Ctrl+J types LF but is not Enter');
 end;
 
 procedure TTestKeyChord.TestTerminalHostPassthrough;

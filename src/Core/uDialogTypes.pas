@@ -7,7 +7,7 @@ interface
 uses
   System.SysUtils, System.Math,
   System.UITypes,
-  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl;
+  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl, uMultiRename;
 
 type
   TDialogControlKind = (dckLabel, dckInput, dckCheckbox, dckButton, dckStatus,
@@ -362,6 +362,11 @@ function BuildMarkdownImportDialog(const APath: string; APaletteIndex: Integer):
 /// <summary>Files > Checksums...: algorithm dropdown (index into
 /// uChecksums.TChecksumAlgo order: MD5, SHA-1, SHA-256, SHA-512).</summary>
 function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
+/// <summary>Files > Multi-rename...: the rule fields filled from ARules, the
+/// dialog AWidth cells wide (the fields and the list stretch with it); the
+/// preview list is filled by the caller.</summary>
+function BuildMultiRenameDialog(const ARules: TMultiRenameRules;
+  AWidth: Integer): TDialogDeclaration;
 /// <summary>Checksum result list; AVerify drops the Save button (the
 /// lines are OK / FAILED marks, not a checksum file).</summary>
 function BuildChecksumResultDialog(const ATitle, AStatus: string;
@@ -1389,6 +1394,59 @@ function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogChecksumOpts, Result);
   DialogSetDropDownSelected(Result, 'algo', AAlgoIndex);
+end;
+
+function BuildMultiRenameDialog(const ARules: TMultiRenameRules;
+  AWidth: Integer): TDialogDeclaration;
+var
+  Half, RightLabel, RightInput, I: Integer;
+
+  procedure Place(const AId: string; ACol, ACells: Integer);
+  var
+    I: Integer;
+  begin
+    for I := 0 to High(Result.Controls) do
+      if SameText(Result.Controls[I].Id, AId) then
+      begin
+        Result.Controls[I].Col := ACol;
+        Result.Controls[I].BoxW := ACells;
+      end;
+  end;
+
+begin
+  RequireDialogResource(cResDialogMultiRename, Result);
+  Result.Width := AWidth;
+  Half := (AWidth - 4) div 2;
+  RightLabel := Half + 3;
+  RightInput := Half + 15;
+  Place('name_mask', 16, Half - 17);
+  Place('search', 16, Half - 17);
+  Place('case_mode', 16, Half - 17);
+  Place('lbl_ext_mask', RightLabel, 11);
+  Place('lbl_replace', RightLabel, 11);
+  Place('ext_mask', RightInput, AWidth - 2 - RightInput);
+  Place('replace', RightInput, AWidth - 2 - RightInput);
+  Place('match_case', RightLabel, AWidth - 2 - RightLabel);
+  Place('status', 1, AWidth - 4);
+  Place('columns', 1, AWidth - 4);
+  Place('preview', 1, AWidth - 4);
+  Place('ok', AWidth div 2 - 12, 12);
+  Place('cancel', AWidth div 2 + 2, 12);
+  for I := 0 to High(Result.Controls) do
+    if (Result.Controls[I].Kind = dckLabel) and IsHRuleText(Result.Controls[I].Text) then
+    begin
+      Result.Controls[I].Text := StringOfChar(chBoxH, AWidth - 2);
+      Result.Controls[I].BoxW := AWidth - 2;
+    end;
+  DialogSetInputValue(Result, 'name_mask', ARules.NameMask);
+  DialogSetInputValue(Result, 'ext_mask', ARules.ExtMask);
+  DialogSetInputValue(Result, 'search', ARules.Search);
+  DialogSetInputValue(Result, 'replace', ARules.Replace);
+  DialogSetInputValue(Result, 'c_start', IntToStr(ARules.CounterStart));
+  DialogSetInputValue(Result, 'c_step', IntToStr(ARules.CounterStep));
+  DialogSetInputValue(Result, 'c_digits', IntToStr(ARules.CounterDigits));
+  DialogSetCheckbox(Result, 'match_case', ARules.MatchCase);
+  DialogSetDropDownSelected(Result, 'case_mode', Ord(ARules.CaseMode));
 end;
 
 function BuildChecksumResultDialog(const ATitle, AStatus: string;

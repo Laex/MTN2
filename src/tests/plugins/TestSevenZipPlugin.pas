@@ -162,6 +162,47 @@ begin
   end;
 end;
 
+procedure WaitDelete(const AVfs: IVirtualFileSystem; const AURI: string;
+  out AErr: TVfsError);
+var
+  Ev: TEvent;
+  Err: TVfsError;
+  Tick: Cardinal;
+begin
+  Ev := TEvent.Create(nil, True, False, '');
+  try
+    AVfs.DeleteAsync(AURI, vdmPermanent, nil, nil,
+      procedure(const AOk: Boolean; const ADelErr: TVfsError)
+      begin
+        Err := ADelErr;
+        if AOk and (Err.Code = vecOk) then
+          Err := TVfsError.Ok;
+        Ev.SetEvent;
+      end);
+    Tick := TThread.GetTickCount;
+    while Ev.WaitFor(50) <> wrSignaled do
+    begin
+      CheckSynchronize;
+      if TThread.GetTickCount - Tick > 15000 then
+        raise Exception.Create('DeleteAsync timed out');
+    end;
+    CheckSynchronize;
+    AErr := Err;
+  finally
+    Ev.Free;
+  end;
+end;
+
+function ListHas(const AItems: TArray<TVfsEntry>; const AName: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to High(AItems) do
+    if SameText(AItems[I].Name, AName) then
+      Exit(True);
+end;
+
 // 7z.dll sits next to the plugin; a 7-Zip program is found in the search path.
 procedure StageEngine(const ADestDir, AEngine: string);
 begin
@@ -183,7 +224,7 @@ end;
 
 var
   Dll7z, PluginDll, PluginsRoot, WorkDir, SrcTxt, ArcPath, Uri, Err, OutFile,
-  PackedSrc, PackedArc: string;
+  PackedSrc, PackedArc, DelDir, DelArc, DelRoot, DelName: string;
   Loaded, Failed: Integer;
   Backend, HostVfs: IVirtualFileSystem;
   Items: TArray<TVfsEntry>;
@@ -295,6 +336,47 @@ begin
   WaitCopy(HostVfs, PathToFileUri(PackedSrc),
     JoinVfsUri(PathToSevenZipRootUri(PackedArc), 'pack-me.txt'), True, VErr);
   Assert.IsTrue(VErr.Code = vecOk, 'pack overwrite: ' + VErr.Message);
+
+  // Delete from an existing archive: a file, then a packed folder; the rest
+  // of the archive stays readable.
+  DelDir := TPath.Combine(WorkDir, 'del-src');
+  TDirectory.CreateDirectory(TPath.Combine(DelDir, 'sub'));
+  TFile.WriteAllText(TPath.Combine(DelDir, 'keep.txt'), 'keep-payload', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(DelDir, 'drop.txt'), 'drop-payload', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(DelDir, 'sub', 'inner.txt'), 'inner-payload', TEncoding.UTF8);
+  DelArc := TPath.Combine(WorkDir, 'delete.7z');
+  if TFile.Exists(DelArc) then
+    TFile.Delete(DelArc);
+  DelRoot := PathToSevenZipRootUri(DelArc);
+  for DelName in ['keep.txt', 'drop.txt'] do
+  begin
+    WaitCopy(HostVfs, PathToFileUri(TPath.Combine(DelDir, DelName)),
+      JoinVfsUri(DelRoot, DelName), True, VErr);
+    Assert.IsTrue(VErr.Code = vecOk, 'pack ' + DelName + ': ' + VErr.Message);
+  end;
+  WaitCopy(HostVfs, PathToFileUri(TPath.Combine(DelDir, 'sub')),
+    JoinVfsUri(DelRoot, 'sub'), True, VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'pack folder: ' + VErr.Message);
+
+  WaitDelete(HostVfs, JoinVfsUri(DelRoot, 'drop.txt'), VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'delete file from 7z: ' + VErr.Message);
+  WaitList(HostVfs, DelRoot, Items, VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'list after delete: ' + VErr.Message);
+  Assert.IsFalse(ListHas(Items, 'drop.txt'), 'deleted file is gone');
+  Assert.IsTrue(ListHas(Items, 'keep.txt'), 'other file stays');
+  Assert.IsTrue(ListHas(Items, 'sub'), 'folder stays');
+  WaitBytes(HostVfs, JoinVfsUri(DelRoot, 'keep.txt'), Data, VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'read kept file: ' + VErr.Message);
+  Assert.IsTrue(TEncoding.UTF8.GetString(Data).Contains('keep-payload'), 'kept payload intact');
+
+  WaitDelete(HostVfs, JoinVfsUri(DelRoot, 'sub'), VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'delete folder from 7z: ' + VErr.Message);
+  WaitList(HostVfs, DelRoot, Items, VErr);
+  Assert.IsFalse(ListHas(Items, 'sub'), 'deleted folder is gone');
+  Assert.IsTrue(ListHas(Items, 'keep.txt'), 'file stays after folder delete');
+
+  WaitDelete(HostVfs, JoinVfsUri(DelRoot, 'missing.txt'), VErr);
+  Assert.IsTrue(VErr.Code = vecNotFound, 'deleting a missing entry reports not found');
 
   PluginLoader.UnloadAll;
   Assert.IsTrue(not GlobalVfsRegistry.IsPluginOwned('7z:///C:/x.7z!/'),

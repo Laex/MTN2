@@ -3561,13 +3561,9 @@ begin
   // FMX sometimes delivers Tab/Enter only as KeyChar with Key=0.
   if (Key = 0) and (KeyChar = #9) then
     Key := vkTab;
-  if Key <> vkTab then
-  begin
-    if (KeyChar = #13) or (KeyChar = #10) then
-      Key := vkReturn;
-    if (Key = 10) or (Key = 13) then
-      Key := vkReturn;
-  end;
+  NormalizeEnterKey(Key, KeyChar);
+  if Key = 13 then
+    Key := vkReturn;
   Result := RouteTerminalKey(FDualPanel, FMdi, FConsole, Key, KeyChar, Shift);
   if Result then
     ConsumeTerminalKey(Key, KeyChar);

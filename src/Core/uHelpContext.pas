@@ -61,7 +61,7 @@ begin
     hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkJobConfirm,
     hdkOverwriteAsk, hdkOverwriteRename, hdkDeleteError, hdkIOError,
     hdkCreateLink, hdkSetAttributes, hdkChecksumOptions, hdkChecksumResult,
-    hdkDescribe:
+    hdkDescribe, hdkMultiRename:
       Result := 'fileops.md';
     hdkJobList, hdkJobProgress, hdkStopConfirm:
       Result := 'jobs.md';

@@ -15,6 +15,7 @@ type
 
   TEditorNotifyProc = reference to procedure;
   TEditorGotoLineProc = reference to procedure(ALine1Based: Integer);
+  TEditorReflowProc = reference to procedure(AWidth: Integer);
   TEditorRequestEncodingProc = reference to procedure(AEncoding: TTextFileEncoding);
   TEditorReplaceProc = reference to procedure(const AFind, AReplace: string;
     AAll: Boolean);
@@ -31,6 +32,7 @@ type
     FOnSaveAndMaybeClose: TEditorNotifyProc;
     FOnForceClose: TEditorNotifyProc;
     FOnGotoLine: TEditorGotoLineProc;
+    FOnReflow: TEditorReflowProc;
     FOnApplyPendingEncoding: TEditorNotifyProc;
     FOnRequestEncoding: TEditorRequestEncodingProc;
     FOnReplace: TEditorReplaceProc;
@@ -54,6 +56,7 @@ type
       const AOnNotify, AOnSetConfirmNone, AOnSaveAndMaybeClose,
       AOnForceClose: TEditorNotifyProc;
       const AOnGotoLine: TEditorGotoLineProc;
+      const AOnReflow: TEditorReflowProc;
       const AOnApplyPendingEncoding: TEditorNotifyProc;
       const AOnRequestEncoding: TEditorRequestEncodingProc;
       const AOnReplace: TEditorReplaceProc;
@@ -62,12 +65,14 @@ type
     procedure OpenAskSave(const AFileName: string);
     procedure OpenDiscardEncoding;
     procedure OpenGoto(ALine1Based: Integer);
+    procedure OpenReflow(AWidth: Integer);
     procedure OpenEncoding(const ACurrentName: string);
     procedure OpenReplace(const AFindText: string);
     procedure OpenFind(const AFindText: string);
     procedure AskSaveCommand(const AControlId, AValuesJson: string);
     procedure DiscardEncodingCommand(const AControlId, AValuesJson: string);
     procedure GotoLineCommand(const AControlId, AValuesJson: string);
+    procedure ReflowCommand(const AControlId, AValuesJson: string);
     procedure EncodingDialogCommand(const AControlId, AValuesJson: string);
     procedure ReplaceDialogCommand(const AControlId, AValuesJson: string);
     procedure FindDialogCommand(const AControlId, AValuesJson: string);
@@ -172,6 +177,7 @@ constructor TEditorDialogController.Create(ADialog: TDialogHost;
   const AOnNotify, AOnSetConfirmNone, AOnSaveAndMaybeClose,
   AOnForceClose: TEditorNotifyProc;
   const AOnGotoLine: TEditorGotoLineProc;
+  const AOnReflow: TEditorReflowProc;
   const AOnApplyPendingEncoding: TEditorNotifyProc;
   const AOnRequestEncoding: TEditorRequestEncodingProc;
   const AOnReplace: TEditorReplaceProc;
@@ -185,6 +191,7 @@ begin
   FOnSaveAndMaybeClose := AOnSaveAndMaybeClose;
   FOnForceClose := AOnForceClose;
   FOnGotoLine := AOnGotoLine;
+  FOnReflow := AOnReflow;
   FOnApplyPendingEncoding := AOnApplyPendingEncoding;
   FOnRequestEncoding := AOnRequestEncoding;
   FOnReplace := AOnReplace;
@@ -231,6 +238,13 @@ begin
   if not FDialog.OpenJson(DeclarationToJson(BuildGotoLineDialog(ALine1Based)),
       GotoLineCommand) then
     FDialog.Open(BuildGotoLineDialog(ALine1Based), GotoLineCommand);
+  Notify;
+end;
+
+procedure TEditorDialogController.OpenReflow(AWidth: Integer);
+begin
+  FDialog.Open(BuildInputDialog(T('ui.editor.reflowTitle', 'Format text'),
+    T('ui.editor.reflowPrompt', 'Line width:'), IntToStr(AWidth)), ReflowCommand);
   Notify;
 end;
 
@@ -318,6 +332,22 @@ begin
   CloseDialog;
   if DialogCmdIsOk(AControlId) and TryStrToInt(S, N) and Assigned(FOnGotoLine) then
     FOnGotoLine(N);
+  Notify;
+end;
+
+procedure TEditorDialogController.ReflowCommand(const AControlId,
+  AValuesJson: string);
+var
+  N: Integer;
+begin
+  if DialogCmdIsOk(AControlId) and TryStrToInt(Trim(FDialog.GetInputValue('name')), N) and
+     (N > 0) and Assigned(FOnReflow) then
+  begin
+    CloseDialog;
+    FOnReflow(N);
+  end
+  else
+    CloseDialog;
   Notify;
 end;
 

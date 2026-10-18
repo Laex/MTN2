@@ -36,6 +36,10 @@ function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;
   out AError: string): Boolean;
 function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string;
   AOverwrite: Boolean; out AError: string): Boolean;
+/// <summary>Removes one entry, or a whole folder with its contents, from an
+/// existing archive. The archive is rewritten; it stays unchanged on failure.</summary>
+function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
+  out AError: string): Boolean;
 function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
@@ -1617,6 +1621,110 @@ begin
         AError := 'Cannot replace archive';
         Exit;
       end;
+    end;
+    try
+      TFile.Move(TmpPath, AArchivePath);
+    except
+      on E: Exception do
+      begin
+        AError := 'Cannot write archive: ' + E.Message;
+        Exit;
+      end;
+    end;
+    Result := True;
+  finally
+    GLock.Release;
+  end;
+end;
+
+function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
+  out AError: string): Boolean;
+var
+  Keep: TArray<UInt32>;
+  NoNew: TArray<T7zPackItem>;
+  ArcIn: IInArchive;
+  ArcOut: IOutArchive;
+  OutSt: IOutStream;
+  Cb: IArchiveUpdateCallback;
+  Hr: HRESULT;
+  N, I: UInt32;
+  Old: T7zItem;
+  Want, TmpPath: string;
+  Removed, K: Integer;
+begin
+  Result := False;
+  AError := '';
+  Want := SevenZipNormInner(AInnerPath);
+  if (Want = '') or not FileExists(AArchivePath) then
+  begin
+    AError := 'Not found';
+    Exit;
+  end;
+  TmpPath := AArchivePath + '.mtn2-pack.tmp';
+  GLock.Acquire;
+  try
+    if not Assigned(GCreateObject) then
+    begin
+      AError := '7z.dll is not loaded';
+      Exit;
+    end;
+    SetLength(Keep, 0);
+    SetLength(NoNew, 0);
+    ArcIn := nil;
+    ArcOut := nil;
+    if not OpenArchive(AArchivePath, ArcIn, AError) then
+      Exit;
+    if not HResOk(ArcIn.GetNumberOfItems(N)) then
+    begin
+      AError := 'GetNumberOfItems failed';
+      Exit;
+    end;
+    Removed := 0;
+    for I := 0 to N - 1 do
+    begin
+      ReadItem(ArcIn, I, Old);
+      if SameText(Old.Path, Want) or Old.Path.StartsWith(Want + '/', True) then
+        Inc(Removed)
+      else
+      begin
+        K := Length(Keep);
+        SetLength(Keep, K + 1);
+        Keep[K] := I;
+      end;
+    end;
+    if Removed = 0 then
+    begin
+      AError := 'Not found';
+      Exit;
+    end;
+    if not Supports(ArcIn, IOutArchive, ArcOut) then
+    begin
+      AError := 'This archive format cannot be updated';
+      Exit;
+    end;
+    if FileExists(TmpPath) then
+      TFile.Delete(TmpPath);
+    OutSt := T7zFileStream.Create(TmpPath, fmCreate);
+    Cb := T7zPackCallback.Create(Keep, NoNew);
+    Hr := ArcOut.UpdateItems(OutSt, UInt32(Length(Keep)), Cb);
+    OutSt := nil;
+    Cb := nil;
+    ArcOut := nil;
+    ArcIn.Close;
+    ArcIn := nil;
+    if not HResOk(Hr) then
+    begin
+      if FileExists(TmpPath) then
+        TFile.Delete(TmpPath);
+      AError := Format('UpdateItems failed: 0x%x', [Hr]);
+      Exit;
+    end;
+    if not System.SysUtils.DeleteFile(AArchivePath) then
+    begin
+      if FileExists(TmpPath) then
+        TFile.Delete(TmpPath);
+      AError := 'Cannot replace archive';
+      Exit;
     end;
     try
       TFile.Move(TmpPath, AArchivePath);

@@ -6,7 +6,7 @@ From top to bottom:
 - **Two file panels** – the active one is highlighted by its frame; **Tab** switches sides. Drive letters are shown on the bottom edge of a panel.
 - **Command line** – a prompt with the current folder.
 - **F-key bar** – hints for the actions of the current mode; you can click them. While Shift / Ctrl / Alt is held, the bar shows the matching actions.
-- **Status line**.
+- **Status line** – facts about the panel; clicking a section opens its dialog: the side and the free space open the drive list, the path opens the folder history, the column mode opens the mode menu, the item or the selection opens its properties. In the viewer and editor: the position opens Go to line, the encoding opens the encoding list, the search result opens Find.
 
 The **console** lives under the panels: **Ctrl+O** (or **Esc** with the focus on the panel) hides the panels and shows the command output.
 

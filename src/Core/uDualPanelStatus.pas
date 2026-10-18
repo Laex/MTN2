@@ -7,7 +7,8 @@ interface
 
 uses
   System.SysUtils, System.UITypes,
-  uFunctionBar, uDualPanelUiTypes, uDualPanelTypes, uThemeTypes, uTerminalTypes;
+  uFunctionBar, uDualPanelUiTypes, uDualPanelTypes, uThemeTypes, uTerminalTypes,
+  uStatusSegments;
 
 type
   TPanelChromeStatus = record
@@ -87,6 +88,10 @@ function MakeChromeStatus(const APath: string;
   const ASnap: TStatusOverlaySnapshot): TPanelChromeStatus;
 function AssembleStatusSegments(const AHost: TDualPanelStatusHost;
   const ASnap: TPanelStatusSnapshot): TArray<string>;
+/// <summary>The same, with what each section stands for (AKinds is empty
+/// when the line is a dialog's or the terminal's: nothing to click).</summary>
+function AssembleStatusLine(const AHost: TDualPanelStatusHost;
+  const ASnap: TPanelStatusSnapshot; out AKinds: TArray<TStatusSegKind>): TArray<string>;
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; AY, AWidth: Integer;
   const ASegs: TArray<string>; AFallbackFg, AFallbackBg: TAlphaColor);
@@ -136,7 +141,7 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkTheme, hdkColumnsConfig, hdkDisplay,
       hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
-      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter,
+      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
@@ -291,6 +296,8 @@ begin
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
     hdkChecksumOptions:
       Result := TArray<string>.Create(S('Checksums'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkMultiRename:
+      Result := TArray<string>.Create(S('Multi-rename'), H('Enter', 'Rename', '='), H('Esc', 'Cancel', '='));
     hdkChecksumResult:
       Result := TArray<string>.Create(S('Checksums'), S('^v select'), H('Tab', 'Copy/Save', '='),
         H('Esc', 'Close', '='));
@@ -447,7 +454,16 @@ end;
 
 function AssembleStatusSegments(const AHost: TDualPanelStatusHost;
   const ASnap: TPanelStatusSnapshot): TArray<string>;
+var
+  Kinds: TArray<TStatusSegKind>;
 begin
+  Result := AssembleStatusLine(AHost, ASnap, Kinds);
+end;
+
+function AssembleStatusLine(const AHost: TDualPanelStatusHost;
+  const ASnap: TPanelStatusSnapshot; out AKinds: TArray<TStatusSegKind>): TArray<string>;
+begin
+  AKinds := nil;
   if ASnap.Kind = wkTerminal then
     Exit(FormatTerminalStatus(ASnap.TermAssigned, ASnap.TermRunning, ASnap.TermTitle));
   if TryFormatChromeStatus(AHost.ChromeContext(), ASnap.Chrome, Result) then
@@ -455,6 +471,8 @@ begin
   Result := FormatDefaultPanelStatus(ASnap.SideLabel, ASnap.Path, ASnap.PosText,
     ASnap.ColMode, ASnap.ItemText, ASnap.FreeText, ASnap.Kind = wkPanels,
     ASnap.CmdFocused);
+  AKinds := PanelStatusKinds(ASnap.Kind = wkPanels, ASnap.ColMode <> '',
+    ASnap.CmdFocused, ASnap.ItemText <> '', ASnap.FreeText <> '');
   // Text segments plugins set (SetStatusSegment) follow the host's own.
   if ASnap.Kind = wkPanels then
     Result := Result + PluginChrome.StatusSegments;

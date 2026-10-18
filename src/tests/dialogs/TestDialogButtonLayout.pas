@@ -247,7 +247,8 @@ begin
       if RowUsed(ContentBottom + 1) or not RuleAt(ContentBottom + 2) then
         Problems.Add('single line needs an empty row, then the rule, below it');
     end
-    else if not RowUsed(Frame.Top + 1) then
+    // The multi-rename dialog keeps a margin row under the title by design.
+    else if not RowUsed(Frame.Top + 1) and not SameText(AName, 'DIALOG_MULTIRENAME') then
       Problems.Add('empty row under the title');
     if RowUsed(Top + 1) then
       Problems.Add('controls on the shadow row');

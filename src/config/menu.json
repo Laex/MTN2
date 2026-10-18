@@ -46,6 +46,7 @@
         { "caption": "Windows context menu", "shortcut": "Shift+F10", "action": "tmaFileShellMenu" },
         { "caption": "Compare files...", "hotChar": "X", "shortcut": "Ctrl+Alt+C", "action": "tmaFileCompare" },
         { "caption": "Checksums...", "hotChar": "H", "shortcut": "Ctrl+Alt+H", "action": "tmaFileChecksums" },
+        { "caption": "Multi-rename...", "hotChar": "I", "shortcut": "Ctrl+Alt+N", "action": "tmaFileMultiRename" },
         { "caption": "Restore from Recycle Bin", "hotChar": "T", "shortcut": "Ctrl+Alt+R", "action": "tmaFileRestore" },
         { "caption": "Delete", "hotChar": "D", "shortcut": "F8", "action": "tmaFileDelete" },
         { "caption": "Delete cursor item", "hotChar": "E", "shortcut": "Shift+F8", "action": "tmaFileWipe" },
@@ -85,7 +86,14 @@
         { "caption": "Encoding...", "hotChar": "N", "shortcut": "Shift+F8", "action": "tmaEditEncoding" },
         { "caption": "Undo", "hotChar": "U", "shortcut": "Ctrl+Z", "action": "tmaEditUndo" },
         { "caption": "Redo", "hotChar": "D", "shortcut": "Ctrl+Shift+Z", "action": "tmaEditRedo" },
-        { "caption": "Hex↔Text", "hotChar": "H", "shortcut": "Ctrl+H", "action": "tmaEditHexToggle" }
+        { "caption": "Hex↔Text", "hotChar": "H", "shortcut": "Ctrl+H", "action": "tmaEditHexToggle" },
+        { "isSeparator": true },
+        { "caption": "Sort lines ascending", "hotChar": "A", "shortcut": "Ctrl+Alt+S", "action": "tmaEditSortLines" },
+        { "caption": "Sort lines descending", "hotChar": "O", "shortcut": "Ctrl+Alt+Shift+S", "action": "tmaEditSortLinesDesc" },
+        { "caption": "Remove repeated lines", "hotChar": "L", "shortcut": "Ctrl+Alt+U", "action": "tmaEditUniqueLines" },
+        { "caption": "Format text to width...", "hotChar": "W", "shortcut": "Ctrl+Alt+F", "action": "tmaEditReflow" },
+        { "caption": "Shift lines right", "hotChar": "I", "shortcut": "Alt+Right", "action": "tmaEditShiftRight" },
+        { "caption": "Shift lines left", "hotChar": "E", "shortcut": "Alt+Left", "action": "tmaEditShiftLeft" }
       ]
     },
     {

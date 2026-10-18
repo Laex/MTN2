@@ -59,6 +59,8 @@ type
     HandleDocumentClick: TClickDocFn;
     HandleTerminalClick: TClickDocFn;
     HandleFunctionBarClick: TClickColShiftFn;
+    /// <summary>Click on a section of the status line: opens what it shows.</summary>
+    HandleStatusLineClick: TClickColShiftFn;
     HandleDialogClick: TClickDocFn;
     LayoutSearchUi: TClickLayoutProc;
     SearchBounds: TClickBoundsFn;
@@ -392,6 +394,13 @@ begin
      (not ASnap.StubVisible) then
   begin
     AHandled := AHost.HandleFunctionBarClick(ALocalCol, AShift);
+    Exit;
+  end;
+
+  if (ALocalRow = StatusLineRow(ASnap.AreaHeight)) and (not ASnap.DialogVisible) and
+     (not ASnap.StubVisible) and Assigned(AHost.HandleStatusLineClick) then
+  begin
+    AHandled := AHost.HandleStatusLineClick(ALocalCol, AShift);
     Exit;
   end;
 

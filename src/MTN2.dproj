@@ -237,6 +237,9 @@
         <DCCReference Include="Core\uDualPanelCommands.pas"/>
         <DCCReference Include="Core\uEditorSearch.pas"/>
         <DCCReference Include="Core\uEditorUndo.pas"/>
+        <DCCReference Include="Core\uEditorLineOps.pas"/>
+        <DCCReference Include="Core\uMultiRename.pas"/>
+        <DCCReference Include="Core\uDualPanelMultiRename.pas"/>
         <DCCReference Include="Core\uEditorLayout.pas"/>
         <DCCReference Include="Core\uEditorDialogs.pas"/>
         <DCCReference Include="Core\uEditorInput.pas"/>
@@ -258,6 +261,7 @@
         <DCCReference Include="Core\uPanelColumns.pas"/>
         <DCCReference Include="Core\uDisplaySettings.pas"/>
         <DCCReference Include="Core\uChromeRows.pas"/>
+        <DCCReference Include="Core\uStatusSegments.pas"/>
         <DCCReference Include="Platform\Windows\uDirWatch.pas"/>
         <DCCReference Include="Core\uDialogTypes.pas"/>
         <DCCReference Include="Core\uDialogJson.pas"/>

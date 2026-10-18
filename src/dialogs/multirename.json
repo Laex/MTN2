@@ -1,0 +1,227 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Multi-rename",
+  "width": 114,
+  "height": 29,
+  "children": [
+    {
+      "type": "label",
+      "id": "lbl_name_mask",
+      "text": "Name mask:",
+      "col": 1,
+      "row": 1,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "name_mask",
+      "value": "[N]",
+      "col": 16,
+      "row": 1,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_ext_mask",
+      "text": "Extension:",
+      "col": 58,
+      "row": 1,
+      "width": 11,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "ext_mask",
+      "value": "[E]",
+      "col": 70,
+      "row": 1,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_search",
+      "text": "Search:",
+      "col": 1,
+      "row": 3,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "search",
+      "value": "",
+      "col": 16,
+      "row": 3,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_replace",
+      "text": "Replace:",
+      "col": 58,
+      "row": 3,
+      "width": 11,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "replace",
+      "value": "",
+      "col": 70,
+      "row": 3,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_counter",
+      "text": "Counter from:",
+      "col": 1,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "c_start",
+      "value": "1",
+      "col": 16,
+      "row": 5,
+      "width": 6,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_step",
+      "text": "step:",
+      "col": 24,
+      "row": 5,
+      "width": 6,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "c_step",
+      "value": "1",
+      "col": 31,
+      "row": 5,
+      "width": 5,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_digits",
+      "text": "digits:",
+      "col": 38,
+      "row": 5,
+      "width": 7,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "c_digits",
+      "value": "1",
+      "col": 46,
+      "row": 5,
+      "width": 4,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "match_case",
+      "text": "Match &case",
+      "checked": false,
+      "col": 58,
+      "row": 5,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_case",
+      "text": "Letter case:",
+      "col": 1,
+      "row": 7,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "case_mode",
+      "selected": 0,
+      "items": [
+        "Unchanged",
+        "lower case",
+        "UPPER CASE",
+        "First letter upper",
+        "Each Word Upper"
+      ],
+      "col": 16,
+      "row": 7,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 9,
+      "width": 110,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "columns",
+      "text": "",
+      "col": 1,
+      "row": 10,
+      "width": 110,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "preview",
+      "selected": 0,
+      "items": [
+        "(none)"
+      ],
+      "col": 1,
+      "row": 11,
+      "width": 110,
+      "height": 11
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 23,
+      "width": 112,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Rename",
+      "default": true,
+      "col": 45,
+      "row": 25,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 59,
+      "row": 25,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

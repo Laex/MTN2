@@ -18,6 +18,7 @@
 | Shift+F10, Menütaste | das Windows-Kontextmenü (für die Auswahl oder das Element unter dem Cursor) |
 | Ctrl+Alt+C | die Dateien unter den Cursorn beider Panels vergleichen |
 | Ctrl+Alt+H | Prüfsummen (MD5, SHA-1, SHA-256, SHA-512) der ausgewählten Dateien und Ordner; bei einer `.md5`- / `.sha1`- / `.sha256`- / `.sha512`-Datei – sie prüfen |
+| Ctrl+Alt+M | ausgewählte Elemente gemeinsam umbenennen: Masken für Name und Erweiterung, Zähler, Suchen und Ersetzen, Groß-/Kleinschreibung |
 | Ctrl+C / Ctrl+X / Ctrl+V | Dateien über die Zwischenablage kopieren / ausschneiden / einfügen |
 | Alt+Shift+Ins | den vollständigen Pfad in die Zwischenablage kopieren |
 | Ctrl+Shift+Ins | nur den Namen (ohne Pfad) in die Zwischenablage kopieren |
@@ -32,6 +33,8 @@ Im Dialog **Ctrl+A** werden Datumsangaben im Systemformat eingegeben, die Zeit a
 Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
 
 **Prüfsummen.** Sie werden im Hintergrund berechnet (Esc – abbrechen). In der Ergebnisliste: **Kopieren** – in die Zwischenablage, **Speichern** – nach `<Datei>.sha256` (eine Datei) oder `checksums.sha256` im Panelordner. Die Prüfung markiert jede Zeile mit `OK`, `FAILED` oder `MISSING`. Zeilen der Form `Hash *Name`, `Hash  Name` und `SHA256 (Name) = Hash` werden verstanden.
+
+**Mehrfach umbenennen.** Die Masken für Name und Erweiterung kennen `[N]` (alter Name ohne Erweiterung), `[E]` (alte Erweiterung) und `[C]` (Zähler mit Start, Schritt und Stellenzahl); anderer Text bleibt wie eingegeben. Suchen und Ersetzen wirken auf den neuen Namen und die Erweiterung, die Groß-/Kleinschreibung wird aus der Liste gewählt. Die Liste unter den Feldern zeigt die Paare „alt -> neu“ sofort. Ein leerer, ungültiger, doppelter oder im Ordner bereits vergebener Name (auch von einem anderen Element der Auswahl) ist mit `!` markiert; solange einer übrig ist, tut **Umbenennen** nichts. Es lassen sich nur Elemente eines Ordners wählen. Das Umbenennen läuft wie ein Verschieben als Hintergrundauftrag.
 
 ---
 

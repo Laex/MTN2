@@ -117,9 +117,30 @@ begin
   Result := WriteUtf8Buf(Text, ABuf, ABufSize, ANegotiatedSize);
 end;
 
+// An archive has no recycle bin, so both delete modes remove the entry. A
+// path that descends into an archive nested inside another one points at a
+// temporary extraction, which must not be edited.
 function SzDelete(AURI: PAnsiChar; AMode: Int64; AUserData: Pointer): Int64; cdecl;
+var
+  URI, ArchivePath, Inner, Err: string;
 begin
-  Result := Int64(verNotSupported);
+  URI := UTF8ToString(AURI);
+  if not ParseSevenZipUri(URI, ArchivePath, Inner) then
+    Exit(Int64(verInvalidURI));
+  if (Pos('!/', URI) > 0) and (Pos('!/', Copy(URI, Pos('!/', URI) + 2, MaxInt)) > 0) then
+    Exit(Int64(verNotSupported));
+  if SevenZipNormInner(Inner) = '' then
+    Exit(Int64(verNotSupported));
+  if SevenZipDeleteInner(ArchivePath, Inner, Err) then
+    Exit(Int64(verOk));
+  if Err = 'Not found' then
+    Result := Int64(verNotFound)
+  else if (Err = 'Encrypted') or (Err = 'Cannot replace archive') then
+    Result := Int64(verAccessDenied)
+  else if (Err = 'This archive format cannot be updated') or (Err = '7-Zip is not available') then
+    Result := Int64(verNotSupported)
+  else
+    Result := Int64(verIOError);
 end;
 
 function SzCreateDirectory(AURI: PAnsiChar; AUserData: Pointer): Int64; cdecl;

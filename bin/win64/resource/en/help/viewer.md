@@ -21,6 +21,10 @@
 | Ctrl+Y, Ctrl+D | delete the line |
 | Ctrl+K | delete to the end of the line |
 | Ctrl+N | insert an empty line below |
+| Ctrl+Alt+S / Ctrl+Alt+Shift+S | sort the selected lines (the whole file without a selection) ascending / descending |
+| Ctrl+Alt+U | remove repeated lines |
+| Ctrl+Alt+F | format the text to a given width (paragraphs are separated by blank lines) |
+| Alt+→ / Alt+← | shift the selected lines (the current line without a selection) right / left |
 | Ctrl+Home / Ctrl+End | to the start / end of the file |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy (without a selection – the line) / cut / paste |
 | Esc, F10 (in the viewer also 5 on the numeric keypad) | close |

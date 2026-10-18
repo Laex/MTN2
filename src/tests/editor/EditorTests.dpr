@@ -15,6 +15,8 @@ uses
   TestEditorLayout in 'TestEditorLayout.pas',
   TestEditorPainter in 'TestEditorPainter.pas',
   TestEditorSearchUndo in 'TestEditorSearchUndo.pas',
+  TestEditorLineOps in 'TestEditorLineOps.pas',
+  TestEditorLineCommands in 'TestEditorLineCommands.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',
   TestMarkdownCursor in 'TestMarkdownCursor.pas',

@@ -184,6 +184,8 @@ type
     /// file diff). Resets scroll to the top.</summary>
     procedure SetListItems(const AId: string; const AItems: TArray<string>;
       ASelectedIndex: Integer = 0);
+    /// <summary>Replaces the accent-colored stretches of an open dckList.</summary>
+    procedure SetListAccents(const AId: string; const AAccents: TArray<TListAccent>);
     procedure Draw(const AGrid: TTerminalGrid; AAreaW, AAreaH: Integer);
     function HandleInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -1257,6 +1259,19 @@ begin
       if FDecl.Controls[I].Text = AText then
         Exit;
       FDecl.Controls[I].Text := AText;
+      NotifyChanged;
+      Exit;
+    end;
+end;
+
+procedure TDialogHost.SetListAccents(const AId: string; const AAccents: TArray<TListAccent>);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckList) and SameText(FDecl.Controls[I].Id, AId) then
+    begin
+      FDecl.Controls[I].ItemAccents := Copy(AAccents);
       NotifyChanged;
       Exit;
     end;

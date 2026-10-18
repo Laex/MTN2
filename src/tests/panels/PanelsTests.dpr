@@ -10,6 +10,8 @@ program PanelsTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestButtonTextClip in 'TestButtonTextClip.pas',
+  TestMultiRename in 'TestMultiRename.pas',
+  TestMultiRenameKey in 'TestMultiRenameKey.pas',
   TestChromeRows in 'TestChromeRows.pas',
   TestFolderTree in 'TestFolderTree.pas',
   TestInfoPanelBar in 'TestInfoPanelBar.pas',
@@ -50,6 +52,7 @@ uses
   TestSearchController in 'TestSearchController.pas',
   TestShellIcons in 'TestShellIcons.pas',
   TestSortMenuController in 'TestSortMenuController.pas',
+  TestStatusSegments in 'TestStatusSegments.pas',
   TestStubController in 'TestStubController.pas',
   TestTopMenuBar in 'TestTopMenuBar.pas',
   TestPicturePreview in 'TestPicturePreview.pas',
