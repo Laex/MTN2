@@ -41,6 +41,9 @@ type
     FURI: string;
     FPath: string;
     FLines: TList<string>;
+    // Bookmarked line indexes, ascending; InsertLine / DeleteLine move them
+    // with the text.
+    FBookmarks: TList<Integer>;
     FRawBytes: TBytes;
     FReady: Boolean;
     FLoading: Boolean;
@@ -147,6 +150,16 @@ type
     procedure DeleteLine(AIndex: Integer);
     procedure MarkDirty;
     function SnapshotLines: TArray<string>;
+    function HasBookmark(ALine: Integer): Boolean;
+    /// <summary>Sets or clears the bookmark of ALine; True when it is set now.</summary>
+    function ToggleBookmark(ALine: Integer): Boolean;
+    /// <summary>The bookmarked line after (or before) ALine, wrapping around
+    /// the document; -1 when there is none.</summary>
+    function NextBookmark(ALine: Integer; AForward: Boolean): Integer;
+    procedure ClearBookmarks;
+    function BookmarkCount: Integer;
+    /// <summary>The line (0-based) of the AIndex-th bookmark, in ascending order.</summary>
+    function BookmarkLine(AIndex: Integer): Integer;
     procedure RestoreLines(const ALines: TArray<string>; AMarkDirty: Boolean);
     function ByteCount: Integer;
     function GetByte(AIndex: Integer): Byte;
@@ -193,6 +206,7 @@ begin
   FLife := NewLifeFlag;
   FVfs := CreateDefaultVfs;
   FLines := TList<string>.Create;
+  FBookmarks := TList<Integer>.Create;
   FLineCache := TDictionary<Integer, string>.Create;
   FLineCacheOrder := TQueue<Integer>.Create;
   FEncoding := tfeUtf8;
@@ -215,6 +229,7 @@ begin
     FreeAndNil(FWatcher);
   end;
   FreeAndNil(FLines);
+  FreeAndNil(FBookmarks);
   FreeAndNil(FLineCache);
   FreeAndNil(FLineCacheOrder);
   FVfs := nil;
@@ -237,6 +252,7 @@ begin
   FURI := '';
   FPath := '';
   FLines.Clear;
+  FBookmarks.Clear;
   SetLength(FRawBytes, 0);
   FReady := False;
   FLoading := False;
@@ -371,6 +387,8 @@ begin
 end;
 
 procedure TEditorDoc.InsertLine(AIndex: Integer; const AValue: string);
+var
+  I: Integer;
 begin
   if FStreaming then
     Exit;
@@ -379,16 +397,26 @@ begin
   if AIndex > FLines.Count then
     AIndex := FLines.Count;
   FLines.Insert(AIndex, AValue);
+  for I := 0 to FBookmarks.Count - 1 do
+    if FBookmarks[I] >= AIndex then
+      FBookmarks[I] := FBookmarks[I] + 1;
   MarkDirty;
 end;
 
 procedure TEditorDoc.DeleteLine(AIndex: Integer);
+var
+  I: Integer;
 begin
   if FStreaming then
     Exit;
   if (AIndex < 0) or (AIndex >= FLines.Count) then
     Exit;
   FLines.Delete(AIndex);
+  for I := FBookmarks.Count - 1 downto 0 do
+    if FBookmarks[I] = AIndex then
+      FBookmarks.Delete(I)
+    else if FBookmarks[I] > AIndex then
+      FBookmarks[I] := FBookmarks[I] - 1;
   if FLines.Count = 0 then
     FLines.Add('');
   MarkDirty;
@@ -414,6 +442,66 @@ begin
     Result[I] := FLines[I];
 end;
 
+function TEditorDoc.HasBookmark(ALine: Integer): Boolean;
+begin
+  Result := FBookmarks.IndexOf(ALine) >= 0;
+end;
+
+function TEditorDoc.ToggleBookmark(ALine: Integer): Boolean;
+var
+  Idx, I: Integer;
+begin
+  Idx := FBookmarks.IndexOf(ALine);
+  if Idx >= 0 then
+  begin
+    FBookmarks.Delete(Idx);
+    Exit(False);
+  end;
+  I := 0;
+  while (I < FBookmarks.Count) and (FBookmarks[I] < ALine) do
+    Inc(I);
+  FBookmarks.Insert(I, ALine);
+  Result := True;
+end;
+
+function TEditorDoc.NextBookmark(ALine: Integer; AForward: Boolean): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  if FBookmarks.Count = 0 then
+    Exit;
+  if AForward then
+  begin
+    for I := 0 to FBookmarks.Count - 1 do
+      if FBookmarks[I] > ALine then
+        Exit(FBookmarks[I]);
+    Result := FBookmarks[0];
+  end
+  else
+  begin
+    for I := FBookmarks.Count - 1 downto 0 do
+      if FBookmarks[I] < ALine then
+        Exit(FBookmarks[I]);
+    Result := FBookmarks[FBookmarks.Count - 1];
+  end;
+end;
+
+procedure TEditorDoc.ClearBookmarks;
+begin
+  FBookmarks.Clear;
+end;
+
+function TEditorDoc.BookmarkCount: Integer;
+begin
+  Result := FBookmarks.Count;
+end;
+
+function TEditorDoc.BookmarkLine(AIndex: Integer): Integer;
+begin
+  Result := FBookmarks[AIndex];
+end;
+
 procedure TEditorDoc.RestoreLines(const ALines: TArray<string>; AMarkDirty: Boolean);
 var
   I: Integer;
@@ -424,6 +512,9 @@ begin
   else
     for I := 0 to High(ALines) do
       FLines.Add(ALines[I]);
+  for I := FBookmarks.Count - 1 downto 0 do
+    if FBookmarks[I] >= FLines.Count then
+      FBookmarks.Delete(I);
   if AMarkDirty then
     FDirty := True;
   NotifyChanged;

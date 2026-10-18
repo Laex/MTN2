@@ -83,6 +83,8 @@ type
     function IsRunning: Boolean;
     /// <summary>The shell has a foreground command running.</summary>
     function HasChildProcess: Boolean;
+    /// <summary>Current folder of the shell process (/proc/&lt;pid&gt;/cwd); '' when unknown.</summary>
+    function ShellCwd: string;
     property LastError: string read FLastError;
     property Persistent: Boolean read FPersistent;
     property ProfileId: string read FProfileId write FProfileId;
@@ -158,6 +160,8 @@ procedure c_exit(AStatus: Integer); cdecl; external libc name '_exit';
 function c_ioctl(AFd: Integer; ARequest: NativeUInt; AArg: Pointer): Integer; cdecl;
   external libc name 'ioctl';
 function c_tcgetpgrp(AFd: Integer): Integer; cdecl; external libc name 'tcgetpgrp';
+function c_readlink(APath, ABuf: MarshaledAString; ASize: NativeUInt): NativeInt; cdecl;
+  external libc name 'readlink';
 
 function ResolveForkPty: Boolean;
 var
@@ -692,6 +696,22 @@ end;
 function TConPtySession.IsRunning: Boolean;
 begin
   Result := FRunning and (FPid > 0);
+end;
+
+function TConPtySession.ShellCwd: string;
+var
+  Path: UTF8String;
+  Buf: TBytes;
+  N: NativeInt;
+begin
+  Result := '';
+  if not IsRunning then
+    Exit;
+  Path := UTF8String('/proc/' + IntToStr(FPid) + '/cwd');
+  SetLength(Buf, 4096);
+  N := c_readlink(MarshaledAString(Path), MarshaledAString(@Buf[0]), Length(Buf) - 1);
+  if N > 0 then
+    Result := TEncoding.UTF8.GetString(Buf, 0, N);
 end;
 
 function TConPtySession.HasChildProcess: Boolean;

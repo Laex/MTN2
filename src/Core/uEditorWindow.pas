@@ -408,6 +408,14 @@ type
     procedure UniqueLines;
     procedure ShiftLines(AToRight: Boolean);
     procedure OpenReflowDialog;
+    /// <summary>Sets or clears the bookmark of the cursor line.</summary>
+    procedure ToggleBookmark;
+    /// <summary>Moves the cursor to the next / previous bookmark, wrapping around.</summary>
+    procedure GotoBookmark(AForward: Boolean);
+    /// <summary>Dialog with the bookmarks (line number and text); Enter goes to one.</summary>
+    procedure OpenBookmarkList;
+    /// <summary>Auto-indent on Enter on / off (GEditorAutoIndent, kept in the session).</summary>
+    procedure ToggleAutoIndent;
     procedure CopySelectionOrLine;
     procedure CutSelectionOrLine;
     procedure PasteText;
@@ -464,7 +472,7 @@ implementation
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
   System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uPluginHighlight, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps;
+  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps, uDisplaySettings;
 
 var
   /// <summary>Width the last Format text command used; the dialog opens with it.</summary>
@@ -2140,6 +2148,10 @@ begin
   FKeymapHost.UniqueLines := UniqueLines;
   FKeymapHost.OpenReflowDialog := OpenReflowDialog;
   FKeymapHost.ShiftLines := ShiftLines;
+  FKeymapHost.ToggleBookmark := ToggleBookmark;
+  FKeymapHost.GotoBookmark := GotoBookmark;
+  FKeymapHost.OpenBookmarkList := OpenBookmarkList;
+  FKeymapHost.ToggleAutoIndent := ToggleAutoIndent;
   FKeymapHost.MoveWord := MoveWord;
   FKeymapHost.MoveCursor := MoveCursor;
   FKeymapHost.MoveBlockCursor := MoveBlockCursor;
@@ -2191,6 +2203,61 @@ begin
   FCursorCol := 0;
   EnsureCursorVisible;
   NotifyHost;
+end;
+
+procedure TEditorWindow.ToggleBookmark;
+begin
+  if (not FDoc.Ready) or FHexMode or FMarkdownMode or (FSurfaceHandle <> 0) then
+    Exit;
+  ClampCursor;
+  FDoc.ToggleBookmark(FCursorRow);
+  NotifyHost;
+end;
+
+procedure TEditorWindow.GotoBookmark(AForward: Boolean);
+var
+  Row: Integer;
+begin
+  if (not FDoc.Ready) or FHexMode or FMarkdownMode or (FSurfaceHandle <> 0) then
+    Exit;
+  Row := FDoc.NextBookmark(FCursorRow, AForward);
+  if Row >= 0 then
+    GotoLine(Row + 1);
+end;
+
+procedure TEditorWindow.OpenBookmarkList;
+var
+  Lines: TArray<Integer>;
+  Texts: TArray<string>;
+  I, Sel: Integer;
+begin
+  if (not FDoc.Ready) or FHexMode or FMarkdownMode or (FSurfaceHandle <> 0) then
+    Exit;
+  if FDoc.BookmarkCount = 0 then
+  begin
+    Notice(T('ui.editor.noBookmarks', 'No bookmarks'));
+    Exit;
+  end;
+  SetLength(Lines, FDoc.BookmarkCount);
+  SetLength(Texts, FDoc.BookmarkCount);
+  Sel := 0;
+  for I := 0 to High(Lines) do
+  begin
+    Lines[I] := FDoc.BookmarkLine(I);
+    Texts[I] := FDoc.GetLine(Lines[I]);
+    if (Lines[I] < FCursorRow) and (I < High(Lines)) then
+      Sel := I + 1;
+  end;
+  FDialogs.OpenBookmarks(Lines, Texts, Sel);
+end;
+
+procedure TEditorWindow.ToggleAutoIndent;
+begin
+  GEditorAutoIndent := not GEditorAutoIndent;
+  if GEditorAutoIndent then
+    Notice(T('ui.editor.autoIndentOn', 'Auto-indent: on'))
+  else
+    Notice(T('ui.editor.autoIndentOff', 'Auto-indent: off'));
 end;
 
 procedure TEditorWindow.LeaveMarkdownOverlay;
@@ -3965,7 +4032,8 @@ end;
 
 procedure TEditorWindow.DoEnter;
 var
-  Line, Left, Right: string;
+  Line, Left, Right, Indent: string;
+  N: Integer;
 begin
   // Markdown Viewer: Enter on an external link offers to open it (the Help
   // window follows its own topic links before the key gets here).
@@ -3985,10 +4053,17 @@ begin
   Line := FDoc.GetLine(FCursorRow);
   Left := Copy(Line, 1, FCursorCol);
   Right := Copy(Line, FCursorCol + 1, MaxInt);
+  // With auto-indent the new line starts with the leading blanks of the line it
+  // was split from (only those left of the cursor).
+  N := 0;
+  if GEditorAutoIndent then
+    while (N < Length(Left)) and ((Left[N + 1] = ' ') or (Left[N + 1] = #9)) do
+      Inc(N);
+  Indent := Copy(Left, 1, N);
   FDoc.SetLine(FCursorRow, Left);
-  FDoc.InsertLine(FCursorRow + 1, Right);
+  FDoc.InsertLine(FCursorRow + 1, Indent + Right);
   Inc(FCursorRow);
-  FCursorCol := 0;
+  FCursorCol := Length(Indent);
   ClearSelection;
   EnsureCursorVisible;
   NotifyHost;
@@ -4758,6 +4833,10 @@ begin
       FillGridRect(Buffer, 1, 1 + Y, W - 3, 1 + Y, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
       if (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
         TEditorPainter.DrawTextLine(Buffer[1 + Y], 1, TextW, Vis, 1, FThemeColors.BodyFg, FThemeColors.BodyBg);
+      // A bookmarked line is marked in the frame column beside its first row.
+      if (LineIdx >= 0) and FDoc.HasBookmark(LineIdx) and
+         ((not (FWordWrap and FViewOnly and (TextW > 0))) or (CharOffset = 0)) then
+        PutGridText(Buffer, 0, 1 + Y, #$25A0, FThemeColors.SelBg, FThemeColors.BodyBg);
       if (HighlightId <> 0) and (Line <> '') then
       begin
         if FWordWrap and FViewOnly and (TextW > 0) then

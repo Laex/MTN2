@@ -109,6 +109,7 @@ begin
   Result.MarkedRows := 'band';
   Result.PassiveCursor := False;
   Result.AltOpensMenu := False;
+  Result.EditorAutoIndent := False;
   Result.SelectFolders := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
@@ -151,6 +152,7 @@ begin
     Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
     Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
+    Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
   finally
     if TFile.Exists(Path) then
@@ -215,6 +217,9 @@ begin
     Pair := Root.RemovePair('altOpensMenu');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('editorAutoIndent');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -239,6 +244,7 @@ begin
     Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
     Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
+    Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
   finally
     if TFile.Exists(Path) then

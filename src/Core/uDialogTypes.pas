@@ -94,6 +94,9 @@ type
     KeyCommands: Boolean;
     /// <summary>dckInput: draw '*' instead of the stored characters.</summary>
     Password: Boolean;
+    /// <summary>dckInput: the text can be selected and copied but not changed
+    /// (JSON "readonly": true).</summary>
+    ReadOnly: Boolean;
     /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
     /// last cell (filled with the color); clicking it fires the command
     /// DialogPickCommand(Id).</summary>
@@ -545,6 +548,7 @@ begin
   InputLineSetText(Result.Edit, AValue);
   InputLineSelectAll(Result.Edit);
   Result.Password := False;
+  Result.ReadOnly := False;
   Result.ColorPick := False;
   Result.History := '';
   SetLength(Result.Items, 0);
@@ -658,6 +662,7 @@ begin
   Result.BgSourceId := '';
   Result.PanelState := cspsNone;
   Result.Password := False;
+  Result.ReadOnly := False;
   Result.History := '';
   ClearControlLayout(Result);
 end;

@@ -115,14 +115,17 @@ const
   // What each document F-bar lists (what that view really handles).
   cViewerFBar: TFBarActions = [kaDocToggleEdit, kaDocHex, kaDocEncodingNext,
     kaDocEncoding, kaDocGotoLine, kaDocFind, kaDocFindNext, kaDocFindPrev,
-    kaDocClose, kaViewerWordWrap];
+    kaDocClose, kaViewerWordWrap, kaEditorBookmarkToggle, kaEditorBookmarkNext,
+    kaEditorBookmarkPrev];
   cViewerHexFBar: TFBarActions = [kaDocToggleEdit, kaDocHex, kaDocEncodingNext,
     kaDocGotoLine, kaDocClose];
   cMarkdownFBar: TFBarActions = [kaMarkdownSource, kaDocToggleEdit, kaDocGotoLine,
     kaDocFind, kaDocFindNext, kaDocFindPrev, kaDocClose];
   cEditorFBar: TFBarActions = [kaEditorSave, kaEditorReplace, kaDocToggleEdit,
     kaDocEncodingNext, kaDocEncoding, kaDocGotoLine, kaDocFind, kaDocFindNext,
-    kaDocFindPrev, kaDocClose];
+    kaDocFindPrev, kaDocClose, kaEditorBookmarkToggle, kaEditorBookmarkNext,
+    kaEditorBookmarkPrev];
+  cShellFBar: TFBarActions = [kaShellFindNext, kaShellFindPrev];
 
 function Hint(AAction: TKeymapAction; const ALabel: string): TFBarHint;
 begin
@@ -269,8 +272,9 @@ begin
   end;
 end;
 
-procedure FunctionBarItemsForConsole(Mods: TShiftState; var ALetters: TArray<string>);
+procedure FunctionBarItemsForConsole(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
+  FKeysFromKeymap(fbcConsole, [kcShell], cShellFBar, Mods, AItems);
   if Mods = [] then
   begin
     SetLength(ALetters, 1);
@@ -278,16 +282,17 @@ begin
   end
   else if Mods = [ssCtrl] then
     HintsFromKeymap([Hint(kaShellSelectAll, 'All'), Hint(kaShellCopyOrInterrupt, 'Copy'),
-      Hint(kaAppConsoleToggle, 'Panels')], Mods, ALetters)
+      Hint(kaAppConsoleToggle, 'Panels'), Hint(kaShellFind, 'Find')], Mods, ALetters)
   else if Mods = [ssCtrl, ssShift] then
-    HintsFromKeymap([Hint(kaShellSelectAll, 'All'), Hint(kaShellCopyOrInterrupt, 'Copy')],
-      Mods, ALetters);
+    HintsFromKeymap([Hint(kaShellSelectAll, 'All'), Hint(kaShellCopyOrInterrupt, 'Copy'),
+      Hint(kaShellFind, 'Find')], Mods, ALetters);
 end;
 
 // Raw passthrough: almost every key goes straight to the shell, so only the
 // host-level shortcuts get a hint here.
-procedure FunctionBarItemsForTerminal(Mods: TShiftState; var ALetters: TArray<string>);
+procedure FunctionBarItemsForTerminal(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
+  FKeysFromKeymap(fbcTerminal, [kcShell], cShellFBar, Mods, AItems);
   if Mods = [] then
   begin
     SetLength(ALetters, 1);
@@ -295,7 +300,8 @@ begin
   end
   else if (Mods = [ssCtrl]) or (Mods = [ssCtrl, ssShift]) then
     HintsFromKeymap([Hint(kaShellSelectAll, 'All'),
-      Hint(kaShellCopyOrInterrupt, 'Copy/Brk'), Hint(kaShellPaste, 'Paste')], Mods, ALetters);
+      Hint(kaShellCopyOrInterrupt, 'Copy/Brk'), Hint(kaShellPaste, 'Paste'),
+      Hint(kaShellFind, 'Find')], Mods, ALetters);
 end;
 
 procedure FunctionBarItemsForViewer(Mods: TShiftState; var AItems, ALetters: TArray<string>);
@@ -426,10 +432,10 @@ begin
       FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters);
 
     fbcConsole:
-      FunctionBarItemsForConsole(Mods, ALetters);
+      FunctionBarItemsForConsole(Mods, AItems, ALetters);
 
     fbcTerminal:
-      FunctionBarItemsForTerminal(Mods, ALetters);
+      FunctionBarItemsForTerminal(Mods, AItems, ALetters);
 
     fbcSurface:
       if Mods = [] then

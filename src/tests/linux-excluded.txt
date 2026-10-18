@@ -46,3 +46,5 @@ console/TestShellSessions
 console/TestPsPipeSafeCommand  # PowerShell command rewriting
 console/TestShellProfileOptions # Windows shell catalog
 console/TestShellProfiles
+console/TestConsoleHistoryRecall  # live cmd session
+dialogs/TestSetAttrExtras      # Windows file flags, drive volumes and the Windows properties button

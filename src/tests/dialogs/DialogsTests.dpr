@@ -29,6 +29,8 @@ uses
   TestIOErrorAskDialog in 'TestIOErrorAskDialog.pas',
   TestPanelFilterDialog in 'TestPanelFilterDialog.pas',
   TestSetAttrDialog in 'TestSetAttrDialog.pas',
+  TestSetAttrExtras in 'TestSetAttrExtras.pas',
+  TestDialogReadOnlyInput in 'TestDialogReadOnlyInput.pas',
   TestSetModeDialog in 'TestSetModeDialog.pas',
   TestThemeDialogs in 'TestThemeDialogs.pas',
   TestSshConnectionsDialog in 'TestSshConnectionsDialog.pas',

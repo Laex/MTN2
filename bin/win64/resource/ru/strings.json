@@ -198,6 +198,7 @@
       "show_menu_bar": "Показывать строку м&еню",
       "file_drag": "Перетаскивать файлы мы&шью",
       "alt_menu": "Открывать меню по одиночному &Alt",
+      "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "passive_cursor": "Курсор в &неактивной панели",
       "show_key_bar": "Показывать строку &функциональных клавиш",
       "show_status_line": "Показывать строку &статуса",
@@ -534,6 +535,36 @@
         "Set": "Задать",
         "Clear": "Снять"
       },
+      "attr_comp_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_enc_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_noidx_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_sparse_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_temp_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
+      "attr_off_items": {
+        "Keep": "Оставить",
+        "Set": "Задать",
+        "Clear": "Снять"
+      },
       "attr_s_items": {
         "Keep": "Оставить",
         "Set": "Задать",
@@ -544,6 +575,15 @@
       "lbl_h": "Скрытый",
       "lbl_a": "Архивный",
       "lbl_s": "Системный",
+      "lbl_volume": "Том:",
+      "lbl_device": "Устройство:",
+      "lbl_comp": "Сжатый",
+      "lbl_enc": "Шифрованный",
+      "lbl_noidx": "Не индексируется",
+      "lbl_sparse": "Разреженный",
+      "lbl_temp": "Временный",
+      "lbl_off": "Автономный",
+      "sys_props": "&Свойства Windows",
       "lbl_owner": "Владелец:",
       "change_owner": "&Изменить владельца",
       "lbl_created": "Создан",
@@ -797,6 +837,11 @@
     "keymap.action.EditorReflow": "Форматировать текст по ширине",
     "keymap.action.EditorShiftRight": "Сдвинуть строки вправо",
     "keymap.action.EditorShiftLeft": "Сдвинуть строки влево",
+    "keymap.action.EditorBookmarkToggle": "Поставить/снять закладку",
+    "keymap.action.EditorBookmarkNext": "Следующая закладка",
+    "keymap.action.EditorBookmarkPrev": "Предыдущая закладка",
+    "keymap.action.EditorBookmarkList": "Список закладок",
+    "keymap.action.EditorAutoIndent": "Автоотступ вкл. / выкл.",
     "keymap.action.PrevTab": "Предыдущее рабочее пространство",
     "keymap.action.TopMenu": "Верхнее меню",
     "keymap.action.AppQuit": "Выход",
@@ -809,6 +854,9 @@
     "keymap.action.ShellCopyOrInterrupt": "Копировать или прервать команду",
     "keymap.action.ShellCopy": "Копировать выделение",
     "keymap.action.ShellPaste": "Вставить",
+    "keymap.action.ShellFind": "Поиск по выводу",
+    "keymap.action.ShellFindNext": "Следующее совпадение",
+    "keymap.action.ShellFindPrev": "Предыдущее совпадение",
     "keymap.action.ConsoleSyncDir": "Панель — в папку консоли",
     "update.offer": "Доступна версия %s (установлена %s).",
     "update.offerDetails": "Загрузить и установить её?",
@@ -1049,6 +1097,13 @@
     "colorPicker.foreground": "Цвет текста",
     "workspaces.dialogTitle": "Рабочие пространства",
     "cmdHistory.filterTitle": "История команд: %s",
+    "consoleFind.title": "Поиск по выводу",
+    "consoleFind.prompt": "Найти:",
+    "consoleFind.notFound": "Не найдено: %s",
+    "editor.autoIndentOn": "Автоотступ: включён",
+    "editor.autoIndentOff": "Автоотступ: выключен",
+    "editor.bookmarksTitle": "Закладки",
+    "editor.noBookmarks": "Закладок нет",
     "fileHistory.filterTitle": "История файлов: %s",
     "fileHistory.empty": "(пусто)",
     "fileHistory.viewMark": "П",
@@ -1534,6 +1589,11 @@
     "tmaEditReflow": "Форматировать по ширине...",
     "tmaEditShiftRight": "Сдвинуть строки вправо",
     "tmaEditShiftLeft": "Сдвинуть строки влево",
+    "tmaEditBookmarkToggle": "Поставить/снять закладку",
+    "tmaEditBookmarkNext": "Следующая закладка",
+    "tmaEditBookmarkPrev": "Предыдущая закладка",
+    "tmaEditBookmarkList": "Список закладок...",
+    "tmaEditAutoIndent": "Режим автоотступа",
 
     "tmaCmdFind": "На&йти файл...",
     "tmaCmdDirSync": "&Синхронизация папок...",
@@ -1635,6 +1695,9 @@
     "Panels": "Панели",
     "Copy/Brk": "Коп/Прер",
     "Paste": "Встав",
+    "Mark": "Закл",
+    "MarkNx": "Закл+",
+    "MarkPv": "Закл-",
     "Close": "Закрыть",
     "Hex": "Hex",
     "Prev": "Назад",

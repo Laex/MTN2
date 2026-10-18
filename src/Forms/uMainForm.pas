@@ -1644,6 +1644,7 @@ begin
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
+  Result.EditorAutoIndent := GEditorAutoIndent;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -1675,6 +1676,8 @@ begin
   GFileDragEnabled := ASettings.FileDrag;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
+  FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  GEditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
@@ -1772,6 +1775,7 @@ begin
   GShowToasts := Sess.ShowNotifications;
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
+  GEditorAutoIndent := Sess.EditorAutoIndent;
   GShowPassiveCursor := Sess.PassiveCursor;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
@@ -1866,6 +1870,7 @@ begin
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.FileDrag := GFileDragEnabled;
   Sess.AltOpensMenu := GAltOpensMenu;
+  Sess.EditorAutoIndent := GEditorAutoIndent;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
@@ -2684,6 +2689,7 @@ begin
   FSession.ShowMenuBar := True;
   FSession.FileDrag := True;
   FSession.AltOpensMenu := True;
+  FSession.EditorAutoIndent := True;
   FSession.PassiveCursor := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;

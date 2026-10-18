@@ -22,6 +22,13 @@ type
   TConsoleCommandEvent = reference to procedure(const ACommand: string);
   TConsoleGetHistoryEvent = reference to function: TArray<string>;
 
+const
+  /// <summary>Colors of the output-search matches (the current match is drawn as a selection).</summary>
+  cFindFg = TAlphaColor($FF000000);
+  cFindBg = TAlphaColor($FFD7A32A);
+
+type
+
   TBaseConsoleWindow = class(TTerminalWindow)
   private
     FWorkingDir:        string;
@@ -46,6 +53,17 @@ type
     FCmdHistDialogOpen: Boolean;
     /// <summary>Multi-line text waiting for the paste confirmation.</summary>
     FPendingPaste: string;
+    /// <summary>Text of the output search (Ctrl+Shift+F) and its lower-case form; '' = no search.</summary>
+    FFindText: string;
+    FFindLower: string;
+    /// <summary>Own Up/Down command recall at a cmd prompt: position in the shared
+    /// history (newest first; -1 = the line being typed), that line as it was typed,
+    /// and the text now on the input line.</summary>
+    FNavIndex: Integer;
+    FNavDraft: string;
+    FNavLine: string;
+    FNavSending: Boolean;
+    procedure FindDialogCommand(const AControlId, AValuesJson: string);
     procedure PasteConfirmCommand(const AControlId, AValuesJson: string);
     procedure WritePasteText(const AText: string);
     procedure CmdHistoryDialogCommand(const AControlId, AValuesJson: string);
@@ -119,6 +137,13 @@ type
     /// live bottom of the output, so its line editing and command history
     /// work; False when scrolled back or in a full-screen app.</summary>
     function HandleShellNav(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Up/Down at a cmd prompt recall the commands of the shared history
+    /// (Alt+F8) and Down past the newest brings back the line that was being
+    /// typed, which cmd.exe's own recall does not. Other shells keep their own.</summary>
+    function HandleOwnHistoryNav(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Replaces the text of the input line by AText (End, Backspace per
+    /// character, then the text).</summary>
+    procedure ReplaceInputLine(const AText: string);
     /// <summary>Blit the alt-screen grid directly into Buffer (no scroll
     /// windowing). Shared by both subclasses' DrawContent.</summary>
     procedure DrawAltScreenGrid(ATextW, AViewH: Integer);
@@ -135,6 +160,16 @@ type
     procedure MoveSelCursor(ARowDelta, AColDelta: Integer; AExtendSel: Boolean);
     function  HitTextCell(ALocalCol, ALocalRow: Integer;
                 out ARow, ACol: Integer): Boolean;
+
+    { Output search: the matches are marked in the scrollback and the current one is selected. }
+    procedure OpenFindDialog;
+    /// <summary>Selects the next (or previous) match, wrapping around; without a
+    /// selection a backward step starts at the end of the output. False when
+    /// there is no match.</summary>
+    function FindStep(AForward: Boolean): Boolean;
+    /// <summary>Per column of line ALineIdx (AWidth columns): True where a match lies.
+    /// Empty when the line has none.</summary>
+    function FoundColumns(ALineIdx, AWidth: Integer): TArray<Boolean>;
 
     { Clipboard. }
     procedure ClipboardSetText(const AText: string);
@@ -293,6 +328,7 @@ begin
     FProfileId        := cShellProfileCmd;
   FWorkingDir         := '';
   FPendingClose       := False;
+  FNavIndex           := -1;
   FSelAnchorRow       := -1;
   FSelAnchorCol       := 0;
   FCursorRow          := 0;
@@ -435,6 +471,61 @@ begin
   Result := True;
 end;
 
+function TBaseConsoleWindow.HandleOwnHistoryNav(var AKey: Word;
+  AShift: TShiftState): Boolean;
+var
+  Items: TArray<string>;
+begin
+  Result := False;
+  if (AKey <> vkUp) and (AKey <> vkDown) then
+    Exit;
+  if (FProfileId <> cShellProfileCmd) or AltScreenActive or EscGoesToProgram or
+     not FHistory.FollowTail or (AShift * cKeyMods <> []) or
+     not Assigned(FOnGetCmdHistory) or not Assigned(FPty) then
+    Exit;
+  Items := FOnGetCmdHistory();
+  if AKey = vkUp then
+  begin
+    if (Length(Items) > 0) and (FNavIndex < High(Items)) then
+    begin
+      if FNavIndex < 0 then
+      begin
+        FNavDraft := FHistory.GetInputAfterPrompt;
+        FNavLine := FNavDraft;
+      end;
+      Inc(FNavIndex);
+      ReplaceInputLine(Items[FNavIndex]);
+    end;
+  end
+  else if FNavIndex >= 0 then
+  begin
+    Dec(FNavIndex);
+    if (FNavIndex >= 0) and (FNavIndex <= High(Items)) then
+      ReplaceInputLine(Items[FNavIndex])
+    else
+    begin
+      FNavIndex := -1;
+      ReplaceInputLine(FNavDraft);
+    end;
+  end;
+  AKey := 0;
+  Result := True;
+end;
+
+procedure TBaseConsoleWindow.ReplaceInputLine(const AText: string);
+begin
+  FNavSending := True;
+  try
+    SendRaw(#27'[F');
+    if FNavLine <> '' then
+      SendRaw(StringOfChar(ProfileBackspaceChar(FProfileId), Length(FNavLine)));
+    SendRaw(AText);
+  finally
+    FNavSending := False;
+  end;
+  FNavLine := AText;
+end;
+
 function TBaseConsoleWindow.HandleShellNav(var AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := False;
@@ -443,6 +534,8 @@ begin
     Exit;
   if AShift * cKeyMods <> [] then
     Exit;
+  if HandleOwnHistoryNav(AKey, AShift) then
+    Exit(True);
   // At the prompt the shell owns line editing and its own command history
   // (Up/Down); PageUp/PageDown, Home/End and the mouse wheel still scroll.
   case AKey of
@@ -866,6 +959,89 @@ begin
   Result := True;
 end;
 
+{ ---- Output search --------------------------------------------------------- }
+
+procedure TBaseConsoleWindow.OpenFindDialog;
+begin
+  if not Assigned(FDialog) or FDialog.Visible or AltScreenActive then
+    Exit;
+  FDialog.Open(BuildInputDialog(T('ui.consoleFind.title', 'Find in output'),
+    T('ui.consoleFind.prompt', 'Find:'), FFindText), FindDialogCommand);
+  NotifyHost;
+end;
+
+procedure TBaseConsoleWindow.FindDialogCommand(const AControlId, AValuesJson: string);
+var
+  Accepted: Boolean;
+  Text: string;
+begin
+  Accepted := not DialogCmdIsReject(AControlId);
+  Text := FDialog.GetInputValue('name');
+  FDialog.Close;
+  if Accepted then
+  begin
+    FFindText := Text;
+    FFindLower := LowerCase(Text);
+    ClearSelection;
+    if (FFindText <> '') and not FindStep(False) then
+      Notice(T('ui.consoleFind.notFound', 'Not found: %s', [FFindText]));
+  end;
+  NotifyHost;
+end;
+
+function TBaseConsoleWindow.FindStep(AForward: Boolean): Boolean;
+var
+  Total, StartRow, StartCol, Row, Col, TopLine, ViewTotal: Integer;
+  R1, C1, R2, C2: Integer;
+begin
+  Result := False;
+  if (FFindLower = '') or AltScreenActive then
+    Exit;
+  Total := FHistory.LineCount;
+  if Total = 0 then
+    Exit;
+  // Start beside the selected match, else at the top of the view going
+  // forward or at the end of the output going back.
+  if HasSelection then
+  begin
+    GetSelRange(R1, C1, R2, C2);
+    StartRow := R1;
+    StartCol := C1;
+  end
+  else if AForward then
+  begin
+    FHistory.GetScrollMetrics(ViewHeight, ViewTotal, TopLine);
+    StartRow := TopLine;
+    StartCol := -1;
+  end
+  else
+  begin
+    StartRow := Total - 1;
+    StartCol := MaxInt;
+  end;
+  if not ConsoleFindMatch(Total,
+    function(AIndex: Integer): string
+    begin
+      Result := FHistory.GetLine(AIndex);
+    end, FFindLower, AForward, StartRow, StartCol, Row, Col) then
+    Exit;
+  FSelAnchorRow := Row;
+  FSelAnchorCol := Col;
+  FCursorRow := Row;
+  FCursorCol := Col + Length(FFindLower);
+  FHistory.FollowTail := False;
+  EnsureCursorVisible;
+  NotifyHost;
+  Result := True;
+end;
+
+function TBaseConsoleWindow.FoundColumns(ALineIdx, AWidth: Integer): TArray<Boolean>;
+begin
+  if FFindLower = '' then
+    Exit(nil);
+  Result := ConsoleMatchColumns(FHistory.GetLine(ALineIdx), FFindLower, AWidth);
+end;
+
 { ---- Clipboard ------------------------------------------------------------- }
 
 procedure TBaseConsoleWindow.ClipboardSetText(const AText: string);
@@ -992,6 +1168,9 @@ procedure TBaseConsoleWindow.SendRaw(const AText: string);
 begin
   if (AText = '') or not Assigned(FPty) then
     Exit;
+  // Any key that is not the recall itself ends the recall.
+  if not FNavSending then
+    FNavIndex := -1;
   FPty.WriteInput(AText);
 end;
 
@@ -1272,6 +1451,16 @@ begin
       CopySelection;
     kaShellPaste:
       PasteClipboard;
+    kaShellFind:
+      if KeysToProgram then
+        Exit(False)
+      else
+        OpenFindDialog;
+    kaShellFindNext, kaShellFindPrev:
+      if KeysToProgram or (FFindLower = '') then
+        Exit(False)
+      else if not FindStep(MatchActiveActionIn([kcShell], KeymapLookupKey(AKey, AKeyChar), AShift) = kaShellFindNext) then
+        Notice(T('ui.consoleFind.notFound', 'Not found: %s', [FFindText]));
   else
     Exit(False);
   end;

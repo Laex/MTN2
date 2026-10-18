@@ -120,6 +120,9 @@ type
     /// <summary>The shell process has a child process: a command it started
     /// is still running.</summary>
     function HasChildProcess: Boolean;
+    /// <summary>Current folder of the shell process, read from the system; '' when
+    /// this platform does not tell (the prompt is parsed instead).</summary>
+    function ShellCwd: string;
     property LastError: string read FLastError;
     property Persistent: Boolean read FPersistent;
     property ProfileId: string read FProfileId write FProfileId;
@@ -681,6 +684,11 @@ begin
   Size.X := SmallInt(ACols);
   Size.Y := SmallInt(ARows);
   ResizePseudoConsole(FHPC, Size);
+end;
+
+function TConPtySession.ShellCwd: string;
+begin
+  Result := '';
 end;
 
 function TConPtySession.HasChildProcess: Boolean;

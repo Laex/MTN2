@@ -29,12 +29,18 @@ type
     FCwdBeforeCommand: string;
     FReturnPending: Boolean;
     FPromptsAtStart: Integer;
+    /// <summary>Where prompts cannot be recognized: when the last output arrived, and
+    /// whether the check for "the command is done" is queued.</summary>
+    FLastOutputTick: UInt64;
+    FIdleCheckQueued: Boolean;
     FRestartOnExit: Boolean;
     FOnBackToPanels:     TNotifyEvent;
     FOnDismissConsole:   TNotifyEvent;
     FOnFocusCommandLine: TNotifyEvent;
     FOnSyncDirToPanels:  TNotifyEvent;
     function CountPrompts: Integer;
+    procedure FinishReturn;
+    procedure QueueIdleCheck;
     procedure DoCloseConsole;
     /// <summary>A dialog button released after the click or key returned:
     /// the close its command asked for, as HandleInput / HandleClick do.</summary>
@@ -300,7 +306,11 @@ begin
   for I := Last downto Max(0, Last - cScanLines) do
     if ShellCwdFromPrompt(ProfileId, FHistory.GetLine(I), Result) then
       Exit;
-  Result := '';
+  // No recognizable prompt (a Linux shell): ask the system where the shell is.
+  if Assigned(FPty) then
+    Result := FPty.ShellCwd
+  else
+    Result := '';
 end;
 
 procedure TConsoleWindow.NoteCommandSubmitted(const ACommand: string);
@@ -330,13 +340,53 @@ begin
   FReturnPending := True;
 end;
 
-procedure TConsoleWindow.OutputAppended;
+procedure TConsoleWindow.FinishReturn;
 begin
-  if not FReturnPending or (CountPrompts <= FPromptsAtStart) then
-    Exit;
   FReturnPending := False;
   if Assigned(FOnBackToPanels) then
     FOnBackToPanels(Self);
+end;
+
+// Without prompts to count, a command is done when the shell is in the
+// foreground again and its output has stopped for a moment.
+procedure TConsoleWindow.QueueIdleCheck;
+const
+  cQuietMs = 150;
+  cPollMs = 100;
+var
+  Life: ILifeFlag;
+begin
+  if FIdleCheckQueued then
+    Exit;
+  FIdleCheckQueued := True;
+  Life := FLife;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if not Life.Alive then
+        Exit;
+      FIdleCheckQueued := False;
+      if not FReturnPending then
+        Exit;
+      if ShellBusy or (TThread.GetTickCount64 - FLastOutputTick < cQuietMs) then
+        QueueIdleCheck
+      else
+        FinishReturn;
+    end, cPollMs);
+end;
+
+procedure TConsoleWindow.OutputAppended;
+begin
+  if not FReturnPending then
+    Exit;
+  if ProfilePromptIsParsable(ProfileId) then
+  begin
+    if CountPrompts > FPromptsAtStart then
+      FinishReturn;
+    Exit;
+  end;
+  FLastOutputTick := TThread.GetTickCount64;
+  QueueIdleCheck;
 end;
 
 function TConsoleWindow.TakeCwdChange(out APath: string): Boolean;
@@ -429,6 +479,7 @@ var
   Ch: Char;
   Fg, Bg, TempColor: TAlphaColor;
   ShowInputCursor: Boolean;
+  Found: TArray<Boolean>;
 begin
   W := Area.Width;
   H := Area.Height;
@@ -462,6 +513,7 @@ begin
       Break;
     LineIdx := Top + I;
     Row := Rows[I];
+    Found := FoundColumns(LineIdx, TextW);
     for AbsCol := 0 to TextW - 1 do
     begin
       if AbsCol < Length(Row) then
@@ -482,6 +534,10 @@ begin
         Ch := ' '; Fg := cTextFg; Bg := cCmdBg;
       end;
 
+      if (AbsCol < Length(Found)) and Found[AbsCol] then
+      begin
+        Fg := cFindFg; Bg := cFindBg;
+      end;
       if IsCellSelected(LineIdx, AbsCol) then
       begin
         Fg := cSelFg; Bg := cSelBg;

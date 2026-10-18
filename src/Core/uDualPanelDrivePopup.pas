@@ -14,6 +14,7 @@ type
   TPanelPathEvent = reference to function(ASide: TPanelSide): string;
   TPanelDriveDirsEvent = reference to function(ASide: TPanelSide): TPanelDriveDirs;
   TPanelNavigateEvent = reference to procedure(ASide: TPanelSide; const AURI: string);
+  TDrivePathEvent = reference to procedure(const APath: string);
 
   TDrivePopupController = class
   private
@@ -24,7 +25,10 @@ type
     FGetDriveDirs: TPanelDriveDirsEvent;
     FOnNavigate: TPanelNavigateEvent;
     FState: TDrivePopupState;
+    FOnAttributes: TDrivePathEvent;
     procedure HandleDriveInfoRefreshed;
+    function WithUncShares(const ADrives: TDriveInfoArray): TDriveInfoArray;
+    function UncCursorIndex: Integer;
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
       const AGetPanelBounds: TPanelBoundsEvent;
@@ -46,12 +50,14 @@ type
     property Visible: Boolean read FState.Visible;
     property Side: TPanelSide read FState.Side;
     property Bounds: TRectI read FState.Bounds;
+    /// <summary>F4 on a drive: the host shows its attributes (root path given).</summary>
+    property OnAttributes: TDrivePathEvent read FOnAttributes write FOnAttributes;
   end;
 
 implementation
 
 uses
-  uStrings;
+  uStrings, uFolderHistory;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -150,13 +156,50 @@ begin
   EnsureScroll;
 end;
 
+// The network shares the panels are in or were in lately come after the
+// drives, so a UNC folder can be reached from this list without typing the
+// path again.
+function TDrivePopupController.WithUncShares(
+  const ADrives: TDriveInfoArray): TDriveInfoArray;
+const
+  cMaxShares = 8;
+var
+  Paths: TArray<string>;
+  Uri: string;
+  Side: TPanelSide;
+begin
+  SetLength(Paths, 0);
+  for Side := Low(TPanelSide) to High(TPanelSide) do
+    Paths := Paths + [FileUriToPath(FGetCurrentPath(Side))];
+  for Uri in FolderHistoryGetUris do
+    Paths := Paths + [FileUriToPath(Uri)];
+  Result := AppendUncShares(ADrives, Paths, cMaxShares);
+end;
+
+// The list row of the share the active panel is in; -1 when it is not on a
+// listed share.
+function TDrivePopupController.UncCursorIndex: Integer;
+var
+  Share: string;
+  I: Integer;
+begin
+  Result := -1;
+  Share := UncShareRoot(FileUriToPath(FGetCurrentPath(FState.Side)));
+  if Share = '' then
+    Exit;
+  for I := 0 to High(FState.Drives) do
+    if (FState.Drives[I].Letter = #0) and
+       SameText(FState.Drives[I].LabelOrPath, Share) then
+      Exit(I);
+end;
+
 procedure TDrivePopupController.HandleDriveInfoRefreshed;
 begin
   // A stale callback from a previous Open (popup closed, or reopened for the
   // other side) must not repaint a hidden/unrelated state.
   if not FState.Visible then
     Exit;
-  FState.Drives := CachedDriveInfo(nil);
+  FState.Drives := WithUncShares(CachedDriveInfo(nil));
   EnsureScroll;
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -169,9 +212,11 @@ begin
   // ever open) info immediately; HandleDriveInfoRefreshed repaints once the
   // background GetVolumeInformation/GetDiskFreeSpaceEx pass lands, instead of
   // freezing the UI thread for however long an unresponsive drive takes.
-  FState.Drives := CachedDriveInfo(HandleDriveInfoRefreshed);
+  FState.Drives := WithUncShares(CachedDriveInfo(HandleDriveInfoRefreshed));
   FState.ScrollOffset := 0;
   FState.CursorIndex := DrivePopupCursorIndex(FState.Drives, FGetCurrentPath(ASide));
+  if UncCursorIndex >= 0 then
+    FState.CursorIndex := UncCursorIndex;
   FState.Visible := True;
   Layout;
   EnsureScroll;
@@ -229,6 +274,7 @@ var
   Line, Status: string;
   Fg, Bg: TAlphaColor;
   CurGlyph: Char;
+  CurShare: string;
   IsCur: Boolean;
   SpecialIdx: Integer;
 begin
@@ -243,6 +289,7 @@ begin
     cFileFg, cPanelBg, cFrameActive, cCursorFg);
 
   CurGlyph := DriveBarGlyphFromUri(FGetCurrentPath(FState.Side));
+  CurShare := UncShareRoot(FileUriToPath(FGetCurrentPath(FState.Side)));
 
   ListTop := R.Top + 1;
   StatusY := R.Bottom - 1;
@@ -261,7 +308,10 @@ begin
     Idx := FState.ScrollOffset + I;
     if Idx < Length(FState.Drives) then
     begin
-      IsCur := FState.Drives[Idx].Letter = CurGlyph;
+      if FState.Drives[Idx].Letter = #0 then
+        IsCur := SameText(FState.Drives[Idx].LabelOrPath, CurShare)
+      else
+        IsCur := FState.Drives[Idx].Letter = CurGlyph;
       Line := FormatDrivePopupLine(FState.Drives[Idx], IsCur, InnerW);
       if Idx = FState.CursorIndex then
         ResolveOverlayTextColors(FTheme, False, False, True, cCursorFg, cCursorBg, Fg, Bg)
@@ -327,6 +377,7 @@ function TDrivePopupController.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
   Ch: Char;
+  Root: string;
   I, ViewH: Integer;
 begin
   Result := True;
@@ -341,6 +392,18 @@ begin
   if AKey = vkReturn then
   begin
     Confirm;
+    AKey := 0;
+    Exit;
+  end;
+  if (AKey = vkF4) and (AShift = []) then
+  begin
+    if (FState.CursorIndex >= 0) and (FState.CursorIndex < Length(FState.Drives)) and
+       Assigned(FOnAttributes) then
+    begin
+      Root := FState.Drives[FState.CursorIndex].RootPath;
+      Close;
+      FOnAttributes(Root);
+    end;
     AKey := 0;
     Exit;
   end;

@@ -189,6 +189,11 @@
     "EditorReflow": { "key": "F", "ctrl": true, "alt": true, "description": "Format text to a width" },
     "EditorShiftRight": { "key": "Right", "alt": true, "description": "Shift the lines right" },
     "EditorShiftLeft": { "key": "Left", "alt": true, "description": "Shift the lines left" },
+    "EditorBookmarkToggle": { "key": "F2", "ctrl": true, "description": "Set or clear the bookmark of the cursor line" },
+    "EditorBookmarkNext": { "key": "F2", "ctrl": true, "shift": true, "description": "Go to the next bookmark" },
+    "EditorBookmarkPrev": { "key": "F2", "ctrl": true, "alt": true, "description": "Go to the previous bookmark" },
+    "EditorBookmarkList": { "key": "B", "ctrl": true, "alt": true, "description": "List of the bookmarks, jump to one" },
+    "EditorAutoIndent": { "key": "I", "ctrl": true, "alt": true, "description": "Auto-indent on Enter on / off" },
     "PrevTab": { "key": "PageUp", "ctrl": true, "alt": true, "description": "Switch to the previous workspace" },
     "TopMenu": { "key": "F9", "description": "Open / close the top menu" },
     "AppQuit": { "key": "X", "alt": true, "description": "Quit the application (from any window)" },
@@ -214,6 +219,9 @@
       { "key": "V", "ctrl": true, "shift": true, "description": "Console / terminal: paste" },
       { "key": "Ins", "shift": true, "description": "Console / terminal: paste" }
     ],
+    "ShellFind": { "key": "F", "ctrl": true, "shift": true, "description": "Console / terminal: search the output" },
+    "ShellFindNext": { "key": "F3", "description": "Console / terminal: next match of the output search" },
+    "ShellFindPrev": { "key": "F3", "shift": true, "description": "Console / terminal: previous match of the output search" },
     "ConsoleSyncDir": { "key": "O", "ctrl": true, "shift": true, "description": "Console: show the console's folder in the active panel" }
   }
 }

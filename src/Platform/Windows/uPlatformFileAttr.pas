@@ -24,10 +24,25 @@ function TryReadFileAttrSnapshot(const APath: string;
 function ApplyFileAttrOne(const APath: string; const APlan: TFileAttrPlan;
   out AError: string): Boolean;
 
+/// <summary>For a drive root such as 'F:\': its volume GUID path and its device
+/// name; False for anything else.</summary>
+function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
+
 implementation
 
 uses
   System.SysUtils, Winapi.Windows, Winapi.AccCtrl, Winapi.AclAPI, uVfsTypes;
+
+const
+  FSCTL_SET_COMPRESSION = $0009C040;
+  FSCTL_SET_SPARSE = $000900C4;
+  COMPRESSION_FORMAT_NONE = 0;
+  COMPRESSION_FORMAT_DEFAULT = 1;
+
+function EncryptFileW(AFileName: PWideChar): BOOL; stdcall;
+  external 'advapi32.dll' name 'EncryptFileW';
+function DecryptFileW(AFileName: PWideChar; AReserved: DWORD): BOOL; stdcall;
+  external 'advapi32.dll' name 'DecryptFileW';
 
 function FileTimeToLocalDateTime(const AFT: TFileTime): TDateTime;
 var
@@ -148,6 +163,12 @@ begin
   ASnap.Hidden := (Attr and FILE_ATTRIBUTE_HIDDEN) <> 0;
   ASnap.System := (Attr and FILE_ATTRIBUTE_SYSTEM) <> 0;
   ASnap.Archive := (Attr and FILE_ATTRIBUTE_ARCHIVE) <> 0;
+  ASnap.Compressed := (Attr and FILE_ATTRIBUTE_COMPRESSED) <> 0;
+  ASnap.Encrypted := (Attr and FILE_ATTRIBUTE_ENCRYPTED) <> 0;
+  ASnap.NotIndexed := (Attr and FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) <> 0;
+  ASnap.Sparse := (Attr and FILE_ATTRIBUTE_SPARSE_FILE) <> 0;
+  ASnap.Temporary := (Attr and FILE_ATTRIBUTE_TEMPORARY) <> 0;
+  ASnap.Offline := (Attr and FILE_ATTRIBUTE_OFFLINE) <> 0;
   if not ReadFileOwner(APath, ASnap.Owner) then
     ASnap.Owner := '(unknown)';
   ReadFileAttrTimes(APath, ASnap.Times);
@@ -183,6 +204,9 @@ begin
   Next := ApplyAttrBits(Next, APlan.Hidden, FILE_ATTRIBUTE_HIDDEN);
   Next := ApplyAttrBits(Next, APlan.System, FILE_ATTRIBUTE_SYSTEM);
   Next := ApplyAttrBits(Next, APlan.Archive, FILE_ATTRIBUTE_ARCHIVE);
+  Next := ApplyAttrBits(Next, APlan.NotIndexed, FILE_ATTRIBUTE_NOT_CONTENT_INDEXED);
+  Next := ApplyAttrBits(Next, APlan.Temporary, FILE_ATTRIBUTE_TEMPORARY);
+  Next := ApplyAttrBits(Next, APlan.Offline, FILE_ATTRIBUTE_OFFLINE);
   if Next = Attr then
     Exit(True);
   if not SetFileAttributes(PChar(WinApiPath(APath)), Next) then
@@ -191,6 +215,124 @@ begin
     Exit;
   end;
   Result := True;
+end;
+
+// Compression and the sparse flag are file system settings changed with a
+// control code on an open handle; encryption has its own calls. Each is done
+// only when the file is not in the wanted state already.
+function ChoiceWantsChange(AChoice: TFileAttrChoice; ACurrentlySet: Boolean): Boolean;
+begin
+  Result := ((AChoice = facSet) and not ACurrentlySet) or
+    ((AChoice = facClear) and ACurrentlySet);
+end;
+
+function ControlCodeOn(const APath: string; ACode: DWORD; var AValue; ASize: DWORD;
+  out AError: string): Boolean;
+var
+  H: THandle;
+  Returned: DWORD;
+begin
+  Result := False;
+  AError := '';
+  H := CreateFile(PChar(WinApiPath(APath)), GENERIC_READ or GENERIC_WRITE,
+    FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
+    FILE_FLAG_BACKUP_SEMANTICS, 0);
+  if H = INVALID_HANDLE_VALUE then
+  begin
+    AError := SysErrorText;
+    Exit;
+  end;
+  try
+    Returned := 0;
+    if not DeviceIoControl(H, ACode, @AValue, ASize, nil, 0, Returned, nil) then
+    begin
+      AError := SysErrorText;
+      Exit;
+    end;
+  finally
+    CloseHandle(H);
+  end;
+  Result := True;
+end;
+
+function ApplyFileSystemFlags(const APath: string; const APlan: TFileAttrPlan;
+  out AError: string): Boolean;
+var
+  Attr: DWORD;
+  Format: Word;
+  Sparse: Byte;
+begin
+  Result := False;
+  AError := '';
+  if (APlan.Compressed = facKeep) and (APlan.Encrypted = facKeep) and
+     (APlan.Sparse = facKeep) then
+    Exit(True);
+  Attr := GetFileAttributes(PChar(WinApiPath(APath)));
+  if Attr = INVALID_FILE_ATTRIBUTES then
+  begin
+    AError := SysErrorText;
+    Exit;
+  end;
+  // Encryption and compression exclude each other: leaving one before taking
+  // the other is what the user asked for when both are in the plan.
+  if ChoiceWantsChange(APlan.Compressed, (Attr and FILE_ATTRIBUTE_COMPRESSED) <> 0) and
+     (APlan.Compressed = facClear) then
+  begin
+    Format := COMPRESSION_FORMAT_NONE;
+    if not ControlCodeOn(APath, FSCTL_SET_COMPRESSION, Format, SizeOf(Format), AError) then
+      Exit;
+  end;
+  if ChoiceWantsChange(APlan.Encrypted, (Attr and FILE_ATTRIBUTE_ENCRYPTED) <> 0) then
+  begin
+    if APlan.Encrypted = facSet then
+    begin
+      if not EncryptFileW(PWideChar(WinApiPath(APath))) then
+      begin
+        AError := SysErrorText;
+        Exit;
+      end;
+    end
+    else if not DecryptFileW(PWideChar(WinApiPath(APath)), 0) then
+    begin
+      AError := SysErrorText;
+      Exit;
+    end;
+  end;
+  if ChoiceWantsChange(APlan.Compressed, (Attr and FILE_ATTRIBUTE_COMPRESSED) <> 0) and
+     (APlan.Compressed = facSet) then
+  begin
+    Format := COMPRESSION_FORMAT_DEFAULT;
+    if not ControlCodeOn(APath, FSCTL_SET_COMPRESSION, Format, SizeOf(Format), AError) then
+      Exit;
+  end;
+  if ChoiceWantsChange(APlan.Sparse, (Attr and FILE_ATTRIBUTE_SPARSE_FILE) <> 0) then
+  begin
+    if APlan.Sparse = facSet then
+      Sparse := 1
+    else
+      Sparse := 0;
+    if not ControlCodeOn(APath, FSCTL_SET_SPARSE, Sparse, SizeOf(Sparse), AError) then
+      Exit;
+  end;
+  Result := True;
+end;
+
+function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
+var
+  Root: string;
+  Buf: array[0..MAX_PATH + 1] of Char;
+begin
+  AVolume := '';
+  ADevice := '';
+  Result := False;
+  if (Length(APath) < 2) or (Length(APath) > 3) or (APath[2] <> ':') then
+    Exit;
+  Root := UpCase(APath[1]) + ':\';
+  if GetVolumeNameForVolumeMountPoint(PChar(Root), Buf, Length(Buf)) then
+    AVolume := string(Buf);
+  if QueryDosDevice(PChar(Root[1] + ':'), Buf, Length(Buf)) <> 0 then
+    ADevice := string(Buf);
+  Result := (AVolume <> '') or (ADevice <> '');
 end;
 
 function ApplyFileTimes(const APath: string; const APlan: TFileAttrPlan;
@@ -316,6 +458,11 @@ begin
   Result := False;
   AError := '';
   if not ApplyFileAttributesOnly(APath, APlan, Err) then
+  begin
+    AError := Err;
+    Exit;
+  end;
+  if not ApplyFileSystemFlags(APath, APlan, Err) then
   begin
     AError := Err;
     Exit;

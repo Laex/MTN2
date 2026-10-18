@@ -93,7 +93,13 @@
         { "caption": "Remove repeated lines", "hotChar": "L", "shortcut": "Ctrl+Alt+U", "action": "tmaEditUniqueLines" },
         { "caption": "Format text to width...", "hotChar": "W", "shortcut": "Ctrl+Alt+F", "action": "tmaEditReflow" },
         { "caption": "Shift lines right", "hotChar": "I", "shortcut": "Alt+Right", "action": "tmaEditShiftRight" },
-        { "caption": "Shift lines left", "hotChar": "E", "shortcut": "Alt+Left", "action": "tmaEditShiftLeft" }
+        { "caption": "Shift lines left", "hotChar": "E", "shortcut": "Alt+Left", "action": "tmaEditShiftLeft" },
+        { "isSeparator": true },
+        { "caption": "Toggle bookmark", "hotChar": "B", "shortcut": "Ctrl+F2", "action": "tmaEditBookmarkToggle" },
+        { "caption": "Next bookmark", "hotChar": "X", "shortcut": "Ctrl+Shift+F2", "action": "tmaEditBookmarkNext" },
+        { "caption": "Previous bookmark", "hotChar": "V", "shortcut": "Ctrl+Alt+F2", "action": "tmaEditBookmarkPrev" },
+        { "caption": "Bookmark list...", "hotChar": "K", "shortcut": "Ctrl+Alt+B", "action": "tmaEditBookmarkList" },
+        { "caption": "Auto-indent mode", "hotChar": "M", "shortcut": "Ctrl+Alt+I", "action": "tmaEditAutoIndent" }
       ]
     },
     {

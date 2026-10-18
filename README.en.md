@@ -56,9 +56,10 @@ it is one more two-panel manager with its own habits.
 - **Console and terminals:** command line under the panels, genuine ConPTY (cmd, PowerShell, pwsh, Git Bash, WSL,
   SSH), ANSI/VT escape sequence parsing, alternate screen buffer for TUI applications, terminal workspaces.
   Console applications launched from panels or the command line run in the integrated console, with their output
-  retained on screen (`Ctrl+O`).
+  retained on screen (`Ctrl+O`). Search in the console and terminal output (`Ctrl+Shift+F`).
 - **View and edit:** built-in Viewer (text, hex, streamed reading of large files), Editor,
-  Quick View (`Ctrl+Q`), Markdown preview, external viewer/editor support.
+  Quick View (`Ctrl+Q`), Markdown preview, external viewer/editor support. The editor has line commands,
+  rectangular blocks, bookmarks, and auto-indent.
 - **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, plugin VFS.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), file associations, F1 context help.

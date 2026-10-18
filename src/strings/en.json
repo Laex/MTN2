@@ -201,6 +201,7 @@
       "show_menu_bar": "Show &menu bar",
       "file_drag": "Dr&ag files with the mouse",
       "alt_menu": "&Open menu on a single Alt press",
+      "editor_autoindent": "Editor a&uto-indent on Enter",
       "passive_cursor": "Cursor in the inacti&ve panel",
       "show_key_bar": "Show F-&key bar",
       "show_status_line": "Show &status line",
@@ -527,6 +528,15 @@
       "lbl_h": "Hidden",
       "lbl_a": "Archive",
       "lbl_s": "System",
+      "lbl_volume": "Volume:",
+      "lbl_device": "Device:",
+      "lbl_comp": "Compressed",
+      "lbl_enc": "Encrypted",
+      "lbl_noidx": "Not indexed",
+      "lbl_sparse": "Sparse",
+      "lbl_temp": "Temporary",
+      "lbl_off": "Offline",
+      "sys_props": "S&ystem properties",
       "lbl_owner": "Owner:",
       "change_owner": "&Change owner",
       "lbl_created": "Created",
@@ -548,6 +558,36 @@
         "Set": "Set"
       },
       "attr_ro_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_comp_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_enc_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_noidx_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_sparse_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_temp_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_off_items": {
         "Clear": "Clear",
         "Keep": "Keep",
         "Set": "Set"
@@ -800,6 +840,11 @@
     "keymap.action.EditorReflow": "Format text to a width",
     "keymap.action.EditorShiftRight": "Shift lines right",
     "keymap.action.EditorShiftLeft": "Shift lines left",
+    "keymap.action.EditorBookmarkToggle": "Toggle bookmark",
+    "keymap.action.EditorBookmarkNext": "Next bookmark",
+    "keymap.action.EditorBookmarkPrev": "Previous bookmark",
+    "keymap.action.EditorBookmarkList": "Bookmark list",
+    "keymap.action.EditorAutoIndent": "Auto-indent on / off",
     "keymap.action.PrevTab": "Previous workspace",
     "keymap.action.TopMenu": "Top menu",
     "keymap.action.AppQuit": "Quit",
@@ -812,6 +857,9 @@
     "keymap.action.ShellCopyOrInterrupt": "Copy, or interrupt the command",
     "keymap.action.ShellCopy": "Copy selection",
     "keymap.action.ShellPaste": "Paste",
+    "keymap.action.ShellFind": "Find in output",
+    "keymap.action.ShellFindNext": "Next match",
+    "keymap.action.ShellFindPrev": "Previous match",
     "keymap.action.ConsoleSyncDir": "Panel to the console folder",
     "update.offer": "Version %s is available (installed: %s).",
     "update.offerDetails": "Download and install it?",
@@ -1052,6 +1100,13 @@
     "colorPicker.foreground": "Pick foreground color",
     "workspaces.dialogTitle": "Workspaces",
     "cmdHistory.filterTitle": "Command history: %s",
+    "consoleFind.title": "Find in output",
+    "consoleFind.prompt": "Find:",
+    "consoleFind.notFound": "Not found: %s",
+    "editor.autoIndentOn": "Auto-indent: on",
+    "editor.autoIndentOff": "Auto-indent: off",
+    "editor.bookmarksTitle": "Bookmarks",
+    "editor.noBookmarks": "No bookmarks",
     "fileHistory.filterTitle": "File history: %s",
     "fileHistory.empty": "(empty)",
     "fileHistory.viewMark": "V",
@@ -1537,6 +1592,11 @@
     "tmaEditReflow": "Format text to width...",
     "tmaEditShiftRight": "Shift lines right",
     "tmaEditShiftLeft": "Shift lines left",
+    "tmaEditBookmarkToggle": "Toggle bookmark",
+    "tmaEditBookmarkNext": "Next bookmark",
+    "tmaEditBookmarkPrev": "Previous bookmark",
+    "tmaEditBookmarkList": "Bookmark list...",
+    "tmaEditAutoIndent": "Auto-indent mode",
 
     "tmaCmdFind": "Find file...",
     "tmaCmdDirSync": "Synchronize dirs...",
@@ -1638,6 +1698,9 @@
     "Panels": "Panels",
     "Copy/Brk": "Copy/Brk",
     "Paste": "Paste",
+    "Mark": "Mark",
+    "MarkNx": "MarkNx",
+    "MarkPv": "MarkPv",
     "Close": "Close",
     "Hex": "Hex",
     "Prev": "Prev",

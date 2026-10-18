@@ -3071,6 +3071,16 @@ begin
       AKeyChar := #0;
       Exit;
     end;
+    // Read-only inputs: moving, selecting and copying only.
+    if C.ReadOnly and (K.IsPrintable or (AKey = vkBack) or (AKey = vkDelete) or
+       K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
+       K.MatchesAny(vkV, [ssCtrl], [ssShift, ssAlt]) or
+       K.MatchesAny(vkInsert, [ssShift], [ssCtrl, ssAlt])) then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      Exit;
+    end;
     LineRes := InputLineHandleInput(C.Edit, AKey, AShift, AKeyChar);
     FDecl.Controls[FFocusIndex] := C;
     case LineRes of

@@ -18,6 +18,7 @@ uses
   TestDeleteProgress in 'TestDeleteProgress.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',
+  TestDriveUnc in 'TestDriveUnc.pas',
   TestElevatedHelper in 'TestElevatedHelper.pas',
   TestExternalTools in 'TestExternalTools.pas',
   TestFileCompare in 'TestFileCompare.pas',

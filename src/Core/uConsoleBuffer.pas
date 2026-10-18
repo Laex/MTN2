@@ -13,6 +13,7 @@ uses
 
 type
   TConsoleRow = TArray<TCharCell>;
+  TConsoleLineGetter = reference to function(AIndex: Integer): string;
 
   TConsoleBuffer = class
   private
@@ -177,7 +178,100 @@ type
     property AppCursorKeys: Boolean read FAppCursorKeys;
   end;
 
+/// <summary>Finds the next (AForward) or previous match of ALowerNeedle (already
+/// lower-case; case is ignored) in lines 0..ATotal-1, wrapping around. The scan
+/// starts on row AStartRow: forward, after column AStartCol (-1 = from column 0);
+/// backward, only matches that begin before column AStartCol. Returns the row
+/// and the 0-based column of the match.</summary>
+function ConsoleFindMatch(ATotal: Integer; const AGetLine: TConsoleLineGetter;
+  const ALowerNeedle: string; AForward: Boolean; AStartRow, AStartCol: Integer;
+  out ARow, ACol: Integer): Boolean;
+/// <summary>Per column of ALine (AWidth columns): True where a match of
+/// ALowerNeedle lies. Empty when the line has none.</summary>
+function ConsoleMatchColumns(const ALine, ALowerNeedle: string;
+  AWidth: Integer): TArray<Boolean>;
+
 implementation
+
+uses
+  System.StrUtils;
+
+function ConsoleFindMatch(ATotal: Integer; const AGetLine: TConsoleLineGetter;
+  const ALowerNeedle: string; AForward: Boolean; AStartRow, AStartCol: Integer;
+  out ARow, ACol: Integer): Boolean;
+var
+  I, P, Last: Integer;
+  Line: string;
+begin
+  Result := False;
+  ARow := -1;
+  ACol := -1;
+  if (ATotal <= 0) or (ALowerNeedle = '') then
+    Exit;
+  AStartRow := EnsureRange(AStartRow, 0, ATotal - 1);
+  // One extra visit returns to the start row, for the matches the first visit
+  // skipped.
+  for I := 0 to ATotal do
+  begin
+    if AForward then
+      ARow := (AStartRow + I) mod ATotal
+    else
+      ARow := ((AStartRow - I) mod ATotal + ATotal) mod ATotal;
+    Line := LowerCase(AGetLine(ARow));
+    if AForward then
+    begin
+      if I = 0 then
+        P := PosEx(ALowerNeedle, Line, Max(AStartCol + 2, 1))
+      else
+        P := PosEx(ALowerNeedle, Line, 1);
+      if P > 0 then
+      begin
+        ACol := P - 1;
+        Exit(True);
+      end;
+    end
+    else
+    begin
+      if I = 0 then
+        Last := AStartCol
+      else
+        Last := MaxInt;
+      ACol := -1;
+      P := PosEx(ALowerNeedle, Line, 1);
+      while (P > 0) and (P - 1 < Last) do
+      begin
+        ACol := P - 1;
+        P := PosEx(ALowerNeedle, Line, P + 1);
+      end;
+      if ACol >= 0 then
+        Exit(True);
+    end;
+  end;
+  ARow := -1;
+end;
+
+function ConsoleMatchColumns(const ALine, ALowerNeedle: string;
+  AWidth: Integer): TArray<Boolean>;
+var
+  Line: string;
+  P, N, I: Integer;
+begin
+  SetLength(Result, 0);
+  if (ALowerNeedle = '') or (AWidth <= 0) then
+    Exit;
+  Line := LowerCase(ALine);
+  P := PosEx(ALowerNeedle, Line, 1);
+  if P = 0 then
+    Exit;
+  SetLength(Result, AWidth);
+  N := Length(ALowerNeedle);
+  while P > 0 do
+  begin
+    for I := P - 1 to Min(P + N - 2, AWidth - 1) do
+      Result[I] := True;
+    P := PosEx(ALowerNeedle, Line, P + N);
+  end;
+end;
 
 function LooksLikeDrivePrompt(const S: string): Boolean;
 var

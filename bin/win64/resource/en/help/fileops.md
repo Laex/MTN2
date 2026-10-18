@@ -28,6 +28,8 @@
 
 In the **Ctrl+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional). An empty field keeps the date: that is how dates that differ between the selected files are shown. **Current** puts the current time into all three fields, **Original** restores the values read from the files. “Process subfolders” applies to the dates too.
 
+The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not indexed**, **Sparse**, **Temporary** and **Offline** (each one: keep / set / clear; compression, encryption and the sparse flag are done by the file system, so a volume without them reports an error). For a drive root (**F4** in the **Alt+F1** / **Alt+F2** drive list) the volume (GUID path) and the device are shown at the top; the **System properties** button opens the Windows properties window.
+
 **Windows context menu** – the same menu as a right click in Explorer: “Open with”, “Send to”, archiver, antivirus and version-control items and so on. It opens with **Shift+F10** or the **Menu** key at the cursor row, from **Files → Windows context menu**, or by holding the right mouse button on a file for about a second. From the keyboard and the menu it acts on the selection, or without one on the item under the cursor (on `..` – on the current folder); holding the mouse button opens the menu of the file under the mouse. Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 
 The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).

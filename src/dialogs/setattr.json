@@ -2,7 +2,7 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Set attributes",
-  "width": 56,
+  "width": 80,
   "height": 23,
   "children": [
     {
@@ -11,16 +11,172 @@
       "id": "summary",
       "col": 1,
       "row": 0,
-      "width": 52,
+      "width": 76,
       "height": 1
     },
     {
       "type": "label",
-      "text": "Read-only",
-      "id": "lbl_ro",
+      "id": "lbl_volume",
+      "text": "Volume:",
+      "col": 1,
+      "row": 1,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "volume",
+      "value": "",
+      "readonly": true,
+      "col": 16,
+      "row": 1,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_device",
+      "text": "Device:",
       "col": 1,
       "row": 2,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "device",
+      "value": "",
+      "readonly": true,
+      "col": 16,
+      "row": 2,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_created",
+      "text": "Created",
+      "col": 1,
+      "row": 4,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_created",
+      "value": "",
+      "col": 16,
+      "row": 4,
+      "width": 21,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_modified",
+      "text": "Modified",
+      "col": 1,
+      "row": 5,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_modified",
+      "value": "",
+      "col": 16,
+      "row": 5,
+      "width": 21,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_accessed",
+      "text": "Accessed",
+      "col": 1,
+      "row": 6,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "date_accessed",
+      "value": "",
+      "col": 16,
+      "row": 6,
+      "width": 21,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Owner:",
+      "id": "lbl_owner",
+      "col": 40,
+      "row": 4,
       "width": 12,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "owner_now",
+      "col": 53,
+      "row": 4,
+      "width": 23,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "change_owner",
+      "text": "&Change owner",
+      "checked": false,
+      "col": 40,
+      "row": 5,
+      "width": 36,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "owner",
+      "value": "",
+      "col": 40,
+      "row": 6,
+      "width": 36,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_now",
+      "text": "C&urrent",
+      "col": 20,
+      "row": 7,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_orig",
+      "text": "&Original",
+      "col": 40,
+      "row": 7,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "date_error",
+      "col": 1,
+      "row": 8,
+      "width": 76,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_ro",
+      "text": "Read-only",
+      "col": 1,
+      "row": 10,
+      "width": 14,
       "height": 1
     },
     {
@@ -32,41 +188,41 @@
         "Set",
         "Clear"
       ],
-      "col": 14,
-      "row": 2,
+      "col": 16,
+      "row": 10,
       "width": 10,
       "height": 1
     },
     {
       "type": "label",
-      "text": "Hidden",
-      "id": "lbl_h",
-      "col": 28,
-      "row": 2,
-      "width": 8,
+      "id": "lbl_enc",
+      "text": "Encrypted",
+      "col": 40,
+      "row": 10,
+      "width": 16,
       "height": 1
     },
     {
       "type": "dropdown",
-      "id": "attr_h",
+      "id": "attr_enc",
       "selected": 0,
       "items": [
         "Keep",
         "Set",
         "Clear"
       ],
-      "col": 37,
-      "row": 2,
+      "col": 57,
+      "row": 10,
       "width": 10,
       "height": 1
     },
     {
       "type": "label",
-      "text": "Archive",
       "id": "lbl_a",
+      "text": "Archive",
       "col": 1,
-      "row": 3,
-      "width": 12,
+      "row": 11,
+      "width": 14,
       "height": 1
     },
     {
@@ -78,18 +234,87 @@
         "Set",
         "Clear"
       ],
-      "col": 14,
-      "row": 3,
+      "col": 16,
+      "row": 11,
       "width": 10,
       "height": 1
     },
     {
       "type": "label",
-      "text": "System",
+      "id": "lbl_noidx",
+      "text": "Not indexed",
+      "col": 40,
+      "row": 11,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_noidx",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 57,
+      "row": 11,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_h",
+      "text": "Hidden",
+      "col": 1,
+      "row": 12,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_h",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 16,
+      "row": 12,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_sparse",
+      "text": "Sparse",
+      "col": 40,
+      "row": 12,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_sparse",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 57,
+      "row": 12,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
       "id": "lbl_s",
-      "col": 28,
-      "row": 3,
-      "width": 8,
+      "text": "System",
+      "col": 1,
+      "row": 13,
+      "width": 14,
       "height": 1
     },
     {
@@ -101,127 +326,78 @@
         "Set",
         "Clear"
       ],
-      "col": 37,
-      "row": 3,
+      "col": 16,
+      "row": 13,
       "width": 10,
       "height": 1
     },
     {
       "type": "label",
-      "text": "Owner:",
-      "id": "lbl_owner",
-      "col": 1,
-      "row": 5,
-      "width": 8,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "",
-      "id": "owner_now",
-      "col": 10,
-      "row": 5,
-      "width": 44,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "change_owner",
-      "text": "&Change owner",
-      "checked": false,
-      "col": 1,
-      "row": 6,
-      "width": 52,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "owner",
-      "value": "",
-      "col": 1,
-      "row": 7,
-      "width": 52,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Created",
-      "id": "lbl_created",
-      "col": 1,
-      "row": 9,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_created",
-      "value": "",
-      "col": 14,
-      "row": 9,
-      "width": 39,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Modified",
-      "id": "lbl_modified",
-      "col": 1,
-      "row": 10,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_modified",
-      "value": "",
-      "col": 14,
-      "row": 10,
-      "width": 39,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Accessed",
-      "id": "lbl_accessed",
-      "col": 1,
-      "row": 11,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_accessed",
-      "value": "",
-      "col": 14,
-      "row": 11,
-      "width": 39,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "dates_now",
-      "text": "C&urrent",
-      "col": 12,
+      "id": "lbl_temp",
+      "text": "Temporary",
+      "col": 40,
       "row": 13,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_temp",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 57,
+      "row": 13,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_comp",
+      "text": "Compressed",
+      "col": 1,
+      "row": 14,
       "width": 14,
       "height": 1
     },
     {
-      "type": "button",
-      "id": "dates_orig",
-      "text": "&Original",
-      "col": 30,
-      "row": 13,
-      "width": 14,
+      "type": "dropdown",
+      "id": "attr_comp",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 16,
+      "row": 14,
+      "width": 10,
       "height": 1
     },
     {
       "type": "label",
-      "text": "",
-      "id": "date_error",
-      "col": 1,
-      "row": 15,
-      "width": 52,
+      "id": "lbl_off",
+      "text": "Offline",
+      "col": 40,
+      "row": 14,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "attr_off",
+      "selected": 0,
+      "items": [
+        "Keep",
+        "Set",
+        "Clear"
+      ],
+      "col": 57,
+      "row": 14,
+      "width": 10,
       "height": 1
     },
     {
@@ -231,14 +407,14 @@
       "checked": false,
       "col": 1,
       "row": 16,
-      "width": 52,
+      "width": 76,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
       "row": 17,
-      "width": 54,
+      "width": 78,
       "height": 1
     },
     {
@@ -246,9 +422,18 @@
       "id": "ok",
       "text": "Set",
       "default": true,
-      "col": 14,
+      "col": 17,
       "row": 19,
       "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "sys_props",
+      "text": "S&ystem properties",
+      "col": 31,
+      "row": 19,
+      "width": 21,
       "height": 1
     },
     {
@@ -256,7 +441,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 28,
+      "col": 54,
       "row": 19,
       "width": 12,
       "height": 1

@@ -25,6 +25,9 @@ function TryReadFileAttrSnapshot(const APath: string;
 function ApplyFileAttrOne(const APath: string; const APlan: TFileAttrPlan;
   out AError: string): Boolean;
 
+/// <summary>Drive roots (volume GUID and device) are a Windows notion: always False.</summary>
+function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
+
 implementation
 
 uses
@@ -102,6 +105,13 @@ end;
 function PlatformFileModeSupported: Boolean;
 begin
   Result := True;
+end;
+
+function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
+begin
+  AVolume := '';
+  ADevice := '';
+  Result := False;
 end;
 
 function TryReadFileAttrSnapshot(const APath: string;

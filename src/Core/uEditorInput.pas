@@ -58,6 +58,10 @@ type
     UniqueLines: TEditorProc;
     OpenReflowDialog: TEditorProc;
     ShiftLines: TEditorLineDirProc;
+    ToggleBookmark: TEditorProc;
+    GotoBookmark: TEditorFindProc;
+    OpenBookmarkList: TEditorProc;
+    ToggleAutoIndent: TEditorProc;
     MoveWord: TEditorWordProc;
     MoveCursor: TEditorMoveProc;
     MoveBlockCursor: TEditorBlockMoveProc;
@@ -190,6 +194,16 @@ begin
       end;
     kaDocClose:
       AHost.RequestClose();
+    kaEditorBookmarkToggle:
+      AHost.ToggleBookmark();
+    kaEditorBookmarkNext:
+      AHost.GotoBookmark(True);
+    kaEditorBookmarkPrev:
+      AHost.GotoBookmark(False);
+    kaEditorBookmarkList:
+      AHost.OpenBookmarkList();
+    kaEditorAutoIndent:
+      AHost.ToggleAutoIndent();
     kaViewerWordWrap:
       if HostViewOnly(AHost) and not HostMarkdownMode(AHost) then
         AHost.ToggleWordWrap()

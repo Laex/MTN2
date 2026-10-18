@@ -186,6 +186,11 @@ begin
     tmaEditReflow: CallProc(AHost.EditReflow);
     tmaEditShiftRight: CallProc(AHost.EditShiftRight);
     tmaEditShiftLeft: CallProc(AHost.EditShiftLeft);
+    tmaEditBookmarkToggle: CallProc(AHost.EditBookmarkToggle);
+    tmaEditBookmarkNext: CallProc(AHost.EditBookmarkNext);
+    tmaEditBookmarkPrev: CallProc(AHost.EditBookmarkPrev);
+    tmaEditBookmarkList: CallProc(AHost.EditBookmarkList);
+    tmaEditAutoIndent: CallProc(AHost.EditAutoIndent);
 
     tmaOptReloadKeymap: CallProc(AHost.ReloadKeymapProfile);
     tmaOptShowPlugins: CallProc(AHost.OpenPluginListDialog);
@@ -247,7 +252,8 @@ begin
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanUndo);
     tmaEditRedo:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanRedo);
-    tmaEditHexToggle:
+    tmaEditHexToggle, tmaEditBookmarkToggle, tmaEditBookmarkNext,
+    tmaEditBookmarkPrev, tmaEditBookmarkList, tmaEditAutoIndent:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady);
     // The line commands change the text: only an editor can take them.
     tmaEditSortLines, tmaEditSortLinesDesc, tmaEditUniqueLines, tmaEditReflow,

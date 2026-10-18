@@ -71,6 +71,9 @@ function ProfileReturnSeq(const AProfileId: string): string;
 /// pwsh line ("C:\Tools>" or "PS C:\Tools> "); False for other profiles,
 /// custom prompts and non-file-system locations.</summary>
 function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;
+/// <summary>True where ShellCwdFromPrompt can recognize the prompt of the profile, so that
+/// prompts can be counted; False: the console follows the shell process instead.</summary>
+function ProfilePromptIsParsable(const AProfileId: string): Boolean;
 /// <summary>Silent setup line sent once right after the shell starts, before
 /// the user can type anything; '' if the profile needs none. PowerShell/pwsh
 /// piped stdin (no real console) hangs indefinitely when a command reports a
@@ -810,6 +813,11 @@ begin
     Result := T + ' | % {"$_"}'
   else
     Result := T;
+end;
+
+function ProfilePromptIsParsable(const AProfileId: string): Boolean;
+begin
+  Result := True;
 end;
 
 function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;

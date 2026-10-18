@@ -29,6 +29,9 @@ const
 var
   /// <summary>A bare press of Alt opens the menu bar when it is released.</summary>
   GAltOpensMenu: Boolean = True;
+  /// <summary>Enter in the editor starts the new line with the indent of the line it
+  /// continues.</summary>
+  GEditorAutoIndent: Boolean = True;
 
 type
   /// <summary>Dialog, button and toast drop shadows and the modal backdrop
@@ -61,6 +64,8 @@ type
     /// <summary>Pressing and releasing Alt on its own opens the menu bar
     /// (uDisplaySettings.GAltOpensMenu).</summary>
     AltOpensMenu: Boolean;
+    /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
+    EditorAutoIndent: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>The cursor row is highlighted in the passive panel too
@@ -301,6 +306,7 @@ begin
   Result.ShowStatusLine := True;
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
+  Result.EditorAutoIndent := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;

@@ -55,6 +55,7 @@ type
     FOnApplySetAttr: TFileOpApplySetAttr;
     FOnGetLinkFolderUri: TFileOpGetActiveUri;
     FAttrPaths: TArray<string>;
+    FOnSystemProperties: TProc<TArray<string>>;
     // Date text the dialog opened with (date_created / _modified / _accessed):
     // an unchanged field is not written, so seconds-truncated display text
     // never rounds away a file's sub-second time.
@@ -94,6 +95,9 @@ type
     procedure BeginCopyInPlace;
     procedure BeginCreateLink;
     procedure BeginSetAttributes(const APaths: TArray<string>);
+    /// <summary>The System properties button of the attributes dialog.</summary>
+    property OnSystemProperties: TProc<TArray<string>> read FOnSystemProperties
+      write FOnSystemProperties;
     procedure DispatchSimpleNameCommand(const AControlId: string;
       const ACallback: TFileOpConfirmName);
     procedure DispatchSelectMaskCommand(AKind: THostDialogKind;
@@ -363,7 +367,9 @@ end;
 procedure TFileOpDialogController.BeginSetAttributes(const APaths: TArray<string>);
 var
   State: TFileAttrDialogState;
-  OwnerEdit: string;
+  OwnerEdit, Id: string;
+  I: Integer;
+  Decl: TDialogDeclaration;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -390,11 +396,28 @@ begin
     Notify;
     Exit;
   end;
-  FDialog.Open(BuildSetAttributesDialog(State.Summary, State.Owner, OwnerEdit,
+  Decl := BuildSetAttributesDialog(State.Summary, State.Owner, OwnerEdit,
     FileAttrChoiceToIndex(State.ReadOnly), FileAttrChoiceToIndex(State.Hidden),
     FileAttrChoiceToIndex(State.Archive), FileAttrChoiceToIndex(State.System),
-    FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]),
-    FOnCommand);
+    FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]);
+  DialogSetDropDownSelected(Decl, 'attr_comp', FileAttrChoiceToIndex(State.Compressed));
+  DialogSetDropDownSelected(Decl, 'attr_enc', FileAttrChoiceToIndex(State.Encrypted));
+  DialogSetDropDownSelected(Decl, 'attr_noidx', FileAttrChoiceToIndex(State.NotIndexed));
+  DialogSetDropDownSelected(Decl, 'attr_sparse', FileAttrChoiceToIndex(State.Sparse));
+  DialogSetDropDownSelected(Decl, 'attr_temp', FileAttrChoiceToIndex(State.Temporary));
+  DialogSetDropDownSelected(Decl, 'attr_off', FileAttrChoiceToIndex(State.Offline));
+  // The volume and device lines are for a drive root only.
+  if State.Volume + State.Device <> '' then
+  begin
+    DialogSetInputValue(Decl, 'volume', State.Volume);
+    DialogSetInputValue(Decl, 'device', State.Device);
+  end
+  else
+    for Id in ['lbl_volume', 'volume', 'lbl_device', 'device'] do
+      for I := High(Decl.Controls) downto 0 do
+        if Decl.Controls[I].Id = Id then
+          Delete(Decl.Controls, I, 1);
+  FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
 
@@ -575,6 +598,13 @@ begin
     KeepSetAttributesOpen;
     Exit;
   end;
+  if DialogCmdIs(AControlId, 'sys_props') then
+  begin
+    if Assigned(FOnSystemProperties) then
+      FOnSystemProperties(FAttrPaths);
+    KeepSetAttributesOpen;
+    Exit;
+  end;
   Accepted := not DialogCmdIsReject(AControlId);
   Plan := Default(TFileAttrPlan);
   if Accepted then
@@ -583,6 +613,12 @@ begin
     Plan.Hidden := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_h'));
     Plan.Archive := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_a'));
     Plan.System := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_s'));
+    Plan.Compressed := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_comp'));
+    Plan.Encrypted := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_enc'));
+    Plan.NotIndexed := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_noidx'));
+    Plan.Sparse := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_sparse'));
+    Plan.Temporary := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_temp'));
+    Plan.Offline := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_off'));
     Plan.ChangeOwner := FDialog.GetCheckbox('change_owner');
     Plan.Owner := FDialog.GetInputValue('owner');
     Plan.Recurse := FDialog.GetCheckbox('recurse');

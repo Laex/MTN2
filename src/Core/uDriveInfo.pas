@@ -59,6 +59,14 @@ function PercentOfTotal(APart, ATotal: Int64): Integer;
 /// <summary>'C:\Work' -> 'C'; UNC / empty / relative -> #0.</summary>
 function DriveLetterFromPath(const APath: string): Char;
 function IndexOfDriveLetter(const ADrives: TDriveInfoArray; ALetter: Char): Integer;
+/// <summary>'\\srv\share\dir\a' -> '\\srv\share'; anything that is not a UNC
+/// path with a server and a share -> ''.</summary>
+function UncShareRoot(const APath: string): string;
+/// <summary>The drives followed by one network entry (no letter, root
+/// '\\srv\share\') for each distinct UNC share in APaths, in order, up to
+/// AMax; a share already behind a mapped drive is left out.</summary>
+function AppendUncShares(const ADrives: TDriveInfoArray;
+  const APaths: TArray<string>; AMax: Integer): TDriveInfoArray;
 /// <summary>Wrap ACurrentIndex by ADelta. Missing current (ACurrentIndex&lt;0):
 /// +delta starts at 0, -delta at last.</summary>
 function CycleDriveIndex(ACount, ACurrentIndex, ADelta: Integer): Integer;
@@ -180,7 +188,10 @@ begin
     FreeSz := Copy(FreeSz, 1, 7);
   // Use chBoxV (#$2502), not a UTF-8 literal - source encoding must not matter.
   Sep := ' ' + chBoxV + ' ';
-  LeftPart := Mark + AInfo.Letter + ': ' + Kind + Sep + Fs + Sep;
+  if AInfo.Letter = #0 then
+    LeftPart := Mark + '   ' + Kind + Sep + Fs + Sep
+  else
+    LeftPart := Mark + AInfo.Letter + ': ' + Kind + Sep + Fs + Sep;
   // AInnerWidth - 1 reserve empty column before right border / scrollbar
   LabW := (AInnerWidth - 1) - Length(LeftPart) - Length(Sz) - Length(FreeSz) -
     2 * Length(Sep);
@@ -514,6 +525,72 @@ end;
 function DriveLetterFromPath(const APath: string): Char;
 begin
   Result := PlatformDriveLetterOfPath(APath);
+end;
+
+function UncShareRoot(const APath: string): string;
+var
+  P, ServerEnd, ShareEnd: Integer;
+begin
+  Result := '';
+  if (Length(APath) < 5) or (APath[1] <> '\') or (APath[2] <> '\') then
+    Exit;
+  // The long-path form (\\?\UNC\srv\share) names the same share.
+  if SameText(Copy(APath, 1, 8), '\\?\UNC\') then
+    P := 9
+  else if (APath[3] = '?') or (APath[3] = '.') then
+    Exit
+  else
+    P := 3;
+  ServerEnd := P;
+  while (ServerEnd <= Length(APath)) and (APath[ServerEnd] <> '\') do
+    Inc(ServerEnd);
+  if (ServerEnd = P) or (ServerEnd > Length(APath)) then
+    Exit;
+  ShareEnd := ServerEnd + 1;
+  while (ShareEnd <= Length(APath)) and (APath[ShareEnd] <> '\') do
+    Inc(ShareEnd);
+  if ShareEnd = ServerEnd + 1 then
+    Exit;
+  Result := '\\' + Copy(APath, P, ShareEnd - P);
+end;
+
+function AppendUncShares(const ADrives: TDriveInfoArray;
+  const APaths: TArray<string>; AMax: Integer): TDriveInfoArray;
+var
+  Shares: TArray<string>;
+  Share: string;
+  I, J: Integer;
+  Known: Boolean;
+  Entry: TDriveInfo;
+begin
+  Result := Copy(ADrives);
+  SetLength(Shares, 0);
+  for I := 0 to High(APaths) do
+  begin
+    if Length(Shares) >= AMax then
+      Break;
+    Share := UncShareRoot(APaths[I]);
+    if Share = '' then
+      Continue;
+    Known := False;
+    for J := 0 to High(Shares) do
+      if SameText(Shares[J], Share) then
+        Known := True;
+    for J := 0 to High(ADrives) do
+      if SameText(ExcludeTrailingPathDelimiter(ADrives[J].LabelOrPath), Share) then
+        Known := True;
+    if not Known then
+      Shares := Shares + [Share];
+  end;
+  for Share in Shares do
+  begin
+    Entry := Default(TDriveInfo);
+    Entry.Letter := #0;
+    Entry.RootPath := Share + '\';
+    Entry.KindLabel := 'Network';
+    Entry.LabelOrPath := Share;
+    Result := Result + [Entry];
+  end;
 end;
 
 function IndexOfDriveLetter(const ADrives: TDriveInfoArray; ALetter: Char): Integer;

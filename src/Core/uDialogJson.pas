@@ -121,6 +121,7 @@ begin
   begin
     C := MakeInput(Id, Value);
     C.Password := JsonBool(AObj, 'password', False);
+    C.ReadOnly := JsonBool(AObj, 'readonly', False);
     if not C.Password then
       C.History := JsonStr(AObj, 'history');
     C.ColorPick := JsonBool(AObj, 'colorpick', False);
@@ -396,6 +397,8 @@ begin
             [EscapeJson(C.Id), EscapeJson(C.Edit.Text)]);
           if C.Password then
             One := One + ',"password":true';
+          if C.ReadOnly then
+            One := One + ',"readonly":true';
           if C.History <> '' then
             One := One + Format(',"history":"%s"', [EscapeJson(C.History)]);
           if C.ColorPick then

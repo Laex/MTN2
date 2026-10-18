@@ -169,6 +169,11 @@ type
     EditReflow: TKeymapProc;
     EditShiftRight: TKeymapProc;
     EditShiftLeft: TKeymapProc;
+    EditBookmarkToggle: TKeymapProc;
+    EditBookmarkNext: TKeymapProc;
+    EditBookmarkPrev: TKeymapProc;
+    EditBookmarkList: TKeymapProc;
+    EditAutoIndent: TKeymapProc;
     EditCopy: TKeymapProc;
     EditCut: TKeymapProc;
     EditPaste: TKeymapProc;

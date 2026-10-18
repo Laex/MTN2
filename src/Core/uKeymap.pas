@@ -152,6 +152,11 @@ type
     kaEditorReflow, // Ctrl+Alt+F -- fill paragraphs to a width
     kaEditorShiftRight, // Alt+Right -- indent the lines
     kaEditorShiftLeft, // Alt+Left -- outdent the lines
+    kaEditorBookmarkToggle, // Ctrl+F2 -- set / clear the bookmark of the cursor line
+    kaEditorBookmarkNext, // Ctrl+Shift+F2 -- go to the next bookmark
+    kaEditorBookmarkPrev, // Ctrl+Alt+F2 -- go to the previous bookmark
+    kaEditorBookmarkList, // Ctrl+Alt+B -- list of the bookmarks, jump to one
+    kaEditorAutoIndent, // Ctrl+Alt+I -- auto-indent on Enter on / off
     // Global (context kcGlobal, with kaHelp, kaNextTab, kaNewTerminal and
     // kaSelectConsoleProfile): every window, unless its own context binds
     // the same keys.
@@ -168,6 +173,9 @@ type
     kaShellCopyOrInterrupt, // Ctrl+C -- copy the selection, else interrupt
     kaShellCopy, // Ctrl+Ins -- copy the selection
     kaShellPaste, // Ctrl+V / Shift+Ins -- paste
+    kaShellFind, // Ctrl+Shift+F -- search the output
+    kaShellFindNext, // F3 -- next match (while a search is set)
+    kaShellFindPrev, // Shift+F3 -- previous match (while a search is set)
     // Panel Console (kcConsole).
     kaConsoleSyncDir // Ctrl+Shift+O -- the panel follows the console's folder
   );
@@ -707,6 +715,11 @@ begin
   AddBinding(Result, kaEditorReflow, KeyBinding(Ord('F'), False, True, True));
   AddBinding(Result, kaEditorShiftRight, KeyBinding(vkRight, False, True, False));
   AddBinding(Result, kaEditorShiftLeft, KeyBinding(vkLeft, False, True, False));
+  AddBinding(Result, kaEditorBookmarkToggle, KeyBinding(vkF2, False, False, True));
+  AddBinding(Result, kaEditorBookmarkNext, KeyBinding(vkF2, True, False, True));
+  AddBinding(Result, kaEditorBookmarkPrev, KeyBinding(vkF2, False, True, True));
+  AddBinding(Result, kaEditorBookmarkList, KeyBinding(Ord('B'), False, True, True));
+  AddBinding(Result, kaEditorAutoIndent, KeyBinding(Ord('I'), False, True, True));
 
   // Global. The workspaces, MTN2's own top-row tabs, take Ctrl+Alt+PgDn /
   // Ctrl+Alt+PgUp, and Ctrl+Tab / Ctrl+Shift+Tab (handled by the main form
@@ -733,6 +746,9 @@ begin
   AddBinding(Result, kaShellPaste, KeyBinding(Ord('V'), False, False, True));
   AddBinding(Result, kaShellPaste, KeyBinding(Ord('V'), True, False, True));
   AddBinding(Result, kaShellPaste, KeyBinding(vkInsert, True, False, False));
+  AddBinding(Result, kaShellFind, KeyBinding(Ord('F'), True, False, True));
+  AddBinding(Result, kaShellFindNext, KeyBinding(vkF3, False, False, False));
+  AddBinding(Result, kaShellFindPrev, KeyBinding(vkF3, True, False, False));
   AddBinding(Result, kaConsoleSyncDir, KeyBinding(Ord('O'), True, False, True));
 end;
 
@@ -760,12 +776,17 @@ begin
     kaEditorSortLines, kaEditorSortLinesDesc, kaEditorUniqueLines, kaEditorReflow,
     kaEditorShiftRight, kaEditorShiftLeft:
       Result := kcEditor;
+    kaEditorBookmarkToggle, kaEditorBookmarkNext, kaEditorBookmarkPrev,
+    kaEditorBookmarkList:
+      Result := kcDocument;
+    kaEditorAutoIndent:
+      Result := kcEditor;
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
     kaTopMenu, kaAppQuit, kaAppConsoleToggle, kaZoomReset, kaReloadKeymap,
     kaToggleFullscreen:
       Result := kcGlobal;
     kaShellHistory, kaShellSelectAll, kaShellCopyOrInterrupt, kaShellCopy,
-    kaShellPaste:
+    kaShellPaste, kaShellFind, kaShellFindNext, kaShellFindPrev:
       Result := kcShell;
     kaConsoleSyncDir:
       Result := kcConsole;
@@ -993,6 +1014,11 @@ const
     'EditorReflow',          // kaEditorReflow
     'EditorShiftRight',      // kaEditorShiftRight
     'EditorShiftLeft',       // kaEditorShiftLeft
+    'EditorBookmarkToggle',  // kaEditorBookmarkToggle
+    'EditorBookmarkNext',    // kaEditorBookmarkNext
+    'EditorBookmarkPrev',    // kaEditorBookmarkPrev
+    'EditorBookmarkList',    // kaEditorBookmarkList
+    'EditorAutoIndent',      // kaEditorAutoIndent
     'PrevTab',               // kaPrevTab
     'TopMenu',               // kaTopMenu
     'AppQuit',               // kaAppQuit
@@ -1005,6 +1031,9 @@ const
     'ShellCopyOrInterrupt',  // kaShellCopyOrInterrupt
     'ShellCopy',             // kaShellCopy
     'ShellPaste',            // kaShellPaste
+    'ShellFind',             // kaShellFind
+    'ShellFindNext',         // kaShellFindNext
+    'ShellFindPrev',         // kaShellFindPrev
     'ConsoleSyncDir'         // kaConsoleSyncDir
   );
 
@@ -1416,6 +1445,12 @@ begin
     kaViewerWordWrap: Result := 'Wrap';
     kaEditorSave: Result := 'Save';
     kaEditorReplace: Result := 'Repl';
+    kaEditorBookmarkToggle: Result := 'Mark';
+    kaEditorBookmarkNext: Result := 'MarkNx';
+    kaEditorBookmarkPrev: Result := 'MarkPv';
+    kaShellFind: Result := 'Find';
+    kaShellFindNext: Result := 'Next';
+    kaShellFindPrev: Result := 'Prev';
     kaTopMenu: Result := 'TopMn';
     kaCmdHistory: Result := 'CmdHs';
     kaFolderTree: Result := 'Tree';

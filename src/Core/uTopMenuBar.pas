@@ -122,6 +122,11 @@ type
     tmaEditReflow,
     tmaEditShiftRight,
     tmaEditShiftLeft,
+    tmaEditBookmarkToggle,
+    tmaEditBookmarkNext,
+    tmaEditBookmarkPrev,
+    tmaEditBookmarkList,
+    tmaEditAutoIndent,
     tmaOptReloadKeymap,
     tmaOptShowPlugins,
     tmaOptColorCoding,
@@ -478,6 +483,16 @@ begin
       Result := kaEditorShiftRight;
     tmaEditShiftLeft:
       Result := kaEditorShiftLeft;
+    tmaEditBookmarkToggle:
+      Result := kaEditorBookmarkToggle;
+    tmaEditBookmarkNext:
+      Result := kaEditorBookmarkNext;
+    tmaEditBookmarkPrev:
+      Result := kaEditorBookmarkPrev;
+    tmaEditBookmarkList:
+      Result := kaEditorBookmarkList;
+    tmaEditAutoIndent:
+      Result := kaEditorAutoIndent;
     tmaOptReloadKeymap:
       Result := kaReloadKeymap;
     tmaOptResetZoom:
@@ -837,7 +852,7 @@ begin
   FCategories[3].Title := 'Edit';
   FCategories[3].HotChar := 'E';
   FCategories[3].HotPos := 1;
-  SetLength(FCategories[3].Items, 18);
+  SetLength(FCategories[3].Items, 24);
   FCategories[3].Items[0] := SubItem('Copy', 'C', 'Ctrl+C / Ctrl+Ins', tmaEditCopy);
   FCategories[3].Items[1] := SubItem('Cut', 'T', 'Ctrl+X / Ctrl+Del', tmaEditCut);
   FCategories[3].Items[2] := SubItem('Paste', 'P', 'Ctrl+V / Shift+Ins', tmaEditPaste);
@@ -856,6 +871,12 @@ begin
   FCategories[3].Items[15] := SubItem('Format text to width...', 'W', 'Ctrl+Alt+F', tmaEditReflow);
   FCategories[3].Items[16] := SubItem('Shift lines right', 'I', 'Alt+Right', tmaEditShiftRight);
   FCategories[3].Items[17] := SubItem('Shift lines left', 'E', 'Alt+Left', tmaEditShiftLeft);
+  FCategories[3].Items[18] := Separator;
+  FCategories[3].Items[19] := SubItem('Toggle bookmark', 'B', 'Ctrl+F2', tmaEditBookmarkToggle);
+  FCategories[3].Items[20] := SubItem('Next bookmark', 'X', 'Ctrl+Shift+F2', tmaEditBookmarkNext);
+  FCategories[3].Items[21] := SubItem('Previous bookmark', 'V', 'Ctrl+Alt+F2', tmaEditBookmarkPrev);
+  FCategories[3].Items[22] := SubItem('Bookmark list...', 'K', 'Ctrl+Alt+B', tmaEditBookmarkList);
+  FCategories[3].Items[23] := SubItem('Auto-indent mode', 'M', 'Ctrl+Alt+I', tmaEditAutoIndent);
 
   // 4: Commands
   FCategories[4].Title := 'Commands';

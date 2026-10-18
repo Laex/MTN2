@@ -26,6 +26,10 @@
 | Ctrl+Alt+F | Text auf eine vorgegebene Breite umbrechen (Absätze trennen Leerzeilen) |
 | Alt+→ / Alt+← | ausgewählte Zeilen (ohne Auswahl die aktuelle) nach rechts / links einrücken |
 | Alt+Shift+Pfeiltasten (auch Home / End / PgUp / PgDn), Alt+Maus | rechteckigen Block auswählen – dieselben Spalten mehrerer Zeilen; Del, Backspace, Eingabe und Ctrl+X / Ctrl+C / Ctrl+V wirken auf jede Zeile des Blocks, ein kopierter Block wird als Block eingefügt |
+| Enter (Editor) | die neue Zeile beginnt mit dem Einzug der Zeile, die sie fortsetzt (die Leerzeichen links vom Cursor); der Modus wird mit **Ctrl+Alt+I**, im Menü „Bearbeiten“ und in den Einstellungen (Schrift / Anzeige) ein- und ausgeschaltet |
+| Ctrl+F2 | Lesezeichen der Cursorzeile setzen / entfernen (die Zeile ist im Rahmen links mit ■ markiert) |
+| Ctrl+Shift+F2 / Ctrl+Alt+F2 | zum nächsten / vorherigen Lesezeichen springen (zyklisch) |
+| Ctrl+Alt+B | Liste der Lesezeichen (Zeilennummer und Text): Enter springt zum gewählten |
 | Ctrl+Home / Ctrl+End | zum Anfang / Ende der Datei |
 | Ctrl+C / Ctrl+X / Ctrl+V | kopieren (ohne Auswahl – die Zeile) / ausschneiden / einfügen |
 | Esc, F10 (im Viewer auch 5 auf dem Ziffernblock) | schließen |

@@ -66,6 +66,7 @@ type
     ShowMenuBar: Boolean;
     FileDrag: Boolean;
     AltOpensMenu: Boolean;
+    EditorAutoIndent: Boolean;
     /// <summary>uDisplaySettings.PassiveCursor.</summary>
     PassiveCursor: Boolean;
     ShowKeyBar: Boolean;
@@ -545,6 +546,7 @@ begin
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
       Root.AddPair('altOpensMenu', TJSONBool.Create(ASession.AltOpensMenu));
+      Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
       Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
@@ -617,6 +619,7 @@ begin
   ASession.ShowMenuBar := True;
   ASession.FileDrag := True;
   ASession.AltOpensMenu := True;
+  ASession.EditorAutoIndent := True;
   ASession.PassiveCursor := True;
   ASession.ShowKeyBar := True;
   ASession.ShowStatusLine := True;
@@ -704,6 +707,7 @@ begin
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);
       ASession.AltOpensMenu := JsonBool(Root, 'altOpensMenu', True);
+      ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
       ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);

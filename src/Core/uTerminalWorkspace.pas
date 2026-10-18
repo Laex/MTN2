@@ -264,6 +264,7 @@ var
   Ch: Char;
   Fg, Bg, TempColor: TAlphaColor;
   ShowInputCursor: Boolean;
+  Found: TArray<Boolean>;
 begin
   W := Area.Width;
   H := Area.Height;
@@ -299,6 +300,7 @@ begin
       Break;
     LineIdx := Top + I;
     Row     := Rows[I];
+    Found := FoundColumns(LineIdx, TextW);
     for AbsCol := 0 to TextW - 1 do
     begin
       if AbsCol < Length(Row) then
@@ -317,6 +319,10 @@ begin
       else
       begin
         Ch := ' '; Fg := cTextFg; Bg := cCmdBg;
+      end;
+      if (AbsCol < Length(Found)) and Found[AbsCol] then
+      begin
+        Fg := cFindFg; Bg := cFindBg;
       end;
       if IsCellSelected(LineIdx, AbsCol) then
       begin
@@ -478,6 +484,8 @@ begin
       begin SendRaw(#27'[C'); AKey := 0; Exit; end;
     vkUp:
       begin
+        if HandleOwnHistoryNav(AKey, AShift) then
+          Exit;
         // Prefer shell history when following tail; else scroll.
         if FHistory.FollowTail and Running then
           SendRaw(#27'[A')
@@ -492,6 +500,8 @@ begin
       end;
     vkDown:
       begin
+        if HandleOwnHistoryNav(AKey, AShift) then
+          Exit;
         if FHistory.FollowTail and Running then
           SendRaw(#27'[B')
         else

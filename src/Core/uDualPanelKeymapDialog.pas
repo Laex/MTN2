@@ -232,6 +232,11 @@ const
     'Format text to a width',
     'Shift lines right',
     'Shift lines left',
+    'Toggle bookmark',
+    'Next bookmark',
+    'Previous bookmark',
+    'Bookmark list',
+    'Auto-indent on / off',
     'Previous workspace',
     'Top menu',
     'Quit',
@@ -244,6 +249,9 @@ const
     'Copy, or interrupt the command',
     'Copy selection',
     'Paste',
+    'Find in output',
+    'Next match',
+    'Previous match',
     'Panel to the console folder'
   );
 

@@ -436,6 +436,11 @@ type
     procedure EditReflow;
     procedure EditShiftRight;
     procedure EditShiftLeft;
+    procedure EditBookmarkToggle;
+    procedure EditBookmarkNext;
+    procedure EditBookmarkPrev;
+    procedure EditBookmarkList;
+    procedure EditAutoIndent;
     procedure EditCopy;
     procedure EditCut;
     procedure EditPaste;
@@ -640,6 +645,9 @@ type
     procedure BeginCreateLink;
     procedure ConfirmCreateLink(const ALinkName, ATarget: string; AKind: TLinkKind);
     procedure BeginSetAttributes;
+    /// <summary>F4 in the drive list: attributes of the drive's root folder.</summary>
+    procedure HostDriveAttributes(const APath: string);
+    procedure HostSystemProperties(APaths: TArray<string>);
     procedure ShowProperties;
     /// <summary>Shift+F10 / Menu: the Windows context menu for the selection
     /// (else the cursor item, or the folder itself on ".."), at the cursor
@@ -1813,6 +1821,11 @@ begin
   FKeymapHost.EditReflow := EditReflow;
   FKeymapHost.EditShiftRight := EditShiftRight;
   FKeymapHost.EditShiftLeft := EditShiftLeft;
+  FKeymapHost.EditBookmarkToggle := EditBookmarkToggle;
+  FKeymapHost.EditBookmarkNext := EditBookmarkNext;
+  FKeymapHost.EditBookmarkPrev := EditBookmarkPrev;
+  FKeymapHost.EditBookmarkList := EditBookmarkList;
+  FKeymapHost.EditAutoIndent := EditAutoIndent;
   FKeymapHost.EditCopy := EditCopy;
   FKeymapHost.EditCut := EditCut;
   FKeymapHost.EditPaste := EditPaste;
@@ -2282,7 +2295,17 @@ begin
 end;
 
 function TDualPanelWindow.HostPanelBounds(ASide: TPanelSide): TRectI;
+var
+  Other: TPanelSide;
 begin
+  // The overlays of a hidden panel (the drive list of Alt+F1 / Alt+F2) open
+  // over the panel that is on screen.
+  if ASide = psLeft then
+    Other := psRight
+  else
+    Other := psLeft;
+  if not IsPanelVisible(ASide) and IsPanelVisible(Other) then
+    ASide := Other;
   if ASide = psLeft then
     Result := FLeftBounds
   else
@@ -2824,6 +2847,7 @@ begin
     HostShowShellStub, HostLastSelectMask, HostSelectFolders, HostTryGetCursorItem,
     HostRememberStubUri, ConfirmMkDir, ConfirmNewFile, ConfirmRename,
     ConfirmCopyInPlace, ApplySelectMask, ConfirmCreateLink, ApplySetAttributes);
+  FFileOps.OnSystemProperties := HostSystemProperties;
   FFileOps.OnGetLinkFolderUri := LinkFolderUri;
 end;
 
@@ -2845,6 +2869,7 @@ begin
     HostFolderSizeProgress, NotifyChanged);
   FDrivePopupCtrl := TDrivePopupController.Create(Theme, Invalidate,
     HostPanelBounds, HostPanelPath, HostPanelDriveDirs, HostNavigateSide);
+  FDrivePopupCtrl.OnAttributes := HostDriveAttributes;
   FHistoryPopupCtrl := THistoryPopupController.Create(Theme, Invalidate,
     HostPanelBounds);
   // NotifyChanged, not Invalidate: listings land from a background thread
@@ -3194,6 +3219,36 @@ procedure TDualPanelWindow.EditShiftLeft;
 begin
   if ActiveDocument <> nil then
     ActiveDocument.ShiftLines(False);
+end;
+
+procedure TDualPanelWindow.EditBookmarkToggle;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ToggleBookmark;
+end;
+
+procedure TDualPanelWindow.EditBookmarkNext;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.GotoBookmark(True);
+end;
+
+procedure TDualPanelWindow.EditBookmarkPrev;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.GotoBookmark(False);
+end;
+
+procedure TDualPanelWindow.EditBookmarkList;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.OpenBookmarkList;
+end;
+
+procedure TDualPanelWindow.EditAutoIndent;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ToggleAutoIndent;
 end;
 
 procedure TDualPanelWindow.EditHexToggle;
@@ -5663,6 +5718,18 @@ begin
     Exit;
   end;
   FFileOps.BeginSetAttributes(Paths);
+end;
+
+procedure TDualPanelWindow.HostSystemProperties(APaths: TArray<string>);
+begin
+  if Assigned(FOnShowProperties) then
+    FOnShowProperties(APaths);
+end;
+
+procedure TDualPanelWindow.HostDriveAttributes(const APath: string);
+begin
+  if (APath <> '') and CanStartOperation and HostInPanelsWorkspace then
+    FFileOps.BeginSetAttributes([APath]);
 end;
 
 procedure TDualPanelWindow.ShowProperties;

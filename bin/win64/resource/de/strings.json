@@ -200,6 +200,7 @@
       "show_menu_bar": "&Menüleiste anzeigen",
       "file_drag": "Dateien mit der Ma&us ziehen",
       "alt_menu": "Menü bei einzelnem &Alt öffnen",
+      "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
       "passive_cursor": "Cursor im ina&ktiven Panel",
       "show_key_bar": "F-Tasten&leiste anzeigen",
       "show_status_line": "&Statuszeile anzeigen",
@@ -526,6 +527,15 @@
       "lbl_h": "Versteckt",
       "lbl_a": "Archiv",
       "lbl_s": "System",
+      "lbl_volume": "Volume:",
+      "lbl_device": "Gerät:",
+      "lbl_comp": "Komprimiert",
+      "lbl_enc": "Verschlüsselt",
+      "lbl_noidx": "Nicht indiziert",
+      "lbl_sparse": "Sparse",
+      "lbl_temp": "Temporär",
+      "lbl_off": "Offline",
+      "sys_props": "System-&Eigenschaften",
       "lbl_owner": "Besitzer:",
       "change_owner": "Besitzer &ändern",
       "lbl_created": "Erstellt",
@@ -547,6 +557,36 @@
         "Clear": "Entfernen"
       },
       "attr_a_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_comp_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_enc_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_noidx_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_sparse_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_temp_items": {
+        "Keep": "Beibehalten",
+        "Set": "Setzen",
+        "Clear": "Entfernen"
+      },
+      "attr_off_items": {
         "Keep": "Beibehalten",
         "Set": "Setzen",
         "Clear": "Entfernen"
@@ -799,6 +839,11 @@
     "keymap.action.EditorReflow": "Text auf Breite umbrechen",
     "keymap.action.EditorShiftRight": "Zeilen nach rechts einrücken",
     "keymap.action.EditorShiftLeft": "Zeilen nach links einrücken",
+    "keymap.action.EditorBookmarkToggle": "Lesezeichen setzen/löschen",
+    "keymap.action.EditorBookmarkNext": "Nächstes Lesezeichen",
+    "keymap.action.EditorBookmarkPrev": "Vorheriges Lesezeichen",
+    "keymap.action.EditorBookmarkList": "Lesezeichenliste",
+    "keymap.action.EditorAutoIndent": "Automatischer Einzug ein / aus",
     "keymap.action.PrevTab": "Vorheriger Arbeitsbereich",
     "keymap.action.TopMenu": "Hauptmenü",
     "keymap.action.AppQuit": "Beenden",
@@ -811,6 +856,9 @@
     "keymap.action.ShellCopyOrInterrupt": "Kopieren oder Befehl unterbrechen",
     "keymap.action.ShellCopy": "Auswahl kopieren",
     "keymap.action.ShellPaste": "Einfügen",
+    "keymap.action.ShellFind": "In der Ausgabe suchen",
+    "keymap.action.ShellFindNext": "Nächster Treffer",
+    "keymap.action.ShellFindPrev": "Vorheriger Treffer",
     "keymap.action.ConsoleSyncDir": "Panel auf den Konsolenordner",
     "update.offer": "Version %s ist verfügbar (installiert: %s).",
     "update.offerDetails": "Herunterladen und installieren?",
@@ -1042,6 +1090,13 @@
     "colorPicker.foreground": "Vordergrundfarbe wählen",
     "workspaces.dialogTitle": "Arbeitsbereiche",
     "cmdHistory.filterTitle": "Befehlsverlauf: %s",
+    "consoleFind.title": "In der Ausgabe suchen",
+    "consoleFind.prompt": "Suchen:",
+    "consoleFind.notFound": "Nicht gefunden: %s",
+    "editor.autoIndentOn": "Automatischer Einzug: ein",
+    "editor.autoIndentOff": "Automatischer Einzug: aus",
+    "editor.bookmarksTitle": "Lesezeichen",
+    "editor.noBookmarks": "Keine Lesezeichen",
     "fileHistory.filterTitle": "Dateiverlauf: %s",
     "fileHistory.empty": "(leer)",
     "fileHistory.viewMark": "A",
@@ -1513,6 +1568,11 @@
     "tmaEditReflow": "Text auf Breite umbrechen...",
     "tmaEditShiftRight": "Zeilen nach rechts einrücken",
     "tmaEditShiftLeft": "Zeilen nach links einrücken",
+    "tmaEditBookmarkToggle": "Lesezeichen setzen/löschen",
+    "tmaEditBookmarkNext": "Nächstes Lesezeichen",
+    "tmaEditBookmarkPrev": "Vorheriges Lesezeichen",
+    "tmaEditBookmarkList": "Lesezeichenliste...",
+    "tmaEditAutoIndent": "Automatischer Einzug",
     "tmaCmdFind": "&Datei suchen...",
     "tmaCmdDirSync": "&Verzeichnisse synchronisieren...",
     "tmaCmdCompareFolders": "Ordner vergleichen",
@@ -1612,6 +1672,9 @@
     "Panels": "Panels",
     "Copy/Brk": "Kop/Abr",
     "Paste": "Einfüg",
+    "Mark": "Lesez",
+    "MarkNx": "Lz vor",
+    "MarkPv": "Lz zur",
     "Close": "Schließ",
     "Hex": "Hex",
     "Prev": "Zurück",

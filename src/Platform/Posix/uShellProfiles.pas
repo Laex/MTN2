@@ -64,6 +64,9 @@ function GetGitBashExePath(out AGitBashExe: string): Boolean;
 function ProfileReturnSeq(const AProfileId: string): string;
 /// <summary>No prompt is parsed on this platform: always False.</summary>
 function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;
+/// <summary>True where ShellCwdFromPrompt can recognize the prompt of the profile, so that
+/// prompts can be counted; False: the console follows the shell process instead.</summary>
+function ProfilePromptIsParsable(const AProfileId: string): Boolean;
 /// <summary>Setup line sent once right after the shell starts; always ''.</summary>
 function ProfileInitCommand(const AProfileId: string): string;
 /// <summary>Output is UTF-8 for every profile.</summary>
@@ -353,6 +356,11 @@ end;
 function ProfileReturnSeq(const AProfileId: string): string;
 begin
   Result := #13;
+end;
+
+function ProfilePromptIsParsable(const AProfileId: string): Boolean;
+begin
+  Result := False;
 end;
 
 function ShellCwdFromPrompt(const AProfileId, ALine: string; out APath: string): Boolean;

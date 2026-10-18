@@ -48,6 +48,9 @@ function FileAttrPlanIsNoOp(const APlan: TFileAttrPlan): Boolean;
 begin
   Result := (APlan.ReadOnly = facKeep) and (APlan.Hidden = facKeep) and
     (APlan.System = facKeep) and (APlan.Archive = facKeep) and
+    (APlan.Compressed = facKeep) and (APlan.Encrypted = facKeep) and
+    (APlan.NotIndexed = facKeep) and (APlan.Sparse = facKeep) and
+    (APlan.Temporary = facKeep) and (APlan.Offline = facKeep) and
     (not APlan.ChangeOwner) and (not APlan.ChangeGroup) and (not APlan.ChangeMode) and
     not (APlan.SetCreated or APlan.SetModified or APlan.SetAccessed);
 end;
@@ -113,6 +116,12 @@ begin
   Result.Hidden := facKeep;
   Result.System := facKeep;
   Result.Archive := facKeep;
+  Result.Compressed := facKeep;
+  Result.Encrypted := facKeep;
+  Result.NotIndexed := facKeep;
+  Result.Sparse := facKeep;
+  Result.Temporary := facKeep;
+  Result.Offline := facKeep;
   Result.Owner := '';
   Result.OwnerMixed := False;
   Result.Mode := -1;
@@ -122,7 +131,14 @@ begin
     Exit;
   end;
   if Length(APaths) = 1 then
-    Result.Summary := ExtractFileName(ExcludeTrailingPathDelimiter(APaths[0]))
+  begin
+    Result.Summary := ExtractFileName(ExcludeTrailingPathDelimiter(APaths[0]));
+    // A drive root has no file name: it is shown by its path, with its volume and device.
+    if TryGetDriveRootInfo(APaths[0], Result.Volume, Result.Device) then
+      Result.Summary := APaths[0];
+    if Result.Summary = '' then
+      Result.Summary := APaths[0];
+  end
   else
     Result.Summary := Format('%d items', [Length(APaths)]);
   First := True;
@@ -136,6 +152,12 @@ begin
       Result.Hidden := ChoiceFromFlag(Snap.Hidden);
       Result.System := ChoiceFromFlag(Snap.System);
       Result.Archive := ChoiceFromFlag(Snap.Archive);
+      Result.Compressed := ChoiceFromFlag(Snap.Compressed);
+      Result.Encrypted := ChoiceFromFlag(Snap.Encrypted);
+      Result.NotIndexed := ChoiceFromFlag(Snap.NotIndexed);
+      Result.Sparse := ChoiceFromFlag(Snap.Sparse);
+      Result.Temporary := ChoiceFromFlag(Snap.Temporary);
+      Result.Offline := ChoiceFromFlag(Snap.Offline);
       Result.Owner := Snap.Owner;
       Result.Mode := Snap.Mode;
       Result.Group := Snap.Group;
@@ -148,6 +170,12 @@ begin
       Result.Hidden := MergeChoice(Result.Hidden, Snap.Hidden);
       Result.System := MergeChoice(Result.System, Snap.System);
       Result.Archive := MergeChoice(Result.Archive, Snap.Archive);
+      Result.Compressed := MergeChoice(Result.Compressed, Snap.Compressed);
+      Result.Encrypted := MergeChoice(Result.Encrypted, Snap.Encrypted);
+      Result.NotIndexed := MergeChoice(Result.NotIndexed, Snap.NotIndexed);
+      Result.Sparse := MergeChoice(Result.Sparse, Snap.Sparse);
+      Result.Temporary := MergeChoice(Result.Temporary, Snap.Temporary);
+      Result.Offline := MergeChoice(Result.Offline, Snap.Offline);
       Result.Times.Created := MergeTime(Result.Times.Created, Snap.Times.Created);
       Result.Times.Modified := MergeTime(Result.Times.Modified, Snap.Times.Modified);
       Result.Times.Accessed := MergeTime(Result.Times.Accessed, Snap.Times.Accessed);
@@ -209,6 +237,9 @@ begin
   for Raw in APaths do
   begin
     Root := ExcludeTrailingPathDelimiter(Raw);
+    // 'F:' alone means the current folder of drive F: - a drive root keeps its backslash.
+    if (Length(Root) = 2) and (Root[2] = ':') then
+      Root := Root + PathDelim;
     if Root = '' then
     begin
       Inc(AFail);

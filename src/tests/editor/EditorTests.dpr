@@ -17,6 +17,7 @@ uses
   TestEditorSearchUndo in 'TestEditorSearchUndo.pas',
   TestEditorLineOps in 'TestEditorLineOps.pas',
   TestEditorLineCommands in 'TestEditorLineCommands.pas',
+  TestEditorBookmarks in 'TestEditorBookmarks.pas',
   TestEditorColumnBlock in 'TestEditorColumnBlock.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',

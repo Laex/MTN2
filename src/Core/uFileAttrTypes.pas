@@ -21,6 +21,13 @@ type
     Hidden: Boolean;
     System: Boolean;
     Archive: Boolean;
+    // Windows only: the other attribute flags of the file.
+    Compressed: Boolean;
+    Encrypted: Boolean;
+    NotIndexed: Boolean;
+    Sparse: Boolean;
+    Temporary: Boolean;
+    Offline: Boolean;
     Owner: string;
     // Permission bits (0..$FFF) and the group name; Mode = -1 where the
     // platform has no permission bits.
@@ -34,6 +41,12 @@ type
     Hidden: TFileAttrChoice;
     System: TFileAttrChoice;
     Archive: TFileAttrChoice;
+    Compressed: TFileAttrChoice;
+    Encrypted: TFileAttrChoice;
+    NotIndexed: TFileAttrChoice;
+    Sparse: TFileAttrChoice;
+    Temporary: TFileAttrChoice;
+    Offline: TFileAttrChoice;
     ChangeOwner: Boolean;
     Owner: string;
     // An empty Group keeps the group while the owner changes.
@@ -57,6 +70,15 @@ type
     Hidden: TFileAttrChoice;
     System: TFileAttrChoice;
     Archive: TFileAttrChoice;
+    Compressed: TFileAttrChoice;
+    Encrypted: TFileAttrChoice;
+    NotIndexed: TFileAttrChoice;
+    Sparse: TFileAttrChoice;
+    Temporary: TFileAttrChoice;
+    Offline: TFileAttrChoice;
+    // Volume GUID path and device of a drive root ('' for any other item).
+    Volume: string;
+    Device: string;
     // Mode and Group of the first readable item; -1 when none is readable.
     Mode: Integer;
     Group: string;

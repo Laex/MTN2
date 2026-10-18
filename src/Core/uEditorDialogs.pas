@@ -39,6 +39,8 @@ type
     FOnFind: TEditorFindTextProc;
     FOnWordAtCursor: TEditorTextFn;
     FOnSelectionText: TEditorTextFn;
+    /// <summary>Lines (0-based) of the rows of the open bookmark list.</summary>
+    FBookmarkLines: TArray<Integer>;
     procedure Notify;
     /// <summary>The four option check boxes of the open dialog into
     /// GEditorSearchOptions.</summary>
@@ -66,6 +68,11 @@ type
     procedure OpenDiscardEncoding;
     procedure OpenGoto(ALine1Based: Integer);
     procedure OpenReflow(AWidth: Integer);
+    /// <summary>The bookmark list: ALines are the bookmarked lines (0-based) with
+    /// their texts, ASelected the row to start on. Enter goes to the line.</summary>
+    procedure OpenBookmarks(const ALines: TArray<Integer>; const ATexts: TArray<string>;
+      ASelected: Integer);
+    procedure BookmarksCommand(const AControlId, AValuesJson: string);
     procedure OpenEncoding(const ACurrentName: string);
     procedure OpenReplace(const AFindText: string);
     procedure OpenFind(const AFindText: string);
@@ -238,6 +245,40 @@ begin
   if not FDialog.OpenJson(DeclarationToJson(BuildGotoLineDialog(ALine1Based)),
       GotoLineCommand) then
     FDialog.Open(BuildGotoLineDialog(ALine1Based), GotoLineCommand);
+  Notify;
+end;
+
+procedure TEditorDialogController.OpenBookmarks(const ALines: TArray<Integer>;
+  const ATexts: TArray<string>; ASelected: Integer);
+var
+  Items: TArray<string>;
+  I: Integer;
+  Decl: TDialogDeclaration;
+begin
+  FBookmarkLines := Copy(ALines);
+  SetLength(Items, Length(ALines));
+  for I := 0 to High(ALines) do
+    Items[I] := Format('%6d: %s', [ALines[I] + 1,
+      Copy(StringReplace(ATexts[I], #9, ' ', [rfReplaceAll]), 1, 48)]);
+  Decl := BuildCmdHistoryDialog(Items, ASelected);
+  Decl.Title := T('ui.editor.bookmarksTitle', 'Bookmarks');
+  FDialog.Open(Decl, BookmarksCommand);
+  Notify;
+end;
+
+procedure TEditorDialogController.BookmarksCommand(const AControlId,
+  AValuesJson: string);
+var
+  Idx: Integer;
+  Accepted: Boolean;
+begin
+  // Read before Close: it releases the declaration AControlId points into.
+  Idx := FDialog.GetListSelectedIndex('commands');
+  Accepted := DialogCmdIsListAccept(AControlId, 'commands');
+  CloseDialog;
+  if Accepted and (Idx >= 0) and (Idx <= High(FBookmarkLines)) and
+     Assigned(FOnGotoLine) then
+    FOnGotoLine(FBookmarkLines[Idx] + 1);
   Notify;
 end;
 
