@@ -14,6 +14,7 @@ Ein **Wort** besteht aus Buchstaben eines beliebigen Alphabets, Ziffern und `_`.
 | Nächster schneller Klick | die ganze Zeile auswählen |
 | Shift+Klick | die Auswahl bis zum Klickpunkt erweitern oder verkleinern |
 | Maus ziehen | Auswahl (Viewer, Editor, Konsole) |
+| Alt+Maus ziehen | rechteckiger Block (Viewer, Editor) |
 | Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del, Ctrl+V / Shift+Ins | Zwischenablage |
 | Ctrl+A | alles auswählen |
 

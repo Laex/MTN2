@@ -10,6 +10,11 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, uKeymap;
 
+const
+  /// <summary>AColDelta of a block move that goes to the start / end of the line.</summary>
+  BlockColHome = -$40000000;
+  BlockColEnd = $40000000;
+
 type
   TEditorProc = procedure of object;
   TEditorBoolFn = function: Boolean of object;
@@ -19,6 +24,7 @@ type
   TEditorMoveProc = procedure(ARowDelta, AColDelta: Integer;
     AExtendSel: Boolean) of object;
   TEditorWordProc = procedure(AForward, AExtendSel: Boolean) of object;
+  TEditorBlockMoveProc = procedure(ARowDelta, AColDelta: Integer) of object;
   TEditorCharProc = procedure(ACh: Char) of object;
 
   TEditorKeymapHost = record
@@ -54,6 +60,7 @@ type
     ShiftLines: TEditorLineDirProc;
     MoveWord: TEditorWordProc;
     MoveCursor: TEditorMoveProc;
+    MoveBlockCursor: TEditorBlockMoveProc;
     BreakInsertCoalesce: TEditorProc;
     GotoFileHome: TEditorExtendProc;
     GotoFileEnd: TEditorExtendProc;
@@ -251,6 +258,29 @@ begin
     AHost.RequestClose();
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
+  end;
+
+  // Alt+Shift+cursor keys grow a rectangular block.
+  if Assigned(AHost.MoveBlockCursor) and K.HasMods([ssAlt, ssShift], []) then
+  begin
+    case K.Key of
+      vkUp:    AHost.MoveBlockCursor(-1, 0);
+      vkDown:  AHost.MoveBlockCursor(1, 0);
+      vkLeft:  AHost.MoveBlockCursor(0, -1);
+      vkRight: AHost.MoveBlockCursor(0, 1);
+      vkPrior: AHost.MoveBlockCursor(-AViewH, 0);
+      vkNext:  AHost.MoveBlockCursor(AViewH, 0);
+      vkHome:  AHost.MoveBlockCursor(0, BlockColHome);
+      vkEnd:   AHost.MoveBlockCursor(0, BlockColEnd);
+    else
+      Result := False;
+    end;
+    if Result then
+    begin
+      ConsumeKey(AKey, AKeyChar, False);
+      Exit;
+    end;
+    Result := True;
   end;
 
   // Ctrl+Left/Right word, Ctrl+Home/End file start / end (Shift extends).

@@ -25,6 +25,7 @@
 | Ctrl+Alt+U | 删除重复行 |
 | Ctrl+Alt+F | 按指定宽度重排文本(段落以空行分隔) |
 | Alt+→ / Alt+← | 将选中的行(无选择时为当前行)右移 / 左移 |
+| Alt+Shift+方向键(及 Home / End / PgUp / PgDn), Alt+鼠标 | 选择矩形块 – 若干行的相同列; Del、Backspace、输入文字和 Ctrl+X / Ctrl+C / Ctrl+V 作用于块的每一行,复制的块按块粘贴 |
 | Ctrl+Home / Ctrl+End | 到文件开头 / 末尾 |
 | Ctrl+C / Ctrl+X / Ctrl+V | 复制(没有选区时复制整行) / 剪切 / 粘贴 |
 | Esc, F10(在查看器中还有小键盘 5) | 关闭 |

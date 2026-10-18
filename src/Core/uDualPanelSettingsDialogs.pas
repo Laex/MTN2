@@ -233,6 +233,7 @@ begin
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
+  DialogSetCheckbox(Decl, 'alt_menu', Cur.AltOpensMenu);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
   DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
@@ -500,6 +501,7 @@ begin
     Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
     Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
     Disp.FileDrag := FDialog.GetCheckbox('file_drag');
+    Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
     Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');

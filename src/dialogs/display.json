@@ -324,6 +324,16 @@
     },
     {
       "type": "checkbox",
+      "id": "alt_menu",
+      "text": "&Open menu on a single Alt press",
+      "checked": true,
+      "col": 47,
+      "row": 16,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
       "id": "file_drag",
       "text": "Dr&ag files with the mouse",
       "checked": true,

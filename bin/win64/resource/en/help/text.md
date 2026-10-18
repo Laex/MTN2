@@ -14,6 +14,7 @@ A **word** is made of letters of any alphabet, digits and `_`. Everything else â
 | Next quick click | select the whole line |
 | Shift+click | extend or shrink the selection to the click point |
 | Mouse drag | selection (viewer, editor, console) |
+| Alt+mouse drag | rectangular block (viewer, editor) |
 | Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del, Ctrl+V / Shift+Ins | clipboard |
 | Ctrl+A | select all |
 

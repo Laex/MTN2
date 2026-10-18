@@ -25,6 +25,7 @@
 | Ctrl+Alt+U | doppelte Zeilen entfernen |
 | Ctrl+Alt+F | Text auf eine vorgegebene Breite umbrechen (Absätze trennen Leerzeilen) |
 | Alt+→ / Alt+← | ausgewählte Zeilen (ohne Auswahl die aktuelle) nach rechts / links einrücken |
+| Alt+Shift+Pfeiltasten (auch Home / End / PgUp / PgDn), Alt+Maus | rechteckigen Block auswählen – dieselben Spalten mehrerer Zeilen; Del, Backspace, Eingabe und Ctrl+X / Ctrl+C / Ctrl+V wirken auf jede Zeile des Blocks, ein kopierter Block wird als Block eingefügt |
 | Ctrl+Home / Ctrl+End | zum Anfang / Ende der Datei |
 | Ctrl+C / Ctrl+X / Ctrl+V | kopieren (ohne Auswahl – die Zeile) / ausschneiden / einfügen |
 | Esc, F10 (im Viewer auch 5 auf dem Ziffernblock) | schließen |

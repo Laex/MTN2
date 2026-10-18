@@ -87,6 +87,9 @@ type
     /// <summary>Alt went down on its own and nothing else happened since: releasing it
     /// opens the menu. The form gets no key-up for Alt, so FAltTimer watches the key.</summary>
     FAltArmed: Boolean;
+    /// <summary>Alt was used with the mouse (Alt+drag selects a block): releasing it
+    /// opens no menu. Cleared once the key is up.</summary>
+    FAltMouseUsed: Boolean;
     FAltTimer: TTimer;
     /// <summary>Runs out when a command started in the background has been
     /// shown long enough; a key before that keeps the console.</summary>
@@ -1640,6 +1643,7 @@ begin
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
+  Result.AltOpensMenu := GAltOpensMenu;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -1669,6 +1673,8 @@ begin
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.FileDrag := ASettings.FileDrag;
   GFileDragEnabled := ASettings.FileDrag;
+  FSession.AltOpensMenu := ASettings.AltOpensMenu;
+  GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
@@ -1765,6 +1771,7 @@ begin
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
   GFileDragEnabled := Sess.FileDrag;
+  GAltOpensMenu := Sess.AltOpensMenu;
   GShowPassiveCursor := Sess.PassiveCursor;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
@@ -1858,6 +1865,7 @@ begin
   Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.FileDrag := GFileDragEnabled;
+  Sess.AltOpensMenu := GAltOpensMenu;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
@@ -1920,9 +1928,11 @@ var
   Key: Word;
   KeyChar: Char;
 begin
+  if FAltMouseUsed and ((GetAsyncKeyState(VK_MENU) and $8000) = 0) then
+    FAltMouseUsed := False;
   if not FAltArmed then
   begin
-    FAltTimer.Enabled := False;
+    FAltTimer.Enabled := FAltMouseUsed;
     Exit;
   end;
   // Still held: wait.
@@ -2673,6 +2683,7 @@ begin
   FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
   FSession.FileDrag := True;
+  FSession.AltOpensMenu := True;
   FSession.PassiveCursor := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
@@ -3174,6 +3185,11 @@ var
   Dbl: Boolean;
 begin
   FAltArmed := False;
+  if (ssAlt in Shift) or ((GetAsyncKeyState(VK_MENU) and $8000) <> 0) then
+  begin
+    FAltMouseUsed := True;
+    FAltTimer.Enabled := True;
+  end;
   // A click, like a key, takes the console over from a background command.
   FPeekTimer.Enabled := False;
   if not Assigned(FMdi) then
@@ -3590,9 +3606,10 @@ begin
   begin
     // Alt alone arms the menu; Ctrl or Shift joining it (AltGr, a layout switch)
     // disarms it, like any other key below.
-    FAltArmed := ((K = vkMenu) or (K = vkLMenu)) and ([ssCtrl, ssShift] * Shift = []) and
+    FAltArmed := GAltOpensMenu and not FAltMouseUsed and ((K = vkMenu) or (K = vkLMenu)) and
+      ([ssCtrl, ssShift] * Shift = []) and
       not (Assigned(FDualPanel) and FDualPanel.ProgramCapturesKeys);
-    FAltTimer.Enabled := FAltArmed;
+    FAltTimer.Enabled := FAltArmed or FAltMouseUsed;
     Key := 0;
     KeyChar := #0;
     Exit;

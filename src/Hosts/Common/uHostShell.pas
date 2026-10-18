@@ -187,6 +187,7 @@ begin
   FSession.ShowMenuBar := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
+  FSession.AltOpensMenu := True;
   FSession.PassiveCursor := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
@@ -332,6 +333,7 @@ begin
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
+  Result.AltOpensMenu := GAltOpensMenu;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -350,6 +352,8 @@ begin
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
   FSession.PassiveCursor := ASettings.PassiveCursor;
+  FSession.AltOpensMenu := ASettings.AltOpensMenu;
+  GAltOpensMenu := ASettings.AltOpensMenu;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;

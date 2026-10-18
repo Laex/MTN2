@@ -133,6 +133,11 @@ type
     FCursorCol: Integer;
     FSelAnchorRow: Integer; // -1 = no selection
     FSelAnchorCol: Integer;
+    // A rectangular block: rows between the anchor row and the cursor row,
+    // character columns between the anchor column and FBlockCol. FBlockCol
+    // may lie past the end of a short line; FCursorCol never does.
+    FColumnMode: Boolean;
+    FBlockCol: Integer;
     FCursorVisible: Boolean;
     FAlive: Boolean;
     FLife: ILifeFlag;
@@ -245,6 +250,19 @@ type
     procedure ClearSelection;
     procedure EnsureSelAnchor;
     procedure GetSelRange(out ARow1, ACol1, ARow2, ACol2: Integer);
+    procedure GetBlockRect(out ARow1, ACol1, ARow2, ACol2: Integer);
+    /// <summary>Removes the block's text. AKeepCaret leaves an empty block over
+    /// the same rows so that typing goes on in every row.</summary>
+    function DeleteBlock(AKeepCaret: Boolean): Boolean;
+    procedure TypeIntoBlock(const AText: string);
+    procedure EraseInBlock(ABackspace: Boolean);
+    procedure InsertBlockText(const AText: string);
+    procedure SetBlockCaret(ACol: Integer);
+    /// <summary>Keeps the block text so that pasting it again goes in as a block.</summary>
+    procedure RememberBlockClip;
+    function VirtualColAt(ALocalCol, ARow: Integer): Integer;
+    function BlockAllowed: Boolean;
+    procedure MoveBlockCursor(ARowDelta, AColDelta: Integer);
     function SelectedText: string;
     /// <summary>The text cursor columns count in: the displayed text in the
     /// Markdown view (marks hidden, table rows padded), the source line otherwise.</summary>
@@ -399,6 +417,8 @@ type
     function MenuCanUndo: Boolean;
     function MenuCanRedo: Boolean;
     function HasSelection: Boolean;
+    /// <summary>True while the selection is a rectangular block.</summary>
+    function ColumnBlockActive: Boolean;
     /// <summary>The selected text; in the Markdown view it is the displayed text.</summary>
     function SelectionText: string;
     // Help viewer API (uHelpViewer). Positions are line index / display
@@ -1133,6 +1153,7 @@ begin
     Exit;
   ClampDocPos(ARow1, ACol1);
   ClampDocPos(ARow2, ACol2);
+  FColumnMode := False;
   FSelAnchorRow := ARow1;
   FSelAnchorCol := ACol1;
   FCursorRow := ARow2;
@@ -1201,6 +1222,7 @@ begin
   FCursorCol := Pos.CursorCol;
   if Pos.HasSelection then
   begin
+    FColumnMode := False;
     FSelAnchorRow := Pos.SelAnchorRow;
     FSelAnchorCol := Pos.SelAnchorCol;
   end
@@ -1891,6 +1913,7 @@ begin
     EnsureSelAnchor
   else
   begin
+    FColumnMode := False;
     FSelAnchorRow := ARow;
     FSelAnchorCol := ACol;
   end;
@@ -1910,6 +1933,7 @@ begin
   Line := CursorLineText(ARow);
   if AWholeLine then
   begin
+    FColumnMode := False;
     FSelAnchorRow := ARow;
     FSelAnchorCol := 0;
     // Include the line break when there is a next line, so copy/delete of a
@@ -1928,6 +1952,7 @@ begin
   else
   begin
     TextWordRangeAt(Line, ACol, WStart, WEnd);
+    FColumnMode := False;
     FSelAnchorRow := ARow;
     FSelAnchorCol := WStart;
     FCursorRow := ARow;
@@ -2117,6 +2142,7 @@ begin
   FKeymapHost.ShiftLines := ShiftLines;
   FKeymapHost.MoveWord := MoveWord;
   FKeymapHost.MoveCursor := MoveCursor;
+  FKeymapHost.MoveBlockCursor := MoveBlockCursor;
   FKeymapHost.BreakInsertCoalesce := BreakInsertCoalesce;
   FKeymapHost.GotoFileHome := GotoFileHome;
   FKeymapHost.GotoFileEnd := GotoFileEnd;
@@ -2479,6 +2505,7 @@ begin
   if Keep and (Length(ANew) > 0) then
   begin
     Last := AFrom + Length(ANew) - 1;
+    FColumnMode := False;
     FSelAnchorRow := AFrom;
     FSelAnchorCol := 0;
     if Last + 1 < FDoc.LineCount then
@@ -2732,6 +2759,7 @@ begin
     else
     begin
       // The match is shown selected, behind the question.
+      FColumnMode := False;
       FSelAnchorRow := Hit.LineIndex;
       FSelAnchorCol := Hit.ColIndex;
       FCursorRow := Hit.LineIndex;
@@ -2939,16 +2967,33 @@ begin
   NotifyHost;
 end;
 
+const
+  MaxBlockCol = 4096;
+
+var
+  // The text of the last block copied or cut, to paste it back as a block.
+  GBlockClip: string;
+
 procedure TEditorWindow.ClearSelection;
 begin
   FSelAnchorRow := -1;
   FSelAnchorCol := 0;
+  FColumnMode := False;
 end;
 
 function TEditorWindow.HasSelection: Boolean;
 begin
-  Result := (FSelAnchorRow >= 0) and
-    ((FSelAnchorRow <> FCursorRow) or (FSelAnchorCol <> FCursorCol));
+  if FColumnMode then
+    Result := (FSelAnchorRow >= 0) and
+      ((FSelAnchorRow <> FCursorRow) or (FSelAnchorCol <> FBlockCol))
+  else
+    Result := (FSelAnchorRow >= 0) and
+      ((FSelAnchorRow <> FCursorRow) or (FSelAnchorCol <> FCursorCol));
+end;
+
+function TEditorWindow.ColumnBlockActive: Boolean;
+begin
+  Result := FColumnMode and HasSelection;
 end;
 
 procedure TEditorWindow.CloseDocument;
@@ -3077,6 +3122,7 @@ begin
     begin
       // Anchor at the end, cursor on the first char: the link is shown
       // selected and LinkAtCursor still finds it.
+      FColumnMode := False;
       FSelAnchorRow := Line;
       FSelAnchorCol := BestCol + MdLine.Spans[BestIdx].Len;
       FCursorRow := Line;
@@ -3147,6 +3193,8 @@ end;
 
 procedure TEditorWindow.EnsureSelAnchor;
 begin
+  // Extending with Shift alone turns a block back into a stream selection.
+  FColumnMode := False;
   if FSelAnchorRow < 0 then
   begin
     FSelAnchorRow := FCursorRow;
@@ -3156,6 +3204,11 @@ end;
 
 procedure TEditorWindow.GetSelRange(out ARow1, ACol1, ARow2, ACol2: Integer);
 begin
+  if FColumnMode then
+  begin
+    GetBlockRect(ARow1, ACol1, ARow2, ACol2);
+    Exit;
+  end;
   if (FSelAnchorRow < FCursorRow) or
      ((FSelAnchorRow = FCursorRow) and (FSelAnchorCol <= FCursorCol)) then
   begin
@@ -3173,6 +3226,184 @@ begin
   end;
 end;
 
+procedure TEditorWindow.GetBlockRect(out ARow1, ACol1, ARow2, ACol2: Integer);
+begin
+  ARow1 := Min(FSelAnchorRow, FCursorRow);
+  ARow2 := Max(FSelAnchorRow, FCursorRow);
+  ACol1 := Min(FSelAnchorCol, FBlockCol);
+  ACol2 := Max(FSelAnchorCol, FBlockCol);
+end;
+
+function TEditorWindow.BlockAllowed: Boolean;
+begin
+  Result := FDoc.Ready and not FHexMode and not FMarkdownMode and not FWordWrap;
+end;
+
+function TEditorWindow.VirtualColAt(ALocalCol, ARow: Integer): Integer;
+begin
+  Result := Min(FLeftCol + CharAtCell(DocLineOrEmpty(ARow), FLeftCol, Max(ALocalCol - 1, 0)),
+    MaxBlockCol);
+end;
+
+procedure TEditorWindow.SetBlockCaret(ACol: Integer);
+begin
+  FSelAnchorCol := ACol;
+  FBlockCol := ACol;
+  FCursorCol := Min(ACol, Length(FDoc.GetLine(FCursorRow)));
+end;
+
+procedure TEditorWindow.MoveBlockCursor(ARowDelta, AColDelta: Integer);
+var
+  LineLen: Integer;
+begin
+  if not FDoc.Ready then
+    Exit;
+  if not BlockAllowed then
+  begin
+    // Hex, Markdown and wrapped views have no columns to cut: a stream
+    // selection is the closest thing.
+    if AColDelta = BlockColHome then
+      GotoLineHome(True)
+    else if AColDelta = BlockColEnd then
+      GotoLineEnd(True)
+    else
+      MoveCursor(ARowDelta, AColDelta, True);
+    Exit;
+  end;
+  BreakInsertCoalesce;
+  ClampCursor;
+  if not FColumnMode then
+  begin
+    if FSelAnchorRow < 0 then
+    begin
+      FSelAnchorRow := FCursorRow;
+      FSelAnchorCol := FCursorCol;
+    end;
+    FBlockCol := FCursorCol;
+    FColumnMode := True;
+  end;
+  FCursorRow := EnsureRange(FCursorRow + ARowDelta, 0, Max(FDoc.LineCount - 1, 0));
+  LineLen := Length(FDoc.GetLine(FCursorRow));
+  if AColDelta = BlockColHome then
+    FBlockCol := 0
+  else if AColDelta = BlockColEnd then
+    FBlockCol := LineLen
+  else
+    FBlockCol := EnsureRange(FBlockCol + AColDelta, 0, MaxBlockCol);
+  FCursorCol := Min(FBlockCol, LineLen);
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+function TEditorWindow.DeleteBlock(AKeepCaret: Boolean): Boolean;
+var
+  R1, C1, R2, C2, R: Integer;
+  Line: string;
+begin
+  Result := False;
+  if not HasSelection then
+    Exit;
+  GetBlockRect(R1, C1, R2, C2);
+  if C2 > C1 then
+    for R := R1 to R2 do
+    begin
+      Line := FDoc.GetLine(R);
+      Delete(Line, C1 + 1, C2 - C1);
+      FDoc.SetLine(R, Line);
+    end;
+  if AKeepCaret and (R2 > R1) then
+    SetBlockCaret(C1)
+  else
+  begin
+    FCursorRow := R1;
+    FCursorCol := C1;
+    ClearSelection;
+  end;
+  ClampCursor;
+  Result := True;
+end;
+
+procedure TEditorWindow.TypeIntoBlock(const AText: string);
+var
+  R1, C1, R2, C2, R: Integer;
+  Line: string;
+begin
+  GetBlockRect(R1, C1, R2, C2);
+  for R := R1 to R2 do
+  begin
+    Line := FDoc.GetLine(R);
+    if C2 > C1 then
+      Delete(Line, C1 + 1, C2 - C1);
+    if Length(Line) < C1 then
+      Line := Line + StringOfChar(' ', C1 - Length(Line));
+    Insert(AText, Line, C1 + 1);
+    FDoc.SetLine(R, Line);
+  end;
+  Inc(C1, Length(AText));
+  if R2 > R1 then
+    SetBlockCaret(C1)
+  else
+  begin
+    FCursorRow := R1;
+    FCursorCol := C1;
+    ClearSelection;
+  end;
+end;
+
+procedure TEditorWindow.EraseInBlock(ABackspace: Boolean);
+var
+  R1, C1, R2, C2, R: Integer;
+  Line: string;
+begin
+  GetBlockRect(R1, C1, R2, C2);
+  if C2 > C1 then
+  begin
+    DeleteBlock(True);
+    Exit;
+  end;
+  // An empty block over several rows: one character per row, left of the
+  // caret column for Backspace and at it for Delete.
+  for R := R1 to R2 do
+  begin
+    Line := FDoc.GetLine(R);
+    if ABackspace then
+    begin
+      if (C1 > 0) and (C1 <= Length(Line)) then
+        Delete(Line, C1, 1);
+    end
+    else if C1 < Length(Line) then
+      Delete(Line, C1 + 1, 1);
+    FDoc.SetLine(R, Line);
+  end;
+  if ABackspace and (C1 > 0) then
+    Dec(C1);
+  SetBlockCaret(C1);
+end;
+
+procedure TEditorWindow.InsertBlockText(const AText: string);
+var
+  Parts: TArray<string>;
+  Text, Line: string;
+  I, Row, Col: Integer;
+begin
+  Text := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
+  Text := StringReplace(Text, #13, #10, [rfReplaceAll]);
+  Parts := Text.Split([#10]);
+  Row := FCursorRow;
+  Col := FCursorCol;
+  for I := 0 to High(Parts) do
+  begin
+    Line := FDoc.GetLine(Row + I);
+    if Length(Line) < Col then
+      Line := Line + StringOfChar(' ', Col - Length(Line));
+    Insert(Parts[I], Line, Col + 1);
+    FDoc.SetLine(Row + I, Line);
+  end;
+  FCursorRow := Row + High(Parts);
+  FCursorCol := Col + Length(Parts[High(Parts)]);
+  ClearSelection;
+end;
+
 function TEditorWindow.IsCellSelected(ARow, ACol: Integer): Boolean;
 var
   R1, C1, R2, C2: Integer;
@@ -3183,6 +3414,8 @@ begin
   GetSelRange(R1, C1, R2, C2);
   if (ARow < R1) or (ARow > R2) then
     Exit;
+  if FColumnMode then
+    Exit((ACol >= C1) and (ACol < C2));
   if R1 = R2 then
     Result := (ACol >= C1) and (ACol < C2)
   else if ARow = R1 then
@@ -3270,6 +3503,14 @@ begin
   if not HasSelection then
     Exit;
   GetSelRange(R1, C1, R2, C2);
+  if FColumnMode then
+  begin
+    SetLength(Parts, R2 - R1 + 1);
+    for R := R1 to R2 do
+      Parts[R - R1] := Copy(CursorLineText(R), C1 + 1, C2 - C1);
+    Result := string.Join(#10, Parts);
+    Exit;
+  end;
   if R1 = R2 then
   begin
     Line := CursorLineText(R1);
@@ -3294,6 +3535,8 @@ begin
   Result := False;
   if not HasSelection then
     Exit;
+  if FColumnMode then
+    Exit(DeleteBlock(False));
   GetSelRange(R1, C1, R2, C2);
   First := FDoc.GetLine(R1);
   Last := FDoc.GetLine(R2);
@@ -3320,6 +3563,7 @@ procedure TEditorWindow.SelectAll;
 begin
   if not FDoc.Ready then
     Exit;
+  FColumnMode := False;
   FSelAnchorRow := 0;
   FSelAnchorCol := 0;
   if FHexMode then
@@ -3464,6 +3708,14 @@ begin
   uClipboardService.SetClipboardText(AText);
 end;
 
+procedure TEditorWindow.RememberBlockClip;
+begin
+  if FColumnMode and (FSelAnchorRow <> FCursorRow) then
+    GBlockClip := SelectedText
+  else
+    GBlockClip := '';
+end;
+
 procedure TEditorWindow.CopySelectionOrLine;
 begin
   if not FDoc.Ready then
@@ -3472,6 +3724,7 @@ begin
   if HasSelection then
   begin
     ClipboardSetText(SelectedText);
+    RememberBlockClip;
     Notice(T('ui.toast.copiedSelection', 'Selected text copied to the clipboard'));
   end
   else
@@ -3492,6 +3745,7 @@ begin
   begin
     PushUndo;
     ClipboardSetText(SelectedText);
+    RememberBlockClip;
     DeleteSelection;
     EnsureCursorVisible;
     NotifyHost;
@@ -3528,6 +3782,13 @@ begin
     DeleteSelection;
   Text := StringReplace(Text, #13#10, #10, [rfReplaceAll]);
   Text := StringReplace(Text, #13, #10, [rfReplaceAll]);
+  if (GBlockClip <> '') and (Text = GBlockClip) and BlockAllowed then
+  begin
+    InsertBlockText(Text);
+    EnsureCursorVisible;
+    NotifyHost;
+    Exit;
+  end;
   Parts := Text.Split([#10]);
   if Length(Parts) = 0 then
     Exit;
@@ -3571,6 +3832,18 @@ begin
     Exit;
   end;
   ClampCursor;
+  if FColumnMode and HasSelection then
+  begin
+    if not FCoalesceInsert then
+    begin
+      PushUndo;
+      FCoalesceInsert := True;
+    end;
+    TypeIntoBlock(ACh);
+    EnsureCursorVisible;
+    NotifyHost;
+    Exit;
+  end;
   if HasSelection then
   begin
     BreakInsertCoalesce;
@@ -3613,7 +3886,10 @@ begin
   if HasSelection then
   begin
     PushUndo;
-    DeleteSelection;
+    if FColumnMode then
+      EraseInBlock(True)
+    else
+      DeleteSelection;
     EnsureCursorVisible;
     NotifyHost;
     Exit;
@@ -3661,7 +3937,10 @@ begin
   if HasSelection then
   begin
     PushUndo;
-    DeleteSelection;
+    if FColumnMode then
+      EraseInBlock(False)
+    else
+      DeleteSelection;
     EnsureCursorVisible;
     NotifyHost;
     Exit;
@@ -3832,6 +4111,7 @@ begin
 
   if Hit.Found then
   begin
+    FColumnMode := False;
     FSelAnchorRow := Hit.LineIndex;
     FSelAnchorCol := Hit.ColIndex;
     FCursorRow := Hit.LineIndex;
@@ -3918,7 +4198,7 @@ begin
     end;
     if HasSelection then
     begin
-      Segs := Segs + ['Sel'];
+      Segs := Segs + [IfThen(FColumnMode, 'Blk', 'Sel')];
       Kinds := Kinds + [sskNone];
     end
     else if LinesText <> '' then
@@ -4639,7 +4919,20 @@ begin
     Exit;
 
   Result := True;
-  if ssShift in AShift then
+  if (ssAlt in AShift) and BlockAllowed then
+  begin
+    FClicks.Reset;
+    BreakInsertCoalesce;
+    FSelAnchorRow := Row;
+    FSelAnchorCol := VirtualColAt(ALocalCol, Row);
+    FBlockCol := FSelAnchorCol;
+    FColumnMode := True;
+    FCursorRow := Row;
+    FCursorCol := Col;
+    EnsureCursorVisible;
+    NotifyHost;
+  end
+  else if ssShift in AShift then
   begin
     FClicks.Reset;
     SetCursorPos(Row, Col, True);
@@ -4655,6 +4948,7 @@ begin
   begin
     // Anchor at click; selection appears when the cursor moves on drag.
     BreakInsertCoalesce;
+    FColumnMode := False;
     FSelAnchorRow := Row;
     FSelAnchorCol := Col;
     FCursorRow := Row;
@@ -4680,7 +4974,18 @@ begin
 
   if HitTextCell(ALocalCol, ALocalRow, Row, Col) then
   begin
-    if (Row <> FCursorRow) or (Col <> FCursorCol) then
+    if FColumnMode then
+    begin
+      if (Row <> FCursorRow) or (VirtualColAt(ALocalCol, Row) <> FBlockCol) then
+      begin
+        FCursorRow := Row;
+        FBlockCol := VirtualColAt(ALocalCol, Row);
+        FCursorCol := Col;
+        EnsureCursorVisible;
+        NotifyHost;
+      end;
+    end
+    else if (Row <> FCursorRow) or (Col <> FCursorCol) then
     begin
       FCursorRow := Row;
       FCursorCol := Col;

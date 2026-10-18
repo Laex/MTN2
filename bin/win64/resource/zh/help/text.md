@@ -14,6 +14,7 @@
 | 紧接着再快速点击 | 选择整行 |
 | Shift+点击 | 把选区扩展或缩小到点击处 |
 | 鼠标拖动 | 选择(查看器、编辑器、控制台) |
+| Alt+鼠标拖动 | 矩形块(查看器、编辑器) |
 | Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del, Ctrl+V / Shift+Ins | 剪贴板 |
 | Ctrl+A | 全选 |
 

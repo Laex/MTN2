@@ -108,6 +108,7 @@ begin
   Result.LineSpacing := True;
   Result.MarkedRows := 'band';
   Result.PassiveCursor := False;
+  Result.AltOpensMenu := False;
   Result.SelectFolders := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
@@ -149,6 +150,7 @@ begin
     Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
     Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
     Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
+    Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
   finally
     if TFile.Exists(Path) then
@@ -210,6 +212,9 @@ begin
     Pair := Root.RemovePair('passiveCursor');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('altOpensMenu');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -233,6 +238,7 @@ begin
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
     Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
     Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
+    Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
   finally
     if TFile.Exists(Path) then

@@ -25,6 +25,7 @@
 | Ctrl+Alt+U | remove repeated lines |
 | Ctrl+Alt+F | format the text to a given width (paragraphs are separated by blank lines) |
 | Alt+→ / Alt+← | shift the selected lines (the current line without a selection) right / left |
+| Alt+Shift+arrows (and Home / End / PgUp / PgDn), Alt+mouse | select a rectangular block – the same columns of several lines; Del, Backspace, typing and Ctrl+X / Ctrl+C / Ctrl+V act on every line of the block, a copied block is pasted as a block |
 | Ctrl+Home / Ctrl+End | to the start / end of the file |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy (without a selection – the line) / cut / paste |
 | Esc, F10 (in the viewer also 5 on the numeric keypad) | close |

@@ -26,6 +26,10 @@ const
   cDisplayMaxCellExtra = 4;
   cDisplayMaxZoom = 3.0;
 
+var
+  /// <summary>A bare press of Alt opens the menu bar when it is released.</summary>
+  GAltOpensMenu: Boolean = True;
+
 type
   /// <summary>Dialog, button and toast drop shadows and the modal backdrop
   /// (uThemeDrawing.GShadowStyle): classic FAR/NDN strength, a lighter one,
@@ -54,6 +58,9 @@ type
     ShowStatusLine: Boolean;
     /// <summary>Files can be dragged out of the panels with the mouse.</summary>
     FileDrag: Boolean;
+    /// <summary>Pressing and releasing Alt on its own opens the menu bar
+    /// (uDisplaySettings.GAltOpensMenu).</summary>
+    AltOpensMenu: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>The cursor row is highlighted in the passive panel too
@@ -293,6 +300,7 @@ begin
   Result.ShowKeyBar := True;
   Result.ShowStatusLine := True;
   Result.FileDrag := True;
+  Result.AltOpensMenu := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;
