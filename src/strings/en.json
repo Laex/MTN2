@@ -46,13 +46,23 @@
     "DIALOG_ASSOCIATIONEDIT": {
       "$title": "File Association",
       "ok": "OK",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "action_items": {
+        "Edit": "Edit",
+        "Run command": "Run command",
+        "Shell (OS open)": "Shell (OS open)",
+        "View": "View"
+      },
+      "lbl_action": "Action:",
+      "lbl_command": "Command (%1 = file, Run command only):",
+      "lbl_extension": "Extension:"
     },
     "DIALOG_ASSOCIATIONS": {
       "$title": "File Associations",
       "ok": "Edit",
       "add": "&Add",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "assocHeader": "Ext          Action        Command"
     },
     "DIALOG_CMDHISTORY": {
       "$title": "Command history",
@@ -68,18 +78,36 @@
       "moveup": "&Up",
       "movedown": "D&n",
       "ok": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "header": "    T Name             Mask                     N  S  C   Sample"
     },
     "DIALOG_COLORCODINGEDIT": {
       "$title": "Color coding group",
       "cc_enabled": "&Enabled",
       "ok": "OK",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "cc_applyto_items": {
+        "Dirs only": "Dirs only",
+        "Files and dirs": "Files and dirs",
+        "Files only": "Files only"
+      },
+      "lbl_applyto": "Apply to:",
+      "lbl_columns": "           Fg             Bg             Sample",
+      "lbl_current": "Current:",
+      "lbl_hint_blank": "Leave a color blank to inherit the theme's own color there.",
+      "lbl_hint_format": "Colors: #RRGGBB, @role.key (theme role) or a palette name.",
+      "lbl_hint_pick": "F9 or [...] = pick a color for the Fg/Bg field above.",
+      "lbl_masks": "Mask(s):",
+      "lbl_name": "Name:",
+      "lbl_normal": "Normal:",
+      "lbl_selected": "Selected:"
     },
     "DIALOG_COLORPICKER": {
       "$title": "Pick color",
       "ok": "Use",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "clear": "&Theme color",
+      "hint": "Arrows move, Shift+Left/Right by 10, Tab next"
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Custom columns",
@@ -105,12 +133,28 @@
       "job_filter": "&Exclude mask:",
       "ok": "Copy",
       "background": "&Background",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "existing_label": "Already existing files:",
+      "job_existing_items": {
+        "Ask": "Ask",
+        "Overwrite": "Overwrite",
+        "Skip": "Skip"
+      },
+      "retry_label": "Retries on error:"
     },
     "DIALOG_CREATELINK": {
       "$title": "Create link",
       "ok": "Create",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_link_name": "Link name:",
+      "lbl_target": "Target:",
+      "lbl_type": "Type:",
+      "link_type_items": {
+        "Hard link": "Hard link",
+        "Junction (directory)": "Junction (directory)",
+        "Symbolic link (directory)": "Symbolic link (directory)",
+        "Symbolic link (file)": "Symbolic link (file)"
+      }
     },
     "DIALOG_DELETE": {
       "background": "&Background",
@@ -269,16 +313,37 @@
       "hint_keys": "F2 rename  F4 group  Del delete  Ctrl+Up/Down move  Left [-]  Right [+]",
       "ok": "Go",
       "save": "&Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "hotlistHeader": "K     Group          Name                 Path                       Hotkey"
     },
     "DIALOG_GOTOLINE": {
       "$title": "Go to line",
       "ok": "OK",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_line": "Line number:"
     },
     "DIALOG_HELP": {
       "$title": "Help",
-      "ok": "OK"
+      "ok": "OK",
+      "line0": "F2 User   F3 View/size dirs   F4 Edit   F5 Copy",
+      "line1": "F6 Move   F7 MkDir  F8 Del    F10 Quit",
+      "line10": "Ctrl+Left/Right drive preview (release=go)",
+      "line11": "Ctrl+Alt+S sync dirs   F5: newer/retry/exclude/links",
+      "line12": "F5 extract from ZIP / copy into open ZIP",
+      "line13": "Ins / Ctrl+A select   Ctrl+Shift+A attr   Tab side",
+      "line14": "Brief: Shift+Left/Right invert column span (not landing)",
+      "line15": "F3 on dirs: size all selected folders (Esc cancels)",
+      "line16": "Viewer: F4/Ctrl+H Hex↔Text   F8 re-decode binary as text",
+      "line17": "Ctrl+Shift+O sync dir   Alt+F8 works in Console too",
+      "line18": "Shift+F5 Copy into same directory under a new name",
+      "line2": "Shift+F1 Pack ZIP   Shift+F2 Unpack   Shift+F6 Ren",
+      "line3": "Shift+F8 Delete cursor item   Alt+F1/F2 Drive   Alt+F7 Find",
+      "line4": "Gray+/-/* Select  Shift+Arrows/Home/End/Pg invert",
+      "line5": "Ctrl+O / Esc Console   Ctrl+Down cmdline   Ctrl+R refresh",
+      "line6": "Ctrl+Enter name   Ctrl+Shift+Enter path   Tab complete   Up/Dn hist",
+      "line7": "Ctrl+F1/F2 hide panel   Ctrl+\\ root / leave archive",
+      "line8": "Ctrl+U swap  Ctrl+]/=other  Ctrl+[=active  Ctrl+L info",
+      "line9": "Ctrl+` modes  Ctrl+F12 Sort  Alt+F12 dirs  Alt+F8 cmds  F3-9"
     },
     "DIALOG_INPUT": {
       "$title": "Input",
@@ -297,7 +362,8 @@
       "foreground": "Foreground",
       "canceljob": "&Cancel",
       "cancelall": "Cancel &all",
-      "cancel": "Close"
+      "cancel": "Close",
+      "header": "Job                                              Progress"
     },
     "DIALOG_JOBPROGRESS": {
       "$title": "Copy",
@@ -328,13 +394,17 @@
       "reset": "&Reset",
       "resetall": "Reset &all",
       "ok": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "header": "  Action                                Hotkeys"
     },
     "DIALOG_KEYMAPEDIT": {
       "$title": "Edit hotkeys",
       "ok": "OK",
       "reset": "&Reset",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_hint_mods": "Modifiers: Ctrl+ Alt+ Shift+ (e.g. Ctrl+Shift+F5, Alt+F7)",
+      "lbl_hint_sep": "Separate multiple combos with ';', e.g. Ctrl+C; F5",
+      "lbl_keys": "Hotkeys:"
     },
     "DIALOG_OVERWRITEASK": {
       "$title": "Warning",
@@ -360,7 +430,10 @@
       "$title": "Plugin permissions",
       "hint": "Replacing built-in handlers reloads the plugin at once.",
       "ok": "  OK  ",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "perm_0": "&Permission",
+      "perm_1": "Perm&ission",
+      "perm_override": "&Replace"
     },
     "DIALOG_PLUGININFO": {
       "$title": "Plugin",
@@ -376,7 +449,8 @@
       "opt_reverse": "Re&verse search",
       "word": "Wo&rd",
       "selection": "Se&lection",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_find": "Find:"
     },
     "DIALOG_REPLACEASK": {
       "$title": "Replace",
@@ -395,7 +469,9 @@
       "all": "&All",
       "word": "Wo&rd",
       "selection": "Se&lection",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_find": "Find:",
+      "lbl_replace": "Replace with:"
     },
     "DIALOG_SEARCH": {
       "$title": "Find file",
@@ -405,7 +481,9 @@
       "search_regex": "&Regex",
       "search_subdirs": "Search in &subfolders",
       "ok": "Find",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_mask": "A file mask or several file masks:",
+      "lbl_text": "Containing text:"
     },
     "DIALOG_PANELFILTER": {
       "$title": "Panel filter",
@@ -436,23 +514,50 @@
       "dates_orig": "&Original",
       "recurse": "&Process subfolders",
       "ok": "Set",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "attr_a_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_h_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_ro_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      },
+      "attr_s_items": {
+        "Clear": "Clear",
+        "Keep": "Keep",
+        "Set": "Set"
+      }
     },
     "DIALOG_SSHCONNECTIONEDIT": {
       "$title": "SSH/SFTP Connection",
       "ok": "OK",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_host": "Host:",
+      "lbl_identity": "Identity file:",
+      "lbl_name": "Name:",
+      "lbl_port": "Port (0=default):",
+      "lbl_user": "User:"
     },
     "DIALOG_SSHCONNECTIONS": {
       "$title": "SSH/SFTP Connections",
       "ok": "Shell",
       "browse": "&Browse",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "sshHeader": "Name                                    Host"
     },
     "DIALOG_TERMINALPROFILE": {
       "$title": "New terminal",
       "ok": "OK",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "lbl_prompt": "Select shell profile:"
     },
     "DIALOG_THEME": {
       "$title": "Theme",
@@ -522,7 +627,8 @@
       "$title": "Workspaces",
       "ok": "Go",
       "save": "&Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "wsHeader": "Name                                            Links"
     }
   },
   "ui": {
@@ -1582,7 +1688,10 @@
     "findCount": "Find %d",
     "resultCount": "Results %d",
     "selection": "Sel %s (%d)",
-    "free": "Free %s"
+    "free": "Free %s",
+    "File history": "File history",
+    "Open": "Open",
+    "View": "View"
   },
   "col": {
     "name": "Name",

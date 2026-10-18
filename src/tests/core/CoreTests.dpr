@@ -24,6 +24,7 @@ uses
   TestKeymap in 'TestKeymap.pas',
   TestKeyChord in 'TestKeyChord.pas',
   TestLiveReload in 'TestLiveReload.pas',
+  TestLocalePacks in 'TestLocalePacks.pas',
   TestMessageBus in 'TestMessageBus.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
   TestSettingsTransfer in 'TestSettingsTransfer.pas',
