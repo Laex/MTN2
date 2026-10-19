@@ -17,3 +17,7 @@
 ## Для авторов
 
 Исходники: `src/plugins/mtn.highlight/src/lib.rs` (Rust, крейт `syntect`, синтаксисы Sublime). Плагин регистрирует каждый язык через `register_highlighter_state` и отвечает на `hl_line` цветными отрезками и состоянием разбора на конце строки. См. `docs/PLUGIN_DEVELOPMENT.md`.
+
+## Лицензии
+
+В плагине библиотека `syntect` и описания синтаксисов Sublime Text; их лицензии – в файле `licenses.md` рядом с плагином.

@@ -17,3 +17,7 @@ Open Options - Plugins... and switch the plugin off; files are plain text again.
 ## For authors
 
 Source: `src/plugins/mtn.highlight/src/lib.rs` (Rust, the `syntect` crate, Sublime syntaxes). It registers every language with `register_highlighter_state` and answers `hl_line` with the colored spans and the parser state at the end of the line. See `docs/PLUGIN_DEVELOPMENT.md`.
+
+## Licenses
+
+The plugin contains the `syntect` library and the Sublime Text syntax definitions; their licenses are in `licenses.md` next to the plugin.
