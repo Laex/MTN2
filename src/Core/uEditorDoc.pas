@@ -65,6 +65,8 @@ type
     // stays empty in this mode; lines are seeked/decoded on demand from
     // FStreamPath using FLineOffsets and cached in FLineCache.
     FStreaming: Boolean;
+    /// <summary>The first line changed since the highlighter last looked (MaxInt: none).</summary>
+    FHlDirtyFrom: Integer;
     FStreamPath: string;
     // True when FStreamPath is a temp file extracted from an archive entry
     // for streaming (Stage: archive streaming) - Close must delete it. False
@@ -106,6 +108,7 @@ type
     procedure StartStreamingOpen(const APath: string; AGen: Cardinal);
     procedure StartStreamingOpenFromArchive(const AURI: string; AGen: Cardinal);
     function StreamingGetLine(AIndex: Integer): string;
+    procedure TouchHighlight(ALine: Integer);
     procedure CacheLine(AIndex: Integer; const AValue: string);
     // Stats APath (Exists/GetSize/GetLastWriteTime) on a background thread
     // and delivers the result back via AOnDone on the main thread - never
@@ -179,6 +182,9 @@ type
     /// <summary>Line-indexed view of a file too big for the
     /// whole-buffer load. Read-only until TryPromoteStreaming.</summary>
     property Streaming: Boolean read FStreaming;
+    /// <summary>The first line changed since the last call (the lines from it on need new syntax
+    /// colors), or MaxInt when none did. Resets the mark.</summary>
+    function TakeHighlightDirty: Integer;
     property StreamFileSize: Int64 read FStreamFileSize;
     property Encoding: TTextFileEncoding read FEncoding;
     property Error: string read FError;
@@ -207,6 +213,7 @@ begin
   FVfs := CreateDefaultVfs;
   FLines := TList<string>.Create;
   FBookmarks := TList<Integer>.Create;
+  FHlDirtyFrom := MaxInt;
   FLineCache := TDictionary<Integer, string>.Create;
   FLineCacheOrder := TQueue<Integer>.Create;
   FEncoding := tfeUtf8;
@@ -236,6 +243,18 @@ begin
   inherited Destroy;
 end;
 
+procedure TEditorDoc.TouchHighlight(ALine: Integer);
+begin
+  if ALine < FHlDirtyFrom then
+    FHlDirtyFrom := ALine;
+end;
+
+function TEditorDoc.TakeHighlightDirty: Integer;
+begin
+  Result := FHlDirtyFrom;
+  FHlDirtyFrom := MaxInt;
+end;
+
 procedure TEditorDoc.NotifyChanged;
 begin
   if Assigned(FOnChanged) then
@@ -252,6 +271,7 @@ begin
   FURI := '';
   FPath := '';
   FLines.Clear;
+  TouchHighlight(0);
   FBookmarks.Clear;
   SetLength(FRawBytes, 0);
   FReady := False;
@@ -376,6 +396,7 @@ begin
   if FLines[AIndex] <> AValue then
   begin
     FLines[AIndex] := AValue;
+    TouchHighlight(AIndex);
     MarkDirty;
   end;
 end;
@@ -397,6 +418,7 @@ begin
   if AIndex > FLines.Count then
     AIndex := FLines.Count;
   FLines.Insert(AIndex, AValue);
+  TouchHighlight(AIndex);
   for I := 0 to FBookmarks.Count - 1 do
     if FBookmarks[I] >= AIndex then
       FBookmarks[I] := FBookmarks[I] + 1;
@@ -412,6 +434,7 @@ begin
   if (AIndex < 0) or (AIndex >= FLines.Count) then
     Exit;
   FLines.Delete(AIndex);
+  TouchHighlight(AIndex);
   for I := FBookmarks.Count - 1 downto 0 do
     if FBookmarks[I] = AIndex then
       FBookmarks.Delete(I)
@@ -507,6 +530,7 @@ var
   I: Integer;
 begin
   FLines.Clear;
+  TouchHighlight(0);
   if Length(ALines) = 0 then
     FLines.Add('')
   else
@@ -803,6 +827,7 @@ var
   Ch: Char;
 begin
   FLines.Clear;
+  TouchHighlight(0);
   FCrlf := Pos(#13#10, AText) > 0;
   S := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
   S := StringReplace(S, #13, #10, [rfReplaceAll]);
@@ -1061,6 +1086,7 @@ begin
           FBinary := True;
           FEncoding := tfeUtf8;
           FLines.Clear;
+          TouchHighlight(0);
           FLines.Add('');
           RefreshReadOnly;
           FDirty := False;
@@ -1366,6 +1392,7 @@ begin
             FEncoding := tfeUtf8;
             FRawBytes := HexBuf;
             FLines.Clear;
+            TouchHighlight(0);
             FLines.Add('');
             FReadOnly := True;
             FDirty := False;
@@ -1492,6 +1519,7 @@ begin
     FBinary := True;
     FEncoding := tfeUtf8;
     FLines.Clear;
+    TouchHighlight(0);
     FLines.Add('');
     FStatus := Format('Hex  %d bytes', [Length(FRawBytes)]);
   end

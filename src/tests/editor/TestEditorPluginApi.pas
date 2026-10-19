@@ -23,6 +23,7 @@ type
     [Test] procedure TestSelectionAndLineByIndex;
     [Test] procedure TestChangesAreAnnouncedOncePerCommand;
     [Test] procedure TestHighlightColorsTheCells;
+    [Test] procedure TestBlockStateColorsFollowTheEdits;
   end;
 
 implementation
@@ -280,6 +281,82 @@ begin
     Assert.AreNotEqual(Plain, Colored, 'the keyword has its own color');
     Assert.AreEqual(Colored, Grid[Row][X + 2].FgColor, 'to its last letter');
     Assert.AreEqual(Plain, Grid[Row][X + 3].FgColor, 'and the text after it is plain again');
+  finally
+    UnregisterHighlighter('t.hl');
+    View.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestEditorPluginApi.TestBlockStateColorsFollowTheEdits;
+var
+  Dir: string;
+  View: TEditorWindow;
+  Grid: TTerminalGrid;
+  Y, Row: Integer;
+  Plain, Inside: TAlphaColor;
+
+  function RowOf(const AText: string): Integer;
+  var
+    R: Integer;
+  begin
+    Result := -1;
+    for R := 0 to High(Grid) do
+      if Pos(AText, RowString(Grid, R, 0, 60)) > 0 then
+        Result := R;
+  end;
+
+  procedure Paint;
+  begin
+    View.PaintEmbedded(Grid, 0, 0, 60, 14, 0, 0);
+    Pump;
+    View.PaintEmbedded(Grid, 0, 0, 60, 14, 0, 0);
+  end;
+
+begin
+  // A fake language: a line with "/*" opens a block, a line with "*/" closes it; a line that is
+  // in a block is colored as a comment.
+  RegisterStatefulHighlighter('t.hl', '.txt',
+    function(const ALine: string; AStateIn: Integer; out ASpans: THighlightSpans;
+      out AStateOut: Integer): Boolean
+    begin
+      AStateOut := AStateIn;
+      if (AStateIn = 0) and (Pos('/*', ALine) > 0) then
+        AStateOut := 1
+      else if (AStateIn = 1) and (Pos('*/', ALine) > 0) then
+        AStateOut := 0;
+      SetLength(ASpans, 0);
+      if AStateIn = 1 then
+      begin
+        SetLength(ASpans, 1);
+        ASpans[0].Start := 0;
+        ASpans[0].Len := Length(ALine);
+        ASpans[0].Kind := cHighlightComment;
+      end;
+      Result := Length(ASpans) > 0;
+    end);
+  View := OpenText('a /* open' + sLineBreak + 'in block' + sLineBreak + 'end */ x' + sLineBreak +
+    'after', False, Dir);
+  try
+    SetLength(Grid, 14);
+    for Y := 0 to High(Grid) do
+      SetLength(Grid[Y], 60);
+    Paint;
+    Row := RowOf('in block');
+    Assert.IsTrue(Row >= 0, 'the line is drawn');
+    Plain := Grid[RowOf('after')][1].FgColor;
+    Inside := Grid[Row][1].FgColor;
+    Assert.AreNotEqual(Plain, Inside, 'the line inside the block has the comment color');
+
+    // Deleting the "/*" leaves no block open, so the line below is plain.
+    SendKey(View, vkRight, []);
+    SendKey(View, vkRight, []);
+    SendKey(View, vkRight, []);
+    SendKey(View, vkDelete, []);
+    SendKey(View, vkDelete, []);
+    Paint;
+    Row := RowOf('in block');
+    Assert.AreEqual(Plain, Grid[Row][1].FgColor, 'the edit above recolored the line');
   finally
     UnregisterHighlighter('t.hl');
     View.Free;

@@ -1,0 +1,14 @@
+{
+  "id": "mtn.highlight",
+  "name": "Syntax highlighting",
+  "version": "0.1.0",
+  "abi": 1,
+  "startup": true,
+  "memoryMib": 64,
+  "description": {
+    "en": "Colors source code in the viewer (F3) and the editor (F4): about 70 languages, including multi-line comments and strings.",
+    "ru": "Раскрашивает исходный код в просмотрщике (F3) и редакторе (F4): около 70 языков, включая многострочные комментарии и строки."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

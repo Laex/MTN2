@@ -1718,6 +1718,7 @@ begin
   PluginSetResources(APluginId, ExtractFileDir(AFileName), Manifest.ResourceVersion);
   Inst := TWasmPluginInstance.Create(APluginId);
   Inst.Wasi := Manifest.Wasi;
+  Inst.MemoryMib := Manifest.MemoryMib;
   if not Inst.LoadFromFile(AFileName, Err) then
   begin
     Inst.Free;

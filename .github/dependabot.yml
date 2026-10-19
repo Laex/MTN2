@@ -8,3 +8,7 @@ updates:
     directory: /src/plugins/mtn.ws
     schedule:
       interval: monthly
+  - package-ecosystem: cargo
+    directory: /src/plugins/mtn.highlight
+    schedule:
+      interval: monthly

@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap, uStatusSegments;
+  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight;
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
@@ -56,6 +56,12 @@ type
   TEditorWindow = class(TTerminalWindow)
   private
     FDoc: TEditorDoc;
+    /// <summary>Syntax colors of a language whose lines depend on the lines before them: the
+    /// state at the start of every line, and whether lines were left plain for now.</summary>
+    FHlTracker: THighlightTracker;
+    FHlPending: Boolean;
+    FHlRepaintQueued: Boolean;
+    FHlFrameStart: UInt64;
     FURI: string;
     FViewOnly: Boolean;
     FHexMode: Boolean;
@@ -324,7 +330,11 @@ type
     /// <summary>Recolors the cells of row ARow with the spans a plugin highlighter gives for
     /// ALine; AFirstChar is the 1-based index in ALine of the first visible character.</summary>
     procedure ApplyHighlight(ARow: Integer; const ALine: string; AFirstChar, AWidth: Integer;
-      AHighlightId: Integer);
+      AHighlightId, ALineIdx: Integer);
+    procedure SyncHighlightTracker(AHighlightId: Integer);
+    function LineHighlight(AHighlightId, ALineIdx: Integer; const ALine: string;
+      out ASpans: THighlightSpans): Boolean;
+    procedure QueueHighlightRepaint;
     procedure DoBackspace;
     procedure DoDelete;
     procedure DoEnter;
@@ -471,7 +481,7 @@ implementation
 
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
-  System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uPluginHighlight, uStrings, uDialogHistory, uDialogResources, uNotice,
+  System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uStrings, uDialogHistory, uDialogResources, uNotice,
   uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps, uDisplaySettings;
 
 var
@@ -851,6 +861,7 @@ destructor TEditorWindow.Destroy;
 begin
   FAlive := False;
   FLife.Alive := False;
+  FHlTracker.Free;
   if FSurfaceHandle <> 0 then
   begin
     SurfaceTabClosed(FSurfaceHandle);
@@ -4689,15 +4700,80 @@ begin
     LeaveMarkdownOverlay;
 end;
 
+procedure TEditorWindow.SyncHighlightTracker(AHighlightId: Integer);
+var
+  Dirty: Integer;
+begin
+  Dirty := FDoc.TakeHighlightDirty;
+  // A streamed (big) file is colored line by line without the state of the lines above.
+  if (AHighlightId = 0) or FDoc.Streaming or not HighlighterIsStateful(AHighlightId) then
+  begin
+    FreeAndNil(FHlTracker);
+    Exit;
+  end;
+  if (FHlTracker = nil) or (FHlTracker.Id <> AHighlightId) then
+  begin
+    FHlTracker.Free;
+    FHlTracker := THighlightTracker.Create(AHighlightId);
+  end
+  else if Dirty <> MaxInt then
+    FHlTracker.InvalidateFrom(Dirty);
+end;
+
+function TEditorWindow.LineHighlight(AHighlightId, ALineIdx: Integer; const ALine: string;
+  out ASpans: THighlightSpans): Boolean;
+const
+  cFrameBudgetMs = 30;
+var
+  StateOut, Left: Integer;
+begin
+  if not HighlighterIsStateful(AHighlightId) then
+    Exit(HighlightLine(AHighlightId, ALine, ASpans));
+  if FHlTracker = nil then
+    Exit(HighlightLineState(AHighlightId, ALine, 0, ASpans, StateOut));
+  Left := cFrameBudgetMs - Integer(TThread.GetTickCount64 - FHlFrameStart);
+  if (ALineIdx < 0) or not FHlTracker.Reach(ALineIdx,
+       function(AIndex: Integer): string
+       begin
+         Result := FDoc.GetLine(AIndex);
+       end, Left) then
+  begin
+    // The states above this line are still being worked out; it is colored on a later repaint.
+    FHlPending := True;
+    ASpans := nil;
+    Exit(False);
+  end;
+  Result := HighlightLineState(AHighlightId, ALine, FHlTracker.StateAt(ALineIdx), ASpans, StateOut);
+end;
+
+procedure TEditorWindow.QueueHighlightRepaint;
+var
+  Life: ILifeFlag;
+begin
+  if FHlRepaintQueued then
+    Exit;
+  FHlRepaintQueued := True;
+  Life := FLife;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if not Life.Alive then
+        Exit;
+      FHlRepaintQueued := False;
+      Invalidate;
+    end);
+end;
+
 procedure TEditorWindow.ApplyHighlight(ARow: Integer; const ALine: string; AFirstChar,
-  AWidth, AHighlightId: Integer);
+  AWidth, AHighlightId, ALineIdx: Integer);
 var
   Spans: THighlightSpans;
   Span: THighlightSpan;
   First, Last, I, K, Col, W, Fit: Integer;
   Color: TAlphaColor;
 begin
-  if (ARow < 0) or (ARow > High(Buffer)) or not HighlightLine(AHighlightId, ALine, Spans) then
+  if (ARow < 0) or (ARow > High(Buffer)) or
+     not LineHighlight(AHighlightId, ALineIdx, ALine, Spans) then
     Exit;
   // The characters that fit AWidth cells from AFirstChar; a wide one takes two.
   Fit := TextFitChars(Copy(ALine, AFirstChar, AWidth), AWidth);
@@ -4791,7 +4867,10 @@ begin
   TextW := TextWidth;
   HighlightId := 0;
   if (FSurfaceHandle = 0) and FDoc.Ready and not FHelpMode then
-    HighlightId := HighlighterFor(ExtractFileExt(FDoc.Path));
+    HighlightId := HighlighterForFile(FDoc.Path);
+  SyncHighlightTracker(HighlightId);
+  FHlFrameStart := TThread.GetTickCount64;
+  FHlPending := False;
 
   if FSurfaceHandle <> 0 then
     DrawSurfaceContent
@@ -4840,9 +4919,9 @@ begin
       if (HighlightId <> 0) and (Line <> '') then
       begin
         if FWordWrap and FViewOnly and (TextW > 0) then
-          ApplyHighlight(1 + Y, Line, CharOffset + 1, TextW, HighlightId)
+          ApplyHighlight(1 + Y, Line, CharOffset + 1, TextW, HighlightId, LineIdx)
         else
-          ApplyHighlight(1 + Y, Line, FLeftCol + 1, TextW, HighlightId);
+          ApplyHighlight(1 + Y, Line, FLeftCol + 1, TextW, HighlightId, LineIdx);
       end;
       if FWordWrap and FViewOnly and (TextW > 0) then
         PaintTextSelection(1 + Y, LineIdx, CharOffset, Vis, TextW)
@@ -4874,6 +4953,8 @@ begin
     end;
   end;
 
+  if FHlPending then
+    QueueHighlightRepaint;
   if FSurfaceHandle = 0 then
     DrawScrollBar;
   if FChromeless or IsSurfaceFullscreen then

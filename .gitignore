@@ -58,6 +58,8 @@ src/tools/dcu/
 src/tools/**/dcu/
 src/tests/dcu/
 src/tools/wasmtime/
+# Built from Cargo.toml (the syntax tables make it large)
+/src/plugins/mtn.highlight/plugin.wasm
 
 # Rust plugin build trees
 **/target/
@@ -88,6 +90,7 @@ modules/
 !.gitattributes
 !/.github/
 !/src/plugins/mtn.ws/.cargo/
+!/src/plugins/mtn.highlight/.cargo/
 
 # IDE / OS junk
 Thumbs.db

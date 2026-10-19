@@ -28,6 +28,11 @@ function ApplyFileAttrOne(const APath: string; const APlan: TFileAttrPlan;
 /// <summary>Drive roots (volume GUID and device) are a Windows notion: always False.</summary>
 function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
 
+/// <summary>Accounts that can own a file: local users and the well-known
+/// groups and service accounts, as DOMAIN/name. Empty where the owner is not
+/// chosen from a list.</summary>
+function ListFileOwnerCandidates: TArray<string>;
+
 implementation
 
 uses
@@ -105,6 +110,11 @@ end;
 function PlatformFileModeSupported: Boolean;
 begin
   Result := True;
+end;
+
+function ListFileOwnerCandidates: TArray<string>;
+begin
+  Result := nil;
 end;
 
 function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;

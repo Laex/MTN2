@@ -42,6 +42,10 @@ type
     /// environment, no arguments, and a larger memory limit. Ignored for a
     /// native DLL.</summary>
     Wasi: Boolean;
+    /// <summary>Optional "memoryMib": N - memory limit of a WASM module that is not built for
+    /// WASI, in MiB (at most 256). 0 = the small default; a module that carries big tables (a
+    /// syntax library) asks for more.</summary>
+    MemoryMib: Integer;
     /// <summary>Optional "keepLoaded": true - the native DLL stays mapped after
     /// the plugin is unloaded or switched off (its registrations are removed and
     /// mtn_plugin_shutdown runs, FreeLibrary does not). Needed by a DLL that
@@ -114,7 +118,7 @@ function PluginListDisplayLabel(const APluginId, APluginDir: string): string;
 implementation
 
 uses
-  System.IOUtils, System.JSON, System.Generics.Collections;
+  System.IOUtils, System.JSON, System.Math, System.Generics.Collections;
 
 procedure ClearManifest(out AManifest: TPluginManifest);
 begin
@@ -128,6 +132,7 @@ begin
   SetLength(AManifest.Overrides, 0);
   AManifest.Startup := False;
   AManifest.Wasi := False;
+  AManifest.MemoryMib := 0;
   AManifest.KeepLoaded := False;
   SetLength(AManifest.DescriptionLocales, 0);
   SetLength(AManifest.DescriptionTexts, 0);
@@ -230,6 +235,9 @@ begin
     AManifest.Startup := (N is TJSONBool) and TJSONBool(N).AsBoolean;
     N := Obj.Values['wasi'];
     AManifest.Wasi := (N is TJSONBool) and TJSONBool(N).AsBoolean;
+    N := Obj.Values['memoryMib'];
+    if N is TJSONNumber then
+      AManifest.MemoryMib := Max(0, Min(256, TJSONNumber(N).AsInt));
     N := Obj.Values['keepLoaded'];
     AManifest.KeepLoaded := (N is TJSONBool) and TJSONBool(N).AsBoolean;
     N := Obj.Values['description'];

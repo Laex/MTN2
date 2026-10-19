@@ -29,6 +29,7 @@ uses
   TestSevenZipOpen in 'TestSevenZipOpen.pas',
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
   TestWasmHost in 'TestWasmHost.pas',
+  TestHighlightPlugin in 'TestHighlightPlugin.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas';
 
 begin

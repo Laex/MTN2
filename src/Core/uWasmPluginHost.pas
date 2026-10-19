@@ -81,6 +81,13 @@ unit uWasmPluginHost;
       // colors lines of files with those extensions: the guest export takes
       // (line_ptr, line_len, out_ptr, out_cap) with out_cap spans of three 32-bit
       // integers (start byte, byte length, class 0..11) and returns the number written
+    register_highlighter_state(ext_ptr, ext_len, export_ptr, export_len, lang) -> i32
+      // the same for a language whose lines depend on the lines before them (block comments,
+      // multi-line strings). The export takes (line_ptr, line_len, lang, state_in, out_ptr,
+      // out_cap): state_in is 0 at the start of the file, else the state the guest returned for
+      // the line before. It writes the state the line ends in (32-bit) at out_ptr, then up to
+      // out_cap spans, and returns the number of spans, or -1 when it does not know state_in.
+      // A plugin registers once per language (lang is passed back unchanged)
     vfs_list(uri_ptr, uri_len, export_ptr, export_len) -> i32
     vfs_exists(uri_ptr, uri_len, export_ptr, export_len) -> i32
     vfs_read(uri_ptr, uri_len, max_bytes, export_ptr, export_len) -> i32
@@ -169,6 +176,7 @@ type
     FInstance: TWasmtimeInstance;
     FHasInstance: Boolean;
     FWasi: Boolean;
+    FMemoryMib: Integer;
     FScratchBase: Integer;
     FUriOff: Integer;
     FUriSlot: Integer;
@@ -210,6 +218,10 @@ type
     /// spans of ALine: 12 bytes each, ACount of them.</summary>
     function CallHighlightExport(const AExport, ALine: string; out ASpans: TBytes;
       out ACount: Integer; out AError: string): Boolean;
+    /// <summary>Asks a stateful highlighter export (line_ptr, line_len, lang, state_in, out_ptr,
+    /// out_cap): the 12-byte spans of ALine, ACount of them, and the state the line ends in.</summary>
+    function CallHighlightStateExport(const AExport, ALine: string; ALang, AStateIn: Integer;
+      out ASpans: TBytes; out ACount, AStateOut: Integer; out AError: string): Boolean;
     /// <summary>Calls a guest export taking 32-bit integers and returning nothing.</summary>
     function CallIntsVoidExport(const AExport: string; const AArgs: array of Integer;
       out AError: string): Boolean;
@@ -230,6 +242,8 @@ type
     /// <summary>The module may import WASI preview1 (empty: no files, no
     /// environment). Set before LoadFromFile.</summary>
     property Wasi: Boolean read FWasi write FWasi;
+    /// <summary>Memory limit in MiB of a module that is not WASI (0 = the default 1 MiB).</summary>
+    property MemoryMib: Integer read FMemoryMib write FMemoryMib;
   end;
 
 function EnsureWasmEngine(out AError: string): Boolean;
@@ -275,6 +289,9 @@ const
   cProgressSet: AnsiString = 'progress_set';
   cProgressEnd: AnsiString = 'progress_end';
   cRegHighlighter: AnsiString = 'register_highlighter';
+  cRegHighlighterState: AnsiString = 'register_highlighter_state';
+  cHighlightFuel: UInt64 = 400000000;
+  cHighlightMaxLineBytes = 3500;
   cVfsList: AnsiString = 'vfs_list';
   cVfsExists: AnsiString = 'vfs_exists';
   cVfsRead: AnsiString = 'vfs_read';
@@ -1646,6 +1663,90 @@ begin
   SetI32Result(Results, NResults, 0);
 end;
 
+function HostRegHighlighterState(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Extensions, ExportName: string;
+  Lang: Integer;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 5 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Extensions) or (Extensions = '') or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, ExportName) or (ExportName = '') then
+    Exit;
+  Lang := Vals^[4].Of_.I32;
+  RegisterStatefulHighlighter(Inst.PluginId, Extensions,
+    function(const ALine: string; AStateIn: Integer; out ASpans: THighlightSpans;
+      out AStateOut: Integer): Boolean
+    var
+      Bytes: TBytes;
+      Count, I, B, Units: Integer;
+      U: UTF8String;
+      Map: TArray<Integer>;
+      Start, Stop, Len, Kind: Integer;
+      Err: string;
+    begin
+      ASpans := nil;
+      AStateOut := AStateIn;
+      Result := False;
+      U := UTF8String(ALine);
+      // A very long line does not fit the exchange buffer and stays plain.
+      if (Inst = nil) or Inst.Dead or (Length(U) > cHighlightMaxLineBytes) then
+        Exit;
+      if not Inst.CallHighlightStateExport(ExportName, ALine, Lang, AStateIn, Bytes, Count,
+           AStateOut, Err) then
+      begin
+        if AStateOut >= 0 then
+          AStateOut := AStateIn;
+        Exit;
+      end;
+      if (AStateOut < 0) or (Count <= 0) then
+        Exit;
+      // The guest counts bytes; the program counts UTF-16 characters.
+      SetLength(Map, Length(U) + 1);
+      Units := 0;
+      for B := 0 to Length(U) - 1 do
+      begin
+        Map[B] := Units;
+        if (Byte(U[B + 1]) and $C0) <> $80 then
+        begin
+          if Byte(U[B + 1]) >= $F0 then
+            Inc(Units, 2)
+          else
+            Inc(Units);
+        end;
+      end;
+      Map[Length(U)] := Units;
+      for I := 0 to Count - 1 do
+      begin
+        B := PInteger(@Bytes[4 + I * 12])^;
+        Len := PInteger(@Bytes[4 + I * 12 + 4])^;
+        Kind := PInteger(@Bytes[4 + I * 12 + 8])^;
+        if (B < 0) or (B >= Length(U)) or (Len <= 0) then
+          Continue;
+        Start := Map[B];
+        Stop := Map[Min(B + Len, Length(U))];
+        if Stop <= Start then
+          Continue;
+        SetLength(ASpans, Length(ASpans) + 1);
+        ASpans[High(ASpans)].Start := Start;
+        ASpans[High(ASpans)].Len := Stop - Start;
+        ASpans[High(ASpans)].Kind := Kind;
+      end;
+      Result := Length(ASpans) > 0;
+    end);
+  SetI32Result(Results, NResults, 0);
+end;
+
 function HostSurfaceOpen(Env: Pointer; Caller: PWasmtimeCaller;
   Args: PWasmtimeVal; NArgs: NativeUInt;
   Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
@@ -2080,6 +2181,8 @@ begin
     if not DefineHostImport(cProgressEnd, Ty2, @HostProgressEnd, AError) then
       Exit(False);
     if not DefineHostImport(cRegHighlighter, Ty4, @HostRegHighlighter, AError) then
+      Exit(False);
+    if not DefineHostImport(cRegHighlighterState, Ty5, @HostRegHighlighterState, AError) then
       Exit(False);
     if not DefineHostImport(cVfsList, Ty4, @HostVfsList, AError) then
       Exit(False);
@@ -2717,7 +2820,7 @@ begin
     end;
   end
   else
-    Wasmtime.StoreLimiter(FStore, 1024 * 1024, 64, 1, 1, 1);
+    Wasmtime.StoreLimiter(FStore, Int64(Max(FMemoryMib, 1)) * 1024 * 1024, IfThen(FMemoryMib > 1, 20000, 64), 1, 1, 1);
 
   FillChar(Wasm, SizeOf(Wasm), 0);
   Ext := LowerCase(ExtractFileExt(AFileName));
@@ -3217,6 +3320,100 @@ begin
     if ACount <= 0 then
       Exit(True);
     Result := ReadScratchOut(Int64(ACount) * cSpanBytes, ASpans, AError);
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TWasmPluginInstance.CallHighlightStateExport(const AExport, ALine: string;
+  ALang, AStateIn: Integer; out ASpans: TBytes; out ACount, AStateOut: Integer;
+  out AError: string): Boolean;
+const
+  cSpanBytes = 12;
+var
+  Func: TWasmtimeFunc;
+  Args: TValBuf;
+  Rets: TValBuf;
+  Err: PWasmtimeError;
+  Trap: PWasmTrap;
+  LinePtr, LineLen, Cap: Integer;
+  Out: TBytes;
+begin
+  Result := False;
+  ACount := 0;
+  AStateOut := AStateIn;
+  SetLength(ASpans, 0);
+  AError := '';
+  FLock.Acquire;
+  try
+    if FDead or not FHasInstance then
+    begin
+      AError := 'WASM instance is not live';
+      Exit;
+    end;
+    if not GetExportFunc(AExport, Func) then
+    begin
+      AError := AExport + ' export missing';
+      Exit;
+    end;
+    if not WriteUriScratch(ALine, LinePtr, LineLen, AError) then
+      Exit;
+    // Compiling the regular expressions of a language takes many instructions the first time.
+    Err := Wasmtime.ContextSetFuel(FContext, cHighlightFuel);
+    if Err <> nil then
+    begin
+      AError := 'set_fuel: ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    Cap := (FOutCap - 4) div cSpanBytes;
+    if Cap > 256 then
+      Cap := 256;
+    FillChar(Args, SizeOf(Args), 0);
+    FillChar(Rets, SizeOf(Rets), 0);
+    Args[0].Kind := WASMTIME_I32;
+    Args[0].Of_.I32 := LinePtr;
+    Args[1].Kind := WASMTIME_I32;
+    Args[1].Of_.I32 := LineLen;
+    Args[2].Kind := WASMTIME_I32;
+    Args[2].Of_.I32 := ALang;
+    Args[3].Kind := WASMTIME_I32;
+    Args[3].Of_.I32 := AStateIn;
+    Args[4].Kind := WASMTIME_I32;
+    Args[4].Of_.I32 := FOutOff;
+    Args[5].Kind := WASMTIME_I32;
+    Args[5].Of_.I32 := Cap;
+    Trap := nil;
+    Err := Wasmtime.FuncCall(FContext, @Func, @Args[0], 6, @Rets[0], 1, @Trap);
+    if Err <> nil then
+    begin
+      AError := AExport + ': ' + WasmtimeErrorMessage(Err);
+      WasmtimeClearError(Err);
+      Exit;
+    end;
+    if Trap <> nil then
+    begin
+      AError := AExport + ' trap: ' + WasmtimeTrapMessage(Trap);
+      WasmtimeClearTrap(Trap);
+      Exit;
+    end;
+    ACount := Integer(WasmResultI64(Rets[0]));
+    if ACount < 0 then
+    begin
+      // The guest does not know the incoming state.
+      AStateOut := -1;
+      ACount := 0;
+      AError := 'state unknown';
+      Exit;
+    end;
+    if ACount > Cap then
+      ACount := Cap;
+    if not ReadScratchOut(4 + Int64(ACount) * cSpanBytes, Out, AError) then
+      Exit;
+    AStateOut := PInteger(@Out[0])^;
+    SetLength(ASpans, Length(Out));
+    Move(Out[0], ASpans[0], Length(Out));
+    Result := True;
   finally
     FLock.Release;
   end;

@@ -497,8 +497,9 @@ var
   I: Integer;
 begin
   for I := 0 to High(FDecl.Controls) do
-    if FDecl.Controls[I].Kind in [dckInput, dckCheckbox, dckRadio, dckRadioGroup,
-      dckButton, dckList, dckDropDown, dckColorPicker] then
+    if (FDecl.Controls[I].Kind in [dckInput, dckCheckbox, dckRadio, dckRadioGroup,
+      dckButton, dckList, dckDropDown, dckColorPicker]) and
+      not ((FDecl.Controls[I].Kind = dckCheckbox) and FDecl.Controls[I].Disabled) then
       Exit(I);
   Result := -1;
 end;
@@ -517,8 +518,9 @@ begin
       Result := (Result + 1) mod N
     else
       Result := (Result + N - 1) mod N;
-    if FDecl.Controls[Result].Kind in [dckInput, dckCheckbox, dckRadio,
-      dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker] then
+    if (FDecl.Controls[Result].Kind in [dckInput, dckCheckbox, dckRadio,
+      dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker]) and
+      not ((FDecl.Controls[Result].Kind = dckCheckbox) and FDecl.Controls[Result].Disabled) then
       Exit;
   end;
   Result := AFrom;
@@ -2267,6 +2269,12 @@ begin
               FDecl.Controls[I].Password);
         end;
       dckCheckbox:
+        if C.Disabled then
+          PutGridText(AGrid, R.Left, R.Top,
+            Copy(IfThen(C.Checked, '[x] ', '[ ] ') + StripHotKeyMarker(C.Text), 1, Max(R.Width, 1)),
+            ContrastingGlyphFg(LabelBg, TAlphaColor($FF808080), TAlphaColor($FF909090)),
+            LabelBg, [])
+        else
         begin
           // Warning chrome is red: theme DrawCheckBox paints black-on-white
           // (dialog body), which shows as a white strip on the red fill -
@@ -2575,6 +2583,8 @@ begin
         end;
       dckCheckbox:
         begin
+          if FDecl.Controls[I].Disabled then
+            Exit(True);
           FFocusIndex := I;
           FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
           NotifyChanged;
@@ -2742,6 +2752,7 @@ begin
   begin
     C := FDecl.Controls[I];
     if not (C.Kind in [dckButton, dckCheckbox, dckRadio]) or
+       ((C.Kind = dckCheckbox) and C.Disabled) or
        (HotKeyCharOf(C.Text) <> ACh) then
       Continue;
     FFocusIndex := I;

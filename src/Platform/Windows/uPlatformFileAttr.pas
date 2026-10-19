@@ -28,10 +28,26 @@ function ApplyFileAttrOne(const APath: string; const APlan: TFileAttrPlan;
 /// name; False for anything else.</summary>
 function TryGetDriveRootInfo(const APath: string; out AVolume, ADevice: string): Boolean;
 
+/// <summary>Accounts that can own a file: local users and the well-known
+/// groups and service accounts, as DOMAIN/name. Empty where the owner is not
+/// chosen from a list.</summary>
+function ListFileOwnerCandidates: TArray<string>;
+
 implementation
 
 uses
   System.SysUtils, Winapi.Windows, Winapi.AccCtrl, Winapi.AclAPI, uVfsTypes;
+
+type
+  TUserInfo0 = record
+    Name: PWideChar;
+  end;
+  PUserInfo0 = ^TUserInfo0;
+
+function NetUserEnum(AServer: PWideChar; ALevel, AFilter: DWORD;
+  out ABuf: Pointer; AMaxLen: DWORD; out ARead, ATotal: DWORD;
+  AResume: PDWORD): DWORD; stdcall; external 'netapi32.dll';
+function NetApiBufferFree(ABuf: Pointer): DWORD; stdcall; external 'netapi32.dll';
 
 const
   FSCTL_SET_COMPRESSION = $0009C040;
@@ -137,6 +153,72 @@ begin
     if Assigned(SD) then
       LocalFree(HLOCAL(SD));
   end;
+end;
+
+function SidAccountName(const ASidText: string): string;
+var
+  Sid: PSID;
+  NameBuf, DomBuf: array[0..255] of Char;
+  NameLen, DomLen: DWORD;
+  Use: SID_NAME_USE;
+begin
+  Result := '';
+  Sid := nil;
+  if not ConvertStringSidToSid(PChar(ASidText), Sid) then
+    Exit;
+  try
+    NameLen := Length(NameBuf);
+    DomLen := Length(DomBuf);
+    if LookupAccountSid(nil, Sid, NameBuf, NameLen, DomBuf, DomLen, Use) then
+      if DomBuf[0] <> #0 then
+        Result := string(DomBuf) + '' + string(NameBuf)
+      else
+        Result := string(NameBuf);
+  finally
+    LocalFree(HLOCAL(Sid));
+  end;
+end;
+
+function ListFileOwnerCandidates: TArray<string>;
+const
+  cWellKnown: array[0..3] of string = ('S-1-5-32-544', 'S-1-5-18',
+    'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464', 'S-1-5-32-545');
+var
+  List: TArray<string>;
+  Buf: Pointer;
+  Read, Total, I: DWORD;
+  Computer: array[0..MAX_COMPUTERNAME_LENGTH] of Char;
+  CompLen: DWORD;
+  Name: string;
+
+  procedure Add(const AName: string);
+  var
+    S: string;
+  begin
+    if AName = '' then
+      Exit;
+    for S in List do
+      if SameText(S, AName) then
+        Exit;
+    List := List + [AName];
+  end;
+
+begin
+  List := nil;
+  for Name in cWellKnown do
+    Add(SidAccountName(Name));
+  CompLen := Length(Computer);
+  if not GetComputerName(Computer, CompLen) then
+    Computer[0] := #0;
+  Buf := nil;
+  if NetUserEnum(nil, 0, 0, Buf, DWORD(-1), Read, Total, nil) = 0 then
+  try
+    for I := 0 to Read - 1 do
+      Add(string(Computer) + '' + string(PUserInfo0(PByte(Buf) + I * SizeOf(TUserInfo0)).Name));
+  finally
+    NetApiBufferFree(Buf);
+  end;
+  Result := List;
 end;
 
 function PlatformFileModeSupported: Boolean;

@@ -135,13 +135,14 @@
       "height": 1
     },
     {
-      "type": "input",
+      "type": "dropdown",
       "id": "owner",
-      "value": "",
       "col": 40,
       "row": 6,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "selected": 0,
+      "items": []
     },
     {
       "type": "button",
@@ -197,7 +198,7 @@
       "type": "label",
       "id": "lbl_enc",
       "text": "Encrypted",
-      "col": 39,
+      "col": 38,
       "row": 10,
       "width": 16,
       "height": 1
@@ -211,7 +212,7 @@
         "Set",
         "Clear"
       ],
-      "col": 56,
+      "col": 55,
       "row": 10,
       "width": 20,
       "height": 1
@@ -243,7 +244,7 @@
       "type": "label",
       "id": "lbl_noidx",
       "text": "Not indexed",
-      "col": 39,
+      "col": 38,
       "row": 11,
       "width": 16,
       "height": 1
@@ -257,7 +258,7 @@
         "Set",
         "Clear"
       ],
-      "col": 56,
+      "col": 55,
       "row": 11,
       "width": 20,
       "height": 1
@@ -289,7 +290,7 @@
       "type": "label",
       "id": "lbl_sparse",
       "text": "Sparse",
-      "col": 39,
+      "col": 38,
       "row": 12,
       "width": 16,
       "height": 1
@@ -303,7 +304,7 @@
         "Set",
         "Clear"
       ],
-      "col": 56,
+      "col": 55,
       "row": 12,
       "width": 20,
       "height": 1
@@ -335,7 +336,7 @@
       "type": "label",
       "id": "lbl_temp",
       "text": "Temporary",
-      "col": 39,
+      "col": 38,
       "row": 13,
       "width": 16,
       "height": 1
@@ -349,7 +350,7 @@
         "Set",
         "Clear"
       ],
-      "col": 56,
+      "col": 55,
       "row": 13,
       "width": 20,
       "height": 1
@@ -381,7 +382,7 @@
       "type": "label",
       "id": "lbl_off",
       "text": "Offline",
-      "col": 39,
+      "col": 38,
       "row": 14,
       "width": 16,
       "height": 1
@@ -395,7 +396,7 @@
         "Set",
         "Clear"
       ],
-      "col": 56,
+      "col": 55,
       "row": 14,
       "width": 20,
       "height": 1

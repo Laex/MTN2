@@ -27,6 +27,7 @@ panels/TestShellIcons          # Windows shell icons in a FireMonkey bitmap
 plugins/TestSamplePlugins      # plugins are Windows DLLs
 plugins/TestWasmHost
 plugins/TestWorkspacePlugin
+plugins/TestHighlightPlugin
 shell/TestCdDirQuote           # cmd.exe and PowerShell sessions
 shell/TestPsTwoCommands
 shell/TestPtyLifecycle

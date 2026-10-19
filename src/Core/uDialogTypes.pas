@@ -97,6 +97,9 @@ type
     /// <summary>dckInput: the text can be selected and copied but not changed
     /// (JSON "readonly": true).</summary>
     ReadOnly: Boolean;
+    /// <summary>dckCheckbox: greyed out, skipped by the focus, ignores clicks and
+    /// its mnemonic.</summary>
+    Disabled: Boolean;
     /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
     /// last cell (filled with the color); clicking it fires the command
     /// DialogPickCommand(Id).</summary>
@@ -564,6 +567,7 @@ begin
   Result.Text := AText;
   Result.Group := '';
   Result.Checked := AChecked;
+  Result.Disabled := False;
   Result.IsDefault := False;
   Result.IsCancel := False;
   Result.Edit := InputLineEmpty;

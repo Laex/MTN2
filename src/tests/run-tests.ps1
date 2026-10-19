@@ -103,20 +103,22 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     # src\tests\dcu is src\tests -- point it at the fetched copy explicitly.
     $WasmtimeDll = Join-Path $Src 'tools\wasmtime\wasmtime.dll'
     if (Test-Path $WasmtimeDll) { $env:MTN2_WASMTIME_DLL = $WasmtimeDll }
-    $WsSrc = Join-Path $Src 'plugins\mtn.ws'
     if (Get-Command cargo -ErrorAction SilentlyContinue) {
-        Push-Location $WsSrc
-        try {
-            $BuildCache = & (Join-Path $Src 'tools\cache-dir.ps1')
-            $CargoTarget = if ($BuildCache) { Join-Path $BuildCache 'cargo-target\mtn.ws' } else { Join-Path $WsSrc 'target' }
-            $env:CARGO_TARGET_DIR = $CargoTarget
-            rustup target add wasm32-unknown-unknown 2>&1 | Out-Null
-            cargo build --target wasm32-unknown-unknown --release 2>&1 | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-                Copy-Item (Join-Path $CargoTarget 'wasm32-unknown-unknown\release\mtn_ws.wasm') `
-                    (Join-Path $WsSrc 'plugin.wasm') -Force
-            } else { Write-Host 'WARN: mtn.ws cargo build failed; TestWorkspacePlugin may SKIP' }
-        } finally { Pop-Location }
+        foreach ($Plugin in @(@('mtn.ws', 'mtn_ws'), @('mtn.highlight', 'mtn_highlight'))) {
+            $PluginSrc = Join-Path $Src "plugins\$($Plugin[0])"
+            Push-Location $PluginSrc
+            try {
+                $BuildCache = & (Join-Path $Src 'tools\cache-dir.ps1')
+                $CargoTarget = if ($BuildCache) { Join-Path $BuildCache "cargo-target\$($Plugin[0])" } else { Join-Path $PluginSrc 'target' }
+                $env:CARGO_TARGET_DIR = $CargoTarget
+                rustup target add wasm32-unknown-unknown 2>&1 | Out-Null
+                cargo build --target wasm32-unknown-unknown --release 2>&1 | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                    Copy-Item (Join-Path $CargoTarget "wasm32-unknown-unknown\release\$($Plugin[1]).wasm") `
+                        (Join-Path $PluginSrc 'plugin.wasm') -Force
+                } else { Write-Host "WARN: $($Plugin[0]) cargo build failed; its plugin test may SKIP" }
+            } finally { Pop-Location }
+        }
     }
 }
 

@@ -20,6 +20,9 @@ type
     [Test] procedure TestOtherPathsHaveNoVolume;
     [Test] procedure TestSystemPropertiesButtonKeepsTheDialogOpen;
     [Test] procedure TestFileDialogHasNoVolumeLines;
+    [Test] procedure TestSubfoldersOptionIsOnlyForFolders;
+    [Test] procedure TestOwnerIsChosenFromAList;
+    [Test] procedure TestFlagListsOfBothColumnsAreEquallyWide;
   end;
 
 implementation
@@ -61,6 +64,16 @@ begin
     if ADialog.GetControl(I).Id = AId then
       Exit(ADialog.GetControl(I).Accent);
   Result := False;
+end;
+
+function FindControl(ADialog: TDialogHost; const AId: string): TDialogControl;
+var
+  I: Integer;
+begin
+  for I := 0 to ADialog.ControlCount - 1 do
+    if ADialog.GetControl(I).Id = AId then
+      Exit(ADialog.GetControl(I));
+  Result := Default(TDialogControl);
 end;
 
 function NewTempFile(out ADir: string): string;
@@ -197,6 +210,82 @@ begin
     C.BeginSetAttributes([Path]);
     Assert.IsFalse(Dialog.HasControl('volume'), 'no volume field for a file');
     Assert.IsFalse(Dialog.HasControl('device'), 'no device field for a file');
+  finally
+    C.Free;
+    Dialog.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSetAttrExtras.TestSubfoldersOptionIsOnlyForFolders;
+var
+  Dir, Path: string;
+  Dialog: TDialogHost;
+  C: TFileOpDialogController;
+begin
+  Path := NewTempFile(Dir);
+  Dialog := TDialogHost.Create(nil);
+  C := MakeController(Dialog);
+  try
+    C.BeginSetAttributes([Path]);
+    Assert.IsTrue(FindControl(Dialog, 'recurse').Disabled, 'a file has no subfolders');
+    C.BeginSetAttributes([Dir]);
+    Assert.IsFalse(FindControl(Dialog, 'recurse').Disabled, 'a folder may be processed with its contents');
+  finally
+    C.Free;
+    Dialog.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSetAttrExtras.TestOwnerIsChosenFromAList;
+var
+  Dir, Path: string;
+  Dialog: TDialogHost;
+  C: TFileOpDialogController;
+  Own: TDialogControl;
+begin
+  Path := NewTempFile(Dir);
+  Dialog := TDialogHost.Create(nil);
+  C := MakeController(Dialog);
+  try
+    C.BeginSetAttributes([Path]);
+    Own := FindControl(Dialog, 'owner');
+    Assert.IsTrue(Own.Kind = dckDropDown, 'owner is a drop-down');
+    Assert.IsTrue(Length(Own.Items) > 0, 'the list is not empty');
+    Assert.IsTrue(Dialog.GetListSelectedText('owner') <> '', 'an owner is selected');
+  finally
+    C.Free;
+    Dialog.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSetAttrExtras.TestFlagListsOfBothColumnsAreEquallyWide;
+var
+  Dir, Path: string;
+  Dialog: TDialogHost;
+  C: TFileOpDialogController;
+
+  function BoxWidth(const AId: string): Integer;
+  var
+    I: Integer;
+  begin
+    for I := 0 to Dialog.ControlCount - 1 do
+      if Dialog.GetControl(I).Id = AId then
+        Exit(Dialog.ControlBoundsAt(I).Width);
+    Result := -1;
+  end;
+
+begin
+  Path := NewTempFile(Dir);
+  Dialog := TDialogHost.Create(nil);
+  C := MakeController(Dialog);
+  try
+    C.BeginSetAttributes([Path]);
+    Assert.IsTrue(BoxWidth('attr_ro') > 0, 'left list is laid out');
+    Assert.AreEqual(BoxWidth('attr_ro'), BoxWidth('attr_enc'), 'right list is as wide as the left one');
+    Assert.AreEqual(BoxWidth('attr_ro'), BoxWidth('attr_off'), 'last right list is as wide as the left one');
   finally
     C.Free;
     Dialog.Free;

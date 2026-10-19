@@ -367,9 +367,32 @@ end;
 procedure TFileOpDialogController.BeginSetAttributes(const APaths: TArray<string>);
 var
   State: TFileAttrDialogState;
-  OwnerEdit, Id: string;
+  OwnerEdit, Id, Path: string;
   I: Integer;
+  HasFolder: Boolean;
   Decl: TDialogDeclaration;
+
+  procedure PrepareOwnerChoice(var ADecl: TDialogDeclaration; const ACurrent: string);
+  var
+    Names: TArray<string>;
+    Sel, K: Integer;
+  begin
+    Names := ListFileOwnerCandidates;
+    Sel := -1;
+    for K := 0 to High(Names) do
+      if SameText(Names[K], ACurrent) then
+        Sel := K;
+    if (Sel < 0) and (ACurrent <> '') then
+    begin
+      Names := [ACurrent] + Names;
+      Sel := 0;
+    end;
+    if Length(Names) = 0 then
+      Names := [' '];
+    if Sel < 0 then
+      Sel := 0;
+    DialogSetListItems(ADecl, 'owner', Names, Sel);
+  end;
 
   procedure MarkAttrLabel(const ALabelId: string; AChoice: TFileAttrChoice);
   var
@@ -420,6 +443,16 @@ begin
   MarkAttrLabel('lbl_sparse', State.Sparse);
   MarkAttrLabel('lbl_temp', State.Temporary);
   MarkAttrLabel('lbl_off', State.Offline);
+  PrepareOwnerChoice(Decl, OwnerEdit);
+  // Subfolders exist only when a folder is among the items.
+  HasFolder := False;
+  for Path in APaths do
+    if DirectoryExists(Path) then
+      HasFolder := True;
+  if not HasFolder then
+    for I := 0 to High(Decl.Controls) do
+      if Decl.Controls[I].Id = 'recurse' then
+        Decl.Controls[I].Disabled := True;
   // The volume and device lines are for a drive root only.
   if State.Volume + State.Device <> '' then
   begin
@@ -641,7 +674,7 @@ begin
     Plan.Temporary := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_temp'));
     Plan.Offline := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_off'));
     Plan.ChangeOwner := FDialog.GetCheckbox('change_owner');
-    Plan.Owner := FDialog.GetInputValue('owner');
+    Plan.Owner := Trim(FDialog.GetListSelectedText('owner'));
     Plan.Recurse := FDialog.GetCheckbox('recurse');
     if not ReadAttrDateFields(Plan, BadText) then
     begin
