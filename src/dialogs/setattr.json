@@ -148,7 +148,7 @@
       "id": "dates_now",
       "text": "C&urrent",
       "col": 20,
-      "row": 7,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -157,7 +157,7 @@
       "id": "dates_orig",
       "text": "&Original",
       "col": 40,
-      "row": 7,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -166,7 +166,7 @@
       "text": "",
       "id": "date_error",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 76,
       "height": 1
     },
@@ -184,20 +184,20 @@
       "id": "attr_ro",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
       "col": 16,
       "row": 10,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_enc",
       "text": "Encrypted",
-      "col": 40,
+      "col": 39,
       "row": 10,
       "width": 16,
       "height": 1
@@ -207,13 +207,13 @@
       "id": "attr_enc",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
-      "col": 57,
+      "col": 56,
       "row": 10,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
@@ -230,20 +230,20 @@
       "id": "attr_a",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
       "col": 16,
       "row": 11,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_noidx",
       "text": "Not indexed",
-      "col": 40,
+      "col": 39,
       "row": 11,
       "width": 16,
       "height": 1
@@ -253,13 +253,13 @@
       "id": "attr_noidx",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
-      "col": 57,
+      "col": 56,
       "row": 11,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
@@ -276,20 +276,20 @@
       "id": "attr_h",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
       "col": 16,
       "row": 12,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_sparse",
       "text": "Sparse",
-      "col": 40,
+      "col": 39,
       "row": 12,
       "width": 16,
       "height": 1
@@ -299,13 +299,13 @@
       "id": "attr_sparse",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
-      "col": 57,
+      "col": 56,
       "row": 12,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
@@ -322,20 +322,20 @@
       "id": "attr_s",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
       "col": 16,
       "row": 13,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_temp",
       "text": "Temporary",
-      "col": 40,
+      "col": 39,
       "row": 13,
       "width": 16,
       "height": 1
@@ -345,13 +345,13 @@
       "id": "attr_temp",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
-      "col": 57,
+      "col": 56,
       "row": 13,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
@@ -368,20 +368,20 @@
       "id": "attr_comp",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
       "col": 16,
       "row": 14,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_off",
       "text": "Offline",
-      "col": 40,
+      "col": 39,
       "row": 14,
       "width": 16,
       "height": 1
@@ -391,13 +391,13 @@
       "id": "attr_off",
       "selected": 0,
       "items": [
-        "Keep",
+        "Keep as is",
         "Set",
         "Clear"
       ],
-      "col": 57,
+      "col": 56,
       "row": 14,
-      "width": 10,
+      "width": 20,
       "height": 1
     },
     {

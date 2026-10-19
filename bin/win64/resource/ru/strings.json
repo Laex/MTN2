@@ -521,52 +521,52 @@
     },
     "DIALOG_SETATTR": {
       "attr_ro_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_h_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_a_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_comp_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_enc_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_noidx_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_sparse_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_temp_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_off_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },
       "attr_s_items": {
-        "Keep": "Оставить",
+        "Keep as is": "Оставить как есть",
         "Set": "Задать",
         "Clear": "Снять"
       },

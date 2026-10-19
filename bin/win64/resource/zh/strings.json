@@ -522,52 +522,52 @@
     },
     "DIALOG_SETATTR": {
       "attr_ro_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_h_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_a_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_comp_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_enc_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_noidx_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_sparse_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_temp_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_off_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },
       "attr_s_items": {
-        "Keep": "保持",
+        "Keep as is": "保持不变",
         "Set": "设置",
         "Clear": "清除"
       },

@@ -370,6 +370,16 @@ var
   OwnerEdit, Id: string;
   I: Integer;
   Decl: TDialogDeclaration;
+
+  procedure MarkAttrLabel(const ALabelId: string; AChoice: TFileAttrChoice);
+  var
+    K: Integer;
+  begin
+    for K := 0 to High(Decl.Controls) do
+      if Decl.Controls[K].Id = ALabelId then
+        Decl.Controls[K].Accent := AChoice = facSet;
+  end;
+
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -396,16 +406,20 @@ begin
     Notify;
     Exit;
   end;
+  // Every dropdown starts at "keep"; the labels of the attributes that are
+  // currently set are drawn in a contrasting color instead.
   Decl := BuildSetAttributesDialog(State.Summary, State.Owner, OwnerEdit,
-    FileAttrChoiceToIndex(State.ReadOnly), FileAttrChoiceToIndex(State.Hidden),
-    FileAttrChoiceToIndex(State.Archive), FileAttrChoiceToIndex(State.System),
-    FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]);
-  DialogSetDropDownSelected(Decl, 'attr_comp', FileAttrChoiceToIndex(State.Compressed));
-  DialogSetDropDownSelected(Decl, 'attr_enc', FileAttrChoiceToIndex(State.Encrypted));
-  DialogSetDropDownSelected(Decl, 'attr_noidx', FileAttrChoiceToIndex(State.NotIndexed));
-  DialogSetDropDownSelected(Decl, 'attr_sparse', FileAttrChoiceToIndex(State.Sparse));
-  DialogSetDropDownSelected(Decl, 'attr_temp', FileAttrChoiceToIndex(State.Temporary));
-  DialogSetDropDownSelected(Decl, 'attr_off', FileAttrChoiceToIndex(State.Offline));
+    0, 0, 0, 0, FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]);
+  MarkAttrLabel('lbl_ro', State.ReadOnly);
+  MarkAttrLabel('lbl_h', State.Hidden);
+  MarkAttrLabel('lbl_a', State.Archive);
+  MarkAttrLabel('lbl_s', State.System);
+  MarkAttrLabel('lbl_comp', State.Compressed);
+  MarkAttrLabel('lbl_enc', State.Encrypted);
+  MarkAttrLabel('lbl_noidx', State.NotIndexed);
+  MarkAttrLabel('lbl_sparse', State.Sparse);
+  MarkAttrLabel('lbl_temp', State.Temporary);
+  MarkAttrLabel('lbl_off', State.Offline);
   // The volume and device lines are for a drive root only.
   if State.Volume + State.Device <> '' then
   begin
@@ -413,10 +427,17 @@ begin
     DialogSetInputValue(Decl, 'device', State.Device);
   end
   else
+  begin
     for Id in ['lbl_volume', 'volume', 'lbl_device', 'device'] do
       for I := High(Decl.Controls) downto 0 do
         if Decl.Controls[I].Id = Id then
           Delete(Decl.Controls, I, 1);
+    // Close the two rows the removed lines occupied.
+    for I := 0 to High(Decl.Controls) do
+      if Decl.Controls[I].Row >= 4 then
+        Dec(Decl.Controls[I].Row, 2);
+    Dec(Decl.Height, 2);
+  end;
   FDialog.Open(Decl, FOnCommand);
   Notify;
 end;

@@ -549,52 +549,52 @@
       "cancel": "Cancel",
       "attr_a_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_h_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_ro_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_comp_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_enc_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_noidx_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_sparse_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_temp_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_off_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       },
       "attr_s_items": {
         "Clear": "Clear",
-        "Keep": "Keep",
+        "Keep as is": "Keep as is",
         "Set": "Set"
       }
     },

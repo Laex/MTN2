@@ -15,7 +15,7 @@ type
   TTestSetAttrExtras = class
   public
     [Test] procedure TestFlagsRoundTripThroughAPlan;
-    [Test] procedure TestDialogOpensOnTheCurrentFlagsAndPutsThemInThePlan;
+    [Test] procedure TestDialogKeepsFlagsAndMarksTheSetOnes;
     [Test] procedure TestDriveRootHasVolumeAndDevice;
     [Test] procedure TestOtherPathsHaveNoVolume;
     [Test] procedure TestSystemPropertiesButtonKeepsTheDialogOpen;
@@ -51,6 +51,16 @@ begin
     begin
       GPropsPaths := APaths;
     end;
+end;
+
+function LabelMarked(ADialog: TDialogHost; const AId: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to ADialog.ControlCount - 1 do
+    if ADialog.GetControl(I).Id = AId then
+      Exit(ADialog.GetControl(I).Accent);
+  Result := False;
 end;
 
 function NewTempFile(out ADir: string): string;
@@ -94,7 +104,7 @@ begin
   end;
 end;
 
-procedure TTestSetAttrExtras.TestDialogOpensOnTheCurrentFlagsAndPutsThemInThePlan;
+procedure TTestSetAttrExtras.TestDialogKeepsFlagsAndMarksTheSetOnes;
 var
   Dir, Path, Err: string;
   Plan: TFileAttrPlan;
@@ -111,13 +121,15 @@ begin
 
     C.BeginSetAttributes([Path]);
     Assert.IsTrue(Dialog.Visible, 'dialog opens');
-    Assert.AreEqual<Integer>(Ord(facSet), Dialog.GetListSelectedIndex('attr_temp'), 'Temporary shows Set');
-    Assert.AreEqual<Integer>(Ord(facClear), Dialog.GetListSelectedIndex('attr_noidx'), 'Not indexed shows Clear');
+    Assert.AreEqual<Integer>(Ord(facKeep), Dialog.GetListSelectedIndex('attr_temp'), 'Temporary starts at keep');
+    Assert.AreEqual<Integer>(Ord(facKeep), Dialog.GetListSelectedIndex('attr_noidx'), 'Not indexed starts at keep');
+    Assert.IsTrue(LabelMarked(Dialog, 'lbl_temp'), 'a set flag has a marked label');
+    Assert.IsFalse(LabelMarked(Dialog, 'lbl_noidx'), 'a clear flag has a plain label');
 
     GPlan := Default(TFileAttrPlan);
     C.DispatchCommand(hdkSetAttributes, 'ok');
-    Assert.IsTrue(GPlan.Temporary = facSet, 'Temporary reaches the plan');
-    Assert.IsTrue(GPlan.NotIndexed = facClear, 'Not indexed reaches the plan');
+    Assert.IsTrue(GPlan.Temporary = facKeep, 'Temporary is left as it is');
+    Assert.IsTrue(GPlan.NotIndexed = facKeep, 'Not indexed is left as it is');
   finally
     C.Free;
     Dialog.Free;

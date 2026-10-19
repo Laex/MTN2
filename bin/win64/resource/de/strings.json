@@ -547,52 +547,52 @@
       "ok": "Setzen",
       "cancel": "Abbrechen",
       "attr_ro_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_h_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_a_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_comp_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_enc_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_noidx_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_sparse_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_temp_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_off_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       },
       "attr_s_items": {
-        "Keep": "Beibehalten",
+        "Keep as is": "Unverändert lassen",
         "Set": "Setzen",
         "Clear": "Entfernen"
       }
