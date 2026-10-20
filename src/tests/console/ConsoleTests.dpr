@@ -18,6 +18,7 @@ uses
   TestFindEncoding in 'TestFindEncoding.pas',
   TestConsoleFind in 'TestConsoleFind.pas',
   TestConsoleShellCwd in 'TestConsoleShellCwd.pas',
+  TestConsoleRunCommand in 'TestConsoleRunCommand.pas',
   TestConsoleHistoryRecall in 'TestConsoleHistoryRecall.pas',
   TestLineBufferedBackspace in 'TestLineBufferedBackspace.pas',
   TestPosixPty in 'TestPosixPty.pas',

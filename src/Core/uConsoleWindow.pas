@@ -29,6 +29,10 @@ type
     FCwdBeforeCommand: string;
     FReturnPending: Boolean;
     FPromptsAtStart: Integer;
+    /// <summary>A freshly started shell has not drawn its first prompt yet;
+    /// FStartupPrompts is the prompt count before it appears.</summary>
+    FStartupPending: Boolean;
+    FStartupPrompts: Integer;
     /// <summary>Where prompts cannot be recognized: when the last output arrived, and
     /// whether the check for "the command is done" is queued.</summary>
     FLastOutputTick: UInt64;
@@ -188,6 +192,7 @@ begin
   FLastSyncedCwd := '';
   FRunning := False;
   FReturnPending := False;
+  FStartupPending := False;
   FHistory.AppendStatus(Format('[MTN2] process exited with code %d', [AExitCode]));
   if FRestartOnExit then
   begin
@@ -245,6 +250,8 @@ begin
     Exit(False);
 
   FLastSyncedCwd := WorkingDir;
+  FStartupPrompts := CountPrompts;
+  FStartupPending := True;
   SyncTitle;
   Result := True;
 end;
@@ -337,6 +344,10 @@ end;
 procedure TConsoleWindow.ReturnToPanelsWhenDone;
 begin
   FPromptsAtStart := CountPrompts;
+  // The first prompt of a shell that was just started is not the end of
+  // the command given to it.
+  if FStartupPending then
+    Inc(FPromptsAtStart);
   FReturnPending := True;
 end;
 
@@ -377,6 +388,11 @@ end;
 
 procedure TConsoleWindow.OutputAppended;
 begin
+  if FStartupPending then
+    if ProfilePromptIsParsable(ProfileId) then
+      FStartupPending := CountPrompts <= FStartupPrompts
+    else
+      FStartupPending := False;
   if not FReturnPending then
     Exit;
   if ProfilePromptIsParsable(ProfileId) then
@@ -401,7 +417,7 @@ end;
 
 procedure TConsoleWindow.RunCommand(const ACommand, AWorkingDir: string);
 var
-  Cmd, Line, NormId: string;
+  Cmd, Line, NormId, Pending: string;
 begin
   Cmd := Trim(ACommand);
   if Cmd = '' then
@@ -428,6 +444,12 @@ begin
 
   if not EnsureShell(WorkingDir) then
     Exit;
+
+  // Text left on the shell's input line (a recalled history entry, a
+  // half-typed command) would be glued to the front of the command.
+  Pending := FHistory.GetInputAfterPrompt;
+  if (Pending <> '') and not ShellBusy then
+    SendRaw(#27'[F' + StringOfChar(ProfileBackspaceChar(ProfileId), Length(Pending)));
 
   Line := Cmd;
   NormId := NormalizeShellProfileId(ProfileId);
