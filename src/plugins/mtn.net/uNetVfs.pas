@@ -969,6 +969,14 @@ begin
         Exit(nrOk);
       end;
       Result := AClient.ReadBytes(APath, Cap, AOp, Got);
+      // A server that reported no size (or a smaller one) can deliver more
+      // than the caller's buffer holds: ask for a bigger buffer instead of
+      // copying past its end.
+      if (Result = nrOk) and (Int64(Length(Got)) + 1 > ABufSize) then
+      begin
+        Needed := Int64(Length(Got)) + 1;
+        SetLength(Got, 0);
+      end;
     end);
   ANeeded := Needed;
   if (Result = nrOk) and (Needed = 0) then

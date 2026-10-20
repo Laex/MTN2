@@ -204,7 +204,7 @@ implementation
 
 uses
   System.IOUtils, uPlatformFileOps,
-  uVfsRegistry;
+  uVfsRegistry, uStrings;
 
 constructor TEditorDoc.Create;
 begin
@@ -1025,7 +1025,7 @@ begin
   FLoading := True;
   FReady := False;
   FError := '';
-  FStatus := 'Loading...';
+  FStatus := T('ui.editor.loading', 'Loading...');
   FCancel := TJobCancelToken.Create;
   NotifyChanged;
 

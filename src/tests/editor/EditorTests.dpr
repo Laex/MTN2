@@ -18,6 +18,7 @@ uses
   TestEditorLineOps in 'TestEditorLineOps.pas',
   TestEditorLineCommands in 'TestEditorLineCommands.pas',
   TestEditorBookmarks in 'TestEditorBookmarks.pas',
+  TestEditorLoadCancel in 'TestEditorLoadCancel.pas',
   TestEditorColumnBlock in 'TestEditorColumnBlock.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',

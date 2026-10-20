@@ -141,7 +141,7 @@ type
 implementation
 
 uses
-  System.JSON, uPanelColumns, uMessageBus, uFileFind, uPanelPluginRegistry;
+  System.JSON, uPanelColumns, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
 
 function PanelRowToJson(const ARow: TPanelRow): string;
 var
@@ -562,10 +562,11 @@ begin
           if not Life.Alive then
             Exit;
           if IsSftpUri(URI) or IsGenericVfsUri(URI) then
-            ApplySlowHint(WaitingRows('Waiting for the server...'), Gen)
+            ApplySlowHint(WaitingRows(T('ui.panel.waitingServer', 'Waiting for the server...')), Gen)
           else
             ApplySlowHint(ErrorRows(URI,
-              'Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...',
+              T('ui.panel.notResponding',
+                'Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...'),
               ReturnUri), Gen);
         end);
     end).Start;

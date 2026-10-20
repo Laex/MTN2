@@ -967,7 +967,7 @@ begin
   else if FDoc.Ready then
     Title := ModeTitle + ' - ' + Star + ExtractFileName(FDoc.Path)
   else if FDoc.Loading then
-    Title := ModeTitle + ' - loading...'
+    Title := ModeTitle + ' - ' + T('ui.editor.loading', 'Loading...')
   else if FDoc.Error <> '' then
     Title := ModeTitle + ' - error'
   else
@@ -2006,9 +2006,10 @@ procedure TEditorWindow.RequestClose;
 var
   Name: string;
 begin
-  if FDoc.Saving or FDoc.Loading then
+  if FDoc.Saving then
     Exit;
-  if (not FViewOnly) and FDoc.Dirty then
+  // A load still running is cancelled (FDoc.Close) and the tab goes away.
+  if (not FViewOnly) and FDoc.Dirty and not FDoc.Loading then
   begin
     FConfirm := ecAskSave;
     Name := ExtractFileName(FDoc.Path);
@@ -4875,7 +4876,8 @@ begin
   if FSurfaceHandle <> 0 then
     DrawSurfaceContent
   else if FDoc.Loading then
-    PutGridText(Buffer, 1, 1, 'Loading...', FThemeColors.HintFg, FThemeColors.BodyBg)
+    PutGridText(Buffer, 1, 1, T('ui.editor.loading', 'Loading...') + '  ' +
+      T('ui.editor.loadingHint', 'Esc cancels'), FThemeColors.HintFg, FThemeColors.BodyBg)
   else if (not FDoc.Ready) and (FDoc.Error <> '') then
     PutGridText(Buffer, 1, 1, FDoc.Error, FThemeColors.HintFg, FThemeColors.BodyBg)
   else if FDoc.Ready and FHexMode then
@@ -5258,6 +5260,13 @@ begin
     Exit(FDialog.HandleInput(AKey, AShift, AKeyChar));
   if FSurfaceHandle <> 0 then
     Exit(SurfaceInput(AKey, AShift, AKeyChar));
+  if FDoc.Loading and (AKey = vkEscape) and (AShift = []) then
+  begin
+    RequestClose;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
 
   if FHexMode and (AKey = vkInsert) and (AShift = []) then
   begin

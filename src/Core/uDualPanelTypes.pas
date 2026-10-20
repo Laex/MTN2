@@ -229,7 +229,7 @@ implementation
 
 uses
   System.Generics.Collections, System.Generics.Defaults, uFindSession, uFileFind,
-  uCharWidth, uPlatformPaths;
+  uCharWidth, uPlatformPaths, uStrings;
 
 function MakeTab(AId: Cardinal; const ATitle, AURI: string): TTab;
 begin
@@ -661,7 +661,7 @@ end;
 function LoadingRows: TPanelRows;
 begin
   SetLength(Result, 1);
-  Result[0] := MakePanelRow('Reading...', False, -1, '', '', '', False);
+  Result[0] := MakePanelRow(T('ui.panel.reading', 'Reading...'), False, -1, '', '', '', False);
 end;
 
 function ErrorRows(const ADirURI, AMessage: string;
