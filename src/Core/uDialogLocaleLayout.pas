@@ -312,7 +312,7 @@ var
   end;
 
 begin
-  if not IsDialogProtocolV2(ADecl.Version) then
+  if ADecl.NoAutoLayout or not IsDialogProtocolV2(ADecl.Version) then
     Exit;
   if Length(ADecl.Controls) = 0 then
   begin
@@ -447,7 +447,7 @@ var
   I: Integer;
 begin
   Result := False;
-  if not IsDialogProtocolV2(ADecl.Version) then
+  if ADecl.NoAutoLayout or not IsDialogProtocolV2(ADecl.Version) then
     Exit;
   for I := 0 to High(ADecl.Controls) do
     if (ADecl.Controls[I].Kind in cCaptionKinds) and

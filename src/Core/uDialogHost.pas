@@ -43,6 +43,9 @@ type
     /// <summary>Button the left mouse button went down on, else -1. The
     /// command runs on release over the same button.</summary>
     FMouseIndex: Integer;
+    /// <summary>Input the left mouse button went down on and is dragging a
+    /// selection in, else -1.</summary>
+    FDragInput: Integer;
     /// <summary>Keyboard press waiting for the release: runs when the press
     /// timer fires or the next input arrives (FlushDialogButtonPress).</summary>
     FPendingAction: TProc;
@@ -75,7 +78,7 @@ type
     procedure DropPress;
     function ButtonIndexById(const AId: string): Integer;
     function CanShiftButton(const R: TRectI): Boolean;
-    procedure MouseCaptureMove(ALocalCol, ALocalRow: Integer);
+    function MouseCaptureMove(ALocalCol, ALocalRow: Integer): Boolean;
     procedure MouseCaptureRelease(ALocalCol, ALocalRow: Integer);
     procedure FireCancel;
     function FindDefaultButtonIndex: Integer;
@@ -365,8 +368,8 @@ begin
   if GCaptureHost = nil then
     Exit;
   Was := GCaptureHost.FPressIndex;
-  GCaptureHost.MouseCaptureMove(AAbsCol - GCaptureDX, AAbsRow - GCaptureDY);
-  Result := (GCaptureHost <> nil) and (GCaptureHost.FPressIndex <> Was);
+  Result := GCaptureHost.MouseCaptureMove(AAbsCol - GCaptureDX, AAbsRow - GCaptureDY);
+  Result := Result or ((GCaptureHost <> nil) and (GCaptureHost.FPressIndex <> Was));
 end;
 
 procedure DialogButtonCaptureRelease(AAbsCol, AAbsRow: Integer);
@@ -444,6 +447,7 @@ begin
   FAreaH := 25;
   FPressIndex := -1;
   FMouseIndex := -1;
+  FDragInput := -1;
   SetLength(FControlBounds, 0);
 end;
 
@@ -1354,6 +1358,7 @@ begin
   FPendingAction := nil;
   FPressIndex := -1;
   FMouseIndex := -1;
+  FDragInput := -1;
 end;
 
 function TDialogHost.ButtonIndexById(const AId: string): Integer;
@@ -1435,10 +1440,32 @@ begin
     Done(Self);
 end;
 
-procedure TDialogHost.MouseCaptureMove(ALocalCol, ALocalRow: Integer);
+function TDialogHost.MouseCaptureMove(ALocalCol, ALocalRow: Integer): Boolean;
 var
   Over: Boolean;
+  R: TRectI;
+  Before: TInputLine;
 begin
+  Result := False;
+  if FDragInput >= 0 then
+  begin
+    // Dragging a selection: the caret follows the pointer; past either end
+    // of the field it steps one cell beyond, which scrolls the text.
+    if (FDragInput > High(FControlBounds)) or (FDragInput > High(FDecl.Controls)) then
+      Exit;
+    R := FControlBounds[FDragInput];
+    Before := FDecl.Controls[FDragInput].Edit;
+    if (ALocalCol < R.Left) and (FDecl.Controls[FDragInput].Edit.ViewLeft > 0) then
+      Dec(FDecl.Controls[FDragInput].Edit.ViewLeft);
+    InputLineMouseClick(FDecl.Controls[FDragInput].Edit,
+      EnsureRange(ALocalCol - R.Left, -1, R.Width), 1, True);
+    Result := (Before.Cursor <> FDecl.Controls[FDragInput].Edit.Cursor) or
+      (Before.SelAnchor <> FDecl.Controls[FDragInput].Edit.SelAnchor) or
+      (Before.ViewLeft <> FDecl.Controls[FDragInput].Edit.ViewLeft);
+    if Result then
+      NotifyChanged;
+    Exit;
+  end;
   if (FMouseIndex < 0) or (FMouseIndex > High(FControlBounds)) then
     Exit;
   Over := FControlBounds[FMouseIndex].Contains(ALocalCol, ALocalRow);
@@ -1460,6 +1487,11 @@ var
   Id: string;
   Done: TNotifyEvent;
 begin
+  if FDragInput >= 0 then
+  begin
+    FDragInput := -1;
+    Exit;
+  end;
   Idx := FMouseIndex;
   FMouseIndex := -1;
   FPressIndex := -1;
@@ -2621,8 +2653,19 @@ begin
             InputLineMouseClick(FDecl.Controls[I].Edit, ALocalCol - R.Left, 1, True);
           end
           else
-            InputLineMouseClick(FDecl.Controls[I].Edit, ALocalCol - R.Left,
-              FClicks.Hit(ALocalCol, ALocalRow));
+          begin
+            Clicks := FClicks.Hit(ALocalCol, ALocalRow);
+            InputLineMouseClick(FDecl.Controls[I].Edit, ALocalCol - R.Left, Clicks);
+            // A single press starts a drag selection, finished on the release.
+            if (Clicks = 1) and Assigned(GDialogButtonPressStart) then
+            begin
+              DropPress;
+              FDragInput := I;
+              GCaptureHost := Self;
+              GCaptureDX := GMouseDownCol - ALocalCol;
+              GCaptureDY := GMouseDownRow - ALocalRow;
+            end;
+          end;
           NotifyChanged;
           Exit(True);
         end;

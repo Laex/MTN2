@@ -14,7 +14,7 @@ function DeclarationToJson(const ADecl: TDialogDeclaration): string;
 implementation
 
 uses
-  System.JSON, System.Generics.Collections;
+  System.JSON, System.StrUtils, System.Generics.Collections;
 
 function JsonBool(const AObj: TJSONObject; const AName: string;
   ADefault: Boolean = False): Boolean;
@@ -280,6 +280,7 @@ begin
   ADecl.Width := 48;
   ADecl.Height := 8;
   ADecl.IsWarning := False;
+  ADecl.NoAutoLayout := False;
   SetLength(ADecl.Controls, 0);
   if Trim(AJson) = '' then
     Exit;
@@ -299,6 +300,8 @@ begin
     ADecl.Height := JsonInt(Obj, 'height', 8);
     ADecl.IsWarning := SameText(JsonStr(Obj, 'style', ''), 'warning') or
       SameText(JsonStr(Obj, 'style', ''), 'error');
+    if Assigned(Obj.Values['autoLayout']) then
+      ADecl.NoAutoLayout := Obj.Values['autoLayout'] is TJSONFalse;
     if ADecl.Width < 28 then
       ADecl.Width := 28;
     if ADecl.Height < 6 then
@@ -513,9 +516,9 @@ begin
     Parts[N] := One;
   end;
   Result := Format(
-    '{"type":"dialog","version":"%s","title":"%s","width":%d,"height":%d,"children":[%s]}',
+    '{"type":"dialog","version":"%s","title":"%s","width":%d,"height":%d,%s"children":[%s]}',
     [EscapeJson(Ver), EscapeJson(ADecl.Title), ADecl.Width, ADecl.Height,
-     string.Join(',', Parts)]);
+     IfThen(ADecl.NoAutoLayout, '"autoLayout":false,', ''), string.Join(',', Parts)]);
 end;
 
 end.

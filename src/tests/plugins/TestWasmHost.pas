@@ -66,7 +66,7 @@ uses
 function DemoPluginDir: string;
 begin
   Result := ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
-    NativePath('../../plugins/mtn.wasm.demo')));
+    NativePath('../../../samples/plugins/mtn.wasm.demo')));
 end;
 
 procedure WaitList(const AVfs: IVirtualFileSystem; const AURI: string;

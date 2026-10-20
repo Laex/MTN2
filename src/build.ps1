@@ -11,7 +11,11 @@ param(
     [string]$Version = '',
     # Development build: the version is tools\dev-version.ps1 (the last
     # release plus the commits since its tag). Ignored when -Version is given.
-    [switch]$Dev
+    [switch]$Dev,
+    # A Debug build also builds and installs the samples\plugins demo plugins
+    # (every one whose toolchain is found), so they are there for testing. A
+    # Release build never does; -NoSamples skips them in a Debug build too.
+    [switch]$NoSamples
 )
 
 $ErrorActionPreference = 'Stop'
@@ -181,6 +185,11 @@ if ($WasmtimeDll -and (Test-Path $WasmtimeDll)) {
     Write-Host "OK: staged wasmtime.dll"
 } else {
     Write-Host "WARN: wasmtime.dll not found; WASM plugins skipped (run src/tools/fetch-wasmtime.ps1)"
+}
+
+if ($Config -ne 'Release' -and -not $NoSamples) {
+    try { & (Join-Path $PSScriptRoot '..\samples\build-samples.ps1') -Install }
+    catch { Write-Host "WARN: samples build failed: $_" }
 }
 
 Write-Host "OK: $Exe"

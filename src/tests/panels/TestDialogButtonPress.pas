@@ -21,6 +21,7 @@ type
     [Test] procedure TestKeyRunsOnRelease;
     [Test] procedure TestNextKeyRunsPendingFirst;
     [Test] procedure TestCloseDropsPress;
+    [Test] procedure TestDraggingInAnInputSelectsText;
     [Test] procedure TestMouseRunsOnReleaseOverButton;
     [Test] procedure TestEscAndNoTimerRunAtOnce;
     [Test] procedure TestPressButtonThen;
@@ -32,7 +33,8 @@ implementation
 
 uses
   System.SysUtils, System.UITypes,
-  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost, uThemeRegistry;
+  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost, uThemeRegistry,
+  uInputLine;
 
 const
   W = 60;
@@ -233,6 +235,55 @@ begin
   SendKey(Host, vkReturn);
   Host.Free;
   Assert.IsFalse(DialogButtonPressPending, 'freeing the host drops the press');
+end;
+
+procedure TTestDialogButtonPress.TestDraggingInAnInputSelectsText;
+const
+  DX = 5;
+  DY = 2;
+  cInputJson =
+    '{"type":"dialog","version":"2.0","title":"Edit","width":40,"height":8,' +
+    '"children":[' +
+    '{"type":"input","id":"name","value":"abcdefghij","col":4,"row":1,"width":20,"height":1},' +
+    '{"type":"button","id":"ok","text":"OK","default":true,"col":4,"row":3,"width":10,"height":1}]}';
+var
+  Host: TDialogHost;
+  Decl: TDialogDeclaration;
+  R: TRectI;
+  Idx: Integer;
+
+  function Selected: string;
+  begin
+    Result := InputLineSelectedText(Host.GetControl(Idx).Edit);
+  end;
+
+begin
+  UsePressTimer;
+  Assert.IsTrue(TryParseDialogJson(cInputJson, Decl), 'dialog json');
+  Host := TDialogHost.Create(CreateThemeByName('NDN'));
+  try
+    Host.Open(Decl, procedure(const AControlId, AValuesJson: string) begin end);
+    Render(Host);
+    Idx := ButtonIndex(Host, 'name');
+    R := Host.ControlBoundsAt(Idx);
+
+    DialogButtonMouseDown(R.Left + 2 + DX, R.Top + DY);
+    Assert.IsTrue(Host.HandleClick(R.Left + 2, R.Top), 'press in the field handled');
+    Assert.IsTrue(DialogButtonCaptured, 'the field holds the mouse');
+    Assert.AreEqual('', Selected, 'a press alone selects nothing');
+
+    Assert.IsTrue(DialogButtonCaptureMove(R.Left + 6 + DX, R.Top + DY), 'dragging right extends');
+    Assert.AreEqual('cdef', Selected, 'text between the press and the pointer');
+    Assert.IsTrue(DialogButtonCaptureMove(R.Left + 1 + DX, R.Top + DY + 3), 'dragging back shrinks');
+    Assert.AreEqual('b', Selected, 'the row of the pointer does not matter');
+    Assert.IsFalse(DialogButtonCaptureMove(R.Left + 1 + DX, R.Top + DY), 'no change, no repaint');
+
+    DialogButtonCaptureRelease(R.Left + 1 + DX, R.Top + DY);
+    Assert.IsFalse(DialogButtonCaptured, 'the release ends the drag');
+    Assert.AreEqual('b', Selected, 'the selection stays');
+  finally
+    Host.Free;
+  end;
 end;
 
 procedure TTestDialogButtonPress.TestMouseRunsOnReleaseOverButton;

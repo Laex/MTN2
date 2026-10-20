@@ -11,6 +11,7 @@ type
   public
     [Test] procedure TestValidateAllDialogs;
     [Test] procedure TestListFlagsSurviveARoundTrip;
+    [Test] procedure TestAutoLayoutOptionSurvivesARoundTrip;
     [Test] procedure TestColorSampleParsing;
     [Test] procedure TestDirSyncRadios;
     [Test] procedure TestFileDiffDialog;
@@ -27,7 +28,8 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
   uDialogTypes,
-  uDialogJson;
+  uDialogJson,
+  uDialogLocaleLayout;
 
 procedure TestValidateAllDialogs;
 var
@@ -321,6 +323,32 @@ begin
       Assert.IsFalse(Back.Controls[I].Framed, 'no frame stays no frame');
       Assert.IsFalse(Back.Controls[I].KeyCommands, 'and no key commands');
     end;
+end;
+
+procedure TTestDialogJson.TestAutoLayoutOptionSurvivesARoundTrip;
+const
+  cBody =
+    '"version":"2.0","title":"T","width":40,"height":8,"children":[' +
+    '{"type":"label","id":"a","text":"A rather long caption:","col":1,"row":0,"width":8},' +
+    '{"type":"input","id":"b","value":"","col":10,"row":0,"width":27}]}';
+var
+  Decl, Back: TDialogDeclaration;
+begin
+  Assert.IsTrue(TryParseDialogJson('{"type":"dialog",' + cBody, Decl), 'parses');
+  Assert.IsFalse(Decl.NoAutoLayout, 'automatic layout is on by default');
+  Assert.IsTrue(Pos('autoLayout', DeclarationToJson(Decl)) = 0, 'default is not written');
+
+  Assert.IsTrue(TryParseDialogJson('{"type":"dialog","autoLayout":false,' + cBody, Decl), 'parses');
+  Assert.IsTrue(Decl.NoAutoLayout, 'autoLayout false turns it off');
+  FitDialogToTranslatedText(Decl);
+  Assert.AreEqual(40, Decl.Width, 'width is kept');
+  Assert.AreEqual(10, Decl.Controls[1].Col, 'columns are kept');
+  Assert.IsFalse(DialogCaptionsOverflow(Decl), 'no caption fitting either');
+  Assert.IsTrue(TryParseDialogJson(DeclarationToJson(Decl), Back), 'the written JSON parses again');
+  Assert.IsTrue(Back.NoAutoLayout, 'the option is written');
+
+  Assert.IsTrue(TryParseDialogJson('{"type":"dialog","autoLayout":true,' + cBody, Decl), 'parses');
+  Assert.IsFalse(Decl.NoAutoLayout, 'autoLayout true keeps it on');
 end;
 
 procedure TTestDialogJson.TestValidateAllDialogs;

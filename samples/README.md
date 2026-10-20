@@ -17,6 +17,7 @@
 | `mtn.demo.go.wasm` | Go (WASM, WASI) | Блокирует Shift+Del и Wipe, объясняя это в диалоге |
 | `mtn.demo.pas` | Delphi | Ctrl+Alt+F8 – быстрая заметка в `mtn2-notes.txt` |
 | `mtn.demo.wat` | WAT | Ctrl+Alt+F7 – счётчик в статусе |
+| `mtn.wasm.demo` | WAT | Папка `wasmdemo://` только для чтения с одним текстовым файлом; образец гостевого ABI виртуальной файловой системы |
 
 ## Сборка
 

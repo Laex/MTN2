@@ -20,7 +20,7 @@
 | Форма поставки | Доступ к памяти процесса | Куда попадает сейчас |
 |---|---|---|
 | DLL/SO (родной ABI v1) | Полный (native, доверенный код) | `mtn.7z` (системный) |
-| WASM (Wasmtime, без WASI) | Только копии UTF-8/JSON по смещениям в линейной памяти guest, песочница | `mtn.ws`, `mtn.tmp`, `mtn.highlight`, `mtn.wasm.demo` (системные) |
+| WASM (Wasmtime, без WASI) | Только копии UTF-8/JSON по смещениям в линейной памяти guest, песочница | `mtn.ws`, `mtn.tmp`, `mtn.highlight` (системные) |
 | Far/TC bridge (будущее) | Через отдельный ABI-мост поверх родного Plugin Manager | не реализовано («Far API Wrapper» – «Total Commander plugin bridge») |
 
 Системный и пользовательский плагин в DLL-форме одинаково доверенные (полный доступ к процессу) – «системность» тут не даёт дополнительных прав и не отбирает их.
@@ -62,7 +62,7 @@
 | `mtn.ws` | меню Commands → Workspace, WASM | **Сделано** («WASM Host для родных плагинов») | Сама схема `ws:///` – в ядре (`uWorkspaceVfs.pas`); WASM-плагин добавляет только пункты меню поверх неё. Нет `wasmtime.dll` → пункты меню не появляются, схема продолжает работать |
 | `mtn.highlight` | подсветка текста, WASM | **Сделано** | Раскрашивает около 70 языков в просмотрщике и редакторе библиотекой `syntect`; разбор идёт в песочнице WASM, состояние между строками хранит плагин (`register_highlighter_state`) |
 | `mtn.tmp` | `tmp:///`, WASM | **Сделано** (демо/референс) | Демонстрационная панель поверх WASM guest ABI – образец для сторонних авторов |
-| `mtn.wasm.demo` | `wasmdemo://`, WASM (`.wat`) | **Сделано** («WASM Host для родных плагинов», демо) | Read-only fake VFS – эталонный пример гостевого ABI (`mtn_vfs_list`/`exists`/`read_text`/…) |
+| `mtn.wasm.demo` (`samples\plugins`) | `wasmdemo://`, WASM (`.wat`) | **Сделано** (образец, в сборку не входит) | Read-only fake VFS – эталонный пример гостевого ABI (`mtn_vfs_list`/`exists`/`read_text`/…) |
 | `mtn.net` | `net://`, `ftp://`, `ftps://`, `nsftp://`, `scp://`, `dav://`, `davs://`, `s3://`, DLL (ABI 4) | **Сделано** | Сетевой клиент FTP/FTPS/SFTP/SCP/WebDAV/S3 на libcurl: пункт в окне выбора диска, список сохранённых подключений, схема VFS версии 2 (ход и отмена передач, постраничный листинг), вопросы о пароле, ключе сервера и сертификате. Встроенный `sftp://` не заменяет: SFTP плагина идёт под `nsftp://` |
 | **SFTP-провайдер** | `sftp://` | **In-process в ядре, не вынесен** | Остаётся в ядре: рядом с ним работает `mtn.net`, у которого свой SFTP под схемой `nsftp://` |
 | **Far API Wrapper** | мост VFS-плагинов Far Manager | **Не реализовано** («Far API Wrapper», «отложено») | Не «плагин» в родном ABI – мост, транслирующий `PluginPanelItem` Far → Pull MTN2. Системный в смысле поставки (часть продукта), но отдельная, более поздняя категория моста совместимости |
@@ -119,7 +119,7 @@
 | Зона | Примеры | Файлы/каталоги | Готовность |
 |---|---|---|---|
 | **Ядро** | Dual Panel, Editor/Viewer, Theme Engine, Keymap, Jobs, VFS Core+схемы `file/zip/sys/recycle/find/ws/sftp`, Dialog Host, Overlay Renderer, ConPTY, Event Bus, Plugin Manager сам по себе | `src/Core`, `src/Forms`, `src/Themes` | Реализовано |
-| **Системные плагины (готово)** | `mtn.7z` (7z-архивы), `mtn.ws` (workspace-меню), `mtn.tmp`/`mtn.wasm.demo` (демо) | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp`, `src/plugins/mtn.wasm.demo` | Сделано, покрыто тестами |
+| **Системные плагины (готово)** | `mtn.7z` (7z-архивы), `mtn.ws` (workspace-меню), `mtn.tmp` | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp` | Сделано, покрыто тестами |
 | **Системные плагины (запланировано)** | SFTP как отдельный плагин, Far API Wrapper, TC Plugin Bridge | – | Не начато («Far API Wrapper» – «Total Commander plugin bridge» «отложено»; SFTP-вынос не начат) |
 | **Пользовательские плагины (доступно)** | VFS-схема + панель (идентификация) + пункты меню + rebind хоткеев + pub/sub + invalidate | Host API (`uPluginHostAbi.pas`) | Работает уже сейчас, тем же путём что `mtn.7z` |
 | **Пользовательские плагины (запланировано)** | Полный Pull для панели, диалоги, F-bar/status/overlay/text-area как плагин-контент | `PANEL_PLUGIN.md` и другие `*_PLUGIN.md` | Контракт описан, cdecl не экспортирован: Pull для самой панели, overlay и text area (см. §6) |

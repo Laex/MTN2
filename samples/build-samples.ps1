@@ -20,6 +20,7 @@
 #   mtn.demo.go.wasm Go      go (GOOS=wasip1, needs "wasi": true in plugin.json)
 #   mtn.demo.pas     Delphi  dcc64 from RAD Studio
 #   mtn.demo.wat     WAT     nothing: the host assembles the text at load time
+#   mtn.wasm.demo    WAT     nothing, as mtn.demo.wat
 param(
     [string[]]$Only,
     [switch]$Install
@@ -251,8 +252,7 @@ function Build-Delphi {
     return $true
 }
 
-function Build-Wat {
-    $id = 'mtn.demo.wat'
+function Build-Wat([string]$id) {
     $out = Join-Path $BuildRoot $id
     Stage-Common $id $out
     Copy-Item (Join-Path $Samples "$id\plugin.wat") $out -Force
@@ -273,7 +273,8 @@ foreach ($step in @(
         @{ Id = 'mtn.demo.go'; Run = { Build-Go } },
         @{ Id = 'mtn.demo.go.wasm'; Run = { Build-GoWasm } },
         @{ Id = 'mtn.demo.pas'; Run = { Build-Delphi } },
-        @{ Id = 'mtn.demo.wat'; Run = { Build-Wat } })) {
+        @{ Id = 'mtn.demo.wat'; Run = { Build-Wat 'mtn.demo.wat' } },
+        @{ Id = 'mtn.wasm.demo'; Run = { Build-Wat 'mtn.wasm.demo' } })) {
     if (-not (Want $step.Id)) { continue }
     if (& $step.Run) {
         Write-Host "OK: built $($step.Id)"

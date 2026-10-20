@@ -126,6 +126,10 @@ type
     Height: Integer;
     /// <summary>True = FAR Warning chrome (red body, white text).</summary>
     IsWarning: Boolean;
+    /// <summary>True = the declaration's width and control columns are used
+    /// as written: no widening to captions, no column shifts, no button
+    /// recentering (JSON "autoLayout": false).</summary>
+    NoAutoLayout: Boolean;
     Controls: TDialogControls;
   end;
 

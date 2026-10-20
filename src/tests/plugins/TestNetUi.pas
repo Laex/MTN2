@@ -23,6 +23,7 @@ type
     [Test] procedure TestHostKeyQuestionShowsTheFingerprintAndNeedsTrust;
     [Test] procedure TestBusyHostIsRetriedUntilTheDialogOpens;
     [Test] procedure TestEditorAddsANewSession;
+    [Test] procedure TestTranslatedEditorHasNoOverlappingControls;
     [Test] procedure TestEditorUpdatesAndRenamesASession;
     [Test] procedure TestEditorKeepsOpenOnInvalidInput;
     [Test] procedure TestMoreOptionsReturnToTheMainDialog;
@@ -32,7 +33,8 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.JSON, System.SyncObjs, uPluginHostAbi, uNetTypes,
+  System.SysUtils, System.Classes, System.JSON, System.SyncObjs, System.Math, uPluginHostAbi,
+  uDialogTypes, uDialogJson, uDialogLocaleLayout, uNetTypes,
   uNetManager, uNetSessions, uNetSecrets, uNetUi;
 
 type
@@ -114,6 +116,27 @@ end;
 function FakeGetSetting(APluginId, AKey: PAnsiChar; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
 begin
   Result := -1;
+end;
+
+function FakeTranslate(APluginId, AKey, ADefault: PAnsiChar; ABuf: PAnsiChar;
+  ABufSize: Int64): Int64; cdecl;
+var
+  Key, Text: UTF8String;
+begin
+  Key := UTF8String(AKey);
+  Text := UTF8String(ADefault);
+  if Key = 'ui.edit.user' then
+    Text := UTF8String('Пользователь / ключ доступа:')
+  else if Key = 'ui.edit.secret' then
+    Text := UTF8String('Пароль / секретный ключ:')
+  else if Key = 'ui.edit.root' then
+    Text := UTF8String('Начальная папка:');
+  Result := Length(Text);
+  if Result < ABufSize then
+  begin
+    Move(PAnsiChar(Text)^, ABuf^, Result);
+    ABuf[Result] := #0;
+  end;
 end;
 
 procedure TTestNetUi.Setup;
@@ -312,6 +335,32 @@ begin
   Assert.AreEqual('pp', S.KeyPassphrase);
   Assert.AreEqual('/home/u', S.RootPath);
   Assert.IsTrue(GRefreshCalls > 0, 'the panel is refreshed');
+end;
+
+procedure TTestNetUi.TestTranslatedEditorHasNoOverlappingControls;
+var
+  Decl: TDialogDeclaration;
+  I, J, W: Integer;
+begin
+  GHost.Translate := FakeTranslate;
+  EditSession('');
+  Assert.IsTrue(GDialogs.Count = 1, 'the editor opened');
+  Assert.IsTrue(TryParseDialogJson(GDialogs[0], Decl), 'the declaration parses');
+  FitDialogToTranslatedText(Decl);
+  for I := 0 to High(Decl.Controls) do
+  begin
+    W := Decl.Controls[I].BoxW;
+    if Decl.Controls[I].Kind = dckLabel then
+      W := Length(Decl.Controls[I].Text);
+    Assert.IsTrue(Decl.Controls[I].Col + W <= Decl.Width - 2,
+      Decl.Controls[I].Id + ' stays inside the frame');
+    for J := I + 1 to High(Decl.Controls) do
+      if (Decl.Controls[I].Row = Decl.Controls[J].Row) and
+         (Decl.Controls[I].Col < Decl.Controls[J].Col + Max(Decl.Controls[J].BoxW, 1)) and
+         (Decl.Controls[J].Col < Decl.Controls[I].Col + Max(W, 1)) then
+        Assert.Fail('controls overlap on row ' + IntToStr(Decl.Controls[I].Row) + ': ' +
+          Decl.Controls[I].Text + ' / ' + Decl.Controls[J].Text);
+  end;
 end;
 
 procedure TTestNetUi.TestEditorUpdatesAndRenamesASession;

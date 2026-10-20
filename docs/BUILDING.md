@@ -4,6 +4,8 @@
 
 Требуется RAD Studio 13 (`Studio\37.0`), Windows x64. Опционально – Rust (`cargo`) для плагина `mtn.ws`.
 
+Сборка без `-Config Release` (по умолчанию Debug) заодно собирает и ставит в `bin\win64\plugins` образцы из `samples\plugins`, для которых нашёлся инструментарий; `-NoSamples` отключает это. Release-сборка образцы не трогает.
+
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # -> bin\win64\MTN2.exe + bin\win64\plugins\
 ./src/tests/run-tests.ps1                         # регрессионные тесты (DUnitX, dcc64)

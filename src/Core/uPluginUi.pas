@@ -49,7 +49,7 @@ procedure PluginUiUnregister(const APluginId: string);
 implementation
 
 uses
-  uDialogJson, uDialogResources;
+  uDialogJson, uDialogResources, uDialogLocaleLayout;
 
 const
   cMaxDeclarationChars = 256 * 1024;
@@ -89,6 +89,9 @@ begin
       Exit;
   if not TryParseDialogJson(Json, Decl) then
     Exit;
+  // Widen the dialog and realign columns to the captions the plugin supplied
+  // (protocol 2 only; other declarations are shown as authored).
+  FitDialogToTranslatedText(Decl);
   Gen := GenerationOf(Id);
   Answered := False;
   Result := GHost(Decl,

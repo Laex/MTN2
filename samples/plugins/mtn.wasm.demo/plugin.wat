@@ -1,4 +1,4 @@
-;; MTN2 stage-30 demo plugin: read-only fake VFS on wasmdemo://
+;; MTN2 demo plugin: read-only fake VFS on wasmdemo://
 ;; Compiled at load time by Wasmtime wat2wasm. Guest never sees host pointers -
 ;; list/exists/read copy UTF-8 through linear memory. No WASI imports.
 ;; Status is a single i64; byte size / isDir is exported as mtn_last_size.

@@ -16,6 +16,8 @@ type
     [Test] procedure TestUnloadedPluginGetsNoAnswer;
     [Test] procedure TestFaultyCallbackIsContained;
     [Test] procedure TestDialogLoadsFromPluginFolderByName;
+    [Test] procedure TestLongLabelWidensAndAlignsPluginDialog;
+    [Test] procedure TestProtocolOneDialogKeepsAuthoredLayout;
   end;
 
 implementation
@@ -31,10 +33,32 @@ const
     '{"type":"input","id":"name","value":"x"},' +
     '{"type":"button","id":"ok","text":"OK","default":true}]}';
 
+  cWideJson =
+    '{"version":"2.0","type":"dialog","title":"Ask","width":40,"height":8,"children":[' +
+    '{"type":"label","id":"lbl_a","text":"A rather long caption:","col":1,"row":0,"width":8},' +
+    '{"type":"input","id":"a","value":"","col":10,"row":0,"width":27},' +
+    '{"type":"label","id":"lbl_b","text":"Size:","col":1,"row":1,"width":8},' +
+    '{"type":"input","id":"b","value":"","col":10,"row":1,"width":27}]}';
+  cV1Json =
+    '{"type":"dialog","title":"Ask","width":40,"height":8,"children":[' +
+    '{"type":"label","id":"lbl_a","text":"A rather long caption:","col":1,"row":0,"width":8},' +
+    '{"type":"input","id":"a","value":"","col":10,"row":0,"width":27}]}';
+
 var
   GPending: TProc<string, string>;
   GShown: Integer;
   GTitle: string;
+  GShownDecl: TDialogDeclaration;
+
+function ColOf(const ADecl: TDialogDeclaration; const AId: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(ADecl.Controls) do
+    if ADecl.Controls[I].Id = AId then
+      Exit(ADecl.Controls[I].Col);
+  Result := -1;
+end;
 
 procedure InstallHost(ACanShow: Boolean);
 begin
@@ -49,6 +73,7 @@ begin
       begin
         Inc(GShown);
         GTitle := ADecl.Title;
+        GShownDecl := ADecl;
         GPending := AOnCommand;
       end;
     end);
@@ -183,6 +208,44 @@ begin
     SetPluginDialogHost(nil);
     TDirectory.Delete(TPath.GetDirectoryName(Dir), True);
   end;
+end;
+
+procedure TestLongLabelWidensAndAlignsPluginDialog;
+begin
+  InstallHost(True);
+  try
+    Assert.IsTrue(PluginShowDialog('t.ui', cWideJson,
+      procedure(const AControlId, AValuesJson: string) begin end), 'dialog shown');
+    Assert.AreEqual(1 + Length('A rather long caption:') + 1, ColOf(GShownDecl, 'a'),
+      'the field moved past the longer caption');
+    Assert.AreEqual(ColOf(GShownDecl, 'a'), ColOf(GShownDecl, 'b'),
+      'fields of one label column stay aligned');
+  finally
+    SetPluginDialogHost(nil);
+  end;
+end;
+
+procedure TestProtocolOneDialogKeepsAuthoredLayout;
+begin
+  InstallHost(True);
+  try
+    Assert.IsTrue(PluginShowDialog('t.ui', cV1Json,
+      procedure(const AControlId, AValuesJson: string) begin end), 'dialog shown');
+    Assert.AreEqual(10, ColOf(GShownDecl, 'a'), 'protocol 1 is shown as authored');
+    Assert.AreEqual(40, GShownDecl.Width, 'width untouched');
+  finally
+    SetPluginDialogHost(nil);
+  end;
+end;
+
+procedure TTestPluginUi.TestLongLabelWidensAndAlignsPluginDialog;
+begin
+  TestPluginUi.TestLongLabelWidensAndAlignsPluginDialog;
+end;
+
+procedure TTestPluginUi.TestProtocolOneDialogKeepsAuthoredLayout;
+begin
+  TestPluginUi.TestProtocolOneDialogKeepsAuthoredLayout;
 end;
 
 procedure TTestPluginUi.TestInvalidDeclarationIsRefused;
