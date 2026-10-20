@@ -271,6 +271,12 @@ begin
   MessageBus.Publish(cTopicPanelNavigated);
 end;
 
+function WaitingRows(const AText: string): TPanelRows;
+begin
+  SetLength(Result, 1);
+  Result[0] := MakePanelRow(AText, False, -1, '', '', '', False);
+end;
+
 procedure TFilePanelModel.ApplySlowHint(const ARows: TPanelRows; AGen: Cardinal);
 begin
   // Still loading (not FLoading) -- a superseded/finished request must not
@@ -555,9 +561,12 @@ begin
         begin
           if not Life.Alive then
             Exit;
-          ApplySlowHint(ErrorRows(URI,
-            'Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...',
-            ReturnUri), Gen);
+          if IsSftpUri(URI) or IsGenericVfsUri(URI) then
+            ApplySlowHint(WaitingRows('Waiting for the server...'), Gen)
+          else
+            ApplySlowHint(ErrorRows(URI,
+              'Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...',
+              ReturnUri), Gen);
         end);
     end).Start;
 end;

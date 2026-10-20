@@ -1053,11 +1053,12 @@ begin
         StartStreamingOpen(FPath, Gen);
         Exit;
       end;
-      // An oversized archive entry gets the same second chance, but there's
-      // no local file to seek/line-index directly - extract it to a temp
-      // file first (reusing the same CopyAsync path F5/Copy uses to pull a
-      // file out of a ZIP), then stream from that temp copy.
-      if (AError.Code = vecNotSupported) and HasArchiveChain(URI) then
+      // An oversized archive entry (or a file a plugin serves, such as a
+      // remote server's) gets the same second chance, but there's no local
+      // file to seek/line-index directly - copy it to a temp file first
+      // (reusing the same CopyAsync path F5/Copy uses to pull a file out of a
+      // ZIP), then stream from that temp copy.
+      if (AError.Code = vecNotSupported) and (HasArchiveChain(URI) or IsGenericVfsUri(URI)) then
       begin
         StartStreamingOpenFromArchive(URI, Gen);
         Exit;

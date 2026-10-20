@@ -129,7 +129,7 @@ implementation
 uses
   System.Classes, System.Rtti, System.SyncObjs, System.Math, System.Generics.Collections,
   System.IOUtils, System.JSON,
-  uClipboardService,
+  uClipboardService, uConfigLocation,
   uNotice, uStrings, uUpdater;
 
 type
@@ -279,6 +279,7 @@ begin
   try
     Obj.AddPair('version', AppVersionString);
     Obj.AddPair('language', CurrentLocale);
+    Obj.AddPair('configDir', GetConfigDirectory);
     Result := Obj.ToJSON;
   finally
     Obj.Free;

@@ -66,8 +66,9 @@ const
   cPanelBg  = TAlphaColor($FF0000AA);
   cFrameActive = TAlphaColor($FF55FFFF);
 
-  // Numbered extras below the drive list come from ChangeDriveSpecial* in
-  // uDriveInfo so the panel drive bar and this popup stay on one catalog.
+  // Numbered extras below the drive list (built-in ones, then the items plugins
+  // registered) come from ChangeDriveItem* / ChangeDriveSpecial* in uDriveInfo
+  // so the panel drive bar and this popup stay on one catalog.
 
 constructor TDrivePopupController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AGetPanelBounds: TPanelBoundsEvent;
@@ -124,7 +125,7 @@ begin
     FState.ScrollOffset := FState.CursorIndex - ViewH + 1;
   if FState.ScrollOffset < 0 then
     FState.ScrollOffset := 0;
-  TotalItems := Length(FState.Drives) + ChangeDriveSpecialCount + 1;
+  TotalItems := Length(FState.Drives) + ChangeDriveItemCount + 1;
   if (TotalItems > 0) and
      (FState.ScrollOffset > TotalItems - ViewH) then
     FState.ScrollOffset := Max(TotalItems - ViewH, 0);
@@ -138,7 +139,7 @@ begin
   PanelBounds := FGetPanelBounds(FState.Side);
   Count := Length(FState.Drives);
   // TotalItems includes drives + 1 separator line + the special items below it
-  TotalItems := Count + ChangeDriveSpecialCount + 1;
+  TotalItems := Count + ChangeDriveItemCount + 1;
   W := Min(72, Max(PanelBounds.Width - 2, 40));
   if W > PanelBounds.Width - 1 then
     W := Max(PanelBounds.Width - 1, 24);
@@ -243,11 +244,11 @@ begin
     Exit;
   Side := FState.Side;
   // If cursor is on one of the special items below the separator line
-  // (indices Length(Drives) + 1 .. Length(Drives) + ChangeDriveSpecialCount)
+  // (indices Length(Drives) + 1 .. Length(Drives) + ChangeDriveItemCount)
   SpecialIdx := FState.CursorIndex - (Length(FState.Drives) + 1);
-  if (SpecialIdx >= 0) and (SpecialIdx < ChangeDriveSpecialCount) then
+  if (SpecialIdx >= 0) and (SpecialIdx < ChangeDriveItemCount) then
   begin
-    TargetURI := ChangeDriveSpecialUris[SpecialIdx];
+    TargetURI := ChangeDriveItemUri(SpecialIdx);
     Close;
     if Assigned(FOnNavigate) then
       FOnNavigate(Side, TargetURI);
@@ -326,7 +327,7 @@ begin
       PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
     end
     else if (Idx - (Length(FState.Drives) + 1) >= 0) and
-            (Idx - (Length(FState.Drives) + 1) < ChangeDriveSpecialCount) then
+            (Idx - (Length(FState.Drives) + 1) < ChangeDriveItemCount) then
     begin
       SpecialIdx := Idx - (Length(FState.Drives) + 1);
       IsCur := CurGlyph = ChangeDriveSpecialGlyph(SpecialIdx);
@@ -356,7 +357,7 @@ begin
     // ADialogStyle forces the white FAR-dialog track only when no theme is
     // assigned; an assigned theme paints its own scrollbar via ATheme.
     DrawPanelScrollBar(AGrid, ScrollX, ListTop, ListBottom,
-      FState.ScrollOffset, Count + ChangeDriveSpecialCount + 1, ViewH, FTheme,
+      FState.ScrollOffset, Count + ChangeDriveItemCount + 1, ViewH, FTheme,
       not Assigned(FTheme));
 
   if Count = 0 then
@@ -419,14 +420,14 @@ begin
     else
       // Wrap from the first item to the last (last special item, or last
       // drive when there are no special items to land on).
-      FState.CursorIndex := Length(FState.Drives) + ChangeDriveSpecialCount;
+      FState.CursorIndex := Length(FState.Drives) + ChangeDriveItemCount;
     MoveCursorAndInvalidate;
     AKey := 0;
     Exit;
   end;
   if AKey = vkDown then
   begin
-    if FState.CursorIndex < Length(FState.Drives) + ChangeDriveSpecialCount then
+    if FState.CursorIndex < Length(FState.Drives) + ChangeDriveItemCount then
     begin
       Inc(FState.CursorIndex);
       // Skip separator line (index = Length(Drives))
@@ -454,8 +455,8 @@ begin
   if AKey = vkNext then
   begin
     Inc(FState.CursorIndex, ViewH);
-    if FState.CursorIndex > Length(FState.Drives) + ChangeDriveSpecialCount then
-      FState.CursorIndex := Length(FState.Drives) + ChangeDriveSpecialCount;
+    if FState.CursorIndex > Length(FState.Drives) + ChangeDriveItemCount then
+      FState.CursorIndex := Length(FState.Drives) + ChangeDriveItemCount;
     if FState.CursorIndex = Length(FState.Drives) then
       Inc(FState.CursorIndex);
     MoveCursorAndInvalidate;
@@ -471,16 +472,16 @@ begin
   end;
   if AKey = vkEnd then
   begin
-    FState.CursorIndex := Length(FState.Drives) + ChangeDriveSpecialCount;
+    FState.CursorIndex := Length(FState.Drives) + ChangeDriveItemCount;
     MoveCursorAndInvalidate;
     AKey := 0;
     Exit;
   end;
 
-  // Digit keys 1..ChangeDriveSpecialCount jump straight to the matching numbered
+  // Digit keys 1..ChangeDriveItemCount jump straight to the matching numbered
   // item below the separator and confirm it, mirroring the letter shortcuts
   // for drives below.
-  if (AKeyChar >= '1') and (AKeyChar <= Chr(Ord('0') + ChangeDriveSpecialCount)) then
+  if (AKeyChar >= '1') and (AKeyChar <= Chr(Ord('0') + ChangeDriveItemCount)) then
   begin
     FState.CursorIndex := Length(FState.Drives) + 1 + (Ord(AKeyChar) - Ord('1'));
     EnsureScroll;
@@ -570,7 +571,7 @@ begin
   if (ALocalRow < ListTop) or (ALocalRow >= StatusY) then
     Exit;
   Idx := FState.ScrollOffset + (ALocalRow - ListTop);
-  if (Idx >= 0) and (Idx <= Length(FState.Drives) + ChangeDriveSpecialCount) and
+  if (Idx >= 0) and (Idx <= Length(FState.Drives) + ChangeDriveItemCount) and
      (Idx <> Length(FState.Drives)) then
   begin
     FState.CursorIndex := Idx;

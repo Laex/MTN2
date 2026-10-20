@@ -50,3 +50,7 @@ console/TestShellProfiles
 console/TestConsoleHistoryRecall  # live cmd session
 console/TestConsoleRunCommand  # live cmd session
 dialogs/TestSetAttrExtras      # Windows file flags, drive volumes and the Windows properties button
+plugins/TestNetClients        # local test servers are started with Win32 calls
+plugins/TestNetClientsHttp
+plugins/TestNetVfs
+plugins/TestNetPlugin

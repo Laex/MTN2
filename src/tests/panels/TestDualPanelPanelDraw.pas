@@ -16,6 +16,7 @@ type
     [Test] procedure TestDriveLetterHit;
     [Test] [Category('WindowsOnly')] procedure TestDrivePreviewHelpers;
     [Test] procedure TestDriveBarDraw;
+    [Test] procedure TestDriveBarShowsPluginItems;
     [Test] procedure TestDrawPanelHelpers;
     [Test] procedure TestDrawContentDispatch;
     [Test] procedure TestListRowHelpers;
@@ -35,6 +36,7 @@ uses
   uVfsTypes,
   uDualPanelTypes,
   uDriveInfo,
+  uDriveItems,
   uDualPanelDrawUtils,
   uDualPanelPanelDraw;
 
@@ -499,6 +501,33 @@ begin
     Assert.IsTrue(Pos('|', Row) > 0, 'bar separator between drives and specials');
 end;
 
+procedure TestDriveBarShowsPluginItems;
+var
+  Grid: TTerminalGrid;
+  Bounds: TRectI;
+  Tab: TTab;
+  Col: Integer;
+  Has5: Boolean;
+begin
+  DriveItems.RegisterItem('t.bar', 'net', 'Network', 'xnet:///', 0);
+  try
+    AllocTerminalGrid(Grid, 60, 8);
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    Bounds := TRectI.Make(0, 0, 59, 7);
+    Tab := Default(TTab);
+    Tab.CurrentURI := 'xnet://host/dir';
+    DrawPanelDriveLetterBar(Grid, Bounds, Tab, psLeft,
+      TAlphaColors.Yellow, TAlphaColors.Blue, False, psLeft, #0);
+    Has5 := False;
+    for Col := 0 to 59 do
+      if Grid[7][Col].CharValue = '5' then
+        Has5 := True;
+    Assert.IsTrue(Has5, 'the bar paints the digit of the plugin item');
+  finally
+    DriveItems.UnregisterPlugin('t.bar');
+  end;
+end;
+
 procedure TestDrawPanelHelpers;
 var
   TL, TR, BL, BR, H, V: Char;
@@ -853,6 +882,11 @@ end;
 procedure TTestDualPanelPanelDraw.TestDriveBarDraw;
 begin
   TestDualPanelPanelDraw.TestDriveBarDraw;
+end;
+
+procedure TTestDualPanelPanelDraw.TestDriveBarShowsPluginItems;
+begin
+  TestDualPanelPanelDraw.TestDriveBarShowsPluginItems;
 end;
 
 procedure TTestDualPanelPanelDraw.TestDrawPanelHelpers;

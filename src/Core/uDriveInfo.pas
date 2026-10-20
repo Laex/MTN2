@@ -80,7 +80,14 @@ const
   ChangeDriveSpecialUris: array[0..ChangeDriveSpecialCount - 1] of string =
     ('sys://folders', 'recycle:///', 'tmp:///', 'ws:///');
 
-/// <summary>ChangeDriveSpecialLabels[AIndex] as shown on screen (translated).</summary>
+/// <summary>Number of numbered items below the drives: the built-in
+/// ChangeDriveSpecialCount ones plus the items plugins registered
+/// (uDriveItems.pas).</summary>
+function ChangeDriveItemCount: Integer;
+/// <summary>Target URI of numbered item AIndex (built-in or plugin).</summary>
+function ChangeDriveItemUri(AIndex: Integer): string;
+/// <summary>ChangeDriveSpecialLabels[AIndex] as shown on screen (translated);
+/// the caption a plugin gave for AIndex >= ChangeDriveSpecialCount.</summary>
 function ChangeDriveSpecialTitle(AIndex: Integer): string;
 /// <summary>TDriveInfo.KindLabel as shown on screen (translated). KindLabel
 /// itself stays English: the info panel compares it ('Hard disk').</summary>
@@ -108,16 +115,41 @@ implementation
 
 uses
   System.Math, System.Classes, System.SyncObjs,
-  uPlatformDrives, uTerminalTypes, uVfsTypes, uStrings;
+  uPlatformDrives, uTerminalTypes, uVfsTypes, uStrings, uDriveItems;
+
+function PluginDriveItemAt(AIndex: Integer): TDriveItem;
+var
+  Items: TArray<TDriveItem>;
+begin
+  Items := DriveItems.Items;
+  Result := Items[AIndex];
+end;
 
 function ChangeDriveSpecialTitle(AIndex: Integer): string;
 const
   cKeys: array[0..ChangeDriveSpecialCount - 1] of string =
     ('systemFolders', 'recycleBin', 'temporary', 'workspace');
 begin
-  if (AIndex < 0) or (AIndex >= ChangeDriveSpecialCount) then
+  if (AIndex < 0) or (AIndex >= ChangeDriveItemCount) then
     Exit('');
+  if AIndex >= ChangeDriveSpecialCount then
+    Exit(PluginDriveItemAt(AIndex - ChangeDriveSpecialCount).Caption);
   Result := T('ui.drivePopup.' + cKeys[AIndex], ChangeDriveSpecialLabels[AIndex]);
+end;
+
+function ChangeDriveItemCount: Integer;
+begin
+  Result := ChangeDriveSpecialCount + Length(DriveItems.Items);
+end;
+
+function ChangeDriveItemUri(AIndex: Integer): string;
+begin
+  if (AIndex < 0) or (AIndex >= ChangeDriveItemCount) then
+    Exit('');
+  if AIndex < ChangeDriveSpecialCount then
+    Result := ChangeDriveSpecialUris[AIndex]
+  else
+    Result := PluginDriveItemAt(AIndex - ChangeDriveSpecialCount).Uri;
 end;
 
 function DriveKindTitle(const AKindLabel: string): string;
@@ -623,7 +655,7 @@ end;
 
 function ChangeDriveSpecialGlyph(AIndex: Integer): Char;
 begin
-  if (AIndex < 0) or (AIndex >= ChangeDriveSpecialCount) then
+  if (AIndex < 0) or (AIndex >= ChangeDriveItemCount) then
     Exit(#0);
   Result := Char(Ord('1') + AIndex);
 end;
@@ -631,7 +663,7 @@ end;
 function IsChangeDriveSpecialGlyph(AGlyph: Char): Boolean;
 begin
   Result := (AGlyph >= '1') and
-    (AGlyph <= Char(Ord('0') + ChangeDriveSpecialCount));
+    (AGlyph <= Char(Ord('0') + ChangeDriveItemCount));
 end;
 
 function TryChangeDriveSpecialUri(AGlyph: Char; out AUri: string): Boolean;
@@ -643,11 +675,26 @@ begin
   if not IsChangeDriveSpecialGlyph(AGlyph) then
     Exit;
   Idx := Ord(AGlyph) - Ord('1');
-  AUri := ChangeDriveSpecialUris[Idx];
+  AUri := ChangeDriveItemUri(Idx);
   Result := True;
 end;
 
+function UriSchemeOfItem(const AUri: string): string;
+var
+  P: Integer;
+begin
+  P := Pos('://', AUri);
+  if P > 1 then
+    Result := LowerCase(Copy(AUri, 1, P - 1))
+  else
+    Result := '';
+end;
+
 function DriveBarGlyphFromUri(const AUri: string): Char;
+var
+  Items: TArray<TDriveItem>;
+  Scheme: string;
+  I: Integer;
 begin
   if IsSystemFoldersUri(AUri) then
     Exit(ChangeDriveSpecialGlyph(0));
@@ -657,6 +704,15 @@ begin
     Exit(ChangeDriveSpecialGlyph(2));
   if IsWorkspaceUri(AUri) then
     Exit(ChangeDriveSpecialGlyph(3));
+  // A plugin item owns every URI of its scheme (net:///, net://work/dir).
+  Scheme := UriSchemeOfItem(AUri);
+  if Scheme <> '' then
+  begin
+    Items := DriveItems.Items;
+    for I := 0 to High(Items) do
+      if SameText(UriSchemeOfItem(Items[I].Uri), Scheme) then
+        Exit(ChangeDriveSpecialGlyph(ChangeDriveSpecialCount + I));
+  end;
   Result := DriveLetterFromPath(FileUriToPath(AUri));
 end;
 
@@ -684,10 +740,10 @@ begin
   // never touch GetVolumeInformation/GetDiskFreeSpaceEx (see EnumLogicalDrivesFast).
   Drives := EnumLogicalDrivesFast;
   N := Length(Drives);
-  SetLength(Result, N + ChangeDriveSpecialCount);
+  SetLength(Result, N + ChangeDriveItemCount);
   for I := 0 to N - 1 do
     Result[I] := Drives[I].Letter;
-  for I := 0 to ChangeDriveSpecialCount - 1 do
+  for I := 0 to ChangeDriveItemCount - 1 do
     Result[N + I] := ChangeDriveSpecialGlyph(I);
 end;
 

@@ -234,6 +234,11 @@ begin
     AHostApi.SetStatusSegment(PAnsiChar(UTF8String('SamplePlugin')),
       PAnsiChar(UTF8String('state')), PAnsiChar(UTF8String('sample-status')));
 
+  if Assigned(AHostApi.RegisterDriveItem) then
+    AHostApi.RegisterDriveItem(PAnsiChar(UTF8String('SamplePlugin')),
+      PAnsiChar(UTF8String('sample')), PAnsiChar(UTF8String('Sample panel')),
+      PAnsiChar(UTF8String('sample:///')), 10);
+
   if Assigned(AHostApi.RegisterPanelActivate) then
     AHostApi.RegisterPanelActivate(PAnsiChar(UTF8String('SamplePlugin')),
       PAnsiChar(UTF8String('sample')), @SamplePanelActivate, nil);

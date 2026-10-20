@@ -48,8 +48,9 @@ const
   /// ProgressEnd, SurfaceOpenEx, SurfaceSetFullscreen, SurfaceNativeHandle,
   /// RegisterHighlighter, VfsList, VfsExists, VfsRead, VfsOpen, VfsSize, VfsReadAt,
   /// VfsClose, VfsCancel, SurfaceGetFullscreen.
-  /// 3: Translate.</summary>
-  cPluginAbiVersion: Int64 = 3;
+  /// 3: Translate.
+  /// 4: RegisterDriveItem, RegisterVfsSchemeV2.</summary>
+  cPluginAbiVersion: Int64 = 4;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -92,7 +93,10 @@ type
   end;
   PVfsCallbacksCdecl = ^TVfsCallbacksCdecl;
 
-  /// <summary>Result codes returned by TVfsCallbacksCdecl methods (0 = ok).</summary>
+  /// <summary>Result codes returned by TVfsCallbacksCdecl methods (0 = ok).
+  /// verCancelled, verAuthFailed and verTimeout are understood by the version 2
+  /// table only; verAuthFailed and verTimeout appear as "access denied" and
+  /// "I/O error" with the text the plugin gave through SetErrorText.</summary>
   TVfsCdeclResult = (
     verOk = 0,
     verNotFound = 1,
@@ -101,8 +105,68 @@ type
     verNotSupported = 4,
     verIOError = 5,
     verInvalidURI = 6,
-    verNeedsBiggerBuffer = 7
+    verNeedsBiggerBuffer = 7,
+    verCancelled = 8,
+    verAuthFailed = 9,
+    verTimeout = 10
   );
+
+  PVfsOpContext = ^TVfsOpContext;
+  /// <summary>Handed to every call of a version 2 VFS table. The plugin reports
+  /// progress and polls for cancellation through it while the call runs; the
+  /// host owns the record and it is valid until the call returns. Calls may
+  /// come from any thread (the one running the VFS call).
+  /// ReportProgress: ADone/ATotal count the whole operation (bytes, or items
+  /// when the size is not known; ATotal 0 = unknown), AItemDone/AItemTotal the
+  /// file being transferred, AName its name (nil = none). Returns 1 when the
+  /// user cancelled; the plugin should stop and return verCancelled.
+  /// IsCancelled: 1 when the user cancelled.
+  /// SetErrorText: text (UTF-8) the host shows with the error the call returns.</summary>
+  TVfsOpContext = record
+    Cookie: Pointer;
+    ReportProgress: function(ACtx: PVfsOpContext; ADone, ATotal, AItemDone,
+      AItemTotal: Int64; AName: PAnsiChar): Int64; cdecl;
+    IsCancelled: function(ACtx: PVfsOpContext): Int64; cdecl;
+    SetErrorText: procedure(ACtx: PVfsOpContext; AText: PAnsiChar); cdecl;
+  end;
+
+  /// <summary>VFS callbacks of ABI 4. Like TVfsCallbacksCdecl, every call gets
+  /// the operation context, and:
+  /// ListDirectory returns the entries from index AOffset on (JSON array as in
+  /// version 1) and sets AMore to 1 when entries follow; the host calls again
+  /// with AOffset advanced by the number of entries it received, so the plugin
+  /// keeps the listing for the duration of one list operation.
+  /// CopyItem / MoveItem: AFlags bit 0 = overwrite, bit 1 = keep timestamps.
+  /// One side of a copy is always a local file:// URI unless both URIs belong
+  /// to this plugin. When the result does not fit the buffer the plugin returns
+  /// verNeedsBiggerBuffer with ANegotiatedSize set to the size it needs, and
+  /// the host calls again with a buffer that big (up to 256 MB).</summary>
+  TVfsCallbacksCdeclV2 = record
+    ListDirectory: function(AURI: PAnsiChar; AUserData: Pointer; ACtx: PVfsOpContext;
+      AOffset: Int64; ABuf: PAnsiChar; ABufSize: Int64; out ANegotiatedSize: Int64;
+      out AMore: Int64): Int64; cdecl;
+    Delete: function(AURI: PAnsiChar; AMode: Int64; AUserData: Pointer;
+      ACtx: PVfsOpContext): Int64; cdecl;
+    CreateDirectory: function(AURI: PAnsiChar; AUserData: Pointer;
+      ACtx: PVfsOpContext): Int64; cdecl;
+    CopyItem: function(AFromURI, AToURI: PAnsiChar; AFlags: Int64; AUserData: Pointer;
+      ACtx: PVfsOpContext): Int64; cdecl;
+    MoveItem: function(AFromURI, AToURI: PAnsiChar; AFlags: Int64; AUserData: Pointer;
+      ACtx: PVfsOpContext): Int64; cdecl;
+    ReadText: function(AURI: PAnsiChar; AMaxBytes: Int64; AUserData: Pointer;
+      ACtx: PVfsOpContext; ABuf: PAnsiChar; ABufSize: Int64;
+      out ANegotiatedSize: Int64): Int64; cdecl;
+    ReadBytes: function(AURI: PAnsiChar; AMaxBytes: Int64; AUserData: Pointer;
+      ACtx: PVfsOpContext; ABuf: PByte; ABufSize: Int64;
+      out ANegotiatedSize: Int64): Int64; cdecl;
+    WriteText: function(AURI: PAnsiChar; AText: PAnsiChar; AUserData: Pointer;
+      ACtx: PVfsOpContext): Int64; cdecl;
+    Exists: function(AURI: PAnsiChar; AUserData: Pointer; ACtx: PVfsOpContext;
+      out AIsDirectory: Int64): Int64; cdecl;
+    GetFreeSpace: function(ARootURI: PAnsiChar; AUserData: Pointer; ACtx: PVfsOpContext;
+      out AFree, ATotal: Int64): Int64; cdecl;
+  end;
+  PVfsCallbacksCdeclV2 = ^TVfsCallbacksCdeclV2;
 
   { C-ABI Host Function Pointers - handed to the plugin at init time. }
   THostPublishFn = function(APluginId, ATopicUtf8, APayloadJsonUtf8: PAnsiChar): Int64; cdecl;
@@ -373,6 +437,29 @@ type
   THostTranslateFn = function(APluginId, AKey, ADefault: PAnsiChar;
     ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
 
+  /// <summary>Adds a numbered item to the Change Drive list (Alt+F1/F2) and to
+  /// the drive bar, after the built-in items. Enter on it opens AUri in the
+  /// panel; it is marked while the panel is on a URI of the same scheme. AItemId
+  /// is the plugin's own id for the item (registering it again replaces it),
+  /// ACaption is shown as is (translate it first), items go in ascending
+  /// APriority. 0 = added, -1 = refused (empty id or caption, AUri without a
+  /// scheme or with the "file" scheme, or five plugin items exist already).
+  /// Main thread only. Unloading the plugin removes its items.</summary>
+  THostRegisterDriveItemFn = function(APluginId, AItemId, ACaption, AUri: PAnsiChar;
+    APriority: Int64): Int64; cdecl;
+
+  /// <summary>As RegisterVfsScheme, with the version 2 callback table (progress,
+  /// cancellation, error text, paged listings). 0 = registered, -1 = refused.</summary>
+  THostRegisterVfsSchemeV2Fn = function(APluginId, AScheme: PAnsiChar;
+    ACallbacks: PVfsCallbacksCdeclV2; AUserData: Pointer; APriority: Int64): Int64; cdecl;
+
+  /// <summary>Sets the function-bar labels shown while a panel is in a folder of
+  /// AScheme (see IPluginChrome.SetSchemeFBar for the AJson layout: "root" and
+  /// "inside" objects mapping "F7" / "Shift+F4" to a label). An empty or nil AJson
+  /// removes the labels of the scheme. 0 = set, -1 = refused. Main thread only.
+  /// Unloading the plugin removes its labels.</summary>
+  THostSetPanelFBarFn = function(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -436,6 +523,10 @@ type
     SurfaceGetFullscreen: THostSurfaceGetFullscreenFn;
     // ABI 3
     Translate: THostTranslateFn;
+    // ABI 4
+    RegisterDriveItem: THostRegisterDriveItemFn;
+    RegisterVfsSchemeV2: THostRegisterVfsSchemeV2Fn;
+    SetPanelFBar: THostSetPanelFBarFn;
   end;
   PHostApiTable = ^THostApiTable;
 

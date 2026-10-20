@@ -268,6 +268,7 @@ Pull-модель: ядро запрашивает у плагина тольк�
 | Dialog / Status / Toolbar | in-process JSON / dry segments | cdecl `mtn_dialog_*` not exported yet. |
 | Overlay / Text Area | Host-only | See OVERLAY_PLUGIN.md / TEXTAREA_PLUGIN.md. |
 | 7z VFS plugin | `src/plugins/mtn.7z` (`7z://`) | List/exists/read unencrypted `.7z` via a replaceable `7z.dll` next to the plugin. F5 extract to disk is a host copy-bridge (`vtrPluginExtract`). Pack into `7z://` (Shift+F1 / F5 copy onto an open `.7z`) is `CopyItem` + `IOutArchive.UpdateItems`. |
+| Network plugin | `src/plugins/mtn.net` (`net://`, `ftp://`, `ftps://`, `nsftp://`, `scp://`, `dav://`, `davs://`, `s3://`) | FTP, FTPS, SFTP, SCP, WebDAV and S3 through a replaceable `libcurl` next to the plugin. Uses the version 2 VFS table (`RegisterVfsSchemeV2`: operation context with progress, cancellation and error text; paged listings) and `RegisterDriveItem` for the Change Drive list. Copy and move between a plugin and a local folder, between two plugins and with `sftp://` are host routes (`vtrCopyThenDelete`, `vtrViaTemp`). Unknown schemes written `scheme://authority/path` are generic folder trees (`IsGenericVfsUri`). |
 | WASM host | `uWasmPluginHost` + optional `wasmtime.dll` | `plugins\<id>\*.wat`/`*.wasm`. Guest ABI is JSON/UTF-8 copies in linear memory (no `THostApiTable` pointers, no WASI). Demo: `mtn.wasm.demo` / `wasmdemo://`. Workspace panel: core `ws:///` (`uWorkspaceVfs.pas`) + optional `mtn.ws` menus; host refuses WASM stealing `file`/`recycle`/`sys`/`find`/`ws`. Named snapshots: `workspaces.json`. Missing runtime skips the WASM module; Change Drive **4** still works. |
 
 Far / TC remain deferred.
@@ -279,6 +280,8 @@ Far / TC remain deferred.
 ```text
 DLL  ──cdecl──►  THostApiTable (uPluginHostAbi)
                      ├─ RegisterVfsScheme   → IVfsRegistry (plugin-owned)
+                     ├─ RegisterVfsSchemeV2 → IVfsRegistry (progress, cancel, paged listing)
+                     ├─ RegisterDriveItem   → IDriveItemRegistry (Change Drive list and bar)
                      ├─ RegisterPanelPlugin → IPanelPluginRegistry
                      ├─ RegisterMenuItem    → IMenuRegistry
                      ├─ RegisterKeyBinding  → IKeymapRegistry (rebind only)

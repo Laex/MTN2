@@ -55,6 +55,7 @@ uses
   uPluginUi,
   uPluginSettings,
   uPluginChrome,
+  uDriveItems,
   uDialogTypes,
   uPluginHostAbi,
   uVfsCdeclAdapter,
@@ -232,6 +233,10 @@ begin
     Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'sample-status',
       'the status segment set over the ABI');
 
+    Assert.IsTrue((Length(DriveItems.Items) = 1) and (DriveItems.Items[0].Uri = 'sample:///') and
+      (DriveItems.Items[0].Caption = 'Sample panel'),
+      'the Change Drive item set over the ABI');
+
     Assert.IsTrue(PluginSettings.HasConfigure('SamplePlugin'),
       'the plugin registered a settings handler');
     Assert.IsTrue(PluginSettings.TryConfigure('SamplePlugin') and (Configured = 'fast;'),
@@ -253,6 +258,7 @@ begin
     Assert.IsTrue(Answers = 'ok;', 'the answer reaches the plugin callback: ' + Answers);
 
     PluginLoader.UnloadAll;
+    Assert.IsTrue(Length(DriveItems.Items) = 0, 'unload drops the Change Drive item');
     Pending('ok', '{}');
     Assert.IsTrue(Answers = 'ok;', 'an answer after unload does not reach the plugin');
     Assert.IsTrue(DocumentProviders.TryOpen('file:///C:/x/a.samplehandled', True, Redirect) =

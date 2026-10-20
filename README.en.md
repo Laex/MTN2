@@ -60,7 +60,7 @@ it is one more two-panel manager with its own habits.
 - **View and edit:** built-in Viewer (text, hex, streamed reading of large files), Editor,
   Quick View (`Ctrl+Q`), Markdown preview, external viewer/editor support. The editor has line commands,
   rectangular blocks, bookmarks, and auto-indent.
-- **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, plugin VFS.
+- **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin), plugin VFS.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), file associations, F1 context help.
 - **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → Font / Display...**

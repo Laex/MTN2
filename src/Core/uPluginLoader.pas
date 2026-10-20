@@ -40,9 +40,9 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections,
-  uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
+  uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi,
-  uPluginChrome, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
+  uPluginChrome, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs,
   uWasmPluginHost, uPlatformInfo;
 
@@ -240,6 +240,25 @@ begin
     if IsReservedVfsScheme(UTF8ToString(AScheme)) then
       Exit(-1);
     Backend := TCdeclVfsBackend.Create(ACallbacks^, AUserData);
+    GlobalVfsRegistry.RegisterPluginScheme(UTF8ToString(APluginId),
+      UTF8ToString(AScheme), Backend, Integer(APriority));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterVfsSchemeV2(APluginId, AScheme: PAnsiChar;
+  ACallbacks: PVfsCallbacksCdeclV2; AUserData: Pointer; APriority: Int64): Int64; cdecl;
+var
+  Backend: IVirtualFileSystem;
+begin
+  try
+    if (APluginId = nil) or (AScheme = nil) or (ACallbacks = nil) then
+      Exit(-1);
+    if IsReservedVfsScheme(UTF8ToString(AScheme)) then
+      Exit(-1);
+    Backend := TCdeclVfsBackendV2.Create(ACallbacks^, AUserData);
     GlobalVfsRegistry.RegisterPluginScheme(UTF8ToString(APluginId),
       UTF8ToString(AScheme), Backend, Integer(APriority));
     Result := 0;
@@ -479,6 +498,38 @@ begin
       PluginChrome.SetStatusSegment(UTF8ToString(APluginId), UTF8ToString(ASegmentId),
         UTF8ToString(AText));
     Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetPanelFBar(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AScheme = nil) then
+      Exit(-1);
+    if AJson = nil then
+      PluginChrome.SetSchemeFBar(UTF8ToString(APluginId), UTF8ToString(AScheme), '')
+    else
+      PluginChrome.SetSchemeFBar(UTF8ToString(APluginId), UTF8ToString(AScheme),
+        UTF8ToString(AJson));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterDriveItem(APluginId, AItemId, ACaption, AUri: PAnsiChar;
+  APriority: Int64): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AItemId = nil) or (ACaption = nil) or (AUri = nil) then
+      Exit(-1);
+    if DriveItems.RegisterItem(UTF8ToString(APluginId), UTF8ToString(AItemId),
+         UTF8ToString(ACaption), UTF8ToString(AUri), Integer(APriority)) then
+      Result := 0
+    else
+      Result := -1;
   except
     Result := -1;
   end;
@@ -1585,6 +1636,9 @@ begin
   Result.VfsCancel := @ThunkVfsCancel;
   Result.SurfaceGetFullscreen := @ThunkSurfaceGetFullscreen;
   Result.Translate := @ThunkTranslate;
+  Result.RegisterDriveItem := @ThunkRegisterDriveItem;
+  Result.RegisterVfsSchemeV2 := @ThunkRegisterVfsSchemeV2;
+  Result.SetPanelFBar := @ThunkSetPanelFBar;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -2001,6 +2055,7 @@ begin
   PluginVfsStreamsRelease(FLoaded[AIndex].PluginId);
   UnregisterHighlighter(FLoaded[AIndex].PluginId);
   PluginChrome.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  DriveItems.UnregisterPlugin(FLoaded[AIndex].PluginId);
   PluginSettings.UnregisterPlugin(FLoaded[AIndex].PluginId);
   MenuRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   GlobalVfsRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);

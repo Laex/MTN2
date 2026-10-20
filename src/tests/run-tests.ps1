@@ -40,7 +40,8 @@ $Fixtures = @{
     plugins = @(
         (Join-Path $Tests 'plugins\SamplePlugin.dpr'),
         (Join-Path $Src 'plugins\mtn.7z\SevenZipPlugin.dpr'),
-        (Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr'))
+        (Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.net\NetPlugin.dpr'))
 }
 
 function Get-RunnerName([string]$GroupName) {
@@ -122,7 +123,7 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     }
 }
 
-$UnitPath = @('Core', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'tests\common' |
+$UnitPath = @('Core', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'plugins\mtn.net', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 $Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }

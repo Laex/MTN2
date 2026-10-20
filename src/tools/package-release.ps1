@@ -13,7 +13,9 @@ param(
     # missing one stops the packaging instead of shipping without WASM plugins.
     [switch]$RequireWasmtime,
     # Published packages must also carry 7z.dll (and its license text).
-    [switch]$Require7z
+    [switch]$Require7z,
+    # Published packages must carry the official libcurl of the network plugin (and its license).
+    [switch]$RequireCurl
 )
 $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -34,6 +36,10 @@ if (-not (Test-Path (Join-Path $Bin 'wasmtime.dll'))) {
 if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.7z\7z.dll'))) {
     if ($Require7z) { throw 'bin\win64\plugins\mtn.7z\7z.dll not found; install 7-Zip (x64) or set MTN2_7Z_DLL and build again' }
     Write-Host 'WARN: 7z.dll missing -- 7z archives will not open from this package'
+}
+if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.net\COPYING.txt'))) {
+    if ($RequireCurl) { throw 'bin\win64\plugins\mtn.net\COPYING.txt not found: the official libcurl is missing; run src\tools\fetch-curl.ps1 and build again' }
+    Write-Host 'WARN: the official libcurl is missing -- network connections may not work from this package'
 }
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null

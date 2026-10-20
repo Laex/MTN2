@@ -1,0 +1,16 @@
+{
+  "id": "mtn.net",
+  "name": "Network connections",
+  "version": "0.1.0",
+  "abi": 4,
+  "startup": true,
+  "keepLoaded": true,
+  "resources": 1,
+  "schemes": ["net", "ftp", "ftps", "nsftp", "scp", "dav", "davs", "s3"],
+  "description": {
+    "en": "Network connections as folders of the panels: FTP, FTPS, SFTP, SCP, WebDAV and S3. Adds \"Network connections\" to the Change Drive list (Alt+F1 / Alt+F2). In the list of connections: F7 adds one, F4 edits, F8 removes. Uses libcurl from this folder.",
+    "ru": "Сетевые подключения как папки панелей: FTP, FTPS, SFTP, SCP, WebDAV и S3. Добавляет «Сетевые подключения» в список дисков (Alt+F1 / Alt+F2). В списке подключений: F7 – новое, F4 – изменить, F8 – удалить. Использует libcurl из этой папки."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

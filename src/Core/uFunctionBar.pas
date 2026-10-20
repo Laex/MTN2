@@ -57,8 +57,10 @@ type
     HintKey: string;  // "A", "Esc", "Enter", ... when Kind=fbhHint
   end;
 
+/// <summary>AUri is the folder of the active panel: a plugin that serves its
+/// scheme may relabel the F-key slots there.</summary>
 procedure FunctionBarGetItems(ACtx: TFunctionBarContext; AMods: TShiftState;
-  out AItems, ALetters: TArray<string>);
+  out AItems, ALetters: TArray<string>; const AUri: string = '');
 
 function FunctionBarDefaultColors: TFunctionBarColors;
 
@@ -78,7 +80,7 @@ function FunctionBarHitToInput(const AHit: TFunctionBarHit; AMods: TShiftState;
 implementation
 
 uses
-  uCommandRegistry;
+  uCommandRegistry, uPluginChrome;
 
 function EmptyItems: TArray<string>;
 begin
@@ -216,12 +218,18 @@ begin
 end;
 
 procedure FunctionBarItemsForPanels(ACtx: TFunctionBarContext; Mods: TShiftState;
-  var AItems, ALetters: TArray<string>);
+  var AItems, ALetters: TArray<string>; const AUri: string);
 var
   N: Integer;
   PluginLbl: string;
 begin
   FKeysFromKeymap(ACtx, [kcPanels, kcGlobal], cAllFBarActions, Mods, AItems);
+  // The plugin serving this folder's scheme may relabel any slot (an empty
+  // label leaves just the number).
+  if AUri <> '' then
+    for N := 1 to 10 do
+      if PluginChrome.TryGetSchemeFBarLabel(AUri, vkF1 + N - 1, Mods, PluginLbl) then
+        AItems[N - 1] := IntToStr(N) + Copy(PluginLbl, 1, 7);
   // A plugin command on a free F-key chord shows its caption in the slot (a
   // free slot holds just its number).
   for N := 1 to 10 do
@@ -419,7 +427,7 @@ begin
 end;
 
 procedure FunctionBarGetItems(ACtx: TFunctionBarContext; AMods: TShiftState;
-  out AItems, ALetters: TArray<string>);
+  out AItems, ALetters: TArray<string>; const AUri: string);
 var
   Mods: TShiftState;
 begin
@@ -429,7 +437,7 @@ begin
 
   case ACtx of
     fbcPanels, fbcTmpPanel, fbcWorkspace:
-      FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters);
+      FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters, AUri);
 
     fbcConsole:
       FunctionBarItemsForConsole(Mods, AItems, ALetters);

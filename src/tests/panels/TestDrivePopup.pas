@@ -28,6 +28,8 @@ type
     [Test] procedure TestLayoutWidthClamps;
     [Test] procedure TestToggleAndEscape;
     [Test] procedure TestDigitShortcuts;
+    [Test] procedure TestPluginItemTakesTheNextDigitAndEnter;
+    [Test] procedure TestPluginItemIsDrawnWithItsDigit;
     [Test] procedure TestLetterShortcut;
     [Test] procedure TestLetterShortcutCyrillicLayout;
     [Test] procedure TestCursorMovement;
@@ -47,6 +49,7 @@ uses
   uDualPanelUiTypes,
   uDualPanelOverlays,
   uDriveInfo,
+  uDriveItems,
   uDualPanelDrawUtils,
   uDualPanelDrivePopup;
 
@@ -176,6 +179,77 @@ begin
     finally
       C.Free;
     end;
+  end;
+end;
+
+procedure TestPluginItemTakesTheNextDigitAndEnter;
+var
+  C: TDrivePopupController;
+  Key: Word;
+  KeyChar: Char;
+begin
+  DriveItems.RegisterItem('t.drive', 'net', 'Network', 'xnet:///', 0);
+  try
+    C := MakeController(TRectI.Make(0, 0, 79, 24));
+    try
+      C.Open(psRight);
+      Key := 0;
+      KeyChar := Chr(Ord('1') + ChangeDriveSpecialCount);
+      C.HandleInput(Key, [], KeyChar);
+      Assert.IsTrue(GNavCalled, 'the next digit triggers navigation');
+      Assert.IsTrue(GNavSide = psRight, 'navigates on the opened side');
+      Assert.AreEqual('xnet:///', GNavUri);
+    finally
+      C.Free;
+    end;
+    C := MakeController(TRectI.Make(0, 0, 79, 24));
+    try
+      C.Open(psLeft);
+      Key := vkEnd;
+      KeyChar := #0;
+      C.HandleInput(Key, [], KeyChar);
+      Key := vkReturn;
+      C.HandleInput(Key, [], KeyChar);
+      Assert.AreEqual('xnet:///', GNavUri, 'End goes to the last item, the plugin one');
+    finally
+      C.Free;
+    end;
+  finally
+    DriveItems.UnregisterPlugin('t.drive');
+  end;
+end;
+
+procedure TestPluginItemIsDrawnWithItsDigit;
+var
+  C: TDrivePopupController;
+  Grid: TTerminalGrid;
+  Y, X: Integer;
+  Row, All: string;
+begin
+  DriveItems.RegisterItem('t.drive', 'net', 'Network connections', 'xnet:///', 0);
+  try
+    C := MakeController(TRectI.Make(0, 0, 79, 29));
+    try
+      AllocTerminalGrid(Grid, 80, 30);
+      ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+      C.Open(psLeft);
+      C.Draw(Grid);
+      All := '';
+      for Y := 0 to 29 do
+      begin
+        Row := '';
+        for X := 0 to 79 do
+          Row := Row + Grid[Y][X].CharValue;
+        All := All + Row + #10;
+      end;
+      Assert.IsTrue(Pos('5. Network connections', All) > 0,
+        'the list shows the item after the built-in ones, with the next digit');
+      Assert.IsTrue(Pos('4. ', All) > 0, 'the built-in items are still there');
+    finally
+      C.Free;
+    end;
+  finally
+    DriveItems.UnregisterPlugin('t.drive');
   end;
 end;
 
@@ -388,6 +462,16 @@ end;
 procedure TTestDrivePopup.TestDigitShortcuts;
 begin
   TestDrivePopup.TestDigitShortcuts;
+end;
+
+procedure TTestDrivePopup.TestPluginItemTakesTheNextDigitAndEnter;
+begin
+  TestDrivePopup.TestPluginItemTakesTheNextDigitAndEnter;
+end;
+
+procedure TTestDrivePopup.TestPluginItemIsDrawnWithItsDigit;
+begin
+  TestDrivePopup.TestPluginItemIsDrawnWithItsDigit;
 end;
 
 procedure TTestDrivePopup.TestLetterShortcut;

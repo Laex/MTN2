@@ -75,7 +75,7 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         "{`$R '$Src\MTN2Tui.dres'}", '', 'uses', '  uTestRunner,',
         (($Fixtures | ForEach-Object { "  $_" }) -join ",`n") + ';', '', 'begin', '  RunRegisteredTests;', 'end.') |
         Set-Content $Dpr -Encoding UTF8
-    $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\tests\common;$($Dir.FullName);$Studio\source\DunitX"
+    $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.net;$Src\tests\common;$($Dir.FullName);$Studio\source\DunitX"
     $Dcu = Join-Path $Out "obj\$($Dir.Name)"
     New-Item -ItemType Directory -Force $Dcu | Out-Null
     $Result = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `

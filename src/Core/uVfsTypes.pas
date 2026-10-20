@@ -258,6 +258,18 @@ function IsSftpUri(const AURI: string): Boolean;
 function SftpAuthorityOf(const AURI: string): string;
 function SftpRemotePathOf(const AURI: string): string;
 function MakeSftpUri(const AAuthority, ARemotePath: string): string;
+/// <summary>A URI of a scheme this unit has no rules for, written
+/// scheme://authority/path: the scheme of a plugin that serves a folder tree
+/// (net://work/dir/a.txt, net:///). The path is POSIX-style, absolute and not
+/// percent-encoded; an empty authority names the scheme's root (net:///).
+/// URIs with an archive chain (!/) are never generic.</summary>
+function IsGenericVfsUri(const AURI: string): Boolean;
+function GenericVfsSchemeOf(const AURI: string): string;
+function GenericVfsAuthorityOf(const AURI: string): string;
+/// <summary>The path of a generic URI: '/' for a root, otherwise starting
+/// with '/' and without a trailing one.</summary>
+function GenericVfsPathOf(const AURI: string): string;
+function MakeGenericVfsUri(const AScheme, AAuthority, APath: string): string;
 /// <summary>recycle:// wraps a real filesystem path (the Recycle Bin
 /// item's underlying $R<random> path) with the same URI grammar as
 /// file:// - these just swap the scheme prefix onto/off FileUriToPath /
@@ -969,6 +981,11 @@ begin
       SameText(SftpRemotePathOf(A), SftpRemotePathOf(B)));
   if IsSystemFoldersUri(A) or IsSystemFoldersUri(B) then
     Exit(IsSystemFoldersUri(A) and IsSystemFoldersUri(B));
+  if IsGenericVfsUri(A) or IsGenericVfsUri(B) then
+    Exit(IsGenericVfsUri(A) and IsGenericVfsUri(B) and
+      SameText(GenericVfsSchemeOf(A), GenericVfsSchemeOf(B)) and
+      SameText(GenericVfsAuthorityOf(A), GenericVfsAuthorityOf(B)) and
+      SameText(GenericVfsPathOf(A), GenericVfsPathOf(B)));
   if not HasArchiveChain(A) and not HasArchiveChain(B) then
     Exit(SameLocalPath(FileUriToPath(A), FileUriToPath(B)));
   if not SplitArchiveUri(A, BaseA, SegA) then
@@ -1012,6 +1029,9 @@ begin
       LowerCase(SftpRemotePathOf(AURI)));
   if IsSystemFoldersUri(AURI) then
     Exit('sys'#0);
+  if IsGenericVfsUri(AURI) then
+    Exit('gen'#0 + GenericVfsSchemeOf(AURI) + #0 +
+      LowerCase(GenericVfsAuthorityOf(AURI)) + #0 + LowerCase(GenericVfsPathOf(AURI)));
   if not HasArchiveChain(AURI) then
     Exit('file'#0 + LocalPathKey(FileUriToPath(AURI)));
   if not SplitArchiveUri(AURI, Base, Segs) then
@@ -1427,6 +1447,124 @@ begin
   Result.Alive := True;
 end;
 
+const
+  cBuiltInUriSchemes: array[0..6] of string =
+    ('file', 'sys', 'recycle', 'tmp', 'ws', 'find', 'sftp');
+
+function GenericVfsSplit(const AURI: string; out AScheme, AAuthority,
+  APath: string): Boolean;
+var
+  S, Rest: string;
+  P, Slash, I: Integer;
+begin
+  Result := False;
+  AScheme := '';
+  AAuthority := '';
+  APath := '/';
+  S := Trim(AURI);
+  P := Pos('://', S);
+  if P < 2 then
+    Exit;
+  AScheme := LowerCase(Copy(S, 1, P - 1));
+  for I := 1 to Length(AScheme) do
+    if not CharInSet(AScheme[I], ['a'..'z', '0'..'9', '+', '-', '.']) then
+      Exit;
+  for I := 0 to High(cBuiltInUriSchemes) do
+    if AScheme = cBuiltInUriSchemes[I] then
+      Exit;
+  if HasArchiveChain(S) then
+    Exit;
+  Rest := Copy(S, P + 3, MaxInt);
+  Slash := Pos('/', Rest);
+  if Slash = 0 then
+  begin
+    AAuthority := Rest;
+    APath := '/';
+  end
+  else
+  begin
+    AAuthority := Copy(Rest, 1, Slash - 1);
+    APath := Copy(Rest, Slash, MaxInt);
+  end;
+  while (Length(APath) > 1) and (APath[Length(APath)] = '/') do
+    Delete(APath, Length(APath), 1);
+  if APath = '' then
+    APath := '/';
+  Result := True;
+end;
+
+function IsGenericVfsUri(const AURI: string): Boolean;
+var
+  Scheme, Authority, Path: string;
+begin
+  Result := GenericVfsSplit(AURI, Scheme, Authority, Path);
+end;
+
+function GenericVfsSchemeOf(const AURI: string): string;
+var
+  Authority, Path: string;
+begin
+  if not GenericVfsSplit(AURI, Result, Authority, Path) then
+    Result := '';
+end;
+
+function GenericVfsAuthorityOf(const AURI: string): string;
+var
+  Scheme, Path: string;
+begin
+  if not GenericVfsSplit(AURI, Scheme, Result, Path) then
+    Result := '';
+end;
+
+function GenericVfsPathOf(const AURI: string): string;
+var
+  Scheme, Authority: string;
+begin
+  if not GenericVfsSplit(AURI, Scheme, Authority, Result) then
+    Result := '/';
+end;
+
+function MakeGenericVfsUri(const AScheme, AAuthority, APath: string): string;
+var
+  Path: string;
+begin
+  Path := APath;
+  if (Path = '') or (Path[1] <> '/') then
+    Path := '/' + Path;
+  Result := LowerCase(AScheme) + '://' + AAuthority + Path;
+end;
+
+function ParentVfsUriOfGeneric(const AURI: string): string;
+var
+  Scheme, Authority, Path: string;
+  Slash: Integer;
+begin
+  if not GenericVfsSplit(AURI, Scheme, Authority, Path) then
+    Exit(AURI);
+  if Path = '/' then
+  begin
+    // The root of an authority hangs under the scheme's own root.
+    Exit(MakeGenericVfsUri(Scheme, '', '/'));
+  end;
+  Slash := LastDelimiter('/', Path);
+  if Slash <= 1 then
+    Result := MakeGenericVfsUri(Scheme, Authority, '/')
+  else
+    Result := MakeGenericVfsUri(Scheme, Authority, Copy(Path, 1, Slash - 1));
+end;
+
+function JoinVfsUriOfGeneric(const ADirURI, AName: string): string;
+var
+  Scheme, Authority, Path: string;
+begin
+  if not GenericVfsSplit(ADirURI, Scheme, Authority, Path) then
+    Exit(ADirURI);
+  if Path = '/' then
+    Result := MakeGenericVfsUri(Scheme, Authority, '/' + AName)
+  else
+    Result := MakeGenericVfsUri(Scheme, Authority, Path + '/' + AName);
+end;
+
 function JoinVfsUri(const ADirURI, AName: string): string;
 var
   Base, Name, Last: string;
@@ -1464,6 +1602,9 @@ begin
       Exit(MakeSftpUri(SftpAuthorityOf(ADirURI), '/' + Name));
     Exit(MakeSftpUri(SftpAuthorityOf(ADirURI), SftpRemotePathOf(ADirURI) + '/' + Name));
   end;
+
+  if IsGenericVfsUri(ADirURI) then
+    Exit(JoinVfsUriOfGeneric(ADirURI, Name));
 
   if not HasArchiveChain(ADirURI) then
     Exit(PathToFileUri(SafeCombinePath(FileUriToPath(ADirURI),
@@ -1631,6 +1772,8 @@ begin
     Exit(ParentVfsUriOfWorkspace(AURI));
   if IsSftpUri(AURI) then
     Exit(ParentVfsUriOfSftp(AURI));
+  if IsGenericVfsUri(AURI) then
+    Exit(ParentVfsUriOfGeneric(AURI));
   if not HasArchiveChain(AURI) then
     Exit(ParentVfsUriOfLocalPath(AURI));
   Result := ParentVfsUriOfArchive(AURI);
@@ -1682,6 +1825,18 @@ begin
       Exit(SftpAuthorityOf(AURI));
     Exit(LastUriPathSegment(Path));
   end;
+  if IsGenericVfsUri(AURI) then
+  begin
+    Path := GenericVfsPathOf(AURI);
+    if Path = '/' then
+    begin
+      Result := GenericVfsAuthorityOf(AURI);
+      if Result = '' then
+        Result := GenericVfsSchemeOf(AURI) + ':';
+      Exit;
+    end;
+    Exit(LastUriPathSegment(Path));
+  end;
   if not HasArchiveChain(AURI) then
   begin
     Path := FileUriToPath(AURI);
@@ -1726,7 +1881,8 @@ begin
   // folder inside a drive" - keep VfsUriTitle's short form for them, and
   // for a drive root itself (nothing to show past the letter).
   if IsSystemFoldersUri(AURI) or IsFindUri(AURI) or IsRecycleBinUri(AURI) or
-     IsTmpPanelUri(AURI) or IsWorkspaceUri(AURI) or HasArchiveChain(AURI) then
+     IsTmpPanelUri(AURI) or IsWorkspaceUri(AURI) or HasArchiveChain(AURI) or
+     IsGenericVfsUri(AURI) then
     Exit(VfsUriTitle(AURI));
   Path := FileUriToPath(AURI);
   if PlatformPosixPaths then
@@ -1847,6 +2003,8 @@ begin
     Exit(WorkspaceInnerPath(AURI) = '');
   if IsSftpUri(AURI) then
     Exit(SftpRemotePathOf(AURI) = '/');
+  if IsGenericVfsUri(AURI) then
+    Exit((GenericVfsAuthorityOf(AURI) = '') and (GenericVfsPathOf(AURI) = '/'));
   if HasArchiveChain(AURI) or IsFindUri(AURI) or IsSystemFoldersUri(AURI) or
      IsRecycleBinUri(AURI) or IsTmpPanelUri(AURI) then
     Exit(False);

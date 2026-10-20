@@ -931,6 +931,7 @@ type
       ADialogStyle: Boolean = False);
     procedure DrawCommandLine(AY, AWidth: Integer);
     function ChromeContext: TFunctionBarContext;
+    function ActiveFolderUri: string;
     procedure DrawFunctionKeys(AY, AWidth: Integer);
     procedure DrawAppStatusLine(AY, AWidth: Integer);
     /// <summary>The F-key bar and the status line, those that are shown.</summary>
@@ -4104,7 +4105,8 @@ begin
   NewIsArch := HasArchiveChain(Canon);
   EitherSideIsVirtualView := OldIsArch or NewIsArch or
     IsFindUri(Tab.CurrentURI) or IsFindUri(Canon) or
-    IsSftpUri(Tab.CurrentURI) or IsSftpUri(Canon);
+    IsSftpUri(Tab.CurrentURI) or IsSftpUri(Canon) or
+    IsGenericVfsUri(Tab.CurrentURI) or IsGenericVfsUri(Canon);
   if SameVfsUri(Tab.CurrentURI, Canon) then
   begin
     if (not NewIsArch) and (not IsFindUri(Canon)) then
@@ -4174,7 +4176,8 @@ begin
     Tab.JunctionBackName := '';
   // The root of a remote host has no parent row of its own; `..` there leads
   // back to the folder the panel came from.
-  if IsSftpUri(Canon) and not IsSftpUri(Tab.CurrentURI) and
+  if (IsSftpUri(Canon) or IsGenericVfsUri(Canon)) and
+     not IsSftpUri(Tab.CurrentURI) and not IsGenericVfsUri(Tab.CurrentURI) and
      (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
      not IsWorkspaceUri(Tab.CurrentURI) and IsVfsUriNavigationRoot(Canon) then
   begin
@@ -10632,7 +10635,7 @@ begin
   Result := False;
   if ALocalRow <> KeyBarRow(Area.Height) then
     Exit;
-  FunctionBarGetItems(ChromeContext, AShift, Items, Letters);
+  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri);
   Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
     Assigned(Theme));
   Result := FunctionBarHitToInput(Hit, AShift, AKey, AKeyChar, AKeyShift);
@@ -11312,6 +11315,14 @@ begin
   FCmdLineMgr.Cmd := CmdCopy;
 end;
 
+function TDualPanelWindow.ActiveFolderUri: string;
+var
+  Ws: TDualPanelWorkspaceTab;
+begin
+  Ws := ActiveWorkspace;
+  Result := ActiveTab(ActivePanel(Ws)).CurrentURI;
+end;
+
 function TDualPanelWindow.ChromeContext: TFunctionBarContext;
 var
   S: TChromeOverlayState;
@@ -11357,7 +11368,7 @@ var
   Colors: TFunctionBarColors;
   Discard: TAlphaColor;
 begin
-  FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters);
+  FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters, ActiveFolderUri);
   // Themed F-key bar colours - DrawFunctionBar already forwards to
   // Theme.DrawToolBar for the numbered tool-item segment on the right; these
   // cover the mnemonic-hint segment on the left and the base row fill (there
@@ -12213,7 +12224,7 @@ var
   Shift: TShiftState;
 begin
   Result := False;
-  FunctionBarGetItems(ChromeContext, AShift, Items, Letters);
+  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri);
   Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
     Assigned(Theme));
   if not FunctionBarHitToInput(Hit, AShift, Key, KeyChar, Shift) then

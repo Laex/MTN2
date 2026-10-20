@@ -65,7 +65,8 @@ type
 /// <summary>Decodes the UTF-8 JSON array a plugin's ListDirectory callback
 /// wrote into its buffer. Per-entry fields: name, ext, size (Int64),
 /// isDir/isHidden/isReadOnly/isSystem/isArchive/isCompressed/isEncrypted/
-/// isTemporary/isOffline/isLink (bool), created/modified/accessed (Int64
+/// isTemporary/isOffline/isLink (bool), unixMode (permission bits, 0 = none),
+/// created/modified/accessed (Int64
 /// Unix seconds, 0 = unknown), targetUri (string, '' = none). Unknown
 /// fields are ignored; missing fields default to False/0/''.</summary>
 function EntriesFromJson(const AJson: string): TArray<TVfsEntry>;
@@ -149,6 +150,7 @@ begin
           E.IsTemporary := GetBool('isTemporary');
           E.IsOffline := GetBool('isOffline');
           E.IsLink := GetBool('isLink');
+          E.UnixMode := Cardinal(GetInt64('unixMode'));
           E.CreationTime := UnixToDateTime(GetInt64('created'));
           E.ModificationTime := UnixToDateTime(GetInt64('modified'));
           E.AccessTime := UnixToDateTime(GetInt64('accessed'));

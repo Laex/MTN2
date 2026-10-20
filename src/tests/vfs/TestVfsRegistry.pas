@@ -125,7 +125,21 @@ begin
   Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a', 'sample://b', False,
     False, True, False, Reason) = vtrPluginDest, 'file to plugin dest');
   Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a', 'sample://b', True,
-    False, True, False, Reason) = vtrNotSupported, 'move to plugin dest');
+    False, True, False, Reason) = vtrCopyThenDelete, 'move to plugin dest');
+  Assert.IsTrue(ClassifyVfsTransfer('sample://a', 'file:///C:/b', True,
+    True, False, False, Reason) = vtrCopyThenDelete, 'move out of a plugin');
+  Assert.IsTrue(ClassifyVfsTransfer('sample://a', 'other://b', False,
+    True, True, False, Reason) = vtrViaTemp, 'copy between two plugins');
+  Assert.IsTrue(ClassifyVfsTransfer('sample://a', 'other://b', True,
+    True, True, False, Reason) = vtrViaTemp, 'move between two plugins');
+  Assert.IsTrue(ClassifyVfsTransfer('sftp://u@h/a', 'sample://b', False,
+    False, True, False, Reason) = vtrViaTemp, 'sftp to plugin');
+  Assert.IsTrue(ClassifyVfsTransfer('sample://a', 'sftp://u@h/b', True,
+    True, False, False, Reason) = vtrViaTemp, 'plugin to sftp move');
+  Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a.zip!/x', 'sample://b', False,
+    False, True, False, Reason) = vtrViaTemp, 'archive entry to plugin');
+  Assert.IsTrue(ClassifyVfsTransfer('sample://a', 'sample://b', True,
+    True, True, True, Reason) = vtrPluginBackend, 'same-plugin move');
   Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a', 'ws:///', False,
     False, False, False, Reason) = vtrPluginDest, 'file to workspace');
   Assert.IsTrue(ClassifyVfsTransfer('file:///C:/a', 'ws:///', True,
@@ -159,6 +173,8 @@ begin
     Reg.RegisterPluginScheme('demo', 'sample', Stub, 50);
     Assert.IsTrue(Reg.IsPluginOwned('sample://x'), 'sample is plugin-owned');
     Assert.IsTrue(not Reg.IsPluginOwned('file:///C:/'), 'file is not plugin-owned');
+    Assert.AreEqual('demo', Reg.PluginIdOf('sample://x'), 'owner of the scheme');
+    Assert.AreEqual('', Reg.PluginIdOf('file:///C:/'), 'built-in backends have no plugin id');
     Reg.UnregisterPlugin('demo');
     Assert.IsTrue(not Reg.IsPluginOwned('sample://x'), 'unregistered');
     Reg.UnregisterPlugin('demo'); // idempotent

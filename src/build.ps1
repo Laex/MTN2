@@ -154,6 +154,10 @@ if ($7zSrc) {
     Write-Host "WARN: 7z.dll not found; drop an x64 copy into $(Split-Path $Dest7z) for 7z:// to work"
 }
 
+# The network plugin speaks its protocols through libcurl (see tools\stage-curl.ps1).
+# A Release build gets the official curl build (downloaded once); other builds may use what the machine has.
+& (Join-Path $PSScriptRoot 'tools\stage-curl.ps1') -Dest (Join-Path $PluginsOut 'mtn.net') -Fetch:($Config -eq 'Release')
+
 # MTN2 renders through Skia (FMX.Skia, GlobalUseSkia): the exe does not start
 # without sk4d.dll next to it. The IDE deploys it; a command-line build must.
 $SkiaArch = if ($Platform -eq 'Win64') { 'win64' } else { 'win32' }

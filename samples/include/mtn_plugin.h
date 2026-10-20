@@ -1,7 +1,7 @@
-/* MTN2 native plugin ABI (version 2) for C and C++.
+/* MTN2 native plugin ABI (version 4) for C and C++.
  *
  * Mirrors THostApiTable in src/Core/uPluginHostAbi.pas. The table only grows at
- * the end: a plugin built against ABI 2 must check a field for NULL before
+ * the end: a plugin built against an older ABI must check a field for NULL before
  * calling it if it should also run on an older host. All strings are UTF-8,
  * every function uses the C calling convention, all calls come from the main
  * thread. See docs/PLUGIN_DEVELOPMENT.md. */
@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define MTN_ABI_VERSION 2
+#define MTN_ABI_VERSION 4
 
 #ifdef _WIN32
 #define MTN_EXPORT __declspec(dllexport)
@@ -203,6 +203,32 @@ typedef struct MtnHostApi {
     int64_t (*vfs_cancel)(int64_t job);
     /* 1 when the surface is full screen, 0 when it is not, -1 for an unknown handle. */
     int64_t (*surface_get_fullscreen)(int64_t handle);
+
+    /* ABI 3 */
+    /* The text of key from the plugin's resource/<language>/strings.json, or default_text (the
+     * plugin's English text). Returns the length in bytes; the text and a NUL are written to buf
+     * only when it fits. -1 = bad arguments. */
+    int64_t (*translate)(const char *plugin_id, const char *key, const char *default_text,
+                         char *buf, int64_t buf_size);
+
+    /* ABI 4 */
+    /* Adds a numbered item to the Change Drive list (Alt+F1/F2) and the drive bar, after the
+     * built-in items. Enter on it opens uri in the panel. item_id is the plugin's own id (a repeat
+     * replaces the item), caption is shown as is, items go in ascending priority. 0 = added,
+     * -1 = refused (empty id or caption, uri without a scheme or with "file", or five plugin items
+     * exist already). Main thread only; unloading the plugin removes its items. */
+    int64_t (*register_drive_item)(const char *plugin_id, const char *item_id, const char *caption,
+                                   const char *uri, int64_t priority);
+    /* As the VFS registration of ABI 1, with the version 2 callback table (progress, cancellation,
+     * error text, paged listings); see TVfsCallbacksCdeclV2 in src/Core/uPluginHostAbi.pas.
+     * 0 = registered, -1 = refused. */
+    int64_t (*register_vfs_scheme_v2)(const char *plugin_id, const char *scheme,
+                                      const void *callbacks, void *user_data, int64_t priority);
+    /* Function-bar labels while a panel shows a folder of scheme: json is
+     * {"root": {"F7": "New"}, "inside": {...}} ("root" = scheme:///, "inside" = other folders;
+     * keys F1..F10 with optional Shift+/Ctrl+/Alt+, values the label, "" = number only).
+     * NULL or "" removes the labels. 0 = set, -1 = refused. Main thread only. */
+    int64_t (*set_panel_fbar)(const char *plugin_id, const char *scheme, const char *json);
 } MtnHostApi;
 
 /* Entry points every plugin DLL exports. */

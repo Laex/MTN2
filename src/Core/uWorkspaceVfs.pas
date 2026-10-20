@@ -375,6 +375,10 @@ begin
   if SameVfsUri(AToURI, ABackTarget) or FileUriIsSameOrUnder(AToURI, ABackTarget) or
      IsFindUri(AToURI) then
     Exit;
+  // Moving about the folders of a plugin scheme keeps the way back to the
+  // folder the panel came from.
+  if IsGenericVfsUri(ABackTarget) and IsGenericVfsUri(AToURI) then
+    Exit;
   ABackUri := '';
   ABackTarget := '';
 end;

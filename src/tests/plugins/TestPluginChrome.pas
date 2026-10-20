@@ -15,6 +15,7 @@ type
     [Test] procedure TestChangeNotificationOnlyOnRealChanges;
     [Test] procedure TestUnregisterDropsThePluginSegments;
     [Test] procedure TestCommandCaptionShowsOnItsFunctionKey;
+    [Test] procedure TestSchemeFBarLabelsFollowRootAndInside;
   end;
 
 implementation
@@ -172,6 +173,28 @@ end;
 procedure TTestPluginChrome.TestCommandCaptionShowsOnItsFunctionKey;
 begin
   TestPluginChrome.TestCommandCaptionShowsOnItsFunctionKey;
+end;
+
+procedure TTestPluginChrome.TestSchemeFBarLabelsFollowRootAndInside;
+var
+  L: string;
+begin
+  try
+    PluginChrome.SetSchemeFBar('t.a', 'tnet',
+      '{"root":{"F7":"New","Shift+F4":""},"inside":{"F7":"Dir"},"bad":{"F1":"x"}}');
+    Assert.IsTrue(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $76, [], L));
+    Assert.AreEqual('New', L);
+    Assert.IsTrue(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $73, [ssShift], L));
+    Assert.AreEqual('', L);
+    Assert.IsTrue(PluginChrome.TryGetSchemeFBarLabel('tnet://h/a', $76, [], L));
+    Assert.AreEqual('Dir', L);
+    Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $70, [], L), 'unknown section ignored');
+    Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('other:///', $76, [], L), 'other scheme');
+    PluginChrome.UnregisterPlugin('t.a');
+    Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $76, [], L), 'gone with the plugin');
+  finally
+    Clean;
+  end;
 end;
 
 initialization

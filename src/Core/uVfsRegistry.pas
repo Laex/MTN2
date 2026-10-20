@@ -32,7 +32,8 @@ type
   /// <summary>How TVfsRegistryRoot should dispatch Copy/Move. Pure function
   /// of URIs + plugin-ownership flags so tests do not need a live VFS.</summary>
   TVfsTransferRoute = (vtrNotSupported, vtrFile, vtrZip, vtrSftp,
-    vtrPluginBackend, vtrPluginDest, vtrPluginExtract);
+    vtrPluginBackend, vtrPluginDest, vtrPluginExtract,
+    vtrCopyThenDelete, vtrViaTemp);
 
   IVfsRegistry = interface
     ['{A1B2C3D4-E5F6-4789-A012-3456789ABCDE}']
@@ -70,6 +71,9 @@ type
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
+    /// <summary>Id of the plugin whose backend serves AURI; '' for a built-in
+    /// backend or when none matches.</summary>
+    function PluginIdOf(const AURI: string): string;
     function Resolve(const AURI: string): IVirtualFileSystem;
     function TryResolve(const AURI: string; out ABackend: IVirtualFileSystem): Boolean;
     /// <summary>True when AFileName's extension was registered via
@@ -129,6 +133,7 @@ type
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     function IsPluginOwned(const AURI: string): Boolean;
+    function PluginIdOf(const AURI: string): string;
     function Resolve(const AURI: string): IVirtualFileSystem;
     function TryResolve(const AURI: string; out ABackend: IVirtualFileSystem): Boolean;
     function TryResolveArchiveKind(const AFileName: string;
@@ -147,11 +152,24 @@ type
     function BackendForSftp(const AFromURI, AToURI: string): IVirtualFileSystem;
     function ResolveTransfer(const AFromURI, AToURI: string; AIsMove: Boolean;
       out AReason: string): TVfsTransferRoute;
-    /// <summary>Host copy-bridge: ReadBytes from a plugin-owned source and
-    /// write a local file:// dest. Plugin CopyItem stays unused (ABI v1).</summary>
+    /// <summary>Plugin source, local file:// dest: the host walks the tree and
+    /// has the plugin write each file itself (CopyItem), falling back to
+    /// ReadBytes for a plugin without file extraction.</summary>
     procedure CopyPluginExtract(const AFromURI, AToURI: string;
       ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
       AOnDone: TVfsBoolCallback; AOverwrite: Boolean);
+    /// <summary>Copy through a local temporary copy: the source is copied to a
+    /// temp folder, then from there to the destination. AMove deletes the
+    /// source afterwards. For pairs no backend serves on its own (plugin to
+    /// plugin, plugin to sftp).</summary>
+    procedure CopyViaTemp(const AFromURI, AToURI: string; ACancel: IJobCancelToken;
+      AOnProgress: TVfsProgressCallback; AOnDone: TVfsBoolCallback;
+      AOverwrite, APreserveTimestamps, AMove: Boolean);
+    /// <summary>Move as copy, then delete the source (plugin to or from a
+    /// local folder).</summary>
+    procedure MoveByCopy(const AFromURI, AToURI: string; ACancel: IJobCancelToken;
+      AOnProgress: TVfsProgressCallback; AOnDone: TVfsBoolCallback;
+      AOverwrite, APreserveTimestamps: Boolean);
   public
     constructor Create(const ARegistry: IVfsRegistry;
       const AFileBackend, AZipBackend: IVirtualFileSystem);
@@ -443,18 +461,34 @@ begin
     IsZipArchiveUri(AFromURI) or IsZipArchiveUri(AToURI);
 end;
 
+// A plain local file or folder: no scheme or file://, not inside an archive.
+function IsPlainLocalUri(const AURI: string): Boolean;
+var
+  Scheme: string;
+begin
+  Scheme := UriSchemeOf(AURI);
+  Result := ((Scheme = '') or (Scheme = 'file')) and not HasArchiveChain(AURI);
+end;
+
+// Copy and move where a plugin backend serves one side or both. A plugin
+// writes and reads only local files itself (or items of its own scheme), so
+// anything else goes through a local temporary copy; a move is the copy
+// followed by deleting the source.
 function ClassifyPluginTransfer(AIsMove, APluginOwnedFrom, APluginOwnedTo,
-  ASamePluginBackend: Boolean; out AReason: string): TVfsTransferRoute;
+  ASamePlugin, AOtherSideLocal: Boolean; out AReason: string): TVfsTransferRoute;
 begin
   AReason := '';
-  if ASamePluginBackend then
+  if ASamePlugin then
     Exit(vtrPluginBackend);
-  if APluginOwnedTo and (not APluginOwnedFrom) and (not AIsMove) then
+  if APluginOwnedFrom and APluginOwnedTo then
+    Exit(vtrViaTemp);
+  if not AOtherSideLocal then
+    Exit(vtrViaTemp);
+  if AIsMove then
+    Exit(vtrCopyThenDelete);
+  if APluginOwnedTo then
     Exit(vtrPluginDest);
-  if APluginOwnedFrom and (not APluginOwnedTo) and (not AIsMove) then
-    Exit(vtrPluginExtract);
-  AReason := 'Cross-scheme plugin transfer is not supported';
-  Result := vtrNotSupported;
+  Result := vtrPluginExtract;
 end;
 
 function ClassifySftpTransfer(const AFromURI, AToURI: string;
@@ -528,7 +562,9 @@ begin
   end;
   if APluginOwnedFrom or APluginOwnedTo then
     Exit(ClassifyPluginTransfer(AIsMove, APluginOwnedFrom, APluginOwnedTo,
-      ASamePluginBackend, AReason));
+      ASamePluginBackend,
+      (APluginOwnedTo and IsPlainLocalUri(AFromURI)) or
+      (APluginOwnedFrom and IsPlainLocalUri(AToURI)), AReason));
   if IsSftpUri(AFromURI) or IsSftpUri(AToURI) then
     Exit(ClassifySftpTransfer(AFromURI, AToURI, AReason));
   Result := ClassifyLocalTransfer(AFromURI, AToURI, AIsMove, AReason);
@@ -809,6 +845,11 @@ begin
 end;
 
 function TVfsRegistry.IsPluginOwned(const AURI: string): Boolean;
+begin
+  Result := PluginIdOf(AURI) <> '';
+end;
+
+function TVfsRegistry.PluginIdOf(const AURI: string): string;
 var
   I: Integer;
   E: TEntry;
@@ -817,9 +858,9 @@ begin
   begin
     E := FEntries[I];
     if E.Pred(AURI) then
-      Exit(E.PluginId <> '');
+      Exit(E.PluginId);
   end;
-  Result := False;
+  Result := '';
 end;
 
 function TVfsRegistry.TryResolve(const AURI: string;
@@ -894,17 +935,13 @@ function TVfsRegistryRoot.ResolveTransfer(const AFromURI, AToURI: string;
   AIsMove: Boolean; out AReason: string): TVfsTransferRoute;
 var
   FromPlug, ToPlug, SamePlug: Boolean;
-  FromB, ToB: IVirtualFileSystem;
 begin
   FromPlug := FRegistry.IsPluginOwned(AFromURI);
   ToPlug := FRegistry.IsPluginOwned(AToURI);
-  SamePlug := False;
-  if FromPlug and ToPlug then
-  begin
-    FromB := BackendFor(AFromURI);
-    ToB := BackendFor(AToURI);
-    SamePlug := Assigned(FromB) and (FromB = ToB);
-  end;
+  // One plugin serves both sides (its schemes may have separate backends):
+  // it copies and moves between them itself.
+  SamePlug := FromPlug and ToPlug and
+    SameText(FRegistry.PluginIdOf(AFromURI), FRegistry.PluginIdOf(AToURI));
   Result := ClassifyVfsTransfer(AFromURI, AToURI, AIsMove, FromPlug, ToPlug,
     SamePlug, AReason);
 end;
@@ -935,6 +972,7 @@ type
     FFromURI, FToURI: string;
     FCancel: IJobCancelToken;
     FOverwrite: Boolean;
+    FOnProgress: TVfsProgressCallback;
     FErr: TVfsError;
     function WaitExists(const AURI: string; out AExists, AIsDir: Boolean): Boolean;
     function WaitList(const AURI: string; out AItems: TArray<TVfsEntry>): Boolean;
@@ -943,14 +981,17 @@ type
     function ExtractNode(const ASrcURI, ADestPath: string): Boolean;
   public
     constructor Create(const ABackend: IVirtualFileSystem;
-      const AFromURI, AToURI: string; ACancel: IJobCancelToken; AOverwrite: Boolean);
+      const AFromURI, AToURI: string; ACancel: IJobCancelToken; AOverwrite: Boolean;
+      const AOnProgress: TVfsProgressCallback);
     function Run: TVfsError;
   end;
 
 constructor TPluginExtractOp.Create(const ABackend: IVirtualFileSystem;
-  const AFromURI, AToURI: string; ACancel: IJobCancelToken; AOverwrite: Boolean);
+  const AFromURI, AToURI: string; ACancel: IJobCancelToken; AOverwrite: Boolean;
+  const AOnProgress: TVfsProgressCallback);
 begin
   inherited Create;
+  FOnProgress := AOnProgress;
   FBackend := ABackend;
   FFromURI := AFromURI;
   FToURI := AToURI;
@@ -1076,7 +1117,7 @@ begin
   Result := False;
   Ev := TEvent.Create(nil, True, False, '');
   try
-    FBackend.CopyAsync(ASrcURI, PathToFileUri(ADestPath), FCancel, nil,
+    FBackend.CopyAsync(ASrcURI, PathToFileUri(ADestPath), FCancel, FOnProgress,
       procedure(const ASuccess: Boolean; const AError: TVfsError)
       begin
         Ok := ASuccess;
@@ -1197,12 +1238,14 @@ var
   Cancel: IJobCancelToken;
   OnDone: TVfsBoolCallback;
   Overwrite: Boolean;
+  OnProgress: TVfsProgressCallback;
   Backend: IVirtualFileSystem;
 begin
   FromURI := AFromURI;
   ToURI := AToURI;
   Cancel := ACancel;
   OnDone := AOnDone;
+  OnProgress := AOnProgress;
   Overwrite := AOverwrite;
   Backend := BackendFor(FromURI);
   TThread.CreateAnonymousThread(
@@ -1211,7 +1254,7 @@ begin
       Op: TPluginExtractOp;
       Err: TVfsError;
     begin
-      Op := TPluginExtractOp.Create(Backend, FromURI, ToURI, Cancel, Overwrite);
+      Op := TPluginExtractOp.Create(Backend, FromURI, ToURI, Cancel, Overwrite, OnProgress);
       try
         Err := Op.Run;
       finally
@@ -1219,6 +1262,131 @@ begin
       end;
       QueueVfsBool(OnDone, Err.Code = vecOk, Err);
     end).Start;
+end;
+
+// A name that is valid as one file name on every platform.
+function TempItemName(const AURI: string): string;
+var
+  I: Integer;
+begin
+  Result := VfsUriTitle(AURI);
+  for I := 1 to Length(Result) do
+    if CharInSet(Result[I], ['\', '/', ':', '*', '?', '"', '<', '>', '|']) or
+       (Result[I] < ' ') then
+      Result[I] := '_';
+  Result := Trim(Result);
+  if (Result = '') or (Result = '.') or (Result = '..') then
+    Result := 'item';
+end;
+
+// Progress of one of the two hops of CopyViaTemp, mapped to half of the whole.
+function HalfProgress(const ASink: TVfsProgressCallback;
+  AStage: Integer): TVfsProgressCallback;
+begin
+  if not Assigned(ASink) then
+    Exit(nil);
+  Result :=
+    procedure(const ADone, ATotal: Int64; const ACurrentName: string;
+      const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
+    begin
+      if ATotal > 0 then
+        ASink(AStage * ATotal + ADone, 2 * ATotal, ACurrentName, AItemDone,
+          AItemTotal, AItemSrcPath, AItemDstPath)
+      else
+        ASink(ADone, ATotal, ACurrentName, AItemDone, AItemTotal,
+          AItemSrcPath, AItemDstPath);
+    end;
+end;
+
+procedure TVfsRegistryRoot.CopyViaTemp(const AFromURI, AToURI: string;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
+  AOnDone: TVfsBoolCallback; AOverwrite, APreserveTimestamps, AMove: Boolean);
+var
+  FromURI, ToURI, TempRoot, TempItem: string;
+  Cancel: IJobCancelToken;
+  OnProgress: TVfsProgressCallback;
+  OnDone: TVfsBoolCallback;
+  Overwrite, Preserve, Move: Boolean;
+  Cleanup: TProc;
+  Root: IVirtualFileSystem;
+begin
+  FromURI := AFromURI;
+  ToURI := AToURI;
+  Cancel := ACancel;
+  OnProgress := AOnProgress;
+  OnDone := AOnDone;
+  Overwrite := AOverwrite;
+  Preserve := APreserveTimestamps;
+  Move := AMove;
+  Root := Self;
+  TempRoot := TPath.Combine(TPath.GetTempPath, 'mtn2-xfer-' + TGUID.NewGuid.ToString);
+  TempItem := TPath.Combine(TempRoot, TempItemName(FromURI));
+  try
+    TDirectory.CreateDirectory(TempRoot);
+  except
+    on E: Exception do
+    begin
+      QueueVfsBool(OnDone, False, TVfsError.Make(vecIOError,
+        'Cannot create a temporary folder: ' + E.Message, FromURI));
+      Exit;
+    end;
+  end;
+  Cleanup :=
+    procedure
+    begin
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          try
+            TDirectory.Delete(TempRoot, True);
+          except
+            // A leftover temp folder is harmless; the OS temp cleanup takes it.
+          end;
+        end).Start;
+    end;
+  Root.CopyAsync(FromURI, PathToFileUri(TempItem), Cancel, HalfProgress(OnProgress, 0),
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if not ASuccess then
+      begin
+        Cleanup();
+        if Assigned(OnDone) then
+          OnDone(False, AError);
+        Exit;
+      end;
+      Root.CopyAsync(PathToFileUri(TempItem), ToURI, Cancel, HalfProgress(OnProgress, 1),
+        procedure(const ASuccess2: Boolean; const AError2: TVfsError)
+        begin
+          Cleanup();
+          if ASuccess2 and Move then
+            Root.DeleteAsync(FromURI, vdmPermanent, Cancel, nil, OnDone)
+          else if Assigned(OnDone) then
+            OnDone(ASuccess2, AError2);
+        end, Overwrite, Preserve);
+    end, True, Preserve);
+end;
+
+procedure TVfsRegistryRoot.MoveByCopy(const AFromURI, AToURI: string;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
+  AOnDone: TVfsBoolCallback; AOverwrite, APreserveTimestamps: Boolean);
+var
+  FromURI: string;
+  Cancel: IJobCancelToken;
+  OnDone: TVfsBoolCallback;
+  Root: IVirtualFileSystem;
+begin
+  FromURI := AFromURI;
+  Cancel := ACancel;
+  OnDone := AOnDone;
+  Root := Self;
+  CopyAsync(AFromURI, AToURI, ACancel, AOnProgress,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if ASuccess then
+        Root.DeleteAsync(FromURI, vdmPermanent, Cancel, nil, OnDone)
+      else if Assigned(OnDone) then
+        OnDone(False, AError);
+    end, AOverwrite, APreserveTimestamps);
 end;
 
 procedure TVfsRegistryRoot.CopyAsync(const AFromURI, AToURI: string;
@@ -1250,6 +1418,9 @@ begin
     vtrPluginExtract:
       CopyPluginExtract(AFromURI, AToURI, ACancel, AOnProgress, AOnDone,
         AOverwrite);
+    vtrViaTemp:
+      CopyViaTemp(AFromURI, AToURI, ACancel, AOnProgress, AOnDone,
+        AOverwrite, APreserveTimestamps, False);
   else
     QueueVfsNotSupported(AOnDone, AFromURI, Reason);
   end;
@@ -1275,6 +1446,12 @@ begin
     vtrPluginBackend:
       BackendFor(AFromURI).MoveAsync(AFromURI, AToURI, ACancel, AOnProgress,
         AOnDone, AOverwrite, APreserveTimestamps);
+    vtrCopyThenDelete:
+      MoveByCopy(AFromURI, AToURI, ACancel, AOnProgress, AOnDone,
+        AOverwrite, APreserveTimestamps);
+    vtrViaTemp:
+      CopyViaTemp(AFromURI, AToURI, ACancel, AOnProgress, AOnDone,
+        AOverwrite, APreserveTimestamps, True);
   else
     QueueVfsNotSupported(AOnDone, AFromURI, Reason);
   end;
