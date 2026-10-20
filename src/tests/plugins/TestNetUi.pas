@@ -33,7 +33,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.JSON, System.SyncObjs, uPluginHostAbi, uNetTypes,
-  uNetManager, uNetSessions, uNetUi;
+  uNetManager, uNetSessions, uNetSecrets, uNetUi;
 
 type
   TAnswerFn = procedure(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
@@ -208,7 +208,7 @@ begin
   try
     Assert.IsTrue(P.AskSecret(S, False, False, Op, Secret, Save));
     Assert.AreEqual('hunter2', Secret);
-    Assert.IsTrue(Save);
+    Assert.AreEqual(SecretsAvailable, Save, 'saving is offered only where passwords can be sealed');
     Assert.IsTrue(Pos('bob@example.org', GDialogs[0]) > 0, 'the question names the account');
     Assert.IsTrue(Pos('"password":true', GDialogs[0]) > 0, 'the field hides what is typed');
   finally
