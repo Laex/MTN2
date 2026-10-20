@@ -117,6 +117,16 @@ begin
   Assert.IsTrue(E.Name = 'old.bin', 'Old-file name mismatch: ' + E.Name);
   Assert.IsTrue(YearOf(E.ModificationTime) = 2019, 'Old-file year mismatch');
 
+  Assert.IsTrue(ParseSftpLsLine(
+    'drwxr-xr-x    5 root     root         4096 Jan 15 10:23 /boot', E),
+    'Failed to parse a directory line printed with its full path');
+  Assert.IsTrue((E.Name = 'boot') and E.IsDirectory, 'Full-path name mismatch: ' + E.Name);
+  Assert.IsTrue(not ParseSftpLsLine(
+    'drwxr-xr-x    5 root     root         4096 Jan 15 10:23 /.', E),
+    'full-path "." must be rejected');
+  Assert.IsTrue(not ParseSftpLsLine(
+    'drwxr-xr-x    5 root     root         4096 Jan 15 10:23 /..', E),
+    'full-path ".." must be rejected');
   Assert.IsTrue(not ParseSftpLsLine('.', E), '"." must be rejected');
   Assert.IsTrue(not ParseSftpLsLine('..', E), '".." must be rejected');
   Assert.IsTrue(not ParseSftpLsLine('', E), 'blank line must be rejected');

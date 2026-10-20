@@ -612,7 +612,8 @@
       "ok": "Shell",
       "browse": "&Durchsuchen",
       "cancel": "Abbrechen",
-      "sshHeader": "Name                                    Host"
+      "sshHeader": "Name                                    Host",
+      "sshHotkeys": "Einfg Neu  F2 Ändern  Entf Löschen  Enter Shell"
     },
     "DIALOG_TERMINALPROFILE": {
       "$title": "Neues Terminal",

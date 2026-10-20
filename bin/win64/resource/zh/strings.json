@@ -611,7 +611,8 @@
       "$title": "SSH/SFTP 连接",
       "ok": "Shell",
       "browse": "浏览(&B)",
-      "cancel": "取消"
+      "cancel": "取消",
+      "sshHotkeys": "Ins 添加  F2 编辑  Del 删除  Enter Shell"
     },
     "DIALOG_TERMINALPROFILE": {
       "lbl_prompt": "选择 Shell 配置:",

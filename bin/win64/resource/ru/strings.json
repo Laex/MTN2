@@ -610,7 +610,8 @@
       "$title": "SSH/SFTP-соединения",
       "ok": "Оболочка",
       "browse": "О&бзор",
-      "cancel": "Отмена"
+      "cancel": "Отмена",
+      "sshHotkeys": "Ins Добавить  F2 Правка  Del Удалить  Enter Оболочка"
     },
     "DIALOG_TERMINALPROFILE": {
       "lbl_prompt": "Выберите профиль оболочки:",

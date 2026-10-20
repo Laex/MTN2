@@ -613,7 +613,8 @@
       "ok": "Shell",
       "browse": "&Browse",
       "cancel": "Cancel",
-      "sshHeader": "Name                                    Host"
+      "sshHeader": "Name                                    Host",
+      "sshHotkeys": "Ins Add  F2 Edit  Del Delete  Enter Shell"
     },
     "DIALOG_TERMINALPROFILE": {
       "$title": "New terminal",

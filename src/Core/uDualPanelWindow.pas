@@ -4103,7 +4103,8 @@ begin
   OldIsArch := HasArchiveChain(Tab.CurrentURI);
   NewIsArch := HasArchiveChain(Canon);
   EitherSideIsVirtualView := OldIsArch or NewIsArch or
-    IsFindUri(Tab.CurrentURI) or IsFindUri(Canon);
+    IsFindUri(Tab.CurrentURI) or IsFindUri(Canon) or
+    IsSftpUri(Tab.CurrentURI) or IsSftpUri(Canon);
   if SameVfsUri(Tab.CurrentURI, Canon) then
   begin
     if (not NewIsArch) and (not IsFindUri(Canon)) then
@@ -4171,6 +4172,16 @@ begin
     Tab.CurrentURI, Canon);
   if Tab.WorkspaceBackUri <> OldBackUri then
     Tab.JunctionBackName := '';
+  // The root of a remote host has no parent row of its own; `..` there leads
+  // back to the folder the panel came from.
+  if IsSftpUri(Canon) and not IsSftpUri(Tab.CurrentURI) and
+     (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
+     not IsWorkspaceUri(Tab.CurrentURI) and IsVfsUriNavigationRoot(Canon) then
+  begin
+    Tab.WorkspaceBackUri := Tab.CurrentURI;
+    Tab.WorkspaceBackTarget := Canon;
+    Tab.JunctionBackName := '';
+  end;
   // Entering a junction/symlink shows its resolved target; `..` there must
   // lead back to the folder that holds the link, not to the target's parent.
   if ((Tab.WorkspaceBackUri = '') or (Tab.JunctionBackName <> '')) and

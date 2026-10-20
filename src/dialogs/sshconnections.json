@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "SSH/SFTP Connections",
   "width": 62,
-  "height": 15,
+  "height": 17,
   "children": [
     {
       "type": "label",
@@ -34,12 +34,28 @@
       "height": 1
     },
     {
+      "type": "label",
+      "id": "sshHotkeys",
+      "text": "Ins Add  F2 Edit  Del Delete  Enter Shell",
+      "col": 1,
+      "row": 10,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 11,
+      "width": 60,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Shell",
       "default": true,
       "col": 10,
-      "row": 11,
+      "row": 13,
       "width": 12,
       "height": 1
     },
@@ -48,7 +64,7 @@
       "id": "browse",
       "text": "&Browse",
       "col": 24,
-      "row": 11,
+      "row": 13,
       "width": 12,
       "height": 1
     },
@@ -58,7 +74,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 38,
-      "row": 11,
+      "row": 13,
       "width": 12,
       "height": 1
     }

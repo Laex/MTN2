@@ -509,7 +509,12 @@ begin
       else
       begin
         case AError.Code of
-          vecAccessDenied: Msg := 'Access denied';
+          // The SFTP backend explains why (host key, missing key file, ...).
+          vecAccessDenied:
+            if IsSftpUri(URI) and (AError.Message <> '') then
+              Msg := AError.Message
+            else
+              Msg := 'Access denied';
           vecNotFound: Msg := 'Path not found';
           // The 7z plugin reports a file that no format opens this way.
           vecInvalidURI:

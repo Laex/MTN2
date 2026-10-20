@@ -477,6 +477,9 @@ begin
     AEntry.IsLink := True;
   end;
   Name := Name.TrimRight([#13]);
+  // Some sftp clients print each entry with its directory ("/boot", "/.."),
+  // others only the bare name; a file name never contains '/'.
+  Name := Copy(Name, LastDelimiter('/', Name) + 1, MaxInt);
   if (Name = '.') or (Name = '..') or (Name = '') then
     Exit;
   AEntry.Name := Name;
