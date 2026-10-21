@@ -165,6 +165,11 @@ type
       const AState: TDualPanelWindowState): TDualPanelWindowState;
     class function FilterImportedSession(
       const AState: TDualPanelWindowState): TDualPanelWindowState;
+    /// <summary>Local folders of the restored panel tabs that are missing or
+    /// unreachable are replaced by the nearest existing parent, or by the first
+    /// available drive root when no parent is left. Non-file URIs are left
+    /// alone.</summary>
+    class procedure ReplaceUnavailableFolders(var AState: TDualPanelWindowState);
     class function NextIdAfterSession(const AState: TDualPanelWindowState): Cardinal;
     class procedure RestoreBothVisibleIfHidden(var AWs: TDualPanelWorkspaceTab);
   end;
@@ -172,7 +177,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uPlatformPaths;
 
 { =========================================================================
   Caption helpers
@@ -817,6 +822,76 @@ begin
       Result.ActiveWorkspaceIndex := N;
     Inc(N);
   end;
+end;
+
+function AvailableFolderUri(const AUri: string): string;
+var
+  Cur, Up: string;
+  C: Char;
+  Root: string;
+begin
+  Cur := AUri;
+  while Cur <> '' do
+  begin
+    if LocalPathIsDirectory(FileUriToPath(Cur)) then
+      Exit(Cur);
+    Up := ParentFileUri(Cur);
+    if SameText(Up, Cur) then
+      Break;
+    Cur := Up;
+  end;
+  if PlatformPosixPaths then
+    Exit(PathToFileUri('/'));
+  Root := GetEnvironmentVariable('SystemDrive');
+  if Root <> '' then
+  begin
+    Root := IncludeTrailingPathDelimiter(Root);
+    if LocalPathIsDirectory(Root) then
+      Exit(PathToFileUri(Root));
+  end;
+  for C := 'C' to 'Z' do
+    if LocalPathIsDirectory(C + ':\') then
+      Exit(PathToFileUri(C + ':\'));
+  Result := AUri;
+end;
+
+class procedure TDualPanelTabManager.ReplaceUnavailableFolders(
+  var AState: TDualPanelWindowState);
+var
+  W, I, Side: Integer;
+  Panel: TPanelState;
+  Path, NewUri: string;
+begin
+  for W := 0 to High(AState.WorkspaceTabs) do
+    for Side := 0 to 1 do
+    begin
+      if Side = 0 then
+        Panel := AState.WorkspaceTabs[W].State.LeftPanel
+      else
+        Panel := AState.WorkspaceTabs[W].State.RightPanel;
+      for I := 0 to High(Panel.Tabs) do
+      begin
+        if not Panel.Tabs[I].CurrentURI.StartsWith('file:', True) then
+          Continue;
+        Path := FileUriToPath(Panel.Tabs[I].CurrentURI);
+        if (Path = '') or LocalPathIsDirectory(Path) then
+          Continue;
+        NewUri := AvailableFolderUri(Panel.Tabs[I].CurrentURI);
+        if NewUri = Panel.Tabs[I].CurrentURI then
+          Continue;
+        Panel.Tabs[I].CurrentURI := NewUri;
+        Panel.Tabs[I].Title := FileUriTitle(NewUri);
+        Panel.Tabs[I].CursorIndex := 0;
+        Panel.Tabs[I].CursorName := '';
+        Panel.Tabs[I].ScrollOffset := 0;
+        SetLength(Panel.Tabs[I].SelectedURIs, 0);
+        SetLength(Panel.Tabs[I].PrevSelectedURIs, 0);
+      end;
+      if Side = 0 then
+        AState.WorkspaceTabs[W].State.LeftPanel := Panel
+      else
+        AState.WorkspaceTabs[W].State.RightPanel := Panel;
+    end;
 end;
 
 class function TDualPanelTabManager.NextIdAfterSession(

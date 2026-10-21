@@ -29,11 +29,21 @@ procedure PlatformFillDriveDetails(var AInfo: TDriveInfo);
 /// <summary>Ends the calling thread at once, without any RTL cleanup.</summary>
 procedure PlatformAbandonThread;
 
+/// <summary>True for a volume that can be unmounted from the program: a
+/// removable or optical medium or a network mount, never the root file system.
+/// Does not touch the volume.</summary>
+function PlatformCanDisconnectDrive(const AInfo: TDriveInfo): Boolean;
+
+/// <summary>Unmounts the volume (udisksctl for a block device, else umount).
+/// Blocks while the program runs, so call it off the UI thread. AError carries
+/// the program's own message on failure.</summary>
+function PlatformDisconnectDrive(const AInfo: TDriveInfo; out AError: string): Boolean;
+
 implementation
 
 uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.Generics.Defaults, Posix.Base,
-  Posix.Pthread, Posix.SysStatvfs, uPlatformInfo;
+  Posix.Pthread, Posix.SysStatvfs, uPlatformInfo, uPlatformProcess;
 
 type
   TMount = record
@@ -269,6 +279,55 @@ var
 begin
   Ret := 0;
   pthread_exit(Ret);
+end;
+
+function PlatformCanDisconnectDrive(const AInfo: TDriveInfo): Boolean;
+begin
+  Result := (AInfo.RootPath <> '') and (AInfo.RootPath <> '/') and
+    ((AInfo.KindLabel = 'Removable') or (AInfo.KindLabel = 'CD-ROM') or
+     (AInfo.KindLabel = 'Network'));
+end;
+
+function PlatformDisconnectDrive(const AInfo: TDriveInfo; out AError: string): Boolean;
+var
+  Mounts: TArray<TMount>;
+  Mount: TMount;
+  Source, Output: string;
+  ExitCode: Cardinal;
+  Spawn: TSpawnResult;
+begin
+  AError := '';
+  if not PlatformCanDisconnectDrive(AInfo) then
+  begin
+    AError := 'This drive cannot be disconnected';
+    Result := False;
+    Exit;
+  end;
+  Source := '';
+  Mounts := ReadMounts;
+  for Mount in Mounts do
+    if Mount.MountPoint = AInfo.RootPath then
+    begin
+      Source := Mount.Source;
+      Break;
+    end;
+  // A block device goes through udisks, which lets an ordinary user unmount
+  // what the desktop mounted; anything else (or a missing udisksctl) falls
+  // back to umount on the mount point.
+  Spawn := srSpawnFailed;
+  ExitCode := 1;
+  if Source.StartsWith('/dev/') then
+    Spawn := PlatformRunCaptured('udisksctl', ['unmount', '-b', Source], '', 30000, nil,
+      Output, ExitCode);
+  if (Spawn <> srOk) or (ExitCode <> 0) then
+    Spawn := PlatformRunCaptured('umount', [AInfo.RootPath], '', 30000, nil, Output, ExitCode);
+  Result := (Spawn = srOk) and (ExitCode = 0);
+  if not Result then
+  begin
+    AError := Trim(Output);
+    if AError = '' then
+      AError := 'The volume could not be unmounted';
+  end;
 end;
 
 end.

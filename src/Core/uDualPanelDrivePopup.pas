@@ -15,6 +15,7 @@ type
   TPanelDriveDirsEvent = reference to function(ASide: TPanelSide): TPanelDriveDirs;
   TPanelNavigateEvent = reference to procedure(ASide: TPanelSide; const AURI: string);
   TDrivePathEvent = reference to procedure(const APath: string);
+  TDriveInfoEvent = reference to procedure(const AInfo: TDriveInfo);
 
   TDrivePopupController = class
   private
@@ -26,6 +27,7 @@ type
     FOnNavigate: TPanelNavigateEvent;
     FState: TDrivePopupState;
     FOnAttributes: TDrivePathEvent;
+    FOnDisconnect: TDriveInfoEvent;
     procedure HandleDriveInfoRefreshed;
     function WithUncShares(const ADrives: TDriveInfoArray): TDriveInfoArray;
     function UncCursorIndex: Integer;
@@ -52,12 +54,15 @@ type
     property Bounds: TRectI read FState.Bounds;
     /// <summary>F4 on a drive: the host shows its attributes (root path given).</summary>
     property OnAttributes: TDrivePathEvent read FOnAttributes write FOnAttributes;
+    /// <summary>Del on a drive that can be taken offline (removable, optical,
+    /// mapped network drive): the host confirms and disconnects it.</summary>
+    property OnDisconnect: TDriveInfoEvent read FOnDisconnect write FOnDisconnect;
   end;
 
 implementation
 
 uses
-  uStrings, uFolderHistory;
+  uStrings, uFolderHistory, uPlatformDrives;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -379,6 +384,7 @@ function TDrivePopupController.HandleInput(var AKey: Word; AShift: TShiftState;
 var
   Ch: Char;
   Root: string;
+  Drive: TDriveInfo;
   I, ViewH: Integer;
 begin
   Result := True;
@@ -404,6 +410,19 @@ begin
       Root := FState.Drives[FState.CursorIndex].RootPath;
       Close;
       FOnAttributes(Root);
+    end;
+    AKey := 0;
+    Exit;
+  end;
+  if (AKey = vkDelete) and (AShift = []) then
+  begin
+    if (FState.CursorIndex >= 0) and (FState.CursorIndex < Length(FState.Drives)) and
+       Assigned(FOnDisconnect) and
+       PlatformCanDisconnectDrive(FState.Drives[FState.CursorIndex]) then
+    begin
+      Drive := FState.Drives[FState.CursorIndex];
+      Close;
+      FOnDisconnect(Drive);
     end;
     AKey := 0;
     Exit;

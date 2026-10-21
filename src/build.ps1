@@ -31,12 +31,10 @@ if (-not (Test-Path $RsVars)) {
     throw "rsvars.bat not found: $RsVars"
 }
 
-$Brcc = Join-Path $Studio 'bin\brcc32.exe'
-if (Test-Path $Brcc) {
-    & $Brcc -fo(Join-Path $PSScriptRoot 'MTN2.res') $Rc
-    & $Brcc -fo(Join-Path $PSScriptRoot 'MTN2.dres') (Join-Path $PSScriptRoot 'MTN2Resource.rc')
-    if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE" }
-}
+# MTN2.res: the icon (msbuild adds the version info); MTN2.dres: every embedded asset.
+$BuildResources = Join-Path $PSScriptRoot 'tools\build-resources.ps1'
+& $BuildResources -Rc $Rc -Out (Join-Path $PSScriptRoot 'MTN2.res')
+& $BuildResources -Rc (Join-Path $PSScriptRoot 'MTN2Resource.rc') -Out (Join-Path $PSScriptRoot 'MTN2.dres')
 
 $VerProps = ''
 if ($Version) {

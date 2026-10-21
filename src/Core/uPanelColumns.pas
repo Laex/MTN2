@@ -694,6 +694,24 @@ begin
       end));
 end;
 
+// Length of the extension (with its dot) at the end of AName, 0 when there is
+// none. A VFS may report the extension with or without the leading dot, so
+// the suffix of the name decides.
+function PanelRowExtLength(const ARow: TPanelRow; const AName: string): Integer;
+var
+  Ext: string;
+begin
+  Result := 0;
+  Ext := ARow.Extension;
+  if Ext = '' then
+    Exit;
+  if Ext[1] <> '.' then
+    Ext := '.' + Ext;
+  if (Length(AName) > Length(Ext)) and
+     SameText(Copy(AName, Length(AName) - Length(Ext) + 1, Length(Ext)), Ext) then
+    Result := Length(Ext);
+end;
+
 // Ext already has its own column - don't repeat it inside Name too. Dirs/
 // parent excluded even if Extension were ever wrongly non-empty: Text
 // carries a trailing '/' for dirs, so blindly trimming Extension's length
@@ -702,7 +720,7 @@ function ShouldStripPanelRowExt(const ARow: TPanelRow; AStripExt: Boolean;
   const AName: string): Boolean;
 begin
   Result := AStripExt and not ARow.IsDirectory and not ARow.IsParent and
-    (ARow.Extension <> '') and (Length(AName) > Length(ARow.Extension));
+    (PanelRowExtLength(ARow, AName) > 0);
 end;
 
 function FormatPanelRowName(const ARow: TPanelRow; ANameW: Integer;
@@ -712,7 +730,7 @@ begin
   Result := ARow.Text;
   if ShouldStripPanelRowExt(ARow, AStripExt, Result) then
   begin
-    Result := Copy(Result, 1, Length(Result) - Length(ARow.Extension));
+    Result := Copy(Result, 1, Length(Result) - PanelRowExtLength(ARow, Result));
     // Extension lives in its own column - end-ellipsis only, do not re-parse
     // dots inside the stem as a fake extension.
     if TextDisplayWidth(Result) > ANameW then

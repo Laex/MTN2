@@ -23,6 +23,7 @@ uses
   TestDirHistoryPopup in 'TestDirHistoryPopup.pas',
   TestColumnModeMenuController in 'TestColumnModeMenuController.pas',
   TestDrivePopup in 'TestDrivePopup.pas',
+  TestDriveDisconnect in 'TestDriveDisconnect.pas',
   TestDualPanelClick in 'TestDualPanelClick.pas',
   TestDualPanelCmdLine in 'TestDualPanelCmdLine.pas',
   TestDualPanelCommands in 'TestDualPanelCommands.pas',

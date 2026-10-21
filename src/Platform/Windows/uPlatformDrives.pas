@@ -29,6 +29,16 @@ procedure PlatformFillDriveDetails(var AInfo: TDriveInfo);
 /// worker that wakes up after the heap has been finalized.</summary>
 procedure PlatformAbandonThread;
 
+/// <summary>True for a volume that can be taken offline from the program: a
+/// removable drive, an optical drive or a mapped network drive, never the
+/// drive Windows is installed on. Does not touch the volume.</summary>
+function PlatformCanDisconnectDrive(const AInfo: TDriveInfo): Boolean;
+
+/// <summary>Takes the volume offline: ejects a removable or optical drive,
+/// drops a mapped network drive. Blocks while the system waits for open
+/// files, so call it off the UI thread. AError explains a failure.</summary>
+function PlatformDisconnectDrive(const AInfo: TDriveInfo; out AError: string): Boolean;
+
 implementation
 
 uses
@@ -179,6 +189,120 @@ end;
 procedure PlatformAbandonThread;
 begin
   ExitThread(0);
+end;
+
+function PlatformCanDisconnectDrive(const AInfo: TDriveInfo): Boolean;
+var
+  Buf: array[0..MAX_PATH] of Char;
+  N: Cardinal;
+begin
+  Result := False;
+  if (AInfo.Letter < 'A') or (AInfo.Letter > 'Z') then
+    Exit;
+  if (AInfo.KindLabel <> 'Removable') and (AInfo.KindLabel <> 'CD-ROM') and
+     (AInfo.KindLabel <> 'Network') then
+    Exit;
+  N := GetWindowsDirectory(Buf, Length(Buf));
+  if (N >= 2) and (UpCase(Buf[0]) = AInfo.Letter) then
+    Exit;
+  Result := True;
+end;
+
+function ErrorTextOf(ACode: Cardinal): string;
+begin
+  Result := Trim(SysErrorMessage(ACode));
+  if Result = '' then
+    Result := Format('Error %d', [ACode]);
+end;
+
+function DisconnectNetworkDrive(const AInfo: TDriveInfo; out AError: string): Boolean;
+var
+  Code: Cardinal;
+begin
+  // Not forced: a drive with open files stays connected and says so.
+  Code := WNetCancelConnection2(PChar(AInfo.Letter + ':'), 0, False);
+  Result := Code = NO_ERROR;
+  if not Result then
+    AError := ErrorTextOf(Code);
+end;
+
+function EjectVolume(const AInfo: TDriveInfo; out AError: string): Boolean;
+const
+  cLockVolume = $00090018;
+  cDismountVolume = $00090020;
+  cStorageMediaRemoval = $002D4804;
+  cStorageEjectMedia = $002D4808;
+  cLockTries = 5;
+  cLockPauseMs = 300;
+type
+  TPreventRemoval = record
+    PreventMediaRemoval: ByteBool;
+  end;
+var
+  H: THandle;
+  Bytes: Cardinal;
+  Prevent: TPreventRemoval;
+  Tries: Integer;
+  Locked: Boolean;
+  Code: Cardinal;
+begin
+  Result := False;
+  H := CreateFile(PChar('\\.\' + AInfo.Letter + ':'), GENERIC_READ or GENERIC_WRITE,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if H = INVALID_HANDLE_VALUE then
+  begin
+    AError := ErrorTextOf(GetLastError);
+    Exit;
+  end;
+  try
+    // The lock fails while any program still has a file or folder of the
+    // volume open; a few short retries ride out a handle that is closing.
+    Locked := False;
+    for Tries := 1 to cLockTries do
+    begin
+      if DeviceIoControl(H, cLockVolume, nil, 0, nil, 0, Bytes, nil) then
+      begin
+        Locked := True;
+        Break;
+      end;
+      Sleep(cLockPauseMs);
+    end;
+    if not Locked then
+    begin
+      AError := ErrorTextOf(GetLastError);
+      Exit;
+    end;
+    if not DeviceIoControl(H, cDismountVolume, nil, 0, nil, 0, Bytes, nil) then
+    begin
+      AError := ErrorTextOf(GetLastError);
+      Exit;
+    end;
+    Prevent.PreventMediaRemoval := False;
+    DeviceIoControl(H, cStorageMediaRemoval, @Prevent, SizeOf(Prevent), nil, 0, Bytes, nil);
+    if DeviceIoControl(H, cStorageEjectMedia, nil, 0, nil, 0, Bytes, nil) then
+      Exit(True);
+    Code := GetLastError;
+    // A flash drive has no media to eject: it is dismounted and safe to pull.
+    if (Code = ERROR_INVALID_FUNCTION) or (Code = ERROR_NOT_SUPPORTED) then
+      Exit(True);
+    AError := ErrorTextOf(Code);
+  finally
+    CloseHandle(H);
+  end;
+end;
+
+function PlatformDisconnectDrive(const AInfo: TDriveInfo; out AError: string): Boolean;
+begin
+  AError := '';
+  if not PlatformCanDisconnectDrive(AInfo) then
+  begin
+    AError := 'This drive cannot be disconnected';
+    Exit(False);
+  end;
+  if AInfo.KindLabel = 'Network' then
+    Result := DisconnectNetworkDrive(AInfo, AError)
+  else
+    Result := EjectVolume(AInfo, AError);
 end;
 
 end.

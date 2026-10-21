@@ -14,6 +14,7 @@ type
     [Test] procedure TestWorkspaceLifecycle;
     [Test] procedure TestEmbeddedWorkspace;
     [Test] procedure TestSessionExportFilter;
+    [Test] procedure MissingFolderFallsBackToExistingParent;
     [Test] [Category('WindowsOnly')] procedure TestResolvePanelDriveUri;
     [Test] procedure PanelPlusFollowsTheLastTab;
     [Test] procedure PanelPlusNeedsRoom;
@@ -22,8 +23,9 @@ type
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.IOUtils,
   uThemeTypes,
+  uVfsTypes,
   uDualPanelTypes,
   uDualPanelTabs;
 
@@ -418,6 +420,37 @@ end;
 procedure TTestDualPanelTabs.TestSessionExportFilter;
 begin
   TestDualPanelTabs.TestSessionExportFilter;
+end;
+
+procedure TTestDualPanelTabs.MissingFolderFallsBackToExistingParent;
+var
+  State: TDualPanelWindowState;
+  Base, Gone, Plugin: string;
+begin
+  Base := TPath.Combine(TPath.GetTempPath, 'mtn2_fallback_test');
+  TDirectory.CreateDirectory(Base);
+  try
+    Gone := TPath.Combine(TPath.Combine(Base, 'a'), 'b');
+    Plugin := 'tmp:///panel';
+    State := Default(TDualPanelWindowState);
+    SetLength(State.WorkspaceTabs, 1);
+    State.WorkspaceTabs[0] := MakeWs(1, wkPanels);
+    SetLength(State.WorkspaceTabs[0].State.LeftPanel.Tabs, 1);
+    State.WorkspaceTabs[0].State.LeftPanel.Tabs[0] := MakeTab(1, 'b', PathToFileUri(Gone));
+    SetLength(State.WorkspaceTabs[0].State.RightPanel.Tabs, 1);
+    State.WorkspaceTabs[0].State.RightPanel.Tabs[0] := MakeTab(2, 'panel', Plugin);
+
+    TDualPanelTabManager.ReplaceUnavailableFolders(State);
+
+    Assert.AreEqual(PathToFileUri(Base),
+      State.WorkspaceTabs[0].State.LeftPanel.Tabs[0].CurrentURI,
+      'missing folder -> nearest existing parent');
+    Assert.AreEqual(Plugin,
+      State.WorkspaceTabs[0].State.RightPanel.Tabs[0].CurrentURI,
+      'non-file URI untouched');
+  finally
+    TDirectory.Delete(Base, True);
+  end;
 end;
 
 function TwoTabPanel: TPanelState;

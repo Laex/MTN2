@@ -6,7 +6,7 @@
 3. **Temporär** – ein temporäres Panel, wenn das Plugin „Temporär“ installiert ist.
 4. **Arbeitsbereich** – ein Panel mit Verknüpfungen zu Dateien und Ordnern (keine Kopien): **F5** fügt eine Verknüpfung hinzu, **F8** entfernt sie, **F7** erstellt eine Gruppe.
 
-Nach den Laufwerken zeigt die Liste Netzwerkfreigaben wie `\\Server\Freigabe`, in denen gerade ein Panel geöffnet ist oder die kürzlich geöffnet waren (bis zu acht); Enter öffnet die Freigabe, die Freigabe des aktiven Panels ist mit einem Sternchen markiert. **F4** auf einem Laufwerk zeigt die Attribute seines Stammordners.
+Nach den Laufwerken zeigt die Liste Netzwerkfreigaben wie `\\Server\Freigabe`, in denen gerade ein Panel geöffnet ist oder die kürzlich geöffnet waren (bis zu acht); Enter öffnet die Freigabe, die Freigabe des aktiven Panels ist mit einem Sternchen markiert. **F4** auf einem Laufwerk zeigt die Attribute seines Stammordners. **Entf** auf einem Wechsel- oder optischen Laufwerk oder einem verbundenen Netzlaufwerk trennt es (wirft den Datenträger aus) nach einer Bestätigung; ein Laufwerk mit geöffneten Dateien bleibt verbunden, das Programm nennt den Grund.
 
 **Ctrl+← / Ctrl+→** – das benachbarte Laufwerk am unteren Rand des Panels vorab anzeigen; der Wechsel erfolgt beim Loslassen von Ctrl (Esc – abbrechen). Ein Klick auf einen Laufwerksbuchstaben wechselt sofort. Der zuletzt geöffnete Ordner wird für jedes Laufwerk gemerkt.
 

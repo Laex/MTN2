@@ -29,7 +29,7 @@ uses
   uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
-  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs;
+  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -647,6 +647,8 @@ type
     procedure BeginSetAttributes;
     /// <summary>F4 in the drive list: attributes of the drive's root folder.</summary>
     procedure HostDriveAttributes(const APath: string);
+    procedure HostDriveDisconnect(const AInfo: TDriveInfo);
+    procedure DisconnectDriveNow(const AInfo: TDriveInfo);
     procedure HostSystemProperties(APaths: TArray<string>);
     procedure ShowProperties;
     /// <summary>Shift+F10 / Menu: the Windows context menu for the selection
@@ -1417,6 +1419,7 @@ begin
   Filtered := TDualPanelTabManager.FilterImportedSession(AState);
   if Length(Filtered.WorkspaceTabs) = 0 then
     Exit;
+  TDualPanelTabManager.ReplaceUnavailableFolders(Filtered);
 
   CloseSearchUi;
   CloseJobUi;
@@ -2871,6 +2874,7 @@ begin
   FDrivePopupCtrl := TDrivePopupController.Create(Theme, Invalidate,
     HostPanelBounds, HostPanelPath, HostPanelDriveDirs, HostNavigateSide);
   FDrivePopupCtrl.OnAttributes := HostDriveAttributes;
+  FDrivePopupCtrl.OnDisconnect := HostDriveDisconnect;
   FHistoryPopupCtrl := THistoryPopupController.Create(Theme, Invalidate,
     HostPanelBounds);
   // NotifyChanged, not Invalidate: listings land from a background thread
@@ -5744,6 +5748,72 @@ procedure TDualPanelWindow.HostDriveAttributes(const APath: string);
 begin
   if (APath <> '') and CanStartOperation and HostInPanelsWorkspace then
     FFileOps.BeginSetAttributes([APath]);
+end;
+
+function DriveCaption(const AInfo: TDriveInfo): string;
+begin
+  Result := AInfo.RootPath;
+  if (AInfo.LabelOrPath <> '') and not SameText(AInfo.LabelOrPath, AInfo.RootPath) then
+    Result := Result + ' (' + AInfo.LabelOrPath + ')';
+end;
+
+// Always asks first: taking a drive offline in the middle of a copy, or by a
+// stray Del, would cost the user data.
+procedure TDualPanelWindow.HostDriveDisconnect(const AInfo: TDriveInfo);
+var
+  Info: TDriveInfo;
+begin
+  if not HostInPanelsWorkspace then
+    Exit;
+  Info := AInfo;
+  if not ShowHostDialog(BuildConfirmDialog(
+       T('ui.drivePopup.disconnectTitle', 'Disconnect drive'),
+       T('ui.drivePopup.disconnectQuestion', 'Disconnect %s?', [DriveCaption(Info)])),
+     procedure(AControlId, AValuesJson: string)
+     begin
+       if DialogCmdIsAccept(AControlId) then
+         DisconnectDriveNow(Info);
+     end) then
+    Notice(T('ui.drivePopup.disconnectBusy', 'Close the open dialog first'), '', tkWarning);
+end;
+
+procedure TDualPanelWindow.DisconnectDriveNow(const AInfo: TDriveInfo);
+var
+  Info: TDriveInfo;
+  Side: TPanelSide;
+  Life: ILifeFlag;
+begin
+  Info := AInfo;
+  Life := FLife;
+  // A panel standing on the drive leaves it first: its listing and folder
+  // watch would keep the volume busy.
+  for Side := Low(TPanelSide) to High(TPanelSide) do
+    if (Info.Letter <> #0) and
+       (DriveLetterFromPath(FileUriToPath(HostPanelPath(Side))) = Info.Letter) then
+      NavigateSideTo(Side, PathToFileUri(TPath.GetHomePath));
+  Notice(T('ui.drivePopup.disconnecting', 'Disconnecting %s...'), DriveCaption(Info));
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Error: string;
+      Done: Boolean;
+    begin
+      Sleep(300);
+      Done := PlatformDisconnectDrive(Info, Error);
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not Life.Alive then
+            Exit;
+          ForceRefreshDriveInfo(nil);
+          if Done then
+            Notice(T('ui.drivePopup.disconnected', '%s disconnected'), DriveCaption(Info))
+          else
+            Notice(T('ui.drivePopup.disconnectFailed', 'Could not disconnect %s: %s',
+              [DriveCaption(Info), Error]), '', tkWarning);
+          NotifyChanged;
+        end);
+    end).Start;
 end;
 
 procedure TDualPanelWindow.ShowProperties;

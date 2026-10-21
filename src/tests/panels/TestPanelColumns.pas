@@ -13,6 +13,7 @@ type
   public
     [SetupFixture] procedure SetupFixture;
     [Test] procedure TestEllipsizeKeepingExt;
+    [Test] procedure TestStrippedNameHasNoDotWhenExtensionHasNone;
     [Test] procedure TestBriefColumns;
     [Test] procedure TestBriefCellAndPage;
     [Test] procedure TestBriefHitAndAlign;
@@ -238,6 +239,23 @@ begin
 end;
 
 { TTestPanelColumns }
+
+procedure TTestPanelColumns.TestStrippedNameHasNoDotWhenExtensionHasNone;
+var
+  Row: TPanelRow;
+begin
+  // A plugin reports the extension without its dot.
+  Row := MakePanelRow('report.final.TXT', False, 10, '10', '', 'x:///report.final.TXT');
+  Row.Extension := 'txt';
+  Assert.AreEqual('report.final' + StringOfChar(' ', 8), FormatPanelRowName(Row, 20, True),
+    'the dot goes with the extension column');
+  Row.Extension := '.txt';
+  Assert.AreEqual('report.final' + StringOfChar(' ', 8), FormatPanelRowName(Row, 20, True),
+    'same with the dot reported');
+  Row.Extension := 'zip';
+  Assert.AreEqual('report.final.TXT' + StringOfChar(' ', 4), FormatPanelRowName(Row, 20, True),
+    'an extension that is not at the end of the name strips nothing');
+end;
 
 procedure TTestPanelColumns.SetupFixture;
 begin

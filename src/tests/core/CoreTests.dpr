@@ -26,6 +26,7 @@ uses
   TestKeyChord in 'TestKeyChord.pas',
   TestLiveReload in 'TestLiveReload.pas',
   TestLocalePacks in 'TestLocalePacks.pas',
+  TestResourceScripts in 'TestResourceScripts.pas',
   TestMessageBus in 'TestMessageBus.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
   TestSettingsTransfer in 'TestSettingsTransfer.pas',

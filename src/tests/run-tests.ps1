@@ -93,8 +93,7 @@ New-Item -ItemType Directory -Force -Path $Dcu | Out-Null
 # MTN2.dres (dialogs, strings, keymap, menu as RCDATA) is a build product, not
 # in git; the runners link it with {$R '..\..\MTN2.dres'}. Rebuild it here so a
 # fresh clone runs without build.ps1 and a test never sees stale resources.
-& (Join-Path $Studio 'bin\brcc32.exe') "-fo$(Join-Path $Src 'MTN2.dres')" (Join-Path $Src 'MTN2Resource.rc') | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE (MTN2Resource.rc)" }
+& (Join-Path $Src 'tools\build-resources.ps1') -Rc (Join-Path $Src 'MTN2Resource.rc') -Out (Join-Path $Src 'MTN2.dres')
 
 # Runtime pieces some plugin tests need; they SKIP themselves when absent.
 if ($Groups | Where-Object Name -eq 'plugins') {
