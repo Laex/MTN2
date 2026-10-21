@@ -215,6 +215,13 @@ begin
   Result := Int64(verOk);
 end;
 
+const
+  cHeaderKeyPrefix = 'header-encryption:';
+  cLevelKeyPrefix = 'compression-level:';
+
+// A key is an archive path (the value is its password), cHeaderKeyPrefix plus an
+// archive path (any value asks for encrypted file names when packing) or
+// cLevelKeyPrefix plus an archive path (the value is the 7-Zip level 0..9).
 function mtn_plugin_set_secret(AKeyUtf8, AValueUtf8: PAnsiChar): Int64; cdecl;
 var
   Key: string;
@@ -224,6 +231,21 @@ begin
   Key := UTF8ToString(AKeyUtf8);
   if Key = '' then
     Exit(-1);
+  if Key.StartsWith(cLevelKeyPrefix) then
+  begin
+    if AValueUtf8 = nil then
+      SevenZipSetCompressionLevel(Copy(Key, Length(cLevelKeyPrefix) + 1, MaxInt), -1)
+    else
+      SevenZipSetCompressionLevel(Copy(Key, Length(cLevelKeyPrefix) + 1, MaxInt),
+        StrToIntDef(UTF8ToString(AValueUtf8), -1));
+    Exit(0);
+  end;
+  if Key.StartsWith(cHeaderKeyPrefix) then
+  begin
+    SevenZipSetHeaderEncryption(Copy(Key, Length(cHeaderKeyPrefix) + 1, MaxInt),
+      AValueUtf8 <> nil);
+    Exit(0);
+  end;
   if AValueUtf8 = nil then
     SevenZipClearPassword(Key)
   else

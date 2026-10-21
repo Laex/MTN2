@@ -511,10 +511,10 @@ begin
     if Length(ASources) = 1 then
     begin
       SrcName := FileUriTitle(ASources[0]);
-      ConfirmMsg := T('ui.job.confirmPackOne', 'Pack `%s` to ZIP:', [SrcName]);
+      ConfirmMsg := T('ui.job.confirmPackOne', 'Pack `%s` to archive:', [SrcName]);
     end
     else
-      ConfirmMsg := T('ui.job.confirmPackMany', 'Pack %d item(s) to ZIP:', [Length(ASources)]);
+      ConfirmMsg := T('ui.job.confirmPackMany', 'Pack %d item(s) to archive:', [Length(ASources)]);
   end
   else if AKind = pjkUnpack then
   begin

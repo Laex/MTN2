@@ -345,6 +345,10 @@ begin
   Assert.IsTrue(FindCtrlText(Decl, 'job_timestamps') = '&Сохранять все временные метки', 'static checkbox translates');
   Assert.IsTrue(FindCtrlText(Decl, 'ok') = 'Копировать', 'Copy button translates');
 
+  Assert.IsTrue(TryLoadDialogResource(cResDialogPack, Decl), 'DIALOG_PACK loads');
+  Assert.IsTrue(FindCtrlText(Decl, 'pack_type_label') = 'Тип архива:', 'archive type label translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'ok') = 'Упаковать', 'Pack button translates');
+
   // total_rule's "Total" -> "Итого" substitution is length-for-length
   // (both 5 chars) specifically so the dash-padding either side keeps the
   // dialog's declared width -- verify that invariant held.

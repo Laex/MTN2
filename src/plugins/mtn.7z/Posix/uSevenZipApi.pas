@@ -46,6 +46,12 @@ function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
 procedure SevenZipClearAllPasswords;
+/// <summary>Packing into AArchivePath also encrypts the file names (7z header
+/// encryption); it takes effect only while a password is set for the archive.</summary>
+procedure SevenZipSetHeaderEncryption(const AArchivePath: string; AEnabled: Boolean);
+/// <summary>Compression level (7-Zip -mx: 0 store ... 9 ultra) for entries packed
+/// into AArchivePath from now on; a negative level restores the default.</summary>
+procedure SevenZipSetCompressionLevel(const AArchivePath: string; ALevel: Integer);
 function SevenZipTryGetPassword(const AArchivePath: string; out APassword: string): Boolean;
 
 /// <summary>Extracts AEntryPath from AOuterArchivePath to a cached temp file
@@ -65,6 +71,8 @@ var
   GLock: TCriticalSection;
   GProgram: string;
   GPasswords: TDictionary<string, string>;
+  GHeaderEncryption: TDictionary<string, Boolean>;
+  GCompressionLevels: TDictionary<string, Integer>;
   GNestedCache: TDictionary<string, string>;
   GNestedSeq: Integer;
   GTempSeq: Integer;
@@ -108,6 +116,57 @@ begin
   GLock.Acquire;
   try
     GPasswords.Clear;
+    GHeaderEncryption.Clear;
+    GCompressionLevels.Clear;
+  finally
+    GLock.Release;
+  end;
+end;
+
+procedure SevenZipSetHeaderEncryption(const AArchivePath: string; AEnabled: Boolean);
+begin
+  GLock.Acquire;
+  try
+    if AEnabled then
+      GHeaderEncryption.AddOrSetValue(PasswordKey(AArchivePath), True)
+    else
+      GHeaderEncryption.Remove(PasswordKey(AArchivePath));
+  finally
+    GLock.Release;
+  end;
+end;
+
+procedure SevenZipSetCompressionLevel(const AArchivePath: string; ALevel: Integer);
+begin
+  GLock.Acquire;
+  try
+    if ALevel > 9 then
+      ALevel := 9;
+    if ALevel >= 0 then
+      GCompressionLevels.AddOrSetValue(PasswordKey(AArchivePath), ALevel)
+    else
+      GCompressionLevels.Remove(PasswordKey(AArchivePath));
+  finally
+    GLock.Release;
+  end;
+end;
+
+function CompressionLevelWanted(const AArchivePath: string): Integer;
+begin
+  GLock.Acquire;
+  try
+    if not GCompressionLevels.TryGetValue(PasswordKey(AArchivePath), Result) then
+      Result := -1;
+  finally
+    GLock.Release;
+  end;
+end;
+
+function HeaderEncryptionWanted(const AArchivePath: string): Boolean;
+begin
+  GLock.Acquire;
+  try
+    Result := GHeaderEncryption.ContainsKey(PasswordKey(AArchivePath));
   finally
     GLock.Release;
   end;
@@ -309,6 +368,10 @@ begin
     GProgram := '';
     if Assigned(GPasswords) then
       GPasswords.Clear;
+    if Assigned(GHeaderEncryption) then
+      GHeaderEncryption.Clear;
+    if Assigned(GCompressionLevels) then
+      GCompressionLevels.Clear;
   finally
     GLock.Release;
   end;
@@ -569,7 +632,7 @@ function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string
 var
   Items: TArray<T7zItem>;
   Item: T7zItem;
-  Want, Stage, Target, Dummy, Output: string;
+  Want, Stage, Target, Dummy, Output, Password: string;
   Code: Cardinal;
   Args: TArray<string>;
 begin
@@ -615,7 +678,14 @@ begin
     end;
     Args := ['a'] + CommonArgs(AArchivePath, True);
     if SameText(ExtractFileExt(AArchivePath), '.7z') then
+    begin
       Args := Args + ['-t7z'];
+      if SevenZipTryGetPassword(AArchivePath, Password) and (Password <> '') and
+         HeaderEncryptionWanted(AArchivePath) then
+        Args := Args + ['-mhe=on'];
+      if CompressionLevelWanted(AArchivePath) >= 0 then
+        Args := Args + ['-mx=' + IntToStr(CompressionLevelWanted(AArchivePath))];
+    end;
     Args := Args + ['--', AArchivePath, IncludeTrailingPathDelimiter(Stage) + '*'];
     if not RunEngine(Args, Output, Code) or (Code > 1) then
     begin
@@ -681,11 +751,15 @@ end;
 initialization
   GLock := TCriticalSection.Create;
   GPasswords := TDictionary<string, string>.Create;
+  GHeaderEncryption := TDictionary<string, Boolean>.Create;
+  GCompressionLevels := TDictionary<string, Integer>.Create;
   GNestedCache := TDictionary<string, string>.Create;
 
 finalization
   SevenZipUnloadEngine;
   FreeAndNil(GPasswords);
+  FreeAndNil(GHeaderEncryption);
+  FreeAndNil(GCompressionLevels);
   FreeAndNil(GNestedCache);
   FreeAndNil(GLock);
 

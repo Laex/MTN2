@@ -140,6 +140,35 @@
       "background": "后台(&B)",
       "cancel": "取消"
     },
+    "DIALOG_PACK": {
+      "$title": "打包",
+      "pack_type_label": "压缩包类型:",
+      "pack_level_label": "压缩:",
+      "pack_level_items": {
+        "Store": "仅存储",
+        "Fastest": "最快",
+        "Fast": "快速",
+        "Normal": "标准",
+        "Maximum": "最大",
+        "Ultra": "极限"
+      },
+      "pack_password_label": "密码:",
+      "pack_encrypt_names": "加密文件名(&N)",
+      "job_timestamps": "保留所有时间戳(&P)",
+      "job_only_newer": "仅较新的文件(&O)",
+      "job_symlinks": "打包符号链接的内容(&S)",
+      "job_filter": "排除掩码(&E):",
+      "ok": "打包",
+      "background": "后台(&B)",
+      "cancel": "取消",
+      "existing_label": "已存在的文件:",
+      "job_existing_items": {
+        "Ask": "询问",
+        "Overwrite": "覆盖",
+        "Skip": "跳过"
+      },
+      "retry_label": "出错重试次数:"
+    },
     "DIALOG_CREATELINK": {
       "lbl_link_name": "链接名称:",
       "lbl_target": "目标:",
@@ -1012,8 +1041,8 @@
     "job.kindFile": "文件",
     "job.kindFolder": "文件夹",
     "job.kindItem": "项目",
-    "job.confirmPackOne": "将 `%s` 打包为 ZIP:",
-    "job.confirmPackMany": "将 %d 个项目打包为 ZIP:",
+    "job.confirmPackOne": "将 `%s` 打包为压缩包:",
+    "job.confirmPackMany": "将 %d 个项目打包为压缩包:",
     "job.confirmUnpackOne": "将 `%s` 解压到:",
     "job.confirmUnpackMany": "将 %d 个项目解压到:",
     "job.confirmCopyMoveOne": "%s `%s` 到:",

@@ -225,6 +225,7 @@ type
     FThemeDlg: TThemeDialogController;
     FFileOps: TFileOpDialogController;
     FJobDialogs: TJobDialogController;
+    FPackIntoOpenArchive: Boolean;
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
     FMultiRename: TMultiRenameController;
@@ -366,6 +367,14 @@ type
     function HostPanelPath(ASide: TPanelSide): string;
     function HostPanelDriveDirs(ASide: TPanelSide): TPanelDriveDirs;
     procedure HostOpenJobConfirm(const ATitle, AMessage: string);
+    function HostPackSecurity(const AArchivePath, APassword: string;
+      AEncryptNames: Boolean; ALevel: Integer): Boolean;
+    /// <summary>The password, encrypted-names and compression fields of the Pack
+    /// dialog apply to 7z only (and not to an archive that is already open as a
+    /// folder): they are greyed out otherwise.</summary>
+    procedure UpdatePackDialogFields;
+    procedure HostDialogValueChanged(const AControlId: string);
+    procedure HostRejectJob(const ATitle, AMessage: string);
     procedure HostOpenOverwriteAsk(const APath, ANewLine, AExistingLine: string);
     procedure HostOpenDeleteError(const APath, AHeadline, AQuestion, AErrorLine: string;
       AOfferPermanent: Boolean);
@@ -2340,13 +2349,68 @@ begin
     Result := Ws.State.RightPanel.DriveDirs;
 end;
 
+// An archive being created must not inherit the password of an older archive
+// that had the same path, so an empty password drops the stored one unless the
+// file exists (an existing encrypted archive keeps the password it was opened
+// with).
+procedure TDualPanelWindow.UpdatePackDialogFields;
+var
+  Apply7z: Boolean;
+begin
+  Apply7z := (FDialog.GetListSelectedIndex('pack_type') = cPackType7z) and
+    not FPackIntoOpenArchive;
+  FDialog.SetControlDisabled('pack_type', FPackIntoOpenArchive);
+  FDialog.SetControlDisabled('pack_level', not Apply7z);
+  FDialog.SetControlDisabled('password', not Apply7z);
+  FDialog.SetControlDisabled('pack_encrypt_names', not Apply7z);
+end;
+
+procedure TDualPanelWindow.HostDialogValueChanged(const AControlId: string);
+begin
+  if (FDialogKind = hdkJobConfirm) and SameText(AControlId, 'pack_type') then
+    UpdatePackDialogFields;
+end;
+
+function TDualPanelWindow.HostPackSecurity(const AArchivePath, APassword: string;
+  AEncryptNames: Boolean; ALevel: Integer): Boolean;
+begin
+  Result := True;
+  HostEnsureArchiveExtension(AArchivePath);
+  HostSetPluginSecret('mtn.7z', cSevenZipLevelKeyPrefix + AArchivePath, IntToStr(ALevel));
+  if APassword <> '' then
+    Result := HostSetPluginSecret('mtn.7z', AArchivePath, APassword)
+  else if not FileExists(AArchivePath) then
+    HostClearPluginSecret('mtn.7z', AArchivePath);
+  if Result and AEncryptNames and (APassword <> '') then
+    Result := HostSetPluginSecret('mtn.7z', cSevenZipHeaderKeyPrefix + AArchivePath, '1')
+  else
+    HostClearPluginSecret('mtn.7z', cSevenZipHeaderKeyPrefix + AArchivePath);
+end;
+
+procedure TDualPanelWindow.HostRejectJob(const ATitle, AMessage: string);
+begin
+  OpenStub(skShellInfo, ATitle, AMessage);
+end;
+
 procedure TDualPanelWindow.HostOpenJobConfirm(const ATitle, AMessage: string);
 var
   DestPath, OkText, Prefix, ItemName, Suffix: string;
   Recycle: Boolean;
 begin
   FDialogKind := hdkJobConfirm;
-  if Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) then
+  if Assigned(FJobs) and (FJobs.Kind = pjkPack) then
+  begin
+    DestPath := JobConfirmDestText(FJobs.Kind, FJobs.State.DestDirURI);
+    FPackIntoOpenArchive := HasArchiveChain(FJobs.State.DestDirURI);
+    if FPackIntoOpenArchive then
+      FJobDialogs.PackInitialType := cPackType7z
+    else
+      FJobDialogs.PackInitialType := Max(0, JobPackTypeFromPath(DestPath));
+    FDialog.Open(BuildPackDialog(ATitle, AMessage, DestPath,
+      FJobDialogs.PackInitialType), DialogCommand);
+    UpdatePackDialogFields;
+  end
+  else if Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove, pjkUnpack]) then
   begin
     DestPath := JobConfirmDestText(FJobs.Kind, FJobs.State.DestDirURI);
     FDialog.Open(BuildCopyMoveDialog(ATitle, AMessage, DestPath), DialogCommand);
@@ -2890,6 +2954,9 @@ begin
   FJobs.OnStopRequest := HostRequestJobStop;
   FJobDialogs := TJobDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind);
+  FJobDialogs.OnPackSecurity := HostPackSecurity;
+  FDialog.OnValueChanged := HostDialogValueChanged;
+  FJobDialogs.OnReject := HostRejectJob;
   FSearchUi := TSearchController.Create(Theme, NotifyChanged, GotoFileLocation,
     HostApplyFindResults, FlushDirWatchPending);
   FSearchUi.OnStopRequest := HostRequestSearchStop;
@@ -5432,6 +5499,9 @@ begin
   Fields.DestPath := FDialog.GetInputValue('job_dest');
   Fields.ExistingIdx := FDialog.GetListSelectedIndex('job_existing');
   Fields.RetryIdx := FDialog.GetListSelectedIndex('job_retry');
+  Fields.PackTypeIdx := FDialog.GetListSelectedIndex('pack_type');
+  Fields.PackLevelIdx := FDialog.GetListSelectedIndex('pack_level');
+  Fields.EncryptNames := FDialog.GetCheckbox('pack_encrypt_names');
   Fields.PreserveTs := FDialog.GetCheckbox('job_timestamps');
   Fields.OnlyNewer := FDialog.GetCheckbox('job_only_newer');
   Fields.FollowSymlinks := FDialog.GetCheckbox('job_symlinks');
@@ -11808,7 +11878,8 @@ begin
   else
   begin
     DestDir := FileUriToPath(DestURI);
-    DestZip := TPath.Combine(DestDir, SuggestPackZipName(Sources));
+    DestZip := TPath.Combine(DestDir,
+      SuggestPackArchiveName(Sources, FJobDialogs.LastPackType));
     FJobs.BeginJob(Sources, PathToFileUri(DestZip), pjkPack, True);
   end;
 end;

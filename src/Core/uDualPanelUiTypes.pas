@@ -169,10 +169,10 @@ type
   /// only meaningful to the branches that use it.</summary>
   TDialogCommandFields = record
     Name, Mask, Containing, DestPath, ExcludeMask, Password: string;
-    ExistingIdx, RetryIdx: Integer;
+    ExistingIdx, RetryIdx, PackTypeIdx, PackLevelIdx: Integer;
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
-      SyncByContent: Boolean;
+      SyncByContent, EncryptNames: Boolean;
   end;
 
   TSearchPhase = (spNone, spDialog, spRunning, spResults);

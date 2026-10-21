@@ -7,7 +7,11 @@ unit TestSevenZipOpen;
     archive as unsupported; an archive with plain headers lists without a
     password and needs it only to extract;
   - a file whose extension no format claims opens by content (Ctrl+PgDn),
-    and a file that is not an archive reports 'Not a supported archive'. }
+    and a file that is not an archive reports 'Not a supported archive';
+  - the compression level set for an archive decides how small a file packs;
+  - packing with a password encrypts the new files, with header encryption
+    also their names, and adding to or deleting from such an archive keeps it
+    encrypted. }
 
 interface
 
@@ -21,6 +25,9 @@ type
     [Test] procedure TestEncryptedHeaders;
     [Test] procedure TestEncryptedData;
     [Test] procedure TestUnknownExtensionByContent;
+    [Test] procedure TestPackWithPassword;
+    [Test] procedure TestPackWithEncryptedNames;
+    [Test] procedure TestPackCompressionLevel;
   end;
 
 implementation
@@ -190,6 +197,154 @@ begin
       Assert.IsFalse(Lists(Plain, Err), Tag + 'text is not an archive');
       Assert.AreEqual('Not a supported archive', Err, Tag + 'text: reported as unsupported');
     finally
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+function NewPackSource(const AName, AText: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'mtn2-7z-pack'), AName);
+  TDirectory.CreateDirectory(ExtractFilePath(Result));
+  TFile.WriteAllText(Result, AText);
+end;
+
+function NewPackArchive(const AName: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'mtn2-7z-pack'), AName);
+  TDirectory.CreateDirectory(ExtractFilePath(Result));
+  if TFile.Exists(Result) then
+    TFile.Delete(Result);
+end;
+
+function ReadsAs(const AArchive, AInner, AText: string): Boolean;
+var
+  Data: TBytes;
+  Err: string;
+begin
+  Result := SevenZipExtractFile(AArchive, AInner, 1 shl 20, Data, Err) and
+    (TEncoding.UTF8.GetString(Data) = AText);
+end;
+
+procedure TTestSevenZipOpen.TestPackWithPassword;
+var
+  Dll, Arc, Src, Err, Tag: string;
+  Items: TArray<T7zItem>;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  Src := NewPackSource('inner.txt', 'pack-payload');
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Arc := NewPackArchive('data.7z');
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      SevenZipSetPassword(Arc, 'pw');
+      SevenZipSetHeaderEncryption(Arc, False);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, Src, 'inner.txt', True, Err),
+        Tag + 'pack with password: ' + Err);
+      SevenZipClearPassword(Arc);
+      Assert.IsTrue(SevenZipListArchive(Arc, Items, Err) and (Length(Items) = 1),
+        Tag + 'names stay readable without header encryption: ' + Err);
+      Assert.IsTrue(Items[0].Encrypted, Tag + 'the file is flagged as encrypted');
+      Assert.IsFalse(ReadsAs(Arc, 'inner.txt', 'pack-payload'),
+        Tag + 'no password: content unreadable');
+      SevenZipSetPassword(Arc, 'pw');
+      Assert.IsTrue(ReadsAs(Arc, 'inner.txt', 'pack-payload'),
+        Tag + 'password: content readable');
+    finally
+      SevenZipClearPassword(Arc);
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestPackWithEncryptedNames;
+var
+  Dll, Arc, Src, Extra, Err, Tag: string;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  Src := NewPackSource('inner.txt', 'pack-payload');
+  Extra := NewPackSource('second.txt', 'second-payload');
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Arc := NewPackArchive('hidden.7z');
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      SevenZipSetPassword(Arc, 'pw');
+      SevenZipSetHeaderEncryption(Arc, True);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, Src, 'inner.txt', True, Err),
+        Tag + 'pack with encrypted names: ' + Err);
+      // Later writes learn that the names are encrypted from the archive itself.
+      SevenZipSetHeaderEncryption(Arc, False);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, Extra, 'second.txt', True, Err),
+        Tag + 'add to the encrypted archive: ' + Err);
+      SevenZipClearPassword(Arc);
+      Assert.IsFalse(Lists(Arc, Err), Tag + 'no password: names hidden');
+      Assert.AreEqual('Encrypted', Err, Tag + 'no password: reported as encrypted');
+      SevenZipSetPassword(Arc, 'pw');
+      Assert.IsTrue(Lists(Arc, Err), Tag + 'password lists the first file: ' + Err);
+      Assert.IsTrue(ReadsAs(Arc, 'second.txt', 'second-payload'),
+        Tag + 'the added file reads back');
+      Assert.IsTrue(SevenZipDeleteInner(Arc, 'second.txt', Err),
+        Tag + 'delete from the encrypted archive: ' + Err);
+      SevenZipClearPassword(Arc);
+      Assert.IsFalse(Lists(Arc, Err), Tag + 'after delete: names still hidden');
+      SevenZipSetPassword(Arc, 'pw');
+      Assert.IsTrue(Lists(Arc, Err), Tag + 'after delete: the first file remains: ' + Err);
+      Assert.IsFalse(ReadsAs(Arc, 'second.txt', 'second-payload'),
+        Tag + 'the deleted file is gone');
+    finally
+      SevenZipClearPassword(Arc);
+      SevenZipSetHeaderEncryption(Arc, False);
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestPackCompressionLevel;
+var
+  Dll, Arc, Src, Err, Tag: string;
+  StoredSize, UltraSize: Int64;
+  I: Integer;
+  Text: TStringBuilder;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  Text := TStringBuilder.Create;
+  try
+    for I := 1 to 4000 do
+      Text.Append('compressible line ').Append(I mod 7).AppendLine;
+    Src := NewPackSource('big.txt', Text.ToString);
+  finally
+    Text.Free;
+  end;
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    Arc := NewPackArchive('store.7z');
+    try
+      SevenZipSetCompressionLevel(Arc, 0);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, Src, 'big.txt', True, Err),
+        Tag + 'pack stored: ' + Err);
+      StoredSize := TFile.GetSize(Arc);
+      SevenZipSetCompressionLevel(Arc, -1);
+      Arc := NewPackArchive('ultra.7z');
+      SevenZipSetCompressionLevel(Arc, 9);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, Src, 'big.txt', True, Err),
+        Tag + 'pack ultra: ' + Err);
+      UltraSize := TFile.GetSize(Arc);
+      Assert.IsTrue(UltraSize * 4 < StoredSize,
+        Tag + 'ultra packs far smaller than store: ' + IntToStr(UltraSize) + ' vs ' +
+        IntToStr(StoredSize));
+      Assert.IsTrue(ReadsAs(Arc, 'big.txt', TFile.ReadAllText(Src)),
+        Tag + 'the ultra archive reads back');
+    finally
+      SevenZipSetCompressionLevel(Arc, -1);
       SevenZipUnloadEngine;
     end;
   end;

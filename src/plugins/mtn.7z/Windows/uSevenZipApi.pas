@@ -44,6 +44,12 @@ function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
 procedure SevenZipClearAllPasswords;
+/// <summary>Packing into AArchivePath also encrypts the file names (7z header
+/// encryption); it takes effect only while a password is set for the archive.</summary>
+procedure SevenZipSetHeaderEncryption(const AArchivePath: string; AEnabled: Boolean);
+/// <summary>Compression level (7-Zip -mx: 0 store ... 9 ultra) for entries packed
+/// into AArchivePath from now on; a negative level restores the default.</summary>
+procedure SevenZipSetCompressionLevel(const AArchivePath: string; ALevel: Integer);
 function SevenZipTryGetPassword(const AArchivePath: string; out APassword: string): Boolean;
 
 /// <summary>Extracts AEntryPath from AOuterArchivePath to a cached temp file
@@ -89,6 +95,8 @@ const
 
 type
   PInt32 = ^Int32;
+  PPWideCharArg = ^PWideChar;
+  PPropVariantArg = ^TPropVariant;
   TCreateObjectFn = function(clsid, iid: PGUID; outObj: Pointer): HRESULT; stdcall;
   TGetNumberOfFormatsFn = function(numFormats: PUInt32): HRESULT; stdcall;
   TGetHandlerProperty2Fn = function(formatIndex, propID: UInt32;
@@ -183,6 +191,12 @@ type
     function UpdateItems(outStream: ISequentialOutStream; numItems: UInt32;
       updateCallback: IArchiveUpdateCallback): HRESULT; stdcall;
     function GetFileTimeType(out fileTimeType: UInt32): HRESULT; stdcall;
+  end;
+
+  ISetProperties = interface(IUnknown)
+    ['{23170F69-40C1-278A-0000-000600030000}']
+    function SetProperties(names: PPWideCharArg; values: PPropVariantArg;
+      numProps: Int32): HRESULT; stdcall;
   end;
 
   T7zFileStream = class(TInterfacedObject, ISequentialInStream, IInStream,
@@ -282,13 +296,19 @@ type
     Time: TFileTime;
   end;
 
-  T7zPackCallback = class(TInterfacedObject, IProgress, IArchiveUpdateCallback)
+  T7zPackCallback = class(TInterfacedObject, IProgress, IArchiveUpdateCallback,
+    ICryptoGetTextPassword2)
   private
     FKeep: TArray<UInt32>;
     FNew: TArray<T7zPackItem>;
+    FPassword: string;
+    FHasPassword: Boolean;
     function NewIdx(AIndex: UInt32): Integer;
   public
-    constructor Create(const AKeep: TArray<UInt32>; const ANew: TArray<T7zPackItem>);
+    constructor Create(const AKeep: TArray<UInt32>; const ANew: TArray<T7zPackItem>;
+      AHasPassword: Boolean = False; const APassword: string = '');
+    function CryptoGetTextPassword2(out passwordIsDefined: Int32;
+      out password: TBStr): HRESULT; stdcall;
     function SetTotal(total: UInt64): HRESULT; stdcall;
     function SetCompleted(completeValue: PUInt64): HRESULT; stdcall;
     function GetUpdateItemInfo(index: UInt32; newData, newProperties: PInt32;
@@ -306,6 +326,8 @@ var
   GGetHandlerProperty2: TGetHandlerProperty2Fn;
   GFormats: TArray<T7zFormatInfo>;
   GPasswords: TDictionary<string, string>;
+  GHeaderEncryption: TDictionary<string, Boolean>;
+  GCompressionLevels: TDictionary<string, Integer>;
   // outer-archive|entry|outer-mtime -> extracted temp file, so repeat
   // listing/read calls while browsing a nested archive don't re-extract it.
   GNestedCache: TDictionary<string, string>;
@@ -500,6 +522,57 @@ begin
   GLock.Acquire;
   try
     GPasswords.Clear;
+    GHeaderEncryption.Clear;
+    GCompressionLevels.Clear;
+  finally
+    GLock.Release;
+  end;
+end;
+
+procedure SevenZipSetHeaderEncryption(const AArchivePath: string; AEnabled: Boolean);
+begin
+  GLock.Acquire;
+  try
+    if AEnabled then
+      GHeaderEncryption.AddOrSetValue(PasswordKey(AArchivePath), True)
+    else
+      GHeaderEncryption.Remove(PasswordKey(AArchivePath));
+  finally
+    GLock.Release;
+  end;
+end;
+
+procedure SevenZipSetCompressionLevel(const AArchivePath: string; ALevel: Integer);
+begin
+  GLock.Acquire;
+  try
+    if ALevel > 9 then
+      ALevel := 9;
+    if ALevel >= 0 then
+      GCompressionLevels.AddOrSetValue(PasswordKey(AArchivePath), ALevel)
+    else
+      GCompressionLevels.Remove(PasswordKey(AArchivePath));
+  finally
+    GLock.Release;
+  end;
+end;
+
+function CompressionLevelWanted(const AArchivePath: string): Integer;
+begin
+  GLock.Acquire;
+  try
+    if not GCompressionLevels.TryGetValue(PasswordKey(AArchivePath), Result) then
+      Result := -1;
+  finally
+    GLock.Release;
+  end;
+end;
+
+function HeaderEncryptionWanted(const AArchivePath: string): Boolean;
+begin
+  GLock.Acquire;
+  try
+    Result := GHeaderEncryption.ContainsKey(PasswordKey(AArchivePath));
   finally
     GLock.Release;
   end;
@@ -707,11 +780,24 @@ begin
 end;
 
 constructor T7zPackCallback.Create(const AKeep: TArray<UInt32>;
-  const ANew: TArray<T7zPackItem>);
+  const ANew: TArray<T7zPackItem>; AHasPassword: Boolean; const APassword: string);
 begin
   inherited Create;
   FKeep := Copy(AKeep);
   FNew := Copy(ANew);
+  FHasPassword := AHasPassword;
+  FPassword := APassword;
+end;
+
+function T7zPackCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
+  out password: TBStr): HRESULT;
+begin
+  passwordIsDefined := Ord(FHasPassword);
+  password := nil;
+  if FHasPassword then
+    Result := AllocPassword(FPassword, password)
+  else
+    Result := S_OK;
 end;
 
 function T7zPackCallback.NewIdx(AIndex: UInt32): Integer;
@@ -942,8 +1028,8 @@ begin
   Result := GCreateObject(@CLSID_CFormat7z, @IID, outObj);
 end;
 
-function OpenArchive(const AArchivePath: string; out AArc: IInArchive;
-  out AError: string): Boolean;
+function OpenArchiveEx(const AArchivePath: string; out AArc: IInArchive;
+  out AError: string; out AHeadersEncrypted: Boolean): Boolean;
 var
   St: IInStream;
   Ids: TArray<TGUID>;
@@ -958,6 +1044,7 @@ begin
   Result := False;
   AArc := nil;
   AError := '';
+  AHeadersEncrypted := False;
   if not Assigned(GCreateObject) then
   begin
     AError := '7z.dll is not loaded';
@@ -988,7 +1075,10 @@ begin
     St.Seek(0, STREAM_SEEK_SET, @Dummy);
     Hr := AArc.Open(St, @MaxCheck, OpenCb);
     if Hr = S_OK then
+    begin
+      AHeadersEncrypted := Cb.Asked;
       Exit(True);
+    end;
     AArc.Close;
     AArc := nil;
     // The handler that asked for the password is the archive's own format:
@@ -1003,6 +1093,47 @@ begin
     AError := 'Encrypted'
   else
     AError := 'Not a supported archive';
+end;
+
+function OpenArchive(const AArchivePath: string; out AArc: IInArchive;
+  out AError: string): Boolean;
+var
+  HeadersEncrypted: Boolean;
+begin
+  Result := OpenArchiveEx(AArchivePath, AArc, AError, HeadersEncrypted);
+end;
+
+// Sets the password (when the archive has one) and header encryption for the
+// archive about to be written, so entries added to or kept in an encrypted
+// archive stay encrypted.
+procedure PrepareOutArchive(const AArchivePath: string; const AArc: IOutArchive;
+  AHeadersWereEncrypted: Boolean; out AHasPassword: Boolean; out APassword: string);
+var
+  Props: ISetProperties;
+  Names: array[0..1] of PWideChar;
+  Values: array[0..1] of TPropVariant;
+  Count, Level: Integer;
+begin
+  AHasPassword := SevenZipTryGetPassword(AArchivePath, APassword) and (APassword <> '');
+  Count := 0;
+  FillChar(Values, SizeOf(Values), 0);
+  if AHasPassword and (AHeadersWereEncrypted or HeaderEncryptionWanted(AArchivePath)) then
+  begin
+    Names[Count] := 'he';
+    Values[Count].vt := VT_BOOL;
+    Values[Count].boolVal := True;
+    Inc(Count);
+  end;
+  Level := CompressionLevelWanted(AArchivePath);
+  if Level >= 0 then
+  begin
+    Names[Count] := 'x';
+    Values[Count].vt := VT_UI4;
+    Values[Count].ulVal := Cardinal(Level);
+    Inc(Count);
+  end;
+  if (Count > 0) and Supports(AArc, ISetProperties, Props) then
+    Props.SetProperties(@Names[0], @Values[0], Count);
 end;
 
 function ReadItem(const AArc: IInArchive; AIndex: UInt32; out AItem: T7zItem): Boolean;
@@ -1518,8 +1649,8 @@ var
   Old: T7zItem;
   Skip: Boolean;
   J, K: Integer;
-  TmpPath, Want: string;
-  ExistsArc: Boolean;
+  TmpPath, Want, Password: string;
+  ExistsArc, HeadersEncrypted, HasPassword: Boolean;
 begin
   Result := False;
   AError := '';
@@ -1542,9 +1673,10 @@ begin
     SetLength(Keep, 0);
     ArcIn := nil;
     ArcOut := nil;
+    HeadersEncrypted := False;
     if ExistsArc then
     begin
-      if not OpenArchive(AArchivePath, ArcIn, AError) then
+      if not OpenArchiveEx(AArchivePath, ArcIn, AError, HeadersEncrypted) then
         Exit;
       if not HResOk(ArcIn.GetNumberOfItems(N)) then
       begin
@@ -1594,8 +1726,9 @@ begin
     end;
     if FileExists(TmpPath) then
       TFile.Delete(TmpPath);
+    PrepareOutArchive(AArchivePath, ArcOut, HeadersEncrypted, HasPassword, Password);
     OutSt := T7zFileStream.Create(TmpPath, fmCreate);
-    Cb := T7zPackCallback.Create(Keep, NewItems);
+    Cb := T7zPackCallback.Create(Keep, NewItems, HasPassword, Password);
     Hr := ArcOut.UpdateItems(OutSt, UInt32(Length(Keep) + Length(NewItems)), Cb);
     OutSt := nil;
     Cb := nil;
@@ -1649,8 +1782,9 @@ var
   Hr: HRESULT;
   N, I: UInt32;
   Old: T7zItem;
-  Want, TmpPath: string;
+  Want, TmpPath, Password: string;
   Removed, K: Integer;
+  HeadersEncrypted, HasPassword: Boolean;
 begin
   Result := False;
   AError := '';
@@ -1672,7 +1806,7 @@ begin
     SetLength(NoNew, 0);
     ArcIn := nil;
     ArcOut := nil;
-    if not OpenArchive(AArchivePath, ArcIn, AError) then
+    if not OpenArchiveEx(AArchivePath, ArcIn, AError, HeadersEncrypted) then
       Exit;
     if not HResOk(ArcIn.GetNumberOfItems(N)) then
     begin
@@ -1704,8 +1838,9 @@ begin
     end;
     if FileExists(TmpPath) then
       TFile.Delete(TmpPath);
+    PrepareOutArchive(AArchivePath, ArcOut, HeadersEncrypted, HasPassword, Password);
     OutSt := T7zFileStream.Create(TmpPath, fmCreate);
-    Cb := T7zPackCallback.Create(Keep, NoNew);
+    Cb := T7zPackCallback.Create(Keep, NoNew, HasPassword, Password);
     Hr := ArcOut.UpdateItems(OutSt, UInt32(Length(Keep)), Cb);
     OutSt := nil;
     Cb := nil;
@@ -1744,6 +1879,8 @@ end;
 initialization
   GLock := TCriticalSection.Create;
   GPasswords := TDictionary<string, string>.Create;
+  GHeaderEncryption := TDictionary<string, Boolean>.Create;
+  GCompressionLevels := TDictionary<string, Integer>.Create;
   GNestedCache := TDictionary<string, string>.Create;
   GNestedSeq := 0;
   GModule := 0;
@@ -1754,6 +1891,8 @@ initialization
 finalization
   SevenZipUnloadEngine;
   FreeAndNil(GPasswords);
+  FreeAndNil(GHeaderEncryption);
+  FreeAndNil(GCompressionLevels);
   FreeAndNil(GNestedCache);
   FreeAndNil(GLock);
 

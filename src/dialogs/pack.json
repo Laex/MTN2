@@ -1,0 +1,262 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Pack",
+  "width": 76,
+  "height": 20,
+  "children": [
+    {
+      "type": "label",
+      "text": "Pack to:",
+      "id": "prompt",
+      "col": 1,
+      "row": 0,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "job_dest",
+      "history": "packdest",
+      "value": "",
+      "col": 1,
+      "row": 1,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 2,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Archive type:",
+      "id": "pack_type_label",
+      "col": 1,
+      "row": 3,
+      "width": 24,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "pack_type",
+      "selected": 0,
+      "items": [
+        "zip",
+        "7z"
+      ],
+      "col": 26,
+      "row": 3,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Compression:",
+      "id": "pack_level_label",
+      "col": 1,
+      "row": 4,
+      "width": 24,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "pack_level",
+      "selected": 3,
+      "items": [
+        "Store",
+        "Fastest",
+        "Fast",
+        "Normal",
+        "Maximum",
+        "Ultra"
+      ],
+      "col": 26,
+      "row": 4,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Password:",
+      "id": "pack_password_label",
+      "col": 1,
+      "row": 5,
+      "width": 24,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "password",
+      "value": "",
+      "password": true,
+      "col": 26,
+      "row": 5,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "pack_encrypt_names",
+      "text": "Encrypt file &names",
+      "checked": false,
+      "col": 26,
+      "row": 6,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 7,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Already existing files:",
+      "id": "existing_label",
+      "col": 1,
+      "row": 8,
+      "width": 24,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "job_existing",
+      "selected": 0,
+      "items": [
+        "Ask",
+        "Overwrite",
+        "Skip"
+      ],
+      "col": 26,
+      "row": 8,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Retries on error:",
+      "id": "retry_label",
+      "col": 1,
+      "row": 9,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "job_retry",
+      "selected": 1,
+      "items": [
+        "0",
+        "1",
+        "3"
+      ],
+      "col": 26,
+      "row": 9,
+      "width": 47,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "job_timestamps",
+      "text": "&Preserve all timestamps",
+      "checked": false,
+      "col": 1,
+      "row": 10,
+      "width": 36,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "job_only_newer",
+      "text": "&Only newer files",
+      "checked": false,
+      "col": 38,
+      "row": 10,
+      "width": 35,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "job_symlinks",
+      "text": "Pack contents of &symbolic links",
+      "checked": false,
+      "col": 1,
+      "row": 11,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 12,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "job_filter",
+      "text": "&Exclude mask:",
+      "checked": false,
+      "col": 1,
+      "row": 13,
+      "width": 17,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "job_exclude",
+      "history": "copyexclude",
+      "value": "*.tmp;*.bak;~*",
+      "col": 19,
+      "row": 13,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "──────────────────────────────────────────────────────────────────────────",
+      "col": 0,
+      "row": 14,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Pack",
+      "default": true,
+      "col": 14,
+      "row": 16,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "background",
+      "text": "&Background",
+      "col": 30,
+      "row": 16,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 46,
+      "row": 16,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

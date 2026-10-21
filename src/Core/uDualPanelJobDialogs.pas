@@ -10,8 +10,26 @@ uses
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uDualPanelJobs,
   uDualPanelJobList, uDualPanelJobRules, uVfsTypes;
 
+const
+  /// <summary>Prefix of the plugin secret key that asks for encrypted file names
+  /// in a 7z archive about to be created (the rest of the key is its path).</summary>
+  cSevenZipHeaderKeyPrefix = 'header-encryption:';
+  /// <summary>Prefix of the plugin secret key whose value is the compression
+  /// level (0..9) of a 7z archive about to be written (the rest of the key is
+  /// its path).</summary>
+  cSevenZipLevelKeyPrefix = 'compression-level:';
+  cPackTypeZip = 0;
+  cPackType7z = 1;
+
 type
   TJobKindSetter = reference to procedure(AKind: THostDialogKind);
+  /// <summary>Hands the password, the encrypted-names choice and the compression
+  /// level (7-Zip -mx, 0..9) of a 7z archive that a Pack job is about to write
+  /// to the plugin that writes it; False when the plugin did not take them, so
+  /// the archive must not be written.</summary>
+  TPackSecurityEvent = reference to function(const AArchivePath, APassword: string;
+    AEncryptNames: Boolean; ALevel: Integer): Boolean;
+  TJobRejectEvent = reference to procedure(const ATitle, AMessage: string);
 
   TJobDialogController = class
   private
@@ -19,7 +37,12 @@ type
     FJobs: TPanelJobList;
     FOnCommand: TDialogCommandEvent;
     FOnSetKind: TJobKindSetter;
-    procedure ApplyJobConfirmOptions(const AFields: TDialogCommandFields);
+    FOnPackSecurity: TPackSecurityEvent;
+    FOnReject: TJobRejectEvent;
+    FPackInitialType: Integer;
+    FLastPackType: Integer;
+    function ApplyJobConfirmOptions(const AFields: TDialogCommandFields): Boolean;
+    procedure RejectJob(const ATitle, AMessage: string);
     procedure HandleOverwriteRenameCmd(const AControlId: string;
       const AFields: TDialogCommandFields);
     procedure HandleOverwriteAskCmd(const AControlId: string;
@@ -34,14 +57,38 @@ type
     constructor Create(ADialog: TDialogHost; AJobs: TPanelJobList;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TJobKindSetter);
     function TryHandleOverwriteRename(const AControlId: string): Boolean;
+    /// <summary>The archive type the Pack dialog was opened with. The dialog
+    /// has no change notification, so a differing selection on confirm means
+    /// the user picked a type, and it then overrides the extension typed in the
+    /// name field.</summary>
+    property PackInitialType: Integer read FPackInitialType write FPackInitialType;
+    /// <summary>The archive type chosen in the last confirmed Pack dialog; the
+    /// next Pack dialog starts with it.</summary>
+    property LastPackType: Integer read FLastPackType;
+    property OnPackSecurity: TPackSecurityEvent read FOnPackSecurity write FOnPackSecurity;
+    property OnReject: TJobRejectEvent read FOnReject write FOnReject;
     function DispatchCommand(AKind: THostDialogKind; const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
   end;
 
 function JobOverwriteModeFromIndex(AIdx: Integer): TJobOverwriteMode;
 function JobRetryLimitFromIndex(AIdx: Integer): Integer;
+/// <summary>For Pack, ATypeIdx is the archive type picked in the dialog and
+/// AInitialTypeIdx the one it was opened with: a changed pick replaces the
+/// extension of the typed name, otherwise a typed .zip or .7z decides and a
+/// name without one gets the picked type's extension. A negative ATypeIdx
+/// leaves the type to the typed extension (.zip when there is none).</summary>
 function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
-  AFallbackUri: string): string;
+  AFallbackUri: string; ATypeIdx: Integer = -1;
+  AInitialTypeIdx: Integer = -1): string;
+/// <summary>The extension (with the dot) of an archive type of the Pack dialog.</summary>
+function JobPackArchiveExt(ATypeIdx: Integer): string;
+/// <summary>The 7-Zip level (-mx) of an item of the Pack dialog's compression
+/// list: Store, Fastest, Fast, Normal, Maximum, Ultra.</summary>
+function JobPackLevelFromIndex(AIdx: Integer): Integer;
+/// <summary>The archive type of a name by its extension; -1 when it has no
+/// archive extension.</summary>
+function JobPackTypeFromPath(const APath: string): Integer;
 /// <summary>The destination as the Copy / Move / Pack dialog shows it: a
 /// local path for a folder on disk, the URI itself for anything else (an
 /// archive, tmp:///), so that JobConfirmDestUri reads it back unchanged.</summary>
@@ -52,7 +99,10 @@ function JobDeleteFailActionFromCommand(const AControlId: string;
 function JobIOErrorActionFromCommand(const AControlId: string): TJobIOErrorAction;
 function JobDestRejectedReason(AKind: TPanelJobKind; const ADestURI: string): string;
 function JobDestFailTitle(AKind: TPanelJobKind): string;
-function SuggestPackZipName(const ASources: TArray<string>): string;
+/// <summary>The default archive name: the name of the folder the sources are in
+/// ("archive" when that folder has no name), with the extension of ATypeIdx.</summary>
+function SuggestPackArchiveName(const ASources: TArray<string>;
+  ATypeIdx: Integer = cPackTypeZip): string;
 function SourcesContainArchive(const ASources: TArray<string>): Boolean;
 function UnpackSourcesAreValid(const ASources: TArray<string>;
   out AError: string): Boolean;
@@ -72,6 +122,7 @@ uses
 
 const
   cJobProgressInnerW = 72;
+  cPackSecurityFailed = 'The 7z plugin did not accept the password';
 
 procedure ApplyJobProgressSnapshotToDecl(var ADecl: TDialogDeclaration;
   const ASnap: TJobProgressSnapshot);
@@ -157,10 +208,42 @@ begin
   end;
 end;
 
+function JobPackArchiveExt(ATypeIdx: Integer): string;
+begin
+  if ATypeIdx = cPackType7z then
+    Result := '.7z'
+  else
+    Result := '.zip';
+end;
+
+function JobPackLevelFromIndex(AIdx: Integer): Integer;
+const
+  Levels: array[0..5] of Integer = (0, 1, 3, 5, 7, 9);
+begin
+  if (AIdx < 0) or (AIdx > High(Levels)) then
+    Result := 5
+  else
+    Result := Levels[AIdx];
+end;
+
+function JobPackTypeFromPath(const APath: string): Integer;
+var
+  Ext: string;
+begin
+  Ext := ExtractFileExt(APath);
+  if SameText(Ext, '.zip') then
+    Result := cPackTypeZip
+  else if SameText(Ext, '.7z') then
+    Result := cPackType7z
+  else
+    Result := -1;
+end;
+
 function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
-  AFallbackUri: string): string;
+  AFallbackUri: string; ATypeIdx: Integer; AInitialTypeIdx: Integer): string;
 var
   DestPath: string;
+  NameType: Integer;
 begin
   DestPath := Trim(ADestPath);
   if DestPath = '' then
@@ -171,11 +254,18 @@ begin
     Exit(DestPath);
   if (AKind = pjkPack) then
   begin
-    if SameText(ExtractFileExt(DestPath), '.zip') or
-       SameText(ExtractFileExt(DestPath), '.7z') then
-      { keep }
-    else
-      DestPath := DestPath + '.zip';
+    NameType := JobPackTypeFromPath(DestPath);
+    if ATypeIdx < 0 then
+    begin
+      if NameType < 0 then
+        DestPath := DestPath + JobPackArchiveExt(cPackTypeZip);
+    end
+    else if (NameType < 0) or (ATypeIdx <> AInitialTypeIdx) then
+    begin
+      if NameType >= 0 then
+        DestPath := ChangeFileExt(DestPath, '');
+      DestPath := DestPath + JobPackArchiveExt(ATypeIdx);
+    end;
   end;
   Result := PathToFileUri(ExcludeTrailingPathDelimiter(DestPath));
 end;
@@ -300,19 +390,28 @@ begin
   end;
 end;
 
-function SuggestPackZipName(const ASources: TArray<string>): string;
+function SuggestPackArchiveName(const ASources: TArray<string>;
+  ATypeIdx: Integer): string;
 var
-  Suggest: string;
+  Path, Dir, Name: string;
 begin
-  if Length(ASources) = 1 then
+  Name := '';
+  if Length(ASources) > 0 then
   begin
-    Suggest := FileUriTitle(ASources[0]);
-    if (Suggest <> '') and (Suggest[Length(Suggest)] = '/') then
-      Delete(Suggest, Length(Suggest), 1);
-    Result := ChangeFileExt(Suggest, '') + '.zip';
-  end
-  else
-    Result := 'archive.zip';
+    Path := FileUriToPath(ASources[0]);
+    if Path <> '' then
+    begin
+      Dir := ExtractFileDir(ExcludeTrailingPathDelimiter(Path));
+      Name := ExtractFileName(Dir);
+      if Name = '' then
+        // A drive root has no folder name: use the drive letter.
+        Name := StringReplace(StringReplace(Dir, ':', '', [rfReplaceAll]),
+          PathDelim, '', [rfReplaceAll]);
+    end;
+  end;
+  if Name = '' then
+    Name := 'archive';
+  Result := Name + JobPackArchiveExt(ATypeIdx);
 end;
 
 function SourcesContainArchive(const ASources: TArray<string>): Boolean;
@@ -364,17 +463,22 @@ begin
   FOnSetKind := AOnSetKind;
 end;
 
-procedure TJobDialogController.ApplyJobConfirmOptions(
-  const AFields: TDialogCommandFields);
+function TJobDialogController.ApplyJobConfirmOptions(
+  const AFields: TDialogCommandFields): Boolean;
 var
-  DestURI, ExcludeMask: string;
+  DestURI, ExcludeMask, ArchivePath: string;
   ExistingIdx: Integer;
 begin
+  Result := True;
   if not Assigned(FJobs) then
     Exit;
   if not (FJobs.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) then
     Exit;
-  DestURI := JobConfirmDestUri(FJobs.Kind, AFields.DestPath, FJobs.State.DestDirURI);
+  if FJobs.Kind = pjkPack then
+    DestURI := JobConfirmDestUri(FJobs.Kind, AFields.DestPath, FJobs.State.DestDirURI,
+      AFields.PackTypeIdx, FPackInitialType)
+  else
+    DestURI := JobConfirmDestUri(FJobs.Kind, AFields.DestPath, FJobs.State.DestDirURI);
   ExistingIdx := AFields.ExistingIdx;
   if ExistingIdx < 0 then
     ExistingIdx := 0;
@@ -384,6 +488,26 @@ begin
   FJobs.ApplyCopyMoveOptions(DestURI, JobOverwriteModeFromIndex(ExistingIdx),
     AFields.PreserveTs, AFields.OnlyNewer, AFields.FollowSymlinks,
     JobRetryLimitFromIndex(AFields.RetryIdx), ExcludeMask);
+  if FJobs.Kind <> pjkPack then
+    Exit;
+  ArchivePath := FileUriToPath(DestURI);
+  if ArchivePath = '' then
+    Exit;
+  FLastPackType := JobPackTypeFromPath(ArchivePath);
+  if (FLastPackType = cPackType7z) and Assigned(FOnPackSecurity) then
+    Result := FOnPackSecurity(ArchivePath, AFields.Password, AFields.EncryptNames,
+      JobPackLevelFromIndex(AFields.PackLevelIdx));
+end;
+
+// The confirm dialog is closed and the job dropped before the message opens, so
+// the message does not land on a dialog that is about to close.
+procedure TJobDialogController.RejectJob(const ATitle, AMessage: string);
+begin
+  FDialog.Close;
+  if Assigned(FJobs) then
+    FJobs.CloseJobUi;
+  if Assigned(FOnReject) then
+    FOnReject(ATitle, AMessage);
 end;
 
 function TJobDialogController.TryHandleOverwriteRename(
@@ -450,7 +574,11 @@ procedure TJobDialogController.HandleJobConfirmCmd(const AControlId: string;
 begin
   if JobConfirmWantsBackground(AControlId) then
   begin
-    ApplyJobConfirmOptions(AFields);
+    if not ApplyJobConfirmOptions(AFields) then
+    begin
+      RejectJob(JobDestFailTitle(pjkPack), cPackSecurityFailed);
+      Exit;
+    end;
     if Assigned(FJobs) then
     begin
       FJobs.ConfirmJob;
@@ -460,7 +588,11 @@ begin
   end
   else if DialogCmdIsAccept(AControlId) then
   begin
-    ApplyJobConfirmOptions(AFields);
+    if not ApplyJobConfirmOptions(AFields) then
+    begin
+      RejectJob(JobDestFailTitle(pjkPack), cPackSecurityFailed);
+      Exit;
+    end;
     // Arm Running before Close so Close>Notify never sees unprotected
     // pjpConfirm (outside-click cancel). Item work is ForceQueued inside
     // ConfirmJob; overwrite Ask opens later on that tick if needed.

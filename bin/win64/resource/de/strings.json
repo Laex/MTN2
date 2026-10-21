@@ -141,6 +141,35 @@
       "existing_label": "Bereits vorhandene Dateien:",
       "retry_label": "Wiederholungen bei Fehler:"
     },
+    "DIALOG_PACK": {
+      "$title": "Packen",
+      "pack_type_label": "Archivtyp:",
+      "pack_level_label": "Kompression:",
+      "pack_level_items": {
+        "Store": "Speichern",
+        "Fastest": "Am schnellsten",
+        "Fast": "Schnell",
+        "Normal": "Normal",
+        "Maximum": "Maximal",
+        "Ultra": "Ultra"
+      },
+      "pack_password_label": "Passwort:",
+      "pack_encrypt_names": "Dateinamen &verschlüsseln",
+      "job_timestamps": "&Alle Zeitstempel beibehalten",
+      "job_only_newer": "Nur &neuere Dateien",
+      "job_symlinks": "Inhalt &symbolischer Links packen",
+      "job_filter": "A&usschlussmaske:",
+      "ok": "Packen",
+      "background": "&Hintergrund",
+      "cancel": "Abbrechen",
+      "job_existing_items": {
+        "Ask": "Nachfragen",
+        "Overwrite": "Überschreiben",
+        "Skip": "Überspringen"
+      },
+      "existing_label": "Bereits vorhandene Dateien:",
+      "retry_label": "Wiederholungen bei Fehler:"
+    },
     "DIALOG_CREATELINK": {
       "$title": "Link erstellen",
       "ok": "Erstellen",
@@ -1013,8 +1042,8 @@
     "job.kindFile": "Datei",
     "job.kindFolder": "Ordner",
     "job.kindItem": "Element",
-    "job.confirmPackOne": "`%s` in ZIP packen:",
-    "job.confirmPackMany": "%d Element(e) in ZIP packen:",
+    "job.confirmPackOne": "`%s` in Archiv packen:",
+    "job.confirmPackMany": "%d Element(e) in Archiv packen:",
     "job.confirmUnpackOne": "`%s` entpacken nach:",
     "job.confirmUnpackMany": "%d Element(e) entpacken nach:",
     "job.confirmCopyMoveOne": "%s `%s` nach:",

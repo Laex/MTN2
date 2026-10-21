@@ -35,6 +35,7 @@ type
     FDropScrollTop: Integer;
     FOnCommand: TDialogCommandEvent;
     FOnChanged: TNotifyEvent;
+    FOnValueChanged: TDialogValueChangedEvent;
     FCursorVisible: Boolean;
     FUpdateLock: Integer;
     FUpdateDirty: Boolean;
@@ -86,6 +87,10 @@ type
     procedure FireAccept;
     procedure CaptureListSelection;
     procedure SetListSelectedIndex(AControlIndex, ASelected: Integer);
+    function CanFocus(AIndex: Integer): Boolean;
+    function SelectedItemText(const C: TDialogControl): string;
+    procedure DrawDisabledField(const AGrid: TTerminalGrid; const R: TRectI;
+      const AText: string; AWithArrow: Boolean);
     function ListSelectedIndexOf(const AId: string): Integer;
     function ListSelectedTextOf(const AId: string): string;
     function ListViewHeight(AControlIndex: Integer): Integer;
@@ -171,6 +176,10 @@ type
     function GetCheckbox(const AId: string): Boolean;
     /// <summary>Sets a dckCheckbox of the open dialog; no-op for other ids.</summary>
     procedure SetCheckbox(const AId: string; AChecked: Boolean);
+    /// <summary>Greys out (or restores) a checkbox, input or drop-down of the
+    /// open dialog: it is skipped by the focus and ignores clicks. A focused
+    /// control that gets disabled hands the focus to the next one.</summary>
+    procedure SetControlDisabled(const AId: string; ADisabled: Boolean);
     function GetRadio(const AGroupId: string): string;
     function GetListSelectedIndex(const AId: string): Integer;
     function GetListSelectedText(const AId: string): string;
@@ -236,6 +245,10 @@ type
     property PressedButton: Integer read FPressIndex;
     property CursorVisible: Boolean read FCursorVisible;
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+    /// <summary>Fired with the control id when the user picks another item of a
+    /// drop-down, by keyboard or mouse.</summary>
+    property OnValueChanged: TDialogValueChangedEvent read FOnValueChanged
+      write FOnValueChanged;
     /// <summary>After a button command that ran later than the input that
     /// pressed it (mouse release, end of the keyboard press), so the owner
     /// can finish what it does after HandleInput / HandleClick return.</summary>
@@ -496,14 +509,20 @@ begin
   Result := FVisible;
 end;
 
+function TDialogHost.CanFocus(AIndex: Integer): Boolean;
+begin
+  Result := (FDecl.Controls[AIndex].Kind in [dckInput, dckCheckbox, dckRadio,
+    dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker]) and
+    not ((FDecl.Controls[AIndex].Kind in [dckCheckbox, dckInput, dckDropDown]) and
+      FDecl.Controls[AIndex].Disabled);
+end;
+
 function TDialogHost.FirstFocusable: Integer;
 var
   I: Integer;
 begin
   for I := 0 to High(FDecl.Controls) do
-    if (FDecl.Controls[I].Kind in [dckInput, dckCheckbox, dckRadio, dckRadioGroup,
-      dckButton, dckList, dckDropDown, dckColorPicker]) and
-      not ((FDecl.Controls[I].Kind = dckCheckbox) and FDecl.Controls[I].Disabled) then
+    if CanFocus(I) then
       Exit(I);
   Result := -1;
 end;
@@ -522,9 +541,7 @@ begin
       Result := (Result + 1) mod N
     else
       Result := (Result + N - 1) mod N;
-    if (FDecl.Controls[Result].Kind in [dckInput, dckCheckbox, dckRadio,
-      dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker]) and
-      not ((FDecl.Controls[Result].Kind = dckCheckbox) and FDecl.Controls[Result].Disabled) then
+    if CanFocus(Result) then
       Exit;
   end;
   Result := AFrom;
@@ -1095,6 +1112,22 @@ begin
       Exit(FDecl.Controls[I].Checked);
 end;
 
+procedure TDialogHost.SetControlDisabled(const AId: string; ADisabled: Boolean);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if SameText(FDecl.Controls[I].Id, AId) and
+       (FDecl.Controls[I].Kind in [dckCheckbox, dckInput, dckDropDown]) then
+    begin
+      FDecl.Controls[I].Disabled := ADisabled;
+      if ADisabled and (I = FFocusIndex) then
+        FFocusIndex := NextFocusable(I, True);
+      NotifyChanged;
+      Exit;
+    end;
+end;
+
 procedure TDialogHost.SetCheckbox(const AId: string; AChecked: Boolean);
 var
   I: Integer;
@@ -1579,12 +1612,14 @@ end;
 procedure TDialogHost.SetListSelectedIndex(AControlIndex, ASelected: Integer);
 var
   C: TDialogControl;
+  Before: Integer;
 begin
   if (AControlIndex < 0) or (AControlIndex > High(FDecl.Controls)) then
     Exit;
   C := FDecl.Controls[AControlIndex];
   if not (C.Kind in [dckList, dckRadioGroup, dckDropDown]) then
     Exit;
+  Before := ListSelectedIndexOf(C.Id);
   if Length(C.Items) = 0 then
     C.SelectedIndex := 0
   else
@@ -1595,6 +1630,9 @@ begin
   FListSelIndex := C.SelectedIndex;
   if C.Kind = dckList then
     EnsureListInView(AControlIndex);
+  if (C.Kind = dckDropDown) and (C.SelectedIndex <> Before) and
+     Assigned(FOnValueChanged) then
+    FOnValueChanged(C.Id);
 end;
 
 function TDialogHost.ListViewHeight(AControlIndex: Integer): Integer;
@@ -2127,6 +2165,42 @@ begin
     PutGridText(AGrid, ACol, ARow, WideChar($2026), AFieldColors.Bg, AFieldColors.Fg);
 end;
 
+function TDialogHost.SelectedItemText(const C: TDialogControl): string;
+var
+  Idx: Integer;
+begin
+  Idx := ListSelectedIndexOf(C.Id);
+  if (Idx >= 0) and (Idx <= High(C.Items)) then
+    Result := C.Items[Idx]
+  else
+    Result := '';
+end;
+
+// An input or drop-down field in the colors of an enabled one, lightened.
+procedure TDialogHost.DrawDisabledField(const AGrid: TTerminalGrid; const R: TRectI;
+  const AText: string; AWithArrow: Boolean);
+var
+  Colors: TInputLineColors;
+  Bg: TAlphaColor;
+  Width, Rr, Gg, Bb: Cardinal;
+begin
+  Colors := InputLineDialogColors(False);
+  Rr := (Colors.Bg shr 16) and $FF;
+  Gg := (Colors.Bg shr 8) and $FF;
+  Bb := Colors.Bg and $FF;
+  Rr := Rr + (255 - Rr) * 45 div 100;
+  Gg := Gg + (255 - Gg) * 45 div 100;
+  Bb := Bb + (255 - Bb) * 45 div 100;
+  Bg := TAlphaColor($FF000000 or (Rr shl 16) or (Gg shl 8) or Bb);
+  Colors.Bg := Bg;
+  Colors.Fg := TAlphaColor($FF505050);
+  Width := Max(R.Width, 1);
+  PutGridText(AGrid, R.Left, R.Top, PadGridLine(Copy(AText, 1, Width), Width),
+    Colors.Fg, Colors.Bg, []);
+  if AWithArrow and (R.Width >= 2) then
+    DrawDropArrow(AGrid, R.Left + R.Width - 1, R.Top, Colors);
+end;
+
 procedure TDialogHost.DrawDropDownControl(const AGrid: TTerminalGrid;
   const R: TRectI; AIndex: Integer; const C: TDialogControl);
 var
@@ -2295,6 +2369,10 @@ begin
               FDecl.Controls[I].Edit, I = FFocusIndex, Colors, FCursorVisible, False);
             DrawDropArrow(AGrid, R.Left + R.Width - 1, R.Top, Colors);
           end
+          else if C.Disabled then
+            DrawDisabledField(AGrid, R, IfThen(C.Password,
+              StringOfChar('*', Length(FDecl.Controls[I].Edit.Text)),
+              FDecl.Controls[I].Edit.Text), False)
           else
             InputLineDraw(AGrid, R.Left, R.Top, Max(R.Width, 8),
               FDecl.Controls[I].Edit, I = FFocusIndex, Colors, FCursorVisible,
@@ -2340,7 +2418,10 @@ begin
       dckList:
         DrawListControl(AGrid, R, I, C, LabelFg, LabelBg);
       dckDropDown:
-        DrawDropDownControl(AGrid, R, I, C);
+        if C.Disabled then
+          DrawDisabledField(AGrid, R, SelectedItemText(C), True)
+        else
+          DrawDropDownControl(AGrid, R, I, C);
       dckButton:
         DrawButtonControl(AGrid, R, I, C);
     end;
@@ -2631,6 +2712,8 @@ begin
         end;
       dckInput:
         begin
+          if C.Disabled then
+            Exit(True);
           FFocusIndex := I;
           if C.ColorPick and (R.Width >= 3) and (ALocalCol = R.Left + R.Width - 1) then
           begin
@@ -2671,6 +2754,8 @@ begin
         end;
       dckDropDown:
         begin
+          if C.Disabled then
+            Exit(True);
           FFocusIndex := I;
           if FDropOpenIndex = I then
             CloseDropDown

@@ -139,6 +139,35 @@
       "background": "&В фоне",
       "cancel": "Отмена"
     },
+    "DIALOG_PACK": {
+      "$title": "Упаковка",
+      "pack_type_label": "Тип архива:",
+      "pack_level_label": "Сжатие:",
+      "pack_level_items": {
+        "Store": "Без сжатия",
+        "Fastest": "Самое быстрое",
+        "Fast": "Быстрое",
+        "Normal": "Обычное",
+        "Maximum": "Максимальное",
+        "Ultra": "Ультра"
+      },
+      "pack_password_label": "Пароль:",
+      "pack_encrypt_names": "Шифровать &имена файлов",
+      "job_timestamps": "&Сохранять все временные метки",
+      "job_only_newer": "&Только более новые файлы",
+      "job_symlinks": "&Упаковывать содержимое симв. ссылок",
+      "job_filter": "&Маска исключения:",
+      "ok": "Упаковать",
+      "background": "&В фоне",
+      "cancel": "Отмена",
+      "existing_label": "Существующие файлы:",
+      "job_existing_items": {
+        "Ask": "Спрашивать",
+        "Overwrite": "Перезаписывать",
+        "Skip": "Пропускать"
+      },
+      "retry_label": "Повторов при ошибке:"
+    },
     "DIALOG_CREATELINK": {
       "lbl_link_name": "Имя ссылки:",
       "lbl_target": "Цель:",
@@ -1012,8 +1041,8 @@
     "job.kindFile": "файл",
     "job.kindFolder": "папку",
     "job.kindItem": "объект",
-    "job.confirmPackOne": "Упаковать «%s» в ZIP:",
-    "job.confirmPackMany": "Упаковать объекты в ZIP (%d):",
+    "job.confirmPackOne": "Упаковать «%s» в архив:",
+    "job.confirmPackMany": "Упаковать объекты в архив (%d):",
     "job.confirmUnpackOne": "Распаковать «%s» в:",
     "job.confirmUnpackMany": "Распаковать объекты (%d) в:",
     "job.confirmCopyMoveOne": "%s «%s» в:",

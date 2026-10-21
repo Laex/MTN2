@@ -20,6 +20,7 @@ const
   cResDialogAskSave  = 'DIALOG_ASKSAVE';
   cResDialogSearch   = 'DIALOG_SEARCH';
   cResDialogCopyMove = 'DIALOG_COPYMOVE';
+  cResDialogPack = 'DIALOG_PACK';
   cResDialogGotoLine = 'DIALOG_GOTOLINE';
   cResDialogEncoding = 'DIALOG_ENCODING';
   cResDialogReplace  = 'DIALOG_REPLACE';

@@ -142,6 +142,35 @@
       },
       "retry_label": "Retries on error:"
     },
+    "DIALOG_PACK": {
+      "$title": "Pack",
+      "pack_type_label": "Archive type:",
+      "pack_level_label": "Compression:",
+      "pack_level_items": {
+        "Store": "Store",
+        "Fastest": "Fastest",
+        "Fast": "Fast",
+        "Normal": "Normal",
+        "Maximum": "Maximum",
+        "Ultra": "Ultra"
+      },
+      "pack_password_label": "Password:",
+      "pack_encrypt_names": "Encrypt file &names",
+      "job_timestamps": "&Preserve all timestamps",
+      "job_only_newer": "&Only newer files",
+      "job_symlinks": "Pack contents of &symbolic links",
+      "job_filter": "&Exclude mask:",
+      "ok": "Pack",
+      "background": "&Background",
+      "cancel": "Cancel",
+      "existing_label": "Already existing files:",
+      "job_existing_items": {
+        "Ask": "Ask",
+        "Overwrite": "Overwrite",
+        "Skip": "Skip"
+      },
+      "retry_label": "Retries on error:"
+    },
     "DIALOG_CREATELINK": {
       "$title": "Create link",
       "ok": "Create",
@@ -1015,8 +1044,8 @@
     "job.kindFile": "file",
     "job.kindFolder": "folder",
     "job.kindItem": "item",
-    "job.confirmPackOne": "Pack `%s` to ZIP:",
-    "job.confirmPackMany": "Pack %d item(s) to ZIP:",
+    "job.confirmPackOne": "Pack `%s` to archive:",
+    "job.confirmPackMany": "Pack %d item(s) to archive:",
     "job.confirmUnpackOne": "Unpack `%s` to:",
     "job.confirmUnpackMany": "Unpack %d item(s) to:",
     "job.confirmCopyMoveOne": "%s `%s` to:",

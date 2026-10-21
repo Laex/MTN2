@@ -97,6 +97,29 @@ begin
     'a pack target has no trailing slash');
   Assert.IsTrue(JobConfirmDestUri(pjkPack, 'C:\out\pack', 'file:///C:/dst/') =
     PathToFileUri('C:\out\pack.zip'), 'pack dest gains .zip');
+  Assert.AreEqual(PathToFileUri('C:\out\pack.7z'),
+    JobConfirmDestUri(pjkPack, 'C:\out\pack', 'file:///C:/dst/', cPackType7z, cPackTypeZip),
+    'a name without extension gets the picked type');
+  Assert.AreEqual(PathToFileUri('C:\out\pack.7z'),
+    JobConfirmDestUri(pjkPack, 'C:\out\pack.zip', 'file:///C:/dst/', cPackType7z, cPackTypeZip),
+    'a changed type replaces the typed extension');
+  Assert.AreEqual(PathToFileUri('C:\out\pack.zip'),
+    JobConfirmDestUri(pjkPack, 'C:\out\pack.7z', 'file:///C:/dst/', cPackTypeZip, cPackType7z),
+    'a changed type replaces .7z too');
+  Assert.AreEqual(PathToFileUri('C:\out\pack.7z'),
+    JobConfirmDestUri(pjkPack, 'C:\out\pack.7z', 'file:///C:/dst/', cPackTypeZip, cPackTypeZip),
+    'an unchanged type keeps the extension typed in the name');
+  Assert.AreEqual(PathToFileUri('C:\out\pack.tar.7z'),
+    JobConfirmDestUri(pjkPack, 'C:\out\pack.tar', 'file:///C:/dst/', cPackType7z, cPackType7z),
+    'an unknown extension is kept and the type is appended');
+  Assert.AreEqual(0, JobPackLevelFromIndex(0), 'Store');
+  Assert.AreEqual(5, JobPackLevelFromIndex(3), 'Normal');
+  Assert.AreEqual(9, JobPackLevelFromIndex(5), 'Ultra');
+  Assert.AreEqual(5, JobPackLevelFromIndex(-1), 'no pick -> Normal');
+  Assert.AreEqual('.zip', JobPackArchiveExt(cPackTypeZip));
+  Assert.AreEqual('.7z', JobPackArchiveExt(cPackType7z));
+  Assert.AreEqual(cPackType7z, JobPackTypeFromPath('C:\x\A.7Z'));
+  Assert.AreEqual(-1, JobPackTypeFromPath('C:\x\a.rar'));
   Assert.IsTrue(JobConfirmDestUri(pjkPack, 'C:\out\a.7z', 'file:///C:/dst/') =
     PathToFileUri('C:\out\a.7z'), 'pack dest already 7z');
   Assert.IsTrue(JobDestRejectedReason(pjkPack, '7z:///C:/a.7z!/') = '',
@@ -120,15 +143,22 @@ begin
   Assert.IsTrue(JobDestFailTitle(pjkCopy) = 'Copy failed', 'copy title');
 
   SetLength(Src, 2);
-  Src[0] := 'file:///C:/a.txt';
-  Src[1] := 'file:///C:/b.txt';
-  Assert.IsTrue(SuggestPackZipName(Src) = 'archive.zip', 'multi -> archive.zip');
+  Src[0] := PathToFileUri('C:\work\proj\a.txt');
+  Src[1] := PathToFileUri('C:\work\proj\b.txt');
+  Assert.AreEqual('proj.zip', SuggestPackArchiveName(Src), 'name of the source folder');
+  Assert.AreEqual('proj.7z', SuggestPackArchiveName(Src, cPackType7z), '7z extension');
   SetLength(Src, 1);
-  Src[0] := 'file:///C:/docs/file.txt';
-  Assert.IsTrue(SuggestPackZipName(Src) = 'file.zip', 'single file -> file.zip');
+  Src[0] := PathToFileUri('C:\work\proj\sub');
+  Assert.AreEqual('proj.zip', SuggestPackArchiveName(Src),
+    'a folder is named after the folder that holds it');
+  Src[0] := PathToFileUri('C:\a.txt');
+  Assert.AreEqual('C.zip', SuggestPackArchiveName(Src), 'drive root -> drive letter');
+  Src[0] := 'sys://folders';
+  Assert.AreEqual('archive.zip', SuggestPackArchiveName(Src), 'no local folder -> archive');
+  SetLength(Src, 0);
+  Assert.AreEqual('archive.7z', SuggestPackArchiveName(Src, cPackType7z), 'no sources');
+  SetLength(Src, 1);
   Src[0] := 'file:///C:/docs/folder/';
-  Assert.IsTrue(SuggestPackZipName(Src) = ChangeFileExt('folder', '') + '.zip',
-    'single dir -> folder.zip');
   Assert.IsTrue(not SourcesContainArchive(Src), 'plain file is not archive');
   Src[0] := 'file:///C:/a.zip!/x';
   Assert.IsTrue(SourcesContainArchive(Src), 'zip inner path is archive');

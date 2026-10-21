@@ -97,8 +97,9 @@ type
     /// <summary>dckInput: the text can be selected and copied but not changed
     /// (JSON "readonly": true).</summary>
     ReadOnly: Boolean;
-    /// <summary>dckCheckbox: greyed out, skipped by the focus, ignores clicks and
-    /// its mnemonic.</summary>
+    /// <summary>dckCheckbox, dckInput, dckDropDown: greyed out, skipped by the
+    /// focus, ignores clicks and (checkbox) its mnemonic. TDialogHost.
+    /// SetControlDisabled flips it while the dialog is open.</summary>
     Disabled: Boolean;
     /// <summary>dckInput holding a "#RRGGBB" color: shows a pick button in its
     /// last cell (filled with the color); clicking it fires the command
@@ -135,6 +136,7 @@ type
 
   TDialogCommandEvent = reference to procedure(const AControlId: string;
     const AValuesJson: string);
+  TDialogValueChangedEvent = reference to procedure(const AControlId: string);
 
 const
   cDialogProtocolV1 = '1.0';
@@ -243,6 +245,10 @@ function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
   ARetryIndex: Integer = 1; AFilterEnabled: Boolean = False;
   const AExcludeMask: string = '*.tmp;*.bak;~*'): TDialogDeclaration;
+/// <summary>The Pack job's confirm dialog: the Copy / Move one plus the archive
+/// type (ATypeIndex: 0 zip, 1 7z), a password and the encrypted-names choice.</summary>
+function BuildPackDialog(const ATitle, APrompt, ADestPath: string;
+  ATypeIndex: Integer): TDialogDeclaration;
 function BuildGotoLineDialog(ALine: Integer): TDialogDeclaration;
 function BuildEncodingDialog(ACurrent: string): TDialogDeclaration;
 /// <summary>F7 in the editor and viewer: the text to find, its search options
@@ -881,6 +887,17 @@ begin
   DialogSetCheckbox(Result, 'job_symlinks', AFollowSymlinks);
   DialogSetCheckbox(Result, 'job_filter', AFilterEnabled);
   DialogSetInputValue(Result, 'job_exclude', AExcludeMask);
+  DialogSetButtonText(Result, cDlgCmdOk, ATitle);
+end;
+
+function BuildPackDialog(const ATitle, APrompt, ADestPath: string;
+  ATypeIndex: Integer): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogPack, Result);
+  DialogSetTitle(Result, ATitle);
+  DialogSetLabelText(Result, 'prompt', APrompt);
+  DialogSetInputValue(Result, 'job_dest', ADestPath);
+  DialogSetDropDownSelected(Result, 'pack_type', ATypeIndex);
   DialogSetButtonText(Result, cDlgCmdOk, ATitle);
 end;
 
