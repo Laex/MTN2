@@ -1630,6 +1630,7 @@ begin
   if Assigned(FRenderer) then
   begin
     Result.FontName := FRenderer.FontName;
+    Result.FallbackFont := FRenderer.FallbackFont;
     Result.FontSize := FRenderer.BaseFontSize;
     Result.Zoom := FRenderer.Zoom;
   end;
@@ -1710,7 +1711,7 @@ begin
   if Assigned(FRenderer) then
   begin
     FRenderer.SetFont(ASettings.FontName, ASettings.FontSize,
-      ClientWidth, ClientHeight, Canvas);
+      ClientWidth, ClientHeight, Canvas, ASettings.FallbackFont);
     FRenderer.SetZoom(ASettings.Zoom, ClientWidth, ClientHeight, Canvas);
     FRenderer.SetLineSpacing(ASettings.LineSpacing, ClientWidth, ClientHeight, Canvas);
     FRenderer.SetSnapFontSize(ASettings.SnapFontSize, ClientWidth, ClientHeight, Canvas);
@@ -1718,11 +1719,13 @@ begin
     FRenderer.SetCellExtra(ASettings.CellWidthExtra, ASettings.CellHeightExtra,
       ClientWidth, ClientHeight, Canvas);
     FSession.FontName := FRenderer.FontName;
+    FSession.FallbackFont := FRenderer.FallbackFont;
     FSession.FontSize := FRenderer.BaseFontSize;
   end
   else
   begin
     FSession.FontName := ASettings.FontName;
+    FSession.FallbackFont := ASettings.FallbackFont;
     FSession.FontSize := ClampDisplayFontSize(ASettings.FontSize);
   end;
   UpdateBlinkTimer;
@@ -1782,7 +1785,8 @@ begin
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
   GMarkedRowStyle := MarkedRowStyleFromId(Sess.MarkedRows);
   FCursorBlinkEnabled := Sess.CursorBlink;
-  FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas);
+  FRenderer.SetFont(Sess.FontName, Sess.FontSize, ClientWidth, ClientHeight, Canvas,
+    Sess.FallbackFont);
   FRenderer.SetZoom(Sess.Zoom, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetLineSpacing(Sess.LineSpacing, ClientWidth, ClientHeight, Canvas);
   FRenderer.SetSnapFontSize(Sess.SnapFontSize, ClientWidth, ClientHeight, Canvas);
@@ -1852,11 +1856,13 @@ begin
   if Assigned(FRenderer) then
   begin
     Sess.FontName := FRenderer.FontName;
+    Sess.FallbackFont := FRenderer.FallbackFont;
     Sess.FontSize := FRenderer.BaseFontSize;
   end
   else
   begin
     Sess.FontName := FSession.FontName;
+    Sess.FallbackFont := FSession.FallbackFont;
     Sess.FontSize := FSession.FontSize;
   end;
   Sess.CursorBlink := FCursorBlinkEnabled;

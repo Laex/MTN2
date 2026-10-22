@@ -12,6 +12,7 @@ uses
   uFakeGlyphs in 'uFakeGlyphs.pas',
   TestBoxGlyphs in 'TestBoxGlyphs.pas',
   TestFreeTypeGlyphs in 'TestFreeTypeGlyphs.pas',
+  TestInstanceSocket in 'TestInstanceSocket.pas',
   TestOverlayModel in 'TestOverlayModel.pas',
   TestPixelBlit in 'TestPixelBlit.pas',
   TestPixelGrid in 'TestPixelGrid.pas',

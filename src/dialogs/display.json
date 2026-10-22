@@ -173,6 +173,24 @@
       "height": 1
     },
     {
+      "type": "label",
+      "text": "Fallback font",
+      "id": "lbl_font_fallback",
+      "col": 1,
+      "row": 17,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "font_fallback",
+      "value": "",
+      "col": 18,
+      "row": 17,
+      "width": 26,
+      "height": 1
+    },
+    {
       "type": "checkbox",
       "id": "blink",
       "text": "&Blink cursor",

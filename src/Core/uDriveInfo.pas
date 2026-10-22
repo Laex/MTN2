@@ -44,6 +44,10 @@ procedure ForceRefreshDriveInfo(const AOnRefreshed: TProc = nil);
 function TryCachedPathVolume(const APath: string; out AInfo: TDriveInfo;
   const AOnRefreshed: TProc = nil): Boolean;
 function FormatDriveSize(ABytes: Int64): string;
+/// <summary>The rows of the volume information dialog: mount point, device,
+/// file system, kind, size, free space and mount options. Empty fields are
+/// left out.</summary>
+function DriveInfoLines(const AInfo: TDriveInfo): TArray<string>;
 function FormatDrivePopupLine(const AInfo: TDriveInfo; AIsCurrent: Boolean;
   AInnerWidth: Integer): string;
 /// <summary>Volume details for any local path (drive root of APath).</summary>
@@ -191,6 +195,71 @@ begin
     Result := Copy(AText, 1, AWidth)
   else
     Result := AText + StringOfChar(' ', AWidth - Length(AText));
+end;
+
+function DriveInfoLines(const AInfo: TDriveInfo): TArray<string>;
+const
+  cLabelWidth = 20;
+  cOptionsWidth = 52;
+var
+  Lines: TStringList;
+  Opts, Row, Part: string;
+  First: Boolean;
+
+  procedure Add(const ALabel, AValue: string);
+  begin
+    if AValue <> '' then
+      Lines.Add(PadTrunc(ALabel, cLabelWidth) + AValue);
+  end;
+
+begin
+  Lines := TStringList.Create;
+  try
+    Add(T('ui.driveInfo.mountPoint', 'Mount point'), AInfo.RootPath);
+    Add(T('ui.driveInfo.device', 'Device'), AInfo.Device);
+    Add(T('ui.driveInfo.fileSystem', 'File system'), AInfo.FsName);
+    Add(T('ui.driveInfo.kind', 'Type'), DriveKindTitle(AInfo.KindLabel));
+    if AInfo.TotalBytes > 0 then
+    begin
+      Add(T('ui.driveInfo.size', 'Size'), FormatSizeFar(AInfo.TotalBytes));
+      Add(T('ui.driveInfo.free', 'Free'), FormatPctSize(AInfo.FreeBytes, AInfo.TotalBytes));
+    end;
+    // Mount options run long; they wrap at the commas.
+    Opts := AInfo.MountOptions;
+    Row := '';
+    First := True;
+    while Opts <> '' do
+    begin
+      if Pos(',', Opts) > 0 then
+      begin
+        Part := Copy(Opts, 1, Pos(',', Opts));
+        Delete(Opts, 1, Length(Part));
+      end
+      else
+      begin
+        Part := Opts;
+        Opts := '';
+      end;
+      if (Row <> '') and (Length(Row) + Length(Part) > cOptionsWidth) then
+      begin
+        if First then
+          Add(T('ui.driveInfo.options', 'Options'), Row)
+        else
+          Lines.Add(StringOfChar(' ', cLabelWidth) + Row);
+        First := False;
+        Row := '';
+      end;
+      Row := Row + Part;
+    end;
+    if Row <> '' then
+      if First then
+        Add(T('ui.driveInfo.options', 'Options'), Row)
+      else
+        Lines.Add(StringOfChar(' ', cLabelWidth) + Row);
+    Result := Lines.ToStringArray;
+  finally
+    Lines.Free;
+  end;
 end;
 
 function FormatDrivePopupLine(const AInfo: TDriveInfo; AIsCurrent: Boolean;

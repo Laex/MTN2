@@ -1,0 +1,13 @@
+{
+  "id": "mtn.template.rs",
+  "name": "Template: counter (Rust, WASM)",
+  "version": "0.1.0",
+  "abi": 2,
+  "startup": true,
+  "description": {
+    "en": "A starting point for a WASM plugin in Rust: Ctrl+Alt+F6 adds one to a counter shown in the status line.",
+    "ru": "Заготовка WASM-плагина на Rust: Ctrl+Alt+F6 прибавляет единицу к счётчику в строке состояния."
+  },
+  "author": "MTN2 samples",
+  "help": "help.md"
+}

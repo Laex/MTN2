@@ -1,0 +1,27 @@
+{
+  "description": "Midnight Commander habits: Alt+. hidden files, Ctrl+\\ hotlist, Alt+Enter inserts the file name, Alt+A the folder path",
+  "bindings": {
+    "ToggleHidden": [
+      { "key": ".", "alt": true, "description": "Show or hide hidden files (Alt+.)" },
+      { "key": "H", "ctrl": true, "description": "Show or hide hidden files (Ctrl+H)" }
+    ],
+    "FolderHotlist": [
+      { "key": "\\", "ctrl": true, "description": "Folder hotlist (Ctrl+\\)" },
+      { "key": "D", "ctrl": true, "description": "Folder hotlist (Ctrl+D)" }
+    ],
+    "DriveRoot": [],
+    "InsertItemName": [
+      { "key": "Enter", "alt": true, "description": "Insert the file name into the command line (Alt+Enter)" },
+      { "key": "Enter", "ctrl": true, "description": "Insert the file name into the command line (Ctrl+Enter)" }
+    ],
+    "InsertPanelPath": [
+      { "key": "A", "alt": true, "description": "Insert the folder path of the active panel (Alt+A)" }
+    ],
+    "InsertOtherPanelPath": [
+      { "key": "A", "alt": true, "shift": true, "description": "Insert the folder path of the other panel (Alt+Shift+A)" }
+    ],
+    "Properties": [
+      { "key": "P", "ctrl": true, "shift": true, "description": "Properties (Ctrl+Shift+P)" }
+    ]
+  }
+}

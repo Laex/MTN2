@@ -1,0 +1,9 @@
+{
+  "description": "Far Manager habits: Esc on the panels clears the command line instead of opening the console (Ctrl+O still does)",
+  "bindings": {
+    "ConsoleToggle": [],
+    "ClearCmdLine": [
+      { "key": "Esc", "description": "Clear the command line (Esc)" }
+    ]
+  }
+}

@@ -16,6 +16,8 @@ type
     FreeBytes: Int64;
     SerialNumber: Cardinal;
     VolumeFlags: Cardinal;
+    Device: string;       // /dev/sda2, server:/export; '' when the platform has none
+    MountOptions: string; // rw,noatime,...; '' when the platform has none
   end;
 
   TDriveInfoArray = TArray<TDriveInfo>;

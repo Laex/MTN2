@@ -32,6 +32,10 @@ Die Schaltflächen `[+]` und `[x]` in den Tabzeilen und die Einträge des Hauptm
 
 Die `keymap.json` im Einstellungsordner wird über die eingebaute Tastenbelegung gelegt: die dort aufgeführten Aktionen haben Vorrang vor den eingebauten. Der Dialog **Einstellungen → Tastenbelegung** schreibt nur die geänderten Aktionen in die Datei, die anderen Tasten folgen also nach einem Update der eingebauten Tastenbelegung. Eine von früheren Versionen gespeicherte Datei führt alle Aktionen auf und friert die alten Tasten ein: um die neuen zu erhalten, löschen Sie daraus die Zeilen der benötigten Aktionen oder die ganze Datei (vorher eine Kopie anlegen, wenn sie eigene Änderungen enthält). Eine Aktion ohne Tasten wird als leere Liste geschrieben.
 
+### Beispiele für Far- und MC-Gewohnheiten
+
+Im Repository liegen zwei Beispiel-`keymap.json`, [`keymap.far.json` und `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Kopiere die gewünschte als `keymap.json` in den Einstellungsordner (oder übernimm ihre Aktionen in deine Datei) und drücke **Strg+Alt+K**. Far: Esc in den Panels leert die Befehlszeile und öffnet die Konsole nicht (sie bleibt auf Strg+O). MC: Alt+. zeigt versteckte Dateien, Strg+\ öffnet die Ordnerliste, Alt+Enter fügt den Dateinamen in die Befehlszeile ein, Alt+A und Alt+Umschalt+A fügen den Ordnerpfad des aktiven und des anderen Panels ein, die Eigenschaften wandern auf Strg+Umschalt+P.
+
 ### Reservierte Tasten
 
 Noch nicht belegt und für geplante Funktionen reserviert: **Shift+F3** (Archivbefehle), **F11** (das Plugin-Menü), **Ctrl+Alt+Ins** (Netzwerk-UNC-Pfade), **Ctrl+.** (Makroaufzeichnung). Eine automatische Prüfung verhindert, dass die eingebaute Tastenbelegung sie belegt.

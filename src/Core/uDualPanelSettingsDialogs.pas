@@ -230,6 +230,7 @@ begin
     Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
     Ord(Cur.MarkedRowStyle), Cur.SnapFontSize, ClampTextContrast(Cur.TextContrast),
     ClampCellExtra(Cur.CellWidthExtra), ClampCellExtra(Cur.CellHeightExtra));
+  DialogSetInputValue(Decl, 'font_fallback', Cur.FallbackFont);
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
@@ -489,6 +490,7 @@ begin
   begin
     Disp := DefaultDisplaySettings;
     Disp.FontName := FDialog.GetListSelectedText('fonts');
+    Disp.FallbackFont := Trim(FDialog.GetInputValue('font_fallback'));
     SizeIdx := FDialog.GetListSelectedIndex('font_size');
     if SizeIdx = FOpenFontSizeIdx then
       Disp.FontSize := FOpenFontSize

@@ -31,6 +31,7 @@ type
     [Test] procedure TestGoWasmSafeDelete;
     [Test] procedure TestDelphiNotes;
     [Test] procedure TestWatCounter;
+    [Test] procedure TestRustWasmTemplateCounter;
     [Test] procedure TestWasiIsOptIn;
   end;
 
@@ -842,6 +843,28 @@ begin
     Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 2', 'the counter counts');
     CommandRegistry.TryExecute('demo.wat.count');
     Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 3', 'also from ExecuteCommand');
+  finally
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+procedure TTestSamplePlugins.TestRustWasmTemplateCounter;
+var
+  Id: string;
+begin
+  if not TDirectory.Exists(BuiltSample('mtn.template.rs')) then
+    Assert.Pass('SKIP: mtn.template.rs is not built (run samplesuild-samples.ps1)');
+  if not WasmEngineAvailable then
+    Assert.Pass('SKIP: wasmtime.dll not found');
+  try
+    Assert.IsTrue(StageAndLoad('mtn.template.rs'), 'the Rust WASM template loads without WASI');
+    Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 0', 'initial status');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF6, [ssCtrl, ssAlt], Id) and (Id = 'template.rs.count'),
+      'the guest bound its chord');
+    Assert.IsTrue(PluginFBarLabel(vkF6, [ssCtrl, ssAlt]) = 'Count', 'the bar caption');
+    Assert.IsTrue(TryRunBoundCommand(vkF6, [ssCtrl, ssAlt]) and TryRunBoundCommand(vkF6, [ssCtrl, ssAlt]),
+      'the chord runs the command');
+    Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 2', 'the counter counts');
   finally
     PluginLoader.UnloadAll;
   end;

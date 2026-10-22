@@ -17,6 +17,8 @@ type
     [Test] procedure TestCaretBecomesCursor;
     [Test] procedure TestWideCharacterIsWrittenOnce;
     [Test] procedure TestResizeForcesFullFrame;
+    [Test] procedure TestLeaveSequenceUndoesEveryEnterMode;
+    [Test] procedure TestLeaveSequenceEndsOnPrimaryScreen;
   end;
 
 implementation
@@ -174,6 +176,41 @@ begin
   finally
     W.Free;
   end;
+end;
+
+procedure TTestAnsiFrame.TestLeaveSequenceUndoesEveryEnterMode;
+const
+  cModes: array[0..5] of string = ('1049', '25', '7', '2004', '1000', '1006');
+var
+  Enter, Leave: string;
+  I: Integer;
+begin
+  Enter := AnsiEnterSequence(True);
+  Leave := AnsiLeaveSequence;
+  for I := Low(cModes) to High(cModes) do
+    if Pos(#27'[?' + cModes[I] + 'h', Enter) > 0 then
+      Assert.IsTrue(Pos(#27'[?' + cModes[I] + 'l', Leave) > 0,
+        'mode ' + cModes[I] + ' is reset on leave')
+    else
+    begin
+      Assert.IsTrue(Pos(#27'[?' + cModes[I] + 'l', Enter) > 0,
+        'mode ' + cModes[I] + ' is cleared on enter');
+      Assert.IsTrue(Pos(#27'[?' + cModes[I] + 'h', Leave) > 0,
+        'mode ' + cModes[I] + ' is restored on leave');
+    end;
+  Assert.IsTrue(Pos(#27'[<u', Leave) > 0, 'kitty keyboard flags are popped');
+  Assert.IsTrue(Pos(#27'[>4;0m', Leave) > 0, 'modifyOtherKeys is switched off');
+end;
+
+procedure TTestAnsiFrame.TestLeaveSequenceEndsOnPrimaryScreen;
+var
+  Leave: string;
+begin
+  Leave := AnsiLeaveSequence;
+  Assert.IsTrue(Pos(#27'[?1049l', Leave) > 0, 'alternate screen is left');
+  Assert.IsTrue(Pos(#27'[?25h', Leave) > 0, 'cursor is shown again');
+  Assert.IsTrue(Pos(#27'[?1049l', Leave) > Pos(#27'[?25h', Leave),
+    'the primary screen is restored last');
 end;
 
 initialization

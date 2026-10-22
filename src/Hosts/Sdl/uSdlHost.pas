@@ -15,6 +15,9 @@ type
     Cols: Integer;
     Rows: Integer;
     Path: string;
+    /// <summary>Do not hand the path over to a window that is already open (and
+    /// do not accept paths from later starts).</summary>
+    NewWindow: Boolean;
     /// <summary>When set, one frame is drawn to this PNG file without opening a window.</summary>
     SnapshotFile: string;
   end;
@@ -33,7 +36,7 @@ uses
   uCoreTimer, uHostShell, uPlatformInfo, uPlatformFonts, uPlatformProcess,
   uSdlApi, uSdlInput, uGlyphSource, uFreeTypeGlyphs, uPixelGrid, uPixelBlit,
   uPngWriter, uOverlayRenderer, uOverlayModel, uConfigLocation, uSdlClipboard,
-  uSdlImage, uShellIcons, uSdlSurfaceMouse, uThemeTypes;
+  uSdlImage, uShellIcons, uSdlSurfaceMouse, uThemeTypes, uInstanceSocket;
 
 const
   cDefaultFontSize = 16;
@@ -89,6 +92,9 @@ type
     function Open(out AError: string): Boolean;
     procedure Run;
     procedure Close;
+    /// <summary>A path handed over by a later start: opened in a new tab, the
+    /// window brought to the front.</summary>
+    procedure OpenRequested(const APath: string);
   end;
 
 procedure LogError(const AMessage: string);
@@ -543,6 +549,17 @@ begin
   end;
 end;
 
+procedure TSdlHost.OpenRequested(const APath: string);
+begin
+  if APath <> '' then
+    FShell.DualPanel.OpenPathAsNewTab(APath);
+  FShell.Dirty := True;
+  if Assigned(SDL_RestoreWindow) then
+    SDL_RestoreWindow(FWindow);
+  if Assigned(SDL_RaiseWindow) then
+    SDL_RaiseWindow(FWindow);
+end;
+
 procedure TSdlHost.Run;
 var
   E: TSDLEvent;
@@ -628,9 +645,16 @@ begin
       Host.Close;
       Exit(1);
     end;
+    if not AOptions.NewWindow then
+      InstanceStartListening('sdl',
+        procedure(APath: string)
+        begin
+          Host.OpenRequested(APath);
+        end);
     try
       Host.Run;
     finally
+      InstanceStopListening;
       Host.Close;
     end;
     Result := 0;

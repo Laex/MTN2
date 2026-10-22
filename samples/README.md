@@ -13,6 +13,7 @@
 | `mtn.demo.panelkit` | Rust | Копирование путей выбранных файлов в буфер обмена, показ папки в другой панели, выбор файлов с тем же расширением (Ctrl+Shift+X), подсчёт размера папки в фоне (Ctrl+Shift+K), чтение файла под курсором через хост (Ctrl+Shift+L; нужно право `vfs.read`), уведомление о сохранении файла |
 | `mtn.demo.wc` | Go (WASM) | Ctrl+Shift+E считает строки, слова и символы выделения или документа |
 | `mtn.demo.rs` | Rust | F3 на `.csv` показывает выровненную таблицу |
+| `mtn.template.rs` | Rust (WASM) | Заготовка для своего плагина: счётчик в строке состояния, Ctrl+Alt+F6; без WASI, `no_std` |
 | `mtn.demo.go` | Go (cgo) | F3 на `.json` показывает форматированный JSON; Ctrl+Alt+F9 – сведения о среде Go |
 | `mtn.demo.go.wasm` | Go (WASM, WASI) | Блокирует Shift+Del и Wipe, объясняя это в диалоге |
 | `mtn.demo.pas` | Delphi | Ctrl+Alt+F8 – быстрая заметка в `mtn2-notes.txt` |
@@ -31,6 +32,7 @@
 
 - C++: Visual Studio с компонентом C++ (`vcvars64.bat`);
 - Rust: `cargo` и цель `x86_64-pc-windows-msvc`;
+- Rust-шаблон WASM: `cargo` и цель `wasm32-unknown-unknown` (`rustup target add wasm32-unknown-unknown`);
 - Go: `go`; для `mtn.demo.go` ещё 64-разрядный gcc для cgo (WinLibs или MSYS2; `gcc` из Free Pascal 32-разрядный и не подходит);
 - Delphi: RAD Studio (`rsvars.bat`);
 - WAT: ничего, хост собирает текст при загрузке.

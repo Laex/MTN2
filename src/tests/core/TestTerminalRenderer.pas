@@ -26,6 +26,7 @@ type
     [Test] procedure TestRecomposeRastersOncePerFrame;
     [Test] procedure TestWideGlyphBitmapSpansTwoCells;
     [Test] procedure TestWideCharacterFillsTwoCellsOfTheFrame;
+    [Test] procedure TestFallbackFontJoinsTheFamilyList;
   end;
 
 implementation
@@ -528,6 +529,30 @@ begin
   finally
     R.Free;
     Target.Free;
+    Measure.Free;
+  end;
+end;
+
+procedure TTestTerminalRenderer.TestFallbackFontJoinsTheFamilyList;
+var
+  R: TTerminalRenderer;
+  Measure: TBitmap;
+begin
+  Measure := TBitmap.Create(16, 16);
+  R := TTerminalRenderer.Create;
+  try
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas);
+    Assert.AreEqual(R.FontName, R.FontFamily, 'no fallback: the main font alone');
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas, 'Arial');
+    Assert.AreEqual('Arial', R.FallbackFont, 'an installed fallback is kept');
+    Assert.AreEqual(R.FontName + ',Arial', R.FontFamily, 'the main font first, then the fallback');
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas, 'No Such Font 4711');
+    Assert.AreEqual('', R.FallbackFont, 'a family that is not installed is dropped');
+    Assert.AreEqual(R.FontName, R.FontFamily, 'dropped: the main font alone');
+    R.SetFont('Consolas', 14, 500, 150, Measure.Canvas, R.FontName);
+    Assert.AreEqual('', R.FallbackFont, 'the main font is not its own fallback');
+  finally
+    R.Free;
     Measure.Free;
   end;
 end;

@@ -32,6 +32,10 @@ The `[+]` and `[x]` buttons in the tab rows and the top menu items do the same.
 
 The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones. The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update. A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own). An action without keys is written as an empty list.
 
+### Examples for Far and MC habits
+
+The repository holds two example `keymap.json` files, [`keymap.far.json` and `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**. Far: Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O). MC: Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
+
 ### Reserved keys
 
 Not taken yet and kept for planned features: **Shift+F3** (archive commands), **F11** (the plugin menu), **Ctrl+Alt+Ins** (network UNC paths), **Ctrl+.** (macro recording). An automatic check keeps the built-in keymap from taking them.

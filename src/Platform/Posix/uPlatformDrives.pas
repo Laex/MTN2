@@ -50,6 +50,7 @@ type
     MountPoint: string;
     FsType: string;
     Source: string;
+    Options: string;
   end;
 
 const
@@ -131,6 +132,7 @@ begin
       M.MountPoint := UnescapeMountField(Parts[4]);
       M.FsType := Parts[Sep + 1];
       M.Source := UnescapeMountField(Parts[Sep + 2]);
+      M.Options := Parts[5];
       if IsPseudoFs(M.FsType) or (M.MountPoint = '') then
         Continue;
       // tmpfs only where people look for files; skip /run/user, /sys, /dev...
@@ -188,6 +190,8 @@ begin
   Result.FreeBytes := 0;
   Result.SerialNumber := 0;
   Result.VolumeFlags := 0;
+  Result.Device := '';
+  Result.MountOptions := '';
 end;
 
 function PlatformListDrives: TDriveInfoArray;
@@ -261,6 +265,8 @@ begin
     begin
       AInfo.FsName := Mount.FsType;
       AInfo.LabelOrPath := Mount.MountPoint;
+      AInfo.Device := Mount.Source;
+      AInfo.MountOptions := Mount.Options;
       Break;
     end;
   AInfo.TotalBytes := 0;

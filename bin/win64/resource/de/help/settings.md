@@ -28,6 +28,7 @@ Zwei weitere Optionen im selben Dialog machen den Text schärfer:
 - **Schriftgröße an Geräte-Pixel anpassen** rundet die Buchstabengröße auf ganze physische Bildschirmpixel. Bei 125 % oder 150 % Windows-Skalierung und gebrochenen Größen (11 pt) haben die Striche dann gleiches Gewicht. Die Zellengröße kann sich leicht ändern. Standardmäßig aus.
 - **Textkontrast** (Aus, Niedrig, Mittel, Hoch) füllt den schwachen Antialiasing-Saum aus: dünner heller Text auf dunklem Hintergrund liest sich fester. Standardmäßig aus.
 - **Zellenbreite** und **Zellenhöhe** fügen jeder Zelle 0 bis 4 physische Pixel hinzu. Sie helfen bei einer Schrift, deren Buchstaben sich berühren oder deren Zeilen zu eng sitzen. Die Buchstaben bleiben in der Zelle zentriert, Rahmen füllen sie vollständig aus. Standardmäßig 0.
+- **Ersatzschrift** nennt eine zweite Schriftfamilie für Zeichen, die der Hauptschrift fehlen, etwa CJK-Zeichen und Symbole. Gib den Familiennamen ein; ein leeres Feld oder eine nicht installierte Familie überlässt die Wahl Windows. Die Zellengröße ändert die Ersatzschrift nicht: sie kommt von der Hauptschrift.
 
 #### Warum der Text anders aussieht als in Far
 

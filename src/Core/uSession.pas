@@ -57,6 +57,8 @@ type
     RestoreWorkspaceOnStart: Boolean;
     /// <summary>Display font family. '' = PreferMonoFontFamily.</summary>
     FontName: string;
+    /// <summary>Second family for the characters FontName lacks. '' = system choice.</summary>
+    FallbackFont: string;
     FontSize: Single;
     CursorBlink: Boolean;
     CursorBlinkMs: Integer;
@@ -537,6 +539,8 @@ begin
       Root.AddPair('restoreWorkspaceOnStart', TJSONBool.Create(ASession.RestoreWorkspaceOnStart));
       if ASession.FontName <> '' then
         Root.AddPair('fontName', ASession.FontName);
+      if ASession.FallbackFont <> '' then
+        Root.AddPair('fontFallback', ASession.FallbackFont);
       Root.AddPair('fontSize', TJSONNumber.Create(ASession.FontSize));
       Root.AddPair('cursorBlink', TJSONBool.Create(ASession.CursorBlink));
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
@@ -610,6 +614,7 @@ begin
   ASession.LastWorkspaceId := '';
   ASession.RestoreWorkspaceOnStart := True;
   ASession.FontName := '';
+  ASession.FallbackFont := '';
   ASession.FontSize := cDisplayDefaultFontSize;
   ASession.CursorBlink := True;
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
@@ -696,6 +701,7 @@ begin
       ASession.RestoreWorkspaceOnStart :=
         JsonBool(Root, 'restoreWorkspaceOnStart', True);
       ASession.FontName := JsonStr(Root, 'fontName', '');
+      ASession.FallbackFont := JsonStr(Root, 'fontFallback', '');
       ASession.FontSize :=
         ClampDisplayFontSize(JsonFloat(Root, 'fontSize', cDisplayDefaultFontSize));
       ASession.CursorBlink := JsonBool(Root, 'cursorBlink', True);

@@ -14,12 +14,14 @@ type
     [Test] procedure NoChordIsBoundTwiceInOneContext;
     [Test] procedure OverridesHoldOnlyWhatChanged;
     [Test] procedure ReservedChordsStayFree;
+    [Test] procedure FarPresetFreesEscape;
+    [Test] procedure McPresetMovesItsKeys;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.UITypes,
+  System.SysUtils, System.Classes, System.UITypes, System.IOUtils,
   uKeymap;
 
 // The app's default profile is the KEYMAP_DEFAULT resource (src\keymap.json),
@@ -282,9 +284,8 @@ begin
   Assert.IsTrue(TryKeymapActionByName('DocHex', Act) and (Act = kaDocHex), 'names resolve');
 end;
 
-procedure TestNoChordIsBoundTwiceInOneContext;
+function ChordClashes(const Profile: TKeymapProfile): string;
 var
-  Profile: TKeymapProfile;
   A, B: TKeymapAction;
   I, J: Integer;
   X, Y: TKeyBinding;
@@ -293,7 +294,6 @@ begin
   // Two actions on one chord in the same window context: the first one in
   // the action list would take the key and the other could never be pressed.
   // A Global action sits above every window context, so it counts against all.
-  Profile := LoadDefaultKeymapProfile;
   Clash := '';
   for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
     for B := Succ(A) to High(TKeymapAction) do
@@ -310,7 +310,63 @@ begin
               Clash := Clash + KeymapActionDisplayName(A) + ' / ' +
                 KeymapActionDisplayName(B) + ' on ' + KeyBindingToStr(X) + '; ';
           end;
-  Assert.AreEqual('', Clash, 'default keys bound twice');
+  Result := Clash;
+end;
+
+procedure TestNoChordIsBoundTwiceInOneContext;
+begin
+  Assert.AreEqual('', ChordClashes(LoadDefaultKeymapProfile), 'default keys bound twice');
+end;
+
+function LoadPreset(const AName: string): TKeymapProfile;
+var
+  Path: string;
+begin
+  Path := TPath.Combine(ExtractFilePath(ParamStr(0)), '../../../docs/keymap-presets/' + AName);
+  Assert.IsTrue(TFile.Exists(Path), 'preset file exists: ' + AName);
+  Result := LoadDefaultKeymapProfile;
+  Assert.IsTrue(MergeKeymapJson(TFile.ReadAllText(Path, TEncoding.UTF8), Result),
+    'preset parses: ' + AName);
+end;
+
+procedure TestFarPresetFreesEscape;
+var
+  Def, Far: TKeymapProfile;
+begin
+  Def := LoadDefaultKeymapProfile;
+  Far := LoadPreset('keymap.far.json');
+  Assert.IsTrue(MatchActionIn(Def, [kcPanels, kcGlobal], vkEscape, []) = kaConsoleToggle,
+    'built-in: Esc opens the console');
+  Assert.IsTrue(MatchActionIn(Far, [kcPanels, kcGlobal], vkEscape, []) = kaClearCmdLine,
+    'Far preset: Esc clears the command line');
+  Assert.IsTrue(MatchActionIn(Def, [kcPanels, kcGlobal], vkEscape, []) <> kaClearCmdLine,
+    'built-in: Esc does not clear the command line');
+  Assert.IsTrue(MatchAction(Far, Ord('O'), [ssCtrl]) = kaAppConsoleToggle, 'Far preset: Ctrl+O still opens it');
+  Assert.IsTrue(MatchAction(Far, vkF5, []) = kaCopy, 'Far preset: the rest is the built-in keymap');
+  Assert.AreEqual('', ChordClashes(Far), 'Far preset binds no chord twice');
+end;
+
+procedure TestMcPresetMovesItsKeys;
+var
+  Mc: TKeymapProfile;
+begin
+  Mc := LoadPreset('keymap.mc.json');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], vkPeriod, [ssAlt]) = kaToggleHidden,
+    'MC preset: Alt+. toggles hidden files');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], Ord('H'), [ssCtrl]) = kaToggleHidden,
+    'MC preset: Ctrl+H still does');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], vkBackSlash, [ssCtrl]) = kaFolderHotlist,
+    'MC preset: Ctrl+\ is the hotlist');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], vkReturn, [ssAlt]) = kaInsertItemName,
+    'MC preset: Alt+Enter inserts the name');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], Ord('A'), [ssAlt]) = kaInsertPanelPath,
+    'MC preset: Alt+A inserts the active panel folder');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], Ord('A'), [ssAlt, ssShift]) = kaInsertOtherPanelPath,
+    'MC preset: Alt+Shift+A inserts the other panel folder');
+  Assert.IsTrue(MatchActionIn(Mc, [kcPanels, kcGlobal], Ord('P'), [ssCtrl, ssShift]) = kaProperties,
+    'MC preset: Properties moved');
+  Assert.IsTrue(Length(Mc.Bindings[kaDriveRoot]) = 0, 'MC preset: drive root gave up Ctrl+\');
+  Assert.AreEqual('', ChordClashes(Mc), 'MC preset binds no chord twice');
 end;
 
 procedure TestOverridesHoldOnlyWhatChanged;
@@ -357,6 +413,16 @@ end;
 procedure TTestKeymap.OverridesHoldOnlyWhatChanged;
 begin
   TestOverridesHoldOnlyWhatChanged;
+end;
+
+procedure TTestKeymap.FarPresetFreesEscape;
+begin
+  TestFarPresetFreesEscape;
+end;
+
+procedure TTestKeymap.McPresetMovesItsKeys;
+begin
+  TestMcPresetMovesItsKeys;
 end;
 
 procedure TTestKeymap.ReservedChordsStayFree;

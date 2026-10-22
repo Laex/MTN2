@@ -66,10 +66,13 @@ type
     kaCopyFullPath,
     kaInsertItemName,
     kaInsertItemPath,
+    kaInsertPanelPath,
+    kaInsertOtherPanelPath,
     kaRunDetached,
     kaRunInBackground,
     kaRunInNewTab,
     kaFocusCmdLine,
+    kaClearCmdLine,
     kaNewTab,
     kaCloseTab,
     kaNextTab,
@@ -934,10 +937,13 @@ const
     'CopyFullPath',          // kaCopyFullPath
     'InsertItemName',        // kaInsertItemName
     'InsertItemPath',        // kaInsertItemPath
+    'InsertPanelPath',       // kaInsertPanelPath
+    'InsertOtherPanelPath',  // kaInsertOtherPanelPath
     'RunDetached',           // kaRunDetached
     'RunInBackground',       // kaRunInBackground
     'RunInNewTab',           // kaRunInNewTab
     'FocusCmdLine',          // kaFocusCmdLine
+    'ClearCmdLine',          // kaClearCmdLine
     'NewTab',                // kaNewTab
     'CloseTab',              // kaCloseTab
     'NextTab',               // kaNextTab

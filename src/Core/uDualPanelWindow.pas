@@ -813,6 +813,8 @@ type
     procedure CalculateFolderSizeUnderCursor;
     function FolderSizeStubTitle: string;
     procedure InsertPanelItemToCmdLine(AFullPath: Boolean);
+    procedure InsertPanelPathToCmdLine(AOtherPanel: Boolean);
+    procedure InsertTextToCmdLine(const AText: string);
     /// <summary>A local file by the Windows shell, or as a console program
     /// (OnLaunchConsoleFile) when it is one.</summary>
     procedure ShellOpenPath(const APath: string);
@@ -1230,6 +1232,7 @@ type
     function ActiveDocument: TEditorWindow;
     function ActiveTerminal: TTerminalWorkspaceWindow;
     procedure FocusCommandLine;
+    procedure ClearCommandLine;
     /// <summary>Called by the blink timer to toggle cursor visibility and redraw.</summary>
     procedure SetCursorVisible(AVisible: Boolean);
     property CursorVisible: Boolean read FCursorVisible;
@@ -1775,10 +1778,12 @@ begin
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
   FKeymapHost.FocusCommandLine := FocusCommandLine;
+  FKeymapHost.ClearCommandLine := ClearCommandLine;
   FKeymapHost.RunDetached := RunDetached;
   FKeymapHost.RunInBackground := RunInBackground;
   FKeymapHost.RunInNewTab := RunInNewTab;
   FKeymapHost.InsertPanelItemToCmdLine := InsertPanelItemToCmdLine;
+  FKeymapHost.InsertPanelPathToCmdLine := InsertPanelPathToCmdLine;
   FKeymapHost.BeginSelectByMask := BeginSelectByMask;
   FKeymapHost.ApplySelectByExtension := ApplySelectByExtension;
   FKeymapHost.OpenHelp := OpenHelp;
@@ -5408,6 +5413,14 @@ begin
     FCmdLineMgr.Focus;
 end;
 
+procedure TDualPanelWindow.ClearCommandLine;
+begin
+  if FConsoleMode then
+    Exit;
+  if Assigned(FCmdLineMgr) then
+    FCmdLineMgr.Clear;
+end;
+
 procedure TDualPanelWindow.SetCursorVisible(AVisible: Boolean);
 begin
   if FCursorVisible = AVisible then
@@ -5827,10 +5840,26 @@ begin
     FOnShowProperties(APaths);
 end;
 
+// A volume the platform can describe (device, file system, mount options)
+// gets its information dialog; the others open the attributes of the root.
 procedure TDualPanelWindow.HostDriveAttributes(const APath: string);
+var
+  Drive: TDriveInfo;
 begin
-  if (APath <> '') and CanStartOperation and HostInPanelsWorkspace then
-    FFileOps.BeginSetAttributes([APath]);
+  if (APath = '') or not CanStartOperation or not HostInPanelsWorkspace then
+    Exit;
+  for Drive in CachedDriveInfo(nil) do
+    if SameText(Drive.RootPath, APath) and (Drive.Device <> '') then
+    begin
+      FPluginInfoRow := -1;
+      FPluginInfoHelp := '';
+      FDialogKind := hdkPluginInfo;
+      FDialog.Open(BuildPluginInfoDialog(Drive.RootPath, DriveInfoLines(Drive), False),
+        DialogCommand);
+      NotifyChanged;
+      Exit;
+    end;
+  FFileOps.BeginSetAttributes([APath]);
 end;
 
 function DriveCaption(const AInfo: TDriveInfo): string;
@@ -7292,7 +7321,37 @@ begin
       Exit;
     Piece := Name;
   end;
-  Piece := CmdLineQuoteIfNeeded(Piece);
+  InsertTextToCmdLine(Piece);
+end;
+
+procedure TDualPanelWindow.InsertPanelPathToCmdLine(AOtherPanel: Boolean);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Uri, Piece: string;
+begin
+  if FConsoleMode then
+    Exit;
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Side := Ws.State.ActiveSide;
+  if AOtherPanel then
+    Side := OppositeSide(Side);
+  if Side = psLeft then
+    Uri := ActiveTab(Ws.State.LeftPanel).CurrentURI
+  else
+    Uri := ActiveTab(Ws.State.RightPanel).CurrentURI;
+  Piece := PanelItemFullPath(Uri, Uri, True);
+  if Piece <> '' then
+    InsertTextToCmdLine(Piece);
+end;
+
+procedure TDualPanelWindow.InsertTextToCmdLine(const AText: string);
+var
+  Piece: string;
+begin
+  Piece := CmdLineQuoteIfNeeded(AText);
   if Assigned(FCmdLineMgr) then
   begin
     if (FCmdLineMgr.Text <> '') and (FCmdLineMgr.Cmd.Cursor > 0) and
@@ -8207,6 +8266,9 @@ begin
   Row := FPluginInfoRow;
   HelpFile := FPluginInfoHelp;
   FDialog.Close;
+  // Opened from the drive list: no plugin list behind it.
+  if Row < 0 then
+    Exit;
   if (AControlId = 'help') and (HelpFile <> '') then
   begin
     // The help page opens in the viewer; the Plugins list is not brought back.

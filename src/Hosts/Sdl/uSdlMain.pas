@@ -11,7 +11,7 @@ function RunSdl: Integer;
 implementation
 
 uses
-  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost;
+  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost, uInstanceSocket;
 
 type
   TSdlOptions = record
@@ -47,6 +47,8 @@ begin
       Result.Host.Cols := StrToIntDef(ValueOf('--cols='), 0)
     else if Arg.StartsWith('--rows=') then
       Result.Host.Rows := StrToIntDef(ValueOf('--rows='), 0)
+    else if Arg = '--new-window' then
+      Result.Host.NewWindow := True
     else if Arg.StartsWith('--snapshot=') then
       Result.Host.SnapshotFile := ValueOf('--snapshot=')
     else if (Arg <> '') and (Arg[1] <> '-') and (Result.Host.Path = '') then
@@ -65,6 +67,7 @@ begin
   WriteLine('  --font=NAME       font family (default: the monospace family of the system)');
   WriteLine('  --size=PX         glyph height in pixels (default 16)');
   WriteLine('  --cols=N --rows=N initial window size in cells');
+  WriteLine('  --new-window      do not hand the folder over to a window that is already open');
   WriteLine('  --snapshot=FILE   draw one screen to a PNG file and exit, without a window');
   WriteLine('  --self-check      check the files next to the program and exit');
   WriteLine('  --version         show the version');
@@ -136,6 +139,14 @@ begin
     Exit(RunSdlSelfCheck);
   if Opts.Host.SnapshotFile <> '' then
     Exit(RunSdlSnapshot(Opts.Host));
+  // A window that is already open takes the folder and comes to the front.
+  if not Opts.Host.NewWindow then
+  begin
+    if Opts.Host.Path <> '' then
+      Opts.Host.Path := ExpandFileName(Opts.Host.Path);
+    if InstanceTryHandOver('sdl', Opts.Host.Path) then
+      Exit(0);
+  end;
   Result := RunSdlHost(Opts.Host);
   // An update that asked for a restart starts here.
   PlatformExecPendingStart;

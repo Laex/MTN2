@@ -28,6 +28,7 @@ Two more options in the same dialog make the text crisper:
 - **Snap font size to device pixels** rounds the letter size to whole physical screen pixels. With 125% or 150% Windows scaling and fractional sizes (11 pt) the strokes then have an equal weight. The cell size can change slightly. Off by default.
 - **Text contrast** (Off, Low, Medium, High) fills in the faint anti-aliased fringe: thin light text on a dark background reads firmer. Off by default.
 - **Cell width** and **Cell height** add 0 to 4 physical pixels to every cell. They help a font whose letters touch or whose rows sit too tight. Letters stay centred in the cell, frames fill it completely. 0 by default.
+- **Fallback font** names a second font family for the characters the main font lacks, such as CJK ideographs and symbols. Type the family name; an empty field, or a family that is not installed, leaves the choice to Windows. The fallback does not change the cell size: that comes from the main font.
 
 #### Why text looks different from Far
 

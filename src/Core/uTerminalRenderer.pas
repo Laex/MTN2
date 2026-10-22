@@ -86,6 +86,8 @@ type
     FCols: Integer;
     FRows: Integer;
     FFontName: string;
+    FFallbackFont: string;
+    FFontFamily: string;
     FBaseFontSize: Single;
     FZoom: Single;
     FCellWidth: Single;
@@ -147,8 +149,12 @@ type
     /// <summary>Display "text contrast", 0..3 (TGlyphCache.Contrast).</summary>
     procedure SetTextContrast(ALevel: Integer; AClientWidth, AClientHeight: Single;
       ACanvas: TCanvas);
+    /// <summary>AFallbackFont names a second family for the characters the
+    /// main font lacks (CJK, symbols); '' or a family that is not installed
+    /// leaves the choice to the system.</summary>
     procedure SetFont(const AFontName: string; ABaseSize: Single;
-      AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
+      AClientWidth, AClientHeight: Single; ACanvas: TCanvas;
+      const AFallbackFont: string = '');
     procedure AdjustZoom(ADelta: Single; AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
     procedure Invalidate;
     /// <summary>Compose grid into the back frame and flip if dirty.</summary>
@@ -173,6 +179,10 @@ type
     property TextContrast: Integer read FTextContrast;
     property SceneScale: Single read FSceneScale;
     property FontName: string read FFontName;
+    property FallbackFont: string read FFallbackFont;
+    /// <summary>The family list the glyphs are drawn with: the main font, then
+    /// the fallback.</summary>
+    property FontFamily: string read FFontFamily;
     property BaseFontSize: Single read FBaseFontSize;
     // Fired whenever the grid is (re)allocated (resize / zoom / DPI change).
     // The host composes desktop + windows into AGrid. When unset, a built-in
@@ -371,6 +381,7 @@ begin
   FFrames[1] := TBitmap.Create;
   FFrontIndex := 0;
   FFontName := PreferMonoFontFamily;
+  FFontFamily := FFontName;
   FBaseFontSize := 14;
   FZoom := 1.0;
   FCols := 0;
@@ -700,16 +711,26 @@ begin
 end;
 
 procedure TTerminalRenderer.SetFont(const AFontName: string; ABaseSize: Single;
-  AClientWidth, AClientHeight: Single; ACanvas: TCanvas);
+  AClientWidth, AClientHeight: Single; ACanvas: TCanvas;
+  const AFallbackFont: string);
 var
-  Name: string;
+  Name, Fallback: string;
   Size: Single;
 begin
   Name := ResolveMonospaceFontFamily(AFontName);
   Size := ClampDisplayFontSize(ABaseSize);
-  if SameText(Name, FFontName) and SameValue(Size, FBaseFontSize) then
+  Fallback := Trim(AFallbackFont);
+  if (Fallback <> '') and (SameText(Fallback, Name) or not FontFamilyInstalled(Fallback)) then
+    Fallback := '';
+  if SameText(Name, FFontName) and SameText(Fallback, FFallbackFont) and
+     SameValue(Size, FBaseFontSize) then
     Exit;
   FFontName := Name;
+  FFallbackFont := Fallback;
+  if Fallback = '' then
+    FFontFamily := Name
+  else
+    FFontFamily := Name + ',' + Fallback;
   FBaseFontSize := Size;
   FGlyphCache.Clear;
   FCols := 0;
@@ -945,7 +966,7 @@ begin
   try
     Canvas := Target.Canvas;
     Canvas.Clear(FDefaultBg);
-    Canvas.Font.Family := FFontName;
+    Canvas.Font.Family := FFontFamily;
     Canvas.Font.Size := EffectiveFontSize;
     Canvas.Fill.Kind := TBrushKind.Solid;
 
@@ -997,7 +1018,7 @@ begin
           if ccaBold in Cell.Attributes then
             Include(TargetStyle, TFontStyle.fsBold);
           GlyphBmp := FGlyphCache.GetGlyph(Cell.CharValue, Cell.FgColor, TargetStyle,
-            FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontName,
+            FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
             EffectiveFontSize, True);
           Canvas.SetMatrix(SavedMatrix);
           if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
@@ -1107,7 +1128,7 @@ begin
           for I := 1 to Length(RunStr) do
           begin
             GlyphBmp := FGlyphCache.GetGlyph(RunStr[I], RunFg, TargetStyle,
-              FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontName,
+              FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
               EffectiveFontSize);
             if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
             begin

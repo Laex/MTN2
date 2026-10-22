@@ -108,6 +108,8 @@ var
     AFlags: Cardinal): PSDLWindow; cdecl;
   SDL_DestroyWindow: procedure(AWindow: PSDLWindow); cdecl;
   SDL_SetWindowTitle: procedure(AWindow: PSDLWindow; ATitle: PAnsiChar); cdecl;
+  SDL_RestoreWindow: procedure(AWindow: PSDLWindow); cdecl;
+  SDL_RaiseWindow: procedure(AWindow: PSDLWindow); cdecl;
   SDL_SetWindowMinimumSize: procedure(AWindow: PSDLWindow; W, H: Integer); cdecl;
   SDL_GetWindowSize: procedure(AWindow: PSDLWindow; out W, H: Integer); cdecl;
   SDL_CreateRenderer: function(AWindow: PSDLWindow; AIndex: Integer;
@@ -284,6 +286,8 @@ begin
   Bind(GSdl, 'SDL_CreateWindow', SDL_CreateWindow);
   Bind(GSdl, 'SDL_DestroyWindow', SDL_DestroyWindow);
   Bind(GSdl, 'SDL_SetWindowTitle', SDL_SetWindowTitle);
+  Bind(GSdl, 'SDL_RestoreWindow', SDL_RestoreWindow);
+  Bind(GSdl, 'SDL_RaiseWindow', SDL_RaiseWindow);
   Bind(GSdl, 'SDL_SetWindowMinimumSize', SDL_SetWindowMinimumSize);
   Bind(GSdl, 'SDL_GetWindowSize', SDL_GetWindowSize);
   Bind(GSdl, 'SDL_CreateRenderer', SDL_CreateRenderer);

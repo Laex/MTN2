@@ -95,6 +95,7 @@ begin
   Result.RestoreWorkspaceOnStart := True;
   Result.CustomColumns := DefaultCustomColumnsConfig;
   Result.FontName := 'Consolas';
+  Result.FallbackFont := 'SimSun';
   Result.FontSize := 16;
   Result.CursorBlink := False;
   Result.CursorBlinkMs := 300;
@@ -136,6 +137,7 @@ begin
   try
     Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
     Assert.IsTrue(Loaded.FontName = 'Consolas', 'fontName saved');
+    Assert.AreEqual('SimSun', Loaded.FallbackFont, 'fontFallback saved');
     Assert.IsTrue(SameValue(Loaded.FontSize, 16), 'fontSize saved');
     Assert.IsTrue(not Loaded.CursorBlink, 'cursorBlink saved');
     Assert.IsTrue(Loaded.CursorBlinkMs = 300, 'cursorBlinkMs saved');
@@ -433,6 +435,7 @@ begin
     Assert.IsTrue(Pos('Snap font size', Text) > 0, 'snap checkbox drawn');
     Assert.IsTrue(Pos('Cell width', Text) > 0, 'cell width row drawn');
     Assert.IsTrue(Pos('3 px', Text) > 0, 'saved cell height shown');
+    Assert.IsTrue(Pos('Fallback font', Text) > 0, 'fallback font row drawn');
     Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
   finally

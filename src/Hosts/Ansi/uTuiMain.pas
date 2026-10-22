@@ -266,14 +266,18 @@ begin
       end;
       Shell.PersistSession;
     finally
-      if Assigned(Shell) then
-      begin
-        Shell.DetachUpdater;
-        Shell.DetachPlugins;
+      // The terminal is put back even when tearing the shell down raises.
+      try
+        if Assigned(Shell) then
+        begin
+          Shell.DetachUpdater;
+          Shell.DetachPlugins;
+        end;
+        Shell.Free;
+      finally
+        Term.WriteText(#27'[>4;0m' + AnsiLeaveSequence + #27'[23;2t');
+        Term.LeaveRaw;
       end;
-      Shell.Free;
-      Term.WriteText(#27'[>4;0m' + AnsiLeaveSequence + #27'[23;2t');
-      Term.LeaveRaw;
     end;
   finally
     Writer.Free;

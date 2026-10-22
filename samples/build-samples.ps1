@@ -16,6 +16,7 @@
 #   mtn.demo.wc      Go      go (GOOS=wasip1, needs "wasi": true in plugin.json)
 #   mtn.demo.img     Rust    cargo (image crate + GDI window)
 #   mtn.demo.rs      Rust    cargo, x86_64-pc-windows-msvc
+#   mtn.template.rs  Rust    cargo, target wasm32-unknown-unknown (rustup target add)
 #   mtn.demo.go      Go      go + a 64-bit gcc (cgo, -buildmode=c-shared)
 #   mtn.demo.go.wasm Go      go (GOOS=wasip1, needs "wasi": true in plugin.json)
 #   mtn.demo.pas     Delphi  dcc64 from RAD Studio
@@ -186,6 +187,26 @@ function Build-Rust {
     return $true
 }
 
+function Build-RustWasmTemplate {
+    $id = 'mtn.template.rs'
+    if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
+    $rustup = Get-Command rustup -ErrorAction SilentlyContinue
+    if (-not $rustup -or -not (& $rustup.Source target list --installed | Select-String -SimpleMatch 'wasm32-unknown-unknown')) {
+        Write-Host "skip $id : target wasm32-unknown-unknown not installed (rustup target add wasm32-unknown-unknown)"
+        return $false
+    }
+    $out = Join-Path $BuildRoot $id
+    Stage-Common $id $out
+    $env:CARGO_TARGET_DIR = Join-Path $BuildRoot "cargo\$id"
+    Push-Location (Join-Path $Samples $id)
+    try {
+        & $Cargo build --release --target wasm32-unknown-unknown
+        if ($LASTEXITCODE -ne 0) { throw "$id build failed" }
+    } finally { Pop-Location }
+    Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'wasm32-unknown-unknown\release\mtn_template_rs.wasm') (Join-Path $out 'plugin.wasm') -Force
+    return $true
+}
+
 function Build-Image {
     $id = 'mtn.demo.img'
     if (-not $Cargo) { Write-Host "skip $id : cargo not found"; return $false }
@@ -270,6 +291,7 @@ foreach ($step in @(
         @{ Id = 'mtn.demo.wc'; Run = { Build-WordCount } },
         @{ Id = 'mtn.demo.highlight'; Run = { Build-Highlight } },
         @{ Id = 'mtn.demo.rs'; Run = { Build-Rust } },
+        @{ Id = 'mtn.template.rs'; Run = { Build-RustWasmTemplate } },
         @{ Id = 'mtn.demo.go'; Run = { Build-Go } },
         @{ Id = 'mtn.demo.go.wasm'; Run = { Build-GoWasm } },
         @{ Id = 'mtn.demo.pas'; Run = { Build-Delphi } },

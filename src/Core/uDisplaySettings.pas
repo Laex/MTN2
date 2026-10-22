@@ -45,6 +45,9 @@ type
 
   TDisplaySettings = record
     FontName: string;
+    /// <summary>Second font family for the characters FontName lacks; ''
+    /// leaves them to the system.</summary>
+    FallbackFont: string;
     FontSize: Single;
     Zoom: Single;
     CursorBlink: Boolean;
@@ -294,6 +297,7 @@ end;
 function DefaultDisplaySettings: TDisplaySettings;
 begin
   Result.FontName := '';
+  Result.FallbackFont := '';
   Result.FontSize := cDisplayDefaultFontSize;
   Result.Zoom := 1.0;
   Result.CursorBlink := True;

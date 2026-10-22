@@ -97,10 +97,12 @@ type
     EqualizeOtherPanelToActive: TKeymapProc;
     EqualizeActivePanelFromOther: TKeymapProc;
     FocusCommandLine: TKeymapProc;
+    ClearCommandLine: TKeymapProc;
     RunDetached: TKeymapProc;
     RunInBackground: TKeymapProc;
     RunInNewTab: TKeymapProc;
     InsertPanelItemToCmdLine: TKeymapBoolProc;
+    InsertPanelPathToCmdLine: TKeymapBoolProc;
     BeginSelectByMask: TKeymapBoolProc;
     ApplySelectByExtension: TKeymapBoolProc;
     OpenHelp: TKeymapProc;
@@ -780,6 +782,12 @@ begin
         ConsumeKey(AKey, AKeyChar, False);
         Exit;
       end;
+    kaClearCmdLine:
+      begin
+        AHost.ClearCommandLine();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
     kaRunDetached:
       begin
         AHost.RunDetached();
@@ -807,6 +815,18 @@ begin
     kaInsertItemPath:
       begin
         AHost.InsertPanelItemToCmdLine(True);
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaInsertPanelPath:
+      begin
+        AHost.InsertPanelPathToCmdLine(False);
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaInsertOtherPanelPath:
+      begin
+        AHost.InsertPanelPathToCmdLine(True);
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

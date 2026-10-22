@@ -25,6 +25,8 @@ type
     [Test] procedure TestSlowDriveDoesNotBlockOthers;
     [Test] procedure TestForceRefresh;
     [Test] procedure TestCachedPathVolume;
+    [Test] procedure TestInfoLinesDescribeTheVolume;
+    [Test] procedure TestInfoLinesWrapLongMountOptions;
   end;
 
 implementation
@@ -315,6 +317,59 @@ end;
 procedure TTestDriveInfo.TestCachedPathVolume;
 begin
   TestDriveInfo.TestCachedPathVolume;
+end;
+
+procedure TTestDriveInfo.TestInfoLinesDescribeTheVolume;
+var
+  Info: TDriveInfo;
+  Lines: TArray<string>;
+  Text: string;
+begin
+  FillChar(Info, SizeOf(Info), 0);
+  Info.RootPath := '/home';
+  Info.Device := '/dev/sda2';
+  Info.FsName := 'ext4';
+  Info.KindLabel := 'Hard disk';
+  Info.TotalBytes := 100 * Int64(1024) * 1024 * 1024;
+  Info.FreeBytes := 25 * Int64(1024) * 1024 * 1024;
+  Info.MountOptions := 'rw,relatime';
+  Lines := DriveInfoLines(Info);
+  Text := string.Join(#10, Lines);
+  Assert.IsTrue(Pos('/home', Text) > 0, 'mount point listed');
+  Assert.IsTrue(Pos('/dev/sda2', Text) > 0, 'device listed');
+  Assert.IsTrue(Pos('ext4', Text) > 0, 'file system listed');
+  Assert.IsTrue(Pos('rw,relatime', Text) > 0, 'mount options listed');
+  Assert.IsTrue(Pos('25%', Text) > 0, 'free space as a share of the size');
+
+  Info.Device := '';
+  Info.MountOptions := '';
+  Info.TotalBytes := 0;
+  Lines := DriveInfoLines(Info);
+  Assert.IsTrue(Length(Lines) = 3, 'empty fields are left out: mount point, file system, type');
+end;
+
+procedure TTestDriveInfo.TestInfoLinesWrapLongMountOptions;
+var
+  Info: TDriveInfo;
+  Lines: TArray<string>;
+  I: Integer;
+  Joined: string;
+begin
+  FillChar(Info, SizeOf(Info), 0);
+  Info.RootPath := '/data';
+  Info.MountOptions := 'rw,noatime,nodiratime,discard,errors=remount-ro,commit=60,' +
+    'data=ordered,barrier=1,user_xattr,acl,inode64,logbsize=256k';
+  Lines := DriveInfoLines(Info);
+  Assert.IsTrue(Length(Lines) > 2, 'long options take more than one row');
+  // Row 0 is the mount point; the options start on row 1 after the 20-column label.
+  Joined := Trim(Copy(Lines[1], 21, MaxInt));
+  Assert.IsTrue(Length(Lines[1]) <= 80, 'row fits the dialog');
+  for I := 2 to High(Lines) do
+  begin
+    Assert.IsTrue(Length(Lines[I]) <= 80, 'row fits the dialog');
+    Joined := Joined + Trim(Lines[I]);
+  end;
+  Assert.IsTrue(Pos(Info.MountOptions, Joined) > 0, 'the rows add up to the full option string');
 end;
 
 initialization

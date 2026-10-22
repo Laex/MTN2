@@ -16,6 +16,7 @@
 #   mtn.demo.highlight  Rust   cargo
 #   mtn.demo.img        Rust   cargo (image crate)
 #   mtn.demo.rs         Rust   cargo
+#   mtn.template.rs     Rust   cargo + target wasm32-unknown-unknown
 #   mtn.demo.go         Go     go + gcc (cgo, -buildmode=c-shared)
 #   mtn.demo.wc         Go     go (GOOS=wasip1, needs "wasi": true in plugin.json)
 #   mtn.demo.go.wasm    Go     go (GOOS=wasip1)
@@ -73,6 +74,14 @@ build_cargo() {
     cp -f "$CARGO_CACHE/$1/release/lib$2.so" "$BUILD/$1/" || return 2
 }
 
+build_rust_wasm() {
+    have cargo || skip "$1" "cargo not found" || return 1
+    have rustup && rustup target list --installed | grep -q wasm32-unknown-unknown         || skip "$1" "target wasm32-unknown-unknown is not installed (rustup target add wasm32-unknown-unknown)" || return 1
+    stage "$1"
+    (cd "$SAMPLES/$1" && CARGO_TARGET_DIR="$CARGO_CACHE/$1" cargo build --release --target wasm32-unknown-unknown) || return 2
+    cp -f "$CARGO_CACHE/$1/wasm32-unknown-unknown/release/$2.wasm" "$BUILD/$1/plugin.wasm" || return 2
+}
+
 build_go_wasm() {
     have go || skip "$1" "go not found" || return 1
     stage "$1"
@@ -113,6 +122,7 @@ run mtn.demo.panelkit build_cargo mtn.demo.panelkit mtn_demo_panelkit
 run mtn.demo.highlight build_cargo mtn.demo.highlight mtn_demo_highlight
 run mtn.demo.img build_cargo mtn.demo.img mtn_demo_img
 run mtn.demo.rs build_cargo mtn.demo.rs mtn_demo_rs
+run mtn.template.rs build_rust_wasm mtn.template.rs mtn_template_rs
 run mtn.demo.go build_go mtn.demo.go
 run mtn.demo.wc build_go_wasm mtn.demo.wc
 run mtn.demo.go.wasm build_go_wasm mtn.demo.go.wasm
