@@ -51,6 +51,7 @@ begin
     (APlan.Compressed = facKeep) and (APlan.Encrypted = facKeep) and
     (APlan.NotIndexed = facKeep) and (APlan.Sparse = facKeep) and
     (APlan.Temporary = facKeep) and (APlan.Offline = facKeep) and
+    (APlan.Immutable = facKeep) and (APlan.AppendOnly = facKeep) and (APlan.NoDump = facKeep) and
     (not APlan.ChangeOwner) and (not APlan.ChangeGroup) and (not APlan.ChangeMode) and
     not (APlan.SetCreated or APlan.SetModified or APlan.SetAccessed);
 end;
@@ -122,6 +123,9 @@ begin
   Result.Sparse := facKeep;
   Result.Temporary := facKeep;
   Result.Offline := facKeep;
+  Result.Immutable := facKeep;
+  Result.AppendOnly := facKeep;
+  Result.NoDump := facKeep;
   Result.Owner := '';
   Result.OwnerMixed := False;
   Result.Mode := -1;
@@ -158,6 +162,9 @@ begin
       Result.Sparse := ChoiceFromFlag(Snap.Sparse);
       Result.Temporary := ChoiceFromFlag(Snap.Temporary);
       Result.Offline := ChoiceFromFlag(Snap.Offline);
+      Result.Immutable := ChoiceFromFlag(Snap.Immutable);
+      Result.AppendOnly := ChoiceFromFlag(Snap.AppendOnly);
+      Result.NoDump := ChoiceFromFlag(Snap.NoDump);
       Result.Owner := Snap.Owner;
       Result.Mode := Snap.Mode;
       Result.Group := Snap.Group;
@@ -176,6 +183,9 @@ begin
       Result.Sparse := MergeChoice(Result.Sparse, Snap.Sparse);
       Result.Temporary := MergeChoice(Result.Temporary, Snap.Temporary);
       Result.Offline := MergeChoice(Result.Offline, Snap.Offline);
+      Result.Immutable := MergeChoice(Result.Immutable, Snap.Immutable);
+      Result.AppendOnly := MergeChoice(Result.AppendOnly, Snap.AppendOnly);
+      Result.NoDump := MergeChoice(Result.NoDump, Snap.NoDump);
       Result.Times.Created := MergeTime(Result.Times.Created, Snap.Times.Created);
       Result.Times.Modified := MergeTime(Result.Times.Modified, Snap.Times.Modified);
       Result.Times.Accessed := MergeTime(Result.Times.Accessed, Snap.Times.Accessed);

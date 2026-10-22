@@ -24,6 +24,7 @@ type
     [Test] procedure TestRollback;
     [Test] procedure TestSchedule;
     [Test] procedure TestSettingsJson;
+    [Test] procedure TestPackageManaged;
     [Test] procedure TestLiveGitHub;
   end;
 
@@ -358,6 +359,23 @@ begin
   Assert.IsTrue(S.CheckOnStart and S.ShowCheckNotice and not S.DevChannel, 'bad JSON -> defaults');
 end;
 
+procedure TestPackageManaged;
+var
+  Dir: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-managed-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Assert.IsFalse(UpdatesManagedByPackage(Dir), 'a plain folder updates itself');
+    TFile.WriteAllText(TPath.Combine(Dir, 'no-self-update'), '');
+    // Windows packages are updated by the program in every case.
+    Assert.AreEqual(PlatformPosixPaths, UpdatesManagedByPackage(Dir),
+      'the marker file hands updates to the package manager (POSIX only)');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TestLiveGitHub;
 var
   R: TUpdateRelease;
@@ -433,6 +451,11 @@ end;
 procedure TTestUpdater.TestSettingsJson;
 begin
   TestUpdater.TestSettingsJson;
+end;
+
+procedure TTestUpdater.TestPackageManaged;
+begin
+  TestUpdater.TestPackageManaged;
 end;
 
 procedure TTestUpdater.TestLiveGitHub;

@@ -27,12 +27,13 @@ type
     [Test] procedure FinishedPictureIsPaintedWithoutAnotherRequest;
     [Test] procedure PreviewNeedsARequestForEveryFrame;
     [Test] procedure MissingConverterShowsAHint;
+    [Test] procedure PictureInsideArchiveIsConverted;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, System.Classes, System.UITypes,
+  System.SysUtils, System.IOUtils, System.Classes, System.UITypes, System.Zip,
   uPlatformPaths, uPlatformProcess, uPlatformFileAttr, uFileAttrTypes,
   uTerminalTypes, uThemeTypes, uAnsiPicture, uOverlayRenderer, uVfsTypes;
 
@@ -128,6 +129,43 @@ begin
   Assert.AreEqual(1, Integer(Length(Pic)), 'one row');
   Assert.AreEqual(1, AnsiPictureWidth(Pic), 'only the text is kept');
   Assert.AreEqual('x', string(Pic[0][0].CharValue));
+end;
+
+procedure TTestPicturePreview.PictureInsideArchiveIsConverted;
+var
+  Grid: TTerminalGrid;
+  Zip: TZipFile;
+  ZipPath, Args: string;
+  I: Integer;
+begin
+  if not PlatformPosixPaths then
+    Exit;
+  InstallFakeChafa;
+  ZipPath := TPath.Combine(FDir, 'pics.zip');
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmWrite);
+    Zip.Add(TEncoding.ASCII.GetBytes('not really a picture'), 'inner.png');
+    Zip.Close;
+  finally
+    Zip.Free;
+  end;
+  AllocTerminalGrid(Grid, 20, 10);
+  ClearTerminalGrid(Grid, TAlphaColors.Silver, TAlphaColors.Black);
+  for I := 1 to 250 do
+  begin
+    // The archive answers on the main thread, so the queue is pumped here.
+    RequestOverlayPreview(PathToFileUri(ZipPath) + '!/inner.png', Area(2, 2, 9, 5));
+    PaintOverlayCells(Grid);
+    CheckSynchronize;
+    if Grid[3][5].CharValue <> ' ' then
+      Break;
+    Sleep(20);
+  end;
+  Assert.AreEqual(#$2580, string(Grid[3][5].CharValue), 'picture from the archive is painted');
+  Args := Trim(TFile.ReadAllText(TPath.Combine(FDir, 'args')));
+  Assert.IsTrue(Pos('mtn2-pic-', Args) > 0, 'a temporary copy was converted: ' + Args);
+  Assert.IsTrue(Pos('.png', Args) > 0, 'the copy keeps the extension: ' + Args);
 end;
 
 procedure TTestPicturePreview.PreviewWritesConvertedCellsCentered;

@@ -17,6 +17,7 @@ uses
   TestConfigMode in 'TestConfigMode.pas',
   TestDescriptIon in 'TestDescriptIon.pas',
   TestElevatedProtocol in 'TestElevatedProtocol.pas',
+  TestFdoIcons in 'TestFdoIcons.pas',
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
   TestFolderHotlist in 'TestFolderHotlist.pas',

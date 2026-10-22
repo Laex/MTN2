@@ -11,7 +11,7 @@
 
 ### Linux
 
-`MTN2-{{TAG}}-linux-x64.tar.gz` и `MTN2-{{TAG}}-linux-x64.deb` (Linux x86-64): `mtn2-tui` работает внутри окна терминала, в том числе по SSH и в `tmux`; `mtn2-sdl` – пробная версия в обычном окне SDL2. Установка: `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh` или `sudo apt install ./MTN2-*-linux-x64.deb`, затем `mtn2` или `mtn2-sdl`. Зависимости и параметры – в [LINUX.md](https://github.com/Laex/MTN2/blob/main/docs/LINUX.md).
+`MTN2-{{TAG}}-linux-x64.tar.gz`, `MTN2-{{TAG}}-linux-x64.deb` и `MTN2-{{TAG}}-linux-x64.rpm` (Linux x86-64): `mtn2-tui` работает внутри окна терминала, в том числе по SSH и в `tmux`; `mtn2-sdl` – пробная версия в обычном окне SDL2. Установка: `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh` или `sudo apt install ./MTN2-*-linux-x64.deb` (`sudo dnf install ./MTN2-*-linux-x64.rpm`), затем `mtn2` или `mtn2-sdl`. Зависимости и параметры – в [LINUX.md](https://github.com/Laex/MTN2/blob/main/docs/LINUX.md).
 
 Ответы на частые вопросы (сеть и приватность, SmartScreen, масштаб экрана, темы, плагины) – в [FAQ.md](https://github.com/Laex/MTN2/blob/main/docs/FAQ.md).
 

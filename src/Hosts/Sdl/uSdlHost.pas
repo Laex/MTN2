@@ -29,10 +29,11 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.Types, System.Math, System.IOUtils,
-  System.Generics.Collections, uTerminalTypes, uTermInput, uClipboardService,
+  System.Generics.Collections, System.JSON, uTerminalTypes, uTermInput, uClipboardService,
   uCoreTimer, uHostShell, uPlatformInfo, uPlatformFonts, uPlatformProcess,
   uSdlApi, uSdlInput, uGlyphSource, uFreeTypeGlyphs, uPixelGrid, uPixelBlit,
-  uPngWriter, uOverlayRenderer, uOverlayModel, uConfigLocation, uSdlClipboard;
+  uPngWriter, uOverlayRenderer, uOverlayModel, uConfigLocation, uSdlClipboard,
+  uSdlImage, uShellIcons;
 
 const
   cDefaultFontSize = 16;
@@ -72,6 +73,7 @@ type
     FQuit: Boolean;
     function BuildGlyphs(out AError: string): IGlyphSource;
     procedure ApplyFont;
+    procedure PlaceTextInputRect(AWinW, AWinH: Integer);
     procedure FitGrid;
     procedure RecreateTexture;
     procedure HandleSdlEvent(const E: TSDLEvent);
@@ -103,6 +105,66 @@ begin
   Result := AOptions.FontName;
   if Result = '' then
     Result := PlatformDefaultMonoFont;
+end;
+
+function WindowSettingsFile: string;
+begin
+  Result := TPath.Combine(GetConfigDirectory, 'sdl.json');
+end;
+
+/// <summary>Font size saved by the last zoom; 0 when none is saved.</summary>
+function LoadSavedFontSize: Integer;
+var
+  Json: TJSONValue;
+begin
+  Result := 0;
+  try
+    if not TFile.Exists(WindowSettingsFile) then
+      Exit;
+    Json := TJSONObject.ParseJSONValue(TFile.ReadAllText(WindowSettingsFile, TEncoding.UTF8));
+    try
+      if Json is TJSONObject then
+        Result := EnsureRange(TJSONObject(Json).GetValue<Integer>('fontSize', 0), 0, cMaxFontSize);
+    finally
+      Json.Free;
+    end;
+  except
+    Result := 0;
+  end;
+  if (Result > 0) and (Result < cMinFontSize) then
+    Result := 0;
+end;
+
+procedure SaveFontSize(ASize: Integer);
+var
+  Obj: TJSONObject;
+begin
+  Obj := TJSONObject.Create;
+  try
+    Obj.AddPair('fontSize', TJSONNumber.Create(ASize));
+    try
+      ForceDirectories(GetConfigDirectory);
+      TFile.WriteAllText(WindowSettingsFile, Obj.ToJSON, TEncoding.UTF8);
+    except
+      // A settings file that cannot be written only loses the remembered size.
+    end;
+  finally
+    Obj.Free;
+  end;
+end;
+
+/// <summary>Panel icons come from the icon theme of the desktop, decoded by SDL;
+/// without SDL_image only BMP icons load and the rest keep their glyphs.</summary>
+procedure EnableShellIcons(AGrid: TPixelGridRenderer);
+begin
+  GHostShowsIcons := True;
+  GHostShowsSurfaces := True;
+  ShellIconsSetDecoder(
+    function(const APath: string; out AWidth, AHeight: Integer; out APixels: TBytes): Boolean
+    begin
+      Result := DecodePictureFile(APath, AWidth, AHeight, APixels) = pdOk;
+    end);
+  AGrid.SetIconSource(ShellIconPixels);
 end;
 
 function PluginsDir: string;
@@ -146,8 +208,15 @@ begin
   Result := False;
   if not LoadSdl(AError) then
     Exit;
-  FFontSize := IfThen(FOptions.FontSize > 0, FOptions.FontSize, cDefaultFontSize);
+  FFontSize := FOptions.FontSize;
+  if FFontSize <= 0 then
+    FFontSize := LoadSavedFontSize;
+  if FFontSize <= 0 then
+    FFontSize := cDefaultFontSize;
   FScale := 1;
+  // Without this SDL hides the composition of an input method (CJK and others).
+  if Assigned(SDL_SetHint) then
+    SDL_SetHint('SDL_IME_SHOW_UI', '1');
   if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS) <> 0 then
   begin
     AError := 'SDL_Init failed: ' + SdlErrorText;
@@ -182,6 +251,7 @@ begin
   if WinW > 0 then
     FScale := FOutW / WinW;
   FGrid := TPixelGridRenderer.Create(Glyphs);
+  EnableShellIcons(FGrid);
   FInput := TSdlInputMapper.Create;
   FEvents := TList<TTermEvent>.Create;
   ApplyFont;
@@ -208,6 +278,7 @@ begin
     FreeAndNil(FShell);
   end;
   SetClipboardService(nil);
+  ShellIconsSetDecoder(nil);
   FreeAndNil(FEvents);
   FreeAndNil(FInput);
   FreeAndNil(FGrid);
@@ -225,6 +296,24 @@ begin
 end;
 
 // Sizes the grid to the window, and the texture to the grid.
+/// <summary>Tells the input method where text is typed: the grid carries no
+/// cursor position, so it is the bottom row, where the command line is. The
+/// system input method draws its own composition and candidate window there.</summary>
+procedure TSdlHost.PlaceTextInputRect(AWinW, AWinH: Integer);
+var
+  Area: TSDLRect;
+  RowH: Integer;
+begin
+  if not Assigned(SDL_SetTextInputRect) then
+    Exit;
+  RowH := Max(1, Round(FGrid.CellHeight / Max(FScale, 0.1)));
+  Area.X := 0;
+  Area.Y := Max(0, AWinH - RowH);
+  Area.W := AWinW;
+  Area.H := RowH;
+  SDL_SetTextInputRect(Area);
+end;
+
 procedure TSdlHost.FitGrid;
 var
   WinW, WinH: Integer;
@@ -237,6 +326,7 @@ begin
     FScale := FOutW / WinW;
     FInput.SetPixelScale(FScale);
   end;
+  PlaceTextInputRect(WinW, WinH);
   Cells := FGrid.GridSizeOf(FOutW, FOutH);
   FShell.Resize(Cells.cx, Cells.cy);
   FGrid.Invalidate;
@@ -271,6 +361,7 @@ begin
   FFontSize := NewSize;
   ApplyFont;
   FitGrid;
+  SaveFontSize(NewSize);
 end;
 
 function TSdlHost.HandleZoomKey(const E: TSDLEvent): Boolean;
@@ -301,6 +392,7 @@ begin
         FFontSize := IfThen(FOptions.FontSize > 0, FOptions.FontSize, cDefaultFontSize);
         ApplyFont;
         FitGrid;
+        SaveFontSize(FFontSize);
       end;
   else
     Exit;
@@ -529,8 +621,12 @@ begin
   end;
   Cols := Max(20, IfThen(AOptions.Cols > 0, AOptions.Cols, cDefaultCols));
   Rows := Max(6, IfThen(AOptions.Rows > 0, AOptions.Rows, cDefaultRows));
-  Shell := THostShell.Create(Cols, Rows);
+  // The icons and pictures are decoded by SDL even though no window opens.
+  if not SdlLoaded then
+    LoadSdl(Err);
   Grid := TPixelGridRenderer.Create(Glyphs);
+  EnableShellIcons(Grid);
+  Shell := THostShell.Create(Cols, Rows);
   try
     Shell.AttachPlugins(PluginsDir);
     if AOptions.Path <> '' then
@@ -558,6 +654,7 @@ begin
     Result := 0;
   finally
     Shell.DetachPlugins;
+    ShellIconsSetDecoder(nil);
     Grid.Free;
     Shell.Free;
   end;

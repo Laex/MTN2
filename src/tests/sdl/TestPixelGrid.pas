@@ -30,6 +30,9 @@ type
     [Test] procedure InsertCaretIsABarAtTheLeftEdge;
     [Test] procedure CellAtMapsPixelsToCells;
     [Test] procedure ResizedGridIsPaintedCompletely;
+    [Test] procedure IconCoversItsCellAndTheFillerAfterIt;
+    [Test] procedure FillerIsClearedWhenTheIconGoesAway;
+    [Test] procedure CellWithoutAnIconPictureKeepsItsGlyph;
   end;
 
 implementation
@@ -353,6 +356,87 @@ begin
     Assert.AreEqual(24, R.Width);
     Assert.AreEqual(24, R.DirtyRect.Right, 'the whole bitmap is new');
     Assert.AreEqual(Cardinal($FF0000AA), R.PixelAt(23, 31));
+  finally
+    R.Free;
+  end;
+end;
+
+function SolidRedIcon: TPixelIconSource;
+begin
+  Result :=
+    function(AId: Integer; out AWidth, AHeight: Integer; out APixels: TBytes): Boolean
+    var
+      I: Integer;
+    begin
+      AWidth := 4;
+      AHeight := 4;
+      SetLength(APixels, 4 * 4 * 4);
+      for I := 0 to 15 do
+      begin
+        APixels[I * 4] := 0;
+        APixels[I * 4 + 1] := 0;
+        APixels[I * 4 + 2] := $FF;
+        APixels[I * 4 + 3] := $FF;
+      end;
+      Result := AId = 1;
+    end;
+end;
+
+procedure TTestPixelGrid.IconCoversItsCellAndTheFillerAfterIt;
+var
+  R: TPixelGridRenderer;
+  Grid: TTerminalGrid;
+begin
+  R := TPixelGridRenderer.Create(TFakeGlyphs.Create);
+  try
+    R.SetIconSource(SolidRedIcon());
+    Grid := NewGrid(3, 1);
+    DrawGridIcon(Grid, 0, 0, 1, '*', cWhite, cBlue);
+    R.Render(Grid);
+    // Two cells are 16 x 16 pixels; the picture is 14 square, centered in them.
+    Assert.AreEqual(Cardinal($FFFF0000), R.PixelAt(4, 8), 'in the icon cell');
+    Assert.AreEqual(Cardinal($FFFF0000), R.PixelAt(12, 8), 'in the filler cell');
+    Assert.AreEqual(Cardinal($FF0000AA), R.PixelAt(0, 0), 'the margin keeps the background');
+    Assert.AreEqual(Cardinal($FF0000AA), R.PixelAt(20, 8), 'the cell after the filler is untouched');
+  finally
+    R.Free;
+  end;
+end;
+
+procedure TTestPixelGrid.FillerIsClearedWhenTheIconGoesAway;
+var
+  R: TPixelGridRenderer;
+  Grid: TTerminalGrid;
+begin
+  R := TPixelGridRenderer.Create(TFakeGlyphs.Create);
+  try
+    R.SetIconSource(SolidRedIcon());
+    Grid := NewGrid(3, 1);
+    DrawGridIcon(Grid, 0, 0, 1, '*', cWhite, cBlue);
+    R.Render(Grid);
+    Grid := NewGrid(3, 1);
+    R.Render(Grid);
+    Assert.AreEqual(Cardinal($FF0000AA), R.PixelAt(12, 8), 'the right half is blank again');
+    Assert.AreEqual(Cardinal($FF0000AA), R.PixelAt(4, 8), 'the left half is blank again');
+  finally
+    R.Free;
+  end;
+end;
+
+procedure TTestPixelGrid.CellWithoutAnIconPictureKeepsItsGlyph;
+var
+  R: TPixelGridRenderer;
+  Grid: TTerminalGrid;
+begin
+  R := TPixelGridRenderer.Create(TFakeGlyphs.Create);
+  try
+    R.SetIconSource(SolidRedIcon());
+    Grid := NewGrid(2, 1);
+    // Id 2 has no picture: the fallback glyph is drawn as for any character.
+    DrawGridIcon(Grid, 0, 0, 2, 'A', cRed, cWhite);
+    R.Render(Grid);
+    Assert.AreEqual(Cardinal($FFAA0000), R.PixelAt(1, 2), 'glyph box in the foreground color');
+    Assert.AreEqual(Cardinal($FFFFFFFF), R.PixelAt(0, 0), 'background of the cell');
   finally
     R.Free;
   end;

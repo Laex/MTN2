@@ -11,11 +11,17 @@ unit uPixelGrid;
 interface
 
 uses
-  System.Types, System.UITypes, uTerminalTypes, uGlyphSource;
+  System.Types, System.SysUtils, System.UITypes, uTerminalTypes, uGlyphSource;
 
 type
+  /// <summary>The pixels (blue, green, red, alpha in memory order) of the icon
+  /// a cell names by its IconId; False when there is none.</summary>
+  TPixelIconSource = reference to function(AId: Integer; out AWidth, AHeight: Integer;
+    out APixels: TBytes): Boolean;
+
   TPixelGridRenderer = class
   strict private
+    FIcons: TPixelIconSource;
     FGlyphs: IGlyphSource;
     FCellW, FCellH: Integer;
     FCols, FRows: Integer;
@@ -35,6 +41,7 @@ type
     procedure DrawShape(AX, AY, AW, AH: Integer; const AChar: Integer;
       AColor: Cardinal);
     procedure PaintCell(const AGrid: TTerminalGrid; AX, AY: Integer);
+    function IconSpan(const AGrid: TTerminalGrid; AX, AY: Integer): Integer;
     function CellUnitDiffers(const AGrid: TTerminalGrid; AX, AY: Integer): Boolean;
     function GetPixels: PByte;
   public
@@ -42,6 +49,9 @@ type
     /// <summary>Swaps the font: the cell size follows it and the whole grid is
     /// painted again by the next Render.</summary>
     procedure SetGlyphSource(const AGlyphs: IGlyphSource);
+    /// <summary>Where the pictures of icon cells come from; nil draws the glyph
+    /// of such a cell. The whole grid is painted again by the next Render.</summary>
+    procedure SetIconSource(const AIcons: TPixelIconSource);
     /// <summary>Paints the cells that changed; True when any pixel changed.</summary>
     function Render(const AGrid: TTerminalGrid; ABlinkOn: Boolean = True): Boolean;
     /// <summary>Paints everything again by the next Render.</summary>
@@ -71,7 +81,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Math, uBoxGlyphs;
+  System.Math, uBoxGlyphs, uPixelBlit;
 
 function Opaque(AColor: TAlphaColor): Cardinal; inline;
 begin
@@ -93,6 +103,12 @@ begin
   FPrev := nil;
   FForceAll := True;
   Reallocate(0, 0);
+end;
+
+procedure TPixelGridRenderer.SetIconSource(const AIcons: TPixelIconSource);
+begin
+  FIcons := AIcons;
+  FForceAll := True;
 end;
 
 procedure TPixelGridRenderer.Reallocate(ACols, ARows: Integer);
@@ -263,18 +279,46 @@ begin
   end;
 end;
 
+// How many cells the icon of a cell covers: 0 when the cell has no icon that
+// can be drawn, 2 when the blank cell to its right is its filler.
+function TPixelGridRenderer.IconSpan(const AGrid: TTerminalGrid; AX, AY: Integer): Integer;
+var
+  Cell, Next: TCharCell;
+  W, H: Integer;
+  Pixels: TBytes;
+begin
+  Result := 0;
+  Cell := AGrid[AY][AX];
+  if not Assigned(FIcons) or (Cell.IconId <= 0) or (ccaWide in Cell.Attributes) then
+    Exit;
+  if not FIcons(Cell.IconId, W, H, Pixels) then
+    Exit;
+  Result := 1;
+  if AX + 1 < FCols then
+  begin
+    Next := AGrid[AY][AX + 1];
+    if (Next.IconId = 0) and (Next.CharValue = ' ') and (Next.BgColor = Cell.BgColor) and
+       (Next.Attributes = []) then
+      Result := 2;
+  end;
+end;
+
 procedure TPixelGridRenderer.PaintCell(const AGrid: TTerminalGrid; AX, AY: Integer);
 var
   Cell: TCharCell;
   Fg, Bg: Cardinal;
-  Cells, PX, PY, W, Code, Bar: Integer;
+  Cells, PX, PY, W, Code, Bar, Span, IconW, IconH, Side: Integer;
   Cl: TRect;
   Glyph: TGlyphBitmap;
+  IconPixels: TBytes;
 begin
   Cell := AGrid[AY][AX];
   Cells := 1;
   if (ccaWide in Cell.Attributes) and (AX + 1 < FCols) then
     Cells := 2;
+  Span := IconSpan(AGrid, AX, AY);
+  if Span > 0 then
+    Cells := Span;
   PX := AX * FCellW;
   PY := AY * FCellH;
   W := Cells * FCellW;
@@ -289,6 +333,18 @@ begin
   if (ccaBlink in Cell.Attributes) and not FBlinkOn then
     Fg := Bg;
   FillRect(Cl, Bg);
+  if (Span > 0) and FIcons(Cell.IconId, IconW, IconH, IconPixels) then
+  begin
+    // As large as the row allows and centered in the cells it covers.
+    Side := Min(W - 1, FCellH - 2);
+    if Side < 4 then
+      Side := FCellH;
+    BlitScaled(IconPixels, IconW, IconH, PByte(FPixels), FWidth * 4, FWidth, FHeight,
+      TRect.Create(PX + (W - Side) div 2, PY + (FCellH - Side) div 2,
+        PX + (W - Side) div 2 + Side, PY + (FCellH - Side) div 2 + Side), Cl);
+    MarkDirty(Cl);
+    Exit;
+  end;
   Code := Ord(Cell.CharValue);
   if (Code > 32) and (Fg <> Bg) and not ((Code >= $D800) and (Code <= $DFFF)) then
   begin
@@ -327,6 +383,14 @@ begin
     Result := not SameCharCell(AGrid[AY][AX + 1], FPrev[AY][AX + 1])
   else if (ccaWideTail in Cell.Attributes) and (AX > 0) then
     Result := not SameCharCell(AGrid[AY][AX - 1], FPrev[AY][AX - 1]);
+  if Result then
+    Exit;
+  // An icon covers the filler cell to its right: both are repainted together,
+  // and a filler stays dirty when the icon in front of it went away.
+  if IconSpan(AGrid, AX, AY) = 2 then
+    Result := not SameCharCell(AGrid[AY][AX + 1], FPrev[AY][AX + 1])
+  else if (AX > 0) and (FPrev[AY][AX - 1].IconId > 0) then
+    Result := not SameCharCell(AGrid[AY][AX - 1], FPrev[AY][AX - 1]);
 end;
 
 function TPixelGridRenderer.Render(const AGrid: TTerminalGrid; ABlinkOn: Boolean): Boolean;
@@ -358,7 +422,9 @@ begin
       if not Full and not CellUnitDiffers(AGrid, X, Y) then
         Continue;
       Result := True;
-      // The filler cell of a wide character is painted with its first cell.
+      // The filler cell of a wide character or of an icon is painted with its first cell.
+      if (X > 0) and (AGrid[Y][X - 1].IconId > 0) and (IconSpan(AGrid, X - 1, Y) = 2) then
+        Continue;
       if not (ccaWideTail in AGrid[Y][X].Attributes) or (X = 0) then
         PaintCell(AGrid, X, Y);
     end;

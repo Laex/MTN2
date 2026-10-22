@@ -28,6 +28,10 @@ type
     Sparse: Boolean;
     Temporary: Boolean;
     Offline: Boolean;
+    // POSIX only: the file system flags chattr sets (immutable, append only, no dump).
+    Immutable: Boolean;
+    AppendOnly: Boolean;
+    NoDump: Boolean;
     Owner: string;
     // Permission bits (0..$FFF) and the group name; Mode = -1 where the
     // platform has no permission bits.
@@ -47,6 +51,9 @@ type
     Sparse: TFileAttrChoice;
     Temporary: TFileAttrChoice;
     Offline: TFileAttrChoice;
+    Immutable: TFileAttrChoice;
+    AppendOnly: TFileAttrChoice;
+    NoDump: TFileAttrChoice;
     ChangeOwner: Boolean;
     Owner: string;
     // An empty Group keeps the group while the owner changes.
@@ -76,6 +83,9 @@ type
     Sparse: TFileAttrChoice;
     Temporary: TFileAttrChoice;
     Offline: TFileAttrChoice;
+    Immutable: TFileAttrChoice;
+    AppendOnly: TFileAttrChoice;
+    NoDump: TFileAttrChoice;
     // Volume GUID path and device of a drive root ('' for any other item).
     Volume: string;
     Device: string;

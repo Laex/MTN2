@@ -63,10 +63,10 @@ fn uri_to_path(uri: &str) -> Option<PathBuf> {
                 continue;
             }
         }
-        bytes.push(if raw[i] == b'/' { b'\\' } else { raw[i] });
+        bytes.push(if cfg!(windows) && raw[i] == b'/' { b'\\' } else { raw[i] });
         i += 1;
     }
-    String::from_utf8(bytes).ok().map(PathBuf::from)
+    String::from_utf8(bytes).ok().map(|p| if cfg!(windows) { PathBuf::from(p) } else { PathBuf::from(format!("/{p}")) })
 }
 
 /// Splits one CSV record on `delimiter`, honouring double quotes.
@@ -156,7 +156,12 @@ fn render_to_temp(uri: &str) -> Option<String> {
     let table = render_table(text.trim_start_matches('\u{feff}'));
     let out = std::env::temp_dir().join(format!("mtn2-csv-{:016x}.txt", fnv(uri)));
     fs::write(&out, table).ok()?;
-    Some(format!("file:///{}", out.to_string_lossy().replace('\\', "/")))
+    let shown = out.to_string_lossy();
+    Some(if cfg!(windows) {
+        format!("file:///{}", shown.replace('\\', "/"))
+    } else {
+        format!("file://{shown}")
+    })
 }
 
 unsafe extern "C" fn on_document(
@@ -227,9 +232,15 @@ mod tests {
 
     #[test]
     fn converts_file_uris() {
+        #[cfg(windows)]
         assert_eq!(
             uri_to_path("file:///C:/My%20Dir/a.csv").unwrap(),
             PathBuf::from("C:\\My Dir\\a.csv")
+        );
+        #[cfg(not(windows))]
+        assert_eq!(
+            uri_to_path("file:///home/me/My%20Dir/a.csv").unwrap(),
+            PathBuf::from("/home/me/My Dir/a.csv")
         );
         assert!(uri_to_path("sftp://h/a.csv").is_none());
     }

@@ -310,9 +310,10 @@ function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;
   AReadOnlyIdx, AHiddenIdx, AArchiveIdx, ASystemIdx: Integer;
   const ACreated, AModified, AAccessed: string): TDialogDeclaration;
 /// <summary>The permissions dialog (octal mode, owner and group) of POSIX
-/// builds; AMode holds the permission bits of the first item.</summary>
+/// builds; AMode holds the permission bits of the first item and the flags are
+/// the chattr flags every item has.</summary>
 function BuildSetModeDialog(const ASummary, AOwner, AGroup: string;
-  AMode: Integer): TDialogDeclaration;
+  AMode: Integer; AImmutable, AAppendOnly, ANoDump: Boolean): TDialogDeclaration;
 /// <summary>AItems are pre-formatted display labels, see SshConnectionDisplayLabel.</summary>
 function BuildSshConnectionsDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
@@ -1335,7 +1336,7 @@ begin
 end;
 
 function BuildSetModeDialog(const ASummary, AOwner, AGroup: string;
-  AMode: Integer): TDialogDeclaration;
+  AMode: Integer; AImmutable, AAppendOnly, ANoDump: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogSetMode, Result);
   DialogSetLabelText(Result, 'summary', ASummary);
@@ -1344,6 +1345,9 @@ begin
   DialogSetLabelText(Result, 'mode_error', '');
   DialogSetInputValue(Result, 'owner', AOwner);
   DialogSetInputValue(Result, 'group', AGroup);
+  DialogSetCheckbox(Result, 'flag_immutable', AImmutable);
+  DialogSetCheckbox(Result, 'flag_append', AAppendOnly);
+  DialogSetCheckbox(Result, 'flag_nodump', ANoDump);
   DialogSetCheckbox(Result, 'recurse', False);
 end;
 

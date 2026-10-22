@@ -19,6 +19,7 @@ type
     [Test] procedure MouseClickInTheMenuBarOpensAMenu;
     [Test] procedure QuitKeyEndsTheLoop;
     [Test] procedure ChangedCellsAreTheOnesTheShellRedraws;
+    [Test] procedure PluginPictureTabOpensAndGetsKeys;
   end;
 
 implementation
@@ -26,7 +27,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.Types, System.Generics.Collections,
   System.UITypes, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
-  uPixelGrid, uFakeGlyphs;
+  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface;
 
 const
   cScancodeBit = $40000000;
@@ -220,6 +221,52 @@ begin
     Assert.IsFalse(Rig.Renderer.DirtyRect.IsEmpty, 'the typed letter changed some pixels');
   finally
     Rig.Free;
+  end;
+end;
+
+procedure TTestSdlShell.PluginPictureTabOpensAndGetsKeys;
+var
+  Rig: THostRig;
+  Dir, KeyName: string;
+  H: Integer;
+  Pixels: TBytes;
+  Closed: Boolean;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-surface-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  GHostShowsSurfaces := True;
+  Rig := THostRig.Create;
+  try
+    Rig.Shell.AttachPlugins(Dir);
+    KeyName := '';
+    Closed := False;
+    H := PluginSurfaceOpen('t.surface', 'Pic',
+      function(const AKey: string): Boolean
+      begin
+        KeyName := AKey;
+        Result := AKey = 'Right';
+      end,
+      nil,
+      procedure
+      begin
+        Closed := True;
+      end);
+    Assert.IsTrue(H > 0, 'the host opens a picture tab');
+    SetLength(Pixels, 4 * 4 * 4);
+    FillChar(Pixels[0], Length(Pixels), $FF);
+    Assert.IsTrue(PluginSurfaceSetFrame(H, 4, 4, @Pixels[0], Length(Pixels)));
+    Rig.Screen;
+    Assert.IsTrue(SurfaceExists(H), 'the tab holds the surface');
+    Rig.Send(Key(cScancodeBit or 79, 79, 0));
+    Assert.AreEqual('Right', KeyName, 'the key reaches the plugin');
+    Rig.Send(Key(27, 41, 0));
+    Rig.Screen;
+    Assert.IsTrue(Closed, 'closing the tab tells the plugin');
+  finally
+    Rig.Shell.DetachPlugins;
+    Rig.Free;
+    GHostShowsSurfaces := False;
+    TDirectory.Delete(Dir, True);
   end;
 end;
 

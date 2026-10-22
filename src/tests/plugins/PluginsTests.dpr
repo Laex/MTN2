@@ -33,6 +33,7 @@ uses
   TestPluginSettings in 'TestPluginSettings.pas',
   TestPluginUi in 'TestPluginUi.pas',
   TestSamplePlugins in 'TestSamplePlugins.pas',
+  TestLinuxSamplePlugins in 'TestLinuxSamplePlugins.pas',
   TestSevenZipDllWarning in 'TestSevenZipDllWarning.pas',
   TestPluginManifest in 'TestPluginManifest.pas',
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',

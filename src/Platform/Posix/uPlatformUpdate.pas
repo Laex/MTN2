@@ -28,6 +28,10 @@ function PlatformUnpackPackage(const APackage, AStagingDir: string;
 function PlatformMoveFile(const ASource, ADest: string; AReplace: Boolean;
   out AError: string): Boolean;
 
+/// <summary>True when the program was installed by a package manager, which
+/// updates it itself: the self-updater then stays out of the way.</summary>
+function PlatformUpdatesManagedByPackage(const AAppDir: string): Boolean;
+
 /// <summary>True when a file can be created in ADir.</summary>
 function PlatformCanWriteToDir(const ADir: string): Boolean;
 
@@ -143,6 +147,12 @@ begin
       Result := False;
     end;
   end;
+end;
+
+// The package builds put an empty file named no-self-update next to the program.
+function PlatformUpdatesManagedByPackage(const AAppDir: string): Boolean;
+begin
+  Result := TFile.Exists(TPath.Combine(AAppDir, 'no-self-update'));
 end;
 
 function PlatformCanWriteToDir(const ADir: string): Boolean;

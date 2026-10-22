@@ -11,10 +11,17 @@
 // Shows: the document API (doc_get_text, doc_replace, doc_info, doc_set_cursor), a hook that
 // changes what a built-in editor command works on, show_message and plugin settings.
 
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#else
+#include <cwchar>
+#include <cwctype>
+#include <locale.h>
+#include <wctype.h>
+#endif
 
 #include <algorithm>
 #include <cstdlib>
@@ -30,6 +37,8 @@ constexpr const char *kPluginId = "mtn.demo.texttools";
 
 const MtnHostApi *g_host = nullptr;
 bool g_tidy_on_save = false;
+
+#ifdef _WIN32
 
 std::wstring widen(const std::string &text) {
     if (text.empty()) {
@@ -51,6 +60,90 @@ std::string narrow(const std::wstring &text) {
     WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), &out[0], len, nullptr, nullptr);
     return out;
 }
+
+void change_case(std::wstring &wide, bool upper) {
+    LCMapStringEx(LOCALE_NAME_USER_DEFAULT, upper ? LCMAP_UPPERCASE : LCMAP_LOWERCASE, wide.data(),
+                  static_cast<int>(wide.size()), &wide[0], static_cast<int>(wide.size()), nullptr, nullptr, 0);
+}
+
+// Case-insensitive, by the rules of the user's language (Cyrillic sorts as expected).
+bool line_less(const std::wstring &a, const std::wstring &b) {
+    return CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, a.c_str(), -1, b.c_str(), -1,
+                           nullptr, nullptr, 0) == CSTR_LESS_THAN;
+}
+
+#else
+
+// wchar_t is a UTF-32 code point here. The user's locale is a private locale_t, so the
+// plugin never changes the locale of the host process.
+locale_t user_locale() {
+    static locale_t loc = [] {
+        locale_t l = newlocale(LC_ALL_MASK, "", nullptr);
+        return l ? l : newlocale(LC_ALL_MASK, "C.UTF-8", nullptr);
+    }();
+    return loc;
+}
+
+std::wstring widen(const std::string &text) {
+    std::wstring out;
+    for (size_t i = 0; i < text.size();) {
+        const unsigned char c = static_cast<unsigned char>(text[i]);
+        size_t extra = c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : c >= 0xC0 ? 1 : 0;
+        // A cut-off sequence is taken as the single byte it starts with.
+        if (i + extra >= text.size()) {
+            extra = 0;
+        }
+        unsigned long cp = extra == 0 ? c : (c & (0x3Fu >> extra));
+        for (size_t k = 1; k <= extra; ++k) {
+            cp = (cp << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
+        }
+        out.push_back(static_cast<wchar_t>(cp));
+        i += 1 + extra;
+    }
+    return out;
+}
+
+std::string narrow(const std::wstring &text) {
+    std::string out;
+    for (wchar_t w : text) {
+        const unsigned long cp = static_cast<unsigned long>(w);
+        if (cp < 0x80) {
+            out += static_cast<char>(cp);
+        } else if (cp < 0x800) {
+            out += static_cast<char>(0xC0 | (cp >> 6));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        } else if (cp < 0x10000) {
+            out += static_cast<char>(0xE0 | (cp >> 12));
+            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        } else {
+            out += static_cast<char>(0xF0 | (cp >> 18));
+            out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        }
+    }
+    return out;
+}
+
+void change_case(std::wstring &wide, bool upper) {
+    for (wchar_t &c : wide) {
+        c = static_cast<wchar_t>(upper ? towupper_l(c, user_locale()) : towlower_l(c, user_locale()));
+    }
+}
+
+std::wstring folded(const std::wstring &text) {
+    std::wstring out = text;
+    change_case(out, false);
+    return out;
+}
+
+// Case-insensitive, by the collation of the user's locale.
+bool line_less(const std::wstring &a, const std::wstring &b) {
+    return wcscoll_l(folded(a).c_str(), folded(b).c_str(), user_locale()) < 0;
+}
+
+#endif
 
 // Reads text through one of the "text out" functions of the host API, growing the buffer as asked.
 template <class Fn>
@@ -118,8 +211,7 @@ void map_case(bool upper) {
         return;
     }
     std::wstring wide = widen(text);
-    LCMapStringEx(LOCALE_NAME_USER_DEFAULT, upper ? LCMAP_UPPERCASE : LCMAP_LOWERCASE, wide.data(),
-                  static_cast<int>(wide.size()), &wide[0], static_cast<int>(wide.size()), nullptr, nullptr, 0);
+    change_case(wide, upper);
     replace_or_explain(0, narrow(wide));
 }
 
@@ -158,11 +250,8 @@ void sort_lines() {
     for (const std::string &line : split_lines(text)) {
         keyed.emplace_back(widen(line), line);
     }
-    // Case-insensitive, by the rules of the user's language (Cyrillic sorts as expected).
-    std::stable_sort(keyed.begin(), keyed.end(), [](const auto &a, const auto &b) {
-        return CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, a.first.c_str(), -1,
-                               b.first.c_str(), -1, nullptr, nullptr, 0) == CSTR_LESS_THAN;
-    });
+    std::stable_sort(keyed.begin(), keyed.end(),
+                     [](const auto &a, const auto &b) { return line_less(a.first, b.first); });
     std::vector<std::string> lines;
     for (auto &entry : keyed) {
         lines.push_back(std::move(entry.second));

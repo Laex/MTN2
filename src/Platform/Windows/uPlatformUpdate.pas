@@ -29,6 +29,9 @@ function PlatformMoveFile(const ASource, ADest: string; AReplace: Boolean;
   out AError: string): Boolean;
 
 /// <summary>True when a file can be created in ADir.</summary>
+/// <summary>Windows packages are zip archives the program updates itself: always False.</summary>
+function PlatformUpdatesManagedByPackage(const AAppDir: string): Boolean;
+
 function PlatformCanWriteToDir(const ADir: string): Boolean;
 
 function PlatformCurrentProcessId: Cardinal;
@@ -129,6 +132,11 @@ begin
   Result := MoveFileEx(PChar(ASource), PChar(ADest), Flags);
   if not Result then
     AError := SysErrorMessage(GetLastError);
+end;
+
+function PlatformUpdatesManagedByPackage(const AAppDir: string): Boolean;
+begin
+  Result := False;
 end;
 
 function PlatformCanWriteToDir(const ADir: string): Boolean;

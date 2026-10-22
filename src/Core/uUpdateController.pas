@@ -323,7 +323,9 @@ var
   Due: Boolean;
 begin
   AnnounceUpdate;
-  Due := (FCurrent <> '') and UpdateCheckDue(FSettings, Now);
+  // A package manager updates the program; nothing goes online here.
+  Due := (FCurrent <> '') and not UpdatesManagedByPackage(AppDir) and
+    UpdateCheckDue(FSettings, Now);
   if not Due then
   begin
     // Still tidy up after a previous update, off the UI thread.
@@ -380,6 +382,14 @@ var
   Life: IUpdateLife;
   Interactive, Dev: Boolean;
 begin
+  if UpdatesManagedByPackage(AppDir) then
+  begin
+    if AInteractive then
+      ShowMessageDlg(T('ui.update.managedTitle', 'MTN2 is installed from a package.'),
+        T('ui.update.managedText',
+          'Update it with the package manager (apt, dnf) or install a newer package.'));
+    Exit;
+  end;
   case FState of
     usChecking:
       Exit;

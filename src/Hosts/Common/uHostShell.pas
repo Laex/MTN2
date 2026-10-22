@@ -137,6 +137,15 @@ type
     property Rows: Integer read FRows;
   end;
 
+var
+  /// <summary>Set by a host that draws bitmap file icons before it creates the
+  /// shell: the panel icon column and its setting then work; otherwise the
+  /// column is off.</summary>
+  GHostShowsIcons: Boolean;
+  /// <summary>Set by a host that draws pictures over the cells (the overlay
+  /// frame): plugins may then open picture tabs.</summary>
+  GHostShowsSurfaces: Boolean;
+
 implementation
 
 uses
@@ -144,7 +153,7 @@ uses
   uShellProfiles, uDualPanelTypes, uConsoleSettings,
   uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
-  uDualPanelUiTypes, uToast, uWindowChrome, uConsoleLaunch, uPluginHost,
+  uDualPanelUiTypes, uToast, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
   uOverlayRenderer, uKeyRouting;
 
@@ -162,13 +171,14 @@ begin
   FLastClickCol := -1;
   FLastClickRow := -1;
   ReloadKeymap('');
-  // The shell draws no window frame of its own and has no bitmap file icons
-  // or drag-out; the flags go back when the shell is freed.
+  // The shell draws no window frame of its own and no drag-out, and has bitmap
+  // file icons only when the host draws them; the flags go back when the shell
+  // is freed.
   FPrevTitleBar := GShowTitleBar;
   FPrevPanelIcons := GShowPanelIcons;
   FPrevFileDrag := GFileDragEnabled;
   GShowTitleBar := True;
-  GShowPanelIcons := False;
+  GShowPanelIcons := GHostShowsIcons;
   GFileDragEnabled := False;
   SetOverlayRepaintHandler(
     procedure
@@ -190,6 +200,7 @@ begin
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
   FSession.PassiveCursor := True;
+  FSession.ShowPanelIcons := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
 
@@ -255,6 +266,18 @@ end;
 
 procedure THostShell.AttachPlugins(const APluginsDir: string);
 begin
+  // Picture tabs a plugin opens (uPluginSurface) need a host that can show
+  // pixels; without one the plugin is told no surface is available. Registered before the
+  // plugins load so a plugin may open one from its start-up code.
+  if GHostShowsSurfaces then
+    SetPluginSurfaceHost(
+      function(AHandle: Integer): Boolean
+      begin
+        Result := Assigned(FDualPanel) and (FMdi.Active = FDualPanel) and
+          FDualPanel.Visible and FDualPanel.OpenSurfaceTab(AHandle);
+        if Result then
+          Recompose;
+      end);
   StartPluginHost(APluginsDir);
   // Dialogs a plugin asks for appear only over the panels, never inside an
   // editor, viewer or terminal.
@@ -291,6 +314,7 @@ begin
   SetPluginHostServices(Default(TPluginHostServices));
   SetPluginChromeChanged(nil);
   SetPluginDialogHost(nil);
+  SetPluginSurfaceHost(nil);
   StopPluginHost;
 end;
 
@@ -349,7 +373,13 @@ procedure THostShell.ApplyDisplaySettings(const ASettings: TDisplaySettings);
 var
   LanguageChanged: Boolean;
 begin
-  // The terminal owns the font, the zoom, the window frame and the icons.
+  // The terminal owns the font, the zoom and the window frame; the icons are
+  // the host's setting only when the host draws them.
+  if GHostShowsIcons then
+  begin
+    FSession.ShowPanelIcons := ASettings.ShowPanelIcons;
+    GShowPanelIcons := ASettings.ShowPanelIcons;
+  end;
   FSession.CursorBlink := ASettings.CursorBlink;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
@@ -406,6 +436,8 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GShowToasts := Sess.ShowNotifications;
   GShowPassiveCursor := Sess.PassiveCursor;
+  if GHostShowsIcons then
+    GShowPanelIcons := Sess.ShowPanelIcons;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
   GMarkedRowStyle := MarkedRowStyleFromId(Sess.MarkedRows);
@@ -443,6 +475,8 @@ begin
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
+  if GHostShowsIcons then
+    Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
   Sess.MarkedRows := MarkedRowStyleId(GMarkedRowStyle);
   Sess.ConsoleScrollback := GConsoleSettings.ScrollbackLines;

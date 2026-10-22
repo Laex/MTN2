@@ -57,6 +57,9 @@ func uriToPath(uri string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
+	if runtime.GOOS != "windows" {
+		return "/" + p, true
+	}
 	return filepath.FromSlash(p), true
 }
 
@@ -84,6 +87,9 @@ func render(uri string) (string, bool) {
 	target := filepath.Join(os.TempDir(), fmt.Sprintf("mtn2-json-%016x.txt", h.Sum64()))
 	if err := os.WriteFile(target, out.Bytes(), 0o600); err != nil {
 		return "", false
+	}
+	if runtime.GOOS != "windows" {
+		return "file://" + target, true
 	}
 	return "file:///" + filepath.ToSlash(target), true
 }

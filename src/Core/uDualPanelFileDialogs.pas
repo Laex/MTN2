@@ -61,6 +61,8 @@ type
     // never rounds away a file's sub-second time.
     FAttrDateTexts: array[0..2] of string;
     FAttrModeDialog: Boolean;
+    // The chattr flags the permissions dialog opened with (all items had it).
+    FAttrFlagsOpen: array[0..2] of Boolean;
     FAttrModeText, FAttrOwnerText, FAttrGroupText: string;
     function ReadAttrDateFields(var APlan: TFileAttrPlan; out ABadText: string): Boolean;
     procedure KeepSetAttributesOpen;
@@ -424,8 +426,11 @@ begin
     FAttrModeText := FileModeToOctal(State.Mode);
     FAttrOwnerText := OwnerEdit;
     FAttrGroupText := IfThen(State.OwnerMixed, '', State.Group);
+    FAttrFlagsOpen[0] := State.Immutable = facSet;
+    FAttrFlagsOpen[1] := State.AppendOnly = facSet;
+    FAttrFlagsOpen[2] := State.NoDump = facSet;
     FDialog.Open(BuildSetModeDialog(State.Summary, FAttrOwnerText, FAttrGroupText,
-      State.Mode), FOnCommand);
+      State.Mode, FAttrFlagsOpen[0], FAttrFlagsOpen[1], FAttrFlagsOpen[2]), FOnCommand);
     Notify;
     Exit;
   end;
@@ -586,6 +591,17 @@ begin
   end;
 end;
 
+// A box left as the dialog opened it changes nothing; a changed box sets or clears the flag.
+function FlagChoice(AChecked, AWasSet: Boolean): TFileAttrChoice;
+begin
+  if AChecked = AWasSet then
+    Result := facKeep
+  else if AChecked then
+    Result := facSet
+  else
+    Result := facClear;
+end;
+
 function TFileOpDialogController.DispatchSetModeCommand(
   const AControlId: string): Boolean;
 var
@@ -616,6 +632,9 @@ begin
     Plan.Group := Trim(FDialog.GetInputValue('group'));
     Plan.ChangeGroup := (Plan.Group <> '') and (Plan.Group <> FAttrGroupText);
     Plan.Recurse := FDialog.GetCheckbox('recurse');
+    Plan.Immutable := FlagChoice(FDialog.GetCheckbox('flag_immutable'), FAttrFlagsOpen[0]);
+    Plan.AppendOnly := FlagChoice(FDialog.GetCheckbox('flag_append'), FAttrFlagsOpen[1]);
+    Plan.NoDump := FlagChoice(FDialog.GetCheckbox('flag_nodump'), FAttrFlagsOpen[2]);
   end;
   FDialog.Close;
   if not Accepted then

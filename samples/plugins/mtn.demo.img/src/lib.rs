@@ -211,10 +211,10 @@ fn uri_to_path(uri: &str) -> Option<PathBuf> {
                 continue;
             }
         }
-        bytes.push(if raw[i] == b'/' { b'\\' } else { raw[i] });
+        bytes.push(if cfg!(windows) && raw[i] == b'/' { b'\\' } else { raw[i] });
         i += 1;
     }
-    String::from_utf8(bytes).ok().map(PathBuf::from)
+    String::from_utf8(bytes).ok().map(|p| if cfg!(windows) { PathBuf::from(p) } else { PathBuf::from(format!("/{p}")) })
 }
 
 fn is_picture(path: &Path) -> bool {

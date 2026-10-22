@@ -58,6 +58,7 @@ type
     procedure Store(const AUri: string; AState: TPictureState; AWidth, AHeight: Integer;
       const APixels: TBytes);
     procedure Decode(const AUri, APath: string);
+    procedure DecodeStaged(const AUri, APath: string; ATemp: Boolean);
     procedure NotifyRepaint;
     procedure PutHint(var AGrid: TTerminalGrid; const ABounds: TRectI; const AText: string);
   public
@@ -94,7 +95,7 @@ procedure BlitOverlayFrame(const AFrame: TOverlayFrame; ACellW, ACellH: Integer;
 implementation
 
 uses
-  System.IOUtils, System.UITypes, System.Math, uStrings, uVfsTypes, uPixelBlit;
+  System.IOUtils, System.UITypes, System.Math, uStrings, uPictureStage, uPixelBlit;
 
 const
   cHintFg = TAlphaColor($FF9A9A9A);
@@ -165,6 +166,16 @@ begin
     Store(AUri, psReady, W, H, Pixels)
   else
     Store(AUri, State, 0, 0, nil);
+end;
+
+procedure TOverlayModel.DecodeStaged(const AUri, APath: string; ATemp: Boolean);
+begin
+  try
+    Decode(AUri, APath);
+  finally
+    if ATemp then
+      TFile.Delete(APath);
+  end;
 end;
 
 procedure TOverlayModel.Request(const AUri: string; const ABounds, AClip: TRectI;
@@ -326,7 +337,7 @@ end;
 
 procedure TOverlayModel.PaintCells(var AGrid: TTerminalGrid);
 var
-  Uri, Path: string;
+  Uri: string;
   Bounds, Clip: TRectI;
   Scale: Single;
   State: TPictureState;
@@ -367,19 +378,20 @@ begin
     FLock.Leave;
   end;
   if Start then
-  begin
-    Path := FileUriToPath(Uri);
-    if (Path = '') or not TFile.Exists(Path) then
-      Store(Uri, psFailed, 0, 0, nil)
-    else if FAsync then
-      TThread.CreateAnonymousThread(
-        procedure
-        begin
-          Decode(Uri, Path);
-        end).Start
-    else
-      Decode(Uri, Path);
-  end;
+    StagePictureFile(Uri,
+      procedure(const APath: string; ATemp: Boolean)
+      begin
+        if APath = '' then
+          Store(Uri, psFailed, 0, 0, nil)
+        else if FAsync then
+          TThread.CreateAnonymousThread(
+            procedure
+            begin
+              DecodeStaged(Uri, APath, ATemp);
+            end).Start
+        else
+          DecodeStaged(Uri, APath, ATemp);
+      end);
   case State of
     psNoDecoder:
       PutHint(AGrid, Bounds, T('ui.picture.needImageLib', '(install SDL2_image to see pictures)'));

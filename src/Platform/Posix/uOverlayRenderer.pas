@@ -5,8 +5,9 @@ unit uOverlayRenderer;
   block characters by chafa (--format=symbols works in every TrueColor
   terminal) and written into the cells of the preview area. The conversion
   runs on a worker thread and is cached per file and area size; until it is
-  ready the area stays empty. Without chafa the area shows a hint. Only local
-  files (file URIs or plain paths) are previewed. The Windows build lives in Platform\Windows; each
+  ready the area stays empty. Without chafa the area shows a hint. A picture in
+  an archive or on a server is first copied to a temporary file (uPictureStage).
+  The Windows build lives in Platform\Windows; each
   project puts exactly one of the two directories on its unit search path. }
 
 interface
@@ -49,7 +50,7 @@ implementation
 
 uses
   System.SysUtils, System.SyncObjs, System.IOUtils, System.UITypes, System.Math,
-  uPlatformProcess, uAnsiPicture, uStrings, uVfsTypes;
+  uPlatformProcess, uAnsiPicture, uPictureStage, uStrings;
 
 const
   cConvertTimeoutMs = 8000;
@@ -127,15 +128,21 @@ begin
     StoreResult(AKey, psReady, Picture);
 end;
 
-procedure StartConversion(const AKey, APath: string; ACols, ARows: Integer);
+procedure StartConversion(const AKey, APath: string; ACols, ARows: Integer;
+  ATemp: Boolean);
 begin
   TThread.CreateAnonymousThread(
     procedure
     begin
       try
-        ConvertPicture(AKey, APath, ACols, ARows);
-      except
-        StoreResult(AKey, psFailed, nil);
+        try
+          ConvertPicture(AKey, APath, ACols, ARows);
+        except
+          StoreResult(AKey, psFailed, nil);
+        end;
+      finally
+        if ATemp then
+          TFile.Delete(APath);
       end;
     end).Start;
 end;
@@ -263,7 +270,7 @@ end;
 
 procedure PaintOverlayCells(var AGrid: TTerminalGrid);
 var
-  Uri, Key, Path: string;
+  Uri, Key: string;
   Bounds, Clip: TRectI;
   State: TPictureState;
   Picture: TTerminalGrid;
@@ -310,13 +317,14 @@ begin
   end;
 
   if Start then
-  begin
-    Path := FileUriToPath(Uri);
-    if (Path <> '') and TFile.Exists(Path) then
-      StartConversion(Key, Path, Cols, Rows)
-    else
-      StoreResult(Key, psFailed, nil);
-  end;
+    StagePictureFile(Uri,
+      procedure(const APath: string; ATemp: Boolean)
+      begin
+        if APath = '' then
+          StoreResult(Key, psFailed, nil)
+        else
+          StartConversion(Key, APath, Cols, Rows, ATemp);
+      end);
 
   case State of
     psMissingTool:

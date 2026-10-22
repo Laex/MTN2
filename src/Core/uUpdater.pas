@@ -119,6 +119,9 @@ function ApplyStagedUpdate(const AStagingDir, AAppDir: string; out AError: strin
 /// and a leftover staging folder. Locked files are skipped silently.</summary>
 procedure CleanupOldFiles(const AAppDir: string);
 function CanWriteToDir(const ADir: string): Boolean;
+/// <summary>True for a program installed from a package (.deb, .rpm): the
+/// package manager updates it, not this updater.</summary>
+function UpdatesManagedByPackage(const AAppDir: string): Boolean;
 
 function AppDir: string;
 function StagingDir: string;
@@ -607,6 +610,11 @@ end;
 function CanWriteToDir(const ADir: string): Boolean;
 begin
   Result := PlatformCanWriteToDir(ADir);
+end;
+
+function UpdatesManagedByPackage(const AAppDir: string): Boolean;
+begin
+  Result := PlatformUpdatesManagedByPackage(AAppDir);
 end;
 
 function AppDir: string;

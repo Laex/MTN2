@@ -4,7 +4,8 @@ unit uPlatformFileAttr;
   build). The read-only flag is the absence of write permission, hidden means a
   name that starts with a dot, the system and archive flags do not exist; the
   owner is the user name, the times are the change, modification and access
-  times (the creation time is the inode change time). The Windows build lives
+  times (the creation time is the birth time from statx, or the inode change
+  time where the file system does not record it). The Windows build lives
   in Platform\Windows; each project puts exactly one of the two directories on
   its unit search path. }
 
@@ -68,6 +69,61 @@ function c_chown(APath: MarshaledAString; AUid, AGid: Cardinal): Integer; cdecl;
 function c_utimes(APath: MarshaledAString; ATimes: Pointer): Integer; cdecl;
   external libc name 'utimes';
 
+const
+  cAtFdCwd = -100;
+  cStatxBtime = $800;
+  cStatxBufSize = 256;
+  cStatxMaskOffset = 0;
+  cStatxBtimeOffset = 80;
+
+function c_statx(ADirFd: Integer; APath: MarshaledAString; AFlags: Integer;
+  AMask: Cardinal; ABuf: Pointer): Integer; cdecl; external libc name 'statx';
+
+/// <summary>Birth time of APath from statx; False where the file system does
+/// not record it (the caller then falls back to the inode change time).</summary>
+function TryReadBirthTime(APath: MarshaledAString; out ASeconds: Int64): Boolean;
+var
+  Buf: array[0..cStatxBufSize - 1] of Byte;
+begin
+  FillChar(Buf, SizeOf(Buf), 0);
+  Result := (c_statx(cAtFdCwd, APath, 0, cStatxBtime, @Buf[0]) = 0) and
+    ((PCardinal(@Buf[cStatxMaskOffset])^ and cStatxBtime) <> 0);
+  if Result then
+    ASeconds := PInt64(@Buf[cStatxBtimeOffset])^;
+end;
+
+const
+  cFsIocGetFlags = $80086601;
+  cFsIocSetFlags = $40086602;
+  cFsImmutableFl = $10;
+  cFsAppendFl = $20;
+  cFsNoDumpFl = $40;
+  cOpenReadOnlyNonBlock = $800;  // O_RDONLY or O_NONBLOCK
+  cOpenNoFollow = $20000;
+
+function c_ioctl(AFd: Integer; ARequest: NativeUInt; AArg: Pointer): Integer; cdecl;
+  external libc name 'ioctl';
+function c_open(APath: MarshaledAString; AFlags, AMode: Integer): Integer; cdecl;
+  external libc name 'open';
+function c_close(AFd: Integer): Integer; cdecl; external libc name 'close';
+
+/// <summary>The chattr flags of APath (FS_IOC_GETFLAGS); False where the file
+/// system has none (the ioctl is refused).</summary>
+function TryReadFsFlags(APath: MarshaledAString; out AFlags: Int64): Boolean;
+var
+  Fd: Integer;
+begin
+  AFlags := 0;
+  Fd := c_open(APath, cOpenReadOnlyNonBlock or cOpenNoFollow, 0);
+  if Fd < 0 then
+    Exit(False);
+  try
+    Result := c_ioctl(Fd, cFsIocGetFlags, @AFlags) = 0;
+  finally
+    c_close(Fd);
+  end;
+end;
+
 function SysErrorText: string;
 begin
   Result := SysErrorMessage(GetLastError);
@@ -129,6 +185,7 @@ function TryReadFileAttrSnapshot(const APath: string;
 var
   St: _stat;
   P: UTF8String;
+  Birth, FsFlags: Int64;
 begin
   Result := False;
   ASnap := Default(TFileAttrSnapshot);
@@ -144,7 +201,16 @@ begin
   ASnap.Owner := UserNameOf(St.st_uid);
   ASnap.Group := GroupNameOf(St.st_gid);
   ASnap.Mode := St.st_mode and $FFF;
-  ASnap.Times.Created := UnixToLocal(St.st_ctime);
+  if TryReadFsFlags(MarshaledAString(P), FsFlags) then
+  begin
+    ASnap.Immutable := (FsFlags and cFsImmutableFl) <> 0;
+    ASnap.AppendOnly := (FsFlags and cFsAppendFl) <> 0;
+    ASnap.NoDump := (FsFlags and cFsNoDumpFl) <> 0;
+  end;
+  if TryReadBirthTime(MarshaledAString(P), Birth) then
+    ASnap.Times.Created := UnixToLocal(Birth)
+  else
+    ASnap.Times.Created := UnixToLocal(St.st_ctime);
   ASnap.Times.Modified := UnixToLocal(St.st_mtime);
   ASnap.Times.Accessed := UnixToLocal(St.st_atime);
   Result := True;
@@ -268,6 +334,60 @@ begin
   Result := True;
 end;
 
+function ChoiceToBit(AChoice: TFileAttrChoice; ABit: Int64; AOn: Boolean): Int64;
+begin
+  Result := 0;
+  if (AChoice = facSet) = AOn then
+    if AChoice <> facKeep then
+      Result := ABit;
+end;
+
+// Sets (ASetting) or clears the flags the plan names. Clearing runs before the
+// rest of the plan and setting after it, so an immutable file is first made
+// writable and only locked once everything else is written.
+function ApplyFsFlags(const APath: string; const APlan: TFileAttrPlan; ASetting: Boolean;
+  out AError: string): Boolean;
+var
+  P: UTF8String;
+  Fd: Integer;
+  Flags, Mask: Int64;
+begin
+  Result := True;
+  AError := '';
+  Mask := ChoiceToBit(APlan.Immutable, cFsImmutableFl, ASetting) or
+    ChoiceToBit(APlan.AppendOnly, cFsAppendFl, ASetting) or
+    ChoiceToBit(APlan.NoDump, cFsNoDumpFl, ASetting);
+  if Mask = 0 then
+    Exit;
+  P := UTF8String(ExcludeTrailingPathDelimiter(APath));
+  Fd := c_open(MarshaledAString(P), cOpenReadOnlyNonBlock or cOpenNoFollow, 0);
+  if Fd < 0 then
+  begin
+    AError := SysErrorText;
+    Exit(False);
+  end;
+  try
+    Flags := 0;
+    if c_ioctl(Fd, cFsIocGetFlags, @Flags) <> 0 then
+    begin
+      AError := 'File system flags are not supported here';
+      Exit(False);
+    end;
+    if ASetting then
+      Flags := Flags or Mask
+    else
+      Flags := Flags and not Mask;
+    // The kernel reads a 32-bit int through this pointer.
+    if c_ioctl(Fd, cFsIocSetFlags, @Flags) <> 0 then
+    begin
+      AError := SysErrorText;
+      Exit(False);
+    end;
+  finally
+    c_close(Fd);
+  end;
+end;
+
 function ApplyFileAttrOne(const APath: string; const APlan: TFileAttrPlan;
   out AError: string): Boolean;
 var
@@ -277,6 +397,11 @@ var
 begin
   Result := False;
   AError := '';
+  if not ApplyFsFlags(APath, APlan, False, Err) then
+  begin
+    AError := Err;
+    Exit;
+  end;
   if not ApplyMode(APath, APlan, Err) then
   begin
     AError := Err;
@@ -305,6 +430,11 @@ begin
       AError := Err;
       Exit;
     end;
+  end;
+  if not ApplyFsFlags(APath, APlan, True, Err) then
+  begin
+    AError := Err;
+    Exit;
   end;
   Result := True;
 end;

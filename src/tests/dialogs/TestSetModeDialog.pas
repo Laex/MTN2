@@ -17,6 +17,9 @@ type
     [Test] procedure PermissionsDialogBuildsModePlan;
     [Test] procedure ModeTextRoundTrips;
     [Test] procedure ModeIsAppliedToTheFile;
+    [Test] procedure CreationTimeOfNewFileIsRecent;
+    [Test] procedure FileSystemFlagsAreAppliedAndRead;
+    [Test] procedure FlagBoxesGoIntoThePlanOnlyWhenChanged;
   end;
 
 implementation
@@ -107,6 +110,99 @@ begin
   Assert.IsFalse(TryParseFileMode('', Mode), 'empty');
   Assert.IsFalse(TryParseFileMode('800', Mode), 'digit 8');
   Assert.IsFalse(TryParseFileMode('77777', Mode), 'too long');
+end;
+
+procedure TTestSetModeDialog.CreationTimeOfNewFileIsRecent;
+var
+  Dir, A, Err: string;
+  Snap: TFileAttrSnapshot;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-created-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    A := TPath.Combine(Dir, 'a.txt');
+    TFile.WriteAllText(A, 'a', TEncoding.UTF8);
+    Assert.IsTrue(TryReadFileAttrSnapshot(A, Snap, Err), Err);
+    Assert.IsTrue(Abs(Now - Snap.Times.Created) < 1, 'creation time of a new file is within a day of now');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSetModeDialog.FileSystemFlagsAreAppliedAndRead;
+var
+  Dir, A, Err: string;
+  Plan: TFileAttrPlan;
+  Snap: TFileAttrSnapshot;
+begin
+  if not PlatformFileModeSupported then
+    Exit;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-fsflags-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    A := TPath.Combine(Dir, 'a.txt');
+    TFile.WriteAllText(A, 'a', TEncoding.UTF8);
+    Assert.IsTrue(TryReadFileAttrSnapshot(A, Snap, Err), Err);
+    Assert.IsFalse(Snap.NoDump or Snap.Immutable or Snap.AppendOnly, 'a new file has no flags');
+    Plan := Default(TFileAttrPlan);
+    Plan.NoDump := facSet;
+    // A file system without flags (tmpfs) refuses; there is nothing to check there.
+    if not ApplyFileAttrOne(A, Plan, Err) then
+    begin
+      Assert.IsTrue(Pos('not supported', Err) > 0, Err);
+      Exit;
+    end;
+    Assert.IsTrue(TryReadFileAttrSnapshot(A, Snap, Err), Err);
+    Assert.IsTrue(Snap.NoDump, 'no dump is set');
+    Assert.IsFalse(Snap.Immutable, 'the other flags stay');
+    Plan.NoDump := facClear;
+    Assert.IsTrue(ApplyFileAttrOne(A, Plan, Err), Err);
+    Assert.IsTrue(TryReadFileAttrSnapshot(A, Snap, Err), Err);
+    Assert.IsFalse(Snap.NoDump, 'no dump is cleared');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestSetModeDialog.FlagBoxesGoIntoThePlanOnlyWhenChanged;
+var
+  Dir, A, Err: string;
+  Dialog: TDialogHost;
+  C: TFileOpDialogController;
+  Plan: TFileAttrPlan;
+begin
+  if not PlatformFileModeSupported then
+    Exit;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-flagbox-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  A := TPath.Combine(Dir, 'a.txt');
+  Dialog := TDialogHost.Create(nil);
+  C := MakeController(Dialog);
+  try
+    TFile.WriteAllText(A, 'a', TEncoding.UTF8);
+    Plan := Default(TFileAttrPlan);
+    Plan.NoDump := facSet;
+    if not ApplyFileAttrOne(A, Plan, Err) then
+      Exit;
+    C.BeginSetAttributes([A]);
+    Assert.IsTrue(Dialog.GetCheckbox('flag_nodump'), 'the flag the file has is checked');
+    Assert.IsFalse(Dialog.GetCheckbox('flag_immutable'), 'the others are not');
+    GApplyCount := 0;
+    C.DispatchCommand(hdkSetAttributes, 'ok');
+    Assert.AreEqual(0, GApplyCount, 'untouched boxes apply nothing');
+    C.BeginSetAttributes([A]);
+    Dialog.SetCheckbox('flag_nodump', False);
+    Dialog.SetCheckbox('flag_append', True);
+    C.DispatchCommand(hdkSetAttributes, 'ok');
+    Assert.AreEqual(1, GApplyCount);
+    Assert.IsTrue(GPlan.NoDump = facClear, 'a cleared box clears the flag');
+    Assert.IsTrue(GPlan.AppendOnly = facSet, 'a checked box sets the flag');
+    Assert.IsTrue(GPlan.Immutable = facKeep, 'an untouched box keeps it');
+  finally
+    C.Free;
+    Dialog.Free;
+    TDirectory.Delete(Dir, True);
+  end;
 end;
 
 procedure TTestSetModeDialog.ModeIsAppliedToTheFile;

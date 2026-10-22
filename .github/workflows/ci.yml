@@ -187,6 +187,7 @@ jobs:
           path: |
             dist/*-linux-x64.tar.gz
             dist/*-linux-x64.deb
+            dist/*-linux-x64.rpm
           retention-days: 3
 
       - name: Check packages
