@@ -1069,7 +1069,6 @@ var
   Shift: TShiftState;
   Dbl: Boolean;
   Active: TTerminalWindow;
-  Path: string;
   MenuClick: Boolean;
   Key: Word;
   KeyChar: Char;
@@ -1150,9 +1149,10 @@ begin
       Exit;
     end;
     MenuClick := FDualPanel.TopMenuOpen or (LocalRow = 0) or FDualPanel.HasOpenDialog;
-    if MenuClick or not FDualPanel.HitTestListItemLocalPath(LocalCol, LocalRow, Path) then
-      ;
     FDualPanel.HandleClick(LocalCol, LocalRow, Dbl, Shift);
+    // A press on a file row can turn into a drag to the other panel.
+    if (AEvent.Button = TMouseButton.mbLeft) and not Dbl and not MenuClick then
+      FDualPanel.ArmPanelDrag(LocalCol, LocalRow);
   end;
 end;
 
@@ -1175,6 +1175,8 @@ begin
     Exit;
   LocalCol := Col - Active.Area.Left;
   LocalRow := Row - Active.Area.Top;
+  if (Active = FDualPanel) and FDualPanel.UpdatePanelDrag(LocalCol, LocalRow) then
+    Exit;
   if Active is TDualPanelWindow then
     TDualPanelWindow(Active).HandleMouseMove(LocalCol, LocalRow)
   else if Active is TEditorWindow then
@@ -1194,6 +1196,9 @@ begin
   FButtonsDown := FButtonsDown and not 1;
   Col := AEvent.Col - FDualPanel.Area.Left;
   Row := AEvent.Row - FDualPanel.Area.Top;
+  // Shift moves, as in the Windows drop; without it the items are copied.
+  if FDualPanel.FinishPanelDrag(Col, Row, (ssShift in AEvent.Shift) and not (ssCtrl in AEvent.Shift)) then
+    Exit;
   if FDualPanel.HandleMenuMouseUp(Col, Row) then
     Exit;
   if FDualPanel.ReleaseChromeButton(Col, Row, Btn, Acts) then

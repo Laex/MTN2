@@ -47,5 +47,5 @@
 
 Скрипт делает то же, что `build-samples.ps1`, и кладёт результат в `samples/.build-linux/<id>` (в git не попадает); образец без инструментов пропускается. Нужны: `g++` для `mtn.demo.cpp` и `mtn.demo.texttools`, `cargo` для образцов на Rust, `go` для образцов на Go (для `mtn.demo.go` ещё `gcc`). Образцы на WAT собирать не нужно, а собранный `.wasm` (Go) не зависит от системы и работает и в Windows, и в Linux. Нативный плагин на Linux – это `.so` с тем же ABI и тем же манифестом, что и `.dll`. Скрипт находит `cargo` и `go`, поставленные для пользователя (`~/.cargo/bin`, `~/.local/go/bin`). Образцы, которые разбирают URI файла (`mtn.demo.rs`, `mtn.demo.img`, `mtn.demo.go`, `mtn.demo.panelkit`), понимают и `file:///C:/dir/a.csv`, и `file:///home/user/a.csv`.
 
-Не собираются под Linux `mtn.demo.video` (Media Foundation), `mtn.demo.nativeview` (окно самого плагина) и `mtn.demo.pas` (собирается `dcclinux64`, как сама программа). Вкладка с картинкой, которую открывает плагин (`mtn.demo.img`), работает в `mtn2-sdl`; в `mtn2-tui` её нет.
+Не собираются под Linux `mtn.demo.video` (Media Foundation), `mtn.demo.nativeview` (окно самого плагина) и `mtn.demo.pas` (собирается `dcclinux64`, как сама программа). Вкладка с картинкой, которую открывает плагин (`mtn.demo.img`), работает в `mtn2-sdl`, в том числе с мышью; в `mtn2-tui` её нет.
 

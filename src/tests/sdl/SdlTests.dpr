@@ -17,6 +17,7 @@ uses
   TestPixelGrid in 'TestPixelGrid.pas',
   TestSdlInput in 'TestSdlInput.pas',
   TestSdlShell in 'TestSdlShell.pas',
+  TestSdlSurfaceMouse in 'TestSdlSurfaceMouse.pas',
   TestSdlWindow in 'TestSdlWindow.pas';
 
 begin

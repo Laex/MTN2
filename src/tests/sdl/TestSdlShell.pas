@@ -20,6 +20,9 @@ type
     [Test] procedure QuitKeyEndsTheLoop;
     [Test] procedure ChangedCellsAreTheOnesTheShellRedraws;
     [Test] procedure PluginPictureTabOpensAndGetsKeys;
+    [Test] procedure DragToTheOtherPanelCopiesTheFile;
+    [Test] procedure DragWithShiftMovesTheFile;
+    [Test] procedure DragBackOntoTheSameFolderChangesNothing;
   end;
 
 implementation
@@ -45,6 +48,7 @@ type
     procedure Send(const E: TSDLEvent);
     function Screen: string;
     procedure Draw;
+    procedure SetMods(AMods: Integer);
     property Shell: THostShell read FShell;
     property Renderer: TPixelGridRenderer read FGrid;
   end;
@@ -77,6 +81,11 @@ begin
   FMapper.Translate(E, FEvents);
   for Ev in FEvents do
     FShell.HandleEvent(Ev);
+end;
+
+procedure THostRig.SetMods(AMods: Integer);
+begin
+  FMapper.Mods := AMods;
 end;
 
 procedure THostRig.Draw;
@@ -267,6 +276,186 @@ begin
     Rig.Free;
     GHostShowsSurfaces := False;
     TDirectory.Delete(Dir, True);
+  end;
+end;
+
+type
+  TDragRig = record
+    Rig: THostRig;
+    Left, Right: string;
+    FileCol, FileRow: Integer;
+  end;
+
+// The grid cell where "text" starts, -1 when it is not on the screen.
+function FindOnScreen(ARig: THostRig; const AText: string; out ACol, ARow: Integer): Boolean;
+var
+  Lines: TArray<string>;
+  Line: string;
+  P, Y: Integer;
+begin
+  Lines := ARig.Screen.Split([#10]);
+  Y := 0;
+  for Line in Lines do
+  begin
+    P := Pos(AText, Line);
+    if P > 0 then
+    begin
+      ACol := P - 1;
+      ARow := Y;
+      Exit(True);
+    end;
+    Inc(Y);
+  end;
+  Result := False;
+  ACol := -1;
+  ARow := -1;
+end;
+
+procedure PumpMain(AMilliseconds: Integer);
+var
+  Waited: Integer;
+begin
+  Waited := 0;
+  while Waited < AMilliseconds do
+  begin
+    CheckSynchronize(20);
+    Inc(Waited, 20);
+  end;
+end;
+
+function Pixel(ACell, ASize: Integer): Integer;
+begin
+  Result := ACell * ASize + ASize div 2;
+end;
+
+procedure PrepareDrag(var ADrag: TDragRig);
+var
+  Root: string;
+  I: Integer;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-panel-drag-' + TPath.GetGUIDFileName(False));
+  ADrag.Left := TPath.Combine(Root, 'left');
+  ADrag.Right := TPath.Combine(Root, 'right');
+  TDirectory.CreateDirectory(ADrag.Left);
+  TDirectory.CreateDirectory(ADrag.Right);
+  TFile.WriteAllText(TPath.Combine(ADrag.Left, 'dragme.txt'), 'x', TEncoding.UTF8);
+  ADrag.Rig := THostRig.Create;
+  ADrag.Rig.Shell.DualPanel.OpenPathAsNewTab(ADrag.Left);
+  // Tab moves to the right panel.
+  ADrag.Rig.Send(Key(9, 43, 0));
+  ADrag.Rig.Shell.DualPanel.OpenPathAsNewTab(ADrag.Right);
+  ADrag.Rig.Send(Key(9, 43, 0));
+  for I := 1 to 50 do
+  begin
+    PumpMain(40);
+    if FindOnScreen(ADrag.Rig, 'dragme.txt', ADrag.FileCol, ADrag.FileRow) then
+      Break;
+  end;
+end;
+
+procedure DragFileToTheRightPanel(const ADrag: TDragRig; AMods: Integer);
+var
+  Step: Integer;
+  Ev: TSDLEvent;
+begin
+  ADrag.Rig.SetMods(0);
+  ADrag.Rig.Send(Click(SDL_MOUSEBUTTONDOWN, Pixel(ADrag.FileCol + 2, 8), Pixel(ADrag.FileRow, 16)));
+  for Step := 1 to 8 do
+  begin
+    Ev := Default(TSDLEvent);
+    SdlEventSetU32(Ev, 0, SDL_MOUSEMOTION);
+    SdlEventSetU32(Ev, 16, 1);
+    SdlEventSetU32(Ev, 20, Cardinal(Pixel(ADrag.FileCol + 2, 8) + Step * 40));
+    SdlEventSetU32(Ev, 24, Cardinal(Pixel(ADrag.FileRow, 16) + Step * 8));
+    ADrag.Rig.Send(Ev);
+  end;
+  ADrag.Rig.SetMods(AMods);
+  ADrag.Rig.Send(Click(SDL_MOUSEBUTTONUP, Pixel(75, 8), Pixel(14, 16)));
+  ADrag.Rig.SetMods(0);
+end;
+
+function WaitForFile(const APath: string; AShouldExist: Boolean): Boolean;
+var
+  I: Integer;
+begin
+  for I := 1 to 100 do
+  begin
+    PumpMain(30);
+    if TFile.Exists(APath) = AShouldExist then
+      Exit(True);
+  end;
+  Result := TFile.Exists(APath) = AShouldExist;
+end;
+
+procedure FinishDrag(var ADrag: TDragRig);
+begin
+  ADrag.Rig.Free;
+  TDirectory.Delete(TPath.GetDirectoryName(ADrag.Left), True);
+end;
+
+procedure TTestSdlShell.DragToTheOtherPanelCopiesTheFile;
+var
+  D: TDragRig;
+begin
+  PrepareDrag(D);
+  try
+    Assert.IsTrue(D.FileCol >= 0, 'the file is on the screen');
+    DragFileToTheRightPanel(D, 0);
+    // The drop opens the same confirmation as F5, aimed at the other folder.
+    Assert.IsTrue(D.Rig.Screen.Contains('Copy `dragme.txt` to:'), 'the copy dialog opens');
+    Assert.IsTrue(D.Rig.Screen.Contains(PathDelim + 'right' + PathDelim), 'and names the other panel');
+    D.Rig.Send(Key(13, 40, 0));
+    Assert.IsTrue(WaitForFile(TPath.Combine(D.Right, 'dragme.txt'), True), 'the file arrived');
+    Assert.IsTrue(TFile.Exists(TPath.Combine(D.Left, 'dragme.txt')), 'and is still where it was');
+  finally
+    FinishDrag(D);
+  end;
+end;
+
+procedure TTestSdlShell.DragWithShiftMovesTheFile;
+var
+  D: TDragRig;
+begin
+  PrepareDrag(D);
+  try
+    Assert.IsTrue(D.FileCol >= 0, 'the file is on the screen');
+    DragFileToTheRightPanel(D, KMOD_LSHIFT);
+    Assert.IsTrue(D.Rig.Screen.Contains('Move `dragme.txt` to:') or D.Rig.Screen.Contains('Rename/Move'),
+      'the move dialog opens'#10 + D.Rig.Screen);
+    D.Rig.Send(Key(13, 40, 0));
+    Assert.IsTrue(WaitForFile(TPath.Combine(D.Right, 'dragme.txt'), True), 'the file arrived');
+    Assert.IsTrue(WaitForFile(TPath.Combine(D.Left, 'dragme.txt'), False), 'and left the first folder');
+  finally
+    FinishDrag(D);
+  end;
+end;
+
+procedure TTestSdlShell.DragBackOntoTheSameFolderChangesNothing;
+var
+  D: TDragRig;
+  Step: Integer;
+  Ev: TSDLEvent;
+begin
+  PrepareDrag(D);
+  try
+    Assert.IsTrue(D.FileCol >= 0, 'the file is on the screen');
+    D.Rig.Send(Click(SDL_MOUSEBUTTONDOWN, Pixel(D.FileCol + 2, 8), Pixel(D.FileRow, 16)));
+    for Step := 1 to 6 do
+    begin
+      Ev := Default(TSDLEvent);
+      SdlEventSetU32(Ev, 0, SDL_MOUSEMOTION);
+      SdlEventSetU32(Ev, 16, 1);
+      SdlEventSetU32(Ev, 20, Cardinal(Pixel(D.FileCol + 2, 8) + Step * 8));
+      SdlEventSetU32(Ev, 24, Cardinal(Pixel(D.FileRow, 16) + Step * 20));
+      D.Rig.Send(Ev);
+    end;
+    D.Rig.Send(Click(SDL_MOUSEBUTTONUP, Pixel(10, 8), Pixel(14, 16)));
+    PumpMain(400);
+    Assert.IsTrue(TFile.Exists(TPath.Combine(D.Left, 'dragme.txt')), 'the file stays');
+    Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(D.Right))), 'the other folder is empty');
+    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(D.Left))), 'no copy appeared next to it');
+  finally
+    FinishDrag(D);
   end;
 end;
 

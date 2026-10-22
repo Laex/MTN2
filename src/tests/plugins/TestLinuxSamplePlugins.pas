@@ -19,6 +19,7 @@ type
     [Test] procedure RustCsvViewerAlignsTheTable;
     [Test] procedure GoJsonViewerIndentsTheText;
     [Test] procedure PictureViewerFillsASurface;
+    [Test] procedure PictureViewerSurvivesDragsAndWheelAnywhere;
     [Test] procedure RustPluginsLoad;
     [Test] procedure WasmPluginsRun;
   end;
@@ -192,6 +193,57 @@ begin
       Redirect) = dokPass, 'a file that does not decode is left to the next provider');
     PluginLoader.UnloadAll;
     Assert.IsFalse(SurfaceExists(Handle), 'unloading the plugin closes its tab');
+  finally
+    SetPluginSurfaceHost(nil);
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+procedure TTestLinuxSamplePlugins.PictureViewerSurvivesDragsAndWheelAnywhere;
+const
+  cBmp: array[0..57] of Byte = (
+    $42, $4D, $3A, 0, 0, 0, 0, 0, 0, 0, $36, 0, 0, 0, $28, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, $18, 0,
+    0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $FF, $80, $40, 0);
+var
+  Bmp, Redirect: string;
+  Stream: TFileStream;
+  Handle, I, J, X, Y: Integer;
+begin
+  RequireBuilt('mtn.demo.img');
+  Handle := 0;
+  SetPluginSurfaceHost(
+    function(AHandle: Integer): Boolean
+    begin
+      Handle := AHandle;
+      SurfaceAttach(AHandle, procedure begin end, procedure begin SurfaceTabClosed(AHandle); end);
+      Result := True;
+    end);
+  try
+    Assert.IsTrue(StageAndLoad('mtn.demo.img'), 'the picture plugin loads');
+    Bmp := TPath.Combine(TPath.GetTempPath, 'mtn2-linux-sample-drag.bmp');
+    Stream := TFileStream.Create(Bmp, fmCreate);
+    try
+      Stream.WriteBuffer(cBmp, SizeOf(cBmp));
+    finally
+      Stream.Free;
+    end;
+    Assert.IsTrue(DocumentProviders.TryOpen(PathToFileUri(Bmp), True, Redirect) = dokHandled);
+    for J := 0 to 6 do
+    begin
+      SurfaceReportSize(Handle, 400 + J * 37, 300 + J * 11);
+      SurfaceDeliverMouse(Handle, 0, 100, 100, 400 + J * 37, 300 + J * 11, 1, 0, 0);
+      // The pointer may leave the area on any side while a button is held.
+      for I := 1 to 60 do
+      begin
+        X := -900 + I * 53;
+        Y := -700 + I * 41;
+        SurfaceDeliverMouse(Handle, 2, X, Y, 400 + J * 37, 300 + J * 11, 1, 0, 0);
+        SurfaceDeliverMouse(Handle, 3, X, Y, 400 + J * 37, 300 + J * 11, 1, (I mod 7) - 3, 0);
+      end;
+      SurfaceDeliverMouse(Handle, 1, 5000, 5000, 400, 300, 1, 0, 0);
+      SurfaceDeliverMouse(Handle, 4, 10, 10, 400, 300, 1, 0, 0);
+    end;
+    Assert.IsTrue(SurfaceExists(Handle), 'the tab is still there');
   finally
     SetPluginSurfaceHost(nil);
     PluginLoader.UnloadAll;

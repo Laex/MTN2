@@ -33,7 +33,7 @@ uses
   uCoreTimer, uHostShell, uPlatformInfo, uPlatformFonts, uPlatformProcess,
   uSdlApi, uSdlInput, uGlyphSource, uFreeTypeGlyphs, uPixelGrid, uPixelBlit,
   uPngWriter, uOverlayRenderer, uOverlayModel, uConfigLocation, uSdlClipboard,
-  uSdlImage, uShellIcons;
+  uSdlImage, uShellIcons, uSdlSurfaceMouse, uThemeTypes;
 
 const
   cDefaultFontSize = 16;
@@ -56,6 +56,7 @@ type
     FTexture: PSDLTexture;
     FTexW, FTexH: Integer;
     FShell: THostShell;
+    FSurfaceMouse: TSdlSurfaceMouse;
     FGrid: TPixelGridRenderer;
     FInput: TSdlInputMapper;
     FComposite: TArray<Cardinal>;
@@ -261,6 +262,20 @@ begin
     Max(6, FOutH div FGrid.CellHeight));
   FShell.AttachPlugins(PluginsDir);
   FShell.AttachUpdater;
+  FSurfaceMouse := TSdlSurfaceMouse.Create(
+    function: TArray<Integer>
+    begin
+      Result := FShell.DualPanel.VisibleSurfaces;
+    end,
+    function(AHandle: Integer; out AArea: TRect): Boolean
+    var
+      B: TRectI;
+    begin
+      Result := FShell.DualPanel.SurfaceViewport(AHandle, B);
+      if Result then
+        AArea := TRect.Create(B.Left * FGrid.CellWidth, B.Top * FGrid.CellHeight,
+          (B.Right + 1) * FGrid.CellWidth, (B.Bottom + 1) * FGrid.CellHeight);
+    end);
   if FOptions.Path <> '' then
     FShell.DualPanel.OpenPathAsNewTab(FOptions.Path);
   FitGrid;
@@ -279,6 +294,7 @@ begin
   end;
   SetClipboardService(nil);
   ShellIconsSetDecoder(nil);
+  FreeAndNil(FSurfaceMouse);
   FreeAndNil(FEvents);
   FreeAndNil(FInput);
   FreeAndNil(FGrid);
@@ -407,7 +423,10 @@ begin
   Kind := SdlEventType(E);
   case Kind of
     SDL_QUITEVENT:
-      FQuit := True;
+      begin
+        FQuit := True;
+        LogError('the window was asked to close (SDL_QUIT)');
+      end;
     SDL_WINDOWEVENT:
       case SdlEventU8(E, 12) of
         SDL_WINDOWEVENT_SIZE_CHANGED, SDL_WINDOWEVENT_RESIZED:
@@ -417,6 +436,9 @@ begin
       end;
   else
     if HandleZoomKey(E) then
+      Exit;
+    FSurfaceMouse.Scale := FScale;
+    if FSurfaceMouse.Handle(E, SDL_GetModState) then
       Exit;
     FInput.Mods := SDL_GetModState;
     FInput.Translate(E, FEvents);
@@ -559,7 +581,13 @@ begin
     Got := SDL_WaitEventTimeout(E, WaitMs);
     while Got <> 0 do
     begin
-      HandleSdlEvent(E);
+      // An event that fails is logged and dropped: the window stays up.
+      try
+        HandleSdlEvent(E);
+      except
+        on Ex: Exception do
+          LogError('event ' + IntToStr(SdlEventType(E)) + ': ' + Ex.ClassName + ': ' + Ex.Message);
+      end;
       Got := SDL_PollEvent(E);
     end;
     for Ev in FEvents do
@@ -573,9 +601,18 @@ begin
     if FShell.Dirty or FMustPresent or BlinkFlipped then
     begin
       FLastFrame := PlatformTickCount64;
-      DrawFrame;
+      try
+        DrawFrame;
+        // After the frame, not inside it: a plugin answers with a new picture.
+        FSurfaceMouse.ReportSizes;
+      except
+        on Ex: Exception do
+          LogError('frame: ' + Ex.ClassName + ': ' + Ex.Message);
+      end;
     end;
   end;
+  if FShell.Quit then
+    LogError('the program asked to quit (F10, Alt+X or a command)');
 end;
 
 function RunSdlHost(const AOptions: TSdlHostOptions): Integer;

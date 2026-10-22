@@ -261,6 +261,10 @@ type
     FDragStartCol: Integer;
     FDragStartRow: Integer;
     FDragUris: TArray<string>;
+    // A drag between the panels of this window (hosts without an OS drag): the pointer
+    // has left the press cell and the panel under it is highlighted as the target.
+    FPanelDragActive: Boolean;
+    FPanelDragSourceSide: TPanelSide;
     /// <summary>Mouse reorder for workspace / panel tabs.</summary>
     FTabDragKind: Integer; // 0=none, 1=workspace, 2=panel left, 3=panel right
     FTabDragFrom: Integer;
@@ -1072,6 +1076,15 @@ type
     function TryStartFileDrag(ALocalCol, ALocalRow: Integer;
       out APaths: TArray<string>): Boolean;
     procedure CancelFileDrag;
+    /// <summary>Arms a drag between the panels after a left press on a list row (hosts
+    /// without an OS drag; the items may be on any file system). Call after HandleClick.</summary>
+    procedure ArmPanelDrag(ALocalCol, ALocalRow: Integer);
+    /// <summary>The pointer moved with the button held: once it has left the press cell the
+    /// panel (or folder row) under it is highlighted. True while a drag is armed.</summary>
+    function UpdatePanelDrag(ALocalCol, ALocalRow: Integer): Boolean;
+    /// <summary>The button went up. A drag that was under way copies (or, with AMove,
+    /// moves) the items into the folder under the pointer; True when there was one.</summary>
+    function FinishPanelDrag(ALocalCol, ALocalRow: Integer; AMove: Boolean): Boolean;
     /// <summary>Shared first half of HitTestDropTarget/HitTestListItemLocalPath:
     /// resolves which panel a click landed in and its bounds/state, or
     /// returns False (info panels and misses excluded) for the caller to
@@ -12537,6 +12550,7 @@ end;
 procedure TDualPanelWindow.CancelFileDrag;
 begin
   FDragArmed := False;
+  FPanelDragActive := False;
   SetLength(FDragUris, 0);
   if FDropHighlightActive then
   begin
@@ -12636,6 +12650,91 @@ begin
   FDropHighlightRow := AHighlightRow;
   if Changed then
     NotifyChanged;
+end;
+
+procedure TDualPanelWindow.ArmPanelDrag(ALocalCol, ALocalRow: Integer);
+var
+  Side: TPanelSide;
+  Bounds: TRectI;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Idx: Integer;
+  Sources: TArray<string>;
+begin
+  CancelFileDrag;
+  if (ActiveWorkspace.Kind <> wkPanels) or HelpVisible or TopMenuOpen or HasOpenDialog or
+     (Assigned(FJobs) and FJobs.OwnsInput) or TabDragBusy(FTabDragArmed, FTabDragActive) then
+    Exit;
+  if not ResolvePanelHitContext(ALocalCol, ALocalRow, Side, Bounds, Panel) then
+    Exit;
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Side);
+  if not HitPanelListIndex(PanelListBounds(Bounds), Panel.ColumnMode, Tab.ScrollOffset,
+       ALocalCol, ALocalRow, Length(Rows), Idx) or Rows[Idx].IsParent then
+    Exit;
+  Sources := CollectActiveSources;
+  if Length(Sources) = 0 then
+    Exit;
+  FDragUris := Sources;
+  FDragArmed := True;
+  FPanelDragSourceSide := Side;
+  FDragStartCol := ALocalCol;
+  FDragStartRow := ALocalRow;
+end;
+
+function TDualPanelWindow.UpdatePanelDrag(ALocalCol, ALocalRow: Integer): Boolean;
+var
+  Dest: string;
+  Side: TPanelSide;
+  HighlightRow: Integer;
+begin
+  Result := FDragArmed or FPanelDragActive;
+  if not Result then
+    Exit;
+  if not FPanelDragActive then
+  begin
+    if not FileDragPastThreshold(ALocalCol, ALocalRow, FDragStartCol, FDragStartRow) then
+      Exit;
+    FPanelDragActive := True;
+  end;
+  if HitTestDropTarget(ALocalCol, ALocalRow, Dest, Side, HighlightRow) then
+    SetDropHighlight(True, Side, Dest, HighlightRow)
+  else
+    SetDropHighlight(False);
+end;
+
+function TDualPanelWindow.FinishPanelDrag(ALocalCol, ALocalRow: Integer;
+  AMove: Boolean): Boolean;
+var
+  Dest: string;
+  Side: TPanelSide;
+  HighlightRow: Integer;
+  Uris: TArray<string>;
+  SourceUri: string;
+  Kind: TPanelJobKind;
+begin
+  Result := FPanelDragActive;
+  if not Result then
+    Exit;
+  Uris := Copy(FDragUris);
+  CancelFileDrag;
+  SetDropHighlight(False);
+  if not HitTestDropTarget(ALocalCol, ALocalRow, Dest, Side, HighlightRow) then
+    Exit;
+  // Dropping on the folder the items came from changes nothing.
+  if FPanelDragSourceSide = psLeft then
+    SourceUri := ActiveTab(ActiveWorkspace.State.LeftPanel).CurrentURI
+  else
+    SourceUri := ActiveTab(ActiveWorkspace.State.RightPanel).CurrentURI;
+  if (Side = FPanelDragSourceSide) and (HighlightRow < 0) and SameVfsUri(Dest, SourceUri) then
+    Exit;
+  if AMove then
+    Kind := pjkMove
+  else
+    Kind := pjkCopy;
+  BeginTransferJob(Uris, Dest, Kind);
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.AcceptDroppedFiles(const APaths: TArray<string>;
