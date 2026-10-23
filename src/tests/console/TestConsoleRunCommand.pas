@@ -18,6 +18,8 @@ type
     [Test] procedure PendingInputIsDroppedBeforeTheCommand;
     [Test] procedure PendingRedirectWithCursorInsideIsDropped;
     [Test] procedure PendingInputIsDroppedBeforeTheFolderSync;
+    [Test] procedure HomeAndEndMoveWithinTheInputLine;
+    [Test] procedure TabCompletesTheWordInTheShell;
   end;
 
 implementation
@@ -31,6 +33,7 @@ type
   public
     function InputLine: string;
     function BufferHas(const AText: string): Boolean;
+    function FollowsTail: Boolean;
   end;
 
   TReturnProbe = class
@@ -45,6 +48,11 @@ type
 function TProbeConsole.InputLine: string;
 begin
   Result := FHistory.GetInputAfterPrompt;
+end;
+
+function TProbeConsole.FollowsTail: Boolean;
+begin
+  Result := FHistory.FollowTail;
 end;
 
 function TProbeConsole.BufferHas(const AText: string): Boolean;
@@ -230,6 +238,73 @@ begin
     Pump(2500);
     Assert.IsFalse(Win.BufferHas('abccd'), 'the folder change is not glued to the old text');
     Assert.IsTrue(Win.BufferHas('child>'), 'the shell is in the new folder');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+    TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestConsoleRunCommand.HomeAndEndMoveWithinTheInputLine;
+var
+  Win: TProbeConsole;
+  I: Integer;
+begin
+  Win := NewConsole;
+  try
+    Assert.IsTrue(Win.EnsureShell(GetCurrentDir), 'the shell starts');
+    Pump(3000);
+    Type_(Win, 'abc');
+    for I := 1 to 60 do
+    begin
+      Pump(100);
+      if Win.InputLine = 'abc' then
+        Break;
+    end;
+    Press(Win, vkHome);
+    Pump(500);
+    Type_(Win, 'x');
+    Press(Win, vkEnd);
+    Pump(500);
+    Type_(Win, 'y');
+    for I := 1 to 60 do
+    begin
+      Pump(100);
+      if Win.InputLine = 'xabcy' then
+        Break;
+    end;
+    Assert.AreEqual('xabcy', Win.InputLine, 'Home and End moved the cursor within the line');
+    Press(Win, vkLeft);
+    Pump(300);
+    Assert.IsTrue(Win.FollowsTail, 'the console still follows the shell');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+  end;
+end;
+
+procedure TTestConsoleRunCommand.TabCompletesTheWordInTheShell;
+var
+  Root: string;
+  Win: TProbeConsole;
+  I: Integer;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-run-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(TPath.Combine(Root, 'uniquefolder'));
+  Win := NewConsole;
+  try
+    Win.WorkingDir := Root;
+    Assert.IsTrue(Win.EnsureShell(Root), 'the shell starts');
+    Pump(3000);
+    Type_(Win, 'cd uniq');
+    Press(Win, vkTab);
+    for I := 1 to 60 do
+    begin
+      Pump(100);
+      if SameText(Win.InputLine, 'cd uniquefolder') then
+        Break;
+    end;
+    Assert.IsTrue(SameText(Win.InputLine, 'cd uniquefolder'), 'Tab completed the folder name');
   finally
     Win.CloseConsole;
     Win.Free;

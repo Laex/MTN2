@@ -712,6 +712,16 @@ begin
         AKey := 0;
         AKeyChar := #0;
       end;
+    vkTab:
+      begin
+        // The shell completes the word before the cursor; a terminal host
+        // delivers Tab as a key without a character.
+        if not K.HasMods([], []) then
+          Exit(False);
+        SendRaw(#9);
+        AKey := 0;
+        AKeyChar := #0;
+      end;
     vkBack:
       begin
         // Only outside alt-screen: a TUI app (vim/htop) manages its own

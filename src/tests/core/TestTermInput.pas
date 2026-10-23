@@ -13,6 +13,7 @@ type
     [Test] procedure TestControlKeys;
     [Test] procedure TestCursorAndFunctionKeys;
     [Test] procedure TestModifiedKeys;
+    [Test] procedure TestShiftedFunctionKeysOfPlainTerminals;
     [Test] procedure TestAltKey;
     [Test] procedure TestLoneEscapeNeedsFlush;
     [Test] procedure TestKittyKeys;
@@ -115,6 +116,20 @@ begin
   CheckKey(E[2], vkPrior, #0, [], 'page up');
   CheckKey(E[3], vkNext, #0, [], 'page down');
   CheckKey(E[4], vkTab, #0, [ssShift], 'shift+tab');
+end;
+
+procedure TTestTermInput.TestShiftedFunctionKeysOfPlainTerminals;
+var
+  E: TArray<TTermEvent>;
+begin
+  E := Decode(#27'[25~'#27'[26~'#27'[28~'#27'[29~'#27'[34~'#27'[23~');
+  Assert.AreEqual(6, Integer(Length(E)));
+  CheckKey(E[0], vkF3, #0, [ssShift], 'shift+F3');
+  CheckKey(E[1], vkF4, #0, [ssShift], 'shift+F4');
+  CheckKey(E[2], vkF5, #0, [ssShift], 'shift+F5');
+  CheckKey(E[3], vkF6, #0, [ssShift], 'shift+F6');
+  CheckKey(E[4], vkF10, #0, [ssShift], 'shift+F10');
+  CheckKey(E[5], vkF11, #0, [], 'F11 stays unshifted');
 end;
 
 procedure TTestTermInput.TestModifiedKeys;

@@ -537,12 +537,15 @@ begin
   if HandleOwnHistoryNav(AKey, AShift) then
     Exit(True);
   // At the prompt the shell owns line editing and its own command history
-  // (Up/Down); PageUp/PageDown, Home/End and the mouse wheel still scroll.
+  // (Up/Down) and Home/End move within the input line; PageUp/PageDown and
+  // the mouse wheel scroll, and once scrolled back Home/End scroll too.
   case AKey of
     vkLeft:   SendRaw(#27'[D');
     vkRight:  SendRaw(#27'[C');
     vkUp:     SendRaw(#27'[A');
     vkDown:   SendRaw(#27'[B');
+    vkHome:   SendRaw(#27'[H');
+    vkEnd:    SendRaw(#27'[F');
     vkDelete: SendRaw(#27'[3~');
   else
     Exit;

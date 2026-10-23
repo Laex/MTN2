@@ -162,6 +162,25 @@ begin
   end;
 end;
 
+// F13..F20 as the VT220 and PuTTY sequences carry them: a terminal that cannot
+// report modifiers on function keys sends Shift+F3..Shift+F10 this way
+// (Shift+F1 and Shift+F2 arrive as F11 and F12).
+function ShiftedTildeKeyToVk(ANumber: Integer): Word;
+begin
+  case ANumber of
+    25: Result := vkF3;
+    26: Result := vkF4;
+    28: Result := vkF5;
+    29: Result := vkF6;
+    31: Result := vkF7;
+    32: Result := vkF8;
+    33: Result := vkF9;
+    34: Result := vkF10;
+  else
+    Result := 0;
+  end;
+end;
+
 // Shift, Alt, Ctrl of an xterm / kitty modifier parameter (value - 1 is a mask).
 function ModsOf(AParam: Integer): TShiftState;
 var
@@ -658,7 +677,13 @@ begin
         end;
         Key := TildeKeyToVk(N);
         if Key <> 0 then
-          EmitKey(AEvents, Key, #0, ModsOf(ParamAt(P, 1, 1)));
+          EmitKey(AEvents, Key, #0, ModsOf(ParamAt(P, 1, 1)))
+        else
+        begin
+          Key := ShiftedTildeKeyToVk(N);
+          if Key <> 0 then
+            EmitKey(AEvents, Key, #0, ModsOf(ParamAt(P, 1, 1)) + [ssShift]);
+        end;
       end;
     'u':
       begin
