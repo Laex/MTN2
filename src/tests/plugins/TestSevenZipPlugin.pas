@@ -224,7 +224,7 @@ end;
 
 var
   Dll7z, PluginDll, PluginsRoot, WorkDir, SrcTxt, ArcPath, Uri, Err, OutFile,
-  PackedSrc, PackedArc, DelDir, DelArc, DelRoot, DelName: string;
+  PackedSrc, PackedArc, RenamedArc, DelDir, DelArc, DelRoot, DelName: string;
   Loaded, Failed: Integer;
   Backend, HostVfs: IVirtualFileSystem;
   Items: TArray<TVfsEntry>;
@@ -336,6 +336,16 @@ begin
   WaitCopy(HostVfs, PathToFileUri(PackedSrc),
     JoinVfsUri(PathToSevenZipRootUri(PackedArc), 'pack-me.txt'), True, VErr);
   Assert.IsTrue(VErr.Code = vecOk, 'pack overwrite: ' + VErr.Message);
+
+  // An archive whose extension is not .7z is still updated in place.
+  RenamedArc := TPath.Combine(WorkDir, 'renamed.7z2');
+  TFile.Copy(PackedArc, RenamedArc, True);
+  WaitCopy(HostVfs, PathToFileUri(SrcTxt),
+    JoinVfsUri(PathToSevenZipRootUri(RenamedArc), 'added.txt'), False, VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'pack into an archive with another extension: ' + VErr.Message);
+  WaitList(HostVfs, PathToSevenZipRootUri(RenamedArc), Items, VErr);
+  Assert.IsTrue(ListHas(Items, 'added.txt') and ListHas(Items, 'pack-me.txt'),
+    'the old and the new entry are both there');
 
   // Delete from an existing archive: a file, then a packed folder; the rest
   // of the archive stays readable.

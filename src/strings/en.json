@@ -1195,6 +1195,8 @@
     "checksum.title": "Checksums",
     "checksum.localOnly": "Only for files and folders on disk",
     "checksum.working": "Calculating... Esc=Cancel",
+    "folderSize.title": "Folder size",
+    "folderSize.titleN": "Folder size (%d/%d)",
     "checksum.verified": "%d checked, %d not OK: %s",
     "checksum.done": "%d files",
     "checksum.errors": ", %d not read",

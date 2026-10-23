@@ -18,6 +18,8 @@ type
     [Test] procedure TestShiftNavRanges;
     [Test] [Category('WindowsOnly')] procedure TestSelectionKeys;
     [Test] procedure ClearedSelectionCanBeRestored;
+    [Test] procedure SetSelectedRangeMarksAndUnmarksSpan;
+    [Test] procedure InvertSelectionSkipsFoldersUnlessAsked;
   end;
 
 implementation
@@ -218,6 +220,48 @@ end;
 procedure TTestPanelSelect.ClearedSelectionCanBeRestored;
 begin
   TestClearedSelectionCanBeRestored;
+end;
+
+procedure TTestPanelSelect.SetSelectedRangeMarksAndUnmarksSpan;
+var
+  Tab: TTab;
+  Rows: TPanelRows;
+  I: Integer;
+begin
+  Tab := MakeTab(1, 't', 'file:///D:/Temp');
+  SetLength(Rows, 5);
+  Rows[0] := MakePanelRow('..', True, -1, '', '', 'file:///D:/', True);
+  for I := 1 to 4 do
+    Rows[I] := MakePanelRow('f' + IntToStr(I), False, 1, '1', '',
+      'file:///D:/Temp/f' + IntToStr(I), False);
+  TabToggleSelected(Tab, Rows[2].URI);
+  TabSetSelectedRange(Tab, Rows, 0, 3, True);
+  Assert.IsTrue(TabIsSelected(Tab, Rows[1].URI) and TabIsSelected(Tab, Rows[2].URI) and
+    TabIsSelected(Tab, Rows[3].URI), 'whole span marked, an already marked row stays marked');
+  Assert.IsTrue(not TabIsSelected(Tab, Rows[4].URI), 'row outside the span untouched');
+  Assert.AreEqual(3, Integer(Length(Tab.SelectedURIs)), 'no duplicate entries');
+  TabSetSelectedRange(Tab, Rows, 2, 4, False);
+  Assert.IsTrue(TabIsSelected(Tab, Rows[1].URI), 'row before the span stays marked');
+  Assert.IsTrue(not TabIsSelected(Tab, Rows[2].URI) and not TabIsSelected(Tab, Rows[3].URI),
+    'span unmarked');
+end;
+
+procedure TTestPanelSelect.InvertSelectionSkipsFoldersUnlessAsked;
+var
+  Tab: TTab;
+  Rows: TPanelRows;
+begin
+  Tab := MakeTab(1, 't', 'file:///D:/Temp');
+  SetLength(Rows, 3);
+  Rows[0] := MakePanelRow('..', True, -1, '', '', 'file:///D:/', True);
+  Rows[1] := MakePanelRow('dir/', True, -1, '<DIR>', '', 'file:///D:/Temp/dir', False);
+  Rows[2] := MakePanelRow('a', False, 1, '1', '', 'file:///D:/Temp/a', False);
+  TabInvertSelection(Tab, Rows);
+  Assert.IsTrue(not TabIsSelected(Tab, Rows[1].URI), 'folder left alone');
+  Assert.IsTrue(TabIsSelected(Tab, Rows[2].URI), 'file inverted');
+  TabInvertSelection(Tab, Rows, True);
+  Assert.IsTrue(TabIsSelected(Tab, Rows[1].URI), 'folder inverted when asked');
+  Assert.IsTrue(not TabIsSelected(Tab, Rows[2].URI), 'file inverted back');
 end;
 
 procedure TTestPanelSelect.TestSelectionKeys;

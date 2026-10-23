@@ -99,6 +99,8 @@ type
     procedure ApplyLoadedText(const AText: string);
     function BuildSaveText: string;
     procedure RefreshReadOnly;
+    procedure WriteArchiveEntryAsync(const AURI: string; const ABytes: TBytes;
+      const AOnDone: TVfsBoolCallback);
     procedure ScanFileForStreaming(const APath: string; const ACancel: IJobCancelToken;
       out AErr: string; out AHexMode: Boolean; out AHexBuf: TBytes;
       out AOffsets: TArray<Int64>; out ADetEnc: TTextFileEncoding; out ASize: Int64);
@@ -544,6 +546,14 @@ begin
   NotifyChanged;
 end;
 
+function IsNestedArchiveUri(const AURI: string): Boolean;
+var
+  P: Integer;
+begin
+  P := Pos('!/', AURI);
+  Result := (P > 0) and (Pos('!/', Copy(AURI, P + 2, MaxInt)) > 0);
+end;
+
 procedure TEditorDoc.RefreshReadOnly;
 var
   Life: ILifeFlag;
@@ -559,10 +569,11 @@ begin
     FReadOnly := True;
     Exit;
   end;
-  // Archive entries cannot be written back.
+  // An entry of an archive is saved back through the archive's backend; an
+  // entry of an archive inside an archive cannot be.
   if HasArchiveChain(FURI) then
   begin
-    FReadOnly := True;
+    FReadOnly := IsNestedArchiveUri(FURI);
     Exit;
   end;
   // Never call sync Exists/GetAttributes on the UI thread.
@@ -1575,6 +1586,7 @@ var
   URI, Text, Path: string;
   Enc: TTextFileEncoding;
   Raw: TBytes;
+  OnDone: TVfsBoolCallback;
 begin
   Life := FLife;
   if (not FReady) or FSaving or FLoading then
@@ -1669,7 +1681,7 @@ begin
   FCancel := TJobCancelToken.Create;
   NotifyChanged;
 
-  FVfs.WriteTextAsync(URI, Text, Enc, FCancel,
+  OnDone :=
     procedure(const ASuccess: Boolean; const AError: TVfsError)
     begin
       if not Life.Alive or (SaveGen <> FSaveGen) then
@@ -1691,10 +1703,44 @@ begin
         FStatus := 'Saved';
         RefreshReadOnly;
         StartWatchingCurrentFile;
-        RecordKnownFileStat; // so the watcher notification our own write triggers is a no-op
+        if not HasArchiveChain(FURI) then
+          RecordKnownFileStat; // so the watcher notification our own write triggers is a no-op
       end;
       NotifyChanged;
-    end);
+    end;
+
+  if HasArchiveChain(URI) then
+    WriteArchiveEntryAsync(URI, EncodeTextBytes(Text, Enc), OnDone)
+  else
+    FVfs.WriteTextAsync(URI, Text, Enc, FCancel, OnDone);
+end;
+
+// Archive backends take a file to copy in, not text: the entry is staged in a
+// temp file and copied in with overwrite.
+procedure TEditorDoc.WriteArchiveEntryAsync(const AURI: string;
+  const ABytes: TBytes; const AOnDone: TVfsBoolCallback);
+var
+  Tmp: string;
+begin
+  Tmp := TPath.Combine(TPath.GetTempPath, 'mtn2-edit-' + TPath.GetGUIDFileName(False));
+  try
+    TFile.WriteAllBytes(Tmp, ABytes);
+  except
+    on E: Exception do
+    begin
+      AOnDone(False, TVfsError.Make(vecIOError, E.Message, AURI));
+      Exit;
+    end;
+  end;
+  FVfs.CopyAsync(PathToFileUri(Tmp), AURI, FCancel, nil,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      try
+        TFile.Delete(Tmp);
+      except
+      end;
+      AOnDone(ASuccess, AError);
+    end, True);
 end;
 
 end.

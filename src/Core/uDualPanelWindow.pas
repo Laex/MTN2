@@ -1256,6 +1256,8 @@ type
     /// <summary>True while a plugin picture covers the whole window; ABackground is the color
     /// to paint around it.</summary>
     function SurfaceFullscreenBackground(out ABackground: TAlphaColor): Boolean;
+    /// <summary>Body color of an idle panel in the current theme.</summary>
+    function ThemeBodyBg: TAlphaColor;
   end;
 
 implementation
@@ -4501,8 +4503,12 @@ begin
   Side := Ws.State.ActiveSide;
   FromIdx := EnsureRange(Tab.CursorIndex, 0, High(Rows));
   ToIdx := EnsureRange(FromIdx + ADelta, 0, High(Rows));
-  if ShiftNavInvertRange(FromIdx, ToIdx, ADelta, AExcludeLanding, Lo, Hi) then
-    TabToggleSelectedRange(Tab, Rows, Lo, Hi);
+  // The whole span takes the opposite of the mark on the row the move starts
+  // from, so moving back and forth marks everything between the two stops.
+  if (Length(Rows) > 0) and
+     ShiftNavInvertRange(FromIdx, ToIdx, ADelta, AExcludeLanding, Lo, Hi) then
+    TabSetSelectedRange(Tab, Rows, Lo, Hi,
+      not TabIsSelected(Tab, Rows[FromIdx].URI));
   Tab.CursorIndex := ToIdx;
   ViewH := ListViewHeight;
   if ViewH < 1 then
@@ -4619,7 +4625,7 @@ begin
     Exit;
   Panel := ActivePanel(Ws);
   Tab := ActiveTab(Panel);
-  TabInvertSelection(Tab, RowsForSide(Ws.State.ActiveSide));
+  TabInvertSelection(Tab, RowsForSide(Ws.State.ActiveSide), SelectFolders);
   SetActiveTab(Panel, Tab);
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
@@ -7250,9 +7256,10 @@ begin
   begin
     Total := FFolderSizeMgr.PendingCount + FFolderSizeMgr.CompletedCount;
     if Total > 1 then
-      Exit(Format('Folder size (%d/%d)', [FFolderSizeMgr.CompletedCount, Total]));
+      Exit(Format(T('ui.folderSize.titleN', 'Folder size (%d/%d)'),
+        [FFolderSizeMgr.CompletedCount, Total]));
   end;
-  Result := 'Folder size';
+  Result := T('ui.folderSize.title', 'Folder size');
 end;
 
 procedure TDualPanelWindow.CalculateFolderSizeUnderCursor;
@@ -7282,7 +7289,8 @@ begin
 
   if Assigned(FFolderSizeMgr) then
   begin
-    OpenStub(skShellInfo, FolderSizeStubTitle, 'Calculating... Esc=Cancel');
+    OpenStub(skShellInfo, FolderSizeStubTitle,
+      T('ui.checksum.working', 'Calculating... Esc=Cancel'));
     FFolderSizeMgr.StartCalculation(Side, Targets[0], Targets);
   end;
 end;
@@ -7547,6 +7555,13 @@ begin
   // The Help window covers the panels; the image Overlay would paint over it.
   Result := (not FConsoleMode) and (not HelpVisible) and (ActiveWorkspace.Kind = wkPanels) and
     ((PanelViewKind(psLeft) = pvkQuickView) or (PanelViewKind(psRight) = pvkQuickView));
+end;
+
+function TDualPanelWindow.ThemeBodyBg: TAlphaColor;
+var
+  Fg: TAlphaColor;
+begin
+  ResolveChrome(pcpFrameIdle, False, Fg, Result);
 end;
 
 function TDualPanelWindow.SurfaceFullscreenBackground(out ABackground: TAlphaColor): Boolean;

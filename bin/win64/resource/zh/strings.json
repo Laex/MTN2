@@ -1184,6 +1184,8 @@
     "checksum.title": "校验和",
     "checksum.localOnly": "仅适用于磁盘上的文件和文件夹",
     "checksum.working": "计算中... Esc=取消",
+    "folderSize.title": "文件夹大小",
+    "folderSize.titleN": "文件夹大小 (%d/%d)",
     "checksum.verified": "已检查 %d 个,%d 个不匹配: %s",
     "checksum.done": "%d 个文件",
     "checksum.errors": ",%d 个无法读取",

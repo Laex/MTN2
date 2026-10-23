@@ -1538,8 +1538,9 @@ begin
         end;
       vkHome:
         begin
-          FHistory.FollowTail := False;
-          FHistory.ScrollToStart;
+          // ScrollTo keeps following the tail when there is nothing to scroll
+          // back to, so the arrows keep reaching the shell.
+          FHistory.ScrollTo(0, ViewH);
           NotifyHost;
           AKey := 0; Exit(True);
         end;

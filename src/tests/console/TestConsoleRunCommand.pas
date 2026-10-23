@@ -16,6 +16,7 @@ type
   public
     [Test] procedure ColdShellCdIsSeenBeforeReturningToPanels;
     [Test] procedure PendingInputIsDroppedBeforeTheCommand;
+    [Test] procedure PendingRedirectWithCursorInsideIsDropped;
   end;
 
 implementation
@@ -160,6 +161,45 @@ begin
   finally
     Win.CloseConsole;
     Win.Free;
+  end;
+end;
+
+procedure TTestConsoleRunCommand.PendingRedirectWithCursorInsideIsDropped;
+var
+  Root: string;
+  Win: TProbeConsole;
+  I: Integer;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-run-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Root);
+  Win := NewConsole;
+  try
+    Win.WorkingDir := Root;
+    Assert.IsTrue(Win.EnsureShell(Root), 'the shell starts');
+    Pump(3000);
+    Type_(Win, 'echo 1 > outf');
+    for I := 1 to 60 do
+    begin
+      Pump(100);
+      if Win.InputLine = 'echo 1 > outf' then
+        Break;
+    end;
+    Assert.AreEqual('echo 1 > outf', Win.InputLine, 'text left on the input line');
+    // Cursor in the middle of the line, not at its end.
+    for I := 1 to 4 do
+      Press(Win, vkLeft);
+    Pump(500);
+    Win.RunCommand('echo fresh', Root);
+    Pump(2500);
+    Assert.IsTrue(Win.BufferHas('fresh'), 'the command ran');
+    Assert.IsFalse(TFile.Exists(TPath.Combine(Root, 'outf')),
+      'the old input line was not executed');
+    Assert.AreEqual(Integer(0), Integer(Length(TDirectory.GetFiles(Root))),
+      'the command was not glued to the old text');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+    TDirectory.Delete(Root, True);
   end;
 end;
 

@@ -195,6 +195,9 @@ function SelectionKeysHas(const AKeys: TArray<string>; const AURI: string): Bool
 /// (same result as TabToggleSelected per row, without the quadratic cost).</summary>
 procedure TabToggleSelectedRange(var ATab: TTab; const ARows: TPanelRows;
   ALo, AHi: Integer);
+/// <summary>Select (or unselect) every selectable row in ARows[ALo..AHi].</summary>
+procedure TabSetSelectedRange(var ATab: TTab; const ARows: TPanelRows;
+  ALo, AHi: Integer; ASelected: Boolean);
 procedure TabClearSelection(var ATab: TTab);
 /// <summary>Swaps the selection with the one held before it was last cleared
 /// (Ctrl+M); a second call brings the first back.</summary>
@@ -219,7 +222,8 @@ function TabHasSelectedDirectories(const ATab: TTab;
   const ARows: TPanelRows): Boolean;
 function CollectSelectedDirectoryUris(const ATab: TTab;
   const ARows: TPanelRows): TArray<string>;
-procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows);
+procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows;
+  AIncludeFolders: Boolean = False);
 /// <summary>Inclusive index range to invert for Shift+nav. ADelta is the move
 /// delta before clamp; AExcludeLanding omits ATo (Brief Left/Right).</summary>
 function ShiftNavInvertRange(AFrom, ATo, ADelta: Integer; AExcludeLanding: Boolean;
@@ -757,12 +761,34 @@ begin
     SortedKeysHas(AKeys, VfsUriKey(AURI));
 end;
 
+procedure ApplySelectionChange(var ATab: TTab; ADrop, AAdd: TArray<string>);
+var
+  Kept: TArray<string>;
+  I, N: Integer;
+begin
+  if Length(ADrop) > 0 then
+  begin
+    ADrop := SortKeys(ADrop);
+    SetLength(Kept, Length(ATab.SelectedURIs));
+    N := 0;
+    for I := 0 to High(ATab.SelectedURIs) do
+      if not SortedKeysHas(ADrop, VfsUriKey(ATab.SelectedURIs[I])) then
+      begin
+        Kept[N] := ATab.SelectedURIs[I];
+        Inc(N);
+      end;
+    SetLength(Kept, N);
+    ATab.SelectedURIs := Kept;
+  end;
+  ATab.SelectedURIs := ATab.SelectedURIs + AAdd;
+end;
+
 procedure TabToggleSelectedRange(var ATab: TTab; const ARows: TPanelRows;
   ALo, AHi: Integer);
 var
-  Keys, Drop, Add, Kept: TArray<string>;
+  Keys, Drop, Add: TArray<string>;
   K: string;
-  I, N: Integer;
+  I: Integer;
 begin
   ALo := Max(ALo, 0);
   AHi := Min(AHi, High(ARows));
@@ -779,21 +805,35 @@ begin
     else
       Add := Add + [ARows[I].URI];
   end;
-  if Length(Drop) > 0 then
+  ApplySelectionChange(ATab, Drop, Add);
+end;
+
+procedure TabSetSelectedRange(var ATab: TTab; const ARows: TPanelRows;
+  ALo, AHi: Integer; ASelected: Boolean);
+var
+  Keys, Drop, Add: TArray<string>;
+  K: string;
+  I: Integer;
+begin
+  ALo := Max(ALo, 0);
+  AHi := Min(AHi, High(ARows));
+  if ALo > AHi then
+    Exit;
+  Keys := TabSelectionKeys(ATab);
+  for I := ALo to AHi do
   begin
-    Drop := SortKeys(Drop);
-    SetLength(Kept, Length(ATab.SelectedURIs));
-    N := 0;
-    for I := 0 to High(ATab.SelectedURIs) do
-      if not SortedKeysHas(Drop, VfsUriKey(ATab.SelectedURIs[I])) then
-      begin
-        Kept[N] := ATab.SelectedURIs[I];
-        Inc(N);
-      end;
-    SetLength(Kept, N);
-    ATab.SelectedURIs := Kept;
+    if ARows[I].IsParent or (ARows[I].URI = '') then
+      Continue;
+    K := VfsUriKey(ARows[I].URI);
+    if SortedKeysHas(Keys, K) then
+    begin
+      if not ASelected then
+        Drop := Drop + [K];
+    end
+    else if ASelected then
+      Add := Add + [ARows[I].URI];
   end;
-  ATab.SelectedURIs := ATab.SelectedURIs + Add;
+  ApplySelectionChange(ATab, Drop, Add);
 end;
 
 procedure TabClearSelection(var ATab: TTab);
@@ -1054,13 +1094,16 @@ begin
   end;
 end;
 
-procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows);
+procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows;
+  AIncludeFolders: Boolean);
 var
   R: TPanelRow;
 begin
   for R in ARows do
   begin
     if R.IsParent or (R.URI = '') then
+      Continue;
+    if (not AIncludeFolders) and PanelRowIsDirectory(R) then
       Continue;
     TabToggleSelected(ATab, R.URI);
   end;

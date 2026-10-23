@@ -1185,6 +1185,8 @@
     "checksum.title": "Prüfsummen",
     "checksum.localOnly": "Nur für Dateien und Ordner auf der Festplatte",
     "checksum.working": "Berechne... Esc=Abbrechen",
+    "folderSize.title": "Ordnergröße",
+    "folderSize.titleN": "Ordnergröße (%d/%d)",
     "checksum.verified": "%d geprüft, %d nicht OK: %s",
     "checksum.done": "%d Dateien",
     "checksum.errors": ", %d nicht lesbar",

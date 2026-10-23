@@ -1118,6 +1118,16 @@ begin
     Exit;
   end;
 
+  // A dialog or menu the panels opened over another window (the editor) is
+  // drawn above it and takes the click first.
+  if (AEvent.Button = TMouseButton.mbLeft) and (FMdi.Active <> FDualPanel) and
+     FDualPanel.Visible and (FDualPanel.HasOpenDialog or FDualPanel.TopMenuOpen) and
+     FDualPanel.HitTest(Col, Row) then
+  begin
+    FDualPanel.HandleClick(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top, Dbl, Shift);
+    Exit;
+  end;
+
   FMdi.ActivateAt(Col, Row);
   Active := FMdi.Active;
   if (AEvent.Button = TMouseButton.mbLeft) and Assigned(Active) and Active.HitTest(Col, Row) then

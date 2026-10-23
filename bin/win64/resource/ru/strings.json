@@ -1192,6 +1192,8 @@
     "checksum.title": "Контрольные суммы",
     "checksum.localOnly": "Только для файлов и папок на диске",
     "checksum.working": "Подсчёт... Esc=Отмена",
+    "folderSize.title": "Размер папки",
+    "folderSize.titleN": "Размер папки (%d/%d)",
     "checksum.verified": "Проверено %d, не совпало %d: %s",
     "checksum.done": "Файлов: %d",
     "checksum.errors": ", не прочитано: %d",

@@ -158,6 +158,7 @@ type
     procedure SnapWindowToGrid;
     procedure SyncRenderer;
     procedure ApplyZoomDelta(ADelta: Single);
+    procedure LeaveFullscreen;
     function TryHandleFullscreen(var AKey: Word; var AKeyChar: Char;
       AShift: TShiftState): Boolean;
     function TryHandleZoom(var AKey: Word; var AKeyChar: Char;
@@ -819,6 +820,9 @@ end;
 
 procedure TMainForm.HandleWindowCommand(AButton: TWindowButton);
 begin
+  // Minimize and maximize leave full screen first, then act as usual.
+  if FullScreen and (AButton in [wbMinimize, wbMaximize]) then
+    LeaveFullscreen;
   case AButton of
     wbMinimize:
       WindowState := System.UITypes.TWindowState.wsMinimized;
@@ -1318,18 +1322,21 @@ begin
     FullScreen := True;
   end
   else
-  begin
-    FullScreen := False;
-    // FMX only restores the frame when it saved a normal-state size on entry,
-    // so a window that was maximized would stay without a title bar.
-    if FFullscreenFromMaximized and (BorderStyle = TFmxFormBorderStyle.None) then
-    begin
-      BorderStyle := TFmxFormBorderStyle.Sizeable;
-      WindowState := System.UITypes.TWindowState.wsMaximized;
-    end;
-  end;
+    LeaveFullscreen;
   AKey := 0;
   AKeyChar := #0;
+end;
+
+procedure TMainForm.LeaveFullscreen;
+begin
+  FullScreen := False;
+  // FMX only restores the frame when it saved a normal-state size on entry,
+  // so a window that was maximized would stay without a title bar.
+  if FFullscreenFromMaximized and (BorderStyle = TFmxFormBorderStyle.None) then
+  begin
+    BorderStyle := TFmxFormBorderStyle.Sizeable;
+    WindowState := System.UITypes.TWindowState.wsMaximized;
+  end;
 end;
 
 function TMainForm.TryHandleZoom(var AKey: Word; var AKeyChar: Char;
@@ -3008,7 +3015,17 @@ begin
     FRenderer.SetSceneScale(Canvas.Scale, ClientWidth, ClientHeight, Canvas);
     UpdateCaption;
   end;
+  if Assigned(FDualPanel) then
+    FRenderer.DefaultBg := FDualPanel.ThemeBodyBg;
   FRenderer.Draw(Canvas, RectF(0, 0, ClientWidth, ClientHeight));
+  // The pixels the whole cells leave over at the right and bottom edge take
+  // the theme's body color.
+  Canvas.Fill.Kind := TBrushKind.Solid;
+  Canvas.Fill.Color := FRenderer.DefaultBg;
+  if FRenderer.Cols * FRenderer.CellWidth < ClientWidth then
+    Canvas.FillRect(RectF(FRenderer.Cols * FRenderer.CellWidth, 0, ClientWidth, ClientHeight), 0, 0, [], 1);
+  if FRenderer.Rows * FRenderer.CellHeight < ClientHeight then
+    Canvas.FillRect(RectF(0, FRenderer.Rows * FRenderer.CellHeight, ClientWidth, ClientHeight), 0, 0, [], 1);
   PaintSurfaceFullscreenFrame(Canvas);
   // Markdown image blocks are sized in cells from the pixel cell aspect;
   // after a font/scale change re-lay out once so the next frame uses it.
@@ -3243,6 +3260,17 @@ begin
   // Before ActivateAt: the bar is Dual Panel's, and activating it while the
   // console shows would hide the console and leave the panels blank.
   if (Button = TMouseButton.mbLeft) and TryDispatchConsoleFunctionBarClick(Col, Row, Shift) then
+  begin
+    Recompose;
+    Exit;
+  end;
+  // A dialog or menu the panels opened over another window (the editor) is
+  // drawn above it and takes the click first.
+  if (Button = TMouseButton.mbLeft) and Assigned(FDualPanel) and
+     (FMdi.Active <> FDualPanel) and
+     (FDualPanel.HasOpenDialog or FDualPanel.TopMenuOpen) and
+     TryDispatchDualPanelMouseDown(Col, Row, Dbl, Shift, Button,
+       ClientToScreen(TPointF.Create(X, Y))) then
   begin
     Recompose;
     Exit;

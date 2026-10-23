@@ -163,6 +163,8 @@ type
     procedure Draw(ACanvas: TCanvas; const ADestRect: TRectF);
     procedure FillDemoContent;
     property Grid: TTerminalGrid read FGrid write FGrid;
+    /// <summary>Color of the area no cell covers and of a cleared frame.</summary>
+    property DefaultBg: TAlphaColor read FDefaultBg write FDefaultBg;
     property Cols: Integer read FCols;
     property Rows: Integer read FRows;
     property Zoom: Single read FZoom;
@@ -390,7 +392,7 @@ begin
   FCellHeight := 16;
   FSceneScale := 1.0;
   FDefaultFg := TAlphaColorRec.Lightgray;
-  FDefaultBg := $FF000080; // NDN-like deep blue
+  FDefaultBg := $FF000080;
   FGlyphCache := TGlyphCache.Create;
   FNeedRebuildBuffer := True;
 end;

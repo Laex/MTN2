@@ -178,8 +178,6 @@ begin
   FromPath := FileUriToPath(FromURI);
   if FromPath = '' then
     Exit(Int64(verInvalidURI));
-  if not SameText(ExtractFileExt(ArchivePath), '.7z') then
-    Exit(Int64(verNotSupported));
   if Inner = '' then
     Inner := ExtractFileName(ExcludeTrailingPathDelimiter(FromPath));
   if not SevenZipAddLocalPath(ArchivePath, FromPath, Inner, AOverwrite <> 0, Err) then
