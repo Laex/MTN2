@@ -259,10 +259,11 @@ begin
   Assert.IsTrue(not TopMenuActionEnabled(tmaEditFindReplace, Viewer), 'viewer: replace off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaEditUndo, Viewer), 'viewer: undo off');
   Assert.IsTrue(TopMenuActionEnabled(tmaEditHexToggle, Viewer), 'viewer: hex on');
-  Assert.IsTrue(TopMenuActionEnabled(tmaOptTheme, Viewer), 'viewer: theme on');
-  Assert.IsTrue(TopMenuActionEnabled(tmaOptDisplay, Viewer), 'viewer: display on');
-  Assert.IsTrue(TopMenuActionEnabled(tmaCmdNewTerminal, Viewer), 'viewer: new terminal on');
-  Assert.IsTrue(TopMenuActionEnabled(tmaCmdConsoleProfile, Viewer), 'viewer: console profile on');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaOptTheme, Viewer), 'viewer: theme off');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaOptDisplay, Viewer), 'viewer: display off');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaCmdNewTerminal, Viewer), 'viewer: new terminal off');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaHelpAbout, Editor), 'editor: help off');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaQuit, Editor), 'editor: quit off');
   Assert.IsTrue(TopMenuActionEnabled(tmaCmdConsoleProfile, Term), 'terminal: console profile on');
 
   Assert.IsTrue(TopMenuActionEnabled(tmaEditFindReplace, Editor), 'editor: replace on');

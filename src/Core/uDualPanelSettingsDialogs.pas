@@ -240,6 +240,7 @@ begin
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
   DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
   DialogSetCheckbox(Decl, 'select_folders', Cur.SelectFolders);
+  DialogSetCheckbox(Decl, 'pack_same_panel', Cur.PackInSamePanel);
   FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
@@ -515,6 +516,7 @@ begin
     Disp.CellWidthExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_w'));
     Disp.CellHeightExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_h'));
     Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
+    Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
       Disp.ShadowStyle := TShadowStyle(ShadowIdx);

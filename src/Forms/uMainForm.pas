@@ -1664,6 +1664,7 @@ begin
   Result.CellWidthExtra := ClampCellExtra(FSession.CellWidthExtra);
   Result.CellHeightExtra := ClampCellExtra(FSession.CellHeightExtra);
   Result.SelectFolders := FDualPanel.SelectFolders;
+  Result.PackInSamePanel := FDualPanel.PackInSamePanel;
   Result.Language := CurrentLocale;
 end;
 
@@ -1700,6 +1701,8 @@ begin
   FSession.CellHeightExtra := ClampCellExtra(ASettings.CellHeightExtra);
   FSession.SelectFolders := ASettings.SelectFolders;
   FDualPanel.SelectFolders := ASettings.SelectFolders;
+  FSession.PackInSamePanel := ASettings.PackInSamePanel;
+  FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
   GShadowStyle := ASettings.ShadowStyle;
   FSession.MarkedRows := MarkedRowStyleId(ASettings.MarkedRowStyle);
   GMarkedRowStyle := ASettings.MarkedRowStyle;
@@ -1778,6 +1781,7 @@ begin
   FDualPanel.TerminalCloseOnExit := Sess.TerminalCloseOnExit;
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
   FDualPanel.SelectFolders := Sess.SelectFolders;
+  FDualPanel.PackInSamePanel := Sess.PackInSamePanel;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -1904,6 +1908,7 @@ begin
   Sess.EditorSearchWords := GEditorSearchOptions.WholeWord;
   Sess.EditorSearchRegex := GEditorSearchOptions.UseRegex;
   Sess.SelectFolders := FDualPanel.SelectFolders;
+  Sess.PackInSamePanel := FDualPanel.PackInSamePanel;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever

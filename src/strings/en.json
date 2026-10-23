@@ -236,6 +236,7 @@
       "show_key_bar": "Show F-&key bar",
       "show_status_line": "Show &status line",
       "select_folders": "Select all also &folders",
+      "pack_same_panel": "Pack to the sam&e panel (Shift+F1)",
       "ok": "OK",
       "cancel": "Cancel"
     },

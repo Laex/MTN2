@@ -366,6 +366,7 @@ begin
   Result.ShadowStyle := GShadowStyle;
   Result.MarkedRowStyle := GMarkedRowStyle;
   Result.SelectFolders := FDualPanel.SelectFolders;
+  Result.PackInSamePanel := FDualPanel.PackInSamePanel;
   Result.Language := CurrentLocale;
 end;
 
@@ -399,6 +400,8 @@ begin
   GMarkedRowStyle := ASettings.MarkedRowStyle;
   FSession.SelectFolders := ASettings.SelectFolders;
   FDualPanel.SelectFolders := ASettings.SelectFolders;
+  FSession.PackInSamePanel := ASettings.PackInSamePanel;
+  FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -431,6 +434,7 @@ begin
   FDualPanel.TerminalCloseOnExit := Sess.TerminalCloseOnExit;
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
   FDualPanel.SelectFolders := Sess.SelectFolders;
+  FDualPanel.PackInSamePanel := Sess.PackInSamePanel;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -489,6 +493,7 @@ begin
   Sess.EditorSearchWords := GEditorSearchOptions.WholeWord;
   Sess.EditorSearchRegex := GEditorSearchOptions.UseRegex;
   Sess.SelectFolders := FDualPanel.SelectFolders;
+  Sess.PackInSamePanel := FDualPanel.PackInSamePanel;
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;

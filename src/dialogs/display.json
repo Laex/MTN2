@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Font / Display",
   "width": 96,
-  "height": 24,
+  "height": 25,
   "children": [
     {
       "type": "label",
@@ -362,6 +362,15 @@
     },
     {
       "type": "checkbox",
+      "id": "pack_same_panel",
+      "text": "Pack to the sam&e panel (Shift+F1)",
+      "col": 47,
+      "row": 18,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
       "id": "file_drag",
       "text": "Dr&ag files with the mouse",
       "checked": true,
@@ -394,7 +403,7 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 18,
+      "row": 19,
       "width": 94,
       "height": 1
     },
@@ -404,7 +413,7 @@
       "text": "OK",
       "default": true,
       "col": 34,
-      "row": 20,
+      "row": 21,
       "width": 12,
       "height": 1
     },
@@ -414,7 +423,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 48,
-      "row": 20,
+      "row": 21,
       "width": 12,
       "height": 1
     }

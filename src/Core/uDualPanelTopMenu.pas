@@ -222,6 +222,10 @@ end;
 function TopMenuActionEnabled(AAction: TTopMenuAction;
   const ACtx: TTopMenuEnableContext): Boolean;
 begin
+  // An open editor or viewer leaves only the Edit menu usable.
+  if (ACtx.Kind = wkDocument) and not (AAction in [tmaEditCopy..tmaEditAutoIndent]) then
+    Exit(False);
+
   case AAction of
     tmaNone:
       Exit(False);

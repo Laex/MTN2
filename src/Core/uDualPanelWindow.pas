@@ -184,6 +184,7 @@ type
     FChromePressed: Integer;
     FTerminalCloseOnExit: Boolean;
     FAutoSyncConsoleCwd: Boolean;
+    FPackInSamePanel: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -1214,6 +1215,8 @@ type
     property AutoSyncConsoleCwd: Boolean read FAutoSyncConsoleCwd write FAutoSyncConsoleCwd;
     /// <summary>Select all / Deselect all and select by extension also take folders.</summary>
     property SelectFolders: Boolean read GetSelectFolders write SetSelectFolders;
+    /// <summary>Shift+F1 packs into the active panel's folder, not the other one's.</summary>
+    property PackInSamePanel: Boolean read FPackInSamePanel write FPackInSamePanel;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -11953,7 +11956,9 @@ begin
   end;
 
   Ws := ActiveWorkspace;
-  DestSide := OppositeSide(Ws.State.ActiveSide);
+  DestSide := Ws.State.ActiveSide;
+  if not FPackInSamePanel then
+    DestSide := OppositeSide(DestSide);
   if DestSide = psLeft then
     DestURI := ActiveTab(Ws.State.LeftPanel).CurrentURI
   else

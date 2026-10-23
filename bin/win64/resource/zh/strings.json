@@ -234,6 +234,7 @@
       "show_key_bar": "显示功能键栏(&K)",
       "show_status_line": "显示状态栏(&S)",
       "select_folders": "全选时包含文件夹(&F)",
+      "pack_same_panel": "打包到同一面板 (Shift+F1)(&A)",
       "ok": "确定",
       "cancel": "取消"
     },

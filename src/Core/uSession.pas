@@ -97,6 +97,7 @@ type
     EditorSearchWords: Boolean;
     EditorSearchRegex: Boolean;
     SelectFolders: Boolean;
+    PackInSamePanel: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -571,6 +572,7 @@ begin
       Root.AddPair('editorSearchWords', TJSONBool.Create(ASession.EditorSearchWords));
       Root.AddPair('editorSearchRegex', TJSONBool.Create(ASession.EditorSearchRegex));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
+      Root.AddPair('packInSamePanel', TJSONBool.Create(ASession.PackInSamePanel));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -645,6 +647,7 @@ begin
   ASession.EditorSearchWords := False;
   ASession.EditorSearchRegex := False;
   ASession.SelectFolders := False;
+  ASession.PackInSamePanel := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -734,6 +737,7 @@ begin
       ASession.EditorSearchWords := JsonBool(Root, 'editorSearchWords', False);
       ASession.EditorSearchRegex := JsonBool(Root, 'editorSearchRegex', False);
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
+      ASession.PackInSamePanel := JsonBool(Root, 'packInSamePanel', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

@@ -91,6 +91,9 @@ type
     /// <summary>Select all / Deselect all and select by extension also take
     /// folders (uDualPanelSelection.SelectFolders). Off by default, like Far.</summary>
     SelectFolders: Boolean;
+    /// <summary>Pack (Shift+F1) puts the archive into the active panel's folder
+    /// instead of the other panel's.</summary>
+    PackInSamePanel: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -320,6 +323,7 @@ begin
   Result.CellWidthExtra := 0;
   Result.CellHeightExtra := 0;
   Result.SelectFolders := False;
+  Result.PackInSamePanel := False;
   Result.Language := '';
 end;
 

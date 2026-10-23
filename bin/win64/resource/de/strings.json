@@ -235,6 +235,7 @@
       "show_key_bar": "F-Tasten&leiste anzeigen",
       "show_status_line": "&Statuszeile anzeigen",
       "select_folders": "Alles auswählen auch &Ordner",
+      "pack_same_panel": "Im selben Be&dienfeld packen (Shift+F1)",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
