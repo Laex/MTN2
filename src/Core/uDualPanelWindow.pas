@@ -11190,9 +11190,12 @@ end;
 
 procedure TDualPanelWindow.DrawPanelDriveLetters(const ABounds: TRectI;
   const ATab: TTab; ASide: TPanelSide; AFrame, ABodyBg: TAlphaColor);
+var
+  CurFg, CurBg: TAlphaColor;
 begin
+  ResolveChrome(pcpPanelTabActive, True, CurFg, CurBg);
   uDualPanelDrawUtils.DrawPanelDriveLetterBar(
-    Buffer, ABounds, ATab, ASide, AFrame, ABodyBg,
+    Buffer, ABounds, ATab, ASide, AFrame, ABodyBg, CurFg, CurBg,
     FDrivePreviewActive, FDrivePreviewSide, FDrivePreviewLetter);
 end;
 

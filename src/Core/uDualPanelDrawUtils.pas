@@ -43,10 +43,11 @@ procedure FallbackFileRowColors(AIsDirectory, AIsParent, AIsHidden,
 /// <summary>Draw Change Drive items on the bottom border of ABounds in NDN
 /// style: [ C D E | 1 2 3 ]. Physical drives, then the same numbered specials
 /// as Alt+F1/F2. HiGlyph is highlighted (current dest or Ctrl+Left/Right
-/// preview). AFrame / ABodyBg come from the caller's ResolveChrome call.</summary>
+/// preview) in ACurFg / ACurBg. The colors come from the caller's ResolveChrome
+/// calls.</summary>
 procedure DrawPanelDriveLetterBar(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; const ATab: TTab; ASide: TPanelSide;
-  AFrame, ABodyBg: TAlphaColor;
+  AFrame, ABodyBg, ACurFg, ACurBg: TAlphaColor;
   ADrivePreviewActive: Boolean; ADrivePreviewSide: TPanelSide;
   ADrivePreviewLetter: Char);
 /// <summary>Hit-test twin of DrawPanelDriveLetterBar: True when ACol is a
@@ -85,8 +86,6 @@ const
   // Current-drive badge in the drive letter bar: needs to read at a glance
   // against the (typically all-blue) panel chrome, so it gets its own
   // brighter pair rather than reusing the shared cCursorFg/cCursorBg.
-  cDriveCurFg      = TAlphaColor($FFFFFF00);
-  cDriveCurBg      = TAlphaColor($FF0000FF);
 
 { =========================================================================
   DrawPanelScrollBar
@@ -469,7 +468,7 @@ end;
 
 procedure DrawPanelDriveLetterBar(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; const ATab: TTab; ASide: TPanelSide;
-  AFrame, ABodyBg: TAlphaColor;
+  AFrame, ABodyBg, ACurFg, ACurBg: TAlphaColor;
   ADrivePreviewActive: Boolean; ADrivePreviewSide: TPanelSide;
   ADrivePreviewLetter: Char);
 var
@@ -500,8 +499,8 @@ begin
     Inc(X);
     if Glyphs[I] = HiGlyph then
     begin
-      Fg := cDriveCurFg;
-      Bg := cDriveCurBg;
+      Fg := ACurFg;
+      Bg := ACurBg;
     end
     else
     begin

@@ -468,7 +468,7 @@ var
   Tab: TTab;
   Row: string;
   Col: Integer;
-  Has1, Has2, Has3, Has4: Boolean;
+  Has1, Has2, Has3, Has4, Hi: Boolean;
 begin
   AllocTerminalGrid(Grid, 52, 8);
   ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
@@ -476,7 +476,8 @@ begin
   Tab := Default(TTab);
   Tab.CurrentURI := 'tmp:///';
   DrawPanelDriveLetterBar(Grid, Bounds, Tab, psLeft,
-    TAlphaColors.Yellow, TAlphaColors.Blue, False, psLeft, #0);
+    TAlphaColors.Yellow, TAlphaColors.Blue, TAlphaColors.Black,
+      TAlphaColors.Cyan, False, psLeft, #0);
   Row := '';
   Has1 := False;
   Has2 := False;
@@ -499,6 +500,22 @@ begin
   // take minutes when a network drive is unreachable.
   if Length(EnumLogicalDrivesFast) > 0 then
     Assert.IsTrue(Pos('|', Row) > 0, 'bar separator between drives and specials');
+
+  ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+  DrawPanelDriveLetterBar(Grid, Bounds, Tab, psLeft,
+    TAlphaColors.Yellow, TAlphaColors.Blue, TAlphaColors.Black,
+    TAlphaColors.Cyan, True, psLeft, '1');
+  Hi := False;
+  for Col := 0 to 51 do
+    if Grid[7][Col].CharValue = '1' then
+    begin
+      Hi := True;
+      Assert.AreEqual(Cardinal(TAlphaColors.Black), Cardinal(Grid[7][Col].FgColor),
+        'the highlighted item takes the given foreground');
+      Assert.AreEqual(Cardinal(TAlphaColors.Cyan), Cardinal(Grid[7][Col].BgColor),
+        'the highlighted item takes the given background');
+    end;
+  Assert.IsTrue(Hi, 'the previewed item is drawn');
 end;
 
 procedure TestDriveBarShowsPluginItems;
@@ -517,7 +534,8 @@ begin
     Tab := Default(TTab);
     Tab.CurrentURI := 'xnet://host/dir';
     DrawPanelDriveLetterBar(Grid, Bounds, Tab, psLeft,
-      TAlphaColors.Yellow, TAlphaColors.Blue, False, psLeft, #0);
+      TAlphaColors.Yellow, TAlphaColors.Blue, TAlphaColors.Black,
+      TAlphaColors.Cyan, False, psLeft, #0);
     Has5 := False;
     for Col := 0 to 59 do
       if Grid[7][Col].CharValue = '5' then
