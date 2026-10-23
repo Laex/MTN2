@@ -1353,6 +1353,8 @@
     "themeRole.panel.headerBg": "Hintergrund der Spaltenköpfe",
     "themeRole.panel.hotMark": "Panelmarkierung",
     "themeRole.panel.closeMark": "Schließen-Markierung des Tabs",
+    "themeRole.panel.driveCurFg": "Aktueller Laufwerksbuchstabe",
+    "themeRole.panel.driveCurBg": "Hintergrund des aktuellen Laufwerksbuchstabens",
     "themeRole.scroll.fg": "Bildlaufleiste",
     "themeRole.scroll.thumb": "Schieber der Bildlaufleiste",
     "themeRole.editor.bodyFg": "Text",

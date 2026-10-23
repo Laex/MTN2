@@ -109,6 +109,8 @@ const
     'Column header background',
     'Panel mark',
     'Tab close mark',
+    'Current drive letter text',
+    'Current drive letter background',
     'Scroll bar',
     'Scroll bar thumb',
     'Text',

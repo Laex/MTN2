@@ -245,7 +245,7 @@
 
 ### Панели (`panel`)
 
-Вкладки панелей, шапка колонок, метки.
+Вкладки панелей, шапка колонок, метки, буква текущего диска в нижней рамке панели.
 
 | Роль | Если не задано |
 |---|---|
@@ -257,6 +257,8 @@
 | `panel.headerBg` | `window.bg` |
 | `panel.hotMark` | `toolbar.keyFg` |
 | `panel.closeMark` | `window.closeAccent` |
+| `panel.driveCurFg` | `panel.tabActiveFg` |
+| `panel.driveCurBg` | `panel.tabActiveBg` |
 
 ### Полосы прокрутки (`scroll`)
 

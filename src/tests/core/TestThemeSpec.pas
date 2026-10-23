@@ -17,6 +17,7 @@ type
     [Test] procedure TestRoleTable;
     [Test] procedure TestFallbackRoles;
     [Test] procedure TestParentValueBeatsChildFallback;
+    [Test] procedure TestCurrentDriveLetterColors;
     [Test] procedure TestRoundTrip;
     [Test] procedure TestPaletteNames;
     [Test] procedure TestColorReferences;
@@ -160,6 +161,28 @@ begin
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF020202), Spec.MdBg[mskText], 'Markdown background is the window');
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF010101), Spec.MdFg[mskLink], 'Markdown text color is the window text');
   Assert.AreEqual<TAlphaColor>(TAlphaColor(0), Spec.Colors[trScrollThumb], 'a role nobody sets is 0');
+end;
+
+procedure TTestThemeSpec.TestCurrentDriveLetterColors;
+var
+  Doc: TThemeDoc;
+  Spec: TThemeSpec;
+begin
+  Doc := DocWith('');
+  SetColor(Doc, trPanelTabActiveFg, TAlphaColor($FF0A0A0A));
+  SetColor(Doc, trPanelTabActiveBg, TAlphaColor($FF0B0B0B));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0A0A0A), Spec.Colors[trPanelDriveCurFg],
+    'the drive letter text follows the active panel tab');
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0B0B0B), Spec.Colors[trPanelDriveCurBg],
+    'the drive letter background follows the active panel tab');
+  SetColor(Doc, trPanelDriveCurFg, TAlphaColor($FF0C0C0C));
+  SetColor(Doc, trPanelDriveCurBg, TAlphaColor($FF0D0D0D));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0C0C0C), Spec.Colors[trPanelDriveCurFg], 'own text color');
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0D0D0D), Spec.Colors[trPanelDriveCurBg], 'own background');
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0A0A0A), Spec.Colors[trPanelTabActiveFg],
+    'the tab colors stay as they were');
 end;
 
 procedure TTestThemeSpec.TestParentValueBeatsChildFallback;

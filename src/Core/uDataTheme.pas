@@ -607,6 +607,8 @@ begin
   Pal.WorkspaceTabIdleBg := FSpec.Colors[trTabNormalBg];
   Pal.HotMarkFg := FSpec.Colors[trPanelHotMark];
   Pal.CloseMarkFg := FSpec.Colors[trPanelCloseMark];
+  Pal.DriveCurFg := FSpec.Colors[trPanelDriveCurFg];
+  Pal.DriveCurBg := FSpec.Colors[trPanelDriveCurBg];
   ResolveStandardPanelChromeColors(APart, AActive, Pal, AFg, ABg);
 end;
 

@@ -1352,6 +1352,8 @@
     "themeRole.panel.headerBg": "列标题背景",
     "themeRole.panel.hotMark": "面板标记",
     "themeRole.panel.closeMark": "标签页关闭标记",
+    "themeRole.panel.driveCurFg": "当前驱动器字母",
+    "themeRole.panel.driveCurBg": "当前驱动器字母背景",
     "themeRole.scroll.fg": "滚动条",
     "themeRole.scroll.thumb": "滚动条滑块",
     "themeRole.editor.bodyFg": "文字",

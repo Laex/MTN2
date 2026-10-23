@@ -1363,6 +1363,8 @@
     "themeRole.panel.headerBg": "Column header background",
     "themeRole.panel.hotMark": "Panel mark",
     "themeRole.panel.closeMark": "Tab close mark",
+    "themeRole.panel.driveCurFg": "Current drive letter text",
+    "themeRole.panel.driveCurBg": "Current drive letter background",
     "themeRole.scroll.fg": "Scroll bar",
     "themeRole.scroll.thumb": "Scroll bar thumb",
     "themeRole.editor.bodyFg": "Text",

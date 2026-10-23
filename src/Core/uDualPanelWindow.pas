@@ -3989,6 +3989,8 @@ begin
   FallbackPal.WorkspaceTabIdleBg := cInactiveCursorBg;
   FallbackPal.HotMarkFg := cMenuHot;
   FallbackPal.CloseMarkFg := TAlphaColor($FFFF55FF);
+  FallbackPal.DriveCurFg := cCursorFg;
+  FallbackPal.DriveCurBg := cCursorBg;
   ResolveStandardPanelChromeColors(APart, AActive, FallbackPal, AFg, ABg);
 end;
 
@@ -11193,7 +11195,7 @@ procedure TDualPanelWindow.DrawPanelDriveLetters(const ABounds: TRectI;
 var
   CurFg, CurBg: TAlphaColor;
 begin
-  ResolveChrome(pcpPanelTabActive, True, CurFg, CurBg);
+  ResolveChrome(pcpDriveCurrent, True, CurFg, CurBg);
   uDualPanelDrawUtils.DrawPanelDriveLetterBar(
     Buffer, ABounds, ATab, ASide, AFrame, ABodyBg, CurFg, CurBg,
     FDrivePreviewActive, FDrivePreviewSide, FDrivePreviewLetter);

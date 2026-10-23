@@ -1360,6 +1360,8 @@
     "themeRole.panel.headerBg": "Фон заголовка колонок",
     "themeRole.panel.hotMark": "Метка панели",
     "themeRole.panel.closeMark": "Значок закрытия вкладки",
+    "themeRole.panel.driveCurFg": "Буква текущего диска",
+    "themeRole.panel.driveCurBg": "Фон буквы текущего диска",
     "themeRole.scroll.fg": "Полоса прокрутки",
     "themeRole.scroll.thumb": "Ползунок полосы прокрутки",
     "themeRole.editor.bodyFg": "Текст",

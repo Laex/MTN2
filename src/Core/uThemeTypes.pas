@@ -36,6 +36,7 @@ type
     pcpWorkspaceTabIdle,
     pcpHotMark,
     pcpCloseMark,
+    pcpDriveCurrent,
     pcpFrameActive,
     pcpFrameIdle
   );
@@ -53,6 +54,7 @@ type
     WorkspaceTabIdleFg, WorkspaceTabIdleBg: TAlphaColor;      // pcpWorkspaceTabIdle
     HotMarkFg: TAlphaColor;                                   // pcpHotMark
     CloseMarkFg: TAlphaColor;                                 // pcpCloseMark (tab/window 'x')
+    DriveCurFg, DriveCurBg: TAlphaColor;                      // pcpDriveCurrent
   end;
 
   /// <summary>Logical style categories a Markdown Viewer span can
@@ -349,6 +351,11 @@ begin
       begin
         AFg := APalette.CloseMarkFg;
         ABg := APalette.WindowBg;
+      end;
+    pcpDriveCurrent:
+      begin
+        AFg := APalette.DriveCurFg;
+        ABg := APalette.DriveCurBg;
       end;
     pcpFrameActive:
       begin
