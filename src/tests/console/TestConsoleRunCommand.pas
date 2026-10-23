@@ -17,6 +17,7 @@ type
     [Test] procedure ColdShellCdIsSeenBeforeReturningToPanels;
     [Test] procedure PendingInputIsDroppedBeforeTheCommand;
     [Test] procedure PendingRedirectWithCursorInsideIsDropped;
+    [Test] procedure PendingInputIsDroppedBeforeTheFolderSync;
   end;
 
 implementation
@@ -196,6 +197,39 @@ begin
       'the old input line was not executed');
     Assert.AreEqual(Integer(0), Integer(Length(TDirectory.GetFiles(Root))),
       'the command was not glued to the old text');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+    TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestConsoleRunCommand.PendingInputIsDroppedBeforeTheFolderSync;
+var
+  Root, Sub: string;
+  Win: TProbeConsole;
+  I: Integer;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-run-' + TPath.GetGUIDFileName(False));
+  Sub := TPath.Combine(Root, 'child');
+  TDirectory.CreateDirectory(Sub);
+  Win := NewConsole;
+  try
+    Win.WorkingDir := Root;
+    Assert.IsTrue(Win.EnsureShell(Root), 'the shell starts');
+    Pump(3000);
+    Type_(Win, 'abc');
+    for I := 1 to 60 do
+    begin
+      Pump(100);
+      if Win.InputLine = 'abc' then
+        Break;
+    end;
+    Assert.AreEqual('abc', Win.InputLine, 'text left on the input line');
+    Win.SyncWorkingDir(Sub);
+    Pump(2500);
+    Assert.IsFalse(Win.BufferHas('abccd'), 'the folder change is not glued to the old text');
+    Assert.IsTrue(Win.BufferHas('child>'), 'the shell is in the new folder');
   finally
     Win.CloseConsole;
     Win.Free;

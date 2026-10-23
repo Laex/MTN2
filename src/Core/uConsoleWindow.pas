@@ -77,6 +77,7 @@ type
     /// <summary>A command still runs in the persistent shell (it has a child
     /// process). A shell not started yet is not busy.</summary>
     function ShellBusy: Boolean;
+    procedure DropPendingInput;
     procedure CloseConsole;
     function  HandleInput(var AKey: Word; AShift: TShiftState;
                 var AKeyChar: Char): Boolean; override;
@@ -286,6 +287,7 @@ begin
   end;
 
   WorkingDir := Path;
+  DropPendingInput;
   FPty.WriteInput(BuildCdLineForProfile(ProfileId, Path));
   if FPty.LastError <> '' then
   begin
@@ -299,6 +301,17 @@ end;
 function TConsoleWindow.ShellBusy: Boolean;
 begin
   Result := Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess;
+end;
+
+// Text left on the shell's input line (a recalled history entry, a
+// half-typed command) would be glued to the front of a line written next.
+procedure TConsoleWindow.DropPendingInput;
+var
+  Pending: string;
+begin
+  Pending := FHistory.GetInputAfterPrompt;
+  if (Pending <> '') and not ShellBusy then
+    SendRaw(#27'[F' + StringOfChar(ProfileBackspaceChar(ProfileId), Length(Pending)));
 end;
 
 function TConsoleWindow.PromptCwd: string;
@@ -417,7 +430,7 @@ end;
 
 procedure TConsoleWindow.RunCommand(const ACommand, AWorkingDir: string);
 var
-  Cmd, Line, NormId, Pending: string;
+  Cmd, Line, NormId: string;
 begin
   Cmd := Trim(ACommand);
   if Cmd = '' then
@@ -445,11 +458,7 @@ begin
   if not EnsureShell(WorkingDir) then
     Exit;
 
-  // Text left on the shell's input line (a recalled history entry, a
-  // half-typed command) would be glued to the front of the command.
-  Pending := FHistory.GetInputAfterPrompt;
-  if (Pending <> '') and not ShellBusy then
-    SendRaw(#27'[F' + StringOfChar(ProfileBackspaceChar(ProfileId), Length(Pending)));
+  DropPendingInput;
 
   Line := Cmd;
   NormId := NormalizeShellProfileId(ProfileId);
