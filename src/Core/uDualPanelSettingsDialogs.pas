@@ -61,6 +61,7 @@ type
     /// list row. OK without touching the size keeps the exact value -- a
     /// size set outside the list (session.json) is not rounded to it.</summary>
     FOpenFontSize: Single;
+    FOpenDisplay: TDisplaySettings;
     FOpenFontSizeIdx: Integer;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
@@ -130,6 +131,33 @@ implementation
 uses
   uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
   uShellProfileOptions;
+
+// Drops the controls that only matter when the host draws with a font of its own.
+procedure RemoveFontControls(var ADecl: TDialogDeclaration);
+const
+  cIds: array[0..15] of string = ('lbl_font', 'fonts', 'lbl_size', 'font_size',
+    'lbl_zoom', 'zoom', 'line_spacing', 'snap_font_size', 'lbl_text_contrast',
+    'text_contrast', 'lbl_cell_w', 'cell_w', 'lbl_cell_h', 'cell_h',
+    'lbl_font_fallback', 'font_fallback');
+var
+  I, J, N: Integer;
+  Hide: Boolean;
+begin
+  N := 0;
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    Hide := False;
+    for J := Low(cIds) to High(cIds) do
+      if SameText(ADecl.Controls[I].Id, cIds[J]) then
+        Hide := True;
+    if not Hide then
+    begin
+      ADecl.Controls[N] := ADecl.Controls[I];
+      Inc(N);
+    end;
+  end;
+  SetLength(ADecl.Controls, N);
+end;
 
 constructor TSettingsDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TSettingsKindSetter;
@@ -221,6 +249,10 @@ begin
   LanguageIdx := IndexOfFontName(FLanguageCodes, Cur.Language);
 
   SetKind(hdkDisplay);
+  FOpenDisplay := Cur;
+  if not GFontSettingsApply then
+    Note := T('ui.display.terminalFont',
+      'The terminal sets the font and cell size.');
   FOpenFontSize := Cur.FontSize;
   FOpenFontSizeIdx := IndexOfDisplayFontSize(Cur.FontSize);
   Decl := BuildDisplayDialog(Fonts, FontIdx,
@@ -231,6 +263,8 @@ begin
     Ord(Cur.MarkedRowStyle), Cur.SnapFontSize, ClampTextContrast(Cur.TextContrast),
     ClampCellExtra(Cur.CellWidthExtra), ClampCellExtra(Cur.CellHeightExtra));
   DialogSetInputValue(Decl, 'font_fallback', Cur.FallbackFont);
+  if not GFontSettingsApply then
+    RemoveFontControls(Decl);
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
@@ -528,6 +562,18 @@ begin
       Disp.Language := FLanguageCodes[LanguageIdx]
     else
       Disp.Language := '';
+    if not GFontSettingsApply then
+    begin
+      Disp.FontName := FOpenDisplay.FontName;
+      Disp.FallbackFont := FOpenDisplay.FallbackFont;
+      Disp.FontSize := FOpenDisplay.FontSize;
+      Disp.Zoom := FOpenDisplay.Zoom;
+      Disp.LineSpacing := FOpenDisplay.LineSpacing;
+      Disp.SnapFontSize := FOpenDisplay.SnapFontSize;
+      Disp.TextContrast := FOpenDisplay.TextContrast;
+      Disp.CellWidthExtra := FOpenDisplay.CellWidthExtra;
+      Disp.CellHeightExtra := FOpenDisplay.CellHeightExtra;
+    end;
     if Assigned(FOnApplyDisplay) then
       FOnApplyDisplay(Disp);
   end;

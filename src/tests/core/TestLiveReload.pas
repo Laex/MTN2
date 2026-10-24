@@ -70,7 +70,7 @@ var
   Tick: Cardinal;
 begin
   Tick := GetTickCount;
-  while ADoc.Loading do
+  while ADoc.Loading or ADoc.Indexing do
   begin
     CheckSynchronize(20);
     if GetTickCount - Tick > 60000 then

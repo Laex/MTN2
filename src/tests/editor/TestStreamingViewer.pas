@@ -21,6 +21,7 @@ type
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestSampleTrim;
     [Test] procedure TestStreamingBasics;
+    [Test] procedure TestFirstLinesShownWhileIndexing;
     [Test] procedure TestCacheEviction;
     [Test] procedure TestNoTrailingNewline;
     [Test] procedure TestSampleStraddle;
@@ -275,7 +276,7 @@ var
   Tick: UInt64;
 begin
   Tick := PlatformTickCount64;
-  while ADoc.Loading do
+  while ADoc.Loading or ADoc.Indexing do
   begin
     CheckSynchronize(20);
     if PlatformTickCount64 - Tick > 60000 then
@@ -345,6 +346,60 @@ begin
   Trimmed := Copy(Bytes);
   TrimUtf8SampleTail(Trimmed);
   Assert.IsTrue(Length(Trimmed) = 0, 'empty input is safe');
+end;
+
+procedure TestFirstLinesShownWhileIndexing;
+const
+  cBlockLines = 1000;
+  cBlocks = 1200;
+var
+  Path, Block: string;
+  BlockBytes: TBytes;
+  FS: TFileStream;
+  Doc: TEditorDoc;
+  I: Integer;
+  SawPartial: Boolean;
+  Tick: UInt64;
+begin
+  Path := TempPath('big_progressive.txt');
+  Block := '';
+  for I := 0 to cBlockLines - 1 do
+    Block := Block + Format('row %.4d abcdefghij 0123456789 abcdefghij', [I]) + #10;
+  BlockBytes := TEncoding.ASCII.GetBytes(Block);
+  FS := TFileStream.Create(Path, fmCreate);
+  try
+    for I := 1 to cBlocks do
+      FS.WriteBuffer(BlockBytes[0], Length(BlockBytes));
+  finally
+    FS.Free;
+  end;
+  Doc := TEditorDoc.Create;
+  try
+    Doc.OpenAsync(PathToFileUri(Path));
+    SawPartial := False;
+    Tick := PlatformTickCount64;
+    while (not Doc.Ready) or Doc.Indexing do
+    begin
+      CheckSynchronize(0);
+      if Doc.Ready and Doc.Indexing and (not SawPartial) then
+      begin
+        SawPartial := True;
+        Assert.IsFalse(Doc.Loading, 'shown while still indexing');
+        Assert.IsTrue(Doc.Streaming, 'streaming document');
+        Assert.IsTrue(Doc.LineCount > 0, 'the first lines are available');
+        Assert.AreEqual('row 0000 abcdefghij 0123456789 abcdefghij', Doc.GetLine(0),
+          'first line readable before the index is complete');
+      end;
+      if PlatformTickCount64 - Tick > 60000 then
+        Assert.Fail('timeout indexing');
+    end;
+    Assert.IsTrue(SawPartial, 'the document became ready before indexing finished');
+    Assert.AreEqual(cBlockLines * cBlocks, Doc.LineCount, 'all lines indexed at the end');
+    Assert.AreEqual('row 0999 abcdefghij 0123456789 abcdefghij',
+      Doc.GetLine(cBlockLines * cBlocks - 1), 'last line readable');
+  finally
+    Doc.Free;
+  end;
 end;
 
 procedure TestStreamingBasics;
@@ -690,6 +745,11 @@ end;
 procedure TTestStreamingViewer.TestStreamingBasics;
 begin
   TestStreamingViewer.TestStreamingBasics;
+end;
+
+procedure TTestStreamingViewer.TestFirstLinesShownWhileIndexing;
+begin
+  TestStreamingViewer.TestFirstLinesShownWhileIndexing;
 end;
 
 procedure TTestStreamingViewer.TestCacheEviction;

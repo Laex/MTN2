@@ -32,6 +32,9 @@ var
   /// <summary>Enter in the editor starts the new line with the indent of the line it
   /// continues.</summary>
   GEditorAutoIndent: Boolean = True;
+  /// <summary>False in a host that draws with the terminal's own font (mtn2-tui):
+  /// the font, size, zoom and cell controls of the display dialog do not apply.</summary>
+  GFontSettingsApply: Boolean = True;
 
 type
   /// <summary>Dialog, button and toast drop shadows and the modal backdrop

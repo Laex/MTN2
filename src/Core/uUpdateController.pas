@@ -385,7 +385,8 @@ begin
   if UpdatesManagedByPackage(AppDir) then
   begin
     if AInteractive then
-      ShowMessageDlg(T('ui.update.managedTitle', 'MTN2 is installed from a package.'),
+      ShowMessageDlg(T('ui.update.managedTitle',
+          'MTN2 %s is installed from a package.', [FCurrent]),
         T('ui.update.managedText',
           'Update it with the package manager (apt, dnf) or install a newer package.'));
     Exit;

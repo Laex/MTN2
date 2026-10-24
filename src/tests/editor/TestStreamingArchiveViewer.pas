@@ -131,7 +131,7 @@ var
   Tick: UInt64;
 begin
   Tick := PlatformTickCount64;
-  while ADoc.Loading do
+  while ADoc.Loading or ADoc.Indexing do
   begin
     CheckSynchronize(20);
     if PlatformTickCount64 - Tick > 60000 then

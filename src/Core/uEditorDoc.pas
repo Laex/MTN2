@@ -74,7 +74,12 @@ type
     FStreamPathIsTemp: Boolean;
     FStreamEncoding: TTextFileEncoding;
     FStreamFileSize: Int64;
-    FLineOffsets: TArray<Int64>;   // byte offset of each line start; last entry is a file-size sentinel
+    // Byte offset of each line start; capacity may exceed FIndexCount. Line I
+    // is known once entry I + 1 exists, so the last entry is either the open
+    // line (indexing) or the file-size sentinel (done).
+    FLineOffsets: TArray<Int64>;
+    FIndexCount: Integer;
+    FIndexing: Boolean;
     FLineCache: TDictionary<Integer, string>;
     FLineCacheOrder: TQueue<Integer>;
     FWantEdit: Boolean;
@@ -103,10 +108,12 @@ type
       const AOnDone: TVfsBoolCallback);
     procedure ScanFileForStreaming(const APath: string; const ACancel: IJobCancelToken;
       out AErr: string; out AHexMode: Boolean; out AHexBuf: TBytes;
-      out AOffsets: TArray<Int64>; out ADetEnc: TTextFileEncoding; out ASize: Int64);
-    function BuildStreamingLineOffsets(FS: TFileStream; ASize: Int64;
+      out ADetEnc: TTextFileEncoding; out ASize: Int64);
+    procedure IndexStreamingLines(const APath: string; ASize: Int64;
       ADetEnc: TTextFileEncoding; const ACancel: IJobCancelToken;
-      out AErr: string): TArray<Int64>;
+      AGen: Cardinal; const ALife: ILifeFlag);
+    procedure AppendIndexBatch(const ABatch: TArray<Int64>; ACount: Integer;
+      ADonePos, ASize: Int64; AFinal: Boolean);
     procedure StartStreamingOpen(const APath: string; AGen: Cardinal);
     procedure StartStreamingOpenFromArchive(const AURI: string; AGen: Cardinal);
     function StreamingGetLine(AIndex: Integer): string;
@@ -184,6 +191,9 @@ type
     /// <summary>Line-indexed view of a file too big for the
     /// whole-buffer load. Read-only until TryPromoteStreaming.</summary>
     property Streaming: Boolean read FStreaming;
+    /// <summary>True while the line index of a streaming document is still
+    /// growing: the first lines are shown, LineCount only covers what is indexed.</summary>
+    property Indexing: Boolean read FIndexing;
     /// <summary>The first line changed since the last call (the lines from it on need new syntax
     /// colors), or MaxInt when none did. Resets the mark.</summary>
     function TakeHighlightDirty: Integer;
@@ -298,6 +308,8 @@ begin
   FStreamPathIsTemp := False;
   FStreamFileSize := 0;
   SetLength(FLineOffsets, 0);
+  FIndexCount := 0;
+  FIndexing := False;
   FLineCache.Clear;
   FLineCacheOrder.Clear;
   FWatcher.SetPath('');
@@ -309,7 +321,7 @@ end;
 function TEditorDoc.LineCount: Integer;
 begin
   if FStreaming then
-    Result := Length(FLineOffsets) - 1
+    Result := FIndexCount - 1
   else
     Result := FLines.Count;
 end;
@@ -342,7 +354,7 @@ var
   FS: TFileStream;
   S: string;
 begin
-  if (AIndex < 0) or (AIndex >= Length(FLineOffsets) - 1) then
+  if (AIndex < 0) or (AIndex >= FIndexCount - 1) then
     Exit('');
   if FLineCache.TryGetValue(AIndex, Result) then
     Exit;
@@ -1184,14 +1196,12 @@ begin
 end;
 
 // Off the UI thread: sniffs APath's first chunk to tell text from binary,
-// then either loads it whole as hex (binary) or walks the file once via
-// BuildStreamingLineOffsets to build a line-start offset table (text) for
-// random-access streaming later. AErr is set on any failure; the other out
-// params are meaningful only when AErr = ''.
+// then either loads it whole as hex (binary) or leaves text to
+// IndexStreamingLines. AErr is set on any failure; the other out params are
+// meaningful only when AErr = ''.
 procedure TEditorDoc.ScanFileForStreaming(const APath: string;
   const ACancel: IJobCancelToken; out AErr: string; out AHexMode: Boolean;
-  out AHexBuf: TBytes; out AOffsets: TArray<Int64>;
-  out ADetEnc: TTextFileEncoding; out ASize: Int64);
+  out AHexBuf: TBytes; out ADetEnc: TTextFileEncoding; out ASize: Int64);
 var
   FS: TFileStream;
   Sample: TBytes;
@@ -1204,7 +1214,6 @@ begin
   AHexMode := False;
   ADetEnc := tfeUtf8;
   ASize := 0;
-  SetLength(AOffsets, 0);
   SetLength(AHexBuf, 0);
   try
     if not TFile.Exists(WinApiPath(APath)) then
@@ -1245,9 +1254,7 @@ begin
           if FS.Read(AHexBuf[0], Integer(HexLen)) <> HexLen then
             AErr := 'Cannot read file';
         end;
-      end
-      else
-        AOffsets := BuildStreamingLineOffsets(FS, ASize, ADetEnc, ACancel, AErr);
+      end;
     finally
       FS.Free;
     end;
@@ -1257,108 +1264,176 @@ begin
   end;
 end;
 
-// Walks FS from its current position building a table of line-start byte
-// offsets (LF for 8-bit encodings, matching UTF-16 code-unit pairs for
-// UTF-16). Result[0] is the first line's start (already positioned past any
-// BOM by the caller); a trailing sentinel equal to ASize is appended so the
-// last line's length can always be computed as Result[i+1] - Result[i].
-function TEditorDoc.BuildStreamingLineOffsets(FS: TFileStream; ASize: Int64;
-  ADetEnc: TTextFileEncoding; const ACancel: IJobCancelToken;
-  out AErr: string): TArray<Int64>;
+// Appends a batch of line-start offsets to the table on the UI thread. The
+// first batch makes the document ready; the final one also closes the table
+// with the file-size sentinel and ends indexing.
+procedure TEditorDoc.AppendIndexBatch(const ABatch: TArray<Int64>; ACount: Integer;
+  ADonePos, ASize: Int64; AFinal: Boolean);
 var
-  ChunkBuf: TBytes;
-  OffCount: Integer;
-  Pos, Read: Int64;
   I: Integer;
-  IsUtf16, IsLE, HasPending: Boolean;
-  PendingByte: Byte;
 begin
-  AErr := '';
+  if FIndexCount + ACount + 1 > Length(FLineOffsets) then
+    SetLength(FLineOffsets, (FIndexCount + ACount + 1) * 2);
+  for I := 0 to ACount - 1 do
+    FLineOffsets[FIndexCount + I] := ABatch[I];
+  Inc(FIndexCount, ACount);
+  if AFinal then
+  begin
+    // The last line runs to EOF when the file does not end with LF.
+    if (FIndexCount = 0) or (FLineOffsets[FIndexCount - 1] < ASize) then
+    begin
+      FLineOffsets[FIndexCount] := ASize;
+      Inc(FIndexCount);
+    end;
+    SetLength(FLineOffsets, FIndexCount);
+    FIndexing := False;
+    FCancel := nil;
+    if FWantEdit then
+      FStatus := Format('Too large to edit  %d MB', [ASize div (1024 * 1024)])
+    else
+      FStatus := Format('Streaming  %d lines', [FIndexCount - 1]);
+  end
+  else if ASize > 0 then
+    FStatus := Format('Indexing  %d%%  %d lines',
+      [ADonePos * 100 div ASize, FIndexCount - 1]);
+  FLoading := False;
+  FReady := True;
+  NotifyChanged;
+end;
+
+// Worker thread: walks the file once collecting line-start byte offsets (LF
+// for 8-bit encodings, matching UTF-16 code-unit pairs for UTF-16) and hands
+// them to the UI thread in batches, so the start of a huge file can be shown
+// while the rest is still being indexed. The first entry is the first line's
+// start, past any BOM. Batches are published at most every cIndexPublishMs.
+procedure TEditorDoc.IndexStreamingLines(const APath: string; ASize: Int64;
+  ADetEnc: TTextFileEncoding; const ACancel: IJobCancelToken;
+  AGen: Cardinal; const ALife: ILifeFlag);
+const
+  cIndexPublishMs = 100;
+var
+  FS: TFileStream;
+  ChunkBuf: TBytes;
+  Batch: TArray<Int64>;
+  BatchCount: Integer;
+  Pos, Read: Int64;
+  LastPublish: UInt64;
+  I: Integer;
+  IsUtf16, IsLE, HasPending, Failed: Boolean;
+  PendingByte: Byte;
+
+  procedure Add(AOffset: Int64);
+  begin
+    if BatchCount >= Length(Batch) then
+      SetLength(Batch, Length(Batch) * 2);
+    Batch[BatchCount] := AOffset;
+    Inc(BatchCount);
+  end;
+
+  procedure Publish(AFinal: Boolean; const AErr: string);
+  var
+    Copy_: TArray<Int64>;
+    N: Integer;
+    DonePos: Int64;
+  begin
+    N := BatchCount;
+    DonePos := Pos;
+    Copy_ := Copy(Batch, 0, N);
+    BatchCount := 0;
+    LastPublish := TThread.GetTickCount64;
+    TThread.Queue(nil,
+      procedure
+      begin
+        if not ALife.Alive or (AGen <> FGen) then
+          Exit;
+        if AErr <> '' then
+        begin
+          FLoading := False;
+          FIndexing := False;
+          FCancel := nil;
+          FError := AErr;
+          FStatus := '';
+          FReady := False;
+          NotifyChanged;
+          Exit;
+        end;
+        AppendIndexBatch(Copy_, N, DonePos, ASize, AFinal);
+      end);
+  end;
+
+begin
+  Failed := False;
   IsUtf16 := (ADetEnc = tfeUtf16LE) or (ADetEnc = tfeUtf16BE);
   IsLE := ADetEnc = tfeUtf16LE;
-  SetLength(Result, 1024);
-  OffCount := 0;
-  if IsUtf16 then
-    Result[0] := 2 // skip the 2-byte BOM; first line starts right after it
-  else
-    Result[0] := 0;
-  Inc(OffCount);
-  FS.Position := Result[0];
+  SetLength(Batch, 4096);
+  BatchCount := 0;
   SetLength(ChunkBuf, cStreamScanChunk);
-  Pos := Result[0];
   HasPending := False;
   PendingByte := 0;
-  while True do
-  begin
-    if JobCancelRequested(ACancel) then
-    begin
-      AErr := 'Cancelled';
-      Break;
+  try
+    FS := TFileStream.Create(WinApiPath(APath), fmOpenRead or fmShareDenyNone);
+    try
+      if IsUtf16 then
+        Pos := 2
+      else
+        Pos := 0;
+      Add(Pos);
+      FS.Position := Pos;
+      LastPublish := 0;
+      while True do
+      begin
+        if JobCancelRequested(ACancel) then
+          Exit;
+        Read := FS.Read(ChunkBuf[0], Length(ChunkBuf));
+        if Read <= 0 then
+          Break;
+        if not IsUtf16 then
+        begin
+          for I := 0 to Read - 1 do
+            if ChunkBuf[I] = 10 then
+              Add(Pos + I + 1);
+        end
+        else
+        begin
+          I := 0;
+          // A leftover byte from the previous chunk pairs with this chunk's
+          // first byte, keeping pairs on the code-unit grid even if a read
+          // returns an odd byte count.
+          if HasPending then
+          begin
+            if Utf16PairIsLF(PendingByte, ChunkBuf[0], IsLE) then
+              Add(Pos + 1);
+            HasPending := False;
+            I := 1;
+          end;
+          while I + 1 < Read do
+          begin
+            if Utf16PairIsLF(ChunkBuf[I], ChunkBuf[I + 1], IsLE) then
+              Add(Pos + I + 2);
+            Inc(I, 2);
+          end;
+          if I < Read then
+          begin
+            PendingByte := ChunkBuf[Read - 1];
+            HasPending := True;
+          end;
+        end;
+        Inc(Pos, Read);
+        if (LastPublish = 0) or (TThread.GetTickCount64 - LastPublish >= cIndexPublishMs) then
+          Publish(False, '');
+      end;
+    finally
+      FS.Free;
     end;
-    Read := FS.Read(ChunkBuf[0], Length(ChunkBuf));
-    if Read <= 0 then
-      Break;
-    if not IsUtf16 then
+  except
+    on E: Exception do
     begin
-      for I := 0 to Read - 1 do
-        if ChunkBuf[I] = 10 then // LF; offsets mark line starts
-        begin
-          if OffCount >= Length(Result) then
-            SetLength(Result, Length(Result) * 2);
-          Result[OffCount] := Pos + I + 1;
-          Inc(OffCount);
-        end;
-    end
-    else
-    begin
-      I := 0;
-      // A leftover byte from the previous chunk pairs with this chunk's
-      // first byte - keeps pairs aligned to the code-unit grid even if a
-      // read ever returns an odd byte count.
-      if HasPending then
-      begin
-        if Utf16PairIsLF(PendingByte, ChunkBuf[0], IsLE) then
-        begin
-          if OffCount >= Length(Result) then
-            SetLength(Result, Length(Result) * 2);
-          Result[OffCount] := Pos + 1;
-          Inc(OffCount);
-        end;
-        HasPending := False;
-        I := 1;
-      end;
-      while I + 1 < Read do
-      begin
-        if Utf16PairIsLF(ChunkBuf[I], ChunkBuf[I + 1], IsLE) then
-        begin
-          if OffCount >= Length(Result) then
-            SetLength(Result, Length(Result) * 2);
-          Result[OffCount] := Pos + I + 2;
-          Inc(OffCount);
-        end;
-        Inc(I, 2);
-      end;
-      if I < Read then
-      begin
-        PendingByte := ChunkBuf[Read - 1];
-        HasPending := True;
-      end;
+      Failed := True;
+      Publish(True, E.Message);
     end;
-    Inc(Pos, Read);
   end;
-  if AErr = '' then
-  begin
-    // Trailing sentinel for the last line's length; if the file doesn't end
-    // with LF, the last line runs to EOF.
-    if (OffCount = 0) or (Result[OffCount - 1] < ASize) then
-    begin
-      if OffCount >= Length(Result) then
-        SetLength(Result, OffCount + 1);
-      Result[OffCount] := ASize;
-      Inc(OffCount);
-    end;
-    SetLength(Result, OffCount);
-  end;
+  if not Failed then
+    Publish(True, '');
 end;
 
 procedure TEditorDoc.StartStreamingOpen(const APath: string; AGen: Cardinal);
@@ -1374,30 +1449,31 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Offsets: TArray<Int64>;
       DetEnc: TTextFileEncoding;
       Size: Int64;
       HexBuf: TBytes;
       HexMode: Boolean;
       Err: string;
     begin
-      ScanFileForStreaming(APath, Cancel, Err, HexMode, HexBuf, Offsets, DetEnc, Size);
+      ScanFileForStreaming(APath, Cancel, Err, HexMode, HexBuf, DetEnc, Size);
 
       TThread.Queue(nil,
         procedure
         begin
           if not Life.Alive or (AGen <> FGen) then
             Exit;
-          FLoading := False;
-          FCancel := nil;
           if Err <> '' then
           begin
+            FLoading := False;
+            FCancel := nil;
             FError := Err;
             FStatus := '';
             FReady := False;
           end
           else if HexMode then
           begin
+            FLoading := False;
+            FCancel := nil;
             FStreaming := False;
             FStreamPath := '';
             FBinary := True;
@@ -1418,27 +1494,26 @@ begin
           end
           else
           begin
+            // The document turns ready with the first index batch.
             FStreaming := True;
             FStreamPath := APath;
             FStreamEncoding := DetEnc;
             FEncoding := DetEnc;
             FStreamFileSize := Size;
-            FLineOffsets := Offsets;
+            SetLength(FLineOffsets, 0);
+            FIndexCount := 0;
+            FIndexing := True;
             FLineCache.Clear;
             FLineCacheOrder.Clear;
             FBinary := False;
             FReadOnly := True; // streaming docs start view-only until promote
             FDirty := False;
             FError := '';
-            FReady := True;
-            if FWantEdit then
-              FStatus := Format('Too large to edit  %d MB',
-                [Size div (1024 * 1024)])
-            else
-              FStatus := Format('Streaming  %d lines', [Length(FLineOffsets) - 1]);
           end;
           NotifyChanged;
         end);
+      if (Err = '') and (not HexMode) and (not JobCancelRequested(Cancel)) then
+        IndexStreamingLines(APath, Size, DetEnc, Cancel, AGen, Life);
     end).Start;
 end;
 
@@ -1498,7 +1573,7 @@ var
   Path: string;
 begin
   Result := False;
-  if (not FStreaming) or (not FReady) or FLoading or FSaving then
+  if (not FStreaming) or (not FReady) or FLoading or FSaving or FIndexing then
     Exit;
   if FStreamFileSize > cEditorEditMaxBytes then
   begin
@@ -1523,6 +1598,7 @@ begin
   end;
   FStreaming := False;
   SetLength(FLineOffsets, 0);
+  FIndexCount := 0;
   FLineCache.Clear;
   FLineCacheOrder.Clear;
   FRawBytes := Bytes;

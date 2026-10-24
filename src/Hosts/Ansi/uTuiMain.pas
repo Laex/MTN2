@@ -15,7 +15,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.IOUtils,
   uTerminalTypes, uTermInput, uAnsiFrame, uAnsiTerm, uAnsiClipboard, uHostShell,
   uCoreTimer, uPlatformInfo, uUpdater, uConfigLocation, uResourceAccess, uSelfCheck,
-  uPlatformUpdate, uThemeDrawing, uStrings;
+  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings;
 
 const
   cEscapeWaitMs = 30;
@@ -174,6 +174,7 @@ var
   Title, ShownTitle: string;
 begin
   Result := 0;
+  GFontSettingsApply := False;
   Term := TAnsiTerm.Create;
   Parser := TTermInputParser.Create;
   Events := TList<TTermEvent>.Create;
