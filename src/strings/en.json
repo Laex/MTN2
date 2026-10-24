@@ -825,6 +825,7 @@
     "panel.waitingServer": "Waiting for the server...",
     "panel.notResponding": "Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...",
     "editor.loading": "Loading...",
+    "editor.indexingNotice": "Indexing the file: %s",
     "editor.loadingHint": "Esc cancels",
     "surface.waiting": "Loading...",
     "drivePopup.disconnectTitle": "Disconnect drive",

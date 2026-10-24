@@ -824,6 +824,7 @@
     "panel.waitingServer": "Warten auf den Server...",
     "panel.notResponding": "Noch keine Antwort – es wird weiter versucht (auf einem langsamen oder nicht erreichbaren Laufwerk kann das dauern)...",
     "editor.loading": "Wird geladen...",
+    "editor.indexingNotice": "Datei wird indiziert: %s",
     "editor.loadingHint": "Esc bricht ab",
     "surface.waiting": "Wird geladen...",
     "drivePopup.disconnectTitle": "Laufwerk trennen",

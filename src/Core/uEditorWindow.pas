@@ -20,6 +20,10 @@ uses
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
   uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight;
 
+const
+  /// <summary>TNoticeRequest.Tag of the toast with the indexing progress.</summary>
+  cIndexNoticeTag = 'editor-index';
+
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
     ecOpenLink, ecNotFound, ecReplaceAsk, ecReplaceWrap);
@@ -130,6 +134,8 @@ type
     // saved file position, Markdown images as text placeholders (the image
     // Overlay belongs to the picture Quick View).
     FChromeless: Boolean;
+    // A toast with the indexing progress is up (the status line is hidden).
+    FIndexNoticeShown: Boolean;
     FTopLine: Integer;
     /// <summary>Markdown view only: screen row inside FTopLine's wrapped
     /// rows where the view starts, so scrolling goes by rows, not paragraphs.</summary>
@@ -186,6 +192,7 @@ type
     procedure RestoreSavedPosition;
     procedure SaveCurrentPosition;
     procedure DocChanged(Sender: TObject);
+    procedure UpdateIndexNotice;
     procedure NotifyHost;
     function ModeTitle: string;
     function CanEdit: Boolean;
@@ -877,6 +884,8 @@ begin
     FreeAndNil(FDialog);
   end;
   FDoc.OnChanged := nil;
+  if FIndexNoticeShown then
+    NoticeDismiss(cIndexNoticeTag);
   FreeAndNil(FUndoBuffer);
   FreeAndNil(FDoc);
   FreeAndNil(FMdFenceIdx);
@@ -894,6 +903,30 @@ begin
     FOnContentChanged(Self);
 end;
 
+// With the status line hidden nothing else shows that a big file is still
+// being indexed (End then stops at the indexed part), so a toast does.
+procedure TEditorWindow.UpdateIndexNotice;
+var
+  Req: TNoticeRequest;
+begin
+  if FDoc.Indexing and not GShowStatusLine and not FChromeless then
+  begin
+    Req := TNoticeRequest.Make(T('ui.editor.indexingNotice', 'Indexing the file: %s'),
+      IntToStr(FDoc.IndexPercent) + '%');
+    Req.Always := True;
+    Req.Tag := cIndexNoticeTag;
+    // Every batch of the index renews it; it ends soon after they stop.
+    Req.DurationMs := 1500;
+    NoticeRequest(Req);
+    FIndexNoticeShown := True;
+  end
+  else if FIndexNoticeShown then
+  begin
+    NoticeDismiss(cIndexNoticeTag);
+    FIndexNoticeShown := False;
+  end;
+end;
+
 procedure TEditorWindow.DocChanged(Sender: TObject);
 var
   Star: string;
@@ -902,6 +935,7 @@ var
 begin
   if not FAlive then
     Exit;
+  UpdateIndexNotice;
   Life := FLife;
   // A live reload (FDoc's own file-watcher) replaces the document's content
   // without going through Open, so the markdown fence index / line cache -
@@ -3079,6 +3113,7 @@ procedure TEditorWindow.CloseDocument;
 begin
   LeaveMarkdownOverlay;
   FDoc.Close;
+  UpdateIndexNotice;
   FURI := '';
   FTopLine := 0;
   FTopSubRow := 0;

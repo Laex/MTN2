@@ -22,6 +22,7 @@ type
     [Test] procedure TestSampleTrim;
     [Test] procedure TestStreamingBasics;
     [Test] procedure TestFirstLinesShownWhileIndexing;
+    [Test] procedure TestIndexingToastShownWhileStatusLineHidden;
     [Test] procedure TestCacheEviction;
     [Test] procedure TestNoTrailingNewline;
     [Test] procedure TestSampleStraddle;
@@ -50,6 +51,9 @@ uses
   uVfsRegistry,
   uVfsRouter,
   uTextEncoding,
+  uNotice,
+  uChromeRows,
+  uEditorWindow,
   uEditorDoc;
 
 const
@@ -402,6 +406,68 @@ begin
   end;
 end;
 
+procedure TestIndexingToastShownWhileStatusLineHidden;
+const
+  cBlockLines = 1000;
+  cBlocks = 1200;
+var
+  Path, Block: string;
+  BlockBytes: TBytes;
+  FS: TFileStream;
+  Win: TEditorWindow;
+  I, Shown, Dismissed: Integer;
+  SawAlways: Boolean;
+  SavedStatus: Boolean;
+  Tick: UInt64;
+begin
+  Path := TempPath('big_toast.txt');
+  Block := '';
+  for I := 0 to cBlockLines - 1 do
+    Block := Block + Format('row %.4d abcdefghij 0123456789 abcdefghij', [I]) + #10;
+  BlockBytes := TEncoding.ASCII.GetBytes(Block);
+  FS := TFileStream.Create(Path, fmCreate);
+  try
+    for I := 1 to cBlocks do
+      FS.WriteBuffer(BlockBytes[0], Length(BlockBytes));
+  finally
+    FS.Free;
+  end;
+  Shown := 0;
+  Dismissed := 0;
+  SawAlways := False;
+  SavedStatus := GShowStatusLine;
+  GShowStatusLine := False;
+  SetNoticeHandler(
+    procedure(const ARequest: TNoticeRequest)
+    begin
+      if ARequest.Tag = cIndexNoticeTag then
+      begin
+        Inc(Shown);
+        if ARequest.Always then
+          SawAlways := True;
+      end;
+    end,
+    procedure(const ATag: string)
+    begin
+      if ATag = cIndexNoticeTag then
+        Inc(Dismissed);
+    end);
+  Win := TEditorWindow.Create(nil, 1);
+  try
+    Win.Open(PathToFileUri(Path), True);
+    Tick := PlatformTickCount64;
+    while (Dismissed = 0) and (PlatformTickCount64 - Tick < 60000) do
+      CheckSynchronize(0);
+    Assert.IsTrue(Shown > 0, 'the progress toast is shown while indexing');
+    Assert.IsTrue(SawAlways, 'it shows even with notifications off');
+    Assert.IsTrue(Dismissed > 0, 'it is taken down when the index is complete');
+  finally
+    Win.Free;
+    SetNoticeHandler(nil, nil);
+    GShowStatusLine := SavedStatus;
+  end;
+end;
+
 procedure TestStreamingBasics;
 var
   Path: string;
@@ -750,6 +816,11 @@ end;
 procedure TTestStreamingViewer.TestFirstLinesShownWhileIndexing;
 begin
   TestStreamingViewer.TestFirstLinesShownWhileIndexing;
+end;
+
+procedure TTestStreamingViewer.TestIndexingToastShownWhileStatusLineHidden;
+begin
+  TestStreamingViewer.TestIndexingToastShownWhileStatusLineHidden;
 end;
 
 procedure TTestStreamingViewer.TestCacheEviction;

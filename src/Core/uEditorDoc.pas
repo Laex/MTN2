@@ -80,6 +80,7 @@ type
     FLineOffsets: TArray<Int64>;
     FIndexCount: Integer;
     FIndexing: Boolean;
+    FIndexPercent: Integer;
     FLineCache: TDictionary<Integer, string>;
     FLineCacheOrder: TQueue<Integer>;
     FWantEdit: Boolean;
@@ -194,6 +195,8 @@ type
     /// <summary>True while the line index of a streaming document is still
     /// growing: the first lines are shown, LineCount only covers what is indexed.</summary>
     property Indexing: Boolean read FIndexing;
+    /// <summary>Share of the file indexed so far, 0..100; meaningful while Indexing.</summary>
+    property IndexPercent: Integer read FIndexPercent;
     /// <summary>The first line changed since the last call (the lines from it on need new syntax
     /// colors), or MaxInt when none did. Resets the mark.</summary>
     function TakeHighlightDirty: Integer;
@@ -1287,6 +1290,7 @@ begin
     end;
     SetLength(FLineOffsets, FIndexCount);
     FIndexing := False;
+    FIndexPercent := 100;
     FCancel := nil;
     if FWantEdit then
       FStatus := Format('Too large to edit  %d MB', [ASize div (1024 * 1024)])
@@ -1294,8 +1298,10 @@ begin
       FStatus := Format('Streaming  %d lines', [FIndexCount - 1]);
   end
   else if ASize > 0 then
-    FStatus := Format('Indexing  %d%%  %d lines',
-      [ADonePos * 100 div ASize, FIndexCount - 1]);
+  begin
+    FIndexPercent := Integer(ADonePos * 100 div ASize);
+    FStatus := Format('Indexing  %d%%  %d lines', [FIndexPercent, FIndexCount - 1]);
+  end;
   FLoading := False;
   FReady := True;
   NotifyChanged;

@@ -822,6 +822,7 @@
     "panel.waitingServer": "Ожидание сервера...",
     "panel.notResponding": "Ответа пока нет – попытки продолжаются (на медленном или недоступном диске это может занять много времени)...",
     "editor.loading": "Загрузка...",
+    "editor.indexingNotice": "Индексация файла: %s",
     "editor.loadingHint": "Esc – отмена",
     "surface.waiting": "Загрузка...",
     "drivePopup.disconnectTitle": "Отключение диска",

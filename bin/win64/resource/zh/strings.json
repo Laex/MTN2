@@ -823,6 +823,7 @@
     "panel.waitingServer": "等待服务器...",
     "panel.notResponding": "尚无响应,仍在重试(在缓慢或无法访问的磁盘上可能需要较长时间)...",
     "editor.loading": "加载中...",
+    "editor.indexingNotice": "正在为文件建立索引：%s",
     "editor.loadingHint": "Esc 取消",
     "surface.waiting": "加载中...",
     "drivePopup.disconnectTitle": "断开驱动器",
