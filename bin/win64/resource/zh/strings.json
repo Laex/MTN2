@@ -977,7 +977,7 @@
     "display.contrastMedium": "中",
     "display.contrastHigh": "高",
     "display.terminalFont": "字体和单元格大小由终端决定。",
-    "update.managedTitle": "MTN2 %s 是通过软件包安装的。",
+    "update.managedNewer": "有新版本 %s（已安装 %s）。",
     "update.managedText": "请使用包管理器（apt、dnf）更新，或安装更新的软件包。",
     "display.markedText": "文字颜色",
     "display.markedBand": "行背景",

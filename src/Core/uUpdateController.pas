@@ -382,15 +382,10 @@ var
   Life: IUpdateLife;
   Interactive, Dev: Boolean;
 begin
-  if UpdatesManagedByPackage(AppDir) then
-  begin
-    if AInteractive then
-      ShowMessageDlg(T('ui.update.managedTitle',
-          'MTN2 %s is installed from a package.', [FCurrent]),
-        T('ui.update.managedText',
-          'Update it with the package manager (apt, dnf) or install a newer package.'));
+  // A package manager updates the program: a background check stays quiet,
+  // a requested one only reports whether a newer version exists.
+  if UpdatesManagedByPackage(AppDir) and not AInteractive then
     Exit;
-  end;
   case FState of
     usChecking:
       Exit;
@@ -460,6 +455,14 @@ begin
   end;
   if not AInteractive and SameText(FSettings.SkipVersion, ARelease.Version) then
     Exit;
+  if UpdatesManagedByPackage(AppDir) then
+  begin
+    ShowMessageDlg(T('ui.update.managedNewer',
+        'Version %s is available (installed: %s).', [ARelease.Version, FCurrent]),
+      T('ui.update.managedText',
+        'Update it with the package manager (apt, dnf) or install a newer package.'));
+    Exit;
+  end;
   ShowOffer;
 end;
 

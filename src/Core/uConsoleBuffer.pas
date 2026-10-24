@@ -196,6 +196,9 @@ implementation
 uses
   System.StrUtils;
 
+const
+  cInputScanRows = 1;
+
 function ConsoleFindMatch(ATotal: Integer; const AGetLine: TConsoleLineGetter;
   const ALowerNeedle: string; AForward: Boolean; AStartRow, AStartCol: Integer;
   out ARow, ACol: Integer): Boolean;
@@ -1525,13 +1528,20 @@ end;
 
 function TConsoleBuffer.GetInputAfterPrompt(AIndex: Integer): string;
 var
-  I, PromptEnd, LineIdx, Total: Integer;
+  I, PromptEnd, LineIdx, Total, ScanFloor: Integer;
   Line, Prev: string;
 begin
   Result := '';
   FLock.Enter;
   try
     Total := LineCountLocked;
+    // With a screen grid the input line is the cursor row; blank rows may
+    // follow it. Output further up must not be read as typed input, so the
+    // upward scan covers only the cursor row and the rows a wrapped command
+    // can occupy above it.
+    ScanFloor := 0;
+    if FGridEnabled then
+      ScanFloor := FPlainLines.Count + FActiveGrid.CursorRow - cInputScanRows;
     if AIndex < 0 then
       LineIdx := Total - 1
     else
@@ -1566,7 +1576,7 @@ begin
     // an old "PS ...> ls" still sitting in scrollback must never be mistaken
     // for input the user is currently typing (see FInputLineStart).
     if AIndex < 0 then
-      for I := Total - 1 downto Max(0, FInputLineStart) do
+      for I := Total - 1 downto Max(Max(0, FInputLineStart), ScanFloor) do
       begin
         Line := GetLineLocked(I);
         PromptEnd := FindPromptProtectedEnd(Line);

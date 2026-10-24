@@ -19,6 +19,7 @@ type
     [Test] procedure TestEchoBackspaceGrid;
     [Test] procedure TestTabExpansionGrid;
     [Test] procedure TestLocalInputAfterCmdPromptGrid;
+    [Test] procedure TestEmptyPromptAfterOutputHasNoInputGrid;
     [Test] procedure TestSubmitOutputOnNextLineGrid;
     [Test] procedure TestPasteOntoPromptLineGrid;
     [Test] procedure TestGridModeNoPhantomBlankLine;
@@ -266,6 +267,24 @@ begin
     Buf.AppendOutputEx('r', 80, 1);
     Assert.AreEqual('D:\Work\Delphi>dir', Buf.GetLine(Buf.LineCount - 1), 'typed on prompt line (grid)');
     Assert.AreEqual('dir', Buf.GetInputAfterPrompt, 'command on same line as prompt (grid)');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestEmptyPromptAfterOutputHasNoInputGrid;
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx('D:\Work>'#13#10, 80, 5);
+    Buf.AppendOutputEx('usage: tool [options]'#13#10, 80, 5);
+    Buf.AppendOutputEx('#25 {main}'#13#10, 80, 5);
+    Buf.AppendOutputEx(#13#10, 80, 5);
+    Buf.AppendOutputEx('D:\Work>', 80, 5);
+    Assert.AreEqual('', Trim(Buf.GetInputAfterPrompt),
+      'program output above an empty prompt is not typed input');
   finally
     Buf.Free;
   end;
@@ -542,6 +561,11 @@ end;
 procedure TTestConsoleBuffer.TestTabExpansionGrid;
 begin
   TestConsoleBuffer.TestTabExpansionGrid;
+end;
+
+procedure TTestConsoleBuffer.TestEmptyPromptAfterOutputHasNoInputGrid;
+begin
+  TestConsoleBuffer.TestEmptyPromptAfterOutputHasNoInputGrid;
 end;
 
 procedure TTestConsoleBuffer.TestLocalInputAfterCmdPromptGrid;

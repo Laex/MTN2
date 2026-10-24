@@ -978,7 +978,7 @@
     "display.contrastMedium": "Mittel",
     "display.contrastHigh": "Hoch",
     "display.terminalFont": "Schrift und Zellengröße bestimmt das Terminal.",
-    "update.managedTitle": "MTN2 %s ist aus einem Paket installiert.",
+    "update.managedNewer": "Version %s ist verfügbar (installiert: %s).",
     "update.managedText": "Aktualisieren Sie es mit dem Paketmanager (apt, dnf) oder installieren Sie ein neueres Paket.",
     "display.markedText": "Textfarbe",
     "display.markedBand": "Zeilenhintergrund",

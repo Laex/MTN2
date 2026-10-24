@@ -99,6 +99,9 @@ type
     FOnChanged: TNotifyEvent;
     FLastError: TVfsError;
     FWorkspaceReturnUri: string;
+    // Directory the current FRawRows were listed from; a reload of the same
+    // directory keeps the folder sizes already calculated.
+    FRowsURI: string;
     procedure NotifyChanged;
     procedure CancelPending;
     procedure ApplyRows(const ARows: TPanelRows; AGen: Cardinal);
@@ -141,7 +144,7 @@ type
 implementation
 
 uses
-  System.JSON, uPanelColumns, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
+  System.JSON, System.Generics.Collections, uPanelColumns, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
 
 function PanelRowToJson(const ARow: TPanelRow): string;
 var
@@ -261,10 +264,37 @@ begin
 end;
 
 procedure TFilePanelModel.ApplyRows(const ARows: TPanelRows; AGen: Cardinal);
+var
+  Sizes: TDictionary<string, TPair<Int64, string>>;
+  I: Integer;
+  Known: TPair<Int64, string>;
 begin
   if (AGen <> FGen) then
     Exit;
-  FRawRows := ARows;
+  if SameVfsUri(FRowsURI, FURI) and (Length(FRawRows) > 0) then
+  begin
+    Sizes := TDictionary<string, TPair<Int64, string>>.Create;
+    try
+      for I := 0 to High(FRawRows) do
+        if FRawRows[I].IsDirectory and not FRawRows[I].IsParent and
+           (FRawRows[I].Size >= 0) then
+          Sizes.AddOrSetValue(FRawRows[I].URI,
+            TPair<Int64, string>.Create(FRawRows[I].Size, FRawRows[I].SizeText));
+      FRawRows := ARows;
+      for I := 0 to High(FRawRows) do
+        if FRawRows[I].IsDirectory and not FRawRows[I].IsParent and
+           (FRawRows[I].Size < 0) and Sizes.TryGetValue(FRawRows[I].URI, Known) then
+        begin
+          FRawRows[I].Size := Known.Key;
+          FRawRows[I].SizeText := Known.Value;
+        end;
+    finally
+      Sizes.Free;
+    end;
+  end
+  else
+    FRawRows := ARows;
+  FRowsURI := FURI;
   RebuildSortedRows;
   FLoading := False;
   NotifyChanged;
@@ -453,6 +483,7 @@ begin
   CancelPending;
   Inc(FGen);
   FURI := '';
+  FRowsURI := '';
   FLastError := TVfsError.Ok;
   SetLength(FRawRows, 0);
   SetLength(FRows, 0);

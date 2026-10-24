@@ -21,6 +21,7 @@ type
     [Test] procedure TestSlowHintAppearsWhileStillLoading;
     [Test] procedure TestSlowHintDoesNotFireForAFastAnswer;
     [Test] procedure TestSlowHintIgnoredAfterNavigatingAway;
+    [Test] procedure TestCalculatedFolderSizeSurvivesReload;
   end;
 
 implementation
@@ -157,6 +158,39 @@ begin
     end).Start;
 end;
 
+type
+  { Lists one sub-folder, so a reload returns the folder without a size. }
+  TOneFolderVfs = class(TImmediateEmptyVfs)
+    procedure ListDirectoryAsync(const AURI: string; ACancel: IJobCancelToken;
+      AOnDone: TVfsListCallback); override;
+  end;
+
+procedure TOneFolderVfs.ListDirectoryAsync(const AURI: string;
+  ACancel: IJobCancelToken; AOnDone: TVfsListCallback);
+var
+  OnDone: TVfsListCallback;
+  Err: TVfsError;
+  Items: TArray<TVfsEntry>;
+begin
+  OnDone := AOnDone;
+  Err := TVfsError.Ok;
+  Err.URI := AURI;
+  SetLength(Items, 1);
+  Items[0] := Default(TVfsEntry);
+  Items[0].Name := 'sub';
+  Items[0].IsDirectory := True;
+  Items[0].Size := -1;
+  TThread.CreateAnonymousThread(
+    procedure
+    begin
+      TThread.Queue(nil,
+        procedure
+        begin
+          OnDone(Items, Err);
+        end);
+    end).Start;
+end;
+
 function WaitUntil(const APredicate: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
 var
   Deadline: UInt64;
@@ -223,6 +257,43 @@ begin
       'no leftover "still trying" row for a request that already finished');
 end;
 
+procedure TestCalculatedFolderSizeSurvivesReload;
+var
+  Model: IPanelModel;
+  FolderUri: string;
+
+  function FolderRow: TPanelRow;
+  var
+    J: Integer;
+  begin
+    for J := 0 to Model.ItemCount - 1 do
+      if Model.GetRow(J).IsDirectory and not Model.GetRow(J).IsParent then
+        Exit(Model.GetRow(J));
+    Result := Default(TPanelRow);
+    Result.Size := -2;
+  end;
+
+begin
+  Model := TFilePanelModel.Create(TOneFolderVfs.Create);
+  Model.Open('file:///C:/data');
+  Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+    'first listing finishes');
+  FolderUri := FolderRow.URI;
+  Assert.IsTrue(FolderUri <> '', 'the listing has a folder row');
+  Assert.IsTrue(Model.SetRowSize(FolderUri, 4096, '4K'), 'size applied to the folder row');
+
+  Model.Refresh;
+  Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+    'reload finishes');
+  Assert.AreEqual<Int64>(4096, FolderRow.Size, 'calculated size kept after reloading the same folder');
+  Assert.AreEqual('4K', FolderRow.SizeText, 'size text kept too');
+
+  Model.Open('file:///C:/other');
+  Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+    'other folder listing finishes');
+  Assert.IsTrue(FolderRow.Size < 0, 'sizes are not carried into another directory');
+end;
+
 procedure TestSlowHintIgnoredAfterNavigatingAway;
 var
   Model: IPanelModel;
@@ -259,6 +330,11 @@ end;
 procedure TTestPanelModel.TestSlowHintDoesNotFireForAFastAnswer;
 begin
   TestPanelModel.TestSlowHintDoesNotFireForAFastAnswer;
+end;
+
+procedure TTestPanelModel.TestCalculatedFolderSizeSurvivesReload;
+begin
+  TestPanelModel.TestCalculatedFolderSizeSurvivesReload;
 end;
 
 procedure TTestPanelModel.TestSlowHintIgnoredAfterNavigatingAway;

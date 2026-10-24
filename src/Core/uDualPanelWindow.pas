@@ -1057,6 +1057,9 @@ type
     /// native title bar is hidden: opens or closes the top menu like F9.
     /// False when the click is not for the menu (the system menu may follow).</summary>
     function ToggleTopMenuFromTitle: Boolean;
+    /// <summary>A right click on the free part of the tab bar opens the top
+    /// menu, with or without the window title bar.</summary>
+    function RightClickOpensTopMenu(ALocalCol, ALocalRow: Integer): Boolean;
     /// <summary>Left mouse button released (-1, -1 when outside the window).
     /// True when a window button was pressed and the release is consumed;
     /// AActs says the mouse is still over that button, so its command is to be
@@ -10923,6 +10926,21 @@ begin
   if GShowTitleBar or not ChromeDrawn or not Assigned(FTopMenu) then
     Exit;
   if Assigned(FDialog) and FDialog.Visible then
+    Exit;
+  FTopMenu.ToggleMenu;
+  NotifyChanged;
+  Result := True;
+end;
+
+function TDualPanelWindow.RightClickOpensTopMenu(ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  Result := False;
+  if not ChromeDrawn or not Assigned(FTopMenu) or (Assigned(FDialog) and FDialog.Visible) then
+    Exit;
+  if IsWindowDragZone(ALocalCol, ALocalRow) then
+    Exit(ToggleTopMenuFromTitle);
+  if (ALocalRow <> TabBarRow) or FTopMenu.Active or
+     not InTabBarFreeZone(TabBarChrome(Area.Width), ALocalCol) then
     Exit;
   FTopMenu.ToggleMenu;
   NotifyChanged;

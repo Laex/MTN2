@@ -4876,10 +4876,17 @@ begin
   if FSurfaceHandle <> 0 then
     DrawSurfaceContent
   else if FDoc.Loading then
+  begin
+    FillGridRect(Buffer, 1, 1, W - 2, H - 2, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
     PutGridText(Buffer, 1, 1, T('ui.editor.loading', 'Loading...') + '  ' +
-      T('ui.editor.loadingHint', 'Esc cancels'), FThemeColors.HintFg, FThemeColors.BodyBg)
+      T('ui.editor.loadingHint', 'Esc cancels'), FThemeColors.HintFg, FThemeColors.BodyBg);
+  end
   else if (not FDoc.Ready) and (FDoc.Error <> '') then
-    PutGridText(Buffer, 1, 1, FDoc.Error, FThemeColors.HintFg, FThemeColors.BodyBg)
+  begin
+    // The buffer is cleared with the window's default color, not the theme's.
+    FillGridRect(Buffer, 1, 1, W - 2, H - 2, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
+    PutGridText(Buffer, 1, 1, FDoc.Error, FThemeColors.HintFg, FThemeColors.BodyBg);
+  end
   else if FDoc.Ready and FHexMode then
     DrawHexContent
   else if FDoc.Ready and FMarkdownMode then

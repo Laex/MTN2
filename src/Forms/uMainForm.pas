@@ -3202,6 +3202,8 @@ begin
   if AButton = TMouseButton.mbRight then
   begin
     CancelContextMenuHold;
+    if FDualPanel.RightClickOpensTopMenu(LocalCol, LocalRow) then
+      Exit(True);
     FDualPanel.HandleClick(LocalCol, LocalRow, False, Shift, False);
     if FDualPanel.HitTestListItemLocalPath(LocalCol, LocalRow, Path) then
       ArmContextMenuHold(Path, Round(AScreenPt.X), Round(AScreenPt.Y));

@@ -976,7 +976,7 @@
     "display.contrastMedium": "Средний",
     "display.contrastHigh": "Сильный",
     "display.terminalFont": "Шрифт и размер ячейки задаёт терминал.",
-    "update.managedTitle": "MTN2 %s установлен из пакета.",
+    "update.managedNewer": "Доступна версия %s (установлена %s).",
     "update.managedText": "Обновите его менеджером пакетов (apt, dnf) или установите более новый пакет.",
     "display.markedText": "Цвет текста",
     "display.markedBand": "Фон строки",

@@ -1164,6 +1164,8 @@ begin
     LocalRow := Row - FDualPanel.Area.Top;
     if AEvent.Button = TMouseButton.mbRight then
     begin
+      if FDualPanel.RightClickOpensTopMenu(LocalCol, LocalRow) then
+        Exit;
       FDualPanel.HandleClick(LocalCol, LocalRow, False, Shift, False);
       Exit;
     end;
