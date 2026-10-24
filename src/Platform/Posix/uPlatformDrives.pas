@@ -58,22 +58,6 @@ const
   cFirstLetter = 'A';
   cLastLetter = 'Z';
 
-function IsPseudoFs(const AFsType: string): Boolean;
-const
-  cPseudo: array[0..23] of string = ('proc', 'sysfs', 'devtmpfs', 'devpts',
-    'cgroup', 'cgroup2', 'pstore', 'bpf', 'tracefs', 'debugfs', 'securityfs',
-    'configfs', 'fusectl', 'mqueue', 'hugetlbfs', 'autofs', 'binfmt_misc',
-    'overlay', 'squashfs', 'nsfs', 'rpc_pipefs', 'efivarfs', 'selinuxfs',
-    'fuse.gvfsd-fuse');
-var
-  I: Integer;
-begin
-  for I := Low(cPseudo) to High(cPseudo) do
-    if AFsType = cPseudo[I] then
-      Exit(True);
-  Result := False;
-end;
-
 function UnescapeMountField(const AText: string): string;
 var
   I, Code: Integer;
@@ -104,15 +88,19 @@ var
   M: TMount;
   Sep, I: Integer;
   List: TList<TMount>;
-  Seen: TStringList;
+  Seen, SeenDev: TStringList;
+  DevKey: string;
 begin
   List := TList<TMount>.Create;
   Lines := TStringList.Create;
   Seen := TStringList.Create;
+  SeenDev := TStringList.Create;
   Parts := TStringList.Create;
   try
     Seen.Sorted := True;
     Seen.Duplicates := dupIgnore;
+    SeenDev.Sorted := True;
+    SeenDev.Duplicates := dupIgnore;
     Parts.Delimiter := ' ';
     Parts.StrictDelimiter := True;
     Lines.Text := PlatformReadTextFile('/proc/self/mountinfo');
@@ -133,18 +121,16 @@ begin
       M.FsType := Parts[Sep + 1];
       M.Source := UnescapeMountField(Parts[Sep + 2]);
       M.Options := Parts[5];
-      if IsPseudoFs(M.FsType) or (M.MountPoint = '') then
+      if IsNoiseMount(M.MountPoint, M.FsType) then
         Continue;
-      // tmpfs only where people look for files; skip /run/user, /sys, /dev...
-      if (M.FsType = 'tmpfs') and (M.MountPoint <> '/tmp') and
-         (M.MountPoint <> '/dev/shm') then
-        Continue;
-      if M.MountPoint.StartsWith('/snap/') or M.MountPoint.StartsWith('/var/lib/docker') or
-         M.MountPoint.StartsWith('/proc') or M.MountPoint.StartsWith('/sys') then
+      // The same device and root mounted again (a bind mount) adds nothing.
+      DevKey := Parts[2] + ' ' + Parts[3];
+      if SeenDev.IndexOf(DevKey) >= 0 then
         Continue;
       if Seen.IndexOf(M.MountPoint) >= 0 then
         Continue;
       Seen.Add(M.MountPoint);
+      SeenDev.Add(DevKey);
       List.Add(M);
     end;
     List.Sort(TComparer<TMount>.Construct(
@@ -155,6 +141,7 @@ begin
     Result := List.ToArray;
   finally
     Parts.Free;
+    SeenDev.Free;
     Seen.Free;
     Lines.Free;
     List.Free;
@@ -182,10 +169,11 @@ begin
   Result.Letter := ALetter;
   Result.RootPath := AMount.MountPoint;
   Result.KindLabel := KindOf(AMount);
-  // The file system and the mount point arrive with PlatformFillDriveDetails:
-  // the drive cache treats an entry that has them as already answered.
+  // The file system arrives with PlatformFillDriveDetails: the drive cache
+  // treats an entry that has it as already answered. The mount point is known
+  // at once and names the volume in the Change Drive popup.
   Result.FsName := '';
-  Result.LabelOrPath := '';
+  Result.LabelOrPath := AMount.MountPoint;
   Result.TotalBytes := 0;
   Result.FreeBytes := 0;
   Result.SerialNumber := 0;

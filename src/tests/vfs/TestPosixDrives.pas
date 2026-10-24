@@ -15,6 +15,8 @@ type
   public
     [Test] procedure QuickListLeavesDetailsOpen;
     [Test] procedure DetailsNameFileSystemAndMountPoint;
+    [Test] procedure MachineryMountsAreHidden;
+    [Test] procedure PlacesToBrowseAreKept;
   end;
 
 implementation
@@ -45,6 +47,29 @@ begin
   Assert.AreNotEqual('', Info.FsName, 'file system');
   Assert.AreEqual(Info.RootPath, Info.LabelOrPath, 'the mount point is shown');
   Assert.IsTrue(Info.TotalBytes > 0, 'total size');
+end;
+
+procedure TTestPosixDrives.MachineryMountsAreHidden;
+begin
+  Assert.IsTrue(IsNoiseMount('/proc', 'proc'), 'proc');
+  Assert.IsTrue(IsNoiseMount('/run/user/1000', 'tmpfs'), 'per-user tmpfs');
+  Assert.IsTrue(IsNoiseMount('/var/lib/docker/overlay2/x/merged', 'overlay'), 'container overlay');
+  Assert.IsTrue(IsNoiseMount('/etc/hosts', 'ext4'), 'single-file bind mount');
+  Assert.IsTrue(IsNoiseMount('/run/credentials/x', 'ramfs'), 'credentials ramfs');
+  Assert.IsTrue(IsNoiseMount('/run/snapd/ns', 'tmpfs'), 'snap namespaces');
+  Assert.IsTrue(IsNoiseMount('/snap/core/1', 'squashfs'), 'snap image');
+  Assert.IsTrue(IsNoiseMount('', 'ext4'), 'no mount point');
+end;
+
+procedure TTestPosixDrives.PlacesToBrowseAreKept;
+begin
+  Assert.IsFalse(IsNoiseMount('/', 'ext4'), 'root');
+  Assert.IsFalse(IsNoiseMount('/home', 'btrfs'), 'home');
+  Assert.IsFalse(IsNoiseMount('/boot/efi', 'vfat'), 'efi partition');
+  Assert.IsFalse(IsNoiseMount('/mnt/data', 'xfs'), 'data disk');
+  Assert.IsFalse(IsNoiseMount('/run/media/user/USB', 'exfat'), 'removable media');
+  Assert.IsFalse(IsNoiseMount('/tmp', 'tmpfs'), 'tmp');
+  Assert.IsFalse(IsNoiseMount('/srv/share', 'nfs4'), 'network mount');
 end;
 
 initialization
