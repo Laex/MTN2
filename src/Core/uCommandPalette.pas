@@ -28,8 +28,11 @@ type
 const
   cPaletteRecentMax = 8;
 
-/// <summary>The commands of AMenu that can run now, in menu order.</summary>
-function BuildPaletteEntries(AMenu: TTopMenuController): TArray<TPaletteEntry>;
+/// <summary>The commands of AMenu that can run now, in menu order. Their search
+/// words come from menu.json, from the locale file and from the user's
+/// aliases.json (AUserAliasesPath, the config folder's file when blank).</summary>
+function BuildPaletteEntries(AMenu: TTopMenuController;
+  const AUserAliasesPath: string = ''): TArray<TPaletteEntry>;
 
 /// <summary>Quality of the match of AQuery with the entry, lower is better;
 /// -1 when it does not match. Every word of the query must match: the start
@@ -54,62 +57,66 @@ procedure PaletteForgetRecent;
 implementation
 
 uses
-  System.Classes, System.JSON, System.Generics.Defaults, System.TypInfo,
-  uStrings, uCharWidth, uResourceAccess;
-
-const
-  cResMenuAliases = 'MENU_ALIASES';
+  System.Classes, System.IOUtils, System.JSON, System.Generics.Defaults,
+  System.TypInfo, uStrings, uCharWidth, uConfigLocation;
 
 var
   GRecent: TArray<string>; // newest first
-  GAliases: TDictionary<string, string>;
 
-// The search words of the commands, from the embedded config\menualiases.json:
-// action name -> comma separated words.
-function AliasTable: TDictionary<string, string>;
+// aliases.json of the config folder: item key -> comma separated words, or a
+// list of words. A missing or malformed file adds nothing.
+function LoadUserAliases(const APath: string): TDictionary<string, string>;
 var
-  RS: TStream;
-  Bytes: TBytes;
   Root: TJSONValue;
   Pair: TJSONPair;
+  S: string;
+  I: Integer;
 begin
-  if GAliases <> nil then
-    Exit(GAliases);
-  GAliases := TDictionary<string, string>.Create;
-  Result := GAliases;
-  RS := OpenRcData(cResMenuAliases);
-  if RS = nil then
+  Result := TDictionary<string, string>.Create;
+  if (APath = '') or not FileExists(APath) then
     Exit;
   try
-    SetLength(Bytes, RS.Size);
-    if RS.Size > 0 then
-      RS.ReadBuffer(Bytes[0], RS.Size);
-  finally
-    RS.Free;
+    Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(APath, TEncoding.UTF8));
+  except
+    Exit;
   end;
-  Root := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(Bytes));
   try
-    if Root is TJSONObject then
-      for Pair in TJSONObject(Root) do
-        if (Pair.JsonValue is TJSONString) and not Pair.JsonString.Value.StartsWith('//') then
-          GAliases.AddOrSetValue(Pair.JsonString.Value, Pair.JsonValue.Value);
+    if not (Root is TJSONObject) then
+      Exit;
+    for Pair in TJSONObject(Root) do
+    begin
+      if Pair.JsonString.Value.StartsWith('//') then
+        Continue;
+      if Pair.JsonValue is TJSONArray then
+      begin
+        S := '';
+        for I := 0 to TJSONArray(Pair.JsonValue).Count - 1 do
+          S := S + ', ' + TJSONArray(Pair.JsonValue).Items[I].Value;
+      end
+      else if Pair.JsonValue is TJSONString then
+        S := Pair.JsonValue.Value
+      else
+        Continue;
+      Result.AddOrSetValue(Pair.JsonString.Value, S);
+    end;
   finally
     Root.Free;
   end;
 end;
 
-function AliasesOf(const AKey: string): string;
+// The search words of an item: its aliases in menu.json (English), those the
+// locale file adds as menu.alias.<key>, and those of the user's aliases.json.
+function AliasesOf(const AEntry: TPaletteEntry; AUser: TDictionary<string, string>): string;
 var
-  Own: string;
+  Extra: string;
 begin
-  if not AliasTable.TryGetValue(AKey, Result) then
-    Result := '';
-  // a locale file can add words of its own
-  Own := T('menu.alias.' + AKey, '');
-  if Own <> '' then
-    Result := Result + ', ' + Own;
+  Result := AEntry.Item.Aliases;
+  Extra := T('menu.alias.' + AEntry.Key, '');
+  if Extra <> '' then
+    Result := Result + ', ' + Extra;
+  if AUser.TryGetValue(AEntry.Key, Extra) then
+    Result := Result + ', ' + Extra;
 end;
-
 function CleanTitle(const ACaption: string): string;
 begin
   Result := StringReplace(ACaption, '&', '', [rfReplaceAll]);
@@ -123,10 +130,17 @@ begin
     Result := GetEnumName(TypeInfo(TTopMenuAction), Ord(AItem.Action));
 end;
 
-function BuildPaletteEntries(AMenu: TTopMenuController): TArray<TPaletteEntry>;
+function BuildPaletteEntries(AMenu: TTopMenuController;
+  const AUserAliasesPath: string): TArray<TPaletteEntry>;
 var
   List: TList<TPaletteEntry>;
+  User: TDictionary<string, string>;
+  Path: string;
 begin
+  Path := AUserAliasesPath;
+  if Path = '' then
+    Path := GetConfigFilePath('aliases.json');
+  User := LoadUserAliases(Path);
   List := TList<TPaletteEntry>.Create;
   try
     AMenu.ListItems(
@@ -146,15 +160,13 @@ begin
           E.Category := ACategory;
         E.Shortcut := TopMenuItemShortcut(AItem);
         E.Key := ItemKey(AItem);
-        if AItem.IsPluginItem then
-          E.Aliases := ''
-        else
-          E.Aliases := AliasesOf(E.Key);
+        E.Aliases := AliasesOf(E, User);
         List.Add(E);
       end);
     Result := List.ToArray;
   finally
     List.Free;
+    User.Free;
   end;
 end;
 
@@ -415,9 +427,5 @@ begin
   GRecent := nil;
 end;
 
-initialization
-
-finalization
-  FreeAndNil(GAliases);
 
 end.

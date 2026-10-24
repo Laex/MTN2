@@ -61,7 +61,7 @@ sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
   Quick View (`Ctrl+Q`), Markdown-Vorschau, externer Viewer/Editor.
 - **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, Plugin-VFS.
 - **Anpassung:** anpassbare Tastenbelegung (`keymap.json`), dateibasierte Themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast usw.; eigene Themes im Theme-Editor),
-  Benutzermenü (F2), Dateizuordnungen, kontextbezogene F1-Hilfe.
+  Benutzermenü (F2), Befehlspalette (`Umschalt+F9`) zur Suche in den Menüeinträgen, Dateizuordnungen, kontextbezogene F1-Hilfe.
 - **Sprachen:** Oberfläche und Hilfe auf Deutsch, Englisch, Russisch und Chinesisch (vereinfacht); Sprache wird unter **Optionen → Schrift / Anzeige...**
   ausgewählt und ohne Neustart angewendet; beim ersten Start wird die Windows-Sprache verwendet, sofern eine Übersetzung vorliegt. Eine eigene Sprache wird als Ordner `resource\<sprache>\` neben `MTN2.exe` hinzugefügt (`locale.json`, `strings.json`, Hilfe in `help\`); ein Neukompilieren ist nicht nötig. Nur Englisch ist im Programm eingebaut.
 - **Unicode:** CJK-Schriftzeichen (BMP), Hiragana, Katakana, Hangeul und vollbreite Zeichen

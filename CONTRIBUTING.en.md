@@ -19,7 +19,7 @@ issues that need help are marked [help wanted](https://github.com/Laex/MTN2/labe
 - **Themes.** A theme is a JSON file ([docs/THEMES.md](docs/THEMES.md)); share a finished theme in Discussions.
 - **Interface languages.** Strings are stored in `bin/win64/resource/<language>/strings.json` (the template with every key is
   `src/strings/en.json`); a custom language is added as a `resource\<language>\` folder next to `MTN2.exe`.
-  Its `locale.json` names the key-set version; when keys change, raise `src/resource.version` and the pack versions.
+  Its `locale.json` names the key-set version; when keys change, raise `src/resource.version` and the pack versions. Search words for the command palette: English ones are the `aliases` field of an item in `src/config/menu.json`, words of your own language are optional `menu.alias.<action>` keys in `strings.json`.
 - **Plugins.** Native DLLs and WebAssembly (C, C++, Rust, Go, and others); contracts are documented in
   [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md), with examples in [samples](samples).
 - **Documentation and help.** Text lives in `docs/` and `bin/win64/resource/<language>/help`.

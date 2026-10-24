@@ -156,6 +156,9 @@ type
     HotChar: Char;
     HotPos: Integer; // 1-indexed position in Caption; 0 = not highlighted
     Shortcut: string;
+    /// <summary>Extra words the command palette finds the item by (menu.json
+    /// "aliases", comma separated, English).</summary>
+    Aliases: string;
     Action: TTopMenuAction;
     IsSeparator: Boolean;
     /// <summary>Plugin-supplied items dispatch through PluginOnClick instead
@@ -725,6 +728,7 @@ begin
               NewCategories[I].Items[J].HotChar := HotC;
               NewCategories[I].Items[J].HotPos := PosIdx;
               NewCategories[I].Items[J].Shortcut := ShortStr;
+              NewCategories[I].Items[J].Aliases := ItemObj.GetValue<string>('aliases', '');
               NewCategories[I].Items[J].Action := StringToTopMenuAction(ActStr);
               NewCategories[I].Items[J].IsSeparator := False;
             end;

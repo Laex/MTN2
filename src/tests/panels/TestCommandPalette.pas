@@ -20,6 +20,8 @@ type
     [Test] procedure TestCaptionStartRanksBeforeInnerMatch;
     [Test] procedure TestInitialsFindACommand;
     [Test] procedure TestWildcardsStandForCharacters;
+    [Test] procedure TestMenuJsonAliasesAreSearchWords;
+    [Test] procedure TestUserAliasesFileAddsWords;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
     [Test] procedure TestRunItemRunsOnlyEnabledCommands;
@@ -31,7 +33,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.UITypes,
+  System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
   uDialogHost, uDualPanelUiTypes, uDualPanelPaletteDialog;
 
@@ -41,7 +43,7 @@ const
     '{"caption":"Copy","hotChar":"C","shortcut":"F5","action":"tmaFileCopy"},' +
     '{"isSeparator":true},' +
     '{"caption":"Copy full path","hotChar":"P","shortcut":"","action":"tmaFileCopyPath"},' +
-    '{"caption":"Move","hotChar":"M","shortcut":"F6","action":"tmaFileMove"},' +
+    '{"caption":"Move","hotChar":"M","shortcut":"F6","action":"tmaFileMove","aliases":"transfer, relocate"},' +
     '{"caption":"Delete","hotChar":"D","shortcut":"F8","action":"tmaFileDelete"}' +
     ']}]}';
 
@@ -144,8 +146,8 @@ begin
     E := BuildPaletteEntries(M);
     Assert.IsTrue(Contains(RankedKeys(E, 'shell'), 'tmaCmdConsoleProfile'),
       'the English alias finds the command in an English menu');
-    Assert.IsTrue(Contains(RankedKeys(E, 'оболочка'), 'tmaCmdConsoleProfile'),
-      'the Russian alias finds it in an English menu');
+    Assert.IsFalse(Contains(RankedKeys(E, 'оболочка'), 'tmaCmdConsoleProfile'),
+      'the Russian words belong to the Russian locale');
     SetLocale('ru');
     M.BuildMenuStructure;
     E := BuildPaletteEntries(M);
@@ -236,6 +238,49 @@ begin
     Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'mo*e copy')),
       'every word still has to match');
   finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestMenuJsonAliasesAreSearchWords;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+begin
+  M := MakeMenu(cMenuJson);
+  try
+    E := BuildPaletteEntries(M, 'no-such-aliases.json');
+    Assert.AreEqual('tmaFileMove', RankedKeys(E, 'transfer')[0]);
+    Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'clone')), 'a word nobody lists finds nothing');
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestUserAliasesFileAddsWords;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Path: string;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-test-aliases.json');
+  M := MakeMenu(cMenuJson);
+  try
+    TFile.WriteAllText(Path,
+      '{"//": "note", "tmaFileCopy": ["clone", "dup"], "tmaFileDelete": "shred, zap"}',
+      TEncoding.UTF8);
+    E := BuildPaletteEntries(M, Path);
+    Assert.AreEqual('tmaFileCopy', RankedKeys(E, 'clone')[0], 'a list of words');
+    Assert.AreEqual('tmaFileDelete', RankedKeys(E, 'zap')[0], 'a comma separated string');
+    Assert.AreEqual('tmaFileMove', RankedKeys(E, 'transfer')[0], 'the built-in words stay');
+    Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'note')), 'a "//" key is a comment');
+
+    TFile.WriteAllText(Path, 'not json', TEncoding.UTF8);
+    E := BuildPaletteEntries(M, Path);
+    Assert.AreEqual<Integer>(4, Length(E), 'a malformed file adds nothing and breaks nothing');
+    Assert.AreEqual('tmaFileMove', RankedKeys(E, 'transfer')[0]);
+  finally
+    TFile.Delete(Path);
     M.Free;
   end;
 end;

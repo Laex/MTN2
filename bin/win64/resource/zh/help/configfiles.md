@@ -5,7 +5,8 @@
 | 文件 | 内容 |
 | --- | --- |
 | `session.json` | 窗口、面板和标签页的状态,主题,字体,语言 |
-| `keymap.json` | 重新定义的按键 |
+| `keymap.json` | 重新定义的按键 |
+| `aliases.json` | 命令面板的自定义搜索词 |
 | `history.json` | 命令历史 |
 | `folderhistory.json` | 文件夹历史 |
 | `filehistory.json` | 文件历史 (Alt+F11) |

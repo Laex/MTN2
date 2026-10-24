@@ -109,7 +109,7 @@ begin
   try
     Missing := '';
     for Key in Ru.Keys do
-      if not De.ContainsKey(Key) then
+      if not De.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') then
         Missing := Missing + ' ' + Key;
     Assert.AreEqual('', Missing, 'keys translated into Russian but not into German');
     for Key in De.Keys do

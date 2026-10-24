@@ -46,7 +46,7 @@ MTN2 面向在 DOS Navigator 与 Far Manager 陪伴下成长、习惯用键盘�
 - **控制台与终端：** 面板下方的命令行输入、真正的 ConPTY（cmd、PowerShell、pwsh、Git Bash、WSL、SSH）、ANSI/VT 转义序列解析、面向 TUI 程序的备用屏幕缓冲、终端工作区。从面板或命令行启动的控制台程序在内置控制台中运行，输出保留在屏幕上（`Ctrl+O`）。
 - **查看与编辑：** 内置 Viewer（文本、十六进制、大文件流式加载）、Editor、快速查看（`Ctrl+Q`）、Markdown 预览、支持外部查看器与编辑器。
 - **虚拟文件系统（VFS）：** 压缩包浏览（zip、基于 `7z.dll` 的 7z）、SSH 上的 SFTP、插件扩展 VFS。
-- **个性化设置：** 可自定义快捷键映射（`keymap.json`）、基于文件的主题系统（Far Classic、Norton Commander、Midnight Commander、Total Commander、Gruvbox、Tokyo Night、Dracula、Nord、Solarized、Light、High Contrast 等；可通过内置主题编辑器创建自定义主题）、用户菜单（F2）、文件关联、F1 上下文帮助。
+- **个性化设置：** 可自定义快捷键映射（`keymap.json`）、基于文件的主题系统（Far Classic、Norton Commander、Midnight Commander、Total Commander、Gruvbox、Tokyo Night、Dracula、Nord、Solarized、Light、High Contrast 等；可通过内置主题编辑器创建自定义主题）、用户菜单（F2）、命令面板（`Shift+F9`，搜索菜单项）、文件关联、F1 上下文帮助。
 - **多语言：** 界面和帮助文档支持英语、俄语、德语和简体中文；语言可在 **选项 → 字体 / 显示...**（Options → Font / Display...）中选择并实时生效，无需重启。可通过在 `MTN2.exe` 同级目录下放置 `resource\<语言代码>\` 文件夹（`locale.json`、`strings.json`，帮助文档在 `help\` 中）添加自定义语言，无需重新编译。程序内仅内置英语。
 - **Unicode：** CJK 汉字（基本多语言平面）、平假名、片假名、谚文及全角字符在控制台、面板、标签页和标题中均以双列宽度显示；缺失字符自动使用系统字体回退渲染。
 - **插件系统：** 原生 DLL 与 WebAssembly（基于 Wasmtime）—— 支持自定义 VFS 方案及专属面板、菜单项、按键绑定、消息总线。已定义对话框、覆盖层与状态栏的插件协议，目前由主程序内部使用——详见 [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md)。

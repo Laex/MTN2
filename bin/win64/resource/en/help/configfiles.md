@@ -5,7 +5,8 @@ The settings folder is `%APPDATA%\MTN2\`. If a `portable.dat` file lies next to 
 | File | Contents |
 | --- | --- |
 | `session.json` | state of the window, panels and tabs, theme, font, language |
-| `keymap.json` | redefined keys |
+| `keymap.json` | redefined keys |
+| `aliases.json` | your own search words for the command palette |
 | `history.json` | command history |
 | `folderhistory.json` | folder history |
 | `filehistory.json` | file history (Alt+F11) |

@@ -144,7 +144,7 @@ begin
     begin
       Missing := '';
       for Key in Pack.Value.Keys do
-        if not Template.ContainsKey(Key) then
+        if not Template.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') then
           Missing := Missing + ' ' + Key;
       Assert.AreEqual('', Missing, Pack.Key + ': pack keys absent from the English template');
     end;
@@ -167,7 +167,7 @@ begin
       Missing := '';
       for Other in Packs do
         for Key in Other.Value.Keys do
-          if not Pack.Value.ContainsKey(Key) then
+          if not Pack.Value.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') then
             Missing := Missing + ' ' + Key;
       Assert.AreEqual('', Missing, Pack.Key + ': keys present in another pack but not here');
     end;
