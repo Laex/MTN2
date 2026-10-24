@@ -29,6 +29,9 @@ type
     CmdFocused: Boolean;
     /// <summary>Active panel folder URI (wkPanels only).</summary>
     PanelURI: string;
+    /// <summary>Topic the open dialog asks for itself ('' = the one its kind
+    /// maps to), e.g. the command picked in the command palette.</summary>
+    DialogTopic: string;
   end;
 
 const
@@ -43,6 +46,9 @@ function HelpTopicForDialog(AKind: THostDialogKind): string;
 /// <summary>Topic for a panel folder: archives, SFTP, Recycle Bin / system
 /// folders and search results have their own pages.</summary>
 function HelpTopicForPanelUri(const AURI: string): string;
+/// <summary>Topic that explains a top menu command, by the action's name
+/// (the enum identifier, or 'plugin:...' for a plugin's item).</summary>
+function HelpTopicForMenuAction(const AActionName: string): string;
 function HelpTopicForScreen(const AScreen: THelpScreen): string;
 
 implementation
@@ -134,6 +140,79 @@ begin
   Result := 'panels.md';
 end;
 
+function HelpTopicForMenuAction(const AActionName: string): string;
+type
+  TTopicRule = record
+    Prefix, Topic: string;
+  end;
+const
+  // The first rule whose prefix starts the name wins, so the specific
+  // prefixes come before the general ones.
+  cRules: array[0..54] of TTopicRule = (
+    (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
+    (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
+    (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
+    (Prefix: 'tmaFileRestoreSelection'; Topic: 'selection.md'),
+    (Prefix: 'tmaFileView'; Topic: 'viewer.md'),
+    (Prefix: 'tmaFileEdit'; Topic: 'viewer.md'),
+    (Prefix: 'tmaFilePack'; Topic: 'archives.md'),
+    (Prefix: 'tmaFileUnpack'; Topic: 'archives.md'),
+    (Prefix: 'tmaFileCompare'; Topic: 'sync.md'),
+    (Prefix: 'tmaFileRestore'; Topic: 'drives.md'),
+    (Prefix: 'tmaFileRunInBackground'; Topic: 'jobs.md'),
+    (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
+    (Prefix: 'tmaFile'; Topic: 'fileops.md'),
+    (Prefix: 'tmaEdit'; Topic: 'text.md'),
+    (Prefix: 'tmaLeftDrive'; Topic: 'drives.md'),
+    (Prefix: 'tmaRightDrive'; Topic: 'drives.md'),
+    (Prefix: 'tmaLeftSort'; Topic: 'view.md'),
+    (Prefix: 'tmaRightSort'; Topic: 'view.md'),
+    (Prefix: 'tmaLeftColumnModes'; Topic: 'view.md'),
+    (Prefix: 'tmaRightColumnModes'; Topic: 'view.md'),
+    (Prefix: 'tmaLeft'; Topic: 'panels.md'),
+    (Prefix: 'tmaRight'; Topic: 'panels.md'),
+    (Prefix: 'tmaCmdPalette'; Topic: 'topmenu.md'),
+    (Prefix: 'tmaCmdQuickView'; Topic: 'panels.md'),
+    (Prefix: 'tmaCmdFind'; Topic: 'search.md'),
+    (Prefix: 'tmaCmdDirSync'; Topic: 'sync.md'),
+    (Prefix: 'tmaCmdCompareFolders'; Topic: 'sync.md'),
+    (Prefix: 'tmaCmdUserMenu'; Topic: 'usermenu.md'),
+    (Prefix: 'tmaCmdHistory'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdFolderHistory'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdFileHistory'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdFolderHotlist'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdCmdHistory'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdWorkspace'; Topic: 'workspaces.md'),
+    (Prefix: 'tmaCmdSsh'; Topic: 'ssh.md'),
+    (Prefix: 'tmaCmdAssociations'; Topic: 'associations.md'),
+    (Prefix: 'tmaCmdJobList'; Topic: 'jobs.md'),
+    (Prefix: 'tmaCmdRecycleBin'; Topic: 'drives.md'),
+    (Prefix: 'tmaCmdDriveRoot'; Topic: 'drives.md'),
+    (Prefix: 'tmaCmdNewTerminal'; Topic: 'terminals.md'),
+    (Prefix: 'tmaCmdConsole'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaCmdSyncConsoleDir'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaCmdSaveConsoleOutput'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaCmdClearConsole'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaCmdFocusCmdLine'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaCmdInsert'; Topic: 'cmdline.md'),
+    (Prefix: 'tmaOptKeymap'; Topic: 'keymap.md'),
+    (Prefix: 'tmaOptReloadKeymap'; Topic: 'keymap.md'),
+    (Prefix: 'tmaOptZoom'; Topic: 'screen.md'),
+    (Prefix: 'tmaOptResetZoom'; Topic: 'screen.md'),
+    (Prefix: 'tmaOptDisplay'; Topic: 'screen.md'),
+    (Prefix: 'tmaOptColumnsConfig'; Topic: 'view.md'),
+    (Prefix: 'tmaOpt'; Topic: 'settings.md'),
+    (Prefix: 'tmaHelpUpdates'; Topic: 'updates.md'),
+    (Prefix: 'tmaCmd'; Topic: 'panels.md'));
+var
+  I: Integer;
+begin
+  for I := Low(cRules) to High(cRules) do
+    if StartsStr(cRules[I].Prefix, AActionName) then
+      Exit(cRules[I].Topic);
+  Result := 'topmenu.md';
+end;
+
 function HelpTopicForScreen(const AScreen: THelpScreen): string;
 begin
   if AScreen.ConsoleMode then
@@ -141,7 +220,11 @@ begin
   if AScreen.TopMenuActive then
     Exit('topmenu.md');
   if AScreen.DialogKind <> hdkNone then
+  begin
+    if AScreen.DialogTopic <> '' then
+      Exit(AScreen.DialogTopic);
     Exit(HelpTopicForDialog(AScreen.DialogKind));
+  end;
   case AScreen.WorkspaceKind of
     wkDocument:
       Exit('viewer.md');

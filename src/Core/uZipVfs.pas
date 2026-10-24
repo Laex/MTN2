@@ -180,20 +180,32 @@ end;
 
 function FindZipEntryIndex(AZip: TZipFile; const AName: string): Integer;
 var
+  Names: TArray<string>;
   I: Integer;
   Want, Have: string;
 begin
+  Names := AZip.FileNames;
   Want := NormZipName(AName);
   for I := 0 to AZip.FileCount - 1 do
   begin
-    Have := NormZipName(AZip.FileNames[I]);
+    Have := NormZipName(Names[I]);
     if SameText(Have, Want) then
       Exit(I);
   end;
   Result := -1;
 end;
 
-function EntryIsDirectory(AZip: TZipFile; AIndex: Integer): Boolean;
+function EntryIsDirectory(AZip: TZipFile; AIndex: Integer; const AName: string): Boolean; overload;
+var
+  H: TZipHeader;
+begin
+  if (Length(AName) > 0) and ((AName[Length(AName)] = '/') or (AName[Length(AName)] = '')) then
+    Exit(True);
+  H := AZip.FileInfo[AIndex];
+  Result := (H.ExternalAttributes and $10) <> 0; // DOS dir bit when present
+end;
+
+function EntryIsDirectory(AZip: TZipFile; AIndex: Integer): Boolean; overload;
 var
   N: string;
   H: TZipHeader;
@@ -391,6 +403,7 @@ class function TZipCdCacheHub.BuildFromZip(AZip: TZipFile; const APathKey: strin
   ASize: Int64; ATime: TDateTime; ACancel: IJobCancelToken;
   out AError: TVfsError): TZipCdCache;
 var
+  Names: TArray<string>;
   I, Slash: Integer;
   Name, Rest, Parent, Child, Full, ParentKey, ChildKey: string;
   IsDir: Boolean;
@@ -402,7 +415,6 @@ var
   var
     L: TList<TVfsEntry>;
     SeenKey: string;
-    J: Integer;
   begin
     if AChildName = '' then
       Exit;
@@ -415,9 +427,6 @@ var
       L := TList<TVfsEntry>.Create;
       Result.Children.Add(AParentKey, L);
     end;
-    for J := 0 to L.Count - 1 do
-      if SameText(L[J].Name, AChildName) then
-        Exit;
     L.Add(MakeDirEntry(AChildName));
     Full := AChildName;
     if AParentKey <> '' then
@@ -431,7 +440,6 @@ var
   var
     L: TList<TVfsEntry>;
     SeenKey, FullPath: string;
-    J: Integer;
   begin
     if AChildName = '' then
       Exit;
@@ -444,9 +452,6 @@ var
       L := TList<TVfsEntry>.Create;
       Result.Children.Add(AParentKey, L);
     end;
-    for J := 0 to L.Count - 1 do
-      if SameText(L[J].Name, AChildName) then
-        Exit;
     L.Add(MakeFileEntry(AChildName, AHeader));
     if AParentKey <> '' then
       FullPath := AParentKey + '/' + LowerCase(AChildName)
@@ -456,6 +461,7 @@ var
   end;
 
 begin
+  Names := AZip.FileNames;
   AError := TVfsError.Ok;
   Result := TZipCdCache.Create;
   Result.PathKey := APathKey;
@@ -471,12 +477,12 @@ begin
         FreeAndNil(Result);
         Exit;
       end;
-      if IsUnsafeZipName(AZip.FileNames[I]) then
+      if IsUnsafeZipName(Names[I]) then
         Continue;
-      Name := NormZipName(AZip.FileNames[I]);
+      Name := NormZipName(Names[I]);
       if Name = '' then
         Continue;
-      IsDir := EntryIsDirectory(AZip, I);
+      IsDir := EntryIsDirectory(AZip, I, Names[I]);
       H := AZip.FileInfo[I];
       Parent := '';
       Rest := Name;
@@ -1078,6 +1084,7 @@ procedure SumZipEntries(AZip: TZipFile; const APrefix: string;
   ACancel: IJobCancelToken; out ABytes: Int64; out AFiles, AFolders: Integer;
   out AError: TVfsError);
 var
+  Names: TArray<string>;
   Pref, Name, Rest: string;
   I, Slash: Integer;
   Dirs: TDictionary<string, Boolean>;
@@ -1119,6 +1126,7 @@ var
   end;
 
 begin
+  Names := AZip.FileNames;
   ABytes := 0;
   AFiles := 0;
   AFolders := 0;
@@ -1135,12 +1143,12 @@ begin
         AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
         Exit;
       end;
-      if IsUnsafeZipName(AZip.FileNames[I]) then
+      if IsUnsafeZipName(Names[I]) then
         Continue;
-      Name := NormZipName(AZip.FileNames[I]);
+      Name := NormZipName(Names[I]);
       if not ZipRestAfterPrefix(Name, Pref, Rest) then
         Continue;
-      if EntryIsDirectory(AZip, I) then
+      if EntryIsDirectory(AZip, I, Names[I]) then
         MarkDir(Rest)
       else
       begin
@@ -1218,6 +1226,7 @@ end;
 procedure ListZipPrefix(AZip: TZipFile; const APrefix: string;
   ACancel: IJobCancelToken; out AItems: TArray<TVfsEntry>; out AError: TVfsError);
 var
+  Names: TArray<string>;
   Pref, Name, Rest, Child: string;
   I, Slash: Integer;
   Dirs: TDictionary<string, Boolean>;
@@ -1226,6 +1235,7 @@ var
   H: TZipHeader;
   DT: TDateTime;
 begin
+  Names := AZip.FileNames;
   SetLength(AItems, 0);
   AError := TVfsError.Ok;
   Pref := NormZipName(APrefix);
@@ -1242,8 +1252,8 @@ begin
         AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
         Exit;
       end;
-      Name := NormZipName(AZip.FileNames[I]);
-      if IsUnsafeZipName(AZip.FileNames[I]) then
+      Name := NormZipName(Names[I]);
+      if IsUnsafeZipName(Names[I]) then
         Continue;
       if not ZipRestAfterPrefix(Name, Pref, Rest) then
         Continue;
@@ -1274,7 +1284,7 @@ begin
           List.Add(E);
         end;
       end
-      else if not EntryIsDirectory(AZip, I) then
+      else if not EntryIsDirectory(AZip, I, Names[I]) then
       begin
         H := AZip.FileInfo[I];
         E.Name := Rest;
@@ -1339,9 +1349,11 @@ end;
 
 function EntryExists(AZip: TZipFile; const APath: string; out AIsDir: Boolean): Boolean;
 var
+  Names: TArray<string>;
   Pref, Name: string;
   I: Integer;
 begin
+  Names := AZip.FileNames;
   Result := False;
   AIsDir := False;
   Pref := NormZipName(APath);
@@ -1353,17 +1365,17 @@ begin
   end;
   for I := 0 to AZip.FileCount - 1 do
   begin
-    Name := NormZipName(AZip.FileNames[I]);
+    Name := NormZipName(Names[I]);
     if SameText(Name, Pref) then
     begin
-      AIsDir := EntryIsDirectory(AZip, I);
+      AIsDir := EntryIsDirectory(AZip, I, Names[I]);
       Exit(True);
     end;
   end;
   Pref := Pref + '/';
   for I := 0 to AZip.FileCount - 1 do
   begin
-    Name := NormZipName(AZip.FileNames[I]);
+    Name := NormZipName(Names[I]);
     if Name.StartsWith(Pref, True) then
     begin
       AIsDir := True;
@@ -1463,9 +1475,11 @@ end;
 
 procedure DeleteZipEntryName(AZip: TZipFile; const AEntry: string);
 var
+  Names: TArray<string>;
   Idx: Integer;
   Want, Have: string;
 begin
+  Names := AZip.FileNames;
   Want := NormZipName(AEntry);
   if Want = '' then
     Exit;
@@ -1477,7 +1491,7 @@ begin
   begin
     for Idx := 0 to AZip.FileCount - 1 do
     begin
-      Have := NormZipName(AZip.FileNames[Idx]);
+      Have := NormZipName(Names[Idx]);
       if SameText(Have, Want) then
       begin
         AZip.Delete(Idx);
@@ -1492,10 +1506,12 @@ end;
 procedure DeleteZipPrefix(AZip: TZipFile; const APrefix: string;
   ACancel: IJobCancelToken; var AError: TVfsError);
 var
+  Names: TArray<string>;
   Pref: string;
   I: Integer;
   ToDelete: TList<Integer>;
 begin
+  Names := AZip.FileNames;
   Pref := NormZipName(APrefix);
   if Pref = '' then
   begin
@@ -1511,7 +1527,7 @@ begin
         AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
         Exit;
       end;
-      if ZipNameEqualsOrUnder(AZip.FileNames[I], Pref) then
+      if ZipNameEqualsOrUnder(Names[I], Pref) then
         ToDelete.Add(I);
     end;
     if ToDelete.Count = 0 then
@@ -1801,10 +1817,12 @@ procedure CollectExtractJobs(AZip: TZipFile; const APrefix: string;
   const ADestRoot: string; ACancel: IJobCancelToken;
   AJobs: TList<TPair<Integer, string>>; var ATotal: Int64; var AError: TVfsError);
 var
+  Names: TArray<string>;
   Pref, Name, Rest, Dest: string;
   I: Integer;
   H: TZipHeader;
 begin
+  Names := AZip.FileNames;
   Pref := NormZipName(APrefix);
   if Pref = '' then
   begin
@@ -1816,10 +1834,10 @@ begin
         AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
         Exit;
       end;
-      Name := NormZipName(AZip.FileNames[I]);
-      if IsUnsafeZipName(AZip.FileNames[I]) or (Name = '') then
+      Name := NormZipName(Names[I]);
+      if IsUnsafeZipName(Names[I]) or (Name = '') then
         Continue;
-      if EntryIsDirectory(AZip, I) then
+      if EntryIsDirectory(AZip, I, Names[I]) then
         Continue;
       Dest := TPath.Combine(ADestRoot, StringReplace(Name, '/', PathDelim, [rfReplaceAll]));
       AJobs.Add(TPair<Integer, string>.Create(I, Dest));
@@ -1831,7 +1849,7 @@ begin
 
   // Single file?
   I := FindZipEntryIndex(AZip, Pref);
-  if (I >= 0) and not EntryIsDirectory(AZip, I) then
+  if (I >= 0) and not EntryIsDirectory(AZip, I, Names[I]) then
   begin
     Dest := ADestRoot;
     AJobs.Add(TPair<Integer, string>.Create(I, Dest));
@@ -1849,10 +1867,10 @@ begin
       AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
       Exit;
     end;
-    Name := NormZipName(AZip.FileNames[I]);
+    Name := NormZipName(Names[I]);
     if not ZipRestAfterPrefix(Name, Pref, Rest) then
       Continue;
-    if EntryIsDirectory(AZip, I) then
+    if EntryIsDirectory(AZip, I, Names[I]) then
       Continue;
     Dest := TPath.Combine(ADestRoot, StringReplace(Rest, '/', PathDelim, [rfReplaceAll]));
     AJobs.Add(TPair<Integer, string>.Create(I, Dest));

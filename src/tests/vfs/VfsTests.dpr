@@ -47,7 +47,8 @@ uses
   TestVfsUtils in 'TestVfsUtils.pas',
   TestWinFileAttr in 'TestWinFileAttr.pas',
   TestWinFileClipboard in 'TestWinFileClipboard.pas',
-  TestZipNames in 'TestZipNames.pas';
+  TestZipNames in 'TestZipNames.pas',
+  TestZipLargeListing in 'TestZipLargeListing.pas';
 
 begin
   // TestElevatedHelper starts this program again as the helper process.

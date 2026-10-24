@@ -15,6 +15,7 @@ type
     [SetupFixture] procedure SetupFixture;
     [Test] procedure TestScreens;
     [Test] procedure TestEveryTopicExists;
+    [Test] procedure TestMenuActionTopics;
   end;
 
 implementation
@@ -148,6 +149,40 @@ begin
   Assert.IsTrue(Missing = 0, 'every dialog kind (but the built-in help) maps to an existing topic');
 end;
 
+procedure TestMenuActionTopics;
+const
+  cSamples: array[0..11] of array[0..1] of string = (
+    ('tmaFileCopy', 'fileops.md'),
+    ('tmaFileSelectAll', 'selection.md'),
+    ('tmaFilePack', 'archives.md'),
+    ('tmaEditFind', 'text.md'),
+    ('tmaLeftSort', 'view.md'),
+    ('tmaLeftNewTab', 'panels.md'),
+    ('tmaCmdFolderHistory', 'history.md'),
+    ('tmaCmdSyncConsoleDir', 'cmdline.md'),
+    ('tmaCmdDirSync', 'sync.md'),
+    ('tmaOptTheme', 'settings.md'),
+    ('plugin:x:Do it', 'topmenu.md'),
+    ('tmaCmdPalette', 'topmenu.md'));
+var
+  I: Integer;
+  S: THelpScreen;
+  Lang: string;
+begin
+  for I := Low(cSamples) to High(cSamples) do
+  begin
+    Assert.AreEqual(cSamples[I][1], HelpTopicForMenuAction(cSamples[I][0]), cSamples[I][0]);
+    for Lang in ['en', 'ru', 'de'] do
+      Assert.IsTrue(TFile.Exists(TPath.Combine(HelpDir(Lang), cSamples[I][1])),
+        Lang + '' + cSamples[I][1] + ' exists');
+  end;
+  S := Default(THelpScreen);
+  S.DialogKind := hdkCommandPalette;
+  ExpectTopic(S, 'topmenu.md', 'the palette without a choice');
+  S.DialogTopic := 'fileops.md';
+  ExpectTopic(S, 'fileops.md', 'the palette asks for the topic of its command');
+end;
+
 { TTestHelpContext }
 
 procedure TTestHelpContext.SetupFixture;
@@ -157,6 +192,11 @@ end;
 procedure TTestHelpContext.TestScreens;
 begin
   TestHelpContext.TestScreens;
+end;
+
+procedure TTestHelpContext.TestMenuActionTopics;
+begin
+  TestHelpContext.TestMenuActionTopics;
 end;
 
 procedure TTestHelpContext.TestEveryTopicExists;

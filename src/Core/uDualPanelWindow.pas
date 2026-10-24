@@ -8402,6 +8402,8 @@ begin
     Result.DialogKind := FDialogKind
   else
     Result.DialogKind := hdkNone;
+  if Result.DialogKind = hdkCommandPalette then
+    Result.DialogTopic := FPalette.SelectedHelpTopic;
   Result.SearchActive := OverlaySearchActive;
   Result.JobOverlay := OverlayJobActive;
   Result.UserMenu := OverlayUserMenuVisible;

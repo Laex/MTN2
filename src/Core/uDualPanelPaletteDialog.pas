@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uTopMenuBar, uCommandPalette,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uTopMenuBar, uCommandPalette, uHelpContext,
   uDualPanelHistoryDialogs;
 
 type
@@ -41,6 +41,8 @@ type
     function DispatchCommand(const AControlId: string): Boolean;
     /// <summary>The rows that are listed now (for tests).</summary>
     function RowCount: Integer;
+    /// <summary>Help topic of the selected command ('' when nothing is selected).</summary>
+    function SelectedHelpTopic: string;
   end;
 
 implementation
@@ -153,6 +155,16 @@ end;
 function TCommandPaletteDialogController.RowCount: Integer;
 begin
   Result := Length(FShown);
+end;
+
+function TCommandPaletteDialogController.SelectedHelpTopic: string;
+var
+  Idx: Integer;
+begin
+  Result := '';
+  Idx := FDialog.GetListSelectedIndex('commands');
+  if (Idx >= 0) and (Idx <= High(FShown)) then
+    Result := HelpTopicForMenuAction(FAll[FShown[Idx]].Key);
 end;
 
 function TCommandPaletteDialogController.DispatchCommand(
