@@ -1,0 +1,64 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Command palette",
+  "width": 84,
+  "height": 22,
+  "children": [
+    {
+      "type": "list",
+      "id": "commands",
+      "selected": 0,
+      "items": [
+        "(no matches)"
+      ],
+      "col": 1,
+      "row": 0,
+      "width": 80,
+      "height": 14
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 14,
+      "width": 82,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "Type to search  Enter=Run  Backspace=Erase  Esc=Close",
+      "col": 1,
+      "row": 15,
+      "width": 80,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 16,
+      "width": 82,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Run",
+      "default": true,
+      "col": 30,
+      "row": 18,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 42,
+      "row": 18,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

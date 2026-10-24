@@ -210,6 +210,7 @@ begin
     tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom: ;
     tmaOptRestoreHiddenDialogs: CallProc(AHost.RestoreHiddenDialogs);
 
+    tmaCmdPalette: CallProc(AHost.OpenCommandPalette);
     tmaHelpContents: CallProc(AHost.OpenHelp);
     tmaHelpAbout: CallProc(AHost.OpenAboutDialog);
     tmaHelpUpdates: CallProc(AHost.OpenUpdates);
@@ -230,7 +231,7 @@ begin
     tmaNone:
       Exit(False);
 
-    tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit,
+    tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit, tmaCmdPalette,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
     tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,

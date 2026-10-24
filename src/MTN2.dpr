@@ -107,6 +107,8 @@ uses
   uDualPanelKeymapDialog in 'Core\uDualPanelKeymapDialog.pas',
   uDualPanelFolderHotlist in 'Core\uDualPanelFolderHotlist.pas',
   uDualPanelHistoryDialogs in 'Core\uDualPanelHistoryDialogs.pas',
+  uDualPanelPaletteDialog in 'Core\uDualPanelPaletteDialog.pas',
+  uCommandPalette in 'Core\uCommandPalette.pas',
   uDualPanelSettingsDialogs in 'Core\uDualPanelSettingsDialogs.pas',
   uDualPanelThemeDialogs in 'Core\uDualPanelThemeDialogs.pas',
   uDualPanelFileDialogs in 'Core\uDualPanelFileDialogs.pas',

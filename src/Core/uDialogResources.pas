@@ -32,6 +32,7 @@ const
   cResDialogFolderHistory = 'DIALOG_FOLDERHISTORY';
   cResDialogCmdHistory = 'DIALOG_CMDHISTORY';
   cResDialogFileHistory = 'DIALOG_FILEHISTORY';
+  cResDialogCommandPalette = 'DIALOG_COMMANDPALETTE';
   cResDialogFolderHotlist = 'DIALOG_FOLDERHOTLIST';
   cResDialogWorkspaces = 'DIALOG_WORKSPACES';
   cResDialogCreateLink = 'DIALOG_CREATELINK';

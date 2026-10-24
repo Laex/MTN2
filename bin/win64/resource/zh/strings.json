@@ -355,6 +355,12 @@
       "ok": "打开",
       "cancel": "取消"
     },
+    "DIALOG_COMMANDPALETTE": {
+      "$title": "命令面板",
+      "hint": "输入=搜索  Enter=执行  Backspace=删除  Esc=关闭",
+      "ok": "执行",
+      "cancel": "取消"
+    },
     "DIALOG_FOLDERHISTORY": {
       "$title": "文件夹历史",
       "ok": "确定",
@@ -893,6 +899,7 @@
     "keymap.action.EditorAutoIndent": "自动缩进开 / 关",
     "keymap.action.PrevTab": "上一个工作区",
     "keymap.action.TopMenu": "顶部菜单",
+    "keymap.action.CommandPalette": "查找命令",
     "keymap.action.AppQuit": "退出",
     "keymap.action.AppConsoleToggle": "面板 <-> 控制台",
     "keymap.action.ZoomReset": "缩放 100%",
@@ -1140,6 +1147,8 @@
     "colorPicker.foreground": "选择前景色",
     "workspaces.dialogTitle": "工作区",
     "cmdHistory.filterTitle": "命令历史: %s",
+    "palette.filterTitle": "命令面板: %s",
+    "palette.empty": "(无匹配)",
     "consoleFind.title": "在输出中查找",
     "consoleFind.prompt": "查找:",
     "consoleFind.notFound": "未找到: %s",
@@ -1556,6 +1565,7 @@
     "category.Commands": "命令(&C)",
     "category.Options": "选项(&O)",
     "category.Right": "右面板(&R)",
+    "tmaCmdPalette": "查找命令(&F)...",
     "tmaHelpAbout": "关于 MTN2(&A)...",
     "tmaHelpUpdates": "检查更新(&U)...",
     "tmaHelpContents": "帮助目录(&H)",
@@ -1815,6 +1825,7 @@
     "Open": "打开",
     "View": "查看",
     "Commands": "命令",
+    "Palette": "命令面板",
     "Theme": "主题",
     "Display": "显示",
     "Columns": "列",

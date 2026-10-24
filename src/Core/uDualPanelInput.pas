@@ -71,6 +71,7 @@ type
     OpenFolderHistoryDialog: TKeymapProc;
     OpenFileHistoryDialog: TKeymapProc;
     OpenCmdHistoryDialog: TKeymapProc;
+    OpenCommandPalette: TKeymapProc;
     OpenFolderHotlistDialog: TKeymapProc;
     BeginFolderHotlistAdd: TKeymapProc;
     OpenWorkspaceLibraryDialog: TKeymapProc;
@@ -257,6 +258,7 @@ type
     HandleColorEdit: TKeymapInputFn;
     HandleKeymapList: TKeymapInputFn;
     HandleCmdHistoryFilter: TKeymapInputFn;
+    HandleCommandPaletteFilter: TKeymapInputFn;
     HandleFileHistoryList: TKeymapInputFn;
     HandleDialogWidget: TKeymapInputFn;
     HandleMarkdownColors: TKeymapInputFn;
@@ -1598,6 +1600,9 @@ begin
   end;
   if (AKind = hdkCmdHistory) and
      AHost.HandleCmdHistoryFilter(AKey, AShift, AKeyChar) then
+    Exit(True);
+  if (AKind = hdkCommandPalette) and
+     AHost.HandleCommandPaletteFilter(AKey, AShift, AKeyChar) then
     Exit(True);
   Result := AHost.HandleDialogWidget(AKey, AShift, AKeyChar);
 end;

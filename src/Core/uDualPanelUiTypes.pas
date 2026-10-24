@@ -142,7 +142,7 @@ type
     hdkSearch,
     hdkHelp, hdkSelectMask, hdkUnselectMask, hdkOverwriteAsk, hdkOverwriteRename,
     hdkDeleteError, hdkFolderHistory, hdkDirSync, hdkTerminalProfile,
-    hdkConsoleProfile, hdkCmdHistory, hdkFileHistory,
+    hdkConsoleProfile, hdkCmdHistory, hdkFileHistory, hdkCommandPalette,
     hdkFolderHotlist, hdkFolderHotlistAdd, hdkFolderHotlistRename, hdkCreateLink,
     hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,

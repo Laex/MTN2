@@ -356,6 +356,12 @@
       "ok": "Öffnen",
       "cancel": "Abbrechen"
     },
+    "DIALOG_COMMANDPALETTE": {
+      "$title": "Befehlspalette",
+      "hint": "Tippen=Suchen  Enter=Ausführen  Rücktaste=Löschen  Esc=Schließen",
+      "ok": "Ausführen",
+      "cancel": "Abbrechen"
+    },
     "DIALOG_FOLDERHISTORY": {
       "$title": "Ordnerverlauf",
       "ok": "OK",
@@ -894,6 +900,7 @@
     "keymap.action.EditorAutoIndent": "Automatischer Einzug ein / aus",
     "keymap.action.PrevTab": "Vorheriger Arbeitsbereich",
     "keymap.action.TopMenu": "Hauptmenü",
+    "keymap.action.CommandPalette": "Befehl suchen",
     "keymap.action.AppQuit": "Beenden",
     "keymap.action.AppConsoleToggle": "Panels <-> Konsole",
     "keymap.action.ZoomReset": "Zoom 100%",
@@ -1141,6 +1148,8 @@
     "colorPicker.foreground": "Vordergrundfarbe wählen",
     "workspaces.dialogTitle": "Arbeitsbereiche",
     "cmdHistory.filterTitle": "Befehlsverlauf: %s",
+    "palette.filterTitle": "Befehlspalette: %s",
+    "palette.empty": "(keine Treffer)",
     "consoleFind.title": "In der Ausgabe suchen",
     "consoleFind.prompt": "Suchen:",
     "consoleFind.notFound": "Nicht gefunden: %s",
@@ -1557,6 +1566,7 @@
     "category.Commands": "Be&fehle",
     "category.Options": "&Optionen",
     "category.Right": "&Rechts",
+    "tmaCmdPalette": "Be&fehl suchen...",
     "tmaHelpAbout": "&Info zu MTN2...",
     "tmaHelpUpdates": "&Nach Updates suchen...",
     "tmaHelpContents": "&Hilfe",
@@ -1813,6 +1823,7 @@
     "Dialog": "Dialog",
     "Folders": "Ordner",
     "Commands": "Befehle",
+    "Palette": "Palette",
     "Theme": "Farbschema",
     "Display": "Anzeige",
     "Columns": "Spalten",

@@ -39,6 +39,8 @@ uses
   TestDualPanelSync in 'TestDualPanelSync.pas',
   TestDualPanelTabs in 'TestDualPanelTabs.pas',
   TestDualPanelTopMenu in 'TestDualPanelTopMenu.pas',
+  TestCommandPalette in 'TestCommandPalette.pas',
+  TestMenuScroll in 'TestMenuScroll.pas',
   TestWindowChrome in 'TestWindowChrome.pas',
   TestHistoryPopup in 'TestHistoryPopup.pas',
   TestCmdLinePlatformPaths in 'TestCmdLinePlatformPaths.pas',

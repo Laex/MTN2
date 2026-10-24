@@ -280,6 +280,9 @@ function BuildCmdHistoryDialog(const AItems: TArray<string>;
 /// <summary>Alt+F11: AItems are "mode mark + path" labels, newest first.</summary>
 function BuildFileHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
+/// <summary>Shift+F9: AItems are the rows of the matching menu commands.</summary>
+function BuildCommandPaletteDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer = 0): TDialogDeclaration;
 /// <summary>AItems are pre-formatted rows (on/off mark, id, name, version),
 /// see HostPluginRows in uPluginHost.pas.</summary>
 function BuildPluginListDialog(const AItems: TArray<string>;
@@ -1121,6 +1124,19 @@ begin
       Sel := High(Items);
   end;
   DialogSetListItems(Result, 'jobs', Items, Sel);
+end;
+
+function BuildCommandPaletteDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer): TDialogDeclaration;
+var
+  Items: TArray<string>;
+begin
+  RequireDialogResource(cResDialogCommandPalette, Result);
+  Items := AItems;
+  if Length(Items) = 0 then
+    Items := [T('ui.palette.empty', '(no matches)')];
+  DialogSetListItems(Result, 'commands', Items,
+    EnsureRange(ASelectedIndex, 0, High(Items)));
 end;
 
 function BuildFileHistoryDialog(const AItems: TArray<string>;

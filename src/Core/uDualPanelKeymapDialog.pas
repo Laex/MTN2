@@ -242,6 +242,7 @@ const
     'Auto-indent on / off',
     'Previous workspace',
     'Top menu',
+    'Find a command',
     'Quit',
     'Panels <-> console',
     'Zoom 100%',

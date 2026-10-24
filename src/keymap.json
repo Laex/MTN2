@@ -196,6 +196,7 @@
     "EditorAutoIndent": { "key": "I", "ctrl": true, "alt": true, "description": "Auto-indent on Enter on / off" },
     "PrevTab": { "key": "PageUp", "ctrl": true, "alt": true, "description": "Switch to the previous workspace" },
     "TopMenu": { "key": "F9", "description": "Open / close the top menu" },
+    "CommandPalette": { "key": "F9", "shift": true, "description": "Find a menu command by name" },
     "AppQuit": { "key": "X", "alt": true, "description": "Quit the application (from any window)" },
     "AppConsoleToggle": { "key": "O", "ctrl": true, "description": "Toggle Panel <-> Console Screen (from any window)" },
     "ZoomReset": [

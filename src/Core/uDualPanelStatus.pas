@@ -139,7 +139,8 @@ begin
         Exit(fbcColorCoding);
       hdkColorCodingEdit:
         Exit(fbcColorCodingEdit);
-      hdkFolderHistory, hdkCmdHistory, hdkTheme, hdkColumnsConfig, hdkDisplay,
+      hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
+      hdkColumnsConfig, hdkDisplay,
       hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
@@ -282,6 +283,8 @@ begin
       Result := TArray<string>.Create(S('Folders'), S('^v select'), H('Enter', 'Go', '='), H('Esc', 'Cancel', '='));
     hdkCmdHistory:
       Result := TArray<string>.Create(S('Commands'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkCommandPalette:
+      Result := TArray<string>.Create(S('Palette'), S('^v select'), H('Enter', 'Run', '='), H('Esc', 'Cancel', '='));
     hdkTheme:
       Result := TArray<string>.Create(S('Theme'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkThemeEditor, hdkThemeItems:

@@ -72,6 +72,8 @@ begin
     hdkFolderHistory, hdkCmdHistory, hdkFileHistory, hdkFolderHotlist,
     hdkFolderHotlistAdd, hdkFolderHotlistRename:
       Result := 'history.md';
+    hdkCommandPalette:
+      Result := 'topmenu.md';
     hdkDirSync, hdkCompareResult:
       Result := 'sync.md';
     hdkTerminalProfile:

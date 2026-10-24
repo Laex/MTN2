@@ -313,6 +313,9 @@ begin
     if Item.HotKey <> '' then
       PutGridText(AGrid, R.Left + 2, Y, Item.HotKey, cMenuHotKeyFg, Bg, [ccaBold]);
   end;
+  if ItemCount > ViewRows then
+    DrawDialogScrollBar(AGrid, R.Right, R.Top + 1, R.Bottom - 1, FTop, ItemCount,
+      ViewRows);
 end;
 
 // Moves over |ADelta| selectable items (separators do not count), stopping

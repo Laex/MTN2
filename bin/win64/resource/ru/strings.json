@@ -354,6 +354,12 @@
       "ok": "Открыть",
       "cancel": "Отмена"
     },
+    "DIALOG_COMMANDPALETTE": {
+      "$title": "Палитра команд",
+      "hint": "Ввод=поиск  Enter=Выполнить  Backspace=Стереть  Esc=Закрыть",
+      "ok": "Выполнить",
+      "cancel": "Отмена"
+    },
     "DIALOG_FOLDERHISTORY": {
       "$title": "История папок",
       "ok": "ОК",
@@ -892,6 +898,7 @@
     "keymap.action.EditorAutoIndent": "Автоотступ вкл. / выкл.",
     "keymap.action.PrevTab": "Предыдущее рабочее пространство",
     "keymap.action.TopMenu": "Верхнее меню",
+    "keymap.action.CommandPalette": "Поиск команды",
     "keymap.action.AppQuit": "Выход",
     "keymap.action.AppConsoleToggle": "Панели <-> консоль",
     "keymap.action.ZoomReset": "Масштаб 100%",
@@ -1148,6 +1155,8 @@
     "colorPicker.foreground": "Цвет текста",
     "workspaces.dialogTitle": "Рабочие пространства",
     "cmdHistory.filterTitle": "История команд: %s",
+    "palette.filterTitle": "Палитра команд: %s",
+    "palette.empty": "(нет совпадений)",
     "consoleFind.title": "Поиск по выводу",
     "consoleFind.prompt": "Найти:",
     "consoleFind.notFound": "Не найдено: %s",
@@ -1573,6 +1582,7 @@
     "category.Commands": "&Команды",
     "category.Options": "&Настройки",
     "category.Right": "&Справа",
+    "tmaCmdPalette": "Найти &команду...",
 
     "tmaHelpAbout": "&О программе MTN2...",
     "tmaHelpUpdates": "Об&новления...",
@@ -1839,6 +1849,7 @@
     "Open": "Открыть",
     "View": "Просмотр",
     "Commands": "Команды",
+    "Palette": "Палитра",
     "Theme": "Тема",
     "Display": "Шрифт / экран",
     "Columns": "Колонки",

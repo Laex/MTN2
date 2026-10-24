@@ -165,6 +165,7 @@ type
     // the same keys.
     kaPrevTab, // Ctrl+Alt+PgUp -- previous workspace
     kaTopMenu, // F9 -- top menu
+    kaCommandPalette, // Shift+F9 -- find a menu command by name
     kaAppQuit, // Alt+X -- quit (kaQuit is F10 on the panels only)
     kaAppConsoleToggle, // Ctrl+O -- panels <-> console (kaConsoleToggle is Esc on the panels)
     kaZoomReset, // Ctrl+0 -- zoom back to 100%
@@ -731,6 +732,7 @@ begin
   AddBinding(Result, kaNextTab, KeyBinding(vkNext, False, True, True));
   AddBinding(Result, kaPrevTab, KeyBinding(vkPrior, False, True, True));
   AddBinding(Result, kaTopMenu, KeyBinding(vkF9, False, False, False));
+  AddBinding(Result, kaCommandPalette, KeyBinding(vkF9, True, False, False));
   AddBinding(Result, kaAppQuit, KeyBinding(Ord('X'), False, True, False));
   AddBinding(Result, kaAppConsoleToggle, KeyBinding(Ord('O'), False, False, True));
   AddBinding(Result, kaZoomReset, KeyBinding(Ord('0'), False, False, True));
@@ -785,8 +787,8 @@ begin
     kaEditorAutoIndent:
       Result := kcEditor;
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
-    kaTopMenu, kaAppQuit, kaAppConsoleToggle, kaZoomReset, kaReloadKeymap,
-    kaToggleFullscreen:
+    kaTopMenu, kaCommandPalette, kaAppQuit, kaAppConsoleToggle, kaZoomReset,
+    kaReloadKeymap, kaToggleFullscreen:
       Result := kcGlobal;
     kaShellHistory, kaShellSelectAll, kaShellCopyOrInterrupt, kaShellCopy,
     kaShellPaste, kaShellFind, kaShellFindNext, kaShellFindPrev:
@@ -1027,6 +1029,7 @@ const
     'EditorAutoIndent',      // kaEditorAutoIndent
     'PrevTab',               // kaPrevTab
     'TopMenu',               // kaTopMenu
+    'CommandPalette',        // kaCommandPalette
     'AppQuit',               // kaAppQuit
     'AppConsoleToggle',      // kaAppConsoleToggle
     'ZoomReset',             // kaZoomReset
@@ -1458,6 +1461,7 @@ begin
     kaShellFindNext: Result := 'Next';
     kaShellFindPrev: Result := 'Prev';
     kaTopMenu: Result := 'TopMn';
+    kaCommandPalette: Result := 'Palet';
     kaCmdHistory: Result := 'CmdHs';
     kaFolderTree: Result := 'Tree';
     kaRecycleBin: Result := 'RecBn';

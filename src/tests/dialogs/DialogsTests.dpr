@@ -14,6 +14,7 @@ uses
   TestMultiRenameDialog in 'TestMultiRenameDialog.pas',
   TestConsoleSettings in 'TestConsoleSettings.pas',
   TestDialogHistory in 'TestDialogHistory.pas',
+  TestDialogScroll in 'TestDialogScroll.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogAlignment in 'TestDialogAlignment.pas',
   TestDialogButtonLayout in 'TestDialogButtonLayout.pas',

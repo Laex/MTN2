@@ -357,6 +357,12 @@
       "ok": "Open",
       "cancel": "Cancel"
     },
+    "DIALOG_COMMANDPALETTE": {
+      "$title": "Command palette",
+      "hint": "Type to search  Enter=Run  Backspace=Erase  Esc=Close",
+      "ok": "Run",
+      "cancel": "Cancel"
+    },
     "DIALOG_FOLDERHISTORY": {
       "$title": "Folder history",
       "ok": "OK",
@@ -895,6 +901,7 @@
     "keymap.action.EditorAutoIndent": "Auto-indent on / off",
     "keymap.action.PrevTab": "Previous workspace",
     "keymap.action.TopMenu": "Top menu",
+    "keymap.action.CommandPalette": "Find a command",
     "keymap.action.AppQuit": "Quit",
     "keymap.action.AppConsoleToggle": "Panels <-> console",
     "keymap.action.ZoomReset": "Zoom 100%",
@@ -1151,6 +1158,8 @@
     "colorPicker.foreground": "Pick foreground color",
     "workspaces.dialogTitle": "Workspaces",
     "cmdHistory.filterTitle": "Command history: %s",
+    "palette.filterTitle": "Command palette: %s",
+    "palette.empty": "(no matches)",
     "consoleFind.title": "Find in output",
     "consoleFind.prompt": "Find:",
     "consoleFind.notFound": "Not found: %s",
@@ -1576,6 +1585,7 @@
     "category.Commands": "Commands",
     "category.Options": "Options",
     "category.Right": "Right",
+    "tmaCmdPalette": "Find command...",
 
     "tmaHelpAbout": "About MTN2...",
     "tmaHelpUpdates": "Check for updates...",
@@ -1839,6 +1849,7 @@
     "Dialog": "Dialog",
     "Folders": "Folders",
     "Commands": "Commands",
+    "Palette": "Palette",
     "Theme": "Theme",
     "Display": "Display",
     "Columns": "Columns",

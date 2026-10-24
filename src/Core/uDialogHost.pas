@@ -1,4 +1,4 @@
-﻿unit uDialogHost;
+unit uDialogHost;
 
 { Host-built declarative dialogs (DIALOG_PLUGIN). Draws via IThemeRenderer;
   inputs use TInputLine. In-process - cdecl export comes with DLL stage. }
@@ -21,6 +21,12 @@ type
     FAreaW: Integer;
     FAreaH: Integer;
     FFocusIndex: Integer;
+    /// <summary>A dialog taller than the window scrolls: FScrollY is the first row of
+    /// the content shown, FContentH the rows the controls need, FScrollFollow the
+    /// focus the view last followed (so a wheel or a bar drag is not undone).</summary>
+    FScrollY: Integer;
+    FContentH: Integer;
+    FScrollFollow: Integer;
     FClicks: TMouseClickCounter; // input fields: double = word, triple = all
     /// <summary>Host-side mirror of list selection (avoids dynarray-of-record writeback issues).</summary>
     FListSelId: string;
@@ -626,6 +632,8 @@ begin
   FDropHover := 0;
   FDropScrollTop := 0;
   FListScrollTop := 0;
+  FScrollY := 0;
+  FScrollFollow := -1;
   NormalizeRadioGroups;
   LoadInputHistory;
   FFocusIndex := FirstFocusable;
@@ -1804,6 +1812,8 @@ var
   I, Y, BtnX, BtnW, Span, InnerLeft, InnerRight: Integer;
   ClientLeft, ClientTop, ClientRight, ClientBottom, ClientW: Integer;
   CX, CY, CW, CH, L, T, Rgt, Bot: Integer;
+  ClientH, ContentH: Integer;
+  RowY, RowH: TArray<Integer>;
   InButtonRow: Boolean;
   C: TDialogControl;
 begin
@@ -1821,6 +1831,39 @@ begin
     if ClientBottom < ClientTop then
       ClientBottom := ClientTop;
     ClientW := ClientRight - ClientLeft + 1;
+    ClientH := ClientBottom - ClientTop + 1;
+
+    SetLength(RowY, Length(FDecl.Controls));
+    SetLength(RowH, Length(FDecl.Controls));
+    ContentH := 0;
+    for I := 0 to High(FDecl.Controls) do
+    begin
+      C := FDecl.Controls[I];
+      RowY[I] := Max(C.Row, 0);
+      if C.BoxH > 0 then
+        RowH[I] := C.BoxH
+      else
+        RowH[I] := DefaultControlHeight(C);
+      ContentH := Max(ContentH, RowY[I] + RowH[I]);
+    end;
+    FContentH := ContentH;
+    if ContentH > ClientH then
+    begin
+      if (FFocusIndex <> FScrollFollow) then
+      begin
+        FScrollFollow := FFocusIndex;
+        if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) then
+        begin
+          if RowY[FFocusIndex] < FScrollY then
+            FScrollY := RowY[FFocusIndex];
+          if RowY[FFocusIndex] + RowH[FFocusIndex] > FScrollY + ClientH then
+            FScrollY := RowY[FFocusIndex] + RowH[FFocusIndex] - ClientH;
+        end;
+      end;
+      FScrollY := EnsureRange(FScrollY, 0, ContentH - ClientH);
+    end
+    else
+      FScrollY := 0;
 
     for I := 0 to High(FDecl.Controls) do
     begin
@@ -1829,22 +1872,25 @@ begin
         CX := C.Col
       else
         CX := 0;
-      if C.Row >= 0 then
-        CY := C.Row
-      else
-        CY := 0;
+      CY := RowY[I];
       if C.BoxW > 0 then
         CW := C.BoxW
       else
         CW := DefaultControlWidth(C, Max(ClientW - CX, 1));
-      if C.BoxH > 0 then
-        CH := C.BoxH
-      else
-        CH := DefaultControlHeight(C);
+      CH := RowH[I];
       L := ClientLeft + CX;
-      T := ClientTop + CY;
+      T := ClientTop + CY - FScrollY;
       Rgt := L + CW - 1;
       Bot := T + CH - 1;
+      // In a scrolling dialog a control that is not wholly in view is not
+      // drawn or hit; a list or a group of options is cut to the view.
+      if (ContentH > ClientH) and ((T < ClientTop) or (Bot > ClientBottom)) and
+         not ((C.Kind in [dckList, dckRadioGroup]) and (Bot >= ClientTop) and
+              (T <= ClientBottom)) then
+      begin
+        FControlBounds[I] := TRectI.Make(-1, -1, -2, -2);
+        Continue;
+      end;
       if L < ClientLeft then
         L := ClientLeft;
       if T < ClientTop then
@@ -2306,6 +2352,9 @@ begin
     FillGridRect(AGrid, FBounds.Left, FBounds.Top, FBounds.Right, FBounds.Bottom,
       ' ', TAlphaColor($FF000000), TAlphaColor($FFFFFFFF));
   DrawDialogShadow(AGrid, FBounds);
+  if FContentH > FBounds.Height - 2 then
+    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top + 1, FBounds.Bottom - 1,
+      FScrollY, FContentH, FBounds.Height - 2);
 
   if FDecl.IsWarning then
   begin

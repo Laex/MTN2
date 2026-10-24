@@ -144,6 +144,7 @@ type
     tmaOptZoomOut,
     tmaOptResetZoom,
     tmaOptRestoreHiddenDialogs,
+    tmaCmdPalette,
     tmaHelpContents,
     tmaHelpAbout,
     tmaHelpUpdates,
@@ -195,12 +196,16 @@ type
     FSubmenuIndex: Integer;
     FCategories: TArray<TTopMenuCategory>;
     FSubmenuBounds: TRectI;
+    /// <summary>First item shown and number of item rows shown; a menu taller than
+    /// the window scrolls so that the selected item stays in view.</summary>
+    FSubmenuTop: Integer;
+    FSubmenuVisible: Integer;
     FOnIsRightPanelActive: TFunc<Boolean>;
     /// <summary>The left button went down on a menu title or an item and is still held:
     /// letting go over an item runs it.</summary>
     FBarPressed: Boolean;
     FPluginItems: TArray<TPluginMenuItemDesc>;
-    procedure LayoutSubmenu(AClientWidth: Integer);
+    procedure LayoutSubmenu(AClientWidth, AClientHeight: Integer);
     function FindHotCategory(AChar: Char): Integer;
     function FindHotSubItem(AChar: Char): Integer;
     procedure ApplyPluginItemsToCategories;
@@ -232,6 +237,14 @@ type
     function CategoryTitle(AIndex: Integer): string;
     /// <summary>'' when either index is out of range.</summary>
     function CategoryItemCaption(ACategoryIndex, AItemIndex: Integer): string;
+    /// <summary>The whole menu as a flat list, for searching it: every item
+    /// that is not a separator, with the title of its category.</summary>
+    procedure ListItems(const AOnItem: TProc<string, TSubmenuItem>);
+    /// <summary>Whether the item can run now (separators never).</summary>
+    function CanRunItem(const AItem: TSubmenuItem): Boolean;
+    /// <summary>Runs the item as if it was chosen in the open menu; False when
+    /// it cannot run now.</summary>
+    function RunItem(const AItem: TSubmenuItem): Boolean;
 
     /// <summary>Replaces all plugin-registered menu items with AItems (each
     /// inserted into the category matching ParentTitle, sorted by Priority)
@@ -252,6 +265,9 @@ type
     /// ends over an item runs that item (also a drag through the menu). True when it
     /// ran something.</summary>
     function HandleMouseUp(ACol, ARow: Integer): Boolean;
+    /// <summary>The wheel moves the selection three items (no wrap-around) in the open
+    /// submenu; positive ADelta is up. True when a submenu is open.</summary>
+    function HandleMouseWheel(ADelta: Integer): Boolean;
     /// <summary>Tells whether the right panel is the active one; read when the menu
     /// is opened from the keyboard.</summary>
     property OnIsRightPanelActive: TFunc<Boolean> read FOnIsRightPanelActive
@@ -497,6 +513,8 @@ begin
       Result := kaReloadKeymap;
     tmaOptResetZoom:
       Result := kaZoomReset;
+    tmaCmdPalette:
+      Result := kaCommandPalette;
     tmaHelpContents:
       Result := kaHelp;
     tmaQuit:
@@ -575,6 +593,28 @@ begin
   if (AItemIndex < 0) or (AItemIndex > High(FCategories[ACategoryIndex].Items)) then
     Exit;
   Result := FCategories[ACategoryIndex].Items[AItemIndex].Caption;
+end;
+
+procedure TTopMenuController.ListItems(const AOnItem: TProc<string, TSubmenuItem>);
+var
+  I, J: Integer;
+begin
+  for I := 0 to High(FCategories) do
+    for J := 0 to High(FCategories[I].Items) do
+      if not FCategories[I].Items[J].IsSeparator then
+        AOnItem(FCategories[I].Title, FCategories[I].Items[J]);
+end;
+
+function TTopMenuController.CanRunItem(const AItem: TSubmenuItem): Boolean;
+begin
+  Result := IsItemEnabled(AItem);
+end;
+
+function TTopMenuController.RunItem(const AItem: TSubmenuItem): Boolean;
+begin
+  Result := IsItemEnabled(AItem);
+  if Result then
+    ExecuteItem(AItem);
 end;
 
 // Every TTopMenuAction member's Delphi identifier is also its JSON menu
@@ -1143,8 +1183,9 @@ begin
   Result := -1;
   if not (FActive and FSubmenuOpen) or not FSubmenuBounds.Contains(ACol, ARow) then
     Exit;
-  Result := ARow - (FSubmenuBounds.Top + 1);
-  if (Result < 0) or (Result > High(FCategories[FCategoryIndex].Items)) or
+  Result := ARow - (FSubmenuBounds.Top + 1) + FSubmenuTop;
+  if (ARow <= FSubmenuBounds.Top) or (ARow >= FSubmenuBounds.Bottom) or
+     (Result < 0) or (Result > High(FCategories[FCategoryIndex].Items)) or
      FCategories[FCategoryIndex].Items[Result].IsSeparator then
     Result := -1;
 end;
@@ -1160,6 +1201,37 @@ begin
   begin
     FSubmenuIndex := Idx;
     Result := True;
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+  end;
+end;
+
+function TTopMenuController.HandleMouseWheel(ADelta: Integer): Boolean;
+var
+  Items: TArray<TSubmenuItem>;
+  Dir, I, Step, Moved: Integer;
+begin
+  Result := FActive and FSubmenuOpen and (ADelta <> 0) and
+    (FCategoryIndex >= 0) and (FCategoryIndex <= High(FCategories));
+  if not Result then
+    Exit;
+  Items := FCategories[FCategoryIndex].Items;
+  Dir := -Sign(ADelta);
+  Moved := 0;
+  I := FSubmenuIndex;
+  Step := I + Dir;
+  while (Step >= 0) and (Step <= High(Items)) and (Moved < 3) do
+  begin
+    if IsItemEnabled(Items[Step]) then
+    begin
+      I := Step;
+      Inc(Moved);
+    end;
+    Inc(Step, Dir);
+  end;
+  if I <> FSubmenuIndex then
+  begin
+    FSubmenuIndex := I;
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
   end;
@@ -1182,9 +1254,9 @@ begin
   end;
 end;
 
-procedure TTopMenuController.LayoutSubmenu(AClientWidth: Integer);
+procedure TTopMenuController.LayoutSubmenu(AClientWidth, AClientHeight: Integer);
 var
-  I, X, W, H, MaxCapW, MaxShortW, ItemW: Integer;
+  I, X, W, H, MaxCapW, MaxShortW, ItemW, N: Integer;
   Cat: TTopMenuCategory;
 begin
   if (FCategoryIndex < 0) or (FCategoryIndex > High(FCategories)) then
@@ -1212,8 +1284,17 @@ begin
   W := ItemW + 2;
   if X + W > AClientWidth - 1 then
     X := Max(1, AClientWidth - W - 1);
-  H := Length(Cat.Items) + 2;
-
+  N := Length(Cat.Items);
+  H := N + 2;
+  // Rows 1 .. AClientHeight - 2: the bar is above and the function bar below.
+  if (AClientHeight > 0) and (H > AClientHeight - 2) then
+    H := Max(AClientHeight - 2, 4);
+  FSubmenuVisible := H - 2;
+  if FSubmenuIndex < FSubmenuTop then
+    FSubmenuTop := FSubmenuIndex;
+  if FSubmenuIndex >= FSubmenuTop + FSubmenuVisible then
+    FSubmenuTop := FSubmenuIndex - FSubmenuVisible + 1;
+  FSubmenuTop := EnsureRange(FSubmenuTop, 0, Max(N - FSubmenuVisible, 0));
   FSubmenuBounds := TRectI.Make(X, 1, X + W - 1, 1 + H - 1);
 end;
 
@@ -1302,7 +1383,7 @@ begin
     Exit;
 
   Cat := FCategories[FCategoryIndex];
-  LayoutSubmenu(AClientWidth);
+  LayoutSubmenu(AClientWidth, Length(AGrid));
   R := FSubmenuBounds;
   if (R.Width < 8) or (R.Height < 3) then
     Exit;
@@ -1319,9 +1400,9 @@ begin
   DrawDialogShadow(AGrid, R);
 
   InnerW := R.Width - 2;
-  for I := 0 to High(Cat.Items) do
+  for I := FSubmenuTop to High(Cat.Items) do
   begin
-    Y := R.Top + 1 + I;
+    Y := R.Top + 1 + I - FSubmenuTop;
     if Y >= R.Bottom then
       Break;
     Item := Cat.Items[I];
@@ -1381,6 +1462,9 @@ begin
       PutGridText(AGrid, R.Left + 2 + TextDisplayWidth(Copy(Item.Caption, 1, Item.HotPos - 1)), Y,
         Item.Caption[Item.HotPos], cSubmenuHotFg, Bg, [ccaBold]);
   end;
+  if Length(Cat.Items) > FSubmenuVisible then
+    DrawDialogScrollBar(AGrid, R.Right, R.Top + 1, R.Bottom - 1, FSubmenuTop,
+      Length(Cat.Items), FSubmenuVisible);
 end;
 
 function TTopMenuController.FindHotCategory(AChar: Char): Integer;
@@ -1627,8 +1711,9 @@ begin
   end;
   // An item runs when the button is released over it (HandleMouseUp), so the press
   // only selects it and a drag can still move to another item.
-  Idx := ARow - (FSubmenuBounds.Top + 1);
-  if (Idx >= 0) and (Idx <= High(FCategories[FCategoryIndex].Items)) and
+  Idx := ARow - (FSubmenuBounds.Top + 1) + FSubmenuTop;
+  if (ARow > FSubmenuBounds.Top) and (ARow < FSubmenuBounds.Bottom) and
+     (Idx >= 0) and (Idx <= High(FCategories[FCategoryIndex].Items)) and
      not FCategories[FCategoryIndex].Items[Idx].IsSeparator then
   begin
     FSubmenuIndex := Idx;

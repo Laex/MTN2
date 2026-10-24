@@ -26,7 +26,7 @@ uses
   uDualPanelWorkspaceLibrary, uWorkspaceLibrary,
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
-  uDualPanelHistoryDialogs, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
+  uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives;
@@ -222,6 +222,7 @@ type
     FFolderHistory: TFolderHistoryDialogController;
     FCmdHistory: TCmdHistoryDialogController;
     FFileHistory: TFileHistoryDialogController;
+    FPalette: TCommandPaletteDialogController;
     FSettings: TSettingsDialogController;
     FThemeDlg: TThemeDialogController;
     FFileOps: TFileOpDialogController;
@@ -735,6 +736,7 @@ type
     function HandlePluginListCommand(const AControlId: string): Boolean;
     procedure OpenFolderHistoryDialog;
     procedure OpenFileHistoryDialog;
+    procedure OpenCommandPalette;
     procedure HostOpenHistoryFile(const AURI: string; AEdit: Boolean);
     procedure HostGotoHistoryFile(const AURI: string);
     procedure OpenCmdHistoryDialog;
@@ -1553,6 +1555,7 @@ begin
   FreeAndNil(FThemeDlg);
   FreeAndNil(FCmdHistory);
   FreeAndNil(FFileHistory);
+  FreeAndNil(FPalette);
   FreeAndNil(FFolderHistory);
   FreeAndNil(FFolderHotlist);
   FreeAndNil(FWorkspaceLibrary);
@@ -1756,6 +1759,7 @@ begin
   FKeymapHost.HistoryForward := HistoryForward;
   FKeymapHost.OpenFolderHistoryDialog := OpenFolderHistoryDialog;
   FKeymapHost.OpenFileHistoryDialog := OpenFileHistoryDialog;
+  FKeymapHost.OpenCommandPalette := OpenCommandPalette;
   FKeymapHost.OpenCmdHistoryDialog := OpenCmdHistoryDialog;
   FKeymapHost.OpenFolderHotlistDialog := OpenFolderHotlistDialog;
   FKeymapHost.BeginFolderHotlistAdd := BeginFolderHotlistAdd;
@@ -2023,6 +2027,7 @@ begin
   FModalInputHost.HandleKeymapList := FKeymapDlg.HandleListInput;
   FModalInputHost.HandleCmdHistoryFilter := FCmdHistory.HandleFilterInput;
   FModalInputHost.HandleFileHistoryList := FFileHistory.HandleListInput;
+  FModalInputHost.HandleCommandPaletteFilter := FPalette.HandleFilterInput;
   FModalInputHost.HandleDialogWidget := FDialog.HandleInput;
   FModalInputHost.DialogDropDownOpen := FDialog.DropDownOpen;
   FModalInputHost.RecordDialogHistory := FDialog.RecordInputHistory;
@@ -2903,6 +2908,13 @@ begin
   FFileHistory := TFileHistoryDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostOpenHistoryFile, HostGotoHistoryFile);
+  FPalette := TCommandPaletteDialogController.Create(FDialog,
+    DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
+    CloseTransientUiBeforeDialog,
+    function: TTopMenuController
+    begin
+      Result := FTopMenu;
+    end);
   FSettings := TSettingsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog,
@@ -5639,6 +5651,8 @@ begin
       Result := FCmdHistory.DispatchCommand(AControlId);
     hdkFileHistory:
       Result := FFileHistory.DispatchCommand(AControlId);
+    hdkCommandPalette:
+      Result := FPalette.DispatchCommand(AControlId);
     hdkFolderHotlist, hdkFolderHotlistAdd, hdkFolderHotlistRename:
       Result := FFolderHotlist.DispatchCommand(AKind, AControlId);
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename, hdkWorkspaceConfirm:
@@ -7524,6 +7538,8 @@ var
   Bounds: TRectI;
 begin
   Result := False;
+  if Assigned(FTopMenu) and FTopMenu.HandleMouseWheel(AWheelDelta) then
+    Exit(True);
   // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
   if FolderTreeShown and not (Assigned(FDialog) and FDialog.Visible) and
      FFolderTreeCtrl.Bounds.Contains(ALocalCol, ALocalRow) then
@@ -8454,6 +8470,12 @@ end;
 procedure TDualPanelWindow.OpenFileHistoryDialog;
 begin
   FFileHistory.OpenList;
+end;
+
+procedure TDualPanelWindow.OpenCommandPalette;
+begin
+  HostEnsureAllPlugins;
+  FPalette.OpenList;
 end;
 
 procedure TDualPanelWindow.HostOpenHistoryFile(const AURI: string; AEdit: Boolean);
@@ -12337,6 +12359,14 @@ begin
     begin
       HostEnsureAllPlugins;
       FTopMenu.ActivateMenu(FTopMenu.PanelCategory, True);
+      AKey := 0;
+      AKeyChar := #0;
+      Invalidate;
+      Exit(True);
+    end;
+    if not FTopMenu.Active and (GlobalAct = kaCommandPalette) then
+    begin
+      OpenCommandPalette;
       AKey := 0;
       AKeyChar := #0;
       Invalidate;
