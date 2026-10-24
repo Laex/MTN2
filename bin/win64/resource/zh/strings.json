@@ -357,7 +357,8 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "命令面板",
-      "hint": "输入=搜索  Enter=执行  Backspace=删除  Esc=关闭",
+      "hint": "输入=搜索(可用 ? 和 *)  Enter=执行  Esc=关闭",
+      "query_label": "搜索文本:",
       "ok": "执行",
       "cancel": "取消"
     },
@@ -1147,7 +1148,6 @@
     "colorPicker.foreground": "选择前景色",
     "workspaces.dialogTitle": "工作区",
     "cmdHistory.filterTitle": "命令历史: %s",
-    "palette.filterTitle": "命令面板: %s",
     "palette.empty": "(无匹配)",
     "consoleFind.title": "在输出中查找",
     "consoleFind.prompt": "查找:",
@@ -1157,6 +1157,7 @@
     "editor.bookmarksTitle": "书签",
     "editor.noBookmarks": "没有书签",
     "fileHistory.filterTitle": "文件历史: %s",
+    "folderHistory.filterTitle": "文件夹历史: %s",
     "fileHistory.empty": "(空)",
     "fileHistory.viewMark": "V",
     "fileHistory.editMark": "E",

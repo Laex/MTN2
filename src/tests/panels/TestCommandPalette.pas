@@ -19,6 +19,7 @@ type
     [Test] procedure TestEveryWordOfTheQueryMustMatch;
     [Test] procedure TestCaptionStartRanksBeforeInnerMatch;
     [Test] procedure TestInitialsFindACommand;
+    [Test] procedure TestWildcardsStandForCharacters;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
     [Test] procedure TestRunItemRunsOnlyEnabledCommands;
@@ -212,6 +213,33 @@ begin
   end;
 end;
 
+procedure TTestCommandPalette.TestWildcardsStandForCharacters;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Keys: TArray<string>;
+begin
+  M := MakeMenu(cMenuJson);
+  try
+    E := BuildPaletteEntries(M);
+    Keys := RankedKeys(E, 'c?py');
+    Assert.IsTrue(Contains(Keys, 'tmaFileCopy') and Contains(Keys, 'tmaFileCopyPath'),
+      '? stands for one character');
+    Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'c?y')), '? is exactly one character');
+    Keys := RankedKeys(E, 'mo*e');
+    Assert.AreEqual('tmaFileMove', Keys[0], '* stands for a run of characters');
+    Keys := RankedKeys(E, 'co*path');
+    Assert.AreEqual<Integer>(1, Length(Keys));
+    Assert.AreEqual('tmaFileCopyPath', Keys[0], '* crosses the words of a caption');
+    Assert.AreEqual<Integer>(Length(E), Length(RankedKeys(E, '*')), 'a lone * matches all');
+    Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'z*')));
+    Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'mo*e copy')),
+      'every word still has to match');
+  finally
+    M.Free;
+  end;
+end;
+
 procedure TTestCommandPalette.TestRecentCommandsComeFirstWithEmptyQuery;
 var
   M: TTopMenuController;
@@ -338,6 +366,7 @@ begin
       Ch := 'l';
       C.HandleFilterInput(Key, [], Ch);
       Assert.AreEqual<Integer>(1, C.RowCount, 'only Delete contains del');
+      Assert.AreEqual('del', D.GetInputValue('query'), 'the search text is shown in the field');
       Key := vkBack;
       Ch := #0;
       Assert.IsTrue(C.HandleFilterInput(Key, [], Ch));

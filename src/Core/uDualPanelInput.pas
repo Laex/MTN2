@@ -260,6 +260,7 @@ type
     HandleCmdHistoryFilter: TKeymapInputFn;
     HandleCommandPaletteFilter: TKeymapInputFn;
     HandleFileHistoryList: TKeymapInputFn;
+    HandleFolderHistoryList: TKeymapInputFn;
     HandleDialogWidget: TKeymapInputFn;
     HandleMarkdownColors: TKeymapInputFn;
     HandleThemeColor: TKeymapInputFn;
@@ -1507,6 +1508,9 @@ begin
   // Before the generic Enter: Ctrl+Enter there is "show in panel", not OK.
   if (AKind = hdkFileHistory) and Assigned(AHost.HandleFileHistoryList) and
      AHost.HandleFileHistoryList(AKey, AShift, AKeyChar) then
+    Exit(True);
+  if (AKind = hdkFolderHistory) and Assigned(AHost.HandleFolderHistoryList) and
+     AHost.HandleFolderHistoryList(AKey, AShift, AKeyChar) then
     Exit(True);
   // Enter presses the focused "Background" or "Cancel" button like a click
   // does (Cancel only asks whether to stop). With no button focused it is

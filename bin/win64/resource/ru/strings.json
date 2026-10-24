@@ -356,7 +356,8 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "Палитра команд",
-      "hint": "Ввод=поиск  Enter=Выполнить  Backspace=Стереть  Esc=Закрыть",
+      "hint": "Ввод=поиск (допустимы ? и *)  Enter=Выполнить  Esc=Закрыть",
+      "query_label": "Текст для поиска:",
       "ok": "Выполнить",
       "cancel": "Отмена"
     },
@@ -1155,7 +1156,6 @@
     "colorPicker.foreground": "Цвет текста",
     "workspaces.dialogTitle": "Рабочие пространства",
     "cmdHistory.filterTitle": "История команд: %s",
-    "palette.filterTitle": "Палитра команд: %s",
     "palette.empty": "(нет совпадений)",
     "consoleFind.title": "Поиск по выводу",
     "consoleFind.prompt": "Найти:",
@@ -1165,6 +1165,7 @@
     "editor.bookmarksTitle": "Закладки",
     "editor.noBookmarks": "Закладок нет",
     "fileHistory.filterTitle": "История файлов: %s",
+    "folderHistory.filterTitle": "История папок: %s",
     "fileHistory.empty": "(пусто)",
     "fileHistory.viewMark": "П",
     "fileHistory.editMark": "Р",

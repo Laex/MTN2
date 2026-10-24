@@ -95,10 +95,9 @@ begin
   SetLength(Rows, Length(FShown));
   for I := 0 to High(FShown) do
     Rows[I] := PaletteRowText(FAll[FShown[I]], cRowWidth);
-  Decl := BuildCommandPaletteDialog(Rows, 0);
-  if FQuery <> '' then
-    Decl.Title := T('ui.palette.filterTitle', 'Command palette: %s', [FQuery]);
+  Decl := BuildCommandPaletteDialog(Rows, 0, FQuery);
   FDialog.Open(Decl, FOnCommand);
+  FDialog.FocusControlById('commands');
   if Assigned(FOnNotify) then
     FOnNotify();
 end;

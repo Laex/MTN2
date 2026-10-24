@@ -359,7 +359,8 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "Command palette",
-      "hint": "Type to search  Enter=Run  Backspace=Erase  Esc=Close",
+      "hint": "Type to search (? and * allowed)  Enter=Run  Esc=Close",
+      "query_label": "Search text:",
       "ok": "Run",
       "cancel": "Cancel"
     },
@@ -1158,7 +1159,6 @@
     "colorPicker.foreground": "Pick foreground color",
     "workspaces.dialogTitle": "Workspaces",
     "cmdHistory.filterTitle": "Command history: %s",
-    "palette.filterTitle": "Command palette: %s",
     "palette.empty": "(no matches)",
     "consoleFind.title": "Find in output",
     "consoleFind.prompt": "Find:",
@@ -1168,6 +1168,7 @@
     "editor.bookmarksTitle": "Bookmarks",
     "editor.noBookmarks": "No bookmarks",
     "fileHistory.filterTitle": "File history: %s",
+    "folderHistory.filterTitle": "Folder history: %s",
     "fileHistory.empty": "(empty)",
     "fileHistory.viewMark": "V",
     "fileHistory.editMark": "E",

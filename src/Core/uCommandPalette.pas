@@ -5,7 +5,8 @@ unit uCommandPalette;
   the caption, the category title and the aliases that the string tables give
   to an item as 'menu.alias.<action name>' (comma separated words in any
   language, so a command is found by the name another program or another
-  language gives it). Only the commands that can run now are listed. }
+  language gives it). A word of the query may hold ? (one character) and *
+  (any run of characters). Only the commands that can run now are listed. }
 
 interface
 
@@ -186,6 +187,67 @@ begin
   end;
 end;
 
+// Glob match of the whole text: ? is one character, * is any run of them.
+function GlobMatch(const APattern, AText: string): Boolean;
+var
+  P, S, StarP, StarS: Integer;
+begin
+  P := 1;
+  S := 1;
+  StarP := 0;
+  StarS := 0;
+  while S <= Length(AText) do
+  begin
+    if (P <= Length(APattern)) and ((APattern[P] = '?') or (APattern[P] = AText[S])) then
+    begin
+      Inc(P);
+      Inc(S);
+    end
+    else if (P <= Length(APattern)) and (APattern[P] = '*') then
+    begin
+      StarP := P;
+      StarS := S;
+      Inc(P);
+    end
+    else if StarP > 0 then
+    begin
+      P := StarP + 1;
+      Inc(StarS);
+      S := StarS;
+    end
+    else
+      Exit(False);
+  end;
+  while (P <= Length(APattern)) and (APattern[P] = '*') do
+    Inc(P);
+  Result := P > Length(APattern);
+end;
+
+// A word with ? or * matches where the glob matches some part of the text; the
+// beginning of the caption or of one of its words ranks best.
+function WildWordScore(const AWord: string; const AEntry: TPaletteEntry): Integer;
+var
+  TitleF, AliasF, W: string;
+begin
+  TitleF := Fold(AEntry.Title);
+  if GlobMatch(AWord + '*', TitleF) then
+    Exit(0);
+  for W in SplitWords(TitleF) do
+    if GlobMatch(AWord + '*', W) then
+      Exit(1);
+  if GlobMatch('*' + AWord + '*', TitleF) then
+    Exit(2);
+  AliasF := Fold(AEntry.Aliases);
+  for W in SplitWords(AliasF) do
+    if GlobMatch(AWord + '*', W) then
+      Exit(3);
+  if GlobMatch('*' + AWord + '*', AliasF) then
+    Exit(4);
+  if GlobMatch('*' + AWord + '*', Fold(AEntry.Category)) then
+    Exit(5);
+  Result := -1;
+end;
+
 function WordScore(const AWord: string; const AEntry: TPaletteEntry): Integer;
 var
   TitleF, Initials: string;
@@ -193,6 +255,8 @@ var
   W: string;
   Best: Integer;
 begin
+  if (Pos('*', AWord) > 0) or (Pos('?', AWord) > 0) then
+    Exit(WildWordScore(AWord, AEntry));
   Best := -1;
   TitleF := Fold(AEntry.Title);
   TitleWords := SplitWords(TitleF);

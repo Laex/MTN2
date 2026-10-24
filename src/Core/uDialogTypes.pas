@@ -280,9 +280,10 @@ function BuildCmdHistoryDialog(const AItems: TArray<string>;
 /// <summary>Alt+F11: AItems are "mode mark + path" labels, newest first.</summary>
 function BuildFileHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
-/// <summary>Shift+F9: AItems are the rows of the matching menu commands.</summary>
+/// <summary>Shift+F9: AItems are the rows of the matching menu commands, AQuery
+/// the search text shown in the field above them.</summary>
 function BuildCommandPaletteDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0; const AQuery: string = ''): TDialogDeclaration;
 /// <summary>AItems are pre-formatted rows (on/off mark, id, name, version),
 /// see HostPluginRows in uPluginHost.pas.</summary>
 function BuildPluginListDialog(const AItems: TArray<string>;
@@ -1127,7 +1128,7 @@ begin
 end;
 
 function BuildCommandPaletteDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; const AQuery: string): TDialogDeclaration;
 var
   Items: TArray<string>;
 begin
@@ -1137,6 +1138,7 @@ begin
     Items := [T('ui.palette.empty', '(no matches)')];
   DialogSetListItems(Result, 'commands', Items,
     EnsureRange(ASelectedIndex, 0, High(Items)));
+  DialogSetInputValue(Result, 'query', AQuery);
 end;
 
 function BuildFileHistoryDialog(const AItems: TArray<string>;

@@ -2027,6 +2027,7 @@ begin
   FModalInputHost.HandleKeymapList := FKeymapDlg.HandleListInput;
   FModalInputHost.HandleCmdHistoryFilter := FCmdHistory.HandleFilterInput;
   FModalInputHost.HandleFileHistoryList := FFileHistory.HandleListInput;
+  FModalInputHost.HandleFolderHistoryList := FFolderHistory.HandleListInput;
   FModalInputHost.HandleCommandPaletteFilter := FPalette.HandleFilterInput;
   FModalInputHost.HandleDialogWidget := FDialog.HandleInput;
   FModalInputHost.DialogDropDownOpen := FDialog.DropDownOpen;

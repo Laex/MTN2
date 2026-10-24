@@ -102,6 +102,8 @@ var
   Dialog: TDialogHost;
   C: TFolderHistoryDialogController;
   Uris: TArray<string>;
+  Key: Word;
+  KeyChar: Char;
 begin
   BackupPath := GetConfigFilePath('folderhistory.json');
   HadOriginal := TFile.Exists(BackupPath);
@@ -139,6 +141,39 @@ begin
         Assert.IsTrue(not Dialog.Visible, 'accepting closes the dialog');
         Assert.IsTrue(GNavigateCalled, 'accepting navigates');
         Assert.IsTrue(GNavigatedUri = 'file:///C:/alpha/', 'navigates to the selected (not the first) URI');
+
+        // Typing narrows the list (case-insensitive), the first match maps
+        // to its own URI, Backspace widens it again.
+        GNavigateCalled := False;
+        C.OpenList;
+        Key := 0;
+        KeyChar := 'B';
+        Assert.IsTrue(C.HandleListInput(Key, [], KeyChar), 'typing a letter is consumed');
+        KeyChar := 'E';
+        C.HandleListInput(Key, [], KeyChar);
+        C.DispatchCommand('folders');
+        Assert.IsTrue(GNavigateCalled and (GNavigatedUri = 'file:///C:/beta/'),
+          'typing "BE" narrows to beta');
+
+        C.OpenList;
+        Key := 0;
+        KeyChar := 'z';
+        C.HandleListInput(Key, [], KeyChar);
+        Key := vkBack;
+        KeyChar := #0;
+        Assert.IsTrue(C.HandleListInput(Key, [], KeyChar), 'Backspace is consumed');
+        GNavigateCalled := False;
+        C.DispatchCommand('folders');
+        Assert.IsTrue(GNavigateCalled and (GNavigatedUri = 'file:///C:/gamma/'),
+          'Backspace restores the full list');
+
+        GNavigateCalled := False;
+        C.OpenList;
+        Key := 0;
+        KeyChar := 'z';
+        C.HandleListInput(Key, [], KeyChar);
+        C.DispatchCommand('folders');
+        Assert.IsTrue(not GNavigateCalled, 'accept on an empty filtered list navigates nowhere');
       finally
         C.Free;
       end;

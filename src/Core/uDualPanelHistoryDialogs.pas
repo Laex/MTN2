@@ -29,9 +29,12 @@ type
     FOnCanStart: THistoryDialogCanStart;
     FOnPrepareUi: THistoryDialogPrepareUi;
     FOnNavigate: THistoryDialogNavigate;
-    FUris: TArray<string>;
+    FAllUris: TArray<string>;
+    FUris: TArray<string>; // FAllUris narrowed by FFilter
+    FFilter: string;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
+    procedure RefreshList;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: THistoryDialogKindSetter; const AOnNotify: TProc;
@@ -39,6 +42,10 @@ type
       const AOnPrepareUi: THistoryDialogPrepareUi;
       const AOnNavigate: THistoryDialogNavigate);
     procedure OpenList;
+    /// <summary>Typing narrows the list (substring of the folder label, any
+    /// case), Backspace removes the last filter character.</summary>
+    function HandleListInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     function DispatchCommand(const AControlId: string): Boolean;
     function ShouldNavigateToHistoryUri(AAccepted: Boolean; AIdx: Integer): Boolean;
   end;
@@ -162,25 +169,72 @@ begin
 end;
 
 procedure TFolderHistoryDialogController.OpenList;
-var
-  Uris: TArray<string>;
-  Items: TArray<string>;
-  I: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
-  Uris := FolderHistoryGetUris;
-  FUris := Uris;
-  SetLength(Items, Length(Uris));
-  for I := 0 to High(Uris) do
-    Items[I] := FolderHistoryDisplayLabel(Uris[I]);
-
+  FAllUris := FolderHistoryGetUris;
+  FFilter := '';
   SetKind(hdkFolderHistory);
-  FDialog.Open(BuildFolderHistoryDialog(Items, 0), FOnCommand);
+  RefreshList;
+end;
+
+procedure TFolderHistoryDialogController.RefreshList;
+var
+  Items: TArray<string>;
+  I, N: Integer;
+  Needle, Lbl: string;
+  Decl: TDialogDeclaration;
+begin
+  Needle := AnsiLowerCase(FFilter);
+  SetLength(FUris, Length(FAllUris));
+  SetLength(Items, Length(FAllUris));
+  N := 0;
+  for I := 0 to High(FAllUris) do
+  begin
+    Lbl := FolderHistoryDisplayLabel(FAllUris[I]);
+    if (Needle = '') or (Pos(Needle, AnsiLowerCase(Lbl)) > 0) then
+    begin
+      FUris[N] := FAllUris[I];
+      Items[N] := Lbl;
+      Inc(N);
+    end;
+  end;
+  SetLength(FUris, N);
+  SetLength(Items, N);
+  Decl := BuildFolderHistoryDialog(Items, 0);
+  if FFilter <> '' then
+    Decl.Title := T('ui.folderHistory.filterTitle', 'Folder history: %s', [FFilter]);
+  FDialog.Open(Decl, FOnCommand);
   Notify;
+end;
+
+function TFolderHistoryDialogController.HandleListInput(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+begin
+  Result := False;
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
+     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
+  begin
+    FFilter := FFilter + AKeyChar;
+    RefreshList;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AKey = vkBack) and (AShift * [ssShift, ssAlt, ssCtrl] = []) then
+  begin
+    if FFilter <> '' then
+    begin
+      Delete(FFilter, Length(FFilter), 1);
+      RefreshList;
+    end;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
 end;
 
 function TFolderHistoryDialogController.ShouldNavigateToHistoryUri(
@@ -203,6 +257,8 @@ begin
   if ShouldNavigateToHistoryUri(Accepted, Idx) then
     FOnNavigate(FUris[Idx]);
   SetLength(FUris, 0);
+  SetLength(FAllUris, 0);
+  FFilter := '';
 end;
 
 { TCmdHistoryDialogController }
