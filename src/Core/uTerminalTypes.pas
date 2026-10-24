@@ -93,7 +93,13 @@ procedure PutGridText(const AGrid: TTerminalGrid; AX, AY: Integer;
 /// for, so the overflow can't bleed into whatever sits to the right of it.</summary>
 procedure PutGridTextClipped(const AGrid: TTerminalGrid; AX, AY, AMaxX: Integer;
   const AText: string; AFg, ABg: TAlphaColor; AAttr: TCharCellAttributes = []);
-/// <summary>Mark a cell for a 2-px insert caret at its left edge (drawn after glyphs).</summary>
+var
+  /// <summary>Draw the insert caret as a bar along the bottom of its cell, as
+  /// in Far, instead of a thin vertical bar at the cell's left edge.</summary>
+  GCaretUnderline: Boolean = False;
+
+/// <summary>Mark a cell for an insert caret (drawn after glyphs): a 2-px bar at
+/// its left edge, or a bottom bar when GCaretUnderline is on.</summary>
 procedure MarkGridInsertCaret(const AGrid: TTerminalGrid; AX, AY: Integer);
 /// <summary>Bar color that stays visible on ACellBg (cyan on dark, black on light).</summary>
 function InsertCaretColor(ACellBg: TAlphaColor): TAlphaColor;

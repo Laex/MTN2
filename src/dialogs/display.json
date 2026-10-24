@@ -342,6 +342,16 @@
     },
     {
       "type": "checkbox",
+      "id": "caret_underline",
+      "text": "&Cursor as underline",
+      "checked": false,
+      "col": 47,
+      "row": 2,
+      "width": 46,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
       "id": "alt_menu",
       "text": "&Open menu on a single Alt press",
       "checked": true,

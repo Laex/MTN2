@@ -290,6 +290,7 @@
 | `editor.scrollThumb` | `scroll.thumb` |
 | `editor.matchFg` | `cursor.fg` |
 | `editor.matchBg` | `cursor.bg` |
+| `editor.lineBg` | `editor.bodyBg` |
 
 ## Как это устроено в коде
 

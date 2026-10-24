@@ -102,6 +102,9 @@ type
     FrameFocus, FrameIdle: TAlphaColor;
     ScrollFg, ScrollThumb: TAlphaColor;
     MatchFg, MatchBg: TAlphaColor;
+    /// <summary>Background of the line the text cursor is on; equal to BodyBg
+    /// when the theme does not highlight it.</summary>
+    LineBg: TAlphaColor;
   end;
 
   // Visual style of widgets rendered into a text grid. The Core (Host) owns

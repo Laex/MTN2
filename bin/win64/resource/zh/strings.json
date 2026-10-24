@@ -235,6 +235,7 @@
       "show_status_line": "显示状态栏(&S)",
       "select_folders": "全选时包含文件夹(&F)",
       "pack_same_panel": "打包到同一面板 (Shift+F1)(&A)",
+      "caret_underline": "光标显示为下划线(&C)",
       "ok": "确定",
       "cancel": "取消"
     },
@@ -1374,6 +1375,7 @@
     "themeRole.editor.scrollThumb": "滚动条滑块",
     "themeRole.editor.matchFg": "搜索匹配文字",
     "themeRole.editor.matchBg": "搜索匹配背景",
+    "themeRole.editor.lineBg": "当前行背景",
     "themeAttr.windowTitle": "窗口标题",
     "themeAttr.dialogTitle": "对话框标题",
     "themeAttr.button": "按钮",

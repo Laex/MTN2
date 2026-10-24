@@ -127,7 +127,8 @@ const
     'Scroll bar',
     'Scroll bar thumb',
     'Search match text',
-    'Search match background');
+    'Search match background',
+    'Current line background');
 
   cAttrNames: array[TThemeAttrSlot] of string = (
     'Window title',

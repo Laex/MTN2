@@ -1221,8 +1221,16 @@ begin
         DevT := Round(FYTop[Y] * Sc);
         DevB := Round(FYTop[Y + 1] * Sc);
         Canvas.Fill.Color := CaretColor;
-        Canvas.FillRect(RectF(DevL / Sc, DevT / Sc, (DevL + tDev) / Sc, DevB / Sc),
-          0, 0, [], 1);
+        if GCaretUnderline then
+        begin
+          DevR := Round(FXLeft[X + 1] * Sc);
+          Canvas.FillRect(RectF(DevL / Sc,
+            (DevB - Max(tDev, Round(FCellHeight * Sc * 0.18))) / Sc,
+            DevR / Sc, DevB / Sc), 0, 0, [], 1);
+        end
+        else
+          Canvas.FillRect(RectF(DevL / Sc, DevT / Sc, (DevL + tDev) / Sc, DevB / Sc),
+            0, 0, [], 1);
       end;
     end;
 

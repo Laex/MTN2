@@ -18,6 +18,7 @@ type
     [Test] procedure TestFallbackRoles;
     [Test] procedure TestParentValueBeatsChildFallback;
     [Test] procedure TestCurrentDriveLetterColors;
+    [Test] procedure TestEditorCursorLineColor;
     [Test] procedure TestRoundTrip;
     [Test] procedure TestPaletteNames;
     [Test] procedure TestColorReferences;
@@ -183,6 +184,23 @@ begin
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0D0D0D), Spec.Colors[trPanelDriveCurBg], 'own background');
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF0A0A0A), Spec.Colors[trPanelTabActiveFg],
     'the tab colors stay as they were');
+end;
+
+procedure TTestThemeSpec.TestEditorCursorLineColor;
+var
+  Doc: TThemeDoc;
+  Spec: TThemeSpec;
+begin
+  Doc := DocWith('');
+  SetColor(Doc, trEditorBodyBg, TAlphaColor($FF010101));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF010101), Spec.Colors[trEditorLineBg],
+    'without its own color the cursor line looks like the body');
+  SetColor(Doc, trEditorLineBg, TAlphaColor($FF020202));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF020202), Spec.Colors[trEditorLineBg], 'own color');
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF010101), Spec.Colors[trEditorBodyBg],
+    'the body color stays as it was');
 end;
 
 procedure TTestThemeSpec.TestParentValueBeatsChildFallback;

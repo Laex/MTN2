@@ -4853,7 +4853,7 @@ end;
 
 procedure TEditorWindow.DrawContent;
 var
-  W, H, ViewH, TextW, Y, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
+  W, H, ViewH, TextW, Y, X, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
   Line, Vis: string;
   CaretHere: Boolean;
 begin
@@ -4929,6 +4929,16 @@ begin
         PaintTextSelection(1 + Y, LineIdx, CharOffset, Vis, TextW)
       else
         PaintTextSelection(1 + Y, LineIdx, FLeftCol, Vis, TextW);
+
+      // The cursor line takes the theme's line color wherever the cell still
+      // has the plain body background (selection and matches stay as drawn).
+      if (LineIdx = FCursorRow) and (LineIdx >= 0) and (FConfirm = ecNone) and
+         (not FViewOnly) and (not FChromeless) and
+         (FThemeColors.LineBg <> FThemeColors.BodyBg) and
+         (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
+        for X := 1 to Min(W - 3, High(Buffer[1 + Y])) do
+          if Buffer[1 + Y][X].BgColor = FThemeColors.BodyBg then
+            Buffer[1 + Y][X].BgColor := FThemeColors.LineBg;
 
       // Cursor on this line (drawn over selection).
       if (LineIdx = FCursorRow) and (FConfirm = ecNone) and FCursorVisible then

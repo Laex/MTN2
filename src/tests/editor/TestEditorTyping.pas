@@ -16,13 +16,14 @@ type
   public
     [Test] procedure TestEndTypeBackspace;
     [Test] procedure TestBackspaceJoinsLines;
+    [Test] procedure TestCursorLineUsesThemeColor;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
-  uTerminalTypes, uVfsTypes, uThemeRegistry, uEditorWindow;
+  uTerminalTypes, uVfsTypes, uThemeTypes, uThemeSpec, uThemeRegistry, uEditorWindow;
 
 const
   W = 60;
@@ -122,6 +123,51 @@ begin
     Assert.IsTrue(Pos('hello ', RowText(Grid, Row) + ' ') > 0, 'Backspace removed it');
     Assert.IsFalse(Pos('hellox', RowText(Grid, Row)) > 0, 'the character is gone');
     Assert.AreEqual(TextStart + 5, CaretCol(Grid, Row), 'Backspace: caret back after "hello"');
+  finally
+    View.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestEditorTyping.TestCursorLineUsesThemeColor;
+const
+  cLine = TAlphaColor($FF123456);
+var
+  Dir, Path: string;
+  View: TEditorWindow;
+  Grid: TTerminalGrid;
+  Spec: TThemeSpec;
+  Row1, Row2, Col: Integer;
+begin
+  Assert.IsTrue(TryLoadThemeSpec('NDN', Spec), 'theme loads');
+  Spec.Colors[trEditorLineBg] := cLine;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-typing-' + TPath.GetGUIDFileName(False));
+  ForceDirectories(Dir);
+  Path := TPath.Combine(Dir, 'a.txt');
+  TFile.WriteAllText(Path, 'hello' + sLineBreak + 'world' + sLineBreak, TEncoding.UTF8);
+  View := TEditorWindow.Create(CreateThemeFromSpec(Spec), 1);
+  try
+    View.Open(PathToFileUri(Path), False);
+    Pump;
+    Assert.IsTrue(View.DocReady, 'document loaded');
+    Grid := Paint(View);
+    Row1 := -1;
+    Row2 := -1;
+    for Col := 0 to High(Grid) do
+    begin
+      if Pos('hello', RowText(Grid, Col)) > 0 then
+        Row1 := Col;
+      if Pos('world', RowText(Grid, Col)) > 0 then
+        Row2 := Col;
+    end;
+    Assert.IsTrue((Row1 >= 0) and (Row2 >= 0), 'both lines drawn');
+    Col := Pos('hello', RowText(Grid, Row1)) + 20;
+    Assert.AreEqual<TAlphaColor>(cLine, Grid[Row1][Col].BgColor, 'the cursor line has the line color');
+    Assert.AreNotEqual<TAlphaColor>(cLine, Grid[Row2][Col].BgColor, 'the other line keeps the body color');
+    Send(View, vkDown, #0);
+    Grid := Paint(View);
+    Assert.AreEqual<TAlphaColor>(cLine, Grid[Row2][Col].BgColor, 'the color follows the cursor');
+    Assert.AreNotEqual<TAlphaColor>(cLine, Grid[Row1][Col].BgColor, 'and leaves the first line');
   finally
     View.Free;
     TDirectory.Delete(Dir, True);

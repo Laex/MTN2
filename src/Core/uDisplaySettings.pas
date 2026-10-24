@@ -72,6 +72,8 @@ type
     AltOpensMenu: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
     EditorAutoIndent: Boolean;
+    /// <summary>uTerminalTypes.GCaretUnderline.</summary>
+    CaretUnderline: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>The cursor row is highlighted in the passive panel too
@@ -317,6 +319,7 @@ begin
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
+  Result.CaretUnderline := False;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;

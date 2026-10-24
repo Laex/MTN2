@@ -1653,6 +1653,7 @@ begin
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
+  Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -1686,7 +1687,9 @@ begin
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
+  GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
@@ -1790,6 +1793,7 @@ begin
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
+  GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
@@ -1888,6 +1892,7 @@ begin
   Sess.FileDrag := GFileDragEnabled;
   Sess.AltOpensMenu := GAltOpensMenu;
   Sess.EditorAutoIndent := GEditorAutoIndent;
+  Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
@@ -2708,6 +2713,7 @@ begin
   FSession.FileDrag := True;
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
+  FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;

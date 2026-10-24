@@ -234,6 +234,7 @@
       "show_status_line": "Показывать строку &статуса",
       "select_folders": "Выделять и &папки (выделить / снять всё)",
       "pack_same_panel": "Упаковывать в ту &же панель (Shift+F1)",
+      "caret_underline": "Курсор-под&чёркивание",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -1382,6 +1383,7 @@
     "themeRole.editor.scrollThumb": "Ползунок полосы прокрутки",
     "themeRole.editor.matchFg": "Текст найденного",
     "themeRole.editor.matchBg": "Фон найденного",
+    "themeRole.editor.lineBg": "Фон текущей строки",
     "themeAttr.windowTitle": "Заголовок окна",
     "themeAttr.dialogTitle": "Заголовок диалога",
     "themeAttr.button": "Кнопка",

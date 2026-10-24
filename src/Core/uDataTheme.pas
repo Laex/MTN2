@@ -637,6 +637,7 @@ begin
   AColors.ScrollThumb := FSpec.Colors[trEditorScrollThumb];
   AColors.MatchFg := FSpec.Colors[trEditorMatchFg];
   AColors.MatchBg := FSpec.Colors[trEditorMatchBg];
+  AColors.LineBg := FSpec.Colors[trEditorLineBg];
 end;
 
 end.

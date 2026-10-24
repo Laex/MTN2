@@ -237,6 +237,7 @@
       "show_status_line": "Show &status line",
       "select_folders": "Select all also &folders",
       "pack_same_panel": "Pack to the sam&e panel (Shift+F1)",
+      "caret_underline": "&Cursor as underline",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -1385,6 +1386,7 @@
     "themeRole.editor.scrollThumb": "Scroll bar thumb",
     "themeRole.editor.matchFg": "Search match text",
     "themeRole.editor.matchBg": "Search match background",
+    "themeRole.editor.lineBg": "Current line background",
     "themeAttr.windowTitle": "Window title",
     "themeAttr.dialogTitle": "Dialog title",
     "themeAttr.button": "Button",

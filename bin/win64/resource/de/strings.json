@@ -236,6 +236,7 @@
       "show_status_line": "&Statuszeile anzeigen",
       "select_folders": "Alles auswählen auch &Ordner",
       "pack_same_panel": "Im selben Be&dienfeld packen (Shift+F1)",
+      "caret_underline": "&Cursor als Unterstrich",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
@@ -1375,6 +1376,7 @@
     "themeRole.editor.scrollThumb": "Schieber der Bildlaufleiste",
     "themeRole.editor.matchFg": "Text des Suchtreffers",
     "themeRole.editor.matchBg": "Hintergrund des Suchtreffers",
+    "themeRole.editor.lineBg": "Hintergrund der aktuellen Zeile",
     "themeAttr.windowTitle": "Fenstertitel",
     "themeAttr.dialogTitle": "Dialogtitel",
     "themeAttr.button": "Schaltfläche",

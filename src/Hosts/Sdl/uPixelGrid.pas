@@ -362,8 +362,12 @@ begin
     FillRect(TRect.Create(PX, PY + (FGlyphs.Baseline * 2) div 3,
       PX + W, PY + (FGlyphs.Baseline * 2) div 3 + Bar), Fg);
   if ccaInsertCaret in Cell.Attributes then
-    FillRect(TRect.Create(PX, PY, PX + Min(2, FCellW), PY + FCellH),
-      Opaque(InsertCaretColor(Cell.BgColor)));
+    if GCaretUnderline then
+      FillRect(TRect.Create(PX, PY + FCellH - Max(2, FCellH * 18 div 100),
+        PX + W, PY + FCellH), Opaque(InsertCaretColor(Cell.BgColor)))
+    else
+      FillRect(TRect.Create(PX, PY, PX + Min(2, FCellW), PY + FCellH),
+        Opaque(InsertCaretColor(Cell.BgColor)));
   MarkDirty(Cl);
 end;
 

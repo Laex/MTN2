@@ -69,7 +69,8 @@ type
     trEditorBodyFg, trEditorBodyBg, trEditorCursorFg, trEditorCursorBg,
     trEditorSelFg, trEditorSelBg, trEditorHintFg,
     trEditorStatusFg, trEditorStatusBg, trEditorFrameFocus, trEditorFrameIdle,
-    trEditorScrollFg, trEditorScrollThumb, trEditorMatchFg, trEditorMatchBg);
+    trEditorScrollFg, trEditorScrollThumb, trEditorMatchFg, trEditorMatchBg,
+    trEditorLineBg);
 
   /// <summary>Text attributes a theme applies to a kind of chrome text.</summary>
   TThemeAttrSlot = (
@@ -352,7 +353,8 @@ const
     (Key: 'editor.scrollFg'; Fallback: Ord(trScrollFg)),
     (Key: 'editor.scrollThumb'; Fallback: Ord(trScrollThumb)),
     (Key: 'editor.matchFg'; Fallback: Ord(trCursorFg)),
-    (Key: 'editor.matchBg'; Fallback: Ord(trCursorBg)));
+    (Key: 'editor.matchBg'; Fallback: Ord(trCursorBg)),
+    (Key: 'editor.lineBg'; Fallback: Ord(trEditorBodyBg)));
 
   cAttrKeys: array[TThemeAttrSlot] of string = (
     'windowTitle', 'dialogTitle', 'button', 'check', 'tab',
