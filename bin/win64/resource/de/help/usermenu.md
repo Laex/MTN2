@@ -24,6 +24,10 @@ Ihre eigene Befehlsliste: Einträge mit Tasten, verschachtelte Untermenüs und T
 
 **Menüeintrag:** Taste (ein Zeichen), Typ (Befehl / Untermenü / Trennlinie), Beschriftung und Befehl. Ist die Beschriftung leer, wird der Befehl selbst angezeigt.
 
+**Nach dem Start** im Eintragsdialog legt fest, wohin das Programm geht, wenn ein Befehl beendet ist: **Wie in den Konsolenoptionen** (das Kontrollfeld **Nach Befehlsende immer zu den Panels zurückkehren** unter **Optionen → Konsole...**), **Zu den Panels zurückkehren** oder **In der Konsole bleiben**.
+
+Der Befehl läuft in der für die Konsole gewählten Shell (cmd, PowerShell, WSL) – schreiben Sie Befehle in deren Syntax. Mehrere Befehle in einer Zeile lassen sich mit `&&` verbinden (cmd, PowerShell 7).
+
 **Ersetzungen in einem Befehl:**
 
 | Muster | Wird ersetzt durch |
@@ -52,11 +56,7 @@ fc "!.!" "!#!\!.!"                     mit der gleichnamigen Datei im anderen Pa
 git commit -am "!?Commit-Nachricht?!"  committen und nach der Nachricht fragen
 ```
 
-Der Befehl läuft in der für die Konsole gewählten Shell (cmd, PowerShell, WSL) – schreiben Sie Befehle in deren Syntax. Mehrere Befehle in einer Zeile lassen sich mit `&&` verbinden (cmd, PowerShell 7).
-
 Solange das Hauptmenü noch nie gespeichert wurde, zeigt es Beispiele. Menüdateien lassen sich auch von Hand bearbeiten – Änderungen werden beim nächsten Öffnen des Menüs übernommen.
-
-**Nach dem Start** im Eintragsdialog legt fest, wohin das Programm geht, wenn ein Befehl beendet ist: **Wie in den Konsolenoptionen** (das Kontrollfeld **Nach Befehlsende immer zu den Panels zurückkehren** unter **Optionen → Konsole...**), **Zu den Panels zurückkehren** oder **In der Konsole bleiben**.
 
 ---
 

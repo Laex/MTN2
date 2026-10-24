@@ -13,7 +13,9 @@ Nach dem Download (das Paket wird gegen seine SHA-256 geprüft) bietet MTN2 an, 
 **≡ → Nach Updates suchen...** (F9, dann der linkeste Eintrag des Hauptmenüs) zeigt die installierte Version, sucht sofort (**Jetzt suchen**) und hat zwei Kontrollfelder:
 
 - **Beim Start nach Updates suchen** – einmal am Tag beim Start. Ist es aus, geht MTN2 nicht von selbst online.
-- **Hinweis bei der Suche anzeigen** – jede Suche, die online geht (beim Start oder mit **Jetzt suchen**), zeigt unten rechts einige Sekunden lang den Hinweis „Suche auf github.com nach MTN2-Updates...“. Bei der Suche beim Start hat er eine zweite Zeile dazu, wie sich die Suche ausschalten lässt. Er wird auch angezeigt, wenn andere Popup-Hinweise aus sind, und verschwindet, sobald GitHub geantwortet hat; solange ein Dialog offen ist, bleibt er darunter verborgen.
+- **Hinweis bei der Suche anzeigen** – jede Suche, die online geht (beim Start oder mit **Jetzt suchen**), zeigt unten rechts einige Sekunden lang den Hinweis „Suche auf github.com nach MTN2-Updates...“.
+
+Bei der Suche beim Start hat er eine zweite Zeile dazu, wie sich die Suche ausschalten lässt. Er wird auch angezeigt, wenn andere Popup-Hinweise aus sind, und verschwindet, sobald GitHub geantwortet hat; solange ein Dialog offen ist, bleibt er darunter verborgen.
 
 ### Was über das Netzwerk geht
 

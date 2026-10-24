@@ -24,6 +24,10 @@ Your own list of commands: items with hot keys, nested submenus and separators. 
 
 **Menu item:** hot key (one character), type (command / submenu / separator), caption and command. If the caption is empty, the command itself is shown.
 
+**After run** in the item dialog says where the program goes once a command has finished: **As in the console options** (the **Always return to the panels** box in **Options → Console...**), **Return to the panels** or **Stay in the console**.
+
+The command runs in the shell chosen for the console (cmd, PowerShell, WSL) – write commands in its syntax. Several commands on one line can be joined with `&&` (cmd, PowerShell 7).
+
 **Substitutions in a command:**
 
 | Pattern | Replaced with |
@@ -52,11 +56,7 @@ fc "!.!" "!#!\!.!"                     compare with the same-named file on the o
 git commit -am "!?Commit message?!"    commit, asking for the message
 ```
 
-The command runs in the shell chosen for the console (cmd, PowerShell, WSL) – write commands in its syntax. Several commands on one line can be joined with `&&` (cmd, PowerShell 7).
-
 Until the main menu has been saved even once, it shows examples. Menu files can also be edited by hand – changes are picked up the next time the menu opens.
-
-**After run** in the item dialog says where the program goes once a command has finished: **As in the console options** (the **Always return to the panels** box in **Options → Console...**), **Return to the panels** or **Stay in the console**.
 
 ---
 

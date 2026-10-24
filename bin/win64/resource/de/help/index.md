@@ -7,38 +7,38 @@ Die Tasten gelten für das eingebaute Profil; sie lassen sich ändern (siehe [Ta
 ### Inhalt
 
 - [Programmoberfläche](screen.md)
+- [Hauptmenü (F9)](topmenu.md)
 - [Panels und Navigation](panels.md)
-- [Dateien auswählen](selection.md)
-- [Dateioperationen](fileops.md)
+- [Panelansicht und Sortierung](view.md)
 - [Laufwerke und besondere Orte](drives.md)
 - [Tabs und Arbeitsbereiche](workspaces.md)
-- [Panelansicht und Sortierung](view.md)
-- [Suche und Filter](search.md)
 - [Verlauf und Ordner-Hotlist](history.md)
-- [Befehlszeile und Konsole](cmdline.md)
-- [Terminals](terminals.md)
-- [Dateien ansehen und bearbeiten](viewer.md)
-- [Arbeiten mit Text und Maus](text.md)
-- [Hauptmenü (F9)](topmenu.md)
-- [Benutzermenü (F2)](usermenu.md)
+- [Dateien auswählen](selection.md)
+- [Dateioperationen](fileops.md)
+- [Hintergrundaufträge](jobs.md)
+- [Suche und Filter](search.md)
+- [Synchronisieren und Vergleichen](sync.md)
 - [Archive](archives.md)
 - [Netzwerk: SSH und SFTP](ssh.md)
-- [Synchronisieren und Vergleichen](sync.md)
-- [Hintergrundaufträge](jobs.md)
+- [Dateien ansehen und bearbeiten](viewer.md)
+- [Arbeiten mit Text und Maus](text.md)
+- [Befehlszeile und Konsole](cmdline.md)
+- [Terminals](terminals.md)
+- [Benutzermenü (F2)](usermenu.md)
 - [Dateizuordnungen](associations.md)
 - [Einstellungen](settings.md)
-- [Updates](updates.md)
 - [Tastenbelegung](keymap.md)
 - [Einstellungsdateien](configfiles.md)
+- [Updates](updates.md)
 
 ### Die Hilfe bedienen
 
 | Taste | Aktion |
 | --- | --- |
+| ↑ ↓ PgUp PgDn Home End | blättern |
 | Tab / Shift+Tab | nächster / vorheriger Link |
 | Enter, Klick auf einen Link | dem Link folgen |
 | Backspace, Alt+← | zurück |
 | F1 | diese Seite (Inhalt) |
 | F7, Shift+F7 / Alt+F7 | Text suchen, nächster / vorheriger Treffer |
-| ↑ ↓ PgUp PgDn Home End | blättern |
 | Esc, F10 | Hilfe schließen |

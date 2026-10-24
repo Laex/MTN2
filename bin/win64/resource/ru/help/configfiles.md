@@ -5,19 +5,19 @@
 | Файл | Содержимое |
 | --- | --- |
 | `session.json` | состояние окна, панелей и вкладок, тема, шрифт, язык |
-| `keymap.json` | переопределённые клавиши |
+| `themes\*.theme.json` | ваши темы (Настройки → Тема...) |
+| `keymap.json` | переопределённые клавиши |
 | `aliases.json` | свои слова для поиска в палитре команд |
+| `usermenu.json` | главное меню пользователя (F2) |
+| `.mtn2menu.json` (в любой папке) | меню этой папки и вложенных |
+| `associations.json` | ассоциации файлов |
+| `externaltools.json` | внешний просмотрщик и редактор (Alt+F3 / Alt+F4) |
+| `workspaces.json` | сохранённые рабочие пространства |
+| `sshconnections.json` | SSH/SFTP-подключения |
 | `history.json` | история команд |
 | `folderhistory.json` | история папок |
 | `filehistory.json` | история файлов (Alt+F11) |
-| `externaltools.json` | внешний просмотрщик и редактор (Alt+F3 / Alt+F4) |
-| `themes\*.theme.json` | ваши темы (Настройки → Тема...) |
 | `dialoghistory.json` | история полей ввода в диалогах |
-| `workspaces.json` | сохранённые рабочие пространства |
-| `sshconnections.json` | SSH/SFTP-подключения |
-| `associations.json` | ассоциации файлов |
-| `usermenu.json` | главное меню пользователя (F2) |
-| `.mtn2menu.json` (в любой папке) | меню этой папки и вложенных |
 
 ---
 
