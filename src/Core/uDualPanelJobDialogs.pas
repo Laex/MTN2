@@ -86,8 +86,8 @@ function JobPackArchiveExt(ATypeIdx: Integer): string;
 /// <summary>The 7-Zip level (-mx) of an item of the Pack dialog's compression
 /// list: Store, Fastest, Fast, Normal, Maximum, Ultra.</summary>
 function JobPackLevelFromIndex(AIdx: Integer): Integer;
-/// <summary>The archive type of a name by its extension; -1 when it has no
-/// archive extension.</summary>
+/// <summary>The archive type of a name by its extension, or of an existing
+/// local file by its 7z signature; -1 when it is neither.</summary>
 function JobPackTypeFromPath(const APath: string): Integer;
 /// <summary>The destination as the Copy / Move / Pack dialog shows it: a
 /// local path for a folder on disk, the URI itself for anything else (an
@@ -233,7 +233,7 @@ begin
   Ext := ExtractFileExt(APath);
   if SameText(Ext, '.zip') then
     Result := cPackTypeZip
-  else if SameText(Ext, '.7z') then
+  else if IsSevenZipArchivePath(APath) then
     Result := cPackType7z
   else
     Result := -1;

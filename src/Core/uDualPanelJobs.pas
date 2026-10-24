@@ -1115,7 +1115,7 @@ begin
   begin
     if IsSevenZipUri(FJob.DestDirURI) then
       DstURI := JoinVfsUri(FJob.DestDirURI, Name)
-    else if SameText(ExtractFileExt(FileUriToPath(FJob.DestDirURI)), '.7z') then
+    else if IsSevenZipArchivePath(FileUriToPath(FJob.DestDirURI)) then
       DstURI := JoinVfsUri(PathToSevenZipRootUri(FileUriToPath(FJob.DestDirURI)), Name)
     else
       DstURI := JoinVfsUri(EnsureArchiveRootUri(FJob.DestDirURI), Name);

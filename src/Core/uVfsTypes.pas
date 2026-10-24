@@ -231,6 +231,9 @@ function IsZipFileName(const AName: string): Boolean;
 /// <summary>The local file starts like a ZIP archive, whatever its name
 /// (docx, xlsx, odt, jar are ZIP inside).</summary>
 function FileHasZipSignature(const APath: string): Boolean;
+/// <summary>APath is a 7z archive for packing: named .7z, or an existing local
+/// file that starts with the 7z signature under any other name.</summary>
+function IsSevenZipArchivePath(const APath: string): Boolean;
 function IsSevenZipFileName(const AName: string): Boolean;
 function IsSevenZipUri(const AURI: string): Boolean;
 function IsZipArchiveUri(const AURI: string): Boolean;
@@ -1072,6 +1075,31 @@ begin
   // PK 03 04: a local file header; PK 05 06: an empty archive.
   Result := (Sig[0] = $50) and (Sig[1] = $4B) and
     (((Sig[2] = 3) and (Sig[3] = 4)) or ((Sig[2] = 5) and (Sig[3] = 6)));
+end;
+
+function IsSevenZipArchivePath(const APath: string): Boolean;
+var
+  S: TFileStream;
+  Sig: array[0..5] of Byte;
+begin
+  if SameText(ExtractFileExt(APath), '.7z') then
+    Exit(True);
+  Result := False;
+  if (APath = '') or SameText(ExtractFileExt(APath), '.zip') or not TFile.Exists(APath) then
+    Exit;
+  try
+    S := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      if S.Read(Sig, SizeOf(Sig)) <> SizeOf(Sig) then
+        Exit;
+    finally
+      S.Free;
+    end;
+  except
+    Exit;
+  end;
+  Result := (Sig[0] = $37) and (Sig[1] = $7A) and (Sig[2] = $BC) and
+    (Sig[3] = $AF) and (Sig[4] = $27) and (Sig[5] = $1C);
 end;
 
 function IsSevenZipFileName(const AName: string): Boolean;

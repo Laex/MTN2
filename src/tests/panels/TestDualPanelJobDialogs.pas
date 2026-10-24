@@ -12,13 +12,14 @@ type
     [Test] procedure TestJobOptionMaps;
     [Test] [Category('WindowsOnly')] procedure TestDestAndPack;
     [Test] procedure TestCollectSources;
+    [Test] procedure TestPackIntoRenamedSevenZip;
     [Test] [Category('WindowsOnly')] procedure TestSearchRootAndSync;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.Classes, System.IOUtils,
   uDialogTypes,
   uVfsTypes,
   uDualPanelTypes,
@@ -176,6 +177,36 @@ begin
   Assert.IsTrue(Err = '', 'empty sources silent');
 end;
 
+procedure TestPackIntoRenamedSevenZip;
+var
+  Dir, Archive, Plain: string;
+  Sig: TBytes;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-pack-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Archive := TPath.Combine(Dir, 'data.8z');
+    Plain := TPath.Combine(Dir, 'notes.8z');
+    Sig := TBytes.Create($37, $7A, $BC, $AF, $27, $1C, 0, 4, 0, 0, 0, 0);
+    TFile.WriteAllBytes(Archive, Sig);
+    TFile.WriteAllText(Plain, 'just text, not an archive');
+    Assert.IsTrue(IsSevenZipArchivePath(Archive), 'a renamed 7z file is recognised by its signature');
+    Assert.IsFalse(IsSevenZipArchivePath(Plain), 'a text file with the same extension is not');
+    Assert.IsFalse(IsSevenZipArchivePath(TPath.Combine(Dir, 'missing.8z')), 'a name that does not exist is not');
+    Assert.IsTrue(IsSevenZipArchivePath(TPath.Combine(Dir, 'new.7z')), 'a .7z name needs no file');
+    Assert.AreEqual(cPackType7z, JobPackTypeFromPath(Archive), 'the renamed archive packs as 7z');
+    Assert.AreEqual(-1, JobPackTypeFromPath(Plain), 'a text file is no archive type');
+    Assert.AreEqual(PathToFileUri(Archive),
+      JobConfirmDestUri(pjkPack, Archive, 'file:///C:/dst/', cPackTypeZip, cPackTypeZip),
+      'files are added to the renamed archive, no extension is appended');
+    Assert.AreEqual(PathToFileUri(Plain + '.zip'),
+      JobConfirmDestUri(pjkPack, Plain, 'file:///C:/dst/', cPackTypeZip, cPackTypeZip),
+      'an unknown name still gets the picked extension');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TestCollectSources;
 var
   Tab: TTab;
@@ -257,6 +288,11 @@ end;
 procedure TTestDualPanelJobDialogs.TestDestAndPack;
 begin
   TestDualPanelJobDialogs.TestDestAndPack;
+end;
+
+procedure TTestDualPanelJobDialogs.TestPackIntoRenamedSevenZip;
+begin
+  TestDualPanelJobDialogs.TestPackIntoRenamedSevenZip;
 end;
 
 procedure TTestDualPanelJobDialogs.TestCollectSources;
