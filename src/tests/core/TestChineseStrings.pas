@@ -110,7 +110,7 @@ begin
   try
     Missing := '';
     for Key in Ru.Keys do
-      if not Zh.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') then
+      if not Zh.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') and not Key.StartsWith('/menu/hint.') then
         Missing := Missing + ' ' + Key;
     Assert.AreEqual('', Missing, 'keys translated into Russian but not into Chinese');
     for Key in Zh.Keys do

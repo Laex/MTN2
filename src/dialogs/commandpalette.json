@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Command palette",
   "width": 84,
-  "height": 22,
+  "height": 23,
   "children": [
     {
       "type": "list",
@@ -39,7 +39,7 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 14,
+      "row": 15,
       "width": 82,
       "height": 1
     },
@@ -48,14 +48,23 @@
       "id": "hint",
       "text": "Type to search (? and * allowed)  Enter=Run  Esc=Close",
       "col": 1,
-      "row": 15,
+      "row": 16,
+      "width": 80,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "context",
+      "text": "",
+      "col": 1,
+      "row": 14,
       "width": 80,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 16,
+      "row": 17,
       "width": 82,
       "height": 1
     },
@@ -65,7 +74,7 @@
       "text": "Run",
       "default": true,
       "col": 30,
-      "row": 18,
+      "row": 19,
       "width": 10,
       "height": 1
     },
@@ -75,7 +84,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 42,
-      "row": 18,
+      "row": 19,
       "width": 10,
       "height": 1
     }

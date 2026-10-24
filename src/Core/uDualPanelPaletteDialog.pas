@@ -26,6 +26,7 @@ type
     FShown: TArray<Integer>; // indexes into FAll, in list order
     FQuery: string;
     procedure RefreshList;
+    procedure UpdateContext;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: THistoryDialogKindSetter; const AOnNotify: TProc;
@@ -98,8 +99,20 @@ begin
   Decl := BuildCommandPaletteDialog(Rows, 0, FQuery);
   FDialog.Open(Decl, FOnCommand);
   FDialog.FocusControlById('commands');
+  UpdateContext;
   if Assigned(FOnNotify) then
     FOnNotify();
+end;
+
+procedure TCommandPaletteDialogController.UpdateContext;
+var
+  Idx: Integer;
+begin
+  Idx := FDialog.GetListSelectedIndex('commands');
+  if (Idx < 0) or (Idx > High(FShown)) then
+    FDialog.SetLabelText('context', '')
+  else
+    FDialog.SetLabelText('context', PaletteContextText(FAll, FShown[Idx]));
 end;
 
 function TCommandPaletteDialogController.HandleFilterInput(var AKey: Word;
@@ -126,6 +139,18 @@ begin
     end;
     AKey := 0;
     AKeyChar := #0;
+    Exit(True);
+  end;
+  // The list moves the selection; the line under it follows.
+  if (AKey in [vkUp, vkDown, vkPrior, vkNext, vkHome, vkEnd]) and
+     FDialog.Visible and FDialog.HandleInput(AKey, AShift, AKeyChar) then
+  begin
+    if FDialog.Visible then
+    begin
+      UpdateContext;
+      if Assigned(FOnNotify) then
+        FOnNotify();
+    end;
     Exit(True);
   end;
 end;

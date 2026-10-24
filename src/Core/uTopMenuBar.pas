@@ -159,6 +159,10 @@ type
     /// <summary>Extra words the command palette finds the item by (menu.json
     /// "aliases", comma separated, English).</summary>
     Aliases: string;
+    /// <summary>One-line explanation of the command shown in the command
+    /// palette (menu.json "hint", English); a language's string table can
+    /// replace it with 'menu.hint.<action name>'.</summary>
+    Hint: string;
     Action: TTopMenuAction;
     IsSeparator: Boolean;
     /// <summary>Plugin-supplied items dispatch through PluginOnClick instead
@@ -729,6 +733,7 @@ begin
               NewCategories[I].Items[J].HotPos := PosIdx;
               NewCategories[I].Items[J].Shortcut := ShortStr;
               NewCategories[I].Items[J].Aliases := ItemObj.GetValue<string>('aliases', '');
+              NewCategories[I].Items[J].Hint := ItemObj.GetValue<string>('hint', '');
               NewCategories[I].Items[J].Action := StringToTopMenuAction(ActStr);
               NewCategories[I].Items[J].IsSeparator := False;
             end;

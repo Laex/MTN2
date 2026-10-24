@@ -19,6 +19,9 @@ type
     Category: string;
     Shortcut: string;
     Aliases: string;
+    /// <summary>What the command does, from 'menu.hint.<key>' of the string
+    /// table; empty when the table has none.</summary>
+    Description: string;
     /// <summary>Stable id of the command, the same in every locale; the list
     /// of recent commands is keyed by it.</summary>
     Key: string;
@@ -49,6 +52,11 @@ function PaletteRank(const AEntries: TArray<TPaletteEntry>;
 /// <summary>One list row: caption, category and keys in columns that fill
 /// AWidth cells.</summary>
 function PaletteRowText(const AEntry: TPaletteEntry; AWidth: Integer): string;
+
+/// <summary>The line shown under the list for AEntries[AIndex]: its description
+/// when it has one, otherwise its menu with the commands next to it.</summary>
+function PaletteContextText(const AEntries: TArray<TPaletteEntry>;
+  AIndex: Integer): string;
 
 /// <summary>Remembers that the command was run from the palette.</summary>
 procedure PaletteNoteRun(const AKey: string);
@@ -161,6 +169,7 @@ begin
         E.Shortcut := TopMenuItemShortcut(AItem);
         E.Key := ItemKey(AItem);
         E.Aliases := AliasesOf(E, User);
+        E.Description := T('menu.hint.' + E.Key, AItem.Hint);
         List.Add(E);
       end);
     Result := List.ToArray;
@@ -401,6 +410,32 @@ begin
   Result := FitCells(AEntry.Title, TitleW) + ' ' +
     FitCells(AEntry.Category, cCategoryW) + ' ' +
     FitCells(AEntry.Shortcut, cShortcutW);
+end;
+
+function PaletteContextText(const AEntries: TArray<TPaletteEntry>;
+  AIndex: Integer): string;
+var
+  E: TPaletteEntry;
+  Prev, Next: string;
+begin
+  Result := '';
+  if (AIndex < 0) or (AIndex > High(AEntries)) then
+    Exit;
+  E := AEntries[AIndex];
+  if E.Description <> '' then
+    Exit(E.Description);
+  if (AIndex > 0) and (AEntries[AIndex - 1].Category = E.Category) then
+    Prev := AEntries[AIndex - 1].Title;
+  if (AIndex < High(AEntries)) and (AEntries[AIndex + 1].Category = E.Category) then
+    Next := AEntries[AIndex + 1].Title;
+  Result := E.Category;
+  if Result <> '' then
+    Result := Result + ': ';
+  if Prev <> '' then
+    Result := Result + Prev + ' | ';
+  Result := Result + '[' + E.Title + ']';
+  if Next <> '' then
+    Result := Result + ' | ' + Next;
 end;
 
 procedure PaletteNoteRun(const AKey: string);

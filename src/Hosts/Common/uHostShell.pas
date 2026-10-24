@@ -811,7 +811,7 @@ end;
 function THostShell.DualPanelLaunchConsoleFile(const APath: string): Boolean;
 var
   Kind: TLaunchFileKind;
-  Cwd, Profile: string;
+  Cwd, Profile, Line: string;
 begin
   Kind := DetectLaunchFileKind(APath);
   Result := Kind <> lfkOther;
@@ -821,7 +821,11 @@ begin
   Profile := GetConsoleProfile;
   case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy) of
     cltConsole:
-      DualPanelRunCommand(BuildConsoleLaunchLine(APath, Kind, Profile), Cwd);
+      begin
+        Line := BuildConsoleLaunchLine(APath, Kind, Profile);
+        FDualPanel.RecordConsoleCommand(Line);
+        DualPanelRunCommand(Line, Cwd);
+      end;
     cltTerminal:
       begin
         Profile := TerminalProfileForLaunch(Kind);

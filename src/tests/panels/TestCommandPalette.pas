@@ -22,6 +22,7 @@ type
     [Test] procedure TestWildcardsStandForCharacters;
     [Test] procedure TestMenuJsonAliasesAreSearchWords;
     [Test] procedure TestUserAliasesFileAddsWords;
+    [Test] procedure TestContextLineShowsHintOrNeighbours;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
     [Test] procedure TestRunItemRunsOnlyEnabledCommands;
@@ -252,6 +253,35 @@ begin
     E := BuildPaletteEntries(M, 'no-such-aliases.json');
     Assert.AreEqual('tmaFileMove', RankedKeys(E, 'transfer')[0]);
     Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'clone')), 'a word nobody lists finds nothing');
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestContextLineShowsHintOrNeighbours;
+const
+  cJson =
+    '{"categories":[{"title":"Files","hotChar":"F","items":[' +
+    '{"caption":"Copy","hotChar":"C","shortcut":"F5","action":"tmaFileCopy"},' +
+    '{"caption":"Move","hotChar":"M","shortcut":"F6","action":"tmaFileMove","hint":"Moves the files."},' +
+    '{"caption":"Delete","hotChar":"D","shortcut":"F8","action":"tmaFileDelete"}' +
+    ']}]}';
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+begin
+  M := MakeMenu(cJson);
+  try
+    E := BuildPaletteEntries(M);
+    Assert.AreEqual('Moves the files.', PaletteContextText(E, IndexOfKey(E, 'tmaFileMove')),
+      'a command with a hint shows it');
+    Assert.AreEqual('Files: [Copy] | Move',
+      PaletteContextText(E, IndexOfKey(E, 'tmaFileCopy')),
+      'the first command has no previous neighbour');
+    Assert.AreEqual('Files: Move | [Delete]',
+      PaletteContextText(E, IndexOfKey(E, 'tmaFileDelete')),
+      'the last command has no next neighbour');
+    Assert.AreEqual('', PaletteContextText(E, -1), 'no selection, no line');
   finally
     M.Free;
   end;
