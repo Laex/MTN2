@@ -23,6 +23,7 @@ type
     [Test] procedure TestMenuJsonAliasesAreSearchWords;
     [Test] procedure TestUserAliasesFileAddsWords;
     [Test] procedure TestContextLineShowsHintOrNeighbours;
+    [Test] procedure TestContextLineFollowsTheSelectedItem;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
     [Test] procedure TestRunItemRunsOnlyEnabledCommands;
@@ -414,6 +415,51 @@ begin
     begin
       Result := AMenu;
     end);
+end;
+
+procedure TTestCommandPalette.TestContextLineFollowsTheSelectedItem;
+const
+  cJson =
+    '{"categories":[{"title":"Files","hotChar":"F","items":[' +
+    '{"caption":"Copy","hotChar":"C","shortcut":"F5","action":"tmaFileCopy"},' +
+    '{"caption":"Move","hotChar":"M","shortcut":"F6","action":"tmaFileMove","hint":"Moves the files."}' +
+    ']}]}';
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Key: Word;
+  Ch: Char;
+
+  function ContextText: string;
+  var
+    I: Integer;
+  begin
+    Result := '<none>';
+    for I := 0 to D.ControlCount - 1 do
+      if D.GetControl(I).Id = 'context' then
+        Exit(D.GetControl(I).Text);
+  end;
+
+begin
+  M := MakeMenu(cJson);
+  D := TDialogHost.Create(nil);
+  try
+    C := MakePalette(D, M);
+    try
+      C.OpenList;
+      Assert.AreEqual('Files: [Copy] | Move', ContextText, 'the first item is selected');
+      Key := vkDown;
+      Ch := #0;
+      D.HandleInput(Key, [], Ch);
+      Assert.AreEqual<Integer>(1, D.GetListSelectedIndex('commands'), 'Down moves the list selection');
+      Assert.AreEqual('Moves the files.', ContextText, 'moving the selection changes the line');
+    finally
+      C.Free;
+    end;
+  finally
+    D.Free;
+  end;
 end;
 
 procedure TTestCommandPalette.TestTypingNarrowsTheListAndEnterRuns;

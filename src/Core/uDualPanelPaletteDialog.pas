@@ -81,6 +81,13 @@ begin
     FOnPrepareUi();
   FAll := BuildPaletteEntries(Menu);
   FQuery := '';
+  // The line under the list follows the selected item, keyboard or mouse.
+  FDialog.OnListSelected :=
+    procedure(const AControlId: string)
+    begin
+      if AControlId = 'commands' then
+        UpdateContext;
+    end;
   if Assigned(FOnSetKind) then
     FOnSetKind(hdkCommandPalette);
   RefreshList;
@@ -141,18 +148,6 @@ begin
     AKeyChar := #0;
     Exit(True);
   end;
-  // The list moves the selection; the line under it follows.
-  if (AKey in [vkUp, vkDown, vkPrior, vkNext, vkHome, vkEnd]) and
-     FDialog.Visible and FDialog.HandleInput(AKey, AShift, AKeyChar) then
-  begin
-    if FDialog.Visible then
-    begin
-      UpdateContext;
-      if Assigned(FOnNotify) then
-        FOnNotify();
-    end;
-    Exit(True);
-  end;
 end;
 
 function TCommandPaletteDialogController.RowCount: Integer;
@@ -171,6 +166,7 @@ begin
   Result := True;
   Idx := FDialog.GetListSelectedIndex('commands');
   Accepted := DialogCmdIsListAccept(AControlId, 'commands');
+  FDialog.OnListSelected := nil;
   FDialog.Close;
   Accepted := Accepted and (Idx >= 0) and (Idx <= High(FShown));
   if Accepted then

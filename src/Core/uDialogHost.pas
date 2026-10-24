@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
-  uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
+  System.Generics.Collections, uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
   uInputLine, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl;
 
 type
@@ -42,6 +42,9 @@ type
     FOnCommand: TDialogCommandEvent;
     FOnChanged: TNotifyEvent;
     FOnValueChanged: TDialogValueChangedEvent;
+    FOnListSelected: TDialogValueChangedEvent;
+    // Selected item of each list as last reported to FOnListSelected.
+    FListSeen: TArray<TPair<string, Integer>>;
     FCursorVisible: Boolean;
     FUpdateLock: Integer;
     FUpdateDirty: Boolean;
@@ -155,6 +158,11 @@ type
       AIndex: Integer; const C: TDialogControl);
     procedure DrawButtonControl(const AGrid: TTerminalGrid; const R: TRectI;
       AIndex: Integer; const C: TDialogControl);
+    procedure ReportListSelection;
+    function HandleClickCore(ALocalCol, ALocalRow: Integer;
+      AShift: TShiftState): Boolean;
+    function HandleInputCore(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
   public
     constructor Create(const ATheme: IThemeRenderer);
     destructor Destroy; override;
@@ -251,6 +259,10 @@ type
     property PressedButton: Integer read FPressIndex;
     property CursorVisible: Boolean read FCursorVisible;
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+    /// <summary>Fired with the control id when the selected item of a list
+    /// changes by keyboard or mouse.</summary>
+    property OnListSelected: TDialogValueChangedEvent read FOnListSelected
+      write FOnListSelected;
     /// <summary>Fired with the control id when the user picks another item of a
     /// drop-down, by keyboard or mouse.</summary>
     property OnValueChanged: TDialogValueChangedEvent read FOnValueChanged
@@ -616,8 +628,18 @@ end;
 
 procedure TDialogHost.Open(const ADecl: TDialogDeclaration;
   AOnCommand: TDialogCommandEvent);
+var
+  I: Integer;
 begin
   FDecl := ADecl;
+  SetLength(FListSeen, 0);
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckList) and (FDecl.Controls[I].Id <> '') then
+    begin
+      SetLength(FListSeen, Length(FListSeen) + 1);
+      FListSeen[High(FListSeen)] := TPair<string, Integer>.Create(
+        FDecl.Controls[I].Id, FDecl.Controls[I].SelectedIndex);
+    end;
   // Captions set after the resource was loaded and fitted (Build* naming a
   // button after the operation, e.g. "Копирование") can outgrow their box.
   FitDialogCaptions(FDecl);
@@ -2637,7 +2659,52 @@ begin
     Result := '';
 end;
 
+procedure TDialogHost.ReportListSelection;
+var
+  I, J: Integer;
+  Known: Boolean;
+begin
+  if not Assigned(FOnListSelected) then
+    Exit;
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckList) and (FDecl.Controls[I].Id <> '') then
+    begin
+      Known := False;
+      for J := 0 to High(FListSeen) do
+        if FListSeen[J].Key = FDecl.Controls[I].Id then
+        begin
+          Known := True;
+          if FListSeen[J].Value <> FDecl.Controls[I].SelectedIndex then
+          begin
+            FListSeen[J].Value := FDecl.Controls[I].SelectedIndex;
+            FOnListSelected(FDecl.Controls[I].Id);
+          end;
+          Break;
+        end;
+      if not Known then
+      begin
+        SetLength(FListSeen, Length(FListSeen) + 1);
+        FListSeen[High(FListSeen)] := TPair<string, Integer>.Create(
+          FDecl.Controls[I].Id, FDecl.Controls[I].SelectedIndex);
+      end;
+    end;
+end;
+
 function TDialogHost.HandleClick(ALocalCol, ALocalRow: Integer;
+  AShift: TShiftState): Boolean;
+begin
+  Result := HandleClickCore(ALocalCol, ALocalRow, AShift);
+  ReportListSelection;
+end;
+
+function TDialogHost.HandleInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+begin
+  Result := HandleInputCore(AKey, AShift, AKeyChar);
+  ReportListSelection;
+end;
+
+function TDialogHost.HandleClickCore(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 var
   I, Row, Idx, Count, Span, ViewH: Integer;
@@ -2952,7 +3019,7 @@ begin
   Result := False;
 end;
 
-function TDialogHost.HandleInput(var AKey: Word; AShift: TShiftState;
+function TDialogHost.HandleInputCore(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
   ViewH, Last: Integer;
