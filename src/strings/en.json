@@ -66,6 +66,7 @@
     },
     "DIALOG_CMDHISTORY": {
       "$title": "Command history",
+      "hint": "Enter=Select  Del=Remove  Ctrl+Del=Clear all  Type=Filter",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -353,7 +354,8 @@
     },
     "DIALOG_FILEHISTORY": {
       "$title": "File history",
-      "hint": "Enter=Open F3=View F4=Edit Ctrl+Enter=Go to file Del=Remove",
+      "hint": "Enter=Open  F3=View  F4=Edit  Ctrl+Enter=Go to file",
+      "hint_keys": "Del=Remove  Ctrl+Del=Clear all  Type=Filter",
       "ok": "Open",
       "cancel": "Cancel"
     },
@@ -366,6 +368,7 @@
     },
     "DIALOG_FOLDERHISTORY": {
       "$title": "Folder history",
+      "hint": "Enter=Go to  Del=Remove  Ctrl+Del=Clear all  Type=Filter",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -1055,6 +1058,10 @@
     "job.titleRecycle": "Recycle",
     "job.titleDelete": "Delete",
     "job.titleGeneric": "Job",
+    "job.doneOne": "%s finished: %s",
+    "job.doneMany": "%s finished: %d items",
+    "job.failed": "%s failed: %s",
+    "job.failedHint": "Click the job in the tab bar for details",
     "job.confirmRecycle": "Move %d item(s) to Recycle Bin?",
     "job.confirmDeletePermanent": "Permanently delete %d item(s)?",
     "job.confirmRecycleOne": "Move %s \"%s\" to Recycle Bin?",

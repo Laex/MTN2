@@ -63,6 +63,7 @@
     },
     "DIALOG_CMDHISTORY": {
       "$title": "История команд",
+      "hint": "Enter=Выбрать  Del=Убрать  Ctrl+Del=Очистить всё  Ввод=Фильтр",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -350,7 +351,8 @@
     },
     "DIALOG_FILEHISTORY": {
       "$title": "История файлов",
-      "hint": "Enter=Открыть F3=Просмотр F4=Правка Ctrl+Enter=К файлу Del=Убрать",
+      "hint": "Enter=Открыть  F3=Просмотр  F4=Правка  Ctrl+Enter=К файлу",
+      "hint_keys": "Del=Убрать  Ctrl+Del=Очистить всё  Ввод=Фильтр",
       "ok": "Открыть",
       "cancel": "Отмена"
     },
@@ -363,6 +365,7 @@
     },
     "DIALOG_FOLDERHISTORY": {
       "$title": "История папок",
+      "hint": "Enter=Перейти  Del=Убрать  Ctrl+Del=Очистить всё  Ввод=Фильтр",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -1052,6 +1055,10 @@
     "job.titleRecycle": "В корзину",
     "job.titleDelete": "Удаление",
     "job.titleGeneric": "Задача",
+    "job.doneOne": "%s: готово, %s",
+    "job.doneMany": "%s: готово, элементов: %d",
+    "job.failed": "%s: ошибка, %s",
+    "job.failedHint": "Нажмите на задачу в строке вкладок, чтобы узнать подробности",
     "job.confirmRecycle": "Переместить объекты в корзину (%d)?",
     "job.confirmDeletePermanent": "Удалить объекты безвозвратно (%d)?",
     "job.confirmRecycleOne": "Переместить %s «%s» в корзину?",

@@ -26,6 +26,8 @@ type
     [Test] procedure TestCmdHistoryOpenAndAccept;
     [Test] procedure TestCmdHistoryReject;
     [Test] procedure TestCmdHistoryFilter;
+    [Test] procedure TestFolderHistoryDeleteKeys;
+    [Test] procedure TestCmdHistoryDeleteKeys;
   end;
 
 implementation
@@ -571,6 +573,11 @@ begin
           Assert.IsTrue((Length(FileHistoryGetEntries) = 2) and
             (FileHistoryGetEntries[0].URI = 'file:///C:/beta.pas'), 'Del removes the file from history');
 
+          // Ctrl+Del empties the whole history, list stays open.
+          SendKey(vkDelete, [ssCtrl]);
+          Assert.IsTrue(Dialog.Visible, 'Ctrl+Del keeps the list open');
+          Assert.IsTrue(Length(FileHistoryGetEntries) = 0, 'Ctrl+Del empties the file history');
+
           // Typing filters by path.
           GOpenCalled := False;
           SeedFiles;
@@ -600,7 +607,144 @@ begin
     end);
 end;
 
+procedure TestFolderHistoryDeleteKeys;
+var
+  BackupPath, OriginalContent: string;
+  HadOriginal: Boolean;
+  Dialog: TDialogHost;
+  C: TFolderHistoryDialogController;
+  Uris: TArray<string>;
+  Key: Word;
+  KeyChar: Char;
+begin
+  BackupPath := GetConfigFilePath('folderhistory.json');
+  HadOriginal := TFile.Exists(BackupPath);
+  if HadOriginal then
+    OriginalContent := TFile.ReadAllText(BackupPath, TEncoding.UTF8);
+  try
+    FolderHistoryClear;
+    FolderHistoryPush('file:///C:/alpha/');
+    FolderHistoryPush('file:///C:/beta/');
+    FolderHistoryPush('file:///C:/gamma/');
+    Dialog := TDialogHost.Create(nil);
+    try
+      C := MakeFolderController(Dialog);
+      try
+        C.OpenList;
+        Dialog.SetListItems('folders', ['gamma', 'beta', 'alpha'], 1);
+        Key := vkDelete;
+        KeyChar := #0;
+        Assert.IsTrue(C.HandleListInput(Key, [], KeyChar), 'Del is consumed');
+        Assert.IsTrue(Dialog.Visible, 'Del keeps the list open');
+        Uris := FolderHistoryGetUris;
+        Assert.IsTrue(Length(Uris) = 2, 'Del forgets one folder');
+        Assert.AreEqual('file:///C:/gamma/', Uris[0], 'Del keeps the other folders in order');
+        Assert.AreEqual('file:///C:/alpha/', Uris[1], 'Del drops the selected folder only');
+
+        // The selection stays on the same row, now the folder after the removed one.
+        C.DispatchCommand('folders');
+        Assert.AreEqual('file:///C:/alpha/', GNavigatedUri, 'selection stays on the row after Del');
+
+        GNavigateCalled := False;
+        C.OpenList;
+        Key := vkDelete;
+        Assert.IsTrue(C.HandleListInput(Key, [ssCtrl], KeyChar), 'Ctrl+Del is consumed');
+        Assert.IsTrue(Dialog.Visible, 'Ctrl+Del keeps the list open');
+        Assert.IsTrue(Length(FolderHistoryGetUris) = 0, 'Ctrl+Del empties the folder history');
+
+        // Del on the empty placeholder row removes nothing.
+        Key := vkDelete;
+        Assert.IsTrue(C.HandleListInput(Key, [], KeyChar), 'Del on an empty list is consumed');
+        C.DispatchCommand('folders');
+        Assert.IsTrue(not GNavigateCalled, 'the empty placeholder row navigates nowhere');
+      finally
+        C.Free;
+      end;
+    finally
+      Dialog.Free;
+    end;
+  finally
+    FolderHistoryClear;
+    if HadOriginal then
+      TFile.WriteAllText(BackupPath, OriginalContent, TEncoding.UTF8)
+    else if TFile.Exists(BackupPath) then
+      TFile.Delete(BackupPath);
+  end;
+end;
+
+procedure TestCmdHistoryDeleteKeys;
+var
+  Dialog: TDialogHost;
+  C: TCmdHistoryDialogController;
+  Key: Word;
+  KeyChar: Char;
+  Removed: TArray<string>;
+  ClearCount: Integer;
+begin
+  Dialog := TDialogHost.Create(nil);
+  try
+    C := MakeCmdController(Dialog);
+    try
+      // Without handlers the keys are not taken.
+      GTryGetItems := ['dir', 'cd ..', 'echo hi'];
+      C.OpenList;
+      Key := vkDelete;
+      KeyChar := #0;
+      Assert.IsTrue(not C.HandleFilterInput(Key, [], KeyChar), 'Del is ignored without OnRemove');
+      Assert.IsTrue(not C.HandleFilterInput(Key, [ssCtrl], KeyChar), 'Ctrl+Del is ignored without OnClear');
+      C.DispatchCommand('cancel');
+
+      ClearCount := 0;
+      C.OnRemove :=
+        procedure(const ACommand: string)
+        begin
+          Removed := Removed + [ACommand];
+        end;
+      C.OnClear :=
+        procedure
+        begin
+          Inc(ClearCount);
+        end;
+
+      C.OpenList;
+      Dialog.SetListItems('commands', GTryGetItems, 1);
+      Key := vkDelete;
+      Assert.IsTrue(C.HandleFilterInput(Key, [], KeyChar), 'Del is consumed');
+      Assert.IsTrue(Dialog.Visible, 'Del keeps the list open');
+      Assert.IsTrue(Length(Removed) = 1, 'Del reports one removed command');
+      Assert.AreEqual('cd ..', Removed[0], 'Del removes the selected command');
+
+      // The selection stays on the same row, now the command after the removed one.
+      C.DispatchCommand('commands');
+      Assert.AreEqual('echo hi', GAppliedCmd, 'selection stays on the row after Del');
+
+      C.OpenList;
+      Key := vkDelete;
+      Assert.IsTrue(C.HandleFilterInput(Key, [ssCtrl], KeyChar), 'Ctrl+Del is consumed');
+      Assert.IsTrue(ClearCount = 1, 'Ctrl+Del clears the history');
+      Assert.IsTrue(Dialog.Visible, 'Ctrl+Del keeps the list open');
+      GApplyCalled := False;
+      C.DispatchCommand('commands');
+      Assert.IsTrue(not GApplyCalled, 'nothing is left to apply after Ctrl+Del');
+    finally
+      C.Free;
+    end;
+  finally
+    Dialog.Free;
+  end;
+end;
+
 { TTestHistoryDialogs }
+
+procedure TTestHistoryDialogs.TestFolderHistoryDeleteKeys;
+begin
+  TestHistoryDialogs.TestFolderHistoryDeleteKeys;
+end;
+
+procedure TTestHistoryDialogs.TestCmdHistoryDeleteKeys;
+begin
+  TestHistoryDialogs.TestCmdHistoryDeleteKeys;
+end;
 
 procedure TTestHistoryDialogs.TestFolderHistory;
 begin

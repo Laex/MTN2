@@ -7,38 +7,38 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 ### Contents
 
 - [Program screen](screen.md)
-- [Top menu (F9)](topmenu.md)
 - [Panels and navigation](panels.md)
-- [Panel view and sorting](view.md)
-- [Drives and special places](drives.md)
-- [Tabs and workspaces](workspaces.md)
-- [History and folder hotlist](history.md)
 - [Selecting files](selection.md)
 - [File operations](fileops.md)
-- [Background jobs](jobs.md)
+- [Drives and special places](drives.md)
+- [Tabs and workspaces](workspaces.md)
+- [Panel view and sorting](view.md)
 - [Search and filters](search.md)
-- [Synchronization and comparison](sync.md)
-- [Archives](archives.md)
-- [Network: SSH and SFTP](ssh.md)
-- [Viewing and editing files](viewer.md)
-- [Working with text and the mouse](text.md)
+- [History and folder hotlist](history.md)
 - [Command line and console](cmdline.md)
 - [Terminals](terminals.md)
+- [Viewing and editing files](viewer.md)
+- [Working with text and the mouse](text.md)
+- [Top menu (F9)](topmenu.md)
 - [User menu (F2)](usermenu.md)
+- [Archives](archives.md)
+- [Network: SSH and SFTP](ssh.md)
+- [Synchronization and comparison](sync.md)
+- [Background jobs](jobs.md)
 - [File associations](associations.md)
 - [Settings](settings.md)
+- [Updates](updates.md)
 - [Key bindings](keymap.md)
 - [Settings files](configfiles.md)
-- [Updates](updates.md)
 
 ### Using the help
 
 | Key | Action |
 | --- | --- |
-| ↑ ↓ PgUp PgDn Home End | scroll |
 | Tab / Shift+Tab | next / previous link |
 | Enter, click on a link | follow the link |
 | Backspace, Alt+← | go back |
 | F1 | this page (contents) |
 | F7, Shift+F7 / Alt+F7 | search text, next / previous match |
+| ↑ ↓ PgUp PgDn Home End | scroll |
 | Esc, F10 | close the help |

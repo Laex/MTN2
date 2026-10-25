@@ -14,6 +14,8 @@ procedure FolderHistoryPush(const AURI: string);
 function FolderHistoryCount: Integer;
 /// <summary>Newest first.</summary>
 function FolderHistoryGetUris: TArray<string>;
+/// <summary>Forgets AURI (matched like FolderHistoryPush does).</summary>
+procedure FolderHistoryRemove(const AURI: string);
 procedure FolderHistoryClear;
 
 implementation
@@ -139,6 +141,24 @@ begin
   // Newest first for the dialog.
   for I := 0 to N - 1 do
     Result[I] := GUris[N - 1 - I];
+end;
+
+procedure FolderHistoryRemove(const AURI: string);
+var
+  U: string;
+  I: Integer;
+begin
+  U := Trim(AURI);
+  if U = '' then
+    Exit;
+  EnsureLoaded;
+  for I := GUris.Count - 1 downto 0 do
+    if SameVfsUri(GUris[I], U) then
+      GUris.Delete(I);
+  try
+    SaveLocked;
+  except
+  end;
 end;
 
 procedure FolderHistoryClear;

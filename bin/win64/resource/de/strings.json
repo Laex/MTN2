@@ -65,6 +65,7 @@
     },
     "DIALOG_CMDHISTORY": {
       "$title": "Befehlsverlauf",
+      "hint": "Enter=Wählen  Del=Entfernen  Ctrl+Del=Alle löschen  Tippen=Filter",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
@@ -352,7 +353,8 @@
     },
     "DIALOG_FILEHISTORY": {
       "$title": "Dateiverlauf",
-      "hint": "Enter=Öffnen F3=Ansehen F4=Bearbeiten Ctrl+Enter=Zur Datei Del=Entfernen",
+      "hint": "Enter=Öffnen  F3=Ansehen  F4=Bearbeiten  Ctrl+Enter=Zur Datei",
+      "hint_keys": "Del=Entfernen  Ctrl+Del=Alle löschen  Tippen=Filter",
       "ok": "Öffnen",
       "cancel": "Abbrechen"
     },
@@ -365,6 +367,7 @@
     },
     "DIALOG_FOLDERHISTORY": {
       "$title": "Ordnerverlauf",
+      "hint": "Enter=Öffnen  Del=Entfernen  Ctrl+Del=Alle löschen  Tippen=Filter",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
@@ -1053,6 +1056,10 @@
     "job.titleRecycle": "Papierkorb",
     "job.titleDelete": "Löschen",
     "job.titleGeneric": "Auftrag",
+    "job.doneOne": "%s abgeschlossen: %s",
+    "job.doneMany": "%s abgeschlossen: %d Elemente",
+    "job.failed": "%s fehlgeschlagen: %s",
+    "job.failedHint": "Auftrag in der Tab-Leiste anklicken für Details",
     "job.confirmRecycle": "%d Element(e) in den Papierkorb verschieben?",
     "job.confirmDeletePermanent": "%d Element(e) endgültig löschen?",
     "job.confirmRecycleOne": "%s \"%s\" in den Papierkorb verschieben?",

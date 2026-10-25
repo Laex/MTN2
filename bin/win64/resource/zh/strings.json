@@ -64,6 +64,7 @@
     },
     "DIALOG_CMDHISTORY": {
       "$title": "命令历史",
+      "hint": "Enter=选择  Del=删除  Ctrl+Del=全部清空  输入=筛选",
       "ok": "确定",
       "cancel": "取消"
     },
@@ -351,7 +352,8 @@
     },
     "DIALOG_FILEHISTORY": {
       "$title": "文件历史",
-      "hint": "Enter=打开 F3=查看 F4=编辑 Ctrl+Enter=转到文件 Del=删除",
+      "hint": "Enter=打开  F3=查看  F4=编辑  Ctrl+Enter=转到文件",
+      "hint_keys": "Del=删除  Ctrl+Del=全部清空  输入=筛选",
       "ok": "打开",
       "cancel": "取消"
     },
@@ -364,6 +366,7 @@
     },
     "DIALOG_FOLDERHISTORY": {
       "$title": "文件夹历史",
+      "hint": "Enter=转到  Del=删除  Ctrl+Del=全部清空  输入=筛选",
       "ok": "确定",
       "cancel": "取消"
     },
@@ -1052,6 +1055,10 @@
     "job.titleRecycle": "回收",
     "job.titleDelete": "删除",
     "job.titleGeneric": "任务",
+    "job.doneOne": "%s 已完成: %s",
+    "job.doneMany": "%s 已完成: %d 项",
+    "job.failed": "%s 失败: %s",
+    "job.failedHint": "点击标签栏中的任务查看详情",
     "job.confirmRecycle": "将 %d 个项目移到回收站?",
     "job.confirmDeletePermanent": "永久删除 %d 个项目?",
     "job.confirmRecycleOne": "将%s\"%s\"移到回收站?",

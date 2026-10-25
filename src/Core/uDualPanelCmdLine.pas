@@ -45,7 +45,6 @@ type
     procedure DoTabComplete;
     procedure LoadHistory;
     procedure SaveHistory;
-    procedure RemoveHistory(const ACommand: string);
   public
     constructor Create(const AOnSubmit: TCmdLineSubmitEvent;
       const AOnInvalidate: TProc);
@@ -93,6 +92,10 @@ type
     /// line (typed directly at a console/terminal shell prompt) into the
     /// same shared history.</summary>
     procedure RecordExternalCommand(const ACommand: string);
+    /// <summary>Removes every history entry equal to ACommand (any case).</summary>
+    procedure RemoveHistory(const ACommand: string);
+    /// <summary>Empties the command history.</summary>
+    procedure ClearHistory;
   end;
 
 implementation
@@ -286,6 +289,18 @@ begin
   for I := FHistory.Count - 1 downto 0 do
     if SameText(FHistory[I], ACommand) then
       FHistory.Delete(I);
+  FHistIndex := -1;
+  try
+    SaveHistory;
+  except
+    // Ignore disk errors - history is best-effort.
+  end;
+  Invalidate;
+end;
+
+procedure TDualPanelCmdLineManager.ClearHistory;
+begin
+  FHistory.Clear;
   FHistIndex := -1;
   try
     SaveHistory;

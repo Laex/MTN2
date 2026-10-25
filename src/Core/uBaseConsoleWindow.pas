@@ -40,6 +40,8 @@ type
     FOnContentChanged:  TNotifyEvent;
     FOnCommandExecuted: TConsoleCommandEvent;
     FOnGetCmdHistory:   TConsoleGetHistoryEvent;
+    FOnRemoveCmdHistory: TConsoleCommandEvent;
+    FOnClearCmdHistory: TProc;
     FCmdHistItems:      TArray<string>;
     /// <summary>Unfiltered Alt+F8 command history, captured when the dialog
     /// opens; FCmdHistItems is re-derived from this as FCmdHistFilter grows.</summary>
@@ -67,7 +69,7 @@ type
     procedure PasteConfirmCommand(const AControlId, AValuesJson: string);
     procedure WritePasteText(const AText: string);
     procedure CmdHistoryDialogCommand(const AControlId, AValuesJson: string);
-    procedure RefreshCmdHistoryDialog;
+    procedure RefreshCmdHistoryDialog(ASelected: Integer);
     { Private helpers. }
     procedure DialogChanged(Sender: TObject);
     procedure ClampPos(var ARow, ACol: Integer);
@@ -299,6 +301,12 @@ type
     /// <summary>Alt+F8: queried for the shared command history (newest
     /// first) when this console opens its own history picker dialog.</summary>
     property OnGetCmdHistory: TConsoleGetHistoryEvent read FOnGetCmdHistory write FOnGetCmdHistory;
+    /// <summary>Del in the Alt+F8 picker: the host drops the command from the
+    /// shared history. Without a handler Del does nothing there.</summary>
+    property OnRemoveCmdHistory: TConsoleCommandEvent read FOnRemoveCmdHistory write FOnRemoveCmdHistory;
+    /// <summary>Ctrl+Del in the Alt+F8 picker: the host empties the shared
+    /// history. Without a handler Ctrl+Del does nothing there.</summary>
+    property OnClearCmdHistory: TProc read FOnClearCmdHistory write FOnClearCmdHistory;
   end;
 
 implementation
@@ -1328,7 +1336,7 @@ begin
   NotifyHost;
 end;
 
-procedure TBaseConsoleWindow.RefreshCmdHistoryDialog;
+procedure TBaseConsoleWindow.RefreshCmdHistoryDialog(ASelected: Integer);
 var
   Filtered: TArray<string>;
   I, N: Integer;
@@ -1345,7 +1353,7 @@ begin
     end;
   SetLength(Filtered, N);
   FCmdHistItems := Filtered;
-  Decl := BuildCmdHistoryDialog(Filtered, 0);
+  Decl := BuildCmdHistoryDialog(Filtered, ASelected);
   if FCmdHistFilter <> '' then
     Decl.Title := T('ui.cmdHistory.filterTitle', 'Command history: %s', [FCmdHistFilter]);
   FDialog.Open(Decl, CmdHistoryDialogCommand);
@@ -1354,15 +1362,50 @@ end;
 
 function TBaseConsoleWindow.HandleCmdHistoryFilterInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Idx, I, N: Integer;
+  Removed: string;
 begin
   Result := False;
   if not FCmdHistDialogOpen then
     Exit;
+  if (AKey = vkDelete) and (AShift * [ssShift, ssAlt, ssCtrl] = [ssCtrl]) and
+     Assigned(FOnClearCmdHistory) then
+  begin
+    FOnClearCmdHistory();
+    SetLength(FCmdHistAllItems, 0);
+    RefreshCmdHistoryDialog(0);
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AKey = vkDelete) and (AShift * [ssShift, ssAlt, ssCtrl] = []) and
+     Assigned(FOnRemoveCmdHistory) then
+  begin
+    Idx := FDialog.GetListSelectedIndex('commands');
+    if (Idx >= 0) and (Idx <= High(FCmdHistItems)) then
+    begin
+      Removed := FCmdHistItems[Idx];
+      FOnRemoveCmdHistory(Removed);
+      N := 0;
+      for I := 0 to High(FCmdHistAllItems) do
+        if not SameText(FCmdHistAllItems[I], Removed) then
+        begin
+          FCmdHistAllItems[N] := FCmdHistAllItems[I];
+          Inc(N);
+        end;
+      SetLength(FCmdHistAllItems, N);
+      RefreshCmdHistoryDialog(Idx);
+    end;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
      (AShift * [ssCtrl, ssAlt] = []) then
   begin
     FCmdHistFilter := FCmdHistFilter + AKeyChar;
-    RefreshCmdHistoryDialog;
+    RefreshCmdHistoryDialog(0);
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -1372,7 +1415,7 @@ begin
     if FCmdHistFilter <> '' then
     begin
       Delete(FCmdHistFilter, Length(FCmdHistFilter), 1);
-      RefreshCmdHistoryDialog;
+      RefreshCmdHistoryDialog(0);
     end;
     AKey := 0;
     AKeyChar := #0;

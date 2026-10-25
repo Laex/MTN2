@@ -5,19 +5,19 @@ Der Einstellungsordner ist `%APPDATA%\MTN2\`. Liegt eine Datei `portable.dat` ne
 | Datei | Inhalt |
 | --- | --- |
 | `session.json` | Zustand von Fenster, Panels und Tabs, Farbschema, Schrift, Sprache |
-| `themes\*.theme.json` | eigene Farbschemata (Optionen → Farbschema...) |
 | `keymap.json` | geänderte Tasten |
 | `aliases.json` | eigene Suchwörter für die Befehlspalette |
-| `usermenu.json` | Haupt-Benutzermenü (F2) |
-| `.mtn2menu.json` (in einem beliebigen Ordner) | Menü dieses Ordners und der darunterliegenden Ordner |
-| `associations.json` | Dateizuordnungen |
-| `externaltools.json` | externer Viewer und Editor (Alt+F3 / Alt+F4) |
-| `workspaces.json` | gespeicherte Arbeitsbereiche |
-| `sshconnections.json` | SSH/SFTP-Verbindungen |
 | `history.json` | Befehlsverlauf |
 | `folderhistory.json` | Ordnerverlauf |
 | `filehistory.json` | Dateiverlauf (Alt+F11) |
+| `externaltools.json` | externer Viewer und Editor (Alt+F3 / Alt+F4) |
+| `themes\*.theme.json` | eigene Farbschemata (Optionen → Farbschema...) |
 | `dialoghistory.json` | Verlauf der Eingabefelder in Dialogen |
+| `workspaces.json` | gespeicherte Arbeitsbereiche |
+| `sshconnections.json` | SSH/SFTP-Verbindungen |
+| `associations.json` | Dateizuordnungen |
+| `usermenu.json` | Haupt-Benutzermenü (F2) |
+| `.mtn2menu.json` (in einem beliebigen Ordner) | Menü dieses Ordners und der darunterliegenden Ordner |
 
 ---
 

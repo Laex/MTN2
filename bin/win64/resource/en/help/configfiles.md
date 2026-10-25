@@ -5,19 +5,19 @@ The settings folder is `%APPDATA%\MTN2\`. If a `portable.dat` file lies next to 
 | File | Contents |
 | --- | --- |
 | `session.json` | state of the window, panels and tabs, theme, font, language |
-| `themes\*.theme.json` | your themes (Settings → Theme...) |
 | `keymap.json` | redefined keys |
 | `aliases.json` | your own search words for the command palette |
-| `usermenu.json` | main user menu (F2) |
-| `.mtn2menu.json` (in any folder) | menu of that folder and the folders below |
-| `associations.json` | file associations |
-| `externaltools.json` | external viewer and editor (Alt+F3 / Alt+F4) |
-| `workspaces.json` | saved workspaces |
-| `sshconnections.json` | SSH/SFTP connections |
 | `history.json` | command history |
 | `folderhistory.json` | folder history |
 | `filehistory.json` | file history (Alt+F11) |
+| `externaltools.json` | external viewer and editor (Alt+F3 / Alt+F4) |
+| `themes\*.theme.json` | your themes (Settings → Theme...) |
 | `dialoghistory.json` | dialog input field history |
+| `workspaces.json` | saved workspaces |
+| `sshconnections.json` | SSH/SFTP connections |
+| `associations.json` | file associations |
+| `usermenu.json` | main user menu (F2) |
+| `.mtn2menu.json` (in any folder) | menu of that folder and the folders below |
 
 ---
 

@@ -18,6 +18,7 @@ type
   THistoryDialogNavigate = reference to procedure(const AUri: string);
   TCmdHistoryTryGetItems = reference to function(out AItems: TArray<string>): Boolean;
   TCmdHistoryApply = reference to procedure(const ACommand: string);
+  TCmdHistoryRemove = reference to procedure(const ACommand: string);
   TFileHistoryOpen = reference to procedure(const AUri: string; AEdit: Boolean);
 
   TFolderHistoryDialogController = class
@@ -34,7 +35,8 @@ type
     FFilter: string;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
-    procedure RefreshList;
+    procedure RefreshList(ASelected: Integer);
+    function SelectedIndex: Integer;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: THistoryDialogKindSetter; const AOnNotify: TProc;
@@ -42,7 +44,8 @@ type
       const AOnPrepareUi: THistoryDialogPrepareUi;
       const AOnNavigate: THistoryDialogNavigate);
     procedure OpenList;
-    /// <summary>Typing narrows the list (substring of the folder label, any
+    /// <summary>Del forgets the selected folder, Ctrl+Del empties the whole
+    /// history. Typing narrows the list (substring of the folder label, any
     /// case), Backspace removes the last filter character.</summary>
     function HandleListInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -63,9 +66,12 @@ type
     FItems: TArray<string>;
     FAllItems: TArray<string>;
     FFilter: string;
+    FOnRemove: TCmdHistoryRemove;
+    FOnClear: TProc;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
-    procedure RefreshList;
+    procedure RefreshList(ASelected: Integer);
+    function SelectedIndex: Integer;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: THistoryDialogKindSetter; const AOnNotify: TProc;
@@ -74,15 +80,24 @@ type
       const AOnTryGetItems: TCmdHistoryTryGetItems;
       const AOnApply: TCmdHistoryApply);
     procedure OpenList;
+    /// <summary>Del forgets the selected command, Ctrl+Del empties the whole
+    /// history (both need OnRemove / OnClear). Typing narrows the list,
+    /// Backspace removes the last filter character.</summary>
     function HandleFilterInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function DispatchCommand(const AControlId: string): Boolean;
     function ShouldApplyHistoryItem(AAccepted: Boolean; AIdx: Integer): Boolean;
+    /// <summary>Called with the command Del removed; the host drops it from
+    /// its history store.</summary>
+    property OnRemove: TCmdHistoryRemove read FOnRemove write FOnRemove;
+    /// <summary>Called when Ctrl+Del empties the history.</summary>
+    property OnClear: TProc read FOnClear write FOnClear;
   end;
 
   /// <summary>Alt+F11: files opened with F3/F4, newest first. Enter reopens
   /// in the mode last used, F3/F4 force Viewer/Editor, Ctrl+Enter shows the
-  /// file in the active panel, Del forgets it, typing filters the list.</summary>
+  /// file in the active panel, Del forgets it, Ctrl+Del empties the history,
+  /// typing filters the list.</summary>
   TFileHistoryDialogController = class
   private
     FDialog: TDialogHost;
@@ -107,7 +122,7 @@ type
       const AOnPrepareUi: THistoryDialogPrepareUi;
       const AOnOpen: TFileHistoryOpen; const AOnGoto: THistoryDialogNavigate);
     procedure OpenList;
-    /// <summary>F3/F4/Ctrl+Enter/Del and the filter. Plain Enter is left to
+    /// <summary>F3/F4/Ctrl+Enter/Del/Ctrl+Del and the filter. Plain Enter is left to
     /// the dialog (list accept -> DispatchCommand).</summary>
     function HandleListInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -178,10 +193,17 @@ begin
   FAllUris := FolderHistoryGetUris;
   FFilter := '';
   SetKind(hdkFolderHistory);
-  RefreshList;
+  RefreshList(0);
 end;
 
-procedure TFolderHistoryDialogController.RefreshList;
+function TFolderHistoryDialogController.SelectedIndex: Integer;
+begin
+  Result := FDialog.GetListSelectedIndex('folders');
+  if (Result < 0) or (Result > High(FUris)) then
+    Result := -1;
+end;
+
+procedure TFolderHistoryDialogController.RefreshList(ASelected: Integer);
 var
   Items: TArray<string>;
   I, N: Integer;
@@ -204,7 +226,7 @@ begin
   end;
   SetLength(FUris, N);
   SetLength(Items, N);
-  Decl := BuildFolderHistoryDialog(Items, 0);
+  Decl := BuildFolderHistoryDialog(Items, ASelected);
   if FFilter <> '' then
     Decl.Title := T('ui.folderHistory.filterTitle', 'Folder history: %s', [FFilter]);
   FDialog.Open(Decl, FOnCommand);
@@ -213,23 +235,49 @@ end;
 
 function TFolderHistoryDialogController.HandleListInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Mods: TShiftState;
+  Idx: Integer;
 begin
   Result := False;
-  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
-     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
+  Mods := AShift * [ssShift, ssAlt, ssCtrl];
+  if (AKey = vkDelete) and ((Mods = []) or (Mods = [ssCtrl])) then
   begin
-    FFilter := FFilter + AKeyChar;
-    RefreshList;
+    if Mods = [ssCtrl] then
+    begin
+      FolderHistoryClear;
+      FAllUris := FolderHistoryGetUris;
+      RefreshList(0);
+    end
+    else
+    begin
+      Idx := SelectedIndex;
+      if Idx >= 0 then
+      begin
+        FolderHistoryRemove(FUris[Idx]);
+        FAllUris := FolderHistoryGetUris;
+        RefreshList(Idx);
+      end;
+    end;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
   end;
-  if (AKey = vkBack) and (AShift * [ssShift, ssAlt, ssCtrl] = []) then
+  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
+     TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
+  begin
+    FFilter := FFilter + AKeyChar;
+    RefreshList(0);
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AKey = vkBack) and (Mods = []) then
   begin
     if FFilter <> '' then
     begin
       Delete(FFilter, Length(FFilter), 1);
-      RefreshList;
+      RefreshList(0);
     end;
     AKey := 0;
     AKeyChar := #0;
@@ -313,7 +361,14 @@ begin
   Notify;
 end;
 
-procedure TCmdHistoryDialogController.RefreshList;
+function TCmdHistoryDialogController.SelectedIndex: Integer;
+begin
+  Result := FDialog.GetListSelectedIndex('commands');
+  if (Result < 0) or (Result > High(FItems)) then
+    Result := -1;
+end;
+
+procedure TCmdHistoryDialogController.RefreshList(ASelected: Integer);
 var
   Filtered: TArray<string>;
   I, N: Integer;
@@ -330,7 +385,7 @@ begin
     end;
   SetLength(Filtered, N);
   FItems := Filtered;
-  Decl := BuildCmdHistoryDialog(Filtered, 0);
+  Decl := BuildCmdHistoryDialog(Filtered, ASelected);
   if FFilter <> '' then
     Decl.Title := T('ui.cmdHistory.filterTitle', 'Command history: %s', [FFilter]);
   FDialog.Open(Decl, FOnCommand);
@@ -339,12 +394,47 @@ end;
 
 function TCmdHistoryDialogController.HandleFilterInput(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Mods: TShiftState;
+  Idx, I, N: Integer;
+  Removed: string;
 begin
   Result := False;
+  Mods := AShift * [ssShift, ssAlt, ssCtrl];
+  if (AKey = vkDelete) and (Mods = [ssCtrl]) and Assigned(FOnClear) then
+  begin
+    FOnClear();
+    SetLength(FAllItems, 0);
+    RefreshList(0);
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AKey = vkDelete) and (Mods = []) and Assigned(FOnRemove) then
+  begin
+    Idx := SelectedIndex;
+    if Idx >= 0 then
+    begin
+      Removed := FItems[Idx];
+      FOnRemove(Removed);
+      N := 0;
+      for I := 0 to High(FAllItems) do
+        if not SameText(FAllItems[I], Removed) then
+        begin
+          FAllItems[N] := FAllItems[I];
+          Inc(N);
+        end;
+      SetLength(FAllItems, N);
+      RefreshList(Idx);
+    end;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
   begin
     FFilter := FFilter + AKeyChar;
-    RefreshList;
+    RefreshList(0);
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -354,7 +444,7 @@ begin
     if FFilter <> '' then
     begin
       Delete(FFilter, Length(FFilter), 1);
-      RefreshList;
+      RefreshList(0);
     end;
     AKey := 0;
     AKeyChar := #0;
@@ -499,6 +589,15 @@ begin
       FAll := FileHistoryGetEntries;
       RefreshList(Idx);
     end;
+    Exit(True);
+  end;
+  if (AKey = vkDelete) and (Mods = [ssCtrl]) then
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+    FileHistoryClear;
+    FAll := FileHistoryGetEntries;
+    RefreshList(0);
     Exit(True);
   end;
   // Typing narrows the list (substring of the path, any case), like Alt+F8.

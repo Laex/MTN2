@@ -269,6 +269,8 @@ type
     /// bridged to FDualPanel's cmdline history (the console has no cmdline
     /// of its own to own a history store).</summary>
     function ConsoleGetCmdHistory: TArray<string>;
+    procedure ConsoleRemoveCmdHistory(const ACommand: string);
+    procedure ConsoleClearCmdHistory;
     procedure ConsoleCommandExecuted(const ACommand: string);
     procedure ChangeConsoleProfile(const AProfileId: string);
     function DispatchTerminalKey(var Key: Word; var KeyChar: Char;
@@ -2298,6 +2300,8 @@ begin
     FConsole.OnFocusCommandLine := ConsoleFocusCommandLine;
     FConsole.OnSyncDirToPanels := ConsoleSyncDirToPanels;
     FConsole.OnGetCmdHistory := ConsoleGetCmdHistory;
+    FConsole.OnRemoveCmdHistory := ConsoleRemoveCmdHistory;
+    FConsole.OnClearCmdHistory := ConsoleClearCmdHistory;
     FConsole.OnCommandExecuted := ConsoleCommandExecuted;
     // Keep the shared Dual Panel cmdline / F-keys / status visible below.
     FMdi.AttachWindow(FConsole);
@@ -2342,6 +2346,8 @@ begin
   FConsole.OnFocusCommandLine := nil;
   FConsole.OnSyncDirToPanels := nil;
   FConsole.OnGetCmdHistory := nil;
+  FConsole.OnRemoveCmdHistory := nil;
+  FConsole.OnClearCmdHistory := nil;
   FConsole.OnCommandExecuted := nil;
   FMdi.CloseWindow(FConsole);
   FConsole := nil;
@@ -2531,6 +2537,18 @@ begin
     Result := FDualPanel.GetCommandHistoryItems
   else
     SetLength(Result, 0);
+end;
+
+procedure TMainForm.ConsoleRemoveCmdHistory(const ACommand: string);
+begin
+  if Assigned(FDualPanel) then
+    FDualPanel.RemoveCommandHistoryItem(ACommand);
+end;
+
+procedure TMainForm.ConsoleClearCmdHistory;
+begin
+  if Assigned(FDualPanel) then
+    FDualPanel.ClearCommandHistory;
 end;
 
 procedure TMainForm.ConsoleCommandExecuted(const ACommand: string);
@@ -2904,6 +2922,8 @@ begin
       FConsole.OnFocusCommandLine := nil;
       FConsole.OnSyncDirToPanels := nil;
       FConsole.OnGetCmdHistory := nil;
+      FConsole.OnRemoveCmdHistory := nil;
+      FConsole.OnClearCmdHistory := nil;
       FConsole.OnCommandExecuted := nil;
       FConsole.Interrupt;
     end;

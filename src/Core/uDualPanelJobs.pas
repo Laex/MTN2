@@ -34,6 +34,13 @@ type
     AOriginDst: string);
   TJobClearSelectionEvent = reference to procedure(const AOriginSrc: string);
 
+var
+  /// <summary>A job that ends in the background sooner than this after it
+  /// started or went there finishes without a toast.</summary>
+  JobBackgroundToastMinMs: Integer = 2000;
+
+type
+
   TPanelJobController = class
   private
     FTheme: IThemeRenderer;
@@ -63,6 +70,9 @@ type
     /// inside a recursive tree copy so FJob.FilesDone can count real files
     /// instead of top-level selected items.</summary>
     FLastItemSrcPath: string;
+    /// <summary>When the job started or last went to the background; a
+    /// background job that ends soon after is not worth a toast.</summary>
+    FWatchTick: UInt64;
     FExcludeMasks: TArray<string>;
     FExcludeMasksReady: Boolean;
     function JobTitle: string;
@@ -115,6 +125,7 @@ type
     procedure HandleTransferFailure(const ASrcURI, ADstURI: string; AIndex: Integer;
       AOverwrite, AAppend: Boolean; const AError: TVfsError);
     procedure FinishJob(ASuccess: Boolean; const AError: TVfsError);
+    procedure NoteBackgroundFinish(ASuccess: Boolean);
     function JobItemExcluded(const AName: string): Boolean;
     function FormatConflictFileLine(const ALabel, APath: string): string;
     procedure PromptOverwriteAsk(const ASrcURI, ADstURI: string; AIndex: Integer;
@@ -185,7 +196,7 @@ type
 implementation
 
 uses
-  uLinkUtils;
+  uLinkUtils, uNotice;
 
 type
   TJobLife = class(TInterfacedObject, IJobLife)
@@ -817,6 +828,7 @@ begin
     Exit;
   WasForeground := FJob.Presentation = jpForeground;
   FJob.Presentation := jpBackground;
+  FWatchTick := PlatformTickCount64;
   // Foreground execution pauses dir-watches. Leaving the progress dialog
   // must re-list both panels so the user sees files already copied and
   // LoadSide -> SyncDirWatches arms watches again for the rest of the job.
@@ -862,6 +874,7 @@ begin
   FJob.Cancel := TJobCancelToken.Create;
   FUseElevated := False;
   FJob.Phase := pjpRunning;
+  FWatchTick := PlatformTickCount64;
   FJob.Index := 0;
   FJob.BytesDoneBase := 0;
   FJob.FilesDone := 0;
@@ -1941,6 +1954,7 @@ begin
   Invalidate := FOnInvalidate;
   if ASuccess then
   begin
+    NoteBackgroundFinish(True);
     if Assigned(FOnClearSelection) then
       FOnClearSelection(OriginSrc);
     if Assigned(FOnReloadPanels) then
@@ -1976,8 +1990,41 @@ begin
       FJob.Message := 'Operation failed';
     end;
   FJob.Cancel := nil;
+  NoteBackgroundFinish(False);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
+end;
+
+procedure TPanelJobController.NoteBackgroundFinish(ASuccess: Boolean);
+var
+  Request: TNoticeRequest;
+begin
+  if (FJob.Presentation <> jpBackground) or
+     ((PlatformTickCount64 - FWatchTick) < UInt64(JobBackgroundToastMinMs)) then
+    Exit;
+  // The user sees nothing of a background job: without a toast a finished
+  // job only drops out of the tab bar, and a failed one waits behind its chip.
+  // The single %s left in each template is the argument the toast shortens to
+  // fit the window.
+  if ASuccess then
+  begin
+    if Length(FJob.Sources) = 1 then
+      Request := TNoticeRequest.Make(
+        T('ui.job.doneOne', '%s finished: %s', [JobTitle, '%s']),
+        FileUriTitle(FJob.Sources[0]))
+    else
+      Request := TNoticeRequest.Make(
+        T('ui.job.doneMany', '%s finished: %d items', [JobTitle, Length(FJob.Sources)]));
+  end
+  else
+  begin
+    Request := TNoticeRequest.Make(
+      T('ui.job.failed', '%s failed: %s', [JobTitle, '%s']), FJob.Message,
+      tkWarning);
+    Request.Hint := T('ui.job.failedHint', 'Click the job in the tab bar for details');
+    Request.Always := True;
+  end;
+  NoticeRequest(Request);
 end;
 
 procedure TPanelJobController.HandleConfirmKeys(var AKey: Word; var AKeyChar: Char);

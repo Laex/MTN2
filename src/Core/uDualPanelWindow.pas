@@ -1232,6 +1232,10 @@ type
     /// as the cmdline's own history. Used by the background console (via the
     /// host) and by terminal tabs (wired directly at OpenTerminal time).</summary>
     function GetCommandHistoryItems: TArray<string>;
+    /// <summary>Forgets ACommand in the shared command history.</summary>
+    procedure RemoveCommandHistoryItem(const ACommand: string);
+    /// <summary>Empties the shared command history.</summary>
+    procedure ClearCommandHistory;
     /// <summary>Records a command run directly at a console/terminal shell
     /// prompt into the shared history.</summary>
     procedure RecordConsoleCommand(const ACommand: string);
@@ -2909,6 +2913,8 @@ begin
   FCmdHistory := TCmdHistoryDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostTryGetCmdHistory, HostApplyCmdHistory);
+  FCmdHistory.OnRemove := RemoveCommandHistoryItem;
+  FCmdHistory.OnClear := ClearCommandHistory;
   FFileHistory := TFileHistoryDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostOpenHistoryFile, HostGotoHistoryFile);
@@ -4368,6 +4374,18 @@ begin
     Result := FCmdLineMgr.GetHistoryItems
   else
     SetLength(Result, 0);
+end;
+
+procedure TDualPanelWindow.RemoveCommandHistoryItem(const ACommand: string);
+begin
+  if Assigned(FCmdLineMgr) then
+    FCmdLineMgr.RemoveHistory(ACommand);
+end;
+
+procedure TDualPanelWindow.ClearCommandHistory;
+begin
+  if Assigned(FCmdLineMgr) then
+    FCmdLineMgr.ClearHistory;
 end;
 
 procedure TDualPanelWindow.RecordConsoleCommand(const ACommand: string);
@@ -10240,6 +10258,8 @@ begin
   Term.OnCloseRequest := TerminalCloseRequest;
   Term.OnCommandExecuted := RecordConsoleCommand;
   Term.OnGetCmdHistory := GetCommandHistoryItems;
+  Term.OnRemoveCmdHistory := RemoveCommandHistoryItem;
+  Term.OnClearCmdHistory := ClearCommandHistory;
 
   Ws := TDualPanelTabManager.MakeEmbeddedWorkspaceTab(
     FNextTabId, ProfTitle, wkTerminal, ActiveWorkspace.Id);

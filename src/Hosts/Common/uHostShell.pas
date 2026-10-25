@@ -103,6 +103,8 @@ type
     procedure ConsoleFocusCommandLine(Sender: TObject);
     procedure ConsoleSyncDirToPanels(Sender: TObject);
     function ConsoleGetCmdHistory: TArray<string>;
+    procedure ConsoleRemoveCmdHistory(const ACommand: string);
+    procedure ConsoleClearCmdHistory;
     procedure ConsoleCommandExecuted(const ACommand: string);
   public
     /// <summary>ANewSessionLocale is the language of a first start (no saved
@@ -257,6 +259,8 @@ begin
     FConsole.OnFocusCommandLine := nil;
     FConsole.OnSyncDirToPanels := nil;
     FConsole.OnGetCmdHistory := nil;
+    FConsole.OnRemoveCmdHistory := nil;
+    FConsole.OnClearCmdHistory := nil;
     FConsole.OnCommandExecuted := nil;
   end;
   FreeAndNil(FMdi);
@@ -559,6 +563,8 @@ begin
     FConsole.OnFocusCommandLine := ConsoleFocusCommandLine;
     FConsole.OnSyncDirToPanels := ConsoleSyncDirToPanels;
     FConsole.OnGetCmdHistory := ConsoleGetCmdHistory;
+    FConsole.OnRemoveCmdHistory := ConsoleRemoveCmdHistory;
+    FConsole.OnClearCmdHistory := ConsoleClearCmdHistory;
     FConsole.OnCommandExecuted := ConsoleCommandExecuted;
     FMdi.AttachWindow(FConsole);
     // Attaching activates the window; it stays hidden until it is asked for.
@@ -853,6 +859,8 @@ begin
   FConsole.OnFocusCommandLine := nil;
   FConsole.OnSyncDirToPanels := nil;
   FConsole.OnGetCmdHistory := nil;
+  FConsole.OnRemoveCmdHistory := nil;
+  FConsole.OnClearCmdHistory := nil;
   FConsole.OnCommandExecuted := nil;
   FMdi.CloseWindow(FConsole);
   FConsole := nil;
@@ -957,6 +965,16 @@ end;
 function THostShell.ConsoleGetCmdHistory: TArray<string>;
 begin
   Result := FDualPanel.GetCommandHistoryItems;
+end;
+
+procedure THostShell.ConsoleRemoveCmdHistory(const ACommand: string);
+begin
+  FDualPanel.RemoveCommandHistoryItem(ACommand);
+end;
+
+procedure THostShell.ConsoleClearCmdHistory;
+begin
+  FDualPanel.ClearCommandHistory;
 end;
 
 procedure THostShell.ConsoleCommandExecuted(const ACommand: string);
