@@ -61,6 +61,7 @@ const
   cResDialogColumnsConfig = 'DIALOG_COLUMNSCONFIG';
   cResDialogExportList = 'DIALOG_EXPORTLIST';
   cResDialogDisplay = 'DIALOG_DISPLAY';
+  cResDialogInterface = 'DIALOG_INTERFACE';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';
   cResDialogConsoleOptions = 'DIALOG_CONSOLEOPTIONS';
   cResDialogSettingsFile = 'DIALOG_SETTINGSFILE';

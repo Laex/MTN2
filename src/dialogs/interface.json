@@ -1,0 +1,161 @@
+﻿{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Interface",
+  "width": 62,
+  "height": 21,
+  "children": [
+    {
+      "type": "checkbox",
+      "id": "show_title_bar",
+      "text": "Show window &title bar",
+      "col": 1,
+      "row": 0,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "show_menu_bar",
+      "text": "Show &menu bar",
+      "col": 1,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "show_key_bar",
+      "text": "Show F-&key bar",
+      "col": 1,
+      "row": 2,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "show_status_line",
+      "text": "Show &status line",
+      "col": 1,
+      "row": 3,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "notifications",
+      "text": "Show &pop-up notifications",
+      "checked": true,
+      "col": 1,
+      "row": 4,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Language",
+      "id": "lbl_language",
+      "col": 1,
+      "row": 6,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "language",
+      "selected": 0,
+      "items": [
+        "English"
+      ],
+      "col": 18,
+      "row": 6,
+      "width": 20,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_menu",
+      "text": "&Open menu on a single Alt press",
+      "checked": true,
+      "col": 1,
+      "row": 8,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "file_drag",
+      "text": "Dr&ag files with the mouse",
+      "checked": true,
+      "col": 1,
+      "row": 9,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "select_folders",
+      "text": "Select all also &folders",
+      "col": 1,
+      "row": 10,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "pack_same_panel",
+      "text": "Pack to the sam&e panel (Shift+F1)",
+      "col": 1,
+      "row": 11,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "passive_cursor",
+      "text": "Cursor in the inacti&ve panel",
+      "checked": true,
+      "col": 1,
+      "row": 12,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "editor_autoindent",
+      "text": "Editor a&uto-indent on Enter",
+      "checked": true,
+      "col": 1,
+      "row": 13,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 15,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 17,
+      "row": 17,
+      "width": 12,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 31,
+      "row": 17,
+      "width": 12,
+      "height": 1
+    }
+  ]
+}

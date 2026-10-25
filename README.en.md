@@ -63,7 +63,7 @@ it is one more two-panel manager with its own habits.
 - **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin), plugin VFS.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), command palette (`Shift+F9`) to search the menu items, file associations, F1 context help.
-- **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → Font / Display...**
+- **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → User interface...**
   and applied on the fly without restarting; the first start uses the Windows language when a translation for it exists. A custom language is added as a `resource\<language>\` folder next to `MTN2.exe` (`locale.json`, `strings.json`, help in `help\`); no recompilation is needed. Only English is built into the program.
 - **Unicode:** CJK ideographs (BMP), Hiragana, Katakana, Hangul, and full-width forms
   render across console, panels, tabs, and headers in two columns; missing glyphs fall back to system fonts.

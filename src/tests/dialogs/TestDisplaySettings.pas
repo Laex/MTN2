@@ -25,6 +25,7 @@ type
     [Test] procedure TestShadowStyle;
     [Test] procedure TestDialogShowsMarkedFiles;
     [Test] procedure TestFontQualitySettings;
+    [Test] procedure TestInterfaceDialogDrawn;
   end;
 
 implementation
@@ -38,7 +39,7 @@ uses
   uDisplaySettings,
   uSession,
   System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing,
-  uStrings, uDialogTypes, uDialogHost, uThemeRegistry;
+  uStrings, uDialogTypes, uDialogResources, uDialogHost, uThemeRegistry;
 
 procedure TestClampAndIndex;
 begin
@@ -317,7 +318,7 @@ procedure TestDialogShowsMarkedFiles;
     Host := TDialogHost.Create(CreateThemeByName('NDN'));
     try
       Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
-        ['English'], 0, True, 0, False, Ord(mrsBand)), nil);
+        0, False, Ord(mrsBand)), nil);
       AllocTerminalGrid(Grid, 100, 40);
       ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
       Host.Draw(Grid, 100, 40);
@@ -412,7 +413,7 @@ begin
   Host := TDialogHost.Create(CreateThemeByName('NDN'));
   try
     Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
-      ['English'], 0, True, 0, False, 0, True, 2, 1, 3), nil);
+      0, False, 0, True, 2, 1, 3), nil);
     AllocTerminalGrid(Grid, 120, 40);
     ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
     Host.Draw(Grid, 120, 40);
@@ -437,10 +438,62 @@ begin
     Assert.IsTrue(Pos('Cell width', Text) > 0, 'cell width row drawn');
     Assert.IsTrue(Pos('3 px', Text) > 0, 'saved cell height shown');
     Assert.IsTrue(Pos('Fallback font', Text) > 0, 'fallback font row drawn');
-    Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
+    Assert.IsTrue(Pos('Language', Text) = 0, 'language row belongs to the interface dialog');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
   finally
     Host.Free;
+  end;
+end;
+
+// The real User interface dialog, drawn: the language row, the saved
+// check box states and the buttons, in English and in Russian.
+procedure TestInterfaceDialogDrawn;
+
+  function DrawnText: string;
+  var
+    Host: TDialogHost;
+    Decl: TDialogDeclaration;
+    Grid: TTerminalGrid;
+    X, Y: Integer;
+  begin
+    Host := TDialogHost.Create(CreateThemeByName('NDN'));
+    try
+      Decl := BuildInterfaceDialog(['English', 'Russian'], 1, True);
+      DialogSetCheckbox(Decl, 'alt_menu', True);
+      Host.Open(Decl, nil);
+      AllocTerminalGrid(Grid, 100, 40);
+      ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+      Host.Draw(Grid, 100, 40);
+      Result := '';
+      for Y := 0 to High(Grid) do
+      begin
+        for X := 0 to High(Grid[Y]) do
+          Result := Result + Grid[Y][X].CharValue;
+        Result := Result + #10;
+      end;
+    finally
+      Host.Free;
+    end;
+  end;
+
+var
+  Text: string;
+begin
+  try
+    SetLocale('');
+    Text := DrawnText;
+    Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
+    Assert.IsTrue(Pos('Russian', Text) > 0, 'saved language shown');
+    Assert.IsTrue(Pos('Show pop-up notifications', Text) > 0, 'notifications checkbox drawn');
+    Assert.IsTrue(Pos('Open menu on a single Alt press', Text) > 0, 'Alt menu checkbox drawn');
+    Assert.IsTrue(Pos('Editor auto-indent on Enter', Text) > 0, 'auto-indent checkbox drawn');
+    Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
+    Assert.IsTrue(Pos('Font', Text) = 0, 'no font controls');
+    SetLocale('ru');
+    Text := DrawnText;
+    Assert.IsTrue(Pos('Открывать меню по одиночному Alt', Text) > 0, 'Russian caption drawn in full');
+  finally
+    SetLocale('');
   end;
 end;
 
@@ -565,6 +618,11 @@ end;
 procedure TTestDisplaySettings.TestFontQualitySettings;
 begin
   TestDisplaySettings.TestFontQualitySettings;
+end;
+
+procedure TTestDisplaySettings.TestInterfaceDialogDrawn;
+begin
+  TestDisplaySettings.TestInterfaceDialogDrawn;
 end;
 
 procedure TTestDisplaySettings.TestPanelIconFlag;

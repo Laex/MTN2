@@ -156,6 +156,7 @@
         { "caption": "Keymap...", "hotChar": "M", "shortcut": "", "action": "tmaOptKeymap", "aliases": "keys, hotkeys, shortcuts, keybindings, bindings" },
         { "caption": "Theme...", "hotChar": "T", "shortcut": "", "action": "tmaOptTheme", "aliases": "theme, colors, skin, dark, light, scheme" },
         { "caption": "Font / Display...", "hotChar": "F", "shortcut": "", "action": "tmaOptDisplay", "aliases": "font, size, scale, zoom, display, screen, cursor" },
+        { "caption": "User interface...", "hotChar": "U", "shortcut": "", "action": "tmaOptInterface", "aliases": "interface, language, menu bar, status line, notifications, editor, drag" },
         { "caption": "External viewer/editor...", "hotChar": "E", "shortcut": "", "action": "tmaOptExternalTools", "aliases": "viewer, editor, external, program" },
         { "caption": "Console...", "hotChar": "N", "shortcut": "", "action": "tmaOptConsoleOptions", "aliases": "shell, console, terminal, startup" },
         { "caption": "Markdown colors...", "hotChar": "A", "shortcut": "", "action": "tmaOptMarkdownColors", "aliases": "markdown, colors, md" },

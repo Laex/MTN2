@@ -57,7 +57,7 @@ MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하�
 - **가상 파일 시스템(VFS):** 압축 파일을 폴더처럼 탐색(zip, `7z.dll`을 통한 7z), SSH 기반 SFTP, 플러그인 VFS.
 - **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 명령 팔레트(`Shift+F9`, 메뉴 항목 검색), 파일 연결 설정, F1 컨텍스트 도움말.
-- **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어, 중국어 간체로 제공됩니다. 언어는 **옵션 → 글꼴 / 화면...** (Options → Font / Display...)에서 선택할 수 있으며
+- **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어, 중국어 간체로 제공됩니다. 언어는 **옵션 → 인터페이스...** (Options → User interface...)에서 선택할 수 있으며
   재시작 없이 즉시 적용됩니다. `MTN2.exe` 파일 옆에 `resource\<언어코드>\` 폴더(`locale.json`, `strings.json`, `help\`의 도움말)를 추가하여 사용자 언어를 확장할 수 있으며 다시 컴파일할 필요가 없습니다. 프로그램에는 영어만 내장되어 있습니다.
 - **유니코드:** CJK 한자(기본 다국어 평면 BMP), 히라가나, 가타카나, 한글 및 전각 문자가
   콘솔, 패널, 탭, 제목 표시줄에서 2열 너비로 표시되며, 누락된 글꼴은 시스템 폰트로 대체 렌더링됩니다.

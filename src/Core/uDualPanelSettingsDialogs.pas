@@ -57,8 +57,10 @@ type
     /// <summary>Id of the color field the color picker is editing.</summary>
     FMdPickField: string;
     FLanguageCodes: TArray<string>;
-    /// <summary>Display dialog: the size it opened with (pixels) and its
-    /// list row. OK without touching the size keeps the exact value -- a
+    /// <summary>Display and Interface dialogs: the settings they opened with.
+    /// OK writes the fields of the open dialog onto this snapshot, so the
+    /// other dialog's fields are kept. Also the size it opened with (pixels)
+    /// and its list row: OK without touching the size keeps the exact value -- a
     /// size set outside the list (session.json) is not rounded to it.</summary>
     FOpenFontSize: Single;
     FOpenDisplay: TDisplaySettings;
@@ -88,6 +90,7 @@ type
       const AOnApplyDisplay: TSettingsApplyDisplay);
     procedure OpenColumns;
     procedure OpenDisplay;
+    procedure OpenInterface;
     procedure OpenExternalTools;
     procedure OpenConsoleOptions;
     procedure OpenMarkdownColors;
@@ -108,6 +111,7 @@ type
       read FOnSetConsoleCwdToPanels write FOnSetConsoleCwdToPanels;
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
+    procedure DispatchInterfaceCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
     procedure DispatchConsoleOptionsCommand(const AControlId: string);
     procedure DispatchMarkdownColorsCommand(const AControlId: string);
@@ -222,8 +226,6 @@ var
   Fonts: TArray<string>;
   ResolvedName, Note: string;
   FontIdx: Integer;
-  LanguageNames: TArray<string>;
-  LanguageIdx, I: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -242,12 +244,6 @@ begin
   if (Trim(Cur.FontName) <> '') and not SameText(Cur.FontName, ResolvedName) then
     Note := Format('Using %s (saved font not found)', [ResolvedName]);
 
-  FLanguageCodes := DisplayLanguageItems;
-  SetLength(LanguageNames, Length(FLanguageCodes));
-  for I := 0 to High(FLanguageCodes) do
-    LanguageNames[I] := DisplayLanguageName(FLanguageCodes[I]);
-  LanguageIdx := IndexOfFontName(FLanguageCodes, Cur.Language);
-
   SetKind(hdkDisplay);
   FOpenDisplay := Cur;
   if not GFontSettingsApply then
@@ -258,24 +254,53 @@ begin
   Decl := BuildDisplayDialog(Fonts, FontIdx,
     FOpenFontSizeIdx, IndexOfDisplayZoom(Cur.Zoom),
     IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
-    Cur.ShowPanelIcons, Note, LanguageNames, LanguageIdx,
-    Cur.ShowNotifications, Ord(Cur.ShadowStyle), Cur.LineSpacing,
+    Cur.ShowPanelIcons, Note, Ord(Cur.ShadowStyle), Cur.LineSpacing,
     Ord(Cur.MarkedRowStyle), Cur.SnapFontSize, ClampTextContrast(Cur.TextContrast),
     ClampCellExtra(Cur.CellWidthExtra), ClampCellExtra(Cur.CellHeightExtra));
   DialogSetInputValue(Decl, 'font_fallback', Cur.FallbackFont);
   if not GFontSettingsApply then
     RemoveFontControls(Decl);
+  DialogSetCheckbox(Decl, 'caret_underline', Cur.CaretUnderline);
+  FDialog.Open(Decl, FOnCommand);
+  Notify;
+end;
+
+procedure TSettingsDialogController.OpenInterface;
+var
+  Cur: TDisplaySettings;
+  Decl: TDialogDeclaration;
+  LanguageNames: TArray<string>;
+  LanguageIdx, I: Integer;
+begin
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  if Assigned(FOnPrepareUi) then
+    FOnPrepareUi();
+
+  if Assigned(FOnGetDisplay) then
+    Cur := FOnGetDisplay()
+  else
+    Cur := DefaultDisplaySettings;
+
+  FLanguageCodes := DisplayLanguageItems;
+  SetLength(LanguageNames, Length(FLanguageCodes));
+  for I := 0 to High(FLanguageCodes) do
+    LanguageNames[I] := DisplayLanguageName(FLanguageCodes[I]);
+  LanguageIdx := IndexOfFontName(FLanguageCodes, Cur.Language);
+
+  SetKind(hdkInterface);
+  FOpenDisplay := Cur;
+  Decl := BuildInterfaceDialog(LanguageNames, LanguageIdx, Cur.ShowNotifications);
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
-  DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
-  DialogSetCheckbox(Decl, 'alt_menu', Cur.AltOpensMenu);
-  DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
-  DialogSetCheckbox(Decl, 'caret_underline', Cur.CaretUnderline);
-  DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
   DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
+  DialogSetCheckbox(Decl, 'alt_menu', Cur.AltOpensMenu);
+  DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
   DialogSetCheckbox(Decl, 'select_folders', Cur.SelectFolders);
   DialogSetCheckbox(Decl, 'pack_same_panel', Cur.PackInSamePanel);
+  DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
+  DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
@@ -519,12 +544,12 @@ procedure TSettingsDialogController.DispatchDisplayCommand(
 var
   Accepted: Boolean;
   Disp: TDisplaySettings;
-  LanguageIdx, ShadowIdx, SizeIdx, MarkedIdx: Integer;
+  ShadowIdx, SizeIdx, MarkedIdx: Integer;
 begin
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
   begin
-    Disp := DefaultDisplaySettings;
+    Disp := FOpenDisplay;
     Disp.FontName := FDialog.GetListSelectedText('fonts');
     Disp.FallbackFont := Trim(FDialog.GetInputValue('font_fallback'));
     SizeIdx := FDialog.GetListSelectedIndex('font_size');
@@ -536,34 +561,18 @@ begin
     Disp.CursorBlink := FDialog.GetCheckbox('blink');
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
-    Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
-    Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
-    Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
-    Disp.FileDrag := FDialog.GetCheckbox('file_drag');
-    Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
-    Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.CaretUnderline := FDialog.GetCheckbox('caret_underline');
-    Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
-    Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
-    Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
     Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
     Disp.SnapFontSize := FDialog.GetCheckbox('snap_font_size');
     Disp.TextContrast := ClampTextContrast(FDialog.GetListSelectedIndex('text_contrast'));
     Disp.CellWidthExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_w'));
     Disp.CellHeightExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_h'));
-    Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
-    Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
     ShadowIdx := FDialog.GetListSelectedIndex('shadows');
     if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
       Disp.ShadowStyle := TShadowStyle(ShadowIdx);
     MarkedIdx := FDialog.GetListSelectedIndex('marked_rows');
     if (MarkedIdx >= Ord(Low(TMarkedRowStyle))) and (MarkedIdx <= Ord(High(TMarkedRowStyle))) then
       Disp.MarkedRowStyle := TMarkedRowStyle(MarkedIdx);
-    LanguageIdx := FDialog.GetListSelectedIndex('language');
-    if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
-      Disp.Language := FLanguageCodes[LanguageIdx]
-    else
-      Disp.Language := '';
     if not GFontSettingsApply then
     begin
       Disp.FontName := FOpenDisplay.FontName;
@@ -576,6 +585,41 @@ begin
       Disp.CellWidthExtra := FOpenDisplay.CellWidthExtra;
       Disp.CellHeightExtra := FOpenDisplay.CellHeightExtra;
     end;
+    if Assigned(FOnApplyDisplay) then
+      FOnApplyDisplay(Disp);
+  end;
+  FDialog.Close;
+  if Accepted then
+    Notify;
+end;
+
+procedure TSettingsDialogController.DispatchInterfaceCommand(
+  const AControlId: string);
+var
+  Accepted: Boolean;
+  Disp: TDisplaySettings;
+  LanguageIdx: Integer;
+begin
+  Accepted := DialogCmdIsAccept(AControlId);
+  if Accepted then
+  begin
+    Disp := FOpenDisplay;
+    Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
+    Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
+    Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
+    Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
+    Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
+    Disp.FileDrag := FDialog.GetCheckbox('file_drag');
+    Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
+    Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
+    Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
+    Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
+    LanguageIdx := FDialog.GetListSelectedIndex('language');
+    if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
+      Disp.Language := FLanguageCodes[LanguageIdx]
+    else
+      Disp.Language := '';
     if Assigned(FOnApplyDisplay) then
       FOnApplyDisplay(Disp);
   end;
@@ -951,6 +995,7 @@ begin
   case AKind of
     hdkColumnsConfig: DispatchColumnsCommand(AControlId);
     hdkDisplay: DispatchDisplayCommand(AControlId);
+    hdkInterface: DispatchInterfaceCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);
     hdkConsoleOptions: DispatchConsoleOptionsCommand(AControlId);
     hdkMarkdownColors: DispatchMarkdownColorsCommand(AControlId);

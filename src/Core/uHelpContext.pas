@@ -87,6 +87,7 @@ begin
     hdkConsoleProfile, hdkConsoleSave:
       Result := 'cmdline.md';
     hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
+    hdkInterface,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkConsoleOptions, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,

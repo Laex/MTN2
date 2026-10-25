@@ -329,8 +329,12 @@ begin
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_size') = 'Размер', 'Size label translates');
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_zoom') = 'Масштаб', 'Zoom label translates');
   Assert.IsTrue(FindCtrlText(Decl, 'lbl_interval') = 'Интервал', 'Interval label translates');
-  Assert.IsTrue(FindCtrlText(Decl, 'lbl_language') = 'Язык', 'Language label translates');
   Assert.IsTrue(FindCtrlText(Decl, 'blink') = 'Мигающий &курсор', 'Blink cursor checkbox translates');
+
+  Assert.IsTrue(TryLoadDialogResource(cResDialogInterface, Decl), 'DIALOG_INTERFACE loads');
+  Assert.IsTrue(Decl.Title = 'Интерфейс', 'Interface title translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'lbl_language') = 'Язык', 'Language label translates');
+  Assert.IsTrue(FindCtrlText(Decl, 'alt_menu') = 'Открывать меню по одиночному &Alt', 'Alt menu checkbox translates');
 
   Assert.IsTrue(TryLoadDialogResource(cResDialogSearch, Decl), 'DIALOG_SEARCH loads');
   Assert.IsTrue(Decl.Title = 'Поиск файла', 'title translates');

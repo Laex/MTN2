@@ -24,7 +24,7 @@
 | Ctrl+Shift+Ins | nur den Namen (ohne Pfad) in die Zwischenablage kopieren |
 | Ctrl+Z | die Datei beschreiben: eine Eingabezeile, der Text wird in `Descript.ion` neben der Datei gespeichert |
 
-**Alt+Shift+Ins** und **Ctrl+Shift+Ins** übernehmen die ausgewählten Elemente (eines pro Zeile) oder, ohne Auswahl, das Element unter dem Cursor; bei `..` – den aktuellen Ordner. Das Ergebnis lässt sich überall mit **Shift+Ins** / **Ctrl+V** einfügen. Ein kurzer Hinweis unten rechts bestätigt das Kopieren (oder meldet, dass nichts zu kopieren ist); er lässt sich unter **Optionen → Schrift / Anzeige...** ausschalten.
+**Alt+Shift+Ins** und **Ctrl+Shift+Ins** übernehmen die ausgewählten Elemente (eines pro Zeile) oder, ohne Auswahl, das Element unter dem Cursor; bei `..` – den aktuellen Ordner. Das Ergebnis lässt sich überall mit **Shift+Ins** / **Ctrl+V** einfügen. Ein kurzer Hinweis unten rechts bestätigt das Kopieren (oder meldet, dass nichts zu kopieren ist); er lässt sich unter **Optionen → Oberfläche...** ausschalten.
 
 **Dateien → Liste speichern...** schreibt die ausgewählten Elemente (ohne Auswahl das Element unter dem Cursor) in eine Datei. Der Dialog fragt nach dem Dateinamen, dem Format – nach Endung (`.md` – Markdown-Tabelle, `.csv` – CSV, sonst ausgerichteter Text), einfacher Text, Markdown oder CSV – und den Feldern: Name, vollständiger Pfad, Endung, Größe, Änderungs- / Erstellungs- / Zugriffsdatum, Typ und Attribute. Die Überschriftenzeile lässt sich abschalten (eine Markdown-Tabelle hat immer eine). Bei Ordnern steht statt der Größe `<DIR>`. Die Auswahl bleibt über Neustarts erhalten; der Eintrag hat keine Standardtaste – sie lässt sich im Dialog für die Tastenbelegung zuweisen (Aktion `ExportList`).
 

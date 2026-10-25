@@ -19,6 +19,7 @@ type
     [Test] procedure TestSelectMaskDialog;
     [Test] procedure TestSetAttrDialog;
     [Test] procedure TestDisplayDialog;
+    [Test] procedure TestInterfaceDialog;
     [Test] procedure TestDeleteErrorDialog;
     [Test] procedure TestJobProgressDialogs;
   end;
@@ -224,6 +225,30 @@ begin
   Writeln('  display.json: fonts, font_size, zoom, blink, blink_ms, panel_icons');
 end;
 
+procedure TestInterfaceDialog;
+const
+  cChecks: array[0..9] of string = ('show_title_bar', 'show_menu_bar', 'show_key_bar',
+    'show_status_line', 'notifications', 'alt_menu', 'file_drag', 'select_folders',
+    'pack_same_panel', 'editor_autoindent');
+var
+  LDecl: TDialogDeclaration;
+  I, K: Integer;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    TFile.ReadAllText('../../dialogs/interface.json', TEncoding.UTF8), LDecl),
+    'interface.json failed to parse');
+  for K := Low(cChecks) to High(cChecks) do
+  begin
+    I := FindControlById(LDecl, cChecks[K]);
+    Assert.IsTrue(I >= 0, cChecks[K] + ' checkbox not found');
+    Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, cChecks[K] + ' is not checkbox');
+  end;
+  I := FindControlById(LDecl, 'language');
+  Assert.IsTrue(I >= 0, 'language dropdown not found');
+  Assert.IsTrue(LDecl.Controls[I].Kind = dckDropDown, 'language is not dropdown');
+  Assert.IsTrue(FindControlById(LDecl, 'fonts') < 0, 'font list belongs to display.json');
+end;
+
 procedure TestJobProgressDialogs;
 var
   LDecl: TDialogDeclaration;
@@ -389,6 +414,11 @@ end;
 procedure TTestDialogJson.TestDisplayDialog;
 begin
   TestDialogJson.TestDisplayDialog;
+end;
+
+procedure TTestDialogJson.TestInterfaceDialog;
+begin
+  TestDialogJson.TestInterfaceDialog;
 end;
 
 procedure TTestDialogJson.TestDeleteErrorDialog;

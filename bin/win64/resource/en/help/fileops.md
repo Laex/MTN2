@@ -24,7 +24,7 @@
 | Ctrl+Shift+Ins | copy only the name (no path) to the clipboard |
 | Ctrl+Z | describe the file: an input line, the text is kept in `Descript.ion` next to the file |
 
-**Alt+Shift+Ins** and **Ctrl+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` – the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → Font / Display...**.
+**Alt+Shift+Ins** and **Ctrl+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` – the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → User interface...**.
 
 **Files → Export list...** saves the selected items (or, with nothing selected, the item under the cursor) to a file. The dialog asks for the file name, the layout – by extension (`.md` – Markdown table, `.csv` – CSV, anything else – aligned text), plain text, Markdown or CSV – and the fields: name, full path, extension, size, modified / created / accessed date, type and attributes. The header line can be switched off (a Markdown table always has one). Folders show `<DIR>` in place of the size. The choice is remembered between launches; the item has no default key, one can be assigned in the key bindings dialog (action `ExportList`).
 

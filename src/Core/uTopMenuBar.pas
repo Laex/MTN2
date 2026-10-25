@@ -135,6 +135,7 @@ type
     tmaOptTheme,
     tmaOptColumnsConfig,
     tmaOptDisplay,
+    tmaOptInterface,
     tmaOptExternalTools,
     tmaOptConsoleOptions,
     tmaOptExportSettings,
@@ -961,19 +962,20 @@ begin
   FCategories[5].Title := 'Options';
   FCategories[5].HotChar := 'O';
   FCategories[5].HotPos := 1;
-  SetLength(FCategories[5].Items, 12);
+  SetLength(FCategories[5].Items, 13);
   FCategories[5].Items[0] := SubItem('Reload keymap', 'K', 'Ctrl+Alt+K', tmaOptReloadKeymap);
   FCategories[5].Items[1] := SubItem('Plugins...', 'P', '', tmaOptShowPlugins);
   FCategories[5].Items[2] := SubItem('Color coding...', 'C', '', tmaOptColorCoding);
   FCategories[5].Items[3] := SubItem('Keymap...', 'M', '', tmaOptKeymap);
   FCategories[5].Items[4] := SubItem('Theme...', 'T', '', tmaOptTheme);
   FCategories[5].Items[5] := SubItem('Font / Display...', 'F', '', tmaOptDisplay);
-  FCategories[5].Items[6] := SubItem('Columns...', 'L', 'Ctrl+Shift+F7', tmaOptColumnsConfig);
-  FCategories[5].Items[7] := Separator;
-  FCategories[5].Items[8] := SubItem('Zoom In', 'I', 'Ctrl+Wheel', tmaOptZoomIn);
-  FCategories[5].Items[9] := SubItem('Zoom Out', 'O', 'Ctrl+Wheel', tmaOptZoomOut);
-  FCategories[5].Items[10] := SubItem('Reset Zoom', 'R', 'Ctrl+0', tmaOptResetZoom);
-  FCategories[5].Items[11] := SubItem('Restore hidden dialogs', 'H', '', tmaOptRestoreHiddenDialogs);
+  FCategories[5].Items[6] := SubItem('User interface...', 'U', '', tmaOptInterface);
+  FCategories[5].Items[7] := SubItem('Columns...', 'L', 'Ctrl+Shift+F7', tmaOptColumnsConfig);
+  FCategories[5].Items[8] := Separator;
+  FCategories[5].Items[9] := SubItem('Zoom In', 'I', 'Ctrl+Wheel', tmaOptZoomIn);
+  FCategories[5].Items[10] := SubItem('Zoom Out', 'O', 'Ctrl+Wheel', tmaOptZoomOut);
+  FCategories[5].Items[11] := SubItem('Reset Zoom', 'R', 'Ctrl+0', tmaOptResetZoom);
+  FCategories[5].Items[12] := SubItem('Restore hidden dialogs', 'H', '', tmaOptRestoreHiddenDialogs);
 
   // 6: Right
   FCategories[6].Title := 'Right';

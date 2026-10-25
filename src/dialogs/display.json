@@ -2,7 +2,7 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Font / Display",
-  "width": 96,
+  "width": 88,
   "height": 25,
   "children": [
     {
@@ -197,14 +197,14 @@
       "checked": true,
       "col": 47,
       "row": 1,
-      "width": 22,
+      "width": 18,
       "height": 1
     },
     {
       "type": "label",
       "text": "Interval",
       "id": "lbl_interval",
-      "col": 71,
+      "col": 66,
       "row": 1,
       "width": 9,
       "height": 1
@@ -216,9 +216,19 @@
       "items": [
         "530 ms"
       ],
-      "col": 81,
+      "col": 76,
       "row": 1,
       "width": 10,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "caret_underline",
+      "text": "&Cursor as underline",
+      "checked": false,
+      "col": 47,
+      "row": 2,
+      "width": 38,
       "height": 1
     },
     {
@@ -228,53 +238,7 @@
       "checked": true,
       "col": 47,
       "row": 3,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "notifications",
-      "text": "Show &pop-up notifications",
-      "checked": true,
-      "col": 47,
-      "row": 4,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "show_title_bar",
-      "text": "Show window &title bar",
-      "col": 47,
-      "row": 5,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "show_menu_bar",
-      "text": "Show &menu bar",
-      "col": 47,
-      "row": 6,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "show_key_bar",
-      "text": "Show F-&key bar",
-      "col": 47,
-      "row": 7,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "show_status_line",
-      "text": "Show &status line",
-      "col": 47,
-      "row": 8,
-      "width": 46,
+      "width": 38,
       "height": 1
     },
     {
@@ -282,7 +246,7 @@
       "text": "Shadows",
       "id": "lbl_shadows",
       "col": 47,
-      "row": 10,
+      "row": 5,
       "width": 16,
       "height": 1
     },
@@ -296,7 +260,7 @@
         "None"
       ],
       "col": 64,
-      "row": 10,
+      "row": 5,
       "width": 20,
       "height": 1
     },
@@ -305,7 +269,7 @@
       "text": "Marked files",
       "id": "lbl_marked_rows",
       "col": 47,
-      "row": 11,
+      "row": 6,
       "width": 16,
       "height": 1
     },
@@ -317,96 +281,7 @@
         "Text color"
       ],
       "col": 64,
-      "row": 11,
-      "width": 20,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "select_folders",
-      "text": "Select all also &folders",
-      "col": 47,
-      "row": 12,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "passive_cursor",
-      "text": "Cursor in the inacti&ve panel",
-      "checked": true,
-      "col": 47,
-      "row": 15,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "caret_underline",
-      "text": "&Cursor as underline",
-      "checked": false,
-      "col": 47,
-      "row": 2,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "alt_menu",
-      "text": "&Open menu on a single Alt press",
-      "checked": true,
-      "col": 47,
-      "row": 16,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "editor_autoindent",
-      "text": "Editor a&uto-indent on Enter",
-      "checked": true,
-      "col": 47,
-      "row": 17,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "pack_same_panel",
-      "text": "Pack to the sam&e panel (Shift+F1)",
-      "col": 47,
-      "row": 18,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "file_drag",
-      "text": "Dr&ag files with the mouse",
-      "checked": true,
-      "col": 47,
-      "row": 13,
-      "width": 46,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Language",
-      "id": "lbl_language",
-      "col": 47,
-      "row": 14,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "language",
-      "selected": 0,
-      "items": [
-        "English"
-      ],
-      "col": 64,
-      "row": 14,
+      "row": 6,
       "width": 20,
       "height": 1
     },
@@ -414,7 +289,7 @@
       "type": "separator",
       "col": 0,
       "row": 19,
-      "width": 94,
+      "width": 86,
       "height": 1
     },
     {
@@ -422,7 +297,7 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 34,
+      "col": 30,
       "row": 21,
       "width": 12,
       "height": 1
@@ -432,7 +307,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 48,
+      "col": 44,
       "row": 21,
       "width": 12,
       "height": 1

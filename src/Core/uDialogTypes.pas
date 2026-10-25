@@ -351,11 +351,15 @@ function BuildExportListDialog(const APath: string;
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
-  const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
-  AShowNotifications: Boolean = True; AShadowIndex: Integer = 0;
+  AShadowIndex: Integer = 0;
   ALineSpacing: Boolean = False; AMarkedRowIndex: Integer = 0;
   ASnapFontSize: Boolean = False; ATextContrastIndex: Integer = 0;
   ACellWidthExtra: Integer = 0; ACellHeightExtra: Integer = 0): TDialogDeclaration;
+/// <summary>Options > User interface...: language, notifications and the
+/// check boxes for the bars, menu, mouse and editor behavior. The check boxes
+/// are filled by the caller (DialogSetCheckbox).</summary>
+function BuildInterfaceDialog(const ALanguageNames: TArray<string>;
+  ALanguageIndex: Integer; AShowNotifications: Boolean = True): TDialogDeclaration;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
@@ -1620,13 +1624,12 @@ end;
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
-  const ALanguageNames: TArray<string>; ALanguageIndex: Integer;
-  AShowNotifications: Boolean; AShadowIndex: Integer;
+  AShadowIndex: Integer;
   ALineSpacing: Boolean; AMarkedRowIndex: Integer;
   ASnapFontSize: Boolean; ATextContrastIndex: Integer;
   ACellWidthExtra, ACellHeightExtra: Integer): TDialogDeclaration;
 var
-  Fonts, Languages: TArray<string>;
+  Fonts: TArray<string>;
   Sel: Integer;
 begin
   RequireDialogResource(cResDialogDisplay, Result);
@@ -1651,7 +1654,6 @@ begin
   DialogSetListItems(Result, 'blink_ms', DisplayBlinkMsItems, ABlinkMsIndex);
   DialogSetCheckbox(Result, 'blink', ABlink);
   DialogSetCheckbox(Result, 'panel_icons', AShowIcons);
-  DialogSetCheckbox(Result, 'notifications', AShowNotifications);
   DialogSetListItems(Result, 'shadows', DisplayShadowItems, AShadowIndex);
   DialogSetListItems(Result, 'marked_rows', DisplayMarkedRowItems, AMarkedRowIndex);
   DialogSetCheckbox(Result, 'line_spacing', ALineSpacing);
@@ -1660,7 +1662,16 @@ begin
   DialogSetListItems(Result, 'cell_w', DisplayCellExtraItems, ACellWidthExtra);
   DialogSetListItems(Result, 'cell_h', DisplayCellExtraItems, ACellHeightExtra);
   DialogSetLabelText(Result, 'font_note', ANote);
+end;
 
+function BuildInterfaceDialog(const ALanguageNames: TArray<string>;
+  ALanguageIndex: Integer; AShowNotifications: Boolean): TDialogDeclaration;
+var
+  Languages: TArray<string>;
+  Sel: Integer;
+begin
+  RequireDialogResource(cResDialogInterface, Result);
+  DialogSetCheckbox(Result, 'notifications', AShowNotifications);
   if Length(ALanguageNames) = 0 then
   begin
     SetLength(Languages, 1);

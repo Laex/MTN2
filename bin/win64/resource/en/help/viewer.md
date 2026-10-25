@@ -26,7 +26,7 @@
 | Ctrl+Alt+F | format the text to a given width (paragraphs are separated by blank lines) |
 | Alt+→ / Alt+← | shift the selected lines (the current line without a selection) right / left |
 | Alt+Shift+arrows (and Home / End / PgUp / PgDn), Alt+mouse | select a rectangular block – the same columns of several lines; Del, Backspace, typing and Ctrl+X / Ctrl+C / Ctrl+V act on every line of the block, a copied block is pasted as a block |
-| Enter (editor) | the new line starts with the indent of the line it continues (the blanks left of the cursor); the mode is switched on and off with **Ctrl+Alt+I**, in the Edit menu and in the settings (Font / Display) |
+| Enter (editor) | the new line starts with the indent of the line it continues (the blanks left of the cursor); the mode is switched on and off with **Ctrl+Alt+I**, in the Edit menu and in the settings (User interface) |
 | Ctrl+F2 | set / clear the bookmark of the cursor line (the line is marked with ■ in the frame on the left) |
 | Ctrl+Shift+F2 / Ctrl+Alt+F2 | go to the next / previous bookmark (wrapping around) |
 | Ctrl+Alt+B | list of the bookmarks (line number and text): Enter goes to the chosen one |

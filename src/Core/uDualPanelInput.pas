@@ -157,6 +157,7 @@ type
     OpenThemeDialog: TKeymapProc;
     OpenColumnsConfigDialog: TKeymapProc;
     OpenDisplayDialog: TKeymapProc;
+    OpenInterfaceDialog: TKeymapProc;
     OpenAboutDialog: TKeymapProc;
     OpenUpdates: TKeymapProc;
     RestoreHiddenDialogs: TKeymapProc;

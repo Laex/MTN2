@@ -46,6 +46,7 @@ type
     procedure EditCopy;
     procedure BeginSetAttributes;
     procedure OpenDisplayDialog;
+    procedure OpenInterfaceDialog;
     procedure OpenConsoleProfileDialog;
   end;
 
@@ -120,6 +121,11 @@ begin
   Last := 'display';
 end;
 
+procedure TMenuSpy.OpenInterfaceDialog;
+begin
+  Last := 'interface';
+end;
+
 procedure TMenuSpy.OpenConsoleProfileDialog;
 begin
   Last := 'consoleprofile';
@@ -147,6 +153,7 @@ begin
   AHost.EditCopy := ASpy.EditCopy;
   AHost.BeginSetAttributes := ASpy.BeginSetAttributes;
   AHost.OpenDisplayDialog := ASpy.OpenDisplayDialog;
+  AHost.OpenInterfaceDialog := ASpy.OpenInterfaceDialog;
   AHost.OpenConsoleProfileDialog := ASpy.OpenConsoleProfileDialog;
 end;
 
@@ -205,6 +212,9 @@ begin
     Assert.IsTrue(DispatchTopMenuAction(Host, tmaOptDisplay), 'display handled');
     Assert.IsTrue(Spy.Last = 'display', 'display opens Font / Display dialog');
 
+    Assert.IsTrue(DispatchTopMenuAction(Host, tmaOptInterface), 'interface handled');
+    Assert.IsTrue(Spy.Last = 'interface', 'interface opens the User interface dialog');
+
     Assert.IsTrue(DispatchTopMenuAction(Host, tmaQuit), 'quit handled');
     Assert.IsTrue(Spy.Last = 'quit', 'quit uses RequestQuit');
 
@@ -248,6 +258,7 @@ begin
   Assert.IsTrue(TopMenuActionEnabled(tmaCmdNextTab, Panels), 'panels: next tab on');
   Assert.IsTrue(TopMenuActionEnabled(tmaOptTheme, Panels), 'panels: theme on');
   Assert.IsTrue(TopMenuActionEnabled(tmaOptDisplay, Panels), 'panels: display on');
+  Assert.IsTrue(TopMenuActionEnabled(tmaOptInterface, Panels), 'panels: interface on');
 
   Assert.IsTrue(not TopMenuActionEnabled(tmaFileCopy, Viewer), 'viewer: copy off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaLeftDrive, Viewer), 'viewer: left drive off');
@@ -261,6 +272,7 @@ begin
   Assert.IsTrue(TopMenuActionEnabled(tmaEditHexToggle, Viewer), 'viewer: hex on');
   Assert.IsTrue(not TopMenuActionEnabled(tmaOptTheme, Viewer), 'viewer: theme off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaOptDisplay, Viewer), 'viewer: display off');
+  Assert.IsTrue(not TopMenuActionEnabled(tmaOptInterface, Viewer), 'viewer: interface off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaCmdNewTerminal, Viewer), 'viewer: new terminal off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaHelpAbout, Editor), 'editor: help off');
   Assert.IsTrue(not TopMenuActionEnabled(tmaQuit, Editor), 'editor: quit off');

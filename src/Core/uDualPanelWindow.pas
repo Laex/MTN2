@@ -758,6 +758,7 @@ type
     procedure OpenThemeDialog;
     procedure OpenColumnsConfigDialog;
     procedure OpenDisplayDialog;
+    procedure OpenInterfaceDialog;
     procedure OpenColorCodingDialog;
     procedure OpenKeymapDialog;
     procedure BeginBranchView;
@@ -1865,6 +1866,7 @@ begin
   FKeymapHost.OpenThemeDialog := OpenThemeDialog;
   FKeymapHost.OpenColumnsConfigDialog := OpenColumnsConfigDialog;
   FKeymapHost.OpenDisplayDialog := OpenDisplayDialog;
+  FKeymapHost.OpenInterfaceDialog := OpenInterfaceDialog;
   FKeymapHost.OpenAboutDialog := OpenAboutDialog;
   FKeymapHost.OpenUpdates := OpenUpdates;
   FKeymapHost.RestoreHiddenDialogs := RestoreHiddenDialogsNow;
@@ -5764,7 +5766,7 @@ begin
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
-    hdkColumnsConfig, hdkDisplay, hdkTerminalProfile, hdkConsoleProfile,
+    hdkColumnsConfig, hdkDisplay, hdkInterface, hdkTerminalProfile, hdkConsoleProfile,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkConsoleOptions:
       Result := FSettings.DispatchCommand(AKind, AControlId);
@@ -8715,6 +8717,11 @@ end;
 procedure TDualPanelWindow.OpenDisplayDialog;
 begin
   FSettings.OpenDisplay;
+end;
+
+procedure TDualPanelWindow.OpenInterfaceDialog;
+begin
+  FSettings.OpenInterface;
 end;
 
 procedure TDualPanelWindow.OpenExternalToolsDialog;

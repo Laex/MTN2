@@ -151,7 +151,7 @@ begin
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
-      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkConsoleOptions, hdkConsoleSave, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
+      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkConsoleOptions, hdkInterface, hdkConsoleSave, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
       hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeColors, hdkThemeText,
       hdkThemeChoice:
         Exit(fbcStubEdit);
@@ -291,6 +291,8 @@ begin
       Result := TArray<string>.Create(S('Theme'), S('^v select'), H('Enter', 'Edit', '='), H('Esc', 'Back', '='));
     hdkDisplay:
       Result := TArray<string>.Create(S('Display'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkInterface:
+      Result := TArray<string>.Create(S('Interface'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColumnsConfig:
       Result := TArray<string>.Create(S('Columns'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColorPicker, hdkMarkdownPicker, hdkThemePicker:

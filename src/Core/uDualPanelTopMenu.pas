@@ -200,6 +200,7 @@ begin
     tmaOptTheme: CallProc(AHost.OpenThemeDialog);
     tmaOptColumnsConfig: CallProc(AHost.OpenColumnsConfigDialog);
     tmaOptDisplay: CallProc(AHost.OpenDisplayDialog);
+    tmaOptInterface: CallProc(AHost.OpenInterfaceDialog);
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
     tmaOptConsoleOptions: CallProc(AHost.OpenConsoleOptionsDialog);
     tmaOptExportSettings: CallProc(AHost.BeginExportSettings);
@@ -235,7 +236,7 @@ begin
     tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit, tmaCmdPalette,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
-    tmaOptColumnsConfig, tmaOptDisplay, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
+    tmaOptColumnsConfig, tmaOptDisplay, tmaOptInterface, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile,
     tmaCmdSaveConsoleOutput, tmaCmdClearConsole,
