@@ -455,10 +455,12 @@ begin
   // lines). Let the real shell be the only source of truth,
   // exactly like keystroke-level input already does.
 
+  // Before EnsureShell: its cwd-sync `cd` line would otherwise be glued to
+  // the text still sitting on the shell's input line.
+  DropPendingInput;
+
   if not EnsureShell(WorkingDir) then
     Exit;
-
-  DropPendingInput;
 
   Line := Cmd;
   NormId := NormalizeShellProfileId(ProfileId);
