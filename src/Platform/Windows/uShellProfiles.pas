@@ -284,6 +284,17 @@ begin
   Result := NormalizeShellProfileId(AProfileId) + ShellProfileCopySuffix(AProfileId);
 end;
 
+// A typed "wsl <arguments>" line used as a profile id: wsl.exe runs it as
+// typed (wsl -d Name, wsl --shutdown, wsl ls) instead of being one of the
+// listed profiles.
+function IsWslInvocation(const AId: string): Boolean;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(Trim(AId));
+  Result := Lower.StartsWith('wsl ') or Lower.StartsWith('wsl.exe ');
+end;
+
 function NormalizeShellProfileId(const AProfileId: string): string;
 var
   Trimmed, Lower, Suffix: string;
@@ -337,6 +348,8 @@ begin
   if Id = cShellProfileGitBash then
     Exit(GetGitBashExePath(GitBashExe));
   if Id = cShellProfileWsl then
+    Exit(GetWslExePath(WslExe));
+  if IsWslInvocation(Id) then
     Exit(GetWslExePath(WslExe));
 
   if Id.StartsWith(cShellProfileWslPrefix) then
@@ -665,6 +678,15 @@ begin
     AWorkingDir := Cwd; // MSYS runtime maps the inherited Windows cwd on its own.
     Exit(True);
   end;
+  if IsWslInvocation(Id) then
+  begin
+    // The typed arguments may not combine with --cd (wsl --shutdown); wsl.exe
+    // maps the inherited Windows folder itself.
+    if not BuildWslCommandLine(Id, '', ACmdLine) then
+      Exit(False);
+    AWorkingDir := Cwd;
+    Exit(True);
+  end;
   if (Id = cShellProfileWsl) or Id.StartsWith(cShellProfileWslPrefix) then
   begin
     if not BuildWslCommandLine(Id, Cwd, ACmdLine) then
@@ -687,6 +709,7 @@ var
 begin
   NormId := NormalizeShellProfileId(AProfileId);
   if (NormId = cShellProfileWsl) or NormId.StartsWith(cShellProfileWslPrefix) or
+     IsWslInvocation(NormId) or
      NormId.StartsWith(cShellProfileSshPrefix) or (NormId = cShellProfileGitBash) then
     // WSL/Linux bash, Git Bash (MSYS bash), and ssh.exe forwarding to a
     // remote bash-like shell:
@@ -988,7 +1011,8 @@ begin
   // The line is submitted with the profile's own Enter (ProfileReturnSeq),
   // exactly like RunCommand: a fixed CRLF left PowerShell's PSReadLine on a
   // ">>" continuation prompt and gave bash a second, empty Enter.
-  if (NormId = cShellProfileWsl) or NormId.StartsWith(cShellProfileWslPrefix) then
+  if (NormId = cShellProfileWsl) or NormId.StartsWith(cShellProfileWslPrefix) or
+     IsWslInvocation(NormId) then
   begin
     LinuxPath := WindowsPathToWslPath(Path);
     if LinuxPath = '' then

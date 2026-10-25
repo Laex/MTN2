@@ -4947,7 +4947,7 @@ begin
   end;
 
   LowerText := LowerCase(Text);
-  if IsWslCommandString(LowerText) then
+  if IsWslSessionLine(LowerText) then
   begin
     FCmdLineMgr.Clear;
     SetCmdFocused(False);

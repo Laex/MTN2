@@ -16,13 +16,14 @@ type
     [Test] procedure TestSshProfile;
     [Test] procedure TestTitleWithShell;
     [Test] procedure TestShellCwdFromPrompt;
+    [Test] procedure TestWslSessionLine;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.IOUtils,
-  uShellProfiles,
+  uShellProfiles, uConPty,
   uSshConnections;
 
 procedure TestNormalization;
@@ -101,6 +102,31 @@ begin
     Assert.IsTrue(WorkingDir = '', 'WSL distro working dir mismatch');
   end;
 
+  // A typed wsl line runs as typed; --cd would not combine with --shutdown.
+  if ShellProfileAvailable(cShellProfileWsl) then
+  begin
+    Assert.IsTrue(ShellProfileAvailable('wsl --shutdown'), 'typed wsl line is available');
+    Assert.IsTrue(ResolveShellCmdLine('wsl --shutdown', 'C:\Test', CmdLine, WorkingDir),
+      'typed wsl line resolve failed');
+    Assert.IsTrue(CmdLine.Contains('wsl.exe') and CmdLine.EndsWith('--shutdown'),
+      'typed wsl cmdline mismatch: ' + CmdLine);
+    Assert.IsTrue(not CmdLine.Contains('--cd'), 'typed wsl line keeps its own arguments: ' + CmdLine);
+    Assert.IsTrue(WorkingDir = 'C:\Test', 'typed wsl line starts in the panel folder');
+    Assert.IsTrue(ProfileReturnSeq('wsl -d Debian') = #10, 'typed wsl line submits with a lone LF');
+  end;
+end;
+
+procedure TestWslSessionLine;
+begin
+  Assert.IsTrue(IsWslSessionLine('wsl'), 'wsl opens a session');
+  Assert.IsTrue(IsWslSessionLine('wsl.exe'), 'wsl.exe opens a session');
+  Assert.IsTrue(IsWslSessionLine('wsl -d debian'), 'a distro choice opens a session');
+  Assert.IsTrue(IsWslSessionLine('wsl -u root --cd ~'), 'user and folder options open a session');
+  Assert.IsTrue(IsWslSessionLine('wsl:ubuntu'), 'a profile id opens a session');
+  Assert.IsFalse(IsWslSessionLine('wsl --shutdown'), 'shutdown is a console command');
+  Assert.IsFalse(IsWslSessionLine('wsl -l -v'), 'listing is a console command');
+  Assert.IsFalse(IsWslSessionLine('wsl -d debian ls'), 'a command runs in the console');
+  Assert.IsFalse(IsWslSessionLine('dir wsl'), 'other commands are not wsl lines');
 end;
 
 procedure TestEnumeration;
@@ -240,6 +266,11 @@ end;
 procedure TTestShellProfiles.TestSshProfile;
 begin
   TestShellProfiles.TestSshProfile;
+end;
+
+procedure TTestShellProfiles.TestWslSessionLine;
+begin
+  TestShellProfiles.TestWslSessionLine;
 end;
 
 procedure TTestShellProfiles.TestShellCwdFromPrompt;

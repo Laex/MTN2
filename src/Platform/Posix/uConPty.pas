@@ -101,6 +101,8 @@ function BuildPersistentShellCmdLine(const AProfile: string = ''): string;
 function QuoteCmdPath(const APath: string): string;
 /// <summary>Always False: there is no WSL launcher on this platform.</summary>
 function IsWslCommandString(const ALowerCmd: string): Boolean;
+/// <summary>Always False: there is no WSL launcher on this platform.</summary>
+function IsWslSessionLine(const ALowerCmd: string): Boolean;
 
 implementation
 
@@ -242,6 +244,11 @@ begin
 end;
 
 function IsWslCommandString(const ALowerCmd: string): Boolean;
+begin
+  Result := False;
+end;
+
+function IsWslSessionLine(const ALowerCmd: string): Boolean;
 begin
   Result := False;
 end;

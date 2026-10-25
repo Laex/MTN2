@@ -139,6 +139,10 @@ function QuoteCmdPath(const APath: string): string;
 /// <summary>True for "wsl", "wsl.exe", or either with a trailing space/colon
 /// (a WSL invocation to route through wsl.exe rather than cmd.exe).</summary>
 function IsWslCommandString(const ALowerCmd: string): Boolean;
+/// <summary>True for a "wsl" line that opens a shell session (wsl, wsl -d Name,
+/// wsl -u user ~) and not for one that runs a command or a management option
+/// (wsl --shutdown, wsl -l -v, wsl ls), which belongs in the console.</summary>
+function IsWslSessionLine(const ALowerCmd: string): Boolean;
 
 implementation
 
@@ -156,6 +160,31 @@ begin
   Result := (ALowerCmd = 'wsl') or (ALowerCmd = 'wsl.exe') or
     ALowerCmd.StartsWith('wsl ') or ALowerCmd.StartsWith('wsl.exe ') or
     ALowerCmd.StartsWith('wsl:');
+end;
+
+function IsWslSessionLine(const ALowerCmd: string): Boolean;
+var
+  Tokens: TArray<string>;
+  I: Integer;
+begin
+  Result := False;
+  if not IsWslCommandString(ALowerCmd) then
+    Exit;
+  if ALowerCmd.StartsWith('wsl:') then
+    Exit(True);
+  Tokens := ALowerCmd.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  I := 1;
+  while I < Length(Tokens) do
+  begin
+    if (Tokens[I] = '-d') or (Tokens[I] = '--distribution') or (Tokens[I] = '-u') or
+       (Tokens[I] = '--user') or (Tokens[I] = '--cd') then
+      Inc(I, 2)
+    else if Tokens[I] = '~' then
+      Inc(I)
+    else
+      Exit(False);
+  end;
+  Result := True;
 end;
 
 function BuildCmdLineForShell(const ACommand: string): string;
