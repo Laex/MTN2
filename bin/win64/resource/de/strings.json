@@ -387,7 +387,7 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "Befehlspalette",
-      "hint": "Tippen=Suchen (? und * erlaubt)  Enter=Ausführen  Esc=Schließen",
+      "hint": "Tippen=Suchen (? und * erlaubt)  Enter=Ausführen  Ctrl+K=Taste  Esc=Schließen",
       "query_label": "Suchtext:",
       "ok": "Ausführen",
       "cancel": "Abbrechen"
@@ -1043,6 +1043,7 @@
     "toast.selectionUnchanged": "Auswahl unverändert (Maske \"%s\")",
     "toast.hotlistAdded": "\"%s\" zur Ordner-Hotlist hinzugefügt",
     "toast.nothingToCopy": "Nichts zu kopieren",
+    "toast.noKeyForCommand": "Für diesen Befehl gibt es keine Taste zum Zuweisen",
     "toast.nothingToExport": "Nichts zu speichern",
     "toast.noExportFields": "Mindestens ein Feld wählen",
     "toast.listExported": "%d Einträge gespeichert: %s",
@@ -1106,6 +1107,7 @@
     "job.confirmCopyMoveOne": "%s `%s` nach:",
     "job.confirmCopyMoveMany": "%s %d Element(e) nach:",
     "job.renameTitle": "Umbenennen",
+    "job.sameFolder": "Der Zielordner ist der Ordner der Elemente: bitte einen anderen wählen",
     "job.renameNewName": "Neuer Name:",
     "hotlist.addTitle": "Zur Hotlist hinzufügen",
     "hotlist.namePrompt": "Name:",

@@ -7,6 +7,9 @@ unit uSdlHost;
 
 interface
 
+uses
+  uStartupTargets;
+
 type
   TSdlHostOptions = record
     FontName: string;
@@ -14,7 +17,7 @@ type
     FontSize: Integer;
     Cols: Integer;
     Rows: Integer;
-    Path: string;
+    Targets: TStartupTargets;
     /// <summary>Do not hand the path over to a window that is already open (and
     /// do not accept paths from later starts).</summary>
     NewWindow: Boolean;
@@ -36,7 +39,7 @@ uses
   uCoreTimer, uHostShell, uPlatformInfo, uPlatformFonts, uPlatformProcess,
   uSdlApi, uSdlInput, uGlyphSource, uFreeTypeGlyphs, uPixelGrid, uPixelBlit,
   uPngWriter, uOverlayRenderer, uOverlayModel, uConfigLocation, uSdlClipboard,
-  uSdlImage, uShellIcons, uSdlSurfaceMouse, uThemeTypes, uInstanceSocket;
+  uSdlImage, uShellIcons, uSdlSurfaceMouse, uThemeTypes, uInstanceSocket, uDesktopEntry;
 
 const
   cDefaultFontSize = 16;
@@ -94,7 +97,8 @@ type
     procedure Close;
     /// <summary>A path handed over by a later start: opened in a new tab, the
     /// window brought to the front.</summary>
-    procedure OpenRequested(const APath: string);
+    /// <summary>ATargets is EncodeStartupTargets text from a later start.</summary>
+    procedure OpenRequested(const ATargets: string);
   end;
 
 procedure LogError(const AMessage: string);
@@ -223,7 +227,13 @@ begin
   FScale := 1;
   // Without this SDL hides the composition of an input method (CJK and others).
   if Assigned(SDL_SetHint) then
+  begin
     SDL_SetHint('SDL_IME_SHOW_UI', '1');
+    // The window class (X11) and the application id (Wayland) are the id of
+    // the menu entry, so the taskbar finds its name and icon.
+    SDL_SetHint('SDL_VIDEO_X11_WMCLASS', PAnsiChar(AnsiString(DesktopEntryId(dekSdl))));
+    SDL_SetHint('SDL_APP_ID', PAnsiChar(AnsiString(DesktopEntryId(dekSdl))));
+  end;
   if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS) <> 0 then
   begin
     AError := 'SDL_Init failed: ' + SdlErrorText;
@@ -282,10 +292,13 @@ begin
         AArea := TRect.Create(B.Left * FGrid.CellWidth, B.Top * FGrid.CellHeight,
           (B.Right + 1) * FGrid.CellWidth, (B.Bottom + 1) * FGrid.CellHeight);
     end);
-  if FOptions.Path <> '' then
-    FShell.DualPanel.OpenPathAsNewTab(FOptions.Path);
+  FShell.DualPanel.OpenStartupTargets(FOptions.Targets);
   FitGrid;
   SDL_StartTextInput;
+  // The first window of a program unpacked from an archive gets its menu entry
+  // and icon; a window opened for a test or in a second copy does not.
+  if not FOptions.NewWindow then
+    EnsureDesktopEntry(dekSdl);
   Result := True;
 end;
 
@@ -549,10 +562,9 @@ begin
   end;
 end;
 
-procedure TSdlHost.OpenRequested(const APath: string);
+procedure TSdlHost.OpenRequested(const ATargets: string);
 begin
-  if APath <> '' then
-    FShell.DualPanel.OpenPathAsNewTab(APath);
+  FShell.DualPanel.OpenStartupTargets(DecodeStartupTargets(ATargets));
   FShell.Dirty := True;
   if Assigned(SDL_RestoreWindow) then
     SDL_RestoreWindow(FWindow);
@@ -690,8 +702,7 @@ begin
   Shell := THostShell.Create(Cols, Rows);
   try
     Shell.AttachPlugins(PluginsDir);
-    if AOptions.Path <> '' then
-      Shell.DualPanel.OpenPathAsNewTab(AOptions.Path);
+    Shell.DualPanel.OpenStartupTargets(AOptions.Targets);
     // Let the panels finish reading their folders.
     for I := 1 to 40 do
     begin

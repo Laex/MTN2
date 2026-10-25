@@ -12,6 +12,8 @@ type
     [Test] procedure TestJobOptionMaps;
     [Test] [Category('WindowsOnly')] procedure TestDestAndPack;
     [Test] procedure TestCollectSources;
+    [Test] procedure TestPanelFoldersAreSame;
+    [Test] procedure TestConfirmIntoSameFolderStaysOpen;
     [Test] procedure TestPackIntoRenamedSevenZip;
     [Test] [Category('WindowsOnly')] procedure TestSearchRootAndSync;
   end;
@@ -21,6 +23,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils,
   uDialogTypes,
+  uDialogHost,
   uVfsTypes,
   uDualPanelTypes,
   uDualPanelUiTypes,
@@ -28,8 +31,69 @@ uses
   uDualPanelSync,
   uFindSession,
   uDualPanelJobDialogs,
+  uDualPanelJobList,
+  uDualPanelJobs,
   uDualPanelJobRules,
   uDualPanelFindDialogs;
+
+procedure TestConfirmIntoSameFolderStaysOpen;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Controller: TJobDialogController;
+  Fields: TDialogCommandFields;
+  Warning, Dir: string;
+begin
+  Warning := '';
+  Dir := TPath.Combine(TPath.GetTempPath, 'MTN2_SameFolderConfirm');
+  Host := TDialogHost.Create(nil);
+  Jobs := TPanelJobList.Create(nil, nil,
+    procedure begin end,
+    procedure(const ATitle, AMessage: string)
+    begin
+      Host.Open(BuildCopyMoveDialog(ATitle, AMessage,
+        JobConfirmDestText(pjkCopy, PathToFileUri(Dir))), nil);
+    end,
+    procedure(const APath, ANewLine, AExistingLine: string) begin end,
+    procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
+      AOfferPermanent: Boolean) begin end,
+    procedure(const AHeadline, APath, AErrorLine: string) begin end,
+    procedure(ASucceeded: Boolean) begin end,
+    procedure(const AOriginSrc, AOriginDst: string) begin end,
+    procedure(const AOriginSrc: string) begin end);
+  Controller := TJobDialogController.Create(Host, Jobs, nil, nil);
+  Controller.OnWarn :=
+    procedure(const AMessage: string)
+    begin
+      Warning := AMessage;
+    end;
+  try
+    Jobs.BeginJob(TArray<string>.Create(PathToFileUri(TPath.Combine(Dir, 'a.txt'))),
+      PathToFileUri(Dir), pjkCopy);
+    Assert.IsTrue(Jobs.Phase = pjpConfirm, 'the confirm dialog is up');
+    Fields := Default(TDialogCommandFields);
+    Fields.DestPath := Host.GetInputValue('job_dest');
+    Fields.ExistingIdx := 0;
+    Controller.DispatchCommand(hdkJobConfirm, 'ok', Fields);
+    Assert.IsTrue(Jobs.Phase = pjpConfirm, 'confirming into the source folder starts nothing');
+    Assert.IsTrue(Host.Visible, 'the dialog stays open');
+    Assert.AreEqual(JobSameFolderWarning, Warning, 'a warning says why');
+  finally
+    Controller.Free;
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestPanelFoldersAreSame;
+begin
+  Assert.IsTrue(PanelFoldersAreSame('file:///C:/Work', 'file:///C:/Work'), 'identical folders');
+  Assert.IsTrue(PanelFoldersAreSame('file:///C:/Work/', 'file:///C:/Work'), 'a trailing slash does not matter');
+  Assert.IsFalse(PanelFoldersAreSame('file:///C:/Work', 'file:///C:/Other'), 'different folders');
+  Assert.IsFalse(PanelFoldersAreSame('file:///C:/Work', 'file:///C:/Work/sub'), 'a subfolder is another folder');
+  Assert.IsTrue(PanelFoldersAreSame('sftp://u@h/path/', 'sftp://u@h/path'), 'the same remote folder');
+  Assert.IsFalse(PanelFoldersAreSame('sftp://u@h/a', 'sftp://u@h/b'), 'different remote folders');
+end;
 
 procedure TestJobOptionMaps;
 begin
@@ -279,6 +343,16 @@ begin
 end;
 
 { TTestDualPanelJobDialogs }
+
+procedure TTestDualPanelJobDialogs.TestPanelFoldersAreSame;
+begin
+  TestDualPanelJobDialogs.TestPanelFoldersAreSame;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConfirmIntoSameFolderStaysOpen;
+begin
+  TestDualPanelJobDialogs.TestConfirmIntoSameFolderStaysOpen;
+end;
 
 procedure TTestDualPanelJobDialogs.TestJobOptionMaps;
 begin

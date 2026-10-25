@@ -23,6 +23,9 @@ type
     [Test] procedure DragToTheOtherPanelCopiesTheFile;
     [Test] procedure DragWithShiftMovesTheFile;
     [Test] procedure DragBackOntoTheSameFolderChangesNothing;
+    [Test] procedure SeveralStartupFoldersOpenSeveralTabs;
+    [Test] procedure StartupViewTargetOpensTheFileInTheViewer;
+    [Test] procedure StartupEditTargetOpensTheFileInTheEditor;
   end;
 
 implementation
@@ -30,7 +33,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.Types, System.Generics.Collections,
   System.UITypes, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
-  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface;
+  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets;
 
 const
   cScancodeBit = $40000000;
@@ -456,6 +459,90 @@ begin
     Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(D.Left))), 'no copy appeared next to it');
   finally
     FinishDrag(D);
+  end;
+end;
+
+// Runs the panel window until AText is on the screen or the time is up.
+function WaitForScreenText(ARig: THostRig; const AText: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 1 to 50 do
+  begin
+    PumpMain(40);
+    if ARig.Screen.Contains(AText) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+function StartupTarget(const APath: string; AMode: TStartupMode): TStartupTarget;
+begin
+  Result.Path := APath;
+  Result.Mode := AMode;
+end;
+
+procedure TTestSdlShell.SeveralStartupFoldersOpenSeveralTabs;
+var
+  Rig: THostRig;
+  Root, One, Two: string;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-startup-' + TPath.GetGUIDFileName(False));
+  One := TPath.Combine(Root, 'one');
+  Two := TPath.Combine(Root, 'two');
+  TDirectory.CreateDirectory(One);
+  TDirectory.CreateDirectory(Two);
+  TFile.WriteAllText(TPath.Combine(One, 'inone.txt'), 'x', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(Two, 'intwo.txt'), 'x', TEncoding.UTF8);
+  Rig := THostRig.Create;
+  try
+    Rig.Shell.DualPanel.OpenStartupTargets([StartupTarget(One, smOpen), StartupTarget(Two, smOpen)]);
+    Assert.IsTrue(WaitForScreenText(Rig, 'intwo.txt'), 'the last folder is shown'#10 + Rig.Screen);
+    Assert.IsTrue(Rig.Screen.Contains('one x'), 'the first folder keeps its tab'#10 + Rig.Screen);
+  finally
+    Rig.Free;
+    TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestSdlShell.StartupViewTargetOpensTheFileInTheViewer;
+var
+  Rig: THostRig;
+  Root, FileName: string;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-startup-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Root);
+  FileName := TPath.Combine(Root, 'viewme.txt');
+  TFile.WriteAllText(FileName, 'startup-view-marker', TEncoding.UTF8);
+  Rig := THostRig.Create;
+  try
+    Rig.Shell.DualPanel.OpenStartupTargets([StartupTarget(FileName, smView)]);
+    Assert.IsTrue(WaitForScreenText(Rig, 'startup-view-marker'), 'the viewer shows the text'#10 + Rig.Screen);
+  finally
+    Rig.Free;
+    TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestSdlShell.StartupEditTargetOpensTheFileInTheEditor;
+var
+  Rig: THostRig;
+  Root, FileName: string;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-startup-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Root);
+  FileName := TPath.Combine(Root, 'editme.txt');
+  TFile.WriteAllText(FileName, 'startup-edit-marker', TEncoding.UTF8);
+  Rig := THostRig.Create;
+  try
+    Rig.Shell.DualPanel.OpenStartupTargets([StartupTarget(FileName, smEdit)]);
+    Assert.IsTrue(WaitForScreenText(Rig, 'startup-edit-marker'), 'the editor shows the text'#10 + Rig.Screen);
+    // A name that does not exist yet opens an empty buffer in an existing folder.
+    Rig.Shell.DualPanel.OpenStartupTargets([StartupTarget(TPath.Combine(Root, 'fresh.txt'), smEdit)]);
+    Assert.IsFalse(TFile.Exists(TPath.Combine(Root, 'fresh.txt')), 'nothing is written before a save');
+  finally
+    Rig.Free;
+    TDirectory.Delete(Root, True);
   end;
 end;
 

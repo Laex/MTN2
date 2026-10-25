@@ -11,7 +11,7 @@ function RunSdl: Integer;
 implementation
 
 uses
-  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost, uInstanceSocket;
+  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost, uInstanceSocket, uStartupTargets, uUpdateCli, uDesktopEntry;
 
 type
   TSdlOptions = record
@@ -24,6 +24,7 @@ function ParseOptions: TSdlOptions;
 var
   I: Integer;
   Arg: string;
+  Parser: TStartupTargetParser;
 
   function ValueOf(const APrefix: string): string;
   begin
@@ -32,6 +33,7 @@ var
 
 begin
   Result := Default(TSdlOptions);
+  Parser := Default(TStartupTargetParser);
   for I := 1 to ParamCount do
   begin
     Arg := ParamStr(I);
@@ -51,9 +53,10 @@ begin
       Result.Host.NewWindow := True
     else if Arg.StartsWith('--snapshot=') then
       Result.Host.SnapshotFile := ValueOf('--snapshot=')
-    else if (Arg <> '') and (Arg[1] <> '-') and (Result.Host.Path = '') then
-      Result.Host.Path := Arg;
+    else
+      Parser.Take(Arg);
   end;
+  Result.Host.Targets := Parser.Targets;
 end;
 
 procedure WriteLine(const AText: string);
@@ -63,10 +66,15 @@ end;
 
 procedure ShowUsage;
 begin
-  WriteLine('Usage: mtn2-sdl [options] [folder]');
+  WriteLine('Usage: mtn2-sdl [options] [path ...]');
+  WriteLine('  path              a folder opens in a new tab; a file opens its folder with the cursor on it');
+  WriteLine('  --view FILE       open the file in the viewer');
+  WriteLine('  --edit FILE       open the file in the editor (-e FILE)');
+  WriteLine('  --update [CH]     download and install the latest version, CH is stable or nightly (kept for next time)');
   WriteLine('  --font=NAME       font family (default: the monospace family of the system)');
   WriteLine('  --size=PX         glyph height in pixels (default 16)');
   WriteLine('  --cols=N --rows=N initial window size in cells');
+  WriteLine('  --install-desktop    write the menu entry and icon to ~/.local/share (--uninstall-desktop removes them)');
   WriteLine('  --new-window      do not hand the folder over to a window that is already open');
   WriteLine('  --snapshot=FILE   draw one screen to a PNG file and exit, without a window');
   WriteLine('  --self-check      check the files next to the program and exit');
@@ -115,6 +123,7 @@ end;
 function RunSdl: Integer;
 var
   Opts: TSdlOptions;
+  Channel: string;
 begin
   // Glyph edges are smooth, as under Skia: a stronger dim and a lighter shadow strip.
   GModalDimPercent := 88;
@@ -137,16 +146,18 @@ begin
   end;
   if SelfCheckRequested then
     Exit(RunSdlSelfCheck);
+  if UpdateRequested(Channel) then
+    Exit(RunUpdateCommand(Channel, WriteLine));
+  if InstallDesktopRequested then
+    Exit(RunDesktopCommand(dekSdl, True, WriteLine));
+  if UninstallDesktopRequested then
+    Exit(RunDesktopCommand(dekSdl, False, WriteLine));
   if Opts.Host.SnapshotFile <> '' then
     Exit(RunSdlSnapshot(Opts.Host));
-  // A window that is already open takes the folder and comes to the front.
+  // A window that is already open takes the paths and comes to the front.
   if not Opts.Host.NewWindow then
-  begin
-    if Opts.Host.Path <> '' then
-      Opts.Host.Path := ExpandFileName(Opts.Host.Path);
-    if InstanceTryHandOver('sdl', Opts.Host.Path) then
+    if InstanceTryHandOver('sdl', EncodeStartupTargets(Opts.Host.Targets)) then
       Exit(0);
-  end;
   Result := RunSdlHost(Opts.Host);
   // An update that asked for a restart starts here.
   PlatformExecPendingStart;

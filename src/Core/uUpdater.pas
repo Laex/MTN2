@@ -20,7 +20,7 @@ unit uUpdater;
 interface
 
 uses
-  System.SysUtils, System.Classes;
+  System.SysUtils, System.Classes, uStartupTargets;
 
 const
   cUpdateRepo = 'Laex/MTN2';
@@ -130,8 +130,9 @@ function StagingDir: string;
 function RestartApplication(const AExeFile: string; out AError: string): Boolean;
 /// <summary>Called first thing in the dpr: honours --wait-pid.</summary>
 procedure WaitForPreviousInstanceFromCommandLine;
-/// <summary>First command-line argument that is not an updater switch.</summary>
-function StartupPathArgument: string;
+/// <summary>The folders and files named on the command line; the updater and
+/// display switches are not targets.</summary>
+function StartupTargetsArgument: TStartupTargets;
 /// <summary>True when the process was started with --no-skia.</summary>
 function NoSkiaRequested: Boolean;
 /// <summary>True when the process was started with --fps: frames per second
@@ -648,21 +649,22 @@ begin
     end;
 end;
 
-function StartupPathArgument: string;
+function StartupTargetsArgument: TStartupTargets;
 var
   I: Integer;
+  Parser: TStartupTargetParser;
 begin
+  Parser := Default(TStartupTargetParser);
   I := 1;
   while I <= ParamCount do
   begin
     if SameText(ParamStr(I), cUpdateWaitPidSwitch) then
-      Inc(I, 2)
-    else if SameText(ParamStr(I), cNoSkiaSwitch) or SameText(ParamStr(I), cFpsSwitch) then
       Inc(I)
     else
-      Exit(ParamStr(I));
+      Parser.Take(ParamStr(I));
+    Inc(I);
   end;
-  Result := '';
+  Result := Parser.Targets;
 end;
 
 function SwitchRequested(const ASwitch: string): Boolean;

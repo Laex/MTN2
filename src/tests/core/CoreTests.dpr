@@ -38,7 +38,10 @@ uses
   TestTermInput in 'TestTermInput.pas',
   TestThemeSpec in 'TestThemeSpec.pas',
   TestToast in 'TestToast.pas',
-  TestUpdater in 'TestUpdater.pas';
+  TestUpdater in 'TestUpdater.pas',
+  TestUpdateCli in 'TestUpdateCli.pas',
+  TestStartupTargets in 'TestStartupTargets.pas',
+  TestDesktopEntry in 'TestDesktopEntry.pas';
 
 begin
   RunRegisteredTests;

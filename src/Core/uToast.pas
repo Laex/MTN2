@@ -46,8 +46,13 @@ type
     procedure Hide;
     /// <summary>Hide, but only if the notice on screen was shown with ATag.</summary>
     procedure HideTag(const ATag: string);
+    /// <summary>AAvoid: an area that must stay uncovered (an open dialog);
+    /// the notice is skipped while its box, shadow included, would touch it.
+    /// Width 0 means nothing to avoid.</summary>
     procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
-      AWidth, AHeight: Integer);
+      AWidth, AHeight: Integer); overload;
+    procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
+      AWidth, AHeight: Integer; const AAvoid: TRectI); overload;
     property Visible: Boolean read FVisible;
     property Kind: TToastKind read FKind;
   end;
@@ -68,6 +73,9 @@ function ToastFitText(const ATemplate, AArg: string; AMaxLen: Integer): string;
 /// Empty (Width 0) when the window is too small.</summary>
 function ToastBounds(ATextLen, AWidth, AHeight: Integer;
   ALines: Integer = 1): TRectI;
+/// <summary>True when a toast box (its one-cell shadow included) does not
+/// touch AOther; an empty AOther is always clear.</summary>
+function ToastClearOf(const AToast, AOther: TRectI): Boolean;
 /// <summary>Longest text a toast can show in a window AWidth wide.</summary>
 function ToastMaxTextLen(AWidth: Integer): Integer;
 
@@ -212,8 +220,21 @@ begin
   Hide;
 end;
 
+function ToastClearOf(const AToast, AOther: TRectI): Boolean;
+begin
+  Result := (AOther.Width <= 0) or (AOther.Height <= 0) or
+    (AToast.Right + 1 < AOther.Left) or (AToast.Left > AOther.Right) or
+    (AToast.Bottom + 1 < AOther.Top) or (AToast.Top > AOther.Bottom);
+end;
+
 procedure TToast.Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
   AWidth, AHeight: Integer);
+begin
+  Draw(AGrid, ATheme, AWidth, AHeight, Default(TRectI));
+end;
+
+procedure TToast.Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
+  AWidth, AHeight: Integer; const AAvoid: TRectI);
 var
   Text, Hint: string;
   R: TRectI;
@@ -234,6 +255,8 @@ begin
   end;
   R := ToastBounds(TextW, AWidth, AHeight, Lines);
   if R.Width < cToastChrome + 1 then
+    Exit;
+  if not ToastClearOf(R, AAvoid) then
     Exit;
   // Plain double frame in the dialog colours: the theme's dialog frame adds
   // a close box, and a toast takes no clicks.

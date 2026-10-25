@@ -30,6 +30,9 @@ type
     [Test] procedure TestShiftF9IsBoundToThePalette;
     [Test] procedure TestTypingNarrowsTheListAndEnterRuns;
     [Test] procedure TestEnterOnEmptyResultRunsNothing;
+    [Test] procedure TestCtrlKOpensTheKeyListOnTheCommand;
+    [Test] procedure TestCtrlKOnACommandWithoutKeyKeepsThePalette;
+    [Test] procedure TestResumeKeepsTheSelectedCommand;
   end;
 
 implementation
@@ -37,7 +40,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
-  uDialogHost, uDualPanelUiTypes, uDualPanelPaletteDialog;
+  uDialogHost, uDualPanelUiTypes, uDualPanelPaletteDialog, uDualPanelKeymapDialog;
 
 const
   cMenuJson =
@@ -415,6 +418,169 @@ begin
     begin
       Result := AMenu;
     end);
+end;
+
+procedure TTestCommandPalette.TestCtrlKOpensTheKeyListOnTheCommand;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  K: TKeymapDialogController;
+  Key: Word;
+  Ch: Char;
+  Asked: TKeymapAction;
+  Sel: Integer;
+  I: Integer;
+begin
+  M := MakeMenu(cMenuJson);
+  D := TDialogHost.Create(nil);
+  K := nil;
+  try
+    C := MakePalette(D, M);
+    K := TKeymapDialogController.Create(D,
+      procedure(const AControlId, AValuesJson: string) begin end,
+      procedure(AKind: THostDialogKind) begin end,
+      procedure begin end,
+      function: Boolean begin Result := True; end,
+      procedure begin end);
+    try
+      Asked := kaNone;
+      C.OnAssignKey :=
+        function(AAction: TKeymapAction): Boolean
+        begin
+          Asked := AAction;
+          K.OpenList(AAction);
+          Result := True;
+        end;
+      C.OpenList;
+      for I := 1 to 4 do
+      begin
+        Key := 0;
+        Ch := 'move'[I];
+        C.HandleFilterInput(Key, [], Ch);
+      end;
+      Key := Ord('K');
+      Ch := #0;
+      Assert.IsTrue(C.HandleFilterInput(Key, [ssCtrl], Ch), 'Ctrl+K is taken by the palette');
+      Assert.AreEqual(Ord(TopMenuKeymapAction(tmaFileMove)), Ord(Asked),
+        'the key list is asked for the action of the selected command');
+      Assert.AreNotEqual(Ord(kaNone), Ord(Asked));
+      Assert.AreEqual<Integer>(0, C.RowCount, 'the palette is closed');
+      Sel := D.GetListSelectedIndex('actions');
+      Assert.IsTrue(Sel > 1, 'the list is scrolled to the command, not left at the top');
+      for I := 0 to D.ControlCount - 1 do
+        if D.GetControl(I).Id = 'actions' then
+          Assert.IsTrue(Pos(KeymapActionCaption(Asked), D.GetControl(I).Items[Sel]) > 0,
+            'the selected row is the command');
+
+      // Closing the key list brings the palette back as it was left.
+      K.OnListClosed :=
+        procedure
+        begin
+          C.Resume;
+        end;
+      GKind := hdkNone;
+      K.DispatchCommand(hdkKeymap, 'cancel');
+      Assert.AreEqual(Ord(hdkCommandPalette), Ord(GKind), 'the palette is the open dialog again');
+      Assert.AreEqual('move', D.GetInputValue('query'), 'the search text is kept');
+      Assert.AreEqual<Integer>(1, C.RowCount, 'the same narrowed list');
+      Assert.AreEqual<Integer>(0, D.GetListSelectedIndex('commands'), 'the same command is selected');
+    finally
+      K.Free;
+      C.Free;
+    end;
+  finally
+    D.Free;
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestResumeKeepsTheSelectedCommand;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Key: Word;
+  Ch: Char;
+  Before: Integer;
+begin
+  M := MakeMenu(cMenuJson);
+  D := TDialogHost.Create(nil);
+  try
+    C := MakePalette(D, M);
+    try
+      C.OnAssignKey :=
+        function(AAction: TKeymapAction): Boolean
+        begin
+          Result := True;
+        end;
+      C.OpenList;
+      Key := vkDown;
+      Ch := #0;
+      D.HandleInput(Key, [], Ch);
+      Key := vkDown;
+      D.HandleInput(Key, [], Ch);
+      Before := D.GetListSelectedIndex('commands');
+      Assert.IsTrue(Before > 0, 'a command below the first is selected');
+      Key := Ord('K');
+      Ch := #0;
+      C.HandleFilterInput(Key, [ssCtrl], Ch);
+      Assert.AreEqual<Integer>(0, C.RowCount, 'the palette is left');
+      C.Resume;
+      Assert.AreEqual<Integer>(Before, D.GetListSelectedIndex('commands'),
+        'the same command is selected on return');
+    finally
+      C.Free;
+    end;
+  finally
+    D.Free;
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestCtrlKOnACommandWithoutKeyKeepsThePalette;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Key: Word;
+  Ch: Char;
+  Asked: TKeymapAction;
+  Calls: Integer;
+begin
+  M := MakeMenu(
+    '{"categories":[{"title":"Files","hotChar":"F","items":[' +
+    '{"caption":"Without key","hotChar":"W","shortcut":"","action":"tmaFileSelectByExt"}]}]}');
+  D := TDialogHost.Create(nil);
+  try
+    C := MakePalette(D, M);
+    try
+      Assert.AreEqual(Ord(kaNone), Ord(TopMenuKeymapAction(tmaFileSelectByExt)),
+        'the test command has no key of its own');
+      Asked := kaCopy;
+      Calls := 0;
+      C.OnAssignKey :=
+        function(AAction: TKeymapAction): Boolean
+        begin
+          Inc(Calls);
+          Asked := AAction;
+          Result := False;
+        end;
+      C.OpenList;
+      Assert.IsTrue(C.RowCount > 0, 'the command is listed');
+      Key := Ord('K');
+      Ch := #0;
+      Assert.IsTrue(C.HandleFilterInput(Key, [ssCtrl], Ch));
+      Assert.AreEqual<Integer>(1, Calls);
+      Assert.AreEqual(Ord(kaNone), Ord(Asked), 'a command with no key is reported as such');
+      Assert.IsTrue(C.RowCount > 0, 'the palette stays open');
+    finally
+      C.Free;
+    end;
+  finally
+    D.Free;
+    M.Free;
+  end;
 end;
 
 procedure TTestCommandPalette.TestContextLineFollowsTheSelectedItem;

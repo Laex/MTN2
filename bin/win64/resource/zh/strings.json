@@ -386,7 +386,7 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "命令面板",
-      "hint": "输入=搜索(可用 ? 和 *)  Enter=执行  Esc=关闭",
+      "hint": "输入=搜索(可用 ? 和 *)  Enter=执行  Ctrl+K=按键  Esc=关闭",
       "query_label": "搜索文本:",
       "ok": "执行",
       "cancel": "取消"
@@ -1042,6 +1042,7 @@
     "toast.selectionUnchanged": "选择未变化(掩码\"%s\")",
     "toast.hotlistAdded": "\"%s\"已添加到常用文件夹",
     "toast.nothingToCopy": "没有可复制的内容",
+    "toast.noKeyForCommand": "此命令没有可分配的按键",
     "toast.nothingToExport": "没有可保存的内容",
     "toast.noExportFields": "请至少选择一个字段",
     "toast.listExported": "已保存 %d 项: %s",
@@ -1105,6 +1106,7 @@
     "job.confirmCopyMoveOne": "%s `%s` 到:",
     "job.confirmCopyMoveMany": "%s %d 个项目到:",
     "job.renameTitle": "重命名",
+    "job.sameFolder": "目标文件夹就是这些项目所在的文件夹，请另选一个",
     "job.renameNewName": "新名称:",
     "hotlist.addTitle": "添加到常用文件夹",
     "hotlist.namePrompt": "名称:",

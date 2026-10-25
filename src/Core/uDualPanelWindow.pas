@@ -12,7 +12,7 @@ uses
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindSession, uEditorWindow, uHelpViewer, uHelpContext, uQuickTextView,
-  uHistoryPopup,
+  uHistoryPopup, uStartupTargets,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
@@ -217,6 +217,9 @@ type
     FReloadSub: ISubscription;
     FColorCoding: TColorCodingDialogController;
     FKeymapDlg: TKeymapDialogController;
+    /// <summary>The key list was opened from the command palette: closing it
+    /// brings the palette back.</summary>
+    FReturnToPalette: Boolean;
     FFolderHotlist: TFolderHotlistDialogController;
     FWorkspaceLibrary: TWorkspaceLibraryDialogController;
     FSshConnections: TSshConnectionsDialogController;
@@ -385,6 +388,9 @@ type
     procedure UpdatePackDialogFields;
     procedure HostDialogValueChanged(const AControlId: string);
     procedure HostRejectJob(const ATitle, AMessage: string);
+    procedure HostWarnJob(const AMessage: string);
+    function HostAssignPaletteKey(AAction: TKeymapAction): Boolean;
+    procedure HostKeymapListClosed;
     procedure HostOpenOverwriteAsk(const APath, ANewLine, AExistingLine: string);
     procedure HostOpenDeleteError(const APath, AHeadline, AQuestion, AErrorLine: string;
       AOfferPermanent: Boolean);
@@ -1148,6 +1154,10 @@ type
     /// startup CLI-arg path both call. No-op for '' or a path that doesn't
     /// exist.</summary>
     procedure OpenPathAsNewTab(const APath: string);
+    /// <summary>Opens what the command line (or a later start handing it over)
+    /// names: folders and file locations in new tabs, --view files in the
+    /// viewer, --edit files in the editor (a new name is created on save).</summary>
+    procedure OpenStartupTargets(const ATargets: TStartupTargets);
     function ExportSessionState: TDualPanelWindowState;
     procedure ApplySessionState(const AState: TDualPanelWindowState);
     /// <summary>Rebuilds the top menu bar's categories/captions from
@@ -2443,6 +2453,34 @@ begin
   OpenStub(skShellInfo, ATitle, AMessage);
 end;
 
+procedure TDualPanelWindow.HostWarnJob(const AMessage: string);
+begin
+  FToast.Show(AMessage, '', tkWarning);
+end;
+
+function TDualPanelWindow.HostAssignPaletteKey(AAction: TKeymapAction): Boolean;
+begin
+  if AAction = kaNone then
+  begin
+    FToast.Show(T('ui.toast.noKeyForCommand',
+      'This command has no key to assign'), '', tkInfo);
+    Exit(False);
+  end;
+  FReturnToPalette := True;
+  FKeymapDlg.OpenList(AAction);
+  Result := FDialogKind = hdkKeymap;
+  if not Result then
+    FReturnToPalette := False;
+end;
+
+procedure TDualPanelWindow.HostKeymapListClosed;
+begin
+  if not FReturnToPalette then
+    Exit;
+  FReturnToPalette := False;
+  FPalette.Resume;
+end;
+
 procedure TDualPanelWindow.HostOpenJobConfirm(const ATitle, AMessage: string);
 var
   DestPath, OkText, Prefix, ItemName, Suffix: string;
@@ -2465,6 +2503,11 @@ begin
   begin
     DestPath := JobConfirmDestText(FJobs.Kind, FJobs.State.DestDirURI);
     FDialog.Open(BuildCopyMoveDialog(ATitle, AMessage, DestPath), DialogCommand);
+    // Both panels on one folder: say so as the dialog opens, not only when it
+    // is confirmed.
+    if (FJobs.Kind in [pjkCopy, pjkMove]) and
+       PanelFoldersAreSame(FJobs.State.DestDirURI, FJobs.State.OriginSrcDirURI) then
+      HostWarnJob(JobSameFolderWarning);
   end
   else if Assigned(FJobs) and (FJobs.Kind = pjkDelete) then
   begin
@@ -2893,6 +2936,7 @@ begin
   FKeymapDlg := TKeymapDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog);
+  FKeymapDlg.OnListClosed := HostKeymapListClosed;
   FFolderHotlist := TFolderHotlistDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostTryGetHotlistUri, NavigateActiveTo,
@@ -2940,6 +2984,7 @@ begin
     begin
       Result := FTopMenu;
     end);
+  FPalette.OnAssignKey := HostAssignPaletteKey;
   FSettings := TSettingsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog,
@@ -3017,6 +3062,7 @@ begin
   FJobDialogs.OnPackSecurity := HostPackSecurity;
   FDialog.OnValueChanged := HostDialogValueChanged;
   FJobDialogs.OnReject := HostRejectJob;
+  FJobDialogs.OnWarn := HostWarnJob;
   FSearchUi := TSearchController.Create(Theme, NotifyChanged, GotoFileLocation,
     HostApplyFindResults, FlushDirWatchPending);
   FSearchUi.OnStopRequest := HostRequestSearchStop;
@@ -5720,6 +5766,11 @@ begin
   FDialogKind := hdkNone;
   if not DispatchDialogCommand(Kind, AControlId, AValuesJson, Fields) then
     Exit;
+  // The Copy / Move dialog stays up when it refuses the destination; it keeps
+  // its kind so it is still drawn and its buttons still work.
+  if (Kind = hdkJobConfirm) and (FDialogKind = hdkNone) and
+     Assigned(FDialog) and FDialog.Visible then
+    FDialogKind := hdkJobConfirm;
   NotifyChanged;
   FlushDirWatchPending;
   FlushPendingJobAsk;
@@ -10607,6 +10658,24 @@ begin
     GotoFileLocation(APath);
 end;
 
+procedure TDualPanelWindow.OpenStartupTargets(const ATargets: TStartupTargets);
+var
+  Target: TStartupTarget;
+begin
+  for Target in ATargets do
+    case Target.Mode of
+      smOpen:
+        OpenPathAsNewTab(Target.Path);
+      smView:
+        if TFile.Exists(Target.Path) then
+          OpenDocument(PathToFileUri(Target.Path), True);
+      smEdit:
+        if TFile.Exists(Target.Path) or
+           TDirectory.Exists(ExtractFileDir(Target.Path)) then
+          OpenDocument(PathToFileUri(Target.Path), False);
+    end;
+end;
+
 procedure TDualPanelWindow.SelectPanelTab(ASide: TPanelSide; AIndex: Integer);
 var
   Ws: TDualPanelWorkspaceTab;
@@ -12387,10 +12456,14 @@ begin
       FCmdLineMgr.HistoryPopup.Draw(Buffer, Theme);
     if HelpVisible then
       FHelp.Paint(Buffer, W, H, Area.Left, Area.Top);
-    // Last and only over a screen without a dialog / Help: a notice must
-    // not cover the buttons of whatever the user is answering.
-    if Assigned(FToast) and not Snap.DialogVisible and not HelpVisible then
-      FToast.Draw(Buffer, Theme, W, H);
+    // Last. Over a dialog a notice is drawn only where it leaves the dialog
+    // uncovered, so it never hides the buttons of whatever the user is
+    // answering; Help takes the whole screen.
+    if Assigned(FToast) and not HelpVisible then
+      if Snap.DialogVisible then
+        FToast.Draw(Buffer, Theme, W, H, FDialog.Bounds)
+      else
+        FToast.Draw(Buffer, Theme, W, H);
   end;
 end;
 

@@ -46,7 +46,7 @@
     {
       "type": "label",
       "id": "hint",
-      "text": "Type to search (? and * allowed)  Enter=Run  Esc=Close",
+      "text": "Type to search (? and * allowed)  Enter=Run  Ctrl+K=Key  Esc=Close",
       "col": 1,
       "row": 17,
       "width": 80,

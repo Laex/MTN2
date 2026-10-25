@@ -177,6 +177,8 @@ uses
   uWinFileAttr in 'Core\uWinFileAttr.pas',
   uSingleInstance in 'Platform\Windows\uSingleInstance.pas',
   uTaskbarProgress in 'Platform\Windows\uTaskbarProgress.pas',
+  uStartupTargets in 'Core\uStartupTargets.pas',
+  uUpdateCli in 'Core\uUpdateCli.pas',
   uUpdater in 'Core\uUpdater.pas',
   uSelfCheck in 'Core\uSelfCheck.pas',
   uElevatedHelper in 'Platform\Windows\uElevatedHelper.pas',
@@ -193,12 +195,24 @@ uses
 var
   AlreadyRunning: Boolean;
   ExistingHwnd: HWND;
+  UpdateChannel: string;
 begin
   // --self-check: report missing run-time files and exit (release smoke
   // test, src\tools\check-release.ps1) -- no window, no instance handshake.
   if SelfCheckRequested then
   begin
     ExitCode := RunSelfCheckToStdOut;
+    Exit;
+  end;
+
+  // --update [stable|nightly]: install the latest version without a window.
+  if UpdateRequested(UpdateChannel) then
+  begin
+    ExitCode := RunUpdateCommand(UpdateChannel,
+      procedure(const ALine: string)
+      begin
+        PlatformWriteStdOut(ALine + #13#10);
+      end);
     Exit;
   end;
 
@@ -221,7 +235,7 @@ begin
   begin
     if TryFindExistingInstanceWindow(ExistingHwnd) then
     begin
-      SendActivateRequest(ExistingHwnd, StartupPathArgument);
+      SendActivateRequest(ExistingHwnd, EncodeStartupTargets(StartupTargetsArgument));
       Exit;
     end;
     // Existing window not found (narrow startup race) -- fall through to a

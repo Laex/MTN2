@@ -385,7 +385,7 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "Палитра команд",
-      "hint": "Ввод=поиск (допустимы ? и *)  Enter=Выполнить  Esc=Закрыть",
+      "hint": "Ввод=поиск (допустимы ? и *)  Enter=Выполнить  Ctrl+K=Клавиша  Esc=Закрыть",
       "query_label": "Текст для поиска:",
       "ok": "Выполнить",
       "cancel": "Отмена"
@@ -1041,6 +1041,7 @@
     "toast.selectionUnchanged": "Выделение не изменилось (маска «%s»)",
     "toast.hotlistAdded": "Добавлено в избранные папки: «%s»",
     "toast.nothingToCopy": "Нечего копировать",
+    "toast.noKeyForCommand": "У этой команды нет клавиши, которую можно назначить",
     "toast.nothingToExport": "Нечего сохранять",
     "toast.noExportFields": "Выберите хотя бы одно поле",
     "toast.listExported": "Список сохранён (%d): %s",
@@ -1105,6 +1106,7 @@
     "job.confirmCopyMoveOne": "%s «%s» в:",
     "job.confirmCopyMoveMany": "%s объектов (%d) в:",
     "job.renameTitle": "Переименование",
+    "job.sameFolder": "Папка назначения совпадает с исходной: укажите другую",
     "job.renameNewName": "Новое имя:",
 
     "hotlist.addTitle": "Добавить в избранное",

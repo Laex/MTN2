@@ -14,6 +14,7 @@ type
   public
     [Test] procedure TestFitText;
     [Test] procedure TestBounds;
+    [Test] procedure TestClearOfDialog;
     [Test] procedure TestAlwaysNoticeDraws;
   end;
 
@@ -51,6 +52,21 @@ begin
   Assert.IsTrue(S = 'Bad %d template x', 'bad placeholder degrades, no exception');
 
   Assert.IsTrue(ToastFitText(Tpl, LongPath, 0) = '', 'zero width -> empty');
+end;
+
+procedure TestClearOfDialog;
+var
+  Box, Dialog: TRectI;
+begin
+  Box := ToastBounds(20, 100, 30);
+  Dialog := TRectI.Make(10, 5, 80, 20);
+  Assert.IsTrue(ToastClearOf(Box, Dialog), 'a dialog above the toast leaves it clear');
+  Dialog := TRectI.Make(10, 5, 80, 24);
+  Assert.IsTrue(ToastClearOf(Box, Dialog) = False, 'a dialog reaching the toast rows hides it');
+  Dialog := TRectI.Make(10, 5, 60, 28);
+  Assert.IsTrue(ToastClearOf(Box, Dialog), 'a dialog left of the toast leaves it clear');
+  Dialog := TRectI.Make(0, 0, -1, -1);
+  Assert.IsTrue(ToastClearOf(Box, Dialog), 'no dialog area: clear');
 end;
 
 procedure TestBounds;
@@ -147,6 +163,11 @@ end;
 procedure TTestToast.TestFitText;
 begin
   TestToast.TestFitText;
+end;
+
+procedure TTestToast.TestClearOfDialog;
+begin
+  TestToast.TestClearOfDialog;
 end;
 
 procedure TTestToast.TestBounds;

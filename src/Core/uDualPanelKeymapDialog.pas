@@ -44,6 +44,7 @@ type
     /// edit - a second Save press with the same conflicting combo confirms
     /// the reassignment instead of warning again.</summary>
     FConfirmOverwrite: Boolean;
+    FOnListClosed: TProc;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     function ActionRowLabel(AAction: TKeymapAction): string;
@@ -70,7 +71,9 @@ type
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TKeymapKindSetter; const AOnNotify: TProc;
       const AOnCanStart: TKeymapCanStart; const AOnPrepareUi: TKeymapPrepareUi);
-    procedure OpenList;
+    /// <summary>Opens the list of actions; AAction, when given, is the row
+    /// the list starts on.</summary>
+    procedure OpenList(AAction: TKeymapAction = kaNone);
     procedure RefreshList(ASelectedIndex: Integer = -1);
     procedure BeginEdit(AIndex: Integer);
     procedure ResetSelected;
@@ -81,6 +84,9 @@ type
     function DispatchEditCommand(const AControlId: string): Boolean;
     function DispatchCommand(AKind: THostDialogKind;
       const AControlId: string): Boolean;
+    /// <summary>Called after the list of actions is closed, Save (already
+    /// written and reloaded) or Cancel alike.</summary>
+    property OnListClosed: TProc read FOnListClosed write FOnListClosed;
   end;
 
 /// <summary>Readable, translated name of AAction ("Hex <-> text").</summary>
@@ -359,7 +365,10 @@ begin
   Result := FRows[AIndex];
 end;
 
-procedure TKeymapDialogController.OpenList;
+procedure TKeymapDialogController.OpenList(AAction: TKeymapAction);
+var
+  Rows: TArray<string>;
+  Sel, I: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -371,8 +380,17 @@ begin
   FDefaults := LoadDefaultKeymapProfile;
 
   SetKind(hdkKeymap);
+  Rows := BuildRows;
   // Row 0 is the first group's heading.
-  FDialog.Open(BuildKeymapDialog(BuildRows, 1), FOnCommand);
+  Sel := 1;
+  if AAction <> kaNone then
+    for I := 0 to High(FRows) do
+      if FRows[I] = AAction then
+      begin
+        Sel := I;
+        Break;
+      end;
+  FDialog.Open(BuildKeymapDialog(Rows, Sel), FOnCommand);
   Notify;
 end;
 
@@ -543,10 +561,16 @@ begin
       SaveKeymapProfile(FProfile);
       ReloadKeymap('');
     end;
+    if Assigned(FOnListClosed) then
+      FOnListClosed();
   end
   else
+  begin
     // Cancel or dismiss: discard the working copy, nothing is written.
     FDialog.Close;
+    if Assigned(FOnListClosed) then
+      FOnListClosed();
+  end;
 end;
 
 function TKeymapDialogController.DispatchEditCommand(

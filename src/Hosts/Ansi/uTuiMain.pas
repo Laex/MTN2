@@ -15,7 +15,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.IOUtils,
   uTerminalTypes, uTermInput, uAnsiFrame, uAnsiTerm, uAnsiClipboard, uHostShell,
   uCoreTimer, uPlatformInfo, uUpdater, uConfigLocation, uResourceAccess, uSelfCheck,
-  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings;
+  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry;
 
 const
   cEscapeWaitMs = 30;
@@ -33,14 +33,16 @@ type
     DumpRows: Integer;
     Mouse: Boolean;
     Colors: string;
-    Path: string;
+    Targets: TStartupTargets;
   end;
 
 function ParseOptions: TTuiOptions;
 var
   I: Integer;
   Arg: string;
+  Parser: TStartupTargetParser;
 begin
+  Parser := Default(TStartupTargetParser);
   Result := Default(TTuiOptions);
   Result.Mouse := True;
   Result.DumpCols := 100;
@@ -68,10 +70,11 @@ begin
         Inc(I, 2);
       end;
     end
-    else if (Arg <> '') and (Arg[1] <> '-') and (Result.Path = '') then
-      Result.Path := Arg;
+    else
+      Parser.Take(Arg);
     Inc(I);
   end;
+  Result.Targets := Parser.Targets;
 end;
 
 procedure WriteLine(const AText: string);
@@ -81,7 +84,12 @@ end;
 
 procedure ShowUsage;
 begin
-  WriteLine('Usage: mtn2-tui [options] [folder]');
+  WriteLine('Usage: mtn2-tui [options] [path ...]');
+  WriteLine('  path           a folder opens in a new tab; a file opens its folder with the cursor on it');
+  WriteLine('  --view FILE    open the file in the viewer');
+  WriteLine('  --edit FILE    open the file in the editor (-e FILE)');
+  WriteLine('  --update [CH]  download and install the latest version, CH is stable or nightly (kept for next time)');
+  WriteLine('  --install-desktop  write the menu entry and icon to ~/.local/share (--uninstall-desktop removes them)');
   WriteLine('  --no-mouse     do not ask the terminal for mouse events');
   WriteLine('  --colors=MODE  truecolor, 256 or 16 (default: from COLORTERM and TERM)');
   WriteLine('  --dump [W H]   draw one screen as plain text to standard output and exit');
@@ -106,8 +114,7 @@ begin
   Shell := THostShell.Create(AOptions.DumpCols, AOptions.DumpRows);
   Shell.AttachPlugins(PluginsDir);
   try
-    if AOptions.Path <> '' then
-      Shell.DualPanel.OpenPathAsNewTab(AOptions.Path);
+    Shell.DualPanel.OpenStartupTargets(AOptions.Targets);
     // Let the panels finish reading their folders.
     for Y := 1 to 40 do
     begin
@@ -196,8 +203,7 @@ begin
       Shell := THostShell.Create(Cols, Rows);
       Shell.AttachPlugins(PluginsDir);
       Shell.AttachUpdater;
-      if AOptions.Path <> '' then
-        Shell.DualPanel.OpenPathAsNewTab(AOptions.Path);
+      Shell.DualPanel.OpenStartupTargets(AOptions.Targets);
       LastInput := PlatformTickCount64;
       LastFrame := 0;
       ShownTitle := '';
@@ -293,6 +299,7 @@ end;
 function RunTui: Integer;
 var
   Opts: TTuiOptions;
+  Channel: string;
 begin
   GGraphicsEngineLabel :=
     function: string
@@ -312,6 +319,12 @@ begin
   end;
   if SelfCheckRequested then
     Exit(RunSelfCheckToStdOut);
+  if UpdateRequested(Channel) then
+    Exit(RunUpdateCommand(Channel, WriteLine));
+  if InstallDesktopRequested then
+    Exit(RunDesktopCommand(dekTui, True, WriteLine));
+  if UninstallDesktopRequested then
+    Exit(RunDesktopCommand(dekTui, False, WriteLine));
   if Opts.Dump then
     Exit(RunDump(Opts));
   if not TAnsiTerm.IsTerminal then

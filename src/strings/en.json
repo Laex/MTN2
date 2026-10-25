@@ -388,7 +388,7 @@
     },
     "DIALOG_COMMANDPALETTE": {
       "$title": "Command palette",
-      "hint": "Type to search (? and * allowed)  Enter=Run  Esc=Close",
+      "hint": "Type to search (? and * allowed)  Enter=Run  Ctrl+K=Key  Esc=Close",
       "query_label": "Search text:",
       "ok": "Run",
       "cancel": "Cancel"
@@ -1044,6 +1044,7 @@
     "toast.selectionUnchanged": "Selection unchanged (mask \"%s\")",
     "toast.hotlistAdded": "\"%s\" added to the folder hotlist",
     "toast.nothingToCopy": "Nothing to copy",
+    "toast.noKeyForCommand": "This command has no key to assign",
     "toast.nothingToExport": "Nothing to save",
     "toast.noExportFields": "Select at least one field",
     "toast.listExported": "Saved %d items to %s",
@@ -1108,6 +1109,7 @@
     "job.confirmCopyMoveOne": "%s `%s` to:",
     "job.confirmCopyMoveMany": "%s %d item(s) to:",
     "job.renameTitle": "Rename",
+    "job.sameFolder": "The destination is the folder the items are in: choose another one",
     "job.renameNewName": "New name:",
 
     "hotlist.addTitle": "Add to hotlist",

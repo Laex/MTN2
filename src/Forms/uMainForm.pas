@@ -8,7 +8,7 @@ uses
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.Controls.Presentation, FMX.StdCtrls, FMX.Menus,
   Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.MultiMon,
-  uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow,
+  uStartupTargets, uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow,
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uListExport,
@@ -335,15 +335,14 @@ type
     procedure StartOleFileDrag(const APaths: TArray<string>);
     procedure EnsureShutdownHook;
     procedure HookProcessWindowsForShutdown;
-    /// <summary>Decodes the path from a WM_COPYDATA sent by a
+    /// <summary>Decodes the targets from a WM_COPYDATA sent by a
     /// delegating second instance, restores/activates this window, and opens
-    /// the path (empty path = activate only, no new tab).</summary>
+    /// them (no targets = activate only, no new tab).</summary>
     procedure HandleActivateRequest(ACds: PCopyDataStruct);
     /// <summary>Shared by the startup CLI-arg path (FormCreate,
-    /// after TryRestoreSession) and HandleActivateRequest - opens APath in a
-    /// new tab on the active side. No-op for '' or a path that doesn't
-    /// exist.</summary>
-    procedure OpenPathFromArgument(const APath: string);
+    /// after TryRestoreSession) and HandleActivateRequest - opens the targets
+    /// in new tabs, the viewer or the editor.</summary>
+    procedure OpenTargetsFromArgument(const ATargets: TStartupTargets);
   protected
     procedure CreateHandle; override;
     procedure DestroyHandle; override;
@@ -1013,11 +1012,11 @@ begin
     Recompose;
 end;
 
-procedure TMainForm.OpenPathFromArgument(const APath: string);
+procedure TMainForm.OpenTargetsFromArgument(const ATargets: TStartupTargets);
 begin
-  if (APath = '') or not Assigned(FDualPanel) then
+  if (Length(ATargets) = 0) or not Assigned(FDualPanel) then
     Exit;
-  FDualPanel.OpenPathAsNewTab(APath);
+  FDualPanel.OpenStartupTargets(ATargets);
 end;
 
 procedure TMainForm.HandleActivateRequest(ACds: PCopyDataStruct);
@@ -1040,7 +1039,7 @@ begin
     SetForegroundWindow(H);
   end;
 
-  OpenPathFromArgument(Path);
+  OpenTargetsFromArgument(DecodeStartupTargets(Path));
 end;
 
 procedure TMainForm.CreateHandle;
@@ -2746,10 +2745,9 @@ begin
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
   FCursorBlinkEnabled := True;
   TryRestoreSession;
-  // Mtn2 <path> - a brand new tab for the CLI path, restored
-  // session tabs are left untouched. Updater switches (--wait-pid) are not paths.
-  if StartupPathArgument <> '' then
-    OpenPathFromArgument(StartupPathArgument);
+  // Mtn2 <path> ... - a brand new tab for each CLI path, restored session
+  // tabs are left untouched. Updater switches (--wait-pid) are not paths.
+  OpenTargetsFromArgument(StartupTargetsArgument);
   SyncRenderer;
   if (FThemes.MissingId <> '') and Assigned(FDualPanel) then
     FDualPanel.ShowInfo(T('ui.theme.title', 'Theme'),

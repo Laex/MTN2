@@ -30,6 +30,7 @@ type
   TPackSecurityEvent = reference to function(const AArchivePath, APassword: string;
     AEncryptNames: Boolean; ALevel: Integer): Boolean;
   TJobRejectEvent = reference to procedure(const ATitle, AMessage: string);
+  TJobWarnEvent = reference to procedure(const AMessage: string);
 
   TJobDialogController = class
   private
@@ -39,6 +40,7 @@ type
     FOnSetKind: TJobKindSetter;
     FOnPackSecurity: TPackSecurityEvent;
     FOnReject: TJobRejectEvent;
+    FOnWarn: TJobWarnEvent;
     FPackInitialType: Integer;
     FLastPackType: Integer;
     function ApplyJobConfirmOptions(const AFields: TDialogCommandFields): Boolean;
@@ -67,6 +69,8 @@ type
     property LastPackType: Integer read FLastPackType;
     property OnPackSecurity: TPackSecurityEvent read FOnPackSecurity write FOnPackSecurity;
     property OnReject: TJobRejectEvent read FOnReject write FOnReject;
+    /// <summary>Shows a short warning (a toast) while the dialog stays open.</summary>
+    property OnWarn: TJobWarnEvent read FOnWarn write FOnWarn;
     function DispatchCommand(AKind: THostDialogKind; const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
   end;
@@ -99,6 +103,12 @@ function JobDeleteFailActionFromCommand(const AControlId: string;
 function JobIOErrorActionFromCommand(const AControlId: string): TJobIOErrorAction;
 function JobDestRejectedReason(AKind: TPanelJobKind; const ADestURI: string): string;
 function JobDestFailTitle(AKind: TPanelJobKind): string;
+/// <summary>True when both panel folders are the same place: the same local
+/// folder (case and a trailing separator aside) or the same location URI.</summary>
+function PanelFoldersAreSame(const AFirstURI, ASecondURI: string): Boolean;
+/// <summary>The warning shown when the Copy / Move destination is the folder
+/// the sources are in.</summary>
+function JobSameFolderWarning: string;
 /// <summary>The default archive name: the name of the folder the sources are in
 /// ("archive" when that folder has no name), with the extension of ATypeIdx.</summary>
 function SuggestPackArchiveName(const ASources: TArray<string>;
@@ -355,6 +365,24 @@ begin
     IsZipFileName(SafeFileName(FileUriToPath(Base)));
 end;
 
+function JobSameFolderWarning: string;
+begin
+  Result := T('ui.job.sameFolder',
+    'The destination is the folder the items are in: choose another one');
+end;
+
+function PanelFoldersAreSame(const AFirstURI, ASecondURI: string): Boolean;
+var
+  PathA, PathB: string;
+begin
+  PathA := FileUriToPath(AFirstURI);
+  PathB := FileUriToPath(ASecondURI);
+  if (PathA <> '') and (PathB <> '') then
+    Exit(SameLocalPath(ExcludeTrailingPathDelimiter(PathA),
+      ExcludeTrailingPathDelimiter(PathB)));
+  Result := SameText(AFirstURI.TrimRight(['/']), ASecondURI.TrimRight(['/']));
+end;
+
 function JobDestRejectedReason(AKind: TPanelJobKind; const ADestURI: string): string;
 begin
   Result := '';
@@ -572,6 +600,17 @@ end;
 procedure TJobDialogController.HandleJobConfirmCmd(const AControlId: string;
   const AFields: TDialogCommandFields);
 begin
+  // Copy or Move onto the folder the items are in does nothing: the dialog
+  // stays open and a toast gives the reason.
+  if (DialogCmdIsAccept(AControlId) or JobConfirmWantsBackground(AControlId)) and
+     Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove]) and
+     PanelFoldersAreSame(JobConfirmDestUri(FJobs.Kind, AFields.DestPath,
+       FJobs.State.DestDirURI), FJobs.State.OriginSrcDirURI) then
+  begin
+    if Assigned(FOnWarn) then
+      FOnWarn(JobSameFolderWarning);
+    Exit;
+  end;
   if JobConfirmWantsBackground(AControlId) then
   begin
     if not ApplyJobConfirmOptions(AFields) then
