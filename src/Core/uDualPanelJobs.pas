@@ -23,6 +23,15 @@ type
     property Alive: Boolean read GetAlive write SetAlive;
   end;
 
+  /// <summary>Rendezvous between a copy worker waiting for the answer to a
+  /// per-file conflict and the UI thread that shows the question.</summary>
+  IConflictWait = interface
+    ['{A2D94B7E-1C35-4F08-8E6B-90D3F7C1B254}']
+    procedure Signal(AAction: TVfsConflictAction; const ANewDstPath: string);
+    function WaitForAnswer(const ALife: IJobLife;
+      out ANewDstPath: string): TVfsConflictAction;
+  end;
+
   TJobConfirmDialogEvent = reference to procedure(const ATitle, AMessage: string);
   TJobOverwriteAskEvent = reference to procedure(const APath, ANewLine, AExistingLine: string);
   TJobDeleteAskEvent = reference to procedure(const APath, AHeadline, AQuestion,
@@ -75,6 +84,15 @@ type
     FWatchTick: UInt64;
     FExcludeMasks: TArray<string>;
     FExcludeMasksReady: Boolean;
+    /// <summary>Set while a copy worker waits for the answer to a per-file
+    /// conflict inside a folder merge.</summary>
+    FConflictWait: IConflictWait;
+    function MakeConflictResolver: TVfsConflictResolver;
+    procedure AskWorkerConflict(const AWait: IConflictWait;
+      const ASrcPath, ADstPath, ANewLine, AExistingLine: string);
+    procedure ResolveWorkerConflict(AAction: TJobConflictAction;
+      const ARenameName: string);
+    procedure AbortConflictWait;
     function JobTitle: string;
     procedure ResetExcludeMasks;
     procedure HandleConfirmKeys(var AKey: Word; var AKeyChar: Char);
@@ -196,9 +214,23 @@ type
 implementation
 
 uses
-  uLinkUtils, uNotice;
+  System.SyncObjs, uLinkUtils, uNotice;
 
 type
+  TConflictWait = class(TInterfacedObject, IConflictWait)
+  private
+    FEvent: TEvent;
+    FAction: TVfsConflictAction;
+    FNewDstPath: string;
+    FAnswered: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Signal(AAction: TVfsConflictAction; const ANewDstPath: string);
+    function WaitForAnswer(const ALife: IJobLife;
+      out ANewDstPath: string): TVfsConflictAction;
+  end;
+
   TJobLife = class(TInterfacedObject, IJobLife)
   private
     FAlive: Boolean;
@@ -214,6 +246,44 @@ end;
 procedure TJobLife.SetAlive(AValue: Boolean);
 begin
   FAlive := AValue;
+end;
+
+constructor TConflictWait.Create;
+begin
+  inherited Create;
+  FEvent := TEvent.Create(nil, True, False, '');
+  FAction := vcaCancel;
+end;
+
+destructor TConflictWait.Destroy;
+begin
+  FEvent.Free;
+  inherited;
+end;
+
+// UI thread only; the first answer wins.
+procedure TConflictWait.Signal(AAction: TVfsConflictAction;
+  const ANewDstPath: string);
+begin
+  if FAnswered then
+    Exit;
+  FAnswered := True;
+  FAction := AAction;
+  FNewDstPath := ANewDstPath;
+  FEvent.SetEvent;
+end;
+
+function TConflictWait.WaitForAnswer(const ALife: IJobLife;
+  out ANewDstPath: string): TVfsConflictAction;
+begin
+  while FEvent.WaitFor(250) = wrTimeout do
+    if not ALife.Alive then
+    begin
+      ANewDstPath := '';
+      Exit(vcaCancel);
+    end;
+  ANewDstPath := FNewDstPath;
+  Result := FAction;
 end;
 
 function JobErrorDisplayPath(const AError: TVfsError; const AFallbackURI: string): string;
@@ -283,7 +353,115 @@ begin
   FLife.Alive := False;
   if Assigned(FJob.Cancel) then
     FJob.Cancel.Cancel;
+  AbortConflictWait;
   inherited;
+end;
+
+{ ---- Per-file conflicts inside a folder merge -------------------------------- }
+
+// Runs on the copy worker, which blocks until the question is answered on the
+// UI thread. File details are read here, off the UI thread, because the source
+// may sit on a slow network share.
+function TPanelJobController.MakeConflictResolver: TVfsConflictResolver;
+var
+  Life: IJobLife;
+begin
+  Life := FLife;
+  Result :=
+    function(const ASrcPath, ADstPath: string; out ANewDstPath: string): TVfsConflictAction
+    var
+      Wait: IConflictWait;
+      SrcPath, DstPath, NewLine, ExistingLine: string;
+    begin
+      ANewDstPath := '';
+      if not Life.Alive then
+        Exit(vcaCancel);
+      SrcPath := ASrcPath;
+      DstPath := ADstPath;
+      NewLine := FormatConflictFileLine('New', SrcPath);
+      ExistingLine := FormatConflictFileLine('Existing', DstPath);
+      Wait := TConflictWait.Create;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if Life.Alive then
+            AskWorkerConflict(Wait, SrcPath, DstPath, NewLine, ExistingLine)
+          else
+            Wait.Signal(vcaCancel, '');
+        end);
+      Result := Wait.WaitForAnswer(Life, ANewDstPath);
+    end;
+end;
+
+procedure TPanelJobController.AskWorkerConflict(const AWait: IConflictWait;
+  const ASrcPath, ADstPath, ANewLine, AExistingLine: string);
+begin
+  if (FJob.Phase <> pjpRunning) or
+     (Assigned(FJob.Cancel) and FJob.Cancel.IsCancellationRequested) then
+  begin
+    AWait.Signal(vcaCancel, '');
+    Exit;
+  end;
+  if FJob.HasRememberedAction then
+  begin
+    case FJob.RememberedAction of
+      jcaSkip: AWait.Signal(vcaSkip, '');
+      jcaAppend: AWait.Signal(vcaAppend, '');
+    else
+      AWait.Signal(vcaOverwrite, '');
+    end;
+    Exit;
+  end;
+  FConflictWait := AWait;
+  FJob.PendingBothDirs := False;
+  PromptOverwriteAsk(PathToFileUri(ASrcPath), PathToFileUri(ADstPath), FJob.Index,
+    ANewLine, AExistingLine);
+end;
+
+procedure TPanelJobController.ResolveWorkerConflict(AAction: TJobConflictAction;
+  const ARenameName: string);
+var
+  Wait: IConflictWait;
+  NewName: string;
+begin
+  Wait := FConflictWait;
+  if AAction = jcaRename then
+  begin
+    NewName := Trim(ARenameName);
+    if NewName = '' then
+    begin
+      PromptOverwriteAsk(FJob.PendingSrcURI, FJob.PendingDstURI, FJob.PendingIndex);
+      Exit;
+    end;
+    FConflictWait := nil;
+    FJob.Phase := pjpRunning;
+    Wait.Signal(vcaRename, SafeCombinePath(
+      ExtractFilePath(FileUriToPath(FJob.PendingDstURI)), NewName));
+    Exit;
+  end;
+  FConflictWait := nil;
+  FJob.Phase := pjpRunning;
+  case AAction of
+    jcaOverwrite: Wait.Signal(vcaOverwrite, '');
+    jcaSkip: Wait.Signal(vcaSkip, '');
+    jcaAppend: Wait.Signal(vcaAppend, '');
+  else
+    begin
+      RequestCancel;
+      Wait.Signal(vcaCancel, '');
+    end;
+  end;
+end;
+
+procedure TPanelJobController.AbortConflictWait;
+var
+  Wait: IConflictWait;
+begin
+  if not Assigned(FConflictWait) then
+    Exit;
+  Wait := FConflictWait;
+  FConflictWait := nil;
+  Wait.Signal(vcaCancel, '');
 end;
 
 procedure TPanelJobController.SetTheme(const ATheme: IThemeRenderer);
@@ -340,6 +518,7 @@ procedure TPanelJobController.CloseJobUi;
 begin
   if Assigned(FJob.Cancel) then
     FJob.Cancel.Cancel;
+  AbortConflictWait;
   FJob.Phase := pjpNone;
   FJob.Kind := pjkNone;
   FJob.Id := 0;
@@ -860,6 +1039,7 @@ procedure TPanelJobController.RequestCancel;
 begin
   if Assigned(FJob.Cancel) then
     FJob.Cancel.Cancel;
+  AbortConflictWait;
 end;
 
 procedure TPanelJobController.StartJobExecution;
@@ -867,11 +1047,16 @@ var
   CapSources: TArray<string>;
   CountFolders, LinkAsItem: Boolean;
   Life: IJobLife;
+  Token: TJobCancelToken;
 begin
   Life := FLife;
   if Assigned(FOnBeforeExecute) then
     FOnBeforeExecute;
-  FJob.Cancel := TJobCancelToken.Create;
+  Token := TJobCancelToken.Create;
+  // Skip mode must leave existing files alone without asking.
+  if FJob.OverwriteMode = jomAsk then
+    Token.ConflictResolver := MakeConflictResolver();
+  FJob.Cancel := Token;
   FUseElevated := False;
   FJob.Phase := pjpRunning;
   FWatchTick := PlatformTickCount64;
@@ -989,14 +1174,12 @@ begin
   // Folder onto an existing folder is a merge, never a real conflict - the
   // actual overwrite/skip decisions happen one level down, per file, inside
   // CopyTree. Skip/Overwrite mode is handled unconditionally right here. Ask
-  // mode still prompts once per folder (matches Explorer/FAR convention, and
-  // CopyTree has no way to prompt per file mid-recursion), but the answer
-  // must become CopyTree's AOverwrite for a merge - it must never mean
-  // "abandon this whole folder". Treating a pre-existing folder as an
-  // ordinary conflict would silently drop everything missing at the
-  // destination under a folder-level "Skip", both from Skip mode directly
-  // and from clicking Skip on this prompt (every nested folder already
-  // existing at the destination).
+  // mode starts the merge without a folder-level question: the job's conflict
+  // resolver asks for each file that really exists at the destination, so a
+  // folder copied again over itself prompts only about files, never about the
+  // folder. Treating a pre-existing folder as an ordinary conflict would
+  // silently drop everything missing at the destination under a folder-level
+  // "Skip". The elevated helper has no resolver and keeps the folder prompt.
   Result := False;
   if not AIsDirMerge then
     Exit;
@@ -1010,6 +1193,11 @@ begin
   begin
     StartTransferInvalidate(ASrcURI, ADstURI, AIndex,
       FJob.RememberedAction <> jcaSkip, FJob.RememberedAction = jcaAppend);
+    Exit(True);
+  end;
+  if not FUseElevated then
+  begin
+    StartTransferInvalidate(ASrcURI, ADstURI, AIndex, False, False);
     Exit(True);
   end;
 end;
@@ -1652,16 +1840,21 @@ var
 begin
   if FJob.Phase <> pjpOverwriteAsk then
     Exit;
-  SrcURI := FJob.PendingSrcURI;
-  DstURI := FJob.PendingDstURI;
-  Idx := FJob.PendingIndex;
-  FJob.Phase := pjpRunning;
-
   if ARemember and (AAction in [jcaOverwrite, jcaSkip, jcaAppend]) then
   begin
     FJob.HasRememberedAction := True;
     FJob.RememberedAction := AAction;
   end;
+  if Assigned(FConflictWait) then
+  begin
+    ResolveWorkerConflict(AAction, ARenameName);
+    Exit;
+  end;
+
+  SrcURI := FJob.PendingSrcURI;
+  DstURI := FJob.PendingDstURI;
+  Idx := FJob.PendingIndex;
+  FJob.Phase := pjpRunning;
 
   case AAction of
     jcaCancel:

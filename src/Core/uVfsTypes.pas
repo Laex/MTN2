@@ -79,6 +79,22 @@ type
     procedure Cancel;
   end;
 
+  /// <summary>Answer to a per-file name conflict met inside a folder merge.</summary>
+  TVfsConflictAction = (vcaOverwrite, vcaSkip, vcaRename, vcaAppend, vcaCancel);
+
+  /// <summary>Called on a worker thread; blocks until the answer is known.
+  /// For vcaRename ANewDstPath is the replacement destination path.</summary>
+  TVfsConflictResolver = reference to function(const ASrcPath, ADstPath: string;
+    out ANewDstPath: string): TVfsConflictAction;
+
+  /// <summary>Optionally implemented by a cancel token. It lets a recursive copy
+  /// ask what to do with each file that already exists at the destination
+  /// instead of being given one answer for the whole tree.</summary>
+  IJobConflictResolver = interface
+    ['{4F7A2C91-8B3E-4D56-A1C0-5E9D3B6F7A82}']
+    function GetConflictResolver: TVfsConflictResolver;
+  end;
+
   TVfsListCallback = reference to procedure(const AItems: TArray<TVfsEntry>;
     const AError: TVfsError);
   TVfsBoolCallback = reference to procedure(const ASuccess: Boolean; const AError: TVfsError);
@@ -130,13 +146,21 @@ type
       AOnDone: TVfsFreeSpaceCallback);
   end;
 
-  TJobCancelToken = class(TInterfacedObject, IJobCancelToken)
+  TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver)
   private
     FCancelled: Integer; // 0/1 - written from UI, read from workers
+    FConflictResolver: TVfsConflictResolver;
   public
     function IsCancellationRequested: Boolean;
     procedure Cancel;
+    function GetConflictResolver: TVfsConflictResolver;
+    /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
+    property ConflictResolver: TVfsConflictResolver read FConflictResolver
+      write FConflictResolver;
   end;
+
+/// <summary>The token's per-file conflict resolver, or nil when it has none.</summary>
+function JobConflictResolver(const ACancel: IJobCancelToken): TVfsConflictResolver;
 
 /// <summary>True when token is assigned and cancellation was requested.</summary>
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
@@ -315,9 +339,23 @@ begin
   TInterlocked.Exchange(FCancelled, 1);
 end;
 
+function TJobCancelToken.GetConflictResolver: TVfsConflictResolver;
+begin
+  Result := FConflictResolver;
+end;
+
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
 begin
   Result := Assigned(ACancel) and ACancel.IsCancellationRequested;
+end;
+
+function JobConflictResolver(const ACancel: IJobCancelToken): TVfsConflictResolver;
+var
+  Source: IJobConflictResolver;
+begin
+  Result := nil;
+  if Assigned(ACancel) and Supports(ACancel, IJobConflictResolver, Source) then
+    Result := Source.GetConflictResolver;
 end;
 
 function IsWindowsDriveRoot(const APath: string): Boolean;

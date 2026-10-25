@@ -336,7 +336,7 @@ end;
 procedure CopyFileWithProgress(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var AError: TVfsError;
   AOverwrite: Boolean = False; APreserveTimestamps: Boolean = False;
-  ABaseDoneBytes: Int64 = 0; AItemTotalBytes: Int64 = 0);
+  ABaseDoneBytes: Int64 = 0; AItemTotalBytes: Int64 = 0; AAppend: Boolean = False);
 var
   Src, Dst: TFileStream;
   Buf: TBytes;
@@ -358,19 +358,29 @@ begin
       // file into an EFOpenError that escaped this routine, aborted the whole
       // recursive copy at that point and left the rest of the tree uncopied.
       Src := TFileStream.Create(WinApiPath(ASrc), fmOpenRead or fmShareDenyNone);
-      if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
+      if AAppend and TFile.Exists(WinApiPath(ADst)) then
       begin
-        if not AOverwrite then
+        // The existing file is the user's data: it is extended in place and
+        // never removed if the copy fails.
+        Dst := TFileStream.Create(WinApiPath(ADst), fmOpenWrite or fmShareDenyWrite);
+        Dst.Seek(0, soEnd);
+      end
+      else
+      begin
+        if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
         begin
-          AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
-          Exit;
+          if not AOverwrite then
+          begin
+            AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
+            Exit;
+          end;
+          RemoveExistingPath(ADst, AError);
+          if AError.Code <> vecOk then
+            Exit;
         end;
-        RemoveExistingPath(ADst, AError);
-        if AError.Code <> vecOk then
-          Exit;
+        Dst := TFileStream.Create(WinApiPath(ADst), fmCreate);
+        DstCreated := True;
       end;
-      Dst := TFileStream.Create(WinApiPath(ADst), fmCreate);
-      DstCreated := True;
       Total := Src.Size;
       ReportTotal := AItemTotalBytes;
       if ReportTotal <= 0 then
@@ -427,7 +437,8 @@ begin
   end;
   if AError.Code = vecCancelled then
   begin
-    CleanupFailedCopy(ADst);
+    if DstCreated then
+      CleanupFailedCopy(ADst);
     Exit;
   end;
   if AError.Code <> vecOk then
@@ -449,10 +460,15 @@ begin
     begin
       AError := TVfsError.Make(vecIOError,
         Format('Copy incomplete (%d of %d bytes)', [Copied, Total]), PathToFileUri(ASrc));
-      CleanupFailedCopy(ADst);
+      if DstCreated then
+        CleanupFailedCopy(ADst);
       Exit;
     end;
   end;
+  // An appended file keeps its own timestamps and is larger than the source
+  // by design.
+  if not DstCreated then
+    Exit;
   VerifyCopiedFile(ASrc, ADst, Total, True, AError);
   if AError.Code <> vecOk then
   begin
@@ -466,6 +482,61 @@ begin
   PreserveFileAttributes(ASrc, ADst);
 end;
 
+// Asks the job's resolver what to do with a file that already exists at the
+// destination. Without a resolver nothing changes and the caller's overwrite
+// flag decides. Skip is reported as vecAlreadyExists, which CopyTree counts as
+// a skipped item and moves past.
+procedure AskFileConflict(const ASrc: string; var ADst: string;
+  ACancel: IJobCancelToken; var AOverwrite, AAppend: Boolean;
+  var AError: TVfsError);
+var
+  Resolver: TVfsConflictResolver;
+  NewDst: string;
+begin
+  Resolver := JobConflictResolver(ACancel);
+  if not Assigned(Resolver) then
+    Exit;
+  while TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) do
+  begin
+    if JobCancelRequested(ACancel) then
+    begin
+      AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+      Exit;
+    end;
+    NewDst := '';
+    case Resolver(ASrc, ADst, NewDst) of
+      vcaOverwrite:
+        begin
+          AOverwrite := True;
+          Exit;
+        end;
+      vcaAppend:
+        begin
+          AAppend := TFile.Exists(WinApiPath(ADst));
+          AOverwrite := not AAppend;
+          Exit;
+        end;
+      vcaSkip:
+        begin
+          AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists',
+            PathToFileUri(ADst));
+          Exit;
+        end;
+      vcaRename:
+        if NewDst <> '' then
+          ADst := NewDst
+        else
+        begin
+          AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+          Exit;
+        end;
+    else
+      AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+      Exit;
+    end;
+  end;
+end;
+
 procedure CopyTree(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var ADoneBytes, ATotalBytes: Int64;
   var AError: TVfsError; var AAnySkipped: Boolean; AOverwrite: Boolean = False;
@@ -475,6 +546,7 @@ var
   Code: Integer;
   ChildSrc, ChildDst: string;
   ChildErr: TVfsError;
+  ChildOverwrite, ChildAppend: Boolean;
 begin
   if JobCancelRequested(ACancel) then
   begin
@@ -519,8 +591,15 @@ begin
             ChildErr, AAnySkipped, AOverwrite, APreserveTimestamps)
         else
         begin
-          CopyFileWithProgress(ChildSrc, ChildDst, ACancel, AOnProgress, ChildErr,
-            AOverwrite, APreserveTimestamps, ADoneBytes, ATotalBytes);
+          ChildOverwrite := AOverwrite;
+          ChildAppend := False;
+          if not AOverwrite then
+            AskFileConflict(ChildSrc, ChildDst, ACancel, ChildOverwrite,
+              ChildAppend, ChildErr);
+          if ChildErr.Code = vecOk then
+            CopyFileWithProgress(ChildSrc, ChildDst, ACancel, AOnProgress, ChildErr,
+              ChildOverwrite, APreserveTimestamps, ADoneBytes, ATotalBytes,
+              ChildAppend);
           if ChildErr.Code = vecOk then
           begin
             if SR.Size > 0 then

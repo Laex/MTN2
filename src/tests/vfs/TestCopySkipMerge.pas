@@ -27,6 +27,11 @@ type
     [Test] procedure TestSkipNestedDirAlreadyExists;
     [Test] procedure TestJobLevelSkipMergesNested;
     [Test] procedure TestAskModeSkipOnFolderMerges;
+    [Test] procedure TestAskModeNoFolderPrompt;
+    [Test] procedure TestAskModeOverwriteAnswer;
+    [Test] procedure TestAskModeRenameAnswer;
+    [Test] procedure TestAskModeAppendAnswer;
+    [Test] procedure TestAskModeCancelAnswer;
   end;
 
 implementation
@@ -308,14 +313,15 @@ begin
     'pre-existing deep file left untouched by Skip');
 end;
 
-/// <summary>Ask-mode job, auto-answering every overwrite prompt with "Skip"
-/// (ARemember=False, exactly like a user clicking Skip on each popup rather
-/// than checking "remember"). Sources are every direct child of ASrcDir,
-/// as when everything inside the source folder is selected and copied onto
-/// an existing destination folder, rather than the single top folder as one
-/// item.</summary>
-function RunJobCopyAskAllSkip(const ASrcDir, ADestDir: string;
-  out ASuccess: Boolean; out APromptCount: Integer): Boolean;
+/// <summary>Ask-mode job, auto-answering every overwrite prompt with AAnswer
+/// (ARemember=False, like a user clicking a button on each popup rather than
+/// checking "remember"). Sources are every direct child of ASrcDir, as when
+/// everything inside the source folder is selected and copied onto an
+/// existing destination folder, rather than the single top folder as one
+/// item. APrompted lists the destination paths that were asked about.</summary>
+function RunJobCopyAsk(const ASrcDir, ADestDir: string; AAnswer: TJobConflictAction;
+  const ARenameTo: string; out ASuccess: Boolean; out APromptCount: Integer;
+  out APrompted: string): Boolean;
 var
   Jobs: TPanelJobController;
   Vfs: IVirtualFileSystem;
@@ -327,7 +333,9 @@ var
   Code: Integer;
   N: Integer;
   PromptCount: Integer;
+  Prompted: string;
 begin
+  Prompted := '';
   SetLength(Sources, 0);
   N := 0;
   Code := FindFirst(TPath.Combine(ASrcDir, '*'), faAnyFile, SR);
@@ -355,9 +363,10 @@ begin
     procedure(const ATitle, AMessage: string) begin end,
     procedure(const APath, ANewLine, AExistingLine: string)
     begin
-      // The real popup; simulate the user clicking "Skip" without "remember".
+      // The real popup; simulate the user clicking a button without "remember".
       Inc(PromptCount);
-      Jobs.ResolveOverwriteAsk(jcaSkip, False, '');
+      Prompted := Prompted + APath + '|';
+      Jobs.ResolveOverwriteAsk(AAnswer, False, ARenameTo);
     end,
     procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
       AOfferPermanent: Boolean) begin end,
@@ -387,6 +396,7 @@ begin
     end;
     ASuccess := Ok;
     APromptCount := PromptCount;
+    APrompted := Prompted;
     Result := True;
   finally
     Jobs.Free;
@@ -395,12 +405,10 @@ end;
 
 procedure TestAskModeSkipOnFolderMerges;
 var
-  Src, Dst: string;
+  Src, Dst, Prompted: string;
   Ok, Ran: Boolean;
   Prompts: Integer;
 begin
-  Writeln('  inside the source folder, Ask mode, click Skip on the folder prompt)');
-
   // Mirrors "select all files/folders inside P:\_.. and copy to D:\_.." -
   // Src's children become FJob.Sources, not Src itself.
   Src := TPath.Combine(GRoot, 'ask_src');
@@ -416,15 +424,101 @@ begin
   WriteTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2024.txt'), 'src-2024');
   WriteTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2025.txt'), 'src-2025');
 
-  Ran := RunJobCopyAskAllSkip(Src, Dst, Ok, Prompts);
+  Ran := RunJobCopyAsk(Src, Dst, jcaSkip, '', Ok, Prompts, Prompted);
   Assert.IsTrue(Ran and Ok, 'job finished successfully');
-  Assert.IsTrue(Prompts > 0, 'at least one overwrite-ask prompt fired (the __2026/ZNRM folder conflict)');
+  Assert.AreEqual(2, Prompts, 'only the two files that exist at the destination are asked about');
+  Assert.IsFalse(Prompted.Contains('2026_new'), 'a file missing at the destination is not asked about');
 
   Assert.IsTrue(TFile.Exists(TPath.Combine(Dst, '__2026', 'ZNRM', '2026_new.txt')),
-    'new nested file copied despite clicking Skip on the folder-level prompt '
-    + '(the exact reported symptom)');
+    'new nested file copied after clicking Skip on the file prompts');
   Assert.IsTrue(ReadTextFile(TPath.Combine(Dst, '__2026', 'ZNRM', '2024.txt')) = 'src-2024',
     'pre-existing file untouched');
+end;
+
+/// <summary>Source folder with one file that also exists at the destination
+/// (different content) and one that does not.</summary>
+procedure MakeAskFixture(const AName: string; out ASrc, ADst: string);
+begin
+  ASrc := TPath.Combine(GRoot, AName + '_src');
+  ADst := TPath.Combine(GRoot, AName + '_dst');
+  TDirectory.CreateDirectory(TPath.Combine(ASrc, 'dir'));
+  WriteTextFile(TPath.Combine(ASrc, 'dir', 'same.txt'), 'src-same');
+  WriteTextFile(TPath.Combine(ASrc, 'dir', 'fresh.txt'), 'src-fresh');
+  TDirectory.CreateDirectory(TPath.Combine(ADst, 'dir'));
+  WriteTextFile(TPath.Combine(ADst, 'dir', 'same.txt'), 'dst-same');
+end;
+
+procedure TestAskModeNoFolderPrompt;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  Src := TPath.Combine(GRoot, 'nofolder_src');
+  Dst := TPath.Combine(GRoot, 'nofolder_dst');
+  TDirectory.CreateDirectory(TPath.Combine(Src, 'dir'));
+  WriteTextFile(TPath.Combine(Src, 'dir', 'fresh.txt'), 'src-fresh');
+  TDirectory.CreateDirectory(TPath.Combine(Dst, 'dir'));
+
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(0, Prompts, 'merging into an existing folder asks nothing when no file collides');
+  Assert.AreEqual('src-fresh', ReadTextFile(TPath.Combine(Dst, 'dir', 'fresh.txt')));
+end;
+
+procedure TestAskModeOverwriteAnswer;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeAskFixture('ow', Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaOverwrite, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(1, Prompts, 'one prompt for the colliding file');
+  Assert.AreEqual('src-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')));
+  Assert.AreEqual('src-fresh', ReadTextFile(TPath.Combine(Dst, 'dir', 'fresh.txt')));
+end;
+
+procedure TestAskModeRenameAnswer;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeAskFixture('rn', Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaRename, 'same_copy.txt', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'the existing file is kept');
+  Assert.AreEqual('src-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same_copy.txt')),
+    'the source is copied under the new name');
+end;
+
+procedure TestAskModeAppendAnswer;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeAskFixture('ap', Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaAppend, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual('dst-samesrc-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')));
+end;
+
+procedure TestAskModeCancelAnswer;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeAskFixture('cn', Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran, 'job ended');
+  Assert.IsFalse(Ok, 'cancelling the prompt fails the job');
+  Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'the existing file is untouched');
 end;
 
 { TTestCopySkipMerge }
@@ -466,6 +560,31 @@ end;
 procedure TTestCopySkipMerge.TestAskModeSkipOnFolderMerges;
 begin
   TestCopySkipMerge.TestAskModeSkipOnFolderMerges;
+end;
+
+procedure TTestCopySkipMerge.TestAskModeNoFolderPrompt;
+begin
+  TestCopySkipMerge.TestAskModeNoFolderPrompt;
+end;
+
+procedure TTestCopySkipMerge.TestAskModeOverwriteAnswer;
+begin
+  TestCopySkipMerge.TestAskModeOverwriteAnswer;
+end;
+
+procedure TTestCopySkipMerge.TestAskModeRenameAnswer;
+begin
+  TestCopySkipMerge.TestAskModeRenameAnswer;
+end;
+
+procedure TTestCopySkipMerge.TestAskModeAppendAnswer;
+begin
+  TestCopySkipMerge.TestAskModeAppendAnswer;
+end;
+
+procedure TTestCopySkipMerge.TestAskModeCancelAnswer;
+begin
+  TestCopySkipMerge.TestAskModeCancelAnswer;
 end;
 
 initialization
