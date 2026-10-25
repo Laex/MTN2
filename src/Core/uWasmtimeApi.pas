@@ -193,7 +193,7 @@ begin
   Env := GetEnvironmentVariable('MTN2_WASMTIME_DLL');
   if (Env <> '') and TFile.Exists(Env) then
     Exit(Env);
-  ExeDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ExeDir := ExcludeTrailingPathDelimiter(ExtractFilePath(PlatformExePath));
   Result := TPath.Combine(ExeDir, PlatformSharedLibName('wasmtime'));
   if TFile.Exists(Result) then
     Exit;

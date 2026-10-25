@@ -645,7 +645,7 @@ begin
     Exit;
   end;
   FState := usApplied;
-  if not RestartApplication(ParamStr(0), Err) then
+  if not RestartApplication(PlatformExePath, Err) then
   begin
     ShowMessageDlg(T('ui.update.failed', 'Could not update MTN2.'), Err);
     Exit; // installed; takes effect on the next manual start

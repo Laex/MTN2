@@ -149,6 +149,7 @@ procedure DialogSetColorSampleSources(var ADecl: TDialogDeclaration; const AId: 
 implementation
 
 uses
+  uPlatformInfo,
   System.Classes, System.Math, System.IOUtils, uResourceAccess,
   uDialogJson, uDialogLocaleLayout, uInputLine, uStrings, uColorPickerControl;
 
@@ -193,7 +194,7 @@ begin
   if FileName = '.json' then
     Exit;
 
-  ExeDir := ExtractFilePath(ParamStr(0));
+  ExeDir := ExtractFilePath(PlatformExePath);
   Candidate := TPath.Combine(TPath.Combine(ExeDir, 'dialogs'), FileName);
   if TFile.Exists(Candidate) then
   begin
@@ -302,7 +303,7 @@ begin
      not IsSafePluginPathComponent(ADialogName) then
     Exit;
 
-  ExeDir := ExtractFilePath(ParamStr(0));
+  ExeDir := ExtractFilePath(PlatformExePath);
   FilePath := TPath.Combine(TPath.Combine(TPath.Combine(TPath.Combine(
     ExeDir, 'plugins'), APluginId), 'dialogs'), ADialogName + '.json');
   Result := TryReadUtf8FileStripBom(FilePath, AJson);

@@ -58,6 +58,12 @@ function PlatformKeyIsDown(AVirtualKey: Word): Boolean;
 /// <summary>Extension of native libraries including the dot: ".dll" or ".so".</summary>
 function PlatformSharedLibExt: string;
 
+/// <summary>Full path of the running program file. On Linux ParamStr(0) is
+/// argv[0] as typed (a bare command name when started through PATH, or the
+/// path of a symlink), so the program's own folder is taken from the kernel
+/// instead.</summary>
+function PlatformExePath: string;
+
 /// <summary>Changes whenever the contents of the system clipboard change; a
 /// constant where the platform cannot tell.</summary>
 function PlatformClipboardSequence: Cardinal;
@@ -167,6 +173,24 @@ end;
 function PlatformSharedLibExt: string;
 begin
   Result := '.so';
+end;
+
+function c_readlink(APath, ABuf: MarshaledAString; ASize: NativeUInt): NativeInt; cdecl;
+  external libc name 'readlink';
+
+function PlatformExePath: string;
+var
+  Buf: array[0..4095] of Byte;
+  N: NativeInt;
+begin
+  N := c_readlink('/proc/self/exe', MarshaledAString(@Buf[0]), Length(Buf) - 1);
+  if N > 0 then
+  begin
+    Buf[N] := 0;
+    Result := UTF8ToString(MarshaledAString(@Buf[0]));
+  end
+  else
+    Result := ParamStr(0);
 end;
 
 function PlatformKeyIsDown(AVirtualKey: Word): Boolean;

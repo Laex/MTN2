@@ -2017,6 +2017,10 @@ begin
   else
     Engine := '';
   DialogSetLabelText(Result, 'lbl_skia', Engine);
+{$IFNDEF MSWINDOWS}
+  DialogSetLabelText(Result, 'lbl_pty',
+    T('ui.about.platformLinux', 'Platform: Linux x64 | PTY Persistent Shell'));
+{$ENDIF}
 
   Ver := AppVersionString;
   if Ver = '' then

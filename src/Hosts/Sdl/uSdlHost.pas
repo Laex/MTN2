@@ -176,7 +176,7 @@ end;
 
 function PluginsDir: string;
 begin
-  Result := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins');
+  Result := TPath.Combine(ExtractFilePath(PlatformExePath), 'plugins');
 end;
 
 { TSdlHost }

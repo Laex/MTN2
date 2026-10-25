@@ -201,7 +201,7 @@ begin
   if GRootOverride <> '' then
     Result := GRootOverride
   else
-    Result := TPath.Combine(ExtractFilePath(ParamStr(0)), 'resource');
+    Result := TPath.Combine(ExtractFilePath(PlatformExePath), 'resource');
 end;
 
 procedure SetResourceRoot(const ADir: string);

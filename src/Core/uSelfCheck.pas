@@ -332,7 +332,7 @@ var
   Report: TSelfCheckReport;
   Ok: Boolean;
 begin
-  Ok := RunSelfCheck(ExtractFileDir(ParamStr(0)), Report);
+  Ok := RunSelfCheck(ExtractFileDir(PlatformExePath), Report);
   if Ok then
     Report := Report + ['self-check passed']
   else

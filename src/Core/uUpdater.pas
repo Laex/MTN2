@@ -150,6 +150,7 @@ function UpdateCheckDue(const ASettings: TUpdateSettings; ANow: TDateTime): Bool
 implementation
 
 uses
+  uPlatformInfo,
   uPlatformUpdate, System.Math, System.IOUtils, System.JSON, System.Hash, System.Generics.Collections,
   System.DateUtils, System.Net.HttpClient, System.Net.URLClient,
   uSession;
@@ -238,7 +239,7 @@ end;
 
 function AppVersionString: string;
 begin
-  Result := FileVersionString(ParamStr(0));
+  Result := FileVersionString(PlatformExePath);
 end;
 
 function ParseLatestReleaseJson(const AJson, AAssetSuffix: string;
@@ -619,7 +620,7 @@ end;
 
 function AppDir: string;
 begin
-  Result := ExtractFileDir(ParamStr(0));
+  Result := ExtractFileDir(PlatformExePath);
 end;
 
 function StagingDir: string;

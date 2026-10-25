@@ -25,6 +25,7 @@ type
     [Test] procedure TestSchedule;
     [Test] procedure TestSettingsJson;
     [Test] procedure TestPackageManaged;
+    [Test] procedure TestExePathIsResolved;
     [Test] procedure TestLiveGitHub;
   end;
 
@@ -33,7 +34,7 @@ implementation
 uses
   uTestPaths,
   System.SysUtils, System.Classes, System.IOUtils, System.Zip, System.DateUtils,
-  uUpdater, uPlatformPaths, uPlatformUpdate, uPlatformProcess;
+  uUpdater, uPlatformInfo, uPlatformPaths, uPlatformUpdate, uPlatformProcess;
 
 const
   // The fixtures of the release parsers name Windows packages.
@@ -51,6 +52,12 @@ procedure WriteText(const AFile, AText: string);
 begin
   ForceDirectories(ExtractFileDir(AFile));
   TFile.WriteAllText(AFile, AText);
+end;
+
+procedure TestExePathIsResolved;
+begin
+  Assert.IsTrue(TPath.IsPathRooted(PlatformExePath), 'the program path is absolute');
+  Assert.IsTrue(TFile.Exists(PlatformExePath), 'the program path names the running file');
 end;
 
 procedure TestVersions;
@@ -456,6 +463,11 @@ end;
 procedure TTestUpdater.TestPackageManaged;
 begin
   TestUpdater.TestPackageManaged;
+end;
+
+procedure TTestUpdater.TestExePathIsResolved;
+begin
+  TestUpdater.TestExePathIsResolved;
 end;
 
 procedure TTestUpdater.TestLiveGitHub;

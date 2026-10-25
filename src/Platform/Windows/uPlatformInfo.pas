@@ -58,6 +58,12 @@ function PlatformKeyIsDown(AVirtualKey: Word): Boolean;
 /// <summary>Extension of native libraries including the dot: ".dll" or ".so".</summary>
 function PlatformSharedLibExt: string;
 
+/// <summary>Full path of the running program file. On Linux ParamStr(0) is
+/// argv[0] as typed (a bare command name when started through PATH, or the
+/// path of a symlink), so the program's own folder is taken from the kernel
+/// instead.</summary>
+function PlatformExePath: string;
+
 /// <summary>Changes whenever the contents of the system clipboard change; a
 /// constant where the platform cannot tell.</summary>
 function PlatformClipboardSequence: Cardinal;
@@ -168,6 +174,11 @@ end;
 function PlatformSharedLibExt: string;
 begin
   Result := '.dll';
+end;
+
+function PlatformExePath: string;
+begin
+  Result := ParamStr(0);
 end;
 
 function PlatformKeyIsDown(AVirtualKey: Word): Boolean;

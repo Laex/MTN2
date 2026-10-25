@@ -314,6 +314,7 @@ function TopMenuKeymapAction(AAction: TTopMenuAction): TKeymapAction;
 implementation
 
 uses
+  uPlatformInfo,
   uInputLine, uCharWidth;
 
 /// <summary>The keymap action a menu item runs, whose keys it shows as its
@@ -831,7 +832,7 @@ begin
 
   // Fallback for tools/dev runs without the compiled resource (e.g. running
   // straight from source before a full rebuild).
-  ConfigPath := TPath.Combine(ExtractFilePath(ParamStr(0)), 'config', 'menu.json');
+  ConfigPath := TPath.Combine(ExtractFilePath(PlatformExePath), 'config', 'menu.json');
   if not FileExists(ConfigPath) then
     ConfigPath := TPath.Combine('src', 'config', 'menu.json');
 

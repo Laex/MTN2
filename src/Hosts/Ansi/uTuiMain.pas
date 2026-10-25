@@ -93,7 +93,7 @@ end;
 // Draws one screen as plain text; for checks without a terminal.
 function PluginsDir: string;
 begin
-  Result := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins');
+  Result := TPath.Combine(ExtractFilePath(PlatformExePath), 'plugins');
 end;
 
 function RunDump(const AOptions: TTuiOptions): Integer;

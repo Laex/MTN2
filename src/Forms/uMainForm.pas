@@ -374,6 +374,7 @@ implementation
 {$R *.fmx}
 
 uses
+  uPlatformInfo,
   System.Diagnostics,
   FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes,
   uKeyChord, uFileRecycleBin, uDualPanelJobRules;
@@ -2709,7 +2710,7 @@ begin
   FMdi := TMdiCompositor.Create(FTheme);
   EnsureDemoWindows;
 
-  StartPluginHost(TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins'));
+  StartPluginHost(TPath.Combine(ExtractFilePath(PlatformExePath), 'plugins'));
 
   FRenderer := TTerminalRenderer.Create;
   FRenderer.OnCompose := ComposeScene;

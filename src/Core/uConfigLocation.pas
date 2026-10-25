@@ -48,7 +48,7 @@ end;
 
 function ProgramDirectory: string;
 begin
-  Result := ExtractFilePath(ParamStr(0));
+  Result := ExtractFilePath(PlatformExePath);
 end;
 
 function PortableMarkerPath: string;
@@ -85,7 +85,7 @@ begin
   end
   else if IsPortableMode then
   begin
-    Result := ExtractFilePath(ParamStr(0));
+    Result := ExtractFilePath(PlatformExePath);
     if Result = '' then
       Result := GetCurrentDir;
   end
