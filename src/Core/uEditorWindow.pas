@@ -4272,9 +4272,6 @@ var
   Segs: TArray<string>;
   Name, PosText, LinesText, Flag, Mode: string;
   Kinds: TArray<TStatusSegKind>;
-  PrefixLen, EditW: Integer;
-  Colors: TInputLineColors;
-  Prefix: string;
 begin
   if FSurfaceHandle <> 0 then
   begin

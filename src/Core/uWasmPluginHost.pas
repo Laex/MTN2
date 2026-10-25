@@ -2088,7 +2088,6 @@ function DefineAllHostImports(ALinker: PWasmtimeLinker; out AError: string): Boo
 var
   Ty0, Ty1, Ty2, Ty3, Ty4, Ty5, Ty6, Ty8, Ty9, Ty11, TySize, TyReadAt: PWasmFunctype;
 begin
-  Result := False;
   AError := '';
   GDefineLinker := ALinker;
   Ty0 := MakeFuncType([], [WASM_I32]);

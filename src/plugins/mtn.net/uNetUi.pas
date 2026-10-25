@@ -63,7 +63,7 @@ procedure PanelDirChanged(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); 
 implementation
 
 uses
-  System.IOUtils, uVfsTypes, uNetSecrets, uNetSessions, uNetCurlApi, uNetVfs, uNetClient;
+  System.IOUtils, System.Generics.Collections, uVfsTypes, uNetSecrets, uNetSessions, uNetCurlApi, uNetVfs, uNetClient;
 
 const
   cWaitSliceMs = 200;

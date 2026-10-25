@@ -6,6 +6,9 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[lints.rust]
+linker_messages = "allow"
+
 [profile.release]
 panic = "abort"
 lto = true

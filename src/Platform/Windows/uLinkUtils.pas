@@ -242,8 +242,10 @@ begin
   Buf.ReparseDataLength := ReparseDataLen;
   TotalLen := SizeOf(DWORD) + SizeOf(Word) * 2 + ReparseDataLen;
 
+  {$WARN SYMBOL_PLATFORM OFF}
   Handle := CreateFileW(PWideChar(WinApiPath(ALinkPath)), GENERIC_WRITE, 0, nil, OPEN_EXISTING,
     FILE_FLAG_OPEN_REPARSE_POINT or FILE_FLAG_BACKUP_SEMANTICS, 0);
+  {$WARN SYMBOL_PLATFORM ON}
   if Handle = INVALID_HANDLE_VALUE then
   begin
     AError := TVfsError.Make(vecIOError, 'Cannot open link directory: ' + LastErrorMessage,
@@ -297,9 +299,11 @@ begin
   Attr := GetFileAttributes(PChar(WinApiPath(APath)));
   if (Attr = INVALID_FILE_ATTRIBUTES) or ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) = 0) then
     Exit;
+  {$WARN SYMBOL_PLATFORM OFF}
   Handle := CreateFileW(PWideChar(WinApiPath(APath)), 0,
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
     FILE_FLAG_OPEN_REPARSE_POINT or FILE_FLAG_BACKUP_SEMANTICS, 0);
+  {$WARN SYMBOL_PLATFORM ON}
   if Handle = INVALID_HANDLE_VALUE then
     Exit;
   try

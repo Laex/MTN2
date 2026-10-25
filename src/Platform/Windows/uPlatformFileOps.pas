@@ -85,7 +85,6 @@ begin
   AEntry.IsOffline := (DWORD(SR.Attr) and FILE_ATTRIBUTE_OFFLINE) <> 0;
   // faSymLink = FILE_ATTRIBUTE_REPARSE_POINT
   AEntry.IsLink := (SR.Attr and faSymLink) <> 0;
-  {$WARN SYMBOL_PLATFORM ON}
   AEntry.ModificationTime := FileTimeToLocalDateTime(SR.FindData.ftLastWriteTime);
   if AEntry.ModificationTime = 0 then
     AEntry.ModificationTime := SR.TimeStamp;
@@ -95,6 +94,7 @@ begin
   AEntry.AccessTime := FileTimeToLocalDateTime(SR.FindData.ftLastAccessTime);
   if AEntry.AccessTime = 0 then
     AEntry.AccessTime := AEntry.ModificationTime;
+  {$WARN SYMBOL_PLATFORM ON}
 end;
 
 procedure PlatformFillEntryByPath(const APath: string; var AEntry: TVfsEntry);
@@ -229,7 +229,6 @@ var
   P: string;
   Ok: Boolean;
 begin
-  Result := ERROR_SUCCESS;
   P := ExtendedWinPath(APath);
   for I := 1 to cMaxTries do
   begin
