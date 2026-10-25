@@ -376,61 +376,69 @@ begin
   AProfile.Bindings[AAction][Len] := ABinding;
 end;
 
+type
+  TKeyAlias = record
+    Name: string;
+    VK: Word;
+  end;
+
+const
+  KeyAliases: array[0..78] of TKeyAlias = (
+    (Name: 'F1'; VK: vkF1), (Name: 'F2'; VK: vkF2), (Name: 'F3'; VK: vkF3),
+    (Name: 'F4'; VK: vkF4), (Name: 'F5'; VK: vkF5), (Name: 'F6'; VK: vkF6),
+    (Name: 'F7'; VK: vkF7), (Name: 'F8'; VK: vkF8), (Name: 'F9'; VK: vkF9),
+    (Name: 'F10'; VK: vkF10), (Name: 'F11'; VK: vkF11), (Name: 'F12'; VK: vkF12),
+    (Name: 'ESC'; VK: vkEscape), (Name: 'ESCAPE'; VK: vkEscape),
+    (Name: 'LEFT'; VK: vkLeft), (Name: 'RIGHT'; VK: vkRight),
+    (Name: 'UP'; VK: vkUp), (Name: 'DOWN'; VK: vkDown),
+    (Name: 'BACKSLASH'; VK: vkBackSlash), (Name: '\'; VK: vkBackSlash),
+    (Name: '['; VK: vkOemOpenBrackets), (Name: 'OEM4'; VK: vkOemOpenBrackets),
+    (Name: 'OPENBRACKET'; VK: vkOemOpenBrackets),
+    (Name: ']'; VK: vkOemCloseBrackets), (Name: 'OEM6'; VK: vkOemCloseBrackets),
+    (Name: 'CLOSEBRACKET'; VK: vkOemCloseBrackets),
+    (Name: '`'; VK: vkOemGrave), (Name: 'OEM3'; VK: vkOemGrave),
+    (Name: 'GRAVE'; VK: vkOemGrave), (Name: 'TILDE'; VK: vkOemGrave),
+    (Name: 'TAB'; VK: vkTab),
+    (Name: 'INSERT'; VK: vkInsert), (Name: 'INS'; VK: vkInsert),
+    (Name: 'DELETE'; VK: vkDelete), (Name: 'DEL'; VK: vkDelete),
+    (Name: 'HOME'; VK: vkHome), (Name: 'END'; VK: vkEnd),
+    (Name: 'PRIOR'; VK: vkPrior), (Name: 'PAGEUP'; VK: vkPrior), (Name: 'PGUP'; VK: vkPrior),
+    (Name: 'NEXT'; VK: vkNext), (Name: 'PAGEDOWN'; VK: vkNext), (Name: 'PGDN'; VK: vkNext),
+    (Name: 'ENTER'; VK: vkReturn), (Name: 'RETURN'; VK: vkReturn),
+    (Name: 'NUMPAD+'; VK: vkAdd), (Name: 'NUM+'; VK: vkAdd),
+    (Name: '+'; VK: vkAdd), (Name: 'ADD'; VK: vkAdd),
+    (Name: 'NUMPAD-'; VK: vkSubtract), (Name: 'NUM-'; VK: vkSubtract),
+    (Name: '-'; VK: vkSubtract), (Name: 'SUBTRACT'; VK: vkSubtract),
+    (Name: 'NUMPAD*'; VK: vkMultiply), (Name: 'NUM*'; VK: vkMultiply),
+    (Name: '*'; VK: vkMultiply), (Name: 'MULTIPLY'; VK: vkMultiply),
+    (Name: '/'; VK: vkSlash), (Name: 'SLASH'; VK: vkSlash), (Name: 'OEM2'; VK: vkSlash),
+    (Name: ','; VK: vkComma), (Name: 'COMMA'; VK: vkComma),
+    (Name: '.'; VK: vkPeriod), (Name: 'PERIOD'; VK: vkPeriod), (Name: 'DOT'; VK: vkPeriod),
+    (Name: 'SEMICOLON'; VK: vkSemicolon), (Name: 'OEM1'; VK: vkSemicolon),
+    (Name: ''''; VK: vkQuote), (Name: 'QUOTE'; VK: vkQuote), (Name: 'OEM7'; VK: vkQuote),
+    (Name: '='; VK: vkEqual), (Name: 'EQUAL'; VK: vkEqual), (Name: 'EQUALS'; VK: vkEqual),
+    (Name: 'MINUS'; VK: vkMinus),
+    (Name: 'BACKSPACE'; VK: vkBack), (Name: 'BKSP'; VK: vkBack),
+    (Name: 'APPS'; VK: vkApps), (Name: 'MENU'; VK: vkApps), (Name: 'CONTEXTMENU'; VK: vkApps)
+  );
+
 function StringToVK(const S: string): Word;
 var
   UpperS: string;
+  I: Integer;
 begin
   UpperS := UpperCase(Trim(S));
-  if UpperS = 'F1' then Result := vkF1
-  else if UpperS = 'F2' then Result := vkF2
-  else if UpperS = 'F3' then Result := vkF3
-  else if UpperS = 'F4' then Result := vkF4
-  else if UpperS = 'F5' then Result := vkF5
-  else if UpperS = 'F6' then Result := vkF6
-  else if UpperS = 'F7' then Result := vkF7
-  else if UpperS = 'F8' then Result := vkF8
-  else if UpperS = 'F9' then Result := vkF9
-  else if UpperS = 'F10' then Result := vkF10
-  else if UpperS = 'F11' then Result := vkF11
-  else if UpperS = 'F12' then Result := vkF12
-  else if (UpperS = 'ESC') or (UpperS = 'ESCAPE') then Result := vkEscape
-  else if (UpperS = 'LEFT') then Result := vkLeft
-  else if (UpperS = 'RIGHT') then Result := vkRight
-  else if (UpperS = 'UP') then Result := vkUp
-  else if (UpperS = 'DOWN') then Result := vkDown
-  else if (UpperS = 'BACKSLASH') or (UpperS = '\') then Result := vkBackSlash
-  else if (UpperS = '[') or (UpperS = 'OEM4') or (UpperS = 'OPENBRACKET') then
-    Result := vkOemOpenBrackets
-  else if (UpperS = ']') or (UpperS = 'OEM6') or (UpperS = 'CLOSEBRACKET') then
-    Result := vkOemCloseBrackets
-  else if (UpperS = '`') or (UpperS = 'OEM3') or (UpperS = 'GRAVE') or (UpperS = 'TILDE') then
-    Result := vkOemGrave
-  else if (UpperS = 'TAB') then Result := vkTab
-  else if (UpperS = 'INSERT') or (UpperS = 'INS') then Result := vkInsert
-  else if (UpperS = 'DELETE') or (UpperS = 'DEL') then Result := vkDelete
-  else if (UpperS = 'HOME') then Result := vkHome
-  else if (UpperS = 'END') then Result := vkEnd
-  else if (UpperS = 'PRIOR') or (UpperS = 'PAGEUP') or (UpperS = 'PGUP') then Result := vkPrior
-  else if (UpperS = 'NEXT') or (UpperS = 'PAGEDOWN') or (UpperS = 'PGDN') then Result := vkNext
-  else if (UpperS = 'ENTER') or (UpperS = 'RETURN') then Result := vkReturn
-  else if (Length(UpperS) = 4) and UpperS.StartsWith('NUM') and CharInSet(UpperS[4], ['0'..'9']) then
+  for I := Low(KeyAliases) to High(KeyAliases) do
+    if KeyAliases[I].Name = UpperS then
+      Exit(KeyAliases[I].VK);
+  if (Length(UpperS) = 4) and UpperS.StartsWith('NUM') and CharInSet(UpperS[4], ['0'..'9']) then
     Result := vkNumpad0 + Ord(UpperS[4]) - Ord('0')
   else if (Length(UpperS) = 7) and UpperS.StartsWith('NUMPAD') and CharInSet(UpperS[7], ['0'..'9']) then
     Result := vkNumpad0 + Ord(UpperS[7]) - Ord('0')
-  else if (UpperS = 'NUMPAD+') or (UpperS = 'NUM+') or (UpperS = '+') or (UpperS = 'ADD') then Result := vkAdd
-  else if (UpperS = 'NUMPAD-') or (UpperS = 'NUM-') or (UpperS = '-') or (UpperS = 'SUBTRACT') then Result := vkSubtract
-  else if (UpperS = 'NUMPAD*') or (UpperS = 'NUM*') or (UpperS = '*') or (UpperS = 'MULTIPLY') then Result := vkMultiply
-  else if (UpperS = '/') or (UpperS = 'SLASH') or (UpperS = 'OEM2') then Result := vkSlash
-  else if (UpperS = ',') or (UpperS = 'COMMA') then Result := vkComma
-  else if (UpperS = '.') or (UpperS = 'PERIOD') or (UpperS = 'DOT') then Result := vkPeriod
-  else if (UpperS = 'SEMICOLON') or (UpperS = 'OEM1') then Result := vkSemicolon
-  else if (UpperS = '''') or (UpperS = 'QUOTE') or (UpperS = 'OEM7') then Result := vkQuote
-  else if (UpperS = '=') or (UpperS = 'EQUAL') or (UpperS = 'EQUALS') then Result := vkEqual
-  else if UpperS = 'MINUS' then Result := vkMinus
-  else if (UpperS = 'BACKSPACE') or (UpperS = 'BKSP') then Result := vkBack
-  else if (UpperS = 'APPS') or (UpperS = 'MENU') or (UpperS = 'CONTEXTMENU') then Result := vkApps
-  else if Length(UpperS) = 1 then Result := Ord(UpperS[1])
-  else Result := 0;
+  else if Length(UpperS) = 1 then
+    Result := Ord(UpperS[1])
+  else
+    Result := 0;
 end;
 
 function VKToDisplayString(AKey: Word): string;

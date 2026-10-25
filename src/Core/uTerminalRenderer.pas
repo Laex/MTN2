@@ -123,6 +123,17 @@ type
     procedure FlipFrames; inline;
     procedure RenderGridToBitmap;
     procedure RasterizeGrid;
+    procedure PaintBackgrounds(ACanvas: TCanvas);
+    procedure PaintWideGlyph(ACanvas: TCanvas; const AMatrix: TMatrix;
+      X, Y: Integer; const ACell: TCharCell);
+    function PaintShellIcon(ACanvas: TCanvas; const AMatrix: TMatrix;
+      const ARow: TTerminalRow; X, Y, ALastX: Integer): Integer;
+    procedure PaintHalfBlock(ACanvas: TCanvas; const AMatrix: TMatrix;
+      X, Y: Integer; const ACell: TCharCell);
+    function PaintTextRun(ACanvas: TCanvas; const ARow: TTerminalRow;
+      X, Y, ALastX: Integer): Integer;
+    procedure PaintGlyphs(ACanvas: TCanvas);
+    procedure PaintDecorations(ACanvas: TCanvas);
     procedure DrawBoxGlyph(ACanvas: TCanvas; ACol, ARow, N, S, E, W: Integer;
       AColor: TAlphaColor);
     function EffectiveFontSize: Single;
@@ -934,37 +945,312 @@ begin
   FOnRasterized(TStopwatch.GetTimeStamp - T0);
 end;
 
-procedure TTerminalRenderer.RasterizeGrid;
+procedure TTerminalRenderer.PaintBackgrounds(ACanvas: TCanvas);
 var
-  X, Y, RunX, I: Integer;
-  Cell, SubCell: TCharCell;
-  CellRect: TRectF;
-  Target: TBitmap;
-  Canvas: TCanvas;
-  PrevBg, RunFg: TAlphaColor;
-  Ch, RunStr: string;
-  SavedMatrix: TMatrix;
-  BN, BS, BE, BW: Integer;
-  Succeeded: Boolean;
+  X, Y, RunX, LastX: Integer;
+  Row: TTerminalRow;
+  RunBg: TAlphaColor;
+begin
+  // Backgrounds are aligned to physical pixels (crisp cell borders).
+  for Y := 0 to Min(FRows, Length(FGrid)) - 1 do
+  begin
+    Row := FGrid[Y];
+    LastX := Min(FCols, Length(Row)) - 1;
+    X := 0;
+    while X <= LastX do
+    begin
+      RunBg := Row[X].BgColor;
+      RunX := X + 1;
+      while (RunX <= LastX) and (Row[RunX].BgColor = RunBg) do
+        Inc(RunX);
+      if (RunBg <> FDefaultBg) and ((RunBg and $FF000000) <> 0) then
+      begin
+        ACanvas.Fill.Color := RunBg;
+        ACanvas.FillRect(RectF(FXLeft[X], FYTop[Y], FXLeft[RunX], FYTop[Y + 1]),
+          0, 0, [], 1);
+      end;
+      X := RunX;
+    end;
+  end;
+end;
+
+procedure TTerminalRenderer.PaintWideGlyph(ACanvas: TCanvas;
+  const AMatrix: TMatrix; X, Y: Integer; const ACell: TCharCell);
+var
+  Style: TFontStyles;
+  GlyphBmp: TBitmap;
+begin
+  // No italic slant: a wide glyph fills its two cells exactly.
+  Style := [];
+  if ccaBold in ACell.Attributes then
+    Include(Style, TFontStyle.fsBold);
+  GlyphBmp := FGlyphCache.GetGlyph(ACell.CharValue, ACell.FgColor, Style,
+    FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
+    EffectiveFontSize, True);
+  ACanvas.SetMatrix(AMatrix);
+  if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
+    ACanvas.DrawBitmap(GlyphBmp, RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height),
+      RectF(FXLeft[X], FYTop[Y], FXLeft[X + 2], FYTop[Y + 1]), 1.0, True);
+end;
+
+function TTerminalRenderer.PaintShellIcon(ACanvas: TCanvas;
+  const AMatrix: TMatrix; const ARow: TTerminalRow; X, Y, ALastX: Integer): Integer;
+var
+  Cell: TCharCell;
   IconBmp: TBitmap;
-  SrcRect: TRectF;
   IconSpan: Integer;
   Sz, PadX, PadY, ReservedW, RowH: Single;
-  CurFg: TAlphaColor;
-  CurStyle, TargetStyle: TFontStyles;
+begin
+  Result := X;
+  Cell := ARow[X];
+  IconBmp := ShellIconBitmap(Cell.IconId);
+  if IconBmp = nil then
+    Exit;
+  ACanvas.SetMatrix(AMatrix);
+  IconSpan := 1;
+  while (X + IconSpan <= ALastX) and (IconSpan < cShellIconCells) and
+        (ARow[X + IconSpan].IconId = 0) and
+        (ARow[X + IconSpan].CharValue = ' ') and
+        (ARow[X + IconSpan].BgColor = Cell.BgColor) do
+    Inc(IconSpan);
+
+  ReservedW := FXLeft[X + IconSpan] - FXLeft[X];
+  RowH := FYTop[Y + 1] - FYTop[Y];
+
+  Sz := Min(ReservedW - 1, RowH - 2);
+  if (IconBmp.Width > 0) and (Sz > IconBmp.Width) then
+    Sz := Max(IconBmp.Width, RowH - 2);
+  if Sz < 4 then
+    Sz := RowH;
+
+  PadX := (ReservedW - Sz) * 0.5;
+  PadY := (RowH - Sz) * 0.5;
+  ACanvas.DrawBitmap(IconBmp, RectF(0, 0, IconBmp.Width, IconBmp.Height),
+    RectF(FXLeft[X] + PadX, FYTop[Y] + PadY,
+      FXLeft[X] + PadX + Sz, FYTop[Y] + PadY + Sz),
+    1.0, False);
+  Result := X + IconSpan;
+end;
+
+procedure TTerminalRenderer.PaintHalfBlock(ACanvas: TCanvas;
+  const AMatrix: TMatrix; X, Y: Integer; const ACell: TCharCell);
+var
+  CellRect: TRectF;
+begin
+  // Fills the exact half-cell (button shadows); font glyphs leave gaps.
+  ACanvas.SetMatrix(AMatrix);
+  ACanvas.Fill.Kind := TBrushKind.Solid;
+  ACanvas.Fill.Color := ACell.FgColor;
+  if ACell.CharValue = chLowerHalf then
+    CellRect := RectF(FXLeft[X], FYTop[Y] + FCellHeight * 0.5,
+      FXLeft[X + 1], FYTop[Y + 1])
+  else
+    CellRect := RectF(FXLeft[X], FYTop[Y],
+      FXLeft[X + 1], FYTop[Y] + FCellHeight * 0.5);
+  ACanvas.FillRect(CellRect, 0, 0, [], 1);
+end;
+
+function TTerminalRenderer.PaintTextRun(ACanvas: TCanvas;
+  const ARow: TTerminalRow; X, Y, ALastX: Integer): Integer;
+var
+  I, BN, BS, BE, BW: Integer;
+  RunFg: TAlphaColor;
   RunAttr: TCharCellAttributes;
+  Style: TFontStyles;
   GlyphBmp: TBitmap;
   DestRect: TRectF;
-  Sc, PadPx: Single;
-  tDev, DevL, DevT, DevB, DevR, ulDev: Integer;
-  CaretColor: TAlphaColor;
+  PadPx: Single;
+  Sub: TCharCell;
+begin
+  // Contiguous characters of the same color and style form a run.
+  // ccaInsertCaret is a post-glyph overlay and must not split the run.
+  RunFg := ARow[X].FgColor;
+  RunAttr := ARow[X].Attributes - [ccaInsertCaret];
+  Result := X;
+  while Result <= ALastX do
+  begin
+    Sub := ARow[Result];
+    if (Sub.IconId > 0) or (Sub.FgColor <> RunFg) or
+       ((Sub.Attributes - [ccaInsertCaret]) <> RunAttr) or
+       (Sub.CharValue <= #32) or
+       (Sub.CharValue = chLowerHalf) or (Sub.CharValue = chUpperHalf) or
+       ClassifyBoxChar(Sub.CharValue, BN, BS, BE, BW) then
+      Break;
+    Inc(Result);
+  end;
+  if Result = X then
+    Exit;
+
+  Style := [];
+  if ccaBold in RunAttr then
+    Include(Style, TFontStyle.fsBold);
+  if ccaItalic in RunAttr then
+    Include(Style, TFontStyle.fsItalic);
+  PadPx := 0;
+  if TFontStyle.fsItalic in Style then
+    PadPx := ItalicGlyphPadDev(FCellWidth, FSceneScale) / FSceneScale;
+
+  for I := X to Result - 1 do
+  begin
+    GlyphBmp := FGlyphCache.GetGlyph(ARow[I].CharValue, RunFg, Style,
+      FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
+      EffectiveFontSize);
+    if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
+    begin
+      DestRect := RectF(FXLeft[I] - PadPx, FYTop[Y], FXLeft[I + 1] + PadPx, FYTop[Y + 1]);
+      ACanvas.DrawBitmap(GlyphBmp, RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height),
+        DestRect, 1.0, True);
+    end;
+  end;
+end;
+
+procedure TTerminalRenderer.PaintGlyphs(ACanvas: TCanvas);
+var
+  X, Y, LastX, Next: Integer;
+  BN, BS, BE, BW: Integer;
+  Row: TTerminalRow;
+  Cell: TCharCell;
+  SavedMatrix: TMatrix;
+begin
+  SavedMatrix := ACanvas.Matrix;
+  for Y := 0 to Min(FRows, Length(FGrid)) - 1 do
+  begin
+    Row := FGrid[Y];
+    LastX := Min(FCols, Length(Row)) - 1;
+    X := 0;
+    while X <= LastX do
+    begin
+      Cell := Row[X];
+
+      if (ccaWide in Cell.Attributes) and (Cell.IconId = 0) and
+         (X + 1 < FCols) and (Cell.CharValue > ' ') then
+      begin
+        PaintWideGlyph(ACanvas, SavedMatrix, X, Y, Cell);
+        Inc(X, 2);
+        Continue;
+      end;
+
+      if Cell.IconId > 0 then
+      begin
+        Next := PaintShellIcon(ACanvas, SavedMatrix, Row, X, Y, LastX);
+        if Next > X then
+        begin
+          X := Next;
+          Continue;
+        end;
+      end;
+
+      if Cell.CharValue <= ' ' then
+      begin
+        Inc(X);
+        Continue;
+      end;
+
+      if (Cell.CharValue = chLowerHalf) or (Cell.CharValue = chUpperHalf) then
+      begin
+        PaintHalfBlock(ACanvas, SavedMatrix, X, Y, Cell);
+        Inc(X);
+        Continue;
+      end;
+
+      if ClassifyBoxChar(Cell.CharValue, BN, BS, BE, BW) then
+      begin
+        ACanvas.SetMatrix(SavedMatrix);
+        DrawBoxGlyph(ACanvas, X, Y, BN, BS, BE, BW, Cell.FgColor);
+        Inc(X);
+        Continue;
+      end;
+
+      Next := PaintTextRun(ACanvas, Row, X, Y, LastX);
+      if Next > X then
+        X := Next
+      else
+        Inc(X);
+    end;
+  end;
+  ACanvas.SetMatrix(SavedMatrix);
+end;
+
+procedure TTerminalRenderer.PaintDecorations(ACanvas: TCanvas);
+var
+  X, Y, LastX, DevL, DevR, DevT, DevB, UlDev, CaretDev: Integer;
+  Sc: Single;
+  Row: TTerminalRow;
+  Attrs: TCharCellAttributes;
+begin
+  Sc := FSceneScale;
+  if Sc <= 0 then
+    Sc := 1.0;
+  ACanvas.Fill.Kind := TBrushKind.Solid;
+  UlDev := Max(1, Round(Sc));
+  CaretDev := Max(2, Round(2 * Sc));
+
+  for Y := 0 to Min(FRows, Length(FGrid)) - 1 do
+  begin
+    Row := FGrid[Y];
+    LastX := Min(FCols, Length(Row)) - 1;
+    for X := 0 to LastX do
+    begin
+      Attrs := Row[X].Attributes;
+      if Attrs * [ccaUnderline, ccaStrike, ccaInsertCaret] = [] then
+        Continue;
+      DevL := Round(FXLeft[X] * Sc);
+
+      // Underline (Markdown links, ANSI SGR 4): a 1 CSS-px bar in the glyph
+      // colour just above the cell's bottom edge, spaces included so a
+      // multi-word link reads as one underlined run.
+      if ccaUnderline in Attrs then
+      begin
+        DevR := Round(FXLeft[X + 1] * Sc);
+        DevB := Round(FYTop[Y + 1] * Sc) - Max(1, Round(FCellHeight * Sc * 0.08));
+        ACanvas.Fill.Color := Row[X].FgColor;
+        ACanvas.FillRect(RectF(DevL / Sc, (DevB - UlDev) / Sc, DevR / Sc, DevB / Sc),
+          0, 0, [], 1);
+      end;
+
+      // Strikethrough (Markdown ~~text~~): a 1 CSS-px bar in the glyph colour
+      // through the middle of the cell, spaces included.
+      if ccaStrike in Attrs then
+      begin
+        DevR := Round(FXLeft[X + 1] * Sc);
+        DevT := Round((FYTop[Y] + FCellHeight * 0.55) * Sc);
+        ACanvas.Fill.Color := Row[X].FgColor;
+        ACanvas.FillRect(RectF(DevL / Sc, DevT / Sc, DevR / Sc, (DevT + UlDev) / Sc),
+          0, 0, [], 1);
+      end;
+
+      // Insert caret (2 CSS-px bar at the left edge of the marked cell), drawn
+      // after glyphs so space cells still get a caret.
+      if ccaInsertCaret in Attrs then
+      begin
+        DevT := Round(FYTop[Y] * Sc);
+        DevB := Round(FYTop[Y + 1] * Sc);
+        ACanvas.Fill.Color := InsertCaretColor(Row[X].BgColor);
+        if GCaretUnderline then
+        begin
+          DevR := Round(FXLeft[X + 1] * Sc);
+          ACanvas.FillRect(RectF(DevL / Sc,
+            (DevB - Max(CaretDev, Round(FCellHeight * Sc * 0.18))) / Sc,
+            DevR / Sc, DevB / Sc), 0, 0, [], 1);
+        end
+        else
+          ACanvas.FillRect(RectF(DevL / Sc, DevT / Sc, (DevL + CaretDev) / Sc, DevB / Sc),
+            0, 0, [], 1);
+      end;
+    end;
+  end;
+end;
+
+procedure TTerminalRenderer.RasterizeGrid;
+var
+  Target: TBitmap;
+  Canvas: TCanvas;
 begin
   Target := BackFrame;
   if (Target.Width < 1) or (Target.Height < 1) then
     Exit;
   if not Target.Canvas.BeginScene then
     Exit;
-  Succeeded := False;
   try
     Canvas := Target.Canvas;
     Canvas.Clear(FDefaultBg);
@@ -972,278 +1258,15 @@ begin
     Canvas.Font.Size := EffectiveFontSize;
     Canvas.Fill.Kind := TBrushKind.Solid;
 
-    // Pass 1: backgrounds, aligned to physical pixels (crisp cell borders).
-    for Y := 0 to FRows - 1 do
-    begin
-      if Y > High(FGrid) then
-        Break;
-      X := 0;
-      while X < FCols do
-      begin
-        if X > High(FGrid[Y]) then
-          Break;
-        PrevBg := FGrid[Y][X].BgColor;
-        RunX := X;
-        while (RunX < FCols) and (RunX <= High(FGrid[Y])) and
-          (FGrid[Y][RunX].BgColor = PrevBg) do
-          Inc(RunX);
-        if (PrevBg <> FDefaultBg) and ((PrevBg and $FF000000) <> 0) then
-        begin
-          CellRect := RectF(FXLeft[X], FYTop[Y], FXLeft[RunX], FYTop[Y + 1]);
-          Canvas.Fill.Color := PrevBg;
-          Canvas.FillRect(CellRect, 0, 0, [], 1);
-        end;
-        X := RunX;
-      end;
-    end;
-
-    // Pass 2: glyphs and icons. Group contiguous text characters into text runs.
-    SavedMatrix := Canvas.Matrix;
-    CurFg := $00000000;
-    CurStyle := [];
-    for Y := 0 to FRows - 1 do
-    begin
-      if Y > High(FGrid) then
-        Break;
-      X := 0;
-      while X < FCols do
-      begin
-        if X > High(FGrid[Y]) then
-          Break;
-        Cell := FGrid[Y][X];
-
-        if (ccaWide in Cell.Attributes) and (Cell.IconId = 0) and
-           (X + 1 < FCols) and (Cell.CharValue > ' ') then
-        begin
-          // No italic slant: a wide glyph fills its two cells exactly.
-          TargetStyle := [];
-          if ccaBold in Cell.Attributes then
-            Include(TargetStyle, TFontStyle.fsBold);
-          GlyphBmp := FGlyphCache.GetGlyph(Cell.CharValue, Cell.FgColor, TargetStyle,
-            FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
-            EffectiveFontSize, True);
-          Canvas.SetMatrix(SavedMatrix);
-          if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
-            Canvas.DrawBitmap(GlyphBmp, RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height),
-              RectF(FXLeft[X], FYTop[Y], FXLeft[X + 2], FYTop[Y + 1]), 1.0, True);
-          Inc(X, 2);
-          Continue;
-        end;
-
-        if Cell.IconId > 0 then
-        begin
-          IconBmp := ShellIconBitmap(Cell.IconId);
-          if IconBmp <> nil then
-          begin
-            Canvas.SetMatrix(SavedMatrix);
-            IconSpan := 1;
-            while (X + IconSpan < FCols) and (X + IconSpan <= High(FGrid[Y])) and
-                  (IconSpan < cShellIconCells) and
-                  (FGrid[Y][X + IconSpan].IconId = 0) and
-                  (FGrid[Y][X + IconSpan].CharValue = ' ') and
-                  (FGrid[Y][X + IconSpan].BgColor = Cell.BgColor) do
-              Inc(IconSpan);
-
-            ReservedW := FXLeft[X + IconSpan] - FXLeft[X];
-            RowH := FYTop[Y + 1] - FYTop[Y];
-
-            Sz := Min(ReservedW - 1, RowH - 2);
-            if (IconBmp.Width > 0) and (Sz > IconBmp.Width) then
-              Sz := Max(IconBmp.Width, RowH - 2);
-            if Sz < 4 then
-              Sz := RowH;
-
-            PadX := (ReservedW - Sz) * 0.5;
-            PadY := (RowH - Sz) * 0.5;
-            SrcRect := RectF(0, 0, IconBmp.Width, IconBmp.Height);
-            Canvas.DrawBitmap(IconBmp, SrcRect,
-              RectF(FXLeft[X] + PadX, FYTop[Y] + PadY,
-                FXLeft[X] + PadX + Sz, FYTop[Y] + PadY + Sz),
-              1.0, False);
-            Inc(X, IconSpan);
-            Continue;
-          end;
-        end;
-
-        Ch := Cell.CharValue;
-        if (Ch = '') or (Ch = ' ') then
-        begin
-          Inc(X);
-          Continue;
-        end;
-
-        // ▄ / ▀ - fill exact half-cell (button shadows); font glyphs leave gaps.
-        if (Length(Ch) = 1) and ((Ch[1] = chLowerHalf) or (Ch[1] = chUpperHalf)) then
-        begin
-          Canvas.SetMatrix(SavedMatrix);
-          Canvas.Fill.Kind := TBrushKind.Solid;
-          Canvas.Fill.Color := Cell.FgColor;
-          CurFg := Cell.FgColor;
-          if Ch[1] = chLowerHalf then
-            CellRect := RectF(FXLeft[X], FYTop[Y] + FCellHeight * 0.5,
-              FXLeft[X + 1], FYTop[Y + 1])
-          else
-            CellRect := RectF(FXLeft[X], FYTop[Y],
-              FXLeft[X + 1], FYTop[Y] + FCellHeight * 0.5);
-          Canvas.FillRect(CellRect, 0, 0, [], 1);
-          Inc(X);
-          Continue;
-        end;
-
-        if (Length(Ch) = 1) and ClassifyBoxChar(Ch[1], BN, BS, BE, BW) then
-        begin
-          Canvas.SetMatrix(SavedMatrix);
-          DrawBoxGlyph(Canvas, X, Y, BN, BS, BE, BW, Cell.FgColor);
-          CurFg := Cell.FgColor;
-          Inc(X);
-          Continue;
-        end;
-
-        // Group contiguous text characters of the same color and style into a text run.
-        // ccaInsertCaret is a post-glyph overlay and must not split the run.
-        RunX := X;
-        RunFg := Cell.FgColor;
-        RunAttr := Cell.Attributes - [ccaInsertCaret];
-        RunStr := '';
-        while (RunX < FCols) and (RunX <= High(FGrid[Y])) do
-        begin
-          SubCell := FGrid[Y][RunX];
-          if (SubCell.IconId > 0) or (SubCell.FgColor <> RunFg) or
-             ((SubCell.Attributes - [ccaInsertCaret]) <> RunAttr) or
-             (Length(SubCell.CharValue) <> 1) or
-             (SubCell.CharValue <= #32) or
-             (SubCell.CharValue = chLowerHalf) or (SubCell.CharValue = chUpperHalf) or
-             ClassifyBoxChar(SubCell.CharValue, BN, BS, BE, BW) then
-            Break;
-          RunStr := RunStr + SubCell.CharValue;
-          Inc(RunX);
-        end;
-
-        if RunStr <> '' then
-        begin
-          TargetStyle := [];
-          if ccaBold in RunAttr then
-            Include(TargetStyle, TFontStyle.fsBold);
-          if ccaItalic in RunAttr then
-            Include(TargetStyle, TFontStyle.fsItalic);
-
-          for I := 1 to Length(RunStr) do
-          begin
-            GlyphBmp := FGlyphCache.GetGlyph(RunStr[I], RunFg, TargetStyle,
-              FCellWidth, FCellHeight, FSceneScale, FGlyphTop, FFontFamily,
-              EffectiveFontSize);
-            if Assigned(GlyphBmp) and (GlyphBmp.Width > 0) and (GlyphBmp.Height > 0) then
-            begin
-              SrcRect := RectF(0, 0, GlyphBmp.Width, GlyphBmp.Height);
-              DestRect := RectF(FXLeft[X + I - 1], FYTop[Y], FXLeft[X + I], FYTop[Y + 1]);
-              if TFontStyle.fsItalic in TargetStyle then
-              begin
-                PadPx := ItalicGlyphPadDev(FCellWidth, FSceneScale) / FSceneScale;
-                DestRect.Left := DestRect.Left - PadPx;
-                DestRect.Right := DestRect.Right + PadPx;
-              end;
-              Canvas.DrawBitmap(GlyphBmp, SrcRect, DestRect, 1.0, True);
-            end;
-          end;
-          X := RunX;
-        end
-        else
-          Inc(X);
-      end;
-    end;
-
-    Canvas.SetMatrix(SavedMatrix);
-
-    // Pass 3: insert carets (2 CSS-px bar at the left edge of the marked cell).
-    // Drawn after glyphs so space cells still get a caret.
-    Sc := FSceneScale;
-    if Sc <= 0 then
-      Sc := 1.0;
-    Canvas.Fill.Kind := TBrushKind.Solid;
-
-    // Underline (Markdown links, ANSI SGR 4): a 1 CSS-px bar in the glyph
-    // colour just above the cell's bottom edge, spaces included so a
-    // multi-word link reads as one underlined run.
-    ulDev := Max(1, Round(Sc));
-    for Y := 0 to FRows - 1 do
-    begin
-      if Y > High(FGrid) then
-        Break;
-      for X := 0 to FCols - 1 do
-      begin
-        if X > High(FGrid[Y]) then
-          Break;
-        if not (ccaUnderline in FGrid[Y][X].Attributes) then
-          Continue;
-        DevL := Round(FXLeft[X] * Sc);
-        DevR := Round(FXLeft[X + 1] * Sc);
-        DevB := Round(FYTop[Y + 1] * Sc) - Max(1, Round(FCellHeight * Sc * 0.08));
-        Canvas.Fill.Color := FGrid[Y][X].FgColor;
-        Canvas.FillRect(RectF(DevL / Sc, (DevB - ulDev) / Sc, DevR / Sc, DevB / Sc),
-          0, 0, [], 1);
-      end;
-    end;
-
-    // Strikethrough (Markdown ~~text~~): a 1 CSS-px bar in the glyph colour
-    // through the middle of the cell, spaces included.
-    for Y := 0 to FRows - 1 do
-    begin
-      if Y > High(FGrid) then
-        Break;
-      for X := 0 to FCols - 1 do
-      begin
-        if X > High(FGrid[Y]) then
-          Break;
-        if not (ccaStrike in FGrid[Y][X].Attributes) then
-          Continue;
-        DevL := Round(FXLeft[X] * Sc);
-        DevR := Round(FXLeft[X + 1] * Sc);
-        DevT := Round((FYTop[Y] + FCellHeight * 0.55) * Sc);
-        Canvas.Fill.Color := FGrid[Y][X].FgColor;
-        Canvas.FillRect(RectF(DevL / Sc, DevT / Sc, DevR / Sc, (DevT + ulDev) / Sc),
-          0, 0, [], 1);
-      end;
-    end;
-
-    tDev := Max(2, Round(2 * Sc));
-    for Y := 0 to FRows - 1 do
-    begin
-      if Y > High(FGrid) then
-        Break;
-      for X := 0 to FCols - 1 do
-      begin
-        if X > High(FGrid[Y]) then
-          Break;
-        if not (ccaInsertCaret in FGrid[Y][X].Attributes) then
-          Continue;
-        CaretColor := InsertCaretColor(FGrid[Y][X].BgColor);
-        DevL := Round(FXLeft[X] * Sc);
-        DevT := Round(FYTop[Y] * Sc);
-        DevB := Round(FYTop[Y + 1] * Sc);
-        Canvas.Fill.Color := CaretColor;
-        if GCaretUnderline then
-        begin
-          DevR := Round(FXLeft[X + 1] * Sc);
-          Canvas.FillRect(RectF(DevL / Sc,
-            (DevB - Max(tDev, Round(FCellHeight * Sc * 0.18))) / Sc,
-            DevR / Sc, DevB / Sc), 0, 0, [], 1);
-        end
-        else
-          Canvas.FillRect(RectF(DevL / Sc, DevT / Sc, (DevL + tDev) / Sc, DevB / Sc),
-            0, 0, [], 1);
-      end;
-    end;
-
-    Succeeded := True;
+    PaintBackgrounds(Canvas);
+    PaintGlyphs(Canvas);
+    PaintDecorations(Canvas);
   finally
     Target.Canvas.EndScene;
   end;
 
-  if Succeeded then
-  begin
-    FlipFrames;
-    FNeedRebuildBuffer := False;
-  end;
+  FlipFrames;
+  FNeedRebuildBuffer := False;
 end;
 
 procedure TTerminalRenderer.Draw(ACanvas: TCanvas; const ADestRect: TRectF);
