@@ -263,7 +263,7 @@
       "select_folders": "全选时包含文件夹(&F)",
       "pack_same_panel": "打包到同一面板 (Shift+F1)(&A)",
       "passive_cursor": "非活动面板显示光标(&V)",
-      "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
+      "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"
@@ -1594,7 +1594,7 @@
     "terminalProfile.hint1": "Ins - 复制配置   Del - 删除副本",
     "terminalProfile.hint2": "Ctrl+Up/Down - 顺序  F4 - 按键  F6 - 环境",
     "terminalEnv.title": "环境配置文件",
-    "terminalEnv.none": "(无)",
+    "terminalEnv.none": "(无)",
     "display.saverOff": "关",
     "display.saverMinutes": "%d 分钟",
     "profileKeys.auto": "自动",

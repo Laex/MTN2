@@ -264,7 +264,7 @@
       "select_folders": "Alles auswählen auch &Ordner",
       "pack_same_panel": "Im selben Be&dienfeld packen (Shift+F1)",
       "passive_cursor": "Cursor im ina&ktiven Panel",
-      "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
+      "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"
@@ -1595,7 +1595,7 @@
     "terminalProfile.hint1": "Ins - Profil kopieren   Del - Kopie löschen",
     "terminalProfile.hint2": "Ctrl+Up/Down - Reihenfolge  F4 - Tasten  F6 - Umgebung",
     "terminalEnv.title": "Umgebungsprofil",
-    "terminalEnv.none": "(keins)",
+    "terminalEnv.none": "(keins)",
     "display.saverOff": "Aus",
     "display.saverMinutes": "%d Min.",
     "profileKeys.auto": "auto",

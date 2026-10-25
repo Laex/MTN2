@@ -1614,7 +1614,7 @@
     "terminalProfile.hint1": "Ins - copy profile   Del - delete copy",
     "terminalProfile.hint2": "Ctrl+Up/Down - order  F4 - keys  F6 - env",
     "terminalEnv.title": "Environment profile",
-    "terminalEnv.none": "(none)",
+    "terminalEnv.none": "(none)",
     "display.saverOff": "Off",
     "display.saverMinutes": "%d min",
     "profileKeys.auto": "auto",

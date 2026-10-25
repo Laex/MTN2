@@ -262,7 +262,7 @@
       "select_folders": "Выделять и &папки (выделить / снять всё)",
       "pack_same_panel": "Упаковывать в ту &же панель (Shift+F1)",
       "passive_cursor": "Курсор в &неактивной панели",
-      "editor_autoindent": "Автоотступ в &редакторе по Enter",
+      "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "lbl_saver": "Заставка",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -1611,7 +1611,7 @@
     "terminalProfile.hint1": "Ins - копия профиля   Del - удалить копию",
     "terminalProfile.hint2": "Ctrl+Вверх/Вниз - порядок  F4 - клавиши  F6 - среда",
     "terminalEnv.title": "Профиль окружения",
-    "terminalEnv.none": "(нет)",
+    "terminalEnv.none": "(нет)",
     "display.saverOff": "Выкл.",
     "display.saverMinutes": "%d мин",
     "profileKeys.auto": "авто",
