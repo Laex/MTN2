@@ -71,7 +71,7 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\dcu\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>..\bin\win64</DCC_ExeOutput>
-        <DCC_UnitSearchPath>.\Core;.\Forms;.\Platform\Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>.\Core;.\ascii-sharks;.\Forms;.\Platform\Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
         <DCC_S>false</DCC_S>
@@ -361,6 +361,8 @@
         <DCCReference Include="Platform\Windows\uSingleInstance.pas"/>
         <DCCReference Include="Platform\Windows\uTaskbarProgress.pas"/>
         <DCCReference Include="Core\uStartupTargets.pas"/>
+        <DCCReference Include="Core\uEnvProfiles.pas"/>
+        <DCCReference Include="ascii-sharks\uSharkSaver.pas"/>
         <DCCReference Include="Core\uUpdateCli.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>
         <DCCReference Include="Core\uSelfCheck.pas"/>

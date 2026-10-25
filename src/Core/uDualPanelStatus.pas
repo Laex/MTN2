@@ -127,7 +127,7 @@ begin
       hdkJobProgress:
         Exit(fbcJobRunning);
       hdkJobConfirm, hdkOverwriteAsk, hdkOverwriteRename, hdkDeleteError,
-      hdkStopConfirm, hdkTerminalProfile, hdkConsoleProfile:
+      hdkStopConfirm, hdkTerminalProfile, hdkConsoleProfile, hdkTerminalEnv:
         Exit(fbcJob);
       hdkWorkspaceLibrary:
         Exit(fbcWorkspaceLibrary);

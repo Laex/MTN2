@@ -402,6 +402,11 @@ function BuildMultiRenameDialog(const ARules: TMultiRenameRules;
 function BuildChecksumResultDialog(const ATitle, AStatus: string;
   const ALines: TArray<string>; AVerify: Boolean): TDialogDeclaration;
 /// <summary>AAccents: the quick-launch key cells of the rows.</summary>
+/// <summary>The list that picks the environment profile (uEnvProfiles) of a
+/// shell profile: AItems with the "none" row first, ASelectedIndex the current
+/// one.</summary>
+function BuildTerminalEnvDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer): TDialogDeclaration;
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0;
   const AAccents: TArray<TListAccent> = nil): TDialogDeclaration;
@@ -1716,6 +1721,13 @@ begin
   DialogSetListItems(Result, 'profiles', Items, Sel);
 end;
 
+function BuildTerminalEnvDialog(const AItems: TArray<string>;
+  ASelectedIndex: Integer): TDialogDeclaration;
+begin
+  Result := BuildShellProfileListDialog(T('ui.terminalEnv.title', 'Environment profile'),
+    AItems, ASelectedIndex);
+end;
+
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer; const AAccents: TArray<TListAccent>): TDialogDeclaration;
 const
@@ -1752,7 +1764,7 @@ begin
     MakeLabel(T('ui.terminalProfile.hint1', 'Ins - copy profile   Del - delete copy')),
     1, 13, Result.Width - 4, 1);
   Result.Controls[N + 1] := WithControlBox(
-    MakeLabel(T('ui.terminalProfile.hint2', 'Ctrl+Up/Down - order   F4 - keys mode')),
+    MakeLabel(T('ui.terminalProfile.hint2', 'Ctrl+Up/Down - order  F4 - keys  F6 - env')),
     1, 14, Result.Width - 4, 1);
   FitDialogCaptions(Result);
 end;

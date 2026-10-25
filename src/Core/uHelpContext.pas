@@ -82,7 +82,7 @@ begin
       Result := 'topmenu.md';
     hdkDirSync, hdkCompareResult:
       Result := 'sync.md';
-    hdkTerminalProfile:
+    hdkTerminalProfile, hdkTerminalEnv:
       Result := 'terminals.md';
     hdkConsoleProfile, hdkConsoleSave:
       Result := 'cmdline.md';

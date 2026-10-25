@@ -45,10 +45,11 @@ uses
   System.Classes, System.IOUtils, System.Zip, uConfigLocation;
 
 const
-  cFileNames: array[0..9] of string = (
+  cFileNames: array[0..10] of string = (
     'session.json', 'keymap.json', 'usermenu.json', 'associations.json',
     'externaltools.json', 'markdown-colors.json', 'folderhotlist.json',
-    'sshconnections.json', 'workspaces.json', 'hidden-dialogs.json');
+    'sshconnections.json', 'workspaces.json', 'hidden-dialogs.json',
+    'environment.json');
   cBackupName = 'settings-backup.zip';
 
 function SettingsFileNames: TArray<string>;

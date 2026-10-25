@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uListExport,
-  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uToast, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uToast, uSharkSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
   uPluginSurface, uPluginServices, uTaskbarProgress;
 
@@ -1655,6 +1655,7 @@ begin
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
+  Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
@@ -1689,8 +1690,10 @@ begin
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
+  GSaverMinutes := ASettings.SaverMinutes;
   GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
@@ -1796,6 +1799,7 @@ begin
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
+  GSaverMinutes := Sess.SaverMinutes;
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
@@ -1895,6 +1899,7 @@ begin
   Sess.FileDrag := GFileDragEnabled;
   Sess.AltOpensMenu := GAltOpensMenu;
   Sess.EditorAutoIndent := GEditorAutoIndent;
+  Sess.SaverMinutes := GSaverMinutes;
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ShowKeyBar := GShowKeyBar;
@@ -2737,6 +2742,7 @@ begin
   FSession.FileDrag := True;
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
+  FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ShowKeyBar := True;

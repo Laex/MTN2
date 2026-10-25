@@ -15,8 +15,9 @@ unit uConPty;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.SyncObjs, Winapi.Windows,
-  Winapi.TlHelp32, uShellProfiles, uConPtyApi;
+  System.SysUtils, System.Classes, System.SyncObjs, System.Generics.Collections,
+  System.Generics.Defaults, Winapi.Windows, Winapi.TlHelp32, uShellProfiles,
+  uEnvProfiles, uShellProfileOptions, uConPtyApi;
 
 type
   TConPtyOutputEvent = reference to procedure(const AText: string);
@@ -74,6 +75,7 @@ type
     FPendingText: string;
     FFlushQueued: Boolean;
     FEpoch: Integer;
+    FShellId: string;         // the id StartShell was given, copy suffix included
     FProfileId: string;       // drives per-profile output/input encoding (cmd=OEM, ps/wsl=UTF-8)
     FDecodeTail: TBytes;      // pending UTF-8 multibyte tail spanning ReadFile boundaries
     FOnOutput: TConPtyOutputEvent;
@@ -1104,6 +1106,7 @@ begin
 
   Terminate;
 
+  FShellId := '';
   FAlive := True;
   FOnOutput := OutEvt;
   FOnExit := ExitEvt;
@@ -1122,9 +1125,48 @@ begin
   end;
 end;
 
+// The child's environment block (sorted, double-terminated) with the
+// environment profiles applied; '' when no profile changes the environment,
+// which lets the child inherit ours.
+function ProfileEnvironmentBlock(const AShellId: string): UnicodeString;
+var
+  Raw, P: PWideChar;
+  Base, Env: TArray<string>;
+  Entry: string;
+begin
+  Result := '';
+  Raw := GetEnvironmentStringsW;
+  if Raw = nil then
+    Exit;
+  try
+    P := Raw;
+    while P^ <> #0 do
+    begin
+      SetLength(Base, Length(Base) + 1);
+      Base[High(Base)] := P;
+      Inc(P, StrLen(P) + 1);
+    end;
+  finally
+    FreeEnvironmentStringsW(Raw);
+  end;
+  Env := ShellEnvironment(Base, AShellId, ProfileEnvName(AShellId));
+  if Pointer(Env) = Pointer(Base) then
+    Exit;
+  TArray.Sort<string>(Env, TComparer<string>.Construct(
+    function(const A, B: string): Integer
+    begin
+      Result := CompareText(A, B);
+    end));
+  for Entry in Env do
+    Result := Result + Entry + #0;
+  Result := Result + #0;
+end;
+
 function TConPtySession.LaunchProcess(const ACmdLine, AWorkingDir: string;
   ACols, ARows: Word): Boolean;
 var
+  EnvBlock: UnicodeString;
+  EnvPtr: Pointer;
   PtyInRead, PtyOutWrite: THandle;
   Sa: TSecurityAttributes;
   Si: TStartupInfoExW;
@@ -1238,9 +1280,15 @@ begin
     else
       Cwd := nil;
 
+    EnvBlock := ProfileEnvironmentBlock(FShellId);
+    if EnvBlock <> '' then
+      EnvPtr := PWideChar(EnvBlock)
+    else
+      EnvPtr := nil;
+
     if not CreateProcessW(nil, PWideChar(CmdLine), nil, nil, False,
       CREATE_UNICODE_ENVIRONMENT or EXTENDED_STARTUPINFO_PRESENT,
-      nil, Cwd, Si.StartupInfo, Pi) then
+      EnvPtr, Cwd, Si.StartupInfo, Pi) then
     begin
       FLastError := 'CreateProcessW failed: ' + FormatLastError;
       Exit;
@@ -1337,6 +1385,7 @@ var
 begin
   BeginSession(FOnOutput, FOnExit, True);
   FProfileId := NormalizeShellProfileId(AProfile);
+  FShellId := AProfile;
   if not ResolveShellCmdLine(AProfile, ACwd, Cmd, Cwd) then
   begin
     FLastError := 'Shell profile unavailable: ' + AProfile;

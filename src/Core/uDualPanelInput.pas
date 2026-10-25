@@ -132,6 +132,7 @@ type
     BeginExportSettings: TKeymapProc;
     BeginImportSettings: TKeymapProc;
     BeginConfigLocation: TKeymapProc;
+    OpenEnvironmentProfiles: TKeymapProc;
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;

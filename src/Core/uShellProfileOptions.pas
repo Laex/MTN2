@@ -19,6 +19,9 @@ type
     Title: string;
     IsCopy: Boolean;
     KeyMode: TProfileKeyMode;
+    /// <summary>Environment profile (uEnvProfiles) the shell starts with; ''
+    /// for the profiles that apply by their own settings.</summary>
+    EnvName: string;
   end;
   TProfileEntries = TArray<TProfileEntry>;
 
@@ -27,6 +30,11 @@ procedure SetProfileKeyMode(const AProfileId: string; AMode: TProfileKeyMode);
 /// <summary>Auto -> Program -> Host -> Auto.</summary>
 function NextProfileKeyMode(AMode: TProfileKeyMode): TProfileKeyMode;
 function ProfileKeyModeTitle(AMode: TProfileKeyMode): string;
+
+/// <summary>Name of the environment profile the shell profile starts with
+/// ('' = none named: the profiles that are on apply).</summary>
+function ProfileEnvName(const AProfileId: string): string;
+procedure SetProfileEnvName(const AProfileId, AName: string);
 
 /// <summary>The available profiles and their copies in the saved order.</summary>
 function ProfileEntriesOrdered: TProfileEntries;
@@ -79,6 +87,7 @@ var
   GCopies: TList<TCopyRec>;
   GOrder: TList<string>;
   GModes: TDictionary<string, Integer>;
+  GEnvNames: TDictionary<string, string>;
 
 function StoragePath: string;
 begin
@@ -115,13 +124,16 @@ begin
     GOrder := TList<string>.Create;
   if GModes = nil then
     GModes := TDictionary<string, Integer>.Create(TIStringComparer.Ordinal);
+  if GEnvNames = nil then
+    GEnvNames := TDictionary<string, string>.Create(TIStringComparer.Ordinal);
 end;
 
 procedure Save;
 var
-  Root, Keys, Obj: TJSONObject;
+  Root, Keys, Envs, Obj: TJSONObject;
   Arr: TJSONArray;
   Pair: TPair<string, Integer>;
+  EnvPair: TPair<string, string>;
   C: TCopyRec;
   S, Path: string;
 begin
@@ -148,6 +160,11 @@ begin
     for Pair in GModes do
       if TProfileKeyMode(Pair.Value) <> pkmAuto then
         Keys.AddPair(Pair.Key, ModeName(TProfileKeyMode(Pair.Value)));
+    Envs := TJSONObject.Create;
+    Root.AddPair('env', Envs);
+    for EnvPair in GEnvNames do
+      if EnvPair.Value <> '' then
+        Envs.AddPair(EnvPair.Key, EnvPair.Value);
     try
       ForceDirectories(ExtractFilePath(Path));
       TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
@@ -164,7 +181,7 @@ procedure EnsureLoaded;
 var
   Content, Id, Name: string;
   Val: TJSONValue;
-  Root, Keys: TJSONObject;
+  Root, Keys, Envs: TJSONObject;
   Arr: TJSONArray;
   I: Integer;
   C: TCopyRec;
@@ -177,6 +194,7 @@ begin
   GCopies.Clear;
   GOrder.Clear;
   GModes.Clear;
+  GEnvNames.Clear;
   if not TFile.Exists(StoragePath) then
     Exit;
   try
@@ -211,6 +229,10 @@ begin
         for Pair in Keys do
           GModes.AddOrSetValue(Pair.JsonString.Value,
             Ord(ModeFromName(Pair.JsonValue.Value)));
+      if Root.TryGetValue<TJSONObject>('env', Envs) then
+        for Pair in Envs do
+          if Pair.JsonValue.Value <> '' then
+            GEnvNames.AddOrSetValue(Pair.JsonString.Value, Pair.JsonValue.Value);
     finally
       Root.Free;
     end;
@@ -218,6 +240,7 @@ begin
     GCopies.Clear;
     GOrder.Clear;
     GModes.Clear;
+    GEnvNames.Clear;
   end;
 end;
 
@@ -230,6 +253,23 @@ begin
     Result := TProfileKeyMode(V)
   else
     Result := pkmAuto;
+end;
+
+function ProfileEnvName(const AProfileId: string): string;
+begin
+  EnsureLoaded;
+  if not GEnvNames.TryGetValue(CanonicalShellProfileId(AProfileId), Result) then
+    Result := '';
+end;
+
+procedure SetProfileEnvName(const AProfileId, AName: string);
+begin
+  EnsureLoaded;
+  if AName = '' then
+    GEnvNames.Remove(CanonicalShellProfileId(AProfileId))
+  else
+    GEnvNames.AddOrSetValue(CanonicalShellProfileId(AProfileId), AName);
+  Save;
 end;
 
 procedure SetProfileKeyMode(const AProfileId: string; AMode: TProfileKeyMode);
@@ -361,6 +401,7 @@ begin
           Result[N].Title := Titles[J];
           Result[N].IsCopy := ShellProfileCopySuffix(Ids[J]) <> '';
           Result[N].KeyMode := ProfileKeyMode(Ids[J]);
+          Result[N].EnvName := ProfileEnvName(Ids[J]);
         end;
         Break;
       end;
@@ -429,6 +470,8 @@ begin
   // The copy starts with the settings of the profile it was made from.
   if ProfileKeyMode(ASourceId) <> pkmAuto then
     GModes.AddOrSetValue(Result, Ord(ProfileKeyMode(ASourceId)));
+  if ProfileEnvName(ASourceId) <> '' then
+    GEnvNames.AddOrSetValue(Result, ProfileEnvName(ASourceId));
   Save;
 end;
 
@@ -453,6 +496,7 @@ begin
   if not Result then
     Exit;
   GModes.Remove(Id);
+  GEnvNames.Remove(Id);
   List := TList<string>.Create;
   try
     Ordered := GOrder.ToArray;
@@ -551,5 +595,6 @@ finalization
   GCopies.Free;
   GOrder.Free;
   GModes.Free;
+  GEnvNames.Free;
 
 end.

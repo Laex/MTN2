@@ -266,6 +266,7 @@
       "pack_same_panel": "Pack to the sam&e panel (Shift+F1)",
       "passive_cursor": "Cursor in the inacti&ve panel",
       "editor_autoindent": "Editor a&uto-indent on Enter",
+      "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -1611,7 +1612,11 @@
 
     "terminalProfile.title": "New terminal",
     "terminalProfile.hint1": "Ins - copy profile   Del - delete copy",
-    "terminalProfile.hint2": "Ctrl+Up/Down - order   F4 - keys mode",
+    "terminalProfile.hint2": "Ctrl+Up/Down - order  F4 - keys  F6 - env",
+    "terminalEnv.title": "Environment profile",
+    "terminalEnv.none": "(none)",
+    "display.saverOff": "Off",
+    "display.saverMinutes": "%d min",
     "profileKeys.auto": "auto",
     "profileKeys.program": "terminal",
     "profileKeys.host": "host",
@@ -1758,6 +1763,7 @@
     "tmaOptInterface": "User interface...",
     "tmaOptExternalTools": "External viewer/editor...",
     "tmaOptConsoleOptions": "Console...",
+    "tmaOptEnvironment": "Environment profiles...",
     "tmaOptExportSettings": "Export settings...",
     "tmaOptImportSettings": "Import settings...",
     "tmaOptConfigLocation": "Settings location...",

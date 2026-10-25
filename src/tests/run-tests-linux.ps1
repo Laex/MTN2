@@ -68,6 +68,13 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         if ($Test -and -not ($Test | Where-Object { $F.BaseName -like $_ })) { continue }
         $F.BaseName
     }
+    # The fixtures of the screensaver subsystem live with its code.
+    $SubsystemTests = Join-Path $Src 'ascii-sharks\tests'
+    $ExtraUnits = ''
+    if ($Dir.Name -eq 'core' -and (Test-Path $SubsystemTests)) {
+        $Fixtures = @($Fixtures) + @(Get-ChildItem $SubsystemTests -Filter 'Test*.pas' -File | Sort-Object Name | ForEach-Object { $_.BaseName })
+        $ExtraUnits = ";$SubsystemTests"
+    }
     if (-not $Fixtures) { continue }
     $Name = (Get-Culture).TextInfo.ToTitleCase($Dir.Name) + 'TestsLinux'
     $Dpr = Join-Path $Out "$Name.dpr"
@@ -75,7 +82,7 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         "{`$R '$Src\MTN2Tui.dres'}", '', 'uses', '  uTestRunner,',
         (($Fixtures | ForEach-Object { "  $_" }) -join ",`n") + ';', '', 'begin', '  RunRegisteredTests;', 'end.') |
         Set-Content $Dpr -Encoding UTF8
-    $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.net;$Src\tests\common;$($Dir.FullName);$Studio\source\DunitX"
+    $Units = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.net;$Src\tests\common;$($Dir.FullName)$ExtraUnits;$Studio\source\DunitX"
     $Dcu = Join-Path $Out "obj\$($Dir.Name)"
     New-Item -ItemType Directory -Force $Dcu | Out-Null
     $Result = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `

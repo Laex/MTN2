@@ -41,6 +41,8 @@ uses
   TestUpdater in 'TestUpdater.pas',
   TestUpdateCli in 'TestUpdateCli.pas',
   TestStartupTargets in 'TestStartupTargets.pas',
+  TestEnvProfiles in 'TestEnvProfiles.pas',
+  TestAsciiSharks in 'TestAsciiSharks.pas',
   TestDesktopEntry in 'TestDesktopEntry.pas';
 
 begin

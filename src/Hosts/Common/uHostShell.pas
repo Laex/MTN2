@@ -155,7 +155,7 @@ uses
   uShellProfiles, uDualPanelTypes, uConsoleSettings,
   uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
-  uDualPanelUiTypes, uToast, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
+  uDualPanelUiTypes, uToast, uSharkSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
   uOverlayRenderer, uKeyRouting;
 
@@ -201,6 +201,7 @@ begin
   FSession.ShowStatusLine := True;
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
+  FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ShowPanelIcons := True;
@@ -365,6 +366,7 @@ begin
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
+  Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ShowKeyBar := GShowKeyBar;
@@ -394,8 +396,10 @@ begin
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
+  GSaverMinutes := ASettings.SaverMinutes;
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
@@ -448,6 +452,7 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GListExportConfig := Sess.ListExport;
   GShowToasts := Sess.ShowNotifications;
+  GSaverMinutes := Sess.SaverMinutes;
   GShowPassiveCursor := Sess.PassiveCursor;
   if GHostShowsIcons then
     GShowPanelIcons := Sess.ShowPanelIcons;
@@ -484,6 +489,7 @@ begin
   Sess.ThemeName := FThemes.ThemeId;
   Sess.ThemeFile := '';
   Sess.ShowNotifications := GShowToasts;
+  Sess.SaverMinutes := GSaverMinutes;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;

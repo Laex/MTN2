@@ -178,6 +178,8 @@ uses
   uSingleInstance in 'Platform\Windows\uSingleInstance.pas',
   uTaskbarProgress in 'Platform\Windows\uTaskbarProgress.pas',
   uStartupTargets in 'Core\uStartupTargets.pas',
+  uEnvProfiles in 'Core\uEnvProfiles.pas',
+  uSharkSaver in 'ascii-sharks\uSharkSaver.pas',
   uUpdateCli in 'Core\uUpdateCli.pas',
   uUpdater in 'Core\uUpdater.pas',
   uSelfCheck in 'Core\uSelfCheck.pas',

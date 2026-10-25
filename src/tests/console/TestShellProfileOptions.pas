@@ -18,6 +18,7 @@ type
     [Test] procedure NextCopyIdSkipsUsedNumbers;
     [Test] procedure SavedOrderComesFirst;
     [Test] procedure KeyModeSurvivesReload;
+    [Test] procedure EnvNameSurvivesReloadAndFollowsTheCopy;
     [Test] procedure CopyAddMoveDeleteRoundTrip;
     [Test] procedure ProfileIsNotDeletable;
     [Test] procedure TerminalKeysUseXtermSequences;
@@ -104,6 +105,26 @@ begin
   Assert.IsTrue(NextProfileKeyMode(pkmAuto) = pkmProgram);
   Assert.IsTrue(NextProfileKeyMode(pkmProgram) = pkmHost);
   Assert.IsTrue(NextProfileKeyMode(pkmHost) = pkmAuto);
+end;
+
+procedure TTestShellProfileOptions.EnvNameSurvivesReloadAndFollowsTheCopy;
+var
+  Copy1, Copy2: string;
+begin
+  Assert.AreEqual('', ProfileEnvName('cmd'));
+  SetProfileEnvName('cmd', 'work');
+  Copy1 := ProfileCopyAdd('cmd');
+  Assert.AreEqual('work', ProfileEnvName(Copy1), 'a copy starts with its source''s environment');
+  SetProfileEnvName(Copy1, 'clean');
+  ShellProfileOptionsUsePath(FPath);
+  Assert.AreEqual('work', ProfileEnvName('cmd'));
+  Assert.AreEqual('clean', ProfileEnvName(Copy1));
+  Copy2 := ProfileCopyAdd(Copy1);
+  Assert.AreEqual('clean', ProfileEnvName(Copy2));
+  Assert.IsTrue(ProfileCopyDelete(Copy2));
+  Assert.AreEqual('', ProfileEnvName(Copy2), 'deleting a copy drops its environment');
+  SetProfileEnvName('cmd', '');
+  Assert.AreEqual('', ProfileEnvName('cmd'));
 end;
 
 procedure TTestShellProfileOptions.CopyAddMoveDeleteRoundTrip;

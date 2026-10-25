@@ -30,3 +30,6 @@ x64-версию `7z.dll` в `plugins\mtn.7z\`. Автообновление з�
 
 Полные тексты лицензий и уведомления об авторских правах – в файле `plugins\mtn.highlight\licenses.md`.
 
+## ascii-sharks (`src\ascii-sharks`)
+
+Заставка с акулами (модели рыб и акул, правила их движения и рисование акул ячейками) переписана на Delphi по проекту [ascii-sharks](https://github.com/stackedlol/ascii-sharks), лицензия MIT, Copyright (c) 2026 drewdi. Текст лицензии – в файле `src\ascii-sharks\LICENSE-ascii-sharks.txt`. Подсистему можно не собирать: см. `src\ascii-sharks\README.md`.

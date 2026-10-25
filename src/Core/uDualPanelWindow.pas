@@ -12,7 +12,7 @@ uses
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindSession, uEditorWindow, uHelpViewer, uHelpContext, uQuickTextView,
-  uHistoryPopup, uStartupTargets,
+  uHistoryPopup, uStartupTargets, uSharkSaver,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
@@ -198,6 +198,11 @@ type
     FQuickText: TQuickTextView;
     /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
     FToast: TToast;
+    FSaver: TSharkSaver;
+    /// <summary>The click and the release that follow a mouse press which only
+    /// stopped the screensaver are not input for the window.</summary>
+    FSaverSwallowClick: Boolean;
+    FSaverSwallowUp: Boolean;
     /// <summary>Workspace tab id while hdkWorkspaceTabRename is open.</summary>
     FRenameWorkspaceId: Cardinal;
     FSkipArchivePasswordUri: string;
@@ -800,6 +805,9 @@ type
     procedure BeginExportSettings;
     procedure BeginImportSettings;
     procedure BeginConfigLocation;
+    procedure OpenEnvironmentProfiles;
+    function MenuBarWidth(AWidth: Integer): Integer;
+    function SaverCornerHit(ALocalCol, ALocalRow: Integer): Boolean;
     function HandleConfigLocationCommand(const AControlId: string): Boolean;
     /// <summary>mtn2-settings.zip in the folder of the active panel (the
     /// documents folder when that is not a plain folder).</summary>
@@ -1158,6 +1166,10 @@ type
     /// names: folders and file locations in new tabs, --view files in the
     /// viewer, --edit files in the editor (a new name is created on save).</summary>
     procedure OpenStartupTargets(const ATargets: TStartupTargets);
+    /// <summary>True while the screensaver sharks swim.</summary>
+    function SaverActive: Boolean;
+    /// <summary>Column of the menu bar cell that starts the screensaver; -1 while no menu bar is shown.</summary>
+    function SaverCornerCol: Integer;
     function ExportSessionState: TDualPanelWindowState;
     procedure ApplySessionState(const AState: TDualPanelWindowState);
     /// <summary>Rebuilds the top menu bar's categories/captions from
@@ -1299,7 +1311,7 @@ implementation
 
 uses
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
-  uExternalTools, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode;
 
 const
@@ -1379,6 +1391,12 @@ begin
   // NotifyChanged, not Invalidate: the hide comes from a timer, outside any
   // input/paint pass, so the host must be told to repaint.
   FToast := TToast.Create(
+    procedure
+    begin
+      if Life.Alive then
+        NotifyChanged;
+    end);
+  FSaver := TSharkSaver.Create(
     procedure
     begin
       if Life.Alive then
@@ -1620,6 +1638,7 @@ begin
   end;
   SetNoticeHandler(nil);
   FreeAndNil(FToast);
+  FreeAndNil(FSaver);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
   if Assigned(FQuickText) then
@@ -1851,6 +1870,7 @@ begin
   FKeymapHost.BeginExportSettings := BeginExportSettings;
   FKeymapHost.BeginImportSettings := BeginImportSettings;
   FKeymapHost.BeginConfigLocation := BeginConfigLocation;
+  FKeymapHost.OpenEnvironmentProfiles := OpenEnvironmentProfiles;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
@@ -5818,6 +5838,7 @@ begin
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
     hdkColumnsConfig, hdkDisplay, hdkInterface, hdkTerminalProfile, hdkConsoleProfile,
+    hdkTerminalEnv,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkConsoleOptions:
       Result := FSettings.DispatchCommand(AKind, AControlId);
@@ -7712,6 +7733,8 @@ var
   Bounds: TRectI;
 begin
   Result := False;
+  if Assigned(FSaver) and FSaver.Wake then
+    Exit(True);
   if Assigned(FTopMenu) and FTopMenu.HandleMouseWheel(AWheelDelta) then
     Exit(True);
   // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
@@ -8918,6 +8941,21 @@ begin
     T('ui.settings.importPrompt', 'Read the settings from the file:'),
     SettingsFileDefaultPath), DialogCommand);
   NotifyChanged;
+end;
+
+procedure TDualPanelWindow.OpenEnvironmentProfiles;
+var
+  Path: string;
+begin
+  if not CanStartOperation then
+    Exit;
+  Path := DefaultEnvProfilesPath;
+  if not EnsureEnvProfilesFile(Path) then
+  begin
+    HostWarnJob(T('ui.environment.createFailed', 'Could not create') + ' ' + Path);
+    Exit;
+  end;
+  OpenDocument(PathToFileUri(Path), False);
 end;
 
 procedure TDualPanelWindow.BeginConfigLocation;
@@ -11243,6 +11281,9 @@ begin
   Result := False;
   if GShowTitleBar then
     Exit;
+  // The screensaver cell is a button, not part of the title area.
+  if SaverCornerHit(ALocalCol, ALocalRow) then
+    Exit;
   if ConsoleBarShown then
     Exit((ALocalRow = 0) and InMenuBarFreeZone(0, Area.Width, ALocalCol));
   if not ChromeDrawn then
@@ -11309,6 +11350,35 @@ begin
   DispatchTopMenuAction(FKeymapHost, AAction);
 end;
 
+function TDualPanelWindow.MenuBarWidth(AWidth: Integer): Integer;
+begin
+  // The window buttons own the right end of the row.
+  Result := AWidth;
+  if (not GShowTitleBar) and (WindowButtonsLeft(AWidth) >= 0) then
+    Result := WindowButtonsLeft(AWidth);
+end;
+
+function TDualPanelWindow.SaverActive: Boolean;
+begin
+  Result := Assigned(FSaver) and FSaver.Active;
+end;
+
+function TDualPanelWindow.SaverCornerCol: Integer;
+begin
+  if GShowMenuBar and ChromeDrawn then
+    Result := MenuBarWidth(Area.Width) - 1
+  else
+    Result := -1;
+end;
+
+function TDualPanelWindow.SaverCornerHit(ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  // The last cell of a shown menu bar starts the screensaver.
+  Result := (ALocalRow = 0) and GShowMenuBar and ChromeDrawn and
+    not (Assigned(FTopMenu) and FTopMenu.Active) and
+    (ALocalCol = MenuBarWidth(Area.Width) - 1);
+end;
+
 procedure TDualPanelWindow.DrawMenuBar(AWidth: Integer);
 var
   BarWidth: Integer;
@@ -11316,10 +11386,7 @@ begin
   // A hidden menu bar shows over the top row while the menu is open (F9).
   if not GShowMenuBar and not (Assigned(FTopMenu) and FTopMenu.Active) then
     Exit;
-  // The window buttons own the right end of the row.
-  BarWidth := AWidth;
-  if (not GShowTitleBar) and (WindowButtonsLeft(AWidth) >= 0) then
-    BarWidth := WindowButtonsLeft(AWidth);
+  BarWidth := MenuBarWidth(AWidth);
   if Assigned(FTopMenu) then
     FTopMenu.DrawTopBar(Buffer, BarWidth)
   else
@@ -12465,6 +12532,8 @@ begin
       else
         FToast.Draw(Buffer, Theme, W, H);
   end;
+  if Assigned(FSaver) then
+    FSaver.Draw(Buffer, W, H);
 end;
 
 function TDualPanelWindow.DrivePreviewActive: Boolean;
@@ -12571,6 +12640,13 @@ var
   ProgramKeys: Boolean;
 begin
   Result := True;
+  // A key that stops the screensaver does nothing else.
+  if Assigned(FSaver) and FSaver.Wake then
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+    Exit;
+  end;
   SetKeyModifiers(AShift);
   // Any key press resets blink phase so cursor is immediately visible.
   if not FCursorVisible then
@@ -12807,8 +12883,19 @@ var
   ColMode: TPanelColumnMode;
 begin
   Result := False;
+  if FSaverSwallowClick then
+  begin
+    FSaverSwallowClick := False;
+    Exit(True);
+  end;
   if HelpVisible then
     Exit(True); // Help got it in HandleMouseDown (right button lands here)
+  if Assigned(FSaver) and not (Assigned(FDialog) and FDialog.Visible) and
+     SaverCornerHit(ALocalCol, ALocalRow) then
+  begin
+    FSaver.Toggle;
+    Exit(True);
+  end;
   // Open command-line history list: a click on it picks; elsewhere it
   // closes and the click goes on as usual.
   if ClickCmdHistoryPopup(ALocalCol, ALocalRow) then
@@ -12901,6 +12988,14 @@ function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 begin
   Result := False;
+  FSaverSwallowClick := False;
+  FSaverSwallowUp := False;
+  if Assigned(FSaver) and FSaver.Wake then
+  begin
+    FSaverSwallowClick := True;
+    FSaverSwallowUp := True;
+    Exit(True);
+  end;
   if HelpVisible then
     Exit(FHelp.HandleMouseDown(ALocalCol, ALocalRow, AShift));
   // An open F9 submenu is drawn over the Viewer/Editor/Terminal body. If
@@ -13192,6 +13287,8 @@ var
   Doc: TEditorWindow;
   Term: TTerminalWorkspaceWindow;
 begin
+  if Assigned(FSaver) and FSaver.WakeByMove then
+    Exit(True);
   if HelpVisible then
     Exit(FHelp.HandleMouseMove(ALocalCol, ALocalRow));
   // Dragging through an open menu only moves its selection.
@@ -13221,6 +13318,11 @@ var
   Term: TTerminalWorkspaceWindow;
 begin
   Result := False;
+  if FSaverSwallowUp then
+  begin
+    FSaverSwallowUp := False;
+    Exit(True);
+  end;
   if HelpVisible then
     Exit(FHelp.HandleMouseUp);
   if TabDragBusy(FTabDragArmed, FTabDragActive) then

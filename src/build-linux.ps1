@@ -39,7 +39,7 @@ Push-Location $Src
 try {
     $Rtl = Join-Path $Studio 'lib\linux64\release'
     $Libs = "$Rtl;$Sdk\usr\lib\x86_64-linux-gnu;$Sdk\lib\x86_64-linux-gnu;$Sdk\usr\lib\gcc\x86_64-linux-gnu\13"
-    $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl"
+    $Units = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl"
     $Args = @("--syslibroot:$Sdk", "--libpath:$Libs", '--linker-option:-lstdc++',
         "-U$Units", "-I$Units", "-N0$DcuDir", "-E$OutDir", '-V', '-$D-', '-$O+')
     if ($Rebuild) { $Args += '-B' }
@@ -52,7 +52,7 @@ try {
         # The SDL program has its own picture preview unit, so its compiled units live apart.
         $SdlDcu = Join-Path $Root 'dcu\linux64-sdl'
         New-Item -ItemType Directory -Force $SdlDcu | Out-Null
-        $SdlUnits = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Common;$Src\Hosts\Sdl"
+        $SdlUnits = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Common;$Src\Hosts\Sdl"
         $SdlArgs = @("--syslibroot:$Sdk", "--libpath:$Libs", '--linker-option:-lstdc++',
             "-U$SdlUnits", "-I$SdlUnits", "-N0$SdlDcu", "-E$OutDir", '-V', '-$D-', '-$O+')
         if ($Rebuild) { $SdlArgs += '-B' }

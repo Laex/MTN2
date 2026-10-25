@@ -31,6 +31,7 @@ uses
   TestPsPersistent in 'TestPsPersistent.pas',
   TestPsPipeSafeCommand in 'TestPsPipeSafeCommand.pas',
   TestPtySession in 'TestPtySession.pas',
+  TestShellEnvironment in 'TestShellEnvironment.pas',
   TestPtyCtrlC in 'TestPtyCtrlC.pas',
   TestPtyPromptCount in 'TestPtyPromptCount.pas',
   TestShellProfileOptions in 'TestShellProfileOptions.pas',

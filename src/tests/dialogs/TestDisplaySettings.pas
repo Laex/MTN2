@@ -16,6 +16,7 @@ type
   TTestDisplaySettings = class
   public
     [Test] procedure TestClampAndIndex;
+    [Test] procedure TestSaverChoices;
     [Test] procedure TestFontEnum;
     [Test] procedure TestSessionRoundTrip;
     [Test] procedure TestSessionMissingKeys;
@@ -32,7 +33,7 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils, System.JSON, System.Math,
-  uVfsTypes,
+  uVfsTypes, uSharkSaver,
   uDualPanelTypes,
   uPanelColumns, uListExport,
   uConfigLocation,
@@ -113,6 +114,7 @@ begin
   Result.PassiveCursor := False;
   Result.AltOpensMenu := False;
   Result.EditorAutoIndent := False;
+  Result.SaverMinutes := 15;
   Result.SelectFolders := True;
   Result.Language := 'ru';
   Tab := MakeTab(1, 'C:', 'file:///C:/');
@@ -157,6 +159,7 @@ begin
     Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
+    Assert.AreEqual(15, Loaded.SaverMinutes, 'saverMinutes saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
   finally
     if TFile.Exists(Path) then
@@ -224,6 +227,9 @@ begin
     Pair := Root.RemovePair('editorAutoIndent');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('saverMinutes');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -249,6 +255,7 @@ begin
     Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
+    Assert.AreEqual(5, Sess.SaverMinutes, 'missing saverMinutes -> 5 minutes');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
   finally
     if TFile.Exists(Path) then
@@ -548,6 +555,21 @@ end;
 procedure TTestDisplaySettings.TestClampAndIndex;
 begin
   TestDisplaySettings.TestClampAndIndex;
+end;
+
+procedure TTestDisplaySettings.TestSaverChoices;
+var
+  Items: TArray<string>;
+begin
+  Items := DisplaySaverItems;
+  Assert.AreEqual(Integer(Length(cSaverMinuteChoices)), Integer(Length(Items)));
+  Assert.AreEqual(0, DisplaySaverMinutesAt(0), 'the first row is off');
+  Assert.AreEqual(5, DisplaySaverMinutesAt(IndexOfDisplaySaver(5)));
+  Assert.AreEqual(10, DisplaySaverMinutesAt(IndexOfDisplaySaver(12)),
+    'a value between two rows shows as the shorter one');
+  Assert.AreEqual(30, DisplaySaverMinutesAt(IndexOfDisplaySaver(500)));
+  Assert.AreEqual(0, DisplaySaverMinutesAt(IndexOfDisplaySaver(-3)));
+  Assert.AreEqual(30, DisplaySaverMinutesAt(99), 'an index past the list takes the last row');
 end;
 
 procedure TTestDisplaySettings.TestFontEnum;

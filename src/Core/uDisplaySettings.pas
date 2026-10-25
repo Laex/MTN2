@@ -72,6 +72,8 @@ type
     AltOpensMenu: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
     EditorAutoIndent: Boolean;
+    /// <summary>uSharkSaver.GSaverMinutes.</summary>
+    SaverMinutes: Integer;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
     CaretUnderline: Boolean;
     ShadowStyle: TShadowStyle;
@@ -124,6 +126,10 @@ function DisplayTextContrastItems: TArray<string>;
 function DisplayFontSizeItems: TArray<string>;
 function DisplayZoomItems: TArray<string>;
 function DisplayBlinkMsItems: TArray<string>;
+/// <summary>Interface dialog "Screensaver" dropdown: off, then the idle minutes.</summary>
+function DisplaySaverItems: TArray<string>;
+function IndexOfDisplaySaver(AMinutes: Integer): Integer;
+function DisplaySaverMinutesAt(AIndex: Integer): Integer;
 /// <summary>ASize in pixels -> the nearest point size in the list.</summary>
 function IndexOfDisplayFontSize(ASize: Single): Integer;
 function IndexOfDisplayZoom(AZoom: Single): Integer;
@@ -160,7 +166,7 @@ implementation
 
 uses
   System.Math, System.Classes, System.IOUtils, System.Generics.Collections,
-  uPlatformFonts, uStrings;
+  uPlatformFonts, uStrings, uSharkSaver;
 
 const
   // Points; half steps where terminals are usually set (8..12 pt). 6 and 24 pt
@@ -319,6 +325,7 @@ begin
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
+  Result.SaverMinutes := 5;
   Result.CaretUnderline := False;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
@@ -389,6 +396,39 @@ begin
   SetLength(Result, Length(cZoomPercents));
   for I := 0 to High(cZoomPercents) do
     Result[I] := Format('%d%%', [cZoomPercents[I]]);
+end;
+
+function DisplaySaverItems: TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(cSaverMinuteChoices));
+  for I := 0 to High(cSaverMinuteChoices) do
+    if cSaverMinuteChoices[I] = 0 then
+      Result[I] := T('ui.display.saverOff', 'Off')
+    else
+      Result[I] := Format(T('ui.display.saverMinutes', '%d min'), [cSaverMinuteChoices[I]]);
+end;
+
+function IndexOfDisplaySaver(AMinutes: Integer): Integer;
+var
+  I: Integer;
+begin
+  // A value from the session file that is not in the list takes the nearest
+  // shorter one; the dialog shows that, and OK writes it.
+  Result := 0;
+  for I := 0 to High(cSaverMinuteChoices) do
+    if cSaverMinuteChoices[I] <= AMinutes then
+      Result := I;
+end;
+
+function DisplaySaverMinutesAt(AIndex: Integer): Integer;
+begin
+  if AIndex < 0 then
+    AIndex := 0;
+  if AIndex > High(cSaverMinuteChoices) then
+    AIndex := High(cSaverMinuteChoices);
+  Result := cSaverMinuteChoices[AIndex];
 end;
 
 function DisplayBlinkMsItems: TArray<string>;

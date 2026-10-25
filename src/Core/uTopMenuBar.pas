@@ -138,6 +138,7 @@ type
     tmaOptInterface,
     tmaOptExternalTools,
     tmaOptConsoleOptions,
+    tmaOptEnvironment,
     tmaOptExportSettings,
     tmaOptImportSettings,
     tmaOptConfigLocation,

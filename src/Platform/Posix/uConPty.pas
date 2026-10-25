@@ -12,7 +12,8 @@ unit uConPty;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.SyncObjs, uShellProfiles;
+  System.SysUtils, System.Classes, System.SyncObjs, uShellProfiles, uEnvProfiles,
+  uShellProfileOptions;
 
 type
   TConPtyOutputEvent = reference to procedure(const AText: string);
@@ -59,6 +60,7 @@ type
     FFlushQueued: Boolean;
     FEpoch: Integer;
     FProfileId: string;
+    FShellId: string;
     FDecodeTail: TBytes;
     FOnOutput: TConPtyOutputEvent;
     FOnExit: TConPtyExitEvent;
@@ -513,6 +515,7 @@ begin
   StopChild;
   SetLength(FDecodeTail, 0);
   FLastError := '';
+  FShellId := '';
   FPersistent := APersistent;
   if Assigned(AOnOutput) then
     FOnOutput := AOnOutput;
@@ -526,6 +529,7 @@ var
   Args: TArray<string>;
   ArgStore, EnvStore: TArray<UTF8String>;
   Argv, Envp: TArray<MarshaledAString>;
+  BaseEnv: TArray<string>;
   Cwd: UTF8String;
   CwdPtr: MarshaledAString;
   WS: TWinSize;
@@ -557,19 +561,24 @@ begin
   Argv[High(Argv)] := nil;
 
   SetLength(EnvStore, 0);
+  SetLength(BaseEnv, 0);
   HasTerm := False;
   HasColor := False;
   Cur := CurrentEnvironment;
   while (Cur <> nil) and (Cur^ <> nil) do
   begin
-    Entry := UTF8ToString(Cur^);
+    SetLength(BaseEnv, Length(BaseEnv) + 1);
+    BaseEnv[High(BaseEnv)] := UTF8ToString(Cur^);
+    Inc(Cur);
+  end;
+  for Entry in ShellEnvironment(BaseEnv, FShellId, ProfileEnvName(FShellId)) do
+  begin
     if Entry.StartsWith('TERM=') then
       HasTerm := True;
     if Entry.StartsWith('COLORTERM=') then
       HasColor := True;
     SetLength(EnvStore, Length(EnvStore) + 1);
     EnvStore[High(EnvStore)] := UTF8String(Entry);
-    Inc(Cur);
   end;
   if not HasTerm then
   begin
@@ -635,6 +644,7 @@ var
   CmdLine, WorkDir: string;
 begin
   BeginSession(nil, nil, True);
+  FShellId := AProfile;
   if AProfile <> '' then
     FProfileId := AProfile;
   if not ResolveShellCmdLine(AProfile, ACwd, CmdLine, WorkDir) then

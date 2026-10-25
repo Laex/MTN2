@@ -4,6 +4,8 @@ unit TestSdlShell;
   through the input mapper into the host shell, the shell composes the grid
   and the pixel renderer draws it. The glyph source is a fixed pattern. }
 
+{$I ..\..\ascii-sharks\sharks.inc}
+
 interface
 
 uses
@@ -17,6 +19,10 @@ type
     [Test] procedure EscapeClosesTheDialog;
     [Test] procedure TypedTextReachesTheCommandLine;
     [Test] procedure MouseClickInTheMenuBarOpensAMenu;
+{$IFDEF MTN_ASCII_SHARKS}
+    [Test] procedure LastMenuBarCellStartsTheSaverAndAKeyStopsIt;
+    [Test] procedure OtherMenuBarCellsDoNotStartTheSaver;
+{$ENDIF}
     [Test] procedure QuitKeyEndsTheLoop;
     [Test] procedure ChangedCellsAreTheOnesTheShellRedraws;
     [Test] procedure PluginPictureTabOpensAndGetsKeys;
@@ -33,7 +39,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.Types, System.Generics.Collections,
   System.UITypes, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
-  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets;
+  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets, uDualPanelTypes, uVfsTypes;
 
 const
   cScancodeBit = $40000000;
@@ -203,6 +209,50 @@ begin
     Rig.Free;
   end;
 end;
+
+{$IFDEF MTN_ASCII_SHARKS}
+procedure TTestSdlShell.LastMenuBarCellStartsTheSaverAndAKeyStopsIt;
+var
+  Rig: THostRig;
+  Col: Integer;
+  Before: string;
+begin
+  Rig := THostRig.Create;
+  try
+    Before := Rig.Screen;
+    Col := Rig.Shell.DualPanel.SaverCornerCol;
+    Assert.IsTrue(Col > 0, 'the menu bar is shown');
+    Rig.Send(Click(SDL_MOUSEBUTTONDOWN, Col * 8 + 3, 5));
+    Rig.Send(Click(SDL_MOUSEBUTTONUP, Col * 8 + 3, 5));
+    Assert.IsTrue(Rig.Shell.DualPanel.SaverActive, 'the click starts the sharks');
+    Assert.AreNotEqual(Before, Rig.Screen, 'they are drawn');
+    // The key that stops them is used up: no menu or panel reacts to F9.
+    Rig.Send(Key(cScancodeBit or 66, 66, 0));
+    Assert.IsFalse(Rig.Shell.DualPanel.SaverActive, 'a key stops the sharks');
+    Assert.AreEqual(Before, Rig.Screen, 'and nothing else happened');
+  finally
+    Rig.Free;
+  end;
+end;
+
+procedure TTestSdlShell.OtherMenuBarCellsDoNotStartTheSaver;
+var
+  Rig: THostRig;
+  Col: Integer;
+begin
+  Rig := THostRig.Create;
+  try
+    Rig.Screen;
+    Col := Rig.Shell.DualPanel.SaverCornerCol;
+    Rig.Send(Click(SDL_MOUSEBUTTONDOWN, (Col - 3) * 8 + 3, 5));
+    Rig.Send(Click(SDL_MOUSEBUTTONUP, (Col - 3) * 8 + 3, 5));
+    Assert.IsFalse(Rig.Shell.DualPanel.SaverActive);
+  finally
+    Rig.Free;
+  end;
+end;
+
+{$ENDIF}
 
 procedure TTestSdlShell.QuitKeyEndsTheLoop;
 var
@@ -482,10 +532,21 @@ begin
   Result.Mode := AMode;
 end;
 
+function HasTabAt(const APanel: TPanelState; const AFolder: string): Boolean;
+var
+  Tab: TTab;
+begin
+  for Tab in APanel.Tabs do
+    if SameText(FileUriToPath(Tab.CurrentURI), AFolder) then
+      Exit(True);
+  Result := False;
+end;
+
 procedure TTestSdlShell.SeveralStartupFoldersOpenSeveralTabs;
 var
   Rig: THostRig;
   Root, One, Two: string;
+  Panels: TDualPanelState;
 begin
   Root := TPath.Combine(TPath.GetTempPath, 'mtn2-startup-' + TPath.GetGUIDFileName(False));
   One := TPath.Combine(Root, 'one');
@@ -498,7 +559,9 @@ begin
   try
     Rig.Shell.DualPanel.OpenStartupTargets([StartupTarget(One, smOpen), StartupTarget(Two, smOpen)]);
     Assert.IsTrue(WaitForScreenText(Rig, 'intwo.txt'), 'the last folder is shown'#10 + Rig.Screen);
-    Assert.IsTrue(Rig.Screen.Contains('one x'), 'the first folder keeps its tab'#10 + Rig.Screen);
+    Panels := Rig.Shell.DualPanel.State.WorkspaceTabs[Rig.Shell.DualPanel.State.ActiveWorkspaceIndex].State;
+    Assert.IsTrue(HasTabAt(Panels.LeftPanel, One) or HasTabAt(Panels.RightPanel, One),
+      'the first folder keeps its tab');
   finally
     Rig.Free;
     TDirectory.Delete(Root, True);

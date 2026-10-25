@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns,
-  uShellProfiles, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
+  uShellProfiles, uEnvProfiles, uSharkSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
   TSettingsKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -44,6 +44,10 @@ type
     FOnGetDisplay: TSettingsGetDisplay;
     FOnApplyDisplay: TSettingsApplyDisplay;
     FProfileIds: TArray<string>;
+    /// <summary>Environment profile list: the shell profile it is for and the
+    /// names it offers after its "none" row.</summary>
+    FEnvTarget: string;
+    FEnvNames: TArray<string>;
     /// <summary>Markdown colors dialog: the edited set while the import
     /// dialog is on top, and the import dialog's last path / palette.</summary>
     FMdWorking: TMdColorSet;
@@ -76,6 +80,7 @@ type
     function CollectAvailableProfiles(out ATitles, AIds: TArray<string>;
       const APreferId: string; out ASel: Integer): Boolean;
     procedure ShowTerminalProfiles(const ASelectId: string);
+    procedure ShowTerminalEnvChoice(const AShellId: string);
     procedure LaunchTerminalProfile(AIndex: Integer);
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
@@ -121,7 +126,8 @@ type
     function HandleMarkdownColorsInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure DispatchTerminalProfileCommand(const AControlId: string);
-    /// <summary>Quick-launch keys, Ins / Del / Ctrl+Up / Ctrl+Down / F4 of the
+    procedure DispatchTerminalEnvCommand(const AControlId: string);
+    /// <summary>Quick-launch keys, Ins / Del / Ctrl+Up / Ctrl+Down / F4 / F6 of the
     /// New terminal list.</summary>
     function HandleTerminalProfileInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -301,6 +307,12 @@ begin
   DialogSetCheckbox(Decl, 'pack_same_panel', Cur.PackInSamePanel);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
+  DialogSetListItems(Decl, 'saver', DisplaySaverItems, IndexOfDisplaySaver(Cur.SaverMinutes));
+  // Without the screensaver subsystem the row stays, greyed out, showing Off.
+  if not SharksBuiltIn then
+    for I := 0 to High(Decl.Controls) do
+      if SameText(Decl.Controls[I].Id, 'saver') or SameText(Decl.Controls[I].Id, 'lbl_saver') then
+        Decl.Controls[I].Disabled := True;
   FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
@@ -362,6 +374,8 @@ begin
       Hot := ' ';
     Items[I] := Format('%s  %-30s [%s]', [Hot, Entries[I].Title,
       ProfileKeyModeTitle(Entries[I].KeyMode)]);
+    if Entries[I].EnvName <> '' then
+      Items[I] := Items[I] + ' +' + Entries[I].EnvName;
     if SameText(Entries[I].Id, Prefer) then
       Sel := I;
   end;
@@ -385,6 +399,47 @@ begin
     Exit;
   end;
   ShowTerminalProfiles('');
+end;
+
+procedure TSettingsDialogController.ShowTerminalEnvChoice(const AShellId: string);
+var
+  Items: TArray<string>;
+  Current: string;
+  I, Sel: Integer;
+begin
+  FEnvTarget := AShellId;
+  FEnvNames := EnvProfileNames;
+  Current := ProfileEnvName(AShellId);
+  SetLength(Items, Length(FEnvNames) + 1);
+  Items[0] := T('ui.terminalEnv.none', '(none)');
+  Sel := 0;
+  for I := 0 to High(FEnvNames) do
+  begin
+    Items[I + 1] := FEnvNames[I];
+    if SameText(FEnvNames[I], Current) then
+      Sel := I + 1;
+  end;
+  SetKind(hdkTerminalEnv);
+  FDialog.Open(BuildTerminalEnvDialog(Items, Sel), FOnCommand);
+  Notify;
+end;
+
+procedure TSettingsDialogController.DispatchTerminalEnvCommand(
+  const AControlId: string);
+var
+  Idx: Integer;
+begin
+  Idx := FDialog.GetListSelectedIndex('profiles');
+  if (DialogCmdIsAccept(AControlId) or DialogCmdIsListAccept(AControlId, 'profiles')) and
+     (Idx >= 0) and (Idx <= Length(FEnvNames)) then
+  begin
+    if Idx = 0 then
+      SetProfileEnvName(FEnvTarget, '')
+    else
+      SetProfileEnvName(FEnvTarget, FEnvNames[Idx - 1]);
+  end;
+  // Back to the New terminal list, on the shell profile that was edited.
+  ShowTerminalProfiles(FEnvTarget);
 end;
 
 procedure TSettingsDialogController.LaunchTerminalProfile(AIndex: Integer);
@@ -457,6 +512,12 @@ begin
       begin
         SetProfileKeyMode(Id, NextProfileKeyMode(ProfileKeyMode(Id)));
         ShowTerminalProfiles(Id);
+        Consume;
+        Exit(True);
+      end;
+    vkF6:
+      begin
+        ShowTerminalEnvChoice(Id);
         Consume;
         Exit(True);
       end;
@@ -615,6 +676,7 @@ begin
     Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
+    Disp.SaverMinutes := DisplaySaverMinutesAt(FDialog.GetListSelectedIndex('saver'));
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
       Disp.Language := FLanguageCodes[LanguageIdx]
@@ -1002,6 +1064,7 @@ begin
     hdkMarkdownImport: DispatchMarkdownImportCommand(AControlId);
     hdkMarkdownPicker: DispatchMarkdownPickerCommand(AControlId);
     hdkTerminalProfile: DispatchTerminalProfileCommand(AControlId);
+    hdkTerminalEnv: DispatchTerminalEnvCommand(AControlId);
     hdkConsoleProfile: DispatchConsoleProfileCommand(AControlId);
   else
     { not a settings dialog }
