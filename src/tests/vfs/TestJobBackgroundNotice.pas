@@ -29,7 +29,6 @@ uses
   System.Classes,
   System.IOUtils,
   System.Generics.Collections,
-  Winapi.Windows,
   uVfsTypes,
   uFileVfs,
   uVfsRegistry,
@@ -67,7 +66,7 @@ procedure RunJob(AKind: TPanelJobKind; const ASource, ADestDir: string;
 var
   Jobs: TPanelJobController;
   Done: Boolean;
-  Tick: Cardinal;
+  Tick: UInt64;
   SavedMinMs: Integer;
 begin
   GNotices.Clear;
@@ -100,11 +99,11 @@ begin
     Jobs.ConfirmJob;
     if ABackground then
       Jobs.BackgroundJob;
-    Tick := GetTickCount;
+    Tick := TThread.GetTickCount64;
     while not Done and (Jobs.Phase <> pjpError) do
     begin
       CheckSynchronize(20);
-      if GetTickCount - Tick > 30000 then
+      if TThread.GetTickCount64 - Tick > 30000 then
       begin
         Assert.Fail('job timed out');
         Break;
