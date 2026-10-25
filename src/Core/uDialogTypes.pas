@@ -7,7 +7,8 @@ interface
 uses
   System.SysUtils, System.Math,
   System.UITypes,
-  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl, uMultiRename;
+  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl, uMultiRename,
+  uListExport;
 
 type
   TDialogControlKind = (dckLabel, dckInput, dckCheckbox, dckButton, dckStatus,
@@ -343,6 +344,10 @@ function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
   AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean): TDialogDeclaration;
+/// <summary>Files > Export list...: target file, layout and the fields of the
+/// saved list, prefilled from AConfig.</summary>
+function BuildExportListDialog(const APath: string;
+  const AConfig: TListExportConfig): TDialogDeclaration;
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
@@ -1428,6 +1433,30 @@ begin
   DialogSetCheckbox(Result, 'col_accessed', AShowAccessed);
   DialogSetCheckbox(Result, 'col_type', AShowType);
   DialogSetCheckbox(Result, 'col_attr', AShowAttr);
+end;
+
+function BuildExportListDialog(const APath: string;
+  const AConfig: TListExportConfig): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogExportList, Result);
+  DialogSetInputValue(Result, 'name', APath);
+  case AConfig.Format of
+    lefText: DialogSetRadio(Result, 'format', 'fmt_text');
+    lefMarkdown: DialogSetRadio(Result, 'format', 'fmt_md');
+    lefCsv: DialogSetRadio(Result, 'format', 'fmt_csv');
+  else
+    DialogSetRadio(Result, 'format', 'fmt_auto');
+  end;
+  DialogSetCheckbox(Result, 'header', AConfig.Header);
+  DialogSetCheckbox(Result, 'f_name', lxfName in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_path', lxfPath in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_ext', lxfExt in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_size', lxfSize in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_modified', lxfModified in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_created', lxfCreated in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_accessed', lxfAccessed in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_type', lxfType in AConfig.Fields);
+  DialogSetCheckbox(Result, 'f_attr', lxfAttr in AConfig.Fields);
 end;
 
 function BuildMarkdownColorsDialog: TDialogDeclaration;

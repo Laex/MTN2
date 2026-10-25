@@ -60,6 +60,7 @@ type
     ActiveSide: TKeymapSideFn;
     CopyFullPathToClipboard: TKeymapProc;
     CopyItemNameToClipboard: TKeymapProc;
+    ExportItemList: TKeymapProc;
     ToggleConsole: TKeymapProc;
     RequestQuit: TKeymapProc;
     TogglePanelVisible: TKeymapSideProc;
@@ -388,6 +389,13 @@ begin
       begin
         if Assigned(AHost.CopyItemNameToClipboard) then
           AHost.CopyItemNameToClipboard();
+        ConsumeKey(AKey, AKeyChar, True);
+        Exit;
+      end;
+    kaExportList:
+      begin
+        if Assigned(AHost.ExportItemList) then
+          AHost.ExportItemList();
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;

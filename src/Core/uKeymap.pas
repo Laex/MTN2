@@ -122,6 +122,7 @@ type
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
     kaMultiRename,    // Ctrl+Alt+N -- rename the selected items by rules
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
+    kaExportList,     // unbound by default -- save the marked items as a text list
     kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
     // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
     // see KeymapActionContext).
@@ -991,6 +992,7 @@ const
     'Checksums',             // kaChecksums
     'MultiRename',           // kaMultiRename
     'CopyItemName',          // kaCopyItemName
+    'ExportList',            // kaExportList
     'ShellContextMenu',      // kaShellContextMenu
     'DocViewEdit',           // kaDocToggleEdit
     'DocHex',                // kaDocHex

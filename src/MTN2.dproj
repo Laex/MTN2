@@ -259,6 +259,7 @@
         <DCCReference Include="Core\uFunctionBar.pas"/>
         <DCCReference Include="Core\uPanelModel.pas"/>
         <DCCReference Include="Core\uPanelColumns.pas"/>
+        <DCCReference Include="Core\uListExport.pas"/>
         <DCCReference Include="Core\uDisplaySettings.pas"/>
         <DCCReference Include="Core\uChromeRows.pas"/>
         <DCCReference Include="Core\uStatusSegments.pas"/>
@@ -407,6 +408,7 @@
         <None Include="dialogs\workspaces.json"/>
         <None Include="dialogs\dirsync.json"/>
         <None Include="dialogs\columnsconfig.json"/>
+        <None Include="dialogs\exportlist.json"/>
         <None Include="dialogs\terminalprofile.json"/>
         <None Include="dialogs\pluginlist.json"/>
         <None Include="dialogs\theme.json"/>

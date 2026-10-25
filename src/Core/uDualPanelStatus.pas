@@ -141,7 +141,7 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
       hdkColumnsConfig, hdkDisplay,
-      hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
+      hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
@@ -297,6 +297,8 @@ begin
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
+    hdkExportList:
+      Result := TArray<string>.Create(S('Export list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
     hdkChecksumOptions:
       Result := TArray<string>.Create(S('Checksums'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkMultiRename:

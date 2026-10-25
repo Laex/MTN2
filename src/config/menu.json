@@ -67,6 +67,7 @@
         { "caption": "Calculate folder size", "hotChar": "Z", "shortcut": "F3", "action": "tmaFileCalcSize", "aliases": "size, folder size, du, disk usage" },
         { "caption": "Copy full path", "hotChar": "Y", "shortcut": "Alt+Shift+Ins", "action": "tmaFileCopyPath", "hint": "Copies the full path of the selected items to the clipboard.", "aliases": "clipboard, copy path, full path" },
         { "caption": "Copy name", "hotChar": "", "shortcut": "Ctrl+Shift+Ins", "action": "tmaFileCopyName", "hint": "Copies only the name of the selected items to the clipboard.", "aliases": "clipboard, copy name, file name" },
+        { "caption": "Export list...", "hotChar": "", "shortcut": "", "action": "tmaFileExportList", "hint": "Saves the selected items to a text, Markdown or CSV file with the chosen fields.", "aliases": "export, save list, file list, csv, markdown" },
         { "caption": "Describe...", "hotChar": "", "shortcut": "Ctrl+Z", "action": "tmaFileDescribe", "hint": "Stores a description of the file in Descript.ion next to it.", "aliases": "description, comment, descript.ion" },
         { "caption": "Run detached (OS)", "hotChar": "O", "shortcut": "Shift+Enter", "action": "tmaFileRunDetached", "aliases": "run, launch, start, open with system" },
         { "caption": "Run in background", "hotChar": "B", "shortcut": "Alt+Shift+Enter", "action": "tmaFileRunInBackground", "aliases": "run, background" },

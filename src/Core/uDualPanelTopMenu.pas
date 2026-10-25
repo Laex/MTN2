@@ -131,6 +131,7 @@ begin
     tmaFileCalcSize: CallProc(AHost.CalculateFolderSize);
     tmaFileCopyPath: CallProc(AHost.CopyFullPathToClipboard);
     tmaFileCopyName: CallProc(AHost.CopyItemNameToClipboard);
+    tmaFileExportList: CallProc(AHost.ExportItemList);
     tmaFileRunDetached: CallProc(AHost.RunDetached);
     tmaFileRunInBackground: CallProc(AHost.RunInBackground);
     tmaFileRunInNewTab: CallProc(AHost.RunInNewTab);

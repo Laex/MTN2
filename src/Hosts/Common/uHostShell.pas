@@ -153,7 +153,7 @@ implementation
 uses
   System.IOUtils, uThemeRegistry, uColorCoding, uKeymap, uStrings, uChromeRows,
   uShellProfiles, uDualPanelTypes, uConsoleSettings,
-  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uThemeDrawing,
+  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
   uDualPanelUiTypes, uToast, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
@@ -446,6 +446,7 @@ begin
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
+  GListExportConfig := Sess.ListExport;
   GShowToasts := Sess.ShowNotifications;
   GShowPassiveCursor := Sess.PassiveCursor;
   if GHostShowsIcons then
@@ -504,6 +505,7 @@ begin
   Sess.PackInSamePanel := FDualPanel.PackInSamePanel;
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
+  Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;
   FSession := Sess;
   SaveSession(DefaultSessionFilePath, Sess);

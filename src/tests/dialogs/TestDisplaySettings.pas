@@ -33,7 +33,7 @@ uses
   System.SysUtils, System.IOUtils, System.JSON, System.Math,
   uVfsTypes,
   uDualPanelTypes,
-  uPanelColumns,
+  uPanelColumns, uListExport,
   uConfigLocation,
   uDisplaySettings,
   uSession,
@@ -94,6 +94,7 @@ begin
   Result.TerminalCloseOnExit := True;
   Result.RestoreWorkspaceOnStart := True;
   Result.CustomColumns := DefaultCustomColumnsConfig;
+  Result.ListExport := DefaultListExportConfig;
   Result.FontName := 'Consolas';
   Result.FallbackFont := 'SimSun';
   Result.FontSize := 16;

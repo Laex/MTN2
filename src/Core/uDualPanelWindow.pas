@@ -28,7 +28,7 @@ uses
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
-  uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
+  uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives;
 
 type
@@ -189,6 +189,9 @@ type
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
     FDialogKind: THostDialogKind;
+    /// <summary>Items the open Export list dialog will write; collected when
+    /// the dialog opens so the file matches what was marked then.</summary>
+    FExportItems: TArray<TListExportItem>;
     /// <summary>F1 Help window (created on first F1); modal over everything.</summary>
     FHelp: THelpViewer;
     /// <summary>Ctrl+Q text preview (created on first use).</summary>
@@ -539,6 +542,7 @@ type
     procedure CopyItemsToClipboard(ANameOnly: Boolean);
     procedure CopyFullPathToClipboard;
     procedure CopyItemNameToClipboard;
+    procedure ExportItemList;
     procedure SelectAllActive;
     procedure UnselectAllActive;
     procedure InvertSelectionActive;
@@ -792,6 +796,8 @@ type
     function HandleSettingsFileCommand(AKind: THostDialogKind;
       const AControlId: string; const AFields: TDialogCommandFields): Boolean;
     function HandleConsoleSaveCommand(const AControlId: string;
+      const AFields: TDialogCommandFields): Boolean;
+    function HandleExportListCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
     procedure BeginChecksums;
@@ -1756,6 +1762,7 @@ begin
   FKeymapHost.ActiveSide := KeymapActiveSide;
   FKeymapHost.CopyFullPathToClipboard := CopyFullPathToClipboard;
   FKeymapHost.CopyItemNameToClipboard := CopyItemNameToClipboard;
+  FKeymapHost.ExportItemList := ExportItemList;
   FKeymapHost.ToggleConsole := KeymapToggleConsole;
   FKeymapHost.RequestQuit := KeymapRequestQuit;
   FKeymapHost.TogglePanelVisible := TogglePanelVisible;
@@ -4643,6 +4650,73 @@ begin
     FToast.Show(T('ui.toast.copiedPath', 'Full path "%s" copied to the clipboard'), Paths[0]);
 end;
 
+procedure TDualPanelWindow.ExportItemList;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  R: TPanelRow;
+  Keys: TArray<string>;
+  Dir, Ext: string;
+
+  procedure AddItem(const ARow: TPanelRow);
+  var
+    Item: TListExportItem;
+  begin
+    if ARow.IsParent or (ARow.URI = '') then
+      Exit;
+    Item.Row := ARow;
+    Item.FullPath := PanelItemFullPath(ARow.URI, Tab.CurrentURI, False);
+    if Item.FullPath = '' then
+      Item.FullPath := FileUriToPath(ARow.TargetURI);
+    if Item.FullPath = '' then
+      Exit;
+    Item.Name := PathLastSegment(Item.FullPath);
+    FExportItems := FExportItems + [Item];
+  end;
+
+begin
+  Ws := ActiveWorkspace;
+  if (Ws.Kind <> wkPanels) or not CanStartOperation then
+    Exit;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Ws.State.ActiveSide);
+  SetLength(FExportItems, 0);
+
+  if Length(Tab.SelectedURIs) > 0 then
+  begin
+    Keys := TabSelectionKeys(Tab);
+    for R in Rows do
+      if SelectionKeysHas(Keys, R.URI) then
+        AddItem(R);
+  end
+  else if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
+    AddItem(Rows[Tab.CursorIndex]);
+
+  if Length(FExportItems) = 0 then
+  begin
+    FToast.Show(T('ui.toast.nothingToExport', 'Nothing to save'), '', tkWarning);
+    Exit;
+  end;
+
+  Dir := FileUriToPath(Tab.CurrentURI);
+  if (Dir = '') or not TDirectory.Exists(Dir) then
+    Dir := PlatformDocumentsDir;
+  case GListExportConfig.Format of
+    lefMarkdown: Ext := '.md';
+    lefCsv: Ext := '.csv';
+  else
+    Ext := '.txt';
+  end;
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkExportList;
+  FDialog.Open(BuildExportListDialog(TPath.Combine(Dir, 'filelist' + Ext),
+    GListExportConfig), DialogCommand);
+  NotifyChanged;
+end;
+
 procedure TDualPanelWindow.SelectAllActive;
 begin
   ApplySelectAllFiles(False);
@@ -5658,6 +5732,8 @@ begin
       Result := HandleDescribeCommand(AControlId, AFields);
     hdkConsoleSave:
       Result := HandleConsoleSaveCommand(AControlId, AFields);
+    hdkExportList:
+      Result := HandleExportListCommand(AControlId, AFields);
     hdkSettingsExport, hdkSettingsImport:
       Result := HandleSettingsFileCommand(AKind, AControlId, AFields);
     hdkConfigLocation:
@@ -8658,6 +8734,75 @@ begin
     Exit;
   end;
   FDialog.Close;
+end;
+
+function TDualPanelWindow.HandleExportListCommand(const AControlId: string;
+  const AFields: TDialogCommandFields): Boolean;
+var
+  Cfg: TListExportConfig;
+  Ws: TDualPanelWorkspaceTab;
+  Path, Dir, Fmt: string;
+  Bytes: TBytes;
+begin
+  Result := True;
+  if not DialogCmdIsAccept(AControlId) then
+  begin
+    FDialog.Close;
+    Exit;
+  end;
+  Path := Trim(AFields.Name);
+  if Path = '' then
+    Exit;
+
+  Cfg.Fields := [];
+  if FDialog.GetCheckbox('f_name') then Include(Cfg.Fields, lxfName);
+  if FDialog.GetCheckbox('f_path') then Include(Cfg.Fields, lxfPath);
+  if FDialog.GetCheckbox('f_ext') then Include(Cfg.Fields, lxfExt);
+  if FDialog.GetCheckbox('f_size') then Include(Cfg.Fields, lxfSize);
+  if FDialog.GetCheckbox('f_modified') then Include(Cfg.Fields, lxfModified);
+  if FDialog.GetCheckbox('f_created') then Include(Cfg.Fields, lxfCreated);
+  if FDialog.GetCheckbox('f_accessed') then Include(Cfg.Fields, lxfAccessed);
+  if FDialog.GetCheckbox('f_type') then Include(Cfg.Fields, lxfType);
+  if FDialog.GetCheckbox('f_attr') then Include(Cfg.Fields, lxfAttr);
+  if Cfg.Fields = [] then
+  begin
+    FToast.Show(T('ui.toast.noExportFields', 'Select at least one field'), '', tkWarning);
+    Exit;
+  end;
+  Cfg.Header := FDialog.GetCheckbox('header');
+  Fmt := FDialog.GetRadio('format');
+  if Fmt = 'fmt_text' then
+    Cfg.Format := lefText
+  else if Fmt = 'fmt_md' then
+    Cfg.Format := lefMarkdown
+  else if Fmt = 'fmt_csv' then
+    Cfg.Format := lefCsv
+  else
+    Cfg.Format := lefAuto;
+  FDialog.Close;
+  GListExportConfig := Cfg;
+
+  if LocalPathRootOf(Path) = '' then
+  begin
+    Ws := ActiveWorkspace;
+    Dir := FileUriToPath(ActiveTab(ActivePanel(Ws)).CurrentURI);
+    if Dir = '' then
+      Dir := PlatformDocumentsDir;
+    Path := TPath.Combine(Dir, Path);
+  end;
+  try
+    Bytes := TEncoding.UTF8.GetBytes(FormatItemList(FExportItems, Cfg, Path));
+    if ListExportNeedsBom(Cfg.Format, Path) then
+      Bytes := TEncoding.UTF8.GetPreamble + Bytes;
+    TFile.WriteAllBytes(Path, Bytes);
+    FToast.Show(T('ui.toast.listExported', 'Saved %d items to %s',
+      [Length(FExportItems), Path]));
+  except
+    on E: Exception do
+      FToast.Show(T('ui.toast.listExportFailed', 'Could not save the list') +
+        ': ' + E.Message, '', tkWarning);
+  end;
+  SetLength(FExportItems, 0);
 end;
 
 function TDualPanelWindow.SettingsFileDefaultPath: string;

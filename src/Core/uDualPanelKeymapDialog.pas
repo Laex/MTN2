@@ -204,6 +204,7 @@ const
     'Checksums',
     'Multi-rename',
     'Copy name',
+    'Save list to a file',
     'Windows context menu',
     'Viewer <-> editor',
     'Hex <-> text',

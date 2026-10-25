@@ -147,7 +147,7 @@ type
     hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker,
-    hdkColumnsConfig, hdkDisplay, hdkArchivePassword, hdkTmpSaveList,
+    hdkColumnsConfig, hdkDisplay, hdkArchivePassword, hdkTmpSaveList, hdkExportList,
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename, hdkWorkspaceConfirm,
     hdkSetAttributes,
     hdkSshConnections, hdkSshConnectionEdit, hdkSshConnectionConfirm,
