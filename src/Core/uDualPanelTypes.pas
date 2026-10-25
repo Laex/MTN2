@@ -229,6 +229,24 @@ procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows;
 function ShiftNavInvertRange(AFrom, ATo, ADelta: Integer; AExcludeLanding: Boolean;
   out ALo, AHi: Integer): Boolean;
 
+type
+  /// <summary>One Shift+navigation selection: the mark (select or deselect) is
+  /// decided by the row the gesture starts on and stays the same for every
+  /// following move, until the cursor is moved some other way or Shift is
+  /// released.</summary>
+  TShiftSelectGesture = record
+    Active: Boolean;
+    Mark: Boolean;
+    LandIdx: Integer;
+    Dir: string;
+    /// <summary>True when a move from AFromIdx in folder ADir carries on the
+    /// running gesture.</summary>
+    function Continues(const ADir: string; AFromIdx: Integer): Boolean;
+    procedure Start(const ADir: string; AMark: Boolean);
+    procedure Land(AIdx: Integer);
+    procedure Clear;
+  end;
+
 implementation
 
 uses
@@ -1107,6 +1125,32 @@ begin
       Continue;
     TabToggleSelected(ATab, R.URI);
   end;
+end;
+
+function TShiftSelectGesture.Continues(const ADir: string;
+  AFromIdx: Integer): Boolean;
+begin
+  Result := Active and (LandIdx = AFromIdx) and (Dir = ADir);
+end;
+
+procedure TShiftSelectGesture.Start(const ADir: string; AMark: Boolean);
+begin
+  Active := True;
+  Mark := AMark;
+  Dir := ADir;
+  LandIdx := -1;
+end;
+
+procedure TShiftSelectGesture.Land(AIdx: Integer);
+begin
+  LandIdx := AIdx;
+end;
+
+procedure TShiftSelectGesture.Clear;
+begin
+  Active := False;
+  LandIdx := -1;
+  Dir := '';
 end;
 
 function ShiftNavInvertRange(AFrom, ATo, ADelta: Integer; AExcludeLanding: Boolean;

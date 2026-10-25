@@ -235,6 +235,7 @@ type
     FDirSync: TDirSyncDialogController;
     FMultiRename: TMultiRenameController;
     FKeymapHost: TDualPanelKeymapHost;
+    FShiftSelect: TShiftSelectGesture;
     FClickHost: TDualPanelClickHost;
     FDrawHost: TDualPanelDrawHost;
     FPanelHost: TDualPanelPanelHost;
@@ -531,9 +532,12 @@ type
       const AFields: TDialogCommandFields): Boolean;
     function DescriptionOf(const ADirUri, AName: string): string;
     procedure ToggleInsertSelect;
-    /// <summary>Shift+Up/Down/Left/Right/Home/End/Pg*: invert mark on rows, then
-    /// move. Unit steps: leaving row only. AExcludeLanding (Brief Left/Right):
-    /// invert [From..To) - includes the row before landing, not the landing.</summary>
+    /// <summary>Shift+Up/Down/Left/Right/Home/End/Pg*: mark the rows passed, then
+    /// move. The first move picks select or deselect (the opposite of the mark
+    /// on the row it starts from) and later moves keep it until Shift is
+    /// released. Unit steps: leaving row only. AExcludeLanding (Brief
+    /// Left/Right): [From..To) - includes the row before landing, not the
+    /// landing.</summary>
     procedure MoveCursorWithSelect(ADelta: Integer;
       AExcludeLanding: Boolean = False);
     /// <summary>Selected items (or the cursor item) to the clipboard, one per
@@ -970,6 +974,8 @@ type
   public
     constructor Create(const ATheme: IThemeRenderer; AId: Cardinal);
     destructor Destroy; override;
+    /// <summary>Ends the running Shift+navigation selection (Shift released).</summary>
+    procedure EndShiftSelect;
     /// <summary>Opens ADecl for a caller outside the panel window. False (and
     /// nothing opens) while another dialog is up. AOnCommand runs after the
     /// dialog has closed, so it may open the next one.</summary>
@@ -4542,19 +4548,31 @@ var
   Tab: TTab;
   Rows: TPanelRows;
   Side: TPanelSide;
-  FromIdx, ToIdx, Lo, Hi, ViewH, Cols: Integer;
+  FromIdx, ToIdx, Lo, Hi, ViewH, Cols, StartIdx: Integer;
 begin
   if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
     Exit;
   Side := Ws.State.ActiveSide;
   FromIdx := EnsureRange(Tab.CursorIndex, 0, High(Rows));
   ToIdx := EnsureRange(FromIdx + ADelta, 0, High(Rows));
-  // The whole span takes the opposite of the mark on the row the move starts
-  // from, so moving back and forth marks everything between the two stops.
-  if (Length(Rows) > 0) and
-     ShiftNavInvertRange(FromIdx, ToIdx, ADelta, AExcludeLanding, Lo, Hi) then
-    TabSetSelectedRange(Tab, Rows, Lo, Hi,
-      not TabIsSelected(Tab, Rows[FromIdx].URI));
+  // The whole span takes one mark for the entire gesture: the opposite of the
+  // mark on the row the gesture starts from. Moving back and forth therefore
+  // marks everything between the stops instead of toggling it.
+  if Length(Rows) > 0 then
+  begin
+    if not FShiftSelect.Continues(Tab.CurrentURI, FromIdx) then
+    begin
+      // The parent row is never marked, so a gesture started on it takes its
+      // state from the row below.
+      StartIdx := FromIdx;
+      if Rows[FromIdx].IsParent and (FromIdx < High(Rows)) then
+        Inc(StartIdx);
+      FShiftSelect.Start(Tab.CurrentURI, not TabIsSelected(Tab, Rows[StartIdx].URI));
+    end;
+    if ShiftNavInvertRange(FromIdx, ToIdx, ADelta, AExcludeLanding, Lo, Hi) then
+      TabSetSelectedRange(Tab, Rows, Lo, Hi, FShiftSelect.Mark);
+    FShiftSelect.Land(ToIdx);
+  end;
   Tab.CursorIndex := ToIdx;
   ViewH := ListViewHeight;
   if ViewH < 1 then
@@ -4565,6 +4583,11 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+end;
+
+procedure TDualPanelWindow.EndShiftSelect;
+begin
+  FShiftSelect.Clear;
 end;
 
 procedure TDualPanelWindow.CopyFullPathToClipboard;
@@ -9283,6 +9306,7 @@ var
 begin
   if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
     Exit;
+  FShiftSelect.Clear;
   Side := Ws.State.ActiveSide;
   Inc(Tab.CursorIndex, ADelta);
   ViewH := ListViewHeight;

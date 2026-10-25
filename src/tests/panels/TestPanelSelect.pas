@@ -20,6 +20,7 @@ type
     [Test] procedure ClearedSelectionCanBeRestored;
     [Test] procedure SetSelectedRangeMarksAndUnmarksSpan;
     [Test] procedure InvertSelectionSkipsFoldersUnlessAsked;
+    [Test] procedure ShiftSelectGestureKeepsOneMark;
   end;
 
 implementation
@@ -215,6 +216,28 @@ end;
 procedure TTestPanelSelect.TestShiftNavRanges;
 begin
   TestPanelSelect.TestShiftNavRanges;
+end;
+
+procedure TTestPanelSelect.ShiftSelectGestureKeepsOneMark;
+var
+  G: TShiftSelectGesture;
+begin
+  G := Default(TShiftSelectGesture);
+  Assert.IsFalse(G.Continues('file:///D:/Temp', 5), 'nothing runs before the first move');
+
+  G.Start('file:///D:/Temp', True);
+  G.Land(6);
+  Assert.IsTrue(G.Mark, 'the mark chosen at the start is kept');
+  Assert.IsTrue(G.Continues('file:///D:/Temp', 6), 'the next move from the landing row carries on');
+  G.Land(5);
+  Assert.IsTrue(G.Continues('file:///D:/Temp', 5), 'moving back carries on with the same mark');
+  Assert.IsTrue(G.Mark, 'moving back does not flip the mark');
+
+  Assert.IsFalse(G.Continues('file:///D:/Temp', 9), 'a cursor moved elsewhere starts a new gesture');
+  Assert.IsFalse(G.Continues('file:///D:/Other', 5), 'another folder starts a new gesture');
+
+  G.Clear;
+  Assert.IsFalse(G.Continues('file:///D:/Temp', 5), 'releasing Shift ends the gesture');
 end;
 
 procedure TTestPanelSelect.ClearedSelectionCanBeRestored;

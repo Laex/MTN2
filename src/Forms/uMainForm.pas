@@ -3761,6 +3761,8 @@ begin
   SyncKeyModifiers(Shift);
   if IsModifierOnlyKey(Key) then
   begin
+    if (Key = vkShift) and Assigned(FDualPanel) then
+      FDualPanel.EndShiftSelect;
     Key := 0;
     KeyChar := #0;
     Exit;
