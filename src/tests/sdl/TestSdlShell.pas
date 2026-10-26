@@ -38,7 +38,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.Types, System.Generics.Collections,
-  System.UITypes, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
+  System.UITypes, System.RegularExpressions, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
   uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets, uDualPanelTypes, uVfsTypes;
 
 const
@@ -116,6 +116,12 @@ begin
     Result := Result + #10;
   end;
   FGrid.Render(Grid);
+end;
+
+// The menu bar shows the time of day; frames taken a second apart differ only there.
+function WithoutClock(const AScreen: string): string;
+begin
+  Result := TRegEx.Replace(AScreen, '\d\d:\d\d:\d\d', '##:##:##');
 end;
 
 function Key(ASym, AScan, AMods: Integer): TSDLEvent;
@@ -219,17 +225,17 @@ var
 begin
   Rig := THostRig.Create;
   try
-    Before := Rig.Screen;
+    Before := WithoutClock(Rig.Screen);
     Col := Rig.Shell.DualPanel.SaverCornerCol;
     Assert.IsTrue(Col > 0, 'the menu bar is shown');
     Rig.Send(Click(SDL_MOUSEBUTTONDOWN, Col * 8 + 3, 5));
     Rig.Send(Click(SDL_MOUSEBUTTONUP, Col * 8 + 3, 5));
     Assert.IsTrue(Rig.Shell.DualPanel.SaverActive, 'the click starts the sharks');
-    Assert.AreNotEqual(Before, Rig.Screen, 'they are drawn');
+    Assert.AreNotEqual(Before, WithoutClock(Rig.Screen), 'they are drawn');
     // The key that stops them is used up: no menu or panel reacts to F9.
     Rig.Send(Key(cScancodeBit or 66, 66, 0));
     Assert.IsFalse(Rig.Shell.DualPanel.SaverActive, 'a key stops the sharks');
-    Assert.AreEqual(Before, Rig.Screen, 'and nothing else happened');
+    Assert.AreEqual(Before, WithoutClock(Rig.Screen), 'and nothing else happened');
   finally
     Rig.Free;
   end;
