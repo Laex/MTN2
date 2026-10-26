@@ -33,6 +33,8 @@ type
     [Test] procedure TestCtrlKOpensTheKeyListOnTheCommand;
     [Test] procedure TestCtrlKOnACommandWithoutKeyKeepsThePalette;
     [Test] procedure TestResumeKeepsTheSelectedCommand;
+    [Test] procedure TestKeysWithoutMenuItemAreListedWithTheirShortcut;
+    [Test] procedure TestKeyOnlyCommandRunsItsAction;
   end;
 
 implementation
@@ -703,6 +705,73 @@ begin
       Assert.AreEqual<Integer>(0, C.RowCount);
       C.DispatchCommand('commands');
       Assert.AreEqual<Integer>(0, GExecutedCount);
+    finally
+      C.Free;
+    end;
+  finally
+    D.Free;
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestKeysWithoutMenuItemAreListedWithTheirShortcut;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  I: Integer;
+begin
+  M := MakeMenu(cMenuJson);
+  try
+    E := BuildPaletteEntries(M);
+    AppendKeymapOnlyEntries(M, KeymapActionCaption, E);
+    I := IndexOfKey(E, 'key:RunInBackground');
+    Assert.IsTrue(I >= 0, 'an action no menu item runs is listed');
+    Assert.AreEqual(Ord(kaRunInBackground), Ord(E[I].Action));
+    Assert.IsTrue(Pos('Enter', E[I].Shortcut) > 0, 'its keys are shown');
+    Assert.AreEqual('Keys', E[I].Category);
+    Assert.IsTrue(IndexOfKey(E, 'tmaFileCopy') >= 0, 'menu commands stay');
+    Assert.IsTrue(IndexOfKey(E, 'key:Copy') < 0, 'an action with a menu item is not listed twice');
+    Assert.IsTrue(Contains(RankedKeys(E, 'background'), 'key:RunInBackground'),
+      'found by its caption');
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestKeyOnlyCommandRunsItsAction;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Ran: TKeymapAction;
+  Key: Word;
+  Ch: Char;
+  S: string;
+  I: Integer;
+begin
+  Ran := kaNone;
+  M := MakeMenu(cMenuJson);
+  D := TDialogHost.Create(nil);
+  try
+    C := MakePalette(D, M);
+    try
+      C.OnRunAction :=
+        procedure(AAction: TKeymapAction)
+        begin
+          Ran := AAction;
+        end;
+      C.OpenList;
+      S := 'in a new tab';
+      for I := 1 to Length(S) do
+      begin
+        Key := 0;
+        Ch := S[I];
+        C.HandleFilterInput(Key, [], Ch);
+      end;
+      Assert.IsTrue(C.RowCount >= 1, 'the query finds the action');
+      C.DispatchCommand('commands');
+      Assert.AreEqual(Ord(kaRunInNewTab), Ord(Ran), 'Enter runs the action of the key');
+      Assert.AreEqual<Integer>(0, GExecutedCount, 'no menu command ran');
     finally
       C.Free;
     end;

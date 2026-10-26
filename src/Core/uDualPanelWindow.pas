@@ -29,7 +29,8 @@ uses
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
-  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives;
+  uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
+  uKeyHints;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -201,6 +202,8 @@ type
     FQuickText: TQuickTextView;
     /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
     FToast: TToast;
+    FKeyHints: TKeyHintTracker;
+    FHintSituation: THintSituation;
     FSaver: TSharkSaver;
     /// <summary>The click and the release that follow a mouse press which only
     /// stopped the screensaver are not input for the window.</summary>
@@ -613,6 +616,11 @@ type
     procedure SyncConsoleDirNow;
     function TryResolveCommandPath(const AText: string; out AURI: string): Boolean;
     procedure NotifyChanged;
+    /// <summary>A toast with the useful keys the first time the active panel
+    /// shows search results, an archive, a temporary panel, a workspace or an
+    /// SFTP folder, or a command is being typed (uKeyHints).</summary>
+    procedure ShowSituationHint;
+    procedure ShowKeyHint(ASituation: THintSituation);
     procedure CloseDrivePopup;
     procedure ToggleDrivePopup(ASide: TPanelSide);
     /// <summary>The tree is open over a panel of this workspace, focused or not.</summary>
@@ -1417,6 +1425,7 @@ begin
       if Life.Alive then
         NotifyChanged;
     end);
+  FKeyHints := TKeyHintTracker.Create(True);
   FSaver := TSharkSaver.Create(
     procedure
     begin
@@ -1659,6 +1668,7 @@ begin
   end;
   SetNoticeHandler(nil);
   FreeAndNil(FToast);
+  FreeAndNil(FKeyHints);
   FreeAndNil(FSaver);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
@@ -3027,6 +3037,16 @@ begin
       Result := FTopMenu;
     end);
   FPalette.OnAssignKey := HostAssignPaletteKey;
+  FPalette.OnRunAction :=
+    procedure(AAction: TKeymapAction)
+    var
+      Key: Word;
+      KeyChar: Char;
+    begin
+      Key := 0;
+      KeyChar := #0;
+      HandleKeymapActionPrimary(AAction, Key, KeyChar);
+    end;
   FSettings := TSettingsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog,
@@ -3688,6 +3708,44 @@ begin
     FOnContentChanged(Self);
   SyncSurfacePanel;
   PublishPanelEvents;
+  ShowSituationHint;
+end;
+
+procedure TDualPanelWindow.ShowKeyHint(ASituation: THintSituation);
+var
+  Request: TNoticeRequest;
+  Text: string;
+begin
+  if not Assigned(FKeyHints) then
+    Exit;
+  Text := FKeyHints.Take(ASituation, ActiveKeymap);
+  if Text = '' then
+    Exit;
+  Request := TNoticeRequest.Make(Text);
+  Request.DurationMs := 6000;
+  FToast.ShowRequest(Request);
+end;
+
+procedure TDualPanelWindow.ShowSituationHint;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Situation: THintSituation;
+begin
+  if not Assigned(FKeyHints) or not Assigned(FToast) then
+    Exit;
+  Situation := hsNone;
+  Ws := ActiveWorkspace;
+  if (Ws.Kind = wkPanels) and not FConsoleMode then
+  begin
+    Situation := HintSituationOfUri(ActiveTab(ActivePanel(Ws)).CurrentURI);
+    if (Situation = hsNone) and Assigned(FCmdLineMgr) and FCmdLineMgr.Focused and
+       (Trim(FCmdLineMgr.Text) <> '') then
+      Situation := hsCommandLine;
+  end;
+  if Situation = FHintSituation then
+    Exit;
+  FHintSituation := Situation;
+  ShowKeyHint(Situation);
 end;
 
 procedure TDualPanelWindow.ModelInvalidated(AWindowId: Integer);
@@ -7880,6 +7938,7 @@ begin
   // its output stays on screen; anything else is the Windows shell's.
   if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(APath, lpDefault) then
   begin
+    ShowKeyHint(hsConsoleProgram);
     NotifyChanged;
     Exit;
   end;

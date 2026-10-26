@@ -16,6 +16,8 @@ type
   /// Called with kaNone for a command that has no key to assign; False when
   /// nothing was opened.</summary>
   TPaletteAssignKey = reference to function(AAction: TKeymapAction): Boolean;
+  /// <summary>Runs a panel action that has no menu item, as its key would.</summary>
+  TPaletteRunAction = reference to procedure(AAction: TKeymapAction);
 
   TCommandPaletteDialogController = class
   private
@@ -27,6 +29,7 @@ type
     FOnPrepareUi: THistoryDialogPrepareUi;
     FGetMenu: TPaletteMenuGetter;
     FOnAssignKey: TPaletteAssignKey;
+    FOnRunAction: TPaletteRunAction;
     FAll: TArray<TPaletteEntry>;
     /// <summary>The search text and the command the palette had when it was
     /// left for the key list; Resume restores them.</summary>
@@ -59,12 +62,14 @@ type
     /// <summary>Help topic of the selected command ('' when nothing is selected).</summary>
     function SelectedHelpTopic: string;
     property OnAssignKey: TPaletteAssignKey read FOnAssignKey write FOnAssignKey;
+    /// <summary>Without it the palette lists menu commands only.</summary>
+    property OnRunAction: TPaletteRunAction read FOnRunAction write FOnRunAction;
   end;
 
 implementation
 
 uses
-  System.Math, uStrings, uKeyChord;
+  System.Math, uStrings, uKeyChord, uDualPanelKeymapDialog;
 
 const
   cRowWidth = 76;
@@ -108,6 +113,8 @@ begin
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
   FAll := BuildPaletteEntries(Menu);
+  if Assigned(FOnRunAction) then
+    AppendKeymapOnlyEntries(Menu, KeymapActionCaption, FAll);
   FQuery := AQuery;
   // The line under the list follows the selected item, keyboard or mouse.
   FDialog.OnListSelected :=
@@ -203,8 +210,8 @@ begin
   Idx := FDialog.GetListSelectedIndex('commands');
   if (Idx < 0) or (Idx > High(FShown)) then
     Exit;
-  Action := kaNone;
-  if not FAll[FShown[Idx]].Item.IsPluginItem then
+  Action := FAll[FShown[Idx]].Action;
+  if (Action = kaNone) and not FAll[FShown[Idx]].Item.IsPluginItem then
     Action := TopMenuKeymapAction(FAll[FShown[Idx]].Item.Action);
   if Action = kaNone then
   begin
@@ -257,6 +264,15 @@ begin
   FQuery := '';
   if not Accepted then
     Exit;
+  if Entry.Action <> kaNone then
+  begin
+    if Assigned(FOnRunAction) then
+    begin
+      PaletteNoteRun(Entry.Key);
+      FOnRunAction(Entry.Action);
+    end;
+    Exit;
+  end;
   Menu := nil;
   if Assigned(FGetMenu) then
     Menu := FGetMenu();

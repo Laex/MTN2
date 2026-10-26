@@ -11,7 +11,7 @@ unit uCommandPalette;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections, uTopMenuBar;
+  System.SysUtils, System.Generics.Collections, uTopMenuBar, uKeymap;
 
 type
   TPaletteEntry = record
@@ -26,10 +26,22 @@ type
     /// of recent commands is keyed by it.</summary>
     Key: string;
     Item: TSubmenuItem;
+    /// <summary>The panel action of a command that has no menu item (its keys
+    /// are the only way to it); kaNone for a menu command.</summary>
+    Action: TKeymapAction;
   end;
+
+  /// <summary>The caption of a keymap action in the current language.</summary>
+  TPaletteActionCaption = reference to function(AAction: TKeymapAction): string;
 
 const
   cPaletteRecentMax = 8;
+
+/// <summary>Adds the bound panel actions that no menu item runs (Ctrl+Enter,
+/// Alt+Shift+Enter, ...) after the menu commands, so the palette lists the
+/// keys the menu never mentions and shows their shortcuts.</summary>
+procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
+  const ACaption: TPaletteActionCaption; var AEntries: TArray<TPaletteEntry>);
 
 /// <summary>The commands of AMenu that can run now, in menu order. Their search
 /// words come from menu.json, from the locale file and from the user's
@@ -161,6 +173,7 @@ begin
         if not AMenu.CanRunItem(AItem) then
           Exit;
         E.Item := AItem;
+        E.Action := kaNone;
         E.Title := CleanTitle(AItem.Caption);
         if ACategory = #$2261 then // the system menu has no name worth showing
           E.Category := ''
@@ -176,6 +189,48 @@ begin
   finally
     List.Free;
     User.Free;
+  end;
+end;
+
+procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
+  const ACaption: TPaletteActionCaption; var AEntries: TArray<TPaletteEntry>);
+var
+  Covered: array[TKeymapAction] of Boolean;
+  A: TKeymapAction;
+  E: TPaletteEntry;
+  List: TList<TPaletteEntry>;
+  Shortcut: string;
+begin
+  FillChar(Covered, SizeOf(Covered), 0);
+  AMenu.ListItems(
+    procedure(ACategory: string; AItem: TSubmenuItem)
+    begin
+      if not AItem.IsPluginItem then
+        Covered[TopMenuKeymapAction(AItem.Action)] := True;
+    end);
+  List := TList<TPaletteEntry>.Create;
+  try
+    List.AddRange(AEntries);
+    for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+    begin
+      if Covered[A] or (KeymapActionContext(A) <> kcPanels) then
+        Continue;
+      Shortcut := KeymapShortcutText(ActiveKeymap, A);
+      if Shortcut = '' then
+        Continue;
+      E := Default(TPaletteEntry);
+      E.Action := A;
+      E.Title := ACaption(A);
+      E.Category := T('ui.palette.keysCategory', 'Keys');
+      E.Shortcut := Shortcut;
+      E.Key := 'key:' + KeymapActionDisplayName(A);
+      E.Aliases := T('menu.alias.' + E.Key, '');
+      E.Description := T('menu.hint.' + E.Key, '');
+      List.Add(E);
+    end;
+    AEntries := List.ToArray;
+  finally
+    List.Free;
   end;
 end;
 

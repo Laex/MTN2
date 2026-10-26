@@ -454,6 +454,10 @@ file:///D:/data/bundle.zip!/nested.zip!/a.txt
 
 При пустой командной строке обе клавиши запускают консольную программу под курсором: `TDualPanelWindow.RunCursorFile` передаёт путь в `OnLaunchConsoleFile` с `TLaunchPlacement`. `lpBackground` (Alt+Shift+Enter) выбирает место как Enter и после запуска в консоли включает таймер возврата; `lpPanelTerminal` (Ctrl+Alt+Enter) отправляет программу в терминал вкладки панелей, как включённый флажок `ProgramsInTerminal`, но независимо от него. Каталог, архивная запись и файл, не являющийся консольной программой, ничего не запускают.
 
+Подсказки о клавишах (`uKeyHints.pas`): `HintSituationOfUri` определяет состояние активной панели (поиск, архив, временная панель, рабочее пространство, SFTP), `TKeyHintTracker` отдаёт текст подсказки один раз за запуск. Текст берётся из строки `ui.hint.<состояние>`; метка `{Имя}` заменяется клавишами действия из текущей раскладки. `TDualPanelWindow.ShowSituationHint` вызывается из `NotifyChanged` и показывает подсказку через `TToast`, поэтому она подчиняется настройке «Показывать всплывающие уведомления».
+
+Палитра команд дополняется действиями панелей без пункта меню: `AppendKeymapOnlyEntries` берёт действия контекста `kcPanels` с клавишей, которые не выполняет ни один пункт меню; `TCommandPaletteDialogController.OnRunAction` выполняет их через `HandleKeymapActionPrimary`.
+
 Показ элемента под курсором на соседней панели – Alt+Shift+F3 (`WorkspaceGotoOpposite`; во временной панели `TmpGotoOpposite`).
 
 Прочее:

@@ -25,6 +25,7 @@ uses
   TestHiddenDialogs in 'TestHiddenDialogs.pas',
   TestKeymap in 'TestKeymap.pas',
   TestKeyChord in 'TestKeyChord.pas',
+  TestKeyHints in 'TestKeyHints.pas',
   TestLiveReload in 'TestLiveReload.pas',
   TestLocalePacks in 'TestLocalePacks.pas',
   TestResourceScripts in 'TestResourceScripts.pas',

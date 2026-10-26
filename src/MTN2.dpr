@@ -110,6 +110,7 @@ uses
   uDualPanelHistoryDialogs in 'Core\uDualPanelHistoryDialogs.pas',
   uDualPanelPaletteDialog in 'Core\uDualPanelPaletteDialog.pas',
   uCommandPalette in 'Core\uCommandPalette.pas',
+  uKeyHints in 'Core\uKeyHints.pas',
   uDualPanelSettingsDialogs in 'Core\uDualPanelSettingsDialogs.pas',
   uDualPanelThemeDialogs in 'Core\uDualPanelThemeDialogs.pas',
   uDualPanelFileDialogs in 'Core\uDualPanelFileDialogs.pas',
