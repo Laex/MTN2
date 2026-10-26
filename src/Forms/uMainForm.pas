@@ -2659,7 +2659,9 @@ begin
     cltTerminal:
       begin
         Profile := TerminalProfileForLaunch(Kind);
-        DualPanelOpenTerminalWith(Profile, Cwd, BuildConsoleLaunchLine(APath, Kind, Profile));
+        Line := BuildConsoleLaunchLine(APath, Kind, Profile);
+        FDualPanel.RecordConsoleCommand(Line);
+        DualPanelOpenTerminalWith(Profile, Cwd, Line);
       end;
   else
     Result := False;
