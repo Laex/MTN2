@@ -121,6 +121,7 @@ type
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
+    FHostDialogTopic: string;
     FDrivePopupCtrl: TDrivePopupController;
     FFolderTreeCtrl: TFolderTreeController;
     /// <summary>Ctrl+Left/Right preview: highlight only; navigate on Ctrl release.</summary>
@@ -1022,8 +1023,10 @@ type
     function PluginPanelListJson(ASide: Integer): string;
     function PluginPanelSetCursor(ASide: Integer; const AURI: string): Boolean;
     function PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
+    /// <summary>Opens a dialog for a host or plugin; AHelpTopic is the help
+    /// page F1 shows over it ('' = the contents page).</summary>
     function ShowHostDialog(const ADecl: TDialogDeclaration;
-      const AOnCommand: TProc<string, string>): Boolean;
+      const AOnCommand: TProc<string, string>; const AHelpTopic: string = ''): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
     function HasBusyJob: Boolean;
     /// <summary>States of every job that is not idle, for the taskbar button.</summary>
@@ -6105,7 +6108,7 @@ begin
      begin
        if DialogCmdIsAccept(AControlId) then
          DisconnectDriveNow(Info);
-     end) then
+     end, 'drives.md') then
     Notice(T('ui.drivePopup.disconnectBusy', 'Close the open dialog first'), '', tkWarning);
 end;
 
@@ -8323,7 +8326,7 @@ begin
      begin
        if Life.Alive and DialogCmdIsAccept(ACmd) then
          AAction();
-     end) then
+     end, 'fileops.md') then
     Exit;
   NotifyChanged;
 end;
@@ -8372,13 +8375,13 @@ begin
                  ADone(Accepted);
                end);
            end).Start;
-       end) then
+       end, 'fileops.md') then
     Exit;
   ADone(False);
 end;
 
 function TDualPanelWindow.ShowHostDialog(const ADecl: TDialogDeclaration;
-  const AOnCommand: TProc<string, string>): Boolean;
+  const AOnCommand: TProc<string, string>; const AHelpTopic: string): Boolean;
 begin
   Result := Assigned(FDialog) and not FDialog.Visible;
   if not Result then
@@ -8386,6 +8389,7 @@ begin
   CloseTransientUiBeforeDialog;
   FDialogKind := hdkHost;
   FHostDialogCommand := AOnCommand;
+  FHostDialogTopic := AHelpTopic;
   FDialog.Open(ADecl, DialogCommand);
   NotifyChanged;
 end;
@@ -8564,7 +8568,7 @@ begin
       // A message dialog; closing it brings the list back (hdkHost branch).
       if not ShowHostDialog(BuildConfirmDialog(T('ui.plugins.noSettingsTitle', 'Plugin settings'),
            Format(T('ui.plugins.noSettings', 'The plugin %s has no settings.'),
-             [HostPluginIdAt(Row)])), nil) then
+             [HostPluginIdAt(Row)])), nil, 'settings.md') then
       begin
         FPluginListReturnRow := -1;
         ShowPluginList(Row);
@@ -8596,7 +8600,9 @@ begin
   else
     Result.DialogKind := hdkNone;
   if Result.DialogKind = hdkCommandPalette then
-    Result.DialogTopic := FPalette.SelectedHelpTopic;
+    Result.DialogTopic := FPalette.SelectedHelpTopic
+  else if Result.DialogKind = hdkHost then
+    Result.DialogTopic := FHostDialogTopic;
   Result.SearchActive := OverlaySearchActive;
   Result.JobOverlay := OverlayJobActive;
   Result.UserMenu := OverlayUserMenuVisible;

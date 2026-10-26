@@ -17,6 +17,7 @@ Die Tasten gelten für das eingebaute Profil; sie lassen sich ändern (siehe [Ta
 - [Verlauf und Ordner-Hotlist](history.md)
 - [Befehlszeile und Konsole](cmdline.md)
 - [Terminals](terminals.md)
+- [Umgebungsprofile](environment.md)
 - [Dateien ansehen und bearbeiten](viewer.md)
 - [Arbeiten mit Text und Maus](text.md)
 - [Hauptmenü (F9)](topmenu.md)

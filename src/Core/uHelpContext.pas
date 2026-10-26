@@ -41,7 +41,9 @@ const
 /// keymap editor records any key, and the built-in key summary is already
 /// help.</summary>
 function DialogKindTakesF1(AKind: THostDialogKind): Boolean;
-/// <summary>Topic for a modal dialog ('' = the contents page).</summary>
+/// <summary>Topic for a modal dialog ('' = the contents page). A topic is a
+/// file name, optionally followed by #id: the line that starts with the
+/// marker &lt;!--id--&gt; in that file (the same in every language).</summary>
 function HelpTopicForDialog(AKind: THostDialogKind): string;
 /// <summary>Topic for a panel folder: archives, SFTP, Recycle Bin / system
 /// folders and search results have their own pages.</summary>
@@ -64,52 +66,90 @@ end;
 function HelpTopicForDialog(AKind: THostDialogKind): string;
 begin
   case AKind of
-    hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkJobConfirm,
-    hdkOverwriteAsk, hdkOverwriteRename, hdkDeleteError, hdkIOError,
-    hdkCreateLink, hdkSetAttributes, hdkChecksumOptions, hdkChecksumResult,
-    hdkDescribe, hdkMultiRename, hdkExportList:
+    hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkCreateLink, hdkDescribe:
       Result := 'fileops.md';
-    hdkJobList, hdkJobProgress, hdkStopConfirm:
-      Result := 'jobs.md';
-    hdkSearch, hdkTmpSaveList:
+    hdkJobConfirm, hdkOverwriteAsk, hdkOverwriteRename:
+      Result := 'fileops.md#copy';
+    hdkSetAttributes:
+      Result := 'fileops.md#attributes';
+    hdkChecksumOptions, hdkChecksumResult:
+      Result := 'fileops.md#checksums';
+    hdkMultiRename:
+      Result := 'fileops.md#multi-rename';
+    hdkExportList:
+      Result := 'fileops.md#export-list';
+    hdkDeleteError, hdkIOError:
+      Result := 'jobs.md#errors';
+    hdkJobList, hdkJobProgress:
+      Result := 'jobs.md#job-list';
+    hdkStopConfirm:
+      Result := 'jobs.md#stop';
+    hdkSearch, hdkTmpSaveList, hdkPanelFilter:
       Result := 'search.md';
-    hdkSelectMask, hdkUnselectMask, hdkPanelFilter:
+    hdkSelectMask, hdkUnselectMask:
       Result := 'selection.md';
-    hdkFolderHistory, hdkCmdHistory, hdkFileHistory, hdkFolderHotlist,
+    hdkFolderHistory, hdkCmdHistory, hdkFolderHotlist,
     hdkFolderHotlistAdd, hdkFolderHotlistRename:
       Result := 'history.md';
+    hdkFileHistory:
+      Result := 'history.md#file-history';
     hdkCommandPalette:
       Result := 'topmenu.md';
-    hdkDirSync, hdkCompareResult:
-      Result := 'sync.md';
-    hdkTerminalProfile, hdkTerminalEnv:
-      Result := 'terminals.md';
-    hdkConsoleProfile, hdkConsoleSave:
-      Result := 'cmdline.md';
-    hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme, hdkDisplay,
-    hdkInterface,
-    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
-    hdkConsoleOptions, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
-    hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
-    hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
-      Result := 'settings.md';
-    hdkHost: // the updater's dialogs
-      Result := 'updates.md';
-    hdkPluginList, hdkPluginInfo, hdkPluginPerms:
-      Result := 'settings.md';
+    hdkDirSync:
+      Result := 'sync.md#dir-sync';
+    hdkCompareResult:
+      Result := 'sync.md#compare-files';
+    hdkTerminalProfile:
+      Result := 'terminals.md#profiles';
+    hdkTerminalEnv:
+      Result := 'environment.md#choice';
+    hdkConsoleProfile:
+      Result := 'cmdline.md#console-profile';
+    hdkConsoleSave:
+      Result := 'cmdline.md#save-output';
+    hdkColorCoding, hdkColorCodingEdit:
+      Result := 'settings.md#color-coding';
+    hdkColorPicker, hdkThemePicker:
+      Result := 'settings.md#color-picker';
+    hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
+    hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice:
+      Result := 'settings.md#theme';
+    hdkDisplay:
+      Result := 'settings.md#display';
+    hdkInterface:
+      Result := 'settings.md#interface';
     hdkColumnsConfig:
-      Result := 'view.md';
+      Result := 'settings.md#columns';
+    hdkConsoleOptions:
+      Result := 'settings.md#console';
+    hdkExternalTools:
+      Result := 'settings.md#external-tools';
+    hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
+      Result := 'settings.md#markdown-colors';
+    hdkSettingsExport, hdkSettingsImport:
+      Result := 'settings.md#settings-file';
+    hdkConfigLocation:
+      Result := 'settings.md#location';
+    hdkPluginList, hdkPluginInfo, hdkPluginPerms:
+      Result := 'settings.md#plugins';
+    // hdkHost: the opener names the topic (TDualPanelWindow.ShowHostDialog).
     hdkArchivePassword:
-      Result := 'archives.md';
+      Result := 'archives.md#password';
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename,
-    hdkWorkspaceConfirm, hdkWorkspaceTabRename:
-      Result := 'workspaces.md';
+    hdkWorkspaceConfirm:
+      Result := 'workspaces.md#saved';
+    hdkWorkspaceTabRename:
+      Result := 'workspaces.md#workspaces';
     hdkSshConnections, hdkSshConnectionEdit, hdkSshConnectionConfirm:
       Result := 'ssh.md';
     hdkAssociations, hdkAssociationEdit, hdkAssociationConfirm:
       Result := 'associations.md';
-    hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt:
+    hdkUserMenuEdit:
+      Result := 'usermenu.md#item';
+    hdkUserMenuConfirm:
       Result := 'usermenu.md';
+    hdkUserMenuPrompt:
+      Result := 'usermenu.md#substitutions';
     hdkKeymap, hdkKeymapEdit:
       Result := 'keymap.md';
   else
@@ -149,19 +189,25 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..54] of TTopicRule = (
+  cRules: array[0..73] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileRestoreSelection'; Topic: 'selection.md'),
     (Prefix: 'tmaFileView'; Topic: 'viewer.md'),
+    (Prefix: 'tmaFileExternal'; Topic: 'viewer.md'),
     (Prefix: 'tmaFileEdit'; Topic: 'viewer.md'),
-    (Prefix: 'tmaFilePack'; Topic: 'archives.md'),
-    (Prefix: 'tmaFileUnpack'; Topic: 'archives.md'),
-    (Prefix: 'tmaFileCompare'; Topic: 'sync.md'),
+    (Prefix: 'tmaFilePack'; Topic: 'archives.md#pack'),
+    (Prefix: 'tmaFileUnpack'; Topic: 'archives.md#pack'),
+    (Prefix: 'tmaFileCompare'; Topic: 'sync.md#compare-files'),
     (Prefix: 'tmaFileRestore'; Topic: 'drives.md'),
+    (Prefix: 'tmaFileJobList'; Topic: 'jobs.md#job-list'),
     (Prefix: 'tmaFileRunInBackground'; Topic: 'jobs.md'),
     (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
+    (Prefix: 'tmaFileSetAttributes'; Topic: 'fileops.md#attributes'),
+    (Prefix: 'tmaFileChecksums'; Topic: 'fileops.md#checksums'),
+    (Prefix: 'tmaFileMultiRename'; Topic: 'fileops.md#multi-rename'),
+    (Prefix: 'tmaFileExportList'; Topic: 'fileops.md#export-list'),
     (Prefix: 'tmaFile'; Topic: 'fileops.md'),
     (Prefix: 'tmaEdit'; Topic: 'text.md'),
     (Prefix: 'tmaLeftDrive'; Topic: 'drives.md'),
@@ -175,24 +221,26 @@ const
     (Prefix: 'tmaCmdPalette'; Topic: 'topmenu.md'),
     (Prefix: 'tmaCmdQuickView'; Topic: 'panels.md'),
     (Prefix: 'tmaCmdFind'; Topic: 'search.md'),
-    (Prefix: 'tmaCmdDirSync'; Topic: 'sync.md'),
-    (Prefix: 'tmaCmdCompareFolders'; Topic: 'sync.md'),
+    (Prefix: 'tmaCmdLiveFilter'; Topic: 'search.md'),
+    (Prefix: 'tmaCmdDirSync'; Topic: 'sync.md#dir-sync'),
+    (Prefix: 'tmaCmdCompareFolders'; Topic: 'sync.md#compare-folders'),
     (Prefix: 'tmaCmdUserMenu'; Topic: 'usermenu.md'),
     (Prefix: 'tmaCmdHistory'; Topic: 'history.md'),
     (Prefix: 'tmaCmdFolderHistory'; Topic: 'history.md'),
-    (Prefix: 'tmaCmdFileHistory'; Topic: 'history.md'),
+    (Prefix: 'tmaCmdFileHistory'; Topic: 'history.md#file-history'),
     (Prefix: 'tmaCmdFolderHotlist'; Topic: 'history.md'),
     (Prefix: 'tmaCmdCmdHistory'; Topic: 'history.md'),
-    (Prefix: 'tmaCmdWorkspace'; Topic: 'workspaces.md'),
+    (Prefix: 'tmaCmdWorkspace'; Topic: 'workspaces.md#saved'),
     (Prefix: 'tmaCmdSsh'; Topic: 'ssh.md'),
     (Prefix: 'tmaCmdAssociations'; Topic: 'associations.md'),
-    (Prefix: 'tmaCmdJobList'; Topic: 'jobs.md'),
+    (Prefix: 'tmaCmdJobList'; Topic: 'jobs.md#job-list'),
     (Prefix: 'tmaCmdRecycleBin'; Topic: 'drives.md'),
     (Prefix: 'tmaCmdDriveRoot'; Topic: 'drives.md'),
-    (Prefix: 'tmaCmdNewTerminal'; Topic: 'terminals.md'),
+    (Prefix: 'tmaCmdNewTerminal'; Topic: 'terminals.md#profiles'),
+    (Prefix: 'tmaCmdConsoleProfile'; Topic: 'cmdline.md#console-profile'),
+    (Prefix: 'tmaCmdSaveConsoleOutput'; Topic: 'cmdline.md#save-output'),
     (Prefix: 'tmaCmdConsole'; Topic: 'cmdline.md'),
     (Prefix: 'tmaCmdSyncConsoleDir'; Topic: 'cmdline.md'),
-    (Prefix: 'tmaCmdSaveConsoleOutput'; Topic: 'cmdline.md'),
     (Prefix: 'tmaCmdClearConsole'; Topic: 'cmdline.md'),
     (Prefix: 'tmaCmdFocusCmdLine'; Topic: 'cmdline.md'),
     (Prefix: 'tmaCmdInsert'; Topic: 'cmdline.md'),
@@ -200,8 +248,19 @@ const
     (Prefix: 'tmaOptReloadKeymap'; Topic: 'keymap.md'),
     (Prefix: 'tmaOptZoom'; Topic: 'screen.md'),
     (Prefix: 'tmaOptResetZoom'; Topic: 'screen.md'),
-    (Prefix: 'tmaOptDisplay'; Topic: 'screen.md'),
-    (Prefix: 'tmaOptColumnsConfig'; Topic: 'view.md'),
+    (Prefix: 'tmaOptDisplay'; Topic: 'settings.md#display'),
+    (Prefix: 'tmaOptColumnsConfig'; Topic: 'settings.md#columns'),
+    (Prefix: 'tmaOptTheme'; Topic: 'settings.md#theme'),
+    (Prefix: 'tmaOptInterface'; Topic: 'settings.md#interface'),
+    (Prefix: 'tmaOptConsoleOptions'; Topic: 'settings.md#console'),
+    (Prefix: 'tmaOptExportSettings'; Topic: 'settings.md#settings-file'),
+    (Prefix: 'tmaOptImportSettings'; Topic: 'settings.md#settings-file'),
+    (Prefix: 'tmaOptConfigLocation'; Topic: 'settings.md#location'),
+    (Prefix: 'tmaOptColorCoding'; Topic: 'settings.md#color-coding'),
+    (Prefix: 'tmaOptShowPlugins'; Topic: 'settings.md#plugins'),
+    (Prefix: 'tmaOptExternalTools'; Topic: 'settings.md#external-tools'),
+    (Prefix: 'tmaOptMarkdownColors'; Topic: 'settings.md#markdown-colors'),
+    (Prefix: 'tmaOptEnvironment'; Topic: 'environment.md'),
     (Prefix: 'tmaOpt'; Topic: 'settings.md'),
     (Prefix: 'tmaHelpUpdates'; Topic: 'updates.md'),
     (Prefix: 'tmaCmd'; Topic: 'panels.md'));

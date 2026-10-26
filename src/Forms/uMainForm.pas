@@ -1992,13 +1992,14 @@ const
   cOffId = 'plugins-off';
 var
   Decl: TDialogDeclaration;
-  HideId: string;
+  HideId, HintTopic: string;
 begin
   // One start-up hint at a time: that every plugin is off (a fresh install), else
   // that 7z.dll is missing for a plugin that is on.
   if HostAllPluginsOff and not DialogHidden(cOffId) then
   begin
     HideId := cOffId;
+    HintTopic := 'settings.md';
     Decl := BuildHideableMessageDialog(
       T('ui.pluginsOff.title', 'Plugins are switched off.'),
       T('ui.pluginsOff.details', '7z archives, workspaces and other extras are off.'),
@@ -2007,6 +2008,7 @@ begin
   else if HostSevenZipDllMissing and not DialogHidden(cHideId) then
   begin
     HideId := cHideId;
+    HintTopic := 'archives.md';
     Decl := BuildHideableMessageDialog(
       T('ui.sevenZip.missing', '7z.dll not found.'),
       T('ui.sevenZip.missingDetails', '7z, RAR and encrypted ZIP archives cannot be opened.'),
@@ -2026,7 +2028,7 @@ begin
        begin
          if DialogValuesChecked(AValues, 'hide') then
            HideDialog(HideId);
-       end) then
+       end, HintTopic) then
   begin
     FSevenZipTimer.Enabled := False;
     Recompose;
@@ -2188,7 +2190,7 @@ begin
       // Only over the panels: never pop up inside an editor, viewer or
       // terminal the user is working in. The controller retries later.
       Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
-        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'updates.md');
       if Result then
         Recompose;
     end;
@@ -2804,7 +2806,7 @@ begin
     function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>): Boolean
     begin
       Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
-        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'settings.md');
       if Result then
         Recompose;
     end);

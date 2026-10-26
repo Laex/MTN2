@@ -22,9 +22,9 @@ Ihre eigene Befehlsliste: Einträge mit Tasten, verschachtelte Untermenüs und T
 | Ctrl+↑ / Ctrl+↓ | den Eintrag verschieben |
 | Shift+F2 | Ordnermenü ↔ Hauptmenü |
 
-**Menüeintrag:** Taste (ein Zeichen), Typ (Befehl / Untermenü / Trennlinie), Beschriftung und Befehl. Ist die Beschriftung leer, wird der Befehl selbst angezeigt.
+<!--item-->**Menüeintrag:** Taste (ein Zeichen), Typ (Befehl / Untermenü / Trennlinie), Beschriftung und Befehl. Ist die Beschriftung leer, wird der Befehl selbst angezeigt.
 
-**Ersetzungen in einem Befehl:**
+<!--substitutions-->**Ersetzungen in einem Befehl:**
 
 | Muster | Wird ersetzt durch |
 | --- | --- |

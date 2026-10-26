@@ -76,7 +76,7 @@ implementation
 
 uses
   System.IOUtils, System.Math, System.StrUtils, System.Character,
-  uThemeDrawing, uFunctionBar, uStrings, uVfsTypes;
+  uThemeDrawing, uFunctionBar, uStrings, uVfsTypes, uMarkdownParser;
 
 const
   cIndexTopic = 'index.md';
@@ -147,12 +147,15 @@ end;
 function THelpViewer.FindAnchorLine(const AAnchor: string): Integer;
 var
   I: Integer;
-  Line, Want: string;
+  Line, Want, Id, Rest: string;
 begin
   Want := AAnchor.ToLower;
   for I := 0 to FViewer.LineCount - 1 do
   begin
     Line := TrimLeft(FViewer.LineText(I));
+    // A "<!--id-->" marker names a line in every language of a topic.
+    if TMarkdownParser.SplitLeadingMarker(Line, Id, Rest) and SameText(Id, Want) then
+      Exit(I);
     if StartsStr('#', Line) and (HeadingSlug(Line.TrimLeft(['#'])) = Want) then
       Exit(I);
   end;

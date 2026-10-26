@@ -22,9 +22,9 @@ Your own list of commands: items with hot keys, nested submenus and separators. 
 | Ctrl+↑ / Ctrl+↓ | move the item |
 | Shift+F2 | folder menu ↔ main menu |
 
-**Menu item:** hot key (one character), type (command / submenu / separator), caption and command. If the caption is empty, the command itself is shown.
+<!--item-->**Menu item:** hot key (one character), type (command / submenu / separator), caption and command. If the caption is empty, the command itself is shown.
 
-**Substitutions in a command:**
+<!--substitutions-->**Substitutions in a command:**
 
 | Pattern | Replaced with |
 | --- | --- |

@@ -18,7 +18,7 @@ The command line is always below the panels: just start typing. A command runs i
 | Ctrl+Shift+O | synchronize the folder between the active panel and the console |
 | Ctrl+Alt+O | choose the shell of the background console (cmd, PowerShell, WSL, …) |
 
-**Commands → Background console...** is the same dialog. **Start shell at program launch** is off by default: the shell starts on the first **Ctrl+O** or the first command from the command line. Turn the option on to start the shell together with the program, as before.
+<!--console-profile-->**Commands → Background console...** is the same dialog. **Start shell at program launch** is off by default: the shell starts on the first **Ctrl+O** or the first command from the command line. Turn the option on to start the shell together with the program, as before.
 
 **In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](text.md)).
 
@@ -28,7 +28,7 @@ The command line is always below the panels: just start typing. A command runs i
 
 **Options → Console...** sets the scrollback size of the console and terminals (1000 – 50,000 lines, 10,000 by default), the confirmation of a multi-line paste (off; a full-screen program such as vim never asks) the removal of trailing spaces on copy and on paste, and **Always return to the panels when a command ends** (off). With it on, a command run from the command line under the panels sends you back to the panels as soon as the shell shows its prompt again; a command typed in the background console (Ctrl+O) always stays in the console. **Alt+Shift+Enter** runs the command line in the console in the background: the console is shown for the time set in **Background run** (0.5 – 10 s, 2 s by default) and the panels come back by themselves; a key pressed in the console before that keeps it in front, and the command goes on running either way. Changes apply at once, to open consoles too.
 
-**Commands → Save console output...** writes the background console's scrollback (Ctrl+O) to a UTF-8 text file; **Clear console buffer** erases it, the shell keeps running.
+<!--save-output-->**Commands → Save console output...** writes the background console's scrollback (Ctrl+O) to a UTF-8 text file; **Clear console buffer** erases it, the shell keeps running.
 
 ---
 

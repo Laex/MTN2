@@ -6,6 +6,7 @@ Der Einstellungsordner ist `%APPDATA%\MTN2\`. Liegt eine Datei `portable.dat` ne
 | --- | --- |
 | `session.json` | Zustand von Fenster, Panels und Tabs, Farbschema, Schrift, Sprache |
 | `keymap.json` | geänderte Tasten |
+| `environment.json` | Umgebungsprofile für Shells |
 | `aliases.json` | eigene Suchwörter für die Befehlspalette |
 | `history.json` | Befehlsverlauf |
 | `folderhistory.json` | Ordnerverlauf |

@@ -291,7 +291,7 @@ begin
     function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>): Boolean
     begin
       Result := Assigned(FDualPanel) and (FMdi.Active = FDualPanel) and
-        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'settings.md');
       if Result then
         Recompose;
     end);
@@ -661,7 +661,7 @@ begin
       // Only over the panels: never inside an editor, viewer or terminal the
       // user is working in. The controller retries later.
       Result := Assigned(FDualPanel) and (FMdi.Active = FDualPanel) and
-        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand);
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'updates.md');
       if Result then
         Recompose;
     end;

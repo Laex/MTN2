@@ -110,6 +110,11 @@ type
   TMarkdownParser = class
   public
     class function ParseLine(const ARaw: string; var AState: TMdFenceState): TMdLine; static;
+    /// <summary>A line that starts with an HTML comment ("&lt;!--id--&gt;text")
+    /// carries a named marker: ParseLine drops it from the display, so a link
+    /// such as "page.md#id" can scroll to the line in any language. AId is the
+    /// trimmed comment text, ARest the line after it.</summary>
+    class function SplitLeadingMarker(const ARaw: string; out AId, ARest: string): Boolean; static;
     /// <summary>Word-boundary line-wrap: splits AText into chunks that each
     /// fit within AWidth columns, returning the 1-based start index of every
     /// chunk (chunk N's end is chunk N+1's start minus one, or Length(AText)
@@ -693,6 +698,25 @@ begin
   end;
 end;
 
+class function TMarkdownParser.SplitLeadingMarker(const ARaw: string; out AId, ARest: string): Boolean;
+var
+  T: string;
+  P: Integer;
+begin
+  AId := '';
+  ARest := '';
+  T := TrimLeft(ARaw);
+  Result := False;
+  if Copy(T, 1, 4) <> '<!--' then
+    Exit;
+  P := Pos('-->', T);
+  if P < 5 then
+    Exit;
+  AId := Trim(Copy(T, 5, P - 5));
+  ARest := Copy(T, P + 3, MaxInt);
+  Result := True;
+end;
+
 class function TMarkdownParser.ParseLine(const ARaw: string; var AState: TMdFenceState): TMdLine;
 var
   Trimmed: string;
@@ -700,6 +724,7 @@ var
   Alt, Path: string;
   ImgW, ImgH: Integer;
   InlineRes: TMdInlineResult;
+  Marker, MarkerRest: string;
 begin
   Result.DisplayText := ARaw;
   Result.IsImage := False;
@@ -729,6 +754,9 @@ begin
     Result.Spans := SingleSpan(1, Length(ARaw), mskCodeBlock);
     Exit;
   end;
+
+  if SplitLeadingMarker(ARaw, Marker, MarkerRest) then
+    Exit(ParseLine(MarkerRest, AState));
 
   if TryParseStandaloneImage(ARaw, Alt, Path, ImgW, ImgH) then
   begin

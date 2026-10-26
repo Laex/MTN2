@@ -17,6 +17,7 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 - [History and folder hotlist](history.md)
 - [Command line and console](cmdline.md)
 - [Terminals](terminals.md)
+- [Environment profiles](environment.md)
 - [Viewing and editing files](viewer.md)
 - [Working with text and the mouse](text.md)
 - [Top menu (F9)](topmenu.md)

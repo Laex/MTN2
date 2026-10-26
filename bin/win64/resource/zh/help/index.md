@@ -17,6 +17,7 @@ Modern Terminal Navigator 2 是一款双面板文件管理器,风格类似 NDN /
 - [历史记录和常用文件夹](history.md)
 - [命令行和控制台](cmdline.md)
 - [终端](terminals.md)
+- [环境配置文件](environment.md)
 - [查看和编辑文件](viewer.md)
 - [文本和鼠标操作](text.md)
 - [顶部菜单 (F9)](topmenu.md)

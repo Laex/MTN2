@@ -18,6 +18,7 @@ type
     [SetupFixture] procedure SetupFixture;
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestHeadings;
+    [Test] procedure TestAnchorMarkers;
     [Test] procedure TestFences;
     [Test] procedure TestBlockConstructs;
     [Test] procedure TestInline;
@@ -106,6 +107,39 @@ begin
     if (ALine.Spans[I].StartCol = AStart) and (ALine.Spans[I].Len = ALen) and
        (ALine.Spans[I].Kind = AKind) then
       Exit(True);
+end;
+
+{ ---- ParseLine: anchor markers ---------------------------------------------- }
+
+procedure TestAnchorMarkers;
+var
+  State: TMdFenceState;
+  L: TMdLine;
+  Id, Rest: string;
+begin
+  State.InFence := False;
+
+  Assert.IsTrue(TMarkdownParser.SplitLeadingMarker('  <!-- some-id -->- item', Id, Rest),
+    'a leading comment is a marker');
+  Assert.AreEqual('some-id', Id);
+  Assert.AreEqual('- item', Rest);
+  Assert.IsFalse(TMarkdownParser.SplitLeadingMarker('text <!--x-->', Id, Rest),
+    'a comment after text is not a marker');
+
+  L := TMarkdownParser.ParseLine('<!--x-->## Sub', State);
+  Assert.AreEqual('Sub', L.DisplayText, 'the marker is dropped before a heading');
+  Assert.IsTrue(IsSingleFullSpan(L, mskH2), 'the heading keeps its style');
+
+  L := TMarkdownParser.ParseLine('<!--x-->- item', State);
+  Assert.AreEqual('item', Copy(L.DisplayText, Length(L.DisplayText) - 3, 4),
+    'the marker is dropped before a list item');
+
+  L := TMarkdownParser.ParseLine('<!--x-->', State);
+  Assert.AreEqual('', L.DisplayText, 'a marker alone is an empty line');
+
+  State.InFence := True;
+  L := TMarkdownParser.ParseLine('<!--x-->', State);
+  Assert.AreEqual('<!--x-->', L.DisplayText, 'code keeps its comments');
 end;
 
 { ---- ParseLine: headings ---------------------------------------------------- }
@@ -1047,6 +1081,11 @@ end;
 procedure TTestMarkdownParser.TestHeadings;
 begin
   TestMarkdownParser.TestHeadings;
+end;
+
+procedure TTestMarkdownParser.TestAnchorMarkers;
+begin
+  TestMarkdownParser.TestAnchorMarkers;
 end;
 
 procedure TTestMarkdownParser.TestFences;
