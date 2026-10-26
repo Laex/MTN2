@@ -265,6 +265,7 @@
       "pack_same_panel": "Упаковывать в ту &же панель (Shift+F1)",
       "passive_cursor": "Курсор в &неактивной панели",
       "editor_autoindent": "Автоотступ в &редакторе по Enter",
+      "exact_sizes": "&Точный размер в байтах",
       "lbl_saver": "Заставка",
       "ok": "ОК",
       "cancel": "Отмена"

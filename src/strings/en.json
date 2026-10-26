@@ -268,6 +268,7 @@
       "pack_same_panel": "Pack to the sam&e panel (Shift+F1)",
       "passive_cursor": "Cursor in the inacti&ve panel",
       "editor_autoindent": "Editor a&uto-indent on Enter",
+      "exact_sizes": "Show exact size in &bytes",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"

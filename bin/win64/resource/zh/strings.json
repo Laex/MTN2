@@ -266,6 +266,7 @@
       "pack_same_panel": "打包到同一面板 (Shift+F1)(&A)",
       "passive_cursor": "非活动面板显示光标(&V)",
       "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
+      "exact_sizes": "以字节显示精确大小(&B)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"

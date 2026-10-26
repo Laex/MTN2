@@ -267,6 +267,7 @@
       "pack_same_panel": "Im selben Be&dienfeld packen (Shift+F1)",
       "passive_cursor": "Cursor im ina&ktiven Panel",
       "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
+      "exact_sizes": "Genaue Größe in &Bytes anzeigen",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"

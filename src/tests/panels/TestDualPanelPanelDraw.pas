@@ -12,6 +12,7 @@ type
   TTestDualPanelPanelDraw = class
   public
     [Test] procedure TestCaptionsAndFooters;
+    [Test] procedure TestExactSizeFormatAndFooter;
     [Test] procedure TestSeparatorAndTitle;
     [Test] procedure TestDriveLetterHit;
     [Test] [Category('WindowsOnly')] procedure TestDrivePreviewHelpers;
@@ -38,7 +39,8 @@ uses
   uDriveInfo,
   uDriveItems,
   uDualPanelDrawUtils,
-  uDualPanelPanelDraw;
+  uDualPanelPanelDraw,
+  uDisplaySettings;
 
 type
   TDrawSpy = class
@@ -258,6 +260,77 @@ end;
 procedure TFilesSpy.Quick(const ABounds: TRectI);
 begin
   Last := Last + 'quick,';
+end;
+
+procedure TestExactSizeFormatAndFooter;
+var
+  Fmt: TFormatSettings;
+  Saved: Boolean;
+  Footer, Line: string;
+  Row: TPanelRow;
+begin
+  Fmt := TFormatSettings.Create('en-US');
+  Fmt.ThousandSeparator := ',';
+  Assert.AreEqual('0', FormatSizeExact(0, Fmt), 'zero');
+  Assert.AreEqual('999', FormatSizeExact(999, Fmt), 'no grouping below a thousand');
+  Assert.AreEqual('1,234,567,890', FormatSizeExact(1234567890, Fmt), 'groups of three');
+  Assert.AreEqual('9,223,372,036,854,775,807', FormatSizeExact(High(Int64), Fmt),
+    'largest size is exact');
+  Assert.AreEqual('0', FormatSizeExact(-5, Fmt), 'a negative size shows as zero');
+  Fmt.ThousandSeparator := #160;
+  Assert.AreEqual('1' + #160 + '024', FormatSizeExact(1024, Fmt), 'the separator comes from the format');
+
+  Saved := GExactSelectionSize;
+  try
+    GExactSelectionSize := False;
+    Assert.IsTrue(Pos(FormatSizeShort(1234567), FormatPanelTotalsFooter(True, 1234567, 2, 1, 80)) > 0,
+      'short size by default');
+    GExactSelectionSize := True;
+    Footer := FormatPanelTotalsFooter(True, 1234567, 2, 1, 80);
+    Assert.IsTrue(Pos(FormatSizeExact(1234567), Footer) > 0, 'exact size when enabled');
+    Assert.IsTrue(Pos('Selected:', Footer) = 2, 'selection caption kept');
+    Footer := FormatPanelTotalsFooter(False, 1234567, 2, 1, 80);
+    Assert.IsTrue(Pos(FormatSizeExact(1234567), Footer) > 0, 'exact total without selection');
+    // Too narrow for the exact size: the short one is used and the whole text still fits.
+    Footer := FormatPanelTotalsFooter(True, 1234567890123, 2, 1, 40);
+    Assert.IsTrue(Pos(FormatSizeShort(1234567890123), Footer) > 0, 'short size when the exact one does not fit');
+    Assert.IsTrue(Length(Footer) <= 40, 'footer fits the width');
+
+    // The cursor strip: a file shows its exact size, <DIR> and the parent row stay as they are.
+    Row := Default(TPanelRow);
+    Row.Text := 'data.bin';
+    Row.Size := 1234567;
+    Row.SizeText := FormatSizeShort(1234567);
+    Row.DateText := '01.01.20';
+    Line := FormatPanelCursorInfoLine(Row, 60);
+    Assert.IsTrue(Pos(FormatSizeExact(1234567), Line) > 0, 'exact size of the file under the cursor');
+    Assert.IsTrue(Pos(FormatSizeExact(1234567) + ' ' + #$2502 + ' 01.01.20', Line) > 0,
+      'a rule between the size and the date');
+    Assert.IsTrue(Line.EndsWith('01.01.20'), 'the date is at the right edge');
+    Row.DateText := '';
+    Assert.IsTrue(Pos(#$2502, FormatPanelCursorInfoLine(Row, 60)) = 0, 'no rule without a date');
+    Row.DateText := '01.01.20';
+    Row.IsDirectory := True;
+    Row.SizeText := '<DIR>';
+    Line := FormatPanelCursorInfoLine(Row, 60);
+    Assert.IsTrue(Pos('<DIR>', Line) > 0, 'a folder without a counted size keeps <DIR>');
+    Row.IsParent := True;
+    Row.DateText := '';
+    Row.SizeText := '';
+    Row.Size := 0;
+    Assert.IsTrue(Pos('0', FormatPanelCursorInfoLine(Row, 60)) = 0, 'the parent row shows no size');
+    Row := Default(TPanelRow);
+    Row.Text := 'data.bin';
+    Row.Size := 1234567;
+    Row.SizeText := FormatSizeShort(1234567);
+    Line := FormatPanelCursorInfoLine(Row, 16);
+    Assert.IsTrue(Pos(FormatSizeShort(1234567), Line) > 0, 'a narrow strip keeps the short size');
+    GExactSelectionSize := False;
+    Line := FormatPanelCursorInfoLine(Row, 60);
+    Assert.IsTrue(Pos(FormatSizeShort(1234567), Line) > 0, 'short size when the option is off');
+  finally
+    GExactSelectionSize := Saved;
+  end;
 end;
 
 procedure TestCaptionsAndFooters;
@@ -876,6 +949,11 @@ begin
 end;
 
 { TTestDualPanelPanelDraw }
+
+procedure TTestDualPanelPanelDraw.TestExactSizeFormatAndFooter;
+begin
+  TestDualPanelPanelDraw.TestExactSizeFormatAndFooter;
+end;
 
 procedure TTestDualPanelPanelDraw.TestCaptionsAndFooters;
 begin

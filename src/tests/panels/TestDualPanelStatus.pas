@@ -10,6 +10,7 @@ type
   TTestDualPanelStatus = class
   public
     [Test] procedure TestPosAndTruncate;
+    [Test] procedure TestExactSelectionSizeInStatus;
     [Test] procedure TestChromeAndDefault;
     [Test] procedure TestChromeContext;
     [Test] procedure TestPathSideAndItem;
@@ -31,6 +32,7 @@ uses
   uDualPanelTypes,
   uDualPanelUiTypes,
   uDualPanelStatus,
+  uDisplaySettings,
   uTopMenuBar,
   uCommandRegistry,
   uPluginChrome,
@@ -70,6 +72,25 @@ begin
   Assert.IsTrue(Length(TruncateStatusItem('LongDocumentNameHere.docx', 20)) = 20,
     'item fits width');
   Assert.IsTrue(FormatStatusSelText(1024, 2, 1) = 'Sel 1 K (3)', 'sel totals');
+end;
+
+procedure TestExactSelectionSizeInStatus;
+var
+  Saved: Boolean;
+begin
+  Saved := GExactSelectionSize;
+  try
+    GExactSelectionSize := False;
+    Assert.AreEqual('Sel 1 K (3)', FormatStatusSelText(1024, 2, 1), 'short size by default');
+    GExactSelectionSize := True;
+    Assert.AreEqual('Sel ' + FormatSizeExact(1048576) + ' (3)', FormatStatusSelText(1048576, 2, 1),
+      'exact size when enabled');
+    // A size too long for the status line falls back to the short form.
+    Assert.AreEqual('Sel ' + FormatSizeShort(Int64(1234567890123456789)) + ' (123456)',
+      FormatStatusSelText(Int64(1234567890123456789), 100000, 23456), 'short size when too long');
+  finally
+    GExactSelectionSize := Saved;
+  end;
 end;
 
 procedure TestChromeAndDefault;
@@ -469,6 +490,11 @@ end;
 procedure TTestDualPanelStatus.TestFBarFollowsKeymap;
 begin
   TestDualPanelStatus.TestFBarFollowsKeymap;
+end;
+
+procedure TTestDualPanelStatus.TestExactSelectionSizeInStatus;
+begin
+  TestDualPanelStatus.TestExactSelectionSizeInStatus;
 end;
 
 procedure TTestDualPanelStatus.TestPosAndTruncate;

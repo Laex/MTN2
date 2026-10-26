@@ -162,6 +162,10 @@ function MakePanelRowFromEntry(const AEntry: TVfsEntry;
 function ClassifyPanelFileType(const AName: string;
   AIsDirectory, AIsParent: Boolean): string;
 function FormatSizeShort(ABytes: Int64): string;
+/// <summary>The whole number of bytes with the digit grouping of AFormat
+/// (the system one for the overload without it); a negative size shows as 0.</summary>
+function FormatSizeExact(ABytes: Int64): string; overload;
+function FormatSizeExact(ABytes: Int64; const AFormat: TFormatSettings): string; overload;
 procedure PanelTotals(const ARows: TPanelRows; out ABytes: Int64;
   out AFiles, AFolders: Integer);
 procedure PanelSelectionTotals(const ATab: TTab; const ARows: TPanelRows;
@@ -405,6 +409,30 @@ begin
     Result := Format('%.1f M', [ABytes / (1024 * 1024)])
   else
     Result := Format('%.1f G', [ABytes / (Int64(1024) * 1024 * 1024)]);
+end;
+
+function FormatSizeExact(ABytes: Int64; const AFormat: TFormatSettings): string;
+var
+  Digits: string;
+  I: Integer;
+begin
+  if ABytes < 0 then
+    Exit('0');
+  Digits := IntToStr(ABytes);
+  if AFormat.ThousandSeparator = #0 then
+    Exit(Digits);
+  Result := '';
+  for I := 1 to Length(Digits) do
+  begin
+    if (I > 1) and ((Length(Digits) - I + 1) mod 3 = 0) then
+      Result := Result + AFormat.ThousandSeparator;
+    Result := Result + Digits[I];
+  end;
+end;
+
+function FormatSizeExact(ABytes: Int64): string;
+begin
+  Result := FormatSizeExact(ABytes, FormatSettings);
 end;
 
 procedure PanelTotals(const ARows: TPanelRows; out ABytes: Int64;

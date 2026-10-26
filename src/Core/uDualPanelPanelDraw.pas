@@ -10,7 +10,7 @@ interface
 uses
   System.SysUtils, System.Math, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uVfsTypes,
-  uDualPanelTabs, uPanelColumns, uCharWidth;
+  uDualPanelTabs, uPanelColumns, uCharWidth, uDisplaySettings;
 
 type
   TResolvePanelChromeProc = procedure(APart: TPanelChromePart; AActive: Boolean;
@@ -195,20 +195,42 @@ end;
 
 function FormatPanelTotalsFooter(AHasSelection: Boolean; ABytes: Int64;
   AFiles, AFolders: Integer; AMaxWidth: Integer): string;
+
+  function Compose(const ASize: string): string;
+  begin
+    if AHasSelection then
+      Result := Format(' Selected: %s, files: %d, folders: %d ',
+        [ASize, AFiles, AFolders])
+    else
+      Result := Format(' Bytes: %s, files: %d, folders: %d ',
+        [ASize, AFiles, AFolders]);
+  end;
+
 begin
-  if AHasSelection then
-    Result := Format(' Selected: %s, files: %d, folders: %d ',
-      [FormatSizeShort(ABytes), AFiles, AFolders])
-  else
-    Result := Format(' Bytes: %s, files: %d, folders: %d ',
-      [FormatSizeShort(ABytes), AFiles, AFolders]);
+  Result := '';
+  // The exact size gives way to the short one when the line would not fit.
+  if GExactSelectionSize then
+  begin
+    Result := Compose(FormatSizeExact(ABytes));
+    if Length(Result) > AMaxWidth then
+      Result := '';
+  end;
+  if Result = '' then
+    Result := Compose(FormatSizeShort(ABytes));
   if Length(Result) > AMaxWidth then
     Result := Copy(Result, 1, AMaxWidth);
 end;
 
 function FormatPanelCursorInfoLine(const ARow: TPanelRow; AWidth: Integer): string;
+const
+  // The exact size keeps at least this many cells for the name.
+  cExactMinName = 12;
+  // Between the size and the date: a column rule when the name keeps at least
+  // cRuleMinName cells, else a plain space.
+  cMetaRule = ' ' + #$2502 + ' ';
+  cRuleMinName = 8;
 var
-  NamePart, MetaPart: string;
+  NamePart, MetaPart, SizePart: string;
   MaxName: Integer;
 begin
   NamePart := ARow.Text;
@@ -216,9 +238,27 @@ begin
     MetaPart := Format('L%d: %s', [ARow.MatchLine, ARow.MatchSnippet])
   else
   begin
-    MetaPart := ARow.SizeText;
+    SizePart := ARow.SizeText;
+    // Rows with a number (files, folders with a counted size), not <DIR> or <LINK>.
+    if GExactSelectionSize and (SizePart <> '') and (SizePart[1] <> '<') and
+       (not ARow.IsParent) then
+    begin
+      SizePart := FormatSizeExact(ARow.Size);
+      if AWidth - TextDisplayWidth(SizePart) - 1 < cExactMinName then
+        SizePart := ARow.SizeText;
+    end;
+    MetaPart := SizePart;
     if ARow.DateText <> '' then
-      MetaPart := MetaPart + ' ' + ARow.DateText;
+    begin
+      if SizePart = '' then
+        MetaPart := ARow.DateText
+      else
+      begin
+        MetaPart := SizePart + cMetaRule + ARow.DateText;
+        if AWidth - TextDisplayWidth(MetaPart) - 1 < cRuleMinName then
+          MetaPart := SizePart + ' ' + ARow.DateText;
+      end;
+    end;
   end;
   MaxName := Max(AWidth - TextDisplayWidth(MetaPart) - 1, 4);
   if TextDisplayWidth(NamePart) > MaxName then

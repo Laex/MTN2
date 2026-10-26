@@ -99,7 +99,7 @@ procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
 implementation
 
 uses
-  uVfsTypes, uStrings, uPluginChrome;
+  uVfsTypes, uStrings, uPluginChrome, uDisplaySettings;
 
 // Status line captions are translated where they are built, never as whole
 // segments: a segment can also be a path or a file name, and a file called
@@ -219,8 +219,19 @@ begin
 end;
 
 function FormatStatusSelText(ABytes: Int64; AFiles, AFolders: Integer): string;
+const
+  // Longer than this the exact size would push the segments after it out of the line.
+  cExactSelMaxLen = 32;
 begin
-  Result := T('status.selection', 'Sel %s (%d)', [FormatSizeShort(ABytes), AFiles + AFolders]);
+  Result := '';
+  if GExactSelectionSize then
+  begin
+    Result := T('status.selection', 'Sel %s (%d)', [FormatSizeExact(ABytes), AFiles + AFolders]);
+    if Length(Result) > cExactSelMaxLen then
+      Result := '';
+  end;
+  if Result = '' then
+    Result := T('status.selection', 'Sel %s (%d)', [FormatSizeShort(ABytes), AFiles + AFolders]);
 end;
 
 function FormatTerminalStatus(AAssigned, ARunning: Boolean;

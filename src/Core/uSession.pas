@@ -74,6 +74,7 @@ type
     FileDrag: Boolean;
     AltOpensMenu: Boolean;
     EditorAutoIndent: Boolean;
+    ExactSelectionSize: Boolean;
     /// <summary>Idle minutes before the screensaver (uSharkSaver.GSaverMinutes); 0 = off.</summary>
     SaverMinutes: Integer;
     CaretUnderline: Boolean;
@@ -615,6 +616,7 @@ begin
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
       Root.AddPair('altOpensMenu', TJSONBool.Create(ASession.AltOpensMenu));
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
+      Root.AddPair('exactSelectionSize', TJSONBool.Create(ASession.ExactSelectionSize));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
@@ -696,6 +698,7 @@ begin
   ASession.FileDrag := True;
   ASession.AltOpensMenu := True;
   ASession.EditorAutoIndent := True;
+  ASession.ExactSelectionSize := False;
   ASession.SaverMinutes := 5;
   ASession.CaretUnderline := False;
   ASession.PassiveCursor := True;
@@ -795,6 +798,7 @@ begin
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);
       ASession.AltOpensMenu := JsonBool(Root, 'altOpensMenu', True);
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
+      ASession.ExactSelectionSize := JsonBool(Root, 'exactSelectionSize', False);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);

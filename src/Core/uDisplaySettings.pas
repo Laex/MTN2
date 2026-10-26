@@ -32,6 +32,9 @@ var
   /// <summary>Enter in the editor starts the new line with the indent of the line it
   /// continues.</summary>
   GEditorAutoIndent: Boolean = True;
+  /// <summary>Sizes in the panel footer (totals, cursor line) and the status line are
+  /// shown as the exact number of bytes with the system digit grouping, not as 1.5 M.</summary>
+  GExactSelectionSize: Boolean = False;
   /// <summary>False in a host that draws with the terminal's own font (mtn2-tui):
   /// the font, size, zoom and cell controls of the display dialog do not apply.</summary>
   GFontSettingsApply: Boolean = True;
@@ -74,6 +77,8 @@ type
     AltOpensMenu: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
     EditorAutoIndent: Boolean;
+    /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
+    ExactSelectionSize: Boolean;
     /// <summary>uSharkSaver.GSaverMinutes.</summary>
     SaverMinutes: Integer;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
@@ -328,6 +333,7 @@ begin
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
+  Result.ExactSelectionSize := False;
   Result.SaverMinutes := 5;
   Result.CaretUnderline := False;
   Result.ShadowStyle := ssClassic;
