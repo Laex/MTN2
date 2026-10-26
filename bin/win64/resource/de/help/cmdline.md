@@ -18,7 +18,7 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 | Ctrl+Shift+O | Ordner zwischen aktivem Panel und Konsole abgleichen |
 | Ctrl+Alt+O | Shell der Hintergrundkonsole wählen (cmd, PowerShell, WSL, …) |
 
-<!--console-profile-->**Befehle → Hintergrundkonsole...** ist derselbe Dialog. **Shell beim Programmstart starten** ist standardmäßig aus: die Shell startet beim ersten **Ctrl+O** oder beim ersten Befehl aus der Befehlszeile. Mit eingeschalteter Option startet die Shell wie früher zusammen mit dem Programm.
+<!--console-profile-->**Befehle → Hintergrundkonsole...** ist derselbe Dialog. **Shell beim Programmstart starten** ist standardmäßig aus: die Shell startet beim ersten **Ctrl+O** oder beim ersten Befehl aus der Befehlszeile. Mit eingeschalteter Option startet die Shell wie früher zusammen mit dem Programm. **Programme der Panels in einem Terminal-Tab ausführen** schickt Konsolenprogramme, die in einem Panel mit Enter gestartet werden, in Terminal-Tabs statt in diese Konsole.
 
 **In der Konsole:** **Ctrl+C** unterbricht den Befehl; **Esc** blendet die Konsole nur aus und beendet den Prozess nicht. Das Mausrad blättert durch die Ausgabe. Text wird mit der Maus ausgewählt (siehe [Arbeiten mit Text und Maus](text.md)).
 

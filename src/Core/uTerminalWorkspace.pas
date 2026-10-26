@@ -46,6 +46,13 @@ type
     function  Start(const AProfileId, ACwd: string): Boolean;
     /// <summary>Types ACommand and Enter into the tab's shell.</summary>
     procedure SendCommand(const ACommand: string);
+    /// <summary>True when the shell waits at a prompt: nothing runs in it, no
+    /// full-screen program owns the screen and nothing is typed on the
+    /// input line.</summary>
+    function  IsIdle: Boolean;
+    /// <summary>Changes the shell to ACwd, then runs ACommand there. Only
+    /// meant for an idle shell.</summary>
+    procedure RunInDir(const ACwd, ACommand: string);
     procedure CloseWorkspace;
     function  HandleInput(var AKey: Word; AShift: TShiftState;
                 var AKeyChar: Char): Boolean; override;
@@ -208,6 +215,22 @@ begin
   FHistory.AppendStatus('[MTN2] ' + ShellProfileTitle(FProfileId) + ' ready');
   SyncTitle;
   Result := True;
+end;
+
+function TTerminalWorkspaceWindow.IsIdle: Boolean;
+begin
+  Result := Running and Assigned(FPty) and FPty.IsRunning and
+    not FPty.HasChildProcess and not AltScreenActive and
+    (Trim(FHistory.GetInputAfterPrompt) = '');
+end;
+
+procedure TTerminalWorkspaceWindow.RunInDir(const ACwd, ACommand: string);
+begin
+  if not Assigned(FPty) or not FPty.IsRunning then
+    Exit;
+  if Trim(ACwd) <> '' then
+    FPty.WriteInput(BuildCdLineForProfile(FProfileId, ACwd));
+  SendCommand(ACommand);
 end;
 
 procedure TTerminalWorkspaceWindow.SendCommand(const ACommand: string);

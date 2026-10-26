@@ -140,12 +140,22 @@ end;
 procedure TTestDialogCaptionFit.TestConsoleProfileCheckboxesFit;
 var
   D: TDialogDeclaration;
+  I: Integer;
 begin
   SetLocale('ru');
   try
     D := BuildConsoleProfileDialog(['cmd'], 0, False, True);
     Assert.IsFalse(DialogCaptionsOverflow(D), 'the translated checkbox captions fit their boxes');
     Assert.AreEqual('Фоновая консоль', D.Title, 'the title is translated');
+    for I := 0 to High(D.Controls) do
+      case D.Controls[I].Kind of
+        dckCheckbox:
+          Assert.IsTrue(D.Controls[I].Col + D.Controls[I].BoxW <= D.Width - 3,
+            'a clear cell before the frame: ' + D.Controls[I].Id);
+        dckList:
+          Assert.AreEqual(D.Width - 3, D.Controls[I].Col + D.Controls[I].BoxW,
+            'the list stretches with the dialog');
+      end;
   finally
     SetLocale('');
   end;

@@ -1610,7 +1610,8 @@
     "shellProfiles.noneAvailable": "Keine Shell-Profile verfügbar",
     "consoleProfile.title": "Hintergrundkonsole",
     "consoleProfile.startOnLaunch": "&Shell beim Programmstart starten",
-    "consoleProfile.cwdToPanels": "&Panel folgt nach Befehlen dem Konsolenordner"
+    "consoleProfile.cwdToPanels": "&Panel folgt nach Befehlen dem Konsolenordner",
+    "consoleProfile.programsInTerminal": "Programme der Panels in einem &Terminal-Tab ausführen"
   },
   "menu": {
     "category.Left": "&Links",

@@ -33,6 +33,8 @@
 - in the background console (Ctrl+O) when its shell is cmd, PowerShell or pwsh and nothing runs in it: like a command typed in the command line;
 - otherwise (a WSL, Git Bash or SSH console, or one busy with another command) – in a new terminal tab with cmd, or PowerShell for a `.ps1`; the tab stays open after the program ends.
 
+With **Run programs from the panels in a terminal tab** (**Commands → Background console...**) every console program goes to a terminal tab, so the other tabs stay usable while it runs. The first program started from a panels tab opens a terminal tab next to it; the next ones are typed into that tab's shell (in the folder of the file) while it is idle and nothing is typed on its input line, otherwise a new tab opens. The tab's shell has its own environment profile (**F6** in the shell list) and its own shell history.
+
 Window programs and documents open with their Windows program as before. **Shift+Enter** still runs any file in a separate window.
 
 A mouse click places the cursor, a double click acts like Enter. Files can be dragged with the mouse between the panels and to other programs (and back).

@@ -1629,7 +1629,8 @@
     "shellProfiles.noneAvailable": "No shell profiles available",
     "consoleProfile.title": "Background console",
     "consoleProfile.startOnLaunch": "&Start shell at program launch",
-    "consoleProfile.cwdToPanels": "&Panel follows the console folder after commands"
+    "consoleProfile.cwdToPanels": "&Panel follows the console folder after commands",
+    "consoleProfile.programsInTerminal": "&Run programs from the panels in a terminal tab"
   },
   "menu": {
     "category.Left": "Left",

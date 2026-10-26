@@ -458,12 +458,13 @@ end;
 procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
 var
   Rows, Order: TArray<Integer>;
-  I, J, K, Row, Tmp, Col, OrigCol, W, FreeCol, NewClient: Integer;
+  I, J, K, Row, Tmp, Col, OrigCol, W, FreeCol, NewClient, OldClient, Delta: Integer;
   ButtonsGrew, Grew: Boolean;
 begin
   if not DialogCaptionsOverflow(ADecl) then
     Exit;
   NewClient := ClientWidthOf(ADecl.Width);
+  OldClient := NewClient;
   ButtonsGrew := False;
 
   Rows := nil;
@@ -525,17 +526,34 @@ begin
         Inc(FreeCol); // ▄ shadow
       if Grew then
         Inc(FreeCol);
-      // Client right edge: the control itself; a button also needs its
-      // shadow and a gap before the frame.
+      // Client right edge: a button needs its shadow and a gap before the
+      // frame; a grown caption needs one clear cell before it. A control
+      // that did not grow keeps its authored edge.
       if ADecl.Controls[K].Kind = dckButton then
         NewClient := Max(NewClient, Col + W + 2)
+      else if Grew then
+        NewClient := Max(NewClient, Col + W + 1)
       else
         NewClient := Max(NewClient, Col + W);
     end;
   end;
 
   ADecl.Width := Max(ADecl.Width, NewClient + 2);
-  if ButtonsGrew then
+  // Lists, fields and rules that reached the right edge stretch with the
+  // dialog and keep their inset.
+  Delta := ClientWidthOf(ADecl.Width) - OldClient;
+  if Delta > 0 then
+    for I := 0 to High(ADecl.Controls) do
+      if (ADecl.Controls[I].Kind in [dckList, dckInput, dckDropDown, dckLabel]) and
+         (OldClient - (ADecl.Controls[I].Col + ADecl.Controls[I].BoxW) <= 1) and
+         (OldClient - (ADecl.Controls[I].Col + ADecl.Controls[I].BoxW) >= 0) then
+      begin
+        Inc(ADecl.Controls[I].BoxW, Delta);
+        if (ADecl.Controls[I].Kind = dckLabel) and IsRuleText(ADecl.Controls[I].Text) then
+          ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
+            ADecl.Controls[I].BoxW);
+      end;
+  if ButtonsGrew or (Delta > 0) then
     CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
 end;
 

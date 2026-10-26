@@ -6,9 +6,10 @@ unit uConsoleLaunch;
   - The background console (Ctrl+O), when its shell is cmd / PowerShell /
     pwsh and nothing runs in it: the program's output stays under the panels,
     as with a command typed in the command line.
-  - Otherwise (a WSL / Git Bash / SSH console, or a command still running in
-    it): a new terminal tab with cmd, or PowerShell for a .ps1. The tab's
-    shell outlives the program, so its output stays on screen.
+  - Otherwise (a WSL / Git Bash / SSH console, a command still running in
+    it, or the option to run programs in a terminal tab): a terminal tab
+    with cmd, or PowerShell for a .ps1. The tab's shell outlives the
+    program, so its output stays on screen and the other tabs stay usable.
   - Anything else (GUI programs, documents) is not a console launch: the
     Windows shell opens it (ShellExecute). }
 
@@ -23,9 +24,10 @@ type
 /// unreadable file is lfkOther.</summary>
 function DetectLaunchFileKind(const APath: string): TLaunchFileKind;
 /// <summary>AConsoleBusy: a command still runs in the background console's
-/// shell.</summary>
+/// shell. AAlwaysTerminal: every console program goes to a terminal tab,
+/// whatever the background console is doing.</summary>
 function ChooseConsoleLaunch(AKind: TLaunchFileKind; const AConsoleProfileId: string;
-  AConsoleBusy: Boolean): TConsoleLaunchTarget;
+  AConsoleBusy: Boolean; AAlwaysTerminal: Boolean = False): TConsoleLaunchTarget;
 /// <summary>The shell of a new terminal tab for AKind.</summary>
 function TerminalProfileForLaunch(AKind: TLaunchFileKind): string;
 /// <summary>The line to type into a AProfileId shell (cmd / PowerShell /
@@ -102,10 +104,12 @@ begin
 end;
 
 function ChooseConsoleLaunch(AKind: TLaunchFileKind; const AConsoleProfileId: string;
-  AConsoleBusy: Boolean): TConsoleLaunchTarget;
+  AConsoleBusy: Boolean; AAlwaysTerminal: Boolean): TConsoleLaunchTarget;
 begin
   if AKind = lfkOther then
     Result := cltShellOpen
+  else if AAlwaysTerminal then
+    Result := cltTerminal
   else if (AKind = lfkUnixExecutable) and not AConsoleBusy then
     Result := cltConsole
   else if (AKind <> lfkUnixExecutable) and IsWindowsShell(AConsoleProfileId) and

@@ -245,6 +245,7 @@ type
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
+    procedure DualPanelRunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
     function EnsureConsole: TConsoleWindow;
     /// <summary>A hidden console is not laid out with the visible windows; it
     /// takes the size it will have once shown, so a shell started in the
@@ -1787,6 +1788,7 @@ begin
   ApplySessionWindow(Sess.Window);
   FDualPanel.ApplySessionState(Sess.Panels);
   FDualPanel.TerminalCloseOnExit := Sess.TerminalCloseOnExit;
+  FDualPanel.ProgramsInTerminal := Sess.ProgramsInTerminal;
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
   FDualPanel.SelectFolders := Sess.SelectFolders;
   FDualPanel.PackInSamePanel := Sess.PackInSamePanel;
@@ -1862,11 +1864,13 @@ begin
   if Assigned(FDualPanel) then
   begin
     Sess.TerminalCloseOnExit := FDualPanel.TerminalCloseOnExit;
+    Sess.ProgramsInTerminal := FDualPanel.ProgramsInTerminal;
     Sess.AutoSyncConsoleCwd := FDualPanel.AutoSyncConsoleCwd;
   end
   else
   begin
     Sess.TerminalCloseOnExit := FSession.TerminalCloseOnExit;
+    Sess.ProgramsInTerminal := FSession.ProgramsInTerminal;
     Sess.AutoSyncConsoleCwd := FSession.AutoSyncConsoleCwd;
   end;
   Sess.ConsoleStartOnLaunch := FSession.ConsoleStartOnLaunch;
@@ -2649,7 +2653,8 @@ begin
     Exit;
   Cwd := ExtractFileDir(APath);
   Profile := GetConsoleProfile;
-  case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy) of
+  case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy,
+    FDualPanel.ProgramsInTerminal) of
     cltConsole:
       begin
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
@@ -2661,7 +2666,7 @@ begin
         Profile := TerminalProfileForLaunch(Kind);
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
         FDualPanel.RecordConsoleCommand(Line);
-        DualPanelOpenTerminalWith(Profile, Cwd, Line);
+        DualPanelRunInPanelTerminal(Profile, Cwd, Line);
       end;
   else
     Result := False;
@@ -2671,6 +2676,18 @@ end;
 procedure TMainForm.DualPanelOpenTerminal(const AProfileId, ACwd: string);
 begin
   DualPanelOpenTerminalWith(AProfileId, ACwd, '');
+end;
+
+procedure TMainForm.DualPanelRunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
+begin
+  if (AProfileId = '') or not Assigned(FDualPanel) then
+    Exit;
+  if FDualPanel.ConsoleMode then
+    ShowPanelMode;
+  FDualPanel.RunInPanelTerminal(AProfileId, ACwd, ACommand);
+  if Assigned(FMdi) then
+    FMdi.Activate(FDualPanel);
+  Recompose;
 end;
 
 procedure TMainForm.DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);

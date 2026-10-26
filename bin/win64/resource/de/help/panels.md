@@ -33,6 +33,8 @@
 - in der Hintergrundkonsole (Ctrl+O), wenn ihre Shell cmd, PowerShell oder pwsh ist und nichts darin läuft: wie ein in die Befehlszeile eingegebener Befehl;
 - sonst (eine WSL-, Git-Bash- oder SSH-Konsole oder eine, die mit einem anderen Befehl beschäftigt ist) – in einem neuen Terminal-Tab mit cmd, bei einer `.ps1` mit PowerShell; der Tab bleibt nach dem Ende des Programms offen.
 
+Mit **Programme der Panels in einem Terminal-Tab ausführen** (**Befehle → Hintergrundkonsole...**) läuft jedes Konsolenprogramm in einem Terminal-Tab, sodass die anderen Tabs währenddessen benutzbar bleiben. Das erste aus einem Panel-Tab gestartete Programm öffnet daneben einen Terminal-Tab; die folgenden werden in der Shell dieses Tabs eingegeben (im Ordner der Datei), solange sie frei ist und in der Eingabezeile nichts steht, sonst öffnet sich ein neuer Tab. Die Shell des Tabs hat ein eigenes Umgebungsprofil (**F6** in der Shell-Liste) und einen eigenen Shell-Verlauf.
+
 Fensterprogramme und Dokumente öffnen sich wie bisher mit ihrem Windows-Programm. **Shift+Enter** führt weiterhin jede Datei in einem separaten Fenster aus.
 
 Ein Mausklick setzt den Cursor, ein Doppelklick wirkt wie Enter. Dateien lassen sich mit der Maus zwischen den Panels und zu anderen Programmen (und zurück) ziehen.

@@ -412,7 +412,8 @@ function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   const AAccents: TArray<TListAccent> = nil): TDialogDeclaration;
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer = 0; AStartOnLaunch: Boolean = False;
-  ACwdToPanels: Boolean = True): TDialogDeclaration;
+  ACwdToPanels: Boolean = True;
+  AProgramsInTerminal: Boolean = False): TDialogDeclaration;
 function BuildAboutDialog: TDialogDeclaration;
 /// <summary>Update offer: buttons update / later (Esc) / skip.</summary>
 function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;
@@ -1770,26 +1771,27 @@ begin
 end;
 
 function BuildConsoleProfileDialog(const ATitles: TArray<string>;
-  ASelectedIndex: Integer; AStartOnLaunch, ACwdToPanels: Boolean): TDialogDeclaration;
+  ASelectedIndex: Integer; AStartOnLaunch, ACwdToPanels,
+  AProgramsInTerminal: Boolean): TDialogDeclaration;
 var
   I, N, ButtonRow: Integer;
 begin
   Result := BuildShellProfileListDialog(
     T('ui.consoleProfile.title', 'Background console'), ATitles, ASelectedIndex);
-  // Two checkboxes take the rows under the profile list that hold the rule
-  // and the empty row above the buttons; the rule and the buttons move three
+  // Three checkboxes take the rows under the profile list that hold the rule
+  // and the empty row above the buttons; the rule and the buttons move four
   // rows down. The shared terminal-profile resource has no room for it, so
   // only this dialog grows.
   ButtonRow := 0;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Kind = dckButton then
       ButtonRow := Max(ButtonRow, Result.Controls[I].Row);
-  Result.Height := Result.Height + 3;
+  Result.Height := Result.Height + 4;
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Row >= ButtonRow - 2 then
-      Inc(Result.Controls[I].Row, 3);
+      Inc(Result.Controls[I].Row, 4);
   N := Length(Result.Controls);
-  SetLength(Result.Controls, N + 2);
+  SetLength(Result.Controls, N + 3);
   Result.Controls[N] := WithControlBox(
     MakeCheckbox('start_on_launch',
       T('ui.consoleProfile.startOnLaunch', '&Start shell at program launch'),
@@ -1800,6 +1802,11 @@ begin
       T('ui.consoleProfile.cwdToPanels', '&Panel follows the console folder after commands'),
       ACwdToPanels),
     1, ButtonRow - 1, Result.Width - 4, 1);
+  Result.Controls[N + 2] := WithControlBox(
+    MakeCheckbox('programs_in_terminal',
+      T('ui.consoleProfile.programsInTerminal', '&Run programs from the panels in a terminal tab'),
+      AProgramsInTerminal),
+    1, ButtonRow, Result.Width - 4, 1);
   // The checkbox captions are set here, after the resource was fitted.
   FitDialogCaptions(Result);
 end;

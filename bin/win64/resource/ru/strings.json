@@ -1626,7 +1626,8 @@
     "shellProfiles.noneAvailable": "Нет доступных профилей оболочки",
     "consoleProfile.title": "Фоновая консоль",
     "consoleProfile.startOnLaunch": "&Запускать оболочку при старте программы",
-    "consoleProfile.cwdToPanels": "&Панель следует за папкой консоли после команд"
+    "consoleProfile.cwdToPanels": "&Панель следует за папкой консоли после команд",
+    "consoleProfile.programsInTerminal": "Программы из панелей – во вкладке-&терминале"
   },
   "menu": {
     "category.Left": "С&лева",

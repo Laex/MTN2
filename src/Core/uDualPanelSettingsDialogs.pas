@@ -40,6 +40,8 @@ type
     FOnSetConsoleStartOnLaunch: TProc<Boolean>;
     FOnGetConsoleCwdToPanels: TFunc<Boolean>;
     FOnSetConsoleCwdToPanels: TProc<Boolean>;
+    FOnGetProgramsInTerminal: TFunc<Boolean>;
+    FOnSetProgramsInTerminal: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
     FOnApplyDisplay: TSettingsApplyDisplay;
@@ -114,6 +116,12 @@ type
       read FOnGetConsoleCwdToPanels write FOnGetConsoleCwdToPanels;
     property OnSetConsoleCwdToPanels: TProc<Boolean>
       read FOnSetConsoleCwdToPanels write FOnSetConsoleCwdToPanels;
+    /// <summary>Enter on a console program in a panel runs it in a terminal
+    /// tab instead of the background console.</summary>
+    property OnGetProgramsInTerminal: TFunc<Boolean>
+      read FOnGetProgramsInTerminal write FOnGetProgramsInTerminal;
+    property OnSetProgramsInTerminal: TProc<Boolean>
+      read FOnSetProgramsInTerminal write FOnSetProgramsInTerminal;
     procedure DispatchColumnsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchInterfaceCommand(const AControlId: string);
@@ -547,7 +555,7 @@ var
   Ids: TArray<string>;
   Sel: Integer;
   CurId: string;
-  StartOnLaunch, CwdToPanels: Boolean;
+  StartOnLaunch, CwdToPanels, ProgramsInTerminal: Boolean;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -572,9 +580,13 @@ begin
   CwdToPanels := True;
   if Assigned(FOnGetConsoleCwdToPanels) then
     CwdToPanels := FOnGetConsoleCwdToPanels();
+  ProgramsInTerminal := False;
+  if Assigned(FOnGetProgramsInTerminal) then
+    ProgramsInTerminal := FOnGetProgramsInTerminal();
   FProfileIds := Ids;
   SetKind(hdkConsoleProfile);
-  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch, CwdToPanels),
+  FDialog.Open(BuildConsoleProfileDialog(Titles, Sel, StartOnLaunch, CwdToPanels,
+    ProgramsInTerminal),
     FOnCommand);
   Notify;
 end;
@@ -1033,17 +1045,20 @@ procedure TSettingsDialogController.DispatchConsoleProfileCommand(
   const AControlId: string);
 var
   Idx: Integer;
-  Accepted, StartOnLaunch, CwdToPanels: Boolean;
+  Accepted, StartOnLaunch, CwdToPanels, ProgramsInTerminal: Boolean;
 begin
   Idx := FDialog.GetListSelectedIndex('profiles');
   StartOnLaunch := FDialog.GetCheckbox('start_on_launch');
   CwdToPanels := FDialog.GetCheckbox('cwd_to_panels');
+  ProgramsInTerminal := FDialog.GetCheckbox('programs_in_terminal');
   Accepted := DialogCmdIsListAccept(AControlId, 'profiles');
   FDialog.Close;
   if Accepted and Assigned(FOnSetConsoleStartOnLaunch) then
     FOnSetConsoleStartOnLaunch(StartOnLaunch);
   if Accepted and Assigned(FOnSetConsoleCwdToPanels) then
     FOnSetConsoleCwdToPanels(CwdToPanels);
+  if Accepted and Assigned(FOnSetProgramsInTerminal) then
+    FOnSetProgramsInTerminal(ProgramsInTerminal);
   if Accepted and (Idx >= 0) and (Idx <= High(FProfileIds)) and
      Assigned(FOnSetConsoleProfile) then
     FOnSetConsoleProfile(FProfileIds[Idx]);

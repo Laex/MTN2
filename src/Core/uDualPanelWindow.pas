@@ -184,6 +184,7 @@ type
     /// <summary>Window button (1..3) the mouse went down on; it acts on release.</summary>
     FChromePressed: Integer;
     FTerminalCloseOnExit: Boolean;
+    FProgramsInTerminal: Boolean;
     FAutoSyncConsoleCwd: Boolean;
     FPackInSamePanel: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
@@ -1160,6 +1161,10 @@ type
     /// <summary>New terminal tab with AProfileId's shell in ACwd; ACommand,
     /// when given, is typed into that shell.</summary>
     procedure OpenTerminal(const AProfileId, ACwd: string; const ACommand: string = '');
+    /// <summary>Runs ACommand in the terminal tab that belongs to the active
+    /// panels tab: an idle one with AProfileId's shell takes the command in
+    /// ACwd and comes to the front; otherwise a new terminal tab opens.</summary>
+    procedure RunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
     /// <summary>Opens APath (file or directory) in a new tab on
     /// the active side - the single entry point single-instance IPC and the
     /// startup CLI-arg path both call. No-op for '' or a path that doesn't
@@ -1251,6 +1256,9 @@ type
     /// <summary>When True (default), a Ctrl+Shift+N terminal tab's shell
     /// exiting closes the tab. Applied to each tab at OpenTerminal time.</summary>
     property TerminalCloseOnExit: Boolean read FTerminalCloseOnExit write FTerminalCloseOnExit;
+    /// <summary>Enter on a console program in a panel runs it in a terminal
+    /// tab instead of the background console.</summary>
+    property ProgramsInTerminal: Boolean read FProgramsInTerminal write FProgramsInTerminal;
     /// <summary>When True, the active panel navigating automatically pushes
     /// its directory into the background console (Ctrl+O). Off by default:
     /// the console and the active panel then keep independent directories,
@@ -3018,6 +3026,16 @@ begin
   FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
   FSettings.OnGetConsoleCwdToPanels := HostGetConsoleCwdToPanels;
   FSettings.OnSetConsoleCwdToPanels := HostSetConsoleCwdToPanels;
+  FSettings.OnGetProgramsInTerminal :=
+    function: Boolean
+    begin
+      Result := FProgramsInTerminal;
+    end;
+  FSettings.OnSetProgramsInTerminal :=
+    procedure(AValue: Boolean)
+    begin
+      FProgramsInTerminal := AValue;
+    end;
   FThemeDlg := TThemeDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, HostGetActiveThemeId, HostSelectTheme,
@@ -10558,6 +10576,31 @@ begin
   SyncWindowTitle;
   SyncDirWatches;
   NotifyChanged;
+end;
+
+procedure TDualPanelWindow.RunInPanelTerminal(const AProfileId, ACwd,
+  ACommand: string);
+var
+  I: Integer;
+  Ws: TDualPanelWorkspaceTab;
+  Term: TTerminalWorkspaceWindow;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind = wkPanels then
+    for I := 0 to High(FState.WorkspaceTabs) do
+      if (FState.WorkspaceTabs[I].Kind = wkTerminal) and
+         (FState.WorkspaceTabs[I].OriginWorkspaceId = Ws.Id) and
+         (FState.WorkspaceTabs[I].TermProfileId = AProfileId) and
+         FTerminals.TryGetValue(FState.WorkspaceTabs[I].Id, Term) and
+         Term.IsIdle then
+      begin
+        SetCmdFocused(False);
+        Term.RunInDir(ACwd, ACommand);
+        SelectWorkspace(I);
+        NotifyChanged;
+        Exit;
+      end;
+  OpenTerminal(AProfileId, ACwd, ACommand);
 end;
 
 procedure TDualPanelWindow.NextWorkspace;

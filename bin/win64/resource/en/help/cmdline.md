@@ -18,7 +18,7 @@ The command line is always below the panels: just start typing. A command runs i
 | Ctrl+Shift+O | synchronize the folder between the active panel and the console |
 | Ctrl+Alt+O | choose the shell of the background console (cmd, PowerShell, WSL, …) |
 
-<!--console-profile-->**Commands → Background console...** is the same dialog. **Start shell at program launch** is off by default: the shell starts on the first **Ctrl+O** or the first command from the command line. Turn the option on to start the shell together with the program, as before.
+<!--console-profile-->**Commands → Background console...** is the same dialog. **Start shell at program launch** is off by default: the shell starts on the first **Ctrl+O** or the first command from the command line. Turn the option on to start the shell together with the program, as before. **Run programs from the panels in a terminal tab** sends console programs started with Enter in a panel to terminal tabs instead of this console.
 
 **In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](text.md)).
 

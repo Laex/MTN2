@@ -1609,7 +1609,8 @@
     "shellProfiles.noneAvailable": "没有可用的 Shell 配置",
     "consoleProfile.title": "后台控制台",
     "consoleProfile.startOnLaunch": "程序启动时启动 Shell(&S)",
-    "consoleProfile.cwdToPanels": "命令执行后面板跟随控制台文件夹(&P)"
+    "consoleProfile.cwdToPanels": "命令执行后面板跟随控制台文件夹(&P)",
+    "consoleProfile.programsInTerminal": "在终端标签页中运行面板中的程序(&T)"
   },
   "menu": {
     "category.Left": "左面板(&L)",

@@ -94,6 +94,7 @@ begin
   Result.Zoom := 1.25;
   Result.ConsoleRestartOnExit := True;
   Result.TerminalCloseOnExit := True;
+  Result.ProgramsInTerminal := True;
   Result.RestoreWorkspaceOnStart := True;
   Result.CustomColumns := DefaultCustomColumnsConfig;
   Result.ListExport := DefaultListExportConfig;
@@ -161,6 +162,7 @@ begin
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
     Assert.AreEqual(15, Loaded.SaverMinutes, 'saverMinutes saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
+    Assert.IsTrue(Loaded.ProgramsInTerminal, 'programsInTerminal saved');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);
@@ -230,6 +232,9 @@ begin
     Pair := Root.RemovePair('saverMinutes');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('programsInTerminal');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -257,6 +262,7 @@ begin
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
     Assert.AreEqual(5, Sess.SaverMinutes, 'missing saverMinutes -> 5 minutes');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
+    Assert.IsTrue(not Sess.ProgramsInTerminal, 'missing programsInTerminal -> console');
   finally
     if TFile.Exists(Path) then
       TFile.Delete(Path);

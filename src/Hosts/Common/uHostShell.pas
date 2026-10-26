@@ -82,6 +82,7 @@ type
     procedure DualPanelToggleConsole(Sender: TObject);
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
+    procedure DualPanelRunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
     function DualPanelLaunchConsoleFile(const APath: string): Boolean;
     procedure ChangeConsoleProfile(const AProfileId: string);
     function GetConsoleProfile: string;
@@ -444,6 +445,7 @@ begin
   FSession := Sess;
   FDualPanel.ApplySessionState(Sess.Panels);
   FDualPanel.TerminalCloseOnExit := Sess.TerminalCloseOnExit;
+  FDualPanel.ProgramsInTerminal := Sess.ProgramsInTerminal;
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
   FDualPanel.SelectFolders := Sess.SelectFolders;
   FDualPanel.PackInSamePanel := Sess.PackInSamePanel;
@@ -485,6 +487,7 @@ begin
     Sess.ConsoleRestartOnExit := FConsole.RestartOnExit;
   end;
   Sess.TerminalCloseOnExit := FDualPanel.TerminalCloseOnExit;
+  Sess.ProgramsInTerminal := FDualPanel.ProgramsInTerminal;
   Sess.AutoSyncConsoleCwd := FDualPanel.AutoSyncConsoleCwd;
   Sess.ThemeName := FThemes.ThemeId;
   Sess.ThemeFile := '';
@@ -811,6 +814,17 @@ begin
   DualPanelOpenTerminalWith(AProfileId, ACwd, '');
 end;
 
+procedure THostShell.DualPanelRunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
+begin
+  if AProfileId = '' then
+    Exit;
+  if FDualPanel.ConsoleMode then
+    ShowPanelMode;
+  FDualPanel.RunInPanelTerminal(AProfileId, ACwd, ACommand);
+  FMdi.Activate(FDualPanel);
+  Recompose;
+end;
+
 procedure THostShell.DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
 begin
   if AProfileId = '' then
@@ -833,7 +847,8 @@ begin
     Exit;
   Cwd := ExtractFileDir(APath);
   Profile := GetConsoleProfile;
-  case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy) of
+  case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy,
+    FDualPanel.ProgramsInTerminal) of
     cltConsole:
       begin
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
@@ -845,7 +860,7 @@ begin
         Profile := TerminalProfileForLaunch(Kind);
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
         FDualPanel.RecordConsoleCommand(Line);
-        DualPanelOpenTerminalWith(Profile, Cwd, Line);
+        DualPanelRunInPanelTerminal(Profile, Cwd, Line);
       end;
   else
     Result := False;

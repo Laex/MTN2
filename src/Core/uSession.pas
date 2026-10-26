@@ -34,6 +34,7 @@ type
     BackgroundConsoleProfile: string; // profile for Ctrl+O background console
     ConsoleRestartOnExit: Boolean; // auto-restart the Ctrl+O background console's shell when it exits
     TerminalCloseOnExit: Boolean;  // close a Ctrl+Shift+N terminal tab when its shell exits
+    ProgramsInTerminal: Boolean;   // Enter on a console program in a panel runs it in a terminal tab
     AutoSyncConsoleCwd: Boolean;   // auto-cd the background console whenever the active panel navigates
     ConsoleCwdToPanels: Boolean;   // the active panel follows a folder change made by commands in the background console
     /// <summary>When True, FormCreate starts the Ctrl+O shell immediately.
@@ -583,6 +584,7 @@ begin
         Root.AddPair('backgroundConsoleProfile', ASession.BackgroundConsoleProfile);
       Root.AddPair('consoleRestartOnExit', TJSONBool.Create(ASession.ConsoleRestartOnExit));
       Root.AddPair('terminalCloseOnExit', TJSONBool.Create(ASession.TerminalCloseOnExit));
+      Root.AddPair('programsInTerminal', TJSONBool.Create(ASession.ProgramsInTerminal));
       Root.AddPair('autoSyncConsoleCwd', TJSONBool.Create(ASession.AutoSyncConsoleCwd));
       Root.AddPair('consoleCwdToPanels', TJSONBool.Create(ASession.ConsoleCwdToPanels));
       Root.AddPair('consoleStartOnLaunch', TJSONBool.Create(ASession.ConsoleStartOnLaunch));
@@ -666,6 +668,7 @@ begin
   ASession.BackgroundConsoleProfile := '';
   ASession.ConsoleRestartOnExit := True;
   ASession.TerminalCloseOnExit := True;
+  ASession.ProgramsInTerminal := False;
   ASession.AutoSyncConsoleCwd := False;
   ASession.ConsoleCwdToPanels := True;
   ASession.ConsoleStartOnLaunch := False;
@@ -751,6 +754,8 @@ begin
         JsonBool(Root, 'consoleRestartOnExit', True);
       ASession.TerminalCloseOnExit :=
         JsonBool(Root, 'terminalCloseOnExit', True);
+      ASession.ProgramsInTerminal :=
+        JsonBool(Root, 'programsInTerminal', False);
       ASession.AutoSyncConsoleCwd :=
         JsonBool(Root, 'autoSyncConsoleCwd', False);
       ASession.ConsoleCwdToPanels :=

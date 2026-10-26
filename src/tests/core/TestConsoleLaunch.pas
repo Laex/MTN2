@@ -108,6 +108,12 @@ begin
     'WSL console: a terminal tab');
   Assert.IsTrue(ChooseConsoleLaunch(lfkBatch, cShellProfileGitBash, False) = cltTerminal,
     'Git Bash console: a terminal tab');
+  Assert.IsTrue(ChooseConsoleLaunch(lfkConsoleExe, cShellProfileCmd, False, True) = cltTerminal,
+    'terminal tab option: a free cmd console is bypassed');
+  Assert.IsTrue(ChooseConsoleLaunch(lfkBatch, cShellProfilePowerShell, False, True) = cltTerminal,
+    'terminal tab option: batch file');
+  Assert.IsTrue(ChooseConsoleLaunch(lfkOther, cShellProfileCmd, False, True) = cltShellOpen,
+    'terminal tab option: a GUI program still goes to the shell');
   Assert.AreEqual(cShellProfilePowerShell, TerminalProfileForLaunch(lfkPowerShell),
     '.ps1 tab runs PowerShell');
   Assert.AreEqual(cShellProfileCmd, TerminalProfileForLaunch(lfkBatch), 'other tabs run cmd');
