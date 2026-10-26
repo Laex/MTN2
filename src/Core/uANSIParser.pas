@@ -20,7 +20,12 @@ type
       AOnCursorSaveRestore: TProc<Boolean>; AOnSetMode: TProc<Integer, Boolean>);
   end;
 
-  TParserState = (psText, psEscape, psCsi, psOsc, psOscEscape);
+  TParserState = (psText, psEscape, psEscapeSkip, psCsi, psOsc, psOscEscape);
+
+  /// <summary>Editing and addressing CSI commands beyond the basic cursor moves:
+  /// the final byte (G d E F @ P L M S T r) and its first two parameters (0 when
+  /// absent); 'R' stands for ESC M (reverse index).</summary>
+  TAnsiEditEvent = reference to procedure(ACmd: Char; AP1, AP2: Integer);
 
   TANSIParser = class(TInterfacedObject, IANSIParser)
   private
@@ -34,6 +39,8 @@ type
     FDefaultFg: TAlphaColor;
     FDefaultBg: TAlphaColor;
     FOnEraseChars: TProc<Integer>;
+    FOnEdit: TAnsiEditEvent;
+    FLastChar: Char;
     procedure ResetState;
     procedure ProcessSgr;
     function ParseParams(const AParamStr: string): TArray<Integer>;
@@ -52,6 +59,7 @@ type
 
     /// <summary>ECH (CSI n X): blank n cells at the cursor without moving it.</summary>
     property OnEraseChars: TProc<Integer> read FOnEraseChars write FOnEraseChars;
+    property OnEdit: TAnsiEditEvent read FOnEdit write FOnEdit;
     property CurrentFg: TAlphaColor read FCurrentFg write FCurrentFg;
     property CurrentBg: TAlphaColor read FCurrentBg write FCurrentBg;
     property CurrentAttrs: TCharCellAttributes read FCurrentAttrs write FCurrentAttrs;
@@ -106,6 +114,7 @@ begin
   FCurrentFg := FDefaultFg;
   FCurrentBg := FDefaultBg;
   FCurrentAttrs := [];
+  FLastChar := #0;
 end;
 
 class function TANSIParser.StandardAnsiColor(AIndex: Byte; ABright: Boolean): TAlphaColor;
@@ -279,11 +288,25 @@ begin
           begin
             FState := psOsc;
           end
+          else if CharInSet(C, ['(', ')', '*', '+', '-', '.', '/', '#', '%', ' ']) then
+          begin
+            // Character-set designation and similar: one more byte belongs to
+            // the sequence and must not be drawn.
+            FState := psEscapeSkip;
+          end
           else
           begin
             FState := psText;
+            case C of
+              '7': if Assigned(AOnCursorSaveRestore) then AOnCursorSaveRestore(True);
+              '8': if Assigned(AOnCursorSaveRestore) then AOnCursorSaveRestore(False);
+              'M': if Assigned(FOnEdit) then FOnEdit('R', 0, 0);
+            end;
           end;
         end;
+
+      psEscapeSkip:
+        FState := psText;
 
       psCsi:
         begin
@@ -315,6 +338,21 @@ begin
                   if Length(FCsiParams) >= 1 then N := Max(FCsiParams[0], 1) else N := 1;
                   if Assigned(FOnEraseChars) then
                     FOnEraseChars(N);
+                end;
+              'G', 'd', 'E', 'F', '@', 'P', 'L', 'M', 'S', 'T', 'r':
+                if (not IsPrivate) and Assigned(FOnEdit) then
+                begin
+                  if Length(FCsiParams) >= 1 then Row := FCsiParams[0] else Row := 0;
+                  if Length(FCsiParams) >= 2 then Col := FCsiParams[1] else Col := 0;
+                  FOnEdit(FinalCmd, Row, Col);
+                end;
+              'b':
+                begin
+                  // REP: repeat the previous printable character.
+                  if Length(FCsiParams) >= 1 then N := Max(FCsiParams[0], 1) else N := 1;
+                  if (FLastChar <> #0) and Assigned(AOnCell) then
+                    for J := 1 to Min(N, 4096) do
+                      AOnCell(FLastChar, FCurrentFg, FCurrentBg, FCurrentAttrs);
                 end;
               'J':
                 begin
@@ -392,6 +430,7 @@ begin
             #8, #127: if Assigned(AOnBackSpace) then AOnBackSpace();
             #0, #7: ;
           else
+            FLastChar := C;
             if Assigned(AOnCell) then
               AOnCell(C, FCurrentFg, FCurrentBg, FCurrentAttrs);
           end;

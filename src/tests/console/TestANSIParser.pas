@@ -16,6 +16,8 @@ type
     [Test] procedure TestEraseCommands;
     [Test] procedure TestCursorAddressingAndAltScreen;
     [Test] procedure TestAltScreenDeferredWrapAtLastColumn;
+    [Test] procedure TestAltScreenEditingSequences;
+    [Test] procedure TestCharsetDesignationIsNotDrawn;
     [Test] procedure TestApplicationCursorKeysMode;
   end;
 
@@ -293,6 +295,80 @@ begin
   end;
 end;
 
+procedure TestAltScreenEditingSequences;
+var
+  Buffer: TConsoleBuffer;
+
+  function Row(AIndex: Integer): string;
+  var
+    X: Integer;
+  begin
+    Result := '';
+    for X := 0 to Buffer.AltScreen.Cols - 1 do
+      Result := Result + Buffer.AltScreen.Grid[AIndex][X].CharValue;
+    Result := TrimRight(Result);
+  end;
+
+begin
+  Buffer := TConsoleBuffer.Create(100);
+  try
+    Buffer.AppendOutputEx(#27'[?1049h', 10, 4);
+
+    // CHA and VPA address a single axis.
+    Buffer.AppendOutputEx(#27'[1;1Hab'#27'[6GX'#27'[3dY', 10, 4);
+    Assert.AreEqual('ab   X', Row(0), 'CHA moves to column 6');
+    Assert.AreEqual('      Y', Row(2), 'VPA moves to row 3 keeping the column');
+
+    // DCH pulls the rest of the row left, ICH opens blank cells.
+    Buffer.AppendOutputEx(#27'[1;1H'#27'[2P', 10, 4);
+    Assert.AreEqual('   X', Row(0), 'DCH removes two cells');
+    Buffer.AppendOutputEx(#27'[1;1H'#27'[2@', 10, 4);
+    Assert.AreEqual('     X', Row(0), 'ICH inserts two blank cells');
+
+    // REP repeats the previous character.
+    Buffer.AppendOutputEx(#27'[2;1HQ'#27'[3b', 10, 4);
+    Assert.AreEqual('QQQQ', Row(1), 'REP draws the last character again');
+
+    // IL / DL work inside the scroll region.
+    Buffer.AppendOutputEx(#27'[1;1H'#27'[2J'#27'[1;1Ha'#13#10'b'#13#10'c'#13#10'd', 10, 4);
+    Buffer.AppendOutputEx(#27'[2;1H'#27'[L', 10, 4);
+    Assert.AreEqual('a', Row(0));
+    Assert.AreEqual('', Row(1), 'IL opens a blank row at the cursor');
+    Assert.AreEqual('b', Row(2));
+    Assert.AreEqual('c', Row(3), 'IL pushes the last row out');
+    Buffer.AppendOutputEx(#27'[2;1H'#27'[M', 10, 4);
+    Assert.AreEqual('b', Row(1), 'DL pulls the rows below up');
+    Assert.AreEqual('', Row(3), 'DL leaves a blank row at the bottom');
+
+    // A scroll region confines the scrolling.
+    Buffer.AppendOutputEx(#27'[1;1H'#27'[2J'#27'[1;1Ha'#13#10'b'#13#10'c'#13#10'd', 10, 4);
+    Buffer.AppendOutputEx(#27'[2;3r'#27'[3;1H'#13#10'x', 10, 4);
+    Assert.AreEqual('a', Row(0), 'row above the region stays');
+    Assert.AreEqual('c', Row(1), 'region scrolled up');
+    Assert.AreEqual('x', Row(2));
+    Assert.AreEqual('d', Row(3), 'row below the region stays');
+  finally
+    Buffer.Free;
+  end;
+end;
+
+procedure TestCharsetDesignationIsNotDrawn;
+var
+  Buffer: TConsoleBuffer;
+begin
+  Buffer := TConsoleBuffer.Create(100);
+  try
+    Buffer.AppendOutputEx(#27'[?1049h', 10, 3);
+    Buffer.AppendOutputEx(#27'(B'#27'[mab'#27'(0'#27'[mc', 10, 3);
+    Assert.AreEqual('a', string(Buffer.AltScreen.Grid[0][0].CharValue));
+    Assert.AreEqual('b', string(Buffer.AltScreen.Grid[0][1].CharValue));
+    Assert.AreEqual('c', string(Buffer.AltScreen.Grid[0][2].CharValue),
+      'ESC ( B and ESC ( 0 draw nothing');
+  finally
+    Buffer.Free;
+  end;
+end;
+
 procedure TestApplicationCursorKeysMode;
 var
   Buffer: TConsoleBuffer;
@@ -347,6 +423,16 @@ end;
 procedure TTestANSIParser.TestAltScreenDeferredWrapAtLastColumn;
 begin
   TestANSIParser.TestAltScreenDeferredWrapAtLastColumn;
+end;
+
+procedure TTestANSIParser.TestAltScreenEditingSequences;
+begin
+  TestANSIParser.TestAltScreenEditingSequences;
+end;
+
+procedure TTestANSIParser.TestCharsetDesignationIsNotDrawn;
+begin
+  TestANSIParser.TestCharsetDesignationIsNotDrawn;
 end;
 
 procedure TTestANSIParser.TestApplicationCursorKeysMode;

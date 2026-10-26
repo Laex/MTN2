@@ -381,6 +381,40 @@ begin
       FPendingCR := False;
       EraseCharsLocked(ACount, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
     end;
+  FAnsiParser.OnEdit :=
+    procedure(ACmd: Char; AP1, AP2: Integer)
+    var
+      Fg, Bg: TAlphaColor;
+      N: Integer;
+    begin
+      Fg := FAnsiParser.CurrentFg;
+      Bg := FAnsiParser.CurrentBg;
+      N := Max(AP1, 1);
+      if FAltActive then
+      begin
+        case ACmd of
+          'G': FAltGrid.MoveCol(N - 1);
+          'd': FAltGrid.MoveRow(N - 1);
+          'E': begin FAltGrid.MoveRel('B', N); FAltGrid.CarriageReturn; end;
+          'F': begin FAltGrid.MoveRel('A', N); FAltGrid.CarriageReturn; end;
+          '@': FAltGrid.InsertChars(N, Fg, Bg);
+          'P': FAltGrid.DeleteChars(N, Fg, Bg);
+          'L': FAltGrid.InsertLines(N, Fg, Bg);
+          'M': FAltGrid.DeleteLines(N, Fg, Bg);
+          'S': FAltGrid.ScrollLines(N, Fg, Bg);
+          'T': FAltGrid.ScrollLines(-N, Fg, Bg);
+          'r': FAltGrid.SetScrollRegion(AP1, AP2);
+          'R': FAltGrid.ReverseIndex(Fg, Bg);
+        end;
+        Exit;
+      end;
+      // Column / row addressing is all the primary screen needs.
+      if FGridEnabled and not FSuppressingBackspaceEcho then
+        case ACmd of
+          'G': begin FPendingCR := False; FActiveGrid.MoveAbs(FActiveGrid.CursorRow, N - 1); end;
+          'd': begin FPendingCR := False; FActiveGrid.MoveAbs(N - 1, FActiveGrid.CursorCol); end;
+        end;
+    end;
   FAltGrid := TAltScreenGrid.Create;
   FAltActive := False;
   FGridEnabled := False;
