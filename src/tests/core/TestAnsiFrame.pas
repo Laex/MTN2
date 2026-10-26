@@ -19,6 +19,7 @@ type
     [Test] procedure TestResizeForcesFullFrame;
     [Test] procedure TestLeaveSequenceUndoesEveryEnterMode;
     [Test] procedure TestLeaveSequenceEndsOnPrimaryScreen;
+    [Test] procedure TestMouseSequenceSwitchesReporting;
   end;
 
 implementation
@@ -200,6 +201,25 @@ begin
     end;
   Assert.IsTrue(Pos(#27'[<u', Leave) > 0, 'kitty keyboard flags are popped');
   Assert.IsTrue(Pos(#27'[>4;0m', Leave) > 0, 'modifyOtherKeys is switched off');
+end;
+
+procedure TTestAnsiFrame.TestMouseSequenceSwitchesReporting;
+const
+  cModes: array[0..2] of string = ('1000', '1002', '1006');
+var
+  OnSeq, OffSeq, Enter: string;
+  I: Integer;
+begin
+  OnSeq := AnsiMouseSequence(True);
+  OffSeq := AnsiMouseSequence(False);
+  for I := Low(cModes) to High(cModes) do
+  begin
+    Assert.IsTrue(Pos(#27'[?' + cModes[I] + 'h', OnSeq) > 0, 'mode ' + cModes[I] + ' on');
+    Assert.IsTrue(Pos(#27'[?' + cModes[I] + 'l', OffSeq) > 0, 'mode ' + cModes[I] + ' off');
+  end;
+  Enter := AnsiEnterSequence(True);
+  Assert.IsTrue(Pos(OnSeq, Enter) > 0, 'entering with the mouse reports it');
+  Assert.IsTrue(Pos(OnSeq, AnsiEnterSequence(False)) = 0, 'entering without the mouse does not');
 end;
 
 procedure TTestAnsiFrame.TestLeaveSequenceEndsOnPrimaryScreen;

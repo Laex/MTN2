@@ -139,6 +139,7 @@ type
     tmaOptExternalTools,
     tmaOptConsoleOptions,
     tmaOptEnvironment,
+    tmaOptToggleMouse,
     tmaOptExportSettings,
     tmaOptImportSettings,
     tmaOptConfigLocation,
@@ -524,6 +525,8 @@ begin
       Result := kaEditorAutoIndent;
     tmaOptReloadKeymap:
       Result := kaReloadKeymap;
+    tmaOptToggleMouse:
+      Result := kaToggleMouse;
     tmaOptResetZoom:
       Result := kaZoomReset;
     tmaCmdPalette:

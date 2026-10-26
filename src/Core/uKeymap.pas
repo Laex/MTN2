@@ -172,6 +172,7 @@ type
     kaZoomReset, // Ctrl+0 -- zoom back to 100%
     kaReloadKeymap, // Ctrl+Alt+K -- reload keymap.json
     kaToggleFullscreen, // F11 -- the window to full screen and back
+    kaToggleMouse, // Ctrl+Shift+M -- text terminal: mouse reporting off / on
     // Panel Console and terminal alike (kcShell).
     kaShellHistory, // Alt+F8 -- command history picker
     kaShellSelectAll, // Ctrl+A -- select all
@@ -748,6 +749,7 @@ begin
   AddBinding(Result, kaZoomReset, KeyBinding(vkNumpad0, False, False, True));
   AddBinding(Result, kaReloadKeymap, KeyBinding(Ord('K'), False, True, True));
   AddBinding(Result, kaToggleFullscreen, KeyBinding(vkF11, False, False, False));
+  AddBinding(Result, kaToggleMouse, KeyBinding(Ord('M'), True, False, True));
 
   // Panel Console and terminal. Ctrl+Shift+A / C / V as well: the usual
   // terminal copy / paste chords.
@@ -797,7 +799,7 @@ begin
       Result := kcEditor;
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
     kaTopMenu, kaCommandPalette, kaAppQuit, kaAppConsoleToggle, kaZoomReset,
-    kaReloadKeymap, kaToggleFullscreen:
+    kaReloadKeymap, kaToggleFullscreen, kaToggleMouse:
       Result := kcGlobal;
     kaShellHistory, kaShellSelectAll, kaShellCopyOrInterrupt, kaShellCopy,
     kaShellPaste, kaShellFind, kaShellFindNext, kaShellFindPrev:
@@ -1045,6 +1047,7 @@ const
     'ZoomReset',             // kaZoomReset
     'ReloadKeymap',          // kaReloadKeymap
     'ToggleFullscreen',      // kaToggleFullscreen
+    'ToggleMouse',           // kaToggleMouse
     'ShellHistory',          // kaShellHistory
     'ShellSelectAll',        // kaShellSelectAll
     'ShellCopyOrInterrupt',  // kaShellCopyOrInterrupt

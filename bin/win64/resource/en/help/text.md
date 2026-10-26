@@ -20,6 +20,8 @@ A **word** is made of letters of any alphabet, digits and `_`. Everything else �
 
 In the panels, when the command line is not empty, Ctrl+Shift+←/→ work on the command line.
 
+<!--mouse-->**Text terminal version (mtn2-tui).** The program asks the terminal for the mouse, so a drag selects inside MTN2 and the text goes to the clipboard through the terminal (an escape sequence that some terminals, PuTTY by default among them, ignore; inside tmux and on a desktop MTN2 also fills the tmux buffer and the system clipboard). To select with the terminal itself hold **Shift** while dragging, or turn the mouse off with **Ctrl+Shift+M** (**Options → Terminal mouse on/off**); the same key turns it back on. The `--no-mouse` option starts the program with the mouse off.
+
 **Input history.** Fields with **↓** at the right end (selection masks, file search mask and text, copy/move destination and exclusions, link target, new folder and file, editor find and replace, user menu prompts) remember their last 20 values. **Ctrl+↓** / **Alt+↓** or a click on the arrow drops the list down: **Enter** – use the entry, **Del** – remove it from the history, **Esc** – close the list. A value is added when the dialog is accepted.
 
 ---

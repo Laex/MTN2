@@ -28,6 +28,12 @@ procedure SystemFileClipClear;
 /// or the clipboard cannot be read.</summary>
 function SystemFileClipSignature: Cardinal;
 
+/// <summary>Hands text to the clipboard facilities a terminal escape cannot
+/// reach: the buffer of the tmux session this program runs in (tmux then also
+/// forwards it to the outer terminal) and the clipboard of a desktop session
+/// (wl-copy or xclip). True when at least one of them took it.</summary>
+function SystemTextClipSet(const AText: string): Boolean;
+
 implementation
 
 uses
@@ -87,6 +93,45 @@ begin
     Result := PlatformRunCaptured('xclip', ['-selection', 'clipboard', '-o', '-t', AType], '',
       cTimeoutMs, nil, APayload, Code) = srOk;
   Result := Result and (Code = 0) and (APayload <> '');
+end;
+
+function TmuxClipSet(const AText: string): Boolean;
+var
+  Output: string;
+  Code: Cardinal;
+begin
+  Result := (GetEnvironmentVariable('TMUX') <> '') and FindTool('tmux') and
+    (PlatformRunCaptured('tmux', ['load-buffer', '-w', '-'], AText, cTimeoutMs, nil, Output,
+       Code) = srOk) and (Code = 0);
+end;
+
+function DesktopTextClipSet(const AText: string): Boolean;
+var
+  Tool: TClipTool;
+  Cmd, Output: string;
+  Code: Cardinal;
+begin
+  Tool := CurrentTool;
+  if Tool = ctNone then
+    Exit(False);
+  // Same background-helper arrangement as WriteClipboard.
+  if Tool = ctWayland then
+    Cmd := 'exec wl-copy >/dev/null 2>&1'
+  else
+    Cmd := 'exec xclip -selection clipboard -i >/dev/null 2>&1';
+  Result := (PlatformRunCaptured('sh', ['-c', Cmd], AText, cTimeoutMs, nil, Output, Code) = srOk) and
+    (Code = 0);
+end;
+
+function SystemTextClipSet(const AText: string): Boolean;
+begin
+  if AText = '' then
+    Exit(False);
+  // Both run: inside tmux on a desktop either one alone may miss the program
+  // the user pastes into.
+  Result := TmuxClipSet(AText);
+  if DesktopTextClipSet(AText) then
+    Result := True;
 end;
 
 function SystemFileClipAvailable: Boolean;

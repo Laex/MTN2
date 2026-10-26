@@ -255,6 +255,7 @@ const
     'Zoom 100%',
     'Reload keymap.json',
     'Full screen',
+    'Terminal mouse on/off',
     'Command history',
     'Select all',
     'Copy, or interrupt the command',

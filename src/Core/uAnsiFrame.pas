@@ -50,6 +50,9 @@ function DetectColorMode(const AColorTerm, ATerm: string): TAnsiColorMode;
 /// enable mouse (SGR) and bracketed paste, ask for the kitty keyboard flags
 /// and the device attributes.</summary>
 function AnsiEnterSequence(AMouse: Boolean): string;
+/// <summary>Turns the terminal's mouse reporting on or off (press, drag and
+/// release in the SGR format); with it off the terminal selects text itself.</summary>
+function AnsiMouseSequence(AOn: Boolean): string;
 /// <summary>Undoes AnsiEnterSequence and restores the colors.</summary>
 function AnsiLeaveSequence: string;
 
@@ -180,8 +183,16 @@ begin
     + #27'[?u'                // ask for the kitty keyboard flags
     + #27'[c';                // device attributes: ends the query
   if AMouse then
-    Result := Result + #27'[?1000h' + #27'[?1002h' + #27'[?1006h';
+    Result := Result + AnsiMouseSequence(True);
   Result := Result + #27'[2J';
+end;
+
+function AnsiMouseSequence(AOn: Boolean): string;
+begin
+  if AOn then
+    Result := #27'[?1000h' + #27'[?1002h' + #27'[?1006h'
+  else
+    Result := #27'[?1006l' + #27'[?1002l' + #27'[?1000l';
 end;
 
 function AnsiLeaveSequence: string;

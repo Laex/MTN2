@@ -15,7 +15,8 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.IOUtils,
   uTerminalTypes, uTermInput, uAnsiFrame, uAnsiTerm, uAnsiClipboard, uHostShell,
   uCoreTimer, uPlatformInfo, uUpdater, uConfigLocation, uResourceAccess, uSelfCheck,
-  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry;
+  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry,
+  uNotice, uDualPanelInput, System.UITypes;
 
 const
   cEscapeWaitMs = 30;
@@ -179,6 +180,7 @@ var
   LastInput, LastFrame, Now64: UInt64;
   Bytes: TBytes;
   Title, ShownTitle: string;
+  MouseOn, TipShown: Boolean;
 begin
   Result := 0;
   GFontSettingsApply := False;
@@ -194,7 +196,27 @@ begin
     Term.QuerySize(Cols, Rows);
     Term.EnterRaw;
     Term.WriteText(AnsiEnterSequence(AOptions.Mouse) + #27'[22;2t'#27']2;MTN2'#7);
+    MouseOn := AOptions.Mouse;
+    TipShown := False;
     try
+      GToggleMouseCapture :=
+        procedure
+        var
+          Request: TNoticeRequest;
+        begin
+          MouseOn := not MouseOn;
+          TipShown := True;
+          Term.WriteText(AnsiMouseSequence(MouseOn));
+          Request := TNoticeRequest.Make(T('ui.mouse.on', 'Mouse on'));
+          if not MouseOn then
+          begin
+            Request.Template := T('ui.mouse.off', 'Mouse off: the terminal selects text');
+            Request.Hint := T('ui.mouse.offHint', 'Ctrl+Shift+M turns it back on');
+          end;
+          Request.Always := True;
+          Request.DurationMs := 4000;
+          NoticeRequest(Request);
+        end;
       InstallAnsiClipboard(
         procedure(const AText: string)
         begin
@@ -251,7 +273,19 @@ begin
                 Term.WriteText(#27'[>4;2m');
             end
             else
+            begin
+              // The first drag over text hints at the terminal's own selection.
+              if MouseOn and not TipShown and (E.Kind = tekMouse) and
+                 (E.MouseAction = tmaMove) and (E.Button = TMouseButton.mbLeft) and
+                 (Shell.DualPanel.ConsoleMode or (Shell.DualPanel.ActiveDocument <> nil) or
+                  (Shell.DualPanel.ActiveTerminal <> nil)) then
+              begin
+                TipShown := True;
+                NoticeRequest(TNoticeRequest.Make(
+                  T('ui.mouse.selectTip', 'Hold Shift to select text with the terminal')));
+              end;
               Shell.HandleEvent(E);
+            end;
           except
             on Ex: Exception do
               LogError(Ex.ClassName + ': ' + Ex.Message);
@@ -274,6 +308,7 @@ begin
       Shell.PersistSession;
     finally
       // The terminal is put back even when tearing the shell down raises.
+      GToggleMouseCapture := nil;
       try
         if Assigned(Shell) then
         begin

@@ -29,6 +29,8 @@ type
     [Test] procedure ForeignTextIsNotAFileList;
     [Test] procedure ClearEmptiesTheFileList;
     [Test] procedure SequenceFollowsTheClipboard;
+    [Test] procedure TextGoesToTheDesktopClipboard;
+    [Test] procedure TextGoesToTheTmuxBuffer;
   end;
 
 implementation
@@ -36,6 +38,9 @@ implementation
 uses
   System.SysUtils, System.IOUtils,
   uPlatformPaths, uPlatformProcess, uPlatformFileAttr, uFileAttrTypes, uPlatformInfo,
+{$IFDEF POSIX}
+  uSystemClipboard,
+{$ENDIF}
   uVfsTypes, uWinFileDragDrop;
 
 const
@@ -55,6 +60,11 @@ const
     'fi'#10 +
     'cat > "$store/data"'#10 +
     'printf %s "$type" > "$store/type"'#10;
+
+  cFakeTmux =
+    '#!/bin/sh'#10 +
+    'printf %s "$*" > "$FAKE_CLIP_DIR/tmux-args"'#10 +
+    'cat > "$FAKE_CLIP_DIR/tmux-data"'#10;
 
 procedure TTestSystemFileClipboard.InstallFakeXclip;
 var
@@ -240,6 +250,47 @@ begin
   Seq3 := PlatformClipboardSequence;
   Assert.AreEqual(Cardinal(0), Seq3, 'foreign content leaves no file list');
 end;
+
+procedure TTestSystemFileClipboard.TextGoesToTheDesktopClipboard;
+begin
+  if not PlatformPosixPaths then
+    Exit;
+{$IFDEF POSIX}
+  PlatformSetEnvironment('TMUX', '');
+  Assert.IsTrue(SystemTextClipSet('plain text'), 'accepted');
+  Assert.AreEqual('plain text', StoredData, 'payload');
+  Assert.IsFalse(TFile.Exists(TPath.Combine(FDir, 'tmux-data')), 'no tmux outside tmux');
+{$ENDIF}
+end;
+
+procedure TTestSystemFileClipboard.TextGoesToTheTmuxBuffer;
+var
+  Script: string;
+  Plan: TFileAttrPlan;
+  Err: string;
+begin
+  if not PlatformPosixPaths then
+    Exit;
+{$IFDEF POSIX}
+  Script := TPath.Combine(FDir, 'tmux');
+  TFile.WriteAllText(Script, cFakeTmux, TEncoding.ASCII);
+  Plan := Default(TFileAttrPlan);
+  Plan.ChangeMode := True;
+  Plan.Mode := $1ED;
+  Assert.IsTrue(ApplyFileAttrOne(Script, Plan, Err), Err);
+  PlatformSetEnvironment('TMUX', FDir + ',1,0');
+  try
+    Assert.IsTrue(SystemTextClipSet('from tmux'), 'accepted');
+  finally
+    PlatformSetEnvironment('TMUX', '');
+  end;
+  Assert.AreEqual('from tmux', TFile.ReadAllText(TPath.Combine(FDir, 'tmux-data'), TEncoding.UTF8),
+    'the tmux buffer gets the text');
+  Assert.AreEqual('load-buffer -w -', TFile.ReadAllText(TPath.Combine(FDir, 'tmux-args')),
+    'the buffer is also sent to the terminal clipboard');
+{$ENDIF}
+end;
+
 
 initialization
   TDUnitX.RegisterTestFixture(TTestSystemFileClipboard);

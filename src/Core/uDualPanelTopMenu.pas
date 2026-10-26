@@ -212,6 +212,9 @@ begin
     tmaOptMarkdownColors: CallProc(AHost.OpenMarkdownColorsDialog);
     tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom: ;
     tmaOptRestoreHiddenDialogs: CallProc(AHost.RestoreHiddenDialogs);
+    tmaOptToggleMouse:
+      if Assigned(GToggleMouseCapture) then
+        GToggleMouseCapture();
 
     tmaCmdPalette: CallProc(AHost.OpenCommandPalette);
     tmaHelpContents: CallProc(AHost.OpenHelp);
@@ -243,6 +246,9 @@ begin
     tmaCmdSaveConsoleOutput, tmaCmdClearConsole,
     tmaOptExportSettings, tmaOptImportSettings, tmaOptConfigLocation:
       Exit(True);
+
+    tmaOptToggleMouse:
+      Exit(Assigned(GToggleMouseCapture));
 
     tmaEditCopy:
       Exit(ACtx.CmdFocused or

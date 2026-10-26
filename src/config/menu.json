@@ -158,6 +158,7 @@
         { "caption": "Font / Display...", "hotChar": "F", "shortcut": "", "action": "tmaOptDisplay", "aliases": "font, size, scale, zoom, display, screen, cursor" },
         { "caption": "User interface...", "hotChar": "U", "shortcut": "", "action": "tmaOptInterface", "aliases": "interface, language, menu bar, status line, notifications, editor, drag" },
         { "caption": "External viewer/editor...", "hotChar": "E", "shortcut": "", "action": "tmaOptExternalTools", "aliases": "viewer, editor, external, program" },
+        { "caption": "Terminal mouse on/off", "hotChar": "Y", "shortcut": "Ctrl+Shift+M", "action": "tmaOptToggleMouse", "hint": "Text terminal version: turns the mouse off so that the terminal itself selects and copies text; run it again to turn the mouse back on.", "aliases": "mouse, select, copy, terminal, tmux, putty, ssh" },
         { "caption": "Console...", "hotChar": "N", "shortcut": "", "action": "tmaOptConsoleOptions", "aliases": "shell, console, terminal, startup" },
         { "caption": "Environment profiles...", "hotChar": "V", "shortcut": "", "action": "tmaOptEnvironment", "aliases": "environment, variables, env, proxy, path, profile" },
         { "caption": "Markdown colors...", "hotChar": "A", "shortcut": "", "action": "tmaOptMarkdownColors", "aliases": "markdown, colors, md" },

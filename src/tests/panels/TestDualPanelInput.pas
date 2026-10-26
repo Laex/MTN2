@@ -10,6 +10,7 @@ type
   TTestDualPanelInput = class
   public
     [Test] procedure TestInputTranslation;
+    [Test] procedure TestToggleMouseNeedsAHostHook;
     [Test] procedure TestKeymapDispatchConsume;
     [Test] procedure TestNavDispatch;
     [Test] procedure TestClassifyAndFreeInput;
@@ -753,6 +754,8 @@ begin
   Assert.IsTrue(not IsContextHelpChord(vkF2, [], True, True), 'only F1');
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('N'), #0, [ssCtrl, ssShift], False) =
     kaNewTerminal, 'Ctrl+Shift+N');
+  Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('M'), #0, [ssCtrl, ssShift], False) =
+    kaToggleMouse, 'Ctrl+Shift+M');
   Assert.IsTrue(GlobalKeymapAction(P, [kcEditor, kcDocument], Ord('N'), #0, [ssCtrl], False) =
     kaNone, 'Ctrl+N is the editor''s insert line');
   Assert.IsTrue(GlobalKeymapAction(P, [kcPanels], Ord('O'), #0, [ssCtrl, ssAlt], False) =
@@ -1422,6 +1425,30 @@ end;
 procedure TTestDualPanelInput.TestPluginHooksOnTopMenu;
 begin
   TestDualPanelInput.TestPluginHooksOnTopMenu;
+end;
+
+procedure TTestDualPanelInput.TestToggleMouseNeedsAHostHook;
+var
+  Host: TDualPanelKeymapHost;
+  Key: Word;
+  Ch: Char;
+  Calls: Integer;
+begin
+  Host := Default(TDualPanelKeymapHost);
+  Key := Ord('M');
+  Ch := #0;
+  Calls := 0;
+  GToggleMouseCapture := nil;
+  Assert.IsFalse(DispatchGlobalAction(Host, kaToggleMouse, Key, Ch),
+    'without a terminal host the key is left alone');
+  Assert.AreEqual(Word(Ord('M')), Key, 'the key is not consumed');
+  GToggleMouseCapture := procedure begin Inc(Calls); end;
+  try
+    Assert.IsTrue(DispatchGlobalAction(Host, kaToggleMouse, Key, Ch), 'the terminal host takes it');
+    Assert.AreEqual(1, Calls, 'the hook runs once');
+  finally
+    GToggleMouseCapture := nil;
+  end;
 end;
 
 procedure TTestDualPanelInput.TestInputTranslation;

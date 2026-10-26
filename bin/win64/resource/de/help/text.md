@@ -20,6 +20,8 @@ Ein **Wort** besteht aus Buchstaben eines beliebigen Alphabets, Ziffern und `_`.
 
 In den Panels wirken Ctrl+Shift+←/→ auf die Befehlszeile, wenn sie nicht leer ist.
 
+<!--mouse-->**Textterminal-Version (mtn2-tui).** Das Programm fordert die Maus vom Terminal an: Ein Ziehen markiert innerhalb von MTN2, und der Text gelangt über das Terminal in die Zwischenablage (eine Steuersequenz, die manche Terminals, etwa PuTTY standardmäßig, ignorieren; in tmux und auf einem Desktop füllt MTN2 zusätzlich den tmux-Puffer und die Systemzwischenablage). Um mit dem Terminal selbst zu markieren, halten Sie beim Ziehen **Shift** gedrückt oder schalten Sie die Maus mit **Ctrl+Shift+M** aus (**Optionen → Terminal-Maus an/aus**); dieselbe Taste schaltet sie wieder ein. Die Option `--no-mouse` startet das Programm mit ausgeschalteter Maus.
+
 **Eingabeverlauf.** Felder mit **↓** am rechten Ende (Auswahlmasken, Maske und Text der Dateisuche, Ziel und Ausschlüsse beim Kopieren/Verschieben, Linkziel, neuer Ordner und neue Datei, Suchen und Ersetzen im Editor, Abfragen des Benutzermenüs) merken sich ihre letzten 20 Werte. **Ctrl+↓** / **Alt+↓** oder ein Klick auf den Pfeil klappt die Liste auf: **Enter** – den Eintrag verwenden, **Del** – ihn aus dem Verlauf entfernen, **Esc** – die Liste schließen. Ein Wert wird hinzugefügt, wenn der Dialog bestätigt wird.
 
 ---

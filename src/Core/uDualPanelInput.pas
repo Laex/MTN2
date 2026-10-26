@@ -298,6 +298,13 @@ function IsContextHelpChord(AKey: Word; AShift: TShiftState;
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
   ADialogVisible, AConsoleMode: Boolean): TEmbeddedInputOwner;
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
+
+var
+  /// <summary>Set by the text terminal host: switches the terminal's mouse
+  /// reporting off and on, so that the terminal itself can select text.
+  /// nil in the other hosts, where the key and the menu item do nothing.</summary>
+  GToggleMouseCapture: TProc = nil;
+
 function IsAltQuickSearchChord(AKey: Word; AShift: TShiftState): Boolean;
 function QuickSearchMatchIndex(const ARows: TPanelRows; const ANeedle: string): Integer;
 function ApplyQuickSearchMatch(var ATab: TTab; const ARows: TPanelRows;
@@ -1189,6 +1196,12 @@ begin
       AHost.RequestQuit();
     kaAppConsoleToggle:
       AHost.ToggleConsole();
+    kaToggleMouse:
+      begin
+        if not Assigned(GToggleMouseCapture) then
+          Exit(False);
+        GToggleMouseCapture();
+      end;
   else
     Exit(False);
   end;
