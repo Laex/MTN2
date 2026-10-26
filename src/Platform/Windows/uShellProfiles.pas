@@ -813,11 +813,29 @@ begin
   Result := True;
 end;
 
+/// <summary>True for the call-operator line that runs one batch file or
+/// executable (& 'C:\Tools\run.bat'). Its output is the program's own console
+/// text: piping it through the wrapper would decode it with the shell's
+/// output encoding, which a program that switches the code page (chcp 65001)
+/// has already left behind.</summary>
+function IsNativeProgramCall(const T: string): Boolean;
+var
+  Ext: string;
+begin
+  Result := False;
+  if not (T.StartsWith('& ''') and T.EndsWith('''')) or (T.Length < 6) then
+    Exit;
+  Ext := LowerCase(ExtractFileExt(Copy(T, 4, T.Length - 4)));
+  Result := (Ext = '.bat') or (Ext = '.cmd') or (Ext = '.exe') or (Ext = '.com');
+end;
+
 function PsPipeSafeCommand(const ACmd: string): string;
 var
   T: string;
 begin
   T := Trim(ACmd);
+  if IsNativeProgramCall(T) then
+    Exit(T);
   // Piped PS host: table/list formatters (Out-Default's default view for any
   // non-string object) hang indefinitely instead of just printing nothing -
   // confirmed via Get-Date, Get-Process, Out-String, Out-Host all hanging

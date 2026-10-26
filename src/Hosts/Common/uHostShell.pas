@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Types, System.UITypes, System.Math,
   uTerminalTypes, uThemeTypes, uThemeController, uThemeSpec, uMdiCompositor,
-  uDualPanelWindow, uConsoleWindow, uSession, uTermInput, uCoreTimer,
+  uDualPanelWindow, uDualPanelUiTypes, uConsoleWindow, uSession, uTermInput, uCoreTimer,
   uUpdateController, uDisplaySettings;
 
 type
@@ -83,7 +83,8 @@ type
     procedure DualPanelOpenTerminal(const AProfileId, ACwd: string);
     procedure DualPanelOpenTerminalWith(const AProfileId, ACwd, ACommand: string);
     procedure DualPanelRunInPanelTerminal(const AProfileId, ACwd, ACommand: string);
-    function DualPanelLaunchConsoleFile(const APath: string): Boolean;
+    function DualPanelLaunchConsoleFile(const APath: string;
+      AWhere: TLaunchPlacement): Boolean;
     procedure ChangeConsoleProfile(const AProfileId: string);
     function GetConsoleProfile: string;
     function GetConsoleStartOnLaunch: Boolean;
@@ -160,7 +161,7 @@ uses
   uShellProfiles, uDualPanelTypes, uConsoleSettings,
   uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
-  uDualPanelUiTypes, uToast, uSharkSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
+  uToast, uSharkSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
   uOverlayRenderer, uKeyRouting;
 
@@ -853,7 +854,8 @@ begin
   Recompose;
 end;
 
-function THostShell.DualPanelLaunchConsoleFile(const APath: string): Boolean;
+function THostShell.DualPanelLaunchConsoleFile(const APath: string;
+  AWhere: TLaunchPlacement): Boolean;
 var
   Kind: TLaunchFileKind;
   Cwd, Profile, Line: string;
@@ -865,12 +867,14 @@ begin
   Cwd := ExtractFileDir(APath);
   Profile := GetConsoleProfile;
   case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy,
-    FDualPanel.ProgramsInTerminal) of
+    (AWhere = lpPanelTerminal) or ((AWhere = lpDefault) and FDualPanel.ProgramsInTerminal)) of
     cltConsole:
       begin
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
         FDualPanel.RecordConsoleCommand(Line);
         DualPanelRunCommand(Line, Cwd);
+        if AWhere = lpBackground then
+          DualPanelRunInBackground(Self);
       end;
     cltTerminal:
       begin

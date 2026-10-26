@@ -452,6 +452,10 @@ file:///D:/data/bundle.zip!/nested.zip!/a.txt
 
 Отдельно от трёх случаев – **Ctrl+Alt+Enter** (`kaRunInNewTab`): `TDualPanelWindow.RunInNewTab` открывает вкладку терминала (`OpenTerminal`) с оболочкой фоновой консоли (`OnGetConsoleProfile`, по умолчанию cmd) и отправляет туда команду (`TTerminalWorkspaceWindow.SendCommand`); консоль и возврат в панели не участвуют, вкладка остаётся открытой.
 
+При пустой командной строке обе клавиши запускают консольную программу под курсором: `TDualPanelWindow.RunCursorFile` передаёт путь в `OnLaunchConsoleFile` с `TLaunchPlacement`. `lpBackground` (Alt+Shift+Enter) выбирает место как Enter и после запуска в консоли включает таймер возврата; `lpPanelTerminal` (Ctrl+Alt+Enter) отправляет программу в терминал вкладки панелей, как включённый флажок `ProgramsInTerminal`, но независимо от него. Каталог, архивная запись и файл, не являющийся консольной программой, ничего не запускают.
+
+Показ элемента под курсором на соседней панели – Alt+Shift+F3 (`WorkspaceGotoOpposite`; во временной панели `TmpGotoOpposite`).
+
 Прочее:
 - Командная строка при фокусе принимает любое сочетание с Enter за Enter (`InputLineHandleInput`), поэтому `TDualPanelWindow.HandleCmdLineInput` сначала спрашивает keymap (`MatchActiveAction`), не привязан ли этот ввод к `kaRunInBackground` или `kaRunInNewTab`.
 - Вставка в консоль (`TBaseConsoleWindow.WritePasteText`) переводит LF и CRLF в CR (`LineBreaksToEnter`): голый LF оболочка (PSReadLine) принимает за «добавить строку», и после вставленной команды остаётся приглашение продолжения.

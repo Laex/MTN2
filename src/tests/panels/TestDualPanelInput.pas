@@ -600,6 +600,12 @@ begin
     Assert.IsTrue(Spy.Last = '', 'Ctrl+Alt+Enter does not submit cmdline');
     Assert.IsTrue(Key = vkReturn, 'Ctrl+Alt+Enter leaves AKey for panel handler');
 
+    Spy.Last := '';
+    Key := vkReturn;
+    Assert.IsTrue(not DispatchPanelNavKeys(Host, Key, [ssAlt, ssShift], KeyChar, 10, False, 20),
+      'Alt+Shift+Enter is not Activate/submit');
+    Assert.IsTrue(Spy.Last = '', 'Alt+Shift+Enter does not submit cmdline');
+
     Key := Ord('A');
     KeyChar := 'a';
     Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),

@@ -11,8 +11,8 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 | Ctrl+↓ / Alt+↓ (Zeile fokussiert) | Befehlsverlauf als Liste: Enter – in die Zeile übernehmen, Del – aus dem Verlauf entfernen, Esc – schließen |
 | Ctrl+Enter | Namen des Elements unter dem Cursor einfügen |
 | Ctrl+F, Ctrl+Shift+Enter | vollständigen Pfad des Elements einfügen |
-| Alt+Shift+Enter | Befehlszeile im Hintergrund ausführen: die Konsole zeigt kurz den Start, dann kommen die Panels zurück (**Optionen → Konsole...** weiter unten) |
-| Ctrl+Alt+Enter | Befehlszeile in einem neuen Terminal-Tab ausführen: ein neuer Arbeitsbereich-Tab mit der Shell der Hintergrundkonsole (cmd, PowerShell, WSL, ...), der Befehl startet dort und der Tab bleibt offen |
+| Alt+Shift+Enter | Befehlszeile im Hintergrund ausführen: die Konsole zeigt kurz den Start, dann kommen die Panels zurück (**Optionen → Konsole...** weiter unten); bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor auf dieselbe Weise |
+| Ctrl+Alt+Enter | Befehlszeile in einem neuen Terminal-Tab ausführen: ein neuer Arbeitsbereich-Tab mit der Shell der Hintergrundkonsole (cmd, PowerShell, WSL, ...), der Befehl startet dort und der Tab bleibt offen; bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor im Terminal-Tab des Panel-Tabs |
 | Esc | Schritt für Schritt: Zeile löschen → Fokus ans Panel zurückgeben → Konsole zeigen. Bei leerer Zeile entfällt der erste Schritt; bei Fokus auf dem Panel zeigt Esc sofort die Konsole |
 | Ctrl+O | Panels ↔ Konsole |
 | Ctrl+Shift+O | Ordner zwischen aktivem Panel und Konsole abgleichen |

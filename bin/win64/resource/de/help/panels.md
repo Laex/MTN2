@@ -8,8 +8,9 @@
 | Backspace | eine Ebene nach oben, wie Enter auf `..` (bei leerer Befehlszeile; sonst löscht es dort ein Zeichen) |
 | Ctrl+PgUp / Ctrl+PgDn | eine Ebene nach oben / den Ordner unter dem Cursor betreten, wie in FAR; bei einer Datei öffnet Ctrl+PgDn sie als Archiv (siehe [Archive](archives.md)) |
 | Shift+Enter | eine Datei oder einen Befehl in einem separaten Betriebssystemfenster ausführen |
-| Alt+Shift+Enter | die Befehlszeile im Hintergrund ausführen: die Konsole zeigt sie kurz, dann kommen die Panels zurück |
-| Ctrl+Alt+Enter | die Befehlszeile in einem neuen Terminal-Tab ausführen (die Shell der Hintergrundkonsole) |
+| Alt+Shift+Enter | die Befehlszeile im Hintergrund ausführen: die Konsole zeigt sie kurz, dann kommen die Panels zurück; bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor auf dieselbe Weise |
+| Ctrl+Alt+Enter | die Befehlszeile in einem neuen Terminal-Tab ausführen (die Shell der Hintergrundkonsole); bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor im Terminal-Tab des Panel-Tabs |
+| Alt+Shift+F3 | das Element unter dem Cursor im anderen Panel zeigen |
 | Tab | das aktive Panel wechseln |
 | Ctrl+\\ | zur Laufwerkswurzel (in einem Archiv – das Archiv verlassen) |
 | Alt+← / Alt+→ | zurück / vor im Ordnerverlauf |

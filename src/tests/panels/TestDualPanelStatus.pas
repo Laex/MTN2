@@ -314,11 +314,10 @@ begin
   FunctionBarGetItems(fbcWorkspace, [], Items, Letters);
   Assert.IsTrue(Pos('MkDir', Items[6]) > 0, 'workspace F7 stays MkDir');
   Assert.IsTrue(Pos('Unlink', Items[7]) > 0, 'workspace F8 is Unlink not Del');
-  Assert.IsTrue((Length(Letters) > 0) and (Pos('CtAlt+Ent', Letters[0]) > 0),
-    'workspace F-bar shows Ctrl+Alt+Enter');
-  FunctionBarGetItems(fbcWorkspace, [ssCtrl, ssAlt], Items, Letters);
-  Assert.IsTrue((Length(Letters) > 0) and (Pos('Ent:GoTo', Letters[0]) > 0),
-    'workspace Ctrl+Alt F-bar shows Enter GoTo');
+  Assert.IsTrue((Length(Letters) > 0) and (Pos('Alt+Shift+F3', Letters[0]) > 0),
+    'workspace F-bar shows Alt+Shift+F3');
+  FunctionBarGetItems(fbcWorkspace, [ssAlt, ssShift], Items, Letters);
+  Assert.IsTrue(Pos('GoTo', Items[2]) > 0, 'workspace Alt+Shift F-bar shows F3 GoTo');
 
   FunctionBarGetItems(fbcWorkspaceLibrary, [], Items, Letters);
   Assert.IsTrue(Pos('Ren', Items[1]) > 0, 'workspace library F2 is Ren');

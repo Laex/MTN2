@@ -48,6 +48,9 @@ begin
   Assert.AreEqual('function foo { "hi" }', PsPipeSafeCommand('function foo { "hi" }'), 'function definition left untouched');
   Assert.AreEqual('foreach ($i in 1..3) { $i }', PsPipeSafeCommand('foreach ($i in 1..3) { $i }'), 'foreach left untouched');
   Assert.AreEqual('', PsPipeSafeCommand(''), 'empty command left untouched');
+  Assert.AreEqual('& ''D:\Work\Game\start.bat''', PsPipeSafeCommand('& ''D:\Work\Game\start.bat'''), 'batch file call left untouched (own code page)');
+  Assert.AreEqual('& ''C:\Tools\app.exe''', PsPipeSafeCommand('& ''C:\Tools\app.exe'''), 'executable call left untouched');
+  Assert.AreEqual('& ''C:\Tools\run.ps1'' | % {"$_"}', PsPipeSafeCommand('& ''C:\Tools\run.ps1'''), 'script call still wrapped (objects)');
 end;
 
 procedure TestAlreadyFormatted;

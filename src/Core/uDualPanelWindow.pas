@@ -591,11 +591,16 @@ type
     procedure RunDetachedFile(const AUri: string);
     procedure RunDetached;
     /// <summary>The command line runs in the console, which shows it for a
-    /// moment (OnRunInBackground, Options > Console...) and gives the panels back.</summary>
+    /// moment (OnRunInBackground, Options > Console...) and gives the panels back.
+    /// An empty command line runs the console program under the cursor instead.</summary>
     procedure RunInBackground;
     /// <summary>The command line runs in a new terminal tab, in the shell of the
-    /// background console.</summary>
+    /// background console. An empty command line runs the console program under
+    /// the cursor in the terminal tab of the panels tab instead.</summary>
     procedure RunInNewTab;
+    /// <summary>The console program under the cursor, placed by AWhere; False
+    /// when the cursor is not on a local console program.</summary>
+    function RunCursorFile(AWhere: TLaunchPlacement): Boolean;
     function PanelCommandCwd: string;
     /// <summary>Shared active-panel-dir -> console push, used by both the
     /// gated auto-sync (NotifyShellCwdSync) and the unconditional hotkey
@@ -5181,7 +5186,10 @@ begin
     Exit;
   Cmd := Trim(FCmdLineMgr.Text);
   if Cmd = '' then
+  begin
+    RunCursorFile(lpPanelTerminal);
     Exit;
+  end;
   FCmdLineMgr.RememberCommand(Cmd);
   FCmdLineMgr.Clear;
   Profile := HostGetConsoleProfile;
@@ -5192,11 +5200,40 @@ end;
 
 procedure TDualPanelWindow.RunInBackground;
 begin
-  if not Assigned(FCmdLineMgr) or (Trim(FCmdLineMgr.Text) = '') then
+  if not Assigned(FCmdLineMgr) then
     Exit;
+  if Trim(FCmdLineMgr.Text) = '' then
+  begin
+    RunCursorFile(lpBackground);
+    Exit;
+  end;
   FCmdLineMgr.RememberCommand(FCmdLineMgr.Text);
   if SendConsoleCommand(FCmdLineMgr.Text) and Assigned(FOnRunInBackground) then
     FOnRunInBackground(Self);
+end;
+
+function TDualPanelWindow.RunCursorFile(AWhere: TLaunchPlacement): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Row: TPanelRow;
+  Idx: Integer;
+  Path: string;
+begin
+  Result := False;
+  if not Assigned(FOnLaunchConsoleFile) or
+     not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
+    Exit;
+  if Row.IsParent or Row.IsDirectory or HasArchiveChain(Row.URI) then
+    Exit;
+  Path := FileUriToPath(Row.URI);
+  if (Path = '') or not LocalPathIsFile(Path) then
+    Exit;
+  Result := FOnLaunchConsoleFile(Path, AWhere);
+  if Result then
+    NotifyChanged;
 end;
 
 function TDualPanelWindow.SendConsoleCommand(const ACommand: string): Boolean;
@@ -7841,7 +7878,7 @@ begin
     Exit;
   // A console program runs in the built-in console or a terminal tab, so
   // its output stays on screen; anything else is the Windows shell's.
-  if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(APath) then
+  if Assigned(FOnLaunchConsoleFile) and FOnLaunchConsoleFile(APath, lpDefault) then
   begin
     NotifyChanged;
     Exit;
@@ -12904,11 +12941,11 @@ begin
       end;
     end;
   end;
-  // Ctrl+Alt+Enter: reveal the cursor item on the opposite panel. Must run
-  // even after Enter on a workspace dir-link (CurrentURI is then file://),
-  // otherwise DispatchPanelNavKeys treats Return as ActivateCurrent and
-  // opens the file.
-  if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkReturn, [ssCtrl, ssAlt]) and not Snap.CmdFocused then
+  // Alt+Shift+F3: reveal the cursor item on the opposite panel. Must run
+  // even after Enter on a workspace dir-link (CurrentURI is then file://).
+  // The temporary panel's own chord is handled above.
+  if not ActivePanelIsTmp and not Snap.CmdFocused and
+     TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkF3, [ssAlt, ssShift]) then
   begin
     WorkspaceGotoOpposite;
     AKey := 0;

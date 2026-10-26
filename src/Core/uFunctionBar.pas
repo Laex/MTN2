@@ -254,10 +254,9 @@ begin
     SetLength(ALetters, 1);
     ALetters[0] := 'CPgUp:GoTo';
   end
-  else if (Mods = [ssCtrl, ssAlt]) and (ACtx = fbcWorkspace) then
+  else if (Mods = [ssAlt, ssShift]) and (ACtx = fbcWorkspace) then
   begin
-    SetLength(ALetters, 1);
-    ALetters[0] := 'Ent:GoTo';
+    AItems[2] := '3GoTo';
   end
   else if Mods = [ssCtrl, ssAlt] then
     HintsFromKeymap([Hint(kaMultiRename, 'MRen'), Hint(kaCompareFiles, 'Cmp'),
@@ -275,7 +274,7 @@ begin
     begin
       AItems[7] := '8Unlink';
       SetLength(ALetters, 1);
-      ALetters[0] := 'CtAlt+Ent:GoTo';
+      ALetters[0] := 'Alt+Shift+F3:GoTo';
     end;
   end;
 end;

@@ -91,7 +91,9 @@ begin
   Act := MatchAction(Profile, vkReturn, [ssAlt]);
   Assert.IsTrue(Act = kaProperties, 'Alt+Enter should match kaProperties');
   Act := MatchAction(Profile, vkReturn, [ssCtrl, ssAlt]);
-  Assert.IsTrue(Act <> kaProperties, 'Ctrl+Alt+Enter is not Properties (reveal on the other panel)');
+  Assert.IsTrue(Act = kaRunInNewTab, 'Ctrl+Alt+Enter should match kaRunInNewTab');
+  Act := MatchAction(Profile, vkReturn, [ssAlt, ssShift]);
+  Assert.IsTrue(Act = kaRunInBackground, 'Alt+Shift+Enter should match kaRunInBackground');
   Assert.IsTrue(TryKeymapActionByName('Properties', Act) and (Act = kaProperties),
     'keymap.json name "Properties"');
   Assert.IsTrue(TryKeymapActionByName('FileHistory', Act) and (Act = kaFileHistory),

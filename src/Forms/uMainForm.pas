@@ -8,7 +8,7 @@ uses
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.Controls.Presentation, FMX.StdCtrls, FMX.Menus,
   Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.MultiMon,
-  uStartupTargets, uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow,
+  uStartupTargets, uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow, uDualPanelUiTypes,
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uListExport,
@@ -253,7 +253,8 @@ type
     /// takes the size it will have once shown, so a shell started in the
     /// background begins at the right size and is not resized on first show.</summary>
     procedure SyncHiddenConsoleArea(ACols, ARows: Integer);
-    function DualPanelLaunchConsoleFile(const APath: string): Boolean;
+    function DualPanelLaunchConsoleFile(const APath: string;
+      AWhere: TLaunchPlacement): Boolean;
     procedure ShowConsoleMode;
     procedure ShowPanelMode;
     procedure ApplyConsoleLayout;
@@ -2664,7 +2665,8 @@ begin
   Recompose;
 end;
 
-function TMainForm.DualPanelLaunchConsoleFile(const APath: string): Boolean;
+function TMainForm.DualPanelLaunchConsoleFile(const APath: string;
+  AWhere: TLaunchPlacement): Boolean;
 var
   Kind: TLaunchFileKind;
   Cwd, Profile, Line: string;
@@ -2676,12 +2678,14 @@ begin
   Cwd := ExtractFileDir(APath);
   Profile := GetConsoleProfile;
   case ChooseConsoleLaunch(Kind, Profile, Assigned(FConsole) and FConsole.ShellBusy,
-    FDualPanel.ProgramsInTerminal) of
+    (AWhere = lpPanelTerminal) or ((AWhere = lpDefault) and FDualPanel.ProgramsInTerminal)) of
     cltConsole:
       begin
         Line := BuildConsoleLaunchLine(APath, Kind, Profile);
         FDualPanel.RecordConsoleCommand(Line);
         DualPanelRunCommand(Line, Cwd);
+        if AWhere = lpBackground then
+          DualPanelRunInBackground(Self);
       end;
     cltTerminal:
       begin
