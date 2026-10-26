@@ -1632,7 +1632,7 @@
     "mouse.on": "Mouse on",
     "mouse.off": "Mouse off: the terminal selects text",
     "mouse.offHint": "Ctrl+Shift+M turns it back on",
-    "mouse.selectTip": "Hold Shift to select text with the terminal",
+    "mouse.selectTip": "Text does not reach the clipboard? Hold Shift to select with the terminal, or Ctrl+Shift+M turns the mouse off",
     "terminalEnv.none": "(none)",
     "display.saverOff": "Off",
     "display.saverMinutes": "%d min",

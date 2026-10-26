@@ -23,6 +23,7 @@ type
     [Test] procedure TestMenuJsonAliasesAreSearchWords;
     [Test] procedure TestUserAliasesFileAddsWords;
     [Test] procedure TestContextLineShowsHintOrNeighbours;
+    [Test] procedure TestEveryMenuCommandHasADescription;
     [Test] procedure TestContextLineFollowsTheSelectedItem;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
@@ -262,6 +263,31 @@ begin
     Assert.AreEqual<Integer>(0, Length(RankedKeys(E, 'clone')), 'a word nobody lists finds nothing');
   finally
     M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestEveryMenuCommandHasADescription;
+const
+  cLocales: array[0..3] of string = ('en', 'ru', 'de', 'zh');
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Loc: string;
+  I: Integer;
+begin
+  for Loc in cLocales do
+  begin
+    SetLocale(Loc);
+    M := MakeMenu;
+    try
+      E := BuildPaletteEntries(M);
+      Assert.IsTrue(Length(E) > 100, 'the menu lists its commands');
+      for I := 0 to High(E) do
+        Assert.IsTrue(E[I].Description <> '',
+          'no description for ' + E[I].Key + ' in ' + Loc);
+    finally
+      M.Free;
+    end;
   end;
 end;
 
