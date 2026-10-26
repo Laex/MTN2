@@ -20,6 +20,7 @@ type
     [Test] procedure TestTabExpansionGrid;
     [Test] procedure TestLocalInputAfterCmdPromptGrid;
     [Test] procedure TestEmptyPromptAfterOutputHasNoInputGrid;
+    [Test] procedure TestFullWidthLineThenCrLfAdvancesOneRowGrid;
     [Test] procedure TestSubmitOutputOnNextLineGrid;
     [Test] procedure TestPasteOntoPromptLineGrid;
     [Test] procedure TestGridModeNoPhantomBlankLine;
@@ -285,6 +286,27 @@ begin
     Buf.AppendOutputEx('D:\Work>', 80, 5);
     Assert.AreEqual('', Trim(Buf.GetInputAfterPrompt),
       'program output above an empty prompt is not typed input');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestFullWidthLineThenCrLfAdvancesOneRowGrid;
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx(StringOfChar('x', 20) + #13#10 + 'next', 20, 5);
+    Assert.AreEqual(StringOfChar('x', 20), Buf.GetLine(0),
+      'full-width line stays on one row');
+    Assert.AreEqual('next', Buf.GetLine(1),
+      'CR LF after a full-width line adds no blank row');
+
+    Buf.Clear;
+    Buf.AppendOutputEx(StringOfChar('x', 20) + 'yz', 20, 5);
+    Assert.AreEqual('yz', Buf.GetLine(1),
+      'a character past the last column wraps to the next row');
   finally
     Buf.Free;
   end;
@@ -566,6 +588,11 @@ end;
 procedure TTestConsoleBuffer.TestEmptyPromptAfterOutputHasNoInputGrid;
 begin
   TestConsoleBuffer.TestEmptyPromptAfterOutputHasNoInputGrid;
+end;
+
+procedure TTestConsoleBuffer.TestFullWidthLineThenCrLfAdvancesOneRowGrid;
+begin
+  TestConsoleBuffer.TestFullWidthLineThenCrLfAdvancesOneRowGrid;
 end;
 
 procedure TTestConsoleBuffer.TestLocalInputAfterCmdPromptGrid;

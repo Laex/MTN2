@@ -57,8 +57,18 @@ begin
     Grid.Alloc(5, 3, Fg, Bg);
     PutStr(Grid, 'ABCDE');
     Assert.IsTrue(RowText(Grid.Grid[0]) = 'ABCDE', 'Row 0 should hold all 5 chars');
-    Assert.IsTrue(Grid.CursorRow = 1, 'Cursor should wrap to row 1');
-    Assert.IsTrue(Grid.CursorCol = 0, 'Cursor col should reset to 0 after wrap');
+    Assert.IsTrue(Grid.CursorRow = 0, 'Cursor waits on the last column of row 0');
+    Assert.IsTrue(Grid.CursorCol = 4, 'Cursor stays on the last column until the next character');
+    PutStr(Grid, 'F');
+    Assert.IsTrue(RowText(Grid.Grid[1]) = 'F    ', 'Next character wraps to row 1');
+    Assert.IsTrue(Grid.CursorRow = 1, 'Cursor should be on row 1 after wrap');
+    Assert.IsTrue(Grid.CursorCol = 1, 'Cursor col follows the wrapped character');
+    Grid.MoveAbs(0, 0);
+    PutStr(Grid, 'ABCDE');
+    Grid.NewLine(Fg, Bg);
+    Grid.CarriageReturn;
+    Assert.IsTrue(Grid.CursorRow = 1, 'CR LF after a full row advances exactly one row');
+    Assert.IsTrue(Grid.CursorCol = 0, 'CR resets the column');
   finally
     Grid.Free;
   end;
@@ -77,17 +87,19 @@ begin
         Archived.Add(RowText(ARow));
       end;
     Grid.Alloc(5, 3, Fg, Bg);
-    PutStr(Grid, 'ABCDE'); // row0, wraps to row1
-    PutStr(Grid, 'FGHIJ'); // row1, wraps to row2
+    PutStr(Grid, 'ABCDE'); // row0, wrap pending
+    PutStr(Grid, 'FGHIJ'); // wraps to row1, row1 full
     Assert.IsTrue(Archived.Count = 0, 'No archive yet before 3rd row fills');
-    PutStr(Grid, 'KLMNO'); // row2, fills last row -> scroll, archives row0
+    PutStr(Grid, 'KLMNO'); // wraps to row2, row2 full
+    Assert.IsTrue(Archived.Count = 0, 'A full last row waits for the next character');
+    PutStr(Grid, 'P'); // wraps past the last row -> scroll, archives row0
     Assert.IsTrue(Archived.Count = 1, 'Exactly one row should be archived');
     Assert.IsTrue(Archived[0] = 'ABCDE', 'Archived row should be the oldest (row0) content');
     Assert.IsTrue(RowText(Grid.Grid[0]) = 'FGHIJ', 'Row 0 should now hold former row1');
     Assert.IsTrue(RowText(Grid.Grid[1]) = 'KLMNO', 'Row 1 should now hold former row2');
-    Assert.IsTrue(Trim(RowText(Grid.Grid[2])) = '', 'Row 2 should be blank after scroll');
+    Assert.IsTrue(Trim(RowText(Grid.Grid[2])) = 'P', 'Row 2 should hold the wrapped character');
     Assert.IsTrue(Grid.CursorRow = 2, 'Cursor should stay on last row after scroll');
-    Assert.IsTrue(Grid.CursorCol = 0, 'Cursor col should be 0 after scroll-wrap');
+    Assert.IsTrue(Grid.CursorCol = 1, 'Cursor col follows the wrapped character');
   finally
     Archived.Free;
     Grid.Free;

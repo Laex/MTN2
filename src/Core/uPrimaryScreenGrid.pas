@@ -34,6 +34,10 @@ type
     FCursorRow, FCursorCol: Integer;
     FSavedRow, FSavedCol: Integer;
     FHasSaved: Boolean;
+    // Last column written: the wrap to the next line happens on the next
+    // printable character, not on this one (xterm semantics). A full-width
+    // line followed by CR LF therefore advances one row, not two.
+    FWrapPending: Boolean;
     FOnArchiveRow: TArchiveRowEvent;
     procedure ScrollUpOne(AFg, ABg: TAlphaColor);
     procedure ClampCursor;
@@ -96,6 +100,7 @@ begin
   ClearTerminalGrid(FGrid, AFg, ABg);
   FCursorRow := 0;
   FCursorCol := 0;
+  FWrapPending := False;
   FHasSaved := False;
 end;
 
@@ -128,6 +133,7 @@ begin
   FCols := NewCols;
   FRows := NewRows;
   Dec(FCursorRow, ArchiveCount);
+  FWrapPending := False;
   ClampCursor;
 end;
 
@@ -136,6 +142,7 @@ begin
   ClearTerminalGrid(FGrid, AFg, ABg);
   FCursorRow := 0;
   FCursorCol := 0;
+  FWrapPending := False;
 end;
 
 procedure TPrimaryScreenGrid.ScrollUpOne(AFg, ABg: TAlphaColor);
@@ -164,6 +171,11 @@ var
 begin
   if (FCols <= 0) or (FRows <= 0) then
     Exit;
+  if FWrapPending then
+  begin
+    FCursorCol := 0;
+    NewLine(AFg, ABg);
+  end;
   W := CharDisplayWidth(ACh);
   // A wide character that does not fit the last column moves to the next line.
   if (W = 2) and (FCursorCol >= FCols - 1) and (FCols > 1) then
@@ -173,16 +185,18 @@ begin
     NewLine(AFg, ABg);
   end;
   DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
-  Inc(FCursorCol, W);
-  if FCursorCol >= FCols then
+  if FCursorCol + W >= FCols then
   begin
-    FCursorCol := 0;
-    NewLine(AFg, ABg);
-  end;
+    FCursorCol := FCols - 1;
+    FWrapPending := True;
+  end
+  else
+    Inc(FCursorCol, W);
 end;
 
 procedure TPrimaryScreenGrid.NewLine(AFg, ABg: TAlphaColor);
 begin
+  FWrapPending := False;
   if FCursorRow < FRows - 1 then
     Inc(FCursorRow)
   else
@@ -191,11 +205,13 @@ end;
 
 procedure TPrimaryScreenGrid.CarriageReturn;
 begin
+  FWrapPending := False;
   FCursorCol := 0;
 end;
 
 procedure TPrimaryScreenGrid.Backspace;
 begin
+  FWrapPending := False;
   if FCursorCol > 0 then
     Dec(FCursorCol);
 end;
@@ -216,6 +232,7 @@ begin
   // means there is no typed input left to delete.
   if (APromptGuardCol > 0) and (FCursorCol <= APromptGuardCol) then
     Exit;
+  FWrapPending := False;
   Row := FGrid[FCursorRow];
   // The filler of a wide character goes together with its first half.
   Count := 1;
@@ -232,6 +249,7 @@ end;
 
 procedure TPrimaryScreenGrid.MoveAbs(ARow, ACol: Integer);
 begin
+  FWrapPending := False;
   FCursorRow := ARow;
   FCursorCol := ACol;
   ClampCursor;
@@ -239,6 +257,7 @@ end;
 
 procedure TPrimaryScreenGrid.MoveRel(ADir: Char; ACount: Integer);
 begin
+  FWrapPending := False;
   case ADir of
     'A': Dec(FCursorRow, ACount);
     'B': Inc(FCursorRow, ACount);
@@ -259,6 +278,7 @@ procedure TPrimaryScreenGrid.RestoreCursor;
 begin
   if not FHasSaved then
     Exit;
+  FWrapPending := False;
   FCursorRow := FSavedRow;
   FCursorCol := FSavedCol;
   ClampCursor;
