@@ -41,6 +41,7 @@ type
     FOnGetConsoleCwdToPanels: TFunc<Boolean>;
     FOnSetConsoleCwdToPanels: TProc<Boolean>;
     FOnGetProgramsInTerminal: TFunc<Boolean>;
+    FOnResetKeyHints: TProc;
     FOnSetProgramsInTerminal: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
@@ -118,6 +119,9 @@ type
       read FOnSetConsoleCwdToPanels write FOnSetConsoleCwdToPanels;
     /// <summary>Enter on a console program in a panel runs it in a terminal
     /// tab instead of the background console.</summary>
+    /// <summary>The Reset button of the interface dialog: every key hint is
+    /// due again.</summary>
+    property OnResetKeyHints: TProc read FOnResetKeyHints write FOnResetKeyHints;
     property OnGetProgramsInTerminal: TFunc<Boolean>
       read FOnGetProgramsInTerminal write FOnGetProgramsInTerminal;
     property OnSetProgramsInTerminal: TProc<Boolean>
@@ -305,6 +309,7 @@ begin
   SetKind(hdkInterface);
   FOpenDisplay := Cur;
   Decl := BuildInterfaceDialog(LanguageNames, LanguageIdx, Cur.ShowNotifications);
+  DialogSetCheckbox(Decl, 'key_hints', Cur.ShowKeyHints);
   DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
   DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
   DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
@@ -673,11 +678,18 @@ var
   Disp: TDisplaySettings;
   LanguageIdx: Integer;
 begin
+  if AControlId = 'reset_hints' then
+  begin
+    if Assigned(FOnResetKeyHints) then
+      FOnResetKeyHints();
+    Exit;
+  end;
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
   begin
     Disp := FOpenDisplay;
     Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+    Disp.ShowKeyHints := FDialog.GetCheckbox('key_hints');
     Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
     Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
     Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');

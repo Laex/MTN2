@@ -201,6 +201,7 @@ begin
   FSession.RestoreWorkspaceOnStart := True;
   FSession.CursorBlink := True;
   FSession.ShowNotifications := True;
+  FSession.ShowKeyHints := True;
   FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
   FSession.ShowKeyBar := True;
@@ -367,6 +368,7 @@ begin
   Result.CursorBlink := FSession.CursorBlink;
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
+  Result.ShowKeyHints := not Assigned(FDualPanel) or FDualPanel.KeyHintsEnabled;
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
@@ -398,6 +400,9 @@ begin
   FSession.CursorBlink := ASettings.CursorBlink;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
+  FSession.ShowKeyHints := ASettings.ShowKeyHints;
+  if Assigned(FDualPanel) then
+    FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
@@ -459,6 +464,8 @@ begin
   GCustomColumnsConfig := Sess.CustomColumns;
   GListExportConfig := Sess.ListExport;
   GShowToasts := Sess.ShowNotifications;
+  FDualPanel.KeyHintsEnabled := Sess.ShowKeyHints;
+  FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
   GSaverMinutes := Sess.SaverMinutes;
   GShowPassiveCursor := Sess.PassiveCursor;
   if GHostShowsIcons then
@@ -509,6 +516,8 @@ begin
   Sess.ThemeName := FThemes.ThemeId;
   Sess.ThemeFile := '';
   Sess.ShowNotifications := GShowToasts;
+  Sess.ShowKeyHints := FDualPanel.KeyHintsEnabled;
+  Sess.KeyHintsSeen := FDualPanel.KeyHintsSeen;
   Sess.SaverMinutes := GSaverMinutes;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.ShowKeyBar := GShowKeyBar;

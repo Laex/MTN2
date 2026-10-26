@@ -35,6 +35,7 @@ type
     [Test] procedure TestResumeKeepsTheSelectedCommand;
     [Test] procedure TestKeysWithoutMenuItemAreListedWithTheirShortcut;
     [Test] procedure TestKeyOnlyCommandRunsItsAction;
+    [Test] procedure TestShortcutColumnIsSearched;
   end;
 
 implementation
@@ -777,6 +778,33 @@ begin
     end;
   finally
     D.Free;
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestShortcutColumnIsSearched;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Keys: TArray<string>;
+begin
+  M := MakeMenu(cMenuJson);
+  try
+    E := BuildPaletteEntries(M);
+    AppendKeymapOnlyEntries(M, KeymapActionCaption, E);
+    Keys := RankedKeys(E, 'f5');
+    Assert.IsTrue(Contains(Keys, 'tmaFileCopy'), 'F5 finds the command bound to F5');
+    Assert.IsTrue(not Contains(Keys, 'tmaFileMove'), 'F5 does not find the command bound to F6');
+    Assert.AreEqual('tmaFileCopy', Keys[0], 'a command bound to the key comes first');
+    Assert.IsTrue(Contains(RankedKeys(E, 'F5'), 'tmaFileCopy'), 'the case of the key does not matter');
+    Keys := RankedKeys(E, 'shift');
+    Assert.IsTrue(Contains(Keys, 'key:RunInBackground'), 'a modifier finds the chords that use it');
+    Keys := RankedKeys(E, 'alt+shift+enter');
+    Assert.IsTrue(Contains(Keys, 'key:RunInBackground'), 'a whole chord finds its command');
+    Assert.IsTrue(not Contains(Keys, 'key:RunInNewTab'), 'another chord is not found');
+    Assert.IsTrue(not Contains(RankedKeys(E, 'f'), 'key:RunInBackground'),
+      'a letter does not match inside a key name such as Shift');
+  finally
     M.Free;
   end;
 end;

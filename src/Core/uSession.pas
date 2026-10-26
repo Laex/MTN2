@@ -67,6 +67,8 @@ type
     CursorBlinkMs: Integer;
     ShowPanelIcons: Boolean;
     ShowNotifications: Boolean;
+    ShowKeyHints: Boolean;         // short key hints for the state the program is in (uKeyHints)
+    KeyHintsSeen: Integer;         // bit set of the hints already shown (TKeyHintTracker.Seen)
     ShowTitleBar: Boolean;
     ShowMenuBar: Boolean;
     FileDrag: Boolean;
@@ -606,6 +608,8 @@ begin
       Root.AddPair('cursorBlinkMs', TJSONNumber.Create(ASession.CursorBlinkMs));
       Root.AddPair('showPanelIcons', TJSONBool.Create(ASession.ShowPanelIcons));
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
+      Root.AddPair('showKeyHints', TJSONBool.Create(ASession.ShowKeyHints));
+      Root.AddPair('keyHintsSeen', TJSONNumber.Create(ASession.KeyHintsSeen));
       Root.AddPair('showTitleBar', TJSONBool.Create(ASession.ShowTitleBar));
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
@@ -685,6 +689,8 @@ begin
   ASession.CursorBlinkMs := cDisplayDefaultBlinkMs;
   ASession.ShowPanelIcons := True;
   ASession.ShowNotifications := True;
+  ASession.ShowKeyHints := True;
+  ASession.KeyHintsSeen := 0;
   ASession.ShowTitleBar := True;
   ASession.ShowMenuBar := True;
   ASession.FileDrag := True;
@@ -782,6 +788,8 @@ begin
         ClampDisplayBlinkMs(JsonInt(Root, 'cursorBlinkMs', cDisplayDefaultBlinkMs));
       ASession.ShowPanelIcons := JsonBool(Root, 'showPanelIcons', True);
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
+      ASession.ShowKeyHints := JsonBool(Root, 'showKeyHints', True);
+      ASession.KeyHintsSeen := JsonInt(Root, 'keyHintsSeen', 0);
       ASession.ShowTitleBar := JsonBool(Root, 'showTitleBar', True);
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);

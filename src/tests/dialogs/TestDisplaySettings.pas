@@ -105,6 +105,8 @@ begin
   Result.CursorBlinkMs := 300;
   Result.ShowPanelIcons := False;
   Result.ShowNotifications := False;
+  Result.ShowKeyHints := False;
+  Result.KeyHintsSeen := 5;
   Result.ShowTitleBar := False;
   Result.ShowMenuBar := False;
   Result.ShowKeyBar := False;
@@ -148,6 +150,8 @@ begin
     Assert.IsTrue(Loaded.CursorBlinkMs = 300, 'cursorBlinkMs saved');
     Assert.IsTrue(not Loaded.ShowPanelIcons, 'showPanelIcons saved');
     Assert.IsTrue(not Loaded.ShowNotifications, 'showNotifications saved');
+    Assert.IsTrue(not Loaded.ShowKeyHints, 'showKeyHints saved');
+    Assert.AreEqual<Integer>(5, Loaded.KeyHintsSeen, 'keyHintsSeen saved');
     Assert.IsTrue(not Loaded.ShowTitleBar, 'showTitleBar saved');
     Assert.IsTrue(not Loaded.ShowMenuBar, 'showMenuBar saved');
     Assert.IsTrue(not Loaded.ShowKeyBar, 'showKeyBar saved');
@@ -235,6 +239,12 @@ begin
     Pair := Root.RemovePair('programsInTerminal');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('showKeyHints');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('keyHintsSeen');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
@@ -250,6 +260,8 @@ begin
     Assert.IsTrue(Sess.CursorBlinkMs = cDisplayDefaultBlinkMs, 'missing blink ms -> 530');
     Assert.IsTrue(Sess.ShowPanelIcons, 'missing showPanelIcons -> on');
     Assert.IsTrue(Sess.ShowNotifications, 'missing showNotifications -> on');
+    Assert.IsTrue(Sess.ShowKeyHints, 'missing showKeyHints -> on');
+    Assert.AreEqual<Integer>(0, Sess.KeyHintsSeen, 'missing keyHintsSeen -> none seen');
     Assert.IsTrue(Sess.ShowTitleBar, 'missing showTitleBar -> shown');
     Assert.IsTrue(Sess.ShowMenuBar, 'missing showMenuBar -> shown');
     Assert.IsTrue(Sess.ShowKeyBar, 'missing showKeyBar -> shown');

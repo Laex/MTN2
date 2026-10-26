@@ -19,12 +19,18 @@ type
   private
     FEnabled: Boolean;
     FShown: set of THintSituation;
+    function GetSeen: Integer;
+    procedure SetSeen(AValue: Integer);
   public
     constructor Create(AEnabled: Boolean);
     /// <summary>The hint text for ASituation the first time it is asked for,
     /// '' afterwards, for hsNone and while the hints are off.</summary>
     function Take(ASituation: THintSituation; const AProfile: TKeymapProfile): string;
     property Enabled: Boolean read FEnabled write FEnabled;
+    /// <summary>The hints shown so far as a bit set (bit = ordinal of the
+    /// situation), kept in the session file so each hint appears once for good.
+    /// Zero makes every hint due again.</summary>
+    property Seen: Integer read GetSeen write SetSeen;
   end;
 
 /// <summary>The situation of a panel showing AURI (hsNone for a plain folder).</summary>
@@ -55,6 +61,26 @@ begin
   inherited Create;
   FEnabled := AEnabled;
   FShown := [];
+end;
+
+function TKeyHintTracker.GetSeen: Integer;
+var
+  S: THintSituation;
+begin
+  Result := 0;
+  for S := Succ(hsNone) to High(THintSituation) do
+    if S in FShown then
+      Result := Result or (1 shl Ord(S));
+end;
+
+procedure TKeyHintTracker.SetSeen(AValue: Integer);
+var
+  S: THintSituation;
+begin
+  FShown := [];
+  for S := Succ(hsNone) to High(THintSituation) do
+    if AValue and (1 shl Ord(S)) <> 0 then
+      Include(FShown, S);
 end;
 
 function TKeyHintTracker.Take(ASituation: THintSituation;

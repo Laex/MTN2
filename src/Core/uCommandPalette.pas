@@ -299,6 +299,41 @@ begin
   Result := P > Length(APattern);
 end;
 
+// How well the folded query word AWord fits the shortcut column ("F5", "Ctrl+F5
+// / Shift+Ins"): 1 when it is one whole chord, 3 when it is one key of a chord
+// ("f9" finds Shift+F9) or, with a "+", a part of a chord ("ctrl+f"); -1 when it
+// is none of them. A bare letter never matches inside a longer key name.
+function ShortcutScore(const AWord, AShortcut: string): Integer;
+var
+  Rest, Chord, Part: string;
+  P: Integer;
+begin
+  Result := -1;
+  Rest := Fold(AShortcut);
+  while Rest <> '' do
+  begin
+    P := Pos(' / ', Rest);
+    if P > 0 then
+    begin
+      Chord := Copy(Rest, 1, P - 1);
+      Rest := Copy(Rest, P + 3, MaxInt);
+    end
+    else
+    begin
+      Chord := Rest;
+      Rest := '';
+    end;
+    Chord := Trim(Chord);
+    if Chord = AWord then
+      Exit(1);
+    if (Pos('+', AWord) > 0) and (Pos(AWord, Chord) > 0) then
+      Result := 3;
+    for Part in Chord.Split(['+']) do
+      if Part = AWord then
+        Result := 3;
+  end;
+end;
+
 // A word with ? or * matches where the glob matches some part of the text; the
 // beginning of the caption or of one of its words ranks best.
 function WildWordScore(const AWord: string; const AEntry: TPaletteEntry): Integer;
@@ -318,6 +353,8 @@ begin
     if GlobMatch(AWord + '*', W) then
       Exit(3);
   if GlobMatch('*' + AWord + '*', AliasF) then
+    Exit(4);
+  if GlobMatch('*' + AWord + '*', Fold(AEntry.Shortcut)) then
     Exit(4);
   if GlobMatch('*' + AWord + '*', Fold(AEntry.Category)) then
     Exit(5);
@@ -351,6 +388,9 @@ begin
     if Pos(AWord, Initials) = 1 then
       Best := 2;
   end;
+  if Best >= 0 then
+    Exit(Best);
+  Best := ShortcutScore(AWord, AEntry.Shortcut);
   if Best >= 0 then
     Exit(Best);
   AliasWords := SplitWords(Fold(AEntry.Aliases));

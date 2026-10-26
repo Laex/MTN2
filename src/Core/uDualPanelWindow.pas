@@ -1269,6 +1269,10 @@ type
     property OnApplyDisplaySettings: TDisplaySettingsEvent read FOnApplyDisplaySettings write FOnApplyDisplaySettings;
     property OnGetDisplaySettings: TGetDisplaySettingsEvent read FOnGetDisplaySettings write FOnGetDisplaySettings;
     function GetCmdFocused: Boolean;
+    function GetKeyHintsEnabled: Boolean;
+    procedure SetKeyHintsEnabled(AValue: Boolean);
+    function GetKeyHintsSeen: Integer;
+    procedure SetKeyHintsSeen(AValue: Integer);
     property CmdFocused: Boolean read GetCmdFocused write SetCmdFocused;
     property ConsoleMode: Boolean read FConsoleMode write SetConsoleMode;
     /// <summary>When True (default), a Ctrl+Shift+N terminal tab's shell
@@ -1277,6 +1281,12 @@ type
     /// <summary>Enter on a console program in a panel runs it in a terminal
     /// tab instead of the background console.</summary>
     property ProgramsInTerminal: Boolean read FProgramsInTerminal write FProgramsInTerminal;
+    /// <summary>Key hints on or off (Options > User interface).</summary>
+    property KeyHintsEnabled: Boolean read GetKeyHintsEnabled write SetKeyHintsEnabled;
+    /// <summary>The hints shown so far (bit set), kept in the session file.</summary>
+    property KeyHintsSeen: Integer read GetKeyHintsSeen write SetKeyHintsSeen;
+    /// <summary>Makes every key hint due again.</summary>
+    procedure ResetKeyHints;
     /// <summary>When True, the active panel navigating automatically pushes
     /// its directory into the background console (Ctrl+O). Off by default:
     /// the console and the active panel then keep independent directories,
@@ -1361,6 +1371,40 @@ class function TInputOverlayEntry.Make(AIsActive: TFunc<Boolean>;
 begin
   Result.IsActive := AIsActive;
   Result.Handle := AHandle;
+end;
+
+function TDualPanelWindow.GetKeyHintsEnabled: Boolean;
+begin
+  Result := Assigned(FKeyHints) and FKeyHints.Enabled;
+end;
+
+procedure TDualPanelWindow.SetKeyHintsEnabled(AValue: Boolean);
+begin
+  if Assigned(FKeyHints) then
+    FKeyHints.Enabled := AValue;
+end;
+
+function TDualPanelWindow.GetKeyHintsSeen: Integer;
+begin
+  if Assigned(FKeyHints) then
+    Result := FKeyHints.Seen
+  else
+    Result := 0;
+end;
+
+procedure TDualPanelWindow.SetKeyHintsSeen(AValue: Integer);
+begin
+  if Assigned(FKeyHints) then
+    FKeyHints.Seen := AValue;
+end;
+
+procedure TDualPanelWindow.ResetKeyHints;
+begin
+  if Assigned(FKeyHints) then
+    FKeyHints.Seen := 0;
+  // The state the panel is in now shows its hint again.
+  FHintSituation := hsNone;
+  NotifyChanged;
 end;
 
 function TDualPanelWindow.GetCmdFocused: Boolean;
@@ -3057,6 +3101,12 @@ begin
   FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
   FSettings.OnGetConsoleCwdToPanels := HostGetConsoleCwdToPanels;
   FSettings.OnSetConsoleCwdToPanels := HostSetConsoleCwdToPanels;
+  FSettings.OnResetKeyHints :=
+    procedure
+    begin
+      ResetKeyHints;
+      FToast.Show(T('ui.toast.keyHintsReset', 'Key hints will be shown again'));
+    end;
   FSettings.OnGetProgramsInTerminal :=
     function: Boolean
     begin

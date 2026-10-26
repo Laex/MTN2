@@ -227,9 +227,9 @@ end;
 
 procedure TestInterfaceDialog;
 const
-  cChecks: array[0..9] of string = ('show_title_bar', 'show_menu_bar', 'show_key_bar',
-    'show_status_line', 'notifications', 'alt_menu', 'file_drag', 'select_folders',
-    'pack_same_panel', 'editor_autoindent');
+  cChecks: array[0..10] of string = ('show_title_bar', 'show_menu_bar', 'show_key_bar',
+    'show_status_line', 'notifications', 'key_hints', 'alt_menu', 'file_drag',
+    'select_folders', 'pack_same_panel', 'editor_autoindent');
 var
   LDecl: TDialogDeclaration;
   I, K: Integer;
@@ -243,6 +243,9 @@ begin
     Assert.IsTrue(I >= 0, cChecks[K] + ' checkbox not found');
     Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, cChecks[K] + ' is not checkbox');
   end;
+  I := FindControlById(LDecl, 'reset_hints');
+  Assert.IsTrue(I >= 0, 'reset hints button not found');
+  Assert.IsTrue(LDecl.Controls[I].Kind = dckButton, 'reset_hints is not a button');
   I := FindControlById(LDecl, 'language');
   Assert.IsTrue(I >= 0, 'language dropdown not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckDropDown, 'language is not dropdown');

@@ -21,6 +21,7 @@ type
     [Test] procedure TestHintIsTakenOnce;
     [Test] procedure TestDisabledTrackerGivesNothing;
     [Test] procedure TestHintFitsAToast;
+    [Test] procedure TestSeenSetSurvivesARestart;
   end;
 
 implementation
@@ -113,6 +114,29 @@ begin
   for S := Succ(hsNone) to High(THintSituation) do
     Assert.IsTrue(Length(KeyHintText(S, GetDefaultNDNProfile)) <= 90,
       'hint ' + IntToStr(Ord(S)) + ' is short: ' + KeyHintText(S, GetDefaultNDNProfile));
+end;
+
+procedure TTestKeyHints.TestSeenSetSurvivesARestart;
+var
+  First, Second: TKeyHintTracker;
+  Saved: Integer;
+begin
+  First := TKeyHintTracker.Create(True);
+  Second := TKeyHintTracker.Create(True);
+  try
+    First.Take(hsArchive, GetDefaultNDNProfile);
+    First.Take(hsSftp, GetDefaultNDNProfile);
+    Saved := First.Seen;
+    Assert.IsTrue(Saved <> 0, 'shown hints are recorded');
+    Second.Seen := Saved;
+    Assert.AreEqual('', Second.Take(hsArchive, GetDefaultNDNProfile), 'seen before the restart');
+    Assert.IsTrue(Second.Take(hsFindResults, GetDefaultNDNProfile) <> '', 'not seen yet');
+    Second.Seen := 0;
+    Assert.IsTrue(Second.Take(hsArchive, GetDefaultNDNProfile) <> '', 'reset makes it due again');
+  finally
+    Second.Free;
+    First.Free;
+  end;
 end;
 
 initialization

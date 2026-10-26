@@ -1655,6 +1655,7 @@ begin
     Result.CursorBlinkMs := ClampDisplayBlinkMs(FSession.CursorBlinkMs);
   Result.ShowPanelIcons := GShowPanelIcons;
   Result.ShowNotifications := GShowToasts;
+  Result.ShowKeyHints := not Assigned(FDualPanel) or FDualPanel.KeyHintsEnabled;
   Result.ShowTitleBar := GShowTitleBar;
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
@@ -1688,6 +1689,9 @@ begin
   GShowPanelIcons := ASettings.ShowPanelIcons;
   FSession.ShowNotifications := ASettings.ShowNotifications;
   GShowToasts := ASettings.ShowNotifications;
+  FSession.ShowKeyHints := ASettings.ShowKeyHints;
+  if Assigned(FDualPanel) then
+    FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.ShowTitleBar := ASettings.ShowTitleBar;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.FileDrag := ASettings.FileDrag;
@@ -1802,6 +1806,8 @@ begin
   GListExportConfig := Sess.ListExport;
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
+  FDualPanel.KeyHintsEnabled := Sess.ShowKeyHints;
+  FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
@@ -1908,6 +1914,16 @@ begin
     Sess.CursorBlinkMs := FSession.CursorBlinkMs;
   Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShowNotifications := GShowToasts;
+  if Assigned(FDualPanel) then
+  begin
+    Sess.ShowKeyHints := FDualPanel.KeyHintsEnabled;
+    Sess.KeyHintsSeen := FDualPanel.KeyHintsSeen;
+  end
+  else
+  begin
+    Sess.ShowKeyHints := FSession.ShowKeyHints;
+    Sess.KeyHintsSeen := FSession.KeyHintsSeen;
+  end;
   Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.FileDrag := GFileDragEnabled;
@@ -2784,6 +2800,7 @@ begin
   FSession.CursorBlinkMs := cBlinkIntervalMs;
   FSession.ShowPanelIcons := True;
   FSession.ShowNotifications := True;
+  FSession.ShowKeyHints := True;
   FSession.ShowTitleBar := True;
   FSession.ShowMenuBar := True;
   FSession.FileDrag := True;
