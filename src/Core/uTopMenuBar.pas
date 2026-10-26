@@ -140,6 +140,7 @@ type
     tmaOptConsoleOptions,
     tmaOptEnvironment,
     tmaOptToggleMouse,
+    tmaOptSaveSettings,
     tmaOptExportSettings,
     tmaOptImportSettings,
     tmaOptConfigLocation,

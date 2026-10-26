@@ -189,7 +189,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..74] of TTopicRule = (
+  cRules: array[0..75] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -253,6 +253,7 @@ const
     (Prefix: 'tmaOptTheme'; Topic: 'settings.md#theme'),
     (Prefix: 'tmaOptInterface'; Topic: 'settings.md#interface'),
     (Prefix: 'tmaOptConsoleOptions'; Topic: 'settings.md#console'),
+    (Prefix: 'tmaOptSaveSettings'; Topic: 'settings.md#save-settings'),
     (Prefix: 'tmaOptExportSettings'; Topic: 'settings.md#settings-file'),
     (Prefix: 'tmaOptImportSettings'; Topic: 'settings.md#settings-file'),
     (Prefix: 'tmaOptConfigLocation'; Topic: 'settings.md#location'),

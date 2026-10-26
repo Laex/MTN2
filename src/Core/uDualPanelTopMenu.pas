@@ -204,6 +204,7 @@ begin
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
     tmaOptConsoleOptions: CallProc(AHost.OpenConsoleOptionsDialog);
     tmaOptEnvironment: CallProc(AHost.OpenEnvironmentProfiles);
+    tmaOptSaveSettings: CallProc(AHost.SaveSettings);
     tmaOptExportSettings: CallProc(AHost.BeginExportSettings);
     tmaOptImportSettings: CallProc(AHost.BeginImportSettings);
     tmaOptConfigLocation: CallProc(AHost.BeginConfigLocation);
@@ -244,7 +245,7 @@ begin
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile,
     tmaCmdSaveConsoleOutput, tmaCmdClearConsole,
-    tmaOptExportSettings, tmaOptImportSettings, tmaOptConfigLocation:
+    tmaOptSaveSettings, tmaOptExportSettings, tmaOptImportSettings, tmaOptConfigLocation:
       Exit(True);
 
     tmaOptToggleMouse:

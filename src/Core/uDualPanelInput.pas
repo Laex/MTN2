@@ -129,6 +129,7 @@ type
     OpenExternalToolsDialog: TKeymapProc;
     OpenConsoleOptionsDialog: TKeymapProc;
     BeginSaveConsoleOutput: TKeymapProc;
+    SaveSettings: TKeymapProc;
     BeginExportSettings: TKeymapProc;
     BeginImportSettings: TKeymapProc;
     BeginConfigLocation: TKeymapProc;

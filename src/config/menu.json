@@ -170,6 +170,7 @@
         { "isSeparator": true },
         { "caption": "Restore hidden dialogs", "hotChar": "H", "shortcut": "", "action": "tmaOptRestoreHiddenDialogs", "aliases": "dialogs, hidden, confirmations, do not show again, restore" },
         { "isSeparator": true },
+        { "caption": "Save settings", "hotChar": "G", "shortcut": "", "action": "tmaOptSaveSettings", "hint": "Writes the current settings, panels and tabs to the settings file now instead of at exit.", "aliases": "save, write, settings, config, session" },
         { "caption": "Export settings...", "hotChar": "X", "shortcut": "", "action": "tmaOptExportSettings", "aliases": "export, backup, settings, config" },
         { "caption": "Import settings...", "hotChar": "P", "shortcut": "", "action": "tmaOptImportSettings", "aliases": "import, restore, settings, config" },
         { "caption": "Settings location...", "hotChar": "S", "shortcut": "", "action": "tmaOptConfigLocation", "aliases": "config, folder, path, portable, location" }

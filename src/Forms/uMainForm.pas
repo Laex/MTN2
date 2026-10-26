@@ -206,6 +206,8 @@ type
     function PeekSessionLanguage: string;
     procedure TryRestoreSession;
     procedure PersistSession;
+    function TryPersistSession: Boolean;
+    function DualPanelSaveSettings(out AError: string): Boolean;
     procedure DualPanelContentChanged(Sender: TObject);
     procedure DualPanelOpenViewer(const AURI: string);
     procedure DualPanelOpenEditor(const AURI: string);
@@ -1386,6 +1388,7 @@ begin
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
   FDualPanel.OnHelperActiveChanged := DualPanelHelperActiveChanged;
+  FDualPanel.OnSaveSettings := DualPanelSaveSettings;
   FDualPanel.OnExportSettings := DualPanelExportSettings;
   FDualPanel.OnImportSettings := DualPanelImportSettings;
   FDualPanel.OnSwitchConfigMode := DualPanelSwitchConfigMode;
@@ -1829,9 +1832,15 @@ begin
 end;
 
 procedure TMainForm.PersistSession;
+begin
+  TryPersistSession;
+end;
+
+function TMainForm.TryPersistSession: Boolean;
 var
   Sess: TMtnSession;
 begin
+  Result := False;
   if not Assigned(FDualPanel) or FSettingsImported then
     Exit;
   CaptureNormalBounds;
@@ -1937,7 +1946,20 @@ begin
   Sess.RestoreWorkspaceOnStart := FSession.RestoreWorkspaceOnStart or
     (FSession.Version < 1);
   FSession := Sess;
-  SaveSession(DefaultSessionFilePath, Sess);
+  Result := SaveSession(DefaultSessionFilePath, Sess);
+end;
+
+function TMainForm.DualPanelSaveSettings(out AError: string): Boolean;
+begin
+  AError := '';
+  if FSettingsImported then
+  begin
+    AError := T('ui.settings.saveAfterImport', 'imported settings apply at the next start');
+    Exit(False);
+  end;
+  Result := TryPersistSession;
+  if not Result then
+    AError := DefaultSessionFilePath;
 end;
 
 procedure TMainForm.DualPanelContentChanged(Sender: TObject);

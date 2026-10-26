@@ -181,7 +181,7 @@ end;
 
 procedure TestMenuActionTopics;
 const
-  cSamples: array[0..17] of array[0..1] of string = (
+  cSamples: array[0..18] of array[0..1] of string = (
     ('tmaFileCopy', 'fileops.md'),
     ('tmaFileSelectAll', 'selection.md'),
     ('tmaFilePack', 'archives.md#pack'),
@@ -199,6 +199,7 @@ const
     ('tmaCmdLiveFilter', 'search.md'),
     ('tmaCmdJobList', 'jobs.md#job-list'),
     ('tmaOptEnvironment', 'environment.md'),
+    ('tmaOptSaveSettings', 'settings.md#save-settings'),
     ('tmaOptToggleMouse', 'text.md#mouse'));
 var
   I: Integer;

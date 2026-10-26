@@ -219,6 +219,9 @@ type
   /// <summary>Writes (export) or reads (import) the settings zip at APath.</summary>
   TSettingsFileEvent = function(const APath: string;
     out AError: string): Boolean of object;
+  /// <summary>Writes the current settings and session to their files; AError
+  /// says why not.</summary>
+  TSaveSettingsEvent = function(out AError: string): Boolean of object;
   /// <summary>Moves the settings to the other place (standard folder or the
   /// program's own); ALeftover counts the originals that could not be deleted.</summary>
   TSwitchConfigModeEvent = function(out ALeftover: Integer;

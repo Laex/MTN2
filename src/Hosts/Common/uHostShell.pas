@@ -118,6 +118,10 @@ type
     procedure HandleEvent(const AEvent: TTermEvent);
     /// <summary>Saves the panels and settings; call before leaving.</summary>
     procedure PersistSession;
+    /// <summary>Saves the panels and settings now; False when the file could not
+    /// be written.</summary>
+    function TryPersistSession: Boolean;
+    function DualPanelSaveSettings(out AError: string): Boolean;
     /// <summary>The terminal window title: the program and the folder of the
     /// active panel.</summary>
     function Title: string;
@@ -473,9 +477,21 @@ begin
 end;
 
 procedure THostShell.PersistSession;
+begin
+  TryPersistSession;
+end;
+
+function THostShell.DualPanelSaveSettings(out AError: string): Boolean;
+begin
+  AError := DefaultSessionFilePath;
+  Result := TryPersistSession;
+end;
+
+function THostShell.TryPersistSession: Boolean;
 var
   Sess: TMtnSession;
 begin
+  Result := False;
   if not Assigned(FDualPanel) then
     Exit;
   Sess := FSession;
@@ -517,7 +533,7 @@ begin
   Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;
   FSession := Sess;
-  SaveSession(DefaultSessionFilePath, Sess);
+  Result := SaveSession(DefaultSessionFilePath, Sess);
 end;
 
 { ---- windows ------------------------------------------------------------ }
@@ -535,6 +551,7 @@ begin
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
+  FDualPanel.OnSaveSettings := DualPanelSaveSettings;
   FDualPanel.OnGetDisplaySettings := GetDisplaySettings;
   FDualPanel.OnApplyDisplaySettings := ApplyDisplaySettings;
   FDualPanel.OnToggleConsole := DualPanelToggleConsole;

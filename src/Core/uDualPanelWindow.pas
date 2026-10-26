@@ -159,6 +159,7 @@ type
     FOnShellCwdSync: TShellCwdSyncEvent;
     FOnSaveConsoleOutput: TSaveConsoleOutputEvent;
     FOnClearConsoleBuffer: TNotifyEvent;
+    FOnSaveSettings: TSaveSettingsEvent;
     FOnExportSettings: TSettingsFileEvent;
     FOnImportSettings: TSettingsFileEvent;
     FOnSwitchConfigMode: TSwitchConfigModeEvent;
@@ -804,6 +805,7 @@ type
     procedure OpenConsoleOptionsDialog;
     procedure BeginSaveConsoleOutput;
     procedure ClearConsoleBuffer;
+    procedure SaveSettings;
     procedure BeginExportSettings;
     procedure BeginImportSettings;
     procedure BeginConfigLocation;
@@ -1215,6 +1217,9 @@ type
     property HelperActive: Boolean read FHelperActive;
     property OnHelperActiveChanged: TNotifyEvent
       read FOnHelperActiveChanged write FOnHelperActiveChanged;
+    /// <summary>Options > Save settings: the host writes the session file.</summary>
+    property OnSaveSettings: TSaveSettingsEvent
+      read FOnSaveSettings write FOnSaveSettings;
     property OnExportSettings: TSettingsFileEvent
       read FOnExportSettings write FOnExportSettings;
     property OnImportSettings: TSettingsFileEvent
@@ -1878,6 +1883,7 @@ begin
   FKeymapHost.OpenExternalToolsDialog := OpenExternalToolsDialog;
   FKeymapHost.OpenConsoleOptionsDialog := OpenConsoleOptionsDialog;
   FKeymapHost.BeginSaveConsoleOutput := BeginSaveConsoleOutput;
+  FKeymapHost.SaveSettings := SaveSettings;
   FKeymapHost.BeginExportSettings := BeginExportSettings;
   FKeymapHost.BeginImportSettings := BeginImportSettings;
   FKeymapHost.BeginConfigLocation := BeginConfigLocation;
@@ -8941,6 +8947,19 @@ begin
   if (Dir = '') or not TDirectory.Exists(Dir) then
     Dir := PlatformDocumentsDir;
   Result := TPath.Combine(Dir, 'mtn2-settings.zip');
+end;
+
+procedure TDualPanelWindow.SaveSettings;
+var
+  Err: string;
+begin
+  if not Assigned(FOnSaveSettings) then
+    Exit;
+  if FOnSaveSettings(Err) then
+    FToast.Show(T('ui.toast.settingsSaved', 'Settings saved'), '', tkInfo)
+  else
+    FToast.Show(T('ui.toast.settingsSaveFailed', 'Could not save the settings: %s'),
+      Err, tkWarning);
 end;
 
 procedure TDualPanelWindow.BeginExportSettings;
