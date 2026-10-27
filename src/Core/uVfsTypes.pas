@@ -183,6 +183,10 @@ function LocalPathIsFile(const APath: string): Boolean;
 /// messages on the plain path. Not for Shell APIs (SHFileOperation,
 /// IFileOperation, ShellExecute): they reject the prefix.</summary>
 function WinApiPath(const APath: string): string;
+/// <summary>True when a name in the path, the last one included, ends with a
+/// space. Win32 and Delphi's file routines drop that space; such a path goes
+/// through WinApiPath and the raw API calls.</summary>
+function PathHasBlankEndedName(const APath: string): Boolean;
 /// <summary>TPath.GetFileName that also accepts a name with control
 /// characters (valid on Linux, and on NTFS volumes mounted there), where TPath
 /// raises.</summary>
@@ -399,6 +403,27 @@ begin
   Result := False;
 end;
 
+function IsUncPath(const APath: string): Boolean; forward;
+
+// True when a folder name in the path ends with a space ("name \"): Win32
+// drops that space unless the path starts with \\?\.
+function HasBlankEndedSegment(const APath: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if PlatformPosixPaths then
+    Exit;
+  for I := 2 to Length(APath) do
+    if CharInSet(APath[I], ['\', '/']) and (APath[I - 1] = ' ') then
+      Exit(True);
+end;
+
+function PathHasBlankEndedName(const APath: string): Boolean;
+begin
+  Result := HasBlankEndedSegment(APath + '\');
+end;
+
 function LocalPathKey(const APath: string): string;
 begin
   if PlatformPosixPaths then
@@ -429,11 +454,30 @@ begin
   P := Trim(APath);
   if P = '' then
     Exit('');
+  // A folder whose name ends with a space keeps it when it exists with it.
+  if APath[Length(APath)] = ' ' then
+    if PlatformPosixPaths then
+    begin
+      if (P[1] = '/') and PlatformIsDirectory(TrimLeft(APath)) then
+        P := TrimLeft(APath);
+    end
+    else if (Length(P) >= 3) and (P[2] = ':') and CharInSet(P[3], ['\', '/']) and
+       PlatformIsDirectory('\\?\' + StringReplace(TrimLeft(APath), '/', '\', [rfReplaceAll])) then
+      P := TrimLeft(APath);
   if PlatformPosixPaths then
   begin
     Result := TPath.GetFullPath(P);
     if Length(Result) > 1 then
       Result := ExcludeTrailingPathDelimiter(Result);
+    Exit;
+  end;
+  // GetFullPath would cut the space off the end of such a folder name.
+  if HasBlankEndedSegment(P + '\') and (IsUncPath(P) or ((Length(P) >= 3) and
+     (P[2] = ':') and CharInSet(P[3], ['\', '/']))) and
+     (Pos('\..\', StringReplace(P, '/', '\', [rfReplaceAll]) + '\') = 0) and
+     (Pos('\.\', StringReplace(P, '/', '\', [rfReplaceAll]) + '\') = 0) then
+  begin
+    Result := ExcludeTrailingPathDelimiter(StringReplace(P, '/', '\', [rfReplaceAll]));
     Exit;
   end;
   // Bare "C:" means current-dir-on-drive in Windows APIs - force true root.
@@ -566,8 +610,10 @@ begin
   Result := APath;
   if PlatformPosixPaths then
     Exit;
-  if (Length(Result) < cLongPathThreshold) or Result.StartsWith('\\?\') or
-     Result.StartsWith('\\.\') then
+  if Result.StartsWith('\\?\') or Result.StartsWith('\\.\') then
+    Exit;
+  if (Length(Result) < cLongPathThreshold) and
+     not HasBlankEndedSegment(Result + '\') then
     Exit;
   // \\?\ turns off Win32 path normalization, so hand it backslashes only.
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);

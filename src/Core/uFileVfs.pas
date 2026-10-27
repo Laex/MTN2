@@ -40,7 +40,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
-  System.Generics.Defaults, uPlatformInfo, uPlatformFileOps, uFileRecycleBin, uVfsUtils;
+  System.Generics.Defaults, uPlatformInfo, uPlatformFileOps, uFileRecycleBin, uVfsUtils, uPlatformUpdate, uPlatformPaths;
 
 type
   TVfsEntryComparer = class(TComparer<TVfsEntry>)
@@ -270,6 +270,8 @@ end;
 
 procedure VerifyMoveResult(const ASrc, ADst: string; AWasDirectory: Boolean;
   var AError: TVfsError);
+var
+  SourceLeft: Boolean;
 begin
   if AError.Code <> vecOk then
     Exit;
@@ -288,8 +290,14 @@ begin
       'Move verification failed: destination file missing', PathToFileUri(ADst));
     Exit;
   end;
-  if LocalPathIsFile(ASrc) or LocalPathIsDirectory(ASrc) or
-     TFile.Exists(WinApiPath(ASrc)) or TDirectory.Exists(WinApiPath(ASrc)) then
+  // The usual checks cut a space off the end of a name, and would find the
+  // moved item under its new name when only that space was removed.
+  if PathHasBlankEndedName(ASrc) then
+    SourceLeft := PlatformIsDirectory(WinApiPath(ASrc)) or PlatformIsFile(WinApiPath(ASrc))
+  else
+    SourceLeft := LocalPathIsFile(ASrc) or LocalPathIsDirectory(ASrc) or
+      TFile.Exists(WinApiPath(ASrc)) or TDirectory.Exists(WinApiPath(ASrc));
+  if SourceLeft then
     AError := TVfsError.Make(vecIOError,
       'Move verification failed: source still exists', PathToFileUri(ASrc));
 end;
@@ -401,7 +409,11 @@ begin
         if Total - Copied < Want then
           Want := Integer(Total - Copied);
         N := Src.Read(Buf[0], Want);
-        if N <= 0 then
+        // A failed read (an offline cloud placeholder, a drive that went away)
+        // reports the system's own reason, not just a short copy.
+        if N < 0 then
+          RaiseLastOSError;
+        if N = 0 then
           Break;
         Dst.WriteBuffer(Buf[0], N);
         Inc(Copied, N);
@@ -1163,7 +1175,7 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Src, Dst: string;
+      Src, Dst, MoveMsg: string;
       Err: TVfsError;
       DoneBytes, TotalBytes: Int64;
       SameVolume, WasDirectory, AnySkipped: Boolean;
@@ -1221,7 +1233,13 @@ begin
             begin
               QueueProgress(OnProgress, 0, 1, SafeFileName(Src), 0, 1, Src, Dst);
               try
-                if WasDirectory then
+                if PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) then
+                begin
+                  // TDirectory.Move and TFile.Move cut the space off such a name.
+                  if not PlatformMoveFile(WinApiPath(Src), WinApiPath(Dst), False, MoveMsg) then
+                    raise EInOutError.Create(MoveMsg);
+                end
+                else if WasDirectory then
                   TDirectory.Move(WinApiPath(Src), WinApiPath(Dst))
                 else
                   TFile.Move(WinApiPath(Src), WinApiPath(Dst));

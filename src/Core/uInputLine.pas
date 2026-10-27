@@ -589,7 +589,7 @@ procedure InputLineDraw(const AGrid: TTerminalGrid; AX, AY, AWidth: Integer;
   var A: TInputLine; AFocused: Boolean; const AColors: TInputLineColors;
   ACursorVisible: Boolean; APasswordMask: Boolean);
 var
-  X, I, AbsIdx, MaxVis: Integer;
+  X, I, AbsIdx, MaxVis, FirstSolid, LastSolid: Integer;
   Vis: string;
   Ch: Char;
   Fg, Bg: TAlphaColor;
@@ -601,6 +601,15 @@ begin
   MaxVis := Min(AWidth, Max(Length(A.Text) - A.ViewLeft, 0));
   Vis := Copy(A.Text, A.ViewLeft + 1, MaxVis);
 
+  // Spaces before the first and after the last other character are drawn as
+  // dots: they are easy to miss in a path or a name.
+  FirstSolid := 0;
+  while (FirstSolid < Length(A.Text)) and (A.Text[FirstSolid + 1] = ' ') do
+    Inc(FirstSolid);
+  LastSolid := Length(A.Text);
+  while (LastSolid > FirstSolid) and (A.Text[LastSolid] = ' ') do
+    Dec(LastSolid);
+
   X := AX;
   for I := 1 to Length(Vis) do
   begin
@@ -609,6 +618,12 @@ begin
     AbsIdx := A.ViewLeft + I - 1;
     if APasswordMask then
       Ch := '*'
+    else if (Ord(Vis[I]) < 32) or ((Ord(Vis[I]) >= $7F) and (Ord(Vis[I]) <= $9F)) then
+      // A control character would draw as nothing or break the cell: a dot
+      // in the middle of the cell shows that something is there.
+      Ch := #$00B7
+    else if (Vis[I] = ' ') and ((AbsIdx < FirstSolid) or (AbsIdx >= LastSolid)) then
+      Ch := #$00B7
     else
       Ch := Vis[I];
     if AFocused and InputLineHasSelection(A) and
