@@ -16,6 +16,7 @@
 | Tab / Shift+Tab | Markdown: next / previous link |
 | Enter, click on a link | Markdown: open an external link (`https://…`, `mailto:…`) in the default application, after a confirmation |
 | F2 | save (editor) / word wrap (viewer; remembered per file along with the position) |
+| Ctrl+Shift+F | viewer: follow the end of a growing file (a log); leave with the same key, a scroll up, Up, PgUp, Home or another mode |
 | Ctrl+S | save |
 | Ctrl+Z / Ctrl+Shift+Z | undo / redo |
 | Ctrl+Y, Ctrl+D | delete the line |

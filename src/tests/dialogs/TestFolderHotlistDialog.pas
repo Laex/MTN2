@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHotlist,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHotlist, uConfigLocation,
   uDualPanelFolderHotlist;
 
 const
@@ -77,6 +77,7 @@ end;
 
 procedure TTestFolderHotlistDialog.Setup;
 begin
+  Assert.IsTrue(ConfigDirectoryIsOverridden, 'the tests run on a settings folder of their own');
   FolderHotlistClear;
   FolderHotlistAdd('a', cA);
   FolderHotlistAdd('b', cB);

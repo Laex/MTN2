@@ -3147,6 +3147,12 @@ begin
       begin
         Recompose;
       end);
+  // A notice drawn into the grid stays above the picture: the picture leaves
+  // its cells out.
+  if Assigned(FDualPanel) then
+    SetOverlayExclusion(FDualPanel.ToastArea)
+  else
+    SetOverlayExclusion(TRectI.Make(0, 0, -1, -1));
   // Media Overlay (Ctrl+Q Quick View) - separate canvas pass on
   // top of the grid, per OVERLAY_PLUGIN.md invariant 2 ("not TCharCell").
   // Gated by QuickViewVisible: the overlay's stored bounds only make sense

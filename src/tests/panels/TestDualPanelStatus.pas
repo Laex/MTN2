@@ -450,7 +450,8 @@ begin
   Assert.IsTrue((Length(Letters) = 10) and (Letters[9] = 'F:Path'),
     'Ctrl+F (the first key of Path) shown under Ctrl');
   FunctionBarGetItems(fbcViewer, [ssCtrl, ssShift], Items, Letters);
-  Assert.IsTrue(Length(Letters) = 0, 'Ctrl+Shift+A is not select all');
+  Assert.IsTrue((Length(Letters) = 1) and (Letters[0] = 'F:Follow'),
+    'Ctrl+Shift+A is not select all; Follow is the only hint');
   Item := Default(TSubmenuItem);
   Item.Action := tmaEditCopy;
   Item.Shortcut := 'json text';

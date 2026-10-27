@@ -43,6 +43,8 @@ function FolderHotlistGetEntries: TArray<TFolderHotlistEntry>;
 /// neighbour it would pass.</summary>
 function FolderHotlistMoveByUri(const AUri: string; ADelta: Integer): Boolean;
 procedure FolderHotlistClear;
+/// <summary>Forgets the list in memory; the next use reads the file again.</summary>
+procedure FolderHotlistReload;
 /// <summary>Writes the list to disk now.</summary>
 procedure FolderHotlistSave;
 /// <summary>Replaces the whole list (for rolling back a cancelled edit).</summary>
@@ -85,7 +87,7 @@ implementation
 
 uses
   System.IOUtils, System.JSON, System.Generics.Collections, System.Generics.Defaults,
-  System.UITypes, uConfigLocation, uVfsTypes;
+  System.UITypes, uConfigLocation, uVfsTypes, uPlatformUpdate;
 
 var
   GLoaded: Boolean = False;
@@ -171,9 +173,65 @@ begin
     GEntries.Delete(I);
 end;
 
-procedure EnsureLoaded;
+type
+  THotlistLoad = (hlOk, hlUnreadable, hlCorrupt);
+
 var
-  Path, Content: string;
+  // The file exists but could not be read: the list in memory is empty
+  // only because of that, so nothing is written over the file.
+  GLoadFailed: Boolean = False;
+  GLoadFailedAt: UInt64 = 0;
+  // Size and time of the file as this process last read or wrote it: another
+  // copy of the program sharing the settings folder changes it behind our
+  // back, and the list in memory is then read again before it is used.
+  GStamp: string = '';
+  GStampCheckedAt: UInt64 = 0;
+  GLoading: Boolean = False;
+
+const
+  cRetryAfterFailureMs = 2000;
+  cStampCheckMs = 200;
+
+function BackupPath: string;
+begin
+  Result := GetConfigFilePath(cFileName) + '.bak';
+end;
+
+function FileStamp(const APath: string): string;
+begin
+  try
+    if TFile.Exists(APath) then
+      Result := IntToStr(TFile.GetSize(APath)) + '|' +
+        FloatToStr(TFile.GetLastWriteTimeUtc(APath))
+    else
+      Result := '';
+  except
+    Result := '?';
+  end;
+end;
+
+// A file another process is writing or scanning can refuse a read for a
+// moment; a few tries tell that apart from a file that is really unreadable.
+function ReadHotlistFile(const APath: string; out AText: string): Boolean;
+var
+  Attempt: Integer;
+begin
+  for Attempt := 1 to 4 do
+  begin
+    try
+      AText := TFile.ReadAllText(APath, TEncoding.UTF8);
+      Exit(True);
+    except
+      Sleep(50 * Attempt);
+    end;
+  end;
+  Result := False;
+end;
+
+// Fills GEntries from the file at APath.
+function LoadHotlistFrom(const APath: string): THotlistLoad;
+var
+  Content: string;
   Root: TJSONValue;
   Arr: TJSONArray;
   I: Integer;
@@ -183,25 +241,17 @@ var
   NameVal, UriVal, GroupVal: string;
   HotKeyVal: Integer;
 begin
-  if GLoaded then
-    Exit;
-  GLoaded := True;
-  if GEntries = nil then
-    GEntries := TList<TFolderHotlistEntry>.Create
-  else
-    GEntries.Clear;
-
-  Path := GetConfigFilePath(cFileName);
-  if not TFile.Exists(Path) then
-    Exit;
+  GEntries.Clear;
+  if not ReadHotlistFile(APath, Content) then
+    Exit(hlUnreadable);
+  Root := TJSONObject.ParseJSONValue(Content);
+  if not (Root is TJSONArray) then
+  begin
+    Root.Free;
+    Exit(hlCorrupt);
+  end;
   try
-    Content := TFile.ReadAllText(Path, TEncoding.UTF8);
-    Root := TJSONObject.ParseJSONValue(Content);
-    if Root = nil then
-      Exit;
     try
-      if not (Root is TJSONArray) then
-        Exit;
       Arr := TJSONArray(Root);
       for I := 0 to Arr.Count - 1 do
       begin
@@ -245,24 +295,111 @@ begin
           GEntries[I] := Entry;
         end;
       end;
-    finally
-      Root.Free;
+      Result := hlOk;
+    except
+      GEntries.Clear;
+      Result := hlCorrupt;
     end;
-  except
-    GEntries.Clear;
+  finally
+    Root.Free;
   end;
 end;
 
+procedure LoadAll;
+var
+  Path, Backup: string;
+begin
+  GLoadFailed := False;
+  if GEntries = nil then
+    GEntries := TList<TFolderHotlistEntry>.Create
+  else
+    GEntries.Clear;
+
+  Path := GetConfigFilePath(cFileName);
+  Backup := BackupPath;
+  if not TFile.Exists(Path) then
+  begin
+    // A lost file with a backup beside it is restored from the backup.
+    if TFile.Exists(Backup) and (LoadHotlistFrom(Backup) <> hlOk) then
+      GEntries.Clear;
+    Exit;
+  end;
+  case LoadHotlistFrom(Path) of
+    hlOk:
+      ;
+    hlUnreadable:
+      begin
+        // Not the user's list: ask again later and write nothing meanwhile.
+        GEntries.Clear;
+        GLoaded := False;
+        GLoadFailed := True;
+        GLoadFailedAt := TThread.GetTickCount64;
+      end;
+    hlCorrupt:
+      begin
+        // A damaged file is kept for recovery; the last good copy takes over.
+        try
+          TFile.Copy(Path, Path + '.corrupt', True);
+        except
+        end;
+        if (not TFile.Exists(Backup)) or (LoadHotlistFrom(Backup) <> hlOk) then
+          GEntries.Clear;
+      end;
+  end;
+end;
+
+procedure EnsureLoaded;
+begin
+  if GLoading then
+    Exit;
+  if GLoaded then
+  begin
+    // The file changed since this process last saw it: another copy of the
+    // program wrote it, and its list is the one to work on.
+    if TThread.GetTickCount64 - GStampCheckedAt < cStampCheckMs then
+      Exit;
+    GStampCheckedAt := TThread.GetTickCount64;
+    if FileStamp(GetConfigFilePath(cFileName)) = GStamp then
+      Exit;
+    GLoaded := False;
+  end;
+  // A read that failed a moment ago is not repeated on every call.
+  if GLoadFailed and (TThread.GetTickCount64 - GLoadFailedAt < cRetryAfterFailureMs) then
+    Exit;
+  // Set first: loading calls back into the list (hotkey check).
+  GLoaded := True;
+  GLoading := True;
+  try
+    LoadAll;
+  finally
+    GLoading := False;
+  end;
+  GStamp := FileStamp(GetConfigFilePath(cFileName));
+  GStampCheckedAt := TThread.GetTickCount64;
+end;
+
+procedure FolderHotlistReload;
+begin
+  GLoaded := False;
+  GLoadFailed := False;
+  EnsureLoaded;
+end;
+
+// The new content is written beside the file and moved over it, so a crash
+// or a power loss leaves the file whole, with either the previous content or
+// the new one, never half of it. A list with entries is also kept as .bak, the
+// copy a damaged or lost file is restored from.
 procedure SaveLocked;
 var
-  Path: string;
+  Path, Tmp, Error: string;
   Arr: TJSONArray;
   Obj: TJSONObject;
   I: Integer;
 begin
-  if GEntries = nil then
+  if (GEntries = nil) or GLoadFailed then
     Exit;
   Path := GetConfigFilePath(cFileName);
+  Tmp := Path + '.tmp';
   Arr := TJSONArray.Create;
   try
     for I := 0 to GEntries.Count - 1 do
@@ -279,10 +416,22 @@ begin
         Obj.AddPair('group', GEntries[I].Group);
       Arr.AddElement(Obj);
     end;
-    TFile.WriteAllText(Path, Arr.ToJSON, TEncoding.UTF8);
+    TFile.WriteAllText(Tmp, Arr.ToJSON, TEncoding.UTF8);
   finally
     Arr.Free;
   end;
+  if not PlatformMoveFile(Tmp, Path, True, Error) then
+  begin
+    TFile.Delete(Tmp);
+    raise EInOutError.Create(Error);
+  end;
+  GStamp := FileStamp(Path);
+  GStampCheckedAt := TThread.GetTickCount64;
+  if GEntries.Count > 0 then
+    try
+      TFile.Copy(Path, BackupPath, True);
+    except
+    end;
 end;
 
 procedure FolderHotlistAdd(const AName, AURI: string);

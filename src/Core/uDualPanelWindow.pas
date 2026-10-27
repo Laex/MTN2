@@ -203,7 +203,10 @@ type
     /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
     FToast: TToast;
     FKeyHints: TKeyHintTracker;
-    FHintSituation: THintSituation;
+    /// <summary>The key-hint situations that held at the last look, and whether
+    /// there was a last look (a restored session's tabs and workspaces are not news).</summary>
+    FHintActive: THintSituations;
+    FHintStarted: Boolean;
     FSaver: TSharkSaver;
     /// <summary>The click and the release that follow a mouse press which only
     /// stopped the screensaver are not input for the window.</summary>
@@ -616,11 +619,14 @@ type
     procedure SyncConsoleDirNow;
     function TryResolveCommandPath(const AText: string; out AURI: string): Boolean;
     procedure NotifyChanged;
-    /// <summary>A toast with the useful keys the first time the active panel
-    /// shows search results, an archive, a temporary panel, a workspace or an
-    /// SFTP folder, or a command is being typed (uKeyHints).</summary>
+    /// <summary>A toast with the useful keys the first time a state is entered:
+    /// a special folder, selected files, a second tab, the console, a terminal,
+    /// the viewer, the editor, a typed command and so on (uKeyHints).</summary>
     procedure ShowSituationHint;
-    procedure ShowKeyHint(ASituation: THintSituation);
+    /// <summary>The situations that hold in the active workspace now.</summary>
+    function CurrentHintSituations: THintSituations;
+    /// <summary>True when the hint of ASituation was due and is on screen.</summary>
+    function ShowKeyHint(ASituation: THintSituation): Boolean;
     procedure CloseDrivePopup;
     procedure ToggleDrivePopup(ASide: TPanelSide);
     /// <summary>The tree is open over a panel of this workspace, focused or not.</summary>
@@ -1339,6 +1345,10 @@ type
     /// Viewer with an image Overlay in the viewport. Host FormPaint uses
     /// this because FMdi.Active is DualPanel, not the nested TEditorWindow.</summary>
     function MarkdownImageOverlayVisible: Boolean;
+    /// <summary>The cells the notice covers, in the grid of the whole window;
+    /// empty (Width 0) when none is on screen. A picture painted over the grid
+    /// leaves them free.</summary>
+    function ToastArea: TRectI;
     /// <summary>True while a plugin picture covers the whole window; ABackground is the color
     /// to paint around it.</summary>
     function SurfaceFullscreenBackground(out ABackground: TAlphaColor): Boolean;
@@ -1402,8 +1412,8 @@ procedure TDualPanelWindow.ResetKeyHints;
 begin
   if Assigned(FKeyHints) then
     FKeyHints.Seen := 0;
-  // The state the panel is in now shows its hint again.
-  FHintSituation := hsNone;
+  // The state the program is in now shows its hint again.
+  FHintActive := [];
   NotifyChanged;
 end;
 
@@ -3761,41 +3771,151 @@ begin
   ShowSituationHint;
 end;
 
-procedure TDualPanelWindow.ShowKeyHint(ASituation: THintSituation);
+function TDualPanelWindow.ShowKeyHint(ASituation: THintSituation): Boolean;
 var
   Request: TNoticeRequest;
-  Text: string;
+  Text, Line1, Line2: string;
 begin
+  Result := False;
   if not Assigned(FKeyHints) then
     Exit;
   Text := FKeyHints.Take(ASituation, ActiveKeymap);
   if Text = '' then
     Exit;
-  Request := TNoticeRequest.Make(Text);
+  // A hint longer than the window is wide goes onto two lines, not off the edge.
+  WrapKeyHint(Text, ToastMaxTextLen(Area.Width), Line1, Line2);
+  Request := TNoticeRequest.Make(Line1);
+  Request.Hint := Line2;
   Request.DurationMs := 6000;
   FToast.ShowRequest(Request);
+  Result := True;
+end;
+
+function TDualPanelWindow.CurrentHintSituations: THintSituations;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Doc: TEditorWindow;
+  Situation: THintSituation;
+  I, PanelWorkspaces: Integer;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Row: TPanelRow;
+  Idx: Integer;
+  LeftName, RightName: string;
+begin
+  Result := [];
+  if Assigned(FTopMenu) and FTopMenu.Active then
+    Include(Result, hsMenu);
+  // A viewer or terminal tab has its own hint; this one is for a second
+  // workspace of panels.
+  PanelWorkspaces := 0;
+  for I := 0 to High(FState.WorkspaceTabs) do
+    if FState.WorkspaceTabs[I].Kind = wkPanels then
+      Inc(PanelWorkspaces);
+  if PanelWorkspaces > 1 then
+    Include(Result, hsWorkspaces);
+  if Assigned(FJobs) and FJobs.HasBusyJob then
+    Include(Result, hsJobs);
+  Ws := ActiveWorkspace;
+  case Ws.Kind of
+    wkDocument:
+      begin
+        Doc := ActiveDocument;
+        if Assigned(Doc) and Doc.MenuDocReady then
+        begin
+          if Doc.HexMode then
+            Include(Result, hsHexView)
+          else if Doc.MarkdownMode then
+            Include(Result, hsMarkdown)
+          else if Doc.ViewOnly then
+            Include(Result, hsViewer)
+          else
+          begin
+            Include(Result, hsEditor);
+            if Doc.HasSelection then
+              Include(Result, hsEditorSelection);
+          end;
+        end;
+      end;
+    wkTerminal:
+      Include(Result, hsTerminal);
+    wkPanels:
+      if FConsoleMode then
+        Include(Result, hsConsole)
+      else
+      begin
+        Panel := ActivePanel(Ws);
+        Situation := HintSituationOfUri(ActiveTab(Panel).CurrentURI);
+        if Situation <> hsNone then
+          Include(Result, Situation)
+        else if Assigned(FCmdLineMgr) and FCmdLineMgr.Focused and
+           (Trim(FCmdLineMgr.Text) <> '') then
+          Include(Result, hsCommandLine);
+        if Length(ActiveTab(Panel).SelectedURIs) > 0 then
+          Include(Result, hsSelection);
+        if Length(ActiveTab(Panel).SelectedURIs) >= 3 then
+          Include(Result, hsManySelected);
+        if Length(ActiveTab(Panel).History) >= 8 then
+          Include(Result, hsFolderTravel);
+        // The same folder name in both panels: a copy to compare or sync.
+        LeftName := '';
+        RightName := '';
+        if SameText(Copy(ActiveTab(Ws.State.LeftPanel).CurrentURI, 1, 7), 'file://') then
+          LeftName := ExtractFileName(FileUriToPath(ActiveTab(Ws.State.LeftPanel).CurrentURI));
+        if SameText(Copy(ActiveTab(Ws.State.RightPanel).CurrentURI, 1, 7), 'file://') then
+          RightName := ExtractFileName(FileUriToPath(ActiveTab(Ws.State.RightPanel).CurrentURI));
+        if (LeftName <> '') and SameText(LeftName, RightName) and
+           (not SameVfsUri(ActiveTab(Ws.State.LeftPanel).CurrentURI,
+             ActiveTab(Ws.State.RightPanel).CurrentURI)) then
+          Include(Result, hsSameNameFolders);
+        if GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
+        begin
+          if Length(Rows) >= 150 then
+            Include(Result, hsLongFolder);
+          if Row.IsArchive and (not Row.IsDirectory) and (not Row.IsParent) then
+            Include(Result, hsArchiveFile);
+        end;
+        if (Ws.State.LeftPanel.ViewKind = pvkQuickView) or
+           (Ws.State.RightPanel.ViewKind = pvkQuickView) then
+          Include(Result, hsQuickView);
+        if (Ws.State.LeftPanel.ViewKind = pvkInfo) or
+           (Ws.State.RightPanel.ViewKind = pvkInfo) then
+          Include(Result, hsInfoPanel);
+        if Length(Panel.Tabs) > 1 then
+          Include(Result, hsPanelTabs);
+      end;
+  end;
 end;
 
 procedure TDualPanelWindow.ShowSituationHint;
+const
+  // The order in which states that begin together are offered; one hint is
+  // shown per look.
+  cPriority: array[0..26] of THintSituation = (hsMenu, hsFindResults,
+    hsArchive, hsTempPanel, hsWorkspace, hsSftp, hsPluginFolder, hsRecycleBin,
+    hsCommandLine, hsHexView, hsMarkdown, hsViewer, hsEditor, hsEditorSelection,
+    hsConsole, hsTerminal, hsSelection, hsManySelected, hsArchiveFile,
+    hsQuickView, hsInfoPanel, hsLongFolder, hsFolderTravel, hsSameNameFolders,
+    hsPanelTabs, hsWorkspaces, hsJobs);
 var
-  Ws: TDualPanelWorkspaceTab;
-  Situation: THintSituation;
+  Active, Fresh: THintSituations;
+  S: THintSituation;
 begin
   if not Assigned(FKeyHints) or not Assigned(FToast) then
     Exit;
-  Situation := hsNone;
-  Ws := ActiveWorkspace;
-  if (Ws.Kind = wkPanels) and not FConsoleMode then
+  Active := CurrentHintSituations;
+  if not FHintStarted then
   begin
-    Situation := HintSituationOfUri(ActiveTab(ActivePanel(Ws)).CurrentURI);
-    if (Situation = hsNone) and Assigned(FCmdLineMgr) and FCmdLineMgr.Focused and
-       (Trim(FCmdLineMgr.Text) <> '') then
-      Situation := hsCommandLine;
+    FHintStarted := True;
+    // Tabs and workspaces restored with the session are not news.
+    FHintActive := Active * [hsPanelTabs, hsWorkspaces];
   end;
-  if Situation = FHintSituation then
-    Exit;
-  FHintSituation := Situation;
-  ShowKeyHint(Situation);
+  Fresh := Active - FHintActive;
+  FHintActive := Active;
+  for S in cPriority do
+    if (S in Fresh) and ShowKeyHint(S) then
+      Break;
 end;
 
 procedure TDualPanelWindow.ModelInvalidated(AWindowId: Integer);
@@ -4746,6 +4866,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   MoveCursor(1);
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.MoveCursorWithSelect(ADelta: Integer;
@@ -4791,6 +4912,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.EndShiftSelect;
@@ -4974,6 +5096,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.BeginSelectByMask(AUnselect: Boolean);
@@ -5013,6 +5136,7 @@ begin
   SaveActiveWorkspace(Ws);
   Invalidate;
   NoteSelectionUnchanged(Before, Tab, Mask);
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.ApplySelectAllFiles(AUnselect: Boolean);
@@ -5039,6 +5163,7 @@ begin
   SaveActiveWorkspace(Ws);
   Invalidate;
   NoteSelectionUnchanged(Before, Tab, '*');
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.ApplySelectByExtension(AUnselect: Boolean);
@@ -5082,6 +5207,7 @@ begin
   SaveActiveWorkspace(Ws);
   Invalidate;
   NoteSelectionUnchanged(Before, Tab, Mask);
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.ApplySelectByName(AUnselect: Boolean);
@@ -5117,6 +5243,7 @@ begin
   SaveActiveWorkspace(Ws);
   Invalidate;
   NoteSelectionUnchanged(Before, Tab, FileNameStem(Name) + '.*');
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.NoteSelectionUnchanged(ABefore: Integer;
@@ -7967,6 +8094,16 @@ begin
     ABackground := Doc.SurfaceBackground;
 end;
 
+function TDualPanelWindow.ToastArea: TRectI;
+begin
+  Result := TRectI.Make(0, 0, -1, -1);
+  if (not Assigned(FToast)) or (FToast.DrawnBounds.Width <= 0) then
+    Exit;
+  Result := FToast.DrawnBounds;
+  Result := TRectI.Make(Result.Left + Area.Left, Result.Top + Area.Top,
+    Result.Right + Area.Left, Result.Bottom + Area.Top);
+end;
+
 function TDualPanelWindow.MarkdownImageOverlayVisible: Boolean;
 var
   Doc: TEditorWindow;
@@ -9603,6 +9740,7 @@ begin
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
   Invalidate;
+  ShowSituationHint;
 end;
 
 procedure TDualPanelWindow.SwitchSide;
@@ -11415,7 +11553,8 @@ begin
   Result := False;
   if ALocalRow <> KeyBarRow(Area.Height) then
     Exit;
-  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri);
+  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri,
+    Area.Width);
   Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
     Assigned(Theme));
   Result := FunctionBarHitToInput(Hit, AShift, AKey, AKeyChar, AKeyShift);
@@ -12195,7 +12334,8 @@ var
   Colors: TFunctionBarColors;
   Discard: TAlphaColor;
 begin
-  FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters, ActiveFolderUri);
+  FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters, ActiveFolderUri,
+    AWidth);
   // Themed F-key bar colours - DrawFunctionBar already forwards to
   // Theme.DrawToolBar for the numbered tool-item segment on the right; these
   // cover the mnemonic-hint segment on the left and the base row fill (there
@@ -13075,7 +13215,8 @@ var
   Shift: TShiftState;
 begin
   Result := False;
-  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri);
+  FunctionBarGetItems(ChromeContext, AShift, Items, Letters, ActiveFolderUri,
+    Area.Width);
   Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
     Assigned(Theme));
   if not FunctionBarHitToInput(Hit, AShift, Key, KeyChar, Shift) then

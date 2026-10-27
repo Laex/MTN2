@@ -140,6 +140,7 @@ type
     kaDocClearSelection, // Ctrl+U -- clear selection
     kaDocClose, // Esc / F10 -- close
     kaViewerWordWrap, // F2 -- word wrap (not in Markdown)
+    kaViewerFollow, // Ctrl+Shift+F -- keep the view at the end of a growing file
     kaMarkdownSource, // F4 in Markdown -- rendered <-> source
     kaEditorSave, // F2 / Ctrl+S -- save
     kaEditorReplace, // Ctrl+F7 -- replace
@@ -708,6 +709,7 @@ begin
   AddBinding(Result, kaDocClose, KeyBinding(vkEscape, False, False, False));
   AddBinding(Result, kaDocClose, KeyBinding(vkF10, False, False, False));
   AddBinding(Result, kaViewerWordWrap, KeyBinding(vkF2, False, False, False));
+  AddBinding(Result, kaViewerFollow, KeyBinding(Ord('F'), True, False, True));
   AddBinding(Result, kaMarkdownSource, KeyBinding(vkF4, False, False, False));
   AddBinding(Result, kaEditorSave, KeyBinding(vkF2, False, False, False));
   AddBinding(Result, kaEditorSave, KeyBinding(Ord('S'), False, False, True));
@@ -783,7 +785,7 @@ begin
     kaDocGotoLine, kaDocFind, kaDocFindNext, kaDocFindPrev, kaDocCopy,
     kaDocSelectAll, kaDocClearSelection, kaDocClose:
       Result := kcDocument;
-    kaViewerWordWrap:
+    kaViewerWordWrap, kaViewerFollow:
       Result := kcViewer;
     kaMarkdownSource:
       Result := kcMarkdown;
@@ -1018,6 +1020,7 @@ const
     'DocClearSelection',     // kaDocClearSelection
     'DocClose',              // kaDocClose
     'ViewerWrap',            // kaViewerWordWrap
+    'ViewerFollow',          // kaViewerFollow
     'MarkdownSource',        // kaMarkdownSource
     'EditorSave',            // kaEditorSave
     'EditorReplace',         // kaEditorReplace
@@ -1465,6 +1468,7 @@ begin
     kaDocFindPrev: Result := 'Prev';
     kaDocClose: Result := 'Quit';
     kaViewerWordWrap: Result := 'Wrap';
+    kaViewerFollow: Result := 'Follow';
     kaEditorSave: Result := 'Save';
     kaEditorReplace: Result := 'Repl';
     kaEditorBookmarkToggle: Result := 'Mark';

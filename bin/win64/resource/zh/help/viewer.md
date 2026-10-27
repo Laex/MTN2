@@ -16,6 +16,7 @@
 | Tab / Shift+Tab | Markdown: 下一个 / 上一个链接 |
 | Enter,点击链接 | Markdown: 确认后用默认应用程序打开外部链接(`https://…`、`mailto:…`) |
 | F2 | 保存(编辑器) / 自动换行(查看器; 与位置一起按文件记住) |
+| Ctrl+Shift+F | 查看器: 跟随不断增长的文件(日志)的末尾; 再按同一键、向上滚动、Up、PgUp、Home 或切换模式即退出 |
 | Ctrl+S | 保存 |
 | Ctrl+Z / Ctrl+Shift+Z | 撤销 / 重做 |
 | Ctrl+Y, Ctrl+D | 删除行 |

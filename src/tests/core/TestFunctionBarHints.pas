@@ -15,12 +15,14 @@ type
     [Test] procedure TestConsoleShowsTheSearchKeys;
     [Test] procedure TestTerminalShowsTheSearchKeys;
     [Test] procedure TestEditorAndViewerShowTheBookmarkKeys;
+    [Test] procedure TestWidePanelsBarNamesThePaletteKey;
+    [Test] procedure TestNarrowPanelsBarKeepsOnlyTheFKeys;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, uFunctionBar;
+  System.SysUtils, System.Classes, System.UITypes, uFunctionBar;
 
 function Joined(const AItems: TArray<string>): string;
 begin
@@ -59,6 +61,34 @@ begin
   Assert.AreEqual('2MarkNx', Items[1], 'Ctrl+Shift+F2 goes to the next one');
   FunctionBarGetItems(fbcViewer, [ssCtrl, ssAlt], Items, Letters);
   Assert.AreEqual('2MarkPv', Items[1], 'Ctrl+Alt+F2 goes to the previous one');
+end;
+
+procedure TTestFunctionBarHints.TestWidePanelsBarNamesThePaletteKey;
+var
+  Items, Letters: TArray<string>;
+  Hit: TFunctionBarHit;
+  Key: Word;
+  KeyChar: Char;
+  Shift: TShiftState;
+begin
+  FunctionBarGetItems(fbcPanels, [], Items, Letters, '', 120);
+  Assert.IsTrue(Joined(Letters).Contains('Shift+F9:Palette'), Joined(Letters));
+  // A click on the hint presses the key it names.
+  Hit := FunctionBarHitTest(2, 120, Items, Letters, [], False);
+  Assert.AreEqual(Ord(fbhHint), Ord(Hit.Kind));
+  Assert.IsTrue(FunctionBarHitToInput(Hit, [], Key, KeyChar, Shift));
+  Assert.AreEqual(Integer(vkF9), Integer(Key));
+  Assert.IsTrue(ssShift in Shift, 'the hint carries Shift');
+end;
+
+procedure TTestFunctionBarHints.TestNarrowPanelsBarKeepsOnlyTheFKeys;
+var
+  Items, Letters: TArray<string>;
+begin
+  FunctionBarGetItems(fbcPanels, [], Items, Letters, '', 80);
+  Assert.IsTrue(Length(Letters) = 0, 'no room for a hint at 80 columns');
+  FunctionBarGetItems(fbcPanels, [], Items, Letters);
+  Assert.IsTrue(Length(Letters) = 0, 'unknown width adds nothing');
 end;
 
 initialization

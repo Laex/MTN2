@@ -54,6 +54,7 @@ type
   TTempConfig = class
   public
     Dir: string;
+    Prev: string;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -63,12 +64,13 @@ begin
   inherited Create;
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-theme-spec-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(Dir);
+  Prev := ConfigDirectoryOverride;
   SetConfigDirectoryOverride(Dir);
 end;
 
 destructor TTempConfig.Destroy;
 begin
-  SetConfigDirectoryOverride('');
+  SetConfigDirectoryOverride(Prev);
   try
     TDirectory.Delete(Dir, True);
   except

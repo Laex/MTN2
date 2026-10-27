@@ -16,6 +16,7 @@
 | Tab / Shift+Tab | Markdown: nächster / vorheriger Link |
 | Enter, Klick auf einen Link | Markdown: einen externen Link (`https://…`, `mailto:…`) nach einer Bestätigung in der Standardanwendung öffnen |
 | F2 | speichern (Editor) / Zeilenumbruch (Viewer; wird pro Datei zusammen mit der Position gemerkt) |
+| Ctrl+Shift+F | Viewer: dem Ende einer wachsenden Datei (Log) folgen; Ende mit derselben Taste, Hochscrollen, Up, PgUp, Home oder einem anderen Modus |
 | Ctrl+S | speichern |
 | Ctrl+Z / Ctrl+Shift+Z | rückgängig / wiederholen |
 | Ctrl+Y, Ctrl+D | die Zeile löschen |

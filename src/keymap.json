@@ -160,6 +160,7 @@
       { "key": "F10", "description": "Close" }
     ],
     "ViewerWrap": { "key": "F2", "description": "Word wrap (not in Markdown)" },
+    "ViewerFollow": { "key": "F", "ctrl": true, "shift": true, "description": "Keep the view at the end of a growing file" },
     "MarkdownSource": { "key": "F4", "description": "Rendered <-> source" },
     "EditorSave": [
       { "key": "F2", "description": "Save" },

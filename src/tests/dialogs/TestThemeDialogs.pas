@@ -44,6 +44,7 @@ type
   TRig = class
   public
     Dir: string;
+    Prev: string;
     Dialog: TDialogHost;
     Ctrl: TThemeDialogController;
     Kind: THostDialogKind;
@@ -66,6 +67,7 @@ begin
   SetLocale('');
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-theme-test-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(Dir);
+  Prev := ConfigDirectoryOverride;
   SetConfigDirectoryOverride(Dir);
   ActiveId := 'Nord';
   Dialog := TDialogHost.Create(nil);
@@ -111,7 +113,7 @@ destructor TRig.Destroy;
 begin
   Ctrl.Free;
   Dialog.Free;
-  SetConfigDirectoryOverride('');
+  SetConfigDirectoryOverride(Prev);
   try
     TDirectory.Delete(Dir, True);
   except

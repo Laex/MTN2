@@ -48,6 +48,7 @@ type
     procedure FindNextOrPrev(AForward: Boolean);
     procedure SaveDoc;
     procedure ToggleWordWrap;
+    procedure ToggleFollow;
     procedure CopySelectionOrLine;
     procedure PasteText;
     procedure CutSelectionOrLine;
@@ -147,6 +148,11 @@ end;
 procedure TEditorSpy.ToggleWordWrap;
 begin
   Last := 'wrap';
+end;
+
+procedure TEditorSpy.ToggleFollow;
+begin
+  Last := 'follow';
 end;
 
 procedure TEditorSpy.CopySelectionOrLine;
@@ -292,6 +298,7 @@ begin
   AHost.FindNextOrPrev := ASpy.FindNextOrPrev;
   AHost.SaveDoc := ASpy.SaveDoc;
   AHost.ToggleWordWrap := ASpy.ToggleWordWrap;
+  AHost.ToggleFollow := ASpy.ToggleFollow;
   AHost.CopySelectionOrLine := ASpy.CopySelectionOrLine;
   AHost.PasteText := ASpy.PasteText;
   AHost.CutSelectionOrLine := ASpy.CutSelectionOrLine;
@@ -394,6 +401,23 @@ begin
     Assert.IsTrue(Key = vkF2, 'markdown F2 leaves AKey');
 
     Spy.MarkdownModeVal := False;
+    Spy.CanEditVal := True;
+    Spy.ViewOnlyVal := False;
+
+    Spy.Last := 'keep';
+    Key := Ord('F');
+    KeyChar := 'F';
+    Assert.IsTrue(not DispatchEditorKeys(Host, Key, [ssCtrl, ssShift], KeyChar, 10),
+      'Ctrl+Shift+F follows nothing in the editor');
+    Assert.IsTrue(Spy.Last = 'keep', 'the editor does not follow');
+
+    Spy.CanEditVal := False;
+    Spy.ViewOnlyVal := True;
+    Key := Ord('F');
+    KeyChar := 'F';
+    Assert.IsTrue(DispatchEditorKeys(Host, Key, [ssCtrl, ssShift], KeyChar, 10),
+      'Ctrl+Shift+F handled in the viewer');
+    Assert.IsTrue(Spy.Last = 'follow', 'Ctrl+Shift+F follows the end of the file');
     Spy.CanEditVal := True;
     Spy.ViewOnlyVal := False;
 

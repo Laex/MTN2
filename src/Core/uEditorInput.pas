@@ -43,6 +43,7 @@ type
     FindNextOrPrev: TEditorFindProc;
     SaveDoc: TEditorProc;
     ToggleWordWrap: TEditorProc;
+    ToggleFollow: TEditorProc;
     CopySelectionOrLine: TEditorProc;
     PasteText: TEditorProc;
     CutSelectionOrLine: TEditorProc;
@@ -207,6 +208,11 @@ begin
     kaViewerWordWrap:
       if HostViewOnly(AHost) and not HostMarkdownMode(AHost) then
         AHost.ToggleWordWrap()
+      else
+        Result := arReject;
+    kaViewerFollow:
+      if HostViewOnly(AHost) and not HostMarkdownMode(AHost) then
+        AHost.ToggleFollow()
       else
         Result := arReject;
   else

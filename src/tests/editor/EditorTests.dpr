@@ -32,6 +32,7 @@ uses
   TestQuickTextView in 'TestQuickTextView.pas',
   TestStreamingArchiveViewer in 'TestStreamingArchiveViewer.pas',
   TestStreamingViewer in 'TestStreamingViewer.pas',
+  TestFollowTail in 'TestFollowTail.pas',
   TestTextEncoding in 'TestTextEncoding.pas',
   TestEditorWideChars in 'TestEditorWideChars.pas';
 

@@ -43,6 +43,10 @@ procedure UpdateOverlayBounds(const ABounds, AClip: TRectI; AImageScale: Single 
 /// and bottom edge of the window. Stays in force until ClearOverlayPixelArea.</summary>
 procedure SetOverlayPixelArea(const ARect: TRectF);
 procedure ClearOverlayPixelArea;
+/// <summary>Cells (inclusive) the picture leaves unpainted, so that what the
+/// grid shows there stays visible: a notice drawn over the picture's area.
+/// An empty rectangle (Right < Left) clears it.</summary>
+procedure SetOverlayExclusion(const ARect: TRectI);
 /// <summary>Shows a picture the caller already holds as AWidth x AHeight pixels
 /// (B, G, R, A bytes, rows top to bottom, no padding), copied; AURI names it
 /// for OverlayCurrentURI. Fitted and centered in ABounds, painted inside AClip
@@ -112,6 +116,7 @@ type
 var
   GHost: TOverlayHost;
   GAreaOn: Boolean = False;
+  GExclusion: TRectI = (Left: 0; Top: 0; Right: -1; Bottom: -1);
   GArea: TRectF;
   GCellW: Single = 0;
   GCellH: Single = 0;
@@ -290,6 +295,24 @@ var
   BoundsPx, ClipPx, Fitted: TRectF;
   SrcW, SrcH, BW, BH, Scale, CX, CY: Single;
   Saved: TCanvasSaveState;
+  ExPx: TRectF;
+
+  procedure DrawWithin(const AArea: TRectF);
+  var
+    Part: TRectF;
+  begin
+    Part := TRectF.Intersect(AArea, ClipPx);
+    if (Part.Width <= 0) or (Part.Height <= 0) then
+      Exit;
+    Saved := ACanvas.SaveState;
+    try
+      ACanvas.IntersectClipRect(Part);
+      ACanvas.DrawBitmap(FBitmap, RectF(0, 0, SrcW, SrcH), Fitted, 1, True);
+    finally
+      ACanvas.RestoreState(Saved);
+    end;
+  end;
+
 begin
   if (FState <> osReady) or not Assigned(FBitmap) then
     Exit;
@@ -334,6 +357,20 @@ begin
       (FClip.Right + 1) * ACellWidth, (FClip.Bottom + 1) * ACellHeight);
   if (ClipPx.Width <= 0) or (ClipPx.Height <= 0) then
     Exit;
+  if GExclusion.Right >= GExclusion.Left then
+  begin
+    ExPx := RectF(GExclusion.Left * ACellWidth, GExclusion.Top * ACellHeight,
+      (GExclusion.Right + 1) * ACellWidth, (GExclusion.Bottom + 1) * ACellHeight);
+    if ExPx.IntersectsWith(Fitted) then
+    begin
+      // The four strips around the excluded cells.
+      DrawWithin(RectF(ClipPx.Left, ClipPx.Top, ClipPx.Right, ExPx.Top));
+      DrawWithin(RectF(ClipPx.Left, ExPx.Bottom, ClipPx.Right, ClipPx.Bottom));
+      DrawWithin(RectF(ClipPx.Left, ExPx.Top, ExPx.Left, ExPx.Bottom));
+      DrawWithin(RectF(ExPx.Right, ExPx.Top, ClipPx.Right, ExPx.Bottom));
+      Exit;
+    end;
+  end;
   if ClipPx.Contains(Fitted) then
   begin
     ACanvas.DrawBitmap(FBitmap, RectF(0, 0, SrcW, SrcH), Fitted, 1, True);
@@ -407,6 +444,11 @@ begin
     Result := GHost.URI
   else
     Result := '';
+end;
+
+procedure SetOverlayExclusion(const ARect: TRectI);
+begin
+  GExclusion := ARect;
 end;
 
 procedure DrawOverlayPreview(ACanvas: TCanvas; ACellWidth, ACellHeight: Single);

@@ -25,12 +25,19 @@ type
     [Test] procedure KeyMarkersInNames;
     [Test] procedure GroupKeepsItsKeyMarker;
     [Test] procedure AccentsCoverKeyAndHotkeyCells;
+    [Test] procedure DamagedFileIsRestoredFromTheBackup;
+    [Test] procedure EmptiedFileIsRestoredFromTheBackup;
+    [Test] procedure LostFileIsRestoredFromTheBackup;
+    [Test] procedure UnreadableFileIsNotOverwritten;
+    [Test] procedure AmpersandNamesSurviveReload;
+    [Test] procedure ChangeMadeByAnotherCopyIsPickedUp;
   end;
 
 implementation
 
 uses
-  System.SysUtils, uFolderHotlist, uPanelUriLabels;
+  System.SysUtils, System.Classes, System.IOUtils, uConfigLocation,
+  uFolderHotlist, uPanelUriLabels;
 
 const
   cA = 'file:///C:/hotlist-a';
@@ -48,6 +55,8 @@ end;
 
 procedure TTestFolderHotlist.Setup;
 begin
+  // The list is written to disk at once: never into the user's own settings.
+  Assert.IsTrue(ConfigDirectoryIsOverridden, 'the tests run on a settings folder of their own');
   FolderHotlistClear;
   FolderHotlistAdd('a', cA);
   FolderHotlistAdd('b', cB);
@@ -214,6 +223,86 @@ begin
   E.HotKey := 0;
   Assert.AreEqual<Integer>(0, Length(FolderHotlistEntryAccents(E)), 'nothing to accent');
   Assert.AreEqual<Integer>(1, Length(FolderHotlistGroupAccents('&Net')));
+end;
+
+function HotlistFile: string;
+begin
+  Result := GetConfigFilePath('folderhotlist.json');
+end;
+
+procedure TTestFolderHotlist.DamagedFileIsRestoredFromTheBackup;
+begin
+  TFile.WriteAllText(HotlistFile, '[{"name":"a","uri":"file:///C:/hotl', TEncoding.UTF8);
+  FolderHotlistReload;
+  Assert.AreEqual('abc', Names, 'the last good copy takes over');
+  Assert.IsTrue(TFile.Exists(HotlistFile + '.corrupt'), 'the damaged file is kept');
+end;
+
+procedure TTestFolderHotlist.EmptiedFileIsRestoredFromTheBackup;
+begin
+  // A write cut short leaves a file of no bytes.
+  TFile.WriteAllBytes(HotlistFile, nil);
+  FolderHotlistReload;
+  Assert.AreEqual('abc', Names, 'an empty file is a damaged one, not an empty list');
+end;
+
+procedure TTestFolderHotlist.LostFileIsRestoredFromTheBackup;
+begin
+  TFile.Delete(HotlistFile);
+  FolderHotlistReload;
+  Assert.AreEqual('abc', Names);
+end;
+
+procedure TTestFolderHotlist.UnreadableFileIsNotOverwritten;
+{$IFDEF MSWINDOWS}
+var
+  Lock: TFileStream;
+begin
+  Lock := TFileStream.Create(HotlistFile, fmOpenRead or fmShareExclusive);
+  try
+    FolderHotlistReload;
+    Assert.AreEqual('', Names, 'nothing can be read while the file is locked');
+    FolderHotlistAdd('d', 'file:///C:/hotlist-d');
+  finally
+    Lock.Free;
+  end;
+  FolderHotlistReload;
+  Assert.AreEqual('abc', Names, 'the file was not replaced by a list that could not be read');
+{$ELSE}
+begin
+  // A read lock is advisory on POSIX: the file stays readable.
+  Assert.Pass;
+{$ENDIF}
+end;
+
+procedure TTestFolderHotlist.AmpersandNamesSurviveReload;
+var
+  E: TFolderHotlistEntry;
+  Found: Integer;
+begin
+  FolderHotlistAdd('&Delphi', 'file:///D:/Work/Delphi');
+  FolderHotlistAdd('&&Fish && Chips', 'file:///D:/Work/Obsidian');
+  FolderHotlistReload;
+  Assert.AreEqual('abc&Delphi&&Fish && Chips', Names, 'names keep their key markers');
+  Found := 0;
+  for E in FolderHotlistGetEntries do
+    if (E.Name = '&Delphi') or (E.Name = '&&Fish && Chips') then
+      Inc(Found);
+  Assert.AreEqual(2, Found);
+end;
+
+procedure TTestFolderHotlist.ChangeMadeByAnotherCopyIsPickedUp;
+begin
+  Assert.AreEqual('abc', Names);
+  Sleep(300);
+  // Another copy of the program, sharing the settings folder, rewrites the file.
+  TFile.WriteAllText(HotlistFile,
+    '[{"name":"x","uri":"file:///C:/hotlist-x"},{"name":"y","uri":"file:///C:/hotlist-y"}]',
+    TEncoding.UTF8);
+  Assert.AreEqual('xy', Names, 'the list on disk is read again before it is used');
+  FolderHotlistAdd('z', 'file:///C:/hotlist-z');
+  FolderHotlistReload;
+  Assert.AreEqual('xyz', Names, 'an edit builds on the list the other copy left');
 end;
 
 end.

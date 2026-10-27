@@ -22,6 +22,7 @@
     <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
     <nav class="links">
       <a href="#features">Возможности</a>
+      <a href="#demo">Демо</a>
       <a href="#screenshots">Скриншоты</a>
       <a href="#start">Как начать</a>
       <a href="#projects">Другие проекты</a>
@@ -56,15 +57,25 @@
       <div class="card"><h3>Панели и вкладки</h3><p>Две панели с вкладками, режимы Brief и Full, быстрый поиск, живой фильтр, сравнение каталогов, избранные папки, длинные пути.</p></div>
       <div class="card"><h3>Настоящий терминал</h3><p>Консоль на ConPTY: cmd, PowerShell, Git Bash, WSL, SSH. ANSI/VT, альтернативный экран для TUI-программ, рабочие пространства.</p></div>
       <div class="card"><h3>Архивы как папки</h3><p>zip и 7z открываются как обычные каталоги. SFTP по SSH подключается как виртуальная файловая система.</p></div>
-      <div class="card"><h3>Просмотр и редактор</h3><p>Текст, hex, большие файлы потоком, просмотр Markdown с таблицами, быстрый просмотр на Ctrl+Q, редактор с подсветкой от плагинов.</p></div>
+      <div class="card"><h3>Просмотр и редактор</h3><p>Текст, hex, большие файлы потоком, просмотр Markdown с таблицами, быстрый просмотр на Ctrl+Q, слежение за концом растущего лога на Ctrl+Shift+F, редактор с подсветкой от плагинов.</p></div>
       <div class="card"><h3>Фоновые операции</h3><p>Копирование, перенос и удаление идут заданиями с прогрессом, в том числе на кнопке в панели задач. Корзина, контрольные суммы, синхронизация.</p></div>
-      <div class="card"><h3>Клавиатура прежде всего</h3><p>Раскладка клавиш близка к Far Manager и целиком переопределяется файлом <code>keymap.json</code>. Меню пользователя на F2.</p></div>
+      <div class="card"><h3>Клавиатура прежде всего</h3><p>Раскладка клавиш близка к Far Manager и целиком переопределяется файлом <code>keymap.json</code>. Палитра команд на Shift+F9 находит любой пункт меню по названию и показывает его клавиши, а программа сама подсказывает полезные и редкие сочетания в новых для неё состояниях. Меню пользователя на F2.</p></div>
       <div class="card"><h3>Темы</h3><p>Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast и другие. Свои темы собираются в редакторе тем, это обычные JSON-файлы.</p></div>
       <div class="card"><h3>Плагины</h3><p>Нативные DLL и WebAssembly: свои файловые системы, панели, команды, пункты меню, привязки клавиш и подсветка.</p></div>
       <div class="card"><h3>Unicode и языки</h3><p>CJK-иероглифы занимают две колонки, как в других терминалах. Интерфейс на русском, английском, немецком и китайском (упрощённом), язык меняется без перезапуска.</p></div>
       <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> занимает весь терминал и работает по SSH и в tmux. <code>mtn2-sdl</code> показывает то же окно в SDL2 на X11 и Wayland.</p></div>
       <div class="card"><h3>Переносимость</h3><p>Один каталог, никаких записей в реестре. В переносной версии настройки лежат рядом с <code>MTN2.exe</code>.</p></div>
       <div class="card"><h3>Приватность</h3><p>Без телеметрии и облачных функций. Единственное обращение к сети – проверка новой версии на GitHub, её можно отключить.</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>Демо</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-demo-palette.gif"><img loading="lazy" src="../images/mtn2-demo-palette.gif" alt="Палитра команд" width="1000" height="550"></a><figcaption>Палитра команд (Shift+F9): поиск по названию, рядом клавиши</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-archive.gif"><img loading="lazy" src="../images/mtn2-demo-archive.gif" alt="Архив как папка" width="1000" height="550"></a><figcaption>Архив открывается как папка, подсказка о клавишах</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-selection.gif"><img loading="lazy" src="../images/mtn2-demo-selection.gif" alt="Выделение и быстрый просмотр" width="1000" height="550"></a><figcaption>Выделение (Ins) и быстрый просмотр (Ctrl+Q)</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-follow.gif"><img loading="lazy" src="../images/mtn2-demo-follow.gif" alt="Слежение за концом лога" width="1000" height="550"></a><figcaption>Просмотр лога со слежением за концом (Ctrl+Shift+F)</figcaption></figure>
     </div>
   </section>
 
@@ -84,7 +95,7 @@
     <ol class="steps">
       <li><strong>Скачайте</strong> архив со страницы <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a>: <code>win64.zip</code> (настройки в <code>%APPDATA%\MTN2</code>), <code>win64-portable.zip</code> (всё рядом с программой), <code>linux-x64.tar.gz</code> или <code>.deb</code>.</li>
       <li><strong>Распакуйте</strong> в любую папку и запустите <code>MTN2.exe</code>. В Linux: <code>./mtn2/install.sh</code> или <code>sudo apt install ./MTN2-*-linux-x64.deb</code>, затем <code>mtn2</code>.</li>
-      <li><strong>Нажмите F1</strong>: справка рассказывает про клавиши и настройки. Дальше программа обновляется сама (<kbd>≡</kbd> → Обновления) и всегда спрашивает перед установкой.</li>
+      <li><strong>Нажмите Shift+F9 и F1</strong>: палитра команд находит любую команду по названию, справка рассказывает про клавиши и настройки. Дальше программа обновляется сама (<kbd>≡</kbd> → Обновления) и всегда спрашивает перед установкой.</li>
     </ol>
     <p class="note">При первом запуске Windows SmartScreen может предупредить о неизвестном издателе: нажмите «Подробнее» → «Выполнить в любом случае». Контрольные суммы загрузок проверяются по SHA-256, подробности – в <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.md">FAQ</a>.</p>
   </section>

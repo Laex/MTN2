@@ -67,11 +67,12 @@ end;
 function ShellEchoOfVariable(const AShellId, AEnvName: string;
   const AProfiles: TEnvProfiles): string;
 var
-  Dir, Output, Cmd: string;
+  Dir, Output, Cmd, Prev: string;
   S: TConPtySession;
 begin
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-envshell-' + IntToStr(Random(MaxInt)));
   ForceDirectories(Dir);
+  Prev := ConfigDirectoryOverride;
   SetConfigDirectoryOverride(Dir);
   ShellProfileOptionsUsePath(TPath.Combine(Dir, 'shellprofiles.json'));
   Output := '';
@@ -101,7 +102,7 @@ begin
   finally
     S.Free;
     ShellProfileOptionsUsePath('');
-    SetConfigDirectoryOverride('');
+    SetConfigDirectoryOverride(Prev);
     TDirectory.Delete(Dir, True);
   end;
 end;

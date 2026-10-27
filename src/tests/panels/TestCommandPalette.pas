@@ -24,6 +24,7 @@ type
     [Test] procedure TestUserAliasesFileAddsWords;
     [Test] procedure TestContextLineShowsHintOrNeighbours;
     [Test] procedure TestEveryMenuCommandHasADescription;
+    [Test] procedure TestEveryDescriptionFitsTheContextLabel;
     [Test] procedure TestContextLineFollowsTheSelectedItem;
     [Test] procedure TestRecentCommandsComeFirstWithEmptyQuery;
     [Test] procedure TestRowTextFillsTheWidth;
@@ -44,7 +45,8 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
-  uDialogHost, uDualPanelUiTypes, uDualPanelPaletteDialog, uDualPanelKeymapDialog;
+  uDialogHost, uDialogTypes, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
+  uDualPanelKeymapDialog;
 
 const
   cMenuJson =
@@ -285,6 +287,41 @@ begin
       for I := 0 to High(E) do
         Assert.IsTrue(E[I].Description <> '',
           'no description for ' + E[I].Key + ' in ' + Loc);
+    finally
+      M.Free;
+    end;
+  end;
+end;
+
+procedure TTestCommandPalette.TestEveryDescriptionFitsTheContextLabel;
+const
+  cLocales: array[0..3] of string = ('en', 'ru', 'de', 'zh');
+var
+  Decl: TDialogDeclaration;
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Loc: string;
+  I, W, H: Integer;
+begin
+  Decl := BuildCommandPaletteDialog([], 0, '');
+  W := 0;
+  H := 0;
+  for I := 0 to High(Decl.Controls) do
+    if Decl.Controls[I].Id = 'context' then
+    begin
+      W := Decl.Controls[I].BoxW;
+      H := Decl.Controls[I].BoxH;
+    end;
+  Assert.IsTrue((W > 0) and (H >= 2), 'the context label has room for two lines');
+  for Loc in cLocales do
+  begin
+    SetLocale(Loc);
+    M := MakeMenu;
+    try
+      E := BuildPaletteEntries(M);
+      for I := 0 to High(E) do
+        Assert.IsTrue(Length(TDialogRenderer.WrapLabelLines(E[I].Description, W)) <= H,
+          'description of ' + E[I].Key + ' fits the label in ' + Loc);
     finally
       M.Free;
     end;

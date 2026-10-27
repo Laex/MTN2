@@ -17,6 +17,25 @@
 
 MTN2 面向在 DOS Navigator 与 Far Manager 陪伴下成长、习惯用键盘工作的人：系统与网络工程师、开发者、管理员。它不取代 Far Manager，也不与 Total Commander 竞争，只是又一个有自己使用习惯的双面板管理器。
 
+## 快速开始
+
+1. 从[最新发布页](https://github.com/Laex/MTN2/releases/latest)下载 `MTN2-<版本>-win64.zip`，解压到任意文件夹即可：无需安装程序，也无需管理员权限。
+2. 运行 `MTN2.exe`。设置保存在 `%APPDATA%\MTN2`；便携版（`-portable.zip`）把所有内容放在程序旁边。
+3. 从这些按键开始：
+
+| 按键 | 作用 |
+|---|---|
+| **Shift+F9** | 命令面板：按名称查找任意菜单项，并在旁边显示它的按键 |
+| **F1** | 当前窗口的帮助 |
+| **Tab**、**F5**、**F6** | 切换面板、复制、移动 |
+| **F3**、**F4** | 查看和编辑光标所在的文件 |
+| **Ctrl+Q** | 在另一个面板中快速查看文件 |
+| **Alt+F7** | 查找文件 |
+| **Ctrl+O** | 面板下方的控制台（**Esc** 返回面板） |
+| **Ctrl+Shift+N** | 新建终端标签页 |
+
+Linux（`mtn2-tui`、`mtn2-sdl`）请见下文“安装指南”。程序在首次进入新的状态（压缩包、选中文件、控制台、查看器等）时，也会提示常用按键；可在**选项 → 界面**中关闭提示。
+
 ## 设计原则
 
 - **无遥测、无云端功能。** 唯一的网络访问是向 GitHub 检查新版本（每天启动时一次）；可在 **≡ → 检查更新...** 中关闭（“启动时检查更新”）。
@@ -38,6 +57,15 @@ MTN2 面向在 DOS Navigator 与 Far Manager 陪伴下成长、习惯用键盘�
 | 支持表格的 Markdown 查看器 | 编辑器；高亮由插件提供 |
 | ![内置控制台](docs/images/mtn2-console.png) | ![Dracula 主题](docs/images/mtn2-dracula.png) |
 | 内置控制台（Ctrl+O） | Dracula 主题 |
+
+## 演示
+
+| | |
+|---|---|
+| ![命令面板](docs/images/mtn2-demo-palette.en.gif) | ![压缩包作为文件夹](docs/images/mtn2-demo-archive.en.gif) |
+| 命令面板（**Shift+F9**）：按名称搜索，旁边显示按键 | 压缩包像文件夹一样打开，并给出按键提示 |
+| ![选择文件与快速查看](docs/images/mtn2-demo-selection.en.gif) | ![跟随日志末尾](docs/images/mtn2-demo-follow.en.gif) |
+| 选择文件（**Ins**）与快速查看（**Ctrl+Q**） | 查看日志并跟随其末尾（**Ctrl+Shift+F**） |
 
 ## 功能特性
 

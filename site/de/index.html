@@ -22,6 +22,7 @@
     <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
     <nav class="links">
       <a href="#features">Funktionen</a>
+      <a href="#demo">Demo</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#start">Erste Schritte</a>
       <a href="#projects">Weitere Projekte</a>
@@ -56,15 +57,25 @@
       <div class="card"><h3>Fenster und Tabs</h3><p>Zwei Fenster mit Tabs, Brief- und Full-Modus, Schnellsuche, Live-Filter, Ordnervergleich, Favoriten, lange Pfade.</p></div>
       <div class="card"><h3>Ein echtes Terminal</h3><p>Konsole auf ConPTY: cmd, PowerShell, Git Bash, WSL, SSH. ANSI/VT, alternativer Bildschirm für TUI-Programme, Terminal-Arbeitsbereiche.</p></div>
       <div class="card"><h3>Archive als Ordner</h3><p>zip und 7z öffnen sich wie gewöhnliche Verzeichnisse. SFTP über SSH wird als virtuelles Dateisystem eingebunden.</p></div>
-      <div class="card"><h3>Viewer und Editor</h3><p>Text, Hex, große Dateien als Stream, Markdown-Vorschau mit Tabellen, Schnellansicht mit Strg+Q, Editor mit Syntaxhervorhebung per Plugin.</p></div>
+      <div class="card"><h3>Viewer und Editor</h3><p>Text, Hex, große Dateien als Stream, Markdown-Vorschau mit Tabellen, Schnellansicht mit Strg+Q, Verfolgen des Endes eines wachsenden Logs mit Strg+Umschalt+F, Editor mit Syntaxhervorhebung per Plugin.</p></div>
       <div class="card"><h3>Hintergrundaufgaben</h3><p>Kopieren, Verschieben und Löschen laufen als Aufgaben mit Fortschritt, auch auf der Taskleistenschaltfläche. Papierkorb, Prüfsummen, Ordnersynchronisation.</p></div>
-      <div class="card"><h3>Tastatur zuerst</h3><p>Die Tastenbelegung ähnelt Far Manager und lässt sich über <code>keymap.json</code> vollständig ändern. Benutzermenü auf F2.</p></div>
+      <div class="card"><h3>Tastatur zuerst</h3><p>Die Tastenbelegung ähnelt Far Manager und lässt sich über <code>keymap.json</code> vollständig ändern. Die Befehlspalette auf Umschalt+F9 findet jeden Menüpunkt nach Namen und zeigt seine Tasten; das Programm nennt außerdem nützliche und selten genutzte Tasten, sobald es in einen neuen Zustand kommt. Benutzermenü auf F2.</p></div>
       <div class="card"><h3>Themen</h3><p>Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast und weitere. Eigene Themen entstehen im Themen-Editor, es sind einfache JSON-Dateien.</p></div>
       <div class="card"><h3>Plugins</h3><p>Native DLLs und WebAssembly: eigene Dateisysteme, Fenster, Befehle, Menüpunkte, Tastenbelegungen und Hervorhebung.</p></div>
       <div class="card"><h3>Unicode und Sprachen</h3><p>CJK-Zeichen belegen zwei Spalten wie in anderen Terminals. Die Oberfläche gibt es auf Englisch, Russisch, Deutsch und Chinesisch (vereinfacht), der Wechsel erfolgt ohne Neustart.</p></div>
       <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> füllt das ganze Terminal und läuft über SSH und in tmux. <code>mtn2-sdl</code> zeigt dasselbe Fenster in SDL2 unter X11 und Wayland.</p></div>
       <div class="card"><h3>Portabel</h3><p>Ein Ordner, keine Registry-Einträge. Die portable Version legt ihre Einstellungen neben <code>MTN2.exe</code> ab.</p></div>
       <div class="card"><h3>Datenschutz</h3><p>Keine Telemetrie, keine Cloud-Funktionen. Die einzige Netzwerkanfrage ist die Update-Prüfung auf GitHub, sie lässt sich abschalten.</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>Demo</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-demo-palette.en.gif"><img loading="lazy" src="../images/mtn2-demo-palette.en.gif" alt="Befehlspalette" width="1000" height="550"></a><figcaption>Befehlspalette (Umschalt+F9): Suche nach Namen, Tasten daneben</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-archive.en.gif"><img loading="lazy" src="../images/mtn2-demo-archive.en.gif" alt="Archiv als Ordner" width="1000" height="550"></a><figcaption>Ein Archiv öffnet sich wie ein Ordner, mit Tastenhinweis</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-selection.en.gif"><img loading="lazy" src="../images/mtn2-demo-selection.en.gif" alt="Markieren und Schnellansicht" width="1000" height="550"></a><figcaption>Dateien markieren (Einfg) und Schnellansicht (Strg+Q)</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-follow.en.gif"><img loading="lazy" src="../images/mtn2-demo-follow.en.gif" alt="Dem Ende eines Logs folgen" width="1000" height="550"></a><figcaption>Ein Log ansehen und seinem Ende folgen (Strg+Umschalt+F)</figcaption></figure>
     </div>
   </section>
 
@@ -84,7 +95,7 @@
     <ol class="steps">
       <li><strong>Laden Sie</strong> ein Archiv von der Seite <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a> herunter: <code>win64.zip</code> (Einstellungen in <code>%APPDATA%\MTN2</code>), <code>win64-portable.zip</code> (alles neben dem Programm), <code>linux-x64.tar.gz</code> oder <code>.deb</code>.</li>
       <li><strong>Entpacken Sie</strong> es in einen beliebigen Ordner und starten Sie <code>MTN2.exe</code>. Unter Linux: <code>./mtn2/install.sh</code> oder <code>sudo apt install ./MTN2-*-linux-x64.deb</code>, dann <code>mtn2</code>.</li>
-      <li><strong>Drücken Sie F1</strong>: Die Hilfe erklärt Tasten und Einstellungen. Danach aktualisiert sich das Programm selbst (<kbd>≡</kbd> → Updates) und fragt vor der Installation immer nach.</li>
+      <li><strong>Drücken Sie Umschalt+F9 und F1</strong>: Die Befehlspalette findet jeden Befehl nach Namen, die Hilfe erklärt Tasten und Einstellungen. Danach aktualisiert sich das Programm selbst (<kbd>≡</kbd> → Updates) und fragt vor der Installation immer nach.</li>
     </ol>
     <p class="note">Beim ersten Start warnt Windows SmartScreen möglicherweise vor einem unbekannten Herausgeber: „Weitere Informationen“ → „Trotzdem ausführen“. Downloads werden per SHA-256 geprüft, Details in den <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a> (englisch).</p>
   </section>

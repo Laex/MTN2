@@ -226,6 +226,7 @@ const
     'Clear selection',
     'Close',
     'Word wrap',
+    'Follow the end of the file',
     'Rendered <-> source',
     'Save',
     'Replace',

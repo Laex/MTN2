@@ -23,6 +23,25 @@ MTN2 is made for people who grew up with DOS Navigator and Far Manager and work 
 engineers, developers, administrators. It does not replace Far Manager and does not compete with Total Commander;
 it is one more two-panel manager with its own habits.
 
+## Quick start
+
+1. Download `MTN2-<version>-win64.zip` from the [latest release](https://github.com/Laex/MTN2/releases/latest) and unpack it into any folder: no installer and no administrator rights needed.
+2. Run `MTN2.exe`. Settings are kept in `%APPDATA%\MTN2`; the portable edition (`-portable.zip`) keeps everything next to the program.
+3. Start with these keys:
+
+| Keys | What they do |
+|---|---|
+| **Shift+F9** | command palette: any menu item is found by name, with its keys shown beside it |
+| **F1** | help for the current window |
+| **Tab**, **F5**, **F6** | other panel, copy, move |
+| **F3**, **F4** | view and edit the file under the cursor |
+| **Ctrl+Q** | quick view of the file in the other panel |
+| **Alt+F7** | find files |
+| **Ctrl+O** | console under the panels (**Esc** goes back to the panels) |
+| **Ctrl+Shift+N** | new terminal tab |
+
+For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also names useful keys the first time it enters a new state (an archive, selected files, the console, the viewer and more); switch the hints off in **Options → User interface**.
+
 ## Principles
 
 - **No telemetry, no cloud features.** The only network access is a check for a new version on GitHub (once a day,
@@ -46,6 +65,15 @@ it is one more two-panel manager with its own habits.
 | Markdown viewer with tables | Editor; highlighting comes from a plugin |
 | ![Built-in console](docs/images/mtn2-console.png) | ![Dracula theme](docs/images/mtn2-dracula.png) |
 | Built-in console (Ctrl+O) | Dracula theme |
+
+## Demo
+
+| | |
+|---|---|
+| ![Command palette](docs/images/mtn2-demo-palette.en.gif) | ![Archive as a folder](docs/images/mtn2-demo-archive.en.gif) |
+| Command palette (**Shift+F9**): search by name, keys shown beside it | An archive opens as a folder, with a key hint |
+| ![Selection and quick view](docs/images/mtn2-demo-selection.en.gif) | ![Following the end of a log](docs/images/mtn2-demo-follow.en.gif) |
+| Selecting files (**Ins**) and quick view (**Ctrl+Q**) | Viewing a log that follows its end (**Ctrl+Shift+F**) |
 
 ## Features
 

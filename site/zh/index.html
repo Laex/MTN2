@@ -22,6 +22,7 @@
     <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
     <nav class="links">
       <a href="#features">功能</a>
+      <a href="#demo">演示</a>
       <a href="#screenshots">截图</a>
       <a href="#start">开始使用</a>
       <a href="#projects">其他项目</a>
@@ -56,15 +57,25 @@
       <div class="card"><h3>面板与标签页</h3><p>双面板带标签页，Brief 和 Full 显示模式，快速搜索，实时过滤，目录比较，收藏文件夹，支持超长路径。</p></div>
       <div class="card"><h3>真实的终端</h3><p>基于 ConPTY 的控制台：cmd、PowerShell、Git Bash、WSL、SSH。支持 ANSI/VT，TUI 程序使用的备用屏幕，以及终端工作区。</p></div>
       <div class="card"><h3>压缩包当作文件夹</h3><p>zip 和 7z 像普通目录一样打开。通过 SSH 的 SFTP 作为虚拟文件系统挂载。</p></div>
-      <div class="card"><h3>查看器与编辑器</h3><p>文本、十六进制、大文件流式读取，带表格的 Markdown 预览，Ctrl+Q 快速查看，编辑器的语法高亮由插件提供。</p></div>
+      <div class="card"><h3>查看器与编辑器</h3><p>文本、十六进制、大文件流式读取，带表格的 Markdown 预览，Ctrl+Q 快速查看，Ctrl+Shift+F 跟随不断增长的日志末尾，编辑器的语法高亮由插件提供。</p></div>
       <div class="card"><h3>后台任务</h3><p>复制、移动和删除作为带进度的任务运行，进度也显示在任务栏按钮上。支持回收站、校验和、目录同步。</p></div>
-      <div class="card"><h3>键盘优先</h3><p>按键布局接近 Far Manager，可通过 <code>keymap.json</code> 完全自定义。F2 为用户菜单。</p></div>
+      <div class="card"><h3>键盘优先</h3><p>按键布局接近 Far Manager，可通过 <code>keymap.json</code> 完全自定义。Shift+F9 的命令面板可按名称找到任意菜单项并显示其按键，程序在进入新的状态时也会提示常用和不常用的按键。F2 为用户菜单。</p></div>
       <div class="card"><h3>主题</h3><p>Far Classic、Norton Commander、Midnight Commander、Total Commander、Gruvbox、Tokyo Night、Dracula、Nord、Solarized、Light、High Contrast 等。可在主题编辑器中制作自己的主题，主题就是普通的 JSON 文件。</p></div>
       <div class="card"><h3>插件</h3><p>原生 DLL 和 WebAssembly：自定义文件系统、面板、命令、菜单项、按键绑定和语法高亮。</p></div>
       <div class="card"><h3>Unicode 与语言</h3><p>中日韩字符与其他终端一样占两列。界面提供英语、俄语、德语和简体中文，切换语言无需重启。</p></div>
       <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> 占满整个终端，可通过 SSH 和 tmux 使用。<code>mtn2-sdl</code> 在 X11 和 Wayland 下用 SDL2 显示同样的窗口。</p></div>
       <div class="card"><h3>便携</h3><p>单个文件夹，不写注册表。便携版把设置保存在 <code>MTN2.exe</code> 旁边。</p></div>
       <div class="card"><h3>隐私</h3><p>没有遥测，没有云功能。唯一的网络请求是在 GitHub 上检查更新，可以关闭。</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>演示</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-demo-palette.en.gif"><img loading="lazy" src="../images/mtn2-demo-palette.en.gif" alt="命令面板" width="1000" height="550"></a><figcaption>命令面板（Shift+F9）：按名称搜索，旁边显示按键</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-archive.en.gif"><img loading="lazy" src="../images/mtn2-demo-archive.en.gif" alt="压缩包作为文件夹" width="1000" height="550"></a><figcaption>压缩包像文件夹一样打开，并给出按键提示</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-selection.en.gif"><img loading="lazy" src="../images/mtn2-demo-selection.en.gif" alt="选择文件与快速查看" width="1000" height="550"></a><figcaption>选择文件（Ins）与快速查看（Ctrl+Q）</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-follow.en.gif"><img loading="lazy" src="../images/mtn2-demo-follow.en.gif" alt="跟随日志末尾" width="1000" height="550"></a><figcaption>查看日志并跟随其末尾（Ctrl+Shift+F）</figcaption></figure>
     </div>
   </section>
 
@@ -84,7 +95,7 @@
     <ol class="steps">
       <li><strong>下载：</strong>从 <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a> 页面获取压缩包：<code>win64.zip</code>（设置保存在 <code>%APPDATA%\MTN2</code>）、<code>win64-portable.zip</code>（全部放在程序旁边）、<code>linux-x64.tar.gz</code> 或 <code>.deb</code>。</li>
       <li><strong>解压：</strong>解压到任意文件夹并运行 <code>MTN2.exe</code>。在 Linux 上：<code>./mtn2/install.sh</code> 或 <code>sudo apt install ./MTN2-*-linux-x64.deb</code>，然后运行 <code>mtn2</code>。</li>
-      <li><strong>按 F1：</strong>帮助介绍按键和设置。之后程序会自行更新（<kbd>≡</kbd> → 更新），安装前总会先询问。</li>
+      <li><strong>按 Shift+F9 和 F1：</strong>命令面板可按名称找到任意命令，帮助介绍按键和设置。之后程序会自行更新（<kbd>≡</kbd> → 更新），安装前总会先询问。</li>
     </ol>
     <p class="note">首次运行时，Windows SmartScreen 可能提示未知发布者：点击“更多信息”→“仍要运行”。下载文件通过 SHA-256 校验，详见 <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a>（英文）。</p>
   </section>

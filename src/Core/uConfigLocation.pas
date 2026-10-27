@@ -30,6 +30,10 @@ function ConfigDirectoryIsOverridden: Boolean;
 /// runner uses it so the tests see the built-in defaults, not a developer's
 /// own files.</summary>
 procedure SetConfigDirectoryOverride(const ADir: string);
+/// <summary>The folder SetConfigDirectoryOverride set, '' when there is none. A
+/// test that points the settings elsewhere for a while gives this back
+/// afterwards, so the folder of the test runner stays in force.</summary>
+function ConfigDirectoryOverride: string;
 function GetConfigDirectory: string;
 function GetConfigFilePath(const AFileName: string): string;
 
@@ -44,6 +48,11 @@ var
 procedure SetConfigDirectoryOverride(const ADir: string);
 begin
   GConfigDirOverride := ADir;
+end;
+
+function ConfigDirectoryOverride: string;
+begin
+  Result := GConfigDirOverride;
 end;
 
 function ProgramDirectory: string;

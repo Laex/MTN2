@@ -22,6 +22,7 @@
     <a class="brand" href="./"><img src="../images/icon.png" alt="" width="28" height="28"> MTN2</a>
     <nav class="links">
       <a href="#features">Features</a>
+      <a href="#demo">Demo</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#start">Getting started</a>
       <a href="#projects">Other projects</a>
@@ -56,15 +57,25 @@
       <div class="card"><h3>Panels and tabs</h3><p>Two tabbed panels, Brief and Full modes, quick search, live filter, folder comparison, favorite folders, long paths.</p></div>
       <div class="card"><h3>A real terminal</h3><p>A ConPTY console: cmd, PowerShell, Git Bash, WSL, SSH. ANSI/VT parsing, alternate screen for TUI programs, terminal workspaces.</p></div>
       <div class="card"><h3>Archives as folders</h3><p>zip and 7z open like ordinary directories. SFTP over SSH is mounted as a virtual file system.</p></div>
-      <div class="card"><h3>Viewer and editor</h3><p>Text, hex, streaming of large files, Markdown preview with tables, Quick View on Ctrl+Q, an editor with plugin-provided highlighting.</p></div>
+      <div class="card"><h3>Viewer and editor</h3><p>Text, hex, streaming of large files, Markdown preview with tables, Quick View on Ctrl+Q, following the end of a growing log on Ctrl+Shift+F, an editor with plugin-provided highlighting.</p></div>
       <div class="card"><h3>Background jobs</h3><p>Copy, move and delete run as jobs with progress, also shown on the taskbar button. Recycle bin, checksums, folder sync.</p></div>
-      <div class="card"><h3>Keyboard first</h3><p>The key layout is close to Far Manager and fully remappable through <code>keymap.json</code>. User menu on F2.</p></div>
+      <div class="card"><h3>Keyboard first</h3><p>The key layout is close to Far Manager and fully remappable through <code>keymap.json</code>. The command palette on Shift+F9 finds any menu item by name and shows its keys, and the program itself suggests useful and rarely used keys the first time it enters a new state. User menu on F2.</p></div>
       <div class="card"><h3>Themes</h3><p>Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast and more. Build your own in the theme editor: they are plain JSON files.</p></div>
       <div class="card"><h3>Plugins</h3><p>Native DLLs and WebAssembly: custom file systems, panels, commands, menu items, key bindings and highlighting.</p></div>
       <div class="card"><h3>Unicode and languages</h3><p>CJK characters take two columns, as in other terminals. The interface comes in English, Russian, German and Simplified Chinese and switches without a restart.</p></div>
       <div class="card"><h3>Linux</h3><p><code>mtn2-tui</code> fills the whole terminal and works over SSH and in tmux. <code>mtn2-sdl</code> shows the same window in SDL2 on X11 and Wayland.</p></div>
       <div class="card"><h3>Portable</h3><p>One folder, no registry entries. The portable build keeps its settings next to <code>MTN2.exe</code>.</p></div>
       <div class="card"><h3>Privacy</h3><p>No telemetry, no cloud features. The only network request is the update check on GitHub, and you can turn it off.</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>Demo</h2>
+    <div class="gallery">
+      <figure><a class="shot" href="../images/mtn2-demo-palette.en.gif"><img loading="lazy" src="../images/mtn2-demo-palette.en.gif" alt="Command palette" width="1000" height="550"></a><figcaption>Command palette (Shift+F9): search by name, keys shown beside it</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-archive.en.gif"><img loading="lazy" src="../images/mtn2-demo-archive.en.gif" alt="Archive as a folder" width="1000" height="550"></a><figcaption>An archive opens as a folder, with a key hint</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-selection.en.gif"><img loading="lazy" src="../images/mtn2-demo-selection.en.gif" alt="Selection and quick view" width="1000" height="550"></a><figcaption>Selecting files (Ins) and quick view (Ctrl+Q)</figcaption></figure>
+      <figure><a class="shot" href="../images/mtn2-demo-follow.en.gif"><img loading="lazy" src="../images/mtn2-demo-follow.en.gif" alt="Following the end of a log" width="1000" height="550"></a><figcaption>Viewing a log that follows its end (Ctrl+Shift+F)</figcaption></figure>
     </div>
   </section>
 
@@ -84,7 +95,7 @@
     <ol class="steps">
       <li><strong>Download</strong> an archive from the <a href="https://github.com/Laex/MTN2/releases/latest">Releases</a> page: <code>win64.zip</code> (settings in <code>%APPDATA%\MTN2</code>), <code>win64-portable.zip</code> (everything next to the program), <code>linux-x64.tar.gz</code> or <code>.deb</code>.</li>
       <li><strong>Extract</strong> it to any folder and run <code>MTN2.exe</code>. On Linux: <code>./mtn2/install.sh</code> or <code>sudo apt install ./MTN2-*-linux-x64.deb</code>, then <code>mtn2</code>.</li>
-      <li><strong>Press F1</strong>: the help covers keys and settings. After that the program updates itself (<kbd>≡</kbd> → Updates) and always asks before installing.</li>
+      <li><strong>Press Shift+F9 and F1</strong>: the command palette finds any command by name, the help covers keys and settings. After that the program updates itself (<kbd>≡</kbd> → Updates) and always asks before installing.</li>
     </ol>
     <p class="note">On first launch Windows SmartScreen may warn about an unknown publisher: click "More info" → "Run anyway". Downloads are verified by SHA-256, see the <a href="https://github.com/Laex/MTN2/blob/main/docs/FAQ.en.md">FAQ</a> for details.</p>
   </section>

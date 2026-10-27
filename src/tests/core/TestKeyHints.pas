@@ -15,7 +15,11 @@ type
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
     [Test] procedure TestUriSelectsTheSituation;
+    [Test] procedure TestSpecialFoldersSelectTheirSituation;
+    [Test] procedure TestSituationsKeepTheirBitsAcrossVersions;
     [Test] procedure TestKeysComeFromTheKeymap;
+    [Test] procedure TestLongHintBreaksAfterAComma;
+    [Test] procedure TestWideTextIsMeasuredInCells;
     [Test] procedure TestUnboundActionShowsAQuestionMark;
     [Test] procedure TestEveryHintHasAText;
     [Test] procedure TestHintIsTakenOnce;
@@ -47,6 +51,28 @@ begin
   Assert.AreEqual(Ord(hsWorkspace), Ord(HintSituationOfUri('ws:///')), 'workspace');
 end;
 
+procedure TTestKeyHints.TestSpecialFoldersSelectTheirSituation;
+begin
+  Assert.AreEqual(Ord(hsRecycleBin), Ord(HintSituationOfUri('recycle://')), 'Recycle Bin');
+  Assert.AreEqual(Ord(hsPluginFolder), Ord(HintSituationOfUri('ftp://host/dir')),
+    'a folder served by a plugin');
+  Assert.AreEqual(Ord(hsSftp), Ord(HintSituationOfUri('sftp://host/dir')), 'SFTP keeps its own hint');
+  Assert.AreEqual(Ord(hsNone), Ord(HintSituationOfUri('sys://folders')), 'system folders');
+end;
+
+procedure TTestKeyHints.TestSituationsKeepTheirBitsAcrossVersions;
+begin
+  // The shown hints are stored as a bit set of these ordinals; moving one would
+  // make a stored bit mean another hint.
+  Assert.AreEqual(1, Ord(hsFindResults));
+  Assert.AreEqual(7, Ord(hsConsoleProgram));
+  Assert.AreEqual(8, Ord(hsSelection));
+  Assert.AreEqual(22, Ord(hsMenu));
+  Assert.AreEqual(23, Ord(hsManySelected));
+  Assert.AreEqual(28, Ord(hsEditorSelection));
+  Assert.IsTrue(Ord(High(THintSituation)) <= 30, 'the set fits an Integer');
+end;
+
 procedure TTestKeyHints.TestKeysComeFromTheKeymap;
 var
   Text: string;
@@ -55,6 +81,41 @@ begin
   Assert.IsTrue(Pos('Alt+Shift+Enter', Text) > 0, 'default keys of the background run: ' + Text);
   Assert.IsTrue(Pos('Ctrl+Alt+Enter', Text) > 0, 'default keys of the run in a new tab: ' + Text);
   Assert.IsTrue(Pos('{', Text) = 0, 'no placeholder is left');
+end;
+
+procedure TTestKeyHints.TestLongHintBreaksAfterAComma;
+var
+  L1, L2: string;
+  S: THintSituation;
+begin
+  WrapKeyHint('short hint', 40, L1, L2);
+  Assert.AreEqual('short hint', L1);
+  Assert.AreEqual('', L2);
+  WrapKeyHint('Selected: F5 copy, F6 move, F8 delete, * invert', 30, L1, L2);
+  Assert.AreEqual('Selected: F5 copy, F6 move,', L1);
+  Assert.AreEqual('F8 delete, * invert', L2);
+  WrapKeyHint('oneverylongwordwithoutanybreak', 10, L1, L2);
+  Assert.AreEqual('oneverylon', L1, 'no separator: broken at the width');
+  Assert.AreEqual('gwordwithoutanybreak', L2);
+  // Every hint fits two lines of a 60-cell toast.
+  for S := Succ(hsNone) to High(THintSituation) do
+  begin
+    WrapKeyHint(KeyHintText(S, GetDefaultNDNProfile), 60, L1, L2);
+    Assert.IsTrue(Length(L1) <= 60, 'first line of hint ' + IntToStr(Ord(S)));
+    Assert.IsTrue(Length(L2) <= 60, 'second line of hint ' + IntToStr(Ord(S)));
+  end;
+end;
+
+procedure TTestKeyHints.TestWideTextIsMeasuredInCells;
+var
+  L1, L2: string;
+begin
+  // Ten wide characters take 20 cells: a 12-cell line holds six of them.
+  WrapKeyHint(#$4E00#$4E01#$4E02#$4E03#$4E04#$4E05#$4E06#$4E07#$4E08#$4E09, 12, L1, L2);
+  Assert.AreEqual(6, Length(L1));
+  Assert.AreEqual(4, Length(L2));
+  WrapKeyHint(#$4E00#$4E01#$FF0C#$4E02#$4E03#$4E04#$4E05, 8, L1, L2);
+  Assert.AreEqual(3, Length(L1), 'broken after the full-width comma');
 end;
 
 procedure TTestKeyHints.TestUnboundActionShowsAQuestionMark;

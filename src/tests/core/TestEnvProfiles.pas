@@ -389,10 +389,11 @@ end;
 
 procedure TTestEnvProfiles.NamesOfferedForChoiceSkipDefaultAndOff;
 var
-  Dir: string;
+  Dir, Prev: string;
 begin
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-envnames-' + IntToStr(Random(MaxInt)));
   ForceDirectories(Dir);
+  Prev := ConfigDirectoryOverride;
   SetConfigDirectoryOverride(Dir);
   try
     Assert.AreEqual(0, Integer(Length(EnvProfileNames)), 'no file, no names');
@@ -401,7 +402,7 @@ begin
       Profile('two', False, ['A=2'])]));
     Assert.AreEqual('one;two;', Names(ProfilesNamed(EnvProfileNames)));
   finally
-    SetConfigDirectoryOverride('');
+    SetConfigDirectoryOverride(Prev);
     TDirectory.Delete(Dir, True);
   end;
 end;

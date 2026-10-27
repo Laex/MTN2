@@ -174,6 +174,10 @@ type
     FPressLink: string;
     FClicks: TMouseClickCounter; // double = word, triple = line
     FWordWrap: Boolean;
+    /// <summary>Follow mode (viewer only): the cursor stays on the last line
+    /// of a file that grows; FFollowLines is the line count it last saw.</summary>
+    FFollow: Boolean;
+    FFollowLines: Integer;
     FPositionRestored: Boolean;
     FOnCloseRequest: TNotifyEvent;
     FOnContentChanged: TNotifyEvent;
@@ -217,6 +221,9 @@ type
     function MapMarkdownViewToPos(AViewRow, AViewCol: Integer;
       out ALineIdx, ACol: Integer): Boolean;
     procedure ToggleWordWrap;
+    procedure ToggleFollow;
+    procedure StopFollow;
+    procedure UpdateFollow;
     function HexBytesPerRow: Integer;
     function HexRowCount: Integer;
     function FormatHexLine(ARow: Integer): string;
@@ -477,6 +484,10 @@ type
     procedure ScrollLines(ADelta: Integer);
     property URI: string read FURI;
     property ViewOnly: Boolean read FViewOnly;
+    property HexMode: Boolean read FHexMode;
+    /// <summary>The view follows the end of a growing file.</summary>
+    property Following: Boolean read FFollow;
+    property MarkdownMode: Boolean read FMarkdownMode;
     property Embedded: Boolean read FEmbedded write FEmbedded;
     property OnCloseRequest: TNotifyEvent read FOnCloseRequest write FOnCloseRequest;
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
@@ -990,6 +1001,7 @@ begin
     if not JustRestored then
       EnsureCursorVisible;
   end;
+  UpdateFollow;
   if (not FViewOnly) and FDoc.Dirty then
     Star := '* '
   else
@@ -1039,6 +1051,7 @@ end;
 
 procedure TEditorWindow.Open(const AURI: string; AViewOnly: Boolean);
 begin
+  FFollow := False;
   FURI := AURI;
   FViewOnly := AViewOnly;
   FHexMode := False;
@@ -1584,6 +1597,55 @@ begin
   end;
 end;
 
+procedure TEditorWindow.ToggleFollow;
+begin
+  if FFollow then
+  begin
+    StopFollow;
+    NotifyHost;
+    Exit;
+  end;
+  if (not FViewOnly) or FHexMode or FMarkdownMode or (not FDoc.CanFollow) then
+    Exit;
+  FFollow := True;
+  FFollowLines := -1;
+  UpdateFollow;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.StopFollow;
+begin
+  FFollow := False;
+  FDoc.Follow := False;
+end;
+
+// Follow mode: the document watches its file; whenever it has more or fewer
+// lines the cursor goes to the last one and the view scrolls with it. Another
+// mode, an edit or a scroll up ends it.
+procedure TEditorWindow.UpdateFollow;
+begin
+  if not FFollow then
+    Exit;
+  if (not FViewOnly) or FHexMode or FMarkdownMode then
+  begin
+    StopFollow;
+    Exit;
+  end;
+  if not FDoc.Ready then
+    Exit;
+  // A file opened again after a rotation is followed again.
+  if (not FDoc.Follow) and FDoc.CanFollow then
+    FDoc.Follow := True;
+  if FDoc.LineCount = FFollowLines then
+    Exit;
+  FFollowLines := FDoc.LineCount;
+  ClearSelection;
+  FCursorRow := Max(FDoc.LineCount - 1, 0);
+  FCursorCol := 0;
+  ClampCursor;
+  EnsureCursorVisible;
+end;
+
 procedure TEditorWindow.ToggleWordWrap;
 begin
   FWordWrap := not FWordWrap;
@@ -1633,6 +1695,8 @@ end;
 
 procedure TEditorWindow.ScrollBy(ADelta: Integer);
 begin
+  if FFollow and (ADelta < 0) then
+    StopFollow;
   if FMarkdownMode and FDoc.Ready and not FHexMode then
     ScrollMarkdownRows(ADelta)
   else
@@ -2179,6 +2243,7 @@ begin
   FKeymapHost.FindNextOrPrev := FindNextOrPrev;
   FKeymapHost.SaveDoc := SaveDoc;
   FKeymapHost.ToggleWordWrap := ToggleWordWrap;
+  FKeymapHost.ToggleFollow := ToggleFollow;
   FKeymapHost.CopySelectionOrLine := CopySelectionOrLine;
   FKeymapHost.PasteText := PasteText;
   FKeymapHost.CutSelectionOrLine := CutSelectionOrLine;
@@ -4330,6 +4395,11 @@ begin
       Segs := Segs + [Flag];
       Kinds := Kinds + [sskNone];
     end;
+    if FFollow then
+    begin
+      Segs := Segs + [T('ui.editor.follow', 'Follow')];
+      Kinds := Kinds + [sskNone];
+    end;
     if FDoc.Ready and not FHexMode then
     begin
       Segs := Segs + [TextEncodingName(FDoc.Encoding)];
@@ -5334,6 +5404,11 @@ begin
     AKeyChar := #0;
     Exit;
   end;
+
+  // Moving up or to the top leaves follow mode.
+  if FFollow and ((AKey = vkUp) or (AKey = vkPrior) or (AKey = vkHome)) and
+     (AShift * [ssShift, ssAlt] = []) then
+    StopFollow;
 
   Result := DispatchEditorKeys(FKeymapHost, AKey, AShift, AKeyChar, ViewHeight);
 end;

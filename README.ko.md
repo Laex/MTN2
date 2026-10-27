@@ -21,6 +21,25 @@ TrueType 폰트, 유니코드 및 32비트 트루컬러를 지원하는 Delphi F
 
 MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하는 사람들을 위한 프로그램입니다: 시스템·네트워크 엔지니어, 개발자, 관리자. Far Manager를 대체하지 않으며 Total Commander와 경쟁하지도 않습니다. 나름의 습관을 가진 또 하나의 듀얼 패널 관리자일 뿐입니다.
 
+## 빠른 시작
+
+1. [최신 릴리스 페이지](https://github.com/Laex/MTN2/releases/latest)에서 `MTN2-<버전>-win64.zip`을 받아 아무 폴더에나 풀면 됩니다. 설치 프로그램도 관리자 권한도 필요 없습니다.
+2. `MTN2.exe`를 실행합니다. 설정은 `%APPDATA%\MTN2`에 저장되고, 휴대용 버전(`-portable.zip`)은 모든 것을 프로그램 옆에 저장합니다.
+3. 다음 키부터 시작해 보세요:
+
+| 키 | 동작 |
+|---|---|
+| **Shift+F9** | 명령 팔레트: 이름으로 모든 메뉴 항목을 찾고, 옆에 해당 키를 보여 줍니다 |
+| **F1** | 현재 창의 도움말 |
+| **Tab**, **F5**, **F6** | 다른 패널, 복사, 이동 |
+| **F3**, **F4** | 커서 위치의 파일 보기와 편집 |
+| **Ctrl+Q** | 다른 패널에서 파일 빠른 보기 |
+| **Alt+F7** | 파일 찾기 |
+| **Ctrl+O** | 패널 아래의 콘솔(**Esc**로 패널로 돌아감) |
+| **Ctrl+Shift+N** | 새 터미널 탭 |
+
+Linux(`mtn2-tui`, `mtn2-sdl`)는 아래 “설치”를 참고하세요. 프로그램은 압축 파일, 선택한 파일, 콘솔, 뷰어 등 새로운 상태에 처음 들어갈 때 유용한 키도 알려 줍니다. 이 힌트는 **옵션 → 인터페이스**에서 끌 수 있습니다.
+
 ## 원칙
 
 - **텔레메트리와 클라우드 기능 없음.** 유일한 네트워크 접근은 GitHub에서 새 버전을 확인하는 것입니다(시작 시 하루 한 번). **≡ → 업데이트 확인...**에서 끌 수 있습니다("시작 시 업데이트 확인").
@@ -42,6 +61,15 @@ MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하�
 | 표를 지원하는 Markdown 뷰어 | 에디터. 강조는 플러그인이 제공합니다 |
 | ![내장 콘솔](docs/images/mtn2-console.png) | ![Dracula 테마](docs/images/mtn2-dracula.png) |
 | 내장 콘솔(Ctrl+O) | Dracula 테마 |
+
+## 데모
+
+| | |
+|---|---|
+| ![명령 팔레트](docs/images/mtn2-demo-palette.en.gif) | ![폴더처럼 열린 압축 파일](docs/images/mtn2-demo-archive.en.gif) |
+| 명령 팔레트(**Shift+F9**): 이름으로 검색, 옆에 키 표시 | 압축 파일이 폴더처럼 열리고 키 힌트가 나옵니다 |
+| ![선택과 빠른 보기](docs/images/mtn2-demo-selection.en.gif) | ![로그 끝 따라가기](docs/images/mtn2-demo-follow.en.gif) |
+| 파일 선택(**Ins**)과 빠른 보기(**Ctrl+Q**) | 로그를 보며 끝을 따라갑니다(**Ctrl+Shift+F**) |
 
 ## 주요 기능
 

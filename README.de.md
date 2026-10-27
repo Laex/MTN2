@@ -23,6 +23,25 @@ MTN2 ist für Menschen gedacht, die mit DOS Navigator und Far Manager aufgewachs
 System- und Netzwerkadministratoren, Entwickler. Es ersetzt Far Manager nicht und konkurriert nicht mit Total Commander,
 sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
 
+## Schnellstart
+
+1. Laden Sie `MTN2-<Version>-win64.zip` von der [aktuellen Release-Seite](https://github.com/Laex/MTN2/releases/latest) herunter und entpacken Sie es in einen beliebigen Ordner: kein Installer und keine Administratorrechte nötig.
+2. Starten Sie `MTN2.exe`. Die Einstellungen liegen in `%APPDATA%\MTN2`; die portable Version (`-portable.zip`) speichert alles neben dem Programm.
+3. Beginnen Sie mit diesen Tasten:
+
+| Tasten | Wirkung |
+|---|---|
+| **Shift+F9** | Befehlspalette: jeder Menüpunkt wird nach Namen gefunden, daneben stehen seine Tasten |
+| **F1** | Hilfe zum aktuellen Fenster |
+| **Tab**, **F5**, **F6** | anderes Panel, Kopieren, Verschieben |
+| **F3**, **F4** | Datei unter dem Cursor ansehen und bearbeiten |
+| **Ctrl+Q** | Schnellansicht der Datei im anderen Panel |
+| **Alt+F7** | Dateien suchen |
+| **Ctrl+O** | Konsole unter den Panels (**Esc** zurück zu den Panels) |
+| **Ctrl+Shift+N** | neuer Terminal-Tab |
+
+Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm nennt nützliche Tasten außerdem beim ersten Mal in einem neuen Zustand (Archiv, markierte Dateien, Konsole, Viewer u. a.); die Hinweise lassen sich unter **Optionen → Oberfläche** abschalten.
+
 ## Grundsätze
 
 - **Keine Telemetrie, keine Cloud-Funktionen.** Der einzige Netzzugriff ist die Prüfung auf eine neue Version bei GitHub
@@ -46,6 +65,15 @@ sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
 | Markdown-Anzeige mit Tabellen | Editor; die Hervorhebung kommt von einem Plugin |
 | ![Integrierte Konsole](docs/images/mtn2-console.png) | ![Theme Dracula](docs/images/mtn2-dracula.png) |
 | Integrierte Konsole (Strg+O) | Theme Dracula |
+
+## Demo
+
+| | |
+|---|---|
+| ![Befehlspalette](docs/images/mtn2-demo-palette.en.gif) | ![Archiv als Ordner](docs/images/mtn2-demo-archive.en.gif) |
+| Befehlspalette (**Shift+F9**): Suche nach Namen, Tasten daneben | Ein Archiv öffnet sich wie ein Ordner, mit Tastenhinweis |
+| ![Markieren und Schnellansicht](docs/images/mtn2-demo-selection.en.gif) | ![Dem Ende eines Logs folgen](docs/images/mtn2-demo-follow.en.gif) |
+| Dateien markieren (**Ins**) und Schnellansicht (**Ctrl+Q**) | Ein Log ansehen und seinem Ende folgen (**Ctrl+Shift+F**) |
 
 ## Funktionen
 

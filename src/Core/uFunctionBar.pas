@@ -58,9 +58,11 @@ type
   end;
 
 /// <summary>AUri is the folder of the active panel: a plugin that serves its
-/// scheme may relabel the F-key slots there.</summary>
+/// scheme may relabel the F-key slots there. AWidth is the bar's width in
+/// cells (0 = unknown): the panels' bar names the command palette key only when
+/// there is room left of the F-key slots.</summary>
 procedure FunctionBarGetItems(ACtx: TFunctionBarContext; AMods: TShiftState;
-  out AItems, ALetters: TArray<string>; const AUri: string = '');
+  out AItems, ALetters: TArray<string>; const AUri: string = ''; AWidth: Integer = 0);
 
 function FunctionBarDefaultColors: TFunctionBarColors;
 
@@ -217,9 +219,24 @@ begin
   end;
 end;
 
+// The palette key is named on the panels' bar from this width on; narrower
+// bars keep every F-key slot readable instead.
+const
+  cPaletteHintMinWidth = 100;
+
+// "Shift+F9:Palette" for the key the keymap gives the command palette; '' when
+// it is unbound.
+function PaletteHintLetter: string;
+begin
+  if Length(ActiveKeymap.Bindings[kaCommandPalette]) = 0 then
+    Exit('');
+  Result := KeyBindingToShortStr(ActiveKeymap.Bindings[kaCommandPalette][0]) + ':Palette';
+end;
+
 procedure FunctionBarItemsForPanels(ACtx: TFunctionBarContext; Mods: TShiftState;
-  var AItems, ALetters: TArray<string>; const AUri: string);
+  var AItems, ALetters: TArray<string>; const AUri: string; AWidth: Integer);
 var
+  Palette: string;
   N: Integer;
   PluginLbl: string;
 begin
@@ -278,6 +295,12 @@ begin
       SetLength(ALetters, 1);
       ALetters[0] := 'Alt+Shift+F3:GoTo';
     end;
+    if AWidth >= cPaletteHintMinWidth then
+    begin
+      Palette := PaletteHintLetter;
+      if Palette <> '' then
+        ALetters := ALetters + [Palette];
+    end;
   end;
 end;
 
@@ -318,7 +341,9 @@ begin
   FKeysFromKeymap(fbcViewer, [kcViewer, kcDocument], cViewerFBar, Mods, AItems);
   if Mods = [ssCtrl] then
     HintsFromKeymap([Hint(kaDocSelectAll, 'All'), Hint(kaDocCopy, 'Copy'),
-      Hint(kaDocHex, 'Hex')], Mods, ALetters);
+      Hint(kaDocHex, 'Hex')], Mods, ALetters)
+  else if Mods = [ssCtrl, ssShift] then
+    HintsFromKeymap([Hint(kaViewerFollow, 'Follow')], Mods, ALetters);
 end;
 
 procedure FunctionBarItemsForViewerHex(Mods: TShiftState; var AItems, ALetters: TArray<string>);
@@ -428,7 +453,7 @@ begin
 end;
 
 procedure FunctionBarGetItems(ACtx: TFunctionBarContext; AMods: TShiftState;
-  out AItems, ALetters: TArray<string>; const AUri: string);
+  out AItems, ALetters: TArray<string>; const AUri: string; AWidth: Integer);
 var
   Mods: TShiftState;
 begin
@@ -438,7 +463,7 @@ begin
 
   case ACtx of
     fbcPanels, fbcTmpPanel, fbcWorkspace:
-      FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters, AUri);
+      FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters, AUri, AWidth);
 
     fbcConsole:
       FunctionBarItemsForConsole(Mods, AItems, ALetters);

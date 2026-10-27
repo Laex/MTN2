@@ -84,6 +84,10 @@ type
     FLineCache: TDictionary<Integer, string>;
     FLineCacheOrder: TQueue<Integer>;
     FWantEdit: Boolean;
+    // Follow mode: the view keeps up with a file that grows (see SetFollow).
+    FFollow: Boolean;
+    FGrowing: Boolean;
+    FRecheckGrowth: Boolean;
     // Live reload (see file header comment).
     FWatcher: TDirectoryWatcher;
     FKnownSize: Int64;
@@ -140,6 +144,12 @@ type
     procedure StartWatchingCurrentFile;
     function CanReloadFromDisk: Boolean;
     procedure CheckExternalChange;
+    procedure SetFollow(AValue: Boolean);
+    /// <summary>Follow mode on a streaming document: indexes the lines
+    /// that were appended since the last look.</summary>
+    procedure CheckStreamGrowth;
+    procedure ApplyStreamGrowth(AOldSize, ANewSize, AResume: Int64;
+      const AOffsets: TArray<Int64>; ACount: Integer);
     procedure ReloadFromDisk;
     /// <summary>Shift+F4 / edit of a path that does not exist yet: empty
     /// UTF-8 buffer, not dirty. SaveAsync creates the file; discard leaves
@@ -201,6 +211,14 @@ type
     /// colors), or MaxInt when none did. Resets the mark.</summary>
     function TakeHighlightDirty: Integer;
     property StreamFileSize: Int64 read FStreamFileSize;
+    /// <summary>True for a document that can be followed: a local text file,
+    /// whole or streamed (8-bit encodings only).</summary>
+    function CanFollow: Boolean;
+    /// <summary>While on, the document picks up what is appended to its file
+    /// (a log): a whole document is re-read, a streamed one indexes only the
+    /// new tail. A shrunk file is opened again. Turns itself off when the
+    /// document cannot be followed.</summary>
+    property Follow: Boolean read FFollow write SetFollow;
     property Encoding: TTextFileEncoding read FEncoding;
     property Error: string read FError;
     property Status: string read FStatus;
@@ -295,6 +313,9 @@ begin
   FDirty := False;
   FReadOnly := False;
   FWantEdit := False;
+  FFollow := False;
+  FGrowing := False;
+  FRecheckGrowth := False;
   FCrlf := True;
   FEncoding := tfeUtf8;
   FBinary := False;
@@ -740,7 +761,16 @@ end;
 // bigger job than a plain reload - out of scope for now.
 procedure TEditorDoc.StartWatchingCurrentFile;
 begin
-  if FStreaming or FBinary or HasArchiveChain(FURI) or (FPath = '') then
+  // A streamed file is watched only in follow mode, for its growth.
+  if FStreaming then
+  begin
+    if FFollow and (FStreamPath <> '') and not FStreamPathIsTemp then
+      FWatcher.SetPath(ExtractFileDir(FStreamPath))
+    else
+      FWatcher.SetPath('');
+    Exit;
+  end;
+  if FBinary or HasArchiveChain(FURI) or (FPath = '') then
   begin
     FWatcher.SetPath('');
     Exit;
@@ -764,6 +794,11 @@ procedure TEditorDoc.CheckExternalChange;
 var
   Seq: Cardinal;
 begin
+  if FStreaming then
+  begin
+    CheckStreamGrowth;
+    Exit;
+  end;
   if not CanReloadFromDisk then
     Exit;
   if KnownStatPending then
@@ -844,6 +879,172 @@ begin
       AcceptReadStat;
       NotifyChanged;
     end);
+end;
+
+function TEditorDoc.CanFollow: Boolean;
+begin
+  if (not FReady) or FBinary or FLoading or HasArchiveChain(FURI) then
+    Exit(False);
+  if FStreaming then
+    Result := (FStreamPath <> '') and (not FStreamPathIsTemp) and
+      (FStreamEncoding <> tfeUtf16LE) and (FStreamEncoding <> tfeUtf16BE)
+  else
+    Result := FPath <> '';
+end;
+
+procedure TEditorDoc.SetFollow(AValue: Boolean);
+begin
+  AValue := AValue and CanFollow;
+  if AValue = FFollow then
+    Exit;
+  FFollow := AValue;
+  StartWatchingCurrentFile;
+  if FFollow then
+    CheckExternalChange;
+end;
+
+// The streamed index keeps one entry per line start and, last, either the
+// start of the open line (the file ended with LF) or the file size closing a
+// partial last line. The scan starts at the end of the indexed part of the
+// file, or at the start of a partial last line, so only the appended bytes
+// are read.
+procedure TEditorDoc.CheckStreamGrowth;
+var
+  Life: ILifeFlag;
+  Gen: Cardinal;
+  Path: string;
+  OldSize, PrevStart: Int64;
+begin
+  if not (FFollow and FStreaming and FReady and (not FIndexing) and (not FLoading) and
+    (FStreamPath <> '') and (not FStreamPathIsTemp)) then
+    Exit;
+  if FGrowing then
+  begin
+    FRecheckGrowth := True;
+    Exit;
+  end;
+  FGrowing := True;
+  Life := FLife;
+  Gen := FGen;
+  Path := FStreamPath;
+  OldSize := FStreamFileSize;
+  if FIndexCount >= 2 then
+    PrevStart := FLineOffsets[FIndexCount - 2]
+  else
+    PrevStart := 0;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      FS: TFileStream;
+      Buf: TBytes;
+      Offsets: TArray<Int64>;
+      Count, I, Got: Integer;
+      Pos, NewSize, Resume: Int64;
+      Last: Byte;
+      Failed: Boolean;
+    begin
+      Failed := False;
+      Count := 0;
+      NewSize := OldSize;
+      Resume := OldSize;
+      SetLength(Offsets, 256);
+      try
+        FS := TFileStream.Create(WinApiPath(Path), fmOpenRead or fmShareDenyNone);
+        try
+          NewSize := FS.Size;
+          if NewSize > OldSize then
+          begin
+            if OldSize > 0 then
+            begin
+              FS.Position := OldSize - 1;
+              FS.ReadBuffer(Last, 1);
+              if Last <> 10 then
+                Resume := PrevStart;
+            end;
+            FS.Position := Resume;
+            Pos := Resume;
+            SetLength(Buf, cStreamScanChunk);
+            repeat
+              Got := FS.Read(Buf[0], Length(Buf));
+              for I := 0 to Got - 1 do
+                if Buf[I] = 10 then
+                begin
+                  if Count >= Length(Offsets) then
+                    SetLength(Offsets, Length(Offsets) * 2);
+                  Offsets[Count] := Pos + I + 1;
+                  Inc(Count);
+                end;
+              Inc(Pos, Got);
+            until Got <= 0;
+            NewSize := Pos;
+          end;
+        finally
+          FS.Free;
+        end;
+      except
+        Failed := True;
+      end;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if (not Life.Alive) or (Gen <> FGen) then
+            Exit;
+          FGrowing := False;
+          if not Failed then
+            ApplyStreamGrowth(OldSize, NewSize, Resume, Offsets, Count);
+          if FRecheckGrowth then
+          begin
+            FRecheckGrowth := False;
+            CheckStreamGrowth;
+          end;
+        end);
+    end).Start;
+end;
+
+procedure TEditorDoc.ApplyStreamGrowth(AOldSize, ANewSize, AResume: Int64;
+  const AOffsets: TArray<Int64>; ACount: Integer);
+var
+  I, FirstChanged: Integer;
+  URI: string;
+  WantEdit: Boolean;
+begin
+  if not (FFollow and FStreaming and FReady and (not FIndexing)) then
+    Exit;
+  if ANewSize < AOldSize then
+  begin
+    // Truncated or rotated: start again from the top of the new file.
+    URI := FURI;
+    WantEdit := FWantEdit;
+    Close;
+    OpenAsync(URI, WantEdit);
+    Exit;
+  end;
+  if ANewSize = AOldSize then
+    Exit;
+  if FIndexCount > 2 then
+    FirstChanged := FIndexCount - 2
+  else
+    FirstChanged := 0;
+  // The sentinel of a partial last line goes; its line is indexed again.
+  if AResume < AOldSize then
+    Dec(FIndexCount);
+  if FIndexCount + ACount + 1 > Length(FLineOffsets) then
+    SetLength(FLineOffsets, FIndexCount + ACount + 1);
+  for I := 0 to ACount - 1 do
+    FLineOffsets[FIndexCount + I] := AOffsets[I];
+  Inc(FIndexCount, ACount);
+  if (FIndexCount = 0) or (FLineOffsets[FIndexCount - 1] < ANewSize) then
+  begin
+    FLineOffsets[FIndexCount] := ANewSize;
+    Inc(FIndexCount);
+  end;
+  SetLength(FLineOffsets, FIndexCount);
+  FStreamFileSize := ANewSize;
+  FLineCache.Clear;
+  FLineCacheOrder.Clear;
+  TouchHighlight(FirstChanged);
+  FStatus := Format('Streaming  %d lines', [FIndexCount - 1]);
+  NotifyChanged;
 end;
 
 procedure TEditorDoc.ApplyLoadedText(const AText: string);
@@ -1292,6 +1493,7 @@ begin
     FIndexing := False;
     FIndexPercent := 100;
     FCancel := nil;
+    StartWatchingCurrentFile;
     if FWantEdit then
       FStatus := Format('Too large to edit  %d MB', [ASize div (1024 * 1024)])
     else

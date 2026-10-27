@@ -23,6 +23,7 @@ type
   private
     FTimer: TCoreTimer;
     FVisible: Boolean;
+    FDrawn: TRectI;
     FKind: TToastKind;
     FTemplate: string;
     FArg: string;
@@ -54,6 +55,10 @@ type
     procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer;
       AWidth, AHeight: Integer; const AAvoid: TRectI); overload;
     property Visible: Boolean read FVisible;
+    /// <summary>The cells the notice covered in the last Draw, its shadow
+    /// included; empty (Width 0) when it was not drawn. A picture painted over
+    /// the grid leaves this area free.</summary>
+    property DrawnBounds: TRectI read FDrawn;
     property Kind: TToastKind read FKind;
   end;
 
@@ -82,7 +87,7 @@ function ToastMaxTextLen(AWidth: Integer): Integer;
 implementation
 
 uses
-  uDualPanelOverlays, uPanelUriLabels, uThemeDrawing, uChromeRows;
+  uDualPanelOverlays, uPanelUriLabels, uThemeDrawing, uChromeRows, uCharWidth;
 
 const
   cToastFg = TAlphaColor($FF000000);
@@ -93,15 +98,22 @@ const
   cToastMinWidth = 16;
   cToastMinHeight = 10;
 
+// AMaxLen counts cells: a wide (CJK) character takes two.
 function CutText(const S: string; AMaxLen: Integer): string;
 begin
   if AMaxLen < 1 then
     Exit('');
-  if Length(S) <= AMaxLen then
+  if TextDisplayWidth(S) <= AMaxLen then
     Exit(S);
   if AMaxLen <= 3 then
-    Exit(Copy(S, 1, AMaxLen));
-  Result := Copy(S, 1, AMaxLen - 3) + '...';
+    Exit(Copy(S, 1, TextFitChars(S, AMaxLen)));
+  Result := Copy(S, 1, TextFitChars(S, AMaxLen - 3)) + '...';
+end;
+
+// S padded with spaces to AWidth cells.
+function PadCells(const S: string; AWidth: Integer): string;
+begin
+  Result := S + StringOfChar(' ', AWidth - TextDisplayWidth(S));
 end;
 
 function ToastFitText(const ATemplate, AArg: string; AMaxLen: Integer): string;
@@ -155,6 +167,7 @@ constructor TToast.Create(const AOnChanged: TProc);
 begin
   inherited Create;
   FOnChanged := AOnChanged;
+  FDrawn := TRectI.Make(0, 0, -1, -1);
   FTimer := TCoreTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cToastDurationMs;
@@ -241,17 +254,18 @@ var
   Fg, Bg: TAlphaColor;
   Lines, TextW: Integer;
 begin
+  FDrawn := TRectI.Make(0, 0, -1, -1);
   if not FVisible then
     Exit;
   Text := ToastFitText(FTemplate, FArg, ToastMaxTextLen(AWidth));
   Hint := ToastFitText(FHint, '', ToastMaxTextLen(AWidth));
-  TextW := Length(Text);
+  TextW := TextDisplayWidth(Text);
   Lines := 1;
   if Hint <> '' then
   begin
     Lines := 2;
-    if Length(Hint) > TextW then
-      TextW := Length(Hint);
+    if TextDisplayWidth(Hint) > TextW then
+      TextW := TextDisplayWidth(Hint);
   end;
   R := ToastBounds(TextW, AWidth, AHeight, Lines);
   if R.Width < cToastChrome + 1 then
@@ -265,12 +279,13 @@ begin
   DrawPanelFrameGlyphs(AGrid, R, chDblTL, chDblTR, chDblBL, chDblBR, chDblH,
     chDblV, Fg, Fg, Bg);
   DrawDialogShadow(AGrid, R);
+  FDrawn := TRectI.Make(R.Left, R.Top, R.Right + 1, R.Bottom + 1);
   PutOverlayText(AGrid, ATheme, R.Left + 1, R.Top + 1,
-    ' ' + Text.PadRight(TextW) + ' ', False, FKind = tkWarning, False, cToastFg, cToastBg);
+    ' ' + PadCells(Text, TextW) + ' ', False, FKind = tkWarning, False, cToastFg, cToastBg);
   // The hint in the dialogs' hot-tip colour, so it reads as secondary.
   if Hint <> '' then
     PutOverlayText(AGrid, ATheme, R.Left + 1, R.Top + 2,
-      ' ' + Hint.PadRight(TextW) + ' ', True, False, False, cToastFg, cToastBg);
+      ' ' + PadCells(Hint, TextW) + ' ', True, False, False, cToastFg, cToastBg);
 end;
 
 end.
