@@ -10,6 +10,7 @@ type
   TTestFileFind = class
   public
     [Test] procedure Run;
+    [Test] procedure FiltersParseAndApply;
   end;
 
 implementation
@@ -80,6 +81,56 @@ var
   UriInsideZip: string;
 
 { TTestFileFind }
+
+procedure TTestFileFind.FiltersParseAndApply;
+var
+  Bytes: Int64;
+  Opts: TFindOptions;
+  Text: TFindFilterText;
+  Err: string;
+  T0: TDateTime;
+begin
+  Assert.IsTrue(TryParseFindSize('', Bytes) and (Bytes = -1), 'empty size is no bound');
+  Assert.IsTrue(TryParseFindSize('512', Bytes) and (Bytes = 512), 'plain bytes');
+  Assert.IsTrue(TryParseFindSize('10k', Bytes) and (Bytes = 10 * 1024), 'K suffix');
+  Assert.IsTrue(TryParseFindSize('2 MB', Bytes) and (Bytes = 2 * 1024 * 1024), 'M suffix with B');
+  Assert.IsFalse(TryParseFindSize('abc', Bytes), 'text is not a size');
+  Assert.IsFalse(TryParseFindSize('-5', Bytes), 'negative size');
+
+  T0 := EncodeDate(2025, 3, 4) + EncodeTime(10, 30, 0, 0);
+  Opts := DefaultFindOptions('C:\x', '*.*');
+  Opts.MinSize := 100;
+  Opts.MaxSize := 200;
+  Assert.IsTrue(FindEntryPassesFilters(Opts, False, 150, T0, 0), 'inside the size range');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 99, T0, 0), 'below the range');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 201, T0, 0), 'above the range');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, True, 0, T0, 0), 'folders drop out while a size bound is set');
+
+  Opts := DefaultFindOptions('C:\x', '*.*');
+  Opts.ModifiedFrom := T0;
+  Opts.ModifiedTo := T0 + 1;
+  Assert.IsTrue(FindEntryPassesFilters(Opts, False, 1, T0 + 0.5, 0), 'inside the date range');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 1, T0 - 0.5, 0), 'before the range');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, True, 0, T0 + 2, 0), 'folder after the range');
+
+  Opts := DefaultFindOptions('C:\x', '*.*');
+  Opts.RequireAttr := faHidden or faReadOnly;
+  Assert.IsTrue(FindEntryPassesFilters(Opts, False, 1, T0, faHidden or faReadOnly or faArchive),
+    'all required attributes present');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 1, T0, faHidden), 'one attribute missing');
+
+  Opts := DefaultFindOptions('C:\x', '*.*');
+  Text := Default(TFindFilterText);
+  Text.SizeMin := '1K';
+  Text.AttrHidden := True;
+  Assert.IsTrue(ApplyFindFilterText(Opts, Text, Err), 'valid filters apply');
+  Assert.AreEqual(Int64(1024), Opts.MinSize);
+  Assert.AreEqual(Int64(-1), Opts.MaxSize);
+  Assert.AreEqual(faHidden, Opts.RequireAttr);
+  Text.SizeMax := 'oops';
+  Assert.IsFalse(ApplyFindFilterText(Opts, Text, Err), 'a bad size is rejected');
+  Assert.IsTrue(Err <> '', 'the rejection names the field');
+end;
 
 procedure TTestFileFind.Run;
 begin

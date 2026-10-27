@@ -108,6 +108,12 @@ type
     /// <summary>Pack (Shift+F1) puts the archive into the active panel's folder
     /// instead of the other panel's.</summary>
     PackInSamePanel: Boolean;
+    /// <summary>Backspace on an empty command line in a drive root opens the drive menu.</summary>
+    BackspaceDriveMenu: Boolean;
+    /// <summary>Picking a drive opens the other panel's folder when it is on that drive.</summary>
+    DriveToOtherFolder: Boolean;
+    /// <summary>Space on an empty command line toggles the selection and moves down, like Insert.</summary>
+    SpaceSelects: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -346,6 +352,9 @@ begin
   Result.CellHeightExtra := 0;
   Result.SelectFolders := False;
   Result.PackInSamePanel := False;
+  Result.BackspaceDriveMenu := False;
+  Result.DriveToOtherFolder := False;
+  Result.SpaceSelects := False;
   Result.Language := '';
 end;
 

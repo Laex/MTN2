@@ -239,6 +239,17 @@ uses
   System.IOUtils, uPlatformFileOps,
   uVfsRegistry, uStrings;
 
+// A denied open or read would otherwise show the RTL's own English text
+// ("Cannot create file ..."), which names the wrong operation.
+function DocFileErrorText(E: Exception): string;
+begin
+  if PlatformIsAccessDenied(E) then
+    Result := T('editor.accessDenied', 'No access to the file: %s',
+      [PlatformAccessDeniedText])
+  else
+    Result := E.Message;
+end;
+
 constructor TEditorDoc.Create;
 begin
   inherited Create;
@@ -1464,7 +1475,7 @@ begin
     end;
   except
     on E: Exception do
-      AErr := E.Message;
+      AErr := DocFileErrorText(E);
   end;
 end;
 
@@ -1637,7 +1648,7 @@ begin
     on E: Exception do
     begin
       Failed := True;
-      Publish(True, E.Message);
+      Publish(True, DocFileErrorText(E));
     end;
   end;
   if not Failed then
@@ -1798,7 +1809,7 @@ begin
   except
     on E: Exception do
     begin
-      FError := E.Message;
+      FError := DocFileErrorText(E);
       FStatus := FError;
       NotifyChanged;
       Exit;
@@ -1851,7 +1862,7 @@ begin
   except
     on E: Exception do
     begin
-      AError := E.Message;
+      AError := DocFileErrorText(E);
       Exit;
     end;
   end;
@@ -1926,7 +1937,7 @@ begin
           Ok := True;
         except
           on E: Exception do
-            Err := E.Message;
+            Err := DocFileErrorText(E);
         end;
         TThread.Queue(nil,
           procedure

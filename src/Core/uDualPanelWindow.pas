@@ -30,7 +30,7 @@ uses
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
-  uKeyHints;
+  uKeyHints, uPanelCompare;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -76,6 +76,8 @@ type
     FChecksumPaths: TArray<string>;
     FChecksumBaseDir: string;
     FChecksumAlgoIndex: Integer;
+    FCompareOptions: TPanelCompareOptions;
+    FCompareToken: IJobCancelToken;
     FChecksumToken: IJobCancelToken;
     FChecksumLines: TArray<string>;
     FChecksumSaveName: string;
@@ -189,6 +191,9 @@ type
     FProgramsInTerminal: Boolean;
     FAutoSyncConsoleCwd: Boolean;
     FPackInSamePanel: Boolean;
+    FBackspaceDriveMenu: Boolean;
+    FDriveToOtherFolder: Boolean;
+    FSpaceSelects: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -538,6 +543,8 @@ type
     procedure ActivateRow(const ATab: TTab; const ARow: TPanelRow);
     /// <summary>Up one level: activates the ".." row of the active panel.</summary>
     procedure GoToParent;
+    function HostResolveDriveTarget(ASide: TPanelSide; ALetter: Char;
+      const ADefaultUri: string): string;
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
@@ -715,6 +722,9 @@ type
     procedure BeginCompareFiles;
     /// <summary>Ctrl+Shift+C: select what differs between the two panels.</summary>
     procedure CompareFolders;
+    procedure DispatchCompareOptionsCommand(const AControlId: string);
+    procedure RunCompareFolders;
+    procedure ApplyCompareResult(const ADiff: TPanelCompareResult);
     procedure ShowCompareResult(const ATitle, AMessage: string);
     procedure ShowFileDiff(const ALeftName, ARightName, AStatus: string;
       const ALines: TArray<string>);
@@ -1302,6 +1312,9 @@ type
     property SelectFolders: Boolean read GetSelectFolders write SetSelectFolders;
     /// <summary>Shift+F1 packs into the active panel's folder, not the other one's.</summary>
     property PackInSamePanel: Boolean read FPackInSamePanel write FPackInSamePanel;
+    property BackspaceDriveMenu: Boolean read FBackspaceDriveMenu write FBackspaceDriveMenu;
+    property DriveToOtherFolder: Boolean read FDriveToOtherFolder write FDriveToOtherFolder;
+    property SpaceSelects: Boolean read FSpaceSelects write FSpaceSelects;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -1359,7 +1372,7 @@ type
 implementation
 
 uses
-  uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uPanelCompare, uChromeRows,
+  uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode;
 
@@ -1726,6 +1739,8 @@ begin
   FreeAndNil(FSaver);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
+  if Assigned(FCompareToken) then
+    FCompareToken.Cancel;
   if Assigned(FQuickText) then
   begin
     FQuickText.OnChanged := nil;
@@ -3161,6 +3176,7 @@ begin
   FCmdLineMgr := TDualPanelCmdLineManager.Create(HostCmdLineSubmit, NotifyChanged);
   FCmdLineMgr.OnGetNames := HostCmdLineNames;
   FChecksumAlgoIndex := Ord(caSHA256);
+  FCompareOptions := TPanelCompareOptions.Default;
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
   FCmdLineMgr.OnOpenHistoryPopup := OpenCmdHistoryPopup;
   FPendingSelectName := '';
@@ -3175,6 +3191,7 @@ begin
   FDrivePopupCtrl := TDrivePopupController.Create(Theme, Invalidate,
     HostPanelBounds, HostPanelPath, HostPanelDriveDirs, HostNavigateSide);
   FDrivePopupCtrl.OnAttributes := HostDriveAttributes;
+  FDrivePopupCtrl.OnResolveDrive := HostResolveDriveTarget;
   FDrivePopupCtrl.OnDisconnect := HostDriveDisconnect;
   FHistoryPopupCtrl := THistoryPopupController.Create(Theme, Invalidate,
     HostPanelBounds);
@@ -3201,6 +3218,7 @@ begin
   FSearchDlg := TSearchDialogController.Create(FDialog, FSearchUi, DialogCommand,
     HostSetDialogKind, HostSearchBlocked, HostPrepareSearchUi,
     HostActivePanelUri, NotifyChanged);
+  FModalInputHost.HandleSearchEdit := FSearchDlg.HandleEditInput;
   FDirSync := TDirSyncDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
@@ -5757,7 +5775,8 @@ var
   I: Integer;
 begin
   // Whatever Enter on ".." does here (a folder up, out of an archive, back
-  // from search results / the Recycle Bin); nothing at a drive root.
+  // from search results / the Recycle Bin); at a drive root nothing, or the
+  // drive menu when that option is on.
   if not GetActiveRowContext(Ws, Panel, Tab, Rows) then
     Exit;
   for I := 0 to High(Rows) do
@@ -5766,6 +5785,8 @@ begin
       ActivateRow(Tab, Rows[I]);
       Exit;
     end;
+  if FBackspaceDriveMenu and IsFileUriDriveRoot(Tab.CurrentURI) then
+    ToggleDrivePopup(Ws.State.ActiveSide);
 end;
 
 procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
@@ -5908,6 +5929,16 @@ begin
           Exit(True);
         end;
     end;
+  // Space on an empty command line selects like Insert; with text in the
+  // command line it stays a space.
+  if FSpaceSelects and (AKeyChar = ' ') and (AShift = []) and
+     Assigned(FCmdLineMgr) and (FCmdLineMgr.Text = '') then
+  begin
+    ToggleInsertSelect;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   if Assigned(FCmdLineMgr) then
     Result := FCmdLineMgr.HandleInput(AKey, AShift, AKeyChar)
   else
@@ -5968,6 +5999,11 @@ begin
   begin
     FChecksumToken.Cancel;
     FChecksumToken := nil;
+  end;
+  if Assigned(FCompareToken) then
+  begin
+    FCompareToken.Cancel;
+    FCompareToken := nil;
   end;
   if Assigned(FMenus) then
     FMenus.CloseStub;
@@ -6049,6 +6085,14 @@ begin
   Fields.WholeWords := FDialog.GetCheckbox('search_words');
   Fields.SearchFolders := FDialog.GetCheckbox('search_folders');
   Fields.UseRegex := FDialog.GetCheckbox('search_regex');
+  Fields.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
+  Fields.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
+  Fields.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
+  Fields.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
+  Fields.Filters.AttrReadOnly := FDialog.GetCheckbox('filter_attr_ro');
+  Fields.Filters.AttrHidden := FDialog.GetCheckbox('filter_attr_hidden');
+  Fields.Filters.AttrSystem := FDialog.GetCheckbox('filter_attr_system');
+  Fields.Filters.AttrArchive := FDialog.GetCheckbox('filter_attr_archive');
   Fields.SyncTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
   Fields.SyncByContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
   // Rename from overwrite-ask: keep pending conflict; open name dialog.
@@ -6111,6 +6155,8 @@ begin
       Result := FJobDialogs.DispatchCommand(AKind, AControlId, AFields);
     hdkSearch:
       Result := FSearchDlg.DispatchCommand(AControlId, AFields);
+    hdkDatePicker:
+      Result := FSearchDlg.DispatchDatePickerCommand(AControlId);
     hdkHelp:
       FDialog.Close;
     hdkPluginList:
@@ -6202,6 +6248,8 @@ begin
       end;
     hdkChecksumOptions, hdkChecksumResult:
       DispatchChecksumCommand(AKind, AControlId);
+    hdkCompareOptions:
+      DispatchCompareOptionsCommand(AControlId);
   else
     FDialog.Close;
   end;
@@ -6630,11 +6678,9 @@ end;
 procedure TDualPanelWindow.CompareFolders;
 var
   Ws: TDualPanelWorkspaceTab;
-  LeftTab, RightTab: TTab;
-  Diff: TPanelCompareResult;
   Title: string;
 begin
-  if not CanStartOperation then
+  if not CanStartOperation or Assigned(FCompareToken) then
     Exit;
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -6647,20 +6693,121 @@ begin
       'Both panels must show file lists.'));
     Exit;
   end;
-  Diff := ComparePanelRows(RowsForSide(psLeft), RowsForSide(psRight));
-  // The new selection replaces the previous one on both sides, as in FAR.
+  CloseTransientUiBeforeDialog;
+  FDialogKind := hdkCompareOptions;
+  FDialog.Open(BuildCompareOptionsDialog(FCompareOptions.ByTime,
+    FCompareOptions.BySize, FCompareOptions.ByContent), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.DispatchCompareOptionsCommand(const AControlId: string);
+var
+  Opt: TPanelCompareOptions;
+begin
+  Opt.ByTime := FDialog.GetCheckbox('by_time');
+  Opt.BySize := FDialog.GetCheckbox('by_size');
+  Opt.ByContent := FDialog.GetCheckbox('by_content');
+  FDialog.Close;
+  if DialogCmdIsAccept(AControlId) then
+  begin
+    FCompareOptions := Opt;
+    RunCompareFolders;
+  end;
+  NotifyChanged;
+end;
+
+// The new selection replaces the previous one on both sides, as in FAR.
+procedure TDualPanelWindow.ApplyCompareResult(const ADiff: TPanelCompareResult);
+var
+  Ws: TDualPanelWorkspaceTab;
+  LeftTab, RightTab: TTab;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
   LeftTab := ActiveTab(Ws.State.LeftPanel);
-  LeftTab.SelectedURIs := Diff.LeftUris;
+  LeftTab.SelectedURIs := ADiff.LeftUris;
   SetActiveTab(Ws.State.LeftPanel, LeftTab);
   RightTab := ActiveTab(Ws.State.RightPanel);
-  RightTab.SelectedURIs := Diff.RightUris;
+  RightTab.SelectedURIs := ADiff.RightUris;
   SetActiveTab(Ws.State.RightPanel, RightTab);
   SaveActiveWorkspace(Ws);
   Invalidate;
   // Differences speak for themselves (the selection and its totals in the
   // panel footer); only "nothing differs" needs saying, as in FAR.
-  if (Length(Diff.LeftUris) = 0) and (Length(Diff.RightUris) = 0) then
-    ShowCompareResult(Title, T('ui.compareFolders.same', 'The folders are identical.'));
+  if (Length(ADiff.LeftUris) = 0) and (Length(ADiff.RightUris) = 0) then
+    ShowCompareResult(T('ui.compareFolders.title', 'Compare folders'),
+      T('ui.compareFolders.same', 'The folders are identical.'));
+end;
+
+procedure TDualPanelWindow.RunCompareFolders;
+var
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+  LeftRows, RightRows: TPanelRows;
+  Opt: TPanelCompareOptions;
+  Title: string;
+begin
+  LeftRows := RowsForSide(psLeft);
+  RightRows := RowsForSide(psRight);
+  Opt := FCompareOptions;
+  if not Opt.ByContent then
+  begin
+    ApplyCompareResult(ComparePanelRows(LeftRows, RightRows, Opt, nil));
+    Exit;
+  end;
+  // Reading file content can take long: the comparison runs off the UI
+  // thread behind a stub that Esc cancels.
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  FCompareToken := Token;
+  Title := T('ui.compareFolders.title', 'Compare folders');
+  OpenStub(skShellInfo, Title, T('ui.compareFolders.working', 'Comparing... Esc=Cancel'));
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Diff: TPanelCompareResult;
+      Err: string;
+    begin
+      Err := '';
+      try
+        Diff := ComparePanelRows(LeftRows, RightRows, Opt,
+          function(const ALeft, ARight: TPanelRow): Boolean
+          var
+            LP, RP: string;
+          begin
+            if Token.IsCancellationRequested then
+              Exit(True);
+            LP := FileUriToPath(ALeft.URI);
+            RP := FileUriToPath(ARight.URI);
+            // Rows of other filesystems (archives, SFTP) are not read.
+            if (LP = '') or (RP = '') then
+              Exit(True);
+            Result := LocalFilesHaveSameContent(LP, RP,
+              function: Boolean
+              begin
+                Result := Token.IsCancellationRequested;
+              end);
+          end);
+      except
+        on E: Exception do
+          Err := E.Message;
+      end;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if Token.IsCancellationRequested or not Life.Alive then
+            Exit;
+          FCompareToken := nil;
+          CloseStub;
+          if Err <> '' then
+          begin
+            OpenStub(skShellInfo, Title, Err);
+            Exit;
+          end;
+          ApplyCompareResult(Diff);
+        end);
+    end).Start;
 end;
 
 procedure TDualPanelWindow.BeginCompareFiles;
@@ -11929,6 +12076,28 @@ begin
     FDrivePreviewActive, FDrivePreviewSide, FDrivePreviewLetter);
 end;
 
+function TDualPanelWindow.HostResolveDriveTarget(ASide: TPanelSide;
+  ALetter: Char; const ADefaultUri: string): string;
+var
+  OtherPanel: TPanelState;
+  OtherUri, OtherPath: string;
+begin
+  Result := ADefaultUri;
+  if not FDriveToOtherFolder then
+    Exit;
+  if ASide = psLeft then
+    OtherPanel := ActiveWorkspace.State.RightPanel
+  else
+    OtherPanel := ActiveWorkspace.State.LeftPanel;
+  OtherUri := ActiveTab(OtherPanel).CurrentURI;
+  if (Pos('file://', OtherUri) <> 1) or HasArchiveChain(OtherUri) then
+    Exit;
+  OtherPath := FileUriToPath(OtherUri);
+  if (Length(OtherPath) >= 2) and (OtherPath[2] = ':') and
+     (UpCase(OtherPath[1]) = UpCase(ALetter)) then
+    Result := OtherUri;
+end;
+
 procedure TDualPanelWindow.NavigatePanelToDrive(ASide: TPanelSide; ALetter: Char);
 var
   Drives: TDriveInfoArray;
@@ -11959,8 +12128,8 @@ begin
     Panel := ActiveWorkspace.State.LeftPanel
   else
     Panel := ActiveWorkspace.State.RightPanel;
-  NavigateSideTo(ASide,
-    ResolvePanelDriveUri(Panel.DriveDirs, ALetter, Drives[I].RootPath));
+  NavigateSideTo(ASide, HostResolveDriveTarget(ASide, ALetter,
+    ResolvePanelDriveUri(Panel.DriveDirs, ALetter, Drives[I].RootPath)));
 end;
 
 procedure TDualPanelWindow.CancelDrivePreview;

@@ -155,7 +155,7 @@ type
     hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt,
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
-    hdkChecksumOptions, hdkChecksumResult, hdkMultiRename,
+    hdkChecksumOptions, hdkChecksumResult, hdkMultiRename, hdkCompareOptions, hdkDatePicker,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.
@@ -173,6 +173,7 @@ type
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
       SyncByContent, EncryptNames: Boolean;
+    Filters: TFindFilterText;
   end;
 
   TSearchPhase = (spNone, spDialog, spRunning, spResults);
@@ -186,6 +187,7 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;
     UseRegex: Boolean;
+    Filters: TFindFilterText;
     FocusField: Integer; // legacy
     RootPath: string;
     Results: TArray<TFindHit>;

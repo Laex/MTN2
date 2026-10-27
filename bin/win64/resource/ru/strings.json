@@ -100,6 +100,13 @@
       "ok": "ОК",
       "cancel": "Отмена"
     },
+    "DIALOG_DATEPICKER": {
+      "$title": "Выбор даты",
+      "lbl_time": "Время (чч:мм):",
+      "ok": "Взять",
+      "clear": "&Очистить",
+      "cancel": "Отмена"
+    },
     "DIALOG_COLORPICKER": {
       "hint": "Стрелки - выбор, Shift+Влево/Вправо - шаг 10, Tab - далее",
       "$title": "Выбор цвета",
@@ -266,6 +273,9 @@
       "passive_cursor": "Курсор в &неактивной панели",
       "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "exact_sizes": "&Точный размер в байтах",
+      "backspace_drive_menu": "Backspace в корне диска открывает &меню дисков",
+      "drive_other_folder": "Смена диска &открывает папку другой панели",
+      "space_selects": "Пробел выде&ляет файл и идёт вниз",
       "lbl_saver": "Заставка",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -273,6 +283,15 @@
     "DIALOG_CHECKSUMOPTS": {
       "$title": "Контрольные суммы",
       "lbl_algo": "Алгоритм:",
+      "ok": "ОК",
+      "cancel": "Отмена"
+    },
+    "DIALOG_COMPAREOPTS": {
+      "$title": "Сравнение папок",
+      "lbl_compare": "Сравнивать:",
+      "by_time": "&Время",
+      "by_size": "&Размер",
+      "by_content": "&Содержимое",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -570,6 +589,16 @@
       "lbl_mask": "Маска файла или несколько масок:",
       "lbl_text": "Содержащие текст:",
       "$title": "Поиск файла",
+      "lbl_format": "Размер: 10K, 1.5M",
+      "lbl_size": "Размер от:",
+      "lbl_size_to": "до:",
+      "lbl_date": "Изменён с:",
+      "lbl_date_to": "до:",
+      "lbl_attr": "Атрибуты:",
+      "filter_attr_ro": "Только чт&ение",
+      "filter_attr_hidden": "С&крытый",
+      "filter_attr_system": "Систе&мный",
+      "filter_attr_archive": "&Архивный",
       "search_case": "&Учитывать регистр",
       "search_words": "&Только слово целиком",
       "search_folders": "&Искать папки",
@@ -1172,6 +1201,7 @@
     "editor.reloadEncodingMsg": "Отменить несохранённые изменения и перекодировать?",
     "editor.readOnlyTitle": "Файл только для чтения",
     "editor.readOnlyMsg": "Снять атрибут «только для чтения» и редактировать?",
+    "editor.accessDenied": "Нет доступа к файлу: %s",
     "editor.notFoundTitle": "Поиск",
     "editor.notFoundMsg": "Строка не найдена",
     "editor.badPatternMsg": "Неверное регулярное выражение",
@@ -1298,6 +1328,9 @@
     "checksum.saved": "Сохранено: ",
     "compareFolders.needPanels": "На обеих панелях должны быть списки файлов.",
     "compareFolders.same": "Папки одинаковы.",
+    "compareFolders.working": "Сравнение... Esc=Отмена",
+    "datePicker.title": "Выбор даты",
+    "search.filterFormat": "Размер: 10K, 1.5M   Дата: %s",
     "externalTools.title": "Внешний просмотрщик / редактор",
     "externalTools.viewTitle": "Внешний просмотрщик",
     "externalTools.editTitle": "Внешний редактор",

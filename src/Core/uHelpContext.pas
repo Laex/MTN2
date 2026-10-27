@@ -74,6 +74,8 @@ begin
       Result := 'fileops.md#attributes';
     hdkChecksumOptions, hdkChecksumResult:
       Result := 'fileops.md#checksums';
+    hdkCompareOptions:
+      Result := 'sync.md#compare-folders';
     hdkMultiRename:
       Result := 'fileops.md#multi-rename';
     hdkExportList:
@@ -84,7 +86,7 @@ begin
       Result := 'jobs.md#job-list';
     hdkStopConfirm:
       Result := 'jobs.md#stop';
-    hdkSearch, hdkTmpSaveList, hdkPanelFilter:
+    hdkSearch, hdkDatePicker, hdkTmpSaveList, hdkPanelFilter:
       Result := 'search.md';
     hdkSelectMask, hdkUnselectMask:
       Result := 'selection.md';

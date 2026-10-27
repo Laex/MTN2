@@ -23,6 +23,19 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;    // include matching directories in results
     UseRegex: Boolean;         // ContainingText is a regex pattern, not plain text
+    MinSize: Int64;            // bytes; -1 = no lower bound (files only)
+    MaxSize: Int64;            // bytes; -1 = no upper bound (files only)
+    ModifiedFrom: TDateTime;   // 0 = no lower bound
+    ModifiedTo: TDateTime;     // 0 = no upper bound
+    RequireAttr: Integer;      // fa* bits an entry must all have; 0 = any
+  end;
+
+  /// <summary>The filter fields of the Find dialog as typed: sizes such as
+  /// "10", "512K", "1.5M", dates in the locale's short format, optionally with
+  /// a time.</summary>
+  TFindFilterText = record
+    SizeMin, SizeMax, DateFrom, DateTo: string;
+    AttrReadOnly, AttrHidden, AttrSystem, AttrArchive: Boolean;
   end;
 
   /// <summary>One search hit. Line/Snippet are 0/'' unless ContainingText was
@@ -40,6 +53,24 @@ type
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean = True): TFindOptions;
+
+/// <summary>A size with an optional K, M, G or T suffix (powers of 1024, a
+/// trailing B allowed); '' gives True with -1 (no bound).</summary>
+function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;
+/// <summary>A date (locale short format) with an optional time; '' gives True
+/// with 0. A date without a time is the start of that day, or its last moment
+/// when AEndOfDay.</summary>
+function TryParseFindDate(const AText: string; AEndOfDay: Boolean;
+  out ATime: TDateTime): Boolean;
+/// <summary>Copies the typed filters into AOptions; False with AError naming
+/// the field that cannot be read.</summary>
+function ApplyFindFilterText(var AOptions: TFindOptions;
+  const AText: TFindFilterText; out AError: string): Boolean;
+/// <summary>True when an entry passes the size, date and attribute filters.
+/// Size bounds do not apply to folders, and a folder is dropped while one is
+/// set.</summary>
+function FindEntryPassesFilters(const AOptions: TFindOptions; AIsDir: Boolean;
+  ASize: Int64; AModified: TDateTime; AAttr: Integer): Boolean;
 
 /// <summary>Split `*.pas;*.dfm` / comma-separated masks (empty -> `*.*`).</summary>
 function SplitMasks(const AMask: string): TArray<string>;
@@ -72,6 +103,110 @@ begin
   Result.WholeWords := False;
   Result.SearchFolders := False;
   Result.UseRegex := False;
+  Result.MinSize := -1;
+  Result.MaxSize := -1;
+  Result.ModifiedFrom := 0;
+  Result.ModifiedTo := 0;
+  Result.RequireAttr := 0;
+end;
+
+function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;
+var
+  S: string;
+  Mult: Int64;
+  Num: Double;
+begin
+  ABytes := -1;
+  S := Trim(AText);
+  if S = '' then
+    Exit(True);
+  Result := False;
+  if (S <> '') and CharInSet(UpCase(S[Length(S)]), ['B']) then
+    Delete(S, Length(S), 1);
+  Mult := 1;
+  if S <> '' then
+    case UpCase(S[Length(S)]) of
+      'K': Mult := Int64(1) shl 10;
+      'M': Mult := Int64(1) shl 20;
+      'G': Mult := Int64(1) shl 30;
+      'T': Mult := Int64(1) shl 40;
+    end;
+  if Mult > 1 then
+    Delete(S, Length(S), 1);
+  S := Trim(S);
+  if (S = '') or not TryStrToFloat(S, Num) or (Num < 0) then
+    Exit;
+  ABytes := Round(Num * Mult);
+  Result := True;
+end;
+
+function TryParseFindDate(const AText: string; AEndOfDay: Boolean;
+  out ATime: TDateTime): Boolean;
+var
+  S: string;
+begin
+  ATime := 0;
+  S := Trim(AText);
+  if S = '' then
+    Exit(True);
+  Result := TryStrToDateTime(S, ATime);
+  if not Result then
+    Exit;
+  if AEndOfDay and (Frac(ATime) = 0) then
+    ATime := ATime + 1 - 1 / MSecsPerDay;
+end;
+
+function ApplyFindFilterText(var AOptions: TFindOptions;
+  const AText: TFindFilterText; out AError: string): Boolean;
+begin
+  AError := '';
+  Result := False;
+  if not TryParseFindSize(AText.SizeMin, AOptions.MinSize) then
+    AError := 'Invalid size: ' + AText.SizeMin
+  else if not TryParseFindSize(AText.SizeMax, AOptions.MaxSize) then
+    AError := 'Invalid size: ' + AText.SizeMax
+  else if not TryParseFindDate(AText.DateFrom, False, AOptions.ModifiedFrom) then
+    AError := 'Invalid date: ' + AText.DateFrom
+  else if not TryParseFindDate(AText.DateTo, True, AOptions.ModifiedTo) then
+    AError := 'Invalid date: ' + AText.DateTo;
+  if AError <> '' then
+    Exit;
+  // The fa* constants are the bits TSearchRec.Attr reports.
+  {$WARN SYMBOL_PLATFORM OFF}
+  AOptions.RequireAttr := 0;
+  if AText.AttrReadOnly then
+    AOptions.RequireAttr := AOptions.RequireAttr or faReadOnly;
+  if AText.AttrHidden then
+    AOptions.RequireAttr := AOptions.RequireAttr or faHidden;
+  if AText.AttrSystem then
+    AOptions.RequireAttr := AOptions.RequireAttr or faSysFile;
+  if AText.AttrArchive then
+    AOptions.RequireAttr := AOptions.RequireAttr or faArchive;
+  {$WARN SYMBOL_PLATFORM ON}
+  Result := True;
+end;
+
+function FindEntryPassesFilters(const AOptions: TFindOptions; AIsDir: Boolean;
+  ASize: Int64; AModified: TDateTime; AAttr: Integer): Boolean;
+begin
+  Result := False;
+  if (AOptions.RequireAttr <> 0) and
+     ((AAttr and AOptions.RequireAttr) <> AOptions.RequireAttr) then
+    Exit;
+  if (AOptions.ModifiedFrom <> 0) and (AModified < AOptions.ModifiedFrom) then
+    Exit;
+  if (AOptions.ModifiedTo <> 0) and (AModified > AOptions.ModifiedTo) then
+    Exit;
+  if (AOptions.MinSize >= 0) or (AOptions.MaxSize >= 0) then
+  begin
+    if AIsDir then
+      Exit;
+    if (AOptions.MinSize >= 0) and (ASize < AOptions.MinSize) then
+      Exit;
+    if (AOptions.MaxSize >= 0) and (ASize > AOptions.MaxSize) then
+      Exit;
+  end;
+  Result := True;
 end;
 
 function SplitMasks(const AMask: string): TArray<string>;
@@ -373,7 +508,8 @@ begin
                     if IsDir then
                     begin
                       if Opts.SearchFolders and NameMatchesAnyMask(Name, Masks) and
-                         (Needle = '') then
+                         (Needle = '') and
+                         FindEntryPassesFilters(Opts, True, 0, SR.TimeStamp, SR.Attr) then
                       begin
                         Hit.Path := Full;
                         Hit.Line := 0;
@@ -383,7 +519,9 @@ begin
                       if Opts.Subdirs then
                         Stack.Push(Full);
                     end
-                    else if NameMatchesAnyMask(Name, Masks) then
+                    else if NameMatchesAnyMask(Name, Masks) and
+                            FindEntryPassesFilters(Opts, False, SR.Size, SR.TimeStamp,
+                              SR.Attr) then
                     begin
                       if FindContentMatch(Full, Opts, HitLine, HitSnippet) then
                       begin

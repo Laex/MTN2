@@ -85,6 +85,11 @@ function JobRetryLimitFromIndex(AIdx: Integer): Integer;
 function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
   AFallbackUri: string; ATypeIdx: Integer = -1;
   AInitialTypeIdx: Integer = -1): string;
+/// <summary>The destination typed in the Copy / Move / Pack dialog with a
+/// relative local path anchored at the folder the sources come from (ABaseDirUri,
+/// a plain local folder); anything else - an absolute path, a URI, a base that
+/// is not a local folder - comes back unchanged.</summary>
+function JobResolveRelativeDest(const ADestPath, ABaseDirUri: string): string;
 /// <summary>The extension (with the dot) of an archive type of the Pack dialog.</summary>
 function JobPackArchiveExt(ATypeIdx: Integer): string;
 /// <summary>The 7-Zip level (-mx) of an item of the Pack dialog's compression
@@ -278,6 +283,23 @@ begin
     end;
   end;
   Result := PathToFileUri(ExcludeTrailingPathDelimiter(DestPath));
+end;
+
+function JobResolveRelativeDest(const ADestPath, ABaseDirUri: string): string;
+var
+  Dest, Base: string;
+begin
+  Result := ADestPath;
+  Dest := Trim(ADestPath);
+  if (Dest = '') or (Pos('://', Dest) > 0) or not TPath.IsRelativePath(Dest) then
+    Exit;
+  if (ABaseDirUri = '') or HasArchiveChain(ABaseDirUri) or
+     (Pos('file://', ABaseDirUri) <> 1) then
+    Exit;
+  Base := FileUriToPath(ABaseDirUri);
+  if Base = '' then
+    Exit;
+  Result := TPath.Combine(Base, Dest);
 end;
 
 function JobConfirmDestText(AKind: TPanelJobKind; const ADestDirURI: string): string;
@@ -494,7 +516,7 @@ end;
 function TJobDialogController.ApplyJobConfirmOptions(
   const AFields: TDialogCommandFields): Boolean;
 var
-  DestURI, ExcludeMask, ArchivePath: string;
+  DestURI, DestPath, ExcludeMask, ArchivePath: string;
   ExistingIdx: Integer;
 begin
   Result := True;
@@ -502,11 +524,12 @@ begin
     Exit;
   if not (FJobs.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) then
     Exit;
+  DestPath := JobResolveRelativeDest(AFields.DestPath, FJobs.State.OriginSrcDirURI);
   if FJobs.Kind = pjkPack then
-    DestURI := JobConfirmDestUri(FJobs.Kind, AFields.DestPath, FJobs.State.DestDirURI,
+    DestURI := JobConfirmDestUri(FJobs.Kind, DestPath, FJobs.State.DestDirURI,
       AFields.PackTypeIdx, FPackInitialType)
   else
-    DestURI := JobConfirmDestUri(FJobs.Kind, AFields.DestPath, FJobs.State.DestDirURI);
+    DestURI := JobConfirmDestUri(FJobs.Kind, DestPath, FJobs.State.DestDirURI);
   ExistingIdx := AFields.ExistingIdx;
   if ExistingIdx < 0 then
     ExistingIdx := 0;
@@ -604,7 +627,8 @@ begin
   // stays open and a toast gives the reason.
   if (DialogCmdIsAccept(AControlId) or JobConfirmWantsBackground(AControlId)) and
      Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove]) and
-     PanelFoldersAreSame(JobConfirmDestUri(FJobs.Kind, AFields.DestPath,
+     PanelFoldersAreSame(JobConfirmDestUri(FJobs.Kind,
+       JobResolveRelativeDest(AFields.DestPath, FJobs.State.OriginSrcDirURI),
        FJobs.State.DestDirURI), FJobs.State.OriginSrcDirURI) then
   begin
     if Assigned(FOnWarn) then

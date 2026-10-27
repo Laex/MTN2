@@ -103,6 +103,13 @@
       "lbl_normal": "Normal:",
       "lbl_selected": "Selected:"
     },
+    "DIALOG_DATEPICKER": {
+      "$title": "Pick date",
+      "lbl_time": "Time (hh:mm):",
+      "ok": "Use",
+      "clear": "C&lear",
+      "cancel": "Cancel"
+    },
     "DIALOG_COLORPICKER": {
       "$title": "Pick color",
       "ok": "Use",
@@ -269,6 +276,9 @@
       "passive_cursor": "Cursor in the inacti&ve panel",
       "editor_autoindent": "Editor a&uto-indent on Enter",
       "exact_sizes": "Show exact size in &bytes",
+      "backspace_drive_menu": "Backspace in a drive root opens the &drive menu",
+      "drive_other_folder": "Drive &change opens the other panel's folder",
+      "space_selects": "Space se&lects files, then moves down",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"
@@ -276,6 +286,15 @@
     "DIALOG_CHECKSUMOPTS": {
       "$title": "Checksums",
       "lbl_algo": "Algorithm:",
+      "ok": "OK",
+      "cancel": "Cancel"
+    },
+    "DIALOG_COMPAREOPTS": {
+      "$title": "Compare folders",
+      "lbl_compare": "Compare:",
+      "by_time": "&Time",
+      "by_size": "&Size",
+      "by_content": "&Content",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -571,6 +590,7 @@
     },
     "DIALOG_SEARCH": {
       "$title": "Find file",
+      "lbl_format": "Size: 10K, 1.5M",
       "search_case": "&Case sensitive",
       "search_words": "&Whole words",
       "search_folders": "Search for &folders",
@@ -579,7 +599,16 @@
       "ok": "Find",
       "cancel": "Cancel",
       "lbl_mask": "A file mask or several file masks:",
-      "lbl_text": "Containing text:"
+      "lbl_text": "Containing text:",
+      "lbl_size": "Size from:",
+      "lbl_size_to": "to:",
+      "lbl_date": "Modified from:",
+      "lbl_date_to": "to:",
+      "lbl_attr": "Attributes:",
+      "filter_attr_ro": "Rea&d-only",
+      "filter_attr_hidden": "&Hidden",
+      "filter_attr_system": "Sys&tem",
+      "filter_attr_archive": "&Archive"
     },
     "DIALOG_PANELFILTER": {
       "$title": "Panel filter",
@@ -1175,6 +1204,7 @@
     "editor.reloadEncodingMsg": "Discard unsaved changes and re-decode?",
     "editor.readOnlyTitle": "Read-only file",
     "editor.readOnlyMsg": "Clear the OS read-only attribute and edit?",
+    "editor.accessDenied": "No access to the file: %s",
     "editor.notFoundTitle": "Search",
     "editor.notFoundMsg": "Could not find the string",
     "editor.badPatternMsg": "Invalid regular expression",
@@ -1301,6 +1331,9 @@
     "checksum.saved": "Saved: ",
     "compareFolders.needPanels": "Both panels must show file lists.",
     "compareFolders.same": "The folders are identical.",
+    "compareFolders.working": "Comparing... Esc=Cancel",
+    "datePicker.title": "Pick date",
+    "search.filterFormat": "Size: 10K, 1.5M   Date: %s",
     "externalTools.title": "External viewer/editor",
     "externalTools.viewTitle": "External viewer",
     "externalTools.editTitle": "External editor",

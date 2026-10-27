@@ -126,6 +126,18 @@ begin
   Assert.IsTrue(JobConfirmDestUri(pjkCopy, '', 'file:///C:/dst/') = 'file:///C:/dst/',
     'empty dest keeps fallback');
   Assert.IsTrue(FileUriToPath('tmp:///') = '', 'tmp URI is not a local path');
+  Assert.AreEqual('C:\Folder1\misc',
+    FileUriToPath(PathToFileUri(JobResolveRelativeDest('misc', 'file:///C:/Folder1/'))),
+    'relative dest is anchored at the folder of the sources');
+  Assert.AreEqual('C:\Folder1\sub\misc',
+    FileUriToPath(PathToFileUri(JobResolveRelativeDest('sub\misc', 'file:///C:/Folder1/'))),
+    'relative dest with a subfolder');
+  Assert.AreEqual('D:\out', JobResolveRelativeDest('D:\out', 'file:///C:/Folder1/'),
+    'absolute dest is kept');
+  Assert.AreEqual('tmp:///', JobResolveRelativeDest('tmp:///', 'file:///C:/Folder1/'),
+    'URI dest is kept');
+  Assert.AreEqual('misc', JobResolveRelativeDest('misc', 'file:///C:/a.zip!/'),
+    'base inside an archive is not a local folder');
   Assert.IsTrue(JobConfirmDestUri(pjkCopy, '', 'tmp:///') = 'tmp:///',
     'empty dest keeps tmp fallback');
   Assert.IsTrue(JobConfirmDestUri(pjkCopy, 'tmp:///', 'tmp:///') = 'tmp:///',

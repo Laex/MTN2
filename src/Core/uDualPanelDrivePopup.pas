@@ -16,6 +16,10 @@ type
   TPanelNavigateEvent = reference to procedure(ASide: TPanelSide; const AURI: string);
   TDrivePathEvent = reference to procedure(const APath: string);
   TDriveInfoEvent = reference to procedure(const AInfo: TDriveInfo);
+  /// <summary>The URI a drive letter picked for a side opens; ADefaultUri is the
+  /// remembered folder of that drive.</summary>
+  TDriveTargetEvent = reference to function(ASide: TPanelSide; ALetter: Char;
+    const ADefaultUri: string): string;
 
   TDrivePopupController = class
   private
@@ -28,6 +32,7 @@ type
     FState: TDrivePopupState;
     FOnAttributes: TDrivePathEvent;
     FOnDisconnect: TDriveInfoEvent;
+    FOnResolveDrive: TDriveTargetEvent;
     procedure HandleDriveInfoRefreshed;
     function WithUncShares(const ADrives: TDriveInfoArray): TDriveInfoArray;
     function UncCursorIndex: Integer;
@@ -57,6 +62,8 @@ type
     /// <summary>Del on a drive that can be taken offline (removable, optical,
     /// mapped network drive): the host confirms and disconnects it.</summary>
     property OnDisconnect: TDriveInfoEvent read FOnDisconnect write FOnDisconnect;
+    /// <summary>Chooses the folder a picked drive opens; unset = its remembered folder.</summary>
+    property OnResolveDrive: TDriveTargetEvent read FOnResolveDrive write FOnResolveDrive;
   end;
 
 implementation
@@ -268,6 +275,8 @@ begin
   Idx := EnsureRange(FState.CursorIndex, 0, High(FState.Drives));
   TargetURI := ResolvePanelDriveUri(FGetDriveDirs(Side),
     FState.Drives[Idx].Letter, FState.Drives[Idx].RootPath);
+  if Assigned(FOnResolveDrive) then
+    TargetURI := FOnResolveDrive(Side, FState.Drives[Idx].Letter, TargetURI);
   Close;
   if Assigned(FOnNavigate) then
     FOnNavigate(Side, TargetURI);

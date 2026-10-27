@@ -212,6 +212,11 @@ begin
     SameDateTime(P, EncodeDateTime(2021, 3, 4, 5, 6, 0, 0)), 'seconds are optional');
   Assert.IsTrue(TryParseFileAttrTime(DateToStr(T), P) and SameDateTime(P, EncodeDate(2021, 3, 4)),
     'date alone means midnight');
+  Assert.IsTrue(TryParseFileAttrTime('Mon ' + FormatFileAttrTime(T), P) and SameDateTime(P, T),
+    'a leading day of week is ignored');
+  Assert.IsTrue(TryParseFileAttrTime('Tue. ' + FormatFileAttrTime(T), P) and SameDateTime(P, T),
+    'a day of week with a dot is ignored');
+  Assert.IsTrue(not TryParseFileAttrTime('Mon', P), 'a day of week alone is not a date');
   Assert.IsTrue(not TryParseFileAttrTime('', P), 'empty is not a date');
   Assert.IsTrue(not TryParseFileAttrTime('yesterday', P), 'garbage is not a date');
   Assert.IsTrue(not TryParseFileAttrTime(DateToStr(EncodeDate(1500, 1, 1)), P),

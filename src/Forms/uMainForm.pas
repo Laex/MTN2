@@ -1676,6 +1676,9 @@ begin
   Result.CellHeightExtra := ClampCellExtra(FSession.CellHeightExtra);
   Result.SelectFolders := FDualPanel.SelectFolders;
   Result.PackInSamePanel := FDualPanel.PackInSamePanel;
+  Result.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
+  Result.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
+  Result.SpaceSelects := FDualPanel.SpaceSelects;
   Result.Language := CurrentLocale;
 end;
 
@@ -1722,7 +1725,13 @@ begin
   FSession.SelectFolders := ASettings.SelectFolders;
   FDualPanel.SelectFolders := ASettings.SelectFolders;
   FSession.PackInSamePanel := ASettings.PackInSamePanel;
+  FSession.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
+  FSession.DriveToOtherFolder := ASettings.DriveToOtherFolder;
+  FSession.SpaceSelects := ASettings.SpaceSelects;
   FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
+  FDualPanel.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
+  FDualPanel.DriveToOtherFolder := ASettings.DriveToOtherFolder;
+  FDualPanel.SpaceSelects := ASettings.SpaceSelects;
   GShadowStyle := ASettings.ShadowStyle;
   FSession.MarkedRows := MarkedRowStyleId(ASettings.MarkedRowStyle);
   GMarkedRowStyle := ASettings.MarkedRowStyle;
@@ -1803,6 +1812,9 @@ begin
   FDualPanel.AutoSyncConsoleCwd := Sess.AutoSyncConsoleCwd;
   FDualPanel.SelectFolders := Sess.SelectFolders;
   FDualPanel.PackInSamePanel := Sess.PackInSamePanel;
+  FDualPanel.BackspaceDriveMenu := Sess.BackspaceDriveMenu;
+  FDualPanel.DriveToOtherFolder := Sess.DriveToOtherFolder;
+  FDualPanel.SpaceSelects := Sess.SpaceSelects;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -1957,6 +1969,9 @@ begin
   Sess.EditorSearchRegex := GEditorSearchOptions.UseRegex;
   Sess.SelectFolders := FDualPanel.SelectFolders;
   Sess.PackInSamePanel := FDualPanel.PackInSamePanel;
+  Sess.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
+  Sess.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
+  Sess.SpaceSelects := FDualPanel.SpaceSelects;
   // Like ThemeName above: uStrings.CurrentLocale is the live, switched-at-
   // runtime value (Display dialog or the startup PeekSessionLanguage/
   // SetLocale call) -- always the source of truth, not whatever

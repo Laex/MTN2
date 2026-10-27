@@ -102,6 +102,13 @@
         "Dirs only": "Nur Ordner"
       }
     },
+    "DIALOG_DATEPICKER": {
+      "$title": "Datum wählen",
+      "lbl_time": "Zeit (hh:mm):",
+      "ok": "Übernehmen",
+      "clear": "&Leeren",
+      "cancel": "Abbrechen"
+    },
     "DIALOG_COLORPICKER": {
       "$title": "Farbe wählen",
       "ok": "Übernehmen",
@@ -268,6 +275,9 @@
       "passive_cursor": "Cursor im ina&ktiven Panel",
       "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
       "exact_sizes": "Genaue Größe in &Bytes anzeigen",
+      "backspace_drive_menu": "Rücktaste im Laufwerksstamm öffnet das Lau&fwerkmenü",
+      "drive_other_folder": "Laufwerks&wechsel öffnet den Ordner des anderen Panels",
+      "space_selects": "Leertaste markiert und geht na&ch unten",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"
@@ -275,6 +285,15 @@
     "DIALOG_CHECKSUMOPTS": {
       "$title": "Prüfsummen",
       "lbl_algo": "Algorithmus:",
+      "ok": "OK",
+      "cancel": "Abbrechen"
+    },
+    "DIALOG_COMPAREOPTS": {
+      "$title": "Ordner vergleichen",
+      "lbl_compare": "Vergleichen:",
+      "by_time": "&Zeit",
+      "by_size": "&Größe",
+      "by_content": "&Inhalt",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
@@ -570,6 +589,16 @@
     },
     "DIALOG_SEARCH": {
       "$title": "Datei suchen",
+      "lbl_format": "Größe: 10K, 1.5M",
+      "lbl_size": "Größe von:",
+      "lbl_size_to": "bis:",
+      "lbl_date": "Geändert von:",
+      "lbl_date_to": "bis:",
+      "lbl_attr": "Attribute:",
+      "filter_attr_ro": "&Schreibgeschützt",
+      "filter_attr_hidden": "&Versteckt",
+      "filter_attr_system": "Sys&tem",
+      "filter_attr_archive": "&Archiv",
       "search_case": "&Groß-/Kleinschreibung",
       "search_words": "Ganze &Wörter",
       "search_folders": "Nach &Ordnern suchen",
@@ -1169,6 +1198,7 @@
     "editor.reloadEncodingMsg": "Nicht gespeicherte Änderungen verwerfen und neu dekodieren?",
     "editor.readOnlyTitle": "Schreibgeschützte Datei",
     "editor.readOnlyMsg": "Das Schreibschutz-Attribut aufheben und bearbeiten?",
+    "editor.accessDenied": "Kein Zugriff auf die Datei: %s",
     "editor.notFoundTitle": "Suchen",
     "editor.notFoundMsg": "Zeichenfolge nicht gefunden",
     "editor.badPatternMsg": "Ungültiger regulärer Ausdruck",
@@ -1291,6 +1321,9 @@
     "checksum.saved": "Gespeichert:",
     "compareFolders.needPanels": "Beide Panels müssen Dateilisten zeigen.",
     "compareFolders.same": "Die Ordner sind identisch.",
+    "compareFolders.working": "Vergleiche... Esc=Abbrechen",
+    "datePicker.title": "Datum wählen",
+    "search.filterFormat": "Größe: 10K, 1.5M   Datum: %s",
     "externalTools.title": "Externer Viewer/Editor",
     "externalTools.viewTitle": "Externer Viewer",
     "externalTools.editTitle": "Externer Editor",

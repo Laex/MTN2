@@ -16,7 +16,8 @@ function FileAttrPlanIsNoOp(const APlan: TFileAttrPlan): Boolean;
 /// <summary>Short date + hh:nn:ss of the current locale; '' for 0.</summary>
 function FormatFileAttrTime(ATime: TDateTime): string;
 /// <summary>Parses what FormatFileAttrTime produces (seconds and the time
-/// part are optional). False for '' and for dates a file time cannot hold.</summary>
+/// part are optional; a leading day of week is ignored). False for '' and for
+/// dates a file time cannot hold.</summary>
 function TryParseFileAttrTime(const AText: string; out ATime: TDateTime): Boolean;
 function BuildFileAttrDialogState(const APaths: TArray<string>): TFileAttrDialogState;
 function ApplyFileAttrPlan(const APath: string; const APlan: TFileAttrPlan;
@@ -66,11 +67,23 @@ end;
 function TryParseFileAttrTime(const AText: string; out ATime: TDateTime): Boolean;
 var
   S: string;
+  Ok: Boolean;
+  Cut: Integer;
 begin
   S := Trim(AText);
+  Ok := (S <> '') and TryStrToDateTime(S, ATime);
+  if (not Ok) and (S <> '') and not CharInSet(S[1], ['0'..'9']) then
+  begin
+    // A short date format with the day of week ("Mon 27.10.26") is shown in
+    // the dialog; the weekday is derived from the date, so it is dropped.
+    Cut := 1;
+    while (Cut <= Length(S)) and not CharInSet(S[Cut], ['0'..'9']) do
+      Inc(Cut);
+    Ok := TryStrToDateTime(Copy(S, Cut, MaxInt), ATime);
+  end;
   // FILETIME starts at 1601-01-01; a day of margin for the UTC shift.
-  Result := (S <> '') and TryStrToDateTime(S, ATime) and
-    (ATime >= EncodeDate(1601, 1, 2)) and (ATime < EncodeDate(9999, 12, 31));
+  Result := Ok and (ATime >= EncodeDate(1601, 1, 2)) and
+    (ATime < EncodeDate(9999, 12, 31));
 end;
 
 // Two items "have the same time" when the dialog would show the same text.

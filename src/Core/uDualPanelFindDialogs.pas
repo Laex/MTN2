@@ -6,7 +6,7 @@ unit uDualPanelFindDialogs;
 interface
 
 uses
-  System.SysUtils, System.IOUtils,
+  System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uDialogHost, uDialogTypes, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
   uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory;
 
@@ -28,6 +28,10 @@ type
     FOnPrepare: TFindPrepareProc;
     FOnGetUri: TFindGetUriFn;
     FOnNotify: TProc;
+    FPickField: string;
+    function ReadDialogFields: TDialogCommandFields;
+    procedure ApplyFields(const AFields: TDialogCommandFields);
+    procedure BeginDatePick(const AFieldId: string);
   public
     constructor Create(ADialog: TDialogHost; ASearch: TSearchController;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
@@ -36,6 +40,10 @@ type
     procedure Open;
     function DispatchCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
+    /// <summary>F9 on a date field opens the calendar.</summary>
+    function HandleEditInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
+    function DispatchDatePickerCommand(const AControlId: string): Boolean;
   end;
 
   TDirSyncDialogController = class
@@ -77,6 +85,9 @@ type
 function ResolveSearchRootPath(const ACurrentUri: string): string;
 
 implementation
+
+uses
+  System.DateUtils, uFileFind, uStrings;
 
 function ResolveSearchRootPath(const ACurrentUri: string): string;
 var
@@ -143,36 +154,151 @@ begin
   if not FDialog.OpenJson(
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.Subdirs)),
+      FSearch.UseRegex, FSearch.Subdirs, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.Subdirs), FOnCommand);
+      FSearch.UseRegex, FSearch.Subdirs, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
 
-function TSearchDialogController.DispatchCommand(const AControlId: string;
-  const AFields: TDialogCommandFields): Boolean;
+function TSearchDialogController.ReadDialogFields: TDialogCommandFields;
+begin
+  Result := Default(TDialogCommandFields);
+  Result.Mask := FDialog.GetInputValue('search_mask');
+  Result.Containing := FDialog.GetInputValue('search_text');
+  Result.Subdirs := FDialog.GetCheckbox('search_subdirs');
+  Result.CaseSens := FDialog.GetCheckbox('search_case');
+  Result.WholeWords := FDialog.GetCheckbox('search_words');
+  Result.SearchFolders := FDialog.GetCheckbox('search_folders');
+  Result.UseRegex := FDialog.GetCheckbox('search_regex');
+  Result.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
+  Result.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
+  Result.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
+  Result.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
+  Result.Filters.AttrReadOnly := FDialog.GetCheckbox('filter_attr_ro');
+  Result.Filters.AttrHidden := FDialog.GetCheckbox('filter_attr_hidden');
+  Result.Filters.AttrSystem := FDialog.GetCheckbox('filter_attr_system');
+  Result.Filters.AttrArchive := FDialog.GetCheckbox('filter_attr_archive');
+end;
+
+procedure TSearchDialogController.ApplyFields(const AFields: TDialogCommandFields);
+begin
+  FSearch.Mask := AFields.Mask;
+  if FSearch.Mask = '' then
+    FSearch.Mask := '*.*';
+  FSearch.ContainingText := AFields.Containing;
+  FSearch.CaseSensitive := AFields.CaseSens;
+  FSearch.WholeWords := AFields.WholeWords;
+  FSearch.SearchFolders := AFields.SearchFolders;
+  FSearch.UseRegex := AFields.UseRegex;
+  FSearch.Subdirs := AFields.Subdirs;
+  FSearch.Filters := AFields.Filters;
+end;
+
+procedure TSearchDialogController.BeginDatePick(const AFieldId: string);
+var
+  Fields: TDialogCommandFields;
+  Filters: TFindFilterText;
+  Text, TimeText: string;
+  Stamp: TDateTime;
+begin
+  Fields := ReadDialogFields;
+  ApplyFields(Fields);
+  FPickField := AFieldId;
+  Filters := FSearch.Filters;
+  if SameText(AFieldId, 'filter_date_to') then
+    Text := Filters.DateTo
+  else
+    Text := Filters.DateFrom;
+  Stamp := 0;
+  TimeText := '';
+  if (Trim(Text) <> '') and TryStrToDateTime(Trim(Text), Stamp) then
+  begin
+    if Frac(Stamp) <> 0 then
+      TimeText := FormatDateTime('hh:nn', Stamp);
+  end
+  else
+    Stamp := 0;
+  if Assigned(FOnSetKind) then
+    FOnSetKind(hdkDatePicker);
+  FDialog.Open(BuildDatePickerDialog(T('ui.datePicker.title', 'Pick date'),
+    Stamp, TimeText), FOnCommand);
+  if Assigned(FOnNotify) then
+    FOnNotify();
+end;
+
+function TSearchDialogController.HandleEditInput(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Id: string;
+begin
+  Result := False;
+  if AKey <> vkF9 then
+    Exit;
+  Id := FDialog.FocusedControlId;
+  if not (SameText(Id, 'filter_date_from') or SameText(Id, 'filter_date_to')) then
+    Exit;
+  BeginDatePick(Id);
+  AKey := 0;
+  AKeyChar := #0;
+  Result := True;
+end;
+
+function TSearchDialogController.DispatchDatePickerCommand(
+  const AControlId: string): Boolean;
+var
+  Value, TimeText: string;
+  Stamp: TDateTime;
+  Filters: TFindFilterText;
 begin
   Result := True;
+  Value := '';
+  if DialogCmdIsAccept(AControlId) then
+  begin
+    TimeText := Trim(FDialog.GetInputValue('time'));
+    Value := DateToStr(FDialog.GetDatePickerDate('date'));
+    // A time that is not a time of day is left out rather than guessed.
+    if (TimeText <> '') and TryStrToTime(TimeText, Stamp) then
+      Value := Value + ' ' + FormatDateTime('hh:nn', Stamp);
+  end
+  else if not DialogCmdIs(AControlId, 'clear') then
+    Value := #0;
+  FDialog.Close;
+  if Assigned(FSearch) then
+  begin
+    Filters := FSearch.Filters;
+    if Value <> #0 then
+      if SameText(FPickField, 'filter_date_to') then
+        Filters.DateTo := Value
+      else
+        Filters.DateFrom := Value;
+    FSearch.Filters := Filters;
+  end;
+  Open;
+end;
+
+function TSearchDialogController.DispatchCommand(const AControlId: string;
+  const AFields: TDialogCommandFields): Boolean;
+var
+  PickField: string;
+begin
+  Result := True;
+  if DialogCmdIsPick(AControlId, PickField) then
+  begin
+    BeginDatePick(PickField);
+    Exit;
+  end;
   FDialog.Close;
   if not Assigned(FSearch) then
     Exit;
   if DialogCmdIsOk(AControlId) then
   begin
-    FSearch.Mask := AFields.Mask;
-    if FSearch.Mask = '' then
-      FSearch.Mask := '*.*';
-    FSearch.ContainingText := AFields.Containing;
+    ApplyFields(AFields);
     // The editor's F7 starts from this text (a regex is not a plain needle).
     if not AFields.UseRegex then
       DialogHistoryAdd('editfind', Trim(AFields.Containing));
-    FSearch.CaseSensitive := AFields.CaseSens;
-    FSearch.WholeWords := AFields.WholeWords;
-    FSearch.SearchFolders := AFields.SearchFolders;
-    FSearch.UseRegex := AFields.UseRegex;
-    FSearch.Subdirs := AFields.Subdirs;
     FSearch.StartSearch;
   end
   else

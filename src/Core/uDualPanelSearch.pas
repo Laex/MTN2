@@ -53,6 +53,7 @@ type
     property WholeWords: Boolean read FSearch.WholeWords write FSearch.WholeWords;
     property SearchFolders: Boolean read FSearch.SearchFolders write FSearch.SearchFolders;
     property UseRegex: Boolean read FSearch.UseRegex write FSearch.UseRegex;
+    property Filters: TFindFilterText read FSearch.Filters write FSearch.Filters;
     property RootPath: string read FSearch.RootPath write FSearch.RootPath;
     property FocusField: Integer read FSearch.FocusField write FSearch.FocusField;
     property Message: string read FSearch.Message;
@@ -108,6 +109,7 @@ begin
   FSearch.WholeWords := False;
   FSearch.SearchFolders := False;
   FSearch.UseRegex := False;
+  FSearch.Filters := Default(TFindFilterText);
   FSearch.FocusField := 0;
 end;
 
@@ -180,7 +182,7 @@ end;
 
 procedure TSearchController.StartSearch;
 var
-  Mask, Root, RegexError: string;
+  Mask, Root, RegexError, FilterError: string;
   Token: IJobCancelToken;
   Opts: TFindOptions;
   Life: ILifeFlag;
@@ -233,6 +235,16 @@ begin
   Opts.WholeWords := FSearch.WholeWords;
   Opts.SearchFolders := FSearch.SearchFolders;
   Opts.UseRegex := FSearch.UseRegex;
+  if not ApplyFindFilterText(Opts, FSearch.Filters, FilterError) then
+  begin
+    FSearch.Cancel := nil;
+    FSearch.Message := FilterError;
+    FSearch.Phase := spResults;
+    SetLength(FSearch.Results, 0);
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+    Exit;
+  end;
 
   FindFilesAsync(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)

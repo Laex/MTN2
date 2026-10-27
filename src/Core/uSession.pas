@@ -107,6 +107,12 @@ type
     EditorSearchRegex: Boolean;
     SelectFolders: Boolean;
     PackInSamePanel: Boolean;
+    /// <summary>Backspace on an empty command line in a drive root opens the drive menu.</summary>
+    BackspaceDriveMenu: Boolean;
+    /// <summary>Picking a drive opens the other panel's folder when it is on that drive.</summary>
+    DriveToOtherFolder: Boolean;
+    /// <summary>Space on an empty command line toggles the selection and moves down, like Insert.</summary>
+    SpaceSelects: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -640,6 +646,9 @@ begin
       Root.AddPair('editorSearchRegex', TJSONBool.Create(ASession.EditorSearchRegex));
       Root.AddPair('selectFolders', TJSONBool.Create(ASession.SelectFolders));
       Root.AddPair('packInSamePanel', TJSONBool.Create(ASession.PackInSamePanel));
+      Root.AddPair('backspaceDriveMenu', TJSONBool.Create(ASession.BackspaceDriveMenu));
+      Root.AddPair('driveToOtherFolder', TJSONBool.Create(ASession.DriveToOtherFolder));
+      Root.AddPair('spaceSelects', TJSONBool.Create(ASession.SpaceSelects));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -722,6 +731,9 @@ begin
   ASession.EditorSearchRegex := False;
   ASession.SelectFolders := False;
   ASession.PackInSamePanel := False;
+  ASession.BackspaceDriveMenu := False;
+  ASession.DriveToOtherFolder := False;
+  ASession.SpaceSelects := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -822,6 +834,9 @@ begin
       ASession.EditorSearchRegex := JsonBool(Root, 'editorSearchRegex', False);
       ASession.SelectFolders := JsonBool(Root, 'selectFolders', False);
       ASession.PackInSamePanel := JsonBool(Root, 'packInSamePanel', False);
+      ASession.BackspaceDriveMenu := JsonBool(Root, 'backspaceDriveMenu', False);
+      ASession.DriveToOtherFolder := JsonBool(Root, 'driveToOtherFolder', False);
+      ASession.SpaceSelects := JsonBool(Root, 'spaceSelects', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

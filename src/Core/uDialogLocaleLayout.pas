@@ -19,7 +19,14 @@ unit uDialogLocaleLayout;
   its own: buttons grow to their captions, keep the gaps between them, and
   the row is centered by its faces, one cell clear of the frame on either
   side. The dialog grows to fit all of this and the title plus the frame's
-  close mark. Width never shrinks. }
+  close mark. Width never shrinks.
+
+  Controls that start in one column stay in one column, buttons included: a
+  final pass (KeepAuthoredColumns) takes the columns the controls had before
+  the fitting, moves every group to the rightmost column any member reached
+  and pushes what that crowds. Nothing moves left. A button row with a button
+  that started in the column of another control is not centered, so the
+  alignment holds; the dialog widens if the pushed controls no longer fit. }
 
 interface
 
@@ -162,14 +169,182 @@ const
   cFieldKinds = [dckInput, dckDropDown, dckList];
   cMinFieldCells = 8;
 
+/// <summary>The column of every control, as a snapshot taken before a fitting
+/// pass: controls that share a value start in one column and are to stay so.</summary>
+function SnapshotColumns(const ADecl: TDialogDeclaration): TArray<Integer>;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(ADecl.Controls));
+  for I := 0 to High(ADecl.Controls) do
+    Result[I] := Max(ADecl.Controls[I].Col, 0);
+end;
+
+/// <summary>True when another control started in the same column as the control
+/// at AIndex in the snapshot AGroupCol.</summary>
+function SharesColumn(const AGroupCol: TArray<Integer>; AIndex: Integer): Boolean;
+var
+  J: Integer;
+begin
+  Result := False;
+  if Length(AGroupCol) = 0 then
+    Exit;
+  for J := 0 to High(AGroupCol) do
+    if (J <> AIndex) and (AGroupCol[J] = AGroupCol[AIndex]) then
+      Exit(True);
+end;
+
+/// <summary>Moves a control right by ADelta. A field keeps its right edge
+/// while it stays at least cMinFieldCells wide; anything else keeps its width.</summary>
+procedure MoveControlRight(var AControl: TDialogControl; ADelta: Integer);
+begin
+  if ADelta <= 0 then
+    Exit;
+  if (AControl.Kind in cFieldKinds) and (Max(AControl.BoxW, 1) - ADelta >= cMinFieldCells) then
+    Dec(AControl.BoxW, ADelta);
+  Inc(AControl.Col, ADelta);
+end;
+
+/// <summary>Pushes a control right when the one before it in a row reaches it
+/// (a button also owns the cell of its shadow). True when something moved.</summary>
+function ResolveRowOverlaps(var ADecl: TDialogDeclaration): Boolean;
+var
+  Row, I, J, K, Tmp, Free, Top, Bottom: Integer;
+  Order: TArray<Integer>;
+begin
+  Result := False;
+  Top := High(Integer);
+  Bottom := -1;
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    Top := Min(Top, Max(ADecl.Controls[I].Row, 0));
+    Bottom := Max(Bottom, Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1);
+  end;
+  for Row := Top to Bottom do
+  begin
+    Order := nil;
+    for I := 0 to High(ADecl.Controls) do
+      if (Max(ADecl.Controls[I].Row, 0) <= Row) and
+         (Row <= Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1) then
+        Order := Order + [I];
+    for J := 1 to High(Order) do
+    begin
+      K := J;
+      while (K > 0) and (ADecl.Controls[Order[K]].Col < ADecl.Controls[Order[K - 1]].Col) do
+      begin
+        Tmp := Order[K];
+        Order[K] := Order[K - 1];
+        Order[K - 1] := Tmp;
+        Dec(K);
+      end;
+    end;
+    Free := 0;
+    for J := 0 to High(Order) do
+    begin
+      I := Order[J];
+      if (J > 0) and (ADecl.Controls[I].Col < Free) then
+      begin
+        MoveControlRight(ADecl.Controls[I], Free - ADecl.Controls[I].Col);
+        Result := True;
+      end;
+      Free := Max(Free, ADecl.Controls[I].Col + Max(ADecl.Controls[I].BoxW, 1));
+      if ADecl.Controls[I].Kind = dckButton then
+        Inc(Free);
+    end;
+  end;
+end;
+
+/// <summary>Controls that started in one column (AGroupCol, a SnapshotColumns taken
+/// before the pass) stay in one column, whatever the
+/// captions, the translation or the neighbours did to their positions and
+/// widths: the whole group moves to the rightmost column any of its members
+/// reached, and what that crowds is pushed right too. Nothing moves left. The
+/// dialog widens when a control no longer fits, and what reached its right
+/// edge stretches with it.</summary>
+procedure KeepAuthoredColumns(var ADecl: TDialogDeclaration;
+  const AGroupCol: TArray<Integer>);
+var
+  I, J, Pass, Target, Members, OldClient, Over, Extra: Integer;
+  Cols: TArray<Integer>;
+  Moved, Seen: Boolean;
+begin
+  if ADecl.NoAutoLayout or not IsDialogProtocolV2(ADecl.Version) or
+     (Length(ADecl.Controls) < 2) or (Length(AGroupCol) <> Length(ADecl.Controls)) then
+    Exit;
+  OldClient := ClientWidthOf(ADecl.Width);
+  Cols := nil;
+  for I := 0 to High(AGroupCol) do
+  begin
+    Seen := False;
+    for J := 0 to High(Cols) do
+      if Cols[J] = AGroupCol[I] then
+        Seen := True;
+    if not Seen then
+      Cols := Cols + [AGroupCol[I]];
+  end;
+
+  for Pass := 1 to 32 do
+  begin
+    Moved := False;
+    for J := 0 to High(Cols) do
+    begin
+      Target := -1;
+      Members := 0;
+      for I := 0 to High(ADecl.Controls) do
+        if AGroupCol[I] = Cols[J] then
+        begin
+          Inc(Members);
+          Target := Max(Target, ADecl.Controls[I].Col);
+        end;
+      if Members < 2 then
+        Continue;
+      for I := 0 to High(ADecl.Controls) do
+        if (AGroupCol[I] = Cols[J]) and (ADecl.Controls[I].Col < Target) then
+        begin
+          MoveControlRight(ADecl.Controls[I], Target - ADecl.Controls[I].Col);
+          Moved := True;
+        end;
+    end;
+    if ResolveRowOverlaps(ADecl) then
+      Moved := True;
+    if not Moved then
+      Break;
+  end;
+
+  // Widen for whatever no longer fits (a button also needs its shadow and a
+  // clear cell), and stretch what reached the old right edge.
+  Over := 0;
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    Extra := 0;
+    if ADecl.Controls[I].Kind = dckButton then
+      Extra := 2;
+    Over := Max(Over, ADecl.Controls[I].Col + Max(ADecl.Controls[I].BoxW, 1) + Extra - OldClient);
+  end;
+  if Over <= 0 then
+    Exit;
+  for I := 0 to High(ADecl.Controls) do
+    if (ADecl.Controls[I].Kind in [dckList, dckInput, dckDropDown, dckLabel]) and
+       (OldClient - (ADecl.Controls[I].Col + Max(ADecl.Controls[I].BoxW, 1)) <= 1) and
+       (OldClient - (ADecl.Controls[I].Col + Max(ADecl.Controls[I].BoxW, 1)) >= 0) then
+    begin
+      Inc(ADecl.Controls[I].BoxW, Over);
+      if (ADecl.Controls[I].Kind = dckLabel) and IsRuleText(ADecl.Controls[I].Text) then
+        ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
+          ADecl.Controls[I].BoxW);
+    end;
+  Inc(ADecl.Width, Over);
+end;
+
 /// <summary>Center every button row in AClientW by its faces, not counting the
 /// last face's shadow; the row stays one cell clear of the frame on the left
 /// and after the shadow on the right when it fits.</summary>
-procedure CenterButtonRows(var ADecl: TDialogDeclaration; AClientW: Integer);
+procedure CenterButtonRows(var ADecl: TDialogDeclaration; AClientW: Integer;
+  const AGroupCol: TArray<Integer>);
 var
   Rows: TArray<Integer>;
   I, J, Row, Left, Right, Span, Target, Delta: Integer;
-  Found: Boolean;
+  Found, Anchored: Boolean;
 begin
   if AClientW < 1 then
     Exit;
@@ -211,6 +386,15 @@ begin
       Continue;
     // Centered by the faces alone; the last one's shadow hangs to the right
     // and must still fit before the frame.
+    // A row with a button that started in the column of another control stays
+    // there: centering would break that alignment.
+    Anchored := False;
+    for I := 0 to High(ADecl.Controls) do
+      if (ADecl.Controls[I].Kind = dckButton) and (ADecl.Controls[I].Row = Row) and
+         SharesColumn(AGroupCol, I) then
+        Anchored := True;
+    if Anchored then
+      Continue;
     Span := Right - Left;
     Target := (AClientW - Span) div 2;
     if Target + Span + 1 > AClientW then
@@ -289,7 +473,7 @@ var
   I, J, ClientW, NewClient, Tmp, Lim: Integer;
   OrigCol, OrigW, NeedW, NewCol, NewW, Inset: TArray<Integer>;
   Stretch, Rule: TArray<Boolean>;
-  Next, Cols, Pos: TArray<Integer>;
+  Next, Cols, Pos, GroupCol: TArray<Integer>;
 
   function IsButton(AIndex: Integer): Boolean;
   begin
@@ -320,6 +504,7 @@ begin
     Exit;
   end;
 
+  GroupCol := SnapshotColumns(ADecl);
   SetLength(OrigCol, Length(ADecl.Controls));
   SetLength(OrigW, Length(ADecl.Controls));
   SetLength(NeedW, Length(ADecl.Controls));
@@ -439,7 +624,8 @@ begin
         ADecl.Controls[I].BoxW);
   end;
   ADecl.Width := Max(ADecl.Width, NewClient + 2);
-  CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
+  KeepAuthoredColumns(ADecl, GroupCol);
+  CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width), GroupCol);
 end;
 
 function DialogCaptionsOverflow(const ADecl: TDialogDeclaration): Boolean;
@@ -460,9 +646,11 @@ var
   Rows, Order: TArray<Integer>;
   I, J, K, Row, Tmp, Col, OrigCol, W, FreeCol, NewClient, OldClient, Delta: Integer;
   ButtonsGrew, Grew: Boolean;
+  GroupCol: TArray<Integer>;
 begin
   if not DialogCaptionsOverflow(ADecl) then
     Exit;
+  GroupCol := SnapshotColumns(ADecl);
   NewClient := ClientWidthOf(ADecl.Width);
   OldClient := NewClient;
   ButtonsGrew := False;
@@ -553,8 +741,10 @@ begin
           ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
             ADecl.Controls[I].BoxW);
       end;
-  if ButtonsGrew or (Delta > 0) then
-    CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width));
+  OldClient := ClientWidthOf(ADecl.Width);
+  KeepAuthoredColumns(ADecl, GroupCol);
+  if ButtonsGrew or (Delta > 0) or (ClientWidthOf(ADecl.Width) <> OldClient) then
+    CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width), GroupCol);
 end;
 
 end.

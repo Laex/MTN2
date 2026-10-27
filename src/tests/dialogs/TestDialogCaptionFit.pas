@@ -17,6 +17,7 @@ type
   public
     [Test] procedure TestCopyButton;
     [Test] procedure TestCheckboxPushesField;
+    [Test] procedure TestPushedFieldsKeepOneColumn;
     [Test] procedure TestFittingDialogUnchanged;
     [Test] procedure TestNoResourceOverflows;
     [Test] procedure TestConsoleProfileCheckboxesFit;
@@ -94,6 +95,28 @@ begin
   Assert.IsTrue(D.Controls[Ok].BoxW = Length('Копирование') + 4, 'button is caption + brackets');
   AssertButtonsApart(D);
   Assert.IsTrue(D.Width = 76, 'the row still fits: dialog width unchanged, got ' + IntToStr(D.Width));
+end;
+
+procedure TTestDialogCaptionFit.TestPushedFieldsKeepOneColumn;
+var
+  D: TDialogDeclaration;
+begin
+  // The checkbox of row 0 grows and pushes its mask; the field of row 2
+  // started in the mask's column and must follow it.
+  D := Default(TDialogDeclaration);
+  D.Version := '2.0';
+  D.Width := 76;
+  D.Height := 6;
+  D.Controls := [
+    Ctl(dckCheckbox, 'filter', 'Mask to exclude from the list:', 1, 0, 16),
+    Ctl(dckInput, 'mask', '', 18, 0, 55),
+    Ctl(dckLabel, 'other', 'Label', 1, 2, 10),
+    Ctl(dckInput, 'other_in', '', 18, 2, 30),
+    Ctl(dckButton, 'ok', 'OK', 18, 4, 8)];
+  FitDialogCaptions(D);
+  Assert.IsTrue(D.Controls[1].Col > 18, 'the mask was pushed');
+  Assert.AreEqual(D.Controls[1].Col, D.Controls[3].Col, 'the field of another row follows it');
+  Assert.AreEqual(D.Controls[1].Col, D.Controls[4].Col, 'and so does a button that started there');
 end;
 
 procedure TTestDialogCaptionFit.TestCheckboxPushesField;

@@ -125,6 +125,7 @@ begin
     if not C.Password then
       C.History := JsonStr(AObj, 'history');
     C.ColorPick := JsonBool(AObj, 'colorpick', False);
+    C.DatePick := JsonBool(AObj, 'datepick', False);
     AppendParsed(AList, C, AObj);
   end
   else if Typ = 'checkbox' then
@@ -157,6 +158,8 @@ begin
   end
   else if Typ = 'colorpicker' then
     AppendParsed(AList, MakeColorPicker(Id), AObj)
+  else if Typ = 'datepicker' then
+    AppendParsed(AList, MakeDatePicker(Id), AObj)
   else if Typ = 'list' then
   begin
     SetLength(Items, 0);
@@ -406,6 +409,8 @@ begin
             One := One + Format(',"history":"%s"', [EscapeJson(C.History)]);
           if C.ColorPick then
             One := One + ',"colorpick":true';
+          if C.DatePick then
+            One := One + ',"datepick":true';
         end;
       dckCheckbox:
         if C.Checked then
@@ -428,6 +433,8 @@ begin
           [EscapeJson(C.Id), EscapeJson(C.Text)]);
       dckColorPicker:
         One := Format('{"type":"colorpicker","id":"%s"', [EscapeJson(C.Id)]);
+      dckDatePicker:
+        One := Format('{"type":"datepicker","id":"%s"', [EscapeJson(C.Id)]);
       dckColorSample:
         begin
           One := Format('{"type":"colorsample","id":"%s","text":"%s"',

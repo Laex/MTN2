@@ -7,12 +7,12 @@ interface
 uses
   System.SysUtils, System.Math,
   System.UITypes,
-  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl, uMultiRename,
-  uListExport;
+  uInputLine, uTextEncoding, uTerminalTypes, uColorPickerControl, uDatePickerControl, uMultiRename,
+  uListExport, uFileFind;
 
 type
   TDialogControlKind = (dckLabel, dckInput, dckCheckbox, dckButton, dckStatus,
-    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample, dckColorPicker);
+    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample, dckColorPicker, dckDatePicker);
 
   /// <summary>dckColorSample: which panel row visual state an UNSET Fg/Bg
   /// channel should preview as the theme's own resolved color for (matching
@@ -80,6 +80,8 @@ type
     FgFallbackId, BgFallbackId: string;
     /// <summary>dckColorPicker: the whole picker (uColorPickerControl).</summary>
     Picker: TColorPickerState;
+    /// <summary>dckDatePicker: the month calendar (uDatePickerControl).</summary>
+    Cal: TDatePickerState;
     /// <summary>dckLabel: drawn in bold with the dialog's accent color, for the
     /// values a caption introduces (JSON "accent": true).</summary>
     Accent: Boolean;
@@ -106,6 +108,9 @@ type
     /// last cell (filled with the color); clicking it fires the command
     /// DialogPickCommand(Id).</summary>
     ColorPick: Boolean;
+    /// <summary>dckInput holding a date: shows a pick button in its last cell;
+    /// clicking it fires the command DialogPickCommand(Id).</summary>
+    DatePick: Boolean;
     /// <summary>dckInput: uDialogHistory key ('' = none). Such a field shows
     /// ↓ in its last cell and drops down Items (the key's history, filled by
     /// TDialogHost.Open) like a dckDropDown.</summary>
@@ -204,6 +209,8 @@ function MakeColorSample(const AId, AText, AFgSourceId, ABgSourceId: string;
   APanelState: TColorSamplePanelState = cspsNone): TDialogControl;
 /// <summary>The color picker control (swatch grid, sliders, hex field).</summary>
 function MakeColorPicker(const AId: string): TDialogControl;
+/// <summary>The month calendar control.</summary>
+function MakeDatePicker(const AId: string): TDialogControl;
 /// <summary>"normal"/"selected"/"current" -> TColorSamplePanelState; anything
 /// else (including '') -> cspsNone.</summary>
 function ColorSamplePanelStateFromStr(const AStr: string): TColorSamplePanelState;
@@ -240,7 +247,8 @@ function BuildSelectMaskDialog(const ATitle, APrompt, AValue: string;
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
 function BuildSearchDialog(const AMask, AContaining: string;
-  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean): TDialogDeclaration;
+  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean;
+  const AFilters: TFindFilterText): TDialogDeclaration;
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOverwriteIndex: Integer = 0; APreserveTimestamps: Boolean = False;
   AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
@@ -392,6 +400,8 @@ function BuildMarkdownImportDialog(const APath: string; APaletteIndex: Integer):
 /// <summary>Files > Checksums...: algorithm dropdown (index into
 /// uChecksums.TChecksumAlgo order: MD5, SHA-1, SHA-256, SHA-512).</summary>
 function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
+/// <summary>Commands > Compare folders: what counts as a difference.</summary>
+function BuildCompareOptionsDialog(AByTime, ABySize, AByContent: Boolean): TDialogDeclaration;
 /// <summary>Files > Multi-rename...: the rule fields filled from ARules, the
 /// dialog AWidth cells wide (the fields and the list stretch with it); the
 /// preview list is filled by the caller.</summary>
@@ -441,6 +451,10 @@ function BuildColorCodingEditDialog(const AName, AMask: string;
 /// <summary>The color picker dialog, starting on AColor (which is also what
 /// its "was" swatch shows).</summary>
 function BuildColorPickerDialog(const ATitle: string; AColor: TAlphaColor): TDialogDeclaration;
+/// <summary>The date picker: a calendar on ADate (0 = today) and a time field
+/// holding ATime ('' = no time).</summary>
+function BuildDatePickerDialog(const ATitle: string; ADate: TDateTime;
+  const ATime: string): TDialogDeclaration;
 /// <summary>AItems are pre-formatted "Action  Hotkeys" rows - see
 /// TKeymapDialogController.ActionRowLabel in uDualPanelKeymapDialog.pas.</summary>
 function BuildKeymapDialog(const AItems: TArray<string>;
@@ -552,6 +566,7 @@ end;
 
 function MakeLabel(const AText: string; const AId: string = ''): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckLabel;
   Result.Accent := False;
   Result.Marked := False;
@@ -570,6 +585,7 @@ end;
 
 function MakeInput(const AId, AValue: string): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckInput;
   Result.Id := AId;
   Result.Text := '';
@@ -583,6 +599,7 @@ begin
   Result.Password := False;
   Result.ReadOnly := False;
   Result.ColorPick := False;
+  Result.DatePick := False;
   Result.History := '';
   SetLength(Result.Items, 0);
   SetLength(Result.ItemIds, 0);
@@ -592,6 +609,7 @@ end;
 
 function MakeCheckbox(const AId, AText: string; AChecked: Boolean): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckCheckbox;
   Result.Id := AId;
   Result.Text := AText;
@@ -610,6 +628,7 @@ end;
 function MakeRadio(const AId, AGroup, AText: string;
   AChecked: Boolean): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckRadio;
   Result.Id := AId;
   Result.Text := AText;
@@ -627,6 +646,7 @@ end;
 function MakeRadioGroup(const AId, ACaption: string; const AItems: TArray<string>;
   ASelectedIndex: Integer; const AItemIds: TArray<string>): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckRadioGroup;
   Result.Id := AId;
   Result.Text := ACaption;
@@ -646,6 +666,7 @@ end;
 
 function MakeButton(const AId, AText: string; ADefault, ACancel: Boolean): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckButton;
   Result.Id := AId;
   Result.Text := AText;
@@ -662,6 +683,7 @@ end;
 
 function MakeStatus(const AId, AText: string): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckStatus;
   Result.Id := AId;
   Result.Text := AText;
@@ -680,6 +702,7 @@ end;
 
 function MakeColorPicker(const AId: string): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckColorPicker;
   Result.Id := AId;
   Result.Text := '';
@@ -701,9 +724,17 @@ begin
   ClearControlLayout(Result);
 end;
 
+function MakeDatePicker(const AId: string): TDialogControl;
+begin
+  Result := MakeColorPicker(AId);
+  Result.Kind := dckDatePicker;
+  Result.Cal := DatePickerEmpty;
+end;
+
 function MakeColorSample(const AId, AText, AFgSourceId, ABgSourceId: string;
   APanelState: TColorSamplePanelState): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckColorSample;
   Result.Id := AId;
   Result.Text := AText;
@@ -736,6 +767,7 @@ end;
 function MakeList(const AId: string; const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckList;
   Result.Id := AId;
   Result.Text := '';
@@ -756,6 +788,7 @@ end;
 function MakeDropDown(const AId: string; const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogControl;
 begin
+  Result := Default(TDialogControl);
   Result.Kind := dckDropDown;
   Result.Id := AId;
   Result.Text := '';
@@ -879,7 +912,8 @@ begin
 end;
 
 function BuildSearchDialog(const AMask, AContaining: string;
-  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean): TDialogDeclaration;
+  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean;
+  const AFilters: TFindFilterText): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogSearch, Result);
   DialogSetInputValue(Result, 'search_mask', AMask);
@@ -889,6 +923,16 @@ begin
   DialogSetCheckbox(Result, 'search_folders', ASearchFolders);
   DialogSetCheckbox(Result, 'search_regex', AUseRegex);
   DialogSetCheckbox(Result, 'search_subdirs', ASubdirs);
+  DialogSetInputValue(Result, 'filter_size_min', AFilters.SizeMin);
+  DialogSetInputValue(Result, 'filter_size_max', AFilters.SizeMax);
+  DialogSetInputValue(Result, 'filter_date_from', AFilters.DateFrom);
+  DialogSetInputValue(Result, 'filter_date_to', AFilters.DateTo);
+  DialogSetCheckbox(Result, 'filter_attr_ro', AFilters.AttrReadOnly);
+  DialogSetCheckbox(Result, 'filter_attr_hidden', AFilters.AttrHidden);
+  DialogSetCheckbox(Result, 'filter_attr_system', AFilters.AttrSystem);
+  DialogSetCheckbox(Result, 'filter_attr_archive', AFilters.AttrArchive);
+  DialogSetLabelText(Result, 'lbl_format', Format(T('ui.search.filterFormat',
+    'Size: 10K, 1.5M   Date: %s'), [DateToStr(EncodeDate(2026, 10, 27)) + ' [12:00]']));
 end;
 
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
@@ -1487,6 +1531,14 @@ begin
   DialogSetDropDownSelected(Result, 'algo', AAlgoIndex);
 end;
 
+function BuildCompareOptionsDialog(AByTime, ABySize, AByContent: Boolean): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogCompareOpts, Result);
+  DialogSetCheckbox(Result, 'by_time', AByTime);
+  DialogSetCheckbox(Result, 'by_size', ABySize);
+  DialogSetCheckbox(Result, 'by_content', AByContent);
+end;
+
 function BuildMultiRenameDialog(const ARules: TMultiRenameRules;
   AWidth: Integer): TDialogDeclaration;
 var
@@ -1965,6 +2017,15 @@ begin
   RequireDialogResource(cResDialogColorPicker, Result);
   DialogSetTitle(Result, ATitle);
   DialogSetColorPicker(Result, 'picker', AColor);
+end;
+
+function BuildDatePickerDialog(const ATitle: string; ADate: TDateTime;
+  const ATime: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogDatePicker, Result);
+  DialogSetTitle(Result, ATitle);
+  DialogSetDatePicker(Result, 'date', ADate);
+  DialogSetInputValue(Result, 'time', ATime);
 end;
 
 function BuildUpdateOfferDialog(const ANewVersion, ACurrentVersion: string): TDialogDeclaration;

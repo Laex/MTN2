@@ -50,6 +50,7 @@ const
   cResDialogColorCoding = 'DIALOG_COLORCODING';
   cResDialogColorCodingEdit = 'DIALOG_COLORCODINGEDIT';
   cResDialogColorPicker = 'DIALOG_COLORPICKER';
+  cResDialogDatePicker = 'DIALOG_DATEPICKER';
   cResDialogTheme = 'DIALOG_THEME';
   cResDialogThemeNew = 'DIALOG_THEMENEW';
   cResDialogThemeName = 'DIALOG_THEMENAME';
@@ -69,6 +70,7 @@ const
   cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
   cResDialogMarkdownImport = 'DIALOG_MARKDOWNIMPORT';
   cResDialogChecksumOpts = 'DIALOG_CHECKSUMOPTS';
+  cResDialogCompareOpts = 'DIALOG_COMPAREOPTS';
   cResDialogMultiRename = 'DIALOG_MULTIRENAME';
   cResDialogChecksum = 'DIALOG_CHECKSUM';
   cResDialogArchivePassword = 'DIALOG_ARCHIVEPASSWORD';
@@ -113,6 +115,9 @@ procedure TranslateDialogDeclaration(const ANamespace: string;
 procedure DialogSetTitle(var ADecl: TDialogDeclaration; const ATitle: string);
 procedure DialogSetLabelText(var ADecl: TDialogDeclaration; const AId, AText: string);
 procedure DialogSetInputValue(var ADecl: TDialogDeclaration; const AId, AValue: string);
+/// <summary>Starts a dckDatePicker on ADate (0 = today).</summary>
+procedure DialogSetDatePicker(var ADecl: TDialogDeclaration; const AId: string;
+  ADate: TDateTime);
 /// <summary>Starts a dckColorPicker on AColor ("was" shows it too).</summary>
 procedure DialogSetColorPicker(var ADecl: TDialogDeclaration; const AId: string;
   AColor: TAlphaColor);
@@ -151,7 +156,7 @@ implementation
 uses
   uPlatformInfo,
   System.Classes, System.Math, System.IOUtils, uResourceAccess,
-  uDialogJson, uDialogLocaleLayout, uInputLine, uStrings, uColorPickerControl;
+  uDialogJson, uDialogLocaleLayout, uInputLine, uStrings, uColorPickerControl, uDatePickerControl;
 
 function DialogResNameToJsonFile(const AResName: string): string;
 var
@@ -509,6 +514,16 @@ begin
   I := FindControl(ADecl, AId);
   if (I >= 0) and (ADecl.Controls[I].Kind = dckColorPicker) then
     ColorPickerInit(ADecl.Controls[I].Picker, AColor, AColor);
+end;
+
+procedure DialogSetDatePicker(var ADecl: TDialogDeclaration; const AId: string;
+  ADate: TDateTime);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind = dckDatePicker) then
+    DatePickerInit(ADecl.Controls[I].Cal, ADate);
 end;
 
 procedure DialogSetButtonText(var ADecl: TDialogDeclaration; const AId, AText: string);

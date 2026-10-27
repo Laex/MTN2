@@ -1178,7 +1178,7 @@ begin
       Src, Dst, MoveMsg: string;
       Err: TVfsError;
       DoneBytes, TotalBytes: Int64;
-      SameVolume, WasDirectory, AnySkipped: Boolean;
+      SameVolume, WasDirectory, AnySkipped, MergeIntoDir: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
@@ -1211,10 +1211,23 @@ begin
               RemoveExistingPath(Dst, Err);
           end;
           // Src and Dst both directories, Dst already exists: not treated as a
-          // conflict here. Same-volume TDirectory.Move below fails on its own
-          // (native Windows limitation, surfaces as a normal I/O error) -
-          // cross-volume falls through to CopyTree, which merges into the
-          // existing folder per file, honoring AOverwrite/skip like Copy does.
+          // conflict here. A same-volume rename onto an existing folder fails
+          // (native Windows limitation), so an empty Dst is removed and the
+          // folder renamed, and a non-empty Dst takes the copy-and-delete
+          // path below: CopyTree merges into the existing folder per file,
+          // honoring AOverwrite/skip like Copy does.
+          MergeIntoDir := (Err.Code = vecOk) and TDirectory.Exists(WinApiPath(Dst)) and
+            TDirectory.Exists(WinApiPath(Src));
+          if MergeIntoDir and TDirectory.IsEmpty(WinApiPath(Dst)) then
+          begin
+            try
+              TDirectory.Delete(WinApiPath(Dst), False);
+              MergeIntoDir := False;
+            except
+              on E: Exception do
+                Err := VfsErrorFromException(E, ToURI);
+            end;
+          end;
           if Err.Code = vecOk then
           begin
             try
@@ -1227,7 +1240,8 @@ begin
           if Err.Code = vecOk then
           begin
             WasDirectory := TDirectory.Exists(WinApiPath(Src));
-            SameVolume := (Length(Src) >= 2) and (Length(Dst) >= 2) and
+            SameVolume := (not MergeIntoDir) and (Length(Src) >= 2) and
+              (Length(Dst) >= 2) and
               (UpCase(Src[1]) = UpCase(Dst[1])) and (Src[2] = ':') and (Dst[2] = ':');
             if SameVolume then
             begin

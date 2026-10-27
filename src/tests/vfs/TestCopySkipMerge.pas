@@ -24,6 +24,8 @@ type
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestSkipMergesMissingFiles;
     [Test] procedure TestOverwriteReplacesExisting;
+    [Test] procedure TestMoveOntoEmptyFolder;
+    [Test] procedure TestMoveMergesIntoExistingFolder;
     [Test] procedure TestSkipNestedDirAlreadyExists;
     [Test] procedure TestJobLevelSkipMergesNested;
     [Test] procedure TestAskModeSkipOnFolderMerges;
@@ -116,6 +118,40 @@ begin
   end;
 end;
 
+function RunMove(const ASrc, ADst: string; AOverwrite: Boolean;
+  out AError: TVfsError): Boolean;
+var
+  Vfs: IVirtualFileSystem;
+  Ev: TEvent;
+  Ok: Boolean;
+  Err: TVfsError;
+begin
+  Vfs := CreateDefaultVfs;
+  Ev := TEvent.Create(nil, True, False, '');
+  try
+    Ok := False;
+    Err := TVfsError.Ok;
+    Vfs.MoveAsync(PathToFileUri(ASrc), PathToFileUri(ADst), nil,
+      procedure(const ADone, ATotal: Int64; const AName: string;
+        const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string) begin end,
+      procedure(const ASuccess: Boolean; const AErr: TVfsError)
+      begin
+        Ok := ASuccess;
+        Err := AErr;
+        Ev.SetEvent;
+      end, AOverwrite, False);
+    if not WaitEvent(Ev) then
+    begin
+      Assert.Fail('move timed out');
+      Exit(False);
+    end;
+    AError := Err;
+    Result := Ok;
+  finally
+    Ev.Free;
+  end;
+end;
+
 { ---- fixtures --------------------------------------------------------------- }
 
 /// <summary>Source tree with 3 files, destination tree
@@ -186,6 +222,41 @@ begin
   Assert.IsTrue(TFile.Exists(TPath.Combine(Dst, 'b.txt')) and
         (ReadTextFile(TPath.Combine(Dst, 'b.txt')) = 'src-b'),
     'b.txt copied too');
+end;
+
+procedure TestMoveOntoEmptyFolder;
+var
+  Src, Dst: string;
+  Err: TVfsError;
+begin
+  Src := TPath.Combine(GRoot, 'mv_empty_src');
+  Dst := TPath.Combine(GRoot, 'mv_empty_dst');
+  TDirectory.CreateDirectory(TPath.Combine(Src, 'sub'));
+  WriteTextFile(TPath.Combine(Src, 'a.txt'), 'src-a');
+  WriteTextFile(TPath.Combine(Src, 'sub', 'c.txt'), 'src-c');
+  TDirectory.CreateDirectory(Dst);
+
+  Assert.IsTrue(RunMove(Src, Dst, False, Err), 'move onto an empty folder succeeds');
+  Assert.AreEqual('src-a', ReadTextFile(TPath.Combine(Dst, 'a.txt')));
+  Assert.AreEqual('src-c', ReadTextFile(TPath.Combine(Dst, 'sub', 'c.txt')));
+  Assert.IsFalse(TDirectory.Exists(Src), 'source folder is gone after the move');
+end;
+
+procedure TestMoveMergesIntoExistingFolder;
+var
+  Src, Dst: string;
+  Err: TVfsError;
+begin
+  MakeMergeFixture(Src, Dst);
+
+  Assert.IsTrue(RunMove(Src, Dst, True, Err), 'move onto a non-empty folder merges');
+  Assert.AreEqual('src-a', ReadTextFile(TPath.Combine(Dst, 'a.txt')),
+    'conflicting file is replaced when overwrite is on');
+  Assert.AreEqual('src-b', ReadTextFile(TPath.Combine(Dst, 'b.txt')));
+  Assert.AreEqual('src-c', ReadTextFile(TPath.Combine(Dst, 'sub', 'c.txt')));
+  Assert.AreEqual('dst-only', ReadTextFile(TPath.Combine(Dst, 'unrelated.txt')),
+    'files that exist only at the destination survive');
+  Assert.IsFalse(TDirectory.Exists(Src), 'source folder is gone after the merge');
 end;
 
 procedure TestSkipNestedDirAlreadyExists;
@@ -545,6 +616,16 @@ end;
 procedure TTestCopySkipMerge.TestOverwriteReplacesExisting;
 begin
   TestCopySkipMerge.TestOverwriteReplacesExisting;
+end;
+
+procedure TTestCopySkipMerge.TestMoveOntoEmptyFolder;
+begin
+  TestCopySkipMerge.TestMoveOntoEmptyFolder;
+end;
+
+procedure TTestCopySkipMerge.TestMoveMergesIntoExistingFolder;
+begin
+  TestCopySkipMerge.TestMoveMergesIntoExistingFolder;
 end;
 
 procedure TTestCopySkipMerge.TestSkipNestedDirAlreadyExists;

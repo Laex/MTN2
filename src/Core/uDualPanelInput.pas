@@ -260,6 +260,7 @@ type
     HandleAssociationsList: TKeymapInputFn;
     HandleColorList: TKeymapInputFn;
     HandleColorEdit: TKeymapInputFn;
+    HandleSearchEdit: TKeymapInputFn;
     HandleKeymapList: TKeymapInputFn;
     HandleCmdHistoryFilter: TKeymapInputFn;
     HandleCommandPaletteFilter: TKeymapInputFn;
@@ -1608,6 +1609,12 @@ begin
   if AKind = hdkColorCodingEdit then
   begin
     if AHost.HandleColorEdit(AKey, AShift, AKeyChar) then
+      Exit(True);
+  end;
+  if AKind = hdkSearch then
+  begin
+    if Assigned(AHost.HandleSearchEdit) and
+       AHost.HandleSearchEdit(AKey, AShift, AKeyChar) then
       Exit(True);
   end;
   if AKind = hdkMarkdownColors then

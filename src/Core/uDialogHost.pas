@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
   System.Generics.Collections, uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
-  uInputLine, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl;
+  uInputLine, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl;
 
 type
   TDialogHost = class
@@ -177,6 +177,8 @@ type
     function HasControl(const AId: string): Boolean;
     /// <summary>"#RRGGBB" the dckColorPicker with AId currently holds ('' if none).</summary>
     function GetColorPickerHex(const AId: string): string;
+    /// <summary>The date the dckDatePicker with AId currently shows (0 if none).</summary>
+    function GetDatePickerDate(const AId: string): TDateTime;
     /// <summary>Moves the focus to the control with AId (no-op when absent).</summary>
     procedure FocusControlById(const AId: string);
     /// <summary>Live-updates a dckInput's text on the already-open dialog
@@ -436,6 +438,8 @@ begin
       end;
     dckColorPicker:
       Result := cPickerHeight;
+    dckDatePicker:
+      Result := cCalendarHeight;
   else
     Result := 1;
   end;
@@ -530,7 +534,7 @@ end;
 function TDialogHost.CanFocus(AIndex: Integer): Boolean;
 begin
   Result := (FDecl.Controls[AIndex].Kind in [dckInput, dckCheckbox, dckRadio,
-    dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker]) and
+    dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker, dckDatePicker]) and
     not ((FDecl.Controls[AIndex].Kind in [dckCheckbox, dckInput, dckDropDown]) and
       FDecl.Controls[AIndex].Disabled);
 end;
@@ -604,6 +608,16 @@ begin
     if (FDecl.Controls[I].Kind = dckColorPicker) and SameText(FDecl.Controls[I].Id, AId) then
       Exit(ColorPickerHex(FDecl.Controls[I].Picker));
   Result := '';
+end;
+
+function TDialogHost.GetDatePickerDate(const AId: string): TDateTime;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckDatePicker) and SameText(FDecl.Controls[I].Id, AId) then
+      Exit(DatePickerDate(FDecl.Controls[I].Cal));
+  Result := 0;
 end;
 
 function TDialogHost.FocusedIsButton: Boolean;
@@ -1810,6 +1824,8 @@ begin
       end;
     dckColorPicker:
       Result := Min(AClientW, cPickerWidth);
+    dckDatePicker:
+      Result := Min(AClientW, cCalendarWidth);
   else
     Result := Max(AClientW, 1);
   end;
@@ -1824,6 +1840,8 @@ begin
       Result := 1;
     dckColorPicker:
       Result := cPickerHeight;
+    dckDatePicker:
+      Result := cCalendarHeight;
   else
     Result := 1;
   end;
@@ -2422,6 +2440,8 @@ begin
       dckColorPicker:
         ColorPickerDraw(AGrid, R.Left, R.Top, FDecl.Controls[I].Picker,
           I = FFocusIndex, FCursorVisible, LabelFg, LabelBg);
+      dckDatePicker:
+        DatePickerDraw(AGrid, R.Left, R.Top, FDecl.Controls[I].Cal, LabelFg, LabelBg);
       dckInput:
         begin
           Colors := InputLineDialogColors(I = FFocusIndex);
@@ -2432,6 +2452,14 @@ begin
               FDecl.Controls[I].Edit, I = FFocusIndex, Colors, FCursorVisible, False);
             DrawColorPickButton(AGrid, R.Left + R.Width - 1, R.Top, Colors,
               FDecl.Controls[I].Edit.Text);
+          end
+          else if C.DatePick and (R.Width >= 3) then
+          begin
+            // Last cell: the pick button.
+            InputLineDraw(AGrid, R.Left, R.Top, R.Width - 1,
+              FDecl.Controls[I].Edit, I = FFocusIndex, Colors, FCursorVisible, False);
+            PutGridText(AGrid, R.Left + R.Width - 1, R.Top, WideChar($2026),
+              Colors.Bg, Colors.Fg);
           end
           else if IsHistoryInput(I) and (R.Width >= 3) then
           begin
@@ -2831,7 +2859,8 @@ begin
           if C.Disabled then
             Exit(True);
           FFocusIndex := I;
-          if C.ColorPick and (R.Width >= 3) and (ALocalCol = R.Left + R.Width - 1) then
+          if (C.ColorPick or C.DatePick) and (R.Width >= 3) and
+             (ALocalCol = R.Left + R.Width - 1) then
           begin
             NotifyChanged;
             FireCommand(DialogPickCommand(C.Id));
@@ -2877,6 +2906,13 @@ begin
             CloseDropDown
           else
             OpenDropDown(I);
+          Exit(True);
+        end;
+      dckDatePicker:
+        begin
+          FFocusIndex := I;
+          DatePickerClick(FDecl.Controls[I].Cal, ALocalCol - R.Left, ALocalRow - R.Top);
+          NotifyChanged;
           Exit(True);
         end;
       dckColorPicker:
@@ -3229,6 +3265,15 @@ begin
       AKeyChar := #0;
       Exit;
     end;
+  end;
+
+  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckDatePicker) then
+  begin
+    DatePickerHandleKey(FDecl.Controls[FFocusIndex].Cal, AKey, AShift, AKeyChar);
+    AKey := 0;
+    AKeyChar := #0;
+    NotifyChanged;
+    Exit;
   end;
 
   if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckColorPicker) then

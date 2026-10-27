@@ -8,32 +8,65 @@ unit uPanelCompare;
   A file is marked when it exists on one side only, or on the side where it
   is newer. Same time (within the FAT 2 s granularity) but a different size
   marks both. Folders are marked only when missing on the other side. Names
-  compare case-insensitively; '..' is skipped. }
+  compare case-insensitively; '..' is skipped.
+
+  The options choose what counts as a difference between two files that exist
+  on both sides: the modification time, the size, the content. A file that
+  exists on one side only is always marked. }
 
 interface
 
 uses
-  uDualPanelTypes;
+  System.SysUtils, uDualPanelTypes;
 
 const
   /// <summary>FAT stores modification time in 2-second steps.</summary>
   cPanelCompareTimeToleranceSec = 2;
 
 type
+  TPanelCompareOptions = record
+    ByTime: Boolean;
+    BySize: Boolean;
+    /// <summary>Same-size files are read and compared byte by byte; needs
+    /// AContentEqual in ComparePanelRows.</summary>
+    ByContent: Boolean;
+    class function Default: TPanelCompareOptions; static;
+  end;
+
+  /// <summary>True when the two rows hold identical content.</summary>
+  TPanelContentEqualFn = reference to function(const ALeft, ARight: TPanelRow): Boolean;
+
   TPanelCompareResult = record
     /// <summary>URIs to select on each side (the whole new selection).</summary>
     LeftUris: TArray<string>;
     RightUris: TArray<string>;
   end;
 
-function ComparePanelRows(const ALeft, ARight: TPanelRows): TPanelCompareResult;
+/// <summary>Time and size, no content: the default of Compare folders.</summary>
+function ComparePanelRows(const ALeft, ARight: TPanelRows): TPanelCompareResult; overload;
+function ComparePanelRows(const ALeft, ARight: TPanelRows;
+  const AOptions: TPanelCompareOptions;
+  const AContentEqual: TPanelContentEqualFn): TPanelCompareResult; overload;
+/// <summary>Byte-for-byte comparison of two local files; False when either
+/// cannot be read. ACancelled is polled between blocks and stops the read
+/// with False.</summary>
+function LocalFilesHaveSameContent(const ALeftPath, ARightPath: string;
+  const ACancelled: TFunc<Boolean>): Boolean;
 /// <summary>Row name without a trailing '/' or '\' (dirs may carry one).</summary>
 function PanelCompareName(const ARow: TPanelRow): string;
 
 implementation
 
 uses
-  System.SysUtils, System.DateUtils, System.Generics.Collections;
+  System.Classes, System.DateUtils, System.Generics.Collections,
+  uVfsTypes;
+
+class function TPanelCompareOptions.Default: TPanelCompareOptions;
+begin
+  Result.ByTime := True;
+  Result.BySize := True;
+  Result.ByContent := False;
+end;
 
 function PanelCompareName(const ARow: TPanelRow): string;
 begin
@@ -98,10 +131,18 @@ begin
 end;
 
 function ComparePanelRows(const ALeft, ARight: TPanelRows): TPanelCompareResult;
+begin
+  Result := ComparePanelRows(ALeft, ARight, TPanelCompareOptions.Default, nil);
+end;
+
+function ComparePanelRows(const ALeft, ARight: TPanelRows;
+  const AOptions: TPanelCompareOptions;
+  const AContentEqual: TPanelContentEqualFn): TPanelCompareResult;
 var
   LeftIdx, RightIdx: TDictionary<string, Integer>;
   L, R: TPanelRow;
   J: Integer;
+  Differs: Boolean;
 begin
   Result := Default(TPanelCompareResult);
   LeftIdx := BuildIndex(ALeft);
@@ -116,23 +157,75 @@ begin
       R := ARight[J];
       if R.IsDirectory then
         Continue; // file on one side, folder on the other: leave to the user
-      case CompareTimes(L.ModificationTime, R.ModificationTime) of
-        -1:
-          Add(Result.LeftUris, L.URI);
-        1:
-          Add(Result.RightUris, R.URI);
-      else
-        if (L.Size >= 0) and (R.Size >= 0) and (L.Size <> R.Size) then
-        begin
-          Add(Result.LeftUris, L.URI);
-          Add(Result.RightUris, R.URI);
+      if AOptions.ByTime then
+        case CompareTimes(L.ModificationTime, R.ModificationTime) of
+          -1:
+            begin
+              Add(Result.LeftUris, L.URI);
+              Continue;
+            end;
+          1:
+            begin
+              Add(Result.RightUris, R.URI);
+              Continue;
+            end;
         end;
+      Differs := False;
+      if (AOptions.BySize or AOptions.ByContent) and
+         (L.Size >= 0) and (R.Size >= 0) and (L.Size <> R.Size) then
+        Differs := True
+      else if AOptions.ByContent and Assigned(AContentEqual) and
+              (L.Size >= 0) and (R.Size >= 0) and not AContentEqual(L, R) then
+        Differs := True;
+      if Differs then
+      begin
+        Add(Result.LeftUris, L.URI);
+        Add(Result.RightUris, R.URI);
       end;
     end;
     MarkUnique(ARight, LeftIdx, Result.RightUris);
   finally
     LeftIdx.Free;
     RightIdx.Free;
+  end;
+end;
+
+function LocalFilesHaveSameContent(const ALeftPath, ARightPath: string;
+  const ACancelled: TFunc<Boolean>): Boolean;
+const
+  cBlock = 256 * 1024;
+var
+  A, B: TFileStream;
+  BufA, BufB: TBytes;
+  NA, NB: Integer;
+begin
+  Result := False;
+  try
+    A := TFileStream.Create(WinApiPath(ALeftPath), fmOpenRead or fmShareDenyNone);
+    try
+      B := TFileStream.Create(WinApiPath(ARightPath), fmOpenRead or fmShareDenyNone);
+      try
+        if A.Size <> B.Size then
+          Exit;
+        SetLength(BufA, cBlock);
+        SetLength(BufB, cBlock);
+        repeat
+          if Assigned(ACancelled) and ACancelled() then
+            Exit;
+          NA := A.Read(BufA[0], cBlock);
+          NB := B.Read(BufB[0], cBlock);
+          if (NA <> NB) or ((NA > 0) and not CompareMem(@BufA[0], @BufB[0], NA)) then
+            Exit;
+        until NA = 0;
+        Result := True;
+      finally
+        B.Free;
+      end;
+    finally
+      A.Free;
+    end;
+  except
+    Result := False;
   end;
 end;
 

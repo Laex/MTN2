@@ -5,7 +5,9 @@ unit TestDialogTranslatedFit;
   just past its caption; a line with nothing
   right of it grows in place and moves nothing else; buttons grow to their
   captions, keep their gaps and are centered by their faces (the shadow not
-  counted), one cell clear of the frame; a dialog whose captions fit keeps its width. }
+  counted), one cell clear of the frame; a dialog whose captions fit keeps its width.
+  Controls that started in one column (buttons included) are in one column
+  afterwards, whatever grew or was pushed. }
 
 interface
 
@@ -21,6 +23,9 @@ type
     [Test] procedure TestGrowthMovesOnlyItsNeighbour;
     [Test] procedure TestFittingDialogKeepsWidth;
     [Test] procedure TestButtonRowPackedAndCentered;
+    [Test] procedure TestStackedButtonsKeepOneColumn;
+    [Test] procedure TestButtonUnderAFieldKeepsItsColumn;
+    [Test] procedure TestPushedGroupIsPushedTogether;
   end;
 
 implementation
@@ -59,6 +64,54 @@ begin
     if D.Controls[I].Id = AId then
       Exit(D.Controls[I]);
   raise Exception.Create('no control ' + AId);
+end;
+
+procedure TTestDialogTranslatedFit.TestStackedButtonsKeepOneColumn;
+var
+  D: TDialogDeclaration;
+begin
+  D := Dialog(40, [
+    Ctl(dckLabel, 'lbl', 'Items:', 1, 0, 20),
+    Ctl(dckButton, 'add', 'Add', 30, 2, 7),
+    Ctl(dckButton, 'edit', 'Edit existing item', 30, 4, 7),
+    Ctl(dckButton, 'del', 'Delete', 30, 6, 10)]);
+  FitDialogToTranslatedText(D);
+  Assert.AreEqual(ById(D, 'add').Col, ById(D, 'edit').Col, 'stacked buttons start in one column');
+  Assert.AreEqual(ById(D, 'add').Col, ById(D, 'del').Col, 'all three');
+  Assert.AreEqual(30, ById(D, 'add').Col, 'rows that started there are not centered away from it');
+end;
+
+procedure TTestDialogTranslatedFit.TestButtonUnderAFieldKeepsItsColumn;
+var
+  D: TDialogDeclaration;
+begin
+  D := Dialog(40, [
+    Ctl(dckLabel, 'lbl_a', 'A longer caption:', 1, 0, 8),
+    Ctl(dckInput, 'a', '', 10, 0, 27),
+    Ctl(dckButton, 'ok', 'OK', 3, 2, 8),
+    Ctl(dckButton, 'cancel', 'Cancel', 10, 2, 10)]);
+  FitDialogToTranslatedText(D);
+  Assert.AreEqual(ById(D, 'a').Col, ById(D, 'cancel').Col,
+    'a button authored under a field stays under it when the field is pushed');
+  Assert.IsTrue(ById(D, 'cancel').Col >= ById(D, 'ok').Col + ById(D, 'ok').BoxW + 1,
+    'the buttons of the row do not overlap');
+end;
+
+procedure TTestDialogTranslatedFit.TestPushedGroupIsPushedTogether;
+var
+  D: TDialogDeclaration;
+begin
+  // Only the first caption grows; the dropdown in row 2 started in the same
+  // column as the field in row 0 and follows it.
+  D := Dialog(50, [
+    Ctl(dckLabel, 'lbl_a', 'A much longer caption:', 1, 0, 8),
+    Ctl(dckInput, 'a', '', 10, 0, 30),
+    Ctl(dckLabel, 'lbl_c', 'C:', 1, 2, 8),
+    Ctl(dckDropDown, 'c', '', 10, 2, 12),
+    Ctl(dckCheckbox, 'chk', 'Option', 10, 4, 12)]);
+  FitDialogToTranslatedText(D);
+  Assert.AreEqual(ById(D, 'a').Col, ById(D, 'c').Col, 'the dropdown follows the field');
+  Assert.AreEqual(ById(D, 'a').Col, ById(D, 'chk').Col, 'so does the checkbox');
 end;
 
 procedure TTestDialogTranslatedFit.TestLabelPushesItsFields;

@@ -101,6 +101,13 @@
       "ok": "确定",
       "cancel": "取消"
     },
+    "DIALOG_DATEPICKER": {
+      "$title": "选择日期",
+      "lbl_time": "时间 (hh:mm):",
+      "ok": "使用",
+      "clear": "清除(&L)",
+      "cancel": "取消"
+    },
     "DIALOG_COLORPICKER": {
       "hint": "方向键选择, Shift+左/右 步长 10, Tab 下一项",
       "$title": "选择颜色",
@@ -267,6 +274,9 @@
       "passive_cursor": "非活动面板显示光标(&V)",
       "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
       "exact_sizes": "以字节显示精确大小(&B)",
+      "backspace_drive_menu": "在驱动器根目录按退格键打开驱动器菜单(&D)",
+      "drive_other_folder": "切换驱动器时打开另一面板的文件夹(&C)",
+      "space_selects": "空格键选择文件并下移(&L)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"
@@ -274,6 +284,15 @@
     "DIALOG_CHECKSUMOPTS": {
       "$title": "校验和",
       "lbl_algo": "算法:",
+      "ok": "确定",
+      "cancel": "取消"
+    },
+    "DIALOG_COMPAREOPTS": {
+      "$title": "比较文件夹",
+      "lbl_compare": "比较:",
+      "by_time": "时间(&T)",
+      "by_size": "大小(&S)",
+      "by_content": "内容(&C)",
       "ok": "确定",
       "cancel": "取消"
     },
@@ -571,6 +590,16 @@
       "lbl_mask": "文件掩码(可多个):",
       "lbl_text": "包含文本:",
       "$title": "查找文件",
+      "lbl_format": "大小: 10K, 1.5M",
+      "lbl_size": "大小从:",
+      "lbl_size_to": "到:",
+      "lbl_date": "修改时间从:",
+      "lbl_date_to": "到:",
+      "lbl_attr": "属性:",
+      "filter_attr_ro": "只读(&D)",
+      "filter_attr_hidden": "隐藏(&H)",
+      "filter_attr_system": "系统(&T)",
+      "filter_attr_archive": "存档(&A)",
       "search_case": "区分大小写(&C)",
       "search_words": "全字匹配(&W)",
       "search_folders": "查找文件夹(&F)",
@@ -1168,6 +1197,7 @@
     "editor.reloadEncodingMsg": "放弃未保存的更改并重新解码?",
     "editor.readOnlyTitle": "只读文件",
     "editor.readOnlyMsg": "清除系统只读属性并编辑?",
+    "editor.accessDenied": "无法访问文件: %s",
     "editor.notFoundTitle": "搜索",
     "editor.notFoundMsg": "未找到该字符串",
     "editor.badPatternMsg": "正则表达式无效",
@@ -1290,6 +1320,9 @@
     "checksum.saved": "已保存: ",
     "compareFolders.needPanels": "两个面板都必须显示文件列表。",
     "compareFolders.same": "文件夹相同。",
+    "compareFolders.working": "正在比较... Esc=取消",
+    "datePicker.title": "选择日期",
+    "search.filterFormat": "大小: 10K, 1.5M   日期: %s",
     "externalTools.title": "外部查看器/编辑器",
     "externalTools.viewTitle": "外部查看器",
     "externalTools.editTitle": "外部编辑器",

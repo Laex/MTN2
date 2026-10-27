@@ -2,7 +2,7 @@
 
 <!--dir-sync-->- **Ctrl+Alt+S** – synchronize the folders of the active and passive panels: one-way or two-way; the dry-run check box shows what would be done without changing anything.
 <!--compare-files-->- **Ctrl+Alt+C** – compare the files under the cursors of both panels.
-<!--compare-folders-->- **Ctrl+Shift+C** – compare folders: both panels select the files missing on the other side and the newer of same-named ones; same time but a different size selects both. Folders are selected only when missing on the other side. The current panel lists are compared, without subfolders, so it works in archives and on SFTP too.
+<!--compare-folders-->- **Ctrl+Shift+C** – compare folders: both panels select the files missing on the other side and the newer of same-named ones; same time but a different size selects both. Folders are selected only when missing on the other side. The current panel lists are compared, without subfolders, so it works in archives and on SFTP too. The dialog asks what counts as a difference: time, size, content; content is compared byte by byte, only for same-size files on disk, and runs in the background (Esc cancels).
 
 ---
 

@@ -1,0 +1,71 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Pick date",
+  "width": 40,
+  "height": 15,
+  "children": [
+    {
+      "type": "datepicker",
+      "id": "date",
+      "col": 8,
+      "row": 0,
+      "width": 22,
+      "height": 8
+    },
+    {
+      "type": "label",
+      "id": "lbl_time",
+      "text": "Time (hh:mm):",
+      "col": 1,
+      "row": 8,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "time",
+      "value": "",
+      "col": 18,
+      "row": 8,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 9,
+      "width": 38,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Use",
+      "default": true,
+      "col": 2,
+      "row": 11,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "clear",
+      "text": "C&lear",
+      "col": 14,
+      "row": 11,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 26,
+      "row": 11,
+      "width": 10,
+      "height": 1
+    }
+  ]
+}

@@ -8,7 +8,10 @@ unit TestDialogAlignment;
   - a label and the field right of it have at least one blank cell between
     the text and the field;
   - rows whose label starts in the same column put their fields in the same
-    column too. }
+    column too;
+  - controls that start in one column as authored still start in one column
+    (buttons and rules included), whatever the translation and the caption
+    fitting did to the widths and the positions. }
 
 interface
 
@@ -32,7 +35,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.Math, Winapi.Windows,
-  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogRenderer,
+  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogRenderer, uDialogJson,
   uDialogHost;
 
 var
@@ -87,7 +90,7 @@ begin
 end;
 
 procedure CheckDeclaration(const AName: string; const ADecl: TDialogDeclaration;
-  AReport: TStrings);
+  AReport: TStrings; const AAuthoredCols: TArray<Integer> = nil);
 type
   TBox = record
     L, T, R, B: Integer;
@@ -166,6 +169,14 @@ begin
     end;
   end;
 
+  // Controls that started in one column as authored still do.
+  if Length(AAuthoredCols) = N then
+    for I := 0 to N - 1 do
+      for J := I + 1 to N - 1 do
+        if (Max(AAuthoredCols[I], 0) = Max(AAuthoredCols[J], 0)) and (Box[I].L <> Box[J].L) then
+          Problem(Format('%s and %s start in one column as authored (%d) but now in %d and %d',
+            [Named(I), Named(J), Max(AAuthoredCols[I], 0), Box[I].L, Box[J].L]));
+
   // Label -> field pairs: the label is the leftmost control of its row and
   // the field is the next control right of it.
   SetLength(LabelCol, 0);
@@ -204,8 +215,11 @@ end;
 procedure CheckAll(const ALocale: string);
 var
   Name: string;
-  Decl: TDialogDeclaration;
+  Decl, Authored: TDialogDeclaration;
   Report: TStringList;
+  Json: string;
+  Cols: TArray<Integer>;
+  I: Integer;
 begin
   Report := TStringList.Create;
   try
@@ -213,7 +227,17 @@ begin
     try
       for Name in DialogResourceNames do
         if TryLoadDialogResource(Name, Decl) then
-          CheckDeclaration(Name, Decl, Report)
+        begin
+          Cols := nil;
+          if TryLoadDialogResourceJson(Name, Json) and TryParseDialogJson(Json, Authored) and
+             (Length(Authored.Controls) = Length(Decl.Controls)) then
+          begin
+            SetLength(Cols, Length(Authored.Controls));
+            for I := 0 to High(Cols) do
+              Cols[I] := Authored.Controls[I].Col;
+          end;
+          CheckDeclaration(Name, Decl, Report, Cols);
+        end
         else
           Report.Add(Name + ': not loaded');
       CheckDeclaration('console profile',

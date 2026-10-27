@@ -13,6 +13,7 @@ type
   TTestPanelCompare = class
   public
     [Test] procedure Run;
+    [Test] procedure OptionsChooseWhatDiffers;
   end;
 
 implementation
@@ -52,6 +53,49 @@ var
   Res: TPanelCompareResult;
 
 { TTestPanelCompare }
+
+procedure TTestPanelCompare.OptionsChooseWhatDiffers;
+var
+  L, R: TPanelRows;
+  Opt: TPanelCompareOptions;
+  Calls: Integer;
+  Equal: TPanelContentEqualFn;
+begin
+  T0 := EncodeDateTime(2025, 1, 1, 12, 0, 0, 0);
+  T1 := IncHour(T0, 1);
+  L := [Row('newer.txt', 10, T1), Row('resized.txt', 10, T0), Row('same-size.txt', 10, T0)];
+  R := [Row('newer.txt', 10, T0, False, 'R'), Row('resized.txt', 20, T0, False, 'R'),
+    Row('same-size.txt', 10, T0, False, 'R')];
+  Calls := 0;
+  Equal :=
+    function(const ALeft, ARight: TPanelRow): Boolean
+    begin
+      Inc(Calls);
+      Result := False;
+    end;
+
+  Opt := TPanelCompareOptions.Default;
+  Opt.ByTime := False;
+  Res := ComparePanelRows(L, R, Opt, Equal);
+  Assert.IsFalse(Has(Res.LeftUris, 'file:///L/newer.txt'), 'time ignored when off');
+  Assert.IsTrue(Has(Res.LeftUris, 'file:///L/resized.txt') and
+    Has(Res.RightUris, 'file:///R/resized.txt'), 'size still differs');
+  Assert.AreEqual(0, Calls, 'content is not read when off');
+
+  Opt := TPanelCompareOptions.Default;
+  Opt.BySize := False;
+  Res := ComparePanelRows(L, R, Opt, Equal);
+  Assert.IsTrue(Has(Res.LeftUris, 'file:///L/newer.txt'), 'newer side marked');
+  Assert.IsFalse(Has(Res.LeftUris, 'file:///L/resized.txt'), 'size ignored when off');
+
+  Opt.ByContent := True;
+  Res := ComparePanelRows(L, R, Opt, Equal);
+  Assert.IsTrue(Has(Res.LeftUris, 'file:///L/resized.txt'),
+    'different sizes differ in content too');
+  Assert.IsTrue(Has(Res.LeftUris, 'file:///L/same-size.txt') and
+    Has(Res.RightUris, 'file:///R/same-size.txt'), 'content check marks both sides');
+  Assert.AreEqual(1, Calls, 'content is read only for same-size files with equal time');
+end;
 
 procedure TTestPanelCompare.Run;
 begin

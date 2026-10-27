@@ -318,6 +318,9 @@ begin
   DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
   DialogSetCheckbox(Decl, 'select_folders', Cur.SelectFolders);
   DialogSetCheckbox(Decl, 'pack_same_panel', Cur.PackInSamePanel);
+  DialogSetCheckbox(Decl, 'backspace_drive_menu', Cur.BackspaceDriveMenu);
+  DialogSetCheckbox(Decl, 'drive_other_folder', Cur.DriveToOtherFolder);
+  DialogSetCheckbox(Decl, 'space_selects', Cur.SpaceSelects);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
@@ -699,6 +702,9 @@ begin
     Disp.FileDrag := FDialog.GetCheckbox('file_drag');
     Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
     Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
+    Disp.BackspaceDriveMenu := FDialog.GetCheckbox('backspace_drive_menu');
+    Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
+    Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
