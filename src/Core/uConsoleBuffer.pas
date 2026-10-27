@@ -1598,7 +1598,9 @@ begin
     begin
       Prev := GetLineLocked(LineIdx - 1);
       PromptEnd := FindPromptProtectedEnd(Prev);
-      if (PromptEnd > 0) and (Trim(Copy(Prev, PromptEnd + 1, MaxInt)) = '') then
+      // A line that is itself a prompt is the next prompt, not echoed input.
+      if (PromptEnd > 0) and (Trim(Copy(Prev, PromptEnd + 1, MaxInt)) = '') and
+         (FindPromptProtectedEnd(Line) = 0) then
       begin
         Result := Line;
         Exit;
@@ -1625,7 +1627,7 @@ begin
           Prev := GetLineLocked(I - 1);
           PromptEnd := FindPromptProtectedEnd(Prev);
           if (PromptEnd > 0) and (Trim(Copy(Prev, PromptEnd + 1, MaxInt)) = '') and
-             (Trim(Line) <> '') then
+             (Trim(Line) <> '') and (FindPromptProtectedEnd(Line) = 0) then
           begin
             Result := Line;
             Exit;

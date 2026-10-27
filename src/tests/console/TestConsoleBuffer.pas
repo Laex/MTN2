@@ -31,6 +31,7 @@ type
     [Test] procedure TestGetInputCursorAfterUnfollow;
     [Test] procedure TestEraseCharsBlanksPredictionAtCursor;
     [Test] procedure TestMaxLines;
+    [Test] procedure TestPromptAfterBarePromptIsNotInput;
   end;
 
 implementation
@@ -90,6 +91,27 @@ begin
     Assert.AreEqual('ab      x', Buf.GetLine(Buf.LineCount - 1), 'tab expands to 8-col stop');
     Buf.AppendOutput(#13#10'1234567'#9'z');
     Assert.AreEqual('1234567 z', Buf.GetLine(Buf.LineCount - 1), 'tab from col 7 advances one cell');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestPromptAfterBarePromptIsNotInput;
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    // Enter on an empty prompt: the shell answers with a new prompt line.
+    Buf.AppendOutput('D:\Work>'#13#10);
+    Buf.AppendOutput('D:\Work>');
+    Assert.AreEqual('', Trim(Buf.GetInputAfterPrompt),
+      'a prompt that follows a bare prompt is not typed input');
+    Buf.Clear;
+    Buf.AppendOutputEx('D:\Work>'#13#10, 80, 5);
+    Buf.AppendOutputEx('D:\Work>', 80, 5);
+    Assert.AreEqual('', Trim(Buf.GetInputAfterPrompt),
+      'a prompt that follows a bare prompt is not typed input (grid)');
   finally
     Buf.Free;
   end;
@@ -648,6 +670,11 @@ end;
 procedure TTestConsoleBuffer.TestMaxLines;
 begin
   TestConsoleBuffer.TestMaxLines;
+end;
+
+procedure TTestConsoleBuffer.TestPromptAfterBarePromptIsNotInput;
+begin
+  TestConsoleBuffer.TestPromptAfterBarePromptIsNotInput;
 end;
 
 initialization
