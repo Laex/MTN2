@@ -60,6 +60,8 @@ uses
 function c_execv(APath: MarshaledAString; AArgv: Pointer): Integer; cdecl;
   external libc name 'execv';
 function c_chdir(APath: MarshaledAString): Integer; cdecl; external libc name 'chdir';
+function c_rename(AOld, ANew: MarshaledAString): Integer; cdecl;
+  external libc name 'rename';
 
 var
   GPendingExe: string;
@@ -137,7 +139,14 @@ begin
     AError := SysErrorMessage(EEXIST);
     Exit(False);
   end;
+  // rename() replaces an existing destination in one step, so a reader never
+  // sees a missing or half-written file; it only fails across volumes.
+  if AReplace and (c_rename(MarshaledAString(UTF8String(ASource)),
+    MarshaledAString(UTF8String(ADest))) = 0) then
+    Exit(True);
   try
+    if AReplace and TFile.Exists(ADest) then
+      TFile.Delete(ADest);
     TFile.Move(ASource, ADest);
     Result := True;
   except
