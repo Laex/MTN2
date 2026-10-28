@@ -16,6 +16,7 @@ type
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
     [Test] procedure TestLanguagesAreFoundByFileName;
+    [Test] procedure TestPlainTextColorsNumbersPunctuationAndLinks;
     [Test] procedure TestBlockCommentCarriesOverTheLines;
     [Test] procedure TestEditedLineRecolorsTheLinesBelow;
     [Test] procedure TestWholeFileIsColoredQuickly;
@@ -96,8 +97,39 @@ begin
   Assert.IsTrue(HighlighterForFile('unit1.pas') <> 0, 'Pascal');
   Assert.IsTrue(HighlighterForFile('C:\w\Makefile') <> 0, 'a whole file name');
   Assert.IsTrue(HighlighterIsStateful(HighlighterForFile('a.py')), 'a language keeps its state');
-  Assert.AreEqual<Integer>(0, HighlighterForFile('notes.txt'), 'plain text stays plain');
+  Assert.IsTrue(HighlighterForFile('notes.txt') <> 0, 'plain text has its own coloring');
+  Assert.IsTrue(HighlighterForFile('app.LOG') <> 0, 'a log');
   Assert.AreEqual<Integer>(0, HighlighterForFile('archive.zip'), 'an unknown extension');
+end;
+
+procedure TTestHighlightPlugin.TestPlainTextColorsNumbersPunctuationAndLinks;
+const
+  cLine = 'Total: 42 items, see https://example.com/a?b=1.';
+var
+  Id, State: Integer;
+  Spans: THighlightSpans;
+
+  function KindAt(APos: Integer): Integer;
+  var
+    Span: THighlightSpan;
+  begin
+    Result := cHighlightPlain;
+    for Span in Spans do
+      if (APos >= Span.Start) and (APos < Span.Start + Span.Len) then
+        Exit(Span.Kind);
+  end;
+
+begin
+  Id := HighlighterForFile('notes.txt');
+  Assert.IsTrue(HighlightLineState(Id, cLine, 0, Spans, State), 'the line is colored');
+  Assert.AreEqual<Integer>(0, State, 'plain text carries no state');
+  Assert.AreEqual<Integer>(cHighlightPlain, KindAt(0), 'a word');
+  Assert.AreEqual<Integer>(cHighlightOperator, KindAt(5), 'the colon');
+  Assert.AreEqual<Integer>(cHighlightNumber, KindAt(7), 'the number');
+  Assert.AreEqual<Integer>(cHighlightOperator, KindAt(15), 'the comma');
+  Assert.AreEqual<Integer>(cHighlightConstant, KindAt(Pos('https', cLine) - 1), 'the link');
+  Assert.AreEqual<Integer>(cHighlightConstant, KindAt(Length(cLine) - 3), 'the end of the link');
+  Assert.AreEqual<Integer>(cHighlightOperator, KindAt(Length(cLine) - 1), 'the final dot is not in the link');
 end;
 
 procedure TTestHighlightPlugin.TestBlockCommentCarriesOverTheLines;

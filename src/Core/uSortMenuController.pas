@@ -11,12 +11,14 @@ uses
 
 type
   TSortSelectEvent = reference to procedure(AColumn: TPanelSortColumn);
+  TSortPriorityToggleEvent = reference to procedure;
 
   TSortMenuController = class
   private
     FTheme: IThemeRenderer;
     FOnInvalidate: TProc;
     FOnSortSelect: TSortSelectEvent;
+    FOnPriorityToggle: TSortPriorityToggleEvent;
     FGetActivePanelBounds: TMenuPanelBoundsEvent;
     FGetActiveSide: TActiveSideEvent;
     FVisible: Boolean;
@@ -25,7 +27,10 @@ type
     FBounds: TRectI;
     FCurrent: TPanelSortColumn;
     FDescending: Boolean;
+    FByPriority: Boolean;
     procedure BuildItems;
+    procedure Activate(AIndex: Integer);
+    procedure MoveIndex(ADelta: Integer);
     function IndexOf(ACol: TPanelSortColumn): Integer;
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
@@ -33,7 +38,9 @@ type
       const AGetActiveSide: TActiveSideEvent);
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetOnSortSelect(const AHandler: TSortSelectEvent);
-    procedure Open(ACurrent: TPanelSortColumn; ADescending: Boolean);
+    procedure SetOnPriorityToggle(const AHandler: TSortPriorityToggleEvent);
+    procedure Open(ACurrent: TPanelSortColumn; ADescending: Boolean;
+      AByPriority: Boolean = False);
     procedure Close;
     procedure Layout;
     procedure Draw(const AGrid: TTerminalGrid);
@@ -56,6 +63,7 @@ const
   cPanelBg  = TAlphaColor($FF0000AA);
   cFrameActive = TAlphaColor($FF55FFFF);
   cSortHot  = TAlphaColor($FFFF55FF); // raspberry/magenta - readable on blue
+  cSeparatorChar = #$2500;
 
 constructor TSortMenuController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AGetActivePanelBounds: TMenuPanelBoundsEvent;
@@ -80,6 +88,36 @@ begin
   FOnSortSelect := AHandler;
 end;
 
+procedure TSortMenuController.SetOnPriorityToggle(const AHandler: TSortPriorityToggleEvent);
+begin
+  FOnPriorityToggle := AHandler;
+end;
+
+procedure TSortMenuController.MoveIndex(ADelta: Integer);
+var
+  I: Integer;
+begin
+  I := FIndex + ADelta;
+  while (I >= 0) and (I <= High(FItems)) and FItems[I].Separator do
+    Inc(I, ADelta);
+  if (I >= 0) and (I <= High(FItems)) then
+    FIndex := I;
+end;
+
+procedure TSortMenuController.Activate(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FItems)) or FItems[AIndex].Separator then
+    Exit;
+  if FItems[AIndex].Toggle then
+  begin
+    if Assigned(FOnPriorityToggle) then
+      FOnPriorityToggle;
+  end
+  else if Assigned(FOnSortSelect) then
+    FOnSortSelect(FItems[AIndex].Column);
+  Close;
+end;
+
 procedure TSortMenuController.BuildItems;
 
   // AKey: sortMenu.<AKey> in strings/<locale>.json; a translation marks its
@@ -100,6 +138,8 @@ procedure TSortMenuController.BuildItems;
     FItems[N].HotChar := Hot;
     FItems[N].Shortcut := AShortcut;
     FItems[N].Column := ACol;
+    FItems[N].Toggle := False;
+    FItems[N].Separator := False;
   end;
 
 begin
@@ -113,6 +153,11 @@ begin
   Add('accessTime', 'Access time', 'A', 'Ctrl+F9', pscAccessed);
   Add('attr', 'Attr', 't', '', pscAttr);
   Add('type', 'Type', 'y', '', pscType);
+  SetLength(FItems, Length(FItems) + 1);
+  FItems[High(FItems)] := Default(TSortMenuItem);
+  FItems[High(FItems)].Separator := True;
+  Add('priority', 'Priority groups', 'P', '', pscNone);
+  FItems[High(FItems)].Toggle := True;
 end;
 
 function TSortMenuController.IndexOf(ACol: TPanelSortColumn): Integer;
@@ -120,16 +165,17 @@ var
   I: Integer;
 begin
   for I := 0 to High(FItems) do
-    if FItems[I].Column = ACol then
+    if (not FItems[I].Toggle) and (FItems[I].Column = ACol) then
       Exit(I);
   Result := 0;
 end;
 
 procedure TSortMenuController.Open(ACurrent: TPanelSortColumn;
-  ADescending: Boolean);
+  ADescending: Boolean; AByPriority: Boolean);
 begin
   FCurrent := ACurrent;
   FDescending := ADescending;
+  FByPriority := AByPriority;
   BuildItems;
   FIndex := IndexOf(ACurrent);
   FVisible := True;
@@ -198,7 +244,20 @@ begin
     Y := R.Top + 1 + I;
     if Y >= R.Bottom then
       Break;
-    if FItems[I].Column = FCurrent then
+    if FItems[I].Separator then
+    begin
+      ResolveOverlayTextColors(FTheme, False, False, False, cFileFg, cPanelBg, Fg, Bg);
+      PutGridText(AGrid, R.Left + 1, Y, StringOfChar(cSeparatorChar, InnerW), Fg, Bg);
+      Continue;
+    end;
+    if FItems[I].Toggle then
+    begin
+      if FByPriority then
+        Mark := '+'
+      else
+        Mark := ' ';
+    end
+    else if FItems[I].Column = FCurrent then
       Mark := PanelSortMark(True, FDescending)
     else
       Mark := ' ';
@@ -259,8 +318,7 @@ begin
   end;
   if AKey = vkUp then
   begin
-    if FIndex > 0 then
-      Dec(FIndex);
+    MoveIndex(-1);
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;
@@ -268,8 +326,7 @@ begin
   end;
   if AKey = vkDown then
   begin
-    if FIndex < High(FItems) then
-      Inc(FIndex);
+    MoveIndex(1);
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;
@@ -277,12 +334,7 @@ begin
   end;
   if AKey = vkReturn then
   begin
-    if (FIndex >= 0) and (FIndex <= High(FItems)) then
-    begin
-      if Assigned(FOnSortSelect) then
-        FOnSortSelect(FItems[FIndex].Column);
-      Close;
-    end;
+    Activate(FIndex);
     AKey := 0;
     Exit;
   end;
@@ -292,11 +344,9 @@ begin
     // Exact letter first, then the same key on the other keyboard layout.
     for Pass := False to True do
       for I := 0 to High(FItems) do
-        if MenuHotKeyMatches(FItems[I].HotChar, Ch, Pass) then
+        if (not FItems[I].Separator) and MenuHotKeyMatches(FItems[I].HotChar, Ch, Pass) then
         begin
-          if Assigned(FOnSortSelect) then
-            FOnSortSelect(FItems[I].Column);
-          Close;
+          Activate(I);
           AKey := 0;
           AKeyChar := #0;
           Exit;
@@ -324,12 +374,10 @@ begin
   if FBounds.Contains(ALocalCol, ALocalRow) then
   begin
     Idx := ALocalRow - (FBounds.Top + 1);
-    if (Idx >= 0) and (Idx <= High(FItems)) then
+    if (Idx >= 0) and (Idx <= High(FItems)) and not FItems[Idx].Separator then
     begin
       FIndex := Idx;
-      if Assigned(FOnSortSelect) then
-        FOnSortSelect(FItems[Idx].Column);
-      Close;
+      Activate(Idx);
     end;
     Result := True;
     Exit;

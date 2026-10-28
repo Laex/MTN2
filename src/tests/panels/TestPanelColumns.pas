@@ -20,6 +20,7 @@ type
     [Test] procedure TestIconColumn;
     [Test] procedure TestIconVisibility;
     [Test] procedure TestNumericNameSort;
+    [Test] procedure TestPriorityRanksRowsBeforeTheColumn;
     [Test] procedure TestEnsureCursorVisible;
   end;
 
@@ -207,6 +208,37 @@ begin
   Assert.IsTrue(Rows[4].Text = 'file10.txt', 'file10 last');
 end;
 
+procedure TestPriorityRanksRowsBeforeTheColumn;
+var
+  Rows: TPanelRows;
+begin
+  SetLength(Rows, 6);
+  Rows[0] := MakePanelRow('b.txt', False, 1, '1', '', 'file:///b.txt');
+  Rows[1] := MakePanelRow('a.tmp', False, 1, '1', '', 'file:///a.tmp');
+  Rows[2] := MakePanelRow('c.zip', False, 1, '1', '', 'file:///c.zip');
+  Rows[3] := MakePanelRow('dir/', True, -1, '<DIR>', '', 'file:///dir');
+  Rows[4] := MakePanelRow('a.zip', False, 1, '1', '', 'file:///a.zip');
+  Rows[5] := MakePanelRow('..', True, -1, '<DIR>', '', 'file:///', True);
+  Rows[1].SortPriority := 5;
+  Rows[2].SortPriority := -1;
+  Rows[4].SortPriority := -1;
+  SortPanelRows(Rows, pscName, False, True);
+  Assert.AreEqual('..', Rows[0].Text, 'the parent row stays on top');
+  Assert.AreEqual('a.zip', Rows[1].Text, 'lowest priority first, by name inside it');
+  Assert.AreEqual('c.zip', Rows[2].Text, 'same priority, next by name');
+  Assert.AreEqual('dir/', Rows[3].Text, 'unranked rows keep folders first');
+  Assert.AreEqual('b.txt', Rows[4].Text, 'unranked file');
+  Assert.AreEqual('a.tmp', Rows[5].Text, 'positive priority goes last');
+
+  SortPanelRows(Rows, pscName, True, True);
+  Assert.AreEqual('a.tmp', Rows[5].Text, 'a descending column does not reverse the priority');
+
+  Rows[1].SortPriority := 0;
+  Rows[2].SortPriority := 0;
+  SortPanelRows(Rows, pscNone, False, True);
+  Assert.AreEqual('a.tmp', Rows[Length(Rows) - 1].Text, 'priorities apply with no sort column');
+end;
+
 procedure TestEnsureCursorVisible;
 var
   Tab: TTab;
@@ -294,6 +326,11 @@ end;
 procedure TTestPanelColumns.TestNumericNameSort;
 begin
   TestPanelColumns.TestNumericNameSort;
+end;
+
+procedure TTestPanelColumns.TestPriorityRanksRowsBeforeTheColumn;
+begin
+  TestPanelColumns.TestPriorityRanksRowsBeforeTheColumn;
 end;
 
 procedure TTestPanelColumns.TestEnsureCursorVisible;

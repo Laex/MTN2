@@ -101,8 +101,10 @@ function FormatPanelRowIcon(const ARow: TPanelRow): Char;
 function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
   out ACol: TPanelSortColumn): Boolean;
 
+/// <summary>Sorts by ACol; with AByPriority the rows are ranked by their
+/// SortPriority first (also when ACol is pscNone, which then orders by name).</summary>
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean);
+  ADescending: Boolean; AByPriority: Boolean = False);
 
 function FormatPanelRowMeta(AMode: TPanelColumnMode;
   const ARow: TPanelRow; AMetaW: Integer): string;
@@ -633,6 +635,13 @@ begin
     else
       Exit(1);
   end;
+  if Left.SortPriority <> Right.SortPriority then
+  begin
+    if Left.SortPriority < Right.SortPriority then
+      Exit(-1)
+    else
+      Exit(1);
+  end;
   if Left.IsDirectory <> Right.IsDirectory then
   begin
     if Left.IsDirectory then
@@ -682,9 +691,9 @@ begin
 end;
 
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean);
+  ADescending: Boolean; AByPriority: Boolean);
 begin
-  if (ACol = pscNone) or (Length(ARows) < 2) then
+  if ((ACol = pscNone) and not AByPriority) or (Length(ARows) < 2) then
     Exit;
   TArray.Sort<TPanelRow>(ARows,
     TComparer<TPanelRow>.Construct(

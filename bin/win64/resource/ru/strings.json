@@ -83,6 +83,8 @@
       "lbl_name": "Имя:",
       "lbl_masks": "Маски:",
       "lbl_applyto": "Применить:",
+      "lbl_priority": "Приоритет:",
+      "lbl_priority_range": "Меньше – выше: минус – вверх, плюс – вниз",
       "lbl_columns": "           Текст          Фон            Образец",
       "lbl_normal": "Обычный:",
       "lbl_selected": "Выбранный:",
@@ -2325,7 +2327,8 @@
     "creationTime": "Время &создания",
     "accessTime": "Время &доступа",
     "attr": "&Атрибуты",
-    "type": "&Тип"
+    "type": "&Тип",
+    "priority": "&Группы по приоритету"
   },
   "columnModeMenu": {
     "brief": "&Краткий",

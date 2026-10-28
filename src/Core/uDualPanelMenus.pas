@@ -16,6 +16,7 @@ uses
 type
   TUserMenuActionEvent = uUserMenuController.TUserMenuActionEvent;
   TSortSelectEvent = uSortMenuController.TSortSelectEvent;
+  TSortPriorityToggleEvent = uSortMenuController.TSortPriorityToggleEvent;
   TColumnModeSelectEvent = uColumnModeMenuController.TColumnModeSelectEvent;
   TMenuPanelBoundsEvent = uDualPanelOverlays.TMenuPanelBoundsEvent;
   TActiveSideEvent = uDualPanelOverlays.TActiveSideEvent;
@@ -46,6 +47,7 @@ type
     destructor Destroy; override;
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetOnSortSelect(const AHandler: TSortSelectEvent);
+    procedure SetOnSortPriorityToggle(const AHandler: TSortPriorityToggleEvent);
     procedure SetOnColumnModeSelect(const AHandler: TColumnModeSelectEvent);
     /// <summary>ARoot stays owned by the caller (see TUserMenuController.Open).</summary>
     procedure OpenUserMenu(ARoot: TUserMenuItem; const ATitle: string = '');
@@ -56,7 +58,8 @@ type
     function HandleUserMenuInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function HandleUserMenuClick(ALocalCol, ALocalRow: Integer): Boolean;
-    procedure OpenSortMenu(ACurrent: TPanelSortColumn; ADescending: Boolean);
+    procedure OpenSortMenu(ACurrent: TPanelSortColumn; ADescending: Boolean;
+      AByPriority: Boolean);
     procedure CloseSortMenu;
     procedure LayoutSortMenu;
     procedure DrawSortMenu(const AGrid: TTerminalGrid);
@@ -235,12 +238,17 @@ begin
   Result := FUserMenu.HandleClick(ALocalCol, ALocalRow);
 end;
 
+procedure TMenuStubController.SetOnSortPriorityToggle(const AHandler: TSortPriorityToggleEvent);
+begin
+  FSortMenu.SetOnPriorityToggle(AHandler);
+end;
+
 procedure TMenuStubController.OpenSortMenu(ACurrent: TPanelSortColumn;
-  ADescending: Boolean);
+  ADescending: Boolean; AByPriority: Boolean);
 begin
   FUserMenu.Close;
   FColumnModeMenu.Close;
-  FSortMenu.Open(ACurrent, ADescending);
+  FSortMenu.Open(ACurrent, ADescending, AByPriority);
 end;
 
 procedure TMenuStubController.CloseSortMenu;

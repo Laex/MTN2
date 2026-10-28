@@ -483,6 +483,9 @@ type
     /// watcher) without firing OnCloseRequest. Open starts a new one.</summary>
     procedure CloseDocument;
     procedure ScrollLines(ADelta: Integer);
+    /// <summary>Scrolls by a navigation key (arrows, PgUp/PgDn, Home/End) without
+    /// moving a cursor; False for any other key.</summary>
+    function ScrollKey(AKey: Word; AShift: TShiftState): Boolean;
     property URI: string read FURI;
     property ViewOnly: Boolean read FViewOnly;
     property HexMode: Boolean read FHexMode;
@@ -3202,6 +3205,43 @@ end;
 procedure TEditorWindow.ScrollLines(ADelta: Integer);
 begin
   ScrollBy(ADelta);
+end;
+
+function TEditorWindow.ScrollKey(AKey: Word; AShift: TShiftState): Boolean;
+const
+  cColumnStep = 4;
+begin
+  Result := True;
+  if (not FDoc.Ready) or (AShift * [ssAlt, ssShift] <> []) then
+    Exit(False);
+  case AKey of
+    vkUp: ScrollBy(-1);
+    vkDown: ScrollBy(1);
+    vkPrior: ScrollBy(-Max(ViewHeight - 1, 1));
+    vkNext: ScrollBy(Max(ViewHeight - 1, 1));
+    vkHome:
+      begin
+        ScrollTo(0);
+        if FLeftCol <> 0 then
+        begin
+          FLeftCol := 0;
+          NotifyHost;
+        end;
+      end;
+    vkEnd: ScrollTo(MaxInt div 2);
+    vkLeft, vkRight:
+      begin
+        if FWordWrap or FMarkdownMode or FHexMode then
+          Exit(False);
+        if AKey = vkLeft then
+          FLeftCol := Max(FLeftCol - cColumnStep, 0)
+        else
+          FLeftCol := FLeftCol + cColumnStep;
+        NotifyHost;
+      end;
+  else
+    Result := False;
+  end;
 end;
 
 function TEditorWindow.DocReady: Boolean;

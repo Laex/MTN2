@@ -42,6 +42,12 @@ type
     /// <summary>Sort key applied on list results and immediately to current rows.</summary>
     procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean);
     procedure GetSort(out AColumn: TPanelSortColumn; out ADescending: Boolean);
+    /// <summary>Rank rows by the sort priority of their color-coding group
+    /// ahead of the sort column.</summary>
+    procedure SetSortByPriority(AValue: Boolean);
+    function GetSortByPriority: Boolean;
+    /// <summary>Orders the rows again, e.g. after the color-coding groups changed.</summary>
+    procedure Resort;
     procedure SetOnInvalidate(AHandler: TPanelInvalidateEvent);
     /// <summary>Legacy alias: maps to OnInvalidate(WindowId).</summary>
     procedure SetOnChanged(AHandler: TNotifyEvent);
@@ -93,6 +99,7 @@ type
     FCancel: IJobCancelToken;
     FSortColumn: TPanelSortColumn;
     FSortDescending: Boolean;
+    FSortByPriority: Boolean;
     FFilterMask: string;
     FShowHidden: Boolean;
     FOnInvalidate: TPanelInvalidateEvent;
@@ -130,6 +137,9 @@ type
       const ASizeText: string): Boolean;
     procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean);
     procedure GetSort(out AColumn: TPanelSortColumn; out ADescending: Boolean);
+    procedure SetSortByPriority(AValue: Boolean);
+    function GetSortByPriority: Boolean;
+    procedure Resort;
     procedure SetOnInvalidate(AHandler: TPanelInvalidateEvent);
     procedure SetOnChanged(AHandler: TNotifyEvent);
     procedure SetFilterMask(const AMask: string);
@@ -144,7 +154,7 @@ type
 implementation
 
 uses
-  System.JSON, System.Generics.Collections, uPanelColumns, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
+  System.JSON, System.Generics.Collections, uPanelColumns, uColorCoding, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
 
 function PanelRowToJson(const ARow: TPanelRow): string;
 var
@@ -339,8 +349,19 @@ begin
     SetLength(Kept, N);
     FRows := Kept;
   end;
-  if FSortColumn <> pscNone then
-    SortPanelRows(FRows, FSortColumn, FSortDescending);
+  for I := 0 to High(FRows) do
+    FRows[I].SortPriority := 0;
+  if FSortByPriority then
+    for I := 0 to High(FRows) do
+      if not FRows[I].IsParent then
+      begin
+        Name := FRows[I].Text;
+        if (Name <> '') and (Name[Length(Name)] = '/') then
+          SetLength(Name, Length(Name) - 1);
+        FRows[I].SortPriority := ColorCodingSortPriority(Name, FRows[I].IsDirectory);
+      end;
+  if (FSortColumn <> pscNone) or FSortByPriority then
+    SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority);
   if FFilterMask <> '' then
   begin
     Masks := SplitMasks(FFilterMask);
@@ -422,6 +443,32 @@ begin
     RebuildSortedRows;
     NotifyChanged;
   end;
+end;
+
+procedure TFilePanelModel.SetSortByPriority(AValue: Boolean);
+begin
+  if FSortByPriority = AValue then
+    Exit;
+  FSortByPriority := AValue;
+  if Length(FRawRows) > 0 then
+  begin
+    RebuildSortedRows;
+    NotifyChanged;
+  end;
+end;
+
+procedure TFilePanelModel.Resort;
+begin
+  if FSortByPriority and (Length(FRawRows) > 0) then
+  begin
+    RebuildSortedRows;
+    NotifyChanged;
+  end;
+end;
+
+function TFilePanelModel.GetSortByPriority: Boolean;
+begin
+  Result := FSortByPriority;
 end;
 
 procedure TFilePanelModel.GetSort(out AColumn: TPanelSortColumn;

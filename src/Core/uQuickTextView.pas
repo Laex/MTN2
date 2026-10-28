@@ -49,6 +49,9 @@ type
     procedure Paint(const AGrid: TTerminalGrid; const ABounds: TRectI;
       AAbsLeft, AAbsTop: Integer);
     procedure ScrollBy(ADelta: Integer);
+    /// <summary>Scroll by a navigation key; False when the key is not one or
+    /// nothing is shown.</summary>
+    function ScrollKey(AKey: Word; AShift: TShiftState): Boolean;
     property Uri: string read FUri;
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
   end;
@@ -134,6 +137,11 @@ begin
     Exit;
   FViewer.PaintEmbedded(AGrid, ABounds.Left, ABounds.Top, ABounds.Width,
     ABounds.Height, AAbsLeft + ABounds.Left, AAbsTop + ABounds.Top);
+end;
+
+function TQuickTextView.ScrollKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := (FUri <> '') and FViewer.ScrollKey(AKey, AShift);
 end;
 
 procedure TQuickTextView.ScrollBy(ADelta: Integer);

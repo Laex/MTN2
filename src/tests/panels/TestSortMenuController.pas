@@ -22,6 +22,8 @@ type
     [Test] procedure TestEscapeClosesWithoutSelecting;
     [Test] procedure TestClickSelectsRowUnderCursor;
     [Test] procedure TestClickCloseMarkDismissesWithoutSelecting;
+    [Test] procedure TestPriorityItemTogglesInsteadOfSelectingAColumn;
+    [Test] procedure TestSeparatorAbovePriorityIsSkippedAndInert;
   end;
 
 implementation
@@ -137,15 +139,16 @@ begin
   Ctrl := TSortMenuController.Create(nil, Inv.OnInvalidate, FixedPanelBounds, ActiveSideLeft);
   try
     Ctrl.SetOnSortSelect(Spy.OnSelect);
-    Ctrl.Open(pscType, False); // Type = index 8, last row
+    Ctrl.Open(pscType, False); // Type = index 8, the row above the priority switch
 
     Ch := #0;
     Key := Word(vkDown); Ctrl.HandleInput(Key, [], Ch);
     Key := Word(vkDown); Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkDown); Ctrl.HandleInput(Key, [], Ch);
     Key := Word(vkReturn);
     Ctrl.HandleInput(Key, [], Ch);
-    Assert.IsTrue(Spy.LastColumn = pscType,
-      'Down at the bottom row stays clamped on Type (no wrap to the first row)');
+    Assert.AreEqual(0, Spy.Count,
+      'Down at the bottom row stays on the priority switch (no wrap to Name)');
   finally
     Ctrl.Free;
     Spy.Free;
@@ -267,6 +270,95 @@ begin
   end;
 end;
 
+procedure TestPriorityItemTogglesInsteadOfSelectingAColumn;
+var
+  Ctrl: TSortMenuController;
+  Spy: TSelectSpy;
+  Inv: TInvalidateSpy;
+  Toggles, I: Integer;
+  Key: Word;
+  Ch: Char;
+begin
+  Spy := TSelectSpy.Create;
+  Inv := TInvalidateSpy.Create;
+  Toggles := 0;
+  Ctrl := TSortMenuController.Create(nil, Inv.OnInvalidate, FixedPanelBounds, ActiveSideLeft);
+  try
+    Ctrl.SetOnSortSelect(Spy.OnSelect);
+    Ctrl.SetOnPriorityToggle(
+      procedure
+      begin
+        Inc(Toggles);
+      end);
+    Ctrl.Open(pscName, False, False);
+    Key := 0;
+    Ch := 'p';
+    Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(1, Toggles, 'the hotkey switches the priority');
+    Assert.AreEqual(0, Spy.Count, 'no column is selected');
+    Assert.IsFalse(Ctrl.Visible, 'the menu closes');
+
+    Ctrl.Open(pscName, False, True);
+    Ch := #0;
+    for I := 1 to 20 do
+    begin
+      Key := Word(vkDown);
+      Ctrl.HandleInput(Key, [], Ch);
+    end;
+    Key := Word(vkReturn);
+    Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(2, Toggles, 'Enter on the last row switches the priority');
+    Assert.AreEqual(0, Spy.Count, 'still no column selected');
+  finally
+    Ctrl.Free;
+    Spy.Free;
+    Inv.Free;
+  end;
+end;
+
+procedure TestSeparatorAbovePriorityIsSkippedAndInert;
+var
+  Ctrl: TSortMenuController;
+  Spy: TSelectSpy;
+  Inv: TInvalidateSpy;
+  Toggles: Integer;
+  R: TRectI;
+  Key: Word;
+  Ch: Char;
+begin
+  Spy := TSelectSpy.Create;
+  Inv := TInvalidateSpy.Create;
+  Toggles := 0;
+  Ctrl := TSortMenuController.Create(nil, Inv.OnInvalidate, FixedPanelBounds, ActiveSideLeft);
+  try
+    Ctrl.SetOnSortSelect(Spy.OnSelect);
+    Ctrl.SetOnPriorityToggle(
+      procedure
+      begin
+        Inc(Toggles);
+      end);
+    Ctrl.Open(pscType, False);
+    R := Ctrl.Bounds;
+
+    // Type is row 8, the rule is row 9, the priority switch is row 10.
+    Assert.IsTrue(Ctrl.HandleClick(R.Left + 1, R.Top + 1 + 9), 'a click on the rule is handled');
+    Assert.IsTrue(Ctrl.Visible, 'the rule does not close the menu');
+    Assert.AreEqual(0, Spy.Count + Toggles, 'the rule selects nothing');
+
+    Ch := #0;
+    Key := Word(vkDown);
+    Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkReturn);
+    Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(1, Toggles, 'Down from Type steps over the rule onto the priority switch');
+    Assert.AreEqual(0, Spy.Count, 'no column selected');
+  finally
+    Ctrl.Free;
+    Spy.Free;
+    Inv.Free;
+  end;
+end;
+
 { TTestSortMenuController }
 
 procedure TTestSortMenuController.SetupFixture;
@@ -296,6 +388,16 @@ end;
 procedure TTestSortMenuController.TestClickSelectsRowUnderCursor;
 begin
   TestSortMenuController.TestClickSelectsRowUnderCursor;
+end;
+
+procedure TTestSortMenuController.TestPriorityItemTogglesInsteadOfSelectingAColumn;
+begin
+  TestSortMenuController.TestPriorityItemTogglesInsteadOfSelectingAColumn;
+end;
+
+procedure TTestSortMenuController.TestSeparatorAbovePriorityIsSkippedAndInert;
+begin
+  TestSortMenuController.TestSeparatorAbovePriorityIsSkippedAndInert;
 end;
 
 procedure TTestSortMenuController.TestClickCloseMarkDismissesWithoutSelecting;

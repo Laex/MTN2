@@ -22,6 +22,7 @@ type
     [Test] procedure TestMergePrependsNewNames;
     [Test] procedure TestMergeIsOrderIndependentForNames;
     [Test] procedure TestEnabledAndApplyToDefaultsAndParsing;
+    [Test] procedure TestSortPriorityParsedWrittenAndResolved;
     [Test] procedure TestColorHexRoundTrip;
     [Test] procedure TestColorCodingGroupsToJsonRoundTrip;
   end;
@@ -155,6 +156,35 @@ begin
   Assert.IsTrue(Groups[0].ApplyTo = ccaFilesOnly, '"applyTo":"files" parses to ccaFilesOnly');
 end;
 
+procedure TestSortPriorityParsedWrittenAndResolved;
+var
+  Groups, Again: TArray<TColorCodingGroup>;
+begin
+  Assert.IsTrue(ParseColorCodingJson(
+    '{"groups":[' +
+    '{"name":"Packed","mask":"*.zip;*.7z","sortPriority":-2},' +
+    '{"name":"Folders","mask":"*","applyTo":"dirs","sortPriority":-1},' +
+    '{"name":"Temp","mask":"*.tmp;*.bak","sortPriority":5},' +
+    '{"name":"Off","mask":"*.off","enabled":false,"sortPriority":-9},' +
+    '{"name":"Other","mask":"*"}]}', Groups), 'parses');
+  Assert.AreEqual(-2, Groups[0].SortPriority, 'priority read');
+  Assert.AreEqual(0, Groups[4].SortPriority, 'omitted priority is 0');
+
+  Again := nil;
+  Assert.IsTrue(ParseColorCodingJson(ColorCodingGroupsToJson(Groups), Again, 'fileColoring'),
+    'written JSON parses');
+  Assert.AreEqual(5, Again[2].SortPriority, 'priority survives the round trip');
+  Assert.AreEqual(0, Again[4].SortPriority, 'zero is not written and reads back as 0');
+
+  SetActiveColorCodingGroups(Groups);
+  Assert.AreEqual(-2, ColorCodingSortPriority('a.zip', False), 'first matching group');
+  Assert.AreEqual(-1, ColorCodingSortPriority('docs', True), 'a folder matches the dirs group');
+  Assert.AreEqual(0, ColorCodingSortPriority('docs', False), 'a file is not matched by the dirs group');
+  Assert.AreEqual(5, ColorCodingSortPriority('x.tmp', False), 'positive priority');
+  Assert.AreEqual(0, ColorCodingSortPriority('x.off', False), 'a disabled group is skipped');
+  Assert.AreEqual(0, ColorCodingSortPriority('', False), 'no name');
+end;
+
 procedure TestColorHexRoundTrip;
 var
   C: TAlphaColor;
@@ -227,6 +257,11 @@ end;
 procedure TTestColorCodingMerge.TestEnabledAndApplyToDefaultsAndParsing;
 begin
   TestColorCodingMerge.TestEnabledAndApplyToDefaultsAndParsing;
+end;
+
+procedure TTestColorCodingMerge.TestSortPriorityParsedWrittenAndResolved;
+begin
+  TestColorCodingMerge.TestSortPriorityParsedWrittenAndResolved;
 end;
 
 procedure TTestColorCodingMerge.TestColorHexRoundTrip;

@@ -70,6 +70,10 @@ type
     Enabled: Boolean;
     /// <summary>Restricts matching to files, directories, or both (default).</summary>
     ApplyTo: TColorCodingApplyTo;
+    /// <summary>Rank of the group's rows when a panel sorts with priorities:
+    /// lower comes first, negative values move rows to the top, positive ones
+    /// to the bottom. 0 (default) leaves the rows with the unranked ones.</summary>
+    SortPriority: Integer;
     /// <summary>Indexed by TColorCodingState. States left fully unset
     /// (Fg=0 and Bg=0) mean "no opinion for this state" - the caller should
     /// fall back to its own (theme) color, matching FAR: a group that
@@ -88,6 +92,9 @@ type
 /// that stops the scan).</summary>
 function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
   AState: TColorCodingState; out AFg, ABg: TAlphaColor): Boolean;
+/// <summary>SortPriority of the first enabled group that matches the row
+/// (same matching as ColorCodingResolve); 0 when no group matches.</summary>
+function ColorCodingSortPriority(const AName: string; AIsDirectory: Boolean): Integer;
 /// <summary>Merge-by-Name: an AOverride entry whose Name matches an ABase
 /// entry replaces it in place (same position/priority in the result); an
 /// AOverride entry with a new Name is prepended (new/overriding entries get
@@ -277,6 +284,9 @@ begin
         Group.ApplyTo := ccaFilesAndDirs;
         if Obj.TryGetValue<string>('applyTo', ApplyToVal) then
           Group.ApplyTo := ApplyToFromStr(ApplyToVal);
+        Group.SortPriority := 0;
+        if Obj.Values['sortPriority'] is TJSONNumber then
+          Group.SortPriority := TJSONNumber(Obj.Values['sortPriority']).AsInt;
         for S := Low(TColorCodingState) to High(TColorCodingState) do
         begin
           Group.Colors[S].Fg := 0;
@@ -390,6 +400,27 @@ begin
       ABg := GGroups[I].Colors[AState].Bg;
       Exit((AFg <> 0) or (ABg <> 0));
     end;
+  end;
+end;
+
+function ColorCodingSortPriority(const AName: string; AIsDirectory: Boolean): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  EnsureGroups;
+  if AName = '' then
+    Exit;
+  for I := 0 to High(GGroups) do
+  begin
+    if not GGroups[I].Enabled then
+      Continue;
+    if (GGroups[I].ApplyTo = ccaFilesOnly) and AIsDirectory then
+      Continue;
+    if (GGroups[I].ApplyTo = ccaDirsOnly) and not AIsDirectory then
+      Continue;
+    if NameMatchesAnyMask(AName, GGroups[I].Masks) then
+      Exit(GGroups[I].SortPriority);
   end;
 end;
 
@@ -519,6 +550,8 @@ begin
         Obj.AddPair('enabled', TJSONBool.Create(False));
       if AGroups[I].ApplyTo <> ccaFilesAndDirs then
         Obj.AddPair('applyTo', ApplyToToStr(AGroups[I].ApplyTo));
+      if AGroups[I].SortPriority <> 0 then
+        Obj.AddPair('sortPriority', TJSONNumber.Create(AGroups[I].SortPriority));
       for S := Low(TColorCodingState) to High(TColorCodingState) do
       begin
         if (AGroups[I].Colors[S].Fg = 0) and (AGroups[I].Colors[S].Bg = 0) and

@@ -37,6 +37,9 @@ const CONSTANT: u8 = 9;
 const KEY: u8 = 10;
 const ERROR: u8 = 11;
 
+/// Extensions read as plain text, colored by `plain_line` instead of a syntax.
+const PLAIN_EXTENSIONS: &str = "txt;log;text;nfo";
+
 static mut SCRATCH: [u8; 32768] = [0; 32768];
 
 struct Entry {
@@ -215,7 +218,14 @@ pub extern "C" fn hl_line(
 ) -> i32 {
     let eng = engine();
     let lang = lang as usize;
-    if lang >= eng.set.syntaxes().len() {
+    if lang == eng.set.syntaxes().len() {
+        let bytes = unsafe {
+            std::slice::from_raw_parts(line_ptr as usize as *const u8, line_len as usize)
+        };
+        let spans = plain_line(&String::from_utf8_lossy(bytes));
+        return write_out(out_ptr, out_cap, 0, &spans);
+    }
+    if lang > eng.set.syntaxes().len() {
         return -1;
     }
     let (mut parse, mut stack) = if state_in == 0 {
@@ -262,6 +272,50 @@ pub extern "C" fn hl_line(
 
     let state_out = intern(eng, lang, parse, stack);
     write_out(out_ptr, out_cap, state_out, &spans)
+}
+
+/// Colors plain text: numbers, punctuation and links. Spans are byte ranges of the line.
+fn plain_line(line: &str) -> Vec<(usize, usize, u8)> {
+    let bytes = line.as_bytes();
+    let mut spans: Vec<(usize, usize, u8)> = Vec::new();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let c = bytes[i];
+        let at_word_start = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+        let rest = &line[i..];
+        let link = at_word_start
+            && (rest.starts_with("http://")
+                || rest.starts_with("https://")
+                || rest.starts_with("ftp://")
+                || rest.starts_with("www."));
+        if link {
+            let len = rest
+                .find(|ch: char| ch.is_whitespace() || matches!(ch, '<' | '>' | '"' | '\''))
+                .unwrap_or(rest.len());
+            // Trailing sentence punctuation is not part of the link.
+            let trimmed = rest[..len].trim_end_matches(|ch| matches!(ch, '.' | ',' | ';' | ':' | '!' | '?' | ')'));
+            spans.push((i, trimmed.len(), CONSTANT));
+            i += trimmed.len().max(1);
+        } else if c.is_ascii_digit() && at_word_start {
+            let mut j = i;
+            while j < bytes.len()
+                && (bytes[j].is_ascii_alphanumeric()
+                    || (matches!(bytes[j], b'.' | b',' | b':')
+                        && j + 1 < bytes.len()
+                        && bytes[j + 1].is_ascii_digit()))
+            {
+                j += 1;
+            }
+            spans.push((i, j - i, NUMBER));
+            i = j;
+        } else if c.is_ascii_punctuation() {
+            spans.push((i, 1, OPERATOR));
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
+    spans
 }
 
 fn write_out(out_ptr: i32, out_cap: i32, state: i32, spans: &[(usize, usize, u8)]) -> i32 {
@@ -321,6 +375,16 @@ pub extern "C" fn mtn_plugin_init() -> i32 {
                 idx as i32,
             );
         }
+    }
+    let plain = eng.set.syntaxes().len() as i32;
+    unsafe {
+        register_highlighter_state(
+            PLAIN_EXTENSIONS.as_ptr() as usize as i32,
+            PLAIN_EXTENSIONS.len() as i32,
+            export.as_ptr() as usize as i32,
+            export.len() as i32,
+            plain,
+        );
     }
     0
 }

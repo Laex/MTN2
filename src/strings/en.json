@@ -93,6 +93,8 @@
         "Files only": "Files only"
       },
       "lbl_applyto": "Apply to:",
+      "lbl_priority": "Priority:",
+      "lbl_priority_range": "Lower first: negative = top, positive = bottom",
       "lbl_columns": "           Fg             Bg             Sample",
       "lbl_current": "Current:",
       "lbl_hint_blank": "Leave a color blank to inherit the theme's own color there.",
@@ -2058,7 +2060,8 @@
     "creationTime": "Creation time",
     "accessTime": "Access time",
     "attr": "Attr",
-    "type": "Type"
+    "type": "Type",
+    "priority": "Priority groups"
   },
   "columnModeMenu": {
     "brief": "Brief",

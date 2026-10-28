@@ -232,6 +232,8 @@ begin
   Result.AddPair('columnMode', PanelColumnModeName(APanel.ColumnMode));
   Result.AddPair('sortColumn', PanelSortColumnName(APanel.SortColumn));
   Result.AddPair('sortDescending', TJSONBool.Create(APanel.SortDescending));
+  if APanel.SortByPriority then
+    Result.AddPair('sortByPriority', TJSONBool.Create(True));
   Result.AddPair('showHidden', TJSONBool.Create(APanel.ShowHiddenFiles));
   if APanel.ViewKind = pvkInfo then
     Result.AddPair('viewKind', 'info')
@@ -331,6 +333,7 @@ begin
   Result.ColumnMode := pcmFull;
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
+  Result.SortByPriority := False;
   Result.ViewKind := pvkFiles;
   Result.ShowHiddenFiles := True;
   SetLength(Result.Tabs, 0);
@@ -343,6 +346,7 @@ begin
   if not TryPanelSortColumnFromName(JsonStr(O, 'sortColumn', 'None'), Result.SortColumn) then
     Result.SortColumn := pscNone;
   Result.SortDescending := JsonBool(O, 'sortDescending', False);
+  Result.SortByPriority := JsonBool(O, 'sortByPriority', False);
   if Result.SortColumn = pscNone then
     Result.SortDescending := False;
   if SameText(JsonStr(O, 'viewKind', 'files'), 'info') then

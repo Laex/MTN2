@@ -89,6 +89,8 @@
       "lbl_name": "Name:",
       "lbl_masks": "Maske(n):",
       "lbl_applyto": "Anwenden auf:",
+      "lbl_priority": "Priorität:",
+      "lbl_priority_range": "Kleiner = höher: negativ oben, positiv unten",
       "lbl_columns": "           Text           Hintergr.      Muster",
       "lbl_normal": "Normal:",
       "lbl_selected": "Ausgewählt:",
@@ -2167,7 +2169,8 @@
     "creationTime": "Erstellungszeit",
     "accessTime": "Zugriffszeit",
     "attr": "Attribute",
-    "type": "Typ"
+    "type": "Typ",
+    "priority": "Prioritätsgruppen"
   },
   "columnModeMenu": {
     "brief": "Kurz",

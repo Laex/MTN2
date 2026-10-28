@@ -21,7 +21,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils,
+  System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uTerminalTypes, uThemeTypes, uDualPanelTypes, uVfsTypes, uThemeRegistry, uQuickTextView;
 
 var
@@ -188,6 +188,23 @@ begin
     ResetGrid;
     QV.Paint(Grid, Bounds, 0, 0);
     Assert.IsTrue(GridHas('log line 4 ') and not GridHas('log line 1 '), 'ScrollBy scrolls');
+
+    System.Writeln('Navigation keys');
+    Assert.IsTrue(QV.ScrollKey(vkDown, []), 'Down is a scroll key');
+    ResetGrid;
+    QV.Paint(Grid, Bounds, 0, 0);
+    Assert.IsTrue(GridHas('log line 5 ') and not GridHas('log line 4 '), 'Down scrolls one line');
+    Assert.IsTrue(QV.ScrollKey(vkNext, []), 'PgDn is a scroll key');
+    ResetGrid;
+    QV.Paint(Grid, Bounds, 0, 0);
+    Assert.IsTrue(GridHas('log line 21 ') and not GridHas('log line 5 '), 'PgDn scrolls a page');
+    Assert.IsTrue(QV.ScrollKey(vkPrior, []), 'PgUp is a scroll key');
+    Assert.IsTrue(QV.ScrollKey(vkHome, []), 'Home is a scroll key');
+    ResetGrid;
+    QV.Paint(Grid, Bounds, 0, 0);
+    Assert.IsTrue(GridHas('log line 1 '), 'Home returns to the top');
+    Assert.IsFalse(QV.ScrollKey(vkF3, []), 'other keys are not taken');
+    Assert.IsFalse(QV.ScrollKey(vkDown, [ssAlt]), 'Alt+Down is not taken');
 
     System.Writeln('Files stay deletable');
     ShowAndPaint(Txt);

@@ -159,7 +159,7 @@ procedure TColorCodingDialogController.BeginAdd;
 begin
   FEditIndex := -1;
   SetKind(hdkColorCodingEdit);
-  FDialog.Open(BuildColorCodingEditDialog('', '', 0, True, '', '', '', '', '', ''),
+  FDialog.Open(BuildColorCodingEditDialog('', '', 0, True, '0', '', '', '', '', '', ''),
     FOnCommand);
   Notify;
 end;
@@ -181,7 +181,7 @@ begin
   end;
   SetKind(hdkColorCodingEdit);
   FDialog.Open(BuildColorCodingEditDialog(G.Name, string.Join(';', G.Masks),
-    ApplyToIdx, G.Enabled,
+    ApplyToIdx, G.Enabled, IntToStr(G.SortPriority),
     ColorCodingColorText(G.Colors[ccsNormal].Fg, G.Colors[ccsNormal].FgRef),
     ColorCodingColorText(G.Colors[ccsNormal].Bg, G.Colors[ccsNormal].BgRef),
     ColorCodingColorText(G.Colors[ccsSelected].Fg, G.Colors[ccsSelected].FgRef),
@@ -264,7 +264,7 @@ end;
 function TColorCodingDialogController.CommitEdit: Boolean;
 var
   G: TColorCodingGroup;
-  NameVal, MaskVal: string;
+  NameVal, MaskVal, PriorityVal: string;
   ApplyToIdx: Integer;
 begin
   Result := False;
@@ -287,6 +287,13 @@ begin
     G.ApplyTo := ccaFilesAndDirs;
   end;
   G.Enabled := FDialog.GetCheckbox('cc_enabled');
+  PriorityVal := Trim(FDialog.GetInputValue('cc_priority'));
+  G.SortPriority := 0;
+  if (PriorityVal <> '') and not TryStrToInt(PriorityVal, G.SortPriority) then
+  begin
+    FDialog.SetStatus('status', 'Priority must be a whole number.');
+    Exit;
+  end;
   if not TryParseColorFields(G) then
   begin
     FDialog.SetStatus('status', 'Colors must be #RRGGBB, @role or a palette name, or blank.');
@@ -305,6 +312,7 @@ begin
   FEditFields.Mask := FDialog.GetInputValue('cc_mask');
   FEditFields.ApplyToIdx := FDialog.GetListSelectedIndex('cc_applyto');
   FEditFields.Enabled := FDialog.GetCheckbox('cc_enabled');
+  FEditFields.Priority := FDialog.GetInputValue('cc_priority');
   FEditFields.NormalFg := FDialog.GetInputValue('cc_normal_fg');
   FEditFields.NormalBg := FDialog.GetInputValue('cc_normal_bg');
   FEditFields.SelectedFg := FDialog.GetInputValue('cc_selected_fg');
@@ -318,7 +326,7 @@ begin
   SetKind(hdkColorCodingEdit);
   FDialog.Open(BuildColorCodingEditDialog(FEditFields.Name,
     FEditFields.Mask, FEditFields.ApplyToIdx,
-    FEditFields.Enabled,
+    FEditFields.Enabled, FEditFields.Priority,
     FEditFields.NormalFg, FEditFields.NormalBg,
     FEditFields.SelectedFg, FEditFields.SelectedBg,
     FEditFields.CurrentFg, FEditFields.CurrentBg),

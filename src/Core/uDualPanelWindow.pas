@@ -205,6 +205,9 @@ type
     FHelp: THelpViewer;
     /// <summary>Ctrl+Q text preview (created on first use).</summary>
     FQuickText: TQuickTextView;
+    /// <summary>Tab moved the keyboard to the Quick View text: navigation keys
+    /// scroll it and the file panel keeps its cursor.</summary>
+    FQuickViewFocused: Boolean;
     /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
     FToast: TToast;
     FKeyHints: TKeyHintTracker;
@@ -423,6 +426,7 @@ type
     procedure HostPrepareSearchUi;
     function HostIsAlive: Boolean;
     procedure HostMenuSortSelect(AColumn: TPanelSortColumn);
+    procedure HostMenuSortPriorityToggle;
     procedure HostMenuColumnModeSelect(AMode: TPanelColumnMode);
     function OverlayDialogVisible: Boolean;
     function OverlaySearchActive: Boolean;
@@ -870,6 +874,9 @@ type
     /// through the 7z plugin, which finds the format by content.</summary>
     procedure FolderDown;
     procedure CloseQuickView;
+    function QuickViewTextShown: Boolean;
+    function HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     procedure CancelFolderSize;
     procedure CalculateFolderSizeUnderCursor;
     function FolderSizeStubTitle: string;
@@ -989,6 +996,8 @@ type
     procedure SyncSideSort(ASide: TPanelSide);
     procedure ApplyHeaderSort(ASide: TPanelSide; ACol: TPanelSortColumn);
     procedure ApplySortMode(ASide: TPanelSide; ACol: TPanelSortColumn);
+    procedure ToggleSortByPriority(ASide: TPanelSide);
+    procedure ResortPanelsByPriority;
     procedure CommitSortAndRestoreCursor(ASide: TPanelSide;
       var AWs: TDualPanelWorkspaceTab; var APanel: TPanelState; var ATab: TTab;
       const ACurURI: string);
@@ -2961,6 +2970,11 @@ begin
   ApplySortMode(ActiveWorkspace.State.ActiveSide, AColumn);
 end;
 
+procedure TDualPanelWindow.HostMenuSortPriorityToggle;
+begin
+  ToggleSortByPriority(ActiveWorkspace.State.ActiveSide);
+end;
+
 procedure TDualPanelWindow.HostMenuColumnModeSelect(AMode: TPanelColumnMode);
 begin
   ApplyColumnMode(ActiveWorkspace.State.ActiveSide, AMode);
@@ -3150,6 +3164,7 @@ begin
     procedure(AGroups: TArray<TColorCodingGroup>)
     begin
       FThemeDlg.SaveColoring(AGroups);
+      ResortPanelsByPriority;
     end;
   FFileOps := TFileOpDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
@@ -3222,6 +3237,7 @@ begin
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
+  FMenus.SetOnSortPriorityToggle(HostMenuSortPriorityToggle);
   FMenus.SetOnColumnModeSelect(HostMenuColumnModeSelect);
   FInputOverlays := [
     TInputOverlayEntry.Make(OverlayStubVisible, HandleStubInput),
@@ -3758,6 +3774,7 @@ begin
   Result.ColumnMode := pcmFull;
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
+  Result.SortByPriority := False;
   Result.ViewKind := pvkFiles;
   Result.ShowHiddenFiles := True;
   for I := 0 to High(AUris) do
@@ -8119,6 +8136,7 @@ begin
     CloseQuickView;
     Exit;
   end;
+  FQuickViewFocused := False;
 
   if not IsPanelVisible(Other) then
   begin
@@ -8136,8 +8154,41 @@ begin
   NotifyChanged;
 end;
 
+function TDualPanelWindow.QuickViewTextShown: Boolean;
+begin
+  Result := QuickViewVisible and Assigned(FQuickText) and (FQuickText.Uri <> '') and
+    (PanelViewKind(OppositeSide(ActiveWorkspace.State.ActiveSide)) = pvkQuickView) and
+    not ((FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle));
+end;
+
+function TDualPanelWindow.HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+begin
+  Result := False;
+  if not FQuickViewFocused then
+    Exit;
+  if not QuickViewTextShown then
+  begin
+    FQuickViewFocused := False;
+    Exit;
+  end;
+  if (AKey = vkTab) or (AKey = vkEscape) then
+  begin
+    if AShift * [ssCtrl, ssAlt, ssShift] <> [] then
+      Exit;
+    FQuickViewFocused := False;
+  end
+  else if not FQuickText.ScrollKey(AKey, AShift) then
+    Exit;
+  AKey := 0;
+  AKeyChar := #0;
+  Invalidate;
+  Result := True;
+end;
+
 procedure TDualPanelWindow.CloseQuickView;
 begin
+  FQuickViewFocused := False;
   if PanelViewKind(psLeft) = pvkQuickView then
     SetPanelViewKind(psLeft, pvkFiles);
   if PanelViewKind(psRight) = pvkQuickView then
@@ -8680,7 +8731,7 @@ begin
   Ws := ActiveWorkspace;
   Panel := ActivePanel(Ws);
   if Assigned(FMenus) then
-    FMenus.OpenSortMenu(Panel.SortColumn, Panel.SortDescending);
+    FMenus.OpenSortMenu(Panel.SortColumn, Panel.SortDescending, Panel.SortByPriority);
 end;
 
 procedure TDualPanelWindow.OpenColumnModeMenu;
@@ -9877,18 +9928,31 @@ var
   Ws: TDualPanelWorkspaceTab;
   Other: TPanelSide;
 begin
+  // Tab toggles the keyboard between the file panel and a text Quick View;
+  // the active side stays, so the previewed file does not change.
+  if FQuickViewFocused then
+  begin
+    FQuickViewFocused := False;
+    Invalidate;
+    Exit;
+  end;
+  if QuickViewTextShown then
+  begin
+    FQuickViewFocused := True;
+    Invalidate;
+    Exit;
+  end;
   Ws := ActiveWorkspace;
   Other := OppositeSide(Ws.State.ActiveSide);
   if not IsPanelVisible(Other) then
     Exit;
   Ws.State.ActiveSide := Other;
   SaveActiveWorkspace(Ws);
-  // Tabbing into the panel currently showing a live Quick View exits it -
-  // that panel becomes the one you navigate, matching FAR's Ctrl+Q/Tab
-  // interplay (a panel can't simultaneously drive the cursor and mirror
-  // it). DrawPanel's IsQuickViewTarget guard would also self-heal this
-  // visually next frame, but closing it explicitly here also releases the
-  // decoded bitmap/cancels any in-flight decode right away.
+  // Tabbing into a Quick View that shows no text (a picture, a folder) exits
+  // it - that panel becomes the one you navigate. DrawPanel's
+  // IsQuickViewTarget guard would also self-heal this visually next frame,
+  // but closing it explicitly here also releases the decoded bitmap/cancels
+  // any in-flight decode right away.
   if PanelViewKind(Other) = pvkQuickView then
     CloseQuickView;
   NotifyShellCwdSync;
@@ -11918,7 +11982,10 @@ begin
     Panel := Ws.State.RightPanel;
   M := ModelForSide(ASide);
   if Assigned(M) then
+  begin
+    M.SetSortByPriority(Panel.SortByPriority);
     M.SetSort(Panel.SortColumn, Panel.SortDescending);
+  end;
 end;
 
 procedure TDualPanelWindow.SyncSideShowHidden(ASide: TPanelSide);
@@ -11976,7 +12043,10 @@ begin
 
   M := ModelForSide(ASide);
   if Assigned(M) then
+  begin
+    M.SetSortByPriority(APanel.SortByPriority);
     M.SetSort(APanel.SortColumn, APanel.SortDescending);
+  end;
 
   Rows := RowsForSide(ASide);
   if ACurURI <> '' then
@@ -12017,6 +12087,43 @@ begin
     CurURI := Rows[Tab.CursorIndex].URI;
 
   CycleHeaderSort(Panel.SortColumn, Panel.SortDescending, ACol);
+  CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
+end;
+
+procedure TDualPanelWindow.ResortPanelsByPriority;
+var
+  M: IPanelModel;
+begin
+  M := ModelForSide(psLeft);
+  if Assigned(M) then
+    M.Resort;
+  M := ModelForSide(psRight);
+  if Assigned(M) then
+    M.Resort;
+end;
+
+procedure TDualPanelWindow.ToggleSortByPriority(ASide: TPanelSide);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  CurURI: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(ASide);
+  CurURI := '';
+  if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
+    CurURI := Rows[Tab.CursorIndex].URI;
+
+  Panel.SortByPriority := not Panel.SortByPriority;
   CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
 end;
 
@@ -12969,10 +13076,10 @@ begin
   Ws := ActiveWorkspace;
   if Ws.State.LeftVisible then
     DrawPanel(FLeftBounds, Ws.State.LeftPanel, psLeft,
-      Ws.State.ActiveSide = psLeft);
+      (Ws.State.ActiveSide = psLeft) <> (FQuickViewFocused and QuickViewTextShown));
   if Ws.State.RightVisible then
     DrawPanel(FRightBounds, Ws.State.RightPanel, psRight,
-      Ws.State.ActiveSide = psRight);
+      (Ws.State.ActiveSide = psRight) <> (FQuickViewFocused and QuickViewTextShown));
   DrawCommandLine(CmdLineRow(H), W);
   DrawBottomChrome(W, H);
   DrawMenuBar(W);
@@ -13260,6 +13367,9 @@ begin
   end;
   if DispatchGlobalAction(FKeymapHost, GlobalAct, AKey, AKeyChar) then
     Exit;
+  if FQuickViewFocused and not DialogVis and
+     HandleQuickViewKey(AKey, AShift, AKeyChar) then
+    Exit;
 
   // Embedded Viewer/Editor: document input (and its dialogs) before Dual Panel
   // host dialogs - matches HandleClick order so Enter reaches Editor Code page.
@@ -13494,6 +13604,7 @@ function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 begin
   Result := False;
+  FQuickViewFocused := False;
   FSaverSwallowClick := False;
   FSaverSwallowUp := False;
   if Assigned(FSaver) and FSaver.Wake then

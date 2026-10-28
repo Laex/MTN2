@@ -8,7 +8,7 @@ Nothing to press: open a file of one of these languages. The language is chosen 
 
 Block comments and multi-line strings are followed from line to line, also while you edit: a line you change recolors the lines below it. In a very long file the colors of the lines far below the screen are worked out in the background, so right after a jump to the end of the file the first screens may show plain text for a moment.
 
-Left plain: lines longer than 3500 bytes and text files (`.txt`). Files that the viewer reads in pieces because of their size (more than 10 MB) are colored line by line, without the state of the lines above, so a block comment that began earlier is not recognized.
+Text files (`.txt`, `.log`, `.text`, `.nfo`) get a simple coloring: numbers, punctuation and links (`http://`, `https://`, `ftp://`, `www.`). Lines longer than 3500 bytes are left plain. Files that the viewer reads in pieces because of their size (more than 10 MB) are colored line by line, without the state of the lines above, so a block comment that began earlier is not recognized.
 
 ## Switching off
 

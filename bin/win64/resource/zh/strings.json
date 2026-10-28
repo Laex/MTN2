@@ -84,6 +84,8 @@
       "lbl_name": "名称:",
       "lbl_masks": "掩码:",
       "lbl_applyto": "应用于:",
+      "lbl_priority": "优先级:",
+      "lbl_priority_range": "排序：小的在前（负数置顶，正数置底）。",
       "lbl_columns": "           文字           背景           示例",
       "lbl_normal": "普通:",
       "lbl_selected": "选中:",
@@ -2166,7 +2168,8 @@
     "creationTime": "创建时间",
     "accessTime": "访问时间",
     "attr": "属性",
-    "type": "类型"
+    "type": "类型",
+    "priority": "按优先级分组"
   },
   "columnModeMenu": {
     "brief": "简要",

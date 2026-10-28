@@ -76,6 +76,9 @@ type
     ColumnMode: TPanelColumnMode;
     SortColumn: TPanelSortColumn;
     SortDescending: Boolean;
+    /// <summary>Rows are ranked by the SortPriority of their color-coding
+    /// group before the sort column applies.</summary>
+    SortByPriority: Boolean;
     ViewKind: TPanelViewKind;
     ShowHiddenFiles: Boolean;  // Ctrl+H toggle - Hidden/System files in listing
   end;
@@ -146,6 +149,8 @@ type
     /// <summary>Alt+F7 content-search hit (find:// rows only); 0/'' elsewhere.</summary>
     MatchLine: Integer;
     MatchSnippet: string;
+    /// <summary>Filled by the panel model while it sorts by priority; 0 otherwise.</summary>
+    SortPriority: Integer;
   end;
 
   TPanelRows = TArray<TPanelRow>;
@@ -350,6 +355,7 @@ begin
   Result.CreationTime := 0;
   Result.AccessTime := 0;
   Result.MatchLine := 0;
+  Result.SortPriority := 0;
   Result.MatchSnippet := '';
   Base := AText;
   if (Base <> '') and (Base[Length(Base)] = '/') then
