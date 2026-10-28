@@ -16,7 +16,7 @@
 | Ctrl+A | attributes, owner and dates (created / modified / accessed) |
 | Alt+Enter | the Windows “Properties” window (for the selection or the item under the cursor; files and folders on disk only) |
 | Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |
-| Ctrl+Alt+C | compare the files under the cursors of both panels |
+| Ctrl+Alt+C | compare the files under the cursors of both panels, or the two marked files of the active panel; the dialog shows size, modified time and a content verdict |
 | Ctrl+Alt+H | checksums (MD5, SHA-1, SHA-256, SHA-512) of the selected files and folders; on a `.md5` / `.sha1` / `.sha256` / `.sha512` file – verify it |
 | Ctrl+Alt+M | rename the selected items in one go: name and extension masks, counter, search and replace, letter case |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy / cut / paste files through the clipboard |

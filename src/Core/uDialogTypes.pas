@@ -91,6 +91,9 @@ type
     /// <summary>dckList: a single-line frame is drawn around the list, one cell
     /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
     Framed: Boolean;
+    /// <summary>dckList: read-only text block - no selected-row highlight and
+    /// not reachable by focus (JSON "plain": true); ItemSwatches still color it.</summary>
+    Plain: Boolean;
     /// <summary>dckList: Space fires the command "toggle", Ctrl+Up / Ctrl+Down the
     /// commands "up" / "down" (JSON "keycommands": true), so the owner can act on the
     /// selected row without a button for it.</summary>
@@ -346,6 +349,7 @@ function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   const APreview: TArray<string>; ADryRun: Boolean = False;
   ATwoWay: Boolean = False; AByContent: Boolean = False): TDialogDeclaration;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
+  const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
@@ -1458,22 +1462,35 @@ begin
 end;
 
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
+  const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
 var
-  Items: TArray<string>;
+  I, DiffRow, Gap: Integer;
 begin
   RequireDialogResource(cResDialogFileDiff, Result);
   DialogSetLabelText(Result, 'left_name', ALeftName);
   DialogSetLabelText(Result, 'right_name', ARightName);
   DialogSetLabelText(Result, 'status', AStatus);
-  if Length(ALines) = 0 then
+  DialogSetListItems(Result, 'summary', ASummary, 0);
+  DialogSetListSwatches(Result, 'summary', ASwatches);
+  if Length(ALines) > 0 then
   begin
-    SetLength(Items, 1);
-    Items[0] := '(none)';
-  end
-  else
-    Items := ALines;
-  DialogSetListItems(Result, 'diff', Items, 0);
+    DialogSetListItems(Result, 'diff', ALines, 0);
+    Exit;
+  end;
+  // Nothing to list: drop the diff block and pull the footer up.
+  I := 0;
+  while (I <= High(Result.Controls)) and (Result.Controls[I].Id <> 'diff') do
+    Inc(I);
+  if I > High(Result.Controls) then
+    Exit;
+  DiffRow := Result.Controls[I].Row;
+  Gap := Result.Controls[I].BoxH;
+  Delete(Result.Controls, I, 1);
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Row > DiffRow then
+      Dec(Result.Controls[I].Row, Gap);
+  Dec(Result.Height, Gap);
 end;
 
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,

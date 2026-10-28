@@ -127,7 +127,7 @@ begin
       // An unset channel shows the theme's own file-row color.
       SwFg := RowFg;
       SwBg := RowBg;
-      if Assigned(ATheme) then
+      if Assigned(ATheme) and not C.Plain then
         ATheme.ResolveFileRowColors(False, False, False, '', False, False, True,
           SwFg, SwBg);
       if C.ItemSwatches[Idx].Fg <> 0 then

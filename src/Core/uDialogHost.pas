@@ -646,7 +646,8 @@ begin
   Result := (FDecl.Controls[AIndex].Kind in [dckInput, dckCheckbox, dckRadio,
     dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker, dckDatePicker]) and
     not ((FDecl.Controls[AIndex].Kind in [dckCheckbox, dckInput, dckDropDown]) and
-      FDecl.Controls[AIndex].Disabled);
+      FDecl.Controls[AIndex].Disabled) and
+    not ((FDecl.Controls[AIndex].Kind = dckList) and FDecl.Controls[AIndex].Plain);
 end;
 
 function TDialogHost.FirstFocusable: Integer;
@@ -2056,6 +2057,8 @@ var
 begin
   Span := ListViewHeight(AIndex);
   SelIdx := ListSelectedIndexOf(C.Id);
+  if C.Plain then
+    SelIdx := -1;
   if C.Framed and (Span > 1) then
     DrawDialogListFrame(AGrid, R, ALabelFg, ALabelBg);
   if Span <= 1 then

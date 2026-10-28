@@ -34,15 +34,30 @@
     },
     {
       "type": "list",
+      "id": "summary",
+      "plain": true,
+      "selected": 0,
+      "items": [
+        "",
+        "",
+        ""
+      ],
+      "col": 1,
+      "row": 4,
+      "width": 72,
+      "height": 3
+    },
+    {
+      "type": "list",
       "id": "diff",
       "selected": 0,
       "items": [
         "(none)"
       ],
       "col": 1,
-      "row": 4,
+      "row": 8,
       "width": 72,
-      "height": 14
+      "height": 10
     },
     {
       "type": "separator",

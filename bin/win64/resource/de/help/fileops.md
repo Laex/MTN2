@@ -16,7 +16,7 @@
 | Ctrl+A | Attribute, Besitzer und Datumsangaben (erstellt / geändert / Zugriff) |
 | Alt+Enter | das Windows-Fenster „Eigenschaften“ (für die Auswahl oder das Element unter dem Cursor; nur Dateien und Ordner auf der Festplatte) |
 | Shift+F10, Menütaste | das Windows-Kontextmenü (für die Auswahl oder das Element unter dem Cursor) |
-| Ctrl+Alt+C | die Dateien unter den Cursorn beider Panels vergleichen |
+| Ctrl+Alt+C | die Dateien unter den Cursorn beider Panels oder die zwei markierten Dateien des aktiven Panels vergleichen; das Fenster zeigt Größe, Änderungszeit und das Ergebnis des Inhaltsvergleichs |
 | Ctrl+Alt+H | Prüfsummen (MD5, SHA-1, SHA-256, SHA-512) der ausgewählten Dateien und Ordner; bei einer `.md5`- / `.sha1`- / `.sha256`- / `.sha512`-Datei – sie prüfen |
 | Ctrl+Alt+M | ausgewählte Elemente gemeinsam umbenennen: Masken für Name und Erweiterung, Zähler, Suchen und Ersetzen, Groß-/Kleinschreibung |
 | Ctrl+C / Ctrl+X / Ctrl+V | Dateien über die Zwischenablage kopieren / ausschneiden / einfügen |

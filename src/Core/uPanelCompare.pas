@@ -54,12 +54,32 @@ function LocalFilesHaveSameContent(const ALeftPath, ARightPath: string;
   const ACancelled: TFunc<Boolean>): Boolean;
 /// <summary>Row name without a trailing '/' or '\' (dirs may carry one).</summary>
 function PanelCompareName(const ARow: TPanelRow): string;
+/// <summary>The two plain files marked in one panel, in listing order. False
+/// unless exactly two rows are selected and neither is a folder or '..'.</summary>
+function PickMarkedFilePair(const ARows: TPanelRows; const ATab: TTab;
+  out ALeft, ARight: TPanelRow): Boolean;
+/// <summary>One line of the compare-files summary; Same says whether the two
+/// sides match (the dialog colors the whole line by it).</summary>
+type
+  TCompareSummaryRow = record
+    Text: string;
+    Same: Boolean;
+  end;
+
+/// <summary>Size, modified time and content of two compared files, one
+/// localized row each, e.g. 'Size:     48 213 B = 48 213 B'. AContentEqual says
+/// whether the bytes match; ADiffOffset is the first differing byte (> 0) or
+/// not known.</summary>
+function BuildCompareSummary(const ALeft, ARight: TPanelRow;
+  AContentEqual: Boolean; ADiffOffset: Int64): TArray<TCompareSummaryRow>;
+/// <summary>Size with digit grouping and a unit, e.g. '48 213 B'.</summary>
+function FormatExactSize(ASize: Int64): string;
 
 implementation
 
 uses
-  System.Classes, System.DateUtils, System.Generics.Collections,
-  uVfsTypes;
+  System.Classes, System.DateUtils, System.Math, System.Generics.Collections,
+  uVfsTypes, uStrings;
 
 class function TPanelCompareOptions.Default: TPanelCompareOptions;
 begin
@@ -73,6 +93,101 @@ begin
   Result := ARow.Text;
   while (Result <> '') and CharInSet(Result[Length(Result)], ['/', '\']) do
     Delete(Result, Length(Result), 1);
+end;
+
+function PickMarkedFilePair(const ARows: TPanelRows; const ATab: TTab;
+  out ALeft, ARight: TPanelRow): Boolean;
+var
+  I, Found: Integer;
+begin
+  Found := 0;
+  for I := 0 to High(ARows) do
+  begin
+    if ARows[I].IsParent or not TabIsSelected(ATab, ARows[I].URI) then
+      Continue;
+    if ARows[I].IsDirectory then
+      Exit(False);
+    if Found = 0 then
+      ALeft := ARows[I]
+    else if Found = 1 then
+      ARight := ARows[I]
+    else
+      Exit(False);
+    Inc(Found);
+  end;
+  Result := Found = 2;
+end;
+
+function FormatExactSize(ASize: Int64): string;
+var
+  Digits: string;
+  I, N: Integer;
+begin
+  Digits := IntToStr(Abs(ASize));
+  Result := '';
+  N := 0;
+  for I := Length(Digits) downto 1 do
+  begin
+    if (N > 0) and (N mod 3 = 0) then
+      Result := ' ' + Result;
+    Result := Digits[I] + Result;
+    Inc(N);
+  end;
+  if ASize < 0 then
+    Result := '-' + Result;
+  Result := Result + ' B';
+end;
+
+function BuildCompareSummary(const ALeft, ARight: TPanelRow;
+  AContentEqual: Boolean; ADiffOffset: Int64): TArray<TCompareSummaryRow>;
+const
+  cStampFormat = 'yyyy-mm-dd hh:nn:ss';
+var
+  SizeLabel, ModifiedLabel, ContentLabel, Word: string;
+  LabelWidth: Integer;
+
+  function Pair(const ALabel, ALeftText, ARightText: string;
+    ASame: Boolean): TCompareSummaryRow;
+  var
+    ValueWidth: Integer;
+    Mark: string;
+  begin
+    ValueWidth := Max(Length(ALeftText), Length(ARightText));
+    if ASame then
+      Mark := '='
+    else
+      Mark := '<>';
+    Result.Text := ALabel.PadRight(LabelWidth) + ALeftText.PadRight(ValueWidth) +
+      ' ' + Mark.PadRight(2) + ' ' + ARightText;
+    Result.Same := ASame;
+  end;
+
+var
+  Row: TCompareSummaryRow;
+  SameTime: Boolean;
+begin
+  SizeLabel := T('ui.compareFiles.size', 'Size') + ':';
+  ModifiedLabel := T('ui.compareFiles.modified', 'Modified') + ':';
+  ContentLabel := T('ui.compareFiles.content', 'Content') + ':';
+  LabelWidth := Max(Length(SizeLabel), Max(Length(ModifiedLabel),
+    Length(ContentLabel))) + 1;
+  SetLength(Result, 3);
+  Result[0] := Pair(SizeLabel, FormatExactSize(ALeft.Size),
+    FormatExactSize(ARight.Size), ALeft.Size = ARight.Size);
+  SameTime := Abs(ALeft.ModificationTime - ARight.ModificationTime) * SecsPerDay <=
+    cPanelCompareTimeToleranceSec;
+  Result[1] := Pair(ModifiedLabel, FormatDateTime(cStampFormat, ALeft.ModificationTime),
+    FormatDateTime(cStampFormat, ARight.ModificationTime), SameTime);
+  if AContentEqual then
+    Word := T('ui.compareFiles.contentEqual', 'identical')
+  else if ADiffOffset > 0 then
+    Word := T('ui.compareFiles.contentOffset', 'differs at byte offset %d',
+      [ADiffOffset])
+  else
+    Word := T('ui.compareFiles.differs', 'differs');
+  Row.Text := ContentLabel.PadRight(LabelWidth) + Word;
+  Row.Same := AContentEqual;
+  Result[2] := Row;
 end;
 
 function IsComparable(const ARow: TPanelRow): Boolean;

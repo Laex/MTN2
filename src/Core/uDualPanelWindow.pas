@@ -735,7 +735,7 @@ type
     procedure ApplyCompareResult(const ADiff: TPanelCompareResult);
     procedure ShowCompareResult(const ATitle, AMessage: string);
     procedure ShowFileDiff(const ALeftName, ARightName, AStatus: string;
-      const ALines: TArray<string>);
+      const ASummary: TArray<TCompareSummaryRow>; const ALines: TArray<string>);
     procedure NavigateToRecycleBin;
     procedure RestoreCursorItemFromRecycleBin;
     function ActivePanelIsTmp: Boolean;
@@ -6720,14 +6720,34 @@ begin
 end;
 
 procedure TDualPanelWindow.ShowFileDiff(const ALeftName, ARightName,
-  AStatus: string; const ALines: TArray<string>);
+  AStatus: string; const ASummary: TArray<TCompareSummaryRow>;
+  const ALines: TArray<string>);
+const
+  cSameFg = TAlphaColor($FF00D000);
+  cDiffFg = TAlphaColor($FFFF4040);
+var
+  Items: TArray<string>;
+  Swatches: TArray<TListSwatch>;
+  I: Integer;
 begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
   SetCmdFocused(False);
   FDialogKind := hdkCompareResult;
-  FDialog.Open(BuildFileDiffDialog(ALeftName, ARightName, AStatus, ALines),
-    DialogCommand);
+  SetLength(Items, Length(ASummary));
+  SetLength(Swatches, Length(ASummary));
+  for I := 0 to High(ASummary) do
+  begin
+    Items[I] := ASummary[I].Text;
+    Swatches[I].Col := 0;
+    Swatches[I].Text := ASummary[I].Text;
+    if ASummary[I].Same then
+      Swatches[I].Fg := cSameFg
+    else
+      Swatches[I].Fg := cDiffFg;
+  end;
+  FDialog.Open(BuildFileDiffDialog(ALeftName, ARightName, AStatus, Items,
+    Swatches, ALines), DialogCommand);
   NotifyChanged;
 end;
 
@@ -6870,13 +6890,13 @@ procedure TDualPanelWindow.BeginCompareFiles;
 var
   Life: ILifeFlag;
   Ws: TDualPanelWorkspaceTab;
-  LeftRows, RightRows: TPanelRows;
+  LeftRows, RightRows, ActiveRows: TPanelRows;
   LeftTab, RightTab: TTab;
   LeftIdx, RightIdx: Integer;
   LeftRow, RightRow: TPanelRow;
   Token: IJobCancelToken;
-  LeftName, RightName: string;
-  EitherSideNotAPlainFile: Boolean;
+  LeftName, RightName, Title: string;
+  EitherSideNotAPlainFile, SamePanelPair: Boolean;
 begin
   Life := FLife;
   if not CanStartOperation then
@@ -6884,55 +6904,85 @@ begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
     Exit;
+  Title := T('ui.compareFiles.title', 'Compare files');
   LeftRows := RowsForSide(psLeft);
   RightRows := RowsForSide(psRight);
   if (Length(LeftRows) = 0) or (Length(RightRows) = 0) then
     Exit;
   LeftTab := ActiveTab(Ws.State.LeftPanel);
   RightTab := ActiveTab(Ws.State.RightPanel);
-  LeftIdx := EnsureRange(LeftTab.CursorIndex, 0, High(LeftRows));
-  RightIdx := EnsureRange(RightTab.CursorIndex, 0, High(RightRows));
-  LeftRow := LeftRows[LeftIdx];
-  RightRow := RightRows[RightIdx];
-  EitherSideNotAPlainFile := LeftRow.IsParent or RightRow.IsParent or
-    LeftRow.IsDirectory or RightRow.IsDirectory;
-  if EitherSideNotAPlainFile then
+  if Ws.State.ActiveSide = psLeft then
   begin
-    ShowCompareResult('Compare files', 'Select a file (not a folder) on each panel.');
-    Exit;
+    ActiveRows := LeftRows;
+    SamePanelPair := PickMarkedFilePair(ActiveRows, LeftTab, LeftRow, RightRow);
+  end
+  else
+  begin
+    ActiveRows := RightRows;
+    SamePanelPair := PickMarkedFilePair(ActiveRows, RightTab, LeftRow, RightRow);
+  end;
+  if not SamePanelPair then
+  begin
+    LeftIdx := EnsureRange(LeftTab.CursorIndex, 0, High(LeftRows));
+    RightIdx := EnsureRange(RightTab.CursorIndex, 0, High(RightRows));
+    LeftRow := LeftRows[LeftIdx];
+    RightRow := RightRows[RightIdx];
+    EitherSideNotAPlainFile := LeftRow.IsParent or RightRow.IsParent or
+      LeftRow.IsDirectory or RightRow.IsDirectory;
+    if EitherSideNotAPlainFile then
+    begin
+      ShowCompareResult(Title, T('ui.compareFiles.needFiles',
+        'Select a file (not a folder) on each panel.'));
+      Exit;
+    end;
   end;
 
-  LeftName := LeftRow.Text;
-  RightName := RightRow.Text;
+  if SamePanelPair then
+  begin
+    LeftName := '1: ' + LeftRow.Text;
+    RightName := '2: ' + RightRow.Text;
+  end
+  else
+  begin
+    LeftName := 'L: ' + LeftRow.Text;
+    RightName := 'R: ' + RightRow.Text;
+  end;
   Token := TJobCancelToken.Create;
   DiffFilesAsync(LeftRow.URI, RightRow.URI, FVfs, Token,
     procedure(AResult: TCompareResult; ADiffOffset: Int64; const AError: TVfsError;
       const ADiffLines: TArray<string>; AChangedLines: Integer)
     var
-      Msg, Status: string;
+      Status: string;
+      Extra: TArray<string>;
     begin
       if not Life.Alive then
         Exit;
+      if AResult = crReadError then
+      begin
+        ShowCompareResult(Title, T('ui.compareFiles.failed', 'Compare failed: %s',
+          [AError.Message]));
+        Exit;
+      end;
+      Extra := nil;
       case AResult of
         crEqual:
-          ShowCompareResult('Compare files', 'Files are identical.');
-        crReadError:
-          ShowCompareResult('Compare files', 'Compare failed: ' + AError.Message);
+          Status := T('ui.compareFiles.identical', 'Files are identical.');
+        crDifferSize:
+          Status := T('ui.compareFiles.sizeBinary', 'Files differ in size.');
       else
-        if (Length(ADiffLines) > 0) and (AChangedLines > 0) then
-        begin
-          Status := Format('%d line(s) differ', [AChangedLines]);
-          ShowFileDiff('L: ' + LeftName, 'R: ' + RightName, Status, ADiffLines);
-        end
-        else
-        begin
-          if AResult = crDifferSize then
-            Msg := 'Files differ in size (binary).'
-          else
-            Msg := Format('Files differ at byte offset %d (binary).', [ADiffOffset]);
-          ShowCompareResult('Compare files', Msg);
-        end;
+        Status := T('ui.compareFiles.offsetBinary',
+          'Files differ at byte offset %d.', [ADiffOffset]);
       end;
+      if (AResult <> crEqual) and (Length(ADiffLines) > 0) and
+         (AChangedLines > 0) then
+      begin
+        Status := T('ui.compareFiles.linesDiffer', '%d line(s) differ',
+          [AChangedLines]);
+        Extra := ADiffLines;
+      end;
+      ShowFileDiff(LeftName, RightName, Status,
+        BuildCompareSummary(LeftRow, RightRow, AResult = crEqual, ADiffOffset),
+        Extra);
     end);
 end;
 

@@ -14,6 +14,8 @@ type
   public
     [Test] procedure Run;
     [Test] procedure OptionsChooseWhatDiffers;
+    [Test] procedure MarkedFilePairNeedsExactlyTwoFiles;
+    [Test] procedure SummaryShowsSizeDateAndContentVerdicts;
   end;
 
 implementation
@@ -53,6 +55,57 @@ var
   Res: TPanelCompareResult;
 
 { TTestPanelCompare }
+
+procedure TTestPanelCompare.MarkedFilePairNeedsExactlyTwoFiles;
+var
+  Rows: TPanelRows;
+  Tab: TTab;
+  L, R: TPanelRow;
+begin
+  T0 := EncodeDateTime(2025, 1, 1, 12, 0, 0, 0);
+  Rows := [Parent, Row('a.docx', 10, T0), Row('b.docx', 10, T0),
+    Row('c.docx', 10, T0), Row('dir', 0, T0, True)];
+  Tab := MakeTab(1, 't', 'file:///L/');
+  Assert.IsFalse(PickMarkedFilePair(Rows, Tab, L, R), 'nothing marked');
+  TabSetSelected(Tab, Rows[2].URI, True);
+  Assert.IsFalse(PickMarkedFilePair(Rows, Tab, L, R), 'one marked file is not a pair');
+  TabSetSelected(Tab, Rows[1].URI, True);
+  Assert.IsTrue(PickMarkedFilePair(Rows, Tab, L, R), 'two marked files form a pair');
+  Assert.AreEqual('a.docx', L.Text, 'pair keeps listing order (first)');
+  Assert.AreEqual('b.docx', R.Text, 'pair keeps listing order (second)');
+  TabSetSelected(Tab, Rows[3].URI, True);
+  Assert.IsFalse(PickMarkedFilePair(Rows, Tab, L, R), 'three marked files are ambiguous');
+  TabSetSelected(Tab, Rows[3].URI, False);
+  TabSetSelected(Tab, Rows[4].URI, True);
+  Assert.IsFalse(PickMarkedFilePair(Rows, Tab, L, R), 'a marked folder is not a file');
+end;
+
+procedure TTestPanelCompare.SummaryShowsSizeDateAndContentVerdicts;
+var
+  A, B: TPanelRow;
+  Rows: TArray<TCompareSummaryRow>;
+begin
+  T0 := EncodeDateTime(2025, 1, 1, 12, 0, 0, 0);
+  A := Row('x.docx', 48213, T0);
+  B := Row('x (1).docx', 48213, IncSecond(T0, 1), False, 'R');
+  Assert.AreEqual('48 213 B', FormatExactSize(48213), 'size is grouped by thousands');
+  Rows := BuildCompareSummary(A, B, True, -1);
+  Assert.IsTrue(Length(Rows) = 3, 'size, modified and content rows');
+  Assert.IsTrue(Rows[0].Same and (Pos('48 213 B =  48 213 B', Rows[0].Text) > 0),
+    'equal sizes are joined by =');
+  Assert.IsTrue(Rows[1].Same, '1 s apart counts as the same time');
+  Assert.IsTrue(Rows[2].Same and (Pos('identical', Rows[2].Text) > 0), 'equal content');
+
+  B.Size := 5000;
+  B.ModificationTime := IncHour(T0, 1);
+  Rows := BuildCompareSummary(A, B, False, 7);
+  Assert.IsFalse(Rows[0].Same, 'different sizes');
+  Assert.IsTrue(Pos('<>', Rows[0].Text) > 0, 'different sizes are joined by <>');
+  Assert.IsFalse(Rows[1].Same, 'different times');
+  Assert.IsFalse(Rows[2].Same, 'different content');
+  Assert.IsTrue(Pos('differs at byte offset 7', Rows[2].Text) > 0,
+    'the offset is reported');
+end;
 
 procedure TTestPanelCompare.OptionsChooseWhatDiffers;
 var

@@ -253,6 +253,7 @@ begin
   CopyJsonStrings(AObj.Values['items'] as TJSONArray, Items);
   C := MakeList(JsonStr(AObj, 'id'), Items, JsonInt(AObj, 'selected', 0));
   C.Framed := JsonBool(AObj, 'frame', False);
+  C.Plain := JsonBool(AObj, 'plain', False);
   C.KeyCommands := JsonBool(AObj, 'keycommands', False);
   AppendParsed(AList, C, AObj);
 end;
@@ -544,6 +545,8 @@ begin
           One := One + ']';
           if C.Framed then
             One := One + ',"frame":true';
+          if C.Plain then
+            One := One + ',"plain":true';
           if C.KeyCommands then
             One := One + ',"keycommands":true';
         end;
