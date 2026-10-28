@@ -2925,8 +2925,13 @@ begin
       TThread.Queue(nil,
         procedure
         begin
-          if not (csDestroying in ComponentState) then
-            Recompose;
+          if csDestroying in ComponentState then
+            Exit;
+          // The status line is drawn with the panels: they must rebuild, or the
+          // new text waits for the next key press.
+          if Assigned(FDualPanel) then
+            FDualPanel.Invalidate;
+          Recompose;
         end);
     end);
 

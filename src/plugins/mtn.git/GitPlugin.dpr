@@ -15,6 +15,10 @@ uses
 
 const
   cPluginId = 'mtn.git';
+  /// <summary>The ABI the plugin needs to load, and the one that has SetStatusSegmentStyled:
+  /// on an older host the colored segment is replaced by plain text.</summary>
+  cNeededAbi = 4;
+  cStyledSegmentAbi = 5;
   cSegmentId = 'git';
   cPollMs = 1000;
 
@@ -48,7 +52,8 @@ var
 begin
   Id := UTF8String(cPluginId);
   Seg := UTF8String(cSegmentId);
-  if (AJson <> '') and Assigned(GHostApi.SetStatusSegmentStyled) then
+  if (AJson <> '') and (GHostApi.AbiVersion >= cStyledSegmentAbi) and
+     Assigned(GHostApi.SetStatusSegmentStyled) then
   begin
     Json := UTF8String(AJson);
     GHostApi.SetStatusSegmentStyled(PAnsiChar(Id), PAnsiChar(Seg), PAnsiChar(Json));
@@ -347,7 +352,7 @@ end;
 
 function mtn_plugin_get_abi_version: Int64; cdecl;
 begin
-  Result := cPluginAbiVersion;
+  Result := cNeededAbi;
 end;
 
 function mtn_plugin_init(AHostApi: PHostApiTable): Int64; cdecl;

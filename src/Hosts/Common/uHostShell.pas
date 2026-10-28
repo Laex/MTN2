@@ -319,6 +319,9 @@ begin
   SetPluginChromeChanged(
     procedure
     begin
+      // The status line is drawn with the panels: they must rebuild.
+      if Assigned(FDualPanel) then
+        FDualPanel.Invalidate;
       Recompose;
     end);
 end;

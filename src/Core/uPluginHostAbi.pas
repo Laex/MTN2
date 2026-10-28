@@ -49,8 +49,12 @@ const
   /// RegisterHighlighter, VfsList, VfsExists, VfsRead, VfsOpen, VfsSize, VfsReadAt,
   /// VfsClose, VfsCancel, SurfaceGetFullscreen.
   /// 3: Translate.
-  /// 4: RegisterDriveItem, RegisterVfsSchemeV2, SetPanelFBar, SetStatusSegmentStyled.</summary>
-  cPluginAbiVersion: Int64 = 4;
+  /// 4: RegisterDriveItem, RegisterVfsSchemeV2, SetPanelFBar.
+  /// 5: SetStatusSegmentStyled. A plugin that wants a function of a newer version
+  /// than it needs to load checks AHostApi^.AbiVersion before it uses the field: an
+  /// older host hands out a shorter table, and the fields past its end are not
+  /// there.</summary>
+  cPluginAbiVersion: Int64 = 5;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 

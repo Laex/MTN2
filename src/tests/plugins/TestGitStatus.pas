@@ -31,9 +31,9 @@ type
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, System.Classes, System.JSON{$IFDEF MSWINDOWS}, Winapi.Windows{$ENDIF},
+  System.SysUtils, System.IOUtils, System.Classes, System.JSON,
   uTerminalTypes, uDialogTypes, uDialogJson, uDialogLocaleLayout, uDialogHost,
-  uGitStatus, uGitSettings, uGitRepo;
+  uPlatformProcess, uGitStatus, uGitSettings, uGitRepo;
 
 const
   CRLF = #13#10;
@@ -375,50 +375,30 @@ begin
 end;
 
 procedure TTestGitStatus.TestReadsStatusOfARealRepository;
-{$IFDEF MSWINDOWS}
 var
-  Dir: string;
+  Dir, Output: string;
   S: TGitStatus;
   Code: Cardinal;
-  Si: TStartupInfo;
-  Pi: TProcessInformation;
-  Cmd: string;
 begin
   Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-repo-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(Dir);
   try
-    Si := Default(TStartupInfo);
-    Si.cb := SizeOf(Si);
-    Si.dwFlags := STARTF_USESHOWWINDOW;
-    Si.wShowWindow := SW_HIDE;
-    Cmd := 'git init -q -b main';
-    UniqueString(Cmd);
-    if not CreateProcess(nil, PChar(Cmd), nil, nil, False, CREATE_NO_WINDOW, nil,
-       PChar(Dir), Si, Pi) then
+    if (PlatformRunCaptured('git', ['init', '-q', '-b', 'main', Dir], '', 15000, nil,
+         Output, Code) <> srOk) or (Code <> 0) then
     begin
       Assert.Pass('git is not available');
       Exit;
     end;
-    WaitForSingleObject(Pi.hProcess, 15000);
-    GetExitCodeProcess(Pi.hProcess, Code);
-    CloseHandle(Pi.hThread);
-    CloseHandle(Pi.hProcess);
-    Assert.AreEqual(Cardinal(0), Code, 'git init');
     TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'x');
     Assert.IsTrue(IsInsideGitWorkTree(Dir));
     Assert.IsTrue(ReadGitStatus(Dir, nil, S) = grOk);
     Assert.AreEqual('main', S.Branch);
-    Assert.AreEqual(1, S.Untracked);
+    Assert.IsTrue(S.Untracked = 1);
     Assert.AreEqual('git:main ?1', FormatGitStatus(S));
   finally
     TDirectory.Delete(Dir, True);
   end;
 end;
-{$ELSE}
-begin
-  Assert.Pass('the git runner is Windows-only');
-end;
-{$ENDIF}
 
 initialization
   TDUnitX.RegisterTestFixture(TTestGitStatus);
