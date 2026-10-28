@@ -39,6 +39,7 @@ uses
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',
   TestSevenZipOpen in 'TestSevenZipOpen.pas',
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
+  TestGitStatus in 'TestGitStatus.pas',
   TestWasmHost in 'TestWasmHost.pas',
   TestHighlightPlugin in 'TestHighlightPlugin.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas';

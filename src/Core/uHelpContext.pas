@@ -111,7 +111,7 @@ begin
       Result := 'cmdline.md#save-output';
     hdkColorCoding, hdkColorCodingEdit:
       Result := 'settings.md#color-coding';
-    hdkColorPicker, hdkThemePicker:
+    hdkColorPicker, hdkHostColorPicker, hdkThemePicker:
       Result := 'settings.md#color-picker';
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice:

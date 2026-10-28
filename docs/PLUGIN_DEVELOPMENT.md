@@ -63,6 +63,7 @@
 | Активация строки панели | `RegisterPanelActivate` | `register_panel_activate` | Реакцию на Enter / двойной щелчок по строке панели своей схемы |
 | Подпись команды | `SetCommandCaption` | `set_command_caption` | Подпись в нижней строке клавиш |
 | Текст в статусе | `SetStatusSegment` | `set_status_segment` | Именованный сегмент строки состояния панелей |
+| Цветной текст в статусе | `SetStatusSegmentStyled` | – (только нативные плагины) | Тот же сегмент из цветных частей: JSON-массив `[{"t": "текст", "role": "ok", "fg": "#RRGGBB", "bg": "#RRGGBB", "b": true}]`; `role` – `ok`, `warn`, `error`, `info`, `accent`, `neutral` (пара цветов, читаемая в любой теме), `fg` и `bg` переопределяют её цвета, часть без цветов берёт цвета строки состояния |
 | Настройки | `RegisterSettings`, `GetSetting`, `SetSetting` | `register_settings`, `get_setting`, `set_setting` | Обработчик кнопки «Настройки» в диалоге плагинов и своё хранилище «ключ – значение» |
 | Документ | `DocInfo`, `DocGetText`, `DocReplace`, `DocSetCursor` | `doc_info`, `doc_get_text`, `doc_replace`, `doc_set_cursor` | Текст документа, открытого в просмотрщике или редакторе: описание, выделение, строка, весь текст; замена одним шагом отмены |
 | Панели | `PanelInfo`, `PanelGoto`, `PanelRefresh` | `panel_info`, `panel_goto`, `panel_refresh` | Обе панели (папка, строка под курсором, выбранные строки), показ папки в панели, обновление |

@@ -281,6 +281,25 @@ type
 procedure NormalizePanelInputKey(var AKey: Word; var AKeyChar: Char);
 function ShouldOfferTopMenu(AWorkspaceKind: TWorkspaceKind;
   ADialogVisible: Boolean): Boolean;
+
+type
+  /// <summary>What the host does with a key before an open top menu sees it.</summary>
+  TTopMenuKeyKind = (tmkSkip, tmkClose, tmkOpen, tmkPalette, tmkForward);
+
+  TTopMenuKeyOffer = record
+    Kind: TTopMenuKeyKind;
+    /// <summary>tmkForward only: Alt was released, so plugin items must be
+    /// loaded before the menu handles the key.</summary>
+    PreloadPlugins: Boolean;
+  end;
+
+/// <summary>F9 toggles the bar, Shift+F9 opens the command palette, and an
+/// Alt release on a closed menu loads plugin items first. Anything else is
+/// forwarded to the open bar. AProgramKeys or not AShouldOffer skips the
+/// menu, so a modal dialog keeps its own F9.</summary>
+function ClassifyTopMenuKey(AHasMenu, AProgramKeys, AShouldOffer, AMenuActive: Boolean;
+  AChordAction, AGlobalAct: TKeymapAction; AShift: TShiftState;
+  AKey: Word; AKeyChar: Char): TTopMenuKeyOffer;
 /// <summary>The Global keymap action (kcGlobal) for this keystroke in a
 /// window whose own contexts are AChain, or kaNone: the window's contexts
 /// come first, so a key they bind is theirs (F10 closes a document rather
@@ -299,6 +318,30 @@ function IsContextHelpChord(AKey: Word; AShift: TShiftState;
   ATopMenuActive, ADialogWantsHelp: Boolean): Boolean;
 function ClassifyEmbeddedInputOwner(AKind: TWorkspaceKind;
   ADialogVisible, AConsoleMode: Boolean): TEmbeddedInputOwner;
+
+type
+  /// <summary>A panel chord handled before free input.</summary>
+  TPanelLocalChord = (plcNone, plcTmpGotoFile, plcTmpSave, plcTmpOpposite,
+    plcWorkspaceOpposite);
+
+/// <summary>Chords the panels take while the command line is not focused.
+/// A temporary panel: Ctrl+PageUp jumps to the cursor file, Alt+Shift+F2
+/// saves the list, Alt+Shift+F3 shows it on the opposite panel. Any other
+/// panel: Alt+Shift+F3 reveals the cursor item opposite, including after
+/// entering a workspace dir-link (its URI is then a plain file URI). A
+/// focused command line takes none of these.</summary>
+function ClassifyPanelLocalChord(ATmpPanel, ACmdFocused: Boolean;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState): TPanelLocalChord;
+/// <summary>Contexts searched before kcGlobal. A document uses its own chain,
+/// or kcDocument when it has none yet. A terminal is terminal then shell.
+/// Panels in console mode are console then shell; otherwise the file panels.
+/// Console mode does not change a document or a terminal.</summary>
+function GlobalLookupChain(AKind: TWorkspaceKind; AConsoleMode, AHasDocument: Boolean;
+  const ADocumentChain: TArray<TKeymapContext>): TArray<TKeymapContext>;
+/// <summary>While the console or terminal has the keys, the host keeps only
+/// the actions that leave it (IsKeyboardCaptureExitAction). The rest,
+/// including the menu and help, go to the program.</summary>
+function ApplyProgramKeyCapture(AAction: TKeymapAction; AProgramKeys: Boolean): TKeymapAction;
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
 
 var
@@ -381,225 +424,434 @@ begin
   Result := (AKey = vkReturn) and (AShift = []);
 end;
 
+function SortColumnOf(AAction: TKeymapAction; out AColumn: TPanelSortColumn): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaSortByName: AColumn := pscName;
+    kaSortByExt: AColumn := pscExt;
+    kaSortByDate: AColumn := pscModified;
+    kaSortBySize: AColumn := pscSize;
+    kaSortUnsorted: AColumn := pscNone;
+    kaSortByCreated: AColumn := pscCreated;
+    kaSortByAccessed: AColumn := pscAccessed;
+  else
+    begin
+      AColumn := pscNone;
+      Result := False;
+    end;
+  end;
+end;
+
+function ColumnModeOf(AAction: TKeymapAction; out AMode: TPanelColumnMode): Boolean;
+begin
+  // kaColumnMode opens the menu; it is not one of these modes.
+  Result := True;
+  case AAction of
+    kaColumnBrief: AMode := pcmBrief;
+    kaColumnSize: AMode := pcmSize;
+    kaColumnDate: AMode := pcmDate;
+    kaColumnFull: AMode := pcmFull;
+    kaColumnCreated: AMode := pcmCreated;
+    kaColumnTypes: AMode := pcmTypes;
+    kaColumnCustom: AMode := pcmCustom;
+  else
+    begin
+      AMode := pcmBrief;
+      Result := False;
+    end;
+  end;
+end;
+
+function ToggledPanelSide(AAction: TKeymapAction; out ASide: TPanelSide): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaTogglePanelLeft: ASide := psLeft;
+    kaTogglePanelRight: ASide := psRight;
+  else
+    begin
+      ASide := psLeft;
+      Result := False;
+    end;
+  end;
+end;
+
+function DrivePopupSide(AAction: TKeymapAction; out ASide: TPanelSide): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaDriveLeft: ASide := psLeft;
+    kaDriveRight: ASide := psRight;
+  else
+    begin
+      ASide := psLeft;
+      Result := False;
+    end;
+  end;
+end;
+
+function ApplyCmdInsert(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaInsertItemName: AHost.InsertPanelItemToCmdLine(False);
+    kaInsertItemPath: AHost.InsertPanelItemToCmdLine(True);
+    kaInsertPanelPath: AHost.InsertPanelPathToCmdLine(False);
+    kaInsertOtherPanelPath: AHost.InsertPanelPathToCmdLine(True);
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function MaskSelectOf(AAction: TKeymapAction; out AUnselect: Boolean): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaSelectByMask: AUnselect := False;
+    kaUnselectByMask: AUnselect := True;
+  else
+    begin
+      AUnselect := False;
+      Result := False;
+    end;
+  end;
+end;
+
+function ApplyHistoryStep(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaHistoryBack: AHost.HistoryBack();
+    kaHistoryForward: AHost.HistoryForward();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, False);
+end;
+
+function ApplyPanelTab(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaNewTab: AHost.NewPanelTab();
+    kaNextPanelTab: AHost.NextPanelTab();
+    kaPrevPanelTab: AHost.PrevPanelTab();
+    kaCloseTab: AHost.ClosePanelTabOnSide(AHost.ActiveSide());
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplySelection(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaSelectAll: AHost.SelectAllActive();
+    kaUnselectAll: AHost.UnselectAllActive();
+    kaInvertSelection: AHost.InvertSelectionActive();
+    kaRestoreSelection: AHost.RestoreSelection();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyRun(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaRunDetached: AHost.RunDetached();
+    kaRunInBackground: AHost.RunInBackground();
+    kaRunInNewTab: AHost.RunInNewTab();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyEditClip(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaEditCopy: AHost.EditCopy();
+    kaEditCut: AHost.EditCut();
+    kaEditPaste: AHost.EditPaste();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function TryOptionalShellAction(const AHost: TDualPanelKeymapHost;
+  AAction: TKeymapAction): Boolean;
+begin
+  // Primary, not function-key dispatch: that runs after Alt quick search,
+  // which takes any other Alt+key (Alt+Enter included) as a search letter.
+  // Alt+F3 / Alt+F4 are the same.
+  Result := True;
+  case AAction of
+    kaProperties:
+      if Assigned(AHost.ShowProperties) then
+        AHost.ShowProperties();
+    kaShellContextMenu:
+      if Assigned(AHost.ShellContextMenu) then
+        AHost.ShellContextMenu();
+    kaExternalView:
+      if Assigned(AHost.ExternalView) then
+        AHost.ExternalView();
+    kaExternalEdit:
+      if Assigned(AHost.ExternalEdit) then
+        AHost.ExternalEdit();
+  else
+    Result := False;
+  end;
+end;
+
+function ApplyHistoryDialog(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaFolderHistory: AHost.OpenFolderHistoryDialog();
+    kaFileHistory: AHost.OpenFileHistoryDialog();
+    kaCmdHistory: AHost.OpenCmdHistoryDialog();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyHotlist(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaFolderHotlist: AHost.OpenFolderHotlistDialog();
+    kaFolderHotlistAdd: AHost.BeginFolderHotlistAdd();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyWorkspace(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaWorkspaceLibrary: AHost.OpenWorkspaceLibraryDialog();
+    kaWorkspaceSave: AHost.BeginWorkspaceLibrarySave();
+    kaNewWorkspace: AHost.NewWorkspace();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyFolderNav(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaFolderUp: AHost.GoToParent();
+    kaFolderDown: AHost.FolderDown();
+    kaFolderTree: AHost.ToggleFolderTree();
+    kaToggleHidden: AHost.ToggleShowHidden(AHost.ActiveSide());
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyPanelLayout(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaInfoPanel: AHost.ToggleAdjacentInfoPanel();
+    kaQuickView: AHost.ToggleQuickView();
+    kaSwapPanels: AHost.SwapPanels();
+    kaEqualizeOtherPanel: AHost.EqualizeOtherPanelToActive();
+    kaEqualizeActivePanel: AHost.EqualizeActivePanelFromOther();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyClipboardCopy(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaCopyFullPath:
+      AHost.CopyFullPathToClipboard();
+    kaCopyItemName:
+      if Assigned(AHost.CopyItemNameToClipboard) then
+        AHost.CopyItemNameToClipboard();
+    kaExportList:
+      if Assigned(AHost.ExportItemList) then
+        AHost.ExportItemList();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyPanelTool(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaDescribe: AHost.DescribeItems();
+    kaSshConnections: AHost.OpenSshConnectionsDialog();
+    kaAssociations: AHost.OpenUserAssociationsDialog();
+    kaBranchView: AHost.BeginBranchView();
+    kaLiveFilter: AHost.OpenPanelFilter();
+    kaDirSync: AHost.OpenDirSync();
+    kaJobList: AHost.OpenJobList();
+    kaSyncConsoleDir: AHost.SyncConsoleDirNow();
+    kaColumnMode: AHost.OpenColumnModeMenu();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, True);
+end;
+
+function ApplyCmdLine(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  // Focusing the line leaves the character. Clearing it removes the character.
+  Result := True;
+  case AAction of
+    kaFocusCmdLine:
+      begin
+        AHost.FocusCommandLine();
+        ConsumeKey(AKey, AKeyChar, False);
+      end;
+    kaClearCmdLine:
+      begin
+        AHost.ClearCommandLine();
+        ConsumeKey(AKey, AKeyChar, True);
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+function ApplySession(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  // The console toggle clears the character. Quit leaves it.
+  Result := True;
+  case AAction of
+    kaConsoleToggle:
+      begin
+        AHost.ToggleConsole();
+        ConsumeKey(AKey, AKeyChar, True);
+      end;
+    kaQuit:
+      begin
+        AHost.RequestQuit();
+        ConsumeKey(AKey, AKeyChar, False);
+      end;
+  else
+    Result := False;
+  end;
+end;
+
 function DispatchKeymapActionPrimary(const AHost: TDualPanelKeymapHost;
   AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
+var
+  SortColumn: TPanelSortColumn;
+  ColumnMode: TPanelColumnMode;
+  Side: TPanelSide;
+  Unselect: Boolean;
 begin
   // The panels look keys up in Panels, then Global: the Global ones run as
   // they do from any window.
   if DispatchGlobalAction(AHost, AAction, AKey, AKeyChar) then
     Exit(True);
   Result := True;
+  if SortColumnOf(AAction, SortColumn) then
+  begin
+    AHost.ApplySortMode(AHost.ActiveSide(), SortColumn);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if ColumnModeOf(AAction, ColumnMode) then
+  begin
+    AHost.ApplyColumnMode(AHost.ActiveSide(), ColumnMode);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if ToggledPanelSide(AAction, Side) then
+  begin
+    AHost.TogglePanelVisible(Side);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if DrivePopupSide(AAction, Side) then
+  begin
+    AHost.ToggleDrivePopup(Side);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if ApplyCmdInsert(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if MaskSelectOf(AAction, Unselect) then
+  begin
+    AHost.BeginSelectByMask(Unselect);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if ApplyHistoryStep(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyPanelTab(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplySelection(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyRun(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyEditClip(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if TryOptionalShellAction(AHost, AAction) then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if ApplyClipboardCopy(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyHistoryDialog(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyHotlist(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyWorkspace(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyFolderNav(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyPanelLayout(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyPanelTool(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyCmdLine(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplySession(AHost, AAction, AKey, AKeyChar) then
+    Exit;
   case AAction of
-    kaCopyFullPath:
-      begin
-        AHost.CopyFullPathToClipboard();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaCopyItemName:
-      begin
-        if Assigned(AHost.CopyItemNameToClipboard) then
-          AHost.CopyItemNameToClipboard();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaExportList:
-      begin
-        if Assigned(AHost.ExportItemList) then
-          AHost.ExportItemList();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaConsoleToggle:
-      begin
-        AHost.ToggleConsole();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaQuit:
-      begin
-        AHost.RequestQuit();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaTogglePanelLeft:
-      begin
-        AHost.TogglePanelVisible(psLeft);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaTogglePanelRight:
-      begin
-        AHost.TogglePanelVisible(psRight);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortByName:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscName);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortByExt:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscExt);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortByDate:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscModified);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortBySize:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscSize);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortUnsorted:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscNone);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortByCreated:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscCreated);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSortByAccessed:
-      begin
-        AHost.ApplySortMode(AHost.ActiveSide(), pscAccessed);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
     kaSortMenu:
       begin
         AHost.OpenSortMenu();
         ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaDriveLeft:
-      begin
-        AHost.ToggleDrivePopup(psLeft);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaDriveRight:
-      begin
-        AHost.ToggleDrivePopup(psRight);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaHistoryBack:
-      begin
-        AHost.HistoryBack();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaHistoryForward:
-      begin
-        AHost.HistoryForward();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaFolderHistory:
-      begin
-        AHost.OpenFolderHistoryDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFileHistory:
-      begin
-        AHost.OpenFileHistoryDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaCmdHistory:
-      begin
-        AHost.OpenCmdHistoryDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFolderHotlist:
-      begin
-        AHost.OpenFolderHotlistDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFolderHotlistAdd:
-      begin
-        AHost.BeginFolderHotlistAdd();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaWorkspaceLibrary:
-      begin
-        AHost.OpenWorkspaceLibraryDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaWorkspaceSave:
-      begin
-        AHost.BeginWorkspaceLibrarySave();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaNewWorkspace:
-      begin
-        AHost.NewWorkspace();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaNewTab:
-      begin
-        AHost.NewPanelTab();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaNextPanelTab:
-      begin
-        AHost.NextPanelTab();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaPrevPanelTab:
-      begin
-        AHost.PrevPanelTab();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSelectAll:
-      begin
-        AHost.SelectAllActive();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaUnselectAll:
-      begin
-        AHost.UnselectAllActive();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaInvertSelection:
-      begin
-        AHost.InvertSelectionActive();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaRestoreSelection:
-      begin
-        AHost.RestoreSelection();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaDescribe:
-      begin
-        AHost.DescribeItems();
-        ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
     kaTogglePassivePanel:
@@ -611,425 +863,186 @@ begin
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
-    kaCloseTab:
-      begin
-        AHost.ClosePanelTabOnSide(AHost.ActiveSide());
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSshConnections:
-      begin
-        AHost.OpenSshConnectionsDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaAssociations:
-      begin
-        AHost.OpenUserAssociationsDialog();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    // Primary, not function-key dispatch: that runs after Alt quick search,
-    // which takes any other Alt+key (Alt+Enter included) as a search letter.
-    kaProperties:
-      begin
-        if Assigned(AHost.ShowProperties) then
-          AHost.ShowProperties();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaShellContextMenu:
-      begin
-        if Assigned(AHost.ShellContextMenu) then
-          AHost.ShellContextMenu();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    // Alt+F3 / Alt+F4: same reason as kaProperties.
-    kaExternalView:
-      begin
-        if Assigned(AHost.ExternalView) then
-          AHost.ExternalView();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaExternalEdit:
-      begin
-        if Assigned(AHost.ExternalEdit) then
-          AHost.ExternalEdit();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaBranchView:
-      begin
-        AHost.BeginBranchView();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaLiveFilter:
-      begin
-        AHost.OpenPanelFilter();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
     kaFind:
       begin
         AHost.OpenSearchDialog();
         ConsumeKey(AKey, AKeyChar, False);
         Exit;
       end;
-    kaDirSync:
-      begin
-        AHost.OpenDirSync();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaJobList:
-      begin
-        AHost.OpenJobList();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSyncConsoleDir:
-      begin
-        AHost.SyncConsoleDirNow();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFolderUp:
-      begin
-        AHost.GoToParent();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFolderDown:
-      begin
-        AHost.FolderDown();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFolderTree:
-      begin
-        AHost.ToggleFolderTree();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaToggleHidden:
-      begin
-        AHost.ToggleShowHidden(AHost.ActiveSide());
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaColumnMode:
-      begin
-        AHost.OpenColumnModeMenu();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaColumnBrief:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmBrief);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnSize:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmSize);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnDate:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmDate);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnFull:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmFull);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnCreated:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmCreated);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnTypes:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmTypes);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaColumnCustom:
-      begin
-        AHost.ApplyColumnMode(AHost.ActiveSide(), pcmCustom);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaInfoPanel:
-      begin
-        AHost.ToggleAdjacentInfoPanel();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaQuickView:
-      begin
-        AHost.ToggleQuickView();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSwapPanels:
-      begin
-        AHost.SwapPanels();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaEqualizeOtherPanel:
-      begin
-        AHost.EqualizeOtherPanelToActive();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaEqualizeActivePanel:
-      begin
-        AHost.EqualizeActivePanelFromOther();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaFocusCmdLine:
-      begin
-        AHost.FocusCommandLine();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaClearCmdLine:
-      begin
-        AHost.ClearCommandLine();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaRunDetached:
-      begin
-        AHost.RunDetached();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaRunInBackground:
-      begin
-        AHost.RunInBackground();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaRunInNewTab:
-      begin
-        AHost.RunInNewTab();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaInsertItemName:
-      begin
-        AHost.InsertPanelItemToCmdLine(False);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaInsertItemPath:
-      begin
-        AHost.InsertPanelItemToCmdLine(True);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaInsertPanelPath:
-      begin
-        AHost.InsertPanelPathToCmdLine(False);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaInsertOtherPanelPath:
-      begin
-        AHost.InsertPanelPathToCmdLine(True);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaSelectByMask:
-      begin
-        AHost.BeginSelectByMask(False);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaUnselectByMask:
-      begin
-        AHost.BeginSelectByMask(True);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaEditCopy:
-      begin
-        AHost.EditCopy();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaEditCut:
-      begin
-        AHost.EditCut();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaEditPaste:
-      begin
-        AHost.EditPaste();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
   end;
   Result := False;
 end;
 
-function DispatchKeymapActionFunctionKeys(const AHost: TDualPanelKeymapHost;
-  AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
+function ViewOrEditOf(AAction: TKeymapAction; out AEdit, AClearChar: Boolean): Boolean;
 begin
+  // View clears the typed character. Edit leaves it.
   Result := True;
   case AAction of
-    kaHelp:
-      begin
-        AHost.OpenHelp();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaUserMenu:
-      begin
-        AHost.OpenUserMenu();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaPack:
-      begin
-        AHost.BeginPackZip();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaUnpack:
-      begin
-        AHost.BeginUnpackZip();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
     kaView:
       begin
-        AHost.OpenViewOrEdit(False);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
+        AEdit := False;
+        AClearChar := True;
       end;
     kaEdit:
       begin
-        AHost.OpenViewOrEdit(True);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
+        AEdit := True;
+        AClearChar := False;
       end;
-    kaNewFile:
-      begin
-        AHost.BeginNewFile();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaCopy:
-      begin
-        AHost.BeginJob(pjkCopy, True);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaMove:
-      begin
-        AHost.BeginJob(pjkMove, True);
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaRename:
-      begin
-        AHost.BeginRename();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaCopyInPlace:
-      begin
-        AHost.BeginCopyInPlace();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaMkDir:
-      begin
-        AHost.BeginMkDir();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaCreateLink:
-      begin
-        AHost.BeginCreateLink();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaSetAttributes:
-      begin
-        AHost.BeginSetAttributes();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaCompareFiles:
-      begin
-        AHost.BeginCompareFiles();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
+  else
+    begin
+      AEdit := False;
+      AClearChar := False;
+      Result := False;
+    end;
+  end;
+end;
+
+function TransferJobOf(AAction: TKeymapAction; out AKind: TPanelJobKind): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaCopy: AKind := pjkCopy;
+    kaMove: AKind := pjkMove;
+  else
+    begin
+      AKind := pjkCopy;
+      Result := False;
+    end;
+  end;
+end;
+
+function ApplyArchive(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaPack: AHost.BeginPackZip();
+    kaUnpack: AHost.BeginUnpackZip();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, False);
+end;
+
+function ApplyFileBegin(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaNewFile: AHost.BeginNewFile();
+    kaRename: AHost.BeginRename();
+    kaCopyInPlace: AHost.BeginCopyInPlace();
+    kaMkDir: AHost.BeginMkDir();
+    kaCreateLink: AHost.BeginCreateLink();
+    kaSetAttributes: AHost.BeginSetAttributes();
+    kaCompareFiles: AHost.BeginCompareFiles();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, False);
+end;
+
+function TryOptionalTool(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction): Boolean;
+begin
+  Result := True;
+  case AAction of
     kaCompareFolders:
-      begin
-        if Assigned(AHost.CompareFolders) then
-          AHost.CompareFolders();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
+      if Assigned(AHost.CompareFolders) then
+        AHost.CompareFolders();
     kaChecksums:
-      begin
-        if Assigned(AHost.BeginChecksums) then
-          AHost.BeginChecksums();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
+      if Assigned(AHost.BeginChecksums) then
+        AHost.BeginChecksums();
     kaMultiRename:
-      begin
-        if Assigned(AHost.BeginMultiRename) then
-          AHost.BeginMultiRename();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaRecycleBin:
-      begin
-        AHost.NavigateToRecycleBin();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaRestore:
-      begin
-        AHost.RestoreCursorItemFromRecycleBin();
-        ConsumeKey(AKey, AKeyChar, False);
-        Exit;
-      end;
-    kaDelete:
-      begin
-        AHost.BeginJob(pjkDelete, True);
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
+      if Assigned(AHost.BeginMultiRename) then
+        AHost.BeginMultiRename();
+  else
+    Result := False;
+  end;
+end;
+
+function ApplyHelpOrUserMenu(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaHelp: AHost.OpenHelp();
+    kaUserMenu: AHost.OpenUserMenu();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, False);
+end;
+
+function ApplyRecycleBin(const AHost: TDualPanelKeymapHost; AAction: TKeymapAction;
+  var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaRecycleBin: AHost.NavigateToRecycleBin();
+    kaRestore: AHost.RestoreCursorItemFromRecycleBin();
+  else
+    Exit(False);
+  end;
+  ConsumeKey(AKey, AKeyChar, False);
+end;
+
+function DeleteJobOf(AAction: TKeymapAction; out ARecycle: Boolean): Boolean;
+begin
+  Result := True;
+  case AAction of
+    kaDelete: ARecycle := True;
+    kaDeletePermanent: ARecycle := False;
+  else
+    begin
+      ARecycle := True;
+      Result := False;
+    end;
+  end;
+end;
+
+function DispatchKeymapActionFunctionKeys(const AHost: TDualPanelKeymapHost;
+  AAction: TKeymapAction; var AKey: Word; var AKeyChar: Char): Boolean;
+var
+  Edit, ClearChar, Recycle: Boolean;
+  Job: TPanelJobKind;
+begin
+  Result := True;
+  if ViewOrEditOf(AAction, Edit, ClearChar) then
+  begin
+    AHost.OpenViewOrEdit(Edit);
+    ConsumeKey(AKey, AKeyChar, ClearChar);
+    Exit;
+  end;
+  if TransferJobOf(AAction, Job) then
+  begin
+    AHost.BeginJob(Job, True);
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  if DeleteJobOf(AAction, Recycle) then
+  begin
+    AHost.BeginJob(pjkDelete, Recycle);
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if ApplyArchive(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyFileBegin(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if TryOptionalTool(AHost, AAction) then
+  begin
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if ApplyHelpOrUserMenu(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  if ApplyRecycleBin(AHost, AAction, AKey, AKeyChar) then
+    Exit;
+  case AAction of
     kaWipe:
       begin
         if Assigned(AHost.BeginDeleteCursor) then
           AHost.BeginDeleteCursor();
-        ConsumeKey(AKey, AKeyChar, True);
-        Exit;
-      end;
-    kaDeletePermanent:
-      begin
-        AHost.BeginJob(pjkDelete, False);
         ConsumeKey(AKey, AKeyChar, True);
         Exit;
       end;
@@ -1167,6 +1180,35 @@ begin
     not ADialogVisible;
 end;
 
+function ClassifyTopMenuKey(AHasMenu, AProgramKeys, AShouldOffer, AMenuActive: Boolean;
+  AChordAction, AGlobalAct: TKeymapAction; AShift: TShiftState;
+  AKey: Word; AKeyChar: Char): TTopMenuKeyOffer;
+begin
+  Result.Kind := tmkSkip;
+  Result.PreloadPlugins := False;
+  if not (AHasMenu and not AProgramKeys and AShouldOffer) then
+    Exit;
+  // F9 closes the bar before it can be read as "open".
+  if AMenuActive and (AChordAction = kaTopMenu) then
+  begin
+    Result.Kind := tmkClose;
+    Exit;
+  end;
+  if not AMenuActive and (AGlobalAct = kaTopMenu) then
+  begin
+    Result.Kind := tmkOpen;
+    Exit;
+  end;
+  if not AMenuActive and (AGlobalAct = kaCommandPalette) then
+  begin
+    Result.Kind := tmkPalette;
+    Exit;
+  end;
+  Result.Kind := tmkForward;
+  Result.PreloadPlugins := not AMenuActive and (ssAlt in AShift) and
+    (AKey = 0) and (AKeyChar = #0);
+end;
+
 function GlobalKeymapAction(const AProfile: TKeymapProfile;
   const AChain: TArray<TKeymapContext>; AKey: Word; AKeyChar: Char;
   AShift: TShiftState; ADialogVisible: Boolean): TKeymapAction;
@@ -1227,6 +1269,59 @@ begin
   if AConsoleMode and not ADialogVisible then
     Exit(eioConsoleYield);
   Result := eioNone;
+end;
+
+function ClassifyPanelLocalChord(ATmpPanel, ACmdFocused: Boolean;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState): TPanelLocalChord;
+var
+  K: TKeyChord;
+begin
+  Result := plcNone;
+  if ACmdFocused then
+    Exit;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if ATmpPanel then
+  begin
+    if K.Matches(vkPrior, [ssCtrl]) then
+      Exit(plcTmpGotoFile);
+    if K.HasMods([ssAlt, ssShift]) then
+    begin
+      if AKey = vkF2 then
+        Exit(plcTmpSave);
+      if AKey = vkF3 then
+        Exit(plcTmpOpposite);
+    end;
+    Exit;
+  end;
+  if K.Matches(vkF3, [ssAlt, ssShift]) then
+    Result := plcWorkspaceOpposite;
+end;
+
+function GlobalLookupChain(AKind: TWorkspaceKind; AConsoleMode, AHasDocument: Boolean;
+  const ADocumentChain: TArray<TKeymapContext>): TArray<TKeymapContext>;
+begin
+  case AKind of
+    wkDocument:
+      if AHasDocument then
+        Result := ADocumentChain
+      else
+        Result := [kcDocument];
+    wkTerminal:
+      Result := [kcTerminal, kcShell];
+  else
+    if AConsoleMode then
+      Result := [kcConsole, kcShell]
+    else
+      Result := [kcPanels];
+  end;
+end;
+
+function ApplyProgramKeyCapture(AAction: TKeymapAction; AProgramKeys: Boolean): TKeymapAction;
+begin
+  if AProgramKeys and not IsKeyboardCaptureExitAction(AAction) then
+    Result := kaNone
+  else
+    Result := AAction;
 end;
 
 function IsPasteChord(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
@@ -1346,30 +1441,23 @@ begin
   Result := (AKey = vkSubtract) or (AKey = vkMinus) or (AKeyChar = '-');
 end;
 
-function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
-  const AKeymap: TDualPanelKeymapHost; const ASnap: TPanelFreeInputSnap;
-  var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
-
-  // The keystroke as it is now: RestoreGrayOpKey and the host input handlers
-  // may rewrite AKey / AKeyChar on the way down.
-  function Chord: TKeyChord;
-  begin
-    Result := TKeyChord.Make(AKey, AKeyChar, AShift);
-  end;
-
-var
-  Mods: TShiftState;
-  Act: TKeymapAction;
+function FreeInputPrefix(const AHost: TDualPanelFreeInputHost;
+  const ASnap: TPanelFreeInputSnap; var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; out AAct: TKeymapAction; out AResult: Boolean): Boolean;
 begin
+  AAct := kaNone;
+  AResult := True;
   Result := True;
-  Mods := AShift * cKeyMods;
   // Command line focused (typing, Ctrl+Down): every key is the command
   // line's, the panel bindings included (- + * deselect / select / invert,
   // F-keys, ...). Esc there clears the text, and on an empty line gives the
   // focus back to the panel; Ctrl+Up does that at once. Esc on the panel is
   // the keymap's (ConsoleToggle by default), text or not.
   if ASnap.CmdFocused then
-    Exit(AHost.HandleCmdLineInput(AKey, AShift, AKeyChar));
+  begin
+    AResult := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
+    Exit;
+  end;
   if ASnap.DrivePreviewActive and (AKey = vkEscape) then
   begin
     AHost.CancelDrivePreview();
@@ -1384,27 +1472,29 @@ begin
   end;
   // Plugin hooks on built-in commands, and plugin commands bound to a chord no
   // built-in action owns, come before the built-in handlers.
-  Act := MatchActiveAction(AKey, AShift);
-  if (Act <> kaNone) and InterceptKeymapAction(Act, 'key') then
+  AAct := MatchActiveAction(AKey, AShift);
+  if (AAct <> kaNone) and InterceptKeymapAction(AAct, 'key') then
   begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if (Act = kaNone) and TryRunBoundCommand(KeymapLookupKey(AKey, AKeyChar), AShift) then
+  if (AAct = kaNone) and TryRunBoundCommand(KeymapLookupKey(AKey, AKeyChar), AShift) then
   begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit;
   end;
-  if AHost.DispatchKeymapPrimary(Act, AKey, AKeyChar) then
-    Exit;
-  // Backspace with an empty command line: up one level, like Enter on "..".
-  // With text in it, Backspace edits the command line (DispatchPanelNavKeys).
-  if Chord.Matches(vkBack) and not ASnap.CmdLineHasText and Assigned(AHost.GoToParent) then
-  begin
-    AHost.GoToParent();
-    ConsumeKey(AKey, AKeyChar, True);
-    Exit;
-  end;
+  Result := False;
+end;
+
+function OfferDriveChords(const AHost: TDualPanelFreeInputHost;
+  const ASnap: TPanelFreeInputSnap; var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; out AResult: Boolean): Boolean;
+var
+  Chord: TKeyChord;
+begin
+  AResult := True;
+  Result := True;
+  Chord := TKeyChord.Make(AKey, AKeyChar, AShift);
   // Ctrl+Shift+Left/Right with text in the command line select word parts
   // there instead of cycling the drive preview.
   if (Chord.Matches(vkLeft, [ssCtrl, ssShift]) or Chord.Matches(vkRight, [ssCtrl, ssShift])) and
@@ -1412,7 +1502,8 @@ begin
   begin
     if not ASnap.CmdFocused and Assigned(AHost.FocusCommandLine) then
       AHost.FocusCommandLine();
-    Exit(AHost.HandleCmdLineInput(AKey, AShift, AKeyChar));
+    AResult := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
+    Exit;
   end;
   if Chord.HasMods([ssCtrl], [ssShift]) then
   begin
@@ -1435,16 +1526,18 @@ begin
       Exit;
     end;
   end;
-  if IsPasteChord(AKey, AShift, AKeyChar) then
-  begin
-    if AHost.TryPasteClipboard() then
-    begin
-      ConsumeKey(AKey, AKeyChar, True);
-      Exit(True);
-    end;
-  end;
-  AHost.RestoreGrayOpKey(AKey, AKeyChar);
-  if Mods = [] then
+  Result := False;
+end;
+
+function OfferSelectChords(const AHost: TDualPanelFreeInputHost;
+  var AKey: Word; AShift: TShiftState; var AKeyChar: Char;
+  const AMods: TShiftState): Boolean;
+var
+  Chord: TKeyChord;
+begin
+  Result := True;
+  Chord := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if AMods = [] then
   begin
     if AKey = vkAdd then
     begin
@@ -1474,7 +1567,7 @@ begin
       Exit;
     end;
   end;
-  if Mods = [ssAlt] then
+  if AMods = [ssAlt] then
   begin
     if (AKey = vkAdd) or (AKeyChar = '+') then
     begin
@@ -1491,6 +1584,52 @@ begin
       Exit;
     end;
   end;
+  Result := False;
+end;
+
+function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
+  const AKeymap: TDualPanelKeymapHost; const ASnap: TPanelFreeInputSnap;
+  var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
+
+  // The keystroke as it is now: RestoreGrayOpKey and the host input handlers
+  // may rewrite AKey / AKeyChar on the way down.
+  function Chord: TKeyChord;
+  begin
+    Result := TKeyChord.Make(AKey, AKeyChar, AShift);
+  end;
+
+var
+  Mods: TShiftState;
+  Act: TKeymapAction;
+  Step: Boolean;
+begin
+  Result := True;
+  Mods := AShift * cKeyMods;
+  if FreeInputPrefix(AHost, ASnap, AKey, AShift, AKeyChar, Act, Step) then
+    Exit(Step);
+  if AHost.DispatchKeymapPrimary(Act, AKey, AKeyChar) then
+    Exit;
+  // Backspace with an empty command line: up one level, like Enter on "..".
+  // With text in it, Backspace edits the command line (DispatchPanelNavKeys).
+  if Chord.Matches(vkBack) and not ASnap.CmdLineHasText and Assigned(AHost.GoToParent) then
+  begin
+    AHost.GoToParent();
+    ConsumeKey(AKey, AKeyChar, True);
+    Exit;
+  end;
+  if OfferDriveChords(AHost, ASnap, AKey, AShift, AKeyChar, Step) then
+    Exit(Step);
+  if IsPasteChord(AKey, AShift, AKeyChar) then
+  begin
+    if AHost.TryPasteClipboard() then
+    begin
+      ConsumeKey(AKey, AKeyChar, True);
+      Exit(True);
+    end;
+  end;
+  AHost.RestoreGrayOpKey(AKey, AKeyChar);
+  if OfferSelectChords(AHost, AKey, AShift, AKeyChar, Mods) then
+    Exit;
   if IsAltQuickSearchChord(AKey, AShift) then
   begin
     if AHost.HandleQuickSearchInput(AKey, AShift, AKeyChar) then
@@ -1521,123 +1660,119 @@ begin
     ASnap.Brief, ASnap.PageSize);
 end;
 
-function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;
+function JobProgressEnterSwallowed(const AHost: TDualPanelModalInputHost;
+  AKind: THostDialogKind; AKey: Word): Boolean;
+begin
+  // Enter presses the focused Background or Cancel like a click (Cancel only
+  // asks whether to stop). With no such button focused it is swallowed, so
+  // it never acts on the job by accident.
+  Result := (AKey = vkReturn) and (AKind = hdkJobProgress) and
+    not (Assigned(AHost.FocusedOrDefaultButtonId) and
+         (DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdBackground) or
+          DialogCmdIsCancel(AHost.FocusedOrDefaultButtonId())));
+end;
+
+function ModalKindTookKey(const AHost: TDualPanelModalInputHost;
   AKind: THostDialogKind; var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
+begin
+  case AKind of
+    hdkFileHistory:
+      Result := Assigned(AHost.HandleFileHistoryList) and
+        AHost.HandleFileHistoryList(AKey, AShift, AKeyChar);
+    hdkFolderHistory:
+      Result := Assigned(AHost.HandleFolderHistoryList) and
+        AHost.HandleFolderHistoryList(AKey, AShift, AKeyChar);
+    hdkFolderHotlist:
+      Result := Assigned(AHost.HandleHotlistList) and
+        AHost.HandleHotlistList(AKey, AShift, AKeyChar);
+    hdkWorkspaceLibrary:
+      Result := Assigned(AHost.HandleWorkspaceList) and
+        AHost.HandleWorkspaceList(AKey, AShift, AKeyChar);
+    hdkTerminalProfile:
+      Result := Assigned(AHost.HandleTerminalProfileList) and
+        AHost.HandleTerminalProfileList(AKey, AShift, AKeyChar);
+    hdkSshConnections:
+      Result := Assigned(AHost.HandleSshConnectionsList) and
+        AHost.HandleSshConnectionsList(AKey, AShift, AKeyChar);
+    hdkAssociations:
+      Result := Assigned(AHost.HandleAssociationsList) and
+        AHost.HandleAssociationsList(AKey, AShift, AKeyChar);
+    hdkColorCoding:
+      Result := AHost.HandleColorList(AKey, AShift, AKeyChar);
+    hdkColorCodingEdit:
+      Result := AHost.HandleColorEdit(AKey, AShift, AKeyChar);
+    hdkSearch:
+      Result := Assigned(AHost.HandleSearchEdit) and
+        AHost.HandleSearchEdit(AKey, AShift, AKeyChar);
+    hdkMarkdownColors:
+      Result := AHost.HandleMarkdownColors(AKey, AShift, AKeyChar);
+    hdkThemeColors:
+      Result := Assigned(AHost.HandleThemeColor) and
+        AHost.HandleThemeColor(AKey, AShift, AKeyChar);
+    hdkKeymap:
+      Result := AHost.HandleKeymapList(AKey, AShift, AKeyChar);
+    hdkCmdHistory:
+      Result := AHost.HandleCmdHistoryFilter(AKey, AShift, AKeyChar);
+    hdkCommandPalette:
+      Result := AHost.HandleCommandPaletteFilter(AKey, AShift, AKeyChar);
+  else
+    Result := False;
+  end;
+end;
+
+function PressFocusedOrOk(const AHost: TDualPanelModalInputHost;
+  AKind: THostDialogKind; var AKey: Word; var AKeyChar: Char): Boolean;
 var
   DialogCmdId: string;
   Record_: TDialogIdProc;
   Command: TDialogCmdProc;
   Run: TProc;
 begin
-  // Before the generic Enter: Ctrl+Enter there is "show in panel", not OK.
-  if (AKind = hdkFileHistory) and Assigned(AHost.HandleFileHistoryList) and
-     AHost.HandleFileHistoryList(AKey, AShift, AKeyChar) then
+  Result := False;
+  if (AKey <> vkReturn) or (AKind = hdkNone) then
+    Exit;
+  if Assigned(AHost.DialogDropDownOpen) and AHost.DialogDropDownOpen() then
+    Exit;
+  DialogCmdId := AHost.FocusedOrDefaultButtonId();
+  if DialogCmdId = '' then
+    DialogCmdId := cDlgCmdOk;
+  // Bypasses TDialogHost.FireCommand, which would record the history.
+  Record_ := AHost.RecordDialogHistory;
+  Command := AHost.DialogCommand;
+  Run :=
+    procedure
+    begin
+      if Assigned(Record_) then
+        Record_(DialogCmdId);
+      Command(DialogCmdId, '');
+    end;
+  if Assigned(AHost.PressDialogButton) then
+    AHost.PressDialogButton(DialogCmdId, Run)
+  else
+    Run();
+  ConsumeKey(AKey, AKeyChar, True);
+  Result := True;
+end;
+
+function DispatchModalDialogInput(const AHost: TDualPanelModalInputHost;
+  AKind: THostDialogKind; var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+begin
+  // Before the generic Enter: Ctrl+Enter in a history list is "show in
+  // panel", not OK. A miss is not asked again below.
+  if (AKind in [hdkFileHistory, hdkFolderHistory]) and
+     ModalKindTookKey(AHost, AKind, AKey, AShift, AKeyChar) then
     Exit(True);
-  if (AKind = hdkFolderHistory) and Assigned(AHost.HandleFolderHistoryList) and
-     AHost.HandleFolderHistoryList(AKey, AShift, AKeyChar) then
-    Exit(True);
-  // Enter presses the focused "Background" or "Cancel" button like a click
-  // does (Cancel only asks whether to stop). With no button focused it is
-  // swallowed, so it never acts on the job by accident.
-  if (AKey = vkReturn) and (AKind = hdkJobProgress) and
-     not (Assigned(AHost.FocusedOrDefaultButtonId) and
-          (DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdBackground) or
-           DialogCmdIsCancel(AHost.FocusedOrDefaultButtonId()))) then
+  if JobProgressEnterSwallowed(AHost, AKind, AKey) then
   begin
     ConsumeKey(AKey, AKeyChar, True);
     Exit(True);
   end;
-  if (AKey = vkReturn) and (AKind <> hdkNone) and
-     not (Assigned(AHost.DialogDropDownOpen) and AHost.DialogDropDownOpen()) then
-  begin
-    DialogCmdId := AHost.FocusedOrDefaultButtonId();
-    if DialogCmdId = '' then
-      DialogCmdId := cDlgCmdOk;
-    // Bypasses TDialogHost.FireCommand, which would record the history.
-    Record_ := AHost.RecordDialogHistory;
-    Command := AHost.DialogCommand;
-    Run :=
-      procedure
-      begin
-        if Assigned(Record_) then
-          Record_(DialogCmdId);
-        Command(DialogCmdId, '');
-      end;
-    if Assigned(AHost.PressDialogButton) then
-      AHost.PressDialogButton(DialogCmdId, Run)
-    else
-      Run();
-    ConsumeKey(AKey, AKeyChar, True);
+  if PressFocusedOrOk(AHost, AKind, AKey, AKeyChar) then
     Exit(True);
-  end;
-  if AKind = hdkFolderHotlist then
-  begin
-    if Assigned(AHost.HandleHotlistList) and
-       AHost.HandleHotlistList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkWorkspaceLibrary then
-  begin
-    if Assigned(AHost.HandleWorkspaceList) and
-       AHost.HandleWorkspaceList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkTerminalProfile then
-  begin
-    if Assigned(AHost.HandleTerminalProfileList) and
-       AHost.HandleTerminalProfileList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkSshConnections then
-  begin
-    if Assigned(AHost.HandleSshConnectionsList) and
-       AHost.HandleSshConnectionsList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkAssociations then
-  begin
-    if Assigned(AHost.HandleAssociationsList) and
-       AHost.HandleAssociationsList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkColorCoding then
-  begin
-    if AHost.HandleColorList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkColorCodingEdit then
-  begin
-    if AHost.HandleColorEdit(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkSearch then
-  begin
-    if Assigned(AHost.HandleSearchEdit) and
-       AHost.HandleSearchEdit(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkMarkdownColors then
-  begin
-    if AHost.HandleMarkdownColors(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkThemeColors then
-  begin
-    if Assigned(AHost.HandleThemeColor) and
-       AHost.HandleThemeColor(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if AKind = hdkKeymap then
-  begin
-    if AHost.HandleKeymapList(AKey, AShift, AKeyChar) then
-      Exit(True);
-  end;
-  if (AKind = hdkCmdHistory) and
-     AHost.HandleCmdHistoryFilter(AKey, AShift, AKeyChar) then
-    Exit(True);
-  if (AKind = hdkCommandPalette) and
-     AHost.HandleCommandPaletteFilter(AKey, AShift, AKeyChar) then
+  if not (AKind in [hdkFileHistory, hdkFolderHistory]) and
+     ModalKindTookKey(AHost, AKind, AKey, AShift, AKeyChar) then
     Exit(True);
   Result := AHost.HandleDialogWidget(AKey, AShift, AKeyChar);
 end;

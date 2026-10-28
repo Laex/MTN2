@@ -503,6 +503,22 @@ begin
   end;
 end;
 
+function ThunkSetStatusSegmentStyled(APluginId, ASegmentId, AJson: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (ASegmentId = nil) then
+      Exit(-1);
+    if AJson = nil then
+      PluginChrome.SetStatusSegmentStyled(UTF8ToString(APluginId), UTF8ToString(ASegmentId), '')
+    else
+      PluginChrome.SetStatusSegmentStyled(UTF8ToString(APluginId), UTF8ToString(ASegmentId),
+        UTF8ToString(AJson));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkSetPanelFBar(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
 begin
   try
@@ -1639,6 +1655,7 @@ begin
   Result.RegisterDriveItem := @ThunkRegisterDriveItem;
   Result.RegisterVfsSchemeV2 := @ThunkRegisterVfsSchemeV2;
   Result.SetPanelFBar := @ThunkSetPanelFBar;
+  Result.SetStatusSegmentStyled := @ThunkSetStatusSegmentStyled;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

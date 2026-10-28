@@ -122,7 +122,7 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     }
 }
 
-$UnitPath = @('Core', 'ascii-sharks', 'ascii-sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'plugins\mtn.net', 'tests\common' |
+$UnitPath = @('Core', 'ascii-sharks', 'ascii-sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'plugins\mtn.git', 'plugins\mtn.net', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 $Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }

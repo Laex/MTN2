@@ -47,6 +47,12 @@ function StepTabDrag(const AHost: TDualPanelDragHost;
 
 function CanArmFileDragSources(APanelsWorkspace, ADialogVisible,
   AJobBusy: Boolean): Boolean;
+/// <summary>A drag between the panels may start: this is the panels workspace,
+/// and help, the top menu, a dialog, a job prompt and a tab drag are not
+/// holding the pointer. GFileDragEnabled is not consulted; that switch gates
+/// the drag out to other programs (CanArmFileDragSources).</summary>
+function CanArmPanelDrag(AKind: TWorkspaceKind; AHelpVisible, ATopMenuOpen,
+  ADialogVisible, AJobBusy, ATabDragBusy: Boolean): Boolean;
 var
   /// <summary>Options > Display: files can be dragged out of the panels with the mouse.</summary>
   GFileDragEnabled: Boolean = True;
@@ -193,6 +199,35 @@ function CanArmFileDragSources(APanelsWorkspace, ADialogVisible,
   AJobBusy: Boolean): Boolean;
 begin
   Result := GFileDragEnabled and APanelsWorkspace and (not ADialogVisible) and (not AJobBusy);
+end;
+
+function PanelsFreeForFileDrag(AKind: TWorkspaceKind; ATabDragBusy: Boolean): Boolean;
+begin
+  Result := (AKind = wkPanels) and not ATabDragBusy;
+end;
+
+function MenuChromeOpen(AHelpVisible, ATopMenuOpen: Boolean): Boolean;
+begin
+  Result := AHelpVisible or ATopMenuOpen;
+end;
+
+function ModalChromeOpen(ADialogVisible, AJobBusy: Boolean): Boolean;
+begin
+  Result := ADialogVisible or AJobBusy;
+end;
+
+function PointerFreeForPanelDrag(AHelpVisible, ATopMenuOpen, ADialogVisible,
+  AJobBusy: Boolean): Boolean;
+begin
+  Result := not (MenuChromeOpen(AHelpVisible, ATopMenuOpen) or
+    ModalChromeOpen(ADialogVisible, AJobBusy));
+end;
+
+function CanArmPanelDrag(AKind: TWorkspaceKind; AHelpVisible, ATopMenuOpen,
+  ADialogVisible, AJobBusy, ATabDragBusy: Boolean): Boolean;
+begin
+  Result := PanelsFreeForFileDrag(AKind, ATabDragBusy) and
+    PointerFreeForPanelDrag(AHelpVisible, ATopMenuOpen, ADialogVisible, AJobBusy);
 end;
 
 function FileDragPastThreshold(ACol, ARow, AStartCol, AStartRow: Integer): Boolean;

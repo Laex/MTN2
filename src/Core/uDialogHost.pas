@@ -347,6 +347,11 @@ type
     procedure SetControlDisabled(const AId: string; ADisabled: Boolean);
     function GetRadio(const AGroupId: string): string;
     function GetListSelectedIndex(const AId: string): Integer;
+    /// <summary>First visible row of the dialog's list. A reopened dialog starts at
+    /// the top; SetListScrollTop restores the position (the next draw keeps the
+    /// selected row in view).</summary>
+    function GetListScrollTop: Integer;
+    procedure SetListScrollTop(ATop: Integer);
     function GetListSelectedText(const AId: string): string;
     procedure SetStatus(const AId, AText: string);
     /// <summary>Live-update a dckLabel or dckStatus caption on the open
@@ -1313,6 +1318,16 @@ end;
 function TDialogHost.GetListSelectedIndex(const AId: string): Integer;
 begin
   Result := ListSelectedIndexOf(AId);
+end;
+
+function TDialogHost.GetListScrollTop: Integer;
+begin
+  Result := FListScrollTop;
+end;
+
+procedure TDialogHost.SetListScrollTop(ATop: Integer);
+begin
+  FListScrollTop := Max(0, ATop);
 end;
 
 function TDialogHost.GetListSelectedText(const AId: string): string;

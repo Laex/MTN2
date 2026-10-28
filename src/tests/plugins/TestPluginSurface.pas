@@ -24,6 +24,7 @@ type
     [Test] procedure TestMouseReachesThePlugin;
     [Test] procedure TestAreaSizeIsToldOnlyWhenItChanges;
     [Test] procedure TestNativeSurfaceNeedsTheHooks;
+    [Test] procedure TestHostHidesViewportUnderChrome;
   end;
 
 implementation
@@ -337,6 +338,18 @@ begin
   finally
     SetSurfaceNativeHooks(nil, nil);
   end;
+end;
+
+procedure TTestPluginSurface.TestHostHidesViewportUnderChrome;
+begin
+  Assert.IsTrue(SurfaceHostShowsViewport(True, False, False, False, False),
+    'a live panels host shows the surface');
+  Assert.IsFalse(SurfaceHostShowsViewport(False, False, False, False, False), 'the host is gone');
+  Assert.IsFalse(SurfaceHostShowsViewport(True, True, False, False, False),
+    'the console covers the panels');
+  Assert.IsFalse(SurfaceHostShowsViewport(True, False, True, False, False), 'help covers it');
+  Assert.IsFalse(SurfaceHostShowsViewport(True, False, False, True, False), 'a dialog covers it');
+  Assert.IsFalse(SurfaceHostShowsViewport(True, False, False, False, True), 'the top menu covers it');
 end;
 
 procedure TTestPluginSurface.TestRefusedTabLeavesNoSurface;

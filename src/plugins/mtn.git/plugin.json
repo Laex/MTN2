@@ -1,0 +1,12 @@
+{
+  "id": "mtn.git",
+  "name": "Git status",
+  "version": "0.2.0",
+  "abi": 4,
+  "startup": true,
+  "description": {
+    "en": "Shows the git statistics of the active panel's folder in the status line as colored badges: branch, commits ahead / behind, staged, modified, new and conflicted files, or \"clean\". Needs git in PATH.",
+    "ru": "Показывает в строке состояния статистику git для папки активной панели цветными плашками: ветка, коммиты впереди / позади, файлы в индексе, изменённые, новые и конфликтующие, либо «чисто». Нужен git в PATH."
+  },
+  "author": "MTN2"
+}

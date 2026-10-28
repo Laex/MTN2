@@ -125,6 +125,10 @@ type
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
     FHostDialogTopic: string;
+    /// <summary>The declaration of the open hdkHost dialog, with the values typed so
+    /// far: it is reopened after a color is picked for one of its fields.</summary>
+    FHostDialogDecl: TDialogDeclaration;
+    FHostPickField: string;
     FDrivePopupCtrl: TDrivePopupController;
     FFolderTreeCtrl: TFolderTreeController;
     /// <summary>Ctrl+Left/Right preview: highlight only; navigate on Ctrl release.</summary>
@@ -784,6 +788,8 @@ type
     procedure AskElevationPassword(const ADone: TProc<Boolean>);
     procedure OpenPluginListDialog;
     procedure ShowPluginList(ASelectedIndex: Integer);
+    procedure BeginHostColorPick(const AFieldId: string);
+    procedure FinishHostColorPick(const AControlId: string);
     procedure ShowPluginInfo(ARow: Integer);
     procedure ShowPluginPermissions(ARow: Integer);
     function HandlePluginPermsCommand(const AControlId: string): Boolean;
@@ -1023,6 +1029,49 @@ type
     procedure DrawAppStatusLine(AY, AWidth: Integer);
     /// <summary>The F-key bar and the status line, those that are shown.</summary>
     procedure DrawBottomChrome(W, H: Integer);
+    /// <summary>F9 toggles the top menu and an open bar takes the key before
+    /// global actions. True when the key was consumed. An Alt+letter that
+    /// matches nothing falls through, so Quick Search can still see it. The
+    /// row-0 click reaches the menu through DispatchClickOverlays.</summary>
+    function OfferTopMenuKey(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; AProgramKeys, ADialogVisible: Boolean;
+      AGlobalAct: TKeymapAction): Boolean;
+    /// <summary>Temporary-panel chords and Alt+Shift+F3 before free input.
+    /// True when the key was consumed.</summary>
+    function OfferPanelLocalChord(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; ACmdFocused: Boolean): Boolean;
+    /// <summary>Document and terminal input before host dialogs, matching
+    /// HandleClick so Enter reaches the editor. A host dialog already open
+    /// wins. True when this key does not continue to the panels; AHandled is
+    /// then the result, and False for a console that wants the key itself.</summary>
+    function TryEmbeddedInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; ADialogVisible: Boolean; out AHandled: Boolean): Boolean;
+    /// <summary>The first active input overlay takes the key. Drive lists sit
+    /// in this table ahead of Esc-to-console, so Esc closes the popup.</summary>
+    function DispatchInputOverlays(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; out AHandled: Boolean): Boolean;
+    function FreeInputSnap: TPanelFreeInputSnap;
+    /// <summary>A key that stops the screensaver does nothing else. True when
+    /// the key was consumed.</summary>
+    function ScreensaverTakesKey(var AKey: Word; var AKeyChar: Char): Boolean;
+    /// <summary>Records modifiers, shows the cursor and canonicalises the key
+    /// before any binding is matched.</summary>
+    procedure PreparePanelKey(var AKey: Word; AShift: TShiftState; var AKeyChar: Char);
+    /// <summary>Modal help takes every key. Otherwise context F1 (open menu,
+    /// or a dialog with no F1 of its own) opens help. True when the key does
+    /// not continue. ADialogVisible is the open host dialog once modal help
+    /// has been ruled out.</summary>
+    function OfferHelpKey(var AKey: Word; AShift: TShiftState; var AKeyChar: Char;
+      out ADialogVisible: Boolean; out AHandled: Boolean): Boolean;
+    /// <summary>The global action for this window's contexts, then program-key
+    /// capture. An open top menu is not in that capture.</summary>
+    procedure ResolveGlobalAction(ADialogVisible: Boolean; AKey: Word;
+      AShift: TShiftState; AKeyChar: Char; out AGlobalAct: TKeymapAction;
+      out AProgramKeys: Boolean);
+    /// <summary>A plugin hook, then the global action, then Quick View when it
+    /// has the keyboard. True when the key does not continue.</summary>
+    function OfferGlobalAndQuickView(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; AGlobalAct: TKeymapAction; ADialogVisible: Boolean): Boolean;
   protected
     procedure DrawDocumentContent(W, H: Integer);
     procedure DrawTerminalContent(W, H: Integer);
@@ -1383,7 +1432,7 @@ implementation
 uses
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
-  uCharWidth, uConfigMode;
+  uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -6143,6 +6192,7 @@ function TDualPanelWindow.DispatchDialogCommand(AKind: THostDialogKind;
 var
   HostCmd: TProc<string, string>;
   ReturnRow: Integer;
+  PickField: string;
 begin
   Result := True;
   case AKind of
@@ -6208,7 +6258,14 @@ begin
       Result := FKeymapDlg.DispatchCommand(AKind, AControlId);
     hdkCompareResult:
       FDialog.Close;
+    hdkHostColorPicker:
+      FinishHostColorPick(AControlId);
     hdkHost:
+      if DialogCmdIsPick(AControlId, PickField) then
+        // The button of a color field: the picker comes up and the dialog returns
+        // with the chosen color; the plugin sees only the final answer.
+        BeginHostColorPick(PickField)
+      else
       begin
         FDialog.Close;
         HostCmd := FHostDialogCommand;
@@ -8877,6 +8934,7 @@ begin
   FDialogKind := hdkHost;
   FHostDialogCommand := AOnCommand;
   FHostDialogTopic := AHelpTopic;
+  FHostDialogDecl := ADecl;
   FDialog.Open(ADecl, DialogCommand);
   NotifyChanged;
 end;
@@ -8902,6 +8960,55 @@ begin
   HostEnsureAllPlugins;
   HostPluginsBegin;
   ShowPluginList(0);
+end;
+
+procedure TDualPanelWindow.BeginHostColorPick(const AFieldId: string);
+var
+  I: Integer;
+  Start: TAlphaColor;
+  Title: string;
+begin
+  // Keep what the user typed: the dialog is rebuilt from the declaration.
+  for I := 0 to High(FHostDialogDecl.Controls) do
+    case FHostDialogDecl.Controls[I].Kind of
+      dckInput:
+        if FHostDialogDecl.Controls[I].Id <> '' then
+          InputLineSetText(FHostDialogDecl.Controls[I].Edit,
+            FDialog.GetInputValue(FHostDialogDecl.Controls[I].Id));
+      dckCheckbox:
+        FHostDialogDecl.Controls[I].Checked := FDialog.GetCheckbox(FHostDialogDecl.Controls[I].Id);
+      dckList, dckDropDown:
+        FHostDialogDecl.Controls[I].SelectedIndex :=
+          FDialog.GetListSelectedIndex(FHostDialogDecl.Controls[I].Id);
+    end;
+  FHostPickField := AFieldId;
+  if not HexToColor(FDialog.GetInputValue(AFieldId), Start) then
+    Start := cPickerNoColor;
+  Title := T('ui.themeEditor.pickColor', 'Pick color');
+  FDialogKind := hdkHostColorPicker;
+  FDialog.Open(BuildColorPickerDialog(Title, Start), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.FinishHostColorPick(const AControlId: string);
+var
+  I: Integer;
+  Hex: string;
+  Picked: Boolean;
+begin
+  Picked := DialogCmdIsAccept(AControlId);
+  Hex := '';
+  if Picked then
+    Hex := FDialog.GetColorPickerHex('picker');
+  if Picked or DialogCmdIs(AControlId, 'clear') then
+    for I := 0 to High(FHostDialogDecl.Controls) do
+      if (FHostDialogDecl.Controls[I].Kind = dckInput) and
+         SameText(FHostDialogDecl.Controls[I].Id, FHostPickField) then
+        InputLineSetText(FHostDialogDecl.Controls[I].Edit, Hex);
+  FDialog.Close;
+  FDialogKind := hdkHost;
+  FDialog.Open(FHostDialogDecl, DialogCommand);
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.ShowPluginList(ASelectedIndex: Integer);
@@ -9004,7 +9111,7 @@ end;
 
 function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
 var
-  Row, Delta: Integer;
+  Row, Delta, Top: Integer;
 begin
   Result := True;
   if (AControlId <> 'toggle') and (AControlId <> 'permissions') and
@@ -9021,6 +9128,7 @@ begin
     Exit;
   end;
   Row := FDialog.GetListSelectedIndex('plugins');
+  Top := FDialog.GetListScrollTop;
   FDialog.Close;
   if (AControlId = 'up') or (AControlId = 'down') then
   begin
@@ -9032,6 +9140,7 @@ begin
     if HostMovePlugin(Row, Delta) then
       Inc(Row, Delta);
     ShowPluginList(Row);
+    FDialog.SetListScrollTop(Top);
     Exit;
   end;
   if AControlId = 'info' then
@@ -9071,8 +9180,10 @@ begin
   else
     HostTogglePlugin(Row);
   // The list is rebuilt so the marks show the new state; the menu is rebuilt
-  // too, since a plugin that left or arrived takes its items with it.
+  // too, since a plugin that left or arrived takes its items with it. The rows
+  // stay where they were: the list does not jump.
   ShowPluginList(Row);
+  FDialog.SetListScrollTop(Top);
 end;
 
 function TDualPanelWindow.CurrentHelpScreen: THelpScreen;
@@ -10478,8 +10589,8 @@ var
 begin
   Result := False;
   ABounds := TRectI.Make(0, 0, -1, -1);
-  if not FAlive or FConsoleMode or HelpVisible or (Assigned(FDialog) and FDialog.Visible) or
-     (Assigned(FTopMenu) and FTopMenu.Active) then
+  if not SurfaceHostShowsViewport(FAlive, FConsoleMode, HelpVisible,
+    HasOpenDialog, TopMenuOpen) then
     Exit;
   if SurfaceMode(AHandle) = cSurfaceModePanel then
   begin
@@ -12753,9 +12864,16 @@ begin
 end;
 
 procedure TDualPanelWindow.DrawAppStatusLine(AY, AWidth: Integer);
+var
+  Segs: TArray<string>;
+  Spans: TArray<TStatusSpans>;
 begin
-  DrawAppStatusLineRow(Buffer, Theme, AY, AWidth, BuildPanelStatusSegments,
-    cMenuFg, cMenuBg);
+  Segs := BuildPanelStatusSegments;
+  if ActiveWorkspace.Kind = wkPanels then
+    Spans := PluginStatusSpans(Length(Segs))
+  else
+    Spans := nil;
+  DrawAppStatusLineRow(Buffer, Theme, AY, AWidth, Segs, cMenuFg, cMenuBg, Spans);
 end;
 
 function TDualPanelWindow.OppositeSide(ASide: TPanelSide): TPanelSide;
@@ -13238,29 +13356,170 @@ begin
     Result := Assigned(FOnQueryConsoleKeyCapture) and FOnQueryConsoleKeyCapture();
 end;
 
-function TDualPanelWindow.HandleInput(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
+function TDualPanelWindow.OfferTopMenuKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; AProgramKeys, ADialogVisible: Boolean;
+  AGlobalAct: TKeymapAction): Boolean;
 var
-  ViewH, Cols, PageSize: Integer;
-  Doc: TEditorWindow;
-  Term: TTerminalWorkspaceWindow;
-  OverlayIdx: Integer;
-  Snap: TPanelFreeInputSnap;
-  DialogVis: Boolean;
-  Chain: TArray<TKeymapContext>;
-  GlobalAct: TKeymapAction;
-  ProgramKeys: Boolean;
+  MenuActive, Offered: Boolean;
+  Chord: TKeymapAction;
+  Offer: TTopMenuKeyOffer;
+begin
+  Result := False;
+  Offered := ShouldOfferTopMenu(ActiveWorkspace.Kind, ADialogVisible);
+  MenuActive := Assigned(FTopMenu) and FTopMenu.Active;
+  // The close chord is read only while the bar is open and offered, so a
+  // closed bar or a dialog does not pay for the lookup.
+  if Assigned(FTopMenu) and not AProgramKeys and Offered and MenuActive then
+    Chord := MatchActiveActionIn([kcGlobal], KeymapLookupKey(AKey, AKeyChar), AShift)
+  else
+    Chord := kaNone;
+  Offer := ClassifyTopMenuKey(Assigned(FTopMenu), AProgramKeys, Offered, MenuActive,
+    Chord, AGlobalAct, AShift, AKey, AKeyChar);
+  case Offer.Kind of
+    tmkClose:
+      begin
+        FTopMenu.DeactivateMenu;
+        AKey := 0;
+        AKeyChar := #0;
+        Invalidate;
+        Result := True;
+      end;
+    tmkOpen:
+      begin
+        // Opening loads plugins first so their items are already in the menu.
+        // Any other key must not pay that cost.
+        HostEnsureAllPlugins;
+        FTopMenu.ActivateMenu(FTopMenu.PanelCategory, True);
+        AKey := 0;
+        AKeyChar := #0;
+        Invalidate;
+        Result := True;
+      end;
+    tmkPalette:
+      begin
+        OpenCommandPalette;
+        AKey := 0;
+        AKeyChar := #0;
+        Invalidate;
+        Result := True;
+      end;
+    tmkForward:
+      begin
+        if Offer.PreloadPlugins then
+          HostEnsureAllPlugins;
+        if FTopMenu.HandleInput(AKey, AShift, AKeyChar) then
+        begin
+          Invalidate;
+          Result := True;
+        end;
+      end;
+  end;
+end;
+
+function TDualPanelWindow.OfferPanelLocalChord(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; ACmdFocused: Boolean): Boolean;
 begin
   Result := True;
-  // A key that stops the screensaver does nothing else.
-  if Assigned(FSaver) and FSaver.Wake then
+  case ClassifyPanelLocalChord(ActivePanelIsTmp, ACmdFocused, AKey, AKeyChar, AShift) of
+    plcTmpGotoFile:
+      TmpGotoCursorFile;
+    plcTmpSave:
+      TmpSaveList;
+    plcTmpOpposite:
+      TmpGotoOpposite;
+    plcWorkspaceOpposite:
+      WorkspaceGotoOpposite;
+  else
+    Exit(False);
+  end;
+  AKey := 0;
+  AKeyChar := #0;
+end;
+
+function TDualPanelWindow.TryEmbeddedInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; ADialogVisible: Boolean; out AHandled: Boolean): Boolean;
+var
+  Doc: TEditorWindow;
+  Term: TTerminalWorkspaceWindow;
+begin
+  Result := True;
+  AHandled := False;
+  case ClassifyEmbeddedInputOwner(ActiveWorkspace.Kind, ADialogVisible, FConsoleMode) of
+    eioDocument:
+      begin
+        Doc := DocumentForWorkspace(FState.ActiveWorkspaceIndex);
+        if Doc <> nil then
+          AHandled := Doc.HandleInput(AKey, AShift, AKeyChar)
+        else
+          AHandled := True;
+      end;
+    eioTerminal:
+      begin
+        Term := TerminalForWorkspace(FState.ActiveWorkspaceIndex);
+        if Term <> nil then
+          AHandled := Term.HandleInput(AKey, AShift, AKeyChar)
+        else
+          AHandled := True;
+      end;
+    eioConsoleYield:
+      AHandled := False;
+  else
+    Result := False;
+  end;
+end;
+
+function TDualPanelWindow.DispatchInputOverlays(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; out AHandled: Boolean): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  AHandled := False;
+  for I := 0 to High(FInputOverlays) do
+    if FInputOverlays[I].IsActive() then
+    begin
+      AHandled := FInputOverlays[I].Handle(AKey, AShift, AKeyChar);
+      Exit(True);
+    end;
+end;
+
+function TDualPanelWindow.FreeInputSnap: TPanelFreeInputSnap;
+var
+  ViewH, Cols: Integer;
+begin
+  ViewH := ListViewHeight;
+  if ViewH < 1 then
+    ViewH := 1;
+  Cols := ListColCountForSide(ActiveWorkspace.State.ActiveSide);
+  Result := Default(TPanelFreeInputSnap);
+  Result.DrivePreviewActive := FDrivePreviewActive;
+  Result.QuickViewVisible := QuickViewVisible;
+  Result.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
+  Result.CmdFocused := CmdFocused;
+  Result.ViewH := ViewH;
+  Result.Cols := Cols;
+  Result.PageSize := BriefPageSize(ViewH, Cols);
+  if ActiveWorkspace.State.ActiveSide = psLeft then
+    Result.Brief := ActiveWorkspace.State.LeftPanel.ColumnMode = pcmBrief
+  else
+    Result.Brief := ActiveWorkspace.State.RightPanel.ColumnMode = pcmBrief;
+end;
+
+function TDualPanelWindow.ScreensaverTakesKey(var AKey: Word; var AKeyChar: Char): Boolean;
+begin
+  Result := Assigned(FSaver) and FSaver.Wake;
+  if Result then
   begin
     AKey := 0;
     AKeyChar := #0;
-    Exit;
   end;
+end;
+
+procedure TDualPanelWindow.PreparePanelKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char);
+begin
   SetKeyModifiers(AShift);
-  // Any key press resets blink phase so cursor is immediately visible.
+  // Any key press resets blink phase so the cursor is immediately visible.
   if not FCursorVisible then
   begin
     FCursorVisible := True;
@@ -13268,200 +13527,100 @@ begin
   end;
   NormalizePanelInputKey(AKey, AKeyChar);
   RestoreGrayOpKey(AKey, AKeyChar);
+end;
+
+function TDualPanelWindow.OfferHelpKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; out ADialogVisible: Boolean; out AHandled: Boolean): Boolean;
+begin
+  ADialogVisible := False;
+  AHandled := False;
   // F1 Help is modal over the menu, workspaces and dialogs alike.
   if HelpVisible then
-    Exit(FHelp.HandleInput(AKey, AShift, AKeyChar));
-  DialogVis := Assigned(FDialog) and FDialog.Visible;
-
+  begin
+    AHandled := FHelp.HandleInput(AKey, AShift, AKeyChar);
+    Exit(True);
+  end;
+  ADialogVisible := Assigned(FDialog) and FDialog.Visible;
   // Context F1 first: the open top menu takes every key, and a dialog would
   // get it next. The keymap editor's key field records F1 as a key.
   if IsContextHelpChord(AKey, AShift, Assigned(FTopMenu) and FTopMenu.Active,
-    DialogVis and not DialogKindTakesF1(FDialogKind)) then
+    ADialogVisible and not DialogKindTakesF1(FDialogKind)) then
   begin
     OpenHelp;
     AKey := 0;
     AKeyChar := #0;
-    Exit;
+    AHandled := True;
+    Exit(True);
   end;
+  Result := False;
+end;
 
-  // Global keymap actions (uKeymap kcGlobal: F1, F9, Ctrl+Tab, Ctrl+O,
-  // Alt+X, ...) work in every workspace, so they are looked up before the
-  // document / terminal early-exit below -- but along the active window's
+procedure TDualPanelWindow.ResolveGlobalAction(ADialogVisible: Boolean; AKey: Word;
+  AShift: TShiftState; AKeyChar: Char; out AGlobalAct: TKeymapAction;
+  out AProgramKeys: Boolean);
+var
+  Doc: TEditorWindow;
+  Chain: TArray<TKeymapContext>;
+begin
+  // Looked up before the document / terminal early-exit, along this window's
   // own contexts first: a key the document binds (F10, Esc) stays its own.
-  case ActiveWorkspace.Kind of
-    wkDocument:
-      begin
-        Doc := DocumentForWorkspace(FState.ActiveWorkspaceIndex);
-        if Doc <> nil then
-          Chain := Doc.KeymapChain
-        else
-          Chain := [kcDocument];
-      end;
-    wkTerminal:
-      Chain := [kcTerminal, kcShell];
+  if ActiveWorkspace.Kind = wkDocument then
+    Doc := DocumentForWorkspace(FState.ActiveWorkspaceIndex)
   else
-    if FConsoleMode then
-      Chain := [kcConsole, kcShell]
-    else
-      Chain := [kcPanels];
-  end;
-  GlobalAct := GlobalKeymapAction(ActiveKeymap, Chain, AKey, AKeyChar, AShift, DialogVis);
-  // A console in program-keys mode: the host keeps only the keys that leave
-  // the console; its menu, help and the rest of the global keys go to the
-  // program (an open top menu still takes its keys).
-  ProgramKeys := ProgramCapturesKeys and not (Assigned(FTopMenu) and FTopMenu.Active);
-  if ProgramKeys and not IsKeyboardCaptureExitAction(GlobalAct) then
-    GlobalAct := kaNone;
-
-  // Top menu: its key (F9) opens and closes the bar, so does an Alt
-  // release; an open bar takes every key, and Alt+letter hotkeys that match
-  // none of its items fall through to Quick Search. Same offer on
-  // Viewer/Editor tabs as on panels: a row 0 click reaches the menu via
-  // DispatchClickOverlays. Not while a modal dialog is open, or F9 would win
-  // over dialog bindings (hdkColorCodingEdit's "pick a color").
-  if Assigned(FTopMenu) and not ProgramKeys and
-     ShouldOfferTopMenu(ActiveWorkspace.Kind, DialogVis) then
-  begin
-    if FTopMenu.Active and (MatchActiveActionIn([kcGlobal],
-      KeymapLookupKey(AKey, AKeyChar), AShift) = kaTopMenu) then
-    begin
-      FTopMenu.DeactivateMenu;
-      AKey := 0;
-      AKeyChar := #0;
-      Invalidate;
-      Exit(True);
-    end;
-    // Opening: load plugins first so their items are already in the menu;
-    // any other key must not pay that cost.
-    if not FTopMenu.Active and (GlobalAct = kaTopMenu) then
-    begin
-      HostEnsureAllPlugins;
-      FTopMenu.ActivateMenu(FTopMenu.PanelCategory, True);
-      AKey := 0;
-      AKeyChar := #0;
-      Invalidate;
-      Exit(True);
-    end;
-    if not FTopMenu.Active and (GlobalAct = kaCommandPalette) then
-    begin
-      OpenCommandPalette;
-      AKey := 0;
-      AKeyChar := #0;
-      Invalidate;
-      Exit(True);
-    end;
-    if not FTopMenu.Active and (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
-      HostEnsureAllPlugins;
-    if FTopMenu.HandleInput(AKey, AShift, AKeyChar) then
-    begin
-      Invalidate;
-      Exit(True);
-    end;
-  end;
-
-  if InterceptKeymapAction(GlobalAct, 'key') then
-  begin
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if DispatchGlobalAction(FKeymapHost, GlobalAct, AKey, AKeyChar) then
-    Exit;
-  if FQuickViewFocused and not DialogVis and
-     HandleQuickViewKey(AKey, AShift, AKeyChar) then
-    Exit;
-
-  // Embedded Viewer/Editor: document input (and its dialogs) before Dual Panel
-  // host dialogs - matches HandleClick order so Enter reaches Editor Code page.
-  // Still yields to a host-level dialog if one is open (e.g. Help/About/Theme
-  // opened via the top menu while a document tab is active).
-  case ClassifyEmbeddedInputOwner(ActiveWorkspace.Kind, DialogVis, FConsoleMode) of
-    eioDocument:
-      begin
-        Doc := DocumentForWorkspace(FState.ActiveWorkspaceIndex);
-        if Doc <> nil then
-          Result := Doc.HandleInput(AKey, AShift, AKeyChar)
-        else
-          Result := True;
-        Exit;
-      end;
-    eioTerminal:
-      begin
-        Term := TerminalForWorkspace(FState.ActiveWorkspaceIndex);
-        if Term <> nil then
-          Result := Term.HandleInput(AKey, AShift, AKeyChar)
-        else
-          Result := True;
-        Exit;
-      end;
-    eioConsoleYield:
-      Exit(False);
-  end;
-
-  // Alt+F1/F2 drive list is included below - before Esc>Console so Esc
-  // closes the popup - via the same FInputOverlays table as the dialog/
-  // search/job/menu overlays above it, in that priority order.
-  for OverlayIdx := 0 to High(FInputOverlays) do
-    if FInputOverlays[OverlayIdx].IsActive() then
-      Exit(FInputOverlays[OverlayIdx].Handle(AKey, AShift, AKeyChar));
-
-  ViewH := ListViewHeight;
-  if ViewH < 1 then
-    ViewH := 1;
-  Cols := ListColCountForSide(ActiveWorkspace.State.ActiveSide);
-  PageSize := BriefPageSize(ViewH, Cols);
-  Snap := Default(TPanelFreeInputSnap);
-  Snap.DrivePreviewActive := FDrivePreviewActive;
-  Snap.QuickViewVisible := QuickViewVisible;
-  Snap.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
-  Snap.CmdFocused := CmdFocused;
-  Snap.ViewH := ViewH;
-  Snap.Cols := Cols;
-  Snap.PageSize := PageSize;
-  if ActiveWorkspace.State.ActiveSide = psLeft then
-    Snap.Brief := ActiveWorkspace.State.LeftPanel.ColumnMode = pcmBrief
+    Doc := nil;
+  if Assigned(Doc) then
+    Chain := GlobalLookupChain(wkDocument, FConsoleMode, True, Doc.KeymapChain)
   else
-    Snap.Brief := ActiveWorkspace.State.RightPanel.ColumnMode = pcmBrief;
-  // Panel-only chords below; a focused command line takes every key
-  // (DispatchPanelFreeInput).
-  if ActivePanelIsTmp and not Snap.CmdFocused then
+    Chain := GlobalLookupChain(ActiveWorkspace.Kind, FConsoleMode, False, nil);
+  AGlobalAct := GlobalKeymapAction(ActiveKeymap, Chain, AKey, AKeyChar, AShift,
+    ADialogVisible);
+  // An open top menu still takes its keys, so program-keys mode does not apply.
+  AProgramKeys := ProgramCapturesKeys and not (Assigned(FTopMenu) and FTopMenu.Active);
+  AGlobalAct := ApplyProgramKeyCapture(AGlobalAct, AProgramKeys);
+end;
+
+function TDualPanelWindow.OfferGlobalAndQuickView(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; AGlobalAct: TKeymapAction; ADialogVisible: Boolean): Boolean;
+begin
+  if InterceptKeymapAction(AGlobalAct, 'key') then
   begin
-    if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkPrior, [ssCtrl]) then
-    begin
-      TmpGotoCursorFile;
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssAlt, ssShift]) then
-    begin
-      if AKey = vkF2 then
-      begin
-        TmpSaveList;
-        AKey := 0;
-        AKeyChar := #0;
-        Exit(True);
-      end;
-      if AKey = vkF3 then
-      begin
-        TmpGotoOpposite;
-        AKey := 0;
-        AKeyChar := #0;
-        Exit(True);
-      end;
-    end;
-  end;
-  // Alt+Shift+F3: reveal the cursor item on the opposite panel. Must run
-  // even after Enter on a workspace dir-link (CurrentURI is then file://).
-  // The temporary panel's own chord is handled above.
-  if not ActivePanelIsTmp and not Snap.CmdFocused and
-     TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkF3, [ssAlt, ssShift]) then
-  begin
-    WorkspaceGotoOpposite;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
   end;
+  if DispatchGlobalAction(FKeymapHost, AGlobalAct, AKey, AKeyChar) then
+    Exit(True);
+  Result := FQuickViewFocused and not ADialogVisible and
+    HandleQuickViewKey(AKey, AShift, AKeyChar);
+end;
+
+function TDualPanelWindow.HandleInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+var
+  DialogVis: Boolean;
+  GlobalAct: TKeymapAction;
+  ProgramKeys: Boolean;
+  Handled: Boolean;
+  Snap: TPanelFreeInputSnap;
+begin
+  Result := True;
+  if ScreensaverTakesKey(AKey, AKeyChar) then
+    Exit(True);
+  PreparePanelKey(AKey, AShift, AKeyChar);
+  if OfferHelpKey(AKey, AShift, AKeyChar, DialogVis, Handled) then
+    Exit(Handled);
+  ResolveGlobalAction(DialogVis, AKey, AShift, AKeyChar, GlobalAct, ProgramKeys);
+  if OfferTopMenuKey(AKey, AShift, AKeyChar, ProgramKeys, DialogVis, GlobalAct) then
+    Exit(True);
+  if OfferGlobalAndQuickView(AKey, AShift, AKeyChar, GlobalAct, DialogVis) then
+    Exit(True);
+  if TryEmbeddedInput(AKey, AShift, AKeyChar, DialogVis, Handled) then
+    Exit(Handled);
+  if DispatchInputOverlays(AKey, AShift, AKeyChar, Handled) then
+    Exit(Handled);
+  Snap := FreeInputSnap;
+  if OfferPanelLocalChord(AKey, AShift, AKeyChar, Snap.CmdFocused) then
+    Exit(True);
   Result := DispatchPanelFreeInput(FFreeInputHost, FKeymapHost, Snap, AKey, AShift,
     AKeyChar);
 end;
@@ -13782,8 +13941,8 @@ var
   Sources: TArray<string>;
 begin
   CancelFileDrag;
-  if (ActiveWorkspace.Kind <> wkPanels) or HelpVisible or TopMenuOpen or HasOpenDialog or
-     (Assigned(FJobs) and FJobs.OwnsInput) or TabDragBusy(FTabDragArmed, FTabDragActive) then
+  if not CanArmPanelDrag(ActiveWorkspace.Kind, HelpVisible, TopMenuOpen, HasOpenDialog,
+    Assigned(FJobs) and FJobs.OwnsInput, TabDragBusy(FTabDragArmed, FTabDragActive)) then
     Exit;
   if not ResolvePanelHitContext(ALocalCol, ALocalRow, Side, Bounds, Panel) then
     Exit;

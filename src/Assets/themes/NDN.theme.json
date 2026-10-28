@@ -222,6 +222,7 @@
     {
       "name": "Archives",
       "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "sortPriority": -2,
       "normal": {
         "fg": "#FF55FF"
       }
@@ -229,6 +230,7 @@
     {
       "name": "Executables",
       "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "sortPriority": -1,
       "normal": {
         "fg": "#55FF55"
       }
@@ -236,6 +238,7 @@
     {
       "name": "Temporary",
       "mask": "*.tmp;*.bak;*.old",
+      "sortPriority": 1,
       "normal": {
         "fg": "#AAAAAA"
       }

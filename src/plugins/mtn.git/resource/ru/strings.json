@@ -1,0 +1,31 @@
+{
+  "label": {
+    "ahead": "впереди",
+    "behind": "позади",
+    "staged": "в индексе",
+    "changed": "изменено",
+    "untracked": "новых",
+    "conflicts": "конфликтов",
+    "clean": "чисто"
+  },
+  "badge": {
+    "branch": "Ветка",
+    "sync": "Впереди / позади",
+    "staged": "В индексе",
+    "changed": "Изменено",
+    "untracked": "Новые файлы",
+    "conflicts": "Конфликты",
+    "clean": "Чисто"
+  },
+  "dlg": {
+    "title": "Git status",
+    "refresh": "Опрашивать git каждые (с):",
+    "fg": "Текст",
+    "bg": "Фон",
+    "sample": "Образец",
+    "sampleText": "Образец",
+    "hint": "#RRGGBB; кнопка выбирает цвет; пусто – стандартный",
+    "ok": "OK",
+    "cancel": "Отмена"
+  }
+}

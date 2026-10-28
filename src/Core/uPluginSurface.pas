@@ -53,6 +53,12 @@ const
 /// <summary>Registers (or, with nil, removes) the window that shows surface tabs.</summary>
 procedure SetPluginSurfaceHost(const AOpen: TSurfaceOpenHandler);
 
+/// <summary>False when the host is not on screen (gone, or the console covers
+/// the panels) or help, a dialog or the top menu covers the surface. The
+/// window then reports no viewport, so nothing is drawn under that chrome.</summary>
+function SurfaceHostShowsViewport(AAlive, AConsoleMode, AHelpVisible,
+  ADialogVisible, ATopMenuOpen: Boolean): Boolean;
+
 /// <summary>Opens a surface tab titled ATitle for plugin APluginId. AOnKey, AOnTick
 /// and AOnClosed are optional. Returns the handle (above 0), or 0 when no tab can
 /// be opened.</summary>
@@ -208,6 +214,23 @@ begin
   except
     // A faulty plugin callback must not break the host's timer.
   end;
+end;
+
+function HostIsOnScreen(AAlive, AConsoleMode: Boolean): Boolean;
+begin
+  Result := AAlive and not AConsoleMode;
+end;
+
+function ChromeCoversViewport(AHelpVisible, ADialogVisible, ATopMenuOpen: Boolean): Boolean;
+begin
+  Result := AHelpVisible or ADialogVisible or ATopMenuOpen;
+end;
+
+function SurfaceHostShowsViewport(AAlive, AConsoleMode, AHelpVisible,
+  ADialogVisible, ATopMenuOpen: Boolean): Boolean;
+begin
+  Result := HostIsOnScreen(AAlive, AConsoleMode) and
+    not ChromeCoversViewport(AHelpVisible, ADialogVisible, ATopMenuOpen);
 end;
 
 procedure SetPluginSurfaceHost(const AOpen: TSurfaceOpenHandler);

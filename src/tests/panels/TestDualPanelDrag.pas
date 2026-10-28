@@ -191,6 +191,16 @@ begin
   end;
   Assert.IsTrue(CanArmFileDragSources(True, False, False), 'panels idle');
 
+  Assert.IsTrue(CanArmPanelDrag(wkPanels, False, False, False, False, False),
+    'panels, nothing else holds the pointer');
+  Assert.IsTrue(not CanArmPanelDrag(wkDocument, False, False, False, False, False),
+    'a document workspace has no panel drag');
+  Assert.IsTrue(not CanArmPanelDrag(wkPanels, True, False, False, False, False), 'help holds the pointer');
+  Assert.IsTrue(not CanArmPanelDrag(wkPanels, False, True, False, False, False), 'the top menu holds it');
+  Assert.IsTrue(not CanArmPanelDrag(wkPanels, False, False, True, False, False), 'a dialog holds it');
+  Assert.IsTrue(not CanArmPanelDrag(wkPanels, False, False, False, True, False), 'a job prompt holds it');
+  Assert.IsTrue(not CanArmPanelDrag(wkPanels, False, False, False, False, True), 'a tab drag holds it');
+
   Assert.IsTrue(not FileDragPastThreshold(3, 3, 3, 3), 'file no move');
   Assert.IsTrue(not FileDragPastThreshold(4, 3, 3, 3), 'one cell sideways is still a click');
   Assert.IsTrue(not FileDragPastThreshold(3, 4, 3, 3), 'one row down is still a click');

@@ -18,6 +18,7 @@ type
     [Test] procedure TestReplaceHintMapsToF7;
     [Test] procedure TestFBarFollowsKeymap;
     [Test] procedure TestPluginChromeInPanelsBars;
+    [Test] procedure TestColoredPartsArePaintedOverPluginSegment;
   end;
 
 implementation
@@ -526,6 +527,40 @@ end;
 procedure TTestDualPanelStatus.TestReplaceHintMapsToF7;
 begin
   TestDualPanelStatus.TestReplaceHintMapsToF7;
+end;
+
+procedure TTestDualPanelStatus.TestColoredPartsArePaintedOverPluginSegment;
+const
+  cFg: TAlphaColor = $FFFFFFFF;
+  cBg: TAlphaColor = $FF202020;
+  cRed: TAlphaColor = $FFC62828;
+var
+  Grid: TTerminalGrid;
+  Segs: TArray<string>;
+  Spans: TArray<TStatusSpans>;
+  Part: TStatusSpan;
+begin
+  AllocTerminalGrid(Grid, 30, 1);
+  Segs := ['host', 'ab'];
+  SetLength(Spans, 2);
+  Part := Default(TStatusSpan);
+  Part.Text := 'a';
+  Part.HasBg := True;
+  Part.Bg := cRed;
+  Part.Bold := True;
+  Spans[1] := [Part];
+  Part := Default(TStatusSpan);
+  Part.Text := 'b';
+  Spans[1] := Spans[1] + [Part];
+  // No theme: the sections are joined with two spaces from column 1.
+  DrawAppStatusLineRow(Grid, nil, 0, 30, Segs, cFg, cBg, Spans);
+  Assert.AreEqual('a', string(Grid[0][7].CharValue), 'plugin segment starts after the host one');
+  Assert.IsTrue(Grid[0][7].BgColor = cRed, 'colored part has its background');
+  Assert.IsTrue(ccaBold in Grid[0][7].Attributes, 'bold part');
+  Assert.IsTrue(Grid[0][7].FgColor = cFg, 'a part without text color keeps the line''s');
+  Assert.IsTrue(Grid[0][8].BgColor = cBg, 'plain part keeps the line''s colors');
+  Assert.IsTrue(Grid[0][1].BgColor = cBg, 'host section is not painted');
+  Assert.IsTrue(Length(PluginStatusSpans(0)) = 0, 'no segments, no parts');
 end;
 
 initialization

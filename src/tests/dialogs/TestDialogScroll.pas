@@ -17,6 +17,7 @@ type
     [Test] procedure TestFocusingAFarControlScrollsItIntoView;
     [Test] procedure TestTabReachesTheLastButton;
     [Test] procedure TestDialogThatFitsHasNoBar;
+    [Test] procedure TestReopenedListKeepsItsScrollPosition;
   end;
 
 implementation
@@ -144,6 +145,43 @@ begin
     Assert.IsTrue(InView(Host, 'ok'), 'everything is shown when the window is tall enough');
     Assert.AreNotEqual<Integer>(Ord(#$25B2),
       Ord(Grid[Host.Bounds.Top + 1][Host.Bounds.Right].CharValue), 'no bar');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogScroll.TestReopenedListKeepsItsScrollPosition;
+var
+  Host: TDialogHost;
+  Json: string;
+  Grid: TTerminalGrid;
+  I, Top: Integer;
+begin
+  Json := '{"type":"dialog","version":"2.0","title":"t","width":40,"height":12,"children":[' +
+    '{"type":"list","id":"l","selected":3,"items":[';
+  for I := 0 to 29 do
+  begin
+    if I > 0 then
+      Json := Json + ',';
+    Json := Json + Format('"item %d"', [I]);
+  end;
+  Json := Json + '],"col":1,"row":0,"width":36,"height":7}]}';
+  Host := TDialogHost.Create(nil);
+  try
+    Assert.IsTrue(Host.OpenJson(Json, nil));
+    DrawIn(Host, 24, Grid);
+    Assert.IsTrue(Host.GetListScrollTop = 0, 'the selected row near the top: no scroll');
+    Host.SetListScrollTop(12);
+    DrawIn(Host, 24, Grid);
+    Top := Host.GetListScrollTop;
+    Assert.IsTrue(Top >= 3, 'the selected row stays in view: ' + IntToStr(Top));
+    Assert.IsTrue(Top <= 3, 'the list is not scrolled past the selected row');
+    // A rebuilt dialog starts at the top; the restored position holds.
+    Host.Close;
+    Assert.IsTrue(Host.OpenJson(Json.Replace('"selected":3', '"selected":10'), nil));
+    Host.SetListScrollTop(5);
+    DrawIn(Host, 24, Grid);
+    Assert.IsTrue(Host.GetListScrollTop = 5, 'a position that keeps the selection in view is kept');
   finally
     Host.Free;
   end;

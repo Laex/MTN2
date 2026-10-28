@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.UITypes,
   uFunctionBar, uDualPanelUiTypes, uDualPanelTypes, uThemeTypes, uTerminalTypes,
-  uStatusSegments;
+  uStatusSegments, uPluginChrome;
 
 type
   TPanelChromeStatus = record
@@ -92,14 +92,20 @@ function AssembleStatusSegments(const AHost: TDualPanelStatusHost;
 /// when the line is a dialog's or the terminal's: nothing to click).</summary>
 function AssembleStatusLine(const AHost: TDualPanelStatusHost;
   const ASnap: TPanelStatusSnapshot; out AKinds: TArray<TStatusSegKind>): TArray<string>;
+/// <summary>Colored parts for ASegs of a panel status line: plugin segments are the
+/// last ones, the host's own sections have none. ASegCount = Length(ASegs).</summary>
+function PluginStatusSpans(ASegCount: Integer): TArray<TStatusSpans>;
+/// <summary>Draws the status line; ASpans (nil = none) holds the colored parts of
+/// each segment of ASegs, painted over the segment's text.</summary>
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; AY, AWidth: Integer;
-  const ASegs: TArray<string>; AFallbackFg, AFallbackBg: TAlphaColor);
+  const ASegs: TArray<string>; AFallbackFg, AFallbackBg: TAlphaColor;
+  const ASpans: TArray<TStatusSpans> = nil);
 
 implementation
 
 uses
-  uVfsTypes, uStrings, uPluginChrome, uDisplaySettings;
+  uVfsTypes, uStrings, uDisplaySettings, uCharWidth;
 
 // Status line captions are translated where they are built, never as whole
 // segments: a segment can also be a path or a file name, and a file called
@@ -141,7 +147,7 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
       hdkColumnsConfig, hdkDisplay,
-      hdkColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
+      hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
       hdkCompareOptions, hdkDatePicker,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
@@ -307,7 +313,7 @@ begin
       Result := TArray<string>.Create(S('Interface'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColumnsConfig:
       Result := TArray<string>.Create(S('Columns'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
-    hdkColorPicker, hdkMarkdownPicker, hdkThemePicker:
+    hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkThemePicker:
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
@@ -501,17 +507,78 @@ begin
     Result := Result + PluginChrome.StatusSegments;
 end;
 
+function PluginStatusSpans(ASegCount: Integer): TArray<TStatusSpans>;
+var
+  Own: TArray<TStatusSpans>;
+  I, First: Integer;
+begin
+  Own := PluginChrome.StatusSegmentSpans;
+  First := ASegCount - Length(Own);
+  if First < 0 then
+    Exit(nil);
+  SetLength(Result, ASegCount);
+  for I := 0 to High(Own) do
+    Result[First + I] := Own[I];
+end;
+
+procedure PaintSegmentSpans(const ABuffer: TTerminalGrid; AY, AWidth: Integer;
+  const ASegs: TArray<string>; const ASpans: TArray<TStatusSpans>; AGap: Integer);
+var
+  I, J, X: Integer;
+  Span: TStatusSpan;
+  BaseFg, BaseBg, Fg, Bg: TAlphaColor;
+  Attr: TCharCellAttributes;
+begin
+  if (AY < 0) or (AY > High(ABuffer)) then
+    Exit;
+  X := 1;
+  for I := 0 to High(ASegs) do
+  begin
+    if (X >= AWidth) or (X > High(ABuffer[AY])) then
+      Break;
+    if (I <= High(ASpans)) and (Length(ASpans[I]) > 0) then
+    begin
+      // A part without its own colors keeps what the theme drew under it.
+      BaseFg := ABuffer[AY][X].FgColor;
+      BaseBg := ABuffer[AY][X].BgColor;
+      for J := 0 to High(ASpans[I]) do
+      begin
+        Span := ASpans[I][J];
+        Attr := [];
+        if Span.Bold then
+          Include(Attr, ccaBold);
+        Fg := BaseFg;
+        Bg := BaseBg;
+        if Span.HasFg then
+          Fg := Span.Fg;
+        if Span.HasBg then
+          Bg := Span.Bg;
+        PutGridTextClipped(ABuffer, X, AY, AWidth - 1, Span.Text, Fg, Bg, Attr);
+        Inc(X, TextDisplayWidth(Span.Text));
+      end;
+      Inc(X, AGap);
+    end
+    else
+      Inc(X, TextDisplayWidth(ASegs[I]) + AGap);
+  end;
+end;
+
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; AY, AWidth: Integer;
-  const ASegs: TArray<string>; AFallbackFg, AFallbackBg: TAlphaColor);
+  const ASegs: TArray<string>; AFallbackFg, AFallbackBg: TAlphaColor;
+  const ASpans: TArray<TStatusSpans>);
 begin
   if Assigned(ATheme) then
-    ATheme.DrawStatusLine(ABuffer, TRectI.Make(0, AY, AWidth - 1, AY), ASegs, [])
+  begin
+    ATheme.DrawStatusLine(ABuffer, TRectI.Make(0, AY, AWidth - 1, AY), ASegs, []);
+    PaintSegmentSpans(ABuffer, AY, AWidth, ASegs, ASpans, 3);
+  end
   else
   begin
     FillGridRect(ABuffer, 0, AY, AWidth - 1, AY, ' ', AFallbackFg, AFallbackBg);
     if Length(ASegs) > 0 then
       PutGridText(ABuffer, 1, AY, string.Join('  ', ASegs), AFallbackFg, AFallbackBg);
+    PaintSegmentSpans(ABuffer, AY, AWidth, ASegs, ASpans, 2);
   end;
 end;
 

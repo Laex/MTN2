@@ -49,7 +49,7 @@ const
   /// RegisterHighlighter, VfsList, VfsExists, VfsRead, VfsOpen, VfsSize, VfsReadAt,
   /// VfsClose, VfsCancel, SurfaceGetFullscreen.
   /// 3: Translate.
-  /// 4: RegisterDriveItem, RegisterVfsSchemeV2.</summary>
+  /// 4: RegisterDriveItem, RegisterVfsSchemeV2, SetPanelFBar, SetStatusSegmentStyled.</summary>
   cPluginAbiVersion: Int64 = 4;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
@@ -460,6 +460,15 @@ type
   /// Unloading the plugin removes its labels.</summary>
   THostSetPanelFBarFn = function(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
 
+  /// <summary>As SetStatusSegment, with colored parts. AJson is an array of parts:
+  /// [{"t": "main", "role": "info", "fg": "#RRGGBB", "bg": "#RRGGBB", "b": true}, ...];
+  /// "t" is the text, "role" one of ok, warn, error, info, accent, neutral (a
+  /// text and background color pair that reads on any theme), "fg" / "bg"
+  /// override a color of the role, "b" makes the part bold. A part without
+  /// colors takes the theme's status colors. An empty or nil AJson, or one
+  /// without text, removes the segment. 0 = ok, -1 = bad arguments.</summary>
+  THostSetStatusSegmentStyledFn = function(APluginId, ASegmentId, AJson: PAnsiChar): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -527,6 +536,7 @@ type
     RegisterDriveItem: THostRegisterDriveItemFn;
     RegisterVfsSchemeV2: THostRegisterVfsSchemeV2Fn;
     SetPanelFBar: THostSetPanelFBarFn;
+    SetStatusSegmentStyled: THostSetStatusSegmentStyledFn;
   end;
   PHostApiTable = ^THostApiTable;
 

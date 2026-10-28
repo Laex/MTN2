@@ -22,6 +22,7 @@ type
     [Test] procedure TestInterfaceDialog;
     [Test] procedure TestDeleteErrorDialog;
     [Test] procedure TestJobProgressDialogs;
+    [Test] procedure TestControlTypesParse;
   end;
 
 implementation
@@ -252,6 +253,172 @@ begin
   Assert.IsTrue(FindControlById(LDecl, 'fonts') < 0, 'font list belongs to display.json');
 end;
 
+procedure TestControlTypesParse;
+const
+  cJson =
+    '{"type":"dialog","title":"T","width":40,"height":16,"children":[' +
+    '{"type":"label","id":"lb","text":"Hi","accent":true,"marked":true,"col":3,"row":2,"width":4},' +
+    '{"type":"input","id":"pw","value":"s","password":true,"history":"h","readonly":true,' +
+      '"colorpick":true,"datepick":true},' +
+    '{"type":"input","id":"nm","value":"v","history":"masks"},' +
+    '{"type":"checkbox","id":"ck","text":"C","checked":true},' +
+    '{"type":"radiobox","id":"rb","text":"R","checked":true},' +
+    '{"type":"radio","id":"rb2","group":"grp","text":"R2"},' +
+    '{"type":"status","id":"st","text":"Ready"},' +
+    '{"type":"separator","width":4},' +
+    '{"type":"colorsample","id":"cs","text":"t","fgFrom":"f","bgFrom":"b","panelState":"selected",' +
+      '"styleFrom":"s","baseStyle":"bold","fgFallback":"ff","bgFallback":"bf"},' +
+    '{"type":"colorpicker","id":"cp"},' +
+    '{"type":"datepicker","id":"dp"},' +
+    '{"type":"list","id":"ls","selected":1,"items":["a",2,null],"frame":true,"keycommands":true},' +
+    '{"type":"dropdown","id":"dd","selected":1,"items":["a","b"]},' +
+    '{"type":"dropdownlist","id":"dl","selected":1,"items":["a","b"]},' +
+    '{"type":"drop_down","id":"du","selected":1,"items":["a","b"]},' +
+    '{"type":"combo","id":"cb","selected":1,"items":["a","b"]},' +
+    '{"type":"radio_group","id":"g","text":"G","selected":1,"items":["a","b"],' +
+      '"item_ids":["ia","ib"],"itemIds":["xa","xb"]},' +
+    '{"type":"radiogroup","id":"g2","text":"G2","items":["a","b"],"itemIds":["ca","cb"]},' +
+    '{"type":"radio_group","id":"ge2","text":"E","items":["a"],"item_ids":[],"itemIds":["no"]},' +
+    '{"type":"radio_group","id":"gc","text":"C","children":[' +
+      '{"type":"label","text":"nope"},1,{"type":"radio","id":"r1","text":"One"},' +
+      '{"type":"radiobox","id":"r2","text":"Two","checked":true}]},' +
+    '{"type":"radio_group","id":"ge","text":"E2","selected":0,"children":[' +
+      '{"type":"radio","id":"e1","text":"One"},{"type":"radio","id":"e2","text":"Two","checked":true}]},' +
+    '{"type":"button_row","children":[' +
+      '{"type":"button","id":"ok","text":"OK","default":true},"x",' +
+      '{"type":"dialog","children":[{"type":"button","id":"cancel","text":"Cancel","cancel":true}]}]},' +
+    '{"type":"nope","id":"z"}]}';
+var
+  Decl: TDialogDeclaration;
+  C: TDialogControl;
+  Raised: Boolean;
+
+  function ById(const AId: string): TDialogControl;
+  var
+    I: Integer;
+  begin
+    I := FindControlById(Decl, AId);
+    Assert.IsTrue(I >= 0, AId + ' is missing');
+    Result := Decl.Controls[I];
+  end;
+
+begin
+  Assert.IsTrue(TryParseDialogJson(cJson, Decl), 'parses');
+  Assert.IsTrue(Length(Decl.Controls) = 23, 'unknown type and non-objects add nothing');
+  Assert.IsTrue(FindControlById(Decl, 'z') < 0, 'unknown type is skipped');
+
+  C := ById('lb');
+  Assert.IsTrue(C.Kind = dckLabel, 'label');
+  Assert.AreEqual('Hi', C.Text);
+  Assert.IsTrue(C.Accent, 'accent');
+  Assert.IsTrue(C.Marked, 'marked');
+  Assert.AreEqual(3, C.Col);
+  Assert.AreEqual(2, C.Row);
+  Assert.AreEqual(4, C.BoxW);
+
+  C := ById('pw');
+  Assert.IsTrue(C.Kind = dckInput, 'password input');
+  Assert.AreEqual('s', C.Edit.Text);
+  Assert.IsTrue(C.Password, 'password');
+  Assert.AreEqual('', C.History, 'password drops history');
+  Assert.IsTrue(C.ReadOnly and C.ColorPick and C.DatePick, 'input flags');
+
+  C := ById('nm');
+  Assert.AreEqual('v', C.Edit.Text);
+  Assert.AreEqual('masks', C.History);
+
+  C := ById('ck');
+  Assert.IsTrue((C.Kind = dckCheckbox) and C.Checked, 'checkbox');
+
+  C := ById('rb');
+  Assert.IsTrue(C.Kind = dckRadio, 'radiobox');
+  Assert.AreEqual('rb', C.Group, 'empty group falls back to id');
+  Assert.IsTrue(C.Checked, 'radiobox checked');
+  C := ById('rb2');
+  Assert.AreEqual('grp', C.Group);
+
+  C := ById('st');
+  Assert.IsTrue((C.Kind = dckStatus) and (C.Text = 'Ready'), 'status');
+
+  C := Decl.Controls[FindControlById(Decl, 'st') + 1];
+  Assert.IsTrue(IsHRuleText(C.Text), 'separator');
+  Assert.AreEqual(4, Length(C.Text));
+  Assert.AreEqual(4, C.BoxW);
+
+  C := ById('cs');
+  Assert.IsTrue(C.Kind = dckColorSample, 'color sample');
+  Assert.AreEqual('f', C.FgSourceId);
+  Assert.AreEqual('b', C.BgSourceId);
+  Assert.IsTrue(C.PanelState = cspsSelected, 'panel state');
+  Assert.AreEqual('s', C.StyleSourceId);
+  Assert.AreEqual('bold', C.BaseStyle);
+  Assert.AreEqual('ff', C.FgFallbackId);
+  Assert.AreEqual('bf', C.BgFallbackId);
+
+  Assert.IsTrue(ById('cp').Kind = dckColorPicker, 'color picker');
+  Assert.IsTrue(ById('dp').Kind = dckDatePicker, 'date picker');
+
+  C := ById('ls');
+  Assert.IsTrue(C.Kind = dckList, 'list');
+  Assert.IsTrue(Length(C.Items) = 3, 'list items');
+  Assert.AreEqual('a', C.Items[0]);
+  Assert.AreEqual('', C.Items[1], 'a non-string item is empty');
+  Assert.AreEqual('', C.Items[2]);
+  Assert.AreEqual(1, C.SelectedIndex);
+  Assert.IsTrue(C.Framed and C.KeyCommands, 'list flags');
+
+  C := ById('dd');
+  Assert.IsTrue(C.Kind = dckDropDown, 'dropdown');
+  Assert.AreEqual(1, C.SelectedIndex);
+  Assert.AreEqual('b', C.Items[1]);
+  Assert.IsTrue(ById('dl').Kind = dckDropDown, 'dropdownlist');
+  Assert.IsTrue(ById('du').Kind = dckDropDown, 'drop_down');
+  Assert.IsTrue(ById('cb').Kind = dckDropDown, 'combo');
+
+  C := ById('g');
+  Assert.IsTrue(C.Kind = dckRadioGroup, 'radio_group');
+  Assert.AreEqual('G', C.Text);
+  Assert.AreEqual(1, C.SelectedIndex);
+  Assert.AreEqual('ia', C.ItemIds[0], 'item_ids wins over itemIds');
+  Assert.AreEqual('ib', C.ItemIds[1]);
+  C := ById('g2');
+  Assert.AreEqual('ca', C.ItemIds[0], 'itemIds is the fallback');
+  Assert.AreEqual(0, C.SelectedIndex);
+  C := ById('ge2');
+  Assert.IsTrue(Length(C.ItemIds) = 0, 'an empty item_ids is kept');
+
+  C := ById('gc');
+  Assert.IsTrue(Length(C.Items) = 2, 'radio group children');
+  Assert.AreEqual('One', C.Items[0]);
+  Assert.AreEqual('Two', C.Items[1]);
+  Assert.AreEqual('r1', C.ItemIds[0]);
+  Assert.AreEqual('r2', C.ItemIds[1]);
+  Assert.AreEqual(1, C.SelectedIndex, 'the checked radio is selected');
+  C := ById('ge');
+  Assert.AreEqual(0, C.SelectedIndex, 'an explicit selected wins over checked');
+
+  C := ById('ok');
+  Assert.IsTrue((C.Kind = dckButton) and C.IsDefault, 'button row');
+  C := ById('cancel');
+  Assert.IsTrue(C.IsCancel, 'a nested dialog is flattened');
+  Assert.AreEqual(FindControlById(Decl, 'ok') + 1, FindControlById(Decl, 'cancel'));
+
+  Assert.IsFalse(TryParseDialogJson(
+    '{"type":"dialog","title":"T","children":[{"type":"nope"}]}', Decl),
+    'only an unknown control does not make a dialog');
+
+  Raised := False;
+  try
+    TryParseDialogJson(
+      '{"type":"dialog","title":"T","width":40,"height":8,"children":[' +
+      '{"type":"list","id":"l","items":"no"}]}', Decl);
+  except
+    on E: EInvalidCast do
+      Raised := True;
+  end;
+  Assert.IsTrue(Raised, 'a non-array items value is rejected');
+end;
+
 procedure TestJobProgressDialogs;
 var
   LDecl: TDialogDeclaration;
@@ -432,6 +599,11 @@ end;
 procedure TTestDialogJson.TestJobProgressDialogs;
 begin
   TestDialogJson.TestJobProgressDialogs;
+end;
+
+procedure TTestDialogJson.TestControlTypesParse;
+begin
+  TestDialogJson.TestControlTypesParse;
 end;
 
 initialization

@@ -16,6 +16,9 @@ type
     [Test] procedure TestUnregisterDropsThePluginSegments;
     [Test] procedure TestCommandCaptionShowsOnItsFunctionKey;
     [Test] procedure TestSchemeFBarLabelsFollowRootAndInside;
+    [Test] procedure TestStyledSegmentKeepsTextAndColoredParts;
+    [Test] procedure TestStyledSegmentWithoutTextIsRemoved;
+    [Test] procedure TestStyledSegmentChangesOnlyWhenPartsChange;
   end;
 
 implementation
@@ -79,7 +82,7 @@ begin
     T := PluginChrome.StatusSegments[0];
     Assert.IsTrue((Pos(#10, T) = 0) and (Pos(#13, T) = 0), 'line breaks are flattened');
     PluginChrome.SetStatusSegment('t.a', 'two', StringOfChar('x', 500));
-    Assert.IsTrue(Length(PluginChrome.StatusSegments[1]) <= 40,
+    Assert.IsTrue(Length(PluginChrome.StatusSegments[1]) <= 80,
       'long text is cut to status size');
   finally
     Clean;
@@ -192,6 +195,64 @@ begin
     Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('other:///', $76, [], L), 'other scheme');
     PluginChrome.UnregisterPlugin('t.a');
     Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $76, [], L), 'gone with the plugin');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestStyledSegmentKeepsTextAndColoredParts;
+var
+  Spans: TArray<TStatusSpans>;
+begin
+  try
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git',
+      '[{"t":" main ","role":"ok","b":true},{"t":" "},' +
+      '{"t":" ~2 ","role":"warn","fg":"#112233"},{"t":"x","bg":"#445566"},{"nope":1}]');
+    Assert.AreEqual(' main   ~2 x', PluginChrome.StatusSegments[0]);
+    Spans := PluginChrome.StatusSegmentSpans;
+    Assert.IsTrue(Length(Spans[0]) = 4, 'a part without text is dropped');
+    Assert.IsTrue(Spans[0][0].HasFg and Spans[0][0].HasBg and Spans[0][0].Bold, 'role + bold');
+    Assert.IsTrue(Spans[0][0].Bg = TAlphaColor($FF2E7D32), 'ok role background');
+    Assert.IsFalse(Spans[0][1].HasFg or Spans[0][1].HasBg, 'plain part keeps the theme colors');
+    Assert.IsTrue(Spans[0][2].Fg = TAlphaColor($FF112233), 'explicit fg overrides the role');
+    Assert.IsTrue(Spans[0][2].Bg = TAlphaColor($FFE0B000), 'role background stays');
+    Assert.IsTrue(Spans[0][3].HasBg and not Spans[0][3].HasFg, 'bg only');
+    PluginChrome.SetStatusSegment('t.a', 'git', 'plain');
+    Assert.IsTrue(Length(PluginChrome.StatusSegmentSpans[0]) = 0, 'plain text drops the parts');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestStyledSegmentWithoutTextIsRemoved;
+begin
+  try
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '[{"t":"a","role":"ok"}]');
+    Assert.IsTrue(Length(PluginChrome.StatusSegments) = 1);
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', 'not json');
+    Assert.IsTrue(Length(PluginChrome.StatusSegments) = 0, 'bad json removes');
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '[{"t":"a"}]');
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '');
+    Assert.IsTrue(Length(PluginChrome.StatusSegments) = 0, 'empty json removes');
+    PluginChrome.SetStatusSegmentStyled('', 'git', '[{"t":"a"}]');
+    Assert.IsTrue(Length(PluginChrome.StatusSegments) = 0, 'empty plugin id ignored');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestStyledSegmentChangesOnlyWhenPartsChange;
+var
+  Calls: Integer;
+begin
+  Calls := 0;
+  try
+    SetPluginChromeChanged(procedure begin Inc(Calls); end);
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '[{"t":"a","role":"ok"}]');
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '[{"t":"a","role":"ok"}]');
+    Assert.AreEqual(1, Calls, 'same parts are no change');
+    PluginChrome.SetStatusSegmentStyled('t.a', 'git', '[{"t":"a","role":"error"}]');
+    Assert.AreEqual(2, Calls, 'same text, other colors is a change');
   finally
     Clean;
   end;

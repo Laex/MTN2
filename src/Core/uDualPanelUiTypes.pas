@@ -148,7 +148,7 @@ type
     hdkDeleteError, hdkFolderHistory, hdkDirSync, hdkTerminalProfile,
     hdkConsoleProfile, hdkTerminalEnv, hdkCmdHistory, hdkFileHistory, hdkCommandPalette,
     hdkFolderHotlist, hdkFolderHotlistAdd, hdkFolderHotlistRename, hdkCreateLink,
-    hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkTheme,
+    hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkHostColorPicker, hdkTheme,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker,
     hdkColumnsConfig, hdkDisplay, hdkInterface, hdkArchivePassword, hdkTmpSaveList, hdkExportList,

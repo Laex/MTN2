@@ -23,6 +23,10 @@ type
     [Test] procedure TestPluginHooksOnPanelInput;
     [Test] procedure TestMultiRenameChordReachesTheCommand;
     [Test] procedure TestPluginHooksOnTopMenu;
+    [Test] procedure TestTopMenuKeyOffer;
+    [Test] procedure TestPanelLocalChords;
+    [Test] procedure TestGlobalLookupChain;
+    [Test] procedure TestProgramKeysDropGlobalActions;
   end;
 
 implementation
@@ -1475,6 +1479,116 @@ end;
 procedure TTestDualPanelInput.TestClassifyAndFreeInput;
 begin
   TestDualPanelInput.TestClassifyAndFreeInput;
+end;
+
+procedure TestTopMenuKeyOffer;
+var
+  Offer: TTopMenuKeyOffer;
+begin
+  Offer := ClassifyTopMenuKey(False, False, True, False, kaNone, kaTopMenu, [], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkSkip, 'no menu');
+  Offer := ClassifyTopMenuKey(True, True, True, True, kaTopMenu, kaTopMenu, [], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkSkip, 'program keys keep the menu from the host');
+  Offer := ClassifyTopMenuKey(True, False, False, True, kaTopMenu, kaNone, [], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkSkip, 'a dialog hides the menu');
+
+  Offer := ClassifyTopMenuKey(True, False, True, True, kaTopMenu, kaNone, [], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkClose, 'F9 closes an open menu');
+  Offer := ClassifyTopMenuKey(True, False, True, False, kaTopMenu, kaTopMenu, [], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkOpen, 'F9 opens a closed menu');
+  Offer := ClassifyTopMenuKey(True, False, True, False, kaNone, kaCommandPalette, [ssShift], vkF9, #0);
+  Assert.IsTrue(Offer.Kind = tmkPalette, 'Shift+F9 opens the palette');
+
+  Offer := ClassifyTopMenuKey(True, False, True, False, kaNone, kaNone, [ssAlt], 0, #0);
+  Assert.IsTrue((Offer.Kind = tmkForward) and Offer.PreloadPlugins,
+    'Alt release loads plugin items');
+  Offer := ClassifyTopMenuKey(True, False, True, True, kaNone, kaNone, [ssAlt], 0, #0);
+  Assert.IsTrue((Offer.Kind = tmkForward) and not Offer.PreloadPlugins,
+    'an open menu does not reload plugins on Alt release');
+  Offer := ClassifyTopMenuKey(True, False, True, False, kaNone, kaNone, [], vkDown, #0);
+  Assert.IsTrue((Offer.Kind = tmkForward) and not Offer.PreloadPlugins,
+    'any other key is forwarded to the menu');
+end;
+
+procedure TTestDualPanelInput.TestTopMenuKeyOffer;
+begin
+  TestDualPanelInput.TestTopMenuKeyOffer;
+end;
+
+procedure TestPanelLocalChords;
+begin
+  Assert.IsTrue(ClassifyPanelLocalChord(True, True, vkPrior, #0, [ssCtrl]) = plcNone,
+    'a focused command line takes the key');
+  Assert.IsTrue(ClassifyPanelLocalChord(True, False, vkPrior, #0, [ssCtrl]) = plcTmpGotoFile,
+    'Ctrl+PageUp on a temporary panel jumps to the cursor file');
+  Assert.IsTrue(ClassifyPanelLocalChord(True, False, vkPrior, #0, [ssCtrl, ssShift]) = plcNone,
+    'an extra Shift is not that chord');
+  Assert.IsTrue(ClassifyPanelLocalChord(True, False, vkF2, #0, [ssAlt, ssShift]) = plcTmpSave,
+    'Alt+Shift+F2 saves the temporary list');
+  Assert.IsTrue(ClassifyPanelLocalChord(True, False, vkF3, #0, [ssAlt, ssShift]) = plcTmpOpposite,
+    'Alt+Shift+F3 on a temporary panel stays on that panel');
+  Assert.IsTrue(ClassifyPanelLocalChord(True, False, vkF4, #0, [ssAlt, ssShift]) = plcNone,
+    'another Alt+Shift key is free input');
+  Assert.IsTrue(ClassifyPanelLocalChord(False, False, vkF3, #0, [ssAlt, ssShift]) = plcWorkspaceOpposite,
+    'Alt+Shift+F3 elsewhere reveals the item opposite');
+  Assert.IsTrue(ClassifyPanelLocalChord(False, False, vkF2, #0, [ssAlt, ssShift]) = plcNone,
+    'Alt+Shift+F2 is only for a temporary panel');
+  Assert.IsTrue(ClassifyPanelLocalChord(False, False, vkPrior, #0, [ssCtrl]) = plcNone,
+    'Ctrl+PageUp is only for a temporary panel');
+end;
+
+procedure TTestDualPanelInput.TestPanelLocalChords;
+begin
+  TestDualPanelInput.TestPanelLocalChords;
+end;
+
+function SameChain(const A, B: TArray<TKeymapContext>): Boolean;
+var
+  I: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if not Result then
+    Exit;
+  for I := 0 to High(A) do
+    if A[I] <> B[I] then
+      Exit(False);
+end;
+
+procedure TestGlobalLookupChain;
+var
+  Doc: TArray<TKeymapContext>;
+begin
+  Doc := [kcEditor, kcDocument];
+  Assert.IsTrue(SameChain(GlobalLookupChain(wkDocument, True, True, Doc), Doc),
+    'a document keeps its own chain, console mode or not');
+  Assert.IsTrue(SameChain(GlobalLookupChain(wkDocument, False, False, nil), [kcDocument]),
+    'a document tab without a document is kcDocument');
+  Assert.IsTrue(SameChain(GlobalLookupChain(wkTerminal, True, False, nil),
+    [kcTerminal, kcShell]), 'a terminal is terminal then shell');
+  Assert.IsTrue(SameChain(GlobalLookupChain(wkPanels, True, False, nil),
+    [kcConsole, kcShell]), 'panels in console mode are console then shell');
+  Assert.IsTrue(SameChain(GlobalLookupChain(wkPanels, False, False, nil), [kcPanels]),
+    'panels otherwise');
+end;
+
+procedure TTestDualPanelInput.TestGlobalLookupChain;
+begin
+  TestDualPanelInput.TestGlobalLookupChain;
+end;
+
+procedure TestProgramKeysDropGlobalActions;
+begin
+  Assert.IsTrue(ApplyProgramKeyCapture(kaHelp, True) = kaNone, 'help goes to the program');
+  Assert.IsTrue(ApplyProgramKeyCapture(kaTopMenu, True) = kaNone, 'the menu goes to the program');
+  Assert.IsTrue(ApplyProgramKeyCapture(kaAppConsoleToggle, True) = kaAppConsoleToggle,
+    'leaving the console stays with the host');
+  Assert.IsTrue(ApplyProgramKeyCapture(kaNextTab, True) = kaNextTab, 'switching tabs stays');
+  Assert.IsTrue(ApplyProgramKeyCapture(kaHelp, False) = kaHelp, 'outside capture nothing is dropped');
+end;
+
+procedure TTestDualPanelInput.TestProgramKeysDropGlobalActions;
+begin
+  TestDualPanelInput.TestProgramKeysDropGlobalActions;
 end;
 
 procedure TTestDualPanelInput.TestModalDialogInput;
