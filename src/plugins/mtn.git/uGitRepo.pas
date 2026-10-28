@@ -162,6 +162,8 @@ end;
 {$ELSE}
 begin
   AStatus := Default(TGitStatus);
+  if not IsInsideGitWorkTree(ADir) then
+    Exit(grNotRepo);
   Result := grError;
 end;
 {$ENDIF}
