@@ -17,6 +17,7 @@ type
     [Test] procedure TestSchemeRootIsTheNavigationRoot;
     [Test] procedure TestSameUriAndKeyIgnoreCaseAndTrailingSlash;
     [Test] procedure TestTitleIsTheLastSegmentOrAuthority;
+    [Test] procedure VirtualDirWatchSkipsFoldersThatAreNotOnDisk;
   end;
 
 implementation
@@ -96,6 +97,17 @@ begin
   Assert.AreEqual('w', VfsUriTitle('net://w/'));
   Assert.AreEqual('net:', VfsUriTitle('net:///'));
   Assert.AreEqual('b', VfsUriDirTabTitle('net://w/a/b', 20));
+end;
+
+procedure TTestGenericVfsUri.VirtualDirWatchSkipsFoldersThatAreNotOnDisk;
+begin
+  Assert.IsTrue(IsVirtualDirWatchUri('file:///C:/a.zip!/dir'), 'an archive chain is not a disk folder');
+  Assert.IsTrue(IsVirtualDirWatchUri('find://session'), 'find results are not a disk folder');
+  Assert.IsTrue(IsVirtualDirWatchUri('tmp:///'), 'the temporary panel is not a disk folder');
+  Assert.IsTrue(IsVirtualDirWatchUri('ws:///'), 'a workspace is not a disk folder');
+  Assert.IsFalse(IsVirtualDirWatchUri('file:///C:/Work'), 'a file folder is watched');
+  Assert.IsFalse(IsVirtualDirWatchUri('recycle:'), 'the recycle bin is a separate check');
+  Assert.IsFalse(IsVirtualDirWatchUri('sys://folders'), 'system folders are a separate check');
 end;
 
 initialization

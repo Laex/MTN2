@@ -14,6 +14,7 @@ type
   TTestMenuScroll = class
   public
     [Test] procedure TestTallSubmenuIsCutAndMarked;
+    [Test] procedure TestBorderMarksShowHiddenItems;
     [Test] procedure TestSelectionStaysInView;
     [Test] procedure TestMouseHitsTheItemThatIsShown;
     [Test] procedure TestWheelMovesTheSelection;
@@ -107,6 +108,28 @@ begin
     Assert.IsTrue(RowOfText(Grid, 'Item 09') < 0, 'the rest is not drawn');
     Assert.IsTrue(Pos(#$25BC, RowText(Grid, 9)) > 0, 'a down mark says there is more');
     Assert.IsTrue(Pos(#$25B2, RowText(Grid, 2)) > 0, 'the bar starts at the first item row');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TTestMenuScroll.TestBorderMarksShowHiddenItems;
+var
+  C: TTopMenuController;
+  Grid: TTerminalGrid;
+begin
+  C := MakeMenu(30);
+  try
+    DrawFresh(C, Grid, 12, 60);
+    Assert.IsTrue(Pos(#$25BC, RowText(Grid, 10)) > 0, 'a mark on the bottom border: more below');
+    Assert.IsTrue(Pos(#$25B2, RowText(Grid, 1)) = 0, 'no mark on the top border at the start');
+    Press(C, vkDown, 20);
+    DrawFresh(C, Grid, 12, 60);
+    Assert.IsTrue(Pos(#$25B2, RowText(Grid, 1)) > 0, 'a mark on the top border: more above');
+    Assert.IsTrue(Pos(#$25BC, RowText(Grid, 10)) > 0, 'still more below');
+    Press(C, vkEnd);
+    DrawFresh(C, Grid, 12, 60);
+    Assert.IsTrue(Pos(#$25BC, RowText(Grid, 10)) = 0, 'no mark on the bottom border at the end');
   finally
     C.Free;
   end;

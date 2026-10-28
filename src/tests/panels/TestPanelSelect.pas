@@ -21,6 +21,7 @@ type
     [Test] procedure SetSelectedRangeMarksAndUnmarksSpan;
     [Test] procedure InvertSelectionSkipsFoldersUnlessAsked;
     [Test] procedure ShiftSelectGestureKeepsOneMark;
+    [Test] procedure PathLastSegmentNamesTheLeaf;
   end;
 
 implementation
@@ -238,6 +239,17 @@ begin
 
   G.Clear;
   Assert.IsFalse(G.Continues('file:///D:/Temp', 5), 'releasing Shift ends the gesture');
+end;
+
+procedure TTestPanelSelect.PathLastSegmentNamesTheLeaf;
+begin
+  Assert.IsTrue(PathLastSegment('C:\a\b\') = 'b', 'a trailing slash is not part of the name');
+  Assert.IsTrue(PathLastSegment('a.zip!\d\f') = 'f', 'an archive path names its last segment');
+  Assert.IsTrue(PathLastSegment('sftp://u@host:22/home/a/') = 'a', 'a URI names its last segment');
+  Assert.IsTrue(PathLastSegment('C:\') = '', 'a drive root has no leaf name');
+  Assert.IsTrue(PathLastSegment('C:') = '', 'a bare drive has no leaf name');
+  Assert.IsTrue(PathLastSegment('/') = '', 'a slash alone has no leaf name');
+  Assert.IsTrue(PathLastSegment('readme.txt') = 'readme.txt', 'a bare name is itself');
 end;
 
 procedure TTestPanelSelect.ClearedSelectionCanBeRestored;

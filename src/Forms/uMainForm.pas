@@ -3741,8 +3741,7 @@ end;
 function TMainForm.IsReloadKeymapShortcut(AKey: Word; AKeyChar: Char;
   AShift: TShiftState): Boolean;
 begin
-  Result := MatchActionIn(ActiveKeymap, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
-    AShift) = kaReloadKeymap;
+  Result := uKeymap.IsReloadKeymapShortcut(ActiveKeymap, AKey, AKeyChar, AShift);
 end;
 
 function TMainForm.DispatchTerminalKey(var Key: Word; var KeyChar: Char;

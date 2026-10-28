@@ -268,6 +268,9 @@
         <DCCReference Include="Core\uDialogJson.pas"/>
         <DCCReference Include="Core\uDialogResources.pas"/>
         <DCCReference Include="Core\uDialogLocaleLayout.pas"/>
+        <DCCReference Include="Core\uDialogValues.pas"/>
+        <DCCReference Include="Core\uDialogV2Layout.pas"/>
+        <DCCReference Include="Core\uDialogListDraw.pas"/>
         <DCCReference Include="Core\uDialogHost.pas"/>
         <DCCReference Include="Core\uDualPanelOverlays.pas"/>
         <DCCReference Include="Core\uDualPanelDrivePopup.pas"/>

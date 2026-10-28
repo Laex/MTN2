@@ -328,19 +328,6 @@ begin
     Result := TVfsError.Make(vecIOError, E.Message, AURI);
 end;
 
-procedure RemoveExistingPath(const APath: string; var AError: TVfsError);
-begin
-  try
-    if TDirectory.Exists(WinApiPath(APath)) then
-      TDirectory.Delete(WinApiPath(APath), True)
-    else if TFile.Exists(WinApiPath(APath)) then
-      TFile.Delete(WinApiPath(APath));
-  except
-    on E: Exception do
-      AError := VfsErrorFromException(E, PathToFileUri(APath));
-  end;
-end;
-
 procedure CopyFileWithProgress(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var AError: TVfsError;
   AOverwrite: Boolean = False; APreserveTimestamps: Boolean = False;
@@ -350,7 +337,8 @@ var
   Buf: TBytes;
   N, Want: Integer;
   Copied, Total, ReportTotal, NowSize: Int64;
-  DstCreated, Raised: Boolean;
+  DstCreated, Raised, Staged: Boolean;
+  WritePath, MoveMsg: string;
 begin
   Src := nil;
   Dst := nil;
@@ -358,6 +346,8 @@ begin
   Total := 0;
   DstCreated := False;
   Raised := False;
+  Staged := False;
+  WritePath := ADst;
   try
     try
       // fmShareDenyNone, not fmShareDenyWrite: a file another process holds
@@ -375,18 +365,35 @@ begin
       end
       else
       begin
+        // A directory occupying the file's name is not a skippable file
+        // conflict: treating it as "already exists" made verification look
+        // for a file, fail, and delete the whole destination folder.
+        if TDirectory.Exists(WinApiPath(ADst)) and not AOverwrite then
+        begin
+          AError := TVfsError.Make(vecIOError,
+            'Cannot replace a directory with a file', PathToFileUri(ADst));
+          Exit;
+        end;
+        if TFile.Exists(WinApiPath(ADst)) and not AOverwrite then
+        begin
+          AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
+          Exit;
+        end;
+        // Overwrite writes beside the destination and swaps only after the
+        // bytes are complete, so a failed or cancelled copy leaves the
+        // previous file or directory in place.
         if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
         begin
-          if not AOverwrite then
+          WritePath := UnusedSiblingPath(ADst, '.mtnpart');
+          if WritePath = '' then
           begin
-            AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
+            AError := TVfsError.Make(vecIOError,
+              'Cannot make room to replace the destination', PathToFileUri(ADst));
             Exit;
           end;
-          RemoveExistingPath(ADst, AError);
-          if AError.Code <> vecOk then
-            Exit;
+          Staged := True;
         end;
-        Dst := TFileStream.Create(WinApiPath(ADst), fmCreate);
+        Dst := TFileStream.Create(WinApiPath(WritePath), fmCreate);
         DstCreated := True;
       end;
       Total := Src.Size;
@@ -444,13 +451,13 @@ begin
   if Raised then
   begin
     if DstCreated then
-      CleanupFailedCopy(ADst);
+      CleanupFailedCopy(WritePath);
     Exit;
   end;
   if AError.Code = vecCancelled then
   begin
     if DstCreated then
-      CleanupFailedCopy(ADst);
+      CleanupFailedCopy(WritePath);
     Exit;
   end;
   if AError.Code <> vecOk then
@@ -473,7 +480,7 @@ begin
       AError := TVfsError.Make(vecIOError,
         Format('Copy incomplete (%d of %d bytes)', [Copied, Total]), PathToFileUri(ASrc));
       if DstCreated then
-        CleanupFailedCopy(ADst);
+        CleanupFailedCopy(WritePath);
       Exit;
     end;
   end;
@@ -481,11 +488,20 @@ begin
   // by design.
   if not DstCreated then
     Exit;
-  VerifyCopiedFile(ASrc, ADst, Total, True, AError);
+  VerifyCopiedFile(ASrc, WritePath, Total, True, AError);
   if AError.Code <> vecOk then
   begin
-    CleanupFailedCopy(ADst);
+    CleanupFailedCopy(WritePath);
     Exit;
+  end;
+  if Staged then
+  begin
+    if not ReplacePathWith(WritePath, ADst, MoveMsg) then
+    begin
+      AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(ADst));
+      CleanupFailedCopy(WritePath);
+      Exit;
+    end;
   end;
   if APreserveTimestamps then
     PreserveFileTimestamps(ASrc, ADst);
@@ -558,8 +574,10 @@ var
   Code: Integer;
   ChildSrc, ChildDst: string;
   ChildErr: TVfsError;
-  ChildOverwrite, ChildAppend: Boolean;
+  ChildOverwrite, ChildAppend, CreatedHere: Boolean;
+  Stage, MoveMsg: string;
 begin
+  CreatedHere := False;
   if JobCancelRequested(ACancel) then
   begin
     AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
@@ -567,23 +585,42 @@ begin
   end;
   if TFile.Exists(WinApiPath(ADst)) then
   begin
-    // A plain file sits where a directory needs to go - a real type
-    // conflict (only this and per-file leaf conflicts below respect
-    // AOverwrite). A directory already existing at ADst is not a conflict at
-    // all: recursive copy into an existing folder is a merge by definition,
-    // so it falls through to the else-branch below untouched.
+    // A file where a directory must go is not a skippable name clash: a skip
+    // would later fail verification and delete the destination folder.
     if not AOverwrite then
     begin
-      AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
+      AError := TVfsError.Make(vecIOError,
+        'Cannot replace a file with a directory', PathToFileUri(ADst));
       Exit;
     end;
-    RemoveExistingPath(ADst, AError);
-    if AError.Code <> vecOk then
+    // Build the tree beside the file, then swap. Deleting the file first
+    // would lose it when the copy fails.
+    Stage := UnusedSiblingPath(ADst, '.mtnpart');
+    if Stage = '' then
+    begin
+      AError := TVfsError.Make(vecIOError,
+        'Cannot make room to replace the destination', PathToFileUri(ADst));
       Exit;
-    TDirectory.CreateDirectory(WinApiPath(ADst));
+    end;
+    CopyTree(ASrc, Stage, ACancel, AOnProgress, ADoneBytes, ATotalBytes, AError,
+      AAnySkipped, True, APreserveTimestamps);
+    if AError.Code = vecOk then
+    begin
+      if not ReplacePathWith(Stage, ADst, MoveMsg) then
+      begin
+        AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(ADst));
+        CleanupFailedCopy(Stage);
+      end;
+    end
+    else
+      CleanupFailedCopy(Stage);
+    Exit;
   end
   else if not TDirectory.Exists(WinApiPath(ADst)) then
+  begin
     TDirectory.CreateDirectory(WinApiPath(ADst));
+    CreatedHere := True;
+  end;
   Code := FindFirst(WinApiPath(SafeCombinePath(ASrc, '*')), faAnyFile, SR);
   try
     while Code = 0 do
@@ -652,7 +689,9 @@ begin
   if AError.Code = vecOk then
   begin
     VerifyCopiedTree(ASrc, ADst, AError);
-    if AError.Code <> vecOk then
+    // A folder that already existed is a merge target: a failed check must
+    // not delete the files that were there before this copy.
+    if (AError.Code <> vecOk) and CreatedHere then
       CleanupFailedCopy(ADst)
     else
     begin
@@ -1087,7 +1126,7 @@ begin
       Src, Dst: string;
       Err: TVfsError;
       DoneBytes, TotalBytes: Int64;
-      AnySkipped: Boolean;
+      AnySkipped, DestWasDir: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
@@ -1123,6 +1162,7 @@ begin
               TotalBytes := EstimateTreeBytes(Src);
               if TotalBytes <= 0 then
                 TotalBytes := 1;
+              DestWasDir := TDirectory.Exists(WinApiPath(Dst));
               if TDirectory.Exists(WinApiPath(Src)) then
                 CopyTree(Src, Dst, Cancel, OnProgress, DoneBytes, TotalBytes, Err,
                   AnySkipped, Overwrite, Preserve)
@@ -1141,7 +1181,9 @@ begin
                   // Non-strict for the same reason as VerifyCopiedTree: the
                   // strict size check already ran inside the copy itself.
                   VerifyCopiedFile(Src, Dst, TFile.GetSize(WinApiPath(Src)), False, Err);
-                if Err.Code <> vecOk then
+                // A merge into a folder that was already there must not be
+                // deleted when the check fails.
+                if (Err.Code <> vecOk) and not DestWasDir then
                   CleanupFailedCopy(Dst);
               end;
             end;
@@ -1178,7 +1220,7 @@ begin
       Src, Dst, MoveMsg: string;
       Err: TVfsError;
       DoneBytes, TotalBytes: Int64;
-      SameVolume, WasDirectory, AnySkipped, MergeIntoDir: Boolean;
+      SameVolume, WasDirectory, AnySkipped, MergeIntoDir, DestWasDir: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
@@ -1194,22 +1236,13 @@ begin
             Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', FromURI)
           else if not (TFile.Exists(WinApiPath(Src)) or TDirectory.Exists(WinApiPath(Src))) then
             Err := TVfsError.Make(vecNotFound, 'Source not found', FromURI)
-          else if TFile.Exists(WinApiPath(Dst)) then
-          begin
-            // Dst is an existing file - a real conflict regardless of Src's kind.
-            if not Overwrite then
-              Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
-            else
-              RemoveExistingPath(Dst, Err);
-          end
-          else if TDirectory.Exists(WinApiPath(Dst)) and not TDirectory.Exists(WinApiPath(Src)) then
-          begin
-            // Src is a file but Dst is an existing directory - real type conflict.
-            if not Overwrite then
-              Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
-            else
-              RemoveExistingPath(Dst, Err);
-          end;
+          else if TFile.Exists(WinApiPath(Dst)) and not Overwrite then
+            // An existing file is replaced only when overwrite is on, and then
+            // by the move or copy below - not deleted before that succeeds.
+            Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
+          else if TDirectory.Exists(WinApiPath(Dst)) and
+            not TDirectory.Exists(WinApiPath(Src)) and not Overwrite then
+            Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI);
           // Src and Dst both directories, Dst already exists: not treated as a
           // conflict here. A same-volume rename onto an existing folder fails
           // (native Windows limitation), so an empty Dst is removed and the
@@ -1240,17 +1273,25 @@ begin
           if Err.Code = vecOk then
           begin
             WasDirectory := TDirectory.Exists(WinApiPath(Src));
+            // A file and a directory of the same name cannot be renamed over
+            // each other; that goes through the copy below, which swaps only
+            // after the new tree exists.
             SameVolume := (not MergeIntoDir) and (Length(Src) >= 2) and
               (Length(Dst) >= 2) and
-              (UpCase(Src[1]) = UpCase(Dst[1])) and (Src[2] = ':') and (Dst[2] = ':');
+              (UpCase(Src[1]) = UpCase(Dst[1])) and (Src[2] = ':') and (Dst[2] = ':') and
+              not (WasDirectory and TFile.Exists(WinApiPath(Dst))) and
+              not ((not WasDirectory) and TDirectory.Exists(WinApiPath(Dst)));
             if SameVolume then
             begin
               QueueProgress(OnProgress, 0, 1, SafeFileName(Src), 0, 1, Src, Dst);
               try
-                if PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) then
+                if PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) or
+                  ((not WasDirectory) and TFile.Exists(WinApiPath(Dst))) then
                 begin
                   // TDirectory.Move and TFile.Move cut the space off such a name.
-                  if not PlatformMoveFile(WinApiPath(Src), WinApiPath(Dst), False, MoveMsg) then
+                  // Replace keeps the previous file when the rename itself fails.
+                  if not PlatformMoveFile(WinApiPath(Src), WinApiPath(Dst),
+                    (not WasDirectory) and TFile.Exists(WinApiPath(Dst)), MoveMsg) then
                     raise EInOutError.Create(MoveMsg);
                 end
                 else if WasDirectory then
@@ -1267,11 +1308,12 @@ begin
             end
             else
             begin
-              // Cross-volume: copy then delete source.
+              // Cross-volume, or a file/directory name clash: copy then delete source.
               TotalBytes := EstimateTreeBytes(Src);
               if TotalBytes <= 0 then
                 TotalBytes := 1;
               DoneBytes := 0;
+              DestWasDir := TDirectory.Exists(WinApiPath(Dst));
               if WasDirectory then
                 CopyTree(Src, Dst, Cancel, OnProgress, DoneBytes, TotalBytes, Err,
                   AnySkipped, Overwrite, Preserve)
@@ -1285,7 +1327,7 @@ begin
                   // Non-strict for the same reason as VerifyCopiedTree: the
                   // strict size check already ran inside the copy itself.
                   VerifyCopiedFile(Src, Dst, TFile.GetSize(WinApiPath(Src)), False, Err);
-                if Err.Code <> vecOk then
+                if (Err.Code <> vecOk) and not DestWasDir then
                   CleanupFailedCopy(Dst)
                 // Skip mode left at least one source item untouched at the
                 // destination (see CopyTree) - it still exists only in Src,

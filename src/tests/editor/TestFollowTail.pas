@@ -19,13 +19,15 @@ type
     [Test] procedure TestWholeFilePicksUpAppendedLines;
     [Test] procedure TestBinaryFileCannotBeFollowed;
     [Test] procedure TestFollowEndsWithTheDocument;
+    [Test] procedure TestTrackClickUpLeavesFollow;
+    [Test] procedure TestTextClickAboveTailLeavesFollow;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils,
-  uPlatformInfo, uVfsTypes, uEditorDoc;
+  System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
+  uPlatformInfo, uVfsTypes, uEditorDoc, uThemeRegistry, uEditorWindow, uTerminalTypes;
 
 var
   GTempDir: string;
@@ -233,6 +235,110 @@ begin
     Assert.IsFalse(Doc.CanFollow);
   finally
     Doc.Free;
+  end;
+end;
+
+procedure TTestFollowTail.TestTrackClickUpLeavesFollow;
+const
+  W = 40;
+  H = 20;
+var
+  Path: string;
+  View: TEditorWindow;
+  Grid: TTerminalGrid;
+  Y, I, Top, Row, Col: Integer;
+  Key: Word;
+  Ch: Char;
+  Tick: UInt64;
+  SB: TStringBuilder;
+begin
+  Path := TPath.Combine(GTempDir, 'scroll.log');
+  SB := TStringBuilder.Create;
+  try
+    for I := 1 to 40 do
+      SB.Append('line ').Append(I).Append(#10);
+    WriteText(Path, SB.ToString, False);
+  finally
+    SB.Free;
+  end;
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
+  try
+    View.Open(PathToFileUri(Path), True);
+    Tick := PlatformTickCount64;
+    while not View.DocReady do
+    begin
+      CheckSynchronize(20);
+      if PlatformTickCount64 - Tick > 15000 then
+        Assert.Fail('timeout opening the viewer');
+    end;
+    SetLength(Grid, H);
+    for Y := 0 to High(Grid) do
+      SetLength(Grid[Y], W);
+    View.PaintEmbedded(Grid, 0, 0, W, H, 0, 0);
+    Key := Ord('F');
+    Ch := #0;
+    View.HandleInput(Key, [ssCtrl, ssShift], Ch);
+    Assert.IsTrue(View.Following, 'Ctrl+Shift+F follows the end of the file');
+    View.GetViewPos(Top, Row, Col);
+    Assert.IsTrue(Top > 2, 'the view sits on the tail');
+    Assert.IsTrue(View.HandleMouseDown(W - 2, 2, []), 'a click on the scrollbar track is handled');
+    View.HandleMouseUp;
+    Assert.IsFalse(View.Following, 'scrolling up the track leaves follow mode');
+    View.GetViewPos(Top, Row, Col);
+    Assert.IsTrue(Top = 0, 'the track click moved the view to the start');
+  finally
+    View.Free;
+  end;
+end;
+
+procedure TTestFollowTail.TestTextClickAboveTailLeavesFollow;
+const
+  W = 40;
+  H = 20;
+var
+  Path: string;
+  View: TEditorWindow;
+  Grid: TTerminalGrid;
+  Y, I, Top, Row, Col: Integer;
+  Key: Word;
+  Ch: Char;
+  Tick: UInt64;
+  SB: TStringBuilder;
+begin
+  Path := TPath.Combine(GTempDir, 'click.log');
+  SB := TStringBuilder.Create;
+  try
+    for I := 1 to 40 do
+      SB.Append('line ').Append(I).Append(#10);
+    WriteText(Path, SB.ToString, False);
+  finally
+    SB.Free;
+  end;
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
+  try
+    View.Open(PathToFileUri(Path), True);
+    Tick := PlatformTickCount64;
+    while not View.DocReady do
+    begin
+      CheckSynchronize(20);
+      if PlatformTickCount64 - Tick > 15000 then
+        Assert.Fail('timeout opening the viewer');
+    end;
+    SetLength(Grid, H);
+    for Y := 0 to High(Grid) do
+      SetLength(Grid[Y], W);
+    View.PaintEmbedded(Grid, 0, 0, W, H, 0, 0);
+    Key := Ord('F');
+    Ch := #0;
+    View.HandleInput(Key, [ssCtrl, ssShift], Ch);
+    Assert.IsTrue(View.Following, 'Ctrl+Shift+F follows the end of the file');
+    Assert.IsTrue(View.HandleMouseDown(2, 1, []), 'a click on the text is handled');
+    View.HandleMouseUp;
+    View.GetViewPos(Top, Row, Col);
+    Assert.IsTrue(Row < View.LineCount - 1, 'the click lands above the tail');
+    Assert.IsFalse(View.Following, 'a click above the tail leaves follow mode');
+  finally
+    View.Free;
   end;
 end;
 

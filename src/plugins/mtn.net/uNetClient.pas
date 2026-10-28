@@ -423,10 +423,56 @@ begin
   Result := nrNotFound;
 end;
 
+function PlaceDownloadedFile(const APart, ADest: string; out AError: string): Boolean;
+var
+  Hold: string;
+  N: Integer;
+begin
+  AError := '';
+  if not FileExists(ADest) then
+  begin
+    TFile.Move(APart, ADest);
+    Exit(True);
+  end;
+  // Move the current file aside and put it back if the new one cannot take
+  // the name. Deleting it first loses it when that move fails.
+  Hold := ADest + '.mtnhold';
+  N := 0;
+  while FileExists(Hold) do
+  begin
+    Inc(N);
+    if N > 1000 then
+    begin
+      AError := 'Cannot make room to replace the destination';
+      Exit(False);
+    end;
+    Hold := ADest + '.mtnhold' + IntToStr(N);
+  end;
+  TFile.Move(ADest, Hold);
+  try
+    TFile.Move(APart, ADest);
+  except
+    on E: Exception do
+    begin
+      AError := E.Message;
+      try
+        if not FileExists(ADest) then
+          TFile.Move(Hold, ADest);
+      except
+        on E2: Exception do
+          AError := AError + '; restore failed: ' + E2.Message;
+      end;
+      Exit(False);
+    end;
+  end;
+  TFile.Delete(Hold);
+  Result := True;
+end;
+
 function TNetClient.Download(const ARemote, ALocal: string; AOp: TNetOp;
   AKeepTime: Boolean; AKnownSize: Int64): TNetResult;
 var
-  Part: string;
+  Part, PlaceError: string;
   Stream: TFileStream;
   Call: TCurlCall;
   Total: Int64;
@@ -474,10 +520,13 @@ begin
   if Result = nrOk then
   begin
     try
-      if FileExists(ALocal) then
-        TFile.Delete(ALocal);
-      TFile.Move(Part, ALocal);
-      if AKeepTime and (Entry.Modified > 0) then
+      if not PlaceDownloadedFile(Part, ALocal, PlaceError) then
+      begin
+        if AOp <> nil then
+          AOp.ErrorText := PlaceError;
+        Result := nrAccessDenied;
+      end
+      else if AKeepTime and (Entry.Modified > 0) then
         TFile.SetLastWriteTimeUtc(ALocal, UnixToDateTime(Entry.Modified, True));
     except
       on E: Exception do

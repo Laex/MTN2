@@ -74,7 +74,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
-  System.DateUtils, System.StrUtils, uPlatformProcess, uShellProfiles;
+  System.DateUtils, System.StrUtils, uPlatformProcess, uShellProfiles, uVfsUtils;
 
 const
   cDefaultSftpPort = 22;
@@ -599,14 +599,73 @@ begin
     cTransferTimeoutMs, ACancel, cTransientRetries, Output, AError);
 end;
 
-function SftpPutFromLocal(const AAuthority, ALocalPath, ARemotePath: string;
-  ARecursive: Boolean; ACancel: IJobCancelToken; out AError: TVfsError): Boolean;
+function SftpRename(const AAuthority, AFrom, ATo: string; ACancel: IJobCancelToken;
+  out AError: TVfsError): Boolean;
 var
   Output: string;
 begin
+  Result := RunSftpLine(AAuthority, 'rename ' + QuoteRemotePath(AFrom) + ' ' +
+    QuoteRemotePath(ATo), cListTimeoutMs, ACancel, 0, Output, AError);
+end;
+
+// The bytes land in APart first. ADest is renamed aside and restored if the
+// part cannot take its name, so a failed transfer does not leave a partial
+// file under the real name or erase the previous one.
+function CommitRemotePath(const AAuthority, APart, ADest: string; AIsDir: Boolean;
+  ACancel: IJobCancelToken; out AError: TVfsError): Boolean;
+var
+  Exists, DestIsDir: Boolean;
+  Hold: string;
+  HoldErr: TVfsError;
+begin
+  Result := False;
+  if not SftpExists(AAuthority, ADest, ACancel, Exists, DestIsDir, AError) then
+  begin
+    SftpDelete(AAuthority, APart, AIsDir, ACancel, HoldErr);
+    Exit;
+  end;
+  if not Exists then
+  begin
+    Result := SftpRename(AAuthority, APart, ADest, ACancel, AError);
+    if not Result then
+      SftpDelete(AAuthority, APart, AIsDir, ACancel, HoldErr);
+    Exit;
+  end;
+  // A fixed suffix would clash with a real file of that name, and a leftover
+  // from an interrupted transfer would block every later replace.
+  Hold := ADest + '.mtnhold' + IntToStr(TThread.GetTickCount);
+  if not SftpRename(AAuthority, ADest, Hold, ACancel, AError) then
+  begin
+    SftpDelete(AAuthority, APart, AIsDir, ACancel, HoldErr);
+    Exit;
+  end;
+  if not SftpRename(AAuthority, APart, ADest, ACancel, AError) then
+  begin
+    SftpRename(AAuthority, Hold, ADest, ACancel, HoldErr);
+    SftpDelete(AAuthority, APart, AIsDir, ACancel, HoldErr);
+    Exit;
+  end;
+  SftpDelete(AAuthority, Hold, DestIsDir, ACancel, HoldErr);
+  Result := True;
+end;
+
+function SftpPutFromLocal(const AAuthority, ALocalPath, ARemotePath: string;
+  ARecursive: Boolean; ACancel: IJobCancelToken; out AError: TVfsError): Boolean;
+var
+  Output, Part: string;
+  CleanupErr: TVfsError;
+begin
+  Part := ARemotePath + '.mtnpart' + IntToStr(TThread.GetTickCount);
   Result := RunSftpLine(AAuthority, IfThen(ARecursive, 'put -r ', 'put ') +
-    QuoteCmdArg(ALocalPath) + ' ' + QuoteRemotePath(ARemotePath),
+    QuoteCmdArg(ALocalPath) + ' ' + QuoteRemotePath(Part),
     cTransferTimeoutMs, ACancel, cTransientRetries, Output, AError);
+  if not Result then
+  begin
+    // The transfer error stays in AError; cleanup must not replace it.
+    SftpDelete(AAuthority, Part, ARecursive, ACancel, CleanupErr);
+    Exit;
+  end;
+  Result := CommitRemotePath(AAuthority, Part, ARemotePath, ARecursive, ACancel, AError);
 end;
 
 { ---- TSftpVirtualFileSystem ------------------------------------------------ }
@@ -770,7 +829,7 @@ function SftpDownloadToLocal(const AFromURI, AToURI: string;
   ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
   AOverwrite: Boolean; out AError: TVfsError): Boolean;
 var
-  FromAuth, FromPath, LocalPath, Name: string;
+  FromAuth, FromPath, LocalPath, Part, Name, MoveMsg: string;
   IsDir: Boolean;
 begin
   Result := False;
@@ -785,10 +844,27 @@ begin
     Exit(FailTransfer(AError, vecAlreadyExists, 'Destination exists', AToURI));
   if not EnsureRemoteSource(FromAuth, FromPath, AFromURI, ACancel, IsDir, AError) then
     Exit;
+  MoveMsg := '';
+  Part := UnusedSiblingPath(LocalPath, '.mtnpart');
+  if Part = '' then
+    Exit(FailTransfer(AError, vecIOError, 'Cannot make room for the download', AToURI));
   QueueSftpProgress(AOnProgress, 0, 1, Name, AFromURI, AToURI);
-  Result := SftpGetToLocal(FromAuth, FromPath, LocalPath, IsDir, ACancel, AError);
+  // Download beside the final name. A cancelled sftp process leaves the
+  // partial file there; it is removed unless the whole download is in place.
+  Result := SftpGetToLocal(FromAuth, FromPath, Part, IsDir, ACancel, AError);
   if Result then
-    QueueSftpProgress(AOnProgress, 1, 1, Name, AFromURI, AToURI);
+    Result := ReplacePathWith(Part, LocalPath, MoveMsg);
+  if not Result then
+  begin
+    if (AError.Code = vecOk) and (MoveMsg <> '') then
+      AError := TVfsError.Make(vecIOError, MoveMsg, AToURI);
+    if TFile.Exists(Part) then
+      TFile.Delete(Part)
+    else if TDirectory.Exists(Part) then
+      TDirectory.Delete(Part, True);
+    Exit;
+  end;
+  QueueSftpProgress(AOnProgress, 1, 1, Name, AFromURI, AToURI);
 end;
 
 function SftpUploadFromLocal(const AFromURI, AToURI: string;

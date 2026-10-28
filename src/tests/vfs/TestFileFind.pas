@@ -18,6 +18,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.DateUtils,
   System.IOUtils,
   System.Math,
   System.SyncObjs,
@@ -88,7 +89,7 @@ var
   Opts: TFindOptions;
   Text: TFindFilterText;
   Err: string;
-  T0: TDateTime;
+  T0, Day, When, Parsed: TDateTime;
 begin
   Assert.IsTrue(TryParseFindSize('', Bytes) and (Bytes = -1), 'empty size is no bound');
   Assert.IsTrue(TryParseFindSize('512', Bytes) and (Bytes = 512), 'plain bytes');
@@ -96,6 +97,10 @@ begin
   Assert.IsTrue(TryParseFindSize('2 MB', Bytes) and (Bytes = 2 * 1024 * 1024), 'M suffix with B');
   Assert.IsFalse(TryParseFindSize('abc', Bytes), 'text is not a size');
   Assert.IsFalse(TryParseFindSize('-5', Bytes), 'negative size');
+  Assert.IsTrue(TryParseFindSize('1.5M', Bytes) and (Bytes = 1572864),
+    'fractional megabytes');
+  Assert.IsFalse(TryParseFindSize('1e20', Bytes), 'a size past the file-size range is rejected');
+  Assert.IsFalse(TryParseFindSize('999999999T', Bytes), 'a huge suffix is rejected');
 
   T0 := EncodeDate(2025, 3, 4) + EncodeTime(10, 30, 0, 0);
   Opts := DefaultFindOptions('C:\x', '*.*');
@@ -130,6 +135,19 @@ begin
   Text.SizeMax := 'oops';
   Assert.IsFalse(ApplyFindFilterText(Opts, Text, Err), 'a bad size is rejected');
   Assert.IsTrue(Err <> '', 'the rejection names the field');
+
+  Day := EncodeDate(2021, 3, 4);
+  When := Day + EncodeTime(10, 30, 45, 0);
+  Assert.IsTrue(TryParseFindDate('', False, Parsed) and (Parsed = 0), 'empty date is no bound');
+  Assert.IsTrue(TryParseFindDate('Mon ' + DateToStr(Day), False, Parsed) and SameDateTime(Parsed, Day),
+    'a weekday before the date is ignored');
+  Assert.IsTrue(TryParseFindDate('Tue. ' + DateToStr(Day), True, Parsed) and
+    SameDateTime(Parsed, Day + 1 - 1 / MSecsPerDay),
+    'a weekday and no time is the end of that day when asked');
+  Assert.IsTrue(TryParseFindDate('Wed ' + DateToStr(Day) + ' ' + FormatDateTime('hh:nn:ss', When),
+    True, Parsed) and SameDateTime(Parsed, When), 'a time after a weekday is kept');
+  Assert.IsFalse(TryParseFindDate('Mon', False, Parsed), 'a day of week alone is not a date');
+  Assert.IsFalse(TryParseFindDate('yesterday', False, Parsed), 'garbage is not a date');
 end;
 
 procedure TTestFileFind.Run;

@@ -92,6 +92,7 @@ var
   C: TSearchController;
   Key: Word;
   KeyChar: Char;
+  Filters: TFindFilterText;
 begin
   C := MakeController;
   try
@@ -117,6 +118,22 @@ begin
     C.HandleSearchInput(Key, [], KeyChar);
     Assert.IsTrue(C.Phase = spResults, 'invalid regex goes straight to spResults');
     Assert.IsTrue(Pos('Invalid regex', C.Message) = 1, 'invalid regex message');
+  finally
+    C.Free;
+  end;
+
+  C := MakeController;
+  try
+    C.Phase := spDialog;
+    C.RootPath := 'C:\';
+    Filters := Default(TFindFilterText);
+    Filters.SizeMin := '1e20';
+    C.Filters := Filters;
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    Assert.IsTrue(C.Phase = spResults, 'a size past the file-size range stays on the result page');
+    Assert.IsTrue(Pos('Invalid size', C.Message) = 1, 'the huge size is named as invalid');
   finally
     C.Free;
   end;

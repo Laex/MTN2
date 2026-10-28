@@ -1397,6 +1397,18 @@ var
   Fg, Bg: TAlphaColor;
   SubFg, SubBg, SubSelFg, SubSelBg: TAlphaColor;
   IsSel: Boolean;
+  MarkX: Integer;
+
+  procedure DrawBorderMark(const AGrid: TTerminalGrid; AX, AY: Integer; AMark: Char);
+  var
+    Cell: TCharCell;
+  begin
+    if (AY < 0) or (AY > High(AGrid)) or (AX < 0) or (AX > High(AGrid[AY])) then
+      Exit;
+    Cell := AGrid[AY][AX];
+    DrawGridChar(AGrid, AX, AY, AMark, Cell.FgColor, Cell.BgColor);
+  end;
+
 begin
   if not FActive or not FSubmenuOpen then
     Exit;
@@ -1484,8 +1496,17 @@ begin
         Item.Caption[Item.HotPos], cSubmenuHotFg, Bg, [ccaBold]);
   end;
   if Length(Cat.Items) > FSubmenuVisible then
+  begin
     DrawDialogScrollBar(AGrid, R.Right, R.Top + 1, R.Bottom - 1, FSubmenuTop,
       Length(Cat.Items), FSubmenuVisible);
+    // Marks on the frame next to the left corner: items hidden above / below.
+    // They reuse the frame's own colours so every theme keeps its border look.
+    MarkX := R.Left + 2;
+    if FSubmenuTop > 0 then
+      DrawBorderMark(AGrid, MarkX, R.Top, #$25B2);
+    if FSubmenuTop + FSubmenuVisible < Length(Cat.Items) then
+      DrawBorderMark(AGrid, MarkX, R.Bottom, #$25BC);
+  end;
 end;
 
 function TTopMenuController.FindHotCategory(AChar: Char): Integer;

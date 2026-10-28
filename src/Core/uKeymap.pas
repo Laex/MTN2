@@ -227,6 +227,10 @@ function MatchActionIn(const AProfile: TKeymapProfile;
 /// or digit only as the typed character (AKey = 0), which then stands for
 /// its key. Ord('o') and the like are other keys (vkDivide) and stay.</summary>
 function KeymapLookupKey(AKey: Word; AKeyChar: Char): Word;
+/// <summary>Ctrl+Alt+K in the Global context: reload keymap.json. Checked
+/// before a panel or the command line sees the letter.</summary>
+function IsReloadKeymapShortcut(const AProfile: TKeymapProfile; AKey: Word;
+  AKeyChar: Char; AShiftState: TShiftState): Boolean;
 /// <summary>The Global action (kcGlobal) for this keystroke in a window whose
 /// own contexts are AChain, or kaNone: the window's contexts come first, so
 /// a key they bind stays theirs. AKey goes through KeymapLookupKey.</summary>
@@ -818,6 +822,13 @@ begin
   Result := AKey;
   if (Result = 0) and CharInSet(AKeyChar, ['a'..'z', 'A'..'Z', '0'..'9']) then
     Result := Ord(UpCase(AKeyChar));
+end;
+
+function IsReloadKeymapShortcut(const AProfile: TKeymapProfile; AKey: Word;
+  AKeyChar: Char; AShiftState: TShiftState): Boolean;
+begin
+  Result := MatchActionIn(AProfile, [kcGlobal], KeymapLookupKey(AKey, AKeyChar),
+    AShiftState) = kaReloadKeymap;
 end;
 
 function MatchActionIn(const AProfile: TKeymapProfile;

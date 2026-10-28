@@ -522,6 +522,36 @@ begin
   Result := '';
 end;
 
+procedure RestoreAppliedFile(const AItem: TAppliedFile; var AError: string);
+var
+  Aside, MoveError: string;
+begin
+  if AItem.Backup = '' then
+  begin
+    // This file did not exist before the update.
+    System.SysUtils.DeleteFile(AItem.Target);
+    Exit;
+  end;
+  Aside := AItem.Target + '.undo';
+  if not PlatformMoveFile(AItem.Target, Aside, False, MoveError) then
+  begin
+    // The new file is still at the live name.
+    if AError = '' then
+      AError := MoveError;
+    Exit;
+  end;
+  if not PlatformMoveFile(AItem.Backup, AItem.Target, False, MoveError) then
+  begin
+    if AError = '' then
+      AError := 'could not restore ' + AItem.Target;
+    // The new file is at Aside. Put it back so the live name is not empty.
+    if not PlatformMoveFile(Aside, AItem.Target, False, MoveError) then
+      AError := AError + '; ' + MoveError;
+    Exit;
+  end;
+  System.SysUtils.DeleteFile(Aside);
+end;
+
 function ApplyStagedUpdate(const AStagingDir, AAppDir: string; out AError: string): Boolean;
 var
   Files: TArray<string>;
@@ -555,8 +585,11 @@ begin
       if not PlatformMoveFile(Src, Item.Target, True, MoveError) then
       begin
         AError := Format('%s: %s', [Rel, MoveError]);
-        if Item.Backup <> '' then
-          PlatformMoveFile(Item.Backup, Item.Target, False, MoveError);
+        // The previous file is still at Item.Backup. Put it back; if that
+        // fails too, say so instead of reporting a rollback that did not happen.
+        if (Item.Backup <> '') and
+          not PlatformMoveFile(Item.Backup, Item.Target, False, MoveError) then
+          AError := AError + '; restore failed: ' + MoveError;
         Exit;
       end;
       SetLength(Done, Length(Done) + 1);
@@ -565,13 +598,12 @@ begin
     Result := True;
   finally
     if not Result then
-      // Roll back in reverse: drop the new file, put the previous one back.
+    begin
+      // Roll back in reverse. The new file is moved aside and put back if the
+      // backup cannot return, so a failed restore does not leave the name empty.
       for I := High(Done) downto 0 do
-      begin
-        System.SysUtils.DeleteFile(Done[I].Target);
-        if Done[I].Backup <> '' then
-          PlatformMoveFile(Done[I].Backup, Done[I].Target, False, MoveError);
-      end
+        RestoreAppliedFile(Done[I], AError);
+    end
     else
       try
         TDirectory.Delete(AStagingDir, True);

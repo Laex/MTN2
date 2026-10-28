@@ -182,6 +182,9 @@ function ResolvePanelDriveUri(const ADirs: TPanelDriveDirs; ALetter: Char;
   const ARootPath: string): string;
 procedure SeedPanelDriveDirs(var APanel: TPanelState);
 function FormatFileDate(const AValue: TDateTime): string;
+/// <summary>Last segment of a path or URI ("C:\a\b\" -> "b", "a.zip!\d\f"
+/// -> "f"); '' for a drive root.</summary>
+function PathLastSegment(const APath: string): string;
 function RowsFromVfsItems(const ADirURI: string;
   const AItems: TArray<TVfsEntry>;
   const AWorkspaceReturnUri: string = ''): TPanelRows;
@@ -637,6 +640,14 @@ begin
     Result := ''
   else
     Result := FormatDateTime('dd.mm.yy hh:nn', AValue);
+end;
+
+function PathLastSegment(const APath: string): string;
+begin
+  Result := APath;
+  while (Result <> '') and CharInSet(Result[Length(Result)], ['\', '/']) do
+    Delete(Result, Length(Result), 1);
+  Result := Copy(Result, LastDelimiter('\/:', Result) + 1, MaxInt);
 end;
 
 function ParentRowUri(const ADirURI, AWorkspaceReturnUri: string): string;

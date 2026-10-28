@@ -24,10 +24,19 @@ type
     class function CleanPathDelimiter(const APath: string): string;
   end;
 
+/// <summary>A free path next to ADest, named ADest plus ASuffix (and a number
+/// when that name is taken). '' when no free name was found.</summary>
+function UnusedSiblingPath(const ADest, ASuffix: string): string;
+
+/// <summary>Makes AStaged become ADest. An existing ADest is moved aside
+/// first and put back if AStaged cannot take its place, so a failed replace
+/// does not leave ADest missing. AStaged is consumed on success.</summary>
+function ReplacePathWith(const AStaged, ADest: string; out AError: string): Boolean;
+
 implementation
 
 uses
-  uPlatformInfo;
+  uPlatformInfo, uPlatformUpdate;
 
 // One non-digit run of each name. Whole runs, never single chars mixed with
 // an ASCII fast path: per-char "ASCII ordinal, else locale" is not
@@ -175,6 +184,69 @@ end;
 class function TVfsUtils.CleanPathDelimiter(const APath: string): string;
 begin
   Result := ExcludeTrailingPathDelimiter(APath);
+end;
+
+function PathIsPresent(const APath: string): Boolean;
+begin
+  Result := (APath <> '') and (TFile.Exists(APath) or TDirectory.Exists(APath));
+end;
+
+function UnusedSiblingPath(const ADest, ASuffix: string): string;
+var
+  N: Integer;
+begin
+  Result := ADest + ASuffix;
+  N := 0;
+  while PathIsPresent(Result) do
+  begin
+    Inc(N);
+    if N > 1000 then
+      Exit('');
+    Result := ADest + ASuffix + IntToStr(N);
+  end;
+end;
+
+function DeletePathTree(const APath: string): Boolean;
+begin
+  Result := True;
+  if not PathIsPresent(APath) then
+    Exit;
+  try
+    if TDirectory.Exists(APath) then
+      TDirectory.Delete(APath, True)
+    else
+      TFile.Delete(APath);
+  except
+    Result := False;
+  end;
+end;
+
+function ReplacePathWith(const AStaged, ADest: string; out AError: string): Boolean;
+var
+  Hold, MoveError: string;
+begin
+  AError := '';
+  if not PathIsPresent(ADest) then
+    Exit(PlatformMoveFile(AStaged, ADest, False, AError));
+  // Move the current occupant aside before the staged path takes the name.
+  // Deleting it first would lose it when the following rename fails.
+  Hold := UnusedSiblingPath(ADest, '.mtnhold');
+  if Hold = '' then
+  begin
+    AError := 'Cannot make room to replace the destination';
+    Exit(False);
+  end;
+  if not PlatformMoveFile(ADest, Hold, False, AError) then
+    Exit(False);
+  if not PlatformMoveFile(AStaged, ADest, False, MoveError) then
+  begin
+    AError := MoveError;
+    if not PlatformMoveFile(Hold, ADest, False, MoveError) then
+      AError := AError + '; restore failed: ' + MoveError;
+    Exit(False);
+  end;
+  DeletePathTree(Hold);
+  Result := True;
 end;
 
 end.

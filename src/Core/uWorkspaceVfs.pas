@@ -687,15 +687,14 @@ begin
               else
               begin
                 Idx := IndexOfPath(Dest);
-                if Idx >= 0 then
-                begin
-                  if not Overwrite then
-                    Err := TVfsError.Make(vecAlreadyExists, 'Already exists', ToURI)
-                  else
-                    RemoveTree(Dest);
-                end;
+                if (Idx >= 0) and not Overwrite then
+                  Err := TVfsError.Make(vecAlreadyExists, 'Already exists', ToURI);
+                // Confirm the parent before dropping the previous link. A
+                // failed parent check must leave that link in the list.
                 if (Err.Code = vecOk) and EnsureParent(Dest, Err) then
                 begin
+                  if (Idx >= 0) and Overwrite then
+                    RemoveTree(Dest);
                   Node := Default(TWsNode);
                   Node.Path := Dest;
                   Node.TargetURI := Target;

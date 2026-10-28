@@ -53,7 +53,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Zip, System.DateUtils,
   System.Generics.Collections, System.Generics.Defaults, uPlatformInfo,
-  uZipArchiveCache, uZipNames;
+  uZipArchiveCache, uZipNames, uVfsUtils;
 
 { TZipLayer / TVfsEntryComparer live in uZipArchiveCache (single ownership). }
 
@@ -1449,28 +1449,60 @@ procedure ExtractEntryToFile(AZip: TZipFile; AIndex: Integer; const ADestPath: s
   ACancel: IJobCancelToken; var AError: TVfsError); forward;
 
 function OpenZipForWrite(const AZipPath: string; out AZip: TZipFile;
-  out AError: TVfsError): Boolean;
+  out AWorkPath: string; out AError: TVfsError): Boolean;
 begin
   Result := False;
   AZip := nil;
+  AWorkPath := '';
   AError := TVfsError.Ok;
   try
-    AZip := TZipFile.Create;
+    // Edit a copy. Closing the real archive after a failed delete would
+    // persist the removal of entries the new data never replaced.
+    AWorkPath := UnusedSiblingPath(AZipPath, '.mtnzip');
+    if AWorkPath = '' then
+    begin
+      AError := TVfsError.Make(vecIOError,
+        'Cannot make room to update the archive', PathToFileUri(AZipPath));
+      Exit;
+    end;
     if TFile.Exists(AZipPath) then
-      AZip.Open(AZipPath, zmReadWrite)
+      TFile.Copy(AZipPath, AWorkPath, True);
+    AZip := TZipFile.Create;
+    if TFile.Exists(AWorkPath) then
+      AZip.Open(AWorkPath, zmReadWrite)
     else
     begin
       ForceDirectories(SafeDirectoryName(AZipPath));
-      AZip.Open(AZipPath, zmWrite);
+      AZip.Open(AWorkPath, zmWrite);
     end;
     Result := True;
   except
     on E: Exception do
     begin
       FreeAndNil(AZip);
+      if (AWorkPath <> '') and TFile.Exists(AWorkPath) then
+        TFile.Delete(AWorkPath);
+      AWorkPath := '';
       AError := TVfsError.Make(vecIOError, E.Message, PathToFileUri(AZipPath));
     end;
   end;
+end;
+
+procedure FinishZipWrite(const AZipPath, AWorkPath: string; AZip: TZipFile;
+  AKeep: Boolean; var AError: TVfsError);
+var
+  MoveMsg: string;
+begin
+  FreeAndNil(AZip);
+  if AWorkPath = '' then
+    Exit;
+  if AKeep then
+  begin
+    if not ReplacePathWith(AWorkPath, AZipPath, MoveMsg) then
+      AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(AZipPath));
+  end
+  else if TFile.Exists(AWorkPath) then
+    TFile.Delete(AWorkPath);
 end;
 
 procedure DeleteZipEntryName(AZip: TZipFile; const AEntry: string);
@@ -1656,9 +1688,10 @@ begin
     var
       Base: string;
       Segs: TArray<string>;
-      Pref, Path: string;
+      Pref, Path, Work: string;
       Err: TVfsError;
       Zip: TZipFile;
+      Keep: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
@@ -1677,13 +1710,20 @@ begin
           Pref := NormZipName(Pref);
           if Pref = '' then
             Err := TVfsError.Make(vecInvalidURI, 'Cannot delete archive root', URI)
-          else if OpenZipForWrite(Path, Zip, Err) then
+          else if OpenZipForWrite(Path, Zip, Work, Err) then
           try
-            DeleteZipPrefix(Zip, Pref, Cancel, Err);
-            if Err.URI = '' then
-              Err.URI := URI;
+            try
+              DeleteZipPrefix(Zip, Pref, Cancel, Err);
+              if Err.URI = '' then
+                Err.URI := URI;
+            except
+              on E: Exception do
+                if Err.Code = vecOk then
+                  Err := TVfsError.Make(vecIOError, E.Message, URI);
+            end;
           finally
-            Zip.Free;
+            Keep := Err.Code = vecOk;
+            FinishZipWrite(Path, Work, Zip, Keep, Err);
             TZipCdCacheHub.Invalidate(Path);
           end;
         end;
@@ -1710,10 +1750,10 @@ begin
     var
       Base: string;
       Segs: TArray<string>;
-      Pref, Path, Entry: string;
+      Pref, Path, Entry, Work: string;
       Err: TVfsError;
       Zip: TZipFile;
-      Exists: Boolean;
+      Exists, Keep: Boolean;
       I: Integer;
       EmptyBytes: TBytes;
     begin
@@ -1734,8 +1774,9 @@ begin
           Entry := NormZipName(Pref);
           if Entry = '' then
             Err := TVfsError.Make(vecInvalidURI, 'Invalid folder name', URI)
-          else if OpenZipForWrite(Path, Zip, Err) then
+          else if OpenZipForWrite(Path, Zip, Work, Err) then
           try
+            try
             Exists := False;
             for I := 0 to Zip.FileCount - 1 do
               if SameText(NormZipName(Zip.FileNames[I]), Entry) or
@@ -1751,8 +1792,14 @@ begin
               SetLength(EmptyBytes, 0);
               Zip.Add(EmptyBytes, Entry + '/');
             end;
+            except
+              on E: Exception do
+                if Err.Code = vecOk then
+                  Err := TVfsError.Make(vecIOError, E.Message, URI);
+            end;
           finally
-            Zip.Free;
+            Keep := Err.Code = vecOk;
+            FinishZipWrite(Path, Work, Zip, Keep, Err);
             TZipCdCacheHub.Invalidate(Path);
           end;
         end;
@@ -1901,8 +1948,9 @@ begin
       Base: string;
       Segs: TArray<string>;
       Stack: TArray<TZipLayer>;
-      Pref, Path, Dest, LocalSrc, EntryName: string;
+      Pref, Path, Dest, LocalSrc, EntryName, Work: string;
       Err: TVfsError;
+      KeepZip: Boolean;
       Jobs: TList<TPair<Integer, string>>;
       Total, Done: Int64;
       I: Integer;
@@ -1929,16 +1977,23 @@ begin
               EntryName := SafeFileName(ExcludeTrailingPathDelimiter(LocalSrc))
             else
               EntryName := Segs[0];
-            if OpenZipForWrite(Path, Zip, Err) then
+            if OpenZipForWrite(Path, Zip, Work, Err) then
             try
-              Total := 1;
-              Done := 0;
-              AddLocalTreeToZip(Zip, LocalSrc, EntryName, DoOverwrite, Cancel,
-                Done, Total, OnProgress, Err);
-              if Err.URI = '' then
-                Err.URI := ToURI;
+              try
+                Total := 1;
+                Done := 0;
+                AddLocalTreeToZip(Zip, LocalSrc, EntryName, DoOverwrite, Cancel,
+                  Done, Total, OnProgress, Err);
+                if Err.URI = '' then
+                  Err.URI := ToURI;
+              except
+                on E: Exception do
+                  if Err.Code = vecOk then
+                    Err := TVfsError.Make(vecIOError, E.Message, ToURI);
+              end;
             finally
-              Zip.Free;
+              KeepZip := Err.Code = vecOk;
+              FinishZipWrite(Path, Work, Zip, KeepZip, Err);
               TZipCdCacheHub.Invalidate(Path);
             end;
           end;

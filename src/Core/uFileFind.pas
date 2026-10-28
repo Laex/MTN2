@@ -58,8 +58,9 @@ function DefaultFindOptions(const ARootPath, AMask: string;
 /// trailing B allowed); '' gives True with -1 (no bound).</summary>
 function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;
 /// <summary>A date (locale short format) with an optional time; '' gives True
-/// with 0. A date without a time is the start of that day, or its last moment
-/// when AEndOfDay.</summary>
+/// with 0. A leading weekday, as in a short format that prints one, is
+/// ignored. A date without a time is the start of that day, or its last
+/// moment when AEndOfDay.</summary>
 function TryParseFindDate(const AText: string; AEndOfDay: Boolean;
   out ATime: TDateTime): Boolean;
 /// <summary>Copies the typed filters into AOptions; False with AError naming
@@ -114,7 +115,7 @@ function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;
 var
   S: string;
   Mult: Int64;
-  Num: Double;
+  Num, Product: Double;
 begin
   ABytes := -1;
   S := Trim(AText);
@@ -136,7 +137,15 @@ begin
   S := Trim(S);
   if (S = '') or not TryStrToFloat(S, Num) or (Num < 0) then
     Exit;
-  ABytes := Round(Num * Mult);
+  Product := Num * Mult;
+  // NaN compares unequal to itself. Past the Int64 range Round wraps to a
+  // negative value, and a negative bound is read as "no bound", so the
+  // search would ignore the typed size.
+  if (Product <> Product) or (Product >= 9223372036854775808.0) then
+    Exit;
+  ABytes := Round(Product);
+  if ABytes < 0 then
+    Exit;
   Result := True;
 end;
 
@@ -144,12 +153,22 @@ function TryParseFindDate(const AText: string; AEndOfDay: Boolean;
   out ATime: TDateTime): Boolean;
 var
   S: string;
+  Cut: Integer;
 begin
   ATime := 0;
   S := Trim(AText);
   if S = '' then
     Exit(True);
   Result := TryStrToDateTime(S, ATime);
+  if (not Result) and not CharInSet(S[1], ['0'..'9']) then
+  begin
+    // A short date format may lead with the day of week ("Mon 27.10.26").
+    // The weekday is derived from the date, so it is dropped.
+    Cut := 1;
+    while (Cut <= Length(S)) and not CharInSet(S[Cut], ['0'..'9']) do
+      Inc(Cut);
+    Result := TryStrToDateTime(Copy(S, Cut, MaxInt), ATime);
+  end;
   if not Result then
     Exit;
   if AEndOfDay and (Frac(ATime) = 0) then

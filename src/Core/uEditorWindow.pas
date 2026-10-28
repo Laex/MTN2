@@ -223,6 +223,7 @@ type
     procedure ToggleWordWrap;
     procedure ToggleFollow;
     procedure StopFollow;
+    procedure LeaveFollowIfMoved(ARow: Integer);
     procedure UpdateFollow;
     function HexBytesPerRow: Integer;
     function HexRowCount: Integer;
@@ -1619,9 +1620,17 @@ begin
   FDoc.Follow := False;
 end;
 
+// A click or drag onto an earlier line leaves follow mode. The next append
+// would otherwise put the cursor back on the tail and drop the selection.
+procedure TEditorWindow.LeaveFollowIfMoved(ARow: Integer);
+begin
+  if FFollow and FDoc.Ready and (ARow < Max(FDoc.LineCount - 1, 0)) then
+    StopFollow;
+end;
+
 // Follow mode: the document watches its file; whenever it has more or fewer
 // lines the cursor goes to the last one and the view scrolls with it. Another
-// mode, an edit or a scroll up ends it.
+// mode, an edit, a scroll up or a move onto an earlier line ends it.
 procedure TEditorWindow.UpdateFollow;
 begin
   if not FFollow then
@@ -2025,6 +2034,7 @@ end;
 procedure TEditorWindow.SetCursorPos(ARow, ACol: Integer; AExtendSel: Boolean);
 begin
   ClampDocPos(ARow, ACol);
+  LeaveFollowIfMoved(ARow);
   BreakInsertCoalesce;
   if AExtendSel then
     EnsureSelAnchor
@@ -5144,8 +5154,8 @@ end;
 
 function TEditorWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
-var
-  W, Bottom, ViewH, MaxTop, TrackH, Row, Col: Integer;
+  var
+  W, Bottom, ViewH, MaxTop, TrackH, TrackTop, Row, Col: Integer;
   Frame: TRectI;
 begin
   Result := False;
@@ -5191,7 +5201,13 @@ begin
     else if MaxTop > 0 then
     begin
       TrackH := Max(Bottom - 2, 1);
-      ScrollTo(Round((ALocalRow - 2) * MaxTop / Max(TrackH - 1, 1)));
+      TrackTop := Round((ALocalRow - 2) * MaxTop / Max(TrackH - 1, 1));
+      // The up arrow goes through ScrollBy, which already leaves follow.
+      // A jump up the track has to do the same, or the next append pulls
+      // the view back to the end.
+      if FFollow and (TrackTop < FTopLine) then
+        StopFollow;
+      ScrollTo(TrackTop);
     end;
     Exit;
   end;
@@ -5200,6 +5216,7 @@ begin
     Exit;
 
   Result := True;
+  LeaveFollowIfMoved(Row);
   if (ssAlt in AShift) and BlockAllowed then
   begin
     FClicks.Reset;
@@ -5255,6 +5272,7 @@ begin
 
   if HitTextCell(ALocalCol, ALocalRow, Row, Col) then
   begin
+    LeaveFollowIfMoved(Row);
     if FColumnMode then
     begin
       if (Row <> FCursorRow) or (VirtualColAt(ALocalCol, Row) <> FBlockCol) then

@@ -34,6 +34,10 @@ type
     [Test] procedure TestAskModeRenameAnswer;
     [Test] procedure TestAskModeAppendAnswer;
     [Test] procedure TestAskModeCancelAnswer;
+    [Test] procedure TestFileOntoDirectoryKeepsTheFolder;
+    [Test] procedure TestDirectoryOntoFileKeepsTheFile;
+    [Test] procedure TestOverwriteOfLockedFileKeepsIt;
+    [Test] procedure TestFailedZipReplaceKeepsEntries;
   end;
 
 implementation
@@ -43,6 +47,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.SyncObjs,
+  System.Zip,
   Winapi.Windows,
   uVfsTypes,
   uFileVfs,
@@ -52,7 +57,8 @@ uses
   uVfsRegistry,
   uVfsRouter,
   uDualPanelUiTypes,
-  uDualPanelJobs;
+  uDualPanelJobs,
+  uPlatformPaths;
 
 var
   GRoot: string;
@@ -592,6 +598,134 @@ begin
     'the existing file is untouched');
 end;
 
+procedure TestFileOntoDirectoryKeepsTheFolder;
+var
+  SrcDir, DstDir: string;
+  Err: TVfsError;
+begin
+  SrcDir := TPath.Combine(GRoot, 'type_src');
+  DstDir := TPath.Combine(GRoot, 'type_dst');
+  TDirectory.CreateDirectory(SrcDir);
+  TDirectory.CreateDirectory(TPath.Combine(DstDir, 'readme'));
+  WriteTextFile(TPath.Combine(SrcDir, 'readme'), 'src-file');
+  WriteTextFile(TPath.Combine(DstDir, 'keep.txt'), 'keep');
+  WriteTextFile(TPath.Combine(DstDir, 'readme', 'note.txt'), 'note');
+  Assert.IsFalse(RunCopy(SrcDir, DstDir, False, Err),
+    'a file cannot take the place of a directory');
+  Assert.AreEqual('keep', ReadTextFile(TPath.Combine(DstDir, 'keep.txt')),
+    'a file beside the clash is still there');
+  Assert.IsTrue(TDirectory.Exists(TPath.Combine(DstDir, 'readme')),
+    'the destination directory was not deleted');
+  Assert.AreEqual('note', ReadTextFile(TPath.Combine(DstDir, 'readme', 'note.txt')));
+end;
+
+procedure TestDirectoryOntoFileKeepsTheFile;
+var
+  SrcDir, DstDir: string;
+  Err: TVfsError;
+begin
+  SrcDir := TPath.Combine(GRoot, 'dirfile_src');
+  DstDir := TPath.Combine(GRoot, 'dirfile_dst');
+  TDirectory.CreateDirectory(TPath.Combine(SrcDir, 'docs'));
+  WriteTextFile(TPath.Combine(SrcDir, 'docs', 'a.txt'), 'src');
+  TDirectory.CreateDirectory(DstDir);
+  WriteTextFile(TPath.Combine(DstDir, 'docs'), 'dst-file');
+  WriteTextFile(TPath.Combine(DstDir, 'keep.txt'), 'keep');
+  Assert.IsFalse(RunCopy(SrcDir, DstDir, False, Err),
+    'a directory cannot take the place of a file');
+  Assert.AreEqual('dst-file', ReadTextFile(TPath.Combine(DstDir, 'docs')),
+    'the destination file is unchanged');
+  Assert.AreEqual('keep', ReadTextFile(TPath.Combine(DstDir, 'keep.txt')));
+end;
+
+procedure TestOverwriteOfLockedFileKeepsIt;
+var
+  Src, Dst: string;
+  Err: TVfsError;
+  Lock: TFileStream;
+begin
+  if PlatformPosixPaths then
+  begin
+    Assert.Pass('An open file does not block a rename on this platform');
+    Exit;
+  end;
+  Src := TPath.Combine(GRoot, 'lock_src.txt');
+  Dst := TPath.Combine(GRoot, 'lock_dst.txt');
+  WriteTextFile(Src, 'new');
+  WriteTextFile(Dst, 'old');
+  Lock := TFileStream.Create(Dst, fmOpenRead or fmShareDenyWrite);
+  try
+    Assert.IsFalse(RunCopy(Src, Dst, True, Err), 'a locked destination is not replaced');
+  finally
+    Lock.Free;
+  end;
+  Assert.AreEqual('old', ReadTextFile(Dst), 'the previous file is still there');
+end;
+
+procedure TestFailedZipReplaceKeepsEntries;
+var
+  ZipPath, Src, Uri: string;
+  Zip: TZipFile;
+  Bytes, Kept: TBytes;
+  Vfs: IVirtualFileSystem;
+  Ev: TEvent;
+  Ok: Boolean;
+  Err: TVfsError;
+  Lock: TFileStream;
+begin
+  if PlatformPosixPaths then
+  begin
+    Assert.Pass('An open file does not block the archive writer on this platform');
+    Exit;
+  end;
+  ZipPath := TPath.Combine(GRoot, 'keep.zip');
+  Src := TPath.Combine(GRoot, 'zip-src.txt');
+  WriteTextFile(Src, 'new-bytes');
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmWrite);
+    Bytes := TEncoding.ASCII.GetBytes('keep-me');
+    Zip.Add(Bytes, 'keep.txt');
+    Bytes := TEncoding.ASCII.GetBytes('old-entry');
+    Zip.Add(Bytes, 'old.txt');
+  finally
+    Zip.Free;
+  end;
+  Uri := PathToFileUri(ZipPath) + '!/old.txt';
+  Lock := TFileStream.Create(Src, fmOpenRead or fmShareExclusive);
+  try
+    Vfs := CreateDefaultVfs;
+    Ev := TEvent.Create(nil, True, False, '');
+    try
+      Ok := True;
+      Vfs.CopyAsync(PathToFileUri(Src), Uri, nil, nil,
+        procedure(const ASuccess: Boolean; const AErr: TVfsError)
+        begin
+          Ok := ASuccess;
+          Err := AErr;
+          Ev.SetEvent;
+        end, True, False);
+      Assert.IsTrue(WaitEvent(Ev), 'zip copy timed out');
+      Assert.IsFalse(Ok, 'reading a locked source fails the pack');
+    finally
+      Ev.Free;
+    end;
+  finally
+    Lock.Free;
+  end;
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmRead);
+    Zip.Read('keep.txt', Kept);
+    Assert.AreEqual('keep-me', TEncoding.ASCII.GetString(Kept), 'other entry stays');
+    Zip.Read('old.txt', Kept);
+    Assert.AreEqual('old-entry', TEncoding.ASCII.GetString(Kept),
+      'the replaced entry stays when the new bytes cannot be read');
+  finally
+    Zip.Free;
+  end;
+end;
+
 { TTestCopySkipMerge }
 
 procedure TTestCopySkipMerge.SetupFixture;
@@ -666,6 +800,26 @@ end;
 procedure TTestCopySkipMerge.TestAskModeCancelAnswer;
 begin
   TestCopySkipMerge.TestAskModeCancelAnswer;
+end;
+
+procedure TTestCopySkipMerge.TestFileOntoDirectoryKeepsTheFolder;
+begin
+  TestCopySkipMerge.TestFileOntoDirectoryKeepsTheFolder;
+end;
+
+procedure TTestCopySkipMerge.TestDirectoryOntoFileKeepsTheFile;
+begin
+  TestCopySkipMerge.TestDirectoryOntoFileKeepsTheFile;
+end;
+
+procedure TTestCopySkipMerge.TestOverwriteOfLockedFileKeepsIt;
+begin
+  TestCopySkipMerge.TestOverwriteOfLockedFileKeepsIt;
+end;
+
+procedure TTestCopySkipMerge.TestFailedZipReplaceKeepsEntries;
+begin
+  TestCopySkipMerge.TestFailedZipReplaceKeepsEntries;
 end;
 
 initialization

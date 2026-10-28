@@ -16,6 +16,7 @@ type
     [Test] procedure ReservedChordsStayFree;
     [Test] procedure FarPresetFreesEscape;
     [Test] procedure McPresetMovesItsKeys;
+    [Test] procedure ReloadShortcutIsCtrlAltK;
   end;
 
 implementation
@@ -435,6 +436,19 @@ end;
 procedure TTestKeymap.NoChordIsBoundTwiceInOneContext;
 begin
   TestNoChordIsBoundTwiceInOneContext;
+end;
+
+procedure TTestKeymap.ReloadShortcutIsCtrlAltK;
+var
+  P: TKeymapProfile;
+begin
+  P := GetDefaultNDNProfile;
+  Assert.IsTrue(IsReloadKeymapShortcut(P, Ord('K'), #0, [ssCtrl, ssAlt]),
+    'Ctrl+Alt+K reloads the keymap');
+  Assert.IsFalse(IsReloadKeymapShortcut(P, Ord('K'), #0, [ssCtrl]),
+    'Ctrl+K does not reload the keymap');
+  Assert.IsTrue(IsReloadKeymapShortcut(P, 0, 'k', [ssCtrl, ssAlt]),
+    'a typed k with no key code still reloads the keymap');
 end;
 
 procedure TTestKeymap.Run;

@@ -218,6 +218,24 @@ begin
     Exit;
   end;
 
+  Opts := DefaultFindOptions(Root, Mask, FSearch.Subdirs);
+  Opts.ContainingText := FSearch.ContainingText;
+  Opts.CaseSensitive := FSearch.CaseSensitive;
+  Opts.WholeWords := FSearch.WholeWords;
+  Opts.SearchFolders := FSearch.SearchFolders;
+  Opts.UseRegex := FSearch.UseRegex;
+  // A rejected size stops here. Past this point the overlay says the search
+  // is running, and Esc only cancels a walk that has already started.
+  if not ApplyFindFilterText(Opts, FSearch.Filters, FilterError) then
+  begin
+    FSearch.Message := FilterError;
+    FSearch.Phase := spResults;
+    SetLength(FSearch.Results, 0);
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+    Exit;
+  end;
+
   Life := FLife;
   Token := TJobCancelToken.Create;
   FSearch.Cancel := Token;
@@ -228,23 +246,6 @@ begin
   SetLength(FSearch.Results, 0);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
-
-  Opts := DefaultFindOptions(Root, Mask, FSearch.Subdirs);
-  Opts.ContainingText := FSearch.ContainingText;
-  Opts.CaseSensitive := FSearch.CaseSensitive;
-  Opts.WholeWords := FSearch.WholeWords;
-  Opts.SearchFolders := FSearch.SearchFolders;
-  Opts.UseRegex := FSearch.UseRegex;
-  if not ApplyFindFilterText(Opts, FSearch.Filters, FilterError) then
-  begin
-    FSearch.Cancel := nil;
-    FSearch.Message := FilterError;
-    FSearch.Phase := spResults;
-    SetLength(FSearch.Results, 0);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    Exit;
-  end;
 
   FindFilesAsync(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)

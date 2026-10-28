@@ -1379,16 +1379,6 @@ uses
 const
   cLiveFilterHistory = 'livefilter';
 
-/// <summary>Last segment of a path or URI ("C:\a\b\" -> "b", "a.zip!\d\f"
-/// -> "f"); '' for a drive root.</summary>
-function PathLastSegment(const APath: string): string;
-begin
-  Result := APath;
-  while (Result <> '') and CharInSet(Result[Length(Result)], ['\', '/']) do
-    Delete(Result, Length(Result), 1);
-  Result := Copy(Result, LastDelimiter('\/:', Result) + 1, MaxInt);
-end;
-
 class function TInputOverlayEntry.Make(AIsActive: TFunc<Boolean>;
   AHandle: THandleInputMethod): TInputOverlayEntry;
 begin
@@ -4415,14 +4405,6 @@ procedure TDualPanelWindow.ReloadActiveRows;
 begin
   LoadSide(psLeft);
   LoadSide(psRight);
-end;
-
-// True for panel URI kinds that are virtual views with no real directory to
-// watch (archives, find results, the temp panel, workspace links).
-function IsVirtualDirWatchUri(const AURI: string): Boolean;
-begin
-  Result := HasArchiveChain(AURI) or IsFindUri(AURI) or IsTmpPanelUri(AURI) or
-    IsWorkspaceUri(AURI);
 end;
 
 procedure TDualPanelWindow.SyncDirWatches;

@@ -214,13 +214,12 @@ begin
     Text := Filters.DateFrom;
   Stamp := 0;
   TimeText := '';
-  if (Trim(Text) <> '') and TryStrToDateTime(Trim(Text), Stamp) then
-  begin
-    if Frac(Stamp) <> 0 then
-      TimeText := FormatDateTime('hh:nn', Stamp);
-  end
-  else
+  // The same reading as the search itself, so a weekday in the short date
+  // opens the calendar on that day instead of today.
+  if not TryParseFindDate(Text, False, Stamp) then
     Stamp := 0;
+  if (Stamp <> 0) and (Frac(Stamp) <> 0) then
+    TimeText := FormatDateTime('hh:nn', Stamp);
   if Assigned(FOnSetKind) then
     FOnSetKind(hdkDatePicker);
   FDialog.Open(BuildDatePickerDialog(T('ui.datePicker.title', 'Pick date'),

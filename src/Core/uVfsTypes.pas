@@ -280,6 +280,9 @@ function IsSystemFoldersUri(const AURI: string): Boolean;
 function IsRecycleBinUri(const AURI: string): Boolean;
 function IsTmpPanelUri(const AURI: string): Boolean;
 function IsWorkspaceUri(const AURI: string): Boolean;
+/// <summary>No single disk directory to watch: an archive chain, find
+/// results, the temporary panel or a workspace. A file folder is watched.</summary>
+function IsVirtualDirWatchUri(const AURI: string): Boolean;
 function WorkspaceInnerPath(const AURI: string): string;
 function MakeWorkspaceUri(const AInner: string): string;
 /// <summary>sftp://user@host:port/remote/path -- Authority is "user@host:port"
@@ -1367,6 +1370,12 @@ begin
   S := Trim(AURI);
   P := Pos('://', S);
   Result := (P > 1) and SameText(Copy(S, 1, P - 1), 'ws');
+end;
+
+function IsVirtualDirWatchUri(const AURI: string): Boolean;
+begin
+  Result := HasArchiveChain(AURI) or IsFindUri(AURI) or IsTmpPanelUri(AURI) or
+    IsWorkspaceUri(AURI);
 end;
 
 function WorkspaceInnerPath(const AURI: string): string;
