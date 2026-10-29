@@ -23,6 +23,7 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;    // include matching directories in results
     UseRegex: Boolean;         // ContainingText is a regex pattern, not plain text
+    HexBytes: string;          // byte sequence ("4D 5A ?? 90") the file must contain; empty = none
     MinSize: Int64;            // bytes; -1 = no lower bound (files only)
     MaxSize: Int64;            // bytes; -1 = no upper bound (files only)
     ModifiedFrom: TDateTime;   // 0 = no lower bound
@@ -84,13 +85,50 @@ function NameMatchesAnyMask(const AName: string;
 /// failing file-by-file mid-walk.</summary>
 function ValidateRegexPattern(const APattern: string; out AError: string): Boolean;
 
+/// <summary>Reads a byte sequence typed as hex: pairs of digits, optionally
+/// separated by spaces or commas and prefixed with 0x; "??" matches any byte.
+/// Each APattern item is 0..255, or -1 for "??". AError says what is wrong.</summary>
+function TryParseHexPattern(const AText: string; out APattern: TArray<Integer>;
+  out AError: string): Boolean;
+
+/// <summary>The UTF-8 bytes of AText as hex pairs ("48 65 6C").</summary>
+function TextToHexString(const AText: string): string;
+
+/// <summary>The text AHex spells when it is plain UTF-8 without "??"; False
+/// for anything else (odd digits, wildcards, bytes that are not UTF-8).</summary>
+function TryHexToText(const AHex: string; out AText: string): Boolean;
+
+/// <summary>Applies an edit of the hex field. AOld is the field as last shown
+/// (pairs of digits separated by single spaces), ANew what the edit left and
+/// ACursor the caret in it (0-based, as in the input line). The result is
+/// again pairs of upper-case digits; the spaces are not editable. A digit
+/// typed between the two digits of a byte replaces the second one; typed
+/// anywhere else among the bytes it inserts a new byte (the other nibble is 0,
+/// "?" for a wildcard), so the following bytes keep their pairing; typed at
+/// the end it appends a digit. Deleting one digit of a byte turns it into 0
+/// (the bytes after it keep their pairing); a byte that becomes 00 is removed,
+/// as is a lone digit at the end. Deleting a space does nothing.</summary>
+procedure EditHexField(const AOld, ANew: string; ACursor: Integer;
+  out AText: string; out ACursor2: Integer);
+
+/// <summary>Scans the whole file in pieces for APattern; AOffset is the
+/// position of the first match.</summary>
+function FileHexMatch(const APath: string; const APattern: TArray<Integer>;
+  out AOffset: Int64): Boolean;
+
+/// <summary>Whether one file passes the content conditions (text and/or hex
+/// bytes); ALine / ASnippet describe the first hit. No condition matches
+/// every file.</summary>
+function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
+  out ALine: Integer; out ASnippet: string): Boolean;
+
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
   AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback);
 
 implementation
 
 uses
-  System.IOUtils, System.Masks, System.Generics.Collections,
+  System.IOUtils, System.Masks, System.Math, System.Generics.Collections,
   System.RegularExpressions;
 
 function DefaultFindOptions(const ARootPath, AMask: string;
@@ -104,6 +142,7 @@ begin
   Result.WholeWords := False;
   Result.SearchFolders := False;
   Result.UseRegex := False;
+  Result.HexBytes := '';
   Result.MinSize := -1;
   Result.MaxSize := -1;
   Result.ModifiedFrom := 0;
@@ -344,6 +383,284 @@ begin
   end;
 end;
 
+function TryParseHexPattern(const AText: string; out APattern: TArray<Integer>;
+  out AError: string): Boolean;
+var
+  Digits, Token: string;
+  I: Integer;
+  Hi, Lo: Char;
+
+  function HexValue(C: Char): Integer;
+  begin
+    case C of
+      '0'..'9': Result := Ord(C) - Ord('0');
+      'a'..'f': Result := Ord(C) - Ord('a') + 10;
+      'A'..'F': Result := Ord(C) - Ord('A') + 10;
+    else
+      Result := -1;
+    end;
+  end;
+
+begin
+  APattern := nil;
+  AError := '';
+  Digits := '';
+  for Token in AText.Split([' ', ',', ';', #9]) do
+    if (Length(Token) > 2) and (Token[1] = '0') and ((Token[2] = 'x') or (Token[2] = 'X')) then
+      Digits := Digits + Copy(Token, 3, MaxInt)
+    else
+      Digits := Digits + Token;
+  if Digits = '' then
+  begin
+    AError := 'No bytes';
+    Exit(False);
+  end;
+  if Odd(Length(Digits)) then
+  begin
+    AError := 'Odd number of hex digits';
+    Exit(False);
+  end;
+  SetLength(APattern, Length(Digits) div 2);
+  for I := 0 to High(APattern) do
+  begin
+    Hi := Digits[I * 2 + 1];
+    Lo := Digits[I * 2 + 2];
+    if (Hi = '?') and (Lo = '?') then
+      APattern[I] := -1
+    else if (HexValue(Hi) >= 0) and (HexValue(Lo) >= 0) then
+      APattern[I] := HexValue(Hi) * 16 + HexValue(Lo)
+    else
+    begin
+      AError := 'Not a hex byte: ' + Hi + Lo;
+      APattern := nil;
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function TextToHexString(const AText: string): string;
+var
+  Bytes: TBytes;
+  I: Integer;
+begin
+  Bytes := TEncoding.UTF8.GetBytes(AText);
+  Result := '';
+  for I := 0 to High(Bytes) do
+  begin
+    if I > 0 then
+      Result := Result + ' ';
+    Result := Result + IntToHex(Bytes[I], 2);
+  end;
+end;
+
+function TryHexToText(const AHex: string; out AText: string): Boolean;
+var
+  Pattern: TArray<Integer>;
+  Error: string;
+  Bytes, Back: TBytes;
+  I: Integer;
+begin
+  AText := '';
+  if not TryParseHexPattern(AHex, Pattern, Error) then
+    Exit(False);
+  SetLength(Bytes, Length(Pattern));
+  for I := 0 to High(Pattern) do
+  begin
+    if Pattern[I] < 0 then
+      Exit(False);
+    Bytes[I] := Pattern[I];
+  end;
+  try
+    AText := TEncoding.UTF8.GetString(Bytes);
+  except
+    on EEncodingError do
+      Exit(False);
+  end;
+  // Overlong forms decode without an error; the round trip rejects them.
+  Back := TEncoding.UTF8.GetBytes(AText);
+  if Length(Back) <> Length(Bytes) then
+    Exit(False);
+  for I := 0 to High(Bytes) do
+    if Back[I] <> Bytes[I] then
+      Exit(False);
+  Result := True;
+end;
+
+function IsHexFieldChar(C: Char): Boolean;
+begin
+  Result := CharInSet(C, ['0'..'9', 'a'..'f', 'A'..'F', '?']);
+end;
+
+// Digits and "?" of AText upper-cased; "0x" prefixes of pasted bytes dropped.
+function HexFieldDigits(const AText: string): string;
+var
+  I: Integer;
+  S: string;
+begin
+  S := AText.Replace('0x', '', [rfReplaceAll, rfIgnoreCase]);
+  Result := '';
+  for I := 1 to Length(S) do
+    if IsHexFieldChar(S[I]) then
+      Result := Result + UpCase(S[I]);
+end;
+
+procedure EditHexField(const AOld, ANew: string; ACursor: Integer;
+  out AText: string; out ACursor2: Integer);
+var
+  Pos, N, I, R, S: Integer;
+  Left, Digits, Fill: string;
+  Ch, Prev: Char;
+begin
+  // One character typed among the existing bytes.
+  if (Length(ANew) = Length(AOld) + 1) and (ACursor >= 1) and
+     (ACursor <= Length(ANew)) and (ACursor <= Length(AOld)) and
+     (Copy(ANew, 1, ACursor - 1) + Copy(ANew, ACursor + 1, MaxInt) = AOld) then
+  begin
+    Pos := ACursor;
+    Ch := UpCase(ANew[Pos]);
+    AText := AOld;
+    ACursor2 := ACursor - 1;
+    if not IsHexFieldChar(Ch) then
+      Exit;
+    if Pos > 1 then
+      Prev := AOld[Pos - 1]
+    else
+      Prev := ' ';
+    if Ch = '?' then
+      Fill := '?'
+    else
+      Fill := '0';
+    if (Prev <> ' ') and (AOld[Pos] <> ' ') then
+    begin
+      AText[Pos] := Ch;
+      ACursor2 := Pos;
+    end
+    else if AOld[Pos] = ' ' then
+    begin
+      AText := Copy(AOld, 1, Pos - 1) + ' ' + Ch + Fill + Copy(AOld, Pos, MaxInt);
+      ACursor2 := Pos + 1;
+    end
+    else
+    begin
+      AText := Copy(AOld, 1, Pos - 1) + Ch + Fill + ' ' + Copy(AOld, Pos, MaxInt);
+      ACursor2 := Pos;
+    end;
+    Exit;
+  end;
+  // One character deleted (Backspace or Delete leave the caret at the same place).
+  if (Length(ANew) = Length(AOld) - 1) and (ACursor >= 0) and
+     (ACursor < Length(AOld)) and
+     (Copy(AOld, 1, ACursor) + Copy(AOld, ACursor + 2, MaxInt) = ANew) then
+  begin
+    R := ACursor + 1;
+    AText := AOld;
+    ACursor2 := ACursor;
+    if AOld[R] = ' ' then
+      Exit;
+    if (R > 1) and (AOld[R - 1] <> ' ') then
+      S := R - 1
+    else
+      S := R;
+    if (S = R) and ((R = Length(AOld)) or (AOld[R + 1] = ' ')) then
+    begin
+      AText := Copy(AOld, 1, R - 1);
+      if (AText <> '') and (AText[Length(AText)] = ' ') then
+        SetLength(AText, Length(AText) - 1);
+      ACursor2 := Min(ACursor, Length(AText));
+      Exit;
+    end;
+    AText[R] := '0';
+    if (AText[S] = '0') and (AText[S + 1] = '0') then
+    begin
+      if S + 2 <= Length(AText) then
+      begin
+        Delete(AText, S, 3);
+        ACursor2 := S - 1;
+      end
+      else if S > 1 then
+      begin
+        Delete(AText, S - 1, 3);
+        ACursor2 := Length(AText);
+      end
+      else
+      begin
+        AText := '';
+        ACursor2 := 0;
+      end;
+    end;
+    Exit;
+  end;
+  // Typing at the end, paste, selection delete: regroup what is left.
+  Left := HexFieldDigits(Copy(ANew, 1, ACursor));
+  Digits := Left + HexFieldDigits(Copy(ANew, ACursor + 1, MaxInt));
+  AText := '';
+  for I := 1 to Length(Digits) do
+  begin
+    if (I > 1) and Odd(I) then
+      AText := AText + ' ';
+    AText := AText + Digits[I];
+  end;
+  N := Length(Left);
+  if N > 0 then
+    ACursor2 := N + (N - 1) div 2
+  else
+    ACursor2 := 0;
+end;
+
+function FileHexMatch(const APath: string; const APattern: TArray<Integer>;
+  out AOffset: Int64): Boolean;
+const
+  cChunk = 1024 * 1024;
+var
+  FS: TFileStream;
+  Buf: TBytes;
+  M, Have, Got, Keep, I, J: Integer;
+  Base: Int64;
+begin
+  AOffset := -1;
+  M := Length(APattern);
+  if M = 0 then
+    Exit(False);
+  try
+    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(Buf, cChunk + M);
+      Have := 0;
+      Base := 0;
+      repeat
+        Got := FS.Read(Buf[Have], cChunk);
+        if Got <= 0 then
+          Break;
+        Inc(Have, Got);
+        for I := 0 to Have - M do
+        begin
+          J := 0;
+          while (J < M) and ((APattern[J] < 0) or (Buf[I + J] = APattern[J])) do
+            Inc(J);
+          if J = M then
+          begin
+            AOffset := Base + I;
+            Exit(True);
+          end;
+        end;
+        // The next window starts where the last complete one ended, so a match
+        // that straddles two reads is still seen.
+        Keep := Min(M - 1, Have);
+        if Keep > 0 then
+          Move(Buf[Have - Keep], Buf[0], Keep);
+        Inc(Base, Have - Keep);
+        Have := Keep;
+      until False;
+    finally
+      FS.Free;
+    end;
+  except
+    Exit(False);
+  end;
+  Result := False;
+end;
+
 const
   cFindSnippetMaxLen = 200;
 
@@ -440,13 +757,26 @@ end;
 { Name-only searches (empty ContainingText) match every file. }
 function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
   out ALine: Integer; out ASnippet: string): Boolean;
+var
+  Pattern: TArray<Integer>;
+  Offset: Int64;
+  Error: string;
 begin
-  if AOptions.ContainingText = '' then
-  begin
-    ALine := 0;
-    ASnippet := '';
+  ALine := 0;
+  ASnippet := '';
+  if (AOptions.ContainingText = '') and (Trim(AOptions.HexBytes) = '') then
     Exit(True);
+  // Both fields filled: the file has to satisfy both. The text hit supplies
+  // the line; with bytes only, the hit shows the offset.
+  if Trim(AOptions.HexBytes) <> '' then
+  begin
+    if not TryParseHexPattern(AOptions.HexBytes, Pattern, Error) or
+       not FileHexMatch(AFilePath, Pattern, Offset) then
+      Exit(False);
+    ASnippet := Format('@ 0x%.8X', [Offset]);
   end;
+  if AOptions.ContainingText = '' then
+    Exit(True);
   Result := FileContentMatch(AFilePath, AOptions.ContainingText,
     AOptions.CaseSensitive, AOptions.WholeWords, AOptions.UseRegex, ALine,
     ASnippet);
@@ -529,7 +859,7 @@ begin
                     if IsDir then
                     begin
                       if Opts.SearchFolders and NameMatchesAnyMask(Name, Masks) and
-                         (Needle = '') and
+                         (Needle = '') and (Trim(Opts.HexBytes) = '') and
                          FindEntryPassesFilters(Opts, True, 0, SR.TimeStamp, SR.Attr) then
                       begin
                         Hit.Path := Full;

@@ -34,6 +34,9 @@ function InputLineEmpty: TInputLine;
 procedure InputLineReset(var A: TInputLine);
 procedure InputLineSetText(var A: TInputLine; const AText: string;
   ACursorAtEnd: Boolean = True);
+/// <summary>Replaces the text and puts the cursor at ACursor (clamped).</summary>
+procedure InputLineSetTextAt(var A: TInputLine; const AText: string;
+  ACursor: Integer);
 procedure InputLineInsert(var A: TInputLine; const AText: string);
 procedure InputLineSelectAll(var A: TInputLine);
 procedure InputLineClearSelection(var A: TInputLine);
@@ -364,6 +367,15 @@ begin
     A.Cursor := 0;
   A.SelAnchor := -1;
   A.ViewLeft := 0;
+  Clamp(A);
+end;
+
+procedure InputLineSetTextAt(var A: TInputLine; const AText: string;
+  ACursor: Integer);
+begin
+  A.Text := AText;
+  A.Cursor := ACursor;
+  A.SelAnchor := -1;
   Clamp(A);
 end;
 

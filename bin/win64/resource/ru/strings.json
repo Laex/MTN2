@@ -605,6 +605,7 @@
       "search_words": "&Только слово целиком",
       "search_folders": "&Искать папки",
       "search_regex": "&Рег. выражение",
+      "lbl_hex": "Hex-байты:",
       "search_subdirs": "Искать во &вложенных папках",
       "ok": "Найти",
       "cancel": "Отмена"

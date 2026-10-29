@@ -680,6 +680,7 @@ begin
   FJob.CurrentName := '';
   FJob.CurrentSrcPath := '';
   FJob.CurrentDstPath := '';
+  FJob.Scanning := False;
   FJob.Message := '';
   FJob.Cancel := nil;
   FJob.Presentation := jpForeground;
@@ -799,6 +800,7 @@ begin
   FJob.CurrentName := '';
   FJob.CurrentSrcPath := '';
   FJob.CurrentDstPath := '';
+  FJob.Scanning := False;
   FJob.Message := '';
   FJob.Cancel := nil;
   FJob.Presentation := jpForeground;
@@ -897,6 +899,15 @@ procedure TPanelJobController.NoteItemProgress(ADone, ATotal: Int64;
 var
   Need: Int64;
 begin
+  // ATotal = -1: the VFS is still reading the tree and ACurrentName is the
+  // folder it is in.
+  if ATotal < 0 then
+  begin
+    FJob.Scanning := True;
+    FJob.CurrentSrcPath := ACurrentName;
+    Exit;
+  end;
+  FJob.Scanning := False;
   // ADone/ATotal keep their original meaning unchanged: cumulative bytes for
   // the whole current top-level item (a recursive tree copy reports running
   // totals across all its files here) - this still drives the "Total" bar

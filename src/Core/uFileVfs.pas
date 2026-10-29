@@ -702,12 +702,18 @@ begin
   end;
 end;
 
-function EstimateTreeBytes(const APath: string): Int64;
+// The walks below run before a copy / move / delete starts. They report the
+// folder being read (ATotal = -1 marks a scan report) and stop on cancel, so
+// a huge tree shows what is happening and can be abandoned.
+function EstimateTreeBytes(const APath: string; ACancel: IJobCancelToken = nil;
+  AOnProgress: TVfsProgressCallback = nil): Int64;
 var
   SR: TSearchRec;
   Code: Integer;
 begin
   Result := 0;
+  if JobCancelRequested(ACancel) then
+    Exit;
   if TFile.Exists(WinApiPath(APath)) and not TDirectory.Exists(WinApiPath(APath)) then
   begin
     Result := TFile.GetSize(WinApiPath(APath));
@@ -715,14 +721,16 @@ begin
   end;
   if not TDirectory.Exists(WinApiPath(APath)) then
     Exit;
+  QueueProgress(AOnProgress, 0, -1, APath);
   Code := FindFirst(WinApiPath(SafeCombinePath(APath, '*')), faAnyFile, SR);
   try
-    while Code = 0 do
+    while (Code = 0) and not JobCancelRequested(ACancel) do
     begin
       if (SR.Name <> '.') and (SR.Name <> '..') then
       begin
         if (SR.Attr and faDirectory) <> 0 then
-          Inc(Result, EstimateTreeBytes(SafeCombinePath(APath, SR.Name)))
+          Inc(Result, EstimateTreeBytes(SafeCombinePath(APath, SR.Name), ACancel,
+            AOnProgress))
         else
           Inc(Result, SR.Size);
       end;
@@ -737,24 +745,29 @@ end;
 // DeleteTree below will remove - the denominator for its progress reporting.
 // A second walk of the same tree before deletion starts, mirroring
 // EstimateTreeBytes above for copy.
-function EstimateTreeItemCount(const APath: string): Int64;
+function EstimateTreeItemCount(const APath: string; ACancel: IJobCancelToken = nil;
+  AOnProgress: TVfsProgressCallback = nil): Int64;
 var
   SR: TSearchRec;
   Code: Integer;
 begin
+  if JobCancelRequested(ACancel) then
+    Exit(0);
   if TFile.Exists(WinApiPath(APath)) and not TDirectory.Exists(WinApiPath(APath)) then
     Exit(1);
   if not TDirectory.Exists(WinApiPath(APath)) then
     Exit(0);
   Result := 1; // APath itself
+  QueueProgress(AOnProgress, 0, -1, APath);
   Code := FindFirst(WinApiPath(SafeCombinePath(APath, '*')), faAnyFile, SR);
   try
-    while Code = 0 do
+    while (Code = 0) and not JobCancelRequested(ACancel) do
     begin
       if (SR.Name <> '.') and (SR.Name <> '..') then
       begin
         if (SR.Attr and faDirectory) <> 0 then
-          Inc(Result, EstimateTreeItemCount(SafeCombinePath(APath, SR.Name)))
+          Inc(Result, EstimateTreeItemCount(SafeCombinePath(APath, SR.Name), ACancel,
+            AOnProgress))
         else
           Inc(Result);
       end;
@@ -1024,7 +1037,7 @@ begin
           else
           begin
             DoneItems := 0;
-            TotalItems := EstimateTreeItemCount(Path);
+            TotalItems := EstimateTreeItemCount(Path, Cancel, OnProgress);
             if TotalItems <= 0 then
               TotalItems := 1;
             DeleteTree(Path, Cancel, OnProgress, DoneItems, TotalItems, Err);
@@ -1159,7 +1172,7 @@ begin
             end;
             if Err.Code = vecOk then
             begin
-              TotalBytes := EstimateTreeBytes(Src);
+              TotalBytes := EstimateTreeBytes(Src, Cancel, OnProgress);
               if TotalBytes <= 0 then
                 TotalBytes := 1;
               DestWasDir := TDirectory.Exists(WinApiPath(Dst));
@@ -1309,7 +1322,7 @@ begin
             else
             begin
               // Cross-volume, or a file/directory name clash: copy then delete source.
-              TotalBytes := EstimateTreeBytes(Src);
+              TotalBytes := EstimateTreeBytes(Src, Cancel, OnProgress);
               if TotalBytes <= 0 then
                 TotalBytes := 1;
               DoneBytes := 0;

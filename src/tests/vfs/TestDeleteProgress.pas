@@ -127,6 +127,9 @@ begin
       procedure(const ADone, ATotal: Int64; const AName: string;
         const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
       begin
+        // ATotal = -1 reports the folder the tree walk is in; not a progress sample.
+        if ATotal < 0 then
+          Exit;
         Sample.Done := ADone;
         Sample.Total := ATotal;
         Sample.Name := AName;

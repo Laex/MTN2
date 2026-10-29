@@ -53,6 +53,8 @@ type
     property WholeWords: Boolean read FSearch.WholeWords write FSearch.WholeWords;
     property SearchFolders: Boolean read FSearch.SearchFolders write FSearch.SearchFolders;
     property UseRegex: Boolean read FSearch.UseRegex write FSearch.UseRegex;
+    property HexText: string read FSearch.HexText write FSearch.HexText;
+    property HexMode: Boolean read FSearch.HexMode write FSearch.HexMode;
     property Filters: TFindFilterText read FSearch.Filters write FSearch.Filters;
     property RootPath: string read FSearch.RootPath write FSearch.RootPath;
     property FocusField: Integer read FSearch.FocusField write FSearch.FocusField;
@@ -109,6 +111,8 @@ begin
   FSearch.WholeWords := False;
   FSearch.SearchFolders := False;
   FSearch.UseRegex := False;
+  FSearch.HexText := '';
+  FSearch.HexMode := False;
   FSearch.Filters := Default(TFindFilterText);
   FSearch.FocusField := 0;
 end;
@@ -183,6 +187,8 @@ end;
 procedure TSearchController.StartSearch;
 var
   Mask, Root, RegexError, FilterError: string;
+  HexPattern: TArray<Integer>;
+  ByBytes: Boolean;
   Token: IJobCancelToken;
   Opts: TFindOptions;
   Life: ILifeFlag;
@@ -207,7 +213,18 @@ begin
 
   // Validate the regex once up front - a bad pattern is reported instantly
   // instead of silently matching nothing on every file in the walk.
-  if FSearch.UseRegex and (Trim(FSearch.ContainingText) <> '') and
+  ByBytes := FSearch.HexMode and (Trim(FSearch.HexText) <> '');
+  if ByBytes and
+     not TryParseHexPattern(FSearch.HexText, HexPattern, RegexError) then
+  begin
+    FSearch.Message := 'Invalid hex: ' + RegexError;
+    FSearch.Phase := spResults;
+    SetLength(FSearch.Results, 0);
+    if Assigned(FOnInvalidate) then
+      FOnInvalidate;
+    Exit;
+  end;
+  if not ByBytes and FSearch.UseRegex and (Trim(FSearch.ContainingText) <> '') and
      not ValidateRegexPattern(FSearch.ContainingText, RegexError) then
   begin
     FSearch.Message := 'Invalid regex: ' + RegexError;
@@ -224,6 +241,11 @@ begin
   Opts.WholeWords := FSearch.WholeWords;
   Opts.SearchFolders := FSearch.SearchFolders;
   Opts.UseRegex := FSearch.UseRegex;
+  if ByBytes then
+  begin
+    Opts.ContainingText := '';
+    Opts.HexBytes := FSearch.HexText;
+  end;
   // A rejected size stops here. Past this point the overlay says the search
   // is running, and Esc only cancels a walk that has already started.
   if not ApplyFindFilterText(Opts, FSearch.Filters, FilterError) then

@@ -338,6 +338,10 @@ type
     /// worth of fields, not a value that changes on every arrow key).
     /// No-op if AId isn't a dckInput.</summary>
     procedure SetInputValue(const AId, AValue: string);
+    /// <summary>Caret position of a dckInput (0 = before the first character).</summary>
+    function GetInputCursor(const AId: string): Integer;
+    /// <summary>SetInputValue with the caret at ACursor instead of the end.</summary>
+    procedure SetInputValueAt(const AId, AValue: string; ACursor: Integer);
     function GetCheckbox(const AId: string): Boolean;
     /// <summary>Sets a dckCheckbox of the open dialog; no-op for other ids.</summary>
     procedure SetCheckbox(const AId: string; AChecked: Boolean);
@@ -1255,6 +1259,25 @@ begin
   I := FindInputIndexById(AId);
   if I >= 0 then
     InputLineSetText(FDecl.Controls[I].Edit, AValue);
+end;
+
+function TDialogHost.GetInputCursor(const AId: string): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  I := FindInputIndexById(AId);
+  if I >= 0 then
+    Result := FDecl.Controls[I].Edit.Cursor;
+end;
+
+procedure TDialogHost.SetInputValueAt(const AId, AValue: string; ACursor: Integer);
+var
+  I: Integer;
+begin
+  I := FindInputIndexById(AId);
+  if I >= 0 then
+    InputLineSetTextAt(FDecl.Controls[I].Edit, AValue, ACursor);
 end;
 
 function TDialogHost.GetCheckbox(const AId: string): Boolean;

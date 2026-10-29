@@ -164,6 +164,7 @@ type
     FOnReturnWhenDone: TNotifyEvent;
     FOnRunInBackground: TNotifyEvent;
     FOnShellCwdSync: TShellCwdSyncEvent;
+    FOnShellReleaseDirs: TShellReleaseDirsEvent;
     FOnSaveConsoleOutput: TSaveConsoleOutputEvent;
     FOnClearConsoleBuffer: TNotifyEvent;
     FOnSaveSettings: TSaveSettingsEvent;
@@ -628,6 +629,12 @@ type
     /// (SyncConsoleDirNow).</summary>
     procedure PushShellCwdSync;
     procedure NotifyShellCwdSync;
+    /// <summary>Lets the background shell leave a folder that is about to be
+    /// deleted or moved: Windows refuses to remove a process's current folder.</summary>
+    function ReleaseShellDirs(const ASources: TArray<string>): Boolean;
+    /// <summary>Runs AAction at once, or a moment later when the shell had to
+    /// leave one of ASources first.</summary>
+    procedure RunAfterShellRelease(const ASources: TArray<string>; const AAction: TProc);
     /// <summary>kaSyncConsoleDir (Ctrl+Shift+O) while Dual Panel is active:
     /// force-push the active panel's dir into the console, ignoring
     /// AutoSyncConsoleCwd (that setting only gates the automatic push).</summary>
@@ -904,6 +911,7 @@ type
     /// when it landed on the list.</summary>
     function ClickCmdHistoryPopup(ACol, ARow: Integer): Boolean;
     procedure SetPanelFilterMask(const AText: string);
+    function TrySpaceSelect(AKeyChar: Char; AShift: TShiftState): Boolean;
     function HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure SetConsoleMode(AValue: Boolean);
@@ -1296,6 +1304,8 @@ type
     property OnReturnWhenDone: TNotifyEvent read FOnReturnWhenDone write FOnReturnWhenDone;
     property OnRunInBackground: TNotifyEvent read FOnRunInBackground write FOnRunInBackground;
     property OnShellCwdSync: TShellCwdSyncEvent read FOnShellCwdSync write FOnShellCwdSync;
+    property OnShellReleaseDirs: TShellReleaseDirsEvent read FOnShellReleaseDirs
+      write FOnShellReleaseDirs;
     /// <summary>Commands > Save console output: the form writes the console's scrollback.</summary>
     property OnSaveConsoleOutput: TSaveConsoleOutputEvent
       read FOnSaveConsoleOutput write FOnSaveConsoleOutput;
@@ -2084,6 +2094,7 @@ begin
   FKeymapHost.MoveCursorWithSelect := MoveCursorWithSelect;
   FKeymapHost.ToggleInsertSelect := ToggleInsertSelect;
   FKeymapHost.SubmitCommandLine := SubmitCommandLine;
+  FKeymapHost.TrySpaceSelect := TrySpaceSelect;
   FKeymapHost.HandleCmdLineInput := HandleCmdLineInput;
 end;
 
@@ -2534,8 +2545,13 @@ begin
   if Assigned(FMenus) and FMenus.StubVisible then
   begin
     FMenus.StubText := FolderSizeStubTitle;
-    FMenus.StubDetail := Format('Selected folders: %s',
-      [FormatSizeShort(FFolderSizeMgr.SumBytes)]);
+    if FFolderSizeMgr.ScanDir <> '' then
+      FMenus.StubDetail := FormatSizeShort(FFolderSizeMgr.SumBytes +
+        FFolderSizeMgr.ScanBytes) + #10 +
+        FFolderSizeMgr.ScanDir
+    else
+      FMenus.StubDetail := Format('Selected folders: %s',
+        [FormatSizeShort(FFolderSizeMgr.SumBytes)]);
     NotifyChanged;
   end;
   if (APending <= 0) and Assigned(FMenus) then
@@ -5450,6 +5466,47 @@ begin
     PushShellCwdSync;
 end;
 
+function TDualPanelWindow.ReleaseShellDirs(const ASources: TArray<string>): Boolean;
+var
+  Paths: TArray<string>;
+  Path, URI: string;
+begin
+  Result := False;
+  if not Assigned(FOnShellReleaseDirs) then
+    Exit;
+  Paths := nil;
+  for URI in ASources do
+  begin
+    if HasArchiveChain(URI) or IsFindUri(URI) then
+      Continue;
+    Path := FileUriToPath(URI);
+    if Path <> '' then
+      Paths := Paths + [Path];
+  end;
+  if Length(Paths) > 0 then
+    Result := FOnShellReleaseDirs(Paths);
+end;
+
+procedure TDualPanelWindow.RunAfterShellRelease(const ASources: TArray<string>;
+  const AAction: TProc);
+var
+  Life: ILifeFlag;
+begin
+  if not ReleaseShellDirs(ASources) then
+  begin
+    AAction();
+    Exit;
+  end;
+  // The shell needs a moment to process the cd before the folder is touched.
+  Life := FLife;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if Life.Alive then
+        AAction();
+    end, 250);
+end;
+
 procedure TDualPanelWindow.SyncConsoleDirNow;
 var
   Ws: TDualPanelWorkspaceTab;
@@ -5960,15 +6017,21 @@ begin
   NotifyChanged;
 end;
 
+// Space on an empty command line selects like Insert; with text in the
+// command line it stays a space.
+function TDualPanelWindow.TrySpaceSelect(AKeyChar: Char; AShift: TShiftState): Boolean;
+begin
+  Result := FSpaceSelects and (AKeyChar = ' ') and (AShift = []) and
+    Assigned(FCmdLineMgr) and (FCmdLineMgr.Text = '');
+  if Result then
+    ToggleInsertSelect;
+end;
+
 function TDualPanelWindow.HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
-  // Space on an empty command line selects like Insert; with text in the
-  // command line it stays a space.
-  if FSpaceSelects and (AKeyChar = ' ') and (AShift = []) and
-     Assigned(FCmdLineMgr) and (FCmdLineMgr.Text = '') then
+  if TrySpaceSelect(AKeyChar, AShift) then
   begin
-    ToggleInsertSelect;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);
@@ -6088,6 +6151,8 @@ begin
     FDirSync.NotifyDialogChanged;
   if (FDialogKind = hdkMultiRename) and Assigned(FMultiRename) then
     FMultiRename.NotifyDialogChanged;
+  if (FDialogKind = hdkSearch) and Assigned(FSearchDlg) then
+    FSearchDlg.SyncHexField;
   NotifyChanged;
 end;
 
@@ -6119,6 +6184,7 @@ begin
   Fields.WholeWords := FDialog.GetCheckbox('search_words');
   Fields.SearchFolders := FDialog.GetCheckbox('search_folders');
   Fields.UseRegex := FDialog.GetCheckbox('search_regex');
+  Fields.HexText := FDialog.GetInputValue('search_hex');
   Fields.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
   Fields.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
   Fields.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
@@ -7327,7 +7393,11 @@ begin
         NotifyChanged;
       end
       else
-        RunRename(FVfs, FromURI, ToURI, CleanName, True);
+        RunAfterShellRelease([FromURI],
+          procedure
+          begin
+            RunRename(FVfs, FromURI, ToURI, CleanName, True);
+          end);
     end);
 end;
 
@@ -8579,8 +8649,14 @@ procedure TDualPanelWindow.StartMultiRenameJob(const ASources, ADests: TArray<st
 begin
   if not CanBeginAnotherJob then
     Exit;
-  FJobs.BeginJobPairs(ASources, ADests, pjkMove, jomAsk);
-  NotifyChanged;
+  RunAfterShellRelease(ASources,
+    procedure
+    begin
+      if not CanBeginAnotherJob then
+        Exit;
+      FJobs.BeginJobPairs(ASources, ADests, pjkMove, jomAsk);
+      NotifyChanged;
+    end);
 end;
 
 procedure TDualPanelWindow.BeginChecksums;
@@ -13100,6 +13176,8 @@ begin
     end;
   end;
 
+  if AKind in [pjkDelete, pjkMove] then
+    ReleaseShellDirs(Sources);
   FJobs.BeginJob(Sources, DestURI, AKind, ADeleteToRecycleBin);
 end;
 
@@ -13120,6 +13198,7 @@ begin
   end;
   if (not HostTryGetCursorItem(Name, Uri, TargetUri, IsParent)) or IsParent or (Uri = '') then
     Exit;
+  ReleaseShellDirs([Uri]);
   FJobs.BeginJob([Uri], '', pjkDelete, True);
 end;
 
@@ -13134,6 +13213,8 @@ begin
     Exit;
   if Assigned(FDrivePopupCtrl) and FDrivePopupCtrl.Visible then
     CloseDrivePopup;
+  if AKind in [pjkDelete, pjkMove] then
+    ReleaseShellDirs(ASources);
   FJobs.BeginJob(ASources, ADestDirURI, AKind, True);
 end;
 

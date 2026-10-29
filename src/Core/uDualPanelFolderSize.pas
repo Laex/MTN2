@@ -26,6 +26,10 @@ type
     FSumBytes: Int64;
     FOnProgress: TFolderSizeProgressEvent;
     FOnInvalidate: TProc;
+    FScanDir: string;
+    FScanBytes: Int64;
+    FScanByFolder: TDictionary<string, Int64>;
+    procedure SumScanBytes;
     function GetIsActive: Boolean;
   public
     constructor Create(const AOnProgress: TFolderSizeProgressEvent;
@@ -41,6 +45,10 @@ type
     property PendingCount: Integer read FPending;
     property CompletedCount: Integer read FCompleted;
     property SumBytes: Int64 read FSumBytes;
+    /// <summary>The folder being read and the bytes counted so far in the
+    /// tree it belongs to; '' between folders.</summary>
+    property ScanDir: string read FScanDir;
+    property ScanBytes: Int64 read FScanBytes;
     property Side: TPanelSide read FSide;
     property URI: string read FURI;
   end;
@@ -54,6 +62,7 @@ begin
   FLife := NewLifeFlag;
   FOnProgress := AOnProgress;
   FOnInvalidate := AOnInvalidate;
+  FScanByFolder := TDictionary<string, Int64>.Create;
   Reset;
 end;
 
@@ -61,7 +70,17 @@ destructor TFolderSizeCalculationManager.Destroy;
 begin
   FLife.Alive := False;
   Cancel;
+  FScanByFolder.Free;
   inherited Destroy;
+end;
+
+procedure TFolderSizeCalculationManager.SumScanBytes;
+var
+  Part: Int64;
+begin
+  FScanBytes := 0;
+  for Part in FScanByFolder.Values do
+    Inc(FScanBytes, Part);
 end;
 
 function TFolderSizeCalculationManager.GetIsActive: Boolean;
@@ -79,6 +98,10 @@ begin
   Inc(FGen);
   FPending := 0;
   SetLength(FQueue, 0);
+  if Assigned(FScanByFolder) then
+    FScanByFolder.Clear;
+  FScanDir := '';
+  FScanBytes := 0;
 end;
 
 procedure TFolderSizeCalculationManager.Reset;
@@ -107,6 +130,17 @@ var
     CalculateFolderSizeAsync(CapURI, FCancelToken,
       procedure(ABytes: Int64; AFiles, AFolders: Integer; const ACurrentDir: string)
       begin
+        if not Life.Alive or (FGen <> CapGen) then
+          Exit;
+        FScanDir := ACurrentDir;
+        // Folders are walked side by side; the running figure is the sum of
+        // all of them, not the last one to report.
+        FScanByFolder.AddOrSetValue(CapURI, ABytes);
+        SumScanBytes;
+        if Assigned(FOnProgress) then
+          FOnProgress(CapSide, FCompleted, FPending, -1, '');
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
       end,
       procedure(ABytes: Int64; AFiles, AFolders: Integer; const AError: TVfsError)
       var
@@ -128,6 +162,10 @@ var
               DoneBytes := -1;
             Inc(FCompleted);
             Dec(FPending);
+            FScanByFolder.Remove(DoneURI);
+            SumScanBytes;
+            if FScanByFolder.Count = 0 then
+              FScanDir := '';
             if Assigned(FOnProgress) then
               FOnProgress(CapSide, FCompleted, FPending, DoneBytes, DoneURI);
             if Assigned(FOnInvalidate) then

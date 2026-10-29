@@ -64,6 +64,11 @@ type
     procedure Interrupt; override;
     function  EnsureShell(const ACwd: string): Boolean;
     procedure SyncWorkingDir(const APath: string);
+    /// <summary>An idle persistent shell standing in one of APaths (or below it)
+    /// moves to the parent of that folder, so the folder can be deleted or
+    /// moved; Windows refuses to touch the current folder of a process. True =
+    /// the shell was told to leave.</summary>
+    function ReleaseWorkingDirs(const APaths: TArray<string>): Boolean;
     procedure RunCommand(const ACommand, AWorkingDir: string);
     /// <summary>The folder the shell's latest prompt shows ('' when the prompt
     /// is not a recognizable cmd / PowerShell one).</summary>
@@ -296,6 +301,46 @@ begin
     Exit;
   end;
   FLastSyncedCwd := Path;
+end;
+
+function TConsoleWindow.ReleaseWorkingDirs(const APaths: TArray<string>): Boolean;
+var
+  Cwd, Dir, Parent, Path: string;
+begin
+  Result := False;
+  if not (Assigned(FPty) and FPty.IsRunning and FPty.Persistent) or ShellBusy then
+    Exit;
+  Cwd := PromptCwd;
+  if Cwd = '' then
+    Cwd := FLastSyncedCwd;
+  if Cwd = '' then
+    Exit;
+  for Path in APaths do
+  begin
+    Dir := ExcludeTrailingPathDelimiter(Cwd);
+    while Dir <> '' do
+    begin
+      if SamePathNorm(Dir, Path) then
+      begin
+        Parent := SafeDirectoryName(ExcludeTrailingPathDelimiter(Path));
+        if Parent = '' then
+          Exit;
+        DropPendingInput;
+        FPty.WriteInput(BuildCdLineForProfile(ProfileId, Parent));
+        if FPty.LastError = '' then
+        begin
+          WorkingDir := Parent;
+          FLastSyncedCwd := Parent;
+          Result := True;
+        end;
+        Exit;
+      end;
+      Parent := SafeDirectoryName(Dir);
+      if SamePathNorm(Parent, Dir) then
+        Break;
+      Dir := Parent;
+    end;
+  end;
 end;
 
 function TConsoleWindow.ShellBusy: Boolean;

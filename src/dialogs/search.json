@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Find file",
   "width": 58,
-  "height": 22,
+  "height": 24,
   "children": [
     {
       "type": "label",
@@ -44,9 +44,28 @@
       "height": 1
     },
     {
+      "type": "label",
+      "text": "Hex bytes:",
+      "id": "lbl_hex",
+      "col": 1,
+      "row": 4,
+      "width": 54,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "search_hex",
+      "value": "",
+      "history": "findhex",
+      "col": 1,
+      "row": 5,
+      "width": 54,
+      "height": 1
+    },
+    {
       "type": "separator",
       "col": 0,
-      "row": 4,
+      "row": 6,
       "width": 56,
       "height": 1
     },
@@ -56,7 +75,7 @@
       "text": "&Case sensitive",
       "checked": false,
       "col": 1,
-      "row": 5,
+      "row": 7,
       "width": 22,
       "height": 1
     },
@@ -66,7 +85,7 @@
       "text": "&Whole words",
       "checked": false,
       "col": 27,
-      "row": 5,
+      "row": 7,
       "width": 28,
       "height": 1
     },
@@ -76,7 +95,7 @@
       "text": "Search for &folders",
       "checked": false,
       "col": 1,
-      "row": 6,
+      "row": 8,
       "width": 25,
       "height": 1
     },
@@ -86,7 +105,7 @@
       "text": "&Regex",
       "checked": false,
       "col": 27,
-      "row": 6,
+      "row": 8,
       "width": 28,
       "height": 1
     },
@@ -96,14 +115,14 @@
       "text": "Search in &subfolders",
       "checked": true,
       "col": 1,
-      "row": 7,
+      "row": 9,
       "width": 54,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 8,
+      "row": 10,
       "width": 56,
       "height": 1
     },
@@ -112,7 +131,7 @@
       "text": "Size from:",
       "id": "lbl_size",
       "col": 1,
-      "row": 9,
+      "row": 11,
       "width": 15,
       "height": 1
     },
@@ -121,7 +140,7 @@
       "id": "filter_size_min",
       "value": "",
       "col": 17,
-      "row": 9,
+      "row": 11,
       "width": 16,
       "height": 1
     },
@@ -130,7 +149,7 @@
       "text": "to:",
       "id": "lbl_size_to",
       "col": 34,
-      "row": 9,
+      "row": 11,
       "width": 3,
       "height": 1
     },
@@ -139,7 +158,7 @@
       "id": "filter_size_max",
       "value": "",
       "col": 38,
-      "row": 9,
+      "row": 11,
       "width": 16,
       "height": 1
     },
@@ -148,7 +167,7 @@
       "text": "Modified from:",
       "id": "lbl_date",
       "col": 1,
-      "row": 10,
+      "row": 12,
       "width": 15,
       "height": 1
     },
@@ -157,7 +176,7 @@
       "id": "filter_date_from",
       "value": "",
       "col": 17,
-      "row": 10,
+      "row": 12,
       "width": 16,
       "height": 1
     },
@@ -166,7 +185,7 @@
       "text": "to:",
       "id": "lbl_date_to",
       "col": 34,
-      "row": 10,
+      "row": 12,
       "width": 3,
       "height": 1
     },
@@ -175,7 +194,7 @@
       "id": "filter_date_to",
       "value": "",
       "col": 38,
-      "row": 10,
+      "row": 12,
       "width": 16,
       "height": 1
     },
@@ -184,7 +203,7 @@
       "text": "Size: 10K, 1.5M",
       "id": "lbl_format",
       "col": 1,
-      "row": 11,
+      "row": 13,
       "width": 54,
       "height": 1
     },
@@ -193,7 +212,7 @@
       "text": "Attributes:",
       "id": "lbl_attr",
       "col": 1,
-      "row": 12,
+      "row": 14,
       "width": 15,
       "height": 1
     },
@@ -203,7 +222,7 @@
       "text": "Rea&d-only",
       "checked": false,
       "col": 17,
-      "row": 12,
+      "row": 14,
       "width": 24,
       "height": 1
     },
@@ -213,7 +232,7 @@
       "text": "&Hidden",
       "checked": false,
       "col": 17,
-      "row": 13,
+      "row": 15,
       "width": 24,
       "height": 1
     },
@@ -223,7 +242,7 @@
       "text": "Sys&tem",
       "checked": false,
       "col": 17,
-      "row": 14,
+      "row": 16,
       "width": 24,
       "height": 1
     },
@@ -233,14 +252,14 @@
       "text": "&Archive",
       "checked": false,
       "col": 17,
-      "row": 15,
+      "row": 17,
       "width": 24,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 16,
+      "row": 18,
       "width": 56,
       "height": 1
     },
@@ -250,7 +269,7 @@
       "text": "Find",
       "default": true,
       "col": 15,
-      "row": 18,
+      "row": 20,
       "width": 12,
       "height": 1
     },
@@ -260,7 +279,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 29,
-      "row": 18,
+      "row": 20,
       "width": 12,
       "height": 1
     }

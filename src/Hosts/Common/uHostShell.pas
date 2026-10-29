@@ -77,6 +77,7 @@ type
     procedure DualPanelRunInBackground(Sender: TObject);
     procedure DualPanelReturnWhenDone(Sender: TObject);
     procedure DualPanelShellCwdSync(const APath: string);
+    function DualPanelShellReleaseDirs(const APaths: TArray<string>): Boolean;
     function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
     procedure DualPanelClearConsoleBuffer(Sender: TObject);
     procedure DualPanelToggleConsole(Sender: TObject);
@@ -581,6 +582,7 @@ begin
   FDualPanel.OnReturnWhenDone := DualPanelReturnWhenDone;
   FDualPanel.OnRunInBackground := DualPanelRunInBackground;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
+  FDualPanel.OnShellReleaseDirs := DualPanelShellReleaseDirs;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
   FDualPanel.OnSaveSettings := DualPanelSaveSettings;
@@ -820,6 +822,11 @@ procedure THostShell.DualPanelShellCwdSync(const APath: string);
 begin
   if Assigned(FConsole) then
     FConsole.SyncWorkingDir(APath);
+end;
+
+function THostShell.DualPanelShellReleaseDirs(const APaths: TArray<string>): Boolean;
+begin
+  Result := Assigned(FConsole) and FConsole.ReleaseWorkingDirs(APaths);
 end;
 
 function THostShell.DualPanelSaveConsoleOutput(const APath: string;

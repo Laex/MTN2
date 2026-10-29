@@ -234,7 +234,9 @@ var
   MaxName: Integer;
 begin
   NamePart := ARow.Text;
-  if ARow.MatchSnippet <> '' then
+  if (ARow.MatchSnippet <> '') and (ARow.MatchLine <= 0) then
+    MetaPart := ARow.MatchSnippet
+  else if ARow.MatchSnippet <> '' then
     MetaPart := Format('L%d: %s', [ARow.MatchLine, ARow.MatchSnippet])
   else
   begin

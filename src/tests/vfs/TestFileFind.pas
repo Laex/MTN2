@@ -12,6 +12,11 @@ type
     [Test] procedure Run;
     [Test] procedure FiltersParseAndApply;
     [Test] procedure ContentSearchDecodesEncodings;
+    [Test] procedure HexPatternParsing;
+    [Test] procedure HexSearchFindsBytesAcrossReads;
+    [Test] procedure HexFieldAndTextBothHaveToMatch;
+    [Test] procedure TextAndHexFieldsConvert;
+    [Test] procedure HexFieldKeepsPairsAndRefusesTheGaps;
   end;
 
 implementation
@@ -162,6 +167,137 @@ begin
     True, Parsed) and SameDateTime(Parsed, When), 'a time after a weekday is kept');
   Assert.IsFalse(TryParseFindDate('Mon', False, Parsed), 'a day of week alone is not a date');
   Assert.IsFalse(TryParseFindDate('yesterday', False, Parsed), 'garbage is not a date');
+end;
+
+procedure TTestFileFind.HexPatternParsing;
+var
+  P: TArray<Integer>;
+  E: string;
+begin
+  Assert.IsTrue(TryParseHexPattern('4D 5a,0x90;??', P, E), 'separators, prefix and wildcard');
+  Assert.AreEqual(4, Integer(Length(P)));
+  Assert.AreEqual(77, P[0]);
+  Assert.AreEqual(90, P[1]);
+  Assert.AreEqual(144, P[2]);
+  Assert.AreEqual(-1, P[3]);
+  Assert.IsTrue(TryParseHexPattern('4d5A', P, E) and (Length(P) = 2), 'no separators');
+  Assert.IsFalse(TryParseHexPattern('', P, E), 'empty');
+  Assert.IsFalse(TryParseHexPattern('4D5', P, E), 'odd digit count');
+  Assert.IsFalse(TryParseHexPattern('4G', P, E), 'not a hex digit');
+  Assert.IsFalse(TryParseHexPattern('4?', P, E), 'half a wildcard');
+end;
+
+procedure TTestFileFind.HexSearchFindsBytesAcrossReads;
+const
+  cBlock = 1024 * 1024;
+var
+  Dir, F: string;
+  Data: TBytes;
+  P: TArray<Integer>;
+  E: string;
+  Off: Int64;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2_find_hex_' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    SetLength(Data, cBlock + 100);
+    FillChar(Data[0], Length(Data), 0);
+    // The signature straddles the end of the first 1 MiB read.
+    Data[cBlock - 2] := $DE;
+    Data[cBlock - 1] := $AD;
+    Data[cBlock] := $BE;
+    Data[cBlock + 1] := $EF;
+    F := TPath.Combine(Dir, 'blob.bin');
+    TFile.WriteAllBytes(F, Data);
+    TryParseHexPattern('de ad be ef', P, E);
+    Assert.IsTrue(FileHexMatch(F, P, Off), 'signature found');
+    Assert.AreEqual(Int64(cBlock - 2), Off, 'offset of the first byte');
+    TryParseHexPattern('DE ?? BE EF', P, E);
+    Assert.IsTrue(FileHexMatch(F, P, Off), 'wildcard byte');
+    TryParseHexPattern('DE AD BE EE', P, E);
+    Assert.IsFalse(FileHexMatch(F, P, Off), 'absent signature');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFileFind.HexFieldAndTextBothHaveToMatch;
+var
+  Dir, F: string;
+  Opts: TFindOptions;
+  Line: Integer;
+  Snippet: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2_find_hex2_' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    F := TPath.Combine(Dir, 'a.bin');
+    TFile.WriteAllBytes(F, TBytes.Create($00, $4D, $5A, $90, $00));
+    Opts := DefaultFindOptions(Dir, '*.*', False);
+    Opts.HexBytes := '4D 5A';
+    Assert.IsTrue(FindContentMatch(F, Opts, Line, Snippet), 'bytes only');
+    Assert.AreEqual('@ 0x00000001', Snippet, 'the offset is reported');
+    Opts.HexBytes := '4D 5B';
+    Assert.IsFalse(FindContentMatch(F, Opts, Line, Snippet), 'absent bytes');
+    Opts.HexBytes := '4D 5A';
+    Opts.ContainingText := 'nothere';
+    Assert.IsFalse(FindContentMatch(F, Opts, Line, Snippet), 'bytes match but the text does not');
+    Opts.HexBytes := 'zz';
+    Opts.ContainingText := '';
+    Assert.IsFalse(FindContentMatch(F, Opts, Line, Snippet), 'malformed bytes match nothing');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFileFind.TextAndHexFieldsConvert;
+var
+  Text: string;
+begin
+  Assert.AreEqual('48 65 6C 6C 6F', TextToHexString('Hello'));
+  Assert.AreEqual('', TextToHexString(''));
+  Assert.AreEqual('D0 9F', TextToHexString(#$041F), 'UTF-8 of a Cyrillic letter');
+  Assert.IsTrue(TryHexToText('48 65 6c 6C 6f', Text), 'plain bytes');
+  Assert.AreEqual('Hello', Text);
+  Assert.IsTrue(TryHexToText('D0 9F', Text) and (Text = #$041F), 'multi-byte letter');
+  Assert.IsFalse(TryHexToText('48 ??', Text), 'wildcard is not text');
+  Assert.IsFalse(TryHexToText('FF FE', Text), 'bytes that are not UTF-8');
+  Assert.IsFalse(TryHexToText('4', Text), 'half typed byte');
+end;
+
+procedure TTestFileFind.HexFieldKeepsPairsAndRefusesTheGaps;
+
+  procedure Check(const AOld, ANew: string; ACursor: Integer;
+    const AText: string; ACursorAfter: Integer; const AWhat: string);
+  var
+    Text: string;
+    Cur: Integer;
+  begin
+    EditHexField(AOld, ANew, ACursor, Text, Cur);
+    Assert.AreEqual(AText, Text, AWhat + ': text');
+    Assert.AreEqual(ACursorAfter, Cur, AWhat + ': caret');
+  end;
+
+begin
+  Check('', '4', 1, '4', 1, 'first digit');
+  Check('4D', '4D5', 3, '4D 5', 4, 'third digit starts the next pair');
+  Check('4D 5', '4D 5a', 5, '4D 5A', 5, 'lower case is raised');
+  Check('4D 5A', '4DX 5A', 3, '4D 5A', 2, 'a non-hex character on the gap is dropped');
+  Check('4D 5A', '4DF 5A', 3, '4D F0 5A', 4, 'a digit after a byte inserts a byte');
+  Check('4D 5A', '14D 5A', 1, '10 4D 5A', 1, 'a digit before the first byte inserts a byte');
+  Check('4D 5A', '4D 15A', 4, '4D 10 5A', 4, 'a digit before a byte inserts a byte');
+  Check('4D 5A', '4FD 5A', 2, '4F 5A', 2, 'a digit between the two digits replaces the second');
+  Check('4D 5A', '4D ?5A', 4, '4D ?? 5A', 4, 'a wildcard inserts a wildcard byte');
+  Check('4D 5A', '4DA 5A', 3, '4D A0 5A', 4, 'insert the first digit of a byte');
+  Check('4D', '4DZ', 3, '4D', 2, 'a non-hex character is dropped');
+  Check('', '0x4D, 0x5A', 10, '4D 5A', 5, 'pasted bytes are regrouped');
+  Check('4D 5A', '4D5A', 2, '4D 5A', 2, 'backspace over the gap changes nothing');
+  Check('4D 5A', '4D 5', 4, '4D 50', 4, 'a deleted digit becomes 0');
+  Check('4D 5A', 'D 5A', 0, '0D 5A', 0, 'a deleted first digit becomes 0');
+  Check('40 5A', '0 5A', 0, '5A', 0, 'a byte that turns 00 is removed');
+  Check('4D 50', '4D 0', 3, '4D', 2, 'the last byte that turns 00 is removed');
+  Check('4D 5', '4D ', 3, '4D', 2, 'a lone digit at the end is removed');
+  Check('00', '0', 0, '', 0, 'the only byte that turns 00 is removed');
 end;
 
 procedure TTestFileFind.ContentSearchDecodesEncodings;

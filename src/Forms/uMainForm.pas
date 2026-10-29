@@ -238,6 +238,7 @@ type
     procedure DualPanelRunInBackground(Sender: TObject);
     procedure PeekTimerTick(Sender: TObject);
     procedure DualPanelShellCwdSync(const APath: string);
+    function DualPanelShellReleaseDirs(const APaths: TArray<string>): Boolean;
     function DualPanelSaveConsoleOutput(const APath: string; out AError: string): Boolean;
     procedure DualPanelClearConsoleBuffer(Sender: TObject);
     procedure DualPanelHelperActiveChanged(Sender: TObject);
@@ -1386,6 +1387,7 @@ begin
   FDualPanel.OnReturnWhenDone := DualPanelReturnWhenDone;
   FDualPanel.OnRunInBackground := DualPanelRunInBackground;
   FDualPanel.OnShellCwdSync := DualPanelShellCwdSync;
+  FDualPanel.OnShellReleaseDirs := DualPanelShellReleaseDirs;
   FDualPanel.OnSaveConsoleOutput := DualPanelSaveConsoleOutput;
   FDualPanel.OnClearConsoleBuffer := DualPanelClearConsoleBuffer;
   FDualPanel.OnHelperActiveChanged := DualPanelHelperActiveChanged;
@@ -2533,6 +2535,11 @@ begin
   if not Assigned(FConsole) then
     Exit;
   FConsole.SyncWorkingDir(APath);
+end;
+
+function TMainForm.DualPanelShellReleaseDirs(const APaths: TArray<string>): Boolean;
+begin
+  Result := Assigned(FConsole) and FConsole.ReleaseWorkingDirs(APaths);
 end;
 
 function TMainForm.DualPanelSaveConsoleOutput(const APath: string;

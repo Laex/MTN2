@@ -112,7 +112,8 @@ begin
   R := FBounds;
   DrawHostOverlayFrame(AGrid, FTheme, R, FText,
     cFileFg, cPanelBg, cFrameActive, cCursorFg);
-  MaxW := Max(R.Width - 2, 8);
+  // One blank cell between the frame and the text on each side.
+  MaxW := Max(R.Width - 4, 8);
   Rest := StringReplace(FDetail, #13#10, #10, [rfReplaceAll]);
   Rest := StringReplace(Rest, #13, #10, [rfReplaceAll]);
   Y := R.Top + 2;
@@ -136,11 +137,11 @@ begin
       else
         Line := Copy(Line, 1, MaxW - 3) + '...';
     end;
-    PutOverlayText(AGrid, FTheme, R.Left + 1, Y, Line,
+    PutOverlayText(AGrid, FTheme, R.Left + 2, Y, Line,
       False, False, False, cFileFg, cPanelBg);
     Inc(Y);
   end;
-  PutOverlayText(AGrid, FTheme, R.Left + 1, R.Bottom - 1, 'Esc=Cancel',
+  PutOverlayText(AGrid, FTheme, R.Left + 2, R.Bottom - 1, 'Esc=Cancel',
     True, False, False, cMenuHot, cPanelBg);
 end;
 

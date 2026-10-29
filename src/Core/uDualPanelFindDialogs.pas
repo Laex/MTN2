@@ -29,6 +29,10 @@ type
     FOnGetUri: TFindGetUriFn;
     FOnNotify: TProc;
     FPickField: string;
+    FSyncing: Boolean;
+    FHexMode: Boolean;
+    FLastText: string;
+    FLastHex: string;
     function ReadDialogFields: TDialogCommandFields;
     procedure ApplyFields(const AFields: TDialogCommandFields);
     procedure BeginDatePick(const AFieldId: string);
@@ -38,6 +42,10 @@ type
       const AOnBlocked: TFindBlockedFn; const AOnPrepare: TFindPrepareProc;
       const AOnGetUri: TFindGetUriFn; const AOnNotify: TProc);
     procedure Open;
+    /// <summary>Keeps the text and hex fields in step while either is edited:
+    /// text shows its UTF-8 bytes; bytes that spell text show it; bytes typed
+    /// by hand are searched instead of the text.</summary>
+    procedure SyncHexField;
     function DispatchCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     /// <summary>F9 on a date field opens the calendar.</summary>
@@ -149,16 +157,21 @@ begin
     Mask := '*.*';
   FSearch.FocusField := 0;
   FSearch.Phase := spNone;
+  if not FSearch.HexMode then
+    FSearch.HexText := TextToHexString(FSearch.ContainingText);
+  FHexMode := FSearch.HexMode;
+  FLastText := FSearch.ContainingText;
+  FLastHex := FSearch.HexText;
   if Assigned(FOnSetKind) then
     FOnSetKind(hdkSearch);
   if not FDialog.OpenJson(
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.Subdirs, FSearch.Filters)),
+      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.Subdirs, FSearch.Filters), FOnCommand);
+      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -173,6 +186,7 @@ begin
   Result.WholeWords := FDialog.GetCheckbox('search_words');
   Result.SearchFolders := FDialog.GetCheckbox('search_folders');
   Result.UseRegex := FDialog.GetCheckbox('search_regex');
+  Result.HexText := FDialog.GetInputValue('search_hex');
   Result.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
   Result.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
   Result.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
@@ -181,6 +195,48 @@ begin
   Result.Filters.AttrHidden := FDialog.GetCheckbox('filter_attr_hidden');
   Result.Filters.AttrSystem := FDialog.GetCheckbox('filter_attr_system');
   Result.Filters.AttrArchive := FDialog.GetCheckbox('filter_attr_archive');
+end;
+
+procedure TSearchDialogController.SyncHexField;
+var
+  Text, Hex, NewHex, NewText: string;
+  Cursor, NewCursor: Integer;
+begin
+  if FSyncing or not Assigned(FDialog) then
+    Exit;
+  FSyncing := True;
+  try
+    Text := FDialog.GetInputValue('search_text');
+    Hex := FDialog.GetInputValue('search_hex');
+    if Text <> FLastText then
+    begin
+      FHexMode := False;
+      NewHex := TextToHexString(Text);
+      if NewHex <> Hex then
+        FDialog.SetInputValue('search_hex', NewHex);
+      FLastText := Text;
+      FLastHex := NewHex;
+    end
+    else if Hex <> FLastHex then
+    begin
+      Cursor := FDialog.GetInputCursor('search_hex');
+      EditHexField(FLastHex, Hex, Cursor, NewHex, NewCursor);
+      if (NewHex <> Hex) or (NewCursor <> Cursor) then
+        FDialog.SetInputValueAt('search_hex', NewHex, NewCursor);
+      if NewHex <> FLastHex then
+      begin
+        FHexMode := True;
+        FLastHex := NewHex;
+        if TryHexToText(NewHex, NewText) and (NewText <> Text) then
+        begin
+          FDialog.SetInputValue('search_text', NewText);
+          FLastText := NewText;
+        end;
+      end;
+    end;
+  finally
+    FSyncing := False;
+  end;
 end;
 
 procedure TSearchDialogController.ApplyFields(const AFields: TDialogCommandFields);
@@ -193,6 +249,8 @@ begin
   FSearch.WholeWords := AFields.WholeWords;
   FSearch.SearchFolders := AFields.SearchFolders;
   FSearch.UseRegex := AFields.UseRegex;
+  FSearch.HexText := AFields.HexText;
+  FSearch.HexMode := FHexMode;
   FSearch.Subdirs := AFields.Subdirs;
   FSearch.Filters := AFields.Filters;
 end;
@@ -296,7 +354,7 @@ begin
   begin
     ApplyFields(AFields);
     // The editor's F7 starts from this text (a regex is not a plain needle).
-    if not AFields.UseRegex then
+    if not (AFields.UseRegex or FHexMode) then
       DialogHistoryAdd('editfind', Trim(AFields.Containing));
     FSearch.StartSearch;
   end

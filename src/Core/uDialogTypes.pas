@@ -250,7 +250,8 @@ function BuildSelectMaskDialog(const ATitle, APrompt, AValue: string;
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
 function BuildSearchDialog(const AMask, AContaining: string;
-  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean;
+  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
+  const AHex: string; ASubdirs: Boolean;
   const AFilters: TFindFilterText): TDialogDeclaration;
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOverwriteIndex: Integer = 0; APreserveTimestamps: Boolean = False;
@@ -916,7 +917,8 @@ begin
 end;
 
 function BuildSearchDialog(const AMask, AContaining: string;
-  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex, ASubdirs: Boolean;
+  ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
+  const AHex: string; ASubdirs: Boolean;
   const AFilters: TFindFilterText): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogSearch, Result);
@@ -926,6 +928,7 @@ begin
   DialogSetCheckbox(Result, 'search_words', AWholeWords);
   DialogSetCheckbox(Result, 'search_folders', ASearchFolders);
   DialogSetCheckbox(Result, 'search_regex', AUseRegex);
+  DialogSetInputValue(Result, 'search_hex', AHex);
   DialogSetCheckbox(Result, 'search_subdirs', ASubdirs);
   DialogSetInputValue(Result, 'filter_size_min', AFilters.SizeMin);
   DialogSetInputValue(Result, 'filter_size_max', AFilters.SizeMax);

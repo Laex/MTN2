@@ -265,6 +265,8 @@ begin
         else
           Verb := 'Copying the file';
         end;
+        if AJob.Scanning then
+          Verb := 'Scanning the folder';
         PutOverlayText(AGrid, ATheme, R.Left + 2, R.Top + 2, Verb,
           False, False, False, cFileFg, cPanelBg);
 
@@ -338,6 +340,8 @@ begin
           Line := AJob.CurrentName;
         if Line = '' then
           Line := Format('Item %d/%d', [AJob.Index + 1, Length(AJob.Sources)]);
+        if AJob.Scanning then
+          Line := 'Scanning: ' + Line;
         PutOverlayText(AGrid, ATheme, R.Left + 2, R.Top + 2,
           EllipsizeLeft(Line, InnerW), False, False, False, cFileFg, cPanelBg);
         if AJob.ProgressTotal > 0 then

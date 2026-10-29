@@ -52,6 +52,7 @@ type
   TKeymapSelectDeltaProc = procedure(ADelta: Integer; AExcludeLanding: Boolean) of object;
   TKeymapInputFn = function(var AKey: Word; AShift: TShiftState;
     var AKeyChar: Char): Boolean of object;
+  TKeymapCharFn = function(AKeyChar: Char; AShift: TShiftState): Boolean of object;
 
   /// <summary>Method-pointer sink for HandleKeymapAction* dispatch. Bound once
   /// by TDualPanelWindow so the case tables can live here without pulling the
@@ -194,6 +195,9 @@ type
     MoveCursorWithSelect: TKeymapSelectDeltaProc;
     ToggleInsertSelect: TKeymapProc;
     SubmitCommandLine: TKeymapProc;
+    /// <summary>Space selects the file under the cursor (when enabled and the
+    /// command line is empty); True = the key was used.</summary>
+    TrySpaceSelect: TKeymapCharFn;
     HandleCmdLineInput: TKeymapInputFn;
   end;
 
@@ -1156,6 +1160,13 @@ begin
   else
     if K.IsPrintable and K.HasMods([], [ssShift]) then
     begin
+      // Selecting with Space must not move the focus to the command line.
+      if Assigned(AHost.TrySpaceSelect) and AHost.TrySpaceSelect(AKeyChar, AShift) then
+      begin
+        AKey := 0;
+        AKeyChar := #0;
+        Exit(True);
+      end;
       AHost.FocusCommandLine();
       Result := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
       Exit;

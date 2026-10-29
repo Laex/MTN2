@@ -605,6 +605,7 @@
       "search_words": "Ganze &Wörter",
       "search_folders": "Nach &Ordnern suchen",
       "search_regex": "&Regex",
+      "lbl_hex": "Hex-Bytes:",
       "search_subdirs": "In &Unterordnern suchen",
       "ok": "Suchen",
       "cancel": "Abbrechen",

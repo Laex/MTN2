@@ -106,6 +106,9 @@ type
     FilesDone: Integer;
     CurrentName: string;
     CurrentSrcPath: string;
+    /// <summary>The VFS is reading the tree (CurrentSrcPath = the folder)
+    /// before the real work reports anything.</summary>
+    Scanning: Boolean;
     CurrentDstPath: string;
     Message: string;
     Bounds: TRectI;
@@ -172,7 +175,7 @@ type
   /// dispatching on FDialogKind - see DispatchDialogCommand. Each field is
   /// only meaningful to the branches that use it.</summary>
   TDialogCommandFields = record
-    Name, Mask, Containing, DestPath, ExcludeMask, Password: string;
+    Name, Mask, Containing, HexText, DestPath, ExcludeMask, Password: string;
     ExistingIdx, RetryIdx, PackTypeIdx, PackLevelIdx: Integer;
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
@@ -191,6 +194,10 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;
     UseRegex: Boolean;
+    HexText: string;
+    /// <summary>The bytes were typed in the hex field: they are searched
+    /// instead of the text.</summary>
+    HexMode: Boolean;
     Filters: TFindFilterText;
     FocusField: Integer; // legacy
     RootPath: string;
@@ -221,6 +228,10 @@ type
     ALocalCol, ALocalRow: Integer) of object;
   TRunCommandEvent = procedure(const ACommand, AWorkingDir: string) of object;
   TShellCwdSyncEvent = procedure(const APath: string) of object;
+  /// <summary>Local folders about to be deleted or moved: a shell standing in
+  /// one of them (or below it) has to step out first. True = the shell was
+  /// sent out and needs a moment to get there.</summary>
+  TShellReleaseDirsEvent = function(const APaths: TArray<string>): Boolean of object;
   /// <summary>Writes the background console's scrollback to APath; AError says
   /// why not (or that there is no console yet).</summary>
   TSaveConsoleOutputEvent = function(const APath: string;

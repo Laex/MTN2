@@ -606,6 +606,7 @@
       "search_words": "全字匹配(&W)",
       "search_folders": "查找文件夹(&F)",
       "search_regex": "正则(&R)",
+      "lbl_hex": "十六进制字节:",
       "search_subdirs": "搜索子文件夹(&S)",
       "ok": "查找",
       "cancel": "取消"

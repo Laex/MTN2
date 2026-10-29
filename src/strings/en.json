@@ -597,6 +597,7 @@
       "search_words": "&Whole words",
       "search_folders": "Search for &folders",
       "search_regex": "&Regex",
+      "lbl_hex": "Hex bytes:",
       "search_subdirs": "Search in &subfolders",
       "ok": "Find",
       "cancel": "Cancel",

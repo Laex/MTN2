@@ -18,6 +18,7 @@ type
     [Test] procedure PendingInputIsDroppedBeforeTheCommand;
     [Test] procedure PendingRedirectWithCursorInsideIsDropped;
     [Test] procedure PendingInputIsDroppedBeforeTheFolderSync;
+    [Test] procedure ShellLeavesAFolderBeingDeleted;
     [Test] procedure HomeAndEndMoveWithinTheInputLine;
     [Test] procedure CtrlHomeAndCtrlEndScrollTheOutput;
     [Test] procedure TabCompletesTheWordInTheShell;
@@ -239,6 +240,41 @@ begin
     Pump(2500);
     Assert.IsFalse(Win.BufferHas('abccd'), 'the folder change is not glued to the old text');
     Assert.IsTrue(Win.BufferHas('child>'), 'the shell is in the new folder');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+    TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestConsoleRunCommand.ShellLeavesAFolderBeingDeleted;
+var
+  Root, Sub: string;
+  Win: TProbeConsole;
+  I: Integer;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-run-' + TPath.GetGUIDFileName(False));
+  Sub := TPath.Combine(Root, 'child');
+  TDirectory.CreateDirectory(Sub);
+  Win := NewConsole;
+  try
+    Win.WorkingDir := Sub;
+    Assert.IsTrue(Win.EnsureShell(Sub), 'the shell starts');
+    Pump(3000);
+    Assert.IsTrue(Win.BufferHas('child>'), 'the shell is in the folder');
+    Win.ReleaseWorkingDirs([Sub]);
+    for I := 1 to 40 do
+    begin
+      Pump(100);
+      try
+        TDirectory.Delete(Sub);
+        Break;
+      except
+        on EInOutError do ;
+        on EDirectoryNotFoundException do Break;
+      end;
+    end;
+    Assert.IsFalse(TDirectory.Exists(Sub), 'the folder the shell stood in can be deleted');
   finally
     Win.CloseConsole;
     Win.Free;
