@@ -178,6 +178,9 @@ begin
   Act := MatchAction(Profile, 219 {vkOemOpenBrackets}, [ssCtrl]);
   Assert.IsTrue(Act = kaEqualizeActivePanel, 'Ctrl+[ should match kaEqualizeActivePanel');
 
+  Act := MatchAction(Profile, Ord('M'), [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaCursorToSameName, 'Ctrl+Alt+M should match kaCursorToSameName');
+
   Act := MatchAction(Profile, Ord('N'), [ssCtrl, ssShift]);
   Assert.IsTrue(Act = kaNewTerminal, 'Ctrl+Shift+N should match kaNewTerminal');
   Act := MatchAction(Profile, Ord('O'), [ssCtrl, ssAlt]);

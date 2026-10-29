@@ -98,6 +98,7 @@ type
     SwapPanels: TKeymapProc;
     EqualizeOtherPanelToActive: TKeymapProc;
     EqualizeActivePanelFromOther: TKeymapProc;
+    CursorToSameNameInOtherPanel: TKeymapProc;
     FocusCommandLine: TKeymapProc;
     ClearCommandLine: TKeymapProc;
     RunDetached: TKeymapProc;
@@ -682,6 +683,7 @@ begin
     kaSwapPanels: AHost.SwapPanels();
     kaEqualizeOtherPanel: AHost.EqualizeOtherPanelToActive();
     kaEqualizeActivePanel: AHost.EqualizeActivePanelFromOther();
+    kaCursorToSameName: AHost.CursorToSameNameInOtherPanel();
   else
     Exit(False);
   end;
@@ -1452,8 +1454,10 @@ begin
   // line's, the panel bindings included (- + * deselect / select / invert,
   // F-keys, ...). Esc there clears the text, and on an empty line gives the
   // focus back to the panel; Ctrl+Up does that at once. Esc on the panel is
-  // the keymap's (ConsoleToggle by default), text or not.
-  if ASnap.CmdFocused then
+  // the keymap's (ConsoleToggle by default), text or not. Enter with a
+  // modifier (insert name / path, detached / background / new-tab run,
+  // properties) is the panel's chord, handled as on the panel.
+  if ASnap.CmdFocused and not ((AKey = vkReturn) and (AShift * cKeyMods <> [])) then
   begin
     AResult := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
     Exit;

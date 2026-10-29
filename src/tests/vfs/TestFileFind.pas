@@ -11,6 +11,7 @@ type
   public
     [Test] procedure Run;
     [Test] procedure FiltersParseAndApply;
+    [Test] procedure ContentSearchDecodesEncodings;
   end;
 
 implementation
@@ -33,7 +34,8 @@ var
   ProgressHits: Integer;
   LastDir: string;
 
-procedure WaitFind(const ARoot, AMask: string; ASubdirs: Boolean);
+procedure WaitFind(const ARoot, AMask: string; ASubdirs: Boolean;
+  const AText: string = '');
 var
   Tick: Cardinal;
   Opts: TFindOptions;
@@ -45,6 +47,7 @@ begin
   Ev.ResetEvent;
   Writeln('--- Find root=', ARoot, ' mask=', AMask, ' sub=', ASubdirs);
   Opts := DefaultFindOptions(ARoot, AMask, ASubdirs);
+  Opts.ContainingText := AText;
   FindFilesAsync(Opts, nil,
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
@@ -75,6 +78,17 @@ begin
     Writeln('    ', Paths[I]);
   if Length(Paths) > ShowN then
     Writeln('    ...');
+end;
+
+procedure PutEncoded(const ADir, AName, AText: string; AEnc: TEncoding;
+  AWithBom: Boolean);
+var
+  Bytes: TBytes;
+begin
+  Bytes := AEnc.GetBytes(AText);
+  if AWithBom then
+    Bytes := AEnc.GetPreamble + Bytes;
+  TFile.WriteAllBytes(TPath.Combine(ADir, AName), Bytes);
 end;
 
 var
@@ -148,6 +162,37 @@ begin
     True, Parsed) and SameDateTime(Parsed, When), 'a time after a weekday is kept');
   Assert.IsFalse(TryParseFindDate('Mon', False, Parsed), 'a day of week alone is not a date');
   Assert.IsFalse(TryParseFindDate('yesterday', False, Parsed), 'garbage is not a date');
+end;
+
+procedure TTestFileFind.ContentSearchDecodesEncodings;
+const
+  Needle = #$041F#$0440#$0438#$0432#$0435#$0442; // Russian "hello"
+var
+  Dir, Body: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2_find_enc_' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    Body := 'first line' + #10 + 'second line ' + Needle + ' and more text to read' + #10;
+    PutEncoded(Dir, 'utf8.txt', Body, TEncoding.UTF8, False);
+    PutEncoded(Dir, 'utf8bom.txt', Body, TEncoding.UTF8, True);
+    PutEncoded(Dir, 'utf16le.txt', Body, TEncoding.Unicode, True);
+    PutEncoded(Dir, 'utf16be.txt', Body, TEncoding.BigEndianUnicode, True);
+    PutEncoded(Dir, 'cp1251.txt', Body, TEncoding.GetEncoding(1251), False);
+    PutEncoded(Dir, 'cp866.txt', Body, TEncoding.GetEncoding(866), False);
+    PutEncoded(Dir, 'other.txt', 'nothing to see here', TEncoding.UTF8, False);
+    Ev := TEvent.Create(nil, True, False, '');
+    try
+      WaitFind(Dir, '*.txt', False, Needle);
+    finally
+      Ev.Free;
+    end;
+    Assert.AreEqual(6, Integer(Length(Paths)));
+    for var P in Paths do
+      Assert.IsFalse(SameText('other.txt', ExtractFileName(P)));
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
 end;
 
 procedure TTestFileFind.Run;

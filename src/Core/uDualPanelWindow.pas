@@ -917,6 +917,10 @@ type
     procedure SwitchSide;
     procedure SwapPanels;
     procedure EqualizeOtherPanelToActive;
+    /// <summary>The cursor of the other panel moves to the row named like the
+    /// row under the cursor of the active panel; the other panel keeps its
+    /// folder and selection, and focus stays on the active panel.</summary>
+    procedure CursorToSameNameInOtherPanel;
     procedure EqualizeActivePanelFromOther;
     procedure TogglePanelVisible(ASide: TPanelSide);
     function IsPanelVisible(ASide: TPanelSide): Boolean;
@@ -1983,6 +1987,7 @@ begin
   FKeymapHost.ToggleFolderTree := ToggleFolderTree;
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
+  FKeymapHost.CursorToSameNameInOtherPanel := CursorToSameNameInOtherPanel;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
   FKeymapHost.FocusCommandLine := FocusCommandLine;
   FKeymapHost.ClearCommandLine := ClearCommandLine;
@@ -5958,25 +5963,6 @@ end;
 function TDualPanelWindow.HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
-  // The command line takes every Enter chord as Enter itself; the runs that
-  // have a binding of their own are looked up first.
-  if AKey = vkReturn then
-    case MatchActiveAction(AKey, AShift) of
-      kaRunInBackground:
-        begin
-          RunInBackground;
-          AKey := 0;
-          AKeyChar := #0;
-          Exit(True);
-        end;
-      kaRunInNewTab:
-        begin
-          RunInNewTab;
-          AKey := 0;
-          AKeyChar := #0;
-          Exit(True);
-        end;
-    end;
   // Space on an empty command line selects like Insert; with text in the
   // command line it stays a space.
   if FSpaceSelects and (AKeyChar = ' ') and (AShift = []) and
@@ -10208,6 +10194,63 @@ begin
   Ws.State.ActiveSide := Active;
   SaveActiveWorkspace(Ws);
   NotifyShellCwdSync;
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.CursorToSameNameInOtherPanel;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Active, Other: TPanelSide;
+  Panel: TPanelState;
+  Tab: TTab;
+  ActiveRows, OtherRows: TPanelRows;
+  Name: string;
+  I, ViewH: Integer;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Active := Ws.State.ActiveSide;
+  Other := OppositeSide(Active);
+  if not IsPanelVisible(Other) then
+    Exit;
+  ActiveRows := RowsForSide(Active);
+  I := ActiveTab(ActivePanel(Ws)).CursorIndex;
+  if (I < 0) or (I > High(ActiveRows)) or ActiveRows[I].IsParent then
+    Exit;
+  Name := PanelRowMaskName(ActiveRows[I]);
+  if Name = '' then
+    Exit;
+  OtherRows := RowsForSide(Other);
+  I := -1;
+  for var J := 0 to High(OtherRows) do
+    if not OtherRows[J].IsParent and SameText(PanelRowMaskName(OtherRows[J]), Name) then
+    begin
+      I := J;
+      Break;
+    end;
+  if I < 0 then
+  begin
+    FToast.Show(T('ui.toast.sameNameNotFound', 'No "%s" in the other panel'),
+      Name, tkWarning);
+    Exit;
+  end;
+
+  if Other = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Tab.CursorIndex := I;
+  ViewH := ListViewHeight;
+  if ViewH > 0 then
+    EnsureCursorVisible(Tab, Length(OtherRows), ViewH, ListColCountForSide(Other));
+  SetActiveTab(Panel, Tab);
+  if Other = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
   NotifyChanged;
 end;
 

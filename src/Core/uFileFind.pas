@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes,
-  uVfsTypes;
+  uVfsTypes, uTextEncoding;
 
 const
   cFindMaxResults = 5000;
@@ -366,6 +366,8 @@ function FileContentMatch(const APath, ANeedle: string; ACaseSensitive,
 var
   Bytes: TBytes;
   Text: string;
+  Enc: TTextFileEncoding;
+  IsBinary: Boolean;
   FS: TFileStream;
   Lines: TArray<string>;
   Opts: TRegExOptions;
@@ -385,11 +387,11 @@ begin
     finally
       FS.Free;
     end;
-    try
-      Text := TEncoding.UTF8.GetString(Bytes);
-    except
-      Text := TEncoding.Default.GetString(Bytes);
-    end;
+    // BOM, UTF-8, UTF-16, ANSI/OEM and CJK code pages are detected like in
+    // the viewer; binary content still gets a single-byte decode so ASCII
+    // needles are found in it.
+    if not DetectAndDecodeText(Bytes, Text, Enc, IsBinary) or IsBinary then
+      Text := TEncoding.ANSI.GetString(Bytes);
     Lines := Text.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
     if AUseRegex then
     begin

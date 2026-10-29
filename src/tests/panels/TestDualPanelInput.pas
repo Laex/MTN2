@@ -708,6 +708,7 @@ var
   Snap: TPanelFreeInputSnap;
   Key: Word;
   Ch: Char;
+  Mods: TShiftState;
   P: TKeymapProfile;
 begin
   Key := 0;
@@ -929,6 +930,21 @@ begin
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch),
       'focused cmdline: F5 handled');
     Assert.IsTrue(Spy.Last = 'cmdline', 'focused cmdline gets F5 (no copy)');
+    // Enter takes the command line; Enter with a modifier is the panel's chord.
+    Spy.Last := '';
+    Key := vkReturn;
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch),
+      'focused cmdline: Enter handled');
+    Assert.IsTrue(Spy.Last = 'cmdline', 'focused cmdline gets plain Enter');
+    for Mods in [[ssCtrl], [ssCtrl, ssShift], [ssShift], [ssAlt], [ssShift, ssAlt],
+      [ssCtrl, ssAlt]] do
+    begin
+      Spy.Last := '';
+      Key := vkReturn;
+      Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, Mods, Ch),
+        'focused cmdline: modified Enter handled');
+      Assert.IsTrue(Spy.Last = 'primary', 'focused cmdline: modified Enter goes to the panel keymap');
+    end;
     Spy.Last := '';
     Snap.QuickViewVisible := True;
     Key := vkEscape;

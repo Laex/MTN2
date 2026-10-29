@@ -19,6 +19,7 @@ type
     [Test] procedure PendingRedirectWithCursorInsideIsDropped;
     [Test] procedure PendingInputIsDroppedBeforeTheFolderSync;
     [Test] procedure HomeAndEndMoveWithinTheInputLine;
+    [Test] procedure CtrlHomeAndCtrlEndScrollTheOutput;
     [Test] procedure TabCompletesTheWordInTheShell;
   end;
 
@@ -277,6 +278,32 @@ begin
     Press(Win, vkLeft);
     Pump(300);
     Assert.IsTrue(Win.FollowsTail, 'the console still follows the shell');
+  finally
+    Win.CloseConsole;
+    Win.Free;
+  end;
+end;
+
+procedure TTestConsoleRunCommand.CtrlHomeAndCtrlEndScrollTheOutput;
+var
+  Win: TProbeConsole;
+  K: Word;
+  Ch: Char;
+begin
+  Win := NewConsole;
+  try
+    Assert.IsTrue(Win.EnsureShell(GetCurrentDir), 'the shell starts');
+    Pump(3000);
+    Assert.IsTrue(Win.FollowsTail, 'the console starts at the live prompt');
+    K := vkHome;
+    Ch := #0;
+    Win.HandleInput(K, [ssCtrl], Ch);
+    Assert.AreEqual(Word(0), K, 'Ctrl+Home is consumed');
+    Assert.IsFalse(Win.FollowsTail, 'Ctrl+Home scrolls to the start of the output');
+    K := vkEnd;
+    Win.HandleInput(K, [ssCtrl], Ch);
+    Assert.AreEqual(Word(0), K, 'Ctrl+End is consumed');
+    Assert.IsTrue(Win.FollowsTail, 'Ctrl+End returns to the live prompt');
   finally
     Win.CloseConsole;
     Win.Free;

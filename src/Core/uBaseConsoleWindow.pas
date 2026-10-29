@@ -1551,6 +1551,18 @@ var
 begin
   Result := False;
   ViewH := ViewHeight;
+  // Ctrl+Home / Ctrl+End jump to the start of the scrollback and back to the
+  // live prompt, whether or not the shell is at the tail.
+  if (AShift * cKeyMods = [ssCtrl]) and ((AKey = vkHome) or (AKey = vkEnd)) then
+  begin
+    if AKey = vkHome then
+      FHistory.ScrollToStart
+    else
+      FHistory.ScrollToEnd;
+    NotifyHost;
+    AKey := 0;
+    Exit(True);
+  end;
   if AShift * cKeyMods = [] then
   begin
     case AKey of

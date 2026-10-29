@@ -830,6 +830,8 @@
     "keymap.action.SwapPanels": "交换面板",
     "keymap.action.EqualizeOtherPanel": "另一面板转到此文件夹",
     "keymap.action.EqualizeActivePanel": "此面板转到另一文件夹",
+    "keymap.action.CursorToSameName": "另一面板光标移到同名文件",
+    "toast.sameNameNotFound": "另一面板中没有“%s”",
     "keymap.action.InfoPanel": "信息面板",
     "keymap.action.ColumnModes": "列模式菜单",
     "keymap.action.SortMenu": "排序菜单",

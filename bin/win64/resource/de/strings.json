@@ -831,6 +831,8 @@
     "keymap.action.SwapPanels": "Panels tauschen",
     "keymap.action.EqualizeOtherPanel": "Anderes Panel auf diesen Ordner",
     "keymap.action.EqualizeActivePanel": "Dieses Panel auf den anderen Ordner",
+    "keymap.action.CursorToSameName": "Cursor im anderen Panel auf gleichnamige Datei",
+    "toast.sameNameNotFound": "Kein „%s“ im anderen Panel",
     "keymap.action.InfoPanel": "Infopanel",
     "keymap.action.ColumnModes": "Spaltenmodus-Menü",
     "keymap.action.SortMenu": "Sortiermenü",

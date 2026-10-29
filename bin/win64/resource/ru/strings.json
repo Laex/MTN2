@@ -829,6 +829,8 @@
     "keymap.action.SwapPanels": "Поменять панели местами",
     "keymap.action.EqualizeOtherPanel": "Другая панель — в эту папку",
     "keymap.action.EqualizeActivePanel": "Эта панель — в папку другой",
+    "keymap.action.CursorToSameName": "Курсор другой панели на файл с тем же именем",
+    "toast.sameNameNotFound": "Нет «%s» в другой панели",
     "keymap.action.InfoPanel": "Информационная панель",
     "keymap.action.ColumnModes": "Меню режимов колонок",
     "keymap.action.SortMenu": "Меню сортировки",

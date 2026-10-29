@@ -40,6 +40,7 @@
     "SwapPanels": { "key": "U", "ctrl": true, "description": "Swap Left and Right Panels" },
     "EqualizeOtherPanel": { "key": "]", "ctrl": true, "description": "Set other panel directory to active panel" },
     "EqualizeActivePanel": { "key": "[", "ctrl": true, "description": "Set active panel directory to other panel" },
+    "CursorToSameName": { "key": "M", "ctrl": true, "alt": true, "description": "Put the other panel cursor on the file with the same name" },
     "SortMenu": { "key": "F12", "ctrl": true, "description": "Sort Options Menu" },
     "ConsoleToggle": { "key": "Esc", "description": "Toggle Panel <-> Console Screen (Esc on the panels)" },
     "DriveRoot": { "key": "\\", "ctrl": true, "description": "Navigate to Drive Root" },
