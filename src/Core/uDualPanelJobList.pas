@@ -65,7 +65,8 @@ type
     procedure QueuePruneIdle;
     procedure PruneIdleJobs;
     function ConflictsWithRunning(AJob: TPanelJobController): Boolean;
-    function FindJobCoveringUris(const ASources: TArray<string>): TPanelJobController;
+    function FindJobCoveringUris(const ASources,
+      ATargets: TArray<string>): TPanelJobController;
     procedure TryStartQueued;
     function GetPhase: TPanelJobPhase;
     function GetKind: TPanelJobKind;
@@ -122,6 +123,13 @@ type
     /// <summary>Brings job AId back: its progress or error dialog, or its
     /// pending question when it is waiting for an answer.</summary>
     procedure RestoreJobById(AId: Integer);
+    /// <summary>When a running job already works with one of ASources (the
+    /// same item, something inside it or a folder containing it) or with one of
+    /// the items ATargets name, brings that job back as RestoreJobById does and
+    /// returns True: the caller must not start its operation. Unrelated paths
+    /// return False and run alongside.</summary>
+    function RestoreCoveringJob(const ASources: TArray<string>;
+      const ATargets: TArray<string> = nil): Boolean;
     function IsForegroundRunning: Boolean;
     function TryProgressDialogState(out AJob: TPanelJobState): Boolean;
     procedure ResolveOverwriteAsk(AAction: TJobConflictAction; ARemember: Boolean;
@@ -533,30 +541,46 @@ begin
         Exit(True);
 end;
 
-function TPanelJobList.FindJobCoveringUris(
-  const ASources: TArray<string>): TPanelJobController;
+function TPanelJobList.FindJobCoveringUris(const ASources,
+  ATargets: TArray<string>): TPanelJobController;
+
+  function Overlaps(const ANew, AExisting: TArray<string>): Boolean;
+  var
+    I, J: Integer;
+  begin
+    Result := False;
+    for I := 0 to High(ANew) do
+      for J := 0 to High(AExisting) do
+        if JobUrisOverlap(ANew[I], AExisting[J]) then
+          Exit(True);
+  end;
+
 var
   Job: TPanelJobController;
-  ExistingUris: TArray<string>;
-  I, J: Integer;
 begin
   Result := nil;
-  if Length(ASources) = 0 then
-    Exit;
   for Job in FItems do
   begin
     if Job.Phase = pjpNone then
       Continue;
-    ExistingUris := CollectJobTouchUris(Job.State);
-    for I := 0 to High(ASources) do
-    begin
-      if ASources[I] = '' then
-        Continue;
-      for J := 0 to High(ExistingUris) do
-        if JobUrisOverlap(ASources[I], ExistingUris[J]) then
-          Exit(Job);
-    end;
+    // New sources against everything the job touches; new targets only
+    // against the job's sources, so two copies into one folder still queue
+    // rather than raising the first one's dialog.
+    if Overlaps(ASources, CollectJobTouchUris(Job.State)) or
+       Overlaps(ATargets, Job.State.Sources) then
+      Exit(Job);
   end;
+end;
+
+function TPanelJobList.RestoreCoveringJob(const ASources,
+  ATargets: TArray<string>): Boolean;
+var
+  Job: TPanelJobController;
+begin
+  Job := FindJobCoveringUris(ASources, ATargets);
+  Result := Job <> nil;
+  if Result then
+    RestoreJobById(Job.State.Id);
 end;
 
 procedure TPanelJobList.TryStartQueued;
@@ -726,14 +750,9 @@ procedure TPanelJobList.BeginJob(const ASources: TArray<string>;
   ADeleteToRecycleBin: Boolean);
 var
   Job: TPanelJobController;
-  Conflict: TPanelJobController;
 begin
-  Conflict := FindJobCoveringUris(ASources);
-  if Conflict <> nil then
-  begin
-    RestoreJobById(Conflict.State.Id);
+  if RestoreCoveringJob(ASources, [ADestDirURI]) then
     Exit;
-  end;
   if not CanStartAnother then
     Exit;
   Job := SpawnJob;
@@ -747,14 +766,9 @@ procedure TPanelJobList.BeginJobPairs(const ASources, ADestURIs: TArray<string>;
   AKind: TPanelJobKind; AOverwriteMode: TJobOverwriteMode);
 var
   Job: TPanelJobController;
-  Conflict: TPanelJobController;
 begin
-  Conflict := FindJobCoveringUris(ASources);
-  if Conflict <> nil then
-  begin
-    RestoreJobById(Conflict.State.Id);
+  if RestoreCoveringJob(ASources, ADestURIs) then
     Exit;
-  end;
   if not CanStartAnother then
     Exit;
   Job := SpawnJob;

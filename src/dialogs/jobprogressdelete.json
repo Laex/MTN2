@@ -16,6 +16,15 @@
     },
     {
       "type": "label",
+      "id": "verb",
+      "text": "",
+      "col": 1,
+      "row": 1,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
       "id": "file_bar",
       "text": "",
       "col": 1,

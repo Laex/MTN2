@@ -73,6 +73,8 @@ type
     FLife: IJobLife;
     FLastProgressInvalidateTick: UInt64;
     FProgressInvalidateQueued: Boolean;
+    FScanStartTick: UInt64;
+    FScanTickQueued: Boolean;
     FProgressInvalidateDirty: Boolean;
     /// <summary>Full source path of the file the last progress report was
     /// about - for detecting "file finished, next one started" transitions
@@ -128,6 +130,7 @@ type
       AIndex: Integer; AIsDirMerge: Boolean; const ANewLine,
       AExistingLine: string): Boolean;
     procedure NotifyProgressUi;
+    procedure ScanTick;
     procedure NoteItemProgress(ADone, ATotal: Int64; const ACurrentName: string;
       AItemDone: Int64 = 0; AItemTotal: Int64 = 0; const AItemSrcPath: string = '';
       const AItemDstPath: string = '');
@@ -903,11 +906,18 @@ begin
   // folder it is in.
   if ATotal < 0 then
   begin
-    FJob.Scanning := True;
+    if not FJob.Scanning then
+    begin
+      FJob.Scanning := True;
+      FScanStartTick := PlatformTickCount64;
+      FJob.ScanElapsedSec := 0;
+      ScanTick;
+    end;
     FJob.CurrentSrcPath := ACurrentName;
     Exit;
   end;
   FJob.Scanning := False;
+  FJob.ScanElapsedSec := 0;
   // ADone/ATotal keep their original meaning unchanged: cumulative bytes for
   // the whole current top-level item (a recursive tree copy reports running
   // totals across all its files here) - this still drives the "Total" bar
@@ -1051,6 +1061,14 @@ begin
   if Assigned(FJob.Cancel) then
     FJob.Cancel.Cancel;
   AbortConflictWait;
+  // The Shell cannot be interrupted while it prepares a big tree, so waiting
+  // for it would keep the job (and its dialog) alive for minutes and block a
+  // new delete of the same folder. The job ends now; the Shell is told to leave
+  // the item in place as soon as it reports back (see uFileRecycleBin).
+  if (FJob.Phase = pjpRunning) and (FJob.Kind = pjkDelete) and
+     FJob.DeleteToRecycleBin and not FUseElevated then
+    FinishJob(False, TVfsError.Make(vecCancelled, 'Cancelled',
+      FJob.CurrentSrcPath));
 end;
 
 procedure TPanelJobController.StartJobExecution;
@@ -1133,6 +1151,32 @@ begin
         Exit;
       RunJobItem;
     end);
+end;
+
+// While the tree is being read the worker reports rarely or not at all (the
+// Shell reports nothing until it has read the whole tree), so a once-a-second
+// tick refreshes the elapsed time shown in the dialog.
+procedure TPanelJobController.ScanTick;
+var
+  Life: IJobLife;
+begin
+  if FScanTickQueued then
+    Exit;
+  FScanTickQueued := True;
+  Life := FLife;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if not Life.Alive then
+        Exit;
+      FScanTickQueued := False;
+      if not FJob.Scanning or (FJob.Phase <> pjpRunning) then
+        Exit;
+      FJob.ScanElapsedSec :=
+        Integer((PlatformTickCount64 - FScanStartTick) div 1000);
+      NotifyProgressUi;
+      ScanTick;
+    end, 1000);
 end;
 
 procedure TPanelJobController.NotifyProgressUi;
@@ -2187,11 +2231,11 @@ begin
   FJob.Message := AError.Message;
   if FJob.Message = '' then
     case AError.Code of
-      vecAlreadyExists: FJob.Message := 'Already exists';
-      vecAccessDenied: FJob.Message := 'Access denied';
-      vecNotFound: FJob.Message := 'Not found';
+      vecAlreadyExists: FJob.Message := T('ui.job.alreadyExists', 'Already exists');
+      vecAccessDenied: FJob.Message := T('ui.job.accessDenied', 'Access denied');
+      vecNotFound: FJob.Message := T('ui.job.notFound', 'Not found');
     else
-      FJob.Message := 'Operation failed';
+      FJob.Message := T('ui.job.operationFailed', 'Operation failed');
     end;
   FJob.Cancel := nil;
   NoteBackgroundFinish(False);

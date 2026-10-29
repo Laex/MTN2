@@ -13,6 +13,9 @@ type
     [Test] procedure TestConfirmCommand;
     [Test] procedure TestProgressFields;
     [Test] procedure TestParallel;
+    [Test] procedure TestItemUrisIgnorePanelDirs;
+    [Test] procedure TestDeletePreparing;
+    [Test] procedure TestProgressTextIsTranslated;
     [Test] procedure TestStatusAndOrigin;
     [Test] procedure TestDeleteOneParts;
     [Test] procedure TestTaskbarProgress;
@@ -22,6 +25,7 @@ implementation
 
 uses
   System.SysUtils,
+  uStrings,
   uDialogTypes,
   uVfsTypes,
   uDualPanelTypes,
@@ -93,6 +97,93 @@ begin
   Assert.IsTrue(not JobConfirmWantsBackground(cDlgCmdCancel), 'cancel is not background');
 end;
 
+procedure TestItemUrisIgnorePanelDirs;
+var
+  Del: TPanelJobState;
+  Items: TArray<string>;
+begin
+  Del := FileJob('file:///O:/Old/', '');
+  Del.Kind := pjkDelete;
+  Assert.IsTrue(Del.OriginSrcDirURI <> '', 'origin dir recorded');
+  Items := CollectJobItemUris(Del);
+  Assert.AreEqual(1, Integer(Length(Items)), 'only the source is an item');
+  Assert.IsTrue(not JobUrisOverlap('file:///O:/Other/', Items[0]),
+    'sibling of a deleted folder is not covered by the delete job');
+  Assert.IsTrue(JobUrisOverlap('file:///O:/Old/sub/', Items[0]),
+    'content of a deleted folder is covered');
+end;
+
+procedure TestProgressTextIsTranslated;
+var
+  S: TPanelJobState;
+  Snap: TJobProgressSnapshot;
+begin
+  SetLocale('ru');
+  try
+    S := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
+    S.Presentation := jpForeground;
+    Snap := BuildJobProgressSnapshot(S, 72);
+    Assert.AreNotEqual('Copy', Snap.Title, 'copy title follows the language');
+    Assert.AreEqual(T('ui.job.titleCopy', 'Copy'), Snap.Title, 'copy title is the pack text');
+    Assert.AreNotEqual('Copying the file', Snap.Verb, 'copy verb follows the language');
+    Assert.AreEqual(T('ui.job.verbCopy', 'Copying the file'), Snap.Verb,
+      'copy verb is the pack text');
+    Assert.IsTrue(Pos('Files:', Snap.Files) = 0, 'files label follows the language');
+    Assert.IsTrue(Pos('Bytes:', Snap.Bytes) = 0, 'bytes label follows the language');
+    S.Kind := pjkDelete;
+    Assert.AreNotEqual('Recycle', BuildJobProgressSnapshot(S, 72).Title,
+      'recycle title follows the language');
+    S.Scanning := True;
+    Assert.IsTrue(Pos('Preparing', BuildJobProgressSnapshot(S, 72).Verb) = 0,
+      'preparing text follows the language');
+  finally
+    SetLocale('en');
+  end;
+end;
+
+procedure TestDeletePreparing;
+var
+  S: TPanelJobState;
+  Snap: TJobProgressSnapshot;
+begin
+  S := FileJob('file:///O:/Old/', '');
+  S.Kind := pjkDelete;
+  S.Presentation := jpForeground;
+  S.FilesTotal := 1;
+  S.Index := 0;
+  Assert.AreEqual(0, JobDeletePercent(S), 'the only item is not done before it ends');
+  S.FilesTotal := 4;
+  S.Index := 2;
+  Assert.AreEqual(50, JobDeletePercent(S), 'finished items drive the delete bar');
+  S.Scanning := True;
+  S.CurrentSrcPath := 'O:\Old';
+  S.ProgressTotal := 100;
+  S.ProgressDone := 100;
+  Assert.AreEqual(50, JobDeletePercent(S),
+    'while the next item is read the finished items show, not the last item');
+  S.Index := 0;
+  Assert.AreEqual(0, JobDeletePercent(S), 'nothing finished yet');
+  S.ProgressTotal := 0;
+  S.ProgressDone := 0;
+  S.DeleteToRecycleBin := False;
+  Snap := BuildJobProgressSnapshot(S, 72);
+  Assert.IsTrue(Pos('Preparing', Snap.Verb) = 0,
+    'a permanent delete only counts items, it does not wait for the Shell');
+  Assert.IsTrue(Pos(T('ui.job.scanning', 'Scanning the folder'), Snap.Verb) = 1,
+    'a permanent delete reads the tree');
+  S.DeleteToRecycleBin := True;
+  Snap := BuildJobProgressSnapshot(S, 72);
+  Assert.IsTrue(Snap.Verb <> JobProgressVerb(pjkDelete), 'preparing replaces the verb');
+  Assert.IsTrue(Pos('O:\Old', Snap.Src) > 0, 'the item being prepared is shown');
+  Assert.IsTrue(Pos('0:', Snap.Verb) = 0, 'no clock before a second has passed');
+  S.ScanElapsedSec := 83;
+  Assert.IsTrue(Pos('1:23', BuildJobProgressSnapshot(S, 72).Verb) > 0,
+    'the elapsed time shows while preparing');
+  S.Scanning := False;
+  Assert.AreEqual(JobProgressVerb(pjkDelete), BuildJobProgressSnapshot(S, 72).Verb,
+    'the verb returns once progress is reported');
+end;
+
 procedure TestParallel;
 var
   A, B: TPanelJobState;
@@ -105,7 +196,16 @@ begin
   Assert.IsTrue(not CanRunParallel(A, B), 'same source URI queues');
 
   B := FileJob('file:///C:/src/sub/x.txt', 'file:///F:/out/');
-  Assert.IsTrue(not CanRunParallel(A, B), 'source under other src dir queues');
+  Assert.IsTrue(CanRunParallel(A, B), 'the directory a job was started from is not locked');
+
+  A := FileJob('file:///C:/src/dir/', 'file:///D:/dst/');
+  B := FileJob('file:///C:/src/dir/x.txt', 'file:///F:/out/');
+  Assert.IsTrue(not CanRunParallel(A, B), 'source inside the folder of a running job queues');
+  B := FileJob('file:///C:/src/', 'file:///F:/out/');
+  Assert.IsTrue(not CanRunParallel(A, B), 'folder containing the folder of a running job queues');
+  B := FileJob('file:///C:/src/other/', 'file:///F:/out/');
+  Assert.IsTrue(CanRunParallel(A, B), 'sibling folder runs in parallel');
+  A := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
 
   B := FileJob('file:///E:/other/b.txt', 'file:///D:/dst/');
   Assert.IsTrue(not CanRunParallel(A, B), 'same dest dir queues');
@@ -175,14 +275,27 @@ end;
 procedure TestStatusAndOrigin;
 var
   S: TPanelJobState;
+  Line: string;
 begin
   S := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
   Assert.IsTrue(Pos('Copy 2/5', FormatJobProgressLine(S)) > 0, 'progress line has counts');
   Assert.IsTrue(Pos('34%', FormatJobProgressLine(S)) > 0, 'progress line has percent');
   Assert.IsTrue(Pos(' '#$00B7' ', FormatJobProgressLine(S)) > 0,
     'the separator is a middle dot, not a mis-decoded byte pair');
-  Assert.IsTrue(Pos(JobKindGlyph(pjkCopy, False) + ' Copy 2/5', FormatJobListLine(S)) = 1,
+  Assert.IsTrue(Pos(JobKindGlyph(pjkCopy, False) + ' Copy ', FormatJobListLine(S)) = 1,
     'list line starts with the operation glyph');
+  Line := FormatJobListLine(S);
+  Assert.AreEqual(cJobListTaskW + cJobListItemW + cJobListFilesW + cJobListPctW +
+    cJobListStateW + 4, Length(Line), 'every list line is as wide as its columns');
+  Assert.AreEqual('2/5', Trim(Copy(Line, cJobListTaskW + cJobListItemW + 3,
+    cJobListFilesW)), 'files column');
+  Assert.AreEqual('34%', Trim(Copy(Line, cJobListTaskW + cJobListItemW +
+    cJobListFilesW + 4, cJobListPctW)), 'percent column');
+  Assert.AreEqual('a.txt', Trim(Copy(Line, cJobListTaskW + 2, cJobListItemW)),
+    'item column shows the source name until a file reports');
+  S.CurrentName := StringOfChar('x', 60);
+  Assert.AreEqual(Length(Line), Length(FormatJobListLine(S)),
+    'a long name is cut to its column');
 
   // Delete before the background count lands: five removed inside one
   // selected folder never reads "5/1"; the percent counts removed items.
@@ -232,6 +345,21 @@ end;
 procedure TTestDualPanelJobRules.TestParallel;
 begin
   TestDualPanelJobRules.TestParallel;
+end;
+
+procedure TTestDualPanelJobRules.TestItemUrisIgnorePanelDirs;
+begin
+  TestDualPanelJobRules.TestItemUrisIgnorePanelDirs;
+end;
+
+procedure TTestDualPanelJobRules.TestDeletePreparing;
+begin
+  TestDualPanelJobRules.TestDeletePreparing;
+end;
+
+procedure TTestDualPanelJobRules.TestProgressTextIsTranslated;
+begin
+  TestDualPanelJobRules.TestProgressTextIsTranslated;
 end;
 
 procedure TTestDualPanelJobRules.TestStatusAndOrigin;

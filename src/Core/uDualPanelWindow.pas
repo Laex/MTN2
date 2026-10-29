@@ -2922,6 +2922,7 @@ end;
 
 procedure TDualPanelWindow.SyncJobProgressDialog;
 var
+  Lines: TArray<string>;
   Job: TPanelJobState;
   ResName: string;
   DialogOpen: Boolean;
@@ -2930,6 +2931,17 @@ begin
     Exit;
   FSyncingJobProgress := True;
   try
+    // The job list is a snapshot taken when it opened; keep its lines (and the
+    // percent in them) current while it stays on screen.
+    if (FDialogKind = hdkJobList) and Assigned(FJobs) and Assigned(FDialog) and
+       FDialog.Visible then
+    begin
+      Lines := FJobs.ListLines;
+      if Length(Lines) = 0 then
+        Lines := TArray<string>.Create('(no jobs)');
+      FDialog.SetListItems('jobs', Lines, FDialog.GetListSelectedIndex('jobs'));
+      Exit;
+    end;
     if not Assigned(FJobs) or not FJobs.TryProgressDialogState(Job) then
     begin
       if FDialogKind = hdkJobProgress then
@@ -6436,6 +6448,8 @@ begin
     Exit;
   end;
   URI := JoinFileUri(URI, CleanName);
+  if FJobs.RestoreCoveringJob([URI]) then
+    Exit;
   FPendingSelectName := SelectName;
   FPendingSelectSide := Ws.State.ActiveSide;
   RunMkDir(FVfs, URI, SelectName, True);
@@ -7376,6 +7390,8 @@ begin
     NotifyChanged;
     Exit;
   end;
+  if FJobs.RestoreCoveringJob([FromURI], [ToURI]) then
+    Exit;
   Side := ActiveWorkspace.State.ActiveSide;
   FPendingSelectName := CleanName;
   FPendingSelectSide := Side;

@@ -16,6 +16,8 @@ type
     [Test] procedure TestBackgroundReloadsPanels;
     [Test] procedure TestCancelConfirm;
     [Test] procedure TestRestoreJobById;
+    [Test] procedure TestRestoreCoveringJob;
+    [Test] procedure TestCancelRecycleFreesFolder;
     [Test] procedure TestQueuedPruneAfterListFreed;
   end;
 
@@ -207,6 +209,54 @@ begin
   end;
 end;
 
+procedure TestCancelRecycleFreesFolder;
+const
+  cFolder = 'file:///C:/mtn2-test-absent/dir/';
+var
+  Jobs: TPanelJobList;
+begin
+  Jobs := MakeList;
+  try
+    Jobs.BeginJob(TArray<string>.Create(cFolder), '', pjkDelete, True);
+    Jobs.ConfirmJob;
+    Assert.IsTrue(Jobs.Phase = pjpRunning, 'confirm starts the delete');
+    Assert.IsTrue(Jobs.RestoreCoveringJob([cFolder]), 'the folder is busy while it runs');
+    Jobs.RequestCancel;
+    Assert.IsTrue(Jobs.Phase = pjpNone,
+      'cancelling a Recycle Bin delete ends the job without waiting for the Shell');
+    Assert.IsTrue(not Jobs.RestoreCoveringJob([cFolder]),
+      'the same folder can be deleted again right after the cancel');
+  finally
+    Jobs.Free;
+  end;
+end;
+
+procedure TestRestoreCoveringJob;
+var
+  Jobs: TPanelJobList;
+begin
+  Jobs := MakeList;
+  try
+    Jobs.BeginJob(TArray<string>.Create('file:///C:/src/dir/'),
+      'file:///D:/dst/', pjkCopy);
+    Assert.IsTrue(Jobs.RestoreCoveringJob(['file:///C:/src/dir/']),
+      'the same folder raises the running job');
+    Assert.IsTrue(Jobs.RestoreCoveringJob(['file:///C:/src/dir/sub/x.txt']),
+      'an item inside the folder raises the running job');
+    Assert.IsTrue(Jobs.RestoreCoveringJob(['file:///C:/src/']),
+      'a folder containing it raises the running job');
+    Assert.IsTrue(Jobs.RestoreCoveringJob(['file:///E:/a.txt'],
+      ['file:///C:/src/dir/a.txt']), 'a target inside the folder raises the running job');
+    Assert.IsTrue(not Jobs.RestoreCoveringJob(['file:///C:/src/other/']),
+      'a sibling folder is left alone');
+    Assert.IsTrue(not Jobs.RestoreCoveringJob(['file:///E:/b.txt'],
+      ['file:///D:/dst/']), 'a second copy into the same folder is not a repeat');
+    Jobs.CloseJobUi;
+  finally
+    Jobs.Free;
+  end;
+end;
+
 { TTestDualPanelJobsManager }
 
 procedure TTestDualPanelJobsManager.TestListFacade;
@@ -227,6 +277,16 @@ end;
 procedure TTestDualPanelJobsManager.TestQueuedPruneAfterListFreed;
 begin
   TestDualPanelJobsManager.TestQueuedPruneAfterListFreed;
+end;
+
+procedure TTestDualPanelJobsManager.TestRestoreCoveringJob;
+begin
+  TestDualPanelJobsManager.TestRestoreCoveringJob;
+end;
+
+procedure TTestDualPanelJobsManager.TestCancelRecycleFreesFolder;
+begin
+  TestDualPanelJobsManager.TestCancelRecycleFreesFolder;
 end;
 
 procedure TTestDualPanelJobsManager.TestRestoreJobById;

@@ -24,14 +24,21 @@ var
   /// Bin warning, UAC): the main window, set by the main form.</summary>
   GRecycleOwnerWindow: NativeUInt = 0;
 
+/// <summary>ACancel is honoured between the Shell's preparation and the moving
+/// of an item: the Shell cannot be interrupted while it reads a big tree, but
+/// it is told to leave the item in place once it gets that far.</summary>
 procedure DeleteToRecycleBin(const APath: string; var AError: TVfsError;
-  AOnProgress: TVfsProgressCallback = nil);
+  AOnProgress: TVfsProgressCallback = nil; const ACancel: IJobCancelToken = nil);
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
   Winapi.Windows, Winapi.ShellAPI, Winapi.ShlObj, Winapi.ActiveX;
+
+const
+  /// <summary>COPYENGINE_E_USER_CANCELLED.</summary>
+  cCopyEngineUserCancelled = DWORD($80270000);
 
 type
   /// <summary>Bridges IFileOperation's own progress notifications (the
@@ -42,11 +49,13 @@ type
   TDeleteProgressSink = class(TInterfacedObject, IFileOperationProgressSink)
   private
     FOnProgress: TVfsProgressCallback;
+    FCancel: IJobCancelToken;
     FLastPath: string;
     FFailedPath: string;
     FFailedHR: HResult;
   public
-    constructor Create(AOnProgress: TVfsProgressCallback);
+    constructor Create(AOnProgress: TVfsProgressCallback;
+      const ACancel: IJobCancelToken);
     /// <summary>First item the Shell could not delete, '' when none.</summary>
     property FailedPath: string read FFailedPath;
     property FailedHR: HResult read FFailedHR;
@@ -81,10 +90,12 @@ type
     function ResumeTimer: HResult; stdcall;
   end;
 
-constructor TDeleteProgressSink.Create(AOnProgress: TVfsProgressCallback);
+constructor TDeleteProgressSink.Create(AOnProgress: TVfsProgressCallback;
+  const ACancel: IJobCancelToken);
 begin
   inherited Create;
   FOnProgress := AOnProgress;
+  FCancel := ACancel;
 end;
 
 function TDeleteProgressSink.StartOperations: HResult;
@@ -139,12 +150,12 @@ end;
 function TDeleteProgressSink.PreDeleteItem(dwFlags: DWORD;
   const psiItem: IShellItem): HResult;
 begin
-  Result := S_OK;
+  // A failure code here makes the Shell leave this item where it is.
+  if JobCancelRequested(FCancel) then
+    Result := HResult(cCopyEngineUserCancelled)
+  else
+    Result := S_OK;
 end;
-
-const
-  /// <summary>COPYENGINE_E_USER_CANCELLED.</summary>
-  cCopyEngineUserCancelled = DWORD($80270000);
 
 function TDeleteProgressSink.PostDeleteItem(dwFlags: DWORD; const psiItem: IShellItem;
   hrDelete: HResult; const psiNewlyCreated: IShellItem): HResult;
@@ -285,7 +296,7 @@ begin
 end;
 
 function DeleteToRecycleBinIFileOp(const APath: string; var AError: TVfsError;
-  AOnProgress: TVfsProgressCallback): Boolean;
+  AOnProgress: TVfsProgressCallback; const ACancel: IJobCancelToken): Boolean;
 var
   Op: IFileOperation;
   Item: IShellItem;
@@ -336,9 +347,17 @@ begin
   end;
 
   // Always advised: the sink also records the item the Shell failed on.
-  SinkObj := TDeleteProgressSink.Create(AOnProgress);
+  SinkObj := TDeleteProgressSink.Create(AOnProgress, ACancel);
   Sink := SinkObj;
   Advised := Succeeded(Op.Advise(Sink, Cookie));
+  // The Shell walks the whole tree before it reports anything; until its first
+  // progress notification the job shows the item as being prepared.
+  if Assigned(AOnProgress) then
+    TThread.Queue(nil,
+      procedure
+      begin
+        AOnProgress(0, -1, Full, 0, 0, '', '');
+      end);
   try
     HR := Op.PerformOperations;
   finally
@@ -347,6 +366,11 @@ begin
   end;
   if not (LocalPathIsFile(Full) or LocalPathIsDirectory(Full)) then
     Exit(True); // gone despite HRESULT noise
+  if JobCancelRequested(ACancel) then
+  begin
+    AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Full));
+    Exit;
+  end;
   // An item the Shell could not recycle: an error for the caller to act on,
   // whatever the operation as a whole reports.
   if SinkObj.FailedPath <> '' then
@@ -384,7 +408,7 @@ begin
 end;
 
 procedure DeleteToRecycleBin(const APath: string; var AError: TVfsError;
-  AOnProgress: TVfsProgressCallback);
+  AOnProgress: TVfsProgressCallback; const ACancel: IJobCancelToken);
 var
   Op: TSHFileOpStructW;
   Buf: PWideChar;
@@ -418,7 +442,7 @@ begin
     // Prefer modern IFileOperation (Explorer path + UAC elevation prompt).
     AError := TVfsError.Ok;
     AError.URI := PathToFileUri(Path);
-    if DeleteToRecycleBinIFileOp(Path, AError, AOnProgress) then
+    if DeleteToRecycleBinIFileOp(Path, AError, AOnProgress, ACancel) then
       Exit;
     if AError.Code <> vecOk then
       Exit; // real failure from IFileOperation - do not hide behind SHFileOp

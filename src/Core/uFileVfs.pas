@@ -1033,7 +1033,7 @@ begin
           if Path = '' then
             Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', URI)
           else if Mode = vdmRecycleBin then
-            DeleteToRecycleBin(Path, Err, OnProgress)
+            DeleteToRecycleBin(Path, Err, OnProgress, Cancel)
           else
           begin
             DoneItems := 0;

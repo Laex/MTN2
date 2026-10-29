@@ -39,6 +39,18 @@ function JobIsAskPhase(APhase: TPanelJobPhase): Boolean;
 function JobIsBusy(const AJob: TPanelJobState): Boolean;
 function JobProgressPercent(const AJob: TPanelJobState): Integer;
 function FormatJobProgressLine(const AJob: TPanelJobState): string;
+
+const
+  /// <summary>Widths of the job list columns (task, item, files, percent,
+  /// state); the dialog's header text in each language pads its titles to the
+  /// same widths.</summary>
+  cJobListTaskW = 13;
+  cJobListItemW = 23;
+  cJobListFilesW = 11;
+  cJobListPctW = 4;
+  cJobListStateW = 12;
+
+/// <summary>One row of the background jobs list: the columns above, one space apart.</summary>
 function FormatJobListLine(const AJob: TPanelJobState): string;
 
 type
@@ -61,6 +73,9 @@ function JobArchiveKey(const AURI: string): string;
 function JobSftpAuthority(const AURI: string): string;
 function JobUrisOverlap(const A, B: string): Boolean;
 function CollectJobTouchUris(const AJob: TPanelJobState): TArray<string>;
+/// <summary>Items the job itself processes (sources and explicit targets),
+/// without the panel directories it was started from.</summary>
+function CollectJobItemUris(const AJob: TPanelJobState): TArray<string>;
 function CanRunParallel(const ANew, AExisting: TPanelJobState): Boolean;
 
 function CanStartAnotherJob(ABusyCount: Integer): Boolean;
@@ -141,17 +156,17 @@ end;
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
 begin
   case AKind of
-    pjkCopy: Result := 'Copy';
-    pjkMove: Result := 'Move';
-    pjkPack: Result := 'Pack';
-    pjkUnpack: Result := 'Unpack';
+    pjkCopy: Result := T('ui.job.titleCopy', 'Copy');
+    pjkMove: Result := T('ui.job.titleMove', 'Move');
+    pjkPack: Result := T('ui.job.titlePack', 'Pack');
+    pjkUnpack: Result := T('ui.job.titleUnpack', 'Unpack');
     pjkDelete:
       if ADeleteToRecycleBin then
-        Result := 'Recycle'
+        Result := T('ui.job.titleRecycle', 'Recycle')
       else
-        Result := 'Delete';
+        Result := T('ui.job.titleDelete', 'Delete');
   else
-    Result := 'Job';
+    Result := T('ui.job.titleGeneric', 'Job');
   end;
 end;
 
@@ -258,6 +273,16 @@ begin
   end;
 end;
 
+// "Preparing to delete... 1:23": the text plus the time spent, once it is
+// long enough to matter.
+function JobScanVerb(const AText: string; AElapsedSec: Integer): string;
+begin
+  if AElapsedSec < 1 then
+    Result := AText
+  else
+    Result := Format('%s %d:%.2d', [AText, AElapsedSec div 60, AElapsedSec mod 60]);
+end;
+
 function BuildJobProgressSnapshot(const AJob: TPanelJobState;
   AInnerW: Integer): TJobProgressSnapshot;
 var
@@ -273,13 +298,19 @@ begin
     Result.IsError := True;
     Result.Message := AJob.Message;
     if Result.Message = '' then
-      Result.Message := 'Error';
+      Result.Message := T('ui.job.error', 'Error');
     Exit;
   end;
   // The worker stops at its next cancellation check, which can take a while
   // on a large file; the dialog says so instead of looking like it still works.
   if Assigned(AJob.Cancel) and AJob.Cancel.IsCancellationRequested then
     Result.Verb := T('ui.job.cancelling', 'Cancelling...')
+  else if AJob.Scanning and (AJob.Kind = pjkDelete) and AJob.DeleteToRecycleBin then
+    Result.Verb := JobScanVerb(T('ui.job.preparingDelete', 'Preparing to delete...'),
+      AJob.ScanElapsedSec)
+  else if AJob.Scanning then
+    Result.Verb := JobScanVerb(T('ui.job.scanning', 'Scanning the folder'),
+      AJob.ScanElapsedSec)
   else
     Result.Verb := JobProgressVerb(AJob.Kind);
   Result.Src := JobProgressSrcLine(AJob, InnerW);
@@ -292,12 +323,12 @@ begin
   if FilesTotal < 1 then
     FilesTotal := Length(AJob.Sources);
   FilesDone := EnsureRange(AJob.FilesDone, 0, FilesTotal);
-  Result.Files := JobProgressCountLine('Files:', FilesDone, FilesTotal, InnerW);
+  Result.Files := JobProgressCountLine(T('ui.job.filesLabel', 'Files:'), FilesDone, FilesTotal, InnerW);
   BytesNow := AJob.BytesDoneBase + AJob.ProgressDone;
   BytesTot := AJob.BytesTotal;
   if BytesTot < BytesNow then
     BytesTot := BytesNow;
-  Result.Bytes := JobProgressCountLine('Bytes:', BytesNow, BytesTot, InnerW);
+  Result.Bytes := JobProgressCountLine(T('ui.job.bytesLabel', 'Bytes:'), BytesNow, BytesTot, InnerW);
   Result.TotalBar := FormatJobProgressBar(InnerW, JobProgressPercent(AJob));
 end;
 
@@ -329,12 +360,12 @@ end;
 function JobProgressVerb(AKind: TPanelJobKind): string;
 begin
   case AKind of
-    pjkMove: Result := 'Moving the file';
-    pjkPack: Result := 'Packing';
-    pjkUnpack: Result := 'Unpacking';
-    pjkDelete: Result := 'Deleting';
+    pjkMove: Result := T('ui.job.verbMove', 'Moving the file');
+    pjkPack: Result := T('ui.job.verbPack', 'Packing');
+    pjkUnpack: Result := T('ui.job.verbUnpack', 'Unpacking');
+    pjkDelete: Result := T('ui.job.verbDelete', 'Deleting');
   else
-    Result := 'Copying the file';
+    Result := T('ui.job.verbCopy', 'Copying the file');
   end;
 end;
 
@@ -344,7 +375,8 @@ begin
   if Result = '' then
     Result := AJob.CurrentName;
   if Result = '' then
-    Result := Format('Item %d/%d', [AJob.Index + 1, Length(AJob.Sources)]);
+    Result := Format(T('ui.job.itemOf', 'Item %d/%d'),
+      [AJob.Index + 1, Length(AJob.Sources)]);
   Result := JobEllipsizeLeft(Result, AMaxLen);
 end;
 
@@ -382,10 +414,13 @@ end;
 
 function JobDeletePercent(const AJob: TPanelJobState): Integer;
 begin
-  if AJob.ProgressTotal > 0 then
+  // While the next item is being read the item counters still hold the
+  // previous item's values; the finished items are all there is to show.
+  if (AJob.ProgressTotal > 0) and not AJob.Scanning then
     Result := EnsureRange(Round(100 * AJob.ProgressDone / AJob.ProgressTotal), 0, 100)
   else if AJob.FilesTotal > 0 then
-    Result := EnsureRange(Round(100 * (AJob.Index + 1) / AJob.FilesTotal), 0, 100)
+    // Items finished so far: the one being deleted is not done yet.
+    Result := EnsureRange(Round(100 * AJob.Index / AJob.FilesTotal), 0, 100)
   else
     Result := 0;
 end;
@@ -466,51 +501,79 @@ begin
     Result := jtsNone;
 end;
 
-function FormatJobProgressLine(const AJob: TPanelJobState): string;
-var
-  Title: string;
-  FilesDone, FilesTotal, Pct: Integer;
+procedure JobFileCounts(const AJob: TPanelJobState; out ADone, ATotal: Integer);
 begin
-  Title := JobKindTitle(AJob.Kind, AJob.DeleteToRecycleBin);
-  FilesDone := AJob.FilesDone;
-  FilesTotal := AJob.FilesTotal;
-  if FilesTotal < 1 then
-    FilesTotal := Length(AJob.Sources);
-  if FilesTotal < 1 then
-    FilesTotal := 1;
-  if FilesDone < 0 then
-    FilesDone := 0;
+  ADone := AJob.FilesDone;
+  ATotal := AJob.FilesTotal;
+  if ATotal < 1 then
+    ATotal := Length(AJob.Sources);
+  if ATotal < 1 then
+    ATotal := 1;
+  if ADone < 0 then
+    ADone := 0;
   // Until the background count lands the total is only the selected items;
   // never show more done than there is in all.
-  if FilesDone > FilesTotal then
-    FilesTotal := FilesDone;
-  Pct := JobProgressPercent(AJob);
-  Result := Format('%s %d/%d '#$00B7' %d%%', [Title, FilesDone, FilesTotal, Pct]);
+  if ADone > ATotal then
+    ATotal := ADone;
+end;
+
+function FormatJobProgressLine(const AJob: TPanelJobState): string;
+var
+  FilesDone, FilesTotal: Integer;
+begin
+  JobFileCounts(AJob, FilesDone, FilesTotal);
+  Result := Format('%s %d/%d '#$00B7' %d%%',
+    [JobKindTitle(AJob.Kind, AJob.DeleteToRecycleBin), FilesDone, FilesTotal,
+     JobProgressPercent(AJob)]);
+end;
+
+function JobListCell(const AText: string; AWidth: Integer; ARightAlign: Boolean): string;
+var
+  Text: string;
+begin
+  Text := AText;
+  if Length(Text) > AWidth then
+    Text := Copy(Text, 1, Max(AWidth - 2, 0)) + Copy('..', 1, Min(AWidth, 2));
+  if ARightAlign then
+    Result := StringOfChar(' ', AWidth - Length(Text)) + Text
+  else
+    Result := Text + StringOfChar(' ', AWidth - Length(Text));
+end;
+
+function JobListStateText(const AJob: TPanelJobState): string;
+begin
+  case AJob.Phase of
+    pjpQueued: Result := T('ui.job.stateQueued', 'queued');
+    pjpConfirm: Result := T('ui.job.stateConfirm', 'confirm');
+    pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk:
+      Result := T('ui.job.stateAsk', 'question');
+    pjpError: Result := T('ui.job.stateError', 'error');
+    pjpRunning:
+      if AJob.Presentation = jpBackground then
+        Result := T('ui.job.stateBackground', 'background')
+      else
+        Result := T('ui.job.stateForeground', 'foreground');
+  else
+    Result := '';
+  end;
 end;
 
 function FormatJobListLine(const AJob: TPanelJobState): string;
 var
-  Phase: string;
+  Item: string;
+  FilesDone, FilesTotal: Integer;
 begin
-  case AJob.Phase of
-    pjpQueued: Phase := 'queued';
-    pjpConfirm: Phase := 'confirm';
-    pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk: Phase := 'ask';
-    pjpError: Phase := 'error';
-    pjpRunning:
-      if AJob.Presentation = jpBackground then
-        Phase := 'bg'
-      else
-        Phase := 'fg';
-  else
-    Phase := '';
-  end;
-  Result := JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' +
-    FormatJobProgressLine(AJob);
-  if AJob.CurrentName <> '' then
-    Result := Result + '  ' + AJob.CurrentName;
-  if Phase <> '' then
-    Result := Result + '  [' + Phase + ']';
+  Item := AJob.CurrentName;
+  if (Item = '') and (AJob.Index >= 0) and (AJob.Index <= High(AJob.Sources)) then
+    Item := FileUriTitle(AJob.Sources[AJob.Index]);
+  JobFileCounts(AJob, FilesDone, FilesTotal);
+  Result :=
+    JobListCell(JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' +
+      JobKindTitle(AJob.Kind, AJob.DeleteToRecycleBin), cJobListTaskW, False) + ' ' +
+    JobListCell(Item, cJobListItemW, False) + ' ' +
+    JobListCell(Format('%d/%d', [FilesDone, FilesTotal]), cJobListFilesW, True) + ' ' +
+    JobListCell(Format('%d%%', [JobProgressPercent(AJob)]), cJobListPctW, True) + ' ' +
+    JobListCell(JobListStateText(AJob), cJobListStateW, False);
 end;
 
 function JobOriginSrcDir(const ASources: TArray<string>): string;
@@ -581,10 +644,12 @@ begin
     Exit;
   if IsSevenZipUri(AURI) then
   begin
-    Base := ArchiveBaseLocalPath(AURI);
-    if Base = '' then
-      Base := AURI;
-    Exit('7z:' + LowerCase(Base));
+    // Entries of one archive are told apart only after the first '!', so the
+    // part before it identifies the archive.
+    Base := AURI;
+    if Pos('!', Base) > 0 then
+      Base := Copy(Base, 1, Pos('!', Base) - 1);
+    Exit('7z:' + LowerCase(ArchiveBaseLocalPath(Base)));
   end;
   if HasArchiveChain(AURI) then
   begin
@@ -613,41 +678,24 @@ begin
     UriIsSameOrAncestor(B, A);
 end;
 
-function CollectJobTouchUris(const AJob: TPanelJobState): TArray<string>;
+function CollectJobItemUris(const AJob: TPanelJobState): TArray<string>;
 var
-  N, I: Integer;
+  Uri: string;
 begin
-  N := Length(AJob.Sources) + Length(AJob.DestURIs) + 3;
-  SetLength(Result, N);
-  N := 0;
-  for I := 0 to High(AJob.Sources) do
-    if AJob.Sources[I] <> '' then
-    begin
-      Result[N] := AJob.Sources[I];
-      Inc(N);
-    end;
-  for I := 0 to High(AJob.DestURIs) do
-    if AJob.DestURIs[I] <> '' then
-    begin
-      Result[N] := AJob.DestURIs[I];
-      Inc(N);
-    end;
+  Result := nil;
+  for Uri in AJob.Sources do
+    if Uri <> '' then
+      Result := Result + [Uri];
+  for Uri in AJob.DestURIs do
+    if Uri <> '' then
+      Result := Result + [Uri];
+end;
+
+function CollectJobTouchUris(const AJob: TPanelJobState): TArray<string>;
+begin
+  Result := CollectJobItemUris(AJob);
   if AJob.DestDirURI <> '' then
-  begin
-    Result[N] := AJob.DestDirURI;
-    Inc(N);
-  end;
-  if AJob.OriginSrcDirURI <> '' then
-  begin
-    Result[N] := AJob.OriginSrcDirURI;
-    Inc(N);
-  end;
-  if AJob.OriginDstDirURI <> '' then
-  begin
-    Result[N] := AJob.OriginDstDirURI;
-    Inc(N);
-  end;
-  SetLength(Result, N);
+    Result := Result + [AJob.DestDirURI];
 end;
 
 function FirstArchiveKey(const AUris: TArray<string>): string;

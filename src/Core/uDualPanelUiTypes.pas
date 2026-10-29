@@ -109,6 +109,9 @@ type
     /// <summary>The VFS is reading the tree (CurrentSrcPath = the folder)
     /// before the real work reports anything.</summary>
     Scanning: Boolean;
+    /// <summary>Seconds since Scanning began; ticks while nothing else
+    /// reports, so the dialog shows the job is alive.</summary>
+    ScanElapsedSec: Integer;
     CurrentDstPath: string;
     Message: string;
     Bounds: TRectI;

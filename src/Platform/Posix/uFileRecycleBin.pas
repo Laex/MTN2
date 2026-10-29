@@ -21,7 +21,7 @@ var
 function TrashDirectory: string;
 
 procedure DeleteToRecycleBin(const APath: string; var AError: TVfsError;
-  AOnProgress: TVfsProgressCallback = nil);
+  AOnProgress: TVfsProgressCallback = nil; const ACancel: IJobCancelToken = nil);
 
 implementation
 
@@ -75,7 +75,7 @@ begin
 end;
 
 procedure DeleteToRecycleBin(const APath: string; var AError: TVfsError;
-  AOnProgress: TVfsProgressCallback);
+  AOnProgress: TVfsProgressCallback; const ACancel: IJobCancelToken);
 var
   Full, Root, FilesDir, InfoDir, Name, InfoPath, Dest: string;
   A, B: UTF8String;
