@@ -30,7 +30,6 @@ type
     FByPriority: Boolean;
     procedure BuildItems;
     procedure Activate(AIndex: Integer);
-    procedure MoveIndex(ADelta: Integer);
     function IndexOf(ACol: TPanelSortColumn): Integer;
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
@@ -54,7 +53,7 @@ type
 implementation
 
 uses
-  uStrings;
+  uStrings, uMenuNavigation;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -91,17 +90,6 @@ end;
 procedure TSortMenuController.SetOnPriorityToggle(const AHandler: TSortPriorityToggleEvent);
 begin
   FOnPriorityToggle := AHandler;
-end;
-
-procedure TSortMenuController.MoveIndex(ADelta: Integer);
-var
-  I: Integer;
-begin
-  I := FIndex + ADelta;
-  while (I >= 0) and (I <= High(FItems)) and FItems[I].Separator do
-    Inc(I, ADelta);
-  if (I >= 0) and (I <= High(FItems)) then
-    FIndex := I;
 end;
 
 procedure TSortMenuController.Activate(AIndex: Integer);
@@ -316,17 +304,12 @@ begin
     AKey := 0;
     Exit;
   end;
-  if AKey = vkUp then
+  if MenuNavigateKey(AKey, FIndex, Length(FItems), Length(FItems),
+    function(AIndex: Integer): Boolean
+    begin
+      Result := not FItems[AIndex].Separator;
+    end) then
   begin
-    MoveIndex(-1);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-  if AKey = vkDown then
-  begin
-    MoveIndex(1);
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;

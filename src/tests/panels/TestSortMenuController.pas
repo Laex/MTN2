@@ -18,6 +18,7 @@ type
     [SetupFixture] procedure SetupFixture;
     [Test] procedure TestOpenPicksCurrentColumnIndex;
     [Test] procedure TestArrowNavigationClampsNoWrap;
+    [Test] procedure TestHomeAndEndJumpToTheEnds;
     [Test] procedure TestHotkeySelectsRegardlessOfCursor;
     [Test] procedure TestEscapeClosesWithoutSelecting;
     [Test] procedure TestClickSelectsRowUnderCursor;
@@ -149,6 +150,49 @@ begin
     Ctrl.HandleInput(Key, [], Ch);
     Assert.AreEqual(0, Spy.Count,
       'Down at the bottom row stays on the priority switch (no wrap to Name)');
+  finally
+    Ctrl.Free;
+    Spy.Free;
+    Inv.Free;
+  end;
+end;
+
+procedure TestHomeAndEndJumpToTheEnds;
+var
+  Ctrl: TSortMenuController;
+  Spy: TSelectSpy;
+  Inv: TInvalidateSpy;
+  Toggles: Integer;
+  Key: Word;
+  Ch: Char;
+begin
+  Spy := TSelectSpy.Create;
+  Inv := TInvalidateSpy.Create;
+  Toggles := 0;
+  Ctrl := TSortMenuController.Create(nil, Inv.OnInvalidate, FixedPanelBounds, ActiveSideLeft);
+  try
+    Ctrl.SetOnSortSelect(Spy.OnSelect);
+    Ctrl.SetOnPriorityToggle(
+      procedure
+      begin
+        Inc(Toggles);
+      end);
+    Ctrl.Open(pscSize, False, False);
+    Ch := #0;
+    Key := Word(vkEnd); Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(0, Integer(Key), 'End is consumed');
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(1, Toggles, 'End lands on the priority switch, past the separator');
+
+    Ctrl.Open(pscSize, False, False);
+    Key := Word(vkHome); Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.IsTrue(Spy.LastColumn = pscName, 'Home lands on the first row');
+
+    Ctrl.Open(pscName, False, False);
+    Key := Word(vkNext); Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(2, Toggles, 'PgDn runs to the last selectable row');
   finally
     Ctrl.Free;
     Spy.Free;
@@ -368,6 +412,11 @@ end;
 procedure TTestSortMenuController.TestOpenPicksCurrentColumnIndex;
 begin
   TestSortMenuController.TestOpenPicksCurrentColumnIndex;
+end;
+
+procedure TTestSortMenuController.TestHomeAndEndJumpToTheEnds;
+begin
+  TestSortMenuController.TestHomeAndEndJumpToTheEnds;
 end;
 
 procedure TTestSortMenuController.TestArrowNavigationClampsNoWrap;

@@ -102,7 +102,8 @@ function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Intege
   out ACol: TPanelSortColumn): Boolean;
 
 /// <summary>Sorts by ACol; with AByPriority the rows are ranked by their
-/// SortPriority first (also when ACol is pscNone, which then orders by name).</summary>
+/// SortPriority ahead of the column, after the parent row and the folders-first
+/// rule (also when ACol is pscNone, which then orders by name).</summary>
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
   ADescending: Boolean; AByPriority: Boolean = False);
 
@@ -635,16 +636,16 @@ begin
     else
       Exit(1);
   end;
-  if Left.SortPriority <> Right.SortPriority then
+  if Left.IsDirectory <> Right.IsDirectory then
   begin
-    if Left.SortPriority < Right.SortPriority then
+    if Left.IsDirectory then
       Exit(-1)
     else
       Exit(1);
   end;
-  if Left.IsDirectory <> Right.IsDirectory then
+  if Left.SortPriority <> Right.SortPriority then
   begin
-    if Left.IsDirectory then
+    if Left.SortPriority < Right.SortPriority then
       Exit(-1)
     else
       Exit(1);

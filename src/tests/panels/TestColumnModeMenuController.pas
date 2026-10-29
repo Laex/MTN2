@@ -18,6 +18,7 @@ type
     [SetupFixture] procedure SetupFixture;
     [Test] procedure TestOpenPicksCurrentModeIndex;
     [Test] procedure TestArrowNavigationClampsNoWrap;
+    [Test] procedure TestHomeAndEndJumpToTheEnds;
     [Test] procedure TestNumericShortcutSelectsRegardlessOfCursor;
     [Test] procedure TestHotkeySelectsRegardlessOfCursor;
     [Test] procedure TestEscapeClosesWithoutSelecting;
@@ -147,6 +148,42 @@ begin
     Ctrl.HandleInput(Key, [], Ch);
     Assert.IsTrue(Spy.LastMode = pcmTypes,
       'Down at the bottom row stays clamped on Types (no wrap to the first row)');
+  finally
+    Ctrl.Free;
+    Spy.Free;
+    Inv.Free;
+  end;
+end;
+
+procedure TestHomeAndEndJumpToTheEnds;
+var
+  Ctrl: TColumnModeMenuController;
+  Spy: TSelectSpy;
+  Inv: TInvalidateSpy;
+  Key: Word;
+  Ch: Char;
+begin
+  Spy := TSelectSpy.Create;
+  Inv := TInvalidateSpy.Create;
+  Ctrl := TColumnModeMenuController.Create(nil, Inv.OnInvalidate, FixedPanelBounds, ActiveSideLeft);
+  try
+    Ctrl.SetOnColumnModeSelect(Spy.OnSelect);
+    Ch := #0;
+    Ctrl.Open(pcmFull);
+    Key := Word(vkEnd); Ctrl.HandleInput(Key, [], Ch);
+    Assert.AreEqual(0, Integer(Key), 'End is consumed');
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.IsTrue(Spy.LastMode = pcmTypes, 'End lands on the last row');
+
+    Ctrl.Open(pcmFull);
+    Key := Word(vkHome); Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.IsTrue(Spy.LastMode = pcmBrief, 'Home lands on the first row');
+
+    Ctrl.Open(pcmBrief);
+    Key := Word(vkNext); Ctrl.HandleInput(Key, [], Ch);
+    Key := Word(vkReturn); Ctrl.HandleInput(Key, [], Ch);
+    Assert.IsTrue(Spy.LastMode = pcmTypes, 'PgDn runs to the last row');
   finally
     Ctrl.Free;
     Spy.Free;
@@ -305,6 +342,11 @@ end;
 procedure TTestColumnModeMenuController.TestOpenPicksCurrentModeIndex;
 begin
   TestColumnModeMenuController.TestOpenPicksCurrentModeIndex;
+end;
+
+procedure TTestColumnModeMenuController.TestHomeAndEndJumpToTheEnds;
+begin
+  TestColumnModeMenuController.TestHomeAndEndJumpToTheEnds;
 end;
 
 procedure TTestColumnModeMenuController.TestArrowNavigationClampsNoWrap;

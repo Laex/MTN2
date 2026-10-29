@@ -46,7 +46,7 @@ type
 implementation
 
 uses
-  uStrings, uKeyChord;
+  uStrings, uKeyChord, uMenuNavigation;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -249,19 +249,8 @@ begin
     AKey := 0;
     Exit;
   end;
-  if AKey = vkUp then
+  if MenuNavigateKey(AKey, FIndex, Length(FItems), Length(FItems), nil) then
   begin
-    if FIndex > 0 then
-      Dec(FIndex);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-  if AKey = vkDown then
-  begin
-    if FIndex < High(FItems) then
-      Inc(FIndex);
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;

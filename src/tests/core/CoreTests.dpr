@@ -30,6 +30,7 @@ uses
   TestLocalePacks in 'TestLocalePacks.pas',
   TestResourceScripts in 'TestResourceScripts.pas',
   TestMessageBus in 'TestMessageBus.pas',
+  TestMenuNavigation in 'TestMenuNavigation.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
   TestSettingsTransfer in 'TestSettingsTransfer.pas',
   TestStrings in 'TestStrings.pas',

@@ -224,9 +224,9 @@ begin
   Rows[4].SortPriority := -1;
   SortPanelRows(Rows, pscName, False, True);
   Assert.AreEqual('..', Rows[0].Text, 'the parent row stays on top');
-  Assert.AreEqual('a.zip', Rows[1].Text, 'lowest priority first, by name inside it');
-  Assert.AreEqual('c.zip', Rows[2].Text, 'same priority, next by name');
-  Assert.AreEqual('dir/', Rows[3].Text, 'unranked rows keep folders first');
+  Assert.AreEqual('dir/', Rows[1].Text, 'folders stay ahead of ranked files');
+  Assert.AreEqual('a.zip', Rows[2].Text, 'lowest priority first among files, by name inside it');
+  Assert.AreEqual('c.zip', Rows[3].Text, 'same priority, next by name');
   Assert.AreEqual('b.txt', Rows[4].Text, 'unranked file');
   Assert.AreEqual('a.tmp', Rows[5].Text, 'positive priority goes last');
 

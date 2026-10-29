@@ -92,7 +92,7 @@ type
 implementation
 
 uses
-  uInputLine, uStrings, uKeyChord;
+  uInputLine, uStrings, uKeyChord, uMenuNavigation;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -321,29 +321,8 @@ end;
 // Moves over |ADelta| selectable items (separators do not count), stopping
 // at the last selectable one when the list ends first.
 procedure TUserMenuController.MoveCursor(ADelta: Integer);
-var
-  I, Best, Remaining: Integer;
 begin
-  if ItemCount = 0 then
-  begin
-    FIndex := 0;
-    Exit;
-  end;
-  I := FIndex;
-  Best := FIndex;
-  Remaining := Abs(ADelta);
-  while Remaining > 0 do
-  begin
-    Inc(I, Sign(ADelta));
-    if (I < 0) or (I >= ItemCount) then
-      Break;
-    if IsSelectable(I) then
-    begin
-      Best := I;
-      Dec(Remaining);
-    end;
-  end;
-  FIndex := Best;
+  FIndex := MenuStepIndex(FIndex, ItemCount, ADelta, IsSelectable);
 end;
 
 procedure TUserMenuController.Activate(AIndex: Integer);
@@ -469,12 +448,7 @@ begin
       end;
     vkHome, vkEnd, vkPrior, vkNext:
       begin
-        case AKey of
-          vkHome: begin FIndex := 0; if not IsSelectable(0) then MoveCursor(1); end;
-          vkEnd: begin FIndex := Max(ItemCount - 1, 0); if not IsSelectable(FIndex) then MoveCursor(-1); end;
-          vkPrior: MoveCursor(-Max(ViewRows - 1, 1));
-          vkNext: MoveCursor(Max(ViewRows - 1, 1));
-        end;
+        MenuNavigateKey(AKey, FIndex, ItemCount, Max(ViewRows - 1, 1), IsSelectable);
         EnsureCursorVisible;
         Invalidate;
         AKey := 0;
