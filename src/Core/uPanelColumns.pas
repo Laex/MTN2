@@ -126,9 +126,10 @@ function AlignBriefScroll(AScroll, AViewH: Integer): Integer;
 /// <summary>Columns for mode: Brief uses width; others always 1.</summary>
 function PanelListColumnCount(AMode: TPanelColumnMode; AListWidth: Integer): Integer;
 /// <summary>Clamp cursor into the list and scroll so it stays in view.
-/// Brief (AColCount>1) snaps ScrollOffset to a column boundary.</summary>
+/// Brief (AColCount>1) snaps a jump to a column boundary and never leaves
+/// empty cells after the last item; AStep (a one-item move) scrolls by one item.</summary>
 procedure EnsurePanelCursorVisible(var ATab: TTab; ARowCount, AViewH: Integer;
-  AColCount: Integer = 1);
+  AColCount: Integer = 1; AStep: Boolean = False);
 
 /// <summary>Left-pads (or truncates) S to AWidth.</summary>
 function PadLeft(const S: string; AWidth: Integer): string;
@@ -915,7 +916,7 @@ begin
 end;
 
 procedure EnsurePanelCursorVisible(var ATab: TTab; ARowCount, AViewH: Integer;
-  AColCount: Integer);
+  AColCount: Integer; AStep: Boolean);
 var
   PageSize, MaxScroll, Need: Integer;
 begin
@@ -934,14 +935,17 @@ begin
   MaxScroll := Max(ARowCount - PageSize, 0);
   if AColCount > 1 then
   begin
-    Need := MaxScroll;
-    MaxScroll := AlignBriefScroll(MaxScroll, AViewH);
-    if MaxScroll < Need then
-      Inc(MaxScroll, AViewH);
-    ATab.ScrollOffset := AlignBriefScroll(ATab.ScrollOffset, AViewH);
-    if ATab.CursorIndex < ATab.ScrollOffset then
-      ATab.ScrollOffset := AlignBriefScroll(ATab.CursorIndex, AViewH);
-    if ATab.CursorIndex >= ATab.ScrollOffset + PageSize then
+    // The last item sits in the last cell of the last column: no empty cells
+    // after it, so the final scroll position need not be column-aligned.
+    // A single step past the visible window (Up at the top, Down at the
+    // bottom) scrolls by one item; larger jumps snap to whole columns.
+    if AStep and (ATab.CursorIndex = ATab.ScrollOffset - 1) then
+      ATab.ScrollOffset := ATab.CursorIndex
+    else if AStep and (ATab.CursorIndex = ATab.ScrollOffset + PageSize) then
+      ATab.ScrollOffset := ATab.CursorIndex - PageSize + 1
+    else if ATab.CursorIndex < ATab.ScrollOffset then
+      ATab.ScrollOffset := AlignBriefScroll(ATab.CursorIndex, AViewH)
+    else if ATab.CursorIndex >= ATab.ScrollOffset + PageSize then
     begin
       Need := ATab.CursorIndex - PageSize + 1;
       ATab.ScrollOffset := AlignBriefScroll(Need, AViewH);

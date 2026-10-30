@@ -158,6 +158,10 @@ type
     /// removed when the window goes away.</summary>
     FOpenTempDirs: TStringList;
     FPendingSelectSide: TPanelSide;
+    /// <summary>Screen position (cursor minus scroll) a folder had when it was
+    /// entered, by lower-cased URI; leaving the folder restores it.</summary>
+    FEnterViewPos: TDictionary<string, Integer>;
+    FPendingViewPos: Integer;
     /// <summary>Helper for Gray+/Gray? select dialogs (FAR).</summary>
     FSelHelper: TDualPanelSelectionHelper;
     FOnRunCommand: TRunCommandEvent;
@@ -200,6 +204,7 @@ type
     FDriveToOtherFolder: Boolean;
     FSpaceSelects: Boolean;
     FKeepPanelFocus: Boolean;
+    FStickyQuickSearch: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -918,7 +923,7 @@ type
       var AKeyChar: Char): Boolean;
     procedure SetConsoleMode(AValue: Boolean);
     procedure EnsureCursorVisible(var ATab: TTab; ARowCount, AViewH: Integer;
-      AColCount: Integer = 1);
+      AColCount: Integer = 1; AStep: Boolean = False);
     function ListViewHeight: Integer;
     function ListWidthForSide(ASide: TPanelSide): Integer;
     function ListColCountForSide(ASide: TPanelSide): Integer;
@@ -1392,6 +1397,7 @@ type
     /// <summary>Typing on a file panel goes into the command line but leaves
     /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
+    property StickyQuickSearch: Boolean read FStickyQuickSearch write FStickyQuickSearch;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -1535,6 +1541,8 @@ var
   Life: ILifeFlag;
 begin
   inherited Create(ATheme, AId);
+  FEnterViewPos := TDictionary<string, Integer>.Create;
+  FPendingViewPos := -1;
   FLife := NewLifeFlag;
   FAlive := True;
   Life := FLife;
@@ -1822,6 +1830,7 @@ begin
   end;
   FElevatedVfs := nil;
   FElevatedIntf := nil;
+  FreeAndNil(FEnterViewPos);
   FVfs := nil;
   inherited Destroy;
 end;
@@ -4736,7 +4745,13 @@ begin
     begin
       FPendingSelectName := FileUriTitle(Tab.CurrentURI);
       FPendingSelectSide := ASide;
-    end;
+      if not FEnterViewPos.TryGetValue(LowerCase(Canon), FPendingViewPos) then
+        FPendingViewPos := -1;
+    end
+    else if (OldPath <> '') and (NewPath <> '') and
+            SameLocalPath(OldPath, FileUriToPath(ResolveFileUri(ParentFileUri(Canon)))) then
+      FEnterViewPos.AddOrSetValue(LowerCase(Tab.CurrentURI),
+        Tab.CursorIndex - Tab.ScrollOffset);
   end;
 
   OldBackUri := Tab.WorkspaceBackUri;
@@ -5018,7 +5033,7 @@ begin
   if ViewH < 1 then
     ViewH := 1;
   Cols := ListColCountForSide(Side);
-  EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+  EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols, Abs(ADelta) = 1);
   SetActiveTab(Panel, Tab);
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
@@ -7607,10 +7622,24 @@ var
   Ch: Char;
 begin
   Result := True;
+  // A sticky search ends on Ctrl chords and on keys that are not text, Backspace
+  // or Up / Down; the key itself then acts as usual.
+  if FStickyQuickSearch and FQuickSearchActive and
+     ((ssCtrl in AShift) or
+      ((ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) = nbaUnhandled) and
+       (AKey <> vkUp) and (AKey <> vkDown) and (AKey <> vkShift) and
+       (AKey <> vkControl) and (AKey <> vkMenu))) then
+  begin
+    ClearQuickSearch;
+    Exit(False);
+  end;
   case ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) of
     nbaClear:
       begin
         ClearQuickSearch;
+        // Enter opens the item under the cursor; only Esc is consumed.
+        if FStickyQuickSearch and (AKey = vkReturn) then
+          Exit(False);
         AKey := 0;
         AKeyChar := #0;
       end;
@@ -7926,6 +7955,10 @@ begin
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
   Tab.CursorIndex := I;
+  // Back in the parent: the folder we left appears where it was when entered.
+  if FPendingViewPos >= 0 then
+    Tab.ScrollOffset := Max(I - FPendingViewPos, 0);
+  FPendingViewPos := -1;
   ViewH := ListViewHeight;
   if ViewH > 0 then
     EnsureCursorVisible(Tab, Length(ARows), ViewH, ListColCountForSide(ASide));
@@ -10157,9 +10190,9 @@ begin
 end;
 
 procedure TDualPanelWindow.EnsureCursorVisible(var ATab: TTab;
-  ARowCount, AViewH: Integer; AColCount: Integer);
+  ARowCount, AViewH: Integer; AColCount: Integer; AStep: Boolean);
 begin
-  EnsurePanelCursorVisible(ATab, ARowCount, AViewH, AColCount);
+  EnsurePanelCursorVisible(ATab, ARowCount, AViewH, AColCount, AStep);
 end;
 
 procedure TDualPanelWindow.MoveCursor(ADelta: Integer);
@@ -10180,7 +10213,7 @@ begin
   if ViewH < 1 then
     ViewH := 1;
   Cols := ListColCountForSide(Side);
-  EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+  EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols, Abs(ADelta) = 1);
   SetActiveTab(Panel, Tab);
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);
@@ -13518,8 +13551,9 @@ begin
   // FAR: commit Ctrl+Left/Right drive preview when Ctrl is released.
   if CtrlJustReleased then
     CommitDrivePreview;
-  // Alt Quick Search lives only while Alt is held - clear needle on release.
-  if AltJustReleased and (FQuickSearchActive or (FQuickSearchText <> '')) then
+  // Alt Quick Search lives only while Alt is held, unless it is sticky.
+  if AltJustReleased and not FStickyQuickSearch and
+     (FQuickSearchActive or (FQuickSearchText <> '')) then
   begin
     FQuickSearchActive := False;
     FQuickSearchText := '';
@@ -13712,6 +13746,7 @@ begin
   Result.QuickViewVisible := QuickViewVisible;
   Result.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
   Result.CmdFocused := CmdFocused;
+  Result.QuickSearchSticky := FStickyQuickSearch and FQuickSearchActive;
   Result.ViewH := ViewH;
   Result.Cols := Cols;
   Result.PageSize := BriefPageSize(ViewH, Cols);
@@ -13980,6 +14015,7 @@ function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
 begin
   Result := False;
   FQuickViewFocused := False;
+  ClearQuickSearch;
   FSaverSwallowClick := False;
   FSaverSwallowUp := False;
   if Assigned(FSaver) and FSaver.Wake then

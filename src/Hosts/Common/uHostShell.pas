@@ -393,6 +393,7 @@ begin
   Result.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Result.SpaceSelects := FDualPanel.SpaceSelects;
   Result.KeepPanelFocus := FDualPanel.KeepPanelFocus;
+  Result.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Result.Language := CurrentLocale;
 end;
 
@@ -440,11 +441,13 @@ begin
   FSession.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FSession.SpaceSelects := ASettings.SpaceSelects;
   FSession.KeepPanelFocus := ASettings.KeepPanelFocus;
+  FSession.StickyQuickSearch := ASettings.StickyQuickSearch;
   FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
   FDualPanel.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FDualPanel.SpaceSelects := ASettings.SpaceSelects;
   FDualPanel.KeepPanelFocus := ASettings.KeepPanelFocus;
+  FDualPanel.StickyQuickSearch := ASettings.StickyQuickSearch;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -483,6 +486,7 @@ begin
   FDualPanel.DriveToOtherFolder := Sess.DriveToOtherFolder;
   FDualPanel.SpaceSelects := Sess.SpaceSelects;
   FDualPanel.KeepPanelFocus := Sess.KeepPanelFocus;
+  FDualPanel.StickyQuickSearch := Sess.StickyQuickSearch;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -566,6 +570,7 @@ begin
   Sess.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Sess.SpaceSelects := FDualPanel.SpaceSelects;
   Sess.KeepPanelFocus := FDualPanel.KeepPanelFocus;
+  Sess.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
   Sess.ListExport := GListExportConfig;

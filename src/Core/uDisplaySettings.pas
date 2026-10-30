@@ -117,6 +117,9 @@ type
     /// <summary>Typing on a file panel leaves the focus there; the command line
     /// takes it only on Ctrl+Down or a click.</summary>
     KeepPanelFocus: Boolean;
+    /// <summary>Alt quick search on a file panel stays open after Alt is released;
+    /// Esc, Enter or any non-text key ends it.</summary>
+    StickyQuickSearch: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -359,6 +362,7 @@ begin
   Result.DriveToOtherFolder := False;
   Result.SpaceSelects := False;
   Result.KeepPanelFocus := False;
+  Result.StickyQuickSearch := False;
   Result.Language := '';
 end;
 

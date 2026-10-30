@@ -883,6 +883,18 @@ begin
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'primary handled');
     Assert.IsTrue(Spy.Last = 'primary', 'keymap primary wins');
 
+    // A sticky quick search takes plain typing before the keymap and cmdline.
+    Spy.PrimaryHandled := False;
+    Spy.QuickHandled := True;
+    Snap.QuickSearchSticky := True;
+    Spy.Last := '';
+    Key := Ord('A');
+    Ch := 'a';
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'sticky search takes a letter');
+    Assert.IsTrue(Spy.Last = 'quick', 'letter goes to the sticky quick search');
+    Snap.QuickSearchSticky := False;
+    Spy.QuickHandled := False;
+
     Spy.PrimaryHandled := False;
     // Backspace: up one level with an empty command line, else the command line's.
     Snap.CmdLineHasText := False;

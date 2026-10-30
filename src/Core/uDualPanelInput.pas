@@ -230,6 +230,8 @@ type
     QuickViewVisible: Boolean;
     CmdLineHasText: Boolean;
     CmdFocused: Boolean;
+    /// <summary>A sticky quick search is open: typing feeds it, not the command line.</summary>
+    QuickSearchSticky: Boolean;
     ViewH, Cols, PageSize: Integer;
     /// <summary>Active panel is in Brief mode: Left/Right move between its
     /// columns; every other mode sends them to the first / last item.</summary>
@@ -1637,6 +1639,9 @@ var
 begin
   Result := True;
   Mods := AShift * cKeyMods;
+  if ASnap.QuickSearchSticky and not ASnap.CmdFocused and
+     AHost.HandleQuickSearchInput(AKey, AShift, AKeyChar) then
+    Exit(True);
   if FreeInputPrefix(AHost, ASnap, AKey, AShift, AKeyChar, Act, Step) then
     Exit(Step);
   if AHost.DispatchKeymapPrimary(Act, AKey, AKeyChar) then

@@ -282,6 +282,7 @@
       "drive_other_folder": "Drive &change opens the other panel's folder",
       "space_selects": "Space se&lects files, then moves down",
       "keep_panel_focus": "Don't move focus to the command line when typi&ng",
+      "sticky_quick_search": "Keep &quick search open after Alt is released",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"

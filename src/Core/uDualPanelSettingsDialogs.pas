@@ -322,6 +322,7 @@ begin
   DialogSetCheckbox(Decl, 'drive_other_folder', Cur.DriveToOtherFolder);
   DialogSetCheckbox(Decl, 'space_selects', Cur.SpaceSelects);
   DialogSetCheckbox(Decl, 'keep_panel_focus', Cur.KeepPanelFocus);
+  DialogSetCheckbox(Decl, 'sticky_quick_search', Cur.StickyQuickSearch);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
@@ -707,6 +708,7 @@ begin
     Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
     Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
     Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
+    Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');

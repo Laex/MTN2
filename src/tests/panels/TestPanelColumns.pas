@@ -268,6 +268,26 @@ begin
   Tab.ScrollOffset := 0;
   EnsurePanelCursorVisible(Tab, 40, 10, 2);
   Assert.IsTrue(Tab.ScrollOffset = 10, 'brief col-major snaps scroll to viewH');
+
+  Tab.CursorIndex := 20;
+  Tab.ScrollOffset := 0;
+  EnsurePanelCursorVisible(Tab, 40, 10, 2, True);
+  Assert.IsTrue(Tab.ScrollOffset = 1, 'brief Down past the bottom scrolls by one item');
+
+  Tab.CursorIndex := 0;
+  Tab.ScrollOffset := 1;
+  EnsurePanelCursorVisible(Tab, 40, 10, 2, True);
+  Assert.IsTrue(Tab.ScrollOffset = 0, 'brief Up past the top scrolls by one item');
+
+  Tab.CursorIndex := 20;
+  Tab.ScrollOffset := 0;
+  EnsurePanelCursorVisible(Tab, 40, 10, 2);
+  Assert.IsTrue(Tab.ScrollOffset = 10, 'brief page jump snaps to a column');
+
+  Tab.CursorIndex := 44;
+  Tab.ScrollOffset := 0;
+  EnsurePanelCursorVisible(Tab, 45, 10, 2);
+  Assert.IsTrue(Tab.ScrollOffset = 25, 'brief End puts the last item in the last cell');
 end;
 
 { TTestPanelColumns }
