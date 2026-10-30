@@ -1211,6 +1211,7 @@
     "search.cancelHint": "Esc=Abbrechen",
     "search.goHint": "Enter=Öffnen  Esc=Schließen",
     "search.none": "Keine Dateien gefunden",
+    "search.limit": "Suche beendet: Das Limit von %d Ergebnissen ist erreicht. Maske oder Ordner einschränken.",
     "job.cancelling": "Abbrechen...",
     "job.verbCopy": "Datei wird kopiert",
     "job.verbMove": "Datei wird verschoben",

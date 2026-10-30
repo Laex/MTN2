@@ -355,6 +355,14 @@ begin
       // is still perfectly readable, and denying writers turned every such
       // file into an EFOpenError that escaped this routine, aborted the whole
       // recursive copy at that point and left the rest of the tree uncopied.
+      // A skipped file must cost only this check: opening the source first
+      // is slow on network shares and on-demand cloud folders.
+      if not AOverwrite and not AAppend and TFile.Exists(WinApiPath(ADst)) then
+      begin
+        AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists',
+          PathToFileUri(ADst));
+        Exit;
+      end;
       Src := TFileStream.Create(WinApiPath(ASrc), fmOpenRead or fmShareDenyNone);
       if AAppend and TFile.Exists(WinApiPath(ADst)) then
       begin

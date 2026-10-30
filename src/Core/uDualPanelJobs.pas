@@ -89,6 +89,9 @@ type
     /// <summary>Set while a copy worker waits for the answer to a per-file
     /// conflict inside a folder merge.</summary>
     FConflictWait: IConflictWait;
+    /// <summary>Ord of the remembered conflict answer, or -1; the copy worker
+    /// reads it to answer without a round trip to the UI thread.</summary>
+    FWorkerRemembered: Integer;
     function MakeConflictResolver: TVfsConflictResolver;
     procedure AskWorkerConflict(const AWait: IConflictWait;
       const ASrcPath, ADstPath, ANewLine, AExistingLine: string);
@@ -342,6 +345,7 @@ begin
   FJob.SkipAllIOErrors := False;
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
+  FWorkerRemembered := -1;
   ResetExcludeMasks;
 end;
 
@@ -379,6 +383,13 @@ begin
       ANewDstPath := '';
       if not Life.Alive then
         Exit(vcaCancel);
+      // A remembered answer needs neither file details nor the UI thread.
+      if FWorkerRemembered = Ord(jcaSkip) then
+        Exit(vcaSkip);
+      if FWorkerRemembered = Ord(jcaOverwrite) then
+        Exit(vcaOverwrite);
+      if FWorkerRemembered = Ord(jcaAppend) then
+        Exit(vcaAppend);
       SrcPath := ASrcPath;
       DstPath := ADstPath;
       NewLine := FormatConflictFileLine('New', SrcPath);
@@ -669,6 +680,7 @@ begin
   FJob.RetryLeft := 0;
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
+  FWorkerRemembered := -1;
   FJob.PendingSrcURI := '';
   FJob.PendingDstURI := '';
   FJob.PendingIndex := 0;
@@ -789,6 +801,7 @@ begin
   FJob.RetryLeft := 1;
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
+  FWorkerRemembered := -1;
   FJob.PendingSrcURI := '';
   FJob.PendingDstURI := '';
   FJob.PendingIndex := 0;
@@ -1899,6 +1912,7 @@ begin
   begin
     FJob.HasRememberedAction := True;
     FJob.RememberedAction := AAction;
+    FWorkerRemembered := Ord(AAction);
   end;
   if Assigned(FConflictWait) then
   begin

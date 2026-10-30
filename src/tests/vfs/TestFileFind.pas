@@ -20,6 +20,7 @@ type
     [Test] procedure HitsCarryTheFileInfoTheWalkRead;
     [Test] procedure SessionTouchedOnlyByItsOwnFiles;
     [Test] procedure SessionDropsRemovedHitsOnly;
+    [Test] procedure ResultLimitIsReportedOnlyWhenMoreMatchesExist;
   end;
 
 implementation
@@ -63,7 +64,8 @@ begin
       Inc(ProgressHits);
       LastDir := ACurrentDir;
     end,
-    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError)
+    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+      ATruncated: Boolean)
     begin
       SetLength(Paths, Length(AHits));
       for var H := 0 to High(AHits) do
@@ -404,6 +406,61 @@ begin
   Assert.IsFalse(FindSessionTouchesPath(Id, ''), 'no path');
 end;
 
+procedure TTestFileFind.ResultLimitIsReportedOnlyWhenMoreMatchesExist;
+var
+  Dir: string;
+  Opts: TFindOptions;
+  Count: Integer;
+  Truncated: Boolean;
+
+  procedure RunFind;
+  var
+    Done: TEvent;
+    Tick: Cardinal;
+  begin
+    Done := TEvent.Create;
+    try
+      FindFilesAsync(Opts, nil,
+        procedure(AFoundCount: Integer; const ACurrentDir: string) begin end,
+        procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+          ATruncated: Boolean)
+        begin
+          Count := Length(AHits);
+          Truncated := ATruncated;
+          Done.SetEvent;
+        end);
+      Tick := GetTickCount;
+      while Done.WaitFor(50) <> wrSignaled do
+      begin
+        CheckSynchronize;
+        if GetTickCount - Tick > 15000 then
+          Assert.Fail('find timed out');
+      end;
+    finally
+      Done.Free;
+    end;
+  end;
+
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-limit-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    for var I := 1 to 3 do
+      TFile.WriteAllText(TPath.Combine(Dir, Format('f%d.txt', [I])), 'x');
+    Opts := DefaultFindOptions(Dir, '*.txt', False);
+    Opts.MaxResults := 3;
+    RunFind;
+    Assert.AreEqual<Integer>(3, Count, 'exactly the limit');
+    Assert.IsFalse(Truncated, 'no match beyond the limit');
+    Opts.MaxResults := 2;
+    RunFind;
+    Assert.AreEqual<Integer>(2, Count, 'capped at the limit');
+    Assert.IsTrue(Truncated, 'a further match exists');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TTestFileFind.SessionDropsRemovedHitsOnly;
 var
   Hits: TArray<TFindHit>;
@@ -441,7 +498,8 @@ begin
     TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), '12345');
     FindFilesAsync(DefaultFindOptions(Dir, '*.txt', False), nil,
       procedure(AFoundCount: Integer; const ACurrentDir: string) begin end,
-      procedure(const AHits: TArray<TFindHit>; const AError: TVfsError)
+      procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+      ATruncated: Boolean)
       begin
         Found := AHits;
         Done.SetEvent;

@@ -25,6 +25,7 @@ type
     FOnNavigateFindResults: TSearchFindNavigateEvent;
     FOnAfterClose: TProc;
     FOnStopRequest: TProc;
+    FOnLimitReached: TProc;
     FSearch: TSearchState;
     FLife: ILifeFlag;
     // The panel already lists the hits of the running search.
@@ -72,6 +73,9 @@ type
     /// <summary>Called on Esc while a search runs. When assigned, the owner
     /// decides whether to call CancelSearch (the window asks for confirmation).</summary>
     property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
+    /// <summary>Called after a search that ended because it hit the result
+    /// limit (cFindMaxResults).</summary>
+    property OnLimitReached: TProc read FOnLimitReached write FOnLimitReached;
   end;
 
 implementation
@@ -285,13 +289,23 @@ begin
       if Assigned(FOnInvalidate) then
         FOnInvalidate;
     end,
-    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError)
+    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+      ATruncated: Boolean)
     begin
       if not Life.Alive then
         Exit;
       if FSearch.Phase <> spRunning then
         Exit;
       FSearch.Cancel := nil;
+      // Queued so the notice opens after this callback has closed or
+      // rebuilt the search UI.
+      if (AError.Code = vecOk) and ATruncated and Assigned(FOnLimitReached) then
+        TThread.Queue(nil,
+          procedure
+          begin
+            if Life.Alive then
+              FOnLimitReached;
+          end);
       // The panel keeps whatever was found, also after a stop or an error.
       if FResultsShown then
       begin

@@ -10,7 +10,7 @@ uses
   uVfsTypes, uTextEncoding;
 
 const
-  cFindMaxResults = 5000;
+  cFindMaxResults = 50000;
   cFindMaxContentBytes = 4 * 1024 * 1024;
 
 type
@@ -30,6 +30,7 @@ type
     ModifiedTo: TDateTime;     // 0 = no upper bound
     RequireAttr: Integer;      // fa* bits an entry must all have; 0 = any
     ForbidAttr: Integer;       // fa* bits an entry must not have; 0 = any
+    MaxResults: Integer;       // 0 = cFindMaxResults
   end;
 
   /// <summary>One attribute of the Find dialog: ignored, required to be clear,
@@ -59,8 +60,9 @@ type
 
   TFindProgressCallback = reference to procedure(AFoundCount: Integer;
     const ACurrentDir: string);
+  /// <summary>ATruncated: more matches existed than MaxResults allows.</summary>
   TFindDoneCallback = reference to procedure(const AHits: TArray<TFindHit>;
-    const AError: TVfsError);
+    const AError: TVfsError; ATruncated: Boolean);
   /// <summary>The hits found since the previous call, in discovery order.</summary>
   TFindHitsCallback = reference to procedure(const ANewHits: TArray<TFindHit>);
 
@@ -163,6 +165,7 @@ begin
   Result.MaxSize := -1;
   Result.ModifiedFrom := 0;
   Result.ModifiedTo := 0;
+  Result.MaxResults := 0;
   Result.RequireAttr := 0;
   Result.ForbidAttr := 0;
 end;
@@ -882,7 +885,8 @@ begin
       List: TList<TFindHit>;
       Err: TVfsError;
       LastProgressTick, LastHitsTick: Cardinal;
-      Delivered: Integer;
+      Delivered, Limit: Integer;
+      Truncated: Boolean;
       Hits: TArray<TFindHit>;
       Stack: TStack<string>;
       Dir, Full, Name: string;
@@ -900,6 +904,10 @@ begin
       LastProgressTick := 0;
       LastHitsTick := 0;
       Delivered := 0;
+      Truncated := False;
+      Limit := Opts.MaxResults;
+      if Limit <= 0 then
+        Limit := cFindMaxResults;
       Needle := Opts.ContainingText;
       try
         try
@@ -911,7 +919,7 @@ begin
           begin
             Stack.Push(Opts.RootPath);
             while (Stack.Count > 0) and not JobCancelRequested(Cancel) and
-              (List.Count < cFindMaxResults) do
+              not Truncated do
             begin
               Dir := Stack.Pop;
               if (LastProgressTick = 0) or
@@ -926,7 +934,7 @@ begin
               try
                 while Code = 0 do
                 begin
-                  if JobCancelRequested(Cancel) or (List.Count >= cFindMaxResults) then
+                  if JobCancelRequested(Cancel) then
                     Break;
                   Name := SR.Name;
                   if (Name <> '.') and (Name <> '..') then
@@ -939,6 +947,11 @@ begin
                          (Needle = '') and (Trim(Opts.HexBytes) = '') and
                          FindEntryPassesFilters(Opts, True, 0, SR.TimeStamp, SR.Attr) then
                       begin
+                        if List.Count >= Limit then
+                        begin
+                          Truncated := True;
+                          Break;
+                        end;
                         List.Add(MakeFindHit(Full, SR, True, 0, ''));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
@@ -951,6 +964,11 @@ begin
                     begin
                       if FindContentMatch(Full, Opts, HitLine, HitSnippet) then
                       begin
+                        if List.Count >= Limit then
+                        begin
+                          Truncated := True;
+                          Break;
+                        end;
                         List.Add(MakeFindHit(Full, SR, False, HitLine, HitSnippet));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
@@ -981,7 +999,7 @@ begin
         procedure
         begin
           if Assigned(OnDone) then
-            OnDone(Hits, Err);
+            OnDone(Hits, Err, Truncated);
         end);
     end).Start;
 end;

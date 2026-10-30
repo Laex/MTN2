@@ -369,6 +369,7 @@ type
     procedure RequestJobListCancel(AIndex: Integer; AAll: Boolean);
     procedure HostRequestJobStop;
     procedure HostRequestSearchStop;
+    procedure HostSearchLimitReached;
     procedure OpenJobList;
     function KeymapActiveSide: TPanelSide;
     procedure KeymapToggleConsole;
@@ -2962,6 +2963,13 @@ begin
     procedure begin SyncJobProgressDialog; end);
 end;
 
+procedure TDualPanelWindow.HostSearchLimitReached;
+begin
+  ShowInfo(T('ui.search.title', 'Find'),
+    T('ui.search.limit', 'Search stopped: the limit of %d results is reached. ' +
+      'Narrow the mask or the folder.', [cFindMaxResults]));
+end;
+
 procedure TDualPanelWindow.HostRequestSearchStop;
 begin
   RequestStopConfirm(T('ui.stop.search', 'Stop the search?'),
@@ -3357,6 +3365,7 @@ begin
   FSearchUi := TSearchController.Create(Theme, NotifyChanged, GotoFileLocation,
     HostApplyFindResults, FlushDirWatchPending);
   FSearchUi.OnStopRequest := HostRequestSearchStop;
+  FSearchUi.OnLimitReached := HostSearchLimitReached;
   FSearchDlg := TSearchDialogController.Create(FDialog, FSearchUi, DialogCommand,
     HostSetDialogKind, HostSearchBlocked, HostPrepareSearchUi,
     HostActivePanelUri, NotifyChanged);
@@ -10080,7 +10089,8 @@ begin
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
     end,
-    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError)
+    procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+      ATruncated: Boolean)
     var
       Sid: string;
     begin

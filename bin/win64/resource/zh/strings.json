@@ -1210,6 +1210,7 @@
     "search.cancelHint": "Esc=取消",
     "search.goHint": "Enter=转到  Esc=关闭",
     "search.none": "未找到文件",
+    "search.limit": "搜索已停止：已达到 %d 个结果的上限。请缩小掩码或文件夹范围。",
     "job.cancelling": "正在取消...",
     "job.verbCopy": "正在复制文件",
     "job.verbMove": "正在移动文件",

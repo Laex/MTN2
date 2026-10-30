@@ -38,6 +38,7 @@ type
     [Test] procedure TestDirectoryOntoFileKeepsTheFile;
     [Test] procedure TestOverwriteOfLockedFileKeepsIt;
     [Test] procedure TestFailedZipReplaceKeepsEntries;
+    [Test] procedure TestSkippedFileIsNotOpenedAtTheSource;
   end;
 
 implementation
@@ -662,6 +663,31 @@ begin
   Assert.AreEqual('old', ReadTextFile(Dst), 'the previous file is still there');
 end;
 
+procedure TestSkippedFileIsNotOpenedAtTheSource;
+var
+  Src, Dst: string;
+  Err: TVfsError;
+  Lock: TFileStream;
+begin
+  if PlatformPosixPaths then
+  begin
+    Assert.Pass('An open file does not block a read on this platform');
+    Exit;
+  end;
+  Src := TPath.Combine(GRoot, 'skip_locked_src.txt');
+  Dst := TPath.Combine(GRoot, 'skip_locked_dst.txt');
+  WriteTextFile(Src, 'new');
+  WriteTextFile(Dst, 'old');
+  Lock := TFileStream.Create(Src, fmOpenRead or fmShareExclusive);
+  try
+    RunCopy(Src, Dst, False, Err);
+  finally
+    Lock.Free;
+  end;
+  Assert.IsTrue(Err.Code = vecAlreadyExists, 'an existing destination is skipped before the source is opened');
+  Assert.AreEqual('old', ReadTextFile(Dst), 'the destination is untouched');
+end;
+
 procedure TestFailedZipReplaceKeepsEntries;
 var
   ZipPath, Src, Uri: string;
@@ -820,6 +846,11 @@ end;
 procedure TTestCopySkipMerge.TestFailedZipReplaceKeepsEntries;
 begin
   TestCopySkipMerge.TestFailedZipReplaceKeepsEntries;
+end;
+
+procedure TTestCopySkipMerge.TestSkippedFileIsNotOpenedAtTheSource;
+begin
+  TestCopySkipMerge.TestSkippedFileIsNotOpenedAtTheSource;
 end;
 
 initialization

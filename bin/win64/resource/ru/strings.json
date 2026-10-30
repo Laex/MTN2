@@ -1218,6 +1218,7 @@
     "search.cancelHint": "Esc=Отмена",
     "search.goHint": "Enter=Перейти  Esc=Закрыть",
     "search.none": "Файлы не найдены",
+    "search.limit": "Поиск остановлен: достигнут предел в %d результатов. Сузьте маску или папку.",
     "job.cancelling": "Прерывание...",
     "job.verbCopy": "Копирование файла",
     "job.verbMove": "Перемещение файла",

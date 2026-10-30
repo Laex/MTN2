@@ -1221,6 +1221,7 @@
     "search.cancelHint": "Esc=Cancel",
     "search.goHint": "Enter=Go to  Esc=Close",
     "search.none": "No files found",
+    "search.limit": "Search stopped: the limit of %d results is reached. Narrow the mask or the folder.",
     "job.cancelling": "Cancelling...",
     "job.verbCopy": "Copying the file",
     "job.verbMove": "Moving the file",
