@@ -17,6 +17,9 @@ type
     [Test] procedure HexFieldAndTextBothHaveToMatch;
     [Test] procedure TextAndHexFieldsConvert;
     [Test] procedure HexFieldKeepsPairsAndRefusesTheGaps;
+    [Test] procedure HitsCarryTheFileInfoTheWalkRead;
+    [Test] procedure SessionTouchedOnlyByItsOwnFiles;
+    [Test] procedure SessionDropsRemovedHitsOnly;
   end;
 
 implementation
@@ -30,6 +33,7 @@ uses
   System.SyncObjs,
   Winapi.Windows,
   uVfsTypes,
+  uFindSession,
   uFileFind;
 
 var
@@ -380,6 +384,84 @@ begin
     WaitFind(TPath.GetDirectoryName(ArchiveBasePath(UriInsideZip)), '*.pas', True);
   finally
     Ev.Free;
+  end;
+end;
+
+procedure TTestFileFind.SessionTouchedOnlyByItsOwnFiles;
+var
+  Hits: TArray<TFindHit>;
+  Id: string;
+begin
+  SetLength(Hits, 2);
+  Hits[0].Path := 'C:\Data\One\a.txt';
+  Hits[1].Path := 'C:\Data\Two\b.txt';
+  Id := RegisterFindSession('C:\Data', '*.txt', Hits);
+  Assert.IsTrue(FindSessionTouchesPath(Id, 'C:\Data\One\a.txt'), 'a hit itself');
+  Assert.IsTrue(FindSessionTouchesPath(Id, 'c:\data\one'), 'the folder of a hit, any case');
+  Assert.IsTrue(FindSessionTouchesPath(Id, 'C:\Data'), 'a parent folder');
+  Assert.IsFalse(FindSessionTouchesPath(Id, 'C:\Data\Three'), 'a sibling folder');
+  Assert.IsFalse(FindSessionTouchesPath(Id, 'C:\Data\On'), 'a name prefix is not a parent');
+  Assert.IsFalse(FindSessionTouchesPath(Id, ''), 'no path');
+end;
+
+procedure TTestFileFind.SessionDropsRemovedHitsOnly;
+var
+  Hits: TArray<TFindHit>;
+  Id: string;
+  Under, Left: TArray<string>;
+  Data: TFindSessionData;
+begin
+  SetLength(Hits, 3);
+  Hits[0].Path := 'C:\Data\One\a.txt';
+  Hits[1].Path := 'C:\Data\One\b.txt';
+  Hits[2].Path := 'C:\Data\Two\c.txt';
+  Id := RegisterFindSession('C:\Data', '*.txt', Hits);
+  Under := FindSessionHitsUnder(Id, ['c:\data\one']);
+  Assert.AreEqual<Integer>(2, Length(Under), 'hits under a folder');
+  Assert.AreEqual<Integer>(3, Length(FindSessionHitsUnder(Id, [''])), 'unknown path selects all');
+  Assert.AreEqual<Integer>(1, RemoveFindSessionHits(Id, ['C:\DATA\one\A.TXT']), 'removed count');
+  Assert.IsTrue(TryGetFindSession(Id, Data));
+  Assert.AreEqual<Integer>(2, Length(Data.Hits));
+  Left := FindSessionHitsUnder(Id, ['C:\Data']);
+  Assert.AreEqual('C:\Data\One\b.txt', Left[0]);
+  Assert.AreEqual<Integer>(0, RemoveFindSessionHits(Id, ['C:\Data\Nope.txt']), 'unknown path');
+end;
+
+procedure TTestFileFind.HitsCarryTheFileInfoTheWalkRead;
+var
+  Dir: string;
+  Found: TArray<TFindHit>;
+  Done: TEvent;
+  Tick: Cardinal;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-info-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  Done := TEvent.Create;
+  try
+    TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), '12345');
+    FindFilesAsync(DefaultFindOptions(Dir, '*.txt', False), nil,
+      procedure(AFoundCount: Integer; const ACurrentDir: string) begin end,
+      procedure(const AHits: TArray<TFindHit>; const AError: TVfsError)
+      begin
+        Found := AHits;
+        Done.SetEvent;
+      end);
+    Tick := GetTickCount;
+    while Done.WaitFor(50) <> wrSignaled do
+    begin
+      CheckSynchronize;
+      if GetTickCount - Tick > 15000 then
+        Assert.Fail('find timed out');
+    end;
+    CheckSynchronize;
+    Assert.IsTrue(Length(Found) = 1, 'one hit');
+    Assert.IsTrue(Found[0].HasEntry, 'the hit keeps what the walk read');
+    Assert.IsTrue(Found[0].Entry.Size = 5, 'size of the file');
+    Assert.IsFalse(Found[0].Entry.IsDirectory, 'a file');
+    Assert.IsTrue(Found[0].Entry.ModificationTime > 0, 'modification time');
+  finally
+    Done.Free;
+    TDirectory.Delete(Dir, True);
   end;
 end;
 

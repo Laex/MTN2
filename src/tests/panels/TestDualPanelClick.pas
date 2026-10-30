@@ -52,6 +52,7 @@ type
     procedure LayoutSearch(AWidth, AHeight: Integer);
     function GetSearchBounds: TRectI;
     procedure CloseSearch;
+    procedure StopSearch;
     procedure CloseStub;
     function HandleUserMenu(ACol, ARow: Integer): Boolean;
     function HandleSortMenu(ACol, ARow: Integer): Boolean;
@@ -136,6 +137,11 @@ end;
 function TClickSpy.GetSearchBounds: TRectI;
 begin
   Result := SearchBounds;
+end;
+
+procedure TClickSpy.StopSearch;
+begin
+  Last := Last + '+sstop';
 end;
 
 procedure TClickSpy.CloseSearch;
@@ -272,6 +278,7 @@ begin
   AHost.LayoutSearchUi := ASpy.LayoutSearch;
   AHost.SearchBounds := ASpy.GetSearchBounds;
   AHost.CloseSearchUi := ASpy.CloseSearch;
+  AHost.RequestSearchStop := ASpy.StopSearch;
   AHost.CloseStub := ASpy.CloseStub;
   AHost.HandleUserMenuClick := ASpy.HandleUserMenu;
   AHost.HandleSortMenuClick := ASpy.HandleSortMenu;
@@ -432,7 +439,16 @@ begin
     Spy.SearchBounds := TRectI.Make(10, 10, 40, 20);
     Spy.Last := '';
     Owned := DispatchClickOverlays(Host, Snap, 0, 0, [], False, Handled);
-    Assert.IsTrue(Owned and (Pos('+sclose', Spy.Last) > 0), 'outside search closes it');
+    Assert.IsTrue(Owned and (Pos('+sclose', Spy.Last) = 0) and (Pos('+sstop', Spy.Last) > 0),
+      'outside a running search asks to stop it');
+    Owned := DispatchClickOverlays(Host, Snap, 38, 10, [], False, Handled);
+    Assert.IsTrue(Owned and (Pos('+sstop', Spy.Last) > 0) and (Pos('+sclose', Spy.Last) = 0),
+      'close of a running search asks to stop it');
+
+    Snap.SearchPhase := spResults;
+    Spy.Last := '';
+    Owned := DispatchClickOverlays(Host, Snap, 0, 0, [], False, Handled);
+    Assert.IsTrue(Owned and (Pos('+sclose', Spy.Last) > 0), 'outside search results closes them');
 
     Snap.SearchPhase := spDialog;
     Spy.Last := '';

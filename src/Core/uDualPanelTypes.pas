@@ -808,14 +808,60 @@ begin
     end));
 end;
 
+type
+  TSelectionKeysCacheEntry = record
+    // A private copy of the selection the keys were built from. Strings are
+    // immutable, so equal string pointers mean equal contents; the copy keeps
+    // them alive, so an address cannot be reused by another string.
+    Source: TArray<string>;
+    Keys: TArray<string>;
+  end;
+
+var
+  GSelectionKeysCache: array[0..3] of TSelectionKeysCacheEntry;
+  GSelectionKeysNext: Integer;
+  GSelectionKeysLock: TObject;
+
+function SameSelectionStrings(const A, B: TArray<string>): Boolean;
+var
+  I: Integer;
+begin
+  if Length(A) <> Length(B) then
+    Exit(False);
+  for I := 0 to High(A) do
+    if Pointer(A[I]) <> Pointer(B[I]) then
+      Exit(False);
+  Result := True;
+end;
+
+// Building the sorted keys of a large selection takes milliseconds and every
+// repaint asks for them several times, so the last few results are kept.
 function TabSelectionKeys(const ATab: TTab): TArray<string>;
 var
   I: Integer;
 begin
+  if Length(ATab.SelectedURIs) = 0 then
+    Exit(nil);
+  TMonitor.Enter(GSelectionKeysLock);
+  try
+    for I := 0 to High(GSelectionKeysCache) do
+      if SameSelectionStrings(GSelectionKeysCache[I].Source, ATab.SelectedURIs) then
+        Exit(GSelectionKeysCache[I].Keys);
+  finally
+    TMonitor.Exit(GSelectionKeysLock);
+  end;
   SetLength(Result, Length(ATab.SelectedURIs));
   for I := 0 to High(ATab.SelectedURIs) do
     Result[I] := VfsUriKey(ATab.SelectedURIs[I]);
   Result := SortKeys(Result);
+  TMonitor.Enter(GSelectionKeysLock);
+  try
+    GSelectionKeysCache[GSelectionKeysNext].Source := Copy(ATab.SelectedURIs);
+    GSelectionKeysCache[GSelectionKeysNext].Keys := Result;
+    GSelectionKeysNext := (GSelectionKeysNext + 1) mod Length(GSelectionKeysCache);
+  finally
+    TMonitor.Exit(GSelectionKeysLock);
+  end;
 end;
 
 function SelectionKeysHas(const AKeys: TArray<string>; const AURI: string): Boolean;
@@ -1236,5 +1282,11 @@ begin
   end;
   Result := ALo <= AHi;
 end;
+
+initialization
+  GSelectionKeysLock := TObject.Create;
+
+finalization
+  FreeAndNil(GSelectionKeysLock);
 
 end.

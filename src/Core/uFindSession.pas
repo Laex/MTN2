@@ -22,6 +22,16 @@ function UpdateFindSession(const ASessionId, ARootPath, AMask: string;
   const AHits: TArray<TFindHit>): Boolean;
 function TryGetFindSession(const ASessionId: string;
   out AData: TFindSessionData): Boolean;
+/// <summary>True when APath is a hit of the session or a folder holding one
+/// (an operation on it changes the results).</summary>
+function FindSessionTouchesPath(const ASessionId, APath: string): Boolean;
+/// <summary>Hit paths of the session that are APaths or lie under them
+/// (an empty path selects every hit).</summary>
+function FindSessionHitsUnder(const ASessionId: string;
+  const APaths: array of string): TArray<string>;
+/// <summary>Drops the hits with the given paths; returns how many went.</summary>
+function RemoveFindSessionHits(const ASessionId: string;
+  const APaths: TArray<string>): Integer;
 function TryGetFindSessionFromUri(const AURI: string;
   out AData: TFindSessionData): Boolean;
 function FindSessionParentFileUri(const AFindUri: string): string;
@@ -101,6 +111,93 @@ begin
   finally
     TMonitor.Exit(GLock);
   end;
+end;
+
+function FindSessionTouchesPath(const ASessionId, APath: string): Boolean;
+var
+  Data: TFindSessionData;
+  Dir, Hit: string;
+  I: Integer;
+begin
+  if (APath = '') or not TryGetFindSession(ASessionId, Data) then
+    Exit(False);
+  Dir := LowerCase(IncludeTrailingPathDelimiter(APath));
+  for I := 0 to High(Data.Hits) do
+  begin
+    Hit := LowerCase(Data.Hits[I].Path);
+    if (Hit = LowerCase(APath)) or Hit.StartsWith(Dir) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+function FindSessionHitsUnder(const ASessionId: string;
+  const APaths: array of string): TArray<string>;
+var
+  Data: TFindSessionData;
+  Hit, P, Dir: string;
+  I, N: Integer;
+  Match: Boolean;
+begin
+  SetLength(Result, 0);
+  if not TryGetFindSession(ASessionId, Data) then
+    Exit;
+  SetLength(Result, Length(Data.Hits));
+  N := 0;
+  for I := 0 to High(Data.Hits) do
+  begin
+    Hit := LowerCase(Data.Hits[I].Path);
+    Match := False;
+    for P in APaths do
+    begin
+      Dir := LowerCase(IncludeTrailingPathDelimiter(P));
+      if (P = '') or (Hit = LowerCase(P)) or Hit.StartsWith(Dir) then
+      begin
+        Match := True;
+        Break;
+      end;
+    end;
+    if Match then
+    begin
+      Result[N] := Data.Hits[I].Path;
+      Inc(N);
+    end;
+  end;
+  SetLength(Result, N);
+end;
+
+function RemoveFindSessionHits(const ASessionId: string;
+  const APaths: TArray<string>): Integer;
+var
+  Data: TFindSessionData;
+  Gone: TDictionary<string, Boolean>;
+  Kept: TArray<TFindHit>;
+  P: string;
+  I, N: Integer;
+begin
+  Result := 0;
+  if (Length(APaths) = 0) or not TryGetFindSession(ASessionId, Data) then
+    Exit;
+  Gone := TDictionary<string, Boolean>.Create;
+  try
+    for P in APaths do
+      Gone.AddOrSetValue(LowerCase(P), True);
+    SetLength(Kept, Length(Data.Hits));
+    N := 0;
+    for I := 0 to High(Data.Hits) do
+      if not Gone.ContainsKey(LowerCase(Data.Hits[I].Path)) then
+      begin
+        Kept[N] := Data.Hits[I];
+        Inc(N);
+      end;
+  finally
+    Gone.Free;
+  end;
+  Result := Length(Data.Hits) - N;
+  if Result = 0 then
+    Exit;
+  SetLength(Kept, N);
+  UpdateFindSession(ASessionId, Data.RootPath, Data.Mask, Kept);
 end;
 
 function TryGetFindSessionFromUri(const AURI: string;

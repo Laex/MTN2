@@ -50,6 +50,11 @@ type
     Path: string;
     Line: Integer;
     Snippet: string;
+    /// <summary>Size, times and attribute flags the walk already read, so
+    /// listing the results touches no disk (HasEntry; Name and the match
+    /// fields are filled by the listing).</summary>
+    Entry: TVfsEntry;
+    HasEntry: Boolean;
   end;
 
   TFindProgressCallback = reference to procedure(AFoundCount: Integer;
@@ -140,7 +145,7 @@ implementation
 
 uses
   System.IOUtils, System.Masks, System.Math, System.Generics.Collections,
-  System.RegularExpressions;
+  System.RegularExpressions, uPlatformFileOps;
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean): TFindOptions;
@@ -832,6 +837,22 @@ begin
     ASnippet);
 end;
 
+function MakeFindHit(const APath: string; const SR: TSearchRec; AIsDir: Boolean;
+  ALine: Integer; const ASnippet: string): TFindHit;
+begin
+  Result.Path := APath;
+  Result.Line := ALine;
+  Result.Snippet := ASnippet;
+  Result.Entry := Default(TVfsEntry);
+  Result.Entry.IsDirectory := AIsDir;
+  if AIsDir then
+    Result.Entry.Size := -1
+  else
+    Result.Entry.Size := SR.Size;
+  PlatformFillEntry(SR, Result.Entry);
+  Result.HasEntry := True;
+end;
+
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
   AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback;
   AOnHits: TFindHitsCallback);
@@ -869,7 +890,6 @@ begin
       Code: Integer;
       IsDir: Boolean;
       Needle: string;
-      Hit: TFindHit;
       HitLine: Integer;
       HitSnippet: string;
 
@@ -919,10 +939,7 @@ begin
                          (Needle = '') and (Trim(Opts.HexBytes) = '') and
                          FindEntryPassesFilters(Opts, True, 0, SR.TimeStamp, SR.Attr) then
                       begin
-                        Hit.Path := Full;
-                        Hit.Line := 0;
-                        Hit.Snippet := '';
-                        List.Add(Hit);
+                        List.Add(MakeFindHit(Full, SR, True, 0, ''));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
                       if Opts.Subdirs then
@@ -934,10 +951,7 @@ begin
                     begin
                       if FindContentMatch(Full, Opts, HitLine, HitSnippet) then
                       begin
-                        Hit.Path := Full;
-                        Hit.Line := HitLine;
-                        Hit.Snippet := HitSnippet;
-                        List.Add(Hit);
+                        List.Add(MakeFindHit(Full, SR, False, HitLine, HitSnippet));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
                     end;

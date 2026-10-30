@@ -196,6 +196,18 @@ begin
               Break;
             end;
             Path := Data.Hits[I].Path;
+            if Data.Hits[I].HasEntry then
+            begin
+              // The walk already read size, times and flags: no disk access.
+              E := Data.Hits[I].Entry;
+              E.Name := DisplayNameForHit(Data.RootPath, Path);
+              E.Extension := LowerCase(SafeExtension(Path));
+              E.MatchLine := Data.Hits[I].Line;
+              E.MatchSnippet := Data.Hits[I].Snippet;
+              E.TargetURI := PathToFileUri(Path);
+              Items[I] := E;
+              Continue;
+            end;
             E.Name := DisplayNameForHit(Data.RootPath, Path);
             E.Extension := LowerCase(SafeExtension(Path));
             E.MatchLine := Data.Hits[I].Line;

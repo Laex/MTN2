@@ -169,7 +169,7 @@ begin
       end;
     spRunning:
       begin
-        W := Min(56, Max(PanelW - 2, 32));
+        W := Min(76, Max(PanelW - 2, 32));
         H := 7;
       end;
     spResults:
@@ -321,7 +321,7 @@ begin
       if AError.Code <> vecOk then
         FSearch.Message := AError.Message
       else
-        FSearch.Message := 'No files found';
+        FSearch.Message := T('ui.search.none', 'No files found');
       FSearch.Phase := spResults;
       if Assigned(FOnInvalidate) then
         FOnInvalidate;
@@ -396,8 +396,14 @@ begin
       begin
         // The frame owns R.Left / R.Right; a one-cell gap stays free next to
         // each, so the text starts at R.Left + 2 and has R.Width - 4 cells.
+        MaxW := R.Width - 4;
+        Line := T('ui.search.mask', 'Mask: %s', [FSearch.Mask]);
+        if (MaxW > 1) and (Length(Line) > MaxW) then
+          Line := Copy(Line, 1, MaxW - 1) + cEllipsis;
+        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 1, Line,
+          True, False, False, cDirFg, cPanelBg);
         PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 2,
-          Format('Found: %d', [FSearch.FoundCount]),
+          T('ui.search.found', 'Found: %d', [FSearch.FoundCount]),
           False, False, False, cFileFg, cPanelBg);
         Line := FSearch.CurrentDir;
         // Keep the tail: the deep end of the path is the part that changes
@@ -407,7 +413,7 @@ begin
           Line := cEllipsis + Copy(Line, Length(Line) - MaxW + 2, MaxInt);
         PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 3, Line,
           True, False, False, cDirFg, cPanelBg);
-        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 5, 'Esc=Cancel',
+        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 5, T('ui.search.cancelHint', 'Esc=Cancel'),
           True, False, False, cMenuHot, cPanelBg);
       end;
     spResults:
@@ -417,7 +423,7 @@ begin
             True, False, False, cMenuHot, cPanelBg)
         else
           PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 1,
-            'Enter=Go to  Esc=Close', True, False, False, cMenuHot, cPanelBg);
+            T('ui.search.goHint', 'Enter=Go to  Esc=Close'), True, False, False, cMenuHot, cPanelBg);
 
         ViewH := Max(R.Height - 4, 1);
         if FSearch.Cursor < FSearch.Scroll then

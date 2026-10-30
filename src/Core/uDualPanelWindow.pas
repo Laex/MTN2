@@ -323,6 +323,14 @@ type
     FDropHighlightSide: TPanelSide;
     FDropHighlightURI: string;
     FDropHighlightRow: Integer;
+    // Totals of the marked rows, valid while the marked set and the rows stay
+    // the same (every repaint asks for them).
+    FSelTotals: array[TPanelSide] of record
+      Valid: Boolean;
+      Source: TArray<string>;
+      Bytes: Int64;
+      Files, Folders: Integer;
+    end;
     FPlainTotals: array[TPanelSide] of record
       Valid: Boolean;
       Bytes: Int64;
@@ -540,6 +548,13 @@ type
     procedure CheckArchiveActionPassword;
     procedure LoadSide(ASide: TPanelSide);
     procedure ReloadActiveRows;
+    /// <summary>Re-lists both panels, except a search-results panel none of
+    /// whose files lies under APaths (an empty or unknown path reloads all).</summary>
+    procedure ReloadPanelsTouching(const APaths: array of string);
+    /// <summary>Drops the results that no longer exist from a search-results
+    /// panel (existence is checked off the UI thread), then re-lists it.</summary>
+    procedure PruneFindSide(ASide: TPanelSide; const AURI: string;
+      const APaths: array of string);
     procedure SyncDirWatches;
     procedure PauseDirWatchesForJob;
     procedure HostJobUiClosed;
@@ -1039,6 +1054,8 @@ type
     procedure ResolveChrome(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     procedure InvalidatePlainTotals;
+    procedure SelectionTotalsOf(ASide: TPanelSide; const ATab: TTab;
+      out ABytes: Int64; out AFiles, AFolders: Integer);
     procedure EnsurePlainTotals(ASide: TPanelSide; out ABytes: Int64;
       out AFiles, AFolders: Integer);
     function BuildTerminalStatusSegments: TArray<string>;
@@ -2142,6 +2159,7 @@ begin
   FClickHost.LayoutSearchUi := ClickLayoutSearch;
   FClickHost.SearchBounds := ClickSearchBounds;
   FClickHost.CloseSearchUi := CloseSearchUi;
+  FClickHost.RequestSearchStop := HostRequestSearchStop;
   FClickHost.CloseStub := CloseStub;
   FClickHost.HandleUserMenuClick := FMenus.HandleUserMenuClick;
   FClickHost.HandleSortMenuClick := FMenus.HandleSortMenuClick;
@@ -2814,9 +2832,10 @@ begin
     FDialogKind := hdkNone;
   if Assigned(FDirSync) then
     FDirSync.NotifyJobFinished(ASuccess);
-  // Same as pre-background-job FJobs.OnReloadPanels: always re-list both
-  // panels. Origin matching is a hint only and must not skip this.
-  ReloadActiveRows;
+  // Both panels are re-listed, except a search-results panel the job did not
+  // touch.
+  ReloadPanelsTouching([FileUriToPath(FJobs.State.OriginSrcDirURI),
+    FileUriToPath(FJobs.State.OriginDstDirURI)]);
   if ASuccess then
     NotifyChanged;
 end;
@@ -2851,7 +2870,7 @@ end;
 
 procedure TDualPanelWindow.HostReloadJobPanels(const AOriginSrc, AOriginDst: string);
 begin
-  ReloadActiveRows;
+  ReloadPanelsTouching([FileUriToPath(AOriginSrc), FileUriToPath(AOriginDst)]);
 end;
 
 function TDualPanelWindow.CloseJobProgressForReplacement: Boolean;
@@ -4071,9 +4090,15 @@ begin
   // Side-scoped invalidate (PANEL_PLUGIN WindowId): left=1, right=2.
   case AWindowId of
     cPanelWindowIdLeft:
-      FPlainTotals[psLeft].Valid := False;
+      begin
+        FPlainTotals[psLeft].Valid := False;
+        FSelTotals[psLeft].Valid := False;
+      end;
     cPanelWindowIdRight:
-      FPlainTotals[psRight].Valid := False;
+      begin
+        FPlainTotals[psRight].Valid := False;
+        FSelTotals[psRight].Valid := False;
+      end;
   else
     InvalidatePlainTotals;
   end;
@@ -4421,8 +4446,40 @@ end;
 
 procedure TDualPanelWindow.InvalidatePlainTotals;
 begin
+  FSelTotals[psLeft].Valid := False;
+  FSelTotals[psRight].Valid := False;
   FPlainTotals[psLeft].Valid := False;
   FPlainTotals[psRight].Valid := False;
+end;
+
+procedure TDualPanelWindow.SelectionTotalsOf(ASide: TPanelSide; const ATab: TTab;
+  out ABytes: Int64; out AFiles, AFolders: Integer);
+var
+  I: Integer;
+  Same: Boolean;
+begin
+  Same := FSelTotals[ASide].Valid and
+    (Length(FSelTotals[ASide].Source) = Length(ATab.SelectedURIs));
+  if Same then
+    for I := 0 to High(ATab.SelectedURIs) do
+      if Pointer(FSelTotals[ASide].Source[I]) <> Pointer(ATab.SelectedURIs[I]) then
+      begin
+        Same := False;
+        Break;
+      end;
+  if not Same then
+  begin
+    PanelSelectionTotals(ATab, RowsForSide(ASide), ABytes, AFiles, AFolders);
+    FSelTotals[ASide].Source := Copy(ATab.SelectedURIs);
+    FSelTotals[ASide].Bytes := ABytes;
+    FSelTotals[ASide].Files := AFiles;
+    FSelTotals[ASide].Folders := AFolders;
+    FSelTotals[ASide].Valid := True;
+    Exit;
+  end;
+  ABytes := FSelTotals[ASide].Bytes;
+  AFiles := FSelTotals[ASide].Files;
+  AFolders := FSelTotals[ASide].Folders;
 end;
 
 procedure TDualPanelWindow.EnsurePlainTotals(ASide: TPanelSide; out ABytes: Int64;
@@ -4540,6 +4597,81 @@ procedure TDualPanelWindow.ReloadActiveRows;
 begin
   LoadSide(psLeft);
   LoadSide(psRight);
+end;
+
+procedure TDualPanelWindow.ReloadPanelsTouching(const APaths: array of string);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  URI, P: string;
+  Touched: Boolean;
+begin
+  Ws := ActiveWorkspace;
+  for Side := Low(TPanelSide) to High(TPanelSide) do
+  begin
+    if Side = psLeft then
+      URI := ActiveTab(Ws.State.LeftPanel).CurrentURI
+    else
+      URI := ActiveTab(Ws.State.RightPanel).CurrentURI;
+    Touched := True;
+    if IsFindUri(URI) and (Length(APaths) > 0) then
+    begin
+      Touched := False;
+      for P in APaths do
+        if (P = '') or FindSessionTouchesPath(FindSessionIdFromUri(URI), P) then
+          Touched := True;
+      if Touched then
+      begin
+        PruneFindSide(Side, URI, APaths);
+        Continue;
+      end;
+    end;
+    if Touched then
+      LoadSide(Side);
+  end;
+end;
+
+procedure TDualPanelWindow.PruneFindSide(ASide: TPanelSide; const AURI: string;
+  const APaths: array of string);
+var
+  Life: ILifeFlag;
+  Sid: string;
+  Candidates: TArray<string>;
+begin
+  Sid := FindSessionIdFromUri(AURI);
+  Candidates := FindSessionHitsUnder(Sid, APaths);
+  // A running search owns the session's hit list.
+  if (Length(Candidates) = 0) or
+     (Assigned(FSearchUi) and (FSearchUi.Phase = spRunning)) then
+  begin
+    LoadSide(ASide);
+    Exit;
+  end;
+  Life := FLife;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Gone: TArray<string>;
+      I, N: Integer;
+    begin
+      SetLength(Gone, Length(Candidates));
+      N := 0;
+      for I := 0 to High(Candidates) do
+        if FileGetAttr(Candidates[I]) = -1 then
+        begin
+          Gone[N] := Candidates[I];
+          Inc(N);
+        end;
+      SetLength(Gone, N);
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not Life.Alive then
+            Exit;
+          RemoveFindSessionHits(Sid, Gone);
+          LoadSide(ASide);
+        end);
+    end).Start;
 end;
 
 procedure TDualPanelWindow.SyncDirWatches;
@@ -6524,7 +6656,7 @@ begin
         Exit;
       if ASuccess then
       begin
-        ReloadActiveRows;
+        ReloadPanelsTouching([FileUriToPath(AURI)]);
         NotifyChanged;
         Exit;
       end;
@@ -6754,7 +6886,7 @@ begin
         begin
           if not Life.Alive then
             Exit;
-          ReloadActiveRows;
+          ReloadPanelsTouching(CapturedPaths);
           NotifyChanged;
           if Fail > 0 then
           begin
@@ -7486,7 +7618,7 @@ begin
         Exit;
       if ASuccess then
       begin
-        ReloadActiveRows;
+        ReloadPanelsTouching([FileUriToPath(AFromURI), FileUriToPath(AToURI)]);
         NotifyChanged;
         Exit;
       end;
@@ -10182,7 +10314,7 @@ var
   Side: TPanelSide;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
+  RowCount: Integer;
   OldScroll, OldCursor: Integer;
   Changed: Boolean;
   M: IPanelModel;
@@ -10208,9 +10340,12 @@ begin
     Tab := ActiveTab(Panel);
     OldScroll := Tab.ScrollOffset;
     OldCursor := Tab.CursorIndex;
-    Rows := RowsForSide(Side);
     Cols := ListColCountForSide(Side);
-    EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+    if Assigned(M) then
+      RowCount := M.ItemCount
+    else
+      RowCount := 0;
+    EnsureCursorVisible(Tab, RowCount, ViewH, Cols);
     if (Tab.ScrollOffset <> OldScroll) or (Tab.CursorIndex <> OldCursor) then
     begin
       SetActiveTab(Panel, Tab);
@@ -11278,7 +11413,7 @@ var
   Side: TPanelSide;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
+  M: IPanelModel;
   Obj: TJSONObject;
   Cur: string;
   DirChanged: Boolean;
@@ -11295,14 +11430,14 @@ begin
     else
       Panel := Ws.State.RightPanel;
     Tab := ActiveTab(Panel);
-    Rows := RowsForSide(Side);
+    M := ModelForSide(Side);
     // A folder that is still being listed has no cursor row to report yet.
-    if Length(Rows) = 0 then
+    if not Assigned(M) or (M.ItemCount = 0) then
       Continue;
     Cur := '';
-    if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) and
-       not Rows[Tab.CursorIndex].IsParent then
-      Cur := Rows[Tab.CursorIndex].URI;
+    if (Tab.CursorIndex >= 0) and (Tab.CursorIndex < M.ItemCount) and
+       not M.GetRow(Tab.CursorIndex).IsParent then
+      Cur := M.GetRow(Tab.CursorIndex).URI;
     DirChanged := Tab.CurrentURI <> FPanelEventUri[Side];
     if not DirChanged and (Cur = FPanelEventCursor[Side]) then
       Continue;
@@ -12918,8 +13053,7 @@ begin
   Snap.FooterFg := AFrame;
   if Length(Tab.SelectedURIs) > 0 then
   begin
-    Rows := RowsForSide(ASide);
-    PanelSelectionTotals(Tab, Rows, Bytes, Files, Folders);
+    SelectionTotalsOf(ASide, Tab, Bytes, Files, Folders);
     Snap.Footer := FormatPanelTotalsFooter(True, Bytes, Files, Folders,
       ABounds.Width - 2);
     // "Selected: ..." takes the marked-file foreground so the totals read
@@ -13082,8 +13216,7 @@ begin
     (Tab.CursorIndex < Count);
   if HasSel then
   begin
-    Rows := RowsForSide(Ws.State.ActiveSide);
-    PanelSelectionTotals(Tab, Rows, Bytes, Files, Folders);
+    SelectionTotalsOf(Ws.State.ActiveSide, Tab, Bytes, Files, Folders);
     SelText := FormatStatusSelText(Bytes, Files, Folders);
   end
   else

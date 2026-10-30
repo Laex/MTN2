@@ -65,6 +65,7 @@ type
     LayoutSearchUi: TClickLayoutProc;
     SearchBounds: TClickBoundsFn;
     CloseSearchUi: TKeymapProc;
+    RequestSearchStop: TKeymapProc;
     CloseStub: TKeymapProc;
     HandleUserMenuClick: TClickColRowFn;
     HandleSortMenuClick: TClickColRowFn;
@@ -423,8 +424,15 @@ begin
     begin
       AHost.LayoutSearchUi(ASnap.AreaWidth, ASnap.AreaHeight);
       Bounds := AHost.SearchBounds();
-      if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
-         (not Bounds.Contains(ALocalCol, ALocalRow)) then
+      if ASnap.SearchPhase = spRunning then
+      begin
+        // [x] and a click outside ask to stop, like Esc.
+        if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
+           (not Bounds.Contains(ALocalCol, ALocalRow)) then
+          AHost.RequestSearchStop();
+      end
+      else if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
+              (not Bounds.Contains(ALocalCol, ALocalRow)) then
       begin
         AHost.CloseSearchUi();
         AHost.NotifyChanged();
