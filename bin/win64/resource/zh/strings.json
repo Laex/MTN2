@@ -279,6 +279,7 @@
       "backspace_drive_menu": "在驱动器根目录按退格键打开驱动器菜单(&D)",
       "drive_other_folder": "切换驱动器时打开另一面板的文件夹(&C)",
       "space_selects": "空格键选择文件并下移(&L)",
+      "keep_panel_focus": "键入时不将焦点移到命令行(&N)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"

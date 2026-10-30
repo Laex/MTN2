@@ -281,6 +281,7 @@
       "backspace_drive_menu": "Backspace in a drive root opens the &drive menu",
       "drive_other_folder": "Drive &change opens the other panel's folder",
       "space_selects": "Space se&lects files, then moves down",
+      "keep_panel_focus": "Don't move focus to the command line when typi&ng",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"

@@ -392,6 +392,7 @@ begin
   Result.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
   Result.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Result.SpaceSelects := FDualPanel.SpaceSelects;
+  Result.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Result.Language := CurrentLocale;
 end;
 
@@ -438,10 +439,12 @@ begin
   FSession.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FSession.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FSession.SpaceSelects := ASettings.SpaceSelects;
+  FSession.KeepPanelFocus := ASettings.KeepPanelFocus;
   FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
   FDualPanel.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FDualPanel.SpaceSelects := ASettings.SpaceSelects;
+  FDualPanel.KeepPanelFocus := ASettings.KeepPanelFocus;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -479,6 +482,7 @@ begin
   FDualPanel.BackspaceDriveMenu := Sess.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := Sess.DriveToOtherFolder;
   FDualPanel.SpaceSelects := Sess.SpaceSelects;
+  FDualPanel.KeepPanelFocus := Sess.KeepPanelFocus;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -561,6 +565,7 @@ begin
   Sess.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
   Sess.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Sess.SpaceSelects := FDualPanel.SpaceSelects;
+  Sess.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
   Sess.ListExport := GListExportConfig;

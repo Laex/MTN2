@@ -9,11 +9,12 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 | ↑ / ↓ (beim Eingeben eines Befehls) | Befehlsverlauf |
 | Tab | Vervollständigung: ein Name aus dem Panel oder ein Pfad von der Festplatte, wenn das Wort `\`, `/` oder `X:` enthält (wiederholtes Drücken wechselt durch die Treffer) |
 | Ctrl+↓ / Alt+↓ (Zeile fokussiert) | Befehlsverlauf als Liste: Enter – in die Zeile übernehmen, Del – aus dem Verlauf entfernen, Esc – schließen |
+| Eingabe in der Zeile | die älteren Befehle, die mit dem getippten Text beginnen, erscheinen als Liste über der Zeile; sie nimmt keine Tasten weg: ↑ / ↓ wählen einen Eintrag, Enter übernimmt ihn in die Zeile (Enter ohne Auswahl führt die Zeile aus), Del entfernt den Eintrag aus dem Verlauf, Esc schließt die Liste. Ist **Beim Tippen den Fokus nicht auf die Befehlszeile setzen** (Optionen → Oberfläche) eingeschaltet, gelangt das im Panel Getippte in die Zeile, ohne den Fokus dorthin zu setzen (Leertaste und Rücktaste nur bei nicht leerer Zeile); den Fokus setzen Ctrl+↓ oder ein Mausklick |
 | Ctrl+Enter | Namen des Elements unter dem Cursor einfügen |
 | Ctrl+F, Ctrl+Shift+Enter | vollständigen Pfad des Elements einfügen |
 | Alt+Shift+Enter | Befehlszeile im Hintergrund ausführen: die Konsole zeigt kurz den Start, dann kommen die Panels zurück (**Optionen → Konsole...** weiter unten); bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor auf dieselbe Weise |
 | Ctrl+Alt+Enter | Befehlszeile in einem neuen Terminal-Tab ausführen: ein neuer Arbeitsbereich-Tab mit der Shell der Hintergrundkonsole (cmd, PowerShell, WSL, ...), der Befehl startet dort und der Tab bleibt offen; bei leerer Zeile startet es das Konsolenprogramm unter dem Cursor im Terminal-Tab des Panel-Tabs |
-| Esc | Schritt für Schritt: Zeile löschen → Fokus ans Panel zurückgeben → Konsole zeigen. Bei leerer Zeile entfällt der erste Schritt; bei Fokus auf dem Panel zeigt Esc sofort die Konsole |
+| Esc | Schritt für Schritt: Zeile löschen → Fokus ans Panel zurückgeben → Konsole zeigen. Bei leerer Zeile entfällt der erste Schritt; bei Fokus auf dem Panel wird zuerst der in der Zeile verbliebene Text gelöscht, bei leerer Zeile zeigt Esc sofort die Konsole |
 | Ctrl+O | Panels ↔ Konsole |
 | Ctrl+Shift+O | Ordner zwischen aktivem Panel und Konsole abgleichen |
 | Ctrl+Alt+O | Shell der Hintergrundkonsole wählen (cmd, PowerShell, WSL, …) |

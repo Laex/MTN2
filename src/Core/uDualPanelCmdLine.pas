@@ -15,6 +15,10 @@ type
   /// <summary>Local folder of the active panel ('' if not on disk):
   /// relative path tokens complete from there.</summary>
   TCmdLineGetBaseDirEvent = reference to function: string;
+  /// <summary>Typing changed the line and these history entries start with
+  /// it (oldest first): the host opens the suggestion list where the line
+  /// is on screen.</summary>
+  TCmdLineSuggestEvent = reference to procedure(const AItems: TArray<string>);
 
   TDualPanelCmdLineManager = class
   private
@@ -26,6 +30,7 @@ type
     FOnGetNames: TCmdLineGetNamesEvent;
     FOnGetBaseDir: TCmdLineGetBaseDirEvent;
     FOnOpenHistoryPopup: TProc;
+    FOnSuggestHistory: TCmdLineSuggestEvent;
     FPopup: THistoryPopup;
     FHistory: TStringList;
     FHistIndex: Integer; // -1 = live edit; else index into FHistory
@@ -42,6 +47,8 @@ type
     procedure PushHistory(const ACommand: string);
     procedure HistoryUp;
     procedure HistoryDown;
+    procedure UpdateSuggestions;
+    procedure ShowAllHistory;
     procedure DoTabComplete;
     procedure LoadHistory;
     procedure SaveHistory;
@@ -79,6 +86,10 @@ type
     /// <summary>Ctrl+Down / Alt+Down in the focused line: the host opens
     /// HistoryPopup where the line is on screen (it knows the geometry).</summary>
     property OnOpenHistoryPopup: TProc read FOnOpenHistoryPopup write FOnOpenHistoryPopup;
+    /// <summary>While the line has the focus, an edit that leaves text
+    /// matching older commands shows them as a suggestion list (HistoryPopup)
+    /// that does not take the keys from the line.</summary>
+    property OnSuggestHistory: TCmdLineSuggestEvent read FOnSuggestHistory write FOnSuggestHistory;
     /// <summary>History drop-down (newest first). Del there removes the
     /// command from the history.</summary>
     property HistoryPopup: THistoryPopup read FPopup;
@@ -97,6 +108,11 @@ type
     /// <summary>Empties the command history.</summary>
     procedure ClearHistory;
   end;
+
+/// <summary>The entries of AHistory (newest first) that start with AText,
+/// ignoring case and not equal to it, oldest first; none for an empty AText.</summary>
+function CmdLineHistorySuggestions(const AHistory: TArray<string>;
+  const AText: string): TArray<string>;
 
 implementation
 
@@ -443,6 +459,64 @@ begin
   Invalidate;
 end;
 
+function CmdLineHistorySuggestions(const AHistory: TArray<string>;
+  const AText: string): TArray<string>;
+var
+  I: Integer;
+  List: TList<string>;
+begin
+  if AText = '' then
+    Exit(nil);
+  List := TList<string>.Create;
+  try
+    for I := High(AHistory) downto 0 do
+      if (Length(AHistory[I]) > Length(AText)) and
+         SameText(Copy(AHistory[I], 1, Length(AText)), AText) then
+        List.Add(AHistory[I]);
+    Result := List.ToArray;
+  finally
+    List.Free;
+  end;
+end;
+
+procedure TDualPanelCmdLineManager.ShowAllHistory;
+var
+  Newest, Items: TArray<string>;
+  I: Integer;
+  Key: Word;
+  Ch: Char;
+  Picked: string;
+begin
+  Newest := GetHistoryItems;
+  // The commands that start with the text typed so far; the whole history
+  // when there are none (or nothing is typed).
+  Items := CmdLineHistorySuggestions(Newest, FCmd.Text);
+  if Length(Items) = 0 then
+  begin
+    SetLength(Items, Length(Newest));
+    for I := 0 to High(Newest) do
+      Items[High(Newest) - I] := Newest[I];
+  end;
+  FOnSuggestHistory(Items);
+  // Up lands on the newest entry, next to the line.
+  Key := vkUp;
+  Ch := #0;
+  FPopup.HandleKey(Key, [], Ch, Picked);
+end;
+
+procedure TDualPanelCmdLineManager.UpdateSuggestions;
+var
+  Items: TArray<string>;
+begin
+  if not FFocused or FConsoleMode or not Assigned(FOnSuggestHistory) then
+    Exit;
+  Items := CmdLineHistorySuggestions(GetHistoryItems, FCmd.Text);
+  if Length(Items) = 0 then
+    FPopup.Close
+  else
+    FOnSuggestHistory(Items);
+end;
+
 procedure TDualPanelCmdLineManager.DoTabComplete;
 var
   Prefix: string;
@@ -502,7 +576,7 @@ end;
 function TDualPanelCmdLineManager.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
-  Picked: string;
+  Picked, Before: string;
 begin
   // Open history list first: it owns the arrows, Enter, Del and Esc.
   case FPopup.HandleKey(AKey, AShift, AKeyChar, Picked) of
@@ -532,6 +606,7 @@ begin
   // Tab-complete (no modifiers).
   if TKeyChord.Make(AKey, AKeyChar, AShift).Matches(vkTab) then
   begin
+    FPopup.Close;
     DoTabComplete;
     AKey := 0;
     AKeyChar := #0;
@@ -543,7 +618,11 @@ begin
   // scroll while the cmdline has focus.
   if TKeyChord.Make(AKey, AKeyChar, AShift).MatchesAny(vkUp, [], [ssShift]) then
   begin
-    HistoryUp;
+    if (FHistIndex < 0) and not FConsoleMode and
+       (FHistory.Count > 0) and Assigned(FOnSuggestHistory) then
+      ShowAllHistory
+    else
+      HistoryUp;
     AKey := 0;
     Result := True;
     Exit;
@@ -577,6 +656,7 @@ begin
       ResetCompletion;
   end;
 
+  Before := FCmd.Text;
   case InputLineHandleInput(FCmd, AKey, AShift, AKeyChar, FConsoleMode) of
     ilrSubmit:
       begin
@@ -596,6 +676,8 @@ begin
     ilrPassThrough:
       Result := False;
   else
+    if FCmd.Text <> Before then
+      UpdateSuggestions;
     Invalidate;
     Result := True;
   end;

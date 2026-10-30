@@ -321,6 +321,7 @@ begin
   DialogSetCheckbox(Decl, 'backspace_drive_menu', Cur.BackspaceDriveMenu);
   DialogSetCheckbox(Decl, 'drive_other_folder', Cur.DriveToOtherFolder);
   DialogSetCheckbox(Decl, 'space_selects', Cur.SpaceSelects);
+  DialogSetCheckbox(Decl, 'keep_panel_focus', Cur.KeepPanelFocus);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
@@ -705,6 +706,7 @@ begin
     Disp.BackspaceDriveMenu := FDialog.GetCheckbox('backspace_drive_menu');
     Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
     Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
+    Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');

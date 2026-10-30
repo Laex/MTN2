@@ -280,6 +280,7 @@
       "backspace_drive_menu": "Rücktaste im Laufwerksstamm öffnet das Lau&fwerkmenü",
       "drive_other_folder": "Laufwerks&wechsel öffnet den Ordner des anderen Panels",
       "space_selects": "Leertaste markiert und geht na&ch unten",
+      "keep_panel_focus": "Tippen setzt den Fokus nicht auf die Befehlsze&ile",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"

@@ -36,6 +36,7 @@ type
   THistoryPopup = class
   private
     FVisible: Boolean;
+    FSuggest: Boolean;
     FItems: TArray<string>;
     FHover: Integer;
     FTop: Integer;
@@ -43,11 +44,22 @@ type
     FOnRemove: TProc<string>;
     function ViewHeight: Integer;
     procedure EnsureHoverInView;
+    procedure RemoveHovered;
+    function HandleSuggestKey(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char; out APicked: string): THistoryPopupKeyResult;
   public
     /// <summary>Opens over / under the field at row AFieldRow, columns
     /// AFieldLeft..AFieldRight, inside an AAreaW x AAreaH grid. Starts on the
     /// entry equal to ACurrent, else the first. No-op with no items.</summary>
     procedure Open(const AItems: TArray<string>; const ACurrent: string;
+      AFieldRow, AFieldLeft, AFieldRight, AAreaW, AAreaH: Integer);
+    /// <summary>Like Open, but as a suggestion list that does not take the
+    /// keys from the field: nothing is highlighted until Up (the entry next
+    /// to the field, the last one) or Down moves into it; Enter picks only a
+    /// highlighted entry. Every other key goes on to the field and leaves
+    /// the list open, so the host re-filters it after the edit. AItems are in
+    /// display order, the last one nearest the field.</summary>
+    procedure OpenSuggestions(const AItems: TArray<string>;
       AFieldRow, AFieldLeft, AFieldRight, AAreaW, AAreaH: Integer);
     procedure Close;
     function HandleKey(var AKey: Word; AShift: TShiftState; var AKeyChar: Char;
@@ -59,6 +71,7 @@ type
       out APickedValid: Boolean): Boolean;
     procedure Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRenderer);
     property Visible: Boolean read FVisible;
+    property Suggesting: Boolean read FSuggest;
     property Items: TArray<string> read FItems;
     property Hover: Integer read FHover;
     property Bounds: TRectI read FBounds;
@@ -111,9 +124,21 @@ begin
   EnsureHoverInView;
 end;
 
+procedure THistoryPopup.OpenSuggestions(const AItems: TArray<string>;
+  AFieldRow, AFieldLeft, AFieldRight, AAreaW, AAreaH: Integer);
+begin
+  Open(AItems, '', AFieldRow, AFieldLeft, AFieldRight, AAreaW, AAreaH);
+  if not FVisible then
+    Exit;
+  FSuggest := True;
+  FHover := -1;
+  FTop := Max(Length(FItems) - ViewHeight, 0);
+end;
+
 procedure THistoryPopup.Close;
 begin
   FVisible := False;
+  FSuggest := False;
   SetLength(FItems, 0);
   FHover := 0;
   FTop := 0;
@@ -129,23 +154,86 @@ var
   ViewH: Integer;
 begin
   ViewH := ViewHeight;
-  FHover := EnsureRange(FHover, 0, Max(High(FItems), 0));
-  if FHover < FTop then
-    FTop := FHover;
-  if FHover >= FTop + ViewH then
-    FTop := FHover - ViewH + 1;
+  if FSuggest and (FHover < 0) then
+    FHover := -1
+  else
+  begin
+    FHover := EnsureRange(FHover, 0, Max(High(FItems), 0));
+    if FHover < FTop then
+      FTop := FHover;
+    if FHover >= FTop + ViewH then
+      FTop := FHover - ViewH + 1;
+  end;
   FTop := EnsureRange(FTop, 0, Max(Length(FItems) - ViewH, 0));
+end;
+
+procedure THistoryPopup.RemoveHovered;
+var
+  Removed: string;
+begin
+  Removed := FItems[FHover];
+  Delete(FItems, FHover, 1);
+  if Assigned(FOnRemove) then
+    FOnRemove(Removed);
+  if Length(FItems) = 0 then
+    Close;
+end;
+
+function THistoryPopup.HandleSuggestKey(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char; out APicked: string): THistoryPopupKeyResult;
+begin
+  APicked := '';
+  // Ctrl/Alt chords (the full-list chord among them) belong to the field.
+  if (ssCtrl in AShift) or (ssAlt in AShift) then
+    Exit(hpkPassOn);
+  Result := hpkHandled;
+  case AKey of
+    vkUp:
+      if FHover < 0 then
+        FHover := High(FItems)
+      else
+        FHover := Max(FHover - 1, 0);
+    vkDown:
+      if FHover >= High(FItems) then
+        FHover := -1
+      else if FHover >= 0 then
+        Inc(FHover);
+    vkEscape: Close;
+    vkReturn, 0:
+      if (AKey = vkReturn) or (AKeyChar = #13) then
+      begin
+        if FHover < 0 then
+          Exit(hpkPassOn);
+        APicked := FItems[FHover];
+        Close;
+        Result := hpkPicked;
+      end
+      else
+        Exit(hpkPassOn);
+    vkDelete:
+      if FHover >= 0 then
+        RemoveHovered
+      else
+        Exit(hpkPassOn);
+  else
+    Exit(hpkPassOn);
+  end;
+  if FVisible then
+    EnsureHoverInView;
+  AKey := 0;
+  AKeyChar := #0;
 end;
 
 function THistoryPopup.HandleKey(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char; out APicked: string): THistoryPopupKeyResult;
 var
   Last: Integer;
-  Removed: string;
 begin
   APicked := '';
   if not FVisible then
     Exit(hpkNotOpen);
+  if FSuggest then
+    Exit(HandleSuggestKey(AKey, AShift, AKeyChar, APicked));
   Result := hpkHandled;
   Last := High(FItems);
   case AKey of
@@ -166,15 +254,7 @@ begin
         Result := hpkPicked;
       end;
     vkEscape: Close;
-    vkDelete:
-      begin
-        Removed := FItems[FHover];
-        Delete(FItems, FHover, 1);
-        if Assigned(FOnRemove) then
-          FOnRemove(Removed);
-        if Length(FItems) = 0 then
-          Close;
-      end;
+    vkDelete: RemoveHovered;
   else
     if (AKey = 0) and (AKeyChar = #13) then
     begin

@@ -72,6 +72,13 @@ implementation
 uses
   System.Generics.Collections, System.Generics.Defaults, uPlatformInfo;
 
+const
+  /// <summary>Text of a command line that has the focus: white against the
+  /// grey of the idle line.</summary>
+  cFocusedText = TAlphaColor($FFFFFFFF);
+  /// <summary>Prompt of a command line that has the focus.</summary>
+  cFocusedPrompt = TAlphaColor($FF55FFFF);
+
 function UnquoteSingleToken(const AText: string): string;
 var
   S: string;
@@ -478,7 +485,15 @@ begin
   ResolveCmdLineInputColors(AFocused, StripFg, StripBg, AccFg, AccBg, Colors);
   FillGridRect(ABuffer, 0, AY, AWidth - 1, AY, ' ', Colors.Fg, Colors.Bg);
   Prefix := FormatCmdLinePrefix(CmdLinePathLabel(AURI), CmdLinePrefixMaxCells(AWidth));
-  PutGridText(ABuffer, 0, AY, Prefix, Colors.Fg, Colors.Bg);
+  // While the line has the focus its prompt turns aqua and the text white,
+  // on the unchanged background; without the focus both keep the strip colour.
+  if AFocused then
+  begin
+    PutGridText(ABuffer, 0, AY, Prefix, cFocusedPrompt, Colors.Bg);
+    Colors.Fg := cFocusedText;
+  end
+  else
+    PutGridText(ABuffer, 0, AY, Prefix, Colors.Fg, Colors.Bg);
   EditW := AWidth - Length(Prefix);
   if EditW > 0 then
     InputLineDraw(ABuffer, Length(Prefix), AY, EditW, ACmd, AFocused, Colors,

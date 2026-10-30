@@ -9,11 +9,12 @@ The command line is always below the panels: just start typing. A command runs i
 | ↑ / ↓ (while typing a command) | command history |
 | Tab | completion: a name from the panel, or a path from the disk when the word has `\`, `/` or `X:` (repeated presses cycle the matches) |
 | Ctrl+↓ / Alt+↓ (line focused) | command history as a list: Enter – put on the line, Del – remove from the history, Esc – close |
+| Typing in the line | the older commands that start with the typed text appear above the line as a list that does not take the keys: ↑ / ↓ select an entry, Enter puts it on the line (Enter with nothing selected runs the line), Del removes the entry from the history, Esc closes the list. With **Don't move focus to the command line when typing** (Options → User interface) set, what you type on the panels goes into the line without moving the focus there (Space and Backspace only when the line already has text); Ctrl+↓ or a click moves the focus |
 | Ctrl+Enter | insert the name of the item under the cursor |
 | Ctrl+F, Ctrl+Shift+Enter | insert the full path of the item |
 | Alt+Shift+Enter | run the command line in the background: the console shows the start for a moment, then the panels come back (**Options → Console...** below); with an empty line it runs the console program under the cursor the same way |
 | Ctrl+Alt+Enter | run the command line in a new terminal tab: a new workspace tab with the shell of the background console (cmd, PowerShell, WSL, ...), the command starts there and the tab stays open; with an empty line it runs the console program under the cursor in the terminal tab of the panels tab |
-| Esc | step by step: clear the line → give the focus back to the panel → show the console. With an empty line the first step is skipped; with the focus on the panel Esc shows the console at once |
+| Esc | step by step: clear the line → give the focus back to the panel → show the console. With an empty line the first step is skipped; with the focus on the panel text left in the line is cleared first, and with an empty line Esc shows the console at once |
 | Ctrl+O | panels ↔ console |
 | Ctrl+Shift+O | synchronize the folder between the active panel and the console |
 | Ctrl+Alt+O | choose the shell of the background console (cmd, PowerShell, WSL, …) |

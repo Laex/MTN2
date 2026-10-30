@@ -199,6 +199,7 @@ type
     FBackspaceDriveMenu: Boolean;
     FDriveToOtherFolder: Boolean;
     FSpaceSelects: Boolean;
+    FKeepPanelFocus: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -907,6 +908,7 @@ type
     /// <summary>Ctrl+Down / Alt+Down in the command line: its history as a
     /// drop-down above the line.</summary>
     procedure OpenCmdHistoryPopup;
+    procedure ShowCmdHistorySuggestions(const AItems: TArray<string>);
     /// <summary>A click while the command-line history list is open: True
     /// when it landed on the list.</summary>
     function ClickCmdHistoryPopup(ACol, ARow: Integer): Boolean;
@@ -1387,6 +1389,9 @@ type
     property BackspaceDriveMenu: Boolean read FBackspaceDriveMenu write FBackspaceDriveMenu;
     property DriveToOtherFolder: Boolean read FDriveToOtherFolder write FDriveToOtherFolder;
     property SpaceSelects: Boolean read FSpaceSelects write FSpaceSelects;
+    /// <summary>Typing on a file panel goes into the command line but leaves
+    /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
+    property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -2095,6 +2100,11 @@ begin
   FKeymapHost.ToggleInsertSelect := ToggleInsertSelect;
   FKeymapHost.SubmitCommandLine := SubmitCommandLine;
   FKeymapHost.TrySpaceSelect := TrySpaceSelect;
+  FKeymapHost.KeepPanelFocus :=
+    function: Boolean
+    begin
+      Result := FKeepPanelFocus;
+    end;
   FKeymapHost.HandleCmdLineInput := HandleCmdLineInput;
 end;
 
@@ -2223,6 +2233,7 @@ begin
   FFreeInputHost.HandleQuickSearchInput := HandleQuickSearchInput;
   FFreeInputHost.HandleCmdLineInput := HandleCmdLineInput;
   FFreeInputHost.FocusCommandLine := FocusCommandLine;
+  FFreeInputHost.ClearCommandLine := ClearCommandLine;
   FFreeInputHost.SwitchSide := SwitchSide;
   FFreeInputHost.GoToParent := GoToParent;
   FFreeInputHost.TryHotlistJump := FFolderHotlist.TryHandleHotkeyJump;
@@ -3266,6 +3277,7 @@ begin
   FCompareOptions := TPanelCompareOptions.Default;
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
   FCmdLineMgr.OnOpenHistoryPopup := OpenCmdHistoryPopup;
+  FCmdLineMgr.OnSuggestHistory := ShowCmdHistorySuggestions;
   FPendingSelectName := '';
   FPendingSelectSide := psLeft;
   FSelHelper := TDualPanelSelectionHelper.Create;
@@ -6012,6 +6024,20 @@ begin
   EditX := DualPanelCmdLineEditX(ActiveTab(ActivePanel(Ws)).CurrentURI, Area.Width);
   FCmdLineMgr.HistoryPopup.Open(FCmdLineMgr.GetHistoryItems, FCmdLineMgr.Text,
     CmdLineRow(Area.Height), EditX, Area.Width - 1, Area.Width, Area.Height);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.ShowCmdHistorySuggestions(const AItems: TArray<string>);
+var
+  Ws: TDualPanelWorkspaceTab;
+  EditX: Integer;
+begin
+  if not Assigned(FCmdLineMgr) or FConsoleMode then
+    Exit;
+  Ws := ActiveWorkspace;
+  EditX := DualPanelCmdLineEditX(ActiveTab(ActivePanel(Ws)).CurrentURI, Area.Width);
+  FCmdLineMgr.HistoryPopup.OpenSuggestions(AItems, CmdLineRow(Area.Height), EditX,
+    Area.Width - 1, Area.Width, Area.Height);
   NotifyChanged;
 end;
 

@@ -198,6 +198,10 @@ type
     /// <summary>Space selects the file under the cursor (when enabled and the
     /// command line is empty); True = the key was used.</summary>
     TrySpaceSelect: TKeymapCharFn;
+    /// <summary>True = typing on the panel goes into the command line without
+    /// moving the focus there (Ctrl+Down and a click still do). Nil = the
+    /// focus moves.</summary>
+    KeepPanelFocus: TFunc<Boolean>;
     HandleCmdLineInput: TKeymapInputFn;
   end;
 
@@ -246,6 +250,8 @@ type
     HandleQuickSearchInput: TKeymapInputFn;
     HandleCmdLineInput: TKeymapInputFn;
     FocusCommandLine: TKeymapProc;
+    /// <summary>Esc on the panel with text left in the command line.</summary>
+    ClearCommandLine: TKeymapProc;
     SwitchSide: TKeymapProc;
     /// <summary>Up one level (Enter on ".."): Backspace with an empty
     /// command line.</summary>
@@ -1142,7 +1148,8 @@ begin
       end;
     vkBack:
       begin
-        AHost.FocusCommandLine();
+        if not (Assigned(AHost.KeepPanelFocus) and AHost.KeepPanelFocus()) then
+          AHost.FocusCommandLine();
         Result := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
         Exit;
       end;
@@ -1167,7 +1174,8 @@ begin
         AKeyChar := #0;
         Exit(True);
       end;
-      AHost.FocusCommandLine();
+      if not (Assigned(AHost.KeepPanelFocus) and AHost.KeepPanelFocus()) then
+        AHost.FocusCommandLine();
       Result := AHost.HandleCmdLineInput(AKey, AShift, AKeyChar);
       Exit;
     end;
@@ -1482,6 +1490,15 @@ begin
   if ASnap.QuickViewVisible and (AKey = vkEscape) then
   begin
     AHost.CloseQuickView();
+    ConsumeKey(AKey, AKeyChar, False);
+    Exit;
+  end;
+  // Esc on the panel: text left in the command line goes first; the next Esc
+  // is the keymap's (the console).
+  if (AKey = vkEscape) and (AShift * cKeyMods = []) and ASnap.CmdLineHasText and
+     Assigned(AHost.ClearCommandLine) then
+  begin
+    AHost.ClearCommandLine();
     ConsumeKey(AKey, AKeyChar, False);
     Exit;
   end;

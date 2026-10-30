@@ -15,6 +15,7 @@ type
   public
     [SetupFixture] procedure SetupFixture;
     [Test] procedure TestPopup;
+    [Test] procedure TestSuggestions;
     [Test] [Category('WindowsOnly')] procedure TestPathCompletion;
   end;
 
@@ -23,7 +24,7 @@ implementation
 uses
   uTestPaths,
   System.SysUtils, System.Classes, System.UITypes, System.IOUtils,
-  uTerminalTypes, uThemeTypes, uHistoryPopup, uDualPanelCmd;
+  uTerminalTypes, uThemeTypes, uHistoryPopup, uDualPanelCmd, uDualPanelCmdLine;
 
 function Key(P: THistoryPopup; AKey: Word; AShift: TShiftState; out APicked: string;
   AChar: Char = #0): THistoryPopupKeyResult;
@@ -104,6 +105,48 @@ begin
   end;
 end;
 
+procedure TestSuggestions;
+var
+  P: THistoryPopup;
+  Picked: string;
+  S: TArray<string>;
+begin
+  S := CmdLineHistorySuggestions(['git push', 'dir', 'git status', 'GIT', 'git'], 'GIT');
+  Assert.AreEqual('git status,git push', string.Join(',', S), 'prefix, any case, oldest first, not equal');
+  S := CmdLineHistorySuggestions(['dir'], '');
+  Assert.IsTrue(Length(S) = 0, 'empty text: no suggestions');
+
+  P := THistoryPopup.Create;
+  try
+    P.OpenSuggestions(['one', 'two', 'three'], 20, 10, 50, 80, 25);
+    Assert.IsTrue(P.Visible and P.Suggesting and (P.Hover = -1), 'opens with nothing highlighted');
+    Assert.IsTrue(Key(P, Ord('x'), [], Picked, 'x') = hpkPassOn, 'typing goes to the field');
+    Assert.IsTrue(P.Visible, 'and leaves the list open');
+    Assert.IsTrue(Key(P, vkReturn, [], Picked) = hpkPassOn, 'Enter without a highlight runs the line');
+    Assert.IsTrue(Key(P, vkDelete, [], Picked) = hpkPassOn, 'Del without a highlight edits the line');
+    Assert.IsTrue(Key(P, vkDown, [ssCtrl], Picked) = hpkPassOn, 'Ctrl+Down is the field''s');
+
+    Assert.IsTrue(Key(P, vkUp, [], Picked) = hpkHandled, 'Up handled');
+    Assert.AreEqual(2, P.Hover, 'Up goes to the entry next to the field');
+    Key(P, vkUp, [], Picked);
+    Assert.AreEqual(1, P.Hover, 'Up goes further back');
+    Key(P, vkDown, [], Picked);
+    Key(P, vkDown, [], Picked);
+    Assert.AreEqual(-1, P.Hover, 'Down past the last entry drops the highlight');
+
+    Key(P, vkUp, [], Picked);
+    Assert.IsTrue(Key(P, vkReturn, [], Picked) = hpkPicked, 'Enter picks the highlighted entry');
+    Assert.AreEqual('three', Picked, 'picked entry');
+    Assert.IsTrue(not P.Visible and not P.Suggesting, 'list closed');
+
+    P.OpenSuggestions(['one', 'two'], 20, 10, 50, 80, 25);
+    Assert.IsTrue(Key(P, vkEscape, [], Picked) = hpkHandled, 'Esc handled');
+    Assert.IsTrue(not P.Visible, 'Esc closes the list');
+  finally
+    P.Free;
+  end;
+end;
+
 procedure TestPathCompletion;
 var
   Dir: string;
@@ -146,6 +189,11 @@ end;
 procedure TTestHistoryPopup.TestPopup;
 begin
   TestHistoryPopup.TestPopup;
+end;
+
+procedure TTestHistoryPopup.TestSuggestions;
+begin
+  TestHistoryPopup.TestSuggestions;
 end;
 
 procedure TTestHistoryPopup.TestPathCompletion;

@@ -115,6 +115,7 @@ type
     function CmdLine(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure SwitchSide;
     procedure GoToParent;
+    procedure ClearCmd;
     procedure NewTab;
     procedure NextTab;
     function Hotlist(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
@@ -616,6 +617,21 @@ begin
       'printable goes to cmdline');
     Assert.IsTrue(Spy.Last = 'focus+cmd', 'printable focuses then feeds cmdline');
 
+    // Option "keep the panel focus": typing and Backspace stay on the panel.
+    Host.KeepPanelFocus := function: Boolean begin Result := True; end;
+    Spy.Last := '';
+    Key := Ord('A');
+    KeyChar := 'a';
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),
+      'printable goes to the cmdline with the option on');
+    Assert.IsTrue(Spy.Last = '+cmd', 'printable feeds the cmdline without focusing it');
+    Spy.Last := '';
+    Key := vkBack;
+    KeyChar := #0;
+    Assert.IsTrue(DispatchPanelNavKeys(Host, Key, [], KeyChar, 10, False, 20),
+      'Backspace goes to the cmdline with the option on');
+    Assert.IsTrue(Spy.Last = '+cmd', 'Backspace edits the cmdline without focusing it');
+
   finally
     Spy.Free;
   end;
@@ -656,6 +672,7 @@ begin
 end;
 procedure TFreeInputSpy.SwitchSide; begin Last := 'switch'; end;
 procedure TFreeInputSpy.GoToParent; begin Last := 'parent'; end;
+procedure TFreeInputSpy.ClearCmd; begin Last := 'clear'; end;
 procedure TFreeInputSpy.NewTab; begin Last := 'newtab'; end;
 procedure TFreeInputSpy.NextTab; begin Last := 'nexttab'; end;
 function TFreeInputSpy.Hotlist(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
@@ -694,6 +711,7 @@ begin
   AHost.HandleCmdLineInput := ASpy.CmdLine;
   AHost.SwitchSide := ASpy.SwitchSide;
   AHost.GoToParent := ASpy.GoToParent;
+  AHost.ClearCommandLine := ASpy.ClearCmd;
   AHost.TryHotlistJump := ASpy.Hotlist;
   AHost.DispatchKeymapFunctionKeys := ASpy.DispatchFunc;
   AHost.OpenViewOrEdit := ASpy.ViewEdit;
@@ -842,15 +860,21 @@ begin
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'QV Esc handled');
     Assert.IsTrue(Spy.Last = 'closeqv', 'QV Esc closes');
 
-    // Focus on the panel: Esc is the keymap's (the console), even with text
-    // left in the command line.
+    // Focus on the panel: Esc clears text left in the command line first;
+    // the next Esc is the keymap's (the console).
     Snap.QuickViewVisible := False;
     Snap.CmdLineHasText := True;
     Spy.PrimaryHandled := True;
     Key := vkEscape;
     Ch := 'x';
     Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'panel Esc handled');
-    Assert.IsTrue(Spy.Last = 'primary', 'panel Esc goes to the keymap, not to the command line');
+    Assert.IsTrue(Spy.Last = 'clear', 'panel Esc clears the command line text first');
+    Assert.IsTrue(Key = 0, 'and consumes the key');
+    Snap.CmdLineHasText := False;
+    Key := vkEscape;
+    Ch := 'x';
+    Assert.IsTrue(DispatchPanelFreeInput(Host, Keymap, Snap, Key, [], Ch), 'empty line: Esc handled');
+    Assert.IsTrue(Spy.Last = 'primary', 'empty line: Esc goes to the keymap');
     Spy.PrimaryHandled := False;
 
     Snap.CmdLineHasText := False;

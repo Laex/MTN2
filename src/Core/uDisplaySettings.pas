@@ -114,6 +114,9 @@ type
     DriveToOtherFolder: Boolean;
     /// <summary>Space on an empty command line toggles the selection and moves down, like Insert.</summary>
     SpaceSelects: Boolean;
+    /// <summary>Typing on a file panel leaves the focus there; the command line
+    /// takes it only on Ctrl+Down or a click.</summary>
+    KeepPanelFocus: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -355,6 +358,7 @@ begin
   Result.BackspaceDriveMenu := False;
   Result.DriveToOtherFolder := False;
   Result.SpaceSelects := False;
+  Result.KeepPanelFocus := False;
   Result.Language := '';
 end;
 

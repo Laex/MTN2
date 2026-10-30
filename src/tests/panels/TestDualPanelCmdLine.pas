@@ -12,6 +12,8 @@ type
     [Test] [Category('WindowsOnly')] procedure TestPathResolve;
     [Test] procedure TestCompletionHelpers;
     [Test] procedure TestTabAndHistory;
+    [Test] procedure TestTypingSuggestsHistory;
+    [Test] procedure TestUpOnEmptyLineListsHistory;
     [Test] procedure TestHistoryKeepsCurrentLine;
     [Test] procedure TestCtrlUpReturnsToPanel;
     [Test] procedure TestEnterReturnsFocusToPanel;
@@ -163,10 +165,14 @@ begin
       CmdLinePrefixMaxCells(40));
     Assert.IsTrue(Grid[1][0].CharValue = Prefix[1], 'prefix starts the row');
     Assert.IsTrue(Grid[1][Length(Prefix)].CharValue = 'd', 'edit starts after prefix');
+    Assert.IsTrue(Grid[1][Length(Prefix)].FgColor = Spy.StripFg, 'unfocused text keeps the strip colour');
 
     Spy.StripCalls := 0;
     DrawDualPanelCommandLine(Host, Grid, 1, 40, 'file:///C:/Work', Cmd, True, True);
     Assert.IsTrue(Spy.AccentCalls = 1, 'focus asks accent');
+    Assert.IsTrue((Grid[1][0].FgColor = TAlphaColor($FF55FFFF)) and (Grid[1][0].BgColor = Spy.StripBg),
+      'focused prompt changes the colour, not the background');
+    Assert.IsTrue(Grid[1][Length(Prefix)].FgColor = TAlphaColor($FFFFFFFF), 'focused text is white');
   finally
     Spy.Free;
   end;
@@ -216,6 +222,95 @@ begin
     Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'history up');
     Assert.IsTrue(Mgr.Text = 'type about.md', 'Up recalls last command');
   finally
+    Mgr.Free;
+  end;
+end;
+
+procedure TestTypingSuggestsHistory;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Shown: TArray<string>;
+  Calls: Integer;
+
+  procedure TypeChar(AChar: Char);
+  var
+    Key: Word;
+    Ch: Char;
+  begin
+    Key := Ord(UpCase(AChar));
+    Ch := AChar;
+    Mgr.HandleInput(Key, [], Ch);
+  end;
+
+begin
+  Calls := 0;
+  Mgr := TDualPanelCmdLineManager.Create(nil, nil);
+  try
+    Mgr.RememberCommand('zzq build all');
+    Mgr.RememberCommand('zzq test');
+    Mgr.OnSuggestHistory :=
+      procedure(const AItems: TArray<string>)
+      begin
+        Shown := AItems;
+        Inc(Calls);
+      end;
+
+    Mgr.Focus;
+    TypeChar('z');
+    TypeChar('z');
+    TypeChar('q');
+    Assert.AreEqual('zzq build all,zzq test', string.Join(',', Shown),
+      'typed prefix lists the matching commands, oldest first');
+    TypeChar(' ');
+    TypeChar('t');
+    Assert.AreEqual('zzq test', string.Join(',', Shown), 'the list narrows as typing goes on');
+    Assert.AreEqual(5, Calls, 'one update per edit');
+    TypeChar('x');
+    Assert.AreEqual(5, Calls, 'no match: nothing to show');
+    Assert.IsFalse(Mgr.HistoryPopup.Visible, 'no match: list closed');
+  finally
+    Mgr.RemoveHistory('zzq build all');
+    Mgr.RemoveHistory('zzq test');
+    Mgr.Free;
+  end;
+end;
+
+procedure TestUpOnEmptyLineListsHistory;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Key: Word;
+  Ch: Char;
+begin
+  Mgr := TDualPanelCmdLineManager.Create(nil, nil);
+  try
+    Mgr.RememberCommand('zzu first');
+    Mgr.RememberCommand('zzu second');
+    Mgr.OnSuggestHistory :=
+      procedure(const AItems: TArray<string>)
+      begin
+        Mgr.HistoryPopup.OpenSuggestions(AItems, 20, 0, 40, 80, 25);
+      end;
+    Mgr.Focus;
+    Key := vkUp;
+    Ch := #0;
+    Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'Up handled');
+    Assert.IsTrue(Mgr.HistoryPopup.Visible, 'Up on an empty line opens the history list');
+    Assert.AreEqual('', Mgr.Text, 'the line stays empty');
+    Assert.AreEqual('zzu second', Mgr.HistoryPopup.Items[Mgr.HistoryPopup.Hover],
+      'the newest command is highlighted');
+
+    Mgr.HistoryPopup.Close;
+    Mgr.InsertText('zzu f');
+    Key := vkUp;
+    Ch := #0;
+    Assert.IsTrue(Mgr.HandleInput(Key, [], Ch), 'Up with text handled');
+    Assert.IsTrue(Mgr.HistoryPopup.Visible, 'Up with text opens the list');
+    Assert.AreEqual('zzu first', Mgr.HistoryPopup.Items[Mgr.HistoryPopup.Hover],
+      'the list holds the commands that start with the text');
+    Assert.AreEqual('zzu f', Mgr.Text, 'the line is not changed');
+  finally
+    Mgr.RemoveHistory('zzu first');
+    Mgr.RemoveHistory('zzu second');
     Mgr.Free;
   end;
 end;
@@ -463,6 +558,16 @@ end;
 procedure TTestDualPanelCmdLine.TestTabAndHistory;
 begin
   TestDualPanelCmdLine.TestTabAndHistory;
+end;
+
+procedure TTestDualPanelCmdLine.TestTypingSuggestsHistory;
+begin
+  TestDualPanelCmdLine.TestTypingSuggestsHistory;
+end;
+
+procedure TTestDualPanelCmdLine.TestUpOnEmptyLineListsHistory;
+begin
+  TestDualPanelCmdLine.TestUpOnEmptyLineListsHistory;
 end;
 
 procedure TTestDualPanelCmdLine.TestHistoryKeepsCurrentLine;
