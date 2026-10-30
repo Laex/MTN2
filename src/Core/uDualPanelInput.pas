@@ -100,6 +100,7 @@ type
     EqualizeOtherPanelToActive: TKeymapProc;
     EqualizeActivePanelFromOther: TKeymapProc;
     CursorToSameNameInOtherPanel: TKeymapProc;
+    StartQuickSearch: TKeymapProc;
     FocusCommandLine: TKeymapProc;
     ClearCommandLine: TKeymapProc;
     RunDetached: TKeymapProc;
@@ -715,6 +716,9 @@ begin
     kaExportList:
       if Assigned(AHost.ExportItemList) then
         AHost.ExportItemList();
+    kaQuickSearch:
+      if Assigned(AHost.StartQuickSearch) then
+        AHost.StartQuickSearch();
   else
     Exit(False);
   end;

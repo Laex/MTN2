@@ -117,6 +117,8 @@ type
     KeepPanelFocus: Boolean;
     /// <summary>Alt quick search stays open after Alt is released (see TDisplaySettings).</summary>
     StickyQuickSearch: Boolean;
+    /// <summary>An emptied quick search stays open (see TDisplaySettings).</summary>
+    QuickSearchKeepEmpty: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -659,6 +661,7 @@ begin
       Root.AddPair('spaceSelects', TJSONBool.Create(ASession.SpaceSelects));
       Root.AddPair('keepPanelFocus', TJSONBool.Create(ASession.KeepPanelFocus));
       Root.AddPair('stickyQuickSearch', TJSONBool.Create(ASession.StickyQuickSearch));
+      Root.AddPair('quickSearchKeepEmpty', TJSONBool.Create(ASession.QuickSearchKeepEmpty));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -746,6 +749,7 @@ begin
   ASession.SpaceSelects := False;
   ASession.KeepPanelFocus := False;
   ASession.StickyQuickSearch := False;
+  ASession.QuickSearchKeepEmpty := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -851,6 +855,7 @@ begin
       ASession.SpaceSelects := JsonBool(Root, 'spaceSelects', False);
       ASession.KeepPanelFocus := JsonBool(Root, 'keepPanelFocus', False);
       ASession.StickyQuickSearch := JsonBool(Root, 'stickyQuickSearch', False);
+      ASession.QuickSearchKeepEmpty := JsonBool(Root, 'quickSearchKeepEmpty', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then

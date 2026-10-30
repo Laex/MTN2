@@ -126,6 +126,9 @@ procedure DialogSetColorPicker(var ADecl: TDialogDeclaration; const AId: string;
 procedure DialogSetInputHistory(var ADecl: TDialogDeclaration; const AId, AKey: string);
 procedure DialogSetCheckbox(var ADecl: TDialogDeclaration; const AId: string;
   AChecked: Boolean);
+/// <summary>Sets a checkbox by state (see DialogCheckboxState).</summary>
+procedure DialogSetTriState(var ADecl: TDialogDeclaration; const AId: string;
+  AState: Integer);
 procedure DialogSetRadio(var ADecl: TDialogDeclaration; const AGroupId,
   ASelectedId: string);
 procedure DialogSetButtonText(var ADecl: TDialogDeclaration; const AId, AText: string);
@@ -472,6 +475,16 @@ begin
   I := FindControl(ADecl, AId);
   if (I >= 0) and (ADecl.Controls[I].Kind = dckCheckbox) then
     ADecl.Controls[I].Checked := AChecked;
+end;
+
+procedure DialogSetTriState(var ADecl: TDialogDeclaration; const AId: string;
+  AState: Integer);
+var
+  I: Integer;
+begin
+  I := FindControl(ADecl, AId);
+  if (I >= 0) and (ADecl.Controls[I].Kind = dckCheckbox) then
+    DialogSetCheckboxState(ADecl.Controls[I], AState);
 end;
 
 procedure DialogSetRadio(var ADecl: TDialogDeclaration; const AGroupId,

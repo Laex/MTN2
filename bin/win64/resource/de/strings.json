@@ -282,6 +282,7 @@
       "space_selects": "Leertaste markiert und geht na&ch unten",
       "keep_panel_focus": "Tippen setzt den Fokus nicht auf die Befehlsze&ile",
       "sticky_quick_search": "Schnellsuche nach dem Loslassen von Alt offe&n lassen",
+      "quick_search_keep_empty": "Schnellsuche auch bei leere&r Eingabe offen lassen",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"
@@ -630,18 +631,18 @@
     },
     "DIALOG_SETATTR": {
       "$title": "Attribute setzen",
-      "lbl_ro": "Schreibgeschützt",
-      "lbl_h": "Versteckt",
-      "lbl_a": "Archiv",
-      "lbl_s": "System",
+      "attr_ro": "&Schreibgeschützt",
+      "attr_h": "&Versteckt",
+      "attr_a": "Arch&iv",
+      "attr_s": "S&ystem",
       "lbl_volume": "Volume:",
       "lbl_device": "Gerät:",
-      "lbl_comp": "Komprimiert",
-      "lbl_enc": "Verschlüsselt",
-      "lbl_noidx": "Nicht indiziert",
-      "lbl_sparse": "Sparse",
-      "lbl_temp": "Temporär",
-      "lbl_off": "Offline",
+      "attr_comp": "Ko&mprimiert",
+      "attr_enc": "Vers&chlüsselt",
+      "attr_noidx": "&Nicht indiziert",
+      "attr_sparse": "S&parse",
+      "attr_temp": "&Temporär",
+      "attr_off": "Of&fline",
       "sys_props": "System-&Eigenschaften",
       "lbl_owner": "Besitzer:",
       "change_owner": "Besitzer &ändern",
@@ -652,57 +653,7 @@
       "dates_orig": "&Original",
       "recurse": "&Unterordner einbeziehen",
       "ok": "Setzen",
-      "cancel": "Abbrechen",
-      "attr_ro_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_h_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_a_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_comp_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_enc_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_noidx_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_sparse_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_temp_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_off_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      },
-      "attr_s_items": {
-        "Keep as is": "Unverändert lassen",
-        "Set": "Setzen",
-        "Clear": "Entfernen"
-      }
+      "cancel": "Abbrechen"
     },
     "DIALOG_SSHCONNECTIONEDIT": {
       "$title": "SSH/SFTP-Verbindung",
@@ -936,6 +887,7 @@
     "keymap.action.MultiRename": "Mehrfach umbenennen",
     "keymap.action.CopyItemName": "Namen kopieren",
     "keymap.action.ExportList": "Liste in Datei speichern",
+    "keymap.action.QuickSearch": "Schnellsuche (ohne Alt)",
     "keymap.action.ShellContextMenu": "Windows-Kontextmenü",
     "keymap.action.DocViewEdit": "Viewer <-> Editor",
     "keymap.action.DocHex": "Hex <-> Text",

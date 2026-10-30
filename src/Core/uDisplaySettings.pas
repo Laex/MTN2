@@ -120,6 +120,9 @@ type
     /// <summary>Alt quick search on a file panel stays open after Alt is released;
     /// Esc, Enter or any non-text key ends it.</summary>
     StickyQuickSearch: Boolean;
+    /// <summary>Erasing the last character of a quick search leaves the empty
+    /// field open instead of closing it.</summary>
+    QuickSearchKeepEmpty: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -363,6 +366,7 @@ begin
   Result.SpaceSelects := False;
   Result.KeepPanelFocus := False;
   Result.StickyQuickSearch := False;
+  Result.QuickSearchKeepEmpty := False;
   Result.Language := '';
 end;
 

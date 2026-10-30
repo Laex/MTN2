@@ -394,28 +394,29 @@ begin
   case FSearch.Phase of
     spRunning:
       begin
-        PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 2,
+        // The frame owns R.Left / R.Right; a one-cell gap stays free next to
+        // each, so the text starts at R.Left + 2 and has R.Width - 4 cells.
+        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 2,
           Format('Found: %d', [FSearch.FoundCount]),
           False, False, False, cFileFg, cPanelBg);
         Line := FSearch.CurrentDir;
-        // Text starts at R.Left + 1 and the frame owns R.Left / R.Right, so
-        // only R.Width - 2 cells are writable. Keep the tail: the deep end of
-        // the path is the part that changes while scanning.
-        MaxW := R.Width - 2;
+        // Keep the tail: the deep end of the path is the part that changes
+        // while scanning.
+        MaxW := R.Width - 4;
         if (MaxW > 1) and (Length(Line) > MaxW) then
           Line := cEllipsis + Copy(Line, Length(Line) - MaxW + 2, MaxInt);
-        PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 3, Line,
+        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 3, Line,
           True, False, False, cDirFg, cPanelBg);
-        PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 5, 'Esc=Cancel',
+        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 5, 'Esc=Cancel',
           True, False, False, cMenuHot, cPanelBg);
       end;
     spResults:
       begin
         if FSearch.Message <> '' then
-          PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 1, FSearch.Message,
+          PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 1, FSearch.Message,
             True, False, False, cMenuHot, cPanelBg)
         else
-          PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 1,
+          PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 1,
             'Enter=Go to  Esc=Close', True, False, False, cMenuHot, cPanelBg);
 
         ViewH := Max(R.Height - 4, 1);

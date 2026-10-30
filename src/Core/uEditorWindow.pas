@@ -362,6 +362,7 @@ type
     function ClipboardGetText: string;
     procedure ClipboardSetText(const AText: string);
     function FindMatch(AForward: Boolean): Boolean;
+    function HexFindMatch(AForward: Boolean): Boolean;
     /// <summary>The word under the cursor (Word button of the Find dialogs).</summary>
     function WordAtCursor: string;
     /// <summary>First line of the selection, or the current line when nothing
@@ -504,7 +505,8 @@ implementation
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
   System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps, uDisplaySettings;
+  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps, uDisplaySettings,
+  uFileFind;
 
 var
   /// <summary>Width the last Format text command used; the dialog opens with it.</summary>
@@ -4300,6 +4302,96 @@ begin
     end);
 end;
 
+// In the hex dump the cursor and selection are (dump row, byte in row), so the
+// text engine cannot be used: the query is matched against the raw bytes, first
+// as UTF-8 text, then as a hex pattern ("4D 5A ?? 90").
+function TEditorWindow.HexFindMatch(AForward: Boolean): Boolean;
+var
+  Needle, Err: string;
+  Per, Start, Hit, Len, I: Integer;
+  Opts: TSearchOptions;
+  Forward: Boolean;
+  Candidates: TArray<TArray<Integer>>;
+  Pattern, Best: TArray<Integer>;
+  Bytes: TBytes;
+  GetB: TGetByteFunc;
+  R1, C1, R2, C2: Integer;
+begin
+  Result := False;
+  Needle := FFindText;
+  if (Trim(Needle) = '') or (FDoc.ByteCount = 0) then
+  begin
+    FFindStatus := 'not found';
+    NotifyHost;
+    Exit;
+  end;
+  Opts := GEditorSearchOptions;
+  Per := HexBytesPerRow;
+  ClampCursor;
+  Forward := AForward <> Opts.SearchBackwards;
+
+  Bytes := TEncoding.UTF8.GetBytes(Needle);
+  SetLength(Pattern, Length(Bytes));
+  for I := 0 to High(Bytes) do
+    Pattern[I] := Bytes[I];
+  Candidates := [Pattern];
+  if TryParseHexPattern(Needle, Pattern, Err) then
+    Candidates := Candidates + [Pattern];
+
+  if Forward then
+    Start := TEditorHexFormatter.AbsoluteByteIndex(FCursorRow, FCursorCol, Per)
+  else
+  begin
+    R1 := FCursorRow;
+    C1 := FCursorCol;
+    if HasSelection then
+      GetSelRange(R1, C1, R2, C2);
+    Start := TEditorHexFormatter.AbsoluteByteIndex(R1, C1, Per);
+  end;
+  Start := Max(Start, 0);
+
+  GetB :=
+    function(AIndex: Integer): Byte
+    begin
+      Result := FDoc.GetByte(AIndex);
+    end;
+  Hit := -1;
+  Len := 0;
+  for I := 0 to High(Candidates) do
+  begin
+    Best := Candidates[I];
+    Hit := TEditorHexFormatter.FindBytes(FDoc.ByteCount, GetB, Best, Start,
+      Forward, not Opts.MatchCase);
+    if Hit >= 0 then
+    begin
+      Len := Length(Best);
+      Break;
+    end;
+  end;
+
+  if Hit >= 0 then
+  begin
+    FColumnMode := False;
+    FHexHighNibble := True;
+    FSelAnchorRow := Hit div Per;
+    FSelAnchorCol := Hit mod Per;
+    // The cursor sits on the byte after the match (clamped to the last byte
+    // at the end of the file), as in the text editor.
+    FCursorRow := (Hit + Len) div Per;
+    FCursorCol := (Hit + Len) mod Per;
+    ClampCursor;
+    EnsureCursorVisible;
+    FFindStatus := Format('found %.8x', [Hit]);
+    Result := True;
+    NotifyHost;
+    Exit;
+  end;
+
+  FFindStatus := 'not found';
+  NotFoundMessage(Needle);
+  NotifyHost;
+end;
+
 function TEditorWindow.FindMatch(AForward: Boolean): Boolean;
 var
   Needle, Err: string;
@@ -4309,6 +4401,8 @@ var
   Hit: TSearchResult;
   Forward: Boolean;
 begin
+  if FHexMode then
+    Exit(HexFindMatch(AForward));
   Result := False;
   Needle := FFindText;
   if (Trim(Needle) = '') or not FDoc.Ready or (FDoc.LineCount = 0) then

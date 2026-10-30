@@ -855,6 +855,43 @@ begin
   Result := AUri;
 end;
 
+{ Points ATab at the latest folder of its history that is not a find result
+  (the system drive when there is none) and drops find entries from it. }
+procedure LeaveFindResults(var ATab: TTab);
+var
+  J: Integer;
+  Target: string;
+  Kept: TArray<string>;
+begin
+  Target := '';
+  for J := Min(ATab.HistoryIndex, High(ATab.History)) downto 0 do
+    if (ATab.History[J] <> '') and not IsFindUri(ATab.History[J]) then
+    begin
+      Target := ATab.History[J];
+      Break;
+    end;
+  if Target = '' then
+    Target := AvailableFolderUri('');
+  for J := 0 to High(ATab.History) do
+    if not IsFindUri(ATab.History[J]) then
+      Kept := Kept + [ATab.History[J]];
+  ATab.History := Kept;
+  ATab.HistoryIndex := Length(Kept) - 1;
+  for J := High(Kept) downto 0 do
+    if SameVfsUri(Kept[J], Target) then
+    begin
+      ATab.HistoryIndex := J;
+      Break;
+    end;
+  ATab.CurrentURI := Target;
+  ATab.Title := VfsUriTitle(Target);
+  ATab.CursorIndex := 0;
+  ATab.CursorName := '';
+  ATab.ScrollOffset := 0;
+  SetLength(ATab.SelectedURIs, 0);
+  SetLength(ATab.PrevSelectedURIs, 0);
+end;
+
 class procedure TDualPanelTabManager.ReplaceUnavailableFolders(
   var AState: TDualPanelWindowState);
 var
@@ -871,6 +908,10 @@ begin
         Panel := AState.WorkspaceTabs[W].State.RightPanel;
       for I := 0 to High(Panel.Tabs) do
       begin
+        // find:// results live in memory only; after a restart the tab goes
+        // back to the folder it was opened from.
+        if IsFindUri(Panel.Tabs[I].CurrentURI) then
+          LeaveFindResults(Panel.Tabs[I]);
         if not Panel.Tabs[I].CurrentURI.StartsWith('file:', True) then
           Continue;
         Path := FileUriToPath(Panel.Tabs[I].CurrentURI);

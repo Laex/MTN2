@@ -283,6 +283,7 @@
       "space_selects": "Space se&lects files, then moves down",
       "keep_panel_focus": "Don't move focus to the command line when typi&ng",
       "sticky_quick_search": "Keep &quick search open after Alt is released",
+      "quick_search_keep_empty": "Keep an empt&y quick search open",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"
@@ -631,18 +632,18 @@
     },
     "DIALOG_SETATTR": {
       "$title": "Set attributes",
-      "lbl_ro": "Read-only",
-      "lbl_h": "Hidden",
-      "lbl_a": "Archive",
-      "lbl_s": "System",
+      "attr_ro": "&Read-only",
+      "attr_h": "&Hidden",
+      "attr_a": "&Archive",
+      "attr_s": "&System",
       "lbl_volume": "Volume:",
       "lbl_device": "Device:",
-      "lbl_comp": "Compressed",
-      "lbl_enc": "Encrypted",
-      "lbl_noidx": "Not indexed",
-      "lbl_sparse": "Sparse",
-      "lbl_temp": "Temporary",
-      "lbl_off": "Offline",
+      "attr_comp": "Co&mpressed",
+      "attr_enc": "&Encrypted",
+      "attr_noidx": "&Not indexed",
+      "attr_sparse": "S&parse",
+      "attr_temp": "&Temporary",
+      "attr_off": "Of&fline",
       "sys_props": "S&ystem properties",
       "lbl_owner": "Owner:",
       "change_owner": "&Change owner",
@@ -651,59 +652,9 @@
       "lbl_accessed": "Accessed",
       "dates_now": "C&urrent",
       "dates_orig": "&Original",
-      "recurse": "&Process subfolders",
+      "recurse": "Process su&bfolders",
       "ok": "Set",
-      "cancel": "Cancel",
-      "attr_a_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_h_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_ro_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_comp_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_enc_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_noidx_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_sparse_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_temp_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_off_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      },
-      "attr_s_items": {
-        "Clear": "Clear",
-        "Keep as is": "Keep as is",
-        "Set": "Set"
-      }
+      "cancel": "Cancel"
     },
     "DIALOG_SSHCONNECTIONEDIT": {
       "$title": "SSH/SFTP Connection",
@@ -937,6 +888,7 @@
     "keymap.action.MultiRename": "Multi-rename",
     "keymap.action.CopyItemName": "Copy name",
     "keymap.action.ExportList": "Save list to a file",
+    "keymap.action.QuickSearch": "Quick search (without Alt)",
     "keymap.action.ShellContextMenu": "Windows context menu",
     "keymap.action.DocViewEdit": "Viewer <-> editor",
     "keymap.action.DocHex": "Hex <-> text",

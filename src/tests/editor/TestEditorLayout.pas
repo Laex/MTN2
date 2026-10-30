@@ -15,6 +15,7 @@ type
     [Test] procedure TestStatus;
     [Test] procedure TestCaretDrawCol;
     [Test] procedure TestHexCells;
+    [Test] procedure TestHexFindBytes;
   end;
 
 implementation
@@ -207,6 +208,41 @@ begin
   Assert.IsTrue(TEditorHexFormatter.AbsoluteByteIndex(1, 2, 16) = 18, 'byte index');
 end;
 
+procedure TestHexFindBytes;
+var
+  Data: TBytes;
+  Get: TGetByteFunc;
+
+  function Find(const APattern: TArray<Integer>; AStart: Integer;
+    AForward, AIgnoreCase: Boolean): Integer;
+  begin
+    Result := TEditorHexFormatter.FindBytes(Length(Data), Get, APattern, AStart,
+      AForward, AIgnoreCase);
+  end;
+
+begin
+  // 'MZ' at 0 and 6, 'mz' at 3.
+  Data := [$4D, $5A, $00, $6D, $7A, $00, $4D, $5A, $90];
+  Get :=
+    function(AIndex: Integer): Byte
+    begin
+      Result := Data[AIndex];
+    end;
+  Assert.AreEqual(0, Find([$4D, $5A], 0, True, False), 'forward from start');
+  Assert.AreEqual(6, Find([$4D, $5A], 1, True, False), 'forward skips the earlier match');
+  Assert.AreEqual(0, Find([$4D, $5A], 7, True, False), 'forward wraps to the start');
+  Assert.AreEqual(6, Find([$4D, $5A], 7, False, False), 'backward finds the previous start');
+  Assert.AreEqual(6, Find([$4D, $5A], 0, False, False), 'backward wraps to the end');
+  Assert.AreEqual(3, Find([$4D, $5A], 1, True, True), 'case-insensitive ASCII');
+  Assert.AreEqual(6, Find([$4D, $5A], 1, True, False), 'case-sensitive ASCII');
+  Assert.AreEqual(6, Find([$4D, -1, $90], 0, True, False), 'wildcard byte');
+  Assert.AreEqual(-1, Find([$DE, $AD], 0, True, False), 'absent pattern');
+  Assert.AreEqual(8, Find([$90], 0, True, False), 'last byte');
+  Assert.AreEqual(-1, Find([$4D, $5A, $90, $00], 0, True, False), 'pattern longer than the rest');
+  Assert.AreEqual(-1, Find(nil, 0, True, False), 'empty pattern');
+  Assert.AreEqual(8, Find([$90], 100, False, False), 'start past the end');
+end;
+
 { TTestEditorLayout }
 
 procedure TTestEditorLayout.TestModeAndEdit;
@@ -237,6 +273,11 @@ end;
 procedure TTestEditorLayout.TestHexCells;
 begin
   TestEditorLayout.TestHexCells;
+end;
+
+procedure TTestEditorLayout.TestHexFindBytes;
+begin
+  TestEditorLayout.TestHexFindBytes;
 end;
 
 initialization

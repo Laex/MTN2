@@ -56,6 +56,9 @@ type
     FRightWatch: TDirectoryWatcher;
     FWatchPending: array[TPanelSide] of Boolean;
     FQuickSearchActive: Boolean;
+    // Opened by the Quick search action, with no Alt held: it lingers like a
+    // sticky search whatever the setting says.
+    FQuickSearchLatched: Boolean;
     FQuickSearchText: string;
     /// <summary>The masks behind the entries of the open filter dialog's list.</summary>
     FFilterPresets: TArray<string>;
@@ -205,6 +208,7 @@ type
     FSpaceSelects: Boolean;
     FKeepPanelFocus: Boolean;
     FStickyQuickSearch: Boolean;
+    FQuickSearchKeepEmpty: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -563,6 +567,8 @@ type
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
+    procedure StartQuickSearch;
+    function QuickSearchLingers: Boolean;
     procedure DrawQuickSearchField(const ABounds: TRectI);
     procedure OpenPanelFilter;
     function HandlePanelFilterCommand(const AControlId: string): Boolean;
@@ -931,6 +937,7 @@ type
     procedure MoveCursor(ADelta: Integer);
     procedure SwitchSide;
     procedure SwapPanels;
+    procedure EqualizeSourceOfSide(ASide: TPanelSide; out AUri, ASelectName: string);
     procedure EqualizeOtherPanelToActive;
     /// <summary>The cursor of the other panel moves to the row named like the
     /// row under the cursor of the active panel; the other panel keeps its
@@ -1398,6 +1405,7 @@ type
     /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
     property StickyQuickSearch: Boolean read FStickyQuickSearch write FStickyQuickSearch;
+    property QuickSearchKeepEmpty: Boolean read FQuickSearchKeepEmpty write FQuickSearchKeepEmpty;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -2012,6 +2020,7 @@ begin
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
   FKeymapHost.CursorToSameNameInOtherPanel := CursorToSameNameInOtherPanel;
+  FKeymapHost.StartQuickSearch := StartQuickSearch;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
   FKeymapHost.FocusCommandLine := FocusCommandLine;
   FKeymapHost.ClearCommandLine := ClearCommandLine;
@@ -6248,10 +6257,10 @@ begin
   Fields.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
   Fields.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
   Fields.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
-  Fields.Filters.AttrReadOnly := FDialog.GetCheckbox('filter_attr_ro');
-  Fields.Filters.AttrHidden := FDialog.GetCheckbox('filter_attr_hidden');
-  Fields.Filters.AttrSystem := FDialog.GetCheckbox('filter_attr_system');
-  Fields.Filters.AttrArchive := FDialog.GetCheckbox('filter_attr_archive');
+  Fields.Filters.AttrReadOnly := TFindAttrState(FDialog.GetCheckboxState('filter_attr_ro'));
+  Fields.Filters.AttrHidden := TFindAttrState(FDialog.GetCheckboxState('filter_attr_hidden'));
+  Fields.Filters.AttrSystem := TFindAttrState(FDialog.GetCheckboxState('filter_attr_system'));
+  Fields.Filters.AttrArchive := TFindAttrState(FDialog.GetCheckboxState('filter_attr_archive'));
   Fields.SyncTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
   Fields.SyncByContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
   // Rename from overwrite-ask: keep pending conflict; open name dialog.
@@ -7608,6 +7617,22 @@ begin
   if not FQuickSearchActive and (FQuickSearchText = '') then
     Exit;
   FQuickSearchActive := False;
+  FQuickSearchLatched := False;
+  FQuickSearchText := '';
+  NotifyChanged;
+end;
+
+function TDualPanelWindow.QuickSearchLingers: Boolean;
+begin
+  Result := FStickyQuickSearch or FQuickSearchLatched;
+end;
+
+procedure TDualPanelWindow.StartQuickSearch;
+begin
+  if ActiveWorkspace.Kind <> wkPanels then
+    Exit;
+  FQuickSearchActive := True;
+  FQuickSearchLatched := True;
   FQuickSearchText := '';
   NotifyChanged;
 end;
@@ -7630,7 +7655,7 @@ begin
   Result := True;
   // A sticky search ends on Ctrl chords and on keys that are not text, Backspace
   // or Up / Down; the key itself then acts as usual.
-  if FStickyQuickSearch and FQuickSearchActive and
+  if QuickSearchLingers and FQuickSearchActive and
      ((ssCtrl in AShift) or
       ((ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) = nbaUnhandled) and
        (AKey <> vkUp) and (AKey <> vkDown) and (AKey <> vkShift) and
@@ -7644,7 +7669,7 @@ begin
       begin
         ClearQuickSearch;
         // Enter opens the item under the cursor; only Esc is consumed.
-        if FStickyQuickSearch and (AKey = vkReturn) then
+        if QuickSearchLingers and (AKey = vkReturn) then
           Exit(False);
         AKey := 0;
         AKeyChar := #0;
@@ -7652,8 +7677,13 @@ begin
     nbaBackspace:
       begin
         NeedleBackspace(FQuickSearchText);
-        if FQuickSearchText = '' then
+        // An empty field stays open when asked for: a letter that cannot be
+        // typed after Alt can be typed after any other Alt+letter and Backspace.
+        if (FQuickSearchText = '') and not FQuickSearchKeepEmpty then
+        begin
           FQuickSearchActive := False;
+          FQuickSearchLatched := False;
+        end;
         AKey := 0;
         AKeyChar := #0;
         NotifyChanged;
@@ -10320,11 +10350,43 @@ begin
   NotifyChanged;
 end;
 
+procedure TDualPanelWindow.EqualizeSourceOfSide(ASide: TPanelSide;
+  out AUri, ASelectName: string);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Rows: TPanelRows;
+  Idx: Integer;
+  Path: string;
+begin
+  Ws := ActiveWorkspace;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  AUri := ActiveTab(Panel).CurrentURI;
+  ASelectName := '';
+  // A find panel is a flat list: the other panel gets the folder of the item
+  // under the cursor, with the cursor on that item.
+  if not IsFindUri(AUri) then
+    Exit;
+  Rows := RowsForSide(ASide);
+  Idx := ActiveTab(Panel).CursorIndex;
+  if (Idx < 0) or (Idx > High(Rows)) or Rows[Idx].IsParent then
+    Exit;
+  Path := ExcludeTrailingPathDelimiter(FileUriToPath(Rows[Idx].URI));
+  if (Path <> '') and (ExtractFilePath(Path) <> '') then
+  begin
+    AUri := PathToFileUri(ExcludeTrailingPathDelimiter(ExtractFilePath(Path)));
+    ASelectName := ExtractFileName(Path);
+  end;
+end;
+
 procedure TDualPanelWindow.EqualizeOtherPanelToActive;
 var
   Ws: TDualPanelWorkspaceTab;
   Active, Other: TPanelSide;
-  URI: string;
+  URI, SelectName: string;
   OtherPanel: TPanelState;
 begin
   Ws := ActiveWorkspace;
@@ -10335,16 +10397,21 @@ begin
   Other := OppositeSide(Active);
   if not IsPanelVisible(Other) then
     Exit;
-  URI := ActiveTab(ActivePanel(Ws)).CurrentURI;
+  EqualizeSourceOfSide(Active, URI, SelectName);
   if URI = '' then
     Exit;
   if Other = psLeft then
     OtherPanel := Ws.State.LeftPanel
   else
     OtherPanel := Ws.State.RightPanel;
-  if SameVfsUri(URI, ActiveTab(OtherPanel).CurrentURI) then
+  if SameVfsUri(URI, ActiveTab(OtherPanel).CurrentURI) and (SelectName = '') then
     Exit;
 
+  if SelectName <> '' then
+  begin
+    FPendingSelectName := SelectName;
+    FPendingSelectSide := Other;
+  end;
   NavigateSideTo(Other, URI, True);
   // NavigateSideTo focuses the destination side - keep focus on the active panel.
   Ws := ActiveWorkspace;
@@ -10415,8 +10482,7 @@ procedure TDualPanelWindow.EqualizeActivePanelFromOther;
 var
   Ws: TDualPanelWorkspaceTab;
   Active, Other: TPanelSide;
-  URI: string;
-  OtherPanel: TPanelState;
+  URI, SelectName: string;
 begin
   Ws := ActiveWorkspace;
   if not CanStartPanelLayoutChange(Ws) then
@@ -10424,16 +10490,17 @@ begin
 
   Active := Ws.State.ActiveSide;
   Other := OppositeSide(Active);
-  if Other = psLeft then
-    OtherPanel := Ws.State.LeftPanel
-  else
-    OtherPanel := Ws.State.RightPanel;
-  URI := ActiveTab(OtherPanel).CurrentURI;
+  EqualizeSourceOfSide(Other, URI, SelectName);
   if URI = '' then
     Exit;
-  if SameVfsUri(URI, ActiveTab(ActivePanel(Ws)).CurrentURI) then
+  if SameVfsUri(URI, ActiveTab(ActivePanel(Ws)).CurrentURI) and (SelectName = '') then
     Exit;
 
+  if SelectName <> '' then
+  begin
+    FPendingSelectName := SelectName;
+    FPendingSelectSide := Active;
+  end;
   NavigateSideTo(Active, URI, True);
   NotifyChanged;
 end;
@@ -13558,7 +13625,7 @@ begin
   if CtrlJustReleased then
     CommitDrivePreview;
   // Alt Quick Search lives only while Alt is held, unless it is sticky.
-  if AltJustReleased and not FStickyQuickSearch and
+  if AltJustReleased and not QuickSearchLingers and
      (FQuickSearchActive or (FQuickSearchText <> '')) then
   begin
     FQuickSearchActive := False;
@@ -13752,7 +13819,7 @@ begin
   Result.QuickViewVisible := QuickViewVisible;
   Result.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
   Result.CmdFocused := CmdFocused;
-  Result.QuickSearchSticky := FStickyQuickSearch and FQuickSearchActive;
+  Result.QuickSearchSticky := QuickSearchLingers and FQuickSearchActive;
   Result.ViewH := ViewH;
   Result.Cols := Cols;
   Result.PageSize := BriefPageSize(ViewH, Cols);

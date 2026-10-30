@@ -280,6 +280,7 @@
       "space_selects": "Пробел выде&ляет файл и идёт вниз",
       "keep_panel_focus": "Не передавать фокус командной строке при н&аборе",
       "sticky_quick_search": "Не закрывать быстрый поиск после отпускания Al&t",
+      "quick_search_keep_empty": "Не закрывать пусто&й быстрый поиск",
       "lbl_saver": "Заставка",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -627,69 +628,19 @@
       "cancel": "Отмена"
     },
     "DIALOG_SETATTR": {
-      "attr_ro_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_h_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_a_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_comp_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_enc_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_noidx_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_sparse_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_temp_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_off_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
-      "attr_s_items": {
-        "Keep as is": "Оставить как есть",
-        "Set": "Задать",
-        "Clear": "Снять"
-      },
       "$title": "Атрибуты",
-      "lbl_ro": "Только чтение",
-      "lbl_h": "Скрытый",
-      "lbl_a": "Архивный",
-      "lbl_s": "Системный",
+      "attr_ro": "Только &чтение",
+      "attr_h": "Скр&ытый",
+      "attr_a": "&Архивный",
+      "attr_s": "Системны&й",
       "lbl_volume": "Том:",
       "lbl_device": "Устройство:",
-      "lbl_comp": "Сжатый",
-      "lbl_enc": "Шифрованный",
-      "lbl_noidx": "Не индексируется",
-      "lbl_sparse": "Разреженный",
-      "lbl_temp": "Временный",
-      "lbl_off": "Автономный",
+      "attr_comp": "С&жатый",
+      "attr_enc": "&Шифрованный",
+      "attr_noidx": "&Не индексируется",
+      "attr_sparse": "&Разреженный",
+      "attr_temp": "&Временный",
+      "attr_off": "Автоно&мный",
       "sys_props": "&Свойства Windows",
       "lbl_owner": "Владелец:",
       "change_owner": "&Изменить владельца",
@@ -934,6 +885,7 @@
     "keymap.action.MultiRename": "Групповое переименование",
     "keymap.action.CopyItemName": "Копировать имя",
     "keymap.action.ExportList": "Сохранить список в файл",
+    "keymap.action.QuickSearch": "Быстрый поиск (без Alt)",
     "keymap.action.ShellContextMenu": "Контекстное меню Windows",
     "keymap.action.DocViewEdit": "Просмотр <-> редактор",
     "keymap.action.DocHex": "Hex <-> текст",

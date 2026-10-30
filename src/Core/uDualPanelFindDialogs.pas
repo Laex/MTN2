@@ -191,10 +191,10 @@ begin
   Result.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
   Result.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
   Result.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
-  Result.Filters.AttrReadOnly := FDialog.GetCheckbox('filter_attr_ro');
-  Result.Filters.AttrHidden := FDialog.GetCheckbox('filter_attr_hidden');
-  Result.Filters.AttrSystem := FDialog.GetCheckbox('filter_attr_system');
-  Result.Filters.AttrArchive := FDialog.GetCheckbox('filter_attr_archive');
+  Result.Filters.AttrReadOnly := TFindAttrState(FDialog.GetCheckboxState('filter_attr_ro'));
+  Result.Filters.AttrHidden := TFindAttrState(FDialog.GetCheckboxState('filter_attr_hidden'));
+  Result.Filters.AttrSystem := TFindAttrState(FDialog.GetCheckboxState('filter_attr_system'));
+  Result.Filters.AttrArchive := TFindAttrState(FDialog.GetCheckboxState('filter_attr_archive'));
 end;
 
 procedure TSearchDialogController.SyncHexField;

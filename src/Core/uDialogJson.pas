@@ -185,10 +185,14 @@ begin
 end;
 
 procedure ParseCheckbox(const AObj: TJSONObject; AList: TList<TDialogControl>);
+var
+  C: TDialogControl;
 begin
-  AppendParsed(AList,
-    MakeCheckbox(JsonStr(AObj, 'id'), JsonStr(AObj, 'text'),
-      JsonBool(AObj, 'checked', False)), AObj);
+  C := MakeCheckbox(JsonStr(AObj, 'id'), JsonStr(AObj, 'text'),
+    JsonBool(AObj, 'checked', False));
+  C.Tristate := JsonBool(AObj, 'tristate', False);
+  C.Unknown := C.Tristate and JsonBool(AObj, 'unknown', False);
+  AppendParsed(AList, C, AObj);
 end;
 
 procedure ParseRadio(const AObj: TJSONObject; AList: TList<TDialogControl>);
@@ -493,12 +497,18 @@ begin
             One := One + ',"datepick":true';
         end;
       dckCheckbox:
-        if C.Checked then
-          One := Format('{"type":"checkbox","id":"%s","text":"%s","checked":true',
-            [EscapeJson(C.Id), EscapeJson(C.Text)])
-        else
-          One := Format('{"type":"checkbox","id":"%s","text":"%s","checked":false',
-            [EscapeJson(C.Id), EscapeJson(C.Text)]);
+        begin
+          if C.Checked then
+            One := Format('{"type":"checkbox","id":"%s","text":"%s","checked":true',
+              [EscapeJson(C.Id), EscapeJson(C.Text)])
+          else
+            One := Format('{"type":"checkbox","id":"%s","text":"%s","checked":false',
+              [EscapeJson(C.Id), EscapeJson(C.Text)]);
+          if C.Tristate then
+            One := One + ',"tristate":true';
+          if C.Unknown then
+            One := One + ',"unknown":true';
+        end;
       dckButton:
         begin
           One := Format('{"type":"button","id":"%s","text":"%s"',

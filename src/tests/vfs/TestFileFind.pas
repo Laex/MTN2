@@ -146,11 +146,24 @@ begin
   Opts := DefaultFindOptions('C:\x', '*.*');
   Text := Default(TFindFilterText);
   Text.SizeMin := '1K';
-  Text.AttrHidden := True;
+  Text.AttrHidden := fasSet;
+  Text.AttrReadOnly := fasClear;
   Assert.IsTrue(ApplyFindFilterText(Opts, Text, Err), 'valid filters apply');
   Assert.AreEqual(Int64(1024), Opts.MinSize);
   Assert.AreEqual(Int64(-1), Opts.MaxSize);
-  Assert.AreEqual(faHidden, Opts.RequireAttr);
+  Assert.AreEqual(faHidden, Opts.RequireAttr, 'a set attribute is required');
+  Assert.AreEqual(faReadOnly, Opts.ForbidAttr, 'a clear attribute is forbidden');
+  Assert.IsTrue(FindEntryPassesFilters(Opts, False, 2048, T0, faHidden),
+    'hidden and not read-only passes');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 2048, T0, faHidden or faReadOnly),
+    'a read-only entry is dropped');
+  Assert.IsFalse(FindEntryPassesFilters(Opts, False, 2048, T0, 0),
+    'a missing required attribute is dropped');
+  Text := Default(TFindFilterText);
+  Assert.IsTrue(ApplyFindFilterText(Opts, Text, Err), 'default filters apply');
+  Assert.AreEqual(0, Opts.RequireAttr, 'ignored attributes require nothing');
+  Assert.AreEqual(0, Opts.ForbidAttr, 'ignored attributes forbid nothing');
+  Text.SizeMin := '1K';
   Text.SizeMax := 'oops';
   Assert.IsFalse(ApplyFindFilterText(Opts, Text, Err), 'a bad size is rejected');
   Assert.IsTrue(Err <> '', 'the rejection names the field');

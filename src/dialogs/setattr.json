@@ -172,239 +172,119 @@
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_ro",
-      "text": "Read-only",
-      "col": 1,
-      "row": 10,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_ro",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 16,
+      "text": "&Read-only",
+      "tristate": true,
+      "unknown": true,
+      "col": 1,
       "row": 10,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_enc",
-      "text": "Encrypted",
-      "col": 38,
-      "row": 10,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_enc",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 55,
+      "text": "&Encrypted",
+      "tristate": true,
+      "unknown": true,
+      "col": 38,
       "row": 10,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_a",
-      "text": "Archive",
-      "col": 1,
-      "row": 11,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_a",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 16,
+      "text": "&Archive",
+      "tristate": true,
+      "unknown": true,
+      "col": 1,
       "row": 11,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_noidx",
-      "text": "Not indexed",
-      "col": 38,
-      "row": 11,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_noidx",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 55,
+      "text": "&Not indexed",
+      "tristate": true,
+      "unknown": true,
+      "col": 38,
       "row": 11,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_h",
-      "text": "Hidden",
-      "col": 1,
-      "row": 12,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_h",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 16,
+      "text": "&Hidden",
+      "tristate": true,
+      "unknown": true,
+      "col": 1,
       "row": 12,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_sparse",
-      "text": "Sparse",
-      "col": 38,
-      "row": 12,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_sparse",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 55,
+      "text": "S&parse",
+      "tristate": true,
+      "unknown": true,
+      "col": 38,
       "row": 12,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_s",
-      "text": "System",
-      "col": 1,
-      "row": 13,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
+      "type": "checkbox",
       "id": "attr_s",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 16,
+      "text": "&System",
+      "tristate": true,
+      "unknown": true,
+      "col": 1,
       "row": 13,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_temp",
-      "text": "Temporary",
+      "type": "checkbox",
+      "id": "attr_temp",
+      "text": "&Temporary",
+      "tristate": true,
+      "unknown": true,
       "col": 38,
       "row": 13,
-      "width": 16,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "dropdown",
-      "id": "attr_temp",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 55,
-      "row": 13,
-      "width": 20,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_comp",
-      "text": "Compressed",
+      "type": "checkbox",
+      "id": "attr_comp",
+      "text": "Co&mpressed",
+      "tristate": true,
+      "unknown": true,
       "col": 1,
       "row": 14,
-      "width": 14,
+      "width": 36,
       "height": 1
     },
     {
-      "type": "dropdown",
-      "id": "attr_comp",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 16,
-      "row": 14,
-      "width": 20,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_off",
-      "text": "Offline",
+      "type": "checkbox",
+      "id": "attr_off",
+      "text": "Of&fline",
+      "tristate": true,
+      "unknown": true,
       "col": 38,
       "row": 14,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "attr_off",
-      "selected": 0,
-      "items": [
-        "Keep as is",
-        "Set",
-        "Clear"
-      ],
-      "col": 55,
-      "row": 14,
-      "width": 20,
+      "width": 36,
       "height": 1
     },
     {
       "type": "checkbox",
       "id": "recurse",
-      "text": "&Process subfolders",
+      "text": "Process su&bfolders",
       "checked": false,
       "col": 1,
       "row": 16,

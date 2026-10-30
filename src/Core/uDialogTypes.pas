@@ -45,6 +45,11 @@ type
     /// <summary>For dckRadio: mutual-exclusion group id (values key).</summary>
     Group: string;
     Checked: Boolean;
+    /// <summary>dckCheckbox: three states, "don't care" [?], unchecked [ ] and
+    /// checked [x] (JSON "tristate": true). Unknown is the first one and takes
+    /// precedence over Checked.</summary>
+    Tristate: Boolean;
+    Unknown: Boolean;
     IsDefault: Boolean;
     IsCancel: Boolean;
     Edit: TInputLine;
@@ -199,6 +204,13 @@ function DialogCmdIsListAccept(const AId, AListId: string): Boolean;
 function MakeLabel(const AText: string; const AId: string = ''): TDialogControl;
 function MakeInput(const AId, AValue: string): TDialogControl;
 function MakeCheckbox(const AId, AText: string; AChecked: Boolean): TDialogControl;
+/// <summary>The click / Space / mnemonic step of a checkbox. A tri-state one
+/// goes "don't care" -> checked -> unchecked -> "don't care".</summary>
+procedure DialogToggleCheckbox(var AControl: TDialogControl);
+/// <summary>0 = "don't care", 1 = unchecked, 2 = checked; a plain checkbox is
+/// 1 or 2.</summary>
+function DialogCheckboxState(const AControl: TDialogControl): Integer;
+procedure DialogSetCheckboxState(var AControl: TDialogControl; AState: Integer);
 function MakeRadio(const AId, AGroup, AText: string;
   AChecked: Boolean = False): TDialogControl;
 function MakeRadioGroup(const AId, ACaption: string; const AItems: TArray<string>;
@@ -324,7 +336,6 @@ function BuildCreateLinkDialog(const ALinkName, ATarget: string;
 /// <summary>ACreated / AModified / AAccessed: date text for the three time
 /// fields ('' = differs between the items / unknown).</summary>
 function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;
-  AReadOnlyIdx, AHiddenIdx, AArchiveIdx, ASystemIdx: Integer;
   const ACreated, AModified, AAccessed: string): TDialogDeclaration;
 /// <summary>The permissions dialog (octal mode, owner and group) of POSIX
 /// builds; AMode holds the permission bits of the first item and the flags are
@@ -610,6 +621,37 @@ begin
   SetLength(Result.ItemIds, 0);
   Result.SelectedIndex := 0;
   ClearControlLayout(Result);
+end;
+
+procedure DialogToggleCheckbox(var AControl: TDialogControl);
+begin
+  if not AControl.Tristate then
+    AControl.Checked := not AControl.Checked
+  else if AControl.Unknown then
+  begin
+    AControl.Unknown := False;
+    AControl.Checked := True;
+  end
+  else if AControl.Checked then
+    AControl.Checked := False
+  else
+    AControl.Unknown := True;
+end;
+
+function DialogCheckboxState(const AControl: TDialogControl): Integer;
+begin
+  if AControl.Tristate and AControl.Unknown then
+    Result := 0
+  else if AControl.Checked then
+    Result := 2
+  else
+    Result := 1;
+end;
+
+procedure DialogSetCheckboxState(var AControl: TDialogControl; AState: Integer);
+begin
+  AControl.Unknown := AControl.Tristate and (AState = 0);
+  AControl.Checked := AState = 2;
 end;
 
 function MakeCheckbox(const AId, AText: string; AChecked: Boolean): TDialogControl;
@@ -934,10 +976,10 @@ begin
   DialogSetInputValue(Result, 'filter_size_max', AFilters.SizeMax);
   DialogSetInputValue(Result, 'filter_date_from', AFilters.DateFrom);
   DialogSetInputValue(Result, 'filter_date_to', AFilters.DateTo);
-  DialogSetCheckbox(Result, 'filter_attr_ro', AFilters.AttrReadOnly);
-  DialogSetCheckbox(Result, 'filter_attr_hidden', AFilters.AttrHidden);
-  DialogSetCheckbox(Result, 'filter_attr_system', AFilters.AttrSystem);
-  DialogSetCheckbox(Result, 'filter_attr_archive', AFilters.AttrArchive);
+  DialogSetTriState(Result, 'filter_attr_ro', Ord(AFilters.AttrReadOnly));
+  DialogSetTriState(Result, 'filter_attr_hidden', Ord(AFilters.AttrHidden));
+  DialogSetTriState(Result, 'filter_attr_system', Ord(AFilters.AttrSystem));
+  DialogSetTriState(Result, 'filter_attr_archive', Ord(AFilters.AttrArchive));
   DialogSetLabelText(Result, 'lbl_format', Format(T('ui.search.filterFormat',
     'Size: 10K, 1.5M   Date: %s'), [DateToStr(EncodeDate(2026, 10, 27)) + ' [12:00]']));
 end;
@@ -1400,17 +1442,12 @@ begin
 end;
 
 function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;
-  AReadOnlyIdx, AHiddenIdx, AArchiveIdx, ASystemIdx: Integer;
   const ACreated, AModified, AAccessed: string): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogSetAttr, Result);
   DialogSetLabelText(Result, 'summary', ASummary);
   DialogSetLabelText(Result, 'owner_now', AOwnerNow);
   DialogSetInputValue(Result, 'owner', AOwnerEdit);
-  DialogSetDropDownSelected(Result, 'attr_ro', AReadOnlyIdx);
-  DialogSetDropDownSelected(Result, 'attr_h', AHiddenIdx);
-  DialogSetDropDownSelected(Result, 'attr_a', AArchiveIdx);
-  DialogSetDropDownSelected(Result, 'attr_s', ASystemIdx);
   DialogSetCheckbox(Result, 'change_owner', False);
   DialogSetCheckbox(Result, 'recurse', False);
   DialogSetInputValue(Result, 'date_created', ACreated);

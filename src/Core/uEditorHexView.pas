@@ -30,6 +30,13 @@ type
     class function ApplyNibble(AValue: Byte; ADigit: Integer;
       AHigh: Boolean): Byte;
     class function AbsoluteByteIndex(ARow, ACol, ABytesPerRow: Integer): Integer;
+    /// <summary>Finds APattern (byte values, -1 = any byte) in AByteCount bytes.
+    /// Forward looks at starts AStart..end, then wraps to 0..AStart-1; backward
+    /// looks at starts AStart-1 down to 0, then wraps to the end. Returns the
+    /// start of the match, or -1.</summary>
+    class function FindBytes(AByteCount: Integer; const AGetByte: TGetByteFunc;
+      const APattern: TArray<Integer>; AStart: Integer; AForward,
+      AIgnoreCase: Boolean): Integer;
   end;
 
 implementation
@@ -163,6 +170,68 @@ begin
   if (ABytesPerRow < 1) or (ARow < 0) or (ACol < 0) then
     Exit(-1);
   Result := ARow * ABytesPerRow + ACol;
+end;
+
+class function TEditorHexFormatter.FindBytes(AByteCount: Integer;
+  const AGetByte: TGetByteFunc; const APattern: TArray<Integer>; AStart: Integer;
+  AForward, AIgnoreCase: Boolean): Integer;
+var
+  Len, Last, Step, N, P, K: Integer;
+
+  function Fold(AValue: Integer): Integer;
+  begin
+    if (AValue >= Ord('a')) and (AValue <= Ord('z')) then
+      Result := AValue - 32
+    else
+      Result := AValue;
+  end;
+
+  function MatchesAt(AIdx: Integer): Boolean;
+  var
+    J, Want, Got: Integer;
+  begin
+    for J := 0 to Len - 1 do
+    begin
+      Want := APattern[J];
+      if Want < 0 then
+        Continue;
+      Got := AGetByte(AIdx + J);
+      if AIgnoreCase then
+      begin
+        if Fold(Got) <> Fold(Want) then
+          Exit(False);
+      end
+      else if Got <> Want then
+        Exit(False);
+    end;
+    Result := True;
+  end;
+
+begin
+  Len := Length(APattern);
+  Last := AByteCount - Len;
+  if (Len = 0) or (Last < 0) then
+    Exit(-1);
+  AStart := Max(0, Min(AStart, AByteCount));
+  if AForward then
+  begin
+    Step := 1;
+    P := AStart;
+  end
+  else
+  begin
+    Step := -1;
+    P := AStart - 1;
+  end;
+  // Every start position is visited once, beginning at P and wrapping around.
+  for K := 0 to Last do
+  begin
+    N := ((P mod (Last + 1)) + Last + 1) mod (Last + 1);
+    if MatchesAt(N) then
+      Exit(N);
+    P := P + Step;
+  end;
+  Result := -1;
 end;
 
 end.

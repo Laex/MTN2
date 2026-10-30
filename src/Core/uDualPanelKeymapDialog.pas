@@ -212,6 +212,7 @@ const
     'Multi-rename',
     'Copy name',
     'Save list to a file',
+    'Quick search (without Alt)',
     'Windows context menu',
     'Viewer <-> editor',
     'Hex <-> text',

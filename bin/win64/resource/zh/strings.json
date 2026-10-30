@@ -281,6 +281,7 @@
       "space_selects": "空格键选择文件并下移(&L)",
       "keep_panel_focus": "键入时不将焦点移到命令行(&N)",
       "sticky_quick_search": "松开 Alt 后保持快速搜索打开(&Q)",
+      "quick_search_keep_empty": "清空后不关闭快速搜索(&E)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"
@@ -628,69 +629,19 @@
       "cancel": "取消"
     },
     "DIALOG_SETATTR": {
-      "attr_ro_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_h_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_a_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_comp_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_enc_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_noidx_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_sparse_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_temp_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_off_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
-      "attr_s_items": {
-        "Keep as is": "保持不变",
-        "Set": "设置",
-        "Clear": "清除"
-      },
       "$title": "设置属性",
-      "lbl_ro": "只读",
-      "lbl_h": "隐藏",
-      "lbl_a": "存档",
-      "lbl_s": "系统",
+      "attr_ro": "只读(&R)",
+      "attr_h": "隐藏(&H)",
+      "attr_a": "存档(&A)",
+      "attr_s": "系统(&S)",
       "lbl_volume": "卷:",
       "lbl_device": "设备:",
-      "lbl_comp": "已压缩",
-      "lbl_enc": "已加密",
-      "lbl_noidx": "不索引",
-      "lbl_sparse": "稀疏",
-      "lbl_temp": "临时",
-      "lbl_off": "脱机",
+      "attr_comp": "已压缩(&M)",
+      "attr_enc": "已加密(&E)",
+      "attr_noidx": "不索引(&N)",
+      "attr_sparse": "稀疏(&G)",
+      "attr_temp": "临时(&T)",
+      "attr_off": "脱机(&F)",
       "sys_props": "系统属性(&Y)",
       "lbl_owner": "所有者:",
       "change_owner": "更改所有者(&C)",
@@ -935,6 +886,7 @@
     "keymap.action.MultiRename": "批量重命名",
     "keymap.action.CopyItemName": "复制名称",
     "keymap.action.ExportList": "将列表保存到文件",
+    "keymap.action.QuickSearch": "快速搜索(无需 Alt)",
     "keymap.action.ShellContextMenu": "Windows 右键菜单",
     "keymap.action.DocViewEdit": "查看器 <-> 编辑器",
     "keymap.action.DocHex": "十六进制 <-> 文本",

@@ -63,7 +63,10 @@ type
     FAttrModeDialog: Boolean;
     // The chattr flags the permissions dialog opened with (all items had it).
     FAttrFlagsOpen: array[0..2] of Boolean;
+    // Checkbox state each attribute box opened with, in cAttrBoxIds order.
+    FAttrInitial: array[0..9] of Integer;
     FAttrModeText, FAttrOwnerText, FAttrGroupText: string;
+    function AttrChoiceOf(AIndex: Integer): TFileAttrChoice;
     function ReadAttrDateFields(var APlan: TFileAttrPlan; out ABadText: string): Boolean;
     procedure KeepSetAttributesOpen;
     procedure SetKind(AKind: THostDialogKind);
@@ -115,6 +118,11 @@ implementation
 
 uses
   System.StrUtils, uDialogResources, uPlatformFileAttr;
+
+const
+  // Same order as the TFileAttrPlan fields read in DispatchSetAttributesCommand.
+  cAttrBoxIds: array[0..9] of string = ('attr_ro', 'attr_h', 'attr_a', 'attr_s',
+    'attr_comp', 'attr_enc', 'attr_noidx', 'attr_sparse', 'attr_temp', 'attr_off');
 
 constructor TFileOpDialogController.Create(ADialog: TDialogHost;
   const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFileOpKindSetter;
@@ -396,13 +404,16 @@ var
     DialogSetListItems(ADecl, 'owner', Names, Sel);
   end;
 
-  procedure MarkAttrLabel(const ALabelId: string; AChoice: TFileAttrChoice);
-  var
-    K: Integer;
+  // Set on every item = checked, set on none = unchecked, mixed = unknown.
+  procedure InitAttrBox(AIndex: Integer; AChoice: TFileAttrChoice);
   begin
-    for K := 0 to High(Decl.Controls) do
-      if Decl.Controls[K].Id = ALabelId then
-        Decl.Controls[K].Accent := AChoice = facSet;
+    case AChoice of
+      facSet: FAttrInitial[AIndex] := 2;
+      facClear: FAttrInitial[AIndex] := 1;
+    else
+      FAttrInitial[AIndex] := 0;
+    end;
+    DialogSetTriState(Decl, cAttrBoxIds[AIndex], FAttrInitial[AIndex]);
   end;
 
 begin
@@ -434,20 +445,20 @@ begin
     Notify;
     Exit;
   end;
-  // Every dropdown starts at "keep"; the labels of the attributes that are
-  // currently set are drawn in a contrasting color instead.
+  // Each box shows the current state of the items; an unchanged box leaves
+  // the attribute alone.
   Decl := BuildSetAttributesDialog(State.Summary, State.Owner, OwnerEdit,
-    0, 0, 0, 0, FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]);
-  MarkAttrLabel('lbl_ro', State.ReadOnly);
-  MarkAttrLabel('lbl_h', State.Hidden);
-  MarkAttrLabel('lbl_a', State.Archive);
-  MarkAttrLabel('lbl_s', State.System);
-  MarkAttrLabel('lbl_comp', State.Compressed);
-  MarkAttrLabel('lbl_enc', State.Encrypted);
-  MarkAttrLabel('lbl_noidx', State.NotIndexed);
-  MarkAttrLabel('lbl_sparse', State.Sparse);
-  MarkAttrLabel('lbl_temp', State.Temporary);
-  MarkAttrLabel('lbl_off', State.Offline);
+    FAttrDateTexts[0], FAttrDateTexts[1], FAttrDateTexts[2]);
+  InitAttrBox(0, State.ReadOnly);
+  InitAttrBox(1, State.Hidden);
+  InitAttrBox(2, State.Archive);
+  InitAttrBox(3, State.System);
+  InitAttrBox(4, State.Compressed);
+  InitAttrBox(5, State.Encrypted);
+  InitAttrBox(6, State.NotIndexed);
+  InitAttrBox(7, State.Sparse);
+  InitAttrBox(8, State.Temporary);
+  InitAttrBox(9, State.Offline);
   PrepareOwnerChoice(Decl, OwnerEdit);
   // Subfolders exist only when a folder is among the items.
   HasFolder := False;
@@ -542,6 +553,19 @@ end;
 
 const
   cAttrDateIds: array[0..2] of string = ('date_created', 'date_modified', 'date_accessed');
+
+function TFileOpDialogController.AttrChoiceOf(AIndex: Integer): TFileAttrChoice;
+var
+  S: Integer;
+begin
+  S := FDialog.GetCheckboxState(cAttrBoxIds[AIndex]);
+  if (S = FAttrInitial[AIndex]) or (S = 0) then
+    Result := facKeep
+  else if S = 2 then
+    Result := facSet
+  else
+    Result := facClear;
+end;
 
 // The host clears the dialog kind before dispatching a command; a button that
 // keeps the dialog up (date buttons, a date typo) has to claim it back.
@@ -682,16 +706,16 @@ begin
   Plan := Default(TFileAttrPlan);
   if Accepted then
   begin
-    Plan.ReadOnly := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_ro'));
-    Plan.Hidden := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_h'));
-    Plan.Archive := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_a'));
-    Plan.System := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_s'));
-    Plan.Compressed := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_comp'));
-    Plan.Encrypted := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_enc'));
-    Plan.NotIndexed := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_noidx'));
-    Plan.Sparse := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_sparse'));
-    Plan.Temporary := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_temp'));
-    Plan.Offline := FileAttrIndexToChoice(FDialog.GetListSelectedIndex('attr_off'));
+    Plan.ReadOnly := AttrChoiceOf(0);
+    Plan.Hidden := AttrChoiceOf(1);
+    Plan.Archive := AttrChoiceOf(2);
+    Plan.System := AttrChoiceOf(3);
+    Plan.Compressed := AttrChoiceOf(4);
+    Plan.Encrypted := AttrChoiceOf(5);
+    Plan.NotIndexed := AttrChoiceOf(6);
+    Plan.Sparse := AttrChoiceOf(7);
+    Plan.Temporary := AttrChoiceOf(8);
+    Plan.Offline := AttrChoiceOf(9);
     Plan.ChangeOwner := FDialog.GetCheckbox('change_owner');
     Plan.Owner := Trim(FDialog.GetListSelectedText('owner'));
     Plan.Recurse := FDialog.GetCheckbox('recurse');

@@ -343,6 +343,9 @@ type
     /// <summary>SetInputValue with the caret at ACursor instead of the end.</summary>
     procedure SetInputValueAt(const AId, AValue: string; ACursor: Integer);
     function GetCheckbox(const AId: string): Boolean;
+    /// <summary>0 = "don't care", 1 = unchecked, 2 = checked (see
+    /// DialogCheckboxState).</summary>
+    function GetCheckboxState(const AId: string): Integer;
     /// <summary>Sets a dckCheckbox of the open dialog; no-op for other ids.</summary>
     procedure SetCheckbox(const AId: string; AChecked: Boolean);
     /// <summary>Greys out (or restores) a checkbox, input or drop-down of the
@@ -1288,6 +1291,16 @@ begin
   for I := 0 to High(FDecl.Controls) do
     if (FDecl.Controls[I].Kind = dckCheckbox) and SameText(FDecl.Controls[I].Id, AId) then
       Exit(FDecl.Controls[I].Checked);
+end;
+
+function TDialogHost.GetCheckboxState(const AId: string): Integer;
+var
+  I: Integer;
+begin
+  Result := 1;
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckCheckbox) and SameText(FDecl.Controls[I].Id, AId) then
+      Exit(DialogCheckboxState(FDecl.Controls[I]));
 end;
 
 procedure TDialogHost.SetControlDisabled(const AId: string; ADisabled: Boolean);
@@ -2277,17 +2290,28 @@ begin
       FDecl.Controls[AIndex].Password);
 end;
 
+function CheckboxMark(const AControl: TDialogControl): string;
+begin
+  case DialogCheckboxState(AControl) of
+    0: Result := '[?] ';
+    2: Result := '[x] ';
+  else
+    Result := '[ ] ';
+  end;
+end;
+
 procedure TDialogHost.DrawCheckboxControl(const AGrid: TTerminalGrid; const R: TRectI;
   AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
 var
   St: TThemeWidgetState;
   ItemFg, ItemBg, HotFg: TAlphaColor;
   HotAttr: TCharCellAttributes;
+  X: Integer;
 begin
   if C.Disabled then
   begin
     PutGridText(AGrid, R.Left, R.Top,
-      Copy(IfThen(C.Checked, '[x] ', '[ ] ') + StripHotKeyMarker(C.Text), 1, Max(R.Width, 1)),
+      Copy(CheckboxMark(C) + StripHotKeyMarker(C.Text), 1, Max(R.Width, 1)),
       ContrastingGlyphFg(ALabelBg, TAlphaColor($FF808080), TAlphaColor($FF909090)),
       ALabelBg, []);
     Exit;
@@ -2300,7 +2324,7 @@ begin
     ResolveFallbackItemColors(AIndex = FFocusIndex, ALabelFg, ALabelBg,
       ItemFg, ItemBg, HotFg, HotAttr);
     PutGridHotTextClipped(AGrid, R.Left, R.Top, R.Right,
-      IfThen(C.Checked, '[x] ', '[ ] ') + C.Text,
+      CheckboxMark(C) + C.Text,
       ItemFg, ItemBg, HotFg, [], HotAttr);
   end
   else
@@ -2309,6 +2333,16 @@ begin
     if AIndex = FFocusIndex then
       Include(St, twFocused);
     FTheme.DrawCheckBox(AGrid, R, C.Text, C.Checked, St);
+    // The theme knows two marks; the "don't care" one is the unchecked mark
+    // with its blank cell replaced by '?'.
+    if C.Tristate and C.Unknown and (R.Top >= 0) and (R.Top <= High(AGrid)) then
+      for X := R.Left + 1 to Min(R.Left + 3, R.Right) do
+        if (X <= High(AGrid[R.Top])) and (AGrid[R.Top][X].CharValue = ' ') and
+           (AGrid[R.Top][X - 1].CharValue <> ' ') then
+        begin
+          AGrid[R.Top][X].CharValue := '?';
+          Break;
+        end;
   end;
 end;
 
@@ -2874,7 +2908,7 @@ begin
   if FDecl.Controls[AIndex].Disabled then
     Exit;
   FFocusIndex := AIndex;
-  FDecl.Controls[AIndex].Checked := not FDecl.Controls[AIndex].Checked;
+  DialogToggleCheckbox(FDecl.Controls[AIndex]);
   NotifyChanged;
 end;
 
@@ -3041,7 +3075,7 @@ begin
         PressButton(I);
       dckCheckbox:
         begin
-          FDecl.Controls[I].Checked := not FDecl.Controls[I].Checked;
+          DialogToggleCheckbox(FDecl.Controls[I]);
           NotifyChanged;
         end;
       dckRadio:
@@ -3199,7 +3233,7 @@ begin
   begin
     if FDecl.Controls[FFocusIndex].Kind = dckCheckbox then
     begin
-      FDecl.Controls[FFocusIndex].Checked := not FDecl.Controls[FFocusIndex].Checked;
+      DialogToggleCheckbox(FDecl.Controls[FFocusIndex]);
       NotifyChanged;
       AKey := 0;
       AKeyChar := #0;

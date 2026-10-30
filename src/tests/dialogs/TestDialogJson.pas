@@ -23,6 +23,7 @@ type
     [Test] procedure TestDeleteErrorDialog;
     [Test] procedure TestJobProgressDialogs;
     [Test] procedure TestControlTypesParse;
+    [Test] procedure TestTristateCheckbox;
   end;
 
 implementation
@@ -182,9 +183,9 @@ begin
     TFile.ReadAllText('../../dialogs/setattr.json', TEncoding.UTF8), LDecl),
     'setattr.json failed to parse');
   I := FindControlById(LDecl, 'attr_ro');
-  Assert.IsTrue(I >= 0, 'attr_ro dropdown not found');
-  Assert.IsTrue(LDecl.Controls[I].Kind = dckDropDown, 'attr_ro is not dropdown');
-  Assert.IsTrue(Length(LDecl.Controls[I].Items) = 3, 'attr_ro Keep/Set/Clear');
+  Assert.IsTrue(I >= 0, 'attr_ro checkbox not found');
+  Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, 'attr_ro is not checkbox');
+  Assert.IsTrue(LDecl.Controls[I].Tristate, 'attr_ro is tri-state');
   I := FindControlById(LDecl, 'change_owner');
   Assert.IsTrue(I >= 0, 'change_owner checkbox not found');
   Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, 'change_owner is not checkbox');
@@ -194,7 +195,7 @@ begin
   Assert.IsTrue(LDecl.Controls[I].Kind = dckCheckbox, 'recurse is not checkbox');
   I := FindControlById(LDecl, 'owner');
   Assert.IsTrue(I >= 0, 'owner input not found');
-  Writeln('  setattr.json: Keep/Set/Clear dropdowns + owner + recurse');
+  Writeln('  setattr.json: tri-state attribute boxes + owner + recurse');
 end;
 
 procedure TestDisplayDialog;
@@ -491,7 +492,48 @@ begin
   Writeln('  deleteerror.json: error_line is a 3-row wrapping label');
 end;
 
+procedure TestTristateCheckbox;
+var
+  LDecl: TDialogDeclaration;
+  I: Integer;
+  C: TDialogControl;
+begin
+  Assert.IsTrue(TryParseDialogJson(
+    '{"type":"dialog","version":"2.0","title":"T","width":40,"height":8,"children":[' +
+    '{"type":"checkbox","id":"a","text":"A","tristate":true,"unknown":true,' +
+    '"col":1,"row":1,"width":20,"height":1},' +
+    '{"type":"checkbox","id":"b","text":"B","col":1,"row":2,"width":20,"height":1}]}',
+    LDecl), 'tri-state dialog parses');
+  I := FindControlById(LDecl, 'a');
+  C := LDecl.Controls[I];
+  Assert.IsTrue(C.Tristate and C.Unknown, 'starts at "don''t care"');
+  Assert.AreEqual(0, DialogCheckboxState(C));
+  DialogToggleCheckbox(C);
+  Assert.AreEqual(2, DialogCheckboxState(C), 'first click checks it');
+  DialogToggleCheckbox(C);
+  Assert.AreEqual(1, DialogCheckboxState(C), 'second click unchecks it');
+  DialogToggleCheckbox(C);
+  Assert.AreEqual(0, DialogCheckboxState(C), 'third click is back at "don''t care"');
+
+  C := LDecl.Controls[FindControlById(LDecl, 'b')];
+  Assert.IsFalse(C.Tristate, 'a plain checkbox stays two-state');
+  DialogToggleCheckbox(C);
+  Assert.AreEqual(2, DialogCheckboxState(C));
+  DialogToggleCheckbox(C);
+  Assert.AreEqual(1, DialogCheckboxState(C));
+
+  Assert.IsTrue(TryParseDialogJson(DeclarationToJson(LDecl), LDecl),
+    'a tri-state dialog survives a round trip');
+  C := LDecl.Controls[FindControlById(LDecl, 'a')];
+  Assert.IsTrue(C.Tristate and C.Unknown, 'the tri-state flags survive a round trip');
+end;
+
 { TTestDialogJson }
+
+procedure TTestDialogJson.TestTristateCheckbox;
+begin
+  TestDialogJson.TestTristateCheckbox;
+end;
 
 procedure TTestDialogJson.TestListFlagsSurviveARoundTrip;
 var

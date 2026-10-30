@@ -29,14 +29,19 @@ type
     ModifiedFrom: TDateTime;   // 0 = no lower bound
     ModifiedTo: TDateTime;     // 0 = no upper bound
     RequireAttr: Integer;      // fa* bits an entry must all have; 0 = any
+    ForbidAttr: Integer;       // fa* bits an entry must not have; 0 = any
   end;
+
+  /// <summary>One attribute of the Find dialog: ignored, required to be clear,
+  /// or required to be set. The ordinals are the dialog's tri-state values.</summary>
+  TFindAttrState = (fasAny, fasClear, fasSet);
 
   /// <summary>The filter fields of the Find dialog as typed: sizes such as
   /// "10", "512K", "1.5M", dates in the locale's short format, optionally with
   /// a time.</summary>
   TFindFilterText = record
     SizeMin, SizeMax, DateFrom, DateTo: string;
-    AttrReadOnly, AttrHidden, AttrSystem, AttrArchive: Boolean;
+    AttrReadOnly, AttrHidden, AttrSystem, AttrArchive: TFindAttrState;
   end;
 
   /// <summary>One search hit. Line/Snippet are 0/'' unless ContainingText was
@@ -154,6 +159,7 @@ begin
   Result.ModifiedFrom := 0;
   Result.ModifiedTo := 0;
   Result.RequireAttr := 0;
+  Result.ForbidAttr := 0;
 end;
 
 function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;
@@ -220,6 +226,16 @@ begin
     ATime := ATime + 1 - 1 / MSecsPerDay;
 end;
 
+procedure AddAttr(var AOptions: TFindOptions; AState: TFindAttrState; ABit: Integer);
+begin
+  case AState of
+    fasSet:
+      AOptions.RequireAttr := AOptions.RequireAttr or ABit;
+    fasClear:
+      AOptions.ForbidAttr := AOptions.ForbidAttr or ABit;
+  end;
+end;
+
 function ApplyFindFilterText(var AOptions: TFindOptions;
   const AText: TFindFilterText; out AError: string): Boolean;
 begin
@@ -238,14 +254,11 @@ begin
   // The fa* constants are the bits TSearchRec.Attr reports.
   {$WARN SYMBOL_PLATFORM OFF}
   AOptions.RequireAttr := 0;
-  if AText.AttrReadOnly then
-    AOptions.RequireAttr := AOptions.RequireAttr or faReadOnly;
-  if AText.AttrHidden then
-    AOptions.RequireAttr := AOptions.RequireAttr or faHidden;
-  if AText.AttrSystem then
-    AOptions.RequireAttr := AOptions.RequireAttr or faSysFile;
-  if AText.AttrArchive then
-    AOptions.RequireAttr := AOptions.RequireAttr or faArchive;
+  AOptions.ForbidAttr := 0;
+  AddAttr(AOptions, AText.AttrReadOnly, faReadOnly);
+  AddAttr(AOptions, AText.AttrHidden, faHidden);
+  AddAttr(AOptions, AText.AttrSystem, faSysFile);
+  AddAttr(AOptions, AText.AttrArchive, faArchive);
   {$WARN SYMBOL_PLATFORM ON}
   Result := True;
 end;
@@ -256,6 +269,8 @@ begin
   Result := False;
   if (AOptions.RequireAttr <> 0) and
      ((AAttr and AOptions.RequireAttr) <> AOptions.RequireAttr) then
+    Exit;
+  if (AAttr and AOptions.ForbidAttr) <> 0 then
     Exit;
   if (AOptions.ModifiedFrom <> 0) and (AModified < AOptions.ModifiedFrom) then
     Exit;

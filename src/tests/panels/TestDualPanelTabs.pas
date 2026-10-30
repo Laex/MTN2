@@ -15,6 +15,7 @@ type
     [Test] procedure TestEmbeddedWorkspace;
     [Test] procedure TestSessionExportFilter;
     [Test] procedure MissingFolderFallsBackToExistingParent;
+    [Test] procedure FindResultsTabReturnsToItsFolderOnRestore;
     [Test] [Category('WindowsOnly')] procedure TestResolvePanelDriveUri;
     [Test] procedure PanelPlusFollowsTheLastTab;
     [Test] procedure PanelPlusNeedsRoom;
@@ -448,6 +449,36 @@ begin
     Assert.AreEqual(Plugin,
       State.WorkspaceTabs[0].State.RightPanel.Tabs[0].CurrentURI,
       'non-file URI untouched');
+  finally
+    TDirectory.Delete(Base, True);
+  end;
+end;
+
+procedure TTestDualPanelTabs.FindResultsTabReturnsToItsFolderOnRestore;
+var
+  State: TDualPanelWindowState;
+  Base: string;
+  Tab: TTab;
+begin
+  Base := TPath.Combine(TPath.GetTempPath, 'mtn2_find_restore_test');
+  TDirectory.CreateDirectory(Base);
+  try
+    State := Default(TDualPanelWindowState);
+    SetLength(State.WorkspaceTabs, 1);
+    State.WorkspaceTabs[0] := MakeWs(1, wkPanels);
+    SetLength(State.WorkspaceTabs[0].State.LeftPanel.Tabs, 1);
+    Tab := MakeTab(1, 'Find:*.pas', 'find://7');
+    Tab.History := [PathToFileUri(Base), 'find://7'];
+    Tab.HistoryIndex := 1;
+    State.WorkspaceTabs[0].State.LeftPanel.Tabs[0] := Tab;
+
+    TDualPanelTabManager.ReplaceUnavailableFolders(State);
+
+    Tab := State.WorkspaceTabs[0].State.LeftPanel.Tabs[0];
+    Assert.AreEqual(PathToFileUri(Base), Tab.CurrentURI,
+      'find tab -> the folder it was opened from');
+    Assert.IsTrue(Length(Tab.History) = 1, 'find entries leave the history');
+    Assert.IsTrue(Tab.HistoryIndex = 0, 'history points at the restored folder');
   finally
     TDirectory.Delete(Base, True);
   end;

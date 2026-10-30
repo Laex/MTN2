@@ -1,4 +1,4 @@
-unit TestSetAttrExtras;
+﻿unit TestSetAttrExtras;
 
 { The attributes dialog beyond Read-only / Hidden / Archive / System: the other
   file flags (Temporary, Not indexed, ...), the volume and device lines of a
@@ -15,7 +15,7 @@ type
   TTestSetAttrExtras = class
   public
     [Test] procedure TestFlagsRoundTripThroughAPlan;
-    [Test] procedure TestDialogKeepsFlagsAndMarksTheSetOnes;
+    [Test] procedure TestDialogShowsCurrentFlagsAndKeepsUnchangedOnes;
     [Test] procedure TestDriveRootHasVolumeAndDevice;
     [Test] procedure TestOtherPathsHaveNoVolume;
     [Test] procedure TestSystemPropertiesButtonKeepsTheDialogOpen;
@@ -54,16 +54,6 @@ begin
     begin
       GPropsPaths := APaths;
     end;
-end;
-
-function LabelMarked(ADialog: TDialogHost; const AId: string): Boolean;
-var
-  I: Integer;
-begin
-  for I := 0 to ADialog.ControlCount - 1 do
-    if ADialog.GetControl(I).Id = AId then
-      Exit(ADialog.GetControl(I).Accent);
-  Result := False;
 end;
 
 function FindControl(ADialog: TDialogHost; const AId: string): TDialogControl;
@@ -117,7 +107,7 @@ begin
   end;
 end;
 
-procedure TTestSetAttrExtras.TestDialogKeepsFlagsAndMarksTheSetOnes;
+procedure TTestSetAttrExtras.TestDialogShowsCurrentFlagsAndKeepsUnchangedOnes;
 var
   Dir, Path, Err: string;
   Plan: TFileAttrPlan;
@@ -134,10 +124,8 @@ begin
 
     C.BeginSetAttributes([Path]);
     Assert.IsTrue(Dialog.Visible, 'dialog opens');
-    Assert.AreEqual<Integer>(Ord(facKeep), Dialog.GetListSelectedIndex('attr_temp'), 'Temporary starts at keep');
-    Assert.AreEqual<Integer>(Ord(facKeep), Dialog.GetListSelectedIndex('attr_noidx'), 'Not indexed starts at keep');
-    Assert.IsTrue(LabelMarked(Dialog, 'lbl_temp'), 'a set flag has a marked label');
-    Assert.IsFalse(LabelMarked(Dialog, 'lbl_noidx'), 'a clear flag has a plain label');
+    Assert.AreEqual(2, Dialog.GetCheckboxState('attr_temp'), 'a set flag opens checked');
+    Assert.AreEqual(1, Dialog.GetCheckboxState('attr_noidx'), 'a clear flag opens unchecked');
 
     GPlan := Default(TFileAttrPlan);
     C.DispatchCommand(hdkSetAttributes, 'ok');
