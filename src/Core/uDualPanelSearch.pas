@@ -11,8 +11,11 @@ uses
 
 type
   TSearchGotoEvent = reference to procedure(const AFilePath: string);
+  /// <summary>Shows AHits as the find panel; True when it did. AUpdate is True
+  /// once an earlier call showed it: the list only grew, so the panel keeps its
+  /// cursor and selection.</summary>
   TSearchFindNavigateEvent = reference to function(const ARoot, AMask: string;
-    const AHits: TArray<TFindHit>): Boolean;
+    const AHits: TArray<TFindHit>; AUpdate: Boolean): Boolean;
 
   TSearchController = class
   private
@@ -24,6 +27,8 @@ type
     FOnStopRequest: TProc;
     FSearch: TSearchState;
     FLife: ILifeFlag;
+    // The panel already lists the hits of the running search.
+    FResultsShown: Boolean;
     procedure HandleSearchInputDialog(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char);
     procedure HandleSearchInputRunning(var AKey: Word; var AKeyChar: Char);
@@ -265,6 +270,7 @@ begin
   FSearch.FoundCount := 0;
   FSearch.CurrentDir := Root;
   FSearch.Message := '';
+  FResultsShown := False;
   SetLength(FSearch.Results, 0);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -286,6 +292,14 @@ begin
       if FSearch.Phase <> spRunning then
         Exit;
       FSearch.Cancel := nil;
+      // The panel keeps whatever was found, also after a stop or an error.
+      if FResultsShown then
+      begin
+        if Length(AHits) > 0 then
+          FOnNavigateFindResults(Root, Mask, AHits, True);
+        CloseSearchUi;
+        Exit;
+      end;
       if AError.Code = vecCancelled then
       begin
         FSearch.Phase := spNone;
@@ -297,7 +311,7 @@ begin
       begin
         CloseSearchUi;
         if Assigned(FOnNavigateFindResults) and
-           FOnNavigateFindResults(Root, Mask, AHits) then
+           FOnNavigateFindResults(Root, Mask, AHits, False) then
           Exit;
       end;
       FSearch.Results := AHits;
@@ -311,6 +325,16 @@ begin
       FSearch.Phase := spResults;
       if Assigned(FOnInvalidate) then
         FOnInvalidate;
+    end,
+    procedure(const ANewHits: TArray<TFindHit>)
+    begin
+      if not Life.Alive or (FSearch.Phase <> spRunning) or
+         not Assigned(FOnNavigateFindResults) then
+        Exit;
+      FSearch.Results := FSearch.Results + ANewHits;
+      FSearch.FoundCount := Length(FSearch.Results);
+      if FOnNavigateFindResults(Root, Mask, FSearch.Results, FResultsShown) then
+        FResultsShown := True;
     end);
 end;
 

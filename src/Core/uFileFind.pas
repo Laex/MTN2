@@ -51,6 +51,8 @@ type
     const ACurrentDir: string);
   TFindDoneCallback = reference to procedure(const AHits: TArray<TFindHit>;
     const AError: TVfsError);
+  /// <summary>The hits found since the previous call, in discovery order.</summary>
+  TFindHitsCallback = reference to procedure(const ANewHits: TArray<TFindHit>);
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean = True): TFindOptions;
@@ -122,8 +124,12 @@ function FileHexMatch(const APath: string; const APattern: TArray<Integer>;
 function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
   out ALine: Integer; out ASnippet: string): Boolean;
 
+/// <summary>AOnHits, when given, receives the hits while the walk runs: the
+/// first one at once, later ones in batches. Every hit is delivered before
+/// AOnDone, which still carries the complete list.</summary>
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
-  AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback);
+  AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback;
+  AOnHits: TFindHitsCallback = nil);
 
 implementation
 
@@ -754,6 +760,35 @@ begin
     end);
 end;
 
+const
+  cFindHitsBatchMs = 300;
+
+{ Queues the hits of AList not yet delivered. Unless AForce, the first hit goes
+  out at once and later ones wait for a batch interval. }
+procedure QueueFindHits(const AOnHits: TFindHitsCallback;
+  AList: TList<TFindHit>; var ADelivered: Integer; var ALastTick: Cardinal;
+  AForce: Boolean);
+var
+  Batch: TArray<TFindHit>;
+  I: Integer;
+begin
+  if not Assigned(AOnHits) or (AList.Count <= ADelivered) then
+    Exit;
+  if not AForce and (ADelivered > 0) and
+     (TThread.GetTickCount - ALastTick < cFindHitsBatchMs) then
+    Exit;
+  SetLength(Batch, AList.Count - ADelivered);
+  for I := 0 to High(Batch) do
+    Batch[I] := AList[ADelivered + I];
+  ADelivered := AList.Count;
+  ALastTick := TThread.GetTickCount;
+  TThread.Queue(nil,
+    procedure
+    begin
+      AOnHits(Batch);
+    end);
+end;
+
 { Name-only searches (empty ContainingText) match every file. }
 function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
   out ALine: Integer; out ASnippet: string): Boolean;
@@ -783,12 +818,14 @@ begin
 end;
 
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
-  AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback);
+  AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback;
+  AOnHits: TFindHitsCallback);
 var
   Opts: TFindOptions;
   Cancel: IJobCancelToken;
   OnProgress: TFindProgressCallback;
   OnDone: TFindDoneCallback;
+  OnHits: TFindHitsCallback;
   Masks: TArray<string>;
 begin
   Opts := AOptions;
@@ -801,13 +838,15 @@ begin
   Cancel := ACancel;
   OnProgress := AOnProgress;
   OnDone := AOnDone;
+  OnHits := AOnHits;
 
   TThread.CreateAnonymousThread(
     procedure
     var
       List: TList<TFindHit>;
       Err: TVfsError;
-      LastProgressTick: Cardinal;
+      LastProgressTick, LastHitsTick: Cardinal;
+      Delivered: Integer;
       Hits: TArray<TFindHit>;
       Stack: TStack<string>;
       Dir, Full, Name: string;
@@ -824,6 +863,8 @@ begin
       List := TList<TFindHit>.Create;
       Stack := TStack<string>.Create;
       LastProgressTick := 0;
+      LastHitsTick := 0;
+      Delivered := 0;
       Needle := Opts.ContainingText;
       try
         try
@@ -843,6 +884,7 @@ begin
               begin
                 LastProgressTick := TThread.GetTickCount;
                 QueueFindProgress(OnProgress, List.Count, Dir);
+                QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
               end;
 
               Code := FindFirst(SafeCombinePath(Dir, '*'), faAnyFile, SR);
@@ -866,6 +908,7 @@ begin
                         Hit.Line := 0;
                         Hit.Snippet := '';
                         List.Add(Hit);
+                        QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
                       if Opts.Subdirs then
                         Stack.Push(Full);
@@ -880,6 +923,7 @@ begin
                         Hit.Line := HitLine;
                         Hit.Snippet := HitSnippet;
                         List.Add(Hit);
+                        QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
                     end;
                   end;
@@ -897,6 +941,7 @@ begin
           on E: Exception do
             Err := TVfsError.Make(vecIOError, E.Message, Opts.RootPath);
         end;
+        QueueFindHits(OnHits, List, Delivered, LastHitsTick, True);
         Hits := List.ToArray;
       finally
         Stack.Free;

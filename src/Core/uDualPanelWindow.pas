@@ -432,7 +432,7 @@ type
     procedure HostClearJobSelection(const AOriginSrc: string);
     procedure HostReloadJobPanels(const AOriginSrc, AOriginDst: string);
     function HostApplyFindResults(const ARoot, AMask: string;
-      const AHits: TArray<TFindHit>): Boolean;
+      const AHits: TArray<TFindHit>; AUpdate: Boolean): Boolean;
     function HostSearchBlocked: Boolean;
     procedure HostPrepareSearchUi;
     function HostIsAlive: Boolean;
@@ -3013,7 +3013,7 @@ begin
 end;
 
 function TDualPanelWindow.HostApplyFindResults(const ARoot, AMask: string;
-  const AHits: TArray<TFindHit>): Boolean;
+  const AHits: TArray<TFindHit>; AUpdate: Boolean): Boolean;
 var
   Ws: TDualPanelWorkspaceTab;
   Side: TPanelSide;
@@ -3029,6 +3029,12 @@ begin
   if IsFindUri(ActiveURI) and
      UpdateFindSession(FindSessionIdFromUri(ActiveURI), ARoot, AMask, AHits) then
   begin
+    // A search still running only appends: the panel stays where it is.
+    if AUpdate then
+    begin
+      LoadSide(Side);
+      Exit(True);
+    end;
     Tab.Title := FindSessionTitle(ActiveURI);
     Tab.CursorIndex := 0;
     Tab.ScrollOffset := 0;

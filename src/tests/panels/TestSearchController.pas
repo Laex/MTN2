@@ -21,6 +21,8 @@ type
     [Test] procedure TestRealSearchAndResultsNavigation;
     [Test] procedure TestCancelRunningSearch;
     [Test] procedure TestRunningSearchEscAsksOwnerFirst;
+    [Test] procedure TestLiveResultsKeepPanelWhenDone;
+    [Test] procedure TestCancelKeepsFoundHitsInPanel;
   end;
 
 implementation
@@ -58,6 +60,11 @@ var
   GNavigateCalled: Boolean;
   GNavigateHitCount: Integer;
   GInvalidateCount: Integer;
+  GAcceptResults: Boolean;
+  GFirstCallIsUpdate: Boolean;
+  GLastCallIsUpdate: Boolean;
+  GNavigateCalls: Integer;
+  GStopOnFirstHits: TProc;
 
 function MakeController: TSearchController;
 begin
@@ -66,6 +73,11 @@ begin
   GNavigateCalled := False;
   GNavigateHitCount := 0;
   GInvalidateCount := 0;
+  GAcceptResults := False;
+  GFirstCallIsUpdate := False;
+  GLastCallIsUpdate := False;
+  GNavigateCalls := 0;
+  GStopOnFirstHits := nil;
   Result := TSearchController.Create(nil,
     procedure
     begin
@@ -76,14 +88,21 @@ begin
       GGotoCalled := True;
       GGotoPath := AFilePath;
     end,
-    function(const ARoot, AMask: string; const AHits: TArray<TFindHit>): Boolean
+    function(const ARoot, AMask: string; const AHits: TArray<TFindHit>;
+      AUpdate: Boolean): Boolean
     begin
-      // Decline every time -- let the controller show its own spResults UI
-      // instead of handing the hits off elsewhere, so HandleSearchInput's
-      // results-navigation branch is what gets exercised below.
+      // Declines unless a test sets GAcceptResults -- the controller then shows
+      // its own spResults UI instead of handing the hits off elsewhere, so
+      // HandleSearchInput's results-navigation branch is what gets exercised.
       GNavigateCalled := True;
+      Inc(GNavigateCalls);
+      if GNavigateCalls = 1 then
+        GFirstCallIsUpdate := AUpdate;
+      GLastCallIsUpdate := AUpdate;
       GNavigateHitCount := Length(AHits);
-      Result := False;
+      Result := GAcceptResults;
+      if Assigned(GStopOnFirstHits) and (GNavigateCalls = 1) then
+        GStopOnFirstHits();
     end);
 end;
 
@@ -371,7 +390,100 @@ begin
   end;
 end;
 
+procedure TestLiveResultsKeepPanelWhenDone;
+var
+  C: TSearchController;
+  TempDir: string;
+  Key: Word;
+  KeyChar: Char;
+begin
+  TempDir := TPath.Combine(TPath.GetTempPath, 'MTN2_TestSearchControllerLive');
+  if TDirectory.Exists(TempDir) then
+    TDirectory.Delete(TempDir, True);
+  TDirectory.CreateDirectory(TempDir);
+  TFile.WriteAllText(TPath.Combine(TempDir, 'a.txt'), 'a');
+  TFile.WriteAllText(TPath.Combine(TempDir, 'b.txt'), 'b');
+
+  C := MakeController;
+  try
+    GAcceptResults := True;
+    C.Phase := spDialog;
+    C.RootPath := TempDir;
+    C.Mask := '*.txt';
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    WaitWhile(
+      function: Boolean
+      begin
+        Result := C.Phase = spRunning;
+      end);
+
+    Assert.IsTrue(C.Phase = spNone, 'the panel took the hits, so the overlay closes');
+    Assert.IsTrue(GNavigateCalls >= 2, 'a live call plus the final call');
+    Assert.IsFalse(GFirstCallIsUpdate, 'the first call opens the panel');
+    Assert.IsTrue(GLastCallIsUpdate, 'later calls only update the open panel');
+    Assert.AreEqual(2, GNavigateHitCount, 'the final call carries every hit');
+  finally
+    C.Free;
+    TDirectory.Delete(TempDir, True);
+  end;
+end;
+
+procedure TestCancelKeepsFoundHitsInPanel;
+var
+  C: TSearchController;
+  TempDir: string;
+  Key: Word;
+  KeyChar: Char;
+begin
+  TempDir := TPath.Combine(TPath.GetTempPath, 'MTN2_TestSearchControllerLiveCancel');
+  if TDirectory.Exists(TempDir) then
+    TDirectory.Delete(TempDir, True);
+  TDirectory.CreateDirectory(TempDir);
+  TFile.WriteAllText(TPath.Combine(TempDir, 'a.txt'), 'a');
+
+  C := MakeController;
+  try
+    GAcceptResults := True;
+    GStopOnFirstHits :=
+      procedure
+      begin
+        C.CancelSearch;
+      end;
+    C.Phase := spDialog;
+    C.RootPath := TempDir;
+    C.Mask := '*.txt';
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    WaitWhile(
+      function: Boolean
+      begin
+        Result := C.Phase = spRunning;
+      end);
+
+    Assert.IsTrue(C.Phase = spNone, 'the overlay closes after the stop');
+    Assert.IsTrue(GNavigateHitCount >= 1,
+      'the panel was handed the hit found before the stop');
+    Assert.IsTrue(GLastCallIsUpdate, 'the stop updates the open panel instead of closing it');
+  finally
+    C.Free;
+    TDirectory.Delete(TempDir, True);
+  end;
+end;
+
 { TTestSearchController }
+
+procedure TTestSearchController.TestLiveResultsKeepPanelWhenDone;
+begin
+  TestSearchController.TestLiveResultsKeepPanelWhenDone;
+end;
+
+procedure TTestSearchController.TestCancelKeepsFoundHitsInPanel;
+begin
+  TestSearchController.TestCancelKeepsFoundHitsInPanel;
+end;
 
 procedure TTestSearchController.TestStartSearchGuards;
 begin
