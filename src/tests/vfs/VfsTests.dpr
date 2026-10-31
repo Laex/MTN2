@@ -13,6 +13,7 @@ uses
   TestChecksums in 'TestChecksums.pas',
   TestCopyIntoSelf in 'TestCopyIntoSelf.pas',
   TestCopyLockedSource in 'TestCopyLockedSource.pas',
+  TestCopyErrorResolver in 'TestCopyErrorResolver.pas',
   TestCopySkipMerge in 'TestCopySkipMerge.pas',
   TestJobBackgroundNotice in 'TestJobBackgroundNotice.pas',
   TestCreateLink in 'TestCreateLink.pas',

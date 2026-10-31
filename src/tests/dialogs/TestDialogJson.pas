@@ -439,6 +439,8 @@ begin
   Assert.IsTrue(I >= 0, 'file_bar label');
   I := FindControlById(LDecl, 'files');
   Assert.IsTrue(I >= 0, 'files label');
+  I := FindControlById(LDecl, 'skipped');
+  Assert.IsTrue(I >= 0, 'skipped label');
   I := FindControlById(LDecl, 'bytes');
   Assert.IsTrue(I >= 0, 'bytes label');
   I := FindControlById(LDecl, 'total_bar');

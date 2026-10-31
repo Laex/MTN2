@@ -153,6 +153,7 @@ begin
   DialogSetLabelText(ADecl, 'dst', ASnap.Dst);
   DialogSetLabelText(ADecl, 'file_bar', ASnap.FileBar);
   DialogSetLabelText(ADecl, 'files', ASnap.Files);
+  DialogSetLabelText(ADecl, 'skipped', ASnap.Skipped);
   DialogSetLabelText(ADecl, 'bytes', ASnap.Bytes);
   DialogSetLabelText(ADecl, 'total_bar', ASnap.TotalBar);
 end;
@@ -182,6 +183,7 @@ begin
       ADialog.SetLabelText('dst', Snap.Dst);
       ADialog.SetLabelText('file_bar', Snap.FileBar);
       ADialog.SetLabelText('files', Snap.Files);
+      ADialog.SetLabelText('skipped', Snap.Skipped);
       ADialog.SetLabelText('bytes', Snap.Bytes);
       ADialog.SetLabelText('total_bar', Snap.TotalBar);
     end;

@@ -91,6 +91,8 @@ type
     Dst: string;
     FileBar: string;
     Files: string;
+    /// <summary>"Skipped: N" for a copy or move, empty for other jobs.</summary>
+    Skipped: string;
     Bytes: string;
     TotalBar: string;
   end;
@@ -289,6 +291,7 @@ var
   FilesDone, FilesTotal: Integer;
   BytesNow, BytesTot: Int64;
   InnerW: Integer;
+  SkippedLabel, SkippedValue: string;
 begin
   InnerW := Max(AInnerW, 8);
   Result := Default(TJobProgressSnapshot);
@@ -324,6 +327,13 @@ begin
     FilesTotal := Length(AJob.Sources);
   FilesDone := EnsureRange(AJob.FilesDone, 0, FilesTotal);
   Result.Files := JobProgressCountLine(T('ui.job.filesLabel', 'Files:'), FilesDone, FilesTotal, InnerW);
+  if AJob.Kind in [pjkCopy, pjkMove] then
+  begin
+    SkippedLabel := T('ui.job.skippedLabel', 'Skipped:');
+    SkippedValue := FormatJobGroupedInt64(Max(AJob.FilesSkipped, 0));
+    Result.Skipped := SkippedLabel + StringOfChar(' ',
+      Max(InnerW - Length(SkippedLabel) - Length(SkippedValue), 1)) + SkippedValue;
+  end;
   BytesNow := AJob.BytesDoneBase + AJob.ProgressDone;
   BytesTot := AJob.BytesTotal;
   if BytesTot < BytesNow then

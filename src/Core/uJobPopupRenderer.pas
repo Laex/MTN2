@@ -303,6 +303,9 @@ begin
           FilesTotal := Length(AJob.Sources);
         FilesDone := EnsureRange(AJob.FilesDone, 0, FilesTotal);
         LabelL := 'Files:';
+        if (AJob.FilesSkipped > 0) and (AJob.Kind in [pjkCopy, pjkMove]) then
+          LabelL := Format('Files (skipped %s):',
+            [FormatGroupedInt64(AJob.FilesSkipped)]);
         LabelR := Format('%s / %s',
           [FormatGroupedInt64(FilesDone), FormatGroupedInt64(FilesTotal)]);
         Line := LabelL + StringOfChar(' ',

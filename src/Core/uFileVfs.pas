@@ -36,6 +36,14 @@ type
       AOnDone: TVfsFreeSpaceCallback);
   end;
 
+var
+  /// <summary>A file of a recursive copy that failed with an I/O error is retried
+  /// this many times, waiting CopyRetryBaseDelayMs, twice that, four times that
+  /// ..., before the job's error resolver is asked. A network share that drops
+  /// its session for a moment usually answers again within that time.</summary>
+  CopyAutoRetries: Integer = 3;
+  CopyRetryBaseDelayMs: Integer = 1000;
+
 implementation
 
 uses
@@ -232,7 +240,7 @@ end;
 // now than the snapshot that was copied, and a "size mismatch" there would
 // delete the whole freshly copied destination tree.
 procedure VerifyCopiedTree(const ASrc, ADst: string;
-  var AError: TVfsError);
+  var AError: TVfsError; ATolerateMissing: Boolean = False);
 var
   SR: TSearchRec;
   Code: Integer;
@@ -255,8 +263,14 @@ begin
         ChildSrc := SafeCombinePath(ASrc, SR.Name);
         ChildDst := SafeCombinePath(ADst, SR.Name);
         if (SR.Attr and faDirectory) <> 0 then
-          VerifyCopiedTree(ChildSrc, ChildDst, AError)
-        else
+        begin
+          // A folder whose files were all skipped after errors is not created.
+          if not ATolerateMissing or LocalPathIsDirectory(ChildDst) then
+            VerifyCopiedTree(ChildSrc, ChildDst, AError, ATolerateMissing);
+        end
+        // A file the user chose to skip after a copy error is legitimately
+        // absent from the destination.
+        else if not ATolerateMissing or TFile.Exists(WinApiPath(ChildDst)) then
           VerifyCopiedFile(ChildSrc, ChildDst, SR.Size, False, AError);
         if AError.Code <> vecOk then
           Exit;
@@ -573,6 +587,74 @@ begin
   end;
 end;
 
+// Waits for AMs milliseconds in short slices so a cancel is noticed promptly.
+procedure WaitInterruptible(AMs: Integer; ACancel: IJobCancelToken);
+var
+  Left: Integer;
+begin
+  Left := AMs;
+  while (Left > 0) and not JobCancelRequested(ACancel) do
+  begin
+    Sleep(100);
+    Dec(Left, 100);
+  end;
+end;
+
+// Copies one file of a recursive copy. A failure with an I/O error is retried
+// on its own, then put to the job's error resolver, so one unreadable file
+// costs a retry or a skip of that file and not the rest of the folder.
+// Without a resolver the first failure is returned as it always was.
+// ASkipped reports that the user skipped the file (AError is then vecOk).
+procedure CopyTreeFile(const ASrc, ADst: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var AError: TVfsError; AOverwrite,
+  APreserveTimestamps: Boolean; ABaseDoneBytes, AItemTotalBytes: Int64;
+  AAppend: Boolean; out ASkipped: Boolean);
+var
+  Attempt: Integer;
+  Resolver: TVfsErrorResolver;
+begin
+  ASkipped := False;
+  Attempt := 0;
+  while True do
+  begin
+    CopyFileWithProgress(ASrc, ADst, ACancel, AOnProgress, AError, AOverwrite,
+      APreserveTimestamps, ABaseDoneBytes, AItemTotalBytes, AAppend);
+    if AError.Code in [vecOk, vecCancelled, vecAlreadyExists] then
+      Exit;
+    if JobCancelRequested(ACancel) then
+      Exit;
+    Resolver := JobErrorResolver(ACancel);
+    if not Assigned(Resolver) then
+      Exit;
+    if (AError.Code = vecIOError) and (Attempt < CopyAutoRetries) then
+    begin
+      WaitInterruptible(CopyRetryBaseDelayMs shl Attempt, ACancel);
+      Inc(Attempt);
+      if JobCancelRequested(ACancel) then
+      begin
+        AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+        Exit;
+      end;
+      Continue;
+    end;
+    case Resolver(AError) of
+      vcaRetry:
+        ;
+      vcaSkip:
+        begin
+          AError := TVfsError.Ok;
+          ASkipped := True;
+          Exit;
+        end;
+    else
+      begin
+        AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 procedure CopyTree(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var ADoneBytes, ATotalBytes: Int64;
   var AError: TVfsError; var AAnySkipped: Boolean; AOverwrite: Boolean = False;
@@ -582,7 +664,7 @@ var
   Code: Integer;
   ChildSrc, ChildDst: string;
   ChildErr: TVfsError;
-  ChildOverwrite, ChildAppend, CreatedHere: Boolean;
+  ChildOverwrite, ChildAppend, CreatedHere, ChildSkipped: Boolean;
   Stage, MoveMsg: string;
 begin
   CreatedHere := False;
@@ -653,11 +735,23 @@ begin
           if not AOverwrite then
             AskFileConflict(ChildSrc, ChildDst, ACancel, ChildOverwrite,
               ChildAppend, ChildErr);
+          ChildSkipped := False;
           if ChildErr.Code = vecOk then
-            CopyFileWithProgress(ChildSrc, ChildDst, ACancel, AOnProgress, ChildErr,
+            CopyTreeFile(ChildSrc, ChildDst, ACancel, AOnProgress, ChildErr,
               ChildOverwrite, APreserveTimestamps, ADoneBytes, ATotalBytes,
-              ChildAppend);
-          if ChildErr.Code = vecOk then
+              ChildAppend, ChildSkipped);
+          if ChildSkipped then
+          begin
+            // Skipped after an error: the file stays only in the source, so
+            // the tree check and a move's source delete must know about it.
+            AAnySkipped := True;
+            JobNoteSkipped(ACancel);
+            if SR.Size > 0 then
+              Inc(ADoneBytes, SR.Size);
+            QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, SR.Name, 0, 0,
+              ChildSrc, ChildDst);
+          end
+          else if ChildErr.Code = vecOk then
           begin
             if SR.Size > 0 then
               Inc(ADoneBytes, SR.Size);
@@ -673,6 +767,8 @@ begin
         if (ChildErr.Code = vecAlreadyExists) and not AOverwrite then
         begin
           AAnySkipped := True;
+          if (SR.Attr and faDirectory) = 0 then
+            JobNoteSkipped(ACancel);
           // A skipped item still needs to nudge progress along - without
           // this, a run of skipped files (Skip-overwrite mode, or Ask+Skip
           // remembered) never advances the per-file bar, the file counter,
@@ -696,7 +792,7 @@ begin
   end;
   if AError.Code = vecOk then
   begin
-    VerifyCopiedTree(ASrc, ADst, AError);
+    VerifyCopiedTree(ASrc, ADst, AError, AAnySkipped);
     // A folder that already existed is a merge target: a failed check must
     // not delete the files that were there before this copy.
     if (AError.Code <> vecOk) and CreatedHere then
@@ -1197,7 +1293,7 @@ begin
               if Err.Code = vecOk then
               begin
                 if TDirectory.Exists(WinApiPath(Src)) then
-                  VerifyCopiedTree(Src, Dst, Err)
+                  VerifyCopiedTree(Src, Dst, Err, AnySkipped)
                 else
                   // Non-strict for the same reason as VerifyCopiedTree: the
                   // strict size check already ran inside the copy itself.
@@ -1343,7 +1439,7 @@ begin
               if Err.Code = vecOk then
               begin
                 if WasDirectory then
-                  VerifyCopiedTree(Src, Dst, Err)
+                  VerifyCopiedTree(Src, Dst, Err, AnySkipped)
                 else
                   // Non-strict for the same reason as VerifyCopiedTree: the
                   // strict size check already ran inside the copy itself.

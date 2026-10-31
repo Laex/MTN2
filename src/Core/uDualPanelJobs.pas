@@ -92,7 +92,12 @@ type
     /// <summary>Ord of the remembered conflict answer, or -1; the copy worker
     /// reads it to answer without a round trip to the UI thread.</summary>
     FWorkerRemembered: Integer;
+    FWorkerErrSkipAll: Boolean;
     function MakeConflictResolver: TVfsConflictResolver;
+    function MakeErrorResolver: TVfsErrorResolver;
+    procedure NoteSkippedItem(const ASrcURI: string);
+    procedure AskWorkerIOError(const AWait: IConflictWait; const AError: TVfsError);
+    procedure ResolveWorkerIOError(AAction: TJobIOErrorAction);
     procedure AskWorkerConflict(const AWait: IConflictWait;
       const ASrcPath, ADstPath, ANewLine, AExistingLine: string);
     procedure ResolveWorkerConflict(AAction: TJobConflictAction;
@@ -346,6 +351,7 @@ begin
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
   FWorkerRemembered := -1;
+  FWorkerErrSkipAll := False;
   ResetExcludeMasks;
 end;
 
@@ -405,6 +411,102 @@ begin
         end);
       Result := Wait.WaitForAnswer(Life, ANewDstPath);
     end;
+end;
+
+// Runs on the copy worker when one file of a folder copy failed and its
+// automatic retries are spent. Blocks until the user answers on the UI thread.
+function TPanelJobController.MakeErrorResolver: TVfsErrorResolver;
+var
+  Life: IJobLife;
+begin
+  Life := FLife;
+  Result :=
+    function(const AError: TVfsError): TVfsConflictAction
+    var
+      Wait: IConflictWait;
+      Err: TVfsError;
+      NewPath: string;
+    begin
+      if not Life.Alive then
+        Exit(vcaCancel);
+      if FWorkerErrSkipAll then
+        Exit(vcaSkip);
+      Err := AError;
+      Wait := TConflictWait.Create;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if Life.Alive then
+            AskWorkerIOError(Wait, Err)
+          else
+            Wait.Signal(vcaCancel, '');
+        end);
+      Result := Wait.WaitForAnswer(Life, NewPath);
+    end;
+end;
+
+// A source the user skipped as a whole counts as one skipped file; a skipped
+// folder is not counted, as how many files it held is unknown.
+procedure TPanelJobController.NoteSkippedItem(const ASrcURI: string);
+var
+  Path: string;
+begin
+  Path := FileUriToPath(ASrcURI);
+  if (Path <> '') and TDirectory.Exists(WinApiPath(Path)) then
+    Exit;
+  JobNoteSkipped(FJob.Cancel);
+  FJob.FilesSkipped := JobSkippedCount(FJob.Cancel);
+end;
+
+procedure TPanelJobController.AskWorkerIOError(const AWait: IConflictWait;
+  const AError: TVfsError);
+begin
+  if (FJob.Phase <> pjpRunning) or
+     (Assigned(FJob.Cancel) and FJob.Cancel.IsCancellationRequested) then
+  begin
+    AWait.Signal(vcaCancel, '');
+    Exit;
+  end;
+  if FWorkerErrSkipAll then
+  begin
+    AWait.Signal(vcaSkip, '');
+    Exit;
+  end;
+  FConflictWait := AWait;
+  PromptIOErrorAsk(AError.URI, '', FJob.Index, False, False, AError);
+  // The administrator helper redoes whole items, not one file of a tree.
+  FJob.AskOfferElevate := False;
+  if FJob.Phase <> pjpIOErrorAsk then
+  begin
+    // No dialog to answer the question: stop instead of waiting forever.
+    FConflictWait := nil;
+    AWait.Signal(vcaCancel, '');
+  end;
+end;
+
+procedure TPanelJobController.ResolveWorkerIOError(AAction: TJobIOErrorAction);
+var
+  Wait: IConflictWait;
+begin
+  Wait := FConflictWait;
+  FConflictWait := nil;
+  FJob.Phase := pjpRunning;
+  case AAction of
+    jioRetry: Wait.Signal(vcaRetry, '');
+    jioSkip: Wait.Signal(vcaSkip, '');
+    jioSkipAll:
+      begin
+        FWorkerErrSkipAll := True;
+        Wait.Signal(vcaSkip, '');
+      end;
+  else
+    begin
+      RequestCancel;
+      Wait.Signal(vcaCancel, '');
+    end;
+  end;
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
 end;
 
 procedure TPanelJobController.AskWorkerConflict(const AWait: IConflictWait;
@@ -563,6 +665,7 @@ begin
   FJob.BytesTotal := 0;
   FJob.FilesTotal := 0;
   FJob.FilesDone := 0;
+  FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
   ResetExcludeMasks;
   if Assigned(FOnInvalidate) then
@@ -681,6 +784,7 @@ begin
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
   FWorkerRemembered := -1;
+  FWorkerErrSkipAll := False;
   FJob.PendingSrcURI := '';
   FJob.PendingDstURI := '';
   FJob.PendingIndex := 0;
@@ -802,6 +906,7 @@ begin
   FJob.HasRememberedAction := False;
   FJob.RememberedAction := jcaOverwrite;
   FWorkerRemembered := -1;
+  FWorkerErrSkipAll := False;
   FJob.PendingSrcURI := '';
   FJob.PendingDstURI := '';
   FJob.PendingIndex := 0;
@@ -995,6 +1100,7 @@ begin
   end;
   if FJob.SkipAllIOErrors then
   begin
+    NoteSkippedItem(ASrcURI);
     FJob.Index := AIndex + 1;
     RunJobItem;
     Exit;
@@ -1098,6 +1204,8 @@ begin
   // Skip mode must leave existing files alone without asking.
   if FJob.OverwriteMode = jomAsk then
     Token.ConflictResolver := MakeConflictResolver();
+  if FJob.Kind in [pjkCopy, pjkMove] then
+    Token.ErrorResolver := MakeErrorResolver();
   FJob.Cancel := Token;
   FUseElevated := False;
   FJob.Phase := pjpRunning;
@@ -1105,6 +1213,7 @@ begin
   FJob.Index := 0;
   FJob.BytesDoneBase := 0;
   FJob.FilesDone := 0;
+  FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
   if FJob.FilesTotal < 1 then
     FJob.FilesTotal := Length(FJob.Sources);
@@ -1199,6 +1308,7 @@ var
   Life: IJobLife;
 begin
   Life := FLife;
+  FJob.FilesSkipped := JobSkippedCount(FJob.Cancel);
   FProgressInvalidateDirty := True;
   if (PlatformTickCount64 - FLastProgressInvalidateTick) >= cMinInvalidateMs then
   begin
@@ -1861,6 +1971,12 @@ var
 begin
   if FJob.Phase <> pjpIOErrorAsk then
     Exit;
+  if Assigned(FConflictWait) then
+  begin
+    FJob.PendingErrorMessage := '';
+    ResolveWorkerIOError(AAction);
+    Exit;
+  end;
   SrcURI := FJob.PendingSrcURI;
   DstURI := FJob.PendingDstURI;
   Idx := FJob.PendingIndex;
@@ -1880,6 +1996,7 @@ begin
       RunElevatedRemainder(Idx);
     jioSkip:
       begin
+        NoteSkippedItem(SrcURI);
         FJob.Phase := pjpRunning;
         FJob.Index := Idx + 1;
         if Assigned(FOnInvalidate) then
@@ -1889,6 +2006,7 @@ begin
     jioSkipAll:
       begin
         FJob.SkipAllIOErrors := True;
+        NoteSkippedItem(SrcURI);
         FJob.Phase := pjpRunning;
         FJob.Index := Idx + 1;
         if Assigned(FOnInvalidate) then

@@ -8,6 +8,7 @@ dialogs/TestDialogMnemonics
 dialogs/TestIOErrorAskDialog
 vfs/TestCopyIntoSelf
 vfs/TestCopyLockedSource       # Win32 sharing modes
+vfs/TestCopyErrorResolver      # Win32 sharing modes
 vfs/TestCopySkipMerge
 vfs/TestDeleteProgress
 vfs/TestDriveInfo              # drive letters
