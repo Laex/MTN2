@@ -246,6 +246,14 @@ begin
   Snap := BuildJobProgressSnapshot(S, 72);
   Assert.IsTrue((not Snap.IsError) and (Snap.Verb = 'Copying the file'), 'copy snapshot verb');
   Assert.IsTrue(Pos('50%', Snap.FileBar) > 0, 'snapshot file bar');
+  Assert.IsTrue((Pos('Skipped:', Snap.Skipped) = 1) and (Snap.Skipped[Length(Snap.Skipped)] = '0'),
+    'a copy shows its skipped counter, zero to begin with');
+  S.FilesSkipped := 1234;
+  Snap := BuildJobProgressSnapshot(S, 72);
+  Assert.AreEqual(72, Length(Snap.Skipped), 'skipped line fills the dialog width');
+  Assert.IsTrue(Pos('1', Copy(Snap.Skipped, Length(Snap.Skipped) - 4, 5)) > 0,
+    'skipped count is on the right of the line');
+  S.FilesSkipped := 0;
   S.Cancel := TJobCancelToken.Create;
   Assert.IsTrue(BuildJobProgressSnapshot(S, 72).Verb = 'Copying the file',
     'a job nobody asked to stop keeps its verb');

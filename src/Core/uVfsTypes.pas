@@ -80,7 +80,8 @@ type
   end;
 
   /// <summary>Answer to a per-file name conflict met inside a folder merge.</summary>
-  TVfsConflictAction = (vcaOverwrite, vcaSkip, vcaRename, vcaAppend, vcaCancel);
+  TVfsConflictAction = (vcaOverwrite, vcaSkip, vcaRename, vcaAppend, vcaCancel,
+    vcaRetry);
 
   /// <summary>Called on a worker thread; blocks until the answer is known.
   /// For vcaRename ANewDstPath is the replacement destination path.</summary>
@@ -93,6 +94,29 @@ type
   IJobConflictResolver = interface
     ['{4F7A2C91-8B3E-4D56-A1C0-5E9D3B6F7A82}']
     function GetConflictResolver: TVfsConflictResolver;
+  end;
+
+  /// <summary>Called on a worker thread when one file of a recursive copy failed
+  /// and automatic retries are spent; blocks until the answer is known. Answers:
+  /// vcaRetry repeats this file, vcaSkip leaves it out and carries on with the
+  /// rest of the tree, anything else stops the copy.</summary>
+  TVfsErrorResolver = reference to function(const AError: TVfsError): TVfsConflictAction;
+
+  /// <summary>Optionally implemented by a cancel token. It lets a recursive copy
+  /// ask what to do with a single file that failed to copy instead of failing
+  /// the whole tree.</summary>
+  IJobErrorResolver = interface
+    ['{9C5E1B38-7A64-4F2D-B0E3-D81A6F4C2975}']
+    function GetErrorResolver: TVfsErrorResolver;
+  end;
+
+  /// <summary>Optionally implemented by a cancel token. A recursive copy tells it
+  /// about every file it leaves out (already there, or skipped after an error)
+  /// so the job's progress can show how many were skipped.</summary>
+  IJobSkipCounter = interface
+    ['{5D2A8E64-0B71-4C93-A6F5-3E1C9D7B4A08}']
+    procedure NoteSkipped;
+    function GetSkippedCount: Integer;
   end;
 
   TVfsListCallback = reference to procedure(const AItems: TArray<TVfsEntry>;
@@ -146,10 +170,13 @@ type
       AOnDone: TVfsFreeSpaceCallback);
   end;
 
-  TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver)
+  TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver,
+    IJobErrorResolver, IJobSkipCounter)
   private
     FCancelled: Integer; // 0/1 - written from UI, read from workers
+    FSkipped: Integer;   // incremented by workers, read from UI
     FConflictResolver: TVfsConflictResolver;
+    FErrorResolver: TVfsErrorResolver;
   public
     function IsCancellationRequested: Boolean;
     procedure Cancel;
@@ -157,10 +184,25 @@ type
     /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
     property ConflictResolver: TVfsConflictResolver read FConflictResolver
       write FConflictResolver;
+    procedure NoteSkipped;
+    function GetSkippedCount: Integer;
+    function GetErrorResolver: TVfsErrorResolver;
+    /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
+    property ErrorResolver: TVfsErrorResolver read FErrorResolver
+      write FErrorResolver;
   end;
 
 /// <summary>The token's per-file conflict resolver, or nil when it has none.</summary>
 function JobConflictResolver(const ACancel: IJobCancelToken): TVfsConflictResolver;
+
+/// <summary>Counts one skipped file on the token, when it keeps a count.</summary>
+procedure JobNoteSkipped(const ACancel: IJobCancelToken);
+
+/// <summary>How many files the token was told were skipped (0 without a counter).</summary>
+function JobSkippedCount(const ACancel: IJobCancelToken): Integer;
+
+/// <summary>The token's per-file error resolver, or nil when it has none.</summary>
+function JobErrorResolver(const ACancel: IJobCancelToken): TVfsErrorResolver;
 
 /// <summary>True when token is assigned and cancellation was requested.</summary>
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
@@ -351,6 +393,21 @@ begin
   Result := FConflictResolver;
 end;
 
+procedure TJobCancelToken.NoteSkipped;
+begin
+  TInterlocked.Increment(FSkipped);
+end;
+
+function TJobCancelToken.GetSkippedCount: Integer;
+begin
+  Result := TInterlocked.CompareExchange(FSkipped, 0, 0);
+end;
+
+function TJobCancelToken.GetErrorResolver: TVfsErrorResolver;
+begin
+  Result := FErrorResolver;
+end;
+
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
 begin
   Result := Assigned(ACancel) and ACancel.IsCancellationRequested;
@@ -363,6 +420,32 @@ begin
   Result := nil;
   if Assigned(ACancel) and Supports(ACancel, IJobConflictResolver, Source) then
     Result := Source.GetConflictResolver;
+end;
+
+procedure JobNoteSkipped(const ACancel: IJobCancelToken);
+var
+  Counter: IJobSkipCounter;
+begin
+  if Assigned(ACancel) and Supports(ACancel, IJobSkipCounter, Counter) then
+    Counter.NoteSkipped;
+end;
+
+function JobSkippedCount(const ACancel: IJobCancelToken): Integer;
+var
+  Counter: IJobSkipCounter;
+begin
+  Result := 0;
+  if Assigned(ACancel) and Supports(ACancel, IJobSkipCounter, Counter) then
+    Result := Counter.GetSkippedCount;
+end;
+
+function JobErrorResolver(const ACancel: IJobCancelToken): TVfsErrorResolver;
+var
+  Source: IJobErrorResolver;
+begin
+  Result := nil;
+  if Assigned(ACancel) and Supports(ACancel, IJobErrorResolver, Source) then
+    Result := Source.GetErrorResolver;
 end;
 
 function IsWindowsDriveRoot(const APath: string): Boolean;

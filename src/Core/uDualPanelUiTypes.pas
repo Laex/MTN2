@@ -104,6 +104,9 @@ type
     /// top-level selected source. See TPanelJobController.NoteItemProgress /
     /// AdvanceJobAfterItem.</summary>
     FilesDone: Integer;
+    /// <summary>Files a copy or move left out: already at the destination in
+    /// Skip mode, or skipped by the user after an error.</summary>
+    FilesSkipped: Integer;
     CurrentName: string;
     CurrentSrcPath: string;
     /// <summary>The VFS is reading the tree (CurrentSrcPath = the folder)
