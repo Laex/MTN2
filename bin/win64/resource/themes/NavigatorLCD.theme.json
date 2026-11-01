@@ -1,0 +1,37 @@
+{
+  "schema": 2,
+  "name": "Navigator LCD (grayscale)",
+  "extends": "Monochrome",
+  "palette": {
+    "bgDeep": "#000000",
+    "bg": "#555555",
+    "bg1": "#333333",
+    "bg2": "#767676",
+    "line": "#C0C0C0",
+    "fg": "#FFFFFF",
+    "fg2": "#FFFFFF",
+    "mute": "#C0C0C0",
+    "acc": "#FFFFFF",
+    "accFg": "#000000",
+    "hot": "#000000",
+    "bar": "#AAAAAA",
+    "barFg": "#000000"
+  },
+  "colors": {
+    "dialog": {
+      "fg": "barFg",
+      "bg": "bar",
+      "border": "barFg",
+      "hotFg": "bg1"
+    },
+    "button": {
+      "fg": "fg",
+      "bg": "bg2",
+      "hotFg": "bgDeep"
+    },
+    "status": { "fg": "barFg", "bg": "bar", "separator": "bg1" },
+    "menu": { "fg": "barFg", "bg": "bar", "hotFg": "bg1" },
+    "toolbar": { "fg": "barFg", "bg": "bar", "keyFg": "bg1" },
+    "panel": { "headerFg": "fg2" }
+  }
+}

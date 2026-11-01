@@ -1,7 +1,7 @@
 unit uEditorLineOps;
 
 { Whole-line text commands of the editor: sort, remove repeated lines, shift
-  (indent / outdent) and reflow to a width. Each function takes the document
+  (indent / outdent), reflow to a width and align. Each function takes the document
   as an array of lines and the inclusive line range to work on, and returns
   the new lines of that range; the caller splices them back. No I/O and no
   editor state, so the rules are testable on their own. }
@@ -10,6 +10,10 @@ interface
 
 type
   TLineArray = TArray<string>;
+
+  TCaseMode = (cmUpper, cmLower, cmTitle);
+  TAlignMode = (amLeft, amCenter, amRight);
+  TBoxStyle = (bsSingle, bsDouble);
 
 const
   /// <summary>Columns one Shift Right / Left step moves a line.</summary>
@@ -37,10 +41,42 @@ function ShiftedLines(const ALines: TLineArray; AFrom, ATo: Integer;
 /// whole on a line of its own.</summary>
 function ReflowedLines(const ALines: TLineArray; AFrom, ATo, AWidth: Integer): TLineArray;
 
+/// <summary>Lines AFrom..ATo with their text flush left, centered or flush
+/// right within the width of the widest line of the range (leading and
+/// trailing blanks do not count). Blank lines come back empty.</summary>
+function AlignedLines(const ALines: TLineArray; AFrom, ATo: Integer;
+  AMode: TAlignMode): TLineArray;
+
+/// <summary>AText with the letters in the given case. Title case capitalizes
+/// the first letter of each word and lowers the rest; an apostrophe between
+/// two letters stays inside the word.</summary>
+function ChangedCase(const AText: string; AMode: TCaseMode): string;
+
+/// <summary>The mode that follows the state of AText: mixed text goes to
+/// upper case, upper to lower, lower to title, title to upper.</summary>
+function NextCaseMode(const AText: string): TCaseMode;
+
+const
+  /// <summary>Bits of a box-drawing cell: the sides its line reaches.</summary>
+  cBoxUp = 1;
+  cBoxDown = 2;
+  cBoxLeft = 4;
+  cBoxRight = 8;
+
+/// <summary>The sides ACh connects to when it is a single or double
+/// box-drawing character, else 0. The straight characters read as full
+/// lines (vertical = up + down, horizontal = left + right).</summary>
+function BoxMask(ACh: Char): Integer;
+
+/// <summary>The box-drawing character that joins the sides in AMask (a blank
+/// for 0).</summary>
+function BoxChar(AMask: Integer; AStyle: TBoxStyle): Char;
+
 implementation
 
 uses
-  System.SysUtils, System.Generics.Collections, System.Generics.Defaults;
+  System.SysUtils, System.Character, System.Generics.Collections,
+  System.Generics.Defaults;
 
 type
   TIndexedLine = record
@@ -209,6 +245,106 @@ begin
     Outp.Free;
     Words.Free;
   end;
+end;
+
+function AlignedLines(const ALines: TLineArray; AFrom, ATo: Integer;
+  AMode: TAlignMode): TLineArray;
+var
+  I, Width, Pad: Integer;
+  Text: string;
+begin
+  Result := SliceLines(ALines, AFrom, ATo);
+  Width := 0;
+  for I := 0 to High(Result) do
+  begin
+    Result[I] := Trim(Result[I]);
+    if Length(Result[I]) > Width then
+      Width := Length(Result[I]);
+  end;
+  for I := 0 to High(Result) do
+  begin
+    Text := Result[I];
+    case AMode of
+      amCenter: Pad := (Width - Length(Text)) div 2;
+      amRight: Pad := Width - Length(Text);
+    else
+      Pad := 0;
+    end;
+    if Text <> '' then
+      Result[I] := StringOfChar(' ', Pad) + Text;
+  end;
+end;
+
+function ChangedCase(const AText: string; AMode: TCaseMode): string;
+var
+  I: Integer;
+  InWord: Boolean;
+  Ch: Char;
+begin
+  case AMode of
+    cmUpper:
+      Exit(AText.ToUpper);
+    cmLower:
+      Exit(AText.ToLower);
+  end;
+  Result := AText;
+  InWord := False;
+  for I := 1 to Length(Result) do
+  begin
+    Ch := Result[I];
+    if Ch.IsLetterOrDigit then
+    begin
+      if InWord then
+        Result[I] := Ch.ToLower
+      else
+        Result[I] := Ch.ToUpper;
+      InWord := True;
+    end
+    else
+      InWord := InWord and ((Ch = '''') or (Ch = #$2019)) and (I < Length(Result)) and
+        Result[I + 1].IsLetter;
+  end;
+end;
+
+function NextCaseMode(const AText: string): TCaseMode;
+begin
+  if AText.ToLower = AText.ToUpper then
+    Exit(cmUpper);
+  if AText = AText.ToUpper then
+    Exit(cmLower);
+  if AText = AText.ToLower then
+    Exit(cmTitle);
+  Result := cmUpper;
+end;
+
+const
+  // Indexed by the side bits; a side seen alone draws the straight piece.
+  cSingleBox: array[0..15] of Char = (' ', #$2502, #$2502, #$2502, #$2500,
+    #$2518, #$2510, #$2524, #$2500, #$2514, #$250C, #$251C, #$2500, #$2534,
+    #$252C, #$253C);
+  cDoubleBox: array[0..15] of Char = (' ', #$2551, #$2551, #$2551, #$2550,
+    #$255D, #$2557, #$2563, #$2550, #$255A, #$2554, #$2560, #$2550, #$2569,
+    #$2566, #$256C);
+
+function BoxMask(ACh: Char): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  if ACh = ' ' then
+    Exit;
+  for I := High(cSingleBox) downto 1 do
+    if (cSingleBox[I] = ACh) or (cDoubleBox[I] = ACh) then
+      Exit(I);
+end;
+
+function BoxChar(AMask: Integer; AStyle: TBoxStyle): Char;
+begin
+  AMask := AMask and 15;
+  if AStyle = bsDouble then
+    Result := cDoubleBox[AMask]
+  else
+    Result := cSingleBox[AMask];
 end;
 
 end.

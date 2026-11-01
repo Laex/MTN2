@@ -1,0 +1,94 @@
+{
+  "schema": 2,
+  "name": "Navigator Gray",
+  "extends": "NDN",
+  "palette": {
+    "ink": "#000000",
+    "dgray": "#555555",
+    "lgray": "#AAAAAA",
+    "white": "#FFFFFF",
+    "cyan": "#00AAAA",
+    "lcyan": "#55FFFF",
+    "magenta": "#AA00AA",
+    "lmagenta": "#FF55FF",
+    "red": "#AA0000",
+    "lred": "#FF5555",
+    "yellow": "#FFFF55",
+    "green": "#00AA00",
+    "lgreen": "#55FF55",
+    "dcyan": "#008888",
+    "dmagenta": "#AA55AA",
+    "idle": "#2F7F7F",
+    "band": "#007777"
+  },
+  "colors": {
+    "desktop": { "bg": "ink" },
+    "window": {
+      "fg": "white",
+      "bg": "dgray",
+      "borderFocus": "lcyan",
+      "borderNormal": "lgray",
+      "titleFgFocus": "ink",
+      "titleBgFocus": "cyan",
+      "titleFgNormal": "ink",
+      "titleBgNormal": "lgray",
+      "closeAccent": "lred"
+    },
+    "dialog": {
+      "fg": "ink",
+      "bg": "lgray",
+      "border": "ink",
+      "hotFg": "red"
+    },
+    "button": {
+      "fg": "white",
+      "bg": "magenta",
+      "hotFg": "yellow",
+      "focusFg": "ink",
+      "focusBg": "lcyan",
+      "hotFocusFg": "red"
+    },
+    "cursor": {
+      "fg": "ink",
+      "bg": "cyan",
+      "idleBg": "idle",
+      "hotFg": "red",
+      "markedBg": "yellow"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandBg": "band"
+    },
+    "file": {
+      "dir": "white",
+      "archive": "lmagenta",
+      "executable": "lgreen",
+      "media": "lmagenta",
+      "hidden": "lgray",
+      "hiddenDir": "lgray",
+      "hiddenArchive": "dcyan",
+      "hiddenExecutable": "green",
+      "hiddenMedia": "dmagenta"
+    },
+    "status": { "fg": "ink", "bg": "lgray" },
+    "menu": { "fg": "ink", "bg": "lgray", "hotFg": "red" },
+    "toolbar": { "fg": "ink", "bg": "lgray", "keyFg": "red" },
+    "tab": {
+      "activeFg": "ink",
+      "activeBg": "cyan",
+      "normalFg": "lgray",
+      "normalBg": "ink"
+    },
+    "panel": {
+      "tabActiveFg": "ink",
+      "tabActiveBg": "cyan",
+      "tabNormalFg": "lgray",
+      "headerFg": "lcyan"
+    },
+    "scroll": { "fg": "lgray", "thumb": "cyan" }
+  },
+  "markdown": {
+    "inlineCode": { "fg": "lgreen", "bg": "ink" },
+    "codeBlock": { "fg": "lgray", "bg": "ink" }
+  }
+}

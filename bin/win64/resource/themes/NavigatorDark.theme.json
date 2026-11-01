@@ -1,0 +1,89 @@
+{
+  "schema": 2,
+  "name": "Navigator Dark",
+  "extends": "NDN",
+  "palette": {
+    "ink": "#000000",
+    "blue": "#0000AA",
+    "dgray": "#555555",
+    "lgray": "#AAAAAA",
+    "white": "#FFFFFF",
+    "cyan": "#00AAAA",
+    "lcyan": "#55FFFF",
+    "yellow": "#FFFF55",
+    "red": "#AA0000",
+    "lred": "#FF5555",
+    "lmagenta": "#FF55FF",
+    "lgreen": "#55FF55",
+    "green": "#00AA00",
+    "hidden": "#777777",
+    "idle": "#1A3A6A",
+    "band": "#0000FF"
+  },
+  "colors": {
+    "desktop": { "bg": "ink" },
+    "window": {
+      "fg": "lgray",
+      "bg": "ink",
+      "borderFocus": "lcyan",
+      "borderNormal": "dgray",
+      "titleFgFocus": "ink",
+      "titleBgFocus": "cyan",
+      "titleFgNormal": "white",
+      "titleBgNormal": "dgray",
+      "closeAccent": "lred"
+    },
+    "dialog": {
+      "fg": "white",
+      "bg": "blue",
+      "border": "lcyan",
+      "hotFg": "yellow"
+    },
+    "button": {
+      "fg": "ink",
+      "bg": "lgray",
+      "hotFg": "red",
+      "focusFg": "ink",
+      "focusBg": "cyan",
+      "hotFocusFg": "red"
+    },
+    "cursor": {
+      "fg": "ink",
+      "bg": "cyan",
+      "idleBg": "idle",
+      "hotFg": "red",
+      "markedBg": "yellow"
+    },
+    "mark": {
+      "fg": "yellow",
+      "bandBg": "band"
+    },
+    "file": {
+      "dir": "white",
+      "archive": "lmagenta",
+      "executable": "lgreen",
+      "media": "lmagenta",
+      "hidden": "hidden",
+      "hiddenDir": "hidden",
+      "hiddenArchive": "hidden",
+      "hiddenExecutable": "hidden",
+      "hiddenMedia": "hidden"
+    },
+    "status": { "fg": "white", "bg": "blue" },
+    "menu": { "fg": "white", "bg": "blue", "hotFg": "yellow" },
+    "toolbar": { "fg": "lgray", "bg": "blue", "keyFg": "yellow" },
+    "tab": {
+      "activeFg": "white",
+      "activeBg": "blue",
+      "normalFg": "lgray",
+      "normalBg": "ink"
+    },
+    "panel": {
+      "tabActiveFg": "white",
+      "tabActiveBg": "blue",
+      "tabNormalFg": "lgray",
+      "headerFg": "lcyan"
+    },
+    "scroll": { "fg": "dgray", "thumb": "cyan" }
+  }
+}

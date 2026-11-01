@@ -18,7 +18,15 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight;
+  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps;
+
+var
+  /// <summary>Width the last Format text command used; the dialog opens with
+  /// it and auto-wrap breaks lines at it.</summary>
+  GEditorReflowWidth: Integer = 72;
+  /// <summary>Break the line at the last space when typing passes
+  /// GEditorReflowWidth; lasts until the program ends.</summary>
+  GEditorAutoWrap: Boolean = False;
 
 const
   /// <summary>TNoticeRequest.Tag of the toast with the indexing progress.</summary>
@@ -159,6 +167,14 @@ type
     FCloseAfterSave: Boolean;
     FUndoBuffer: TEditorUndoBuffer;
     FCoalesceInsert: Boolean;
+    // Incremental search: the text typed so far, where Esc returns to, and
+    // where the next search starts.
+    FIncActive: Boolean;
+    FIncText: string;
+    FIncHomeRow, FIncHomeCol: Integer;
+    FIncFromRow, FIncFromCol: Integer;
+    // Line drawing: 0 off, 1 single lines, 2 double lines.
+    FDrawStyle: Integer;
     /// <summary>Text of the last search, which F3 / Shift+F3 look for again.
     /// The Find and Replace dialogs fill it; when nothing was searched in this
     /// editor yet it starts from the latest saved search (uDialogHistory
@@ -442,6 +458,26 @@ type
     procedure OpenBookmarkList;
     /// <summary>Auto-indent on Enter on / off (GEditorAutoIndent, kept in the session).</summary>
     procedure ToggleAutoIndent;
+    /// <summary>Upper case, lower case and title case in turn for the
+    /// selection (a block too) or the word under the cursor.</summary>
+    procedure ChangeCase;
+    /// <summary>Aligns the selected lines (the paragraph around the cursor
+    /// without a selection) within the width of the widest one.</summary>
+    procedure AlignLines(AMode: TAlignMode);
+    /// <summary>Typing past the Format text width breaks the line at the last
+    /// space (GEditorAutoWrap, kept in the session).</summary>
+    procedure ToggleAutoWrap;
+    procedure StartIncSearch;
+    procedure ToggleDrawLines;
+    procedure WrapLongLine;
+    procedure IncSearchFind(AForward: Boolean; AFromCursor: Boolean);
+    procedure EndIncSearch(AAccept: Boolean);
+    function IncSearchInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
+    procedure DrawMark(ARow, ACol, ASide: Integer);
+    procedure DrawStep(ASide: Integer);
+    function DrawInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     procedure CopySelectionOrLine;
     procedure CutSelectionOrLine;
     procedure PasteText;
@@ -505,12 +541,8 @@ implementation
 uses
   System.IOUtils, System.StrUtils, uClipboardService,
   System.JSON, uOverlayRenderer, uImageInfo, uPluginSurface, uPluginServices, uStrings, uDialogHistory, uDialogResources, uNotice,
-  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uEditorLineOps, uDisplaySettings,
-  uFileFind;
-
-var
-  /// <summary>Width the last Format text command used; the dialog opens with it.</summary>
-  GEditorReflowWidth: Integer = 72;
+  uShellAssoc, uKeyChord, uChromeRows, uCharWidth, uDisplaySettings,
+  uFileFind, System.Character;
 
 const
   /// <summary>uDialogHistory key of the Find dialog; replace.json's Find field
@@ -2278,6 +2310,11 @@ begin
   FKeymapHost.GotoBookmark := GotoBookmark;
   FKeymapHost.OpenBookmarkList := OpenBookmarkList;
   FKeymapHost.ToggleAutoIndent := ToggleAutoIndent;
+  FKeymapHost.ChangeCase := ChangeCase;
+  FKeymapHost.AlignLines := AlignLines;
+  FKeymapHost.ToggleAutoWrap := ToggleAutoWrap;
+  FKeymapHost.StartIncSearch := StartIncSearch;
+  FKeymapHost.ToggleDrawLines := ToggleDrawLines;
   FKeymapHost.MoveWord := MoveWord;
   FKeymapHost.MoveCursor := MoveCursor;
   FKeymapHost.MoveBlockCursor := MoveBlockCursor;
@@ -2384,6 +2421,399 @@ begin
     Notice(T('ui.editor.autoIndentOn', 'Auto-indent: on'))
   else
     Notice(T('ui.editor.autoIndentOff', 'Auto-indent: off'));
+end;
+
+function IsCaseWordChar(ACh: Char): Boolean;
+begin
+  Result := (ACh = '_') or ACh.IsLetterOrDigit;
+end;
+
+procedure TEditorWindow.ChangeCase;
+var
+  R1, C1, R2, C2, R, SC, EC: Integer;
+  Line, Part: string;
+  Mode: TCaseMode;
+begin
+  if FViewOnly or FHexMode then
+    Exit;
+  if not CanEdit then
+  begin
+    TryUnlockEdit;
+    Exit;
+  end;
+  ClampCursor;
+  BreakInsertCoalesce;
+  if HasSelection then
+  begin
+    GetSelRange(R1, C1, R2, C2);
+    Mode := NextCaseMode(SelectedText);
+  end
+  else
+  begin
+    Line := FDoc.GetLine(FCursorRow);
+    C1 := FCursorCol;
+    C2 := FCursorCol;
+    while (C1 > 0) and IsCaseWordChar(Line[C1]) do
+      Dec(C1);
+    while (C2 < Length(Line)) and IsCaseWordChar(Line[C2 + 1]) do
+      Inc(C2);
+    if C2 = C1 then
+      Exit;
+    R1 := FCursorRow;
+    R2 := FCursorRow;
+    Mode := NextCaseMode(Copy(Line, C1 + 1, C2 - C1));
+  end;
+  PushUndo;
+  for R := R1 to R2 do
+  begin
+    Line := FDoc.GetLine(R);
+    if FColumnMode then
+    begin
+      SC := C1;
+      EC := Min(C2, Length(Line));
+    end
+    else
+    begin
+      SC := IfThen(R = R1, C1, 0);
+      EC := IfThen(R = R2, C2, Length(Line));
+    end;
+    if EC <= SC then
+      Continue;
+    Part := Copy(Line, SC + 1, EC - SC);
+    FDoc.SetLine(R, Copy(Line, 1, SC) + ChangedCase(Part, Mode) +
+      Copy(Line, EC + 1, MaxInt));
+  end;
+  ClampCursor;
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.AlignLines(AMode: TAlignMode);
+var
+  First, Last: Integer;
+begin
+  if not LineCommandRange(First, Last) then
+    Exit;
+  if not HasSelection then
+  begin
+    First := FCursorRow;
+    Last := FCursorRow;
+    while (First > 0) and (Trim(FDoc.GetLine(First - 1)) <> '') do
+      Dec(First);
+    while (Last < FDoc.LineCount - 1) and (Trim(FDoc.GetLine(Last + 1)) <> '') do
+      Inc(Last);
+  end;
+  ApplyLineCommand(First, Last,
+    AlignedLines(FDoc.SnapshotLines, First, Last, AMode));
+end;
+
+procedure TEditorWindow.ToggleAutoWrap;
+begin
+  GEditorAutoWrap := not GEditorAutoWrap;
+  if GEditorAutoWrap then
+    Notice(Format(T('ui.editor.autoWrapOn', 'Auto-wrap at column %d: on'),
+      [GEditorReflowWidth]))
+  else
+    Notice(T('ui.editor.autoWrapOff', 'Auto-wrap: off'));
+end;
+
+procedure TEditorWindow.WrapLongLine;
+var
+  Line, Head, Tail, Indent: string;
+  P, N: Integer;
+begin
+  Line := FDoc.GetLine(FCursorRow);
+  if (Length(Line) <= GEditorReflowWidth) or (FCursorCol <> Length(Line)) then
+    Exit;
+  N := 1;
+  while (N <= Length(Line)) and ((Line[N] = ' ') or (Line[N] = #9)) do
+    Inc(N);
+  P := 0;
+  while N <= Min(GEditorReflowWidth + 1, Length(Line)) do
+  begin
+    if Line[N] = ' ' then
+      P := N;
+    Inc(N);
+  end;
+  if P = 0 then
+    Exit;
+  Head := TrimRight(Copy(Line, 1, P - 1));
+  Tail := Copy(Line, P + 1, MaxInt);
+  if (Head = '') or (Tail = '') then
+    Exit;
+  Indent := '';
+  if GEditorAutoIndent then
+  begin
+    N := 1;
+    while (N <= Length(Line)) and ((Line[N] = ' ') or (Line[N] = #9)) do
+      Inc(N);
+    Indent := Copy(Line, 1, N - 1);
+  end;
+  FDoc.SetLine(FCursorRow, Head);
+  FDoc.InsertLine(FCursorRow + 1, Indent + Tail);
+  Inc(FCursorRow);
+  FCursorCol := Length(Indent) + Length(Tail);
+end;
+
+procedure TEditorWindow.StartIncSearch;
+var
+  R2, C2: Integer;
+begin
+  if FHexMode or not FDoc.Ready or (FDoc.LineCount = 0) then
+    Exit;
+  ClampCursor;
+  BreakInsertCoalesce;
+  FIncHomeRow := FCursorRow;
+  FIncHomeCol := FCursorCol;
+  FIncFromRow := FCursorRow;
+  FIncFromCol := FCursorCol;
+  if HasSelection then
+  begin
+    GetSelRange(FIncFromRow, FIncFromCol, R2, C2);
+    ClearSelection;
+  end;
+  FIncText := '';
+  FIncActive := True;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.IncSearchFind(AForward: Boolean; AFromCursor: Boolean);
+var
+  I, Row, Col, R2, C2: Integer;
+  Lines: TArray<string>;
+  Opts: TSearchOptions;
+  Hit: TSearchResult;
+begin
+  if FIncText = '' then
+  begin
+    ClearSelection;
+    FCursorRow := FIncHomeRow;
+    FCursorCol := FIncHomeCol;
+    EnsureCursorVisible;
+    NotifyHost;
+    Exit;
+  end;
+  Opts := GEditorSearchOptions;
+  Opts.SearchBackwards := False;
+  Opts.UseRegex := False;
+  SetLength(Lines, FDoc.LineCount);
+  for I := 0 to FDoc.LineCount - 1 do
+    Lines[I] := CursorLineText(I);
+  if AFromCursor then
+  begin
+    Row := FCursorRow;
+    Col := FCursorCol;
+    if HasSelection then
+      GetSelRange(Row, Col, R2, C2);
+  end
+  else
+  begin
+    Row := FIncFromRow;
+    Col := FIncFromCol;
+  end;
+  if AForward then
+  begin
+    if AFromCursor then
+    begin
+      Row := FCursorRow;
+      Col := FCursorCol;
+    end;
+    Hit := TEditorSearchEngine.FindNextWrapped(Lines, FIncText, Row, Col, Opts, True);
+  end
+  else
+    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, FIncText, Row, Col, Opts, True);
+  if Hit.Found then
+  begin
+    FColumnMode := False;
+    FSelAnchorRow := Hit.LineIndex;
+    FSelAnchorCol := Hit.ColIndex;
+    FCursorRow := Hit.LineIndex;
+    FCursorCol := Hit.ColIndex + Hit.Length;
+    FIncFromRow := Hit.LineIndex;
+    FIncFromCol := Hit.ColIndex;
+    FFindStatus := '';
+  end
+  else
+    FFindStatus := T('ui.editor.incNotFound', 'not found');
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.EndIncSearch(AAccept: Boolean);
+begin
+  FIncActive := False;
+  FFindStatus := '';
+  if AAccept then
+  begin
+    if FIncText <> '' then
+      FFindText := FIncText;
+  end
+  else
+  begin
+    ClearSelection;
+    FCursorRow := FIncHomeRow;
+    FCursorCol := FIncHomeCol;
+    ClampCursor;
+    EnsureCursorVisible;
+  end;
+  NotifyHost;
+end;
+
+function TEditorWindow.IncSearchInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+var
+  K: TKeyChord;
+begin
+  Result := True;
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if (AKey = vkEscape) and (AShift = []) then
+    EndIncSearch(False)
+  else if (AKey = vkReturn) and (AShift = []) then
+    EndIncSearch(True)
+  else if (AKey = vkBack) and (AShift = []) then
+  begin
+    if FIncText <> '' then
+      Delete(FIncText, Length(FIncText), 1);
+    IncSearchFind(True, False);
+  end
+  else if ((AKey = vkDown) or (AKey = vkF3)) and (AShift = []) then
+    IncSearchFind(True, True)
+  else if ((AKey = vkUp) or ((AKey = vkF3) and (AShift = [ssShift]))) and
+    ((AShift = []) or (AShift = [ssShift])) then
+    IncSearchFind(False, True)
+  else if K.IsPrintable and K.HasMods([], [ssShift]) then
+  begin
+    FIncText := FIncText + K.Ch;
+    IncSearchFind(True, False);
+  end
+  else
+  begin
+    EndIncSearch(True);
+    Exit(False);
+  end;
+  AKey := 0;
+  AKeyChar := #0;
+end;
+
+procedure TEditorWindow.ToggleDrawLines;
+begin
+  if FViewOnly or FHexMode then
+    Exit;
+  if not CanEdit then
+  begin
+    TryUnlockEdit;
+    Exit;
+  end;
+  BreakInsertCoalesce;
+  FDrawStyle := (FDrawStyle + 1) mod 3;
+  case FDrawStyle of
+    1: Notice(T('ui.editor.drawSingle', 'Line drawing: single lines (arrows draw, Esc ends)'));
+    2: Notice(T('ui.editor.drawDouble', 'Line drawing: double lines (arrows draw, Esc ends)'));
+  else
+    Notice(T('ui.editor.drawOff', 'Line drawing: off'));
+  end;
+  NotifyHost;
+end;
+
+procedure TEditorWindow.DrawMark(ARow, ACol, ASide: Integer);
+var
+  Line: string;
+  Mask: Integer;
+  Style: TBoxStyle;
+begin
+  while FDoc.LineCount <= ARow do
+    FDoc.InsertLine(FDoc.LineCount, '');
+  Line := FDoc.GetLine(ARow);
+  if Length(Line) < ACol then
+    Line := Line + StringOfChar(' ', ACol - Length(Line));
+  Mask := ASide;
+  if ACol < Length(Line) then
+    Mask := Mask or BoxMask(Line[ACol + 1]);
+  if FDrawStyle = 2 then
+    Style := bsDouble
+  else
+    Style := bsSingle;
+  if ACol < Length(Line) then
+    Line[ACol + 1] := BoxChar(Mask, Style)
+  else
+    Line := Line + BoxChar(Mask, Style);
+  FDoc.SetLine(ARow, Line);
+end;
+
+procedure TEditorWindow.DrawStep(ASide: Integer);
+var
+  Row, Col, Opposite: Integer;
+begin
+  ClampCursor;
+  Row := FCursorRow;
+  Col := FCursorCol;
+  Opposite := 0;
+  case ASide of
+    cBoxUp:
+      begin
+        Dec(Row);
+        Opposite := cBoxDown;
+      end;
+    cBoxDown:
+      begin
+        Inc(Row);
+        Opposite := cBoxUp;
+      end;
+    cBoxLeft:
+      begin
+        Dec(Col);
+        Opposite := cBoxRight;
+      end;
+    cBoxRight:
+      begin
+        Inc(Col);
+        Opposite := cBoxLeft;
+      end;
+  end;
+  if (Row < 0) or (Col < 0) then
+    Exit;
+  if not FCoalesceInsert then
+  begin
+    PushUndo;
+    FCoalesceInsert := True;
+  end;
+  ClearSelection;
+  DrawMark(FCursorRow, FCursorCol, ASide);
+  DrawMark(Row, Col, Opposite);
+  FCursorRow := Row;
+  FCursorCol := Col;
+  EnsureCursorVisible;
+  NotifyHost;
+end;
+
+function TEditorWindow.DrawInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+begin
+  Result := True;
+  if (AKey = vkEscape) and (AShift = []) then
+  begin
+    FDrawStyle := 0;
+    BreakInsertCoalesce;
+    NotifyHost;
+  end
+  else if AShift <> [] then
+    Exit(False)
+  else if not CanEdit then
+  begin
+    FDrawStyle := 0;
+    Exit(False);
+  end
+  else
+    case AKey of
+      vkUp:    DrawStep(cBoxUp);
+      vkDown:  DrawStep(cBoxDown);
+      vkLeft:  DrawStep(cBoxLeft);
+      vkRight: DrawStep(cBoxRight);
+    else
+      Exit(False);
+    end;
+  AKey := 0;
+  AKeyChar := #0;
 end;
 
 procedure TEditorWindow.LeaveMarkdownOverlay;
@@ -4092,6 +4522,8 @@ begin
   FDoc.SetLine(FCursorRow, Line);
   Inc(FCursorCol);
   ClearSelection;
+  if GEditorAutoWrap and (ACh <> ' ') then
+    WrapLongLine;
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -4548,6 +4980,17 @@ begin
     begin
       Segs := Segs + [TextEncodingName(FDoc.Encoding)];
       Kinds := Kinds + [sskEncoding];
+    end;
+    if FIncActive then
+    begin
+      Segs := Segs + [T('ui.editor.incSearch', 'Search') + ': ' + FIncText];
+      Kinds := Kinds + [sskNone];
+    end;
+    if FDrawStyle <> 0 then
+    begin
+      Segs := Segs + [IfThen(FDrawStyle = 2, T('ui.editor.drawDoubleTag', 'Draw ='),
+        T('ui.editor.drawSingleTag', 'Draw -'))];
+      Kinds := Kinds + [sskNone];
     end;
     if FFindStatus <> '' then
     begin
@@ -5556,6 +5999,11 @@ begin
     AKeyChar := #0;
     Exit;
   end;
+
+  if FIncActive and IncSearchInput(AKey, AShift, AKeyChar) then
+    Exit(True);
+  if (FDrawStyle <> 0) and DrawInput(AKey, AShift, AKeyChar) then
+    Exit(True);
 
   // Moving up or to the top leaves follow mode.
   if FFollow and ((AKey = vkUp) or (AKey = vkPrior) or (AKey = vkHome)) and

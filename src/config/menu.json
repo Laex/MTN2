@@ -101,7 +101,15 @@
         { "caption": "Next bookmark", "hotChar": "X", "shortcut": "Ctrl+Shift+F2", "action": "tmaEditBookmarkNext", "hint": "Jumps to the next bookmark.", "aliases": "bookmark, mark" },
         { "caption": "Previous bookmark", "hotChar": "V", "shortcut": "Ctrl+Alt+F2", "action": "tmaEditBookmarkPrev", "hint": "Jumps to the previous bookmark.", "aliases": "bookmark, mark" },
         { "caption": "Bookmark list...", "hotChar": "K", "shortcut": "Ctrl+Alt+B", "action": "tmaEditBookmarkList", "hint": "Lists the bookmarks of the document; Enter jumps to the chosen one.", "aliases": "bookmarks, marks" },
-        { "caption": "Auto-indent mode", "hotChar": "M", "shortcut": "Ctrl+Alt+I", "action": "tmaEditAutoIndent", "hint": "Turns on or off carrying the indent of a line to the new line on Enter.", "aliases": "indent" }
+        { "caption": "Auto-indent mode", "hotChar": "M", "shortcut": "Ctrl+Alt+I", "action": "tmaEditAutoIndent", "hint": "Turns on or off carrying the indent of a line to the new line on Enter.", "aliases": "indent" },
+        { "isSeparator": true },
+        { "caption": "Change case", "hotChar": "S", "shortcut": "Ctrl+Alt+C", "action": "tmaEditChangeCase", "hint": "Switches the selection, or the word under the cursor, between upper case, lower case and title case.", "aliases": "case, upper, lower, capitalize" },
+        { "caption": "Align left", "hotChar": "", "shortcut": "Ctrl+Alt+L", "action": "tmaEditAlignLeft", "hint": "Moves the selected lines (the paragraph without a selection) to the left edge.", "aliases": "align, left" },
+        { "caption": "Align center", "hotChar": "", "shortcut": "Ctrl+Alt+E", "action": "tmaEditAlignCenter", "hint": "Centers the selected lines (the paragraph without a selection) within the widest line.", "aliases": "align, center" },
+        { "caption": "Align right", "hotChar": "", "shortcut": "Ctrl+Alt+R", "action": "tmaEditAlignRight", "hint": "Moves the selected lines (the paragraph without a selection) to the right edge of the widest line.", "aliases": "align, right" },
+        { "caption": "Auto-wrap mode", "hotChar": "", "shortcut": "Ctrl+Alt+W", "action": "tmaEditAutoWrap", "hint": "Turns on or off breaking a line at the last space when typing goes past the Format text width.", "aliases": "wrap, word wrap" },
+        { "caption": "Incremental search", "hotChar": "", "shortcut": "Ctrl+Alt+T", "action": "tmaEditIncSearch", "hint": "Searches while you type; Down and Up move to the next and previous match, Enter keeps the match, Esc returns.", "aliases": "isearch, find, search as you type" },
+        { "caption": "Draw lines mode", "hotChar": "", "shortcut": "Ctrl+Alt+D", "action": "tmaEditDrawLines", "hint": "The arrow keys draw single or double box lines; each press of the key switches single, double and off, Esc ends.", "aliases": "draw, box, frame, line" }
       ]
     },
     {

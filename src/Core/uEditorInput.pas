@@ -8,7 +8,7 @@ unit uEditorInput;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, uKeymap;
+  System.SysUtils, System.Classes, System.UITypes, uKeymap, uEditorLineOps;
 
 const
   /// <summary>AColDelta of a block move that goes to the start / end of the line.</summary>
@@ -26,6 +26,7 @@ type
   TEditorWordProc = procedure(AForward, AExtendSel: Boolean) of object;
   TEditorBlockMoveProc = procedure(ARowDelta, AColDelta: Integer) of object;
   TEditorCharProc = procedure(ACh: Char) of object;
+  TEditorAlignProc = procedure(AMode: TAlignMode) of object;
 
   TEditorKeymapHost = record
     CanEdit: TEditorBoolFn;
@@ -63,6 +64,11 @@ type
     GotoBookmark: TEditorFindProc;
     OpenBookmarkList: TEditorProc;
     ToggleAutoIndent: TEditorProc;
+    ChangeCase: TEditorProc;
+    AlignLines: TEditorAlignProc;
+    ToggleAutoWrap: TEditorProc;
+    StartIncSearch: TEditorProc;
+    ToggleDrawLines: TEditorProc;
     MoveWord: TEditorWordProc;
     MoveCursor: TEditorMoveProc;
     MoveBlockCursor: TEditorBlockMoveProc;
@@ -205,6 +211,8 @@ begin
       AHost.OpenBookmarkList();
     kaEditorAutoIndent:
       AHost.ToggleAutoIndent();
+    kaEditorIncSearch:
+      AHost.StartIncSearch();
     kaViewerWordWrap:
       if HostViewOnly(AHost) and not HostMarkdownMode(AHost) then
         AHost.ToggleWordWrap()
@@ -250,6 +258,18 @@ begin
         AHost.ShiftLines(True);
       kaEditorShiftLeft:
         AHost.ShiftLines(False);
+      kaEditorChangeCase:
+        AHost.ChangeCase();
+      kaEditorAlignLeft:
+        AHost.AlignLines(amLeft);
+      kaEditorAlignCenter:
+        AHost.AlignLines(amCenter);
+      kaEditorAlignRight:
+        AHost.AlignLines(amRight);
+      kaEditorAutoWrap:
+        AHost.ToggleAutoWrap();
+      kaEditorDrawLines:
+        AHost.ToggleDrawLines();
     else
       Result := arPass;
     end;

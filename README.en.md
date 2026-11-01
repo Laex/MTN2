@@ -110,7 +110,7 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
   highlighting of plain text files and pictures in quick view.
 - **Command line and automation:** a list of earlier commands that start with what you typed, environment profiles for shells (`environment.json`),
   `MTN2 path1 path2` opens tabs, `--view` and `--edit` open the viewer and editor, `--update` updates without a window, file lists exported to Markdown or CSV.
-- **Git and extras:** the Git status plugin shows the branch and change counts in the status bar; color groups with priorities; a screensaver with sharks when idle.
+- **Git and extras:** the Git status plugin shows the branch and change counts in the status bar, colors the file names in the panels by their git state, and Ctrl+Shift+D opens the `git diff` of a file in the built-in viewer; Ctrl+Shift+F12 jumps to frequent folders; optional Vim keys on the panel (`hjkl`, `g`, `G`, `/`, `:`); color groups with priorities; a screensaver with sharks when idle.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), command palette (`Shift+F9`) to search the menu items, file associations, F1 context help.
 - **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → User interface...**
@@ -141,7 +141,7 @@ Pre-built binaries are available on the [Releases](https://github.com/Laex/MTN2/
   window, works over SSH) and the experimental GUI `mtn2-sdl` (SDL2 window, needs `libSDL2` and `libfreetype`):
   installation, dependencies, and options in [docs/LINUX.md](docs/LINUX.md).
 
-**Windows:** simply extract the archive into any folder and run `MTN2.exe`. The application can then update itself
+**Windows:** with [Scoop](https://scoop.sh): `scoop bucket add mtn2 https://github.com/Laex/scoop-mtn2` and `scoop install mtn2`. Or simply extract the archive into any folder and run `MTN2.exe`. The application can then update itself
 (menu **≡ → Check for updates...**). The release includes `7z.dll` from [7-Zip](https://www.7-zip.org) (GNU LGPL; license text in
 `plugins\mtn.7z\license.txt`, details in [THIRD-PARTY.md](THIRD-PARTY.md)) enabling support for 7z and other
 7-Zip formats. You may replace it with your own x64 version in `plugins\mtn.7z\`; zip archives open without it.

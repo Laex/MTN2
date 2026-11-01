@@ -100,7 +100,7 @@ Linux(`mtn2-tui`, `mtn2-sdl`)는 아래 “설치”를 참고하세요. 프로�
 - **비교와 동기화:** 시간·크기·내용으로 폴더 비교(백그라운드, 중단 가능), 두 파일의 줄 단위 차이(`Ctrl+Alt+C`), 디렉터리 동기화, 다른 패널의 같은 이름 파일로 이동(`Ctrl+Alt+M`).
 - **로그와 바이너리 파일:** 늘어나는 파일의 끝 따라가기(`Ctrl+Shift+F`, 로그 로테이션 지원), 16진수 모드의 바이트 검색, 텍스트 파일 강조, 빠른 보기의 이미지.
 - **명령줄과 자동화:** 입력한 글자로 시작하는 이전 명령 목록, 셸용 환경 프로필(`environment.json`), `MTN2 경로1 경로2`로 탭 열기, `--view`와 `--edit`로 뷰어·에디터 열기, `--update`로 창 없이 업데이트, 파일 목록을 Markdown 또는 CSV로 내보내기.
-- **Git과 기타:** "Git status" 플러그인이 상태 표시줄에 브랜치와 변경 수를 표시하고, 우선순위가 있는 색상 그룹, 유휴 시 상어 화면 보호기가 있습니다.
+- **Git과 기타:** "Git status" 플러그인이 상태 표시줄에 브랜치와 변경 수를 표시하고 패널의 파일 이름을 git 상태에 따라 색칠하며, Ctrl+Shift+D로 파일의 `git diff`를 내장 뷰어에서 열 수 있고, Ctrl+Shift+F12로 자주 쓰는 폴더로 이동하며, 선택적으로 패널에서 Vim 키(`hjkl`, `g`, `G`, `/`, `:`)를 쓸 수 있고, 우선순위가 있는 색상 그룹, 유휴 시 상어 화면 보호기가 있습니다.
 - **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 명령 팔레트(`Shift+F9`, 메뉴 항목 검색), 파일 연결 설정, F1 컨텍스트 도움말.
 - **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어, 중국어 간체로 제공됩니다. 언어는 **옵션 → 인터페이스...** (Options → User interface...)에서 선택할 수 있으며
@@ -127,7 +127,7 @@ Windows x64(GUI 애플리케이션) 및 Linux x86-64를 지원합니다: `mtn2-t
   실험적인 GUI 버전 `mtn2-sdl`(SDL2 창, `libSDL2`와 `libfreetype` 필요):
   설치 방법, 의존성 및 옵션은 [docs/LINUX.md](docs/LINUX.md)를 참조하십시오.
 
-**Windows:** 압축을 임의의 폴더에 풀고 `MTN2.exe`를 실행하기만 하면 됩니다. 이후에는 프로그램이 자체적으로 업데이트됩니다
+**Windows:** [Scoop](https://scoop.sh)으로: `scoop bucket add mtn2 https://github.com/Laex/scoop-mtn2` 및 `scoop install mtn2`. 또는 압축을 임의의 폴더에 풀고 `MTN2.exe`를 실행하기만 하면 됩니다. 이후에는 프로그램이 자체적으로 업데이트됩니다
 (메뉴 **≡ → 업데이트 확인...**). 7z 및 기타 7-Zip 포맷 지원을 위해 [7-Zip](https://www.7-zip.org)의 `7z.dll`이 번들로 포함되어 있습니다(GNU LGPL 라이선스; 라이선스 전문은 `plugins\mtn.7z\license.txt`, 상세 내용은 [THIRD-PARTY.md](THIRD-PARTY.md) 참조). 필요한 경우 `plugins\mtn.7z\`의 DLL을 사용자의 x64 버전으로 교체할 수 있으며, zip 파일은 이 DLL 없이도 열 수 있습니다.
 
 **Linux:** `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh`(모든 사용자용은 `sudo`) 또는

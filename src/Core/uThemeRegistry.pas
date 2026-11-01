@@ -112,11 +112,12 @@ const
   cThemesDirName = 'themes';
   // Shipped themes the picker lists first, in this order; any other shipped
   // theme follows by name.
-  cPickerOrder: array[0..18] of string = (
+  cPickerOrder: array[0..22] of string = (
     'NortonCommander', 'MidnightCommander', 'ModernUnicode', 'ASCII',
     'TotalCommander', 'Monochrome', 'HighContrast', 'SolarizedDark',
     'SolarizedLight', 'Dracula', 'Nord', 'GruvboxDark', 'Monokai', 'TokyoNight',
-    'OneDark', 'DarkPlus', 'Light', 'GreenPhosphor', 'AmberPhosphor');
+    'OneDark', 'DarkPlus', 'Light', 'GreenPhosphor', 'AmberPhosphor',
+    'NavigatorGray', 'NavigatorDark', 'NavigatorNight', 'NavigatorLCD');
 
 var
   // The default theme first, then the shipped ones in picker order.

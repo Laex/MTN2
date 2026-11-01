@@ -165,6 +165,13 @@ type
     kaEditorBookmarkPrev, // Ctrl+Alt+F2 -- go to the previous bookmark
     kaEditorBookmarkList, // Ctrl+Alt+B -- list of the bookmarks, jump to one
     kaEditorAutoIndent, // Ctrl+Alt+I -- auto-indent on Enter on / off
+    kaEditorChangeCase, // Ctrl+Alt+C -- upper / lower / title case of the selection or word
+    kaEditorAlignLeft, // Ctrl+Alt+L -- text of the selected lines flush left
+    kaEditorAlignCenter, // Ctrl+Alt+E -- text of the selected lines centered
+    kaEditorAlignRight, // Ctrl+Alt+R -- text of the selected lines flush right
+    kaEditorAutoWrap, // Ctrl+Alt+W -- wrap lines being typed at the format width on / off
+    kaEditorIncSearch, // Ctrl+Alt+T -- incremental search: the text found as it is typed
+    kaEditorDrawLines, // Ctrl+Alt+D -- draw single / double box lines with the arrow keys
     // Global (context kcGlobal, with kaHelp, kaNextTab, kaNewTerminal and
     // kaSelectConsoleProfile): every window, unless its own context binds
     // the same keys.
@@ -745,6 +752,13 @@ begin
   AddBinding(Result, kaEditorBookmarkPrev, KeyBinding(vkF2, False, True, True));
   AddBinding(Result, kaEditorBookmarkList, KeyBinding(Ord('B'), False, True, True));
   AddBinding(Result, kaEditorAutoIndent, KeyBinding(Ord('I'), False, True, True));
+  AddBinding(Result, kaEditorChangeCase, KeyBinding(Ord('C'), False, True, True));
+  AddBinding(Result, kaEditorAlignLeft, KeyBinding(Ord('L'), False, True, True));
+  AddBinding(Result, kaEditorAlignCenter, KeyBinding(Ord('E'), False, True, True));
+  AddBinding(Result, kaEditorAlignRight, KeyBinding(Ord('R'), False, True, True));
+  AddBinding(Result, kaEditorAutoWrap, KeyBinding(Ord('W'), False, True, True));
+  AddBinding(Result, kaEditorIncSearch, KeyBinding(Ord('T'), False, True, True));
+  AddBinding(Result, kaEditorDrawLines, KeyBinding(Ord('D'), False, True, True));
 
   // Global. The workspaces, MTN2's own top-row tabs, take Ctrl+Alt+PgDn /
   // Ctrl+Alt+PgUp, and Ctrl+Tab / Ctrl+Shift+Tab (handled by the main form
@@ -804,9 +818,10 @@ begin
     kaEditorShiftRight, kaEditorShiftLeft:
       Result := kcEditor;
     kaEditorBookmarkToggle, kaEditorBookmarkNext, kaEditorBookmarkPrev,
-    kaEditorBookmarkList:
+    kaEditorBookmarkList, kaEditorIncSearch:
       Result := kcDocument;
-    kaEditorAutoIndent:
+    kaEditorAutoIndent, kaEditorChangeCase, kaEditorAlignLeft, kaEditorAlignCenter,
+    kaEditorAlignRight, kaEditorAutoWrap, kaEditorDrawLines:
       Result := kcEditor;
     kaHelp, kaNextTab, kaPrevTab, kaNewTerminal, kaSelectConsoleProfile,
     kaTopMenu, kaCommandPalette, kaAppQuit, kaAppConsoleToggle, kaZoomReset,
@@ -1061,6 +1076,13 @@ const
     'EditorBookmarkPrev',    // kaEditorBookmarkPrev
     'EditorBookmarkList',    // kaEditorBookmarkList
     'EditorAutoIndent',      // kaEditorAutoIndent
+    'EditorChangeCase',      // kaEditorChangeCase
+    'EditorAlignLeft',       // kaEditorAlignLeft
+    'EditorAlignCenter',     // kaEditorAlignCenter
+    'EditorAlignRight',      // kaEditorAlignRight
+    'EditorAutoWrap',        // kaEditorAutoWrap
+    'EditorIncSearch',       // kaEditorIncSearch
+    'EditorDrawLines',       // kaEditorDrawLines
     'PrevTab',               // kaPrevTab
     'TopMenu',               // kaTopMenu
     'CommandPalette',        // kaCommandPalette

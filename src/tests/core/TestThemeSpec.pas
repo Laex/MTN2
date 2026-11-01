@@ -577,7 +577,7 @@ begin
       Assert.IsTrue(Spec.BuiltIn, Info.Id);
       Assert.IsTrue(Length(Spec.FileColoring) > 0, Info.Id + ' inherits the file coloring');
     end;
-  Assert.AreEqual(20, Builtin);
+  Assert.AreEqual(24, Builtin);
   Assert.AreEqual('NDN', Infos[0].Id, 'the classic theme comes first');
   Assert.AreEqual('NDN', DefaultThemeId);
 end;
@@ -786,7 +786,8 @@ begin
     end;
   Assert.AreEqual('NDN;NortonCommander;MidnightCommander;ModernUnicode;ASCII;TotalCommander;' +
     'Monochrome;HighContrast;SolarizedDark;SolarizedLight;Dracula;Nord;GruvboxDark;Monokai;' +
-    'TokyoNight;OneDark;DarkPlus;Light;GreenPhosphor;AmberPhosphor;', Ids, 'picker order');
+    'TokyoNight;OneDark;DarkPlus;Light;GreenPhosphor;AmberPhosphor;' +
+    'NavigatorGray;NavigatorDark;NavigatorNight;NavigatorLCD;', Ids, 'picker order');
   Assert.AreEqual(0, Integer(Length(InvalidShippedThemes)), 'every shipped file parses');
 end;
 

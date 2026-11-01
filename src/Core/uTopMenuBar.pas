@@ -129,6 +129,13 @@ type
     tmaEditBookmarkPrev,
     tmaEditBookmarkList,
     tmaEditAutoIndent,
+    tmaEditChangeCase,
+    tmaEditAlignLeft,
+    tmaEditAlignCenter,
+    tmaEditAlignRight,
+    tmaEditAutoWrap,
+    tmaEditIncSearch,
+    tmaEditDrawLines,
     tmaOptReloadKeymap,
     tmaOptShowPlugins,
     tmaOptColorCoding,
@@ -527,6 +534,20 @@ begin
       Result := kaEditorBookmarkList;
     tmaEditAutoIndent:
       Result := kaEditorAutoIndent;
+    tmaEditChangeCase:
+      Result := kaEditorChangeCase;
+    tmaEditAlignLeft:
+      Result := kaEditorAlignLeft;
+    tmaEditAlignCenter:
+      Result := kaEditorAlignCenter;
+    tmaEditAlignRight:
+      Result := kaEditorAlignRight;
+    tmaEditAutoWrap:
+      Result := kaEditorAutoWrap;
+    tmaEditIncSearch:
+      Result := kaEditorIncSearch;
+    tmaEditDrawLines:
+      Result := kaEditorDrawLines;
     tmaOptReloadKeymap:
       Result := kaReloadKeymap;
     tmaOptToggleMouse:
@@ -915,7 +936,7 @@ begin
   FCategories[3].Title := 'Edit';
   FCategories[3].HotChar := 'E';
   FCategories[3].HotPos := 1;
-  SetLength(FCategories[3].Items, 24);
+  SetLength(FCategories[3].Items, 32);
   FCategories[3].Items[0] := SubItem('Copy', 'C', 'Ctrl+C / Ctrl+Ins', tmaEditCopy);
   FCategories[3].Items[1] := SubItem('Cut', 'T', 'Ctrl+X / Ctrl+Del', tmaEditCut);
   FCategories[3].Items[2] := SubItem('Paste', 'P', 'Ctrl+V / Shift+Ins', tmaEditPaste);
@@ -940,6 +961,14 @@ begin
   FCategories[3].Items[21] := SubItem('Previous bookmark', 'V', 'Ctrl+Alt+F2', tmaEditBookmarkPrev);
   FCategories[3].Items[22] := SubItem('Bookmark list...', 'K', 'Ctrl+Alt+B', tmaEditBookmarkList);
   FCategories[3].Items[23] := SubItem('Auto-indent mode', 'M', 'Ctrl+Alt+I', tmaEditAutoIndent);
+  FCategories[3].Items[24] := Separator;
+  FCategories[3].Items[25] := SubItem('Change case', 'S', 'Ctrl+Alt+C', tmaEditChangeCase);
+  FCategories[3].Items[26] := SubItem('Align left', #0, 'Ctrl+Alt+L', tmaEditAlignLeft);
+  FCategories[3].Items[27] := SubItem('Align center', #0, 'Ctrl+Alt+E', tmaEditAlignCenter);
+  FCategories[3].Items[28] := SubItem('Align right', #0, 'Ctrl+Alt+R', tmaEditAlignRight);
+  FCategories[3].Items[29] := SubItem('Auto-wrap mode', #0, 'Ctrl+Alt+W', tmaEditAutoWrap);
+  FCategories[3].Items[30] := SubItem('Incremental search', #0, 'Ctrl+Alt+T', tmaEditIncSearch);
+  FCategories[3].Items[31] := SubItem('Draw lines mode', #0, 'Ctrl+Alt+D', tmaEditDrawLines);
 
   // 4: Commands
   FCategories[4].Title := 'Commands';

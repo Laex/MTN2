@@ -185,6 +185,13 @@ type
     EditBookmarkPrev: TKeymapProc;
     EditBookmarkList: TKeymapProc;
     EditAutoIndent: TKeymapProc;
+    EditChangeCase: TKeymapProc;
+    EditAlignLeft: TKeymapProc;
+    EditAlignCenter: TKeymapProc;
+    EditAlignRight: TKeymapProc;
+    EditAutoWrap: TKeymapProc;
+    EditIncSearch: TKeymapProc;
+    EditDrawLines: TKeymapProc;
     EditCopy: TKeymapProc;
     EditCut: TKeymapProc;
     EditPaste: TKeymapProc;

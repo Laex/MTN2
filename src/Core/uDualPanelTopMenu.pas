@@ -193,6 +193,13 @@ begin
     tmaEditBookmarkPrev: CallProc(AHost.EditBookmarkPrev);
     tmaEditBookmarkList: CallProc(AHost.EditBookmarkList);
     tmaEditAutoIndent: CallProc(AHost.EditAutoIndent);
+    tmaEditChangeCase: CallProc(AHost.EditChangeCase);
+    tmaEditAlignLeft: CallProc(AHost.EditAlignLeft);
+    tmaEditAlignCenter: CallProc(AHost.EditAlignCenter);
+    tmaEditAlignRight: CallProc(AHost.EditAlignRight);
+    tmaEditAutoWrap: CallProc(AHost.EditAutoWrap);
+    tmaEditIncSearch: CallProc(AHost.EditIncSearch);
+    tmaEditDrawLines: CallProc(AHost.EditDrawLines);
 
     tmaOptReloadKeymap: CallProc(AHost.ReloadKeymapProfile);
     tmaOptShowPlugins: CallProc(AHost.OpenPluginListDialog);
@@ -232,7 +239,7 @@ function TopMenuActionEnabled(AAction: TTopMenuAction;
   const ACtx: TTopMenuEnableContext): Boolean;
 begin
   // An open editor or viewer leaves only the Edit menu usable.
-  if (ACtx.Kind = wkDocument) and not (AAction in [tmaEditCopy..tmaEditAutoIndent]) then
+  if (ACtx.Kind = wkDocument) and not (AAction in [tmaEditCopy..tmaEditDrawLines]) then
     Exit(False);
 
   case AAction of
@@ -269,11 +276,12 @@ begin
     tmaEditRedo:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanRedo);
     tmaEditHexToggle, tmaEditBookmarkToggle, tmaEditBookmarkNext,
-    tmaEditBookmarkPrev, tmaEditBookmarkList, tmaEditAutoIndent:
+    tmaEditBookmarkPrev, tmaEditBookmarkList, tmaEditAutoIndent, tmaEditIncSearch:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady);
     // The line commands change the text: only an editor can take them.
     tmaEditSortLines, tmaEditSortLinesDesc, tmaEditUniqueLines, tmaEditReflow,
-    tmaEditShiftRight, tmaEditShiftLeft:
+    tmaEditShiftRight, tmaEditShiftLeft, tmaEditChangeCase, tmaEditAlignLeft,
+    tmaEditAlignCenter, tmaEditAlignRight, tmaEditAutoWrap, tmaEditDrawLines:
       Exit((ACtx.Kind = wkDocument) and ACtx.DocReady and ACtx.CanEdit);
   else
     // Left / Right / Files / remaining Commands need a file list.

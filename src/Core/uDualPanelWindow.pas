@@ -11,7 +11,7 @@ uses
   System.IOUtils, System.Generics.Collections, System.JSON,
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
-  uKeymap, uFileFind, uFindSession, uEditorWindow, uHelpViewer, uHelpContext, uQuickTextView,
+  uKeymap, uFileFind, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup, uStartupTargets, uSharkSaver,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
@@ -517,6 +517,13 @@ type
     procedure EditBookmarkPrev;
     procedure EditBookmarkList;
     procedure EditAutoIndent;
+    procedure EditChangeCase;
+    procedure EditAlignLeft;
+    procedure EditAlignCenter;
+    procedure EditAlignRight;
+    procedure EditAutoWrap;
+    procedure EditIncSearch;
+    procedure EditDrawLines;
     procedure EditCopy;
     procedure EditCut;
     procedure EditPaste;
@@ -2159,6 +2166,13 @@ begin
   FKeymapHost.EditBookmarkPrev := EditBookmarkPrev;
   FKeymapHost.EditBookmarkList := EditBookmarkList;
   FKeymapHost.EditAutoIndent := EditAutoIndent;
+  FKeymapHost.EditChangeCase := EditChangeCase;
+  FKeymapHost.EditAlignLeft := EditAlignLeft;
+  FKeymapHost.EditAlignCenter := EditAlignCenter;
+  FKeymapHost.EditAlignRight := EditAlignRight;
+  FKeymapHost.EditAutoWrap := EditAutoWrap;
+  FKeymapHost.EditIncSearch := EditIncSearch;
+  FKeymapHost.EditDrawLines := EditDrawLines;
   FKeymapHost.EditCopy := EditCopy;
   FKeymapHost.EditCut := EditCut;
   FKeymapHost.EditPaste := EditPaste;
@@ -3763,6 +3777,48 @@ procedure TDualPanelWindow.EditAutoIndent;
 begin
   if ActiveDocument <> nil then
     ActiveDocument.ToggleAutoIndent;
+end;
+
+procedure TDualPanelWindow.EditChangeCase;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ChangeCase;
+end;
+
+procedure TDualPanelWindow.EditAlignLeft;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.AlignLines(amLeft);
+end;
+
+procedure TDualPanelWindow.EditAlignCenter;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.AlignLines(amCenter);
+end;
+
+procedure TDualPanelWindow.EditAlignRight;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.AlignLines(amRight);
+end;
+
+procedure TDualPanelWindow.EditAutoWrap;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ToggleAutoWrap;
+end;
+
+procedure TDualPanelWindow.EditIncSearch;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.StartIncSearch;
+end;
+
+procedure TDualPanelWindow.EditDrawLines;
+begin
+  if ActiveDocument <> nil then
+    ActiveDocument.ToggleDrawLines;
 end;
 
 procedure TDualPanelWindow.EditHexToggle;
