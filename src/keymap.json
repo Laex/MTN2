@@ -57,6 +57,7 @@
     "HistoryBack": { "key": "Left", "alt": true, "description": "Directory History Back" },
     "HistoryForward": { "key": "Right", "alt": true, "description": "Directory History Forward" },
     "FolderHistory": { "key": "F12", "alt": true, "description": "Folder history dialog" },
+    "FolderFrecent": { "key": "F12", "ctrl": true, "shift": true, "description": "Frequent folders dialog" },
     "FileHistory": { "key": "F11", "alt": true, "description": "History of files opened with F3/F4" },
     "CmdHistory": { "key": "F8", "alt": true, "description": "Command line history dialog" },
     "FolderHotlist": { "key": "D", "ctrl": true, "description": "Directory hotlist dialog" },

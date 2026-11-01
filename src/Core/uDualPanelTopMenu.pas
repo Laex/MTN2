@@ -158,6 +158,7 @@ begin
     tmaCmdConsoleProfile: CallProc(AHost.OpenConsoleProfileDialog);
     tmaCmdSyncConsoleDir: CallProc(AHost.SyncConsoleDirNow);
     tmaCmdFolderHistory: CallProc(AHost.OpenFolderHistoryDialog);
+    tmaCmdFolderFrecent: CallProc(AHost.OpenFolderFrecentDialog);
     tmaCmdFileHistory: CallProc(AHost.OpenFileHistoryDialog);
     tmaCmdCmdHistory: CallProc(AHost.OpenCmdHistoryDialog);
     tmaCmdFolderHotlist: CallProc(AHost.OpenFolderHotlistDialog);

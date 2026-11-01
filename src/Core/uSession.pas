@@ -113,6 +113,7 @@ type
     DriveToOtherFolder: Boolean;
     /// <summary>Space on an empty command line toggles the selection and moves down, like Insert.</summary>
     SpaceSelects: Boolean;
+    VimKeys: Boolean;
     /// <summary>Typing on a file panel keeps the focus there (see TDisplaySettings).</summary>
     KeepPanelFocus: Boolean;
     /// <summary>Alt quick search stays open after Alt is released (see TDisplaySettings).</summary>
@@ -659,6 +660,7 @@ begin
       Root.AddPair('backspaceDriveMenu', TJSONBool.Create(ASession.BackspaceDriveMenu));
       Root.AddPair('driveToOtherFolder', TJSONBool.Create(ASession.DriveToOtherFolder));
       Root.AddPair('spaceSelects', TJSONBool.Create(ASession.SpaceSelects));
+      Root.AddPair('vimKeys', TJSONBool.Create(ASession.VimKeys));
       Root.AddPair('keepPanelFocus', TJSONBool.Create(ASession.KeepPanelFocus));
       Root.AddPair('stickyQuickSearch', TJSONBool.Create(ASession.StickyQuickSearch));
       Root.AddPair('quickSearchKeepEmpty', TJSONBool.Create(ASession.QuickSearchKeepEmpty));
@@ -747,6 +749,7 @@ begin
   ASession.BackspaceDriveMenu := False;
   ASession.DriveToOtherFolder := False;
   ASession.SpaceSelects := False;
+  ASession.VimKeys := False;
   ASession.KeepPanelFocus := False;
   ASession.StickyQuickSearch := False;
   ASession.QuickSearchKeepEmpty := False;
@@ -853,6 +856,7 @@ begin
       ASession.BackspaceDriveMenu := JsonBool(Root, 'backspaceDriveMenu', False);
       ASession.DriveToOtherFolder := JsonBool(Root, 'driveToOtherFolder', False);
       ASession.SpaceSelects := JsonBool(Root, 'spaceSelects', False);
+      ASession.VimKeys := JsonBool(Root, 'vimKeys', False);
       ASession.KeepPanelFocus := JsonBool(Root, 'keepPanelFocus', False);
       ASession.StickyQuickSearch := JsonBool(Root, 'stickyQuickSearch', False);
       ASession.QuickSearchKeepEmpty := JsonBool(Root, 'quickSearchKeepEmpty', False);

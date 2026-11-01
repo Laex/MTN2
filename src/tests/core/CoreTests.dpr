@@ -21,6 +21,8 @@ uses
   TestFrameStats in 'TestFrameStats.pas',
   TestHelpContext in 'TestHelpContext.pas',
   TestFolderHotlist in 'TestFolderHotlist.pas',
+  TestFolderFrecent in 'TestFolderFrecent.pas',
+  TestRowDecorations in 'TestRowDecorations.pas',
   TestFunctionBarHints in 'TestFunctionBarHints.pas',
   TestHiddenDialogs in 'TestHiddenDialogs.pas',
   TestKeymap in 'TestKeymap.pas',

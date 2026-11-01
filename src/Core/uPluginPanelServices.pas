@@ -64,6 +64,13 @@ begin
       if Result then
         ARecompose();
     end;
+  Result.OpenDocument :=
+    function(const AURI: string; AEdit: Boolean): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginOpenDocument(AURI, AEdit);
+      if Result then
+        ARecompose();
+    end;
   Result.PanelRefresh :=
     procedure
     begin

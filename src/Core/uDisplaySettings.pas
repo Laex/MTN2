@@ -114,6 +114,7 @@ type
     DriveToOtherFolder: Boolean;
     /// <summary>Space on an empty command line toggles the selection and moves down, like Insert.</summary>
     SpaceSelects: Boolean;
+    VimKeys: Boolean;
     /// <summary>Typing on a file panel leaves the focus there; the command line
     /// takes it only on Ctrl+Down or a click.</summary>
     KeepPanelFocus: Boolean;
@@ -364,6 +365,7 @@ begin
   Result.BackspaceDriveMenu := False;
   Result.DriveToOtherFolder := False;
   Result.SpaceSelects := False;
+  Result.VimKeys := False;
   Result.KeepPanelFocus := False;
   Result.StickyQuickSearch := False;
   Result.QuickSearchKeepEmpty := False;

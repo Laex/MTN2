@@ -3,6 +3,7 @@
 | Key | Action |
 | --- | --- |
 | Alt+F12 | history of visited folders |
+| Ctrl+Shift+F12 | frequent folders (by visit count and recency) |
 | Alt+F11 | history of viewed and edited files |
 | Alt+F8 | command history |
 | Ctrl+D | folder hotlist |
@@ -11,6 +12,8 @@
 In the lists: **Ins** – add, **F2** – edit, **Del** – delete (where applicable). Choosing an entry from the command history puts the command on the command line but does not run it.
 
 In the folder, file and command history (Alt+F12, Alt+F11, Alt+F8) **Del** removes the selected entry from the history and **Ctrl+Del** clears the whole history; typing filters the list.
+
+<!--frecent-->**Frequent folders (Ctrl+Shift+F12)** – the folders you enter most often, with recent visits weighing more. Typing narrows the list, **Enter** opens the folder, **Del** forgets its count, **Ctrl+Del** clears the ranking. Unlike Alt+F12, which is ordered by time, the folders you use every day stay at the top.
 
 <!--file-history-->**File history (Alt+F11)** – the last 100 files opened with F3/F4, newest first; the mark on the left is the mode the file was last opened in (**V** – view, **E** – edit). **Enter** opens the file in the same mode, **F3** / **F4** – in the viewer / editor, **Ctrl+Enter** – goes to the file in the panel, **Del** – removes it from the history. Typing filters the list by path. The position inside the file is restored.
 

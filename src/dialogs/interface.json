@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Interface",
   "width": 62,
-  "height": 27,
+  "height": 28,
   "children": [
     {
       "type": "checkbox",
@@ -66,7 +66,7 @@
       "id": "reset_hints",
       "text": "&Reset hints",
       "col": 32,
-      "row": 23,
+      "row": 24,
       "width": 26,
       "height": 1
     },
@@ -213,6 +213,15 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "vim_keys",
+      "text": "V&im keys on the panel (hjkl, g, G, /, :)",
+      "col": 1,
+      "row": 21,
+      "width": 58,
+      "height": 1
+    },
+    {
       "type": "label",
       "text": "Screensaver",
       "id": "lbl_saver",
@@ -236,7 +245,7 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 21,
+      "row": 22,
       "width": 60,
       "height": 1
     },
@@ -246,7 +255,7 @@
       "text": "OK",
       "default": true,
       "col": 4,
-      "row": 23,
+      "row": 24,
       "width": 12,
       "height": 1
     },
@@ -256,7 +265,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 18,
-      "row": 23,
+      "row": 24,
       "width": 12,
       "height": 1
     }

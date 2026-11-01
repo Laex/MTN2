@@ -43,6 +43,8 @@ type
   /// <summary>Selects from (ARow1, ACol1) to (ARow2, ACol2), 0-based; the cursor goes to the end.</summary>
   TPluginDocSetSelection = reference to function(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
   TPluginDocLine = reference to function(AIndex: Integer; out AText: string): Boolean;
+  /// <summary>Opens a file in the built-in viewer (AEdit = False) or editor.</summary>
+  TPluginOpenDocument = reference to function(const AURI: string; AEdit: Boolean): Boolean;
 
   TPluginHostServices = record
     /// <summary>JSON about the active text document, '' when there is none.</summary>
@@ -59,6 +61,7 @@ type
     PanelSelect: TPluginPanelSelect;
     DocSetSelection: TPluginDocSetSelection;
     DocLine: TPluginDocLine;
+    OpenDocument: TPluginOpenDocument;
   end;
 
   /// <summary>Handler of a host event: topic and payload JSON.</summary>
@@ -78,6 +81,7 @@ function PluginPanelSetCursor(ASide: Integer; const AURI: string): Boolean;
 function PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
 function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
 function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
+function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
 
 /// <summary>Plain text on the system clipboard; False when it holds none.</summary>
 function PluginClipboardGet(out AText: string): Boolean;
@@ -207,6 +211,12 @@ function PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
 begin
   Result := Assigned(GServices.PanelGoto) and (AURI <> '') and (ASide >= -1) and (ASide <= 1) and
     GServices.PanelGoto(ASide, AURI);
+end;
+
+function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
+begin
+  Result := Assigned(GServices.OpenDocument) and (AURI <> '') and
+    GServices.OpenDocument(AURI, AEdit);
 end;
 
 function PluginPanelRefresh: Boolean;

@@ -115,6 +115,7 @@
         { "caption": "History back", "hotChar": "B", "shortcut": "Alt+Left", "action": "tmaCmdHistoryBack", "hint": "Returns the panel to the previous folder.", "aliases": "back, navigate" },
         { "caption": "History forward", "hotChar": "G", "shortcut": "Alt+Right", "action": "tmaCmdHistoryForward", "hint": "Moves the panel to the next folder of its history.", "aliases": "forward, navigate" },
         { "caption": "Folder history...", "hotChar": "H", "shortcut": "Alt+F12", "action": "tmaCmdFolderHistory", "hint": "Lists the folders visited before; Enter opens the chosen one.", "aliases": "history, recent folders" },
+        { "caption": "Frequent folders...", "hotChar": "Z", "shortcut": "Ctrl+Shift+F12", "action": "tmaCmdFolderFrecent", "hint": "Lists the folders you enter most often and most recently; type to narrow it, Enter opens the chosen one.", "aliases": "jump, frecent, zoxide, favorite folders" },
         { "caption": "File history...", "hotChar": "I", "shortcut": "Alt+F11", "action": "tmaCmdFileHistory", "hint": "Lists the files opened before; Enter opens the chosen one.", "aliases": "history, recent files" },
         { "caption": "Directory hotlist...", "hotChar": "D", "shortcut": "Ctrl+D", "action": "tmaCmdFolderHotlist", "hint": "Lists your favorite folders for a quick jump.", "aliases": "bookmarks, favorites, hotlist" },
         { "caption": "Add to hotlist", "hotChar": "J", "shortcut": "Ctrl+Alt+D", "action": "tmaCmdFolderHotlistAdd", "hint": "Adds the current folder to the favorites.", "aliases": "bookmark, favorite, add" },

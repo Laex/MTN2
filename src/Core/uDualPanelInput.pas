@@ -71,6 +71,7 @@ type
     HistoryBack: TKeymapProc;
     HistoryForward: TKeymapProc;
     OpenFolderHistoryDialog: TKeymapProc;
+    OpenFolderFrecentDialog: TKeymapProc;
     OpenFileHistoryDialog: TKeymapProc;
     OpenCmdHistoryDialog: TKeymapProc;
     OpenCommandPalette: TKeymapProc;
@@ -199,6 +200,9 @@ type
     /// <summary>Space selects the file under the cursor (when enabled and the
     /// command line is empty); True = the key was used.</summary>
     TrySpaceSelect: TKeymapCharFn;
+    /// <summary>Vim-style letters on the panel (when enabled and the command
+    /// line is empty); True = the key was used.</summary>
+    TryVimKey: TKeymapCharFn;
     /// <summary>True = typing on the panel goes into the command line without
     /// moving the focus there (Ctrl+Down and a click still do). Nil = the
     /// focus moves.</summary>
@@ -636,6 +640,7 @@ begin
   Result := True;
   case AAction of
     kaFolderHistory: AHost.OpenFolderHistoryDialog();
+    kaFolderFrecent: AHost.OpenFolderFrecentDialog();
     kaFileHistory: AHost.OpenFileHistoryDialog();
     kaCmdHistory: AHost.OpenCmdHistoryDialog();
   else
@@ -1175,6 +1180,12 @@ begin
     begin
       // Selecting with Space must not move the focus to the command line.
       if Assigned(AHost.TrySpaceSelect) and AHost.TrySpaceSelect(AKeyChar, AShift) then
+      begin
+        AKey := 0;
+        AKeyChar := #0;
+        Exit(True);
+      end;
+      if Assigned(AHost.TryVimKey) and AHost.TryVimKey(AKeyChar, AShift) then
       begin
         AKey := 0;
         AKeyChar := #0;

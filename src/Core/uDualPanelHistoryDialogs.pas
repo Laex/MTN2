@@ -8,7 +8,8 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHistory, uFileHistory,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHistory, uFolderFrecent,
+  uFileHistory,
   uPanelUriLabels;
 
 type
@@ -33,10 +34,13 @@ type
     FAllUris: TArray<string>;
     FUris: TArray<string>; // FAllUris narrowed by FFilter
     FFilter: string;
+    FFrecent: Boolean; // list ordered by visit count and recency, not by time
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     procedure RefreshList(ASelected: Integer);
     function SelectedIndex: Integer;
+    function LoadUris: TArray<string>;
+    procedure Open(AFrecent: Boolean);
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: THistoryDialogKindSetter; const AOnNotify: TProc;
@@ -44,6 +48,10 @@ type
       const AOnPrepareUi: THistoryDialogPrepareUi;
       const AOnNavigate: THistoryDialogNavigate);
     procedure OpenList;
+    /// <summary>The same pick list ordered by how often and how recently each
+    /// folder was entered (Ctrl+Shift+F12); typing narrows it, Del forgets a
+    /// folder's count.</summary>
+    procedure OpenFrecent;
     /// <summary>Del forgets the selected folder, Ctrl+Del empties the whole
     /// history. Typing narrows the list (substring of the folder label, any
     /// case), Backspace removes the last filter character.</summary>
@@ -183,17 +191,36 @@ begin
     FOnNotify();
 end;
 
-procedure TFolderHistoryDialogController.OpenList;
+function TFolderHistoryDialogController.LoadUris: TArray<string>;
+begin
+  if FFrecent then
+    Result := FolderFrecentGetUris
+  else
+    Result := FolderHistoryGetUris;
+end;
+
+procedure TFolderHistoryDialogController.Open(AFrecent: Boolean);
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
-  FAllUris := FolderHistoryGetUris;
+  FFrecent := AFrecent;
+  FAllUris := LoadUris;
   FFilter := '';
   SetKind(hdkFolderHistory);
   RefreshList(0);
+end;
+
+procedure TFolderHistoryDialogController.OpenList;
+begin
+  Open(False);
+end;
+
+procedure TFolderHistoryDialogController.OpenFrecent;
+begin
+  Open(True);
 end;
 
 function TFolderHistoryDialogController.SelectedIndex: Integer;
@@ -227,7 +254,14 @@ begin
   SetLength(FUris, N);
   SetLength(Items, N);
   Decl := BuildFolderHistoryDialog(Items, ASelected);
-  if FFilter <> '' then
+  if FFrecent then
+  begin
+    if FFilter <> '' then
+      Decl.Title := T('ui.folderFrecent.filterTitle', 'Frequent folders: %s', [FFilter])
+    else
+      Decl.Title := T('ui.folderFrecent.title', 'Frequent folders');
+  end
+  else if FFilter <> '' then
     Decl.Title := T('ui.folderHistory.filterTitle', 'Folder history: %s', [FFilter]);
   FDialog.Open(Decl, FOnCommand);
   Notify;
@@ -245,8 +279,11 @@ begin
   begin
     if Mods = [ssCtrl] then
     begin
-      FolderHistoryClear;
-      FAllUris := FolderHistoryGetUris;
+      if FFrecent then
+        FolderFrecentClear
+      else
+        FolderHistoryClear;
+      FAllUris := LoadUris;
       RefreshList(0);
     end
     else
@@ -254,8 +291,11 @@ begin
       Idx := SelectedIndex;
       if Idx >= 0 then
       begin
-        FolderHistoryRemove(FUris[Idx]);
-        FAllUris := FolderHistoryGetUris;
+        if FFrecent then
+          FolderFrecentRemove(FUris[Idx])
+        else
+          FolderHistoryRemove(FUris[Idx]);
+        FAllUris := LoadUris;
         RefreshList(Idx);
       end;
     end;

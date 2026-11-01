@@ -141,6 +141,7 @@ const
     'Folder history back',
     'Folder history forward',
     'Folder history',
+    'Frequent folders',
     'File history',
     'Command history',
     'Folder hotlist',

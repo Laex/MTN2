@@ -11,7 +11,9 @@ uses
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uGitStatus in 'uGitStatus.pas',
   uGitSettings in 'uGitSettings.pas',
-  uGitRepo in 'uGitRepo.pas';
+  uGitRepo in 'uGitRepo.pas',
+  uGitDiff in 'uGitDiff.pas',
+  uGitMarks in 'uGitMarks.pas';
 
 const
   cPluginId = 'mtn.git';
@@ -19,6 +21,9 @@ const
   /// on an older host the colored segment is replaced by plain text.</summary>
   cNeededAbi = 4;
   cStyledSegmentAbi = 5;
+  cOpenDocumentAbi = 6;
+  cRowDecorationsAbi = 6;
+  cDiffCommand = 'git.diff';
   cSegmentId = 'git';
   cPollMs = 1000;
 
@@ -44,6 +49,18 @@ var
   GSettings: TGitSettings;
   GDirty: Boolean;
   GWorker: TGitWorker;
+  /// <summary>The diff thread's answer for the main thread: the temp file to open,
+  /// or the notice to show.</summary>
+  GDiffFile: string;
+  GDiffNotice: string;
+  GDiffBusy: Boolean;
+  /// <summary>Local folders of both panels, as the panels report them.</summary>
+  GFolders: TArray<string>;
+  /// <summary>Marks the worker computed (folder URI, JSON) and the folders the
+  /// host holds marks for.</summary>
+  GPendingMarkUris: TArray<string>;
+  GPendingMarkJson: TArray<string>;
+  GAppliedMarkUris: TArray<string>;
 
 { Colored parts when the host has them, the plain text otherwise. }
 procedure SetSegment(const AText, AJson: string);
@@ -189,6 +206,155 @@ begin
   end;
 end;
 
+procedure ShowNotice(const AText: string; AKind: Int64);
+var
+  Text: UTF8String;
+begin
+  if not Assigned(GHostApi.ShowMessage) then
+    Exit;
+  Text := UTF8String(AText);
+  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
+end;
+
+function ReadPanelInfo: string;
+var
+  Buf: UTF8String;
+  Len: Int64;
+begin
+  Result := '';
+  if not Assigned(GHostApi.PanelInfo) then
+    Exit;
+  Len := GHostApi.PanelInfo(nil, 0);
+  if Len <= 0 then
+    Exit;
+  SetLength(Buf, Len + 1);
+  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
+  if (Len > 0) and (Len < Length(Buf)) then
+    Result := UTF8ToString(PAnsiChar(Buf));
+end;
+
+{ Main thread: the diff is ready - open it in the built-in viewer. }
+procedure MainShowDiff(AUserData: Pointer); cdecl;
+var
+  FileName, Notice: string;
+  Uri: UTF8String;
+begin
+  try
+    GLock.Enter;
+    try
+      FileName := GDiffFile;
+      Notice := GDiffNotice;
+      GDiffFile := '';
+      GDiffNotice := '';
+      GDiffBusy := False;
+    finally
+      GLock.Leave;
+    end;
+    if FileName <> '' then
+    begin
+      Uri := UTF8String(PathToFileUri(FileName));
+      if GHostApi.OpenDocument(PAnsiChar(Uri), 0) <> 0 then
+        ShowNotice(Tr('msg.openFailed', 'The diff could not be shown.'), 1);
+    end
+    else if Notice <> '' then
+      ShowNotice(Notice, 0);
+  except
+  end;
+end;
+
+type
+  TGitDiffThread = class(TThread)
+  private
+    FPath, FName: string;
+    FIsDir: Boolean;
+    FNoRepo, FNoChanges, FError: string;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const APath: string; AIsDir: Boolean;
+      const ANoRepo, ANoChanges, AError: string);
+  end;
+
+constructor TGitDiffThread.Create(const APath: string; AIsDir: Boolean;
+  const ANoRepo, ANoChanges, AError: string);
+begin
+  FPath := APath;
+  FIsDir := AIsDir;
+  FName := ExtractFileName(ExcludeTrailingPathDelimiter(APath));
+  FNoRepo := ANoRepo;
+  FNoChanges := ANoChanges;
+  FError := AError;
+  FreeOnTerminate := True;
+  inherited Create(False);
+end;
+
+procedure TGitDiffThread.Execute;
+var
+  Text, FileName, Notice: string;
+  R: TGitDiffResult;
+begin
+  FileName := '';
+  Notice := '';
+  try
+    R := ReadGitDiff(FPath, FIsDir,
+      function: Boolean
+      begin
+        Result := Terminated;
+      end, Text);
+    case R of
+      gdOk: FileName := WriteDiffFile(FName, Text);
+      gdNoChanges: Notice := FNoChanges;
+      gdNotRepo: Notice := FNoRepo;
+    else
+      Notice := FError;
+    end;
+  except
+    Notice := FError;
+  end;
+  GLock.Enter;
+  try
+    GDiffFile := FileName;
+    GDiffNotice := Notice;
+  finally
+    GLock.Leave;
+  end;
+  if Assigned(GHostApi.PostToMain) then
+    GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainShowDiff, nil);
+end;
+
+{ The "Git diff" command: the change of the row under the cursor, in the viewer. }
+procedure CmdDiff(AUserData: Pointer); cdecl;
+var
+  Uri: string;
+  IsDir: Boolean;
+begin
+  try
+    if (GHostApi.AbiVersion < cOpenDocumentAbi) or not Assigned(GHostApi.OpenDocument) then
+    begin
+      ShowNotice(Tr('msg.needNewer', 'This needs a newer MTN2.'), 1);
+      Exit;
+    end;
+    if not ActivePanelCursor(ReadPanelInfo, Uri, IsDir) or not Uri.StartsWith('file:', True) then
+    begin
+      ShowNotice(Tr('msg.noFile', 'Put the cursor on a file or folder of a local git folder.'), 0);
+      Exit;
+    end;
+    GLock.Enter;
+    try
+      if GDiffBusy then
+        Exit;
+      GDiffBusy := True;
+    finally
+      GLock.Leave;
+    end;
+    TGitDiffThread.Create(FileUriToPath(Uri), IsDir,
+      Tr('msg.notRepo', 'This folder is not in a git working tree.'),
+      Tr('msg.noChanges', 'No changes against HEAD.'),
+      Tr('msg.error', 'git did not answer.'));
+  except
+  end;
+end;
+
 { Main thread: remembers the folder of the active panel. A screen without panels
   (a viewer, a dialog) keeps the last folder. }
 procedure ReadActiveUri;
@@ -210,8 +376,62 @@ begin
   GLock.Enter;
   try
     GActiveUri := Uri;
+    GFolders := PanelFolderUris(UTF8ToString(PAnsiChar(Buf)));
   finally
     GLock.Leave;
+  end;
+end;
+
+function HasUri(const AUris: TArray<string>; const AUri: string): Boolean;
+var
+  U: string;
+begin
+  for U in AUris do
+    if U = AUri then
+      Exit(True);
+  Result := False;
+end;
+
+function MarksAvailable: Boolean;
+begin
+  Result := (GHostApi.AbiVersion >= cRowDecorationsAbi) and Assigned(GHostApi.SetRowDecorations);
+end;
+
+procedure SetMarks(const AUri, AJson: string);
+var
+  Id, Uri, Json: UTF8String;
+begin
+  Id := UTF8String(cPluginId);
+  Uri := UTF8String(AUri);
+  Json := UTF8String(AJson);
+  GHostApi.SetRowDecorations(PAnsiChar(Id), PAnsiChar(Uri), PAnsiChar(Json));
+end;
+
+{ Main thread: hands the computed marks to the host and drops those of folders
+  that left the panels. }
+procedure MainApplyMarks(AUserData: Pointer); cdecl;
+var
+  Uris, Jsons, Applied: TArray<string>;
+  I: Integer;
+begin
+  try
+    if not MarksAvailable then
+      Exit;
+    GLock.Enter;
+    try
+      Uris := GPendingMarkUris;
+      Jsons := GPendingMarkJson;
+    finally
+      GLock.Leave;
+    end;
+    for I := 0 to High(GAppliedMarkUris) do
+      if not HasUri(Uris, GAppliedMarkUris[I]) then
+        SetMarks(GAppliedMarkUris[I], '');
+    for I := 0 to High(Uris) do
+      SetMarks(Uris[I], Jsons[I]);
+    Applied := Copy(Uris);
+    GAppliedMarkUris := Applied;
+  except
   end;
 end;
 
@@ -283,7 +503,9 @@ end;
 
 procedure TGitWorker.Execute;
 var
-  Uri, LastUri, Dir, Text, Json, LastText: string;
+  Uri, LastUri, Dir, Text, Json, LastText, FoldersKey, LastFoldersKey, MarkKey, LastMarkKey: string;
+  Folders, MarkUris, MarkJsons: TArray<string>;
+  MarkJson, F: string;
   LastRun: UInt64;
   Status: TGitStatus;
   Labels: TGitLabels;
@@ -293,6 +515,8 @@ var
 begin
   LastUri := #0;
   LastText := #0;
+  LastFoldersKey := #0;
+  LastMarkKey := #0;
   LastRun := 0;
   Cancelled :=
     function: Boolean
@@ -308,6 +532,7 @@ begin
     GLock.Enter;
     try
       Uri := GActiveUri;
+      Folders := GFolders;
       Labels := GLabels;
       Settings := GSettings;
       Dirty := GDirty;
@@ -317,9 +542,11 @@ begin
     end;
     if Dirty then
       LastText := #0;
-    if (Uri = LastUri) and (TThread.GetTickCount64 - LastRun < UInt64(Settings.RefreshSec) * 1000) and not Dirty then
+    FoldersKey := string.Join('|', Folders);
+    if (Uri = LastUri) and (FoldersKey = LastFoldersKey) and (TThread.GetTickCount64 - LastRun < UInt64(Settings.RefreshSec) * 1000) and not Dirty then
       Continue;
     LastUri := Uri;
+    LastFoldersKey := FoldersKey;
     Text := '';
     Json := '';
     Dir := '';
@@ -329,6 +556,32 @@ begin
     begin
       Text := FormatGitStatus(Status);
       Json := GitStatusSpansJson(Status, Labels, Settings.Colors);
+    end;
+    if MarksAvailable then
+    begin
+      MarkUris := nil;
+      MarkJsons := nil;
+      MarkKey := '';
+      for F in Folders do
+      begin
+        if not ReadGitMarks(FileUriToPath(F), Cancelled, MarkJson) then
+          MarkJson := '';
+        MarkUris := MarkUris + [F];
+        MarkJsons := MarkJsons + [MarkJson];
+        MarkKey := MarkKey + F + #1 + MarkJson + #2;
+      end;
+      if not Terminated and (MarkKey <> LastMarkKey) then
+      begin
+        LastMarkKey := MarkKey;
+        GLock.Enter;
+        try
+          GPendingMarkUris := MarkUris;
+          GPendingMarkJson := MarkJsons;
+        finally
+          GLock.Leave;
+        end;
+        PostToMain(MainApplyMarks);
+      end;
     end;
     LastRun := TThread.GetTickCount64;
     if Terminated then
@@ -382,6 +635,15 @@ begin
   GHostApi.Subscribe(PAnsiChar(Id), PAnsiChar(Topic), @OnHostEvent, nil);
   Topic := UTF8String('language.changed');
   GHostApi.Subscribe(PAnsiChar(Id), PAnsiChar(Topic), @OnHostEvent, nil);
+  if (AHostApi.AbiVersion >= cOpenDocumentAbi) and Assigned(GHostApi.RegisterCommand) then
+  begin
+    Id := UTF8String(cPluginId);
+    GHostApi.RegisterCommand(PAnsiChar(Id), cDiffCommand, @CmdDiff, nil);
+    GHostApi.RegisterKeyBinding(PAnsiChar(Id), cDiffCommand, 'Ctrl+Shift+D');
+    if Assigned(GHostApi.RegisterMenuItem) then
+      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Commands', 'git_diff',
+        PAnsiChar(UTF8String(Tr('ui.menu.diff', 'Git diff of the file'))), @CmdDiff, nil, 70);
+  end;
   LoadLabels;
   ReadActiveUri;
   GWorker := TGitWorker.Create;
@@ -389,6 +651,8 @@ begin
 end;
 
 procedure mtn_plugin_shutdown; cdecl;
+var
+  I: Integer;
 begin
   if Assigned(GWorker) then
   begin
@@ -396,6 +660,12 @@ begin
     GWorker.Wake;
     GWorker.WaitFor;
     FreeAndNil(GWorker);
+  end;
+  if MarksAvailable then
+  begin
+    for I := 0 to High(GAppliedMarkUris) do
+      SetMarks(GAppliedMarkUris[I], '');
+    GAppliedMarkUris := nil;
   end;
   SetSegment('', '');
   FreeAndNil(GLock);

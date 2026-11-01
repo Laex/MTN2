@@ -19,7 +19,7 @@ uses
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInfo, uPluginServices, uPluginSurface,
-  uFolderHistory, uANSIParser,
+  uFolderHistory, uFolderFrecent, uANSIParser,
   uLinkUtils, uFileAttrTypes, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
   uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
   uColorCodingEditHelpers, uDualPanelColorCoding, uDualPanelKeymapDialog, uDualPanelFolderHotlist,
@@ -206,6 +206,7 @@ type
     FBackspaceDriveMenu: Boolean;
     FDriveToOtherFolder: Boolean;
     FSpaceSelects: Boolean;
+    FVimKeys: Boolean;
     FKeepPanelFocus: Boolean;
     FStickyQuickSearch: Boolean;
     FQuickSearchKeepEmpty: Boolean;
@@ -834,6 +835,7 @@ type
     function HandlePluginInfoCommand(const AControlId: string): Boolean;
     function HandlePluginListCommand(const AControlId: string): Boolean;
     procedure OpenFolderHistoryDialog;
+    procedure OpenFolderFrecentDialog;
     procedure OpenFileHistoryDialog;
     procedure OpenCommandPalette;
     procedure HostOpenHistoryFile(const AURI: string; AEdit: Boolean);
@@ -944,6 +946,7 @@ type
     function ClickCmdHistoryPopup(ACol, ARow: Integer): Boolean;
     procedure SetPanelFilterMask(const AText: string);
     function TrySpaceSelect(AKeyChar: Char; AShift: TShiftState): Boolean;
+    function TryVimKey(AKeyChar: Char; AShift: TShiftState): Boolean;
     function HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure SetConsoleMode(AValue: Boolean);
@@ -1152,6 +1155,7 @@ type
     function PluginDocSetCursor(ARow, ACol: Integer): Boolean;
     function PluginPanelInfoJson: string;
     function PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
+    function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
     procedure PluginPanelRefresh;
     procedure PublishPanelEvents;
     procedure DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
@@ -1422,6 +1426,8 @@ type
     property BackspaceDriveMenu: Boolean read FBackspaceDriveMenu write FBackspaceDriveMenu;
     property DriveToOtherFolder: Boolean read FDriveToOtherFolder write FDriveToOtherFolder;
     property SpaceSelects: Boolean read FSpaceSelects write FSpaceSelects;
+    /// <summary>h/j/k/l, g/G, / and : move around the panel while the command line is empty.</summary>
+    property VimKeys: Boolean read FVimKeys write FVimKeys;
     /// <summary>Typing on a file panel goes into the command line but leaves
     /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
@@ -2039,6 +2045,7 @@ begin
   FKeymapHost.HistoryBack := HistoryBack;
   FKeymapHost.HistoryForward := HistoryForward;
   FKeymapHost.OpenFolderHistoryDialog := OpenFolderHistoryDialog;
+  FKeymapHost.OpenFolderFrecentDialog := OpenFolderFrecentDialog;
   FKeymapHost.OpenFileHistoryDialog := OpenFileHistoryDialog;
   FKeymapHost.OpenCommandPalette := OpenCommandPalette;
   FKeymapHost.OpenCmdHistoryDialog := OpenCmdHistoryDialog;
@@ -2165,6 +2172,7 @@ begin
   FKeymapHost.ToggleInsertSelect := ToggleInsertSelect;
   FKeymapHost.SubmitCommandLine := SubmitCommandLine;
   FKeymapHost.TrySpaceSelect := TrySpaceSelect;
+  FKeymapHost.TryVimKey := TryVimKey;
   FKeymapHost.KeepPanelFocus :=
     function: Boolean
     begin
@@ -4978,6 +4986,7 @@ begin
   Tab.ScrollOffset := 0;
   TabClearSelection(Tab);
   FolderHistoryPush(Canon);
+  FolderFrecentVisit(Canon);
   if AAddToHistory then
   begin
     if (Tab.HistoryIndex >= 0) and (Tab.HistoryIndex < High(Tab.History)) then
@@ -6260,6 +6269,30 @@ begin
     Assigned(FCmdLineMgr) and (FCmdLineMgr.Text = '');
   if Result then
     ToggleInsertSelect;
+end;
+
+// Vim-style panel navigation on an empty command line: j/k move, h goes to
+// the parent folder, l opens, g/G jump to the ends, / starts the quick search
+// and : puts the focus on the command line.
+function TDualPanelWindow.TryVimKey(AKeyChar: Char; AShift: TShiftState): Boolean;
+begin
+  Result := FVimKeys and (AShift - [ssShift] = []) and
+    Assigned(FCmdLineMgr) and (FCmdLineMgr.Text = '') and
+    CharInSet(AKeyChar, ['j', 'k', 'h', 'l', 'g', 'G', '/', ':']);
+  if not Result then
+    Exit;
+  case AKeyChar of
+    'j': MoveCursor(1);
+    'k': MoveCursor(-1);
+    'h': GoToParent;
+    'l': ActivateCurrent;
+    'g': MoveCursor(-100000);
+    'G': MoveCursor(100000);
+    '/':
+      StartQuickSearch;
+    ':':
+      FocusCommandLine;
+  end;
 end;
 
 function TDualPanelWindow.HandleCmdLineInput(var AKey: Word; AShift: TShiftState;
@@ -9665,6 +9698,11 @@ begin
   FFolderHistory.OpenList;
 end;
 
+procedure TDualPanelWindow.OpenFolderFrecentDialog;
+begin
+  FFolderHistory.OpenFrecent;
+end;
+
 procedure TDualPanelWindow.OpenCmdHistoryDialog;
 begin
   FCmdHistory.OpenList;
@@ -11526,6 +11564,17 @@ begin
   if Side <> Previous then
     ActivateSide(Previous);
   NotifyChanged;
+end;
+
+function TDualPanelWindow.PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
+begin
+  Result := (ActiveWorkspace.Kind = wkPanels) and not (Assigned(FDialog) and FDialog.Visible);
+  if not Result then
+    Exit;
+  if AEdit then
+    RequestOpenEditor(AURI)
+  else
+    RequestOpenViewer(AURI);
 end;
 
 procedure TDualPanelWindow.PluginPanelRefresh;

@@ -42,7 +42,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections,
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi,
-  uPluginChrome, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
+  uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs,
   uWasmPluginHost, uPlatformInfo;
 
@@ -1278,6 +1278,38 @@ begin
   end;
 end;
 
+function ThunkOpenDocument(AURI: PAnsiChar; AEdit: Int64): Int64; cdecl;
+begin
+  try
+    if (AURI <> nil) and PluginOpenDocument(UTF8ToString(AURI), AEdit <> 0) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetRowDecorations(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
+var
+  Json: string;
+begin
+  try
+    if (APluginId = nil) or (AFolderUri = nil) then
+      Exit(-1);
+    if AJson <> nil then
+      Json := UTF8ToString(AJson)
+    else
+      Json := '';
+    if not RowDecorationsSet(UTF8ToString(APluginId), UTF8ToString(AFolderUri), Json) then
+      Exit(-1);
+    NotifyPluginChromeChanged;
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkExecuteCommand(ACommandId: PAnsiChar): Int64; cdecl;
 begin
   try
@@ -1656,6 +1688,8 @@ begin
   Result.RegisterVfsSchemeV2 := @ThunkRegisterVfsSchemeV2;
   Result.SetPanelFBar := @ThunkSetPanelFBar;
   Result.SetStatusSegmentStyled := @ThunkSetStatusSegmentStyled;
+  Result.OpenDocument := @ThunkOpenDocument;
+  Result.SetRowDecorations := @ThunkSetRowDecorations;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

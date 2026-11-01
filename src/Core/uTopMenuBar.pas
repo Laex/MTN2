@@ -94,6 +94,7 @@ type
     tmaCmdSaveConsoleOutput,
     tmaCmdClearConsole,
     tmaCmdFolderHistory,
+    tmaCmdFolderFrecent,
     tmaCmdFileHistory,
     tmaCmdCmdHistory,
     tmaCmdFolderHotlist,
@@ -458,6 +459,8 @@ begin
       Result := kaSelectConsoleProfile;
     tmaCmdFolderHistory:
       Result := kaFolderHistory;
+    tmaCmdFolderFrecent:
+      Result := kaFolderFrecent;
     tmaCmdFileHistory:
       Result := kaFileHistory;
     tmaCmdCmdHistory:

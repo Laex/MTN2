@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Math, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uVfsTypes, uPanelModel, uPanelColumns,
-  uShellIcons, uDriveInfo, uInputLine, uColorCoding;
+  uShellIcons, uDriveInfo, uInputLine, uColorCoding, uRowDecorations;
 
 { --- Scrollbar ------------------------------------------------------------ }
 
@@ -326,6 +326,20 @@ var
     end;
   end;
 
+  // A plugin's name color (git status of the file) on a plain row; the cursor
+  // and the selection keep the theme's colors.
+  procedure ApplyRowDecoration;
+  var
+    Tint: TAlphaColor;
+  begin
+    if Row.IsParent or Selected or not RowDecorationsAny then
+      Exit;
+    if (Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor) then
+      Exit;
+    if RowDecorationColor(ATab.CurrentURI, ColorCodingItemName(Row.Text), Tint) then
+      Fg := Tint;
+  end;
+
   procedure ResolveRowColors;
   begin
     Selected := SelectionKeysHas(SelKeys, Row.URI);
@@ -338,6 +352,7 @@ var
         Selected, (Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor),
         ASideActive, Fg, Bg);
     ApplyColorCoding;
+    ApplyRowDecoration;
   end;
 
   procedure PaintIconCells(ALeft: Integer);

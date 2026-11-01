@@ -21,6 +21,11 @@ function IsInsideGitWorkTree(const ADir: string): Boolean;
 function ReadGitStatus(const ADir: string; const ACancelled: TFunc<Boolean>;
   out AStatus: TGitStatus): TGitReadResult;
 
+/// <summary>Runs "git" with AArgs; True when git ran (any exit code), AOutput is
+/// its merged stdout and stderr.</summary>
+function RunGit(const AArgs: TArray<string>; const ACancelled: TFunc<Boolean>;
+  out AOutput: string; out AExitCode: Cardinal): Boolean;
+
 implementation
 
 uses
@@ -74,20 +79,24 @@ begin
   end;
 end;
 
+function RunGit(const AArgs: TArray<string>; const ACancelled: TFunc<Boolean>;
+  out AOutput: string; out AExitCode: Cardinal): Boolean;
+begin
+  Result := PlatformRunCaptured('git', AArgs, '', cGitTimeoutMs,
+    TFuncCancelToken.Create(ACancelled), AOutput, AExitCode) = srOk;
+end;
+
 function ReadGitStatus(const ADir: string; const ACancelled: TFunc<Boolean>;
   out AStatus: TGitStatus): TGitReadResult;
 var
   Text: string;
   Code: Cardinal;
-  Token: IJobCancelToken;
 begin
   AStatus := Default(TGitStatus);
   if not IsInsideGitWorkTree(ADir) then
     Exit(grNotRepo);
-  Token := TFuncCancelToken.Create(ACancelled);
-  if PlatformRunCaptured('git',
-       ['-C', ADir, '--no-optional-locks', 'status', '--porcelain=v2', '--branch'],
-       '', cGitTimeoutMs, Token, Text, Code) <> srOk then
+  if not RunGit(['-C', ADir, '--no-optional-locks', 'status', '--porcelain=v2', '--branch'],
+       ACancelled, Text, Code) then
     Exit(grError);
   if (Code <> 0) or not ParseGitStatus(Text, AStatus) then
     Exit(grNotRepo);

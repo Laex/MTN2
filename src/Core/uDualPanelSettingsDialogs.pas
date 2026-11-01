@@ -321,6 +321,7 @@ begin
   DialogSetCheckbox(Decl, 'backspace_drive_menu', Cur.BackspaceDriveMenu);
   DialogSetCheckbox(Decl, 'drive_other_folder', Cur.DriveToOtherFolder);
   DialogSetCheckbox(Decl, 'space_selects', Cur.SpaceSelects);
+  DialogSetCheckbox(Decl, 'vim_keys', Cur.VimKeys);
   DialogSetCheckbox(Decl, 'keep_panel_focus', Cur.KeepPanelFocus);
   DialogSetCheckbox(Decl, 'sticky_quick_search', Cur.StickyQuickSearch);
   DialogSetCheckbox(Decl, 'quick_search_keep_empty', Cur.QuickSearchKeepEmpty);
@@ -708,6 +709,7 @@ begin
     Disp.BackspaceDriveMenu := FDialog.GetCheckbox('backspace_drive_menu');
     Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
     Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
+    Disp.VimKeys := FDialog.GetCheckbox('vim_keys');
     Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
     Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
     Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');

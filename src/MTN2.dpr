@@ -37,6 +37,8 @@ uses
   uTerminalTypes in 'Core\uTerminalTypes.pas',
   uConfigLocation in 'Core\uConfigLocation.pas',
   uFolderHistory in 'Core\uFolderHistory.pas',
+  uFolderFrecent in 'Core\uFolderFrecent.pas',
+  uRowDecorations in 'Core\uRowDecorations.pas',
   uFileHistory in 'Core\uFileHistory.pas',
   uHelpContext in 'Core\uHelpContext.pas',
   uPanelCompare in 'Core\uPanelCompare.pas',

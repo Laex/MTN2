@@ -49,6 +49,7 @@ type
     kaHistoryBack,
     kaHistoryForward,
     kaFolderHistory,
+    kaFolderFrecent,
     kaFileHistory, // Alt+F11 -- files opened with F3/F4
     kaCmdHistory,
     kaFolderHotlist,
@@ -604,6 +605,7 @@ begin
   AddBinding(Result, kaHistoryBack, KeyBinding(vkLeft, False, True, False));
   AddBinding(Result, kaHistoryForward, KeyBinding(vkRight, False, True, False));
   AddBinding(Result, kaFolderHistory, KeyBinding(vkF12, False, True, False));
+  AddBinding(Result, kaFolderFrecent, KeyBinding(vkF12, True, False, True));
   AddBinding(Result, kaFileHistory, KeyBinding(vkF11, False, True, False));
   AddBinding(Result, kaCmdHistory, KeyBinding(vkF8, False, True, False));
   AddBinding(Result, kaFolderHotlist, KeyBinding(Ord('D'), False, False, True));
@@ -949,6 +951,7 @@ const
     'HistoryBack',           // kaHistoryBack
     'HistoryForward',        // kaHistoryForward
     'FolderHistory',         // kaFolderHistory
+    'FolderFrecent',         // kaFolderFrecent
     'FileHistory',           // kaFileHistory
     'CmdHistory',            // kaCmdHistory
     'FolderHotlist',         // kaFolderHotlist

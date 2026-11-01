@@ -1681,6 +1681,7 @@ begin
   Result.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
   Result.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Result.SpaceSelects := FDualPanel.SpaceSelects;
+  Result.VimKeys := FDualPanel.VimKeys;
   Result.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Result.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Result.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;
@@ -1733,6 +1734,7 @@ begin
   FSession.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FSession.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FSession.SpaceSelects := ASettings.SpaceSelects;
+  FSession.VimKeys := ASettings.VimKeys;
   FSession.KeepPanelFocus := ASettings.KeepPanelFocus;
   FSession.StickyQuickSearch := ASettings.StickyQuickSearch;
   FSession.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
@@ -1740,6 +1742,7 @@ begin
   FDualPanel.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := ASettings.DriveToOtherFolder;
   FDualPanel.SpaceSelects := ASettings.SpaceSelects;
+  FDualPanel.VimKeys := ASettings.VimKeys;
   FDualPanel.KeepPanelFocus := ASettings.KeepPanelFocus;
   FDualPanel.StickyQuickSearch := ASettings.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
@@ -1826,6 +1829,7 @@ begin
   FDualPanel.BackspaceDriveMenu := Sess.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := Sess.DriveToOtherFolder;
   FDualPanel.SpaceSelects := Sess.SpaceSelects;
+  FDualPanel.VimKeys := Sess.VimKeys;
   FDualPanel.KeepPanelFocus := Sess.KeepPanelFocus;
   FDualPanel.StickyQuickSearch := Sess.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := Sess.QuickSearchKeepEmpty;
@@ -1986,6 +1990,7 @@ begin
   Sess.BackspaceDriveMenu := FDualPanel.BackspaceDriveMenu;
   Sess.DriveToOtherFolder := FDualPanel.DriveToOtherFolder;
   Sess.SpaceSelects := FDualPanel.SpaceSelects;
+  Sess.VimKeys := FDualPanel.VimKeys;
   Sess.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Sess.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Sess.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;

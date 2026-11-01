@@ -53,8 +53,9 @@ const
   /// 5: SetStatusSegmentStyled. A plugin that wants a function of a newer version
   /// than it needs to load checks AHostApi^.AbiVersion before it uses the field: an
   /// older host hands out a shorter table, and the fields past its end are not
-  /// there.</summary>
-  cPluginAbiVersion: Int64 = 5;
+  /// there.
+  /// 6: OpenDocument, SetRowDecorations.</summary>
+  cPluginAbiVersion: Int64 = 6;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -473,6 +474,16 @@ type
   /// without text, removes the segment. 0 = ok, -1 = bad arguments.</summary>
   THostSetStatusSegmentStyledFn = function(APluginId, ASegmentId, AJson: PAnsiChar): Int64; cdecl;
 
+  /// <summary>Opens the file AURI in the built-in viewer (AEdit = 0) or editor
+  /// (AEdit = 1). 0 = asked, -1 = bad arguments or no panel window on screen.</summary>
+  THostOpenDocumentFn = function(AURI: PAnsiChar; AEdit: Int64): Int64; cdecl;
+
+  /// <summary>Colors the names of the rows of a folder in the file panels: AFolderUri is
+  /// the folder as the panel reports it, AJson maps a row name to a role ("ok", "warn",
+  /// "error", "info", "accent", "neutral") or "#RRGGBB". An empty object, '' or nil
+  /// removes the colors of that folder. 0 = ok, -1 = bad arguments.</summary>
+  THostSetRowDecorationsFn = function(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -541,6 +552,9 @@ type
     RegisterVfsSchemeV2: THostRegisterVfsSchemeV2Fn;
     SetPanelFBar: THostSetPanelFBarFn;
     SetStatusSegmentStyled: THostSetStatusSegmentStyledFn;
+    // ABI 6
+    OpenDocument: THostOpenDocumentFn;
+    SetRowDecorations: THostSetRowDecorationsFn;
   end;
   PHostApiTable = ^THostApiTable;
 

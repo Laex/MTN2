@@ -1,12 +1,12 @@
 {
   "id": "mtn.git",
   "name": "Git status",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "abi": 4,
   "startup": true,
   "description": {
-    "en": "Shows the git statistics of the active panel's folder in the status line as colored badges: branch, commits ahead / behind, staged, modified, new and conflicted files, or \"clean\". Needs git in PATH.",
-    "ru": "Показывает в строке состояния статистику git для папки активной панели цветными плашками: ветка, коммиты впереди / позади, файлы в индексе, изменённые, новые и конфликтующие, либо «чисто». Нужен git в PATH."
+    "en": "Shows the git statistics of the active panel's folder in the status line as colored badges: branch, commits ahead / behind, staged, modified, new and conflicted files, or \"clean\". Colors the file names in the panels by their git state; Ctrl+Shift+D shows the git diff of the file under the cursor in the viewer. Needs git in PATH.",
+    "ru": "Показывает в строке состояния статистику git для папки активной панели цветными плашками: ветка, коммиты впереди / позади, файлы в индексе, изменённые, новые и конфликтующие, либо «чисто». Красит имена файлов в панелях по состоянию в git; Ctrl+Shift+D показывает git diff файла под курсором во встроенном просмотре. Нужен git в PATH."
   },
   "author": "MTN2"
 }

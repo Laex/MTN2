@@ -26,6 +26,15 @@ type
     [Test] procedure TestActivePanelUriFollowsTheActiveSide;
     [Test] procedure TestFolderOutsideAWorkTreeIsNotARepo;
     [Test] procedure TestReadsStatusOfARealRepository;
+    [Test] procedure TestCursorRowComesFromTheActiveSide;
+    [Test] procedure TestDiffOfAChangedFileAgainstHead;
+    [Test] procedure TestDiffOutsideAWorkTreeIsNotARepo;
+    [Test] procedure TestDiffFileKeepsTheTextAndGetsADiffExtension;
+    [Test] procedure TestMarksNameTheRowsOfTheFolder;
+    [Test] procedure TestMarksOfASubfolderUseItsPrefix;
+    [Test] procedure TestRenamedFileTakesOnePathOnly;
+    [Test] procedure TestPanelFoldersAreLocalAndUnique;
+    [Test] procedure TestMarksOfARealRepository;
   end;
 
 implementation
@@ -33,7 +42,7 @@ implementation
 uses
   System.SysUtils, System.IOUtils, System.Classes, System.JSON,
   uTerminalTypes, uDialogTypes, uDialogJson, uDialogLocaleLayout, uDialogHost,
-  uPlatformProcess, uGitStatus, uGitSettings, uGitRepo;
+  uPlatformProcess, uGitStatus, uGitSettings, uGitRepo, uGitDiff, uGitMarks;
 
 const
   CRLF = #13#10;
@@ -395,6 +404,200 @@ begin
     Assert.AreEqual('main', S.Branch);
     Assert.IsTrue(S.Untracked = 1);
     Assert.AreEqual('git:main ?1', FormatGitStatus(S));
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestGitStatus.TestCursorRowComesFromTheActiveSide;
+const
+  Json = '{"active":"left","left":{"uri":"file:///C:/a","cursor":"file:///C:/a/x.txt",' +
+    '"cursorIsDirectory":false},"right":{"uri":"file:///C:/b","cursor":"file:///C:/b/d",' +
+    '"cursorIsDirectory":true}}';
+var
+  Uri: string;
+  IsDir: Boolean;
+begin
+  Assert.IsTrue(ActivePanelCursor(Json, Uri, IsDir));
+  Assert.AreEqual('file:///C:/a/x.txt', Uri);
+  Assert.IsFalse(IsDir);
+  Assert.IsTrue(ActivePanelCursor(StringReplace(Json, 'left"', 'right"', []), Uri, IsDir));
+  Assert.IsTrue(IsDir, 'folder row');
+  Assert.IsFalse(ActivePanelCursor('{"active":"left","left":{"uri":"file:///C:/a"}}', Uri, IsDir),
+    'no cursor row');
+  Assert.IsFalse(ActivePanelCursor('', Uri, IsDir), 'no panels');
+end;
+
+procedure TTestGitStatus.TestDiffOfAChangedFileAgainstHead;
+var
+  Dir, Output, Text, FileName: string;
+  Code: Cardinal;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-diff-' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    if (PlatformRunCaptured('git', ['init', '-q', '-b', 'main', Dir], '', 15000, nil,
+         Output, Code) <> srOk) or (Code <> 0) then
+    begin
+      Assert.Pass('git is not available');
+      Exit;
+    end;
+    FileName := TPath.Combine(Dir, 'a.txt');
+    TFile.WriteAllText(FileName, 'one' + CRLF);
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, 'add', 'a.txt'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'add');
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, '-c', 'user.name=t', '-c',
+      'user.email=t@example.com', 'commit', '-q', '-m', 'first'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'commit');
+    Assert.IsTrue(ReadGitDiff(FileName, False, nil, Text) = gdNoChanges, 'clean file');
+    TFile.WriteAllText(FileName, 'one' + CRLF + 'two' + CRLF);
+    Assert.IsTrue(ReadGitDiff(FileName, False, nil, Text) = gdOk, 'changed file');
+    Assert.IsTrue(Pos('+two', Text) > 0, 'the added line is in the diff: ' + Text);
+    Assert.IsTrue(ReadGitDiff(Dir, True, nil, Text) = gdOk, 'changed folder');
+    Assert.IsTrue(Pos('a.txt', Text) > 0, 'the folder diff names the file');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestGitStatus.TestDiffOutsideAWorkTreeIsNotARepo;
+var
+  Dir, Text: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-diff-none-' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    if IsInsideGitWorkTree(Dir) then
+      Exit;
+    TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'x');
+    Assert.IsTrue(ReadGitDiff(TPath.Combine(Dir, 'a.txt'), False, nil, Text) = gdNotRepo);
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestGitStatus.TestDiffFileKeepsTheTextAndGetsADiffExtension;
+var
+  Path: string;
+begin
+  Path := WriteDiffFile('some name.txt', '+line' + CRLF);
+  try
+    Assert.AreEqual('some name.txt.diff', TPath.GetFileName(Path));
+    Assert.AreEqual('+line' + CRLF, TFile.ReadAllText(Path, TEncoding.UTF8));
+  finally
+    TFile.Delete(Path);
+  end;
+end;
+
+procedure TTestGitStatus.TestMarksNameTheRowsOfTheFolder;
+var
+  Obj: TJSONObject;
+  Z: string;
+begin
+  Z := ' M changed.txt' + #0 + 'A  staged.txt' + #0 + '?? new.txt' + #0 +
+    'UU clash.txt' + #0 + 'AM both.txt' + #0 + '!! ignored.log' + #0 + '?? dir/' + #0 +
+    ' M dir2/a.txt' + #0 + 'A  dir2/b.txt' + #0;
+  Obj := TJSONObject.ParseJSONValue(GitMarksJson(Z, '')) as TJSONObject;
+  try
+    Assert.AreEqual('warn', Obj.Values['changed.txt'].Value);
+    Assert.AreEqual('ok', Obj.Values['staged.txt'].Value);
+    Assert.AreEqual('info', Obj.Values['new.txt'].Value);
+    Assert.AreEqual('error', Obj.Values['clash.txt'].Value);
+    Assert.AreEqual('warn', Obj.Values['both.txt'].Value, 'staged and edited again');
+    Assert.IsNull(Obj.Values['ignored.log'], 'ignored files are not marked');
+    Assert.AreEqual('info', Obj.Values['dir'].Value, 'untracked folder');
+    Assert.AreEqual('warn', Obj.Values['dir2'].Value, 'the folder takes the most urgent state inside');
+  finally
+    Obj.Free;
+  end;
+end;
+
+procedure TTestGitStatus.TestMarksOfASubfolderUseItsPrefix;
+var
+  Obj: TJSONObject;
+  Z: string;
+begin
+  Z := ' M top.txt' + #0 + ' M sub/in.txt' + #0 + '?? sub/deep/x.txt' + #0;
+  Obj := TJSONObject.ParseJSONValue(GitMarksJson(Z, 'sub/')) as TJSONObject;
+  try
+    Assert.AreEqual(2, Obj.Count);
+    Assert.AreEqual('warn', Obj.Values['in.txt'].Value);
+    Assert.AreEqual('info', Obj.Values['deep'].Value);
+  finally
+    Obj.Free;
+  end;
+end;
+
+procedure TTestGitStatus.TestRenamedFileTakesOnePathOnly;
+var
+  Obj: TJSONObject;
+begin
+  Obj := TJSONObject.ParseJSONValue(
+    GitMarksJson('R  new.txt' + #0 + 'old.txt' + #0 + ' M other.txt' + #0, '')) as TJSONObject;
+  try
+    Assert.AreEqual('ok', Obj.Values['new.txt'].Value);
+    Assert.IsNull(Obj.Values['old.txt'], 'the old path is skipped');
+    Assert.AreEqual('warn', Obj.Values['other.txt'].Value);
+  finally
+    Obj.Free;
+  end;
+end;
+
+procedure TTestGitStatus.TestPanelFoldersAreLocalAndUnique;
+const
+  Json = '{"active":"left","left":{"uri":"file:///C:/a"},"right":{"uri":"file:///C:/a"}}';
+var
+  Uris: TArray<string>;
+begin
+  Uris := PanelFolderUris(Json);
+  Assert.AreEqual(1, Integer(Length(Uris)), 'same folder in both panels');
+  Uris := PanelFolderUris('{"left":{"uri":"file:///C:/a"},"right":{"uri":"sftp://host/x"}}');
+  Assert.AreEqual(1, Integer(Length(Uris)), 'a remote folder is left out');
+  Assert.AreEqual(0, Integer(Length(PanelFolderUris(''))), 'no panels');
+end;
+
+procedure TTestGitStatus.TestMarksOfARealRepository;
+var
+  Dir, Output, Json: string;
+  Code: Cardinal;
+  Obj: TJSONObject;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-marks-' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    if (PlatformRunCaptured('git', ['init', '-q', '-b', 'main', Dir], '', 15000, nil,
+         Output, Code) <> srOk) or (Code <> 0) then
+    begin
+      Assert.Pass('git is not available');
+      Exit;
+    end;
+    TDirectory.CreateDirectory(TPath.Combine(Dir, 'sub'));
+    TFile.WriteAllText(TPath.Combine(Dir, 'sub' + PathDelim + 'x.txt'), 'x');
+    TFile.WriteAllText(TPath.Combine(Dir, 'top.txt'), 'x');
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, 'add', '.'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'add');
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, '-c', 'user.name=t', '-c',
+      'user.email=t@example.com', 'commit', '-q', '-m', 'first'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'commit');
+    TFile.WriteAllText(TPath.Combine(Dir, 'sub' + PathDelim + 'x.txt'), 'changed');
+    TFile.WriteAllText(TPath.Combine(Dir, 'sub' + PathDelim + 'new.txt'), 'x');
+    Assert.IsTrue(ReadGitMarks(Dir, nil, Json), 'root');
+    Obj := TJSONObject.ParseJSONValue(Json) as TJSONObject;
+    try
+      Assert.AreEqual(1, Obj.Count);
+      Assert.AreEqual('warn', Obj.Values['sub'].Value);
+    finally
+      Obj.Free;
+    end;
+    Assert.IsTrue(ReadGitMarks(TPath.Combine(Dir, 'sub'), nil, Json), 'subfolder');
+    Obj := TJSONObject.ParseJSONValue(Json) as TJSONObject;
+    try
+      Assert.AreEqual(2, Obj.Count);
+      Assert.AreEqual('warn', Obj.Values['x.txt'].Value);
+      Assert.AreEqual('info', Obj.Values['new.txt'].Value);
+    finally
+      Obj.Free;
+    end;
   finally
     TDirectory.Delete(Dir, True);
   end;
