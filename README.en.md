@@ -23,6 +23,19 @@ MTN2 is made for people who grew up with DOS Navigator and Far Manager and work 
 engineers, developers, administrators. It does not replace Far Manager and does not compete with Total Commander;
 it is one more two-panel manager with its own habits.
 
+## Why MTN2
+
+- **A file manager and a real terminal in one window.** Panels, ConPTY terminal tabs (cmd, PowerShell, WSL, SSH); Vim, htop and other TUI programs run as in a regular terminal.
+- **Everything is a folder.** Archives (zip, 7z and more), SFTP, FTP/FTPS, WebDAV, S3 and plugin file systems open and copy like ordinary directories.
+- **Stays fast on big data.** Copy, move and delete run as background jobs; search streams up to 50,000 results straight into a panel; large files are read as a stream.
+- **Powerful search.** By mask, text (UTF-8, UTF-16, Windows-1251, CP866), bytes with `??` wildcards, size, date and attributes.
+- **View and edit without external tools.** Hex, Markdown, syntax highlighting, log following, images in quick view, rectangular blocks and bookmarks in the editor.
+- **Compare and synchronize.** Folders by time, size and content; two files with a line-by-line diff.
+- **Nothing to memorize.** A command palette (**Shift+F9**) with explanations, key hints in new situations, context help on **F1**.
+- **Your look, your keys.** More than ten themes (Far, Norton, Midnight, Total Commander, Dracula, Nord and more), a theme editor, file color groups, a fully remappable key layout.
+- **Windows and Linux.** A graphical window on Windows; on Linux `mtn2-tui` (over SSH and in `tmux`) and an SDL2 window; `tar.gz`, `.deb` and `.rpm` packages.
+- **Free and no surprises.** MPL-2.0, no telemetry, no installer, a portable edition, updates only with your consent, plugins (native and WebAssembly).
+
 ## Quick start
 
 1. Download `MTN2-<version>-win64.zip` from the [latest release](https://github.com/Laex/MTN2/releases/latest) and unpack it into any folder: no installer and no administrator rights needed.
@@ -89,6 +102,15 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
   Quick View (`Ctrl+Q`), Markdown preview, external viewer/editor support. The editor has line commands,
   rectangular blocks, bookmarks, and auto-indent.
 - **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin), plugin VFS.
+- **Search (`Alt+F7`):** by mask, content (UTF-8, UTF-16, Windows-1251, CP866), hex bytes with `??` wildcards, size, date and attributes.
+  Results appear in a panel while the search runs (up to 50,000 files) and behave like an ordinary folder.
+- **Compare and synchronize:** folders by time, size or content (in the background, can be interrupted); two files with a line-by-line diff
+  (`Ctrl+Alt+C`); directory synchronization; jump to the same-named file in the other panel (`Ctrl+Alt+M`).
+- **Logs and binaries:** follow the end of a growing file (`Ctrl+Shift+F`, handles log rotation), byte search in hex mode,
+  highlighting of plain text files and pictures in quick view.
+- **Command line and automation:** a list of earlier commands that start with what you typed, environment profiles for shells (`environment.json`),
+  `MTN2 path1 path2` opens tabs, `--view` and `--edit` open the viewer and editor, `--update` updates without a window, file lists exported to Markdown or CSV.
+- **Git and extras:** the Git status plugin shows the branch and change counts in the status bar; color groups with priorities; a screensaver with sharks when idle.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), command palette (`Shift+F9`) to search the menu items, file associations, F1 context help.
 - **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → User interface...**
@@ -105,7 +127,7 @@ Windows x64 (GUI application) and Linux x86-64 are supported: `mtn2-tui` runs in
 featuring the same panels, viewer, editor, console, and plugins, and works over SSH and inside `tmux` (see [docs/LINUX.md](docs/LINUX.md)).
 An experimental GUI version for Linux, `mtn2-sdl`, shows the same windows in a regular SDL2 window: system font,
 mouse and wheel, input in any keyboard layout, desktop clipboard, pictures in Quick View. It runs on X11 and Wayland
-(in Windows through WSLg), is included in the `tar.gz` and `.deb` packages and needs `libSDL2` and `libfreetype`
+(in Windows through WSLg), is included in the `tar.gz`, `.deb` and `.rpm` packages and needs `libSDL2` and `libfreetype`
 (`libSDL2_image` for PNG and JPEG): dependencies and options are described in [docs/LINUX.md](docs/LINUX.md)
 (in Russian). A macOS build is planned.
 
@@ -115,7 +137,7 @@ Pre-built binaries are available on the [Releases](https://github.com/Laex/MTN2/
 
 - `MTN2-<version>-win64.zip` – settings and history are stored in `%APPDATA%\MTN2`;
 - `MTN2-<version>-win64-portable.zip` – portable edition: everything is stored next to `MTN2.exe`;
-- `MTN2-<version>-linux-x64.tar.gz` and `MTN2-<version>-linux-x64.deb` – Linux version: `mtn2-tui` (inside a terminal
+- `MTN2-<version>-linux-x64.tar.gz`, `MTN2-<version>-linux-x64.deb` and `MTN2-<version>-linux-x64.rpm` – Linux version: `mtn2-tui` (inside a terminal
   window, works over SSH) and the experimental GUI `mtn2-sdl` (SDL2 window, needs `libSDL2` and `libfreetype`):
   installation, dependencies, and options in [docs/LINUX.md](docs/LINUX.md).
 
@@ -125,7 +147,7 @@ Pre-built binaries are available on the [Releases](https://github.com/Laex/MTN2/
 7-Zip formats. You may replace it with your own x64 version in `plugins\mtn.7z\`; zip archives open without it.
 
 **Linux:** `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh` (use `sudo` for all users) or
-`sudo apt install ./MTN2-*-linux-x64.deb`. Afterwards `mtn2` starts the terminal version and `mtn2-sdl` the SDL2 window.
+`sudo apt install ./MTN2-*-linux-x64.deb` or `sudo dnf install ./MTN2-*-linux-x64.rpm`. Afterwards `mtn2` starts the terminal version and `mtn2-sdl` the SDL2 window.
 The unpacked folder also runs without installing: `mtn2/mtn2-tui` and `mtn2/mtn2-sdl` start where they lie.
 
 ### Dev Builds

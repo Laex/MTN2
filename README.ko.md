@@ -21,6 +21,19 @@ TrueType 폰트, 유니코드 및 32비트 트루컬러를 지원하는 Delphi F
 
 MTN2는 DOS Navigator와 Far Manager와 함께 자랐고 키보드로 작업하는 사람들을 위한 프로그램입니다: 시스템·네트워크 엔지니어, 개발자, 관리자. Far Manager를 대체하지 않으며 Total Commander와 경쟁하지도 않습니다. 나름의 습관을 가진 또 하나의 듀얼 패널 관리자일 뿐입니다.
 
+## 왜 MTN2인가
+
+- **파일 관리자와 진짜 터미널을 한 창에서.** 패널, ConPTY 기반 터미널 탭(cmd, PowerShell, WSL, SSH). Vim, htop 같은 TUI 프로그램도 일반 터미널처럼 동작합니다.
+- **모든 것이 폴더.** 압축 파일(zip, 7z 등), SFTP, FTP/FTPS, WebDAV, S3, 플러그인 파일 시스템을 일반 디렉터리처럼 열고 복사합니다.
+- **대용량에서도 빠름.** 복사·이동·삭제는 백그라운드 작업으로 실행되고, 검색은 최대 50,000개 결과를 패널에 바로 보여 주며, 큰 파일은 스트리밍으로 읽습니다.
+- **강력한 검색.** 마스크, 텍스트 내용(UTF-8, UTF-16, Windows-1251, CP866), `??` 와일드카드가 있는 16진수 바이트, 크기, 날짜, 속성으로 찾습니다.
+- **외부 프로그램 없이 보기와 편집.** 16진수, Markdown, 구문 강조, 로그 끝 따라가기, 빠른 보기의 이미지, 에디터의 사각형 블록과 북마크.
+- **비교와 동기화.** 시간·크기·내용으로 폴더 비교, 두 파일의 줄 단위 차이.
+- **외울 필요 없음.** 설명이 달린 명령 팔레트(**Shift+F9**), 새로운 상황에서의 키 힌트, **F1** 컨텍스트 도움말.
+- **나만의 모양, 나만의 키.** 10개 이상의 테마(Far, Norton, Midnight, Total Commander, Dracula, Nord 등), 테마 에디터, 파일 색상 그룹, 완전히 재정의 가능한 키 배치.
+- **Windows와 Linux.** Windows에서는 그래픽 창, Linux에서는 `mtn2-tui`(SSH 및 `tmux` 지원)와 SDL2 창. `tar.gz`, `.deb`, `.rpm` 패키지 제공.
+- **자유롭고 놀랄 일 없음.** MPL-2.0, 텔레메트리 없음, 설치 프로그램 없음, 포터블 버전, 사용자 동의가 있을 때만 업데이트, 플러그인(네이티브 및 WebAssembly).
+
 ## 빠른 시작
 
 1. [최신 릴리스 페이지](https://github.com/Laex/MTN2/releases/latest)에서 `MTN2-<버전>-win64.zip`을 받아 아무 폴더에나 풀면 됩니다. 설치 프로그램도 관리자 권한도 필요 없습니다.
@@ -82,7 +95,12 @@ Linux(`mtn2-tui`, `mtn2-sdl`)는 아래 “설치”를 참고하세요. 프로�
   패널이나 명령줄에서 실행된 콘솔 프로그램은 내장 콘솔에서 동작하며 출력 결과가 화면에 유지됩니다(`Ctrl+O`).
 - **보기 및 편집:** 내장 뷰어(텍스트, 16진수 hex, 대용량 파일 스트리밍 로딩), 에디터,
   빠른 보기(`Ctrl+Q`), Markdown 미리보기, 외부 뷰어/에디터 연동.
-- **가상 파일 시스템(VFS):** 압축 파일을 폴더처럼 탐색(zip, `7z.dll`을 통한 7z), SSH 기반 SFTP, 플러그인 VFS.
+- **가상 파일 시스템(VFS):** 압축 파일을 폴더처럼 탐색(zip, `7z.dll`을 통한 7z), SSH 기반 SFTP, FTP / FTPS / WebDAV / S3("네트워크 연결" 플러그인), 플러그인 VFS.
+- **검색(`Alt+F7`):** 마스크, 내용(UTF-8, UTF-16, Windows-1251, CP866), `??` 와일드카드가 있는 16진수 바이트, 크기, 날짜, 속성. 결과는 검색 중에 패널에 나타나며(최대 50,000개 파일) 일반 폴더처럼 다룰 수 있습니다.
+- **비교와 동기화:** 시간·크기·내용으로 폴더 비교(백그라운드, 중단 가능), 두 파일의 줄 단위 차이(`Ctrl+Alt+C`), 디렉터리 동기화, 다른 패널의 같은 이름 파일로 이동(`Ctrl+Alt+M`).
+- **로그와 바이너리 파일:** 늘어나는 파일의 끝 따라가기(`Ctrl+Shift+F`, 로그 로테이션 지원), 16진수 모드의 바이트 검색, 텍스트 파일 강조, 빠른 보기의 이미지.
+- **명령줄과 자동화:** 입력한 글자로 시작하는 이전 명령 목록, 셸용 환경 프로필(`environment.json`), `MTN2 경로1 경로2`로 탭 열기, `--view`와 `--edit`로 뷰어·에디터 열기, `--update`로 창 없이 업데이트, 파일 목록을 Markdown 또는 CSV로 내보내기.
+- **Git과 기타:** "Git status" 플러그인이 상태 표시줄에 브랜치와 변경 수를 표시하고, 우선순위가 있는 색상 그룹, 유휴 시 상어 화면 보호기가 있습니다.
 - **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 명령 팔레트(`Shift+F9`, 메뉴 항목 검색), 파일 연결 설정, F1 컨텍스트 도움말.
 - **다국어 지원:** UI 및 도움말이 영어, 러시아어, 독일어, 중국어 간체로 제공됩니다. 언어는 **옵션 → 인터페이스...** (Options → User interface...)에서 선택할 수 있으며
@@ -97,7 +115,7 @@ Linux(`mtn2-tui`, `mtn2-sdl`)는 아래 “설치”를 참고하세요. 프로�
 
 Windows x64(GUI 애플리케이션) 및 Linux x86-64를 지원합니다: `mtn2-tui`는 전체 텍스트 터미널에서 실행되며,
 동일한 패널, 뷰어, 에디터, 콘솔 및 플러그인을 제공하고 SSH 및 `tmux` 환경에서도 작동합니다([docs/LINUX.md](docs/LINUX.md) 참조).
-실험적인 Linux GUI 버전 `mtn2-sdl`은 같은 창을 일반 SDL2 창에서 보여 줍니다: 시스템 글꼴, 마우스와 휠, 모든 키보드 배열 입력, 데스크톱 클립보드, 빠른 보기의 이미지. X11 및 Wayland(Windows에서는 WSLg)에서 실행되고 `tar.gz` 및 `.deb` 패키지에 포함되며 `libSDL2`와 `libfreetype`이 필요합니다(PNG와 JPEG는 `libSDL2_image` 추가): 의존성과 옵션은 [docs/LINUX.md](docs/LINUX.md)(러시아어)를 참조하십시오. macOS 빌드는 향후 지원 예정입니다.
+실험적인 Linux GUI 버전 `mtn2-sdl`은 같은 창을 일반 SDL2 창에서 보여 줍니다: 시스템 글꼴, 마우스와 휠, 모든 키보드 배열 입력, 데스크톱 클립보드, 빠른 보기의 이미지. X11 및 Wayland(Windows에서는 WSLg)에서 실행되고 `tar.gz`, `.deb` 및 `.rpm` 패키지에 포함되며 `libSDL2`와 `libfreetype`이 필요합니다(PNG와 JPEG는 `libSDL2_image` 추가): 의존성과 옵션은 [docs/LINUX.md](docs/LINUX.md)(러시아어)를 참조하십시오. macOS 빌드는 향후 지원 예정입니다.
 
 ## 설치
 
@@ -105,7 +123,7 @@ Windows x64(GUI 애플리케이션) 및 Linux x86-64를 지원합니다: `mtn2-t
 
 - `MTN2-<버전>-win64.zip` – 설정 및 히스토리가 `%APPDATA%\MTN2`에 저장됩니다.
 - `MTN2-<버전>-win64-portable.zip` – 포터블 버전: 모든 데이터가 `MTN2.exe`와 같은 폴더에 저장됩니다;
-- `MTN2-<버전>-linux-x64.tar.gz` 및 `MTN2-<버전>-linux-x64.deb` – Linux 버전: `mtn2-tui`(터미널 창 안에서 실행, SSH 지원)와
+- `MTN2-<버전>-linux-x64.tar.gz`, `MTN2-<버전>-linux-x64.deb` 및 `MTN2-<버전>-linux-x64.rpm` – Linux 버전: `mtn2-tui`(터미널 창 안에서 실행, SSH 지원)와
   실험적인 GUI 버전 `mtn2-sdl`(SDL2 창, `libSDL2`와 `libfreetype` 필요):
   설치 방법, 의존성 및 옵션은 [docs/LINUX.md](docs/LINUX.md)를 참조하십시오.
 
@@ -113,7 +131,7 @@ Windows x64(GUI 애플리케이션) 및 Linux x86-64를 지원합니다: `mtn2-t
 (메뉴 **≡ → 업데이트 확인...**). 7z 및 기타 7-Zip 포맷 지원을 위해 [7-Zip](https://www.7-zip.org)의 `7z.dll`이 번들로 포함되어 있습니다(GNU LGPL 라이선스; 라이선스 전문은 `plugins\mtn.7z\license.txt`, 상세 내용은 [THIRD-PARTY.md](THIRD-PARTY.md) 참조). 필요한 경우 `plugins\mtn.7z\`의 DLL을 사용자의 x64 버전으로 교체할 수 있으며, zip 파일은 이 DLL 없이도 열 수 있습니다.
 
 **Linux:** `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh`(모든 사용자용은 `sudo`) 또는
-`sudo apt install ./MTN2-*-linux-x64.deb`. 설치 후 `mtn2`는 터미널 버전을, `mtn2-sdl`은 SDL2 창을 실행합니다.
+`sudo apt install ./MTN2-*-linux-x64.deb` 또는 `sudo dnf install ./MTN2-*-linux-x64.rpm`. 설치 후 `mtn2`는 터미널 버전을, `mtn2-sdl`은 SDL2 창을 실행합니다.
 압축을 푼 폴더는 설치 없이도 실행됩니다: `mtn2/mtn2-tui`와 `mtn2/mtn2-sdl`을 그 자리에서 실행하면 됩니다.
 
 ### 개발 빌드 (Dev Builds)

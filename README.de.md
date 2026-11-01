@@ -23,6 +23,19 @@ MTN2 ist für Menschen gedacht, die mit DOS Navigator und Far Manager aufgewachs
 System- und Netzwerkadministratoren, Entwickler. Es ersetzt Far Manager nicht und konkurriert nicht mit Total Commander,
 sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
 
+## Warum MTN2
+
+- **Dateimanager und echtes Terminal in einem Fenster.** Panels, ConPTY-Terminal-Tabs (cmd, PowerShell, WSL, SSH); Vim, htop und andere TUI-Programme laufen wie in einem normalen Terminal.
+- **Alles ist ein Ordner.** Archive (zip, 7z u. a.), SFTP, FTP/FTPS, WebDAV, S3 und Plugin-Dateisysteme lassen sich wie gewöhnliche Verzeichnisse öffnen und kopieren.
+- **Bleibt bei großen Datenmengen schnell.** Kopieren, Verschieben und Löschen laufen als Hintergrundaufträge; die Suche liefert bis zu 50.000 Treffer direkt in ein Panel; große Dateien werden gestreamt gelesen.
+- **Mächtige Suche.** Nach Maske, Text (UTF-8, UTF-16, Windows-1251, CP866), Bytes mit Platzhalter `??`, Größe, Datum und Attributen.
+- **Anzeigen und Bearbeiten ohne Zusatzprogramme.** Hex, Markdown, Syntaxhervorhebung, Log-Verfolgung, Bilder in der Schnellansicht, rechteckige Blöcke und Lesezeichen im Editor.
+- **Vergleichen und Synchronisieren.** Ordner nach Zeit, Größe und Inhalt; zwei Dateien mit zeilenweisem Unterschied.
+- **Nichts auswendig lernen.** Befehlspalette (**Umschalt+F9**) mit Erklärungen, Tastenhinweise in neuen Situationen, kontextbezogene Hilfe auf **F1**.
+- **Ihr Aussehen, Ihre Tasten.** Mehr als zehn Themes (Far, Norton, Midnight, Total Commander, Dracula, Nord u. a.), Theme-Editor, Farbgruppen für Dateien, frei änderbare Tastenbelegung.
+- **Windows und Linux.** Grafisches Fenster unter Windows; unter Linux `mtn2-tui` (über SSH und in `tmux`) und ein SDL2-Fenster; Pakete `tar.gz`, `.deb`, `.rpm`.
+- **Frei und ohne Überraschungen.** MPL-2.0, keine Telemetrie, kein Installer, portable Version, Updates nur mit Ihrer Zustimmung, Plugins (nativ und WebAssembly).
+
 ## Schnellstart
 
 1. Laden Sie `MTN2-<Version>-win64.zip` von der [aktuellen Release-Seite](https://github.com/Laex/MTN2/releases/latest) herunter und entpacken Sie es in einen beliebigen Ordner: kein Installer und keine Administratorrechte nötig.
@@ -87,7 +100,16 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
   bleibt auf dem Bildschirm erhalten (`Ctrl+O`).
 - **Anzeigen und Bearbeiten:** integrierter Viewer (Text, Hex, Streaming großer Dateien), Editor,
   Quick View (`Ctrl+Q`), Markdown-Vorschau, externer Viewer/Editor.
-- **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, Plugin-VFS.
+- **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, FTP / FTPS / WebDAV / S3 (Plugin „Netzwerkverbindungen“), Plugin-VFS.
+- **Suche (`Alt+F7`):** nach Maske, Inhalt (UTF-8, UTF-16, Windows-1251, CP866), Hex-Bytes mit Platzhalter `??`, Größe, Datum und Attributen.
+  Treffer erscheinen schon während der Suche in einem Panel (bis zu 50.000 Dateien) und verhalten sich wie ein normaler Ordner.
+- **Vergleichen und Synchronisieren:** Ordner nach Zeit, Größe oder Inhalt (im Hintergrund, abbrechbar); zwei Dateien mit zeilenweisem Unterschied
+  (`Ctrl+Alt+C`); Verzeichnissynchronisierung; Sprung zur gleichnamigen Datei im anderen Panel (`Ctrl+Alt+M`).
+- **Logs und Binärdateien:** dem Ende einer wachsenden Datei folgen (`Ctrl+Shift+F`, mit Log-Rotation), Bytesuche im Hex-Modus,
+  Hervorhebung von Textdateien und Bilder in der Schnellansicht.
+- **Befehlszeile und Automatisierung:** Liste früherer Befehle, die mit der Eingabe beginnen, Umgebungsprofile für Shells (`environment.json`),
+  `MTN2 Pfad1 Pfad2` öffnet Tabs, `--view` und `--edit` öffnen Viewer und Editor, `--update` aktualisiert ohne Fenster, Dateilisten als Markdown oder CSV.
+- **Git und mehr:** das Plugin „Git status“ zeigt Branch und Änderungszahlen in der Statuszeile; Farbgruppen mit Prioritäten; Bildschirmschoner mit Haien bei Inaktivität.
 - **Anpassung:** anpassbare Tastenbelegung (`keymap.json`), dateibasierte Themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast usw.; eigene Themes im Theme-Editor),
   Benutzermenü (F2), Befehlspalette (`Umschalt+F9`) zur Suche in den Menüeinträgen, Dateizuordnungen, kontextbezogene F1-Hilfe.
 - **Sprachen:** Oberfläche und Hilfe auf Deutsch, Englisch, Russisch und Chinesisch (vereinfacht); Sprache wird unter **Optionen → Oberfläche...**
@@ -104,7 +126,7 @@ Unterstützt werden Windows x64 (grafische Anwendung) und Linux x86-64: `mtn2-tu
 bietet dieselben Panels, Viewer, Editor, Konsole und Plugins und funktioniert über SSH sowie in `tmux` (siehe [docs/LINUX.md](docs/LINUX.md)).
 Die experimentelle grafische Linux-Version `mtn2-sdl` zeigt dieselben Fenster in einem normalen SDL2-Fenster:
 Systemschrift, Maus und Mausrad, Eingabe in jeder Tastaturbelegung, Zwischenablage des Desktops, Bilder in der
-Schnellansicht. Sie läuft unter X11 und Wayland (in Windows über WSLg), liegt den Paketen `tar.gz` und `.deb` bei und
+Schnellansicht. Sie läuft unter X11 und Wayland (in Windows über WSLg), liegt den Paketen `tar.gz`, `.deb` und `.rpm` bei und
 braucht `libSDL2` und `libfreetype` (für PNG und JPEG zusätzlich `libSDL2_image`): Abhängigkeiten und Parameter
 stehen in [docs/LINUX.md](docs/LINUX.md) (auf Russisch). Ein macOS-Build ist in Planung.
 
@@ -114,7 +136,7 @@ Fertige Builds stehen auf der [Releases](https://github.com/Laex/MTN2/releases)-
 
 - `MTN2-<version>-win64.zip` – Einstellungen und Verlauf werden in `%APPDATA%\MTN2` gespeichert;
 - `MTN2-<version>-win64-portable.zip` – portable Version: alles wird direkt neben `MTN2.exe` abgelegt;
-- `MTN2-<version>-linux-x64.tar.gz` und `MTN2-<version>-linux-x64.deb` – Version für Linux: `mtn2-tui` (im Terminalfenster,
+- `MTN2-<version>-linux-x64.tar.gz`, `MTN2-<version>-linux-x64.deb` und `MTN2-<version>-linux-x64.rpm` – Version für Linux: `mtn2-tui` (im Terminalfenster,
   funktioniert über SSH) und die experimentelle grafische `mtn2-sdl` (SDL2-Fenster, braucht `libSDL2` und `libfreetype`):
   Installation, Abhängigkeiten und Parameter – siehe [docs/LINUX.md](docs/LINUX.md).
 
@@ -124,7 +146,7 @@ Fertige Builds stehen auf der [Releases](https://github.com/Laex/MTN2/releases)-
 7-Zip-Archive öffnen. Sie kann durch eine eigene x64-Version in `plugins\mtn.7z\` ersetzt werden; zip lässt sich auch ohne sie öffnen.
 
 **Linux:** `tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh` (für alle Benutzer mit `sudo`) oder
-`sudo apt install ./MTN2-*-linux-x64.deb`. Danach startet `mtn2` die Terminalversion und `mtn2-sdl` das SDL2-Fenster.
+`sudo apt install ./MTN2-*-linux-x64.deb` oder `sudo dnf install ./MTN2-*-linux-x64.rpm`. Danach startet `mtn2` die Terminalversion und `mtn2-sdl` das SDL2-Fenster.
 Der entpackte Ordner läuft auch ohne Installation: `mtn2/mtn2-tui` und `mtn2/mtn2-sdl` starten dort, wo sie liegen.
 
 ### Dev-Builds
