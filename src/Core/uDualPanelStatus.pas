@@ -192,6 +192,8 @@ begin
     Exit(fbcRecycleBin);
   if IsTmpPanelUri(AState.CurrentURI) then
     Exit(fbcTmpPanel);
+  if IsFindUri(AState.CurrentURI) then
+    Exit(fbcFindResults);
   if IsWorkspaceUri(AState.CurrentURI) then
     Exit(fbcWorkspace);
   Result := fbcPanels;

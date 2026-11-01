@@ -34,6 +34,7 @@ type
     fbcSysFolders,
     fbcRecycleBin,
     fbcTmpPanel,
+    fbcFindResults, // find:// panel: no MkDir / NewFile / Rename / CopyInPlace
     fbcWorkspace,
     fbcWorkspaceLibrary,
     fbcFolderHotlist,
@@ -240,7 +241,12 @@ var
   N: Integer;
   PluginLbl: string;
 begin
-  FKeysFromKeymap(ACtx, [kcPanels, kcGlobal], cAllFBarActions, Mods, AItems);
+  if ACtx = fbcFindResults then
+    // Found items sit in many folders: nothing can be created or renamed there.
+    FKeysFromKeymap(ACtx, [kcPanels, kcGlobal],
+      cAllFBarActions - [kaMkDir, kaNewFile, kaRename, kaCopyInPlace], Mods, AItems)
+  else
+    FKeysFromKeymap(ACtx, [kcPanels, kcGlobal], cAllFBarActions, Mods, AItems);
   // The plugin serving this folder's scheme may relabel any slot (an empty
   // label leaves just the number).
   if AUri <> '' then
@@ -271,7 +277,7 @@ begin
     SetLength(ALetters, 1);
     ALetters[0] := 'CPgUp:GoTo';
   end
-  else if (Mods = [ssAlt, ssShift]) and (ACtx = fbcWorkspace) then
+  else if (Mods = [ssAlt, ssShift]) and (ACtx in [fbcWorkspace, fbcFindResults]) then
   begin
     AItems[2] := '3GoTo';
   end
@@ -462,7 +468,7 @@ begin
   AItems := EmptyItems;
 
   case ACtx of
-    fbcPanels, fbcTmpPanel, fbcWorkspace:
+    fbcPanels, fbcTmpPanel, fbcFindResults, fbcWorkspace:
       FunctionBarItemsForPanels(ACtx, Mods, AItems, ALetters, AUri, AWidth);
 
     fbcConsole:

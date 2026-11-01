@@ -630,6 +630,10 @@ begin
   // status line instead -- FLoading/FGen are untouched, so if the real
   // listing does eventually answer (for this same navigation), ApplyRows
   // still replaces it with the genuine result or error as normal.
+  // A find panel is an in-memory snapshot: it never waits on a server, and
+  // each batch of a running search reopens it.
+  if IsFindUri(URI) then
+    Exit;
   TThread.CreateAnonymousThread(
     procedure
     begin

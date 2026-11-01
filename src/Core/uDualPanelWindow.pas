@@ -343,6 +343,9 @@ type
     procedure SetActivePanel(var AWs: TDualPanelWorkspaceTab; const APanel: TPanelState);
     function ModelForSide(ASide: TPanelSide): IPanelModel;
     function RowsForSide(ASide: TPanelSide): TPanelRows;
+    function RowCountForSide(ASide: TPanelSide): Integer;
+    function TryRowAtSide(ASide: TPanelSide; AIndex: Integer;
+      out ARow: TPanelRow): Boolean;
     /// <summary>Active workspace/panel/tab/rows for the active side. Returns False
     /// (nothing else populated meaningfully) when the active side has no rows.</summary>
     function GetActiveRowContext(out AWs: TDualPanelWorkspaceTab;
@@ -1950,6 +1953,32 @@ begin
     Result[I] := M.GetRow(I);
 end;
 
+// RowsForSide copies every row; a caller that needs the length or one row
+// must not pay that on each click or key (a find panel holds up to
+// cFindMaxResults rows).
+function TDualPanelWindow.RowCountForSide(ASide: TPanelSide): Integer;
+var
+  M: IPanelModel;
+begin
+  M := ModelForSide(ASide);
+  if Assigned(M) then
+    Result := M.ItemCount
+  else
+    Result := 0;
+end;
+
+function TDualPanelWindow.TryRowAtSide(ASide: TPanelSide; AIndex: Integer;
+  out ARow: TPanelRow): Boolean;
+var
+  M: IPanelModel;
+begin
+  ARow := Default(TPanelRow);
+  M := ModelForSide(ASide);
+  Result := Assigned(M) and (AIndex >= 0) and (AIndex < M.ItemCount);
+  if Result then
+    ARow := M.GetRow(AIndex);
+end;
+
 function TDualPanelWindow.GetActiveRowContext(out AWs: TDualPanelWorkspaceTab;
   out APanel: TPanelState; out ATab: TTab; out ARows: TPanelRows): Boolean;
 begin
@@ -2543,7 +2572,6 @@ function TDualPanelWindow.HostTryGetCursorItem(out AName, AUri, ATargetUri: stri
 var
   Ws: TDualPanelWorkspaceTab;
   Tab: TTab;
-  Rows: TPanelRows;
   Row: TPanelRow;
 begin
   AName := '';
@@ -2553,10 +2581,8 @@ begin
   Result := False;
   Ws := ActiveWorkspace;
   Tab := ActiveTab(ActivePanel(Ws));
-  Rows := RowsForSide(Ws.State.ActiveSide);
-  if (Tab.CursorIndex < 0) or (Tab.CursorIndex > High(Rows)) then
+  if not TryRowAtSide(Ws.State.ActiveSide, Tab.CursorIndex, Row) then
     Exit;
-  Row := Rows[Tab.CursorIndex];
   AName := Row.Text;
   AUri := Row.URI;
   ATargetUri := Row.TargetURI;
@@ -7086,7 +7112,18 @@ var
   LeftRows, RightRows: TPanelRows;
   Opt: TPanelCompareOptions;
   Title: string;
+  Ws: TDualPanelWorkspaceTab;
 begin
+  Ws := ActiveWorkspace;
+  // Found items come from many folders: there is no folder to compare.
+  if IsFindUri(ActiveTab(Ws.State.LeftPanel).CurrentURI) or
+     IsFindUri(ActiveTab(Ws.State.RightPanel).CurrentURI) then
+  begin
+    ShowInfo(T('ui.compareFolders.title', 'Compare folders'),
+      T('ui.compareFolders.findPanel',
+        'Search results cannot be compared with a folder.'));
+    Exit;
+  end;
   LeftRows := RowsForSide(psLeft);
   RightRows := RowsForSide(psRight);
   Opt := FCompareOptions;
@@ -8231,9 +8268,8 @@ var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
   M: IPanelModel;
-  ViewH, MaxOff: Integer;
+  ViewH, MaxOff, RowCount: Integer;
 begin
   M := ModelForSide(ASide);
   if Assigned(M) and M.IsLoading then
@@ -8244,21 +8280,21 @@ begin
   else
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(ASide);
+  RowCount := RowCountForSide(ASide);
   ViewH := ListViewHeight;
   if ViewH < 1 then
   begin
     // Layout not ready yet (startup / session restore before first paint).
     // Only clamp indices - do not pull ScrollOffset to CursorIndex with ViewH=1.
-    if Length(Rows) <= 0 then
+    if RowCount <= 0 then
     begin
       Tab.CursorIndex := 0;
       Tab.ScrollOffset := 0;
     end
     else
     begin
-      Tab.CursorIndex := EnsureRange(Tab.CursorIndex, 0, High(Rows));
-      MaxOff := High(Rows);
+      Tab.CursorIndex := EnsureRange(Tab.CursorIndex, 0, RowCount - 1);
+      MaxOff := RowCount - 1;
       if Tab.ScrollOffset < 0 then
         Tab.ScrollOffset := 0;
       if Tab.ScrollOffset > MaxOff then
@@ -8266,7 +8302,7 @@ begin
     end;
   end
   else
-    EnsureCursorVisible(Tab, Length(Rows), ViewH, ListColCountForSide(ASide));
+    EnsureCursorVisible(Tab, RowCount, ViewH, ListColCountForSide(ASide));
   SetActiveTab(Panel, Tab);
   if ASide = psLeft then
     Ws.State.LeftPanel := Panel
@@ -14118,7 +14154,7 @@ var
   Panel: TPanelState;
   Tab: TTab;
   Side: TPanelSide;
-  Rows: TPanelRows;
+  RowCount: Integer;
   Bounds, ListBounds: TRectI;
   Idx, ViewH, Cols: Integer;
   HitList: Boolean;
@@ -14171,27 +14207,27 @@ begin
   Ws.State.ActiveSide := Side;
   Panel := ActivePanel(Ws);
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Side);
+  RowCount := RowCountForSide(Side);
   ListBounds := PanelListBounds(Bounds);
   ViewH := ListBounds.Height;
   HitList := False;
   Cols := PanelListColumnCount(Panel.ColumnMode, ListBounds.Width);
 
   if HitPanelListIndex(ListBounds, Panel.ColumnMode, Tab.ScrollOffset,
-     ALocalCol, ALocalRow, Length(Rows), Idx) then
+     ALocalCol, ALocalRow, RowCount, Idx) then
   begin
     Tab.CursorIndex := Idx;
-    EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+    EnsureCursorVisible(Tab, RowCount, ViewH, Cols);
     SetActiveTab(Panel, Tab);
     HitList := True;
   end
   else if HitPanelListEmptyArea(ListBounds, Panel.ColumnMode, Tab.ScrollOffset,
-    ALocalCol, ALocalRow, Length(Rows)) then
+    ALocalCol, ALocalRow, RowCount) then
   begin
     // The empty space after the last item puts the cursor on that item. It
     // is not a hit on a row, so a double-click there opens nothing.
-    Tab.CursorIndex := High(Rows);
-    EnsureCursorVisible(Tab, Length(Rows), ViewH, Cols);
+    Tab.CursorIndex := RowCount - 1;
+    EnsureCursorVisible(Tab, RowCount, ViewH, Cols);
     SetActiveTab(Panel, Tab);
   end;
 
@@ -14329,6 +14365,7 @@ var
   Bounds: TRectI;
   Panel: TPanelState;
   Tab: TTab;
+  Rows: TPanelRows;
 begin
   Result := False;
   ADestURI := '';
@@ -14341,9 +14378,13 @@ begin
   if not ResolvePanelHitContext(ALocalCol, ALocalRow, ASide, Bounds, Panel) then
     Exit;
   Tab := ActiveTab(Panel);
+  // A find panel is never a drop target: skip copying its rows on each move.
+  if IsFindUri(Tab.CurrentURI) then
+    Rows := nil
+  else
+    Rows := RowsForSide(ASide);
   Result := ResolveDropDest(Tab.CurrentURI, Bounds, Panel.ColumnMode,
-    Tab.ScrollOffset, ALocalCol, ALocalRow, RowsForSide(ASide),
-    ADestURI, AHighlightRow);
+    Tab.ScrollOffset, ALocalCol, ALocalRow, Rows, ADestURI, AHighlightRow);
 end;
 
 function TDualPanelWindow.HitTestListItemLocalPath(ALocalCol, ALocalRow: Integer;
@@ -14352,7 +14393,7 @@ var
   Bounds: TRectI;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
+  Row: TPanelRow;
   Idx: Integer;
   Side: TPanelSide;
   DialogVisible, JobsOwnInput, AnyMenuVisible, DrivePopupVisible,
@@ -14374,11 +14415,11 @@ begin
   if not ResolvePanelHitContext(ALocalCol, ALocalRow, Side, Bounds, Panel) then
     Exit;
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Side);
   if not HitPanelListIndex(PanelListBounds(Bounds), Panel.ColumnMode,
-    Tab.ScrollOffset, ALocalCol, ALocalRow, Length(Rows), Idx) then
+    Tab.ScrollOffset, ALocalCol, ALocalRow, RowCountForSide(Side), Idx) or
+    not TryRowAtSide(Side, Idx, Row) then
     Exit;
-  ALocalPath := ListItemLocalPath(Rows[Idx]);
+  ALocalPath := ListItemLocalPath(Row);
   Result := ALocalPath <> '';
 end;
 
@@ -14404,7 +14445,7 @@ var
   Bounds: TRectI;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
+  Row: TPanelRow;
   Idx: Integer;
   Sources: TArray<string>;
 begin
@@ -14415,9 +14456,9 @@ begin
   if not ResolvePanelHitContext(ALocalCol, ALocalRow, Side, Bounds, Panel) then
     Exit;
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Side);
   if not HitPanelListIndex(PanelListBounds(Bounds), Panel.ColumnMode, Tab.ScrollOffset,
-       ALocalCol, ALocalRow, Length(Rows), Idx) or Rows[Idx].IsParent then
+       ALocalCol, ALocalRow, RowCountForSide(Side), Idx) or
+     not TryRowAtSide(Side, Idx, Row) or Row.IsParent then
     Exit;
   Sources := CollectActiveSources;
   if Length(Sources) = 0 then

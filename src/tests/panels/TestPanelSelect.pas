@@ -20,6 +20,7 @@ type
     [Test] procedure ClearedSelectionCanBeRestored;
     [Test] procedure SetSelectedRangeMarksAndUnmarksSpan;
     [Test] procedure InvertSelectionSkipsFoldersUnlessAsked;
+    [Test] procedure BulkSelectionOpsOnLargeListStayLinear;
     [Test] procedure ShiftSelectGestureKeepsOneMark;
     [Test] procedure PathLastSegmentNamesTheLeaf;
   end;
@@ -28,6 +29,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   uVfsTypes,
   uFileFind,
   uFindSession,
@@ -297,6 +299,42 @@ begin
   TabInvertSelection(Tab, Rows, True);
   Assert.IsTrue(TabIsSelected(Tab, Rows[1].URI), 'folder inverted when asked');
   Assert.IsTrue(not TabIsSelected(Tab, Rows[2].URI), 'file inverted back');
+end;
+
+procedure TTestPanelSelect.BulkSelectionOpsOnLargeListStayLinear;
+const
+  cRows = 30000;
+var
+  Tab: TTab;
+  Rows: TPanelRows;
+  I, Count: Integer;
+  Watch: TStopwatch;
+begin
+  Tab := MakeTab(1, 't', 'file:///D:/Temp');
+  SetLength(Rows, cRows);
+  for I := 0 to cRows - 1 do
+    Rows[I] := MakePanelRow('f' + IntToStr(I) + '.txt', False, 1, '1', '',
+      'file:///D:/Temp/f' + IntToStr(I) + '.txt', False);
+  Watch := TStopwatch.StartNew;
+  TabSelectByMask(Tab, Rows, '*.txt', False);
+  Assert.AreEqual(cRows, Integer(Length(Tab.SelectedURIs)), 'mask selects every row');
+  TabInvertSelection(Tab, Rows);
+  Assert.AreEqual(0, Integer(Length(Tab.SelectedURIs)), 'invert of a full selection clears it');
+  TabInvertSelection(Tab, Rows);
+  Assert.AreEqual(cRows, Integer(Length(Tab.SelectedURIs)), 'invert of an empty selection selects all');
+  TabUnselectByMask(Tab, Rows, '*1.txt', False);
+  Count := 0;
+  for I := 0 to cRows - 1 do
+    if I mod 10 <> 1 then
+      Inc(Count);
+  Assert.AreEqual(Count, Integer(Length(Tab.SelectedURIs)), 'unselect by mask drops only matching rows');
+  Assert.IsFalse(TabIsSelected(Tab, Rows[11].URI), 'a row matching the mask is dropped');
+  Assert.IsTrue(TabIsSelected(Tab, Rows[12].URI), 'a row outside the mask stays');
+  TabSelectByNameStem(Tab, Rows, 'f11', False);
+  Assert.IsTrue(TabIsSelected(Tab, Rows[11].URI), 'stem selects the row back');
+  Watch.Stop;
+  // Per-row scans of the selection would need minutes here.
+  Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, 'bulk selection ops are not quadratic');
 end;
 
 procedure TTestPanelSelect.TestSelectionKeys;

@@ -1095,64 +1095,96 @@ begin
     (AIncludeFolders or not PanelRowIsDirectory(ARow));
 end;
 
+type
+  TSelectionOp = (soToggle, soSelect, soUnselect);
+  TRowPick = reference to function(const ARow: TPanelRow): Boolean;
+
+// One pass over ARows against the sorted keys of the current selection, then a
+// single ApplySelectionChange: O(rows log selected) instead of a linear
+// SameVfsUri scan of the selection per row.
+procedure ChangeSelectionOfRows(var ATab: TTab; const ARows: TPanelRows;
+  AOp: TSelectionOp; const APick: TRowPick);
+var
+  Keys, Drop, Add: TArray<string>;
+  Key: string;
+  I, DropN, AddN: Integer;
+  Has: Boolean;
+begin
+  Keys := TabSelectionKeys(ATab);
+  SetLength(Drop, Length(ARows));
+  SetLength(Add, Length(ARows));
+  DropN := 0;
+  AddN := 0;
+  for I := 0 to High(ARows) do
+  begin
+    if ARows[I].IsParent or (ARows[I].URI = '') or not APick(ARows[I]) then
+      Continue;
+    Key := VfsUriKey(ARows[I].URI);
+    Has := SortedKeysHas(Keys, Key);
+    if Has and (AOp <> soSelect) then
+    begin
+      Drop[DropN] := Key;
+      Inc(DropN);
+    end
+    else if (not Has) and (AOp <> soUnselect) then
+    begin
+      Add[AddN] := ARows[I].URI;
+      Inc(AddN);
+    end;
+  end;
+  SetLength(Drop, DropN);
+  SetLength(Add, AddN);
+  ApplySelectionChange(ATab, Drop, Add);
+end;
+
 procedure TabSelectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean);
 var
-  R: TPanelRow;
   Masks: TArray<string>;
 begin
   Masks := SplitMasks(AMask);
-  for R in ARows do
-  begin
-    // FAR default: Gray+/Gray- do not select folders (Select folders = off).
-    if not TabRowSelectable(R, AIncludeFolders) then
-      Continue;
-    if NameMatchesAnyMask(PanelRowMaskName(R), Masks) and
-       not TabIsSelected(ATab, R.URI) then
-      TabToggleSelected(ATab, R.URI);
-  end;
+  // FAR default: Gray+/Gray- do not select folders (Select folders = off).
+  ChangeSelectionOfRows(ATab, ARows, soSelect,
+    function(const ARow: TPanelRow): Boolean
+    begin
+      Result := TabRowSelectable(ARow, AIncludeFolders) and
+        NameMatchesAnyMask(PanelRowMaskName(ARow), Masks);
+    end);
 end;
 
 procedure TabUnselectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean);
 var
-  R: TPanelRow;
   Masks: TArray<string>;
 begin
   Masks := SplitMasks(AMask);
-  for R in ARows do
-  begin
-    if not TabRowSelectable(R, AIncludeFolders) then
-      Continue;
-    if NameMatchesAnyMask(PanelRowMaskName(R), Masks) and
-       TabIsSelected(ATab, R.URI) then
-      TabToggleSelected(ATab, R.URI);
-  end;
+  ChangeSelectionOfRows(ATab, ARows, soUnselect,
+    function(const ARow: TPanelRow): Boolean
+    begin
+      Result := TabRowSelectable(ARow, AIncludeFolders) and
+        NameMatchesAnyMask(PanelRowMaskName(ARow), Masks);
+    end);
 end;
 
 procedure TabSelectByNameStem(var ATab: TTab; const ARows: TPanelRows;
   const AStem: string; AUnselect: Boolean; AIncludeFolders: Boolean);
 var
-  R: TPanelRow;
   Stem: string;
+  Op: TSelectionOp;
 begin
   Stem := Trim(AStem);
   if Stem = '' then
     Exit;
-  for R in ARows do
-  begin
-    if not TabRowSelectable(R, AIncludeFolders) then
-      Continue;
-    if not SameText(FileNameStem(PanelRowMaskName(R)), Stem) then
-      Continue;
-    if AUnselect then
+  if AUnselect then
+    Op := soUnselect
+  else
+    Op := soSelect;
+  ChangeSelectionOfRows(ATab, ARows, Op,
+    function(const ARow: TPanelRow): Boolean
     begin
-      if TabIsSelected(ATab, R.URI) then
-        TabToggleSelected(ATab, R.URI);
-    end
-    else if not TabIsSelected(ATab, R.URI) then
-      TabToggleSelected(ATab, R.URI);
-  end;
+      Result := TabRowSelectable(ARow, AIncludeFolders) and
+        SameText(FileNameStem(PanelRowMaskName(ARow)), Stem);
+    end);
 end;
 
 function TabHasSelectedDirectories(const ATab: TTab;
@@ -1205,17 +1237,12 @@ end;
 
 procedure TabInvertSelection(var ATab: TTab; const ARows: TPanelRows;
   AIncludeFolders: Boolean);
-var
-  R: TPanelRow;
 begin
-  for R in ARows do
-  begin
-    if R.IsParent or (R.URI = '') then
-      Continue;
-    if (not AIncludeFolders) and PanelRowIsDirectory(R) then
-      Continue;
-    TabToggleSelected(ATab, R.URI);
-  end;
+  ChangeSelectionOfRows(ATab, ARows, soToggle,
+    function(const ARow: TPanelRow): Boolean
+    begin
+      Result := AIncludeFolders or not PanelRowIsDirectory(ARow);
+    end);
 end;
 
 function TShiftSelectGesture.Continues(const ADir: string;

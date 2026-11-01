@@ -17,6 +17,7 @@ type
     [Test] procedure TestEditorAndViewerShowTheBookmarkKeys;
     [Test] procedure TestWidePanelsBarNamesThePaletteKey;
     [Test] procedure TestNarrowPanelsBarKeepsOnlyTheFKeys;
+    [Test] procedure TestFindResultsBarOmitsCreateAndRename;
   end;
 
 implementation
@@ -89,6 +90,24 @@ begin
   Assert.IsTrue(Length(Letters) = 0, 'no room for a hint at 80 columns');
   FunctionBarGetItems(fbcPanels, [], Items, Letters);
   Assert.IsTrue(Length(Letters) = 0, 'unknown width adds nothing');
+end;
+
+procedure TTestFunctionBarHints.TestFindResultsBarOmitsCreateAndRename;
+var
+  Plain, Found: TArray<string>;
+  Letters: TArray<string>;
+begin
+  FunctionBarGetItems(fbcPanels, [], Plain, Letters, '', 80);
+  FunctionBarGetItems(fbcFindResults, [], Found, Letters, '', 80);
+  Assert.AreEqual('7MkDir', Plain[6], 'a folder bar offers MkDir on F7');
+  Assert.AreEqual('7', Found[6], 'found items cannot get a folder created');
+  Assert.AreEqual(Plain[4], Found[4], 'Copy stays');
+  Assert.AreEqual(Plain[7], Found[7], 'Delete stays');
+  Assert.AreEqual(Plain[2], Found[2], 'View stays');
+  FunctionBarGetItems(fbcFindResults, [ssShift], Found, Letters, '', 80);
+  Assert.AreEqual('4', Found[3], 'Shift+F4 (new file) is not offered');
+  Assert.AreEqual('5', Found[4], 'Shift+F5 (copy in place) is not offered');
+  Assert.AreEqual('6', Found[5], 'Shift+F6 (rename) is not offered');
 end;
 
 initialization
