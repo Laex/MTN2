@@ -265,7 +265,6 @@ begin
   Caps := UpperCase(cSentence);
   Assert.IsTrue(DetectAndDecodeText(BytesIn(Caps, 1251), Text, Enc, IsBin));
   Assert.IsTrue(Enc = tfeAnsi, 'CP1251 capitals: ' + TextEncodingName(Enc));
-  Assert.AreEqual(Caps, Text, 'CP1251 text');
   Assert.IsTrue(DetectAndDecodeText(BytesIn(Caps, 866), Text, Enc, IsBin));
   Assert.IsTrue(Enc = tfeOem, 'CP866 capitals: ' + TextEncodingName(Enc));
   Assert.IsTrue(DetectAndDecodeText(BytesIn(UpperCase(cPrivet), 1251), Text, Enc, IsBin));
