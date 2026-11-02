@@ -132,6 +132,7 @@ uses
   uZipVfs in 'Core\uZipVfs.pas',
   uZipNames in 'Core\uZipNames.pas',
   uZipArchiveCache in 'Core\uZipArchiveCache.pas',
+  uFindArchive in 'Core\uFindArchive.pas',
   uFindSession in 'Core\uFindSession.pas',
   uFindVfs in 'Core\uFindVfs.pas',
   uSysFoldersVfs in 'Core\uSysFoldersVfs.pas',

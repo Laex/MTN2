@@ -167,11 +167,13 @@ begin
   if not FDialog.OpenJson(
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.Filters)),
+      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
+      FSearch.EncodingIdx, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
-      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.Filters), FOnCommand);
+      FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
+      FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -186,6 +188,8 @@ begin
   Result.WholeWords := FDialog.GetCheckbox('search_words');
   Result.SearchFolders := FDialog.GetCheckbox('search_folders');
   Result.UseRegex := FDialog.GetCheckbox('search_regex');
+  Result.SearchArchives := FDialog.GetCheckbox('search_archives');
+  Result.SearchEncodingIdx := FDialog.GetListSelectedIndex('search_encoding');
   Result.HexText := FDialog.GetInputValue('search_hex');
   Result.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
   Result.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
@@ -249,6 +253,8 @@ begin
   FSearch.WholeWords := AFields.WholeWords;
   FSearch.SearchFolders := AFields.SearchFolders;
   FSearch.UseRegex := AFields.UseRegex;
+  FSearch.SearchArchives := AFields.SearchArchives;
+  FSearch.EncodingIdx := AFields.SearchEncodingIdx;
   FSearch.HexText := AFields.HexText;
   FSearch.HexMode := FHexMode;
   FSearch.Subdirs := AFields.Subdirs;

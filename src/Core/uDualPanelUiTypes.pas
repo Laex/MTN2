@@ -185,7 +185,10 @@ type
     ExistingIdx, RetryIdx, PackTypeIdx, PackLevelIdx: Integer;
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
-      SyncByContent, EncryptNames: Boolean;
+      SyncByContent, EncryptNames, SearchArchives: Boolean;
+    /// <summary>Code page of the Find dialog: 0 detects it per file, n is
+    /// item n - 1 of TextEncodingListItems.</summary>
+    SearchEncodingIdx: Integer;
     Filters: TFindFilterText;
   end;
 
@@ -200,6 +203,10 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;
     UseRegex: Boolean;
+    SearchArchives: Boolean;
+    /// <summary>0 = detect the code page of each file, n = item n - 1 of
+    /// TextEncodingListItems.</summary>
+    EncodingIdx: Integer;
     HexText: string;
     /// <summary>The bytes were typed in the hex field: they are searched
     /// instead of the text.</summary>

@@ -21,6 +21,9 @@ type
     [Test] procedure SessionTouchedOnlyByItsOwnFiles;
     [Test] procedure SessionDropsRemovedHitsOnly;
     [Test] procedure ResultLimitIsReportedOnlyWhenMoreMatchesExist;
+    [Test] procedure ChosenEncodingDecidesWhatTextIsSearched;
+    [Test] procedure ArchivesAreSearchedOnlyWhenAsked;
+    [Test] procedure ArchiveHitsNameTheArchiveAndTheEntry;
   end;
 
 implementation
@@ -34,7 +37,10 @@ uses
   System.SyncObjs,
   Winapi.Windows,
   uVfsTypes,
+  System.Zip,
   uFindSession,
+  uFindArchive,
+  uTextEncoding,
   uFileFind;
 
 var
@@ -456,6 +462,135 @@ begin
     RunFind;
     Assert.AreEqual<Integer>(2, Count, 'capped at the limit');
     Assert.IsTrue(Truncated, 'a further match exists');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+function RunFind(const AOptions: TFindOptions): TArray<TFindHit>;
+var
+  Found: TArray<TFindHit>;
+  Done: TEvent;
+  Tick: Cardinal;
+begin
+  Done := TEvent.Create;
+  try
+    FindFilesAsync(AOptions, nil,
+      procedure(AFoundCount: Integer; const ACurrentDir: string) begin end,
+      procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
+        ATruncated: Boolean)
+      begin
+        Found := AHits;
+        Done.SetEvent;
+      end);
+    Tick := GetTickCount;
+    while Done.WaitFor(50) <> wrSignaled do
+    begin
+      CheckSynchronize;
+      if GetTickCount - Tick > 30000 then
+        Assert.Fail('find timed out');
+    end;
+    CheckSynchronize;
+    Result := Found;
+  finally
+    Done.Free;
+  end;
+end;
+
+procedure TTestFileFind.ChosenEncodingDecidesWhatTextIsSearched;
+const
+  cWord = #$041F#$0440#$0438#$0432#$0435#$0442;
+var
+  Dir: string;
+  Opts: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-enc-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    TFile.WriteAllBytes(TPath.Combine(Dir, 'seven.txt'),
+      EncodeTextBytes('say ' + cWord + ' now', tfeUtf7));
+    Opts := DefaultFindOptions(Dir, '*.txt', False);
+    Opts.ContainingText := cWord;
+    Assert.AreEqual<Integer>(0, Length(RunFind(Opts)),
+      'UTF-7 is plain ASCII to the detector, so the word is not seen');
+    Opts.ForceEncoding := True;
+    Opts.Encoding := tfeUtf7;
+    Assert.AreEqual<Integer>(1, Length(RunFind(Opts)), 'found once the code page is chosen');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure MakeZip(const APath: string);
+var
+  Zip: TZipFile;
+begin
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(APath, zmWrite);
+    Zip.Add(TEncoding.UTF8.GetBytes('first line' + #10 + 'the needle is here'), 'inner/note.txt');
+    Zip.Add(TEncoding.UTF8.GetBytes('nothing to see'), 'other.txt');
+    Zip.Close;
+  finally
+    Zip.Free;
+  end;
+end;
+
+procedure TTestFileFind.ArchivesAreSearchedOnlyWhenAsked;
+var
+  Dir: string;
+  Opts: TFindOptions;
+  Hits: TArray<TFindHit>;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-zip-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    MakeZip(TPath.Combine(Dir, 'pack.zip'));
+    Opts := DefaultFindOptions(Dir, '*.txt', True);
+    Opts.ContainingText := 'needle';
+    Assert.AreEqual<Integer>(0, Length(RunFind(Opts)), 'archives are left alone by default');
+    Opts.SearchArchives := True;
+    Hits := RunFind(Opts);
+    Assert.AreEqual<Integer>(1, Length(Hits), 'one entry holds the text');
+    Assert.AreEqual<Integer>(2, Hits[0].Line, 'line of the match');
+    Assert.IsTrue(Hits[0].HasEntry, 'entry data is kept');
+    Opts.ContainingText := '';
+    Opts.Mask := '*.txt';
+    Assert.AreEqual<Integer>(2, Length(RunFind(Opts)), 'name-only search lists both entries');
+    Opts.ContainingText := 'absent';
+    Assert.AreEqual<Integer>(0, Length(RunFind(Opts)), 'text that is nowhere');
+    Opts.ContainingText := 'needle';
+    Opts.Subdirs := False;
+    Assert.AreEqual<Integer>(0, Length(RunFind(Opts)),
+      'a folder inside the archive is skipped without subfolders');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFileFind.ArchiveHitsNameTheArchiveAndTheEntry;
+var
+  Dir, ZipPath, Archive, Inner: string;
+  Opts: TFindOptions;
+  Hits: TArray<TFindHit>;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-zipname-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    ZipPath := TPath.Combine(Dir, 'pack.zip');
+    MakeZip(ZipPath);
+    Opts := DefaultFindOptions(Dir, '*.txt', True);
+    Opts.ContainingText := 'needle';
+    Opts.SearchArchives := True;
+    Hits := RunFind(Opts);
+    Assert.AreEqual<Integer>(1, Length(Hits));
+    Assert.IsTrue(SplitArchiveHit(Hits[0].Path, Archive, Inner), 'the hit is an entry URI');
+    Assert.IsTrue(SameText(ZipPath, Archive), 'archive path: ' + Archive);
+    Assert.AreEqual('inner/note.txt', Inner);
+    Assert.AreEqual(Hits[0].Path, FindHitUri(Hits[0].Path), 'opens as the entry itself');
+    Assert.AreEqual('pack.zip : inner/note.txt', FindHitDisplayName(Dir, Hits[0].Path));
+    Assert.IsFalse(SplitArchiveHit(TPath.Combine(Dir, 'plain.txt'), Archive, Inner),
+      'a local path is no archive hit');
   finally
     TDirectory.Delete(Dir, True);
   end;

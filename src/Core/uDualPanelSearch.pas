@@ -59,6 +59,8 @@ type
     property WholeWords: Boolean read FSearch.WholeWords write FSearch.WholeWords;
     property SearchFolders: Boolean read FSearch.SearchFolders write FSearch.SearchFolders;
     property UseRegex: Boolean read FSearch.UseRegex write FSearch.UseRegex;
+    property SearchArchives: Boolean read FSearch.SearchArchives write FSearch.SearchArchives;
+    property EncodingIdx: Integer read FSearch.EncodingIdx write FSearch.EncodingIdx;
     property HexText: string read FSearch.HexText write FSearch.HexText;
     property HexMode: Boolean read FSearch.HexMode write FSearch.HexMode;
     property Filters: TFindFilterText read FSearch.Filters write FSearch.Filters;
@@ -81,7 +83,7 @@ type
 implementation
 
 uses
-  uStrings, uKeyChord;
+  uStrings, uKeyChord, uTextEncoding, uFindArchive;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -120,6 +122,8 @@ begin
   FSearch.WholeWords := False;
   FSearch.SearchFolders := False;
   FSearch.UseRegex := False;
+  FSearch.SearchArchives := False;
+  FSearch.EncodingIdx := 0;
   FSearch.HexText := '';
   FSearch.HexMode := False;
   FSearch.Filters := Default(TFindFilterText);
@@ -250,6 +254,9 @@ begin
   Opts.WholeWords := FSearch.WholeWords;
   Opts.SearchFolders := FSearch.SearchFolders;
   Opts.UseRegex := FSearch.UseRegex;
+  Opts.SearchArchives := FSearch.SearchArchives;
+  Opts.ForceEncoding := (FSearch.EncodingIdx > 0) and
+    TryTextEncodingFromListIndex(FSearch.EncodingIdx - 1, Opts.Encoding);
   if ByBytes then
   begin
     Opts.ContainingText := '';
@@ -381,7 +388,7 @@ procedure TSearchController.DrawSearchUi(const AGrid: TTerminalGrid;
 var
   R: TRectI;
   Y, ViewH, Idx, MaxW: Integer;
-  Line, Path, Rel: string;
+  Line, Path, Rel, InnerPath: string;
   Title: string;
   Fg, Bg: TAlphaColor;
 begin
@@ -460,6 +467,9 @@ begin
           end;
           Path := FSearch.Results[Idx].Path;
           Rel := Path;
+          InnerPath := '';
+          if SplitArchiveHit(Path, Rel, InnerPath) then
+            InnerPath := ' : ' + InnerPath;
           if FSearch.RootPath <> '' then
           begin
             if Rel.StartsWith(IncludeTrailingPathDelimiter(FSearch.RootPath), True) then
@@ -468,6 +478,7 @@ begin
             else if SameLocalPath(Rel, FSearch.RootPath) then
               Rel := ExtractFileName(Rel);
           end;
+          Rel := Rel + InnerPath;
           if Length(Rel) > R.Width - 2 then
             Rel := Copy(Rel, 1, R.Width - 3) + '~';
           if Idx = FSearch.Cursor then

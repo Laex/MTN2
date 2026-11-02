@@ -114,10 +114,10 @@ begin
     Decl.Version := cDialogProtocolV2;
     Decl.Title := 'Code page';
     Decl.Width := 28;
-    Decl.Height := 12;
+    Decl.Height := 13;
     Decl.IsWarning := False;
     SetLength(Decl.Controls, 1);
-    Decl.Controls[0] := WithControlBox(MakeList('encoding', Items, 0), 1, 1, 24, 9);
+    Decl.Controls[0] := WithControlBox(MakeList('encoding', Items, 0), 1, 1, 24, 10);
     Host.Open(Decl, NoopDialogCommand);
 
     AllocTerminalGrid(Grid, 80, 25);

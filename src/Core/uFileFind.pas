@@ -23,6 +23,9 @@ type
     WholeWords: Boolean;
     SearchFolders: Boolean;    // include matching directories in results
     UseRegex: Boolean;         // ContainingText is a regex pattern, not plain text
+    ForceEncoding: Boolean;    // False = detect the encoding of each file
+    Encoding: TTextFileEncoding; // used when ForceEncoding
+    SearchArchives: Boolean;   // also look at the files inside archives
     HexBytes: string;          // byte sequence ("4D 5A ?? 90") the file must contain; empty = none
     MinSize: Int64;            // bytes; -1 = no lower bound (files only)
     MaxSize: Int64;            // bytes; -1 = no upper bound (files only)
@@ -136,6 +139,15 @@ function FileHexMatch(const APath: string; const APattern: TArray<Integer>;
 function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
   out ALine: Integer; out ASnippet: string): Boolean;
 
+/// <summary>The same test on content already in memory (a file inside an
+/// archive).</summary>
+function FindBytesMatch(const ABytes: TBytes; const AOptions: TFindOptions;
+  out ALine: Integer; out ASnippet: string): Boolean;
+
+/// <summary>True when the options ask for a text or byte condition on the
+/// content of a file.</summary>
+function FindNeedsContent(const AOptions: TFindOptions): Boolean;
+
 /// <summary>AOnHits, when given, receives the hits while the walk runs: the
 /// first one at once, later ones in batches. Every hit is delivered before
 /// AOnDone, which still carries the complete list.</summary>
@@ -147,7 +159,7 @@ implementation
 
 uses
   System.IOUtils, System.Masks, System.Math, System.Generics.Collections,
-  System.RegularExpressions, uPlatformFileOps;
+  System.RegularExpressions, uPlatformFileOps, uFindArchive;
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean): TFindOptions;
@@ -160,6 +172,9 @@ begin
   Result.WholeWords := False;
   Result.SearchFolders := False;
   Result.UseRegex := False;
+  Result.ForceEncoding := False;
+  Result.Encoding := tfeUtf8;
+  Result.SearchArchives := False;
   Result.HexBytes := '';
   Result.MinSize := -1;
   Result.MaxSize := -1;
@@ -637,6 +652,39 @@ begin
     ACursor2 := 0;
 end;
 
+{ Index of the first place in ABuf[0..AHave-1] where APattern matches, -1 when
+  there is none. }
+function HexPatternIndex(const ABuf: TBytes; AHave: Integer;
+  const APattern: TArray<Integer>): Integer;
+var
+  M, I, J: Integer;
+begin
+  M := Length(APattern);
+  for I := 0 to AHave - M do
+  begin
+    J := 0;
+    while (J < M) and ((APattern[J] < 0) or (ABuf[I + J] = APattern[J])) do
+      Inc(J);
+    if J = M then
+      Exit(I);
+  end;
+  Result := -1;
+end;
+
+function BytesHexMatch(const ABytes: TBytes; const APattern: TArray<Integer>;
+  out AOffset: Int64): Boolean;
+var
+  At: Integer;
+begin
+  AOffset := -1;
+  if Length(APattern) = 0 then
+    Exit(False);
+  At := HexPatternIndex(ABytes, Length(ABytes), APattern);
+  if At >= 0 then
+    AOffset := At;
+  Result := At >= 0;
+end;
+
 function FileHexMatch(const APath: string; const APattern: TArray<Integer>;
   out AOffset: Int64): Boolean;
 const
@@ -644,7 +692,7 @@ const
 var
   FS: TFileStream;
   Buf: TBytes;
-  M, Have, Got, Keep, I, J: Integer;
+  M, Have, Got, Keep, At: Integer;
   Base: Int64;
 begin
   AOffset := -1;
@@ -662,16 +710,11 @@ begin
         if Got <= 0 then
           Break;
         Inc(Have, Got);
-        for I := 0 to Have - M do
+        At := HexPatternIndex(Buf, Have, APattern);
+        if At >= 0 then
         begin
-          J := 0;
-          while (J < M) and ((APattern[J] < 0) or (Buf[I + J] = APattern[J])) do
-            Inc(J);
-          if J = M then
-          begin
-            AOffset := Base + I;
-            Exit(True);
-          end;
+          AOffset := Base + At;
+          Exit(True);
         end;
         // The next window starts where the last complete one ended, so a match
         // that straddles two reads is still seen.
@@ -700,53 +743,65 @@ begin
     Result := Copy(Result, 1, cFindSnippetMaxLen) + #$2026;
 end;
 
-/// <summary>Reads APath (size-capped) and scans
-/// it line by line for ANeedle - plain substring/whole-word, or (AUseRegex)
-/// a compiled regex. Returns the first matching line (1-based) and a
-/// trimmed copy of it. A malformed regex is caught per-file (defensive:
-/// callers should already have validated the pattern once via
-/// ValidateRegexPattern before starting the walk) and just means no match,
-/// not a crashed job.</summary>
-function FileContentMatch(const APath, ANeedle: string; ACaseSensitive,
-  AWholeWords, AUseRegex: Boolean; out ALine: Integer; out ASnippet: string): Boolean;
+const
+  // How much of a file the encoding detection looks at. The rest is decoded
+  // with whatever the start turned out to be.
+  cFindDetectSampleBytes = 64 * 1024;
+
+{ The text of ABytes: in the chosen encoding, or in the detected one (BOM,
+  UTF-8, UTF-16, ANSI/OEM and CJK code pages, like in the viewer). Binary
+  content still gets a single-byte decode so ASCII needles are found in it. }
+function DecodeForFind(const ABytes: TBytes; const AOptions: TFindOptions): string;
 var
-  Bytes: TBytes;
-  Text: string;
+  Sample: TBytes;
   Enc: TTextFileEncoding;
   IsBinary: Boolean;
-  FS: TFileStream;
+begin
+  if AOptions.ForceEncoding then
+    Exit(DecodeTextWithEncoding(ABytes, AOptions.Encoding));
+  if Length(ABytes) <= cFindDetectSampleBytes then
+  begin
+    if not DetectAndDecodeText(ABytes, Result, Enc, IsBinary) or IsBinary then
+      Result := TEncoding.ANSI.GetString(ABytes);
+    Exit;
+  end;
+  Sample := Copy(ABytes, 0, cFindDetectSampleBytes);
+  TrimUtf8SampleTail(Sample);
+  if not DetectAndDecodeText(Sample, Result, Enc, IsBinary) or IsBinary then
+    Exit(TEncoding.ANSI.GetString(ABytes));
+  Result := DecodeTextWithEncoding(ABytes, Enc);
+end;
+
+/// <summary>Scans ABytes line by line for AOptions.ContainingText - plain
+/// substring/whole-word, or (UseRegex) a compiled regex. Returns the first
+/// matching line (1-based) and a trimmed copy of it. A malformed regex is
+/// caught per-file (callers should already have validated the pattern once via
+/// ValidateRegexPattern before starting the walk) and just means no match,
+/// not a crashed job.</summary>
+function BytesContentMatch(const ABytes: TBytes; const AOptions: TFindOptions;
+  out ALine: Integer; out ASnippet: string): Boolean;
+var
   Lines: TArray<string>;
   Opts: TRegExOptions;
   I: Integer;
 begin
   ALine := 0;
   ASnippet := '';
-  if ANeedle = '' then
+  if AOptions.ContainingText = '' then
     Exit(True);
+  if Length(ABytes) = 0 then
+    Exit(False);
   try
-    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
-    try
-      if (FS.Size <= 0) or (FS.Size > cFindMaxContentBytes) then
-        Exit(False);
-      SetLength(Bytes, FS.Size);
-      FS.ReadBuffer(Bytes[0], FS.Size);
-    finally
-      FS.Free;
-    end;
-    // BOM, UTF-8, UTF-16, ANSI/OEM and CJK code pages are detected like in
-    // the viewer; binary content still gets a single-byte decode so ASCII
-    // needles are found in it.
-    if not DetectAndDecodeText(Bytes, Text, Enc, IsBinary) or IsBinary then
-      Text := TEncoding.ANSI.GetString(Bytes);
-    Lines := Text.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-    if AUseRegex then
+    Lines := DecodeForFind(ABytes, AOptions).Replace(#13#10, #10).Replace(#13, #10)
+      .Split([#10]);
+    if AOptions.UseRegex then
     begin
       Opts := [roNotEmpty];
-      if not ACaseSensitive then
+      if not AOptions.CaseSensitive then
         Opts := Opts + [roIgnoreCase];
       for I := 0 to High(Lines) do
         try
-          if TRegEx.IsMatch(Lines[I], ANeedle, Opts) then
+          if TRegEx.IsMatch(Lines[I], AOptions.ContainingText, Opts) then
           begin
             ALine := I + 1;
             ASnippet := TrimSnippet(Lines[I]);
@@ -759,13 +814,36 @@ begin
     end
     else
       for I := 0 to High(Lines) do
-        if TextContainsAbs(Lines[I], ANeedle, ACaseSensitive, AWholeWords) then
+        if TextContainsAbs(Lines[I], AOptions.ContainingText,
+             AOptions.CaseSensitive, AOptions.WholeWords) then
         begin
           ALine := I + 1;
           ASnippet := TrimSnippet(Lines[I]);
           Exit(True);
         end;
     Result := False;
+  except
+    Result := False;
+  end;
+end;
+
+{ Reads APath (size-capped) into ABytes. }
+function ReadFileForFind(const APath: string; out ABytes: TBytes): Boolean;
+var
+  FS: TFileStream;
+begin
+  SetLength(ABytes, 0);
+  try
+    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      if (FS.Size <= 0) or (FS.Size > cFindMaxContentBytes) then
+        Exit(False);
+      SetLength(ABytes, FS.Size);
+      FS.ReadBuffer(ABytes[0], FS.Size);
+    finally
+      FS.Free;
+    end;
+    Result := True;
   except
     Result := False;
   end;
@@ -812,6 +890,11 @@ begin
     end);
 end;
 
+function FindNeedsContent(const AOptions: TFindOptions): Boolean;
+begin
+  Result := (AOptions.ContainingText <> '') or (Trim(AOptions.HexBytes) <> '');
+end;
+
 { Name-only searches (empty ContainingText) match every file. }
 function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
   out ALine: Integer; out ASnippet: string): Boolean;
@@ -819,10 +902,11 @@ var
   Pattern: TArray<Integer>;
   Offset: Int64;
   Error: string;
+  Bytes: TBytes;
 begin
   ALine := 0;
   ASnippet := '';
-  if (AOptions.ContainingText = '') and (Trim(AOptions.HexBytes) = '') then
+  if not FindNeedsContent(AOptions) then
     Exit(True);
   // Both fields filled: the file has to satisfy both. The text hit supplies
   // the line; with bytes only, the hit shows the offset.
@@ -835,9 +919,93 @@ begin
   end;
   if AOptions.ContainingText = '' then
     Exit(True);
-  Result := FileContentMatch(AFilePath, AOptions.ContainingText,
-    AOptions.CaseSensitive, AOptions.WholeWords, AOptions.UseRegex, ALine,
-    ASnippet);
+  if not ReadFileForFind(AFilePath, Bytes) then
+    Exit(False);
+  Result := BytesContentMatch(Bytes, AOptions, ALine, ASnippet);
+end;
+
+function FindBytesMatch(const ABytes: TBytes; const AOptions: TFindOptions;
+  out ALine: Integer; out ASnippet: string): Boolean;
+var
+  Pattern: TArray<Integer>;
+  Offset: Int64;
+  Error: string;
+begin
+  ALine := 0;
+  ASnippet := '';
+  if not FindNeedsContent(AOptions) then
+    Exit(True);
+  if Trim(AOptions.HexBytes) <> '' then
+  begin
+    if not TryParseHexPattern(AOptions.HexBytes, Pattern, Error) or
+       not BytesHexMatch(ABytes, Pattern, Offset) then
+      Exit(False);
+    ASnippet := Format('@ 0x%.8X', [Offset]);
+  end;
+  if AOptions.ContainingText = '' then
+    Exit(True);
+  Result := BytesContentMatch(ABytes, AOptions, ALine, ASnippet);
+end;
+
+{ Looks at the files inside one archive and adds the ones that match to AList.
+  AAdded runs after each addition. }
+procedure FindInArchive(const AArchivePath: string; const AOptions: TFindOptions;
+  const AMasks: TArray<string>; AResolver: TArchiveRootResolver;
+  var AVfs: IVirtualFileSystem; ACancel: IJobCancelToken; AList: TList<TFindHit>;
+  ALimit: Integer; var ATruncated: Boolean; const AAdded: TProc);
+var
+  Root: string;
+  Truncated: Boolean;
+  Options: TFindOptions;
+  Vfs: IVirtualFileSystem;
+begin
+  Root := AResolver.RootUriOf(AArchivePath);
+  if Root = '' then
+    Exit;
+  if AVfs = nil then
+    AVfs := CreateArchiveSearchVfs;
+  Vfs := AVfs;
+  Options := AOptions;
+  Truncated := False;
+  WalkArchiveEntries(Vfs, Root, Options.Subdirs, ACancel,
+    function(const AEntryUri: string; const AEntry: TVfsEntry): Boolean
+    var
+      Bytes: TBytes;
+      Line: Integer;
+      Snippet: string;
+      Hit: TFindHit;
+    begin
+      Result := True;
+      if not NameMatchesAnyMask(AEntry.Name, AMasks) or
+         not FindEntryPassesFilters(Options, False, AEntry.Size,
+           AEntry.ModificationTime, 0) then
+        Exit;
+      Line := 0;
+      Snippet := '';
+      if FindNeedsContent(Options) then
+      begin
+        if (AEntry.Size > cFindMaxContentBytes) or
+           not ReadArchiveEntry(Vfs, AEntryUri, cFindMaxContentBytes, ACancel, Bytes) or
+           not FindBytesMatch(Bytes, Options, Line, Snippet) then
+          Exit;
+      end;
+      if AList.Count >= ALimit then
+      begin
+        Truncated := True;
+        Exit(False);
+      end;
+      Hit.Path := AEntryUri;
+      Hit.Line := Line;
+      Hit.Snippet := Snippet;
+      Hit.Entry := AEntry;
+      Hit.Entry.TargetURI := '';
+      Hit.HasEntry := True;
+      AList.Add(Hit);
+      if Assigned(AAdded) then
+        AAdded();
+    end);
+  if Truncated then
+    ATruncated := True;
 end;
 
 function MakeFindHit(const APath: string; const SR: TSearchRec; AIsDir: Boolean;
@@ -896,11 +1064,14 @@ begin
       Needle: string;
       HitLine: Integer;
       HitSnippet: string;
+      Archives: TArchiveRootResolver;
+      ArchiveVfs: IVirtualFileSystem;
 
     begin
       Err := TVfsError.Ok;
       List := TList<TFindHit>.Create;
       Stack := TStack<string>.Create;
+      Archives := TArchiveRootResolver.Create;
       LastProgressTick := 0;
       LastHitsTick := 0;
       Delivered := 0;
@@ -958,11 +1129,12 @@ begin
                       if Opts.Subdirs then
                         Stack.Push(Full);
                     end
-                    else if NameMatchesAnyMask(Name, Masks) and
-                            FindEntryPassesFilters(Opts, False, SR.Size, SR.TimeStamp,
-                              SR.Attr) then
+                    else
                     begin
-                      if FindContentMatch(Full, Opts, HitLine, HitSnippet) then
+                      if NameMatchesAnyMask(Name, Masks) and
+                         FindEntryPassesFilters(Opts, False, SR.Size, SR.TimeStamp,
+                           SR.Attr) and
+                         FindContentMatch(Full, Opts, HitLine, HitSnippet) then
                       begin
                         if List.Count >= Limit then
                         begin
@@ -971,6 +1143,17 @@ begin
                         end;
                         List.Add(MakeFindHit(Full, SR, False, HitLine, HitSnippet));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
+                      end;
+                      if Opts.SearchArchives then
+                      begin
+                        FindInArchive(Full, Opts, Masks, Archives, ArchiveVfs, Cancel,
+                          List, Limit, Truncated,
+                          procedure
+                          begin
+                            QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
+                          end);
+                        if Truncated then
+                          Break;
                       end;
                     end;
                   end;
@@ -991,6 +1174,7 @@ begin
         QueueFindHits(OnHits, List, Delivered, LastHitsTick, True);
         Hits := List.ToArray;
       finally
+        Archives.Free;
         Stack.Free;
         List.Free;
       end;

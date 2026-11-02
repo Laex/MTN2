@@ -23,6 +23,10 @@ type
     [Test] procedure TestCyrillicIsNotChinese;
     [Test] procedure TestLatinSymbolsAreNotChinese;
     [Test] procedure TestUtf8StillWins;
+    [Test] procedure TestUtf7KnownVectors;
+    [Test] procedure TestUtf7RoundTrip;
+    [Test] procedure TestUtf7IsNeverDetected;
+    [Test] procedure TestUpperCaseCyrillicSingleByteDetected;
   end;
 
 implementation
@@ -70,11 +74,13 @@ begin
   Assert.AreEqual('GB18030', TextEncodingName(tfeGb18030));
   Assert.AreEqual('Big5', TextEncodingName(tfeBig5));
   Items := TextEncodingListItems;
-  Assert.IsTrue(Length(Items) = 9, 'nine encodings in the list');
+  Assert.IsTrue(Length(Items) = 10, 'ten encodings in the list');
   Assert.IsTrue(TryTextEncodingFromListIndex(6, Enc) and (Enc = tfeGbk), 'index 6');
   Assert.IsTrue(TryTextEncodingFromListIndex(7, Enc) and (Enc = tfeGb18030), 'index 7');
   Assert.IsTrue(TryTextEncodingFromListIndex(8, Enc) and (Enc = tfeBig5), 'index 8');
-  Assert.IsFalse(TryTextEncodingFromListIndex(9, Enc), 'no index 9');
+  Assert.IsTrue(TryTextEncodingFromListIndex(9, Enc) and (Enc = tfeUtf7), 'index 9');
+  Assert.IsFalse(TryTextEncodingFromListIndex(10, Enc), 'no index 10');
+  Assert.IsTrue(TryTextEncodingFromName('utf-7', Enc) and (Enc = tfeUtf7), 'UTF-7 by name');
   Assert.IsTrue(TryTextEncodingFromName('big5', Enc) and (Enc = tfeBig5), 'name is case-insensitive');
   Assert.IsTrue(TryTextEncodingFromName(' gb18030 ', Enc) and (Enc = tfeGb18030), 'name is trimmed');
   Assert.IsTrue(TryTextEncodingFromName('GBK', Enc) and (Enc = tfeGbk));
@@ -203,6 +209,69 @@ begin
   Assert.AreEqual(cSimplified, Text);
   Assert.IsTrue(DetectAndDecodeText(TEncoding.UTF8.GetBytes('plain ascii'), Text, Enc, IsBin));
   Assert.IsTrue(Enc = tfeUtf8, 'ASCII stays UTF-8');
+end;
+
+function AsciiBytes(const AText: string): TBytes;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(AText));
+  for I := 1 to Length(AText) do
+    Result[I - 1] := Byte(Ord(AText[I]));
+end;
+
+procedure TTestTextEncoding.TestUtf7KnownVectors;
+begin
+  // Vectors from RFC 2152.
+  Assert.AreEqual('A' + #$2262 + #$0391 + '.',
+    DecodeTextWithEncoding(AsciiBytes('A+ImIDkQ.'), tfeUtf7), 'A<NOT IDENTICAL TO><ALPHA>.');
+  Assert.AreEqual('Hi Mom -' + #$263A + '-!',
+    DecodeTextWithEncoding(AsciiBytes('Hi Mom -+Jjo--!'), tfeUtf7), 'smiley');
+  Assert.AreEqual(#$65E5#$672C#$8A9E,
+    DecodeTextWithEncoding(AsciiBytes('+ZeVnLIqe-'), tfeUtf7), 'nihongo');
+  Assert.AreEqual('1+1=2', DecodeTextWithEncoding(AsciiBytes('1+-1=2'), tfeUtf7), 'plus sign');
+  Assert.AreEqual('+ZeVnLIqe-', TEncoding.ASCII.GetString(
+    EncodeTextBytes(#$65E5#$672C#$8A9E, tfeUtf7)), 'encoder output');
+end;
+
+procedure TTestTextEncoding.TestUtf7RoundTrip;
+var
+  Text: string;
+begin
+  Text := 'a+b ' + cSentence + ' ' + cSimplified + #13#10 + 'end-';
+  Assert.AreEqual(Text, DecodeTextWithEncoding(EncodeTextBytes(Text, tfeUtf7), tfeUtf7));
+  Assert.IsTrue(Length(EncodeTextBytes(Text, tfeUtf7)) > 0);
+  Assert.IsFalse(EncodeTextBytes(Text, tfeUtf7)[0] > 127, 'seven-bit output');
+end;
+
+procedure TTestTextEncoding.TestUtf7IsNeverDetected;
+var
+  Text: string;
+  Enc: TTextFileEncoding;
+  IsBin: Boolean;
+begin
+  // UTF-7 text is plain ASCII to a detector, so it has to be chosen by hand.
+  Assert.IsTrue(DetectAndDecodeText(EncodeTextBytes(cSentence, tfeUtf7), Text, Enc, IsBin));
+  Assert.IsTrue(Enc <> tfeUtf7);
+end;
+
+procedure TTestTextEncoding.TestUpperCaseCyrillicSingleByteDetected;
+var
+  Text: string;
+  Enc: TTextFileEncoding;
+  IsBin: Boolean;
+  Caps: string;
+begin
+  Caps := UpperCase(cSentence);
+  Assert.IsTrue(DetectAndDecodeText(BytesIn(Caps, 1251), Text, Enc, IsBin));
+  Assert.IsTrue(Enc = tfeAnsi, 'CP1251 capitals: ' + TextEncodingName(Enc));
+  Assert.AreEqual(Caps, Text, 'CP1251 text');
+  Assert.IsTrue(DetectAndDecodeText(BytesIn(Caps, 866), Text, Enc, IsBin));
+  Assert.IsTrue(Enc = tfeOem, 'CP866 capitals: ' + TextEncodingName(Enc));
+  Assert.IsTrue(DetectAndDecodeText(BytesIn(UpperCase(cPrivet), 1251), Text, Enc, IsBin));
+  Assert.IsFalse(IsChinese(Enc), 'one CP1251 capitals word');
+  Assert.IsTrue(DetectAndDecodeText(BytesIn(UpperCase(cPrivet), 866), Text, Enc, IsBin));
+  Assert.IsFalse(IsChinese(Enc), 'one CP866 capitals word');
 end;
 
 initialization

@@ -40,7 +40,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, uPlatformInfo, uPlatformFileOps,
-  uFindSession;
+  uFindSession, uFindArchive;
 
 procedure QueueList(const AOnDone: TVfsListCallback; const AItems: TArray<TVfsEntry>;
   const AError: TVfsError);
@@ -139,21 +139,6 @@ begin
     end);
 end;
 
-function DisplayNameForHit(const ARoot, AFull: string): string;
-var
-  RootSlash: string;
-begin
-  RootSlash := IncludeTrailingPathDelimiter(ARoot);
-  if AFull.StartsWith(RootSlash, True) then
-    Result := Copy(AFull, Length(RootSlash) + 1, MaxInt)
-  else if SameText(AFull, ARoot) then
-    Result := ExtractFileName(AFull)
-  else
-    Result := AFull;
-  if Result = '' then
-    Result := ExtractFileName(AFull);
-end;
-
 procedure TFindVirtualFileSystem.ListDirectoryAsync(const AURI: string;
   ACancel: IJobCancelToken; AOnDone: TVfsListCallback);
 var
@@ -200,15 +185,15 @@ begin
             begin
               // The walk already read size, times and flags: no disk access.
               E := Data.Hits[I].Entry;
-              E.Name := DisplayNameForHit(Data.RootPath, Path);
+              E.Name := FindHitDisplayName(Data.RootPath, Path);
               E.Extension := LowerCase(SafeExtension(Path));
               E.MatchLine := Data.Hits[I].Line;
               E.MatchSnippet := Data.Hits[I].Snippet;
-              E.TargetURI := PathToFileUri(Path);
+              E.TargetURI := FindHitUri(Path);
               Items[I] := E;
               Continue;
             end;
-            E.Name := DisplayNameForHit(Data.RootPath, Path);
+            E.Name := FindHitDisplayName(Data.RootPath, Path);
             E.Extension := LowerCase(SafeExtension(Path));
             E.MatchLine := Data.Hits[I].Line;
             E.MatchSnippet := Data.Hits[I].Snippet;
@@ -222,7 +207,7 @@ begin
             E.IsTemporary := False;
             E.IsOffline := False;
             E.IsLink := False;
-            E.TargetURI := PathToFileUri(Path);
+            E.TargetURI := FindHitUri(Path);
             E.Size := -1;
             E.CreationTime := 0;
             E.ModificationTime := 0;

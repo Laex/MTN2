@@ -23,7 +23,8 @@ type
     tfeOem,       // system OEM code page (CP866 on typical RU Windows)
     tfeGbk,       // Simplified Chinese, code page 936
     tfeGb18030,   // Chinese national standard, code page 54936
-    tfeBig5       // Traditional Chinese, code page 950
+    tfeBig5,      // Traditional Chinese, code page 950
+    tfeUtf7       // UTF-7 (7-bit transfer encoding); never detected, chosen by hand
   );
 
 function TextEncodingName(AEncoding: TTextFileEncoding): string;
@@ -171,6 +172,141 @@ begin
   end;
 end;
 
+const
+  cB64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function Base64Value(AByte: Byte): Integer;
+begin
+  if AByte < $80 then
+    Result := Pos(Char(AByte), cB64Alphabet) - 1
+  else
+    Result := -1;
+end;
+
+// UTF-7 is decoded here instead of through TEncoding so that it behaves the
+// same on every platform. A stray byte >= $80 is kept as a Latin-1 character.
+function DecodeUtf7(const ABytes: TBytes; AIndex: Integer = 0): string;
+var
+  I, N, Acc, Bits, V: Integer;
+  InB64: Boolean;
+  B: Byte;
+begin
+  Result := '';
+  N := Length(ABytes);
+  I := AIndex;
+  InB64 := False;
+  Acc := 0;
+  Bits := 0;
+  while I < N do
+  begin
+    B := ABytes[I];
+    if not InB64 then
+    begin
+      if B <> Ord('+') then
+      begin
+        Result := Result + Char(B);
+        Inc(I);
+      end
+      else if (I + 1 < N) and (ABytes[I + 1] = Ord('-')) then
+      begin
+        Result := Result + '+';
+        Inc(I, 2);
+      end
+      else
+      begin
+        InB64 := True;
+        Acc := 0;
+        Bits := 0;
+        Inc(I);
+      end;
+      Continue;
+    end;
+    V := Base64Value(B);
+    if V >= 0 then
+    begin
+      Acc := (Acc shl 6) or V;
+      Inc(Bits, 6);
+      if Bits >= 16 then
+      begin
+        Dec(Bits, 16);
+        Result := Result + Char((Acc shr Bits) and $FFFF);
+        Acc := Acc and ((1 shl Bits) - 1);
+      end;
+      Inc(I);
+    end
+    else
+    begin
+      InB64 := False;
+      if B = Ord('-') then
+        Inc(I);
+    end;
+  end;
+end;
+
+function IsUtf7Direct(AChar: Char): Boolean;
+begin
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '''', '(', ')', ',',
+    '-', '.', '/', ':', '?', ' ', #9, #10, #13]);
+end;
+
+function EncodeUtf7(const AText: string): TBytes;
+var
+  Sb: string;
+  I, J, Acc, Bits: Integer;
+  Run: string;
+
+  procedure FlushRun;
+  var
+    K: Integer;
+  begin
+    if Run = '' then
+      Exit;
+    Sb := Sb + '+';
+    Acc := 0;
+    Bits := 0;
+    for K := 1 to Length(Run) do
+    begin
+      Acc := (Acc shl 16) or Ord(Run[K]);
+      Inc(Bits, 16);
+      while Bits >= 6 do
+      begin
+        Dec(Bits, 6);
+        Sb := Sb + cB64Alphabet[((Acc shr Bits) and $3F) + 1];
+      end;
+      Acc := Acc and ((1 shl Bits) - 1);
+    end;
+    if Bits > 0 then
+      Sb := Sb + cB64Alphabet[((Acc shl (6 - Bits)) and $3F) + 1];
+    Sb := Sb + '-';
+    Run := '';
+  end;
+
+begin
+  Sb := '';
+  Run := '';
+  I := 1;
+  while I <= Length(AText) do
+  begin
+    if IsUtf7Direct(AText[I]) then
+    begin
+      FlushRun;
+      Sb := Sb + AText[I];
+    end
+    else if AText[I] = '+' then
+    begin
+      FlushRun;
+      Sb := Sb + '+-';
+    end
+    else
+      Run := Run + AText[I];
+    Inc(I);
+  end;
+  FlushRun;
+  SetLength(Result, Length(Sb));
+  for J := 1 to Length(Sb) do
+    Result[J - 1] := Byte(Ord(Sb[J]));
+end;
+
 function TextEncodingName(AEncoding: TTextFileEncoding): string;
 begin
   case AEncoding of
@@ -183,6 +319,7 @@ begin
     tfeGbk:     Result := 'GBK';
     tfeGb18030: Result := 'GB18030';
     tfeBig5:    Result := 'Big5';
+    tfeUtf7:    Result := 'UTF-7';
   else
     Result := 'UTF-8';
   end;
@@ -199,7 +336,8 @@ begin
     tfeOem:     Result := tfeGbk;
     tfeGbk:     Result := tfeGb18030;
     tfeGb18030: Result := tfeBig5;
-    tfeBig5:    Result := tfeUtf8;
+    tfeBig5:    Result := tfeUtf7;
+    tfeUtf7:    Result := tfeUtf8;
   else
     Result := tfeUtf8;
   end;
@@ -209,7 +347,7 @@ function TextEncodingListItems: TArray<string>;
 begin
   Result := TArray<string>.Create(
     'UTF-8', 'UTF-8 BOM', 'UTF-16 LE', 'UTF-16 BE', 'ANSI', 'OEM',
-    'GBK', 'GB18030', 'Big5');
+    'GBK', 'GB18030', 'Big5', 'UTF-7');
 end;
 
 function TryTextEncodingFromName(const AName: string;
@@ -240,6 +378,7 @@ begin
     6: AEncoding := tfeGbk;
     7: AEncoding := tfeGb18030;
     8: AEncoding := tfeBig5;
+    9: AEncoding := tfeUtf7;
   else
     begin
       Result := False;
@@ -704,6 +843,8 @@ begin
       end;
     tfeGbk, tfeGb18030, tfeBig5:
       Result := DecodeCodePage(ABytes, CodePageOf(AEncoding));
+    tfeUtf7:
+      Result := DecodeUtf7(ABytes);
   else
     // tfeUtf8
     begin
@@ -758,6 +899,11 @@ begin
       begin
         SetLength(Bom, 0);
         Body := EncodeCodePage(AText, CodePageOf(AEncoding));
+      end;
+    tfeUtf7:
+      begin
+        SetLength(Bom, 0);
+        Body := EncodeUtf7(AText);
       end;
   else
     // tfeUtf8 - no BOM

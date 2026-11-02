@@ -315,6 +315,7 @@
         <DCCReference Include="Core\uZipVfs.pas"/>
         <DCCReference Include="Core\uZipNames.pas"/>
         <DCCReference Include="Core\uZipArchiveCache.pas"/>
+        <DCCReference Include="Core\uFindArchive.pas"/>
         <DCCReference Include="Core\uFindSession.pas"/>
         <DCCReference Include="Core\uFindVfs.pas"/>
         <DCCReference Include="Core\uSysFoldersVfs.pas"/>

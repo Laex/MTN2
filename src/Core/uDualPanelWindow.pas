@@ -11,7 +11,7 @@ uses
   System.IOUtils, System.Generics.Collections, System.JSON,
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
-  uKeymap, uFileFind, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
+  uKeymap, uFileFind, uFindArchive, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup, uStartupTargets, uSharkSaver,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
@@ -6132,8 +6132,23 @@ end;
 
 procedure TDualPanelWindow.GotoFileLocation(const AFilePath: string);
 var
-  Path, Dir, Name: string;
+  Path, Dir, Name, ArchivePath, ArchiveInner: string;
 begin
+  // A hit inside an archive is an entry URI: open the folder of the archive
+  // that holds it and put the cursor on the entry.
+  if SplitArchiveHit(AFilePath, ArchivePath, ArchiveInner) then
+  begin
+    Name := Trim(AFilePath);
+    while Name.EndsWith('/') do
+      Delete(Name, Length(Name), 1);
+    Name := Copy(Name, LastDelimiter('/', Name) + 1, MaxInt);
+    if Name = '' then
+      Exit;
+    FPendingSelectName := Name;
+    FPendingSelectSide := ActiveWorkspace.State.ActiveSide;
+    NavigateActiveTo(ParentVfsUri(Trim(AFilePath)));
+    Exit;
+  end;
   // A found directory arrives with no trailing separator from uFindVfs, but
   // strip it anyway so ExtractFilePath yields the parent either way rather
   // than the directory itself.
@@ -6189,7 +6204,7 @@ procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
 var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
-  UserCommand, Uri, ArchiveScheme: string;
+  UserCommand, Uri, ArchiveScheme, ArchivePath, ArchiveInner: string;
 begin
   Uri := ARow.URI;
   // A plugin that serves this panel's scheme may take the activation itself.
@@ -6210,7 +6225,10 @@ begin
     IsArchiveFile,
     ResolveAssociationWithUserRules(ARow.Text, False, UserCommand)) of
     ackFindGoto:
-      GotoFileLocation(FileUriToPath(ARow.URI));
+      if SplitArchiveHit(ARow.URI, ArchivePath, ArchiveInner) then
+        GotoFileLocation(ARow.URI)
+      else
+        GotoFileLocation(FileUriToPath(ARow.URI));
     ackHistoryBack:
       GoHistoryBack(False);
     ackNavigate:
@@ -6508,6 +6526,8 @@ begin
   Fields.WholeWords := FDialog.GetCheckbox('search_words');
   Fields.SearchFolders := FDialog.GetCheckbox('search_folders');
   Fields.UseRegex := FDialog.GetCheckbox('search_regex');
+  Fields.SearchArchives := FDialog.GetCheckbox('search_archives');
+  Fields.SearchEncodingIdx := FDialog.GetListSelectedIndex('search_encoding');
   Fields.HexText := FDialog.GetInputValue('search_hex');
   Fields.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
   Fields.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
