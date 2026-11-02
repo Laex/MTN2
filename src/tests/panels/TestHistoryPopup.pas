@@ -112,7 +112,10 @@ var
   S: TArray<string>;
 begin
   S := CmdLineHistorySuggestions(['git push', 'dir', 'git status', 'GIT', 'git'], 'GIT');
-  Assert.AreEqual('git status,git push', string.Join(',', S), 'prefix, any case, oldest first, not equal');
+  Assert.AreEqual('GIT,git status,git push', string.Join(',', S),
+    'prefix, any case, oldest first, a repeated command once, the typed text itself kept');
+  S := CmdLineHistorySuggestions(['zed .', 'zed .', 'zed ..'], 'zed .');
+  Assert.AreEqual('zed ..,zed .', string.Join(',', S), 'a fully typed command stays listed');
   S := CmdLineHistorySuggestions(['dir'], '');
   Assert.IsTrue(Length(S) = 0, 'empty text: no suggestions');
 

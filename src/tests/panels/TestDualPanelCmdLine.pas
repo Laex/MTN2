@@ -13,6 +13,7 @@ type
     [Test] procedure TestCompletionHelpers;
     [Test] procedure TestTabAndHistory;
     [Test] procedure TestTypingSuggestsHistory;
+    [Test] procedure TestHistoryKeepsEachCommandOnce;
     [Test] procedure TestUpOnEmptyLineListsHistory;
     [Test] procedure TestHistoryKeepsCurrentLine;
     [Test] procedure TestCtrlUpReturnsToPanel;
@@ -271,6 +272,36 @@ begin
   finally
     Mgr.RemoveHistory('zzq build all');
     Mgr.RemoveHistory('zzq test');
+    Mgr.Free;
+  end;
+end;
+
+procedure TestHistoryKeepsEachCommandOnce;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Items: TArray<string>;
+  I, N: Integer;
+begin
+  Mgr := TDualPanelCmdLineManager.Create(nil, nil);
+  try
+    Mgr.RememberCommand('zzh edit .');
+    Mgr.RememberCommand('zzh other');
+    Mgr.RememberCommand('ZZH edit .');
+    Mgr.RememberCommand('zzh dir | % {"$_"}');
+    Mgr.RememberCommand('zzh other');
+    N := 0;
+    Items := Mgr.GetHistoryItems;
+    for I := 0 to High(Items) do
+      if SameText(Copy(Items[I], 1, 4), 'zzh ') then
+        Inc(N);
+    Assert.AreEqual(3, N, 'a repeated command is kept once');
+    Assert.AreEqual('zzh other', Items[0], 'the repeat moves to the newest place');
+    Assert.AreEqual('zzh dir', Items[1], 'the PowerShell output tail is not kept');
+    Assert.AreEqual('ZZH edit .', Items[2], 'the newest spelling stays');
+  finally
+    Mgr.RemoveHistory('zzh edit .');
+    Mgr.RemoveHistory('zzh other');
+    Mgr.RemoveHistory('zzh dir');
     Mgr.Free;
   end;
 end;
@@ -563,6 +594,11 @@ end;
 procedure TTestDualPanelCmdLine.TestTypingSuggestsHistory;
 begin
   TestDualPanelCmdLine.TestTypingSuggestsHistory;
+end;
+
+procedure TTestDualPanelCmdLine.TestHistoryKeepsEachCommandOnce;
+begin
+  TestDualPanelCmdLine.TestHistoryKeepsEachCommandOnce;
 end;
 
 procedure TTestDualPanelCmdLine.TestUpOnEmptyLineListsHistory;

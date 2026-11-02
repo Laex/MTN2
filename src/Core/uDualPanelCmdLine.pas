@@ -45,6 +45,7 @@ type
     procedure Invalidate;
     procedure ResetCompletion;
     procedure PushHistory(const ACommand: string);
+    procedure AddUniqueCommand(const ACommand: string);
     procedure HistoryUp;
     procedure HistoryDown;
     procedure UpdateSuggestions;
@@ -110,7 +111,7 @@ type
   end;
 
 /// <summary>The entries of AHistory (newest first) that start with AText,
-/// ignoring case and not equal to it, oldest first; none for an empty AText.</summary>
+/// ignoring case, each command once, oldest first; none for an empty AText.</summary>
 function CmdLineHistorySuggestions(const AHistory: TArray<string>;
   const AText: string): TArray<string>;
 
@@ -118,7 +119,7 @@ implementation
 
 uses
   System.IOUtils, System.JSON, System.Generics.Collections, uConfigLocation,
-  uStrings, uNotice, uKeyChord;
+  System.RegularExpressions, uStrings, uNotice, uKeyChord;
 
 const
   cMaxHistory = 100;
@@ -337,6 +338,28 @@ begin
   PushHistory(ACommand);
 end;
 
+{ Output-capturing wrappers append this PowerShell tail to the line that was
+  typed; it is not part of what the user ran. }
+function HistoryCommandText(const ACommand: string): string;
+begin
+  Result := Trim(TRegEx.Replace(Trim(ACommand),
+    '\s*\|\s*%\s*\{\s*"\$_"\s*\}$', ''));
+end;
+
+procedure TDualPanelCmdLineManager.AddUniqueCommand(const ACommand: string);
+var
+  Cmd: string;
+  I: Integer;
+begin
+  Cmd := HistoryCommandText(ACommand);
+  if Cmd = '' then
+    Exit;
+  for I := FHistory.Count - 1 downto 0 do
+    if SameText(FHistory[I], Cmd) then
+      FHistory.Delete(I);
+  FHistory.Add(Cmd);
+end;
+
 procedure TDualPanelCmdLineManager.LoadHistory;
 var
   Path, Content: string;
@@ -365,8 +388,8 @@ begin
       for I := 0 to Arr.Count - 1 do
       begin
         Item := Arr.Items[I];
-        if (Item <> nil) and (Item.Value <> '') then
-          FHistory.Add(Item.Value);
+        if Item <> nil then
+          AddUniqueCommand(Item.Value);
       end;
       while FHistory.Count > cMaxHistory do
         FHistory.Delete(0);
@@ -402,15 +425,10 @@ begin
 end;
 
 procedure TDualPanelCmdLineManager.PushHistory(const ACommand: string);
-var
-  Cmd: string;
 begin
-  Cmd := Trim(ACommand);
-  if Cmd = '' then
+  if HistoryCommandText(ACommand) = '' then
     Exit;
-  if (FHistory.Count > 0) and SameText(FHistory[FHistory.Count - 1], Cmd) then
-    Exit;
-  FHistory.Add(Cmd);
+  AddUniqueCommand(ACommand);
   while FHistory.Count > cMaxHistory do
     FHistory.Delete(0);
   FHistIndex := -1;
@@ -462,17 +480,30 @@ end;
 function CmdLineHistorySuggestions(const AHistory: TArray<string>;
   const AText: string): TArray<string>;
 var
-  I: Integer;
+  I, J: Integer;
   List: TList<string>;
+  Dup: Boolean;
 begin
   if AText = '' then
     Exit(nil);
   List := TList<string>.Create;
   try
-    for I := High(AHistory) downto 0 do
-      if (Length(AHistory[I]) > Length(AText)) and
+    // Walking newest first keeps the newest spelling of a repeated command.
+    for I := 0 to High(AHistory) do
+      if (Length(AHistory[I]) >= Length(AText)) and
          SameText(Copy(AHistory[I], 1, Length(AText)), AText) then
-        List.Add(AHistory[I]);
+      begin
+        Dup := False;
+        for J := 0 to List.Count - 1 do
+          if SameText(List[J], AHistory[I]) then
+          begin
+            Dup := True;
+            Break;
+          end;
+        if not Dup then
+          List.Add(AHistory[I]);
+      end;
+    List.Reverse;
     Result := List.ToArray;
   finally
     List.Free;
