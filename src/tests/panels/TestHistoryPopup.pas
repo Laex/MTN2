@@ -137,6 +137,21 @@ begin
     Key(P, vkDown, [], Picked);
     Assert.AreEqual(-1, P.Hover, 'Down past the last entry drops the highlight');
 
+    Assert.IsTrue((Key(P, vkHome, [], Picked) = hpkPassOn) and (Key(P, vkEnd, [], Picked) = hpkPassOn) and
+      (Key(P, vkPrior, [], Picked) = hpkPassOn) and (Key(P, vkNext, [], Picked) = hpkPassOn),
+      'Home/End/PgUp/PgDn without a highlight are the field''s');
+    Key(P, vkUp, [], Picked);
+    Assert.IsTrue(Key(P, vkHome, [], Picked) = hpkHandled, 'Home handled once highlighted');
+    Assert.AreEqual(0, P.Hover, 'Home goes to the first entry');
+    Key(P, vkEnd, [], Picked);
+    Assert.AreEqual(2, P.Hover, 'End goes to the last entry');
+    Key(P, vkPrior, [], Picked);
+    Assert.AreEqual(0, P.Hover, 'PgUp moves a page back, clamped');
+    Key(P, vkNext, [], Picked);
+    Assert.AreEqual(2, P.Hover, 'PgDn moves a page forward, clamped');
+    Key(P, vkDown, [], Picked);
+    Assert.AreEqual(-1, P.Hover, 'Down past the last entry drops the highlight');
+
     Key(P, vkUp, [], Picked);
     Assert.IsTrue(Key(P, vkReturn, [], Picked) = hpkPicked, 'Enter picks the highlighted entry');
     Assert.AreEqual('three', Picked, 'picked entry');

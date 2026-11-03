@@ -198,6 +198,27 @@ begin
         FHover := -1
       else if FHover >= 0 then
         Inc(FHover);
+    vkPrior:
+      if FHover < 0 then
+        Exit(hpkPassOn)
+      else
+        FHover := Max(FHover - ViewHeight, 0);
+    vkNext:
+      if FHover < 0 then
+        Exit(hpkPassOn)
+      else
+        FHover := Min(FHover + ViewHeight, High(FItems));
+    // Home/End edit the field until an entry is highlighted.
+    vkHome:
+      if FHover < 0 then
+        Exit(hpkPassOn)
+      else
+        FHover := 0;
+    vkEnd:
+      if FHover < 0 then
+        Exit(hpkPassOn)
+      else
+        FHover := High(FItems);
     vkEscape: Close;
     vkReturn, 0:
       if (AKey = vkReturn) or (AKeyChar = #13) then
