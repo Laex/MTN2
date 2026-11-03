@@ -51,7 +51,8 @@ procedure TTestTmpPanelCollect.Put(const ARelName, AText: string);
 var
   Path: string;
 begin
-  Path := TPath.Combine(FDir, ARelName);
+  Path := TPath.Combine(FDir, StringReplace(
+    StringReplace(ARelName, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]));
   TDirectory.CreateDirectory(ExtractFilePath(Path));
   TFile.WriteAllText(Path, AText);
 end;
@@ -169,8 +170,8 @@ var
   Dirs: TStringList;
 begin
   Put('a.txt', 'same');
-  Put('sub\b.txt', 'same');
-  Put('sub\c.txt', 'unique one');
+  Put('sub/b.txt', 'same');
+  Put('sub/c.txt', 'unique one');
   Put('d.txt', 'other!');
   Last := Default(TDupProgress);
   LastScan := Default(TDupProgress);

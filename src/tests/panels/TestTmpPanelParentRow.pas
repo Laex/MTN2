@@ -70,9 +70,15 @@ var
   Rows: TPanelRows;
 begin
   Items := OneItem;
+{$IFDEF MSWINDOWS}
   Items[0].TargetURI := 'file:///C:/Work/Docs/a.txt';
   Rows := RowsFromVfsItems('tmp:///', Items);
   Assert.AreEqual('C:\Work\Docs', Rows[0].DirText);
+{$ELSE}
+  Items[0].TargetURI := 'file:///work/docs/a.txt';
+  Rows := RowsFromVfsItems('tmp:///', Items);
+  Assert.AreEqual('/work/docs', Rows[0].DirText);
+{$ENDIF}
   Rows := RowsFromVfsItems('file:///C:/Work/', OneItem);
   Assert.AreEqual('', Rows[0].DirText, 'ordinary folders show no extra path');
 end;
