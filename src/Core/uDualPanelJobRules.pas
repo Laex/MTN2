@@ -100,6 +100,9 @@ type
 function BuildJobProgressSnapshot(const AJob: TPanelJobState;
   AInnerW: Integer): TJobProgressSnapshot;
 
+/// <summary>Line AIndex (0-based) of a plugin job's status text; '' past the last line.</summary>
+function PluginStatusLine(const AText: string; AIndex: Integer): string;
+
 implementation
 
 uses
@@ -162,6 +165,7 @@ begin
     pjkMove: Result := T('ui.job.titleMove', 'Move');
     pjkPack: Result := T('ui.job.titlePack', 'Pack');
     pjkUnpack: Result := T('ui.job.titleUnpack', 'Unpack');
+    pjkPlugin: Result := T('ui.job.titlePlugin', 'Plugin');
     pjkDelete:
       if ADeleteToRecycleBin then
         Result := T('ui.job.titleRecycle', 'Recycle')
@@ -179,6 +183,7 @@ begin
     pjkMove: Result := #$25BA;
     pjkPack: Result := #$25A0;
     pjkUnpack: Result := #$25A1;
+    pjkPlugin: Result := #$25C6;
     pjkDelete:
       if ADeleteToRecycleBin then
         Result := #$25BC
@@ -247,6 +252,8 @@ begin
     Result := cResDialogJobProgressError
   else if AJob.Kind = pjkDelete then
     Result := cResDialogJobProgressDelete
+  else if AJob.Kind = pjkPlugin then
+    Result := cResDialogJobProgressPlugin
   else
     Result := cResDialogJobProgress;
 end;
@@ -285,6 +292,17 @@ begin
     Result := Format('%s %d:%.2d', [AText, AElapsedSec div 60, AElapsedSec mod 60]);
 end;
 
+function PluginStatusLine(const AText: string; AIndex: Integer): string;
+var
+  Lines: TArray<string>;
+begin
+  Lines := AText.Split([#10]);
+  if (AIndex >= 0) and (AIndex < Length(Lines)) then
+    Result := Trim(Lines[AIndex])
+  else
+    Result := '';
+end;
+
 function BuildJobProgressSnapshot(const AJob: TPanelJobState;
   AInnerW: Integer): TJobProgressSnapshot;
 var
@@ -302,6 +320,23 @@ begin
     Result.Message := AJob.Message;
     if Result.Message = '' then
       Result.Message := T('ui.job.error', 'Error');
+    Exit;
+  end;
+  if AJob.Kind = pjkPlugin then
+  begin
+    // Message holds the job's title, CurrentName its status text.
+    if AJob.Message <> '' then
+      Result.Title := AJob.Message;
+    // The status text is "statistics" or "statistics<LF>current location".
+    if AJob.Stopping then
+      Result.Verb := T('ui.job.cancelling', 'Cancelling...')
+    else
+      Result.Verb := PluginStatusLine(AJob.CurrentName, 0);
+    Result.Src := PluginStatusLine(AJob.CurrentName, 1);
+    if Length(Result.Src) > InnerW then
+      Result.Src := '...' + Copy(Result.Src, Length(Result.Src) - InnerW + 4, InnerW - 3);
+    if AJob.BytesTotal > 0 then
+      Result.FileBar := FormatJobProgressBar(InnerW, JobProgressPercent(AJob));
     Exit;
   end;
   // The worker stops at its next cancellation check, which can take a while
@@ -559,7 +594,9 @@ begin
       Result := T('ui.job.stateAsk', 'question');
     pjpError: Result := T('ui.job.stateError', 'error');
     pjpRunning:
-      if AJob.Presentation = jpBackground then
+      if AJob.Stopping then
+        Result := T('ui.job.stateStopping', 'stopping')
+      else if AJob.Presentation = jpBackground then
         Result := T('ui.job.stateBackground', 'background')
       else
         Result := T('ui.job.stateForeground', 'foreground');
@@ -570,19 +607,30 @@ end;
 
 function FormatJobListLine(const AJob: TPanelJobState): string;
 var
-  Item: string;
+  Item, FilesText, PctText: string;
   FilesDone, FilesTotal: Integer;
 begin
   Item := AJob.CurrentName;
   if (Item = '') and (AJob.Index >= 0) and (AJob.Index <= High(AJob.Sources)) then
     Item := FileUriTitle(AJob.Sources[AJob.Index]);
+  if AJob.Kind = pjkPlugin then
+    Item := PluginStatusLine(Item, 0);
   JobFileCounts(AJob, FilesDone, FilesTotal);
+  FilesText := Format('%d/%d', [FilesDone, FilesTotal]);
+  PctText := Format('%d%%', [JobProgressPercent(AJob)]);
+  // A plugin job counts no files, and shows a percentage only when the plugin gives one.
+  if AJob.Kind = pjkPlugin then
+  begin
+    FilesText := '';
+    if AJob.BytesTotal <= 0 then
+      PctText := '';
+  end;
   Result :=
     JobListCell(JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' +
       JobKindTitle(AJob.Kind, AJob.DeleteToRecycleBin), cJobListTaskW, False) + ' ' +
     JobListCell(Item, cJobListItemW, False) + ' ' +
-    JobListCell(Format('%d/%d', [FilesDone, FilesTotal]), cJobListFilesW, True) + ' ' +
-    JobListCell(Format('%d%%', [JobProgressPercent(AJob)]), cJobListPctW, True) + ' ' +
+    JobListCell(FilesText, cJobListFilesW, True) + ' ' +
+    JobListCell(PctText, cJobListPctW, True) + ' ' +
     JobListCell(JobListStateText(AJob), cJobListStateW, False);
 end;
 

@@ -58,6 +58,9 @@ type
     FRunContext: TUserMenuContext;
     FRunPrompts: TArray<TUserMenuPrompt>;
     FRunAnswers: TArray<string>;
+    // The input dialog on screen asks for the command itself (BeginApply),
+    // not for a !?...! prompt of one.
+    FAskingCommand: Boolean;
     function ActiveFolder: string;
     procedure ShowMenu(ASource: TUserMenuSource);
     procedure SetKind(AKind: THostDialogKind);
@@ -86,6 +89,10 @@ type
     procedure HandleMenuAction(AAction: TUserMenuAction; AParent: TUserMenuItem;
       AIndex: Integer);
     function DispatchCommand(AKind: THostDialogKind; const AControlId: string): Boolean;
+    /// <summary>Asks for a command line and runs it with the same macros as a
+    /// user menu command (!.! the current file, !& the selected files, ...),
+    /// on the panels as they are now.</summary>
+    procedure BeginApply;
     /// <summary>Test seam: where the main menu is loaded from and saved to.</summary>
     property MainFilePath: string read FMainFilePath write FMainFilePath;
     /// <summary>File of the menu on screen (may not exist yet).</summary>
@@ -303,6 +310,29 @@ begin
   AskNextPrompt;
 end;
 
+procedure TUserMenuDialogController.BeginApply;
+var
+  Decl: TDialogDeclaration;
+begin
+  if Assigned(FGetContext) then
+    FRunContext := FGetContext()
+  else
+    FRunContext := Default(TUserMenuContext);
+  FRunTemplate := '';
+  FRunPrompts := nil;
+  FRunAnswers := nil;
+  FRunTitle := T('ui.applyCommand.title', 'Apply command');
+  FRunReturn := GConsoleSettings.ReturnToPanels;
+  FAskingCommand := True;
+  SetKind(hdkUserMenuPrompt);
+  Decl := BuildInputDialog(FRunTitle,
+    T('ui.applyCommand.prompt', 'Command for the selected files (!.! name, !& all names):'),
+    '');
+  DialogSetInputHistory(Decl, 'name', 'applycommand');
+  FDialog.Open(Decl, FOnCommand);
+  Notify;
+end;
+
 procedure TUserMenuDialogController.AskNextPrompt;
 var
   Prompt: TUserMenuPrompt;
@@ -412,7 +442,17 @@ begin
   begin
     // Cancelling any prompt cancels the command.
     FRunTemplate := '';
+    FAskingCommand := False;
     Notify;
+    Exit;
+  end;
+  if FAskingCommand then
+  begin
+    FAskingCommand := False;
+    FRunTemplate := Answer;
+    FRunPrompts := ParseUserMenuPrompts(FRunTemplate);
+    FRunAnswers := nil;
+    AskNextPrompt;
     Exit;
   end;
   FRunAnswers := FRunAnswers + [Answer];

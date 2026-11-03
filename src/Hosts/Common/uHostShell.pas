@@ -210,6 +210,7 @@ begin
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
   FSession.ExactSelectionSize := False;
+  FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
@@ -380,6 +381,7 @@ begin
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.ExactSelectionSize := GExactSelectionSize;
+  Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
@@ -421,6 +423,8 @@ begin
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
+  FSession.NdnFooter := ASettings.NdnFooter;
+  GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
@@ -504,6 +508,7 @@ begin
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
   GSaverMinutes := Sess.SaverMinutes;
   GShowPassiveCursor := Sess.PassiveCursor;
+  GNdnFooter := Sess.NdnFooter;
   if GHostShowsIcons then
     GShowPanelIcons := Sess.ShowPanelIcons;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
@@ -559,6 +564,7 @@ begin
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
+  Sess.NdnFooter := GNdnFooter;
   if GHostShowsIcons then
     Sess.ShowPanelIcons := GShowPanelIcons;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);

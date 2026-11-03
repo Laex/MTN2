@@ -13,6 +13,7 @@ uses
   TestMultiRename in 'TestMultiRename.pas',
   TestMultiRenameKey in 'TestMultiRenameKey.pas',
   TestChromeRows in 'TestChromeRows.pas',
+  TestTmpPanelParentRow in 'TestTmpPanelParentRow.pas',
   TestFolderTree in 'TestFolderTree.pas',
   TestInfoPanelBar in 'TestInfoPanelBar.pas',
   TestColorCodingMerge in 'TestColorCodingMerge.pas',

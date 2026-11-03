@@ -128,6 +128,37 @@ procedure PluginPostToMain(const APluginId: string; const ACallback: TProc);
 procedure PluginProgressSet(const APluginId, AId, AText: string; APercent: Integer);
 procedure PluginProgressEnd(const APluginId, AId: string);
 
+type
+  /// <summary>A background job a plugin reports: it shows in the job list and as a
+  /// chip in the tab bar, and Esc / Cancel there calls the plugin back.</summary>
+  TPluginJobInfo = record
+    Id: Integer;
+    PluginId: string;
+    Key: string;
+    Title: string;
+    Text: string;
+    /// <summary>0..100, or below 0 when the plugin gives no percentage.</summary>
+    Percent: Integer;
+    CancelRequested: Boolean;
+    /// <summary>The user opened the job's progress dialog; false = it runs in the background.</summary>
+    Foreground: Boolean;
+  end;
+
+/// <summary>Starts (or restarts) the job AKey of a plugin. AOnCancel runs on the main
+/// thread when the user cancels it; it may be nil. Main thread only.</summary>
+procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc);
+procedure PluginJobUpdate(const APluginId, AKey, AText: string; APercent: Integer);
+procedure PluginJobEnd(const APluginId, AKey: string);
+/// <summary>The running plugin jobs, oldest first.</summary>
+function PluginJobSnapshot: TArray<TPluginJobInfo>;
+/// <summary>Asks job AId to stop: marks it and calls the plugin's cancel callback once.
+/// False when there is no such job.</summary>
+function PluginJobCancel(AId: Integer): Boolean;
+/// <summary>Shows (True) or hides (False) the progress dialog of job AId.</summary>
+procedure PluginJobSetForeground(AId: Integer; AForeground: Boolean);
+/// <summary>Called on the main thread whenever a plugin job starts, changes or ends.</summary>
+procedure SetPluginJobsChangedHandler(const AHandler: TProc);
+
 implementation
 
 uses
@@ -154,8 +185,17 @@ type
     destructor Destroy; override;
   end;
 
+type
+  TPluginJobEntry = record
+    Info: TPluginJobInfo;
+    OnCancel: TProc;
+  end;
+
 var
   GServices: TPluginHostServices;
+  GJobs: TList<TPluginJobEntry>;
+  GJobsChanged: TProc;
+  GNextJobId: Integer;
   GSubscriptions: TList<TSubscription>;
   GResources: TObjectDictionary<string, TPluginResources>;
   // Changes when a plugin goes; work posted by that plugin earlier is dropped.
@@ -421,12 +461,140 @@ begin
   NoticeDismiss(LowerCase(Trim(APluginId)) + ':' + AId);
 end;
 
+procedure NotifyJobsChanged;
+begin
+  if Assigned(GJobsChanged) then
+    GJobsChanged();
+end;
+
+function FindJob(const APluginId, AKey: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to GJobs.Count - 1 do
+    if SameText(GJobs[I].Info.PluginId, APluginId) and (GJobs[I].Info.Key = AKey) then
+      Exit(I);
+  Result := -1;
+end;
+
+procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc);
+var
+  Entry: TPluginJobEntry;
+  I: Integer;
+begin
+  if (Trim(APluginId) = '') or (AKey = '') then
+    Exit;
+  I := FindJob(APluginId, AKey);
+  if I >= 0 then
+    GJobs.Delete(I);
+  Inc(GNextJobId);
+  Entry := Default(TPluginJobEntry);
+  Entry.Info.Id := GNextJobId;
+  Entry.Info.PluginId := LowerCase(Trim(APluginId));
+  Entry.Info.Key := AKey;
+  Entry.Info.Title := ATitle;
+  Entry.Info.Percent := -1;
+  Entry.OnCancel := AOnCancel;
+  GJobs.Add(Entry);
+  NoticeRequest(TNoticeRequest.Make('%s',
+    T('ui.job.pluginStarted', 'Started in the background: %s', [ATitle])));
+  NotifyJobsChanged;
+end;
+
+procedure PluginJobSetForeground(AId: Integer; AForeground: Boolean);
+var
+  I: Integer;
+  Entry: TPluginJobEntry;
+begin
+  for I := 0 to GJobs.Count - 1 do
+    if GJobs[I].Info.Id = AId then
+    begin
+      Entry := GJobs[I];
+      Entry.Info.Foreground := AForeground;
+      GJobs[I] := Entry;
+      NotifyJobsChanged;
+      Exit;
+    end;
+end;
+
+procedure PluginJobUpdate(const APluginId, AKey, AText: string; APercent: Integer);
+var
+  I: Integer;
+  Entry: TPluginJobEntry;
+begin
+  I := FindJob(APluginId, AKey);
+  if I < 0 then
+    Exit;
+  Entry := GJobs[I];
+  Entry.Info.Text := AText;
+  Entry.Info.Percent := Min(APercent, 100);
+  GJobs[I] := Entry;
+  NotifyJobsChanged;
+end;
+
+procedure PluginJobEnd(const APluginId, AKey: string);
+var
+  I: Integer;
+begin
+  I := FindJob(APluginId, AKey);
+  if I < 0 then
+    Exit;
+  GJobs.Delete(I);
+  NotifyJobsChanged;
+end;
+
+function PluginJobSnapshot: TArray<TPluginJobInfo>;
+var
+  I: Integer;
+begin
+  SetLength(Result, GJobs.Count);
+  for I := 0 to GJobs.Count - 1 do
+    Result[I] := GJobs[I].Info;
+end;
+
+function PluginJobCancel(AId: Integer): Boolean;
+var
+  I: Integer;
+  Entry: TPluginJobEntry;
+  Callback: TProc;
+begin
+  Result := False;
+  for I := 0 to GJobs.Count - 1 do
+    if GJobs[I].Info.Id = AId then
+    begin
+      Result := True;
+      Entry := GJobs[I];
+      if Entry.Info.CancelRequested then
+        Exit;
+      Entry.Info.CancelRequested := True;
+      GJobs[I] := Entry;
+      Callback := Entry.OnCancel;
+      NotifyJobsChanged;
+      if Assigned(Callback) then
+        try
+          Callback();
+        except
+          // A faulty plugin callback must not break the host.
+        end;
+      Exit;
+    end;
+end;
+
+procedure SetPluginJobsChangedHandler(const AHandler: TProc);
+begin
+  GJobsChanged := AHandler;
+end;
+
 procedure PluginEventsUnregister(const APluginId: string);
 var
   Key: string;
   I: Integer;
 begin
   Key := LowerCase(Trim(APluginId));
+  for I := GJobs.Count - 1 downto 0 do
+    if GJobs[I].Info.PluginId = Key then
+      GJobs.Delete(I);
+  NotifyJobsChanged;
   GResources.Remove(Key);
   GGenerationLock.Enter;
   try
@@ -483,12 +651,15 @@ end;
 
 initialization
   GSubscriptions := TList<TSubscription>.Create;
+  GJobs := TList<TPluginJobEntry>.Create;
   GResources := TObjectDictionary<string, TPluginResources>.Create([doOwnsValues]);
   GGenerations := TDictionary<string, Integer>.Create;
   GGenerationLock := TCriticalSection.Create;
 
 finalization
   GServices := Default(TPluginHostServices);
+  GJobsChanged := nil;
+  FreeAndNil(GJobs);
   FreeAndNil(GSubscriptions);
   FreeAndNil(GResources);
   FreeAndNil(GGenerations);

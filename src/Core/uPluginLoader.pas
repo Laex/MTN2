@@ -905,6 +905,52 @@ begin
   end;
 end;
 
+function ThunkJobBegin(APluginId, AKey, ATitle: PAnsiChar; AOnCancel: THostMainCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  OnCancel: TProc;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) or (ATitle = nil) then
+      Exit(-1);
+    OnCancel := nil;
+    if Assigned(AOnCancel) then
+      OnCancel :=
+        procedure
+        begin
+          AOnCancel(AUserData);
+        end;
+    PluginJobBegin(UTF8ToString(APluginId), UTF8ToString(AKey), UTF8ToString(ATitle), OnCancel);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkJobUpdate(APluginId, AKey, AText: PAnsiChar; APercent: Int64): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) or (AText = nil) then
+      Exit(-1);
+    PluginJobUpdate(UTF8ToString(APluginId), UTF8ToString(AKey), UTF8ToString(AText), APercent);
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkJobEnd(APluginId, AKey: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AKey = nil) then
+      Exit(-1);
+    PluginJobEnd(UTF8ToString(APluginId), UTF8ToString(AKey));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkProgressEnd(APluginId, AId: PAnsiChar): Int64; cdecl;
 begin
   try
@@ -1670,6 +1716,9 @@ begin
   Result.PostToMain := @ThunkPostToMain;
   Result.ProgressSet := @ThunkProgressSet;
   Result.ProgressEnd := @ThunkProgressEnd;
+  Result.JobBegin := @ThunkJobBegin;
+  Result.JobUpdate := @ThunkJobUpdate;
+  Result.JobEnd := @ThunkJobEnd;
   Result.SurfaceOpenEx := @ThunkSurfaceOpenEx;
   Result.SurfaceSetFullscreen := @ThunkSurfaceSetFullscreen;
   Result.SurfaceNativeHandle := @ThunkSurfaceNativeHandle;

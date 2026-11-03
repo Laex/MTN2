@@ -11,6 +11,8 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>gdNoChanges also stands for "nothing to show": a file git does not
+  /// track has no blame.</summary>
   TGitDiffResult = (gdOk, gdNoChanges, gdNotRepo, gdError);
 
 /// <summary>The row under the cursor of the active panel in the JSON of the host's
@@ -25,6 +27,15 @@ function ReadGitDiff(const APath: string; AIsDir: Boolean; const ACancelled: TFu
 /// <summary>Writes the diff text to a file named after AName in the temp folder and
 /// returns its path.</summary>
 function WriteDiffFile(const AName, AText: string): string;
+
+/// <summary>The commit, author and date of every line of the file APath
+/// (git blame); gdNoChanges when git does not track the file.</summary>
+function ReadGitBlame(const APath: string; const ACancelled: TFunc<Boolean>;
+  out AText: string): TGitDiffResult;
+
+/// <summary>Writes the blame text to AName + ".blame" in the temp folder and
+/// returns its path.</summary>
+function WriteBlameFile(const AName, AText: string): string;
 
 implementation
 
@@ -91,14 +102,51 @@ begin
   Result := gdOk;
 end;
 
-function WriteDiffFile(const AName, AText: string): string;
+function WriteTempText(const AFolder, AName, AExt, AText: string): string;
 var
   Dir: string;
 begin
-  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-diff');
+  Dir := TPath.Combine(TPath.GetTempPath, AFolder);
   TDirectory.CreateDirectory(Dir);
-  Result := TPath.Combine(Dir, TPath.GetFileName(AName) + '.diff');
+  Result := TPath.Combine(Dir, TPath.GetFileName(AName) + AExt);
   TFile.WriteAllText(Result, AText, TEncoding.UTF8);
+end;
+
+function WriteDiffFile(const AName, AText: string): string;
+begin
+  Result := WriteTempText('mtn2-git-diff', AName, '.diff', AText);
+end;
+
+function ReadGitBlame(const APath: string; const ACancelled: TFunc<Boolean>;
+  out AText: string): TGitDiffResult;
+var
+  Dir, Output: string;
+  Code: Cardinal;
+begin
+  AText := '';
+  Dir := ExtractFileDir(APath);
+  if not IsInsideGitWorkTree(Dir) then
+    Exit(gdNotRepo);
+  // Untracked files have no history: "git ls-files --error-unmatch" tells them
+  // apart from a real failure of blame.
+  if not RunGit(['-C', Dir, '--no-optional-locks', 'ls-files', '--error-unmatch', '--',
+       ExtractFileName(APath)], ACancelled, Output, Code) then
+    Exit(gdError);
+  if Code <> 0 then
+    Exit(gdNoChanges);
+  if not RunGit(['-C', Dir, '--no-optional-locks', 'blame', '--date=short', '--',
+       ExtractFileName(APath)], ACancelled, AText, Code) then
+    Exit(gdError);
+  if Code <> 0 then
+    Exit(gdNoChanges);
+  if Trim(AText) = '' then
+    Exit(gdNoChanges);
+  Result := gdOk;
+end;
+
+function WriteBlameFile(const AName, AText: string): string;
+begin
+  Result := WriteTempText('mtn2-git-blame', AName, '.blame', AText);
 end;
 
 end.

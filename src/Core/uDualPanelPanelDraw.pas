@@ -41,6 +41,8 @@ procedure DrawPanelListSeparator(const ABuffer: TTerminalGrid; const ABounds: TR
   AUseDouble: Boolean; AFrame, ABodyBg: TAlphaColor);
 procedure DrawPanelTotalsOnRule(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const AFooter: string; AFooterFg, ABodyBg: TAlphaColor);
+procedure DrawPanelNdnFooterRows(const ABuffer: TTerminalGrid; const ABounds: TRectI;
+  const ATotals, AFreeLine: string; ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const AInfoLine: string; AFg, ABg: TAlphaColor);
 procedure DrawPanelDropBadge(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -134,7 +136,7 @@ procedure DrawPanelShell(const ABuffer: TTerminalGrid;
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
   AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
-  const AResolveChrome: TResolvePanelChromeProc);
+  const AFreeLine: string; const AResolveChrome: TResolvePanelChromeProc);
 procedure DrawPanelDropHighlight(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
   AFallbackFg, AFallbackBg: TAlphaColor);
@@ -162,6 +164,9 @@ type
     Count, PageSize: Integer;
     Footer, InfoLine: string;
     HasTheme, ThemeDouble, DropHighlight, QuickSearch: Boolean;
+    /// <summary>Free space line of the NDN footer; '' for a panel whose drive is
+    /// unknown.</summary>
+    FreeLine: string;
   end;
 
   TDualPanelFilesDrawHost = record
@@ -234,6 +239,8 @@ var
   MaxName: Integer;
 begin
   NamePart := ARow.Text;
+  if ARow.DirText <> '' then
+    NamePart := IncludeTrailingPathDelimiter(ARow.DirText) + NamePart;
   if (ARow.MatchSnippet <> '') and (ARow.MatchLine <= 0) then
     MetaPart := ARow.MatchSnippet
   else if ARow.MatchSnippet <> '' then
@@ -385,7 +392,7 @@ end;
 procedure DrawPanelListSeparator(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   AUseDouble: Boolean; AFrame, ABodyBg: TAlphaColor);
 var
-  X: Integer;
+  X, Y: Integer;
   H, VR, VL: Char;
 begin
   if AUseDouble then
@@ -400,10 +407,11 @@ begin
     VR := chBoxVR;
     VL := chBoxVL;
   end;
+  Y := ABounds.Bottom - 1 - PanelFooterRows;
   for X := ABounds.Left + 1 to ABounds.Right - 1 do
-    DrawGridChar(ABuffer, X, ABounds.Bottom - 2, H, AFrame, ABodyBg);
-  DrawGridChar(ABuffer, ABounds.Left, ABounds.Bottom - 2, VR, AFrame, ABodyBg);
-  DrawGridChar(ABuffer, ABounds.Right, ABounds.Bottom - 2, VL, AFrame, ABodyBg);
+    DrawGridChar(ABuffer, X, Y, H, AFrame, ABodyBg);
+  DrawGridChar(ABuffer, ABounds.Left, Y, VR, AFrame, ABodyBg);
+  DrawGridChar(ABuffer, ABounds.Right, Y, VL, AFrame, ABodyBg);
 end;
 
 procedure DrawPanelTotalsOnRule(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -413,6 +421,29 @@ begin
     Exit;
   PutGridText(ABuffer, ABounds.Left + (ABounds.Width - Length(AFooter)) div 2,
     ABounds.Bottom - 2, AFooter, AFooterFg, ABodyBg);
+end;
+
+procedure DrawPanelNdnFooterRows(const ABuffer: TTerminalGrid; const ABounds: TRectI;
+  const ATotals, AFreeLine: string; ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
+
+  procedure CenterRow(ARow: Integer; const AText: string; AFg: TAlphaColor);
+  var
+    W: Integer;
+    Txt: string;
+  begin
+    FillGridRect(ABuffer, ABounds.Left + 1, ARow, ABounds.Right - 2, ARow,
+      ' ', AFg, AInfoBg);
+    W := ABounds.Width - 3;
+    Txt := Trim(AText);
+    Txt := Copy(Txt, 1, TextFitChars(Txt, W));
+    if Txt <> '' then
+      PutGridText(ABuffer, ABounds.Left + 1 + (W - TextDisplayWidth(Txt)) div 2,
+        ARow, Txt, AFg, AInfoBg);
+  end;
+
+begin
+  CenterRow(ABounds.Bottom - 2, ATotals, ATotalsFg);
+  CenterRow(ABounds.Bottom - 1, AFreeLine, AInfoFg);
 end;
 
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -466,8 +497,8 @@ end;
 
 function PanelInfoStripBounds(const ABounds: TRectI): TRectI;
 begin
-  Result := TRectI.Make(ABounds.Left + 1, ABounds.Bottom - 1,
-    ABounds.Right - 2, ABounds.Bottom - 1);
+  Result := TRectI.Make(ABounds.Left + 1, ABounds.Bottom - PanelFooterRows,
+    ABounds.Right - 2, ABounds.Bottom - PanelFooterRows);
 end;
 
 function DualPanelChromeFits(AWidth, AHeight: Integer): Boolean;
@@ -487,10 +518,10 @@ begin
   TopY := ContentTopRow;
   BottomY := CmdLineRow(AHeight) - 1;
   PanelH := BottomY - TopY + 1;
-  if PanelH < 6 then
-    PanelH := 6;
+  if PanelH < 5 + PanelFooterRows then
+    PanelH := 5 + PanelFooterRows;
   AListTop := TopY + 2;
-  AListBottom := TopY + PanelH - 4;
+  AListBottom := TopY + PanelH - 3 - PanelFooterRows;
 
   LeftOn := ALeftOn;
   RightOn := ARightOn;
@@ -637,7 +668,7 @@ end;
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
   AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
-  const AResolveChrome: TResolvePanelChromeProc);
+  const AFreeLine: string; const AResolveChrome: TResolvePanelChromeProc);
 var
   InfoBounds: TRectI;
   InfoFg, InfoBg: TAlphaColor;
@@ -645,10 +676,14 @@ begin
   DrawPanelListSeparator(ABuffer, ABounds,
     UseDoubleListSeparator(AActive, AHasTheme, AThemeDouble),
     AFrame, ABodyBg);
-  DrawPanelTotalsOnRule(ABuffer, ABounds, AFooter, AFooterFg, ABodyBg);
   InfoBounds := PanelInfoStripBounds(ABounds);
   AResolveChrome(pcpInfoStrip, AActive, InfoFg, InfoBg);
   DrawPanelCursorStrip(ABuffer, InfoBounds, AInfoLine, InfoFg, InfoBg);
+  if GNdnFooter then
+    DrawPanelNdnFooterRows(ABuffer, ABounds, AFooter, AFreeLine, AFooterFg,
+      InfoFg, InfoBg)
+  else
+    DrawPanelTotalsOnRule(ABuffer, ABounds, AFooter, AFooterFg, ABodyBg);
 end;
 
 procedure DrawPanelDropHighlight(const ABuffer: TTerminalGrid;
@@ -699,8 +734,7 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
 begin
   DrawPanelFilesChrome(ABuffer, ASnap.Bounds, ASnap.Active, ASnap.HasTheme,
     ASnap.ThemeDouble, ASnap.Frame, ASnap.BodyBg, ASnap.FooterFg, ASnap.Footer,
-    ASnap.InfoLine,
-    AHost.ResolveChrome);
+    ASnap.InfoLine, ASnap.FreeLine, AHost.ResolveChrome);
   AHost.DrawDriveLetters(ASnap.Bounds, ASnap.Tab, ASnap.Side, ASnap.Frame,
     ASnap.BodyBg);
   AHost.DrawHeaders(ASnap.Bounds, ASnap.Panel);
@@ -711,7 +745,7 @@ begin
   if ASnap.DropHighlight then
     DrawPanelDropHighlight(ABuffer, ATheme, ASnap.Bounds, ASnap.DropFg, ASnap.DropBg);
   AHost.DrawScrollBar(ASnap.Bounds.Right - 1, ASnap.Bounds.Top + 2,
-    ASnap.Bounds.Bottom - 3, ASnap.Tab.ScrollOffset, ASnap.Count, ASnap.PageSize);
+    ASnap.Bounds.Bottom - 2 - PanelFooterRows, ASnap.Tab.ScrollOffset, ASnap.Count, ASnap.PageSize);
   DispatchPanelSearchFields(ASnap.Bounds, ASnap.Side, ASnap.ActiveSide,
     ASnap.QuickSearch, AHost.DrawQuickSearch);
 end;

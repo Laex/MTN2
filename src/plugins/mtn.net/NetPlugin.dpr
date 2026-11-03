@@ -153,13 +153,13 @@ begin
     end;
     if Assigned(AHostApi.RegisterMenuItem) then
     begin
-      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Commands', 'net_open',
+      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_open',
         PAnsiChar(UTF8String(Tr('ui.menu.open', 'Network connections'))), @CmdOpenList, nil, 60);
-      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Commands', 'net_new',
+      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_new',
         PAnsiChar(UTF8String(Tr('ui.menu.new', 'New network connection...'))), @CmdNewSession, nil, 61);
-      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Commands', 'net_address',
+      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_address',
         PAnsiChar(UTF8String(Tr('ui.menu.address', 'Open network address...'))), @CmdOpenAddress, nil, 62);
-      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Commands', 'net_chmod',
+      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_chmod',
         PAnsiChar(UTF8String(Tr('ui.menu.chmod', 'Permissions on the server...'))), @CmdPermissions, nil, 63);
     end;
     if Assigned(AHostApi.RegisterSettings) then

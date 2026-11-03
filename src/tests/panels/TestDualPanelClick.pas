@@ -25,6 +25,7 @@ uses
   uDualPanelUiTypes,
   uKeymap,
   uDualPanelInput,
+  uDisplaySettings,
   uDualPanelClick;
 
 type
@@ -312,7 +313,7 @@ begin
   Outer := TRectI.Make(0, 2, 58, 17);
   ListB := PanelListBounds(Outer);
   Assert.IsTrue((ListB.Left = 1) and (ListB.Top = 4) and (ListB.Right = 56) and
-    (ListB.Bottom = 14), 'list inset');
+    (ListB.Bottom = Outer.Bottom - 2 - PanelFooterRows), 'list inset');
 
   LeftB := TRectI.Make(0, 2, 39, 20);
   RightB := TRectI.Make(40, 2, 79, 20);

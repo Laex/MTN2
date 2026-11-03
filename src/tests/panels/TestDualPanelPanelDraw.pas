@@ -23,6 +23,7 @@ type
     [Test] procedure TestListRowHelpers;
     [Test] procedure TestDrawPanelDispatch;
     [Test] procedure TestDrawPanelFilesDispatch;
+    [Test] procedure TestNdnFooterRows;
     [Test] procedure TestPanelLayout;
     [Test] procedure TestTabCloseMarkContrast;
   end;
@@ -40,6 +41,7 @@ uses
   uDriveItems,
   uDualPanelDrawUtils,
   uDualPanelPanelDraw,
+  uDualPanelClick,
   uDisplaySettings;
 
 type
@@ -389,6 +391,7 @@ var
   Grid: TTerminalGrid;
   Bounds: TRectI;
   Fg, Bg: TAlphaColor;
+  SepRow: Integer;
 begin
   AllocTerminalGrid(Grid, 20, 8);
   ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
@@ -396,14 +399,15 @@ begin
   Fg := TAlphaColors.Yellow;
   Bg := TAlphaColors.Blue;
 
+  SepRow := Bounds.Bottom - 1 - PanelFooterRows;
   DrawPanelListSeparator(Grid, Bounds, True, Fg, Bg);
-  Assert.IsTrue(Grid[5][0].CharValue = chDblVR, 'double separator left joint');
-  Assert.IsTrue(Grid[5][19].CharValue = chDblVL, 'double separator right joint');
-  Assert.IsTrue(Grid[5][1].CharValue = chDblH, 'double separator rule');
+  Assert.IsTrue(Grid[SepRow][0].CharValue = chDblVR, 'double separator left joint');
+  Assert.IsTrue(Grid[SepRow][19].CharValue = chDblVL, 'double separator right joint');
+  Assert.IsTrue(Grid[SepRow][1].CharValue = chDblH, 'double separator rule');
 
   DrawPanelListSeparator(Grid, Bounds, False, Fg, Bg);
-  Assert.IsTrue(Grid[5][0].CharValue = chBoxVR, 'single separator left joint');
-  Assert.IsTrue(Grid[5][10].CharValue = chBoxH, 'single separator rule');
+  Assert.IsTrue(Grid[SepRow][0].CharValue = chBoxVR, 'single separator left joint');
+  Assert.IsTrue(Grid[SepRow][10].CharValue = chBoxH, 'single separator rule');
 
   ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
   DrawCenteredPanelTitle(Grid, Bounds, ' Information ', Fg, Bg);
@@ -640,8 +644,9 @@ begin
 
   Bounds := TRectI.Make(0, 2, 40, 20);
   Info := PanelInfoStripBounds(Bounds);
-  Assert.IsTrue((Info.Left = 1) and (Info.Right = 38) and (Info.Top = 19) and
-    (Info.Bottom = 19), 'info strip inset');
+  Assert.IsTrue((Info.Left = 1) and (Info.Right = 38) and
+    (Info.Top = Bounds.Bottom - PanelFooterRows) and
+    (Info.Bottom = Info.Top), 'info strip inset');
 
   Assert.IsTrue(not DualPanelChromeFits(29, 20), 'too narrow');
   Assert.IsTrue(not DualPanelChromeFits(80, 11), 'too short');
@@ -901,6 +906,75 @@ begin
   Assert.IsTrue((LeftB.Left = 0) and (RightB.Left = 40), 'neither visible still splits both');
 end;
 
+procedure TestNdnFooterRows;
+var
+  Spy: TFilesSpy;
+  Host: TDualPanelFilesDrawHost;
+  Snap: TDrawFilesSnapshot;
+  Grid: TTerminalGrid;
+  LeftB, RightB: TRectI;
+  ListTop, ClassicBottom, NdnBottom: Integer;
+  Saved: Boolean;
+
+  function RowText(ARow: Integer): string;
+  var
+    X: Integer;
+  begin
+    Result := '';
+    for X := 0 to 19 do
+      Result := Result + Grid[ARow][X].CharValue;
+  end;
+
+begin
+  Saved := GNdnFooter;
+  Spy := TFilesSpy.Create;
+  try
+    GNdnFooter := False;
+    Assert.AreEqual(1, PanelFooterRows, 'classic footer is the cursor line only');
+    ComputePanelLayout(80, 24, True, True, LeftB, RightB, ListTop, ClassicBottom);
+    GNdnFooter := True;
+    Assert.AreEqual(3, PanelFooterRows, 'NDN footer has three rows');
+    ComputePanelLayout(80, 24, True, True, LeftB, RightB, ListTop, NdnBottom);
+    Assert.AreEqual(ClassicBottom - 2, NdnBottom, 'the list gives up two rows');
+    Assert.AreEqual(LeftB.Bottom - 5, PanelListBounds(LeftB).Bottom,
+      'click list bounds follow the footer');
+
+    Host := Default(TDualPanelFilesDrawHost);
+    Host.ResolveChrome := Spy.ResolveChrome;
+    Host.DrawDriveLetters := Spy.DriveLetters;
+    Host.DrawHeaders := Spy.Headers;
+    Host.DrawList := Spy.List;
+    Host.DrawScrollBar := Spy.Scroll;
+    Host.DrawQuickSearch := Spy.Quick;
+    AllocTerminalGrid(Grid, 20, 12);
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    Snap := Default(TDrawFilesSnapshot);
+    Snap.Bounds := TRectI.Make(0, 0, 19, 11);
+    Snap.ListBounds := PanelListBounds(Snap.Bounds);
+    Snap.Frame := TAlphaColors.Yellow;
+    Snap.BodyBg := TAlphaColors.Blue;
+    Snap.Footer := ' Bytes: 5 ';
+    Snap.FreeLine := '9 free on C:';
+    Snap.InfoLine := 'a.txt';
+    DispatchDrawPanelFiles(Grid, nil, Host, Snap);
+    Assert.IsTrue(Grid[7][5].CharValue = chBoxH, 'separator sits above the three rows');
+    Assert.IsTrue(Pos('a.txt', RowText(8)) > 0, 'cursor line on the first footer row');
+    Assert.IsTrue(Pos('Bytes: 5', RowText(9)) > 0, 'totals on the second footer row');
+    Assert.IsTrue(Pos('free on C:', RowText(10)) > 0, 'free space on the last footer row');
+
+    GNdnFooter := False;
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    Snap.ListBounds := PanelListBounds(Snap.Bounds);
+    DispatchDrawPanelFiles(Grid, nil, Host, Snap);
+    Assert.IsTrue(Pos('Bytes: 5', RowText(9)) > 0, 'classic: totals on the separator');
+    Assert.IsTrue(Pos('a.txt', RowText(10)) > 0, 'classic: cursor line above the border');
+    Assert.IsTrue(Pos('free on C:', RowText(10)) = 0, 'classic: no free-space line');
+  finally
+    GNdnFooter := Saved;
+    Spy.Free;
+  end;
+end;
+
 procedure TestTabCloseMarkContrast;
 const
   cPink = TAlphaColor($FFFF79C6);
@@ -1008,6 +1082,11 @@ end;
 procedure TTestDualPanelPanelDraw.TestDrawPanelFilesDispatch;
 begin
   TestDualPanelPanelDraw.TestDrawPanelFilesDispatch;
+end;
+
+procedure TTestDualPanelPanelDraw.TestNdnFooterRows;
+begin
+  TestDualPanelPanelDraw.TestNdnFooterRows;
 end;
 
 procedure TTestDualPanelPanelDraw.TestPanelLayout;

@@ -35,6 +35,9 @@ var
   /// <summary>Sizes in the panel footer (totals, cursor line) and the status line are
   /// shown as the exact number of bytes with the system digit grouping, not as 1.5 M.</summary>
   GExactSelectionSize: Boolean = False;
+  /// <summary>Panel footer in the NDN/DN layout: the totals sit in the bottom border,
+  /// the rule above the info strip stays plain. Off: totals centered on that rule.</summary>
+  GNdnFooter: Boolean = True;
   /// <summary>False in a host that draws with the terminal's own font (mtn2-tui):
   /// the font, size, zoom and cell controls of the display dialog do not apply.</summary>
   GFontSettingsApply: Boolean = True;
@@ -79,6 +82,8 @@ type
     EditorAutoIndent: Boolean;
     /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
     ExactSelectionSize: Boolean;
+    /// <summary>uDisplaySettings.GNdnFooter.</summary>
+    NdnFooter: Boolean;
     /// <summary>uSharkSaver.GSaverMinutes.</summary>
     SaverMinutes: Integer;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
@@ -135,6 +140,9 @@ function ResolveMonospaceFontFamily(const AName: string): string;
 function EnumerateMonospaceFontFamilies: TArray<string>;
 function FontFamilyInstalled(const AName: string): Boolean;
 function DefaultDisplaySettings: TDisplaySettings;
+/// <summary>Rows between the list separator and the drive bar of a file panel: the
+/// cursor line alone, or with the NDN totals and free-space lines.</summary>
+function PanelFooterRows: Integer;
 function ClampDisplayFontSize(ASize: Single): Single;
 function ClampDisplayZoom(AZoom: Single): Single;
 function ClampDisplayBlinkMs(AMs: Integer): Integer;
@@ -331,6 +339,14 @@ begin
     T('ui.display.markedBand', 'Row background')];
 end;
 
+function PanelFooterRows: Integer;
+begin
+  if GNdnFooter then
+    Result := 3
+  else
+    Result := 1;
+end;
+
 function DefaultDisplaySettings: TDisplaySettings;
 begin
   Result.FontName := '';
@@ -350,6 +366,7 @@ begin
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
   Result.ExactSelectionSize := False;
+  Result.NdnFooter := True;
   Result.SaverMinutes := 5;
   Result.CaretUnderline := False;
   Result.ShadowStyle := ssClassic;

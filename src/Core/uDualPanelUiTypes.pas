@@ -19,7 +19,7 @@ type
     Bounds: TRectI;
   end;
 
-  TPanelJobKind = (pjkNone, pjkCopy, pjkMove, pjkDelete, pjkPack, pjkUnpack);
+  TPanelJobKind = (pjkNone, pjkCopy, pjkMove, pjkDelete, pjkPack, pjkUnpack, pjkPlugin);
   TPanelJobPhase = (pjpNone, pjpConfirm, pjpQueued, pjpRunning, pjpOverwriteAsk,
     pjpDeleteAsk, pjpIOErrorAsk, pjpError);
   TJobPresentation = (jpForeground, jpBackground);
@@ -128,6 +128,8 @@ type
     AskQuestion: string;
     AskErrorLine: string;
     AskOfferPermanent: Boolean;
+    /// <summary>pjkPlugin: the user asked the job to stop and the plugin has not ended it yet.</summary>
+    Stopping: Boolean;
   end;
 
   TSortMenuItem = record

@@ -127,12 +127,13 @@ function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
 implementation
 
 uses
-  uThemeDrawing, uDualPanelDrawUtils, uJobPopupRenderer, uChromeRows;
+  uThemeDrawing, uDualPanelDrawUtils, uJobPopupRenderer, uChromeRows,
+  uDisplaySettings;
 
 function PanelListBounds(const ABounds: TRectI): TRectI;
 begin
   Result := TRectI.Make(ABounds.Left + 1, ABounds.Top + 2,
-    ABounds.Right - 2, ABounds.Bottom - 3);
+    ABounds.Right - 2, ABounds.Bottom - 2 - PanelFooterRows);
 end;
 
 function HitPanelSide(ALeftVisible: Boolean; const ALeftBounds: TRectI;

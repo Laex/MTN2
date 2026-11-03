@@ -300,6 +300,9 @@ type
     FFreeText: string;
     FFreeRoot: string;
     FFreeGen: Cardinal;
+    FSideFreeRoot: array[TPanelSide] of string;
+    FSideFreeLine: array[TPanelSide] of string;
+    FSideFreeGen: array[TPanelSide] of Cardinal;
     FLastClickCol: Integer;
     FLastClickRow: Integer;
     FLastClickTick: Cardinal;
@@ -809,6 +812,9 @@ type
       const AControlId, AValuesJson: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure RequestFreeSpace(const APath: string);
+    /// <summary>Free-space line of the NDN panel footer for ASide, requested in the
+    /// background when the panel's drive changes; '' until known or off a drive.</summary>
+    function PanelFreeLine(ASide: TPanelSide; const AUri: string): string;
     procedure ResolveRelativeCommandAsync(const AText, ABaseDir, ACommand: string);
     /// <summary>A path typed into the command line: an existing file runs
     /// (ShellOpenPath), anything else is navigated to.</summary>
@@ -848,6 +854,7 @@ type
     procedure HostOpenHistoryFile(const AURI: string; AEdit: Boolean);
     procedure HostGotoHistoryFile(const AURI: string);
     procedure OpenCmdHistoryDialog;
+    procedure BeginApplyCommand;
     procedure OpenFolderHotlistDialog;
     procedure BeginFolderHotlistAdd;
     procedure OpenWorkspaceLibraryDialog;
@@ -2056,6 +2063,7 @@ begin
   FKeymapHost.OpenFileHistoryDialog := OpenFileHistoryDialog;
   FKeymapHost.OpenCommandPalette := OpenCommandPalette;
   FKeymapHost.OpenCmdHistoryDialog := OpenCmdHistoryDialog;
+  FKeymapHost.BeginApplyCommand := BeginApplyCommand;
   FKeymapHost.OpenFolderHotlistDialog := OpenFolderHotlistDialog;
   FKeymapHost.BeginFolderHotlistAdd := BeginFolderHotlistAdd;
   FKeymapHost.OpenWorkspaceLibraryDialog := OpenWorkspaceLibraryDialog;
@@ -5005,12 +5013,13 @@ begin
     Tab.CurrentURI, Canon);
   if Tab.WorkspaceBackUri <> OldBackUri then
     Tab.JunctionBackName := '';
-  // The root of a remote host has no parent row of its own; `..` there leads
-  // back to the folder the panel came from.
-  if (IsSftpUri(Canon) or IsGenericVfsUri(Canon)) and
+  // The first folder of a remote host or of a plugin scheme (wherever in its
+  // tree it is entered) gets a `..` row that leads back to the folder the panel
+  // came from.
+  if ((IsSftpUri(Canon) and IsVfsUriNavigationRoot(Canon)) or IsGenericVfsUri(Canon)) and
      not IsSftpUri(Tab.CurrentURI) and not IsGenericVfsUri(Tab.CurrentURI) and
      (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
-     not IsWorkspaceUri(Tab.CurrentURI) and IsVfsUriNavigationRoot(Canon) then
+     not IsWorkspaceUri(Tab.CurrentURI) then
   begin
     Tab.WorkspaceBackUri := Tab.CurrentURI;
     Tab.WorkspaceBackTarget := Canon;
@@ -5031,6 +5040,14 @@ begin
       Tab.WorkspaceBackTarget := Canon;
       Tab.JunctionBackName := FileUriTitle(LinkUri);
     end;
+  end;
+  // The Temporary panel has no parent of its own; `..` there leads back to the
+  // place the panel was opened from.
+  if IsTmpPanelUri(Canon) and not IsTmpPanelUri(Tab.CurrentURI) and (Tab.CurrentURI <> '') then
+  begin
+    Tab.WorkspaceBackUri := Tab.CurrentURI;
+    Tab.WorkspaceBackTarget := Canon;
+    Tab.JunctionBackName := '';
   end;
   Tab.CurrentURI := Canon;
   if IsFindUri(Canon) then
@@ -7863,6 +7880,56 @@ begin
     end);
 end;
 
+function TDualPanelWindow.PanelFreeLine(ASide: TPanelSide;
+  const AUri: string): string;
+var
+  Life: ILifeFlag;
+  Root, RootURI, Drive: string;
+  Gen: Cardinal;
+  Side: TPanelSide;
+begin
+  Root := LocalPathRootOf(StatusPathLabel(AUri));
+  if Root = '' then
+  begin
+    FSideFreeRoot[ASide] := '';
+    FSideFreeLine[ASide] := '';
+    Exit('');
+  end;
+  Root := IncludeTrailingPathDelimiter(Root);
+  if not SameLocalPath(Root, FSideFreeRoot[ASide]) then
+  begin
+    Life := FLife;
+    Side := ASide;
+    FSideFreeRoot[Side] := Root;
+    FSideFreeLine[Side] := '';
+    RootURI := PathToFileUri(Root);
+    Drive := ExcludeTrailingPathDelimiter(Root);
+    Inc(FSideFreeGen[Side]);
+    Gen := FSideFreeGen[Side];
+    FVfs.GetFreeSpaceAsync(RootURI, nil,
+      procedure(const AFree, ATotal: Int64; const AError: TVfsError)
+      var
+        Size: string;
+      begin
+        if not Life.Alive or (Gen <> FSideFreeGen[Side]) then
+          Exit;
+        if (AError.Code = vecOk) and (ATotal > 0) then
+        begin
+          if GExactSelectionSize then
+            Size := FormatSizeExact(AFree)
+          else
+            Size := FormatSizeShort(AFree);
+          FSideFreeLine[Side] := T('status.free_on_drive','%s free on drive %s',
+            [Size, Drive]);
+        end
+        else
+          FSideFreeLine[Side] := '';
+        NotifyChanged;
+      end);
+  end;
+  Result := FSideFreeLine[ASide];
+end;
+
 procedure TDualPanelWindow.ResolveRelativeCommandAsync(const AText, ABaseDir,
   ACommand: string);
 var
@@ -9782,6 +9849,12 @@ end;
 procedure TDualPanelWindow.OpenCmdHistoryDialog;
 begin
   FCmdHistory.OpenList;
+end;
+
+procedure TDualPanelWindow.BeginApplyCommand;
+begin
+  if Assigned(FUserMenuHost) then
+    FUserMenuHost.BeginApply;
 end;
 
 procedure TDualPanelWindow.OpenFileHistoryDialog;
@@ -13222,6 +13295,8 @@ begin
   Snap.DropBg := cMenuHot;
   Snap.Count := Count;
   Snap.FooterFg := AFrame;
+  if GNdnFooter then
+    Snap.FreeLine := PanelFreeLine(ASide, Tab.CurrentURI);
   if Length(Tab.SelectedURIs) > 0 then
   begin
     SelectionTotalsOf(ASide, Tab, Bytes, Files, Folders);

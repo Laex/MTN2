@@ -13,6 +13,7 @@ uses
 
 const
   cPortableMarkerName = 'portable.dat';
+  cConfigDirEnvVar = 'MTN2_CONFIG_DIR';
 
 function IsPortableMode: Boolean;
 /// <summary>The folder of the running program, with a trailing separator.</summary>
@@ -34,6 +35,11 @@ procedure SetConfigDirectoryOverride(const ADir: string);
 /// test that points the settings elsewhere for a while gives this back
 /// afterwards, so the folder of the test runner stays in force.</summary>
 function ConfigDirectoryOverride: string;
+/// <summary>Points the settings at the folder named by the MTN2_CONFIG_DIR
+/// environment variable (blank: nothing changes). Runs once at start-up;
+/// like SetConfigDirectoryOverride it takes the place of the normal and the
+/// portable choice, so the "Settings location" switch is unavailable.</summary>
+procedure ApplyConfigDirectoryEnvironment(const AValue: string);
 function GetConfigDirectory: string;
 function GetConfigFilePath(const AFileName: string): string;
 
@@ -53,6 +59,17 @@ end;
 function ConfigDirectoryOverride: string;
 begin
   Result := GConfigDirOverride;
+end;
+
+procedure ApplyConfigDirectoryEnvironment(const AValue: string);
+var
+  Dir: string;
+begin
+  Dir := Trim(AValue);
+  if Dir = '' then
+    Exit;
+  // A relative value is taken from the folder the program was started in.
+  GConfigDirOverride := ExpandFileName(ExcludeTrailingPathDelimiter(Dir));
 end;
 
 function ProgramDirectory: string;
@@ -110,5 +127,8 @@ function GetConfigFilePath(const AFileName: string): string;
 begin
   Result := TPath.Combine(GetConfigDirectory, AFileName);
 end;
+
+initialization
+  ApplyConfigDirectoryEnvironment(GetEnvironmentVariable(cConfigDirEnvVar));
 
 end.

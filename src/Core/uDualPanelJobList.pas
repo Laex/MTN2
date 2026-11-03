@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Generics.Collections,
   uTerminalTypes, uThemeTypes, uDualPanelTypes, uDualPanelUiTypes,
-  uDualPanelJobs, uDualPanelJobRules, uVfsTypes;
+  uDualPanelJobs, uDualPanelJobRules, uVfsTypes, uPluginServices;
 
 type
   /// <summary>Tells a closure queued on the main thread whether the list that
@@ -101,6 +101,9 @@ type
     function JobIdAt(AIndex: Integer): Integer;
     /// <summary>States of every job that is not idle, in list order.</summary>
     function States: TArray<TPanelJobState>;
+    /// <summary>True for the id of a job a plugin reports (shown in the list and as a
+    /// chip, cancelled through the plugin; it has no dialog of its own).</summary>
+    function IsPluginJob(AId: Integer): Boolean;
     procedure TryOpenNextAsk;
     procedure ReplayCurrentAsk;
     procedure CloseJobUi;
@@ -154,6 +157,58 @@ type
   end;
 
 implementation
+
+const
+  /// <summary>Ids of plugin jobs start here, above any id the list hands to its own jobs.</summary>
+  cPluginJobIdBase = 1000000000;
+
+function PluginJobToState(const AInfo: TPluginJobInfo): TPanelJobState;
+begin
+  Result := Default(TPanelJobState);
+  Result.Kind := pjkPlugin;
+  Result.Phase := pjpRunning;
+  if AInfo.Foreground then
+    Result.Presentation := jpForeground
+  else
+    Result.Presentation := jpBackground;
+  Result.Id := cPluginJobIdBase + AInfo.Id;
+  Result.Message := AInfo.Title;
+  Result.CurrentName := AInfo.Title;
+  if AInfo.Text <> '' then
+    Result.CurrentName := AInfo.Text;
+  Result.Stopping := AInfo.CancelRequested;
+  if AInfo.Percent >= 0 then
+  begin
+    Result.BytesTotal := 100;
+    Result.ProgressDone := AInfo.Percent;
+  end;
+end;
+
+// The plugin job whose progress dialog is up, if any.
+function ForegroundPluginJob(out AInfo: TPluginJobInfo): Boolean;
+var
+  Info: TPluginJobInfo;
+begin
+  for Info in PluginJobSnapshot do
+    if Info.Foreground then
+    begin
+      AInfo := Info;
+      Exit(True);
+    end;
+  AInfo := Default(TPluginJobInfo);
+  Result := False;
+end;
+
+function PluginJobStates: TArray<TPanelJobState>;
+var
+  Infos: TArray<TPluginJobInfo>;
+  I: Integer;
+begin
+  Infos := PluginJobSnapshot;
+  SetLength(Result, Length(Infos));
+  for I := 0 to High(Infos) do
+    Result[I] := PluginJobToState(Infos[I]);
+end;
 
 type
   TJobListLife = class(TInterfacedObject, IJobListLife)
@@ -210,10 +265,17 @@ begin
   FItems := TObjectList<TPanelJobController>.Create(True);
   FNextId := 0;
   FAskJobId := 0;
+  SetPluginJobsChangedHandler(
+    procedure
+    begin
+      if FLife.IsAlive and Assigned(FOnInvalidate) then
+        FOnInvalidate();
+    end);
 end;
 
 destructor TPanelJobList.Destroy;
 begin
+  SetPluginJobsChangedHandler(nil);
   FLife.Die;
   FItems.Free;
   inherited;
@@ -378,10 +440,17 @@ end;
 function TPanelJobList.GetPhase: TPanelJobPhase;
 var
   Job: TPanelJobController;
+  Info: TPluginJobInfo;
 begin
   Job := ActiveJob;
   if Job = nil then
-    Result := pjpNone
+  begin
+    // A plugin job in its progress dialog counts as a running job: Cancel there asks first.
+    if ForegroundPluginJob(Info) then
+      Result := pjpRunning
+    else
+      Result := pjpNone;
+  end
   else
     Result := Job.Phase;
 end;
@@ -438,6 +507,7 @@ end;
 function TPanelJobList.ListLines: TArray<string>;
 var
   Job: TPanelJobController;
+  State: TPanelJobState;
   N: Integer;
 begin
   SetLength(Result, FItems.Count);
@@ -449,11 +519,14 @@ begin
       Inc(N);
     end;
   SetLength(Result, N);
+  for State in PluginJobStates do
+    Result := Result + [FormatJobListLine(State)];
 end;
 
 function TPanelJobList.JobIdAt(AIndex: Integer): Integer;
 var
   Job: TPanelJobController;
+  Plugins: TArray<TPanelJobState>;
   N: Integer;
 begin
   Result := 0;
@@ -465,6 +538,9 @@ begin
         Exit(Job.State.Id);
       Inc(N);
     end;
+  Plugins := PluginJobStates;
+  if (AIndex >= N) and (AIndex - N <= High(Plugins)) then
+    Result := Plugins[AIndex - N].Id;
 end;
 
 function TPanelJobList.States: TArray<TPanelJobState>;
@@ -475,6 +551,12 @@ begin
   for Job in FItems do
     if JobIsBusy(Job.State) then
       Result := Result + [Job.State];
+  Result := Result + PluginJobStates;
+end;
+
+function TPanelJobList.IsPluginJob(AId: Integer): Boolean;
+begin
+  Result := AId >= cPluginJobIdBase;
 end;
 
 function TPanelJobList.SpawnJob: TPanelJobController;
@@ -813,6 +895,7 @@ end;
 procedure TPanelJobList.BackgroundJob;
 var
   Job: TPanelJobController;
+  Info: TPluginJobInfo;
 begin
   for Job in FItems do
     if JobWantsProgressDialog(Job.State) then
@@ -820,6 +903,11 @@ begin
       Job.BackgroundJob;
       Exit;
     end;
+  if ForegroundPluginJob(Info) then
+  begin
+    PluginJobSetForeground(Info.Id, False);
+    Exit;
+  end;
   Job := ActiveJob;
   if Job <> nil then
     Job.BackgroundJob;
@@ -837,8 +925,15 @@ end;
 procedure TPanelJobList.ForegroundJobByIndex(AIndex: Integer);
 var
   Job: TPanelJobController;
+  Id: Integer;
 begin
-  Job := JobById(JobIdAt(AIndex));
+  Id := JobIdAt(AIndex);
+  if IsPluginJob(Id) then
+  begin
+    PluginJobSetForeground(Id - cPluginJobIdBase, True);
+    Exit;
+  end;
+  Job := JobById(Id);
   if Job <> nil then
     Job.ForegroundJob;
 end;
@@ -847,6 +942,11 @@ procedure TPanelJobList.RestoreJobById(AId: Integer);
 var
   Job: TPanelJobController;
 begin
+  if IsPluginJob(AId) then
+  begin
+    PluginJobSetForeground(AId - cPluginJobIdBase, True);
+    Exit;
+  end;
   Job := JobById(AId);
   if Job = nil then
     Exit;
@@ -866,6 +966,7 @@ end;
 function TPanelJobList.TryProgressDialogState(out AJob: TPanelJobState): Boolean;
 var
   Job: TPanelJobController;
+  Info: TPluginJobInfo;
 begin
   for Job in FItems do
     if JobWantsProgressDialog(Job.State) then
@@ -873,6 +974,11 @@ begin
       AJob := Job.State;
       Exit(True);
     end;
+  if ForegroundPluginJob(Info) then
+  begin
+    AJob := PluginJobToState(Info);
+    Exit(True);
+  end;
   AJob := Default(TPanelJobState);
   Result := False;
 end;
@@ -920,10 +1026,16 @@ end;
 procedure TPanelJobList.RequestCancel;
 var
   Job: TPanelJobController;
+  Info: TPluginJobInfo;
 begin
   Job := OverlayJob;
   if Job = nil then
     Job := AskJob;
+  if (Job = nil) and ForegroundPluginJob(Info) then
+  begin
+    PluginJobCancel(Info.Id);
+    Exit;
+  end;
   if Job = nil then
     Job := ActiveJob;
   if Job <> nil then
@@ -933,8 +1045,15 @@ end;
 procedure TPanelJobList.CancelJobByIndex(AIndex: Integer);
 var
   Job: TPanelJobController;
+  Id: Integer;
 begin
-  Job := JobById(JobIdAt(AIndex));
+  Id := JobIdAt(AIndex);
+  if IsPluginJob(Id) then
+  begin
+    PluginJobCancel(Id - cPluginJobIdBase);
+    Exit;
+  end;
+  Job := JobById(Id);
   if Job = nil then
     Exit;
   Job.RequestCancel;
@@ -945,7 +1064,10 @@ end;
 procedure TPanelJobList.CancelAll;
 var
   Job: TPanelJobController;
+  State: TPanelJobState;
 begin
+  for State in PluginJobStates do
+    PluginJobCancel(State.Id - cPluginJobIdBase);
   for Job in FItems do
   begin
     Job.RequestCancel;

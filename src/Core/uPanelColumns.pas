@@ -736,7 +736,28 @@ end;
 
 function FormatPanelRowName(const ARow: TPanelRow; ANameW: Integer;
   AStripExt: Boolean): string;
+const
+  cPathGap = 2;
+  cPathMinW = 8;
+  cNameMinW = 12;
+var
+  Plain: TPanelRow;
+  NameShare, PathW: Integer;
+  PathText: string;
 begin
+  // A file of a flat collection shows its folder after the name.
+  if (ARow.DirText <> '') and (ANameW >= cNameMinW + cPathGap + cPathMinW) then
+  begin
+    Plain := ARow;
+    Plain.DirText := '';
+    NameShare := Min(Max(TextDisplayWidth(Plain.Text), cNameMinW), ANameW * 6 div 10);
+    PathW := ANameW - NameShare - cPathGap;
+    PathText := ARow.DirText;
+    if TextDisplayWidth(PathText) > PathW then
+      PathText := '...' + Copy(PathText, Length(PathText) - (PathW - 3) + 1, PathW - 3);
+    Exit(FormatPanelRowName(Plain, NameShare, AStripExt) + StringOfChar(' ', cPathGap) +
+      PadRight(PathText, PathW));
+  end;
   // ASCII only - Unicode arrows (->) break under Consolas/grid glyph path.
   Result := ARow.Text;
   if ShouldStripPanelRowExt(ARow, AStripExt, Result) then

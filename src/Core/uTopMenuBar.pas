@@ -184,10 +184,18 @@ type
     IsPluginItem: Boolean;
     PluginId: string;
     PluginOnClick: TProc;
+    /// <summary>1-based number of the plugin's group in the Plugins menu; the
+    /// submenu colors a column at the right edge of the rows by it. 0 = none.</summary>
+    PluginGroup: Integer;
+    /// <summary>On a separator: the name drawn in the gap of the line (the
+    /// plugin whose items follow); empty = a plain line.</summary>
+    SeparatorTitle: string;
   end;
 
   TPluginMenuItemDesc = record
     PluginId: string;
+    /// <summary>Name shown on the line that opens the plugin's group.</summary>
+    PluginTitle: string;
     ParentTitle: string;
     Caption: string;
     OnClick: TProc;
@@ -196,6 +204,12 @@ type
 
   TTopMenuCategory = record
     Title: string;
+    /// <summary>Untranslated title; plugins name their parent menu by it.
+    /// Empty means Title is already the key.</summary>
+    Key: string;
+    /// <summary>The Plugins menu the controller adds while plugins have items;
+    /// it is not part of menu.json.</summary>
+    IsPluginsMenu: Boolean;
     HotChar: Char;
     HotPos: Integer; // 1-indexed position in Title
     Items: TArray<TSubmenuItem>;
@@ -257,6 +271,8 @@ type
     function CategoryTitle(AIndex: Integer): string;
     /// <summary>'' when either index is out of range.</summary>
     function CategoryItemCaption(ACategoryIndex, AItemIndex: Integer): string;
+    /// <summary>Name drawn in the gap of a separator row ('' = a plain line).</summary>
+    function CategorySeparatorTitle(ACategoryIndex, AItemIndex: Integer): string;
     /// <summary>The whole menu as a flat list, for searching it: every item
     /// that is not a separator, with the title of its category.</summary>
     procedure ListItems(const AOnItem: TProc<string, TSubmenuItem>);
@@ -587,6 +603,17 @@ const
   cSubmenuHotFg = cMenuHotKeyFg;
   cSubmenuDisabledFg = TAlphaColor($FF808080);
 
+// Band colors of the plugin groups in the Plugins menu, mid-tone so they stand
+// out on both light and dark menu bodies.
+function PluginGroupColor(AGroup: Integer): TAlphaColor;
+const
+  cColors: array[0..5] of TAlphaColor = (
+    TAlphaColor($FF2E86C1), TAlphaColor($FF28A745), TAlphaColor($FFD68910),
+    TAlphaColor($FF8E44AD), TAlphaColor($FFCB4335), TAlphaColor($FF17A2B8));
+begin
+  Result := cColors[(AGroup - 1) mod Length(cColors)];
+end;
+
 // System.UpCase only folds a..z; a translated mnemonic can be any letter.
 function HotUpper(AChar: Char): Char;
 begin
@@ -624,6 +651,16 @@ begin
   Result := '';
   if (AIndex >= 0) and (AIndex <= High(FCategories)) then
     Result := FCategories[AIndex].Title;
+end;
+
+function TTopMenuController.CategorySeparatorTitle(ACategoryIndex, AItemIndex: Integer): string;
+begin
+  Result := '';
+  if (ACategoryIndex < 0) or (ACategoryIndex > High(FCategories)) then
+    Exit;
+  if (AItemIndex < 0) or (AItemIndex > High(FCategories[ACategoryIndex].Items)) then
+    Exit;
+  Result := FCategories[ACategoryIndex].Items[AItemIndex].SeparatorTitle;
 end;
 
 function TTopMenuController.CategoryItemCaption(ACategoryIndex, AItemIndex: Integer): string;
@@ -711,6 +748,7 @@ begin
       // best available key. Renaming a category's English text in menu.json
       // orphans any translation keyed to the previous text; give categories a
       // real id there first if that turns out to matter in practice.
+      NewCategories[I].Key := CatTitle;
       CatTitle := T('menu.category.' + CatTitle, CatTitle);
 
       HotC := #0;
@@ -1000,20 +1038,19 @@ begin
   FCategories[5].Title := 'Options';
   FCategories[5].HotChar := 'O';
   FCategories[5].HotPos := 1;
-  SetLength(FCategories[5].Items, 13);
+  SetLength(FCategories[5].Items, 12);
   FCategories[5].Items[0] := SubItem('Reload keymap', 'K', 'Ctrl+Alt+K', tmaOptReloadKeymap);
-  FCategories[5].Items[1] := SubItem('Plugins...', 'P', '', tmaOptShowPlugins);
-  FCategories[5].Items[2] := SubItem('Color coding...', 'C', '', tmaOptColorCoding);
-  FCategories[5].Items[3] := SubItem('Keymap...', 'M', '', tmaOptKeymap);
-  FCategories[5].Items[4] := SubItem('Theme...', 'T', '', tmaOptTheme);
-  FCategories[5].Items[5] := SubItem('Font / Display...', 'F', '', tmaOptDisplay);
-  FCategories[5].Items[6] := SubItem('User interface...', 'U', '', tmaOptInterface);
-  FCategories[5].Items[7] := SubItem('Columns...', 'L', 'Ctrl+Shift+F7', tmaOptColumnsConfig);
-  FCategories[5].Items[8] := Separator;
-  FCategories[5].Items[9] := SubItem('Zoom In', 'I', 'Ctrl+Wheel', tmaOptZoomIn);
-  FCategories[5].Items[10] := SubItem('Zoom Out', 'O', 'Ctrl+Wheel', tmaOptZoomOut);
-  FCategories[5].Items[11] := SubItem('Reset Zoom', 'R', 'Ctrl+0', tmaOptResetZoom);
-  FCategories[5].Items[12] := SubItem('Restore hidden dialogs', 'H', '', tmaOptRestoreHiddenDialogs);
+  FCategories[5].Items[1] := SubItem('Color coding...', 'C', '', tmaOptColorCoding);
+  FCategories[5].Items[2] := SubItem('Keymap...', 'M', '', tmaOptKeymap);
+  FCategories[5].Items[3] := SubItem('Theme...', 'T', '', tmaOptTheme);
+  FCategories[5].Items[4] := SubItem('Font / Display...', 'F', '', tmaOptDisplay);
+  FCategories[5].Items[5] := SubItem('User interface...', 'U', '', tmaOptInterface);
+  FCategories[5].Items[6] := SubItem('Columns...', 'L', 'Ctrl+Shift+F7', tmaOptColumnsConfig);
+  FCategories[5].Items[7] := Separator;
+  FCategories[5].Items[8] := SubItem('Zoom In', 'I', 'Ctrl+Wheel', tmaOptZoomIn);
+  FCategories[5].Items[9] := SubItem('Zoom Out', 'O', 'Ctrl+Wheel', tmaOptZoomOut);
+  FCategories[5].Items[10] := SubItem('Reset Zoom', 'R', 'Ctrl+0', tmaOptResetZoom);
+  FCategories[5].Items[11] := SubItem('Restore hidden dialogs', 'H', '', tmaOptRestoreHiddenDialogs);
 
   // 6: Right
   FCategories[6].Title := 'Right';
@@ -1034,69 +1071,121 @@ end;
 
 procedure TTopMenuController.ApplyPluginItemsToCategories;
 var
-  I, J: Integer;
+  I, J, At, Group: Integer;
   Desc: TPluginMenuItemDesc;
   NewItem: TSubmenuItem;
-  Kept: TArray<TSubmenuItem>;
+  Cat: TTopMenuCategory;
+  LastPlugin, Title: string;
+  HotC: Char;
+  PosIdx: Integer;
 begin
-  // Strip plugin items inserted earlier first, so this is safe to call
-  // repeatedly (e.g. after every SetPluginMenuItems / menu reload).
-  for I := 0 to High(FCategories) do
+  // Strip what was added earlier first, so this is safe to call repeatedly
+  // (after every SetPluginMenuItems / menu reload).
+  for I := High(FCategories) downto 0 do
+    if FCategories[I].IsPluginsMenu then
+      Delete(FCategories, I, 1);
+  // The plugin manager comes first; then one group per plugin, each opened by
+  // a line carrying the plugin's name (FPluginItems is pre-sorted by
+  // (plugin order, Priority) in SetPluginMenuItems).
+  Cat := Default(TTopMenuCategory);
+  Cat.Key := 'Plugins';
+  Cat.IsPluginsMenu := True;
+  Title := T('menu.category.Plugins', 'Plugins');
+  HotC := 'P';
+  MenuResolveMnemonic(Title, HotC, PosIdx);
+  Cat.Title := Title;
+  Cat.HotChar := HotC;
+  Cat.HotPos := PosIdx;
+
+  NewItem := Default(TSubmenuItem);
+  NewItem.Caption := T('menu.tmaOptShowPlugins', 'Plugins...');
+  NewItem.Action := tmaOptShowPlugins;
+  NewItem.Hint := 'Lists the installed plugins; Space turns one on or off.';
+  HotC := 'P';
+  MenuResolveMnemonic(NewItem.Caption, HotC, PosIdx);
+  NewItem.HotChar := HotC;
+  NewItem.HotPos := PosIdx;
+  SetLength(Cat.Items, 1);
+  Cat.Items[0] := NewItem;
+
+  LastPlugin := '';
+  Group := 0;
+  for Desc in FPluginItems do
   begin
-    SetLength(Kept, 0);
-    for J := 0 to High(FCategories[I].Items) do
-      if not FCategories[I].Items[J].IsPluginItem then
-      begin
-        SetLength(Kept, Length(Kept) + 1);
-        Kept[High(Kept)] := FCategories[I].Items[J];
-      end;
-    FCategories[I].Items := Kept;
+    if (Group = 0) or not SameText(Desc.PluginId, LastPlugin) then
+    begin
+      Inc(Group);
+      NewItem := Default(TSubmenuItem);
+      NewItem.Caption := '-';
+      NewItem.IsSeparator := True;
+      NewItem.SeparatorTitle := Desc.PluginTitle;
+      if NewItem.SeparatorTitle = '' then
+        NewItem.SeparatorTitle := Desc.PluginId;
+      NewItem.PluginGroup := Group;
+      SetLength(Cat.Items, Length(Cat.Items) + 1);
+      Cat.Items[High(Cat.Items)] := NewItem;
+    end;
+    LastPlugin := Desc.PluginId;
+    NewItem := Default(TSubmenuItem);
+    NewItem.Caption := Desc.Caption;
+    NewItem.Action := tmaNone;
+    NewItem.IsPluginItem := True;
+    NewItem.PluginId := Desc.PluginId;
+    NewItem.PluginOnClick := Desc.OnClick;
+    NewItem.PluginGroup := Group;
+    SetLength(Cat.Items, Length(Cat.Items) + 1);
+    Cat.Items[High(Cat.Items)] := NewItem;
   end;
 
-  // FPluginItems is pre-sorted by (ParentTitle, Priority) in
-  // SetPluginMenuItems, so appending in order keeps priority ascending
-  // within each category.
-  for Desc in FPluginItems do
-    for I := 0 to High(FCategories) do
-      if SameText(FCategories[I].Title, Desc.ParentTitle) then
-      begin
-        NewItem.Caption := Desc.Caption;
-        NewItem.HotChar := #0;
-        NewItem.HotPos := 0;
-        NewItem.Shortcut := '';
-        NewItem.Action := tmaNone;
-        NewItem.IsSeparator := False;
-        NewItem.IsPluginItem := True;
-        NewItem.PluginId := Desc.PluginId;
-        NewItem.PluginOnClick := Desc.OnClick;
-
-        SetLength(FCategories[I].Items, Length(FCategories[I].Items) + 1);
-        FCategories[I].Items[High(FCategories[I].Items)] := NewItem;
-        Break;
-      end;
+  // Between Commands and Options; before the last (Right) when there is no Options.
+  At := High(FCategories);
+  for J := 0 to High(FCategories) do
+    if SameText(FCategories[J].Key, 'Options') or SameText(FCategories[J].Title, 'Options') then
+    begin
+      At := J;
+      Break;
+    end;
+  Insert(Cat, FCategories, At);
 end;
 
 procedure TTopMenuController.SetPluginMenuItems(const AItems: TArray<TPluginMenuItemDesc>);
 var
   Sorted: TArray<TPluginMenuItemDesc>;
-  I, J: Integer;
+  Order: TArray<Integer>;
+  I, J, K, OrderTmp: Integer;
   Tmp: TPluginMenuItemDesc;
 begin
+  // A plugin's group sits where its first item was registered (plugins
+  // register in load order); inside a group the items go by Priority.
   Sorted := Copy(AItems);
-  // Stable insertion sort by (ParentTitle, Priority) - plugin item counts
-  // are expected to be small, so O(n^2) is fine here.
+  SetLength(Order, Length(Sorted));
+  for I := 0 to High(Sorted) do
+  begin
+    Order[I] := I;
+    for K := 0 to I - 1 do
+      if SameText(Sorted[K].PluginId, Sorted[I].PluginId) then
+      begin
+        Order[I] := Order[K];
+        Break;
+      end;
+  end;
+  // Stable insertion sort by (group, Priority) - plugin item counts are
+  // small, so O(n^2) is fine here.
   for I := 1 to High(Sorted) do
   begin
     Tmp := Sorted[I];
+    OrderTmp := Order[I];
     J := I - 1;
     while (J >= 0) and
-          ((Sorted[J].ParentTitle > Tmp.ParentTitle) or
-           ((Sorted[J].ParentTitle = Tmp.ParentTitle) and (Sorted[J].Priority > Tmp.Priority))) do
+          ((Order[J] > OrderTmp) or
+           ((Order[J] = OrderTmp) and (Sorted[J].Priority > Tmp.Priority))) do
     begin
       Sorted[J + 1] := Sorted[J];
+      Order[J + 1] := Order[J];
       Dec(J);
     end;
     Sorted[J + 1] := Tmp;
+    Order[J + 1] := OrderTmp;
   end;
 
   FPluginItems := Sorted;
@@ -1326,7 +1415,11 @@ begin
   for I := 0 to High(Cat.Items) do
   begin
     if Cat.Items[I].IsSeparator then
+    begin
+      if Cat.Items[I].SeparatorTitle <> '' then
+        MaxCapW := Max(MaxCapW, TextDisplayWidth(Cat.Items[I].SeparatorTitle) + 2);
       Continue;
+    end;
     MaxCapW := Max(MaxCapW, TextDisplayWidth(Cat.Items[I].Caption));
     MaxShortW := Max(MaxShortW, Length(TopMenuItemShortcut(Cat.Items[I])));
   end;
@@ -1474,7 +1567,20 @@ begin
     if Item.IsSeparator then
     begin
       Line := StringOfChar(#$2500, InnerW); // ─
-      PutGridText(AGrid, R.Left + 1, Y, Line, SubFg, SubBg);
+      if Item.SeparatorTitle <> '' then
+      begin
+        // The name sits in a gap of the line: "─ Name ─────".
+        Cap := ' ' + Item.SeparatorTitle + ' ';
+        if TextDisplayWidth(Cap) > InnerW - 2 then
+          Cap := Copy(Cap, 1, TextFitChars(Cap, InnerW - 2));
+        Line := #$2500 + Cap + StringOfChar(#$2500, InnerW - 1 - TextDisplayWidth(Cap));
+      end;
+      // The header row carries the group colour in its text and leaves the
+      // right column empty, which cuts the colour bands apart.
+      if Item.PluginGroup > 0 then
+        PutGridText(AGrid, R.Left + 1, Y, Line, PluginGroupColor(Item.PluginGroup), SubBg)
+      else
+        PutGridText(AGrid, R.Left + 1, Y, Line, SubFg, SubBg);
       Continue;
     end;
 
@@ -1514,6 +1620,9 @@ begin
     end;
 
     PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
+    // The plugin's color band: one cell at the right edge of its rows.
+    if Item.PluginGroup > 0 then
+      PutGridText(AGrid, R.Left + InnerW, Y, ' ', Fg, PluginGroupColor(Item.PluginGroup));
 
     // Mnemonic char in submenu: fixed dark red on whichever background the
     // row already has (idle or selected) - no background inversion, as in

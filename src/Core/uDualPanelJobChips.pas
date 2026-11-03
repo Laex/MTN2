@@ -65,7 +65,7 @@ begin
     pjpRunning:
       // A job told to stop is only waiting for its worker to notice; it has
       // nothing to show or to open.
-      Result := (AJob.Presentation = jpBackground) and
+      Result := (AJob.Presentation = jpBackground) and not AJob.Stopping and
         not (Assigned(AJob.Cancel) and AJob.Cancel.IsCancellationRequested);
     pjpError:
       Result := AJob.Presentation = jpBackground;
@@ -93,7 +93,10 @@ begin
     pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk: Mark := '?';
     pjpError: Mark := '!';
   else
-    Mark := IntToStr(JobProgressPercent(AJob)) + '%';
+    if (AJob.Kind = pjkPlugin) and (AJob.BytesTotal <= 0) then
+      Mark := '...'
+    else
+      Mark := IntToStr(JobProgressPercent(AJob)) + '%';
   end;
   Result := '[' + JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' + Mark + ']';
 end;

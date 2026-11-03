@@ -33,6 +33,7 @@ uses
   TestResourceScripts in 'TestResourceScripts.pas',
   TestMessageBus in 'TestMessageBus.pas',
   TestMenuNavigation in 'TestMenuNavigation.pas',
+  TestPluginMenu in 'TestPluginMenu.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
   TestSettingsTransfer in 'TestSettingsTransfer.pas',
   TestStrings in 'TestStrings.pas',

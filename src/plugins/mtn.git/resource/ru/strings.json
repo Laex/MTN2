@@ -23,11 +23,16 @@
     "noFile": "Поставьте курсор на файл или папку локальной папки git.",
     "notRepo": "Эта папка не входит в рабочее дерево git.",
     "noChanges": "Изменений относительно HEAD нет.",
-    "error": "git не ответил."
+    "error": "git не ответил.",
+    "diffJob": "Git diff",
+    "blameJob": "Git blame",
+    "noBlame": "У git нет истории этого файла.",
+    "cancelled": "Отменено."
   },
   "ui": {
     "menu": {
-      "diff": "Git diff файла"
+      "diff": "Git diff файла",
+      "blame": "Git blame файла"
     }
   },
   "dlg": {

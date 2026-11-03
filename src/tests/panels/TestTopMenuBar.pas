@@ -156,9 +156,9 @@ begin
     Assert.IsTrue(C.CategoryIndex = 1, 'F9 opens Left');
     C.ToggleMenu;
     RightActive := True;
-    Assert.IsTrue(C.PanelCategory = 6, 'the right panel is active: Right, the last category');
+    Assert.IsTrue(C.PanelCategory = 7, 'the right panel is active: Right, the last category');
     C.ToggleMenu;
-    Assert.IsTrue(C.Active and (C.CategoryIndex = 6), 'F9 opens Right');
+    Assert.IsTrue(C.Active and (C.CategoryIndex = 7), 'F9 opens Right');
   finally
     C.Free;
   end;

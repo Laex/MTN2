@@ -54,8 +54,9 @@ const
   /// than it needs to load checks AHostApi^.AbiVersion before it uses the field: an
   /// older host hands out a shorter table, and the fields past its end are not
   /// there.
-  /// 6: OpenDocument, SetRowDecorations.</summary>
-  cPluginAbiVersion: Int64 = 6;
+  /// 6: OpenDocument, SetRowDecorations.
+  /// 7: JobBegin, JobUpdate, JobEnd.</summary>
+  cPluginAbiVersion: Int64 = 7;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -355,6 +356,17 @@ type
   /// AId; it stays until ProgressEnd. 0 = shown.</summary>
   THostProgressSetFn = function(APluginId, AId, AText: PAnsiChar; APercent: Int64): Int64; cdecl;
   THostProgressEndFn = function(APluginId, AId: PAnsiChar): Int64; cdecl;
+  /// <summary>Starts a background job in the host's job list (main thread only; from
+  /// another thread call it through PostToMain). AKey names the job within the plugin;
+  /// beginning a key again replaces its job. Cancelling the job in the host (Esc or the
+  /// job list) calls AOnCancel(AUserData) on the main thread; AOnCancel may be nil, and
+  /// the job then cannot be cancelled. 0 = started.</summary>
+  THostJobBeginFn = function(APluginId, AKey, ATitle: PAnsiChar; AOnCancel: THostMainCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Sets the status text and percentage (below 0 = none) of a job; main thread only.</summary>
+  THostJobUpdateFn = function(APluginId, AKey, AText: PAnsiChar; APercent: Int64): Int64; cdecl;
+  /// <summary>Removes a job from the list; main thread only. Call it also after a cancel.</summary>
+  THostJobEndFn = function(APluginId, AKey: PAnsiChar): Int64; cdecl;
   /// <summary>Mouse on the surface (pixels of the picture area; the position is the
   /// distance from its top-left corner): AKind 0 = button down, 1 = button up, 2 = move
   /// (only while a button is held), 3 = wheel (AExtra = clicks, positive away from the user),
@@ -555,6 +567,10 @@ type
     // ABI 6
     OpenDocument: THostOpenDocumentFn;
     SetRowDecorations: THostSetRowDecorationsFn;
+    // ABI 7
+    JobBegin: THostJobBeginFn;
+    JobUpdate: THostJobUpdateFn;
+    JobEnd: THostJobEndFn;
   end;
   PHostApiTable = ^THostApiTable;
 

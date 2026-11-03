@@ -10,6 +10,7 @@ type
   TTestConfigLocation = class
   public
     [Test] procedure Run;
+    [Test] procedure EnvironmentVariableRedirectsSettings;
   end;
 
 implementation
@@ -45,6 +46,28 @@ end;
 procedure TTestConfigLocation.Run;
 begin
   RunTests;
+end;
+
+procedure TTestConfigLocation.EnvironmentVariableRedirectsSettings;
+var
+  Saved, Dir: string;
+begin
+  Saved := ConfigDirectoryOverride;
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-envdir-test');
+  try
+    SetConfigDirectoryOverride('');
+    ApplyConfigDirectoryEnvironment('   ');
+    Assert.IsFalse(ConfigDirectoryIsOverridden, 'a blank value changes nothing');
+    ApplyConfigDirectoryEnvironment(Dir + PathDelim);
+    Assert.IsTrue(ConfigDirectoryIsOverridden, 'the variable takes the place of the normal choice');
+    Assert.AreEqual(Dir, GetConfigDirectory);
+    Assert.IsTrue(DirectoryExists(Dir), 'the folder is created on first use');
+    Assert.AreEqual(TPath.Combine(Dir, 'keymap.json'), GetConfigFilePath('keymap.json'));
+  finally
+    SetConfigDirectoryOverride(Saved);
+    if DirectoryExists(Dir) then
+      TDirectory.Delete(Dir, True);
+  end;
 end;
 
 initialization

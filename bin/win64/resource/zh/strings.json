@@ -276,6 +276,7 @@
       "passive_cursor": "非活动面板显示光标(&V)",
       "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
       "exact_sizes": "以字节显示精确大小(&B)",
+      "ndn_footer": "NDN 风格页脚(合计和可用空间)(&W)",
       "backspace_drive_menu": "在驱动器根目录按退格键打开驱动器菜单(&D)",
       "drive_other_folder": "切换驱动器时打开另一面板的文件夹(&C)",
       "space_selects": "空格键选择文件并下移(&L)",
@@ -493,6 +494,11 @@
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "删除",
+      "background": "后台(&B)",
+      "cancel": "取消"
+    },
+    "DIALOG_JOBPROGRESSPLUGIN": {
+      "$title": "插件",
       "background": "后台(&B)",
       "cancel": "取消"
     },
@@ -805,6 +811,7 @@
     "keymap.action.FolderFrecent": "常用文件夹",
     "keymap.action.FileHistory": "文件历史",
     "keymap.action.CmdHistory": "命令历史",
+    "keymap.action.ApplyCommand": "对所选文件应用命令",
     "keymap.action.FolderHotlist": "常用文件夹",
     "keymap.action.FolderHotlistAdd": "添加到常用文件夹",
     "keymap.action.BranchView": "分支视图",
@@ -1124,6 +1131,10 @@
     "job.titleMove": "移动",
     "job.titlePack": "打包",
     "job.titleUnpack": "解压",
+    "applyCommand.title": "应用命令",
+    "applyCommand.prompt": "对所选文件执行的命令（!.! 名称，!& 全部名称）：",
+    "job.titlePlugin": "插件",
+    "job.pluginStarted": "已在后台启动：%s",
     "job.titleRecycle": "回收",
     "job.titleDelete": "删除",
     "job.titleGeneric": "任务",
@@ -1245,6 +1256,7 @@
     "job.stateAsk": "提问",
     "job.stateError": "错误",
     "job.stateBackground": "后台",
+    "job.stateStopping": "正在停止",
     "job.stateForeground": "前台",
     "stop.progress": "取消当前操作?",
     "stop.selected": "取消所选操作?",
@@ -1711,6 +1723,7 @@
     "category.Files": "文件(&F)",
     "category.Edit": "编辑(&E)",
     "category.Commands": "命令(&C)",
+    "category.Plugins": "插件(&P)",
     "category.Options": "选项(&O)",
     "category.Right": "右面板(&R)",
     "tmaCmdPalette": "查找命令(&F)...",
@@ -2173,7 +2186,8 @@
     "findCount": "查找 %d",
     "resultCount": "结果 %d",
     "selection": "已选 %s (%d)",
-    "free": "可用 %s"
+    "free": "可用 %s",
+    "free_on_drive": "%s 可用于驱动器 %s"
   },
   "col": {
     "name": "名称",

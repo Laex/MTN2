@@ -160,7 +160,6 @@
       "hotChar": "O",
       "items": [
         { "caption": "Reload keymap", "hotChar": "K", "shortcut": "Ctrl+Alt+K", "action": "tmaOptReloadKeymap", "hint": "Reads keymap.json again, so changes apply without a restart.", "aliases": "keys, hotkeys, shortcuts, reload" },
-        { "caption": "Plugins...", "hotChar": "P", "shortcut": "", "action": "tmaOptShowPlugins", "hint": "Lists the installed plugins; Space turns one on or off.", "aliases": "plugins, extensions, addons" },
         { "caption": "Color coding...", "hotChar": "C", "shortcut": "", "action": "tmaOptColorCoding", "hint": "Sets the colors of the file rows by name masks.", "aliases": "color, colour, highlight, groups" },
         { "caption": "Keymap...", "hotChar": "M", "shortcut": "", "action": "tmaOptKeymap", "hint": "Lists the commands with their keys and lets you change them.", "aliases": "keys, hotkeys, shortcuts, keybindings, bindings" },
         { "caption": "Theme...", "hotChar": "T", "shortcut": "", "action": "tmaOptTheme", "hint": "Chooses or edits the color theme.", "aliases": "theme, colors, skin, dark, light, scheme" },

@@ -30,6 +30,7 @@ type
     [Test] procedure TestDiffOfAChangedFileAgainstHead;
     [Test] procedure TestDiffOutsideAWorkTreeIsNotARepo;
     [Test] procedure TestDiffFileKeepsTheTextAndGetsADiffExtension;
+    [Test] procedure TestBlameNamesTheCommitOfEachLine;
     [Test] procedure TestMarksNameTheRowsOfTheFolder;
     [Test] procedure TestMarksOfASubfolderUseItsPrefix;
     [Test] procedure TestRenamedFileTakesOnePathOnly;
@@ -471,6 +472,39 @@ begin
       Exit;
     TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'x');
     Assert.IsTrue(ReadGitDiff(TPath.Combine(Dir, 'a.txt'), False, nil, Text) = gdNotRepo);
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestGitStatus.TestBlameNamesTheCommitOfEachLine;
+var
+  Dir, Output, Text, FileName: string;
+  Code: Cardinal;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-git-blame-' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    if (PlatformRunCaptured('git', ['init', '-q', '-b', 'main', Dir], '', 15000, nil,
+         Output, Code) <> srOk) or (Code <> 0) then
+    begin
+      Assert.Pass('git is not available');
+      Exit;
+    end;
+    FileName := TPath.Combine(Dir, 'a.txt');
+    TFile.WriteAllText(FileName, 'one' + CRLF);
+    TFile.WriteAllText(TPath.Combine(Dir, 'new.txt'), 'x' + CRLF);
+    Assert.IsTrue(ReadGitBlame(FileName, nil, Text) = gdNoChanges, 'untracked file');
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, 'add', 'a.txt'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'add');
+    Assert.IsTrue((PlatformRunCaptured('git', ['-C', Dir, '-c', 'user.name=Tester', '-c',
+      'user.email=t@example.com', 'commit', '-q', '-m', 'first'], '', 15000, nil,
+      Output, Code) = srOk) and (Code = 0), 'commit');
+    Assert.IsTrue(ReadGitBlame(FileName, nil, Text) = gdOk, 'tracked file');
+    Assert.IsTrue(Pos('Tester', Text) > 0, 'the author is named: ' + Text);
+    Assert.IsTrue(Pos('one', Text) > 0, 'the line is there: ' + Text);
+    Assert.IsTrue(ReadGitBlame(TPath.Combine(Dir, 'new.txt'), nil, Text) = gdNoChanges,
+      'a file next to tracked ones, but not tracked itself');
   finally
     TDirectory.Delete(Dir, True);
   end;

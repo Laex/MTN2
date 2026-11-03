@@ -74,6 +74,7 @@ type
     OpenFolderFrecentDialog: TKeymapProc;
     OpenFileHistoryDialog: TKeymapProc;
     OpenCmdHistoryDialog: TKeymapProc;
+    BeginApplyCommand: TKeymapProc;
     OpenCommandPalette: TKeymapProc;
     OpenFolderHotlistDialog: TKeymapProc;
     BeginFolderHotlistAdd: TKeymapProc;
@@ -650,6 +651,7 @@ begin
     kaFolderFrecent: AHost.OpenFolderFrecentDialog();
     kaFileHistory: AHost.OpenFileHistoryDialog();
     kaCmdHistory: AHost.OpenCmdHistoryDialog();
+    kaApplyCommand: AHost.BeginApplyCommand();
   else
     Exit(False);
   end;

@@ -277,6 +277,7 @@
       "passive_cursor": "Cursor im ina&ktiven Panel",
       "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
       "exact_sizes": "Genaue Größe in &Bytes anzeigen",
+      "ndn_footer": "Fußzeile im NDN-La&yout (Summen, freier Platz)",
       "backspace_drive_menu": "Rücktaste im Laufwerksstamm öffnet das Lau&fwerkmenü",
       "drive_other_folder": "Laufwerks&wechsel öffnet den Ordner des anderen Panels",
       "space_selects": "Leertaste markiert und geht na&ch unten",
@@ -494,6 +495,11 @@
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "Löschen",
+      "background": "&Hintergrund",
+      "cancel": "Abbrechen"
+    },
+    "DIALOG_JOBPROGRESSPLUGIN": {
+      "$title": "Plugin",
       "background": "&Hintergrund",
       "cancel": "Abbrechen"
     },
@@ -806,6 +812,7 @@
     "keymap.action.FolderFrecent": "Häufige Ordner",
     "keymap.action.FileHistory": "Dateiverlauf",
     "keymap.action.CmdHistory": "Befehlsverlauf",
+    "keymap.action.ApplyCommand": "Befehl auf Auswahl anwenden",
     "keymap.action.FolderHotlist": "Verzeichnis-Hotlist",
     "keymap.action.FolderHotlistAdd": "Ordner zur Hotlist hinzufügen",
     "keymap.action.BranchView": "Verzweigungsansicht",
@@ -1125,6 +1132,10 @@
     "job.titleMove": "Verschieben",
     "job.titlePack": "Packen",
     "job.titleUnpack": "Entpacken",
+    "applyCommand.title": "Befehl anwenden",
+    "applyCommand.prompt": "Befehl für die ausgewählten Dateien (!.! Name, !& alle Namen):",
+    "job.titlePlugin": "Plugin",
+    "job.pluginStarted": "Im Hintergrund gestartet: %s",
     "job.titleRecycle": "Papierkorb",
     "job.titleDelete": "Löschen",
     "job.titleGeneric": "Auftrag",
@@ -1246,6 +1257,7 @@
     "job.stateAsk": "Frage",
     "job.stateError": "Fehler",
     "job.stateBackground": "Hintergrund",
+    "job.stateStopping": "wird beendet",
     "job.stateForeground": "Vordergrund",
     "stop.progress": "Den aktuellen Vorgang abbrechen?",
     "stop.selected": "Den ausgewählten Vorgang abbrechen?",
@@ -1712,6 +1724,7 @@
     "category.Files": "&Dateien",
     "category.Edit": "&Bearbeiten",
     "category.Commands": "Be&fehle",
+    "category.Plugins": "&Plugins",
     "category.Options": "&Optionen",
     "category.Right": "&Rechts",
     "tmaCmdPalette": "Be&fehl suchen...",
@@ -2172,6 +2185,7 @@
     "resultCount": "Ergebnisse %d",
     "selection": "Ausw %s (%d)",
     "free": "Frei %s",
+    "free_on_drive": "%s frei auf Laufwerk %s",
     "File history": "Dateiverlauf",
     "Open": "Öffnen",
     "View": "Ansehen"

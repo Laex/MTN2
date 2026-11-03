@@ -118,6 +118,7 @@ begin
   Result.AltOpensMenu := False;
   Result.EditorAutoIndent := False;
   Result.ExactSelectionSize := True;
+  Result.NdnFooter := False;
   Result.SaverMinutes := 15;
   Result.SelectFolders := True;
   Result.Language := 'ru';
@@ -166,6 +167,7 @@ begin
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
     Assert.IsTrue(Loaded.ExactSelectionSize, 'exactSelectionSize saved');
+    Assert.IsTrue(not Loaded.NdnFooter, 'ndnFooter saved');
     Assert.AreEqual(15, Loaded.SaverMinutes, 'saverMinutes saved');
     Assert.IsTrue(Loaded.SelectFolders, 'selectFolders saved');
     Assert.IsTrue(Loaded.ProgramsInTerminal, 'programsInTerminal saved');
@@ -235,6 +237,9 @@ begin
     Pair := Root.RemovePair('editorAutoIndent');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('ndnFooter');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('exactSelectionSize');
     if Assigned(Pair) then
       Pair.Free;
@@ -278,6 +283,7 @@ begin
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
     Assert.IsTrue(not Sess.ExactSelectionSize, 'missing exactSelectionSize -> short sizes');
+    Assert.IsTrue(Sess.NdnFooter, 'missing ndnFooter -> NDN footer');
     Assert.AreEqual(5, Sess.SaverMinutes, 'missing saverMinutes -> 5 minutes');
     Assert.IsTrue(not Sess.SelectFolders, 'missing selectFolders -> files only');
     Assert.IsTrue(not Sess.ProgramsInTerminal, 'missing programsInTerminal -> console');

@@ -19,6 +19,8 @@ type
     [Test] procedure TestRestoreCoveringJob;
     [Test] procedure TestCancelRecycleFreesFolder;
     [Test] procedure TestQueuedPruneAfterListFreed;
+    [Test] procedure TestPluginJobIsListedAndCancelled;
+    [Test] procedure TestPluginJobOpensItsProgressDialog;
   end;
 
 implementation
@@ -35,7 +37,8 @@ uses
   uDualPanelUiTypes,
   uDualPanelJobRules,
   uDualPanelJobs,
-  uDualPanelJobList;
+  uDualPanelJobList,
+  uPluginServices;
 
 function MakeList: TPanelJobList;
 begin
@@ -258,6 +261,88 @@ begin
 end;
 
 { TTestDualPanelJobsManager }
+
+procedure TTestDualPanelJobsManager.TestPluginJobIsListedAndCancelled;
+var
+  Jobs: TPanelJobList;
+  Cancelled: Integer;
+  States: TArray<TPanelJobState>;
+  Lines: TArray<string>;
+begin
+  Cancelled := 0;
+  Jobs := MakeList;
+  try
+    PluginJobBegin('p.demo', 'scan', 'Scanning',
+      procedure
+      begin
+        Inc(Cancelled);
+      end);
+    try
+      PluginJobUpdate('p.demo', 'scan', 'Folder 3', 40);
+      States := Jobs.States;
+      Assert.AreEqual(1, Integer(Length(States)));
+      Assert.IsTrue(States[0].Kind = pjkPlugin);
+      Assert.IsTrue(Jobs.IsPluginJob(States[0].Id));
+      Assert.AreEqual('Folder 3', States[0].CurrentName);
+      Assert.AreEqual(40, JobProgressPercent(States[0]));
+      Lines := Jobs.ListLines;
+      Assert.AreEqual(1, Integer(Length(Lines)));
+      Assert.IsTrue(Pos('Folder 3', Lines[0]) > 0, 'the list line carries the status text');
+      Assert.AreEqual(States[0].Id, Jobs.JobIdAt(0));
+
+      Jobs.CancelJobByIndex(0);
+      Jobs.CancelJobByIndex(0);
+      Assert.AreEqual(1, Cancelled, 'the plugin is told once');
+      Assert.IsTrue(Jobs.States[0].Stopping, 'the job stays listed until the plugin ends it');
+    finally
+      PluginJobEnd('p.demo', 'scan');
+    end;
+    Assert.AreEqual(0, Integer(Length(Jobs.States)));
+  finally
+    Jobs.Free;
+  end;
+end;
+
+procedure TTestDualPanelJobsManager.TestPluginJobOpensItsProgressDialog;
+var
+  Jobs: TPanelJobList;
+  Cancelled: Integer;
+  State: TPanelJobState;
+  Snap: TJobProgressSnapshot;
+begin
+  Cancelled := 0;
+  Jobs := MakeList;
+  try
+    PluginJobBegin('p.demo', 'scan', 'Scanning',
+      procedure
+      begin
+        Inc(Cancelled);
+      end);
+    try
+      PluginJobUpdate('p.demo', 'scan', 'Checked 3 of 9' + #10 + 'C:\Work\Folder', 40);
+      Assert.IsFalse(Jobs.TryProgressDialogState(State), 'a new plugin job runs in the background');
+      Jobs.RestoreJobById(Jobs.States[0].Id);
+      Assert.IsTrue(Jobs.TryProgressDialogState(State), 'its chip brings the progress dialog');
+      Assert.AreEqual('DIALOG_JOBPROGRESSPLUGIN', JobProgressResourceName(State));
+      Assert.IsTrue(Jobs.Phase = pjpRunning, 'Cancel in the dialog asks first, like for a copy');
+      Snap := BuildJobProgressSnapshot(State, 60);
+      Assert.AreEqual('Scanning', Snap.Title);
+      Assert.AreEqual('Checked 3 of 9', Snap.Verb, 'first line = statistics');
+      Assert.AreEqual('C:\Work\Folder', Snap.Src, 'second line = current location');
+      Assert.IsTrue(Snap.FileBar <> '', 'the bar shows the percentage');
+
+      Jobs.BackgroundJob;
+      Assert.IsFalse(Jobs.TryProgressDialogState(State), 'Background closes the dialog');
+      Jobs.RestoreJobById(Jobs.States[0].Id);
+      Jobs.RequestCancel;
+      Assert.AreEqual(1, Cancelled);
+    finally
+      PluginJobEnd('p.demo', 'scan');
+    end;
+  finally
+    Jobs.Free;
+  end;
+end;
 
 procedure TTestDualPanelJobsManager.TestListFacade;
 begin

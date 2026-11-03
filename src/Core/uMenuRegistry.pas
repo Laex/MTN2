@@ -18,10 +18,11 @@ uses
 type
   IMenuRegistry = interface
     ['{3B2A9C1D-6E4F-4A8B-9D0C-1E3F5A7B9C2D}']
-    /// <summary>Adds/replaces (by APluginId+AItemId) an item at the end of
-    /// the category whose title matches AParentPath (e.g. "File", "Tools" -
-    /// see config/menu.json category titles). Items from the same plugin
-    /// within one category are ordered by ascending APriority.</summary>
+    /// <summary>Adds/replaces (by APluginId+AItemId) an item of the Plugins
+    /// menu. The items of one plugin form a group (groups follow the order the
+    /// plugins registered in, a line between them), ordered by ascending
+    /// APriority inside it. AParentPath is only kept for the plugin's
+    /// information dialog; the menu does not depend on it.</summary>
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
     /// <summary>Removes all items registered by APluginId.</summary>
@@ -33,6 +34,9 @@ type
     /// Register/Unregister calls take effect immediately. Call once after
     /// the controller is constructed (e.g. from uDualPanelWindow/uMainForm).</summary>
     procedure AttachController(AController: TTopMenuController);
+    /// <summary>The name shown on the line that opens a plugin's group (its
+    /// manifest name); a plugin the resolver gives '' for is shown by its id.</summary>
+    procedure SetTitleResolver(const AResolver: TFunc<string, string>);
   end;
 
 function MenuRegistry: IMenuRegistry;
@@ -56,6 +60,7 @@ type
   private
     FEntries: TList<TRegEntry>;
     FController: TTopMenuController;
+    FTitleResolver: TFunc<string, string>;
     procedure Reapply;
   public
     constructor Create;
@@ -65,6 +70,7 @@ type
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     procedure AttachController(AController: TTopMenuController);
+    procedure SetTitleResolver(const AResolver: TFunc<string, string>);
   end;
 
 constructor TMenuRegistry.Create;
@@ -82,6 +88,12 @@ end;
 procedure TMenuRegistry.AttachController(AController: TTopMenuController);
 begin
   FController := AController;
+  Reapply;
+end;
+
+procedure TMenuRegistry.SetTitleResolver(const AResolver: TFunc<string, string>);
+begin
+  FTitleResolver := AResolver;
   Reapply;
 end;
 
@@ -119,7 +131,8 @@ begin
   try
     for E in FEntries do
       if SameText(E.PluginId, APluginId) then
-        Lines.Add(T('ui.plugininfo.menu', 'Menu item: %s > %s', [E.ParentPath, E.Caption]));
+        Lines.Add(T('ui.plugininfo.menu', 'Menu item: %s > %s',
+          [StringReplace(T('menu.category.Plugins', 'Plugins'), '&', '', []), E.Caption]));
     Result := Lines.ToArray;
   finally
     Lines.Free;
@@ -149,6 +162,8 @@ begin
   for Entry in FEntries do
   begin
     Items[I].PluginId := Entry.PluginId;
+    if Assigned(FTitleResolver) then
+      Items[I].PluginTitle := FTitleResolver(Entry.PluginId);
     Items[I].ParentTitle := Entry.ParentPath;
     Items[I].Caption := Entry.Caption;
     Items[I].OnClick := Entry.OnClick;

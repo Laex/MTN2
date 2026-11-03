@@ -75,6 +75,8 @@ type
     AltOpensMenu: Boolean;
     EditorAutoIndent: Boolean;
     ExactSelectionSize: Boolean;
+    /// <summary>uDisplaySettings.NdnFooter.</summary>
+    NdnFooter: Boolean;
     /// <summary>Idle minutes before the screensaver (uSharkSaver.GSaverMinutes); 0 = off.</summary>
     SaverMinutes: Integer;
     CaretUnderline: Boolean;
@@ -634,6 +636,7 @@ begin
       Root.AddPair('altOpensMenu', TJSONBool.Create(ASession.AltOpensMenu));
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
       Root.AddPair('exactSelectionSize', TJSONBool.Create(ASession.ExactSelectionSize));
+      Root.AddPair('ndnFooter', TJSONBool.Create(ASession.NdnFooter));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
@@ -723,6 +726,7 @@ begin
   ASession.AltOpensMenu := True;
   ASession.EditorAutoIndent := True;
   ASession.ExactSelectionSize := False;
+  ASession.NdnFooter := True;
   ASession.SaverMinutes := 5;
   ASession.CaretUnderline := False;
   ASession.PassiveCursor := True;
@@ -830,6 +834,7 @@ begin
       ASession.AltOpensMenu := JsonBool(Root, 'altOpensMenu', True);
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
       ASession.ExactSelectionSize := JsonBool(Root, 'exactSelectionSize', False);
+      ASession.NdnFooter := JsonBool(Root, 'ndnFooter', True);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);

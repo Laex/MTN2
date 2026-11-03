@@ -23,7 +23,10 @@ const
   cStyledSegmentAbi = 5;
   cOpenDocumentAbi = 6;
   cRowDecorationsAbi = 6;
+  cJobsAbi = 7;
+  cDiffJobKey = 'git.diff';
   cDiffCommand = 'git.diff';
+  cBlameCommand = 'git.blame';
   cSegmentId = 'git';
   cPollMs = 1000;
 
@@ -54,6 +57,9 @@ var
   GDiffFile: string;
   GDiffNotice: string;
   GDiffBusy: Boolean;
+  /// <summary>Set on the main thread when the host job is cancelled; the diff thread polls it.</summary>
+  GDiffCancel: Integer;
+  GDiffJob: Boolean;
   /// <summary>Local folders of both panels, as the panels report them.</summary>
   GFolders: TArray<string>;
   /// <summary>Marks the worker computed (folder URI, JSON) and the folders the
@@ -233,6 +239,44 @@ begin
     Result := UTF8ToString(PAnsiChar(Buf));
 end;
 
+function HostHasJobs: Boolean;
+begin
+  Result := (GHostApi.AbiVersion >= cJobsAbi) and Assigned(GHostApi.JobBegin) and
+    Assigned(GHostApi.JobEnd);
+end;
+
+procedure OnDiffJobCancel(AUserData: Pointer); cdecl;
+begin
+  TInterlocked.Exchange(GDiffCancel, 1);
+end;
+
+{ Main thread: lists the diff in the host's job list, where it can be cancelled. }
+procedure BeginDiffJob(const ATitle: string);
+var
+  Plugin, Key, Title: UTF8String;
+begin
+  TInterlocked.Exchange(GDiffCancel, 0);
+  GDiffJob := HostHasJobs;
+  if not GDiffJob then
+    Exit;
+  Plugin := UTF8String(cPluginId);
+  Key := UTF8String(cDiffJobKey);
+  Title := UTF8String(ATitle);
+  GHostApi.JobBegin(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Title), @OnDiffJobCancel, nil);
+end;
+
+procedure EndDiffJob;
+var
+  Plugin, Key: UTF8String;
+begin
+  if not GDiffJob then
+    Exit;
+  GDiffJob := False;
+  Plugin := UTF8String(cPluginId);
+  Key := UTF8String(cDiffJobKey);
+  GHostApi.JobEnd(PAnsiChar(Plugin), PAnsiChar(Key));
+end;
+
 { Main thread: the diff is ready - open it in the built-in viewer. }
 procedure MainShowDiff(AUserData: Pointer); cdecl;
 var
@@ -240,6 +284,20 @@ var
   Uri: UTF8String;
 begin
   try
+    EndDiffJob;
+    if TInterlocked.CompareExchange(GDiffCancel, 0, 0) <> 0 then
+    begin
+      GLock.Enter;
+      try
+        GDiffFile := '';
+        GDiffNotice := '';
+        GDiffBusy := False;
+      finally
+        GLock.Leave;
+      end;
+      ShowNotice(Tr('msg.cancelled', 'Cancelled.'), 0);
+      Exit;
+    end;
     GLock.Enter;
     try
       FileName := GDiffFile;
@@ -266,20 +324,21 @@ type
   TGitDiffThread = class(TThread)
   private
     FPath, FName: string;
-    FIsDir: Boolean;
+    FIsDir, FBlame: Boolean;
     FNoRepo, FNoChanges, FError: string;
   protected
     procedure Execute; override;
   public
-    constructor Create(const APath: string; AIsDir: Boolean;
+    constructor Create(const APath: string; AIsDir, ABlame: Boolean;
       const ANoRepo, ANoChanges, AError: string);
   end;
 
-constructor TGitDiffThread.Create(const APath: string; AIsDir: Boolean;
+constructor TGitDiffThread.Create(const APath: string; AIsDir, ABlame: Boolean;
   const ANoRepo, ANoChanges, AError: string);
 begin
   FPath := APath;
   FIsDir := AIsDir;
+  FBlame := ABlame;
   FName := ExtractFileName(ExcludeTrailingPathDelimiter(APath));
   FNoRepo := ANoRepo;
   FNoChanges := ANoChanges;
@@ -296,13 +355,24 @@ begin
   FileName := '';
   Notice := '';
   try
-    R := ReadGitDiff(FPath, FIsDir,
-      function: Boolean
-      begin
-        Result := Terminated;
-      end, Text);
+    if FBlame then
+      R := ReadGitBlame(FPath,
+        function: Boolean
+        begin
+          Result := Terminated or (TInterlocked.CompareExchange(GDiffCancel, 0, 0) <> 0);
+        end, Text)
+    else
+      R := ReadGitDiff(FPath, FIsDir,
+        function: Boolean
+        begin
+          Result := Terminated or (TInterlocked.CompareExchange(GDiffCancel, 0, 0) <> 0);
+        end, Text);
     case R of
-      gdOk: FileName := WriteDiffFile(FName, Text);
+      gdOk:
+        if FBlame then
+          FileName := WriteBlameFile(FName, Text)
+        else
+          FileName := WriteDiffFile(FName, Text);
       gdNoChanges: Notice := FNoChanges;
       gdNotRepo: Notice := FNoRepo;
     else
@@ -322,8 +392,9 @@ begin
     GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainShowDiff, nil);
 end;
 
-{ The "Git diff" command: the change of the row under the cursor, in the viewer. }
-procedure CmdDiff(AUserData: Pointer); cdecl;
+{ The change (or, with ABlame, the line authors) of the row under the cursor, in the
+  viewer. }
+procedure StartView(ABlame: Boolean);
 var
   Uri: string;
   IsDir: Boolean;
@@ -334,7 +405,8 @@ begin
       ShowNotice(Tr('msg.needNewer', 'This needs a newer MTN2.'), 1);
       Exit;
     end;
-    if not ActivePanelCursor(ReadPanelInfo, Uri, IsDir) or not Uri.StartsWith('file:', True) then
+    if not ActivePanelCursor(ReadPanelInfo, Uri, IsDir) or not Uri.StartsWith('file:', True) or
+       (ABlame and IsDir) then
     begin
       ShowNotice(Tr('msg.noFile', 'Put the cursor on a file or folder of a local git folder.'), 0);
       Exit;
@@ -347,12 +419,36 @@ begin
     finally
       GLock.Leave;
     end;
-    TGitDiffThread.Create(FileUriToPath(Uri), IsDir,
-      Tr('msg.notRepo', 'This folder is not in a git working tree.'),
-      Tr('msg.noChanges', 'No changes against HEAD.'),
-      Tr('msg.error', 'git did not answer.'));
+    if ABlame then
+    begin
+      BeginDiffJob(Tr('msg.blameJob', 'Git blame'));
+      TGitDiffThread.Create(FileUriToPath(Uri), False, True,
+        Tr('msg.notRepo', 'This folder is not in a git working tree.'),
+        Tr('msg.noBlame', 'Git has no history for this file.'),
+        Tr('msg.error', 'git did not answer.'));
+    end
+    else
+    begin
+      BeginDiffJob(Tr('msg.diffJob', 'Git diff'));
+      TGitDiffThread.Create(FileUriToPath(Uri), IsDir, False,
+        Tr('msg.notRepo', 'This folder is not in a git working tree.'),
+        Tr('msg.noChanges', 'No changes against HEAD.'),
+        Tr('msg.error', 'git did not answer.'));
+    end;
   except
   end;
+end;
+
+{ The "Git diff" command. }
+procedure CmdDiff(AUserData: Pointer); cdecl;
+begin
+  StartView(False);
+end;
+
+{ The "Git blame" command. }
+procedure CmdBlame(AUserData: Pointer); cdecl;
+begin
+  StartView(True);
 end;
 
 { Main thread: remembers the folder of the active panel. A screen without panels
@@ -641,8 +737,12 @@ begin
     GHostApi.RegisterCommand(PAnsiChar(Id), cDiffCommand, @CmdDiff, nil);
     GHostApi.RegisterKeyBinding(PAnsiChar(Id), cDiffCommand, 'Ctrl+Shift+D');
     if Assigned(GHostApi.RegisterMenuItem) then
-      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Commands', 'git_diff',
+      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', 'git_diff',
         PAnsiChar(UTF8String(Tr('ui.menu.diff', 'Git diff of the file'))), @CmdDiff, nil, 70);
+    GHostApi.RegisterCommand(PAnsiChar(Id), cBlameCommand, @CmdBlame, nil);
+    if Assigned(GHostApi.RegisterMenuItem) then
+      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', 'git_blame',
+        PAnsiChar(UTF8String(Tr('ui.menu.blame', 'Git blame of the file'))), @CmdBlame, nil, 71);
   end;
   LoadLabels;
   ReadActiveUri;

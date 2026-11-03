@@ -81,7 +81,7 @@ implementation
 uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
-  uConfigLocation, uPluginSettings, uPlatformProcess;
+  uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -128,6 +128,16 @@ var
   Dir: string;
 begin
   GPluginsDir := ExcludeTrailingPathDelimiter(APluginsDir);
+  MenuRegistry.SetTitleResolver(
+    function(APluginId: string): string
+    var
+      Manifest: TPluginManifest;
+    begin
+      Result := '';
+      if (GPluginsDir <> '') and
+         TryReadPluginManifest(TPath.Combine(GPluginsDir, APluginId), Manifest) then
+        Result := Manifest.Name;
+    end);
   // Plugins the user trusts to replace built-in handlers; must be set
   // before cataloguing, which loads those plugins right away.
   TryReadOverrideAllowList(GPluginsDir, Allowed);

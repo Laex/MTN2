@@ -278,6 +278,7 @@
       "passive_cursor": "Cursor in the inacti&ve panel",
       "editor_autoindent": "Editor a&uto-indent on Enter",
       "exact_sizes": "Show exact size in &bytes",
+      "ndn_footer": "NDN footer: t&wo extra lines (totals, free space)",
       "backspace_drive_menu": "Backspace in a drive root opens the &drive menu",
       "drive_other_folder": "Drive &change opens the other panel's folder",
       "space_selects": "Space se&lects files, then moves down",
@@ -495,6 +496,11 @@
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "Delete",
+      "background": "&Background",
+      "cancel": "Cancel"
+    },
+    "DIALOG_JOBPROGRESSPLUGIN": {
+      "$title": "Plugin",
       "background": "&Background",
       "cancel": "Cancel"
     },
@@ -807,6 +813,7 @@
     "keymap.action.FolderFrecent": "Frequent folders",
     "keymap.action.FileHistory": "File history",
     "keymap.action.CmdHistory": "Command history",
+    "keymap.action.ApplyCommand": "Apply command to selected files",
     "keymap.action.FolderHotlist": "Folder hotlist",
     "keymap.action.FolderHotlistAdd": "Add folder to hotlist",
     "keymap.action.BranchView": "Branch view",
@@ -1127,6 +1134,10 @@
     "job.titleMove": "Move",
     "job.titlePack": "Pack",
     "job.titleUnpack": "Unpack",
+    "applyCommand.title": "Apply command",
+    "applyCommand.prompt": "Command for the selected files (!.! name, !& all names):",
+    "job.titlePlugin": "Plugin",
+    "job.pluginStarted": "Started in the background: %s",
     "job.titleRecycle": "Recycle",
     "job.titleDelete": "Delete",
     "job.titleGeneric": "Job",
@@ -1256,6 +1267,7 @@
     "job.stateAsk": "question",
     "job.stateError": "error",
     "job.stateBackground": "background",
+    "job.stateStopping": "stopping",
     "job.stateForeground": "foreground",
     "stop.progress": "Cancel the current operation?",
     "stop.selected": "Cancel the selected operation?",
@@ -1731,6 +1743,7 @@
     "category.Files": "Files",
     "category.Edit": "Edit",
     "category.Commands": "Commands",
+    "category.Plugins": "Plugins",
     "category.Options": "Options",
     "category.Right": "Right",
     "tmaCmdPalette": "Find command...",
@@ -2055,6 +2068,7 @@
     "resultCount": "Results %d",
     "selection": "Sel %s (%d)",
     "free": "Free %s",
+    "free_on_drive": "%s free on drive %s",
     "File history": "File history",
     "Open": "Open",
     "View": "View"

@@ -105,6 +105,12 @@ begin
     'keymap.json name "ExternalView"');
   Assert.IsTrue(TryKeymapActionByName('ExternalEdit', Act) and (Act = kaExternalEdit),
     'keymap.json name "ExternalEdit"');
+  Assert.IsTrue(TryKeymapActionByName('ApplyCommand', Act) and (Act = kaApplyCommand),
+    'keymap.json name "ApplyCommand"');
+  Assert.IsTrue(MatchAction(Profile, Ord('G'), [ssCtrl]) = kaApplyCommand,
+    'Ctrl+G should match kaApplyCommand');
+  Assert.IsTrue(MatchAction(LoadDefaultKeymapProfile, Ord('G'), [ssCtrl]) = kaApplyCommand,
+    'resource: Ctrl+G = ApplyCommand');
   TestResourceMatchesCodeDefaults;
   Act := MatchAction(Profile, Ord('D'), [ssCtrl, ssShift]);
   Assert.IsTrue(Act = kaWorkspaceLibrary, 'Ctrl+Shift+D should match kaWorkspaceLibrary');

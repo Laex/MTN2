@@ -328,6 +328,7 @@ begin
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
+  DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
   DialogSetListItems(Decl, 'saver', DisplaySaverItems, IndexOfDisplaySaver(Cur.SaverMinutes));
   // Without the screensaver subsystem the row stays, greyed out, showing Off.
   if not SharksBuiltIn then
@@ -716,6 +717,7 @@ begin
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
+    Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
     Disp.SaverMinutes := DisplaySaverMinutesAt(FDialog.GetListSelectedIndex('saver'));
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then

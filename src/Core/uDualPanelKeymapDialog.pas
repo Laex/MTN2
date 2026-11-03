@@ -144,6 +144,7 @@ const
     'Frequent folders',
     'File history',
     'Command history',
+    'Apply command to selected files',
     'Folder hotlist',
     'Add folder to hotlist',
     'Branch view',

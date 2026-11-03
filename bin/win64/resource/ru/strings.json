@@ -275,6 +275,7 @@
       "passive_cursor": "Курсор в &неактивной панели",
       "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "exact_sizes": "&Точный размер в байтах",
+      "ndn_footer": "Подвал как в &NDN (итоги и свободное место)",
       "backspace_drive_menu": "Backspace в корне диска открывает &меню дисков",
       "drive_other_folder": "Смена диска &открывает папку другой панели",
       "space_selects": "Пробел выде&ляет файл и идёт вниз",
@@ -492,6 +493,11 @@
     },
     "DIALOG_JOBPROGRESSDELETE": {
       "$title": "Удаление",
+      "background": "&В фоне",
+      "cancel": "Отмена"
+    },
+    "DIALOG_JOBPROGRESSPLUGIN": {
+      "$title": "Плагин",
       "background": "&В фоне",
       "cancel": "Отмена"
     },
@@ -804,6 +810,7 @@
     "keymap.action.FolderFrecent": "Частые папки",
     "keymap.action.FileHistory": "История файлов",
     "keymap.action.CmdHistory": "История команд",
+    "keymap.action.ApplyCommand": "Применить команду к выделенным",
     "keymap.action.FolderHotlist": "Избранные папки",
     "keymap.action.FolderHotlistAdd": "Добавить папку в избранное",
     "keymap.action.BranchView": "Все файлы ветки",
@@ -1124,6 +1131,10 @@
     "job.titleMove": "Перемещение",
     "job.titlePack": "Упаковка",
     "job.titleUnpack": "Распаковка",
+    "applyCommand.title": "Применить команду",
+    "applyCommand.prompt": "Команда для выделенных файлов (!.! имя, !& все имена):",
+    "job.titlePlugin": "Плагин",
+    "job.pluginStarted": "Запущено в фоне: %s",
     "job.titleRecycle": "В корзину",
     "job.titleDelete": "Удаление",
     "job.titleGeneric": "Задача",
@@ -1253,6 +1264,7 @@
     "job.stateAsk": "вопрос",
     "job.stateError": "ошибка",
     "job.stateBackground": "в фоне",
+    "job.stateStopping": "останавливается",
     "job.stateForeground": "на экране",
     "stop.progress": "Прервать текущую операцию?",
     "stop.selected": "Прервать выбранную операцию?",
@@ -1728,6 +1740,7 @@
     "category.Files": "&Файлы",
     "category.Edit": "&Правка",
     "category.Commands": "&Команды",
+    "category.Plugins": "&Плагины",
     "category.Options": "&Настройки",
     "category.Right": "&Справа",
     "tmaCmdPalette": "Найти &команду...",
@@ -2340,7 +2353,8 @@
     "findCount": "Найдено %d",
     "resultCount": "Результатов: %d",
     "selection": "Выделено %s (%d)",
-    "free": "Свободно %s"
+    "free": "Свободно %s",
+    "free_on_drive": "Свободно %s на диске %s"
   },
   "col": {
     "name": "Имя",

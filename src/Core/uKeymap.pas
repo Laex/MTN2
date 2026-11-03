@@ -52,6 +52,7 @@ type
     kaFolderFrecent,
     kaFileHistory, // Alt+F11 -- files opened with F3/F4
     kaCmdHistory,
+    kaApplyCommand, // Ctrl+G -- ask for a command and run it on the selected files
     kaFolderHotlist,
     kaFolderHotlistAdd,
     kaBranchView,
@@ -615,6 +616,7 @@ begin
   AddBinding(Result, kaFolderFrecent, KeyBinding(vkF12, True, False, True));
   AddBinding(Result, kaFileHistory, KeyBinding(vkF11, False, True, False));
   AddBinding(Result, kaCmdHistory, KeyBinding(vkF8, False, True, False));
+  AddBinding(Result, kaApplyCommand, KeyBinding(Ord('G'), False, False, True));
   AddBinding(Result, kaFolderHotlist, KeyBinding(Ord('D'), False, False, True));
   AddBinding(Result, kaFolderHotlistAdd, KeyBinding(Ord('D'), False, True, True));
   AddBinding(Result, kaWorkspaceLibrary, KeyBinding(Ord('D'), True, False, True));
@@ -969,6 +971,7 @@ const
     'FolderFrecent',         // kaFolderFrecent
     'FileHistory',           // kaFileHistory
     'CmdHistory',            // kaCmdHistory
+    'ApplyCommand',          // kaApplyCommand
     'FolderHotlist',         // kaFolderHotlist
     'FolderHotlistAdd',      // kaFolderHotlistAdd
     'BranchView',            // kaBranchView

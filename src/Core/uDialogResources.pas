@@ -86,6 +86,7 @@ const
   cResDialogJobList = 'DIALOG_JOBLIST';
   cResDialogJobProgress = 'DIALOG_JOBPROGRESS';
   cResDialogJobProgressDelete = 'DIALOG_JOBPROGRESSDELETE';
+  cResDialogJobProgressPlugin = 'DIALOG_JOBPROGRESSPLUGIN';
   cResDialogJobProgressError = 'DIALOG_JOBPROGRESSERROR';
   cResDialogStopConfirm = 'DIALOG_STOPCONFIRM';
 

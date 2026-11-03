@@ -149,6 +149,9 @@ type
     /// <summary>Alt+F7 content-search hit (find:// rows only); 0/'' elsewhere.</summary>
     MatchLine: Integer;
     MatchSnippet: string;
+    /// <summary>Folder of a file listed in a flat collection (the Temporary panel), as a
+    /// local path; '' elsewhere. The list shows it next to the name.</summary>
+    DirText: string;
     /// <summary>Filled by the panel model while it sorts by priority; 0 otherwise.</summary>
     SortPriority: Integer;
   end;
@@ -674,8 +677,9 @@ var
   Attr: TVfsEntry;
   ShowParent: Boolean;
 begin
+  // The Temporary panel is flat; it shows ".." only to return to the place it was opened from.
   ShowParent := (not IsFileUriDriveRoot(ADirURI) or (AWorkspaceReturnUri <> '')) and
-    not IsTmpPanelUri(ADirURI);
+    ((AWorkspaceReturnUri <> '') or not IsTmpPanelUri(ADirURI));
   if ShowParent then
   begin
     ParentURI := ParentRowUri(ADirURI, AWorkspaceReturnUri);
@@ -722,6 +726,9 @@ begin
         SizeText := FormatSizeShort(Attr.Size);
     end;
     Result[Base + I] := MakePanelRowFromEntry(Attr, NameText, SizeText, ChildURI);
+    if IsTmpPanelUri(ADirURI) and SameText(Copy(ChildURI, 1, 5), 'file:') then
+      Result[Base + I].DirText := ExcludeTrailingPathDelimiter(
+        ExtractFilePath(ExcludeTrailingPathDelimiter(FileUriToPath(ChildURI))));
   end;
 end;
 
