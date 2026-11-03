@@ -1,10 +1,35 @@
 ## Hauptmenü (F9)
 
-**F9** oder **Alt** öffnet das Menü. Pfeile bewegen, **Enter** führt aus, **Esc** schließt. Der hervorgehobene (Akzent-)Buchstabe eines Eintrags führt ihn sofort aus – in jeder Tastaturbelegung: bei offenem Untermenü wird der Buchstabe unter dessen Einträgen gesucht, sonst unter den Kategorien. Die Tasten der Einträge stehen rechts neben den Einträgen. Im aktuellen Modus nicht verfügbare Einträge sind grau. Passt ein Menü nicht ins Fenster, wird es gescrollt: am rechten Rand zeigt eine Leiste mit ▲ ▼, dass mehr Einträge folgen, der gewählte Eintrag bleibt sichtbar, das Mausrad bewegt die Auswahl.
+**F9** oder **Alt** öffnet das Menü.
+- Pfeile bewegen, **Enter** führt aus, **Esc** schließt.
+- Der hervorgehobene (Akzent-)Buchstabe eines Eintrags führt ihn sofort aus – in jeder Tastaturbelegung: bei offenem Untermenü wird der Buchstabe unter dessen Einträgen gesucht, sonst unter den Kategorien.
+- Die Tasten der Einträge stehen rechts neben den Einträgen. Im aktuellen Modus nicht verfügbare Einträge sind grau.
+- Passt ein Menü nicht ins Fenster, wird es gescrollt: am rechten Rand zeigt eine Leiste mit ▲ ▼, dass mehr Einträge folgen, der gewählte Eintrag bleibt sichtbar, das Mausrad bewegt die Auswahl.
 
-**Umschalt+F9** (oder „Befehl suchen...“ im Menü ≡) öffnet die Befehlspalette, eine Suche in den Menüeinträgen. Beim Tippen wird die Liste enger: gesucht wird in den Wörtern der Bezeichnung, der Kategorie und gängigen Synonymen („shell“ findet „Hintergrundkonsole...“; mehrere Wörter müssen alle passen). Die Suche steht im Feld über der Liste; ein Wort darf `?` (ein Zeichen) und `*` (beliebig viele Zeichen) enthalten. Eigene Suchwörter stehen in `aliases.json` im Einstellungsordner: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – Name des Eintrags und die Wörter, durch Komma getrennt oder als Liste. Die Datei wird bei jedem Öffnen der Palette neu gelesen. Pfeile wählen, **Enter** führt aus, **Rücktaste** löscht, **Strg+K** öffnet die Tastenliste beim gewählten Befehl, um seine Taste zu ändern; nach dem Schließen der Liste öffnet sich die Palette wieder mit derselben Suche und demselben Befehl, die neue Taste ist sichtbar (ein Befehl ohne eigene Taste meldet das), **Esc** schließt. Aufgeführt sind nur jetzt verfügbare Einträge; zuletzt ausgeführte stehen oben. Die Taste lässt sich in der Tastenbelegung ändern (Befehl `CommandPalette`). Befehle ohne Menüpunkt (Ctrl+Enter, Alt+Shift+Enter und die übrigen Panel-Tasten) stehen mit ihren Tastenkombinationen in der Kategorie „Tasten“. Die Suche erfasst auch die Spalte der Tastenkombinationen: „F9“ findet die Befehle, deren Kombination F9 enthält, „shift“ alle Kombinationen mit Shift, „ctrl+f“ die Kombinationen mit Ctrl+F.
+**Umschalt+F9** (oder „Befehl suchen...“ im Menü ≡) öffnet die Befehlspalette, eine Suche in den Menüeinträgen.
 
-**Tastenhinweise.** Wechselt das Programm in einen neuen Zustand, zeigt es einmalig eine kurze Meldung mit den nützlichen Tasten: nach einer Suche, in einem Archiv, in einem temporären Panel, in einem Arbeitsbereich, in einem SFTP- oder Plugin-Ordner, im Papierkorb, bei markierten Dateien, in der Schnellansicht und im Infofenster, bei einem zweiten Fenster-Tab oder Arbeitsbereich, bei Hintergrundjobs, in der Konsole und im Terminal, im Viewer, in der Hex-Ansicht, in Markdown und im Editor, bei geöffnetem Menü, beim Eingeben eines Befehls und nach dem Start eines Konsolenprogramms mit Enter. Weitere Hinweise nennen selten genutzte Tasten: bei mehreren markierten Dateien, bei einem Archiv unter dem Cursor, in einem langen Ordner, nach vielen Ordnerwechseln, bei gleichnamigen Ordnern in beiden Panels und bei markierten Zeilen im Editor. Die Tasten stammen aus der aktuellen Tastenbelegung. Bereits gezeigte Hinweise werden zwischen den Starts gespeichert. Unter **Optionen → Oberfläche** schaltet das Kontrollkästchen „Tastenhinweise anzeigen“ sie ab, die Schaltfläche „Hinweise zurücksetzen“ macht sie wieder neu; bei ausgeschalteten Popup-Hinweisen erscheinen auch sie nicht.
+**Suche**
+- Beim Tippen wird die Liste enger: gesucht wird in den Wörtern der Bezeichnung, der Kategorie und gängigen Synonymen („shell“ findet „Hintergrundkonsole...“; mehrere Wörter müssen alle passen).
+- Die Suche steht im Feld über der Liste; ein Wort darf `?` (ein Zeichen) und `*` (beliebig viele Zeichen) enthalten.
+- Die Suche erfasst auch die Spalte der Tastenkombinationen: „F9“ findet die Befehle, deren Kombination F9 enthält, „shift“ alle Kombinationen mit Shift, „ctrl+f“ die Kombinationen mit Ctrl+F.
+- Eigene Suchwörter stehen in `aliases.json` im Einstellungsordner: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – Name des Eintrags und die Wörter, durch Komma getrennt oder als Liste. Die Datei wird bei jedem Öffnen der Palette neu gelesen.
+
+**Tasten**
+- Pfeile wählen, **Enter** führt aus, **Rücktaste** löscht, **Esc** schließt.
+- **Strg+K** öffnet die Tastenliste beim gewählten Befehl, um seine Taste zu ändern; nach dem Schließen der Liste öffnet sich die Palette wieder mit derselben Suche und demselben Befehl, die neue Taste ist sichtbar (ein Befehl ohne eigene Taste meldet das).
+- Die Taste der Palette selbst lässt sich in der Tastenbelegung ändern (Befehl `CommandPalette`).
+
+**Was aufgeführt wird.** Nur jetzt verfügbare Einträge; zuletzt ausgeführte stehen oben. Befehle ohne Menüpunkt (Ctrl+Enter, Alt+Shift+Enter und die übrigen Panel-Tasten) stehen mit ihren Tastenkombinationen in der Kategorie „Tasten“.
+
+**Tastenhinweise.** Wechselt das Programm in einen neuen Zustand, zeigt es einmalig eine kurze Meldung mit den nützlichen Tasten.
+
+**Wann sie erscheinen**
+- Nach einer Suche, in einem Archiv, in einem temporären Panel, in einem Arbeitsbereich, in einem SFTP- oder Plugin-Ordner, im Papierkorb.
+- Bei markierten Dateien, in der Schnellansicht und im Infofenster, bei einem zweiten Fenster-Tab oder Arbeitsbereich, bei Hintergrundjobs.
+- In der Konsole und im Terminal, im Viewer, in der Hex-Ansicht, in Markdown und im Editor, bei geöffnetem Menü, beim Eingeben eines Befehls und nach dem Start eines Konsolenprogramms mit Enter.
+- Weitere Hinweise nennen selten genutzte Tasten: bei mehreren markierten Dateien, bei einem Archiv unter dem Cursor, in einem langen Ordner, nach vielen Ordnerwechseln, bei gleichnamigen Ordnern in beiden Panels und bei markierten Zeilen im Editor.
+
+**So funktionieren sie.** Die Tasten stammen aus der aktuellen Tastenbelegung. Bereits gezeigte Hinweise werden zwischen den Starts gespeichert. Unter **Optionen → Oberfläche** schaltet das Kontrollkästchen „Tastenhinweise anzeigen“ sie ab, die Schaltfläche „Hinweise zurücksetzen“ macht sie wieder neu; bei ausgeschalteten Popup-Hinweisen erscheinen auch sie nicht.
 
 ---
 

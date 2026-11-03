@@ -1,25 +1,112 @@
 ## Settings
 
 The **Options** menu (F9):
-<!--theme-->- **Theme...** – pick the appearance; changes at once. **Customize...** opens the editor of the selected theme: sections (colors of windows, dialogs, buttons, cursor, panels and more, Markdown, text styles, glyphs, frames) with their values; **Enter** on a row edits the value (a color is typed as `#RRGGBB` or picked with **F9** / the **[...]** button), **Inherit** returns the value of the base theme; rows with an asterisk are set by the theme itself. A color is a `#RRGGBB` value, a reference to another role of the theme (`@cursor.bg`) or a name from the palette. The **Bases** section lists the themes this one builds on (several separated by `;`, later ones override earlier ones). Changes show at once. **Save** writes the theme to a file. Built-in themes are read-only: a copy of a built-in theme is saved under a new name (a file in the `themes` folder of the settings folder), your own theme is updated in place by **Save**, and **Save as...** writes it under another name. **New...** makes a theme from scratch ("blank") or from any other one. **Delete** removes your own theme. If the theme of the saved session is not found, the program says so and uses the classic Far theme.
-<!--display-->- **Font / Display...** – font, size, zoom, cursor shape and blinking, file icons in the panel, **line spacing** (see below), window and button **shadows** (Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them) and how **marked files** look (“Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well); everything applies without a restart.
-<!--interface-->- **User interface...** – the **interface language** (English / Русский / Deutsch / 简体中文), pop-up notifications, the **window title bar, menu bar, F-key bar and status line** (a hidden row goes to the panels; with the menu bar hidden, F9 shows it over the top row while the menu is open; with the window title bar hidden the **[_] [□] [x]** buttons move to the right end of the menu bar, or of the tab bar when that is hidden too, the window title is shown in the free space of the tab bar, and the window is dragged by the free parts of the menu and tab bars and resized by its edges; a right click on a free spot of the tab bar opens the top menu, like F9), **dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel and the **editor auto-indent on Enter** (can be switched off); everything applies without a restart. The **“Select all also folders”** box in the same dialog makes Shift+Gray + / Shift+Gray − and select by extension take folders too (files only by default, as in Far). The **“Show exact size in bytes”** box shows the sizes in the panel footer (the totals of the folder or of the selection, the size of the item under the cursor) and in the status line as the exact number of bytes with the system digit grouping (`1,234,567`) instead of `1.2 M`; when the number does not fit, the short form stays. The Size column of the file list does not change. The **“Vim keys on the panel”** box (off by default) lets **j / k** move the cursor, **h** go to the parent folder, **l** open the item, **g / G** jump to the first / last row, **/** start the quick search and **:** move to the command line, as long as the command line is empty.
+<!--theme-->- **Theme...** – pick the appearance; changes at once.
+
+**Customize...** opens the editor of the selected theme: sections (colors of windows, dialogs, buttons, cursor, panels and more, Markdown, text styles, glyphs, frames) with their values.
+- **Enter** on a row edits the value: a color is typed as `#RRGGBB` or picked with **F9** / the **[...]** button.
+- **Inherit** returns the value of the base theme; rows with an asterisk are set by the theme itself.
+- A color is a `#RRGGBB` value, a reference to another role of the theme (`@cursor.bg`) or a name from the palette.
+- The **Bases** section lists the themes this one builds on (several separated by `;`, later ones override earlier ones).
+- Changes show at once.
+
+**Saving**
+- **Save** writes the theme to a file. Built-in themes are read-only: a copy of a built-in theme is saved under a new name (a file in the `themes` folder of the settings folder), your own theme is updated in place by **Save**.
+- **Save as...** writes the theme under another name.
+- **New...** makes a theme from scratch ("blank") or from any other one.
+- **Delete** removes your own theme.
+
+If the theme of the saved session is not found, the program says so and uses the classic Far theme.
+<!--display-->- **Font / Display...** – font, size, zoom, cursor shape and blinking, file icons in the panel, **line spacing** (see below), **shadows** and how **marked files** look; everything applies without a restart.
+
+**Shadows and marked files**
+- Window and button **shadows**: Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them.
+- **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
+<!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
+
+**What it sets**
+- The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
+- The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
+- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel and the **editor auto-indent on Enter** (can be switched off).
+
+**Hidden window rows**
+- With the menu bar hidden, F9 shows it over the top row while the menu is open.
+- With the window title bar hidden the **[_] [□] [x]** buttons move to the right end of the menu bar, or of the tab bar when that is hidden too.
+- The window title is shown in the free space of the tab bar; the window is dragged by the free parts of the menu and tab bars and resized by its edges.
+- A right click on a free spot of the tab bar opens the top menu, like F9.
+
+**Selection and size boxes**
+- **“Select all also folders”** makes Shift+Gray + / Shift+Gray − and select by extension take folders too (files only by default, as in Far).
+- **“Show exact size in bytes”** shows the sizes in the panel footer (the totals of the folder or of the selection, the size of the item under the cursor) and in the status line as the exact number of bytes with the system digit grouping (`1,234,567`) instead of `1.2 M`; when the number does not fit, the short form stays. The Size column of the file list does not change.
+
+**Vim keys on the panel.** The **“Vim keys on the panel”** box (off by default) enables these keys on the panel while the command line is empty:
+- **j / k** – cursor down / up;
+- **h** – go to the parent folder; **l** – open the item;
+- **g / G** – jump to the first / last row;
+- **/** – start the quick search; **:** – move to the command line.
 <!--columns-->- **Columns...** – the columns of the “Custom” mode.
 <!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
 <!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
-<!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file: the session and display options, keys, user menu, associations, hotlist, SSH connection list, workspaces, own themes; histories are not included. The file name field is an input with a ↓ drop-down of the files used before; by default it is `mtn2-settings.zip` in the folder of the active panel. Before an import the replaced files are saved as `settings-backup.zip` in the settings folder. The new settings take effect after MTN2 restarts.
-<!--location-->- **Settings location...** – chooses where the settings are kept: the user folder (standard mode) or next to the program (portable mode, the `portable.dat` file). The dialog shows both places, how many files move and what stands in the way: no write access to the program folder, a program folder shared by all users, files at the target that are replaced (they stay as `*.before-switch`). The session, histories, keys, plugin settings and your own themes move together and the old copies are deleted; the change applies at once, without a restart. If anything fails, the old place stays in force. The languages and shipped themes in `resource\` always stay with the program.
+<!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.
+
+**What is included.** The session and display options, keys, user menu, associations, hotlist, SSH connection list, workspaces, own themes; histories are not included.
+
+**How it works**
+- The file name field is an input with a ↓ drop-down of the files used before; by default it is `mtn2-settings.zip` in the folder of the active panel.
+- Before an import the replaced files are saved as `settings-backup.zip` in the settings folder.
+- The new settings take effect after MTN2 restarts.
+<!--location-->- **Settings location...** – chooses where the settings are kept: the user folder (standard mode) or next to the program (portable mode, the `portable.dat` file).
+
+**What the dialog shows.** Both places, how many files move and what stands in the way: no write access to the program folder, a program folder shared by all users, files at the target that are replaced (they stay as `*.before-switch`).
+
+**Moving**
+- The session, histories, keys, plugin settings and your own themes move together and the old copies are deleted.
+- The change applies at once, without a restart. If anything fails, the old place stays in force.
+- The languages and shipped themes in `resource\` always stay with the program.
 <!--color-coding-->- **Color coding...** – row colors by name masks; they are stored in the theme, so an edit made with a built-in theme is saved as a new theme (the program asks for its name). **F9** on a color field, or a click on the **[...]** button at its right end (it shows the field's color), opens the color picker (see below).
 - **Keymap...** – view and change keys.
-<!--plugins-->- **Plugins...** – installed plugins. On the first run every plugin is switched off. **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it. **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`). **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start). **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
+<!--plugins-->- **Plugins...** – installed plugins. On the first run every plugin is switched off.
+
+**Controls**
+- **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it.
+- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`).
+- **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start).
+- **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
 <!--external-tools-->- **External viewer/editor...** – the Alt+F3 / Alt+F4 commands; `%1` is the file path (without `%1` the path is added at the end), e.g. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
 - **Environment profiles...** – variables laid over the environment of new shells; see [Environment profiles](environment.md).
-<!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** (the list: Theme, Plain, Bold, Italic, Bold italic, Underline, Strikethrough and combinations) for every element – headings, bold, italic, strikethrough, code, quote, list markers, rules, links, tables. An empty field or **Theme** in the style list keeps the theme's own; **Plain** turns off the style the element has (for example the underline of links); **F9** on a field or a click on its **[...]** button opens the color picker. The **Text / document** row sets the text color and the background of the whole Markdown view (only for Markdown, other files keep the theme colors); elements without a background of their own follow it. **Import from Obsidian...** reads the colors from an Obsidian theme (`theme.css`, for example `<vault>\.obsidian\themes\<theme>\theme.css`); the **Dark** or **Light** palette is picked in the import dialog, and the imported colors and text styles (weight, italic and underline the theme sets for headings, bold, links, quotes and table headers) replace the fields and lists (nothing is saved until OK). **Reset** empties all fields and sets every style to **Theme**, so the theme's own colors and styles apply. The sample next to a row is drawn with its colors and style. Stored in the active theme: with a built-in theme the program asks for the name of a new theme, your own theme is updated in place; the fields hold only what the theme sets itself (the rest is inherited).
+<!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** for every element.
+
+**Elements and styles**
+- Elements: headings, bold, italic, strikethrough, code, quote, list markers, rules, links, tables.
+- The style comes from a list: Theme, Plain, Bold, Italic, Bold italic, Underline, Strikethrough and combinations.
+- An empty field or **Theme** in the style list keeps the theme's own; **Plain** turns off the style the element has (for example the underline of links).
+- **F9** on a field or a click on its **[...]** button opens the color picker.
+- The **Text / document** row sets the text color and the background of the whole Markdown view (only for Markdown, other files keep the theme colors); elements without a background of their own follow it.
+- The sample next to a row is drawn with its colors and style.
+
+**Import from Obsidian...** reads the colors from an Obsidian theme (`theme.css`, for example `<vault>\.obsidian\themes\<theme>\theme.css`).
+- The **Dark** or **Light** palette is picked in the import dialog.
+- The imported colors and text styles (weight, italic and underline the theme sets for headings, bold, links, quotes and table headers) replace the fields and lists (nothing is saved until OK).
+
+**Reset** empties all fields and sets every style to **Theme**, so the theme's own colors and styles apply.
+
+**Where they are stored.** In the active theme: with a built-in theme the program asks for the name of a new theme, your own theme is updated in place; the fields hold only what the theme sets itself (the rest is inherited).
 - **Zoom**: Ctrl+mouse wheel, **Ctrl+0** – reset.
 
 <!--color-picker-->### Color picker
 
-The picker has a grid of swatches (hues across, light to dark down; the bottom row is gray), sliders **H, S, L** (hue, saturation, lightness) and **R, G, B**, and a **Hex** field next to two swatches: the color **was** when the picker opened and the color **now**. **Up / Down** switch between the grid, the sliders and the hex field; **Left / Right** move along the grid or change a slider by 1 (**Shift** – by 10, **PgUp / PgDn** – by 10, **Home / End** – to the ends). The grid uses the current saturation, so the **S** slider makes it paler or more vivid. A mouse click picks a swatch or sets a slider; a click on the **was** swatch returns to the original color. **Use** takes the color, **Theme color** clears the field so the theme's color applies again.
+The picker has:
+- a grid of swatches (hues across, light to dark down; the bottom row is gray);
+- sliders **H, S, L** (hue, saturation, lightness) and **R, G, B**;
+- a **Hex** field next to two swatches: the color **was** when the picker opened and the color **now**.
+
+**Keys**
+- **Up / Down** switch between the grid, the sliders and the hex field.
+- **Left / Right** move along the grid or change a slider by 1 (**Shift** – by 10, **PgUp / PgDn** – by 10, **Home / End** – to the ends).
+
+**Mouse.** A click picks a swatch or sets a slider; a click on the **was** swatch returns to the original color.
+
+The grid uses the current saturation, so the **S** slider makes it paler or more vivid. **Use** takes the color, **Theme color** clears the field so the theme's color applies again.
 
 ### Font and line spacing
 

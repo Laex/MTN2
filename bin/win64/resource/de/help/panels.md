@@ -26,15 +26,47 @@
 | Alt+F10 | Ordnerbaum des Laufwerks über dem aktiven Panel (siehe unten) |
 | Alt+Buchstabe | Schnellsuche nach Name im Panel |
 
-**Ordnerbaum (Alt+F10)** öffnet sich über dem aktiven Panel: die Laufwerkswurzel mit geöffnetem Pfad zum aktuellen Ordner und dem Cursor darauf. ↑ ↓ PgUp PgDn Home End bewegen, → oder `+` öffnet einen Zweig (`[+]─`) oder tritt in ihn ein, ← oder `-` schließt einen Zweig (`[-]─`) oder geht zum übergeordneten Ordner, ein Buchstabe springt zum nächsten Ordner, der damit beginnt. Das andere Panel wechselt in den Ordner unter dem Cursor, sobald der Cursor zur Ruhe kommt. Enter öffnet den Ordner im aktiven Panel und schließt den Baum; Esc oder Alt+F10 schließt den Baum, und dasselbe Panel erscheint wieder. Tab oder ein Klick auf das andere Panel verschiebt den Fokus dorthin, und der Baum bleibt, wie ein FAR-Baumpanel; Tab oder ein Klick auf den Rahmen des Baums bringt den Fokus zurück. Mit der Maus funktioniert der Baum wie ein Index: ein Klick auf einen Ordner zeigt ihn sofort im anderen Panel und verschiebt den Fokus dorthin, ein Klick auf `[+]` / `[-]` öffnet oder schließt den Zweig, ohne den Fokus zu verschieben; das Mausrad blättert den Baum, ohne den Cursor zu bewegen. Der Baum folgt auch dem anderen Panel: wechselt es in einen anderen Ordner, öffnet der Baum den Pfad dorthin und setzt den Cursor darauf und baut sich für ein anderes Laufwerk neu auf. Ordner werden im Hintergrund gelesen; wechselt das Panel unter dem Baum währenddessen in einen anderen Ordner, schließt sich der Baum. Der Baum ist immer nur über einem Panel geöffnet.
+**Ordnerbaum (Alt+F10)** öffnet sich über dem aktiven Panel. Er ist immer nur über einem Panel geöffnet.
 
-**Schnellansicht (Ctrl+Q)** zeigt die Datei unter dem Cursor im anderen Panel: ein Bild, Text (die Kodierung wird erkannt), dargestelltes Markdown oder einen Hex-Dump einer Binärdatei; große Dateien werden gestreamt. Das Mausrad darüber blättert die Vorschau. Dateien auf SFTP und große Dateien in Archiven werden nicht bei jeder Cursorbewegung gelesen – das Panel schlägt vor, sie mit F3 zu öffnen. Tab oder erneut Ctrl+Q schließt die Schnellansicht.
+**Öffnen.** Gezeigt wird die Laufwerkswurzel mit geöffnetem Pfad zum aktuellen Ordner und dem Cursor darauf.
+
+**Tastatur**
+- ↑ ↓ PgUp PgDn Home End – bewegen.
+- → oder `+` – einen Zweig öffnen (`[+]─`) oder in ihn eintreten.
+- ← oder `-` – einen Zweig schließen (`[-]─`) oder zum übergeordneten Ordner gehen.
+- Ein Buchstabe – zum nächsten Ordner springen, der damit beginnt.
+- Enter – den Ordner im aktiven Panel öffnen und den Baum schließen.
+- Esc oder Alt+F10 – den Baum schließen; dasselbe Panel erscheint wieder.
+
+**Das andere Panel.** Es wechselt in den Ordner unter dem Cursor, sobald der Cursor zur Ruhe kommt.
+
+**Fokus**
+- Tab oder ein Klick auf das andere Panel verschiebt den Fokus dorthin; der Baum bleibt, wie ein FAR-Baumpanel.
+- Tab oder ein Klick auf den Rahmen des Baums bringt den Fokus zurück.
+
+**Maus.** Der Baum funktioniert wie ein Index:
+- ein Klick auf einen Ordner zeigt ihn sofort im anderen Panel und verschiebt den Fokus dorthin;
+- ein Klick auf `[+]` / `[-]` öffnet oder schließt den Zweig, ohne den Fokus zu verschieben;
+- das Mausrad blättert den Baum, ohne den Cursor zu bewegen.
+
+**Folgen und Lesen im Hintergrund**
+- Wechselt das andere Panel in einen anderen Ordner, öffnet der Baum den Pfad dorthin und setzt den Cursor darauf; für ein anderes Laufwerk baut er sich neu auf.
+- Ordner werden im Hintergrund gelesen; wechselt das Panel unter dem Baum währenddessen in einen anderen Ordner, schließt sich der Baum.
+
+**Schnellansicht (Ctrl+Q)** zeigt die Datei unter dem Cursor im anderen Panel: ein Bild, Text (die Kodierung wird erkannt), dargestelltes Markdown oder einen Hex-Dump einer Binärdatei.
+- Große Dateien werden gestreamt.
+- Das Mausrad über der Vorschau blättert sie.
+- Dateien auf SFTP und große Dateien in Archiven werden nicht bei jeder Cursorbewegung gelesen – das Panel schlägt vor, sie mit F3 zu öffnen.
+- Tab oder erneut Ctrl+Q schließt die Schnellansicht.
 
 **Konsolenprogramme** (eine `.exe` des Konsolen-Subsystems, `.bat`, `.cmd`, `.ps1`) laufen mit Enter so, dass ihre Ausgabe auf dem Bildschirm bleibt und nicht in einem separaten Windows-Fenster erscheint:
 - in der Hintergrundkonsole (Ctrl+O), wenn ihre Shell cmd, PowerShell oder pwsh ist und nichts darin läuft: wie ein in die Befehlszeile eingegebener Befehl;
 - sonst (eine WSL-, Git-Bash- oder SSH-Konsole oder eine, die mit einem anderen Befehl beschäftigt ist) – in einem neuen Terminal-Tab mit cmd, bei einer `.ps1` mit PowerShell; der Tab bleibt nach dem Ende des Programms offen.
 
-Mit **Programme der Panels in einem Terminal-Tab ausführen** (**Befehle → Hintergrundkonsole...**) läuft jedes Konsolenprogramm in einem Terminal-Tab, sodass die anderen Tabs währenddessen benutzbar bleiben. Das erste aus einem Panel-Tab gestartete Programm öffnet daneben einen Terminal-Tab; die folgenden werden in der Shell dieses Tabs eingegeben (im Ordner der Datei), solange sie frei ist und in der Eingabezeile nichts steht, sonst öffnet sich ein neuer Tab. Die Shell des Tabs hat ein eigenes Umgebungsprofil (**F6** in der Shell-Liste) und einen eigenen Shell-Verlauf.
+Mit **Programme der Panels in einem Terminal-Tab ausführen** (**Befehle → Hintergrundkonsole...**) läuft jedes Konsolenprogramm in einem Terminal-Tab, sodass die anderen Tabs währenddessen benutzbar bleiben.
+- Das erste aus einem Panel-Tab gestartete Programm öffnet daneben einen Terminal-Tab.
+- Die folgenden werden in der Shell dieses Tabs eingegeben (im Ordner der Datei), solange sie frei ist und in der Eingabezeile nichts steht, sonst öffnet sich ein neuer Tab.
+- Die Shell des Tabs hat ein eigenes Umgebungsprofil (**F6** in der Shell-Liste) und einen eigenen Shell-Verlauf.
 
 Fensterprogramme und Dokumente öffnen sich wie bisher mit ihrem Windows-Programm. **Shift+Enter** führt weiterhin jede Datei in einem separaten Fenster aus.
 

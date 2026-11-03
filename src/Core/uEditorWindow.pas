@@ -65,6 +65,12 @@ type
     W, H: Integer; // pixels; 0 = unknown
   end;
 
+  /// <summary>A viewer position: document and scroll / cursor place.</summary>
+  TLinkPlace = record
+    URI: string;
+    TopLine, Row, Col: Integer;
+  end;
+
   TEditorWindow = class(TTerminalWindow)
   private
     FDoc: TEditorDoc;
@@ -188,6 +194,12 @@ type
     // Markdown link under a plain mouse press; the release on the same link
     // (no drag selection in between) follows it.
     FPressLink: string;
+    // Local Markdown links followed in the Viewer: where Back returns to, and
+    // the anchor / place to apply once the target document is ready.
+    FLinkHistory: TList<TLinkPlace>;
+    FPendingAnchor: string;
+    FPendingPlace: TLinkPlace;
+    FHasPendingPlace: Boolean;
     FClicks: TMouseClickCounter; // double = word, triple = line
     FWordWrap: Boolean;
     /// <summary>Follow mode (viewer only): the cursor stays on the last line
@@ -210,6 +222,7 @@ type
     procedure GotoLineHome(AExtendSel: Boolean);
     procedure GotoLineEnd(AExtendSel: Boolean);
     procedure RestoreSavedPosition;
+    procedure ApplyPendingLinkPlace;
     procedure SaveCurrentPosition;
     procedure DocChanged(Sender: TObject);
     procedure UpdateIndexNotice;
@@ -502,12 +515,29 @@ type
     procedure SetViewPos(ATopLine, ARow, ACol: Integer);
     /// <summary>Target of the Markdown link under the cursor.</summary>
     function LinkAtCursor(out ATarget: string): Boolean;
+    /// <summary>Target of the Markdown link at a document position.</summary>
+    function LinkAtPos(ARow, ACol: Integer; out ATarget: string): Boolean;
+    /// <summary>True when the mouse press and release made no selection, or
+    /// only a one-cell jitter on one row: still a click, not a drag.</summary>
+    function IsClickNotDrag: Boolean;
     /// <summary>Selects the next/previous Markdown link (wrapping around the
     /// document) and puts the cursor on its first character.</summary>
     function SelectMarkdownLink(AForward: Boolean): Boolean;
     /// <summary>ATarget carries a URI scheme ("https:", "mailto:", ...) --
     /// not a local topic / file / "#anchor".</summary>
     class function IsExternalLink(const ATarget: string): Boolean; static;
+    /// <summary>GitHub-style heading anchor: lower case, spaces to '-',
+    /// punctuation dropped.</summary>
+    class function HeadingSlug(const AHeading: string): string; static;
+    /// <summary>Line of the "# heading" or "<!--id-->" marker named AAnchor;
+    /// -1 if none.</summary>
+    function FindAnchorLine(const AAnchor: string): Integer;
+    /// <summary>Follows a local Markdown link ("file.md", "file.md#anchor",
+    /// "#anchor") in this window, remembering the place for Back.</summary>
+    procedure FollowLocalLink(const ATarget: string);
+    /// <summary>Returns to the document / place before the last followed
+    /// local link; False if there is none.</summary>
+    function LinkGoBack: Boolean;
     /// <summary>Asks whether to open AUrl and, on OK, hands it to the OS
     /// default handler (the browser for http/https).</summary>
     procedure OpenExternalLink(const AUrl: string);
@@ -580,6 +610,7 @@ begin
   FMdLineCacheOrder := TQueue<Integer>.Create;
   FMdImageUriCache := TDictionary<string, string>.Create;
   FMdImageSizeCache := TDictionary<string, TMdImageSize>.Create;
+  FLinkHistory := TList<TLinkPlace>.Create;
   FMdLineCacheWidth := -1;
   FLastMdContentGen := 0;
   FMdOverlayShowing := False;
@@ -942,6 +973,7 @@ begin
   FreeAndNil(FMdLineCacheOrder);
   FreeAndNil(FMdImageUriCache);
   FreeAndNil(FMdImageSizeCache);
+  FreeAndNil(FLinkHistory);
   inherited Destroy;
 end;
 
@@ -1020,6 +1052,7 @@ begin
     // changes fire this same event). Never for F4/Editor - raw source only.
     if (not FDoc.Binary) and FViewOnly and IsMarkdownFile then
       FMarkdownMode := True;
+    ApplyPendingLinkPlace;
   end;
   // The editor's own edits (SetLine / InsertLine / DeleteLine inside a
   // command) fire this too, halfway through: the line is already changed but
@@ -3723,25 +3756,142 @@ begin
   NotifyHost;
 end;
 
-function TEditorWindow.LinkAtCursor(out ATarget: string): Boolean;
+class function TEditorWindow.HeadingSlug(const AHeading: string): string;
+var
+  Ch: Char;
+begin
+  Result := '';
+  for Ch in Trim(AHeading).ToLower do
+    if Ch.IsLetterOrDigit or (Ch = '_') or (Ch = '-') then
+      Result := Result + Ch
+    else if Ch = ' ' then
+      Result := Result + '-';
+end;
+
+function TEditorWindow.FindAnchorLine(const AAnchor: string): Integer;
+var
+  I: Integer;
+  Line, Want, Id, Rest: string;
+begin
+  Want := AAnchor.ToLower;
+  for I := 0 to LineCount - 1 do
+  begin
+    Line := TrimLeft(LineText(I));
+    // A "<!--id-->" marker names a line in every language of a help topic.
+    if TMarkdownParser.SplitLeadingMarker(Line, Id, Rest) and SameText(Id, Want) then
+      Exit(I);
+    if StartsStr('#', Line) and (HeadingSlug(Line.TrimLeft(['#'])) = Want) then
+      Exit(I);
+  end;
+  Result := -1;
+end;
+
+procedure TEditorWindow.ApplyPendingLinkPlace;
+var
+  Line: Integer;
+begin
+  if FHasPendingPlace then
+  begin
+    FHasPendingPlace := False;
+    SetViewPos(FPendingPlace.TopLine, FPendingPlace.Row, FPendingPlace.Col);
+  end
+  else if FPendingAnchor <> '' then
+  begin
+    Line := FindAnchorLine(FPendingAnchor);
+    if Line >= 0 then
+      SetViewPos(Line, Line, 0);
+  end;
+  FPendingAnchor := '';
+end;
+
+procedure TEditorWindow.FollowLocalLink(const ATarget: string);
+var
+  Topic, Anchor, Path: string;
+  P, Line: Integer;
+  Place: TLinkPlace;
+begin
+  if (ATarget = '') or FChromeless or FHelpMode or not FDoc.Ready then
+    Exit;
+  Topic := ATarget;
+  Anchor := '';
+  P := Pos('#', Topic);
+  if P > 0 then
+  begin
+    Anchor := Copy(Topic, P + 1, MaxInt);
+    Topic := Copy(Topic, 1, P - 1);
+  end;
+  Place.URI := FURI;
+  GetViewPos(Place.TopLine, Place.Row, Place.Col);
+  if Topic = '' then
+  begin
+    Line := FindAnchorLine(Anchor);
+    if Line < 0 then
+      Exit;
+    FLinkHistory.Add(Place);
+    SetViewPos(Line, Line, 0);
+    Exit;
+  end;
+  Path := TPath.GetFullPath(TPath.Combine(ExtractFilePath(FileUriToPath(FURI)),
+    StringReplace(Topic, '/', PathDelim, [rfReplaceAll])));
+  if not FileExists(Path) then
+  begin
+    Notice(T('ui.editor.linkMissing', 'File not found: %s'), Path, tkWarning);
+    Exit;
+  end;
+  FLinkHistory.Add(Place);
+  Open(PathToFileUri(Path), FViewOnly);
+  FPendingAnchor := Anchor;
+end;
+
+function TEditorWindow.LinkGoBack: Boolean;
+var
+  Place: TLinkPlace;
+begin
+  Result := FLinkHistory.Count > 0;
+  if not Result then
+    Exit;
+  Place := FLinkHistory.Last;
+  FLinkHistory.Delete(FLinkHistory.Count - 1);
+  if SameText(Place.URI, FURI) then
+    SetViewPos(Place.TopLine, Place.Row, Place.Col)
+  else
+  begin
+    Open(Place.URI, FViewOnly);
+    FPendingPlace := Place;
+    FHasPendingPlace := True;
+  end;
+end;
+
+function TEditorWindow.LinkAtPos(ARow, ACol: Integer; out ATarget: string): Boolean;
 var
   MdLine: TMdLine;
   Span: TMdSpan;
 begin
   Result := False;
   ATarget := '';
-  if not (FMarkdownMode and FDoc.Ready) or (FCursorRow < 0) or
-     (FCursorRow >= FDoc.LineCount) then
+  if not (FMarkdownMode and FDoc.Ready) or (ARow < 0) or
+     (ARow >= FDoc.LineCount) then
     Exit;
-  MdLine := GetMdLine(FCursorRow);
+  MdLine := GetMdLine(ARow);
   for Span in MdLine.Spans do
     if (Span.Kind = mskLink) and (Span.Target <> '') and
-       (FCursorCol + 1 >= Span.StartCol) and
-       (FCursorCol + 1 < Span.StartCol + Span.Len) then
+       (ACol + 1 >= Span.StartCol) and
+       (ACol + 1 < Span.StartCol + Span.Len) then
     begin
       ATarget := Span.Target;
       Exit(True);
     end;
+end;
+
+function TEditorWindow.LinkAtCursor(out ATarget: string): Boolean;
+begin
+  Result := LinkAtPos(FCursorRow, FCursorCol, ATarget);
+end;
+
+function TEditorWindow.IsClickNotDrag: Boolean;
+begin
+  Result := not HasSelection or
+    ((FSelAnchorRow = FCursorRow) and (Abs(FSelAnchorCol - FCursorCol) <= 1));
 end;
 
 function TEditorWindow.SelectMarkdownLink(AForward: Boolean): Boolean;
@@ -4636,7 +4786,9 @@ begin
   if FMarkdownMode and not FHelpMode and LinkAtCursor(Line) then
   begin
     if IsExternalLink(Line) then
-      OpenExternalLink(Line);
+      OpenExternalLink(Line)
+    else
+      FollowLocalLink(Line);
     Exit;
   end;
   if FHexMode or (not CanEdit) then
@@ -5734,6 +5886,7 @@ function TEditorWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
   var
   W, Bottom, ViewH, MaxTop, TrackH, TrackTop, Row, Col: Integer;
   Frame: TRectI;
+  ClickLink: string;
 begin
   Result := False;
   FMouseSelecting := False;
@@ -5812,7 +5965,8 @@ begin
     FClicks.Reset;
     SetCursorPos(Row, Col, True);
   end
-  else if not FHexMode and (FClicks.Hit(ALocalCol, ALocalRow) > 1) then
+  else if not FHexMode and (FClicks.Hit(ALocalCol, ALocalRow) > 1) and
+          not LinkAtPos(Row, Col, ClickLink) then
   begin
     // Double click = word, the next quick click = whole line. No drag
     // selection afterwards: the range is already final.
@@ -5831,9 +5985,8 @@ begin
     EnsureCursorVisible;
     NotifyHost;
     // The Help window tracks its own link presses.
-    if FMarkdownMode and not FHelpMode and LinkAtCursor(FPressLink) and
-       not IsExternalLink(FPressLink) then
-      FPressLink := '';
+    if FMarkdownMode and not FHelpMode then
+      LinkAtCursor(FPressLink);
   end;
   FMouseSelecting := True;
 end;
@@ -5927,12 +6080,16 @@ var
 begin
   Result := FMouseSelecting;
   FMouseSelecting := False;
-  // A plain click (no drag selection) on an external link offers to open it.
-  if (FPressLink <> '') and not HasSelection and LinkAtCursor(Link) and
+  // A plain click (no drag selection) on a link follows it: an external one
+  // offers to open it, a local one opens in this window.
+  if (FPressLink <> '') and IsClickNotDrag and LinkAtCursor(Link) and
      (Link = FPressLink) then
   begin
     FPressLink := '';
-    OpenExternalLink(Link);
+    if IsExternalLink(Link) then
+      OpenExternalLink(Link)
+    else
+      FollowLocalLink(Link);
     Exit(True);
   end;
   FPressLink := '';
@@ -5985,6 +6142,16 @@ begin
   if FHexMode and (AKey = vkInsert) and (AShift = []) then
   begin
     HexInsertZero;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+
+  // Markdown Viewer: Backspace / Alt+Left return from a followed local link.
+  if FMarkdownMode and not FHelpMode and (FLinkHistory.Count > 0) and
+     (((AKey = vkBack) and (AShift = [])) or ((AKey = vkLeft) and (AShift = [ssAlt]))) then
+  begin
+    LinkGoBack;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);

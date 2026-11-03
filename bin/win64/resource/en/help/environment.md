@@ -1,6 +1,8 @@
 ## Environment profiles
 
-**Options → Environment profiles...** opens the `environment.json` file in the editor (on first use it is created with an example). A profile is a named list of `NAME=value` entries that are laid over the environment of every new shell: terminal tabs and the console under the panels. Shells that are already running keep their environment; a shell started after the file is saved sees the change.
+**Options → Environment profiles...** opens the `environment.json` file in the editor (on first use it is created with an example).
+
+A profile is a named list of `NAME=value` entries that are laid over the environment of every new shell: terminal tabs and the console under the panels. Shells that are already running keep their environment; a shell started after the file is saved sees the change.
 
 ```json
 {
@@ -11,7 +13,11 @@
 }
 ```
 
-**Entries.** Profiles apply in the order of the file and entries in the order of the list, so a later entry sees the result of an earlier one. An entry with an empty value (`OLD_VARIABLE=`) removes the variable. `%NAME%` is replaced by the current value of the variable on every system; on Linux and macOS `$NAME` and `${NAME}` work too. A name that is not set stays as written. On Windows names are compared without regard to case.
+**Entries.**
+- Profiles apply in the order of the file and entries in the order of the list, so a later entry sees the result of an earlier one.
+- An entry with an empty value (`OLD_VARIABLE=`) removes the variable.
+- `%NAME%` is replaced by the current value of the variable on every system; on Linux and macOS `$NAME` and `${NAME}` work too. A name that is not set stays as written.
+- On Windows names are compared without regard to case.
 
 **Which profiles apply to a shell**
 - `default` – applies to every shell, first.

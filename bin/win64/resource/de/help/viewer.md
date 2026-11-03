@@ -14,7 +14,8 @@
 | F4 (im Viewer), Ctrl+H | HEX-Modus (im HEX-Modus des Editors lassen sich Bytes bearbeiten) |
 | Ctrl+M | Markdown: dargestellte Ansicht ↔ Quelltext |
 | Tab / Shift+Tab | Markdown: nächster / vorheriger Link |
-| Enter, Klick auf einen Link | Markdown: einen externen Link (`https://…`, `mailto:…`) nach einer Bestätigung in der Standardanwendung öffnen |
+| Enter, Klick auf einen Link | Markdown: einen lokalen Link (`other.md`, `other.md#abschnitt`, `#abschnitt`) im selben Fenster öffnen; ein externer Link (`https://…`, `mailto:…`) wird nach einer Bestätigung in der Standardanwendung geöffnet |
+| Rücktaste / Alt+← | Markdown: von einem gefolgten lokalen Link zurückkehren |
 | F2 | speichern (Editor) / Zeilenumbruch (Viewer; wird pro Datei zusammen mit der Position gemerkt) |
 | Ctrl+Shift+F | Viewer: dem Ende einer wachsenden Datei (Log) folgen; Ende mit derselben Taste, Hochscrollen, Up, PgUp, Home oder einem anderen Modus |
 | Ctrl+S | speichern |
@@ -37,7 +38,20 @@
 
 Große Dateien werden gestreamt und nicht als Ganzes geladen. Ändert sich die Datei auf der Festplatte, wird das geöffnete Fenster aktualisiert. Bei einer schreibgeschützten Datei bietet das Programm an, sie zum Schreiben zu öffnen, indem das Attribut aufgehoben wird.
 
-**Suchdialog.** Das Feld merkt sich frühere Suchen (**Ctrl+↓** / **Alt+↓**); die Optionen sind **Groß-/Kleinschreibung**, **Ganze Wörter**, **Reguläre Ausdrücke** und **Rückwärts suchen**. **Wort** setzt das Wort unter dem Cursor in das Feld, **Auswahl** setzt die Auswahl ein (die aktuelle Zeile, wenn nichts ausgewählt ist; die erste Zeile einer mehrzeiligen Auswahl). Bei eingeschalteten **Regulären Ausdrücken** wird der Text dieser beiden Schaltflächen maskiert. Ein gefundener Treffer wird ausgewählt, und **F3** / **Shift+F3** machen von dort aus weiter. Ein Treffer erstreckt sich nie über einen Zeilenumbruch. Bei **Regulären Ausdrücken** ist das Muster ein PCRE-Ausdruck, und in der Ersetzung ist `$0` der ganze Treffer, `$1` ... `$9` sind die Gruppen und `$$` ist ein Dollarzeichen; ohne die Option wird die Ersetzung unverändert übernommen. Ein Muster, das sich nicht kompilieren lässt, wird gemeldet, und es wird nichts gesucht. **Ersetzen** im Dialog „Ersetzen“ geht die Treffer einzeln durch: jeder wird ausgewählt angezeigt, mit dem Text, seiner Ersetzung und der Zeile, die ihn enthält, und mit **Ersetzen** (ersetzen und zum nächsten weitergehen), **Alle** (den Rest ohne Nachfrage ersetzen), **Überspringen** oder **Abbrechen** beantwortet. Wird das Textende erreicht und die Suche hat in der Mitte begonnen, bietet es an, am Anfang fortzusetzen (beim Rückwärtssuchen am Ende). **Alle** im Dialog „Ersetzen“ ersetzt alle Treffer des ganzen Textes auf einmal. Beide Wege zeigen am Ende von **Alle** an, wie viele Ersetzungen vorgenommen wurden, werden mit einem einzigen **Ctrl+Z** rückgängig gemacht und setzen den Cursor dorthin zurück, wo er vor dem Ersetzen stand. Groß-/Kleinschreibung, ganze Wörter und reguläre Ausdrücke werden zwischen den Starts gemerkt; **Rückwärts suchen** nur, bis MTN2 geschlossen wird.
+**Suchdialog.** Das Feld merkt sich frühere Suchen (**Ctrl+↓** / **Alt+↓**); die Optionen sind **Groß-/Kleinschreibung**, **Ganze Wörter**, **Reguläre Ausdrücke** und **Rückwärts suchen**.
+
+**Feld und Treffer**
+- **Wort** setzt das Wort unter dem Cursor in das Feld, **Auswahl** setzt die Auswahl ein (die aktuelle Zeile, wenn nichts ausgewählt ist; die erste Zeile einer mehrzeiligen Auswahl). Bei eingeschalteten **Regulären Ausdrücken** wird der Text dieser beiden Schaltflächen maskiert.
+- Ein gefundener Treffer wird ausgewählt, und **F3** / **Shift+F3** machen von dort aus weiter. Ein Treffer erstreckt sich nie über einen Zeilenumbruch.
+- Bei **Regulären Ausdrücken** ist das Muster ein PCRE-Ausdruck, und in der Ersetzung ist `$0` der ganze Treffer, `$1` ... `$9` sind die Gruppen und `$$` ist ein Dollarzeichen; ohne die Option wird die Ersetzung unverändert übernommen. Ein Muster, das sich nicht kompilieren lässt, wird gemeldet, und es wird nichts gesucht.
+
+**Ersetzen**
+- **Ersetzen** im Dialog „Ersetzen“ geht die Treffer einzeln durch: jeder wird ausgewählt angezeigt, mit dem Text, seiner Ersetzung und der Zeile, die ihn enthält, und mit **Ersetzen** (ersetzen und zum nächsten weitergehen), **Alle** (den Rest ohne Nachfrage ersetzen), **Überspringen** oder **Abbrechen** beantwortet.
+- Wird das Textende erreicht und die Suche hat in der Mitte begonnen, bietet es an, am Anfang fortzusetzen (beim Rückwärtssuchen am Ende).
+- **Alle** im Dialog „Ersetzen“ ersetzt alle Treffer des ganzen Textes auf einmal.
+- Beide Wege zeigen am Ende von **Alle** an, wie viele Ersetzungen vorgenommen wurden, werden mit einem einzigen **Ctrl+Z** rückgängig gemacht und setzen den Cursor dorthin zurück, wo er vor dem Ersetzen stand.
+
+**Was gemerkt wird.** Groß-/Kleinschreibung, ganze Wörter und reguläre Ausdrücke werden zwischen den Starts gemerkt; **Rückwärts suchen** nur, bis MTN2 geschlossen wird.
 
 ---
 

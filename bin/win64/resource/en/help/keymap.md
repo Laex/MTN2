@@ -2,11 +2,36 @@
 
 The built-in key set can be partly redefined by the `keymap.json` file in the settings folder (or via **Options → Keymap...**): only the changed actions are listed, the rest stay built-in. **Ctrl+Alt+K** – reload the file without a restart.
 
-Besides the panels, the viewer and editor commands can be rebound. Their names in `keymap.json` start with `Doc` (both viewing and editing: `DocHex`, `DocFind`, `DocEncoding`, `DocClose`…), `Viewer` (viewing only: `ViewerWrap`), `Markdown` (rendered Markdown: `MarkdownSource`) and `Editor` (editing only: `EditorSave`, `EditorUndo`, `EditorDeleteLine`…). The same chord can mean different things on the panels and in a document – Ctrl+H shows hidden files on a panel and toggles hex in a document. A narrower meaning overrides a general one: F4 over rendered Markdown toggles the source, not hex.
+Besides the panels, the viewer and editor commands can be rebound. Their names in `keymap.json` start with:
+- `Doc` – both viewing and editing: `DocHex`, `DocFind`, `DocEncoding`, `DocClose`…;
+- `Viewer` – viewing only: `ViewerWrap`;
+- `Markdown` – rendered Markdown: `MarkdownSource`;
+- `Editor` – editing only: `EditorSave`, `EditorUndo`, `EditorDeleteLine`…
 
-Global commands work in any window – the panels, a document, a terminal: `Help` (F1), `TopMenu` (F9), `CommandPalette` (Shift+F9), `NextTab` / `PrevTab` (Ctrl+Alt+PgDn / Ctrl+Alt+PgUp), `AppConsoleToggle` (Ctrl+O), `NewTerminal` (Ctrl+Shift+N), `SelectConsoleProfile` (Ctrl+Alt+O), `AppQuit` (Alt+X), `ZoomReset` (Ctrl+0), `ReloadKeymap` (Ctrl+Alt+K) and `ToggleMouse` (Ctrl+Shift+M, text terminal version only). A chord the window binds itself stays the window's: F10 closes a document and quits only on the panels (`Quit`); Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel. While a full-screen program runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O. While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
+The same chord can mean different things on the panels and in a document – Ctrl+H shows hidden files on a panel and toggles hex in a document. A narrower meaning overrides a general one: F4 over rendered Markdown toggles the source, not hex.
 
-In the console (Ctrl+O) and a terminal the commands named `Shell…` can be rebound: `ShellHistory` (Alt+F8), `ShellSelectAll` (Ctrl+A), `ShellCopyOrInterrupt` (Ctrl+C – copy the selection, or interrupt the command without one), `ShellCopy` (Ctrl+Ins), `ShellPaste` (Ctrl+V, Shift+Ins), `ShellFind` (Ctrl+Shift+F – search the output) and `ShellFindNext` / `ShellFindPrev` (F3 / Shift+F3); in the console also `ConsoleSyncDir` (Ctrl+Shift+O – the panel goes to the console's folder). Every other key goes to the shell.
+Global commands work in any window – the panels, a document, a terminal:
+- `Help` (F1), `TopMenu` (F9), `CommandPalette` (Shift+F9);
+- `NextTab` / `PrevTab` (Ctrl+Alt+PgDn / Ctrl+Alt+PgUp);
+- `AppConsoleToggle` (Ctrl+O), `NewTerminal` (Ctrl+Shift+N), `SelectConsoleProfile` (Ctrl+Alt+O);
+- `AppQuit` (Alt+X), `ZoomReset` (Ctrl+0), `ReloadKeymap` (Ctrl+Alt+K);
+- `ToggleMouse` (Ctrl+Shift+M, text terminal version only).
+
+**A chord the window binds itself.** It stays the window's:
+- F10 closes a document and quits only on the panels (`Quit`);
+- Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
+
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+
+**Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
+
+In the console (Ctrl+O) and a terminal the commands named `Shell…` can be rebound:
+- `ShellHistory` (Alt+F8), `ShellSelectAll` (Ctrl+A);
+- `ShellCopyOrInterrupt` (Ctrl+C – copy the selection, or interrupt the command without one), `ShellCopy` (Ctrl+Ins), `ShellPaste` (Ctrl+V, Shift+Ins);
+- `ShellFind` (Ctrl+Shift+F – search the output), `ShellFindNext` / `ShellFindPrev` (F3 / Shift+F3);
+- in the console also `ConsoleSyncDir` (Ctrl+Shift+O – the panel goes to the console's folder).
+
+Every other key goes to the shell.
 
 **Settings → Keymap** groups the actions by window – global, file panels, viewer and editor, console and terminal – under readable names; the `keymap.json` name shows in the edit window. The F-key labels at the bottom, hints such as `A:All` and the shortcuts in the top menu come from the keymap: after a rebinding they show the new key.
 
@@ -30,11 +55,16 @@ The `[+]` and `[x]` buttons in the tab rows and the top menu items do the same.
 
 ### Your own `keymap.json` and updates
 
-The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones. The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update. A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own). An action without keys is written as an empty list.
+The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones.
+- The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update.
+- A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own).
+- An action without keys is written as an empty list.
 
 ### Examples for Far and MC habits
 
-The repository holds two example `keymap.json` files, [`keymap.far.json` and `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**. Far: Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O). MC: Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
+The repository holds two example `keymap.json` files, [`keymap.far.json` and `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**.
+- **Far:** Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O).
+- **MC:** Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
 
 ### Reserved keys
 

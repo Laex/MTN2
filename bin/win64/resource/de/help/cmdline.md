@@ -19,15 +19,28 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 | Ctrl+Shift+O | Ordner zwischen aktivem Panel und Konsole abgleichen |
 | Ctrl+Alt+O | Shell der Hintergrundkonsole wählen (cmd, PowerShell, WSL, …) |
 
-<!--console-profile-->**Befehle → Hintergrundkonsole...** ist derselbe Dialog. **Shell beim Programmstart starten** ist standardmäßig aus: die Shell startet beim ersten **Ctrl+O** oder beim ersten Befehl aus der Befehlszeile. Mit eingeschalteter Option startet die Shell wie früher zusammen mit dem Programm. **Programme der Panels in einem Terminal-Tab ausführen** schickt Konsolenprogramme, die in einem Panel mit Enter gestartet werden, in Terminal-Tabs statt in diese Konsole.
+<!--console-profile-->**Befehle → Hintergrundkonsole...** ist derselbe Dialog.
+- **Shell beim Programmstart starten** ist standardmäßig aus: die Shell startet beim ersten **Ctrl+O** oder beim ersten Befehl aus der Befehlszeile. Mit eingeschalteter Option startet die Shell wie früher zusammen mit dem Programm.
+- **Programme der Panels in einem Terminal-Tab ausführen** schickt Konsolenprogramme, die in einem Panel mit Enter gestartet werden, in Terminal-Tabs statt in diese Konsole.
 
 **In der Konsole:** **Ctrl+C** unterbricht den Befehl; **Esc** blendet die Konsole nur aus und beendet den Prozess nicht. Das Mausrad blättert durch die Ausgabe. Text wird mit der Maus ausgewählt (siehe [Arbeiten mit Text und Maus](text.md)).
 
-**Suche in der Ausgabe** (Konsole und Terminal): **Ctrl+Shift+F** fragt nach dem Text; Treffer sind im ganzen Verlauf hervorgehoben, der aktuelle ist wie bei einer Mausauswahl markiert. **F3** / **Shift+F3** springen zum nächsten / vorherigen Treffer (zyklisch), solange eine Suche gesetzt ist und im Fenster kein Vollbildprogramm läuft; eine leere Zeile im Dialog hebt die Suche auf. In einer Konsole mit der Shell cmd blättern **↑** / **↓** im gemeinsamen Befehlsverlauf (wie Alt+F8), und **↓** nach dem neuesten Befehl bringt die getippte Zeile zurück.
+**Suche in der Ausgabe** (Konsole und Terminal):
+- **Ctrl+Shift+F** fragt nach dem Text; Treffer sind im ganzen Verlauf hervorgehoben, der aktuelle ist wie bei einer Mausauswahl markiert. Eine leere Zeile im Dialog hebt die Suche auf.
+- **F3** / **Shift+F3** springen zum nächsten / vorherigen Treffer (zyklisch), solange eine Suche gesetzt ist und im Fenster kein Vollbildprogramm läuft.
+- In einer Konsole mit der Shell cmd blättern **↑** / **↓** im gemeinsamen Befehlsverlauf (wie Alt+F8), und **↓** nach dem neuesten Befehl bringt die getippte Zeile zurück.
 
 **Einfügen in die Konsole** (**Ctrl+V**, **Shift+Ins**): jeder Zeilenumbruch geht als Enter an die Shell, die eingefügten Zeilen laufen also nacheinander, auch die letzte. Bei eingeschaltetem **Mehrzeiliges Einfügen bestätigen** fragt das Programm vorher nach.
 
-**Optionen → Konsole...** legt die Größe des Scrollbacks von Konsole und Terminals fest (1000 – 50.000 Zeilen, standardmäßig 10.000), die Bestätigung beim mehrzeiligen Einfügen (aus; ein Vollbildprogramm wie vim fragt nie), das Entfernen von Leerzeichen am Zeilenende beim Kopieren und beim Einfügen sowie **Nach Befehlsende immer zu den Panels zurückkehren** (aus). Bei eingeschalteter Option führt ein aus der Befehlszeile unter den Panels gestarteter Befehl zurück zu den Panels, sobald die Shell wieder ihren Prompt zeigt; ein in der Hintergrundkonsole (Ctrl+O) eingegebener Befehl bleibt immer in der Konsole. **Alt+Shift+Enter** führt die Befehlszeile in der Konsole im Hintergrund aus: die Konsole wird für die unter **Hintergrundausführung** eingestellte Zeit gezeigt (0,5 – 10 s, standardmäßig 2 s) und die Panels kommen von selbst zurück; eine vorher in der Konsole gedrückte Taste hält sie im Vordergrund, und der Befehl läuft in beiden Fällen weiter. Änderungen gelten sofort, auch für geöffnete Konsolen.
+**Optionen → Konsole...** legt fest:
+- die Größe des Scrollbacks von Konsole und Terminals (1000 – 50.000 Zeilen, standardmäßig 10.000);
+- die Bestätigung beim mehrzeiligen Einfügen (aus; ein Vollbildprogramm wie vim fragt nie);
+- das Entfernen von Leerzeichen am Zeilenende beim Kopieren und beim Einfügen;
+- **Nach Befehlsende immer zu den Panels zurückkehren** (aus). Bei eingeschalteter Option führt ein aus der Befehlszeile unter den Panels gestarteter Befehl zurück zu den Panels, sobald die Shell wieder ihren Prompt zeigt; ein in der Hintergrundkonsole (Ctrl+O) eingegebener Befehl bleibt immer in der Konsole.
+
+**Hintergrundausführung.** **Alt+Shift+Enter** führt die Befehlszeile in der Konsole im Hintergrund aus: die Konsole wird für die unter **Hintergrundausführung** eingestellte Zeit gezeigt (0,5 – 10 s, standardmäßig 2 s) und die Panels kommen von selbst zurück. Eine vorher in der Konsole gedrückte Taste hält sie im Vordergrund; der Befehl läuft in beiden Fällen weiter.
+
+Änderungen gelten sofort, auch für geöffnete Konsolen.
 
 <!--save-output-->**Befehle → Konsolenausgabe speichern...** schreibt den Scrollback der Hintergrundkonsole (Ctrl+O) in eine UTF-8-Textdatei; **Konsolenpuffer leeren** löscht ihn, die Shell läuft weiter.
 

@@ -181,8 +181,8 @@ begin
   Assert.IsTrue(IsSingleFullSpan(L, mskH2), 'H2 with inline markup keeps one heading span');
 
   L := TMarkdownParser.ParseLine('# *Intro* to `code` and [docs](http://x)', State);
-  Assert.IsTrue(L.DisplayText = 'Intro to `code` and docs',
-    'H1: italic stripped, code kept, link reduced to its text');
+  Assert.IsTrue(L.DisplayText = 'Intro to code and docs',
+    'H1: italic and code delimiters stripped, link reduced to its text');
 end;
 
 { ---- ParseLine: fenced code blocks (state carried across lines) ------------ }
@@ -264,11 +264,11 @@ begin
   State.InFence := False;
 
   L := TMarkdownParser.ParseLine('**bold** and *italic* and `code`', State);
-  Assert.IsTrue(L.DisplayText = 'bold and italic and `code`',
-    '**bold**/*italic* delimiters are stripped from DisplayText; `code` delimiters are kept');
+  Assert.IsTrue(L.DisplayText = 'bold and italic and code',
+    '**bold**/*italic*/`code` delimiters are stripped from DisplayText');
   Assert.IsTrue(HasSpan(L, 1, 4, mskBold), '**bold** -> 4-char mskBold span over just "bold" (no ** in the span either)');
   Assert.IsTrue(HasSpan(L, 10, 6, mskItalic), '*italic* -> 6-char mskItalic span over just "italic" (delimiters stripped)');
-  Assert.IsTrue(HasSpan(L, 21, 6, mskInlineCode), '`code` -> 6-char mskInlineCode span (delimiters included, not stripped)');
+  Assert.IsTrue(HasSpan(L, 21, 4, mskInlineCode), '`code` -> 4-char mskInlineCode span over just "code" (delimiters stripped)');
 
   L := TMarkdownParser.ParseLine('***both***', State);
   Assert.IsTrue(L.DisplayText = 'both', '***both*** delimiters are fully stripped, leaving just "both"');
@@ -931,12 +931,12 @@ begin
     'cells past AEndCharIndex are blank padding, not "dog"/"elephant" spilling in');
 
   // End-of-line inline code must not bleed its style into the padded tail
-  // ("- Open `src/main.cpp`" with nothing after the closing backtick).
+  // ("- Open `src/main.cpp`" with nothing after the code span).
   L := TMarkdownParser.ParseLine('- Open `src/main.cpp`', State);
   Row := MakeRow(40);
   TMarkdownPainter.DrawLine(Row, 1, 40, L, Theme);
   Assert.IsTrue((Row[Length(L.DisplayText)].FgColor and $FF) = Cardinal(Ord(mskInlineCode)),
-    'the closing backtick cell is still mskInlineCode');
+    'the last code cell is mskInlineCode');
   Assert.IsTrue((Row[Length(L.DisplayText) + 1].FgColor and $FF) = Cardinal(Ord(mskText)),
     'padding after a line that ends on inline code is mskText, not code bg');
 

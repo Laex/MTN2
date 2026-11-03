@@ -562,10 +562,9 @@ end;
 // Single left-to-right pass: at each position, try each inline construct in
 // precedence order (code > ***bold+italic*** > **bold** > __bold__ >
 // ~~strike~~ > [link](url) > *italic* > _italic_); first match wins. Bold,
-// italic, bold+italic, and strike are STRIPPED (only the inner text is copied
-// to the output, the * / ** / *** / _ / __ / ~~ delimiters are dropped); a
-// link keeps only its [text] (the url goes to TMdSpan.Target); inline code is
-// copied through verbatim (delimiters included) and colored as one span.
+// italic, bold+italic, strike and inline code are STRIPPED (only the inner
+// text is copied to the output, the delimiter characters are dropped); a link
+// keeps only its [text] (the url goes to TMdSpan.Target).
 // No nesting (e.g. an *italic* run inside **bold** is not separately
 // styled) and an unmatched opening marker is copied through as plain text
 // rather than consuming the rest of the line - deliberate
@@ -660,7 +659,7 @@ begin
     Text := '';
     while I <= N do
     begin
-      if TryMarker('`', '`', mskInlineCode, False) then Continue;
+      if TryMarker('`', '`', mskInlineCode, True) then Continue;
       if TryMarker('***', '***', mskBoldItalic, True) then Continue;
       if TryMarker('**', '**', mskBold, True) then Continue;
       if TryMarker('__', '__', mskBold, True, True) then Continue;
@@ -725,6 +724,7 @@ var
   ImgW, ImgH: Integer;
   InlineRes: TMdInlineResult;
   Marker, MarkerRest: string;
+  Span: TMdSpan;
 begin
   Result.DisplayText := ARaw;
   Result.IsImage := False;
@@ -779,10 +779,16 @@ begin
     // Inline markup inside the heading ("## **Title**", "# `code` and
     // [link](x)") is stripped the same way as in body text, but the whole
     // line keeps the one heading style - inline spans' colors would
-    // override it.
+    // override it. Only links stay as spans, so they remain clickable.
     InlineRes := ParseInline(AtxHeadingText(Trimmed, HeadLevel));
     Result.DisplayText := InlineRes.Text;
     Result.Spans := SingleSpan(1, Length(Result.DisplayText), HeadingKind(HeadLevel));
+    for Span in InlineRes.Spans do
+      if Span.Kind = mskLink then
+      begin
+        SetLength(Result.Spans, Length(Result.Spans) + 1);
+        Result.Spans[High(Result.Spans)] := Span;
+      end;
     Exit;
   end;
 
@@ -1032,7 +1038,9 @@ begin
       SpanTo := Min(Span.StartCol + Span.Len - 1, ATo);
       if SpanTo < SpanFrom then
         Continue;
-      Sliced.Add(MakeSpan(SpanFrom - AFrom + 1, SpanTo - SpanFrom + 1, Span.Kind));
+      Span.StartCol := SpanFrom - AFrom + 1;
+      Span.Len := SpanTo - SpanFrom + 1;
+      Sliced.Add(Span);
     end;
     Result := Sliced.ToArray;
   finally
@@ -1391,7 +1399,8 @@ begin
         begin
           Span := RowContent.Spans[I];
           OutStart := CellStart + 1 + LeftPad + Span.StartCol - 1;
-          Spans.Add(MakeSpan(OutStart, Span.Len, Span.Kind));
+          Span.StartCol := OutStart;
+          Spans.Add(Span);
         end;
         Spans.Add(MakeSpan(Length(Result.DisplayText), 1, mskTableBorder));
       end;

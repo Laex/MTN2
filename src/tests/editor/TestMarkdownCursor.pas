@@ -304,11 +304,11 @@ begin
   DoubleClickAt(V, X + 1, Y);
   Assert.AreEqual('code', V.SelectionText, 'a word after hidden marks');
   // Three quick clicks select the whole line: its displayed text (the bold
-  // marks are hidden, the code marks stay).
+  // marks and the code marks are hidden).
   V.HandleMouseDown(X + 1, Y, []);
   V.HandleMouseUp;
-  Assert.AreEqual('see bold and `code` here' + #10, V.SelectionText,
-    'the whole displayed line: the bold marks are gone, the line break is included');
+  Assert.AreEqual('see bold and code here' + #10, V.SelectionText,
+    'the whole displayed line: the marks are gone, the line break is included');
 end;
 
 initialization

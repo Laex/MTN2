@@ -121,15 +121,8 @@ begin
 end;
 
 class function THelpViewer.HeadingSlug(const AHeading: string): string;
-var
-  Ch: Char;
 begin
-  Result := '';
-  for Ch in Trim(AHeading).ToLower do
-    if Ch.IsLetterOrDigit or (Ch = '_') or (Ch = '-') then
-      Result := Result + Ch
-    else if Ch = ' ' then
-      Result := Result + '-';
+  Result := TEditorWindow.HeadingSlug(AHeading);
 end;
 
 procedure THelpViewer.Changed;
@@ -145,21 +138,8 @@ begin
 end;
 
 function THelpViewer.FindAnchorLine(const AAnchor: string): Integer;
-var
-  I: Integer;
-  Line, Want, Id, Rest: string;
 begin
-  Want := AAnchor.ToLower;
-  for I := 0 to FViewer.LineCount - 1 do
-  begin
-    Line := TrimLeft(FViewer.LineText(I));
-    // A "<!--id-->" marker names a line in every language of a topic.
-    if TMarkdownParser.SplitLeadingMarker(Line, Id, Rest) and SameText(Id, Want) then
-      Exit(I);
-    if StartsStr('#', Line) and (HeadingSlug(Line.TrimLeft(['#'])) = Want) then
-      Exit(I);
-  end;
-  Result := -1;
+  Result := FViewer.FindAnchorLine(AAnchor);
 end;
 
 procedure THelpViewer.ViewerChanged(Sender: TObject);
@@ -458,7 +438,7 @@ begin
     Exit;
   FViewer.HandleMouseUp;
   // A plain click (no drag selection) on a link follows it.
-  if (FPressTarget <> '') and not FViewer.HasSelection and
+  if (FPressTarget <> '') and FViewer.IsClickNotDrag and
      FViewer.LinkAtCursor(Target) and (Target = FPressTarget) then
     FollowLink(Target);
   FPressTarget := '';

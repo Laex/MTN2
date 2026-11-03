@@ -1,6 +1,8 @@
 ## Umgebungsprofile
 
-**Optionen → Umgebungsprofile...** öffnet die Datei `environment.json` im Editor (beim ersten Aufruf wird sie mit einem Beispiel angelegt). Ein Profil ist eine benannte Liste von Einträgen `NAME=Wert`, die über die Umgebung jeder neuen Shell gelegt werden: Terminal-Tabs und die Konsole unter den Panels. Bereits laufende Shells behalten ihre Umgebung; eine Shell, die nach dem Speichern der Datei startet, sieht die Änderung.
+**Optionen → Umgebungsprofile...** öffnet die Datei `environment.json` im Editor (beim ersten Aufruf wird sie mit einem Beispiel angelegt).
+
+Ein Profil ist eine benannte Liste von Einträgen `NAME=Wert`, die über die Umgebung jeder neuen Shell gelegt werden: Terminal-Tabs und die Konsole unter den Panels. Bereits laufende Shells behalten ihre Umgebung; eine Shell, die nach dem Speichern der Datei startet, sieht die Änderung.
 
 ```json
 {
@@ -11,7 +13,11 @@
 }
 ```
 
-**Einträge.** Die Profile werden in der Reihenfolge der Datei angewendet, die Einträge in der Reihenfolge der Liste; ein späterer Eintrag sieht also das Ergebnis eines früheren. Ein Eintrag mit leerem Wert (`OLD_VARIABLE=`) entfernt die Variable. `%NAME%` wird auf allen Systemen durch den aktuellen Wert der Variablen ersetzt; unter Linux und macOS funktionieren auch `$NAME` und `${NAME}`. Ein nicht gesetzter Name bleibt wie geschrieben. Unter Windows wird die Groß-/Kleinschreibung der Namen nicht beachtet.
+**Einträge.**
+- Die Profile werden in der Reihenfolge der Datei angewendet, die Einträge in der Reihenfolge der Liste; ein späterer Eintrag sieht also das Ergebnis eines früheren.
+- Ein Eintrag mit leerem Wert (`OLD_VARIABLE=`) entfernt die Variable.
+- `%NAME%` wird auf allen Systemen durch den aktuellen Wert der Variablen ersetzt; unter Linux und macOS funktionieren auch `$NAME` und `${NAME}`. Ein nicht gesetzter Name bleibt wie geschrieben.
+- Unter Windows wird die Groß-/Kleinschreibung der Namen nicht beachtet.
 
 **Welche Profile für eine Shell gelten**
 - `default` – gilt für jede Shell, zuerst.

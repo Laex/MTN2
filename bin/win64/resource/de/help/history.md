@@ -15,7 +15,12 @@ Im Ordner-, Datei- und Befehlsverlauf (Alt+F12, Alt+F11, Alt+F8) entfernt **Del*
 
 <!--frecent-->**Häufige Ordner (Ctrl+Shift+F12)** – die Ordner, die Sie am häufigsten betreten; jüngere Besuche zählen stärker. Tippen schränkt die Liste ein, **Enter** öffnet den Ordner, **Entf** vergisst seinen Zähler, **Ctrl+Entf** löscht die Rangliste. Anders als Alt+F12 (nach Zeit sortiert) bleiben täglich genutzte Ordner oben.
 
-<!--file-history-->**Dateiverlauf (Alt+F11)** – die letzten 100 mit F3/F4 geöffneten Dateien, die neueste zuerst; die Markierung links ist der Modus, in dem die Datei zuletzt geöffnet wurde (**A** – Ansehen, **B** – Bearbeiten). **Enter** öffnet die Datei im selben Modus, **F3** / **F4** – im Viewer / Editor, **Ctrl+Enter** – springt im Panel zur Datei, **Del** – entfernt sie aus dem Verlauf. Eine Eingabe filtert die Liste nach Pfad. Die Position in der Datei wird wiederhergestellt.
+<!--file-history-->**Dateiverlauf (Alt+F11)** – die letzten 100 mit F3/F4 geöffneten Dateien, die neueste zuerst; die Markierung links ist der Modus, in dem die Datei zuletzt geöffnet wurde (**A** – Ansehen, **B** – Bearbeiten).
+- **Enter** öffnet die Datei im selben Modus.
+- **F3** / **F4** – im Viewer / Editor.
+- **Ctrl+Enter** – springt im Panel zur Datei.
+- **Del** – entfernt sie aus dem Verlauf.
+- Eine Eingabe filtert die Liste nach Pfad. Die Position in der Datei wird wiederhergestellt.
 
 ---
 

@@ -15,7 +15,12 @@ In the folder, file and command history (Alt+F12, Alt+F11, Alt+F8) **Del** remov
 
 <!--frecent-->**Frequent folders (Ctrl+Shift+F12)** – the folders you enter most often, with recent visits weighing more. Typing narrows the list, **Enter** opens the folder, **Del** forgets its count, **Ctrl+Del** clears the ranking. Unlike Alt+F12, which is ordered by time, the folders you use every day stay at the top.
 
-<!--file-history-->**File history (Alt+F11)** – the last 100 files opened with F3/F4, newest first; the mark on the left is the mode the file was last opened in (**V** – view, **E** – edit). **Enter** opens the file in the same mode, **F3** / **F4** – in the viewer / editor, **Ctrl+Enter** – goes to the file in the panel, **Del** – removes it from the history. Typing filters the list by path. The position inside the file is restored.
+<!--file-history-->**File history (Alt+F11)** – the last 100 files opened with F3/F4, newest first; the mark on the left is the mode the file was last opened in (**V** – view, **E** – edit).
+- **Enter** opens the file in the same mode.
+- **F3** / **F4** – in the viewer / editor.
+- **Ctrl+Enter** – goes to the file in the panel.
+- **Del** – removes it from the history.
+- Typing filters the list by path. The position inside the file is restored.
 
 ---
 
