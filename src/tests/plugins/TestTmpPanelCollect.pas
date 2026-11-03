@@ -198,42 +198,39 @@ begin
   end;
 end;
 
-procedure TTestTmpPanelCollect.TestCapturesCommandOutput;
+const
 {$IFDEF MSWINDOWS}
+  cListCommand = 'dir /b';
+  cSleepCommand = 'ping -n 30 127.0.0.1 > nul';
+{$ELSE}
+  cListCommand = 'ls';
+  cSleepCommand = 'sleep 30';
+{$ENDIF}
+
+procedure TTestTmpPanelCollect.TestCapturesCommandOutput;
 var
   Output: string;
 begin
   Put('listed.txt', 'x');
-  Assert.IsTrue(RunCommandCapture('dir /b', FDir, 20000, Output));
+  Assert.IsTrue(RunCommandCapture(cListCommand, FDir, 20000, Output));
   Assert.IsTrue(Pos('listed.txt', Output) > 0);
   Assert.AreEqual(1, Integer(Length(ParsePanelizeOutput(Output, FDir))));
-  Assert.IsFalse(RunCommandCapture('ping -n 30 127.0.0.1 > nul', FDir, 300, Output));
+  Assert.IsFalse(RunCommandCapture(cSleepCommand, FDir, 300, Output));
 end;
-{$ELSE}
-begin
-  Assert.Pass('Command capture is implemented on Windows only.');
-end;
-{$ENDIF}
 
 procedure TTestTmpPanelCollect.TestCommandStopsWhenAskedTo;
-{$IFDEF MSWINDOWS}
 var
   Output: string;
   Started: UInt64;
 begin
   Started := TThread.GetTickCount64;
-  Assert.IsFalse(RunCommandCapture('ping -n 30 127.0.0.1 > nul', FDir, 60000, Output,
+  Assert.IsFalse(RunCommandCapture(cSleepCommand, FDir, 60000, Output,
     function: Boolean
     begin
       Result := True;
     end));
   Assert.IsTrue(TThread.GetTickCount64 - Started < 10000, 'the process is killed, not waited for');
 end;
-{$ELSE}
-begin
-  Assert.Pass('Command capture is implemented on Windows only.');
-end;
-{$ENDIF}
 
 initialization
   TDUnitX.RegisterTestFixture(TTestTmpPanelCollect);

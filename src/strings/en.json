@@ -1303,6 +1303,8 @@
     "folderHistory.filterTitle": "Folder history: %s",
     "folderFrecent.title": "Frequent folders",
     "folderFrecent.filterTitle": "Frequent folders: %s",
+    "panelTotals.selected": "Selected: %s, files: %d, folders: %d",
+    "panelTotals.bytes": "Bytes: %s, files: %d, folders: %d",
     "fileHistory.empty": "(empty)",
     "fileHistory.viewMark": "V",
     "fileHistory.editMark": "E",

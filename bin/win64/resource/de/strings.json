@@ -1293,6 +1293,8 @@
     "folderHistory.filterTitle": "Ordnerverlauf: %s",
     "folderFrecent.title": "Häufige Ordner",
     "folderFrecent.filterTitle": "Häufige Ordner: %s",
+    "panelTotals.selected": "Ausgewählt: %s, Dateien: %d, Ordner: %d",
+    "panelTotals.bytes": "Bytes: %s, Dateien: %d, Ordner: %d",
     "fileHistory.empty": "(leer)",
     "fileHistory.viewMark": "A",
     "fileHistory.editMark": "B",

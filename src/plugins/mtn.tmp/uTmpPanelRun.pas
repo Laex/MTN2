@@ -9,12 +9,13 @@ interface
 type
   TStopCheck = reference to function: Boolean;
 
-/// <summary>Runs ACommand through the command interpreter in AWorkDir and puts
+/// <summary>Runs ACommand through the command interpreter (cmd.exe, or sh on
+/// Linux) in AWorkDir and puts
 /// its standard output and standard error text in AOutput. False when the
 /// process could not be started, or was stopped after ATimeoutMs (AOutput then
 /// holds what it printed so far). AShouldStop (may be nil) is polled while the
 /// process runs; when it returns True the process is killed and the result is
-/// False. Only implemented on Windows.</summary>
+/// False.</summary>
 function RunCommandCapture(const ACommand, AWorkDir: string; ATimeoutMs: Cardinal;
   out AOutput: string; const AShouldStop: TStopCheck = nil): Boolean;
 
@@ -144,11 +145,53 @@ end;
 
 {$ELSE}
 
+uses
+  System.SysUtils, uVfsTypes, uPlatformProcess;
+
+type
+  TStopCheckToken = class(TInterfacedObject, IJobCancelToken)
+  private
+    FCheck: TStopCheck;
+  public
+    constructor Create(const ACheck: TStopCheck);
+    function IsCancellationRequested: Boolean;
+    procedure Cancel;
+  end;
+
+constructor TStopCheckToken.Create(const ACheck: TStopCheck);
+begin
+  inherited Create;
+  FCheck := ACheck;
+end;
+
+function TStopCheckToken.IsCancellationRequested: Boolean;
+begin
+  Result := Assigned(FCheck) and FCheck();
+end;
+
+procedure TStopCheckToken.Cancel;
+begin
+  // The stop check decides.
+end;
+
+// Single-quoted for sh: an embedded quote closes the string, is escaped, and
+// reopens it.
+function ShellQuote(const AText: string): string;
+begin
+  Result := '''' + StringReplace(AText, '''', '''\''''', [rfReplaceAll]) + '''';
+end;
+
 function RunCommandCapture(const ACommand, AWorkDir: string; ATimeoutMs: Cardinal;
   out AOutput: string; const AShouldStop: TStopCheck): Boolean;
+var
+  Script: string;
+  Code: Cardinal;
 begin
-  AOutput := '';
-  Result := False;
+  Script := ACommand;
+  if (AWorkDir <> '') and DirectoryExists(AWorkDir) then
+    Script := 'cd ' + ShellQuote(AWorkDir) + ' && ' + ACommand;
+  Result := PlatformRunCaptured('/bin/sh', ['-c', Script], '', ATimeoutMs,
+    TStopCheckToken.Create(AShouldStop), AOutput, Code) = srOk;
 end;
 
 {$ENDIF}

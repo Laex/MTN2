@@ -185,7 +185,7 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
 implementation
 
 uses
-  uChromeRows;
+  uChromeRows, uStrings;
 
 function PanelModeTitleCaption(AViewKind: TPanelViewKind;
   AIsQuickViewTarget: Boolean): string;
@@ -204,11 +204,11 @@ function FormatPanelTotalsFooter(AHasSelection: Boolean; ABytes: Int64;
   function Compose(const ASize: string): string;
   begin
     if AHasSelection then
-      Result := Format(' Selected: %s, files: %d, folders: %d ',
-        [ASize, AFiles, AFolders])
+      Result := ' ' + T('ui.panelTotals.selected', 'Selected: %s, files: %d, folders: %d',
+        [ASize, AFiles, AFolders]) + ' '
     else
-      Result := Format(' Bytes: %s, files: %d, folders: %d ',
-        [ASize, AFiles, AFolders]);
+      Result := ' ' + T('ui.panelTotals.bytes', 'Bytes: %s, files: %d, folders: %d',
+        [ASize, AFiles, AFolders]) + ' ';
   end;
 
 begin

@@ -1300,6 +1300,8 @@
     "folderHistory.filterTitle": "История папок: %s",
     "folderFrecent.title": "Частые папки",
     "folderFrecent.filterTitle": "Частые папки: %s",
+    "panelTotals.selected": "Выбрано: %s, файлов: %d, папок: %d",
+    "panelTotals.bytes": "Байт: %s, файлов: %d, папок: %d",
     "fileHistory.empty": "(пусто)",
     "fileHistory.viewMark": "П",
     "fileHistory.editMark": "Р",

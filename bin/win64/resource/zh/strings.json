@@ -1292,6 +1292,8 @@
     "folderHistory.filterTitle": "文件夹历史: %s",
     "folderFrecent.title": "常用文件夹",
     "folderFrecent.filterTitle": "常用文件夹: %s",
+    "panelTotals.selected": "已选: %s, 文件: %d, 文件夹: %d",
+    "panelTotals.bytes": "字节: %s, 文件: %d, 文件夹: %d",
     "fileHistory.empty": "(空)",
     "fileHistory.viewMark": "V",
     "fileHistory.editMark": "E",
