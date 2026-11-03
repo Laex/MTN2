@@ -25,6 +25,8 @@ type
     [Test] procedure TestEncryptedHeaders;
     [Test] procedure TestEncryptedData;
     [Test] procedure TestUnknownExtensionByContent;
+    [Test] procedure TestMisnamedArchiveOpensByContent;
+    [Test] procedure TestFolderNameEndingInBang;
     [Test] procedure TestPackWithPassword;
     [Test] procedure TestPackWithEncryptedNames;
     [Test] procedure TestPackCompressionLevel;
@@ -34,7 +36,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uPlatformPaths, uPlatformProcess, uSevenZipApi;
+  uPlatformPaths, uPlatformProcess, uSevenZipApi, uSevenZipVfs;
 
 const
   // 7z a -p1 -mhe=on hdr.7z inner.txt ("secret-payload")
@@ -200,6 +202,49 @@ begin
       SevenZipUnloadEngine;
     end;
   end;
+end;
+
+procedure TTestSevenZipOpen.TestMisnamedArchiveOpensByContent;
+var
+  Dll, Arc, Err, Tag: string;
+  Items: TArray<T7zItem>;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  // A gzip saved as .zip: the ZIP handler refuses it, another format opens it.
+  Arc := WriteFixture('misnamed.zip', cGzip);
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      Assert.IsTrue(SevenZipListArchive(Arc, Items, Err) and (Length(Items) = 1),
+        Tag + 'gzip named .zip lists: ' + Err);
+    finally
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestFolderNameEndingInBang;
+var
+  Folder, Arc, Uri, ArcPath, Inner: string;
+begin
+  // "Games!/a.gz" puts a '!/' inside the path; only the one after the
+  // existing archive file is the archive marker.
+  Folder := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'mtn2-7z-bang'), 'Games!');
+  TDirectory.CreateDirectory(Folder);
+  Arc := TPath.Combine(Folder, 'a.gz');
+  TFile.WriteAllBytes(Arc, [1, 2, 3]);
+  Uri := '7z://' + StringReplace(Arc, '\', '/', [rfReplaceAll]);
+  if not PlatformPosixPaths then
+    Uri := '7z:///' + StringReplace(Arc, '\', '/', [rfReplaceAll]);
+  Assert.IsTrue(ParseSevenZipUri(Uri + '!/', ArcPath, Inner), 'root parses');
+  Assert.AreEqual(Arc, ArcPath, 'root: archive is the file, not the folder prefix');
+  Assert.AreEqual('', Inner, 'root: no inner path');
+  Assert.IsTrue(ParseSevenZipUri(Uri + '!/dir/x.txt', ArcPath, Inner), 'inner parses');
+  Assert.AreEqual(Arc, ArcPath, 'inner: archive is the file');
+  Assert.AreEqual('dir/x.txt', Inner, 'inner: entry path');
 end;
 
 function NewPackSource(const AName, AText: string): string;

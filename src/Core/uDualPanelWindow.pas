@@ -6217,6 +6217,22 @@ begin
     ToggleDrivePopup(Ws.State.ActiveSide);
 end;
 
+// A local file named like a ZIP whose content is another archive format (a RAR
+// saved as .zip): the 7z plugin reads it by content, the built-in ZIP cannot.
+function ZipNamedFileIsOtherArchive(const AFileUri: string): Boolean;
+var
+  Backend: IVirtualFileSystem;
+  Path: string;
+begin
+  Result := False;
+  if not AFileUri.StartsWith('file:', True) or HasArchiveChain(AFileUri) then
+    Exit;
+  Path := FileUriToPath(AFileUri);
+  if not TFile.Exists(Path) or FileHasZipSignature(Path) then
+    Exit;
+  Result := GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(Path), Backend);
+end;
+
 procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
 var
   ArchiveKind: TArchiveExtensionKind;
@@ -6258,6 +6274,8 @@ begin
         FArchivePasswordRetry := False;
         NavigateActiveTo(PathToArchiveRootUri(ArchiveScheme, FileUriToPath(ARow.URI)))
       end
+      else if ZipNamedFileIsOtherArchive(ARow.URI) then
+        NavigateActiveTo(PathToSevenZipRootUri(FileUriToPath(ARow.URI)))
       else
         NavigateActiveTo(EnsureArchiveRootUri(ARow.URI));
     ackView:

@@ -81,6 +81,27 @@ begin
   Result := True;
 end;
 
+/// <summary>Position of the '!/' that ends the first archive's path in ARest.
+/// A folder whose name ends in '!' ("Games!/a.rar") also makes a '!/', so a
+/// marker counts only when the path before it is an existing file; with no such
+/// marker the first one is used (the archive may not exist yet).</summary>
+function FindArchiveMarker(const ARest: string): Integer;
+var
+  From, P: Integer;
+begin
+  Result := Pos('!/', ARest);
+  From := Result;
+  while From > 0 do
+  begin
+    P := From;
+    if FileExists(StringReplace(Copy(ARest, 1, P - 1), '/', PathDelim, [rfReplaceAll])) then
+      Exit(P);
+    From := Pos('!/', ARest, P + 1);
+    if From = 0 then
+      Break;
+  end;
+end;
+
 function ParseSevenZipUri(const AURI: string; out AArchivePath, AInnerPath: string): Boolean;
 var
   S, Rest, Base: string;
@@ -103,7 +124,7 @@ begin
   // starts at its drive letter.
   if PlatformPosixPaths then
     Rest := '/' + Rest;
-  P := Pos('!/', Rest);
+  P := FindArchiveMarker(Rest);
   if P <= 0 then
   begin
     Base := StringReplace(Rest, '/', PathDelim, [rfReplaceAll]);

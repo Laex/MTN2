@@ -16,6 +16,7 @@ type
     [Test] procedure TestZipSignature;
     [Test] procedure TestZipListsUnderAnyName;
     [Test] procedure TestRouting;
+    [Test] procedure TestParentOfArchiveInFolderEndingInBang;
   end;
 
 implementation
@@ -112,6 +113,19 @@ begin
   TFile.WriteAllText(TPath.Combine(Folder, 'file.txt'), 'x');
   Assert.IsFalse(IsZipArchiveUri(PathToFileUri(TPath.Combine(Folder, 'file.txt'))),
     'a file in a folder ending in ! stays on the file system');
+end;
+
+procedure TTestOpenAsArchive.TestParentOfArchiveInFolderEndingInBang;
+var
+  Folder, Arc, Root: string;
+begin
+  Folder := TPath.Combine(WorkDir, 'Games!');
+  TDirectory.CreateDirectory(Folder);
+  Arc := TPath.Combine(Folder, 'a.rar');
+  TFile.WriteAllBytes(Arc, [1, 2, 3]);
+  Root := PathToSevenZipRootUri(Arc);
+  Assert.AreEqual(PathToFileUri(Folder), ParentVfsUri(Root),
+    'the root of an archive in a folder ending in ! leads back to that folder');
 end;
 
 initialization

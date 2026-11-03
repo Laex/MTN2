@@ -1035,6 +1035,23 @@ begin
     Delete(Result, Length(Result), 1);
 end;
 
+// The '!/' that ends the archive file's path. A folder whose name ends in '!'
+// ("Games!/a.rar") also makes a '!/', so a marker counts only when the path
+// before it is an existing file; with none, the first marker is used.
+function FindArchiveMarker(const AURI: string): Integer;
+var
+  P: Integer;
+begin
+  Result := Pos('!/', AURI);
+  P := Result;
+  while P > 0 do
+  begin
+    if FileExists(ArchiveBaseLocalPath(Copy(AURI, 1, P - 1))) then
+      Exit(P);
+    P := Pos('!/', AURI, P + 1);
+  end;
+end;
+
 function SplitArchiveUri(const AURI: string; out ABaseFileUri: string;
   out ASegments: TArray<string>): Boolean;
 var
@@ -1045,7 +1062,7 @@ begin
   ABaseFileUri := '';
   SetLength(ASegments, 0);
   S := Trim(AURI);
-  P := Pos('!/', S);
+  P := FindArchiveMarker(S);
   if P <= 0 then
     Exit;
   ABaseFileUri := Copy(S, 1, P - 1);

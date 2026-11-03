@@ -1002,8 +1002,8 @@ begin
   for Fmt in GFormats do
     if FormatMatchesExt(Fmt, Ext) then
       AddGuid(Result, Fmt.ClassID);
-  if Length(Result) > 0 then
-    Exit;
+  // The formats of the extension come first; the rest follow, so an archive
+  // saved under another extension (a RAR named .zip) still opens by content.
   if Ext = 'rar' then
   begin
     AddGuid(Result, CLSID_CFormatRar5);
@@ -1015,8 +1015,8 @@ begin
     AddGuid(Result, CLSID_CFormatRar5);
     AddGuid(Result, CLSID_CFormatRar);
   end;
-  // An extension no format claims (a file opened as an archive on request,
-  // Ctrl+PgDn): every other format, each checking its own signature.
+  // Every other format, each checking its own signature; this alone serves an
+  // extension no format claims (a file opened as an archive with Ctrl+PgDn).
   for Fmt in GFormats do
     AddGuid(Result, Fmt.ClassID);
 end;
