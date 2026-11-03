@@ -77,7 +77,7 @@ begin
   Put('sub\x.txt', 'x');
   Paths := ParsePanelizeOutput('sub\x.txt' + sLineBreak + 'sub/x.txt', FDir);
   Assert.AreEqual(1, Integer(Length(Paths)));
-  Assert.AreEqual(TPath.Combine(FDir, 'sub\x.txt'), Paths[0]);
+  Assert.AreEqual(TPath.Combine(TPath.Combine(FDir, 'sub'), 'x.txt'), Paths[0]);
 end;
 
 procedure TTestTmpPanelCollect.TestGrepStyleSuffixIsCutOff;
@@ -117,7 +117,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Groups)));
   Assert.AreEqual(2, Integer(Length(Groups[0])));
   Assert.AreEqual(TPath.Combine(FDir, 'one.txt'), Groups[0][0]);
-  Assert.AreEqual(TPath.Combine(FDir, 'sub\two.txt'), Groups[0][1]);
+  Assert.AreEqual(TPath.Combine(TPath.Combine(FDir, 'sub'), 'two.txt'), Groups[0][1]);
 end;
 
 procedure TTestTmpPanelCollect.TestSameSizeDifferentContentIsNotADuplicate;
