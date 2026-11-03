@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.md) | **中文** | [한국어](README.ko.md)
+[English](README.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | **中文** | [한국어](README.ko.md)
 
 基于 **Necromancer's DOS Navigator** 与 **Far Manager** 理念的双面板文件管理器，内置控制台、终端、文件查看器和编辑器。界面为文本用户界面（TUI），但在常规 GUI 窗口中渲染：基于 Delphi FireMonkey 画布（Skia 渲染，支持通过 `--no-skia` 回退到标准画布）的虚拟字符网格，支持 TrueType 字体、Unicode 与 32 位色彩。中日韩（CJK）表意文字占用两列宽度（双宽），与其他现代终端表现一致。
 
@@ -139,7 +139,7 @@ Linux 版本在 Windows 环境下通过 `dcclinux64` 编译器进行交叉编译
 | `src/Platform` | 平台适配层：包含同名模块的 `Windows` 与 `Posix` |
 | `src/Hosts` | 外壳宿主：`Ansi` – 文本终端版本 |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | 主窗体、JSON 对话框、默认主题 |
-| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.ws`、WASM 演示） |
+| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.git`、`mtn.csv`、`mtn.logfilter`、`mtn.ws`、WASM 演示） |
 | `src/tests` | 按组划分的 DUnitX 回归测试及运行脚本 `run-tests.ps1` |
 | `src/tools` | DialogDesigner、ExportDialogJson、`Group.groupproj` 项目组、工具脚本 |
 | `bin/win64`, `bin/linux64` | 各平台构建输出目录 |

@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.en.md) | **Deutsch** | [Русский](README.md) | [中文](README.zh.md) | [한국어](README.ko.md)
+[English](README.md) | **Deutsch** | [Русский](README.ru.md) | [中文](README.zh.md) | [한국어](README.ko.md)
 
 Zweipanel-Dateimanager im Geiste von **Necromancer's DOS Navigator** und **Far Manager** mit integrierter Konsole,
 Terminals, Datei-Viewer und Editor. Die Benutzeroberfläche ist textbasiert (TUI), wird jedoch in einem regulären GUI-Fenster gerendert:
@@ -178,7 +178,7 @@ Start: `bin\win64\MTN2.exe [--no-skia] [--fps] [pfad]`. Details unter [docs/BUIL
 | `src/Platform` | Plattformschicht: `Windows` und `Posix` mit gleichnamigen Modulen |
 | `src/Hosts` | Hosts: `Ansi` – Version für das Textterminal |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Hauptformular, JSON-Dialoge, Standardthema |
-| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM-Demo) |
+| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.ws`, WASM-Demo) |
 | `src/tests` | DUnitX-Regressionstests nach Gruppen und Test-Runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, Projektgruppe `Group.groupproj`, Hilfsskripte |
 | `bin/win64`, `bin/linux64` | Build-Ausgabe nach Plattformen |

@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.md) | [中文](README.zh.md) | **한국어**
+[English](README.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [中文](README.zh.md) | **한국어**
 
 **Necromancer's DOS Navigator** 및 **Far Manager** 스타일의 듀얼 패널 파일 관리자로, 내장 콘솔,
 터미널, 파일 뷰어 및 텍스트 에디터를 탑재하고 있습니다. 인터페이스는 텍스트 기반(TUI)이지만 일반 GUI 창에서 렌더링됩니다.
@@ -163,7 +163,7 @@ Linux 버전은 Windows에서 `dcclinux64` 컴파일러로 크로스 컴파일�
 | `src/Platform` | 플랫폼 추상화 계층: `Windows` 및 `Posix` 모듈 |
 | `src/Hosts` | 셸 호스트: `Ansi` – 텍스트 터미널 버전 |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 기본 테마 |
-| `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.ws`, WASM 데모) |
+| `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.ws`, WASM 데모) |
 | `src/tests` | 그룹별 DUnitX 회귀 테스트 및 실행 스크립트 `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` 프로젝트 그룹, 유틸리티 스크립트 |
 | `bin/win64`, `bin/linux64` | 플랫폼별 빌드 결과물 |
