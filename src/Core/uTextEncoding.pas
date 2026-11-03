@@ -498,7 +498,7 @@ end;
 
 function SampleLen(const ABytes: TBytes): Integer;
 const
-  cMaxSample = 65536;
+  cMaxSample = 8192;
 begin
   Result := Length(ABytes);
   if Result > cMaxSample then

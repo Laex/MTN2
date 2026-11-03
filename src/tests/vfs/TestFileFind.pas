@@ -23,6 +23,7 @@ type
     [Test] procedure ResultLimitIsReportedOnlyWhenMoreMatchesExist;
     [Test] procedure ChosenEncodingDecidesWhatTextIsSearched;
     [Test] procedure ArchivesAreSearchedOnlyWhenAsked;
+    [Test] procedure EncryptedArchiveEntriesAreListedButNotRead;
     [Test] procedure ArchiveHitsNameTheArchiveAndTheEntry;
   end;
 
@@ -563,6 +564,35 @@ begin
     Opts.Subdirs := False;
     Assert.AreEqual<Integer>(0, Length(RunFind(Opts)),
       'a folder inside the archive is skipped without subfolders');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFileFind.EncryptedArchiveEntriesAreListedButNotRead;
+var
+  Dir, ZipPath: string;
+  Bytes: TBytes;
+  I: Integer;
+  Opts: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-zipenc-' + TPath.GetGUIDFileName(False));
+  TDirectory.CreateDirectory(Dir);
+  try
+    ZipPath := TPath.Combine(Dir, 'pack.zip');
+    MakeZip(ZipPath);
+    // Set the "encrypted" bit in every central-directory header.
+    Bytes := TFile.ReadAllBytes(ZipPath);
+    for I := 0 to Length(Bytes) - 47 do
+      if (Bytes[I] = $50) and (Bytes[I + 1] = $4B) and (Bytes[I + 2] = 1) and
+         (Bytes[I + 3] = 2) then
+        Bytes[I + 8] := Bytes[I + 8] or 1;
+    TFile.WriteAllBytes(ZipPath, Bytes);
+    Opts := DefaultFindOptions(Dir, '*.txt', True);
+    Opts.SearchArchives := True;
+    Assert.AreEqual<Integer>(2, Length(RunFind(Opts)), 'names are listed from the directory');
+    Opts.ContainingText := 'needle';
+    Assert.AreEqual<Integer>(0, Length(RunFind(Opts)), 'content cannot be read');
   finally
     TDirectory.Delete(Dir, True);
   end;

@@ -746,7 +746,7 @@ end;
 const
   // How much of a file the encoding detection looks at. The rest is decoded
   // with whatever the start turned out to be.
-  cFindDetectSampleBytes = 64 * 1024;
+  cFindDetectSampleBytes = 8 * 1024;
 
 { The text of ABytes: in the chosen encoding, or in the detected one (BOM,
   UTF-8, UTF-16, ANSI/OEM and CJK code pages, like in the viewer). Binary
@@ -984,7 +984,8 @@ begin
       Snippet := '';
       if FindNeedsContent(Options) then
       begin
-        if (AEntry.Size > cFindMaxContentBytes) or
+        // Encrypted members cannot be read without a password.
+        if AEntry.IsEncrypted or (AEntry.Size > cFindMaxContentBytes) or
            not ReadArchiveEntry(Vfs, AEntryUri, cFindMaxContentBytes, ACancel, Bytes) or
            not FindBytesMatch(Bytes, Options, Line, Snippet) then
           Exit;
