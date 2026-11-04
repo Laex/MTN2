@@ -110,6 +110,7 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
   highlighting of plain text files and pictures in quick view.
 - **Command line and automation:** a list of earlier commands that start with what you typed, environment profiles for shells (`environment.json`),
   `MTN2 path1 path2` opens tabs, `--view` and `--edit` open the viewer and editor, `--update` updates without a window, file lists exported to Markdown or CSV.
+- **Macros:** the Macros plugin runs macros written in Lua. `Ctrl+.` records the keys you press into a macro file; a macro starts from its own key or from the Macros menu in the panels, viewer, editor and console, and can check the state of the program (area, marked files, selection) before it starts. Macros are plain text files; three samples ship with the program (`samples\macros`). See F1 help in the macro dialogs.
 - **Git and extras:** the Git status plugin shows the branch and change counts in the status bar, colors the file names in the panels by their git state, Ctrl+Shift+D opens the `git diff` of a file in the built-in viewer, and "Git blame of the file" shows the commit and author of each line; Ctrl+Shift+F12 jumps to frequent folders; optional Vim keys on the panel (`hjkl`, `g`, `G`, `/`, `:`); color groups with priorities; a screensaver with sharks when idle.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
   user menu (F2), command palette (`Shift+F9`) to search the menu items, file associations, F1 context help.
@@ -198,7 +199,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 | `src/Platform` | Platform abstraction layer: `Windows` and `Posix` modules |
 | `src/Hosts` | Shell hosts: `Ansi` – text terminal version |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Main form, JSON dialogs, default theme |
-| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.ws`, WASM demo) |
+| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, WASM demo) |
 | `src/tests` | DUnitX regression tests by group and test runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` project group, utility scripts |
 | `bin/win64`, `bin/linux64` | Build output by platform |

@@ -109,6 +109,7 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
   Hervorhebung von Textdateien und Bilder in der Schnellansicht.
 - **Befehlszeile und Automatisierung:** Liste früherer Befehle, die mit der Eingabe beginnen, Umgebungsprofile für Shells (`environment.json`),
   `MTN2 Pfad1 Pfad2` öffnet Tabs, `--view` und `--edit` öffnen Viewer und Editor, `--update` aktualisiert ohne Fenster, Dateilisten als Markdown oder CSV.
+- **Makros:** das Plugin „Makros“ führt in Lua geschriebene Makros aus. `Strg+.` zeichnet die gedrückten Tasten in eine Makrodatei auf; ein Makro startet über eine eigene Taste oder das Menü „Makros“ in Panels, Viewer, Editor und Konsole und kann vorher den Zustand des Programms prüfen (Bereich, markierte Dateien, Auswahl). Makros sind einfache Textdateien; drei Beispiele liegen bei (`samples\macros`). Beschreibung: F1-Hilfe in den Makro-Dialogen.
 - **Git und mehr:** das Plugin „Git status“ zeigt Branch und Änderungszahlen in der Statuszeile, färbt die Dateinamen in den Panels nach ihrem Git-Zustand, und Strg+Umschalt+D öffnet das `git diff` einer Datei im eingebauten Viewer; Strg+Umschalt+F12 springt zu häufigen Ordnern; optional Vim-Tasten im Panel (`hjkl`, `g`, `G`, `/`, `:`); Farbgruppen mit Prioritäten; Bildschirmschoner mit Haien bei Inaktivität.
 - **Anpassung:** anpassbare Tastenbelegung (`keymap.json`), dateibasierte Themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast usw.; eigene Themes im Theme-Editor),
   Benutzermenü (F2), Befehlspalette (`Umschalt+F9`) zur Suche in den Menüeinträgen, Dateizuordnungen, kontextbezogene F1-Hilfe.
@@ -178,7 +179,7 @@ Start: `bin\win64\MTN2.exe [--no-skia] [--fps] [pfad]`. Details unter [docs/BUIL
 | `src/Platform` | Plattformschicht: `Windows` und `Posix` mit gleichnamigen Modulen |
 | `src/Hosts` | Hosts: `Ansi` – Version für das Textterminal |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Hauptformular, JSON-Dialoge, Standardthema |
-| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.ws`, WASM-Demo) |
+| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, WASM-Demo) |
 | `src/tests` | DUnitX-Regressionstests nach Gruppen und Test-Runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, Projektgruppe `Group.groupproj`, Hilfsskripte |
 | `bin/win64`, `bin/linux64` | Build-Ausgabe nach Plattformen |

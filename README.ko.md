@@ -100,6 +100,7 @@ Linux(`mtn2-tui`, `mtn2-sdl`)는 아래 “설치”를 참고하세요. 프로�
 - **비교와 동기화:** 시간·크기·내용으로 폴더 비교(백그라운드, 중단 가능), 두 파일의 줄 단위 차이(`Ctrl+Alt+C`), 디렉터리 동기화, 다른 패널의 같은 이름 파일로 이동(`Ctrl+Alt+M`).
 - **로그와 바이너리 파일:** 늘어나는 파일의 끝 따라가기(`Ctrl+Shift+F`, 로그 로테이션 지원), 16진수 모드의 바이트 검색, 텍스트 파일 강조, 빠른 보기의 이미지.
 - **명령줄과 자동화:** 입력한 글자로 시작하는 이전 명령 목록, 셸용 환경 프로필(`environment.json`), `MTN2 경로1 경로2`로 탭 열기, `--view`와 `--edit`로 뷰어·에디터 열기, `--update`로 창 없이 업데이트, 파일 목록을 Markdown 또는 CSV로 내보내기.
+- **매크로:** 매크로 플러그인이 Lua로 작성한 매크로를 실행합니다. `Ctrl+.`는 누른 키를 매크로 파일로 기록하고, 매크로는 자체 키 또는 패널·뷰어·에디터·콘솔의 매크로 메뉴에서 시작하며, 시작 전에 프로그램 상태(영역, 표시한 파일, 선택)를 확인할 수 있습니다. 매크로는 일반 텍스트 파일이며 예제 세 개가 포함되어 있습니다(`samples\macros`). 설명은 매크로 대화상자의 F1 도움말에 있습니다.
 - **Git과 기타:** "Git status" 플러그인이 상태 표시줄에 브랜치와 변경 수를 표시하고 패널의 파일 이름을 git 상태에 따라 색칠하며, Ctrl+Shift+D로 파일의 `git diff`를 내장 뷰어에서 열 수 있고, Ctrl+Shift+F12로 자주 쓰는 폴더로 이동하며, 선택적으로 패널에서 Vim 키(`hjkl`, `g`, `G`, `/`, `:`)를 쓸 수 있고, 우선순위가 있는 색상 그룹, 유휴 시 상어 화면 보호기가 있습니다.
 - **사용자 정의 설정:** 재정의 가능한 키 매핑(`keymap.json`), 파일 기반 테마(Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast 등; 내장 테마 에디터를 통한 커스텀 테마 생성),
   사용자 메뉴(F2), 명령 팔레트(`Shift+F9`, 메뉴 항목 검색), 파일 연결 설정, F1 컨텍스트 도움말.
@@ -163,7 +164,7 @@ Linux 버전은 Windows에서 `dcclinux64` 컴파일러로 크로스 컴파일�
 | `src/Platform` | 플랫폼 추상화 계층: `Windows` 및 `Posix` 모듈 |
 | `src/Hosts` | 셸 호스트: `Ansi` – 텍스트 터미널 버전 |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | 메인 폼, JSON 대화 상자, 기본 테마 |
-| `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.ws`, WASM 데모) |
+| `src/plugins` | 내장 플러그인 (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, WASM 데모) |
 | `src/tests` | 그룹별 DUnitX 회귀 테스트 및 실행 스크립트 `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` 프로젝트 그룹, 유틸리티 스크립트 |
 | `bin/win64`, `bin/linux64` | 플랫폼별 빌드 결과물 |

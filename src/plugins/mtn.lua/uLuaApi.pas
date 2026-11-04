@@ -108,7 +108,7 @@ begin
   {$IFDEF MSWINDOWS}
   Result := GetProcAddress(HMODULE(GLib), PAnsiChar(AName));
   {$ELSE}
-  Result := dlsym(Pointer(GLib), PAnsiChar(AName));
+  Result := dlsym(GLib, PAnsiChar(AName));
   {$ENDIF}
   if Result = nil then
     GError := 'missing function ' + string(AName);
@@ -218,7 +218,7 @@ begin
   {$IFDEF MSWINDOWS}
   FreeLibrary(HMODULE(GLib));
   {$ELSE}
-  dlclose(Pointer(GLib));
+  dlclose(GLib);
   {$ENDIF}
   GLib := 0;
 end;
