@@ -26,7 +26,7 @@ x64-версию `7z.dll` в `plugins\mtn.7z\`. Автообновление з�
 
 ## Lua (`plugins\mtn.lua\lua55.dll`)
 
-Плагин `mtn.lua` выполняет макросы интерпретатором [Lua](https://www.lua.org) 5.5 (Copyright (C) PUC-Rio), лицензия MIT; текст лицензии – в файле `plugins\mtn.lua\LICENSE-lua.txt`. Библиотека подключается динамически и лежит отдельным файлом из сборки LuaBinaries.
+Плагин `mtn.lua` выполняет макросы интерпретатором [Lua](https://www.lua.org) 5.5 (Copyright (C) PUC-Rio), лицензия MIT; текст лицензии – в файле `plugins\mtn.lua\LICENSE-lua.txt`. Библиотека подключается динамически и лежит отдельным файлом: в Windows – из сборки LuaBinaries, в архивах и пакетах Linux – `plugins/mtn.lua/liblua5.4.so.0` (Lua 5.4 из пакета Debian 12, текст лицензии – рядом, `LICENSE-lua.txt`).
 
 ## Подсветка синтаксиса (`plugins\mtn.highlight`)
 

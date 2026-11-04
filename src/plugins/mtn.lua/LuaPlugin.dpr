@@ -82,6 +82,17 @@ begin
   GHostApi.ShowMessage(PAnsiChar(Raw), AKind);
 end;
 
+{ Why macros are off, with the way to fix it for this platform. }
+function NoLuaText: string;
+begin
+  {$IFDEF MSWINDOWS}
+  Result := Format(Tr('err.noLuaWin', 'Macros need the Lua library (lua55.dll next to the plugin): %s'), [GLoadError]);
+  {$ELSE}
+  Result := Format(Tr('err.noLuaLinux',
+    'Macros need the Lua library: install liblua5.4-0 (Debian, Ubuntu) or lua-libs (Fedora). %s'), [GLoadError]);
+  {$ENDIF}
+end;
+
 { What the program already binds the chord to ('' = free). The plugin's own macro commands are
   left to the macro checks, which know which of them are live. }
 function KeyOwner(const AChord: string): string;
@@ -705,7 +716,7 @@ begin
   try
     if GEngine = nil then
     begin
-      Notice(Format(Tr('err.noLua', 'Macros need the Lua library: %s'), [GLoadError]), 1);
+      Notice(NoLuaText, 1);
       Exit;
     end;
     if not GRecording then
@@ -1149,7 +1160,7 @@ var
 begin
   if GEngine = nil then
   begin
-    Notice(Format(Tr('err.noLua', 'Macros need the Lua library: %s'), [GLoadError]), 1);
+    Notice(NoLuaText, 1);
     Exit;
   end;
   GListIds.Clear;

@@ -151,7 +151,7 @@ begin
   {$ENDIF}
   if GLib = 0 then
   begin
-    GError := 'Lua 5.4/5.5 library not found';
+    GError := '(Lua 5.4/5.5 not found)';
     Exit(False);
   end;
   @luaL_newstate := Sym('luaL_newstate');

@@ -276,6 +276,8 @@ begin
   SetClipboardService(TSdlClipboard.Create);
   FShell := THostShell.Create(Max(20, FOutW div FGrid.CellWidth),
     Max(6, FOutH div FGrid.CellHeight));
+  // SDL delivers key releases, so Alt and Ctrl modes end on release.
+  FShell.KeyReleaseReported := True;
   FShell.AttachPlugins(PluginsDir);
   FShell.AttachUpdater;
   FSurfaceMouse := TSdlSurfaceMouse.Create(

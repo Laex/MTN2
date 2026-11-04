@@ -17,7 +17,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Generics.Collections;
 
 type
-  TTermEventKind = (tekKey, tekMouse, tekPaste, tekCapabilities, tekFocus);
+  TTermEventKind = (tekKey, tekMouse, tekPaste, tekCapabilities, tekFocus, tekModifiers);
 
   TTermMouseAction = (tmaPress, tmaRelease, tmaMove, tmaWheelUp, tmaWheelDown,
     tmaWheelLeft, tmaWheelRight);
@@ -28,7 +28,8 @@ type
     Key: Word;
     /// <summary>tekKey: the typed character, #0 for a chord.</summary>
     KeyChar: Char;
-    /// <summary>tekKey, tekMouse: Shift, Alt, Ctrl held.</summary>
+    /// <summary>tekKey, tekMouse: Shift, Alt, Ctrl held. tekModifiers: the
+    /// modifiers held after a modifier key went down or up.</summary>
     Shift: TShiftState;
     /// <summary>tekMouse: zero-based cell.</summary>
     Col: Integer;
@@ -90,6 +91,9 @@ uses
 
 const
   cEsc = 27;
+  // Kitty key codes of the modifier keys themselves (left shift .. ISO level 5 shift).
+  cKittyFirstModifier = 57441;
+  cKittyLastModifier = 57454;
 
 procedure CharToKey(ACh: Char; out AKey: Word; out AShift: TShiftState);
 begin
@@ -580,6 +584,7 @@ var
   Ch: Char;
   Sh: TShiftState;
   Digits: string;
+  EventType, TextCode: Integer;
 begin
   // Mouse report: CSI < b ; x ; y M|m
   if (Length(AParams) > 0) and (AParams[1] = '<') and ((AFinal = Ord('M')) or (AFinal = Ord('m'))) then
@@ -605,6 +610,16 @@ begin
     end;
     Exit;
   end;
+
+  // Kitty event types (CSI ... ; mods:type ...): 1 press, 2 repeat, 3 release.
+  // A release is never a key press; only a modifier key's release is reported.
+  Fields := AParams.Split([';']);
+  EventType := 1;
+  if Length(Fields) > 1 then
+    if Length(Fields[1].Split([':'])) > 1 then
+      EventType := StrToIntDef(Fields[1].Split([':'])[1], 1);
+  if (EventType = 3) and (AFinal <> Ord('u')) then
+    Exit;
 
   P := SplitInts(AParams);
   case Char(AFinal) of
@@ -698,6 +713,29 @@ begin
         if Length(Fields) > 1 then
           ModParam := StrToIntDef(Fields[1].Split([':'])[0], 1);
         Mods := ModsOf(ModParam);
+        if (Code >= cKittyFirstModifier) and (Code <= cKittyLastModifier) then
+        begin
+          // A modifier key alone (reported with the "all keys" flag): the
+          // modifiers still held, whether the key went down or up.
+          E := Default(TTermEvent);
+          E.Kind := tekModifiers;
+          E.Shift := Mods;
+          Emit(AEvents, E);
+          Exit;
+        end;
+        if EventType = 3 then
+          Exit;
+        // Text the key types (associated-text flag): the same event a plain
+        // typed character gives, whatever the layout or Caps Lock did.
+        if (Length(Fields) > 2) and (Fields[2] <> '') and ((Mods * [ssCtrl, ssAlt]) = []) then
+        begin
+          TextCode := StrToIntDef(Fields[2].Split([':'])[0], 0);
+          if TextCode >= 32 then
+          begin
+            EmitChar(AEvents, TextCode, []);
+            Exit;
+          end;
+        end;
         case Code of
           13, 57414: EmitKey(AEvents, vkReturn, #0, Mods);
           9: EmitKey(AEvents, vkTab, #0, Mods);

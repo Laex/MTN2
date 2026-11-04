@@ -33,6 +33,7 @@ type
     FDriveTimer: TCoreTimer;
     FAltTimer: TCoreTimer;
     FHeldShift: TShiftState;
+    FKeyReleaseReported: Boolean;
     FUpdater: TUpdateController;
     FUpdateTimer: TCoreTimer;
     FLastClickTick: UInt64;
@@ -60,6 +61,7 @@ type
     function DispatchTerminalKey(var AKey: Word; var AKeyChar: Char;
       AShift: TShiftState): Boolean;
     procedure HandleKey(const AEvent: TTermEvent);
+    procedure HandleModifiers(const AEvent: TTermEvent);
     procedure HandleMouse(const AEvent: TTermEvent);
     procedure HandleMouseDown(const AEvent: TTermEvent);
     procedure HandleMouseMove(const AEvent: TTermEvent);
@@ -139,6 +141,9 @@ type
     /// drops the updater.</summary>
     procedure DetachUpdater;
     /// <summary>True when the screen must be composed again.</summary>
+    /// <summary>True when the host reports modifier releases (tekModifiers), so the
+    /// timers that stand in for them stay off.</summary>
+    property KeyReleaseReported: Boolean read FKeyReleaseReported write FKeyReleaseReported;
     property Dirty: Boolean read FDirty write FDirty;
     property Quit: Boolean read FQuit;
     property DualPanel: TDualPanelWindow read FDualPanel;
@@ -1172,11 +1177,25 @@ begin
   DispatchTerminalKey(Key, Ch, Shift);
   FHeldShift := Shift;
   FAltTimer.Enabled := False;
-  if ssAlt in Shift then
+  if (ssAlt in Shift) and not FKeyReleaseReported then
     FAltTimer.Enabled := True;
   FDriveTimer.Enabled := False;
-  if FDualPanel.DrivePreviewActive then
+  if FDualPanel.DrivePreviewActive and not FKeyReleaseReported then
     FDriveTimer.Enabled := True;
+  Recompose;
+end;
+
+procedure THostShell.HandleModifiers(const AEvent: TTermEvent);
+begin
+  // The host sees modifier keys go up and down, so Alt and Ctrl end their modes
+  // when released instead of after a pause.
+  FKeyReleaseReported := True;
+  FAltTimer.Enabled := False;
+  FDriveTimer.Enabled := False;
+  FHeldShift := AEvent.Shift;
+  SyncKeyModifiers(AEvent.Shift);
+  if not (ssCtrl in AEvent.Shift) and FDualPanel.DrivePreviewActive then
+    FDualPanel.ApplyDrivePreview;
   Recompose;
 end;
 
@@ -1416,6 +1435,7 @@ begin
         Recompose;
       end;
     tekPaste: HandlePaste(AEvent.Text);
+    tekModifiers: HandleModifiers(AEvent);
   end;
 end;
 

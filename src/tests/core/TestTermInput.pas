@@ -17,6 +17,7 @@ type
     [Test] procedure TestAltKey;
     [Test] procedure TestLoneEscapeNeedsFlush;
     [Test] procedure TestKittyKeys;
+    [Test] procedure TestKittyKeyEvents;
     [Test] procedure TestModifyOtherKeys;
     [Test] procedure TestMouse;
     [Test] procedure TestBracketedPaste;
@@ -179,6 +180,38 @@ begin
   CheckKey(E[1], vkReturn, #0, [ssShift], 'shift+enter');
   CheckKey(E[2], Ord('A'), #0, [ssAlt], 'alt+a');
   CheckKey(E[3], vkSemicolon, #0, [ssCtrl], 'ctrl+;');
+end;
+
+procedure TTestTermInput.TestKittyKeyEvents;
+var
+  E: TArray<TTermEvent>;
+begin
+  // A release is not a key press; a repeat is.
+  E := Decode(#27'[1;5:3D');
+  Assert.AreEqual(0, Integer(Length(E)), 'arrow release is dropped');
+  E := Decode(#27'[97;1:3u');
+  Assert.AreEqual(0, Integer(Length(E)), 'letter release is dropped');
+  E := Decode(#27'[1;5:2D');
+  Assert.AreEqual(1, Integer(Length(E)));
+  CheckKey(E[0], vkLeft, #0, [ssCtrl], 'ctrl+left repeat');
+  // A modifier key alone reports the modifiers still held.
+  E := Decode(#27'[57442;5u'#27'[57443;7u'#27'[57443;5:3u'#27'[57448;1:3u');
+  Assert.AreEqual(4, Integer(Length(E)));
+  Assert.AreEqual(Ord(tekModifiers), Ord(E[0].Kind));
+  Assert.IsTrue(E[0].Shift = [ssCtrl], 'ctrl down');
+  Assert.IsTrue(E[1].Shift = [ssCtrl, ssAlt], 'alt down while ctrl is held');
+  Assert.IsTrue(E[2].Shift = [ssCtrl], 'alt released, ctrl still held');
+  Assert.IsTrue(E[3].Shift = [], 'last modifier released');
+  // The associated text decides the typed character: Shift and Caps Lock
+  // are already applied by the terminal.
+  E := Decode(#27'[97:65;2;65u'#27'[97;65;65u'#27'[1074;1;1074u');
+  Assert.AreEqual(3, Integer(Length(E)));
+  CheckKey(E[0], Ord('A'), 'A', [ssShift], 'shift+a');
+  CheckKey(E[1], Ord('A'), 'A', [ssShift], 'caps lock a');
+  Assert.AreEqual(Integer(1074), Integer(Ord(E[2].KeyChar)), 'cyrillic letter');
+  // Without text, a chord keeps its modifiers.
+  E := Decode(#27'[97;5u');
+  CheckKey(E[0], Ord('A'), #0, [ssCtrl], 'ctrl+a');
 end;
 
 procedure TTestTermInput.TestModifyOtherKeys;

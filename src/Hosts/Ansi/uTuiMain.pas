@@ -270,7 +270,12 @@ begin
               // Without the kitty protocol ask xterm-like terminals for
               // distinguishable modified keys.
               if not E.KittyKeyboard then
-                Term.WriteText(#27'[>4;2m');
+                Term.WriteText(#27'[>4;2m')
+              else if GetEnvironmentVariable('MTN2_NO_KEY_EVENTS') = '' then
+                // Disambiguate, release events, alternate keys, all keys as
+                // escape codes, associated text: modifier keys then report
+                // their own release.
+                Term.WriteText(#27'[=31;1u');
             end
             else
             begin

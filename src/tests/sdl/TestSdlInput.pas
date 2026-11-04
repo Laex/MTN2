@@ -31,6 +31,7 @@ type
     [Test] procedure FlippedWheelReverses;
     [Test] procedure DroppedFileIsPastedAsPath;
     [Test] procedure ModifierMaskBecomesShiftState;
+    [Test] procedure ReleasingAModifierReportsWhatIsStillHeld;
   end;
 
 implementation
@@ -49,6 +50,12 @@ begin
   SdlEventSetU32(Result, 16, Cardinal(AScan));
   SdlEventSetU32(Result, 20, Cardinal(ASym));
   SdlEventSetU32(Result, 24, Cardinal(AMods));
+end;
+
+function KeyUp(AScan, AMods: Integer): TSDLEvent;
+begin
+  Result := KeyDown(0, AScan, AMods);
+  SdlEventSetU32(Result, 0, SDL_KEYUP);
 end;
 
 function TextInput(const AText: string): TSDLEvent;
@@ -273,6 +280,30 @@ begin
     Assert.AreEqual('@', Ev[0].KeyChar);
     // Left Ctrl with right Alt is how some systems report AltGr.
     Assert.AreEqual(0, Integer(Length(Translate(M, KeyDown(Ord('q'), 20, KMOD_LCTRL or KMOD_RALT)))));
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestSdlInput.ReleasingAModifierReportsWhatIsStillHeld;
+var
+  M: TSdlInputMapper;
+  Ev: TArray<TTermEvent>;
+begin
+  M := NewMapper;
+  try
+    // Left Alt released while Left Ctrl stays down; the mask may or may not
+    // still carry the released key.
+    Ev := Translate(M, KeyUp(226, KMOD_LCTRL or KMOD_LALT));
+    Assert.AreEqual(1, Integer(Length(Ev)));
+    Assert.AreEqual(Ord(tekModifiers), Ord(Ev[0].Kind));
+    Assert.IsTrue(Ev[0].Shift = [ssCtrl], 'ctrl is still held');
+    Ev := Translate(M, KeyUp(226, KMOD_LCTRL));
+    Assert.IsTrue(Ev[0].Shift = [ssCtrl], 'a mask without the key gives the same');
+    Ev := Translate(M, KeyUp(224, KMOD_LCTRL));
+    Assert.IsTrue(Ev[0].Shift = [], 'nothing held after the last release');
+    // Releasing an ordinary key says nothing.
+    Assert.AreEqual(0, Integer(Length(Translate(M, KeyUp(4, 0)))));
   finally
     M.Free;
   end;

@@ -27,10 +27,27 @@ if ($HasWindow) { Copy-Item $Window $Stage }
 $ModeList = if ($HasWindow) { 'mtn2/mtn2-tui mtn2/mtn2-sdl' } else { 'mtn2/mtn2-tui' }
 $PluginsBuilt = Join-Path $Bin 'linux64\plugins'
 if (Test-Path $PluginsBuilt) { Copy-Item (Join-Path $PluginsBuilt '*') (Join-Path $Stage 'plugins') -Recurse -Force }
+# The macro plugin finds liblua5.4.so.0 in its own folder first, so the archive works without a system Lua package.
+$LuaPlugin = Join-Path $Stage 'plugins\mtn.lua'
+if (Test-Path $LuaPlugin) {
+    try {
+        & (Join-Path $PSScriptRoot 'fetch-lua-linux.ps1') -Distro $Distro | Out-Null
+        $LuaLib = Join-Path $PSScriptRoot 'lua-linux'
+        Copy-Item (Join-Path $LuaLib 'liblua5.4.so.0') $LuaPlugin -Force
+        Copy-Item (Join-Path $LuaLib 'LICENSE-lua.txt') $LuaPlugin -Force
+    } catch {
+        Write-Host "WARN: Lua library not bundled ($_); macros need the system package"
+    }
+}
 $Wasmtime = Join-Path $Bin 'linux64\libwasmtime.so'
 if (Test-Path $Wasmtime) { Copy-Item $Wasmtime $Stage }
 $Packs = Join-Path $Bin 'linux64\resource'
 if (Test-Path $Packs) { Copy-Item $Packs (Join-Path $Stage 'resource') -Recurse }
+$Samples = Join-Path $Root 'samples\macros'
+if (Test-Path $Samples) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'samples') | Out-Null
+    Copy-Item $Samples (Join-Path $Stage 'samples\macros') -Recurse
+}
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
 Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage

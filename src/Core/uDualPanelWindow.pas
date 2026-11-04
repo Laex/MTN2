@@ -6643,7 +6643,7 @@ function TDualPanelWindow.DispatchDialogCommand(AKind: THostDialogKind;
 var
   HostCmd: TProc<string, string>;
   ReturnRow: Integer;
-  PickField: string;
+  PickField, Values: string;
 begin
   Result := True;
   case AKind of
@@ -6718,11 +6718,16 @@ begin
         BeginHostColorPick(PickField)
       else
       begin
+        // Enter on the default button reaches here without the values; read them
+        // before Close drops the controls.
+        Values := AValuesJson;
+        if Values = '' then
+          Values := FDialog.GetValuesJson;
         FDialog.Close;
         HostCmd := FHostDialogCommand;
         FHostDialogCommand := nil;
         if Assigned(HostCmd) then
-          HostCmd(AControlId, AValuesJson);
+          HostCmd(AControlId, Values);
         // A plugin's settings dialog is over: back to the Plugins list, unless the
         // plugin chained another dialog (the list waits for that one).
         if (FPluginListReturnRow >= 0) and not FDialog.Visible then

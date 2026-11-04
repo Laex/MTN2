@@ -46,7 +46,7 @@
 | **Plugin Manager** | Жизненный цикл **родных** плагинов: `uPluginHost` → `uPluginLoader` (DLL `plugins\<id>\*.dll`, ABI v1), реестры VFS/panel/menu/keymap. Far/TC – отдельные мосты после родного API. |
 | **Event Bus / Broker** | `IMessageBus` – pub/sub между плагинами и ядром. |
 | **ANSI Parser** | `IANSIParser` – VT100/xterm → `TTerminalGrid` + scrollback (TrueColor, later alt screen). См. §8. |
-| **Scripting Engine** | Макросы/скрипты (позже). |
+| **Scripting Engine** | Макросы на Lua – плагин `mtn.lua`: песочница Lua, вызовы `mtn.key` / `mtn.text` / `mtn.action` выполняются в главном потоке через `PostToMain`. Библиотека Lua подключается динамически. SDS §6.6. |
 | **Overlay Renderer** | Растровая графика поверх текстовой сетки (превью); запросы идут через ядро, не через Canvas плагина. |
 | **Far API Wrapper** | Windows-only мост VFS-плагинов **Far** (после родного Plugin Manager; SDS §6.8.2). |
 | **TC Plugin Bridge** | Windows-only мост **Total Commander** WCX/WFX (после родного API; SDS §6.8.3). |

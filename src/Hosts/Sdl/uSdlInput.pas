@@ -26,6 +26,7 @@ type
     procedure AddKey(const AEvents: TList<TTermEvent>; AKey: Word; AChar: Char;
       AShift: TShiftState);
     procedure MapKeyDown(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
+    procedure MapKeyUp(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
     procedure MapText(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
     procedure MapMotion(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
     procedure MapButton(const E: TSDLEvent; APressed: Boolean;
@@ -61,6 +62,12 @@ uses
 const
   cScancodeMask = $40000000;
   // Scancodes of the keys that are not characters.
+  scLCtrl = 224;
+  scLShift = 225;
+  scLAlt = 226;
+  scRCtrl = 228;
+  scRShift = 229;
+  scRAlt = 230;
   scF1 = 58;
   scPrintScreen = 70;
   scInsert = 73;
@@ -232,6 +239,32 @@ begin
     AddKey(AEvents, Vk, #0, Shift);
 end;
 
+procedure TSdlInputMapper.MapKeyUp(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
+var
+  Scan, Mods, Bit: Integer;
+  Ev: TTermEvent;
+begin
+  Scan := SdlEventI32(E, 16);
+  case Scan of
+    scLCtrl: Bit := KMOD_LCTRL;
+    scLShift: Bit := KMOD_LSHIFT;
+    scLAlt: Bit := KMOD_LALT;
+    scRCtrl: Bit := KMOD_RCTRL;
+    scRShift: Bit := KMOD_RSHIFT;
+    scRAlt: Bit := KMOD_RALT;
+  else
+    Exit;
+  end;
+  // Whether the mask of a release still holds the key depends on the SDL
+  // version, so the key's own bit is cleared.
+  Mods := (SdlEventU32(E, 24) and $FFFF) and not Bit;
+  FMods := Mods;
+  Ev := Default(TTermEvent);
+  Ev.Kind := tekModifiers;
+  Ev.Shift := SdlModsToShift(Mods);
+  AEvents.Add(Ev);
+end;
+
 procedure TSdlInputMapper.MapText(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
 var
   Text: string;
@@ -354,6 +387,7 @@ procedure TSdlInputMapper.Translate(const E: TSDLEvent; const AEvents: TList<TTe
 begin
   case SdlEventType(E) of
     SDL_KEYDOWN: MapKeyDown(E, AEvents);
+    SDL_KEYUP: MapKeyUp(E, AEvents);
     SDL_TEXTINPUT: MapText(E, AEvents);
     SDL_MOUSEMOTION: MapMotion(E, AEvents);
     SDL_MOUSEBUTTONDOWN: MapButton(E, True, AEvents);
