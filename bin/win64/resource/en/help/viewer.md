@@ -38,14 +38,16 @@
 
 Large files are streamed, not loaded as a whole. If the file changes on disk, the open window is updated. For a read-only file the program offers to open it for writing by clearing the attribute.
 
-**Search dialog.** The field keeps earlier searches (**Ctrl+↓** / **Alt+↓**); the options are **Case sensitive**, **Whole words**, **Regular expressions** and **Reverse search**.
+<!--bookmarks-->**Bookmarks.** **Ctrl+F2** marks the cursor line, **Ctrl+Shift+F2** / **Ctrl+Alt+F2** go to the next / previous one and **Ctrl+Alt+B** opens the list: Enter goes to the chosen line, Esc closes it.
+
+<!--find-->**Search dialog.** The field keeps earlier searches (**Ctrl+↓** / **Alt+↓**); the options are **Case sensitive**, **Whole words**, **Regular expressions** and **Reverse search**.
 
 **The field and matches**
 - **Word** puts the word under the cursor into the field, **Selection** puts in the selection (the current line when nothing is selected; the first line of a multi-line selection). With **Regular expressions** on, the text of those two buttons is escaped.
 - A found match is selected and **F3** / **Shift+F3** go on from it. A match never spans a line break.
 - With **Regular expressions** the pattern is a PCRE expression and in the replacement `$0` is the whole match, `$1` ... `$9` are the groups and `$$` is a dollar sign; without the option the replacement is taken as it is. A pattern that cannot be compiled is reported and nothing is searched.
 
-**Replacing**
+<!--replace-->**Replacing**
 - **Replace** in the Replace dialog goes through the matches one by one: each is shown selected, with the text, its replacement and the line that holds it, and is answered with **Replace** (replace it and go on to the next), **All** (replace the rest without asking), **Skip** or **Cancel**.
 - When the end of the text is reached and the search began in the middle, it offers to continue from the beginning (from the end when searching backwards).
 - **All** in the Replace dialog replaces every match of the whole text in one go.

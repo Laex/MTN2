@@ -19,6 +19,7 @@ type
     [Test] procedure TestFBarFollowsKeymap;
     [Test] procedure TestPluginChromeInPanelsBars;
     [Test] procedure TestColoredPartsArePaintedOverPluginSegment;
+    [Test] procedure TestCompactRunsUseShortTextsAndFitTheWidth;
   end;
 
 implementation
@@ -561,6 +562,41 @@ begin
   Assert.IsTrue(Grid[0][8].BgColor = cBg, 'plain part keeps the line''s colors');
   Assert.IsTrue(Grid[0][1].BgColor = cBg, 'host section is not painted');
   Assert.IsTrue(Length(PluginStatusSpans(0)) = 0, 'no segments, no parts');
+end;
+
+procedure TTestDualPanelStatus.TestCompactRunsUseShortTextsAndFitTheWidth;
+var
+  Runs: TStatusSpans;
+  Run: TStatusSpan;
+  Joined: string;
+  SegOf: TArray<Integer>;
+begin
+  try
+    PluginChrome.SetStatusSegmentStyled('t.cmp', 'git',
+      '[{"t":" branch main ","role":"accent","s":" main "},{"t":" ","s":" "},' +
+      '{"t":" modified 2 ","role":"warn","s":" ~2 "}]');
+    PluginChrome.SetStatusSegmentStyled('t.cmp', 'rec', '[{"t":" REC now ","s":""},{"t":"x"}]');
+    PluginChrome.SetStatusSegment('t.cmp', 'plain', '  text  ');
+    Runs := CompactPluginRuns(80, SegOf);
+    Joined := '';
+    for Run in Runs do
+      Joined := Joined + Run.Text;
+    Assert.AreEqual(' main   ~2  x  text ', Joined, 'short texts, empty short dropped, plain trimmed');
+    Assert.IsTrue(Runs[0].HasBg, 'role colors survive the compact form');
+    Assert.AreEqual('0,0,0,-1,1,-1,2', string.Join(',', [SegOf[0].ToString, SegOf[1].ToString, SegOf[2].ToString, SegOf[3].ToString, SegOf[4].ToString, SegOf[5].ToString, SegOf[6].ToString]), 'runs map to their segments');
+    Runs := CompactPluginRuns(12, SegOf);
+    Joined := '';
+    for Run in Runs do
+      Joined := Joined + Run.Text;
+    Assert.AreEqual(' main   ~2 ', Joined, 'later segments are dropped first');
+    Runs := CompactPluginRuns(3, SegOf);
+    Joined := '';
+    for Run in Runs do
+      Joined := Joined + Run.Text;
+    Assert.AreEqual(' ma', Joined, 'a lone first segment is clipped');
+  finally
+    PluginChrome.UnregisterPlugin('t.cmp');
+  end;
 end;
 
 initialization

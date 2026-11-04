@@ -14,6 +14,10 @@ uses
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uDualPanelOverlays, uStrings,
   uKeymap;
 
+const
+  /// <summary>Parent path a plugin menu item uses to land in the Macros menu.</summary>
+  cMacrosMenuPath = 'Macros';
+
 type
   TTopMenuAction = (
     tmaNone,
@@ -187,6 +191,10 @@ type
     /// <summary>1-based number of the plugin's group in the Plugins menu; the
     /// submenu colors a column at the right edge of the rows by it. 0 = none.</summary>
     PluginGroup: Integer;
+    /// <summary>Priority the plugin gave the item (orders it and splits the Macros menu).</summary>
+    PluginPriority: Integer;
+    /// <summary>A plugin item the plugin greyed out.</summary>
+    PluginDisabled: Boolean;
     /// <summary>On a separator: the name drawn in the gap of the line (the
     /// plugin whose items follow); empty = a plain line.</summary>
     SeparatorTitle: string;
@@ -200,6 +208,10 @@ type
     Caption: string;
     OnClick: TProc;
     Priority: Integer;
+    /// <summary>Keys shown at the right of the item ('' = none).</summary>
+    Shortcut: string;
+    /// <summary>Greyed out: shown but cannot be chosen.</summary>
+    Disabled: Boolean;
   end;
 
   TTopMenuCategory = record
@@ -1074,7 +1086,7 @@ var
   I, J, At, Group: Integer;
   Desc: TPluginMenuItemDesc;
   NewItem: TSubmenuItem;
-  Cat: TTopMenuCategory;
+  Cat, MacroCat: TTopMenuCategory;
   LastPlugin, Title: string;
   HotC: Char;
   PosIdx: Integer;
@@ -1112,6 +1124,8 @@ begin
   Group := 0;
   for Desc in FPluginItems do
   begin
+    if SameText(Desc.ParentTitle, cMacrosMenuPath) then
+      Continue;
     if (Group = 0) or not SameText(Desc.PluginId, LastPlugin) then
     begin
       Inc(Group);
@@ -1128,6 +1142,8 @@ begin
     LastPlugin := Desc.PluginId;
     NewItem := Default(TSubmenuItem);
     NewItem.Caption := Desc.Caption;
+    NewItem.Shortcut := Desc.Shortcut;
+    NewItem.PluginDisabled := Desc.Disabled;
     NewItem.Action := tmaNone;
     NewItem.IsPluginItem := True;
     NewItem.PluginId := Desc.PluginId;
@@ -1146,6 +1162,52 @@ begin
       Break;
     end;
   Insert(Cat, FCategories, At);
+
+  // Items whose parent path is "Macros" get a menu of their own after Plugins,
+  // without per-plugin group titles.
+  MacroCat := Default(TTopMenuCategory);
+  MacroCat.Key := 'Macros';
+  MacroCat.IsPluginsMenu := True;
+  for Desc in FPluginItems do
+    if SameText(Desc.ParentTitle, cMacrosMenuPath) then
+    begin
+      // Commands of the menu (priority below 100) are set apart from the macros.
+      if (Desc.Priority >= 100) and (Length(MacroCat.Items) > 0) and
+         not MacroCat.Items[High(MacroCat.Items)].IsSeparator and
+         (MacroCat.Items[High(MacroCat.Items)].PluginPriority < 100) then
+      begin
+        NewItem := Default(TSubmenuItem);
+        NewItem.Caption := '-';
+        NewItem.IsSeparator := True;
+        SetLength(MacroCat.Items, Length(MacroCat.Items) + 1);
+        MacroCat.Items[High(MacroCat.Items)] := NewItem;
+      end;
+      NewItem := Default(TSubmenuItem);
+      NewItem.PluginPriority := Desc.Priority;
+      NewItem.Caption := Desc.Caption;
+      NewItem.Shortcut := Desc.Shortcut;
+      NewItem.PluginDisabled := Desc.Disabled;
+      HotC := #0;
+      MenuResolveMnemonic(NewItem.Caption, HotC, PosIdx);
+      NewItem.HotChar := HotC;
+      NewItem.HotPos := PosIdx;
+      NewItem.Action := tmaNone;
+      NewItem.IsPluginItem := True;
+      NewItem.PluginId := Desc.PluginId;
+      NewItem.PluginOnClick := Desc.OnClick;
+      SetLength(MacroCat.Items, Length(MacroCat.Items) + 1);
+      MacroCat.Items[High(MacroCat.Items)] := NewItem;
+    end;
+  if Length(MacroCat.Items) > 0 then
+  begin
+    Title := T('menu.category.Macros', 'Macros');
+    HotC := 'M';
+    MenuResolveMnemonic(Title, HotC, PosIdx);
+    MacroCat.Title := Title;
+    MacroCat.HotChar := HotC;
+    MacroCat.HotPos := PosIdx;
+    Insert(MacroCat, FCategories, At + 1);
+  end;
 end;
 
 procedure TTopMenuController.SetPluginMenuItems(const AItems: TArray<TPluginMenuItemDesc>);
@@ -1199,7 +1261,7 @@ begin
   if AItem.IsSeparator then
     Exit(False);
   if AItem.IsPluginItem then
-    Exit(True);
+    Exit(not AItem.PluginDisabled);
   if not Assigned(FOnIsActionEnabled) then
     Exit(True);
   Result := FOnIsActionEnabled(AItem.Action);

@@ -45,6 +45,9 @@ type
   TPluginDocLine = reference to function(AIndex: Integer; out AText: string): Boolean;
   /// <summary>Opens a file in the built-in viewer (AEdit = False) or editor.</summary>
   TPluginOpenDocument = reference to function(const AURI: string; AEdit: Boolean): Boolean;
+  /// <summary>Feeds one keystroke ("F5", "Ctrl+Shift+K", "a") to the window that has
+  /// the focus, as if it was typed. False when the chord is not valid or nothing took it.</summary>
+  TPluginSendKey = reference to function(const AChord: string): Boolean;
 
   TPluginHostServices = record
     /// <summary>JSON about the active text document, '' when there is none.</summary>
@@ -62,6 +65,14 @@ type
     DocSetSelection: TPluginDocSetSelection;
     DocLine: TPluginDocLine;
     OpenDocument: TPluginOpenDocument;
+    SendKey: TPluginSendKey;
+    /// <summary>Types AText, a character at a time, into the focused window.</summary>
+    SendText: TPluginSendKey;
+    /// <summary>Does what the keymap action named so does now (the first chord bound
+    /// to it, sent as a keystroke). False when the name is unknown or unbound.</summary>
+    RunAction: TPluginSendKey;
+    /// <summary>JSON about what the program is doing: see PluginAppState.</summary>
+    AppState: TFunc<string>;
   end;
 
   /// <summary>Handler of a host event: topic and payload JSON.</summary>
@@ -82,6 +93,21 @@ function PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
 function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
 function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
 function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
+
+function PluginSendKey(const AChord: string): Boolean;
+function PluginSendText(const AText: string): Boolean;
+function PluginRunAction(const AName: string): Boolean;
+/// <summary>JSON {"area": "panels|viewer|editor|console|terminal|other", "modal": bool,
+/// "busy": bool, "activeSide": "left|right"}; '' while there is no window. "modal" is
+/// a dialog, the help or an open menu; "busy" is a directory still loading or a
+/// background job running.</summary>
+function PluginAppState(out AJson: string): Boolean;
+
+/// <summary>Event topic carrying every keystroke: {"key": "Ctrl+K", "action": "Copy"}
+/// ("action" is empty for a key no keymap action owns). Published only while a
+/// plugin subscribes to it.</summary>
+const
+  cKeyEventTopic = 'input.key';
 
 /// <summary>Plain text on the system clipboard; False when it holds none.</summary>
 function PluginClipboardGet(out AText: string): Boolean;
@@ -115,6 +141,8 @@ procedure PluginPublishEvent(const ATopic, APayloadJson: string);
 function PluginUriPayload(const AURI: string): string;
 /// <summary>Some plugin listens: the program can skip building events nobody reads.</summary>
 function PluginHasSubscribers: Boolean;
+/// <summary>A plugin subscribed to exactly ATopic (not through "*").</summary>
+function PluginHasTopicSubscriber(const ATopic: string): Boolean;
 
 /// <summary>Changes whenever the plugin goes; a callback that remembers the value
 /// from when it was scheduled and finds another one on arrival must be dropped.</summary>
@@ -257,6 +285,29 @@ function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
 begin
   Result := Assigned(GServices.OpenDocument) and (AURI <> '') and
     GServices.OpenDocument(AURI, AEdit);
+end;
+
+function PluginSendKey(const AChord: string): Boolean;
+begin
+  Result := Assigned(GServices.SendKey) and (AChord <> '') and GServices.SendKey(AChord);
+end;
+
+function PluginSendText(const AText: string): Boolean;
+begin
+  Result := Assigned(GServices.SendText) and (AText <> '') and GServices.SendText(AText);
+end;
+
+function PluginRunAction(const AName: string): Boolean;
+begin
+  Result := Assigned(GServices.RunAction) and (AName <> '') and GServices.RunAction(AName);
+end;
+
+function PluginAppState(out AJson: string): Boolean;
+begin
+  AJson := '';
+  if Assigned(GServices.AppState) then
+    AJson := GServices.AppState();
+  Result := AJson <> '';
 end;
 
 function PluginPanelRefresh: Boolean;
@@ -415,6 +466,16 @@ end;
 function PluginHasSubscribers: Boolean;
 begin
   Result := GSubscriptions.Count > 0;
+end;
+
+function PluginHasTopicSubscriber(const ATopic: string): Boolean;
+var
+  Sub: TSubscription;
+begin
+  for Sub in GSubscriptions do
+    if SameText(Sub.Topic, ATopic) then
+      Exit(True);
+  Result := False;
 end;
 
 procedure PluginPostToMain(const APluginId: string; const ACallback: TProc);
@@ -628,7 +689,9 @@ begin
     Exit;
   Snapshot := GSubscriptions.ToArray;
   for Sub in Snapshot do
-    if ((Sub.Topic = '*') or SameText(Sub.Topic, ATopic)) and StillSubscribed then
+    // Keystrokes reach only a plugin that asks for them by name.
+    if ((Sub.Topic = '*') and not SameText(ATopic, cKeyEventTopic) or
+        SameText(Sub.Topic, ATopic)) and StillSubscribed then
       try
         Sub.Handler(ATopic, APayloadJson);
       except

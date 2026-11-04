@@ -41,6 +41,7 @@ uses
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
   TestTmpPanelCollect in 'TestTmpPanelCollect.pas',
   TestLogFilter in 'TestLogFilter.pas',
+  TestLuaMacros in 'TestLuaMacros.pas',
   TestCsvTable in 'TestCsvTable.pas',
   TestGitStatus in 'TestGitStatus.pas',
   TestWasmHost in 'TestWasmHost.pas',

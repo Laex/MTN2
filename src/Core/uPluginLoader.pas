@@ -41,7 +41,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections,
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
-  uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi,
+  uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs,
   uWasmPluginHost, uPlatformInfo;
@@ -1336,6 +1336,56 @@ begin
   end;
 end;
 
+function ThunkSendKey(AChord: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AChord <> nil) and PluginSendKey(UTF8ToString(AChord)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSendText(AText: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AText <> nil) and PluginSendText(UTF8ToString(AText)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRunAction(AAction: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (AAction <> nil) and PluginRunAction(UTF8ToString(AAction)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkAppState(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Json: string;
+begin
+  try
+    if PluginAppState(Json) then
+      Result := CopyUtf8Out(Json, ABuf, ABufSize)
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkSetRowDecorations(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
 var
   Json: string;
@@ -1362,6 +1412,37 @@ begin
     if ACommandId = nil then
       Exit(-1);
     if CommandRegistry.TryExecute(UTF8ToString(ACommandId)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkKeyOwner(AChord, ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Owner: string;
+begin
+  try
+    if AChord = nil then
+      Exit(-1);
+    Owner := ChordOwnerName(UTF8ToString(AChord));
+    if Owner = '' then
+      Exit(0);
+    Result := CopyUtf8Out(Owner, ABuf, ABufSize);
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetMenuItemEnabled(APluginId, AItemId: PAnsiChar; AEnabled: Int64): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AItemId = nil) then
+      Exit(-1);
+    if MenuRegistry.SetMenuItemEnabled(UTF8ToString(APluginId), UTF8ToString(AItemId),
+         AEnabled <> 0) then
       Result := 0
     else
       Result := -1;
@@ -1739,6 +1820,12 @@ begin
   Result.SetStatusSegmentStyled := @ThunkSetStatusSegmentStyled;
   Result.OpenDocument := @ThunkOpenDocument;
   Result.SetRowDecorations := @ThunkSetRowDecorations;
+  Result.SendKey := @ThunkSendKey;
+  Result.SendText := @ThunkSendText;
+  Result.RunAction := @ThunkRunAction;
+  Result.AppState := @ThunkAppState;
+  Result.SetMenuItemEnabled := @ThunkSetMenuItemEnabled;
+  Result.KeyOwner := @ThunkKeyOwner;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

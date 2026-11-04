@@ -24,6 +24,14 @@ type
     HasFg, HasBg: Boolean;
     Fg, Bg: TAlphaColor;
     Bold: Boolean;
+    /// <summary>The text of the compact form used when the status line is
+    /// hidden; HasShort false = the span has no compact text of its own.
+    /// An empty Short drops the span from the compact form.</summary>
+    HasShort: Boolean;
+    Short: string;
+    /// <summary>Plugin command a click on the part runs; '' = the click shows
+    /// the segment's full text.</summary>
+    Command: string;
   end;
   TStatusSpans = TArray<TStatusSpan>;
 
@@ -157,7 +165,8 @@ begin
   for I := 0 to High(A) do
     if (A[I].Text <> B[I].Text) or (A[I].HasFg <> B[I].HasFg) or
        (A[I].HasBg <> B[I].HasBg) or (A[I].Fg <> B[I].Fg) or (A[I].Bg <> B[I].Bg) or
-       (A[I].Bold <> B[I].Bold) then
+       (A[I].Bold <> B[I].Bold) or (A[I].HasShort <> B[I].HasShort) or
+       (A[I].Short <> B[I].Short) or (A[I].Command <> B[I].Command) then
       Exit(False);
   Result := True;
 end;
@@ -307,6 +316,13 @@ begin
           Span.HasBg := True;
         if Item.TryGetValue<Boolean>('b', Flag) then
           Span.Bold := Flag;
+        if Item.TryGetValue<string>('s', Str) then
+        begin
+          Span.HasShort := True;
+          Span.Short := OneLine(Str);
+        end;
+        if Item.TryGetValue<string>('c', Str) then
+          Span.Command := Trim(Str);
         S.Spans := S.Spans + [Span];
         S.Text := S.Text + Text;
       end;

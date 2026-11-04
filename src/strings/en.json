@@ -529,8 +529,8 @@
       "ok": "OK",
       "reset": "&Reset",
       "cancel": "Cancel",
-      "lbl_hint_mods": "Modifiers: Ctrl+ Alt+ Shift+ (e.g. Ctrl+Shift+F5, Alt+F7)",
-      "lbl_hint_sep": "Separate multiple combos with ';', e.g. Ctrl+C; F5",
+      "lbl_hint_mods": "Combos are separated by ';', e.g. Ctrl+C; F5",
+      "lbl_hint_sep": "Press a combo to add it; Backspace: remove last, Del: clear",
       "lbl_keys": "Hotkeys:"
     },
     "DIALOG_OVERWRITEASK": {
@@ -1746,6 +1746,7 @@
     "category.Edit": "Edit",
     "category.Commands": "Commands",
     "category.Plugins": "Plugins",
+    "category.Macros": "Macros",
     "category.Options": "Options",
     "category.Right": "Right",
     "tmaCmdPalette": "Find command...",

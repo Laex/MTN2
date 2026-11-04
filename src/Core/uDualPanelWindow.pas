@@ -18,7 +18,7 @@ uses
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
-  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInfo, uPluginServices, uPluginSurface,
+  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInfo, uPluginServices, uPluginInputChord, uPluginSurface,
   uFolderHistory, uFolderFrecent, uANSIParser,
   uLinkUtils, uFileAttrTypes, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
   uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
@@ -286,6 +286,9 @@ type
     FStatusHost: TDualPanelStatusHost;
     FStatusKinds: TArray<TStatusSegKind>;
     FFreeInputHost: TDualPanelFreeInputHost;
+    /// <summary>True while a plugin feeds keys through PluginSendKey, so they are
+    /// not published back as user keystrokes.</summary>
+    FInjectingKeys: Boolean;
     FModalInputHost: TDualPanelModalInputHost;
     FFilesDrawHost: TDualPanelFilesDrawHost;
     /// <summary>Ordered "which overlay currently owns keyboard input" table
@@ -1036,6 +1039,12 @@ type
       AOnMenuBar: Boolean);
     function ChromeHoverAt(ALocalCol, ALocalRow: Integer): Integer;
     function ClickJobStrip(ACol: Integer): Boolean;
+    /// <summary>Click on a plugin chip of the tab bar (shown while the status
+    /// line is hidden): a toast with the segment's full text.</summary>
+    function ClickPluginChip(ACol: Integer): Boolean;
+    /// <summary>Runs the command a part of plugin status segment ASegment names
+    /// (span key "c"); False when it has none.</summary>
+    function ClickPluginStatusSegment(ASegment: Integer): Boolean;
     function ClickChrome(ALocalCol, ALocalRow: Integer): Boolean;
     function SelectWorkspaceAtCol(ACol: Integer): Boolean;
     function BeginRenameWorkspaceAtCol(ACol: Integer): Boolean;
@@ -1168,6 +1177,13 @@ type
     function PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
     function PluginDocSetCursor(ARow, ACol: Integer): Boolean;
     function PluginPanelInfoJson: string;
+    /// <summary>Plugin input: a key chord ("Ctrl+F5", "a") or text typed into the
+    /// focused window, a keymap action run by name, and the state a macro checks
+    /// before it starts.</summary>
+    function PluginSendKey(const AChord: string): Boolean;
+    function PluginSendText(const AText: string): Boolean;
+    function PluginRunAction(const AName: string): Boolean;
+    function PluginAppStateJson: string;
     function PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
     function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
     procedure PluginPanelRefresh;
@@ -1194,6 +1210,10 @@ type
     /// <summary>Applies the pending drive choice without waiting for the Ctrl
     /// release (hosts that never see key releases).</summary>
     procedure ApplyDrivePreview;
+    /// <summary>A command a plugin bound to a key runs even where text is typed
+    /// (terminal, command line), for chords that are not text.</summary>
+    function OfferPluginChordInTextFocus(AKey: Word; AShift: TShiftState;
+      AKeyChar: Char; ADialogVisible: Boolean): Boolean;
     function HandleInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean; override;
     /// <summary>Free (non-modal) keymap bindings shared by most of the app -
@@ -9528,6 +9548,8 @@ begin
   FDialogKind := hdkHost;
   FHostDialogCommand := AOnCommand;
   FHostDialogTopic := AHelpTopic;
+  if ADecl.HelpTopic <> '' then
+    FHostDialogTopic := ADecl.HelpTopic;
   FHostDialogDecl := ADecl;
   FDialog.Open(ADecl, DialogCommand);
   NotifyChanged;
@@ -9783,6 +9805,7 @@ end;
 function TDualPanelWindow.CurrentHelpScreen: THelpScreen;
 var
   Ws: TDualPanelWorkspaceTab;
+  Doc: TEditorWindow;
 begin
   Result := Default(THelpScreen);
   Result.ConsoleMode := FConsoleMode;
@@ -9805,7 +9828,13 @@ begin
   Result.WorkspaceKind := Ws.Kind;
   Result.CmdFocused := CmdFocused;
   if Ws.Kind = wkPanels then
-    Result.PanelURI := ActiveTab(ActivePanel(Ws)).CurrentURI;
+    Result.PanelURI := ActiveTab(ActivePanel(Ws)).CurrentURI
+  else if Ws.Kind = wkDocument then
+  begin
+    Doc := ActiveDocument;
+    if Assigned(Doc) then
+      Result.DocumentTopic := Doc.DialogHelpTopic;
+  end;
 end;
 
 procedure TDualPanelWindow.OpenHelp;
@@ -11481,6 +11510,120 @@ begin
   end;
 end;
 
+function TDualPanelWindow.PluginSendKey(const AChord: string): Boolean;
+var
+  Key: Word;
+  KeyChar: Char;
+  Shift: TShiftState;
+  Was: Boolean;
+begin
+  Result := False;
+  if not FAlive or not TryParseInputChord(AChord, Key, KeyChar, Shift) then
+    Exit;
+  Was := FInjectingKeys;
+  FInjectingKeys := True;
+  try
+    HandleInput(Key, Shift, KeyChar);
+  finally
+    FInjectingKeys := Was;
+  end;
+  Result := True;
+end;
+
+function TDualPanelWindow.PluginSendText(const AText: string): Boolean;
+var
+  I: Integer;
+  Key: Word;
+  KeyChar: Char;
+  Was: Boolean;
+begin
+  Result := False;
+  if not FAlive then
+    Exit;
+  Was := FInjectingKeys;
+  FInjectingKeys := True;
+  try
+    for I := 1 to Length(AText) do
+    begin
+      KeyChar := AText[I];
+      Key := 0;
+      if KeyChar = #13 then
+      begin
+        Key := vkReturn;
+        KeyChar := #0;
+      end
+      else if KeyChar = #10 then
+        Continue
+      else if KeyChar = #9 then
+      begin
+        Key := vkTab;
+        KeyChar := #0;
+      end;
+      HandleInput(Key, [], KeyChar);
+    end;
+  finally
+    FInjectingKeys := Was;
+  end;
+  Result := True;
+end;
+
+function TDualPanelWindow.PluginRunAction(const AName: string): Boolean;
+var
+  Chord: string;
+begin
+  Chord := ActionChordText(AName);
+  Result := (Chord <> '') and PluginSendKey(Chord);
+end;
+
+function TDualPanelWindow.PluginAppStateJson: string;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Root: TJSONObject;
+  Part: TJSONValue;
+  Info: string;
+begin
+  Ws := ActiveWorkspace;
+  Root := TJSONObject.Create;
+  try
+    case Ws.Kind of
+      wkDocument:
+        begin
+          Info := PluginDocInfoJson;
+          Part := nil;
+          if Info <> '' then
+            Part := TJSONObject.ParseJSONValue(Info);
+          if (Part is TJSONObject) and (TJSONObject(Part).GetValue('viewOnly') is TJSONBool) and
+            TJSONBool(TJSONObject(Part).GetValue('viewOnly')).AsBoolean then
+            Root.AddPair('area', 'viewer')
+          else
+            Root.AddPair('area', 'editor');
+          if Part is TJSONObject then
+            Root.AddPair('doc', TJSONObject(Part))
+          else
+            Part.Free;
+        end;
+      wkTerminal:
+        Root.AddPair('area', 'terminal');
+    else
+      begin
+        Root.AddPair('area', 'panels');
+        Info := PluginPanelInfoJson;
+        if Info <> '' then
+        begin
+          Part := TJSONObject.ParseJSONValue(Info);
+          if Part is TJSONObject then
+            Root.AddPair('panels', TJSONObject(Part))
+          else
+            Part.Free;
+        end;
+      end;
+    end;
+    Result := Root.ToJSON;
+  finally
+    Root.Free;
+  end;
+end;
+
 function TDualPanelWindow.PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
 var
   Doc: TEditorWindow;
@@ -12455,6 +12598,12 @@ var
   Chip: TJobChip;
   Fg, Bg, ChipFg, ChipBg, ActFg, ActBg: TAlphaColor;
   TitleW: Integer;
+  PluginW, X: Integer;
+  Runs: TStatusSpans;
+  SegOf: TArray<Integer>;
+  Run: TStatusSpan;
+  RunFg, RunBg: TAlphaColor;
+  RunAttr: TCharCellAttributes;
 begin
   Chrome := TabBarChrome(AWidth);
   ResolveChrome(pcpWorkspaceTabIdle, False, Fg, Bg);
@@ -12470,6 +12619,36 @@ begin
   end;
 
   TitleW := Chrome.FreeRight - Chrome.FreeLeft;
+  // With the status line hidden the plugins' status segments (git branch, a
+  // macro recording) show in compact form, coloured like the status line and
+  // right-aligned against the job chips (the free part ends where they begin).
+  if (not GShowStatusLine) and (TitleW >= cMinTitleWidth) then
+  begin
+    Runs := CompactPluginRuns(TitleW, SegOf);
+    PluginW := 0;
+    for Run in Runs do
+      Inc(PluginW, TextDisplayWidth(Run.Text));
+    if PluginW > 0 then
+    begin
+      X := Chrome.FreeRight - PluginW;
+      for Run in Runs do
+      begin
+        RunFg := ActFg;
+        RunBg := ActBg;
+        RunAttr := [];
+        if Run.HasFg then
+          RunFg := Run.Fg;
+        if Run.HasBg then
+          RunBg := Run.Bg;
+        if Run.Bold then
+          Include(RunAttr, ccaBold);
+        PutGridTextClipped(Buffer, X, TabBarRow, Chrome.FreeRight - 1, Run.Text,
+          RunFg, RunBg, RunAttr);
+        Inc(X, TextDisplayWidth(Run.Text));
+      end;
+      Dec(TitleW, PluginW + 1);
+    end;
+  end;
   if (not GShowTitleBar) and (TitleW >= cMinTitleWidth) then
     PutGridText(Buffer, Chrome.FreeLeft, TabBarRow,
       ComposeTitle(FWindowTitleParts, TitleW),
@@ -12686,7 +12865,58 @@ begin
     jshList:
       OpenJobList;
   else
-    Result := False;
+    Result := ClickPluginChip(ACol);
+  end;
+end;
+
+function TDualPanelWindow.ClickPluginChip(ACol: Integer): Boolean;
+var
+  Chrome: TTabBarChrome;
+  Runs: TStatusSpans;
+  SegOf: TArray<Integer>;
+  Segs: TArray<string>;
+  Request: TNoticeRequest;
+  I, X, W, TitleW, Total: Integer;
+  Detail: string;
+begin
+  Result := False;
+  if GShowStatusLine or not Assigned(FToast) then
+    Exit;
+  Chrome := TabBarChrome(Area.Width);
+  TitleW := Chrome.FreeRight - Chrome.FreeLeft;
+  if TitleW < cMinTitleWidth then
+    Exit;
+  Runs := CompactPluginRuns(TitleW, SegOf);
+  Total := 0;
+  for I := 0 to High(Runs) do
+    Inc(Total, TextDisplayWidth(Runs[I].Text));
+  X := Chrome.FreeRight - Total;
+  for I := 0 to High(Runs) do
+  begin
+    W := TextDisplayWidth(Runs[I].Text);
+    if (ACol >= X) and (ACol < X + W) and (SegOf[I] >= 0) then
+    begin
+      if Runs[I].Command <> '' then
+      begin
+        CommandRegistry.TryExecute(Runs[I].Command);
+        NotifyChanged;
+        Exit(True);
+      end;
+      Segs := PluginChrome.StatusSegments;
+      if SegOf[I] > High(Segs) then
+        Exit;
+      // The segment's full text, blank runs collapsed.
+      Detail := Trim(Segs[SegOf[I]]);
+      while Pos('  ', Detail) > 0 do
+        Detail := StringReplace(Detail, '  ', ' ', [rfReplaceAll]);
+      Request := TNoticeRequest.Make('%s', Detail);
+      Request.Always := True;
+      Request.DurationMs := 6000;
+      FToast.ShowRequest(Request);
+      NotifyChanged;
+      Exit(True);
+    end;
+    Inc(X, W);
   end;
 end;
 
@@ -13554,6 +13784,24 @@ begin
   Result := AssembleStatusLine(FStatusHost, Snap, FStatusKinds);
 end;
 
+function TDualPanelWindow.ClickPluginStatusSegment(ASegment: Integer): Boolean;
+var
+  Spans: TArray<TStatusSpans>;
+  Span: TStatusSpan;
+begin
+  Result := False;
+  Spans := PluginChrome.StatusSegmentSpans;
+  if (ASegment < 0) or (ASegment > High(Spans)) or (ActiveWorkspace.Kind <> wkPanels) then
+    Exit;
+  for Span in Spans[ASegment] do
+    if Span.Command <> '' then
+    begin
+      Result := CommandRegistry.TryExecute(Span.Command);
+      NotifyChanged;
+      Exit;
+    end;
+end;
+
 function TDualPanelWindow.HandleStatusLineClick(ALocalCol: Integer;
   AShift: TShiftState): Boolean;
 var
@@ -13565,6 +13813,8 @@ begin
   Idx := StatusSegmentAt(Segs, ALocalCol, Assigned(Theme));
   if (Idx < 0) or (Idx > High(FStatusKinds)) then
     Exit;
+  if ClickPluginStatusSegment(Idx - (Length(Segs) - Length(PluginChrome.StatusSegments))) then
+    Exit(True);
   case FStatusKinds[Idx] of
     sskSide, sskFree: ToggleDrivePopup(ActiveWorkspace.State.ActiveSide);
     sskPath: OpenFolderHistoryDialog;
@@ -14315,6 +14565,23 @@ begin
     HandleQuickViewKey(AKey, AShift, AKeyChar);
 end;
 
+function TDualPanelWindow.OfferPluginChordInTextFocus(AKey: Word; AShift: TShiftState;
+  AKeyChar: Char; ADialogVisible: Boolean): Boolean;
+var
+  Vk: Word;
+begin
+  Result := False;
+  if ADialogVisible then
+    Exit;
+  if not ((ActiveWorkspace.Kind = wkTerminal) or FreeInputSnap.CmdFocused) then
+    Exit;
+  // Only chords that cannot be typed text: with Ctrl or Alt, or a function key.
+  Vk := KeymapLookupKey(AKey, AKeyChar);
+  if not ((AShift * [ssCtrl, ssAlt] <> []) or ((Vk >= vkF1) and (Vk <= vkF24))) then
+    Exit;
+  Result := TryRunBoundCommand(Vk, AShift);
+end;
+
 function TDualPanelWindow.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 var
@@ -14323,10 +14590,26 @@ var
   ProgramKeys: Boolean;
   Handled: Boolean;
   Snap: TPanelFreeInputSnap;
+  Chord: string;
+  KeyObj: TJSONObject;
 begin
   Result := True;
   if ScreensaverTakesKey(AKey, AKeyChar) then
     Exit(True);
+  if not FInjectingKeys and PluginHasTopicSubscriber(cKeyEventTopic) then
+  begin
+    Chord := InputChordText(AKey, AKeyChar, AShift);
+    if Chord <> '' then
+    begin
+      KeyObj := TJSONObject.Create;
+      try
+        KeyObj.AddPair('key', Chord);
+        PluginPublishEvent(cKeyEventTopic, KeyObj.ToJSON);
+      finally
+        KeyObj.Free;
+      end;
+    end;
+  end;
   PreparePanelKey(AKey, AShift, AKeyChar);
   if OfferHelpKey(AKey, AShift, AKeyChar, DialogVis, Handled) then
     Exit(Handled);
@@ -14334,6 +14617,8 @@ begin
   if OfferTopMenuKey(AKey, AShift, AKeyChar, ProgramKeys, DialogVis, GlobalAct) then
     Exit(True);
   if OfferGlobalAndQuickView(AKey, AShift, AKeyChar, GlobalAct, DialogVis) then
+    Exit(True);
+  if OfferPluginChordInTextFocus(AKey, AShift, AKeyChar, DialogVis) then
     Exit(True);
   if TryEmbeddedInput(AKey, AShift, AKeyChar, DialogVis, Handled) then
     Exit(Handled);

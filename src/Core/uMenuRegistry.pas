@@ -25,6 +25,9 @@ type
     /// information dialog; the menu does not depend on it.</summary>
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
+    /// <summary>Greys out (or re-enables) a registered item; False when the plugin
+    /// has no such item. Registering the item again enables it.</summary>
+    function SetMenuItemEnabled(const APluginId, AItemId: string; AEnabled: Boolean): Boolean;
     /// <summary>Removes all items registered by APluginId.</summary>
     /// <summary>One line per thing the plugin registered, for the plugin's information
     /// dialog (already in the user's language).</summary>
@@ -37,6 +40,10 @@ type
     /// <summary>The name shown on the line that opens a plugin's group (its
     /// manifest name); a plugin the resolver gives '' for is shown by its id.</summary>
     procedure SetTitleResolver(const AResolver: TFunc<string, string>);
+    /// <summary>Position of a plugin in the plugin list (load order); the groups of
+    /// the Plugins menu follow it. A plugin the resolver gives a negative number for
+    /// goes after the others, in registration order.</summary>
+    procedure SetOrderResolver(const AResolver: TFunc<string, Integer>);
   end;
 
 function MenuRegistry: IMenuRegistry;
@@ -44,7 +51,7 @@ function MenuRegistry: IMenuRegistry;
 implementation
 
 uses
-  uStrings;
+  uStrings, uCommandRegistry;
 
 type
   TRegEntry = record
@@ -54,6 +61,7 @@ type
     Caption: string;
     OnClick: TProc;
     Priority: Integer;
+    Disabled: Boolean;
   end;
 
   TMenuRegistry = class(TInterfacedObject, IMenuRegistry)
@@ -61,16 +69,19 @@ type
     FEntries: TList<TRegEntry>;
     FController: TTopMenuController;
     FTitleResolver: TFunc<string, string>;
+    FOrderResolver: TFunc<string, Integer>;
     procedure Reapply;
   public
     constructor Create;
     destructor Destroy; override;
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
+    function SetMenuItemEnabled(const APluginId, AItemId: string; AEnabled: Boolean): Boolean;
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     procedure AttachController(AController: TTopMenuController);
     procedure SetTitleResolver(const AResolver: TFunc<string, string>);
+    procedure SetOrderResolver(const AResolver: TFunc<string, Integer>);
   end;
 
 constructor TMenuRegistry.Create;
@@ -97,12 +108,19 @@ begin
   Reapply;
 end;
 
+procedure TMenuRegistry.SetOrderResolver(const AResolver: TFunc<string, Integer>);
+begin
+  FOrderResolver := AResolver;
+  Reapply;
+end;
+
 procedure TMenuRegistry.RegisterMenuItem(const APluginId, AParentPath, AItemId,
   ACaption: string; AOnClick: TProc; APriority: Integer);
 var
   Entry: TRegEntry;
   I: Integer;
 begin
+  Entry := Default(TRegEntry);
   Entry.PluginId := APluginId;
   Entry.ItemId := AItemId;
   Entry.ParentPath := AParentPath;
@@ -120,6 +138,27 @@ begin
 
   FEntries.Add(Entry);
   Reapply;
+end;
+
+function TMenuRegistry.SetMenuItemEnabled(const APluginId, AItemId: string;
+  AEnabled: Boolean): Boolean;
+var
+  I: Integer;
+  Entry: TRegEntry;
+begin
+  Result := False;
+  for I := 0 to FEntries.Count - 1 do
+    if SameText(FEntries[I].PluginId, APluginId) and SameText(FEntries[I].ItemId, AItemId) then
+    begin
+      Result := True;
+      if FEntries[I].Disabled = (not AEnabled) then
+        Exit;
+      Entry := FEntries[I];
+      Entry.Disabled := not AEnabled;
+      FEntries[I] := Entry;
+      Reapply;
+      Exit;
+    end;
 end;
 
 function TMenuRegistry.DescribePlugin(const APluginId: string): TArray<string>;
@@ -153,14 +192,46 @@ procedure TMenuRegistry.Reapply;
 var
   Items: TArray<TPluginMenuItemDesc>;
   Entry: TRegEntry;
-  I: Integer;
+  Sorted: TArray<TRegEntry>;
+  Pos: TArray<Integer>;
+  I, J, K, PosTmp: Integer;
 begin
   if FController = nil then
     Exit;
   SetLength(Items, FEntries.Count);
   I := 0;
-  for Entry in FEntries do
+  // The controller puts a plugin's group where its first item appears, so
+  // feeding the entries in plugin-list order orders the groups the same way.
+  Sorted := FEntries.ToArray;
+  if Assigned(FOrderResolver) then
   begin
+    SetLength(Pos, Length(Sorted));
+    for J := 0 to High(Sorted) do
+    begin
+      Pos[J] := FOrderResolver(Sorted[J].PluginId);
+      if Pos[J] < 0 then
+        Pos[J] := MaxInt;
+    end;
+    for J := 1 to High(Sorted) do
+    begin
+      Entry := Sorted[J];
+      PosTmp := Pos[J];
+      K := J - 1;
+      while (K >= 0) and (Pos[K] > PosTmp) do
+      begin
+        Sorted[K + 1] := Sorted[K];
+        Pos[K + 1] := Pos[K];
+        Dec(K);
+      end;
+      Sorted[K + 1] := Entry;
+      Pos[K + 1] := PosTmp;
+    end;
+  end;
+  for Entry in Sorted do
+  begin
+    // An item registered again with an empty caption is hidden.
+    if Entry.Caption = '' then
+      Continue;
     Items[I].PluginId := Entry.PluginId;
     if Assigned(FTitleResolver) then
       Items[I].PluginTitle := FTitleResolver(Entry.PluginId);
@@ -168,8 +239,11 @@ begin
     Items[I].Caption := Entry.Caption;
     Items[I].OnClick := Entry.OnClick;
     Items[I].Priority := Entry.Priority;
+    Items[I].Disabled := Entry.Disabled;
+    Items[I].Shortcut := CommandRegistry.CommandChordText(Entry.ItemId);
     Inc(I);
   end;
+  SetLength(Items, I);
   FController.SetPluginMenuItems(Items);
 end;
 

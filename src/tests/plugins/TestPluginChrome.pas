@@ -17,6 +17,7 @@ type
     [Test] procedure TestCommandCaptionShowsOnItsFunctionKey;
     [Test] procedure TestSchemeFBarLabelsFollowRootAndInside;
     [Test] procedure TestStyledSegmentKeepsTextAndColoredParts;
+    [Test] procedure TestStyledPartKeepsItsClickCommand;
     [Test] procedure TestStyledSegmentWithoutTextIsRemoved;
     [Test] procedure TestStyledSegmentChangesOnlyWhenPartsChange;
   end;
@@ -219,6 +220,17 @@ begin
     Assert.IsTrue(Spans[0][3].HasBg and not Spans[0][3].HasFg, 'bg only');
     PluginChrome.SetStatusSegment('t.a', 'git', 'plain');
     Assert.IsTrue(Length(PluginChrome.StatusSegmentSpans[0]) = 0, 'plain text drops the parts');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestStyledPartKeepsItsClickCommand;
+begin
+  try
+    PluginChrome.SetStatusSegmentStyled('t.a', 'rec', '[{"t":" REC ","c":"macro.record"},{"t":"3"}]');
+    Assert.AreEqual('macro.record', PluginChrome.StatusSegmentSpans[0][0].Command);
+    Assert.AreEqual('', PluginChrome.StatusSegmentSpans[0][1].Command);
   finally
     Clean;
   end;

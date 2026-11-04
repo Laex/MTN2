@@ -160,6 +160,9 @@ if ($7zSrc) {
 # A Release build gets the official curl build (downloaded once); other builds may use what the machine has.
 & (Join-Path $PSScriptRoot 'tools\stage-curl.ps1') -Dest (Join-Path $PluginsOut 'mtn.net') -Fetch:($Config -eq 'Release')
 
+# The macro plugin runs Lua 5.5 through lua55.dll (see tools\stage-lua.ps1).
+& (Join-Path $PSScriptRoot 'tools\stage-lua.ps1') -Dest (Join-Path $PluginsOut 'mtn.lua')
+
 # MTN2 renders through Skia (FMX.Skia, GlobalUseSkia): the exe does not start
 # without sk4d.dll next to it. The IDE deploys it; a command-line build must.
 $SkiaArch = if ($Platform -eq 'Win64') { 'win64' } else { 'win32' }

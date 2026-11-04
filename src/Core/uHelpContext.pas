@@ -32,6 +32,9 @@ type
     /// <summary>Topic the open dialog asks for itself ('' = the one its kind
     /// maps to), e.g. the command picked in the command palette.</summary>
     DialogTopic: string;
+    /// <summary>Topic of the open dialog of the document in the active
+    /// workspace ('' = none).</summary>
+    DocumentTopic: string;
   end;
 
 const
@@ -292,7 +295,10 @@ begin
   end;
   case AScreen.WorkspaceKind of
     wkDocument:
-      Exit('viewer.md');
+      if AScreen.DocumentTopic <> '' then
+        Exit(AScreen.DocumentTopic)
+      else
+        Exit('viewer.md');
     wkTerminal:
       Exit('terminals.md');
   end;

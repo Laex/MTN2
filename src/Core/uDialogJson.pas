@@ -177,7 +177,9 @@ begin
   C := MakeInput(JsonStr(AObj, 'id'), JsonStr(AObj, 'value'));
   C.Password := JsonBool(AObj, 'password', False);
   C.ReadOnly := JsonBool(AObj, 'readonly', False);
-  if not C.Password then
+  C.HotKey := JsonBool(AObj, 'hotkey', False) and not C.Password;
+  C.HotKeyMulti := C.HotKey and JsonBool(AObj, 'multi', False);
+  if not C.Password and not C.HotKey then
     C.History := JsonStr(AObj, 'history');
   C.ColorPick := JsonBool(AObj, 'colorpick', False);
   C.DatePick := JsonBool(AObj, 'datepick', False);
@@ -489,6 +491,10 @@ begin
             One := One + ',"password":true';
           if C.ReadOnly then
             One := One + ',"readonly":true';
+          if C.HotKey then
+            One := One + ',"hotkey":true';
+          if C.HotKeyMulti then
+            One := One + ',"multi":true';
           if C.History <> '' then
             One := One + Format(',"history":"%s"', [EscapeJson(C.History)]);
           if C.ColorPick then

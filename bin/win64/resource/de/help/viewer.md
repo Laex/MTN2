@@ -38,14 +38,16 @@
 
 Große Dateien werden gestreamt und nicht als Ganzes geladen. Ändert sich die Datei auf der Festplatte, wird das geöffnete Fenster aktualisiert. Bei einer schreibgeschützten Datei bietet das Programm an, sie zum Schreiben zu öffnen, indem das Attribut aufgehoben wird.
 
-**Suchdialog.** Das Feld merkt sich frühere Suchen (**Ctrl+↓** / **Alt+↓**); die Optionen sind **Groß-/Kleinschreibung**, **Ganze Wörter**, **Reguläre Ausdrücke** und **Rückwärts suchen**.
+<!--bookmarks-->**Lesezeichen.** **Ctrl+F2** setzt und entfernt das Lesezeichen der Cursorzeile, **Ctrl+Shift+F2** / **Ctrl+Alt+F2** springen zum nächsten / vorherigen, **Ctrl+Alt+B** öffnet die Liste: Enter springt zur gewählten Zeile, Esc schließt.
+
+<!--find-->**Suchdialog.** Das Feld merkt sich frühere Suchen (**Ctrl+↓** / **Alt+↓**); die Optionen sind **Groß-/Kleinschreibung**, **Ganze Wörter**, **Reguläre Ausdrücke** und **Rückwärts suchen**.
 
 **Feld und Treffer**
 - **Wort** setzt das Wort unter dem Cursor in das Feld, **Auswahl** setzt die Auswahl ein (die aktuelle Zeile, wenn nichts ausgewählt ist; die erste Zeile einer mehrzeiligen Auswahl). Bei eingeschalteten **Regulären Ausdrücken** wird der Text dieser beiden Schaltflächen maskiert.
 - Ein gefundener Treffer wird ausgewählt, und **F3** / **Shift+F3** machen von dort aus weiter. Ein Treffer erstreckt sich nie über einen Zeilenumbruch.
 - Bei **Regulären Ausdrücken** ist das Muster ein PCRE-Ausdruck, und in der Ersetzung ist `$0` der ganze Treffer, `$1` ... `$9` sind die Gruppen und `$$` ist ein Dollarzeichen; ohne die Option wird die Ersetzung unverändert übernommen. Ein Muster, das sich nicht kompilieren lässt, wird gemeldet, und es wird nichts gesucht.
 
-**Ersetzen**
+<!--replace-->**Ersetzen**
 - **Ersetzen** im Dialog „Ersetzen“ geht die Treffer einzeln durch: jeder wird ausgewählt angezeigt, mit dem Text, seiner Ersetzung und der Zeile, die ihn enthält, und mit **Ersetzen** (ersetzen und zum nächsten weitergehen), **Alle** (den Rest ohne Nachfrage ersetzen), **Überspringen** oder **Abbrechen** beantwortet.
 - Wird das Textende erreicht und die Suche hat in der Mitte begonnen, bietet es an, am Anfang fortzusetzen (beim Rückwärtssuchen am Ende).
 - **Alle** im Dialog „Ersetzen“ ersetzt alle Treffer des ganzen Textes auf einmal.

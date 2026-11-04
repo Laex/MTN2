@@ -524,8 +524,8 @@
     },
     "DIALOG_KEYMAPEDIT": {
       "lbl_keys": "按键:",
-      "lbl_hint_sep": "多个组合键用 ';' 分隔,例如 Ctrl+C; F5",
-      "lbl_hint_mods": "修饰键: Ctrl+ Alt+ Shift+(例如 Ctrl+Shift+F5, Alt+F7)",
+      "lbl_hint_sep": "按下组合键添加;Backspace 删除最后一个,Del 清空",
+      "lbl_hint_mods": "组合键用 ';' 分隔,例如 Ctrl+C; F5",
       "$title": "编辑热键",
       "ok": "确定",
       "reset": "重置(&R)",
@@ -1726,6 +1726,7 @@
     "category.Edit": "编辑(&E)",
     "category.Commands": "命令(&C)",
     "category.Plugins": "插件(&P)",
+    "category.Macros": "宏(&M)",
     "category.Options": "选项(&O)",
     "category.Right": "右面板(&R)",
     "tmaCmdPalette": "查找命令(&F)...",

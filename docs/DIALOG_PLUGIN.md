@@ -191,7 +191,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `type` | Поведение |
 |---|---|
 | `label` | Статический текст; без `id` в values. `"accent": true` рисует его жирным акцентным цветом (значения, которые вводит подпись рядом) |
-| `input` | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) / `TInputLine`; поля `id`, `value`, `password` (`true` – вместо введённых символов рисуются звёздочки, копирование из поля заблокировано; в ответе плагину значение приходит как набрано) |
+| `input` | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) / `TInputLine`; поля `id`, `value`, `password` (`true` – вместо введённых символов рисуются звёздочки, копирование из поля заблокировано; в ответе плагину значение приходит как набрано), `hotkey` (`true` – поле захвата клавиш: нажатое сочетание записывается в значение текстом вида `Ctrl+Shift+F5`, Backspace и Delete очищают поле, Tab, Enter и Esc работают как в диалоге; формат тот же, что понимает `SendKey`), `multi` (вместе с `hotkey`: поле хранит несколько сочетаний через `; ` – нажатое добавляется, Backspace убирает последнее, Delete очищает поле) |
 | `checkbox` | `id`, `text`, `checked`; Space / клик переключает |
 | `radio` / `radiobox` | `id`, `group`, `text`, `checked`; взаимное исключение внутри `group`; Space / клик выбирает |
 | `radio_group` / `radiogroup` | `id`, `text` (подпись), `items[]` или `children` из `radio`, `selected`, опционально `item_ids[]`; Up/Down / клик; в values – id пункта или текст |
@@ -199,7 +199,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `button_row` | Группа кнопок в одну строку (дети flatten) |
 | `separator` | Горизонтальная линия (`MakeHRule`): `row`, `col` 0 и `width` во всю клиентскую ширину. Такая линия смыкается с рамкой диалога – `╟─╢` у двойной рамки, `├─┤` у одинарной, `+-+` у ASCII-темы (`TDialogHost.JoinSeparatorsToFrame`); при расширении диалога под перевод растягивается вместе с ним. Не входит в values. |
 | `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне текущего Dialog. |
-| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item. `"frame": true` обводит список одинарной рамкой на одну ячейку вокруг его области. `"keycommands": true` отдаёт владельцу диалога Пробел (команда `toggle`) и Ctrl+Вверх / Ctrl+Вниз (команды `up` и `down`) вместо кнопок, пока список в фокусе; обычные стрелки по-прежнему двигают выбор |
+| `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item. `"frame": true` обводит список одинарной рамкой на одну ячейку вокруг его области. `"keycommands": true` отдаёт владельцу диалога Пробел (команда `toggle`), Delete (`delete`), F2 / F4 / F5 (`f2` / `f4` / `f5`) и Ctrl+Вверх / Ctrl+Вниз (команды `up` и `down`) вместо кнопок, пока список в фокусе; обычные стрелки по-прежнему двигают выбор |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
 
 Не реализовано: `panel` (см. [PANEL_PLUGIN.md](PANEL_PLUGIN.md) отдельно), произвольный `set_control_json` кроме `SetStatus`.

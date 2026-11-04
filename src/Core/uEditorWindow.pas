@@ -543,6 +543,8 @@ type
     procedure OpenExternalLink(const AUrl: string);
     /// <summary>A modal dialog (e.g. the open-link question) owns the input.</summary>
     function DialogOpen: Boolean;
+    /// <summary>Help topic of the editor's open dialog ('' = none).</summary>
+    function DialogHelpTopic: string;
     procedure NotFoundMessage(const ANeedle: string);
     property HelpMode: Boolean read FHelpMode write FHelpMode;
     property Chromeless: Boolean read FChromeless write FChromeless;
@@ -4000,6 +4002,14 @@ end;
 function TEditorWindow.DialogOpen: Boolean;
 begin
   Result := Assigned(FDialog) and FDialog.Visible;
+end;
+
+function TEditorWindow.DialogHelpTopic: string;
+begin
+  if Assigned(FDialog) then
+    Result := FDialog.HelpTopic
+  else
+    Result := '';
 end;
 
 procedure TEditorWindow.EnsureSelAnchor;

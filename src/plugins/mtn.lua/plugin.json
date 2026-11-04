@@ -1,0 +1,13 @@
+{
+  "id": "mtn.lua",
+  "name": "Macros",
+  "version": "0.1.0",
+  "abi": 8,
+  "startup": true,
+  "description": {
+    "en": "Macros written in Lua: Ctrl+. records the keys you press into a macro file, a macro runs from a key or the Macros menu in the panels, viewer, editor and console, and can check the state of the program before it starts.",
+    "ru": "Макросы на Lua: Ctrl+. записывает нажатые клавиши в файл макроса, макрос запускается клавишей или из меню «Макросы» на панелях, в просмотрщике, редакторе и консоли и может проверять состояние программы перед запуском."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

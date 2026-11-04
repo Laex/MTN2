@@ -99,7 +99,8 @@ type
     /// <summary>dckList: read-only text block - no selected-row highlight and
     /// not reachable by focus (JSON "plain": true); ItemSwatches still color it.</summary>
     Plain: Boolean;
-    /// <summary>dckList: Space fires the command "toggle", Ctrl+Up / Ctrl+Down the
+    /// <summary>dckList: Space fires the command "toggle", Delete "delete", F2 / F4 / F5
+    /// "f2" / "f4" / "f5", Ctrl+Up / Ctrl+Down the
     /// commands "up" / "down" (JSON "keycommands": true), so the owner can act on the
     /// selected row without a button for it.</summary>
     KeyCommands: Boolean;
@@ -108,6 +109,15 @@ type
     /// <summary>dckInput: the text can be selected and copied but not changed
     /// (JSON "readonly": true).</summary>
     ReadOnly: Boolean;
+    /// <summary>dckInput: a key-capture field (JSON "hotkey": true). While focused,
+    /// a keystroke is stored as its chord text ("Ctrl+Shift+F5") instead of being
+    /// typed; Backspace / Delete clear it, Tab, Enter and Esc keep their dialog
+    /// meaning.</summary>
+    HotKey: Boolean;
+    /// <summary>dckInput with HotKey (JSON "multi": true): the field holds several
+    /// chords separated by "; " in keymap spelling; a pressed chord is appended,
+    /// Backspace removes the last one, Delete clears the field.</summary>
+    HotKeyMulti: Boolean;
     /// <summary>dckCheckbox, dckInput, dckDropDown: greyed out, skipped by the
     /// focus, ignores clicks and (checkbox) its mnemonic. TDialogHost.
     /// SetControlDisabled flips it while the dialog is open.</summary>
@@ -145,6 +155,9 @@ type
     /// as written: no widening to captions, no column shifts, no button
     /// recentering (JSON "autoLayout": false).</summary>
     NoAutoLayout: Boolean;
+    /// <summary>Help topic F1 opens for a dialog a plugin shows: a help page file
+    /// (full path) or '' for the host's generic topic.</summary>
+    HelpTopic: string;
     Controls: TDialogControls;
   end;
 

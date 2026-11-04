@@ -286,6 +286,11 @@ type
     /// receives it.</summary>
     function HandleMnemonicKeys(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    /// <summary>A focused key-capture input stores the keystroke as chord text
+    /// (Backspace / Delete clear it). False for other controls and for Tab, Enter and
+    /// Esc, which keep their dialog meaning; the key is left unchanged then.</summary>
+    function HandleHotKeyInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     /// <summary>A focused date or color picker takes the key. False for every
     /// other control; the key is left unchanged.</summary>
     function HandleFocusedPickerKeys(var AKey: Word; AShift: TShiftState;
@@ -320,6 +325,8 @@ type
     function OpenJson(const ADeclJson: string; AOnCommand: TDialogCommandEvent): Boolean;
     procedure Close;
     function Visible: Boolean;
+    /// <summary>Help topic the open dialog asks F1 to show ('' = none).</summary>
+    function HelpTopic: string;
     function GetValuesJson: string;
     function GetInputValue(const AId: string): string;
     /// <summary>True when the open dialog has a control with AId.</summary>
@@ -482,7 +489,7 @@ implementation
 
 uses
   System.Character, uKeyChord, uDialogLocaleLayout, uCharWidth,
-  uDialogValues, uDialogV2Layout, uDialogListDraw;
+  uDialogValues, uDialogV2Layout, uDialogListDraw, uPluginInputChord;
 
 const
   cWarningBodyBg = TAlphaColor($FFAA0000);
@@ -646,6 +653,14 @@ end;
 function TDialogHost.Visible: Boolean;
 begin
   Result := FVisible;
+end;
+
+function TDialogHost.HelpTopic: string;
+begin
+  if FVisible then
+    Result := FDecl.HelpTopic
+  else
+    Result := '';
 end;
 
 function TDialogHost.CanFocus(AIndex: Integer): Boolean;
@@ -3318,6 +3333,96 @@ begin
   Result := False;
 end;
 
+{ The text of a multi-chord field after a keystroke: the chord appended (unless it
+  is listed already), the last chord dropped on Backspace, everything on Delete;
+  unchanged for a modifier alone. }
+function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): string;
+var
+  Parts: TArray<string>;
+  Chord, P: string;
+  I: Integer;
+begin
+  Parts := ACurrent.Split([';']);
+  for I := 0 to High(Parts) do
+    Parts[I] := Trim(Parts[I]);
+  if AShift * [ssShift, ssCtrl, ssAlt] = [] then
+  begin
+    if AKey = vkDelete then
+      Exit('');
+    if AKey = vkBack then
+    begin
+      Result := '';
+      for I := 0 to High(Parts) - 1 do
+        if Parts[I] <> '' then
+        begin
+          if Result <> '' then
+            Result := Result + '; ';
+          Result := Result + Parts[I];
+        end;
+      Exit;
+    end;
+  end;
+  Chord := KeystrokeBindingText(AKey, AKeyChar, AShift);
+  if Chord = '' then
+    Exit(ACurrent);
+  for P in Parts do
+    if SameText(P, Chord) then
+      Exit(ACurrent);
+  if Trim(ACurrent) = '' then
+    Result := Chord
+  else
+    Result := Trim(ACurrent) + '; ' + Chord;
+end;
+
+function TDialogHost.HandleHotKeyInput(var AKey: Word; AShift: TShiftState;
+  var AKeyChar: Char): Boolean;
+var
+  C: TDialogControl;
+  Chord: string;
+begin
+  if not ((FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
+     (FDecl.Controls[FFocusIndex].Kind = dckInput) and FDecl.Controls[FFocusIndex].HotKey) then
+    Exit(False);
+  if (AKey = vkEscape) or (AKey = vkTab) or (AKey = vkReturn) then
+    Exit(False);
+  C := FDecl.Controls[FFocusIndex];
+  // Some hosts add a flag above the low byte (Alt+Shift+T arrives as $154);
+  // the virtual key is the low byte.
+  if AKey > $FF then
+    AKey := AKey and $FF;
+  if C.HotKeyMulti then
+  begin
+    Chord := HotKeyMultiText(C.Edit.Text, AKey, AKeyChar, AShift);
+    if Chord = C.Edit.Text then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
+    end;
+  end
+  else if (AShift * [ssShift, ssCtrl, ssAlt] = []) and ((AKey = vkBack) or (AKey = vkDelete)) then
+    Chord := ''
+  else
+  begin
+    Chord := InputChordText(AKey, AKeyChar, AShift);
+    // A bare modifier names no key yet; the field keeps its value.
+    if Chord = '' then
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
+    end;
+  end;
+  InputLineSetText(C.Edit, Chord);
+  InputLineSelectAll(C.Edit);
+  FDecl.Controls[FFocusIndex] := C;
+  AKey := 0;
+  AKeyChar := #0;
+  NotifyChanged;
+  Result := True;
+end;
+
 function TDialogHost.HandleFocusedPickerKeys(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
@@ -3360,7 +3465,14 @@ begin
     else if K.MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
       KeyCmd := 'up'
     else if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
-      KeyCmd := 'down';
+      KeyCmd := 'down'
+    else if AShift * [ssShift, ssCtrl, ssAlt] = [] then
+      case AKey of
+        vkDelete: KeyCmd := 'delete';
+        vkF2: KeyCmd := 'f2';
+        vkF4: KeyCmd := 'f4';
+        vkF5: KeyCmd := 'f5';
+      end;
     if KeyCmd <> '' then
     begin
       AKey := 0;
@@ -3505,6 +3617,8 @@ begin
 
   Result := True;
 
+  if HandleHotKeyInput(AKey, AShift, AKeyChar) then
+    Exit;
   if HandleOpenDropDownKeys(AKey, AShift, AKeyChar) then
     Exit;
   if HandleDialogNavKeys(AKey, AShift, AKeyChar) then

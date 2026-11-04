@@ -191,6 +191,15 @@ var
   P: Integer;
 begin
   Result := False;
+  // A full path is a page outside the host's topic folder (a plugin's own help).
+  if TPath.IsPathRooted(ATopic) and FileExists(ATopic) then
+  begin
+    FHistory.Clear;
+    FVisible := True;
+    ShowFile(ATopic, '', Default(TPlace), False);
+    Changed;
+    Exit(True);
+  end;
   Dir := TopicDir;
   if Dir = '' then
     Exit;

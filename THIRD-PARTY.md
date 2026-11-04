@@ -24,6 +24,10 @@ x64-версию `7z.dll` в `plugins\mtn.7z\`. Автообновление з�
 
 Библиотека подключается динамически и лежит отдельным файлом: её можно заменить своей сборкой curl с поддержкой FTP, FTPS, SFTP, SCP и HTTPS (`libcurl-x64.dll` в `plugins\mtn.net\`). Загружается библиотека из папки плагина, не из `PATH`.
 
+## Lua (`plugins\mtn.lua\lua55.dll`)
+
+Плагин `mtn.lua` выполняет макросы интерпретатором [Lua](https://www.lua.org) 5.5 (Copyright (C) PUC-Rio), лицензия MIT; текст лицензии – в файле `plugins\mtn.lua\LICENSE-lua.txt`. Библиотека подключается динамически и лежит отдельным файлом из сборки LuaBinaries.
+
 ## Подсветка синтаксиса (`plugins\mtn.highlight`)
 
 Плагин `mtn.highlight` собран из библиотеки [syntect](https://github.com/trishume/syntect) (MIT, Copyright (c) 2017 Tristan Hume, Keith Hall, Google Inc и участники проекта) и описаний синтаксисов из стандартных пакетов Sublime Text ([sublimehq/Packages](https://github.com/sublimehq/Packages)), которые библиотека упаковывает в модуль. Лицензия пакетов разрешает копировать, использовать, изменять, продавать и распространять их без дополнительных условий; синтаксисы YAML (MIT, Copyright (c) 2015 FichteFoll) и Rust (MIT) идут со своими лицензиями, которые требуют сохранять уведомление об авторских правах. Кроме того, в модуль входят библиотеки Rust с лицензиями MIT, Apache-2.0, Unlicense, 0BSD и Zlib (выбрана лицензия MIT или единственная, под которой распространяется библиотека).

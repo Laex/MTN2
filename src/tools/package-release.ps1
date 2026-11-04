@@ -15,7 +15,9 @@ param(
     # Published packages must also carry 7z.dll (and its license text).
     [switch]$Require7z,
     # Published packages must carry the official libcurl of the network plugin (and its license).
-    [switch]$RequireCurl
+    [switch]$RequireCurl,
+    # Published packages must carry the Lua library of the macro plugin (and its license).
+    [switch]$RequireLua
 )
 $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -40,6 +42,10 @@ if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.7z\7z.dll'))) {
 if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.net\COPYING.txt'))) {
     if ($RequireCurl) { throw 'bin\win64\plugins\mtn.net\COPYING.txt not found: the official libcurl is missing; run src\tools\fetch-curl.ps1 and build again' }
     Write-Host 'WARN: the official libcurl is missing -- network connections may not work from this package'
+}
+if (-not (Test-Path (Join-Path $Bin 'plugins\mtn.lua\LICENSE-lua.txt'))) {
+    if ($RequireLua) { throw 'bin\win64\plugins\mtn.lua\LICENSE-lua.txt not found: Lua is missing; run src	oolsetch-lua.ps1 and build again' }
+    Write-Host 'WARN: Lua is missing -- macros will not run from this package'
 }
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
@@ -66,6 +72,11 @@ if (Test-Path (Join-Path $Stage 'plugins\mtn.7z')) {
     Copy-Item (Join-Path $Root 'src\plugins\mtn.7z\7-Zip-license.txt') (Join-Path $Stage 'plugins\mtn.7z\license.txt')
 }
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
+# Sample macros: copy into the macros folder of the settings directory to use them.
+if (Test-Path (Join-Path $Root 'samples\macros')) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'samples') | Out-Null
+    Copy-Item (Join-Path $Root 'samples\macros') (Join-Path $Stage 'samples\macros') -Recurse
+}
 Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 # What's new for the user, version by version (also linked from the release page).
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage

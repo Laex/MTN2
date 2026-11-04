@@ -18,6 +18,7 @@ type
     [Test] procedure TestDialogLoadsFromPluginFolderByName;
     [Test] procedure TestLongLabelWidensAndAlignsPluginDialog;
     [Test] procedure TestProtocolOneDialogKeepsAuthoredLayout;
+    [Test] procedure TestDialogCarriesThePluginHelpPage;
   end;
 
 implementation
@@ -246,6 +247,36 @@ end;
 procedure TTestPluginUi.TestProtocolOneDialogKeepsAuthoredLayout;
 begin
   TestPluginUi.TestProtocolOneDialogKeepsAuthoredLayout;
+end;
+
+procedure TestDialogCarriesThePluginHelpPage;
+begin
+  InstallHost(True);
+  try
+    SetPluginHelpResolver(
+      function(APluginId: string): string
+      begin
+        if APluginId = 't.ui' then
+          Result := 'C:\Plugins\t.ui\resource\en\help\help.md'
+        else
+          Result := '';
+      end);
+    Assert.IsTrue(PluginShowDialog('t.ui', cDialogJson,
+      procedure(const AControlId, AValuesJson: string) begin end), 'dialog shown');
+    Assert.AreEqual('C:\Plugins\t.ui\resource\en\help\help.md', GShownDecl.HelpTopic,
+      'F1 opens the page of the plugin that owns the dialog');
+    Assert.IsTrue(PluginShowDialog('other', cDialogJson,
+      procedure(const AControlId, AValuesJson: string) begin end), 'dialog shown');
+    Assert.AreEqual('', GShownDecl.HelpTopic, 'a plugin without a page has no topic');
+  finally
+    SetPluginHelpResolver(nil);
+    SetPluginDialogHost(nil);
+  end;
+end;
+
+procedure TTestPluginUi.TestDialogCarriesThePluginHelpPage;
+begin
+  TestPluginUi.TestDialogCarriesThePluginHelpPage;
 end;
 
 procedure TTestPluginUi.TestInvalidDeclarationIsRefused;

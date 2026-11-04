@@ -59,6 +59,7 @@ src/tools/**/dcu/
 src/tests/dcu/
 src/tools/wasmtime/
 src/tools/curl/
+src/tools/lua/
 # Built from Cargo.toml (the syntax tables make it large)
 /src/plugins/mtn.highlight/plugin.wasm
 

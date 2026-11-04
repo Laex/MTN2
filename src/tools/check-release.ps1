@@ -45,7 +45,8 @@ function Test-Package([string]$Zip, [bool]$ExpectPortable) {
         }
         # 7z.dll goes with its license text (the license requires it).
         foreach ($Needed in 'plugins\mtn.7z\7z.dll', 'plugins\mtn.7z\license.txt', 'THIRD-PARTY.md',
-            'plugins\mtn.net\libcurl-x64.dll', 'plugins\mtn.net\COPYING.txt') {
+            'plugins\mtn.net\libcurl-x64.dll', 'plugins\mtn.net\COPYING.txt',
+            'plugins\mtn.lua\lua55.dll', 'plugins\mtn.lua\LICENSE-lua.txt') {
             if ($Files -notcontains $Needed) { throw "${Name}: must contain $Needed" }
         }
         $HasPortable = $Files -contains 'portable.dat'

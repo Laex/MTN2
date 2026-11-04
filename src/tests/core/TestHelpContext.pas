@@ -118,6 +118,9 @@ begin
   S := Default(THelpScreen);
   S.WorkspaceKind := wkDocument;
   ExpectTopic(S, 'viewer.md', 'viewer / editor tab');
+  S.DocumentTopic := 'viewer.md#find';
+  ExpectTopic(S, 'viewer.md#find', 'editor find dialog');
+  S.DocumentTopic := '';
   S.WorkspaceKind := wkTerminal;
   ExpectTopic(S, 'terminals.md', 'terminal tab');
 
@@ -169,7 +172,8 @@ begin
     end;
     for Topic in ['panels.md', 'archives.md', 'ssh.md', 'drives.md', 'search.md',
       'workspaces.md', 'cmdline.md', 'usermenu.md', 'view.md', 'jobs.md',
-      'viewer.md', 'terminals.md', 'topmenu.md', 'environment.md'] do
+      'viewer.md', 'viewer.md#find', 'viewer.md#replace', 'viewer.md#bookmarks',
+      'terminals.md', 'topmenu.md', 'environment.md'] do
       if not TopicExists(Lang, Topic) then
       begin
         Inc(Missing);

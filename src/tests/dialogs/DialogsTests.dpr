@@ -34,6 +34,7 @@ uses
   TestSetAttrDialog in 'TestSetAttrDialog.pas',
   TestSetAttrExtras in 'TestSetAttrExtras.pas',
   TestDialogReadOnlyInput in 'TestDialogReadOnlyInput.pas',
+  TestDialogHotKeyInput in 'TestDialogHotKeyInput.pas',
   TestInputLineControlChars in 'TestInputLineControlChars.pas',
   TestDialogDisabledFields in 'TestDialogDisabledFields.pas',
   TestSetModeDialog in 'TestSetModeDialog.pas',

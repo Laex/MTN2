@@ -161,12 +161,15 @@ begin
 end;
 
 procedure AddSpan(AArr: TJSONArray; const AText, ARole: string; ABold: Boolean = False;
-  const AFg: string = ''; const ABg: string = '');
+  const AFg: string = ''; const ABg: string = ''; const AShort: string = #0);
 var
   O: TJSONObject;
 begin
   O := TJSONObject.Create;
   O.AddPair('t', AText);
+  // The compact form the host shows when its status line is hidden.
+  if AShort <> #0 then
+    O.AddPair('s', AShort);
   if ARole <> '' then
     O.AddPair('role', ARole);
   if AFg <> '' then
@@ -189,31 +192,31 @@ var
   Arr: TJSONArray;
 
   procedure Badge(const ALabel: string; ACount: Integer; const ARole: string;
-    AKind: TGitBadge);
+    AKind: TGitBadge; const ASymbol: string);
   begin
     if ACount <= 0 then
       Exit;
-    AddSpan(Arr, ' ', '');
+    AddSpan(Arr, ' ', '', False, '', '', ' ');
     AddSpan(Arr, ' ' + ALabel + ' ' + IntToStr(ACount) + ' ', ARole, False,
-      AColors.Fg[AKind], AColors.Bg[AKind]);
+      AColors.Fg[AKind], AColors.Bg[AKind], ' ' + ASymbol + IntToStr(ACount) + ' ');
   end;
 
 begin
   Arr := TJSONArray.Create;
   try
     AddSpan(Arr, ' ' + BranchLabel(AStatus) + ' ', 'accent', True,
-      AColors.Fg[gbBranch], AColors.Bg[gbBranch]);
-    Badge(ALabels.Ahead, AStatus.Ahead, 'info', gbSync);
-    Badge(ALabels.Behind, AStatus.Behind, 'info', gbSync);
-    Badge(ALabels.Staged, AStatus.Staged, 'ok', gbStaged);
-    Badge(ALabels.Changed, AStatus.Changed, 'warn', gbChanged);
-    Badge(ALabels.Untracked, AStatus.Untracked, 'neutral', gbUntracked);
-    Badge(ALabels.Conflicts, AStatus.Conflicts, 'error', gbConflicts);
+      AColors.Fg[gbBranch], AColors.Bg[gbBranch], ' ' + BranchLabel(AStatus) + ' ');
+    Badge(ALabels.Ahead, AStatus.Ahead, 'info', gbSync, '^');
+    Badge(ALabels.Behind, AStatus.Behind, 'info', gbSync, 'v');
+    Badge(ALabels.Staged, AStatus.Staged, 'ok', gbStaged, '+');
+    Badge(ALabels.Changed, AStatus.Changed, 'warn', gbChanged, '~');
+    Badge(ALabels.Untracked, AStatus.Untracked, 'neutral', gbUntracked, '?');
+    Badge(ALabels.Conflicts, AStatus.Conflicts, 'error', gbConflicts, '!');
     if AStatus.Staged + AStatus.Changed + AStatus.Untracked + AStatus.Conflicts = 0 then
     begin
-      AddSpan(Arr, ' ', '');
+      AddSpan(Arr, ' ', '', False, '', '', ' ');
       AddSpan(Arr, ' ' + ALabels.Clean + ' ', 'ok', False,
-        AColors.Fg[gbClean], AColors.Bg[gbClean]);
+        AColors.Fg[gbClean], AColors.Bg[gbClean], ' = ');
     end;
     Result := Arr.ToJSON;
   finally

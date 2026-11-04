@@ -55,8 +55,9 @@ const
   /// older host hands out a shorter table, and the fields past its end are not
   /// there.
   /// 6: OpenDocument, SetRowDecorations.
-  /// 7: JobBegin, JobUpdate, JobEnd.</summary>
-  cPluginAbiVersion: Int64 = 7;
+  /// 7: JobBegin, JobUpdate, JobEnd.
+  /// 8: SendKey, SendText, RunAction, AppState, SetMenuItemEnabled, KeyOwner.</summary>
+  cPluginAbiVersion: Int64 = 8;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -496,6 +497,25 @@ type
   /// removes the colors of that folder. 0 = ok, -1 = bad arguments.</summary>
   THostSetRowDecorationsFn = function(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
 
+  /// <summary>Greys out (AEnabled 0) or re-enables (1) the menu item AItemId the plugin
+  /// registered; a greyed item cannot be chosen. 0 = done, -1 = no such item.</summary>
+  THostSetMenuItemEnabledFn = function(APluginId, AItemId: PAnsiChar; AEnabled: Int64): Int64; cdecl;
+
+  /// <summary>Copies into ABuf (UTF-8, ABufSize bytes) what already owns the key chord
+  /// AChord: a keymap action's name or a plugin command's id. Returns the byte length,
+  /// 0 when the chord is free or is no key, -1 on bad arguments; same buffer convention as AppState.</summary>
+  THostKeyOwnerFn = function(AChord, ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+
+  /// <summary>Feeds the keystroke AChord ("F5", "Ctrl+Shift+K", "a") to the focused
+  /// window as if it was typed. 0 = sent, -1 = bad chord or nothing took it.</summary>
+  THostSendKeyFn = function(AChord: PAnsiChar): Int64; cdecl;
+  /// <summary>Types the UTF-8 text AText into the focused window, a character at a
+  /// time. 0 = typed, -1 = failed.</summary>
+  THostSendTextFn = function(AText: PAnsiChar): Int64; cdecl;
+  /// <summary>Does what the keymap action AAction ("Copy", "Delete", ...) does now: the
+  /// first chord bound to it is sent. 0 = sent, -1 = unknown name or no chord.</summary>
+  THostRunActionFn = function(AAction: PAnsiChar): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -571,6 +591,15 @@ type
     JobBegin: THostJobBeginFn;
     JobUpdate: THostJobUpdateFn;
     JobEnd: THostJobEndFn;
+    // ABI 8
+    SendKey: THostSendKeyFn;
+    SendText: THostSendTextFn;
+    RunAction: THostRunActionFn;
+    /// <summary>JSON: {"area": "panels|viewer|editor|console|terminal|other", "modal": bool,
+    /// "busy": bool, "activeSide": "left|right"}; same text convention as HostInfo.</summary>
+    AppState: THostTextOutFn;
+    SetMenuItemEnabled: THostSetMenuItemEnabledFn;
+    KeyOwner: THostKeyOwnerFn;
   end;
   PHostApiTable = ^THostApiTable;
 

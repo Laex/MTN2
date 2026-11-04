@@ -523,8 +523,8 @@
     },
     "DIALOG_KEYMAPEDIT": {
       "lbl_keys": "Клавиши:",
-      "lbl_hint_sep": "Несколько сочетаний разделяйте ';', например Ctrl+C; F5",
-      "lbl_hint_mods": "Модификаторы: Ctrl+ Alt+ Shift+ (напр. Ctrl+Shift+F5, Alt+F7)",
+      "lbl_hint_sep": "Нажмите сочетание, чтобы добавить; Backspace – убрать последнее, Del – очистить",
+      "lbl_hint_mods": "Сочетания разделяются ';', например Ctrl+C; F5",
       "$title": "Изменение сочетаний клавиш",
       "ok": "ОК",
       "reset": "&Сброс",
@@ -1743,6 +1743,7 @@
     "category.Edit": "&Правка",
     "category.Commands": "&Команды",
     "category.Plugins": "&Плагины",
+    "category.Macros": "&Макросы",
     "category.Options": "&Настройки",
     "category.Right": "&Справа",
     "tmaCmdPalette": "Найти &команду...",

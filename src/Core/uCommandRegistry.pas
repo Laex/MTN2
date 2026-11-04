@@ -65,6 +65,8 @@ type
     /// is registered or its handler raised.</summary>
     function TryExecute(const ACommandId: string): Boolean;
     function HasCommand(const ACommandId: string): Boolean;
+    /// <summary>The key chord most recently bound to the plugin command, '' when none.</summary>
+    function CommandChordText(const ACommandId: string): string;
     /// <summary>The plugin command bound to this key chord, if any.</summary>
     function TryMatchBinding(AKey: Word; AShift: TShiftState;
       out ACommandId: string): Boolean;
@@ -133,6 +135,7 @@ type
     function TryIntercept(const ACommand, AOrigin: string): Boolean;
     function TryExecute(const ACommandId: string): Boolean;
     function HasCommand(const ACommandId: string): Boolean;
+    function CommandChordText(const ACommandId: string): string;
     function TryMatchBinding(AKey: Word; AShift: TShiftState;
       out ACommandId: string): Boolean;
     function HookCount: Integer;
@@ -396,6 +399,16 @@ end;
 function TCommandRegistry.HasCommand(const ACommandId: string): Boolean;
 begin
   Result := IndexOfCommand(ACommandId) >= 0;
+end;
+
+function TCommandRegistry.CommandChordText(const ACommandId: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := FBindings.Count - 1 downto 0 do
+    if SameText(FBindings[I].CommandId, ACommandId) then
+      Exit(KeyBindingToStr(FBindings[I].Binding));
 end;
 
 function TCommandRegistry.TryMatchBinding(AKey: Word; AShift: TShiftState;

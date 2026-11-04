@@ -30,6 +30,7 @@ uses
   TestKeyHints in 'TestKeyHints.pas',
   TestLiveReload in 'TestLiveReload.pas',
   TestLocalePacks in 'TestLocalePacks.pas',
+  TestPluginInputChord in 'TestPluginInputChord.pas',
   TestResourceScripts in 'TestResourceScripts.pas',
   TestMessageBus in 'TestMessageBus.pas',
   TestMenuNavigation in 'TestMenuNavigation.pas',

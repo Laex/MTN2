@@ -43,6 +43,10 @@ procedure SetPluginDialogHost(const AHost: TPluginDialogHost);
 function PluginShowDialog(const APluginId, ADeclJson: string;
   const AOnCommand: TPluginDialogCallback): Boolean;
 
+/// <summary>Registers how a plugin's own help page is found (plugin id -> full
+/// path or ''); F1 in that plugin's dialogs opens it.</summary>
+procedure SetPluginHelpResolver(const AResolver: TFunc<string, string>);
+
 /// <summary>Drops the pending dialog callbacks of APluginId.</summary>
 procedure PluginUiUnregister(const APluginId: string);
 
@@ -56,6 +60,7 @@ const
 
 var
   GHost: TPluginDialogHost;
+  GHelpResolver: TFunc<string, string>;
   GGeneration: TDictionary<string, Integer>;
 
 function GenerationOf(const APluginId: string): Integer;
@@ -67,6 +72,11 @@ end;
 procedure SetPluginDialogHost(const AHost: TPluginDialogHost);
 begin
   GHost := AHost;
+end;
+
+procedure SetPluginHelpResolver(const AResolver: TFunc<string, string>);
+begin
+  GHelpResolver := AResolver;
 end;
 
 function PluginShowDialog(const APluginId, ADeclJson: string;
@@ -92,6 +102,8 @@ begin
   // Widen the dialog and realign columns to the captions the plugin supplied
   // (protocol 2 only; other declarations are shown as authored).
   FitDialogToTranslatedText(Decl);
+  if Assigned(GHelpResolver) then
+    Decl.HelpTopic := GHelpResolver(Id);
   Gen := GenerationOf(Id);
   Answered := False;
   Result := GHost(Decl,
@@ -123,6 +135,7 @@ initialization
 
 finalization
   GHost := nil;
+  GHelpResolver := nil;
   FreeAndNil(GGeneration);
 
 end.

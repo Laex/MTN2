@@ -262,6 +262,7 @@ begin
       Copy(StringReplace(ATexts[I], #9, ' ', [rfReplaceAll]), 1, 48)]);
   Decl := BuildCmdHistoryDialog(Items, ASelected);
   Decl.Title := T('ui.editor.bookmarksTitle', 'Bookmarks');
+  Decl.HelpTopic := 'viewer.md#bookmarks';
   FDialog.Open(Decl, BookmarksCommand);
   Notify;
 end;
@@ -297,18 +298,26 @@ begin
 end;
 
 procedure TEditorDialogController.OpenReplace(const AFindText: string);
+var
+  Decl: TDialogDeclaration;
 begin
-  FDialog.Open(BuildReplaceDialog(AFindText, '', GEditorSearchOptions.MatchCase,
+  Decl := BuildReplaceDialog(AFindText, '', GEditorSearchOptions.MatchCase,
     GEditorSearchOptions.WholeWord, GEditorSearchOptions.UseRegex,
-    GEditorSearchOptions.SearchBackwards), ReplaceDialogCommand);
+    GEditorSearchOptions.SearchBackwards);
+  Decl.HelpTopic := 'viewer.md#replace';
+  FDialog.Open(Decl, ReplaceDialogCommand);
   Notify;
 end;
 
 procedure TEditorDialogController.OpenFind(const AFindText: string);
+var
+  Decl: TDialogDeclaration;
 begin
-  FDialog.Open(BuildEditFindDialog(AFindText, GEditorSearchOptions.MatchCase,
+  Decl := BuildEditFindDialog(AFindText, GEditorSearchOptions.MatchCase,
     GEditorSearchOptions.WholeWord, GEditorSearchOptions.UseRegex,
-    GEditorSearchOptions.SearchBackwards), FindDialogCommand);
+    GEditorSearchOptions.SearchBackwards);
+  Decl.HelpTopic := 'viewer.md#find';
+  FDialog.Open(Decl, FindDialogCommand);
   Notify;
 end;
 

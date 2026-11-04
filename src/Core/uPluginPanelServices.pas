@@ -57,6 +57,35 @@ begin
       else
         Result := '';
     end;
+  Result.SendKey :=
+    function(const AChord: string): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginSendKey(AChord);
+      if Result then
+        ARecompose();
+    end;
+  Result.SendText :=
+    function(const AText: string): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginSendText(AText);
+      if Result then
+        ARecompose();
+    end;
+  Result.RunAction :=
+    function(const AName: string): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginRunAction(AName);
+      if Result then
+        ARecompose();
+    end;
+  Result.AppState :=
+    function: string
+    begin
+      if Assigned(AWindow()) then
+        Result := AWindow().PluginAppStateJson
+      else
+        Result := '';
+    end;
   Result.PanelGoto :=
     function(ASide: Integer; const AURI: string): Boolean
     begin

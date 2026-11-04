@@ -529,8 +529,8 @@
       "reset": "&Zurücksetzen",
       "cancel": "Abbrechen",
       "lbl_keys": "Tasten:",
-      "lbl_hint_sep": "Mehrere Kombinationen mit ';' trennen, z. B. Ctrl+C; F5",
-      "lbl_hint_mods": "Modifikatoren: Ctrl+ Alt+ Shift+ (z. B. Ctrl+Shift+F5, Alt+F7)"
+      "lbl_hint_sep": "Kombination drücken zum Hinzufügen; Rück: letzte entfernen, Entf: leeren",
+      "lbl_hint_mods": "Kombinationen werden mit ';' getrennt, z. B. Ctrl+C; F5"
     },
     "DIALOG_OVERWRITEASK": {
       "$title": "Warnung",
@@ -1727,6 +1727,7 @@
     "category.Edit": "&Bearbeiten",
     "category.Commands": "Be&fehle",
     "category.Plugins": "&Plugins",
+    "category.Macros": "&Makros",
     "category.Options": "&Optionen",
     "category.Right": "&Rechts",
     "tmaCmdPalette": "Be&fehl suchen...",

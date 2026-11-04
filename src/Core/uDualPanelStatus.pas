@@ -95,6 +95,11 @@ function AssembleStatusLine(const AHost: TDualPanelStatusHost;
 /// <summary>Colored parts for ASegs of a panel status line: plugin segments are the
 /// last ones, the host's own sections have none. ASegCount = Length(ASegs).</summary>
 function PluginStatusSpans(ASegCount: Integer): TArray<TStatusSpans>;
+/// <summary>The plugins' status segments in compact form (each span's short
+/// text when it has one), as consecutive runs with blank runs between segments,
+/// fitting AWidth columns; later segments are dropped first. ASegOfRun[i] is the
+/// index (in PluginChrome.StatusSegments) of the segment run i belongs to, -1 for a blank run.</summary>
+function CompactPluginRuns(AWidth: Integer; out ASegOfRun: TArray<Integer>): TStatusSpans;
 /// <summary>Draws the status line; ASpans (nil = none) holds the colored parts of
 /// each segment of ASegs, painted over the segment's text.</summary>
 procedure DrawAppStatusLineRow(const ABuffer: TTerminalGrid;
@@ -521,6 +526,79 @@ begin
   SetLength(Result, ASegCount);
   for I := 0 to High(Own) do
     Result[First + I] := Own[I];
+end;
+
+function CompactPluginRuns(AWidth: Integer; out ASegOfRun: TArray<Integer>): TStatusSpans;
+var
+  Segs: TArray<string>;
+  Spans: TArray<TStatusSpans>;
+  I, J, Used, SegW, Room: Integer;
+  Runs: TStatusSpans;
+  Run: TStatusSpan;
+  Text: string;
+begin
+  Result := nil;
+  ASegOfRun := nil;
+  Segs := PluginChrome.StatusSegments;
+  Spans := PluginChrome.StatusSegmentSpans;
+  Used := 0;
+  for I := 0 to High(Segs) do
+  begin
+    Runs := nil;
+    if (I <= High(Spans)) and (Length(Spans[I]) > 0) then
+      for J := 0 to High(Spans[I]) do
+      begin
+        Run := Spans[I][J];
+        if Run.HasShort then
+          Run.Text := Run.Short;
+        if Run.Text <> '' then
+          Runs := Runs + [Run];
+      end
+    else if Trim(Segs[I]) <> '' then
+    begin
+      Run := Default(TStatusSpan);
+      Run.Text := ' ' + Trim(Segs[I]) + ' ';
+      Runs := [Run];
+    end;
+    if Length(Runs) = 0 then
+      Continue;
+    SegW := 0;
+    for Run in Runs do
+      Inc(SegW, TextDisplayWidth(Run.Text));
+    // One blank column between segments; later segments are dropped first.
+    Room := AWidth - Used - Ord(Used > 0);
+    if SegW > Room then
+    begin
+      if Used > 0 then
+        Break;
+      // The first segment alone is wider than the room: keep its head.
+      for J := 0 to High(Runs) do
+      begin
+        if Room <= 0 then
+          Break;
+        Text := Runs[J].Text;
+        if TextDisplayWidth(Text) > Room then
+          Text := Copy(Text, 1, Room);
+        Runs[J].Text := Text;
+        Dec(Room, TextDisplayWidth(Text));
+        Result := Result + [Runs[J]];
+        ASegOfRun := ASegOfRun + [I];
+      end;
+      Break;
+    end;
+    if Used > 0 then
+    begin
+      Run := Default(TStatusSpan);
+      Run.Text := ' ';
+      Result := Result + [Run];
+      ASegOfRun := ASegOfRun + [-1];
+      Inc(Used);
+    end;
+    Result := Result + Runs;
+    for J := 1 to Length(Runs) do
+      ASegOfRun := ASegOfRun + [I];
+    Inc(Used, SegW);
+  end;
 end;
 
 procedure PaintSegmentSpans(const ABuffer: TTerminalGrid; AY, AWidth: Integer;

@@ -81,7 +81,7 @@ implementation
 uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
-  uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry;
+  uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -137,6 +137,31 @@ begin
       if (GPluginsDir <> '') and
          TryReadPluginManifest(TPath.Combine(GPluginsDir, APluginId), Manifest) then
         Result := Manifest.Name;
+    end);
+  MenuRegistry.SetOrderResolver(
+    function(APluginId: string): Integer
+    var
+      Ids: TArray<string>;
+      I: Integer;
+    begin
+      Ids := PluginLoader.CatalogPluginIds;
+      for I := 0 to High(Ids) do
+        if SameText(Ids[I], APluginId) then
+          Exit(I);
+      Result := -1;
+    end);
+  SetPluginHelpResolver(
+    function(APluginId: string): string
+    var
+      Dir: string;
+      Manifest: TPluginManifest;
+    begin
+      Result := '';
+      if GPluginsDir = '' then
+        Exit;
+      Dir := TPath.Combine(GPluginsDir, APluginId);
+      if TryReadPluginManifest(Dir, Manifest) then
+        Result := ManifestHelpFile(Manifest, Dir, CurrentLocale);
     end);
   // Plugins the user trusts to replace built-in handlers; must be set
   // before cataloguing, which loads those plugins right away.
@@ -205,6 +230,7 @@ end;
 procedure StopPluginHost;
 begin
   PluginLoader.UnloadAll;
+  SetPluginHelpResolver(nil);
   GPluginsDir := '';
 end;
 

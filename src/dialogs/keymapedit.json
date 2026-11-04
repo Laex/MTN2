@@ -27,6 +27,8 @@
       "type": "input",
       "id": "km_keys",
       "value": "",
+      "hotkey": true,
+      "multi": true,
       "col": 12,
       "row": 2,
       "width": 56,
@@ -41,7 +43,7 @@
     },
     {
       "type": "label",
-      "text": "Separate multiple combos with ';', e.g. Ctrl+C; F5",
+      "text": "Press a combo to add it; Backspace: remove last, Del: clear",
       "id": "lbl_hint_sep",
       "col": 1,
       "row": 4,
@@ -50,7 +52,7 @@
     },
     {
       "type": "label",
-      "text": "Modifiers: Ctrl+ Alt+ Shift+ (e.g. Ctrl+Shift+F5, Alt+F7)",
+      "text": "Combos are separated by ';', e.g. Ctrl+C; F5",
       "id": "lbl_hint_mods",
       "col": 1,
       "row": 5,
