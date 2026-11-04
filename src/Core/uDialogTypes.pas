@@ -379,8 +379,13 @@ function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
+/// <summary>AScheme is the scheme of the current folder: the built-in columns its
+/// plugin excluded (BuiltinColumnAvailable) get no checkbox, and the columns it
+/// declared get one each, ids "pcol_0", "pcol_1", ... in declaration order,
+/// checked by IsPluginColumnShown.</summary>
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
-  AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean): TDialogDeclaration;
+  AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
+  const AScheme: string = ''): TDialogDeclaration;
 /// <summary>Files > Export list...: target file, layout and the fields of the
 /// saved list, prefilled from AConfig.</summary>
 function BuildExportListDialog(const APath: string;
@@ -495,7 +500,7 @@ implementation
 
 uses
   uDialogResources, uFileAttrTypes, uDialogLocaleLayout, uDisplaySettings, uConsoleSettings, uStrings, uUpdater,
-  uThemeDrawing;
+  uThemeDrawing, uPluginColumns;
 
 procedure ClearControlLayout(var C: TDialogControl);
 begin
@@ -1559,7 +1564,12 @@ begin
 end;
 
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
-  AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean): TDialogDeclaration;
+  AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
+  const AScheme: string): TDialogDeclaration;
+var
+  Cols: TPluginColumns;
+  I, J, Row: Integer;
+  Box, Tmpl: TDialogControl;
 begin
   RequireDialogResource(cResDialogColumnsConfig, Result);
   DialogSetCheckbox(Result, 'col_ext', AShowExt);
@@ -1569,6 +1579,46 @@ begin
   DialogSetCheckbox(Result, 'col_accessed', AShowAccessed);
   DialogSetCheckbox(Result, 'col_type', AShowType);
   DialogSetCheckbox(Result, 'col_attr', AShowAttr);
+  Cols := SchemePluginColumns(AScheme);
+  Tmpl := Default(TDialogControl);
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Id = 'col_attr' then
+      Tmpl := Result.Controls[I];
+  // Built-in columns the scheme's plugin excluded are dropped; the rows below
+  // move up to close the gap.
+  for I := High(Result.Controls) downto 0 do
+    if (Copy(Result.Controls[I].Id, 1, 4) = 'col_') and
+       not BuiltinColumnAvailable(AScheme, Copy(Result.Controls[I].Id, 5, MaxInt)) then
+    begin
+      Row := Result.Controls[I].Row;
+      Delete(Result.Controls, I, 1);
+      for J := 0 to High(Result.Controls) do
+        if Result.Controls[J].Row > Row then
+          Dec(Result.Controls[J].Row);
+      Dec(Result.Height);
+    end;
+  if Length(Cols) = 0 then
+    Exit;
+  // The plugin checkboxes follow the last built-in one.
+  Row := -1;
+  for I := 0 to High(Result.Controls) do
+    if (Copy(Result.Controls[I].Id, 1, 4) = 'col_') and (Result.Controls[I].Row > Row) then
+      Row := Result.Controls[I].Row;
+  Inc(Row);
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Row >= Row then
+      Inc(Result.Controls[I].Row, Length(Cols));
+  Inc(Result.Height, Length(Cols));
+  for I := 0 to High(Cols) do
+  begin
+    Box := Tmpl;
+    Box.Id := 'pcol_' + IntToStr(I);
+    Box.Text := StringReplace(PluginColumnTitle(Cols[I]), '&', '', [rfReplaceAll]);
+    Box.Checked := IsPluginColumnShown(AScheme, Cols[I]);
+    Box.Row := Row + I;
+    SetLength(Result.Controls, Length(Result.Controls) + 1);
+    Result.Controls[High(Result.Controls)] := Box;
+  end;
 end;
 
 function BuildExportListDialog(const APath: string;

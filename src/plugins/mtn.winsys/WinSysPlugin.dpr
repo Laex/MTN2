@@ -19,6 +19,15 @@ const
   cPluginId = 'mtn.winsys';
   cSchemes: array[0..2] of UTF8String = ('reg', 'proc', 'svc');
   cRowDecorationsAbi = 6;
+  cPanelColumnsAbi = 9;
+  cProcColumnsJson =
+    '{"builtin":[],"columns":[{"id":"pid","title":"PID","width":7,"align":"right","default":true,"sortable":true},' +
+    '{"id":"ppid","title":"PPID","width":7,"align":"right","default":false,"sortable":true},' +
+    '{"id":"threads","title":"Thr","title_key":"ui.col.threads","width":5,"align":"right","default":false,"sortable":true}]}';
+  cSvcColumnsJson =
+    '{"builtin":[],"columns":[{"id":"state","title":"State","title_key":"ui.col.state","width":10,"default":true,"sortable":true},' +
+    '{"id":"pid","title":"PID","width":7,"align":"right","default":false,"sortable":true},' +
+    '{"id":"display","title":"Display name","title_key":"ui.col.display","width":30,"default":true,"sortable":true}]}';
   cControlTimeoutMs = 30000;
   cDrivePriority = 110;
 
@@ -287,6 +296,11 @@ begin
         AHostApi.RegisterPanelPlugin(PAnsiChar(Id), PAnsiChar(S), 60);
       if Assigned(AHostApi.SetPanelFBar) then
         AHostApi.SetPanelFBar(PAnsiChar(Id), PAnsiChar(S), PAnsiChar(UTF8String(FBarJson(string(S)))));
+    end;
+    if (AHostApi.AbiVersion >= cPanelColumnsAbi) and Assigned(AHostApi.RegisterPanelColumns) then
+    begin
+      AHostApi.RegisterPanelColumns(PAnsiChar(Id), 'proc', PAnsiChar(UTF8String(cProcColumnsJson)));
+      AHostApi.RegisterPanelColumns(PAnsiChar(Id), 'svc', PAnsiChar(UTF8String(cSvcColumnsJson)));
     end;
     if Assigned(AHostApi.RegisterDriveItem) then
     begin

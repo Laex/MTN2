@@ -40,7 +40,8 @@ type
     function SetRowSize(const AURI: string; ASize: Int64;
       const ASizeText: string): Boolean;
     /// <summary>Sort key applied on list results and immediately to current rows.</summary>
-    procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean);
+    procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean;
+      const APluginId: string = '');
     procedure GetSort(out AColumn: TPanelSortColumn; out ADescending: Boolean);
     /// <summary>Rank rows by the sort priority of their color-coding group
     /// ahead of the sort column.</summary>
@@ -99,6 +100,7 @@ type
     FCancel: IJobCancelToken;
     FSortColumn: TPanelSortColumn;
     FSortDescending: Boolean;
+    FSortPluginId: string;
     FSortByPriority: Boolean;
     FFilterMask: string;
     FShowHidden: Boolean;
@@ -135,7 +137,8 @@ type
     procedure Refresh;
     function SetRowSize(const AURI: string; ASize: Int64;
       const ASizeText: string): Boolean;
-    procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean);
+    procedure SetSort(AColumn: TPanelSortColumn; ADescending: Boolean;
+      const APluginId: string = '');
     procedure GetSort(out AColumn: TPanelSortColumn; out ADescending: Boolean);
     procedure SetSortByPriority(AValue: Boolean);
     function GetSortByPriority: Boolean;
@@ -361,7 +364,7 @@ begin
         FRows[I].SortPriority := ColorCodingSortPriority(Name, FRows[I].IsDirectory);
       end;
   if (FSortColumn <> pscNone) or FSortByPriority then
-    SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority);
+    SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority, FSortPluginId);
   if FFilterMask <> '' then
   begin
     Masks := SplitMasks(FFilterMask);
@@ -432,12 +435,15 @@ begin
   Result := FFilterMask;
 end;
 
-procedure TFilePanelModel.SetSort(AColumn: TPanelSortColumn; ADescending: Boolean);
+procedure TFilePanelModel.SetSort(AColumn: TPanelSortColumn; ADescending: Boolean;
+  const APluginId: string);
 begin
-  if (FSortColumn = AColumn) and (FSortDescending = ADescending) then
+  if (FSortColumn = AColumn) and (FSortDescending = ADescending) and
+     (FSortPluginId = APluginId) then
     Exit;
   FSortColumn := AColumn;
   FSortDescending := ADescending;
+  FSortPluginId := APluginId;
   if Length(FRawRows) > 0 then
   begin
     RebuildSortedRows;

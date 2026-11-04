@@ -2,7 +2,7 @@
   "id": "mtn.winsys",
   "name": "Windows registry, processes and services",
   "version": "0.1.0",
-  "abi": 6,
+  "abi": 9,
   "platforms": ["windows"],
   "startup": true,
   "resources": 1,

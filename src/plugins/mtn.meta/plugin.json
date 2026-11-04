@@ -2,7 +2,7 @@
   "id": "mtn.meta",
   "name": "File metadata",
   "version": "0.1.0",
-  "abi": 4,
+  "abi": 9,
   "startup": true,
   "resources": 1,
   "description": {

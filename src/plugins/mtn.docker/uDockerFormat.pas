@@ -43,6 +43,8 @@ type
     Name: string;
     State: string;
     Image: string;
+    /// <summary>Published ports as docker ps prints them; empty when none.</summary>
+    Ports: string;
   end;
   TContainerRows = TArray<TContainerRow>;
 
@@ -409,6 +411,8 @@ begin
     Result[N].State := Parts[1];
     if Length(Parts) > 2 then
       Result[N].Image := Parts[2];
+    if Length(Parts) > 3 then
+      Result[N].Ports := Trim(Parts[3]);
     Inc(N);
   end;
 end;

@@ -221,6 +221,7 @@
         <DCCReference Include="Core\uFolderHistory.pas"/>
         <DCCReference Include="Core\uFolderFrecent.pas"/>
         <DCCReference Include="Core\uRowDecorations.pas"/>
+        <DCCReference Include="Core\uPluginColumns.pas"/>
         <DCCReference Include="Core\uFileHistory.pas"/>
         <DCCReference Include="Core\uHelpContext.pas"/>
         <DCCReference Include="Core\uPanelCompare.pas"/>

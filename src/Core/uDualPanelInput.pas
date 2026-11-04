@@ -45,6 +45,8 @@ type
   TKeymapBoolProc = procedure(AValue: Boolean) of object;
   TKeymapSideProc = procedure(ASide: TPanelSide) of object;
   TKeymapSortProc = procedure(ASide: TPanelSide; ACol: TPanelSortColumn) of object;
+  TKeymapSortPluginProc = procedure(ASide: TPanelSide; ACol: TPanelSortColumn;
+    const APluginId: string) of object;
   TKeymapColumnProc = procedure(ASide: TPanelSide; AMode: TPanelColumnMode) of object;
   TKeymapJobProc = procedure(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean) of object;
   TKeymapSideFn = function: TPanelSide of object;

@@ -52,6 +52,9 @@ type
     /// <summary>Options > Columns... selection - which fields pcmCustom
     /// shows. App-wide, like ThemeName/Zoom (not per-panel).</summary>
     CustomColumns: TCustomColumnsConfig;
+    /// <summary>Which plugin columns each scheme shows, as the JSON object of
+    /// uPluginColumns.SchemeColumnSelectionsToJson; '' = none chosen.</summary>
+    PluginColumns: string;
     /// <summary>Files > Export list... layout and fields. App-wide.</summary>
     ListExport: TListExportConfig;
     /// <summary>Id of the last saved/restored ws:/// snapshot. '' = none.</summary>
@@ -241,6 +244,8 @@ begin
   Result.AddPair('columnMode', PanelColumnModeName(APanel.ColumnMode));
   Result.AddPair('sortColumn', PanelSortColumnName(APanel.SortColumn));
   Result.AddPair('sortDescending', TJSONBool.Create(APanel.SortDescending));
+  if (APanel.SortColumn = pscPlugin) and (APanel.SortPluginId <> '') then
+    Result.AddPair('sortPluginColumn', APanel.SortPluginId);
   if APanel.SortByPriority then
     Result.AddPair('sortByPriority', TJSONBool.Create(True));
   Result.AddPair('showHidden', TJSONBool.Create(APanel.ShowHiddenFiles));
@@ -356,6 +361,11 @@ begin
     Result.SortColumn := pscNone;
   Result.SortDescending := JsonBool(O, 'sortDescending', False);
   Result.SortByPriority := JsonBool(O, 'sortByPriority', False);
+  Result.SortPluginId := JsonStr(O, 'sortPluginColumn', '');
+  if (Result.SortColumn = pscPlugin) and (Result.SortPluginId = '') then
+    Result.SortColumn := pscNone;
+  if Result.SortColumn <> pscPlugin then
+    Result.SortPluginId := '';
   if Result.SortColumn = pscNone then
     Result.SortDescending := False;
   if SameText(JsonStr(O, 'viewKind', 'files'), 'info') then
@@ -585,6 +595,7 @@ function SaveSession(const APath: string; const ASession: TMtnSession): Boolean;
 var
   Root: TJSONObject;
   Workspaces: TJSONArray;
+  V: TJSONValue;
   I: Integer;
   Dir, Text: string;
 begin
@@ -615,6 +626,14 @@ begin
       if ASession.ThemeFile <> '' then
         Root.AddPair('themeFile', ASession.ThemeFile);
       Root.AddPair('customColumns', CustomColumnsToJson(ASession.CustomColumns));
+      if ASession.PluginColumns <> '' then
+      begin
+        V := TJSONObject.ParseJSONValue(ASession.PluginColumns);
+        if V is TJSONObject then
+          Root.AddPair('pluginColumns', V)
+        else
+          V.Free;
+      end;
       Root.AddPair('listExport', ListExportToJson(ASession.ListExport));
       if ASession.LastWorkspaceId <> '' then
         Root.AddPair('lastWorkspaceId', ASession.LastWorkspaceId);
@@ -708,6 +727,7 @@ begin
   ASession.ThemeName := '';
   ASession.ThemeFile := '';
   ASession.CustomColumns := DefaultCustomColumnsConfig;
+  ASession.PluginColumns := '';
   ASession.ListExport := DefaultListExportConfig;
   ASession.LastWorkspaceId := '';
   ASession.RestoreWorkspaceOnStart := True;
@@ -811,6 +831,9 @@ begin
       V := Root.GetValue('customColumns');
       if V is TJSONObject then
         ASession.CustomColumns := CustomColumnsFromJson(TJSONObject(V));
+      V := Root.GetValue('pluginColumns');
+      if V is TJSONObject then
+        ASession.PluginColumns := V.ToJSON;
       V := Root.GetValue('listExport');
       if V is TJSONObject then
         ASession.ListExport := ListExportFromJson(TJSONObject(V));

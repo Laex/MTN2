@@ -2,7 +2,7 @@
   "id": "mtn.docker",
   "name": "Docker and Kubernetes",
   "version": "0.1.0",
-  "abi": 6,
+  "abi": 9,
   "startup": true,
   "resources": 1,
   "schemes": ["docker"],

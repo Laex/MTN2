@@ -25,3 +25,5 @@ Every process is a file `name.exe (pid)`; its size is the working set and its da
 Every service is a file named by its short name, colored by state: green running, grey stopped, yellow starting or stopping. F3 shows the display name, start type, command line, account and description. The **Plugins** menu starts, stops, restarts, pauses and resumes the service under the cursor.
 
 Starting, stopping and many registry keys need an administrator: start MTN2 elevated when the program answers "access denied".
+
+Columns: in the Custom column mode (**Columns...**) processes show PID (also PPID and thread count) and services show State, PID and Display name; click a header or press Ctrl+F12 to sort by one.

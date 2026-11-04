@@ -162,18 +162,39 @@ begin
   AArr.AddElement(EntryJson(AName, False, False, 0, 0));
 end;
 
+/// <summary>Adds the "extra" cells of the docker panel columns (see
+/// cPanelColumnsJson) to the entry just built.</summary>
+procedure AddExtra(const AEntry: TJSONObject; const AState, AImage, APorts, AId: string);
+var
+  Extra: TJSONObject;
+begin
+  Extra := TJSONObject.Create;
+  if AState <> '' then
+    Extra.AddPair('state', AState);
+  if AImage <> '' then
+    Extra.AddPair('image', AImage);
+  if APorts <> '' then
+    Extra.AddPair('ports', APorts);
+  if AId <> '' then
+    Extra.AddPair('id', AId);
+  AEntry.AddPair('extra', Extra);
+end;
+
 procedure AddRows(const AArr: TJSONArray; const ARows: TContainerRows; const AFolderUri: string);
 var
   R: TContainerRow;
   Colors: TJSONObject;
   Name: string;
+  Entry: TJSONObject;
 begin
   Colors := TJSONObject.Create;
   try
     for R in ARows do
     begin
       Name := EncodeSegment(R.Name);
-      AddFolder(AArr, Name);
+      Entry := EntryJson(Name, True, False, 0, 0);
+      AddExtra(Entry, R.State, R.Image, R.Ports, '');
+      AArr.AddElement(Entry);
       Colors.AddPair(Name, StateRole(R.State));
     end;
     if Assigned(GOnRowColors) then
@@ -187,6 +208,7 @@ procedure AddImages(const AArr: TJSONArray; const ARows: TContainerRows);
 var
   R: TContainerRow;
   Name: string;
+  Entry: TJSONObject;
 begin
   for R in ARows do
   begin
@@ -195,7 +217,9 @@ begin
       Name := R.State
     else
       Name := R.Name;
-    AddFile(AArr, EncodeSegment(Name));
+    Entry := EntryJson(EncodeSegment(Name), False, False, 0, 0);
+    AddExtra(Entry, '', '', '', R.State);
+    AArr.AddElement(Entry);
   end;
 end;
 
@@ -240,7 +264,7 @@ begin
       end;
     dnContainers:
       begin
-        Result := Run(ACtx, dbDocker, ['ps', '-a', '--format', '{{.Names}}|{{.State}}|{{.Image}}'],
+        Result := Run(ACtx, dbDocker, ['ps', '-a', '--format', '{{.Names}}|{{.State}}|{{.Image}}|{{.Ports}}'],
           '', cListTimeoutMs, Output);
         if Result = Ord(verOk) then
           AddRows(AArr, ParseContainerList(Output), AUri);

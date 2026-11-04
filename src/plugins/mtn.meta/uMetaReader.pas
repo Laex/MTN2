@@ -8,6 +8,21 @@ interface
 /// an unknown kind or a damaged header.</summary>
 function DescribeFile(const APath: string): string;
 
+type
+  /// <summary>What a file panel column shows for a file; a field is '' when the
+  /// file has nothing for it.</summary>
+  TMetaCells = record
+    /// <summary>"1920x1080" of an image.</summary>
+    Dimensions: string;
+    Camera: string;
+    Artist: string;
+    Title: string;
+  end;
+
+/// <summary>The panel column values of a local file; all '' for a file with no
+/// metadata, an unknown kind or a damaged header.</summary>
+function ReadFileCells(const APath: string): TMetaCells;
+
 implementation
 
 uses
@@ -55,29 +70,68 @@ begin
     Result := ImageSummary(Info);
 end;
 
-function DescribeAudio(const APath: string): string;
+// The ID3v2 tag, else the ID3v1 tag at the end of the file.
+function ReadAudioTags(const APath: string; out ATags: TAudioTags): Boolean;
 var
   Head, Tail: TBytes;
-  Tags: TAudioTags;
   Size: Integer;
   FileSize: Int64;
 begin
-  Result := '';
+  Result := False;
   Head := ReadBytesAt(APath, 0, 10);
   Size := Id3v2TagSize(Head);
   if Size > 0 then
   begin
     if Size > cMaxId3Bytes then
       Size := cMaxId3Bytes;
-    if ParseId3v2(ReadBytesAt(APath, 0, Size), Tags) then
-      Exit(AudioSummary(Tags));
+    if ParseId3v2(ReadBytesAt(APath, 0, Size), ATags) then
+      Exit(True);
   end;
   FileSize := FileSizeOf(APath);
   if FileSize >= cId3v1Bytes then
   begin
     Tail := ReadBytesAt(APath, FileSize - cId3v1Bytes, cId3v1Bytes);
-    if ParseId3v1(Tail, Tags) then
-      Result := AudioSummary(Tags);
+    Result := ParseId3v1(Tail, ATags);
+  end;
+end;
+
+function DescribeAudio(const APath: string): string;
+var
+  Tags: TAudioTags;
+begin
+  Result := '';
+  if ReadAudioTags(APath, Tags) then
+    Result := AudioSummary(Tags);
+end;
+
+function ReadFileCells(const APath: string): TMetaCells;
+var
+  Kind: string;
+  Info: TImageInfo;
+  Tags: TAudioTags;
+begin
+  Result := Default(TMetaCells);
+  Kind := MetaKindOf(APath);
+  try
+    if Kind = 'image' then
+    begin
+      if ParseImageInfo(ReadBytesAt(APath, 0, cImageHeadBytes), Info) and (Info.Format <> '') then
+      begin
+        Result.Dimensions := Format('%dx%d', [Info.Width, Info.Height]);
+        Result.Camera := Info.Camera;
+      end;
+    end
+    else if Kind = 'audio' then
+    begin
+      if ReadAudioTags(APath, Tags) then
+      begin
+        Result.Artist := Tags.Artist;
+        Result.Title := Tags.Title;
+      end;
+    end;
+  except
+    // A file that cannot be opened or read has no cells.
+    Result := Default(TMetaCells);
   end;
 end;
 

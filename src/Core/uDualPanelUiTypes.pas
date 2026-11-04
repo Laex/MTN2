@@ -138,6 +138,8 @@ type
     HotPos: Integer; // 1-based in Caption, 0 = none (MenuResolveMnemonic)
     Shortcut: string;
     Column: TPanelSortColumn;
+    /// <summary>The plugin column of an item with Column = pscPlugin.</summary>
+    PluginId: string;
     /// <summary>The "use sort priority" switch instead of a column.</summary>
     Toggle: Boolean;
     /// <summary>A horizontal rule: drawn, never selected.</summary>

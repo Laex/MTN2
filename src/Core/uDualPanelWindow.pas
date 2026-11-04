@@ -13,7 +13,7 @@ uses
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindArchive, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup, uStartupTargets, uSharkSaver,
-  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uDirWatch, uDialogTypes, uDialogJson,
+  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uPluginColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
@@ -460,6 +460,7 @@ type
     procedure HostPrepareSearchUi;
     function HostIsAlive: Boolean;
     procedure HostMenuSortSelect(AColumn: TPanelSortColumn);
+    procedure HostMenuSortPluginSelect(AColumn: TPanelSortColumn; const APluginId: string);
     procedure HostMenuSortPriorityToggle;
     procedure HostMenuColumnModeSelect(AMode: TPanelColumnMode);
     function OverlayDialogVisible: Boolean;
@@ -1072,7 +1073,11 @@ type
     procedure ApplyColumnMode(ASide: TPanelSide; AMode: TPanelColumnMode);
     procedure SyncSideSort(ASide: TPanelSide);
     procedure ApplyHeaderSort(ASide: TPanelSide; ACol: TPanelSortColumn);
+    procedure ApplyHeaderSortPlugin(ASide: TPanelSide; ACol: TPanelSortColumn;
+      const APluginId: string);
     procedure ApplySortMode(ASide: TPanelSide; ACol: TPanelSortColumn);
+    procedure ApplySortModePlugin(ASide: TPanelSide; ACol: TPanelSortColumn;
+      const APluginId: string);
     procedure ToggleSortByPriority(ASide: TPanelSide);
     procedure ResortPanelsByPriority;
     procedure CommitSortAndRestoreCursor(ASide: TPanelSide;
@@ -2263,6 +2268,7 @@ begin
   FClickHost.NewPanelTabOnSide := NewPanelTabOnSide;
   FClickHost.NavigatePanelToDrive := NavigatePanelToDrive;
   FClickHost.ApplyHeaderSort := ApplyHeaderSort;
+  FClickHost.ApplyHeaderSortPlugin := ApplyHeaderSortPlugin;
 end;
 
 procedure TDualPanelWindow.BindDrawHost;
@@ -2386,7 +2392,7 @@ procedure TDualPanelWindow.DrawHostFilesHeaders(const ABounds: TRectI;
 begin
   uDualPanelDrawUtils.DrawPanelColumnHeaders(
     Buffer, ABounds, APanel.ColumnMode, APanel.SortColumn, APanel.SortDescending,
-    Theme);
+    Theme, PluginColumnSchemeOf(ActiveTab(APanel).CurrentURI), APanel.SortPluginId);
 end;
 
 procedure TDualPanelWindow.DrawHostFilesList(const AListBounds: TRectI;
@@ -3190,6 +3196,12 @@ begin
   ApplySortMode(ActiveWorkspace.State.ActiveSide, AColumn);
 end;
 
+procedure TDualPanelWindow.HostMenuSortPluginSelect(AColumn: TPanelSortColumn;
+  const APluginId: string);
+begin
+  ApplySortModePlugin(ActiveWorkspace.State.ActiveSide, AColumn, APluginId);
+end;
+
 procedure TDualPanelWindow.HostMenuSortPriorityToggle;
 begin
   ToggleSortByPriority(ActiveWorkspace.State.ActiveSide);
@@ -3459,6 +3471,7 @@ begin
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
+  FMenus.SetOnSortPluginSelect(HostMenuSortPluginSelect);
   FMenus.SetOnSortPriorityToggle(HostMenuSortPriorityToggle);
   FMenus.SetOnColumnModeSelect(HostMenuColumnModeSelect);
   FInputOverlays := [
@@ -4704,7 +4717,7 @@ begin
      SameVfsUri(Tab.CurrentURI, Tab.WorkspaceBackTarget) then
     M.SetWorkspaceReturnUri(Tab.WorkspaceBackUri)
   else
-    M.SetWorkspaceReturnUri('');
+    M.SetWorkspaceReturnUri(PluginRootReturnUri(Tab));
   RememberPanelDriveDir(Panel.DriveDirs, Tab.CurrentURI);
   // Must write back to ASide - SetActivePanel follows ActiveSide and would
   // corrupt the other panel when reloading the inactive side (dir-watch).
@@ -5028,6 +5041,12 @@ begin
         Tab.CursorIndex - Tab.ScrollOffset);
   end;
 
+  // Entering the top of Workspace from a folder (not by `..` out of a link
+  // target, whose back marker points into Workspace) remembers that folder.
+  if IsWorkspaceUri(Canon) and not IsWorkspaceUri(Tab.CurrentURI) and
+     (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
+     not IsWorkspaceUri(Tab.WorkspaceBackUri) then
+    Tab.WorkspaceOriginUri := Tab.CurrentURI;
   OldBackUri := Tab.WorkspaceBackUri;
   UpdateWorkspaceBackMarker(Tab.WorkspaceBackUri, Tab.WorkspaceBackTarget,
     Tab.CurrentURI, Canon);
@@ -9407,7 +9426,8 @@ begin
   Ws := ActiveWorkspace;
   Panel := ActivePanel(Ws);
   if Assigned(FMenus) then
-    FMenus.OpenSortMenu(Panel.SortColumn, Panel.SortDescending, Panel.SortByPriority);
+    FMenus.OpenSortMenu(Panel.SortColumn, Panel.SortDescending, Panel.SortByPriority,
+      PluginColumnSchemeOf(ActiveTab(Panel).CurrentURI), Panel.SortPluginId);
 end;
 
 procedure TDualPanelWindow.OpenColumnModeMenu;
@@ -10027,8 +10047,15 @@ begin
 end;
 
 procedure TDualPanelWindow.OpenColumnsConfigDialog;
+var
+  Scheme: string;
+  Ws: TDualPanelWorkspaceTab;
 begin
-  FSettings.OpenColumns;
+  Scheme := '';
+  Ws := ActiveWorkspace;
+  if Ws.Kind = wkPanels then
+    Scheme := PluginColumnSchemeOf(ActiveTab(ActivePanel(Ws)).CurrentURI);
+  FSettings.OpenColumns(Scheme);
 end;
 
 procedure TDualPanelWindow.OpenDisplayDialog;
@@ -13044,7 +13071,7 @@ begin
   if Assigned(M) then
   begin
     M.SetSortByPriority(Panel.SortByPriority);
-    M.SetSort(Panel.SortColumn, Panel.SortDescending);
+    M.SetSort(Panel.SortColumn, Panel.SortDescending, Panel.SortPluginId);
   end;
 end;
 
@@ -13105,7 +13132,7 @@ begin
   if Assigned(M) then
   begin
     M.SetSortByPriority(APanel.SortByPriority);
-    M.SetSort(APanel.SortColumn, APanel.SortDescending);
+    M.SetSort(APanel.SortColumn, APanel.SortDescending, APanel.SortPluginId);
   end;
 
   Rows := RowsForSide(ASide);
@@ -13128,6 +13155,12 @@ begin
 end;
 
 procedure TDualPanelWindow.ApplyHeaderSort(ASide: TPanelSide; ACol: TPanelSortColumn);
+begin
+  ApplyHeaderSortPlugin(ASide, ACol, '');
+end;
+
+procedure TDualPanelWindow.ApplyHeaderSortPlugin(ASide: TPanelSide;
+  ACol: TPanelSortColumn; const APluginId: string);
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -13146,7 +13179,8 @@ begin
   if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
     CurURI := Rows[Tab.CursorIndex].URI;
 
-  CycleHeaderSort(Panel.SortColumn, Panel.SortDescending, ACol);
+  CycleHeaderSort(Panel.SortColumn, Panel.SortPluginId, Panel.SortDescending, ACol,
+    APluginId);
   CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
 end;
 
@@ -13188,6 +13222,12 @@ begin
 end;
 
 procedure TDualPanelWindow.ApplySortMode(ASide: TPanelSide; ACol: TPanelSortColumn);
+begin
+  ApplySortModePlugin(ASide, ACol, '');
+end;
+
+procedure TDualPanelWindow.ApplySortModePlugin(ASide: TPanelSide;
+  ACol: TPanelSortColumn; const APluginId: string);
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
@@ -13208,7 +13248,8 @@ begin
   if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
     CurURI := Rows[Tab.CursorIndex].URI;
 
-  CycleMenuSort(Panel.SortColumn, Panel.SortDescending, ACol);
+  CycleMenuSort(Panel.SortColumn, Panel.SortPluginId, Panel.SortDescending, ACol,
+    APluginId);
   CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
 end;
 
@@ -14667,6 +14708,7 @@ var
   Idx, ViewH, Cols: Integer;
   HitList: Boolean;
   ColMode: TPanelColumnMode;
+  ColScheme: string;
 begin
   Result := False;
   if FSaverSwallowClick then
@@ -14701,15 +14743,17 @@ begin
   begin
     Bounds := FLeftBounds;
     ColMode := Ws.State.LeftPanel.ColumnMode;
+    ColScheme := PluginColumnSchemeOf(ActiveTab(Ws.State.LeftPanel).CurrentURI);
   end
   else
   begin
     Bounds := FRightBounds;
     ColMode := Ws.State.RightPanel.ColumnMode;
+    ColScheme := PluginColumnSchemeOf(ActiveTab(Ws.State.RightPanel).CurrentURI);
   end;
 
   if DispatchPanelChromeClick(FClickHost, Side, Bounds, PanelViewKind(Side),
-     ColMode, ALocalCol, ALocalRow, ADoubleClick) then
+     ColMode, ALocalCol, ALocalRow, ADoubleClick, ColScheme) then
     Exit(True);
 
   Ws.State.ActiveSide := Side;

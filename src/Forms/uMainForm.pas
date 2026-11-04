@@ -11,7 +11,7 @@ uses
   uStartupTargets, uTerminalTypes, uThemeTypes, uTerminalWindow, uDualPanelTypes, uDualPanelWindow, uDualPanelUiTypes,
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
-  uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uListExport,
+  uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uPluginColumns, uListExport,
   uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uToast, uSharkSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
   uPluginSurface, uPluginServices, uTaskbarProgress;
@@ -1839,6 +1839,7 @@ begin
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
+  LoadSchemeColumnSelectionsFromJson(Sess.PluginColumns);
   GListExportConfig := Sess.ListExport;
   GShowPanelIcons := Sess.ShowPanelIcons;
   GShowToasts := Sess.ShowNotifications;
@@ -2005,6 +2006,7 @@ begin
   // session.json happened to have on disk before this save.
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
+  Sess.PluginColumns := SchemeColumnSelectionsToJson;
   Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;
   Sess.RestoreWorkspaceOnStart := FSession.RestoreWorkspaceOnStart or

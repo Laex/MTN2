@@ -67,7 +67,9 @@ type
 /// isDir/isHidden/isReadOnly/isSystem/isArchive/isCompressed/isEncrypted/
 /// isTemporary/isOffline/isLink (bool), unixMode (permission bits, 0 = none),
 /// created/modified/accessed (Int64
-/// Unix seconds, 0 = unknown), targetUri (string, '' = none). Unknown
+/// Unix seconds, 0 = unknown), targetUri (string, '' = none), extra (object:
+/// column id -> a string, a number, or {"t": text, "n": number}; the text is
+/// shown and a number orders the rows when the column is sorted). Unknown
 /// fields are ignored; missing fields default to False/0/''.</summary>
 function EntriesFromJson(const AJson: string): TArray<TVfsEntry>;
 
@@ -75,6 +77,46 @@ implementation
 
 uses
   System.DateUtils;
+
+function ExtraFromJson(AValue: TJSONValue): TVfsExtraCells;
+var
+  Pair: TJSONPair;
+  Cell: TVfsExtraCell;
+  Inner: TJSONValue;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONObject) then
+    Exit;
+  for Pair in TJSONObject(AValue) do
+  begin
+    Cell := Default(TVfsExtraCell);
+    Cell.Id := Pair.JsonString.Value;
+    if Pair.JsonValue is TJSONString then
+      Cell.Text := TJSONString(Pair.JsonValue).Value
+    else if Pair.JsonValue is TJSONNumber then
+    begin
+      Cell.Num := TJSONNumber(Pair.JsonValue).AsDouble;
+      Cell.Numeric := True;
+      Cell.Text := Pair.JsonValue.Value;
+    end
+    else if Pair.JsonValue is TJSONObject then
+    begin
+      Inner := TJSONObject(Pair.JsonValue).GetValue('t');
+      if Inner is TJSONString then
+        Cell.Text := TJSONString(Inner).Value;
+      Inner := TJSONObject(Pair.JsonValue).GetValue('n');
+      if Inner is TJSONNumber then
+      begin
+        Cell.Num := TJSONNumber(Inner).AsDouble;
+        Cell.Numeric := True;
+      end;
+    end
+    else
+      Continue;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Cell;
+  end;
+end;
 
 function EntriesFromJson(const AJson: string): TArray<TVfsEntry>;
 var
@@ -155,6 +197,7 @@ begin
           E.ModificationTime := UnixToDateTime(GetInt64('modified'));
           E.AccessTime := UnixToDateTime(GetInt64('accessed'));
           E.TargetURI := GetStr('targetUri');
+          E.Extra := ExtraFromJson(Obj.GetValue('extra'));
           List.Add(E);
         end;
       end;

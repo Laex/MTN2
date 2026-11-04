@@ -193,6 +193,9 @@ begin
   Assert.AreEqual('web', C[0].Name);
   Assert.AreEqual('exited', C[1].State);
   Assert.AreEqual('postgres', C[1].Image);
+  Assert.AreEqual('', C[1].Ports, 'a row without the ports field has none');
+  C := ParseContainerList('web|running|nginx|0.0.0.0:80->80/tcp, :::80->80/tcp' + #10);
+  Assert.AreEqual('0.0.0.0:80->80/tcp, :::80->80/tcp', C[0].Ports);
   C := ParsePodList('api-1   Running' + #10 + 'job-2 Succeeded' + #10);
   Assert.AreEqual(2, Integer(Length(C)));
   Assert.AreEqual('Succeeded', C[1].State);

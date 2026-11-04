@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Math, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uVfsTypes, uPanelModel, uPanelColumns,
-  uShellIcons, uDriveInfo, uInputLine, uColorCoding, uRowDecorations;
+  uShellIcons, uDriveInfo, uInputLine, uColorCoding, uRowDecorations, uPluginColumns;
 
 { --- Scrollbar ------------------------------------------------------------ }
 
@@ -24,7 +24,8 @@ procedure DrawPanelScrollBar(const ABuffer: TTerminalGrid; AX, ATop, ABottom, AP
 /// Full FAR-style header with sort arrows; fallback palette when ATheme nil.</summary>
 procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   AMode: TPanelColumnMode; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
-  const ATheme: IThemeRenderer);
+  const ATheme: IThemeRenderer; const AScheme: string = '';
+  const ASortPluginId: string = '');
 
 { --- File list ------------------------------------------------------------ }
 
@@ -131,7 +132,7 @@ end;
   ========================================================================= }
 procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   AMode: TPanelColumnMode; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
-  const ATheme: IThemeRenderer);
+  const ATheme: IThemeRenderer; const AScheme: string; const ASortPluginId: string);
 var
   NameW, MetaW, ListLeft, ListRight, HeaderY, ColLeft, ColW, IconRes, I: Integer;
   HeadFg, HeadBg: TAlphaColor;
@@ -140,13 +141,13 @@ var
   CustomDefs: TCustomColumnDefs;
 
   procedure PutCentered(AColLeft, AColW: Integer; const ATitle: string;
-    ASortCol: TPanelSortColumn);
+    ASortCol: TPanelSortColumn; const APluginId: string = '');
   var
     X: Integer;
     T, Mark: string;
   begin
-    Mark := PanelSortMark((ASortColumn <> pscNone) and (ASortColumn = ASortCol),
-      ASortDescending);
+    Mark := PanelSortMark((ASortColumn <> pscNone) and (ASortColumn = ASortCol) and
+      ((ASortCol <> pscPlugin) or SameText(APluginId, ASortPluginId)), ASortDescending);
     T := ATitle + Mark;
     if Length(T) > AColW then
       T := Copy(T, 1, AColW);
@@ -163,7 +164,7 @@ begin
   HeaderY   := ABounds.Top + 1;
   if ListRight < ListLeft then
     Exit;
-  PanelColumnWidths(AMode, ListRight - ListLeft + 1, NameW, MetaW);
+  PanelColumnWidths(AMode, ListRight - ListLeft + 1, NameW, MetaW, AScheme);
 
   if Assigned(ATheme) then
     ATheme.ResolvePanelChromeColors(pcpColumnHeader, True, HeadFg, HeadBg)
@@ -184,10 +185,12 @@ begin
   if AMode = pcmCustom then
   begin
     // Dynamic column list - one header per enabled field, canonical order.
-    CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig);
+    CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+      MaxPanelMetaWidth(ListRight - ListLeft + 1));
     for I := 0 to High(CustomDefs) do
     begin
-      PutCentered(ColLeft, CustomDefs[I].Width, CustomDefs[I].Title, CustomDefs[I].SortCol);
+      PutCentered(ColLeft, CustomDefs[I].Width, CustomDefs[I].Title, CustomDefs[I].SortCol,
+        CustomDefs[I].PluginId);
       Inc(ColLeft, CustomDefs[I].Width + 1);
     end;
     Exit;
@@ -289,7 +292,7 @@ var
   Y, Col, Idx, ViewH, NameW, MetaW, Count: Integer;
   ColCount, CellW, CellLeft, IconRes, IconId: Integer;
   Row: TPanelRow;
-  NamePart, MetaPart: string;
+  NamePart, MetaPart, Scheme: string;
   IconCh: Char;
   Fg, Bg, EmptyFg, EmptyBg: TAlphaColor;
   Selected: Boolean;
@@ -369,7 +372,8 @@ var
 begin
   Mode  := AColumnMode;
   ViewH := ABounds.Height;
-  PanelColumnWidths(Mode, ABounds.Width, NameW, MetaW);
+  Scheme := PluginColumnSchemeOf(ATab.CurrentURI);
+  PanelColumnWidths(Mode, ABounds.Width, NameW, MetaW, Scheme);
   IconRes  := PanelIconReserve;
   if Assigned(AModel) then
     Count := AModel.ItemCount
@@ -442,7 +446,7 @@ begin
     PutGridText(ABuffer, ABounds.Left + IconRes, ABounds.Top + Y, NamePart, Fg, Bg);
     if MetaW > 0 then
     begin
-      MetaPart := FormatPanelRowMeta(Mode, Row, MetaW);
+      MetaPart := FormatPanelRowMeta(Mode, Row, MetaW, Scheme, ATab.CurrentURI);
       PutGridText(ABuffer, ABounds.Left + IconRes + NameW + 1, ABounds.Top + Y,
         MetaPart, Fg, Bg);
     end;

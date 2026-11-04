@@ -43,7 +43,7 @@ uses
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
-  uPluginManifest, uPluginPermissions, uPluginVfs,
+  uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns,
   uWasmPluginHost, uPlatformInfo;
 
 type
@@ -529,6 +529,39 @@ begin
     else
       PluginChrome.SetSchemeFBar(UTF8ToString(APluginId), UTF8ToString(AScheme),
         UTF8ToString(AJson));
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterPanelColumns(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AScheme = nil) then
+      Exit(-1);
+    if AJson = nil then
+      SetSchemePluginColumns(UTF8ToString(APluginId), UTF8ToString(AScheme), '')
+    else
+      SetSchemePluginColumns(UTF8ToString(APluginId), UTF8ToString(AScheme),
+        UTF8ToString(AJson));
+    NotifyPluginChromeChanged;
+    Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkSetPanelColumnValues(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if (APluginId = nil) or (AFolderUri = nil) then
+      Exit(-1);
+    if AJson = nil then
+      SetFolderCells(UTF8ToString(APluginId), UTF8ToString(AFolderUri), '')
+    else
+      SetFolderCells(UTF8ToString(APluginId), UTF8ToString(AFolderUri), UTF8ToString(AJson));
+    NotifyPluginChromeChanged;
     Result := 0;
   except
     Result := -1;
@@ -1826,6 +1859,8 @@ begin
   Result.AppState := @ThunkAppState;
   Result.SetMenuItemEnabled := @ThunkSetMenuItemEnabled;
   Result.KeyOwner := @ThunkKeyOwner;
+  Result.RegisterPanelColumns := @ThunkRegisterPanelColumns;
+  Result.SetPanelColumnValues := @ThunkSetPanelColumnValues;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -2242,6 +2277,8 @@ begin
   PluginVfsStreamsRelease(FLoaded[AIndex].PluginId);
   UnregisterHighlighter(FLoaded[AIndex].PluginId);
   PluginChrome.UnregisterPlugin(FLoaded[AIndex].PluginId);
+  RemovePluginColumns(FLoaded[AIndex].PluginId);
+  NotifyPluginChromeChanged;
   DriveItems.UnregisterPlugin(FLoaded[AIndex].PluginId);
   PluginSettings.UnregisterPlugin(FLoaded[AIndex].PluginId);
   MenuRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);

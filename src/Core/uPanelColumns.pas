@@ -30,15 +30,32 @@ type
   TCustomColumnDef = record
     Title: string;
     Width: Integer;
+    /// <summary>pscNone: a click on the header sorts nothing (a plugin column that
+    /// is not sortable). pscPlugin: the plugin column named by PluginId.</summary>
     SortCol: TPanelSortColumn;
+    PluginId: string;
+    AlignRight: Boolean;
   end;
   TCustomColumnDefs = TArray<TCustomColumnDef>;
 
+const
+  /// <summary>Narrowest the Name column may get before trailing columns are dropped.</summary>
+  cMinPanelNameWidth = 12;
+
 function DefaultCustomColumnsConfig: TCustomColumnsConfig;
 /// <summary>Ordered list of AConfig's enabled columns (Ext, Size, Modified,
-/// Created, Accessed, Type, Attr) - the single source of truth for
-/// pcmCustom's width/header/format/hit-test, so they can't drift apart.</summary>
-function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig): TCustomColumnDefs;
+/// Created, Accessed, Type, Attr), then the plugin columns shown for AScheme -
+/// the single source of truth for pcmCustom's width/header/format/hit-test, so
+/// they can't drift apart. AMaxMetaWidth >= 0 drops trailing columns until the
+/// rest (with one space between) fits; -1 keeps them all.</summary>
+function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig;
+  const AScheme: string = ''; AMaxMetaWidth: Integer = -1): TCustomColumnDefs;
+/// <summary>The most the columns after Name may take in a list AListWidth wide.</summary>
+function MaxPanelMetaWidth(AListWidth: Integer): Integer;
+/// <summary>The sort-menu / status caption of a sort column; for pscPlugin the
+/// title of the plugin column APluginId of AScheme.</summary>
+function PanelSortColumnCaption(ACol: TPanelSortColumn; const AScheme,
+  APluginId: string): string;
 
 var
   /// <summary>Live app-wide "which columns" setting for pcmCustom. One
@@ -77,14 +94,21 @@ function DefaultSortDescending(ACol: TPanelSortColumn): Boolean;
 /// <summary>Header click: new column -> ascending, same column ->
 /// descending, third click -> unsorted.</summary>
 procedure CycleHeaderSort(var ACol: TPanelSortColumn; var ADescending: Boolean;
-  AClicked: TPanelSortColumn);
+  AClicked: TPanelSortColumn); overload;
+/// <summary>As above for any column: a plugin column is told apart by its id.</summary>
+procedure CycleHeaderSort(var ACol: TPanelSortColumn; var APluginId: string;
+  var ADescending: Boolean; AClicked: TPanelSortColumn;
+  const AClickedPluginId: string); overload;
 /// <summary>Sort menu / keymap: pscNone clears; same column toggles
 /// direction; new column uses DefaultSortDescending.</summary>
 procedure CycleMenuSort(var ACol: TPanelSortColumn; var ADescending: Boolean;
-  ARequested: TPanelSortColumn);
+  ARequested: TPanelSortColumn); overload;
+procedure CycleMenuSort(var ACol: TPanelSortColumn; var APluginId: string;
+  var ADescending: Boolean; ARequested: TPanelSortColumn;
+  const ARequestedPluginId: string); overload;
 
 procedure PanelColumnWidths(AMode: TPanelColumnMode; AListWidth: Integer;
-  out ANameW, AMetaW: Integer);
+  out ANameW, AMetaW: Integer; const AScheme: string = '');
 
 procedure PanelColumnHeaders(AMode: TPanelColumnMode;
   out ASizeTitle, ADateTitle, AAttrTitle, AExtTitle, ATypeTitle: string;
@@ -99,16 +123,26 @@ function FormatPanelRowIcon(const ARow: TPanelRow): Char;
 
 /// <summary>Which sort key the click column maps to (False = miss).</summary>
 function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
-  out ACol: TPanelSortColumn): Boolean;
+  out ACol: TPanelSortColumn): Boolean; overload;
+/// <summary>As above for the folder of AScheme: a hit on a plugin column gives
+/// pscPlugin and its id; a hit on a column that cannot be sorted gives False.</summary>
+function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
+  const AScheme: string; out ACol: TPanelSortColumn;
+  out APluginId: string): Boolean; overload;
 
-/// <summary>Sorts by ACol; with AByPriority the rows are ranked by their
+/// <summary>Sorts by ACol (APluginId names the column when ACol is pscPlugin);
+/// with AByPriority the rows are ranked by their
 /// SortPriority ahead of the column, after the parent row and the folders-first
 /// rule (also when ACol is pscNone, which then orders by name).</summary>
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean = False);
+  ADescending: Boolean; AByPriority: Boolean = False; const APluginId: string = '');
 
+/// <summary>AScheme selects the plugin columns of pcmCustom; AFolderUri is the
+/// folder the row is in, where plugin cells set with SetFolderCells fill the
+/// columns the listing gave no value for.</summary>
 function FormatPanelRowMeta(AMode: TPanelColumnMode;
-  const ARow: TPanelRow; AMetaW: Integer): string;
+  const ARow: TPanelRow; AMetaW: Integer; const AScheme: string = '';
+  const AFolderUri: string = ''): string;
 
 function FormatPanelRowName(const ARow: TPanelRow; ANameW: Integer;
   AStripExt: Boolean = False): string;
@@ -139,8 +173,8 @@ function PadRight(const S: string; AWidth: Integer): string;
 implementation
 
 uses
-  System.Generics.Collections, System.Generics.Defaults, uVfsUtils, uStrings,
-  uCharWidth, uPlatformPaths;
+  System.Generics.Collections, System.Generics.Defaults, uVfsUtils, uVfsTypes,
+  uStrings, uCharWidth, uPlatformPaths, uPluginColumns;
 
 const
   cSizeW = 8;
@@ -246,6 +280,7 @@ begin
     pscAccessed: Result := 'Accessed';
     pscAttr:     Result := 'Attr';
     pscType:     Result := 'Type';
+    pscPlugin:   Result := 'Plugin';
   else
     Result := 'None';
   end;
@@ -309,6 +344,7 @@ begin
     pscAccessed: Result := 'a';
     pscAttr:     Result := 't';
     pscType:     Result := 'y';
+    pscPlugin:   Result := 'p';
   else
     Result := 'u';
   end;
@@ -347,6 +383,52 @@ begin
   begin
     ACol := pscNone;
     ADescending := False;
+  end;
+end;
+
+procedure CycleHeaderSort(var ACol: TPanelSortColumn; var APluginId: string;
+  var ADescending: Boolean; AClicked: TPanelSortColumn;
+  const AClickedPluginId: string);
+var
+  Same: Boolean;
+begin
+  Same := (ACol = AClicked) and ((AClicked <> pscPlugin) or SameText(APluginId, AClickedPluginId));
+  if not Same then
+  begin
+    ACol := AClicked;
+    APluginId := AClickedPluginId;
+    ADescending := False;
+  end
+  else if not ADescending then
+    ADescending := True
+  else
+  begin
+    ACol := pscNone;
+    APluginId := '';
+    ADescending := False;
+  end;
+end;
+
+procedure CycleMenuSort(var ACol: TPanelSortColumn; var APluginId: string;
+  var ADescending: Boolean; ARequested: TPanelSortColumn;
+  const ARequestedPluginId: string);
+var
+  Same: Boolean;
+begin
+  Same := (ACol = ARequested) and ((ARequested <> pscPlugin) or SameText(APluginId, ARequestedPluginId));
+  if ARequested = pscNone then
+  begin
+    ACol := pscNone;
+    APluginId := '';
+    ADescending := False;
+  end
+  else if Same then
+    ADescending := not ADescending
+  else
+  begin
+    ACol := ARequested;
+    APluginId := ARequestedPluginId;
+    ADescending := DefaultSortDescending(ARequested);
   end;
 end;
 
@@ -395,9 +477,14 @@ begin
   Result.ShowAttr := True;
 end;
 
-function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig): TCustomColumnDefs;
+function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig;
+  const AScheme: string; AMaxMetaWidth: Integer): TCustomColumnDefs;
+var
+  Plugin: TPluginColumns;
+  I, Used, Keep: Integer;
 
-  procedure Add(const ATitle: string; AWidth: Integer; ASortCol: TPanelSortColumn);
+  procedure Add(const ATitle: string; AWidth: Integer; ASortCol: TPanelSortColumn;
+    const APluginId: string = ''; AAlignRight: Boolean = False);
   var
     N: Integer;
   begin
@@ -406,21 +493,84 @@ function BuildCustomColumnDefs(const AConfig: TCustomColumnsConfig): TCustomColu
     Result[N].Title := ATitle;
     Result[N].Width := AWidth;
     Result[N].SortCol := ASortCol;
+    Result[N].PluginId := APluginId;
+    Result[N].AlignRight := AAlignRight;
   end;
 
 begin
   SetLength(Result, 0);
-  if AConfig.ShowExt then Add(PanelColumnTitle(pscExt), cExtW, pscExt);
-  if AConfig.ShowSize then Add(PanelColumnTitle(pscSize), cSizeW, pscSize);
-  if AConfig.ShowModified then Add(PanelColumnTitle(pscModified), cDateW, pscModified);
-  if AConfig.ShowCreated then Add(PanelColumnTitle(pscCreated), cDateW, pscCreated);
-  if AConfig.ShowAccessed then Add(PanelColumnTitle(pscAccessed), cDateW, pscAccessed);
-  if AConfig.ShowType then Add(PanelColumnTitle(pscType), cTypeW, pscType);
-  if AConfig.ShowAttr then Add(PanelColumnTitle(pscAttr), AttrColumnWidth, pscAttr);
+  if AConfig.ShowExt and BuiltinColumnAvailable(AScheme, 'ext') then
+    Add(PanelColumnTitle(pscExt), cExtW, pscExt);
+  if AConfig.ShowSize and BuiltinColumnAvailable(AScheme, 'size') then
+    Add(PanelColumnTitle(pscSize), cSizeW, pscSize);
+  if AConfig.ShowModified and BuiltinColumnAvailable(AScheme, 'modified') then
+    Add(PanelColumnTitle(pscModified), cDateW, pscModified);
+  if AConfig.ShowCreated and BuiltinColumnAvailable(AScheme, 'created') then
+    Add(PanelColumnTitle(pscCreated), cDateW, pscCreated);
+  if AConfig.ShowAccessed and BuiltinColumnAvailable(AScheme, 'accessed') then
+    Add(PanelColumnTitle(pscAccessed), cDateW, pscAccessed);
+  if AConfig.ShowType and BuiltinColumnAvailable(AScheme, 'type') then
+    Add(PanelColumnTitle(pscType), cTypeW, pscType);
+  if AConfig.ShowAttr and BuiltinColumnAvailable(AScheme, 'attr') then
+    Add(PanelColumnTitle(pscAttr), AttrColumnWidth, pscAttr);
+  if AScheme <> '' then
+  begin
+    Plugin := ShownPluginColumns(AScheme);
+    for I := 0 to High(Plugin) do
+      if Plugin[I].Sortable then
+        Add(PluginColumnTitle(Plugin[I]), Plugin[I].Width, pscPlugin, Plugin[I].Id, Plugin[I].AlignRight)
+      else
+        Add(PluginColumnTitle(Plugin[I]), Plugin[I].Width, pscNone, Plugin[I].Id, Plugin[I].AlignRight);
+  end;
+  if AMaxMetaWidth >= 0 then
+  begin
+    Used := 0;
+    Keep := 0;
+    for I := 0 to High(Result) do
+    begin
+      if Used + Result[I].Width + Ord(I > 0) > AMaxMetaWidth then
+        Break;
+      Inc(Used, Result[I].Width + Ord(I > 0));
+      Inc(Keep);
+    end;
+    SetLength(Result, Keep);
+  end;
+end;
+
+function MaxPanelMetaWidth(AListWidth: Integer): Integer;
+begin
+  Result := Max(AListWidth - PanelIconReserve - 1 - cMinPanelNameWidth, 0);
+end;
+
+function PanelSortColumnCaption(ACol: TPanelSortColumn; const AScheme,
+  APluginId: string): string;
+var
+  Col: TPluginColumn;
+begin
+  if ACol = pscPlugin then
+  begin
+    if TryFindPluginColumn(AScheme, APluginId, Col) then
+      Result := PluginColumnTitle(Col)
+    else
+      Result := APluginId;
+  end
+  else
+    Result := PanelColumnTitle(ACol);
+end;
+
+// The value of plugin column AId in ARow ('' / non-numeric when the row has none).
+function RowExtraCell(const ARow: TPanelRow; const AId: string): TVfsExtraCell;
+var
+  I: Integer;
+begin
+  for I := 0 to High(ARow.Extra) do
+    if SameText(ARow.Extra[I].Id, AId) then
+      Exit(ARow.Extra[I]);
+  Result := Default(TVfsExtraCell);
 end;
 
 procedure PanelColumnWidths(AMode: TPanelColumnMode; AListWidth: Integer;
-  out ANameW, AMetaW: Integer);
+  out ANameW, AMetaW: Integer; const AScheme: string);
 var
   IconRes, I: Integer;
   Defs: TCustomColumnDefs;
@@ -438,7 +588,8 @@ begin
       AMetaW := cExtW + 1 + cSizeW + 1 + cTypeW + 1 + AttrColumnWidth;
     pcmCustom:
       begin
-        Defs := BuildCustomColumnDefs(GCustomColumnsConfig);
+        Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+          MaxPanelMetaWidth(AListWidth));
         AMetaW := 0;
         for I := 0 to High(Defs) do
         begin
@@ -508,6 +659,14 @@ end;
 function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
   out ACol: TPanelSortColumn): Boolean;
 var
+  PluginId: string;
+begin
+  Result := HitPanelSortColumn(AMode, AListWidth, ARelCol, '', ACol, PluginId);
+end;
+
+function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
+  const AScheme: string; out ACol: TPanelSortColumn; out APluginId: string): Boolean;
+var
   NameW, MetaW, X, ColW, IconRes, I: Integer;
   SizeTitle, DateTitle, AttrTitle, ExtTitle, TypeTitle: string;
   ShowSize, ShowDate, ShowAttr, ShowExt, ShowType: Boolean;
@@ -515,9 +674,10 @@ var
 begin
   Result := False;
   ACol := pscName;
+  APluginId := '';
   if (ARelCol < 0) or (AListWidth <= 0) then
     Exit;
-  PanelColumnWidths(AMode, AListWidth, NameW, MetaW);
+  PanelColumnWidths(AMode, AListWidth, NameW, MetaW, AScheme);
   IconRes := PanelIconReserve;
   // Icon + Name share the name sort key.
   if ARelCol < IconRes + NameW then
@@ -529,13 +689,15 @@ begin
   if AMode = pcmCustom then
   begin
     // Dynamic column list - can't reuse the fixed Show* walk below.
-    Defs := BuildCustomColumnDefs(GCustomColumnsConfig);
+    Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme, MaxPanelMetaWidth(AListWidth));
     for I := 0 to High(Defs) do
     begin
       if (ARelCol >= X) and (ARelCol < X + Defs[I].Width) then
       begin
         ACol := Defs[I].SortCol;
-        Exit(True);
+        APluginId := Defs[I].PluginId;
+        // A column that cannot be sorted is no hit: the click does nothing.
+        Exit(ACol <> pscNone);
       end;
       Inc(X, Defs[I].Width + 1);
     end;
@@ -605,9 +767,10 @@ begin
 end;
 
 function ComparePanelRows(const Left, Right: TPanelRow; ACol: TPanelSortColumn;
-  ADescending: Boolean): Integer;
+  ADescending: Boolean; const APluginId: string): Integer;
 var
   Primary: Integer;
+  CellL, CellR: TVfsExtraCell;
 
   function CmpInt64(A, B: Int64): Integer;
   begin
@@ -681,6 +844,15 @@ begin
       Primary := CompareText(Left.AttrText, Right.AttrText);
     pscType:
       Primary := CompareText(Left.FileType, Right.FileType);
+    pscPlugin:
+      begin
+        CellL := RowExtraCell(Left, APluginId);
+        CellR := RowExtraCell(Right, APluginId);
+        if CellL.Numeric and CellR.Numeric then
+          Primary := CompareValue(CellL.Num, CellR.Num)
+        else
+          Primary := CompareNaturalText(CellL.Text, CellR.Text);
+      end;
   else
     Primary := CompareNaturalText(RowNameKey(Left), RowNameKey(Right));
   end;
@@ -693,7 +865,7 @@ begin
 end;
 
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean);
+  ADescending: Boolean; AByPriority: Boolean; const APluginId: string);
 begin
   if ((ACol = pscNone) and not AByPriority) or (Length(ARows) < 2) then
     Exit;
@@ -701,7 +873,7 @@ begin
     TComparer<TPanelRow>.Construct(
       function(const Left, Right: TPanelRow): Integer
       begin
-        Result := ComparePanelRows(Left, Right, ACol, ADescending);
+        Result := ComparePanelRows(Left, Right, ACol, ADescending, APluginId);
       end));
 end;
 
@@ -794,11 +966,13 @@ begin
 end;
 
 function FormatPanelRowMeta(AMode: TPanelColumnMode;
-  const ARow: TPanelRow; AMetaW: Integer): string;
+  const ARow: TPanelRow; AMetaW: Integer; const AScheme: string;
+  const AFolderUri: string): string;
 var
   SizePart, DateSrc, AttrPart, ExtPart, TypePart, FieldText: string;
   Defs: TCustomColumnDefs;
   I: Integer;
+  Cell: TVfsExtraCell;
 begin
   Result := '';
   if AMetaW <= 0 then
@@ -837,10 +1011,22 @@ begin
       Result := ExtPart + ' ' + SizePart + ' ' + TypePart + ' ' + AttrPart;
     pcmCustom:
       begin
-        Defs := BuildCustomColumnDefs(GCustomColumnsConfig);
+        Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme, AMetaW);
         Result := '';
         for I := 0 to High(Defs) do
         begin
+          if Defs[I].PluginId <> '' then
+          begin
+            Cell := RowExtraCell(ARow, Defs[I].PluginId);
+            FieldText := Cell.Text;
+            if (FieldText = '') and (AFolderUri <> '') then
+              FolderCellText(AFolderUri, ARow.Text, Defs[I].PluginId, FieldText);
+            if Defs[I].AlignRight then
+              FieldText := PadLeft(FieldText, Defs[I].Width)
+            else
+              FieldText := PadRight(FieldText, Defs[I].Width);
+          end
+          else
           case Defs[I].SortCol of
             pscExt:      FieldText := ExtPart;
             pscSize:     FieldText := SizePart;

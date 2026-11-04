@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns, uPluginColumns,
   uShellProfiles, uEnvProfiles, uSharkSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
@@ -30,6 +30,8 @@ type
     FOnCommand: TDialogCommandEvent;
     FOnSetKind: TSettingsKindSetter;
     FOnNotify: TProc;
+    /// <summary>Scheme whose plugin columns the open Columns dialog lists.</summary>
+    FColumnsScheme: string;
     FOnCanStart: TSettingsCanStart;
     FOnPrepareUi: TSettingsPrepareUi;
     FOnGetLocalPath: TSettingsGetLocalPath;
@@ -96,7 +98,7 @@ type
       const AOnShowStub: TSettingsShowStub;
       const AOnGetDisplay: TSettingsGetDisplay;
       const AOnApplyDisplay: TSettingsApplyDisplay);
-    procedure OpenColumns;
+    procedure OpenColumns(const AScheme: string = '');
     procedure OpenDisplay;
     procedure OpenInterface;
     procedure OpenExternalTools;
@@ -221,19 +223,20 @@ begin
     FOnNotify();
 end;
 
-procedure TSettingsDialogController.OpenColumns;
+procedure TSettingsDialogController.OpenColumns(const AScheme: string);
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
+  FColumnsScheme := AScheme;
   SetKind(hdkColumnsConfig);
   FDialog.Open(BuildColumnsConfigDialog(
     GCustomColumnsConfig.ShowExt, GCustomColumnsConfig.ShowSize,
     GCustomColumnsConfig.ShowModified, GCustomColumnsConfig.ShowCreated,
     GCustomColumnsConfig.ShowAccessed, GCustomColumnsConfig.ShowType,
-    GCustomColumnsConfig.ShowAttr), FOnCommand);
+    GCustomColumnsConfig.ShowAttr, AScheme), FOnCommand);
   Notify;
 end;
 
@@ -609,17 +612,41 @@ procedure TSettingsDialogController.DispatchColumnsCommand(
   const AControlId: string);
 var
   Accepted: Boolean;
+  Cols: TPluginColumns;
+  Ids: TArray<string>;
+  I: Integer;
 begin
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
   begin
-    GCustomColumnsConfig.ShowExt := FDialog.GetCheckbox('col_ext');
-    GCustomColumnsConfig.ShowSize := FDialog.GetCheckbox('col_size');
-    GCustomColumnsConfig.ShowModified := FDialog.GetCheckbox('col_modified');
-    GCustomColumnsConfig.ShowCreated := FDialog.GetCheckbox('col_created');
-    GCustomColumnsConfig.ShowAccessed := FDialog.GetCheckbox('col_accessed');
-    GCustomColumnsConfig.ShowType := FDialog.GetCheckbox('col_type');
-    GCustomColumnsConfig.ShowAttr := FDialog.GetCheckbox('col_attr');
+    // Built-in columns the scheme's plugin excluded have no checkbox: the
+    // setting they hold for other folders stays as it is.
+    if BuiltinColumnAvailable(FColumnsScheme, 'ext') then
+      GCustomColumnsConfig.ShowExt := FDialog.GetCheckbox('col_ext');
+    if BuiltinColumnAvailable(FColumnsScheme, 'size') then
+      GCustomColumnsConfig.ShowSize := FDialog.GetCheckbox('col_size');
+    if BuiltinColumnAvailable(FColumnsScheme, 'modified') then
+      GCustomColumnsConfig.ShowModified := FDialog.GetCheckbox('col_modified');
+    if BuiltinColumnAvailable(FColumnsScheme, 'created') then
+      GCustomColumnsConfig.ShowCreated := FDialog.GetCheckbox('col_created');
+    if BuiltinColumnAvailable(FColumnsScheme, 'accessed') then
+      GCustomColumnsConfig.ShowAccessed := FDialog.GetCheckbox('col_accessed');
+    if BuiltinColumnAvailable(FColumnsScheme, 'type') then
+      GCustomColumnsConfig.ShowType := FDialog.GetCheckbox('col_type');
+    if BuiltinColumnAvailable(FColumnsScheme, 'attr') then
+      GCustomColumnsConfig.ShowAttr := FDialog.GetCheckbox('col_attr');
+    Cols := SchemePluginColumns(FColumnsScheme);
+    if Length(Cols) > 0 then
+    begin
+      Ids := nil;
+      for I := 0 to High(Cols) do
+        if FDialog.GetCheckbox('pcol_' + IntToStr(I)) then
+        begin
+          SetLength(Ids, Length(Ids) + 1);
+          Ids[High(Ids)] := Cols[I].Id;
+        end;
+      SetSchemeColumnSelection(FColumnsScheme, Ids);
+    end;
   end;
   FDialog.Close;
   if Accepted then

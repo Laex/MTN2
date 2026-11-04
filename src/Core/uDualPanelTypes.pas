@@ -31,7 +31,10 @@ type
     pscCreated,
     pscAccessed,
     pscAttr,
-    pscType
+    pscType,
+    /// <summary>A column a plugin declared for the scheme; the column is named by
+    /// TPanelState.SortPluginId.</summary>
+    pscPlugin
   );
 
   TTab = record
@@ -59,6 +62,10 @@ type
     /// resolved target, `..` returns to the link's own folder). Empty for a
     /// workspace back marker.</summary>
     JunctionBackName: string;
+    /// <summary>Ephemeral: the folder this tab was in when it entered the top of
+    /// Workspace; `..` there returns to it. Empty when the tab never came from
+    /// a folder (then the history is used).</summary>
+    WorkspaceOriginUri: string;
   end;
 
   TPanelSide = (psLeft, psRight);
@@ -76,6 +83,8 @@ type
     ColumnMode: TPanelColumnMode;
     SortColumn: TPanelSortColumn;
     SortDescending: Boolean;
+    /// <summary>Id of the plugin column SortColumn = pscPlugin sorts by.</summary>
+    SortPluginId: string;
     /// <summary>Rows are ranked by the SortPriority of their color-coding
     /// group before the sort column applies.</summary>
     SortByPriority: Boolean;
@@ -154,6 +163,8 @@ type
     DirText: string;
     /// <summary>Filled by the panel model while it sorts by priority; 0 otherwise.</summary>
     SortPriority: Integer;
+    /// <summary>Values of the plugin columns of the row's scheme.</summary>
+    Extra: TVfsExtraCells;
   end;
 
   TPanelRows = TArray<TPanelRow>;
@@ -193,6 +204,13 @@ function FormatFileDate(const AValue: TDateTime): string;
 /// <summary>Last segment of a path or URI ("C:\a\b\" -> "b", "a.zip!\d\f"
 /// -> "f"); '' for a drive root.</summary>
 function PathLastSegment(const APath: string): string;
+/// <summary>Where ".." leads from the top folder of a plugin scheme (docker:///,
+/// svc:///, ...) or of Workspace: the folder the panel was opened from. That is
+/// the tab's back marker (Workspace: its origin folder) while it is set; a tab
+/// that has none (a restored session, a history step) takes the nearest earlier
+/// plain folder of its history. '' when the tab is not at such a top folder or
+/// has no earlier folder.</summary>
+function PluginRootReturnUri(const ATab: TTab): string;
 function RowsFromVfsItems(const ADirURI: string;
   const AItems: TArray<TVfsEntry>;
   const AWorkspaceReturnUri: string = ''): TPanelRows;
@@ -282,6 +300,7 @@ begin
   Result.WorkspaceBackUri := '';
   Result.WorkspaceBackTarget := '';
   Result.JunctionBackName := '';
+  Result.WorkspaceOriginUri := '';
 end;
 
 function IsExecutablePanelFileExt(const AExt: string): Boolean;
@@ -400,6 +419,7 @@ begin
   Result.CreationTime := AEntry.CreationTime;
   Result.AccessTime := AEntry.AccessTime;
   Result.MatchSnippet := AEntry.MatchSnippet;
+  Result.Extra := AEntry.Extra;
   if Result.MatchSnippet <> '' then
     Result.MatchLine := AEntry.MatchLine;
   if AEntry.TargetURI <> '' then
@@ -542,6 +562,7 @@ begin
   Result.ColumnMode := APanel.ColumnMode;
   Result.SortColumn := APanel.SortColumn;
   Result.SortDescending := APanel.SortDescending;
+  Result.SortPluginId := APanel.SortPluginId;
   Result.ViewKind := APanel.ViewKind;
   Result.ShowHiddenFiles := APanel.ShowHiddenFiles;
   SetLength(Result.Tabs, Length(APanel.Tabs));
@@ -666,6 +687,28 @@ begin
   if AWorkspaceReturnUri <> '' then
     Exit(AWorkspaceReturnUri);
   Result := ParentFileUri(ADirURI);
+end;
+
+function PluginRootReturnUri(const ATab: TTab): string;
+var
+  I, Last: Integer;
+begin
+  Result := '';
+  if not (IsGenericVfsUri(ATab.CurrentURI) or IsWorkspaceUri(ATab.CurrentURI)) or
+     not IsVfsUriNavigationRoot(ATab.CurrentURI) then
+    Exit;
+  if IsWorkspaceUri(ATab.CurrentURI) then
+  begin
+    if ATab.WorkspaceOriginUri <> '' then
+      Exit(ATab.WorkspaceOriginUri);
+  end
+  else if ATab.WorkspaceBackUri <> '' then
+    Exit(ATab.WorkspaceBackUri);
+  Last := Min(ATab.HistoryIndex, High(ATab.History));
+  for I := Last downto 0 do
+    if (ATab.History[I] <> '') and not IsGenericVfsUri(ATab.History[I]) and
+       not IsFindUri(ATab.History[I]) and not IsWorkspaceUri(ATab.History[I]) then
+      Exit(ATab.History[I]);
 end;
 
 function RowsFromVfsItems(const ADirURI: string;

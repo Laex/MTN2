@@ -48,6 +48,7 @@ uses
   TestJobPopupLayout in 'TestJobPopupLayout.pas',
   TestMarkedRowColors in 'TestMarkedRowColors.pas',
   TestPanelColumns in 'TestPanelColumns.pas',
+  TestPluginColumns in 'TestPluginColumns.pas',
   TestWidePanelText in 'TestWidePanelText.pas',
   TestPanelCompare in 'TestPanelCompare.pas',
   TestPanelModel in 'TestPanelModel.pas',

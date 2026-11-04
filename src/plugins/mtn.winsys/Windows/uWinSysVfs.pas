@@ -108,6 +108,38 @@ begin
     Result.AddPair('modified', TJSONNumber.Create(AModified));
 end;
 
+/// <summary>Adds a panel column cell (see cPanelColumnsJson in the plugin project)
+/// to AEntry's "extra" object, creating the object on the first cell.</summary>
+procedure AddCell(const AEntry: TJSONObject; const AColumn, AText: string);
+var
+  Extra: TJSONObject;
+begin
+  Extra := AEntry.GetValue('extra') as TJSONObject;
+  if Extra = nil then
+  begin
+    Extra := TJSONObject.Create;
+    AEntry.AddPair('extra', Extra);
+  end;
+  Extra.AddPair(AColumn, AText);
+end;
+
+/// <summary>As AddCell for a number: the text is shown, the value sorts.</summary>
+procedure AddNumberCell(const AEntry: TJSONObject; const AColumn: string; AValue: Int64);
+var
+  Extra, Cell: TJSONObject;
+begin
+  Extra := AEntry.GetValue('extra') as TJSONObject;
+  if Extra = nil then
+  begin
+    Extra := TJSONObject.Create;
+    AEntry.AddPair('extra', Extra);
+  end;
+  Cell := TJSONObject.Create;
+  Cell.AddPair('t', IntToStr(AValue));
+  Cell.AddPair('n', TJSONNumber.Create(AValue));
+  Extra.AddPair(AColumn, Cell);
+end;
+
 function ListRegistry(const ASegs: TArray<string>; const AArr: TJSONArray): Cardinal;
 var
   Rows: TRegRows;
@@ -124,12 +156,19 @@ function ListProcessRows(const AArr: TJSONArray): Cardinal;
 var
   Rows: TProcRows;
   R: TProcRow;
+  Entry: TJSONObject;
 begin
   Result := ListProcesses(Rows);
   if Result <> 0 then
     Exit;
   for R in Rows do
-    AArr.AddElement(EntryJson(MakeProcessName(R.Exe, R.Pid), False, R.WorkingSet, R.Started));
+  begin
+    Entry := EntryJson(MakeProcessName(R.Exe, R.Pid), False, R.WorkingSet, R.Started);
+    AddNumberCell(Entry, 'pid', R.Pid);
+    AddNumberCell(Entry, 'ppid', R.ParentPid);
+    AddNumberCell(Entry, 'threads', R.Threads);
+    AArr.AddElement(Entry);
+  end;
 end;
 
 function ListServiceRows(const AFolderUri: string; const AArr: TJSONArray): Cardinal;
@@ -138,6 +177,7 @@ var
   R: TSvcRow;
   Colors: TJSONObject;
   Name: string;
+  Entry: TJSONObject;
 begin
   Result := ListServices(Rows);
   if Result <> 0 then
@@ -147,7 +187,12 @@ begin
     for R in Rows do
     begin
       Name := EncodeSegment(R.Name);
-      AArr.AddElement(EntryJson(Name, False, 0, 0));
+      Entry := EntryJson(Name, False, 0, 0);
+      AddCell(Entry, 'state', ServiceStateName(R.State));
+      AddCell(Entry, 'display', R.Display);
+      if R.Pid <> 0 then
+        AddNumberCell(Entry, 'pid', R.Pid);
+      AArr.AddElement(Entry);
       Colors.AddPair(Name, ServiceStateRole(R.State));
     end;
     if Assigned(GOnServiceColors) then

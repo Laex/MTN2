@@ -1,7 +1,9 @@
 unit TestTmpPanelParentRow;
 
 { The Temporary panel is flat: it shows ".." only when the tab knows the place
-  it was opened from. }
+  it was opened from. The top folder of a plugin scheme (docker:///, svc:///,
+  ...) shows ".." back to the folder the panel was opened from, also for a tab
+  that has no back marker (restored session, history step). }
 
 interface
 
@@ -15,6 +17,10 @@ type
     [Test] procedure TestNoParentRowWithoutReturnFolder;
     [Test] procedure TestParentRowLeadsBackToReturnFolder;
     [Test] procedure TestPluginSchemeFolderLeadsBackToReturnFolder;
+    [Test] procedure TestPluginRootLeadsBackToTheFolderItWasOpenedFrom;
+    [Test] procedure TestPluginRootWithoutMarkerTakesFolderFromHistory;
+    [Test] procedure TestOnlyPluginRootsGetAReturnFolder;
+    [Test] procedure TestWorkspaceRootLeadsBackToTheFolderItWasOpenedFrom;
     [Test] procedure TestRowKnowsItsFolder;
     [Test] procedure TestNameCellShowsFolderAfterName;
     [Test] procedure TestNameCellWithoutFolderIsJustTheName;
@@ -62,6 +68,72 @@ begin
   Assert.AreEqual('file:///C:/Work/', Rows[0].URI, 'a plugin folder entered mid-tree still leads back');
   Rows := ErrorRows('net://work/dir', 'down', 'file:///C:/Work/');
   Assert.AreEqual('file:///C:/Work/', Rows[0].URI, 'an error listing keeps the way back');
+end;
+
+function PluginTab(const AUri, ABack: string; const AHistory: TArray<string>;
+  AIndex: Integer): TTab;
+begin
+  Result := Default(TTab);
+  Result.CurrentURI := AUri;
+  Result.WorkspaceBackUri := ABack;
+  Result.History := AHistory;
+  Result.HistoryIndex := AIndex;
+end;
+
+procedure TTestTmpPanelParentRow.TestPluginRootLeadsBackToTheFolderItWasOpenedFrom;
+var
+  Root: string;
+  Rows: TPanelRows;
+  Ret: string;
+begin
+  for Root in ['docker:///', 'svc:///', 'proc:///', 'reg:///', 'ftp:///', 'net:///'] do
+  begin
+    Ret := PluginRootReturnUri(PluginTab(Root, 'file:///C:/Work/', nil, -1));
+    Assert.AreEqual('file:///C:/Work/', Ret, Root + ' returns to the folder the panel was opened from');
+    Rows := RowsFromVfsItems(Root, OneItem, Ret);
+    Assert.AreEqual(2, Integer(Length(Rows)), Root);
+    Assert.IsTrue(Rows[0].IsParent, Root + ' starts with ".."');
+    Assert.AreEqual('file:///C:/Work/', Rows[0].URI, Root);
+  end;
+end;
+
+procedure TTestTmpPanelParentRow.TestPluginRootWithoutMarkerTakesFolderFromHistory;
+var
+  Tab: TTab;
+begin
+  Tab := PluginTab('docker:///', '',
+    ['file:///C:/Old/', 'file:///C:/Work/', 'docker:///', 'docker:///containers', 'docker:///'], 4);
+  Assert.AreEqual('file:///C:/Work/', PluginRootReturnUri(Tab), 'the nearest earlier local folder');
+  Tab.HistoryIndex := 0;
+  Assert.AreEqual('file:///C:/Old/', PluginRootReturnUri(Tab), 'history is read from the current step back');
+  Assert.AreEqual('', PluginRootReturnUri(PluginTab('docker:///', '', ['docker:///'], 0)),
+    'no earlier folder: no way back');
+end;
+
+procedure TTestTmpPanelParentRow.TestOnlyPluginRootsGetAReturnFolder;
+begin
+  Assert.AreEqual('', PluginRootReturnUri(PluginTab('docker:///containers', 'file:///C:/Work/', nil, -1)),
+    'a deeper folder goes up by its own parent');
+  Assert.AreEqual('', PluginRootReturnUri(PluginTab('file:///C:/Work/', 'file:///C:/Other/', nil, -1)),
+    'a local folder is not a plugin root');
+end;
+
+procedure TTestTmpPanelParentRow.TestWorkspaceRootLeadsBackToTheFolderItWasOpenedFrom;
+var
+  Tab: TTab;
+  Rows: TPanelRows;
+  Ret: string;
+begin
+  Tab := PluginTab('ws:///', '', ['file:///C:/Old/', 'file:///C:/Work/', 'ws:///'], 2);
+  Assert.AreEqual('file:///C:/Work/', PluginRootReturnUri(Tab), 'history gives the folder');
+  Tab.WorkspaceOriginUri := 'file:///C:/Other/';
+  Ret := PluginRootReturnUri(Tab);
+  Assert.AreEqual('file:///C:/Other/', Ret, 'the remembered origin wins');
+  Rows := RowsFromVfsItems('ws:///', OneItem, Ret);
+  Assert.IsTrue(Rows[0].IsParent, 'Workspace starts with ".."');
+  Assert.AreEqual('file:///C:/Other/', Rows[0].URI);
+  Assert.AreEqual('', PluginRootReturnUri(PluginTab('ws:///', '', ['ws:///'], 0)),
+    'no earlier folder: no way back');
 end;
 
 procedure TTestTmpPanelParentRow.TestRowKnowsItsFolder;

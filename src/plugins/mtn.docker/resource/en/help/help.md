@@ -21,3 +21,5 @@ In `fs` the usual keys work: F3 views a file, F4 edits and saves it, F5 copies b
 The **Plugins** menu starts, stops, restarts, pauses and unpauses the container under the cursor.
 
 A `/` in a name is written `%2F`.
+
+Columns: in the Custom column mode (**Columns...**) the panel can show State, Image, Ports and, for images, ID; click a header or press Ctrl+F12 to sort by one.

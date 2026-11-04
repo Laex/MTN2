@@ -56,8 +56,9 @@ const
   /// there.
   /// 6: OpenDocument, SetRowDecorations.
   /// 7: JobBegin, JobUpdate, JobEnd.
-  /// 8: SendKey, SendText, RunAction, AppState, SetMenuItemEnabled, KeyOwner.</summary>
-  cPluginAbiVersion: Int64 = 8;
+  /// 8: SendKey, SendText, RunAction, AppState, SetMenuItemEnabled, KeyOwner.
+  /// 9: RegisterPanelColumns, SetPanelColumnValues.</summary>
+  cPluginAbiVersion: Int64 = 9;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -478,6 +479,24 @@ type
   /// Unloading the plugin removes its labels.</summary>
   THostSetPanelFBarFn = function(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
 
+  /// <summary>Declares the extra columns the file panel can show in a folder of
+  /// AScheme (Columns... dialog, custom column mode). AJson is an array:
+  /// [{"id": "state", "title": "State", "width": 10, "align": "left|right",
+  /// "sortable": true, "default": true}, ...]; "default" columns are shown until
+  /// the user picks the scheme's columns. The values come with the listing: the
+  /// "extra" object of each entry maps a column id to a text, a number, or
+  /// {"t": text, "n": number} (a number sorts numerically). An empty or nil AJson
+  /// removes the columns of the scheme. 0 = set, -1 = refused. Main thread only.
+  /// Unloading the plugin removes its columns.</summary>
+  THostRegisterPanelColumnsFn = function(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+
+  /// <summary>Gives the cells of a folder the plugin does not list itself (a local
+  /// folder): AJson is {"name": {"columnId": "text"}}, for columns the plugin
+  /// declared with RegisterPanelColumns for the folder's scheme. Each call replaces
+  /// the cells of that plugin and folder; an empty or nil AJson drops them. The
+  /// cells are shown, not sorted. 0 = set, -1 = refused. Main thread only.</summary>
+  THostSetPanelColumnValuesFn = function(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
+
   /// <summary>As SetStatusSegment, with colored parts. AJson is an array of parts:
   /// [{"t": "main", "role": "info", "fg": "#RRGGBB", "bg": "#RRGGBB", "b": true}, ...];
   /// "t" is the text, "role" one of ok, warn, error, info, accent, neutral (a
@@ -600,6 +619,9 @@ type
     AppState: THostTextOutFn;
     SetMenuItemEnabled: THostSetMenuItemEnabledFn;
     KeyOwner: THostKeyOwnerFn;
+    // ABI 9
+    RegisterPanelColumns: THostRegisterPanelColumnsFn;
+    SetPanelColumnValues: THostSetPanelColumnValuesFn;
   end;
   PHostApiTable = ^THostApiTable;
 

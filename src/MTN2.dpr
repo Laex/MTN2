@@ -39,6 +39,7 @@ uses
   uFolderHistory in 'Core\uFolderHistory.pas',
   uFolderFrecent in 'Core\uFolderFrecent.pas',
   uRowDecorations in 'Core\uRowDecorations.pas',
+  uPluginColumns in 'Core\uPluginColumns.pas',
   uFileHistory in 'Core\uFileHistory.pas',
   uHelpContext in 'Core\uHelpContext.pas',
   uPanelCompare in 'Core\uPanelCompare.pas',

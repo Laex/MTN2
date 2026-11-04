@@ -11,6 +11,8 @@ uses
 
 type
   TSortSelectEvent = reference to procedure(AColumn: TPanelSortColumn);
+  TSortPluginSelectEvent = reference to procedure(AColumn: TPanelSortColumn;
+    const APluginId: string);
   TSortPriorityToggleEvent = reference to procedure;
 
   TSortMenuController = class
@@ -18,6 +20,9 @@ type
     FTheme: IThemeRenderer;
     FOnInvalidate: TProc;
     FOnSortSelect: TSortSelectEvent;
+    FOnSortPluginSelect: TSortPluginSelectEvent;
+    FScheme: string;
+    FCurrentPluginId: string;
     FOnPriorityToggle: TSortPriorityToggleEvent;
     FGetActivePanelBounds: TMenuPanelBoundsEvent;
     FGetActiveSide: TActiveSideEvent;
@@ -31,15 +36,21 @@ type
     procedure BuildItems;
     procedure Activate(AIndex: Integer);
     function IndexOf(ACol: TPanelSortColumn): Integer;
+    function IsCurrentItem(const AItem: TSortMenuItem): Boolean;
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
       const AGetActivePanelBounds: TMenuPanelBoundsEvent;
       const AGetActiveSide: TActiveSideEvent);
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetOnSortSelect(const AHandler: TSortSelectEvent);
+    /// <summary>Receives the choice of a plugin column (instead of OnSortSelect).</summary>
+    procedure SetOnSortPluginSelect(const AHandler: TSortPluginSelectEvent);
     procedure SetOnPriorityToggle(const AHandler: TSortPriorityToggleEvent);
+    /// <summary>AScheme: the folder's scheme, whose sortable plugin columns follow the
+    /// built-in ones; ACurrentPluginId names the sorted plugin column.</summary>
     procedure Open(ACurrent: TPanelSortColumn; ADescending: Boolean;
-      AByPriority: Boolean = False);
+      AByPriority: Boolean = False; const AScheme: string = '';
+      const ACurrentPluginId: string = '');
     procedure Close;
     procedure Layout;
     procedure Draw(const AGrid: TTerminalGrid);
@@ -53,7 +64,7 @@ type
 implementation
 
 uses
-  uStrings, uMenuNavigation;
+  uStrings, uMenuNavigation, uPluginColumns;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -87,6 +98,17 @@ begin
   FOnSortSelect := AHandler;
 end;
 
+procedure TSortMenuController.SetOnSortPluginSelect(const AHandler: TSortPluginSelectEvent);
+begin
+  FOnSortPluginSelect := AHandler;
+end;
+
+function TSortMenuController.IsCurrentItem(const AItem: TSortMenuItem): Boolean;
+begin
+  Result := (not AItem.Toggle) and (AItem.Column = FCurrent) and
+    ((FCurrent <> pscPlugin) or SameText(AItem.PluginId, FCurrentPluginId));
+end;
+
 procedure TSortMenuController.SetOnPriorityToggle(const AHandler: TSortPriorityToggleEvent);
 begin
   FOnPriorityToggle := AHandler;
@@ -101,6 +123,8 @@ begin
     if Assigned(FOnPriorityToggle) then
       FOnPriorityToggle;
   end
+  else if (FItems[AIndex].Column = pscPlugin) and Assigned(FOnSortPluginSelect) then
+    FOnSortPluginSelect(pscPlugin, FItems[AIndex].PluginId)
   else if Assigned(FOnSortSelect) then
     FOnSortSelect(FItems[AIndex].Column);
   Close;
@@ -130,6 +154,10 @@ procedure TSortMenuController.BuildItems;
     FItems[N].Separator := False;
   end;
 
+var
+  PluginCols: TPluginColumns;
+  I, N: Integer;
+
 begin
   SetLength(FItems, 0);
   Add('name', 'Name', 'N', 'Ctrl+F3', pscName);
@@ -141,6 +169,17 @@ begin
   Add('accessTime', 'Access time', 'A', 'Ctrl+F9', pscAccessed);
   Add('attr', 'Attr', 't', '', pscAttr);
   Add('type', 'Type', 'y', '', pscType);
+  PluginCols := SchemePluginColumns(FScheme);
+  for I := 0 to High(PluginCols) do
+    if PluginCols[I].Sortable then
+    begin
+      N := Length(FItems);
+      SetLength(FItems, N + 1);
+      FItems[N] := Default(TSortMenuItem);
+      FItems[N].Caption := PluginColumnTitle(PluginCols[I]);
+      FItems[N].Column := pscPlugin;
+      FItems[N].PluginId := PluginCols[I].Id;
+    end;
   SetLength(FItems, Length(FItems) + 1);
   FItems[High(FItems)] := Default(TSortMenuItem);
   FItems[High(FItems)].Separator := True;
@@ -153,17 +192,20 @@ var
   I: Integer;
 begin
   for I := 0 to High(FItems) do
-    if (not FItems[I].Toggle) and (FItems[I].Column = ACol) then
+    if IsCurrentItem(FItems[I]) and (FItems[I].Column = ACol) then
       Exit(I);
   Result := 0;
 end;
 
 procedure TSortMenuController.Open(ACurrent: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean);
+  ADescending: Boolean; AByPriority: Boolean; const AScheme: string;
+  const ACurrentPluginId: string);
 begin
   FCurrent := ACurrent;
   FDescending := ADescending;
   FByPriority := AByPriority;
+  FScheme := AScheme;
+  FCurrentPluginId := ACurrentPluginId;
   BuildItems;
   FIndex := IndexOf(ACurrent);
   FVisible := True;
@@ -245,7 +287,7 @@ begin
       else
         Mark := ' ';
     end
-    else if FItems[I].Column = FCurrent then
+    else if IsCurrentItem(FItems[I]) then
       Mark := PanelSortMark(True, FDescending)
     else
       Mark := ' ';
@@ -327,7 +369,8 @@ begin
     // Exact letter first, then the same key on the other keyboard layout.
     for Pass := False to True do
       for I := 0 to High(FItems) do
-        if (not FItems[I].Separator) and MenuHotKeyMatches(FItems[I].HotChar, Ch, Pass) then
+        if (not FItems[I].Separator) and (FItems[I].HotChar <> #0) and
+           MenuHotKeyMatches(FItems[I].HotChar, Ch, Pass) then
         begin
           Activate(I);
           AKey := 0;

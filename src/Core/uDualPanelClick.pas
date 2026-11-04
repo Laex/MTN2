@@ -92,6 +92,8 @@ type
     NewPanelTabOnSide: TKeymapSideProc;
     NavigatePanelToDrive: TClickDriveProc;
     ApplyHeaderSort: TKeymapSortProc;
+    /// <summary>Header click on a plugin column (pscPlugin) with the column's id.</summary>
+    ApplyHeaderSortPlugin: TKeymapSortPluginProc;
   end;
 
 function PanelListBounds(const ABounds: TRectI): TRectI;
@@ -122,7 +124,7 @@ function DispatchClickOverlays(const AHost: TDualPanelClickHost;
 function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
   ASide: TPanelSide; const ABounds: TRectI; AViewKind: TPanelViewKind;
   AColumnMode: TPanelColumnMode; ACol, ARow: Integer;
-  ADoubleClick: Boolean): Boolean;
+  ADoubleClick: Boolean; const AScheme: string = ''): Boolean;
 
 implementation
 
@@ -497,10 +499,11 @@ end;
 function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
   ASide: TPanelSide; const ABounds: TRectI; AViewKind: TPanelViewKind;
   AColumnMode: TPanelColumnMode; ACol, ARow: Integer;
-  ADoubleClick: Boolean): Boolean;
+  ADoubleClick: Boolean; const AScheme: string): Boolean;
 var
   DriveLetter: Char;
   SortCol: TPanelSortColumn;
+  PluginId: string;
 begin
   Result := True;
   case ClassifyPanelClickZone(ARow, ABounds, AViewKind) of
@@ -533,8 +536,13 @@ begin
       begin
         AHost.ActivateSide(ASide);
         if HitPanelSortColumn(AColumnMode, ABounds.Right - ABounds.Left - 2,
-          ACol - (ABounds.Left + 1), SortCol) then
-          AHost.ApplyHeaderSort(ASide, SortCol)
+          ACol - (ABounds.Left + 1), AScheme, SortCol, PluginId) then
+        begin
+          if (SortCol = pscPlugin) and Assigned(AHost.ApplyHeaderSortPlugin) then
+            AHost.ApplyHeaderSortPlugin(ASide, SortCol, PluginId)
+          else
+            AHost.ApplyHeaderSort(ASide, SortCol);
+        end
         else
           AHost.Invalidate();
       end;

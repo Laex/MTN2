@@ -59,7 +59,9 @@ type
       var AKeyChar: Char): Boolean;
     function HandleUserMenuClick(ALocalCol, ALocalRow: Integer): Boolean;
     procedure OpenSortMenu(ACurrent: TPanelSortColumn; ADescending: Boolean;
-      AByPriority: Boolean);
+      AByPriority: Boolean; const AScheme: string = '';
+      const ACurrentPluginId: string = '');
+    procedure SetOnSortPluginSelect(const AHandler: TSortPluginSelectEvent);
     procedure CloseSortMenu;
     procedure LayoutSortMenu;
     procedure DrawSortMenu(const AGrid: TTerminalGrid);
@@ -244,11 +246,17 @@ begin
 end;
 
 procedure TMenuStubController.OpenSortMenu(ACurrent: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean);
+  ADescending: Boolean; AByPriority: Boolean; const AScheme: string;
+  const ACurrentPluginId: string);
 begin
   FUserMenu.Close;
   FColumnModeMenu.Close;
-  FSortMenu.Open(ACurrent, ADescending, AByPriority);
+  FSortMenu.Open(ACurrent, ADescending, AByPriority, AScheme, ACurrentPluginId);
+end;
+
+procedure TMenuStubController.SetOnSortPluginSelect(const AHandler: TSortPluginSelectEvent);
+begin
+  FSortMenu.SetOnSortPluginSelect(AHandler);
 end;
 
 procedure TMenuStubController.CloseSortMenu;

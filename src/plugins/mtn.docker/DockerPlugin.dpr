@@ -15,6 +15,12 @@ const
   cPluginId = 'mtn.docker';
   cScheme: UTF8String = 'docker';
   cRowDecorationsAbi = 6;
+  cPanelColumnsAbi = 9;
+  cPanelColumnsJson =
+    '{"builtin":[],"columns":[{"id":"state","title":"State","title_key":"ui.col.state","width":10,"default":true,"sortable":true},' +
+    '{"id":"image","title":"Image","title_key":"ui.col.image","width":22,"default":true,"sortable":true},' +
+    '{"id":"ports","title":"Ports","title_key":"ui.col.ports","width":24,"default":true,"sortable":true},' +
+    '{"id":"id","title":"ID","width":12,"default":false,"sortable":true}]}';
   cDrivePriority = 120;
 
 type
@@ -261,6 +267,9 @@ begin
     end;
     if Assigned(AHostApi.SetPanelFBar) then
       AHostApi.SetPanelFBar(PAnsiChar(Id), PAnsiChar(cScheme), PAnsiChar(UTF8String(FBarJson)));
+    if (AHostApi.AbiVersion >= cPanelColumnsAbi) and Assigned(AHostApi.RegisterPanelColumns) then
+      AHostApi.RegisterPanelColumns(PAnsiChar(Id), PAnsiChar(cScheme),
+        PAnsiChar(UTF8String(cPanelColumnsJson)));
     if (AHostApi.AbiVersion >= cRowDecorationsAbi) and Assigned(AHostApi.SetRowDecorations) and
        Assigned(AHostApi.PostToMain) then
       GOnRowColors := OnRowColors;

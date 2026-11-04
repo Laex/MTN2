@@ -10,6 +10,16 @@ uses
   uTextEncoding;
 
 type
+  /// <summary>One value of a plugin column in a listing row. Text is shown;
+  /// when Numeric, Num orders the rows of a sorted column instead of Text.</summary>
+  TVfsExtraCell = record
+    Id: string;
+    Text: string;
+    Num: Double;
+    Numeric: Boolean;
+  end;
+  TVfsExtraCells = TArray<TVfsExtraCell>;
+
   TVfsEntry = record
     Name: string;
     Extension: string;
@@ -38,6 +48,9 @@ type
     /// safely '' by default even where nothing sets it explicitly).</summary>
     MatchLine: Integer;
     MatchSnippet: string;
+    /// <summary>Values of the plugin columns of the entry's scheme (see
+    /// uPluginColumns); empty for providers that have none.</summary>
+    Extra: TVfsExtraCells;
   end;
 
   TVfsErrorCode = (
