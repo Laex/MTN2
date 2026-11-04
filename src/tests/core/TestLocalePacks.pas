@@ -167,7 +167,7 @@ begin
       Missing := '';
       for Other in Packs do
         for Key in Other.Value.Keys do
-          if not Pack.Value.ContainsKey(Key) and not Key.StartsWith('/menu/alias.') and not Key.StartsWith('/menu/hint.') then
+          if not Pack.Value.ContainsKey(Key) then
             Missing := Missing + ' ' + Key;
       Assert.AreEqual('', Missing, Pack.Key + ': keys present in another pack but not here');
     end;
