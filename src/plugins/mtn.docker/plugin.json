@@ -1,0 +1,15 @@
+{
+  "id": "mtn.docker",
+  "name": "Docker and Kubernetes",
+  "version": "0.1.0",
+  "abi": 6,
+  "startup": true,
+  "resources": 1,
+  "schemes": ["docker"],
+  "description": {
+    "en": "Docker containers, images and Kubernetes pods as folders of the panels (docker:///). Every container and pod holds its files (copy in and out with F5, view with F3, edit with F4, delete with F8), info.txt and logs.txt; containers and pods are colored by state; the Plugins menu starts, stops, restarts, pauses and resumes the container under the cursor. Adds Docker to the Change Drive list (Alt+F1 / Alt+F2). Needs docker (and kubectl for pods) in PATH.",
+    "ru": "Контейнеры и образы Docker и поды Kubernetes как папки панелей (docker:///). В каждом контейнере и поде есть его файлы (копирование туда и обратно F5, просмотр F3, правка F4, удаление F8), info.txt и logs.txt; контейнеры и поды окрашены по состоянию; меню «Плагины» запускает, останавливает, перезапускает, приостанавливает и возобновляет контейнер под курсором. Добавляет Docker в список дисков (Alt+F1 / Alt+F2). Нужны docker (и kubectl для подов) в PATH."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

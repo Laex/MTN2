@@ -74,6 +74,15 @@ if (-not $NoPlugins) {
     $PluginDcu = Join-Path $Root 'dcu\linux64-plugins'
     New-Item -ItemType Directory -Force $PluginsOut, $PluginDcu | Out-Null
     foreach ($Plugin in Get-ChildItem (Join-Path $Src 'plugins') -Directory) {
+        # A manifest with "platforms" that lacks "linux" is a Windows-only plugin.
+        $ManifestFile = Join-Path $Plugin.FullName 'plugin.json'
+        if (Test-Path $ManifestFile) {
+            $Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
+            if ($Manifest.platforms -and ($Manifest.platforms -notcontains 'linux')) {
+                Write-Host "SKIP: $($Plugin.Name) (not for Linux)"
+                continue
+            }
+        }
         $Dest = Join-Path $PluginsOut $Plugin.Name
         New-Item -ItemType Directory -Force $Dest | Out-Null
         foreach ($Dpr in Get-ChildItem $Plugin.FullName -Filter '*.dpr' -File) {

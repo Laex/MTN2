@@ -1,0 +1,14 @@
+{
+  "id": "mtn.meta",
+  "name": "File metadata",
+  "version": "0.1.0",
+  "abi": 4,
+  "startup": true,
+  "resources": 1,
+  "description": {
+    "en": "Shows the metadata of the file under the panel cursor in the status line: the format and size of an image (JPEG, PNG, GIF, BMP, WebP) with the camera and the shooting time from its EXIF block, the artist, title, album and year of an MP3 file (ID3v1 and ID3v2), the version, company and description of an executable or library (Windows).",
+    "ru": "Показывает в строке состояния метаданные файла под курсором панели: формат и размер изображения (JPEG, PNG, GIF, BMP, WebP) с камерой и временем съёмки из блока EXIF, исполнителя, название, альбом и год файла MP3 (ID3v1 и ID3v2), версию, компанию и описание исполняемого файла или библиотеки (Windows)."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

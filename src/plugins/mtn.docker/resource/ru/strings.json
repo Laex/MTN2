@@ -1,0 +1,19 @@
+{
+  "ui": {
+    "drive": {
+      "docker": "Docker"
+    },
+    "menu": {
+      "start": "Docker: запустить контейнер",
+      "stop": "Docker: остановить контейнер",
+      "restart": "Docker: перезапустить контейнер",
+      "pause": "Docker: приостановить контейнер",
+      "unpause": "Docker: возобновить контейнер"
+    },
+    "msg": {
+      "notContainer": "Поставьте курсор на контейнер в docker:///containers.",
+      "done": "Контейнер %s: готово.",
+      "failed": "Контейнер %s: %s"
+    }
+  }
+}

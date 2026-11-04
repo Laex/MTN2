@@ -44,6 +44,11 @@ uses
   TestLuaMacros in 'TestLuaMacros.pas',
   TestCsvTable in 'TestCsvTable.pas',
   TestGitStatus in 'TestGitStatus.pas',
+  TestWinSysFormat in 'TestWinSysFormat.pas',
+  TestWinSysSystem in 'TestWinSysSystem.pas',
+  TestDockerFormat in 'TestDockerFormat.pas',
+  TestDockerVfs in 'TestDockerVfs.pas',
+  TestMetaFormat in 'TestMetaFormat.pas',
   TestWasmHost in 'TestWasmHost.pas',
   TestHighlightPlugin in 'TestHighlightPlugin.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas';

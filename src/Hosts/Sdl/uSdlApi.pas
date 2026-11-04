@@ -262,7 +262,7 @@ const
   cNames: array[0..2] of string = ('libSDL2-2.0.so.0', 'libSDL2.so', 'SDL2.dll');
 var
   I: Integer;
-  Missing: string;
+  Missing, FirstError: string;
 begin
   AError := '';
   if GSdl <> 0 then
@@ -272,10 +272,13 @@ begin
     GSdl := PlatformLoadLibrary(cNames[I]);
     if GSdl <> 0 then
       Break;
+    // The first name is the one a user can install; later names are fallbacks.
+    if I = Low(cNames) then
+      FirstError := PlatformLibraryError;
   end;
   if GSdl = 0 then
   begin
-    AError := 'SDL2 library not found (' + PlatformLibraryError + ')';
+    AError := 'SDL2 library not found (' + FirstError + ')';
     Exit(False);
   end;
   Missing := '';

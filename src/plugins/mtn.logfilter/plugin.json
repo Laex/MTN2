@@ -8,5 +8,6 @@
     "en": "Ctrl+Shift+J in the viewer or editor: keeps only the lines that contain a text or match a regular expression (or, inverted, do not) and shows them in a new viewer tab, with the original line numbers.",
     "ru": "Ctrl+Shift+J в просмотре или редакторе: оставляет только строки, содержащие текст или подходящие под регулярное выражение (или, наоборот, не подходящие), и показывает их в новой вкладке просмотра с исходными номерами строк."
   },
-  "author": "MTN2"
+  "author": "MTN2",
+  "help": "help.md"
 }

@@ -128,7 +128,7 @@ procedure TDrivePopupController.EnsureScroll;
 var
   ViewH, TotalItems: Integer;
 begin
-  ViewH := FState.Bounds.Height - 3;
+  ViewH := FState.Bounds.Height - 2;
   if ViewH < 1 then
     ViewH := 1;
   if FState.CursorIndex < FState.ScrollOffset then
@@ -155,12 +155,12 @@ begin
   W := Min(72, Max(PanelBounds.Width - 2, 40));
   if W > PanelBounds.Width - 1 then
     W := Max(PanelBounds.Width - 1, 24);
-  MaxList := Max(PanelBounds.Height - 4, 3);
-  H := Min(Max(TotalItems, 1), MaxList) + 3;
-  if H < 5 then
-    H := 5;
+  MaxList := Max(PanelBounds.Height - 3, 3);
+  H := Min(Max(TotalItems, 1), MaxList) + 2;
+  if H < 4 then
+    H := 4;
   if H > PanelBounds.Height - 1 then
-    H := Max(PanelBounds.Height - 1, 5);
+    H := Max(PanelBounds.Height - 1, 4);
   FState.Bounds := TRectI.Make(
     PanelBounds.Left + Max((PanelBounds.Width - W) div 2, 1),
     PanelBounds.Top + Max((PanelBounds.Height - H) div 2, 1),
@@ -285,8 +285,8 @@ end;
 procedure TDrivePopupController.Draw(const AGrid: TTerminalGrid);
 var
   R: TRectI;
-  I, Y, Idx, InnerW, ListTop, ListBottom, ViewH, Count, StatusY, ScrollX: Integer;
-  Line, Status: string;
+  I, Y, Idx, InnerW, ListTop, ListBottom, ViewH, Count, ScrollX: Integer;
+  Line: string;
   Fg, Bg: TAlphaColor;
   CurGlyph: Char;
   CurShare: string;
@@ -297,7 +297,7 @@ begin
     Exit;
   Layout;
   R := FState.Bounds;
-  if (R.Width < 20) or (R.Height < 5) then
+  if (R.Width < 20) or (R.Height < 4) then
     Exit;
 
   DrawHostOverlayFrame(AGrid, FTheme, R, T('ui.drivePopup.title', 'Change Drive'),
@@ -307,8 +307,7 @@ begin
   CurShare := UncShareRoot(FileUriToPath(FGetCurrentPath(FState.Side)));
 
   ListTop := R.Top + 1;
-  StatusY := R.Bottom - 1;
-  ListBottom := StatusY - 1;
+  ListBottom := R.Bottom - 1;
   ViewH := Max(ListBottom - ListTop + 1, 1);
   ScrollX := R.Right - 1;
   InnerW := Max(ScrollX - (R.Left + 1), 16);
@@ -373,19 +372,6 @@ begin
     DrawPanelScrollBar(AGrid, ScrollX, ListTop, ListBottom,
       FState.ScrollOffset, Count + ChangeDriveItemCount + 1, ViewH, FTheme,
       not Assigned(FTheme));
-
-  if Count = 0 then
-    Status := '0 / 0'
-  else
-    Status := Format('%d / %d', [Min(FState.CursorIndex + 1, Count), Count]);
-  if Length(Status) > InnerW then
-    Status := Copy(Status, 1, InnerW);
-  while Length(Status) < InnerW do
-    Status := Status + ' ';
-  ResolveOverlayTextColors(FTheme, False, False, False, cFileFg, cPanelBg, Fg, Bg);
-  PutGridText(AGrid, R.Left + 1, StatusY, Status, Fg, Bg);
-  if ScrollX > R.Left then
-    DrawGridChar(AGrid, ScrollX, StatusY, ' ', Fg, Bg);
 end;
 
 function TDrivePopupController.HandleInput(var AKey: Word; AShift: TShiftState;
@@ -397,7 +383,7 @@ var
   I, ViewH: Integer;
 begin
   Result := True;
-  ViewH := Max(FState.Bounds.Height - 3, 1);
+  ViewH := Max(FState.Bounds.Height - 2, 1);
 
   if AKey = vkEscape then
   begin
@@ -548,7 +534,7 @@ end;
 
 function TDrivePopupController.HandleClick(ALocalCol, ALocalRow: Integer): Boolean;
 var
-  Idx, ListTop, ListBottom, StatusY, ScrollX, ViewH: Integer;
+  Idx, ListTop, ListBottom, ScrollX, ViewH: Integer;
 begin
   Result := True;
   if WindowFrameCloseHit(FState.Bounds, ALocalCol, ALocalRow) then
@@ -563,8 +549,7 @@ begin
   end;
 
   ListTop := FState.Bounds.Top + 1;
-  StatusY := FState.Bounds.Bottom - 1;
-  ListBottom := StatusY - 1;
+  ListBottom := FState.Bounds.Bottom - 1;
   ScrollX := FState.Bounds.Right - 1;
   ViewH := Max(ListBottom - ListTop + 1, 1);
 
@@ -596,7 +581,7 @@ begin
     Exit;
   end;
 
-  if (ALocalRow < ListTop) or (ALocalRow >= StatusY) then
+  if (ALocalRow < ListTop) or (ALocalRow > ListBottom) then
     Exit;
   Idx := FState.ScrollOffset + (ALocalRow - ListTop);
   if (Idx >= 0) and (Idx <= Length(FState.Drives) + ChangeDriveItemCount) and

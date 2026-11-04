@@ -55,3 +55,5 @@ plugins/TestNetClients        # local test servers are started with Win32 calls
 plugins/TestNetClientsHttp
 plugins/TestNetVfs
 plugins/TestNetPlugin
+plugins/TestWinSysFormat  # Windows-only plugin
+plugins/TestWinSysSystem

@@ -8,5 +8,6 @@
     "en": "F3 on a .csv or .tsv file shows it as an aligned table with a header rule: the delimiter is detected, quoted cells are understood, a big file is shown by its first rows. F4 still opens the editor.",
     "ru": "F3 на файле .csv или .tsv показывает его выровненной таблицей с линией под заголовком: разделитель определяется сам, ячейки в кавычках понимаются, большой файл показывается первыми строками. F4 по-прежнему открывает редактор."
   },
-  "author": "MTN2"
+  "author": "MTN2",
+  "help": "help.md"
 }

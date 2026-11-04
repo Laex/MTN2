@@ -1296,7 +1296,10 @@ begin
   Ext := LowerCase(SafeExtension(AName));
   Result := (Ext = '.7z') or (Ext = '.rar') or (Ext = '.tar') or
     (Ext = '.gz') or (Ext = '.tgz') or (Ext = '.bz2') or (Ext = '.xz') or
-    (Ext = '.iso') or (Ext = '.cab') or (Ext = '.wim');
+    (Ext = '.iso') or (Ext = '.cab') or (Ext = '.wim') or (Ext = '.zst') or
+    (Ext = '.lzma') or (Ext = '.vhd') or (Ext = '.vhdx') or (Ext = '.msi') or
+    (Ext = '.deb') or (Ext = '.rpm') or (Ext = '.cpio') or (Ext = '.chm') or
+    (Ext = '.dmg') or (Ext = '.squashfs') or (Ext = '.img');
 end;
 
 function IsSevenZipUri(const AURI: string): Boolean;

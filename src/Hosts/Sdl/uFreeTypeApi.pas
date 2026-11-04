@@ -85,6 +85,7 @@ const
   cNames: array[0..2] of string = ('libfreetype.so.6', 'libfreetype.so', 'freetype.dll');
 var
   I: Integer;
+  FirstError: string;
 
   function Bind(const AName: string; var AProc): Boolean;
   begin
@@ -106,10 +107,12 @@ begin
     GFt := PlatformLoadLibrary(cNames[I]);
     if GFt <> 0 then
       Break;
+    if I = Low(cNames) then
+      FirstError := PlatformLibraryError;
   end;
   if GFt = 0 then
   begin
-    AError := 'FreeType library not found (' + PlatformLibraryError + ')';
+    AError := 'FreeType library not found (' + FirstError + ')';
     Exit(False);
   end;
   if not (Bind('FT_Init_FreeType', FT_Init_FreeType) and

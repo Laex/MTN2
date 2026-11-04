@@ -170,6 +170,27 @@ sudo dnf install ./MTN2-*-linux-x64.rpm
 
 The unpacked folder also runs without installing: `mtn2/mtn2-tui` and `mtn2/mtn2-sdl` start where they lie. Dependencies and options are in [docs/LINUX.md](docs/LINUX.md).
 
+#### Tested distributions
+
+The `.deb`, `.rpm` and `tar.gz` packages install and start on clean systems of these distributions; all plugins load, and the Lua library for macros is bundled.
+
+| Distribution | Package | Result |
+|---|---|---|
+| Debian 12 | `.deb` | works |
+| Ubuntu 22.04, 24.04 | `.deb` | works |
+| Fedora | `.rpm` | works |
+| openSUSE Leap 15.6 | `.rpm` | works once `glibc-locale` is installed (see below) |
+| Arch Linux | `tar.gz` | `mtn2-tui` works; `mtn2-sdl` needs `sdl2` and `freetype2` installed |
+| Alpine (musl) | `tar.gz` | not supported |
+
+#### Known issues
+
+- **openSUSE and minimal images.** Without the glibc character-set modules (`/usr/lib64/gconv`) the program crashes at startup, before printing anything. Regular installations have them; stripped container images do not. Fix: `sudo zypper install glibc-locale`.
+- **musl (Alpine).** The Linux builds need glibc 2.34 or newer.
+- **Terminals without the kitty keyboard protocol.** The terminal does not report key releases, so drive selection by `Ctrl+Left/Right` and the `Alt` quick search finish on a timer instead of on key release. `Ctrl+Shift` combinations may be unavailable; use the menu (`F9`). Terminals with the protocol (kitty, foot, WezTerm, Ghostty, Alacritty) and the `mtn2-sdl` window are not affected.
+- **`mtn2-sdl`.** No dragging files out of the window (dropping files into it works). Native plugin windows are not supported; image and video plugins draw in a tab instead.
+- **Clipboard over SSH and `tmux`.** Copying relies on the terminal's OSC 52 support; in `tmux` enable `set -g set-clipboard on`.
+
 ### Dev Builds
 
 Pre-release (dev) builds are published after every commit to `main` in a dedicated repository:
@@ -199,7 +220,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 | `src/Platform` | Platform abstraction layer: `Windows` and `Posix` modules |
 | `src/Hosts` | Shell hosts: `Ansi` – text terminal version |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Main form, JSON dialogs, default theme |
-| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, WASM demo) |
+| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.meta`, WASM demo) |
 | `src/tests` | DUnitX regression tests by group and test runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` project group, utility scripts |
 | `bin/win64`, `bin/linux64` | Build output by platform |
