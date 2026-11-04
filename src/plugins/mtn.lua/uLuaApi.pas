@@ -135,7 +135,7 @@ begin
     end;
   end;
   {$ELSE}
-  Candidates := ['liblua5.5.so', 'liblua5.5.so.0', 'liblua5.4.so', 'liblua5.4.so.0'];
+  Candidates := ['liblua5.5.so', 'liblua5.5.so.0', 'liblua-5.5.so', 'liblua5.4.so', 'liblua5.4.so.0', 'liblua-5.4.so'];
   for Name in Candidates do
   begin
     GLib := NativeUInt(dlopen(PAnsiChar(AnsiString(IncludeTrailingPathDelimiter(AFolder) + Name)), RTLD_NOW));

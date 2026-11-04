@@ -62,7 +62,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DebRoot 'DEBIAN'), (Join-P
 Copy-Item $Stage (Join-Path $DebRoot 'opt\mtn2') -Recurse
 # The package manager updates the program: this file turns the self-updater off.
 New-Item -ItemType File -Path (Join-Path $DebRoot 'opt\mtn2\no-self-update') | Out-Null
-$Recommends = 'Recommends: 7zip | p7zip-full, chafa, libcurl4t64 | libcurl4'
+$Recommends = 'Recommends: 7zip | p7zip-full, chafa, libcurl4t64 | libcurl4, liblua5.4-0'
 if ($HasWindow) { $Recommends += ', libsdl2-2.0-0, libfreetype6, libsdl2-image-2.0-0' }
 $WindowLink = if ($HasWindow) { ' && ln -s /opt/mtn2/mtn2-sdl usr/bin/mtn2-sdl' } else { '' }
 $DebModes = $ModeList -replace 'mtn2/', 'opt/mtn2/'
@@ -96,7 +96,7 @@ if ($LASTEXITCODE -ne 0) {
     if (Test-Path $Rpm) { Remove-Item $Rpm -Force }
     # An RPM version may not hold a dash.
     $RpmVersion = ($Version -replace '^v', '') -replace '-', '.'
-    $RpmRecommends = @('p7zip', 'chafa', 'libcurl')
+    $RpmRecommends = @('p7zip', 'chafa', 'libcurl', 'lua-libs')
     if ($HasWindow) { $RpmRecommends += @('SDL2', 'freetype', 'SDL2_image') }
     $WindowFiles = if ($HasWindow) { '/usr/bin/mtn2-sdl' } else { '' }
     $WindowLinkRpm = if ($HasWindow) { 'ln -s /opt/mtn2/mtn2-sdl %{buildroot}/usr/bin/mtn2-sdl' } else { '' }
