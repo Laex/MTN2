@@ -64,3 +64,39 @@ macro {
 每个涉及程序的调用都会等程序处理完毕，宏才继续执行。Lua 环境包含基础库以及 `string`、`table`、`math`、`utf8`、`coroutine`；`io`、`os`、`package` 和 `debug` 不可用。长时间不等待地运行的宏会被停止。
 
 发行包的 `samples/macros` 文件夹中有三个示例：去重排序行、创建文件夹、已标记文件报告。
+
+## Editor, panels, dialogs and programs
+
+These functions also wait until the program has handled the call. Lines and columns count from 1; a panel side is `"left"`, `"right"` or `nil` (the active one).
+
+| Function | Action |
+|---|---|
+| `mtn.editor.info()` | table: `uri`, `lines`, `row`, `col`, `dirty`, `can_edit`, `has_selection`; `nil` without a document |
+| `mtn.editor.text()`, `.selection()`, `.current_line()` | the whole text, the selection, the current line |
+| `mtn.editor.line(n)` | line `n` or `nil` |
+| `mtn.editor.replace(text)` | replace the selection (or insert at the cursor) |
+| `mtn.editor.replace_all(text)`, `.replace_line(text)` | replace the whole text or the current line |
+| `mtn.editor.set_cursor(row, col)`, `.set_selection(r1, c1, r2, c2)` | place the cursor or the selection |
+| `mtn.panel.list(side)` | table: `path`, `files` (rows with `name`, `uri`), `cursor`, `truncated` |
+| `mtn.panel.path(side)`, `.cursor(side)` | the path of a panel, the row under the cursor |
+| `mtn.panel.open(uri, side)`, `.set_cursor(uri, side)` | go to a folder, put the cursor on an item |
+| `mtn.panel.select(mask, side)`, `.unselect(mask, side)`, `.clear_selection(side)` | mark, unmark by mask, unmark all |
+| `mtn.panel.select_item(uri, side)`, `.unselect_item(uri, side)` | mark or unmark one item |
+| `mtn.panel.refresh()` | reread the panels |
+| `mtn.clipboard.get()`, `.set(text)` | the clipboard |
+| `mtn.input(prompt, default, title)` | an input box; `nil` when closed |
+| `mtn.confirm(text, title)` | a Yes/No question: `true` or `false` |
+| `mtn.choose(title, items)` | pick from a list of strings: the item number or `nil` |
+| `mtn.exec(program, args, opts)` | run a program: its output and exit code, or `nil` and the reason |
+
+A program starts only when its name (without path and extension) is listed in the macro's `exec` field, comma separated, for example `exec = "git, hg"`. `opts` takes `stdin` (text for the input) and `timeout` (seconds, 10 by default, at most 60). The output is cut at 1 MB. Dialogs are unavailable while another dialog is open.
+
+### Events
+
+`mtn.on(topic, function, {exec = "..."})` called while a file loads registers a handler. When the program publishes an event (`doc.opened`, `doc.saved`, `doc.changed`, `doc.closed`, `panel.dir`, `panel.cursor`), the function runs as a macro and gets the event table with a `topic` field. An event that arrives while another macro or handler runs is skipped, so a handler cannot start itself.
+
+```lua
+mtn.on("doc.saved", function(e)
+  mtn.message("Saved: " .. (e.uri or ""))
+end)
+```

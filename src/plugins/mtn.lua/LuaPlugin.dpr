@@ -13,6 +13,7 @@ uses
   {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uLuaApi in 'uLuaApi.pas',
+  uLuaHostFns in 'uLuaHostFns.pas',
   uLuaMacros in 'uLuaMacros.pas';
 
 const
@@ -1285,7 +1286,7 @@ begin
 end;
 
 { A macro file saved in the editor is loaded again, so the change applies at once. }
-procedure OnDocSaved(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); cdecl;
+procedure ReloadIfMacroSaved(APayloadJson: PAnsiChar);
 var
   V: TJSONValue;
   Uri, Path, Dir: string;
@@ -1312,6 +1313,17 @@ begin
     end;
   except
     // A malformed event is dropped.
+  end;
+end;
+
+procedure OnDocSaved(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); cdecl;
+begin
+  ReloadIfMacroSaved(APayloadJson);
+  try
+    if (GEngine <> nil) and (APayloadJson <> nil) then
+      GEngine.DispatchEvent('doc.saved', UTF8ToString(APayloadJson));
+  except
+    // A handler's failure never reaches the host.
   end;
 end;
 

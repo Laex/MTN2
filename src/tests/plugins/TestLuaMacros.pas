@@ -30,17 +30,101 @@ type
     [Test] procedure TestQuotedTextRoundTripsThroughAMacroFile;
     [Test] procedure TestEscapeStopsARunningMacro;
     [Test] procedure TestSampleMacrosRun;
+    [Test] procedure TestEditorFunctionsReadAndReplace;
+    [Test] procedure TestEditorLinesCountFromOne;
+    [Test] procedure TestPanelFunctionsListAndSelect;
+    [Test] procedure TestClipboardRoundTrip;
+    [Test] procedure TestHandlerRunsOnEventWithPayload;
+    [Test] procedure TestHandlerIsDroppedWhileAMacroRuns;
+    [Test] procedure TestExecRefusesProgramOutsideTheList;
+    [Test] procedure TestExecAllowListMatchesNamesOnly;
+    [Test] procedure TestInputWithoutDialogSupportGivesNil;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, System.Generics.Collections, uLuaApi;
+  System.SysUtils, System.IOUtils, System.Generics.Collections, uLuaApi, uLuaHostFns;
 
 var
   GKeys, GTexts, GActions, GMessages: TStringList;
   GState: string;
   GQueue: TList<THostMainCallback>;
+  GDocText, GDocSelection, GClipboard: string;
+  GReplaced: TStringList;
+  GPanelSelects: TStringList;
+  GEventCb: THostEventCallback;
+
+function ReplyText(const AValue: string; ABuf: PAnsiChar; ABufSize: Int64): Int64;
+var
+  Raw: UTF8String;
+begin
+  Raw := UTF8String(AValue);
+  Result := Length(Raw);
+  if (ABuf <> nil) and (Result < ABufSize) then
+    Move(PAnsiChar(Raw)^, ABuf^, Length(Raw) + 1);
+end;
+
+function StubDocInfo(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  Result := ReplyText('{"uri":"file:///C:/Work/a.txt","lines":2,"row":0,"col":1,' +
+    '"dirty":false,"canEdit":true,"hasSelection":true}', ABuf, ABufSize);
+end;
+
+function StubDocGetText(AWhat: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  if AWhat = 0 then
+    Result := ReplyText(GDocSelection, ABuf, ABufSize)
+  else
+    Result := ReplyText(GDocText, ABuf, ABufSize);
+end;
+
+function StubDocLine(AIndex: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+var
+  Lines: TArray<string>;
+begin
+  Lines := GDocText.Split([#10]);
+  if (AIndex < 0) or (AIndex >= Length(Lines)) then
+    Exit(-1);
+  Result := ReplyText(Lines[AIndex], ABuf, ABufSize);
+end;
+
+function StubDocReplace(AWhat: Int64; AText: PAnsiChar): Int64; cdecl;
+begin
+  GReplaced.Add(IntToStr(AWhat) + ':' + UTF8ToString(AText));
+  Result := 0;
+end;
+
+function StubPanelList(ASide: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  Result := ReplyText('{"uri":"file:///C:/Work","cursor":0,"truncated":false,' +
+    '"rows":[{"name":"a.txt","uri":"file:///C:/Work/a.txt"},' +
+    '{"name":"b.txt","uri":"file:///C:/Work/b.txt"}]}', ABuf, ABufSize);
+end;
+
+function StubPanelSelect(ASide, AMode: Int64; AArg: PAnsiChar): Int64; cdecl;
+begin
+  GPanelSelects.Add(IntToStr(AMode) + ':' + UTF8ToString(AArg));
+  Result := 0;
+end;
+
+function StubClipboardGet(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  Result := ReplyText(GClipboard, ABuf, ABufSize);
+end;
+
+function StubClipboardSet(AText: PAnsiChar): Int64; cdecl;
+begin
+  GClipboard := UTF8ToString(AText);
+  Result := 0;
+end;
+
+function StubSubscribe(APluginId, ATopic: PAnsiChar; AOnEvent: THostEventCallback;
+  AUserData: Pointer): Int64; cdecl;
+begin
+  GEventCb := AOnEvent;
+  Result := 0;
+end;
 
 function StubSendKey(AChord: PAnsiChar): Int64; cdecl;
 begin
@@ -130,6 +214,12 @@ begin
   GActions := TStringList.Create;
   GMessages := TStringList.Create;
   GQueue := TList<THostMainCallback>.Create;
+  GReplaced := TStringList.Create;
+  GPanelSelects := TStringList.Create;
+  GDocText := '';
+  GDocSelection := '';
+  GClipboard := '';
+  GEventCb := nil;
   GState := cPanelsState;
   FApi := Default(THostApiTable);
   FApi.AbiVersion := cPluginAbiVersion;
@@ -139,6 +229,15 @@ begin
   FApi.AppState := @StubAppState;
   FApi.ShowMessage := @StubShowMessage;
   FApi.PostToMain := @StubPostToMain;
+  FApi.DocInfo := @StubDocInfo;
+  FApi.DocGetText := @StubDocGetText;
+  FApi.DocLine := @StubDocLine;
+  FApi.DocReplace := @StubDocReplace;
+  FApi.PanelList := @StubPanelList;
+  FApi.PanelSelect := @StubPanelSelect;
+  FApi.ClipboardGet := @StubClipboardGet;
+  FApi.ClipboardSet := @StubClipboardSet;
+  FApi.Subscribe := @StubSubscribe;
   FDir := TPath.Combine(TPath.GetTempPath, 'mtn2-lua-test-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(FDir);
   FEngine := TMacroEngine.Create(@FApi, 'mtn.lua', nil);
@@ -169,6 +268,8 @@ begin
   GActions.Free;
   GMessages.Free;
   GQueue.Free;
+  GReplaced.Free;
+  GPanelSelects.Free;
 end;
 
 function TTestLuaMacros.Load(const ASource: string): TMacro;
@@ -331,6 +432,144 @@ begin
   Pump;
   Assert.AreEqual('Ctrl+A', GKeys[0]);
   Assert.AreEqual('EditorSortLines,EditorUniqueLines', GActions.CommaText);
+end;
+
+procedure TTestLuaMacros.TestEditorFunctionsReadAndReplace;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  GDocText := 'one' + #10 + 'two';
+  GDocSelection := 'ne';
+  M := Load('macro { name = "e", run = function()' +
+    ' local i = mtn.editor.info()' +
+    ' mtn.text(i.uri .. "|" .. i.lines .. "|" .. i.row .. "|" .. tostring(i.can_edit))' +
+    ' mtn.text(mtn.editor.selection() .. "|" .. mtn.editor.text())' +
+    ' mtn.editor.replace("X")' +
+    ' mtn.editor.replace_all("Y") end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('file:///C:/Work/a.txt|2|1|true', GTexts[0]);
+  Assert.AreEqual('ne|one' + #10 + 'two', GTexts[1]);
+  Assert.AreEqual('0:X', GReplaced[0]);
+  Assert.AreEqual('1:Y', GReplaced[1]);
+end;
+
+procedure TTestLuaMacros.TestEditorLinesCountFromOne;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  GDocText := 'one' + #10 + 'two';
+  M := Load('macro { name = "l", run = function()' +
+    ' mtn.text(mtn.editor.line(1) .. "," .. mtn.editor.line(2) .. "," .. tostring(mtn.editor.line(3))) end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('one,two,nil', GTexts[0]);
+end;
+
+procedure TTestLuaMacros.TestPanelFunctionsListAndSelect;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "p", run = function()' +
+    ' local l = mtn.panel.list("left")' +
+    ' mtn.text(l.path .. "|" .. #l.files .. "|" .. l.files[l.cursor].name)' +
+    ' mtn.panel.select("*.txt")' +
+    ' mtn.panel.unselect("b*") end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('file:///C:/Work|2|a.txt', GTexts[0]);
+  Assert.AreEqual('0:*.txt', GPanelSelects[0]);
+  Assert.AreEqual('1:b*', GPanelSelects[1]);
+end;
+
+procedure TTestLuaMacros.TestClipboardRoundTrip;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  GClipboard := 'before';
+  M := Load('macro { name = "c", run = function()' +
+    ' local old = mtn.clipboard.get() mtn.clipboard.set(old .. "+after") end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('before+after', GClipboard);
+end;
+
+procedure TTestLuaMacros.TestHandlerRunsOnEventWithPayload;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('mtn.on("panel.dir", function(e) mtn.text(e.topic .. "|" .. e.uri) end)');
+  Assert.IsNull(M);
+  Assert.IsTrue(FEngine.Handlers.Count = 1);
+  Assert.IsTrue(Assigned(GEventCb), 'the handler subscribes to its topic');
+  GEventCb(nil, 'panel.dir', '{"uri":"file:///C:/Work"}');
+  Pump;
+  Assert.AreEqual('panel.dir|file:///C:/Work', GTexts[0]);
+  Assert.IsNull(FEngine.Running);
+end;
+
+procedure TTestLuaMacros.TestHandlerIsDroppedWhileAMacroRuns;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  Load('mtn.on("panel.dir", function(e) mtn.text("handler") end)');
+  M := Load('macro { name = "r", run = function() mtn.text("macro") end }');
+  Assert.IsTrue(FEngine.Run(M));
+  GEventCb(nil, 'panel.dir', '{}');
+  Pump;
+  Assert.AreEqual(1, GTexts.Count);
+  Assert.AreEqual('macro', GTexts[0]);
+end;
+
+procedure TTestLuaMacros.TestExecRefusesProgramOutsideTheList;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "x", exec = "git", run = function()' +
+    ' local out, why = mtn.exec("cmd", {"/c", "echo", "hi"})' +
+    ' mtn.text(tostring(out) .. "|" .. tostring(why ~= nil)) end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('nil|true', GTexts[0]);
+end;
+
+procedure TTestLuaMacros.TestExecAllowListMatchesNamesOnly;
+begin
+  Assert.IsTrue(ExecAllowed('git', 'git, hg'));
+  Assert.IsTrue(ExecAllowed('GIT.exe', 'git'));
+  Assert.IsFalse(ExecAllowed('git', ''));
+  Assert.IsFalse(ExecAllowed('', 'git'));
+  Assert.IsFalse(ExecAllowed('C:\Tools\git', 'git'));
+  Assert.IsFalse(ExecAllowed('../git', 'git'));
+  Assert.IsFalse(ExecAllowed('-git', 'git'));
+  Assert.IsFalse(ExecAllowed('gitk', 'git'));
+end;
+
+procedure TTestLuaMacros.TestInputWithoutDialogSupportGivesNil;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "i", run = function()' +
+    ' mtn.text(tostring(mtn.input("Name?", "x"))) end }');
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('nil', GTexts[0]);
 end;
 
 initialization

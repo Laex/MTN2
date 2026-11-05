@@ -2,18 +2,20 @@ unit uLuaMacros;
 
 (* Macro engine: macros are Lua files in the macros folder of the settings
   directory. A file calls macro { name = ..., area = ..., the fields key and menu,
-  requires = ..., run = function() ... end }. A running macro is a coroutine:
-  every call that touches the program (mtn.key, mtn.text, mtn.action) yields
-  afterwards and is resumed from the main loop, so the program draws and handles
-  what the macro started before it goes on. The Lua state is a sandbox (base,
-  string, table, math, utf8, coroutine; no io, os, package or debug), and an
-  instruction budget and Esc end a macro that does not stop. *)
+  requires = ..., exec = ..., run = function() ... end }. A running macro is a
+  coroutine: every call that touches the program (mtn.key, mtn.text,
+  mtn.action, mtn.editor.replace, ...) yields afterwards and is resumed from
+  the main loop, so the program draws and handles what the macro started before
+  it goes on. A file may also call mtn.on(topic, fn) while it loads: fn then
+  runs as a macro when the host publishes that event. The Lua state is a
+  sandbox (base, string, table, math, utf8, coroutine; no io, os, package or
+  debug), and an instruction budget and Esc end a macro that does not stop. *)
 
 interface
 
 uses
   System.SysUtils, System.Classes, System.Generics.Collections,
-  uPluginHostAbi;
+  uPluginHostAbi, uLuaHostFns;
 
 type
   TMacro = class
@@ -24,12 +26,28 @@ type
     Key: string;
     InMenu: Boolean;
     Requires: string;
+    /// <summary>Program names mtn.exec may start for this macro, comma separated.</summary>
+    Exec: string;
     RunRef: Integer;
     Path: string;
   end;
 
+  /// <summary>A function registered with mtn.on.</summary>
+  THandler = class
+  public
+    Topic: string;
+    Exec: string;
+    Path: string;
+    Ref: Integer;
+  end;
+
+  TPendingEvent = record
+    Handler: THandler;
+    Payload: string;
+  end;
+
   /// <summary>Text for the user; the plugin glue supplies the translation.</summary>
-  TMacroText = reference to function(const AKey, ADefault: string): string;
+  TMacroText = TLuaText;
 
   TMacroEngine = class
   private
@@ -41,11 +59,20 @@ type
     FThread: Pointer;
     FThreadRef: Integer;
     FRunning: TMacro;
+    FHandlers: TObjectList<THandler>;
+    FQueue: TList<TPendingEvent>;
+    FSubscribed: TStringList;
+    FEventMacro: TMacro;
+    FStartArgs: Integer;
     function Tr(const AKey, ADefault: string): string;
     procedure Notify(const AText: string; AKind: Integer = 0);
     procedure Step;
     procedure Finish;
     function Probe(AMacro: TMacro; out AWhy: string): Boolean;
+    procedure Launch(AMacro: TMacro; const APayload: string; AIsEvent: Boolean);
+    procedure NextEvent;
+    procedure ClearHandlers;
+    procedure Subscribe(const ATopic: string);
   public
     /// <summary>Loads one macro file; nil (after telling the user) when it declares no macro.</summary>
     function LoadFile(const APath: string): TMacro;
@@ -58,7 +85,12 @@ type
     function Run(AMacro: TMacro): Boolean;
     /// <summary>Esc while a macro runs.</summary>
     procedure RequestAbort;
+    /// <summary>Runs the handlers registered for ATopic with the payload as a
+    /// table. Dropped while a macro or handler runs, so a handler's own edits
+    /// cannot start it again.</summary>
+    procedure DispatchEvent(const ATopic, APayload: string);
     property Macros: TObjectList<TMacro> read FMacros;
+    property Handlers: TObjectList<THandler> read FHandlers;
     property Running: TMacro read FRunning;
     property Api: PHostApiTable read FApi;
     function CurrentState: string;
@@ -84,6 +116,11 @@ const
 
   cPrelude =
     'local k, t, a, s, m, sel, reg = mtn_key, mtn_text, mtn_action, mtn_state, mtn_message, mtn_selected, mtn_register' + #10 +
+    'local di, dt, dl, dr, dc, ds = mtn_doc_info, mtn_doc_text, mtn_doc_line, mtn_doc_replace, mtn_doc_cursor, mtn_doc_select' + #10 +
+    'local pl, pg, pc, ps, pr = mtn_panel_list, mtn_panel_goto, mtn_panel_cursor, mtn_panel_select, mtn_panel_refresh' + #10 +
+    'local cg, cs, on = mtn_clip_get, mtn_clip_set, mtn_on' + #10 +
+    'local dlg, dpend, dres = mtn_dialog, mtn_dialog_pending, mtn_dialog_result' + #10 +
+    'local xs, xd, xr = mtn_exec_start, mtn_exec_done, mtn_exec_result' + #10 +
     'local yield = coroutine.yield' + #10 +
     'mtn = {}' + #10 +
     'function mtn.key(c) local ok = k(c); yield(); return ok end' + #10 +
@@ -94,7 +131,59 @@ const
     'mtn.message = m' + #10 +
     'mtn.selected = sel' + #10 +
     'function macro(def) reg(def) end' + #10 +
+    'mtn.on = on' + #10 +
+    'local function after(ok) yield() return ok end' + #10 +
+    'local function str(x) if type(x) ~= "string" then error("text expected", 3) end return x end' + #10 +
+    'local function side(x) if x == nil or x == "left" or x == "right" then return x end error("side is left or right", 3) end' + #10 +
+    // editor and viewer document; lines and columns count from 1
+    'mtn.editor = {}' + #10 +
+    'function mtn.editor.info() local i = di() if not i then return nil end' +
+    ' return {uri = i.uri, lines = i.lines, row = (i.row or 0) + 1, col = (i.col or 0) + 1,' +
+    ' dirty = i.dirty, can_edit = i.canEdit, has_selection = i.hasSelection} end' + #10 +
+    'function mtn.editor.text() return dt(1) end' + #10 +
+    'function mtn.editor.selection() return dt(0) end' + #10 +
+    'function mtn.editor.current_line() return dt(2) end' + #10 +
+    'function mtn.editor.line(n) return dl(n) end' + #10 +
+    'function mtn.editor.replace(x) return after(dr(0, str(x))) end' + #10 +
+    'function mtn.editor.replace_all(x) return after(dr(1, str(x))) end' + #10 +
+    'function mtn.editor.replace_line(x) return after(dr(2, str(x))) end' + #10 +
+    'function mtn.editor.set_cursor(r, c) return after(dc(r, c)) end' + #10 +
+    'function mtn.editor.set_selection(r1, c1, r2, c2) return after(ds(r1, c1, r2, c2)) end' + #10 +
+    // panels; a side is "left", "right" or nil for the active one
+    'local function plist(s) local t = pl(side(s)) if not t then return nil end' +
+    ' local r = {path = t.uri, files = t.rows or {}, truncated = t.truncated or false}' +
+    ' if t.cursor then r.cursor = t.cursor + 1 end return r end' + #10 +
+    'mtn.panel = {list = plist}' + #10 +
+    'function mtn.panel.path(s) local t = pl(side(s)) return t and t.uri end' + #10 +
+    'function mtn.panel.cursor(s) local t = plist(s) return t and t.cursor and t.files[t.cursor] end' + #10 +
+    'function mtn.panel.open(uri, s) return after(pg(side(s), str(uri))) end' + #10 +
+    'function mtn.panel.set_cursor(uri, s) return after(pc(side(s), str(uri))) end' + #10 +
+    'function mtn.panel.select(mask, s) return after(ps(side(s), 0, str(mask))) end' + #10 +
+    'function mtn.panel.unselect(mask, s) return after(ps(side(s), 1, str(mask))) end' + #10 +
+    'function mtn.panel.clear_selection(s) return after(ps(side(s), 2, "")) end' + #10 +
+    'function mtn.panel.select_item(uri, s) return after(ps(side(s), 3, str(uri))) end' + #10 +
+    'function mtn.panel.unselect_item(uri, s) return after(ps(side(s), 4, str(uri))) end' + #10 +
+    'function mtn.panel.refresh() return after(pr()) end' + #10 +
+    'mtn.clipboard = {get = cg}' + #10 +
+    'function mtn.clipboard.set(x) return after(cs(str(x))) end' + #10 +
+    // dialogs wait for the answer
+    'local function ask(kind, title, text, def, items)' +
+    ' if not dlg(kind, title or "Macro", text or "", def or "", items) then return nil end' +
+    ' while dpend() do yield() end return dres() end' + #10 +
+    'function mtn.input(prompt, default, title) return ask("input", title, prompt, default) end' + #10 +
+    'function mtn.confirm(text, title) return ask("confirm", title, text) or false end' + #10 +
+    'function mtn.choose(title, items) return ask("choose", title, "", "", items) end' + #10 +
+    // a program of the exec field: returns its output and exit code, or nil and the reason
+    'function mtn.exec(program, args, opts) opts = opts or {}' +
+    ' local ok, why = xs(program, args or {}, opts.stdin or "", opts.timeout or 0)' +
+    ' if not ok then return nil, why end' +
+    ' while not xd() do yield() end' +
+    ' local r = xr() if not r.ok then return nil, r.error end return r.output, r.code end' + #10 +
     'mtn_key, mtn_text, mtn_action, mtn_state, mtn_message, mtn_selected, mtn_register = nil' + #10 +
+    'mtn_doc_info, mtn_doc_text, mtn_doc_line, mtn_doc_replace, mtn_doc_cursor, mtn_doc_select = nil' + #10 +
+    'mtn_panel_list, mtn_panel_goto, mtn_panel_cursor, mtn_panel_select, mtn_panel_refresh = nil' + #10 +
+    'mtn_clip_get, mtn_clip_set, mtn_on, mtn_dialog, mtn_dialog_pending, mtn_dialog_result = nil' + #10 +
+    'mtn_exec_start, mtn_exec_done, mtn_exec_result = nil' + #10 +
     'dofile, loadfile, load, print, collectgarbage = nil' + #10;
 
 function LuaQuote(const AValue: string): string;
@@ -126,6 +215,9 @@ end;
 
 var
   GDeclared: TMacro;
+  /// <summary>Handlers registered by the file being loaded.</summary>
+  GNewHandlers: TList<THandler>;
+  GLoading: Boolean;
   GAbort: Boolean;
   GSlices: Integer;
 
@@ -373,6 +465,7 @@ begin
     M.Areas := '';
   M.Key := FieldStr(L, 'key');
   M.Requires := LowerCase(StringReplace(FieldStr(L, 'requires'), ' ', '', [rfReplaceAll]));
+  M.Exec := FieldStr(L, 'exec');
   lua_getfield(L, 1, 'menu');
   M.InMenu := lua_toboolean(L, -1) <> 0;
   lua_pop(L, 1);
@@ -381,6 +474,40 @@ begin
     M.RunRef := luaL_ref(L, LUA_REGISTRYINDEX)
   else
     lua_pop(L, 1);
+end;
+
+// mtn.on(topic, fn, opts): only while a macro file loads. opts.exec lists the
+// programs the handler may start.
+function LOn(L: PLuaState): Integer; cdecl;
+var
+  H: THandler;
+  Topic: string;
+begin
+  Result := 0;
+  Topic := LowerCase(Trim(lua_tostr(L, 1)));
+  if not GLoading or (lua_type(L, 2) <> LUA_TFUNCTION) or (Topic = '') or
+     (Topic = '*') or (Topic = 'input.key') then
+    Exit;
+  H := THandler.Create;
+  H.Topic := Topic;
+  if lua_type(L, 3) = LUA_TTABLE then
+  begin
+    lua_settop(L, 3);
+    H.Exec := FieldStr(L, 'exec');
+  end;
+  lua_pushvalue(L, 2);
+  H.Ref := luaL_ref(L, LUA_REGISTRYINDEX);
+  GNewHandlers.Add(H);
+end;
+
+procedure OnHostEvent(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); cdecl;
+begin
+  try
+    if GEngine <> nil then
+      GEngine.DispatchEvent(UTF8ToString(ATopic), UTF8ToString(APayloadJson));
+  except
+    // Never let an exception cross into the host.
+  end;
 end;
 
 { Raised in the count hook: a stop asked for (Esc) or an instruction budget spent
@@ -413,6 +540,10 @@ begin
   FPluginId := UTF8String(APluginId);
   FTr := ATr;
   FMacros := TObjectList<TMacro>.Create(True);
+  FHandlers := TObjectList<THandler>.Create(True);
+  FQueue := TList<TPendingEvent>.Create;
+  FSubscribed := TStringList.Create;
+  GNewHandlers := TList<THandler>.Create;
 end;
 
 destructor TMacroEngine.Destroy;
@@ -420,6 +551,12 @@ begin
   if FState <> nil then
     lua_close(FState);
   FMacros.Free;
+  FHandlers.Free;
+  FQueue.Free;
+  FSubscribed.Free;
+  FreeAndNil(GNewHandlers);
+  FEventMacro.Free;
+  LuaHostReset;
   GDeclared.Free;
   GDeclared := nil;
   inherited;
@@ -501,6 +638,8 @@ begin
   lua_register(L, 'mtn_message', LMessage);
   lua_register(L, 'mtn_selected', LSelected);
   lua_register(L, 'mtn_register', LRegister);
+  lua_register(L, 'mtn_on', LOn);
+  LuaHostRegister(L, FApi, string(FPluginId), FTr);
   Prelude := UTF8String(cPrelude);
   if (luaL_loadbufferx(L, PAnsiChar(Prelude), Length(Prelude), '=prelude', nil) <> LUA_OK) or
      (lua_pcall(L, 0, 0) <> LUA_OK) then
@@ -517,6 +656,8 @@ var
   Chunk: UTF8String;
   M: TMacro;
   ChunkName: AnsiString;
+  H: THandler;
+  Failed, HasHandlers: Boolean;
 begin
   Result := nil;
   Bytes := TFile.ReadAllBytes(APath);
@@ -529,18 +670,41 @@ begin
   ChunkName := AnsiString('=' + TPath.GetFileName(APath));
   GDeclared.Free;
   GDeclared := nil;
-  if (luaL_loadbufferx(FState, PAnsiChar(Chunk), Length(Chunk), PAnsiChar(ChunkName), nil) <> LUA_OK) or
-     (lua_pcall(FState, 0, 0) <> LUA_OK) then
+  GNewHandlers.Clear;
+  GLoading := True;
+  try
+    Failed := (luaL_loadbufferx(FState, PAnsiChar(Chunk), Length(Chunk), PAnsiChar(ChunkName), nil) <> LUA_OK) or
+      (lua_pcall(FState, 0, 0) <> LUA_OK);
+  finally
+    GLoading := False;
+  end;
+  if Failed then
   begin
     Notify(Format(Tr('err.load', 'Macro file %s: %s'),
       [TPath.GetFileName(APath), lua_tostr(FState, -1)]), 1);
     lua_settop(FState, 0);
+    for H in GNewHandlers do
+    begin
+      luaL_unref(FState, LUA_REGISTRYINDEX, H.Ref);
+      H.Free;
+    end;
+    GNewHandlers.Clear;
     Exit;
   end;
+  // Handlers stay registered even when the file declares no macro.
+  for H in GNewHandlers do
+  begin
+    H.Path := APath;
+    FHandlers.Add(H);
+    Subscribe(H.Topic);
+  end;
+  HasHandlers := GNewHandlers.Count > 0;
+  GNewHandlers.Clear;
   if (GDeclared = nil) or (GDeclared.RunRef < 0) then
   begin
-    Notify(Format(Tr('err.nomacro', 'Macro file %s declares no macro with a run function'),
-      [TPath.GetFileName(APath)]), 1);
+    if not HasHandlers then
+      Notify(Format(Tr('err.nomacro', 'Macro file %s declares no macro with a run function'),
+        [TPath.GetFileName(APath)]), 1);
     Exit;
   end;
   M := GDeclared;
@@ -558,6 +722,7 @@ var
   F: string;
 begin
   FMacros.Clear;
+  ClearHandlers;
   if (FState = nil) or not TDirectory.Exists(AFolder) then
     Exit;
   for F in TDirectory.GetFiles(AFolder, '*.lua') do
@@ -624,15 +789,95 @@ begin
     Notify(Why, 1);
     Exit;
   end;
+  Launch(AMacro, '', False);
+  Result := True;
+end;
+
+procedure TMacroEngine.Launch(AMacro: TMacro; const APayload: string; AIsEvent: Boolean);
+begin
   FThread := lua_newthread(FState);
   FThreadRef := luaL_ref(FState, LUA_REGISTRYINDEX);
   lua_rawgeti(FState, LUA_REGISTRYINDEX, AMacro.RunRef);
   lua_xmove(FState, FThread, 1);
+  FStartArgs := 0;
+  if AIsEvent then
+  begin
+    // The handler gets the payload as a table with the topic added.
+    LuaPushJson(FThread, APayload);
+    if lua_type(FThread, -1) <> LUA_TTABLE then
+    begin
+      lua_pop(FThread, 1);
+      lua_newtable(FThread);
+    end;
+    lua_pushstr(FThread, AMacro.Name);
+    lua_setfield(FThread, -2, 'topic');
+    FStartArgs := 1;
+  end;
   lua_sethook(FThread, CountHook, LUA_MASKCOUNT, cHookCount);
   GAbort := False;
+  GExecAllowed := AMacro.Exec;
   FRunning := AMacro;
   Step;
-  Result := True;
+end;
+
+procedure TMacroEngine.ClearHandlers;
+var
+  H: THandler;
+begin
+  FQueue.Clear;
+  if FState <> nil then
+    for H in FHandlers do
+      luaL_unref(FState, LUA_REGISTRYINDEX, H.Ref);
+  FHandlers.Clear;
+end;
+
+procedure TMacroEngine.Subscribe(const ATopic: string);
+var
+  Plugin, Topic: UTF8String;
+begin
+  // doc.saved reaches the engine through the plugin's own subscription.
+  if (ATopic = 'doc.saved') or (FSubscribed.IndexOf(ATopic) >= 0) or
+     not Assigned(FApi.Subscribe) then
+    Exit;
+  Plugin := FPluginId;
+  Topic := UTF8String(ATopic);
+  FApi.Subscribe(PAnsiChar(Plugin), PAnsiChar(Topic), OnHostEvent, nil);
+  FSubscribed.Add(ATopic);
+end;
+
+procedure TMacroEngine.DispatchEvent(const ATopic, APayload: string);
+var
+  H: THandler;
+  Ev: TPendingEvent;
+  Topic: string;
+begin
+  if (FState = nil) or (FRunning <> nil) then
+    Exit;
+  Topic := LowerCase(ATopic);
+  for H in FHandlers do
+    if H.Topic = Topic then
+    begin
+      Ev.Handler := H;
+      Ev.Payload := APayload;
+      FQueue.Add(Ev);
+    end;
+  NextEvent;
+end;
+
+procedure TMacroEngine.NextEvent;
+var
+  Ev: TPendingEvent;
+begin
+  if (FRunning <> nil) or (FQueue.Count = 0) then
+    Exit;
+  Ev := FQueue[0];
+  FQueue.Delete(0);
+  FEventMacro.Free;
+  FEventMacro := TMacro.Create;
+  FEventMacro.Name := Ev.Handler.Topic;
+  FEventMacro.Exec := Ev.Handler.Exec;
+  FEventMacro.RunRef := Ev.Handler.Ref;
+  Launch(FEventMacro, Ev.Payload, True);
 end;
 
 procedure TMacroEngine.Step;
@@ -650,7 +895,8 @@ begin
   end;
   GSlices := 0;
   NRes := 0;
-  Status := lua_resume(FThread, FState, 0, @NRes);
+  Status := lua_resume(FThread, FState, FStartArgs, @NRes);
+  FStartArgs := 0;
   if Status = LUA_YIELD then
   begin
     lua_settop(FThread, 0);
@@ -675,6 +921,9 @@ begin
   FThreadRef := 0;
   FRunning := nil;
   GAbort := False;
+  GExecAllowed := '';
+  LuaHostReset;
+  NextEvent;
 end;
 
 procedure TMacroEngine.RequestAbort;

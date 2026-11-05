@@ -51,6 +51,7 @@ var
   lua_toboolean: function(L: PLuaState; AIndex: Integer): Integer; cdecl;
   lua_pushnil: procedure(L: PLuaState); cdecl;
   lua_pushinteger: procedure(L: PLuaState; N: Int64); cdecl;
+  lua_pushnumber: procedure(L: PLuaState; N: Double); cdecl;
   lua_pushboolean: procedure(L: PLuaState; B: Integer); cdecl;
   lua_pushlstring: function(L: PLuaState; S: PAnsiChar; ALen: NativeUInt): PAnsiChar; cdecl;
   lua_pushcclosure: procedure(L: PLuaState; F: TLuaCFunction; N: Integer); cdecl;
@@ -171,6 +172,7 @@ begin
   @lua_toboolean := Sym('lua_toboolean');
   @lua_pushnil := Sym('lua_pushnil');
   @lua_pushinteger := Sym('lua_pushinteger');
+  @lua_pushnumber := Sym('lua_pushnumber');
   @lua_pushboolean := Sym('lua_pushboolean');
   @lua_pushlstring := Sym('lua_pushlstring');
   @lua_pushcclosure := Sym('lua_pushcclosure');
