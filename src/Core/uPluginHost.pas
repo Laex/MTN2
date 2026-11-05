@@ -6,7 +6,7 @@ unit uPluginHost;
 interface
 
 uses
-  System.SysUtils, uPluginInfo;
+  System.SysUtils, uPluginInfo, uPluginInstall;
 
 procedure StartPluginHost(const APluginsDir: string);
 procedure StopPluginHost;
@@ -55,6 +55,13 @@ function HostConfigurePlugin(AIndex: Integer): Boolean;
 function HostPluginInfo(AIndex: Integer; out AInfo: TPluginInfo): Boolean;
 /// <summary>Id of the plugin of row AIndex, '' for a row that does not exist.</summary>
 function HostPluginIdAt(AIndex: Integer): string;
+/// <summary>Installs the plugin in ASource (a folder or a .zip file) into the plugins
+/// folder. A new plugin starts switched off; the catalog is read again, so it shows in
+/// the Plugins list at once.</summary>
+function HostInstallPlugin(const ASource: string; AReplace: Boolean): TPluginInstallResult;
+/// <summary>Unloads the plugin of row AIndex and deletes its folder. False when the row
+/// does not exist or its files could not be deleted (ADetail has the reason).</summary>
+function HostRemovePlugin(AIndex: Integer; out ADetail: string): Boolean;
 /// <summary>Load the catalogued plugin that owns AScheme, if any.
 /// No-op when that plugin is already loaded. Used from VFS resolve.</summary>
 function HostEnsurePluginScheme(const AScheme: string): Boolean;
@@ -427,6 +434,69 @@ begin
     Result := ''
   else
     Result := Ids[AIndex];
+end;
+
+function HostInstallPlugin(const ASource: string; AReplace: Boolean): TPluginInstallResult;
+var
+  Disabled: TArray<string>;
+  Known: Boolean;
+  S: string;
+begin
+  if GPluginsDir = '' then
+  begin
+    Result := Default(TPluginInstallResult);
+    Result.Status := pisFailed;
+    Exit;
+  end;
+  Result := InstallPlugin(ASource, GPluginsDir, AReplace);
+  if Result.Status <> pisOk then
+    Exit;
+  if not Result.Replaced then
+  begin
+    Disabled := PluginLoader.DisabledPlugins;
+    Known := False;
+    for S in Disabled do
+      if SameText(S, Result.Id) then
+        Known := True;
+    if not Known then
+    begin
+      Disabled := Disabled + [Result.Id];
+      PluginLoader.SetDisabledPlugins(Disabled);
+      WriteDisabledPlugins(GetConfigFilePath(cDisabledPluginsFile), Disabled);
+      if GPendingActive then
+        GPendingDisabled := GPendingDisabled + [Result.Id];
+    end;
+  end;
+  PluginLoader.CatalogPlugins(GPluginsDir);
+end;
+
+function HostRemovePlugin(AIndex: Integer; out ADetail: string): Boolean;
+var
+  Id: string;
+  Disabled: TArray<string>;
+  I: Integer;
+begin
+  ADetail := '';
+  Id := HostPluginIdAt(AIndex);
+  if (Id = '') or (GPluginsDir = '') then
+    Exit(False);
+  PluginLoader.UnloadPlugin(Id);
+  Result := RemovePluginFolder(Id, GPluginsDir, ADetail);
+  if Result then
+  begin
+    Disabled := PluginLoader.DisabledPlugins;
+    for I := High(Disabled) downto 0 do
+      if SameText(Disabled[I], Id) then
+        Delete(Disabled, I, 1);
+    PluginLoader.SetDisabledPlugins(Disabled);
+    WriteDisabledPlugins(GetConfigFilePath(cDisabledPluginsFile), Disabled);
+    for I := High(GPendingDisabled) downto 0 do
+      if SameText(GPendingDisabled[I], Id) then
+        Delete(GPendingDisabled, I, 1);
+  end;
+  PluginLoader.CatalogPlugins(GPluginsDir);
+  if Result then
+    WritePluginOrder(GetConfigFilePath(cPluginOrderFile), PluginLoader.CatalogPluginIds);
 end;
 
 function HostPluginListDisplayLabels: TArray<string>;

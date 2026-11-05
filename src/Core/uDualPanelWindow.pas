@@ -18,7 +18,7 @@ uses
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
-  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInfo, uPluginServices, uPluginInputChord, uPluginSurface,
+  uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInstall, uPluginInfo, uPluginServices, uPluginInputChord, uPluginSurface,
   uFolderHistory, uFolderFrecent, uANSIParser,
   uLinkUtils, uFileAttrTypes, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
   uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
@@ -860,6 +860,10 @@ type
     function HandlePluginPermsCommand(const AControlId: string): Boolean;
     function HandlePluginInfoCommand(const AControlId: string): Boolean;
     function HandlePluginListCommand(const AControlId: string): Boolean;
+    procedure AskInstallPlugin(ARow: Integer);
+    procedure RunPluginInstall(ASource: string; AReplace: Boolean);
+    procedure AskRemovePlugin(ARow: Integer);
+    procedure ShowPluginNotice(const ATitle, AText: string);
     procedure OpenFolderHistoryDialog;
     procedure OpenFolderFrecentDialog;
     procedure OpenFileHistoryDialog;
@@ -9929,6 +9933,114 @@ begin
   ShowPluginList(Row);
 end;
 
+{ A message over the Plugins list; the list comes back when it is closed. }
+procedure TDualPanelWindow.ShowPluginNotice(const ATitle, AText: string);
+var
+  Row: Integer;
+begin
+  if ShowHostDialog(BuildConfirmDialog(ATitle, AText), nil, 'settings.md#plugins') then
+    Exit;
+  Row := FPluginListReturnRow;
+  FPluginListReturnRow := -1;
+  if Row >= 0 then
+    ShowPluginList(Row);
+end;
+
+procedure TDualPanelWindow.AskInstallPlugin(ARow: Integer);
+begin
+  FPluginListReturnRow := ARow;
+  if ShowHostDialog(BuildInputDialog(T('ui.plugins.installTitle', 'Install plugin'),
+       T('ui.plugins.installPrompt', 'Folder or .zip file with the plugin:'), ''),
+     procedure(AControl, AValues: string)
+     var
+       V: TJSONValue;
+       Source: string;
+     begin
+       if not DialogCmdIsAccept(AControl) then
+         Exit;
+       Source := '';
+       V := TJSONObject.ParseJSONValue(AValues);
+       try
+         if V is TJSONObject then
+           TJSONObject(V).TryGetValue<string>('name', Source);
+       finally
+         V.Free;
+       end;
+       if Trim(Source) <> '' then
+         RunPluginInstall(Source, False);
+     end, 'settings.md#plugins') then
+    Exit;
+  FPluginListReturnRow := -1;
+  ShowPluginList(ARow);
+end;
+
+procedure TDualPanelWindow.RunPluginInstall(ASource: string; AReplace: Boolean);
+var
+  R: TPluginInstallResult;
+  Title: string;
+begin
+  Title := T('ui.plugins.installTitle', 'Install plugin');
+  R := HostInstallPlugin(ASource, AReplace);
+  case R.Status of
+    pisOk:
+      if R.Replaced then
+        ShowPluginNotice(Title, Format(T('ui.plugins.replaced',
+          'Plugin %s replaced. A loaded plugin keeps its old version until the next start.'), [R.Id]))
+      else
+        ShowPluginNotice(Title, Format(T('ui.plugins.installed',
+          'Plugin %s installed. It is switched off: turn it on in the list with Space, then OK.'), [R.Id]));
+    pisExists:
+      ShowHostDialog(BuildConfirmDialog(Title, Format(T('ui.plugins.exists',
+          'The plugin %s is installed already. Replace it?'), [R.Id])),
+        procedure(AControl, AValues: string)
+        begin
+          if DialogCmdIsAccept(AControl) then
+            RunPluginInstall(ASource, True);
+        end, 'settings.md#plugins');
+    pisSourceMissing:
+      ShowPluginNotice(Title, Format(T('ui.plugins.sourceMissing', 'Not found: %s'), [Trim(ASource)]));
+    pisNoManifest:
+      ShowPluginNotice(Title, T('ui.plugins.noManifest', 'The source has no plugin.json.'));
+    pisBadId:
+      ShowPluginNotice(Title, Format(T('ui.plugins.badId',
+        'The plugin id "%s" is not allowed: use letters, digits, ".", "_" and "-".'), [R.Id]));
+    pisUnsafeArchive:
+      ShowPluginNotice(Title, T('ui.plugins.unsafeArchive',
+        'The archive is refused: it has paths outside the plugin folder or is too large.'));
+  else
+    ShowPluginNotice(Title, Format(T('ui.plugins.installFailed', 'Installing failed: %s'), [R.Detail]));
+  end;
+end;
+
+procedure TDualPanelWindow.AskRemovePlugin(ARow: Integer);
+var
+  Id: string;
+begin
+  Id := HostPluginIdAt(ARow);
+  FPluginListReturnRow := ARow;
+  if (Id <> '') and
+     ShowHostDialog(BuildConfirmDialog(T('ui.plugins.removeTitle', 'Remove plugin'),
+       Format(T('ui.plugins.removeAsk', 'Delete the plugin %s and its files?'), [Id])),
+       procedure(AControl, AValues: string)
+       var
+         Detail: string;
+         Title: string;
+       begin
+         if not DialogCmdIsAccept(AControl) then
+           Exit;
+         Title := T('ui.plugins.removeTitle', 'Remove plugin');
+         if HostRemovePlugin(ARow, Detail) then
+           ShowPluginNotice(Title, Format(T('ui.plugins.removed', 'Plugin %s removed.'), [Id]))
+         else
+           ShowPluginNotice(Title, Format(T('ui.plugins.removeFailed',
+             'Plugin %s could not be removed: %s. Switch it off, restart the program and try again.'),
+             [Id, Detail]));
+       end, 'settings.md#plugins') then
+    Exit;
+  FPluginListReturnRow := -1;
+  ShowPluginList(ARow);
+end;
+
 function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
 var
   Row, Delta, Top: Integer;
@@ -9936,7 +10048,7 @@ begin
   Result := True;
   if (AControlId <> 'toggle') and (AControlId <> 'permissions') and
      (AControlId <> 'settings') and (AControlId <> 'info') and (AControlId <> 'up') and
-     (AControlId <> 'down') then
+     (AControlId <> 'down') and (AControlId <> 'add') and (AControlId <> 'remove') then
   begin
     // OK applies the pending on/off choices; Cancel, Esc and the close box drop them.
     FDialog.Close;
@@ -9966,6 +10078,16 @@ begin
   if AControlId = 'info' then
   begin
     ShowPluginInfo(Row);
+    Exit;
+  end;
+  if AControlId = 'add' then
+  begin
+    AskInstallPlugin(Row);
+    Exit;
+  end;
+  if AControlId = 'remove' then
+  begin
+    AskRemovePlugin(Row);
     Exit;
   end;
   if AControlId = 'settings' then

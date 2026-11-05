@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Plugins",
   "width": 98,
-  "height": 20,
+  "height": 22,
   "children": [
     {
       "type": "list",
@@ -75,6 +75,24 @@
       "col": 50,
       "row": 16,
       "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "add",
+      "text": "&Add...",
+      "col": 12,
+      "row": 18,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "remove",
+      "text": "&Remove",
+      "col": 28,
+      "row": 18,
+      "width": 14,
       "height": 1
     },
     {

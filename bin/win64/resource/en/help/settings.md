@@ -72,6 +72,8 @@ If the theme of the saved session is not found, the program says so and uses the
 - **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`).
 - **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start).
 - **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
+- **Add...** installs a plugin from a folder or a `.zip` file (it must contain `plugin.json`; the folder is named after its `id`). An installed plugin is switched off: turn it on with Space and press **OK**. A plugin with the same `id` is replaced after a confirmation; a loaded plugin keeps its old version until the next start. An archive with paths outside the plugin folder is refused.
+- **Remove** deletes the folder of the selected plugin after a confirmation. If its files are in use (the plugin is loaded), switch it off, restart the program and try again.
 <!--external-tools-->- **External viewer/editor...** – the Alt+F3 / Alt+F4 commands; `%1` is the file path (without `%1` the path is added at the end), e.g. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
 - **Environment profiles...** – variables laid over the environment of new shells; see [Environment profiles](environment.md).
 <!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** for every element.

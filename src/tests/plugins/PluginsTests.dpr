@@ -51,7 +51,8 @@ uses
   TestMetaFormat in 'TestMetaFormat.pas',
   TestWasmHost in 'TestWasmHost.pas',
   TestHighlightPlugin in 'TestHighlightPlugin.pas',
-  TestWorkspacePlugin in 'TestWorkspacePlugin.pas';
+  TestWorkspacePlugin in 'TestWorkspacePlugin.pas',
+  TestPluginInstall in 'TestPluginInstall.pas';
 
 begin
   RunRegisteredTests;
