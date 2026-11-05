@@ -1394,8 +1394,14 @@ begin
   end;
 
   ParentDir := ExtractFilePath(ADestPath);
-  if ParentDir <> '' then
-    ForceDirectories(ParentDir);
+  if (ParentDir <> '') and not ForceDirectories(ParentDir) then
+  begin
+    if GetLastError = ERROR_ACCESS_DENIED then
+      AError := 'Access denied'
+    else
+      AError := SysErrorMessage(GetLastError);
+    Exit;
+  end;
   Done := False;
   GLock.Acquire;
   try
@@ -1406,7 +1412,10 @@ begin
     except
       on E: Exception do
       begin
-        AError := E.Message;
+        if Pos(LowerCase(SysErrorMessage(ERROR_ACCESS_DENIED)), LowerCase(E.Message)) > 0 then
+          AError := 'Access denied'
+        else
+          AError := E.Message;
         Arc.Close;
         Exit;
       end;

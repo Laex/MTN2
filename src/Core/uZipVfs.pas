@@ -53,7 +53,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Zip, System.DateUtils,
   System.Generics.Collections, System.Generics.Defaults, uPlatformInfo,
-  uZipArchiveCache, uZipNames, uVfsUtils;
+  uZipArchiveCache, uZipNames, uVfsUtils, uPlatformFileOps;
 
 { TZipLayer / TVfsEntryComparer live in uZipArchiveCache (single ownership). }
 
@@ -1833,11 +1833,31 @@ var
   Buf: TBytes;
   Got: Integer;
   LH: TZipHeader;
+  Code: Integer;
 begin
-  ForceDirectories(SafeDirectoryName(ADestPath));
+  if not ForceDirectories(SafeDirectoryName(ADestPath)) then
+  begin
+    Code := GetLastError;
+    if PlatformSearchDenied(Code) then
+      AError := TVfsError.Make(vecAccessDenied, SysErrorMessage(Code), ADestPath)
+    else
+      AError := TVfsError.Make(vecIOError, SysErrorMessage(Code), ADestPath);
+    Exit;
+  end;
   AZip.Read(AIndex, Local, LH);
   try
-    OutFS := TFileStream.Create(ADestPath, fmCreate);
+    try
+      OutFS := TFileStream.Create(ADestPath, fmCreate);
+    except
+      on E: Exception do
+      begin
+        if PlatformIsAccessDenied(E) then
+          AError := TVfsError.Make(vecAccessDenied, E.Message, ADestPath)
+        else
+          AError := TVfsError.Make(vecIOError, E.Message, ADestPath);
+        Exit;
+      end;
+    end;
     try
       SetLength(Buf, 64 * 1024);
       while True do
@@ -2057,7 +2077,10 @@ begin
           Err := TVfsError.Make(vecInvalidURI, 'Not an archive copy', FromURI);
       except
         on E: Exception do
-          Err := TVfsError.Make(vecIOError, E.Message, FromURI);
+          if PlatformIsAccessDenied(E) then
+            Err := TVfsError.Make(vecAccessDenied, E.Message, FromURI)
+          else
+            Err := TVfsError.Make(vecIOError, E.Message, FromURI);
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;

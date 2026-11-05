@@ -167,7 +167,7 @@ begin
       Exit(Int64(verOk));
     if Err = 'Not found' then
       Exit(Int64(verNotFound));
-    if Err = 'Encrypted' then
+    if (Err = 'Encrypted') or (Err = 'Access denied') then
       Exit(Int64(verAccessDenied));
     Exit(Int64(verIOError));
   end;

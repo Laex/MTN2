@@ -117,6 +117,8 @@ type
     function CanOfferElevate(const AError: TVfsError; AFromIndex: Integer): Boolean;
     function ActiveVfs: IVirtualFileSystem;
     procedure RunElevatedRemainder(AFromIndex: Integer);
+    procedure ExecuteElevatedUnpack(const ASrcURI, ADstURI: string; AIndex: Integer;
+      AOverwrite: Boolean);
     procedure ProbeJobItemAsync(const ASrcURI, ADstURI: string; AIndex: Integer;
       AKind: TPanelJobKind; AFollowSymlinks, AOnlyNewer, AOverwriteAsk: Boolean;
       const ALife: IJobLife);
@@ -1908,7 +1910,9 @@ end;
 
 // Access denied on a local path: the administrator helper can redo the rest of
 // the job, so the error prompt offers that. Not for archives and virtual
-// folders, and not when MTN2 already runs elevated.
+// folders, and not when MTN2 already runs elevated. Unpacking is offered when
+// the destination is a local folder: the archive is read by this process and
+// only the write to the destination goes through the helper.
 function TPanelJobController.CanOfferElevate(const AError: TVfsError;
   AFromIndex: Integer): Boolean;
 var
@@ -1916,11 +1920,20 @@ var
 begin
   Result := False;
   if (AError.Code <> vecAccessDenied) or
-     not (FJob.Kind in [pjkCopy, pjkMove, pjkDelete]) then
+     not (FJob.Kind in [pjkCopy, pjkMove, pjkDelete, pjkUnpack]) then
     Exit;
   if (AFromIndex < 0) or (AFromIndex > High(FJob.Sources)) or IsProcessElevated or
      FUseElevated or not Assigned(FElevatedVfs) then
     Exit;
+  if FJob.Kind = pjkUnpack then
+  begin
+    // An encrypted archive reports access denied too; that is a password
+    // problem, not a rights problem.
+    Result := not HasArchiveChain(FJob.DestDirURI) and
+      (FileUriToPath(FJob.DestDirURI) <> '') and
+      (Pos('ncrypted', AError.Message) = 0);
+    Exit;
+  end;
   for I := AFromIndex to High(FJob.Sources) do
     if HasArchiveChain(FJob.Sources[I]) or (FileUriToPath(FJob.Sources[I]) = '') then
       Exit;
@@ -1951,6 +1964,99 @@ begin
   else
     ExecuteTransfer(FJob.PendingSrcURI, FJob.PendingDstURI, AFromIndex,
       FJob.PendingTransferOverwrite, FJob.PendingTransferAppend);
+end;
+
+// Unpack with administrator rights: the entry is extracted to a temporary
+// folder by this process (the helper cannot read archives), then the helper
+// copies the result to the destination and the temporary folder is removed.
+procedure TPanelJobController.ExecuteElevatedUnpack(const ASrcURI, ADstURI: string;
+  AIndex: Integer; AOverwrite: Boolean);
+var
+  Life: IJobLife;
+  Cancel: IJobCancelToken;
+  SrcURI, DstURI, TmpRoot, TmpURI: string;
+  Idx: Integer;
+  Overwrite: Boolean;
+  Cleanup: TProc;
+begin
+  Life := FLife;
+  Cancel := FJob.Cancel;
+  SrcURI := ASrcURI;
+  DstURI := ADstURI;
+  Idx := AIndex;
+  Overwrite := AOverwrite;
+  TmpRoot := TPath.Combine(TPath.GetTempPath, 'mtn2-unpack-' + TGUID.NewGuid.ToString);
+  try
+    TDirectory.CreateDirectory(TmpRoot);
+  except
+    on E: Exception do
+    begin
+      HandleTransferFailure(SrcURI, DstURI, Idx, Overwrite, False,
+        TVfsError.Make(vecIOError, E.Message, SrcURI));
+      Exit;
+    end;
+  end;
+  TmpURI := JoinFileUri(PathToFileUri(TmpRoot),
+    ExtractFileName(ExcludeTrailingPathDelimiter(FileUriToPath(DstURI))));
+  Cleanup :=
+    procedure
+    var
+      Dir: string;
+    begin
+      Dir := TmpRoot;
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          try
+            TDirectory.Delete(Dir, True);
+          except
+            // The system temp cleanup removes what is left.
+          end;
+        end).Start;
+    end;
+  FVfs.CopyAsync(SrcURI, TmpURI, Cancel,
+    procedure(const ADone, ATotal: Int64; const ACurrentName: string;
+      const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
+    begin
+      if not Life.Alive or (FJob.Phase <> pjpRunning) then
+        Exit;
+      NoteItemProgress(ADone, ATotal, ACurrentName, AItemDone, AItemTotal,
+        AItemSrcPath, AItemDstPath);
+    end,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if not Life.Alive then
+      begin
+        Cleanup();
+        Exit;
+      end;
+      if FJob.Phase <> pjpRunning then
+      begin
+        Cleanup();
+        Exit;
+      end;
+      if not ASuccess then
+      begin
+        Cleanup();
+        HandleTransferFailure(SrcURI, DstURI, Idx, Overwrite, False, AError);
+        Exit;
+      end;
+      FElevatedVfs.CopyAsync(TmpURI, DstURI, Cancel, nil,
+        procedure(const ACopyOk: Boolean; const ACopyError: TVfsError)
+        begin
+          Cleanup();
+          if not Life.Alive then
+            Exit;
+          if FJob.Phase <> pjpRunning then
+            Exit;
+          if not ACopyOk then
+          begin
+            HandleTransferFailure(SrcURI, DstURI, Idx, Overwrite, False, ACopyError);
+            Exit;
+          end;
+          AdvanceJobAfterItem(Idx);
+        end, Overwrite, FJob.PreserveTimestamps);
+    end, Overwrite, FJob.PreserveTimestamps);
 end;
 
 procedure TPanelJobController.ResolveDeleteAsk(AAction: TJobDeleteFailAction);
@@ -2147,6 +2253,12 @@ begin
   BeginItemTotals(SrcURI, DstURI);
   // Parent-directory creation for nested DestURIs runs inside the VFS worker
   // (CopyAsync/MoveAsync), not on the UI thread.
+
+  if (Kind = pjkUnpack) and FUseElevated and Assigned(FElevatedVfs) then
+  begin
+    ExecuteElevatedUnpack(SrcURI, DstURI, Idx, DoOverwrite);
+    Exit;
+  end;
 
   if FJob.CurrentIsLink and (Kind in [pjkCopy, pjkMove]) and not FUseElevated then
   begin

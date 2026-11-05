@@ -420,16 +420,6 @@
       "$title": "比较文件",
       "ok": "确定"
     },
-    "DIALOG_DIFFMERGE": {
-      "$title": "比较与合并",
-      "dm_next": "下一处(&N)",
-      "dm_prev": "上一处(&P)",
-      "dm_right": "复制到右(&R)",
-      "dm_left": "复制到左(&L)",
-      "dm_undo": "撤销(&U)",
-      "dm_save": "保存(&S)",
-      "ok": "关闭"
-    },
     "DIALOG_FILEHISTORY": {
       "$title": "文件历史",
       "hint": "Enter=打开  F3=查看  F4=编辑  Ctrl+Enter=转到文件",
@@ -1392,9 +1382,8 @@
     "compareFiles.title": "比较文件",
     "compareFiles.needFiles": "请在每个面板中选择一个文件（不是文件夹）。",
     "compareFiles.failed": "比较失败：%s",
-    "diffMerge.colLeft": "左",
-    "diffMerge.colRight": "右",
-    "diffMerge.hint": "向右 / 向左键把差异复制到右 / 左文件，Ctrl+向下 / Ctrl+向上在差异之间移动。",
+    "diffMerge.title": "比较与合并",
+    "diffMerge.keys": "向右/向左：复制  Ctrl+向下/向上 或 Tab：下一个/上一个差异  Ctrl+Z：撤销  Ctrl+S：保存  Esc：关闭",
     "diffMerge.noneLeft": "没有剩余差异。",
     "diffMerge.position": "第 %d 处差异，共 %d 处",
     "diffMerge.total": "%d 处差异",

@@ -79,26 +79,126 @@ function SplitTextLines(const AText: string; out AEol: string;
 function JoinTextLines(const ALines: TArray<string>; const AEol: string;
   AFinalEol: Boolean): string;
 
-type
-  /// <summary>Column layout of a side-by-side row.</summary>
-  TDiffRowLayout = record
-    NumCols: Integer;   // width of a line number
-    CellCols: Integer;  // width of one text cell
-  end;
-
-/// <summary>Cells that fit a text cell when the list is AListCols wide.</summary>
-function DiffRowLayout(AListCols: Integer): TDiffRowLayout;
-/// <summary>"  12 left text  | marker |  12 right text ", exactly the layout's width.</summary>
-function FormatDiffRow(const ARow: TDiffRow; const ALayout: TDiffRowLayout): string;
 /// <summary>The three cells between the two texts: "|", "~", "<" or ">".</summary>
 function DiffRowMarker(AKind: TDiffRowKind): string;
-/// <summary>Column in a formatted row where the marker starts.</summary>
-function DiffMarkerCol(const ALayout: TDiffRowLayout): Integer;
+/// <summary>The part of two lines that differs: what is left after the common
+/// start and the common end. AStart is 0-based and the same on both sides; the
+/// lengths may be 0 (text only inserted on the other side).</summary>
+procedure DiffInnerSpan(const ALeft, ARight: string; out AStart, ALeftLen,
+  ARightLen: Integer);
 
 implementation
 
 uses
   System.Math;
+
+const
+  // Pairing two lines always scores a little, so unrelated lines in the same
+  // position still show as one changed row; a similar line elsewhere wins.
+  cPairBonus = 0.05;
+  // Beyond this many line pairs in one hunk the alignment is positional.
+  cMaxAlignCells = 400000;
+
+// Sorted character bigrams of the line without surrounding blanks.
+function LineBigrams(const AText: string): TArray<Cardinal>;
+var
+  T: string;
+  I: Integer;
+begin
+  T := Trim(AText);
+  if Length(T) < 2 then
+  begin
+    SetLength(Result, Length(T));
+    if Length(T) = 1 then
+      Result[0] := Cardinal(Ord(T[1]));
+    Exit;
+  end;
+  SetLength(Result, Length(T) - 1);
+  for I := 1 to Length(T) - 1 do
+    Result[I - 1] := (Cardinal(Ord(T[I])) shl 16) or Cardinal(Ord(T[I + 1]));
+  TArray.Sort<Cardinal>(Result);
+end;
+
+// Dice coefficient of two bigram multisets: 0 (nothing shared) .. 1 (same).
+function BigramSimilarity(const A, B: TArray<Cardinal>): Double;
+var
+  I, J, Common: Integer;
+begin
+  if (Length(A) = 0) and (Length(B) = 0) then
+    Exit(1.0);
+  Common := 0;
+  I := 0;
+  J := 0;
+  while (I < Length(A)) and (J < Length(B)) do
+    if A[I] = B[J] then
+    begin
+      Inc(Common);
+      Inc(I);
+      Inc(J);
+    end
+    else if A[I] < B[J] then
+      Inc(I)
+    else
+      Inc(J);
+  Result := 2 * Common / (Length(A) + Length(B));
+end;
+
+// For every deleted line the index of the inserted line shown beside it, or -1.
+// The pairs keep their order and maximise the total similarity, so a changed
+// line meets its edited version even when other lines were added around it.
+function AlignHunkLines(const ADels, AIns: TArray<string>): TArray<Integer>;
+var
+  N, M, W, I, J: Integer;
+  Score: TArray<Double>;
+  BA, BB: TArray<TArray<Cardinal>>;
+  Diag, Cur: Double;
+begin
+  N := Length(ADels);
+  M := Length(AIns);
+  SetLength(Result, N);
+  for I := 0 to N - 1 do
+    Result[I] := -1;
+  if (N = 0) or (M = 0) then
+    Exit;
+  if Int64(N) * M > cMaxAlignCells then
+  begin
+    for I := 0 to Min(N, M) - 1 do
+      Result[I] := I;
+    Exit;
+  end;
+  SetLength(BA, N);
+  for I := 0 to N - 1 do
+    BA[I] := LineBigrams(ADels[I]);
+  SetLength(BB, M);
+  for J := 0 to M - 1 do
+    BB[J] := LineBigrams(AIns[J]);
+  W := M + 1;
+  SetLength(Score, (N + 1) * W);
+  for I := 1 to N do
+    for J := 1 to M do
+    begin
+      Diag := Score[(I - 1) * W + J - 1] + BigramSimilarity(BA[I - 1], BB[J - 1]) +
+        cPairBonus;
+      Score[I * W + J] := Max(Diag, Max(Score[(I - 1) * W + J], Score[I * W + J - 1]));
+    end;
+  // Ties walk away from the end, so the earlier lines are the ones that pair.
+  I := N;
+  J := M;
+  while (I > 0) and (J > 0) do
+  begin
+    Cur := Score[I * W + J];
+    if Score[(I - 1) * W + J] = Cur then
+      Dec(I)
+    else if Score[I * W + J - 1] = Cur then
+      Dec(J)
+    else
+    begin
+      Result[I - 1] := J - 1;
+      Dec(I);
+      Dec(J);
+    end;
+  end;
+end;
 
 constructor TDiffMerge.Create(const ALeft, ARight: TArray<string>);
 begin
@@ -119,7 +219,8 @@ procedure TDiffMerge.Rebuild;
 var
   Spans: TArray<TDiffSpan>;
   Dels, Ins: TArray<string>;
-  I, J, K, LeftPos, RightPos, Paired, RowCount, Hunk: Integer;
+  I, J, K, LeftPos, RightPos, NextIns, RowCount, Hunk: Integer;
+  Match: TArray<Integer>;
 
   procedure AddRow(AKind: TDiffRowKind; const ALeft, ARight: string;
     ALeftNo, ARightNo, AHunk: Integer);
@@ -177,13 +278,27 @@ begin
     FHunks[Hunk].RightStart := RightPos;
     FHunks[Hunk].RightCount := Length(Ins);
     FHunks[Hunk].FirstRow := RowCount;
-    Paired := Min(Length(Dels), Length(Ins));
-    for K := 0 to Paired - 1 do
-      AddRow(drChanged, Dels[K], Ins[K], LeftPos + K + 1, RightPos + K + 1, Hunk);
-    for K := Paired to High(Dels) do
-      AddRow(drLeftOnly, Dels[K], '', LeftPos + K + 1, 0, Hunk);
-    for K := Paired to High(Ins) do
-      AddRow(drRightOnly, '', Ins[K], 0, RightPos + K + 1, Hunk);
+    Match := AlignHunkLines(Dels, Ins);
+    NextIns := 0;
+    for K := 0 to High(Dels) do
+      if Match[K] < 0 then
+        AddRow(drLeftOnly, Dels[K], '', LeftPos + K + 1, 0, Hunk)
+      else
+      begin
+        while NextIns < Match[K] do
+        begin
+          AddRow(drRightOnly, '', Ins[NextIns], 0, RightPos + NextIns + 1, Hunk);
+          Inc(NextIns);
+        end;
+        AddRow(drChanged, Dels[K], Ins[NextIns], LeftPos + K + 1,
+          RightPos + NextIns + 1, Hunk);
+        Inc(NextIns);
+      end;
+    while NextIns <= High(Ins) do
+    begin
+      AddRow(drRightOnly, '', Ins[NextIns], 0, RightPos + NextIns + 1, Hunk);
+      Inc(NextIns);
+    end;
     Inc(LeftPos, Length(Dels));
     Inc(RightPos, Length(Ins));
     I := J;
@@ -409,17 +524,6 @@ begin
     Result := Result + AEol;
 end;
 
-const
-  cNumCols = 5;
-  cMarkerCols = 3;
-
-function DiffRowLayout(AListCols: Integer): TDiffRowLayout;
-begin
-  Result.NumCols := cNumCols;
-  // number + space, text cell, marker, number + space, text cell
-  Result.CellCols := Max((AListCols - 2 * (cNumCols + 1) - cMarkerCols) div 2, 4);
-end;
-
 function DiffRowMarker(AKind: TDiffRowKind): string;
 begin
   case AKind of
@@ -431,44 +535,22 @@ begin
   end;
 end;
 
-function DiffMarkerCol(const ALayout: TDiffRowLayout): Integer;
-begin
-  Result := ALayout.NumCols + 1 + ALayout.CellCols;
-end;
-
-// Control characters would break the grid; a tab takes one cell like any other.
-function FitCell(const AText: string; AWidth: Integer): string;
+procedure DiffInnerSpan(const ALeft, ARight: string; out AStart, ALeftLen,
+  ARightLen: Integer);
 var
-  I: Integer;
+  Common, Tail, MinLen: Integer;
 begin
-  Result := Copy(AText, 1, AWidth);
-  for I := 1 to Length(Result) do
-    if Result[I] < ' ' then
-      Result[I] := ' ';
-  if Length(Result) < AWidth then
-    Result := Result + StringOfChar(' ', AWidth - Length(Result));
-end;
-
-function NumCell(ANo, AWidth: Integer): string;
-begin
-  if ANo <= 0 then
-    Result := StringOfChar(' ', AWidth)
-  else
-  begin
-    Result := IntToStr(ANo);
-    if Length(Result) > AWidth then
-      Result := Copy(Result, Length(Result) - AWidth + 1, AWidth)
-    else
-      Result := StringOfChar(' ', AWidth - Length(Result)) + Result;
-  end;
-end;
-
-function FormatDiffRow(const ARow: TDiffRow; const ALayout: TDiffRowLayout): string;
-begin
-  Result := NumCell(ARow.LeftNo, ALayout.NumCols) + ' ' +
-    FitCell(ARow.Left, ALayout.CellCols) + DiffRowMarker(ARow.Kind) +
-    NumCell(ARow.RightNo, ALayout.NumCols) + ' ' +
-    FitCell(ARow.Right, ALayout.CellCols);
+  MinLen := Min(Length(ALeft), Length(ARight));
+  Common := 0;
+  while (Common < MinLen) and (ALeft[Common + 1] = ARight[Common + 1]) do
+    Inc(Common);
+  Tail := 0;
+  while (Tail < MinLen - Common) and
+        (ALeft[Length(ALeft) - Tail] = ARight[Length(ARight) - Tail]) do
+    Inc(Tail);
+  AStart := Common;
+  ALeftLen := Length(ALeft) - Common - Tail;
+  ARightLen := Length(ARight) - Common - Tail;
 end;
 
 end.

@@ -421,16 +421,6 @@
       "$title": "Dateien vergleichen",
       "ok": "OK"
     },
-    "DIALOG_DIFFMERGE": {
-      "$title": "Vergleichen und zusammenführen",
-      "dm_next": "&Weiter",
-      "dm_prev": "&Zurück",
-      "dm_right": "&Rechts >>",
-      "dm_left": "<< &Links",
-      "dm_undo": "Rück&gängig",
-      "dm_save": "&Speichern",
-      "ok": "Schließen"
-    },
     "DIALOG_FILEHISTORY": {
       "$title": "Dateiverlauf",
       "hint": "Enter=Öffnen  F3=Ansehen  F4=Bearbeiten  Ctrl+Enter=Zur Datei",
@@ -1393,9 +1383,8 @@
     "compareFiles.title": "Dateien vergleichen",
     "compareFiles.needFiles": "Wählen Sie in jedem Fenster eine Datei (keinen Ordner).",
     "compareFiles.failed": "Vergleich fehlgeschlagen: %s",
-    "diffMerge.colLeft": "Links",
-    "diffMerge.colRight": "Rechts",
-    "diffMerge.hint": "Rechts / Links kopieren den Unterschied in die rechte / linke Datei, Strg+Ab / Strg+Auf wechseln zwischen Unterschieden.",
+    "diffMerge.title": "Vergleichen und zusammenführen",
+    "diffMerge.keys": "Rechts/Links: kopieren  Strg+Ab/Auf oder Tab: nächster/vorheriger Unterschied  Strg+Z: rückgängig  Strg+S: speichern  Esc: schließen",
     "diffMerge.noneLeft": "Keine Unterschiede mehr.",
     "diffMerge.position": "Unterschied %d von %d",
     "diffMerge.total": "%d Unterschied(e)",

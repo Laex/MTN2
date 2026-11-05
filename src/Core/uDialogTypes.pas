@@ -380,10 +380,6 @@ function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
   const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
-/// <summary>Compare and merge window: the two file names, a status line, the
-/// side-by-side list and the merge buttons; AWidth cells wide (the list and the
-/// labels stretch with it).</summary>
-function BuildDiffMergeDialog(AWidth: Integer): TDialogDeclaration;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
@@ -1569,57 +1565,6 @@ begin
     if Result.Controls[I].Row > DiffRow then
       Dec(Result.Controls[I].Row, Gap);
   Dec(Result.Height, Gap);
-end;
-
-function BuildDiffMergeDialog(AWidth: Integer): TDialogDeclaration;
-var
-  I, Gap, BtnW, X: Integer;
-
-  procedure Place(const AId: string; ACol, ACells: Integer);
-  var
-    J: Integer;
-  begin
-    for J := 0 to High(Result.Controls) do
-      if SameText(Result.Controls[J].Id, AId) then
-      begin
-        Result.Controls[J].Col := ACol;
-        Result.Controls[J].BoxW := ACells;
-      end;
-  end;
-
-begin
-  RequireDialogResource(cResDialogDiffMerge, Result);
-  Result.Width := AWidth;
-  Place('left_name', 1, AWidth - 4);
-  Place('right_name', 1, AWidth - 4);
-  Place('status', 1, AWidth - 4);
-  Place('columns', 1, AWidth - 4);
-  Place('rows', 1, AWidth - 4);
-  Place('hint', 1, AWidth - 4);
-  // Seven buttons share the width, a cell apart.
-  Gap := 1;
-  BtnW := Min((AWidth - 2 - 6 * Gap) div 7, 16);
-  X := (AWidth - (7 * BtnW + 6 * Gap)) div 2;
-  for I := 0 to 6 do
-  begin
-    case I of
-      0: Place('dm_next', X, BtnW);
-      1: Place('dm_prev', X, BtnW);
-      2: Place('dm_right', X, BtnW);
-      3: Place('dm_left', X, BtnW);
-      4: Place('dm_undo', X, BtnW);
-      5: Place('dm_save', X, BtnW);
-    else
-      Place('ok', X, BtnW);
-    end;
-    Inc(X, BtnW + Gap);
-  end;
-  for I := 0 to High(Result.Controls) do
-    if (Result.Controls[I].Kind = dckLabel) and IsHRuleText(Result.Controls[I].Text) then
-    begin
-      Result.Controls[I].Text := StringOfChar(chBoxH, AWidth - 2);
-      Result.Controls[I].BoxW := AWidth - 2;
-    end;
 end;
 
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,

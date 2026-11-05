@@ -422,16 +422,6 @@
       "$title": "Compare files",
       "ok": "OK"
     },
-    "DIALOG_DIFFMERGE": {
-      "$title": "Compare and merge",
-      "dm_next": "&Next",
-      "dm_prev": "&Prev",
-      "dm_right": "&Right >>",
-      "dm_left": "<< &Left",
-      "dm_undo": "&Undo",
-      "dm_save": "&Save",
-      "ok": "Close"
-    },
     "DIALOG_FILEHISTORY": {
       "$title": "File history",
       "hint": "Enter=Open  F3=View  F4=Edit  Ctrl+Enter=Go to file",
@@ -1403,9 +1393,8 @@
     "compareFiles.title": "Compare files",
     "compareFiles.needFiles": "Select a file (not a folder) on each panel.",
     "compareFiles.failed": "Compare failed: %s",
-    "diffMerge.colLeft": "Left",
-    "diffMerge.colRight": "Right",
-    "diffMerge.hint": "Right / Left copy the difference to the right / left file, Ctrl+Down / Ctrl+Up move between differences.",
+    "diffMerge.title": "Compare and merge",
+    "diffMerge.keys": "Right/Left: copy  Ctrl+Down/Up or Tab: next/prev difference  Ctrl+Z: undo  Ctrl+S: save  Esc: close",
     "diffMerge.noneLeft": "No differences left.",
     "diffMerge.position": "Difference %d of %d",
     "diffMerge.total": "%d difference(s)",

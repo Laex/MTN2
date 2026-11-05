@@ -419,16 +419,6 @@
       "$title": "Сравнение файлов",
       "ok": "ОК"
     },
-    "DIALOG_DIFFMERGE": {
-      "$title": "Сравнение и слияние",
-      "dm_next": "Д&алее",
-      "dm_prev": "&Назад",
-      "dm_right": "В&право >>",
-      "dm_left": "<< В&лево",
-      "dm_undo": "&Отменить",
-      "dm_save": "&Сохранить",
-      "ok": "Закрыть"
-    },
     "DIALOG_FILEHISTORY": {
       "$title": "История файлов",
       "hint": "Enter=Открыть  F3=Просмотр  F4=Правка  Ctrl+Enter=К файлу",
@@ -1041,7 +1031,7 @@
     "toast.adminHelperOn": "Запущен помощник администратора: файловые операции выполняются с правами администратора",
     "toast.adminHelperOff": "Помощник администратора остановлен",
     "admin.title": "Права администратора",
-    "admin.confirm": "Отказано в доступе. Повторить от администратора?",
+    "admin.confirm": "Отказано в доступе. Повторить с правами администратора?",
     "console.savePrompt": "Файл:",
     "toast.consoleSaved": "Вывод консоли сохранён: %s",
     "toast.consoleSaveFailed": "Не удалось сохранить вывод консоли",
@@ -1400,9 +1390,8 @@
     "compareFiles.title": "Сравнение файлов",
     "compareFiles.needFiles": "Выберите на каждой панели файл (не папку).",
     "compareFiles.failed": "Не удалось сравнить: %s",
-    "diffMerge.colLeft": "Слева",
-    "diffMerge.colRight": "Справа",
-    "diffMerge.hint": "Вправо / Влево копируют отличие в правый / левый файл, Ctrl+Вниз / Ctrl+Вверх – переход между отличиями.",
+    "diffMerge.title": "Сравнение и слияние",
+    "diffMerge.keys": "Вправо/Влево: копировать  Ctrl+Вниз/Вверх или Tab: следующее/предыдущее отличие  Ctrl+Z: отмена  Ctrl+S: сохранить  Esc: закрыть",
     "diffMerge.noneLeft": "Отличий не осталось.",
     "diffMerge.position": "Отличие %d из %d",
     "diffMerge.total": "Отличий: %d",

@@ -27,7 +27,7 @@ uses
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
-  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelDiffMerge, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
+  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
   uKeyHints, uPanelCompare;
@@ -289,7 +289,7 @@ type
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
     FMultiRename: TMultiRenameController;
-    FDiffMerge: TDiffMergeController;
+    FDiffView: TDiffViewer;
     FKeymapHost: TDualPanelKeymapHost;
     FShiftSelect: TShiftSelectGesture;
     FClickHost: TDualPanelClickHost;
@@ -759,6 +759,7 @@ type
     procedure HelpChanged(Sender: TObject);
     procedure QuickTextChanged(Sender: TObject);
     function HelpVisible: Boolean;
+    function DiffViewVisible: Boolean;
     procedure HostUserMenuAction(AAction: TUserMenuAction; AParent: TUserMenuItem;
       AIndex: Integer);
     function HostUserMenuContext: TUserMenuContext;
@@ -1878,7 +1879,11 @@ begin
   FreeAndNil(FHistoryPopupCtrl);
   FreeAndNil(FDirSync);
   FreeAndNil(FMultiRename);
-  FreeAndNil(FDiffMerge);
+  if Assigned(FDiffView) then
+  begin
+    FDiffView.OnChanged := nil;
+    FreeAndNil(FDiffView);
+  end;
   FreeAndNil(FSearchDlg);
   FreeAndNil(FJobDialogs);
   FreeAndNil(FJobs);
@@ -3525,13 +3530,6 @@ begin
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
   FModalInputHost.HandleDirSyncList := FDirSync.HandleListInput;
-  FDiffMerge := TDiffMergeController.Create(FDialog, DialogCommand,
-    HostSetDialogKind, CloseTransientUiBeforeDialog, NotifyChanged,
-    function: Integer
-    begin
-      Result := Area.Width;
-    end, HostIsAlive);
-  FModalInputHost.HandleDiffMergeList := FDiffMerge.HandleListInput;
   FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     StartMultiRenameJob, NotifyChanged,
@@ -6648,8 +6646,6 @@ begin
     FDirSync.NotifyDialogChanged;
   if (FDialogKind = hdkMultiRename) and Assigned(FMultiRename) then
     FMultiRename.NotifyDialogChanged;
-  if (FDialogKind = hdkDiffMerge) and Assigned(FDiffMerge) then
-    FDiffMerge.NotifyDialogChanged;
   if (FDialogKind = hdkSearch) and Assigned(FSearchDlg) then
     FSearchDlg.SyncHexField;
   NotifyChanged;
@@ -6848,8 +6844,6 @@ begin
       Result := FDirSync.DispatchCommand(AControlId, AFields);
     hdkMultiRename:
       Result := FMultiRename.DispatchCommand(AControlId);
-    hdkDiffMerge:
-      Result := FDiffMerge.DispatchCommand(AControlId);
     hdkArchivePassword:
       begin
         HandleArchivePasswordCommand(AControlId, AFields.Password);
@@ -7526,7 +7520,13 @@ begin
     RightName := 'R: ' + RightRow.Text;
   end;
   Token := TJobCancelToken.Create;
-  FDiffMerge.Open(LeftRow.URI, RightRow.URI, LeftName, RightName, FVfs,
+  if not Assigned(FDiffView) then
+  begin
+    FDiffView := TDiffViewer.Create(Theme);
+    FDiffView.OnChanged := HelpChanged;
+  end;
+  CloseTransientUiBeforeDialog;
+  FDiffView.Open(LeftRow.URI, RightRow.URI, LeftName, RightName, FVfs,
     procedure
     begin
       if Life.Alive then
@@ -9205,6 +9205,8 @@ begin
   Result := False;
   if Assigned(FSaver) and FSaver.Wake then
     Exit(True);
+  if DiffViewVisible then
+    Exit(FDiffView.HandleMouseWheel(AWheelDelta));
   if Assigned(FTopMenu) and FTopMenu.HandleMouseWheel(AWheelDelta) then
     Exit(True);
   // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
@@ -10325,7 +10327,12 @@ end;
 
 function TDualPanelWindow.HelpVisible: Boolean;
 begin
-  Result := Assigned(FHelp) and FHelp.Visible;
+  Result := (Assigned(FHelp) and FHelp.Visible) or DiffViewVisible;
+end;
+
+function TDualPanelWindow.DiffViewVisible: Boolean;
+begin
+  Result := Assigned(FDiffView) and FDiffView.Visible;
 end;
 
 procedure TDualPanelWindow.OpenFolderHistoryDialog;
@@ -14738,7 +14745,9 @@ begin
     DispatchDrawOverlays(FDrawHost, Snap);
     if (Kind = dckPanels) and Assigned(FCmdLineMgr) then
       FCmdLineMgr.HistoryPopup.Draw(Buffer, Theme);
-    if HelpVisible then
+    if DiffViewVisible then
+      FDiffView.Paint(Buffer, W, H)
+    else if HelpVisible then
       FHelp.Paint(Buffer, W, H, Area.Left, Area.Top);
     // Last. Over a dialog a notice is drawn only where it leaves the dialog
     // uncovered, so it never hides the buttons of whatever the user is
@@ -14773,7 +14782,7 @@ begin
   WasAlt := ssAlt in KeyModifiers;
   Result := inherited SetKeyModifiers(AShift);
   // Help draws its own F-bar from the modifiers, like an embedded document.
-  if HelpVisible and FHelp.SetKeyModifiers(AShift) then
+  if Assigned(FHelp) and FHelp.Visible and FHelp.SetKeyModifiers(AShift) then
   begin
     Result := True;
     Invalidate;
@@ -15024,6 +15033,11 @@ begin
   ADialogVisible := False;
   AHandled := False;
   // F1 Help is modal over the menu, workspaces and dialogs alike.
+  if DiffViewVisible then
+  begin
+    AHandled := FDiffView.HandleInput(AKey, AShift, AKeyChar);
+    Exit(True);
+  end;
   if HelpVisible then
   begin
     AHandled := FHelp.HandleInput(AKey, AShift, AKeyChar);
@@ -15301,6 +15315,8 @@ begin
     FSaverSwallowUp := True;
     Exit(True);
   end;
+  if DiffViewVisible then
+    Exit(FDiffView.HandleMouseDown(ALocalCol, ALocalRow, AShift));
   if HelpVisible then
     Exit(FHelp.HandleMouseDown(ALocalCol, ALocalRow, AShift));
   // An open F9 submenu is drawn over the Viewer/Editor/Terminal body. If
@@ -15599,6 +15615,8 @@ var
 begin
   if Assigned(FSaver) and FSaver.WakeByMove then
     Exit(True);
+  if DiffViewVisible then
+    Exit(True);
   if HelpVisible then
     Exit(FHelp.HandleMouseMove(ALocalCol, ALocalRow));
   // Dragging through an open menu only moves its selection.
@@ -15633,6 +15651,8 @@ begin
     FSaverSwallowUp := False;
     Exit(True);
   end;
+  if DiffViewVisible then
+    Exit(True);
   if HelpVisible then
     Exit(FHelp.HandleMouseUp);
   if TabDragBusy(FTabDragArmed, FTabDragActive) then

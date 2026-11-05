@@ -20,6 +20,9 @@ type
     [Test] procedure TestAddedLineIsRightOnly;
     [Test] procedure TestRemovedLineIsLeftOnly;
     [Test] procedure TestNeighbouringChangesFormOneHunk;
+    [Test] procedure TestSimilarLinePairsWithItsCounterpartNotItsNeighbour;
+    [Test] procedure TestUnrelatedLinesStillPairInPlace;
+    [Test] procedure TestExtraLinesBeforeAndAfterThePairKeepOrder;
     [Test] procedure TestCopyToRightMakesRightEqualLeft;
     [Test] procedure TestCopyToLeftMakesLeftEqualRight;
     [Test] procedure TestCopyingOneHunkLeavesTheOthers;
@@ -29,7 +32,9 @@ type
     [Test] procedure TestNextAndPrevHunkRows;
     [Test] procedure TestSplitKeepsDominantLineBreakAndFinalBreak;
     [Test] procedure TestJoinRestoresTheSplitText;
-    [Test] procedure TestFormattedRowsHaveEqualWidth;
+    [Test] procedure TestInnerSpanCoversOnlyTheChangedMiddle;
+    [Test] procedure TestInnerSpanOfDisjointLinesIsTheWholeLine;
+    [Test] procedure TestInnerSpanOfRepeatedCharactersDoesNotOverlap;
   end;
 
 implementation
@@ -118,6 +123,66 @@ begin
     Assert.AreEqual(2, M.Hunks[0].LeftCount);
     Assert.AreEqual(3, M.Hunks[0].RightCount);
     Assert.AreEqual<Integer>(3, Length(M.Rows) - 2);
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestDiffMerge.TestSimilarLinePairsWithItsCounterpartNotItsNeighbour;
+var
+  M: TDiffMerge;
+begin
+  M := TDiffMerge.Create(
+    Lines(['x = 1;', 'console.log(totalValue());']),
+    Lines(['x = 1;', 'addItem("Pen", 10, 0.9);', 'console.log("total", totalValue());']));
+  try
+    Assert.AreEqual(1, M.HunkCount);
+    Assert.AreEqual<Integer>(3, Length(M.Rows));
+    Assert.AreEqual(Ord(drRightOnly), Ord(M.Rows[1].Kind));
+    Assert.AreEqual('addItem("Pen", 10, 0.9);', M.Rows[1].Right);
+    Assert.AreEqual(0, M.Rows[1].LeftNo);
+    Assert.AreEqual(2, M.Rows[1].RightNo);
+    Assert.AreEqual(Ord(drChanged), Ord(M.Rows[2].Kind));
+    Assert.AreEqual('console.log(totalValue());', M.Rows[2].Left);
+    Assert.AreEqual('console.log("total", totalValue());', M.Rows[2].Right);
+    Assert.AreEqual(2, M.Rows[2].LeftNo);
+    Assert.AreEqual(3, M.Rows[2].RightNo);
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestDiffMerge.TestUnrelatedLinesStillPairInPlace;
+var
+  M: TDiffMerge;
+begin
+  M := TDiffMerge.Create(Lines(['a', 'qqqq', 'c']), Lines(['a', 'zzzz', 'yyyy', 'c']));
+  try
+    Assert.AreEqual<Integer>(4, Length(M.Rows));
+    Assert.AreEqual(Ord(drChanged), Ord(M.Rows[1].Kind));
+    Assert.AreEqual('qqqq', M.Rows[1].Left);
+    Assert.AreEqual('zzzz', M.Rows[1].Right);
+    Assert.AreEqual(Ord(drRightOnly), Ord(M.Rows[2].Kind));
+    Assert.AreEqual('yyyy', M.Rows[2].Right);
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestDiffMerge.TestExtraLinesBeforeAndAfterThePairKeepOrder;
+var
+  M: TDiffMerge;
+begin
+  M := TDiffMerge.Create(
+    Lines(['s', 'return total(items);', 'e']),
+    Lines(['s', 'first', 'return total(items, tax);', 'last', 'e']));
+  try
+    Assert.AreEqual<Integer>(5, Length(M.Rows));
+    Assert.AreEqual(Ord(drRightOnly), Ord(M.Rows[1].Kind));
+    Assert.AreEqual(Ord(drChanged), Ord(M.Rows[2].Kind));
+    Assert.AreEqual(Ord(drRightOnly), Ord(M.Rows[3].Kind));
+    Assert.AreEqual('last', M.Rows[3].Right);
+    Assert.AreEqual(4, M.Rows[3].RightNo);
   finally
     M.Free;
   end;
@@ -269,23 +334,38 @@ begin
     Assert.AreEqual(Text, JoinTextLines(SplitTextLines(Text, Eol, Final), Eol, Final), Text);
 end;
 
-procedure TTestDiffMerge.TestFormattedRowsHaveEqualWidth;
+procedure TTestDiffMerge.TestInnerSpanCoversOnlyTheChangedMiddle;
 var
-  M: TDiffMerge;
-  L: TDiffRowLayout;
-  I: Integer;
+  Start, LL, RL: Integer;
 begin
-  L := DiffRowLayout(80);
-  M := TDiffMerge.Create(
-    Lines(['short', 'a much longer line than the cell can hold ' + StringOfChar('x', 100), 'c'#9'd']),
-    Lines(['short', 'other', '']));
-  try
-    for I := 0 to High(M.Rows) do
-      Assert.AreEqual(2 * (L.NumCols + 1 + L.CellCols) + 3, Length(FormatDiffRow(M.Rows[I], L)));
-    Assert.AreEqual(DiffMarkerCol(L), Pos(' ~ ', FormatDiffRow(M.Rows[1], L)) - 1);
-  finally
-    M.Free;
-  end;
+  DiffInnerSpan('print(total)', 'print("t", total)', Start, LL, RL);
+  Assert.AreEqual(6, Start);
+  Assert.AreEqual(0, LL);
+  Assert.AreEqual(5, RL);
+  DiffInnerSpan('abcXdef', 'abcYYdef', Start, LL, RL);
+  Assert.AreEqual(3, Start);
+  Assert.AreEqual(1, LL);
+  Assert.AreEqual(2, RL);
+end;
+
+procedure TTestDiffMerge.TestInnerSpanOfDisjointLinesIsTheWholeLine;
+var
+  Start, LL, RL: Integer;
+begin
+  DiffInnerSpan('abc', 'xyz', Start, LL, RL);
+  Assert.AreEqual(0, Start);
+  Assert.AreEqual(3, LL);
+  Assert.AreEqual(3, RL);
+end;
+
+procedure TTestDiffMerge.TestInnerSpanOfRepeatedCharactersDoesNotOverlap;
+var
+  Start, LL, RL: Integer;
+begin
+  DiffInnerSpan('aa', 'aaa', Start, LL, RL);
+  Assert.AreEqual(2, Start);
+  Assert.AreEqual(0, LL);
+  Assert.AreEqual(1, RL);
 end;
 
 initialization
