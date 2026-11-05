@@ -8,6 +8,7 @@ library DocViewPlugin;
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Hash,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uDocText in 'uDocText.pas';
 
 const
@@ -24,40 +25,14 @@ const
 var
   GHostApi: THostApiTable;
 
-{ file:///C:/dir/a%20b.pdf -> C:\dir\a b.pdf; '' for any other URI. }
+{ file:///C:/dir/a%20b.pdf -> C:\dir\a b.pdf (file:///home/a%20b.pdf -> /home/a b.pdf
+  on Linux); '' for any other URI. }
 function UriToPath(const AUri: string): string;
-const
-  cPrefix = 'file:///';
-var
-  Raw: UTF8String;
-  Bytes: TBytes;
-  I, N: Integer;
 begin
-  Result := '';
-  if not SameText(Copy(AUri, 1, Length(cPrefix)), cPrefix) then
-    Exit;
-  Raw := UTF8String(Copy(AUri, Length(cPrefix) + 1, MaxInt));
-  SetLength(Bytes, Length(Raw));
-  N := 0;
-  I := 1;
-  while I <= Length(Raw) do
-  begin
-    if (Raw[I] = '%') and (I + 2 <= Length(Raw)) and
-       CharInSet(Raw[I + 1], ['0'..'9', 'a'..'f', 'A'..'F']) and
-       CharInSet(Raw[I + 2], ['0'..'9', 'a'..'f', 'A'..'F']) then
-    begin
-      Bytes[N] := StrToInt('$' + string(Raw[I + 1]) + string(Raw[I + 2]));
-      Inc(I, 3);
-    end
-    else
-    begin
-      Bytes[N] := Ord(Raw[I]);
-      Inc(I);
-    end;
-    Inc(N);
-  end;
-  SetLength(Bytes, N);
-  Result := StringReplace(TEncoding.UTF8.GetString(Bytes), '/', '\', [rfReplaceAll]);
+  if SameText(Copy(AUri, 1, 8), 'file:///') then
+    Result := FileUriToPath(AUri)
+  else
+    Result := '';
 end;
 
 procedure RemoveOldTempFiles;
@@ -140,7 +115,7 @@ begin
     Target := RenderToTemp(Uri, Path);
     if Target = '' then
       Exit;
-    TargetUri := 'file:///' + StringReplace(Target, '\', '/', [rfReplaceAll]);
+    TargetUri := PathToFileUri(Target);
     Bytes := UTF8String(TargetUri);
     if Length(Bytes) + 1 > ARedirectCap then
       Exit;

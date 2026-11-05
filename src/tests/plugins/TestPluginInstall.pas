@@ -82,7 +82,7 @@ begin
   Assert.AreEqual(Ord(pisOk), Ord(R.Status));
   Assert.AreEqual('demo.one', R.Id);
   Assert.IsFalse(R.Replaced);
-  Assert.IsTrue(TFile.Exists(TPath.Combine(FPlugins, 'demo.one\data.txt')));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(FPlugins, 'demo.one' + PathDelim + 'data.txt')));
 end;
 
 procedure TTestPluginInstall.TestInstallsFromZipWithTopFolder;
@@ -91,7 +91,7 @@ var
 begin
   R := InstallPlugin(MakeZip(MakeSource('packed', 'demo.zip')), FPlugins, False);
   Assert.AreEqual(Ord(pisOk), Ord(R.Status));
-  Assert.IsTrue(TFile.Exists(TPath.Combine(FPlugins, 'demo.zip\plugin.json')));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(FPlugins, 'demo.zip' + PathDelim + 'plugin.json')));
 end;
 
 procedure TTestPluginInstall.TestExistingIdNeedsReplace;
@@ -101,7 +101,7 @@ begin
   InstallPlugin(MakeSource('a', 'same'), FPlugins, False);
   R := InstallPlugin(MakeSource('b', 'same'), FPlugins, False);
   Assert.AreEqual(Ord(pisExists), Ord(R.Status));
-  Assert.AreEqual('a', TFile.ReadAllText(TPath.Combine(FPlugins, 'same\data.txt'), TEncoding.UTF8));
+  Assert.AreEqual('a', TFile.ReadAllText(TPath.Combine(FPlugins, 'same' + PathDelim + 'data.txt'), TEncoding.UTF8));
 end;
 
 procedure TTestPluginInstall.TestReplaceSwapsTheFiles;
@@ -112,7 +112,7 @@ begin
   R := InstallPlugin(MakeSource('b', 'same'), FPlugins, True);
   Assert.AreEqual(Ord(pisOk), Ord(R.Status));
   Assert.IsTrue(R.Replaced);
-  Assert.AreEqual('b', TFile.ReadAllText(TPath.Combine(FPlugins, 'same\data.txt'), TEncoding.UTF8));
+  Assert.AreEqual('b', TFile.ReadAllText(TPath.Combine(FPlugins, 'same' + PathDelim + 'data.txt'), TEncoding.UTF8));
   Assert.IsFalse(TDirectory.Exists(TPath.Combine(FPlugins, 'same.old')));
 end;
 

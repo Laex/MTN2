@@ -213,4 +213,12 @@ if ($Config -ne 'Release' -and -not $NoSamples) {
     catch { Write-Host "WARN: samples build failed: $_" }
 }
 
+# The text files a package carries sit next to the exe: "Open changelog" after
+# an update opens the CHANGELOG.md of the program folder, so a build from a
+# checkout must refresh it too.
+foreach ($Doc in 'CHANGELOG.md', 'THIRD-PARTY.md', 'LICENSE') {
+    $DocSrc = Join-Path $PSScriptRoot "..\$Doc"
+    if (Test-Path $DocSrc) { Copy-Item $DocSrc (Split-Path $Exe -Parent) -Force }
+}
+
 Write-Host "OK: $Exe"

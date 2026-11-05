@@ -1,9 +1,9 @@
 unit uPdfium;
 
-{ Thin binding to the PDFium C API (pdfium.dll next to the plugin): open a
+{ Thin binding to the PDFium C API (pdfium.dll or libpdfium.so next to the plugin): open a
   document, render a part of a page into a BGRA buffer, read the text of a
   page. The library is loaded on first use; PdfiumAvailable tells whether that
-  worked, so the plugin can step aside when the DLL is missing. }
+  worked, so the plugin can step aside when the library is missing. }
 
 interface
 
@@ -33,7 +33,7 @@ type
     property PageCount: Integer read FPageCount;
   end;
 
-/// <summary>True when pdfium.dll was found and initialised.</summary>
+/// <summary>True when the PDFium library was found and initialised.</summary>
 function PdfiumAvailable: Boolean;
 
 /// <summary>Text of the first AMaxPages pages (at most AMaxChars characters),
@@ -45,7 +45,8 @@ procedure PdfiumShutdown;
 implementation
 
 uses
-  Winapi.Windows, System.Math;
+  System.Math
+  {$IFDEF MSWINDOWS}, Winapi.Windows{$ELSE}, Posix.Dlfcn{$ENDIF};
 
 type
   TInitLibrary = procedure; cdecl;
@@ -75,7 +76,7 @@ const
   cMaxRenderSide = 16384;
 
 var
-  GLib: HMODULE;
+  GLib: NativeUInt;
   GTried: Boolean;
   GReady: Boolean;
   GLoadDocument: TLoadDocument;
@@ -95,19 +96,46 @@ var
   GTextCountChars: TTextCountChars;
   GTextGetText: TTextGetText;
 
+{ The folder the plugin library was loaded from. }
 function ModuleDir: string;
+{$IFDEF MSWINDOWS}
 var
   Buf: array[0..MAX_PATH] of Char;
 begin
   GetModuleFileName(HInstance, Buf, Length(Buf));
   Result := ExtractFilePath(string(PChar(@Buf[0])));
 end;
+{$ELSE}
+var
+  Info: dl_info;
+begin
+  Result := '';
+  if (dladdr(UInt64(NativeUInt(@ModuleDir)), Info) <> 0) and (Info.dli_fname <> nil) then
+    Result := ExtractFilePath(UTF8ToString(Info.dli_fname));
+end;
+{$ENDIF}
+
+function LoadPdfiumLibrary: Boolean;
+begin
+  {$IFDEF MSWINDOWS}
+  GLib := LoadLibraryEx(PChar(ModuleDir + 'pdfium.dll'), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+  {$ELSE}
+  GLib := NativeUInt(dlopen(PAnsiChar(UTF8String(ModuleDir + 'libpdfium.so')), RTLD_NOW));
+  if GLib = 0 then
+    GLib := NativeUInt(dlopen('libpdfium.so', RTLD_NOW));
+  {$ENDIF}
+  Result := GLib <> 0;
+end;
 
 function Proc(const AName: AnsiString): Pointer;
 begin
-  Result := GetProcAddress(GLib, PAnsiChar(AName));
+  {$IFDEF MSWINDOWS}
+  Result := GetProcAddress(HMODULE(GLib), PAnsiChar(AName));
+  {$ELSE}
+  Result := dlsym(GLib, PAnsiChar(AName));
+  {$ENDIF}
   if Result = nil then
-    raise EPdfium.CreateFmt('pdfium.dll has no %s', [string(AName)]);
+    raise EPdfium.CreateFmt('the PDFium library has no %s', [string(AName)]);
 end;
 
 function PdfiumAvailable: Boolean;
@@ -118,8 +146,7 @@ begin
     Exit(GReady);
   GTried := True;
   try
-    GLib := LoadLibraryEx(PChar(ModuleDir + 'pdfium.dll'), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
-    if GLib = 0 then
+    if not LoadPdfiumLibrary then
       Exit(False);
     GLoadDocument := Proc('FPDF_LoadDocument');
     GCloseDocument := Proc('FPDF_CloseDocument');
@@ -153,9 +180,12 @@ var
 begin
   if GReady and (GLib <> 0) then
   begin
-    Destroy_ := GetProcAddress(GLib, 'FPDF_DestroyLibrary');
-    if Assigned(Destroy_) then
+    try
+      Destroy_ := Proc('FPDF_DestroyLibrary');
       Destroy_;
+    except
+      // The library is unloaded with the process anyway.
+    end;
   end;
   GReady := False;
 end;
@@ -166,7 +196,7 @@ var
 begin
   inherited Create;
   if not PdfiumAvailable then
-    raise EPdfium.Create('pdfium.dll is not available');
+    raise EPdfium.Create('the PDFium library is not available');
   PathU := UTF8String(APath);
   FDoc := GLoadDocument(PAnsiChar(PathU), nil);
   if FDoc = nil then

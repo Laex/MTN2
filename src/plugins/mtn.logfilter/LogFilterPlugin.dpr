@@ -8,6 +8,7 @@ library LogFilterPlugin;
 uses
   System.SysUtils, System.Classes, System.JSON, System.IOUtils,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uLogFilter in 'uLogFilter.pas';
 
 const
@@ -208,7 +209,7 @@ begin
     Exit;
   end;
   Path := WriteResult(GDocPath, Output);
-  Uri := 'file:///' + StringReplace(Path, '\', '/', [rfReplaceAll]);
+  Uri := PathToFileUri(Path);
   UriUtf8 := UTF8String(Uri);
   if GHostApi.OpenDocument(PAnsiChar(UriUtf8), 0) <> 0 then
     Notice(Tr('msg.cannotOpen', 'The result cannot be shown now.'), 1)

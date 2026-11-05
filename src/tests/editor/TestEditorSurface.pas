@@ -20,6 +20,7 @@ type
     [Test] procedure TestEscClosesAndOtherKeysGoToThePlugin;
     [Test] procedure TestPluginClosingTheSurfaceClosesTheTab;
     [Test] procedure TestDestroyingTheTabTellsThePlugin;
+    [Test] [Category('WindowsOnly')] procedure TestClosingTheTabClearsTheOverlay;
     [Test] procedure TestFullscreenCoversTheWholeWindow;
     [Test] procedure TestEscLeavesFullscreenBeforeClosing;
     [Test] procedure TestPluginCanTakeEscAndF10;
@@ -268,6 +269,19 @@ begin
   FreeAndNil(GView);
   Assert.AreEqual(1, Told, 'the plugin hears that the tab went');
   Assert.IsFalse(SurfaceExists(Handle), 'the surface is gone');
+end;
+
+procedure TTestEditorSurface.TestClosingTheTabClearsTheOverlay;
+var
+  Handle: Integer;
+begin
+  InstallHost;
+  Handle := PluginSurfaceOpen('t.surface', 'Pic', nil, nil, nil);
+  SendRed(Handle);
+  Paint(GView);
+  Assert.IsTrue(OverlayActive, 'the overlay holds the picture');
+  FreeAndNil(GView);
+  Assert.IsFalse(OverlayActive, 'the picture goes with the tab');
 end;
 
 initialization

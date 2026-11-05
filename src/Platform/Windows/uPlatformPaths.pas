@@ -22,6 +22,11 @@ function PlatformFinalDirPath(const AApiPath: string): string;
 /// case-sensitive names, no drive letters.</summary>
 function PlatformPosixPaths: Boolean;
 
+/// <summary>Identifies the volume a path lives on, so jobs on one disk can queue:
+/// the device number of the path or of its nearest existing parent. '' where
+/// drive letters tell volumes apart (Windows) or nothing is known.</summary>
+function PlatformVolumeId(const APath: string): string;
+
 implementation
 
 uses
@@ -30,6 +35,11 @@ uses
 function PlatformPosixPaths: Boolean;
 begin
   Result := False;
+end;
+
+function PlatformVolumeId(const APath: string): string;
+begin
+  Result := '';
 end;
 
 function PlatformIsDirectory(const AApiPath: string): Boolean;

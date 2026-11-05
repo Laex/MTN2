@@ -135,6 +135,7 @@ type
     // text document. FSurfaceGen is the frame last given to the Overlay.
     FSurfaceHandle: Integer;
     FSurfaceGen: Cardinal;
+    FSurfaceOverlayShown: Boolean;
     // The document was being saved at the last DocChanged (to see a save finish).
     FWasSaving: Boolean;
     // A "doc.changed" event is queued (edits of one command are sent as one).
@@ -956,7 +957,7 @@ begin
     SurfaceTabClosed(FSurfaceHandle);
     FSurfaceHandle := 0;
   end;
-  if FMdOverlayShowing then
+  if FMdOverlayShowing or FSurfaceOverlayShown then
     ClearOverlayPreview;
   FreeAndNil(FDialogs);
   if Assigned(FDialog) then
@@ -5680,6 +5681,7 @@ begin
   if (OverlayCurrentURI <> Uri) or (Gen <> FSurfaceGen) then
   begin
     SetOverlayPixels(Uri, FrameW, FrameH, Pixels, Bounds, Bounds);
+    FSurfaceOverlayShown := True;
     FSurfaceGen := Gen;
   end
   else

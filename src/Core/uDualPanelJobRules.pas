@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Math,
-  uDualPanelUiTypes, uTerminalTypes, uVfsTypes;
+  uDualPanelUiTypes, uTerminalTypes, uVfsTypes, uPlatformPaths;
 
 const
   cMaxPanelJobs = 8;
@@ -824,28 +824,36 @@ begin
   Result := '';
 end;
 
-// The drive letter of a local URI, #0 for anything else.
-function UriDriveLetter(const AUri: string): Char;
+// The drive of a local URI (its letter on Windows, the device number elsewhere), '' for
+// anything else.
+function UriVolumeKey(const AUri: string): string;
+var
+  Path: string;
+  Letter: Char;
 begin
-  if SameText(Copy(AUri, 1, 5), 'file:') then
-    Result := DriveLetterOf(FileUriToPath(AUri))
-  else
-    Result := #0;
+  Result := '';
+  if not SameText(Copy(AUri, 1, 5), 'file:') then
+    Exit;
+  Path := FileUriToPath(AUri);
+  Letter := DriveLetterOf(Path);
+  if Letter <> #0 then
+    Result := Letter
+  else if Path <> '' then
+    Result := PlatformVolumeId(Path);
 end;
 
 function SharesDriveLetter(const AUrisA, AUrisB: TArray<string>): Boolean;
 var
-  A, B: string;
-  LetterA: Char;
+  A, B, KeyA: string;
 begin
   Result := False;
   for A in AUrisA do
   begin
-    LetterA := UriDriveLetter(A);
-    if LetterA = #0 then
+    KeyA := UriVolumeKey(A);
+    if KeyA = '' then
       Continue;
     for B in AUrisB do
-      if UriDriveLetter(B) = LetterA then
+      if UriVolumeKey(B) = KeyA then
         Exit(True);
   end;
 end;

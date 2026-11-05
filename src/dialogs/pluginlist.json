@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Plugins",
   "width": 98,
-  "height": 22,
+  "height": 25,
   "children": [
     {
       "type": "list",
@@ -16,32 +16,7 @@
       "col": 1,
       "row": 0,
       "width": 94,
-      "height": 11
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 11,
-      "width": 96,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Space switches the plugin on or off, Ctrl+Up / Ctrl+Down move it in the load order.",
-      "id": "lbl_keyhint",
-      "col": 2,
-      "row": 12,
-      "width": 92,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "On and off apply after OK; the load order applies from the next start.",
-      "id": "lbl_orderhint",
-      "col": 2,
-      "row": 13,
-      "width": 92,
-      "height": 1
+      "height": 14
     },
     {
       "type": "separator",
@@ -51,11 +26,36 @@
       "height": 1
     },
     {
+      "type": "label",
+      "text": "Space switches the plugin on or off, Ctrl+Up / Ctrl+Down move it in the load order.",
+      "id": "lbl_keyhint",
+      "col": 2,
+      "row": 15,
+      "width": 92,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "On and off apply after OK; the load order applies from the next start.",
+      "id": "lbl_orderhint",
+      "col": 2,
+      "row": 16,
+      "width": 92,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 17,
+      "width": 96,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "settings",
       "text": "&Settings",
-      "col": 12,
-      "row": 16,
+      "col": 8,
+      "row": 19,
       "width": 14,
       "height": 1
     },
@@ -63,8 +63,8 @@
       "type": "button",
       "id": "permissions",
       "text": "&Permissions...",
-      "col": 28,
-      "row": 16,
+      "col": 24,
+      "row": 19,
       "width": 20,
       "height": 1
     },
@@ -72,8 +72,8 @@
       "type": "button",
       "id": "info",
       "text": "&Info",
-      "col": 50,
-      "row": 16,
+      "col": 46,
+      "row": 19,
       "width": 10,
       "height": 1
     },
@@ -81,8 +81,8 @@
       "type": "button",
       "id": "add",
       "text": "&Add...",
-      "col": 12,
-      "row": 18,
+      "col": 74,
+      "row": 19,
       "width": 14,
       "height": 1
     },
@@ -90,8 +90,8 @@
       "type": "button",
       "id": "remove",
       "text": "&Remove",
-      "col": 28,
-      "row": 18,
+      "col": 58,
+      "row": 19,
       "width": 14,
       "height": 1
     },
@@ -100,8 +100,8 @@
       "id": "ok",
       "text": "  OK  ",
       "default": true,
-      "col": 62,
-      "row": 16,
+      "col": 34,
+      "row": 21,
       "width": 10,
       "height": 1
     },
@@ -110,8 +110,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 74,
-      "row": 16,
+      "col": 52,
+      "row": 21,
       "width": 10,
       "height": 1
     }

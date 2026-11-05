@@ -100,6 +100,17 @@ if (-not $NoPlugins) {
         $PluginRes = Join-Path $Plugin.FullName 'resource'
         if (Test-Path $PluginRes) { Copy-Item $PluginRes $Dest -Recurse -Force }
     }
+    # The PDF viewer plugin draws pages with PDFium; it steps aside when libpdfium.so is missing.
+    $PdfDest = Join-Path $PluginsOut 'mtn.pdf'
+    if (Test-Path $PdfDest) {
+        try {
+            & (Join-Path $Src 'tools\fetch-pdfium.ps1') -Linux | Out-Null
+            Copy-Item (Join-Path $Src 'tools\pdfium\linux64\*') $PdfDest -Recurse -Force
+            Write-Host "OK: staged libpdfium.so"
+        } catch {
+            Write-Host "WARN: libpdfium.so not bundled ($_); PDF pages are shown as text"
+        }
+    }
     & (Join-Path $Src 'tools\fetch-wasmtime.ps1') -Linux | Out-Null
     $Wasmtime = Join-Path $Src 'tools\wasmtime\linux64\libwasmtime.so'
     if (Test-Path $Wasmtime) { Copy-Item $Wasmtime $OutDir -Force }

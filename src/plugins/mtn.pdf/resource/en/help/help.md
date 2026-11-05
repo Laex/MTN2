@@ -20,4 +20,4 @@ Quick View (Ctrl+Q) shows the text of the first 300 pages of a file up to 16 MB.
 - *Always show pages as pictures*: the first page is drawn even when the document has text.
 - *Show pages as pictures if the text cannot be extracted* (on by default): a scanned document, which has no text, is drawn instead of an empty panel.
 
-A file that is damaged or protected by a password opens in the other viewers instead. The plugin needs `pdfium.dll` in its folder; without it the text viewer of the document plugin is used.
+A file that is damaged or protected by a password opens in the other viewers instead. The plugin needs `pdfium.dll` (`libpdfium.so` on Linux) in its folder; without it the text viewer of the document plugin is used.

@@ -28,6 +28,10 @@ x64-версию `7z.dll` в `plugins\mtn.7z\`. Автообновление з�
 
 Плагин `mtn.lua` выполняет макросы интерпретатором [Lua](https://www.lua.org) 5.5 (Copyright (C) PUC-Rio), лицензия MIT; текст лицензии – в файле `plugins\mtn.lua\LICENSE-lua.txt`. Библиотека подключается динамически и лежит отдельным файлом: в Windows – из сборки LuaBinaries, в архивах и пакетах Linux – `plugins/mtn.lua/liblua5.4.so.0` (Lua 5.4 из пакета Debian 12, текст лицензии – рядом, `LICENSE-lua.txt`).
 
+## PDFium (`plugins\mtn.pdf\pdfium.dll`)
+
+Плагин `mtn.pdf` рисует страницы PDF библиотекой [PDFium](https://pdfium.googlesource.com/pdfium/) (Copyright The PDFium Authors), лицензии BSD-3-Clause и Apache-2.0; тексты лицензий – в файлах `LICENSE` и папке `licenses` рядом с библиотекой. Берётся готовая сборка проекта [pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) (`src\tools\fetch-pdfium.ps1`); в Linux – `plugins/mtn.pdf/libpdfium.so`. Библиотека подключается динамически и лежит отдельным файлом.
+
 ## Подсветка синтаксиса (`plugins\mtn.highlight`)
 
 Плагин `mtn.highlight` собран из библиотеки [syntect](https://github.com/trishume/syntect) (MIT, Copyright (c) 2017 Tristan Hume, Keith Hall, Google Inc и участники проекта) и описаний синтаксисов из стандартных пакетов Sublime Text ([sublimehq/Packages](https://github.com/sublimehq/Packages)), которые библиотека упаковывает в модуль. Лицензия пакетов разрешает копировать, использовать, изменять, продавать и распространять их без дополнительных условий; синтаксисы YAML (MIT, Copyright (c) 2015 FichteFoll) и Rust (MIT) идут со своими лицензиями, которые требуют сохранять уведомление об авторских правах. Кроме того, в модуль входят библиотеки Rust с лицензиями MIT, Apache-2.0, Unlicense, 0BSD и Zlib (выбрана лицензия MIT или единственная, под которой распространяется библиотека).

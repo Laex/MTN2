@@ -20,6 +20,11 @@ function PlatformFinalDirPath(const AApiPath: string): string;
 /// case-sensitive names, no drive letters.</summary>
 function PlatformPosixPaths: Boolean;
 
+/// <summary>Identifies the volume a path lives on, so jobs on one disk can queue:
+/// the device number of the path or of its nearest existing parent. '' where
+/// drive letters tell volumes apart (Windows) or nothing is known.</summary>
+function PlatformVolumeId(const APath: string): string;
+
 implementation
 
 uses
@@ -31,6 +36,25 @@ function realpath(APath, AResolved: MarshaledAString): MarshaledAString; cdecl;
 function PlatformPosixPaths: Boolean;
 begin
   Result := True;
+end;
+
+function PlatformVolumeId(const APath: string): string;
+var
+  St: _stat;
+  P: UTF8String;
+  Dir: string;
+begin
+  Result := '';
+  Dir := APath;
+  while Dir <> '' do
+  begin
+    P := UTF8String(Dir);
+    if stat(MarshaledAString(P), St) = 0 then
+      Exit(IntToStr(Int64(St.st_dev)));
+    if (Dir = '/') or (ExtractFileDir(Dir) = Dir) then
+      Break;
+    Dir := ExtractFileDir(ExcludeTrailingPathDelimiter(Dir));
+  end;
 end;
 
 function StatMode(const AApiPath: string; out AMode: Cardinal): Boolean;

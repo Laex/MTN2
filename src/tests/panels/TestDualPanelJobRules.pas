@@ -20,6 +20,7 @@ type
     [Test] procedure TestDeleteOneParts;
     [Test] procedure TestTaskbarProgress;
     [Test] procedure TestJobsOnOneDriveRunInTurn;
+    [Test] procedure TestJobsOnOneVolumeRunInTurnWithoutDriveLetters;
     [Test] procedure TestHeldJobShowsInListAndChip;
     [Test] procedure TestSpeedPresetsCycle;
     [Test] procedure TestThrottleLimitsSpeed;
@@ -33,7 +34,7 @@ uses
   System.SysUtils, System.Classes,
   uStrings,
   uDialogTypes,
-  uVfsTypes,
+  uVfsTypes, uPlatformPaths,
   uDualPanelTypes,
   uDualPanelUiTypes,
   uDualPanelJobRules, uDualPanelJobChips;
@@ -436,10 +437,28 @@ begin
   JobSerializePerVolume := True;
 end;
 
+procedure TTestDualPanelJobRules.TestJobsOnOneVolumeRunInTurnWithoutDriveLetters;
+var
+  A, B: TPanelJobState;
+begin
+  if not PlatformPosixPaths then
+    Exit;
+  A := FileJob('file:///etc/a.txt', 'file:///tmp/dst/');
+  B := FileJob('file:///usr/b.txt', 'file:///var/out/');
+  Assert.AreEqual(PlatformVolumeId('/etc'), PlatformVolumeId('/etc/missing/dir'),
+    'a path that does not exist yet is on the volume of its nearest parent');
+  if PlatformVolumeId('/etc') = PlatformVolumeId('/usr') then
+    Assert.IsFalse(CanRunParallel(B, A), 'two transfers on one volume queue');
+  B := FileJob('file:///proc/b.txt', 'file:///proc/out/');
+  Assert.IsTrue(CanRunParallel(B, A), 'transfers on different volumes run together');
+end;
+
 procedure TTestDualPanelJobRules.TestJobsOnOneDriveRunInTurn;
 var
   A, B: TPanelJobState;
 begin
+  if PlatformPosixPaths then
+    Exit;
   A := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
   B := FileJob('file:///C:/other/b.txt', 'file:///F:/out/');
   Assert.IsFalse(CanRunParallel(B, A), 'two transfers reading drive C: queue');

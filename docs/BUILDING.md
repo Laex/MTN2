@@ -26,6 +26,8 @@
 (`src/plugins/mtn.7z/7-Zip-license.txt` -> `plugins\mtn.7z\license.txt`) и `THIRD-PARTY.md`; `package-release.ps1 -Require7z`
 останавливает упаковку, если её нет.
 
+`pdfium.dll` (Windows) и `libpdfium.so` (Linux) для плагина `mtn.pdf` скачивает `src/tools/fetch-pdfium.ps1 [-Linux]` из сборок проекта pdfium-binaries в `src/tools/pdfium`; `build.ps1` и `build-linux.ps1` вызывают его сами и кладут библиотеку в папку плагина. Без неё плагин собирается, но PDF открывает текстовый просмотр плагина документов.
+
 В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
 Ресурсы `src/MTN2.dres` (диалоги, клавиши, меню, темы) в git не хранятся – их собирает `build.ps1`
 (и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.

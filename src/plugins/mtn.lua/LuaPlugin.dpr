@@ -12,6 +12,7 @@ uses
   System.Generics.Collections, System.RegularExpressions, System.Character, System.NetEncoding,
   {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uLuaApi in 'uLuaApi.pas',
   uLuaHostFns in 'uLuaHostFns.pas',
   uLuaMacros in 'uLuaMacros.pas';
@@ -1119,7 +1120,7 @@ begin
     end
     else if (Cmd = 'edit') or (Cmd = 'f4') then
     begin
-      Uri := 'file:///' + StringReplace(M.Path, '\', '/', [rfReplaceAll]);
+      Uri := PathToFileUri(M.Path);
       UriUtf8 := UTF8String(Uri);
       if GHostApi.OpenDocument(PAnsiChar(UriUtf8), 1) <> 0 then
         Notice(Tr('msg.cannotOpen', 'The macro cannot be opened now.'), 1);
@@ -1304,7 +1305,7 @@ begin
     end;
     if not Uri.StartsWith('file:///', True) then
       Exit;
-    Path := StringReplace(TNetEncoding.URL.Decode(Copy(Uri, 9, MaxInt)), '/', '\', [rfReplaceAll]);
+    Path := FileUriToPath(Uri);
     Dir := IncludeTrailingPathDelimiter(GMacrosDir);
     if SameText(ExtractFileExt(Path), '.lua') and SameText(Copy(Path, 1, Length(Dir)), Dir) then
     begin
