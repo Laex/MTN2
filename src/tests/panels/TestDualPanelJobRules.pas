@@ -19,18 +19,24 @@ type
     [Test] procedure TestStatusAndOrigin;
     [Test] procedure TestDeleteOneParts;
     [Test] procedure TestTaskbarProgress;
+    [Test] procedure TestJobsOnOneDriveRunInTurn;
+    [Test] procedure TestHeldJobShowsInListAndChip;
+    [Test] procedure TestSpeedPresetsCycle;
+    [Test] procedure TestThrottleLimitsSpeed;
+    [Test] procedure TestPausedThrottleEndsOnCancel;
+    [TearDown] procedure TearDown;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.Classes,
   uStrings,
   uDialogTypes,
   uVfsTypes,
   uDualPanelTypes,
   uDualPanelUiTypes,
-  uDualPanelJobRules;
+  uDualPanelJobRules, uDualPanelJobChips;
 
 function FileJob(const ASrc, ADst: string): TPanelJobState;
 begin
@@ -188,6 +194,7 @@ procedure TestParallel;
 var
   A, B: TPanelJobState;
 begin
+  JobSerializePerVolume := False;
   A := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
   B := FileJob('file:///E:/other/b.txt', 'file:///F:/out/');
   Assert.IsTrue(CanRunParallel(A, B), 'two disjoint file:// jobs parallel');
@@ -422,6 +429,97 @@ begin
   B.Phase := pjpOverwriteAsk;
   Jobs := [A, B];
   Assert.IsTrue(JobTaskbarProgress(Jobs, Pct) = jtsPaused, 'waiting for an answer');
+end;
+
+procedure TTestDualPanelJobRules.TearDown;
+begin
+  JobSerializePerVolume := True;
+end;
+
+procedure TTestDualPanelJobRules.TestJobsOnOneDriveRunInTurn;
+var
+  A, B: TPanelJobState;
+begin
+  A := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
+  B := FileJob('file:///C:/other/b.txt', 'file:///F:/out/');
+  Assert.IsFalse(CanRunParallel(B, A), 'two transfers reading drive C: queue');
+  B := FileJob('file:///E:/other/b.txt', 'file:///D:/more/');
+  Assert.IsFalse(CanRunParallel(B, A), 'two transfers writing drive D: queue');
+  B := FileJob('file:///E:/other/b.txt', 'file:///F:/out/');
+  Assert.IsTrue(CanRunParallel(B, A), 'transfers on different drives run together');
+  B := FileJob('file:///C:/other/b.txt', 'file:///F:/out/');
+  B.Kind := pjkDelete;
+  Assert.IsTrue(CanRunParallel(B, A), 'a delete is not held back by a copy on its drive');
+  JobSerializePerVolume := False;
+  B := FileJob('file:///C:/other/b.txt', 'file:///F:/out/');
+  Assert.IsTrue(CanRunParallel(B, A), 'the rule can be switched off');
+end;
+
+procedure TTestDualPanelJobRules.TestHeldJobShowsInListAndChip;
+var
+  S: TPanelJobState;
+begin
+  S := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
+  Assert.IsFalse(JobIsHeld(S));
+  S.Paused := True;
+  Assert.IsTrue(JobIsHeld(S), 'a paused running job is held');
+  Assert.IsTrue(Pos('||', JobChipCaption(S)) > 0, 'the chip shows the pause mark');
+  Assert.IsTrue(Pos(T('ui.job.statePaused', 'paused'), FormatJobListLine(S)) > 0,
+    'the state column says paused');
+  S.Phase := pjpNone;
+  Assert.IsFalse(JobIsHeld(S), 'a finished job is not held');
+  S := FileJob('file:///C:/src/a.txt', 'file:///D:/dst/');
+  S.SpeedLimitKB := 5120;
+  Assert.IsTrue(Pos('5 MB/s', FormatJobListLine(S)) > 0, 'the limit shows in the state column');
+end;
+
+procedure TTestDualPanelJobRules.TestSpeedPresetsCycle;
+var
+  Kb, I: Integer;
+begin
+  Kb := 0;
+  for I := 1 to 4 do
+  begin
+    Kb := NextJobSpeedKB(Kb);
+    Assert.IsTrue(Kb > 0, 'each step up is a limit');
+  end;
+  Assert.AreEqual(0, NextJobSpeedKB(Kb), 'after the last preset the limit is off');
+  Assert.AreEqual('512 KB/s', JobSpeedText(512));
+  Assert.AreEqual('5 MB/s', JobSpeedText(5120));
+end;
+
+procedure TTestDualPanelJobRules.TestThrottleLimitsSpeed;
+var
+  Token: TJobCancelToken;
+  Ref: IJobCancelToken;
+  Start, Elapsed: UInt64;
+begin
+  Token := TJobCancelToken.Create;
+  Ref := Token;
+  Token.SetLimitKBps(200);
+  Start := TThread.GetTickCount64;
+  JobThrottle(Ref, 51200);
+  JobThrottle(Ref, 51200);
+  Elapsed := TThread.GetTickCount64 - Start;
+  Assert.IsTrue(Elapsed >= 400, 'one hundred KB at 200 KB/s takes about half a second');
+  Assert.IsTrue(Elapsed < 3000, 'the wait is not much longer than asked');
+  Token.SetLimitKBps(0);
+  Start := TThread.GetTickCount64;
+  JobThrottle(Ref, 100 * 1024 * 1024);
+  Assert.IsTrue(TThread.GetTickCount64 - Start < 200, 'no limit, no wait');
+end;
+
+procedure TTestDualPanelJobRules.TestPausedThrottleEndsOnCancel;
+var
+  Token: TJobCancelToken;
+  Ref: IJobCancelToken;
+begin
+  Token := TJobCancelToken.Create;
+  Ref := Token;
+  Token.SetPaused(True);
+  Token.Cancel;
+  JobThrottle(Ref, 1);
+  Assert.IsTrue(Ref.IsCancellationRequested, 'a paused worker is released by a cancel');
 end;
 
 initialization

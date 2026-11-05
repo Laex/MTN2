@@ -12,6 +12,11 @@ Nach **Stopp** schließt das Fortschrittsfenster sofort, und der Auftrag beendet
 
 Dialogschaltflächen werden mit **Enter** und der **Leertaste** gedrückt: die Schaltfläche sieht gedrückt aus, solange die Taste gehalten wird, und wirkt beim Loslassen. Esc vor dem Loslassen hebt die Schaltfläche an, ohne dass sie wirkt.
 
+<!--queue-->**Warteschlange, Pause und Tempo.** Kopier- und Verschiebeaufträge auf demselben Laufwerk laufen nacheinander; die übrigen warten in der Warteschlange (`..`). In der Auftragsliste (**Ctrl+Shift+J**) gilt für den gewählten Auftrag:
+- **Pause** hält ein laufendes Kopieren beim nächsten Block an (Chip `||`, Status „pausiert“) oder verhindert den Start eines wartenden Auftrags; ein angehaltener Auftrag belegt sein Laufwerk, bis er fortgesetzt oder abgebrochen wird;
+- **Hoch** und **Runter** ändern die Startreihenfolge wartender Aufträge;
+- **Tempo** schaltet die Geschwindigkeitsbegrenzung durch: keine, 1, 5, 20 und 100 MB/s (in der Statusspalte). Die Begrenzung gilt beim Kopieren zwischen lokalen Ordnern.
+
 <!--errors-->Hält ein Kopier-, Verschiebe- oder Löschvorgang mit einem Fehler an, bietet das Fehlerfenster **Wiederholen**, **Überspringen**, **Alle überspringen**, **Abbrechen** und, bei „Zugriff verweigert“ auf einem lokalen Pfad, **Admin** an: es wiederholt das Element und den Rest des Auftrags über den Administrator-Helfer (siehe [Dateioperationen](fileops.md)).
 
 Hintergrundaufträge erscheinen rechts in der Tableiste: eine Plakette pro Auftrag und am Ende eine Listenschaltfläche.

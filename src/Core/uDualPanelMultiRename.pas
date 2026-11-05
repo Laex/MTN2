@@ -25,6 +25,7 @@ type
     FSources: TArray<string>;
     FNames: TArray<string>;
     FIsDir: TArray<Boolean>;
+    FInfos: TArray<TRenameItemInfo>;
     FExisting: TArray<string>;
     FDirUri: string;
     FSignature: string;
@@ -37,6 +38,7 @@ type
     FOnStart: TMultiRenameStartProc;
     FOnNotify: TProc;
     FOnAreaCols: TMultiRenameAreaFn;
+    function ItemInfo(const ARow: TPanelRow; const AName, AParent: string): TRenameItemInfo;
     function ReadRules: TMultiRenameRules;
     function RulesSignature(const ARules: TMultiRenameRules): string;
     function ProblemText(AProblem: TRenameProblem): string;
@@ -58,7 +60,7 @@ type
 implementation
 
 uses
-  System.Math, System.StrUtils, uStrings, uVfsTypes;
+  System.Math, System.StrUtils, uStrings, uVfsTypes, uPluginColumns;
 
 const
   cMarkCols = 2;     // "! " in front of a row with a problem
@@ -84,6 +86,29 @@ begin
   FRules := DefaultMultiRenameRules;
 end;
 
+// What the tokens of one row expand to: its modification time and size, the
+// folder name and the values the metadata plugin has read for the row.
+function TMultiRenameController.ItemInfo(const ARow: TPanelRow; const AName,
+  AParent: string): TRenameItemInfo;
+
+  function Cell(const AColumnId: string): string;
+  begin
+    if not FolderCellText(FDirUri, AName, AColumnId, Result) then
+      Result := '';
+  end;
+
+begin
+  Result := EmptyRenameItemInfo;
+  Result.Modified := ARow.ModificationTime;
+  if not ARow.IsDirectory then
+    Result.Size := ARow.Size;
+  Result.Parent := AParent;
+  Result.Dim := Cell('dim');
+  Result.Camera := Cell('camera');
+  Result.Artist := Cell('artist');
+  Result.Title := Cell('title');
+end;
+
 function TMultiRenameController.ReadRules: TMultiRenameRules;
 begin
   Result.NameMask := FDialog.GetInputValue('name_mask');
@@ -91,6 +116,7 @@ begin
   Result.Search := FDialog.GetInputValue('search');
   Result.Replace := FDialog.GetInputValue('replace');
   Result.MatchCase := FDialog.GetCheckbox('match_case');
+  Result.UseRegex := FDialog.GetCheckbox('use_regex');
   Result.CounterStart := StrToIntDef(Trim(FDialog.GetInputValue('c_start')), 1);
   Result.CounterStep := StrToIntDef(Trim(FDialog.GetInputValue('c_step')), 1);
   Result.CounterDigits := EnsureRange(StrToIntDef(Trim(FDialog.GetInputValue('c_digits')), 1), 1, 12);
@@ -100,10 +126,10 @@ end;
 
 function TMultiRenameController.RulesSignature(const ARules: TMultiRenameRules): string;
 begin
-  Result := Format('%s|%s|%s|%s|%d|%d|%d|%d|%d',
+  Result := Format('%s|%s|%s|%s|%d|%d|%d|%d|%d|%d',
     [ARules.NameMask, ARules.ExtMask, ARules.Search, ARules.Replace,
      Ord(ARules.MatchCase), ARules.CounterStart, ARules.CounterStep,
-     ARules.CounterDigits, Ord(ARules.CaseMode)]);
+     ARules.CounterDigits, Ord(ARules.CaseMode), Ord(ARules.UseRegex)]);
 end;
 
 function TMultiRenameController.ProblemText(AProblem: TRenameProblem): string;
@@ -155,7 +181,7 @@ begin
     Exit;
   FSignature := RulesSignature(Rules);
   FRules := Rules;
-  Plan := PlanMultiRename(FNames, FIsDir, FExisting, Rules);
+  Plan := PlanMultiRename(FNames, FIsDir, FExisting, Rules, FInfos);
   SetLength(Lines, Length(Plan));
   SetLength(Accents, 0);
   Unchanged := 0;
@@ -216,7 +242,7 @@ procedure TMultiRenameController.Open(const ASources: TArray<string>;
 var
   I, J, N, DialogCols: Integer;
   Row: TPanelRow;
-  Name: string;
+  Name, ParentName: string;
   Found: Boolean;
 begin
   if Length(ASources) = 0 then
@@ -227,9 +253,11 @@ begin
     Exit;
   end;
   FDirUri := ParentFileUri(ASources[0]);
+  ParentName := PathLastSegment(FileUriToPath(FDirUri));
   SetLength(FSources, 0);
   SetLength(FNames, 0);
   SetLength(FIsDir, 0);
+  SetLength(FInfos, 0);
   for I := 0 to High(ASources) do
   begin
     if ParentFileUri(ASources[I]) <> FDirUri then
@@ -250,9 +278,11 @@ begin
         SetLength(FSources, N + 1);
         SetLength(FNames, N + 1);
         SetLength(FIsDir, N + 1);
+        SetLength(FInfos, N + 1);
         FSources[N] := ASources[I];
         FNames[N] := Name;
         FIsDir[N] := ARows[J].IsDirectory;
+        FInfos[N] := ItemInfo(ARows[J], Name, ParentName);
         Found := True;
         Break;
       end;
@@ -312,7 +342,7 @@ begin
   end;
   if not DialogCmdIsAccept(AControlId) then
     Exit;
-  Plan := PlanMultiRename(FNames, FIsDir, FExisting, ReadRules);
+  Plan := PlanMultiRename(FNames, FIsDir, FExisting, ReadRules, FInfos);
   if RenamePlanBlocked(Plan) then
   begin
     FSignature := '';

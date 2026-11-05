@@ -12,6 +12,11 @@ uses
 const
   cMaxPanelJobs = 8;
 
+var
+  /// <summary>Copy and move jobs that touch the same drive run one after
+  /// another, so two transfers do not fight for one disk.</summary>
+  JobSerializePerVolume: Boolean = True;
+
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
 /// <summary>One cell that tells the operations apart: copy, move, recycle,
 /// permanent delete, pack, unpack. Used by the tab bar chips and the job list.</summary>
@@ -52,6 +57,14 @@ const
 
 /// <summary>One row of the background jobs list: the columns above, one space apart.</summary>
 function FormatJobListLine(const AJob: TPanelJobState): string;
+
+/// <summary>A speed limit as shown in the job list: "5 MB/s", "512 KB/s".</summary>
+function JobSpeedText(AKBps: Integer): string;
+/// <summary>The limit that follows ACurrentKBps in the preset cycle
+/// (none, 1, 5, 20, 100 MB/s, none).</summary>
+function NextJobSpeedKB(ACurrentKBps: Integer): Integer;
+/// <summary>True when the job is on hold (paused and not finished).</summary>
+function JobIsHeld(const AJob: TPanelJobState): Boolean;
 
 type
   TJobTaskbarState = (jtsNone, jtsIndeterminate, jtsNormal, jtsPaused, jtsError);
@@ -585,8 +598,37 @@ begin
     Result := Text + StringOfChar(' ', AWidth - Length(Text));
 end;
 
+function JobSpeedText(AKBps: Integer): string;
+begin
+  if AKBps >= 1024 then
+    Result := Format('%d MB/s', [AKBps div 1024])
+  else
+    Result := Format('%d KB/s', [AKBps]);
+end;
+
+function NextJobSpeedKB(ACurrentKBps: Integer): Integer;
+const
+  cPresets: array[0..3] of Integer = (1024, 5120, 20480, 102400);
+var
+  I: Integer;
+begin
+  for I := 0 to High(cPresets) do
+    if cPresets[I] > ACurrentKBps then
+      Exit(cPresets[I]);
+  Result := 0;
+end;
+
+function JobIsHeld(const AJob: TPanelJobState): Boolean;
+begin
+  Result := AJob.Paused and (AJob.Phase in [pjpQueued, pjpRunning]);
+end;
+
 function JobListStateText(const AJob: TPanelJobState): string;
 begin
+  if JobIsHeld(AJob) then
+    Exit(T('ui.job.statePaused', 'paused'));
+  if (AJob.Phase = pjpRunning) and (AJob.SpeedLimitKB > 0) and not AJob.Stopping then
+    Exit(JobSpeedText(AJob.SpeedLimitKB));
   case AJob.Phase of
     pjpQueued: Result := T('ui.job.stateQueued', 'queued');
     pjpConfirm: Result := T('ui.job.stateConfirm', 'confirm');
@@ -782,6 +824,32 @@ begin
   Result := '';
 end;
 
+// The drive letter of a local URI, #0 for anything else.
+function UriDriveLetter(const AUri: string): Char;
+begin
+  if SameText(Copy(AUri, 1, 5), 'file:') then
+    Result := DriveLetterOf(FileUriToPath(AUri))
+  else
+    Result := #0;
+end;
+
+function SharesDriveLetter(const AUrisA, AUrisB: TArray<string>): Boolean;
+var
+  A, B: string;
+  LetterA: Char;
+begin
+  Result := False;
+  for A in AUrisA do
+  begin
+    LetterA := UriDriveLetter(A);
+    if LetterA = #0 then
+      Continue;
+    for B in AUrisB do
+      if UriDriveLetter(B) = LetterA then
+        Exit(True);
+  end;
+end;
+
 function CanRunParallel(const ANew, AExisting: TPanelJobState): Boolean;
 var
   NewUris, OldUris: TArray<string>;
@@ -808,6 +876,10 @@ begin
   NewAuth := FirstSftpAuthority(NewUris);
   OldAuth := FirstSftpAuthority(OldUris);
   if (NewAuth <> '') and (NewAuth = OldAuth) then
+    Exit(False);
+
+  if JobSerializePerVolume and (ANew.Kind in [pjkCopy, pjkMove]) and
+     (AExisting.Kind in [pjkCopy, pjkMove]) and SharesDriveLetter(NewUris, OldUris) then
     Exit(False);
 
   Result := True;

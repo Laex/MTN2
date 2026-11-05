@@ -289,6 +289,7 @@ type
     HandleColorList: TKeymapInputFn;
     HandleColorEdit: TKeymapInputFn;
     HandleSearchEdit: TKeymapInputFn;
+    HandleDirSyncList: TKeymapInputFn;
     HandleKeymapList: TKeymapInputFn;
     HandleCmdHistoryFilter: TKeymapInputFn;
     HandleCommandPaletteFilter: TKeymapInputFn;
@@ -1768,6 +1769,9 @@ begin
     hdkSearch:
       Result := Assigned(AHost.HandleSearchEdit) and
         AHost.HandleSearchEdit(AKey, AShift, AKeyChar);
+    hdkDirSync:
+      Result := Assigned(AHost.HandleDirSyncList) and
+        AHost.HandleDirSyncList(AKey, AShift, AKeyChar);
     hdkMarkdownColors:
       Result := AHost.HandleMarkdownColors(AKey, AShift, AKeyChar);
     hdkThemeColors:

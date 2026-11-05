@@ -85,6 +85,8 @@ type
     CaretUnderline: Boolean;
     /// <summary>uDisplaySettings.PassiveCursor.</summary>
     PassiveCursor: Boolean;
+    /// <summary>uDisplaySettings.ColumnSeparators.</summary>
+    ColumnSeparators: Boolean;
     ShowKeyBar: Boolean;
     ShowStatusLine: Boolean;
     /// <summary>uDisplaySettings.ShadowStyleId: 'classic' / 'soft' / 'none'.</summary>
@@ -659,6 +661,7 @@ begin
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
+      Root.AddPair('columnSeparators', TJSONBool.Create(ASession.ColumnSeparators));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
       Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
       Root.AddPair('shadowStyle', ShadowStyleId(ShadowStyleFromId(ASession.ShadowStyle)));
@@ -750,6 +753,7 @@ begin
   ASession.SaverMinutes := 5;
   ASession.CaretUnderline := False;
   ASession.PassiveCursor := True;
+  ASession.ColumnSeparators := False;
   ASession.ShowKeyBar := True;
   ASession.ShowStatusLine := True;
   ASession.ShadowStyle := ShadowStyleId(ssClassic);
@@ -861,6 +865,7 @@ begin
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);
+      ASession.ColumnSeparators := JsonBool(Root, 'columnSeparators', False);
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
       ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);
       ASession.ShadowStyle := ShadowStyleId(ShadowStyleFromId(JsonStr(Root, 'shadowStyle', '')));

@@ -377,6 +377,7 @@ type
     procedure RequestStopConfirm(const AQuestion: string; const AOnAccept, AOnReject: TProc);
     procedure AnswerStopConfirm(AAccepted: Boolean);
     procedure RequestJobListCancel(AIndex: Integer; AAll: Boolean);
+    function HandleJobListAction(const AControlId: string): Boolean;
     procedure HostRequestJobStop;
     procedure HostRequestSearchStop;
     procedure HostSearchLimitReached;
@@ -3013,6 +3014,30 @@ begin
     OnReject();
 end;
 
+// Pause / resume, order and speed of the selected job; the list stays open.
+function TDualPanelWindow.HandleJobListAction(const AControlId: string): Boolean;
+var
+  Sel: Integer;
+  Lines: TArray<string>;
+begin
+  Result := True;
+  Sel := FDialog.GetListSelectedIndex('jobs');
+  if DialogCmdIs(AControlId, cDlgCmdPauseJob) then
+    FJobs.TogglePauseByIndex(Sel)
+  else if DialogCmdIs(AControlId, cDlgCmdJobUp) then
+    Sel := FJobs.MoveJobByIndex(Sel, -1)
+  else if DialogCmdIs(AControlId, cDlgCmdJobDown) then
+    Sel := FJobs.MoveJobByIndex(Sel, 1)
+  else if DialogCmdIs(AControlId, cDlgCmdJobSpeed) then
+    FJobs.CycleSpeedByIndex(Sel)
+  else
+    Exit(False);
+  Lines := FJobs.ListLines;
+  if Length(Lines) = 0 then
+    Lines := TArray<string>.Create('(no jobs)');
+  FDialog.SetListItems('jobs', Lines, Sel);
+end;
+
 procedure TDualPanelWindow.RequestJobListCancel(AIndex: Integer; AAll: Boolean);
 begin
   // The job list closes while the question is up; "Continue" reopens it.
@@ -3461,6 +3486,7 @@ begin
   FDirSync := TDirSyncDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
+  FModalInputHost.HandleDirSyncList := FDirSync.HandleListInput;
   FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     StartMultiRenameJob, NotifyChanged,
@@ -6277,6 +6303,16 @@ var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
   UserCommand, Uri, ArchiveScheme, ArchivePath, ArchiveInner: string;
+
+  // A row without a URI (an error or info line) is not a file name.
+  function AssocOf(const ARow: TPanelRow; out ACommand: string): TAssocAction;
+  begin
+    ACommand := '';
+    if ARow.URI = '' then
+      Exit(aaNone);
+    Result := ResolveAssociationWithUserRules(ARow.Text, False, ACommand);
+  end;
+
 begin
   Uri := ARow.URI;
   // A plugin that serves this panel's scheme may take the activation itself.
@@ -6295,7 +6331,7 @@ begin
       IsRecycleBinUri(ATab.CurrentURI)),
     ARow.IsDirectory or ARow.IsParent,
     IsArchiveFile,
-    ResolveAssociationWithUserRules(ARow.Text, False, UserCommand)) of
+    AssocOf(ARow, UserCommand)) of
     ackFindGoto:
       if SplitArchiveHit(ARow.URI, ArchivePath, ArchiveInner) then
         GotoFileLocation(ARow.URI)
@@ -6623,6 +6659,11 @@ begin
      Assigned(FJobs) and (FJobs.Phase = pjpRunning) then
   begin
     HostRequestJobStop;
+    NotifyChanged;
+    Exit;
+  end;
+  if (Kind = hdkJobList) and Assigned(FJobs) and HandleJobListAction(AControlId) then
+  begin
     NotifyChanged;
     Exit;
   end;

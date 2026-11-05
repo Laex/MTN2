@@ -119,6 +119,9 @@ end;
 
 function PluginColumnSchemeOf(const AUri: string): string;
 begin
+  // file:// is a built-in scheme, but plugins may add columns to local folders.
+  if Copy(TrimLeft(AUri), 1, 7).ToLower = 'file://' then
+    Exit('file');
   Result := LowerCase(Trim(GenericVfsSchemeOf(AUri)));
 end;
 

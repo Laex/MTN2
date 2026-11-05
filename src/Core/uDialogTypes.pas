@@ -190,6 +190,10 @@ const
   cDlgCmdForeground = 'foreground';
   cDlgCmdCancelJob = 'canceljob';
   cDlgCmdCancelAll = 'cancelall';
+  cDlgCmdPauseJob = 'pausejob';
+  cDlgCmdJobUp = 'jobup';
+  cDlgCmdJobDown = 'jobdown';
+  cDlgCmdJobSpeed = 'jobspeed';
   cDlgCmdClearFilter = 'clear';
   /// <summary>Suffix of the command a color field's pick button fires.</summary>
   cDlgPickSuffix = ':pick';
@@ -1702,6 +1706,8 @@ begin
   Place('ext_mask', RightInput, AWidth - 2 - RightInput);
   Place('replace', RightInput, AWidth - 2 - RightInput);
   Place('match_case', RightLabel, AWidth - 2 - RightLabel);
+  Place('use_regex', RightLabel, AWidth - 2 - RightLabel);
+  Place('lbl_tokens', 1, AWidth - 4);
   Place('status', 1, AWidth - 4);
   Place('columns', 1, AWidth - 4);
   Place('preview', 1, AWidth - 4);
@@ -1721,6 +1727,7 @@ begin
   DialogSetInputValue(Result, 'c_step', IntToStr(ARules.CounterStep));
   DialogSetInputValue(Result, 'c_digits', IntToStr(ARules.CounterDigits));
   DialogSetCheckbox(Result, 'match_case', ARules.MatchCase);
+  DialogSetCheckbox(Result, 'use_regex', ARules.UseRegex);
   DialogSetDropDownSelected(Result, 'case_mode', Ord(ARules.CaseMode));
 end;
 

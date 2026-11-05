@@ -144,6 +144,13 @@ type
     /// on a foreground job goes through the owner's stop confirmation.</summary>
     property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
     procedure CancelJobByIndex(AIndex: Integer);
+    /// <summary>Holds the job at AIndex of the job list, or releases it.</summary>
+    procedure TogglePauseByIndex(AIndex: Integer);
+    /// <summary>Moves a queued job ADelta places in the start order; returns its
+    /// new index in the job list.</summary>
+    function MoveJobByIndex(AIndex, ADelta: Integer): Integer;
+    /// <summary>Steps the copy speed limit of the job through the presets.</summary>
+    procedure CycleSpeedByIndex(AIndex: Integer);
     procedure CancelAll;
     function HandleJobInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -670,12 +677,77 @@ var
   Job: TPanelJobController;
 begin
   for Job in FItems do
-    if Job.Phase = pjpQueued then
+    if (Job.Phase = pjpQueued) and not Job.State.Paused then
       if not ConflictsWithRunning(Job) then
       begin
         Job.StartIfQueued;
         Exit;
       end;
+end;
+
+procedure TPanelJobList.TogglePauseByIndex(AIndex: Integer);
+var
+  Job: TPanelJobController;
+  Id: Integer;
+begin
+  Id := JobIdAt(AIndex);
+  if (Id = 0) or IsPluginJob(Id) then
+    Exit;
+  Job := JobById(Id);
+  if (Job = nil) or not (Job.Phase in [pjpQueued, pjpRunning]) then
+    Exit;
+  Job.SetPaused(not Job.State.Paused);
+  if not Job.State.Paused then
+    TryStartQueued;
+end;
+
+function TPanelJobList.MoveJobByIndex(AIndex, ADelta: Integer): Integer;
+var
+  Job: TPanelJobController;
+  Id, From, Step, Target, I: Integer;
+begin
+  Result := AIndex;
+  Id := JobIdAt(AIndex);
+  if (Id = 0) or IsPluginJob(Id) or (ADelta = 0) then
+    Exit;
+  Job := JobById(Id);
+  if (Job = nil) or (Job.Phase <> pjpQueued) then
+    Exit;
+  From := FItems.IndexOf(Job);
+  if ADelta < 0 then
+    Step := -1
+  else
+    Step := 1;
+  Target := From + Step;
+  while (Target >= 0) and (Target < FItems.Count) and
+        not JobIsBusy(FItems[Target].State) do
+    Inc(Target, Step);
+  if (Target < 0) or (Target >= FItems.Count) then
+    Exit;
+  FItems.Exchange(From, Target);
+  Result := 0;
+  for I := 0 to FItems.Count - 1 do
+  begin
+    if FItems[I] = Job then
+      Break;
+    if JobIsBusy(FItems[I].State) then
+      Inc(Result);
+  end;
+  TryStartQueued;
+end;
+
+procedure TPanelJobList.CycleSpeedByIndex(AIndex: Integer);
+var
+  Job: TPanelJobController;
+  Id: Integer;
+begin
+  Id := JobIdAt(AIndex);
+  if (Id = 0) or IsPluginJob(Id) then
+    Exit;
+  Job := JobById(Id);
+  if (Job = nil) or not (Job.Phase in [pjpQueued, pjpRunning]) then
+    Exit;
+  Job.SetSpeedLimit(NextJobSpeedKB(Job.State.SpeedLimitKB));
 end;
 
 procedure TPanelJobList.OnJobOverwriteAsk(AJob: TPanelJobController;

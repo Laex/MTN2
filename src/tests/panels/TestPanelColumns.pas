@@ -22,6 +22,7 @@ type
     [Test] procedure TestNumericNameSort;
     [Test] procedure TestPriorityRanksRowsBeforeTheColumn;
     [Test] procedure TestEnsureCursorVisible;
+    [Test] procedure TestColumnGapOffsets;
   end;
 
 implementation
@@ -30,6 +31,7 @@ uses
   System.SysUtils,
   uVfsTypes,
   uDualPanelTypes,
+  uDualPanelDrawUtils,
   uPanelColumns;
 
 procedure TestEllipsizeKeepingExt;
@@ -356,6 +358,28 @@ end;
 procedure TTestPanelColumns.TestEnsureCursorVisible;
 begin
   TestPanelColumns.TestEnsureCursorVisible;
+end;
+
+procedure TestColumnGapOffsets;
+var
+  Gaps: TArray<Integer>;
+  NameW, MetaW, I: Integer;
+begin
+  PanelColumnWidths(pcmFull, 80, NameW, MetaW);
+  Gaps := ColumnGapOffsets(pcmFull, 80, '');
+  Assert.IsTrue(Length(Gaps) >= 1, 'full mode has a gap after the name');
+  Assert.AreEqual(NameW, Gaps[0], 'first gap follows the name column');
+  for I := 1 to High(Gaps) do
+    Assert.IsTrue(Gaps[I] > Gaps[I - 1], 'gaps increase');
+  Assert.IsTrue(Gaps[High(Gaps)] < NameW + 1 + MetaW - 1,
+    'the last column keeps at least one cell after the last gap');
+  Assert.IsTrue(Length(ColumnGapOffsets(pcmBrief, 80, '')) = 0,
+    'brief mode has no meta columns');
+end;
+
+procedure TTestPanelColumns.TestColumnGapOffsets;
+begin
+  TestPanelColumns.TestColumnGapOffsets;
 end;
 
 initialization

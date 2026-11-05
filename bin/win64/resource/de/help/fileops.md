@@ -62,9 +62,12 @@ Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Su
 - `[N]` – alter Name ohne Erweiterung;
 - `[E]` – alte Erweiterung;
 - `[C]` – Zähler mit Start, Schritt und Stellenzahl;
+- `[Date]` und `[Time]` – Datum (`2026-11-05`) und Uhrzeit (`14-30-07`) der Änderung; `[Year]`, `[Month]` und `[Day]` – Teile des Datums;
+- `[Parent]` – Name des Ordners; `[Size]` – Größe in Bytes;
+- `[Dim]`, `[Camera]`, `[Artist]` und `[Title]` – Werte der Spalten des Metadaten-Plugins (Bildgröße und Kamera, Interpret und Titel) wie im Panel angezeigt; sie sind leer, bis das Plugin die Datei gelesen hat;
 - anderer Text bleibt wie eingegeben.
 
-Suchen und Ersetzen wirken auf den neuen Namen und die Erweiterung, die Groß-/Kleinschreibung wird aus der Liste gewählt. Die Liste unter den Feldern zeigt die Paare „alt -> neu“ sofort.
+Suchen und Ersetzen wirken auf den neuen Namen und die Erweiterung, die Groß-/Kleinschreibung wird aus der Liste gewählt. Mit **Regulärer Ausdruck** ist Suchen ein Muster und Ersetzen darf `$1`, `$2` verwenden; ein ungültiges Muster lässt die Namen unverändert. Platzhalter dürfen in beliebiger Schreibweise stehen; ein unbekannter Wert ist leer, und Zeichen, die ein Name nicht enthalten darf, werden zu `_`. Die Liste unter den Feldern zeigt die Paare „alt -> neu“ sofort.
 
 **Fehler.** Ein leerer, ungültiger, doppelter oder im Ordner bereits vergebener Name (auch von einem anderen Element der Auswahl) ist mit `!` markiert; solange einer übrig ist, tut **Umbenennen** nichts.
 

@@ -16,6 +16,7 @@ type
   public
     [Test] procedure TestBarText;
     [Test] procedure TestPercentOfTotal;
+    [Test] procedure TestDriveUsedCells;
     [Test] procedure TestMemoryLoadLine;
   end;
 
@@ -47,6 +48,25 @@ begin
   Assert.AreEqual(0, PercentOfTotal(0, 100), 'empty');
   Assert.AreEqual(-1, PercentOfTotal(5, 0), 'no total');
   Assert.AreEqual('98%, ', Copy(FormatPctSize(1820, 1860), 1, 5), 'same as the text');
+end;
+
+procedure TTestInfoPanelBar.TestDriveUsedCells;
+var
+  Info: TDriveInfo;
+begin
+  Info := Default(TDriveInfo);
+  Info.TotalBytes := 1000;
+  Info.FreeBytes := 750;
+  Assert.AreEqual(4, DriveUsedCells(Info, 17), 'a quarter of 17 cells');
+  Info.FreeBytes := 0;
+  Assert.AreEqual(17, DriveUsedCells(Info, 17), 'full volume');
+  Info.FreeBytes := 1000;
+  Assert.AreEqual(0, DriveUsedCells(Info, 17), 'empty volume');
+  Info.TotalBytes := 0;
+  Assert.AreEqual(0, DriveUsedCells(Info, 17), 'unknown size');
+  Info.TotalBytes := 1000;
+  Info.FreeBytes := -1;
+  Assert.AreEqual(0, DriveUsedCells(Info, 17), 'unknown free space');
 end;
 
 procedure TTestInfoPanelBar.TestMemoryLoadLine;

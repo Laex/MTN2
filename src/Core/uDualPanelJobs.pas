@@ -112,6 +112,7 @@ type
       AOnEscape: TProc);
     procedure HandleErrorKeys(var AKey: Word; var AKeyChar: Char);
     procedure StartJobExecution;
+    procedure ApplyThrottle;
     procedure RunJobItem;
     function CanOfferElevate(const AError: TVfsError; AFromIndex: Integer): Boolean;
     function ActiveVfs: IVirtualFileSystem;
@@ -198,6 +199,11 @@ type
     procedure ConfirmJob;
     procedure QueueAfterConfirm;
     procedure StartIfQueued;
+    /// <summary>Puts the job on hold or releases it; a running copy stops at
+    /// its next chunk and a queued job is not started while held.</summary>
+    procedure SetPaused(AValue: Boolean);
+    /// <summary>Limits the copy speed (KB per second, 0 = none).</summary>
+    procedure SetSpeedLimit(AKBps: Integer);
     procedure BindIdentity(AId: Integer);
     procedure BackgroundJob;
     procedure ForegroundJob;
@@ -1125,6 +1131,37 @@ begin
     FOnInvalidate;
 end;
 
+procedure TPanelJobController.ApplyThrottle;
+var
+  Throttle: IJobThrottle;
+begin
+  if Assigned(FJob.Cancel) and Supports(FJob.Cancel, IJobThrottle, Throttle) then
+  begin
+    Throttle.SetPaused(FJob.Paused);
+    Throttle.SetLimitKBps(FJob.SpeedLimitKB);
+  end;
+end;
+
+procedure TPanelJobController.SetPaused(AValue: Boolean);
+begin
+  if FJob.Paused = AValue then
+    Exit;
+  FJob.Paused := AValue;
+  ApplyThrottle;
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
+end;
+
+procedure TPanelJobController.SetSpeedLimit(AKBps: Integer);
+begin
+  if AKBps < 0 then
+    AKBps := 0;
+  FJob.SpeedLimitKB := AKBps;
+  ApplyThrottle;
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
+end;
+
 procedure TPanelJobController.StartIfQueued;
 begin
   if FJob.Phase <> pjpQueued then
@@ -1207,6 +1244,7 @@ begin
   if FJob.Kind in [pjkCopy, pjkMove] then
     Token.ErrorResolver := MakeErrorResolver();
   FJob.Cancel := Token;
+  ApplyThrottle;
   FUseElevated := False;
   FJob.Phase := pjpRunning;
   FWatchTick := PlatformTickCount64;

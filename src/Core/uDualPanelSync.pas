@@ -18,11 +18,16 @@ type
   TSyncReason = (srMissing, srNewer, srMissingOnSrc, srNewerOnDst, srConflict,
     srContentDiff);
 
+  // saAuto follows Reason and the sync mode; the other values are a manual
+  // choice that overrides both.
+  TSyncAction = (saAuto, saCopyRight, saCopyLeft, saSkip);
+
   TSyncItem = record
     RelPath: string;
     SrcURI: string;
     DstURI: string;
     Reason: TSyncReason;
+    Action: TSyncAction;
   end;
 
   TSyncSnapshotEntry = record
@@ -63,6 +68,26 @@ function CollectDirSyncUnresolvedRels(const AItems: TArray<TSyncItem>;
   ATwoWay: Boolean): TArray<string>;
 function FilesContentEqual(const ALeft, ARight: string): Boolean;
 
+function SyncItemLeftURI(const AItem: TSyncItem): string;
+function SyncItemRightURI(const AItem: TSyncItem): string;
+function EffectiveSyncAction(const AItem: TSyncItem;
+  ATwoWay: Boolean): TSyncAction;
+function SyncActionAllowed(const AItem: TSyncItem;
+  AAction: TSyncAction): Boolean;
+/// <summary>Sets a manual action; False when the action does not apply to the
+/// item (copying from a side where the file does not exist).</summary>
+function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction): Boolean;
+/// <summary>One list row per item: action glyph, reason tag, relative path.
+/// AViewIdx maps rows back to AItems.</summary>
+function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
+  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>): TArray<string>;
+function FormatDirSyncPlanStatus(const AItems: TArray<TSyncItem>;
+  ATwoWay: Boolean): string;
+/// <summary>A path longer than AMaxLen keeps its start and, with more room,
+/// its end (the folder names that tell two roots apart); the middle becomes
+/// "...".</summary>
+function FitSyncPath(const APath: string; AMaxLen: Integer): string;
+
 function FileUtcTicks(const APath: string): Int64;
 function DirSyncStateFilePath: string;
 function LoadDirSyncSnapshotFromFile(const AFile, ALeftRoot,
@@ -81,7 +106,7 @@ implementation
 
 uses
   System.JSON, System.Generics.Collections, System.Generics.Defaults,
-  uConfigLocation;
+  uConfigLocation, uStrings;
 
 const
   cDirSyncStateFile = 'dirsync-state.json';
@@ -212,19 +237,73 @@ begin
   SetLength(Result, 0);
   for I := 0 to High(AItems) do
   begin
-    if AItems[I].Reason = srConflict then
-    begin
-      N := Length(Result);
-      SetLength(Result, N + 1);
-      Result[N] := AItems[I].RelPath;
-    end
-    else if ATwoWay and (AItems[I].Reason = srContentDiff) then
+    if EffectiveSyncAction(AItems[I], ATwoWay) <> saSkip then
+      Continue;
+    if (AItems[I].Reason in [srConflict, srContentDiff]) or
+       (AItems[I].Action = saSkip) then
     begin
       N := Length(Result);
       SetLength(Result, N + 1);
       Result[N] := AItems[I].RelPath;
     end;
   end;
+end;
+
+function SyncItemLeftURI(const AItem: TSyncItem): string;
+begin
+  if AItem.Reason in [srMissingOnSrc, srNewerOnDst] then
+    Result := AItem.DstURI
+  else
+    Result := AItem.SrcURI;
+end;
+
+function SyncItemRightURI(const AItem: TSyncItem): string;
+begin
+  if AItem.Reason in [srMissingOnSrc, srNewerOnDst] then
+    Result := AItem.SrcURI
+  else
+    Result := AItem.DstURI;
+end;
+
+function EffectiveSyncAction(const AItem: TSyncItem;
+  ATwoWay: Boolean): TSyncAction;
+begin
+  if AItem.Action <> saAuto then
+    Exit(AItem.Action);
+  case AItem.Reason of
+    srMissing, srNewer:
+      Result := saCopyRight;
+    srContentDiff:
+      if ATwoWay then
+        Result := saSkip
+      else
+        Result := saCopyRight;
+    srMissingOnSrc, srNewerOnDst:
+      if ATwoWay then
+        Result := saCopyLeft
+      else
+        Result := saSkip;
+  else
+    Result := saSkip;
+  end;
+end;
+
+function SyncActionAllowed(const AItem: TSyncItem;
+  AAction: TSyncAction): Boolean;
+begin
+  case AAction of
+    saCopyRight: Result := AItem.Reason <> srMissingOnSrc;
+    saCopyLeft: Result := AItem.Reason <> srMissing;
+  else
+    Result := True;
+  end;
+end;
+
+function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction): Boolean;
+begin
+  Result := SyncActionAllowed(AItem, AAction);
+  if Result then
+    AItem.Action := AAction;
 end;
 
 function RelInList(const ARel: string; const AList: TArray<string>): Boolean;
@@ -276,6 +355,7 @@ begin
   Result.SrcURI := PathToFileUri(ASrcPath);
   Result.DstURI := PathToFileUri(ADstPath);
   Result.Reason := AReason;
+  Result.Action := saAuto;
 end;
 
 procedure AppendSyncItem(var AItems: TArray<TSyncItem>; const AItem: TSyncItem);
@@ -575,6 +655,80 @@ begin
   end;
 end;
 
+function FitSyncPath(const APath: string; AMaxLen: Integer): string;
+var
+  Head, Tail: Integer;
+begin
+  if (AMaxLen < 8) or (Length(APath) <= AMaxLen) then
+  begin
+    if AMaxLen < 0 then
+      AMaxLen := 0;
+    Exit(Copy(APath, 1, AMaxLen));
+  end;
+  Head := (AMaxLen - 3) div 3;
+  Tail := AMaxLen - 3 - Head;
+  Result := Copy(APath, 1, Head) + '...' + Copy(APath, Length(APath) - Tail + 1, Tail);
+end;
+
+function SyncActionGlyph(AAction: TSyncAction): string;
+begin
+  case AAction of
+    saCopyRight: Result := '->';
+    saCopyLeft: Result := '<-';
+  else
+    Result := '--';
+  end;
+end;
+
+function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
+  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>): TArray<string>;
+var
+  I, N: Integer;
+  Action: TSyncAction;
+  Mark: string;
+begin
+  SetLength(Result, 0);
+  SetLength(AViewIdx, 0);
+  for I := 0 to High(AItems) do
+  begin
+    Action := EffectiveSyncAction(AItems[I], ATwoWay);
+    if AOnlySkipped and (Action <> saSkip) then
+      Continue;
+    if AItems[I].Action = saAuto then
+      Mark := ' '
+    else
+      Mark := '*';
+    N := Length(Result);
+    SetLength(Result, N + 1);
+    SetLength(AViewIdx, N + 1);
+    Result[N] := SyncActionGlyph(Action) + Mark + PreviewTag(AItems[I].Reason) +
+      ' ' + AItems[I].RelPath;
+    AViewIdx[N] := I;
+  end;
+end;
+
+function FormatDirSyncPlanStatus(const AItems: TArray<TSyncItem>;
+  ATwoWay: Boolean): string;
+var
+  I, ToRight, ToLeft, Skipped, Open: Integer;
+begin
+  ToRight := 0;
+  ToLeft := 0;
+  Skipped := 0;
+  for I := 0 to High(AItems) do
+    case EffectiveSyncAction(AItems[I], ATwoWay) of
+      saCopyRight: Inc(ToRight);
+      saCopyLeft: Inc(ToLeft);
+    else
+      Inc(Skipped);
+    end;
+  Open := Length(CollectDirSyncUnresolvedRels(AItems, ATwoWay));
+  Result := T('ui.dirSync.status', '%d to copy (%d ->, %d <-), %d skipped',
+    [ToRight + ToLeft, ToRight, ToLeft, Skipped]);
+  if Open > 0 then
+    Result := Result + T('ui.dirSync.statusOpen', ', %d unresolved', [Open]);
+end;
+
 function FormatDirSyncStatus(const AItems: TArray<TSyncItem>): string;
 var
   I, Missing, Newer, MissingLeft, NewerLeft, Conflicts, ContentDiffs,
@@ -617,24 +771,29 @@ procedure CollectDirSyncJobPairs(const AItems: TArray<TSyncItem>;
   out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean);
 var
   I, N: Integer;
+  Action: TSyncAction;
 begin
   SetLength(ASources, 0);
   SetLength(ADestURIs, 0);
   for I := 0 to High(AItems) do
   begin
-    if SyncItemIsConflict(AItems[I]) then
-      Continue;
-    if (AItems[I].Reason = srContentDiff) and ATwoWay then
-      Continue;
-    if SyncItemCopiesToLeft(AItems[I]) and not ATwoWay then
-      Continue;
-    if not (SyncItemCopiesToRight(AItems[I]) or SyncItemCopiesToLeft(AItems[I])) then
+    Action := EffectiveSyncAction(AItems[I], ATwoWay);
+    if not (Action in [saCopyRight, saCopyLeft]) or
+       not SyncActionAllowed(AItems[I], Action) then
       Continue;
     N := Length(ASources);
     SetLength(ASources, N + 1);
     SetLength(ADestURIs, N + 1);
-    ASources[N] := AItems[I].SrcURI;
-    ADestURIs[N] := AItems[I].DstURI;
+    if Action = saCopyRight then
+    begin
+      ASources[N] := SyncItemLeftURI(AItems[I]);
+      ADestURIs[N] := SyncItemRightURI(AItems[I]);
+    end
+    else
+    begin
+      ASources[N] := SyncItemRightURI(AItems[I]);
+      ADestURIs[N] := SyncItemLeftURI(AItems[I]);
+    end;
   end;
 end;
 

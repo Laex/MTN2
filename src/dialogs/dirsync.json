@@ -2,8 +2,8 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Synchronize directories",
-  "width": 72,
-  "height": 22,
+  "width": 110,
+  "height": 29,
   "children": [
     {
       "type": "label",
@@ -20,7 +20,7 @@
       "text": "",
       "col": 12,
       "row": 0,
-      "width": 58,
+      "width": 96,
       "height": 1
     },
     {
@@ -38,7 +38,7 @@
       "text": "",
       "col": 12,
       "row": 1,
-      "width": 58,
+      "width": 96,
       "height": 1
     },
     {
@@ -91,7 +91,7 @@
       "text": "0 to copy",
       "col": 1,
       "row": 4,
-      "width": 68,
+      "width": 106,
       "height": 1
     },
     {
@@ -103,8 +103,44 @@
       ],
       "col": 1,
       "row": 6,
-      "width": 68,
-      "height": 8
+      "width": 106,
+      "height": 10
+    },
+    {
+      "type": "button",
+      "id": "act_right",
+      "text": "Ri&ght ->",
+      "col": 1,
+      "row": 17,
+      "width": 25,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "act_left",
+      "text": "<- Le&ft",
+      "col": 28,
+      "row": 17,
+      "width": 25,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "act_skip",
+      "text": "S&kip",
+      "col": 55,
+      "row": 17,
+      "width": 25,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "act_auto",
+      "text": "Re&set",
+      "col": 82,
+      "row": 17,
+      "width": 25,
+      "height": 1
     },
     {
       "type": "checkbox",
@@ -112,15 +148,50 @@
       "text": "Dry &run (report only)",
       "checked": false,
       "col": 1,
-      "row": 15,
-      "width": 68,
+      "row": 19,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "only_skipped",
+      "text": "On&ly skipped",
+      "checked": false,
+      "col": 44,
+      "row": 19,
+      "width": 40,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 16,
-      "width": 70,
+      "row": 20,
+      "width": 108,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint_keys",
+      "text": "",
+      "col": 1,
+      "row": 21,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint_legend",
+      "text": "",
+      "col": 1,
+      "row": 22,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 23,
+      "width": 108,
       "height": 1
     },
     {
@@ -128,8 +199,8 @@
       "id": "ok",
       "text": "Synchronize",
       "default": true,
-      "col": 18,
-      "row": 18,
+      "col": 36,
+      "row": 25,
       "width": 16,
       "height": 1
     },
@@ -138,8 +209,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 36,
-      "row": 18,
+      "col": 58,
+      "row": 25,
       "width": 16,
       "height": 1
     }

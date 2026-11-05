@@ -1668,6 +1668,7 @@ begin
   Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
+  Result.ColumnSeparators := GColumnSeparators;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -1721,6 +1722,8 @@ begin
   GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
+  FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  GColumnSeparators := ASettings.ColumnSeparators;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
   ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
@@ -1853,6 +1856,7 @@ begin
   GSaverMinutes := Sess.SaverMinutes;
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
+  GColumnSeparators := Sess.ColumnSeparators;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
@@ -1973,6 +1977,7 @@ begin
   Sess.SaverMinutes := GSaverMinutes;
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
+  Sess.ColumnSeparators := GColumnSeparators;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
@@ -2865,6 +2870,7 @@ begin
   FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
+  FSession.ColumnSeparators := False;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);

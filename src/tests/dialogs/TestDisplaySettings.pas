@@ -115,6 +115,7 @@ begin
   Result.LineSpacing := True;
   Result.MarkedRows := 'band';
   Result.PassiveCursor := False;
+  Result.ColumnSeparators := True;
   Result.AltOpensMenu := False;
   Result.EditorAutoIndent := False;
   Result.ExactSelectionSize := True;
@@ -164,6 +165,7 @@ begin
     Assert.IsTrue(Loaded.LineSpacing, 'lineSpacing saved');
     Assert.IsTrue(Loaded.MarkedRows = 'band', 'markedRows saved');
     Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
+    Assert.IsTrue(Loaded.ColumnSeparators, 'columnSeparators saved');
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
     Assert.IsTrue(Loaded.ExactSelectionSize, 'exactSelectionSize saved');
@@ -231,6 +233,9 @@ begin
     Pair := Root.RemovePair('passiveCursor');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('columnSeparators');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('altOpensMenu');
     if Assigned(Pair) then
       Pair.Free;
@@ -280,6 +285,7 @@ begin
     Assert.IsTrue(not Sess.LineSpacing, 'missing lineSpacing -> off');
     Assert.IsTrue(Sess.MarkedRows = 'text', 'missing markedRows -> text');
     Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
+    Assert.IsTrue(not Sess.ColumnSeparators, 'missing columnSeparators -> no rules');
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
     Assert.IsTrue(not Sess.ExactSelectionSize, 'missing exactSelectionSize -> short sizes');

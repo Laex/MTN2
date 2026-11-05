@@ -93,6 +93,9 @@ type
     /// <summary>The cursor row is highlighted in the passive panel too
     /// (uThemeDrawing.GShowPassiveCursor).</summary>
     PassiveCursor: Boolean;
+    /// <summary>Vertical rules between the panel columns
+    /// (uThemeDrawing.GColumnSeparators).</summary>
+    ColumnSeparators: Boolean;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
@@ -372,6 +375,7 @@ begin
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;
+  Result.ColumnSeparators := False;
   Result.LineSpacing := False;
   Result.SnapFontSize := False;
   Result.TextContrast := 0;

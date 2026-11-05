@@ -50,6 +50,12 @@ function FormatDriveSize(ABytes: Int64): string;
 function DriveInfoLines(const AInfo: TDriveInfo): TArray<string>;
 function FormatDrivePopupLine(const AInfo: TDriveInfo; AIsCurrent: Boolean;
   AInnerWidth: Integer): string;
+/// <summary>Width in characters of the size columns of a popup line (total,
+/// separator, free); they end one character before AInnerWidth.</summary>
+function DrivePopupBarWidth: Integer;
+/// <summary>How many of ACells characters of the usage bar are filled: the used
+/// part of the volume, rounded; 0 when the size or free space is unknown.</summary>
+function DriveUsedCells(const AInfo: TDriveInfo; ACells: Integer): Integer;
 /// <summary>Volume details for any local path (drive root of APath).</summary>
 function TryQueryPathVolume(const APath: string; out AInfo: TDriveInfo): Boolean;
 function FormatVolumeSerial(ASerial: Cardinal): string;
@@ -304,6 +310,26 @@ begin
     Result := Copy(Result, 1, AInnerWidth - 1);
   while Length(Result) < AInnerWidth do
     Result := Result + ' ';
+end;
+
+function DrivePopupBarWidth: Integer;
+begin
+  Result := 7 + 3 + 7;
+end;
+
+function DriveUsedCells(const AInfo: TDriveInfo; ACells: Integer): Integer;
+var
+  Used: Int64;
+begin
+  Result := 0;
+  if (AInfo.TotalBytes <= 0) or (AInfo.FreeBytes < 0) or (ACells <= 0) then
+    Exit;
+  Used := AInfo.TotalBytes - AInfo.FreeBytes;
+  if Used <= 0 then
+    Exit;
+  if Used >= AInfo.TotalBytes then
+    Exit(ACells);
+  Result := Round(Used / AInfo.TotalBytes * ACells);
 end;
 
 function FormatVolumeSerial(ASerial: Cardinal): string;

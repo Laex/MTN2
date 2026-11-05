@@ -282,6 +282,43 @@ begin
     FOnNavigate(Side, TargetURI);
 end;
 
+// Mixes AColor 22% into ABase: a pale tint that keeps text on top readable.
+function PaleTint(AColor, ABase: TAlphaColor): TAlphaColor;
+var
+  Shift: Integer;
+  Ch: Cardinal;
+begin
+  Result := $FF000000;
+  for Shift := 0 to 2 do
+  begin
+    Ch := (((ABase shr (Shift * 8)) and $FF) * 78 +
+      ((AColor shr (Shift * 8)) and $FF) * 22) div 100;
+    Result := Result or (Ch shl (Shift * 8));
+  end;
+end;
+
+// The drive line with the used part of the volume as a pale bar behind the
+// total and free size columns.
+procedure PutDriveLine(const AGrid: TTerminalGrid; AX, AY: Integer;
+  const ALine: string; const AInfo: TDriveInfo; AFg, ABg: TAlphaColor);
+var
+  BarW, BarStart, Filled: Integer;
+begin
+  BarW := DrivePopupBarWidth;
+  BarStart := Length(ALine) - 1 - BarW;
+  Filled := DriveUsedCells(AInfo, BarW);
+  if (Filled <= 0) or (BarStart < 0) then
+  begin
+    PutGridText(AGrid, AX, AY, ALine, AFg, ABg);
+    Exit;
+  end;
+  PutGridText(AGrid, AX, AY, Copy(ALine, 1, BarStart), AFg, ABg);
+  PutGridText(AGrid, AX + BarStart, AY, Copy(ALine, BarStart + 1, Filled),
+    AFg, PaleTint(AFg, ABg));
+  PutGridText(AGrid, AX + BarStart + Filled, AY,
+    Copy(ALine, BarStart + Filled + 1, MaxInt), AFg, ABg);
+end;
+
 procedure TDrivePopupController.Draw(const AGrid: TTerminalGrid);
 var
   R: TRectI;
@@ -331,7 +368,7 @@ begin
         ResolveOverlayTextColors(FTheme, False, False, True, cCursorFg, cCursorBg, Fg, Bg)
       else
         ResolveOverlayTextColors(FTheme, False, False, False, cFileFg, cPanelBg, Fg, Bg);
-      PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
+      PutDriveLine(AGrid, R.Left + 1, Y, Line, FState.Drives[Idx], Fg, Bg);
     end
     else if Idx = Length(FState.Drives) then
     begin

@@ -119,6 +119,10 @@ type
     Message: string;
     Bounds: TRectI;
     Cancel: IJobCancelToken;
+    /// <summary>On hold: a running copy waits, a queued job is not started.</summary>
+    Paused: Boolean;
+    /// <summary>Copy speed limit in KB per second; 0 = none.</summary>
+    SpeedLimitKB: Integer;
     /// <summary>Last ask-dialog copy so a deferred / FIFO ask can reopen
     /// the same overwrite / delete / I/O prompt.</summary>
     AskPath: string;

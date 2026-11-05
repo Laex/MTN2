@@ -455,6 +455,7 @@ begin
         // this file's own progress separately, for the per-file bar.
         QueueProgress(AOnProgress, ABaseDoneBytes + Copied, ReportTotal, SafeFileName(ASrc),
           Copied, Total, ASrc, ADst);
+        JobThrottle(ACancel, N);
       end;
     except
       // A single unreadable or unwritable file must stay a per-file error

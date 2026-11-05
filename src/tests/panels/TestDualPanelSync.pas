@@ -20,6 +20,11 @@ type
     [Test] procedure TestCommitKeepsConflicts;
     [Test] procedure TestJobPairDirection;
     [Test] procedure TestContentModeSameDate;
+    [Test] procedure TestManualActionOverridesDirection;
+    [Test] procedure TestManualSkipStaysUnresolved;
+    [Test] procedure TestManualActionRespectsMissingSide;
+    [Test] procedure TestPlanLinesFilterAndMap;
+    [Test] procedure TestFitSyncPathKeepsBothEnds;
   end;
 
 implementation
@@ -327,6 +332,127 @@ begin
     'status names the content-diff');
 end;
 
+function PlanItems: TArray<TSyncItem>;
+begin
+  SetLength(Result, 4);
+  Result[0].RelPath := 'a.txt';
+  Result[0].SrcURI := 'file:///C:/L/a.txt';
+  Result[0].DstURI := 'file:///C:/R/a.txt';
+  Result[0].Reason := srNewer;
+  Result[1].RelPath := 'b.txt';
+  Result[1].SrcURI := 'file:///C:/R/b.txt';
+  Result[1].DstURI := 'file:///C:/L/b.txt';
+  Result[1].Reason := srNewerOnDst;
+  Result[2].RelPath := 'c.txt';
+  Result[2].SrcURI := 'file:///C:/L/c.txt';
+  Result[2].DstURI := 'file:///C:/R/c.txt';
+  Result[2].Reason := srConflict;
+  Result[3].RelPath := 'd.txt';
+  Result[3].SrcURI := 'file:///C:/L/d.txt';
+  Result[3].DstURI := 'file:///C:/R/d.txt';
+  Result[3].Reason := srMissing;
+end;
+
+procedure TestManualActionOverridesDirection;
+var
+  Items: TArray<TSyncItem>;
+  Sources, Dests: TArray<string>;
+begin
+  Items := PlanItems;
+  Assert.IsTrue(EffectiveSyncAction(Items[2], True) = saSkip,
+    'a conflict is skipped until chosen');
+  Assert.IsTrue(ApplySyncAction(Items[2], saCopyLeft), 'conflict can go right-to-left');
+  Assert.IsTrue(ApplySyncAction(Items[0], saCopyLeft),
+    'a newer left file can be overwritten by the right one');
+  Assert.IsTrue(ApplySyncAction(Items[1], saSkip), 'a copy can be skipped');
+
+  CollectDirSyncJobPairs(Items, Sources, Dests, True);
+  Assert.IsTrue(3 = Length(Sources), 'two manual copies plus the automatic one');
+  Assert.IsTrue(SyncItemRightURI(Items[0]) = Sources[0], 'overridden copy reads from the right');
+  Assert.IsTrue(SyncItemLeftURI(Items[0]) = Dests[0], 'overridden copy writes to the left');
+  Assert.IsTrue(SyncItemRightURI(Items[2]) = Sources[1], 'resolved conflict reads from the right');
+  Assert.IsTrue(SyncItemLeftURI(Items[3]) = Sources[2], 'automatic copy keeps its direction');
+
+  Items[0].Action := saAuto;
+  Assert.IsTrue(EffectiveSyncAction(Items[0], False) = saCopyRight,
+    'reset returns to the automatic action');
+end;
+
+procedure TestManualSkipStaysUnresolved;
+var
+  Items: TArray<TSyncItem>;
+  Rels: TArray<string>;
+begin
+  Items := PlanItems;
+  Rels := CollectDirSyncUnresolvedRels(Items, True);
+  Assert.IsTrue(1 = Length(Rels), 'only the conflict is open at first');
+  Assert.IsTrue('c.txt' = Rels[0], 'unexpected value');
+
+  ApplySyncAction(Items[2], saCopyRight);
+  ApplySyncAction(Items[3], saSkip);
+  Rels := CollectDirSyncUnresolvedRels(Items, True);
+  Assert.IsTrue(1 = Length(Rels), 'a resolved conflict leaves the list, a skipped copy joins it');
+  Assert.IsTrue('d.txt' = Rels[0], 'unexpected value');
+
+  Items[3].Action := saAuto;
+  Assert.IsTrue(Length(CollectDirSyncUnresolvedRels(Items, True)) = 0,
+    'nothing is open once every item has an action');
+  Assert.IsTrue(Length(CollectDirSyncUnresolvedRels(Items, False)) = 0,
+    'one-way mode does not report the reverse copy as open');
+end;
+
+procedure TestManualActionRespectsMissingSide;
+var
+  Items: TArray<TSyncItem>;
+  Sources, Dests: TArray<string>;
+begin
+  Items := PlanItems;
+  Assert.IsFalse(ApplySyncAction(Items[3], saCopyLeft),
+    'a file missing on the right cannot be copied from the right');
+  Assert.IsTrue(Items[3].Action = saAuto, 'a refused action changes nothing');
+
+  Items[3].Action := saCopyLeft;
+  CollectDirSyncJobPairs(Items, Sources, Dests, True);
+  Assert.IsTrue(Length(Sources) = 2,
+    'the impossible action is dropped; a.txt and b.txt remain');
+end;
+
+procedure TestPlanLinesFilterAndMap;
+var
+  Items: TArray<TSyncItem>;
+  View: TArray<Integer>;
+  Lines: TArray<string>;
+begin
+  Items := PlanItems;
+  Lines := FormatSyncPlanLines(Items, True, False, View);
+  Assert.IsTrue(4 = Length(Lines), 'unexpected value');
+  Assert.IsTrue(Pos('->', Lines[0]) = 1, 'newer-left copy shows the right arrow');
+  Assert.IsTrue(Pos('<-', Lines[1]) = 1, 'newer-right copy shows the left arrow');
+  Assert.IsTrue(Pos('--', Lines[2]) = 1, 'conflict shows the skip marker');
+
+  ApplySyncAction(Items[0], saSkip);
+  Lines := FormatSyncPlanLines(Items, True, True, View);
+  Assert.IsTrue(2 = Length(Lines), 'filter keeps only skipped rows');
+  Assert.IsTrue(0 = View[0], 'row 0 maps to a.txt');
+  Assert.IsTrue(2 = View[1], 'row 1 maps to c.txt');
+  Assert.IsTrue(Pos('*', Lines[0]) = 3, 'a manual choice is marked');
+  Assert.IsTrue(Pos('2 skipped', FormatDirSyncPlanStatus(Items, True)) > 0,
+    'status counts skipped items');
+end;
+
+procedure TestFitSyncPathKeepsBothEnds;
+var
+  Path, Fit: string;
+begin
+  Path := 'C:\Very\Long\Folder\Chain\That\Will\Not\Fit\In\The\Label\Width\sync-test\right';
+  Assert.IsTrue(FitSyncPath('C:\Short', 40) = 'C:\Short', 'a path that fits is untouched');
+  Fit := FitSyncPath(Path, 40);
+  Assert.IsTrue(Length(Fit) = 40, 'a long path is cut to the width');
+  Assert.IsTrue(Pos('...', Fit) > 0, 'the cut is marked');
+  Assert.IsTrue(Copy(Fit, 1, 3) = 'C:\', 'the start survives');
+  Assert.IsTrue(Copy(Fit, Length(Fit) - 4, 5) = 'right', 'the last folder survives');
+end;
+
 { TTestDualPanelSync }
 
 procedure TTestDualPanelSync.SetupFixture;
@@ -361,6 +487,31 @@ end;
 procedure TTestDualPanelSync.TestContentModeSameDate;
 begin
   TestDualPanelSync.TestContentModeSameDate;
+end;
+
+procedure TTestDualPanelSync.TestManualActionOverridesDirection;
+begin
+  TestDualPanelSync.TestManualActionOverridesDirection;
+end;
+
+procedure TTestDualPanelSync.TestManualSkipStaysUnresolved;
+begin
+  TestDualPanelSync.TestManualSkipStaysUnresolved;
+end;
+
+procedure TTestDualPanelSync.TestManualActionRespectsMissingSide;
+begin
+  TestDualPanelSync.TestManualActionRespectsMissingSide;
+end;
+
+procedure TTestDualPanelSync.TestPlanLinesFilterAndMap;
+begin
+  TestDualPanelSync.TestPlanLinesFilterAndMap;
+end;
+
+procedure TTestDualPanelSync.TestFitSyncPathKeepsBothEnds;
+begin
+  TestDualPanelSync.TestFitSyncPathKeepsBothEnds;
 end;
 
 initialization

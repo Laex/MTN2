@@ -27,6 +27,15 @@ type
     [Test] procedure TestPlanRejectsNamesOfOtherItems;
     [Test] procedure TestCaseOnlyChangeIsAllowed;
     [Test] procedure TestPlanCounts;
+    [Test] procedure TestDateTokens;
+    [Test] procedure TestParentAndSizeTokens;
+    [Test] procedure TestTokensIgnoreLetterCase;
+    [Test] procedure TestUnknownValuesAreEmpty;
+    [Test] procedure TestMetaValuesAreMadeSafe;
+    [Test] procedure TestRegexReplaceUsesGroups;
+    [Test] procedure TestRegexRespectsMatchCase;
+    [Test] procedure TestInvalidRegexKeepsNames;
+    [Test] procedure TestPlanUsesItemInfo;
   end;
 
 implementation
@@ -39,6 +48,14 @@ begin
   Result := DefaultMultiRenameRules;
   Result.NameMask := AName;
   Result.ExtMask := AExt;
+end;
+
+function Info(const AParent: string): TRenameItemInfo;
+begin
+  Result := EmptyRenameItemInfo;
+  Result.Modified := EncodeDate(2026, 11, 5) + EncodeTime(14, 30, 7, 0);
+  Result.Size := 1234;
+  Result.Parent := AParent;
 end;
 
 procedure TTestMultiRename.TestDefaultRulesKeepNames;
@@ -207,6 +224,100 @@ begin
   Assert.AreEqual('f3.txt', Plan[2].NewName);
   Assert.AreEqual(2, RenamePlanChangeCount(Plan));
   Assert.IsFalse(RenamePlanBlocked(Plan));
+end;
+
+procedure TTestMultiRename.TestDateTokens;
+begin
+  Assert.AreEqual('2026-11-05_14-30-07_a.txt',
+    MultiRenameName('a.txt', False, 0, Rules('[Date]_[Time]_[N]', '[E]'), Info('')));
+  Assert.AreEqual('20261105-a.txt',
+    MultiRenameName('a.txt', False, 0, Rules('[Year][Month][Day]-[N]', '[E]'), Info('')));
+end;
+
+procedure TTestMultiRename.TestParentAndSizeTokens;
+begin
+  Assert.AreEqual('Trip-1234.txt',
+    MultiRenameName('a.txt', False, 0, Rules('[Parent]-[Size]', '[E]'), Info('Trip')));
+end;
+
+procedure TTestMultiRename.TestTokensIgnoreLetterCase;
+begin
+  Assert.AreEqual('2026-11-05.txt',
+    MultiRenameName('a.txt', False, 0, Rules('[dAtE]', '[e]'), Info('')));
+  Assert.AreEqual('a.txt', MultiRenameName('a.txt', False, 0, Rules('[n]', '[e]')));
+end;
+
+procedure TTestMultiRename.TestUnknownValuesAreEmpty;
+begin
+  Assert.AreEqual('x.txt', MultiRenameName('a.txt', False, 0, Rules('[Date][Size][Camera]x', '[E]')),
+    'a token without a value expands to nothing');
+end;
+
+procedure TTestMultiRename.TestMetaValuesAreMadeSafe;
+var
+  I: TRenameItemInfo;
+begin
+  I := Info('');
+  I.Artist := 'AC/DC';
+  I.Title := 'a:b?';
+  I.Camera := 'Canon EOS';
+  I.Dim := '1920x1080';
+  Assert.AreEqual('AC_DC - a_b_.mp3',
+    MultiRenameName('x.mp3', False, 0, Rules('[Artist] - [Title]', '[E]'), I));
+  Assert.AreEqual('Canon EOS 1920x1080.jpg',
+    MultiRenameName('x.jpg', False, 0, Rules('[Camera] [Dim]', '[E]'), I));
+end;
+
+procedure TTestMultiRename.TestRegexReplaceUsesGroups;
+var
+  R: TMultiRenameRules;
+begin
+  R := Rules('[N]', '[E]');
+  R.UseRegex := True;
+  R.Search := '(\d+)-(\w+)';
+  R.Replace := '$2-$1';
+  Assert.AreEqual('abc-12.txt', MultiRenameName('12-abc.txt', False, 0, R));
+end;
+
+procedure TTestMultiRename.TestRegexRespectsMatchCase;
+var
+  R: TMultiRenameRules;
+begin
+  R := Rules('[N]', '[E]');
+  R.UseRegex := True;
+  R.Search := 'IMG';
+  R.Replace := 'Photo';
+  Assert.AreEqual('Photo_1.jpg', MultiRenameName('img_1.jpg', False, 0, R));
+  R.MatchCase := True;
+  Assert.AreEqual('img_1.jpg', MultiRenameName('img_1.jpg', False, 0, R));
+end;
+
+procedure TTestMultiRename.TestInvalidRegexKeepsNames;
+var
+  R: TMultiRenameRules;
+begin
+  R := Rules('[N]', '[E]');
+  R.UseRegex := True;
+  R.Search := '(';
+  R.Replace := 'x';
+  Assert.AreEqual('a.txt', MultiRenameName('a.txt', False, 0, R));
+  R.UseRegex := False;
+  Assert.AreEqual('a.txt', MultiRenameName('a.txt', False, 0, R),
+    'the same text is a plain string without the regex flag');
+end;
+
+procedure TTestMultiRename.TestPlanUsesItemInfo;
+var
+  Plan: TRenamePlan;
+begin
+  Plan := PlanMultiRename(['a.txt', 'b.txt'], [False, False], ['a.txt', 'b.txt'],
+    Rules('[Date]', '[E]'), [Info('x'), Info('x')]);
+  Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[0].Problem), 'equal dates give equal names');
+  Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[1].Problem));
+  Plan := PlanMultiRename(['a.txt', 'b.txt'], [False, False], ['a.txt', 'b.txt'],
+    Rules('[Date]', '[E]'), [Info('x')]);
+  Assert.AreEqual('2026-11-05.txt', Plan[0].NewName);
+  Assert.AreEqual('.txt', Plan[1].NewName, 'an item without info has empty tokens');
 end;
 
 initialization

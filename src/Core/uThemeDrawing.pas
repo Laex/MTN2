@@ -25,6 +25,10 @@ var
   /// session.json (passiveCursor). Off: the cursor row of the panel that does
   /// not have the focus is drawn as an ordinary row.</summary>
   GShowPassiveCursor: Boolean = True;
+  /// <summary>Display dialog "column separators"; persisted in session.json
+  /// (columnSeparators). On: vertical rules between the columns of the Full
+  /// and custom panel modes (the Brief mode always has them).</summary>
+  GColumnSeparators: Boolean = False;
   /// <summary>How much the modal backdrop darkens the scene, in percent. The
   /// host sets it for its renderer: smooth glyph edges read well under a
   /// stronger dim than blocky ones.</summary>

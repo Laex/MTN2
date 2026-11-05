@@ -183,16 +183,40 @@ type
       AOnDone: TVfsFreeSpaceCallback);
   end;
 
+  /// <summary>Optionally implemented by a cancel token. The job can be put on
+  /// hold and its copy speed limited while a worker runs. The UI sets the
+  /// values; the copy loop calls Throttle after every chunk.</summary>
+  IJobThrottle = interface
+    ['{7B2E5D13-94A6-4C80-8F1D-3A6C0E92B5D7}']
+    procedure SetPaused(AValue: Boolean);
+    /// <summary>KB per second; 0 or less means no limit.</summary>
+    procedure SetLimitKBps(AValue: Integer);
+    /// <summary>Called by the worker after ABytes were copied: blocks while the
+    /// job is paused and sleeps as long as the limit asks. Returns early when
+    /// the job is cancelled.</summary>
+    procedure Throttle(ABytes: Integer);
+  end;
+
   TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver,
-    IJobErrorResolver, IJobSkipCounter)
+    IJobErrorResolver, IJobSkipCounter, IJobThrottle)
   private
     FCancelled: Integer; // 0/1 - written from UI, read from workers
+    FPaused: Integer;    // 0/1 - written from UI, read from workers
+    FLimitKB: Integer;   // written from UI, read from workers
+    // The worker's own pacing state: when the current rate window began, how many
+    // bytes it holds and the limit it was started for.
+    FRateStart: UInt64;
+    FRateBytes: Int64;
+    FRateLimit: Integer;
     FSkipped: Integer;   // incremented by workers, read from UI
     FConflictResolver: TVfsConflictResolver;
     FErrorResolver: TVfsErrorResolver;
   public
     function IsCancellationRequested: Boolean;
     procedure Cancel;
+    procedure SetPaused(AValue: Boolean);
+    procedure SetLimitKBps(AValue: Integer);
+    procedure Throttle(ABytes: Integer);
     function GetConflictResolver: TVfsConflictResolver;
     /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
     property ConflictResolver: TVfsConflictResolver read FConflictResolver
@@ -219,6 +243,10 @@ function JobErrorResolver(const ACancel: IJobCancelToken): TVfsErrorResolver;
 
 /// <summary>True when token is assigned and cancellation was requested.</summary>
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
+
+/// <summary>Reports ABytes copied to the token's pause and speed limit (a no-op
+/// for a token without them).</summary>
+procedure JobThrottle(const ACancel: IJobCancelToken; ABytes: Integer);
 
 function FileUriToPath(const AURI: string): string;
 function PathToFileUri(const APath: string): string;
@@ -401,6 +429,59 @@ begin
   TInterlocked.Exchange(FCancelled, 1);
 end;
 
+procedure TJobCancelToken.SetPaused(AValue: Boolean);
+begin
+  TInterlocked.Exchange(FPaused, Ord(AValue));
+end;
+
+procedure TJobCancelToken.SetLimitKBps(AValue: Integer);
+begin
+  if AValue < 0 then
+    AValue := 0;
+  TInterlocked.Exchange(FLimitKB, AValue);
+end;
+
+procedure TJobCancelToken.Throttle(ABytes: Integer);
+const
+  cSliceMs = 50;
+var
+  Limit: Integer;
+  Now, Due: UInt64;
+begin
+  while (TInterlocked.CompareExchange(FPaused, 0, 0) <> 0) and
+        not IsCancellationRequested do
+  begin
+    Sleep(cSliceMs);
+    FRateStart := 0;
+  end;
+  Limit := TInterlocked.CompareExchange(FLimitKB, 0, 0);
+  if Limit <= 0 then
+  begin
+    FRateStart := 0;
+    Exit;
+  end;
+  Now := TThread.GetTickCount64;
+  // A window starts at the first chunk, when the limit changes and after a
+  // stall, so a copy that was slow or paused does not rush to catch up.
+  if (FRateStart = 0) or (Limit <> FRateLimit) then
+  begin
+    FRateStart := Now;
+    FRateBytes := 0;
+    FRateLimit := Limit;
+  end;
+  Inc(FRateBytes, ABytes);
+  Due := FRateStart + UInt64(FRateBytes * 1000 div (Int64(Limit) * 1024));
+  if Now > Due + 1000 then
+  begin
+    FRateStart := Now;
+    FRateBytes := 0;
+    Exit;
+  end;
+  while (Due > TThread.GetTickCount64) and not IsCancellationRequested and
+        (TInterlocked.CompareExchange(FPaused, 0, 0) = 0) do
+    Sleep(cSliceMs);
+end;
+
 function TJobCancelToken.GetConflictResolver: TVfsConflictResolver;
 begin
   Result := FConflictResolver;
@@ -424,6 +505,14 @@ end;
 function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
 begin
   Result := Assigned(ACancel) and ACancel.IsCancellationRequested;
+end;
+
+procedure JobThrottle(const ACancel: IJobCancelToken; ABytes: Integer);
+var
+  Throttle: IJobThrottle;
+begin
+  if Assigned(ACancel) and Supports(ACancel, IJobThrottle, Throttle) then
+    Throttle.Throttle(ABytes);
 end;
 
 function JobConflictResolver(const ACancel: IJobCancelToken): TVfsConflictResolver;

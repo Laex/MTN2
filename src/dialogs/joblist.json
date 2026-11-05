@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Background jobs",
   "width": 72,
-  "height": 17,
+  "height": 19,
   "children": [
     {
       "type": "label",
@@ -35,11 +35,47 @@
     },
     {
       "type": "button",
+      "id": "pausejob",
+      "text": "&Pause",
+      "col": 4,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "jobup",
+      "text": "&Up",
+      "col": 20,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "jobdown",
+      "text": "Do&wn",
+      "col": 36,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "jobspeed",
+      "text": "&Speed",
+      "col": 52,
+      "row": 13,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
       "id": "foreground",
       "text": "Foreground",
       "default": true,
       "col": 4,
-      "row": 13,
+      "row": 15,
       "width": 14,
       "height": 1
     },
@@ -48,7 +84,7 @@
       "id": "canceljob",
       "text": "&Cancel",
       "col": 20,
-      "row": 13,
+      "row": 15,
       "width": 14,
       "height": 1
     },
@@ -57,7 +93,7 @@
       "id": "cancelall",
       "text": "Cancel &all",
       "col": 36,
-      "row": 13,
+      "row": 15,
       "width": 14,
       "height": 1
     },
@@ -67,7 +103,7 @@
       "text": "Close",
       "cancel": true,
       "col": 52,
-      "row": 13,
+      "row": 15,
       "width": 14,
       "height": 1
     }

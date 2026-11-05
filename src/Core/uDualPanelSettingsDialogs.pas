@@ -329,6 +329,7 @@ begin
   DialogSetCheckbox(Decl, 'sticky_quick_search', Cur.StickyQuickSearch);
   DialogSetCheckbox(Decl, 'quick_search_keep_empty', Cur.QuickSearchKeepEmpty);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
+  DialogSetCheckbox(Decl, 'column_separators', Cur.ColumnSeparators);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
   DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
@@ -742,6 +743,7 @@ begin
     Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
     Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
+    Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
     Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');

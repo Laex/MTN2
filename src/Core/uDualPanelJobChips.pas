@@ -98,6 +98,8 @@ begin
     else
       Mark := IntToStr(JobProgressPercent(AJob)) + '%';
   end;
+  if JobIsHeld(AJob) then
+    Mark := '||';
   Result := '[' + JobKindGlyph(AJob.Kind, AJob.DeleteToRecycleBin) + ' ' + Mark + ']';
 end;
 

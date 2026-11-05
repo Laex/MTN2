@@ -35,6 +35,11 @@ procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TR
 procedure DrawPanelList(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const ATab: TTab; ASideActive: Boolean; AColumnMode: TPanelColumnMode;
   const AModel: IPanelModel; const ATheme: IThemeRenderer);
+/// <summary>Offsets of the one-cell gaps between the columns of the Full and
+/// custom modes, from the left edge of the name column (after the icon).
+/// Empty when the mode has no meta columns.</summary>
+function ColumnGapOffsets(AMode: TPanelColumnMode; AListWidth: Integer;
+  const AScheme: string): TArray<Integer>;
 function ColorCodingItemName(const AText: string): string;
 procedure FallbackFileRowColors(AIsDirectory, AIsParent, AIsHidden,
   ASelected, AIsCursor, ASideActive: Boolean; out AFg, ABg: TAlphaColor);
@@ -128,6 +133,84 @@ begin
 end;
 
 { =========================================================================
+  Column separators
+  ========================================================================= }
+
+// Offsets of the one-cell gaps between the columns of the Full and custom
+// modes, counted from the left edge of the name column; the header and the
+// rows share the arithmetic.
+function ColumnGapOffsets(AMode: TPanelColumnMode; AListWidth: Integer;
+  const AScheme: string): TArray<Integer>;
+var
+  NameW, MetaW, Off, I: Integer;
+  Widths: TArray<Integer>;
+  CustomDefs: TCustomColumnDefs;
+  SizeT, DateT, AttrT, ExtT, TypeT: string;
+  ShowSize, ShowDate, ShowAttr, ShowExt, ShowType: Boolean;
+
+  procedure AddWidth(AWidth: Integer);
+  begin
+    SetLength(Widths, Length(Widths) + 1);
+    Widths[High(Widths)] := AWidth;
+  end;
+
+begin
+  SetLength(Result, 0);
+  SetLength(Widths, 0);
+  PanelColumnWidths(AMode, AListWidth, NameW, MetaW, AScheme);
+  if MetaW <= 0 then
+    Exit;
+  if AMode = pcmCustom then
+  begin
+    CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+      MaxPanelMetaWidth(AListWidth));
+    for I := 0 to High(CustomDefs) do
+      AddWidth(CustomDefs[I].Width);
+  end
+  else
+  begin
+    PanelColumnHeaders(AMode, SizeT, DateT, AttrT, ExtT, TypeT,
+      ShowSize, ShowDate, ShowAttr, ShowExt, ShowType);
+    if ShowExt then
+      AddWidth(5);
+    if ShowSize then
+      AddWidth(8);
+    if ShowDate then
+      AddWidth(14);
+    if ShowType then
+      AddWidth(8);
+    if ShowAttr then
+      AddWidth(5);
+  end;
+  if Length(Widths) = 0 then
+    Exit;
+  // The gap after the name, then the gap after every column but the last.
+  Off := NameW;
+  SetLength(Result, Length(Widths));
+  Result[0] := Off;
+  for I := 0 to High(Widths) - 1 do
+  begin
+    Inc(Off, Widths[I] + 1);
+    Result[I + 1] := Off;
+  end;
+end;
+
+// Separator color: the idle frame color of the theme, so the rule stays
+// dimmer than the active frame. A cell whose background is that color (the
+// cursor bar) takes the text color instead, so the rule never vanishes.
+function SeparatorFg(const ATheme: IThemeRenderer; ACellFg, ACellBg: TAlphaColor): TAlphaColor;
+var
+  Bg: TAlphaColor;
+begin
+  if Assigned(ATheme) then
+    ATheme.ResolvePanelChromeColors(pcpFrameIdle, False, Result, Bg)
+  else
+    Result := cRuleFg;
+  if Result = ACellBg then
+    Result := ACellFg;
+end;
+
+{ =========================================================================
   DrawPanelColumnHeaders
   ========================================================================= }
 procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -135,7 +218,8 @@ procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TR
   const ATheme: IThemeRenderer; const AScheme: string; const ASortPluginId: string);
 var
   NameW, MetaW, ListLeft, ListRight, HeaderY, ColLeft, ColW, IconRes, I: Integer;
-  HeadFg, HeadBg: TAlphaColor;
+  HeadFg, HeadBg, RuleFg: TAlphaColor;
+  GapOff: Integer;
   SizeTitle, DateTitle, AttrTitle, ExtTitle, TypeTitle: string;
   ShowSize, ShowDate, ShowAttr, ShowExt, ShowType: Boolean;
   CustomDefs: TCustomColumnDefs;
@@ -177,6 +261,14 @@ begin
   IconRes := PanelIconReserve;
   FillGridRect(ABuffer, ListLeft, HeaderY, ABounds.Right - 1, HeaderY,
     ' ', HeadFg, HeadBg);
+
+  if GColumnSeparators then
+  begin
+    RuleFg := SeparatorFg(ATheme, HeadFg, HeadBg);
+    for GapOff in ColumnGapOffsets(AMode, ListRight - ListLeft + 1, AScheme) do
+      if ListLeft + IconRes + GapOff <= ListRight then
+        DrawGridChar(ABuffer, ListLeft + IconRes + GapOff, HeaderY, chBoxV, RuleFg, HeadBg);
+  end;
 
   // Leading icon column: blank header.
   PutCentered(ListLeft + IconRes, NameW, PanelColumnTitle(pscName), pscName);
@@ -294,10 +386,12 @@ var
   Row: TPanelRow;
   NamePart, MetaPart, Scheme: string;
   IconCh: Char;
-  Fg, Bg, EmptyFg, EmptyBg: TAlphaColor;
+  Fg, Bg, EmptyFg, EmptyBg, SepFg: TAlphaColor;
   Selected: Boolean;
   SelKeys: TArray<string>;
   Mode: TPanelColumnMode;
+  Gaps: TArray<Integer>;
+  GapOff: Integer;
 
   // FAR-style "file highlighting" groups (uColorCoding), layered
   // on top of the theme's normal per-filetype color. ResolveRowColors calls
@@ -426,6 +520,8 @@ begin
     Exit;
   end;
 
+  if GColumnSeparators then
+    Gaps := ColumnGapOffsets(Mode, ABounds.Width, Scheme);
   for Y := 0 to ViewH - 1 do
   begin
     Idx := ATab.ScrollOffset + Y;
@@ -449,6 +545,14 @@ begin
       MetaPart := FormatPanelRowMeta(Mode, Row, MetaW, Scheme, ATab.CurrentURI);
       PutGridText(ABuffer, ABounds.Left + IconRes + NameW + 1, ABounds.Top + Y,
         MetaPart, Fg, Bg);
+      if GColumnSeparators then
+      begin
+        SepFg := SeparatorFg(ATheme, Fg, Bg);
+        for GapOff in Gaps do
+          if ABounds.Left + IconRes + GapOff <= ABounds.Right then
+            DrawGridChar(ABuffer, ABounds.Left + IconRes + GapOff, ABounds.Top + Y,
+              chBoxV, SepFg, Bg);
+      end;
     end;
   end;
 end;

@@ -79,7 +79,7 @@ begin
     Exit('');
   // File name -> extension; bare "pdf" -> ".pdf".
   if (Pos(PathDelim, S) > 0) or (Pos('/', S) > 0) or (Pos('.', S) > 1) then
-    S := TPath.GetExtension(S)
+    S := ExtractFileExt(S)
   else if (Length(S) > 0) and (S[1] <> '.') then
     S := '.' + S;
   Result := LowerCase(S);

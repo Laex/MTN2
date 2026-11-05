@@ -67,6 +67,10 @@ type
     FByContent: Boolean;
     FComparedByContent: Boolean;
     FCompareGen: Integer;
+    // List row -> index in FItems (the list can show a filtered view).
+    FViewIdx: TArray<Integer>;
+    FTwoWay: Boolean;
+    FOnlySkipped: Boolean;
     FOnCommand: TDialogCommandEvent;
     FOnSetKind: TFindKindSetter;
     FOnPrepare: TFindPrepareProc;
@@ -77,6 +81,9 @@ type
     procedure StartCompare;
     procedure ApplyCompareResult(const AItems: TArray<TSyncItem>;
       const AError: string; AByContent: Boolean; AGen: Integer);
+    procedure ReadViewMode;
+    procedure RefreshPlan(ASelect: Integer);
+    procedure ApplyRowAction(AAction: TSyncAction);
   public
     constructor Create(ADialog: TDialogHost; AJobs: TPanelJobList;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
@@ -87,6 +94,10 @@ type
       const AFields: TDialogCommandFields): Boolean;
     procedure NotifyJobFinished(ASuccess: Boolean);
     procedure NotifyDialogChanged;
+    /// <summary>Right / Left / Space / Del on the difference list set the
+    /// action of the current row.</summary>
+    function HandleListInput(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     property Busy: Boolean read FBusy;
   end;
 
@@ -96,6 +107,14 @@ implementation
 
 uses
   System.DateUtils, uFileFind, uStrings;
+
+const
+  // Cells of the path labels in dirsync.json.
+  cDirSyncPathCells = 96;
+  cDirSyncCmdRight = 'act_right';
+  cDirSyncCmdLeft = 'act_left';
+  cDirSyncCmdSkip = 'act_skip';
+  cDirSyncCmdAuto = 'act_auto';
 
 function ResolveSearchRootPath(const ACurrentUri: string): string;
 var
@@ -391,7 +410,10 @@ begin
   FByContent := False;
   FComparedByContent := False;
   FCompareGen := 0;
+  FTwoWay := False;
+  FOnlySkipped := False;
   SetLength(FItems, 0);
+  SetLength(FViewIdx, 0);
   SetLength(FPendingConflictRels, 0);
 end;
 
@@ -407,7 +429,8 @@ begin
   if not DirSyncUrisAreLocalFolders(ASrcURI, ADstURI) then
   begin
     if Assigned(FOnOpenStub) then
-      FOnOpenStub('Synchronize', 'Only local folders (file://) are supported');
+      FOnOpenStub(T('ui.dirSync.title', 'Synchronize'),
+        T('ui.dirSync.localOnly', 'Only local folders (file://) are supported'));
     Exit;
   end;
   SrcPath := FileUriToPath(ASrcURI);
@@ -415,7 +438,8 @@ begin
   if (SrcPath = '') or (DstPath = '') or not TDirectory.Exists(SrcPath) then
   begin
     if Assigned(FOnOpenStub) then
-      FOnOpenStub('Synchronize', 'Active panel must be a local folder');
+      FOnOpenStub(T('ui.dirSync.title', 'Synchronize'),
+        T('ui.dirSync.activeLocal', 'Active panel must be a local folder'));
     Exit;
   end;
 
@@ -424,6 +448,8 @@ begin
   FSnapshotPending := False;
   FByContent := False;
   FComparedByContent := False;
+  FTwoWay := False;
+  FOnlySkipped := False;
   SetLength(FPendingConflictRels, 0);
   StartCompare;
 end;
@@ -441,9 +467,10 @@ begin
   Gen := FCompareGen;
   ByContent := FByContent;
   if Assigned(FDialog) and FDialog.Visible then
-    FDialog.SetLabelText('status', 'Comparing...')
+    FDialog.SetLabelText('status', T('ui.dirSync.comparing', 'Comparing...'))
   else if Assigned(FOnOpenStub) then
-    FOnOpenStub('Synchronize', 'Comparing directories... Esc=wait');
+    FOnOpenStub(T('ui.dirSync.title', 'Synchronize'),
+      T('ui.dirSync.comparingWait', 'Comparing directories... Esc=wait'));
   Snap := LoadDirSyncSnapshot(FSrcRoot, FDstRoot);
   CompareDirsTwoWayAsync(FSrcRoot, FDstRoot, Snap,
     procedure(const AItems: TArray<TSyncItem>; const AError: string)
@@ -468,15 +495,17 @@ begin
     if Assigned(FOnCloseStub) then
       FOnCloseStub();
     if Assigned(FOnOpenStub) then
-      FOnOpenStub('Synchronize failed', AError);
+      FOnOpenStub(T('ui.dirSync.titleFailed', 'Synchronize failed'), AError);
     Exit;
   end;
   FItems := AItems;
   FComparedByContent := AByContent;
-  Preview := FormatSyncPreviewLines(AItems, 12);
+  if Assigned(FDialog) and FDialog.Visible then
+    ReadViewMode;
+  Preview := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx);
   if Assigned(FDialog) and FDialog.Visible then
   begin
-    FDialog.SetLabelText('status', FormatDirSyncStatus(AItems));
+    FDialog.SetLabelText('status', FormatDirSyncPlanStatus(FItems, FTwoWay));
     FDialog.SetListItems('preview', Preview, 0);
   end
   else
@@ -485,9 +514,10 @@ begin
       FOnCloseStub();
     if Assigned(FOnSetKind) then
       FOnSetKind(hdkDirSync);
-    FDialog.Open(BuildDirSyncDialog(FSrcRoot, FDstRoot,
-      FormatDirSyncStatus(AItems), Preview, False, False, AByContent),
-      FOnCommand);
+    FDialog.Open(BuildDirSyncDialog(FitSyncPath(FSrcRoot, cDirSyncPathCells),
+      FitSyncPath(FDstRoot, cDirSyncPathCells),
+      FormatDirSyncPlanStatus(FItems, FTwoWay), Preview, False, FTwoWay,
+      AByContent), FOnCommand);
   end;
   if Assigned(FOnNotify) then
     FOnNotify();
@@ -499,14 +529,85 @@ begin
   end;
 end;
 
+procedure TDirSyncDialogController.ReadViewMode;
+begin
+  FTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
+  FOnlySkipped := FDialog.GetCheckbox('only_skipped');
+end;
+
+procedure TDirSyncDialogController.RefreshPlan(ASelect: Integer);
+var
+  Lines: TArray<string>;
+  ScrollTop: Integer;
+begin
+  Lines := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx);
+  ScrollTop := FDialog.GetListScrollTop;
+  FDialog.SetLabelText('status', FormatDirSyncPlanStatus(FItems, FTwoWay));
+  FDialog.SetListItems('preview', Lines, ASelect);
+  FDialog.SetListScrollTop(ScrollTop);
+end;
+
+procedure TDirSyncDialogController.ApplyRowAction(AAction: TSyncAction);
+var
+  Sel, Idx: Integer;
+begin
+  if FBusy or not Assigned(FDialog) or not FDialog.Visible then
+    Exit;
+  Sel := FDialog.GetListSelectedIndex('preview');
+  if (Sel < 0) or (Sel > High(FViewIdx)) then
+    Exit;
+  Idx := FViewIdx[Sel];
+  if AAction = saAuto then
+    FItems[Idx].Action := saAuto
+  else if not ApplySyncAction(FItems[Idx], AAction) then
+    Exit;
+  ReadViewMode;
+  // Move on to the next row so a run of decisions needs no navigation; in the
+  // filtered view the decided row leaves the list and the next one slides in.
+  if FOnlySkipped then
+    RefreshPlan(Sel)
+  else
+    RefreshPlan(Sel + 1);
+end;
+
+function TDirSyncDialogController.HandleListInput(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Action: TSyncAction;
+begin
+  Result := False;
+  if (AShift * [ssShift, ssCtrl, ssAlt] <> []) or
+     not SameText(FDialog.FocusedControlId, 'preview') then
+    Exit;
+  case AKey of
+    vkRight: Action := saCopyRight;
+    vkLeft: Action := saCopyLeft;
+    vkDelete: Action := saAuto;
+  else
+    if AKeyChar = ' ' then
+      Action := saSkip
+    else
+      Exit;
+  end;
+  ApplyRowAction(Action);
+  AKey := 0;
+  AKeyChar := #0;
+  Result := True;
+end;
+
 procedure TDirSyncDialogController.NotifyDialogChanged;
 var
-  WantContent: Boolean;
+  WantContent, OldTwoWay, OldOnlySkipped: Boolean;
 begin
   if FBusy then
     Exit;
   if not Assigned(FDialog) or not FDialog.Visible then
     Exit;
+  OldTwoWay := FTwoWay;
+  OldOnlySkipped := FOnlySkipped;
+  ReadViewMode;
+  if (FTwoWay <> OldTwoWay) or (FOnlySkipped <> OldOnlySkipped) then
+    RefreshPlan(0);
   WantContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
   if WantContent = FComparedByContent then
     Exit;
@@ -519,37 +620,59 @@ function TDirSyncDialogController.DispatchCommand(const AControlId: string;
 var
   Accepted: Boolean;
   Sources, DestURIs: TArray<string>;
-  Conflicts: Integer;
+  Unresolved: Integer;
   CopyCount: Integer;
   Msg: string;
 begin
   Result := True;
+  if DialogCmdIs(AControlId, cDirSyncCmdRight) then
+  begin
+    ApplyRowAction(saCopyRight);
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, cDirSyncCmdLeft) then
+  begin
+    ApplyRowAction(saCopyLeft);
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, cDirSyncCmdSkip) then
+  begin
+    ApplyRowAction(saSkip);
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, cDirSyncCmdAuto) then
+  begin
+    ApplyRowAction(saAuto);
+    Exit;
+  end;
   Accepted := DialogCmdIsAccept(AControlId);
   FDialog.Close;
   if Accepted then
   begin
     CollectDirSyncJobPairs(FItems, Sources, DestURIs, AFields.SyncTwoWay);
     CopyCount := Length(Sources);
-    Conflicts := CountSyncConflicts(FItems);
+    Unresolved := Length(CollectDirSyncUnresolvedRels(FItems,
+      AFields.SyncTwoWay));
     if AFields.DryRun then
     begin
-      if Conflicts > 0 then
-        Msg := Format('Would copy %d file(s); %d conflict(s) left unresolved',
-          [CopyCount, Conflicts])
+      if Unresolved > 0 then
+        Msg := T('ui.dirSync.wouldCopyOpen',
+          'Would copy %d file(s); %d item(s) left unresolved',
+          [CopyCount, Unresolved])
       else
-        Msg := Format('Would copy %d file(s)', [CopyCount]);
+        Msg := T('ui.dirSync.wouldCopy', 'Would copy %d file(s)', [CopyCount]);
       if Assigned(FOnOpenStub) then
-        FOnOpenStub('Synchronize', Msg);
+        FOnOpenStub(T('ui.dirSync.title', 'Synchronize'), Msg);
     end
     else if CopyCount = 0 then
     begin
-      if Conflicts > 0 then
-        Msg := Format('Nothing to copy; %d conflict(s) need a manual choice',
-          [Conflicts])
+      if Unresolved > 0 then
+        Msg := T('ui.dirSync.nothingOpen',
+          'Nothing to copy; %d item(s) need a manual choice', [Unresolved])
       else
-        Msg := 'Nothing to copy';
+        Msg := T('ui.dirSync.nothing', 'Nothing to copy');
       if Assigned(FOnOpenStub) then
-        FOnOpenStub('Synchronize', Msg);
+        FOnOpenStub(T('ui.dirSync.title', 'Synchronize'), Msg);
       try
         CommitDirSyncSnapshot(FSrcRoot, FDstRoot,
           CollectDirSyncUnresolvedRels(FItems, AFields.SyncTwoWay));
@@ -565,6 +688,7 @@ begin
     end;
   end;
   SetLength(FItems, 0);
+  SetLength(FViewIdx, 0);
 end;
 
 procedure TDirSyncDialogController.NotifyJobFinished(ASuccess: Boolean);

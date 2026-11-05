@@ -219,6 +219,7 @@ begin
   FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
+  FSession.ColumnSeparators := False;
   FSession.ShowPanelIcons := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
@@ -390,6 +391,7 @@ begin
   Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
+  Result.ColumnSeparators := GColumnSeparators;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -424,6 +426,7 @@ begin
   if Assigned(FDualPanel) then
     FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.PassiveCursor := ASettings.PassiveCursor;
+  FSession.ColumnSeparators := ASettings.ColumnSeparators;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
@@ -437,6 +440,7 @@ begin
   GSaverMinutes := ASettings.SaverMinutes;
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
+  GColumnSeparators := ASettings.ColumnSeparators;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
@@ -514,6 +518,7 @@ begin
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
   GSaverMinutes := Sess.SaverMinutes;
   GShowPassiveCursor := Sess.PassiveCursor;
+  GColumnSeparators := Sess.ColumnSeparators;
   GNdnFooter := Sess.NdnFooter;
   if GHostShowsIcons then
     GShowPanelIcons := Sess.ShowPanelIcons;
@@ -570,6 +575,7 @@ begin
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
+  Sess.ColumnSeparators := GColumnSeparators;
   Sess.NdnFooter := GNdnFooter;
   if GHostShowsIcons then
     Sess.ShowPanelIcons := GShowPanelIcons;

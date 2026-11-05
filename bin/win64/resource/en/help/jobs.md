@@ -12,6 +12,11 @@ After **Stop** the progress window closes at once and the job finishes stopping 
 
 Dialog buttons are pressed with **Enter** and **Space**: the button looks pressed while the key is held and acts when the key is released. Esc before the release lifts the button without acting.
 
+<!--queue-->**Queue, pause and speed.** Copy and move jobs that touch the same drive run one after another; the rest wait in the queue (`..`). In the job list (**Ctrl+Shift+J**), with a job selected:
+- **Pause/Resume** holds a running copy at its next chunk (chip `||`, state "paused") or keeps a queued job from starting; a held job keeps its drive busy until it is resumed or cancelled;
+- **Up** and **Down** change the start order of queued jobs;
+- **Speed** steps the copy speed limit of the job through none, 1, 5, 20 and 100 MB/s (shown in the state column). The limit applies to copying between local folders.
+
 <!--errors-->When a copy, move or delete stops with an error, the error window offers **Retry**, **Skip**, **Skip all**, **Cancel** and, for “Access denied” on a local path, **Admin**: it repeats the item and the rest of the job through the administrator helper (see [File operations](fileops.md)).
 
 Background jobs show at the right of the tab bar: one chip per job and a list button at the end.

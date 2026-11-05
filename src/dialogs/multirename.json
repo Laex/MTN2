@@ -167,6 +167,25 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "use_regex",
+      "text": "Regular e&xpression",
+      "checked": false,
+      "col": 58,
+      "row": 7,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_tokens",
+      "text": "Tokens: [N] [E] [C] [Date] [Time] [Year] [Month] [Day] [Parent] [Size] [Dim] [Camera] [Artist] [Title]",
+      "col": 1,
+      "row": 8,
+      "width": 110,
+      "height": 1
+    },
+    {
       "type": "label",
       "id": "status",
       "text": "",
