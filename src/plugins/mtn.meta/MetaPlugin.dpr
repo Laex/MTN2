@@ -22,10 +22,10 @@ const
   cMaxCellFiles = 2000;
   cCellsPerPost = 100;
   cColumnsJson =
-    '[{"id":"dim","title":"Size px","title_key":"ui.col.dim","width":10,"align":"right","default":true,"sortable":false},' +
-    '{"id":"camera","title":"Camera","title_key":"ui.col.camera","width":20,"default":true,"sortable":false},' +
-    '{"id":"artist","title":"Artist","title_key":"ui.col.artist","width":20,"default":true,"sortable":false},' +
-    '{"id":"title","title":"Title","title_key":"ui.col.title","width":24,"default":true,"sortable":false}]';
+    '[{"id":"dim","title":"Size px","title_key":"ui.col.dim","width":10,"align":"right","default":true,"sortable":true},' +
+    '{"id":"camera","title":"Camera","title_key":"ui.col.camera","width":20,"default":true,"sortable":true},' +
+    '{"id":"artist","title":"Artist","title_key":"ui.col.artist","width":20,"default":true,"sortable":true},' +
+    '{"id":"title","title":"Title","title_key":"ui.col.title","width":24,"default":true,"sortable":true}]';
 
 type
   TMetaWorker = class(TThread)
@@ -244,6 +244,20 @@ begin
     Result := Result + '|' + Name;
 end;
 
+// "1920x1080" as {"t": text, "n": pixel count}: the column sorts by image area.
+function DimensionCell(const ADims: string): TJSONObject;
+var
+  P: Integer;
+  W, H: Int64;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('t', ADims);
+  P := Pos('x', ADims);
+  if (P > 1) and TryStrToInt64(Copy(ADims, 1, P - 1), W) and
+     TryStrToInt64(Copy(ADims, P + 1, MaxInt), H) then
+    Result.AddPair('n', TJSONNumber.Create(W * H));
+end;
+
 // Computes the column cells of the active panel's files and hands them to the main
 // thread in growing batches. False when the worker was asked to stop.
 function ComputeCells(AWorker: TMetaWorker; const AFolder: string;
@@ -273,7 +287,7 @@ begin
       begin
         Cell := TJSONObject.Create;
         if Cells.Dimensions <> '' then
-          Cell.AddPair('dim', Cells.Dimensions);
+          Cell.AddPair('dim', DimensionCell(Cells.Dimensions));
         if Cells.Camera <> '' then
           Cell.AddPair('camera', Cells.Camera);
         if Cells.Artist <> '' then

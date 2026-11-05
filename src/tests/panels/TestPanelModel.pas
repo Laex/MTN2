@@ -22,6 +22,8 @@ type
     [Test] procedure TestSlowHintDoesNotFireForAFastAnswer;
     [Test] procedure TestSlowHintIgnoredAfterNavigatingAway;
     [Test] procedure TestCalculatedFolderSizeSurvivesReload;
+    [Test] procedure TestSortByLocalFolderPluginColumn;
+    [Test] procedure TestNeedleFilterKeepsMatchingNames;
   end;
 
 implementation
@@ -31,6 +33,7 @@ uses
   uTerminalTypes,
   uTextEncoding,
   uVfsTypes,
+  uPluginColumns,
   uDualPanelTypes,
   uPanelColumns,
   uMessageBus,
@@ -191,6 +194,42 @@ begin
     end).Start;
 end;
 
+type
+  { Lists three files with no plugin values of their own. }
+  TThreeFilesVfs = class(TImmediateEmptyVfs)
+    procedure ListDirectoryAsync(const AURI: string; ACancel: IJobCancelToken;
+      AOnDone: TVfsListCallback); override;
+  end;
+
+procedure TThreeFilesVfs.ListDirectoryAsync(const AURI: string;
+  ACancel: IJobCancelToken; AOnDone: TVfsListCallback);
+var
+  OnDone: TVfsListCallback;
+  Err: TVfsError;
+  Items: TArray<TVfsEntry>;
+  I: Integer;
+begin
+  OnDone := AOnDone;
+  Err := TVfsError.Ok;
+  Err.URI := AURI;
+  SetLength(Items, 3);
+  for I := 0 to 2 do
+  begin
+    Items[I] := Default(TVfsEntry);
+    Items[I].Name := Chr(Ord('a') + I) + '.jpg';
+    Items[I].Size := 10;
+  end;
+  TThread.CreateAnonymousThread(
+    procedure
+    begin
+      TThread.Queue(nil,
+        procedure
+        begin
+          OnDone(Items, Err);
+        end);
+    end).Start;
+end;
+
 function WaitUntil(const APredicate: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
 var
   Deadline: UInt64;
@@ -255,6 +294,76 @@ begin
   for I := 0 to Model.ItemCount - 1 do
     Assert.IsTrue(Pos('still trying', Model.GetRow(I).Text) = 0,
       'no leftover "still trying" row for a request that already finished');
+end;
+
+procedure TestSortByLocalFolderPluginColumn;
+var
+  Model: IPanelModel;
+
+  function Order: string;
+  var
+    J: Integer;
+  begin
+    Result := '';
+    for J := 0 to Model.ItemCount - 1 do
+      if not Model.GetRow(J).IsParent then
+        Result := Result + Copy(Model.GetRow(J).Text, 1, 1);
+  end;
+
+begin
+  SetFolderCells('mtn.test', 'file:///C:/pics', '{"a.jpg":{"dim":{"t":"big","n":900}},' +
+    '"b.jpg":{"dim":{"t":"small","n":4}},"c.jpg":{"dim":{"t":"mid","n":60}}}');
+  try
+    Model := TFilePanelModel.Create(TThreeFilesVfs.Create);
+    Model.SetSort(pscPlugin, False, 'dim');
+    Model.Open('file:///C:/pics');
+    Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+      'listing finishes');
+    Assert.AreEqual('bca', Order, 'rows are ordered by the plugin number, not by name');
+
+    SetFolderCells('mtn.test', 'file:///C:/pics', '{"a.jpg":{"dim":{"t":"x","n":1}},' +
+      '"b.jpg":{"dim":{"t":"y","n":50}},"c.jpg":{"dim":{"t":"z","n":9}}}');
+    Model.Resort;
+    Assert.AreEqual('acb', Order, 'new values from the plugin re-order the rows');
+  finally
+    SetFolderCells('mtn.test', 'file:///C:/pics', '');
+  end;
+end;
+
+procedure TestNeedleFilterKeepsMatchingNames;
+var
+  Model: IPanelModel;
+
+  function Names: string;
+  var
+    J: Integer;
+  begin
+    Result := '';
+    for J := 0 to Model.ItemCount - 1 do
+      if not Model.GetRow(J).IsParent then
+        Result := Result + Copy(Model.GetRow(J).Text, 1, 1);
+  end;
+
+begin
+  Model := TFilePanelModel.Create(TThreeFilesVfs.Create);
+  Model.Open('file:///C:/pics');
+  Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+    'listing finishes');
+  Assert.AreEqual('abc', Names);
+  Model.SetNeedleFilter('B.J');
+  Assert.AreEqual('b', Names, 'prefix match ignores case');
+  Model.SetNeedleFilter('x');
+  Assert.AreEqual('', Names, 'nothing matches');
+  Model.SetNeedleFilter('x', True);
+  Assert.AreEqual('', Names, 'a fuzzy needle with a missing letter matches nothing');
+  Model.SetNeedleFilter('bg');
+  Assert.AreEqual('', Names, 'letters that are not a prefix do not match');
+  Model.SetNeedleFilter('bg', True);
+  Assert.AreEqual('b', Names, 'a fuzzy needle matches letters in order');
+  Model.SetNeedleFilter('JB', True);
+  Assert.AreEqual('', Names, 'a fuzzy needle keeps the letter order');
+  Model.SetNeedleFilter('', True);
+  Assert.AreEqual('abc', Names, 'an empty needle shows every file');
 end;
 
 procedure TestCalculatedFolderSizeSurvivesReload;
@@ -330,6 +439,16 @@ end;
 procedure TTestPanelModel.TestSlowHintDoesNotFireForAFastAnswer;
 begin
   TestPanelModel.TestSlowHintDoesNotFireForAFastAnswer;
+end;
+
+procedure TTestPanelModel.TestSortByLocalFolderPluginColumn;
+begin
+  TestPanelModel.TestSortByLocalFolderPluginColumn;
+end;
+
+procedure TTestPanelModel.TestNeedleFilterKeepsMatchingNames;
+begin
+  TestPanelModel.TestNeedleFilterKeepsMatchingNames;
 end;
 
 procedure TTestPanelModel.TestCalculatedFolderSizeSurvivesReload;

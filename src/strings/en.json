@@ -294,6 +294,9 @@
       "keep_panel_focus": "Don't move focus to the command line when typi&ng",
       "sticky_quick_search": "Keep &quick search open after Alt is released",
       "quick_search_keep_empty": "Keep an empt&y quick search open",
+      "quick_search_filter": "Quick search also filters the panel (&G)",
+      "quick_search_keep_filter": "Keep the quick search filter in other folders (&J)",
+      "quick_search_fuzzy": "Fuzzy quick search filter: letters in order (&Z)",
       "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"

@@ -132,6 +132,13 @@ type
     /// <summary>Erasing the last character of a quick search leaves the empty
     /// field open instead of closing it.</summary>
     QuickSearchKeepEmpty: Boolean;
+    /// <summary>Alt quick search also hides the files whose names do not begin
+    /// with the typed text.</summary>
+    QuickSearchFilter: Boolean;
+    /// <summary>The quick-search filter stays when a folder is entered; only Esc
+    /// ends it.</summary>
+    QuickSearchKeepFilter: Boolean;
+    QuickSearchFuzzy: Boolean;
     /// <summary>uStrings.pas locale code ('en', 'ru', ...). '' = English
     /// (uStrings' own zero-cost default) -- see DisplayLanguageItems /
     /// DisplayLanguageName for the Display dialog's picker.</summary>
@@ -390,6 +397,9 @@ begin
   Result.KeepPanelFocus := False;
   Result.StickyQuickSearch := False;
   Result.QuickSearchKeepEmpty := False;
+  Result.QuickSearchFilter := False;
+  Result.QuickSearchKeepFilter := False;
+  Result.QuickSearchFuzzy := False;
   Result.Language := '';
 end;
 

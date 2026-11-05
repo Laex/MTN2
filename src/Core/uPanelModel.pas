@@ -56,6 +56,11 @@ type
     /// via ItemCount/GetRow to those matching the mask (SplitMasks/
     /// NameMatchesAnyMask semantics) - the '..' parent row always survives.</summary>
     procedure SetFilterMask(const AMask: string);
+    /// <summary>Hides the rows whose names do not begin with ANeedle (case is
+    /// ignored); '' shows all. With AFuzzy a name also stays when ANeedle's
+    /// letters occur in it in the same order (not necessarily adjacent).
+    /// Works together with the filter mask.</summary>
+    procedure SetNeedleFilter(const ANeedle: string; AFuzzy: Boolean = False);
     function FilterActive: Boolean;
     function FilterMask: string;
     /// <summary>Ctrl+H toggle: when False, rows with IsHidden or IsSystem set
@@ -103,6 +108,8 @@ type
     FSortPluginId: string;
     FSortByPriority: Boolean;
     FFilterMask: string;
+    FNeedle: string;
+    FNeedleFuzzy: Boolean;
     FShowHidden: Boolean;
     FOnInvalidate: TPanelInvalidateEvent;
     FOnChanged: TNotifyEvent;
@@ -146,6 +153,11 @@ type
     procedure SetOnInvalidate(AHandler: TPanelInvalidateEvent);
     procedure SetOnChanged(AHandler: TNotifyEvent);
     procedure SetFilterMask(const AMask: string);
+    /// <summary>Hides the rows whose names do not begin with ANeedle (case is
+    /// ignored); '' shows all. With AFuzzy a name also stays when ANeedle's
+    /// letters occur in it in the same order (not necessarily adjacent).
+    /// Works together with the filter mask.</summary>
+    procedure SetNeedleFilter(const ANeedle: string; AFuzzy: Boolean = False);
     function FilterActive: Boolean;
     function FilterMask: string;
     procedure SetShowHidden(AValue: Boolean);
@@ -157,7 +169,8 @@ type
 implementation
 
 uses
-  System.JSON, System.Generics.Collections, uPanelColumns, uColorCoding, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings;
+  System.JSON, System.Generics.Collections, uPanelColumns, uColorCoding, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings,
+  uPluginColumns;
 
 function PanelRowToJson(const ARow: TPanelRow): string;
 var
@@ -331,12 +344,36 @@ begin
   NotifyChanged;
 end;
 
+function RowExtraCellIndex(const ARow: TPanelRow; const AId: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(ARow.Extra) do
+    if SameText(ARow.Extra[I].Id, AId) then
+      Exit(I);
+  Result := -1;
+end;
+
+// True when the letters of ANeedle occur in AText in the same order; both
+// are already in the same letter case.
+function IsSubsequence(const ANeedle, AText: string): Boolean;
+var
+  I, J: Integer;
+begin
+  J := 1;
+  for I := 1 to Length(AText) do
+    if (J <= Length(ANeedle)) and (AText[I] = ANeedle[J]) then
+      Inc(J);
+  Result := J > Length(ANeedle);
+end;
+
 procedure TFilePanelModel.RebuildSortedRows;
 var
   Masks: TArray<string>;
   Kept: TPanelRows;
   I, N: Integer;
-  Name: string;
+  Name, Needle: string;
+  Cell: TVfsExtraCell;
 begin
   FRows := Copy(FRawRows);
   if not FShowHidden then
@@ -363,6 +400,14 @@ begin
           SetLength(Name, Length(Name) - 1);
         FRows[I].SortPriority := ColorCodingSortPriority(Name, FRows[I].IsDirectory);
       end;
+  if (FSortColumn = pscPlugin) and (FURI <> '') then
+    for I := 0 to High(FRows) do
+      if (RowExtraCellIndex(FRows[I], FSortPluginId) < 0) and
+         FolderCell(FURI, FRows[I].Text, FSortPluginId, Cell) then
+      begin
+        SetLength(FRows[I].Extra, Length(FRows[I].Extra) + 1);
+        FRows[I].Extra[High(FRows[I].Extra)] := Cell;
+      end;
   if (FSortColumn <> pscNone) or FSortByPriority then
     SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority, FSortPluginId);
   if FFilterMask <> '' then
@@ -382,6 +427,27 @@ begin
       if (Length(Name) > 0) and (Name[Length(Name)] = '/') then
         Name := Copy(Name, 1, Length(Name) - 1);
       if NameMatchesAnyMask(Name, Masks) then
+      begin
+        Kept[N] := FRows[I];
+        Inc(N);
+      end;
+    end;
+    SetLength(Kept, N);
+    FRows := Kept;
+  end;
+  if FNeedle <> '' then
+  begin
+    Needle := AnsiLowerCase(FNeedle);
+    SetLength(Kept, Length(FRows));
+    N := 0;
+    for I := 0 to High(FRows) do
+    begin
+      Name := FRows[I].Text;
+      while (Name <> '') and CharInSet(Name[Length(Name)], ['/', '\']) do
+        SetLength(Name, Length(Name) - 1);
+      if FRows[I].IsParent or
+         (Copy(AnsiLowerCase(Name), 1, Length(Needle)) = Needle) or
+         (FNeedleFuzzy and IsSubsequence(Needle, AnsiLowerCase(Name))) then
       begin
         Kept[N] := FRows[I];
         Inc(N);
@@ -414,6 +480,16 @@ end;
 procedure TFilePanelModel.SetWorkspaceReturnUri(const AURI: string);
 begin
   FWorkspaceReturnUri := AURI;
+end;
+
+procedure TFilePanelModel.SetNeedleFilter(const ANeedle: string; AFuzzy: Boolean);
+begin
+  if (FNeedle = ANeedle) and (FNeedleFuzzy = AFuzzy) then
+    Exit;
+  FNeedle := ANeedle;
+  FNeedleFuzzy := AFuzzy;
+  RebuildSortedRows;
+  NotifyChanged;
 end;
 
 procedure TFilePanelModel.SetFilterMask(const AMask: string);
@@ -465,7 +541,7 @@ end;
 
 procedure TFilePanelModel.Resort;
 begin
-  if FSortByPriority and (Length(FRawRows) > 0) then
+  if (FSortByPriority or (FSortColumn = pscPlugin)) and (Length(FRawRows) > 0) then
   begin
     RebuildSortedRows;
     NotifyChanged;

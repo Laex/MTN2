@@ -405,6 +405,9 @@ begin
   Result.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Result.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Result.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;
+  Result.QuickSearchFilter := FDualPanel.QuickSearchFilter;
+  Result.QuickSearchKeepFilter := FDualPanel.QuickSearchKeepFilter;
+  Result.QuickSearchFuzzy := FDualPanel.QuickSearchFuzzy;
   Result.Language := CurrentLocale;
 end;
 
@@ -459,6 +462,9 @@ begin
   FSession.KeepPanelFocus := ASettings.KeepPanelFocus;
   FSession.StickyQuickSearch := ASettings.StickyQuickSearch;
   FSession.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
+  FSession.QuickSearchFilter := ASettings.QuickSearchFilter;
+  FSession.QuickSearchKeepFilter := ASettings.QuickSearchKeepFilter;
+  FSession.QuickSearchFuzzy := ASettings.QuickSearchFuzzy;
   FDualPanel.PackInSamePanel := ASettings.PackInSamePanel;
   FDualPanel.BackspaceDriveMenu := ASettings.BackspaceDriveMenu;
   FDualPanel.DriveToOtherFolder := ASettings.DriveToOtherFolder;
@@ -467,6 +473,9 @@ begin
   FDualPanel.KeepPanelFocus := ASettings.KeepPanelFocus;
   FDualPanel.StickyQuickSearch := ASettings.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
+  FDualPanel.QuickSearchFilter := ASettings.QuickSearchFilter;
+  FDualPanel.QuickSearchKeepFilter := ASettings.QuickSearchKeepFilter;
+  FDualPanel.QuickSearchFuzzy := ASettings.QuickSearchFuzzy;
   LanguageChanged := not SameText(CurrentLocale, ASettings.Language) and
     not (SameText(CurrentLocale, 'en') and (Trim(ASettings.Language) = ''));
   FSession.Language := ASettings.Language;
@@ -508,6 +517,9 @@ begin
   FDualPanel.KeepPanelFocus := Sess.KeepPanelFocus;
   FDualPanel.StickyQuickSearch := Sess.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := Sess.QuickSearchKeepEmpty;
+  FDualPanel.QuickSearchFilter := Sess.QuickSearchFilter;
+  FDualPanel.QuickSearchKeepFilter := Sess.QuickSearchKeepFilter;
+  FDualPanel.QuickSearchFuzzy := Sess.QuickSearchFuzzy;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   GCustomColumnsConfig := Sess.CustomColumns;
@@ -599,6 +611,9 @@ begin
   Sess.KeepPanelFocus := FDualPanel.KeepPanelFocus;
   Sess.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Sess.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;
+  Sess.QuickSearchFilter := FDualPanel.QuickSearchFilter;
+  Sess.QuickSearchKeepFilter := FDualPanel.QuickSearchKeepFilter;
+  Sess.QuickSearchFuzzy := FDualPanel.QuickSearchFuzzy;
   Sess.Language := CurrentLocale;
   Sess.CustomColumns := GCustomColumnsConfig;
   Sess.PluginColumns := SchemeColumnSelectionsToJson;

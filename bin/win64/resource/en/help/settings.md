@@ -27,7 +27,7 @@ If the theme of the saved session is not found, the program says so and uses the
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
 - The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
-- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel, **vertical lines between columns** (Full and custom modes; Brief always has them, off by default) and the **editor auto-indent on Enter** (can be switched off).
+- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel, **vertical lines between columns** (Full and custom modes; Brief always has them, off by default) the **editor auto-indent on Enter** (can be switched off) and **filtering the panel while quick searching** (Alt+letter: besides moving the cursor, the files whose names do not begin with the typed text are hidden; the search box stays open after Alt is released and Esc or Enter removes the filter; the option **fuzzy filter** also keeps names that contain the typed letters in order, not necessarily next to each other; the option **keep the filter in other folders** carries it into a folder opened with Enter or a click, and then only Esc removes it; off by default).
 
 **Hidden window rows**
 - With the menu bar hidden, F9 shows it over the top row while the menu is open.

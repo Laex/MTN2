@@ -13,7 +13,7 @@ unit uPluginColumns;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections;
+  System.SysUtils, System.Generics.Collections, uVfsTypes;
 
 const
   cPluginColumnMinWidth = 3;
@@ -75,19 +75,22 @@ procedure ClearSchemeColumnSelections;
 /// <summary>Scheme of AUri in lower case ('' when it has none).</summary>
 function PluginColumnSchemeOf(const AUri: string): string;
 
-/// <summary>Cell texts a plugin computes for a folder whose listing it does not
-/// produce (the local file system): AJson is {"name": {"columnId": "text"}}. They
+/// <summary>Cell values a plugin computes for a folder whose listing it does not
+/// produce (the local file system): AJson is {"name": {"columnId": value}}, a
+/// value being a text, a number or {"t": text, "n": number} as in a listing
+/// row (a number orders a sorted column as a number). They
 /// fill the rows the listing left without a value for that column. The cells of
 /// one plugin and folder are replaced by each call; an empty AJson drops them.
 /// A few folders are kept, the oldest is forgotten first.</summary>
 procedure SetFolderCells(const APluginId, AFolderUri, AJson: string);
 procedure RemovePluginFolderCells(const APluginId: string);
 function FolderCellText(const AFolderUri, AName, AColumnId: string; out AText: string): Boolean;
+function FolderCell(const AFolderUri, AName, AColumnId: string; out ACell: TVfsExtraCell): Boolean;
 
 implementation
 
 uses
-  System.JSON, System.Math, uVfsTypes, uPluginServices;
+  System.JSON, System.Math, uPluginServices;
 
 type
   TSchemeEntry = record
@@ -416,8 +419,8 @@ type
   TFolderCells = class
     PluginId: string;
     Key: string;
-    // name -> (column id -> text)
-    Names: TDictionary<string, TDictionary<string, string>>;
+    // name -> (column id -> value)
+    Names: TDictionary<string, TDictionary<string, TVfsExtraCell>>;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -428,12 +431,12 @@ var
 constructor TFolderCells.Create;
 begin
   inherited Create;
-  Names := TDictionary<string, TDictionary<string, string>>.Create;
+  Names := TDictionary<string, TDictionary<string, TVfsExtraCell>>.Create;
 end;
 
 destructor TFolderCells.Destroy;
 var
-  D: TDictionary<string, string>;
+  D: TDictionary<string, TVfsExtraCell>;
 begin
   for D in Names.Values do
     D.Free;
@@ -462,7 +465,9 @@ var
   Root: TJSONValue;
   Folder: TFolderCells;
   Pair, CellPair: TJSONPair;
-  Cells: TDictionary<string, string>;
+  Cells: TDictionary<string, TVfsExtraCell>;
+  Cell: TVfsExtraCell;
+  Inner: TJSONValue;
 begin
   Key := CellFolderKey(AFolderUri);
   if (Trim(APluginId) = '') or (Key = '') then
@@ -485,10 +490,35 @@ begin
     begin
       if (Folder.Names.Count >= cMaxCellNames) or not (Pair.JsonValue is TJSONObject) then
         Continue;
-      Cells := TDictionary<string, string>.Create;
+      Cells := TDictionary<string, TVfsExtraCell>.Create;
       for CellPair in TJSONObject(Pair.JsonValue) do
+      begin
+        Cell := Default(TVfsExtraCell);
+        Cell.Id := CellPair.JsonString.Value;
         if CellPair.JsonValue is TJSONString then
-          Cells.AddOrSetValue(CellPair.JsonString.Value, TJSONString(CellPair.JsonValue).Value);
+          Cell.Text := TJSONString(CellPair.JsonValue).Value
+        else if CellPair.JsonValue is TJSONNumber then
+        begin
+          Cell.Num := TJSONNumber(CellPair.JsonValue).AsDouble;
+          Cell.Numeric := True;
+          Cell.Text := CellPair.JsonValue.Value;
+        end
+        else if CellPair.JsonValue is TJSONObject then
+        begin
+          Inner := TJSONObject(CellPair.JsonValue).GetValue('t');
+          if Inner is TJSONString then
+            Cell.Text := TJSONString(Inner).Value;
+          Inner := TJSONObject(CellPair.JsonValue).GetValue('n');
+          if Inner is TJSONNumber then
+          begin
+            Cell.Num := TJSONNumber(Inner).AsDouble;
+            Cell.Numeric := True;
+          end;
+        end
+        else
+          Continue;
+        Cells.AddOrSetValue(Cell.Id, Cell);
+      end;
       Folder.Names.AddOrSetValue(CellName(Pair.JsonString.Value), Cells);
     end;
     GCells.Add(Folder);
@@ -510,21 +540,29 @@ begin
       GCells.Delete(I);
 end;
 
-function FolderCellText(const AFolderUri, AName, AColumnId: string; out AText: string): Boolean;
+function FolderCell(const AFolderUri, AName, AColumnId: string; out ACell: TVfsExtraCell): Boolean;
 var
   Key: string;
   I: Integer;
-  Cells: TDictionary<string, string>;
+  Cells: TDictionary<string, TVfsExtraCell>;
 begin
   Result := False;
-  AText := '';
+  ACell := Default(TVfsExtraCell);
   if (GCells = nil) or (GCells.Count = 0) then
     Exit;
   Key := CellFolderKey(AFolderUri);
   for I := GCells.Count - 1 downto 0 do
     if (GCells[I].Key = Key) and GCells[I].Names.TryGetValue(CellName(AName), Cells) and
-       Cells.TryGetValue(AColumnId, AText) then
+       Cells.TryGetValue(AColumnId, ACell) then
       Exit(True);
+end;
+
+function FolderCellText(const AFolderUri, AName, AColumnId: string; out AText: string): Boolean;
+var
+  Cell: TVfsExtraCell;
+begin
+  Result := FolderCell(AFolderUri, AName, AColumnId, Cell);
+  AText := Cell.Text;
 end;
 
 initialization

@@ -210,6 +210,12 @@ type
     FKeepPanelFocus: Boolean;
     FStickyQuickSearch: Boolean;
     FQuickSearchKeepEmpty: Boolean;
+    FQuickSearchFilter: Boolean;
+    FQuickSearchKeepFilter: Boolean;
+    FQuickSearchFuzzy: Boolean;
+    /// <summary>The side whose model holds the quick-search filter.</summary>
+    FQuickSearchFilterSide: TPanelSide;
+    FQuickSearchFiltering: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -602,6 +608,8 @@ type
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
+    procedure SetQuickSearchNeedle(const AText: string);
+    procedure FocusFirstFilteredRow;
     procedure StartQuickSearch;
     function QuickSearchLingers: Boolean;
     procedure DrawQuickSearchField(const ABounds: TRectI);
@@ -1159,6 +1167,9 @@ type
   public
     constructor Create(const ATheme: IThemeRenderer; AId: Cardinal);
     destructor Destroy; override;
+    /// <summary>Re-sorts a panel sorted by a plugin column after the plugin
+    /// delivered values for its folder.</summary>
+    procedure ResortPluginColumns;
     /// <summary>Ends the running Shift+navigation selection (Shift released).</summary>
     procedure EndShiftSelect;
     /// <summary>Opens ADecl for a caller outside the panel window. False (and
@@ -1473,6 +1484,13 @@ type
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
     property StickyQuickSearch: Boolean read FStickyQuickSearch write FStickyQuickSearch;
     property QuickSearchKeepEmpty: Boolean read FQuickSearchKeepEmpty write FQuickSearchKeepEmpty;
+    /// <summary>Quick search hides the files that do not match, besides moving
+    /// the cursor.</summary>
+    property QuickSearchFilter: Boolean read FQuickSearchFilter write FQuickSearchFilter;
+    /// <summary>The quick-search filter stays in the folder entered with Enter
+    /// or a click; only Esc ends it.</summary>
+    property QuickSearchKeepFilter: Boolean read FQuickSearchKeepFilter write FQuickSearchKeepFilter;
+    property QuickSearchFuzzy: Boolean read FQuickSearchFuzzy write FQuickSearchFuzzy;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -8069,8 +8087,95 @@ begin
     end);
 end;
 
+procedure TDualPanelWindow.SetQuickSearchNeedle(const AText: string);
+var
+  M: IPanelModel;
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Keep: string;
+  I: Integer;
+begin
+  if not FQuickSearchFiltering and (AText = '') then
+    Exit;
+  // Ending the filter keeps the cursor on the same file, not on the same row.
+  Keep := '';
+  if FQuickSearchFiltering and (AText = '') then
+  begin
+    Ws := ActiveWorkspace;
+    if Ws.State.ActiveSide = FQuickSearchFilterSide then
+    begin
+      Panel := ActivePanel(Ws);
+      Tab := ActiveTab(Panel);
+      Rows := RowsForSide(FQuickSearchFilterSide);
+      if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
+        Keep := Rows[Tab.CursorIndex].Text;
+    end;
+  end;
+  if FQuickSearchFiltering and (FQuickSearchFilterSide <> ActiveWorkspace.State.ActiveSide) then
+  begin
+    M := ModelForSide(FQuickSearchFilterSide);
+    if Assigned(M) then
+      M.SetNeedleFilter('');
+  end;
+  FQuickSearchFilterSide := ActiveWorkspace.State.ActiveSide;
+  M := ModelForSide(FQuickSearchFilterSide);
+  if Assigned(M) then
+    M.SetNeedleFilter(AText, FQuickSearchFuzzy);
+  FQuickSearchFiltering := AText <> '';
+  if Keep <> '' then
+  begin
+    Ws := ActiveWorkspace;
+    Panel := ActivePanel(Ws);
+    Tab := ActiveTab(Panel);
+    Rows := RowsForSide(Ws.State.ActiveSide);
+    for I := 0 to High(Rows) do
+      if Rows[I].Text = Keep then
+      begin
+        Tab.CursorIndex := I;
+        EnsurePanelCursorVisible(Tab, Length(Rows), Max(ListViewHeight, 1),
+          ListColCountForSide(Ws.State.ActiveSide));
+        SetActiveTab(Panel, Tab);
+        SetActivePanel(Ws, Panel);
+        SaveActiveWorkspace(Ws);
+        Break;
+      end;
+  end;
+end;
+
+// Puts the cursor on the first real row of the filtered list: a fuzzy
+// filter keeps names the typed text is not a prefix of.
+procedure TDualPanelWindow.FocusFirstFilteredRow;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  I: Integer;
+begin
+  Ws := ActiveWorkspace;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Ws.State.ActiveSide);
+  for I := 0 to High(Rows) do
+    if not Rows[I].IsParent then
+    begin
+      Tab.CursorIndex := I;
+      EnsurePanelCursorVisible(Tab, Length(Rows), Max(ListViewHeight, 1),
+        ListColCountForSide(Ws.State.ActiveSide));
+      SetActiveTab(Panel, Tab);
+      SetActivePanel(Ws, Panel);
+      SaveActiveWorkspace(Ws);
+      Exit;
+    end;
+  ClampCursorSide(Ws.State.ActiveSide);
+end;
+
 procedure TDualPanelWindow.ClearQuickSearch;
 begin
+  if FQuickSearchFiltering then
+    SetQuickSearchNeedle('');
   if not FQuickSearchActive and (FQuickSearchText = '') then
     Exit;
   FQuickSearchActive := False;
@@ -8081,7 +8186,9 @@ end;
 
 function TDualPanelWindow.QuickSearchLingers: Boolean;
 begin
-  Result := FStickyQuickSearch or FQuickSearchLatched;
+  // A filtering search stays open after Alt is released: Esc or Enter is
+  // the way to remove the filter.
+  Result := FStickyQuickSearch or FQuickSearchLatched or FQuickSearchFilter;
 end;
 
 procedure TDualPanelWindow.StartQuickSearch;
@@ -8124,6 +8231,9 @@ begin
   case ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) of
     nbaClear:
       begin
+        // Enter on a folder carries the filter into it.
+        if FQuickSearchKeepFilter and FQuickSearchFiltering and (AKey = vkReturn) then
+          Exit(False);
         ClearQuickSearch;
         // Enter opens the item under the cursor; only Esc is consumed.
         if QuickSearchLingers and (AKey = vkReturn) then
@@ -8134,6 +8244,25 @@ begin
     nbaBackspace:
       begin
         NeedleBackspace(FQuickSearchText);
+        if FQuickSearchFilter then
+        begin
+          SetQuickSearchNeedle(FQuickSearchText);
+          if FQuickSearchText <> '' then
+          begin
+            Ws := ActiveWorkspace;
+            Panel := ActivePanel(Ws);
+            Tab := ActiveTab(Panel);
+            if ApplyQuickSearchMatch(Tab, RowsForSide(Ws.State.ActiveSide),
+              FQuickSearchText, ListViewHeight, ListColCountForSide(Ws.State.ActiveSide)) then
+            begin
+              SetActiveTab(Panel, Tab);
+              SetActivePanel(Ws, Panel);
+              SaveActiveWorkspace(Ws);
+            end
+            else if FQuickSearchFuzzy then
+              FocusFirstFilteredRow;
+          end;
+        end;
         // An empty field stays open when asked for: a letter that cannot be
         // typed after Alt can be typed after any other Alt+letter and Backspace.
         if (FQuickSearchText = '') and not FQuickSearchKeepEmpty then
@@ -8149,6 +8278,8 @@ begin
       begin
         FQuickSearchActive := True;
         FQuickSearchText := FQuickSearchText + Ch;
+        if FQuickSearchFilter then
+          SetQuickSearchNeedle(FQuickSearchText);
         Ws := ActiveWorkspace;
         Panel := ActivePanel(Ws);
         Tab := ActiveTab(Panel);
@@ -8159,6 +8290,13 @@ begin
           SetActiveTab(Panel, Tab);
           SetActivePanel(Ws, Panel);
           SaveActiveWorkspace(Ws);
+        end
+        else if FQuickSearchFilter then
+        begin
+          if FQuickSearchFuzzy then
+            FocusFirstFilteredRow
+          else
+            ClampCursorSide(Ws.State.ActiveSide);
         end;
         AKey := 0;
         AKeyChar := #0;
@@ -13225,6 +13363,11 @@ begin
   CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
 end;
 
+procedure TDualPanelWindow.ResortPluginColumns;
+begin
+  ResortPanelsByPriority;
+end;
+
 procedure TDualPanelWindow.ResortPanelsByPriority;
 var
   M: IPanelModel;
@@ -14860,7 +15003,8 @@ function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
 begin
   Result := False;
   FQuickViewFocused := False;
-  ClearQuickSearch;
+  if not (FQuickSearchKeepFilter and FQuickSearchFiltering) then
+    ClearQuickSearch;
   FSaverSwallowClick := False;
   FSaverSwallowUp := False;
   if Assigned(FSaver) and FSaver.Wake then

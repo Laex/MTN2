@@ -328,6 +328,9 @@ begin
   DialogSetCheckbox(Decl, 'keep_panel_focus', Cur.KeepPanelFocus);
   DialogSetCheckbox(Decl, 'sticky_quick_search', Cur.StickyQuickSearch);
   DialogSetCheckbox(Decl, 'quick_search_keep_empty', Cur.QuickSearchKeepEmpty);
+  DialogSetCheckbox(Decl, 'quick_search_filter', Cur.QuickSearchFilter);
+  DialogSetCheckbox(Decl, 'quick_search_keep_filter', Cur.QuickSearchKeepFilter);
+  DialogSetCheckbox(Decl, 'quick_search_fuzzy', Cur.QuickSearchFuzzy);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'column_separators', Cur.ColumnSeparators);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
@@ -742,6 +745,9 @@ begin
     Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
     Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
     Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');
+    Disp.QuickSearchFilter := FDialog.GetCheckbox('quick_search_filter');
+    Disp.QuickSearchKeepFilter := FDialog.GetCheckbox('quick_search_keep_filter');
+    Disp.QuickSearchFuzzy := FDialog.GetCheckbox('quick_search_fuzzy');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');

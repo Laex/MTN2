@@ -292,6 +292,9 @@
       "keep_panel_focus": "键入时不将焦点移到命令行(&N)",
       "sticky_quick_search": "松开 Alt 后保持快速搜索打开(&Q)",
       "quick_search_keep_empty": "清空后不关闭快速搜索(&E)",
+      "quick_search_filter": "快速搜索时同时过滤面板(&J)",
+      "quick_search_keep_filter": "切换文件夹时保留过滤(&Z)",
+      "quick_search_fuzzy": "模糊过滤：字母按顺序出现(&Y)",
       "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"

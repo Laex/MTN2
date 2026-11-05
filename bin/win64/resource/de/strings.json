@@ -293,6 +293,9 @@
       "keep_panel_focus": "Tippen setzt den Fokus nicht auf die Befehlsze&ile",
       "sticky_quick_search": "Schnellsuche nach dem Loslassen von Alt offe&n lassen",
       "quick_search_keep_empty": "Schnellsuche auch bei leere&r Eingabe offen lassen",
+      "quick_search_filter": "Schnellsuche filtert auch das Panel (&G)",
+      "quick_search_keep_filter": "Filter beim Ordnerwechsel beibehalten (&V)",
+      "quick_search_fuzzy": "Unscharfer Schnellsuche-Filter: Buchstaben in Reihenfolge (&Q)",
       "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"

@@ -127,6 +127,11 @@ type
     StickyQuickSearch: Boolean;
     /// <summary>An emptied quick search stays open (see TDisplaySettings).</summary>
     QuickSearchKeepEmpty: Boolean;
+    /// <summary>Quick search filters the panel (see TDisplaySettings).</summary>
+    QuickSearchFilter: Boolean;
+    /// <summary>The filter survives entering a folder (see TDisplaySettings).</summary>
+    QuickSearchKeepFilter: Boolean;
+    QuickSearchFuzzy: Boolean;
     /// <summary>uStrings.pas locale code. '' = English.</summary>
     Language: string;
   end;
@@ -689,6 +694,9 @@ begin
       Root.AddPair('keepPanelFocus', TJSONBool.Create(ASession.KeepPanelFocus));
       Root.AddPair('stickyQuickSearch', TJSONBool.Create(ASession.StickyQuickSearch));
       Root.AddPair('quickSearchKeepEmpty', TJSONBool.Create(ASession.QuickSearchKeepEmpty));
+      Root.AddPair('quickSearchFilter', TJSONBool.Create(ASession.QuickSearchFilter));
+      Root.AddPair('quickSearchKeepFilter', TJSONBool.Create(ASession.QuickSearchKeepFilter));
+      Root.AddPair('quickSearchFuzzy', TJSONBool.Create(ASession.QuickSearchFuzzy));
       if ASession.Language <> '' then
         Root.AddPair('language', ASession.Language);
       Dir := ExtractFilePath(APath);
@@ -781,6 +789,9 @@ begin
   ASession.KeepPanelFocus := False;
   ASession.StickyQuickSearch := False;
   ASession.QuickSearchKeepEmpty := False;
+  ASession.QuickSearchFilter := False;
+  ASession.QuickSearchKeepFilter := False;
+  ASession.QuickSearchFuzzy := False;
   ASession.Language := '';
 
   if not TFile.Exists(APath) then
@@ -893,6 +904,9 @@ begin
       ASession.KeepPanelFocus := JsonBool(Root, 'keepPanelFocus', False);
       ASession.StickyQuickSearch := JsonBool(Root, 'stickyQuickSearch', False);
       ASession.QuickSearchKeepEmpty := JsonBool(Root, 'quickSearchKeepEmpty', False);
+      ASession.QuickSearchFilter := JsonBool(Root, 'quickSearchFilter', False);
+      ASession.QuickSearchKeepFilter := JsonBool(Root, 'quickSearchKeepFilter', False);
+      ASession.QuickSearchFuzzy := JsonBool(Root, 'quickSearchFuzzy', False);
       ASession.Language := JsonStr(Root, 'language', '');
       Result := SessionIsUsable(ASession);
       if not Result then
