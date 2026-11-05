@@ -39,6 +39,9 @@ type
     [Test] procedure TestExecRefusesProgramOutsideTheList;
     [Test] procedure TestExecAllowListMatchesNamesOnly;
     [Test] procedure TestInputWithoutDialogSupportGivesNil;
+    [Test] procedure TestColumnIsDeclaredAndFilledForTheFolder;
+    [Test] procedure TestFailingColumnIsReportedOnceAndLeftEmpty;
+    [Test] procedure TestColumnsAreWithdrawnWhenTheFolderIsReloaded;
   end;
 
 implementation
@@ -54,6 +57,24 @@ var
   GReplaced: TStringList;
   GPanelSelects: TStringList;
   GEventCb: THostEventCallback;
+  GColumnDecl, GColumnCells: string;
+  GColumnCalls: Integer;
+
+function StubRegisterColumns(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+begin
+  if AJson = nil then
+    GColumnDecl := ''
+  else
+    GColumnDecl := AScheme + ':' + UTF8ToString(AJson);
+  Result := 0;
+end;
+
+function StubSetColumnValues(APluginId, AFolderUri, AJson: PAnsiChar): Int64; cdecl;
+begin
+  Inc(GColumnCalls);
+  GColumnCells := UTF8ToString(AFolderUri) + '|' + UTF8ToString(AJson);
+  Result := 0;
+end;
 
 function ReplyText(const AValue: string; ABuf: PAnsiChar; ABufSize: Int64): Int64;
 var
@@ -220,6 +241,9 @@ begin
   GDocSelection := '';
   GClipboard := '';
   GEventCb := nil;
+  GColumnDecl := '';
+  GColumnCells := '';
+  GColumnCalls := 0;
   GState := cPanelsState;
   FApi := Default(THostApiTable);
   FApi.AbiVersion := cPluginAbiVersion;
@@ -238,6 +262,8 @@ begin
   FApi.ClipboardGet := @StubClipboardGet;
   FApi.ClipboardSet := @StubClipboardSet;
   FApi.Subscribe := @StubSubscribe;
+  FApi.RegisterPanelColumns := @StubRegisterColumns;
+  FApi.SetPanelColumnValues := @StubSetColumnValues;
   FDir := TPath.Combine(TPath.GetTempPath, 'mtn2-lua-test-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(FDir);
   FEngine := TMacroEngine.Create(@FApi, 'mtn.lua', nil);
@@ -570,6 +596,44 @@ begin
   Assert.IsTrue(FEngine.Run(M));
   Pump;
   Assert.AreEqual('nil', GTexts[0]);
+end;
+
+procedure TTestLuaMacros.TestColumnIsDeclaredAndFilledForTheFolder;
+begin
+  if not LuaLoaded then
+    Exit;
+  Load('mtn.column { id = "len", title = "Len", width = 6, align = "right", default = true,' +
+    ' value = function(f) if f.dir then return nil end return #f.name end }');
+  Assert.IsTrue(GColumnDecl.StartsWith('file:'), 'columns are declared for the file scheme');
+  Assert.IsTrue(GColumnDecl.Contains('"id":"len"'));
+  Assert.IsTrue(GColumnDecl.Contains('"align":"right"'));
+  Assert.IsTrue(GColumnDecl.Contains('"default":true'));
+  Assert.IsTrue(GColumnCalls > 0, 'cells are computed when the column is loaded');
+  Assert.IsTrue(GColumnCells.StartsWith('file:///C:/Work|'));
+  Assert.IsTrue(GColumnCells.Contains('"a.txt":{"len":"5"}'));
+end;
+
+procedure TTestLuaMacros.TestFailingColumnIsReportedOnceAndLeftEmpty;
+begin
+  if not LuaLoaded then
+    Exit;
+  Load('mtn.column { id = "bad", value = function(f) error("boom") end }');
+  Assert.AreEqual(1, GMessages.Count);
+  Assert.IsTrue(GMessages[0].Contains('boom'));
+  GEventCb(nil, 'panel.dir', '{}');
+  Assert.AreEqual(1, GMessages.Count);
+  Assert.IsTrue(GColumnCells.EndsWith('|{}'));
+end;
+
+procedure TTestLuaMacros.TestColumnsAreWithdrawnWhenTheFolderIsReloaded;
+begin
+  if not LuaLoaded then
+    Exit;
+  Load('mtn.column { id = "len", value = function(f) return #f.name end }');
+  Assert.IsTrue(GColumnDecl <> '');
+  TDirectory.CreateDirectory(TPath.Combine(FDir, 'empty'));
+  FEngine.LoadFolder(TPath.Combine(FDir, 'empty'));
+  Assert.AreEqual('', GColumnDecl);
 end;
 
 initialization

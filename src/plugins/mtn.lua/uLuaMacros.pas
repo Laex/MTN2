@@ -7,14 +7,15 @@ unit uLuaMacros;
   mtn.action, mtn.editor.replace, ...) yields afterwards and is resumed from
   the main loop, so the program draws and handles what the macro started before
   it goes on. A file may also call mtn.on(topic, fn) while it loads: fn then
-  runs as a macro when the host publishes that event. The Lua state is a
+  runs as a macro when the host publishes that event. mtn.column{...} declares
+  a file panel column whose cells a Lua function computes for every file. The Lua state is a
   sandbox (base, string, table, math, utf8, coroutine; no io, os, package or
   debug), and an instruction budget and Esc end a macro that does not stop. *)
 
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.Generics.Collections, System.JSON,
   uPluginHostAbi, uLuaHostFns;
 
 type
@@ -41,6 +42,19 @@ type
     Ref: Integer;
   end;
 
+  /// <summary>A panel column declared with mtn.column.</summary>
+  TColumn = class
+  public
+    Id: string;
+    Title: string;
+    Width: Integer;
+    Right: Boolean;
+    IsDefault: Boolean;
+    Ref: Integer;
+    /// <summary>Set after the value function failed; the column is then left empty.</summary>
+    Broken: Boolean;
+  end;
+
   TPendingEvent = record
     Handler: THandler;
     Payload: string;
@@ -64,6 +78,8 @@ type
     FSubscribed: TStringList;
     FEventMacro: TMacro;
     FStartArgs: Integer;
+    FColumns: TObjectList<TColumn>;
+    FColumnsDirty: Boolean;
     function Tr(const AKey, ADefault: string): string;
     procedure Notify(const AText: string; AKind: Integer = 0);
     procedure Step;
@@ -73,7 +89,13 @@ type
     procedure NextEvent;
     procedure ClearHandlers;
     procedure Subscribe(const ATopic: string);
+    procedure ClearColumns;
+    procedure PublishColumns;
+    function EvalColumn(AColumn: TColumn; ARow: TJSONObject): string;
   public
+    /// <summary>Computes the cells of the declared columns for the folders of both
+    /// panels and hands them to the host. Postponed while a macro runs.</summary>
+    procedure RefreshColumns;
     /// <summary>Loads one macro file; nil (after telling the user) when it declares no macro.</summary>
     function LoadFile(const APath: string): TMacro;
 
@@ -108,7 +130,7 @@ function LuaQuote(const AValue: string): string;
 implementation
 
 uses
-  System.JSON, System.IOUtils, System.NetEncoding, uLuaApi;
+  System.IOUtils, System.NetEncoding, System.Math, uLuaApi;
 
 const
   cHookCount = 10000;
@@ -118,7 +140,7 @@ const
     'local k, t, a, s, m, sel, reg = mtn_key, mtn_text, mtn_action, mtn_state, mtn_message, mtn_selected, mtn_register' + #10 +
     'local di, dt, dl, dr, dc, ds = mtn_doc_info, mtn_doc_text, mtn_doc_line, mtn_doc_replace, mtn_doc_cursor, mtn_doc_select' + #10 +
     'local pl, pg, pc, ps, pr = mtn_panel_list, mtn_panel_goto, mtn_panel_cursor, mtn_panel_select, mtn_panel_refresh' + #10 +
-    'local cg, cs, on = mtn_clip_get, mtn_clip_set, mtn_on' + #10 +
+    'local cg, cs, on, col = mtn_clip_get, mtn_clip_set, mtn_on, mtn_column' + #10 +
     'local dlg, dpend, dres = mtn_dialog, mtn_dialog_pending, mtn_dialog_result' + #10 +
     'local xs, xd, xr = mtn_exec_start, mtn_exec_done, mtn_exec_result' + #10 +
     'local yield = coroutine.yield' + #10 +
@@ -132,6 +154,10 @@ const
     'mtn.selected = sel' + #10 +
     'function macro(def) reg(def) end' + #10 +
     'mtn.on = on' + #10 +
+    // a number a column function returns is shown as text
+    'function mtn.column(def) if type(def) ~= "table" or type(def.value) ~= "function" then return end' +
+    ' local fn = def.value def.value = function(f) local v = fn(f)' +
+    ' if type(v) == "number" then return tostring(v) end return v end col(def) end' + #10 +
     'local function after(ok) yield() return ok end' + #10 +
     'local function str(x) if type(x) ~= "string" then error("text expected", 3) end return x end' + #10 +
     'local function side(x) if x == nil or x == "left" or x == "right" then return x end error("side is left or right", 3) end' + #10 +
@@ -182,7 +208,7 @@ const
     'mtn_key, mtn_text, mtn_action, mtn_state, mtn_message, mtn_selected, mtn_register = nil' + #10 +
     'mtn_doc_info, mtn_doc_text, mtn_doc_line, mtn_doc_replace, mtn_doc_cursor, mtn_doc_select = nil' + #10 +
     'mtn_panel_list, mtn_panel_goto, mtn_panel_cursor, mtn_panel_select, mtn_panel_refresh = nil' + #10 +
-    'mtn_clip_get, mtn_clip_set, mtn_on, mtn_dialog, mtn_dialog_pending, mtn_dialog_result = nil' + #10 +
+    'mtn_clip_get, mtn_clip_set, mtn_on, mtn_column, mtn_dialog, mtn_dialog_pending, mtn_dialog_result = nil' + #10 +
     'mtn_exec_start, mtn_exec_done, mtn_exec_result = nil' + #10 +
     'dofile, loadfile, load, print, collectgarbage = nil' + #10;
 
@@ -217,6 +243,7 @@ var
   GDeclared: TMacro;
   /// <summary>Handlers registered by the file being loaded.</summary>
   GNewHandlers: TList<THandler>;
+  GNewColumns: TList<TColumn>;
   GLoading: Boolean;
   GAbort: Boolean;
   GSlices: Integer;
@@ -500,6 +527,45 @@ begin
   GNewHandlers.Add(H);
 end;
 
+// mtn.column{id, title, width, align, default, value}: only while a macro file loads.
+function LColumn(L: PLuaState): Integer; cdecl;
+var
+  C: TColumn;
+begin
+  Result := 0;
+  if not GLoading or (lua_type(L, 1) <> LUA_TTABLE) then
+    Exit;
+  lua_settop(L, 1);
+  lua_getfield(L, 1, 'value');
+  if lua_type(L, -1) <> LUA_TFUNCTION then
+  begin
+    lua_pop(L, 1);
+    Exit;
+  end;
+  C := TColumn.Create;
+  C.Ref := luaL_ref(L, LUA_REGISTRYINDEX);
+  C.Id := Trim(FieldStr(L, 'id'));
+  C.Title := FieldStr(L, 'title');
+  if C.Title = '' then
+    C.Title := C.Id;
+  lua_getfield(L, 1, 'width');
+  C.Width := EnsureRange(lua_tointeger(L, -1), 0, 80);
+  lua_pop(L, 1);
+  if C.Width = 0 then
+    C.Width := 10;
+  C.Right := LowerCase(FieldStr(L, 'align')) = 'right';
+  lua_getfield(L, 1, 'default');
+  C.IsDefault := lua_toboolean(L, -1) <> 0;
+  lua_pop(L, 1);
+  if C.Id = '' then
+  begin
+    luaL_unref(L, LUA_REGISTRYINDEX, C.Ref);
+    C.Free;
+    Exit;
+  end;
+  GNewColumns.Add(C);
+end;
+
 procedure OnHostEvent(AUserData: Pointer; ATopic, APayloadJson: PAnsiChar); cdecl;
 begin
   try
@@ -544,6 +610,8 @@ begin
   FQueue := TList<TPendingEvent>.Create;
   FSubscribed := TStringList.Create;
   GNewHandlers := TList<THandler>.Create;
+  GNewColumns := TList<TColumn>.Create;
+  FColumns := TObjectList<TColumn>.Create(True);
 end;
 
 destructor TMacroEngine.Destroy;
@@ -555,6 +623,10 @@ begin
   FQueue.Free;
   FSubscribed.Free;
   FreeAndNil(GNewHandlers);
+  FreeAndNil(GNewColumns);
+  if FApi <> nil then
+    PublishColumns;
+  FColumns.Free;
   FEventMacro.Free;
   LuaHostReset;
   GDeclared.Free;
@@ -639,6 +711,7 @@ begin
   lua_register(L, 'mtn_selected', LSelected);
   lua_register(L, 'mtn_register', LRegister);
   lua_register(L, 'mtn_on', LOn);
+  lua_register(L, 'mtn_column', LColumn);
   LuaHostRegister(L, FApi, string(FPluginId), FTr);
   Prelude := UTF8String(cPrelude);
   if (luaL_loadbufferx(L, PAnsiChar(Prelude), Length(Prelude), '=prelude', nil) <> LUA_OK) or
@@ -657,7 +730,38 @@ var
   M: TMacro;
   ChunkName: AnsiString;
   H: THandler;
+  C: TColumn;
   Failed, HasHandlers: Boolean;
+
+  procedure AddColumns;
+  var
+    Known, New: TColumn;
+    Dup: Boolean;
+  begin
+    for New in GNewColumns do
+    begin
+      Dup := False;
+      for Known in FColumns do
+        if SameText(Known.Id, New.Id) then
+          Dup := True;
+      if Dup then
+      begin
+        luaL_unref(FState, LUA_REGISTRYINDEX, New.Ref);
+        New.Free;
+      end
+      else
+        FColumns.Add(New);
+    end;
+    HasHandlers := GNewColumns.Count > 0;
+    GNewColumns.Clear;
+    if HasHandlers then
+    begin
+      Subscribe('panel.dir');
+      PublishColumns;
+      RefreshColumns;
+    end;
+  end;
+
 begin
   Result := nil;
   Bytes := TFile.ReadAllBytes(APath);
@@ -671,6 +775,7 @@ begin
   GDeclared.Free;
   GDeclared := nil;
   GNewHandlers.Clear;
+  GNewColumns.Clear;
   GLoading := True;
   try
     Failed := (luaL_loadbufferx(FState, PAnsiChar(Chunk), Length(Chunk), PAnsiChar(ChunkName), nil) <> LUA_OK) or
@@ -689,8 +794,15 @@ begin
       H.Free;
     end;
     GNewHandlers.Clear;
+    for C in GNewColumns do
+    begin
+      luaL_unref(FState, LUA_REGISTRYINDEX, C.Ref);
+      C.Free;
+    end;
+    GNewColumns.Clear;
     Exit;
   end;
+  AddColumns;
   // Handlers stay registered even when the file declares no macro.
   for H in GNewHandlers do
   begin
@@ -698,7 +810,7 @@ begin
     FHandlers.Add(H);
     Subscribe(H.Topic);
   end;
-  HasHandlers := GNewHandlers.Count > 0;
+  HasHandlers := HasHandlers or (GNewHandlers.Count > 0);
   GNewHandlers.Clear;
   if (GDeclared = nil) or (GDeclared.RunRef < 0) then
   begin
@@ -723,6 +835,7 @@ var
 begin
   FMacros.Clear;
   ClearHandlers;
+  ClearColumns;
   if (FState = nil) or not TDirectory.Exists(AFolder) then
     Exit;
   for F in TDirectory.GetFiles(AFolder, '*.lua') do
@@ -851,9 +964,11 @@ var
   Ev: TPendingEvent;
   Topic: string;
 begin
+  Topic := LowerCase(ATopic);
+  if (Topic = 'panel.dir') and (FColumns.Count > 0) then
+    RefreshColumns;
   if (FState = nil) or (FRunning <> nil) then
     Exit;
-  Topic := LowerCase(ATopic);
   for H in FHandlers do
     if H.Topic = Topic then
     begin
@@ -923,7 +1038,179 @@ begin
   GAbort := False;
   GExecAllowed := '';
   LuaHostReset;
+  if FColumnsDirty then
+    RefreshColumns;
   NextEvent;
+end;
+
+function PanelListText(AApi: PHostApiTable; ASide: Int64): string;
+var
+  Len: Int64;
+  Buf: UTF8String;
+begin
+  Result := '';
+  Len := AApi.PanelList(ASide, nil, 0);
+  if Len <= 0 then
+    Exit;
+  SetLength(Buf, Len + 1);
+  Len := AApi.PanelList(ASide, PAnsiChar(Buf), Len + 1);
+  if (Len > 0) and (Len < Length(Buf)) then
+    Result := UTF8ToString(PAnsiChar(Buf));
+end;
+
+procedure TMacroEngine.ClearColumns;
+var
+  C: TColumn;
+begin
+  if FState <> nil then
+    for C in FColumns do
+      luaL_unref(FState, LUA_REGISTRYINDEX, C.Ref);
+  FColumns.Clear;
+  PublishColumns;
+end;
+
+procedure TMacroEngine.PublishColumns;
+var
+  Arr: TJSONArray;
+  O: TJSONObject;
+  C: TColumn;
+  Json, Plugin: UTF8String;
+begin
+  if not Assigned(FApi.RegisterPanelColumns) or (FApi.AbiVersion < 9) then
+    Exit;
+  Plugin := FPluginId;
+  if FColumns.Count = 0 then
+  begin
+    FApi.RegisterPanelColumns(PAnsiChar(Plugin), 'file', nil);
+    Exit;
+  end;
+  Arr := TJSONArray.Create;
+  try
+    for C in FColumns do
+    begin
+      O := TJSONObject.Create;
+      O.AddPair('id', C.Id);
+      O.AddPair('title', C.Title);
+      O.AddPair('width', TJSONNumber.Create(C.Width));
+      if C.Right then
+        O.AddPair('align', 'right')
+      else
+        O.AddPair('align', 'left');
+      O.AddPair('sortable', TJSONBool.Create(False));
+      O.AddPair('default', TJSONBool.Create(C.IsDefault));
+      Arr.Add(O);
+    end;
+    Json := UTF8String(Arr.ToJSON);
+  finally
+    Arr.Free;
+  end;
+  FApi.RegisterPanelColumns(PAnsiChar(Plugin), 'file', PAnsiChar(Json));
+end;
+
+{ Runs the value function of AColumn for one row in a thread of its own, with
+  the instruction budget of a macro. A column that fails is switched off and the
+  user is told once. }
+function TMacroEngine.EvalColumn(AColumn: TColumn; ARow: TJSONObject): string;
+var
+  T: PLuaState;
+  Name: string;
+  Size: Int64;
+  IsDir: Boolean;
+begin
+  Result := '';
+  if (FState = nil) or AColumn.Broken then
+    Exit;
+  T := lua_newthread(FState);
+  try
+    lua_sethook(T, CountHook, LUA_MASKCOUNT, cHookCount);
+    GSlices := 0;
+    GAbort := False;
+    lua_rawgeti(T, LUA_REGISTRYINDEX, AColumn.Ref);
+    lua_newtable(T);
+    Name := JsonStr(ARow, 'name');
+    SetStr(T, 'name', Name);
+    SetStr(T, 'uri', JsonStr(ARow, 'uri'));
+    IsDir := JsonBool(ARow, 'dir');
+    SetBool(T, 'dir', IsDir);
+    Size := 0;
+    ARow.TryGetValue<Int64>('size', Size);
+    SetInt(T, 'size', Size);
+    if lua_pcall(T, 1, 1) = LUA_OK then
+      Result := lua_tostr(T, -1)
+    else
+    begin
+      AColumn.Broken := True;
+      Notify(Format(Tr('err.column', 'Column "%s" failed: %s'),
+        [AColumn.Id, lua_tostr(T, -1)]), 1);
+    end;
+  finally
+    lua_pop(FState, 1);
+  end;
+end;
+
+procedure TMacroEngine.RefreshColumns;
+const
+  cMaxRows = 3000;
+var
+  Side, I, N: Integer;
+  Json: string;
+  Root, Rows, Row, Cells, RowCells: TJSONValue;
+  Folder, Text: string;
+  Plugin, FolderU, CellsU: UTF8String;
+  C: TColumn;
+begin
+  if (FColumns.Count = 0) or (FState = nil) or not Assigned(FApi.PanelList) or
+     not Assigned(FApi.SetPanelColumnValues) or (FApi.AbiVersion < 9) then
+    Exit;
+  if FRunning <> nil then
+  begin
+    FColumnsDirty := True;
+    Exit;
+  end;
+  FColumnsDirty := False;
+  Plugin := FPluginId;
+  for Side := 0 to 1 do
+  begin
+    Json := PanelListText(FApi, Side);
+    Root := TJSONObject.ParseJSONValue(Json);
+    try
+      if not (Root is TJSONObject) then
+        Continue;
+      Folder := JsonStr(TJSONObject(Root), 'uri');
+      Rows := TJSONObject(Root).GetValue('rows');
+      if (Folder = '') or not (Rows is TJSONArray) then
+        Continue;
+      Cells := TJSONObject.Create;
+      try
+        N := 0;
+        for I := 0 to TJSONArray(Rows).Count - 1 do
+        begin
+          Row := TJSONArray(Rows).Items[I];
+          if not (Row is TJSONObject) or (N >= cMaxRows) then
+            Continue;
+          Inc(N);
+          RowCells := TJSONObject.Create;
+          for C in FColumns do
+          begin
+            Text := EvalColumn(C, TJSONObject(Row));
+            if Text <> '' then
+              TJSONObject(RowCells).AddPair(C.Id, Text);
+          end;
+          if TJSONObject(RowCells).Count > 0 then
+            TJSONObject(Cells).AddPair(JsonStr(TJSONObject(Row), 'name'), RowCells)
+          else
+            RowCells.Free;
+        end;
+        CellsU := UTF8String(Cells.ToJSON);
+      finally
+        Cells.Free;
+      end;
+      FolderU := UTF8String(Folder);
+      FApi.SetPanelColumnValues(PAnsiChar(Plugin), PAnsiChar(FolderU), PAnsiChar(CellsU));
+    finally
+      Root.Free;
+    end;
+  end;
 end;
 
 procedure TMacroEngine.RequestAbort;

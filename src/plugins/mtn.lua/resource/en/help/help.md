@@ -99,4 +99,29 @@ mtn.on("doc.saved", function(e)
 end)
 ```
 
+### Panel columns
+
+`mtn.column{...}` called while a file loads adds a column to the file panels (Settings – Columns...).
+
+```lua
+mtn.column {
+  id = "kb", title = "KB", width = 7, align = "right", default = true,
+  value = function(f)
+    if f.dir then return nil end
+    return f.size // 1024 .. " KB"
+  end,
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | the name of the column (required) |
+| `title` | the heading, `id` by default |
+| `width` | the width (10 by default) |
+| `align` | `"left"` or `"right"` |
+| `default` | `true` shows the column until the user picks a set of their own |
+| `value` | a function: gets the file table (`name`, `uri`, `dir`, `size`) and returns a text or a number; `nil` leaves the cell empty |
+
+The values are computed for both panels when the macros load and whenever a folder changes, for the first 3000 files and in local folders only. The function runs like a macro but cannot wait: calls that reach into the program (`mtn.key`, `mtn.editor.*`, dialogs, `mtn.exec`) are unavailable in it. A column whose function raised an error is switched off until the macros are reloaded, and the error is shown once. A column cannot be sorted.
+
 Three samples are in the `samples/macros` folder of the distribution: sorting lines without duplicates, making a folder, a report on the marked files.
