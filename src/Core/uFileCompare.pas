@@ -17,6 +17,12 @@ type
   TFileDiffDoneCallback = reference to procedure(AResult: TCompareResult;
     ADiffOffset: Int64; const AError: TVfsError;
     const ADiffLines: TArray<string>; AChangedLines: Integer);
+  TDiffKind = (dkEqual, dkDelete, dkInsert);
+  /// <summary>One line of the edit script that turns the left text into the right one.</summary>
+  TDiffSpan = record
+    Kind: TDiffKind;
+    Text: string;
+  end;
 
 procedure CompareFilesAsync(const AUriLeft, AUriRight: string;
   const AVfs: IVirtualFileSystem; ACancel: IJobCancelToken;
@@ -27,6 +33,9 @@ procedure DiffFilesAsync(const AUriLeft, AUriRight: string;
 function BuildTextDiff(const ALeftText, ARightText: string;
   out AChangedLines: Integer): TArray<string>;
 function FirstByteDiffOffset(const ALeft, ARight: TBytes): Int64;
+/// <summary>The line edit script from ALeft to ARight (Myers for up to 2500 lines
+/// per side, a greedy resync beyond that).</summary>
+function DiffLineSpans(const ALeft, ARight: TArray<string>): TArray<TDiffSpan>;
 
 implementation
 
@@ -38,13 +47,6 @@ const
   cMyersMaxLines = 2500;
   cMaxDiffDisplay = 400;
   cDiffContext = 3;
-
-type
-  TDiffKind = (dkEqual, dkDelete, dkInsert);
-  TDiffSpan = record
-    Kind: TDiffKind;
-    Text: string;
-  end;
 
 procedure CompareFilesAsync(const AUriLeft, AUriRight: string;
   const AVfs: IVirtualFileSystem; ACancel: IJobCancelToken;
@@ -327,6 +329,11 @@ begin
     SetLength(Result, cMaxDiffDisplay + 1);
     Result[cMaxDiffDisplay] := Format('... and %d more lines', [I]);
   end;
+end;
+
+function DiffLineSpans(const ALeft, ARight: TArray<string>): TArray<TDiffSpan>;
+begin
+  Result := MyersDiff(ALeft, ARight);
 end;
 
 function BuildTextDiff(const ALeftText, ARightText: string;

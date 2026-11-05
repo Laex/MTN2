@@ -176,7 +176,7 @@ type
     hdkUserMenuEdit, hdkUserMenuConfirm, hdkUserMenuPrompt,
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
-    hdkChecksumOptions, hdkChecksumResult, hdkMultiRename, hdkCompareOptions, hdkDatePicker,
+    hdkChecksumOptions, hdkChecksumResult, hdkMultiRename, hdkCompareOptions, hdkDiffMerge, hdkDatePicker,
     hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.

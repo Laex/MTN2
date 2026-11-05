@@ -1,0 +1,145 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Compare and merge",
+  "width": 110,
+  "height": 30,
+  "children": [
+    {
+      "type": "label",
+      "id": "left_name",
+      "text": "",
+      "col": 1,
+      "row": 0,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "right_name",
+      "text": "",
+      "col": 1,
+      "row": 1,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 2,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "columns",
+      "text": "",
+      "col": 1,
+      "row": 3,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "rows",
+      "selected": 0,
+      "items": [
+        ""
+      ],
+      "col": 1,
+      "row": 4,
+      "width": 106,
+      "height": 18
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 22,
+      "width": 108,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "",
+      "col": 1,
+      "row": 23,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 24,
+      "width": 108,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_next",
+      "text": "&Next",
+      "col": 1,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_prev",
+      "text": "&Prev",
+      "col": 16,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_right",
+      "text": "&Right >>",
+      "col": 31,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_left",
+      "text": "<< &Left",
+      "col": 46,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_undo",
+      "text": "&Undo",
+      "col": 61,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "dm_save",
+      "text": "&Save",
+      "col": 76,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Close",
+      "default": true,
+      "cancel": true,
+      "col": 91,
+      "row": 26,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

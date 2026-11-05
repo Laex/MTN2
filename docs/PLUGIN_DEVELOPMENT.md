@@ -57,7 +57,7 @@
 | Событие / перерисовка | `HostPublish`, `HostInvalidate` | `publish` | Шину событий |
 | Своя команда | `RegisterCommand`, `ExecuteCommand` | `register_command`, `execute_command` | Команду с произвольным id (не совпадающим с именем встроенной) |
 | Перехватчик встроенной команды | `RegisterCommandHook` | `register_command_hook` | Вызов до встроенной команды; ответ 1 отменяет её |
-| Открытие файлов | `RegisterDocumentProvider` | `register_document_provider` | Решение по F3 / F4 для своих расширений: открыть самому, подсунуть другой URI (только нативный), пропустить |
+| Открытие файлов | `RegisterDocumentProvider` | `register_document_provider` | Решение по F3 / F4 для своих расширений: открыть самому, подсунуть другой URI (только нативный), пропустить. Режим «быстрый просмотр» (бит 4, строка `quick`, Ctrl+Q) принимает только подмену URI |
 | Запуск программой системы | `OpenExternal` | – | Открытие локального файла ассоциированной программой (только нативный) |
 | Диалог | `ShowDialog` | `show_dialog` | Одноразовый модальный диалог по JSON-описанию; вместо текста JSON можно передать имя файла из `plugins\<id>\dialogs\<имя>.json` |
 | Активация строки панели | `RegisterPanelActivate` | `register_panel_activate` | Реакцию на Enter / двойной щелчок по строке панели своей схемы |

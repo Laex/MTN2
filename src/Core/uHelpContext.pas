@@ -81,6 +81,8 @@ begin
       Result := 'sync.md#compare-folders';
     hdkMultiRename:
       Result := 'fileops.md#multi-rename';
+    hdkDiffMerge:
+      Result := 'sync.md#compare-files';
     hdkExportList:
       Result := 'fileops.md#export-list';
     hdkDeleteError, hdkIOError:

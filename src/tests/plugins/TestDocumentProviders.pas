@@ -16,6 +16,7 @@ type
     [Test] procedure TestFaultyProviderCountsAsPass;
     [Test] procedure TestInvalidRegistrationsAreIgnored;
     [Test] procedure TestOpenWithSystemRefusesNonLocalUris;
+    [Test] procedure TestQuickViewAsksOnlyQuickProviders;
   end;
 
 implementation
@@ -199,6 +200,54 @@ begin
   end;
 end;
 
+procedure TestQuickViewAsksOnlyQuickProviders;
+var
+  Redirect, Asked: string;
+  SawQuick: Boolean;
+begin
+  SawQuick := False;
+  try
+    DocumentProviders.RegisterProvider('t.viewonly', 'p', '.qv', [dmView],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        ARedirectURI := 'file:///C:/tmp/wrong.txt';
+        Result := dokRedirect;
+      end);
+    Assert.IsFalse(DocumentProviders.TryQuickRedirect('file:///C:/x.qv', Redirect),
+      'a provider without the quick mode is not asked');
+    DocumentProviders.RegisterProvider('t.quick', 'p', '.qv', [dmView, dmQuick],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        SawQuick := DocumentQuickViewActive;
+        ARedirectURI := 'file:///C:/tmp/text.txt';
+        Result := dokRedirect;
+      end);
+    Assert.IsTrue(DocumentProviders.TryQuickRedirect('file:///C:/x.qv', Redirect), 'redirect');
+    Assert.AreEqual('file:///C:/tmp/text.txt', Redirect);
+    Assert.IsTrue(SawQuick, 'the handler can tell Quick View from F3');
+    Assert.IsFalse(DocumentQuickViewActive, 'the flag is cleared afterwards');
+    SawQuick := False;
+    DocumentProviders.TryOpen('file:///C:/x.qv', True, Redirect);
+    Assert.IsFalse(SawQuick, 'F3 runs the handler outside the quick mode');
+    DocumentProviders.UnregisterPlugin('t.quick');
+    Asked := '';
+    DocumentProviders.RegisterProvider('t.quick', 'p', '.qv', [dmQuick],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        Asked := AURI;
+        if AURI.EndsWith('#view') then
+          Result := dokHandled
+        else
+          Result := dokPass;
+      end);
+    Assert.IsTrue(DocumentProviders.TryQuickInteractive('file:///C:/x.qv'), 'handled');
+    Assert.AreEqual('file:///C:/x.qv#view', Asked, 'the interactive view is asked for in the fragment');
+  finally
+    DocumentProviders.UnregisterPlugin('t.viewonly');
+    DocumentProviders.UnregisterPlugin('t.quick');
+  end;
+end;
+
 procedure TestOpenWithSystemRefusesNonLocalUris;
 begin
   Assert.IsTrue(not OpenUriWithSystem('sftp://u@h/a.txt'), 'remote scheme');
@@ -242,6 +291,11 @@ end;
 procedure TTestDocumentProviders.TestOpenWithSystemRefusesNonLocalUris;
 begin
   TestDocumentProviders.TestOpenWithSystemRefusesNonLocalUris;
+end;
+
+procedure TTestDocumentProviders.TestQuickViewAsksOnlyQuickProviders;
+begin
+  TestDocumentProviders.TestQuickViewAsksOnlyQuickProviders;
 end;
 
 initialization

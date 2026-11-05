@@ -382,6 +382,9 @@ type
       ASelectedIndex: Integer = 0);
     /// <summary>Replaces the accent-colored stretches of an open dckList.</summary>
     procedure SetListAccents(const AId: string; const AAccents: TArray<TListAccent>);
+    /// <summary>Replaces the colored overlays of an open dckList: one per row, row i
+    /// takes ASwatches[i].</summary>
+    procedure SetListSwatches(const AId: string; const ASwatches: TArray<TListSwatch>);
     procedure Draw(const AGrid: TTerminalGrid; AAreaW, AAreaH: Integer);
     function HandleInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -1432,6 +1435,19 @@ begin
     if (FDecl.Controls[I].Kind = dckList) and SameText(FDecl.Controls[I].Id, AId) then
     begin
       FDecl.Controls[I].ItemAccents := Copy(AAccents);
+      NotifyChanged;
+      Exit;
+    end;
+end;
+
+procedure TDialogHost.SetListSwatches(const AId: string; const ASwatches: TArray<TListSwatch>);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckList) and SameText(FDecl.Controls[I].Id, AId) then
+    begin
+      FDecl.Controls[I].ItemSwatches := Copy(ASwatches);
       NotifyChanged;
       Exit;
     end;

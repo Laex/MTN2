@@ -218,7 +218,7 @@ type
     ARedirect: PAnsiChar; ARedirectCap: Int64): Int64; cdecl;
   /// <summary>Registers a provider for the file name extensions in
   /// AExtensions (comma-separated, ".md,.markdown"; "*" = all files).
-  /// AModes: bit 0 = view (F3), bit 1 = edit (F4). Providers run in ascending
+  /// AModes: bit 0 = view (F3), bit 1 = edit (F4), bit 2 = Quick View (Ctrl+Q; mode "quick", redirect answers only). Providers run in ascending
   /// APriority before the built-in viewer / editor. 0 = ok, -1 = refused.</summary>
   THostRegisterDocumentProviderFn = function(APluginId, AExtensions: PAnsiChar;
     AModes: Int64; AHandler: THostDocumentProviderCallback; AUserData: Pointer;

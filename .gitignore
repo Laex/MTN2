@@ -58,6 +58,7 @@ src/tools/dcu/
 src/tools/**/dcu/
 src/tests/dcu/
 src/tools/wasmtime/
+src/tools/pdfium/
 src/tools/curl/
 src/tools/lua/
 src/tools/lua-linux/

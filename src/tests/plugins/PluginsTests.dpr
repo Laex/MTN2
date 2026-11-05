@@ -43,6 +43,8 @@ uses
   TestLogFilter in 'TestLogFilter.pas',
   TestLuaMacros in 'TestLuaMacros.pas',
   TestCsvTable in 'TestCsvTable.pas',
+  TestDocText in 'TestDocText.pas',
+  TestPdfView in 'TestPdfView.pas',
   TestGitStatus in 'TestGitStatus.pas',
   TestWinSysFormat in 'TestWinSysFormat.pas',
   TestWinSysSystem in 'TestWinSysSystem.pas',

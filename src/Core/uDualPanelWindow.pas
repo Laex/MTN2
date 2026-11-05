@@ -27,7 +27,7 @@ uses
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
-  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
+  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDualPanelDiffMerge, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
   uKeyHints, uPanelCompare;
@@ -227,6 +227,14 @@ type
     FHelp: THelpViewer;
     /// <summary>Ctrl+Q text preview (created on first use).</summary>
     FQuickText: TQuickTextView;
+    FQuickRedirectFrom: string;
+    FQuickRedirectTo: string;
+    /// <summary>The picture the last paint of Quick View showed; '' when it
+    /// showed text, a placeholder or a plugin surface.</summary>
+    FQuickImageUri: string;
+    /// <summary>The plugin surface in the Quick View panel was opened by Tab for
+    /// an interactive view of the file; it closes when the keyboard leaves it.</summary>
+    FQuickSurfaceOwned: Boolean;
     /// <summary>Tab moved the keyboard to the Quick View text: navigation keys
     /// scroll it and the file panel keeps its cursor.</summary>
     FQuickViewFocused: Boolean;
@@ -281,6 +289,7 @@ type
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
     FMultiRename: TMultiRenameController;
+    FDiffMerge: TDiffMergeController;
     FKeymapHost: TDualPanelKeymapHost;
     FShiftSelect: TShiftSelectGesture;
     FClickHost: TDualPanelClickHost;
@@ -790,6 +799,8 @@ type
     procedure ShowShellContextMenu;
     procedure ApplySetAttributes(const APaths: TArray<string>; const APlan: TFileAttrPlan);
     procedure BeginCompareFiles;
+    procedure RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
+      const ALeftName, ARightName, ATitle: string; AToken: IJobCancelToken);
     /// <summary>Ctrl+Shift+C: select what differs between the two panels.</summary>
     procedure CompareFolders;
     procedure DispatchCompareOptionsCommand(const AControlId: string);
@@ -952,6 +963,9 @@ type
     procedure FolderDown;
     procedure CloseQuickView;
     function QuickViewTextShown: Boolean;
+    function QuickViewPictureShown: Boolean;
+    function OpenQuickInteractive: Boolean;
+    procedure CloseQuickInteractive;
     function HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure CancelFolderSize;
@@ -1075,6 +1089,7 @@ type
     /// URI changes; every redraw still refreshes the stored bounds so a
     /// resize doesn't leave the image scaled/positioned against stale
     /// geometry (see uOverlayRenderer.UpdateOverlayBounds).</summary>
+    function QuickViewTarget(const AUri: string): string;
     procedure DrawQuickViewContent(const ABounds: TRectI; ASide: TPanelSide;
       AFrame, ABodyBg: TAlphaColor);
     procedure DrawPanelDriveLetters(const ABounds: TRectI; const ATab: TTab;
@@ -1863,6 +1878,7 @@ begin
   FreeAndNil(FHistoryPopupCtrl);
   FreeAndNil(FDirSync);
   FreeAndNil(FMultiRename);
+  FreeAndNil(FDiffMerge);
   FreeAndNil(FSearchDlg);
   FreeAndNil(FJobDialogs);
   FreeAndNil(FJobs);
@@ -3509,6 +3525,13 @@ begin
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
   FModalInputHost.HandleDirSyncList := FDirSync.HandleListInput;
+  FDiffMerge := TDiffMergeController.Create(FDialog, DialogCommand,
+    HostSetDialogKind, CloseTransientUiBeforeDialog, NotifyChanged,
+    function: Integer
+    begin
+      Result := Area.Width;
+    end, HostIsAlive);
+  FModalInputHost.HandleDiffMergeList := FDiffMerge.HandleListInput;
   FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     StartMultiRenameJob, NotifyChanged,
@@ -6625,6 +6648,8 @@ begin
     FDirSync.NotifyDialogChanged;
   if (FDialogKind = hdkMultiRename) and Assigned(FMultiRename) then
     FMultiRename.NotifyDialogChanged;
+  if (FDialogKind = hdkDiffMerge) and Assigned(FDiffMerge) then
+    FDiffMerge.NotifyDialogChanged;
   if (FDialogKind = hdkSearch) and Assigned(FSearchDlg) then
     FSearchDlg.SyncHexField;
   NotifyChanged;
@@ -6823,6 +6848,8 @@ begin
       Result := FDirSync.DispatchCommand(AControlId, AFields);
     hdkMultiRename:
       Result := FMultiRename.DispatchCommand(AControlId);
+    hdkDiffMerge:
+      Result := FDiffMerge.DispatchCommand(AControlId);
     hdkArchivePassword:
       begin
         HandleArchivePasswordCommand(AControlId, AFields.Password);
@@ -7499,7 +7526,28 @@ begin
     RightName := 'R: ' + RightRow.Text;
   end;
   Token := TJobCancelToken.Create;
-  DiffFilesAsync(LeftRow.URI, RightRow.URI, FVfs, Token,
+  FDiffMerge.Open(LeftRow.URI, RightRow.URI, LeftName, RightName, FVfs,
+    procedure
+    begin
+      if Life.Alive then
+        RunPlainCompare(LeftRow, RightRow, LeftName, RightName, Title, Token);
+    end);
+end;
+
+procedure TDualPanelWindow.RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
+  const ALeftName, ARightName, ATitle: string; AToken: IJobCancelToken);
+var
+  Life: ILifeFlag;
+  LeftRow, RightRow: TPanelRow;
+  LeftName, RightName, Title: string;
+begin
+  Life := FLife;
+  LeftRow := ALeftRow;
+  RightRow := ARightRow;
+  LeftName := ALeftName;
+  RightName := ARightName;
+  Title := ATitle;
+  DiffFilesAsync(LeftRow.URI, RightRow.URI, FVfs, AToken,
     procedure(AResult: TCompareResult; ADiffOffset: Int64; const AError: TVfsError;
       const ADiffLines: TArray<string>; AChangedLines: Integer)
     var
@@ -9033,24 +9081,95 @@ begin
     not ((FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle));
 end;
 
+function TDualPanelWindow.QuickViewPictureShown: Boolean;
+begin
+  Result := QuickViewVisible and (FQuickImageUri <> '') and
+    (PanelViewKind(OppositeSide(ActiveWorkspace.State.ActiveSide)) = pvkQuickView) and
+    not ((FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle));
+end;
+
+{ Tab on the previewed file: a document plugin may open its own interactive
+  view (pages, zoom) in the Quick View panel. }
+function TDualPanelWindow.OpenQuickInteractive: Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Row: TPanelRow;
+  Idx: Integer;
+  Panel: TPanelState;
+begin
+  Result := False;
+  if (FSurfacePanelHandle <> 0) or not QuickViewVisible then
+    Exit;
+  if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) or Row.IsDirectory or Row.IsParent or
+     (Row.URI = '') or IsOverlayImageExtension(Row.Extension) then
+    Exit;
+  if not DocumentProviders.TryQuickInteractive(Row.URI) then
+    Exit;
+  Result := (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle);
+  FQuickSurfaceOwned := Result;
+end;
+
+procedure TDualPanelWindow.CloseQuickInteractive;
+var
+  H: Integer;
+begin
+  FQuickSurfaceOwned := False;
+  if FSurfacePanelHandle = 0 then
+    Exit;
+  H := FSurfacePanelHandle;
+  FSurfacePanelHandle := 0;
+  SurfaceTabClosed(H);
+  ClearOverlayPreview;
+end;
+
 function TDualPanelWindow.HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
+var
+  Plain: Boolean;
 begin
   Result := False;
   if not FQuickViewFocused then
     Exit;
-  if not QuickViewTextShown then
+  if not (QuickViewTextShown or QuickViewPictureShown or FQuickSurfaceOwned) then
   begin
     FQuickViewFocused := False;
     Exit;
   end;
+  Plain := AShift * [ssCtrl, ssAlt, ssShift] = [];
+  if FQuickSurfaceOwned then
+  begin
+    if not ((FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle)) then
+    begin
+      CloseQuickInteractive;
+      FQuickViewFocused := False;
+      Exit;
+    end;
+    if ((AKey = vkTab) or (AKey = vkEscape)) and Plain then
+    begin
+      CloseQuickInteractive;
+      FQuickViewFocused := False;
+    end
+    else if not SurfaceDeliverKey(FSurfacePanelHandle, AKey, AShift, AKeyChar) then
+      Exit;
+    AKey := 0;
+    AKeyChar := #0;
+    Invalidate;
+    Exit(True);
+  end;
   if (AKey = vkTab) or (AKey = vkEscape) then
   begin
-    if AShift * [ssCtrl, ssAlt, ssShift] <> [] then
+    if not Plain then
       Exit;
     FQuickViewFocused := False;
   end
-  else if not FQuickText.ScrollKey(AKey, AShift) then
+  else if QuickViewTextShown then
+  begin
+    if not FQuickText.ScrollKey(AKey, AShift) then
+      Exit;
+  end
+  else
     Exit;
   AKey := 0;
   AKeyChar := #0;
@@ -11018,7 +11137,13 @@ begin
     Invalidate;
     Exit;
   end;
-  if QuickViewTextShown then
+  if OpenQuickInteractive then
+  begin
+    FQuickViewFocused := True;
+    Invalidate;
+    Exit;
+  end;
+  if QuickViewTextShown or QuickViewPictureShown then
   begin
     FQuickViewFocused := True;
     Invalidate;
@@ -11688,6 +11813,7 @@ begin
   // Quick View was switched off: the plugin hears it like a closed tab.
   H := FSurfacePanelHandle;
   FSurfacePanelHandle := 0;
+  FQuickSurfaceOwned := False;
   SurfaceTabClosed(H);
 end;
 
@@ -13750,6 +13876,23 @@ begin
     UpdateOverlayBounds(AbsBounds);
 end;
 
+{ The file Quick View shows for AUri: the text a document plugin made of it,
+  or AUri itself. The plugin is asked once per file, not on every repaint. }
+function TDualPanelWindow.QuickViewTarget(const AUri: string): string;
+var
+  Redirect: string;
+begin
+  if AUri <> FQuickRedirectFrom then
+  begin
+    FQuickRedirectFrom := AUri;
+    if DocumentProviders.TryQuickRedirect(AUri, Redirect) then
+      FQuickRedirectTo := Redirect
+    else
+      FQuickRedirectTo := AUri;
+  end;
+  Result := FQuickRedirectTo;
+end;
+
 procedure TDualPanelWindow.DrawQuickViewContent(const ABounds: TRectI;
   ASide: TPanelSide; AFrame, ABodyBg: TAlphaColor);
 var
@@ -13761,11 +13904,17 @@ var
   Panel: TPanelState;
   AbsBounds: TRectI;
   HasRow, Previewable: Boolean;
+  ImageUri: string;
 begin
   FillGridRect(Buffer, ABounds.Left + 1, ABounds.Top + 1,
     ABounds.Right - 1, ABounds.Bottom - 1, ' ', cFileFg, ABodyBg);
 
   // A plugin shows its own picture here instead of the file under the cursor.
+  FQuickImageUri := '';
+  // The keyboard left the interactive view (a mouse click on a panel): the
+  // preview follows the cursor again.
+  if FQuickSurfaceOwned and not FQuickViewFocused then
+    CloseQuickInteractive;
   if (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
   begin
     DrawSurfacePanel(ABounds, ABodyBg);
@@ -13776,8 +13925,22 @@ begin
   // side is physically drawing this panel - only reached when ASide isn't
   // the active side (IsQuickViewTarget guards that in DrawPanel).
   HasRow := GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx);
-  Previewable := IsQuickViewPreviewable(HasRow,
-    IsOverlayImageExtension(Row.Extension), Row);
+  // A picture is the file itself or, for a file a plugin renders for Quick
+  // View, the picture the plugin redirects to.
+  ImageUri := '';
+  if HasRow and (not Row.IsDirectory) and (not Row.IsParent) and (Row.URI <> '') then
+  begin
+    if IsOverlayImageExtension(Row.Extension) then
+      ImageUri := Row.URI
+    else
+    begin
+      ImageUri := QuickViewTarget(Row.URI);
+      if (ImageUri = Row.URI) or
+         not IsOverlayImageExtension(ExtractFileExt(ImageUri)) then
+        ImageUri := '';
+    end;
+  end;
+  Previewable := IsQuickViewPreviewable(HasRow, ImageUri <> '', Row);
 
   if not Previewable then
   begin
@@ -13791,7 +13954,7 @@ begin
             FQuickText := TQuickTextView.Create(Theme);
             FQuickText.OnChanged := QuickTextChanged;
           end;
-          FQuickText.ShowFile(Row.URI);
+          FQuickText.ShowFile(QuickViewTarget(Row.URI));
           FQuickText.Paint(Buffer, ABounds, Area.Left, Area.Top);
           Exit;
         end;
@@ -13812,6 +13975,7 @@ begin
   end;
   if Assigned(FQuickText) then
     FQuickText.Clear;
+  FQuickImageUri := ImageUri;
 
   // Interior only (Left+1/Right-1/Top+1/Bottom-1) - same inset as the
   // FillGridRect above - so the image doesn't paint over the frame
@@ -13820,8 +13984,8 @@ begin
   // uMainForm.FormPaint works in absolute grid cells, so offset by this
   // window's own placement before handing off.
   AbsBounds := QuickViewInteriorAbsBounds(ABounds, Area);
-  if OverlayCurrentURI <> Row.URI then
-    RequestOverlayPreview(Row.URI, AbsBounds)
+  if OverlayCurrentURI <> ImageUri then
+    RequestOverlayPreview(ImageUri, AbsBounds)
   else
     UpdateOverlayBounds(AbsBounds);
 end;
@@ -14515,10 +14679,12 @@ begin
   Ws := ActiveWorkspace;
   if Ws.State.LeftVisible then
     DrawPanel(FLeftBounds, Ws.State.LeftPanel, psLeft,
-      (Ws.State.ActiveSide = psLeft) <> (FQuickViewFocused and QuickViewTextShown));
+      (Ws.State.ActiveSide = psLeft) <> (FQuickViewFocused and
+        (QuickViewTextShown or QuickViewPictureShown or FQuickSurfaceOwned)));
   if Ws.State.RightVisible then
     DrawPanel(FRightBounds, Ws.State.RightPanel, psRight,
-      (Ws.State.ActiveSide = psRight) <> (FQuickViewFocused and QuickViewTextShown));
+      (Ws.State.ActiveSide = psRight) <> (FQuickViewFocused and
+        (QuickViewTextShown or QuickViewPictureShown or FQuickSurfaceOwned)));
   DrawCommandLine(CmdLineRow(H), W);
   DrawBottomChrome(W, H);
   DrawMenuBar(W);

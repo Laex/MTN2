@@ -16,6 +16,7 @@ const
   cPluginId = 'mtn.csv';
   cExtensions = '.csv,.tsv';
   cModeView = 1;
+  cModeQuick = 4;
   cPriority = 50;
   cMaxBytes = 32 * 1024 * 1024;
   cMaxRows = 200000;
@@ -153,13 +154,15 @@ function OnDocument(AUserData: Pointer; AUri, AMode, ARedirect: PAnsiChar;
 var
   Uri, Path, Target, TargetUri: string;
   Bytes: UTF8String;
+  Quick: Boolean;
 begin
   Result := 0;
   try
     if (AUri = nil) or (AMode = nil) or (ARedirect = nil) then
       Exit;
     // F4 stays with the built-in editor.
-    if not SameText(string(AMode), 'view') then
+    Quick := SameText(string(AMode), 'quick');
+    if not Quick and not SameText(string(AMode), 'view') then
       Exit;
     Uri := UTF8ToString(AUri);
     Path := UriToPath(Uri);
@@ -197,7 +200,7 @@ begin
   PluginId := UTF8String(cPluginId);
   Extensions := UTF8String(cExtensions);
   Result := GHostApi.RegisterDocumentProvider(PAnsiChar(PluginId), PAnsiChar(Extensions),
-    cModeView, @OnDocument, nil, cPriority);
+    cModeView or cModeQuick, @OnDocument, nil, cPriority);
 end;
 
 procedure mtn_plugin_shutdown; cdecl;

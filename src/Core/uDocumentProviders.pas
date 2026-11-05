@@ -27,7 +27,7 @@ uses
 type
   TDocumentOpenKind = (dokPass, dokHandled, dokRedirect);
 
-  TDocumentMode = (dmView, dmEdit);
+  TDocumentMode = (dmView, dmEdit, dmQuick);
   TDocumentModes = set of TDocumentMode;
 
   TDocumentOpenHandler = reference to function(const AURI: string; AViewOnly: Boolean;
@@ -51,9 +51,23 @@ type
     /// than dokPass wins. dokPass when none matches or none takes the file.</summary>
     function TryOpen(const AURI: string; AViewOnly: Boolean;
       out ARedirectURI: string): TDocumentOpenKind;
+    /// <summary>Quick View (Ctrl+Q) of AURI: asks only the providers registered
+    /// for dmQuick, which are called in the mode "quick". True when one answers
+    /// with a redirect; the target is the file Quick View shows instead.
+    /// A provider that opens its own window must not answer in this mode.</summary>
+    function TryQuickRedirect(const AURI: string; out ARedirectURI: string): Boolean;
+    /// <summary>Asks the dmQuick providers to open an interactive view of AURI
+    /// in the Quick View panel (a plugin surface). The provider hears the URI
+    /// with "#view" appended and answers "handled" once its surface is open.
+    /// True when one did.</summary>
+    function TryQuickInteractive(const AURI: string): Boolean;
   end;
 
 function DocumentProviders: IDocumentProviderRegistry;
+
+/// <summary>True while TryQuickRedirect runs a provider, so a handler that
+/// serves both F3 and Quick View can tell them apart.</summary>
+function DocumentQuickViewActive: Boolean;
 
 /// <summary>Extension of the file a URI names (".md", lower-case), '' when the
 /// last path segment has none. Works for file:// and plugin-scheme URIs,
@@ -97,10 +111,18 @@ type
     procedure UnregisterPlugin(const APluginId: string);
     function TryOpen(const AURI: string; AViewOnly: Boolean;
       out ARedirectURI: string): TDocumentOpenKind;
+    function TryQuickRedirect(const AURI: string; out ARedirectURI: string): Boolean;
+    function TryQuickInteractive(const AURI: string): Boolean;
   end;
 
 var
   GRegistry: IDocumentProviderRegistry;
+  GQuickActive: Boolean;
+
+function DocumentQuickViewActive: Boolean;
+begin
+  Result := GQuickActive;
+end;
 
 function DocumentUriExtension(const AURI: string): string;
 var
@@ -290,6 +312,76 @@ begin
       ARedirectURI := Redirect;
       Exit(Kind);
     end;
+  end;
+end;
+
+function TDocumentProviderRegistry.TryQuickRedirect(const AURI: string;
+  out ARedirectURI: string): Boolean;
+var
+  Snapshot: TArray<TProviderEntry>;
+  E: TProviderEntry;
+  Ext, Redirect: string;
+  Kind: TDocumentOpenKind;
+begin
+  ARedirectURI := '';
+  Result := False;
+  if FEntries.Count = 0 then
+    Exit;
+  Ext := DocumentUriExtension(AURI);
+  Snapshot := FEntries.ToArray;
+  for E in Snapshot do
+  begin
+    if not (dmQuick in E.Modes) or not Matches(E, Ext) then
+      Continue;
+    Redirect := '';
+    GQuickActive := True;
+    try
+      try
+        Kind := E.Handler(AURI, True, Redirect);
+      except
+        Kind := dokPass;
+      end;
+    finally
+      GQuickActive := False;
+    end;
+    if (Kind = dokRedirect) and (Redirect <> '') then
+    begin
+      ARedirectURI := Redirect;
+      Exit(True);
+    end;
+  end;
+end;
+
+function TDocumentProviderRegistry.TryQuickInteractive(const AURI: string): Boolean;
+var
+  Snapshot: TArray<TProviderEntry>;
+  E: TProviderEntry;
+  Ext, Redirect, Asked: string;
+  Kind: TDocumentOpenKind;
+begin
+  Result := False;
+  if FEntries.Count = 0 then
+    Exit;
+  Ext := DocumentUriExtension(AURI);
+  Asked := AURI + '#view';
+  Snapshot := FEntries.ToArray;
+  for E in Snapshot do
+  begin
+    if not (dmQuick in E.Modes) or not Matches(E, Ext) then
+      Continue;
+    Redirect := '';
+    GQuickActive := True;
+    try
+      try
+        Kind := E.Handler(Asked, True, Redirect);
+      except
+        Kind := dokPass;
+      end;
+    finally
+      GQuickActive := False;
+    end;
+    if Kind = dokHandled then
+      Exit(True);
   end;
 end;
 

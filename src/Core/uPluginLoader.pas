@@ -377,6 +377,8 @@ begin
       Include(Modes, dmView);
     if (AModes and 2) <> 0 then
       Include(Modes, dmEdit);
+    if (AModes and 4) <> 0 then
+      Include(Modes, dmQuick);
     if Modes = [] then
       Exit(-1);
     PluginId := UTF8ToString(APluginId);
@@ -391,7 +393,9 @@ begin
       begin
         ARedirectURI := '';
         UriU := UTF8String(AURI);
-        if AViewOnly then
+        if DocumentQuickViewActive then
+          ModeU := 'quick'
+        else if AViewOnly then
           ModeU := 'view'
         else
           ModeU := 'edit';

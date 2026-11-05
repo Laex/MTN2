@@ -143,6 +143,26 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src;$Src\Windows" -N"$Pl
     Write-Host "OK: staged $Name -> $Dest"
 }
 
+# The PDF viewer plugin draws pages with PDFium (tools\fetch-pdfium.ps1).
+$PdfiumDir = Join-Path $PSScriptRoot 'tools\pdfium'
+if (-not (Test-Path (Join-Path $PdfiumDir 'pdfium.dll'))) {
+    try { & (Join-Path $PSScriptRoot 'tools\fetch-pdfium.ps1') | Out-Null }
+    catch { Write-Host "WARN: pdfium.dll download failed: $_" }
+}
+if (Test-Path (Join-Path $PdfiumDir 'pdfium.dll')) {
+    $PdfDest = Join-Path $PluginsOut 'mtn.pdf'
+    New-Item -ItemType Directory -Force -Path $PdfDest | Out-Null
+    Copy-Item (Join-Path $PdfiumDir 'pdfium.dll') $PdfDest -Force
+    foreach ($Lic in 'LICENSE', 'licenses') {
+        if (Test-Path (Join-Path $PdfiumDir $Lic)) {
+            Copy-Item (Join-Path $PdfiumDir $Lic) (Join-Path $PdfDest ('PDFIUM-' + $Lic)) -Recurse -Force
+        }
+    }
+    Write-Host "OK: staged pdfium.dll"
+} else {
+    Write-Host "WARN: pdfium.dll not found; PDF pages are shown as text (run src/tools/fetch-pdfium.ps1)"
+}
+
 # Native 7z:// needs a replaceable x64 7z.dll (LGPL, gitignored; packaged by package-release.ps1).
 $Dest7z = Join-Path $PluginsOut 'mtn.7z\7z.dll'
 $7zCandidates = @($env:MTN2_7Z_DLL,
