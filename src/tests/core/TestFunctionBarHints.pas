@@ -18,6 +18,8 @@ type
     [Test] procedure TestWidePanelsBarNamesThePaletteKey;
     [Test] procedure TestNarrowPanelsBarKeepsOnlyTheFKeys;
     [Test] procedure TestFindResultsBarOmitsCreateAndRename;
+    [Test] procedure TestDiffMergeBarListsItsFKeys;
+    [Test] procedure TestDiffMergeBarListsCtrlLetters;
   end;
 
 implementation
@@ -108,6 +110,49 @@ begin
   Assert.AreEqual('4', Found[3], 'Shift+F4 (new file) is not offered');
   Assert.AreEqual('5', Found[4], 'Shift+F5 (copy in place) is not offered');
   Assert.AreEqual('6', Found[5], 'Shift+F6 (rename) is not offered');
+end;
+
+procedure TTestFunctionBarHints.TestDiffMergeBarListsItsFKeys;
+var
+  Items, Letters: TArray<string>;
+  Hit: TFunctionBarHit;
+  Key: Word;
+  KeyChar: Char;
+  Shift: TShiftState;
+  Col: Integer;
+  Found: Boolean;
+begin
+  FunctionBarGetItems(fbcDiffMerge, [], Items, Letters);
+  Assert.AreEqual('2Save', Items[1]);
+  Assert.AreEqual('3Next', Items[2]);
+  Assert.AreEqual('4Prev', Items[3]);
+  Assert.AreEqual('5Right', Items[4]);
+  Assert.AreEqual('6Left', Items[5]);
+  Assert.AreEqual('8Undo', Items[7]);
+  Assert.AreEqual('10Quit', Items[9]);
+  // A click on the Save slot presses F2.
+  Found := False;
+  for Col := 0 to 79 do
+  begin
+    Hit := FunctionBarHitTest(Col, 80, Items, Letters, [], False);
+    if (Hit.Kind = fbhFKey) and (Hit.FKeyNum = 2) then
+    begin
+      Assert.IsTrue(FunctionBarHitToInput(Hit, [], Key, KeyChar, Shift));
+      Assert.AreEqual(Integer(vkF2), Integer(Key));
+      Found := True;
+      Break;
+    end;
+  end;
+  Assert.IsTrue(Found, 'the Save slot is clickable');
+end;
+
+procedure TTestFunctionBarHints.TestDiffMergeBarListsCtrlLetters;
+var
+  Items, Letters: TArray<string>;
+begin
+  FunctionBarGetItems(fbcDiffMerge, [ssCtrl], Items, Letters);
+  Assert.AreEqual('Z:Undo', Letters[0]);
+  Assert.AreEqual('S:Save', Letters[1]);
 end;
 
 initialization

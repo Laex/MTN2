@@ -1384,7 +1384,7 @@
     "compareFiles.needFiles": "Wählen Sie in jedem Fenster eine Datei (keinen Ordner).",
     "compareFiles.failed": "Vergleich fehlgeschlagen: %s",
     "diffMerge.title": "Vergleichen und zusammenführen",
-    "diffMerge.keys": "Rechts/Links: kopieren  Strg+Ab/Auf oder Tab: nächster/vorheriger Unterschied  Strg+Z: rückgängig  Strg+S: speichern  Esc: schließen",
+    "diffMerge.mode": "Vergleich",
     "diffMerge.noneLeft": "Keine Unterschiede mehr.",
     "diffMerge.position": "Unterschied %d von %d",
     "diffMerge.total": "%d Unterschied(e)",

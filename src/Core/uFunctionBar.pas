@@ -43,7 +43,8 @@ type
     fbcColorCodingEdit,
     fbcHelp, // F1 Help window (Markdown viewer with link navigation)
     fbcHelpSearch, // fbcHelp after an F7 search: also next/previous match
-    fbcSurface // plugin picture tab: only Esc closes it, the rest is the plugin's
+    fbcSurface, // plugin picture tab: only Esc closes it, the rest is the plugin's
+    fbcDiffMerge // Ctrl+Alt+C compare and merge window
   );
 
   TFunctionBarColors = record
@@ -411,6 +412,28 @@ begin
   end;
 end;
 
+// Compare and merge: F3/F4 walk the differences, F5/F6 copy the selected one to the
+// right/left file (the Right/Left arrows do the same).
+procedure FunctionBarItemsForDiffMerge(Mods: TShiftState; var AItems, ALetters: TArray<string>);
+begin
+  if Mods = [] then
+  begin
+    AItems[1] := '2Save';
+    AItems[2] := '3Next';
+    AItems[3] := '4Prev';
+    AItems[4] := '5Right';
+    AItems[5] := '6Left';
+    AItems[7] := '8Undo';
+    AItems[9] := '10Quit';
+  end
+  else if Mods = [ssCtrl] then
+  begin
+    SetLength(ALetters, 2);
+    ALetters[0] := 'Z:Undo';
+    ALetters[1] := 'S:Save';
+  end;
+end;
+
 procedure FunctionBarItemsForEditor(Mods: TShiftState; var AItems, ALetters: TArray<string>);
 begin
   FKeysFromKeymap(fbcEditor, [kcEditor, kcDocument], cEditorFBar, Mods, AItems);
@@ -498,6 +521,9 @@ begin
 
     fbcEditor:
       FunctionBarItemsForEditor(Mods, AItems, ALetters);
+
+    fbcDiffMerge:
+      FunctionBarItemsForDiffMerge(Mods, AItems, ALetters);
 
     fbcEditorAskSave:
       begin

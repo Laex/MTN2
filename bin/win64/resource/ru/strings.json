@@ -1391,7 +1391,7 @@
     "compareFiles.needFiles": "Выберите на каждой панели файл (не папку).",
     "compareFiles.failed": "Не удалось сравнить: %s",
     "diffMerge.title": "Сравнение и слияние",
-    "diffMerge.keys": "Вправо/Влево: копировать  Ctrl+Вниз/Вверх или Tab: следующее/предыдущее отличие  Ctrl+Z: отмена  Ctrl+S: сохранить  Esc: закрыть",
+    "diffMerge.mode": "Сравнение",
     "diffMerge.noneLeft": "Отличий не осталось.",
     "diffMerge.position": "Отличие %d из %d",
     "diffMerge.total": "Отличий: %d",

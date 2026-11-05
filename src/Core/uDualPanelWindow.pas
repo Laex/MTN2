@@ -14787,6 +14787,11 @@ begin
     Result := True;
     Invalidate;
   end;
+  if Assigned(FDiffView) and FDiffView.SetKeyModifiers(AShift) then
+  begin
+    Result := True;
+    Invalidate;
+  end;
   Doc := ActiveDocument;
   if Assigned(Doc) and Doc.SetKeyModifiers(AShift) then
   begin

@@ -1383,7 +1383,7 @@
     "compareFiles.needFiles": "请在每个面板中选择一个文件（不是文件夹）。",
     "compareFiles.failed": "比较失败：%s",
     "diffMerge.title": "比较与合并",
-    "diffMerge.keys": "向右/向左：复制  Ctrl+向下/向上 或 Tab：下一个/上一个差异  Ctrl+Z：撤销  Ctrl+S：保存  Esc：关闭",
+    "diffMerge.mode": "比较",
     "diffMerge.noneLeft": "没有剩余差异。",
     "diffMerge.position": "第 %d 处差异，共 %d 处",
     "diffMerge.total": "%d 处差异",

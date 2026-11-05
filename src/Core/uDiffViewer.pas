@@ -39,6 +39,9 @@ type
     FBounds: TRectI;    // host-local cells of the last Paint
     FBodyTop: Integer;
     FScrollX: Integer;
+    FKeyBarY: Integer;  // host row of the F-key bar at the last Paint, -1 when hidden
+    FHostW: Integer;
+    FMods: TShiftState; // held modifiers, for the F-key bar labels
     procedure Changed;
     procedure Show;
     procedure ReleaseModel;
@@ -51,7 +54,7 @@ type
     procedure SaveSide(ALeft: Boolean; const ANext: TProc);
     procedure Save;
     procedure RequestClose;
-    function StatusText: string;
+    function StatusSegments: TArray<string>;
     procedure DrawSide(const AGrid: TTerminalGrid; AX, AY, ANumW, ATextW, ANo: Integer;
       const AText: string; AFg, ABg, ANumFg, AHlFg, AHlBg: TAlphaColor;
       AHlStart, AHlLen: Integer);
@@ -71,12 +74,14 @@ type
       var AKeyChar: Char): Boolean;
     function HandleMouseDown(AHostCol, AHostRow: Integer; AShift: TShiftState): Boolean;
     function HandleMouseWheel(ADelta: Integer): Boolean;
+    /// <summary>Tracks the held modifiers for the F-key bar; True when the bar changed.</summary>
+    function SetKeyModifiers(AShift: TShiftState): Boolean;
   end;
 
 implementation
 
 uses
-  System.Math, uStrings;
+  System.Math, uStrings, uChromeRows, uFunctionBar;
 
 const
   cMaxBytes = 16 * 1024 * 1024;
@@ -96,6 +101,7 @@ begin
   FTheme := ATheme;
   FLife := NewLifeFlag;
   FBounds := TRectI.Make(0, 0, -1, -1);
+  FKeyBarY := -1;
 end;
 
 destructor TDiffViewer.Destroy;
@@ -360,18 +366,20 @@ begin
   Close;
 end;
 
-function TDiffViewer.StatusText: string;
+function TDiffViewer.StatusSegments: TArray<string>;
 var
   H: Integer;
   Unsaved: string;
 begin
+  Result := TArray<string>.Create(T('ui.diffMerge.mode', 'Compare'));
   H := FModel.HunkOfRow(FCur);
   if FModel.HunkCount = 0 then
-    Result := T('ui.diffMerge.noneLeft', 'No differences left.')
+    Result := Result + [T('ui.diffMerge.noneLeft', 'No differences left.')]
   else if H >= 0 then
-    Result := T('ui.diffMerge.position', 'Difference %d of %d', [H + 1, FModel.HunkCount])
+    Result := Result + [T('ui.diffMerge.position', 'Difference %d of %d',
+      [H + 1, FModel.HunkCount])]
   else
-    Result := T('ui.diffMerge.total', '%d difference(s)', [FModel.HunkCount]);
+    Result := Result + [T('ui.diffMerge.total', '%d difference(s)', [FModel.HunkCount])];
   Unsaved := '';
   if FModel.LeftDirty then
     Unsaved := T('ui.diffMerge.leftChanged', 'left changed');
@@ -382,9 +390,18 @@ begin
     Unsaved := Unsaved + T('ui.diffMerge.rightChanged', 'right changed');
   end;
   if Unsaved <> '' then
-    Result := Result + '  [' + Unsaved + ']';
+    Result := Result + [Unsaved];
   if FNote <> '' then
-    Result := Result + '  ' + FNote;
+    Result := Result + [FNote];
+end;
+
+function TDiffViewer.SetKeyModifiers(AShift: TShiftState): Boolean;
+var
+  Mods: TShiftState;
+begin
+  Mods := AShift * [ssShift, ssAlt, ssCtrl];
+  Result := FVisible and (Mods <> FMods);
+  FMods := Mods;
 end;
 
 // One side of a row: line number, then the visible part of the text. The changed
@@ -421,7 +438,9 @@ end;
 procedure TDiffViewer.Paint(const AGrid: TTerminalGrid; AHostW, AHostH: Integer);
 var
   C: TEditorThemeColors;
-  InL, InR, StatusY, HintY, BodyRows, Total, NumW, SideW, RightW: Integer;
+  InL, InR, StatusY, FrameBottom, BodyRows, Total, NumW, SideW, RightW: Integer;
+  Items, Letters: TArray<string>;
+  Colors: TFunctionBarColors;
   LeftX, MarkX, RightX, Y, Row, ThumbH, ThumbTop, HlStart, LeftLen, RightLen: Integer;
   R: TDiffRow;
   Sel: Boolean;
@@ -431,16 +450,20 @@ var
 begin
   if not FVisible or not Assigned(FModel) then
     Exit;
+  // Like the Viewer and Editor: the frame closes above the chrome rows, then the
+  // F-key bar and the status line.
   FBodyTop := 2;
-  StatusY := AHostH - 3;
-  HintY := AHostH - 2;
-  BodyRows := StatusY - FBodyTop;
+  FrameBottom := AHostH - 1 - ChromeBottomRows;
+  BodyRows := FrameBottom - FBodyTop;
+  FKeyBarY := KeyBarRow(AHostH);
+  FHostW := AHostW;
   if (AHostW < cMinWidth) or (AHostH < cMinHeight) or (BodyRows < 3) then
   begin
     FBounds := TRectI.Make(0, 0, -1, -1);
+    FKeyBarY := -1;
     Exit;
   end;
-  FBounds := TRectI.Make(0, 0, AHostW - 1, AHostH - 1);
+  FBounds := TRectI.Make(0, 0, AHostW - 1, FrameBottom);
   FBodyRows := BodyRows;
   EnsureCursorVisible;
   FTheme.ResolveEditorColors(C);
@@ -448,7 +471,7 @@ begin
     [twFocused]);
   InL := 1;
   InR := AHostW - 2;
-  FillGridRect(AGrid, InL, 1, InR, HintY, ' ', C.BodyFg, C.BodyBg);
+  FillGridRect(AGrid, InL, 1, InR, FrameBottom - 1, ' ', C.BodyFg, C.BodyBg);
 
   Total := Length(FModel.Rows);
   NumW := Max(3, Length(IntToStr(Max(Length(FModel.LeftLines), Length(FModel.RightLines)))));
@@ -547,13 +570,17 @@ begin
       PutGridText(AGrid, FScrollX, FBodyTop + Y, chBlock, C.ScrollThumb, C.BodyBg);
   end;
 
-  FillGridRect(AGrid, InL, StatusY, InR, StatusY, ' ', C.StatusFg, C.StatusBg);
-  PutGridTextClipped(AGrid, InL + 1, StatusY, InR - 1, StatusText, C.StatusFg, C.StatusBg);
-  FillGridRect(AGrid, InL, HintY, InR, HintY, ' ', C.HintFg, C.StatusBg);
-  PutGridTextClipped(AGrid, InL + 1, HintY, InR - 1,
-    T('ui.diffMerge.keys',
-      'Right/Left: copy  Ctrl+Down/Up or Tab: next/prev difference  Ctrl+Z: undo  Ctrl+S: save  Esc: close'),
-    C.HintFg, C.StatusBg);
+  if FKeyBarY >= 0 then
+  begin
+    FunctionBarGetItems(fbcDiffMerge, FMods, Items, Letters);
+    Colors := FunctionBarDefaultColors;
+    Colors.Bg := C.BodyBg;
+    DrawFunctionBar(AGrid, FKeyBarY, AHostW, Items, Letters, FMods, Colors, FTheme);
+  end;
+  StatusY := StatusLineRow(AHostH);
+  if StatusY >= 0 then
+    FTheme.DrawStatusLine(AGrid, TRectI.Make(0, StatusY, AHostW - 1, StatusY),
+      StatusSegments, []);
 end;
 
 function TDiffViewer.HandleInput(var AKey: Word; AShift: TShiftState;
@@ -579,7 +606,12 @@ begin
         vkEnd: SetCursor(High(FModel.Rows));
         vkRight: CopySelected(True);
         vkLeft: CopySelected(False);
-        vkTab: GoToHunk(FModel.NextHunkRow(FCur));
+        vkTab, vkF3: GoToHunk(FModel.NextHunkRow(FCur));
+        vkF4: GoToHunk(FModel.PrevHunkRow(FCur));
+        vkF2: Save;
+        vkF5: CopySelected(True);
+        vkF6: CopySelected(False);
+        vkF8: DoUndo;
       end
     else if Mods = [ssShift] then
     begin
@@ -610,9 +642,24 @@ function TDiffViewer.HandleMouseDown(AHostCol, AHostRow: Integer;
   AShift: TShiftState): Boolean;
 var
   Row, Total: Integer;
+  Items, Letters: TArray<string>;
+  Hit: TFunctionBarHit;
+  Key: Word;
+  KeyChar: Char;
+  Shift: TShiftState;
 begin
   Result := FVisible;
-  if not FVisible or not Assigned(FModel) or not FBounds.Contains(AHostCol, AHostRow) then
+  if not FVisible or not Assigned(FModel) then
+    Exit;
+  if (FKeyBarY >= 0) and (AHostRow = FKeyBarY) then
+  begin
+    FunctionBarGetItems(fbcDiffMerge, FMods, Items, Letters);
+    Hit := FunctionBarHitTest(AHostCol, FHostW, Items, Letters, FMods, Assigned(FTheme));
+    if FunctionBarHitToInput(Hit, FMods, Key, KeyChar, Shift) then
+      HandleInput(Key, Shift, KeyChar);
+    Exit;
+  end;
+  if not FBounds.Contains(AHostCol, AHostRow) then
     Exit;
   if (AHostRow = FBounds.Top) and (AHostCol >= FBounds.Right - 4) then
   begin

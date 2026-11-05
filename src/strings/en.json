@@ -1394,7 +1394,7 @@
     "compareFiles.needFiles": "Select a file (not a folder) on each panel.",
     "compareFiles.failed": "Compare failed: %s",
     "diffMerge.title": "Compare and merge",
-    "diffMerge.keys": "Right/Left: copy  Ctrl+Down/Up or Tab: next/prev difference  Ctrl+Z: undo  Ctrl+S: save  Esc: close",
+    "diffMerge.mode": "Compare",
     "diffMerge.noneLeft": "No differences left.",
     "diffMerge.position": "Difference %d of %d",
     "diffMerge.total": "%d difference(s)",
