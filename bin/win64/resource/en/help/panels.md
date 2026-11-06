@@ -17,6 +17,8 @@
 | Ctrl+U | swap the panels |
 | Ctrl+] | passive panel := folder of the active one |
 | Ctrl+[ | active panel := folder of the passive one |
+| Ctrl+Alt+P | paired folders on / off: entering a subfolder (Enter, Ctrl+PgDn) or going up (`..`, Ctrl+PgUp) in one panel does the same in the other, if the other panel has a folder of that name (or a parent); both panels must show plain local folders; the setting belongs to the tab and is kept between runs |
+| Ctrl+Alt+G | group the rows: by type, by date, none (each press moves to the next) |
 | Ctrl+F1 / Ctrl+F2 | hide / show the left / right panel |
 | Ctrl+P | hide / show the inactive panel |
 | Ctrl+L | information panel (drive, memory) on the other side |
@@ -25,6 +27,10 @@
 | Ctrl+Q | quick view of the file on the other panel: picture, text, Markdown or hex |
 | Alt+F10 | folder tree of the drive over the active panel (see below) |
 | Alt+letter | quick search by name in the panel |
+
+**Paired folders (Ctrl+Alt+P)** – example: the left panel shows `D:\Work1`, the right one `D:\Work2`, both have `src\Core`. With the mode on, Enter on `src` in the left panel opens `D:\Work1\src` and `D:\Work2\src` at once, and Enter on `Core` goes one level deeper in both; `..` in one panel goes up in both. If the other panel has no folder of that name (say `v2` has no `docs`), it stays where it is. Good for comparing two copies of a tree folder by folder.
+
+**Grouping (Ctrl+Alt+G)** – the rows are ordered by group first, and the current sort applies inside each group; the first row of a group shows its heading at the right of the name, and every other group has a slightly tinted background. By type: folders, images, audio, video, documents, archives, programs, code and data, other. By date: today, yesterday, last 7 days, last 30 days, last year, older, no date. Example: press Ctrl+Alt+G twice in a Downloads folder and sort by size – the files of each day are listed together, the largest first. The mode is kept per panel and saved with the session.
 
 **Folder tree (Alt+F10)** opens over the active panel. It is open over one panel at a time.
 

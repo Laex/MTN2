@@ -377,6 +377,24 @@ end;
 { =========================================================================
   DrawPanelList
   ========================================================================= }
+
+// ABg moved a little toward AFg: the tint of the alternate groups of a grouped
+// panel, light enough to keep the text readable on any theme.
+function GroupBandColor(ABg, AFg: TAlphaColor): TAlphaColor;
+const
+  cShare = 14;
+var
+  B, F, R: TAlphaColorRec;
+begin
+  B := TAlphaColorRec(ABg);
+  F := TAlphaColorRec(AFg);
+  R := B;
+  R.R := B.R + (Integer(F.R) - Integer(B.R)) * cShare div 100;
+  R.G := B.G + (Integer(F.G) - Integer(B.G)) * cShare div 100;
+  R.B := B.B + (Integer(F.B) - Integer(B.B)) * cShare div 100;
+  Result := R.Color;
+end;
+
 procedure DrawPanelList(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const ATab: TTab; ASideActive: Boolean; AColumnMode: TPanelColumnMode;
   const AModel: IPanelModel; const ATheme: IThemeRenderer);
@@ -384,7 +402,7 @@ var
   Y, Col, Idx, ViewH, NameW, MetaW, Count: Integer;
   ColCount, CellW, CellLeft, IconRes, IconId: Integer;
   Row: TPanelRow;
-  NamePart, MetaPart, Scheme: string;
+  NamePart, MetaPart, Scheme, Title: string;
   IconCh: Char;
   Fg, Bg, EmptyFg, EmptyBg, SepFg: TAlphaColor;
   Selected: Boolean;
@@ -414,7 +432,7 @@ var
     else
       State := ccsNormal;
     Name := ColorCodingItemName(Row.Text);
-    if ColorCodingResolve(Name, Row.IsDirectory, State, RuleFg, RuleBg) then
+    if ColorCodingResolveItem(PanelRowColorItem(Row, Name), State, RuleFg, RuleBg) then
     begin
       if RuleFg <> 0 then
         Fg := RuleFg;
@@ -448,6 +466,9 @@ var
       FallbackFileRowColors(Row.IsDirectory, Row.IsParent, Row.IsHidden,
         Selected, (Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor),
         ASideActive, Fg, Bg);
+    if (Row.GroupKey and 1 = 1) and not Selected and
+       not ((Idx = ATab.CursorIndex) and (ASideActive or GShowPassiveCursor)) then
+      Bg := GroupBandColor(Bg, Fg);
     ApplyColorCoding;
     ApplyRowDecoration;
   end;
@@ -540,6 +561,13 @@ begin
     NamePart := FormatPanelRowName(Row, NameW, (Mode = pcmTypes) or
       ((Mode = pcmCustom) and GCustomColumnsConfig.ShowExt));
     PutGridText(ABuffer, ABounds.Left + IconRes, ABounds.Top + Y, NamePart, Fg, Bg);
+    if (Row.GroupKey <> 0) and ((Idx = 0) or (AModel.GetRow(Idx - 1).GroupKey <> Row.GroupKey)) then
+    begin
+      Title := PanelGroupTitle(Row.GroupKey);
+      if (Title <> '') and (Length(TrimRight(NamePart)) + 2 + Length(Title) <= NameW) then
+        PutGridText(ABuffer, ABounds.Left + IconRes + NameW - Length(Title), ABounds.Top + Y,
+          Title, Fg, Bg);
+    end;
     if MetaW > 0 then
     begin
       MetaPart := FormatPanelRowMeta(Mode, Row, MetaW, Scheme, ATab.CurrentURI);

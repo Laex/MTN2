@@ -150,6 +150,8 @@ begin
     tmaCmdSwapPanels: CallProc(AHost.SwapPanels);
     tmaCmdEqualizeOther: CallProc(AHost.EqualizeOtherPanelToActive);
     tmaCmdEqualizeActive: CallProc(AHost.EqualizeActivePanelFromOther);
+    tmaCmdPairedFolders: CallProc(AHost.TogglePairedFolders);
+    tmaCmdGroupBy: CallProc(AHost.CycleGroupBy);
     tmaCmdInsertName: CallBool(AHost.InsertPanelItemToCmdLine, False);
     tmaCmdInsertPath: CallBool(AHost.InsertPanelItemToCmdLine, True);
     tmaCmdFocusCmdLine: CallProc(AHost.FocusCommandLine);

@@ -128,6 +128,8 @@ const
     'Other panel to this folder',
     'This panel to the other folder',
     'Other panel cursor to the same name',
+    'Paired folders on / off',
+    'Group rows by type / date',
     'Info panel',
     'Column mode menu',
     'Sort menu',

@@ -63,7 +63,15 @@ If the theme of the saved session is not found, the program says so and uses the
 - The session, histories, keys, plugin settings and your own themes move together and the old copies are deleted.
 - The change applies at once, without a restart. If anything fails, the old place stays in force.
 - The languages and shipped themes in `resource\` always stay with the program.
-<!--color-coding-->- **Color coding...** – row colors by name masks; they are stored in the theme, so an edit made with a built-in theme is saved as a new theme (the program asks for its name). **F9** on a color field, or a click on the **[...]** button at its right end (it shows the field's color), opens the color picker (see below).
+<!--color-coding-->- **Color coding...** – row colors by name masks and, optionally, by size, age and attributes (the **Condition** field: terms such as `size>10M`, `age<7d`, `+H`, `-R`; the letters are H hidden, R read-only, S system, A archive, C compressed, E encrypted, L link; `age<7d` means modified less than 7 days ago); they are stored in the theme, so an edit made with a built-in theme is saved as a new theme (the program asks for its name). **F9** on a color field, or a click on the **[...]** button at its right end (it shows the field's color), opens the color picker (see below).
+  Condition examples (a group applies only when the mask and the condition both match):
+  - `size>100M` – files larger than 100 MB, for example to paint big logs red with the mask `*.log`.
+  - `size>0 size<4K` – small non-empty files.
+  - `age<1d` – changed within the last day; `age<90m` – within 90 minutes.
+  - `age>30d` – not touched for a month (grey out stale files); `age>2w` – older than two weeks.
+  - `+H` – hidden files only; `+HS` – hidden and system; `-R` – anything that is not read-only.
+  - `size>1G age>90d -R` – big, old and writable: all three must hold (candidates for cleanup).
+  - A folder has no size, so a group with a size term never matches folders; a condition with only attributes or age works for folders too. Groups are checked top to bottom and the first match wins, so put the narrow group (`*.log` + `size>100M`) above the general one (`*.log`).
 - **Keymap...** – view and change keys.
 <!--plugins-->- **Plugins...** – installed plugins. On the first run every plugin is switched off.
 

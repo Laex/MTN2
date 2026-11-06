@@ -41,6 +41,8 @@
     "EqualizeOtherPanel": { "key": "]", "ctrl": true, "description": "Set other panel directory to active panel" },
     "EqualizeActivePanel": { "key": "[", "ctrl": true, "description": "Set active panel directory to other panel" },
     "CursorToSameName": { "key": "M", "ctrl": true, "alt": true, "description": "Put the other panel cursor on the file with the same name" },
+    "PairedFolders": { "key": "P", "ctrl": true, "alt": true, "description": "Paired folders: repeat folder steps in the other panel" },
+    "GroupBy": { "key": "G", "ctrl": true, "alt": true, "description": "Group the rows of the panel by type, by date, or not at all" },
     "SortMenu": { "key": "F12", "ctrl": true, "description": "Sort Options Menu" },
     "ConsoleToggle": { "key": "Esc", "description": "Toggle Panel <-> Console Screen (Esc on the panels)" },
     "DriveRoot": { "key": "\\", "ctrl": true, "description": "Navigate to Drive Root" },

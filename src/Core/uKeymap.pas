@@ -36,6 +36,8 @@ type
     kaEqualizeOtherPanel,   // Ctrl+] - other panel := active URI
     kaEqualizeActivePanel,  // Ctrl+[ - active panel := other URI
     kaCursorToSameName,     // Ctrl+Alt+M - other panel cursor := row named like the active cursor row
+    kaPairedFolders,        // Ctrl+Alt+P - a step into a subfolder / up is repeated in the other panel
+    kaGroupBy,              // Ctrl+Alt+G - group the rows by type / by date / not at all
     kaInfoPanel,
     kaColumnMode,
     kaSortMenu,
@@ -597,6 +599,8 @@ begin
   AddBinding(Result, kaEqualizeOtherPanel, KeyBinding(vkOemCloseBrackets, False, False, True));
   AddBinding(Result, kaEqualizeActivePanel, KeyBinding(vkOemOpenBrackets, False, False, True));
   AddBinding(Result, kaCursorToSameName, KeyBinding(Ord('M'), False, True, True));
+  AddBinding(Result, kaPairedFolders, KeyBinding(Ord('P'), False, True, True));
+  AddBinding(Result, kaGroupBy, KeyBinding(Ord('G'), False, True, True));
   AddBinding(Result, kaSortMenu, KeyBinding(vkF12, False, False, True));
   AddBinding(Result, kaConsoleToggle, KeyBinding(vkEscape, False, False, False));
   AddBinding(Result, kaDriveRoot, KeyBinding(vkBackSlash, False, False, True));
@@ -955,6 +959,8 @@ const
     'EqualizeOtherPanel',    // kaEqualizeOtherPanel
     'EqualizeActivePanel',   // kaEqualizeActivePanel
     'CursorToSameName',      // kaCursorToSameName
+    'PairedFolders',         // kaPairedFolders
+    'GroupBy',               // kaGroupBy
     'InfoPanel',             // kaInfoPanel
     'ColumnModes',           // kaColumnMode
     'SortMenu',              // kaSortMenu

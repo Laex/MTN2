@@ -57,6 +57,41 @@ type
   /// JSON that omits "applyTo".</summary>
   TColorCodingApplyTo = (ccaFilesAndDirs, ccaFilesOnly, ccaDirsOnly);
 
+  /// <summary>Row attributes a group condition can require or exclude.</summary>
+  TColorCodingAttr = (ccatHidden, ccatReadOnly, ccatSystem, ccatArchive,
+    ccatCompressed, ccatEncrypted, ccatLink);
+  TColorCodingAttrs = set of TColorCodingAttr;
+
+  /// <summary>Extra conditions of a group, all of which must hold on top of
+  /// the mask. Size and age are checked only for rows that carry the data (a
+  /// folder has no size; a row without a time has no age); a row lacking the
+  /// data never satisfies such a condition. Text form: see
+  /// ColorCodingParseCondition.</summary>
+  TColorCodingCondition = record
+    /// <summary>When HasMinSize, the size must be greater than MinSize.</summary>
+    HasMinSize: Boolean;
+    MinSize: Int64;
+    /// <summary>When HasMaxSize, the size must be less than MaxSize.</summary>
+    HasMaxSize: Boolean;
+    MaxSize: Int64;
+    /// <summary>Modified less than this many seconds ago; 0 = no limit.</summary>
+    NewerSecs: Int64;
+    /// <summary>Modified more than this many seconds ago; 0 = no limit.</summary>
+    OlderSecs: Int64;
+    Require: TColorCodingAttrs;
+    Exclude: TColorCodingAttrs;
+  end;
+
+  /// <summary>What a panel row offers to the color rules besides its name.
+  /// Size = -1 and ModTime = 0 mean "not known".</summary>
+  TColorCodingItem = record
+    Name: string;
+    IsDirectory: Boolean;
+    Size: Int64;
+    ModTime: TDateTime;
+    Attrs: TColorCodingAttrs;
+  end;
+
   TColorCodingGroup = record
     Name: string;
     Masks: TArray<string>;
@@ -74,6 +109,8 @@ type
     /// lower comes first, negative values move rows to the top, positive ones
     /// to the bottom. 0 (default) leaves the rows with the unranked ones.</summary>
     SortPriority: Integer;
+    /// <summary>Further conditions on size, age and attributes.</summary>
+    Cond: TColorCodingCondition;
     /// <summary>Indexed by TColorCodingState. States left fully unset
     /// (Fg=0 and Bg=0) mean "no opinion for this state" - the caller should
     /// fall back to its own (theme) color, matching FAR: a group that
@@ -92,9 +129,31 @@ type
 /// that stops the scan).</summary>
 function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
   AState: TColorCodingState; out AFg, ABg: TAlphaColor): Boolean;
+/// <summary>As above, with the size, time and attributes of the row for the
+/// group conditions.</summary>
+function ColorCodingResolveItem(const AItem: TColorCodingItem;
+  AState: TColorCodingState; out AFg, ABg: TAlphaColor): Boolean;
 /// <summary>SortPriority of the first enabled group that matches the row
 /// (same matching as ColorCodingResolve); 0 when no group matches.</summary>
 function ColorCodingSortPriority(const AName: string; AIsDirectory: Boolean): Integer;
+function ColorCodingSortPriorityItem(const AItem: TColorCodingItem): Integer;
+/// <summary>An item that knows only its name and kind.</summary>
+function ColorCodingNameItem(const AName: string; AIsDirectory: Boolean): TColorCodingItem;
+/// <summary>True when AItem satisfies ACond; ANow is the reference time for
+/// the age checks.</summary>
+function ColorCodingConditionMet(const ACond: TColorCodingCondition;
+  const AItem: TColorCodingItem; ANow: TDateTime): Boolean;
+/// <summary>Parses the condition text: blank-separated terms
+/// "size>N" / "size<N" (N in bytes, or with K, M, G, T suffix), "age<N" (modified
+/// less than N ago) / "age>N" (more than N ago) with N followed by m, h, d or w
+/// (minutes, hours, days, weeks), "+H" / "-H" (the attribute must / must not be
+/// set; letters H hidden, R read-only, S system, A archive, C compressed,
+/// E encrypted, L link; several letters may follow one sign). Blank text is no
+/// condition; anything unrecognized fails.</summary>
+function ColorCodingParseCondition(const AText: string;
+  out ACond: TColorCodingCondition): Boolean;
+/// <summary>The canonical text of ACond; ColorCodingParseCondition reads it back.</summary>
+function ColorCodingConditionText(const ACond: TColorCodingCondition): string;
 /// <summary>Merge-by-Name: an AOverride entry whose Name matches an ABase
 /// entry replaces it in place (same position/priority in the result); an
 /// AOverride entry with a new Name is prepended (new/overriding entries get
@@ -241,7 +300,7 @@ var
   S: TColorCodingState;
   Item: TJSONValue;
   Obj: TJSONObject;
-  MaskVal, ApplyToVal: string;
+  MaskVal, ApplyToVal, WhenVal: string;
   Group: TColorCodingGroup;
 begin
   Result := False;
@@ -287,6 +346,11 @@ begin
         Group.SortPriority := 0;
         if Obj.Values['sortPriority'] is TJSONNumber then
           Group.SortPriority := TJSONNumber(Obj.Values['sortPriority']).AsInt;
+        Group.Cond := Default(TColorCodingCondition);
+        if Obj.TryGetValue<string>('when', WhenVal) and
+           not ColorCodingParseCondition(WhenVal, Group.Cond) then
+          // A condition that cannot be read leaves the group unrestricted.
+          Group.Cond := Default(TColorCodingCondition);
         for S := Low(TColorCodingState) to High(TColorCodingState) do
         begin
           Group.Colors[S].Fg := 0;
@@ -368,17 +432,34 @@ begin
   GLoaded := True;
 end;
 
+function ColorCodingNameItem(const AName: string; AIsDirectory: Boolean): TColorCodingItem;
+begin
+  Result := Default(TColorCodingItem);
+  Result.Name := AName;
+  Result.IsDirectory := AIsDirectory;
+  Result.Size := -1;
+end;
+
 function ColorCodingResolve(const AName: string; AIsDirectory: Boolean;
+  AState: TColorCodingState; out AFg, ABg: TAlphaColor): Boolean;
+begin
+  Result := ColorCodingResolveItem(ColorCodingNameItem(AName, AIsDirectory),
+    AState, AFg, ABg);
+end;
+
+function ColorCodingResolveItem(const AItem: TColorCodingItem;
   AState: TColorCodingState; out AFg, ABg: TAlphaColor): Boolean;
 var
   I: Integer;
+  Moment: TDateTime;
 begin
   AFg := 0;
   ABg := 0;
   Result := False;
   EnsureGroups;
-  if AName = '' then
+  if AItem.Name = '' then
     Exit;
+  Moment := Now;
   // First mask match wins outright -
   // the winning group's color for AState governs even when it's unset
   // (Result = False then, i.e. "this group has no opinion here, defer to
@@ -390,11 +471,12 @@ begin
   begin
     if not GGroups[I].Enabled then
       Continue;
-    if (GGroups[I].ApplyTo = ccaFilesOnly) and AIsDirectory then
+    if (GGroups[I].ApplyTo = ccaFilesOnly) and AItem.IsDirectory then
       Continue;
-    if (GGroups[I].ApplyTo = ccaDirsOnly) and not AIsDirectory then
+    if (GGroups[I].ApplyTo = ccaDirsOnly) and not AItem.IsDirectory then
       Continue;
-    if NameMatchesAnyMask(AName, GGroups[I].Masks) then
+    if NameMatchesAnyMask(AItem.Name, GGroups[I].Masks) and
+       ColorCodingConditionMet(GGroups[I].Cond, AItem, Moment) then
     begin
       AFg := GGroups[I].Colors[AState].Fg;
       ABg := GGroups[I].Colors[AState].Bg;
@@ -404,24 +486,239 @@ begin
 end;
 
 function ColorCodingSortPriority(const AName: string; AIsDirectory: Boolean): Integer;
+begin
+  Result := ColorCodingSortPriorityItem(ColorCodingNameItem(AName, AIsDirectory));
+end;
+
+function ColorCodingSortPriorityItem(const AItem: TColorCodingItem): Integer;
 var
   I: Integer;
+  Moment: TDateTime;
 begin
   Result := 0;
   EnsureGroups;
-  if AName = '' then
+  if AItem.Name = '' then
     Exit;
+  Moment := Now;
   for I := 0 to High(GGroups) do
   begin
     if not GGroups[I].Enabled then
       Continue;
-    if (GGroups[I].ApplyTo = ccaFilesOnly) and AIsDirectory then
+    if (GGroups[I].ApplyTo = ccaFilesOnly) and AItem.IsDirectory then
       Continue;
-    if (GGroups[I].ApplyTo = ccaDirsOnly) and not AIsDirectory then
+    if (GGroups[I].ApplyTo = ccaDirsOnly) and not AItem.IsDirectory then
       Continue;
-    if NameMatchesAnyMask(AName, GGroups[I].Masks) then
+    if NameMatchesAnyMask(AItem.Name, GGroups[I].Masks) and
+       ColorCodingConditionMet(GGroups[I].Cond, AItem, Moment) then
       Exit(GGroups[I].SortPriority);
   end;
+end;
+
+const
+  cAttrLetters = 'HRSACEL';
+  cSecsPerDay = 86400;
+
+function ColorCodingConditionMet(const ACond: TColorCodingCondition;
+  const AItem: TColorCodingItem; ANow: TDateTime): Boolean;
+var
+  AgeSecs: Double;
+begin
+  Result := False;
+  if ACond.HasMinSize and ((AItem.Size < 0) or (AItem.Size <= ACond.MinSize)) then
+    Exit;
+  if ACond.HasMaxSize and ((AItem.Size < 0) or (AItem.Size >= ACond.MaxSize)) then
+    Exit;
+  if (ACond.NewerSecs > 0) or (ACond.OlderSecs > 0) then
+  begin
+    if AItem.ModTime <= 0 then
+      Exit;
+    AgeSecs := (ANow - AItem.ModTime) * cSecsPerDay;
+    if (ACond.NewerSecs > 0) and (AgeSecs >= ACond.NewerSecs) then
+      Exit;
+    if (ACond.OlderSecs > 0) and (AgeSecs <= ACond.OlderSecs) then
+      Exit;
+  end;
+  if ACond.Require - AItem.Attrs <> [] then
+    Exit;
+  if ACond.Exclude * AItem.Attrs <> [] then
+    Exit;
+  Result := True;
+end;
+
+// Number with an optional one-letter suffix found in AUnits; AMults is the
+// factor per suffix letter. A bare number is accepted only when ABareOk.
+function ParseAmount(const AText, AUnits: string; const AMults: array of Int64;
+  ABareOk: Boolean; out AValue: Int64): Boolean;
+var
+  Digits: string;
+  I, P: Integer;
+  N: Int64;
+begin
+  Result := False;
+  Digits := AText;
+  P := 0;
+  if (Digits <> '') and not CharInSet(Digits[Length(Digits)], ['0'..'9']) then
+  begin
+    P := Pos(UpCase(Digits[Length(Digits)]), AUnits);
+    if P = 0 then
+      Exit;
+    SetLength(Digits, Length(Digits) - 1);
+  end
+  else if not ABareOk then
+    Exit;
+  if (Digits = '') or (Length(Digits) > 12) then
+    Exit;
+  for I := 1 to Length(Digits) do
+    if not CharInSet(Digits[I], ['0'..'9']) then
+      Exit;
+  if not TryStrToInt64(Digits, N) then
+    Exit;
+  if P = 0 then
+    AValue := N
+  else
+    AValue := N * AMults[P - 1];
+  Result := True;
+end;
+
+function ParseAttrTerm(const ATerm: string; var ACond: TColorCodingCondition): Boolean;
+var
+  I, P: Integer;
+  Attr: TColorCodingAttr;
+begin
+  Result := False;
+  if Length(ATerm) < 2 then
+    Exit;
+  for I := 2 to Length(ATerm) do
+  begin
+    P := Pos(UpCase(ATerm[I]), cAttrLetters);
+    if P = 0 then
+      Exit;
+    Attr := TColorCodingAttr(P - 1);
+    if ATerm[1] = '+' then
+    begin
+      Include(ACond.Require, Attr);
+      Exclude(ACond.Exclude, Attr);
+    end
+    else
+    begin
+      Include(ACond.Exclude, Attr);
+      Exclude(ACond.Require, Attr);
+    end;
+  end;
+  Result := True;
+end;
+
+function ColorCodingParseCondition(const AText: string;
+  out ACond: TColorCodingCondition): Boolean;
+var
+  Terms: TArray<string>;
+  T, Key, Rest: string;
+  V: Int64;
+  Greater: Boolean;
+  OpPos: Integer;
+begin
+  Result := False;
+  ACond := Default(TColorCodingCondition);
+  Terms := Trim(AText).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  for T in Terms do
+  begin
+    if CharInSet(T[1], ['+', '-']) then
+    begin
+      if not ParseAttrTerm(T, ACond) then
+        Exit;
+      Continue;
+    end;
+    OpPos := Pos('<', T);
+    if OpPos = 0 then
+      OpPos := Pos('>', T);
+    if OpPos < 2 then
+      Exit;
+    Key := LowerCase(Copy(T, 1, OpPos - 1));
+    Greater := T[OpPos] = '>';
+    Rest := Copy(T, OpPos + 1, MaxInt);
+    if Key = 'size' then
+    begin
+      if not ParseAmount(Rest, 'KMGT', [Int64(1) shl 10, Int64(1) shl 20,
+        Int64(1) shl 30, Int64(1) shl 40], True, V) then
+        Exit;
+      if Greater then
+      begin
+        ACond.HasMinSize := True;
+        ACond.MinSize := V;
+      end
+      else
+      begin
+        ACond.HasMaxSize := True;
+        ACond.MaxSize := V;
+      end;
+    end
+    else if Key = 'age' then
+    begin
+      if not ParseAmount(Rest, 'MHDW', [60, 3600, 86400, 604800], False, V) or
+         (V = 0) then
+        Exit;
+      // "age<7d": modified less than 7 days ago.
+      if Greater then
+        ACond.OlderSecs := V
+      else
+        ACond.NewerSecs := V;
+    end
+    else
+      Exit;
+  end;
+  Result := True;
+end;
+
+function FormatAmount(AValue: Int64; const AUnits: string;
+  const AMults: array of Int64): string;
+var
+  I: Integer;
+begin
+  for I := High(AMults) downto 0 do
+    if (AValue >= AMults[I]) and (AValue mod AMults[I] = 0) then
+      Exit(IntToStr(AValue div AMults[I]) + LowerCase(AUnits[I + 1]));
+  Result := IntToStr(AValue);
+end;
+
+function ColorCodingConditionText(const ACond: TColorCodingCondition): string;
+const
+  cAgeUnits = 'mhdw';
+var
+  Parts: TArray<string>;
+  A: TColorCodingAttr;
+  Plus, Minus: string;
+
+  procedure Add(const AText: string);
+  begin
+    Parts := Parts + [AText];
+  end;
+
+begin
+  SetLength(Parts, 0);
+  if ACond.HasMinSize then
+    Add('size>' + FormatAmount(ACond.MinSize, 'KMGT', [Int64(1) shl 10,
+      Int64(1) shl 20, Int64(1) shl 30, Int64(1) shl 40]));
+  if ACond.HasMaxSize then
+    Add('size<' + FormatAmount(ACond.MaxSize, 'KMGT', [Int64(1) shl 10,
+      Int64(1) shl 20, Int64(1) shl 30, Int64(1) shl 40]));
+  if ACond.NewerSecs > 0 then
+    Add('age<' + FormatAmount(ACond.NewerSecs, cAgeUnits, [60, 3600, 86400, 604800]));
+  if ACond.OlderSecs > 0 then
+    Add('age>' + FormatAmount(ACond.OlderSecs, cAgeUnits, [60, 3600, 86400, 604800]));
+  Plus := '';
+  Minus := '';
+  for A := Low(TColorCodingAttr) to High(TColorCodingAttr) do
+  begin
+    if A in ACond.Require then
+      Plus := Plus + cAttrLetters[Ord(A) + 1];
+    if A in ACond.Exclude then
+      Minus := Minus + cAttrLetters[Ord(A) + 1];
+  end;
+  if Plus <> '' then
+    Add('+' + Plus);
+  if Minus <> '' then
+    Add('-' + Minus);
+  Result := string.Join(' ', Parts);
 end;
 
 function ColorCodingColorText(AColor: TAlphaColor; const ARef: string): string;
@@ -535,7 +832,7 @@ var
   Obj, StateObj: TJSONObject;
   I: Integer;
   S: TColorCodingState;
-  StateKey, FgHex, BgHex: string;
+  StateKey, FgHex, BgHex, CondText: string;
 begin
   Root := TJSONObject.Create;
   try
@@ -552,6 +849,9 @@ begin
         Obj.AddPair('applyTo', ApplyToToStr(AGroups[I].ApplyTo));
       if AGroups[I].SortPriority <> 0 then
         Obj.AddPair('sortPriority', TJSONNumber.Create(AGroups[I].SortPriority));
+      CondText := ColorCodingConditionText(AGroups[I].Cond);
+      if CondText <> '' then
+        Obj.AddPair('when', CondText);
       for S := Low(TColorCodingState) to High(TColorCodingState) do
       begin
         if (AGroups[I].Colors[S].Fg = 0) and (AGroups[I].Colors[S].Bg = 0) and

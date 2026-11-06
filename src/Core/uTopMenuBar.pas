@@ -84,6 +84,8 @@ type
     tmaCmdSwapPanels,
     tmaCmdEqualizeOther,
     tmaCmdEqualizeActive,
+    tmaCmdPairedFolders,
+    tmaCmdGroupBy,
     tmaCmdUserMenu,
     tmaCmdInsertName,
     tmaCmdInsertPath,
@@ -472,6 +474,10 @@ begin
       Result := kaEqualizeOtherPanel;
     tmaCmdEqualizeActive:
       Result := kaEqualizeActivePanel;
+    tmaCmdPairedFolders:
+      Result := kaPairedFolders;
+    tmaCmdGroupBy:
+      Result := kaGroupBy;
     tmaCmdUserMenu:
       Result := kaUserMenu;
     tmaCmdInsertName:
@@ -1024,7 +1030,7 @@ begin
   FCategories[4].Title := 'Commands';
   FCategories[4].HotChar := 'C';
   FCategories[4].HotPos := 1;
-  SetLength(FCategories[4].Items, 20);
+  SetLength(FCategories[4].Items, 22);
   FCategories[4].Items[0] := SubItem('Find file...', 'F', 'Alt+F7', tmaCmdFind);
   FCategories[4].Items[1] := SubItem('Synchronize dirs...', 'Y', 'Ctrl+Alt+S', tmaCmdDirSync);
   FCategories[4].Items[2] := SubItem('Background jobs...', 'J', 'Ctrl+Shift+J', tmaCmdJobList);
@@ -1045,6 +1051,8 @@ begin
   FCategories[4].Items[17] := SubItem('Background console...', 'Q', 'Ctrl+Alt+O', tmaCmdConsoleProfile);
   FCategories[4].Items[18] := SubItem('Sync console dir', 'I', 'Ctrl+Shift+O', tmaCmdSyncConsoleDir);
   FCategories[4].Items[19] := SubItem('New terminal...', 'M', 'Ctrl+Shift+N', tmaCmdNewTerminal);
+  FCategories[4].Items[20] := SubItem('Paired folders', 'D', 'Ctrl+Alt+P', tmaCmdPairedFolders);
+  FCategories[4].Items[21] := SubItem('Group by type / date', 'O', 'Ctrl+Alt+G', tmaCmdGroupBy);
 
   // 5: Options
   FCategories[5].Title := 'Options';

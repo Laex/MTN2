@@ -135,7 +135,11 @@ function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Intege
 /// SortPriority ahead of the column, after the parent row and the folders-first
 /// rule (also when ACol is pscNone, which then orders by name).</summary>
 procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean = False; const APluginId: string = '');
+  ADescending: Boolean; AByPriority: Boolean = False; const APluginId: string = '';
+  AGrouped: Boolean = False);
+
+/// <summary>The heading of a group key of PanelRowGroupKey ('' for 0).</summary>
+function PanelGroupTitle(AKey: Integer): string;
 
 /// <summary>AScheme selects the plugin columns of pcmCustom; AFolderUri is the
 /// folder the row is in, where plugin cells set with SetFolderCells fill the
@@ -807,6 +811,13 @@ begin
     else
       Exit(1);
   end;
+  if Left.GroupKey <> Right.GroupKey then
+  begin
+    if Left.GroupKey < Right.GroupKey then
+      Exit(-1)
+    else
+      Exit(1);
+  end;
   if Left.SortPriority <> Right.SortPriority then
   begin
     if Left.SortPriority < Right.SortPriority then
@@ -864,10 +875,35 @@ begin
   Result := Primary;
 end;
 
-procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
-  ADescending: Boolean; AByPriority: Boolean; const APluginId: string);
+function PanelGroupTitle(AKey: Integer): string;
 begin
-  if ((ACol = pscNone) and not AByPriority) or (Length(ARows) < 2) then
+  case AKey of
+    1: Result := T('ui.group.folders', 'Folders');
+    2: Result := T('ui.group.images', 'Images');
+    3: Result := T('ui.group.audio', 'Audio');
+    4: Result := T('ui.group.video', 'Video');
+    5: Result := T('ui.group.documents', 'Documents');
+    6: Result := T('ui.group.archives', 'Archives');
+    7: Result := T('ui.group.programs', 'Programs');
+    8: Result := T('ui.group.code', 'Code and data');
+    9: Result := T('ui.group.other', 'Other');
+    20: Result := T('ui.group.today', 'Today');
+    21: Result := T('ui.group.yesterday', 'Yesterday');
+    22: Result := T('ui.group.week', 'Last 7 days');
+    23: Result := T('ui.group.month', 'Last 30 days');
+    24: Result := T('ui.group.year', 'Last year');
+    25: Result := T('ui.group.older', 'Older');
+    29: Result := T('ui.group.nodate', 'No date');
+  else
+    Result := '';
+  end;
+end;
+
+procedure SortPanelRows(var ARows: TPanelRows; ACol: TPanelSortColumn;
+  ADescending: Boolean; AByPriority: Boolean; const APluginId: string;
+  AGrouped: Boolean);
+begin
+  if ((ACol = pscNone) and not AByPriority and not AGrouped) or (Length(ARows) < 2) then
     Exit;
   TArray.Sort<TPanelRow>(ARows,
     TComparer<TPanelRow>.Construct(

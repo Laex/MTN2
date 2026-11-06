@@ -17,6 +17,14 @@ type
     Camera: string;
     Artist: string;
     Title: string;
+    Album: string;
+    Year: string;
+    /// <summary>"1.2.3.4" of an executable or library (Windows).</summary>
+    Version: string;
+    /// <summary>The version as a number that sorts like the version does.</summary>
+    VersionKey: Int64;
+    Company: string;
+    Description: string;
   end;
 
 /// <summary>The panel column values of a local file; all '' for a file with no
@@ -109,6 +117,9 @@ var
   Kind: string;
   Info: TImageInfo;
   Tags: TAudioTags;
+  {$IFDEF MSWINDOWS}
+  Pe: TPeVersion;
+  {$ENDIF}
 begin
   Result := Default(TMetaCells);
   Kind := MetaKindOf(APath);
@@ -127,8 +138,22 @@ begin
       begin
         Result.Artist := Tags.Artist;
         Result.Title := Tags.Title;
+        Result.Album := Tags.Album;
+        Result.Year := Tags.Year;
       end;
-    end;
+    end
+    {$IFDEF MSWINDOWS}
+    else if Kind = 'exe' then
+    begin
+      if ReadPeVersion(APath, Pe) then
+      begin
+        Result.Version := Pe.Version;
+        Result.VersionKey := Pe.VersionKey;
+        Result.Company := Pe.Company;
+        Result.Description := Pe.Description;
+      end;
+    end
+    {$ENDIF};
   except
     // A file that cannot be opened or read has no cells.
     Result := Default(TMetaCells);

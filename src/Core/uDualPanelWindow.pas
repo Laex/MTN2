@@ -161,6 +161,9 @@ type
     /// removed when the window goes away.</summary>
     FOpenTempDirs: TStringList;
     FPendingSelectSide: TPanelSide;
+    /// <summary>True while a paired-folders step is being repeated in the other
+    /// panel, so that the repeated step does not bounce back.</summary>
+    FPairedBusy: Boolean;
     /// <summary>Screen position (cursor minus scroll) a folder had when it was
     /// entered, by lower-cased URI; leaving the folder restores it.</summary>
     FEnterViewPos: TDictionary<string, Integer>;
@@ -599,6 +602,11 @@ type
     procedure NavigateSideTo(ASide: TPanelSide; const AURI: string;
       AAddToHistory: Boolean = True);
     procedure NavigateActiveTo(const AURI: string);
+    /// <summary>Paired folders: when ASide went from AOldUri to ANewUri by one
+    /// step (into a subfolder or up to the parent), the other panel takes the
+    /// same step. A subfolder step needs a folder of the same name there; a step
+    /// up needs a parent. Only plain local folders take part.</summary>
+    procedure MirrorPairedStep(ASide: TPanelSide; const AOldUri, ANewUri: string);
     procedure NavigateActiveToDriveRoot;
     /// <summary>"Go to file": navigate the active panel to the folder holding
     /// APath and land the cursor on the item itself. Shared by the Alt+F7
@@ -1011,6 +1019,10 @@ type
     /// row under the cursor of the active panel; the other panel keeps its
     /// folder and selection, and focus stays on the active panel.</summary>
     procedure CursorToSameNameInOtherPanel;
+    /// <summary>Switches paired folders on or off for the active window tab
+    /// (the flag is part of the tab's state and is kept in the session).</summary>
+    procedure TogglePairedFolders;
+    procedure CycleGroupBy;
     procedure EqualizeActivePanelFromOther;
     procedure TogglePanelVisible(ASide: TPanelSide);
     function IsPanelVisible(ASide: TPanelSide): Boolean;
@@ -2158,6 +2170,8 @@ begin
   FKeymapHost.SwapPanels := SwapPanels;
   FKeymapHost.EqualizeOtherPanelToActive := EqualizeOtherPanelToActive;
   FKeymapHost.CursorToSameNameInOtherPanel := CursorToSameNameInOtherPanel;
+  FKeymapHost.TogglePairedFolders := TogglePairedFolders;
+  FKeymapHost.CycleGroupBy := CycleGroupBy;
   FKeymapHost.StartQuickSearch := StartQuickSearch;
   FKeymapHost.EqualizeActivePanelFromOther := EqualizeActivePanelFromOther;
   FKeymapHost.FocusCommandLine := FocusCommandLine;
@@ -4121,6 +4135,7 @@ begin
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
   Result.SortByPriority := False;
+  Result.GroupBy := pgbNone;
   Result.ViewKind := pvkFiles;
   Result.ShowHiddenFiles := True;
   for I := 0 to High(AUris) do
@@ -5187,6 +5202,68 @@ begin
   SaveActiveWorkspace(Ws);
   LoadSide(ASide);
   NotifyShellCwdSync;
+end;
+
+procedure TDualPanelWindow.MirrorPairedStep(ASide: TPanelSide;
+  const AOldUri, ANewUri: string);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Opp: TPanelSide;
+  OppPanel: TPanelState;
+  Target, SavedName: string;
+  SavedSide: TPanelSide;
+begin
+  if FPairedBusy then
+    Exit;
+  Ws := ActiveWorkspace;
+  if (Ws.Kind <> wkPanels) or not Ws.State.PairedFolders then
+    Exit;
+  Opp := OppositeSide(ASide);
+  if not IsPanelVisible(Opp) then
+    Exit;
+  if Opp = psLeft then
+    OppPanel := Ws.State.LeftPanel
+  else
+    OppPanel := Ws.State.RightPanel;
+  Target := PairedFolderTarget(AOldUri, ANewUri, ActiveTab(OppPanel).CurrentURI);
+  if Target = '' then
+    Exit;
+
+  SavedName := FPendingSelectName;
+  SavedSide := FPendingSelectSide;
+  FPairedBusy := True;
+  try
+    NavigateSideTo(Opp, Target, True);
+  finally
+    FPairedBusy := False;
+  end;
+  // The cursor request of the panel that was navigated by hand wins.
+  if SavedName <> '' then
+  begin
+    FPendingSelectName := SavedName;
+    FPendingSelectSide := SavedSide;
+  end;
+  // NavigateSideTo focuses the destination side - focus stays where it was.
+  Ws := ActiveWorkspace;
+  Ws.State.ActiveSide := ASide;
+  SaveActiveWorkspace(Ws);
+  NotifyShellCwdSync;
+end;
+
+procedure TDualPanelWindow.TogglePairedFolders;
+var
+  Ws: TDualPanelWorkspaceTab;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Ws.State.PairedFolders := not Ws.State.PairedFolders;
+  SaveActiveWorkspace(Ws);
+  if Ws.State.PairedFolders then
+    FToast.Show(T('ui.toast.pairedFoldersOn', 'Paired folders: on'))
+  else
+    FToast.Show(T('ui.toast.pairedFoldersOff', 'Paired folders: off'));
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.NavigateActiveTo(const AURI: string);
@@ -6346,6 +6423,9 @@ var
   ArchiveKind: TArchiveExtensionKind;
   IsArchiveFile: Boolean;
   UserCommand, Uri, ArchiveScheme, ArchivePath, ArchiveInner: string;
+  FromUri: string;
+  Side: TPanelSide;
+  Ws: TDualPanelWorkspaceTab;
 
   // A row without a URI (an error or info line) is not a file name.
   function AssocOf(const ARow: TPanelRow; out ACommand: string): TAssocAction;
@@ -6384,7 +6464,13 @@ begin
       GoHistoryBack(False);
     ackNavigate:
       if ARow.URI <> '' then
+      begin
+        Side := ActiveWorkspace.State.ActiveSide;
+        FromUri := ATab.CurrentURI;
         NavigateActiveTo(ARow.URI);
+        Ws := ActiveWorkspace;
+        MirrorPairedStep(Side, FromUri, ActiveTab(ActivePanel(Ws)).CurrentURI);
+      end;
     ackZipNavigate:
       if (ArchiveKind = akPluginScheme) and (not HasArchiveChain(ARow.URI)) then
       begin
@@ -13505,6 +13591,7 @@ begin
   if Assigned(M) then
   begin
     M.SetSortByPriority(Panel.SortByPriority);
+    M.SetGroupBy(Panel.GroupBy);
     M.SetSort(Panel.SortColumn, Panel.SortDescending, Panel.SortPluginId);
   end;
 end;
@@ -13566,6 +13653,7 @@ begin
   if Assigned(M) then
   begin
     M.SetSortByPriority(APanel.SortByPriority);
+    M.SetGroupBy(APanel.GroupBy);
     M.SetSort(APanel.SortColumn, APanel.SortDescending, APanel.SortPluginId);
   end;
 
@@ -13658,6 +13746,44 @@ begin
 
   Panel.SortByPriority := not Panel.SortByPriority;
   CommitSortAndRestoreCursor(ASide, Ws, Panel, Tab, CurURI);
+end;
+
+procedure TDualPanelWindow.CycleGroupBy;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Rows: TPanelRows;
+  CurURI: string;
+  Side: TPanelSide;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Side := Ws.State.ActiveSide;
+  if Side = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Tab := ActiveTab(Panel);
+  Rows := RowsForSide(Side);
+  CurURI := '';
+  if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
+    CurURI := Rows[Tab.CursorIndex].URI;
+
+  case Panel.GroupBy of
+    pgbNone: Panel.GroupBy := pgbType;
+    pgbType: Panel.GroupBy := pgbDate;
+  else
+    Panel.GroupBy := pgbNone;
+  end;
+  CommitSortAndRestoreCursor(Side, Ws, Panel, Tab, CurURI);
+  case Panel.GroupBy of
+    pgbType: FToast.Show(T('ui.toast.groupByType', 'Grouped by type'));
+    pgbDate: FToast.Show(T('ui.toast.groupByDate', 'Grouped by date'));
+  else
+    FToast.Show(T('ui.toast.groupByNone', 'Not grouped'));
+  end;
 end;
 
 procedure TDualPanelWindow.ApplySortMode(ASide: TPanelSide; ACol: TPanelSortColumn);

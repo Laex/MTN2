@@ -23,6 +23,8 @@ type
     [Test] procedure TestKindByExtension;
     [Test] procedure TestDescribeFileReadsAFileOnDisk;
     [Test] procedure TestDescribeFileOfAMissingFileIsEmpty;
+    [Test] procedure TestAudioCellsCarryAlbumAndYear;
+    [Test] procedure TestLibraryCellsCarryVersionCompanyAndDescription;
   end;
 
 implementation
@@ -332,6 +334,50 @@ begin
     TDirectory.Delete(Dir, True);
   end;
 end;
+
+procedure TTestMetaFormat.TestAudioCellsCarryAlbumAndYear;
+var
+  Dir, Path: string;
+  Cells: TMetaCells;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'MTN2MetaCells_' + IntToStr(Random(1000000)));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Path := TPath.Combine(Dir, 's.mp3');
+    TFile.WriteAllBytes(Path, Id3v23Tag + Padded(nil, 100));
+    Cells := ReadFileCells(Path);
+    Assert.AreEqual('Artist ' + #$00E9, Cells.Artist, 'artist');
+    Assert.AreEqual('Song', Cells.Title, 'title');
+    Assert.AreEqual('Album', Cells.Album, 'album');
+    Assert.AreEqual('2020', Cells.Year, 'year');
+    Assert.AreEqual('', Cells.Version, 'an audio file has no version');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestMetaFormat.TestLibraryCellsCarryVersionCompanyAndDescription;
+{$IFDEF MSWINDOWS}
+var
+  Cells, Again: TMetaCells;
+  Path: string;
+begin
+  Path := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\kernel32.dll');
+  Cells := ReadFileCells(Path);
+  Assert.IsTrue(Cells.Version.Contains('.'), 'dotted version: ' + Cells.Version);
+  Assert.IsTrue(Cells.VersionKey > 0, 'the version has a sort key');
+  Assert.AreNotEqual('', Cells.Company, 'company');
+  Assert.AreNotEqual('', Cells.Description, 'description');
+  Again := ReadFileCells(Path);
+  Assert.AreEqual(Cells.VersionKey, Again.VersionKey, 'the key is stable');
+  Assert.AreEqual('', ReadFileCells(TPath.Combine(TPath.GetTempPath, 'MTN2NoSuch.dll')).Version,
+    'a missing library has no version');
+end;
+{$ELSE}
+begin
+  Assert.Pass('Windows version resources only');
+end;
+{$ENDIF}
 
 procedure TTestMetaFormat.TestDescribeFileOfAMissingFileIsEmpty;
 begin

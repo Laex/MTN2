@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Color coding group",
   "width": 78,
-  "height": 19,
+  "height": 21,
   "children": [
     {
       "type": "label",
@@ -103,9 +103,27 @@
     },
     {
       "type": "label",
+      "text": "Condition:",
+      "id": "lbl_when",
+      "col": 1,
+      "row": 4,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "cc_when",
+      "value": "",
+      "col": 12,
+      "row": 4,
+      "width": 63,
+      "height": 1
+    },
+    {
+      "type": "label",
       "text": "────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 4,
+      "row": 5,
       "width": 76,
       "height": 1
     },
@@ -114,7 +132,7 @@
       "text": "           Fg             Bg             Sample",
       "id": "lbl_columns",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 60,
       "height": 1
     },
@@ -123,7 +141,7 @@
       "text": "Normal:",
       "id": "lbl_normal",
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 10,
       "height": 1
     },
@@ -133,7 +151,7 @@
       "value": "",
       "colorpick": true,
       "col": 12,
-      "row": 6,
+      "row": 7,
       "width": 14,
       "height": 1
     },
@@ -143,7 +161,7 @@
       "value": "",
       "colorpick": true,
       "col": 27,
-      "row": 6,
+      "row": 7,
       "width": 14,
       "height": 1
     },
@@ -155,7 +173,7 @@
       "bgFrom": "cc_normal_bg",
       "panelState": "normal",
       "col": 43,
-      "row": 6,
+      "row": 7,
       "width": 30,
       "height": 1
     },
@@ -164,7 +182,7 @@
       "text": "Selected:",
       "id": "lbl_selected",
       "col": 1,
-      "row": 7,
+      "row": 8,
       "width": 10,
       "height": 1
     },
@@ -174,7 +192,7 @@
       "value": "",
       "colorpick": true,
       "col": 12,
-      "row": 7,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -184,7 +202,7 @@
       "value": "",
       "colorpick": true,
       "col": 27,
-      "row": 7,
+      "row": 8,
       "width": 14,
       "height": 1
     },
@@ -196,7 +214,7 @@
       "bgFrom": "cc_selected_bg",
       "panelState": "selected",
       "col": 43,
-      "row": 7,
+      "row": 8,
       "width": 30,
       "height": 1
     },
@@ -205,7 +223,7 @@
       "text": "Current:",
       "id": "lbl_current",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 10,
       "height": 1
     },
@@ -215,7 +233,7 @@
       "value": "",
       "colorpick": true,
       "col": 12,
-      "row": 8,
+      "row": 9,
       "width": 14,
       "height": 1
     },
@@ -225,7 +243,7 @@
       "value": "",
       "colorpick": true,
       "col": 27,
-      "row": 8,
+      "row": 9,
       "width": 14,
       "height": 1
     },
@@ -237,14 +255,14 @@
       "bgFrom": "cc_current_bg",
       "panelState": "current",
       "col": 43,
-      "row": 8,
+      "row": 9,
       "width": 30,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 9,
+      "row": 10,
       "width": 76,
       "height": 1
     },
@@ -253,7 +271,7 @@
       "text": "F9 or [...] = pick a color for the Fg/Bg field above.",
       "id": "lbl_hint_pick",
       "col": 1,
-      "row": 10,
+      "row": 11,
       "width": 60,
       "height": 1
     },
@@ -262,7 +280,7 @@
       "text": "Leave a color blank to inherit the theme's own color there.",
       "id": "lbl_hint_blank",
       "col": 1,
-      "row": 11,
+      "row": 12,
       "width": 60,
       "height": 1
     },
@@ -271,8 +289,17 @@
       "text": "Colors: #RRGGBB, @role.key (theme role) or a palette name.",
       "id": "lbl_hint_format",
       "col": 1,
-      "row": 12,
+      "row": 13,
       "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Condition: size>10M size<1G age<7d age>30d +H -R (H R S A C E L).",
+      "id": "lbl_hint_when",
+      "col": 1,
+      "row": 14,
+      "width": 74,
       "height": 1
     },
     {
@@ -280,7 +307,7 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 14,
+      "row": 16,
       "width": 60,
       "height": 1
     },
@@ -288,7 +315,7 @@
       "type": "label",
       "text": "────────────────────────────────────────────────────────────────────────────",
       "col": 0,
-      "row": 13,
+      "row": 15,
       "width": 76,
       "height": 1
     },
@@ -298,7 +325,7 @@
       "text": "OK",
       "default": true,
       "col": 25,
-      "row": 15,
+      "row": 17,
       "width": 12,
       "height": 1
     },
@@ -308,7 +335,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 39,
-      "row": 15,
+      "row": 17,
       "width": 12,
       "height": 1
     }

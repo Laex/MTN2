@@ -23,7 +23,7 @@ type
     Name, Mask: string;
     ApplyToIdx: Integer;
     Enabled: Boolean;
-    Priority: string;
+    Priority, When: string;
     NormalFg, NormalBg, SelectedFg, SelectedBg, CurrentFg, CurrentBg: string;
   end;
 

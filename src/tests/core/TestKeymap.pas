@@ -187,6 +187,9 @@ begin
   Act := MatchAction(Profile, Ord('M'), [ssCtrl, ssAlt]);
   Assert.IsTrue(Act = kaCursorToSameName, 'Ctrl+Alt+M should match kaCursorToSameName');
 
+  Act := MatchAction(Profile, Ord('P'), [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaPairedFolders, 'Ctrl+Alt+P should match kaPairedFolders');
+
   Act := MatchAction(Profile, Ord('N'), [ssCtrl, ssShift]);
   Assert.IsTrue(Act = kaNewTerminal, 'Ctrl+Shift+N should match kaNewTerminal');
   Act := MatchAction(Profile, Ord('O'), [ssCtrl, ssAlt]);

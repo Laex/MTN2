@@ -47,6 +47,10 @@ type
     /// ahead of the sort column.</summary>
     procedure SetSortByPriority(AValue: Boolean);
     function GetSortByPriority: Boolean;
+    /// <summary>Orders the rows by group (see PanelRowGroupKey) ahead of the
+    /// priority and the sort column.</summary>
+    procedure SetGroupBy(AValue: TPanelGroupBy);
+    function GetGroupBy: TPanelGroupBy;
     /// <summary>Orders the rows again, e.g. after the color-coding groups changed.</summary>
     procedure Resort;
     procedure SetOnInvalidate(AHandler: TPanelInvalidateEvent);
@@ -107,6 +111,7 @@ type
     FSortDescending: Boolean;
     FSortPluginId: string;
     FSortByPriority: Boolean;
+    FGroupBy: TPanelGroupBy;
     FFilterMask: string;
     FNeedle: string;
     FNeedleFuzzy: Boolean;
@@ -149,6 +154,8 @@ type
     procedure GetSort(out AColumn: TPanelSortColumn; out ADescending: Boolean);
     procedure SetSortByPriority(AValue: Boolean);
     function GetSortByPriority: Boolean;
+    procedure SetGroupBy(AValue: TPanelGroupBy);
+    function GetGroupBy: TPanelGroupBy;
     procedure Resort;
     procedure SetOnInvalidate(AHandler: TPanelInvalidateEvent);
     procedure SetOnChanged(AHandler: TNotifyEvent);
@@ -374,6 +381,7 @@ var
   I, N: Integer;
   Name, Needle: string;
   Cell: TVfsExtraCell;
+  Moment: TDateTime;
 begin
   FRows := Copy(FRawRows);
   if not FShowHidden then
@@ -389,8 +397,12 @@ begin
     SetLength(Kept, N);
     FRows := Kept;
   end;
+  Moment := Now;
   for I := 0 to High(FRows) do
+  begin
     FRows[I].SortPriority := 0;
+    FRows[I].GroupKey := PanelRowGroupKey(FGroupBy, FRows[I], Moment);
+  end;
   if FSortByPriority then
     for I := 0 to High(FRows) do
       if not FRows[I].IsParent then
@@ -398,7 +410,7 @@ begin
         Name := FRows[I].Text;
         if (Name <> '') and (Name[Length(Name)] = '/') then
           SetLength(Name, Length(Name) - 1);
-        FRows[I].SortPriority := ColorCodingSortPriority(Name, FRows[I].IsDirectory);
+        FRows[I].SortPriority := ColorCodingSortPriorityItem(PanelRowColorItem(FRows[I], Name));
       end;
   if (FSortColumn = pscPlugin) and (FURI <> '') then
     for I := 0 to High(FRows) do
@@ -408,8 +420,9 @@ begin
         SetLength(FRows[I].Extra, Length(FRows[I].Extra) + 1);
         FRows[I].Extra[High(FRows[I].Extra)] := Cell;
       end;
-  if (FSortColumn <> pscNone) or FSortByPriority then
-    SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority, FSortPluginId);
+  if (FSortColumn <> pscNone) or FSortByPriority or (FGroupBy <> pgbNone) then
+    SortPanelRows(FRows, FSortColumn, FSortDescending, FSortByPriority, FSortPluginId,
+      FGroupBy <> pgbNone);
   if FFilterMask <> '' then
   begin
     Masks := SplitMasks(FFilterMask);
@@ -541,7 +554,7 @@ end;
 
 procedure TFilePanelModel.Resort;
 begin
-  if (FSortByPriority or (FSortColumn = pscPlugin)) and (Length(FRawRows) > 0) then
+  if (FSortByPriority or (FGroupBy <> pgbNone) or (FSortColumn = pscPlugin)) and (Length(FRawRows) > 0) then
   begin
     RebuildSortedRows;
     NotifyChanged;
@@ -551,6 +564,23 @@ end;
 function TFilePanelModel.GetSortByPriority: Boolean;
 begin
   Result := FSortByPriority;
+end;
+
+procedure TFilePanelModel.SetGroupBy(AValue: TPanelGroupBy);
+begin
+  if FGroupBy = AValue then
+    Exit;
+  FGroupBy := AValue;
+  if Length(FRawRows) > 0 then
+  begin
+    RebuildSortedRows;
+    NotifyChanged;
+  end;
+end;
+
+function TFilePanelModel.GetGroupBy: TPanelGroupBy;
+begin
+  Result := FGroupBy;
 end;
 
 procedure TFilePanelModel.GetSort(out AColumn: TPanelSortColumn;

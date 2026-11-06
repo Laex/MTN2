@@ -104,6 +104,8 @@ type
     EqualizeOtherPanelToActive: TKeymapProc;
     EqualizeActivePanelFromOther: TKeymapProc;
     CursorToSameNameInOtherPanel: TKeymapProc;
+    TogglePairedFolders: TKeymapProc;
+    CycleGroupBy: TKeymapProc;
     StartQuickSearch: TKeymapProc;
     FocusCommandLine: TKeymapProc;
     ClearCommandLine: TKeymapProc;
@@ -714,6 +716,8 @@ begin
     kaEqualizeOtherPanel: AHost.EqualizeOtherPanelToActive();
     kaEqualizeActivePanel: AHost.EqualizeActivePanelFromOther();
     kaCursorToSameName: AHost.CursorToSameNameInOtherPanel();
+    kaPairedFolders: AHost.TogglePairedFolders();
+    kaGroupBy: AHost.CycleGroupBy();
   else
     Exit(False);
   end;

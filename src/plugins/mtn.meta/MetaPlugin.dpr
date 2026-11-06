@@ -25,7 +25,12 @@ const
     '[{"id":"dim","title":"Size px","title_key":"ui.col.dim","width":10,"align":"right","default":true,"sortable":true},' +
     '{"id":"camera","title":"Camera","title_key":"ui.col.camera","width":20,"default":true,"sortable":true},' +
     '{"id":"artist","title":"Artist","title_key":"ui.col.artist","width":20,"default":true,"sortable":true},' +
-    '{"id":"title","title":"Title","title_key":"ui.col.title","width":24,"default":true,"sortable":true}]';
+    '{"id":"title","title":"Title","title_key":"ui.col.title","width":24,"default":true,"sortable":true},' +
+    '{"id":"album","title":"Album","title_key":"ui.col.album","width":20,"default":false,"sortable":true},' +
+    '{"id":"year","title":"Year","title_key":"ui.col.year","width":6,"align":"right","default":false,"sortable":true},' +
+    '{"id":"version","title":"Version","title_key":"ui.col.version","width":16,"default":false,"sortable":true},' +
+    '{"id":"company","title":"Company","title_key":"ui.col.company","width":22,"default":false,"sortable":true},' +
+    '{"id":"description","title":"Description","title_key":"ui.col.description","width":30,"default":false,"sortable":true}]';
 
 type
   TMetaWorker = class(TThread)
@@ -258,6 +263,15 @@ begin
     Result.AddPair('n', TJSONNumber.Create(W * H));
 end;
 
+// "1.2.3.4" as {"t": text, "n": packed number}: the column sorts as versions do.
+function VersionCell(const AText: string; AKey: Int64): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('t', AText);
+  if AKey > 0 then
+    Result.AddPair('n', TJSONNumber.Create(AKey));
+end;
+
 // Computes the column cells of the active panel's files and hands them to the main
 // thread in growing batches. False when the worker was asked to stop.
 function ComputeCells(AWorker: TMetaWorker; const AFolder: string;
@@ -283,7 +297,8 @@ begin
         Exit;
       Cells := ReadFileCells(IncludeTrailingPathDelimiter(Path) + Name);
       if (Cells.Dimensions <> '') or (Cells.Camera <> '') or (Cells.Artist <> '') or
-         (Cells.Title <> '') then
+         (Cells.Title <> '') or (Cells.Album <> '') or (Cells.Year <> '') or
+         (Cells.Version <> '') or (Cells.Company <> '') or (Cells.Description <> '') then
       begin
         Cell := TJSONObject.Create;
         if Cells.Dimensions <> '' then
@@ -294,6 +309,16 @@ begin
           Cell.AddPair('artist', Cells.Artist);
         if Cells.Title <> '' then
           Cell.AddPair('title', Cells.Title);
+        if Cells.Album <> '' then
+          Cell.AddPair('album', Cells.Album);
+        if Cells.Year <> '' then
+          Cell.AddPair('year', Cells.Year);
+        if Cells.Version <> '' then
+          Cell.AddPair('version', VersionCell(Cells.Version, Cells.VersionKey));
+        if Cells.Company <> '' then
+          Cell.AddPair('company', Cells.Company);
+        if Cells.Description <> '' then
+          Cell.AddPair('description', Cells.Description);
         Root.AddPair(Name, Cell);
       end;
       if ((I + 1) mod cCellsPerPost = 0) or (I = High(ANames)) then

@@ -142,6 +142,8 @@
         { "caption": "Swap panels", "hotChar": "S", "shortcut": "Ctrl+U", "action": "tmaCmdSwapPanels", "hint": "Swaps the left and right panels.", "aliases": "swap, exchange" },
         { "caption": "Target := Active", "hotChar": "T", "shortcut": "Ctrl+]", "action": "tmaCmdEqualizeOther", "hint": "Opens the folder of the active panel in the other panel.", "aliases": "same folder" },
         { "caption": "Active := Target", "hotChar": "A", "shortcut": "Ctrl+[", "action": "tmaCmdEqualizeActive", "hint": "Opens the folder of the other panel in the active panel.", "aliases": "same folder" },
+        { "caption": "Paired folders", "hotChar": "D", "shortcut": "Ctrl+Alt+P", "action": "tmaCmdPairedFolders", "hint": "Switches paired folders on or off: entering a subfolder or going up in one panel does the same in the other.", "aliases": "sync browsing, synchronized navigation, linked panels" },
+        { "caption": "Group by type / date", "hotChar": "O", "shortcut": "Ctrl+Alt+G", "action": "tmaCmdGroupBy", "hint": "Switches the grouping of the panel rows: by type, by date, or none. Rows are ordered by group first, and the start of each group is marked.", "aliases": "group, type, date, order" },
         { "isSeparator": true },
         { "caption": "Insert item name", "hotChar": "N", "shortcut": "Ctrl+Enter", "action": "tmaCmdInsertName", "hint": "Puts the name of the item under the cursor on the command line.", "aliases": "command line, insert" },
         { "caption": "Insert item path", "hotChar": "P", "shortcut": "Ctrl+Shift+Enter", "action": "tmaCmdInsertPath", "hint": "Puts the full path of the item under the cursor on the command line.", "aliases": "command line, insert" },

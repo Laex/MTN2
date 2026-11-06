@@ -6,7 +6,7 @@ unit uDualPanelTypes;
 interface
 
 uses
-  System.SysUtils, System.Math, System.IOUtils, uVfsTypes;
+  System.SysUtils, System.Math, System.IOUtils, uVfsTypes, uColorCoding;
 
 type
   /// <summary>Per-panel column layout (Ctrl+` opens mode menu).</summary>
@@ -68,6 +68,11 @@ type
     WorkspaceOriginUri: string;
   end;
 
+  /// <summary>How the rows of a file panel are grouped: the rows are ordered by
+  /// group first (the sort column orders them inside a group) and the panel marks
+  /// where a group starts.</summary>
+  TPanelGroupBy = (pgbNone, pgbType, pgbDate);
+
   TPanelSide = (psLeft, psRight);
 
   /// <summary>Panel content mode. Ctrl+L toggles Info on the adjacent panel.</summary>
@@ -88,6 +93,7 @@ type
     /// <summary>Rows are ranked by the SortPriority of their color-coding
     /// group before the sort column applies.</summary>
     SortByPriority: Boolean;
+    GroupBy: TPanelGroupBy;
     ViewKind: TPanelViewKind;
     ShowHiddenFiles: Boolean;  // Ctrl+H toggle - Hidden/System files in listing
   end;
@@ -98,6 +104,9 @@ type
     ActiveSide: TPanelSide;
     LeftVisible: Boolean;   // FAR Ctrl+F1 - hide/show left
     RightVisible: Boolean;  // FAR Ctrl+F2 - hide/show right
+    /// <summary>Paired folders: a step into a subfolder or up to the parent in
+    /// one panel is repeated in the other one.</summary>
+    PairedFolders: Boolean;
   end;
 
   /// <summary>Dual Panel Tabs: panels snapshot, Viewer/Editor document, or a
@@ -163,6 +172,9 @@ type
     DirText: string;
     /// <summary>Filled by the panel model while it sorts by priority; 0 otherwise.</summary>
     SortPriority: Integer;
+    /// <summary>Filled by the panel model while it groups the rows (see
+    /// PanelRowGroupKey); 0 when the rows are not grouped.</summary>
+    GroupKey: Integer;
     /// <summary>Values of the plugin columns of the row's scheme.</summary>
     Extra: TVfsExtraCells;
   end;
@@ -180,6 +192,12 @@ function MakePanelRowFromEntry(const AEntry: TVfsEntry;
 /// <summary>Logical PANEL_PLUGIN file_type for theme coloring.</summary>
 function ClassifyPanelFileType(const AName: string;
   AIsDirectory, AIsParent: Boolean): string;
+/// <summary>The group a row belongs to for AGroupBy; 0 for no grouping and for the
+/// parent row. 1 is the folders; 2..9 the file kinds of pgbType; 20..29 the age
+/// classes of pgbDate (today, yesterday, last 7 days, last 30 days, last year,
+/// older, no date). A smaller key comes first.</summary>
+function PanelRowGroupKey(AGroupBy: TPanelGroupBy; const ARow: TPanelRow;
+  ANow: TDateTime): Integer;
 function FormatSizeShort(ABytes: Int64): string;
 /// <summary>The whole number of bytes with the digit grouping of AFormat
 /// (the system one for the overload without it); a negative size shows as 0.</summary>
@@ -191,6 +209,15 @@ procedure PanelSelectionTotals(const ATab: TTab; const ARows: TPanelRows;
   out ABytes: Int64; out AFiles, AFolders: Integer);
 function ActiveTab(const APanel: TPanelState): TTab;
 procedure SetActiveTab(var APanel: TPanelState; const ATab: TTab);
+/// <summary>Paired folders: a panel went from AOldUri to ANewUri by one step
+/// (into a subfolder or up to the parent); returns the folder the panel that
+/// shows AOppUri takes the same step to, or '' when it does not move. A
+/// subfolder step needs a folder of the same name inside AOppUri, a step up
+/// needs a parent. Only plain local folders take part (not archives, search
+/// results, remote or plugin folders).</summary>
+function PairedFolderTarget(const AOldUri, ANewUri, AOppUri: string): string;
+/// <summary>What the color rules see of a row: name, kind, size, time, attributes.</summary>
+function PanelRowColorItem(const ARow: TPanelRow; const AName: string): TColorCodingItem;
 /// <summary>Deep-copy panel tabs + layout settings; assigns fresh tab Ids.</summary>
 function ClonePanelState(const APanel: TPanelState; var ANextId: Cardinal): TPanelState;
 /// <summary>Session tab caption from active left/right directories (e.g. "Work | Docs").</summary>
@@ -318,6 +345,67 @@ begin
     (AExt = '.wav') or (AExt = '.flac') or (AExt = '.pdf');
 end;
 
+function PanelRowGroupKey(AGroupBy: TPanelGroupBy; const ARow: TPanelRow;
+  ANow: TDateTime): Integer;
+var
+  Ext: string;
+  Days: Integer;
+begin
+  if (AGroupBy = pgbNone) or ARow.IsParent then
+    Exit(0);
+  if ARow.IsDirectory then
+    Exit(1);
+  if AGroupBy = pgbDate then
+  begin
+    if ARow.ModificationTime <= 0 then
+      Exit(29);
+    Days := Trunc(ANow) - Trunc(ARow.ModificationTime);
+    if Days <= 0 then
+      Result := 20
+    else if Days = 1 then
+      Result := 21
+    else if Days < 7 then
+      Result := 22
+    else if Days < 30 then
+      Result := 23
+    else if Days < 365 then
+      Result := 24
+    else
+      Result := 25;
+    Exit;
+  end;
+  Ext := LowerCase(SafeExtension(ARow.Text));
+  if (Ext = '.png') or (Ext = '.jpg') or (Ext = '.jpeg') or (Ext = '.gif') or
+     (Ext = '.bmp') or (Ext = '.ico') or (Ext = '.webp') or (Ext = '.svg') or
+     (Ext = '.tif') or (Ext = '.tiff') then
+    Result := 2
+  else if (Ext = '.mp3') or (Ext = '.wav') or (Ext = '.flac') or (Ext = '.ogg') or
+          (Ext = '.m4a') or (Ext = '.aac') or (Ext = '.wma') then
+    Result := 3
+  else if (Ext = '.mp4') or (Ext = '.avi') or (Ext = '.mkv') or (Ext = '.mov') or
+          (Ext = '.wmv') or (Ext = '.webm') then
+    Result := 4
+  else if (Ext = '.doc') or (Ext = '.docx') or (Ext = '.odt') or (Ext = '.rtf') or
+          (Ext = '.pdf') or (Ext = '.txt') or (Ext = '.md') or (Ext = '.xls') or
+          (Ext = '.xlsx') or (Ext = '.ods') or (Ext = '.ppt') or (Ext = '.pptx') or
+          (Ext = '.csv') then
+    Result := 5
+  else if (Ext = '.zip') or (Ext = '.7z') or (Ext = '.rar') or (Ext = '.tar') or
+          (Ext = '.gz') or (Ext = '.tgz') or (Ext = '.bz2') or (Ext = '.xz') or
+          (Ext = '.cab') or (Ext = '.iso') then
+    Result := 6
+  else if IsExecutablePanelFileExt(Ext) then
+    Result := 7
+  else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or (Ext = '.c') or
+          (Ext = '.h') or (Ext = '.cpp') or (Ext = '.cs') or (Ext = '.py') or
+          (Ext = '.js') or (Ext = '.ts') or (Ext = '.go') or (Ext = '.rs') or
+          (Ext = '.java') or (Ext = '.json') or (Ext = '.xml') or (Ext = '.yml') or
+          (Ext = '.yaml') or (Ext = '.lua') or (Ext = '.sql') then
+    Result := 8
+  else
+    Result := 9;
+end;
+
 function ClassifyPanelFileType(const AName: string;
   AIsDirectory, AIsParent: Boolean): string;
 var
@@ -378,6 +466,7 @@ begin
   Result.AccessTime := 0;
   Result.MatchLine := 0;
   Result.SortPriority := 0;
+  Result.GroupKey := 0;
   Result.MatchSnippet := '';
   Base := AText;
   if (Base <> '') and (Base[Length(Base)] = '/') then
@@ -525,6 +614,52 @@ begin
         Inc(ABytes, R.Size);
     end;
   end;
+end;
+
+// FileUriToPath is '' for every non-file scheme; an archive path still has a
+// file: base, hence the explicit check.
+function PairedLocalPath(const AUri: string): string;
+begin
+  if (AUri = '') or HasArchiveChain(AUri) then
+    Exit('');
+  Result := FileUriToPath(AUri);
+end;
+
+function PanelRowColorItem(const ARow: TPanelRow; const AName: string): TColorCodingItem;
+begin
+  Result := ColorCodingNameItem(AName, ARow.IsDirectory);
+  if not ARow.IsDirectory then
+    Result.Size := ARow.Size;
+  Result.ModTime := ARow.ModificationTime;
+  if ARow.IsHidden then Include(Result.Attrs, ccatHidden);
+  if ARow.IsReadOnly then Include(Result.Attrs, ccatReadOnly);
+  if ARow.IsSystem then Include(Result.Attrs, ccatSystem);
+  if ARow.IsArchive then Include(Result.Attrs, ccatArchive);
+  if ARow.IsCompressed then Include(Result.Attrs, ccatCompressed);
+  if ARow.IsEncrypted then Include(Result.Attrs, ccatEncrypted);
+  if ARow.IsLink then Include(Result.Attrs, ccatLink);
+end;
+
+function PairedFolderTarget(const AOldUri, ANewUri, AOppUri: string): string;
+var
+  OldPath, NewPath: string;
+begin
+  Result := '';
+  OldPath := PairedLocalPath(AOldUri);
+  NewPath := PairedLocalPath(ANewUri);
+  if (OldPath = '') or (NewPath = '') or (PairedLocalPath(AOppUri) = '') or
+     SameLocalPath(OldPath, NewPath) then
+    Exit;
+  if SameLocalPath(NewPath, FileUriToPath(ParentFileUri(AOldUri))) then
+    Result := ParentFileUri(AOppUri)
+  else if SameLocalPath(OldPath, FileUriToPath(ParentFileUri(ANewUri))) then
+  begin
+    Result := JoinFileUri(AOppUri, FileUriTitle(ANewUri));
+    if not LocalPathIsDirectory(FileUriToPath(Result)) then
+      Result := '';
+  end;
+  if SameVfsUri(Result, AOppUri) then
+    Result := '';
 end;
 
 function ActiveTab(const APanel: TPanelState): TTab;

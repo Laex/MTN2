@@ -483,7 +483,7 @@ function BuildColorCodingDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0;
   const ASwatches: TArray<TListSwatch> = nil): TDialogDeclaration;
 function BuildColorCodingEditDialog(const AName, AMask: string;
-  AApplyToIndex: Integer; AEnabled: Boolean; const APriority: string;
+  AApplyToIndex: Integer; AEnabled: Boolean; const APriority, AWhen: string;
   const ANormalFg, ANormalBg, ASelectedFg, ASelectedBg,
   ACurrentFg, ACurrentBg: string): TDialogDeclaration;
 /// <summary>The color picker dialog, starting on AColor (which is also what
@@ -2134,7 +2134,7 @@ begin
 end;
 
 function BuildColorCodingEditDialog(const AName, AMask: string;
-  AApplyToIndex: Integer; AEnabled: Boolean; const APriority: string;
+  AApplyToIndex: Integer; AEnabled: Boolean; const APriority, AWhen: string;
   const ANormalFg, ANormalBg, ASelectedFg, ASelectedBg,
   ACurrentFg, ACurrentBg: string): TDialogDeclaration;
 begin
@@ -2144,6 +2144,7 @@ begin
   DialogSetDropDownSelected(Result, 'cc_applyto', AApplyToIndex);
   DialogSetCheckbox(Result, 'cc_enabled', AEnabled);
   DialogSetInputValue(Result, 'cc_priority', APriority);
+  DialogSetInputValue(Result, 'cc_when', AWhen);
   DialogSetInputValue(Result, 'cc_normal_fg', ANormalFg);
   DialogSetInputValue(Result, 'cc_normal_bg', ANormalBg);
   DialogSetInputValue(Result, 'cc_selected_fg', ASelectedFg);

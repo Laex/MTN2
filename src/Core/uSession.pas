@@ -255,6 +255,10 @@ begin
     Result.AddPair('sortPluginColumn', APanel.SortPluginId);
   if APanel.SortByPriority then
     Result.AddPair('sortByPriority', TJSONBool.Create(True));
+  case APanel.GroupBy of
+    pgbType: Result.AddPair('groupBy', 'type');
+    pgbDate: Result.AddPair('groupBy', 'date');
+  end;
   Result.AddPair('showHidden', TJSONBool.Create(APanel.ShowHiddenFiles));
   if APanel.ViewKind = pvkInfo then
     Result.AddPair('viewKind', 'info')
@@ -285,6 +289,8 @@ begin
   Result.AddPair('activeSide', Side);
   Result.AddPair('leftVisible', TJSONBool.Create(AWs.State.LeftVisible));
   Result.AddPair('rightVisible', TJSONBool.Create(AWs.State.RightVisible));
+  if AWs.State.PairedFolders then
+    Result.AddPair('pairedFolders', TJSONBool.Create(True));
   Result.AddPair('left', PanelToJson(AWs.State.LeftPanel));
   Result.AddPair('right', PanelToJson(AWs.State.RightPanel));
 end;
@@ -355,6 +361,7 @@ begin
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
   Result.SortByPriority := False;
+  Result.GroupBy := pgbNone;
   Result.ViewKind := pvkFiles;
   Result.ShowHiddenFiles := True;
   SetLength(Result.Tabs, 0);
@@ -368,6 +375,10 @@ begin
     Result.SortColumn := pscNone;
   Result.SortDescending := JsonBool(O, 'sortDescending', False);
   Result.SortByPriority := JsonBool(O, 'sortByPriority', False);
+  if SameText(JsonStr(O, 'groupBy', ''), 'type') then
+    Result.GroupBy := pgbType
+  else if SameText(JsonStr(O, 'groupBy', ''), 'date') then
+    Result.GroupBy := pgbDate;
   Result.SortPluginId := JsonStr(O, 'sortPluginColumn', '');
   if (Result.SortColumn = pscPlugin) and (Result.SortPluginId = '') then
     Result.SortColumn := pscNone;
@@ -434,6 +445,7 @@ begin
     Result.State.ActiveSide := psLeft;
   Result.State.LeftVisible := JsonBool(O, 'leftVisible', True);
   Result.State.RightVisible := JsonBool(O, 'rightVisible', True);
+  Result.State.PairedFolders := JsonBool(O, 'pairedFolders', False);
   if not Result.State.LeftVisible and not Result.State.RightVisible then
   begin
     Result.State.LeftVisible := True;

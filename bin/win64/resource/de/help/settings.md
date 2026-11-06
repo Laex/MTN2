@@ -63,7 +63,15 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 - Sitzung, Verläufe, Tasten, Plugin-Einstellungen und eigene Farbschemata werden gemeinsam verschoben, die alten Kopien gelöscht.
 - Die Änderung gilt sofort ohne Neustart. Bei einem Fehler bleibt der alte Ort in Kraft.
 - Sprachen und mitgelieferte Themes in `resource\` bleiben immer beim Programm.
-<!--color-coding-->- **Farbgruppen...** – Zeilenfarben nach Namensmasken; sie werden im Farbschema gespeichert, eine Änderung bei einem eingebauten Farbschema wird also als neues Farbschema gespeichert (das Programm fragt nach seinem Namen). **F9** auf einem Farbfeld oder ein Klick auf die Schaltfläche **[...]** an seinem rechten Ende (sie zeigt die Farbe des Feldes) öffnet die Farbauswahl (siehe unten).
+<!--color-coding-->- **Farbgruppen...** – Zeilenfarben nach Namensmasken und optional nach Größe, Alter und Attributen (Feld **Bedingung**: Terme wie `size>10M`, `age<7d`, `+H`, `-R`; Buchstaben H versteckt, R schreibgeschützt, S System, A Archiv, C komprimiert, E verschlüsselt, L Link; `age<7d` = vor weniger als 7 Tagen geändert); sie werden im Farbschema gespeichert, eine Änderung bei einem eingebauten Farbschema wird also als neues Farbschema gespeichert (das Programm fragt nach seinem Namen). **F9** auf einem Farbfeld oder ein Klick auf die Schaltfläche **[...]** an seinem rechten Ende (sie zeigt die Farbe des Feldes) öffnet die Farbauswahl (siehe unten).
+  Beispiele für Bedingungen (eine Gruppe gilt nur, wenn Maske und Bedingung zutreffen):
+  - `size>100M` – Dateien über 100 MB, etwa mit der Maske `*.log` für große Protokolle.
+  - `size>0 size<4K` – kleine, nicht leere Dateien.
+  - `age<1d` – am letzten Tag geändert; `age<90m` – in den letzten 90 Minuten.
+  - `age>30d` – seit einem Monat unberührt (veraltete Dateien abdunkeln); `age>2w` – älter als zwei Wochen.
+  - `+H` – nur versteckte Dateien; `+HS` – versteckt und System; `-R` – alles außer schreibgeschützten Dateien.
+  - `size>1G age>90d -R` – groß, alt und beschreibbar: alle drei Bedingungen müssen zutreffen (Kandidaten zum Aufräumen).
+  - Ein Ordner hat keine Größe, daher trifft eine Gruppe mit Größenterm nie auf Ordner zu; Bedingungen nur mit Attributen oder Alter gelten auch für Ordner. Die Gruppen werden von oben nach unten geprüft, die erste passende gewinnt: die engere Gruppe (`*.log` + `size>100M`) gehört über die allgemeine (`*.log`).
 - **Tastenbelegung...** – Tasten ansehen und ändern.
 <!--plugins-->- **Plugins...** – installierte Plugins. Beim ersten Start sind alle Plugins ausgeschaltet.
 

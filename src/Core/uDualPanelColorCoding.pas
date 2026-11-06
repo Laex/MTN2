@@ -159,7 +159,7 @@ procedure TColorCodingDialogController.BeginAdd;
 begin
   FEditIndex := -1;
   SetKind(hdkColorCodingEdit);
-  FDialog.Open(BuildColorCodingEditDialog('', '', 0, True, '0', '', '', '', '', '', ''),
+  FDialog.Open(BuildColorCodingEditDialog('', '', 0, True, '0', '', '', '', '', '', '', ''),
     FOnCommand);
   Notify;
 end;
@@ -182,6 +182,7 @@ begin
   SetKind(hdkColorCodingEdit);
   FDialog.Open(BuildColorCodingEditDialog(G.Name, string.Join(';', G.Masks),
     ApplyToIdx, G.Enabled, IntToStr(G.SortPriority),
+    ColorCodingConditionText(G.Cond),
     ColorCodingColorText(G.Colors[ccsNormal].Fg, G.Colors[ccsNormal].FgRef),
     ColorCodingColorText(G.Colors[ccsNormal].Bg, G.Colors[ccsNormal].BgRef),
     ColorCodingColorText(G.Colors[ccsSelected].Fg, G.Colors[ccsSelected].FgRef),
@@ -294,6 +295,11 @@ begin
     FDialog.SetStatus('status', 'Priority must be a whole number.');
     Exit;
   end;
+  if not ColorCodingParseCondition(Trim(FDialog.GetInputValue('cc_when')), G.Cond) then
+  begin
+    FDialog.SetStatus('status', 'Condition: use size>, size<, age<, age>, +H, -R terms.');
+    Exit;
+  end;
   if not TryParseColorFields(G) then
   begin
     FDialog.SetStatus('status', 'Colors must be #RRGGBB, @role or a palette name, or blank.');
@@ -313,6 +319,7 @@ begin
   FEditFields.ApplyToIdx := FDialog.GetListSelectedIndex('cc_applyto');
   FEditFields.Enabled := FDialog.GetCheckbox('cc_enabled');
   FEditFields.Priority := FDialog.GetInputValue('cc_priority');
+  FEditFields.When := FDialog.GetInputValue('cc_when');
   FEditFields.NormalFg := FDialog.GetInputValue('cc_normal_fg');
   FEditFields.NormalBg := FDialog.GetInputValue('cc_normal_bg');
   FEditFields.SelectedFg := FDialog.GetInputValue('cc_selected_fg');
@@ -326,7 +333,7 @@ begin
   SetKind(hdkColorCodingEdit);
   FDialog.Open(BuildColorCodingEditDialog(FEditFields.Name,
     FEditFields.Mask, FEditFields.ApplyToIdx,
-    FEditFields.Enabled, FEditFields.Priority,
+    FEditFields.Enabled, FEditFields.Priority, FEditFields.When,
     FEditFields.NormalFg, FEditFields.NormalBg,
     FEditFields.SelectedFg, FEditFields.SelectedBg,
     FEditFields.CurrentFg, FEditFields.CurrentBg),
