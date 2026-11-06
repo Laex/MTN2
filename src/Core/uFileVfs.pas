@@ -927,7 +927,9 @@ begin
             DeleteTree(Child, ACancel, AOnProgress, ADoneItems, ATotalItems, ChildErr);
             if ChildErr.Code <> vecOk then
             begin
-              if ChildErr.Code = vecCancelled then
+              // A refused node means the rest of the tree is refused as well:
+              // stopping here lets the administrator offer appear at once.
+              if (ChildErr.Code = vecCancelled) or (ChildErr.Code = vecAccessDenied) then
               begin
                 FirstErr := ChildErr;
                 HasError := True;

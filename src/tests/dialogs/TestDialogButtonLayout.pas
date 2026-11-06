@@ -297,6 +297,13 @@ begin
       Add(CheckDeclaration('delete one item',
         BuildDeleteNameDialog('Delete', 'Move file', '"A long file name.txt"',
           'to Recycle Bin?', 'Recycle')));
+      Add(CheckDeclaration('delete error with the administrator button',
+        BuildDeleteErrorDialog('Cannot delete', 'C:\Toolspp', '', 'Access denied', True, True)));
+      Add(CheckDeclaration('i/o error with the administrator button',
+        BuildIOErrorDialog('Cannot create', 'C:\Toolspp', 'Access denied', True)));
+      Add(CheckDeclaration('administrator confirmation',
+        BuildConfirmDialog(T('ui.admin.title', 'Administrator rights'),
+          T('ui.admin.confirm', 'Access denied. Repeat as administrator?'))));
       Add(CheckDeclaration('update message, one button',
         BuildUpdateMessageDialog('Message', 'Details', '', False)));
     finally

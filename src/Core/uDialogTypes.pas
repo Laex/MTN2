@@ -876,10 +876,26 @@ begin
 end;
 
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
+var
+  I, Delta: Integer;
 begin
   RequireDialogResource(cResDialogConfirm, Result);
   DialogSetTitle(Result, ATitle);
   DialogSetLabelText(Result, 'message', AMessage);
+  // The frame is as wide as the message needs (a translation is longer than
+  // the template text); the buttons keep their place relative to the center.
+  Delta := Min(Max(0, Length(AMessage) + 4 - Result.Width), 100 - Result.Width);
+  if Delta > 0 then
+  begin
+    Result.Width := Result.Width + Delta;
+    for I := 0 to High(Result.Controls) do
+      case Result.Controls[I].Kind of
+        dckLabel:
+          Result.Controls[I].BoxW := Result.Width - 4;
+        dckButton:
+          Inc(Result.Controls[I].Col, Delta div 2);
+      end;
+  end;
 end;
 
 function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;
@@ -1183,6 +1199,8 @@ begin
       ADecl.Controls[I].Col := Left;
       Inc(Left, ADecl.Controls[I].BoxW + cGap);
     end;
+  // The row grew by a button: widen the frame and center the row again.
+  FitDialogToTranslatedText(ADecl);
 end;
 
 function BuildDeleteErrorDialog(const AHeadline, APath, AQuestion, AErrorLine: string;

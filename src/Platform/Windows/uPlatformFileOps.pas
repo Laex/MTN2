@@ -242,8 +242,11 @@ begin
     Result := GetLastError;
     if (Result = ERROR_FILE_NOT_FOUND) or (Result = ERROR_PATH_NOT_FOUND) then
       Exit(ERROR_SUCCESS);
+    // Missing rights do not appear by waiting: only a transient block (an
+    // antivirus scan, a handle about to close) is worth the retries.
     if (I < cMaxTries) and
-       ((Result = ERROR_SHARING_VIOLATION) or (Result = ERROR_ACCESS_DENIED) or
+       (((Result = ERROR_ACCESS_DENIED) and (I < 2)) or
+        (Result = ERROR_SHARING_VIOLATION) or
         (Result = ERROR_DIR_NOT_EMPTY) or (Result = ERROR_LOCK_VIOLATION)) then
       Sleep(25 * I)
     else
