@@ -10,6 +10,7 @@ vfs/TestCopyIntoSelf
 vfs/TestCopyLockedSource       # Win32 sharing modes
 vfs/TestCopyErrorResolver      # Win32 sharing modes
 vfs/TestCopySkipMerge
+vfs/TestDeleteErrorResolver      # Win32 sharing modes
 vfs/TestDeleteProgress
 vfs/TestDriveInfo              # drive letters
 vfs/TestElevatedHelper         # UAC helper
