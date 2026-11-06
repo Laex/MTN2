@@ -883,17 +883,56 @@ begin
   end;
 end;
 
+// Removes one file or empty folder. A refusal goes to the job's error resolver
+// when it has one: retry repeats the node, skip leaves it in place (ASkipped,
+// AError is then vecOk), anything else ends the delete as cancelled.
+function DeleteNodeResolved(const APath: string; AIsDir: Boolean;
+  ACancel: IJobCancelToken; var AError: TVfsError; out ASkipped: Boolean): Boolean;
+var
+  Resolver: TVfsErrorResolver;
+begin
+  ASkipped := False;
+  while True do
+  begin
+    if PlatformDeleteNode(APath, AIsDir, AError) then
+      Exit(True);
+    Resolver := JobErrorResolver(ACancel);
+    if JobCancelRequested(ACancel) or not Assigned(Resolver) or
+       (AError.Code = vecNotFound) then
+      Exit(False);
+    case Resolver(AError) of
+      vcaRetry:
+        ;
+      vcaSkip:
+        begin
+          AError := TVfsError.Ok;
+          ASkipped := True;
+          JobNoteSkipped(ACancel);
+          Exit(True);
+        end;
+    else
+      begin
+        AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(APath));
+        Exit(False);
+      end;
+    end;
+  end;
+end;
+
+// ASkipped reports that something under APath was left in place after the job's
+// error resolver said skip; the folders above it then stay as well.
 procedure DeleteTree(const APath: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var ADoneItems: Int64; ATotalItems: Int64;
-  var AError: TVfsError);
+  var AError: TVfsError; var ASkipped: Boolean);
 var
   Path: string;
   SR: TSearchRec;
   Code: Integer;
   Child: string;
   FirstErr, ChildErr: TVfsError;
-  HasError: Boolean;
+  HasError, NodeSkipped, ChildSkipped: Boolean;
 begin
+  NodeSkipped := False;
   if JobCancelRequested(ACancel) then
   begin
     AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(APath));
@@ -924,11 +963,16 @@ begin
           begin
             Child := SafeCombinePath(Path, SR.Name);
             ChildErr := TVfsError.Ok;
-            DeleteTree(Child, ACancel, AOnProgress, ADoneItems, ATotalItems, ChildErr);
+            ChildSkipped := False;
+            DeleteTree(Child, ACancel, AOnProgress, ADoneItems, ATotalItems, ChildErr,
+              ChildSkipped);
+            if ChildSkipped then
+              NodeSkipped := True;
             if ChildErr.Code <> vecOk then
             begin
-              // A refused node means the rest of the tree is refused as well:
-              // stopping here lets the administrator offer appear at once.
+              // Without a resolver a refused node means the rest of the tree is
+              // refused as well: stopping here lets the administrator offer
+              // appear at once.
               if (ChildErr.Code = vecCancelled) or (ChildErr.Code = vecAccessDenied) then
               begin
                 FirstErr := ChildErr;
@@ -947,11 +991,11 @@ begin
       finally
         System.SysUtils.FindClose(SR);
       end;
-      if not HasError then
+      if not HasError and not NodeSkipped then
       begin
-        if not PlatformDeleteNode(Path, True, FirstErr) then
+        if not DeleteNodeResolved(Path, True, ACancel, FirstErr, NodeSkipped) then
           HasError := True
-        else
+        else if not NodeSkipped then
         begin
           Inc(ADoneItems);
           QueueProgress(AOnProgress, ADoneItems, ATotalItems,
@@ -961,9 +1005,9 @@ begin
     end
     else if LocalPathIsFile(Path) or PlatformIsLinkNode(Path) then
     begin
-      if not PlatformDeleteNode(Path, False, FirstErr) then
+      if not DeleteNodeResolved(Path, False, ACancel, FirstErr, NodeSkipped) then
         HasError := True
-      else
+      else if not NodeSkipped then
       begin
         Inc(ADoneItems);
         QueueProgress(AOnProgress, ADoneItems, ATotalItems,
@@ -986,6 +1030,7 @@ begin
     end;
   end;
 
+  ASkipped := NodeSkipped;
   if HasError then
     AError := FirstErr
   else
@@ -1128,9 +1173,11 @@ begin
       Err: TVfsError;
       I: Integer;
       DoneItems, TotalItems: Int64;
+      TreeSkipped: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
+      TreeSkipped := False;
       try
         if JobCancelRequested(Cancel) then
           Err := TVfsError.Make(vecCancelled, 'Cancelled', URI)
@@ -1147,8 +1194,8 @@ begin
             TotalItems := EstimateTreeItemCount(Path, Cancel, OnProgress);
             if TotalItems <= 0 then
               TotalItems := 1;
-            DeleteTree(Path, Cancel, OnProgress, DoneItems, TotalItems, Err);
-            if Err.Code = vecOk then
+            DeleteTree(Path, Cancel, OnProgress, DoneItems, TotalItems, Err, TreeSkipped);
+            if (Err.Code = vecOk) and not TreeSkipped then
             begin
               I := 0;
               while (I < 5) and (LocalPathIsFile(Path) or LocalPathIsDirectory(Path)) do

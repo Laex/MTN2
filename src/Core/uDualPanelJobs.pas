@@ -93,11 +93,17 @@ type
     /// reads it to answer without a round trip to the UI thread.</summary>
     FWorkerRemembered: Integer;
     FWorkerErrSkipAll: Boolean;
+    /// <summary>Set when the administrator button answered a question asked
+    /// from inside a folder delete; the item is redone through the helper when
+    /// the worker reports back.</summary>
+    FWorkerElevate: Boolean;
     function MakeConflictResolver: TVfsConflictResolver;
     function MakeErrorResolver: TVfsErrorResolver;
     procedure NoteSkippedItem(const ASrcURI: string);
     procedure AskWorkerIOError(const AWait: IConflictWait; const AError: TVfsError);
     procedure ResolveWorkerIOError(AAction: TJobIOErrorAction);
+    procedure AskWorkerDeleteError(const AWait: IConflictWait; const AError: TVfsError);
+    procedure ResolveWorkerDeleteError(AAction: TJobDeleteFailAction);
     procedure AskWorkerConflict(const AWait: IConflictWait;
       const ASrcPath, ADstPath, ANewLine, AExistingLine: string);
     procedure ResolveWorkerConflict(AAction: TJobConflictAction;
@@ -444,13 +450,72 @@ begin
       TThread.Queue(nil,
         procedure
         begin
-          if Life.Alive then
-            AskWorkerIOError(Wait, Err)
+          if not Life.Alive then
+            Wait.Signal(vcaCancel, '')
+          else if FJob.Kind = pjkDelete then
+            AskWorkerDeleteError(Wait, Err)
           else
-            Wait.Signal(vcaCancel, '');
+            AskWorkerIOError(Wait, Err);
         end);
       Result := Wait.WaitForAnswer(Life, NewPath);
     end;
+end;
+
+procedure TPanelJobController.AskWorkerDeleteError(const AWait: IConflictWait;
+  const AError: TVfsError);
+begin
+  if (FJob.Phase <> pjpRunning) or
+     (Assigned(FJob.Cancel) and FJob.Cancel.IsCancellationRequested) then
+  begin
+    AWait.Signal(vcaCancel, '');
+    Exit;
+  end;
+  if FWorkerErrSkipAll then
+  begin
+    AWait.Signal(vcaSkip, '');
+    Exit;
+  end;
+  FConflictWait := AWait;
+  PromptDeleteAsk(AError.URI, AError, False);
+  if FJob.Phase <> pjpDeleteAsk then
+  begin
+    // No dialog to answer the question: stop instead of waiting forever.
+    FConflictWait := nil;
+    AWait.Signal(vcaCancel, '');
+  end;
+end;
+
+procedure TPanelJobController.ResolveWorkerDeleteError(AAction: TJobDeleteFailAction);
+var
+  Wait: IConflictWait;
+begin
+  Wait := FConflictWait;
+  FConflictWait := nil;
+  FJob.Phase := pjpRunning;
+  case AAction of
+    jdaPermanent, jdaRetry: Wait.Signal(vcaRetry, '');
+    jdaSkip: Wait.Signal(vcaSkip, '');
+    jdaSkipAll:
+      begin
+        FWorkerErrSkipAll := True;
+        FJob.SkipAllDeleteErrors := True;
+        Wait.Signal(vcaSkip, '');
+      end;
+    jdaElevate:
+      begin
+        // The helper redoes the whole item: the walk ends here and the item is
+        // started again through the helper once the worker reports back.
+        FWorkerElevate := True;
+        Wait.Signal(vcaCancel, '');
+      end;
+  else
+    begin
+      RequestCancel;
+      Wait.Signal(vcaCancel, '');
+    end;
+  end;
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
 end;
 
 // A source the user skipped as a whole counts as one skipped file; a skipped
@@ -1243,7 +1308,8 @@ begin
   // Skip mode must leave existing files alone without asking.
   if FJob.OverwriteMode = jomAsk then
     Token.ConflictResolver := MakeConflictResolver();
-  if FJob.Kind in [pjkCopy, pjkMove] then
+  FWorkerElevate := False;
+  if FJob.Kind in [pjkCopy, pjkMove, pjkDelete] then
     Token.ErrorResolver := MakeErrorResolver();
   FJob.Cancel := Token;
   ApplyThrottle;
@@ -1887,6 +1953,12 @@ begin
         FinishJob(False, TVfsError.Make(vecCancelled, 'Cancelled', SrcURI));
         Exit;
       end;
+      if FWorkerElevate then
+      begin
+        FWorkerElevate := False;
+        RunElevatedRemainder(Idx);
+        Exit;
+      end;
       if not ASuccess then
       begin
         if Assigned(FJob.Cancel) and FJob.Cancel.IsCancellationRequested then
@@ -2066,6 +2138,12 @@ var
 begin
   if FJob.Phase <> pjpDeleteAsk then
     Exit;
+  if Assigned(FConflictWait) then
+  begin
+    FJob.PendingErrorMessage := '';
+    ResolveWorkerDeleteError(AAction);
+    Exit;
+  end;
   SrcURI := FJob.PendingSrcURI;
   Idx := FJob.PendingIndex;
   FJob.PendingErrorMessage := '';

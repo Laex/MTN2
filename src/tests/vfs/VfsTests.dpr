@@ -17,6 +17,7 @@ uses
   TestCopySkipMerge in 'TestCopySkipMerge.pas',
   TestJobBackgroundNotice in 'TestJobBackgroundNotice.pas',
   TestCreateLink in 'TestCreateLink.pas',
+  TestDeleteErrorResolver in 'TestDeleteErrorResolver.pas',
   TestDeleteProgress in 'TestDeleteProgress.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',
