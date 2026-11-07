@@ -1,15 +1,15 @@
 {
   "id": "mtn.winsys",
-  "name": "Windows registry, processes and services",
+  "name": "Registry, processes and services",
   "version": "0.1.0",
   "abi": 9,
-  "platforms": ["windows"],
+  "platforms": ["windows", "linux"],
   "startup": true,
   "resources": 1,
   "schemes": ["reg", "proc", "svc"],
   "description": {
-    "en": "The Windows registry, the running processes and the services as folders of the panels (reg://, proc://, svc://). Registry keys are folders and values are files: F3 shows a value, F4 edits it, F7 makes a key, F8 deletes. A process is a file: F3 shows its details, F8 ends it. A service is a file colored by its state: F3 shows its settings; the Plugins menu starts, stops, restarts, pauses and resumes it. Adds Registry, Processes and Services to the Change Drive list (Alt+F1 / Alt+F2). Windows only.",
-    "ru": "Реестр Windows, запущенные процессы и службы как папки панелей (reg://, proc://, svc://). Разделы реестра – папки, значения – файлы: F3 показывает значение, F4 правит, F7 создаёт раздел, F8 удаляет. Процесс – файл: F3 показывает сведения, F8 завершает его. Служба – файл, окрашенный по состоянию: F3 показывает настройки; меню «Плагины» запускает, останавливает, перезапускает, приостанавливает и возобновляет её. Добавляет Реестр, Процессы и Службы в список дисков (Alt+F1 / Alt+F2). Только Windows."
+    "en": "The running processes and the services as folders of the panels (proc://, svc://), and on Windows the registry (reg://). Registry keys are folders and values are files: F3 shows a value, F4 edits it, F7 makes a key, F8 deletes. A process is a file: F3 shows its details, F8 ends it. A service is a file colored by its state: F3 shows its settings; the Plugins menu starts, stops and restarts it (on Windows also pauses and resumes it). On Linux processes come from /proc and services from systemd (systemctl). Adds Registry (Windows), Processes and Services to the Change Drive list (Alt+F1 / Alt+F2).",
+    "ru": "Запущенные процессы и службы как папки панелей (proc://, svc://), а в Windows ещё и реестр (reg://). Разделы реестра – папки, значения – файлы: F3 показывает значение, F4 правит, F7 создаёт раздел, F8 удаляет. Процесс – файл: F3 показывает сведения, F8 завершает его. Служба – файл, окрашенный по состоянию: F3 показывает настройки; меню «Плагины» запускает, останавливает и перезапускает её (в Windows ещё приостанавливает и возобновляет). В Linux процессы берутся из /proc, службы – из systemd (systemctl). Добавляет Реестр (Windows), Процессы и Службы в список дисков (Alt+F1 / Alt+F2)."
   },
   "author": "MTN2",
   "help": "help.md"

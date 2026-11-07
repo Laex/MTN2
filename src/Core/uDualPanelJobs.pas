@@ -2493,8 +2493,8 @@ begin
       CapTotal := 0;
       LastProgTick := 0;
       try
-        Src := TFileStream.Create(ASrcPath, fmOpenRead or fmShareDenyWrite);
-        Dst := TFileStream.Create(ADstPath, fmOpenWrite or fmShareDenyWrite);
+        Src := TFileStream.Create(WinApiPath(ASrcPath), fmOpenRead or fmShareDenyWrite);
+        Dst := TFileStream.Create(WinApiPath(ADstPath), fmOpenWrite or fmShareDenyWrite);
         Dst.Seek(0, soEnd);
         Total := Src.Size;
         SetLength(Buf, 64 * 1024);

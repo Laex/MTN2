@@ -20,6 +20,8 @@ type
     [Test] procedure TestLeaveSequenceUndoesEveryEnterMode;
     [Test] procedure TestLeaveSequenceEndsOnPrimaryScreen;
     [Test] procedure TestMouseSequenceSwitchesReporting;
+    [Test] procedure TestProgressSequenceCarriesStateAndClampedPercent;
+    [Test] procedure TestProgressIsSentOnlyToTerminalsThatShowIt;
   end;
 
 implementation
@@ -231,6 +233,28 @@ begin
   Assert.IsTrue(Pos(#27'[?25h', Leave) > 0, 'cursor is shown again');
   Assert.IsTrue(Pos(#27'[?1049l', Leave) > Pos(#27'[?25h', Leave),
     'the primary screen is restored last');
+end;
+
+procedure TTestAnsiFrame.TestProgressSequenceCarriesStateAndClampedPercent;
+begin
+  Assert.AreEqual(#27']9;4;1;42'#27'\', AnsiProgressSequence(apsNormal, 42));
+  Assert.AreEqual(#27']9;4;1;100'#27'\', AnsiProgressSequence(apsNormal, 250));
+  Assert.AreEqual(#27']9;4;2;0'#27'\', AnsiProgressSequence(apsError, -5));
+  Assert.AreEqual(#27']9;4;3;0'#27'\', AnsiProgressSequence(apsIndeterminate, 60));
+  Assert.AreEqual(#27']9;4;4;30'#27'\', AnsiProgressSequence(apsPaused, 30));
+  Assert.AreEqual(#27']9;4;0;0'#27'\', AnsiProgressSequence(apsNone, 80));
+end;
+
+procedure TTestAnsiFrame.TestProgressIsSentOnlyToTerminalsThatShowIt;
+begin
+  Assert.IsTrue(TerminalShowsProgress('', '', True, False), 'Windows Terminal');
+  Assert.IsTrue(TerminalShowsProgress('', '', False, True), 'ConEmu');
+  Assert.IsTrue(TerminalShowsProgress('ghostty', '', False, False), 'Ghostty');
+  Assert.IsTrue(TerminalShowsProgress('WezTerm', '', False, False), 'WezTerm');
+  Assert.IsTrue(TerminalShowsProgress('', '8000', False, False), 'VTE 0.80');
+  Assert.IsFalse(TerminalShowsProgress('', '7600', False, False), 'older VTE');
+  Assert.IsFalse(TerminalShowsProgress('iTerm.app', '', False, False), 'OSC 9 is a notification there');
+  Assert.IsFalse(TerminalShowsProgress('', '', False, False), 'unknown terminal');
 end;
 
 initialization

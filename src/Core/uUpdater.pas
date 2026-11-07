@@ -428,6 +428,12 @@ var
 begin
   AError := '';
   Aborted := False;
+  // A package is never fetched over a plain-text or non-HTTP scheme.
+  if not ARelease.AssetUrl.StartsWith('https://', True) then
+  begin
+    AError := 'insecure download URL';
+    Exit(False);
+  end;
   ForceDirectories(ExtractFileDir(ADestFile));
   Http := NewHttpClient(60000);
   try

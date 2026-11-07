@@ -1847,7 +1847,7 @@ begin
   AZip.Read(AIndex, Local, LH);
   try
     try
-      OutFS := TFileStream.Create(ADestPath, fmCreate);
+      OutFS := TFileStream.Create(WinApiPath(ADestPath), fmCreate);
     except
       on E: Exception do
       begin
@@ -1934,6 +1934,9 @@ begin
       AError := TVfsError.Make(vecCancelled, 'Cancelled', '');
       Exit;
     end;
+    // An entry such as "dir/../../x" would otherwise leave the destination.
+    if IsUnsafeZipName(Names[I]) then
+      Continue;
     Name := NormZipName(Names[I]);
     if not ZipRestAfterPrefix(Name, Pref, Rest) then
       Continue;

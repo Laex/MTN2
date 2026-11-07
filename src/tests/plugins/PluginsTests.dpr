@@ -48,6 +48,7 @@ uses
   TestGitStatus in 'TestGitStatus.pas',
   TestWinSysFormat in 'TestWinSysFormat.pas',
   TestWinSysSystem in 'TestWinSysSystem.pas',
+  TestWinSysLinux in 'TestWinSysLinux.pas',
   TestDockerFormat in 'TestDockerFormat.pas',
   TestDockerVfs in 'TestDockerVfs.pas',
   TestMetaFormat in 'TestMetaFormat.pas',

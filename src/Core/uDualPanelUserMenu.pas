@@ -28,7 +28,7 @@ type
   TUserMenuShowProc = reference to procedure(ARoot: TUserMenuItem;
     const ATitle: string);
   TUserMenuFolderFn = reference to function: string;
-  TUserMenuSource = (umsMain, umsFolder);
+  TUserMenuSource = (umsMain, umsFolder, umsTransient);
   TUserMenuChangedProc = reference to procedure(ASelectIndex: Integer);
 
   TUserMenuDialogController = class
@@ -85,6 +85,9 @@ type
     /// when the active folder (or an ancestor) has one, else the main menu.
     /// The previous tree is freed; the popup is re-pointed at the new one.</summary>
     procedure OpenMenu;
+    /// <summary>Shows a list that is not a saved menu ("Open with"): ARoot is
+    /// taken over, its commands start detached programs and it cannot be edited.</summary>
+    procedure ShowTransient(ARoot: TUserMenuItem; const ATitle: string);
     /// <summary>The popup's TUserMenuActionEvent.</summary>
     procedure HandleMenuAction(AAction: TUserMenuAction; AParent: TUserMenuItem;
       AIndex: Integer);
@@ -104,7 +107,7 @@ type
 implementation
 
 uses
-  uDialogResources;
+  uDialogResources, uShellAssoc;
 
 function KindToIndex(AKind: TUserMenuKind): Integer;
 begin
@@ -156,6 +159,8 @@ end;
 
 procedure TUserMenuDialogController.Save;
 begin
+  if FSource = umsTransient then
+    Exit;
   SaveUserMenu(FFilePath, FRoot);
 end;
 
@@ -180,6 +185,19 @@ begin
     ShowMenu(umsFolder)
   else
     ShowMenu(umsMain);
+end;
+
+procedure TUserMenuDialogController.ShowTransient(ARoot: TUserMenuItem;
+  const ATitle: string);
+begin
+  FreeAndNil(FRoot);
+  FEditParent := nil;
+  FSource := umsTransient;
+  FFilePath := '';
+  FRoot := ARoot;
+  if Assigned(FShowMenu) then
+    FShowMenu(FRoot, ATitle);
+  Notify;
 end;
 
 procedure TUserMenuDialogController.ShowMenu(ASource: TUserMenuSource);
@@ -222,6 +240,13 @@ procedure TUserMenuDialogController.HandleMenuAction(AAction: TUserMenuAction;
 begin
   if not Assigned(AParent) then
     Exit;
+  if FSource = umsTransient then
+  begin
+    if (AAction = umaExecute) and (AIndex >= 0) and (AIndex < AParent.Items.Count) and
+       (AParent.Items[AIndex].Kind = umkCommand) then
+      ShellRunDetached(AParent.Items[AIndex].Command, ActiveFolder);
+    Exit;
+  end;
   case AAction of
     umaExecute:
       if (AIndex >= 0) and (AIndex < AParent.Items.Count) then

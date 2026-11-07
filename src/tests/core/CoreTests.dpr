@@ -10,6 +10,7 @@ program CoreTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestAnsiFrame in 'TestAnsiFrame.pas',
+  TestOpenWith in 'TestOpenWith.pas',
   TestCharWidth in 'TestCharWidth.pas',
   TestChineseStrings in 'TestChineseStrings.pas',
   TestGermanStrings in 'TestGermanStrings.pas',

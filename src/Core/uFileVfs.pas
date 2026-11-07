@@ -1388,10 +1388,12 @@ begin
       Err: TVfsError;
       DoneBytes, TotalBytes: Int64;
       SameVolume, WasDirectory, AnySkipped, MergeIntoDir, DestWasDir: Boolean;
+      CaseOnly: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
       AnySkipped := False;
+      CaseOnly := False;
       try
         if JobCancelRequested(Cancel) then
           Err := TVfsError.Make(vecCancelled, 'Cancelled', FromURI)
@@ -1399,15 +1401,21 @@ begin
         begin
           Src := FileUriToPath(FromURI);
           Dst := FileUriToPath(ToURI);
+          // Windows names that differ only in letter case are one item: the
+          // rename is a plain in-place move, not a clash with an existing
+          // destination.
+{$IFDEF MSWINDOWS}
+          CaseOnly := SameText(Src, Dst) and (Src <> Dst);
+{$ENDIF}
           if (Src = '') or (Dst = '') then
             Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', FromURI)
           else if not (TFile.Exists(WinApiPath(Src)) or TDirectory.Exists(WinApiPath(Src))) then
             Err := TVfsError.Make(vecNotFound, 'Source not found', FromURI)
-          else if TFile.Exists(WinApiPath(Dst)) and not Overwrite then
+          else if TFile.Exists(WinApiPath(Dst)) and not Overwrite and not CaseOnly then
             // An existing file is replaced only when overwrite is on, and then
             // by the move or copy below - not deleted before that succeeds.
             Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
-          else if TDirectory.Exists(WinApiPath(Dst)) and
+          else if TDirectory.Exists(WinApiPath(Dst)) and not CaseOnly and
             not TDirectory.Exists(WinApiPath(Src)) and not Overwrite then
             Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI);
           // Src and Dst both directories, Dst already exists: not treated as a
@@ -1416,8 +1424,8 @@ begin
           // folder renamed, and a non-empty Dst takes the copy-and-delete
           // path below: CopyTree merges into the existing folder per file,
           // honoring AOverwrite/skip like Copy does.
-          MergeIntoDir := (Err.Code = vecOk) and TDirectory.Exists(WinApiPath(Dst)) and
-            TDirectory.Exists(WinApiPath(Src));
+          MergeIntoDir := (Err.Code = vecOk) and not CaseOnly and
+            TDirectory.Exists(WinApiPath(Dst)) and TDirectory.Exists(WinApiPath(Src));
           if MergeIntoDir and TDirectory.IsEmpty(WinApiPath(Dst)) then
           begin
             try
@@ -1452,13 +1460,16 @@ begin
             begin
               QueueProgress(OnProgress, 0, 1, SafeFileName(Src), 0, 1, Src, Dst);
               try
-                if PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) or
+                if CaseOnly or PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) or
                   ((not WasDirectory) and TFile.Exists(WinApiPath(Dst))) then
                 begin
-                  // TDirectory.Move and TFile.Move cut the space off such a name.
+                  // TDirectory.Move and TFile.Move cut the space off such a name
+                  // and refuse an existing destination, which a case-only rename
+                  // always has.
                   // Replace keeps the previous file when the rename itself fails.
                   if not PlatformMoveFile(WinApiPath(Src), WinApiPath(Dst),
-                    (not WasDirectory) and TFile.Exists(WinApiPath(Dst)), MoveMsg) then
+                    (not WasDirectory) and not CaseOnly and
+                    TFile.Exists(WinApiPath(Dst)), MoveMsg) then
                     raise EInOutError.Create(MoveMsg);
                 end
                 else if WasDirectory then
@@ -1470,7 +1481,9 @@ begin
                 on E: Exception do
                   Err := VfsErrorFromException(E, FromURI);
               end;
-              if Err.Code = vecOk then
+              // The source name still resolves to the renamed item, so the
+              // "source is gone" check does not apply to a case-only rename.
+              if (Err.Code = vecOk) and not CaseOnly then
                 VerifyMoveResult(Src, Dst, WasDirectory, Err);
             end
             else

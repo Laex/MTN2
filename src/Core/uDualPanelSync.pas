@@ -182,15 +182,15 @@ begin
   if not TFile.Exists(ALeft) or not TFile.Exists(ARight) then
     Exit;
   try
-    SizeL := TFile.GetSize(ALeft);
-    SizeR := TFile.GetSize(ARight);
+    SizeL := TFile.GetSize(WinApiPath(ALeft));
+    SizeR := TFile.GetSize(WinApiPath(ARight));
     if SizeL <> SizeR then
       Exit;
     if SizeL = 0 then
       Exit(True);
-    SL := TFileStream.Create(ALeft, fmOpenRead or fmShareDenyNone);
+    SL := TFileStream.Create(WinApiPath(ALeft), fmOpenRead or fmShareDenyNone);
     try
-      SR := TFileStream.Create(ARight, fmOpenRead or fmShareDenyNone);
+      SR := TFileStream.Create(WinApiPath(ARight), fmOpenRead or fmShareDenyNone);
       try
         SetLength(BL, cChunk);
         SetLength(BR, cChunk);

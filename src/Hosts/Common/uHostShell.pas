@@ -68,12 +68,14 @@ type
     procedure HandleMouseUp(const AEvent: TTermEvent);
     procedure HandleWheel(const AEvent: TTermEvent);
     procedure HandlePaste(const AText: string);
+    procedure HandleDrop(const AEvent: TTermEvent);
     // Commands of the dual panel window.
     procedure DualPanelContentChanged(Sender: TObject);
     procedure DualPanelQuitRequest(Sender: TObject);
     procedure DualPanelOpenUpdates(Sender: TObject);
     procedure UpdateTimerTick(Sender: TObject);
     procedure DualPanelOpenViewer(const AURI: string);
+    procedure DualPanelShowProperties(const APaths: TArray<string>);
     procedure DualPanelOpenEditor(const AURI: string);
     procedure DualPanelRunCommand(const ACommand, AWorkingDir: string);
     procedure DualPanelRunInBackground(Sender: TObject);
@@ -169,7 +171,7 @@ uses
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
   uToast, uSharkSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
-  uOverlayRenderer, uKeyRouting;
+  uOverlayRenderer, uKeyRouting, uShellAssoc;
 
 const
   cDefaultThemeFallback = 'NDN';
@@ -630,6 +632,7 @@ begin
   FDualPanel := TDualPanelWindow.Create(FTheme, FMdi.AllocId);
   FDualPanel.OnContentChanged := DualPanelContentChanged;
   FDualPanel.OnOpenViewer := DualPanelOpenViewer;
+  FDualPanel.OnShowProperties := DualPanelShowProperties;
   FDualPanel.OnOpenEditor := DualPanelOpenEditor;
   FDualPanel.OnQuitRequest := DualPanelQuitRequest;
   FDualPanel.OnRunCommand := DualPanelRunCommand;
@@ -805,6 +808,14 @@ begin
   if Assigned(FDualPanel) then
     FDualPanel.OnOpenUpdates := nil;
   FreeAndNil(FUpdater);
+end;
+
+procedure THostShell.DualPanelShowProperties(const APaths: TArray<string>);
+begin
+  // Without a file manager that offers a Properties window the built-in
+  // attributes dialog takes over.
+  if not ShellShowProperties(APaths, 0) then
+    FDualPanel.ShowAttributesDialog;
 end;
 
 procedure THostShell.DualPanelOpenViewer(const AURI: string);
@@ -1222,6 +1233,33 @@ begin
   Recompose;
 end;
 
+procedure THostShell.HandleDrop(const AEvent: TTermEvent);
+var
+  Paths: TArray<string>;
+  Typed, Path: string;
+begin
+  Paths := AEvent.Text.Split([#10], TStringSplitOptions.ExcludeEmpty);
+  // Shift moves, as in a panel drag; without it the files are copied.
+  if FDualPanel.AcceptExternalDrop(Paths, AEvent.Col - FDualPanel.Area.Left,
+       AEvent.Row - FDualPanel.Area.Top, ssShift in AEvent.Shift) then
+  begin
+    Recompose;
+    Exit;
+  end;
+  // Elsewhere the paths are typed like a paste, quoted when they have spaces.
+  Typed := '';
+  for Path in Paths do
+  begin
+    if Typed <> '' then
+      Typed := Typed + ' ';
+    if Pos(' ', Path) > 0 then
+      Typed := Typed + '"' + Path + '"'
+    else
+      Typed := Typed + Path;
+  end;
+  HandlePaste(Typed);
+end;
+
 procedure THostShell.HandlePaste(const AText: string);
 var
   I: Integer;
@@ -1458,6 +1496,7 @@ begin
         Recompose;
       end;
     tekPaste: HandlePaste(AEvent.Text);
+    tekDrop: HandleDrop(AEvent);
     tekModifiers: HandleModifiers(AEvent);
   end;
 end;

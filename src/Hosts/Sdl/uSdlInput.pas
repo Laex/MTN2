@@ -22,6 +22,8 @@ type
     FMods: Integer;
     FCol, FRow: Integer;
     FHaveCell: Boolean;
+    FInDrop: Boolean;
+    FDropBatch: string;
     procedure CellOf(AX, AY: Integer; out ACol, ARow: Integer);
     procedure AddKey(const AEvents: TList<TTermEvent>; AKey: Word; AChar: Char;
       AShift: TShiftState);
@@ -33,6 +35,7 @@ type
       const AEvents: TList<TTermEvent>);
     procedure MapWheel(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
     procedure MapDrop(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
+    procedure FlushDrop(const AEvents: TList<TTermEvent>);
   public
     constructor Create;
     /// <summary>Size of a character cell in the pixels of the mouse events.</summary>
@@ -366,21 +369,36 @@ begin
   end;
 end;
 
+procedure TSdlInputMapper.FlushDrop(const AEvents: TList<TTermEvent>);
+var
+  Ev: TTermEvent;
+begin
+  if FDropBatch = '' then
+    Exit;
+  Ev := Default(TTermEvent);
+  Ev.Kind := tekDrop;
+  Ev.Text := FDropBatch;
+  Ev.Shift := SdlModsToShift(FMods);
+  Ev.Col := FCol;
+  Ev.Row := FRow;
+  FDropBatch := '';
+  AEvents.Add(Ev);
+end;
+
 procedure TSdlInputMapper.MapDrop(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
 var
   Path: string;
-  Ev: TTermEvent;
 begin
   Path := SdlEventDropFile(E);
   if Path = '' then
     Exit;
-  // A dropped file is typed like a pasted path, quoted when it has spaces.
-  if Pos(' ', Path) > 0 then
-    Path := '"' + Path + '"';
-  Ev := Default(TTermEvent);
-  Ev.Kind := tekPaste;
-  Ev.Text := Path;
-  AEvents.Add(Ev);
+  if FDropBatch <> '' then
+    FDropBatch := FDropBatch + #10;
+  FDropBatch := FDropBatch + Path;
+  // Between SDL_DROPBEGIN and SDL_DROPCOMPLETE the files are one drop; a
+  // lone file event stands for a drop of its own.
+  if not FInDrop then
+    FlushDrop(AEvents);
 end;
 
 procedure TSdlInputMapper.Translate(const E: TSDLEvent; const AEvents: TList<TTermEvent>);
@@ -394,6 +412,16 @@ begin
     SDL_MOUSEBUTTONUP: MapButton(E, False, AEvents);
     SDL_MOUSEWHEEL: MapWheel(E, AEvents);
     SDL_DROPFILE: MapDrop(E, AEvents);
+    SDL_DROPBEGIN:
+      begin
+        FInDrop := True;
+        FDropBatch := '';
+      end;
+    SDL_DROPCOMPLETE:
+      begin
+        FInDrop := False;
+        FlushDrop(AEvents);
+      end;
   end;
 end;
 

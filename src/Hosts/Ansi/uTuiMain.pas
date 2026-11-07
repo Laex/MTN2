@@ -16,7 +16,7 @@ uses
   uTerminalTypes, uTermInput, uAnsiFrame, uAnsiTerm, uAnsiClipboard, uHostShell,
   uCoreTimer, uPlatformInfo, uUpdater, uConfigLocation, uResourceAccess, uSelfCheck,
   uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry,
-  uNotice, uDualPanelInput, System.UITypes;
+  uNotice, uDualPanelInput, uDualPanelJobRules, System.UITypes;
 
 const
   cEscapeWaitMs = 30;
@@ -167,6 +167,23 @@ begin
     GetEnvironmentVariable('TERM'));
 end;
 
+// The terminal progress sequence for the jobs that run now.
+function JobProgressSequence(AShell: THostShell): string;
+var
+  Percent: Integer;
+  State: TAnsiProgressState;
+begin
+  case JobTaskbarProgress(AShell.DualPanel.JobStates, Percent) of
+    jtsNormal: State := apsNormal;
+    jtsIndeterminate: State := apsIndeterminate;
+    jtsPaused: State := apsPaused;
+    jtsError: State := apsError;
+  else
+    State := apsNone;
+  end;
+  Result := AnsiProgressSequence(State, Percent);
+end;
+
 function RunTerminal(const AOptions: TTuiOptions): Integer;
 var
   Term: TAnsiTerm;
@@ -179,10 +196,16 @@ var
   E: TTermEvent;
   LastInput, LastFrame, Now64: UInt64;
   Bytes: TBytes;
-  Title, ShownTitle: string;
-  MouseOn, TipShown: Boolean;
+  Title, ShownTitle, Progress, ShownProgress: string;
+  MouseOn, TipShown, ProgressOn: Boolean;
 begin
   Result := 0;
+  ShownProgress := '';
+  ProgressOn := (GetEnvironmentVariable('MTN2_NO_PROGRESS') = '') and
+    TerminalShowsProgress(GetEnvironmentVariable('TERM_PROGRAM'),
+      GetEnvironmentVariable('VTE_VERSION'),
+      GetEnvironmentVariable('WT_SESSION') <> '',
+      GetEnvironmentVariable('ConEmuPID') <> '');
   GFontSettingsApply := False;
   Term := TAnsiTerm.Create;
   Parser := TTermInputParser.Create;
@@ -308,6 +331,15 @@ begin
             ShownTitle := Title;
             Term.WriteText(#27']2;' + Title + #7);
           end;
+          if ProgressOn then
+          begin
+            Progress := JobProgressSequence(Shell);
+            if Progress <> ShownProgress then
+            begin
+              ShownProgress := Progress;
+              Term.WriteText(Progress);
+            end;
+          end;
         end;
       end;
       Shell.PersistSession;
@@ -322,6 +354,8 @@ begin
         end;
         Shell.Free;
       finally
+        if ShownProgress <> '' then
+          Term.WriteText(AnsiProgressSequence(apsNone, 0));
         Term.WriteText(#27'[>4;0m' + AnsiLeaveSequence + #27'[23;2t');
         Term.LeaveRaw;
       end;

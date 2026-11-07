@@ -29,7 +29,8 @@ type
     [Test] procedure ButtonsMapToMouseButtons;
     [Test] procedure WheelSendsOneEventPerStep;
     [Test] procedure FlippedWheelReverses;
-    [Test] procedure DroppedFileIsPastedAsPath;
+    [Test] procedure DroppedFileBecomesDrop;
+    [Test] procedure FilesBetweenDropBeginAndCompleteAreOneDrop;
     [Test] procedure ModifierMaskBecomesShiftState;
     [Test] procedure ReleasingAModifierReportsWhatIsStillHeld;
   end;
@@ -452,7 +453,52 @@ procedure NoFree(AMemory: Pointer);
 begin
 end;
 
-procedure TTestSdlInput.DroppedFileIsPastedAsPath;
+procedure TTestSdlInput.FilesBetweenDropBeginAndCompleteAreOneDrop;
+var
+  M: TSdlInputMapper;
+  E: TSDLEvent;
+  Ev: TArray<TTermEvent>;
+  A, B: UTF8String;
+  Address: NativeUInt;
+
+  procedure DropFile(const AName: UTF8String);
+  var
+    K: Integer;
+  begin
+    E := Default(TSDLEvent);
+    SdlEventSetU32(E, 0, SDL_DROPFILE);
+    Address := NativeUInt(PAnsiChar(AName));
+    for K := 0 to 7 do
+      E.Raw[8 + K] := Byte(Address shr (8 * K));
+    Ev := Translate(M, E);
+  end;
+
+begin
+  M := NewMapper;
+  SdlDropFree := NoFree;
+  try
+    E := Default(TSDLEvent);
+    SdlEventSetU32(E, 0, SDL_DROPBEGIN);
+    Assert.AreEqual(0, Integer(Length(Translate(M, E))));
+    A := UTF8String('/tmp/a.txt');
+    B := UTF8String('/tmp/b.txt');
+    DropFile(A);
+    Assert.AreEqual(0, Integer(Length(Ev)), 'a batch waits for its end');
+    DropFile(B);
+    Assert.AreEqual(0, Integer(Length(Ev)));
+    E := Default(TSDLEvent);
+    SdlEventSetU32(E, 0, SDL_DROPCOMPLETE);
+    Ev := Translate(M, E);
+    Assert.AreEqual(1, Integer(Length(Ev)));
+    Assert.AreEqual(Integer(tekDrop), Integer(Ev[0].Kind));
+    Assert.AreEqual('/tmp/a.txt'#10'/tmp/b.txt', Ev[0].Text);
+  finally
+    SdlDropFree := nil;
+    M.Free;
+  end;
+end;
+
+procedure TTestSdlInput.DroppedFileBecomesDrop;
 var
   M: TSdlInputMapper;
   E: TSDLEvent;
@@ -472,8 +518,8 @@ begin
       E.Raw[8 + I] := Byte(Address shr (8 * I));
     Ev := Translate(M, E);
     Assert.AreEqual(1, Integer(Length(Ev)));
-    Assert.AreEqual(Integer(tekPaste), Integer(Ev[0].Kind));
-    Assert.AreEqual('"/tmp/my file.txt"', Ev[0].Text, 'a name with a space is quoted');
+    Assert.AreEqual(Integer(tekDrop), Integer(Ev[0].Kind));
+    Assert.AreEqual('/tmp/my file.txt', Ev[0].Text);
     Name := UTF8String('/tmp/plain.txt');
     Address := NativeUInt(PAnsiChar(Name));
     for I := 0 to 7 do

@@ -26,6 +26,8 @@ type
     [Test] procedure TestOverwriteReplacesExisting;
     [Test] procedure TestMoveOntoEmptyFolder;
     [Test] procedure TestMoveMergesIntoExistingFolder;
+    [Test] procedure TestRenameOnlyChangingCase;
+    [Test] procedure TestFolderExtractSkipsEntriesLeavingTheDestination;
     [Test] procedure TestSkipNestedDirAlreadyExists;
     [Test] procedure TestJobLevelSkipMergesNested;
     [Test] procedure TestAskModeSkipOnFolderMerges;
@@ -247,6 +249,72 @@ begin
   Assert.AreEqual('src-a', ReadTextFile(TPath.Combine(Dst, 'a.txt')));
   Assert.AreEqual('src-c', ReadTextFile(TPath.Combine(Dst, 'sub', 'c.txt')));
   Assert.IsFalse(TDirectory.Exists(Src), 'source folder is gone after the move');
+end;
+
+procedure TestRenameOnlyChangingCase;
+var
+  Src, Dst, SrcDir, DstDir: string;
+  Err: TVfsError;
+  Names: TArray<string>;
+begin
+  Src := TPath.Combine(GRoot, 'case_file.txt');
+  Dst := TPath.Combine(GRoot, 'CASE_FILE.txt');
+  WriteTextFile(Src, 'content');
+  Assert.IsTrue(RunMove(Src, Dst, False, Err), 'case-only file rename succeeds');
+  Names := TDirectory.GetFiles(GRoot, 'case_file.txt');
+  Assert.AreEqual(1, Integer(Length(Names)));
+  Assert.AreEqual('CASE_FILE.txt', ExtractFileName(Names[0]), 'file shows the new case');
+  Assert.AreEqual('content', ReadTextFile(Dst));
+
+  SrcDir := TPath.Combine(GRoot, 'case_folder');
+  DstDir := TPath.Combine(GRoot, 'CASE_FOLDER');
+  TDirectory.CreateDirectory(SrcDir);
+  Assert.IsTrue(RunMove(SrcDir, DstDir, False, Err), 'case-only rename of an empty folder succeeds');
+  Names := TDirectory.GetDirectories(GRoot, 'case_folder');
+  Assert.AreEqual(1, Integer(Length(Names)), 'the folder is not deleted');
+  Assert.AreEqual('CASE_FOLDER', ExtractFileName(Names[0]), 'folder shows the new case');
+end;
+
+procedure TestFolderExtractSkipsEntriesLeavingTheDestination;
+var
+  ZipPath, Dst, Escaped: string;
+  Zip: TZipFile;
+  Bytes: TBytes;
+  Vfs: IVirtualFileSystem;
+  Ev: TEvent;
+  Ok: Boolean;
+begin
+  ZipPath := TPath.Combine(GRoot, 'slip.zip');
+  Dst := TPath.Combine(GRoot, 'slip_out');
+  Escaped := TPath.Combine(GRoot, 'slip_escaped.txt');
+  TDirectory.CreateDirectory(Dst);
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmWrite);
+    Bytes := TEncoding.ASCII.GetBytes('fine');
+    Zip.Add(Bytes, 'dir/ok.txt');
+    Bytes := TEncoding.ASCII.GetBytes('evil');
+    Zip.Add(Bytes, 'dir/../slip_escaped.txt');
+  finally
+    Zip.Free;
+  end;
+  Vfs := CreateDefaultVfs;
+  Ev := TEvent.Create(nil, True, False, '');
+  try
+    Ok := False;
+    Vfs.CopyAsync(PathToFileUri(ZipPath) + '!/dir', PathToFileUri(Dst), nil, nil,
+      procedure(const ASuccess: Boolean; const AErr: TVfsError)
+      begin
+        Ok := ASuccess;
+        Ev.SetEvent;
+      end, True, False);
+    Assert.IsTrue(WaitEvent(Ev), 'extract timed out');
+  finally
+    Ev.Free;
+  end;
+  Assert.IsTrue(Ok, 'the safe entry is extracted');
+  Assert.IsTrue(TFile.Exists(TPath.Combine(Dst, 'ok.txt')), 'safe entry extracted');
+  Assert.IsFalse(TFile.Exists(Escaped), 'entry with .. segments is not written outside');
 end;
 
 procedure TestMoveMergesIntoExistingFolder;
@@ -786,6 +854,16 @@ end;
 procedure TTestCopySkipMerge.TestMoveMergesIntoExistingFolder;
 begin
   TestCopySkipMerge.TestMoveMergesIntoExistingFolder;
+end;
+
+procedure TTestCopySkipMerge.TestRenameOnlyChangingCase;
+begin
+  TestCopySkipMerge.TestRenameOnlyChangingCase;
+end;
+
+procedure TTestCopySkipMerge.TestFolderExtractSkipsEntriesLeavingTheDestination;
+begin
+  TestCopySkipMerge.TestFolderExtractSkipsEntriesLeavingTheDestination;
 end;
 
 procedure TTestCopySkipMerge.TestSkipNestedDirAlreadyExists;

@@ -17,7 +17,8 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Generics.Collections;
 
 type
-  TTermEventKind = (tekKey, tekMouse, tekPaste, tekCapabilities, tekFocus, tekModifiers);
+  TTermEventKind = (tekKey, tekMouse, tekPaste, tekCapabilities, tekFocus, tekModifiers,
+    tekDrop);
 
   TTermMouseAction = (tmaPress, tmaRelease, tmaMove, tmaWheelUp, tmaWheelDown,
     tmaWheelLeft, tmaWheelRight);
@@ -36,7 +37,8 @@ type
     Row: Integer;
     Button: TMouseButton;
     MouseAction: TTermMouseAction;
-    /// <summary>tekPaste: the pasted text.</summary>
+    /// <summary>tekPaste: the pasted text. tekDrop: the dropped local paths,
+    /// one per line; Col and Row are the last known pointer cell.</summary>
     Text: string;
     /// <summary>tekCapabilities: the terminal answered the kitty keyboard
     /// query (True) or only the device attributes query (False).</summary>

@@ -1348,10 +1348,10 @@ var
   Sig: array[0..3] of Byte;
 begin
   Result := False;
-  if not TFile.Exists(APath) then
+  if not TFile.Exists(WinApiPath(APath)) then
     Exit;
   try
-    S := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    S := TFileStream.Create(WinApiPath(APath), fmOpenRead or fmShareDenyNone);
     try
       if S.Read(Sig, SizeOf(Sig)) <> SizeOf(Sig) then
         Exit;
@@ -1374,10 +1374,10 @@ begin
   if SameText(ExtractFileExt(APath), '.7z') then
     Exit(True);
   Result := False;
-  if (APath = '') or SameText(ExtractFileExt(APath), '.zip') or not TFile.Exists(APath) then
+  if (APath = '') or SameText(ExtractFileExt(APath), '.zip') or not TFile.Exists(WinApiPath(APath)) then
     Exit;
   try
-    S := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    S := TFileStream.Create(WinApiPath(APath), fmOpenRead or fmShareDenyNone);
     try
       if S.Read(Sig, SizeOf(Sig)) <> SizeOf(Sig) then
         Exit;

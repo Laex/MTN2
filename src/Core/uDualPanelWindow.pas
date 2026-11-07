@@ -25,6 +25,7 @@ uses
   uColorCodingEditHelpers, uDualPanelColorCoding, uDualPanelKeymapDialog, uDualPanelFolderHotlist,
   uDualPanelWorkspaceLibrary, uWorkspaceLibrary,
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
+  uOpenWith,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
@@ -55,8 +56,9 @@ type
     FLeftWatch: TDirectoryWatcher;
     FRightWatch: TDirectoryWatcher;
     FWatchPending: array[TPanelSide] of Boolean;
-    /// <summary>The folder each panel last listed without error; a later
-    /// "not found" for the same folder means it was removed.</summary>
+    /// <summary>The folder each panel last listed without error, or was sent
+    /// to as a drive's remembered folder; a later "not found" for the same
+    /// folder makes the panel climb to an existing parent.</summary>
     FListedOkUri: array[TPanelSide] of string;
     FQuickSearchActive: Boolean;
     // Opened by the Quick search action, with no Alt held: it lingers like a
@@ -635,6 +637,8 @@ type
     procedure GoToParent;
     function HostResolveDriveTarget(ASide: TPanelSide; ALetter: Char;
       const ADefaultUri: string): string;
+    function DriveTargetUri(ASide: TPanelSide; ALetter: Char;
+      const ADefaultUri: string): string;
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
@@ -819,6 +823,7 @@ type
     /// (else the cursor item, or the folder itself on ".."), at the cursor
     /// row; local files and folders only.</summary>
     procedure ShowShellContextMenu;
+    procedure ShowOpenWithMenu(const APaths: TArray<string>);
     procedure ApplySetAttributes(const APaths: TArray<string>; const APlan: TFileAttrPlan);
     procedure BeginCompareFiles;
     procedure BeginCompareGroup(const ALeftRows, ARightRows: TPanelRows;
@@ -1225,6 +1230,9 @@ type
     /// <summary>Re-sorts a panel sorted by a plugin column after the plugin
     /// delivered values for its folder.</summary>
     procedure ResortPluginColumns;
+    /// <summary>Opens the built-in attributes dialog for the active selection;
+    /// the fallback of hosts without a system Properties window.</summary>
+    procedure ShowAttributesDialog;
     /// <summary>Ends the running Shift+navigation selection (Shift released).</summary>
     procedure EndShiftSelect;
     /// <summary>Opens ADecl for a caller outside the panel window. False (and
@@ -1392,6 +1400,11 @@ type
     procedure SetDropHighlight(AActive: Boolean; ASide: TPanelSide = psLeft;
       const ADestURI: string = ''; AHighlightRow: Integer = -1);
     /// <summary>Accept dropped local paths into DestURI (Copy or Move).</summary>
+    /// <summary>Files dropped from another program (a host without its own
+    /// drop): into the folder under the pointer, else the active folder.
+    /// False when the panels cannot take a drop now.</summary>
+    function AcceptExternalDrop(const APaths: TArray<string>; ALocalCol, ALocalRow: Integer;
+      AMove: Boolean): Boolean;
     procedure AcceptDroppedFiles(const APaths: TArray<string>; const ADestDirURI: string;
       AMove: Boolean);
     /// <summary>After OleDragLocalFiles returns - reload if shell moved files out.</summary>
@@ -7180,6 +7193,11 @@ begin
   FFileOps.BeginSetAttributes(Paths);
 end;
 
+procedure TDualPanelWindow.ShowAttributesDialog;
+begin
+  BeginSetAttributes;
+end;
+
 procedure TDualPanelWindow.HostSystemProperties(APaths: TArray<string>);
 begin
   if Assigned(FOnShowProperties) then
@@ -7330,7 +7348,38 @@ begin
     Row := HostPanelBounds(Side).Top + 1;
   end;
   if Assigned(FOnShellContextMenu) then
-    FOnShellContextMenu(Paths, Col, Row);
+    FOnShellContextMenu(Paths, Col, Row)
+  else
+    ShowOpenWithMenu(Paths);
+end;
+
+// Without a system context menu the applications registered for the type of
+// the first file are offered in a popup.
+procedure TDualPanelWindow.ShowOpenWithMenu(const APaths: TArray<string>);
+var
+  Apps: TArray<TOpenWithApp>;
+  Root, Item: TUserMenuItem;
+  I: Integer;
+begin
+  Apps := ShellOpenWithApps(APaths);
+  if Length(Apps) = 0 then
+  begin
+    OpenStub(skShellInfo, T('ui.openWith.title', 'Open with'),
+      T('ui.openWith.none', 'No application found for this file'));
+    Exit;
+  end;
+  Root := TUserMenuItem.Create(umkSubmenu);
+  for I := 0 to High(Apps) do
+  begin
+    Item := TUserMenuItem.Create(umkCommand);
+    Item.Caption := Apps[I].Name;
+    Item.Command := Apps[I].Command;
+    if I < 9 then
+      Item.HotKey := IntToStr(I + 1);
+    Root.Items.Add(Item);
+  end;
+  CloseTransientUiBeforeDialog;
+  FUserMenuHost.ShowTransient(Root, T('ui.openWith.title', 'Open with'));
 end;
 
 procedure TDualPanelWindow.ApplySetAttributes(const APaths: TArray<string>;
@@ -8265,7 +8314,7 @@ begin
   CleanName := Trim(AName);
   DirURI := ParentFileUri(FromURI);
   ToURI := JoinFileUri(DirURI, CleanName);
-  if SameText(FromURI, ToURI) then
+  if FromURI = ToURI then
   begin
     NotifyChanged;
     Exit;
@@ -8275,6 +8324,19 @@ begin
   Side := ActiveWorkspace.State.ActiveSide;
   FPendingSelectName := CleanName;
   FPendingSelectSide := Side;
+{$IFDEF MSWINDOWS}
+  // Only the letter case changes: the target "exists" because it is the
+  // item itself, so there is no overwrite question.
+  if SameText(FromURI, ToURI) then
+  begin
+    RunAfterShellRelease([FromURI],
+      procedure
+      begin
+        RunRename(FVfs, FromURI, ToURI, CleanName, True);
+      end);
+    Exit;
+  end;
+{$ENDIF}
   // An existing target goes through a move job so the usual overwrite
   // question is asked instead of replacing it silently.
   FVfs.ExistsAsync(ToURI, nil,
@@ -14094,6 +14156,15 @@ end;
 
 function TDualPanelWindow.HostResolveDriveTarget(ASide: TPanelSide;
   ALetter: Char; const ADefaultUri: string): string;
+begin
+  Result := DriveTargetUri(ASide, ALetter, ADefaultUri);
+  // The remembered folder of the target drive may be gone; the panel then
+  // climbs to the nearest existing parent instead of showing an error.
+  FListedOkUri[ASide] := Result;
+end;
+
+function TDualPanelWindow.DriveTargetUri(ASide: TPanelSide;
+  ALetter: Char; const ADefaultUri: string): string;
 var
   OtherPanel: TPanelState;
   OtherUri, OtherPath: string;
@@ -15971,6 +16042,25 @@ begin
   else
     Kind := pjkCopy;
   BeginTransferJob(Uris, ADestDirURI, Kind);
+end;
+
+function TDualPanelWindow.AcceptExternalDrop(const APaths: TArray<string>;
+  ALocalCol, ALocalRow: Integer; AMove: Boolean): Boolean;
+var
+  Dest: string;
+  Side: TPanelSide;
+  Row: Integer;
+begin
+  Result := False;
+  if (Length(APaths) = 0) or not Visible or not HostInPanelsWorkspace or
+     not CanStartOperation then
+    Exit;
+  if not HitTestDropTarget(ALocalCol, ALocalRow, Dest, Side, Row) then
+    Dest := ActiveFolderUri;
+  if (Dest = '') or (FileUriToPath(Dest) = '') then
+    Exit;
+  AcceptDroppedFiles(APaths, Dest, AMove);
+  Result := True;
 end;
 
 procedure TDualPanelWindow.FinishOleFileDrag(AEffect: LongInt);

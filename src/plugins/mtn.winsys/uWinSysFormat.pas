@@ -67,10 +67,20 @@ function HexDump(const AData: TBytes): string;
 /// <summary>FILETIME ticks (100 ns since 1601, UTC) as seconds since 1970 UTC.</summary>
 function FileTimeToUnixSeconds(ATicks: UInt64): Int64;
 
+/// <summary>The message of a Win32 error number the plugin reports; the
+/// system's own text on Windows, a short text for the numbers of uWinSysCodes
+/// elsewhere.</summary>
+function WinSysErrorText(AErr: Cardinal): string;
+
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows;
+{$ELSE}
+  uWinSysCodes;
+{$ENDIF}
 
 function ParseWinSysUri(const AUri: string; out AKind: TWinSysKind;
   out ASegments: TArray<string>): Boolean;
@@ -426,6 +436,30 @@ begin
   if ATicks < cEpochDiff then
     Exit(0);
   Result := Int64((ATicks - cEpochDiff) div 10000000);
+end;
+
+function WinSysErrorText(AErr: Cardinal): string;
+begin
+{$IFDEF MSWINDOWS}
+  Result := Trim(SysErrorMessage(AErr));
+{$ELSE}
+  case AErr of
+    ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_SERVICE_DOES_NOT_EXIST:
+      Result := 'Not found';
+    ERROR_ACCESS_DENIED, ERROR_PRIVILEGE_NOT_HELD:
+      Result := 'Access denied';
+    ERROR_INVALID_FUNCTION:
+      Result := 'Not supported here';
+    ERROR_SERVICE_REQUEST_TIMEOUT:
+      Result := 'The request timed out';
+    ERROR_INVALID_PARAMETER:
+      Result := 'Invalid parameter';
+    ERROR_ALREADY_EXISTS:
+      Result := 'Already exists';
+  else
+    Result := 'Error ' + IntToStr(AErr);
+  end;
+{$ENDIF}
 end;
 
 end.

@@ -56,6 +56,19 @@ function AnsiMouseSequence(AOn: Boolean): string;
 /// <summary>Undoes AnsiEnterSequence and restores the colors.</summary>
 function AnsiLeaveSequence: string;
 
+type
+  /// <summary>What a terminal's progress indicator shows (OSC 9;4).</summary>
+  TAnsiProgressState = (apsNone, apsNormal, apsError, apsIndeterminate, apsPaused);
+
+/// <summary>The OSC 9;4 sequence that shows AState (and APercent, 0..100, for
+/// the normal, error and paused states) on the terminal's tab or taskbar
+/// button; apsNone removes it.</summary>
+function AnsiProgressSequence(AState: TAnsiProgressState; APercent: Integer): string;
+/// <summary>True for terminals known to read OSC 9;4 as progress; others may
+/// treat OSC 9 as a notification, so nothing is sent to them.</summary>
+function TerminalShowsProgress(const ATermProgram, AVteVersion: string;
+  AWindowsTerminal, AConEmu: Boolean): Boolean;
+
 implementation
 
 function Index256(AColor: TAlphaColor): Integer;
@@ -205,6 +218,31 @@ begin
     + #27'[0m'
     + #27'[?25h'
     + #27'[?1049l';
+end;
+
+function AnsiProgressSequence(AState: TAnsiProgressState; APercent: Integer): string;
+const
+  // OSC 9;4 state codes: 0 remove, 1 normal, 2 error, 3 indeterminate, 4 paused.
+  cCode: array[TAnsiProgressState] of Integer = (0, 1, 2, 3, 4);
+begin
+  if AState in [apsNone, apsIndeterminate] then
+    APercent := 0
+  else
+    APercent := EnsureRange(APercent, 0, 100);
+  Result := #27']9;4;' + IntToStr(cCode[AState]) + ';' + IntToStr(APercent) + #27'\';
+end;
+
+function TerminalShowsProgress(const ATermProgram, AVteVersion: string;
+  AWindowsTerminal, AConEmu: Boolean): Boolean;
+var
+  Vte: Integer;
+begin
+  Result := AWindowsTerminal or AConEmu or SameText(ATermProgram, 'ghostty') or
+    SameText(ATermProgram, 'WezTerm');
+  if Result then
+    Exit;
+  // VTE 0.80 (GNOME Terminal, Tilix, ...) shows it on the tab.
+  Result := TryStrToInt(AVteVersion, Vte) and (Vte >= 8000);
 end;
 
 { TAnsiFrameWriter }

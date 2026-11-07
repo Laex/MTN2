@@ -7,6 +7,9 @@ unit uShellAssoc;
 
 interface
 
+uses
+  uOpenWith;
+
 type
   /// <summary>Result of asking the OS for an "open" handler for an extension.</summary>
   TShellOpenQuery = record
@@ -49,6 +52,10 @@ function ShellShowContextMenuFor(const APaths: TArray<string>; AScreenX, AScreen
 /// (one path, or a combined sheet for several). Non-modal: returns as soon
 /// as the window is up. False if nothing could be shown.</summary>
 function ShellShowProperties(const APaths: TArray<string>; AOwnerHwnd: NativeUInt): Boolean;
+
+/// <summary>The applications that can open the files, default first, each with
+/// the command line that opens them. Empty where the platform has no such list.</summary>
+function ShellOpenWithApps(const APaths: TArray<string>): TArray<TOpenWithApp>;
 
 /// <summary>Run a command or file as a separate OS process (FAR Shift+Enter).
 /// Does not attach to ConPTY; console apps get their own console window.</summary>
@@ -510,6 +517,12 @@ end;
 function HasShellOpen(const AExtension: string): Boolean;
 begin
   Result := QueryShellOpen(AExtension).Available;
+end;
+
+function ShellOpenWithApps(const APaths: TArray<string>): TArray<TOpenWithApp>;
+begin
+  // Explorer's own menu offers this on Windows.
+  SetLength(Result, 0);
 end;
 
 end.

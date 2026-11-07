@@ -3978,6 +3978,15 @@ begin
   // Chromeless (Quick View) draws no dialogs.
   if (Url = '') or FChromeless or (FConfirm <> ecNone) or FDialog.Visible then
     Exit;
+  // A document can carry any scheme; only web and mail links are handed to the
+  // shell, since other handlers (search-ms:, ms-msdt:, file:) can run programs.
+  Shown := LowerCase(Copy(Url, 1, Pos(':', Url)));
+  if (Shown <> 'http:') and (Shown <> 'https:') and (Shown <> 'mailto:') and
+     (Shown <> 'ftp:') and (Shown <> 'ftps:') then
+  begin
+    Notice(T('ui.editor.openLinkFailed', 'Cannot open %s'), Url, tkWarning);
+    Exit;
+  end;
   // The whole address matters when deciding: keep both ends of a long one.
   Shown := Url;
   if Length(Shown) > cShownUrl then

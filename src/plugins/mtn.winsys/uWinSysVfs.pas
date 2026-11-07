@@ -31,8 +31,13 @@ function WinSysVfsCallbacks: TVfsCallbacksCdeclV2;
 implementation
 
 uses
-  System.SysUtils, System.JSON, Winapi.Windows, uWinSysFormat, uWinSysRegistry,
-  uWinSysProcess, uWinSysServices;
+  System.SysUtils, System.JSON,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
+{$ELSE}
+  uWinSysCodes,
+{$ENDIF}
+  uWinSysFormat, uWinSysRegistry, uWinSysProcess, uWinSysServices;
 
 function ResultOf(ACtx: PVfsOpContext; AErr: Cardinal): Int64;
 var
@@ -52,7 +57,7 @@ begin
   end;
   if (ACtx <> nil) and Assigned(ACtx^.SetErrorText) then
   begin
-    Text := UTF8String(SysErrorMessage(AErr));
+    Text := UTF8String(WinSysErrorText(AErr));
     ACtx^.SetErrorText(ACtx, PAnsiChar(Text));
   end;
 end;

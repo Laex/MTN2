@@ -700,7 +700,7 @@ begin
   if M = 0 then
     Exit(False);
   try
-    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    FS := TFileStream.Create(WinApiPath(APath), fmOpenRead or fmShareDenyNone);
     try
       SetLength(Buf, cChunk + M);
       Have := 0;
@@ -834,7 +834,7 @@ var
 begin
   SetLength(ABytes, 0);
   try
-    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    FS := TFileStream.Create(WinApiPath(APath), fmOpenRead or fmShareDenyNone);
     try
       if (FS.Size <= 0) or (FS.Size > cFindMaxContentBytes) then
         Exit(False);

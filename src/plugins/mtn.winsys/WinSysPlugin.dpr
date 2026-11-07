@@ -1,23 +1,33 @@
 library WinSysPlugin;
 
-{ Native MTN2 plugin: the Windows registry, the running processes and the
-  services as folders of the panels (reg://, proc://, svc://). Adds Registry,
-  Processes and Services to the Change Drive list (Alt+F1 / Alt+F2). Services
-  are colored by their state; the Plugins menu starts, stops, restarts, pauses
-  and resumes the service under the cursor. }
+{ Native MTN2 plugin: the running processes and the services as folders of the
+  panels (proc://, svc://), and on Windows the registry (reg://). Adds them to
+  the Change Drive list (Alt+F1 / Alt+F2). Services are colored by their state;
+  the Plugins menu starts, stops and restarts the service under the cursor, and
+  on Windows also pauses and resumes it. Processes and services come from the
+  system APIs on Windows and from /proc and systemctl on Linux. }
 
 uses
-  System.SysUtils, System.Classes, System.JSON, System.SyncObjs, Winapi.Windows,
+  System.SysUtils, System.Classes, System.JSON, System.SyncObjs,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
+{$ELSE}
+  uWinSysCodes,
+{$ENDIF}
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uWinSysFormat in 'uWinSysFormat.pas',
-  uWinSysRegistry in 'Windows\uWinSysRegistry.pas',
-  uWinSysProcess in 'Windows\uWinSysProcess.pas',
-  uWinSysServices in 'Windows\uWinSysServices.pas',
-  uWinSysVfs in 'Windows\uWinSysVfs.pas';
+  uWinSysRegistry,
+  uWinSysProcess,
+  uWinSysServices,
+  uWinSysVfs in 'uWinSysVfs.pas';
 
 const
   cPluginId = 'mtn.winsys';
+{$IFDEF MSWINDOWS}
   cSchemes: array[0..2] of UTF8String = ('reg', 'proc', 'svc');
+{$ELSE}
+  cSchemes: array[0..1] of UTF8String = ('proc', 'svc');
+{$ENDIF}
   cRowDecorationsAbi = 6;
   cPanelColumnsAbi = 9;
   cProcColumnsJson =
@@ -167,7 +177,7 @@ begin
       Notice(Format(Tr('ui.msg.done', 'Service %s: done.'), [R.Name]), 0)
     else
       Notice(Format(Tr('ui.msg.failed', 'Service %s: %s'),
-        [R.Name, Trim(SysErrorMessage(R.Err))]), 1);
+        [R.Name, WinSysErrorText(R.Err)]), 1);
     if Assigned(GHost.PanelRefresh) then
       GHost.PanelRefresh;
   finally
@@ -304,7 +314,9 @@ begin
     end;
     if Assigned(AHostApi.RegisterDriveItem) then
     begin
+{$IFDEF MSWINDOWS}
       AddDrive('reg', 'ui.drive.reg', 'Registry', 'reg:///', cDrivePriority);
+{$ENDIF}
       AddDrive('proc', 'ui.drive.proc', 'Processes', 'proc:///', cDrivePriority + 1);
       AddDrive('svc', 'ui.drive.svc', 'Services', 'svc:///', cDrivePriority + 2);
     end;
@@ -317,8 +329,10 @@ begin
       AddMenu('svc_start', 'ui.menu.start', 'Services: start', saStart, 70);
       AddMenu('svc_stop', 'ui.menu.stop', 'Services: stop', saStop, 71);
       AddMenu('svc_restart', 'ui.menu.restart', 'Services: restart', saRestart, 72);
+{$IFDEF MSWINDOWS}
       AddMenu('svc_pause', 'ui.menu.pause', 'Services: pause', saPause, 73);
       AddMenu('svc_resume', 'ui.menu.resume', 'Services: resume', saResume, 74);
+{$ENDIF}
     end;
     Result := 0;
   except
