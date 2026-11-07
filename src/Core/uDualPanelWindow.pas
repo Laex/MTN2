@@ -55,6 +55,9 @@ type
     FLeftWatch: TDirectoryWatcher;
     FRightWatch: TDirectoryWatcher;
     FWatchPending: array[TPanelSide] of Boolean;
+    /// <summary>The folder each panel last listed without error; a later
+    /// "not found" for the same folder means it was removed.</summary>
+    FListedOkUri: array[TPanelSide] of string;
     FQuickSearchActive: Boolean;
     // Opened by the Quick search action, with no Alt held: it lingers like a
     // sticky search whatever the setting says.
@@ -84,6 +87,13 @@ type
     /// <summary>The pairs listed by the open group-compare dialog; Enter
     /// opens the selected one.</summary>
     FCompareGroup: TArray<TComparePair>;
+    FGroupVerdicts: TArray<TCompareResult>;
+    FGroupSkipped, FGroupSel: Integer;
+    /// <summary>The group-compare list itself is the open dialog.</summary>
+    FGroupListOpen: Boolean;
+    /// <summary>A pair opened from the list is showing; closing it brings
+    /// the list back.</summary>
+    FGroupReturn: Boolean;
     FChecksumToken: IJobCancelToken;
     FChecksumLines: TArray<string>;
     FChecksumSaveName: string;
@@ -816,6 +826,9 @@ type
     procedure ShowCompareGroup(const APairs: TArray<TComparePair>;
       const AVerdicts: TArray<TCompareResult>; ASkipped: Integer);
     procedure HandleCompareResultCommand(const AControlId: string);
+    procedure ReturnToCompareGroup;
+    procedure LeaveRemovedFolder(ASide: TPanelSide);
+    procedure DiffViewerClosed(Sender: TObject);
     procedure OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
       const ALeftName, ARightName, ATitle: string);
     procedure RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
@@ -1904,6 +1917,7 @@ begin
   if Assigned(FDiffView) then
   begin
     FDiffView.OnChanged := nil;
+    FDiffView.OnClosed := nil;
     FreeAndNil(FDiffView);
   end;
   FreeAndNil(FSearchDlg);
@@ -4399,7 +4413,59 @@ begin
       MaybeAskArchivePassword(psRight);
     end;
   end;
+  LeaveRemovedFolder(psLeft);
+  LeaveRemovedFolder(psRight);
   NotifyChanged;
+end;
+
+procedure TDualPanelWindow.LeaveRemovedFolder(ASide: TPanelSide);
+var
+  M: IPanelModel;
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Cur, Up, Prev: string;
+  Active: TPanelSide;
+begin
+  M := ModelForSide(ASide);
+  if not Assigned(M) or M.IsLoading then
+    Exit;
+  Ws := ActiveWorkspace;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Cur := ActiveTab(Panel).CurrentURI;
+  if M.GetLastError.Code = vecOk then
+  begin
+    FListedOkUri[ASide] := Cur;
+    Exit;
+  end;
+  // Only a local folder that listed fine before and is now gone: a path typed
+  // by the user that never existed keeps its error line.
+  if (M.GetLastError.Code <> vecNotFound) or (Cur = '') or
+     not SameVfsUri(Cur, FListedOkUri[ASide]) or
+     not SameText(Copy(Cur, 1, 8), 'file:///') or HasArchiveChain(Cur) or
+     IsFindUri(Cur) or IsWorkspaceUri(Cur) then
+    Exit;
+  FListedOkUri[ASide] := '';
+  Up := ParentFileUri(Cur);
+  while (Up <> '') and not DirectoryExists(FileUriToPath(Up)) do
+  begin
+    Prev := Up;
+    Up := ParentFileUri(Up);
+    if SameVfsUri(Up, Prev) then
+      Up := '';
+  end;
+  if Up = '' then
+    Exit;
+  Active := Ws.State.ActiveSide;
+  NavigateSideTo(ASide, Up, False);
+  Ws := ActiveWorkspace;
+  if Ws.State.ActiveSide <> Active then
+  begin
+    Ws.State.ActiveSide := Active;
+    SaveActiveWorkspace(Ws);
+  end;
 end;
 
 procedure TDualPanelWindow.HandlePluginNavigate(const ATopic: string;
@@ -7371,6 +7437,7 @@ begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
   SetCmdFocused(False);
+  FGroupListOpen := False;
   FDialogKind := hdkCompareResult;
   FDialog.Open(BuildConfirmDialog(ATitle, AMessage), DialogCommand);
   NotifyChanged;
@@ -7390,6 +7457,7 @@ begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
   SetCmdFocused(False);
+  FGroupListOpen := False;
   FDialogKind := hdkCompareResult;
   SetLength(Items, Length(ASummary));
   SetLength(Swatches, Length(ASummary));
@@ -7566,6 +7634,7 @@ var
 begin
   if not CanStartOperation then
     Exit;
+  FGroupReturn := False;
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
     Exit;
@@ -7639,6 +7708,7 @@ begin
   begin
     FDiffView := TDiffViewer.Create(Theme);
     FDiffView.OnChanged := HelpChanged;
+    FDiffView.OnClosed := DiffViewerClosed;
   end;
   CloseTransientUiBeforeDialog;
   FDiffView.Open(LeftRow.URI, RightRow.URI, LeftName, RightName, FVfs,
@@ -7687,6 +7757,7 @@ begin
         Step := nil;
         FCompareToken := nil;
         CloseStub;
+        FGroupSel := 0;
         ShowCompareGroup(Pairs, Verdicts, Skipped);
         Exit;
       end;
@@ -7753,11 +7824,16 @@ begin
     Swatches[I].Text := Items[I];
   end;
   FCompareGroup := APairs;
+  FGroupVerdicts := AVerdicts;
+  FGroupSkipped := ASkipped;
+  FGroupListOpen := True;
+  FGroupReturn := False;
   SetCmdFocused(False);
   FDialogKind := hdkCompareResult;
   FDialog.Open(BuildCompareGroupDialog(
     T('ui.compareGroup.status', '%d identical, %d differ, %d not compared',
-      [Same, Differ, NotCompared]), Items, Swatches), DialogCommand);
+      [Same, Differ, NotCompared]), Items, Swatches,
+    EnsureRange(FGroupSel, 0, High(APairs))), DialogCommand);
   NotifyChanged;
 end;
 
@@ -7765,23 +7841,44 @@ procedure TDualPanelWindow.HandleCompareResultCommand(const AControlId: string);
 var
   Idx: Integer;
   Pair: TComparePair;
-  Open: Boolean;
 begin
-  Open := False;
-  Idx := -1;
-  if Length(FCompareGroup) > 0 then
-    Idx := FDialog.GetListSelectedIndex('pairs');
+  if not FGroupListOpen then
+  begin
+    // A pair's own result window: the list comes back when it is closed.
+    FDialog.Close;
+    ReturnToCompareGroup;
+    Exit;
+  end;
+  Idx := FDialog.GetListSelectedIndex('pairs');
+  FDialog.Close;
+  FGroupListOpen := False;
   if (Idx >= 0) and (Idx <= High(FCompareGroup)) and
      DialogCmdIsListAccept(AControlId, 'pairs') then
   begin
     Pair := FCompareGroup[Idx];
-    Open := True;
-  end;
-  FDialog.Close;
-  FCompareGroup := nil;
-  if Open then
+    FGroupSel := Idx;
+    FGroupReturn := True;
     OpenPairCompare(Pair.Left, Pair.Right, 'L: ' + Pair.Left.Text,
       'R: ' + Pair.Right.Text, T('ui.compareFiles.title', 'Compare files'));
+  end
+  else
+  begin
+    FCompareGroup := nil;
+    FGroupVerdicts := nil;
+  end;
+end;
+
+procedure TDualPanelWindow.ReturnToCompareGroup;
+begin
+  if not FGroupReturn then
+    Exit;
+  FGroupReturn := False;
+  ShowCompareGroup(FCompareGroup, FGroupVerdicts, FGroupSkipped);
+end;
+
+procedure TDualPanelWindow.DiffViewerClosed(Sender: TObject);
+begin
+  ReturnToCompareGroup;
 end;
 
 procedure TDualPanelWindow.RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;

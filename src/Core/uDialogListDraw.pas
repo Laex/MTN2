@@ -133,7 +133,9 @@ begin
       if C.ItemSwatches[Idx].Fg <> 0 then
         SwFg := C.ItemSwatches[Idx].Fg;
       if C.ItemSwatches[Idx].Bg <> 0 then
-        SwBg := C.ItemSwatches[Idx].Bg;
+        SwBg := C.ItemSwatches[Idx].Bg
+      else if Idx = ASelIdx then
+        SwBg := RowBg;
       PutGridText(AGrid, R.Left + C.ItemSwatches[Idx].Col, R.Top + J,
         C.ItemSwatches[Idx].Text, SwFg, SwBg);
     end;

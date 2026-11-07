@@ -21,6 +21,7 @@ type
     FTheme: IThemeRenderer;
     FLife: ILifeFlag;
     FOnChanged: TNotifyEvent;
+    FOnClosed: TNotifyEvent;
     FModel: TDiffMerge;
     FVfs: IVirtualFileSystem;
     FLeftUri, FRightUri, FLeftName, FRightName: string;
@@ -63,6 +64,8 @@ type
     destructor Destroy; override;
     property Visible: Boolean read FVisible;
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+    /// <summary>Raised after Close of a shown viewer.</summary>
+    property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
     /// <summary>Reads both files and opens the window; AOnFallback runs instead when
     /// the pair cannot be merged (binary, too big, unreadable, identical).</summary>
     procedure Open(const ALeftUri, ARightUri, ALeftName, ARightName: string;
@@ -123,11 +126,16 @@ begin
 end;
 
 procedure TDiffViewer.Close;
+var
+  WasVisible: Boolean;
 begin
+  WasVisible := FVisible;
   Inc(FLoadGen);
   FVisible := False;
   ReleaseModel;
   Changed;
+  if WasVisible and Assigned(FOnClosed) then
+    FOnClosed(Self);
 end;
 
 procedure TDiffViewer.Open(const ALeftUri, ARightUri, ALeftName, ARightName: string;

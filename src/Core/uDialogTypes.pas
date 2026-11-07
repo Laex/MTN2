@@ -383,7 +383,8 @@ function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
 /// <summary>Group compare result: one row per same-named pair, colored by the
 /// swatches; Enter on a row accepts (the list id is "pairs").</summary>
 function BuildCompareGroupDialog(const AStatus: string;
-  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
+  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>;
+  ASelected: Integer): TDialogDeclaration;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
@@ -1590,11 +1591,12 @@ begin
 end;
 
 function BuildCompareGroupDialog(const AStatus: string;
-  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
+  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>;
+  ASelected: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogCompareGroup, Result);
   DialogSetLabelText(Result, 'status', AStatus);
-  DialogSetListItems(Result, 'pairs', AItems, 0);
+  DialogSetListItems(Result, 'pairs', AItems, ASelected);
   DialogSetListSwatches(Result, 'pairs', ASwatches);
 end;
 
