@@ -24,6 +24,7 @@ type
     [Test] procedure TestFullscreenCoversTheWholeWindow;
     [Test] procedure TestEscLeavesFullscreenBeforeClosing;
     [Test] procedure TestPluginCanTakeEscAndF10;
+    [Test] procedure TestNumpad5ClosesUnlessPluginTakesIt;
   end;
 
 implementation
@@ -232,6 +233,34 @@ begin
   SendKey(GView, vkEscape, #27);
   Assert.AreEqual(1, GCloseRequests, 'the second closes it');
   Assert.IsFalse(SurfaceExists(Handle), 'the surface is gone');
+end;
+
+procedure TTestEditorSurface.TestNumpad5ClosesUnlessPluginTakesIt;
+var
+  Handle: Integer;
+  Taken: Boolean;
+begin
+  InstallHost;
+  Taken := False;
+  Handle := PluginSurfaceOpen('t.surface', 'Pic',
+    function(const AKey: string): Boolean
+    begin
+      Result := Taken;
+    end, nil, nil);
+  SendKey(GView, vkNumpad5, '5');
+  Assert.AreEqual(1, GCloseRequests, 'numpad 5 the plugin does not use closes the tab');
+  Assert.IsFalse(SurfaceExists(Handle), 'the surface is gone');
+
+  InstallHost;
+  Taken := True;
+  Handle := PluginSurfaceOpen('t.surface', 'Pic',
+    function(const AKey: string): Boolean
+    begin
+      Result := Taken;
+    end, nil, nil);
+  SendKey(GView, vkNumpad5, '5');
+  Assert.AreEqual(0, GCloseRequests, 'a plugin that uses the key keeps the tab');
+  Assert.IsTrue(SurfaceExists(Handle), 'the surface stays');
 end;
 
 procedure TTestEditorSurface.TestPluginCanTakeEscAndF10;

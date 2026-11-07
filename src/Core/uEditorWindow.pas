@@ -5691,8 +5691,8 @@ end;
 function TEditorWindow.SurfaceInput(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
 begin
   Result := True;
-  // The plugin sees every key first; Esc and F10 it does not use close the tab (Esc leaves
-  // full screen first).
+  // The plugin sees every key first; Esc, F10 and numpad 5 (the key that opened the view
+  // from the panel) it does not use close the tab (Esc leaves full screen first).
   if SurfaceDeliverKey(FSurfaceHandle, AKey, AShift, AKeyChar) then
     Exit;
   if (AKey = vkEscape) and IsSurfaceFullscreen then
@@ -5700,7 +5700,8 @@ begin
     PluginSurfaceSetFullscreen(FSurfaceHandle, False);
     Exit;
   end;
-  if (AKey = vkEscape) or (AKey = vkF10) then
+  if (AKey = vkEscape) or (AKey = vkF10) or
+     ((AShift = []) and ((AKey = vkNumpad5) or (AKey = vkClear))) then
     ForceClose;
 end;
 
