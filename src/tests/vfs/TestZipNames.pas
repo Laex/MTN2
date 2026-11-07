@@ -10,12 +10,18 @@ type
   TTestZipNames = class
   public
     [Test] procedure Run;
+    [Test] procedure Utf8NamesWithoutFlagAreDecoded;
+    [Test] procedure OemNamesWithoutFlagStayOem;
+    [Test] procedure ValidUtf8Check;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.IOUtils, System.Zip,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
+{$ENDIF}
   uZipNames;
 
 { TTestZipNames }
@@ -50,6 +56,71 @@ begin
   Assert.IsTrue(ZipNameEqualsOrUnder('dir', 'dir'), 'exact name matches');
   Assert.IsTrue(not ZipNameEqualsOrUnder('dir2/x', 'dir'), 'dir2 is not under dir');
   Assert.IsTrue(not ZipNameEqualsOrUnder('dir', ''), 'empty prefix is not under');
+end;
+
+function ZipNamesOf(const ARawName: TBytes; AWriteEnc: TEncoding): string;
+var
+  Path: string;
+  W, R: TZipFile;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2_zipnames_' + TGUID.NewGuid.ToString + '.zip');
+  W := TZipFile.Create;
+  try
+    W.Open(Path, zmWrite);
+    W.UTF8Support := False;
+    W.Encoding := AWriteEnc;
+    W.Add(TBytes.Create(1), AWriteEnc.GetString(ARawName));
+  finally
+    W.Free;
+  end;
+  try
+    R := NewReadZipFile;
+    try
+      R.Open(Path, zmRead);
+      Result := R.FileNames[0];
+    finally
+      R.Free;
+    end;
+  finally
+    TFile.Delete(Path);
+  end;
+end;
+
+procedure TTestZipNames.Utf8NamesWithoutFlagAreDecoded;
+var
+  Name: string;
+begin
+  Name := string.Create([#$0417, #$0430, #$0434, #$0430, #$043D, #$0438, #$0435]);
+  Assert.AreEqual(Name + '/a.txt',
+    ZipNamesOf(TEncoding.UTF8.GetBytes(Name + '/a.txt'), TEncoding.UTF8),
+    'valid UTF-8 bytes without the flag read as UTF-8');
+end;
+
+procedure TTestZipNames.OemNamesWithoutFlagStayOem;
+var
+  Raw: TBytes;
+begin
+  // 0x80 0x81 0x82 is not valid UTF-8: such a name is an OEM-encoded one.
+  Raw := TBytes.Create(Ord('a'), $80, $81, $82);
+  Assert.AreEqual(TEncoding.GetEncoding(
+    {$IFDEF MSWINDOWS}GetOEMCP{$ELSE}437{$ENDIF}).GetString(Raw),
+    ZipNamesOf(Raw, TEncoding.GetEncoding(
+      {$IFDEF MSWINDOWS}GetOEMCP{$ELSE}437{$ENDIF})),
+    'invalid UTF-8 bytes fall back to the OEM page');
+end;
+
+procedure TTestZipNames.ValidUtf8Check;
+var
+  A: array[0..3] of Byte;
+begin
+  A[0] := $D0; A[1] := $97;
+  Assert.IsTrue(IsValidUtf8(@A[0], 2), 'two-byte sequence');
+  Assert.IsFalse(IsValidUtf8(@A[0], 1), 'truncated sequence');
+  A[0] := $C0; A[1] := $80;
+  Assert.IsFalse(IsValidUtf8(@A[0], 2), 'overlong lead byte');
+  A[0] := $41;
+  Assert.IsTrue(IsValidUtf8(@A[0], 1), 'ASCII');
+  Assert.IsTrue(IsValidUtf8(nil, 0), 'empty');
 end;
 
 initialization

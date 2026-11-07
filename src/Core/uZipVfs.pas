@@ -569,7 +569,7 @@ begin
     TMonitor.Exit(FLock);
   end;
 
-  Zip := TZipFile.Create;
+  Zip := NewReadZipFile;
   try
     try
       Zip.Open(APath, zmRead);
@@ -709,7 +709,7 @@ begin
     TMonitor.Exit(FLock);
   end;
 
-  Zip := TZipFile.Create;
+  Zip := NewReadZipFile;
   try
     try
       Zip.Open(AZipPath, zmRead);
@@ -994,7 +994,7 @@ begin
   Layer := TZipLayer.Create;
   try
     Layer.OwnStream := nil;
-    Layer.Zip := TZipFile.Create;
+    Layer.Zip := NewReadZipFile;
     Layer.Zip.Open(ABasePath, zmRead);
   except
     on E: Exception do
@@ -1057,7 +1057,7 @@ begin
       Layer := TZipLayer.Create;
       Layer.OwnStream := MS;
       MS := nil;
-      Layer.Zip := TZipFile.Create;
+      Layer.Zip := NewReadZipFile;
       try
         Layer.Zip.Open(Layer.OwnStream, zmRead);
       except
