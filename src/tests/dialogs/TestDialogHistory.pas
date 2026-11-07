@@ -148,6 +148,16 @@ begin
     Assert.IsTrue(Host.GetInputValue('name') = '*.log', 'Enter puts the entry into the field: ' +
       Host.GetInputValue('name'));
 
+    // The list opens on the newest entry even when the field holds an older one.
+    Key(Host, vkDown, [ssAlt]);
+    Key(Host, vkReturn);
+    Assert.IsTrue(Host.GetInputValue('name') = '*.pas',
+      'list opens on the newest entry: ' + Host.GetInputValue('name'));
+    Key(Host, vkDown, [ssAlt]);
+    Key(Host, vkDown);
+    Key(Host, vkReturn);
+    Assert.IsTrue(Host.GetInputValue('name') = '*.log', 'older entry picked again');
+
     // Alt+Down works too; Esc closes only the list.
     Key(Host, vkDown, [ssAlt]);
     Key(Host, vkEscape);
@@ -157,9 +167,10 @@ begin
     // Click on the arrow opens; Del forgets the highlighted entry.
     Host.Draw(Grid, W, H);
     Host.HandleClick(R.Left + R.Width - 1, R.Top);
+    Key(Host, vkDown);
     Key(Host, vkDelete);
     Assert.IsTrue(Joined(DialogHistoryItems('masks')) = '*.pas',
-      'Del removes the highlighted (current) entry from the store: ' + Joined(DialogHistoryItems('masks')));
+      'Del removes the highlighted entry from the store: ' + Joined(DialogHistoryItems('masks')));
     Key(Host, vkEscape);
 
     // Typing still edits the field; OK records it on top.

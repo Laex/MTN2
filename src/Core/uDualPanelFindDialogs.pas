@@ -383,6 +383,13 @@ begin
       DialogHistoryAdd('editfind', Trim(AFields.Containing));
     FSearch.StartSearch;
   end
+  else if SameText(Trim(AControlId), 'background') then
+  begin
+    ApplyFields(AFields);
+    if not (AFields.UseRegex or FHexMode) then
+      DialogHistoryAdd('editfind', Trim(AFields.Containing));
+    FSearch.StartSearchInBackground;
+  end
   else
     FSearch.CloseSearchUi;
 end;

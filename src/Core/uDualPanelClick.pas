@@ -432,7 +432,7 @@ begin
         // [x] and a click outside ask to stop, like Esc.
         if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
            (not Bounds.Contains(ALocalCol, ALocalRow)) then
-          AHost.RequestSearchStop();
+          AHost.RequestSearchStop;
       end
       else if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
               (not Bounds.Contains(ALocalCol, ALocalRow)) then

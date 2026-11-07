@@ -112,6 +112,11 @@ begin
   Assert.AreEqual('[' + Glyph + ' ?]', JobChipCaption(Job), 'waiting for an answer');
   Job.Phase := pjpError;
   Assert.AreEqual('[' + Glyph + ' !]', JobChipCaption(Job), 'failed');
+  Job := MakeJob(2, pjkPlugin, pjpRunning);
+  Glyph := JobKindGlyph(pjkPlugin, False);
+  Assert.AreEqual('[' + Glyph + ' ...]', JobChipCaption(Job), 'plugin job without progress');
+  Job.Badge := '17';
+  Assert.AreEqual('[' + Glyph + ' 17]', JobChipCaption(Job), 'plugin badge replaces progress');
 end;
 
 procedure TTestDualPanelJobChips.ToneMarksAskAndError;

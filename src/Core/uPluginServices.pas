@@ -167,21 +167,38 @@ type
     Text: string;
     /// <summary>0..100, or below 0 when the plugin gives no percentage.</summary>
     Percent: Integer;
+    /// <summary>Short text for the tab-bar chip (a counter, say); '' = the chip shows progress.</summary>
+    Badge: string;
     CancelRequested: Boolean;
     /// <summary>The user opened the job's progress dialog; false = it runs in the background.</summary>
     Foreground: Boolean;
   end;
 
 /// <summary>Starts (or restarts) the job AKey of a plugin. AOnCancel runs on the main
-/// thread when the user cancels it; it may be nil. Main thread only.</summary>
-procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc);
+/// thread when the user cancels it; it may be nil. AOnOpen runs when the user
+/// picks the job's chip or its row in the job list; without it the pick shows the
+/// job's progress dialog. AOnForeground runs after the progress dialog of the job
+/// is shown (True) or hidden (False). AAnnounce False starts the job without the
+/// "started in the background" notice; PluginJobAnnounce shows it later.
+/// Main thread only.</summary>
+procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc;
+  const AOnOpen: TProc = nil; const AOnForeground: TProc<Boolean> = nil;
+  AAnnounce: Boolean = True);
+/// <summary>Shows the "started in the background" notice of a job begun quietly.</summary>
+procedure PluginJobAnnounce(const APluginId, AKey: string);
+/// <summary>Id of the job AKey of a plugin; 0 when there is none.</summary>
+function PluginJobIdByKey(const APluginId, AKey: string): Integer;
 procedure PluginJobUpdate(const APluginId, AKey, AText: string; APercent: Integer);
+/// <summary>Sets the text the job's chip shows in place of its progress.</summary>
+procedure PluginJobSetBadge(const APluginId, AKey, ABadge: string);
 procedure PluginJobEnd(const APluginId, AKey: string);
 /// <summary>The running plugin jobs, oldest first.</summary>
 function PluginJobSnapshot: TArray<TPluginJobInfo>;
 /// <summary>Asks job AId to stop: marks it and calls the plugin's cancel callback once.
 /// False when there is no such job.</summary>
 function PluginJobCancel(AId: Integer): Boolean;
+/// <summary>Runs the open handler of job AId; False when it has none.</summary>
+function PluginJobOpen(AId: Integer): Boolean;
 /// <summary>Shows (True) or hides (False) the progress dialog of job AId.</summary>
 procedure PluginJobSetForeground(AId: Integer; AForeground: Boolean);
 /// <summary>Called on the main thread whenever a plugin job starts, changes or ends.</summary>
@@ -217,6 +234,8 @@ type
   TPluginJobEntry = record
     Info: TPluginJobInfo;
     OnCancel: TProc;
+    OnOpen: TProc;
+    OnForeground: TProc<Boolean>;
   end;
 
 var
@@ -538,7 +557,8 @@ begin
   Result := -1;
 end;
 
-procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc);
+procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc;
+  const AOnOpen: TProc; const AOnForeground: TProc<Boolean>; AAnnounce: Boolean);
 var
   Entry: TPluginJobEntry;
   I: Integer;
@@ -556,24 +576,79 @@ begin
   Entry.Info.Title := ATitle;
   Entry.Info.Percent := -1;
   Entry.OnCancel := AOnCancel;
+  Entry.OnOpen := AOnOpen;
+  Entry.OnForeground := AOnForeground;
   GJobs.Add(Entry);
-  NoticeRequest(TNoticeRequest.Make('%s',
-    T('ui.job.pluginStarted', 'Started in the background: %s', [ATitle])));
+  if AAnnounce then
+    PluginJobAnnounce(APluginId, AKey);
   NotifyJobsChanged;
+end;
+
+procedure PluginJobAnnounce(const APluginId, AKey: string);
+var
+  I: Integer;
+begin
+  I := FindJob(APluginId, AKey);
+  if I >= 0 then
+    NoticeRequest(TNoticeRequest.Make('%s',
+      T('ui.job.pluginStarted', 'Started in the background: %s', [GJobs[I].Info.Title])));
+end;
+
+function PluginJobIdByKey(const APluginId, AKey: string): Integer;
+var
+  I: Integer;
+begin
+  I := FindJob(APluginId, AKey);
+  if I >= 0 then
+    Result := GJobs[I].Info.Id
+  else
+    Result := 0;
+end;
+
+function PluginJobOpen(AId: Integer): Boolean;
+var
+  I: Integer;
+  Handler: TProc;
+begin
+  Result := False;
+  for I := 0 to GJobs.Count - 1 do
+    if GJobs[I].Info.Id = AId then
+    begin
+      Handler := GJobs[I].OnOpen;
+      if not Assigned(Handler) then
+        Exit;
+      Result := True;
+      try
+        Handler();
+      except
+        // A faulty handler must not break the host.
+      end;
+      Exit;
+    end;
 end;
 
 procedure PluginJobSetForeground(AId: Integer; AForeground: Boolean);
 var
   I: Integer;
   Entry: TPluginJobEntry;
+  Handler: TProc<Boolean>;
+  Changed: Boolean;
 begin
   for I := 0 to GJobs.Count - 1 do
     if GJobs[I].Info.Id = AId then
     begin
       Entry := GJobs[I];
+      Changed := Entry.Info.Foreground <> AForeground;
+      Handler := Entry.OnForeground;
       Entry.Info.Foreground := AForeground;
       GJobs[I] := Entry;
       NotifyJobsChanged;
+      if Changed and Assigned(Handler) then
+        try
+          Handler(AForeground);
+        except
+          // A faulty handler must not break the host.
+        end;
       Exit;
     end;
 end;
@@ -589,6 +664,20 @@ begin
   Entry := GJobs[I];
   Entry.Info.Text := AText;
   Entry.Info.Percent := Min(APercent, 100);
+  GJobs[I] := Entry;
+  NotifyJobsChanged;
+end;
+
+procedure PluginJobSetBadge(const APluginId, AKey, ABadge: string);
+var
+  I: Integer;
+  Entry: TPluginJobEntry;
+begin
+  I := FindJob(APluginId, AKey);
+  if (I < 0) or (GJobs[I].Info.Badge = ABadge) then
+    Exit;
+  Entry := GJobs[I];
+  Entry.Info.Badge := ABadge;
   GJobs[I] := Entry;
   NotifyJobsChanged;
 end;

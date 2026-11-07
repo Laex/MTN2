@@ -93,7 +93,9 @@ begin
     pjpOverwriteAsk, pjpDeleteAsk, pjpIOErrorAsk: Mark := '?';
     pjpError: Mark := '!';
   else
-    if (AJob.Kind = pjkPlugin) and (AJob.BytesTotal <= 0) then
+    if (AJob.Kind = pjkPlugin) and (AJob.Badge <> '') then
+      Mark := AJob.Badge
+    else if (AJob.Kind = pjkPlugin) and (AJob.BytesTotal <= 0) then
       Mark := '...'
     else
       Mark := IntToStr(JobProgressPercent(AJob)) + '%';

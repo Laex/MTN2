@@ -922,8 +922,6 @@ begin
 end;
 
 procedure TDialogHost.OpenDropDown(AControlIndex: Integer);
-var
-  I: Integer;
 begin
   if (AControlIndex < 0) or (AControlIndex > High(FDecl.Controls)) then
     Exit;
@@ -937,15 +935,8 @@ begin
   FDropScrollTop := 0;
   if IsHistoryInput(AControlIndex) then
   begin
-    // Start on the entry the field already holds, else the newest.
+    // History is ordered by last use; the cursor starts on the newest entry.
     FDropHover := 0;
-    for I := 0 to High(FDecl.Controls[AControlIndex].Items) do
-      if SameText(FDecl.Controls[AControlIndex].Items[I],
-         FDecl.Controls[AControlIndex].Edit.Text) then
-      begin
-        FDropHover := I;
-        Break;
-      end;
   end
   else
   begin

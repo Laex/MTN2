@@ -184,6 +184,7 @@ begin
   if AInfo.Text <> '' then
     Result.CurrentName := AInfo.Text;
   Result.Stopping := AInfo.CancelRequested;
+  Result.Badge := AInfo.Badge;
   if AInfo.Percent >= 0 then
   begin
     Result.BytesTotal := 100;
@@ -1002,7 +1003,8 @@ begin
   Id := JobIdAt(AIndex);
   if IsPluginJob(Id) then
   begin
-    PluginJobSetForeground(Id - cPluginJobIdBase, True);
+    if not PluginJobOpen(Id - cPluginJobIdBase) then
+      PluginJobSetForeground(Id - cPluginJobIdBase, True);
     Exit;
   end;
   Job := JobById(Id);
@@ -1016,7 +1018,8 @@ var
 begin
   if IsPluginJob(AId) then
   begin
-    PluginJobSetForeground(AId - cPluginJobIdBase, True);
+    if not PluginJobOpen(AId - cPluginJobIdBase) then
+      PluginJobSetForeground(AId - cPluginJobIdBase, True);
     Exit;
   end;
   Job := JobById(AId);

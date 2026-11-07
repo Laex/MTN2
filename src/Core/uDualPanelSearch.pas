@@ -6,6 +6,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math,
+  System.Generics.Collections,
   uTerminalTypes, uThemeTypes, uDualPanelUiTypes, uDualPanelOverlays,
   uVfsTypes, uFileFind, uFindSession;
 
@@ -16,6 +17,39 @@ type
   /// cursor and selection.</summary>
   TSearchFindNavigateEvent = reference to function(const ARoot, AMask: string;
     const AHits: TArray<TFindHit>; AUpdate: Boolean): Boolean;
+
+  /// <summary>A search that runs in the background has ended; AFound is the
+  /// number of files it found.</summary>
+  TSearchBackgroundDoneEvent = reference to procedure(AFound: Integer);
+  /// <summary>Shows the hits of a background search as a find panel on the
+  /// session ASessionId (empty: a new one, whose id comes back).</summary>
+  TSearchSessionOpenEvent = reference to function(var ASessionId: string;
+    const ARoot, AMask: string; const AHits: TArray<TFindHit>): Boolean;
+  /// <summary>Replaces the hits of the open find session and redraws the
+  /// panels that show it.</summary>
+  TSearchSessionUpdateEvent = reference to procedure(const ASessionId, ARoot,
+    AMask: string; const AHits: TArray<TFindHit>);
+  /// <summary>True while some panel tab still shows the find session.</summary>
+  TSearchSessionShownFunc = reference to function(const ASessionId: string): Boolean;
+
+  /// <summary>A search sent to the background: it has its own job-list entry
+  /// and chip, and lives until its results are closed.</summary>
+  TBackgroundSearch = class
+  public
+    Id: Integer;
+    Root: string;
+    Mask: string;
+    Token: IJobCancelToken;
+    Hits: TArray<TFindHit>;
+    Done: Boolean;
+    CurrentDir: string;
+    /// <summary>Find session that shows the hits; empty until the user opens it.</summary>
+    SessionId: string;
+    /// <summary>A panel shows the session now; it is hidden again when the
+    /// search goes back to the background.</summary>
+    Opened: Boolean;
+    JobKey: string;
+  end;
 
   TSearchController = class
   private
@@ -30,6 +64,29 @@ type
     FLife: ILifeFlag;
     // The panel already lists the hits of the running search.
     FResultsShown: Boolean;
+    // Bumped by every StartSearch. The walk of the current number belongs to
+    // the overlay; a number found in FBackgrounds belongs to that search.
+    FRunId: Integer;
+    FBackgrounds: TObjectList<TBackgroundSearch>;
+    FOpening: Boolean;
+    // Job of the search the progress dialog shows; empty when none runs there.
+    FFgJobKey: string;
+    FOnHideResults: TProc;
+    FOnBackgroundDone: TSearchBackgroundDoneEvent;
+    FOnOpenSession: TSearchSessionOpenEvent;
+    FOnUpdateSession: TSearchSessionUpdateEvent;
+    FOnSessionShown: TSearchSessionShownFunc;
+    function GetBackgroundCount: Integer;
+    function FindBackground(AId: Integer): TBackgroundSearch;
+    procedure OpenBackground(AId: Integer);
+    procedure DropBackground(AId: Integer);
+    procedure RefreshBackgroundJob(ASearch: TBackgroundSearch);
+    procedure HideBackground(ASearch: TBackgroundSearch);
+    procedure EndForegroundJob;
+    procedure JobCancel(AId: Integer);
+    procedure JobOpen(AId: Integer);
+    procedure JobForeground(AId: Integer; AForeground: Boolean);
+    function JobIdOf(const AKey: string): Integer;
     procedure HandleSearchInputDialog(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char);
     procedure HandleSearchInputRunning(var AKey: Word; var AKeyChar: Char);
@@ -47,6 +104,15 @@ type
       AClientWidth, AClientHeight: Integer);
     procedure StartSearch;
     procedure CancelSearch;
+    /// <summary>Starts the search the dialog describes and sends it to the
+    /// background at once.</summary>
+    procedure StartSearchInBackground;
+    /// <summary>Hides the overlay of the running search and lets it go on as a
+    /// background search with a job of its own; the job opens its results.</summary>
+    procedure SendToBackground;
+    /// <summary>Ends the background searches whose results no panel shows any
+    /// more, and their jobs. Called whenever the panels change.</summary>
+    procedure SweepBackgrounds;
     procedure GotoSearchResult;
     function HandleSearchInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
@@ -78,12 +144,24 @@ type
     /// <summary>Called after a search that ended because it hit the result
     /// limit (cFindMaxResults).</summary>
     property OnLimitReached: TProc read FOnLimitReached write FOnLimitReached;
+    property BackgroundCount: Integer read GetBackgroundCount;
+    property OnBackgroundDone: TSearchBackgroundDoneEvent read FOnBackgroundDone
+      write FOnBackgroundDone;
+    /// <summary>Takes the live results out of the panel when the search goes to
+    /// the background.</summary>
+    property OnHideResults: TProc read FOnHideResults write FOnHideResults;
+    property OnOpenSession: TSearchSessionOpenEvent read FOnOpenSession
+      write FOnOpenSession;
+    property OnUpdateSession: TSearchSessionUpdateEvent read FOnUpdateSession
+      write FOnUpdateSession;
+    property OnSessionShown: TSearchSessionShownFunc read FOnSessionShown
+      write FOnSessionShown;
   end;
 
 implementation
 
 uses
-  uStrings, uKeyChord, uTextEncoding, uFindArchive;
+  uStrings, uKeyChord, uTextEncoding, uFindArchive, uPluginServices;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -101,6 +179,8 @@ const
   // cannot regress if the encoding is ever lost again. (chBoxH in
   // uTerminalTypes.pas uses the same convention.)
   cEllipsis = #$2026;
+  // The job-list entry of a search that runs in the background.
+  cJobOwner = 'host';
 
 constructor TSearchController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AOnGoto: TSearchGotoEvent;
@@ -114,6 +194,7 @@ begin
   FOnNavigateFindResults := AOnNavigateFindResults;
   FOnAfterClose := AOnAfterClose;
   FLife := NewLifeFlag;
+  FBackgrounds := TObjectList<TBackgroundSearch>.Create(True);
   FSearch.Phase := spNone;
   FSearch.Mask := '*.*';
   FSearch.ContainingText := '';
@@ -135,6 +216,10 @@ begin
   FLife.Alive := False;
   if Assigned(FSearch.Cancel) then
     FSearch.Cancel.Cancel;
+  EndForegroundJob;
+  while FBackgrounds.Count > 0 do
+    DropBackground(FBackgrounds[0].Id);
+  FBackgrounds.Free;
   inherited;
 end;
 
@@ -153,6 +238,7 @@ begin
   if Assigned(FSearch.Cancel) then
     FSearch.Cancel.Cancel;
   FSearch.Cancel := nil;
+  EndForegroundJob;
   FSearch.Phase := spNone;
   SetLength(FSearch.Results, 0);
   FSearch.FoundCount := 0;
@@ -205,6 +291,8 @@ var
   Token: IJobCancelToken;
   Opts: TFindOptions;
   Life: ILifeFlag;
+  RunId: Integer;
+  Bg: TBackgroundSearch;
 begin
   Mask := Trim(FSearch.Mask);
   if Mask = '' then
@@ -275,6 +363,8 @@ begin
   end;
 
   Life := FLife;
+  Inc(FRunId);
+  RunId := FRunId;
   Token := TJobCancelToken.Create;
   FSearch.Cancel := Token;
   FSearch.Phase := spRunning;
@@ -283,16 +373,51 @@ begin
   FSearch.Message := '';
   FResultsShown := False;
   SetLength(FSearch.Results, 0);
+  // The progress dialog is the dialog of this job; the Background button of
+  // that dialog hides it, which sends the search to the background.
+  EndForegroundJob;
+  FFgJobKey := 'find:' + IntToStr(RunId);
+  PluginJobBegin(cJobOwner, FFgJobKey, T('ui.search.jobTitle', 'Search: %s', [Mask]),
+    procedure
+    begin
+      JobCancel(RunId);
+    end,
+    procedure
+    begin
+      JobOpen(RunId);
+    end,
+    procedure(AForeground: Boolean)
+    begin
+      JobForeground(RunId, AForeground);
+    end,
+    False);
+  PluginJobUpdate(cJobOwner, FFgJobKey,
+    T('ui.search.found', 'Found: %d', [0]) + #10 + Root, -1);
+  PluginJobSetForeground(JobIdOf(FFgJobKey), True);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
 
   FindFilesAsync(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
-      if not Life.Alive or (FSearch.Phase <> spRunning) then
+      if not Life.Alive then
+        Exit;
+      Bg := FindBackground(RunId);
+      if Bg <> nil then
+      begin
+        Bg.CurrentDir := ACurrentDir;
+        PluginJobUpdate(cJobOwner, Bg.JobKey,
+          T('ui.search.found', 'Found: %d', [AFoundCount]) + #10 + ACurrentDir, -1);
+        PluginJobSetBadge(cJobOwner, Bg.JobKey, IntToStr(AFoundCount));
+        Exit;
+      end;
+      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) then
         Exit;
       FSearch.FoundCount := AFoundCount;
       FSearch.CurrentDir := ACurrentDir;
+      PluginJobUpdate(cJobOwner, 'find:' + IntToStr(RunId),
+        T('ui.search.found', 'Found: %d', [AFoundCount]) + #10 + ACurrentDir, -1);
+      PluginJobSetBadge(cJobOwner, 'find:' + IntToStr(RunId), IntToStr(AFoundCount));
       if Assigned(FOnInvalidate) then
         FOnInvalidate;
     end,
@@ -301,9 +426,42 @@ begin
     begin
       if not Life.Alive then
         Exit;
-      if FSearch.Phase <> spRunning then
+      Bg := FindBackground(RunId);
+      if Bg <> nil then
+      begin
+        Bg.Done := True;
+        Bg.Token := nil;
+        Bg.Hits := AHits;
+        if Length(AHits) = 0 then
+        begin
+          // Nothing to open: the job ends with a note unless the user stopped it.
+          if (AError.Code <> vecCancelled) and Assigned(FOnBackgroundDone) then
+            FOnBackgroundDone(0);
+          DropBackground(RunId);
+          Exit;
+        end;
+        if Bg.Opened then
+        begin
+          if Assigned(FOnUpdateSession) then
+            FOnUpdateSession(Bg.SessionId, Bg.Root, Bg.Mask, AHits);
+        end
+        else if AError.Code = vecCancelled then
+          // A search the user stopped shows what it found right away.
+          OpenBackground(RunId)
+        else if Assigned(FOnBackgroundDone) then
+          FOnBackgroundDone(Length(AHits));
+        if FindBackground(RunId) <> nil then
+        begin
+          RefreshBackgroundJob(Bg);
+          // A finished search has no progress dialog to keep up.
+          PluginJobSetForeground(JobIdOf(Bg.JobKey), False);
+        end;
+        Exit;
+      end;
+      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) then
         Exit;
       FSearch.Cancel := nil;
+      EndForegroundJob;
       // Queued so the notice opens after this callback has closed or
       // rebuilt the search UI.
       if (AError.Code = vecOk) and ATruncated and Assigned(FOnLimitReached) then
@@ -349,7 +507,17 @@ begin
     end,
     procedure(const ANewHits: TArray<TFindHit>)
     begin
-      if not Life.Alive or (FSearch.Phase <> spRunning) or
+      if not Life.Alive then
+        Exit;
+      Bg := FindBackground(RunId);
+      if Bg <> nil then
+      begin
+        Bg.Hits := Bg.Hits + ANewHits;
+        if (Bg.SessionId <> '') and Assigned(FOnUpdateSession) then
+          FOnUpdateSession(Bg.SessionId, Bg.Root, Bg.Mask, Bg.Hits);
+        Exit;
+      end;
+      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) or
          not Assigned(FOnNavigateFindResults) then
         Exit;
       FSearch.Results := FSearch.Results + ANewHits;
@@ -368,6 +536,245 @@ begin
   end
   else
     CloseSearchUi;
+end;
+
+function TSearchController.GetBackgroundCount: Integer;
+begin
+  Result := FBackgrounds.Count;
+end;
+
+function TSearchController.FindBackground(AId: Integer): TBackgroundSearch;
+var
+  S: TBackgroundSearch;
+begin
+  for S in FBackgrounds do
+    if S.Id = AId then
+      Exit(S);
+  Result := nil;
+end;
+
+procedure TSearchController.RefreshBackgroundJob(ASearch: TBackgroundSearch);
+var
+  Text: string;
+begin
+  Text := T('ui.search.found', 'Found: %d', [Length(ASearch.Hits)]);
+  if ASearch.Done then
+    PluginJobUpdate(cJobOwner, ASearch.JobKey, Text, 100)
+  else
+    PluginJobUpdate(cJobOwner, ASearch.JobKey, Text + #10 + ASearch.CurrentDir, -1);
+  PluginJobSetBadge(cJobOwner, ASearch.JobKey, IntToStr(Length(ASearch.Hits)));
+end;
+
+function TSearchController.JobIdOf(const AKey: string): Integer;
+begin
+  Result := PluginJobIdByKey(cJobOwner, AKey);
+end;
+
+procedure TSearchController.DropBackground(AId: Integer);
+var
+  S: TBackgroundSearch;
+  Key: string;
+begin
+  S := FindBackground(AId);
+  if S = nil then
+    Exit;
+  if Assigned(S.Token) then
+    S.Token.Cancel;
+  Key := S.JobKey;
+  // Out of the list first: ending the job repaints, and the repaint sweeps.
+  FBackgrounds.Remove(S);
+  PluginJobEnd(cJobOwner, Key);
+end;
+
+procedure TSearchController.EndForegroundJob;
+var
+  Key: string;
+begin
+  Key := FFgJobKey;
+  FFgJobKey := '';
+  if Key <> '' then
+    PluginJobEnd(cJobOwner, Key);
+end;
+
+procedure TSearchController.OpenBackground(AId: Integer);
+var
+  S: TBackgroundSearch;
+begin
+  S := FindBackground(AId);
+  if (S = nil) or not Assigned(FOnOpenSession) then
+    Exit;
+  // The panels change while it opens; the sweep must not mistake that for a
+  // panel that was left.
+  FOpening := True;
+  try
+    S.Opened := FOnOpenSession(S.SessionId, S.Root, S.Mask, S.Hits);
+    if not S.Opened then
+      S.SessionId := '';
+  finally
+    FOpening := False;
+  end;
+end;
+
+procedure TSearchController.HideBackground(ASearch: TBackgroundSearch);
+begin
+  if not ASearch.Opened then
+    Exit;
+  ASearch.Opened := False;
+  if Assigned(FOnHideResults) then
+  begin
+    FOpening := True;
+    try
+      FOnHideResults;
+    finally
+      FOpening := False;
+    end;
+  end;
+end;
+
+procedure TSearchController.JobCancel(AId: Integer);
+var
+  B: TBackgroundSearch;
+begin
+  B := FindBackground(AId);
+  if B = nil then
+  begin
+    // The search of the progress dialog: it ends through its own callback.
+    if (AId = FRunId) and (FSearch.Phase = spRunning) and Assigned(FSearch.Cancel) then
+      FSearch.Cancel.Cancel;
+    Exit;
+  end;
+  // Stopping a running search keeps what it found; a finished one that
+  // nobody opened is discarded.
+  if B.Done then
+    DropBackground(AId)
+  else if Assigned(B.Token) then
+    B.Token.Cancel;
+end;
+
+procedure TSearchController.JobOpen(AId: Integer);
+var
+  B: TBackgroundSearch;
+  JobId: Integer;
+begin
+  B := FindBackground(AId);
+  if B = nil then
+  begin
+    if (AId = FRunId) and (FSearch.Phase = spRunning) then
+      PluginJobSetForeground(JobIdOf('find:' + IntToStr(AId)), True);
+    Exit;
+  end;
+  // A running search comes back with its progress dialog; the panel shows
+  // its results only while that dialog (or the finished search) is open.
+  if not B.Done then
+  begin
+    JobId := JobIdOf(B.JobKey);
+    if JobId > 0 then
+      PluginJobSetForeground(JobId, True);
+  end;
+  OpenBackground(AId);
+end;
+
+procedure TSearchController.JobForeground(AId: Integer; AForeground: Boolean);
+var
+  B: TBackgroundSearch;
+begin
+  if AForeground then
+    Exit;
+  B := FindBackground(AId);
+  if B <> nil then
+  begin
+    // Hiding the dialog of a search that still runs puts it away again.
+    if not B.Done and Assigned(B.Token) and not B.Token.IsCancellationRequested then
+      HideBackground(B);
+    Exit;
+  end;
+  if (AId = FRunId) and (FSearch.Phase = spRunning) and Assigned(FSearch.Cancel) and
+     not FSearch.Cancel.IsCancellationRequested then
+    SendToBackground;
+end;
+
+procedure TSearchController.SendToBackground;
+var
+  S: TBackgroundSearch;
+  Id, JobId: Integer;
+begin
+  if FSearch.Phase <> spRunning then
+    Exit;
+  S := TBackgroundSearch.Create;
+  S.Id := FRunId;
+  Id := S.Id;
+  S.Root := FSearch.RootPath;
+  S.Mask := FSearch.Mask;
+  S.Token := FSearch.Cancel;
+  S.Hits := FSearch.Results;
+  S.CurrentDir := FSearch.CurrentDir;
+  S.JobKey := FFgJobKey;
+  if S.JobKey = '' then
+    S.JobKey := 'find:' + IntToStr(Id);
+  FFgJobKey := '';
+  FBackgrounds.Add(S);
+  // The overlay lets go of the walk; its callbacks now find the search by number.
+  FSearch.Cancel := nil;
+  FSearch.Phase := spNone;
+  if FResultsShown and Assigned(FOnHideResults) then
+  begin
+    FOpening := True;
+    try
+      FOnHideResults;
+    finally
+      FOpening := False;
+    end;
+  end;
+  FResultsShown := False;
+  SetLength(FSearch.Results, 0);
+  Inc(FRunId);
+  JobId := JobIdOf(S.JobKey);
+  if JobId = 0 then
+    PluginJobBegin(cJobOwner, S.JobKey, T('ui.search.jobTitle', 'Search: %s', [S.Mask]),
+      procedure
+      begin
+        JobCancel(Id);
+      end,
+      procedure
+      begin
+        JobOpen(Id);
+      end,
+      procedure(AForeground: Boolean)
+      begin
+        JobForeground(Id, AForeground);
+      end)
+  else
+  begin
+    PluginJobSetForeground(JobId, False);
+    PluginJobAnnounce(cJobOwner, S.JobKey);
+  end;
+  RefreshBackgroundJob(S);
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
+  if Assigned(FOnAfterClose) then
+    FOnAfterClose;
+end;
+
+procedure TSearchController.SweepBackgrounds;
+var
+  I: Integer;
+  S: TBackgroundSearch;
+begin
+  if FOpening or not Assigned(FOnSessionShown) then
+    Exit;
+  for I := FBackgrounds.Count - 1 downto 0 do
+  begin
+    S := FBackgrounds[I];
+    if S.Opened and not FOnSessionShown(S.SessionId) then
+      DropBackground(S.Id);
+  end;
+end;
+
+procedure TSearchController.StartSearchInBackground;
+begin
+  StartSearch;
+  if FSearch.Phase = spRunning then
+    SendToBackground;
 end;
 
 procedure TSearchController.GotoSearchResult;
@@ -394,7 +801,7 @@ var
 begin
   if FSearch.Phase = spNone then
     Exit;
-  if FSearch.Phase = spDialog then
+  if FSearch.Phase in [spDialog, spRunning] then
     Exit;
   LayoutSearchUi(AClientWidth, AClientHeight);
   R := FSearch.Bounds;
@@ -413,30 +820,6 @@ begin
     cFileFg, cPanelBg, cFrameActive, cCursorFg);
 
   case FSearch.Phase of
-    spRunning:
-      begin
-        // The frame owns R.Left / R.Right; a one-cell gap stays free next to
-        // each, so the text starts at R.Left + 2 and has R.Width - 4 cells.
-        MaxW := R.Width - 4;
-        Line := T('ui.search.mask', 'Mask: %s', [FSearch.Mask]);
-        if (MaxW > 1) and (Length(Line) > MaxW) then
-          Line := Copy(Line, 1, MaxW - 1) + cEllipsis;
-        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 1, Line,
-          True, False, False, cDirFg, cPanelBg);
-        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 2,
-          T('ui.search.found', 'Found: %d', [FSearch.FoundCount]),
-          False, False, False, cFileFg, cPanelBg);
-        Line := FSearch.CurrentDir;
-        // Keep the tail: the deep end of the path is the part that changes
-        // while scanning.
-        MaxW := R.Width - 4;
-        if (MaxW > 1) and (Length(Line) > MaxW) then
-          Line := cEllipsis + Copy(Line, Length(Line) - MaxW + 2, MaxInt);
-        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 3, Line,
-          True, False, False, cDirFg, cPanelBg);
-        PutOverlayText(AGrid, FTheme, R.Left + 2, R.Top + 5, T('ui.search.cancelHint', 'Esc=Cancel'),
-          True, False, False, cMenuHot, cPanelBg);
-      end;
     spResults:
       begin
         if FSearch.Message <> '' then
@@ -554,7 +937,13 @@ end;
 procedure TSearchController.HandleSearchInputRunning(var AKey: Word;
   var AKeyChar: Char);
 begin
-  if AKey = vkEscape then
+  if AKey = vkTab then
+  begin
+    SendToBackground;
+    AKey := 0;
+    AKeyChar := #0;
+  end
+  else if AKey = vkEscape then
   begin
     if Assigned(FOnStopRequest) then
       FOnStopRequest

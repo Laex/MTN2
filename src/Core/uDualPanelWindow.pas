@@ -413,7 +413,14 @@ type
     function HandleJobListAction(const AControlId: string): Boolean;
     procedure HostRequestJobStop;
     procedure HostRequestSearchStop;
+    procedure HostHideSearchResults;
     procedure HostSearchLimitReached;
+    procedure HostSearchBackgroundDone(AFound: Integer);
+    function HostOpenFindSession(var ASessionId: string; const ARoot, AMask: string;
+      const AHits: TArray<TFindHit>): Boolean;
+    procedure HostUpdateFindSession(const ASessionId, ARoot, AMask: string;
+      const AHits: TArray<TFindHit>);
+    function HostFindSessionShown(const ASessionId: string): Boolean;
     procedure OpenJobList;
     function KeymapActiveSide: TPanelSide;
     procedure KeymapToggleConsole;
@@ -3171,10 +3178,102 @@ begin
       'Narrow the mask or the folder.', [cFindMaxResults]));
 end;
 
+procedure TDualPanelWindow.HostSearchBackgroundDone(AFound: Integer);
+var
+  Request: TNoticeRequest;
+begin
+  if not Assigned(FToast) then
+    Exit;
+  if AFound > 0 then
+    Request := TNoticeRequest.Make(T('ui.toast.searchDone',
+      'Search finished: %s found. Pick its job to open them'), IntToStr(AFound))
+  else
+    Request := TNoticeRequest.Make(T('ui.toast.searchNone',
+      'Search finished: no files found'));
+  // The end of a search nobody watches is shown even with toasts turned off.
+  Request.Always := True;
+  FToast.ShowRequest(Request);
+end;
+
+function TDualPanelWindow.HostOpenFindSession(var ASessionId: string;
+  const ARoot, AMask: string; const AHits: TArray<TFindHit>): Boolean;
+begin
+  if (ASessionId = '') or not UpdateFindSession(ASessionId, ARoot, AMask, AHits) then
+    ASessionId := RegisterFindSession(ARoot, AMask, AHits);
+  NavigateActiveTo(MakeFindSessionUri(ASessionId));
+  Result := True;
+end;
+
+procedure TDualPanelWindow.HostUpdateFindSession(const ASessionId, ARoot,
+  AMask: string; const AHits: TArray<TFindHit>);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Panel: TPanelState;
+  Uri: string;
+begin
+  if not UpdateFindSession(ASessionId, ARoot, AMask, AHits) then
+    Exit;
+  Ws := ActiveWorkspace;
+  for Side := Low(TPanelSide) to High(TPanelSide) do
+  begin
+    if Side = psLeft then
+      Panel := Ws.State.LeftPanel
+    else
+      Panel := Ws.State.RightPanel;
+    Uri := ActiveTab(Panel).CurrentURI;
+    if IsFindUri(Uri) and (FindSessionIdFromUri(Uri) = ASessionId) then
+      LoadSide(Side);
+  end;
+end;
+
+function TDualPanelWindow.HostFindSessionShown(const ASessionId: string): Boolean;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  I: Integer;
+begin
+  for I := 0 to High(FState.WorkspaceTabs) do
+  begin
+    Ws := FState.WorkspaceTabs[I];
+    if Ws.Kind <> wkPanels then
+      Continue;
+    for Panel in [Ws.State.LeftPanel, Ws.State.RightPanel] do
+      for Tab in Panel.Tabs do
+        if IsFindUri(Tab.CurrentURI) and
+           (FindSessionIdFromUri(Tab.CurrentURI) = ASessionId) then
+          Exit(True);
+  end;
+  Result := False;
+end;
+
 procedure TDualPanelWindow.HostRequestSearchStop;
 begin
   RequestStopConfirm(T('ui.stop.search', 'Stop the search?'),
     procedure begin FSearchUi.CancelSearch; end, nil);
+end;
+
+// A search sent to the background takes its live results out of the panel:
+// the tab goes back to the folder it was in before the results appeared.
+procedure TDualPanelWindow.HostHideSearchResults;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Side: TPanelSide;
+begin
+  Ws := ActiveWorkspace;
+  Side := Ws.State.ActiveSide;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  if not IsFindUri(Tab.CurrentURI) or (Tab.HistoryIndex <= 0) then
+    Exit;
+  Dec(Tab.HistoryIndex);
+  SetActiveTab(Panel, Tab);
+  SetActivePanel(Ws, Panel);
+  SaveActiveWorkspace(Ws);
+  NavigateSideTo(Side, Tab.History[Tab.HistoryIndex], False);
 end;
 
 procedure TDualPanelWindow.SyncJobProgressDialog;
@@ -3573,6 +3672,11 @@ begin
     HostApplyFindResults, FlushDirWatchPending);
   FSearchUi.OnStopRequest := HostRequestSearchStop;
   FSearchUi.OnLimitReached := HostSearchLimitReached;
+  FSearchUi.OnBackgroundDone := HostSearchBackgroundDone;
+  FSearchUi.OnHideResults := HostHideSearchResults;
+  FSearchUi.OnOpenSession := HostOpenFindSession;
+  FSearchUi.OnUpdateSession := HostUpdateFindSession;
+  FSearchUi.OnSessionShown := HostFindSessionShown;
   FSearchDlg := TSearchDialogController.Create(FDialog, FSearchUi, DialogCommand,
     HostSetDialogKind, HostSearchBlocked, HostPrepareSearchUi,
     HostActivePanelUri, NotifyChanged);
@@ -4185,6 +4289,9 @@ end;
 
 procedure TDualPanelWindow.NotifyChanged;
 begin
+  // A background search lives only while its results are on a panel.
+  if Assigned(FSearchUi) then
+    FSearchUi.SweepBackgrounds;
   SyncJobProgressDialog;
   Invalidate;
   if Assigned(FOnContentChanged) then

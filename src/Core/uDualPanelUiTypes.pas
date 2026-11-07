@@ -134,6 +134,8 @@ type
     AskOfferPermanent: Boolean;
     /// <summary>pjkPlugin: the user asked the job to stop and the plugin has not ended it yet.</summary>
     Stopping: Boolean;
+    /// <summary>pjkPlugin: text the chip shows in place of the percentage.</summary>
+    Badge: string;
   end;
 
   TSortMenuItem = record
