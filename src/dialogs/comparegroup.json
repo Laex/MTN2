@@ -1,0 +1,73 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Compare marked files",
+  "width": 76,
+  "height": 24,
+  "children": [
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 0,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "pairs",
+      "selected": 0,
+      "items": [
+        "(none)"
+      ],
+      "col": 1,
+      "row": 2,
+      "width": 72,
+      "height": 14
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 16,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "Enter=Compare  Esc=Close",
+      "col": 1,
+      "row": 17,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 18,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Compare",
+      "default": true,
+      "col": 22,
+      "row": 20,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Close",
+      "cancel": true,
+      "col": 38,
+      "row": 20,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

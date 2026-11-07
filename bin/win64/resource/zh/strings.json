@@ -422,6 +422,12 @@
       "$title": "比较文件",
       "ok": "确定"
     },
+    "DIALOG_COMPAREGROUP": {
+      "$title": "比较已标记的文件",
+      "hint": "Enter=比较  Esc=关闭",
+      "ok": "比较",
+      "cancel": "关闭"
+    },
     "DIALOG_FILEHISTORY": {
       "$title": "文件历史",
       "hint": "Enter=打开  F3=查看  F4=编辑  Ctrl+Enter=转到文件",
@@ -1430,6 +1436,10 @@
     "compareFiles.differs": "不同",
     "compareFiles.contentEqual": "一致",
     "compareFiles.contentOffset": "从字节偏移 %d 起不同",
+    "compareGroup.status": "%d 个相同,%d 个不同,%d 个未比较",
+    "compareGroup.error": "读取错误",
+    "compareGroup.none": "没有可比较的同名文件。",
+    "compareGroup.working": "正在比较... Esc=取消",
     "datePicker.title": "选择日期",
     "dirSync.title": "同步",
     "dirSync.titleFailed": "同步失败",

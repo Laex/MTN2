@@ -423,6 +423,12 @@
       "$title": "Dateien vergleichen",
       "ok": "OK"
     },
+    "DIALOG_COMPAREGROUP": {
+      "$title": "Markierte Dateien vergleichen",
+      "hint": "Enter=Vergleichen  Esc=Schließen",
+      "ok": "Vergleichen",
+      "cancel": "Schließen"
+    },
     "DIALOG_FILEHISTORY": {
       "$title": "Dateiverlauf",
       "hint": "Enter=Öffnen  F3=Ansehen  F4=Bearbeiten  Ctrl+Enter=Zur Datei",
@@ -1431,6 +1437,10 @@
     "compareFiles.differs": "unterschiedlich",
     "compareFiles.contentEqual": "identisch",
     "compareFiles.contentOffset": "unterscheidet sich ab Byte-Offset %d",
+    "compareGroup.status": "%d identisch, %d unterschiedlich, %d nicht verglichen",
+    "compareGroup.error": "Lesefehler",
+    "compareGroup.none": "Keine gleichnamigen Dateien zum Vergleichen.",
+    "compareGroup.working": "Vergleiche... Esc=Abbrechen",
     "datePicker.title": "Datum wählen",
     "dirSync.title": "Synchronisieren",
     "dirSync.titleFailed": "Synchronisierung fehlgeschlagen",

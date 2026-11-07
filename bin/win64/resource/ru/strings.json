@@ -421,6 +421,12 @@
       "$title": "Сравнение файлов",
       "ok": "ОК"
     },
+    "DIALOG_COMPAREGROUP": {
+      "$title": "Сравнение отмеченных файлов",
+      "hint": "Enter=Сравнить  Esc=Закрыть",
+      "ok": "Сравнить",
+      "cancel": "Закрыть"
+    },
     "DIALOG_FILEHISTORY": {
       "$title": "История файлов",
       "hint": "Enter=Открыть  F3=Просмотр  F4=Правка  Ctrl+Enter=К файлу",
@@ -1438,6 +1444,10 @@
     "compareFiles.differs": "различается",
     "compareFiles.contentEqual": "одинаково",
     "compareFiles.contentOffset": "различается со смещения %d",
+    "compareGroup.status": "%d одинаковых, %d различаются, %d не сравнено",
+    "compareGroup.error": "ошибка чтения",
+    "compareGroup.none": "Нет файлов с одинаковыми именами для сравнения.",
+    "compareGroup.working": "Сравнение... Esc=Отмена",
     "datePicker.title": "Выбор даты",
     "dirSync.title": "Синхронизация",
     "dirSync.titleFailed": "Ошибка синхронизации",

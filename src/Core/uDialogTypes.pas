@@ -380,6 +380,10 @@ function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
   const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
+/// <summary>Group compare result: one row per same-named pair, colored by the
+/// swatches; Enter on a row accepts (the list id is "pairs").</summary>
+function BuildCompareGroupDialog(const AStatus: string;
+  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
 /// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
@@ -1583,6 +1587,15 @@ begin
     if Result.Controls[I].Row > DiffRow then
       Dec(Result.Controls[I].Row, Gap);
   Dec(Result.Height, Gap);
+end;
+
+function BuildCompareGroupDialog(const AStatus: string;
+  const AItems: TArray<string>; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogCompareGroup, Result);
+  DialogSetLabelText(Result, 'status', AStatus);
+  DialogSetListItems(Result, 'pairs', AItems, 0);
+  DialogSetListSwatches(Result, 'pairs', ASwatches);
 end;
 
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,

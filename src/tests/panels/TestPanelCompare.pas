@@ -15,6 +15,8 @@ type
     [Test] procedure Run;
     [Test] procedure OptionsChooseWhatDiffers;
     [Test] procedure MarkedFilePairNeedsExactlyTwoFiles;
+    [Test] procedure MarksOnOneSidePairWithSameNamedFilesOfTheOther;
+    [Test] procedure MarksOnBothSidesPairOnlyMarkedFiles;
     [Test] procedure SummaryShowsSizeDateAndContentVerdicts;
   end;
 
@@ -78,6 +80,68 @@ begin
   TabSetSelected(Tab, Rows[3].URI, False);
   TabSetSelected(Tab, Rows[4].URI, True);
   Assert.IsFalse(PickMarkedFilePair(Rows, Tab, L, R), 'a marked folder is not a file');
+end;
+
+procedure TTestPanelCompare.MarksOnOneSidePairWithSameNamedFilesOfTheOther;
+var
+  LRows, RRows: TPanelRows;
+  LTab, RTab: TTab;
+  Pairs: TArray<TComparePair>;
+  Skipped: Integer;
+begin
+  T0 := EncodeDateTime(2025, 1, 1, 12, 0, 0, 0);
+  LRows := [Parent, Row('a.txt', 1, T0), Row('B.txt', 1, T0), Row('c.txt', 1, T0),
+    Row('dir', 0, T0, True)];
+  RRows := [Parent, Row('b.TXT', 1, T0, False, 'R'), Row('a.txt', 1, T0, False, 'R'),
+    Row('dir', 0, T0, True, 'R')];
+  LTab := MakeTab(1, 'l', 'file:///L/');
+  RTab := MakeTab(2, 'r', 'file:///R/');
+  TabSetSelected(LTab, LRows[1].URI, True);
+  TabSetSelected(LTab, LRows[2].URI, True);
+  TabSetSelected(LTab, LRows[3].URI, True);
+  TabSetSelected(LTab, LRows[4].URI, True);
+  Pairs := PairMarkedFilesByName(LRows, RRows, LTab, RTab, Skipped);
+  Assert.IsTrue(Length(Pairs) = 2, 'a.txt and B.txt have counterparts');
+  Assert.AreEqual('a.txt', Pairs[0].Left.Text, 'left listing order');
+  Assert.AreEqual('file:///R/a.txt', Pairs[0].Right.URI, 'right side is the other panel');
+  Assert.AreEqual('B.txt', Pairs[1].Left.Text, 'names match regardless of case');
+  Assert.AreEqual(Integer(2), Skipped, 'c.txt has no counterpart and the folder is not a file');
+
+  // Marks on the right panel only: the pair keeps left/right orientation.
+  TabSetSelected(LTab, LRows[1].URI, False);
+  TabSetSelected(LTab, LRows[2].URI, False);
+  TabSetSelected(LTab, LRows[3].URI, False);
+  TabSetSelected(LTab, LRows[4].URI, False);
+  TabSetSelected(RTab, RRows[2].URI, True);
+  TabSetSelected(RTab, RRows[1].URI, True);
+  Pairs := PairMarkedFilesByName(LRows, RRows, LTab, RTab, Skipped);
+  Assert.IsTrue(Length(Pairs) = 2, 'both marked right files have a left counterpart');
+  Assert.AreEqual('file:///R/b.TXT', Pairs[0].Right.URI, 'right listing order');
+  Assert.AreEqual('file:///L/B.txt', Pairs[0].Left.URI, 'left row comes from the left panel');
+  Assert.AreEqual(Integer(0), Skipped, 'nothing skipped');
+end;
+
+procedure TTestPanelCompare.MarksOnBothSidesPairOnlyMarkedFiles;
+var
+  LRows, RRows: TPanelRows;
+  LTab, RTab: TTab;
+  Pairs: TArray<TComparePair>;
+  Skipped: Integer;
+begin
+  T0 := EncodeDateTime(2025, 1, 1, 12, 0, 0, 0);
+  LRows := [Parent, Row('a.txt', 1, T0), Row('b.txt', 1, T0), Row('c.txt', 1, T0)];
+  RRows := [Parent, Row('a.txt', 1, T0, False, 'R'), Row('b.txt', 1, T0, False, 'R'),
+    Row('c.txt', 1, T0, False, 'R')];
+  LTab := MakeTab(1, 'l', 'file:///L/');
+  RTab := MakeTab(2, 'r', 'file:///R/');
+  TabSetSelected(LTab, LRows[1].URI, True);
+  TabSetSelected(LTab, LRows[2].URI, True);
+  TabSetSelected(RTab, RRows[2].URI, True);
+  TabSetSelected(RTab, RRows[3].URI, True);
+  Pairs := PairMarkedFilesByName(LRows, RRows, LTab, RTab, Skipped);
+  Assert.IsTrue(Length(Pairs) = 1, 'only b.txt is marked on both sides');
+  Assert.AreEqual('b.txt', Pairs[0].Left.Text, 'the pair');
+  Assert.AreEqual(Integer(2), Skipped, 'a.txt and c.txt each have no marked counterpart');
 end;
 
 procedure TTestPanelCompare.SummaryShowsSizeDateAndContentVerdicts;

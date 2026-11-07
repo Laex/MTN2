@@ -58,6 +58,22 @@ function PanelCompareName(const ARow: TPanelRow): string;
 /// unless exactly two rows are selected and neither is a folder or '..'.</summary>
 function PickMarkedFilePair(const ARows: TPanelRows; const ATab: TTab;
   out ALeft, ARight: TPanelRow): Boolean;
+/// <summary>Number of marked rows of a panel, folders included, '..' not.</summary>
+function CountMarkedRows(const ARows: TPanelRows; const ATab: TTab): Integer;
+type
+  /// <summary>Two same-named files, one from each panel.</summary>
+  TComparePair = record
+    Left, Right: TPanelRow;
+  end;
+
+/// <summary>The same-named files of a group compare, in listing order of the
+/// marked side (the left one when both are marked). Marks on both panels pair
+/// the marked files of each; marks on one panel pair each marked file with the
+/// file of that name on the other panel. Folders, and files without a
+/// same-named counterpart, are not paired; ASkipped counts the marked rows
+/// left out.</summary>
+function PairMarkedFilesByName(const ALeftRows, ARightRows: TPanelRows;
+  const ALeftTab, ARightTab: TTab; out ASkipped: Integer): TArray<TComparePair>;
 /// <summary>One line of the compare-files summary; Same says whether the two
 /// sides match (the dialog colors the whole line by it).</summary>
 type
@@ -116,6 +132,78 @@ begin
     Inc(Found);
   end;
   Result := Found = 2;
+end;
+
+function CountMarkedRows(const ARows: TPanelRows; const ATab: TTab): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(ARows) do
+    if (not ARows[I].IsParent) and TabIsSelected(ATab, ARows[I].URI) then
+      Inc(Result);
+end;
+
+function PairMarkedFilesByName(const ALeftRows, ARightRows: TPanelRows;
+  const ALeftTab, ARightTab: TTab; out ASkipped: Integer): TArray<TComparePair>;
+var
+  LeftMarked, RightMarked, I, J: Integer;
+  MarkedIsLeft, BothMarked: Boolean;
+  Pairs: TList<TComparePair>;
+  Other: TDictionary<string, Integer>;
+  Pair: TComparePair;
+
+  procedure Collect(const AMarkedRows, AOtherRows: TPanelRows;
+    const AMarkedTab, AOtherTab: TTab);
+  var
+    K: Integer;
+  begin
+    for K := 0 to High(AOtherRows) do
+      if (not AOtherRows[K].IsParent) and (not AOtherRows[K].IsDirectory) and
+         ((not BothMarked) or TabIsSelected(AOtherTab, AOtherRows[K].URI)) then
+        Other.AddOrSetValue(LowerCase(PanelCompareName(AOtherRows[K])), K);
+    for K := 0 to High(AMarkedRows) do
+    begin
+      if AMarkedRows[K].IsParent or AMarkedRows[K].IsDirectory or
+         not TabIsSelected(AMarkedTab, AMarkedRows[K].URI) then
+        Continue;
+      if not Other.TryGetValue(LowerCase(PanelCompareName(AMarkedRows[K])), J) then
+        Continue;
+      if MarkedIsLeft then
+      begin
+        Pair.Left := AMarkedRows[K];
+        Pair.Right := AOtherRows[J];
+      end
+      else
+      begin
+        Pair.Left := AOtherRows[J];
+        Pair.Right := AMarkedRows[K];
+      end;
+      Pairs.Add(Pair);
+    end;
+  end;
+
+begin
+  LeftMarked := CountMarkedRows(ALeftRows, ALeftTab);
+  RightMarked := CountMarkedRows(ARightRows, ARightTab);
+  BothMarked := (LeftMarked > 0) and (RightMarked > 0);
+  MarkedIsLeft := LeftMarked > 0;
+  Pairs := TList<TComparePair>.Create;
+  Other := TDictionary<string, Integer>.Create;
+  try
+    if MarkedIsLeft then
+      Collect(ALeftRows, ARightRows, ALeftTab, ARightTab)
+    else
+      Collect(ARightRows, ALeftRows, ARightTab, ALeftTab);
+    Result := Pairs.ToArray;
+  finally
+    Other.Free;
+    Pairs.Free;
+  end;
+  if BothMarked then
+    ASkipped := LeftMarked + RightMarked - 2 * Length(Result)
+  else
+    ASkipped := LeftMarked + RightMarked - Length(Result);
 end;
 
 function FormatExactSize(ASize: Int64): string;

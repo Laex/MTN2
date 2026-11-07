@@ -81,6 +81,9 @@ type
     FChecksumAlgoIndex: Integer;
     FCompareOptions: TPanelCompareOptions;
     FCompareToken: IJobCancelToken;
+    /// <summary>The pairs listed by the open group-compare dialog; Enter
+    /// opens the selected one.</summary>
+    FCompareGroup: TArray<TComparePair>;
     FChecksumToken: IJobCancelToken;
     FChecksumLines: TArray<string>;
     FChecksumSaveName: string;
@@ -808,6 +811,13 @@ type
     procedure ShowShellContextMenu;
     procedure ApplySetAttributes(const APaths: TArray<string>; const APlan: TFileAttrPlan);
     procedure BeginCompareFiles;
+    procedure BeginCompareGroup(const ALeftRows, ARightRows: TPanelRows;
+      const ALeftTab, ARightTab: TTab);
+    procedure ShowCompareGroup(const APairs: TArray<TComparePair>;
+      const AVerdicts: TArray<TCompareResult>; ASkipped: Integer);
+    procedure HandleCompareResultCommand(const AControlId: string);
+    procedure OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
+      const ALeftName, ARightName, ATitle: string);
     procedure RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
       const ALeftName, ARightName, ATitle: string; AToken: IJobCancelToken);
     /// <summary>Ctrl+Shift+C: select what differs between the two panels.</summary>
@@ -6897,7 +6907,7 @@ begin
     hdkKeymap, hdkKeymapEdit:
       Result := FKeymapDlg.DispatchCommand(AKind, AControlId);
     hdkCompareResult:
-      FDialog.Close;
+      HandleCompareResultCommand(AControlId);
     hdkHostColorPicker:
       FinishHostColorPick(AControlId);
     hdkHost:
@@ -7546,17 +7556,14 @@ end;
 
 procedure TDualPanelWindow.BeginCompareFiles;
 var
-  Life: ILifeFlag;
   Ws: TDualPanelWorkspaceTab;
-  LeftRows, RightRows, ActiveRows: TPanelRows;
+  LeftRows, RightRows: TPanelRows;
   LeftTab, RightTab: TTab;
-  LeftIdx, RightIdx: Integer;
+  LeftIdx, RightIdx, LeftMarked, RightMarked: Integer;
   LeftRow, RightRow: TPanelRow;
-  Token: IJobCancelToken;
   LeftName, RightName, Title: string;
   EitherSideNotAPlainFile, SamePanelPair: Boolean;
 begin
-  Life := FLife;
   if not CanStartOperation then
     Exit;
   Ws := ActiveWorkspace;
@@ -7569,15 +7576,20 @@ begin
     Exit;
   LeftTab := ActiveTab(Ws.State.LeftPanel);
   RightTab := ActiveTab(Ws.State.RightPanel);
+  LeftMarked := CountMarkedRows(LeftRows, LeftTab);
+  RightMarked := CountMarkedRows(RightRows, RightTab);
+  // Two marked files in one panel and nothing marked in the other are the pair.
   if Ws.State.ActiveSide = psLeft then
-  begin
-    ActiveRows := LeftRows;
-    SamePanelPair := PickMarkedFilePair(ActiveRows, LeftTab, LeftRow, RightRow);
-  end
+    SamePanelPair := (RightMarked = 0) and
+      PickMarkedFilePair(LeftRows, LeftTab, LeftRow, RightRow)
   else
+    SamePanelPair := (LeftMarked = 0) and
+      PickMarkedFilePair(RightRows, RightTab, LeftRow, RightRow);
+  // Any other marking of two or more rows compares the same-named files.
+  if (not SamePanelPair) and (Max(LeftMarked, RightMarked) >= 2) then
   begin
-    ActiveRows := RightRows;
-    SamePanelPair := PickMarkedFilePair(ActiveRows, RightTab, LeftRow, RightRow);
+    BeginCompareGroup(LeftRows, RightRows, LeftTab, RightTab);
+    Exit;
   end;
   if not SamePanelPair then
   begin
@@ -7605,6 +7617,23 @@ begin
     LeftName := 'L: ' + LeftRow.Text;
     RightName := 'R: ' + RightRow.Text;
   end;
+  OpenPairCompare(LeftRow, RightRow, LeftName, RightName, Title);
+end;
+
+procedure TDualPanelWindow.OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
+  const ALeftName, ARightName, ATitle: string);
+var
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+  LeftRow, RightRow: TPanelRow;
+  LeftName, RightName, Title: string;
+begin
+  Life := FLife;
+  LeftRow := ALeftRow;
+  RightRow := ARightRow;
+  LeftName := ALeftName;
+  RightName := ARightName;
+  Title := ATitle;
   Token := TJobCancelToken.Create;
   if not Assigned(FDiffView) then
   begin
@@ -7618,6 +7647,141 @@ begin
       if Life.Alive then
         RunPlainCompare(LeftRow, RightRow, LeftName, RightName, Title, Token);
     end);
+end;
+
+procedure TDualPanelWindow.BeginCompareGroup(const ALeftRows, ARightRows: TPanelRows;
+  const ALeftTab, ARightTab: TTab);
+var
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+  Pairs: TArray<TComparePair>;
+  Verdicts: TArray<TCompareResult>;
+  Step: TProc<Integer>;
+  Skipped: Integer;
+  Title: string;
+begin
+  Title := T('ui.compareFiles.title', 'Compare files');
+  Pairs := PairMarkedFilesByName(ALeftRows, ARightRows, ALeftTab, ARightTab, Skipped);
+  if Length(Pairs) = 0 then
+  begin
+    ShowCompareResult(Title, T('ui.compareGroup.none',
+      'No files with the same name to compare.'));
+    Exit;
+  end;
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  FCompareToken := Token;
+  SetLength(Verdicts, Length(Pairs));
+  OpenStub(skShellInfo, Title, T('ui.compareGroup.working', 'Comparing... Esc=Cancel'));
+  // One pair at a time; the next starts when the previous one is read. Files
+  // of different sizes are told apart without reading them.
+  Step := procedure(AIdx: Integer)
+    begin
+      if Token.IsCancellationRequested or not Life.Alive then
+      begin
+        Step := nil;
+        Exit;
+      end;
+      if AIdx > High(Pairs) then
+      begin
+        Step := nil;
+        FCompareToken := nil;
+        CloseStub;
+        ShowCompareGroup(Pairs, Verdicts, Skipped);
+        Exit;
+      end;
+      if (Pairs[AIdx].Left.Size >= 0) and (Pairs[AIdx].Right.Size >= 0) and
+         (Pairs[AIdx].Left.Size <> Pairs[AIdx].Right.Size) then
+      begin
+        Verdicts[AIdx] := crDifferSize;
+        Step(AIdx + 1);
+        Exit;
+      end;
+      CompareFilesAsync(Pairs[AIdx].Left.URI, Pairs[AIdx].Right.URI, FVfs, Token,
+        procedure(AResult: TCompareResult; ADiffOffset: Int64; const AError: TVfsError)
+        begin
+          Verdicts[AIdx] := AResult;
+          Step(AIdx + 1);
+        end);
+    end;
+  Step(0);
+end;
+
+procedure TDualPanelWindow.ShowCompareGroup(const APairs: TArray<TComparePair>;
+  const AVerdicts: TArray<TCompareResult>; ASkipped: Integer);
+const
+  cSameFg = TAlphaColor($FF00D000);
+  cDiffFg = TAlphaColor($FFFF4040);
+var
+  Items: TArray<string>;
+  Swatches: TArray<TListSwatch>;
+  I, NameW, Same, Differ, NotCompared: Integer;
+  Verdict: string;
+begin
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit;
+  NameW := 0;
+  for I := 0 to High(APairs) do
+    NameW := Min(Max(NameW, Length(PanelCompareName(APairs[I].Left))), 52);
+  SetLength(Items, Length(APairs));
+  SetLength(Swatches, Length(APairs));
+  Same := 0;
+  Differ := 0;
+  NotCompared := ASkipped;
+  for I := 0 to High(APairs) do
+  begin
+    case AVerdicts[I] of
+      crEqual:
+        begin
+          Verdict := T('ui.compareFiles.contentEqual', 'identical');
+          Swatches[I].Fg := cSameFg;
+          Inc(Same);
+        end;
+      crReadError:
+        begin
+          Verdict := T('ui.compareGroup.error', 'read error');
+          Swatches[I].Fg := cDiffFg;
+          Inc(NotCompared);
+        end;
+    else
+      Verdict := T('ui.compareFiles.differs', 'differs');
+      Swatches[I].Fg := cDiffFg;
+      Inc(Differ);
+    end;
+    Items[I] := PanelCompareName(APairs[I].Left).PadRight(NameW) + '  ' + Verdict;
+    Swatches[I].Col := 0;
+    Swatches[I].Text := Items[I];
+  end;
+  FCompareGroup := APairs;
+  SetCmdFocused(False);
+  FDialogKind := hdkCompareResult;
+  FDialog.Open(BuildCompareGroupDialog(
+    T('ui.compareGroup.status', '%d identical, %d differ, %d not compared',
+      [Same, Differ, NotCompared]), Items, Swatches), DialogCommand);
+  NotifyChanged;
+end;
+
+procedure TDualPanelWindow.HandleCompareResultCommand(const AControlId: string);
+var
+  Idx: Integer;
+  Pair: TComparePair;
+  Open: Boolean;
+begin
+  Open := False;
+  Idx := -1;
+  if Length(FCompareGroup) > 0 then
+    Idx := FDialog.GetListSelectedIndex('pairs');
+  if (Idx >= 0) and (Idx <= High(FCompareGroup)) and
+     DialogCmdIsListAccept(AControlId, 'pairs') then
+  begin
+    Pair := FCompareGroup[Idx];
+    Open := True;
+  end;
+  FDialog.Close;
+  FCompareGroup := nil;
+  if Open then
+    OpenPairCompare(Pair.Left, Pair.Right, 'L: ' + Pair.Left.Text,
+      'R: ' + Pair.Right.Text, T('ui.compareFiles.title', 'Compare files'));
 end;
 
 procedure TDualPanelWindow.RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
