@@ -1859,7 +1859,7 @@ begin
       end;
     end;
     try
-      SetLength(Buf, 64 * 1024);
+      SetLength(Buf, 256 * 1024);
       while True do
       begin
         if JobCancelRequested(ACancel) then
@@ -1949,6 +1949,130 @@ begin
   end;
 end;
 
+// Disk / file -> archive: packs the local tree FromURI into the archive ToURI.
+procedure PackLocalIntoZip(const AFromURI, AToURI: string; AOverwrite: Boolean;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback; var AErr: TVfsError);
+var
+  Base, Path, LocalSrc, EntryName, Work: string;
+  Segs: TArray<string>;
+  Zip: TZipFile;
+  Total, Done: Int64;
+begin
+  if not SplitArchiveUri(AToURI, Base, Segs) then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', AToURI);
+    Exit;
+  end;
+  if not ZipWriteAllowed(Segs) then
+  begin
+    AErr := TVfsError.Make(vecNotSupported, 'Cannot modify nested archive', AToURI);
+    Exit;
+  end;
+  Path := FileUriToPath(Base);
+  LocalSrc := FileUriToPath(AFromURI);
+  if LocalSrc = '' then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid source', AFromURI);
+    Exit;
+  end;
+  if Length(Segs) = 0 then
+    EntryName := SafeFileName(ExcludeTrailingPathDelimiter(LocalSrc))
+  else
+    EntryName := Segs[0];
+  if not OpenZipForWrite(Path, Zip, Work, AErr) then
+    Exit;
+  try
+    try
+      Total := 1;
+      Done := 0;
+      AddLocalTreeToZip(Zip, LocalSrc, EntryName, AOverwrite, ACancel, Done, Total,
+        AOnProgress, AErr);
+      if AErr.URI = '' then
+        AErr.URI := AToURI;
+    except
+      on E: Exception do
+        if AErr.Code = vecOk then
+          AErr := TVfsError.Make(vecIOError, E.Message, AToURI);
+    end;
+  finally
+    FinishZipWrite(Path, Work, Zip, AErr.Code = vecOk, AErr);
+    TZipCdCacheHub.Invalidate(Path);
+  end;
+end;
+
+// Extracts the collected entries one by one, reporting progress per entry.
+procedure RunExtractJobs(AZip: TZipFile; AJobs: TList<TPair<Integer, string>>;
+  ATotal: Int64; const AFromURI: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var AErr: TVfsError);
+var
+  Done: Int64;
+  I: Integer;
+  Pair: TPair<Integer, string>;
+begin
+  if ATotal <= 0 then
+    ATotal := 1;
+  Done := 0;
+  for I := 0 to AJobs.Count - 1 do
+  begin
+    if JobCancelRequested(ACancel) then
+    begin
+      AErr := TVfsError.Make(vecCancelled, 'Cancelled', AFromURI);
+      Break;
+    end;
+    Pair := AJobs[I];
+    QueueProgress(AOnProgress, Done, ATotal, SafeFileName(Pair.Value));
+    ExtractEntryToFile(AZip, Pair.Key, Pair.Value, ACancel, AErr);
+    if AErr.Code <> vecOk then
+      Break;
+    Inc(Done, AZip.FileInfo[Pair.Key].UncompressedSize);
+    QueueProgress(AOnProgress, Done, ATotal, SafeFileName(Pair.Value));
+  end;
+end;
+
+// Archive -> disk: extracts the entry or folder AFromURI names into AToURI.
+procedure ExtractZipToDisk(const AFromURI, AToURI: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var AErr: TVfsError);
+var
+  Base, Path, Dest, Pref: string;
+  Segs: TArray<string>;
+  Stack: TArray<TZipLayer>;
+  Jobs: TList<TPair<Integer, string>>;
+  Total: Int64;
+begin
+  if not SplitArchiveUri(AFromURI, Base, Segs) then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', AFromURI);
+    Exit;
+  end;
+  Path := FileUriToPath(Base);
+  Dest := FileUriToPath(AToURI);
+  if Dest = '' then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid destination', AToURI);
+    Exit;
+  end;
+  if not OpenZipStack(Path, Segs, ACancel, Stack, Pref, AErr) then
+    Exit;
+  try
+    Jobs := TList<TPair<Integer, string>>.Create;
+    try
+      Total := 0;
+      CollectExtractJobs(Stack[High(Stack)].Zip, Pref, Dest, ACancel, Jobs, Total, AErr);
+      if AErr.Code <> vecOk then
+        Exit;
+      if Jobs.Count = 0 then
+        AErr := TVfsError.Make(vecNotFound, 'Nothing to extract', AFromURI)
+      else
+        RunExtractJobs(Stack[High(Stack)].Zip, Jobs, Total, AFromURI, ACancel,
+          AOnProgress, AErr);
+    finally
+      Jobs.Free;
+    end;
+  finally
+    FreeZipStack(Stack);
+  end;
+end;
+
 procedure TZipVirtualFileSystem.CopyAsync(const AFromURI, AToURI: string;
   ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback; AOnDone: TVfsBoolCallback;
   AOverwrite: Boolean; APreserveTimestamps: Boolean);
@@ -1968,112 +2092,15 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Base: string;
-      Segs: TArray<string>;
-      Stack: TArray<TZipLayer>;
-      Pref, Path, Dest, LocalSrc, EntryName, Work: string;
       Err: TVfsError;
-      KeepZip: Boolean;
-      Jobs: TList<TPair<Integer, string>>;
-      Total, Done: Int64;
-      I: Integer;
-      Pair: TPair<Integer, string>;
-      Zip: TZipFile;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
       try
-        // Disk / file -> archive (pack into zip).
         if HasArchiveChain(ToURI) and not HasArchiveChain(FromURI) then
-        begin
-          if not SplitArchiveUri(ToURI, Base, Segs) then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', ToURI)
-          else if not ZipWriteAllowed(Segs) then
-            Err := TVfsError.Make(vecNotSupported, 'Cannot modify nested archive', ToURI)
-          else
-          begin
-            Path := FileUriToPath(Base);
-            LocalSrc := FileUriToPath(FromURI);
-            if LocalSrc = '' then
-              Err := TVfsError.Make(vecInvalidURI, 'Invalid source', FromURI)
-            else if Length(Segs) = 0 then
-              EntryName := SafeFileName(ExcludeTrailingPathDelimiter(LocalSrc))
-            else
-              EntryName := Segs[0];
-            if OpenZipForWrite(Path, Zip, Work, Err) then
-            try
-              try
-                Total := 1;
-                Done := 0;
-                AddLocalTreeToZip(Zip, LocalSrc, EntryName, DoOverwrite, Cancel,
-                  Done, Total, OnProgress, Err);
-                if Err.URI = '' then
-                  Err.URI := ToURI;
-              except
-                on E: Exception do
-                  if Err.Code = vecOk then
-                    Err := TVfsError.Make(vecIOError, E.Message, ToURI);
-              end;
-            finally
-              KeepZip := Err.Code = vecOk;
-              FinishZipWrite(Path, Work, Zip, KeepZip, Err);
-              TZipCdCacheHub.Invalidate(Path);
-            end;
-          end;
-        end
-        // Archive -> disk (extract).
+          PackLocalIntoZip(FromURI, ToURI, DoOverwrite, Cancel, OnProgress, Err)
         else if HasArchiveChain(FromURI) and not HasArchiveChain(ToURI) then
-        begin
-          if not SplitArchiveUri(FromURI, Base, Segs) then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', FromURI)
-          else
-          begin
-            Path := FileUriToPath(Base);
-            Dest := FileUriToPath(ToURI);
-            if Dest = '' then
-              Err := TVfsError.Make(vecInvalidURI, 'Invalid destination', ToURI)
-            else if OpenZipStack(Path, Segs, Cancel, Stack, Pref, Err) then
-            try
-              Jobs := TList<TPair<Integer, string>>.Create;
-              try
-                Total := 0;
-                CollectExtractJobs(Stack[High(Stack)].Zip, Pref, Dest, Cancel, Jobs,
-                  Total, Err);
-                if Err.Code = vecOk then
-                begin
-                  if Jobs.Count = 0 then
-                    Err := TVfsError.Make(vecNotFound, 'Nothing to extract', FromURI)
-                  else
-                  begin
-                    if Total <= 0 then
-                      Total := 1;
-                    Done := 0;
-                    for I := 0 to Jobs.Count - 1 do
-                    begin
-                      if JobCancelRequested(Cancel) then
-                      begin
-                        Err := TVfsError.Make(vecCancelled, 'Cancelled', FromURI);
-                        Break;
-                      end;
-                      Pair := Jobs[I];
-                      QueueProgress(OnProgress, Done, Total, SafeFileName(Pair.Value));
-                      ExtractEntryToFile(Stack[High(Stack)].Zip, Pair.Key, Pair.Value,
-                        Cancel, Err);
-                      if Err.Code <> vecOk then
-                        Break;
-                      Inc(Done, Stack[High(Stack)].Zip.FileInfo[Pair.Key].UncompressedSize);
-                      QueueProgress(OnProgress, Done, Total, SafeFileName(Pair.Value));
-                    end;
-                  end;
-                end;
-              finally
-                Jobs.Free;
-              end;
-            finally
-              FreeZipStack(Stack);
-            end;
-          end;
-        end
+          ExtractZipToDisk(FromURI, ToURI, Cancel, OnProgress, Err)
         else if HasArchiveChain(FromURI) and HasArchiveChain(ToURI) then
           Err := TVfsError.Make(vecNotSupported, 'Cannot copy between archives', FromURI)
         else
@@ -2087,6 +2114,69 @@ begin
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;
+end;
+
+// Reads the whole archive entry AURI names into ABuf. An entry whose declared
+// size exceeds AMaxBytes is refused before any buffer is allocated.
+procedure ReadZipEntryBytes(const AURI: string; AMaxBytes: Int64;
+  ACancel: IJobCancelToken; var ABuf: TBytes; var AErr: TVfsError);
+var
+  Base, Path, Pref: string;
+  Segs: TArray<string>;
+  Stack: TArray<TZipLayer>;
+  Zip: TZipFile;
+  Idx, Got: Integer;
+  Local: TStream;
+  H, LH: TZipHeader;
+begin
+  SetLength(ABuf, 0);
+  if not SplitArchiveUri(AURI, Base, Segs) then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', AURI);
+    Exit;
+  end;
+  Path := FileUriToPath(Base);
+  if not OpenZipStack(Path, Segs, ACancel, Stack, Pref, AErr) then
+    Exit;
+  try
+    if Pref = '' then
+    begin
+      AErr := TVfsError.Make(vecNotSupported, 'Not a file', AURI);
+      Exit;
+    end;
+    Zip := Stack[High(Stack)].Zip;
+    Idx := FindZipEntryIndex(Zip, Pref);
+    if Idx < 0 then
+    begin
+      AErr := TVfsError.Make(vecNotFound, 'Entry not found', AURI);
+      Exit;
+    end;
+    if EntryIsDirectory(Zip, Idx) then
+    begin
+      AErr := TVfsError.Make(vecNotSupported, 'Not a file', AURI);
+      Exit;
+    end;
+    H := Zip.FileInfo[Idx];
+    if Int64(H.UncompressedSize) > AMaxBytes then
+    begin
+      AErr := TVfsError.Make(vecNotSupported,
+        Format('File too large (max %d KB).', [AMaxBytes div 1024]), AURI);
+      Exit;
+    end;
+    Zip.Read(Idx, Local, LH);
+    try
+      SetLength(ABuf, H.UncompressedSize);
+      if Length(ABuf) > 0 then
+      begin
+        Got := Local.Read(ABuf[0], Length(ABuf));
+        SetLength(ABuf, Got);
+      end;
+    finally
+      Local.Free;
+    end;
+  finally
+    FreeZipStack(Stack);
+  end;
 end;
 
 procedure TZipVirtualFileSystem.ReadTextAsync(const AURI: string; AMaxBytes: Int64;
@@ -2106,74 +2196,25 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Base: string;
-      Segs: TArray<string>;
-      Stack: TArray<TZipLayer>;
-      Pref: string;
       Err: TVfsError;
-      Path: string;
-      Idx, Got: Integer;
-      Local: TStream;
       Buf: TBytes;
       Text: string;
       Enc: TTextFileEncoding;
       IsBin: Boolean;
-      H, LH: TZipHeader;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
       Text := '';
       Enc := tfeUtf8;
       try
-        if not SplitArchiveUri(URI, Base, Segs) then
-          Err := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', URI)
-        else
+        ReadZipEntryBytes(URI, MaxBytes, Cancel, Buf, Err);
+        if (Err.Code = vecOk) and not DetectAndDecodeText(Buf, Text, Enc, IsBin) then
         begin
-          Path := FileUriToPath(Base);
-          if OpenZipStack(Path, Segs, Cancel, Stack, Pref, Err) then
-          try
-            if Pref = '' then
-              Err := TVfsError.Make(vecNotSupported, 'Not a file', URI)
-            else
-            begin
-              Idx := FindZipEntryIndex(Stack[High(Stack)].Zip, Pref);
-              if Idx < 0 then
-                Err := TVfsError.Make(vecNotFound, 'Entry not found', URI)
-              else if EntryIsDirectory(Stack[High(Stack)].Zip, Idx) then
-                Err := TVfsError.Make(vecNotSupported, 'Not a file', URI)
-              else
-              begin
-                H := Stack[High(Stack)].Zip.FileInfo[Idx];
-                if Int64(H.UncompressedSize) > MaxBytes then
-                  Err := TVfsError.Make(vecNotSupported,
-                    Format('File too large (max %d KB).', [MaxBytes div 1024]), URI)
-                else
-                begin
-                  Stack[High(Stack)].Zip.Read(Idx, Local, LH);
-                  try
-                    SetLength(Buf, H.UncompressedSize);
-                    if Length(Buf) > 0 then
-                    begin
-                      Got := Local.Read(Buf[0], Length(Buf));
-                      SetLength(Buf, Got);
-                    end;
-                    if not DetectAndDecodeText(Buf, Text, Enc, IsBin) then
-                    begin
-                      if IsBin then
-                        Err := TVfsError.Make(vecNotSupported, 'Binary file', URI)
-                      else
-                        Err := TVfsError.Make(vecIOError, 'Cannot decode text', URI);
-                      Text := '';
-                    end;
-                  finally
-                    Local.Free;
-                  end;
-                end;
-              end;
-            end;
-          finally
-            FreeZipStack(Stack);
-          end;
+          if IsBin then
+            Err := TVfsError.Make(vecNotSupported, 'Binary file', URI)
+          else
+            Err := TVfsError.Make(vecIOError, 'Cannot decode text', URI);
+          Text := '';
         end;
       except
         on E: Exception do
@@ -2200,63 +2241,14 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Base: string;
-      Segs: TArray<string>;
-      Stack: TArray<TZipLayer>;
-      Pref: string;
       Err: TVfsError;
-      Path: string;
-      Idx, Got: Integer;
-      Local: TStream;
       Buf: TBytes;
-      H, LH: TZipHeader;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
       SetLength(Buf, 0);
       try
-        if not SplitArchiveUri(URI, Base, Segs) then
-          Err := TVfsError.Make(vecInvalidURI, 'Invalid archive URI', URI)
-        else
-        begin
-          Path := FileUriToPath(Base);
-          if OpenZipStack(Path, Segs, Cancel, Stack, Pref, Err) then
-          try
-            if Pref = '' then
-              Err := TVfsError.Make(vecNotSupported, 'Not a file', URI)
-            else
-            begin
-              Idx := FindZipEntryIndex(Stack[High(Stack)].Zip, Pref);
-              if Idx < 0 then
-                Err := TVfsError.Make(vecNotFound, 'Entry not found', URI)
-              else if EntryIsDirectory(Stack[High(Stack)].Zip, Idx) then
-                Err := TVfsError.Make(vecNotSupported, 'Not a file', URI)
-              else
-              begin
-                H := Stack[High(Stack)].Zip.FileInfo[Idx];
-                if Int64(H.UncompressedSize) > MaxBytes then
-                  Err := TVfsError.Make(vecNotSupported,
-                    Format('File too large (max %d KB).', [MaxBytes div 1024]), URI)
-                else
-                begin
-                  Stack[High(Stack)].Zip.Read(Idx, Local, LH);
-                  try
-                    SetLength(Buf, H.UncompressedSize);
-                    if Length(Buf) > 0 then
-                    begin
-                      Got := Local.Read(Buf[0], Length(Buf));
-                      SetLength(Buf, Got);
-                    end;
-                  finally
-                    Local.Free;
-                  end;
-                end;
-              end;
-            end;
-          finally
-            FreeZipStack(Stack);
-          end;
-        end;
+        ReadZipEntryBytes(URI, MaxBytes, Cancel, Buf, Err);
       except
         on E: Exception do
         begin

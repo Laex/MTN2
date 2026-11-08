@@ -962,6 +962,20 @@ begin
     Assert.IsTrue(Pos('a.txt', RowText(8)) > 0, 'cursor line on the first footer row');
     Assert.IsTrue(Pos('Bytes: 5', RowText(9)) > 0, 'totals on the second footer row');
     Assert.IsTrue(Pos('free on C:', RowText(10)) > 0, 'free space on the last footer row');
+    Assert.IsTrue(Grid[10][1].BgColor = Grid[9][1].BgColor, 'one cell of margin before the bar');
+    Assert.IsTrue(Grid[10][17].BgColor = Grid[9][17].BgColor, 'one cell of margin after the bar');
+    Assert.IsTrue(Grid[10][2].BgColor <> Grid[9][2].BgColor, 'the bar is shaded');
+    Assert.IsTrue(Grid[10][2].BgColor = Grid[10][16].BgColor, 'nothing used: the whole bar is free');
+
+    Snap.FreeUsedPermille := 500;
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    DispatchDrawPanelFiles(Grid, nil, Host, Snap);
+    Assert.IsTrue(Grid[10][2].BgColor <> Grid[10][16].BgColor,
+      'the used part is shaded stronger than the free part');
+    Assert.IsTrue(Grid[10][16].BgColor <> Grid[10][1].BgColor,
+      'the free part stays distinct from the margin');
+    Assert.IsTrue(Pos('free on C:', RowText(10)) > 0, 'the bar leaves the text in place');
+    Snap.FreeUsedPermille := 0;
 
     GNdnFooter := False;
     ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');

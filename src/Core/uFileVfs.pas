@@ -342,17 +342,159 @@ begin
     Result := TVfsError.Make(vecIOError, E.Message, AURI);
 end;
 
+// Chooses where the bytes of a new destination file are written. An existing
+// destination is replaced only with AOverwrite, and then by a sibling file
+// that is swapped in after the bytes are complete, so a failed or cancelled
+// copy leaves the previous file or directory in place.
+function ChooseCopyWritePath(const ADst: string; AOverwrite: Boolean;
+  out AWritePath: string; out AStaged: Boolean; var AError: TVfsError): Boolean;
+begin
+  Result := False;
+  AWritePath := ADst;
+  AStaged := False;
+  // A directory occupying the file's name is not a skippable file
+  // conflict: treating it as "already exists" made verification look
+  // for a file, fail, and delete the whole destination folder.
+  if TDirectory.Exists(WinApiPath(ADst)) and not AOverwrite then
+  begin
+    AError := TVfsError.Make(vecIOError,
+      'Cannot replace a directory with a file', PathToFileUri(ADst));
+    Exit;
+  end;
+  if TFile.Exists(WinApiPath(ADst)) and not AOverwrite then
+  begin
+    AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
+    Exit;
+  end;
+  if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
+  begin
+    AWritePath := UnusedSiblingPath(ADst, '.mtnpart');
+    if AWritePath = '' then
+    begin
+      AError := TVfsError.Make(vecIOError,
+        'Cannot make room to replace the destination', PathToFileUri(ADst));
+      Exit;
+    end;
+    AStaged := True;
+  end;
+  Result := True;
+end;
+
+// Streams ATotal bytes of ASrc into ADst and returns how many were copied; a
+// cancel is reported in AError. Exceptions go to the caller.
+function PumpCopyBytes(ASrcStream, ADstStream: TFileStream; const ASrc, ADst: string;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback; ABaseDoneBytes,
+  AReportTotal, ATotal: Int64; var AError: TVfsError): Int64;
+var
+  Buf: TBytes;
+  N, Want: Integer;
+begin
+  Result := 0;
+  // 256 KiB: fewer read/write calls and throttle checks per file than a
+  // 64 KiB block, which matters most on network shares and large files.
+  SetLength(Buf, 256 * 1024);
+  while Result < ATotal do
+  begin
+    if JobCancelRequested(ACancel) then
+    begin
+      AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+      Break;
+    end;
+    // Never read past the size sampled when the file was opened: a source
+    // an application is still appending to would otherwise keep feeding
+    // bytes, and the copy would end up larger than the size everything
+    // downstream (progress totals, verification) was computed from.
+    Want := Length(Buf);
+    if ATotal - Result < Want then
+      Want := Integer(ATotal - Result);
+    N := ASrcStream.Read(Buf[0], Want);
+    // A failed read (an offline cloud placeholder, a drive that went away)
+    // reports the system's own reason, not just a short copy.
+    if N < 0 then
+      RaiseLastOSError;
+    if N = 0 then
+      Break;
+    ADstStream.WriteBuffer(Buf[0], N);
+    Inc(Result, N);
+    // ADone/ATotal stay cumulative across the whole item (base + this file's
+    // progress so far), so inside a recursive folder copy the "Total" bar
+    // moves smoothly instead of resetting on every child.
+    // AItemDone/AItemTotal/paths carry this file's own progress separately,
+    // for the per-file bar.
+    QueueProgress(AOnProgress, ABaseDoneBytes + Result, AReportTotal, SafeFileName(ASrc),
+      Result, ATotal, ASrc, ADst);
+    JobThrottle(ACancel, N);
+  end;
+end;
+
+// Checks and publishes a copied file once its bytes are written. AError holds
+// a cancel from the copy loop; a failed check removes the fragment.
+procedure FinishCopiedFile(const ASrc, ADst, AWritePath: string; ACopied, ATotal: Int64;
+  ADstCreated, AStaged, APreserveTimestamps: Boolean; var AError: TVfsError);
+var
+  NowSize: Int64;
+  MoveMsg: string;
+begin
+  if AError.Code = vecCancelled then
+  begin
+    if ADstCreated then
+      CleanupFailedCopy(AWritePath);
+    Exit;
+  end;
+  if AError.Code <> vecOk then
+    Exit;
+  if ACopied <> ATotal then
+  begin
+    // Short read: either the source really was truncated under us - in which
+    // case ACopied is the whole file as it now stands and the copy is complete
+    // - or something failed mid-stream and the destination is a fragment.
+    NowSize := -1;
+    try
+      NowSize := TFile.GetSize(WinApiPath(ASrc));
+    except
+      // Leave NowSize at -1 and report the short copy below.
+    end;
+    if NowSize <> ACopied then
+    begin
+      AError := TVfsError.Make(vecIOError,
+        Format('Copy incomplete (%d of %d bytes)', [ACopied, ATotal]), PathToFileUri(ASrc));
+      if ADstCreated then
+        CleanupFailedCopy(AWritePath);
+      Exit;
+    end;
+  end;
+  // An appended file keeps its own timestamps and is larger than the source
+  // by design.
+  if not ADstCreated then
+    Exit;
+  VerifyCopiedFile(ASrc, AWritePath, ACopied, True, AError);
+  if AError.Code <> vecOk then
+  begin
+    CleanupFailedCopy(AWritePath);
+    Exit;
+  end;
+  if AStaged and not ReplacePathWith(AWritePath, ADst, MoveMsg) then
+  begin
+    AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(ADst));
+    CleanupFailedCopy(AWritePath);
+    Exit;
+  end;
+  if APreserveTimestamps then
+    PreserveFileTimestamps(ASrc, ADst);
+  // Attributes (R/H/S/A) are carried over unconditionally, like Explorer/TC
+  // do - unrelated to the "preserve timestamps" job option.
+  PreserveFileAttributes(ASrc, ADst);
+end;
+
 procedure CopyFileWithProgress(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var AError: TVfsError;
   AOverwrite: Boolean = False; APreserveTimestamps: Boolean = False;
   ABaseDoneBytes: Int64 = 0; AItemTotalBytes: Int64 = 0; AAppend: Boolean = False);
 var
   Src, Dst: TFileStream;
-  Buf: TBytes;
-  N, Want: Integer;
-  Copied, Total, ReportTotal, NowSize: Int64;
+  Copied, Total, ReportTotal: Int64;
   DstCreated, Raised, Staged: Boolean;
-  WritePath, MoveMsg: string;
+  WritePath: string;
 begin
   Src := nil;
   Dst := nil;
@@ -366,9 +508,8 @@ begin
     try
       // fmShareDenyNone, not fmShareDenyWrite: a file another process holds
       // open for writing - an application log, a live SQLite/LevelDB store -
-      // is still perfectly readable, and denying writers turned every such
-      // file into an EFOpenError that escaped this routine, aborted the whole
-      // recursive copy at that point and left the rest of the tree uncopied.
+      // is still readable, and denying writers would turn every such file
+      // into an EFOpenError that aborts a recursive copy at that point.
       // A skipped file must cost only this check: opening the source first
       // is slow on network shares and on-demand cloud folders.
       if not AOverwrite and not AAppend and TFile.Exists(WinApiPath(ADst)) then
@@ -387,34 +528,8 @@ begin
       end
       else
       begin
-        // A directory occupying the file's name is not a skippable file
-        // conflict: treating it as "already exists" made verification look
-        // for a file, fail, and delete the whole destination folder.
-        if TDirectory.Exists(WinApiPath(ADst)) and not AOverwrite then
-        begin
-          AError := TVfsError.Make(vecIOError,
-            'Cannot replace a directory with a file', PathToFileUri(ADst));
+        if not ChooseCopyWritePath(ADst, AOverwrite, WritePath, Staged, AError) then
           Exit;
-        end;
-        if TFile.Exists(WinApiPath(ADst)) and not AOverwrite then
-        begin
-          AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
-          Exit;
-        end;
-        // Overwrite writes beside the destination and swaps only after the
-        // bytes are complete, so a failed or cancelled copy leaves the
-        // previous file or directory in place.
-        if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
-        begin
-          WritePath := UnusedSiblingPath(ADst, '.mtnpart');
-          if WritePath = '' then
-          begin
-            AError := TVfsError.Make(vecIOError,
-              'Cannot make room to replace the destination', PathToFileUri(ADst));
-            Exit;
-          end;
-          Staged := True;
-        end;
         Dst := TFileStream.Create(WinApiPath(WritePath), fmCreate);
         DstCreated := True;
       end;
@@ -422,41 +537,8 @@ begin
       ReportTotal := AItemTotalBytes;
       if ReportTotal <= 0 then
         ReportTotal := Total;
-      SetLength(Buf, 64 * 1024);
-      while Copied < Total do
-      begin
-        if JobCancelRequested(ACancel) then
-        begin
-          AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
-          Break;
-        end;
-        // Never read past the size sampled when the file was opened: a source
-        // an application is still appending to would otherwise keep feeding
-        // bytes, and the copy would end up larger than the size everything
-        // downstream (progress totals, verification) was computed from.
-        Want := Length(Buf);
-        if Total - Copied < Want then
-          Want := Integer(Total - Copied);
-        N := Src.Read(Buf[0], Want);
-        // A failed read (an offline cloud placeholder, a drive that went away)
-        // reports the system's own reason, not just a short copy.
-        if N < 0 then
-          RaiseLastOSError;
-        if N = 0 then
-          Break;
-        Dst.WriteBuffer(Buf[0], N);
-        Inc(Copied, N);
-        // ADone/ATotal stay cumulative across the whole item (base + this
-        // file's progress so far), not just this one file's own share - inside
-        // a recursive folder copy, ASrc is one of many child files, and the
-        // "Total" bar/counter needs the running tree total to move smoothly
-        // instead of resetting to a near-zero per-file value on every new
-        // child (see CopyTree callers below). AItemDone/AItemTotal/paths carry
-        // this file's own progress separately, for the per-file bar.
-        QueueProgress(AOnProgress, ABaseDoneBytes + Copied, ReportTotal, SafeFileName(ASrc),
-          Copied, Total, ASrc, ADst);
-        JobThrottle(ACancel, N);
-      end;
+      Copied := PumpCopyBytes(Src, Dst, ASrc, ADst, ACancel, AOnProgress,
+        ABaseDoneBytes, ReportTotal, Total, AError);
     except
       // A single unreadable or unwritable file must stay a per-file error
       // carrying its own path, not an exception unwinding out of the caller's
@@ -477,60 +559,9 @@ begin
       CleanupFailedCopy(WritePath);
     Exit;
   end;
-  if AError.Code = vecCancelled then
-  begin
-    if DstCreated then
-      CleanupFailedCopy(WritePath);
-    Exit;
-  end;
-  if AError.Code <> vecOk then
-    Exit;
-  if Copied <> Total then
-  begin
-    // Short read: either the source really was truncated under us - in which
-    // case Copied is the whole file as it now stands and the copy is complete
-    // - or something failed mid-stream and the destination is a fragment.
-    NowSize := -1;
-    try
-      NowSize := TFile.GetSize(WinApiPath(ASrc));
-    except
-      // Leave NowSize at -1 and report the short copy below.
-    end;
-    if NowSize = Copied then
-      Total := Copied
-    else
-    begin
-      AError := TVfsError.Make(vecIOError,
-        Format('Copy incomplete (%d of %d bytes)', [Copied, Total]), PathToFileUri(ASrc));
-      if DstCreated then
-        CleanupFailedCopy(WritePath);
-      Exit;
-    end;
-  end;
-  // An appended file keeps its own timestamps and is larger than the source
-  // by design.
-  if not DstCreated then
-    Exit;
-  VerifyCopiedFile(ASrc, WritePath, Total, True, AError);
-  if AError.Code <> vecOk then
-  begin
-    CleanupFailedCopy(WritePath);
-    Exit;
-  end;
-  if Staged then
-  begin
-    if not ReplacePathWith(WritePath, ADst, MoveMsg) then
-    begin
-      AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(ADst));
-      CleanupFailedCopy(WritePath);
-      Exit;
-    end;
-  end;
-  if APreserveTimestamps then
-    PreserveFileTimestamps(ASrc, ADst);
-  // Attributes (R/H/S/A) are carried over unconditionally, like Explorer/TC
-  // do - unrelated to the "preserve timestamps" job option.
-  PreserveFileAttributes(ASrc, ADst);
+  // A source that shrank during the copy ends the file where it now ends.
+  FinishCopiedFile(ASrc, ADst, WritePath, Copied, Total, DstCreated, Staged,
+    APreserveTimestamps, AError);
 end;
 
 // Asks the job's resolver what to do with a file that already exists at the
@@ -656,6 +687,97 @@ begin
   end;
 end;
 
+// Copies one file child of a recursive copy and reports its progress. AChildErr
+// is vecAlreadyExists when the conflict resolver (or skip mode) left the file
+// untouched.
+procedure CopyTreeChildFile(const AChildSrc: string; var AChildDst: string;
+  const AName: string; ASize: Int64; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var ADoneBytes, ATotalBytes: Int64;
+  var AAnySkipped: Boolean; var AChildErr: TVfsError; AOverwrite,
+  APreserveTimestamps: Boolean);
+var
+  ChildOverwrite, ChildAppend, ChildSkipped: Boolean;
+begin
+  ChildOverwrite := AOverwrite;
+  ChildAppend := False;
+  if not AOverwrite then
+    AskFileConflict(AChildSrc, AChildDst, ACancel, ChildOverwrite, ChildAppend,
+      AChildErr);
+  ChildSkipped := False;
+  if AChildErr.Code = vecOk then
+    CopyTreeFile(AChildSrc, AChildDst, ACancel, AOnProgress, AChildErr,
+      ChildOverwrite, APreserveTimestamps, ADoneBytes, ATotalBytes,
+      ChildAppend, ChildSkipped);
+  if ChildSkipped then
+  begin
+    // Skipped after an error: the file stays only in the source, so
+    // the tree check and a move's source delete must know about it.
+    AAnySkipped := True;
+    JobNoteSkipped(ACancel);
+    if ASize > 0 then
+      Inc(ADoneBytes, ASize);
+    QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, AName, 0, 0,
+      AChildSrc, AChildDst);
+  end
+  else if AChildErr.Code = vecOk then
+  begin
+    if ASize > 0 then
+      Inc(ADoneBytes, ASize);
+    QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, AName,
+      ASize, ASize, AChildSrc, AChildDst);
+  end;
+end;
+
+// Judges the outcome of one child of a recursive copy. Returns False when the
+// walk must stop, with the failure in AError.
+//
+// Skip mode (AOverwrite=False): one item already existing at the destination
+// is the expected, common case for a re-run/merge copy - it must not abort the
+// rest of the tree, or nothing past the first pre-existing name would get
+// copied. Real failures and cancellation still stop the walk.
+function ChildCopyAllowsContinue(const AChildSrc, AChildDst, AName: string;
+  AIsDir: Boolean; const AChildErr: TVfsError; AOverwrite: Boolean;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
+  ADoneBytes, ATotalBytes: Int64; var AAnySkipped: Boolean;
+  var AError: TVfsError): Boolean;
+begin
+  Result := True;
+  if (AChildErr.Code = vecAlreadyExists) and not AOverwrite then
+  begin
+    AAnySkipped := True;
+    if not AIsDir then
+      JobNoteSkipped(ACancel);
+    // A skipped item still needs to nudge progress along - without this, a
+    // run of skipped files never advances the per-file bar, the file counter
+    // or the current-name display, and the job looks stalled. Item bytes stay
+    // 0/0 (nothing was transferred), but the path still identifies it as a
+    // processed item.
+    QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, AName, 0, 0,
+      AChildSrc, AChildDst);
+  end
+  else if AChildErr.Code <> vecOk then
+  begin
+    AError := AChildErr;
+    Result := False;
+  end;
+end;
+
+// Checks a finished tree copy. A folder that already existed is a merge
+// target: a failed check must not delete the files that were there before.
+procedure FinishCopiedTree(const ASrc, ADst: string; ACreatedHere,
+  APreserveTimestamps: Boolean; var AAnySkipped: Boolean; var AError: TVfsError);
+begin
+  VerifyCopiedTree(ASrc, ADst, AError, AAnySkipped);
+  if (AError.Code <> vecOk) and ACreatedHere then
+    CleanupFailedCopy(ADst)
+  else
+  begin
+    if APreserveTimestamps then
+      PreserveFileTimestamps(ASrc, ADst);
+    PreserveFileAttributes(ASrc, ADst);
+  end;
+end;
+
 procedure CopyTree(const ASrc, ADst: string; ACancel: IJobCancelToken;
   AOnProgress: TVfsProgressCallback; var ADoneBytes, ATotalBytes: Int64;
   var AError: TVfsError; var AAnySkipped: Boolean; AOverwrite: Boolean = False;
@@ -665,7 +787,7 @@ var
   Code: Integer;
   ChildSrc, ChildDst: string;
   ChildErr: TVfsError;
-  ChildOverwrite, ChildAppend, CreatedHere, ChildSkipped: Boolean;
+  CreatedHere, IsDir: Boolean;
   Stage, MoveMsg: string;
 begin
   CreatedHere := False;
@@ -706,8 +828,8 @@ begin
     else
       CleanupFailedCopy(Stage);
     Exit;
-  end
-  else if not TDirectory.Exists(WinApiPath(ADst)) then
+  end;
+  if not TDirectory.Exists(WinApiPath(ADst)) then
   begin
     TDirectory.CreateDirectory(WinApiPath(ADst));
     CreatedHere := True;
@@ -726,65 +848,18 @@ begin
         ChildSrc := SafeCombinePath(ASrc, SR.Name);
         ChildDst := SafeCombinePath(ADst, SR.Name);
         ChildErr := TVfsError.Ok;
-        if (SR.Attr and faDirectory) <> 0 then
+        IsDir := (SR.Attr and faDirectory) <> 0;
+        if IsDir then
           CopyTree(ChildSrc, ChildDst, ACancel, AOnProgress, ADoneBytes, ATotalBytes,
             ChildErr, AAnySkipped, AOverwrite, APreserveTimestamps)
         else
-        begin
-          ChildOverwrite := AOverwrite;
-          ChildAppend := False;
-          if not AOverwrite then
-            AskFileConflict(ChildSrc, ChildDst, ACancel, ChildOverwrite,
-              ChildAppend, ChildErr);
-          ChildSkipped := False;
-          if ChildErr.Code = vecOk then
-            CopyTreeFile(ChildSrc, ChildDst, ACancel, AOnProgress, ChildErr,
-              ChildOverwrite, APreserveTimestamps, ADoneBytes, ATotalBytes,
-              ChildAppend, ChildSkipped);
-          if ChildSkipped then
-          begin
-            // Skipped after an error: the file stays only in the source, so
-            // the tree check and a move's source delete must know about it.
-            AAnySkipped := True;
-            JobNoteSkipped(ACancel);
-            if SR.Size > 0 then
-              Inc(ADoneBytes, SR.Size);
-            QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, SR.Name, 0, 0,
-              ChildSrc, ChildDst);
-          end
-          else if ChildErr.Code = vecOk then
-          begin
-            if SR.Size > 0 then
-              Inc(ADoneBytes, SR.Size);
-            QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, SR.Name,
-              SR.Size, SR.Size, ChildSrc, ChildDst);
-          end;
-        end;
-        // Skip mode (AOverwrite=False): one item already existing at the
-        // destination is the expected, common case for a re-run/merge copy -
-        // it must not abort the rest of the tree, or nothing past the first
-        // pre-existing name would get copied. Real failures and cancellation
-        // still stop the walk.
-        if (ChildErr.Code = vecAlreadyExists) and not AOverwrite then
-        begin
-          AAnySkipped := True;
-          if (SR.Attr and faDirectory) = 0 then
-            JobNoteSkipped(ACancel);
-          // A skipped item still needs to nudge progress along - without
-          // this, a run of skipped files (Skip-overwrite mode, or Ask+Skip
-          // remembered) never advances the per-file bar, the file counter,
-          // or the current-name display, and the job looks stalled even
-          // though it's actively walking through hundreds of already-
-          // existing files. Item bytes stay 0/0 (nothing was transferred),
-          // but the path still identifies it as a processed item.
-          QueueProgress(AOnProgress, ADoneBytes, ATotalBytes, SR.Name, 0, 0,
-            ChildSrc, ChildDst);
-        end
-        else if ChildErr.Code <> vecOk then
-        begin
-          AError := ChildErr;
+          CopyTreeChildFile(ChildSrc, ChildDst, SR.Name, SR.Size, ACancel,
+            AOnProgress, ADoneBytes, ATotalBytes, AAnySkipped, ChildErr,
+            AOverwrite, APreserveTimestamps);
+        if not ChildCopyAllowsContinue(ChildSrc, ChildDst, SR.Name, IsDir,
+          ChildErr, AOverwrite, ACancel, AOnProgress, ADoneBytes, ATotalBytes,
+          AAnySkipped, AError) then
           Exit;
-        end;
       end;
       Code := FindNext(SR);
     end;
@@ -792,19 +867,8 @@ begin
     System.SysUtils.FindClose(SR);
   end;
   if AError.Code = vecOk then
-  begin
-    VerifyCopiedTree(ASrc, ADst, AError, AAnySkipped);
-    // A folder that already existed is a merge target: a failed check must
-    // not delete the files that were there before this copy.
-    if (AError.Code <> vecOk) and CreatedHere then
-      CleanupFailedCopy(ADst)
-    else
-    begin
-      if APreserveTimestamps then
-        PreserveFileTimestamps(ASrc, ADst);
-      PreserveFileAttributes(ASrc, ADst);
-    end;
-  end;
+    FinishCopiedTree(ASrc, ADst, CreatedHere, APreserveTimestamps, AAnySkipped,
+      AError);
 end;
 
 // The walks below run before a copy / move / delete starts. They report the
@@ -919,6 +983,80 @@ begin
   end;
 end;
 
+procedure DeleteTree(const APath: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var ADoneItems: Int64; ATotalItems: Int64;
+  var AError: TVfsError; var ASkipped: Boolean); forward;
+
+// Removes one file or empty folder and counts it in the delete progress.
+procedure DeleteCountedNode(const APath: string; AIsDir: Boolean;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
+  var ADoneItems: Int64; ATotalItems: Int64; var AFirstErr: TVfsError;
+  var AHasError, ANodeSkipped: Boolean);
+begin
+  if not DeleteNodeResolved(APath, AIsDir, ACancel, AFirstErr, ANodeSkipped) then
+    AHasError := True
+  else if not ANodeSkipped then
+  begin
+    Inc(ADoneItems);
+    QueueProgress(AOnProgress, ADoneItems, ATotalItems,
+      SafeFileName(APath), 0, 0, APath, '');
+  end;
+end;
+
+// Deletes everything inside the folder APath. The first failure is kept in
+// AFirstErr; a cancel or an access refusal stops the walk at once.
+procedure DeleteTreeChildren(const APath: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; var ADoneItems: Int64; ATotalItems: Int64;
+  var AFirstErr: TVfsError; var AHasError, ANodeSkipped: Boolean);
+var
+  SR: TSearchRec;
+  Code: Integer;
+  ChildErr: TVfsError;
+  ChildSkipped: Boolean;
+begin
+  Code := FindFirst(WinApiPath(SafeCombinePath(APath, '*')), faAnyFile, SR);
+  try
+    while Code = 0 do
+    begin
+      if JobCancelRequested(ACancel) then
+      begin
+        AFirstErr := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(APath));
+        AHasError := True;
+        Break;
+      end;
+      if (SR.Name <> '.') and (SR.Name <> '..') then
+      begin
+        ChildErr := TVfsError.Ok;
+        ChildSkipped := False;
+        DeleteTree(SafeCombinePath(APath, SR.Name), ACancel, AOnProgress,
+          ADoneItems, ATotalItems, ChildErr, ChildSkipped);
+        if ChildSkipped then
+          ANodeSkipped := True;
+        if ChildErr.Code <> vecOk then
+        begin
+          // Without a resolver a refused node means the rest of the tree is
+          // refused as well: stopping here lets the administrator offer
+          // appear at once.
+          if (ChildErr.Code = vecCancelled) or (ChildErr.Code = vecAccessDenied) then
+          begin
+            AFirstErr := ChildErr;
+            AHasError := True;
+            Break;
+          end;
+          if not AHasError then
+          begin
+            AFirstErr := ChildErr;
+            AHasError := True;
+          end;
+        end;
+      end;
+      Code := FindNext(SR);
+    end;
+  finally
+    System.SysUtils.FindClose(SR);
+  end;
+end;
+
 // ASkipped reports that something under APath was left in place after the job's
 // error resolver said skip; the folders above it then stay as well.
 procedure DeleteTree(const APath: string; ACancel: IJobCancelToken;
@@ -926,11 +1064,8 @@ procedure DeleteTree(const APath: string; ACancel: IJobCancelToken;
   var AError: TVfsError; var ASkipped: Boolean);
 var
   Path: string;
-  SR: TSearchRec;
-  Code: Integer;
-  Child: string;
-  FirstErr, ChildErr: TVfsError;
-  HasError, NodeSkipped, ChildSkipped: Boolean;
+  FirstErr: TVfsError;
+  HasError, NodeSkipped: Boolean;
 begin
   NodeSkipped := False;
   if JobCancelRequested(ACancel) then
@@ -949,71 +1084,15 @@ begin
   try
     if LocalPathIsDirectory(Path) and not PlatformIsLinkNode(Path) then
     begin
-      Code := FindFirst(WinApiPath(SafeCombinePath(Path, '*')), faAnyFile, SR);
-      try
-        while Code = 0 do
-        begin
-          if JobCancelRequested(ACancel) then
-          begin
-            FirstErr := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(Path));
-            HasError := True;
-            Break;
-          end;
-          if (SR.Name <> '.') and (SR.Name <> '..') then
-          begin
-            Child := SafeCombinePath(Path, SR.Name);
-            ChildErr := TVfsError.Ok;
-            ChildSkipped := False;
-            DeleteTree(Child, ACancel, AOnProgress, ADoneItems, ATotalItems, ChildErr,
-              ChildSkipped);
-            if ChildSkipped then
-              NodeSkipped := True;
-            if ChildErr.Code <> vecOk then
-            begin
-              // Without a resolver a refused node means the rest of the tree is
-              // refused as well: stopping here lets the administrator offer
-              // appear at once.
-              if (ChildErr.Code = vecCancelled) or (ChildErr.Code = vecAccessDenied) then
-              begin
-                FirstErr := ChildErr;
-                HasError := True;
-                Break;
-              end;
-              if not HasError then
-              begin
-                FirstErr := ChildErr;
-                HasError := True;
-              end;
-            end;
-          end;
-          Code := FindNext(SR);
-        end;
-      finally
-        System.SysUtils.FindClose(SR);
-      end;
+      DeleteTreeChildren(Path, ACancel, AOnProgress, ADoneItems, ATotalItems,
+        FirstErr, HasError, NodeSkipped);
       if not HasError and not NodeSkipped then
-      begin
-        if not DeleteNodeResolved(Path, True, ACancel, FirstErr, NodeSkipped) then
-          HasError := True
-        else if not NodeSkipped then
-        begin
-          Inc(ADoneItems);
-          QueueProgress(AOnProgress, ADoneItems, ATotalItems,
-            SafeFileName(Path), 0, 0, Path, '');
-        end;
-      end;
+        DeleteCountedNode(Path, True, ACancel, AOnProgress, ADoneItems,
+          ATotalItems, FirstErr, HasError, NodeSkipped);
     end
     else if LocalPathIsFile(Path) or PlatformIsLinkNode(Path) then
-    begin
-      if not DeleteNodeResolved(Path, False, ACancel, FirstErr, NodeSkipped) then
-        HasError := True
-      else if not NodeSkipped then
-      begin
-        Inc(ADoneItems);
-        QueueProgress(AOnProgress, ADoneItems, ATotalItems,
-          SafeFileName(Path), 0, 0, Path, '');
-      end;
-    end
+      DeleteCountedNode(Path, False, ACancel, AOnProgress, ADoneItems,
+        ATotalItems, FirstErr, HasError, NodeSkipped)
     else
     begin
       FirstErr := TVfsError.Make(vecNotFound, 'Path not found', PathToFileUri(Path));
@@ -1037,6 +1116,94 @@ begin
     AError := TVfsError.Ok;
 end;
 
+// Reads the entries of directory APath into AList; a cancel or a refused
+// listing is reported in AErr.
+procedure CollectDirectoryEntries(const APath, AURI: string; ACancel: IJobCancelToken;
+  AList: TList<TVfsEntry>; var AErr: TVfsError);
+var
+  SR: TSearchRec;
+  Entry: TVfsEntry;
+  Code: Integer;
+begin
+  Code := FindFirst(WinApiPath(SafeCombinePath(APath, '*')), faAnyFile, SR);
+  if PlatformSearchDenied(Code) then
+  begin
+    AErr := TVfsError.Make(vecAccessDenied, 'Access denied', AURI);
+    Exit;
+  end;
+  if Code <> 0 then
+    Exit;
+  try
+    while Code = 0 do
+    begin
+      if JobCancelRequested(ACancel) then
+      begin
+        AErr := TVfsError.Make(vecCancelled, 'Cancelled', AURI);
+        Break;
+      end;
+      if (SR.Name <> '.') and (SR.Name <> '..') then
+      begin
+        Entry.Name := SR.Name;
+        Entry.Extension := LowerCase(SafeExtension(SR.Name));
+        Entry.IsDirectory := (SR.Attr and faDirectory) <> 0;
+        PlatformFillEntry(SR, Entry);
+        Entry.TargetURI := '';
+        if Entry.IsDirectory then
+        begin
+          Entry.Size := -1;
+          Entry.Extension := '';
+        end
+        else
+          Entry.Size := SR.Size;
+        AList.Add(Entry);
+      end;
+      Code := FindNext(SR);
+    end;
+  finally
+    System.SysUtils.FindClose(SR);
+  end;
+end;
+
+// Lists the local directory AURI names, sorted; AItems stays empty on failure.
+procedure ListLocalDirectory(const AURI: string; ACancel: IJobCancelToken;
+  var AItems: TArray<TVfsEntry>; var AErr: TVfsError);
+var
+  Path: string;
+  List: TList<TVfsEntry>;
+begin
+  SetLength(AItems, 0);
+  if JobCancelRequested(ACancel) then
+  begin
+    AErr := TVfsError.Make(vecCancelled, 'Cancelled', AURI);
+    Exit;
+  end;
+  Path := ResolveLocalDirPath(FileUriToPath(AURI));
+  if Path = '' then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid file URI', AURI);
+    Exit;
+  end;
+  if not LocalPathIsDirectory(Path) then
+  begin
+    if LocalPathIsFile(Path) then
+      AErr := TVfsError.Make(vecNotSupported, 'Not a directory', AURI)
+    else
+      AErr := TVfsError.Make(vecNotFound, 'Path not found', AURI);
+    Exit;
+  end;
+  List := TList<TVfsEntry>.Create;
+  try
+    CollectDirectoryEntries(Path, AURI, ACancel, List, AErr);
+    if AErr.Code = vecOk then
+    begin
+      List.Sort(TVfsEntryComparer.Create);
+      AItems := List.ToArray;
+    end;
+  finally
+    List.Free;
+  end;
+end;
+
 procedure TFileVirtualFileSystem.ListDirectoryAsync(const AURI: string;
   ACancel: IJobCancelToken; AOnDone: TVfsListCallback);
 var
@@ -1050,85 +1217,14 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Path: string;
-      Items: TArray<TVfsEntry>;
-      Err: TVfsError;
-      List: TList<TVfsEntry>;
-      SR: TSearchRec;
-      Entry: TVfsEntry;
-      Code: Integer;
-      DoneItems: TArray<TVfsEntry>;
-      DoneErr: TVfsError;
-//      FullPath: string;
+      Items, DoneItems: TArray<TVfsEntry>;
+      Err, DoneErr: TVfsError;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
       SetLength(Items, 0);
       try
-        if JobCancelRequested(Cancel) then
-          Err := TVfsError.Make(vecCancelled, 'Cancelled', URI)
-        else
-        begin
-          Path := ResolveLocalDirPath(FileUriToPath(URI));
-          if Path = '' then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', URI)
-          else if not LocalPathIsDirectory(Path) then
-          begin
-            if LocalPathIsFile(Path) then
-              Err := TVfsError.Make(vecNotSupported, 'Not a directory', URI)
-            else
-              Err := TVfsError.Make(vecNotFound, 'Path not found', URI);
-          end
-          else
-          begin
-            List := TList<TVfsEntry>.Create;
-            try
-              Code := FindFirst(WinApiPath(SafeCombinePath(Path, '*')), faAnyFile, SR);
-              if PlatformSearchDenied(Code) then
-                Err := TVfsError.Make(vecAccessDenied, 'Access denied', URI)
-              else if Code = 0 then
-              try
-                while Code = 0 do
-                begin
-                  if JobCancelRequested(Cancel) then
-                  begin
-                    Err := TVfsError.Make(vecCancelled, 'Cancelled', URI);
-                    Break;
-                  end;
-                  if (SR.Name <> '.') and (SR.Name <> '..') then
-                  begin
-                    Entry.Name := SR.Name;
-                    Entry.Extension := LowerCase(SafeExtension(SR.Name));
-                    Entry.IsDirectory := (SR.Attr and faDirectory) <> 0;
-                    PlatformFillEntry(SR, Entry);
-                    Entry.TargetURI := '';
-                    if Entry.IsDirectory then
-                    begin
-                      Entry.Size := -1;
-                      Entry.Extension := '';
-                    end
-                    else
-                      Entry.Size := SR.Size;
-                    List.Add(Entry);
-                  end;
-                  Code := FindNext(SR);
-                end;
-              finally
-                System.SysUtils.FindClose(SR);
-              end;
-
-              if Err.Code = vecOk then
-              begin
-                List.Sort(TVfsEntryComparer.Create);
-                Items := List.ToArray;
-              end
-              else
-                SetLength(Items, 0);
-            finally
-              List.Free;
-            end;
-          end;
-        end;
+        ListLocalDirectory(URI, Cancel, Items, Err);
       except
         on E: Exception do
         begin
@@ -1364,6 +1460,181 @@ begin
     end).Start;
 end;
 
+// Validates a move request. ACaseOnly is True when source and destination
+// differ only in letter case (one item on Windows, so no clash).
+procedure CheckMoveRequest(const ASrc, ADst, AFromURI, AToURI: string;
+  AOverwrite, ACaseOnly: Boolean; var AErr: TVfsError);
+begin
+  if (ASrc = '') or (ADst = '') then
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid file URI', AFromURI)
+  else if not (TFile.Exists(WinApiPath(ASrc)) or TDirectory.Exists(WinApiPath(ASrc))) then
+    AErr := TVfsError.Make(vecNotFound, 'Source not found', AFromURI)
+  else if TFile.Exists(WinApiPath(ADst)) and not AOverwrite and not ACaseOnly then
+    // An existing file is replaced only when overwrite is on, and then
+    // by the move or copy later - not deleted before that succeeds.
+    AErr := TVfsError.Make(vecAlreadyExists, 'Destination already exists', AToURI)
+  else if TDirectory.Exists(WinApiPath(ADst)) and not ACaseOnly and
+    not TDirectory.Exists(WinApiPath(ASrc)) and not AOverwrite then
+    AErr := TVfsError.Make(vecAlreadyExists, 'Destination already exists', AToURI);
+end;
+
+// Prepares the destination of a validated move. Src and Dst both directories
+// with Dst existing is not a conflict: a same-volume rename onto an existing
+// folder fails (native Windows limitation), so an empty Dst is removed and
+// the folder renamed, and a non-empty Dst (AMergeIntoDir) takes the
+// copy-and-delete path, where CopyTree merges per file honoring
+// overwrite/skip like Copy does.
+procedure PrepareMoveDestination(const ASrc, ADst, AToURI: string; ACaseOnly: Boolean;
+  var AMergeIntoDir: Boolean; var AErr: TVfsError);
+begin
+  AMergeIntoDir := not ACaseOnly and TDirectory.Exists(WinApiPath(ADst)) and
+    TDirectory.Exists(WinApiPath(ASrc));
+  try
+    if AMergeIntoDir and TDirectory.IsEmpty(WinApiPath(ADst)) then
+    begin
+      TDirectory.Delete(WinApiPath(ADst), False);
+      AMergeIntoDir := False;
+    end;
+    EnsureDestParentDir(ADst);
+  except
+    on E: Exception do
+      AErr := VfsErrorFromException(E, AToURI);
+  end;
+end;
+
+// True when a plain rename can do the move: both paths on one drive letter and
+// no file/directory name clash (those cannot be renamed over each other and go
+// through the copy, which swaps only after the new tree exists).
+function CanRenameInPlace(const ASrc, ADst: string; AMergeIntoDir,
+  AWasDirectory: Boolean): Boolean;
+begin
+  Result := (not AMergeIntoDir) and (Length(ASrc) >= 2) and
+    (Length(ADst) >= 2) and
+    (UpCase(ASrc[1]) = UpCase(ADst[1])) and (ASrc[2] = ':') and (ADst[2] = ':') and
+    not (AWasDirectory and TFile.Exists(WinApiPath(ADst))) and
+    not ((not AWasDirectory) and TDirectory.Exists(WinApiPath(ADst)));
+end;
+
+procedure RenameMove(const ASrc, ADst, AFromURI: string; ACaseOnly, AWasDirectory: Boolean;
+  AOnProgress: TVfsProgressCallback; var AErr: TVfsError);
+var
+  MoveMsg: string;
+begin
+  QueueProgress(AOnProgress, 0, 1, SafeFileName(ASrc), 0, 1, ASrc, ADst);
+  try
+    if ACaseOnly or PathHasBlankEndedName(ASrc) or PathHasBlankEndedName(ADst) or
+      ((not AWasDirectory) and TFile.Exists(WinApiPath(ADst))) then
+    begin
+      // TDirectory.Move and TFile.Move cut the space off such a name
+      // and refuse an existing destination, which a case-only rename
+      // always has.
+      // Replace keeps the previous file when the rename itself fails.
+      if not PlatformMoveFile(WinApiPath(ASrc), WinApiPath(ADst),
+        (not AWasDirectory) and not ACaseOnly and
+        TFile.Exists(WinApiPath(ADst)), MoveMsg) then
+        raise EInOutError.Create(MoveMsg);
+    end
+    else if AWasDirectory then
+      TDirectory.Move(WinApiPath(ASrc), WinApiPath(ADst))
+    else
+      TFile.Move(WinApiPath(ASrc), WinApiPath(ADst));
+    QueueProgress(AOnProgress, 1, 1, SafeFileName(ADst), 1, 1, ASrc, ADst);
+  except
+    on E: Exception do
+      AErr := VfsErrorFromException(E, AFromURI);
+  end;
+  // The source name still resolves to the renamed item, so the
+  // "source is gone" check does not apply to a case-only rename.
+  if (AErr.Code = vecOk) and not ACaseOnly then
+    VerifyMoveResult(ASrc, ADst, AWasDirectory, AErr);
+end;
+
+// Cross-volume move, or a file/directory name clash: copy, verify, delete source.
+procedure CopyDeleteMove(const ASrc, ADst, AFromURI: string; AWasDirectory: Boolean;
+  ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
+  AOverwrite, APreserve: Boolean; var AErr: TVfsError);
+var
+  DoneBytes, TotalBytes: Int64;
+  AnySkipped, DestWasDir: Boolean;
+begin
+  AnySkipped := False;
+  TotalBytes := EstimateTreeBytes(ASrc, ACancel, AOnProgress);
+  if TotalBytes <= 0 then
+    TotalBytes := 1;
+  DoneBytes := 0;
+  DestWasDir := TDirectory.Exists(WinApiPath(ADst));
+  if AWasDirectory then
+    CopyTree(ASrc, ADst, ACancel, AOnProgress, DoneBytes, TotalBytes, AErr,
+      AnySkipped, AOverwrite, APreserve)
+  else
+    CopyFileWithProgress(ASrc, ADst, ACancel, AOnProgress, AErr, AOverwrite, APreserve);
+  if AErr.Code <> vecOk then
+    Exit;
+  if AWasDirectory then
+    VerifyCopiedTree(ASrc, ADst, AErr, AnySkipped)
+  else
+    // Non-strict for the same reason as VerifyCopiedTree: the
+    // strict size check already ran inside the copy itself.
+    VerifyCopiedFile(ASrc, ADst, TFile.GetSize(WinApiPath(ASrc)), False, AErr);
+  if AErr.Code <> vecOk then
+  begin
+    if not DestWasDir then
+      CleanupFailedCopy(ADst);
+    Exit;
+  end;
+  // Skip mode left at least one source item untouched at the destination (see
+  // CopyTree) - it still exists only in Src, so deleting Src here (the whole
+  // point of Move) would lose it. Leave the whole source tree in place
+  // instead; the merge itself already succeeded for everything copied.
+  if AWasDirectory and AnySkipped then
+    Exit;
+  try
+    if AWasDirectory then
+      TDirectory.Delete(WinApiPath(ASrc), True)
+    else
+      TFile.Delete(WinApiPath(ASrc));
+  except
+    on E: Exception do
+      AErr := VfsErrorFromException(E, AFromURI);
+  end;
+end;
+
+procedure RunMove(const AFromURI, AToURI: string; ACancel: IJobCancelToken;
+  AOnProgress: TVfsProgressCallback; AOverwrite, APreserve: Boolean;
+  var AErr: TVfsError);
+var
+  Src, Dst: string;
+  WasDirectory, MergeIntoDir, CaseOnly: Boolean;
+begin
+  if JobCancelRequested(ACancel) then
+  begin
+    AErr := TVfsError.Make(vecCancelled, 'Cancelled', AFromURI);
+    Exit;
+  end;
+  Src := FileUriToPath(AFromURI);
+  Dst := FileUriToPath(AToURI);
+  // Windows names that differ only in letter case are one item: the
+  // rename is a plain in-place move, not a clash with an existing
+  // destination.
+{$IFDEF MSWINDOWS}
+  CaseOnly := SameText(Src, Dst) and (Src <> Dst);
+{$ELSE}
+  CaseOnly := False;
+{$ENDIF}
+  CheckMoveRequest(Src, Dst, AFromURI, AToURI, AOverwrite, CaseOnly, AErr);
+  if AErr.Code <> vecOk then
+    Exit;
+  PrepareMoveDestination(Src, Dst, AToURI, CaseOnly, MergeIntoDir, AErr);
+  if AErr.Code <> vecOk then
+    Exit;
+  WasDirectory := TDirectory.Exists(WinApiPath(Src));
+  if CanRenameInPlace(Src, Dst, MergeIntoDir, WasDirectory) then
+    RenameMove(Src, Dst, AFromURI, CaseOnly, WasDirectory, AOnProgress, AErr)
+  else
+    CopyDeleteMove(Src, Dst, AFromURI, WasDirectory, ACancel, AOnProgress,
+      AOverwrite, APreserve, AErr);
+end;
+
 procedure TFileVirtualFileSystem.MoveAsync(const AFromURI, AToURI: string;
   ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback; AOnDone: TVfsBoolCallback;
   AOverwrite: Boolean; APreserveTimestamps: Boolean);
@@ -1384,156 +1655,62 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Src, Dst, MoveMsg: string;
       Err: TVfsError;
-      DoneBytes, TotalBytes: Int64;
-      SameVolume, WasDirectory, AnySkipped, MergeIntoDir, DestWasDir: Boolean;
-      CaseOnly: Boolean;
     begin
       Err := TVfsError.Ok;
       Err.URI := FromURI;
-      AnySkipped := False;
-      CaseOnly := False;
       try
-        if JobCancelRequested(Cancel) then
-          Err := TVfsError.Make(vecCancelled, 'Cancelled', FromURI)
-        else
-        begin
-          Src := FileUriToPath(FromURI);
-          Dst := FileUriToPath(ToURI);
-          // Windows names that differ only in letter case are one item: the
-          // rename is a plain in-place move, not a clash with an existing
-          // destination.
-{$IFDEF MSWINDOWS}
-          CaseOnly := SameText(Src, Dst) and (Src <> Dst);
-{$ENDIF}
-          if (Src = '') or (Dst = '') then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', FromURI)
-          else if not (TFile.Exists(WinApiPath(Src)) or TDirectory.Exists(WinApiPath(Src))) then
-            Err := TVfsError.Make(vecNotFound, 'Source not found', FromURI)
-          else if TFile.Exists(WinApiPath(Dst)) and not Overwrite and not CaseOnly then
-            // An existing file is replaced only when overwrite is on, and then
-            // by the move or copy below - not deleted before that succeeds.
-            Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI)
-          else if TDirectory.Exists(WinApiPath(Dst)) and not CaseOnly and
-            not TDirectory.Exists(WinApiPath(Src)) and not Overwrite then
-            Err := TVfsError.Make(vecAlreadyExists, 'Destination already exists', ToURI);
-          // Src and Dst both directories, Dst already exists: not treated as a
-          // conflict here. A same-volume rename onto an existing folder fails
-          // (native Windows limitation), so an empty Dst is removed and the
-          // folder renamed, and a non-empty Dst takes the copy-and-delete
-          // path below: CopyTree merges into the existing folder per file,
-          // honoring AOverwrite/skip like Copy does.
-          MergeIntoDir := (Err.Code = vecOk) and not CaseOnly and
-            TDirectory.Exists(WinApiPath(Dst)) and TDirectory.Exists(WinApiPath(Src));
-          if MergeIntoDir and TDirectory.IsEmpty(WinApiPath(Dst)) then
-          begin
-            try
-              TDirectory.Delete(WinApiPath(Dst), False);
-              MergeIntoDir := False;
-            except
-              on E: Exception do
-                Err := VfsErrorFromException(E, ToURI);
-            end;
-          end;
-          if Err.Code = vecOk then
-          begin
-            try
-              EnsureDestParentDir(Dst);
-            except
-              on E: Exception do
-                Err := VfsErrorFromException(E, ToURI);
-            end;
-          end;
-          if Err.Code = vecOk then
-          begin
-            WasDirectory := TDirectory.Exists(WinApiPath(Src));
-            // A file and a directory of the same name cannot be renamed over
-            // each other; that goes through the copy below, which swaps only
-            // after the new tree exists.
-            SameVolume := (not MergeIntoDir) and (Length(Src) >= 2) and
-              (Length(Dst) >= 2) and
-              (UpCase(Src[1]) = UpCase(Dst[1])) and (Src[2] = ':') and (Dst[2] = ':') and
-              not (WasDirectory and TFile.Exists(WinApiPath(Dst))) and
-              not ((not WasDirectory) and TDirectory.Exists(WinApiPath(Dst)));
-            if SameVolume then
-            begin
-              QueueProgress(OnProgress, 0, 1, SafeFileName(Src), 0, 1, Src, Dst);
-              try
-                if CaseOnly or PathHasBlankEndedName(Src) or PathHasBlankEndedName(Dst) or
-                  ((not WasDirectory) and TFile.Exists(WinApiPath(Dst))) then
-                begin
-                  // TDirectory.Move and TFile.Move cut the space off such a name
-                  // and refuse an existing destination, which a case-only rename
-                  // always has.
-                  // Replace keeps the previous file when the rename itself fails.
-                  if not PlatformMoveFile(WinApiPath(Src), WinApiPath(Dst),
-                    (not WasDirectory) and not CaseOnly and
-                    TFile.Exists(WinApiPath(Dst)), MoveMsg) then
-                    raise EInOutError.Create(MoveMsg);
-                end
-                else if WasDirectory then
-                  TDirectory.Move(WinApiPath(Src), WinApiPath(Dst))
-                else
-                  TFile.Move(WinApiPath(Src), WinApiPath(Dst));
-                QueueProgress(OnProgress, 1, 1, SafeFileName(Dst), 1, 1, Src, Dst);
-              except
-                on E: Exception do
-                  Err := VfsErrorFromException(E, FromURI);
-              end;
-              // The source name still resolves to the renamed item, so the
-              // "source is gone" check does not apply to a case-only rename.
-              if (Err.Code = vecOk) and not CaseOnly then
-                VerifyMoveResult(Src, Dst, WasDirectory, Err);
-            end
-            else
-            begin
-              // Cross-volume, or a file/directory name clash: copy then delete source.
-              TotalBytes := EstimateTreeBytes(Src, Cancel, OnProgress);
-              if TotalBytes <= 0 then
-                TotalBytes := 1;
-              DoneBytes := 0;
-              DestWasDir := TDirectory.Exists(WinApiPath(Dst));
-              if WasDirectory then
-                CopyTree(Src, Dst, Cancel, OnProgress, DoneBytes, TotalBytes, Err,
-                  AnySkipped, Overwrite, Preserve)
-              else
-                CopyFileWithProgress(Src, Dst, Cancel, OnProgress, Err, Overwrite, Preserve);
-              if Err.Code = vecOk then
-              begin
-                if WasDirectory then
-                  VerifyCopiedTree(Src, Dst, Err, AnySkipped)
-                else
-                  // Non-strict for the same reason as VerifyCopiedTree: the
-                  // strict size check already ran inside the copy itself.
-                  VerifyCopiedFile(Src, Dst, TFile.GetSize(WinApiPath(Src)), False, Err);
-                if (Err.Code <> vecOk) and not DestWasDir then
-                  CleanupFailedCopy(Dst)
-                // Skip mode left at least one source item untouched at the
-                // destination (see CopyTree) - it still exists only in Src,
-                // so deleting Src here (the whole point of Move) would lose
-                // it. Leave the whole source tree in place instead; the merge
-                // itself already succeeded for everything that was copied.
-                else if not (WasDirectory and AnySkipped) then
-                try
-                  if WasDirectory then
-                    TDirectory.Delete(WinApiPath(Src), True)
-                  else
-                    TFile.Delete(WinApiPath(Src));
-                except
-                  on E: Exception do
-                    Err := VfsErrorFromException(E, FromURI);
-                end;
-              end;
-            end;
-          end;
-        end;
+        RunMove(FromURI, ToURI, Cancel, OnProgress, Overwrite, Preserve, Err);
       except
         on E: Exception do
           Err := VfsErrorFromException(E, FromURI);
       end;
       QueueBool(OnDone, Err.Code = vecOk, Err);
     end).Start;
+end;
+
+// Reads the whole file AURI names into ABuf. A file larger than AMaxBytes is
+// refused before any buffer is allocated. Failures other than exceptions are
+// reported in AErr; ABuf is empty then.
+procedure ReadLocalFileBytes(const AURI: string; AMaxBytes: Int64;
+  ACancel: IJobCancelToken; var ABuf: TBytes; var AErr: TVfsError);
+var
+  Path: string;
+  FS: TFileStream;
+  Size: Int64;
+begin
+  SetLength(ABuf, 0);
+  if JobCancelRequested(ACancel) then
+  begin
+    AErr := TVfsError.Make(vecCancelled, 'Cancelled', AURI);
+    Exit;
+  end;
+  Path := FileUriToPath(AURI);
+  if Path = '' then
+  begin
+    AErr := TVfsError.Make(vecInvalidURI, 'Invalid file URI', AURI);
+    Exit;
+  end;
+  if not TFile.Exists(WinApiPath(Path)) then
+  begin
+    AErr := TVfsError.Make(vecNotFound, 'File not found', AURI);
+    Exit;
+  end;
+  Size := TFile.GetSize(WinApiPath(Path));
+  if Size > AMaxBytes then
+  begin
+    AErr := TVfsError.Make(vecNotSupported,
+      Format('File too large (max %d KB).', [AMaxBytes div 1024]), AURI);
+    Exit;
+  end;
+  FS := TFileStream.Create(WinApiPath(Path), fmOpenRead or fmShareDenyNone);
+  try
+    SetLength(ABuf, Size);
+    if Size > 0 then
+      SetLength(ABuf, FS.Read(ABuf[0], Size));
+  finally
+    FS.Free;
+  end;
 end;
 
 procedure TFileVirtualFileSystem.ReadTextAsync(const AURI: string; AMaxBytes: Int64;
@@ -1553,13 +1730,9 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Path: string;
       Err: TVfsError;
       Text: string;
-      FS: TFileStream;
-      Size: Int64;
       Buf: TBytes;
-      Got: Integer;
       Enc: TTextFileEncoding;
       IsBin: Boolean;
     begin
@@ -1568,53 +1741,19 @@ begin
       Text := '';
       Enc := tfeUtf8;
       try
-        if JobCancelRequested(Cancel) then
-          Err := TVfsError.Make(vecCancelled, 'Cancelled', URI)
-        else
+        ReadLocalFileBytes(URI, MaxBytes, Cancel, Buf, Err);
+        if (Err.Code = vecOk) and not DetectAndDecodeText(Buf, Text, Enc, IsBin) then
         begin
-          Path := FileUriToPath(URI);
-          if Path = '' then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', URI)
-          else if not TFile.Exists(WinApiPath(Path)) then
-            Err := TVfsError.Make(vecNotFound, 'File not found', URI)
+          if IsBin then
+            Err := TVfsError.Make(vecNotSupported, 'Binary file', URI)
           else
-          begin
-            Size := TFile.GetSize(WinApiPath(Path));
-            if Size > MaxBytes then
-              Err := TVfsError.Make(vecNotSupported,
-                Format('File too large (max %d KB).',
-                  [MaxBytes div 1024]), URI)
-            else
-            begin
-              FS := TFileStream.Create(WinApiPath(Path), fmOpenRead or fmShareDenyNone);
-              try
-                SetLength(Buf, Size);
-                if Size > 0 then
-                begin
-                  Got := FS.Read(Buf[0], Size);
-                  SetLength(Buf, Got);
-                end;
-                if not DetectAndDecodeText(Buf, Text, Enc, IsBin) then
-                begin
-                  if IsBin then
-                    Err := TVfsError.Make(vecNotSupported, 'Binary file', URI)
-                  else
-                    Err := TVfsError.Make(vecIOError, 'Cannot decode text', URI);
-                  Text := '';
-                end;
-              finally
-                FS.Free;
-              end;
-            end;
-          end;
+            Err := TVfsError.Make(vecIOError, 'Cannot decode text', URI);
+          Text := '';
         end;
       except
         on E: Exception do
         begin
-          if Pos('denied', LowerCase(E.Message)) > 0 then
-            Err := TVfsError.Make(vecAccessDenied, E.Message, URI)
-          else
-            Err := TVfsError.Make(vecIOError, E.Message, URI);
+          Err := VfsErrorFromException(E, URI);
           Text := '';
         end;
       end;
@@ -1639,56 +1778,18 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Path: string;
       Err: TVfsError;
-      FS: TFileStream;
-      Size: Int64;
       Buf: TBytes;
-      Got: Integer;
     begin
       Err := TVfsError.Ok;
       Err.URI := URI;
       SetLength(Buf, 0);
       try
-        if JobCancelRequested(Cancel) then
-          Err := TVfsError.Make(vecCancelled, 'Cancelled', URI)
-        else
-        begin
-          Path := FileUriToPath(URI);
-          if Path = '' then
-            Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', URI)
-          else if not TFile.Exists(WinApiPath(Path)) then
-            Err := TVfsError.Make(vecNotFound, 'File not found', URI)
-          else
-          begin
-            Size := TFile.GetSize(WinApiPath(Path));
-            if Size > MaxBytes then
-              Err := TVfsError.Make(vecNotSupported,
-                Format('File too large (max %d KB).',
-                  [MaxBytes div 1024]), URI)
-            else
-            begin
-              FS := TFileStream.Create(WinApiPath(Path), fmOpenRead or fmShareDenyNone);
-              try
-                SetLength(Buf, Size);
-                if Size > 0 then
-                begin
-                  Got := FS.Read(Buf[0], Size);
-                  SetLength(Buf, Got);
-                end;
-              finally
-                FS.Free;
-              end;
-            end;
-          end;
-        end;
+        ReadLocalFileBytes(URI, MaxBytes, Cancel, Buf, Err);
       except
         on E: Exception do
         begin
-          if Pos('denied', LowerCase(E.Message)) > 0 then
-            Err := TVfsError.Make(vecAccessDenied, E.Message, URI)
-          else
-            Err := TVfsError.Make(vecIOError, E.Message, URI);
+          Err := VfsErrorFromException(E, URI);
           SetLength(Buf, 0);
         end;
       end;

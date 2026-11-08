@@ -71,6 +71,7 @@ begin
   WriteLine('  --view FILE       open the file in the viewer');
   WriteLine('  --edit FILE       open the file in the editor (-e FILE)');
   WriteLine('  --update [CH]     download and install the latest version, CH is stable or nightly (kept for next time)');
+  WriteLine('  --allow-unverified  with --update: install a package that has no published checksum');
   WriteLine('  --font=NAME       font family (default: the monospace family of the system)');
   WriteLine('  --size=PX         glyph height in pixels (default 16)');
   WriteLine('  --cols=N --rows=N initial window size in cells');

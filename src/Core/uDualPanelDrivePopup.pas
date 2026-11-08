@@ -282,21 +282,6 @@ begin
     FOnNavigate(Side, TargetURI);
 end;
 
-// Mixes AColor 22% into ABase: a pale tint that keeps text on top readable.
-function PaleTint(AColor, ABase: TAlphaColor): TAlphaColor;
-var
-  Shift: Integer;
-  Ch: Cardinal;
-begin
-  Result := $FF000000;
-  for Shift := 0 to 2 do
-  begin
-    Ch := (((ABase shr (Shift * 8)) and $FF) * 78 +
-      ((AColor shr (Shift * 8)) and $FF) * 22) div 100;
-    Result := Result or (Ch shl (Shift * 8));
-  end;
-end;
-
 // The drive line with the used part of the volume as a pale bar behind the
 // total and free size columns.
 procedure PutDriveLine(const AGrid: TTerminalGrid; AX, AY: Integer;

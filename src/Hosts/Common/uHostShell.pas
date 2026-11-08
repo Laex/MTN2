@@ -304,6 +304,10 @@ begin
           Recompose;
       end);
   StartPluginHost(APluginsDir);
+  // The session is restored before the plugins load, so panels on a plugin
+  // scheme (svc:, proc:, ...) were listed without their backend.
+  if Assigned(FDualPanel) then
+    FDualPanel.ReloadPluginSides;
   // Dialogs a plugin asks for appear only over the panels, never inside an
   // editor, viewer or terminal.
   SetPluginDialogHost(

@@ -16,6 +16,7 @@ type
     [Test] procedure TestUnitListSkipsBulletAndBlankLines;
     [Test] procedure TestActiveStateMapsToServiceState;
     [Test] procedure TestShowValueFindsTheKeyLine;
+    [Test] procedure TestMainPidsKeepOnlyUnitsWithAProcess;
   end;
 
 implementation
@@ -103,6 +104,21 @@ begin
   Assert.AreEqual('Secure Shell', ShowValue(Text, 'Description'));
   Assert.AreEqual('0', ShowValue(Text, 'MainPID'));
   Assert.AreEqual('', ShowValue(Text, 'User'));
+end;
+
+procedure TTestWinSysLinux.TestMainPidsKeepOnlyUnitsWithAProcess;
+var
+  Pids: TArray<TUnitPid>;
+begin
+  Pids := ParseMainPids('MainPID=812'#10'Id=ssh.service'#10#10 +
+    'Id=idle.service'#10'MainPID=0'#10#10 +
+    'Id=cron.service'#13#10'MainPID=77'#13#10);
+  Assert.AreEqual(2, Integer(Length(Pids)));
+  Assert.AreEqual('ssh.service', Pids[0].Name);
+  Assert.AreEqual(Cardinal(812), Pids[0].Pid);
+  Assert.AreEqual('cron.service', Pids[1].Name);
+  Assert.AreEqual(Cardinal(77), Pids[1].Pid);
+  Assert.AreEqual(0, Integer(Length(ParseMainPids(''))));
 end;
 
 initialization

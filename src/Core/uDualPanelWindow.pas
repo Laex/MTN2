@@ -338,6 +338,7 @@ type
     FFreeGen: Cardinal;
     FSideFreeRoot: array[TPanelSide] of string;
     FSideFreeLine: array[TPanelSide] of string;
+    FSideFreeUsed: array[TPanelSide] of Integer;
     FSideFreeGen: array[TPanelSide] of Cardinal;
     FLastClickCol: Integer;
     FLastClickRow: Integer;
@@ -882,8 +883,10 @@ type
       const AFields: TDialogCommandFields): Boolean;
     procedure RequestFreeSpace(const APath: string);
     /// <summary>Free-space line of the NDN panel footer for ASide, requested in the
-    /// background when the panel's drive changes; '' until known or off a drive.</summary>
-    function PanelFreeLine(ASide: TPanelSide; const AUri: string): string;
+    /// background when the panel's drive changes; '' until known or off a drive.
+    /// AUsedPermille is the used share of the drive in thousandths (0 = unknown).</summary>
+    function PanelFreeLine(ASide: TPanelSide; const AUri: string;
+      out AUsedPermille: Integer): string;
     procedure ResolveRelativeCommandAsync(const AText, ABaseDir, ACommand: string);
     /// <summary>A path typed into the command line: an existing file runs
     /// (ShellOpenPath), anything else is navigated to.</summary>
@@ -1447,6 +1450,10 @@ type
     function SaverCornerCol: Integer;
     function ExportSessionState: TDualPanelWindowState;
     procedure ApplySessionState(const AState: TDualPanelWindowState);
+    /// <summary>Re-lists the sides that show a plugin scheme (not file://). A
+    /// session restored before the plugins were loaded lists those sides with
+    /// no backend and reports the path as missing.</summary>
+    procedure ReloadPluginSides;
     /// <summary>Rebuilds the top menu bar's categories/captions from
     /// MENU_MAIN -- call after uStrings.SetLocale so an already-open window
     /// picks up a language switch without a restart.</summary>
@@ -3598,6 +3605,15 @@ begin
   FSettings.OnSetConsoleStartOnLaunch := HostSetConsoleStartOnLaunch;
   FSettings.OnGetConsoleCwdToPanels := HostGetConsoleCwdToPanels;
   FSettings.OnSetConsoleCwdToPanels := HostSetConsoleCwdToPanels;
+  FSettings.OnColumnsAccepted :=
+    procedure
+    var
+      Ws: TDualPanelWorkspaceTab;
+    begin
+      Ws := ActiveWorkspace;
+      if Ws.Kind = wkPanels then
+        ApplyColumnMode(Ws.State.ActiveSide, pcmCustom);
+    end;
   FSettings.OnResetKeyHints :=
     procedure
     begin
@@ -5030,6 +5046,26 @@ begin
   M.Open(Tab.CurrentURI);
   FWatchPending[ASide] := False;
   SyncDirWatches;
+end;
+
+procedure TDualPanelWindow.ReloadPluginSides;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Scheme: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  for Side := Low(TPanelSide) to High(TPanelSide) do
+  begin
+    if Side = psLeft then
+      Scheme := UriSchemeOf(ActiveTab(Ws.State.LeftPanel).CurrentURI)
+    else
+      Scheme := UriSchemeOf(ActiveTab(Ws.State.RightPanel).CurrentURI);
+    if (Scheme <> '') and not SameText(Scheme, 'file') then
+      LoadSide(Side);
+  end;
 end;
 
 procedure TDualPanelWindow.ReloadActiveRows;
@@ -8589,18 +8625,20 @@ begin
 end;
 
 function TDualPanelWindow.PanelFreeLine(ASide: TPanelSide;
-  const AUri: string): string;
+  const AUri: string; out AUsedPermille: Integer): string;
 var
   Life: ILifeFlag;
   Root, RootURI, Drive: string;
   Gen: Cardinal;
   Side: TPanelSide;
 begin
+  AUsedPermille := 0;
   Root := LocalPathRootOf(StatusPathLabel(AUri));
   if Root = '' then
   begin
     FSideFreeRoot[ASide] := '';
     FSideFreeLine[ASide] := '';
+    FSideFreeUsed[ASide] := 0;
     Exit('');
   end;
   Root := IncludeTrailingPathDelimiter(Root);
@@ -8610,6 +8648,7 @@ begin
     Side := ASide;
     FSideFreeRoot[Side] := Root;
     FSideFreeLine[Side] := '';
+    FSideFreeUsed[Side] := 0;
     RootURI := PathToFileUri(Root);
     Drive := ExcludeTrailingPathDelimiter(Root);
     Inc(FSideFreeGen[Side]);
@@ -8627,14 +8666,20 @@ begin
             Size := FormatSizeExact(AFree)
           else
             Size := FormatSizeShort(AFree);
+          Size := Size + Format(' (%d%%)', [Round(Min(Max(AFree, 0), ATotal) / ATotal * 100)]);
           FSideFreeLine[Side] := T('status.free_on_drive','%s free on drive %s',
             [Size, Drive]);
+          FSideFreeUsed[Side] := Round(Min(Max(ATotal - AFree, 0), ATotal) / ATotal * 1000);
         end
         else
+        begin
           FSideFreeLine[Side] := '';
+          FSideFreeUsed[Side] := 0;
+        end;
         NotifyChanged;
       end);
   end;
+  AUsedPermille := FSideFreeUsed[ASide];
   Result := FSideFreeLine[ASide];
 end;
 
@@ -14651,7 +14696,7 @@ begin
   Snap.Count := Count;
   Snap.FooterFg := AFrame;
   if GNdnFooter then
-    Snap.FreeLine := PanelFreeLine(ASide, Tab.CurrentURI);
+    Snap.FreeLine := PanelFreeLine(ASide, Tab.CurrentURI, Snap.FreeUsedPermille);
   if Length(Tab.SelectedURIs) > 0 then
   begin
     SelectionTotalsOf(ASide, Tab, Bytes, Files, Folders);

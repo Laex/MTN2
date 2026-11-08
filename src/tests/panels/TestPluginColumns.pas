@@ -28,6 +28,7 @@ type
     [Test] procedure TestHeaderHitFindsPluginColumn;
     [Test] procedure TestHeaderSortCyclesPerPluginColumn;
     [Test] procedure TestColumnsDialogListsPluginColumns;
+    [Test] procedure TestColumnsDialogOkSwitchesToCustomMode;
     [Test] procedure TestPluginRestrictsBuiltinColumns;
     [Test] procedure TestColumnTitlesFollowTheProgramLanguage;
     [Test] procedure TestSessionKeepsPluginSortAndSelection;
@@ -38,7 +39,7 @@ implementation
 uses
   System.SysUtils, System.IOUtils,
   uVfsTypes, uVfsCdeclAdapter, uDialogTypes, uDualPanelTypes, uPanelColumns, uPluginColumns, uPluginServices, uStrings,
-  uDialogLocaleLayout, uSession;
+  uDialogLocaleLayout, uSession, uDialogHost, uDualPanelSettingsDialogs;
 
 const
   cScheme = 'demo';
@@ -366,6 +367,34 @@ begin
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
   Assert.IsFalse(ControlById(Decl, 'pcol_0').Checked, 'the saved choice is shown');
   Assert.IsTrue(ControlById(Decl, 'pcol_2').Checked);
+end;
+
+procedure TTestPluginColumns.TestColumnsDialogOkSwitchesToCustomMode;
+var
+  Host: TDialogHost;
+  Settings: TSettingsDialogController;
+  Switched: Integer;
+begin
+  Host := TDialogHost.Create(nil);
+  Settings := TSettingsDialogController.Create(Host, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+    nil, nil, nil);
+  try
+    Switched := 0;
+    Settings.OnColumnsAccepted :=
+      procedure
+      begin
+        Inc(Switched);
+      end;
+    Settings.OpenColumns(cScheme);
+    Settings.DispatchColumnsCommand(cDlgCmdCancel);
+    Assert.AreEqual(0, Switched, 'Cancel keeps the column mode');
+    Settings.OpenColumns(cScheme);
+    Settings.DispatchColumnsCommand(cDlgCmdOk);
+    Assert.AreEqual(1, Switched, 'OK switches to the Custom mode');
+  finally
+    Settings.Free;
+    Host.Free;
+  end;
 end;
 
 procedure TTestPluginColumns.TestColumnTitlesFollowTheProgramLanguage;

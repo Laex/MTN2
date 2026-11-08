@@ -19,6 +19,7 @@ type
     [Test] procedure TestReleaseJson;
     [Test] procedure TestDevReleaseJson;
     [Test] procedure TestSha256;
+    [Test] procedure TestUnverifiedPackageNeedsConsent;
     [Test] procedure TestExtract;
     [Test] procedure TestApply;
     [Test] procedure TestRollback;
@@ -183,6 +184,23 @@ begin
   TFile.WriteAllBytes(F, TEncoding.ASCII.GetBytes('abc'));
   Assert.IsTrue(FileSha256(F) = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
     'sha256("abc") matches the FIPS vector');
+end;
+
+// A package without a published digest is refused before any network access
+// unless the user agreed; the check comes before the download.
+procedure TestUnverifiedPackageNeedsConsent;
+var
+  Rel: TUpdateRelease;
+  Err: string;
+begin
+  Rel := Default(TUpdateRelease);
+  Rel.AssetUrl := 'http://unverified.invalid/pkg.zip';
+  Assert.IsFalse(DownloadAsset(Rel, TPath.Combine(GTemp, 'nohash.zip'), nil, Err));
+  Assert.AreEqual('insecure download URL', Err, 'the scheme is judged first');
+  Rel.AssetUrl := 'https://unverified.invalid/pkg.zip';
+  Assert.IsFalse(DownloadAsset(Rel, TPath.Combine(GTemp, 'nohash.zip'), nil, Err));
+  Assert.AreEqual('no checksum is published for this package', Err);
+  Assert.IsFalse(TFile.Exists(TPath.Combine(GTemp, 'nohash.zip')), 'nothing was written');
 end;
 
 // A release package: a zip on Windows; on POSIX a tar.gz with a top folder,
@@ -433,6 +451,11 @@ end;
 procedure TTestUpdater.TestSha256;
 begin
   TestUpdater.TestSha256;
+end;
+
+procedure TTestUpdater.TestUnverifiedPackageNeedsConsent;
+begin
+  TestUpdater.TestUnverifiedPackageNeedsConsent;
 end;
 
 procedure TTestUpdater.TestExtract;

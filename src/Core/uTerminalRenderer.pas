@@ -210,15 +210,34 @@ type
 implementation
 
 uses
-  System.Math, System.Diagnostics, FMX.TextLayout, uShellIcons, uPanelColumns,
+  System.Math, System.Diagnostics, System.Generics.Defaults, FMX.TextLayout, uShellIcons, uPanelColumns,
   uDisplaySettings;
 
 { TGlyphCache }
 
+function GlyphKeyEquals(const ALeft, ARight: TGlyphKey): Boolean;
+begin
+  Result := (ALeft.Ch = ARight.Ch) and (ALeft.FgColor = ARight.FgColor) and
+    (ALeft.Style = ARight.Style) and (ALeft.Wide = ARight.Wide);
+end;
+
+// The default record hasher walks the bytes of the key; every painted
+// character looks its glyph up, so a few multiplications are cheaper.
+function GlyphKeyHash(const AKey: TGlyphKey): Integer;
+var
+  H: UInt64;
+begin
+  // 32-bit FNV-style mixing in 64-bit arithmetic: the products stay below 2^56.
+  H := (UInt64(Ord(AKey.Ch)) * 16777619) and $FFFFFFFF;
+  H := ((H xor UInt64(AKey.FgColor)) * 16777619) and $FFFFFFFF;
+  H := ((H xor (UInt64(PByte(@AKey.Style)^) shl 1) xor UInt64(Ord(AKey.Wide))) * 16777619) and $FFFFFFFF;
+  Result := Integer(Cardinal(H xor (H shr 15)));
+end;
+
 constructor TGlyphCache.Create;
 begin
   inherited Create;
-  FMap := TDictionary<TGlyphKey, TBitmap>.Create;
+  FMap := TDictionary<TGlyphKey, TBitmap>.Create(TEqualityComparer<TGlyphKey>.Construct(GlyphKeyEquals, GlyphKeyHash));
   FFontName := '';
   FFontSize := 0;
   FCellW := 0;
@@ -1074,7 +1093,7 @@ begin
        ((Sub.Attributes - [ccaInsertCaret]) <> RunAttr) or
        (Sub.CharValue <= #32) or
        (Sub.CharValue = chLowerHalf) or (Sub.CharValue = chUpperHalf) or
-       ClassifyBoxChar(Sub.CharValue, BN, BS, BE, BW) then
+       ((Sub.CharValue >= #$2500) and ClassifyBoxChar(Sub.CharValue, BN, BS, BE, BW)) then
       Break;
     Inc(Result);
   end;
@@ -1153,7 +1172,7 @@ begin
         Continue;
       end;
 
-      if ClassifyBoxChar(Cell.CharValue, BN, BS, BE, BW) then
+      if (Cell.CharValue >= #$2500) and ClassifyBoxChar(Cell.CharValue, BN, BS, BE, BW) then
       begin
         ACanvas.SetMatrix(SavedMatrix);
         DrawBoxGlyph(ACanvas, X, Y, BN, BS, BE, BW, Cell.FgColor);

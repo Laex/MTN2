@@ -28,6 +28,10 @@ function PlatformSevenZipEngineHint: string;
 /// afterwards inherit it.</summary>
 procedure PlatformSetEnvironment(const AName, AValue: string);
 
+/// <summary>Quotes one argument of a CreateProcess command line so the child's
+/// CommandLineToArgvW parsing gives back exactly S.</summary>
+function PlatformQuoteArg(const S: string): string;
+
 /// <summary>Spawns AExe with AArgs, writes AStdIn to its stdin then closes it,
 /// captures merged stdout and stderr. ATimeoutMs = 0 waits until the process
 /// exits or ACancel is signalled. A timeout or cancel kills the child. A
@@ -106,12 +110,35 @@ begin
   end;
 end;
 
-function QuoteCmdArg(const S: string): string;
+function PlatformQuoteArg(const S: string): string;
+var
+  I, Slashes: Integer;
+  C: Char;
 begin
-  if (S = '') or (Pos(' ', S) > 0) or (Pos('"', S) > 0) or (Pos('&', S) > 0) then
-    Result := '"' + StringReplace(S, '"', '', [rfReplaceAll]) + '"'
-  else
-    Result := S;
+  if (S <> '') and (S.IndexOfAny([' ', #9, #10, #11, '"', '&', '|', '<', '>', '^']) < 0) then
+    Exit(S);
+  // CommandLineToArgvW rules: backslashes only matter in front of a quote, so
+  // they are doubled there (and before the closing quote). Without that a
+  // trailing backslash would escape the closing quote and glue the next
+  // argument onto this one.
+  Result := '"';
+  Slashes := 0;
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    if C = '\' then
+      Inc(Slashes)
+    else
+    begin
+      if C = '"' then
+        Result := Result + StringOfChar('\', Slashes * 2 + 1)
+      else
+        Result := Result + StringOfChar('\', Slashes);
+      Slashes := 0;
+      Result := Result + C;
+    end;
+  end;
+  Result := Result + StringOfChar('\', Slashes * 2) + '"';
 end;
 
 procedure CloseHandleIfOpen(var AHandle: THandle);
@@ -164,9 +191,9 @@ function BuildCommandLine(const AExe: string; const AArgs: TArray<string>): stri
 var
   Arg: string;
 begin
-  Result := QuoteCmdArg(AExe);
+  Result := PlatformQuoteArg(AExe);
   for Arg in AArgs do
-    Result := Result + ' ' + QuoteCmdArg(Arg);
+    Result := Result + ' ' + PlatformQuoteArg(Arg);
   UniqueString(Result);
 end;
 

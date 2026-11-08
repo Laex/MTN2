@@ -46,6 +46,9 @@ type
     AssetUrl: string;
     AssetSize: Int64;
     AssetSha256: string;    // lowercase hex, '' when GitHub gave no digest
+    /// <summary>The user agreed to install a package that has no digest to
+    /// check it against; without it DownloadAsset refuses such a package.</summary>
+    AllowUnverified: Boolean;
   end;
 
   TUpdateSettings = record
@@ -432,6 +435,11 @@ begin
   if not ARelease.AssetUrl.StartsWith('https://', True) then
   begin
     AError := 'insecure download URL';
+    Exit(False);
+  end;
+  if (ARelease.AssetSha256 = '') and not ARelease.AllowUnverified then
+  begin
+    AError := 'no checksum is published for this package';
     Exit(False);
   end;
   ForceDirectories(ExtractFileDir(ADestFile));

@@ -90,6 +90,7 @@ begin
   WriteLine('  --view FILE    open the file in the viewer');
   WriteLine('  --edit FILE    open the file in the editor (-e FILE)');
   WriteLine('  --update [CH]  download and install the latest version, CH is stable or nightly (kept for next time)');
+  WriteLine('  --allow-unverified  with --update: install a package that has no published checksum');
   WriteLine('  --install-desktop  write the menu entry and icon to ~/.local/share (--uninstall-desktop removes them)');
   WriteLine('  --no-mouse     do not ask the terminal for mouse events');
   WriteLine('  --colors=MODE  truecolor, 256 or 16 (default: from COLORTERM and TERM)');

@@ -14,6 +14,7 @@ type
   public
     [Test] procedure ChannelNames;
     [Test] procedure UnknownChannelIsRefusedBeforeAnythingIsDone;
+    [Test] procedure UnverifiedSwitchIsRecognised;
   end;
 
 implementation
@@ -44,6 +45,13 @@ begin
   Assert.AreEqual(2, Code, 'the exit code of a wrong channel');
   Assert.IsTrue(Lines.Contains('Unknown channel "beta"'), Lines);
   Assert.IsFalse(Lines.Contains('Checking'), 'no network access for a wrong channel');
+end;
+
+procedure TTestUpdateCli.UnverifiedSwitchIsRecognised;
+begin
+  Assert.IsTrue(AllowUnverifiedRequested(['--update', 'nightly', '--Allow-Unverified']));
+  Assert.IsFalse(AllowUnverifiedRequested(['--update', 'nightly']));
+  Assert.IsFalse(AllowUnverifiedRequested([]));
 end;
 
 initialization

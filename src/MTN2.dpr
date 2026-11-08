@@ -207,6 +207,10 @@ var
   ExistingHwnd: HWND;
   UpdateChannel: string;
 begin
+  // Libraries loaded later (plugins and their dependencies) are never looked
+  // up in the current directory, which a user can point at a folder holding
+  // a planted DLL of the same name.
+  SetDllDirectory('');
   // --self-check: report missing run-time files and exit (release smoke
   // test, src\tools\check-release.ps1) -- no window, no instance handshake.
   if SelfCheckRequested then

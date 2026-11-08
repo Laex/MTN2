@@ -74,6 +74,7 @@ type
     procedure StartDownload;
     procedure NoticeDownload(const AProgress: string);
     procedure AskCancelDownload;
+    procedure AskInstallUnverified;
     procedure CancelDownload;
     procedure DownloadDone(AOk: Boolean; const AError: string);
     procedure ShowReady;
@@ -494,6 +495,11 @@ begin
       T('ui.update.noWrite', 'The program folder is not writable.'), True);
     Exit;
   end;
+  if (FRelease.AssetSha256 = '') and not FRelease.AllowUnverified then
+  begin
+    AskInstallUnverified;
+    Exit;
+  end;
   FState := usDownloading;
   Life := FLife;
   DownLife := TUpdateLife.Create;
@@ -552,6 +558,24 @@ begin
         end);
     end) then
     FState := usIdle;
+end;
+
+procedure TUpdateController.AskInstallUnverified;
+begin
+  Show(BuildUpdateMessageDialog(
+    T('ui.update.noChecksum', 'No checksum is published for version %s.', [FRelease.Version]),
+    T('ui.update.noChecksumDetails',
+      'The download cannot be verified. Install it anyway?'),
+    T('ui.update.installAnyway', 'Install anyway'), True,
+    T('ui.update.dontInstall', 'Do not install')),
+    procedure(ACmd, AValues: string)
+    begin
+      if SameText(ACmd, cDlgCmdOk) then
+      begin
+        FRelease.AllowUnverified := True;
+        StartDownload;
+      end;
+    end);
 end;
 
 procedure TUpdateController.NoticeDownload(const AProgress: string);

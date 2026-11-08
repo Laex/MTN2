@@ -84,6 +84,11 @@ function WindowFrameCloseHit(const ABounds: TRectI; AX, AY: Integer): Boolean;
 /// <summary>Blends AColor toward black; ACover = how much black to mix in
 /// (0 = unchanged, 255 = pure black).</summary>
 function BlendTowardBlack(AColor: TAlphaColor; ACover: Byte): TAlphaColor;
+/// <summary>Mixes AColor 22% into ABase: a pale tint that keeps text drawn on
+/// top readable (the used-space bars of the drive list and the panel footer).</summary>
+function PaleTint(AColor, ABase: TAlphaColor): TAlphaColor;
+/// <summary>Mixes AColor into ABase, APercent (0..100) of it.</summary>
+function MixTint(AColor, ABase: TAlphaColor; APercent: Integer): TAlphaColor;
 /// <summary>Pick a glyph foreground that stays readable on ABg. Uses
 /// APreferred when its luma is far enough from the background (window/dialog
 /// close accent, tab close), otherwise AFallback (usually the tab's own text
@@ -165,6 +170,25 @@ begin
   Dst.R := Byte((Integer(Src.R) * Keep) div 255);
   Dst.G := Byte((Integer(Src.G) * Keep) div 255);
   Dst.B := Byte((Integer(Src.B) * Keep) div 255);
+end;
+
+function MixTint(AColor, ABase: TAlphaColor; APercent: Integer): TAlphaColor;
+var
+  Shift: Integer;
+  Ch: Cardinal;
+begin
+  Result := $FF000000;
+  for Shift := 0 to 2 do
+  begin
+    Ch := (((ABase shr (Shift * 8)) and $FF) * Cardinal(100 - APercent) +
+      ((AColor shr (Shift * 8)) and $FF) * Cardinal(APercent)) div 100;
+    Result := Result or (Ch shl (Shift * 8));
+  end;
+end;
+
+function PaleTint(AColor, ABase: TAlphaColor): TAlphaColor;
+begin
+  Result := MixTint(AColor, ABase, 22);
 end;
 
 function GlyphLuma(AColor: TAlphaColor): Integer;

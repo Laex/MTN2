@@ -27,6 +27,7 @@ type
     [Test] procedure TestUnknownExtensionByContent;
     [Test] procedure TestMisnamedArchiveOpensByContent;
     [Test] procedure TestFolderNameEndingInBang;
+    [Test] procedure TestParentSegmentOnlyRejectsRealTraversal;
     [Test] procedure TestPackWithPassword;
     [Test] procedure TestPackWithEncryptedNames;
     [Test] procedure TestPackCompressionLevel;
@@ -245,6 +246,17 @@ begin
   Assert.IsTrue(ParseSevenZipUri(Uri + '!/dir/x.txt', ArcPath, Inner), 'inner parses');
   Assert.AreEqual(Arc, ArcPath, 'inner: archive is the file');
   Assert.AreEqual('dir/x.txt', Inner, 'inner: entry path');
+end;
+
+procedure TTestSevenZipOpen.TestParentSegmentOnlyRejectsRealTraversal;
+begin
+  Assert.IsTrue(SevenZipHasParentSegment('..'), 'bare parent');
+  Assert.IsTrue(SevenZipHasParentSegment('a/../b'), 'embedded parent');
+  Assert.IsTrue(SevenZipHasParentSegment('a/..'), 'trailing parent');
+  Assert.IsTrue(SevenZipHasParentSegment('a\..\b'), 'backslash parent');
+  Assert.IsFalse(SevenZipHasParentSegment('v1..2.txt'), 'dots inside a name');
+  Assert.IsFalse(SevenZipHasParentSegment('dir/..hidden'), 'leading dots in a name');
+  Assert.IsFalse(SevenZipHasParentSegment('dir/file.'), 'trailing dot');
 end;
 
 function NewPackSource(const AName, AText: string): string;

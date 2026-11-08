@@ -40,7 +40,7 @@ function ServiceStateRole(AState: Cardinal): string;
 implementation
 
 uses
-  uPlatformProcess, uWinSysCodes, uWinSysLinux;
+  System.Generics.Collections, uPlatformProcess, uWinSysCodes, uWinSysLinux;
 
 const
   cListTimeoutMs = 15000;
@@ -79,6 +79,32 @@ begin
     ATimeoutMs, nil, AOutput, ACode) = srOk;
 end;
 
+// The main process ids of all services in one call. A failure leaves the PIDs
+// at 0: the list is still usable without them.
+procedure FillMainPids(var ARows: TSvcRows);
+var
+  Output: string;
+  Code: Cardinal;
+  Pids: TArray<TUnitPid>;
+  Map: TDictionary<string, Cardinal>;
+  P: TUnitPid;
+  I: Integer;
+begin
+  if not Systemctl(['show', '*.service', '-p', 'Id,MainPID'], cListTimeoutMs, Output, Code) or
+     (Code <> 0) then
+    Exit;
+  Pids := ParseMainPids(Output);
+  Map := TDictionary<string, Cardinal>.Create;
+  try
+    for P in Pids do
+      Map.AddOrSetValue(P.Name, P.Pid);
+    for I := 0 to High(ARows) do
+      Map.TryGetValue(ARows[I].Name, ARows[I].Pid);
+  finally
+    Map.Free;
+  end;
+end;
+
 function ListServices(out ARows: TSvcRows): Cardinal;
 var
   Output: string;
@@ -106,6 +132,7 @@ begin
     Inc(N);
   end;
   SetLength(ARows, N);
+  FillMainPids(ARows);
   Result := 0;
 end;
 

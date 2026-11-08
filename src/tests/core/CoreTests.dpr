@@ -42,6 +42,7 @@ uses
   TestStrings in 'TestStrings.pas',
   TestConsoleLaunch in 'TestConsoleLaunch.pas',
   TestTerminalRenderer in 'TestTerminalRenderer.pas',
+  TestCommandLineQuoting in 'TestCommandLineQuoting.pas',
   TestSafePath in 'TestSafePath.pas',
   TestTermInput in 'TestTermInput.pas',
   TestThemeSpec in 'TestThemeSpec.pas',

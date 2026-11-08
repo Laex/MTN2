@@ -42,7 +42,8 @@ procedure DrawPanelListSeparator(const ABuffer: TTerminalGrid; const ABounds: TR
 procedure DrawPanelTotalsOnRule(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const AFooter: string; AFooterFg, ABodyBg: TAlphaColor);
 procedure DrawPanelNdnFooterRows(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  const ATotals, AFreeLine: string; ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
+  const ATotals, AFreeLine: string; AFreeUsedPermille: Integer;
+  ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const AInfoLine: string; AFg, ABg: TAlphaColor);
 procedure DrawPanelDropBadge(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -136,7 +137,8 @@ procedure DrawPanelShell(const ABuffer: TTerminalGrid;
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
   AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
-  const AFreeLine: string; const AResolveChrome: TResolvePanelChromeProc);
+  const AFreeLine: string; AFreeUsedPermille: Integer;
+  const AResolveChrome: TResolvePanelChromeProc);
 procedure DrawPanelDropHighlight(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
   AFallbackFg, AFallbackBg: TAlphaColor);
@@ -167,6 +169,9 @@ type
     /// <summary>Free space line of the NDN footer; '' for a panel whose drive is
     /// unknown.</summary>
     FreeLine: string;
+    /// <summary>Used share of that drive in thousandths; the footer shades that
+    /// part of the free-space row. 0 draws no bar.</summary>
+    FreeUsedPermille: Integer;
   end;
 
   TDualPanelFilesDrawHost = record
@@ -186,6 +191,13 @@ implementation
 
 uses
   uChromeRows, uStrings;
+
+const
+  // Free-space bar of the NDN footer: cells left empty at each end, and how much
+  // of the text colour is mixed into the used and the free part.
+  cFooterBarMargin = 1;
+  cFooterBarUsedPct = 32;
+  cFooterBarFreePct = 10;
 
 function PanelModeTitleCaption(AViewKind: TPanelViewKind;
   AIsQuickViewTarget: Boolean): string;
@@ -226,49 +238,53 @@ begin
     Result := Copy(Result, 1, AMaxWidth);
 end;
 
-function FormatPanelCursorInfoLine(const ARow: TPanelRow; AWidth: Integer): string;
+// The size shown in the cursor strip: the exact byte count for rows that have a
+// number (files, folders with a counted size, not <DIR> or <LINK>) while the
+// name keeps at least this many cells.
+function CursorInfoSizeText(const ARow: TPanelRow; AWidth: Integer): string;
 const
-  // The exact size keeps at least this many cells for the name.
   cExactMinName = 12;
-  // Between the size and the date: a column rule when the name keeps at least
-  // cRuleMinName cells, else a plain space.
+begin
+  Result := ARow.SizeText;
+  if GExactSelectionSize and (Result <> '') and (Result[1] <> '<') and
+     (not ARow.IsParent) and
+     (AWidth - TextDisplayWidth(FormatSizeExact(ARow.Size)) - 1 >= cExactMinName) then
+    Result := FormatSizeExact(ARow.Size);
+end;
+
+// The right-hand part of the cursor strip: a search match, or size and date.
+// Size and date are split by a column rule when the name keeps at least
+// cRuleMinName cells, else by a plain space.
+function CursorInfoMetaText(const ARow: TPanelRow; AWidth: Integer): string;
+const
   cMetaRule = ' ' + #$2502 + ' ';
   cRuleMinName = 8;
 var
-  NamePart, MetaPart, SizePart: string;
+  SizePart: string;
+begin
+  if (ARow.MatchSnippet <> '') and (ARow.MatchLine <= 0) then
+    Exit(ARow.MatchSnippet);
+  if ARow.MatchSnippet <> '' then
+    Exit(Format('L%d: %s', [ARow.MatchLine, ARow.MatchSnippet]));
+  SizePart := CursorInfoSizeText(ARow, AWidth);
+  if ARow.DateText = '' then
+    Exit(SizePart);
+  if SizePart = '' then
+    Exit(ARow.DateText);
+  Result := SizePart + cMetaRule + ARow.DateText;
+  if AWidth - TextDisplayWidth(Result) - 1 < cRuleMinName then
+    Result := SizePart + ' ' + ARow.DateText;
+end;
+
+function FormatPanelCursorInfoLine(const ARow: TPanelRow; AWidth: Integer): string;
+var
+  NamePart, MetaPart: string;
   MaxName: Integer;
 begin
   NamePart := PanelRowDisplayText(ARow);
   if ARow.DirText <> '' then
     NamePart := IncludeTrailingPathDelimiter(ARow.DirText) + NamePart;
-  if (ARow.MatchSnippet <> '') and (ARow.MatchLine <= 0) then
-    MetaPart := ARow.MatchSnippet
-  else if ARow.MatchSnippet <> '' then
-    MetaPart := Format('L%d: %s', [ARow.MatchLine, ARow.MatchSnippet])
-  else
-  begin
-    SizePart := ARow.SizeText;
-    // Rows with a number (files, folders with a counted size), not <DIR> or <LINK>.
-    if GExactSelectionSize and (SizePart <> '') and (SizePart[1] <> '<') and
-       (not ARow.IsParent) then
-    begin
-      SizePart := FormatSizeExact(ARow.Size);
-      if AWidth - TextDisplayWidth(SizePart) - 1 < cExactMinName then
-        SizePart := ARow.SizeText;
-    end;
-    MetaPart := SizePart;
-    if ARow.DateText <> '' then
-    begin
-      if SizePart = '' then
-        MetaPart := ARow.DateText
-      else
-      begin
-        MetaPart := SizePart + cMetaRule + ARow.DateText;
-        if AWidth - TextDisplayWidth(MetaPart) - 1 < cRuleMinName then
-          MetaPart := SizePart + ' ' + ARow.DateText;
-      end;
-    end;
-  end;
+  MetaPart := CursorInfoMetaText(ARow, AWidth);
   MaxName := Max(AWidth - TextDisplayWidth(MetaPart) - 1, 4);
   if TextDisplayWidth(NamePart) > MaxName then
     NamePart := EllipsizeKeepingExt(NamePart, MaxName);
@@ -424,7 +440,8 @@ begin
 end;
 
 procedure DrawPanelNdnFooterRows(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  const ATotals, AFreeLine: string; ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
+  const ATotals, AFreeLine: string; AFreeUsedPermille: Integer;
+  ATotalsFg, AInfoFg, AInfoBg: TAlphaColor);
 
   procedure CenterRow(ARow: Integer; const AText: string; AFg: TAlphaColor);
   var
@@ -441,9 +458,34 @@ procedure DrawPanelNdnFooterRows(const ABuffer: TTerminalGrid; const ABounds: TR
         ARow, Txt, AFg, AInfoBg);
   end;
 
+  // The volume as a bar behind the free-space text, one cell in from each edge
+  // of the row: the used part is shaded stronger than the free rest, so the end
+  // of the bar stays visible. The cells keep their glyphs and only change
+  // background.
+  procedure TintBar(ARow: Integer; AFg: TAlphaColor);
+  var
+    X, First, BarW, Filled: Integer;
+    UsedTint, FreeTint: TAlphaColor;
+  begin
+    BarW := ABounds.Width - 3 - 2 * cFooterBarMargin;
+    if (BarW <= 0) or (ARow < 0) or (ARow >= Length(ABuffer)) then
+      Exit;
+    Filled := Round(Min(Max(AFreeUsedPermille, 0), 1000) / 1000 * BarW);
+    UsedTint := MixTint(AFg, AInfoBg, cFooterBarUsedPct);
+    FreeTint := MixTint(AFg, AInfoBg, cFooterBarFreePct);
+    First := ABounds.Left + 1 + cFooterBarMargin;
+    for X := First to Min(First + BarW - 1, Length(ABuffer[ARow]) - 1) do
+      if X - First < Filled then
+        ABuffer[ARow][X].BgColor := UsedTint
+      else
+        ABuffer[ARow][X].BgColor := FreeTint;
+  end;
+
 begin
   CenterRow(ABounds.Bottom - 2, ATotals, ATotalsFg);
   CenterRow(ABounds.Bottom - 1, AFreeLine, AInfoFg);
+  if AFreeLine <> '' then
+    TintBar(ABounds.Bottom - 1, AInfoFg);
 end;
 
 procedure DrawPanelCursorStrip(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -615,11 +657,17 @@ end;
 
 function PanelTabDragHoverIndex(ASide: TPanelSide; ADragActive: Boolean;
   ADragKind, ALeftKind, ARightKind, AHover: Integer): Integer;
+var
+  SideKind: Integer;
 begin
   Result := -1;
-  if ADragActive and
-    (((ASide = psLeft) and (ADragKind = ALeftKind)) or
-     ((ASide = psRight) and (ADragKind = ARightKind))) then
+  if not ADragActive then
+    Exit;
+  if ASide = psLeft then
+    SideKind := ALeftKind
+  else
+    SideKind := ARightKind;
+  if ADragKind = SideKind then
     Result := AHover;
 end;
 
@@ -668,7 +716,8 @@ end;
 procedure DrawPanelFilesChrome(const ABuffer: TTerminalGrid;
   const ABounds: TRectI; AActive, AHasTheme, AThemeDouble: Boolean;
   AFrame, ABodyBg, AFooterFg: TAlphaColor; const AFooter, AInfoLine: string;
-  const AFreeLine: string; const AResolveChrome: TResolvePanelChromeProc);
+  const AFreeLine: string; AFreeUsedPermille: Integer;
+  const AResolveChrome: TResolvePanelChromeProc);
 var
   InfoBounds: TRectI;
   InfoFg, InfoBg: TAlphaColor;
@@ -680,8 +729,8 @@ begin
   AResolveChrome(pcpInfoStrip, AActive, InfoFg, InfoBg);
   DrawPanelCursorStrip(ABuffer, InfoBounds, AInfoLine, InfoFg, InfoBg);
   if GNdnFooter then
-    DrawPanelNdnFooterRows(ABuffer, ABounds, AFooter, AFreeLine, AFooterFg,
-      InfoFg, InfoBg)
+    DrawPanelNdnFooterRows(ABuffer, ABounds, AFooter, AFreeLine,
+      AFreeUsedPermille, AFooterFg, InfoFg, InfoBg)
   else
     DrawPanelTotalsOnRule(ABuffer, ABounds, AFooter, AFooterFg, ABodyBg);
 end;
@@ -734,7 +783,7 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
 begin
   DrawPanelFilesChrome(ABuffer, ASnap.Bounds, ASnap.Active, ASnap.HasTheme,
     ASnap.ThemeDouble, ASnap.Frame, ASnap.BodyBg, ASnap.FooterFg, ASnap.Footer,
-    ASnap.InfoLine, ASnap.FreeLine, AHost.ResolveChrome);
+    ASnap.InfoLine, ASnap.FreeLine, ASnap.FreeUsedPermille, AHost.ResolveChrome);
   AHost.DrawDriveLetters(ASnap.Bounds, ASnap.Tab, ASnap.Side, ASnap.Frame,
     ASnap.BodyBg);
   AHost.DrawHeaders(ASnap.Bounds, ASnap.Panel);

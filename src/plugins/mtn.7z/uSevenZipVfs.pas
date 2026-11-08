@@ -18,7 +18,21 @@ function SevenZipExistsAt(const AArchivePath, AInnerPath: string;
 function SevenZipReadFile(const AArchivePath, AInnerPath: string; AMaxBytes: Int64;
   out ABytes: TBytes; out ACode: Int64): Boolean;
 
+/// <summary>True when an entry path has a '..' path segment; a name that merely
+/// contains two dots ("v1..2.txt", "..hidden") is an ordinary file.</summary>
+function SevenZipHasParentSegment(const APath: string): Boolean;
+
 implementation
+
+function SevenZipHasParentSegment(const APath: string): Boolean;
+var
+  Seg: string;
+begin
+  for Seg in APath.Replace('\', '/').Split(['/']) do
+    if Seg = '..' then
+      Exit(True);
+  Result := False;
+end;
 
 /// <summary>Splits the part of a 7z:// URI after the first archive's base
 /// path into per-level segments: one entry per further '!/' -- each
@@ -215,7 +229,7 @@ begin
   try
     for Item in Items do
     begin
-      if (Item.Path = '') or (Pos('..', Item.Path) > 0) then
+      if (Item.Path = '') or SevenZipHasParentSegment(Item.Path) then
         Continue;
       if Prefix = '' then
         Rest := Item.Path

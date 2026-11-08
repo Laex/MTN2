@@ -53,11 +53,25 @@ function ParseUnitList(const AText: string): TArray<TUnitRow>;
 /// <summary>The Win32 service state an ActiveState of systemd stands for.</summary>
 function ServiceStateOfActive(const AActive: string): Cardinal;
 
+type
+  TUnitPid = record
+    Name: string;
+    Pid: Cardinal;
+  end;
+
+/// <summary>The units with a main process in the blocks of "systemctl show -p
+/// Id,MainPID": a block is a run of lines ended by an empty line. A unit
+/// whose MainPID is 0 or missing has no process and is left out.</summary>
+function ParseMainPids(const AText: string): TArray<TUnitPid>;
+
 /// <summary>The value after the key on its line of "systemctl show" output; empty when
 /// there is none.</summary>
 function ShowValue(const AText, AKey: string): string;
 
 implementation
+
+uses
+  System.Generics.Collections;
 
 function ParseProcStat(const AText: string): TProcStat;
 var
@@ -149,6 +163,45 @@ begin
     Result := cSvcFailed
   else
     Result := cSvcStopped;
+end;
+
+function ParseMainPids(const AText: string): TArray<TUnitPid>;
+var
+  Line, Name: string;
+  Pid: Cardinal;
+  List: TList<TUnitPid>;
+
+  procedure Flush;
+  var
+    Item: TUnitPid;
+  begin
+    if (Name <> '') and (Pid <> 0) then
+    begin
+      Item.Name := Name;
+      Item.Pid := Pid;
+      List.Add(Item);
+    end;
+    Name := '';
+    Pid := 0;
+  end;
+
+begin
+  List := TList<TUnitPid>.Create;
+  try
+    Name := '';
+    Pid := 0;
+    for Line in AText.Replace(#13, '').Split([#10]) do
+      if Line = '' then
+        Flush
+      else if Line.StartsWith('Id=') then
+        Name := Copy(Line, 4, MaxInt)
+      else if Line.StartsWith('MainPID=') then
+        Pid := Cardinal(StrToIntDef(Copy(Line, 9, MaxInt), 0));
+    Flush;
+    Result := List.ToArray;
+  finally
+    List.Free;
+  end;
 end;
 
 function ShowValue(const AText, AKey: string): string;

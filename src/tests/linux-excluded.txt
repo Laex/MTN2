@@ -1,5 +1,6 @@
 # Fixtures run-tests-linux.ps1 leaves out: they test Windows-only code.
 # One group/Fixture per line; text after # is the reason.
+core/TestCommandLineQuoting # Windows command-line parsing
 core/TestLiveReload            # Win32 file change notifications
 core/TestTerminalRenderer      # FireMonkey renderer
 dialogs/TestDialogAlignment    # Windows units in the fixture

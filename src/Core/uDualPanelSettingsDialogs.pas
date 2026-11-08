@@ -44,6 +44,7 @@ type
     FOnSetConsoleCwdToPanels: TProc<Boolean>;
     FOnGetProgramsInTerminal: TFunc<Boolean>;
     FOnResetKeyHints: TProc;
+    FOnColumnsAccepted: TProc;
     FOnSetProgramsInTerminal: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
@@ -124,6 +125,9 @@ type
     /// <summary>The Reset button of the interface dialog: every key hint is
     /// due again.</summary>
     property OnResetKeyHints: TProc read FOnResetKeyHints write FOnResetKeyHints;
+    /// <summary>Called after OK in the Columns dialog: the chosen columns show
+    /// only in the Custom column mode, so the host switches to it.</summary>
+    property OnColumnsAccepted: TProc read FOnColumnsAccepted write FOnColumnsAccepted;
     property OnGetProgramsInTerminal: TFunc<Boolean>
       read FOnGetProgramsInTerminal write FOnGetProgramsInTerminal;
     property OnSetProgramsInTerminal: TProc<Boolean>
@@ -655,7 +659,11 @@ begin
   end;
   FDialog.Close;
   if Accepted then
+  begin
+    if Assigned(FOnColumnsAccepted) then
+      FOnColumnsAccepted();
     Notify;
+  end;
 end;
 
 procedure TSettingsDialogController.DispatchDisplayCommand(

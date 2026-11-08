@@ -8,6 +8,9 @@ unit uUpdateCli;
   swapped with rollback, and a program installed from a package (.deb, .rpm)
   is only checked, because the package manager updates it.
 
+  A package whose digest GitHub does not publish is installed only with
+  `--allow-unverified` next to `--update`.
+
   Exit codes: 0 up to date or updated, 1 the update failed, 2 unknown channel,
   3 a newer version exists but the package manager has to install it. }
 
@@ -15,6 +18,7 @@ interface
 
 const
   cUpdateSwitch = '--update';
+  cAllowUnverifiedSwitch = '--allow-unverified';
 
 type
   TUpdateLineWriter = reference to procedure(const ALine: string);
@@ -25,6 +29,10 @@ function IsUpdateChannelName(const AName: string): Boolean;
 /// <summary>True when the command line asks for an update; AChannel is the
 /// channel written after the switch ('' = the remembered one).</summary>
 function UpdateRequested(out AChannel: string): Boolean;
+
+/// <summary>True when AArgs hold the switch that allows installing a package
+/// without a published digest.</summary>
+function AllowUnverifiedRequested(const AArgs: TArray<string>): Boolean;
 
 /// <summary>Runs the update and writes its progress lines to AWrite; the result
 /// is the process exit code.</summary>
@@ -46,6 +54,25 @@ end;
 function IsUpdateChannelName(const AName: string): Boolean;
 begin
   Result := SameText(AName, 'stable') or IsNightlyName(AName);
+end;
+
+function AllowUnverifiedRequested(const AArgs: TArray<string>): Boolean;
+var
+  Arg: string;
+begin
+  for Arg in AArgs do
+    if SameText(Arg, cAllowUnverifiedSwitch) then
+      Exit(True);
+  Result := False;
+end;
+
+function CommandLineArgs: TArray<string>;
+var
+  I: Integer;
+begin
+  SetLength(Result, ParamCount);
+  for I := 1 to ParamCount do
+    Result[I - 1] := ParamStr(I);
 end;
 
 function UpdateRequested(out AChannel: string): Boolean;
@@ -126,6 +153,11 @@ begin
     Exit(1);
   end;
 
+  if (Rel.AssetSha256 = '') and AllowUnverifiedRequested(CommandLineArgs) then
+  begin
+    AWrite('No checksum is published for this package; installing it unverified.');
+    Rel.AllowUnverified := True;
+  end;
   Zip := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'MTN2-update'), Rel.AssetName);
   LastTick := PlatformTickCount64;
   AWrite('Downloading ' + Rel.AssetName + '...');
