@@ -229,6 +229,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 
 ## Documentation
 
+- [FEATURES.md](docs/FEATURES.md) – overview of features by area.
 - [FAQ.md](docs/FAQ.md) – frequently asked questions: network and privacy, SmartScreen, display scaling, themes, plugins.
 - [CONTRIBUTING.md](CONTRIBUTING.md) – how to report a bug, suggest an idea, build the project and send a change.
 - [SDS.md](docs/SDS.md) – full specification: concept, data structures, API, roadmap.
