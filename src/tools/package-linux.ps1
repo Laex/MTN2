@@ -51,6 +51,7 @@ if (Test-Path $Samples) {
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
 Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage
+Copy-Item (Join-Path $Root 'CHANGELOG.ru.md') $Stage
 Copy-Item (Join-Path $Root 'docs\LINUX.md') $Stage
 # A shell script must keep LF endings whatever the checkout did to them.
 $Install = (Get-Content (Join-Path $PSScriptRoot 'install-linux.sh') -Raw).Replace("`r`n", "`n")

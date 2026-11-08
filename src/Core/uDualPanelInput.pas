@@ -82,6 +82,8 @@ type
     BeginFolderHotlistAdd: TKeymapProc;
     OpenWorkspaceLibraryDialog: TKeymapProc;
     BeginWorkspaceLibrarySave: TKeymapProc;
+    FindToWorkspace: TKeymapProc;
+    ToggleTabLock: TKeymapProc;
     OpenSshConnectionsDialog: TKeymapProc;
     OpenUserAssociationsDialog: TKeymapProc;
     BeginBranchView: TKeymapProc;
@@ -167,6 +169,7 @@ type
     OpenKeymapDialog: TKeymapProc;
     OpenThemeDialog: TKeymapProc;
     OpenColumnsConfigDialog: TKeymapProc;
+    OpenMaskGroupsDialog: TKeymapProc;
     OpenDisplayDialog: TKeymapProc;
     OpenInterfaceDialog: TKeymapProc;
     OpenAboutDialog: TKeymapProc;
@@ -683,6 +686,8 @@ begin
   case AAction of
     kaWorkspaceLibrary: AHost.OpenWorkspaceLibraryDialog();
     kaWorkspaceSave: AHost.BeginWorkspaceLibrarySave();
+    kaFindToWorkspace: AHost.FindToWorkspace();
+    kaToggleTabLock: AHost.ToggleTabLock();
     kaNewWorkspace: AHost.NewWorkspace();
   else
     Exit(False);

@@ -167,6 +167,8 @@ type
     /// colour that reads on it.</summary>
     procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
+    /// <summary>Background of unselected rows in lists and drop-down lists.</summary>
+    function ResolveDialogListBg: TAlphaColor;
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     /// <summary>Markdown Viewer: color and text attributes (bold, italic,

@@ -1,43 +1,45 @@
-# Темы: формат файла
+# Themes: file format
 
-Внешний вид MTN2 описывает файл темы `*.theme.json`. Один класс (`TDataTheme`) рисует любую тему; файл задаёт цвета, символы и начертания. Где стоят части виджетов (заголовок, кнопка закрытия, ползунок) – одинаково для всех тем и из файла не меняется.
+**English** | [Русский](THEMES.ru.md)
 
-## Где лежат темы
+The look of MTN2 is described by a theme file `*.theme.json`. One class (`TDataTheme`) draws any theme; the file sets colors, glyphs and text styles. Where the parts of the widgets sit (the title, the close button, the scroll thumb) is the same for all themes and cannot be changed from the file.
 
-| Что | Где |
+## Where themes live
+
+| What | Where |
 |---|---|
-| Корневая тема `NDN` (только для чтения) | вшита в exe (`THEME_NDN`, исходник `src/Assets/themes/NDN.theme.json`) |
-| Поставляемые темы (только для чтения) | `resource\themes\<Id>.theme.json` рядом с exe |
-| Ваши темы | `<каталог настроек>\themes\<имя>.theme.json` (`%APPDATA%\MTN2\themes` или папка рядом с exe в портативном режиме) |
+| The root theme `NDN` (read-only) | embedded in the exe (`THEME_NDN`, source `src/Assets/themes/NDN.theme.json`) |
+| Bundled themes (read-only) | `resource\themes\<Id>.theme.json` next to the exe |
+| Your themes | `<settings folder>\themes\<name>.theme.json` (`%APPDATA%\MTN2\themes` or the folder next to the exe in portable mode) |
 
-Поставляемые темы лежат отдельно от ваших: обновление программы заменяет `resource\`, а ваши файлы остаются в каталоге настроек. Если ваш файл назван так же, как встроенная или поставляемая тема (например, `Nord.theme.json`), он игнорируется: переименуйте его. Чтобы добавить тему для всех копий программы, достаточно положить файл в `resource\themes\`.
+The bundled themes are kept apart from yours: updating the program replaces `resource\`, while your files stay in the settings folder. If your file has the same name as a built-in or bundled theme (for example `Nord.theme.json`), it is ignored: rename it. To add a theme for all copies of the program, just put the file in `resource\themes\`.
 
-Идентификатор темы – имя файла без `.theme.json`; он хранится в `session.json` (поле `"theme"`). Если тема из сессии не найдена, программа показывает сообщение и включает классическую тему Far (`NDN`).
+The theme identifier is the file name without `.theme.json`; it is stored in `session.json` (the `"theme"` field). If the theme from the session is not found, the program shows a message and switches to the classic Far theme (`NDN`).
 
-Темы создаются и правятся в диалоге **Настройки → Тема...**: «Настроить...» (изменить выбранную), «Создать...» (с нуля или на основе существующей), «Удалить». Встроенные темы не изменяются: настройка встроенной темы сохраняется в новый файл с выбранным именем.
+Themes are created and edited in the **Options → Theme...** dialog: "Customize..." (change the selected one), "New..." (from scratch or based on an existing one), "Delete". Built-in themes are not modified: customizing a built-in theme is saved to a new file with the chosen name.
 
-## Наследование
+## Inheritance
 
-Файл перечисляет только то, что задаёт сам; остальное берётся из тем, которые он расширяет (`"extends"`). Тема без `extends` расширяет `NDN`. `extends` – один идентификатор или список: `["Nord", "МояРаскраска"]`. Базы применяются по порядку, поздние перекрывают ранние, а значения самого файла – все базы; так тему можно собрать из частей (палитра из одной, раскраска файлов из другой, символы из третьей). Общая для двух баз тема учитывается один раз, под обеими. Если база не найдена или цепочка зациклена, вместо неё берётся `NDN`.
+A file lists only what it sets itself; the rest comes from the themes it extends (`"extends"`). A theme without `extends` extends `NDN`. `extends` is a single identifier or a list: `["Nord", "MyColors"]`. The bases are applied in order, later ones override earlier ones, and the values of the file itself override all the bases; this way a theme can be assembled from parts (the palette from one, file coloring from another, glyphs from a third). A theme shared by two bases is counted once, under both. If a base is not found or the chain is circular, `NDN` is used in its place.
 
-Роль цвета, которую не задал никто в цепочке, получает значение **роли-запасной** (столбец «Если не задано» ниже): тема, меняющая только цвета курсора, получает согласованные цвета флажков в фокусе и выделения в редакторе. Значение, заданное базовой темой явно, запасную роль перебивает.
+A color role that nobody in the chain has set gets the value of the **fallback role** (the "If not set" column below): a theme that changes only the cursor colors gets consistent colors for focused checkboxes and for the selection in the editor. A value set explicitly by a base theme overrides the fallback role.
 
-## Ссылки и палитра
+## References and palette
 
-Цвет в файле – одно из трёх:
+A color in the file is one of three things:
 
-- литерал `#RRGGBB` или `#AARRGGBB`;
-- имя из `palette`: `"accent"`. Имена наследуются – потомок может использовать имена базовой темы. Имя привязывается там, где записано: цвет, который назвала базовая тема, остаётся её цветом, даже если потомок определяет то же имя иначе;
-- ссылка на роль той же темы `@группа.ключ`, например `"@cursor.bg"`: цвет следует за ролью и меняется вместе с ней (в том числе если роль берётся из запасной). Ссылки можно писать в ролях, в стилях Markdown и в цветах групп раскраски файлов.
+- a literal `#RRGGBB` or `#AARRGGBB`;
+- a name from `palette`: `"accent"`. Names are inherited – a descendant can use the names of the base theme. A name is bound where it is written: a color named by the base theme stays the base theme's color, even if the descendant defines the same name differently;
+- a reference to a role of the same theme `@group.key`, for example `"@cursor.bg"`: the color follows the role and changes together with it (including when the role comes from a fallback). References can be written in roles, in Markdown styles and in the colors of file coloring groups.
 
-Ссылка, которую нельзя разрешить (нет такой роли или имени, цикл), считается незаданной.
+A reference that cannot be resolved (no such role or name, a cycle) is treated as not set.
 
-## Файл
+## File
 
 ```json
 {
   "schema": 2,
-  "name": "Моя тема",
+  "name": "My theme",
   "extends": ["Nord"],
   "palette": { "accent": "#88C0D0" },
   "colors": {
@@ -55,56 +57,56 @@
 }
 ```
 
-| Ключ | Что это |
+| Key | What it is |
 |---|---|
-| `schema` | версия формата (сейчас `2`); файл с большей версией не загружается |
-| `name` | название в списке тем |
-| `extends` | идентификатор базовой темы или список идентификаторов |
-| `palette` | именованные цвета; наследуются потомками, в итоговой теме остаются только цвета |
-| `colors` | цвета по ролям: `группа` -> `ключ` -> цвет (литерал, имя из `palette` или `@роль`) |
-| `markdown` | стиль элементов Markdown: `fg`, `bg` и `attrs` (список начертаний) для `text`, `h1`, `h2`, `h3to6`, `bold`, `italic`, `boldItalic`, `strike`, `inlineCode`, `codeBlock`, `quote`, `listMarker`, `hrule`, `link`, `imageMarker`, `tableBorder`, `tableHeader`. Элемент без `fg` / `bg` берёт цвета элемента `text` (а он – цвета окна); без `attrs` рисуется обычным текстом: подчёркивание ссылок, наклон курсива и зачёркивание задаёт тема |
-| `attrs` | начертания: `windowTitle`, `dialogTitle`, `button`, `check`, `tab`, `toolbar`, `toolbarKey`, `status`, `menu`, `menuHot`, `clock`, `hot`, `hotFocus`; значение – список из `bold`, `italic`, `underline`, `strike`, `blink`, `reverse` (пустой список – обычный текст) |
-| `glyphs` | строки и символы (ниже) |
-| `frames` | набор символов рамки для `window`, `dialog`, `panelActive`, `panelIdle`: `single`, `double`, `ascii`, `rounded`, `heavy` или имя из `frameSets` |
-| `frameSets` | свои наборы рамок: `{ "имя": { "tl": "+", "tr": "+", "bl": "+", "br": "+", "h": "-", "v": "|" } }` |
-| `options.doubleActivePanel` | рисовать активную панель двойной рамкой; без ключа – если рамки активной и неактивной панели различаются |
-| `fileColoring` | только те группы раскраски файлов, которые тема добавляет или меняет (маска и цвета для обычной строки, отмеченной и под курсором); сливаются с группами баз по полю `name` |
-| `fileColoringOrder` | имена групп, которые идут первыми, в таком порядке (нужен, когда порядок отличается от порядка слияния); пишется редактором |
+| `schema` | format version (currently `2`); a file with a greater version is not loaded |
+| `name` | name in the theme list |
+| `extends` | identifier of the base theme or a list of identifiers |
+| `palette` | named colors; inherited by descendants, only colors remain in the resulting theme |
+| `colors` | colors by role: `group` -> `key` -> color (a literal, a name from `palette` or `@role`) |
+| `markdown` | style of Markdown elements: `fg`, `bg` and `attrs` (a list of text styles) for `text`, `h1`, `h2`, `h3to6`, `bold`, `italic`, `boldItalic`, `strike`, `inlineCode`, `codeBlock`, `quote`, `listMarker`, `hrule`, `link`, `imageMarker`, `tableBorder`, `tableHeader`. An element without `fg` / `bg` takes the colors of the `text` element (which takes the window colors); without `attrs` it is drawn as plain text: the underline of links, the slant of italics and the strikethrough are set by the theme |
+| `attrs` | text styles: `windowTitle`, `dialogTitle`, `button`, `check`, `tab`, `toolbar`, `toolbarKey`, `status`, `menu`, `menuHot`, `clock`, `hot`, `hotFocus`; the value is a list of `bold`, `italic`, `underline`, `strike`, `blink`, `reverse` (an empty list is plain text) |
+| `glyphs` | strings and characters (below) |
+| `frames` | the frame character set for `window`, `dialog`, `panelActive`, `panelIdle`: `single`, `double`, `ascii`, `rounded`, `heavy` or a name from `frameSets` |
+| `frameSets` | custom frame sets: `{ "name": { "tl": "+", "tr": "+", "bl": "+", "br": "+", "h": "-", "v": "|" } }` |
+| `options.doubleActivePanel` | draw the active panel with a double frame; without the key – if the frames of the active and inactive panel differ |
+| `fileColoring` | only the file coloring groups that the theme adds or changes (a mask and colors for a regular row, a marked row and the row under the cursor); merged with the groups of the bases by the `name` field |
+| `fileColoringOrder` | names of the groups that go first, in that order (needed when the order differs from the merge order); written by the editor |
 
-Правила раскраски сливаются по цепочке `extends` по полю `name`: группа с тем же именем заменяет базовую на её месте, новая добавляется в начало. Отключённая группа (`"enabled": false`) остаётся в списке, но не применяется – так тема «убирает» группу базовой. Редактор раскраски и редактор Markdown записывают в тему только отличия от баз, поэтому новые группы базовой темы доходят и до производных.
+Coloring rules are merged along the `extends` chain by the `name` field: a group with the same name replaces the base one in its place, a new one is added to the beginning. A disabled group (`"enabled": false`) stays in the list but is not applied – this is how a theme "removes" a group of the base. The coloring editor and the Markdown editor write to the theme only the differences from the bases, so new groups of the base theme reach the derived ones too.
 
-### Символы (`glyphs`)
+### Glyphs (`glyphs`)
 
-| Ключ | Значение по умолчанию | Назначение |
+| Key | Default | Purpose |
 |---|---|---|
-| `checkOn`, `checkOff` | `[x] `, `[ ] ` | метка флажка (перед подписью) |
-| `radioOn`, `radioOff` | `(*) `, `( ) ` | метка переключателя |
-| `buttonNormal`, `buttonDefault` | `[ {0} ]`, `< {0} >` | подпись кнопки и кнопки по умолчанию; `{0}` – текст |
-| `tabWorkspace`, `tabPanel` | `[{0}]`, ` {0} ` | подпись вкладки рабочей области и панели |
-| `statusSeparator` | `│` | разделитель сегментов строки состояния (один символ) |
-| `closeLeft`, `closeMark`, `closeRight` | `[`, `x`, `]` | кнопка закрытия окна (ширина всегда 3 клетки) |
-| `desktopFill` | пробел | заполнение рабочего стола |
-| `scrollUp`, `scrollDown`, `scrollLeft`, `scrollRight` | `▲ ▼ ◄ ►` | стрелки полосы прокрутки |
-| `scrollShade`, `scrollBlock` | `░`, `█` | фон полосы и ползунок |
+| `checkOn`, `checkOff` | `[x] `, `[ ] ` | checkbox mark (before the label) |
+| `radioOn`, `radioOff` | `(*) `, `( ) ` | radio button mark |
+| `buttonNormal`, `buttonDefault` | `[ {0} ]`, `< {0} >` | label of a button and of the default button; `{0}` is the text |
+| `tabWorkspace`, `tabPanel` | `[{0}]`, ` {0} ` | label of a workspace tab and of a panel tab |
+| `statusSeparator` | `│` | separator of the status line segments (one character) |
+| `closeLeft`, `closeMark`, `closeRight` | `[`, `x`, `]` | window close button (the width is always 3 cells) |
+| `desktopFill` | space | desktop fill |
+| `scrollUp`, `scrollDown`, `scrollLeft`, `scrollRight` | `▲ ▼ ◄ ►` | scroll bar arrows |
+| `scrollShade`, `scrollBlock` | `░`, `█` | scroll bar background and thumb |
 
-## Роли цветов
+## Color roles
 
-Ключ роли записывается как `группа.ключ` (`window.bg` – `colors.window.bg`). Столбец «Если не задано» – роль, значение которой берётся, когда ни один файл цепочки роль не задал; «–» означает, что роль обязана быть в базовой теме.
+A role key is written as `group.key` (`window.bg` is `colors.window.bg`). The "If not set" column is the role whose value is taken when no file in the chain has set the role; "–" means the role must be present in the base theme.
 
 
-### Рабочий стол (`desktop`)
+### Desktop (`desktop`)
 
-Фон за всеми окнами.
+The background behind all windows.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `desktop.bg` | – |
 
-### Окна (`window`)
+### Windows (`window`)
 
-Окна, рамки и заголовки, кнопка закрытия.
+Windows, frames and titles, the close button.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `window.fg` | – |
 | `window.bg` | – |
@@ -116,11 +118,11 @@
 | `window.titleBgNormal` | – |
 | `window.closeAccent` | – |
 
-### Диалоги (`dialog`)
+### Dialogs (`dialog`)
 
-Тело, рамка и заголовок диалога; строки списков в диалогах.
+The body, frame and title of a dialog; list rows in dialogs.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `dialog.fg` | – |
 | `dialog.bg` | – |
@@ -132,12 +134,13 @@
 | `dialog.rowBg` | `dialog.bg` |
 | `dialog.rowCursorFg` | `cursor.fg` |
 | `dialog.rowCursorBg` | `cursor.bg` |
+| `dialog.listBg` | slightly lighter or darker than `dialog.rowBg`: 10% of the `dialog.rowFg` color is mixed into it |
 
-### Кнопки (`button`)
+### Buttons (`button`)
 
-Кнопки диалогов, обычные и в фокусе.
+Dialog buttons, regular and focused.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `button.fg` | – |
 | `button.bg` | – |
@@ -146,11 +149,11 @@
 | `button.hotFg` | `dialog.hotFg` |
 | `button.hotFocusFg` | `button.focusFg` |
 
-### Флажки и переключатели (`check`)
+### Checkboxes and radio buttons (`check`)
 
-Подписи флажков и переключателей.
+Labels of checkboxes and radio buttons.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `check.fg` | `dialog.fg` |
 | `check.bg` | `dialog.bg` |
@@ -159,11 +162,11 @@
 | `check.focusBg` | `cursor.bg` |
 | `check.focusHotFg` | `cursor.hotFg` |
 
-### Курсор (`cursor`)
+### Cursor (`cursor`)
 
-Строка под курсором в панели и в списках.
+The row under the cursor in a panel and in lists.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `cursor.fg` | – |
 | `cursor.bg` | – |
@@ -172,22 +175,22 @@
 | `cursor.markedFg` | `cursor.fg` |
 | `cursor.markedBg` | `cursor.bg` |
 
-### Отмеченные файлы (`mark`)
+### Marked files (`mark`)
 
-Цвет отмеченных строк и полоса фона.
+The color of marked rows and the background band.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `mark.fg` | – |
 | `mark.bg` | `window.bg` |
 | `mark.bandFg` | `mark.fg` |
 | `mark.bandBg` | – |
 
-### Типы файлов (`file`)
+### File types (`file`)
 
-Цвета имён по типу; `hidden*` – скрытые файлы.
+Name colors by type; `hidden*` are hidden files.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `file.dir` | – |
 | `file.archive` | – |
@@ -201,53 +204,53 @@
 | `file.hiddenMedia` | `file.hidden` |
 | `file.hiddenPlain` | `file.hidden` |
 
-### Строка состояния (`status`)
+### Status line (`status`)
 
-Строка состояния внизу окна и разделитель сегментов.
+The status line at the bottom of the window and the segment separator.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `status.fg` | – |
 | `status.bg` | – |
 | `status.separator` | `status.fg` |
 
-### Панель клавиш (`toolbar`)
+### Key bar (`toolbar`)
 
-Нижняя строка F1..F10.
+The bottom row F1..F10.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `toolbar.fg` | – |
 | `toolbar.bg` | – |
 | `toolbar.keyFg` | – |
 
-### Строка меню (`menu`)
+### Menu bar (`menu`)
 
-Верхняя строка меню и часы.
+The top menu row and the clock.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `menu.fg` | `status.fg` |
 | `menu.bg` | `status.bg` |
 | `menu.hotFg` | `toolbar.keyFg` |
 | `menu.clockFg` | `menu.fg` |
 
-### Вкладки рабочих областей (`tab`)
+### Workspace tabs (`tab`)
 
-Вкладки рабочих областей.
+Workspace tabs.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `tab.activeFg` | – |
 | `tab.activeBg` | – |
 | `tab.normalFg` | – |
 | `tab.normalBg` | – |
 
-### Панели (`panel`)
+### Panels (`panel`)
 
-Вкладки панелей, шапка колонок, метки, буква текущего диска в нижней рамке панели.
+Panel tabs, the column header, marks, the letter of the current drive in the bottom frame of a panel.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `panel.tabBarBg` | `window.bg` |
 | `panel.tabActiveFg` | – |
@@ -260,20 +263,20 @@
 | `panel.driveCurFg` | `panel.tabActiveFg` |
 | `panel.driveCurBg` | `panel.tabActiveBg` |
 
-### Полосы прокрутки (`scroll`)
+### Scroll bars (`scroll`)
 
-Полосы прокрутки.
+Scroll bars.
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `scroll.fg` | – |
 | `scroll.thumb` | – |
 
-### Просмотр и редактор (`editor`)
+### Viewer and editor (`editor`)
 
-Тело просмотрщика и редактора (F3 / F4).
+The body of the viewer and editor (F3 / F4).
 
-| Роль | Если не задано |
+| Role | If not set |
 |---|---|
 | `editor.bodyFg` | `window.fg` |
 | `editor.bodyBg` | `window.bg` |
@@ -292,9 +295,9 @@
 | `editor.matchBg` | `cursor.bg` |
 | `editor.lineBg` | `editor.bodyBg` |
 
-## Как это устроено в коде
+## How it is built in code
 
-- `uThemeSpec.pas` – модель файла (`TThemeDoc`), разбор и запись JSON, разворачивание цепочки в полную тему (`TThemeSpec`).
-- `uThemeRegistry.pas` – список тем, загрузка цепочки `extends`, сохранение и удаление пользовательских тем.
-- `uDataTheme.pas` – `TDataTheme`, реализация `IThemeRenderer` по `TThemeSpec`.
-- `uDualPanelThemeDialogs.pas` – диалоги выбора и редактирования тем.
+- `uThemeSpec.pas` – the file model (`TThemeDoc`), JSON parsing and writing, expanding the chain into a complete theme (`TThemeSpec`).
+- `uThemeRegistry.pas` – the theme list, loading the `extends` chain, saving and deleting user themes.
+- `uDataTheme.pas` – `TDataTheme`, the `IThemeRenderer` implementation over `TThemeSpec`.
+- `uDualPanelThemeDialogs.pas` – the dialogs for choosing and editing themes.

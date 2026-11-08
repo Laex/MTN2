@@ -62,9 +62,10 @@ The `keymap.json` in the settings folder is laid over the built-in keymap: the a
 
 ### Examples for Far and MC habits
 
-The repository holds two example `keymap.json` files, [`keymap.far.json` and `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**.
+The repository holds three example `keymap.json` files, [`keymap.far.json`, `keymap.mc.json` and `keymap.tc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**.
 - **Far:** Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O).
 - **MC:** Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
+- **Total Commander:** Alt+F5 and Alt+F9 pack and unpack, Ctrl+A selects all, Ctrl+M renames by rules, Ctrl+P inserts the folder path, Ctrl+Tab and Ctrl+Shift+Tab switch tabs, Alt+Down opens the folder history. The default keymap already follows Norton Commander habits.
 
 ### Reserved keys
 

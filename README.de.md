@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.md) | **Deutsch** | [Русский](README.ru.md) | [中文](README.zh.md) | [한국어](README.ko.md)
+[English](README.md) | [Русский](README.ru.md) | **Deutsch** | [中文](README.zh.md)
 
 Zweipanel-Dateimanager im Geiste von **Necromancer's DOS Navigator** und **Far Manager** mit integrierter Konsole,
 Terminals, Datei-Viewer und Editor. Die Benutzeroberfläche ist textbasiert (TUI), wird jedoch in einem regulären GUI-Fenster gerendert:
@@ -15,7 +15,7 @@ nehmen zwei Spalten ein, genau wie in anderen modernen Terminals.
 
 [Projektseite](https://laex.github.io/MTN2/de/) ·
 [Neueste Version herunterladen](https://github.com/Laex/MTN2/releases/latest) ·
-[Neuerungen](CHANGELOG.md) · [FAQ](docs/FAQ.md) (auf Russisch) · [Mitwirken](CONTRIBUTING.md) (auf Russisch) ·
+[Neuerungen](CHANGELOG.md) · [FAQ](docs/FAQ.md) (auf Englisch) · [Mitwirken](CONTRIBUTING.md) (auf Englisch) ·
 [Diskussionen](https://github.com/Laex/MTN2/discussions) ·
 [Artikel auf Habr](https://habr.com/ru/articles/1087174/) (auf Russisch)
 

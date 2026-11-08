@@ -1,128 +1,134 @@
-# Частые вопросы
+# Frequently Asked Questions
 
-## Общие
+**English** | [Русский](FAQ.ru.md)
 
-### Для кого MTN2?
+## General
 
-Для тех, кто привык к DOS Navigator и Far Manager и работает с клавиатуры: системные и сетевые инженеры, разработчики,
-администраторы. MTN2 не заменяет Far Manager и не конкурирует с Total Commander. Это ещё один двухпанельный менеджер
-со своими привычками: сетка символов, нарисованная на GPU, настоящий терминал во вкладках, плагины.
+### Who is MTN2 for?
 
-### Почему интерфейс текстовый, а окно графическое?
+MTN2 is for people who are used to DOS Navigator and Far Manager and work from the keyboard: system and network
+engineers, developers, and administrators. MTN2 does not replace Far Manager or compete with Total Commander. It is
+another dual-panel manager with its own conventions: a GPU-rendered character grid, a real terminal in tabs, and
+plugins.
 
-Весь экран – единая сетка символов, как в DOS Navigator и Far Manager: так положение и перекрытие элементов всегда
-предсказуемы. Но сетка рисуется в обычном окне на холсте FireMonkey (Skia): с TrueType-шрифтами, Unicode,
-32-битным цветом, плавным масштабом и без ограничений консоли Windows. Для настоящего текстового терминала есть
-`mtn2-tui` (Linux).
+### Why is the interface text-based while the window is graphical?
 
-### Какие операционные системы поддерживаются?
+The entire screen is one character grid, as in DOS Navigator and Far Manager, so the position and overlap of elements
+remain predictable. The grid is rendered in a regular window on a FireMonkey canvas (Skia), with TrueType fonts,
+Unicode, 32-bit color, smooth scaling, and none of the limitations of the Windows console. For a true text terminal,
+use `mtn2-tui` on Linux.
 
-Windows x64 (графическая программа) и Linux x86-64: `mtn2-tui` для текстового терминала и пробная графическая
-`mtn2-sdl` на SDL2. Подробности – в [LINUX.md](LINUX.md). Сборка под macOS в планах.
+### Which operating systems are supported?
 
-### Как называется проект?
+Windows x64 (the graphical application) and Linux x86-64: `mtn2-tui` for a text terminal and the experimental
+`mtn2-sdl` graphical application using SDL2. See [LINUX.md](LINUX.md) for details. A macOS build is planned.
 
-Modern Terminal Navigator 2 (MTN2). В статье на Хабре название ошибочно расшифровано как Modern Turbo Navigator.
+### What does the project name mean?
 
-### Какая лицензия?
+Modern Terminal Navigator 2 (MTN2). The Habr article incorrectly expands it as Modern Turbo Navigator.
 
-[Mozilla Public License 2.0](../LICENSE). Исходный код, документация и релизы открыты на GitHub.
+### Which license does MTN2 use?
 
-## Установка и запуск
+[Mozilla Public License 2.0](../LICENSE). The source code, documentation, and releases are open on GitHub.
 
-### Как установить?
+## Installation and startup
 
-Установщика нет. Скачайте архив со страницы [Releases](https://github.com/Laex/MTN2/releases/latest), распакуйте в любую
-папку и запустите `MTN2.exe`. Есть два архива с одинаковой программой:
+### How do I install MTN2?
 
-- `MTN2-<версия>-win64.zip` – настройки в `%APPDATA%\MTN2`;
-- `MTN2-<версия>-win64-portable.zip` – настройки рядом с `MTN2.exe` (флешка, папка, которую носите с собой).
+There is no installer. Download an archive from the [Releases](https://github.com/Laex/MTN2/releases/latest) page,
+extract it to any folder, and run `MTN2.exe`. Two archives contain the same application:
 
-Переносной режим включает файл `portable.dat` рядом с `MTN2.exe`. Переключить режим можно в меню Настройки → «Расположение настроек...»: программа сама перенесёт файлы, проверит права на запись и при ошибке оставит всё как было. Записей в реестр программа не делает.
+- `MTN2-<version>-win64.zip` – settings are stored in `%APPDATA%\MTN2`;
+- `MTN2-<version>-win64-portable.zip` – settings are stored next to `MTN2.exe` (useful for a USB drive or a folder
+  you carry with you).
 
-### Windows показывает предупреждение SmartScreen или антивирус ругается. Что делать?
+Portable mode is enabled by placing `portable.dat` next to `MTN2.exe`. Options > "Settings location..." switches between the modes: the program moves the files itself, checks the write access and leaves everything as it was if something fails. The program does not write to the registry.
 
-Исполняемые файлы пока не подписаны цифровой подписью, поэтому SmartScreen может показать окно «Windows защитила ваш
-компьютер»: нажмите **Подробнее → Выполнить в любом случае**. Программы, собранные Delphi, иногда вызывают ложные
-срабатывания антивирусов.
+### Windows shows a SmartScreen warning or an antivirus complains. What should I do?
 
-Проверить архив можно по контрольной сумме SHA-256: она показана на странице релиза рядом с файлом. Встроенное обновление
-само проверяет SHA-256 загруженного архива. Программу можно собрать самому, см. [BUILDING.md](BUILDING.md).
+The executable files are not digitally signed yet, so SmartScreen may show “Windows protected your PC”: choose
+**More info → Run anyway**. Programs built with Delphi can sometimes trigger false antivirus positives.
 
-### Можно ли собрать в Delphi 12.2?
+You can verify the archive with its SHA-256 checksum, shown next to the file on the release page. The built-in updater
+also checks the SHA-256 of a downloaded archive. You can build the program yourself; see [BUILDING.md](BUILDING.md).
 
-Нужна RAD Studio 13 (в ней изменена система отрисовки FireMonkey). Готовые сборки лежат на странице Releases, собирать
-самому для обычного использования не нужно. Условия сборки – в [BUILDING.md](BUILDING.md).
+### Can I build MTN2 with Delphi 12.2?
 
-### Почему архив такой большой?
+RAD Studio 13 is required because its FireMonkey rendering system was changed. Ready-made builds are available on the
+Releases page, so building it yourself is not needed for ordinary use. Build requirements are listed in
+[BUILDING.md](BUILDING.md).
 
-Архив занимает около 23 МБ. Основной вес – графический движок Skia (`sk4d.dll`) и среда выполнения WebAssembly
-(`wasmtime.dll`) для плагинов; сам `MTN2.exe` – один исполняемый файл без виртуальной машины и сборщика мусора.
+### Why is the archive so large?
 
-## Сеть и приватность
+The archive is about 23 MB. Most of the size comes from the Skia graphics engine (`sk4d.dll`) and the WebAssembly
+runtime (`wasmtime.dll`) used by plugins; `MTN2.exe` itself is one executable without a virtual machine or garbage
+collector.
 
-### Зачем программа обращается в интернет при запуске?
+## Network and privacy
 
-Это проверка новой версии: раз в сутки при запуске программа запрашивает у GitHub (`api.github.com`) сведения о
-последнем релизе. Больше программа в сеть сама не ходит: телеметрии и облачных функций нет. Загрузка и установка новой
-версии начинаются только после вашего согласия. Подключения по SSH/SFTP выполняются только к узлам, которые вы указали сами.
+### Why does the program access the internet at startup?
 
-Отключить проверку: **≡ → Обновления...**, снять флажок «Проверять обновления при запуске». Уведомление о проверке
-отключается там же («Показывать уведомление о проверке»). После этого программа обновляется только по команде
-**≡ → Обновления...**.
+It checks for a new version: once a day at startup, it asks GitHub (`api.github.com`) for information about the latest
+release. The program does not otherwise access the network on its own: there is no telemetry or cloud functionality.
+Downloading and installing a new version starts only after you agree. SSH/SFTP connections are made only to hosts you
+specify.
 
-### Где хранятся настройки?
+To disable the check, open **≡ → Check for updates...** and clear **Check for updates at startup**. The check
+notification can be disabled there as well (**Show update check notification**). Afterwards, updates happen only when
+you use **≡ → Check for updates...**.
 
-В `%APPDATA%\MTN2` или, в переносной версии, рядом с `MTN2.exe`. Это обычные JSON-файлы: `session.json`,
-`keymap.json` и другие; темы лежат отдельными файлами. Их можно править вручную и копировать между машинами.
+### Where are the settings stored?
 
-## Внешний вид
+In `%APPDATA%\MTN2`, or next to `MTN2.exe` in portable mode. They are ordinary JSON files such as `session.json` and
+`keymap.json`; themes are stored as separate files. You can edit and copy them between machines manually.
 
-### Шрифт выглядит «мыльным» или обрезается снизу при масштабе Windows 125%.
+## Appearance
 
-Растеризация глифов под дробные масштабы Windows исправлена. Если проблема осталась, обновитесь до последней версии и
-откройте **Настройки → Шрифт / экран...**: параметры «Размер шрифта в целых пикселях» и «Контраст текста» делают
-штрихи ровнее на масштабах 125% и 150%. Если не помогло, приложите скриншот к issue и укажите шрифт и масштаб.
+### The font looks blurry or is clipped at the bottom at 125% Windows scaling.
 
-### Как поменять цвета? Есть ли палитра DN?
+Glyph rasterization for fractional Windows scaling has been fixed. If the problem remains, update to the latest version
+and open **Settings → Font / display...**: **Integer font size** and **Text contrast** make strokes clearer at 125%
+and 150% scaling. If that does not help, attach a screenshot to an issue and include the font and scale.
 
-**Настройки → Тема...**: встроенные темы (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox,
-Tokyo Night, Dracula, Nord, Solarized, светлые, High Contrast, ASCII и другие), свои темы создаются в редакторе тем или файлом. Формат – в [THEMES.md](THEMES.md). Стиль теней кнопок
-меняется в окне **Настройки → Шрифт / экран...**.
+### How do I change the colors? Is there a DN palette?
 
-### Как переопределить клавиши?
+Open **Settings → Theme...**. Built-in themes include Far Classic, Norton Commander, Midnight Commander, Total
+Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, light ones, High Contrast and ASCII, and custom themes can be created in the theme editor or as a file. The format is documented in
+[THEMES.md](THEMES.md). Button shadow style can be changed in **Settings → Font / display...**.
 
-Через редактор клавиш или файл `keymap.json` в папке настроек; раскладка по умолчанию близка к Far Manager.
+### How do I remap keys?
 
-## Возможности
+Use the key editor or edit the `keymap.json` file in the settings folder. The default layout is close to Far Manager.
 
-### Есть ли встроенный редактор и просмотрщик?
+## Features
 
-Да: просмотрщик текста и hex, редактор, Quick View (`Ctrl+Q`), просмотр Markdown с таблицами. Консоль и панели
-переключаются `Ctrl+O`, как в Far Manager.
+### Does MTN2 include an editor and viewer?
 
-### Есть ли подсветка синтаксиса, пакетное переименование, макросы клавиатуры?
+Yes: a text and hex viewer, an editor, Quick View (`Ctrl+Q`), and a Markdown viewer with tables. The console and panels
+are toggled with `Ctrl+O`, as in Far Manager.
 
-Подсветку текста может давать плагин (образцы `mtn.demo.highlight`: JSON и INI). Остальное – в планах; ход работ виден в
-[Issues](https://github.com/Laex/MTN2/issues) и [Discussions](https://github.com/Laex/MTN2/discussions).
+### Does it support syntax highlighting, batch renaming, or keyboard macros?
 
-### Можно ли использовать плагины Far Manager или Total Commander?
+Text highlighting can be provided by a plugin (the `mtn.demo.highlight` samples cover JSON and INI). The other features
+are planned; progress is tracked in [Issues](https://github.com/Laex/MTN2/issues) and [Discussions](https://github.com/Laex/MTN2/discussions).
 
-Пока нет. Мосты к плагинам Far и Total Commander находятся в стадии проектирования. Собственные плагины – нативные DLL и
-WebAssembly, подробности – в [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md).
+### Can I use Far Manager or Total Commander plugins?
 
-### Какие терминалы поддерживаются?
+Not yet. Bridges to Far and Total Commander plugins are still being designed. MTN2 plugins are native DLLs or WebAssembly;
+see [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md) for details.
 
-Настоящий ConPTY: cmd, PowerShell, pwsh, Git Bash, WSL, SSH. Программы, которые занимают весь экран терминала
-(например, `mc`), работают на альтернативном экране.
+### Which terminals are supported?
 
-## Участие
+The real terminal supports ConPTY, cmd, PowerShell, pwsh, Git Bash, WSL, and SSH. Full-screen terminal programs such
+as `mc` use the alternate screen.
 
-### Как сообщить об ошибке или предложить идею?
+## Contributing
 
-- ошибка или недоработка – [новый issue](https://github.com/Laex/MTN2/issues/new/choose) (версия, Windows, масштаб,
-  шаги воспроизведения, скриншот);
-- вопрос, идея, показать свою тему или плагин – [Discussions](https://github.com/Laex/MTN2/discussions);
-- уязвимость – по [SECURITY.md](../SECURITY.md).
+### How do I report a bug or suggest an idea?
 
-Как собрать проект и принять участие – в [CONTRIBUTING.md](../CONTRIBUTING.md).
+- For a bug or incomplete behavior, open a [new issue](https://github.com/Laex/MTN2/issues/new/choose) with the
+  version, Windows details, scaling, reproduction steps, and a screenshot.
+- For a question, idea, or a theme or plugin to share, use [Discussions](https://github.com/Laex/MTN2/discussions).
+- For a vulnerability, follow [SECURITY.md](../SECURITY.md).
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for build and contribution instructions.

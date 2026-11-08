@@ -3,7 +3,7 @@ unit uHistoryPopup;
 { Drop-down history list for a one-line field outside dialogs: the panel
   command line, the live filter box, the viewer/editor "Find:" prompt.
   Same look and keys as a dialog DropDown / history input (TDialogHost):
-  frame, highlighted row, scroll bar; Up/Down/PgUp/PgDn/Home/End move,
+  a frameless block with a shadow, highlighted row, scroll bar; Up/Down/PgUp/PgDn/Home/End move,
   Enter picks, Del forgets the entry, Esc closes, any other key closes the
   list and still reaches the field. A click on a row picks it, a click
   elsewhere closes.
@@ -110,15 +110,15 @@ begin
   W := EnsureRange(W, 10, Max(AAreaW, 10));
   Left := EnsureRange(AFieldLeft, 0, Max(AAreaW - W, 0));
   Rows := Min(Length(FItems), cHistoryPopupMaxRows);
-  // Above the field when there is room, else below.
-  if AFieldRow - (Rows + 2) >= 0 then
-    Top := AFieldRow - (Rows + 2)
+  // A frameless block docked to the field: above it when there is room, else below.
+  if AFieldRow - Rows >= 0 then
+    Top := AFieldRow - Rows
   else
   begin
     Top := AFieldRow + 1;
-    Rows := Max(Min(Rows, AAreaH - Top - 2), 1);
+    Rows := Max(Min(Rows, AAreaH - Top), 1);
   end;
-  FBounds := TRectI.Make(Left, Top, Left + W - 1, Top + Rows + 1);
+  FBounds := TRectI.Make(Left, Top, Left + W - 1, Top + Rows - 1);
   FTop := 0;
   FVisible := True;
   EnsureHoverInView;
@@ -146,7 +146,7 @@ end;
 
 function THistoryPopup.ViewHeight: Integer;
 begin
-  Result := Max(FBounds.Height - 2, 1);
+  Result := Max(FBounds.Height, 1);
 end;
 
 procedure THistoryPopup.EnsureHoverInView;
@@ -310,9 +310,7 @@ begin
     Exit(False);
   end;
   Result := True;
-  if (ARow <= FBounds.Top) or (ARow >= FBounds.Bottom) then
-    Exit; // frame
-  Idx := FTop + (ARow - FBounds.Top - 1);
+  Idx := FTop + (ARow - FBounds.Top);
   if (Idx < 0) or (Idx > High(FItems)) then
     Exit;
   APicked := FItems[Idx];
@@ -329,14 +327,20 @@ var
 begin
   if not FVisible then
     Exit;
-  // Same chrome as the dialog DropDown popup: white body, black frame.
-  FrameFg := TAlphaColor($FF000000);
-  FrameBg := TAlphaColor($FFFFFFFF);
-  DrawPanelFrameGlyphs(AGrid, FBounds, chBoxTL, chBoxTR, chBoxBL, chBoxBR, chBoxH, chBoxV,
-    FrameFg, FrameFg, FrameBg);
+  // Same chrome as the dialog DropDown popup: the frame takes the theme's
+  // dialog body colours; without a theme, white body and black frame.
+  if Assigned(ATheme) then
+    ATheme.ResolveDialogRowColors(False, FrameFg, FrameBg)
+  else
+  begin
+    FrameFg := TAlphaColor($FF000000);
+    FrameBg := TAlphaColor($FFFFFFFF);
+  end;
+  // The shadow separates the block from what is under it, which has no frame to do so.
+  DrawDialogShadow(AGrid, FBounds);
   ViewH := ViewHeight;
   NeedBar := Length(FItems) > ViewH;
-  TextW := FBounds.Width - 2;
+  TextW := FBounds.Width;
   if NeedBar then
     Dec(TextW);
   TextW := Max(TextW, 1);
@@ -352,7 +356,12 @@ begin
     else
       Line := Line + StringOfChar(' ', TextW - Length(Line));
     if Assigned(ATheme) then
-      ATheme.ResolveDialogRowColors(Idx = FHover, RowFg, RowBg)
+    begin
+      ATheme.ResolveDialogRowColors(Idx = FHover, RowFg, RowBg);
+      // The list background sets the frameless block apart from the dialog body.
+      if Idx <> FHover then
+        RowBg := ATheme.ResolveDialogListBg;
+    end
     else if Idx = FHover then
     begin
       RowFg := TAlphaColor($FF000000);
@@ -363,10 +372,10 @@ begin
       RowFg := FrameFg;
       RowBg := FrameBg;
     end;
-    PutGridText(AGrid, FBounds.Left + 1, FBounds.Top + 1 + J, Line, RowFg, RowBg);
+    PutGridText(AGrid, FBounds.Left, FBounds.Top + J, Line, RowFg, RowBg);
   end;
   if NeedBar then
-    DrawDialogScrollBar(AGrid, FBounds.Right - 1, FBounds.Top + 1, FBounds.Bottom - 1,
+    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top, FBounds.Bottom,
       FTop, Length(FItems), ViewH);
 end;
 

@@ -1,0 +1,36 @@
+{
+  "description": "Total Commander habits: Alt+F5/Alt+F9 pack and unpack, Ctrl+A selects all, Ctrl+M renames by rules, Ctrl+P inserts the folder path, Ctrl+Tab switches tabs, Alt+Down opens the folder history",
+  "bindings": {
+    "Pack": [
+      { "key": "F5", "alt": true, "description": "Pack the selection into an archive (Alt+F5)" }
+    ],
+    "Unpack": [
+      { "key": "F9", "alt": true, "description": "Extract an archive (Alt+F9)" }
+    ],
+    "SelectAll": [
+      { "key": "A", "ctrl": true, "description": "Select all (Ctrl+A)" },
+      { "key": "+", "shift": true, "description": "Select all (Shift++)" }
+    ],
+    "SetAttributes": [],
+    "MultiRename": [
+      { "key": "M", "ctrl": true, "description": "Rename the selected items by rules (Ctrl+M)" }
+    ],
+    "RestoreSelection": [],
+    "InsertPanelPath": [
+      { "key": "P", "ctrl": true, "description": "Insert the folder path of the active panel (Ctrl+P)" }
+    ],
+    "TogglePassivePanel": [],
+    "FolderHistory": [
+      { "key": "Down", "alt": true, "description": "Folder history (Alt+Down)" },
+      { "key": "F12", "alt": true, "description": "Folder history (Alt+F12)" }
+    ],
+    "NextTab": [
+      { "key": "Tab", "ctrl": true, "description": "Next tab (Ctrl+Tab)" },
+      { "key": "PageDown", "ctrl": true, "alt": true, "description": "Next tab (Ctrl+Alt+PageDown)" }
+    ],
+    "PrevTab": [
+      { "key": "Tab", "ctrl": true, "shift": true, "description": "Previous tab (Ctrl+Shift+Tab)" },
+      { "key": "PageUp", "ctrl": true, "alt": true, "description": "Previous tab (Ctrl+Alt+PageUp)" }
+    ]
+  }
+}

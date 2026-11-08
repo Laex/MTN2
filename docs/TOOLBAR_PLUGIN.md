@@ -1,14 +1,16 @@
-# Взаимодействие Toolbar / Button Bar с плагином
+# Toolbar / Button Bar Interaction with a Plugin
 
-> **Роль документа:** контракт панели инструментов (обычно F1–F12) с плагином.  
-> **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [SDS.md](SDS.md) §6.2, `IThemeRenderer.DrawToolBar`.
+**English** | [Русский](TOOLBAR_PLUGIN.ru.md)
+
+> **Role of this document:** the contract between the toolbar (usually F1–F12) and a plugin.  
+> **Series:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
+> **Context:** [SDS.md](SDS.md) §6.2, `IThemeRenderer.DrawToolBar`.
 
 ---
 
-## 1. Область и роли
+## 1. Scope and roles
 
-Toolbar (Button Bar) – ряд командных кнопок, привязанных к горячим клавишам. Чаще всего – нижняя/верхняя полоса Dual Panel или контекстная полоса Viewer/Editor.
+Toolbar (Button Bar) is a row of command buttons bound to hotkeys. Most often it is the bottom/top strip of the Dual Panel or the context strip of the Viewer/Editor.
 
 ```text
 TDualPanelWindow / TTerminalWindow
@@ -17,20 +19,20 @@ TDualPanelWindow / TTerminalWindow
     └── Bound Plugin or Host keymap provider (WindowId)
 ```
 
-| Участник | Ответственность |
+| Participant | Responsibility |
 |---|---|
-| **Host** | Размещение bar, клики/горячие клавиши, вызов команд, отрисовка через `DrawToolBar`. |
-| **Плагин** | Набор пунктов (или дельта к системному набору), enable/disable, обработка своих `command_id`. |
-| **Keymapper** | Глобальные/локальные биндинги; Toolbar отображает актуальные подписи клавиш. |
-| **IThemeRenderer** | Внешний вид кнопок и подписей. |
+| **Host** | Bar placement, clicks/hotkeys, command invocation, drawing via `DrawToolBar`. |
+| **Plugin** | The set of items (or a delta to the system set), enable/disable, handling of its own `command_id`s. |
+| **Keymapper** | Global/local bindings; the Toolbar shows the current key labels. |
+| **IThemeRenderer** | Appearance of the buttons and captions. |
 
-Системные F-клавиши (F3 Viewer, F5 Copy, …) может полностью задавать **ядро**; плагин расширяет или перекрывает пункты для своего режима.
+The system F-keys (F3 Viewer, F5 Copy, …) may be defined entirely by the **core**; a plugin extends or overrides items for its own mode.
 
-**Сейчас:** нижняя F-строка Dual Panel – Host-only (`uFunctionBar.pas` + `ResolveChromeContext` в `uDualPanelStatus.pas`). Контекст зависит от оверлея (панели / диалог / stub / Change Drive / job). cdecl `mtn_toolbar_get_items_json` ещё не экспортируется.
+**Currently:** the bottom F-bar of the Dual Panel is Host-only (`uFunctionBar.pas` + `ResolveChromeContext` in `uDualPanelStatus.pas`). The context depends on the overlay (panels / dialog / stub / Change Drive / job). The cdecl `mtn_toolbar_get_items_json` is not exported yet.
 
 ---
 
-## 2. Жизненный цикл
+## 2. Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -42,23 +44,23 @@ sequenceDiagram
     Host->>Host: Theme.DrawToolBar
     User->>Host: F5 / click item
     Host->>Host: resolve command_id
-    alt системная команда
+    alt system command
         Host->>Host: Jobs / VFS / Associations
-    else команда плагина
+    else plugin command
         Host->>Plug: handle_event(command, ItemIndex)
     end
-    Plug->>Host: invalidate (обновить labels/enabled)
+    Plug->>Host: invalidate (update labels/enabled)
 ```
 
-| Этап | Действие |
+| Stage | Action |
 |---|---|
-| **pull items** | Host запрашивает актуальный список при показе / после invalidate. |
-| **invoke** | Физический ввод → логическая команда. |
-| **update** | Плагин меняет enabled/text → `invalidate`. |
+| **pull items** | The Host requests the current list on show / after invalidate. |
+| **invoke** | Physical input → logical command. |
+| **update** | The plugin changes enabled/text → `invalidate`. |
 
 ---
 
-## 3. API и JSON
+## 3. API and JSON
 
 ```pascal
 procedure mtn_toolbar_get_items_json(WindowId, BarId: Integer;
@@ -70,7 +72,7 @@ procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
 procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 ```
 
-### 3.1. JSON набора кнопок
+### 3.1. Button set JSON
 
 ```json
 {
@@ -86,57 +88,57 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-| Поле | Назначение |
+| Field | Purpose |
 |---|---|
-| `id` | Стабильный `command_id`. |
-| `key` | Отображаемая клавиша (факт биндинга – Keymapper). |
-| `text` | Подпись кнопки (логическая; стиль – тема). |
-| `enabled` | Доступность. |
-| `owner` | `host` – выполняет ядро; `plugin` – `handle_event` плагину. |
+| `id` | Stable `command_id`. |
+| `key` | Displayed key (the actual binding is the Keymapper's). |
+| `text` | Button caption (logical; style is the theme's). |
+| `enabled` | Availability. |
+| `owner` | `host` – executed by the core; `plugin` – `handle_event` goes to the plugin. |
 
-Сейчас: Host может игнорировать `owner` и сам решать по таблице команд; поле нужно для пользовательских плагинов.
+Currently the Host may ignore `owner` and decide itself from its command table; the field is there for user plugins.
 
 ---
 
-## 4. События
+## 4. Events
 
-| EventType | Имя | Param1 | Param2 | Семантика |
+| EventType | Name | Param1 | Param2 | Semantics |
 |---|---|---|---|---|
-| 80 | `command` | ItemIndex | BarId | Активация пункта с `owner=plugin` |
-| 81 | `refresh` | BarId | 0 | Host просит пересобрать items (смена режима/панели) |
+| 80 | `command` | ItemIndex | BarId | Activation of an item with `owner=plugin` |
+| 81 | `refresh` | BarId | 0 | The Host asks to rebuild the items (mode/panel change) |
 
-Payload (опционально):
+Payload (optional):
 
 ```json
 { "command_id": "git_status", "side": "left", "uri": "file:///D:/Work" }
 ```
 
-Контекст (активная сторона, selection) добавляет **Host**, чтобы плагин не читал UI напрямую.
+The context (active side, selection) is added by the **Host**, so the plugin does not read the UI directly.
 
 ---
 
-## 5. Владение состоянием
+## 5. State ownership
 
-| Состояние | Владелец |
+| State | Owner |
 |---|---|
-| Геометрия bar, hit-testing | **Host** |
-| Состав пунктов режима / enable | **Host (системные) + Плагин (свои)** |
-| Фактические key bindings | **Keymapper (Host)** |
+| Bar geometry, hit-testing | **Host** |
+| Item set per mode / enable | **Host (system) + Plugin (its own)** |
+| Actual key bindings | **Keymapper (Host)** |
 
-При конфликте `key` побеждает Keymapper; Toolbar только отражает подпись.
-
----
-
-## 6. Потоки
-
-* `get_items_json` – UI-поток, без I/O.
-* Обработчик команды плагина может стартовать Job; UI обновляется через invalidate.
+On a `key` conflict the Keymapper wins; the Toolbar only reflects the label.
 
 ---
 
-## 7. Инварианты
+## 6. Threads
 
-1. Плагин не рисует кнопки – только JSON items.
-2. Системные файловые операции (Copy/Move/Delete) инициирует Host (Jobs), даже если подпись на bar обновил плагин.
-3. Смена Panel Tab / режима Viewer→Editor → Host шлёт `refresh` или сам переключает bar profile.
-4. Цвета «активной» F-клавиши задаёт тема, не плагин.
+* `get_items_json` runs on the UI thread, without I/O.
+* A plugin command handler may start a Job; the UI is updated via invalidate.
+
+---
+
+## 7. Invariants
+
+1. The plugin does not draw buttons – only JSON items.
+2. System file operations (Copy/Move/Delete) are initiated by the Host (Jobs), even if the caption on the bar was updated by a plugin.
+3. On a Panel Tab / Viewer→Editor mode change, the Host sends `refresh` or switches the bar profile itself.
+4. The colors of the "active" F-key are set by the theme, not the plugin.

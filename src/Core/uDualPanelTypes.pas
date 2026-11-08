@@ -66,6 +66,9 @@ type
     /// Workspace; `..` there returns to it. Empty when the tab never came from
     /// a folder (then the history is used).</summary>
     WorkspaceOriginUri: string;
+    /// <summary>A locked tab keeps its folder: going to another folder opens
+    /// that folder in a new tab, and the tab cannot be closed until unlocked.</summary>
+    Locked: Boolean;
   end;
 
   /// <summary>How the rows of a file panel are grouped: the rows are ordered by
@@ -331,6 +334,7 @@ begin
   Result.WorkspaceBackTarget := '';
   Result.JunctionBackName := '';
   Result.WorkspaceOriginUri := '';
+  Result.Locked := False;
 end;
 
 function IsExecutablePanelFileExt(const AExt: string): Boolean;

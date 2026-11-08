@@ -1,895 +1,133 @@
-# Что нового в MTN2
+# What's new in MTN2
 
-Здесь описано, что меняется для пользователя от версии к версии: новые возможности, исправленные ошибки и изменения в поведении. Раздел «Не выпущено» – то, что войдёт в следующую версию.
+**English** | [Русский](CHANGELOG.ru.md)
 
-## Не выпущено
+This file describes what changes for the user from version to version: new features, fixed bugs and changes in behavior. The "Unreleased" section lists what will go into the next version.
 
-### Новое
+## Unreleased
 
-- Справочные ключи командной строки (Windows и Linux): `--version`, `--paths` (папки программы, настроек, плагинов, ресурсов и тем), `--list-commands` (встроенные команды с клавишами), `--list-plugins`, `--check-keymap [файл]` (проверка `keymap.json`: неизвестные действия и клавиши, одна клавиша у двух команд) и `--export-theme [id]` (тема как JSON).
-- `--shell-init bash|zsh|fish|powershell` печатает функцию `mtn`: после выхода из программы оболочка переходит в папку, которая была открыта в активной панели.
-- К релизам добавлены файл `SHA256SUMS` с контрольными суммами всех архивов и пакетов и перечень сторонних компонентов в формате CycloneDX.
+## Dev v0.5.3.2 – 2026-11-08
 
-### Изменено
+### New
 
-- Копирование файла пишет данные во временный файл `имя.mtnpart` рядом и переименовывает его, когда файл записан целиком. Прерванное, отменённое или оборванное сбоем копирование больше не оставляет под настоящим именем обрезанный файл.
+- Pinning a panel tab: `Ctrl+Alt+T`. A pinned tab is highlighted with the theme's accent color, stays in its folder (navigating to another folder opens a new tab) and cannot be closed until it is unpinned; the state is kept between launches.
+- A Total Commander-style keymap example: `docs/keymap-presets/keymap.tc.json` (Alt+F5/Alt+F9 – pack and unpack, Ctrl+A – select all, Ctrl+M – rename by rules, Ctrl+P – folder path to the command line, Ctrl+Tab – tabs, Alt+Down – folder history).
+- Informational command-line switches (Windows and Linux): `--version`, `--paths` (program, settings, plugin, resource and theme folders), `--list-commands` (built-in commands with their keys), `--list-plugins`, `--check-keymap [file]` (checks `keymap.json`: unknown actions and keys, one key bound to two commands) and `--export-theme [id]` (a theme as JSON).
+- Search results (Alt+F7) can be saved: `Ctrl+Alt+F7` (Commands menu – "Found items to Workspace") adds links to the marked items to the workspace links panel, or to all items if nothing is marked, and opens it in the other panel. Files with identical names get a number, and items already added are not repeated. If the workspace is not empty or saved sets exist, a choice is offered: add to the current set, replace it, create a new one or add to a saved one; a modified set is saved before it is replaced. A set is saved and restored the same way as a workspace: `Ctrl+Alt+Shift+D` and `Ctrl+Shift+D`.
+- `--shell-init bash|zsh|fish|powershell` prints an `mtn` function: after the program exits, the shell changes to the folder that was open in the active panel.
+- Releases now include a `SHA256SUMS` file with checksums of all archives and packages and a list of third-party components in CycloneDX format.
+- Mask groups: in any mask (selection, panel filter, search, color groups) an `@Name` entry expands to a named set, for example `@Images` or `*.log;@Documents`. Images, Audio, Video, Documents, Archives and Sources are built in; custom groups are created in the select-by-mask dialog (the "Save as mask group" field) and in the list under Options – "Mask groups...", where they can be edited and deleted; they are stored in `maskgroups.json` in the settings folder. In a dialog's mask field (selection, filter, search) `Ctrl+G` saves the entered masks as a group named after the first mask.
+- Column sets: in the column mode menu, named sets are listed under "Custom" (Minimal, Dates and Technical are built in); in the "Custom columns" dialog the current choice can be saved under a name in the "Save as column set" field (file `columnsets.json`).
 
-### Исправлено
+### Changed
 
-- Повторная попытка копирования файла после ошибки больше не возвращает ошибку предыдущей попытки.
+- File copying writes data to a temporary `name.mtnpart` file alongside and renames it once the file is fully written. An interrupted, canceled or crashed copy no longer leaves a truncated file under the real name.
+
+### Fixed
+
+- Drop-down lists (mask and command history, lists in dialogs) attach to the field without a gap: a block of the same width directly below the field (or above it) with a shadow and the row colors of the selected theme.
+- Themes gained the `dialog.listBg` role – the background of lists and drop-down lists in dialogs. If a theme does not define it, a color slightly lighter or darker than the dialog body is used (10% of the text color), so the list stands out in any theme. The "Mask groups" dialog became wider, and groups are shown in columns: name, the "built-in" mark, masks.
+- Retrying a file copy after an error no longer returns the error of the previous attempt.
 
 ## v0.5.3 – 2026-11-08
 
-### Новое
+### New
 
-- Трёхстрочный подвал файловой панели: строка «Свободно ... на диске» показывает процент свободного места и полосу на фоне текста: занятая часть темнее свободной, по краям отступ в одну клетку.
+- Three-line footer of the file panel: the "Free ... on disk" line shows the percentage of free space and a bar behind the text: the used part is darker than the free part, with a one-cell margin at the edges.
 
-### Изменено
+### Changed
 
-- Копирование файлов и распаковка из zip читают и пишут блоками по 256 КБ вместо 64 КБ: меньше системных вызовов, быстрее на больших файлах и сетевых папках.
+- File copying and unpacking from zip read and write in 256 KB blocks instead of 64 KB: fewer system calls, faster on large files and network folders.
 
-### Исправлено
+### Fixed
 
-- Диалог «Колонки»: после OK активная панель переключается в режим «Настраиваемый», так что выбранные колонки сразу видны (раньше изменения были заметны только после ручного переключения режима).
-- Linux: панель, открытая на папке плагина (`svc:`, `proc:` и т. п.), при следующем запуске восстанавливается с содержимым, а не с ошибкой «Path not found».
-- Linux, панель служб (`svc:`): в колонке PID показывается идентификатор главного процесса службы, раньше колонка была пустой.
-- 7z и другие архивы через плагин 7-Zip: файлы с двумя точками в имени, например `v1..2.txt`, больше не пропадают из списка.
-- Windows: аргументы внешних программ (Git, Docker, Lua-плагины) с кавычкой внутри или обратной косой чертой в конце, например путь `C:\My Dir\`, передаются без искажений и не склеиваются со следующим аргументом.
-- Windows: библиотеки плагинов и их зависимости больше не ищутся в текущем каталоге, поэтому подложенная в него DLL с тем же именем не загрузится.
-- Обновление: если для пакета не опубликована контрольная сумма, перед загрузкой показывается вопрос, ставить ли непроверяемое обновление; в консольной команде `--update` такой пакет устанавливается только с ключом `--allow-unverified`.
+- "Columns" dialog: after OK the active panel switches to the "Custom" mode, so the chosen columns are visible immediately (previously the changes only showed after switching the mode manually).
+- Linux: a panel left open on a plugin folder (`svc:`, `proc:` and the like) is restored with its contents on the next launch instead of showing a "Path not found" error.
+- Linux, services panel (`svc:`): the PID column shows the identifier of the service's main process; previously the column was empty.
+- 7z and other archives via the 7-Zip plugin: files with two dots in the name, for example `v1..2.txt`, no longer disappear from the list.
+- Windows: arguments of external programs (Git, Docker, Lua plugins) that contain a quote inside or end with a backslash, for example the path `C:\My Dir\`, are passed intact and are not merged with the next argument.
+- Windows: plugin libraries and their dependencies are no longer searched for in the current directory, so a DLL with the same name planted there is not loaded.
+- Update: if no checksum is published for a package, a question is shown before downloading asking whether to install an unverifiable update; in the console `--update` command such a package is installed only with the `--allow-unverified` switch.
 
 ## v0.5.2 – 2026-11-08
 
-### Новое
+### New
 
-- В настройки интерфейса добавлен флажок «Показывать слэш после имени каталога» (включён по умолчанию): с выключенным флажком имена папок в списке файлов показываются без слэша в конце.
-- Linux: во время копирования и других фоновых задач терминалы с поддержкой индикатора прогресса (Windows Terminal, ConEmu, Ghostty, WezTerm, GNOME Terminal и другие на VTE 0.80+) показывают его на вкладке или в заголовке; по окончании индикатор убирается. Отключить можно переменной окружения `MTN2_NO_PROGRESS=1`.
-- Linux: Alt+Enter открывает окно свойств файлового менеджера системы (через `org.freedesktop.FileManager1`); если его нет, открывается встроенный диалог атрибутов.
-- Linux: Shift+F10 (и пункт «Контекстное меню») показывает список программ, зарегистрированных для типа файла по данным рабочего стола (`.desktop`, `xdg-mime`); выбранная программа запускается отдельно от MTN2. Программы с запуском в терминале в список не входят.
-- Linux (SDL): файлы, перетащенные в окно из другой программы, копируются в папку под указателем, а при нажатом Shift перемещаются; вне панелей пути вставляются как текст.
-- Поиск файлов (Alt+F7) можно отправить в фон кнопкой «В фоне» в диалоге поиска (запуск сразу в фоне) или в обычном окне хода выполнения идущего поиска (кнопки «В фоне», «В панель» и «Отмена»). Пока окно хода выполнения открыто, найденные файлы видны в панели; «В фоне» возвращает панель в прежнюю папку, а «В панель» убирает окно, оставляет панель на списке найденных файлов, и список продолжает пополняться. Выход из такого списка не прекращает идущий поиск: он продолжается в фоне, а щелчок по плашке снова показывает окно хода выполнения и список. Каждый такой поиск – отдельная фоновая задача со своей плашкой в строке вкладок (на плашке растёт число найденных файлов) и строкой в списке фоновых задач; одновременно их может идти несколько. Щелчок по плашке (или выбор задачи в списке) возвращает окно хода выполнения и показывает в панели найденное, и список пополняется, пока поиск идёт; завершённый поиск открывает результаты сразу. Остановка оставляет найденное в панели. Поиск и его результат исчезают, когда панель покидает список найденных файлов.
-- Linux: плагин «Процессы и службы» работает и в Linux: в списке дисков появляются «Процессы» (`proc://`, данные из `/proc`, F3 – сведения, F8 – завершение сигналом SIGTERM) и «Службы» (`svc://`, службы systemd через `systemctl`, окраска по состоянию, запуск, остановка и перезапуск из меню «Плагины»). Реестр, приостановка и возобновление служб остаются только в Windows.
-- Сравнение файлов (Ctrl+Alt+C) работает с группами отмеченных файлов. Если отмечено два файла или больше, сравниваются одноимённые файлы: при отметках на обеих панелях – только отмеченные, при отметках на одной панели – с одноимёнными файлами другой. Итоговый список показывает, какие пары одинаковы, а какие различаются; Enter на паре открывает различия. После закрытия различий список возвращается с тем же выбранным файлом. Папки и файлы без пары пропускаются и считаются в строке итога как несравнённые. Без отметок сравнение файлов под курсорами работает как раньше.
+- A "Show a slash after directory names" checkbox was added to the interface settings (on by default): with it off, folder names in the file list are shown without a trailing slash.
+- Linux: during copying and other background tasks, terminals that support a progress indicator (Windows Terminal, ConEmu, Ghostty, WezTerm, GNOME Terminal and others on VTE 0.80+) show it on the tab or in the title; the indicator is removed when the task finishes. It can be disabled with the environment variable `MTN2_NO_PROGRESS=1`.
+- Linux: Alt+Enter opens the properties window of the system file manager (via `org.freedesktop.FileManager1`); if there is none, the built-in attributes dialog opens.
+- Linux: Shift+F10 (and the "Context menu" item) shows a list of programs registered for the file type according to the desktop data (`.desktop`, `xdg-mime`); the chosen program is started separately from MTN2. Programs that run in a terminal are not included in the list.
+- Linux (SDL): files dragged into the window from another program are copied to the folder under the pointer, or moved when Shift is held; outside the panels the paths are pasted as text.
+- File search (Alt+F7) can be sent to the background with the "Background" button in the search dialog (started in the background right away) or in the regular progress window of a running search (the "Background", "To panel" and "Cancel" buttons). While the progress window is open, the found files are visible in the panel; "Background" returns the panel to its previous folder, and "To panel" closes the window and leaves the panel on the list of found files, which keeps growing. Leaving such a list does not stop the running search: it continues in the background, and a click on its chip shows the progress window and the list again. Each such search is a separate background task with its own chip in the tab row (the chip shows the growing number of found files) and a row in the background jobs list; several can run at the same time. A click on the chip (or selecting the task in the list) brings back the progress window and shows the found files in the panel, and the list keeps growing while the search runs; a finished search opens its results immediately. Stopping leaves the found files in the panel. The search and its result disappear when the panel leaves the list of found files.
+- Linux: the "Processes and services" plugin now works on Linux too: the drive list gains "Processes" (`proc://`, data from `/proc`, F3 – details, F8 – terminate with SIGTERM) and "Services" (`svc://`, systemd services via `systemctl`, coloring by state, start, stop and restart from the Plugins menu). The registry and suspending and resuming services remain Windows-only.
+- File comparison (Ctrl+Alt+C) works with groups of marked files. If two or more files are marked, files with the same names are compared: with marks in both panels – only the marked ones, with marks in one panel – against the same-named files of the other panel. The resulting list shows which pairs are identical and which differ; Enter on a pair opens the differences. After the differences are closed, the list returns with the same file selected. Folders and files without a pair are skipped and counted in the summary line as not compared. Without marks, comparing the files under the cursors works as before.
 
-### Изменено
+### Changed
 
-- Плашка фонового поиска в строке вкладок показывает число найденных файлов и обновляет его по ходу поиска.
-- Выпадающий список истории в полях ввода (маска Alt+F7 и другие) открывается на последней использованной записи, а не на записи, совпадающей с текстом поля; порядок – от последнего использования.
-- Удаление занятого файла или папки: повторные попытки сокращены с ~0.7 с до ~0.06 с, окно с причиной отказа появляется почти сразу.
+- The background search chip in the tab row shows the number of found files and updates it as the search progresses.
+- The history drop-down list in input fields (the Alt+F7 mask and others) opens on the most recently used entry rather than on the entry matching the field text; the order is by last use.
+- Deleting a busy file or folder: retry attempts were shortened from ~0.7 s to ~0.06 s, and the window with the reason for the failure appears almost immediately.
 
-### Исправлено
+### Fixed
 
-- Безопасность: при копировании папки из ZIP-архива записи с `..` в имени (например, `dir/../x`) больше не записываются за пределы папки назначения.
-- Безопасность: ссылки в документах открываются во внешней программе только для схем `http`, `https`, `mailto`, `ftp` и `ftps`; остальные схемы отклоняются. Пакет обновления скачивается только по `https`.
-- Файлы с очень длинными путями (больше 260 символов) теперь участвуют в поиске по содержимому, сравнении папок, распаковке из ZIP и дописывании в конец файла; раньше такие операции на них завершались ошибкой.
-- Переименование файла или папки, при котором меняется только регистр букв (например, `report.txt` в `Report.txt`), раньше ничего не делало или заканчивалось вопросом о перезаписи; теперь имя меняется.
-- Поиск по Alt+F7 с подпапками не заходит в символические ссылки и junction на папки: ссылка на родительскую папку раньше зацикливала обход.
-- Если папку, в которой стоит одна из панелей, удалили (например, с другой панели), панель переходит в ближайшую существующую родительскую папку, а не остаётся с надписью «Path not found». То же при переходе на другой диск, если запомненной там папки уже нет.
-- Просмотр через плагин (картинки и другие окна плагинов): цифра 5 на цифровой клавиатуре, которой файл открывается из панели, теперь и закрывает окно просмотра, как в текстовом просмотрщике. Если плагин сам использует эту клавишу, она остаётся за ним.
-- ZIP-архивы, созданные на macOS и в некоторых Linux-программах: имена файлов и папок на русском больше не отображаются кракозябрами. Если имя в архиве не помечено как UTF-8, но байты являются корректным UTF-8, оно читается как UTF-8, иначе как раньше – в кодировке OEM.
+- Security: when copying a folder from a ZIP archive, entries with `..` in the name (for example `dir/../x`) are no longer written outside the destination folder.
+- Security: links in documents are opened in an external program only for the `http`, `https`, `mailto`, `ftp` and `ftps` schemes; other schemes are rejected. The update package is downloaded only over `https`.
+- Files with very long paths (over 260 characters) now take part in content search, folder comparison, unpacking from ZIP and appending to the end of a file; previously such operations failed on them.
+- Renaming a file or folder where only the letter case changes (for example `report.txt` to `Report.txt`) previously did nothing or ended with an overwrite question; now the name changes.
+- Alt+F7 search with subfolders does not enter symbolic links and junctions to folders: a link to a parent folder used to make the traversal loop.
+- If the folder in which one of the panels stands is deleted (for example from the other panel), the panel moves to the nearest existing parent folder instead of staying with a "Path not found" message. The same applies when switching to another drive whose remembered folder no longer exists.
+- Viewing through a plugin (images and other plugin windows): the 5 key on the numeric keypad, which opens a file from the panel, now also closes the viewer window, as in the text viewer. If the plugin uses this key itself, it stays with the plugin.
+- ZIP archives created on macOS and in some Linux programs: Russian file and folder names are no longer shown as garbled text. If a name in the archive is not marked as UTF-8 but its bytes are valid UTF-8, it is read as UTF-8; otherwise it is read in the OEM encoding as before.
 
 ## v0.5.1 – 2026-11-07
 
-### Новое
+### New
 
-- Цветовая разметка: у группы появилось поле «Условие» – размер (`size>10M`), возраст (`age<7d`, `age>30d`) и атрибуты (`+H` скрытый, `-R` не только чтение и т. д.). Группа применяется (и задаёт приоритет сортировки), только если выполнены и маска, и условие.
-- Группировка списка (Ctrl+Alt+G, пункт «Группировка по типу / дате» в меню «Команды»): строки панели упорядочиваются по группам – по типу (папки, изображения, звук, видео, документы, архивы, программы, код, прочее) или по дате (сегодня, вчера, за 7 дней, за 30 дней, за год, старше); внутри группы действует выбранная сортировка, начало группы подписано, а фон соседних групп чередуется. Режим хранится для каждой панели.
-- Плагин метаданных: новые колонки «Альбом» и «Год» (MP3) и «Версия», «Компания» и «Описание» (EXE, DLL, SYS, OCX, SCR в Windows); версии сортируются по номеру, а не по тексту. Колонки добавляются в режиме «Свой».
-- Парные папки (Ctrl+Alt+P, пункт «Парные папки» в меню «Команды»): вход в подпапку или выход на уровень вверх в одной панели повторяется в другой, если там есть папка с таким именем (или родитель). Работает для обычных локальных папок; настройка хранится во вкладке и сохраняется между запусками.
-- Распаковка в защищённую папку: при «Отказано в доступе» в окне ошибки появляется кнопка «Админ». Архив читает сам MTN2, а запись в папку выполняет помощник администратора (через временную папку).
+- Color coding: a group gained a "Condition" field – size (`size>10M`), age (`age<7d`, `age>30d`) and attributes (`+H` hidden, `-R` not read-only, and so on). A group applies (and sets the sort priority) only if both the mask and the condition are met.
+- List grouping (Ctrl+Alt+G, the "Group by type / date" item in the Commands menu): panel rows are ordered by groups – by type (folders, images, audio, video, documents, archives, programs, code, other) or by date (today, yesterday, last 7 days, last 30 days, last year, older); within a group the selected sort order applies, the start of a group is labeled, and the background of neighboring groups alternates. The mode is stored per panel.
+- Metadata plugin: new "Album" and "Year" columns (MP3) and "Version", "Company" and "Description" columns (EXE, DLL, SYS, OCX, SCR on Windows); versions are sorted by number, not by text. The columns are added in the "Custom" mode.
+- Paired folders (Ctrl+Alt+P, the "Paired folders" item in the Commands menu): entering a subfolder or going up one level in one panel is repeated in the other if it has a folder with that name (or the parent). Works for ordinary local folders; the setting is stored in the tab and kept between launches.
+- Unpacking into a protected folder: on "Access denied" the error window shows an "Admin" button. MTN2 itself reads the archive, while the administrator helper writes to the folder (through a temporary folder).
 
-### Изменено
+### Changed
 
-- Постоянное удаление папки: если на отдельный файл внутри нет прав, окно ошибки спрашивает про этот файл. «Пропустить» оставляет только его (и папки над ним), остальное удаляется; «Пропустить все» и «Админ» тоже доступны на уровне файла.
-- Окно сравнения и слияния файлов (Ctrl+Alt+C) занимает весь экран вместо диалога: строки левого и правого файла выравниваются по сходству, поэтому близкие строки стоят напротив друг друга, а изменившаяся часть строки подсвечена; добавлены Tab и Shift+Tab для перехода между различиями, прокрутка колесом мыши и щелчок по строке. Как в просмотрщике и редакторе, внизу строка F-клавиш (F2 – сохранить, F3/F4 – следующее и предыдущее отличие, F5/F6 – копировать вправо и влево, F8 – откат, F10 – выход) и строка состояния.
-- Запрос повторить операцию от администратора переформулирован: «Отказано в доступе. Повторить с правами администратора?».
+- Permanent deletion of a folder: if there are no rights for a single file inside, the error window asks about that file. "Skip" leaves only it (and the folders above it) and deletes the rest; "Skip all" and "Admin" are also available at the file level.
+- The file compare and merge window (Ctrl+Alt+C) takes the whole screen instead of a dialog: lines of the left and right files are aligned by similarity, so similar lines stand opposite each other and the changed part of a line is highlighted; Tab and Shift+Tab for moving between differences, mouse wheel scrolling and clicking a line were added. As in the viewer and editor, there is an F-key row at the bottom (F2 – save, F3/F4 – next and previous difference, F5/F6 – copy right and left, F8 – revert, F10 – exit) and a status line.
+- The prompt to repeat an operation as administrator was reworded: "Access denied. Repeat as administrator?".
 
-### Исправлено
+### Fixed
 
-- Запрос «Повторить с правами администратора?» больше не обрезается в русской локали: окно подтверждения расширяется под текст.
-- Окна ошибки с кнопкой «Админ» (удаление, ввод-вывод) расширяются под переводы кнопок, и у крайней кнопки «Отмена» снова есть тень.
-- Удаление папки без прав (например, в `C:\Program Files`) через Shift+Del сразу предлагает повторить от администратора: обход дерева прекращается на первом отказе в доступе, а повторы при отказе сокращены, вместо минут ожидания.
-- Распаковка ZIP и 7z в папку без прав записи сообщает «Отказано в доступе» вместо «Системе не удаётся найти указанный путь».
+- The "Repeat as administrator?" prompt is no longer truncated in the Russian locale: the confirmation window widens to fit the text.
+- Error windows with the "Admin" button (deletion, I/O) widen to fit the button translations, and the outermost "Cancel" button has its shadow again.
+- Deleting a folder without rights (for example in `C:\Program Files`) with Shift+Del now immediately offers to repeat as administrator: the tree traversal stops at the first access denial, and retries on denial were shortened, instead of minutes of waiting.
+- Unpacking ZIP and 7z into a folder without write permission reports "Access denied" instead of "The system cannot find the path specified".
 
 ## v0.5.0 – 2026-11-05
 
-### Новое
-
-- Плагин «Просмотр PDF»: F3 на `.pdf` показывает страницы как картинки (PDFium), поэтому текст с нестандартными шрифтами и сканы выглядят как в обычном просмотрщике. Клавиши: PageUp/PageDown и Пробел листают, Home/End – первая и последняя страница, `+`/`-` меняют масштаб, `0` – страница целиком, `w` – по ширине, колесо мыши прокручивает, Ctrl+колесо меняет масштаб. В быстром просмотре (Ctrl+Q) показывается текст документа; в настройках плагина можно включить показ страниц картинками всегда или только для документа без текста (скана); Tab открывает в панели полный просмотрщик (страницы, масштаб, колесо мыши и перетаскивание), Tab или Esc возвращают файловую панель. Если `pdfium.dll` не найдена, PDF открывает плагин «Просмотр документов» как текст.
-- Сравнение файлов (Ctrl+Alt+C) для текстовых файлов открывает окно сравнения и слияния: две колонки с номерами строк, различия отмечены посередине; Ctrl+↓/Ctrl+↑ переходят между различиями, → и ← копируют различие в нужную сторону, Ctrl+Z отменяет, Ctrl+S сохраняет изменённые файлы с прежними кодировкой и переводами строк. Двоичные, очень большие и одинаковые файлы показываются прежним окном со сводкой.
-- Плагин «Просмотр документов»: F3 на файлах `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` и базах SQLite (`.sqlite`, `.sqlite3`, `.db`, `.db3`) показывает их текст: абзацы, строки листов, текст слайдов и страниц, сводку SVG с отступами в исходнике, схему базы с первыми строками таблиц. Текст PDF с шрифтами в собственной кодировке не расшифровывается. F4 по-прежнему открывает редактор. Те же тексты показывает быстрый просмотр (Ctrl+Q) для файлов до 16 МБ; так же работает просмотр таблиц `.csv`.
-- Окно «Плагины...»: кнопка «Добавить...» устанавливает плагин из папки или файла `.zip` (с `plugin.json`), кнопка «Удалить» стирает папку выбранного плагина. Установленный плагин выключен, пока его не включат в списке; плагин с тем же идентификатором заменяется после подтверждения, архив с путями за пределами папки плагина отклоняется.
-- Макросы Lua получили доступ к редактору, панелям, буферу обмена и диалогам: `mtn.editor.*` (текст, выделение, строки, замена, курсор), `mtn.panel.*` (список файлов, переход, курсор, отметки по маске), `mtn.clipboard.*`, `mtn.input`, `mtn.confirm`, `mtn.choose`. `mtn.exec` запускает внешнюю программу и возвращает её вывод, но только из списка в поле `exec` макроса (например, `exec = "git"`). Вызов `mtn.on(тема, функция)` в файле макроса выполняет функцию при событиях программы: открытие, сохранение, изменение и закрытие документа, смена папки и курсора на панели. Описание – в справке плагина «Макросы»; новый образец `word-count.lua` считает строки и слова.
-- Макрос Lua может добавить свою колонку в файловые панели: `mtn.column{id, title, width, align, default, value}`, где `value` – функция Lua, которая получает имя, путь, признак папки и размер файла и возвращает текст ячейки. Колонка появляется в окне «Колонки...», значения пересчитываются при смене папки; новый образец `size-kb.lua` показывает размер в килобайтах.
-- Фоновые задания: в списке заданий (Ctrl+Shift+J) появились кнопки «Пауза», «Вверх», «Вниз» и «Скорость». Пауза останавливает копирование на следующем блоке (плашка `||`) или удерживает задание в очереди; «Вверх»/«Вниз» меняют порядок запуска; «Скорость» ограничивает копирование между локальными папками (1, 5, 20, 100 МБ/с). Копирование и перемещение на одном диске теперь идут по очереди, а не вперемешку.
-- Групповое переименование (Ctrl+Alt+N): в масках появились метки `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]` (дата и время изменения), `[Parent]` (имя папки), `[Size]` (размер) и `[Dim]`, `[Camera]`, `[Artist]`, `[Title]` (значения колонок плагина метаданных); метки можно набирать в любом регистре. Флажок «Регулярное выражение» превращает «Найти» в шаблон, а в «Заменить» доступны `$1`, `$2`; неверный шаблон оставляет имена как есть. Подсказка с метками – в самом окне.
-- Синхронизация папок (Ctrl+Alt+S): в списке отличий у каждого файла своё действие – `->` вправо, `<-` влево или `--` пропустить. Кнопки «Вправо», «Влево», «Пропустить» меняют действие выбранной строки (ручной выбор отмечен `*`), «Сбросить» возвращает автоматическое, а флажок «Только пропущенные» показывает строки без решения. Конфликт можно разрешить в любую сторону, новый файл можно оставить на месте. Список прокручивается и показывает все отличия, а не первые двенадцать; строка состояния считает копирования и пропуски по выбранным действиям.
-- Параметр «Вертикальные линии между колонками» (Параметры – Интерфейс): между колонками панели в режимах «Полный» и «Свои колонки» рисуются вертикальные линии, в том числе в заголовке. По умолчанию выключен; в кратком режиме линии есть всегда.
-- Параметр «Фильтровать панель при быстром поиске» (Параметры – Интерфейс): при быстром поиске по Alt+буква, кроме перехода курсора на найденный файл, в панели остаются только файлы, имена которых начинаются с набранного текста; Поле поиска остаётся открытым и после отпускания Alt, пока не нажаты Esc или Enter, которые возвращают все файлы; Backspace расширяет список. Параметр «Нечёткий фильтр: буквы по порядку» оставляет в списке и имена, в которых набранные буквы встречаются по порядку, не обязательно подряд (например, «mnr» находит «main_readme.txt»). Дополнительный параметр «Сохранять фильтр при переходе в другую папку» оставляет фильтр при входе в папку по Enter или щелчку мышью: тогда снимает его только Esc. По умолчанию выключено.
-- Колонки плагина метаданных («Size px», «Camera», «Artist», «Title») теперь сортируются – щелчком по заголовку или в меню сортировки; «Size px» упорядочивает по числу пикселей. Плагины могут присылать для локальных папок числовые значения колонок.
-- Окно смены диска (Alt+F1/F2): занятое место тома показано бледной полосой на фоне колонок общего размера и свободного места; текст не меняется.
-- Колонки плагинов (например, «Size px» плагина метаданных) теперь можно включить в окне «Настраиваемые колонки» и для локальных папок.
-- Linux: плагины «Просмотр PDF», «Просмотр документов» и «CSV-таблица» находят файл по адресу `file:///...` и открывают его в Linux; библиотека PDFium (`libpdfium.so`) входит в архив и пакеты `.deb` / `.rpm`.
-- Linux: копирование и перенос с одного диска (точки монтирования) ставятся в очередь, как в Windows с одной буквой диска.
-
-### Исправлено
-
-- Linux: плагины «Фильтр строк» и «Макросы» открывают файл в редакторе и сохраняют результат макроса по правильному пути (раньше путь собирался как в Windows).
-- Linux (окно): страница PDF не остаётся на экране после закрытия просмотра.
-- Tab в быстром просмотре (Ctrl+Q) на картинке больше не закрывает просмотр и не возвращает файловую панель: клавиатура переходит на просмотр, Tab или Esc возвращают её обратно.
-- Если плагин не смог прочитать папку (например, `kubectl` в папке `kubernetes` плагина Docker не достучался до кластера), строка с текстом ошибки больше не вызывает окно «Invalid characters in file name» при выборе или Enter на ней.
-
-## v0.4.7 – 2026-11-05
-
-### Новое
-
-- Linux: в архиве и пакетах `.deb` / `.rpm` рядом с плагином «Макросы» лежит библиотека Lua (`liblua5.4.so.0`), поэтому макросы работают без установки системного пакета; системная библиотека по-прежнему подходит, если файла рядом нет. Если нет ни той, ни другой, уведомление называет пакет, который нужно поставить (`liblua5.4-0` или `lua-libs`).
-- Справка плагина «Макросы» есть на немецком и китайском языках.
-- Плагины «Docker и Kubernetes» и «Метаданные файлов» работают и в Linux-версии; «Реестр, процессы и службы» только для Windows и в Linux-сборку не входит.
-- У плагинов «CSV», «Архивы 7-Zip», «Временная панель», «Фильтр строк», «Git status» и «Метаданные файлов» появилась контекстная справка (F1).
-- В папках `docker:///`, `reg:///`, `proc:///` и `svc:///` строка F-клавиш показывает только доступные действия.
-- Реестр, процессы и службы Windows как папки панелей (плагин `mtn.winsys`, пункты «Реестр», «Процессы», «Службы» в списке дисков). Разделы реестра – папки, значения – файлы: F3 показывает тип и данные, F4 правит строки, числа и списки строк, F7 создаёт раздел, F8 удаляет. Процесс – файл с рабочим набором и временем запуска: F3 показывает сведения, F8 завершает. Служба – файл, окрашенный по состоянию: F3 показывает настройки, меню «Плагины» запускает, останавливает, перезапускает, приостанавливает и возобновляет её.
-- Контейнеры, образы Docker и поды Kubernetes как папки панелей (плагин `mtn.docker`, пункт «Docker» в списке дисков). У каждого контейнера и пода есть `info.txt`, `logs.txt` и папка `fs` с его файлами: просмотр, правка, удаление, создание папок и копирование в обе стороны. Контейнеры и поды окрашены по состоянию; меню «Плагины» запускает, останавливает, перезапускает, приостанавливает и возобновляет контейнер под курсором. Нужны `docker` и `kubectl` в PATH.
-- Плагин `mtn.meta` показывает в строке состояния метаданные файла под курсором: формат, размер, камеру и время съёмки изображения (JPEG, PNG, GIF, BMP, WebP), исполнителя, название, альбом и год MP3, версию и производителя программы или библиотеки (Windows).
-- Плагин «7-Zip» открывает больше форматов: zst, lzma, vhd, vhdx, msi, deb, rpm, cpio, chm, dmg, squashfs, img.
-- В поставке три новых образца макросов редактора: сортировка строк по убыванию, выравнивание по центру, переформатирование абзаца.
-- Колонки плагинов в файловой панели. В режиме колонок «Custom» плагин добавляет к встроенным колонкам свои: контейнеры Docker показывают состояние, образ и порты, процессы – PID, PPID и число потоков, службы – состояние и отображаемое имя, изображения и MP3 в обычных папках – размер в пикселях, камеру, исполнителя и название. Плагин сам задаёт перечень колонок, доступных для выбора: свои и применимые к его папкам встроенные (у контейнеров Docker, процессов и служб нет размера, дат и атрибутов, поэтому диалог «Columns...» их там не предлагает). Колонки плагина можно включать и выключать в диалоге «Columns...» (выбор запоминается отдельно для каждого плагина и сохраняется между запусками), по ним сортируют щелчком по заголовку или меню `Ctrl+F12`, сортировка запоминается в сессии. Заголовки колонок плагинов показываются на выбранном языке интерфейса. На узкой панели замыкающие колонки скрываются, чтобы имя оставалось читаемым.
-- Макросы на Lua (плагин `mtn.lua`). Ctrl+. начинает и завершает запись нажатых клавиш, после записи диалог спрашивает название, клавишу и показ в меню. Макрос запускается своей клавишей или из нового меню «Макросы» на панелях, в просмотрщике, редакторе и консоли (не из командной строки) и перед стартом проверяет состояние программы: область, наличие отмеченных файлов или выделения. Файлы макросов лежат в папке `macros` каталога настроек и редактируются как обычный текст; Esc останавливает выполняющийся макрос. Во время записи в строке состояния панелей и в строке вкладок видна плашка «ЗАПИСЬ» со счётчиком клавиш; Ctrl+Shift+. ставит запись на паузу, Ctrl+. или щелчок по метке «ЗАПИСЬ» завершают её (пункт «Пауза / продолжить запись» в меню доступен только во время записи). При назначении макросу клавиши проверяется, не занята ли она действием программы или командой другого плагина: окно предупреждает, повторный OK всё равно назначает клавишу; после записи занятая клавиша не назначается. Пункт «Управление макросами...» показывает макросы таблицей и по клавишам (Пробел, F2, F4, F5, Del) включает и выключает их, назначает клавишу, открывает в редакторе (после сохранения файла макросы перечитываются сами), удаляет, импортирует (файл или папку) и экспортирует все макросы и перечитывает папку без перезапуска; после удаления, добавления и импорта список в меню «Макросы» обновляется; в меню «Макросы» у пунктов видны назначенные клавиши. В поставке три образца: сортировка строк без повторов, создание папки, отчёт об отмеченных файлах.
-- В просмотрщике Markdown (F3) Enter и клик по ссылке на локальный файл (`other.md`, `other.md#раздел`, `#раздел`) открывают его в том же окне; Backspace или Alt+← возвращают назад.
-- Меню «Плагины» между «Команды» и «Настройки»: в нём команды всех плагинов, сгруппированные по плагинам. Группы разделены линией с названием плагина, а у строк каждой группы справа свой цветной столбец. Первый пункт меню – «Плагины...» (список плагинов); из меню «Настройки» он убран.
-- Плагины могут показывать длительную работу как фоновое задание: при запуске появляется уведомление, задание видно в списке заданий и плашкой в строке вкладок, а щелчок по плашке открывает окно хода выполнения с кнопками «В фоне» и «Отмена», как у копирования. Так отменяются «Найти повторяющиеся файлы» и «Панель из вывода команды» плагина «Временная панель» (поиск прерывается, команда завершается) и «Git diff файла» плагина Git.
-- Переменная окружения `MTN2_CONFIG_DIR` указывает папку настроек (например, для нескольких профилей или запуска с другого диска); переключение «Расположение настроек» при этом недоступно.
-- Плагин Git: команда «Плагины → Git blame файла» показывает в новой вкладке просмотра, в каком коммите, кем и когда изменена каждая строка файла под курсором; работает фоновым заданием, как «Git diff файла».
-- Ctrl+G на панелях спрашивает команду и выполняет её над выделенными файлами (или над файлом под курсором). Подстановки те же, что в меню пользователя: `!.!` – имя под курсором, `!&` – выделенные имена, `!\` – папка панели, `!#` – другая панель и так далее. Командой «Применить команду к выделенным» из палитры (Shift+F9) клавишу можно переназначить.
-- Новый плагин «CSV-таблица»: F3 на файле `.csv` или `.tsv` показывает выровненную таблицу с линией под заголовком; разделитель (запятая, точка с запятой, табуляция, черта) определяется сам, ячейки в кавычках и переводы строк внутри них понимаются, кодировка UTF-8, UTF-16 или системная; большой файл показывается первыми 200 тысячами строк. F4 по-прежнему открывает редактор.
-- Новый плагин «Фильтр строк»: Ctrl+Shift+J в просмотре или редакторе спрашивает текст или регулярное выражение (с учётом регистра, наоборот, с номерами исходных строк) и открывает оставшиеся строки в новой вкладке просмотра. Удобно для журналов.
-- Во временной панели после имени файла показана папка, в которой он лежит (длинный путь сокращается слева); в строке состояния виден полный путь.
-- Во временной панели первой строкой стоит `..`: она возвращает в папку, из которой панель была открыта.
-- Окно прогресса поиска повторяющихся файлов показывает текущий каталог, число просмотренных файлов, а при сравнении содержимого – проверено из скольких и сколько файлов уже попало в группы дубликатов, с полосой прогресса.
-- Плагин «Временная панель»: команда «Плагины → Панель из вывода команды...» запускает команду оболочки в папке активной панели и собирает во временную панель файлы и папки, имена которых она вывела (например, `rg -l TODO` или `git ls-files -m`); строки вида `путь:12:текст` тоже понимаются, последняя команда запоминается. Команда «Плагины → Найти повторяющиеся файлы» ищет в текущей папке и её подпапках файлы с одинаковым содержимым (сначала по размеру, затем по SHA-256) и показывает их во временной панели группами, сообщая, сколько места можно освободить. Обе команды работают в фоне, в Windows и в Linux.
-- Подвал файловых панелей в стиле NDN (включён по умолчанию): под строкой курсорного файла две дополнительные строки – итоги («Bytes/Selected: …») и свободное место на диске панели. Переключатель – в окне «Настройки → Интерфейс»; при выключении подвал прежний: итоги на линии над строкой курсорного файла.
-- Новые команды редактора (меню «Правка»): смена регистра выделения или слова под курсором (Ctrl+Alt+C: строчные, заголовочные, прописные по кругу); выравнивание строк по левому краю, по центру и по правому краю (Ctrl+Alt+L, Ctrl+Alt+E, Ctrl+Alt+R); автоперенос строки по последнему пробелу при наборе за ширину из «Формат текста» (Ctrl+Alt+W); инкрементный поиск с выделением найденного по мере набора (Ctrl+Alt+T); режим рисования линий, в котором стрелки рисуют рамки из одинарных или двойных линий (Ctrl+Alt+D).
-- Четыре новые темы в духе классических DOS-навигаторов: Navigator Gray (серые панели, пурпурные кнопки, светло-серые меню), Navigator Dark (чёрные панели, синие меню и диалоги), Navigator Night (чёрные панели, бирюзовые акценты, тёмно-серые меню) и Navigator LCD (серая шкала для ЖК-экранов).
-- Частые папки (Ctrl+Shift+F12, «Команды → Частые папки...»): список папок, упорядоченный по числу заходов с учётом давности, чтобы ежедневные папки всегда были наверху. Набор текста сужает список, Enter открывает папку, Del забывает счётчик папки, Ctrl+Del очищает рейтинг. В отличие от истории папок (Alt+F12), порядок не зависит от последнего захода.
-- Режим Vim-клавиш на панели (Настройки → Интерфейс, по умолчанию выключен): j / k – курсор вниз и вверх, h – в родительскую папку, l – открыть, g / G – первая и последняя строка, / – быстрый поиск, : – переход в командную строку; работают, пока командная строка пуста.
-- Плагин «Git status»: клавиша Ctrl+Shift+D (и пункт «Команды → Git diff файла») открывает во встроенном просмотре изменения файла под курсором относительно HEAD (для папки – изменения всей папки); в репозитории без коммитов сравнивается с индексом.
-- Плагин «Git status» красит имена файлов в панелях по состоянию в git: в индексе – зелёным, изменённые – жёлтым, новые – синим, конфликтующие – красным; папка берёт самое срочное состояние внутри. Строка под курсором и выделенные строки остаются в цветах темы.
-- Поиск файлов (Alt+F7) умеет искать внутри архивов: флажок «Искать в архивах» просматривает записи zip и архивов, которые открывают плагины, по маске и по тексту. Находки показываются как «архив : путь внутри архива»; Enter открывает архив и ставит курсор на файл, F3 показывает содержимое записи.
-- В поиске файлов появился выбор кодовой страницы: «Автоопределение» или конкретная, в том числе UTF-7, которую по содержимому не угадать.
-
-### Изменено
-
-- В окне «Смена диска» убран счётчик «N / M» внизу: он считал только диски и не учитывал пункты под списком.
-- Linux, `mtn2-sdl` и `mtn2-tui` в терминалах с протоколом kitty (kitty, foot, WezTerm, Ghostty, Alacritty): выбор диска по `Ctrl+←/→` применяется в момент отпускания `Ctrl`, а быстрый поиск по `Alt` и список истории каталогов закрываются при отпускании `Alt`, без выжидания. В остальных терминалах остаются прежние задержки. Нажатый модификатор сразу виден в строке клавиш. Отключить режим можно переменной окружения `MTN2_NO_KEY_EVENTS=1`.
-- В диалогах плагинов появилось поле захвата клавиш (`"hotkey": true`): сочетание не набирается текстом, а нажимается. Диалоги «Клавиша макроса» и «Редактирование горячих клавиш» (Параметры – Клавиатура) используют его; во втором нажатые сочетания добавляются к списку, Backspace убирает последнее, Delete очищает поле.
-- В меню «Плагины» блоки команд плагинов идут в том же порядке, что в списке плагинов (порядок загрузки).
-- Контекстная справка стала полнее: F1 в диалогах плагина открывает справку самого плагина, а в диалогах поиска, замены и закладок редактора – соответствующий раздел справки о просмотре и редактировании. У плагина макросов появилась своя справка: запись, управление макросами и описание языка макросов.
-- Когда строка состояния скрыта, плашки плагинов (ветка git, запись макроса) показываются в строке вкладок справа, левее плашек фоновых процессов, в сокращённом виде и в тех же цветах, что в строке состояния; при нехватке места последние плашки отбрасываются. Щелчок по плашке показывает уведомление с её полным текстом.
-- Палитра команд (Shift+F9) в немецком и китайском интерфейсе ищет команды и по синонимам на этих языках, как в русском.
-- В просмотре Markdown и справке слова в обратных кавычках (например, `EditorDeleteLine`) показываются без кавычек, но с прежним цветом выделения кода.
-- В списке подсказок истории команд, когда пункт выделен, работают клавиши PgUp, PgDn, Home и End; без выделения Home и End по-прежнему двигают курсор в строке.
-- Поиск по тексту определяет кодировку файла по первым 8 КБ вместо 64 КБ: этого достаточно для экрана текста, а поиск в больших файлах быстрее.
-- Поиск по тексту определяет кодировку файла по первым 64 КБ, а не по всему файлу, что ускоряет поиск в больших файлах и папках с множеством текстовых файлов.
-
-### Исправлено
-
-- В верхней папке плагина (Docker, процессы, службы, реестр, удалённые хосты) и в «Рабочем наборе» строка `..` стоит первой и ведёт в каталог, из которого открыта панель, в том числе после перезапуска программы и после перехода назад по истории.
-- Ссылки в просмотрщике Markdown и справке не срабатывали в ячейках таблиц и в заголовках; теперь работают. Клик по ссылке не терялся бы и при повторном быстром клике, и при смещении мыши на одну ячейку между нажатием и отпусканием.
-- Архив в папке, имя которой заканчивается на «!» (например, `Games!`), открывался как «Not a supported archive»; теперь Enter на таком архиве показывает его содержимое; выход из такого архива возвращает в эту папку.
-- Архив, сохранённый под чужим расширением (например, RAR с именем `.zip`), открывается по содержимому, а не отвергается как неподдерживаемый.
-- Итоговая строка под файловой панелью («Bytes / files / folders», «Selected») переведена: в русском, немецком и китайском интерфейсе в ней больше нет английских слов.
-- Пункты плагинов в меню (например, «Git diff файла») не появлялись при русском интерфейсе; теперь они на месте при любом языке.
-- Поиск по тексту внутри архивов пропускает зашифрованные записи, а не пытается их прочитать; по маске такие записи по-прежнему находятся.
-- В диалоге прогресса копирования и перемещения надпись «Пропущено» переведена на все языки.
-- История командной строки хранит каждую команду один раз (повтор поднимает её на последнее место), а список подсказок при наборе не дублирует строки и не скрывает команду, набранную целиком. Хвост `| % {"$_"}`, который добавляют обёртки PowerShell, в историю не попадает.
-
-## v0.4.6 – 2026-11-01
-
-### Новое
-
-- Параметр «Не закрывать быстрый поиск, если стёрты все символы» (Настройки → Интерфейс, по умолчанию выключен). Когда он включён, поле быстрого поиска остаётся открытым после стирания последнего символа: можно нажать Alt+любую букву, стереть её и набрать нужное имя. Это обходной путь, если какое-то сочетание Alt+буква перехватывает драйвер или система.
-- Действие «Быстрый поиск (без Alt)» в настройках клавиш: по умолчанию без сочетания, назначается в диалоге клавиш. Открывает поле быстрого поиска без Alt; оно остаётся открытым, пока его не закроют Esc, Enter, Ctrl+сочетание или клавиша, не относящаяся к тексту.
-- В поиске файлов (Alt+F7) у каждого атрибута (только чтение, скрытый, системный, архивный) три состояния: [?] – не важно (по умолчанию), [ ] – только файлы без этого атрибута, [x] – только файлы с этим атрибутом.
-- В диалоге установки атрибутов вместо списков «Не менять / Установить / Снять» – трёхпозиционные флажки: показывают текущее состояние атрибута у выбранных элементов (`?` – у части); меняются только переключённые.
-- Параметр «Не закрывать быстрый поиск после отпускания Alt» (Настройки → Интерфейс, по умолчанию выключен). Когда он включён, быстрый поиск по имени, начатый с Alt+буква, остаётся открытым, как в FAR: дальше достаточно набирать символы имени и Backspace. ↑ / ↓ перемещают курсор, не закрывая поиск; Esc, Enter, щелчок мышью и любые другие клавиши закрывают его.
-- Параметр «Не передавать фокус командной строке при наборе с клавиатуры» (Настройки → Интерфейс, по умолчанию выключен). Когда он включён, набранные на файловой панели символы попадают в командную строку, но фокус остаётся на панели, и стрелки продолжают водить курсор по панели. Пробел и Backspace уходят в строку, только если в ней уже есть текст, иначе Пробел выделяет файл, а Backspace поднимает на уровень вверх. Фокус в строку переводят Ctrl+↓ и щелчок мышью, а Ctrl+↑ возвращает его панели.
-- Когда в командной строке набирается текст, над строкой появляется список прежних команд, которые с него начинаются. Список не мешает набору: ↑ / ↓ выбирают запись, Enter подставляет её в строку (Enter без выбора, как и раньше, выполняет строку), Del удаляет запись из истории, Esc закрывает список. Тот же список открывается по ↑, когда в строке фокус: в пустой строке со всей историей, а с текстом – с командами, начинающимися с него (если таких нет, со всей историей).
-- Esc на файловой панели, когда в командной строке остался текст, сначала очищает строку; следующий Esc, как и раньше, показывает консоль.
-- Командная строка показывает, у кого фокус: когда он в строке, путь-приглашение голубое, а текст белый; когда фокус на панели, и приглашение, и текст серые.
-- Поиск файлов (Alt+F7) получил поле «Hex-байты» под полем «Содержит»: набранный текст сразу показывается там байтами UTF-8, а байты, набранные или изменённые в этом поле (`4D 5A 90`, `0x4D,0x5A`; `??` – любой байт), ищутся вместо текста. Если байты складываются в текст, он появляется в поле «Содержит». Поле держит байты парами через пробел: цифра внутри байта заменяет вторую цифру, цифра рядом с байтом вставляет новый байт, удалённая цифра становится нулём, а байт `00` исчезает. Размер файла не ограничивает поиск, а в результатах показывается смещение первого совпадения.
-
-### Изменено
-
-- Предел числа результатов поиска (Alt+F7) увеличен с 5000 до 50 000 файлов. Когда поиск остановился из-за предела, показывается сообщение с предложением сузить маску или папку.
-- Ctrl+] в панели с результатами поиска открывает в неактивной панели папку файла под курсором и ставит курсор на этот файл, а не копирует список результатов. `Ctrl+[` работает так же, когда результаты поиска показаны в неактивной панели: активная панель получает папку файла под курсором в неактивной.
-- В окне идущего поиска (Alt+F7) текст не прилипает к левой и правой границам: по краям оставлен зазор в одну клетку.
-- Поиск файлов по Alt+F7 показывает результаты сразу: как только найден первый файл, за окном поиска открывается панель с результатами, и найденные файлы добавляются в неё по ходу поиска. Если поиск прервать, панель с уже найденными файлами остаётся.
-- В кратком режиме End и PgDn показывают конец списка без пустых ячеек: последний файл стоит в последней позиции последней колонки.
-- При выходе из папки на уровень вверх список в той же панели прокручивается так, что папка оказывается на том же месте экрана, где она была при входе.
-- В кратком режиме панели ↑ в самом верху списка и ↓ в самом низу прокручивают список на одну позицию, а не на целую колонку.
-
-### Исправлено
-
-- Выделение в списках с тысячами строк (инвертирование, выделение и снятие по маске, по расширению и по имени) выполняется сразу, а не подвешивает программу. Самый заметный случай – панель результатов поиска с достигнутым пределом (#89).
-- Щелчки, перетаскивание и открытие файла из панели с десятками тысяч строк больше не копируют весь список при каждом действии; при поиске панель не запускает лишних фоновых потоков при каждой порции результатов.
-- В строке F-клавиш для панели результатов поиска показываются только доступные действия: без создания папки и файла, переименования и копирования на месте.
-- «Сравнить папки» при панели результатов поиска сообщает, что сравнивать нечего, вместо бессмысленного сравнения.
-- Копирование с пропуском существующих файлов (режим «Пропустить», «Пропустить все» в запросе) стало быстрее: для пропускаемого файла не открывается источник, а запомненный ответ применяется без обращения к окну и без чтения сведений о файлах.
-- Ошибка чтения одного файла при копировании папки (например, обрыв сетевого диска) больше не прерывает копирование остальных файлов. Файл сначала автоматически повторяется 3 раза с паузой 1, 2 и 4 секунды, затем «Повторить» и «Пропустить» действуют только на этот файл, а «Пропустить все» пропускает все такие файлы. Раньше «Повторить» начинало копирование папки заново, а «Пропустить» отбрасывало всю папку.
-- При запуске не восстанавливается панель с результатами поиска, если она была открыта при закрытии: вкладка открывает папку, из которой был начат поиск.
-- Панель с результатами поиска (Alt+F7) показывает все найденные файлы, а не только первый, в том числе на медленных сетевых дисках: размер, даты и атрибуты берутся из данных обхода, без повторного обращения к диску.
-- Панель с результатами поиска перечитывается после файловой операции (удаление, копирование, переименование, смена атрибутов) только когда операция затронула файлы из её списка; прочие операции не вызывают долгого обновления большого списка.
-- В окне выполняющегося поиска (Alt+F7) показывается маска поиска; окно стало шире, его надписи переведены на язык интерфейса.
-- Нажатие на [x] и клик вне окна выполняющегося поиска запрашивают подтверждение остановки, как Esc.
-- После удаления или переноса файлов из панели результатов поиска они пропадают из её списка.
-- Панель с очень большим списком (результаты поиска) отрисовывается быстрее: итоги по выделению и ключи выделенных элементов не пересчитываются на каждом кадре.
-- Поиск (F7, F3, Shift+F3) в режиме просмотра бинарных файлов (hex) ищет по байтам: строку (UTF-8) или шаблон вида `4D 5A ?? 90`, и ставит выделение на найденное место.
-- Удаление большой папки в корзину больше не показывает 100% в самом начале: пока Windows готовит операцию (обходит всю папку), окно задачи пишет «Preparing to delete...» с идущим временем (например, `1:23`) и показывает удаляемую папку, а полоса остаётся на нуле. Так окно не выглядит зависшим. При удалении не в корзину, пока программа считает элементы, окно пишет «Scanning the folder», а полоса показывает уже удалённые элементы, а не ноль.
-- Пока в фоне удаляется папка, копирование или перенос соседней папки из того же каталога (F5/F6) идёт параллельно, а не ждёт в очереди и не открывает заново окно удаления.
-- В диалоге «Фоновые задачи» сведения о задачах выводятся колонками: задание, объект, файлы, процент и состояние (в очереди, в фоне, на экране, вопрос, ошибка); заголовки и состояния переведены.
-- В диалоге «Фоновые задачи» ход и процент выполнения обновляются, пока диалог открыт, а не остаются такими, какими были в момент открытия.
-- В окнах копирования, переноса, упаковки и удаления заголовок и подписи («Copying the file», «Files:», «Bytes:», «Deleting» и другие) переведены на выбранный язык, а не показываются по-английски.
-- Отмена удаления в корзину завершает задачу сразу, а не после того, как Windows закончит подготовку: ту же папку можно тут же удалить повторно. Если Windows к этому времени ещё не начала перенос, папка остаётся на месте.
-- Если фоновая операция уже работает с папкой, то попытка выполнить любую файловую операцию (копирование, перенос, удаление, переименование, создание папки) с этой папкой, её содержимым или объемлющей папкой выводит на передний план окно этой операции вместо запуска новой.
-- Пробел, выделяющий файл при пустой командной строке, больше не уводит фокус в консоль: курсор в панели остаётся на месте.
-- Перед копированием, переносом и удалением большой папки окно задачи показывает, какую папку программа сейчас просматривает, и просмотр можно прервать; размер каталога (F3) тоже показывает текущую папку.
-- Папку, в которой остановилась фоновая консоль (например, после команды, выполненной из этой папки), можно удалить, переместить или переименовать (F6): перед этим консоль переходит в родительскую папку. Раньше выдавалась ошибка «файл занят другим процессом». Если в консоли выполняется программа, она по-прежнему удерживает свою папку.
-
-## v0.4.5 – 2026-10-29
-
-### Новое
-
-- Ctrl+Alt+M ставит курсор пассивной панели на файл с тем же именем, что под курсором активной; если такого файла нет, показывается сообщение.
-- Сравнение файлов (Ctrl+Alt+C): если в активной панели отмечены ровно два файла, сравниваются они, и вторая панель не нужна – удобно для файлов вроде «отчёт.docx» и «отчёт (1).docx» в одной папке. Окно результата показывает размер, время изменения и вердикт по содержимому («одинаково» или смещение первого отличия) для обоих файлов; для текстовых файлов ниже идёт построчная разница. Текст окна выводится на языке интерфейса.
-- Сочетания с Enter (Ctrl+Enter и Ctrl+Shift+Enter – вставка имени и пути файла под курсором, Shift+Enter, Alt+Enter, Shift+Alt+Enter, Ctrl+Alt+Enter) работают так же, когда фокус в командной строке; раньше она принимала любое из них за простой Enter и запускала набранную команду.
-- В фоновой консоли Ctrl+Home перематывает экран к началу буфера, а Ctrl+End возвращает к командной строке (как во вкладках-терминалах).
-- Плагин «Git status» работает и в Linux-версии.
-- Плагин «Git status» (`mtn.git`): когда активная панель стоит в каталоге под git, в строке состояния показывается цветная статистика репозитория – ветка, коммиты впереди и позади, файлы в индексе, изменённые, новые и конфликтующие, либо «чисто». Каждый вид изменений – отдельная плашка со своим цветом и подписью на языке интерфейса. Кнопка «Настройки» плагина открывает диалог: период опроса git (секунды) и цвет текста и фона каждой плашки (`#RRGGBB` или имя цвета). Нужен git в `PATH`; выключается в окне плагинов.
-- Текстовые файлы (`.txt`, `.log`, `.text`, `.nfo`) раскрашиваются в просмотре и редакторе: цифры, знаки препинания и ссылки получают свои цвета.
-- Быстрый просмотр (`Ctrl+Q`): `Tab` передаёт клавиатуру тексту в панели просмотра, не закрывая его. Стрелки, `PgUp`/`PgDn`, `Home`/`End` и `←`/`→` прокручивают текст с подсветкой синтаксиса; `Tab` или `Esc` возвращает на файловую панель.
-- Приоритет сортировки у групп цветовой разметки: числовое поле «Приоритет» (меньше – выше, отрицательные значения поднимают строки вверх, положительные опускают вниз). Пункт «Группы по приоритету» в меню сортировки (`Ctrl+F12`) включает его для панели: строки сначала ранжируются по приоритету, затем идёт выбранный порядок сортировки. В стандартной теме приоритеты заданы для примера: архивы и исполняемые файлы идут выше остальных, временные файлы – ниже.
-- Три флажка в «Параметры – Интерфейс», по умолчанию выключены: **Backspace** в корне диска открывает меню дисков; выбор диска открывает папку другой панели, если она находится на этом диске; **пробел** выделяет файл и сдвигает курсор вниз, как **Insert** (только при пустой командной строке).
-- Сравнение папок (**Ctrl+Shift+C**) сначала спрашивает, что считать отличием: время, размер, содержимое. Содержимое сравнивается в фоне, **Esc** прерывает сравнение.
-- Поиск файлов (**Alt+F7**) умеет отбирать по размеру (например, `10K`, `1.5M`), по дате изменения и по атрибутам (только чтение, скрытый, системный, архивный). Под полями показан образец формата; у полей даты есть кнопка «…» (и клавиша **F9**), которая открывает календарь с вводом времени.
-- В диалоге атрибутов дата принимается и с днём недели, как её показывает короткий формат даты (например, «Пн 27.10.26»): день недели игнорируется.
-- В полях ввода диалогов (пути, имена файлов, маски) непечатные символы – табуляция, перевод строки и другие управляющие – и пробелы в начале и в конце текста показываются точкой по центру ячейки, как в Far.
-- Режим «хвоста» в просмотрщике (**Ctrl+Shift+F**): окно следует за концом растущего файла, например лога. Поддерживаются и большие файлы, которые читаются потоком: индексируются только дописанные строки. Файл, который стал короче (ротация лога), читается заново. Режим выключается той же клавишей, прокруткой вверх, клавишами Up, PgUp, Home и сменой режима окна; в строке статуса показана отметка «Follow». Клавиша есть в строке F-клавиш с зажатыми **Ctrl+Shift**.
-- Подсказки о клавишах показываются и в других состояниях: при выделенных файлах, в быстром просмотре и информационной панели, в Корзине, в папке плагина, при второй вкладке панели или втором рабочем пространстве, при фоновых заданиях, в консоли, в терминале, в просмотре, hex-режиме, Markdown и редакторе, при открытом меню. Каждая подсказка по-прежнему появляется один раз.
-- Подсказки о редких сочетаниях клавиш: при нескольких выделенных файлах (группового переименования, контрольные суммы, прежнее выделение), на архиве под курсором, в длинной папке, после долгих переходов по папкам (история, избранные, дерево), при одноимённых папках на панелях (сравнение и синхронизация) и при выделенных строках в редакторе.
-- В строке F-клавиш на панелях в окне шириной от 100 колонок слева показана клавиша палитры команд (**Shift+F9**); по ней можно щёлкнуть мышью.
-
-### Изменено
-
-- Группы по приоритету в сортировке больше не поднимают файлы выше папок: папки остаются первыми, а приоритет упорядочивает файлы между собой и папки между собой.
-- Выпадающее меню, которое не помещается на экране, показывает треугольники на верхней и нижней границе, когда выше или ниже есть скрытые пункты.
-- Подгонка диалогов под перевод и длинные подписи сохраняет выравнивание: элементы, которые начинались в одной колонке (в том числе кнопки), остаются в одной колонке после смены ширины диалога, сдвигов и изменения ширины элементов.
-- Перенос папки на том же диске поверх существующей папки сливает их, как копирование; пустая папка назначения заменяется.
-- Если нет доступа к файлу при открытии в просмотрщике или редакторе, показывается «Нет доступа к файлу» с текстом от системы вместо английского сообщения библиотеки.
-- Пояснение к выбранной команде в палитре (**Shift+F9**) занимает две строки, а не одну: длинные пояснения больше не обрезаются.
-
-### Исправлено
-
-- В меню сортировки (`Ctrl+F12`) и в меню режимов колонок работают `Home`, `End`, `PgUp` и `PgDn`; все три меню-списка пользуются одной логикой перемещения курсора.
-- Поиск файлов по содержимому (Alt+F7) определяет кодировку, как просмотр: находит текст в файлах UTF-16, UTF-8 с BOM, Windows-1251 и CP866, а не только в UTF-8.
-- Текст, который плагин выводит в строку состояния, появляется сразу, а не после следующего нажатия клавиши (например, статистика git при входе в каталог, пока курсор стоит на «..»).
-- Плагин с новыми функциями не роняет старую версию программы: перед вызовом новой функции он проверяет версию интерфейса хоста.
-- Список плагинов не прокручивается к последней строке после включения или отключения плагина пробелом (и после перемещения плагина): строки остаются на своих местах.
-- Кнопка выбора цвета в окне настроек плагина больше не закрывает это окно: после выбора цвета окно возвращается с уже введёнными значениями.
-- Слишком большой размер в поиске (например, `1e20`) не запускает обход: значение отвергается, как и прочий нечитаемый размер.
-- Поиск файлов принимает дату с днём недели в коротком формате (например, «Пн 27.10.26»): день недели не мешает отбору, календарь открывается на этой дате.
-- Щелчок по полосе прокрутки выше текущей позиции в просмотре выключает режим хвоста.
-- Щелчок или протягивание по строке выше конца файла в просмотре выключает режим хвоста.
-- Слияние папки больше не удаляет папку назначения, если имя файла совпало с именем каталога. Неудачная замена оставляет прежний файл.
-- Обрыв скачивания или отправки по SFTP не подменяет готовый файл недописанным.
-- Сбой записи в zip не уничтожает записи, которые уже лежали в архиве.
-- Неудачный откат обновления не оставляет программу без файла: предыдущая копия возвращается на место, а если это не удалось, новый файл остаётся под прежним именем.
-- Скачивание в сетевой папке и замена ссылки рабочего пространства снимают старое только после того, как новое встало на место.
-- В консоли **Ctrl+O** (cmd) после **Enter** на пустом приглашении клавиши вверх и вниз больше не подставляют в строку само приглашение (`C:\Путь>C:\Путь>`): строка приглашения не принимается за набранную команду.
-- Относительный путь назначения при копировании и переносе (**F5**, **F6**) считается от папки панели, а не от каталога, из которого запущена программа.
-- Содержимое папки, в имени которой есть пробел в конце (например, `Инженерный практикум `), не показывалось, а переименование такой папки заканчивалось ошибкой: теперь папка открывается и переименовывается.
-- При ошибке чтения файла при копировании (например, файл облачного диска, который не скачан) показывается причина из системы, а не «Copy incomplete».
-- Уведомление остаётся видимым над изображением в просмотре Markdown и в быстром просмотре (**Ctrl+Q**): изображение не закрывает его.
-- Список избранных папок (**Ctrl+D**) больше не пропадает после перезапуска: файл записывается целиком или не записывается совсем, при повреждении список берётся из резервной копии (`folderhotlist.json.bak`), а файл, который в этот момент нельзя прочитать, не перезаписывается пустым списком. Изменения, которые вносит другая копия программы с теми же настройками, подхватываются перед очередной правкой списка, а не затираются.
-- Длинные подсказки о клавишах и уведомления с иероглифами больше не обрезаются по краю окна: подсказка переносится на вторую строку, ширина считается в ячейках.
-
-## v0.4.4 – 2026-10-27
-
-### Новое
-
-- Флажок «Точный размер в байтах» («Настройки → Интерфейс...») показывает размеры в нижней рамке панели (итог папки или выделенного, размер элемента под курсором) и в строке статуса точным числом байт с разделителем групп разрядов, принятым в системе (`1 234 567`), а не как `1.2 M`. Если число не помещается, остаётся короткая запись. Колонка «Размер» в списке файлов не меняется. По умолчанию выключен.
-- Под списком палитры команд (**Shift+F9**) у каждого пункта меню показано пояснение, что он делает, на английском, русском, немецком и китайском; вместо него больше не выводятся только названия соседних пунктов. Пункты плагинов показывают пояснение, если плагин его задал.
-- Пункт «Настройки → Сохранить настройки»: записывает настройки, панели и вкладки в файл настроек сразу, а не только при закрытии программы. Уведомление подтверждает запись или называет причину ошибки.
-- **Alt+Shift+Enter** и **Ctrl+Alt+Enter** при пустой командной строке запускают консольную программу под курсором (консольный `.exe`, `.bat`, `.cmd`, `.ps1`): Alt+Shift+Enter – в фоновой консоли, которая на короткое время показывает запуск, Ctrl+Alt+Enter – в терминале вкладки панелей, независимо от флажка «Программы из панелей – во вкладке-терминале». Каталог и остальные файлы ничего не запускают.
-- Подсказки о клавишах: в новом состоянии программа один раз за всё время показывает короткое уведомление с полезными клавишами – после поиска, в архиве, во временной панели, в рабочем пространстве, в папке SFTP, при наборе команды и после запуска консольной программы по `Enter`. Клавиши берутся из текущей раскладки; показанные подсказки запоминаются между запусками. В «Параметры → Интерфейс» есть флажок «Показывать подсказки о клавишах» и кнопка «Сбросить подсказки».
-- Палитра команд (**Shift+F9**) показывает и команды без пункта меню (`Ctrl+Enter`, `Alt+Shift+Enter` и другие клавиши панелей) в категории «Клавиши» вместе с их сочетаниями; выбранная команда выполняется как по своей клавише. Поиск в палитре идёт и по колонке сочетаний: «F9» находит команды с F9 в сочетании, «shift» – все сочетания с Shift.
-- В строке F-клавиш с зажатыми **Alt+Shift** появилась подсказка о запуске в фоне, а с **Ctrl+Alt** – о запуске в новой вкладке.
-- Флажок «Программы из панелей – во вкладке-терминале» («Команды → Фоновая консоль...»): консольная программа, запущенная по `Enter` на файле в панели, открывается во вкладке терминала, а не в консоли под панелями. Остальные вкладки остаются доступными, пока программа работает. Первый запуск из вкладки панелей открывает рядом вкладку терминала; следующие программы набираются в оболочке этой вкладки (в папке файла), пока она свободна и в строке ввода ничего не набрано, иначе открывается новая вкладка. У оболочки вкладки свой профиль окружения (`F6` в списке оболочек) и своя история оболочки.
-- Текстовая версия (`mtn2-tui`): `Ctrl+Shift+M` (или «Настройки → Мышь терминала: вкл/выкл») выключает мышь, и текст выделяет и копирует сам терминал; та же клавиша включает мышь обратно. При первом выделении мышью в консоли, терминале или редакторе показывается подсказка про `Shift`.
-- Текстовая версия: копирование теперь попадает и в буфер tmux (а через него в буфер внешнего терминала), и в системный буфер обмена рабочего стола (`wl-copy` или `xclip`), если они есть; терминалам без поддержки OSC 52 (например, PuTTY) это помогает только внутри `tmux` или графического сеанса, в остальных случаях выделяйте текст с `Shift` или выключите мышь программы клавишей `Ctrl+Shift+M`.
-- Справка: раздел «Профили окружения» и описание новой клавиши в разделах о работе с текстом и о раскладке клавиш.
-- Заставка: через заданное время простоя (по умолчанию 5 минут) окно становится чёрным, и по нему плывут акулы разных видов, нарисованные серыми буквами; они охотятся на стаи рыб, стаи разбегаются, а съеденные рыбы потом приплывают новой стаей. Время задаётся в «Настройки → Интерфейс...» (список «Заставка», «Выкл.» отключает запуск по простою). Нажатие клавиши или действие мышью останавливает их и больше ничего не делает. Запустить заставку сразу можно щелчком по последней ячейке справа в строке меню.
-- Профили окружения: «Настройки → Профили окружения...» открывает файл `environment.json` – именованные списки `ИМЯ=значение`, которые применяются к окружению каждой новой оболочки (вкладок-терминалов и консоли под панелями). Пустое значение убирает переменную, `%ИМЯ%` (в Linux ещё `$ИМЯ` и `${ИМЯ}`) подставляет текущее значение. Профиль `default` действует на все оболочки; остальные применяются сами (`auto`), если не ограничены списком `shells`, или только там, где их назначили; `off` выключает профиль совсем. В списке оболочек (`Ctrl+Shift+N`) `F6` открывает выбор профиля окружения для выбранной оболочки или её копии: такая оболочка запускается с `default` и выбранным профилем. Файл входит в экспорт и импорт настроек.
-- Командная строка: `MTN2 путь1 путь2 ...` (и `mtn2-tui`, `mtn2-sdl`) открывает каждую папку или файл новой вкладкой; `--view файл` открывает файл во встроенном просмотре, `--edit файл` (или `-e файл`) – в редакторе. Если окно уже открыто, пути и режимы передаются ему.
-- `--update [stable|nightly]` в `MTN2`, `mtn2-tui` и `mtn2-sdl` скачивает и ставит последнюю версию без окна, показывая ход в консоли; названный канал запоминается и действует и для проверки обновлений в программе. В установке из пакета (deb, rpm) команда только сообщает, есть ли новее.
-- Linux: окно `mtn2-sdl` при запуске записывает ярлык меню и значок в `~/.local/share`, поэтому на панели задач у него своё имя и значок. `--install-desktop` и `--uninstall-desktop` (в `mtn2-sdl` и `mtn2-tui`) делают это по запросу, `install.sh` вызывает их сам; запись ярлыка отключается переменной `MTN2_NO_DESKTOP_ENTRY=1`.
-- В палитре команд (`Shift+F9`) `Ctrl+K` на выбранной команде открывает список клавиш на этой команде, чтобы сразу изменить её клавишу; после закрытия списка палитра открывается снова с тем же запросом и той же командой, а новая клавиша уже видна в её строке. Если у команды нет своей клавиши, показывается уведомление.
-- Пункт «Файлы → Сохранить список в файл...» записывает выделенные элементы (без выделения – элемент под курсором) в текстовый файл. В диалоге выбираются формат (по расширению, обычный текст, таблица Markdown или CSV), строка заголовков и поля: имя, полный путь, расширение, размер, даты изменения, создания и доступа, тип, атрибуты. Выбор запоминается между запусками.
-- Когда фоновая задача (копирование, перемещение, удаление, упаковка, распаковка) завершается, показывается уведомление; если задача завершилась ошибкой, уведомление показывается всегда, даже при выключенных уведомлениях.
-- В диалогах истории папок, файлов и команд (`Alt+F12`, `Alt+F11`, `Alt+F8`) `Del` убирает выбранную запись, а `Ctrl+Del` очищает всю историю; под списком показана строка с подсказкой по клавишам.
-- В палитре команд под списком показана строка о выбранном пункте: пояснение, если оно есть (например, для синхронизации папки консоли и выбора оболочки), иначе меню пункта и соседние пункты.
-- Файл, запущенный из панели клавишей `Enter` в консоли, попадает в историю команд.
-- Если строка состояния скрыта, прогресс индексации большого файла в просмотре показывается уведомлением «Индексация файла: N%» (даже при выключенных уведомлениях); оно исчезает, когда индекс готов.
-- `F1` в палитре команд открывает справку по выбранному пункту: раздел о файловых операциях, истории, консоли, настройках и так далее.
-- Пояснения в палитре команд появились у ещё нескольких пунктов меню (атрибуты, ссылки, контрольные суммы, групповое переименование, консоль).
-- Правый щелчок по свободному месту строки вкладок открывает главное меню (`F9`) и при включённом заголовке окна, и в `mtn2-tui`.
-
-### Изменено
-
-- В строке под рамкой панели (имя, размер и дата элемента под курсором) размер и дата разделены чертой `│`, если в строке хватает места для имени; дата стоит у правого края.
-- Подсказка при первом выделении мышью в текстовой версии (`mtn2-tui`) называет и второй способ, если текст не попал в буфер обмена терминала: `Shift` при выделении или `Ctrl+Shift+M`, который выключает мышь программы. Описание в `docs/LINUX.md` уточнено: у терминалов без OSC 52 (PuTTY) запасного пути с удалённой стороны нет.
-- Показ элемента под курсором на соседней панели переехал с **Ctrl+Alt+Enter** на **Alt+Shift+F3** во всех панелях (во временной панели эта клавиша уже работала так). Ctrl+Alt+Enter теперь всегда запускает в новой вкладке терминала, а не зависит от того, в фокусе ли командная строка.
-- Окно «Шрифт / экран» разделено на два. В нём остались шрифт, кегль, масштаб, чёткость текста, вид и мигание курсора, тени, значки в панелях и вид отмеченных файлов. Язык, уведомления, строки заголовка, меню, функциональных клавиш и статуса, меню по `Alt`, перетаскивание файлов, выделение папок, упаковка в ту же панель, курсор в неактивной панели и автоотступ в редакторе перенесены в новое окно «Настройки → Интерфейс...».
-- Проверка обновлений в установке из пакета (deb, rpm) сравнивает версию с последним выпуском и сообщает, есть ли новее, вместо общей подсказки про менеджер пакетов.
-
-### Исправлено
-
-- Вывод `.bat`, `.cmd` и консольного `.exe`, запущенных в консоли с PowerShell (Enter на файле в панели, Alt+Shift+Enter), больше не превращается в нечитаемые символы, если программа сама переключает кодовую страницу (`chcp 65001`).
-- Диалог расширяется под переведённую подпись флажка или переключателя с запасом в одну клетку до рамки: длинная подпись больше не упирается в правую границу («Фоновая консоль»). Список, поля ввода и разделители, доходившие до правого края, растягиваются вместе с диалогом.
-- Программа, запущенная клавишей `Enter` на файле в панели, попадает в историю команд и тогда, когда она открывается в новой вкладке-терминале (консоль занята или в ней другая оболочка).
-- Консоль: полноэкранные программы вроде `htop` рисуются без разъехавшихся колонок и лишних букв `B` в тексте. Поддержаны выбор набора символов (`ESC ( B`), переходы по столбцу и строке, вставка и удаление символов и строк, область прокрутки и повтор символа.
-- Консоль: строка вывода ровно во всю ширину окна, за которой идёт перевод строки (так выводят отчёты Codeception и другие программы на Symfony Console), больше не даёт лишней пустой строки между строками вывода.
-- `F1` в диалоге открывает справку и прокручивает её к описанию именно этого диалога или пункта меню (параметры, внешний просмотр/правка, плагины, атрибуты, контрольные суммы, групповое переименование, история файлов, синхронизация и другие), а не к началу общей страницы. Фильтр панели и «Живой фильтр» ведут в раздел о поиске, «Список заданий» – в раздел о фоновых задачах; диалоги запроса прав администратора, отключения диска и подсказки при запуске показывают свой раздел, а не раздел об обновлениях.
-- В окне копирования и переноса (`F5`, `F6`), если папка назначения совпадает с папкой, где лежат элементы (например, в обеих панелях открыта одна папка), показывается уведомление-предупреждение, а «Копировать» и «Перенести» не запускают операцию, пока назначение не изменено.
-- Строка `wsl` в командной строке: `wsl`, `wsl -d Debian` и подобные, открывающие оболочку, по-прежнему запускаются во вкладке терминала (в том числе с `-u`, `--cd`), а команды и параметры управления (`wsl --shutdown`, `wsl -l -v`, `wsl ls`) выполняются в консоли, как обычные команды, и их вывод виден. Раньше такая строка открывала вкладку с сообщением «Shell profile unavailable: ...».
-- Linux: программа, запущенная по имени команды (`mtn2` из `PATH`, через символическую ссылку пакета), искала свои файлы не рядом с собой, а относительно текущей папки. Из-за этого в окне «О программе» и в сообщении об обновлении версия была пустой, самообновление не отключалось в установке из пакета, кнопка «Перезапустить» ничего не делала, а языковые файлы и подключаемые модули не находились. Теперь путь к программе берётся у системы. В окне «О программе» на Linux указана своя платформа вместо «Win64 | ConPty».
-- `Shift`-перемещения в панели (стрелки, `Home`, `End`, `PageUp`, `PageDown`) выбирают «отметить» или «снять отметку» один раз, по строке, с которой началось движение, и сохраняют это, пока `Shift` не отпущен или курсор не сдвинут иначе. Раньше при движении туда и обратно отметка переключалась на каждом шаге. В `mtn2-tui` и `mtn2-sdl`, где отпускание клавиш не передаётся, движение считается новым, когда курсор стоит не там, где остановилось предыдущее.
-- Копирование папки на уже существующую папку в режиме «спрашивать» больше не задаёт вопрос о самой папке: слияние идёт без вопроса, а диалог «Файл уже существует» (перезаписать, пропустить, переименовать, дописать) показывается только для файлов, которые действительно есть в целевой папке.
-- Команда из меню пользователя (`F2`) больше не склеивается с текстом, набранным в консоли: при смене папки панели текст на строке ввода убирается до перехода в папку, а не после него.
-- Вход в zip с десятками тысяч записей и просмотр его папок стали быстрыми: список записей больше не пересоздавался для каждой записи.
-- История команд консоли (`Alt+F8`, стрелка вверх): при `Enter` на пустом приглашении в историю больше не попадают строки вывода предыдущей программы (например, куски сообщений или строки с `#`).
-- Размеры папок, подсчитанные по `F3`, не сбрасываются в `<DIR>` при обновлении списка (например, при изменениях на диске).
-- Quick View и просмотр: пока файл загружается или не открывается (нет доступа), фон окна берётся из темы, а не синий.
-
-## v0.4.3 – 2026-10-24
-
-### Новое
-
-- Меню F9, меню пользователя и диалоги, которые не помещаются в окно, прокручиваются: на правой границе видна полоса с ▲ ▼. В меню выбранный пункт всегда в поле зрения, колесо мыши двигает выбор; в диалоге нужный элемент показывается при переходе к нему клавишей Tab, а скрытые элементы не рисуются поверх других.
-- Палитра команд (`Shift+F9` или пункт «Найти команду...» в меню ≡): поиск по пунктам меню. Запрос виден в поле над списком; в слове запроса допустимы `?` (один символ) и `*` (любая цепочка символов). Ищутся слова из названия пункта, названия категории и синонимов: встроенных английских, синонимов выбранного языка и своих слов из файла `aliases.json` в папке настроек (например, «shell» или «оболочка» находят «Фоновая консоль...»). В списке только пункты, доступные сейчас; выполненные недавно идут первыми. Клавиша меняется в раскладке (команда `CommandPalette`).
-- В истории папок (`Alt+F12`) набор текста фильтрует список по пути, как в истории файлов (`Alt+F11`); `Backspace` стирает последний символ фильтра, запрос виден в заголовке окна.
-- Флажок «Курсор-подчёркивание» в окне «Шрифт / экран»: текстовый курсор рисуется полосой вдоль нижнего края ячейки, как в Far, а не тонкой вертикальной чертой. По умолчанию выключен.
-- В темах появилась роль editor.lineBg: цвет фона строки, на которой стоит курсор редактора. Если роль не задана, строка выглядит как остальной текст. Роль есть в редакторе тем.
-- В темах появились роли panel.driveCurFg и panel.driveCurBg: цвета буквы текущего диска внизу панели. Если они не заданы, берутся цвета активной вкладки панели (panel.tabActiveFg, panel.tabActiveBg). Роли есть в редакторе тем.
-- Файлы внутри архивов (7z, ZIP) можно править: `F4` открывает запись в редакторе, `F2` сохраняет её обратно в архив. Запись в архиве внутри архива по-прежнему только для чтения.
-- В архив с любым расширением (например, переименованный `.7z`) можно добавлять файлы, если 7-Zip умеет обновлять этот формат.
-- В репозитории появились примеры `keymap.json` для привычек Far и Midnight Commander (`docs/keymap-presets`): Far – Esc в панелях очищает командную строку и не открывает консоль; MC – Alt+. показывает скрытые файлы, Ctrl+\ открывает список папок, Alt+Enter вставляет имя файла в командную строку, Alt+A и Alt+Shift+A вставляют путь папки активной и второй панели. Файл копируется в папку настроек как `keymap.json`; описание – в справке «Настройка клавиш».
-- В раскладке клавиш появились действия «Путь активной панели в командную строку», «Путь второй панели в командную строку» и «Очистить командную строку»; по умолчанию они без клавиш и назначаются в `keymap.json` или окне настройки клавиш.
-- В окне «Шрифт и экран» появилось поле «Запасной шрифт»: им рисуются символы, которых нет в основном шрифте (иероглифы, значки). Пустое поле и шрифт, которого нет в системе, оставляют подбор за Windows.
-- Linux: `F4` на диске в окне выбора диска (Alt+F1 / Alt+F2) показывает точку монтирования, устройство, файловую систему, размер, свободное место и параметры монтирования.
-- Linux: окно `mtn2-sdl`, запущенное с путём, когда другое окно уже открыто, передаёт путь ему (новая вкладка, окно выходит на передний план) и завершается; ключ `--new-window` открывает отдельное окно.
-- В `samples/plugins` добавлен шаблон WASM-плагина на Rust (`mtn.template.rs`, без WASI), а в `docs/PLUGIN_DEVELOPMENT.md` – раздел «Плагины сообщества» со списком сторонних плагинов.
-- Linux: файлы можно перетаскивать мышью из одной панели в другую (`mtn2-tui` и `mtn2-sdl`): при отпускании открывается диалог копирования, с `Shift` – переноса.
-- Linux: быстрый просмотр показывает картинки из архивов и с серверов (SFTP и других), а не только локальные файлы.
-- Linux: в окне `mtn2-sdl` панели показывают значки файлов и папок из темы значков рабочего стола; колонка включается флажком «Show panel icons» в настройках шрифта и экрана.
-- Linux: в окне `mtn2-sdl` плагины открывают вкладки с картинкой (кадры, таймер, клавиши, мышь и размер области), как в Windows; нативные окна плагинов пока не поддерживаются.
-- Linux: в окне `mtn2-sdl` работает ввод через IME: система показывает набор и окно кандидатов у нижней строки окна.
-- Linux: в диалоге прав (`Ctrl+A`) можно включать и снимать флаги файловой системы `i`, `a` и `d` (как `chattr`); отмеченные флаги файла видны при открытии диалога.
-- Linux: релиз содержит пакет `.rpm` (Fedora, RHEL и производные) рядом с `tar.gz` и `.deb`.
-- Linux: окно `mtn2-sdl` запоминает размер шрифта, выбранный `Ctrl` и колесом или `Ctrl+Плюс` / `Ctrl+Минус`; параметр `--size` главнее сохранённого.
-- Окно упаковки (Shift+F1): имя архива по умолчанию совпадает с именем текущей папки, а тип архива – `zip` или `7z` – выбирается в самом окне. Для `7z` можно выбрать степень сжатия (от «Без сжатия» до «Ультра»), задать пароль и зашифровать имена файлов; для `zip` эти поля недоступны. В зашифрованный архив `7z` можно дописывать файлы и удалять их из него: новые файлы шифруются тем же паролем, а скрытые имена остаются скрытыми.
-- В окне выбора диска (Alt+F1 / Alt+F2) Del отключает съёмный или оптический диск и подключённый сетевой диск (носитель извлекается) после подтверждения. Диск с открытыми файлами остаётся подключённым, причина показывается в уведомлении; панели, стоявшие на этом диске, переходят в домашнюю папку.
-
-### Изменено
-
-- Linux: список дисков (`Alt+F1`/`Alt+F2`) не содержит служебных монтирований: каталогов `/run`, `/etc`, образов snap, файловых систем контейнеров, монтирований отдельных файлов и повторных монтирований того же тома. В списке сразу видна точка монтирования каждого тома.
-- Linux: в `mtn2-tui` окно «Шрифт / экран» не показывает шрифт, размер, масштаб, межстрочный интервал, контраст и размер ячейки: терминал рисует текст сам. Остальные настройки окна работают как раньше.
-- Linux: сообщение «Проверить обновления» в программе, установленной из пакета, показывает текущую версию, а тексты сообщения переведены.
-- Просмотр (`F3`) очень большого текстового файла показывает начало сразу, а индекс строк достраивается в фоне; в строке состояния виден ход индексации. Пока индекс не готов, `End` и полоса прокрутки охватывают только уже проиндексированную часть.
-- Буква текущего диска внизу панели рисуется цветами активной вкладки панели из темы, а не жёлтым на синем; их можно изменить в редакторе тем.
-- В окне «Шрифт / экран» появился флажок «Упаковывать в ту же панель (Shift+F1)»: архив создаётся в папке активной панели, а не второй. По умолчанию выключен.
-- `Shift+Влево/Вправо` и другие `Shift`-перемещения в панели отмечают весь пройденный участок: состояние берётся противоположным отметке строки, с которой началось движение, поэтому движение туда и обратно отмечает все файлы между двумя остановками.
-- `Серый *` (инверсия отметки) обходит папки, как `Серый +` и `Серый -`; папки отмечаются, если включён флажок «Отмечать папки».
-- Пока открыт редактор или просмотрщик, в верхнем меню доступны только пункты «Правки»; остальные затемнены.
-- Фон за сеткой символов и пустые полосы справа и снизу окна закрашиваются цветом темы, а не синим.
-- Linux: в пакетах `.deb` и `.rpm` самообновление отключено (файл `no-self-update` рядом с программой): проверка при запуске не выходит в сеть, а «Проверить обновления» напоминает обновить пакет менеджером пакетов.
-- Linux: пакеты `.deb` и `.rpm` рекомендуют `libcurl` для плагина «Сетевые подключения».
-- Linux: в диалоге свойств «время создания» берётся из времени рождения файла (`statx`), а если файловая система его не хранит – из времени изменения inode.
-- При запуске проверяется, доступны ли папки вкладок панелей. Недоступная папка заменяется ближайшей существующей родительской, а если такой нет – корнем доступного диска.
-
-### Исправлено
-
-- Упаковка (`Shift+F1`) в существующий архив 7z, переименованный в любое расширение: файлы добавляются в этот архив, а имя больше не получает приписку `.zip`. Архив узнаётся по сигнатуре 7z в начале файла.
-- Консоль: `Home` и `End` на приглашении переходят в начало и конец строки ввода; когда экран прокручен назад, они листают вывод, как раньше.
-- Консоль: `Tab` дополняет слово в оболочке при запуске в терминале (`mtn2-tui`).
-- Linux: `mtn2-tui` распознаёт `Shift+F3`…`Shift+F10`, которые простые терминалы (в том числе PuTTY) передают кодами `F13`…`F20`.
-- Консоль: смена папки при переходе панелей больше не приклеивается к тексту, оставшемуся в строке ввода (раньше команда `cd /d` склеивалась с ним и выполнялась с ошибкой).
-- Диалог, открытый из меню панелей поверх редактора (например, «Обновления»), принимает щелчки мыши: раньше они доставались редактору.
-- В полноэкранном режиме (`F11`) кнопки «Свернуть» и «Развернуть» выходят из него и выполняют своё действие.
-- Консоль: после вставки текста и нажатия `Home` стрелки влево и вправо продолжают работать.
-- Окно расчёта размера папки переведено на выбранный язык.
-- Linux: `mtn2-tui` возвращает терминал в обычный режим, даже если при выходе из программы возникла ошибка (раньше терминал мог остаться в режиме без эха и без построчного ввода).
-- В режимах колонок «Типы» и «Настраиваемый» имя файла в архиве больше не заканчивается точкой перед колонкой расширения.
-
-## v0.4.2 – 2026-10-20
-
-### Новое
-
-- Пока файл открывается на просмотр или правку (например, большой файл на сервере плагина «Сетевые подключения»), Esc отменяет загрузку и закрывает вкладку; в окне подсказка «Esc – отмена».
-- В полях ввода диалогов текст выделяется мышью: нажать и протянуть, у края поля текст прокручивается.
-- В описании диалога (JSON) параметр `"autoLayout": false` отключает автоматический подбор ширины и расстановку контролов.
-- Плагин «Сетевые подключения» (`mtn.net`): серверы **FTP**, **FTPS**, **SFTP** (по паролю, по ключу или через агент, с проверкой отпечатка ключа сервера), **SCP**, **WebDAV** и **S3** открываются как папки панелей. Работают просмотр и правка по F3 / F4, копирование и перемещение по F5 / F6 в обе стороны и между двумя серверами (в том числе целых папок), переименование, удаление, создание папки, ход копирования в окне задания и отмена передачи. Нужна библиотека `libcurl` в `plugins\mtn.net`.
-- В окне выбора диска (Alt+F1 / Alt+F2) и в полосе дисков появился пункт «Сетевые подключения». В списке подключений F7 добавляет подключение, F4 изменяет, F8 удаляет, Enter открывает; то же список открывают Ctrl+Shift+B и меню «Команды». Подключение хранит протокол, сервер, порт, способ входа, начальную папку, прокси, кодировку имён и пароль (при желании – в зашифрованном для пользователя Windows виде).
-- В настройках плагина «Сетевые подключения» есть кнопка импорта подключений из встроенного `sftp://`. Пока панель показывает список подключений, строка F-клавиш меняется: остаются Правка, Новое и Удалить.
-- Адреса `net://Название/папка`, `ftp://`, `ftps://`, `nsftp://`, `scp://`, `dav://`, `davs://`, `s3://` можно набрать целиком; «Команды – Открыть сетевой адрес...» открывает адрес в активной панели, «Команды – Права на сервере...» меняет права выделенных файлов по FTP и SFTP.
-- Плагины могут добавлять пункты в окно выбора диска и в полосу дисков панелей. Такой пункт идёт после встроенных «Системные папки», «Корзина», «Временная панель», «Рабочее пространство», получает цифру 5–9 и открывает свой адрес по Enter.
-- Плагины получили схему VFS с ходом и отменой передач: стандартное окно задания показывает проценты и текущий файл, отмена прерывает передачу, сообщение об ошибке приходит от плагина, а длинные папки читаются частями.
-- Подсветка синтаксиса в просмотрщике (`F3`) и редакторе (`F4`): системный плагин `mtn.highlight` раскрашивает около 70 языков (C, C++, C#, Java, Go, Rust, Python, Ruby, PHP, Lua, JavaScript, HTML, CSS, XML, JSON, YAML, SQL, Markdown, Pascal, сценарии оболочки и другие), в том числе многострочные комментарии и строки; при правке перекрашиваются строки ниже изменённой. Язык выбирается по расширению или по имени файла (`Makefile`). Плагин собирается из исходников на Rust (нужен `cargo`), выключается в «Параметры – Плагины...».
-- Плагины на WASM могут раскрашивать текст с учётом соседних строк (`register_highlighter_state`) и просить больше памяти (`memoryMib` в `plugin.json`).
-- Щелчок мышью по секции строки статуса открывает связанный диалог: сторона панели и свободное место – список дисков, путь – историю папок, режим колонок – меню режимов, элемент или выделение – свойства. В просмотре и редакторе: позиция открывает «Перейти к строке», кодировка – выбор кодировки, результат поиска – «Найти».
-- Групповое переименование выделенных файлов и папок: `Ctrl+Alt+N` или «Файлы → Групповое переименование...». Маски имени и расширения понимают `[N]` (старое имя), `[E]` (старое расширение) и `[C]` (счётчик с заданными началом, шагом и числом цифр); есть замена текста (с учётом регистра или без), регистр букв (строчные, прописные, первая буква, каждое слово) и список в колонках «старое имя / новое имя / примечание», который обновляется при вводе; в новом имени цветом выделено то, что изменилось. Диалог занимает ширину окна без пяти колонок с каждой стороны. Пустые, недопустимые, повторяющиеся и уже занятые имена отмечены знаком `!`; пока такие есть, переименование не выполняется. Работа идёт фоновым заданием, как перемещение.
-- Редактор: команды над строками. `Ctrl+Alt+S` и `Ctrl+Alt+Shift+S` сортируют строки по возрастанию и по убыванию (без учёта регистра), `Ctrl+Alt+U` убирает повторяющиеся строки, `Ctrl+Alt+F` форматирует текст по заданной ширине (абзацы разделяются пустыми строками), `Alt+Вправо` и `Alt+Влево` сдвигают строки на четыре колонки. Команды действуют на выделенные строки, без выделения – на весь файл (сдвиг – на строку с курсором); каждая отменяется одним `Ctrl+Z`. Команды есть и в меню «Правка» (пункты всегда на месте, но доступны, только когда открыт редактор `F4`).
-- В настройках («Шрифт / экран») добавлен флажок «Открывать меню по одиночному Alt» (включён по умолчанию): если его снять, меню верхней строки открывается только по `F9`. Выделение блока `Alt` с мышью больше не открывает меню при отпускании `Alt`.
-- Редактор и просмотр: вертикальные (прямоугольные) блоки. `Alt+Shift` со стрелками (а также `Home`, `End`, `PgUp`, `PgDn`) или `Alt` с мышью выделяют одни и те же столбцы нескольких строк; блок можно растянуть за конец короткой строки. `Del`, `Backspace` и ввод текста действуют на каждую строку блока, `Ctrl+X` и `Ctrl+C` берут блок, а `Ctrl+V` вставляет скопированный блок снова блоком (короткие строки дополняются пробелами). `Shift` со стрелками превращает блок в обычное выделение, в строке статуса вместо `Sel` показано `Blk`. В режимах hex, Markdown и с переносом строк блок недоступен.
-- Из архивов 7z можно удалять файлы и папки (`F8`); раньше удаление заканчивалось сообщением «Not supported by plugin».
-- Редактор: Enter переносит на новую строку отступ строки, которую разрезали (пробелы и табуляции слева от курсора). Режим включается и выключается по `Ctrl+Alt+I`, в меню «Правка» и флажком «Автоотступ в редакторе по Enter» в «Шрифт / экран»; выбор сохраняется между запусками.
-- Редактор и просмотр: закладки. `Ctrl+F2` ставит или снимает закладку на строке с курсором (строка отмечена знаком ■ в рамке слева), `Ctrl+Shift+F2` и `Ctrl+Alt+F2` переходят к следующей и предыдущей закладке по кругу; закладки сдвигаются вместе со строками. Список закладок (номер строки и текст) открывается по `Ctrl+Alt+B`, Enter переходит к выбранной. Команды есть и в меню «Правка», а `Ctrl+F2`, `Ctrl+Shift+F2` и `Ctrl+Alt+F2` подписаны в строке F-клавиш.
-- Консоль и терминал: поиск по выводу. `Ctrl+Shift+F` спрашивает текст, совпадения подсвечены во всей истории, текущее выделено; `F3` и `Shift+F3` переходят к следующему и предыдущему совпадению, пустая строка снимает поиск. `F3`, `Shift+F3` и `Ctrl+Shift+F` подписаны в строке F-клавиш.
-- В консоли с оболочкой cmd клавиши `↑` и `↓` листают общую историю команд (как `Alt+F8`), а `↓` после самой новой команды возвращает набранную строку.
-- В Linux папка консоли следует за оболочкой: переход `cd` в консоли переносит панель в ту же папку, а параметр «Всегда возвращаться в панели по завершении команды» работает.
-- Выбор диска (`Alt+F1` / `Alt+F2`): после дисков в списке идут сетевые ресурсы `\\сервер\ресурс`, в которых открыты панели или которые открывались недавно; `F4` на диске открывает диалог атрибутов его корневой папки: сверху том (путь с GUID) и устройство, как в Far.
-- Диалог атрибутов (`Ctrl+A`): кроме «Только чтение», «Скрытый», «Архивный» и «Системный» появились признаки «Сжатый», «Шифрованный», «Не индексируется», «Разреженный», «Временный» и «Автономный» (для каждого: оставить / включить / выключить), а также кнопка «Свойства Windows».
-
-### Изменено
-
-- Надписи «Чтение...», «Ожидание сервера...», «Загрузка...» в панелях и в окне просмотра переведены на русский, немецкий и китайский.
-- Диалоги плагинов (протокол 2) расширяются под длинные подписи и выравнивают поля по колонкам так же, как встроенные диалоги.
-- Перемещение (F6) между локальной папкой и плагином, а также между двумя разными плагинами (и между плагином и встроенным `sftp://`) теперь выполняется: сначала копирование, потом удаление источника; пары без общего способа копируются через временную папку.
-- Адреса плагинов вида `схема://узел/путь` ведут себя как папки: переход вверх, сравнение адресов и заголовок вкладки работают без собственного кода плагина.
-- Просмотрщик и редактор открывают большие файлы с сервера через временную копию, как большие записи архивов.
-- В окне «Подключения SSH/SFTP» добавлена строка с подсказкой по клавишам.
-- Если SFTP-соединение отклонено, панель показывает причину (ключ хоста, отсутствующий файл ключа и т. п.), а не только «Access denied».
-- В комплект подсветки синтаксиса добавлены тексты лицензий библиотек и описаний синтаксисов (`plugins\mtn.highlight\licenses.md`, раздел в `THIRD-PARTY.md`).
-- Диалог атрибутов в Windows: правые списки признаков той же ширины, что левые. Владелец выбирается из списка учётных записей системы (встроенные группы и локальные пользователи, текущий владелец – в списке), а флажок «Обрабатывать вложенные папки» недоступен, если выбраны одни файлы.
-- Диалог атрибутов (`Ctrl+A`): все списки открываются на «Оставить как есть» и стали шире, а метки уже установленных атрибутов выделены красным; без строк тома и устройства диалог файлов стал на две строки ниже, кнопки «Текущее» и «Исходные» опущены на строку.
-
-### Исправлено
-
-- Плагин «Сетевые подключения» больше не пишет за пределы буфера, если сервер не сообщил размер файла или сообщил меньше настоящего.
-- В корне SFTP-хоста строка `..` ведёт обратно в папку, из которой панель пришла.
-- Имена в списке SFTP показываются без каталога, если клиент sftp печатает записи с полными путями.
-- Команда из меню пользователя, выполненная при ещё не запущенной фоновой консоли (например, `cd` в папку), срабатывает с первого раза: панели переходят в новую папку, а не остаются на прежней до повторного вызова.
-- Команда из меню пользователя больше не присоединяется к тексту, оставшемуся в строке консоли (например, к команде, выбранной из истории стрелками): строка очищается перед запуском.
-- Строка функциональных клавиш показывает все действия на `F1`–`F10` с `Ctrl`, `Alt`, `Shift`: меню (`F9`), историю команд (`Alt+F8`), дерево папок (`Alt+F10`), корзину (`Ctrl+Alt+F8`), режимы колонок (`Ctrl+Shift+F1`–`F7`); `Shift+F4` подписано «New». При `Ctrl+Alt` выводятся подсказки букв: групповое переименование, сравнение, контрольные суммы, синхронизация, восстановление.
-- Сочетания `Ctrl+M` и `Ctrl+J` (в том числе с `Alt`, например `Ctrl+Alt+M`) принимались за `Enter`: терминальный символ перевода строки подменял клавишу. Теперь это обычные сочетания с буквой; `Ctrl+M` снова восстанавливает выделение на панели.
-
-## v0.4.1 – 2026-10-18
-
-### Новое
-
-- Двенадцать новых тем оформления: Norton Commander (синие панели, голубой текст, двойные рамки), Midnight Commander (синие панели, одинарные рамки, бирюзовые меню и панель клавиш), Monochrome (чёрно-белая), Gruvbox Dark, Monokai, Tokyo Night, One Dark, Dark+, светлые Solarized Light и Light, одноцветные Green phosphor и Amber phosphor. Выбираются в «Настройки → Тема...»; тексты во всех них проверены на читаемость, включая отмеченные файлы и курсор.
-- Режим хранения настроек переключается в программе: «Настройки → Расположение настроек...» переносит настройки между папкой пользователя (основной режим) и папкой рядом с `MTN2.exe` (портативный режим). Диалог показывает оба места, сколько файлов переносится и что мешает (нет прав на запись в папку программы, программа в системной папке или на сетевом ресурсе, файлы в месте назначения будут заменены). Переносятся сессия, истории, клавиши, настройки плагинов и собственные темы; заменённые файлы остаются как `*.before-switch`, перезапуск не нужен. При ошибке всё остаётся на прежнем месте.
-- Появился китайский (упрощённый) интерфейс: язык выбирается в диалоге «Шрифт / экран» (简体中文). Переведены меню, диалоги, строка клавиш, строка состояния и справка F1.
-- В программу встроен только английский язык. Остальные языки лежат в папках `resource\<язык>\` рядом с `MTN2.exe` (строки интерфейса и справка F1), поэтому новый язык добавляется копированием папки без пересборки. Версия набора строк в `locale.json` сверяется с программой: пакет старее программы работает с английскими вставками на месте недостающих строк, а новее программы игнорируется. Справка F1 читается из `resource\<язык>\help\`.
-- Плагины переводятся так же: пакет `plugins\<id>\resource\<язык>\` содержит строки и справку плагина, а программа сообщает плагину язык и смену языка.
-- При первом запуске язык интерфейса выбирается по языку Windows, если для него есть перевод; иначе включается английский. Позже язык меняется в настройках отображения.
-- Просмотрщик и редактор распознают файлы в кодировках GBK, GB18030 и Big5; эти кодировки есть в окне «Кодовая страница» и в цикле `F8`.
-- Прогресс копирования, перемещения, удаления и других заданий виден на кнопке программы в панели задач Windows: полоса заполняется по мере выполнения, жёлтая – когда задание ждёт ответа, красная – при ошибке, бегущая – пока задание стоит в очереди. При нескольких заданиях показывается средний процент.
-
-### Изменено
-
-- Темы оформления, кроме классической `NDN`, больше не вшиты в `MTN2.exe`: они лежат файлами `resource\themes\*.theme.json` рядом с программой, как языковые пакеты. Новая тема для всех копий программы добавляется одним файлом в эту папку, правка и пересборка не нужны. Файлы `resource\themes\` только для чтения и заменяются при обновлении, а ваши темы остаются в каталоге настроек (в портативном режиме – в `themes\` рядом с `MTN2.exe`). Ваш файл с именем встроенной или поставляемой темы (например, `Nord.theme.json`) игнорируется: переименуйте его. Без папки `resource\themes\` доступна только `NDN`.
-- **Для разработчиков плагинов.** Версия ABI плагинов теперь 3: в таблицу хоста добавлена функция `Translate` (в WASM – импорт `translate`), а поле манифеста `resources` задаёт номер набора ключей перевода. Страница справки плагина больше не ищется в корне его папки (`help.md`, `help.ru.md`): файл, названный в поле `help`, нужно перенести в `resource\<язык>\help\` (английский вариант – в `resource\en\help\`), иначе кнопка «Справка» в сведениях о плагине пропадёт. Плагины, собранные под ABI 1 и 2, продолжают загружаться; тексты плагина переводятся через хост, см. `docs/PLUGIN_DEVELOPMENT.md`, раздел 2.7.
-
-### Исправлено
-
-- Китайский, японский и корейский текст в просмотрщике и редакторе: курсор, горизонтальная прокрутка, выделение, подсветка синтаксиса, щелчок мышью и перенос строк (`F2`) считают широкий символ двумя ячейками. Раньше курсор и выделение смещались относительно текста, а при переносе строк часть длинной строки не показывалась.
-- Копирование и перемещение символьных ссылок и junction'ов (например, папки-ссылки в другой каталог) создаёт такую же ссылку в целевой папке; раньше ссылка пропускалась без сообщения. Содержимое ссылки копируется только при включённой галочке «Копировать содержимое симв. ссылок». Файлы-заглушки OneDrive копируются как обычные файлы.
-- Если окно было развёрнуто (в том числе после перезапуска, когда программу закрыли в полноэкранном режиме), `F11` при повторном нажатии возвращает обычное окно с заголовком: раньше заголовок не появлялся.
-- Папка, в которой есть файл с недопустимым для Windows символом в имени (перевод строки, кавычка, `<`, `>`, `|`; такие имена встречаются на Google Drive), открывается без ошибки «Invalid characters in path» или «Invalid characters in file name».
-
-## v0.4.0 – 2026-10-12
-
-### Новое
-
-- Для Linux появилась пробная графическая версия `mtn2-sdl`: то же окно с панелями, просмотрщиком, редактором, консолью и плагинами, но в окне SDL2 и со шрифтом из системы (нужны `libSDL2` и `libfreetype`). Работают мышь, колесо, ввод в любой раскладке, буфер обмена рабочего стола; файл, брошенный в окно из файлового менеджера, вставляется как путь. Быстрый просмотр показывает настоящие картинки: BMP всегда, PNG, JPEG и другие форматы при установленной `libSDL2_image`. Размер шрифта меняется `Ctrl` и колесом, `Ctrl+` и `Ctrl-`. Входит в архив `tar.gz` и пакет `.deb` (команда `mtn2-sdl`); `.deb` рекомендует `libsdl2`, `libfreetype6` и `libsdl2-image`.
-- Появилась версия для терминала Linux – `mtn2-tui`: те же панели с вкладками, просмотрщик, редактор, консоль и терминалы, диалоги и меню, но внутри обычного терминала (по SSH, в `tmux`, в контейнере, без графической среды). Мышь, вставка в скобках, буфер обмена через OSC 52, TrueColor с откатом на 256 и 16 цветов; сочетания с `Ctrl+Shift` работают в терминалах с протоколом kitty keyboard. Оболочки берутся из `/etc/shells`, корзина – по спецификации freedesktop.org, колонка «Attr» показывает права доступа. Подробности – в `docs/LINUX.md`.
-- В версии для Linux работают плагины: временная панель, плагины на WASM и архивы через установленную программу 7-Zip (`7zz` или `7z`, пакет `7zip` или `p7zip-full`). Если программы нет, при открытии архива показывается подсказка, что установить.
-- В Linux команда «Атрибуты» показывает права доступа: режим (`0644`), владельца и группу можно изменить, в том числе для вложенных папок. Терминалам без протокола kitty keyboard теперь запрашивается режим `modifyOtherKeys`, поэтому сочетания с `Ctrl+Shift` работают и в xterm-подобных терминалах.
-- В Linux при отказе в доступе операцию можно повторить от администратора через `sudo`: пароль спрашивается в окне программы и нигде не сохраняется.
-- Версия для Linux обновляет себя: «Помощь – Проверить обновления» скачивает пакет `linux-x64.tar.gz`, проверяет его контрольную сумму и после установки перезапускает программу в том же терминале.
-- Версия для Linux поставляется архивом `tar.gz` со скриптом `install.sh` (установка для себя или для всех, удаление) и пакетом `.deb`.
-- В Linux файлы, скопированные или вырезанные на панели, попадают в буфер рабочего стола (нужен `xclip` или `wl-clipboard`): их можно вставить в файловый менеджер, а файлы, скопированные там, вставляются в панель.
-- В версии для Linux быстрый просмотр (`Ctrl+Q`) показывает картинки цветными блоками прямо в терминале: нужна программа `chafa` (пакет `chafa`), работает в любом терминале с TrueColor, в том числе по SSH. Без `chafa` на месте картинки подсказка, какой пакет поставить.
-- Каталог `bin` разделён по платформам: `bin\win64` для Windows и `bin\linux64` для Linux.
-- Ctrl+Tab и Ctrl+Shift+Tab всегда переключают рабочие пространства: из просмотра, редактора и терминала в панели и обратно одной и той же клавишей. Вкладки файловой панели переключаются Alt+PgDn и Alt+PgUp (сочетания меняются в раскладке клавиш).
-- Когда вкладки сессий не помещаются в строку, их названия сокращаются с многоточием (не короче трёх колонок), чтобы остались видны кнопка [+], плашки фоновых задач и кнопки окна. Место под плашки резервируется заранее.
-- В диалоге «Шрифт / экран» появился флажок «Курсор в неактивной панели». Если его снять, строка под курсором в панели без фокуса рисуется как обычная строка, и по подсветке видно, какая панель активна (особенно в схеме FAR). Выделенные файлы остаются выделенными. По умолчанию флажок включён.
-- Появился немецкий интерфейс: язык выбирается в диалоге «Шрифт / экран» (Deutsch). Переведены меню, диалоги, строка клавиш, строка состояния и справка F1. Недостающие строки показываются по-английски.
-- Китайские, японские и корейские иероглифы (в пределах основной таблицы Unicode: иероглифы, хирагана, катакана, хангыль, полноширинные формы) занимают в консоли и панелях две колонки, как в других терминалах: текст не сжимается, колонки не съезжают, длинные имена файлов с иероглифами сокращаются по ширине, а вкладки, заголовки окон и строка состояния считают положение по колонкам. Символы вне основной таблицы (редкие иероглифы, эмодзи) пока рисуются как раньше. В редакторе иероглифы рисуются в две колонки, но положение курсора в строке с ними пока считается по символам.
-- Плагин может показать диалог из файла `plugins\<id>\dialogs\<имя>.json` в своей папке: вместо текста JSON в `ShowDialog` / `show_dialog` достаточно передать имя файла.
-- В раскладке клавиш можно назначать знаки пунктуации: `/`, `,`, `.`, `'`, `=`, а также `Semicolon` и `Minus` (например, Ctrl+/ на действие «Корень диска»). Несколько сочетаний на одно действие перечисляются через `;`.
-
-### Изменено
-
-- Плагин с поверхностью получает Esc и F10 в обработчик клавиш раньше программы: если он их обработал, вкладка не закрывается и полноэкранный режим не меняется (например, Esc закрывает просмотр одним нажатием).
-- Кнопки в нижней строке диалогов выровнены одинаково: ряд по центру (без учёта тени кнопок), зазор между кнопками 2, кнопки одного ряда одной ширины, где подписи позволяют. В русском и других языках расположение теперь совпадает с английским. Диалоги «Заменить» и редактор темы стали чуть шире, чтобы кнопки поместились. В диалогах из одной строки (например, выбор алгоритма контрольной суммы) над строкой и под ней теперь пустая строка. Поля ввода, выпадающие списки и флажки, которыми заканчивается строка диалога, растянуты до правого края.
-- Запуск быстрее: WASM-плагины компилируются один раз и дальше берутся из кэша на диске (например, большой плагин на Go больше не добавляет секунду-другую к каждому старту).
-- Кнопка программы на панели задач с самого запуска подписана «Modern Terminal Navigator 2», а не «Mtn2».
-- Прерывание операции теперь спрашивает подтверждение: Esc, кнопка «Отмена» или щелчок вне окна прогресса, «Отмена» и «Отменить все» в списке заданий, Esc во время поиска. Кнопка «Продолжить» по умолчанию и привязана к Esc, поэтому случайный Esc или Enter ничего не прерывает. После «Прервать» окно прогресса закрывается сразу, а задание заканчивает остановку в фоне: пока оно не остановилось, плашка не показывается, запись остаётся в списке заданий.
-- Enter на кнопке «Отмена» в окне прогресса нажимает её (и открывает вопрос), а не игнорируется.
-- Ссылка создаётся в папке противоположной панели, как при копировании (если там обычная локальная папка; иначе – в папке активной панели), под тем же именем, что и источник. Диалог «Создание ссылки» сразу выбирает тип по источнику и правам: для папки – символьную ссылку на каталог, для файла – на файл; если создавать символьные ссылки нельзя (нет режима разработчика и прав администратора), для папки предлагается junction, а для файла на том же диске – жёсткая ссылка. Если Windows отказывает в праве создать символьную ссылку, в сообщении подсказано, что помогут режим разработчика, запуск от администратора или junction для папок.
-
-### Исправлено
-
-- В Linux папка с файлами, в именах которых есть управляющие символы (такие имена остаются после сбоев файловой системы), читается и показывается целиком: раньше панель оставалась на «Reading...». Такие файлы можно копировать, удалять и переименовывать.
-- В версии для Linux дополнение путей по Tab в командной строке читает абсолютные пути как есть: `/usr/` больше не превращается в `\usr\`, а `C:` и `\` не считаются признаками пути. Дерево папок строится от корня `/`, а `Ctrl+\` и «Корень диска» открывают корень файловой системы.
-- В версии для Linux имена, различающиеся только регистром (`A.zip` и `a.zip`, `Foo` и `foo`), больше не смешиваются в кэше архивов, запоминании паролей архивов и дереве папок.
-- В версии для Linux скрипты `.sh`, `.run` и `.AppImage` отмечаются в панелях как исполняемые.
-- В версии для Linux закрытие терминала (`Ctrl+Shift+N`) иногда завершалось ошибкой доступа к памяти: отложенные вызовы читающего потока обращались к уже освобождённой сессии.
-- В версии для Linux быстрый поиск по `Alt` и список истории `Alt+Left/Right` закрываются сами через 1,5 с после последнего нажатия: терминал не сообщает об отпускании `Alt`.
-- В версии для Linux картинка в быстром просмотре (`Ctrl+Q`) появляется сразу, как только готова, а не после перерисовки окна.
-- Закрытие панели или окна во время копирования, перемещения или удаления иногда портило память: отложенные обновления окна прогресса обращались к уже освобождённому заданию.
-- В версии для Linux язык интерфейса и остальные настройки окна «Шрифт / Отображение» применяются: раньше окно закрывалось без последствий.
-- В Linux `Ctrl+Left` и `Ctrl+Right` переключают диск панели после короткой паузы: терминал не сообщает об отпускании `Ctrl`, поэтому раньше менялась только линейка дисков.
-- В Linux в окне смены диска заполнены размер и точка монтирования, а список открывается без задержки.
-- Окна плагинов (просмотр картинок и видео в собственном окне) переживают F11 и смену масштаба экрана: раньше вкладка после этого оставалась пустой.
-- Выход через «..» из папки, открытой по ссылке (junction или символическая ссылка), ведёт в папку, где лежит сама ссылка, а не в родителя её целевой папки; курсор встаёт на ссылку.
-- Переименование по Shift+F6 и копирование по Shift+F5 в имя, которое уже есть в папке, теперь спрашивают, перезаписать ли существующий файл, а не заменяют его без вопроса.
-- При переключении рабочих пространств и вкладок панели курсор остаётся на том же файле, где был, а не уходит в начало списка.
-- Пробел на кнопке диалога (например, «Отмена» в окне прогресса) мог оставить кнопку нажатой без действия; теперь кнопка срабатывает при отпускании пробела.
-
-## v0.3.16 – 2026-10-07
-
-### Новое
-
-- **Ctrl+Shift+N**: у профилей консоли есть номера для быстрого запуска (1–9, 0, затем A–Z), Ins делает копию профиля с отдельными настройками, Del удаляет копию, Ctrl+Вверх и Ctrl+Вниз меняют порядок (он запоминается в файле `shellprofiles.json` в папке настроек), F4 переключает режим клавиш профиля: «авто» (программа получает все клавиши, пока в консоли работает полноэкранное приложение, например `mc`), «терминал» (все клавиши программе) или «хост» (клавиши окна первые). Консоли передаются F1–F12, Alt- и Ctrl-сочетания; окну остаются F11, Ctrl+O, переключение вкладок и Ctrl+Shift+N (#51).
-- **F11** разворачивает окно на весь экран и возвращает обратно (действие `ToggleFullscreen` в раскладке клавиш; кто использовал F11 в своём `keymap.json`, переназначает его там).
-- Плагин на весь экран заполняет окно целиком: картинка, окно плагина и фон вокруг доходят до краёв, а справа и снизу больше нет синей полосы, которую оставляли неполные ячейки сетки. Плагин может узнать, включён ли полный экран, вызовом `surface_get_fullscreen`.
-- Открытие файла из плагина, которое ещё не закончилось (копирование из архива или с sftp), можно отменить вызовом `vfs_cancel`; `vfs_open` теперь возвращает номер задания.
-- Плагины могут читать файл по частям, без предела в 64 МБ: `vfs_open`, `vfs_size`, `vfs_read_at` и `vfs_close` (право `vfs.read`; в WASM-плагинах те же импорты). Чтение, размер и закрытие вызываются из любого потока, поэтому декодер видео не зависит от главного потока. Файл из архива, с sftp или из схемы другого плагина сначала копируется во временный файл, а при долгом копировании показывается уведомление с ходом; копия удаляется при закрытии, а незакрытые файлы – при выгрузке плагина.
-- Плагины могут читать файловую систему: просматривать папки, проверять существование и читать файлы через любые схемы программы (диски, архивы, sftp, схемы других плагинов). Для этого плагин называет право `vfs.read` в манифесте (поле `permissions`), а пользователь разрешает его в **Параметры → Плагины...** кнопкой «Разрешения...»; разрешение запоминается (`plugin-permissions.json` в папке настроек), состояние видно в строке плагина и в «Сведениях». Образец `mtn.demo.panelkit`: Ctrl+Shift+L показывает размер и первую строку файла под курсором.
-- Плагин может показывать картинки и видео не только во вкладке, но и на весь экран и в панели напротив активной (как Quick View), получать мышь (нажатия, перетаскивание, колесо, двойной щелчок, размер области) и вместо кадров занять область своим окном (проигрыватель, веб-вид). Просмотр картинок из образцов теперь масштабируется колесом, перетаскивается, поворачивается и открывается на весь экран; Ctrl+Shift+V показывает картинку под курсором в соседней панели.
-- Плагины могут читать строки панели и ставить курсор, выбирать и снимать выбор файлов по маске, подписываться на события `panel.dir`, `panel.cursor` и `doc.changed`, задавать выделение и читать строки документа, выполнять работу в фоновом потоке с передачей результата в главный поток и показывать уведомление с ходом выполнения. Образцы: выбор файлов с тем же расширением и подсчёт размера папки в фоне.
-- Плагин может раскрашивать текст файлов нужных расширений в просмотрщике и редакторе (образец – подсветка JSON и INI); цвета подбираются под фон темы.
-- Плагины получили доступ к документу в просмотрщике и редакторе (описание, выделение, строка, весь текст, замена одним шагом отмены, курсор), к панелям (папки, строка под курсором, выбранные строки, показ папки в панели, обновление), к буферу обмена и уведомлениям, а также к событиям `doc.opened`, `doc.saved`, `doc.closed`. Перехватчик встроенной команды редактора (например, сохранения) может менять текст до выполнения команды. В образцы добавлены инструменты для текста (регистр, сортировка, повторы строк, «прибрать при сохранении»), инструменты панелей и счётчик слов на WASM.
-- **Параметры → Плагины...**: Ctrl+Вверх и Ctrl+Вниз на строке списка меняют порядок загрузки плагинов; порядок запоминается (файл `plugin-order.json` в папке настроек) и действует со следующего запуска. Он решает, чей перехватчик, провайдер открытия или обработчик схемы спрашивается первым, если приоритеты плагинов равны.
-- Плагин может показывать картинки и видео внутри программы: открывается вкладка просмотра, как у текстового файла, а плагин отдаёт кадры, которые рисует MTN2 (нажатия клавиш и таймер приходят плагину). В образцы добавлены просмотр картинок (JPEG, PNG, BMP, GIF, TIFF, WebP; стрелки листают папку) и видеопроигрыватель со звуком (пауза, перемотка).
-- В списке плагинов (Параметры – Плагины...) появилась кнопка «Сведения»: описание плагина, автор, сайт и перечень того, что он добавил (команды и клавиши, типы файлов, схемы, пункты меню, текст в строке состояния), а кнопка «Справка» открывает страницу справки плагина. Описание, автор, сайт и справка задаются в `plugin.json` (поля `description`, `author`, `homepage`, `help`).
-- Плагин может заменить встроенный обработчик: схему (например, `sftp://`) или расширение архива (например, `.zip`, тогда Enter на таком файле открывает архив через схему плагина). Замена включается только явно: плагин перечисляет её в `plugin.json` (поле `overrides`), а пользователь вносит идентификатор плагина в `plugins\overrides.json` (`{"allow": ["id"]}`). Такой плагин загружается при запуске. Схемы `file`, `sys`, `recycle`, `find` и `ws` заменить нельзя.
-- Плагины могут перехватывать встроенные команды (Copy, View, Edit, Delete, Move и другие имена действий раскладки): перехватчик срабатывает при нажатии клавиши на панелях и при выборе пункта меню до самой команды и может её отменить. Плагин также может добавить свою команду и привязать к ней сочетание клавиш, если оно не занято встроенным действием. Плагин, которому нужны перехватчики или сочетания клавиш, указывает в `plugin.json` `"startup": true` и загружается при запуске. Перехватчики видят команды панелей, верхнего меню, просмотрщика и редактора (например, `DocViewEdit`, `EditorSave`, `DocClose`).
-- Плагины могут брать на себя открытие файлов по типу: для расширений, которые они объявили, плагин вызывается при F3 и F4 до встроенного просмотрщика и редактора. Он может открыть файл сам (в своём окне или внешней программой), либо подсунуть встроенному окну другой файл (например, текст, полученный из исходного формата), либо оставить открытие встроенному окну. Для F3 и F4 можно выбрать разные плагины.
-- Плагины могут показывать диалоги: плагин описывает диалог тем же JSON, что и встроенные, хост показывает его поверх панелей и возвращает плагину нажатую кнопку и значения полей. Диалог одноразовый (любая кнопка закрывает его) и не открывается внутри редактора, просмотрщика или терминала.
-- Плагин может обрабатывать Enter и двойной щелчок по строке панели с его схемой (в том числе `file` для локальных папок), задавать подпись своей команды в нижней строке клавиш (если её сочетание лежит на свободной F-клавише с модификаторами) и выводить свой текст в строке состояния панелей.
-- В сочетании с разрешением замены (`plugins\overrides.json`) плагин `mtn.7z` может взять на себя открытие `.zip` по Enter: для этого в `overrides.json` указывается `{"allow": ["mtn.7z"]}`. Без этого файла `.zip` открывается встроенным модулем, как раньше.
-- **Параметры → Плагины...**: список всех установленных плагинов с отметкой `[x]` / `[ ]` и Пробел на строке для включения и выключения. Выбор применяется по кнопке «ОК» (Отмена, Esc и закрытие окна его отбрасывают): выключенный плагин выгружается и больше не загружается, включённый загружается; выбор запоминается между запусками (файл `disabled-plugins.json` в папке настроек). Кнопка «Разрешения...» открывает диалог с флажками: заменять ли встроенные обработчики, которые плагин назвал в манифесте (строка помечена `[replaces .zip: on]`; разрешение запоминается в `plugins\overrides.json`, плагин перезагружается сразу), и какие права ему даны (`vfs.read`); править файлы вручную не нужно.
-- **Параметры → Плагины...**: кнопка «Настройки» открывает диалог настройки выбранного плагина, если он его предоставляет (такая строка помечена `[settings]`). Когда диалог настроек закрывается, список плагинов открывается снова; если у плагина нет настроек, показывается сообщение об этом. Значения хранятся в папке настроек (`plugin-settings-<id>.json`). Плагины mtn.demo.pas (файл заметок) и mtn.demo.go (отступ JSON) показывают это на примере.
-- WASM-плагин может использовать WASI (Go, Rust): в `plugin.json` указывается `"wasi": true`. Модуль получает пустой WASI без доступа к файлам, окружению и сети; без этого поля модуль, импортирующий WASI, по-прежнему не загружается. В WASM добавлен импорт `register_key_binding` (сочетания клавиш для команд плагина). Нативной DLL с неостанавливаемой средой выполнения (Go) в манифесте задаётся `"keepLoaded": true`.
-
-### Изменено
-
-- Окно истории переходов (Alt+Влево / Alt+Вправо) занимает ширину панели без трёх ячеек с каждой стороны; длинные пути в списке сокращаются.
-- При первом запуске (в папке настроек ещё нет ни списка выключенных плагинов, ни сессии) все плагины выключены; нужные включаются в **Параметры → Плагины...** (Пробел на строке, затем ОК). Установки, которые уже использовались, сохраняют прежнее состояние плагинов. Пока выключены все плагины, при запуске показывается подсказка «Плагины выключены» с флажком «Больше не показывать» (вернуть её можно в **Параметры → Показать скрытые диалоги**). Предупреждение об отсутствующем `7z.dll` не показывается, если плагин `mtn.7z` выключен.
-- Диалоги поиска и замены в редакторе: поля ввода и флажки доходят до правого края без лишнего отступа, а ряд кнопок отделён от параметров линией, как в остальных диалогах (#27).
-- Плагин без такого разрешения не может занять схему, которую уже обслуживает встроенный обработчик, и не получает приоритет выше встроенных, даже если запросил его при регистрации. Нативный плагин, пытающийся зарегистрировать зарезервированную схему, получает отказ.
-
-### Исправлено
-
-- В запросе на удаление одного файла или папки имя показано отдельной строкой контрастным цветом между словами вопроса («Переместить файл», «имя», «в корзину?»); ширина окна подбирается под имя.
-- В диалогах с одной строкой сообщения (удаление, подтверждение, сохранение изменённого файла) нет разделителя: над сообщением и под ним по пустой строке.
-- Файлы из ZIP-архива, зашифрованного паролем (AES), открываются в просмотрщике и редакторе и копируются или переносятся по F5 и F6: запрашивается пароль, а записи читаются через плагин 7z, вместо сообщения «Support for decompression method not registered».
-- Полноэкранные программы в консоли (Midnight Commander в WSL и подобные) больше не рисуются с пустой строкой после каждой строки: перенос на следующую строку происходит только при выводе следующего символа, а не сразу после записи в последнюю колонку (#51).
-- Стрелки, Home и End в полноэкранных программах консоли (Midnight Commander) работают: клавиши шлются в виде, который программа запросила для прикладного режима курсора (#51).
-- Диалог хода копирования, перемещения и удаления: Enter на кнопке «В фоне» отправляет задание в фон (раньше работала только мышь); Enter на «Отмена» по-прежнему ничего не делает, чтобы не прервать задание случайно.
-- Тема Far Classic: кнопки диалогов вне фокуса стали тёмно-серыми с белым текстом и больше не сливаются с полями ввода; кнопка в фокусе по-прежнему голубая.
-- Диалог «Тема»: кнопки «ОК» и «Отмена» стоят внизу, под кнопками «Настроить...», «Создать...» и «Удалить».
-- Единый вид диалогов: содержимое начинается сразу под заголовком (без пустой строки), над рядом кнопок стоят разделитель и одна пустая строка, под кнопками остаётся только строка тени, затем рамка. Блок из двух рядов кнопок (диалог «Тема») отделён пустой строкой сверху. Пояснения под полями (подсказки по клавишам и форматам) зажаты между двумя разделителями, без пустых строк.
-- Выход из Корзины и системных папок по «..» больше не открывает окно истории поверх панели: панель просто возвращается туда, откуда пришла (#41).
-- Одиночное нажатие Alt открывает главное меню (раньше не работало): меню открывается при отпускании Alt, если между нажатием и отпусканием не было других клавиш и мыши; Alt+клавиша и AltGr меню не открывают.
-- **F9** и одиночный Alt открывают меню активной панели («Слева» или «Справа»), а не всегда «Слева» (#42).
-- В главном меню работают Home, End, PgUp и PgDn: первый и последний пункт открытого списка, а на панели меню – первая и последняя группа (#42).
-- Пункт главного меню выполняется при отпускании кнопки мыши, а не при нажатии: можно нажать на заголовок или пункт, протянуть до нужного пункта и отпустить, как в Far. Раньше такое движение начинало перетаскивание файла, и при отпускании над панелью открывался диалог копирования (#42).
-- Двойной щелчок по строке списка в диалоге работает как Enter на ней (#43).
-- Del в списке диалога нажимает кнопку «Удалить», если она есть (например, в диалоге тем) (#43).
-- Перетаскивание файлов стало менее чувствительным: оно начинается, когда указатель ушёл от места нажатия не меньше чем на две ячейки, и только если нажатие пришлось на строку файла (щелчок по крестику диалога, по меню или по пустому месту больше не взводит его). В **Параметры → Дисплей** появился флажок «Перетаскивать файлы мышью», его можно выключить совсем (#44).
-- Курсив в Markdown, просмотрщике и других окнах: наклонные буквы больше не обрезаются справа по границе ячейки, выступающая часть рисуется поверх соседней.
-
-## v0.3.15 – 2026-10-04
-
-### Новое
-
-- Замена в редакторе (**Ctrl+F7**): кнопка «Заменить» идёт по совпадениям по одному, как в Far. Каждое совпадение выделяется, а в вопросе с подписями «Найти», «Заменить на» и «Строка N» показаны искомый текст, его замена (жирным выделенным цветом) и строка с совпадением, в которой само совпадение тоже выделено; ответы «Заменить» (и сразу следующее совпадение), «Все» (остальные без вопросов), «Пропустить» и «Отмена». Если поиск начался с середины текста, в конце предлагается продолжить с начала (при обратном поиске – с конца). Вся замена отменяется одним Ctrl+Z, в конце курсор возвращается туда, где был до замены; «Все» показывает число замен.
-- Поиск и замена в редакторе и просмотре: **F7** открывает диалог с параметрами «Учитывать регистр», «Слова целиком», «Регулярные выражения» и «Обратный поиск», кнопки «Слово» и «Выделение» подставляют в поле слово под курсором и выделенный текст (при регулярных выражениях он экранируется). Диалог замены (**Ctrl+F7**) получил те же параметры и кнопки. В замене по регулярному выражению доступны `$0` – всё совпадение, `$1` ... `$9` – группы, `$$` – знак доллара. Найденное совпадение выделяется, F3 / Shift+F3 продолжают поиск от него, «Заменить все» показывает число замен и отменяется одним Ctrl+Z. Некорректное регулярное выражение сообщается ошибкой. Вместо прежней строки поиска в нижней строке теперь диалог; регистр, слова и регулярные выражения запоминаются между запусками (#27).
-- **Ctrl+Alt+Enter** (**Файлы → Запустить в новой вкладке**): команда из командной строки запускается в новой вкладке терминала с той же оболочкой, что у фоновой консоли (cmd, PowerShell, WSL и т. д.); вкладка остаётся открытой.
-- **Alt+Shift+Enter** (**Файлы → Запустить в фоне**): команда из командной строки запускается в консоли, консоль показывает её запуск заданное время и панели возвращаются сами. Время (от 0,5 до 10 с, по умолчанию 2 с) задаётся в **Параметры → Консоль...** в поле «Фоновый запуск». Клавиша, нажатая в консоли до возврата, оставляет консоль на экране; команда выполняется в любом случае.
-- У пункта меню пользователя (F2) вместо флажка возврата в панели – список «После запуска»: «Как в настройках консоли», «Вернуться в панели», «Остаться в консоли». Пункты с включённым прежним флажком остались «Вернуться в панели».
-- **Параметры → Консоль...**: флажок «Всегда возвращаться в панели по завершении команды». Возврат происходит только для команды, запущенной из командной строки под панелями, как только оболочка снова показала приглашение; команда, набранная в фоновой консоли (Ctrl+O), всегда остаётся в консоли. По умолчанию выключено.
-- Создание папки (F7) и переименование (Shift+F6) в защищённой папке: при «Отказано в доступе» MTN2 спрашивает «Повторить от администратора?» и после согласия выполняет операцию через помощника администратора с одним запросом UAC.
-- Если MTN2 запущен от имени администратора, в заголовке окна стоит «[Администратор]».
-- **Параметры → Экспорт настроек...** и **Импорт настроек...**: настройки одним zip-файлом (сессия и параметры отображения, клавиши, меню пользователя, ассоциации, избранные папки, список SSH, рабочие пространства, собственные темы; истории не входят). Имя файла вводится в поле со списком ранее использованных файлов (↓), по умолчанию `mtn2-settings.zip` в папке активной панели. Перед импортом прежние файлы сохраняются в `settings-backup.zip` в папке настроек, новые настройки вступают в силу после перезапуска.
-- Меню **Параметры → Консоль...**: размер истории консоли и терминалов (от 1000 до 50 000 строк), подтверждение вставки нескольких строк, удаление пробелов в концах строк при копировании и при вставке. Всё выключено, история по умолчанию 10 000 строк, как и раньше. Настройки действуют сразу, в том числе на открытые консоли.
-- Меню **Команды → Сохранить вывод консоли...** записывает историю фоновой консоли в текстовый файл (UTF-8), **Очистить буфер консоли** стирает её; оболочка продолжает работать.
-- В окне «Шрифт / экран» два параметра чёткости текста. «Размер шрифта в целых пикселях» округляет размер букв до целого числа физических пикселей (ровнее штрихи при масштабе 125% и 150%, размер клетки может немного измениться). «Контраст текста» (нет, слабый, средний, сильный) усиливает бледную кайму сглаживания, и тонкий светлый текст читается плотнее. Оба по умолчанию выключены.
-- Там же «Ширина клетки» и «Высота клетки»: к каждой клетке можно добавить от 0 до 4 физических пикселей (для шрифтов, у которых буквы слипаются или строки лежат слишком плотно). По умолчанию 0.
-
-### Исправлено
-
-- Просмотр Markdown: двойной щелчок выделяет слово под указателем, в том числе в перенесённой строке и после скрытых знаков разметки (раньше выделение сдвигалось на число скрытых знаков). Тройной щелчок выделяет всю строку. Клавиши Ctrl+←/→, End, Ctrl+A и копирование выделенного тоже работают с текстом так, как он показан на экране; поиск в просмотре ищет по показанному тексту.
-- Просмотр Markdown: стрелка вниз проходит через картинку. Раньше окно прокручивалось так, будто картинка занимает одну строку, курсор за картинкой уходил за нижний край, и перемещение «останавливалось». Теперь строка за картинкой остаётся на экране, а текст сдвигается на высоту картинки; картинка, на которой стоит курсор, показывается целиком, если помещается.
-- Просмотр Markdown: в таблице с многострочными ячейками курсор проходит все экранные строки строки таблицы (раньше позиция курсора ограничивалась длиной исходной строки). Строки многострочной ячейки в узкой таблице рисуются друг под другом, а не склеенными в одну экранную строку.
-- Закрытие окна сразу после закрытия окна фонового задания могло вызвать ошибку доступа к памяти: отложенная очистка списка заданий обращалась к уже уничтоженному списку.
-- Вставка в фоновую консоль и терминалы: переводы строк (LF, CRLF) уходят оболочке как нажатие Enter. Раньше строка с одним LF в конце оставляла после вставленной команды приглашение продолжения «>>» вместо запуска.
-- Фоновая консоль: щелчок мышью по «Esc:Панели» в строке функциональных клавиш теперь, как и клавиша Esc, возвращает панели. Раньше консоль скрывалась, а файловые панели не появлялись.
-- Большие файлы из архива 7z (сотни мегабайт и больше) открываются и копируются: запись распаковывается прямо на диск, а не через буфер плагина. Раньше запуск такого файла или exe из архива заканчивался ошибкой «Plugin result exceeded the single-shot buffer size» (#31, #38).
-- Просмотр Markdown: пустые строки внутри блока кода рисуются тем же фоном, что и сам блок, поэтому блок больше не выглядит рваным (#36).
-- Просмотр Markdown: стрелки вверх и вниз, PgUp, PgDn и колесо мыши двигают текст по экранным строкам, а не сразу на абзац. Длинный абзац, который выше экрана, теперь можно прочитать до конца, и PgDn не пропускает его часть (#34).
-
-### Изменено
-
-- Окно справки (F1) стало больше: отступ от краёв экрана 5 символов вместо 10.
-- Окно «Шрифт / экран» стало шире и ниже: настройки разложены в два столбца. Список шрифтов обведён рамкой. Слева – шрифт, размер, масштаб и параметры отображения текста; справа – курсор, строки интерфейса (заголовок, меню, функциональные клавиши, статус), панели, тени и язык.
-- Копирование, перемещение и удаление в защищённые папки (например, `C:\Program Files`): если доступ запрещён, в окне ошибки появилась кнопка «Админ». Она запускает небольшой процесс-помощник с правами администратора (один запрос UAC) и повторяет в нём этот и все следующие файлы задания; прогресс и ошибки показываются в обычных окнах MTN2, а в заголовке окна, пока помощник работает, стоит «[Помощник администратора]». Помощник выполняет только копирование, перемещение, удаление, создание папок и сохранение текста на локальных путях, говорит только с запустившим его MTN2 и сам завершается через две минуты без работы. Раньше запрос появлялся на каждый файл при удалении, а копирование и перемещение просто выдавали ошибку на каждом файле. Удаление в Корзину больше не просит повышения прав само по себе: сначала показывается окно ошибки, и повышение прав выбирается в нём. Для архивов, виртуальных папок и при уже запущенном от имени администратора MTN2 кнопки нет (#20).
-- Клавиши удаления в панелях приближены к Far Manager. F8 и Del удаляют выделенное (или объект под курсором) в корзину. Shift+F8 удаляет только объект под курсором, независимо от выделения. Shift+Del удаляет выделенное (или объект под курсором) безвозвратно, мимо корзины.
-- В диалоге безвозвратного удаления кнопка «Затереть» переименована в «Удалить»: файлы не перезаписываются нулями, а просто удаляются мимо корзины. Пункт меню «Файл» и справка по Shift+F8 теперь называются «Удалить под курсором».
-
-## v0.3.14 – 2026-10-01
-
-### Новое
-
-- Загрузка обновления показывает уведомление с процентом, которое обновляется раз в секунду (видно и при выключенных уведомлениях). Загрузку можно отменить: «F9 → ≡ → Обновления → Проверить» предлагает отменить её, пока она идёт.
-- Щелчок мышью по пустому месту файловой панели после последнего элемента списка ставит курсор на последний элемент (двойной щелчок по пустому месту ничего не открывает).
-- В пакеты входит `7z.dll` из 7-Zip (x64) вместе с текстом лицензии (`plugins\mtn.7z\license.txt`) и файлом `THIRD-PARTY.md`: архивы 7z и другие форматы 7-Zip открываются сразу, без ручной установки библиотеки. Её по-прежнему можно заменить своей копией в `plugins\mtn.7z\`; автообновление заменяет `7z.dll` версией из нового пакета.
-- Esc в фоновой консоли и в терминальной вкладке уходит запущенной программе, если в оболочке выполняется команда или открыто полноэкранное приложение (vim, less, htop и т. п.); на свободной командной строке Esc, как и прежде, возвращает к панелям (в терминальной вкладке открывает вопрос о закрытии). Вернуться к панелям в любой момент можно по Ctrl+O.
-- У пункта меню пользователя (F2) появился флажок «Вернуться в панели по завершении»: когда команда закончилась (оболочка снова показала приглашение), программа сама возвращается из консоли к панелям, лишний Esc не нужен.
-- Папка консоли и папка панели больше не расходятся: если после команд в фоновой консоли (в том числе из меню пользователя, например `cd c:\Temp`) оболочка оказалась в другой папке, при возврате к панелям активная панель переходит в эту папку. Папка определяется по приглашению cmd, Windows PowerShell и pwsh. Ctrl+Shift+O тоже берёт текущую папку из приглашения. Отключается флажком «Панель следует за папкой консоли после команд» в окне выбора фоновой консоли (Ctrl+Alt+O).
-- В избранных папках (Ctrl+D) у записи и у группы может быть своя быстрая клавиша: знак `&` перед буквой в имени (F2) или в названии группы (F4 для записи, F2 на заголовке группы) делает эту букву клавишей внутри списка. Клавиша группы раскрывает её и сворачивает остальные, клавиша записи сразу переходит в папку, например Ctrl+D, `N`, `P`; работает и с русской раскладки. Колонка клавиши стоит первой, сами клавиши и Ctrl+цифры подсвечены красным, как клавиши в меню. Глобальные Ctrl+1…0 остались как были.
-- В избранных папках (Ctrl+D) записи можно собирать в группы: F4 задаёт группу выбранной записи (пустое поле убирает её). Список разбит на колонки «Группа», «Имя», «Путь» и «Клавиша»; перед группой стоит заголовок с меткой [-] (развёрнута) или [+] (свёрнута). Left сворачивает группу, Right разворачивает (двойной щелчок по заголовку переключает); окно стало шире. Ctrl+Вверх/Вниз переставляет запись, а на границе группы выносит запись из группы или вносит в соседнюю. Группа, в которой не осталось записей, остаётся в списке; Del на её заголовке удаляет пустую группу. Правки списка применяются сразу: «Перейти» (кнопка по умолчанию) оставляет их и выполняет переход, «Сохранить» фиксирует их, не закрывая окно, «Отмена» (и Esc) откатывает всё, сделанное с открытия окна или с последнего «Сохранить», и не переходит.
-- Свои темы оформления. В «Настройки → Тема...» появились кнопки «Настроить...», «Создать...» и «Удалить». Тему можно создать с нуля или на основе любой другой и настроить в редакторе: цвета окон, диалогов, кнопок, курсора, панелей, строки состояния, просмотрщика и редактора, стили Markdown, начертания текста, символы (метки флажков, стрелки полос прокрутки и другие) и рамки. Изменения видны сразу, «Отмена» возвращает прежнюю тему. Встроенные темы нельзя изменить: настройка встроенной темы сохраняется как новая тема с заданным именем (файл в папке `themes` папки настроек). Свою тему «Сохранить» обновляет на месте, «Сохранить как...» записывает под другим именем. Формат файла темы описан в `docs/THEMES.md`.
-- В редакторе темы цвета каждого раздела правятся одной формой, как стили Markdown: строка на элемент, поле цвета с кнопкой «...» и образцом; пустое поле оставляет цвет основы. Элементы называются понятными именами («Текст окна», «Фон курсора») вместо ключей вроде `window.fg`; ключи остаются в файле темы.
-- Раскраска файлов («Настройки → Цветовая разметка...») и цвета Markdown («Настройки → Цвета Markdown...») стали частью темы. Правка при встроенной теме сохраняется в новую тему (программа спрашивает имя), правка своей темы остаётся в ней. В теме хранятся только отличия от её основы, поэтому новые группы раскраски базовой темы доходят и до своих тем.
-- Тема может опираться на несколько тем сразу (раздел «Основа» в редакторе): поздние перекрывают ранние, так тему можно собрать из частей. Цвета в теме можно задавать не только значением, но и ссылкой на другую роль (`@cursor.bg`) или именем из палитры; ссылки работают и в раскраске файлов, и в цветах Markdown.
-- Если тема из сохранённой сессии не найдена (например, файл темы удалён), программа сообщает об этом и включает классическую тему Far.
-- Выбор цвета: сетка образцов (оттенок и яркость), ползунки H, S, L и R, G, B, поле hex, образцы «было» и «сейчас». Открывается по F9 на поле цвета или щелчком по кнопке «...» у правого края поля (на ней виден цвет поля) в «Цветовой разметке» и в «Цветах Markdown»; кнопка «Цвет темы» очищает поле. Вместо прежнего списка из 16 цветов.
-- «Настройки → Цвета Markdown...»: цвета и начертание (обычный, жирный, курсив, подчёркнутый, зачёркнутый и сочетания) Markdown-просмотра можно задать для каждого элемента отдельно (заголовки, жирный, курсив, зачёркнутый, код, цитаты, списки, линии, ссылки, таблицы); пустое поле оставляет цвет темы. Строка «Текст и документ» задаёт цвет текста и фон всего Markdown-просмотра (остальные файлы остаются в цветах темы). Образец в диалоге показывает и начертание. Цвета и начертания можно взять из темы Obsidian (`theme.css`): кнопка «Импорт из Obsidian...», тёмную или светлую палитру выбирают при импорте.
-- Поиск в редакторе (F7, Shift+F7, F3) начинается с последней искомой строки; текст из поля «Содержащих текст» в поиске файлов (Alt+F7) тоже попадает в историю поиска редактора, поэтому его не нужно вводить заново.
-
-### Изменено
-
-- После обновления до dev-сборки окно сообщает «обновлён до dev-сборки 0.3.13.9» (для релиза по-прежнему «до версии X»).
-- Поиск в редакторе (F7, Shift+F7, F3) больше не зацикливается: дойдя до конца (или начала) текста, он показывает окно «Строка не найдена» с искомой строкой.
-- В окне пункта меню пользователя (F2) три строки со списком макросов заменены одной подсказкой «F1 – макросы»: полное описание открывается по F1.
-- Встроенные темы теперь хранятся в файлах и выглядят как раньше.
-- Файлы прежних версий с цветами (`NDNtheme.json` или файл из `themeFile` в `session.json`, и `markdown-colors.json`) при первом запуске превращаются в тему «<тема> (imported)»; сами файлы получают имя с окончанием `.migrated`.
-- Формат файла темы изменился (схема 2): `extends` может быть списком, у элементов Markdown вместо `bold` список `attrs`. Файлы тем прежней схемы не поддерживаются.
-- В просмотрщике Markdown курсив (`*текст*`, `_текст_`, `***текст***`) теперь рисуется наклонным шрифтом, а зачёркнутый текст (`~~текст~~`) – с линией посередине. Маркеры `~~` в тексте больше не показываются. Курсив виден и в консоли (Ctrl+O) у программ, которые его используют.
-- В просмотрщике Markdown картинки показываются в своём размере (один пиксель картинки на один пиксель экрана). Уменьшаются пропорционально только картинки, которые не помещаются по ширине окна, и картинки выше окна. Размер можно задать в самой ссылке: `![[картинка.png|300]]` (ширина), `![[картинка.png|300x200]]` (ширина и высота) или `![текст|300](картинка.png)`.
-
-### Исправлено
-
-- Файлы из архивов, открытые двойным щелчком, больше не копятся во временной папке: их копии удаляются при закрытии программы.
-- Копирование и перенос в открытый на панели zip-архив (F5/F6): в диалоге теперь стоит адрес самого архива, и файлы попадают в архив, а не в одноимённую папку `archive.zip!` на диске.
-- В консоли PowerShell после удаления всего ввода больше не остаётся серая подсказка PSReadLine (предсказание продолжения).
-- Ctrl+C в фоновой консоли прерывает запущенную команду и больше не завершает саму оболочку: раньше оболочка закрывалась и не запускалась снова.
-- В строке состояния консоли поверх панелей вместо `Esc=Stop` показывается `Ctrl+C=Stop`: Esc возвращает панели, а команду останавливает Ctrl+C.
-- Обновление с dev-канала сразу после выхода релиза показывало «GitHub: no suitable release package».
-
-## v0.3.13 – 2026-09-30
-
-### Новое
-
-- В диалоге «Справка → Обновления» появился флажок «Обновляться с dev-канала (после каждого пуша)». Если он включён, программа следит не за релизами, а за dev-сборкой, которая публикуется после каждого изменения в репозитории. Такие сборки могут быть нестабильными. Версия у них четырёхзначная (например, 0.3.12.57): она новее релиза, от которого отталкивается, и старше следующего. Чтобы вернуться на релизы, флажок снимают и ждут следующего релиза.
-- Если рядом с плагином архивов (`plugins\mtn.7z\`) нет `7z.dll`, при запуске показывается предупреждение: без неё не открываются архивы 7z, RAR и ZIP с шифрованием. В окне есть флажок «Больше не показывать».
-- «Настройки → Показать скрытые диалоги» возвращает все окна, которые были скрыты флажком «Больше не показывать».
-
-### Изменено
-
-- Пока фокус в командной строке (например, после Ctrl+Вниз), выделенный пункт подсвечивается тёмным цветом в обеих панелях, как в неактивной панели. Когда фокус возвращается на панель, подсветка в активной панели восстанавливается.
-- Избранные папки (Ctrl+D): список идёт в том порядке, в каком его расставил пользователь. Новые папки добавляются в конец, Ctrl+Вверх и Ctrl+Вниз переставляют выбранную. Раньше список сортировался по назначенным клавишам, а затем по имени. В нижней части диалога показаны подсказки: Ctrl+1...Ctrl+0 назначает клавишу (повторное нажатие снимает её), F2 переименовывает, Del удаляет.
-
-### Исправлено
-
-- Папка, в имени которой первым стоит пробел, теперь открывается и показывает содержимое (раньше пробел отбрасывался, и открывалась несуществующая папка).
-- Сообщение «Добавлено в избранные папки» называет клавишу, которой открывается список сейчас (например, Ctrl+\ после переназначения), а не всегда Ctrl+D.
-- Enter на файле внутри архива открывает его в программе по умолчанию: файл распаковывается во временную папку, а не выдаёт «Shell open failed». Если встроенный ZIP не справляется (шифрование AES и др.), файл распаковывается через 7z.dll, при необходимости с запросом пароля.
-- После обновления программа один раз сообщает о новой версии; кнопка «Открыть список изменений» открывает CHANGELOG.md в просмотрщике.
-- Файлы и папки можно копировать и переносить в ZIP-архив (F5, F6 при открытом архиве в другой панели).
-- В консоли (Ctrl+O) стрелки Вверх и Вниз перебирают историю команд оболочки, а Влево, Вправо и Delete редактируют строку. Пока вид прокручен вверх, стрелки прокручивают вывод; PgUp, PgDn, Home, End и колесо мыши прокручивают всегда.
-
-## v0.3.12 – 2026-09-30
-
-### Новое
-
-- Ctrl+M возвращает выделение, которое было до последнего сброса (например, после копирования или удаления); повторное нажатие возвращает обратно.
-- Ctrl+Z – описание файла, как в Far: строка ввода для выделенных файлов или файла под курсором. Текст хранится в `Descript.ion` рядом с файлами (формат Far и Total Commander, имена с пробелами в кавычках, кодировка файла сохраняется), а описание файла под курсором показывается в строке статуса. Только для локальных папок.
-- Ctrl+P скрывает и показывает неактивную панель.
-- В настройках («Шрифт / экран») появился флажок «Выделять и папки»: при нём Shift+Серый + / Shift+Серый − и выделение по расширению затрагивают и папки. По умолчанию выключен – только файлы, как в Far.
-- В меню добавлены пункты «Снять выделение со всех», «Восстановить выделение», «Описание файла...» и «Скрыть / показать пассивную панель».
-- Ctrl+F тоже вставляет в командную строку полный путь элемента (как в Far), Ctrl+Shift+Enter остаётся.
-
-### Изменено
-
-- Копирование в буфер обмена: Alt+Shift+Ins – полные пути, Ctrl+Shift+Ins – только имена (как в Far; раньше пути копировал Ctrl+Alt+Ins, а имена – Alt+Shift+Ins). Ctrl+Alt+Ins оставлено свободным под сетевые пути. Если в `keymap.json` есть свои строки для этих действий, они действуют по-прежнему.
-- Зарезервированы под будущие возможности и ничем не заняты: Shift+F3 (команды архива), F11 (меню плагинов), Ctrl+Alt+Ins (сетевые пути), Ctrl+. (запись макроса).
-
-## v0.3.11 – 2026-09-30
-
-### Внимание
-
-- Сочетания клавиш изменены (см. «Новое»). Если в папке настроек лежит свой `keymap.json`, новые сочетания для действий, которые в нём перечислены, не подействуют: файл имеет приоритет над встроенной раскладкой. Диалог «Настройки → Раскладка клавиш» в прежних версиях записывал в файл все действия сразу, поэтому у тех, кто хоть раз сохранял раскладку, в файле заморожены и старые клавиши. Чтобы получить новые, сохраните копию файла и удалите из него строки нужных действий или весь файл.
-
-### Новое
-
-- В «Настройки → Шрифт / экран» можно скрыть заголовок окна, как и строки меню, функциональных клавиш и статуса. Кнопки «свернуть», «развернуть» и «закрыть» (`[_] [□] [x]`) тогда переезжают в правый край строки меню, а если скрыта и она, то строки вкладок; название окна выводится в свободном месте строки вкладок целиком, пока помещается; при нехватке места из него по очереди уходят полное название программы, название вкладки, масштаб, размер окна в символах и версия, остаётся `MTN2`. Окно перетаскивается за свободные места строки меню и вкладок (двойной щелчок разворачивает и возвращает окно) и меняет размер за края шагом в целое число символов; развёрнутое окно занимает весь экран. Настройка применяется сразу.
-- Диалог «Настройки → Раскладка клавиш» записывает в `keymap.json` только изменённые действия: остальные сочетания после обновления программы подхватываются сами. Действие без клавиш записывается пустым списком.
-- При скрытом заголовке окна правый щелчок по свободному месту строки вкладок (или строки меню) открывает верхнее меню, как F9.
-- В консольном режиме (Ctrl+O) при скрытом заголовке окна кнопки `[_] [□] [x]` стоят прямо на верхней рамке консоли, вместо её кнопки закрытия; за верхнюю рамку окно тоже перетаскивается. В названии консоли указана оболочка, например «Консоль - PowerShell».
-- Кнопки окна `[_] [□] [x]` срабатывают при отпускании кнопки мыши: сначала кнопка перерисовывается отпущенной, затем выполняется действие; если увести курсор с кнопки и отпустить, действие отменяется.
-- В строке вкладок каждой файловой панели после последней вкладки стоит кнопка `[+]`, добавляющая вкладку; двойной щелчок по пустому месту строки вкладок панели по-прежнему создаёт вкладку.
-- Сочетания клавиш пересмотрены и приведены к Far, а где его нет – к Total Commander: Ctrl+A – атрибуты файла, Shift+Серый + / Shift+Серый − – выделить / снять все файлы (как в Far, папки не затрагиваются; сочетания переназначаются в раскладке, действия `SelectAll` и `UnselectAll`; Серый * – инвертировать выделение – тоже переназначается, действие `InvertSelection`), Alt+F6 – создать ссылку, Ctrl+I – фильтр панели, Серый * – инвертировать выделение (Ctrl+I для этого больше не служит). Ctrl+F для фильтра и Ctrl+Shift+A для атрибутов освобождены.
-- Фильтр панели (Ctrl+I) теперь открывается диалогом: список готовых фильтров (последние использованные маски и несколько стандартных для текстов, программ, картинок и архивов), строка для своей маски и кнопка «Сбросить»; Enter или двойной щелчок по списку применяет выбранный фильтр.
-- Клавиши вкладок как в Total Commander: Ctrl+T – новая вкладка панели, Ctrl+W – закрыть её (раньше на клавише не срабатывал), Ctrl+Tab и Ctrl+Shift+Tab – следующая и предыдущая вкладка панели (в документе и терминале – рабочее пространство). Рабочие пространства переключаются на Ctrl+Alt+PgDn и Ctrl+Alt+PgUp, новое создаёт Ctrl+Shift+W. Все они переназначаются в `keymap.json` (`NewTab`, `CloseTab`, `NextPanelTab`, `PrevPanelTab`, `NextTab`, `PrevTab`, `NewWorkspace`), в справке, меню и диалоге раскладки вкладки панели и рабочие пространства названы по-разному.
-- Сразу после последней вкладки рабочего пространства стоит кнопка `[+]`, создающая новое рабочее пространство. Двойной щелчок по пустому месту строки вкладок его больше не создаёт.
-- Фоновые задания показаны справа в строке вкладок, а не в строке статуса: по плашке на каждое, со значком операции (`»` копирование, `►` перемещение, `▼` в корзину, `‼` удаление, `■` упаковка, `□` распаковка) и ходом выполнения; `..` – ждёт очереди, `?` – ждёт ответа, `!` – ошибка (плашка красная). Щелчок по плашке возвращает именно это задание: окно прогресса, вопрос или сообщение об ошибке. Кнопка `[≡N]` в конце открывает список заданий. Индикатор виден и при скрытой строке статуса и пропадает, когда фоновых заданий нет. Клик по строке статуса список больше не открывает. Если плашки не помещаются, первыми остаются плашки заданий с ошибкой и с вопросом, остальные скрываются (в счётчике кнопки они учтены). Строки в списке заданий начинаются с того же значка.
-
-### Известные проблемы
-
-- Если скрыть заголовок окна, свернуть окно кнопкой `[_]` и восстановить его, эта кнопка иногда остаётся подсвеченной, пока мышь не сдвинется с места.
-
-### Исправлено
-
-- Ctrl+U при открытом дереве папок (Alt+F10) закрывал дерево. Теперь дерево переезжает на другую сторону вместе со своей панелью, как в Far, а если фокус был на дереве, он остаётся на нём. Ctrl+U работает и когда фокус на дереве.
-
-## v0.3.10 – 2026-09-29
-
-### Новое
-
-- Дерево папок диска (Alt+F10) поверх активной панели: ветки раскрываются стрелками, соседняя панель переходит в папку под курсором, когда курсор остановился, Enter открывает папку в активной панели; при переходе на другую панель дерево остаётся на месте и следит за её папкой. Папки читаются в фоне, так что дерево большого диска открывается сразу.
-- Информационная панель (Ctrl+L) показывает в строках «Занято» и «Загрузка памяти» полосу заполнения между подписью и значением.
-- Просмотр (F3) запоминает для каждого файла не только позицию, но и режим переноса строк (F2): файл, который смотрели с переносом, снова открывается с переносом. Открытие того же файла в редакторе этот выбор не сбрасывает.
-- В «Настройки → Шрифт / экран» можно скрыть строку меню, строку функциональных клавиш и строку статуса, как в Far. Освободившиеся строки занимают панели, терминал и просмотр / редактор. При скрытой строке меню F9 показывает её поверх верхней строки, пока меню открыто. Строка статуса просмотра и редактора появляется на время поиска или вопроса о сохранении.
-- Ctrl+PgUp и Ctrl+PgDn переходят на уровень выше и в папку под курсором, как в Far. Ctrl+PgDn на файле открывает его как архив, какое бы у него ни было расширение: документы `.docx`, `.xlsx`, `.odt` (внутри это ZIP) и архивы с нестандартным расширением. Формат определяется по содержимому; на файле, который не архив, Ctrl+PgDn ничего не делает.
-
-### Исправлено
-
-- Удаление в корзину молча прекращалось, если Windows не могла переместить какой-то файл или папку (например, открытую в другой программе): задание закрывалось как отменённое, а часть файлов оставалась на месте. Теперь MTN2 сообщает, что не удалось переместить, и предлагает удалить насовсем или пропустить. Перед тем как удалить насовсем то, что не помещается в корзину, Windows теперь спрашивает – раньше такая папка могла быть удалена мимо корзины без предупреждения.
-- Копирование на месте (Shift+F5) шло в обход очереди заданий: не показывало прогресс, не отменялось и не попадало в список заданий. Теперь оно работает как обычное копирование.
-- Строка статуса фонового удаления показывала счётчик вида «5/1» и процент по байтам, которых удаление не считает. Теперь считаются удалённые файлы и папки. Разделитель в строке статуса заданий, многоточие при сравнении папок, тире в сообщениях корзины и стрелка в пункте меню «Hex↔Text» выводились искажёнными символами.
-- Архив 7z с зашифрованными именами файлов (7-Zip: «Шифровать имена файлов») при входе показывал ошибку «invalid path». Теперь MTN2 спрашивает пароль и после ввода показывает содержимое.
-- В архиве 7z, где зашифровано только содержимое файлов, просмотр (F3), правка (F4) и копирование (F5, F6) зашифрованного файла заканчивались ошибкой «Access denied». Теперь MTN2 сначала спрашивает пароль, проверяет его и при ошибке спрашивает снова; до конца сеанса пароль этого архива больше не спрашивается.
-- После нажатия и отпускания одной клавиши Alt строка F-клавиш оставалась в режиме Alt, пока не нажата другая клавиша. Теперь она возвращается сразу. То же при переключении в другое окно с зажатым Shift, Ctrl или Alt.
-- Диалог ошибки удаления в русском интерфейсе показывал заголовок, вопрос и кнопку «Удалить» / «Повторить» по-английски. Теперь они переведены.
-
-### Изменено
-
-- В диалогах у кнопок, флажков и переключателей выделена цветом горячая буква: её нажатие нажимает кнопку, переключает флажок или выбирает переключатель, в том числе из другой раскладки клавиатуры. Раньше буквы работали невидимо: срабатывала первая буква надписи или английская буква команды (у «Отмены» – C), и случайное нажатие буквы, пока фокус на кнопке, могло выполнить не ту команду. Теперь буквы есть только там, где они видны; кнопки по умолчанию и отмены работают от Enter и Esc.
-- Кнопка диалога, нажатая Enter или пробелом, остаётся вдавленной, пока клавиша не отпущена, и команда выполняется при отпускании. Если, не отпуская клавишу, нажать Esc, кнопка поднимается без выполнения команды, а диалог остаётся открытым. Щелчок мышью в это время тоже отменяет нажатие.
-
-## v0.3.9 – 2026-09-29
-
-### Изменено
-
-- Enter на консольной программе в панели (`.exe` консольной подсистемы, `.bat`, `.cmd`, `.ps1`) запускает её во встроенной консоли, как команду из командной строки, и вывод остаётся на экране. Раньше она открывалась в отдельном окне Windows, которое закрывалось сразу после её завершения. Если фоновая консоль – WSL, Git Bash или SSH либо в ней ещё выполняется команда, программа запускается в новой вкладке терминала с cmd (для `.ps1` – с PowerShell). Оконные программы и документы открываются, как раньше.
-- Esc в панелях работает по шагам: первое нажатие очищает командную строку, второе возвращает фокус панели, третье показывает консоль. С пустой командной строкой первый шаг пропускается, а при фокусе на панели Esc сразу показывает консоль. Ctrl+O, как и раньше, сразу переключает на консоль.
-- Кнопки во всех диалогах расположены одинаково: над ними одна пустая строка, под ними – только их тень, а слева и справа от ряда кнопок есть отступ от рамки. Некоторые диалоги стали на строку выше или ниже, диалог «Файл уже существует» – на две клетки шире.
-- В диалогах выровнены подписи и поля: в «Шрифт / экран» все поля начинаются в одной колонке, в «SSH-подключении» подпись порта больше не наезжает на поле, в «Справке» и выборе цвета подписи не обрезаются, а длинные строки в диалогах ошибок, «Синхронизации», «Сравнении файлов» и «Атрибутах» больше не упираются в рамку. Сообщение об ошибке даты в «Атрибутах» больше не перекрывает кнопки «Текущее» и «Исходные».
-- На русском диалоги больше не расширяются без надобности: раньше почти каждый становился шире на клетку, «Группы цветовой разметки» – на 26 клеток (кнопка «Добавить» растягивалась под строку подсказки), а поля в «Копировании» уезжали от своих подписей. Теперь более длинная подпись сдвигает только поле рядом с ней, а ряд кнопок раскладывается отдельно.
-- Тема «Classic FAR (NDN)» в списке **Настройки → Тема...** называется «Far Classic»: это палитра Far. Выбранная тема при обновлении не меняется.
-- Диалог **Настройки → Шрифт / экран...** разделён горизонтальными линиями на группы: шрифт, курсор, внешний вид, язык.
-- Кегль в **Настройки → Шрифт / экран...** теперь в настоящих типографских пунктах, как в Windows Terminal и консоли Windows, с шагом 0,5 пт от 8 до 12 пт. Раньше «14 pt» в списке на деле означали 14 пикселей (10,5 пт). Размер шрифта в сохранённых настройках не меняется: прежние 14 показываются как 10,5 пт.
-
-### Новое
-
-- Кнопки в диалогах нажимаются, как настоящие: нажатая кнопка сдвигается вправо и закрывает свою тень. Щелчок мышью срабатывает, когда кнопку мыши отпускают над той же кнопкой, так что нажатие можно отменить, уведя указатель в сторону. С клавиатуры – Enter, пробелом, подчёркнутой буквой, Y / N – кнопка на десятую долю секунды вдавливается и затем срабатывает. Esc закрывает диалог сразу, без анимации.
-- В **Настройки → Шрифт / экран...** можно выбрать вид отмеченных файлов: «Цвет текста» (как раньше) или «Фон строки» – отмеченные строки дополнительно выделяются полосой фона, их легче заметить в длинном списке. Цвет полосы подобран для каждой темы.
-- Контекстное меню Windows теперь открывается с клавиатуры – по **Shift+F10** или клавише **Menu** – и из меню **Файлы → Контекстное меню Windows**, а не только удержанием правой кнопки мыши. С клавиатуры и из меню оно действует на все выделенные файлы и папки, без выделения – на элемент под курсором, на `..` – на текущую папку. На панели F-клавиш с нажатым Shift у F10 подпись «Контекст». Способы вызова описаны в справке, раздел «Операции с файлами».
-- В **Настройки → Шрифт / экран...** появился флажок «Межстрочный интервал (как в терминале)»: строки становятся выше на 15% кегля, как в Windows Terminal. По умолчанию выключен. Чтобы текст выглядел как в Far, запущенном в Windows Terminal с настройками по умолчанию, в «Шрифт / экран» нужно выбрать шрифт Cascadia Mono, размер 11 пт и включить «Межстрочный интервал (как в терминале)»; в профиле Windows Terminal при этом должно стоять сглаживание `grayscale` (оно там по умолчанию). Подробнее – в справке, раздел «Шрифт и межстрочный интервал»: почему текст может выглядеть иначе и почему с классической консолью Windows полного совпадения нет.
-- В **Настройки → Шрифт / экран...** можно выбрать тени окон, диалогов и кнопок: «Классические» (как раньше), «Мягкие» или «Нет». Вместе с тенями ослабляется или отключается затемнение панелей под открытым диалогом.
-- Когда MTN2 проверяет обновления на github.com – при запуске или по кнопке «Проверить», – в правом нижнем углу появляется уведомление об этом; у проверки при запуске в нём есть подсказка, как проверку отключить. Уведомление закрывается, как только ответ от GitHub получен. Уведомление видно, даже если остальные уведомления выключены; убрать его можно флажком «Показывать уведомление о проверке» в **≡ → Обновления...**. В справке появилась отдельная страница «Обновления»: как проходит обновление, как его настроить и что именно отправляется в сеть.
-
-### Исправлено
-
-- В редакторе Backspace в конце строки больше не сдвигает курсор на лишнюю позицию влево, а Backspace в начале строки оставляет курсор ровно на месте склейки строк.
-- Имя или путь файла в командной строке (например, вставленное по Ctrl+Enter или Ctrl+Shift+Enter) по Enter запускает его: консольную программу – во встроенной консоли, остальные файлы – программой Windows. Раньше ничего не происходило. Имя в кавычках тоже распознаётся как путь, а `cd <путь>` обрабатывается так же, как путь без `cd`.
-- Если держать нажатыми стрелки, PgUp или PgDn, курсор теперь плавно бежит по списку. Раньше в большом окне, особенно при масштабе Windows 125% и выше, экран мог застыть на несколько секунд, пока клавиша нажата: программа перерисовывала всё окно на каждый автоповтор клавиши, а не один раз за кадр.
-- После команды из командной строки фокус возвращается панели. Раньше после `cd` или перехода в папку командная строка оставалась в фокусе, и стрелки вверх и вниз листали историю команд вместо файлов.
-- В диалогах «Тема», «История команд», «История папок», «История файлов», «Избранные папки», «Загруженные плагины» и «Рабочие пространства» не были видны кнопки: они попадали на нижнюю рамку. В «Сравнении файлов» тень кнопки ложилась на рамку.
-- В теме High Contrast курсор на отмеченном файле не отличался от курсора на неотмеченном: теперь отмеченный файл под курсором чёрный на бирюзовом, а не на жёлтом.
-- В теме Total Commander отмеченные файлы плохо читались: красный на сером фоне заменён тёмно-красным, а под курсором отмеченный файл светло-красный вместо красного на тёмно-синем.
-- Текст больше не «мылится» при масштабе Windows 125%, 150% и выше: буквы рисуются сразу в разрешении экрана, штрихи ровные и чёткие. Раньше символ рисовался в масштабе 100% и потом растягивался.
-- Нижние хвосты букв и символов (`g`, `j`, `p`, `q`, `y`, `[`, `]`, `|`, `_`) больше не срезаются снизу. Особенно это было заметно в шрифте Ubuntu Mono, где подчёркивание пропадало наполовину. Если символы шрифта не помещаются в строку, строка становится на пиксель выше.
-
-## v0.3.8 – 2026-09-28
-
-### Новое
-
-- Команды просмотрщика и редактора (Hex, поиск, кодировка, сохранение, отмена, удаление строки и другие) можно переназначить в `keymap.json` и в «Настройки → Раскладка клавиш»: их имена начинаются с `Doc`, `Viewer`, `Markdown` и `Editor`. Одно сочетание может означать разное в панелях и в документе.
-- Глобальные клавиши – F1, F9, Ctrl+Tab и Ctrl+Shift+Tab, Ctrl+O, Ctrl+Shift+N, Ctrl+Alt+O, Alt+X, Ctrl+0 и Ctrl+Alt+K – тоже переназначаются (`Help`, `TopMenu`, `NextTab`, `PrevTab`, `AppConsoleToggle`, `NewTerminal`, `SelectConsoleProfile`, `AppQuit`, `ZoomReset`, `ReloadKeymap`). Если сочетание занято в самом окне, оно остаётся за окном.
-- В консоли и терминале переназначаются история команд (Alt+F8), «Выделить всё», копирование, прерывание команды и вставка (`ShellHistory`, `ShellSelectAll`, `ShellCopyOrInterrupt`, `ShellCopy`, `ShellPaste`), а в консоли – переход панели в папку консоли (`ConsoleSyncDir`).
-- В диалоге «Раскладка клавиш» действия сгруппированы по окнам и названы понятными словами вместо внутренних имён вроде `DocHex`.
-- Подписи F-клавиш, подсказки с буквами (например, `A:All`) и сочетания в верхнем меню показывают клавиши из раскладки: после переназначения видно новую клавишу.
-- Backspace в файловой панели при пустой командной строке переходит на уровень выше – так же, как Enter на `..`: в родительскую папку, из архива, назад из результатов поиска или корзины. Если в командной строке есть текст, Backspace, как и раньше, стирает в ней символ.
-
-### Изменено
-
-- В просмотрщике и редакторе сочетания срабатывают только с теми модификаторами, к которым привязаны: например, Ctrl+Shift+A больше не выделяет всё (как Ctrl+A), а Shift+Esc не закрывает окно. Ctrl+Shift+Z по-прежнему повторяет отменённое.
-- Верхнее меню открывается только F9 без модификаторов. Раньше его открывали и Shift+F9, Ctrl+F9, Alt+F9; теперь Ctrl+F9 в панелях, как и указано в раскладке, сортирует по времени доступа, а в терминале эти сочетания уходят в программу.
-- Стрелки ← и → в файловых панелях во всех режимах, кроме «Кратко», переводят курсор в начало и в конец списка, как Home и End (с Shift – выделяют до начала или конца). Раньше в этих режимах они ничего не делали. В режиме «Кратко» стрелки по-прежнему переходят между колонками.
-- Дополнен русский перевод: подписи в диалогах цветовой разметки, ассоциаций, создания ссылки, поиска, замены, SSH-подключений, редактора клавиш и справки, варианты в выпадающих списках («Спрашивать / Перезаписывать / Пропускать», «Оставить / Задать / Снять», виды ссылок) и заголовки колонок в списках.
-
-### Исправлено
-
-- Сочетания с Ctrl и Alt больше не срабатывают на клавишах цифрового блока и F-клавишах. Раньше, например, Ctrl+F4 сохранял файл в редакторе, Ctrl+F11 отменял правку, Ctrl+Num+ удалял текст до конца строки, Ctrl+Num/ открывал консоль, а Alt+F9 закрывал программу.
-- В вопросе «Сохранить изменения?» клавиши F10 и F4 больше не отвечают «Да».
-- В меню выбора диска F-клавиши больше не выбирают диски P–Z, а в быстром поиске не вводят буквы.
-- В диалогах с русскими подписями работают горячие клавиши (подчёркнутые буквы, например «Удалить»). Горячие клавиши с латинскими буквами срабатывают по физической клавише в любой раскладке.
-- Подписи кнопок и флажков в диалогах больше не обрезаются – например, кнопка «Копирование» в диалоге копирования.
-
-## v0.3.7 – 2026-09-27
-
-### Исправлено
-
-- Файл, открытый в просмотрщике или редакторе, больше не перечитывается с диска сразу после сохранения.
-
-## v0.3.6 – 2026-09-27
-
-### Новое
-
-- Переносной архив `MTN2-<версия>-win64-portable.zip`: настройки, история и раскладка клавиш хранятся рядом с `MTN2.exe`. Режим включает файл `portable.dat` рядом с программой.
-- Ссылки в Markdown-просмотрщике и справке: Tab / Shift+Tab переходят по ссылкам, Enter или щелчок открывает ссылку на сайт или почту в программе по умолчанию после подтверждения.
-
-### Исправлено
-
-- Переносной режим включался и файлом `portable.dat` в текущей папке: установленная копия, запущенная из консоли в такой папке, переносила настройки к себе.
-- Файлы перевода ищутся только в папке `strings` рядом с `MTN2.exe`, а не во всех папках выше по диску. Такой файл дополняет встроенный перевод, а не заменяет его целиком.
-- Изображения в Markdown больше не закрывают диалоги и верхнее меню.
-- В окне «О программе» правильно указано название программы.
-
-### Изменено
-
-- Итоги по выделенным файлам в строке состояния показываются цветом отмеченных файлов.
-
-## v0.3.5 – 2026-09-27
-
-### Новое
-
-- Ключ командной строки `--fps` показывает в заголовке окна частоту кадров и время отрисовки.
-
-### Исправлено
-
-- Просмотрщик и редактор не замечали изменение файла, сделанное сразу после его открытия, и не перечитывали его.
-
-## v0.3.4 – 2026-09-27
-
-### Новое
-
-- Alt+Shift+Ins (меню «Файлы → Скопировать имя») копирует имена выделенных объектов или объекта под курсором, по одному в строке.
-- Короткие уведомления в правом нижнем углу подтверждают команды, результат которых не виден на экране: копирование пути, имени или файлов, Ctrl+R, выделение по маске, которое ничего не выделило, и другие. Отключаются в «Настройки → Шрифт / экран → Показывать всплывающие уведомления».
-
-### Исправлено
-
-- Ctrl+Shift+O в консоли PowerShell переходит в папку панели. Раньше команда выдавала ошибку и оставляла приглашение `>>`, а в WSL и Git Bash отправлялся лишний Enter.
-
-## v0.3.3 – 2026-09-25
-
-### Новое
-
-- Ключ командной строки `--no-skia` включает стандартную отрисовку вместо Skia. Окно «О программе» показывает версию и используемую отрисовку.
-
-### Изменено
-
-- Программа запускается быстрее и занимает меньше памяти: плагины загружаются при первом использовании, оболочка Ctrl+O запускается с первой командой (если не включено «Запускать оболочку при старте программы»), а движок WASM-плагинов больше не держит пул потоков по числу ядер процессора.
-
-## v0.3.2 – 2026-09-25
-
-### Новое
-
-- Встроенное обновление. Раз в день после запуска программа проверяет, есть ли новая версия, и предлагает «Обновить / Позже / Пропустить эту версию» – без согласия ничего не скачивается. Архив проверяется по контрольной сумме, обновление ставится сразу с перезапуском или при выходе из программы. Настройки, `7z.dll` и `keymap.json` не затрагиваются. Проверить вручную и отключить проверку при запуске можно в меню `≡` → «Обновления…».
-
-## v0.3.1 – 2026-09-25
-
-### Исправлено
-
-- В архив v0.3.0 не попали `sk4d.dll` и `wasmtime.dll`: программа работала без Skia, а WASM-плагины не загружались.
-
-## v0.3.0 – 2026-09-25
-
-Первый публичный выпуск.
+### New
+
+- "PDF Viewer" plugin: F3 on a `.pdf` shows the pages as images (PDFium), so text with non-standard fonts and scans look as in a regular viewer. Keys: PageUp/PageDown and Space scroll through pages, Home/End – first and last page, `+`/`-` change the zoom, `0` – whole page, `w` – fit width, the mouse wheel scrolls, Ctrl+wheel changes the zoom. Quick view (Ctrl+Q) shows the text of the document; the plugin settings can enable showing pages as images always or only for a document without text (a scan); Tab opens the full viewer in the panel (pages, zoom, mouse wheel and dragging), and Tab or Esc return the file panel. If `pdfium.dll` is not found, the "Document Viewer" plugin opens the PDF as text.
+- File comparison (Ctrl+Alt+C) for text files opens a compare and merge window: two columns with line numbers, differences marked in the middle; Ctrl+Down/Ctrl+Up move between differences, Right and Left copy a difference to the chosen side, Ctrl+Z undoes, Ctrl+S saves the modified files with their original encoding and line endings. Binary, very large and identical files are shown in the previous summary window.
+- "Document Viewer" plugin: F3 on `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` files and SQLite databases (`.sqlite`, `.sqlite3`, `.db`, `.db3`) shows their text: paragraphs, sheet rows, slide and page text, an SVG summary with source indentation, a database schema with the first rows of the tables. PDF text with fonts in a custom encoding is not decoded. F4 still opens the editor. Quick view (Ctrl+Q) shows the same texts for files up to 16 MB; viewing `.csv` tables works the same way.
+- "Plugins..." window: the "Add..." button installs a plugin from a folder or a `.zip` file (with `plugin.json`), and the "Remove" button deletes the folder of the selected plugin. An installed plugin is off until it is enabled in the list; a plugin with the same identifier is replaced after confirmation, and an archive with paths outside the plugin folder is rejected.
+- Lua macros gained access to the editor, panels, clipboard and dialogs: `mtn.editor.*` (text, selection, lines, replace, cursor), `mtn.panel.*` (file list, navigation, cursor, marks by mask), `mtn.clipboard.*`, `mtn.input`, `mtn.confirm`, `mtn.choose`. `mtn.exec` runs an external program and returns its output, but only from the list in the macro's `exec` field (for example `exec = "git"`). A call to `mtn.on(topic, function)` in a macro file runs the function on program events: opening, saving, changing and closing a document, changing the folder and cursor in a panel. The description is in the "Macros" plugin help; the new `word-count.lua` sample counts lines and words.
+- A Lua macro can add its own column to the file panels: `mtn.column{id, title, width, align, default, value}`, where `value` is a Lua function that receives the name, path, folder flag and file size and returns the cell text. The column appears in the "Columns..." window, and values are recalculated when the folder changes; the new `size-kb.lua` sample shows the size in kilobytes.
+- Background jobs: the jobs list (Ctrl+Shift+J) gained the "Pause", "Up", "Down" and "Speed" buttons. Pause stops copying at the next block (the `||` chip) or holds the job in the queue; "Up"/"Down" change the start order; "Speed" limits copying between local folders (1, 5, 20, 100 MB/s). Copying and moving on the same disk now run in turn rather than interleaved.
+- Batch rename (Ctrl+Alt+N): masks gained the tokens `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]` (modification date and time), `[Parent]` (folder name), `[Size]` (size) and `[Dim]`, `[Camera]`, `[Artist]`, `[Title]` (values of the metadata plugin columns); tokens can be typed in any case. The "Regular expression" checkbox turns "Search" into a pattern, and `$1`, `$2` are available in "Replace"; an invalid pattern leaves the names as they are. The token hint is in the window itself.
+- Folder synchronization (Ctrl+Alt+S): in the list of differences each file has its own action – `->` right, `<-` left or `--` skip. The "Right", "Left" and "Skip" buttons change the action of the selected row (a manual choice is marked with `*`), "Reset" restores the automatic one, and the "Only skipped" checkbox shows the rows without a decision. A conflict can be resolved in either direction, and a new file can be left in place. The list scrolls and shows all differences, not the first twelve; the status line counts copies and skips according to the chosen actions.
+- "Vertical lines between columns" option (Options – User interface): vertical lines are drawn between panel columns in the "Full" and "Custom columns" modes, including in the header. Off by default; in the brief mode the lines are always there.
+- "Quick search also filters the panel" option (Options – User interface): with quick search by Alt+letter, besides moving the cursor to the found file, only files whose names start with the typed text remain in the panel; the search field stays open after Alt is released until Esc or Enter is pressed, which return all files; Backspace widens the list. The "Fuzzy quick search filter: letters in order" option also keeps names in which the typed letters occur in order, not necessarily consecutively (for example, "mnr" finds "main_readme.txt"). The additional "Keep the quick search filter in other folders" option keeps the filter when entering a folder with Enter or a mouse click: then only Esc removes it. Off by default.
+- The metadata plugin columns ("Size px", "Camera", "Artist", "Title") can now be sorted – by clicking the header or in the sort menu; "Size px" orders by the number of pixels. Plugins can send numeric column values for local folders.
+- Drive change window (Alt+F1/F2): the used space of a volume is shown as a pale bar behind the total size and free space columns; the text does not change.
+- Plugin columns (for example, "Size px" of the metadata plugin) can now be enabled in the "Custom columns" window for local folders as well.
+- Linux: the "PDF Viewer", "Document Viewer" and "CSV Table" plugins find a file by a `file:///...` address and open it on Linux; the PDFium library (`libpdfium.so`) is included in the archive and in the `.deb` / `.rpm` packages.
+- Linux: copying and moving from one disk (mount point) are queued, as on Windows with a single drive letter.
+
+### Fixed
+
+- Linux: the "Line Filter" and "Macros" plugins open the file in the editor and save the macro result under the correct path (previously the path was built as on Windows).
+- Linux (window): a PDF page no longer stays on screen after the viewer is closed.
+- Tab in quick view (Ctrl+Q) on an image no longer closes the view and no longer returns the file panel: the keyboard moves to the viewer, and Tab or Esc return it back.
+- If a plugin could not read a folder (for example, `kubectl` in the `kubernetes` folder of the Docker plugin could not reach the cluster), the row with the error text no longer triggers the "Invalid characters in file name" window when selected or when Enter is pressed on it.
+
+Earlier versions are on the [releases](https://github.com/Laex/MTN2/releases) page.

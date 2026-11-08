@@ -51,7 +51,7 @@ begin
 
     P.Open(['dir', 'git status', 'make'], 'git status', 20, 10, 50, 80, 25);
     Assert.IsTrue(P.Visible and (P.Hover = 1), 'opens on the current entry');
-    Assert.IsTrue((P.Bounds.Bottom = 19) and (P.Bounds.Height = 5), 'above the field, 3 rows + frame');
+    Assert.IsTrue((P.Bounds.Bottom = 19) and (P.Bounds.Height = 3), 'above the field, 3 rows, no frame');
     Assert.IsTrue((P.Bounds.Left = 10) and (P.Bounds.Right = 50), 'as wide as the field');
 
     Assert.IsTrue(Key(P, vkDown, [], Picked) = hpkHandled, 'Down moves');
@@ -82,10 +82,10 @@ begin
     for I := 0 to High(Items) do
       Items[I] := 'cmd' + IntToStr(I);
     P.Open(Items, '', 20, 0, 40, 80, 25);
-    Assert.IsTrue(P.Bounds.Height = cHistoryPopupMaxRows + 2, 'at most 12 rows');
+    Assert.IsTrue(P.Bounds.Height = cHistoryPopupMaxRows, 'at most 12 rows');
     Key(P, vkEnd, [], Picked);
     Assert.IsTrue(P.Hover = 29, 'End');
-    Assert.IsTrue(P.HandleClick(5, P.Bounds.Top + 1, Picked, Valid) and Valid and (Picked = 'cmd18'),
+    Assert.IsTrue(P.HandleClick(5, P.Bounds.Top, Picked, Valid) and Valid and (Picked = 'cmd18'),
       'click on the first visible row after scrolling: ' + Picked);
     P.Open(Items, '', 20, 0, 40, 80, 25);
     Assert.IsTrue(not P.HandleClick(70, 2, Picked, Valid) and not Valid and not P.Visible,
@@ -96,9 +96,9 @@ begin
       SetLength(Grid[I], 80);
     P.Open(['alpha', 'beta'], 'beta', 20, 10, 50, 80, 25);
     P.Draw(Grid, nil);
-    Assert.IsTrue((Grid[P.Bounds.Top + 1][11].CharValue = 'a') and
-      (Grid[P.Bounds.Top + 2][11].CharValue = 'b'), 'rows drawn inside the frame');
-    Assert.IsTrue(Grid[P.Bounds.Top + 2][11].BgColor <> Grid[P.Bounds.Top + 1][11].BgColor,
+    Assert.IsTrue((Grid[P.Bounds.Top][10].CharValue = 'a') and
+      (Grid[P.Bounds.Top + 1][10].CharValue = 'b'), 'rows drawn from the first cell of the block');
+    Assert.IsTrue(Grid[P.Bounds.Top + 1][10].BgColor <> Grid[P.Bounds.Top][10].BgColor,
       'hovered row highlighted');
   finally
     P.Free;

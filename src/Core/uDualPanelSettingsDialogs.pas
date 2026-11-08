@@ -100,6 +100,8 @@ type
       const AOnGetDisplay: TSettingsGetDisplay;
       const AOnApplyDisplay: TSettingsApplyDisplay);
     procedure OpenColumns(const AScheme: string = '');
+    /// <summary>Lists the mask groups and lets the user add, change and delete them.</summary>
+    procedure OpenMaskGroups;
     procedure OpenDisplay;
     procedure OpenInterface;
     procedure OpenExternalTools;
@@ -133,6 +135,8 @@ type
     property OnSetProgramsInTerminal: TProc<Boolean>
       read FOnSetProgramsInTerminal write FOnSetProgramsInTerminal;
     procedure DispatchColumnsCommand(const AControlId: string);
+    procedure ShowMaskGroups(const ASelectName, AName, AMasks: string);
+    procedure DispatchMaskGroupsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchInterfaceCommand(const AControlId: string);
     procedure DispatchExternalToolsCommand(const AControlId: string);
@@ -157,8 +161,8 @@ type
 implementation
 
 uses
-  uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
-  uShellProfileOptions;
+  System.Math, uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
+  uShellProfileOptions, uColumnSets, uMaskGroups;
 
 // Drops the controls that only matter when the host draws with a font of its own.
 procedure RemoveFontControls(var ADecl: TDialogDeclaration);
@@ -242,6 +246,82 @@ begin
     GCustomColumnsConfig.ShowAccessed, GCustomColumnsConfig.ShowType,
     GCustomColumnsConfig.ShowAttr, AScheme), FOnCommand);
   Notify;
+end;
+
+procedure TSettingsDialogController.OpenMaskGroups;
+begin
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  if Assigned(FOnPrepareUi) then
+    FOnPrepareUi();
+  ShowMaskGroups('', '', '');
+end;
+
+// Opens (or refreshes) the dialog. The row of ASelectName is selected; AName and
+// AMasks fill the edit lines.
+procedure TSettingsDialogController.ShowMaskGroups(const ASelectName, AName,
+  AMasks: string);
+var
+  Names, Items: TArray<string>;
+  I, Sel, NameW, TagW: Integer;
+  Tag: string;
+begin
+  Names := MaskGroupNames;
+  SetLength(Items, Length(Names));
+  Sel := 0;
+  Tag := T('ui.maskGroups.builtIn', '(built-in)');
+  NameW := 0;
+  for I := 0 to High(Names) do
+    NameW := Max(NameW, Length(Names[I]));
+  TagW := Length(Tag);
+  // Columns: name, built-in marker, masks.
+  for I := 0 to High(Names) do
+  begin
+    Items[I] := Names[I].PadRight(NameW) + '  ';
+    if MaskGroupIsBuiltIn(Names[I]) then
+      Items[I] := Items[I] + Tag
+    else
+      Items[I] := Items[I] + StringOfChar(' ', TagW);
+    Items[I] := Items[I] + '  ' + MaskGroupMasks(Names[I]);
+    if SameText(Names[I], ASelectName) then
+      Sel := I;
+  end;
+  SetKind(hdkMaskGroups);
+  FDialog.Open(BuildMaskGroupsDialog(Items, Sel, AName, AMasks), FOnCommand);
+  Notify;
+end;
+
+procedure TSettingsDialogController.DispatchMaskGroupsCommand(
+  const AControlId: string);
+var
+  Names: TArray<string>;
+  Idx: Integer;
+  GName, GMasks: string;
+begin
+  if DialogCmdIsReject(AControlId) then
+  begin
+    FDialog.Close;
+    Exit;
+  end;
+  Names := MaskGroupNames;
+  Idx := FDialog.GetListSelectedIndex('groups');
+  GName := Trim(FDialog.GetInputValue('gname'));
+  GMasks := Trim(FDialog.GetInputValue('gmasks'));
+  if DialogCmdIs(AControlId, 'save') then
+  begin
+    if MaskGroupSave(GName, GMasks) then
+      ShowMaskGroups(GName, '', '')
+    else
+      ShowMaskGroups('', GName, GMasks);
+  end
+  else if DialogCmdIs(AControlId, 'delete') then
+  begin
+    if (Idx >= 0) and (Idx <= High(Names)) then
+      MaskGroupDelete(Names[Idx]);
+    ShowMaskGroups('', '', '');
+  end
+  else if (Idx >= 0) and (Idx <= High(Names)) then
+    ShowMaskGroups(Names[Idx], Names[Idx], MaskGroupMasks(Names[Idx]));
 end;
 
 procedure TSettingsDialogController.OpenDisplay;
@@ -656,6 +736,8 @@ begin
         end;
       SetSchemeColumnSelection(FColumnsScheme, Ids);
     end;
+    if Trim(FDialog.GetInputValue('set_name')) <> '' then
+      ColumnSetSave(FDialog.GetInputValue('set_name'), GCustomColumnsConfig);
   end;
   FDialog.Close;
   if Accepted then
@@ -1146,6 +1228,7 @@ begin
   Result := True;
   case AKind of
     hdkColumnsConfig: DispatchColumnsCommand(AControlId);
+    hdkMaskGroups: DispatchMaskGroupsCommand(AControlId);
     hdkDisplay: DispatchDisplayCommand(AControlId);
     hdkInterface: DispatchInterfaceCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);

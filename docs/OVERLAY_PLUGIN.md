@@ -1,18 +1,20 @@
-# Взаимодействие Media Overlay с плагином
+# Media Overlay interaction with a plugin
 
-> **Роль документа:** контракт графического оверлея (растровое превью поверх текстовой сетки) с плагином.  
-> **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) (Overlay Renderer).
+**English** | [Русский](OVERLAY_PLUGIN.ru.md)
+
+> **Document role:** contract between the graphic overlay (raster preview above the text grid) and a plugin.  
+> **Series:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
+> **Context:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) (Overlay Renderer).
 
 ---
 
-## 1. Область и роли
+## 1. Scope and roles
 
-Media Overlay – слой FMX Canvas **поверх** `TTerminalGrid`. Единственный легальный путь показать bitmap (фото, PDF page, video frame) без нарушения инварианта «плагин без Canvas».
+Media Overlay is an FMX Canvas layer **above** `TTerminalGrid`. It is the only legal way to show a bitmap (photo, PDF page, video frame) without breaking the "plugin without Canvas" invariant.
 
 ```text
 FMX Form
-├── TTerminalRenderer (текстовая сетка)
+├── TTerminalRenderer (text grid)
 └── Overlay Renderer
     ├── Requests[] (uri, cell bounds, z)
     └── Bitmaps (decoded by Host worker)
@@ -21,15 +23,15 @@ FMX Form
     Plugin (Quick View / preview)
 ```
 
-| Участник | Ответственность |
+| Participant | Responsibility |
 |---|---|
-| **Host / Overlay Renderer** | Приём заявок, декод изображений в worker, `TCanvas.DrawBitmap`, клиппинг, z-order поверх grid. |
-| **Плагин** | Логический запрос превью: URI + желаемые границы в **ячейках** + режим. Без доступа к Canvas. |
-| **Async VFS** | Поток файла для декодера Host. |
+| **Host / Overlay Renderer** | Accepting requests, decoding images in a worker, `TCanvas.DrawBitmap`, clipping, z-order above the grid. |
+| **Plugin** | Logical preview request: URI + desired bounds in **cells** + mode. No access to Canvas. |
+| **Async VFS** | File stream for the Host decoder. |
 
 ---
 
-## 2. Жизненный цикл
+## 2. Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -45,31 +47,31 @@ sequenceDiagram
     VFS-->>Host: stream
     Note over Host: decode in worker → TBitmap
     Host->>Host: Overlay.DrawBitmap in cell bounds
-    User->>Host: закрыть Quick View
+    User->>Host: close Quick View
     Host->>Host: overlay_clear(WindowId)
     Host->>Plug: handle_event(preview_closed)
 ```
 
-| Этап | Действие |
+| Stage | Action |
 |---|---|
-| **request** | Плагин или Host формирует заявку на оверлей. |
-| **load** | Host грузит и декодирует в worker. |
-| **present** | Отрисовка поверх grid на каждом кадре / при dirty. |
-| **clear** | Снятие оверлея при смене URI, ресайзе, закрытии QV. |
+| **request** | The plugin or Host forms an overlay request. |
+| **load** | The Host loads and decodes in a worker. |
+| **present** | Drawing above the grid on every frame / when dirty. |
+| **clear** | The overlay is removed on URI change, resize, or Quick View close. |
 
-Плагин **не** передаёт сырые пиксели сейчас (слишком тяжёлый маршалинг). Он передаёт URI; декод – в ядре. Позже: опциональный shared-memory / host-side cache id.
+Currently the plugin does **not** pass raw pixels (marshaling is too heavy). It passes a URI; decoding happens in the core. Planned: an optional shared-memory / host-side cache id.
 
 ---
 
-## 3. API и JSON
+## 3. API and JSON
 
 ```pascal
-// Плагин → Host
+// Plugin → Host
 function mtn_overlay_request(WindowId: Integer;
   const RequestJson: PAnsiChar): Integer; cdecl;
 
 procedure mtn_overlay_clear(WindowId: Integer;
-  const RequestId: PAnsiChar); cdecl;  // пустой id = clear all for window
+  const RequestId: PAnsiChar); cdecl;  // empty id = clear all for the window
 
 // Host → Plugin
 procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
@@ -78,7 +80,7 @@ procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
 procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 ```
 
-### 3.1. Заявка на превью
+### 3.1. Preview request
 
 ```json
 {
@@ -91,18 +93,18 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-| Поле | Назначение |
+| Field | Purpose |
 |---|---|
-| `request_id` | Идемпотентный ключ (повторный request заменяет предыдущий). |
-| `uri` | Источник через VFS. |
-| `bounds` | Прямоугольник в **логических ячейках** текущего grid. |
+| `request_id` | Idempotent key (a repeated request replaces the previous one). |
+| `uri` | Source via the VFS. |
+| `bounds` | Rectangle in **logical cells** of the current grid. |
 | `fit` | `contain` \| `cover` \| `stretch` \| `center` |
-| `priority` | Порядок при нескольких оверлеях. |
-| `mime_hint` | Подсказка декодеру. |
+| `priority` | Order when there are several overlays. |
+| `mime_hint` | Hint for the decoder. |
 
-Коды возврата `mtn_overlay_request`: `0` ok, `-1` unsupported type, `-2` busy, `-3` invalid bounds.
+`mtn_overlay_request` return codes: `0` ok, `-1` unsupported type, `-2` busy, `-3` invalid bounds.
 
-### 3.2. Статус (Pull, опционально)
+### 3.2. Status (Pull, optional)
 
 ```pascal
 procedure mtn_overlay_get_status_json(WindowId: Integer;
@@ -123,52 +125,52 @@ procedure mtn_overlay_get_status_json(WindowId: Integer;
 
 ---
 
-## 4. События
+## 4. Events
 
-| EventType | Имя | Param1 | Param2 | Семантика |
+| EventType | Name | Param1 | Param2 | Semantics |
 |---|---|---|---|---|
-| 100 | `preview_query` | RowIndex | 0 | Host спрашивает: нужно ли превью для строки |
-| 101 | `preview_closed` | 0 | 0 | Оверлей снят |
-| 102 | `bounds_changed` | 0 | 0 | Dynamic grid resize – плагин может переиздать request |
-| 103 | `overlay_failed` | 0 | 0 | Декод/VFS ошибка; детали в status JSON |
+| 100 | `preview_query` | RowIndex | 0 | The Host asks whether a preview is needed for the row |
+| 101 | `preview_closed` | 0 | 0 | The overlay was removed |
+| 102 | `bounds_changed` | 0 | 0 | Dynamic grid resize – the plugin may re-issue the request |
+| 103 | `overlay_failed` | 0 | 0 | Decode/VFS error; details in the status JSON |
 
-Простой путь **без** плагина превью: Host сам по `file_type`/`uri` панели делает `overlay_request` для Quick View. Плагинный путь нужен для нестандартных источников (DB blob, генерация диаграммы).
+In the simple path **without** a preview plugin, the Host itself issues `overlay_request` for Quick View based on the panel's `file_type`/`uri`. The plugin path is needed for non-standard sources (DB blob, diagram generation).
 
 ---
 
-## 5. Владение состоянием
+## 5. State ownership
 
-| Состояние | Владелец |
+| State | Owner |
 |---|---|
-| Bitmap cache, decode jobs, фактическая отрисовка | **Host** |
-| Решение «что превьюить» и `request_id` | **Плагин** или Host QV |
-| Bounds в ячейках | Задаёт заявитель; при resize Host шлёт `bounds_changed` |
+| Bitmap cache, decode jobs, actual drawing | **Host** |
+| The decision of "what to preview" and `request_id` | **Plugin** or Host QV |
+| Bounds in cells | Set by the requester; on resize the Host sends `bounds_changed` |
 
 ---
 
-## 6. Потоки и производительность
+## 6. Threads and performance
 
-1. Декод и VFS – только worker.
-2. `DrawBitmap` – UI-поток в связке с FormPaint (после текста или в отдельном overlay pass).
-3. Смена курсора в панели отменяет предыдущий decode через cancel token.
-4. Большие изображения – downscale до размера bounds×cell в worker.
-
----
-
-## 7. Связь с dynamic grid
-
-При изменении `Cols`/`Rows` или zoom Host:
-
-1. пересчитывает pixel-rect из cell bounds;
-2. шлёт `bounds_changed`;
-3. либо сохраняет request_id и только перерисовывает, либо ждёт обновлённый request от плагина.
+1. Decoding and VFS – worker only.
+2. `DrawBitmap` – UI thread, tied to FormPaint (after the text or in a separate overlay pass).
+3. Moving the panel cursor cancels the previous decode via a cancel token.
+4. Large images – downscaled to bounds×cell size in a worker.
 
 ---
 
-## 8. Инварианты
+## 7. Relation to the dynamic grid
 
-1. Плагин **никогда** не получает `TCanvas` / `TBitmap` handle.
-2. Оверлей не заменяет текстовую сетку и не участвует в `TCharCell`.
-3. Клиппинг и z-order относительно MDI – за Host (оверлей обычно в пределах окна Quick View / панели).
-4. Ошибка декода не обязана ломать панель – status `error` + текстовый fallback в Status Line.
-5. WASM (позже): только URI/request JSON через Host API, без shared framebuffer от модуля.
+When `Cols`/`Rows` or zoom change, the Host:
+
+1. recomputes the pixel rect from the cell bounds;
+2. sends `bounds_changed`;
+3. either keeps the request_id and only redraws, or waits for an updated request from the plugin.
+
+---
+
+## 8. Invariants
+
+1. The plugin **never** receives a `TCanvas` / `TBitmap` handle.
+2. The overlay does not replace the text grid and does not take part in `TCharCell`.
+3. Clipping and z-order relative to MDI belong to the Host (the overlay is normally within the Quick View window / panel).
+4. A decode error does not have to break the panel – status `error` + a text fallback in the Status Line.
+5. WASM (planned): only URI/request JSON through the Host API, no shared framebuffer from the module.

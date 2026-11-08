@@ -55,6 +55,7 @@ type
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
+    function ResolveDialogListBg: TAlphaColor;
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
@@ -168,6 +169,11 @@ end;
 procedure TThemeProxy.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
 begin
   FInner.ResolveMarkedRowBand(AFg, ABg);
+end;
+
+function TThemeProxy.ResolveDialogListBg: TAlphaColor;
+begin
+  Result := FInner.ResolveDialogListBg;
 end;
 
 procedure TThemeProxy.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);

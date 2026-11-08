@@ -90,6 +90,8 @@
       { "key": "F10", "shift": true, "description": "Windows Context Menu (Shift+F10)" },
       { "key": "Apps", "description": "Windows Context Menu (Menu key)" }
     ],
+    "FindToWorkspace": { "key": "F7", "ctrl": true, "alt": true, "description": "Link the found or marked items in the Workspace panel" },
+    "ToggleTabLock": { "key": "T", "ctrl": true, "alt": true, "description": "Lock or unlock the active panel tab" },
     "InsertItemName": { "key": "Enter", "ctrl": true, "description": "Insert Selected Item Name into Command Line" },
     "InsertItemPath": [
       { "key": "Enter", "ctrl": true, "shift": true, "description": "Insert Selected Item Path into Command Line" },

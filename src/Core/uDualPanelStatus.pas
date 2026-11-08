@@ -151,7 +151,7 @@ begin
       hdkColorCodingEdit:
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
-      hdkColumnsConfig, hdkDisplay,
+      hdkColumnsConfig, hdkMaskGroups, hdkDisplay,
       hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
       hdkCompareOptions, hdkDatePicker,
@@ -320,6 +320,8 @@ begin
       Result := TArray<string>.Create(S('Interface'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkColumnsConfig:
       Result := TArray<string>.Create(S('Columns'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkMaskGroups:
+      Result := TArray<string>.Create(S('Mask groups'), H('Enter', 'Edit', '='), H('Esc', 'Close', '='));
     hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkThemePicker:
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:

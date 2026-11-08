@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.md) | [Deutsch](README.de.md) | **Русский** | [中文](README.zh.md) | [한국어](README.ko.md)
+[English](README.md) | **Русский** | [Deutsch](README.de.md) | [中文](README.zh.md)
 
 Двухпанельный файловый менеджер в духе **Necromancer's DOS Navigator** и **Far Manager** со встроенной консолью,
 терминалами, просмотрщиком и редактором. Интерфейс – текстовый (TUI), но рисуется в обычном GUI-окне:
@@ -15,7 +15,7 @@
 
 [Страница проекта](https://laex.github.io/MTN2/ru/) ·
 [Скачать последнюю версию](https://github.com/Laex/MTN2/releases/latest) ·
-[Что нового](CHANGELOG.md) · [Частые вопросы](docs/FAQ.md) · [Участие в проекте](CONTRIBUTING.md) ·
+[Что нового](CHANGELOG.ru.md) · [Частые вопросы](docs/FAQ.ru.md) · [Участие в проекте](CONTRIBUTING.ru.md) ·
 [Обсуждения](https://github.com/Laex/MTN2/discussions) ·
 [Статья на Хабре](https://habr.com/ru/articles/1087174/)
 
@@ -59,7 +59,7 @@ MTN2 сделан для тех, кто привык к DOS Navigator и Far Man
 
 - **Без телеметрии и облачных функций.** Единственное обращение к сети – проверка новой версии на GitHub (раз в сутки,
   при запуске); её можно отключить в **≡ → Обновления...** (флажок «Проверять обновления при запуске»).
-  Подробнее – в [FAQ](docs/FAQ.md).
+  Подробнее – в [FAQ](docs/FAQ.ru.md).
 - **Переносимость.** Один каталог без установщика и записей в реестр; в переносной версии настройки лежат рядом с
   `MTN2.exe`, в обычной – в `%APPDATA%\MTN2`. Настройки, темы и раскладка клавиш – обычные JSON-файлы.
 - **Клавиатура прежде всего.** Раскладка клавиш близка к Far Manager, полностью переопределяется; вкладки и терминалы – как в ConEmu.
@@ -120,15 +120,15 @@ MTN2 сделан для тех, кто привык к DOS Navigator и Far Man
   формы показываются в консоли, панелях, вкладках и заголовках в две колонки; шрифт подставляется системный.
 - **Плагины:** нативные DLL и WebAssembly (через Wasmtime) – свои VFS-схемы и панели для них, пункты меню,
   привязки клавиш, шина сообщений. Протоколы диалогов, оверлеев и строк состояния для плагинов описаны,
-  но пока доступны только самой программе – см. [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md).
+  но пока доступны только самой программе – см. [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.ru.md).
 - **Обновления:** раз в сутки проверка новой версии на GitHub; загрузка (с проверкой SHA-256), установка
   и перезапуск – только после вопроса пользователю. Меню **≡ → Обновления...**.
 
 ### Платформы
 
 - **Windows x64** – графическая программа.
-- **Linux x86-64** – `mtn2-tui` занимает весь текстовый терминал: те же панели, просмотрщик, редактор, консоль и плагины; работает по SSH и в `tmux` (см. [docs/LINUX.md](docs/LINUX.md)).
-- **Linux, окно SDL2** – пробная графическая версия `mtn2-sdl`: системный шрифт, мышь и колесо, ввод в любой раскладке, буфер обмена рабочего стола, картинки в быстром просмотре. Работает на X11 и Wayland (в Windows – через WSLg), входит в пакеты `tar.gz`, `.deb` и `.rpm`, из исходников собирается ключом `-Sdl`. Нужны `libSDL2` и `libfreetype`, для PNG и JPEG – `libSDL2_image`; зависимости, параметры и запуск описаны в [docs/LINUX.md](docs/LINUX.md), раздел «Версия с окном SDL2».
+- **Linux x86-64** – `mtn2-tui` занимает весь текстовый терминал: те же панели, просмотрщик, редактор, консоль и плагины; работает по SSH и в `tmux` (см. [docs/LINUX.md](docs/LINUX.ru.md)).
+- **Linux, окно SDL2** – пробная графическая версия `mtn2-sdl`: системный шрифт, мышь и колесо, ввод в любой раскладке, буфер обмена рабочего стола, картинки в быстром просмотре. Работает на X11 и Wayland (в Windows – через WSLg), входит в пакеты `tar.gz`, `.deb` и `.rpm`, из исходников собирается ключом `-Sdl`. Нужны `libSDL2` и `libfreetype`, для PNG и JPEG – `libSDL2_image`; зависимости, параметры и запуск описаны в [docs/LINUX.md](docs/LINUX.ru.md), раздел «Версия с окном SDL2».
 - **macOS** – сборка в планах.
 
 ## Установка
@@ -168,7 +168,7 @@ sudo dnf install ./MTN2-*-linux-x64.rpm
 
 `install.sh` без `sudo` ставит программу для текущего пользователя, с `sudo` – для всех. После установки `mtn2` запускает версию для терминала, `mtn2-sdl` – окно SDL2.
 
-Папку из архива можно и не устанавливать: `mtn2/mtn2-tui` и `mtn2/mtn2-sdl` запускаются там, где лежат. Зависимости и параметры – в [docs/LINUX.md](docs/LINUX.md).
+Папку из архива можно и не устанавливать: `mtn2/mtn2-tui` и `mtn2/mtn2-sdl` запускаются там, где лежат. Зависимости и параметры – в [docs/LINUX.md](docs/LINUX.ru.md).
 
 #### Проверенные дистрибутивы
 
@@ -210,7 +210,7 @@ Dev-сборки содержат свежие изменения и могут 
 ./src/tests/run-tests-linux.ps1                    # те же тесты в WSL
 ```
 
-Запуск: `bin\win64\MTN2.exe [--no-skia] [--fps] [путь]`. Подробности – в [docs/BUILDING.md](docs/BUILDING.md).
+Запуск: `bin\win64\MTN2.exe [--no-skia] [--fps] [путь]`. Подробности – в [docs/BUILDING.md](docs/BUILDING.ru.md).
 
 ## Структура репозитория
 
@@ -229,29 +229,29 @@ Dev-сборки содержат свежие изменения и могут 
 
 ## Документация
 
-- [FAQ.md](docs/FAQ.md) – частые вопросы: сеть и приватность, SmartScreen, масштаб экрана, темы, плагины.
-- [CONTRIBUTING.md](CONTRIBUTING.md) – как сообщить об ошибке, предложить идею, собрать проект и отправить изменение.
-- [SDS.md](docs/SDS.md) – полная спецификация: концепция, структуры данных, API, дорожная карта.
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) – слои, потоки данных и инварианты.
-- [BUILDING.md](docs/BUILDING.md) – сборка, тесты, CI/CD.
-- [LINUX.md](docs/LINUX.md) – версии для Linux (терминал и окно SDL2): установка, параметры, зависимости.
-- [THEMES.md](docs/THEMES.md) – формат файла темы и роли цветов.
+- [FAQ.ru.md](docs/FAQ.ru.md) – частые вопросы: сеть и приватность, SmartScreen, масштаб экрана, темы, плагины.
+- [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md) – как сообщить об ошибке, предложить идею, собрать проект и отправить изменение.
+- [SDS.ru.md](docs/SDS.ru.md) – полная спецификация: концепция, структуры данных, API, дорожная карта.
+- [ARCHITECTURE.ru.md](docs/ARCHITECTURE.ru.md) – слои, потоки данных и инварианты.
+- [BUILDING.ru.md](docs/BUILDING.ru.md) – сборка, тесты, CI/CD.
+- [LINUX.ru.md](docs/LINUX.ru.md) – версии для Linux (терминал и окно SDL2): установка, параметры, зависимости.
+- [THEMES.ru.md](docs/THEMES.ru.md) – формат файла темы и роли цветов.
 - [HELP.md](docs/HELP.md) – исходный текст справки пользователя одним файлом.
-- Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md), [PANEL](docs/PANEL_PLUGIN.md),
-  [DIALOG](docs/DIALOG_PLUGIN.md), [INPUT](docs/INPUT_PLUGIN.md), [OVERLAY](docs/OVERLAY_PLUGIN.md),
-  [STATUS](docs/STATUS_PLUGIN.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.md),
-  [UI_PRIMITIVES](docs/UI_PRIMITIVES.md).
+- Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.ru.md), [PANEL](docs/PANEL_PLUGIN.ru.md),
+  [DIALOG](docs/DIALOG_PLUGIN.ru.md), [INPUT](docs/INPUT_PLUGIN.ru.md), [OVERLAY](docs/OVERLAY_PLUGIN.ru.md),
+  [STATUS](docs/STATUS_PLUGIN.ru.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.ru.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.ru.md),
+  [UI_PRIMITIVES](docs/UI_PRIMITIVES.ru.md).
 
 ## Как создавался проект
 
 При разработке MTN2 использовались ИИ-ассистенты, в том числе собственной разработки. С их помощью созданы:
 
-- предпроектная документация – спецификация ([SDS.md](docs/SDS.md)), обзор архитектуры, описания протоколов
+- предпроектная документация – спецификация ([SDS.ru.md](docs/SDS.ru.md)), обзор архитектуры, описания протоколов
   плагинов в `docs/`;
 - отслеживание дорожной карты и планов работ;
 - большинство комментариев в коде;
 - регрессионные тесты на DUnitX (`src/tests`);
-- выходная текстовая документация: справка F1 (`bin/win64/resource/<язык>/help`), [CHANGELOG.md](CHANGELOG.md), описания выпусков.
+- выходная текстовая документация: справка F1 (`bin/win64/resource/<язык>/help`), [CHANGELOG.ru.md](CHANGELOG.ru.md), описания выпусков.
 
 ## Лицензия
 

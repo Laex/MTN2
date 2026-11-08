@@ -1,81 +1,83 @@
-# Участие в проекте
+# Contributing to MTN2
 
-Спасибо за интерес к MTN2. Помочь можно по-разному: сообщить об ошибке, предложить идею, написать тему или плагин,
-улучшить документацию или перевод, исправить код.
+**English** | [Русский](CONTRIBUTING.ru.md)
 
-## Куда писать
+Thank you for your interest in MTN2. You can help in many ways: report a bug, suggest an idea, create a theme or
+plugin, improve documentation or translations, or fix code.
 
-- **Ошибка или недоработка** – [новый issue](https://github.com/Laex/MTN2/issues/new/choose). Укажите версию
-  (≡ → О программе), систему, масштаб экрана и шрифт, шаги воспроизведения, по возможности скриншот.
-- **Вопрос, идея, своя тема или плагин** – [Discussions](https://github.com/Laex/MTN2/discussions).
-- **Уязвимость** – приватно, по [SECURITY.md](SECURITY.md); публичный issue не создавайте.
-- Часто задаваемые вопросы – в [docs/FAQ.md](docs/FAQ.md).
+## Where to ask
 
-Задачи для знакомства с проектом помечены
-[good first issue](https://github.com/Laex/MTN2/labels/good%20first%20issue); те, где нужна помощь, –
-[help wanted](https://github.com/Laex/MTN2/labels/help%20wanted).
+- **Bug or missing behavior** – open a [new issue](https://github.com/Laex/MTN2/issues/new/choose). Include the version
+  (≡ → About), operating system, display scale and font, reproduction steps, and a screenshot when possible.
+- **Question, idea, theme, or plugin** – use [Discussions](https://github.com/Laex/MTN2/discussions).
+- **Vulnerability** – report it privately using [SECURITY.md](SECURITY.md); do not open a public issue.
+- Frequently asked questions are in [docs/FAQ.md](docs/FAQ.md).
 
-## Что можно сделать без знания Delphi
+Issues intended for newcomers are marked [good first issue](https://github.com/Laex/MTN2/labels/good%20first%20issue);
+issues that need help are marked [help wanted](https://github.com/Laex/MTN2/labels/help%20wanted).
 
-- **Темы.** Файл темы – JSON ([docs/THEMES.md](docs/THEMES.md)); готовой темой можно поделиться в Discussions.
-- **Язык интерфейса.** Строки лежат в `bin/win64/resource/<язык>/strings.json` (шаблон со всеми ключами – `src/strings/en.json`);
-  свой язык добавляется папкой `resource\<язык>\` рядом с `MTN2.exe`. В `locale.json` папки указана версия набора ключей;
-  при изменении ключей поднимите `src/resource.version` и версии пакетов. Слова для поиска в палитре команд: английские – поле `aliases` пункта в `src/config/menu.json`, слова своего языка – необязательные ключи `menu.alias.<действие>` в `strings.json`.
-- **Плагины.** Нативные DLL и WebAssembly (C, C++, Rust, Go и другие); контракты описаны в
-  [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md), образцы лежат в [samples](samples).
-- **Документация и справка.** Тексты в `docs/` и `bin/win64/resource/<язык>/help`.
+## What you can do without Delphi knowledge
 
-## Сборка и тесты
+- **Themes.** A theme is a JSON file ([docs/THEMES.md](docs/THEMES.md)); share a finished theme in Discussions.
+- **Interface languages.** Strings are stored in `bin/win64/resource/<language>/strings.json` (the template with every key is
+  `src/strings/en.json`); a custom language is added as a `resource\<language>\` folder next to `MTN2.exe`.
+  Its `locale.json` names the key-set version; when keys change, raise `src/resource.version` and the pack versions. Search words for the command palette: English ones are the `aliases` field of an item in `src/config/menu.json`, words of your own language are optional `menu.alias.<action>` keys in `strings.json`.
+- **Plugins.** Native DLLs and WebAssembly (C, C++, Rust, Go, and others); contracts are documented in
+  [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md), with examples in [samples](samples).
+- **Documentation and help.** Text lives in `docs/` and `bin/win64/resource/<language>/help`.
 
-Нужны RAD Studio 13 и Windows x64 (подробности – [docs/BUILDING.md](docs/BUILDING.md)).
+## Building and testing
+
+RAD Studio 13 and Windows x64 are required; see [docs/BUILDING.md](docs/BUILDING.md) for details.
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64
 ./src/tests/run-tests.ps1
 ```
 
-Сборка – только через `src/build.ps1`. Версия для Linux собирается `src/build-linux.ps1`.
+Build only through `src/build.ps1`. The Linux version is built with `src/build-linux.ps1`.
 
-## Как предложить изменение
+## Proposing a change
 
-1. Для крупных изменений сначала откройте обсуждение или issue: так проще согласовать направление.
-2. Одно изменение – один pull request, без посторонних правок форматирования.
-3. К исправлению ошибки добавьте тест (DUnitX, `src/tests`); каждый тест должен что-то проверять (`Assert`).
-   Называйте тесты по проверяемому поведению.
-4. Если изменение заметно пользователю, добавьте запись в раздел «Не выпущено» файла [CHANGELOG.md](CHANGELOG.md):
-   по-русски, от третьего лица, о том, что видит пользователь.
-5. Перед отправкой соберите проект и пройдите тесты.
+1. For a large change, open a discussion or issue first so the direction can be agreed on.
+2. Keep one change per pull request and do not include unrelated formatting changes.
+3. Add a test for a bug fix (DUnitX tests live under `src/tests`); every test must check something with `Assert`.
+   Name tests after the behavior they verify.
+4. If the change is user-visible, add an entry to the “Unreleased” section of [CHANGELOG.md](CHANGELOG.md), in
+   the third person, describing what the user sees. The Russian counterpart is [CHANGELOG.ru.md](CHANGELOG.ru.md); if you
+   do not write Russian, the maintainer adds that entry.
+5. Build the project and run the tests before submitting the change.
 
-## Стиль
+## Style
 
-- Исходники в UTF-8, в файлах сохраняются имеющиеся перевод строк и BOM.
-- Комментарии на английском, короткие: объясняют, зачем код сделан так, а не пересказывают его. В комментариях –
-  только ASCII-пунктуация (`-`, `->`, `...`, прямые кавычки).
-- Платформенный код – в `src/Platform/Windows` и `src/Platform/Posix`, общий код обращается к платформе через
-  парные модули, а не через `{$IFDEF}`.
-- Сообщения коммитов – по-английски, в повелительном наклонении, до ~60 символов, без точки в конце.
+- Source files use UTF-8; preserve the existing line endings and BOM where present.
+- Comments are short and in English: explain why the code is written that way rather than restating what it does.
+  Use ASCII punctuation only in comments (`-`, `->`, `...`, and straight quotes).
+- Platform code belongs in `src/Platform/Windows` and `src/Platform/Posix`. Shared code accesses the platform through
+  matching modules rather than `{$IFDEF}` blocks.
+- Commit messages are in English, imperative, about 60 characters or fewer, and have no period at the end.
 
-## Оформление документации
+## Documentation guidelines
 
-Относится к `README*.md`, `CONTRIBUTING*.md`, `docs/`, справке и `CHANGELOG.md`.
+Applies to `README*.md`, `CONTRIBUTING*.md`, `docs/`, the built-in help, and `CHANGELOG*.md`.
 
-- **Описывайте, как работает сейчас.** Без журнала правок («исправлено», «раньше было»), номеров этапов плана и
-  пометок о ходе проверки. Планы – по названию возможности или версии.
-- **Разметка.** Markdown, UTF-8, тире – `–` (U+2013), не `—`; в заголовках без точки в конце; код и команды – в
-  блоках с указанием языка (`powershell`, `text`).
-- **Тон.** Нейтральный, без «вы/ваш» в `CHANGELOG.md` (там – от третьего лица, о том, что видит пользователь).
-  Названия пунктов меню и диалогов – как в интерфейсе выбранного языка.
-- **Ссылки.** Относительные, на существующие файлы и якоря; перед отправкой проверьте, что они открываются.
-- **Переводы.** Версия на другом языке лежит рядом с оригиналом с суффиксом языка: `FAQ.md` – `FAQ.en.md`.
-  Смысл и структура совпадают с оригиналом; при изменении одной версии обновите или отметьте в pull request другую.
-- **Перекрёстные ссылки между языками.** Если на документ нужна ссылка, а версии на языке читателя нет, ведите на
-  русскую версию и добавьте пометку языка в тексте ссылки: «[FAQ](docs/FAQ.md) (in Russian)». Не создавайте ссылку
-  на ещё не существующий файл. Когда перевод появится, замените ссылку.
-- **ИИ-ассистенты.** Пользоваться ими при подготовке текста можно, но ответственность за него несёт автор pull
-  request. Перед отправкой перечитайте текст целиком: проверьте факты, названия, команды и ссылки, уберите
-  лишнюю многословность и общие фразы, сверьте перевод с оригиналом. Текст, который автор не вычитал, не принимается.
+- **Describe how things work now.** No change logs ("fixed", "used to be"), plan stage numbers, or notes about how a
+  change was tested. Refer to plans by feature name or version.
+- **Markup.** Markdown, UTF-8, en dash – (U+2013) rather than the em dash; no trailing period in headings; code and
+  commands in fenced blocks with a language (`powershell`, `text`).
+- **Tone.** Neutral. `CHANGELOG.md` (English) and `CHANGELOG.ru.md` are written in the third person, describing what the user sees. Menu and
+  dialog names match the interface in the chosen language.
+- **Links.** Relative, pointing to existing files and anchors; check that they open before submitting.
+- **Translations.** The English version has no suffix, other languages get one: `FAQ.md` – `FAQ.ru.md`. Meaning and
+  structure match the original; when you change one version, update the others or note it in the pull request.
+- **Cross-language links.** If a document needs a link and there is no version in the reader's language, link to the
+  English version and mark the language in the link text: "[FAQ](docs/FAQ.md) (in English)". Never link to a file that does
+  not exist yet; replace the link once the translation appears.
+- **AI assistants.** You may use them to prepare text, but the pull request author is responsible for it. Read the
+  whole text before submitting: check facts, names, commands and links, remove filler, and compare a translation with
+  the original. Text the author has not proofread will not be accepted.
 
-## Лицензия
+## License
 
-Отправляя изменения, вы соглашаетесь, что они распространяются на условиях
+By submitting changes, you agree that they are distributed under the terms of the
 [Mozilla Public License 2.0](LICENSE).

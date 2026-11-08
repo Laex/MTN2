@@ -37,7 +37,9 @@ uses
   TestShellProfileOptions in 'TestShellProfileOptions.pas',
   TestShellProfiles in 'TestShellProfiles.pas',
   TestShellSessions in 'TestShellSessions.pas',
-  TestWorkspaceLibrary in 'TestWorkspaceLibrary.pas';
+  TestWorkspaceLibrary in 'TestWorkspaceLibrary.pas',
+  TestWorkspaceAddTargets in 'TestWorkspaceAddTargets.pas',
+  TestWorkspaceSets in 'TestWorkspaceSets.pas';
 
 begin
   RunRegisteredTests;

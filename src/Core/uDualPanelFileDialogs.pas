@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Classes,
   uDialogHost, uDialogTypes, uDialogJson, uDualPanelUiTypes, uVfsTypes, uLinkUtils,
-  uFileAttrTypes, uWinFileAttr, uStrings;
+  uFileAttrTypes, uWinFileAttr, uStrings, uMaskGroups;
 
 type
   TFileOpKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -508,13 +508,16 @@ procedure TFileOpDialogController.DispatchSelectMaskCommand(
   AKind: THostDialogKind; const AControlId: string);
 var
   Accepted: Boolean;
-  NameVal: string;
+  NameVal, GroupVal: string;
   Folders: Boolean;
 begin
   Accepted := not DialogCmdIsReject(AControlId);
   NameVal := FDialog.GetInputValue('name');
   Folders := FDialog.GetCheckbox('select_folders');
+  GroupVal := Trim(FDialog.GetInputValue('group_name'));
   FDialog.Close;
+  if Accepted and (GroupVal <> '') then
+    MaskGroupSave(GroupVal, NameVal);
   if Accepted and Assigned(FOnConfirmSelect) then
     FOnConfirmSelect(NameVal, AKind = hdkUnselectMask, Folders);
 end;

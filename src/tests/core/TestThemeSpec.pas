@@ -16,6 +16,8 @@ type
     [Test] procedure TestColorText;
     [Test] procedure TestRoleTable;
     [Test] procedure TestFallbackRoles;
+    [Test] procedure TestListBackgroundDiffersFromDialogBodyByDefault;
+    [Test] procedure TestListBackgroundSetByTheme;
     [Test] procedure TestParentValueBeatsChildFallback;
     [Test] procedure TestCurrentDriveLetterColors;
     [Test] procedure TestEditorCursorLineColor;
@@ -164,6 +166,37 @@ begin
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF020202), Spec.MdBg[mskText], 'Markdown background is the window');
   Assert.AreEqual<TAlphaColor>(TAlphaColor($FF010101), Spec.MdFg[mskLink], 'Markdown text color is the window text');
   Assert.AreEqual<TAlphaColor>(TAlphaColor(0), Spec.Colors[trScrollThumb], 'a role nobody sets is 0');
+end;
+
+procedure TTestThemeSpec.TestListBackgroundDiffersFromDialogBodyByDefault;
+var
+  Doc: TThemeDoc;
+  Spec: TThemeSpec;
+begin
+  Doc := DocWith('');
+  SetColor(Doc, trDialogFg, TAlphaColor($FFFFFFFF));
+  SetColor(Doc, trDialogBg, TAlphaColor($FF000000));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreNotEqual<TAlphaColor>(Spec.Colors[trDialogBg], Spec.Colors[trDialogListBg],
+    'the list is told apart from the body');
+  Assert.IsTrue((Spec.Colors[trDialogListBg] and $FF) > 0, 'a dark body gives a lighter list');
+  SetColor(Doc, trDialogFg, TAlphaColor($FF000000));
+  SetColor(Doc, trDialogBg, TAlphaColor($FFFFFFFF));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.IsTrue((Spec.Colors[trDialogListBg] and $FF) < $FF, 'a light body gives a darker list');
+end;
+
+procedure TTestThemeSpec.TestListBackgroundSetByTheme;
+var
+  Doc: TThemeDoc;
+  Spec: TThemeSpec;
+begin
+  Doc := DocWith('');
+  SetColor(Doc, trDialogFg, TAlphaColor($FFFFFFFF));
+  SetColor(Doc, trDialogBg, TAlphaColor($FF000000));
+  SetColor(Doc, trDialogListBg, TAlphaColor($FF123456));
+  Spec := ResolveThemeSpec([Doc]);
+  Assert.AreEqual<TAlphaColor>(TAlphaColor($FF123456), Spec.Colors[trDialogListBg]);
 end;
 
 procedure TTestThemeSpec.TestCurrentDriveLetterColors;

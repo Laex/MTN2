@@ -125,6 +125,8 @@ begin
       Result := 'settings.md#interface';
     hdkColumnsConfig:
       Result := 'settings.md#columns';
+    hdkMaskGroups:
+      Result := 'selection.md#mask-groups';
     hdkConsoleOptions:
       Result := 'settings.md#console';
     hdkExternalTools:
@@ -194,7 +196,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..76] of TTopicRule = (
+  cRules: array[0..77] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -256,6 +258,7 @@ const
     (Prefix: 'tmaOptResetZoom'; Topic: 'screen.md'),
     (Prefix: 'tmaOptDisplay'; Topic: 'settings.md#display'),
     (Prefix: 'tmaOptColumnsConfig'; Topic: 'settings.md#columns'),
+    (Prefix: 'tmaOptMaskGroups'; Topic: 'selection.md#mask-groups'),
     (Prefix: 'tmaOptTheme'; Topic: 'settings.md#theme'),
     (Prefix: 'tmaOptInterface'; Topic: 'settings.md#interface'),
     (Prefix: 'tmaOptConsoleOptions'; Topic: 'settings.md#console'),

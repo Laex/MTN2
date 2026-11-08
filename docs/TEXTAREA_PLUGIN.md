@@ -1,14 +1,16 @@
-# Взаимодействие Text Area (Viewer / Editor) с плагином
+# Text Area (Viewer / Editor) interaction with a plugin
 
-> **Роль документа:** контракт многострочной текстовой области с плагином (просмотр и редактирование).  
-> **Серия:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
-> **Контекст:** [SDS.md](SDS.md) §5–6, [ARCHITECTURE.md](ARCHITECTURE.md) (потоковый Viewer).
+**English** | [Русский](TEXTAREA_PLUGIN.ru.md)
+
+> **Document role:** contract between the multi-line text area and a plugin (viewing and editing).  
+> **Series:** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).  
+> **Context:** [SDS.md](SDS.md) §5–6, [ARCHITECTURE.md](ARCHITECTURE.md) (streaming Viewer).
 
 ---
 
-## 1. Область и роли
+## 1. Scope and roles
 
-Text Area – MDI-окно или область внутри окна для просмотра/правки текста (и hex в специализированном режиме).
+Text Area is an MDI window or an area inside a window for viewing/editing text (and hex in a specialized mode).
 
 ```text
 TTerminalWindow (Viewer | Editor)
@@ -18,16 +20,16 @@ TTerminalWindow (Viewer | Editor)
     └── Document model (lines index, dirty, encoding)
 ```
 
-| Участник | Ответственность |
+| Participant | Responsibility |
 |---|---|
-| **Host** | Layout, scroll offset, курсор, selection, keymap (F3/F4, Save, Search), отрисовка видимых строк через тему; **вертикальная полоса прокрутки** (клик ▲/▼/трек) и chrome (F-keys, status). |
-| **Плагин** | Документ: число строк/символов, выдача видимого диапазона, save/load через VFS, dirty-флаг. |
-| **Async VFS** | Потоковое чтение/запись; файлы > 10 МБ не грузятся целиком в RAM. |
-| **IThemeRenderer** | Рамка окна, gutter, **`DrawScrollBar`**, статусы/toolbar; подсветка синтаксиса – логические токены от плагина, цвета от темы (позже). |
+| **Host** | Layout, scroll offset, cursor, selection, keymap (F3/F4, Save, Search), rendering visible lines through the theme; **vertical scrollbar** (click on ▲/▼/track) and chrome (F-keys, status). |
+| **Plugin** | Document: number of lines/characters, serving the visible range, save/load via the VFS, dirty flag. |
+| **Async VFS** | Streaming read/write; files > 10 MB are not loaded into RAM as a whole. |
+| **IThemeRenderer** | Window frame, gutter, **`DrawScrollBar`**, statuses/toolbar; syntax highlighting – logical tokens from the plugin, colors from the theme (planned). |
 
 ---
 
-## 2. Жизненный цикл
+## 2. Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -39,7 +41,7 @@ sequenceDiagram
     Plug->>VFS: GetStreamAsync / index lines
     VFS-->>Plug: chunks
     Plug->>Host: invalidate(WindowId)
-    loop видимые строки
+    loop visible lines
         Host->>Plug: get_line_json(WindowId, LineIndex)
         Plug-->>Host: {"text":"..."}
     end
@@ -52,17 +54,17 @@ sequenceDiagram
     Host->>Plug: textarea_close(WindowId)
 ```
 
-| Этап | Действие |
+| Stage | Action |
 |---|---|
-| **open** | Привязка URI/mode; старт фонового индексирования. |
-| **pull lines** | Host запрашивает только видимый диапазон (+ строку курсора). |
-| **edit** | Editor: Host шлёт логические правки; плагин обновляет модель. |
-| **save / reload** | События; I/O в worker. |
-| **close** | Cancel index/save jobs; запрос confirm при dirty. |
+| **open** | Bind URI/mode; start background indexing. |
+| **pull lines** | The Host requests only the visible range (+ the cursor line). |
+| **edit** | Editor: the Host sends logical edits; the plugin updates the model. |
+| **save / reload** | Events; I/O in a worker. |
+| **close** | Cancel index/save jobs; request a confirmation when dirty. |
 
 ---
 
-## 3. API и JSON
+## 3. API and JSON
 
 ```pascal
 function mtn_textarea_open(WindowId: Integer; const URI: PAnsiChar;
@@ -84,7 +86,7 @@ procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
 procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 ```
 
-### 3.1. Метаданные документа
+### 3.1. Document metadata
 
 ```json
 {
@@ -99,7 +101,7 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-### 3.2. JSON строки
+### 3.2. Line JSON
 
 ```json
 {
@@ -108,7 +110,7 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-Для hex-режима:
+For hex mode:
 
 ```json
 {
@@ -118,68 +120,68 @@ procedure mtn_host_invalidate(WindowId: Integer); cdecl;
 }
 ```
 
-Плагин **не** возвращает цвета токенов сейчас. Позже: массив логических spans `{ "start", "len", "token": "keyword" }` – тему мапит в цвета.
+Currently the plugin does **not** return token colors. Planned: an array of logical spans `{ "start", "len", "token": "keyword" }` – the theme maps them to colors.
 
-**Markdown Viewer (позже, cell-aware):** отдельный режим Text Area для `.md`. Плагин парсит разметку в worker и отдаёт видимые строки со spans (`heading`, `emphasis`, `code`, `link`, `list_item`, `quote`, …); Host/тема стилизуют ячейки. Изображения из MD – заявки Overlay ([OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md)). Это рендеринг в `TTerminalGrid`, не HTML/WYSIWYG-preview. См. roadmap SDS.
+**Markdown Viewer (planned, cell-aware):** a separate Text Area mode for `.md`. The plugin parses the markup in a worker and serves the visible lines with spans (`heading`, `emphasis`, `code`, `link`, `list_item`, `quote`, ...); the Host/theme style the cells. Images from MD are Overlay requests ([OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md)). This is rendering into `TTerminalGrid`, not an HTML/WYSIWYG preview. See the SDS roadmap.
 
 ---
 
-## 4. События
+## 4. Events
 
-| EventType | Имя | Param1 | Param2 | Семантика |
+| EventType | Name | Param1 | Param2 | Semantics |
 |---|---|---|---|---|
-| 40 | `scroll` | FirstVisibleLine | 0 | Informational; pull и так по ScrollOffset Host |
-| 41 | `caret` | Line | Column | Курсор сдвинут |
-| 42 | `insert` | Line | Column | Вставка; текст – через `mtn_host_get_event_payload` |
-| 43 | `delete` | Line | Column | Удаление; длина/диапазон в payload |
-| 44 | `save` | 0 | 0 | Сохранить |
-| 45 | `reload` | 0 | 0 | Перечитать с диска |
-| 46 | `find` | 0 | 0 | Поиск; pattern в payload |
-| 47 | `replace` | 0 | 0 | Замена (Editor) |
+| 40 | `scroll` | FirstVisibleLine | 0 | Informational; the pull follows the Host ScrollOffset anyway |
+| 41 | `caret` | Line | Column | Cursor moved |
+| 42 | `insert` | Line | Column | Insertion; the text comes via `mtn_host_get_event_payload` |
+| 43 | `delete` | Line | Column | Deletion; length/range in the payload |
+| 44 | `save` | 0 | 0 | Save |
+| 45 | `reload` | 0 | 0 | Re-read from disk |
+| 46 | `find` | 0 | 0 | Search; the pattern is in the payload |
+| 47 | `replace` | 0 | 0 | Replace (Editor) |
 | 48 | `set_mode` | Mode | 0 | view/edit/hex |
-| 49 | `close_query` | 0 | 0 | Запрос закрытия; плагин отвечает dirty через meta |
+| 49 | `close_query` | 0 | 0 | Close request; the plugin answers with dirty via meta |
 
 ```pascal
 procedure mtn_host_get_event_payload(WindowId: Integer;
   OutBuffer: PAnsiChar; MaxLen: Integer); cdecl;
 ```
 
-Простой Editor: допустимо упростить – Host держит буфер малого файла целиком и дергает плагин только для load/save; контракт выше – целевой для крупных файлов и единообразия Pull.
+Simple Editor: it is acceptable to simplify – the Host keeps the whole buffer of a small file and calls the plugin only for load/save; the contract above is the target for large files and for uniform Pull.
 
 ---
 
-## 5. Владение состоянием
+## 5. State ownership
 
-| Состояние | Владелец |
+| State | Owner |
 |---|---|
-| ScrollOffset (top line), caret, selection UI, hit-test scrollbar | **Host** |
-| Содержимое / индекс строк / dirty / encoding | **Плагин** |
-| URI окна | **Host** (источник истины для заголовка/сессии) |
+| ScrollOffset (top line), caret, selection UI, scrollbar hit-test | **Host** |
+| Content / line index / dirty / encoding | **Plugin** |
+| Window URI | **Host** (source of truth for the title/session) |
 
-**Scrollbar (сейчас):** Host рисует вертикальную полосу в правом столбце тела окна (`Theme.DrawScrollBar`); позиция бегунка = `TopLine / max(0, LineCount − ViewHeight)`. Плагин не рисует scrollbar и не обрабатывает клики по нему. Viewer find и Editor clipboard/undo – Host.
+**Scrollbar (currently):** the Host draws a vertical bar in the right column of the window body (`Theme.DrawScrollBar`); the thumb position = `TopLine / max(0, LineCount − ViewHeight)`. The plugin does not draw the scrollbar and does not handle clicks on it. Viewer find and Editor clipboard/undo belong to the Host.
 
-Инвариант Architecture: файлы > 10 МБ – потоково; `get_line_json` не читает весь файл.
-
----
-
-## 6. Потоки
-
-1. `get_line_count` / `get_line_json` – UI-поток, O(1)/O(line), без I/O.
-2. Индексация и save – worker; прогресс можно отразить в Status Line через Event Bus.
-3. `Synchronize` запрещён.
+Architecture invariant: files > 10 MB are streamed; `get_line_json` does not read the whole file.
 
 ---
 
-## 7. Связь с ассоциациями
+## 6. Threads
 
-Host открывает Text Area по F3/F4 / ассоциациям. Плагин панели только отдаёт `uri`; выбор Viewer vs Editor – ядро.
+1. `get_line_count` / `get_line_json` – UI thread, O(1)/O(line), no I/O.
+2. Indexing and save – worker; progress can be shown in the Status Line via the Event Bus.
+3. `Synchronize` is forbidden.
 
 ---
 
-## 8. Инварианты
+## 7. Relation to associations
 
-1. Нет Canvas у плагина; нет цветов строк сейчас.
-2. Pull только видимого диапазона.
-3. Dirty + `close_query`: Host показывает confirm-диалог (примитив Dialog), не плагин напрямую.
-4. При `close` – cancel всех job документа.
-5. Scrollbar – Host/тема; плагин отдаёт только `LineCount` / строки.
+The Host opens Text Area via F3/F4 / associations. A panel plugin only supplies the `uri`; the choice of Viewer vs Editor belongs to the core.
+
+---
+
+## 8. Invariants
+
+1. The plugin has no Canvas; there are currently no line colors.
+2. Pull only of the visible range.
+3. Dirty + `close_query`: the Host shows a confirmation dialog (the Dialog primitive), not the plugin directly.
+4. On `close` – cancel all jobs of the document.
+5. The scrollbar belongs to the Host/theme; the plugin supplies only `LineCount` / lines.

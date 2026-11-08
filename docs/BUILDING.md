@@ -1,182 +1,174 @@
-# Сборка и CI
+# Building and CI
 
-## Локальная сборка
+**English** | [Русский](BUILDING.ru.md)
 
-Требуется RAD Studio 13 (`Studio\37.0`), Windows x64. Опционально – Rust (`cargo`) для плагина `mtn.ws`.
+## Local build
 
-Сборка без `-Config Release` (по умолчанию Debug) заодно собирает и ставит в `bin\win64\plugins` образцы из `samples\plugins`, для которых нашёлся инструментарий; `-NoSamples` отключает это. Release-сборка образцы не трогает.
+You need RAD Studio 13 (`Studio\37.0`) and Windows x64. Optional: Rust (`cargo`) for the `mtn.ws` plugin.
+
+A build without `-Config Release` (Debug by default) also builds the samples from `samples\plugins` for which a toolchain was found and installs them into `bin\win64\plugins`; `-NoSamples` turns this off. A Release build leaves the samples alone.
 
 ```powershell
 ./src/build.ps1 -Config Release -Platform Win64   # -> bin\win64\MTN2.exe + bin\win64\plugins\
-./src/tests/run-tests.ps1                         # регрессионные тесты (DUnitX, dcc64)
+./src/tests/run-tests.ps1                         # regression tests (DUnitX, dcc64)
 ./src/tools/package-release.ps1 -Version v0.3.0   # -> dist\MTN2-v0.3.0-win64.zip + -win64-portable.zip
-./src/tools/check-release.ps1 -Version v0.3.0     # распаковать оба и прогнать MTN2.exe --self-check
+./src/tools/check-release.ps1 -Version v0.3.0     # unpack both and run MTN2.exe --self-check
 ```
 
-Архивы отличаются только файлом `portable.dat` (настройки рядом с exe вместо `%APPDATA%\MTN2`).
-Автообновление берёт ровно `MTN2-<тег>-win64.zip` и, распакованное поверх переносной копии, `portable.dat`
-не трогает. `--self-check` проверяет встроенные ресурсы, языковые пакеты `resource\<язык>\` (версия, строки, справка), `sk4d.dll` и
-манифесты плагинов, печатает отчёт в stdout и выходит с кодом 0/1, не открывая окно.
+The two archives differ only by the `portable.dat` file (settings next to the exe instead of `%APPDATA%\MTN2`).
+The self-updater takes exactly `MTN2-<tag>-win64.zip` and, when unpacked over a portable copy, leaves `portable.dat`
+alone. `--self-check` verifies the embedded resources, the language packs `resource\<language>\` (version, strings,
+help), `sk4d.dll` and the plugin manifests, prints a report to stdout and exits with code 0/1 without opening a window.
 
-`-Version 0.3.2` (или `v0.3.2`) прошивает номер в ресурс версии exe: его показывает заголовок окна и с ним
-сравнивает автообновление. Без параметра берётся версия из `MTN2.dproj`; релизная сборка передаёт тег.
+`-Version 0.3.2` (or `v0.3.2`) stamps the number into the exe version resource: the window title shows it and the
+self-updater compares against it. Without the parameter the version comes from `MTN2.dproj`; a release build passes the tag.
 
-`wasmtime.dll` скачивается `src/tools/fetch-wasmtime.ps1` (копия хранится в папке кэша: `MTN2_CACHE`, а на раннере GitHub Actions – в его tool cache; там же лежит папка `target` Rust-плагина, чтобы чистый `checkout` не стирал их); `7z.dll` (x64) берётся из установленного 7-Zip
-или из `MTN2_7Z_DLL`, лежит в `bin\win64\plugins\mtn.7z\` и входит в пакеты вместе с текстом лицензии
-(`src/plugins/mtn.7z/7-Zip-license.txt` -> `plugins\mtn.7z\license.txt`) и `THIRD-PARTY.md`; `package-release.ps1 -Require7z`
-останавливает упаковку, если её нет.
+`wasmtime.dll` is downloaded by `src/tools/fetch-wasmtime.ps1` (a copy is kept in the cache folder: `MTN2_CACHE`, or the
+runner's tool cache on GitHub Actions; the Rust plugin's `target` folder lives there too, so a clean `checkout` does not
+erase them). `7z.dll` (x64) comes from the installed 7-Zip or from `MTN2_7Z_DLL`, lives in `bin\win64\plugins\mtn.7z\`
+and ships in the packages together with the licence text (`src/plugins/mtn.7z/7-Zip-license.txt` ->
+`plugins\mtn.7z\license.txt`) and `THIRD-PARTY.md`; `package-release.ps1 -Require7z` stops packaging if it is missing.
 
-`pdfium.dll` (Windows) и `libpdfium.so` (Linux) для плагина `mtn.pdf` скачивает `src/tools/fetch-pdfium.ps1 [-Linux]` из сборок проекта pdfium-binaries в `src/tools/pdfium`; `build.ps1` и `build-linux.ps1` вызывают его сами и кладут библиотеку в папку плагина. Без неё плагин собирается, но PDF открывает текстовый просмотр плагина документов.
+`pdfium.dll` (Windows) and `libpdfium.so` (Linux) for the `mtn.pdf` plugin are downloaded by
+`src/tools/fetch-pdfium.ps1 [-Linux]` from the pdfium-binaries project into `src/tools/pdfium`; `build.ps1` and
+`build-linux.ps1` call it themselves and put the library into the plugin folder. Without it the plugin still builds,
+but PDFs open in the document plugin's text viewer.
 
-В IDE оба проекта (MTN2 и DialogDesigner) открываются группой `src/tools/Group.groupproj`.
-Ресурсы `src/MTN2.dres` (диалоги, клавиши, меню, темы) в git не хранятся – их собирает `build.ps1`
-(и `run-tests.ps1` для тестов); перед первой сборкой из IDE запустите `build.ps1` один раз.
+In the IDE both projects (MTN2 and DialogDesigner) open as the group `src/tools/Group.groupproj`. The resources
+`src/MTN2.dres` (dialogs, keys, menus, themes) are not stored in git: `build.ps1` builds them (and `run-tests.ps1` for
+the tests). Run `build.ps1` once before the first build from the IDE.
 
-Запуск: `bin\win64\MTN2.exe [--no-skia] [--fps] [путь]`. Ключи (`--no-skia`, `--fps` – кадры и время кадра в заголовке, путь новой вкладкой, служебные `--wait-pid` и `--self-check`) – [ARCHITECTURE.md](ARCHITECTURE.md) §10.
+Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. The switches (`--no-skia`, `--fps` – frame count and frame time in
+the title, a path opens in a new tab, and the internal `--wait-pid` and `--self-check`) are described in
+[ARCHITECTURE.md](ARCHITECTURE.md) §10.
 
-## Сборка под Linux
+## Building for Linux
 
-Терминальная версия `mtn2-tui` собирается компилятором Delphi для Linux64 (`dcclinux64`) прямо из Windows,
-без IDE и PAServer. Нужны RAD Studio 13 и файлы Linux SDK (sysroot): их скачивает диспетчер SDK в IDE
-(*Tools → Options → Deployment → SDK Manager*, Ubuntu 22.04 или 24.04) в
-`Documents\Embarcadero\Studio.0\PlatformSDKs\Linux64.sdk`. Запускать и проверять – в WSL.
+The terminal version `mtn2-tui` is built with the Delphi compiler for Linux64 (`dcclinux64`) straight from Windows,
+without the IDE and PAServer. You need RAD Studio 13 and the Linux SDK files (sysroot), which the IDE's SDK Manager
+downloads (*Tools -> Options -> Deployment -> SDK Manager*, Ubuntu 22.04 or 24.04) into
+`Documents\Embarcadero\Studio.0\PlatformSDKs\Linux64.sdk`. Run and check in WSL.
 
 ```powershell
 ./src/build-linux.ps1                 # -> bin\linux64\mtn2-tui + plugins\<id>\lib*.so
-./src/build-linux.ps1 -Sdl            # дополнительно bin\linux64\mtn2-sdl (окно SDL2, см. LINUX.md)
-./src/build-linux.ps1 -NoPlugins      # только программа, без плагинов (.so) и libwasmtime.so
-./src/build-linux.ps1 -Dump           # собрать и нарисовать один экран текстом в WSL
-./src/tests/run-tests-linux.ps1       # те же тестовые группы, собранные под Linux64 и запущенные в WSL
+./src/build-linux.ps1 -Sdl            # also bin\linux64\mtn2-sdl (SDL2 window, see LINUX.md)
+./src/build-linux.ps1 -NoPlugins      # the program only, without plugins (.so) and libwasmtime.so
+./src/build-linux.ps1 -Dump           # build and render one screen as text in WSL
+./src/tests/run-tests-linux.ps1       # the same test groups built for Linux64 and run in WSL
 ```
 
-Платформенный код лежит в парах юнитов с одним именем: `src/Platform/Windows` и `src/Platform/Posix`;
-проект берёт одну из папок через путь поиска юнитов, `{$IFDEF}` в общем коде не нужен. Общий код –
-`src/Core`, общий контроллер хостов – `src/Hosts/Common`, терминальный хост – `src/Hosts/Ansi`, хост с окном SDL2 – `src/Hosts/Sdl`, оконный (FireMonkey) – `src/Hosts/Fmx` и `src/Forms`.
-`src/tools/check-platform.ps1` падает, если юнит в `Core` или `Forms` обращается к платформенному API
-напрямую (список исключений – `platform-baseline.txt`, он может только сокращаться).
+Platform code lives in pairs of units with the same name: `src/Platform/Windows` and `src/Platform/Posix`; the project
+picks one folder through the unit search path, so `{$IFDEF}` is not needed in shared code. Shared code is `src/Core`,
+the shared host controller is `src/Hosts/Common`, the terminal host is `src/Hosts/Ansi`, the SDL2 window host is
+`src/Hosts/Sdl`, the windowed (FireMonkey) one is `src/Hosts/Fmx` and `src/Forms`.
+`src/tools/check-platform.ps1` fails if a unit in `Core` or `Forms` calls a platform API directly (the exceptions list
+is `platform-baseline.txt`; it may only shrink).
 
-Ресурсы Linux-программ (`MTN2Tui.dres`) собирает `src/tools/make-linux-resources.ps1` из `MTN2Resource.rc`
-и добавляет `RESOURCE_INDEX` – список имён, потому что среда выполнения Linux не умеет перечислять ресурсы.
+The resources of the Linux programs (`MTN2Tui.dres`) are built by `src/tools/make-linux-resources.ps1` from
+`MTN2Resource.rc`, which adds `RESOURCE_INDEX` - a list of names, because the Linux runtime cannot enumerate resources.
 
-Фикстуры, проверяющие код только для Windows, перечислены в `src/tests/linux-excluded.txt`; отдельные тесты
-помечаются `[Category('WindowsOnly')]`. Тесты, которым нужна платформа POSIX (`TestPosixPaths`,
-`TestPosixPty`, `TestPosixShellProfiles`), на Windows завершаются сразу через `Assert.Pass`.
+Fixtures that test Windows-only code are listed in `src/tests/linux-excluded.txt`; single tests are marked
+`[Category('WindowsOnly')]`. Tests that need POSIX (`TestPosixPaths`, `TestPosixPty`, `TestPosixShellProfiles`) finish
+immediately on Windows through `Assert.Pass`.
 
-## Тесты
+## Tests
 
-Тесты написаны на [DUnitX](https://github.com/VSoftTechnologies/DUnitX) (входит в RAD Studio). Каждый
-`src/tests/<группа>/TestXxx.pas` – модуль с фикстурой `[TestFixture] TTestXxx`, методы `[Test]` проверяют
-через `Assert.*`. Фикстуры группы собирает консольный раннер `<Группа>Tests.dpr` (например,
-`vfs/VfsTests.dpr`); общий `Main` – в `src/tests/common/uTestRunner.pas`. Группы:
+The tests use [DUnitX](https://github.com/VSoftTechnologies/DUnitX) (part of RAD Studio). Each
+`src/tests/<group>/TestXxx.pas` is a unit with a `[TestFixture] TTestXxx` fixture whose `[Test]` methods check through
+`Assert.*`. A group's fixtures are assembled by a console runner `<Group>Tests.dpr` (for example `vfs/VfsTests.dpr`);
+the shared `Main` is in `src/tests/common/uTestRunner.pas`. Groups:
 
-| Группа | Что покрывает |
+| Group | What it covers |
 |---|---|
-| `console` | ANSI-парсер, консольный буфер, ConPTY, cmd/PowerShell-сессии, профили оболочек |
-| `shell` | тесты, которые запускают настоящие оболочки через ConPTY и ждут их вывод (вынесены из `console`, чтобы идти параллельно) |
-| `panels` | двухпанельное окно: ввод, мышь, вкладки, меню, отрисовка, статус, модель панели |
-| `editor` | редактор, просмотрщики, Quick View, Markdown |
-| `dialogs` | JSON-диалоги, рендер, история ввода, отдельные диалоги |
-| `vfs` | файловые операции, VFS, архивы, SFTP, диски, длинные пути |
-| `plugins` | плагинный хост, загрузчик, 7z/tmp/WASM-плагины (`SamplePlugin.dpr` – фикстура) |
-| `core` | конфигурация, keymap, шина сообщений, строки, справка, разбор ввода и вывод терминального хоста |
+| `console` | ANSI parser, console buffer, ConPTY, cmd/PowerShell sessions, shell profiles |
+| `shell` | tests that start real shells through ConPTY and wait for their output (split from `console` to run in parallel) |
+| `panels` | the dual-panel window: input, mouse, tabs, menus, drawing, status, panel model |
+| `editor` | editor, viewers, Quick View, Markdown |
+| `dialogs` | JSON dialogs, rendering, input history, individual dialogs |
+| `vfs` | file operations, VFS, archives, SFTP, drives, long paths |
+| `plugins` | plugin host, loader, 7z/tmp/WASM plugins (`SamplePlugin.dpr` is a fixture) |
+| `core` | configuration, keymap, message bus, strings, help, input parsing and terminal host output |
 
 ```powershell
-./src/tests/run-tests.ps1                    # все группы, кроме фикстур категории Manual
-./src/tests/run-tests.ps1 -Group vfs,panels  # выбранные группы
-./src/tests/run-tests.ps1 -Test TestPty*     # фикстуры по имени модуля (маски), в т.ч. Manual
-./src/tests/run-tests.ps1 -All               # вместе с Manual
-./src/tests/run-tests.ps1 -List              # только показать список
-./src/tests/run-tests.ps1 -Jobs 1            # по одной группе (по умолчанию все сразу)
+./src/tests/run-tests.ps1                    # all groups except fixtures of the Manual category
+./src/tests/run-tests.ps1 -Group vfs,panels  # selected groups
+./src/tests/run-tests.ps1 -Test TestPty*     # fixtures by unit name (masks), Manual ones included
+./src/tests/run-tests.ps1 -All               # with Manual
+./src/tests/run-tests.ps1 -List              # only list
+./src/tests/run-tests.ps1 -Jobs 1            # one group at a time (all at once by default)
 ```
 
-Группы независимы (у каждой свои `.dcu` в `src/tests/dcu/obj/<группа>`, своя папка настроек и свой exe), поэтому
-`run-tests.ps1` собирает и запускает их одновременно (`-Jobs` ограничивает число) и печатает результаты по порядку
-групп. Он компилирует раннер группы в `src/tests/dcu` и запускает его из папки группы (пути вида
-`..\..\dialogs` в тестах отсчитываются от неё). Отчёт в формате NUnit XML пишется в
-`src/tests/dcu/<Группа>Tests.xml`, CI сохраняет его артефактом. Раннер дольше `-TimeoutSec` (по умолчанию
-900 с) снимается и считается упавшим; прогон не останавливается на первой ошибке и в конце печатает сводку.
+Groups are independent (each has its own `.dcu` in `src/tests/dcu/obj/<group>`, its own settings folder and its own
+exe), so `run-tests.ps1` builds and runs them at the same time (`-Jobs` limits the number) and prints the results in
+group order. It compiles a group's runner into `src/tests/dcu` and starts it from the group's folder (paths such as
+`..\..\dialogs` in the tests are relative to it). The NUnit XML report is written to `src/tests/dcu/<Group>Tests.xml`;
+CI saves it as an artifact. A runner that exceeds `-TimeoutSec` (900 s by default) is killed and counts as failed; the
+run does not stop at the first failure and prints a summary at the end.
 
-Раннер группы можно запустить и напрямую (из папки группы) – ключи DUnitX: `-h` – справка,
-`--run:TestToast.TTestToast` – одна фикстура, `--exclude:Manual`, `--xmlfile:<путь>`.
+A group's runner can also be started directly (from the group's folder) with the DUnitX switches: `-h` for help,
+`--run:TestToast.TTestToast` for one fixture, `--exclude:Manual`, `--xmlfile:<path>`.
 
-Новый тест: `src/tests/<группа>/TestXxx.pas` по образцу соседних (фикстура регистрируется в `initialization`
-через `TDUnitX.RegisterTestFixture`), модули Core подключать без `in`-путей – их находит `-U` раннера.
-Модуль нужно добавить в `uses` раннера группы; `run-tests.ps1` падает, если какой-то `Test*.pas` там не
-указан. Ручные, интерактивные и зависящие от окружения фикстуры помечаются `[Category('Manual')]` с
-комментарием-причиной над атрибутом. Нет нужного окружения (7z.dll, wasmtime.dll) – тест завершается
-`Assert.Pass('SKIP: …')`.
+A new test: `src/tests/<group>/TestXxx.pas` modelled on its neighbours (the fixture is registered in `initialization`
+through `TDUnitX.RegisterTestFixture`); include Core units without `in` paths - the runner's `-U` finds them. Add the
+unit to the group runner's `uses`; `run-tests.ps1` fails if some `Test*.pas` is not listed there. Manual, interactive
+and environment-dependent fixtures get `[Category('Manual')]` with a comment giving the reason above the attribute. If
+the needed environment (7z.dll, wasmtime.dll) is missing, the test finishes with `Assert.Pass('SKIP: ...')`.
 
-Внутри методов фикстуры `Writeln(…)` разрешается в хелпер DUnitX `TObject.WriteLn(msg)` (один
-строковый аргумент, пишет в лог раннера) – для обычного вывода в консоль пишите `System.Writeln`.
+Inside fixture methods `Writeln(...)` resolves to the DUnitX helper `TObject.WriteLn(msg)` (one string argument,
+writes to the runner log); for ordinary console output write `System.Writeln`.
 
 ## CI/CD (GitHub Actions)
 
-| Workflow | Где | Что |
+| Workflow | Where | What |
 |---|---|---|
-| `ci.yml` → `checks` | GitHub-hosted (ubuntu) | gitleaks, валидность JSON-ресурсов |
-| `ci.yml` → `wasm-plugin` | GitHub-hosted (ubuntu) | `cargo build` плагина `mtn.ws` под `wasm32` |
-| `ci.yml` → `delphi` | self-hosted `delphi` | `build.ps1` + `run-tests.ps1` + zip-артефакт; на пуше в `main` ещё и публикация в скользящий prerelease `dev` репозитория `Laex/MTN2-dev` |
-| `release.yml` | self-hosted `delphi` | по тегу `v*`: сборка, тесты, GitHub Release с zip и разделом из `CHANGELOG.md` |
+| `ci.yml` -> `checks` | GitHub-hosted (ubuntu) | gitleaks, validity of the JSON resources |
+| `ci.yml` -> `wasm-plugin` | GitHub-hosted (ubuntu) | `cargo build` of the `mtn.ws` plugin for `wasm32` |
+| `ci.yml` -> `delphi` | self-hosted `delphi` | `build.ps1` + `run-tests.ps1` + a zip artifact; on a push to `main` it also publishes to the rolling `dev` prerelease of the `Laex/MTN2-dev` repository |
+| `release.yml` | self-hosted `delphi` | on a `v*` tag: build, tests, a GitHub Release with the zip and the matching `CHANGELOG.md` and `CHANGELOG.ru.md` sections |
 
-RAD Studio коммерческая и на GitHub-hosted раннерах отсутствует, поэтому Delphi-часть идёт на своей машине.
+RAD Studio is commercial and not available on GitHub-hosted runners, so the Delphi part runs on the maintainer's machine.
 
-### Сборки разработки (канал dev)
+### Development builds (the dev channel)
 
-Job `delphi` в `ci.yml` на каждом пуше в `main` собирает exe с версией `<версия из MTN2.dproj>.<число коммитов после её тега>` (например,
-`0.3.12.57`; считает `src/tools/dev-version.ps1`) и кладёт пакеты в единственный prerelease `dev` репозитория `Laex/MTN2-dev`; пакеты предыдущей сборки
-удаляются. Отдельный репозиторий нужен потому, что в `Laex/MTN2` включены неизменяемые релизы: опубликованный релиз там
-перезаписать нельзя. В `Laex/MTN2-dev` неизменяемые релизы и rulesets на теги включать не нужно.
+On every push to `main` the `delphi` job in `ci.yml` builds an exe with the version
+`<version from MTN2.dproj>.<number of commits after its tag>` (for example `0.3.12.57`; computed by
+`src/tools/dev-version.ps1`) and puts the packages into the single `dev` prerelease of `Laex/MTN2-dev`; the packages of
+the previous build are removed. A separate repository is needed because immutable releases are enabled in `Laex/MTN2`:
+a published release cannot be overwritten there. `Laex/MTN2-dev` has no immutable releases or tag rulesets.
 
-Версия из четырёх чисел старше релиза, от которого отсчитывается, и младше следующего (`0.3.13 > 0.3.12.999`).
-Поэтому с канала dev на релизы встроенное обновление перейдёт только с выходом следующего релиза.
+A four-number version is newer than the release it counts from and older than the next one (`0.3.13 > 0.3.12.999`),
+so the built-in updater moves from the dev channel to releases only when the next release comes out.
 
-Локальная сборка с тем же номером: `./src/build.ps1 -Dev`. Число коммитов считается по локальной истории, поэтому
-сборка неотправленного коммита получает номер выше опубликованной, и встроенное обновление не предложит ей более
-старую dev-сборку. Тег текущей версии (`v0.3.12`) должен быть в клоне: `git fetch --tags`.
+A local build with the same number: `./src/build.ps1 -Dev`. The commit count comes from the local history, so a build
+of an unpushed commit gets a number higher than the published one and the updater will not offer it an older dev build.
+The tag of the current version (`v0.3.12`) must be in the clone: `git fetch --tags`.
 
-Публикация идёт из той же сборки, что и проверка CI, без второго прогона. Настройка GitHub, один раз:
+The dev steps run only on a push to `main`, not on pull requests: the secret is not available to code from forks. The
+application looks the build up through `releases/tags/dev` and takes the package with the highest number in the name
+`MTN2-v<major>.<minor>.<patch>.<build>-win64.zip`.
 
-1. Репозиторий `Laex/MTN2-dev` (публичный). Пустой – workflow сам добавит `README.md`, чтобы было что помечать тегом.
-2. *Settings → Developer settings → Personal access tokens → Fine-grained tokens*: доступ только к `Laex/MTN2-dev`,
-   *Repository permissions → Contents: Read and write*. Срок действия – по желанию, при истечении сборки dev
-   останавливаются.
-3. В `Laex/MTN2`: *Settings → Secrets and variables → Actions → New repository secret* с именем `DEV_RELEASE_TOKEN`
-   и значением токена. Переменная `DELPHI_RUNNER=true` уже нужна для job `delphi`.
+### What is new: `CHANGELOG.md` and `CHANGELOG.ru.md`
 
-Шаги dev выполняются только на пуше в `main`, не на pull request'ах: секрет недоступен коду из форков.
-Приложение ищет сборку по `releases/tags/dev` и берёт пакет с наибольшим номером в имени
-`MTN2-v<мажор>.<минор>.<патч>.<сборка>-win64.zip`.
+`CHANGELOG.md` (English) and `CHANGELOG.ru.md` (Russian) in the root are for users: what appeared, what was fixed, what changed in behaviour, without the internal
+kitchen (refactoring, tests and CI are not written there). A change noticeable to the user is recorded at once in the
+"Unreleased" section under "New", "Fixed" or "Changed" ("Не выпущено" with "Новое", "Исправлено", "Изменено" in
+the Russian file). Both files are put into both archives next to `LICENSE`; the "Open changelog" button after an update
+opens the one in the interface language, or the English one if there is no translation. `changelog.ps1` works on both
+files together and refuses to stamp or move entries when only one of them has any.
 
-### Подключение self-hosted раннера
-
-1. GitHub → *Settings → Actions → Runners → New self-hosted runner* (Windows x64), выполнить показанные команды
-   на машине с RAD Studio. При `config.cmd` добавить метку: `--labels delphi`.
-2. Запускать раннер **интерактивно** (`run.cmd`, автозапуск при входе), а не как службу: часть тестов (ConPTY,
-   буфер обмена, FMX) требует пользовательского сеанса.
-3. Нужны PowerShell 7 (`pwsh`), Git, опционально Rust с `wasm32-unknown-unknown`.
-4. *Settings → Secrets and variables → Actions → Variables*: `DELPHI_RUNNER = true` – включает job `delphi`
-   (без неё CI не будет висеть в очереди в ожидании раннера).
-5. *Settings → Actions → General → Fork pull request workflows*: «Require approval for all outside collaborators».
-   Job `delphi` и так не запускается для PR из форков.
-
-### Что нового: `CHANGELOG.md`
-
-`CHANGELOG.md` в корне – для пользователей: что появилось, что исправлено, что изменилось в поведении, по-русски и без
-внутренней кухни (рефакторинг, тесты, CI туда не пишутся). Изменение, заметное пользователю, сразу записывается
-в раздел «Не выпущено» под «Новое», «Исправлено» или «Изменено». Файл кладётся в оба архива рядом с `LICENSE`.
-
-### Релиз
+### Release
 
 ```powershell
-./src/tools/changelog.ps1 -Stamp v0.3.0   # «Не выпущено» -> «v0.3.0 – <дата>», новый пустой «Не выпущено»
-                                          # и версия 0.3.0 в MTN2.dproj; оба файла – в коммит «Stamp 0.3.0.»
+./src/tools/changelog.ps1 -Stamp v0.3.0   # "Unreleased" -> "v0.3.0 - <date>", a new empty "Unreleased"
+                                          # and version 0.3.0 in MTN2.dproj; both files go into the commit "Stamp 0.3.0"
 git tag v0.3.0
 git push origin v0.3.0
 ```
 
-`release.yml` берёт раздел этой версии из `CHANGELOG.md` на теге и ставит его в начало страницы релиза со ссылкой
-на весь файл; без такого раздела (не сделан `-Stamp`) релиз останавливается до сборки.
+`release.yml` takes this version's section from both files at the tag (English first) and puts it at the top of the
+release page with links to the whole files; without such a section (`-Stamp` was not run) the release stops before the build.
 
-Версию в exe релиза задаёт тег (`build.ps1 -Version`), а локальная сборка без `-Version` берёт её из `MTN2.dproj`.
-Если dproj не поднять, локальный exe считает себя старше на версию и встроенное обновление предлагает ему «обновиться»
-до уже установленной версии (так было с 0.3.8). Поднять только dproj: `./src/tools/changelog.ps1 -ProjectVersion v0.3.0`.
+The release exe's version comes from the tag (`build.ps1 -Version`), while a local build without `-Version` takes it
+from `MTN2.dproj`. If the dproj is not bumped, the local exe considers itself a version older and the built-in updater
+offers to "update" it to the version already installed. To bump only the dproj:
+`./src/tools/changelog.ps1 -ProjectVersion v0.3.0`.

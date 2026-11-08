@@ -167,6 +167,7 @@ begin
     tmaCmdFolderHotlistAdd: CallProc(AHost.BeginFolderHotlistAdd);
     tmaCmdWorkspaceLibrary: CallProc(AHost.OpenWorkspaceLibraryDialog);
     tmaCmdWorkspaceSave: CallProc(AHost.BeginWorkspaceLibrarySave);
+    tmaCmdFindToWorkspace: CallProc(AHost.FindToWorkspace);
     tmaCmdSshConnections: CallProc(AHost.OpenSshConnectionsDialog);
     tmaCmdAssociations: CallProc(AHost.OpenUserAssociationsDialog);
     tmaCmdBranchView: CallProc(AHost.BeginBranchView);
@@ -209,6 +210,7 @@ begin
     tmaOptKeymap: CallProc(AHost.OpenKeymapDialog);
     tmaOptTheme: CallProc(AHost.OpenThemeDialog);
     tmaOptColumnsConfig: CallProc(AHost.OpenColumnsConfigDialog);
+    tmaOptMaskGroups: CallProc(AHost.OpenMaskGroupsDialog);
     tmaOptDisplay: CallProc(AHost.OpenDisplayDialog);
     tmaOptInterface: CallProc(AHost.OpenInterfaceDialog);
     tmaOptExternalTools: CallProc(AHost.OpenExternalToolsDialog);
@@ -251,7 +253,7 @@ begin
     tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit, tmaCmdPalette,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
-    tmaOptColumnsConfig, tmaOptDisplay, tmaOptInterface, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptEnvironment, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
+    tmaOptColumnsConfig, tmaOptMaskGroups, tmaOptDisplay, tmaOptInterface, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptEnvironment, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,
     tmaOptRestoreHiddenDialogs,
     tmaCmdNextTab, tmaCmdNewTerminal, tmaCmdConsoleToggle, tmaCmdConsoleProfile,
     tmaCmdSaveConsoleOutput, tmaCmdClearConsole,

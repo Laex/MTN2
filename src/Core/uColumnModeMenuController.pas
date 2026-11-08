@@ -11,12 +11,15 @@ uses
 
 type
   TColumnModeSelectEvent = reference to procedure(AMode: TPanelColumnMode);
+  TColumnSetSelectEvent = reference to procedure(const AName: string);
 
   TColumnModeMenuController = class
   private
     FTheme: IThemeRenderer;
     FOnInvalidate: TProc;
     FOnColumnModeSelect: TColumnModeSelectEvent;
+    FOnColumnSetSelect: TColumnSetSelectEvent;
+    FIncludeSets: Boolean;
     FGetActivePanelBounds: TMenuPanelBoundsEvent;
     FGetActiveSide: TActiveSideEvent;
     FVisible: Boolean;
@@ -26,12 +29,17 @@ type
     FCurrent: TPanelColumnMode;
     procedure BuildItems;
     function IndexOf(AMode: TPanelColumnMode): Integer;
+    procedure DoSelect(AIndex: Integer);
+    function IsCurrentItem(AIndex: Integer): Boolean;
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
       const AGetActivePanelBounds: TMenuPanelBoundsEvent;
       const AGetActiveSide: TActiveSideEvent);
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetOnColumnModeSelect(const AHandler: TColumnModeSelectEvent);
+    /// <summary>Lists the saved column sets under Custom; choosing one calls AHandler
+    /// with its name.</summary>
+    procedure SetOnColumnSetSelect(const AHandler: TColumnSetSelectEvent);
     procedure Open(ACurrent: TPanelColumnMode);
     procedure Close;
     procedure Layout;
@@ -46,7 +54,7 @@ type
 implementation
 
 uses
-  uStrings, uKeyChord, uMenuNavigation;
+  uStrings, uKeyChord, uMenuNavigation, uPanelColumns, uColumnSets;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -78,6 +86,45 @@ begin
   FOnColumnModeSelect := AHandler;
 end;
 
+procedure TColumnModeMenuController.SetOnColumnSetSelect(
+  const AHandler: TColumnSetSelectEvent);
+begin
+  FOnColumnSetSelect := AHandler;
+  FIncludeSets := Assigned(AHandler);
+end;
+
+procedure TColumnModeMenuController.DoSelect(AIndex: Integer);
+begin
+  if FItems[AIndex].SetName <> '' then
+  begin
+    if Assigned(FOnColumnSetSelect) then
+      FOnColumnSetSelect(FItems[AIndex].SetName);
+  end
+  else if Assigned(FOnColumnModeSelect) then
+    FOnColumnModeSelect(FItems[AIndex].Mode);
+end;
+
+function TColumnModeMenuController.IsCurrentItem(AIndex: Integer): Boolean;
+var
+  Item: TColumnModeMenuItem;
+  S: TColumnSet;
+  AnySet: Boolean;
+begin
+  Item := FItems[AIndex];
+  if Item.Mode <> FCurrent then
+    Exit(False);
+  if Item.Mode <> pcmCustom then
+    Exit(True);
+  // A set is current when the Custom mode shows exactly its columns.
+  if Item.SetName <> '' then
+    Exit(ColumnSetFind(Item.SetName, S) and SameColumnsConfig(S.Config, GCustomColumnsConfig));
+  AnySet := False;
+  for S in ColumnSets do
+    if SameColumnsConfig(S.Config, GCustomColumnsConfig) then
+      AnySet := True;
+  Result := not (FIncludeSets and AnySet);
+end;
+
 procedure TColumnModeMenuController.BuildItems;
 
   // AKey: columnModeMenu.<AKey> in strings/<locale>.json; a translation
@@ -100,6 +147,9 @@ procedure TColumnModeMenuController.BuildItems;
     FItems[N].Mode := AMode;
   end;
 
+var
+  S: TColumnSet;
+  N: Integer;
 begin
   SetLength(FItems, 0);
   Add('brief', 'Brief', 'B', 'Ctrl+Shift+F1', pcmBrief);
@@ -109,6 +159,16 @@ begin
   Add('created', 'Created', 'C', 'Ctrl+Shift+F5', pcmCreated);
   Add('types', 'Types', 'T', 'Ctrl+Shift+F6', pcmTypes);
   Add('custom', 'Custom', 'X', 'Ctrl+Shift+F7', pcmCustom);
+  if FIncludeSets then
+    for S in ColumnSets do
+    begin
+      N := Length(FItems);
+      SetLength(FItems, N + 1);
+      FItems[N] := Default(TColumnModeMenuItem);
+      FItems[N].Caption := T('columnModeMenu.set', 'Custom: %s', [S.Name]);
+      FItems[N].Mode := pcmCustom;
+      FItems[N].SetName := S.Name;
+    end;
 end;
 
 function TColumnModeMenuController.IndexOf(AMode: TPanelColumnMode): Integer;
@@ -192,7 +252,7 @@ begin
     Y := R.Top + 1 + I;
     if Y >= R.Bottom then
       Break;
-    if FItems[I].Mode = FCurrent then
+    if IsCurrentItem(I) then
       Mark := #$25CF // ●
     else
       Mark := ' ';
@@ -260,8 +320,7 @@ begin
   begin
     if (FIndex >= 0) and (FIndex <= High(FItems)) then
     begin
-      if Assigned(FOnColumnModeSelect) then
-        FOnColumnModeSelect(FItems[FIndex].Mode);
+      DoSelect(FIndex);
       Close;
     end;
     AKey := 0;
@@ -279,8 +338,7 @@ begin
     I := AKey - vkF1;
     if (I >= 0) and (I <= High(FItems)) then
     begin
-      if Assigned(FOnColumnModeSelect) then
-        FOnColumnModeSelect(FItems[I].Mode);
+      DoSelect(I);
       Close;
       AKey := 0;
       AKeyChar := #0;
@@ -295,8 +353,7 @@ begin
       for I := 0 to High(FItems) do
         if MenuHotKeyMatches(FItems[I].HotChar, Ch, Pass) then
         begin
-          if Assigned(FOnColumnModeSelect) then
-            FOnColumnModeSelect(FItems[I].Mode);
+          DoSelect(I);
           Close;
           AKey := 0;
           AKeyChar := #0;
@@ -328,8 +385,7 @@ begin
     if (Idx >= 0) and (Idx <= High(FItems)) then
     begin
       FIndex := Idx;
-      if Assigned(FOnColumnModeSelect) then
-        FOnColumnModeSelect(FItems[Idx].Mode);
+      DoSelect(Idx);
       Close;
     end;
     Result := True;

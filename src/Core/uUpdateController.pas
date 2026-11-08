@@ -299,7 +299,10 @@ begin
   SaveSettings;
   if not Updated then
     Exit;
-  Changelog := TPath.Combine(AppDir, 'CHANGELOG.md');
+  // CHANGELOG.md is English; a translation sits next to it as CHANGELOG.<language>.md.
+  Changelog := TPath.Combine(AppDir, 'CHANGELOG.' + CurrentLocale + '.md');
+  if SameText(CurrentLocale, 'en') or not TFile.Exists(Changelog) then
+    Changelog := TPath.Combine(AppDir, 'CHANGELOG.md');
   if IsDevVersion(FCurrent) then
     Installed := T('ui.update.installedDev',
       'MTN2 has been updated to development build %s.', [FCurrent])

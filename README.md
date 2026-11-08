@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-**English** | [Deutsch](README.de.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [한국어](README.ko.md)
+**English** | [Русский](README.ru.md) | [Deutsch](README.de.md) | [中文](README.zh.md)
 
 A dual-panel file manager inspired by **Necromancer's DOS Navigator** and **Far Manager**, featuring a built-in console,
 terminals, file viewer, and editor. The user interface is text-based (TUI), but rendered inside a standard GUI window:
@@ -15,7 +15,7 @@ occupy two columns, matching standard terminal behavior.
 
 [Project website](https://laex.github.io/MTN2/en/) ·
 [Download the latest version](https://github.com/Laex/MTN2/releases/latest) ·
-[What's new](CHANGELOG.md) · [FAQ](docs/FAQ.en.md) · [Contributing](CONTRIBUTING.en.md) ·
+[What's new](CHANGELOG.md) · [FAQ](docs/FAQ.md) · [Contributing](CONTRIBUTING.md) ·
 [Discussions](https://github.com/Laex/MTN2/discussions) ·
 [Article on Habr (in Russian)](https://habr.com/ru/articles/1087174/)
 
@@ -59,7 +59,7 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
 
 - **No telemetry, no cloud features.** The only network access is a check for a new version on GitHub (once a day,
   at startup); turn it off in **≡ → Check for updates...** ("Check for updates at startup").
-  Details in the [FAQ](docs/FAQ.en.md).
+  Details in the [FAQ](docs/FAQ.md).
 - **Portable.** One folder, no installer, no registry entries; the portable edition keeps its settings next to
   `MTN2.exe`, the regular one in `%APPDATA%\MTN2`. Settings, themes and key bindings are plain JSON files.
 - **Keyboard first.** The key layout is close to Far Manager and fully remappable; tabs and terminals work as in ConEmu.
@@ -229,8 +229,8 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 
 ## Documentation
 
-- [FAQ.en.md](docs/FAQ.en.md) – frequently asked questions: network and privacy, SmartScreen, display scaling, themes, plugins.
-- [CONTRIBUTING.en.md](CONTRIBUTING.en.md) – how to report a bug, suggest an idea, build the project and send a change.
+- [FAQ.md](docs/FAQ.md) – frequently asked questions: network and privacy, SmartScreen, display scaling, themes, plugins.
+- [CONTRIBUTING.md](CONTRIBUTING.md) – how to report a bug, suggest an idea, build the project and send a change.
 - [SDS.md](docs/SDS.md) – full specification: concept, data structures, API, roadmap.
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) – layers, data flows, and invariants.
 - [BUILDING.md](docs/BUILDING.md) – build guide, tests, CI/CD.

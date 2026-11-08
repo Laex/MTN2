@@ -14,6 +14,10 @@
 
 Im Dialog „Nach Maske auswählen“ wendet das Kontrollfeld „Ordner auswählen“ die Maske auch auf Ordner an. Operationen (Kopieren, Löschen, …) wirken auf die ausgewählten Elemente oder, wenn nichts ausgewählt ist, auf das Element unter dem Cursor.
 
+### Maskengruppen
+
+<!--mask-groups-->In jeder Maske (Auswahl, Panelfilter, Suche, Farbgruppen) steht `@Name` für eine benannte Gruppe von Masken, zum Beispiel `@Images` oder `*.log;@Documents`. Eingebaut sind Images, Audio, Video, Documents, Archives und Sources. Eigene Gruppen verwaltet der Menüpunkt "Maskengruppen..." im Menü Optionen (Datei `maskgroups.json` im Einstellungsordner); der Dialog zur Auswahl nach Maske kann seine Maske ebenfalls als Gruppe speichern. In einem Maskenfeld eines Dialogs speichert Strg+G die eingegebenen Masken als Gruppe (benannt nach der ersten Maske) und setzt `@Name` ins Feld.
+
 ---
 
 [Inhalt](index.md)

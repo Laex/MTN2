@@ -758,6 +758,7 @@ type
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
+    function ResolveDialogListBg: TAlphaColor;
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
@@ -796,6 +797,11 @@ procedure TFakeTheme.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Bo
   out AFg, ABg: TAlphaColor); begin AFg := 0; ABg := 0; end;
 procedure TFakeTheme.ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
 begin AFg := 0; ABg := 0; end;
+function TFakeTheme.ResolveDialogListBg: TAlphaColor;
+begin
+  Result := 0;
+end;
+
 procedure TFakeTheme.ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
 begin AFg := 0; ABg := 0; end;
 procedure TFakeTheme.ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;

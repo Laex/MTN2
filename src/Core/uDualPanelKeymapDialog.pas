@@ -218,6 +218,8 @@ const
     'Save list to a file',
     'Quick search (without Alt)',
     'Windows context menu',
+    'Found items to Workspace panel',
+    'Lock or unlock the panel tab',
     'Viewer <-> editor',
     'Hex <-> text',
     'Markdown <-> text',

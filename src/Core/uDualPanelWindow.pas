@@ -13,7 +13,7 @@ uses
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindArchive, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup, uStartupTargets, uSharkSaver,
-  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uPluginColumns, uDirWatch, uDialogTypes, uDialogJson,
+  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uColumnSets, uPluginColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
@@ -506,6 +506,7 @@ type
     procedure HostMenuSortPluginSelect(AColumn: TPanelSortColumn; const APluginId: string);
     procedure HostMenuSortPriorityToggle;
     procedure HostMenuColumnModeSelect(AMode: TPanelColumnMode);
+    procedure HostMenuColumnSetSelect(const AName: string);
     function OverlayDialogVisible: Boolean;
     function OverlaySearchActive: Boolean;
     function OverlayJobActive: Boolean;
@@ -935,11 +936,17 @@ type
     procedure BeginFolderHotlistAdd;
     procedure OpenWorkspaceLibraryDialog;
     procedure BeginWorkspaceLibrarySave;
+    /// <summary>Links the marked rows of the active panel (all of them when none
+    /// is marked) in ws:/// and shows it in the other panel.</summary>
+    procedure FindToWorkspace;
+    procedure ToggleTabLock;
+    procedure ShowWorkspaceBeside;
     procedure OpenSshConnectionsDialog;
     procedure OpenSshTerminal(const AConnectionId: string);
     procedure OpenUserAssociationsDialog;
     procedure OpenThemeDialog;
     procedure OpenColumnsConfigDialog;
+    procedure OpenMaskGroupsDialog;
     procedure OpenDisplayDialog;
     procedure OpenInterfaceDialog;
     procedure OpenColorCodingDialog;
@@ -2201,6 +2208,8 @@ begin
   FKeymapHost.BeginFolderHotlistAdd := BeginFolderHotlistAdd;
   FKeymapHost.OpenWorkspaceLibraryDialog := OpenWorkspaceLibraryDialog;
   FKeymapHost.BeginWorkspaceLibrarySave := BeginWorkspaceLibrarySave;
+  FKeymapHost.FindToWorkspace := FindToWorkspace;
+  FKeymapHost.ToggleTabLock := ToggleTabLock;
   FKeymapHost.OpenSshConnectionsDialog := OpenSshConnectionsDialog;
   FKeymapHost.OpenUserAssociationsDialog := OpenUserAssociationsDialog;
   FKeymapHost.BeginBranchView := BeginBranchView;
@@ -2286,6 +2295,7 @@ begin
   FKeymapHost.OpenKeymapDialog := OpenKeymapDialog;
   FKeymapHost.OpenThemeDialog := OpenThemeDialog;
   FKeymapHost.OpenColumnsConfigDialog := OpenColumnsConfigDialog;
+  FKeymapHost.OpenMaskGroupsDialog := OpenMaskGroupsDialog;
   FKeymapHost.OpenDisplayDialog := OpenDisplayDialog;
   FKeymapHost.OpenInterfaceDialog := OpenInterfaceDialog;
   FKeymapHost.OpenAboutDialog := OpenAboutDialog;
@@ -3455,6 +3465,17 @@ begin
   ApplyColumnMode(ActiveWorkspace.State.ActiveSide, AMode);
 end;
 
+procedure TDualPanelWindow.HostMenuColumnSetSelect(const AName: string);
+var
+  S: TColumnSet;
+begin
+  if not ColumnSetFind(AName, S) then
+    Exit;
+  GCustomColumnsConfig := S.Config;
+  ApplyColumnMode(ActiveWorkspace.State.ActiveSide, pcmCustom);
+  NotifyChanged;
+end;
+
 function TDualPanelWindow.OverlayDialogVisible: Boolean;
 begin
   Result := Assigned(FDialog) and FDialog.Visible;
@@ -3545,7 +3566,8 @@ begin
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, NavigateActiveTo, HostUnfocusCmd,
     HostWorkspaceEmptySave);
-  FSshConnections := TSshConnectionsDialogController.Create(FDialog,
+  FWorkspaceLibrary.OnFindAdded := ShowWorkspaceBeside;
+  FSshConnections :=TSshConnectionsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,
     CloseTransientUiBeforeDialog, NavigateActiveTo, OpenSshTerminal,
     HostUnfocusCmd);
@@ -3733,6 +3755,7 @@ begin
   FMenus.SetOnSortPluginSelect(HostMenuSortPluginSelect);
   FMenus.SetOnSortPriorityToggle(HostMenuSortPriorityToggle);
   FMenus.SetOnColumnModeSelect(HostMenuColumnModeSelect);
+  FMenus.SetOnColumnSetSelect(HostMenuColumnSetSelect);
   FInputOverlays := [
     TInputOverlayEntry.Make(OverlayStubVisible, HandleStubInput),
     TInputOverlayEntry.Make(OverlayDialogVisible, HandleModalDialogInput),
@@ -5302,6 +5325,14 @@ begin
   else
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
+  if Tab.Locked and not SameVfsUri(Tab.CurrentURI, Canon) then
+  begin
+    // The locked tab keeps its folder; the new place opens in a tab of its own.
+    NewPanelTabOnSide(ASide);
+    Ws.State.ActiveSide := ASide;
+    NavigateSideTo(ASide, Canon, AAddToHistory);
+    Exit;
+  end;
   OldIsArch := HasArchiveChain(Tab.CurrentURI);
   NewIsArch := HasArchiveChain(Canon);
   EitherSideIsVirtualView := OldIsArch or NewIsArch or
@@ -7122,7 +7153,7 @@ begin
     hdkTheme, hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor,
     hdkThemeItems, hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker:
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
-    hdkColumnsConfig, hdkDisplay, hdkInterface, hdkTerminalProfile, hdkConsoleProfile,
+    hdkColumnsConfig, hdkMaskGroups, hdkDisplay, hdkInterface, hdkTerminalProfile, hdkConsoleProfile,
     hdkTerminalEnv,
     hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkConsoleOptions:
@@ -11009,6 +11040,79 @@ begin
   FWorkspaceLibrary.BeginSave;
 end;
 
+procedure TDualPanelWindow.FindToWorkspace;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Tab: TTab;
+  Rows: TPanelRows;
+  Keys: TArray<string>;
+  Targets: TArray<TWorkspaceLinkNode>;
+  R: TPanelRow;
+  N: Integer;
+  Marked: Boolean;
+  Uri: string;
+  Side: TPanelSide;
+begin
+  if not CanStartOperation then
+    Exit;
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Side := Ws.State.ActiveSide;
+  Tab := ActiveTab(ActivePanel(Ws));
+  Rows := RowsForSide(Side);
+  Marked := Length(Tab.SelectedURIs) > 0;
+  Keys := TabSelectionKeys(Tab);
+  for R in Rows do
+  begin
+    if R.IsParent or (R.URI = '') then
+      Continue;
+    if Marked and not SelectionKeysHas(Keys, R.URI) then
+      Continue;
+    Uri := R.TargetURI;
+    if Uri = '' then
+      Uri := R.URI;
+    // Links to a place inside an archive or a plugin scheme cannot be opened
+    // from the Workspace panel, so only paths of the file system are linked.
+    if FileUriToPath(Uri) = '' then
+      Continue;
+    N := Length(Targets);
+    SetLength(Targets, N + 1);
+    Targets[N].TargetURI := Uri;
+    Targets[N].IsDir := R.IsDirectory;
+  end;
+  if Length(Targets) = 0 then
+  begin
+    OpenStub(skShellInfo, T('ui.workspace.addTitle', 'Workspace'),
+      T('ui.workspace.addNone', 'There is nothing to link: only the items that are files or folders of the disk can be added'));
+    Exit;
+  end;
+  FWorkspaceLibrary.BeginFindToWorkspace(Targets);
+end;
+
+procedure TDualPanelWindow.ShowWorkspaceBeside;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Side: TPanelSide;
+  Cur: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Side := Ws.State.ActiveSide;
+  Cur := ActiveTab(ActivePanel(Ws)).CurrentURI;
+  if IsWorkspaceUri(Cur) then
+    ReloadSidesShowing(Cur)
+  else
+  begin
+    NavigateSideTo(OppositeSide(Side), MakeWorkspaceUri(''));
+    Ws := ActiveWorkspace;
+    Ws.State.ActiveSide := Side;
+    SaveActiveWorkspace(Ws);
+  end;
+  NotifyChanged;
+end;
+
 procedure TDualPanelWindow.OpenSshConnectionsDialog;
 begin
   FSshConnections.OpenList;
@@ -11063,6 +11167,11 @@ begin
   if Ws.Kind = wkPanels then
     Scheme := PluginColumnSchemeOf(ActiveTab(ActivePanel(Ws)).CurrentURI);
   FSettings.OpenColumns(Scheme);
+end;
+
+procedure TDualPanelWindow.OpenMaskGroupsDialog;
+begin
+  FSettings.OpenMaskGroups;
 end;
 
 procedure TDualPanelWindow.OpenDisplayDialog;
@@ -13309,6 +13418,29 @@ begin
   Invalidate;
 end;
 
+procedure TDualPanelWindow.ToggleTabLock;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Side: TPanelSide;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  Side := Ws.State.ActiveSide;
+  if Side = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  Panel.Tabs[Panel.ActiveTabIndex].Locked := not Panel.Tabs[Panel.ActiveTabIndex].Locked;
+  if Side = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+  Invalidate;
+end;
+
 procedure TDualPanelWindow.ClosePanelTab(ASide: TPanelSide; AIndex: Integer);
 var
   Ws: TDualPanelWorkspaceTab;
@@ -13323,6 +13455,8 @@ begin
   if Length(Panel.Tabs) <= 1 then
     Exit;
   if (AIndex < 0) or (AIndex > High(Panel.Tabs)) then
+    Exit;
+  if Panel.Tabs[AIndex].Locked then
     Exit;
   for I := AIndex to High(Panel.Tabs) - 1 do
     Panel.Tabs[I] := Panel.Tabs[I + 1];

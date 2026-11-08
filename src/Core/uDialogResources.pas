@@ -16,6 +16,7 @@ const
   cResDialogHelp     = 'DIALOG_HELP';
   cResDialogInput    = 'DIALOG_INPUT';
   cResDialogSelectMask = 'DIALOG_SELECTMASK';
+  cResDialogMaskGroups = 'DIALOG_MASKGROUPS';
   cResDialogPanelFilter = 'DIALOG_PANELFILTER';
   cResDialogAskSave  = 'DIALOG_ASKSAVE';
   cResDialogSearch   = 'DIALOG_SEARCH';

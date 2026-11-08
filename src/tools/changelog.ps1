@@ -1,6 +1,8 @@
-# CHANGELOG.md -- what changes for the user from one release tag to the next.
-# New entries go under "## Не выпущено" (Новое / Исправлено / Изменено)
-# as the work lands; a release turns that section into its own.
+# CHANGELOG.md (English) and CHANGELOG.ru.md (Russian) -- what changes for the
+# user from one release tag to the next. New entries go under "## Unreleased"
+# (New / Changed / Fixed) and "## Не выпущено" (Новое / Изменено / Исправлено)
+# as the work lands; a release turns that section into its own. Every command
+# works on both files and refuses when only one has entries.
 #
 #   ./src/tools/changelog.ps1 -Stamp v0.3.8
 #       Before tagging (with the "Stamp 0.3.8." commit): "## Не выпущено"
@@ -40,9 +42,15 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
-$File = Join-Path $Root 'CHANGELOG.md'
 $Utf8 = [Text.UTF8Encoding]::new($false)
-$Unreleased = '## Не выпущено'
+# One file per language: CHANGELOG.md is the English one, CHANGELOG.<code>.md
+# the others. Every command below works on all of them together.
+$Langs = @(
+    @{ Code = 'en'; File = 'CHANGELOG.md'; Unreleased = '## Unreleased'; Subs = @('New', 'Changed', 'Fixed')
+       Title = "## What's new in {0}"; All = 'All changes by version' },
+    @{ Code = 'ru'; File = 'CHANGELOG.ru.md'; Unreleased = '## Не выпущено'; Subs = @('Новое', 'Изменено', 'Исправлено')
+       Title = '## Что нового в {0}'; All = 'Все изменения по версиям' }
+)
 
 function Normalize-Tag([string]$Tag) {
     if ($Tag -notmatch '^v?(\d+\.\d+\.\d+)$') { throw "Version must look like 1.2.3 or v1.2.3, got '$Tag'" }
@@ -80,8 +88,13 @@ if ($PSCmdlet.ParameterSetName -eq 'ProjectVersion') {
     return
 }
 
-# The lines of CHANGELOG.md split into sections: each starts at a "## " line.
-$Lines = [IO.File]::ReadAllText($File, $Utf8).Replace("`r`n", "`n").Split("`n")
+# The lines of a changelog split into sections: each starts at a "## " line.
+function Use-Lang($L) {
+    $script:Lang = $L
+    $script:File = Join-Path $Root $L.File
+    $script:Unreleased = $L.Unreleased
+    $script:Lines = [IO.File]::ReadAllText($script:File, $Utf8).Replace("`r`n", "`n").Split("`n")
+}
 function Find-Heading([string]$Pattern) {
     for ($I = 0; $I -lt $Lines.Count; $I++) {
         if ($Lines[$I] -match $Pattern) { return $I }
@@ -127,7 +140,7 @@ function Format-Subsections($Subs) {
 # Subsections in the order the changelog uses; others follow.
 function Sort-Subsections($Subs) {
     $Sorted = [ordered]@{}
-    foreach ($Name in 'Новое', 'Изменено', 'Исправлено') {
+    foreach ($Name in $Lang.Subs) {
         if ($Subs.Contains($Name)) { $Sorted[$Name] = $Subs[$Name] }
     }
     foreach ($Name in $Subs.Keys) { if (-not $Sorted.Contains($Name)) { $Sorted[$Name] = $Subs[$Name] } }
@@ -137,22 +150,61 @@ function Write-Changelog($Before, $Middle, $After) {
     [IO.File]::WriteAllText($File, ((@($Before) + @($Middle) + @($After)) -join "`n"), $Utf8)
 }
 
+# Unreleased entries in the current language, plus (for a release) the Dev
+# sections right below them: the [start, end) ranges and whether any holds an
+# entry.
+function Get-Pending([bool]$WithDev) {
+    $Start = Find-Heading "^$([regex]::Escape($Unreleased))\s*$"
+    if ($Start -lt 0) { throw "$($Lang.File) has no '$Unreleased' section" }
+    $End = Section-End $Start
+    $Ranges = [Collections.Generic.List[object]]::new()
+    $Ranges.Add(@($Start, $End))
+    while ($WithDev -and $End -lt $Lines.Count -and $Lines[$End] -match '^## Dev ') {
+        $Next = Section-End $End
+        $Ranges.Add(@($End, $Next))
+        $End = $Next
+    }
+    $Any = $false
+    foreach ($Range in $Ranges) { if (Has-Entries $Range[0] $Range[1]) { $Any = $true } }
+    @{ Start = $Start; End = $End; Ranges = $Ranges; Any = $Any }
+}
+
+# The pending entries become one section under $Heading; an empty
+# Unreleased section stays above it.
+function Move-Pending($Pending, [string]$Heading) {
+    $Subs = [ordered]@{}
+    foreach ($Range in $Pending.Ranges) { Read-Subsections $Range[0] $Range[1] $Subs }
+    $Before = if ($Pending.Start -gt 0) { @($Lines[0..($Pending.Start - 1)]) } else { @() }
+    $After = if ($Pending.End -lt $Lines.Count) { @($Lines[$Pending.End..($Lines.Count - 1)]) } else { @() }
+    Write-Changelog $Before (@($Unreleased, '', $Heading, '') + @(Format-Subsections (Sort-Subsections $Subs))) $After
+}
+
+# All language files must agree on whether there is anything to move; a
+# release or build never goes out with one language missing.
+function Assert-Pending([bool]$WithDev, [string]$Heading) {
+    $Counts = 0
+    foreach ($L in $Langs) {
+        Use-Lang $L
+        if ((Find-Heading "^$([regex]::Escape($Heading))\b") -ge 0) { throw "$($L.File) already has a '$Heading' section" }
+        if ((Get-Pending $WithDev).Any) { $Counts++ }
+    }
+    if ($Counts -ne 0 -and $Counts -ne $Langs.Count) {
+        throw "Some changelog files have unreleased entries and others do not: write every language first"
+    }
+    $Counts -ne 0
+}
+
 if ($PSCmdlet.ParameterSetName -eq 'Dev') {
     # A development build: what is unreleased moves under its own
     # "## Dev <version> - <date>" heading; nothing to move means nothing to do.
     if ($DevStamp -notmatch '^v?(\d+\.\d+\.\d+\.\d+)$') { throw "Dev version must look like v1.2.3.4, got '$DevStamp'" }
     $Ver = "v$($Matches[1])"
-    if ((Find-Heading "^## Dev $([regex]::Escape($Ver))\b") -ge 0) { throw "CHANGELOG.md already has a Dev $Ver section" }
-    $Start = Find-Heading "^$Unreleased\s*$"
-    if ($Start -lt 0) { throw "CHANGELOG.md has no '$Unreleased' section" }
-    $End = Section-End $Start
-    if (-not (Has-Entries $Start $End)) { Write-Host "CHANGELOG.md: nothing unreleased, no Dev $Ver section"; return }
-    $Subs = [ordered]@{}
-    Read-Subsections $Start $End $Subs
-    $Before = if ($Start -gt 0) { @($Lines[0..($Start - 1)]) } else { @() }
-    $After = if ($End -lt $Lines.Count) { @($Lines[$End..($Lines.Count - 1)]) } else { @() }
-    Write-Changelog $Before (@($Unreleased, '', "## Dev $Ver – $Date", '') + @(Format-Subsections (Sort-Subsections $Subs))) $After
-    Write-Host "CHANGELOG.md: unreleased entries are now '## Dev $Ver – $Date'"
+    if (-not (Assert-Pending $false "## Dev $Ver")) { Write-Host "CHANGELOG: nothing unreleased, no Dev $Ver section"; return }
+    foreach ($L in $Langs) {
+        Use-Lang $L
+        Move-Pending (Get-Pending $false) "## Dev $Ver – $Date"
+        Write-Host "$($L.File): unreleased entries are now '## Dev $Ver – $Date'"
+    }
     return
 }
 
@@ -160,39 +212,18 @@ if ($PSCmdlet.ParameterSetName -eq 'Stamp') {
     # A release: the unreleased entries and every Dev section above the
     # previous release become the one section of the new version.
     $Tag = Normalize-Tag $Stamp
-    if ((Find-Heading "^## $([regex]::Escape($Tag))\b") -ge 0) { throw "CHANGELOG.md already has a $Tag section" }
-    $Start = Find-Heading "^$Unreleased\s*$"
-    if ($Start -lt 0) { throw "CHANGELOG.md has no '$Unreleased' section" }
-    $End = Section-End $Start
-    $Pending = [Collections.Generic.List[object]]::new()
-    $Pending.Add(@($Start, $End))
-    while ($End -lt $Lines.Count -and $Lines[$End] -match '^## Dev ') {
-        $Next = Section-End $End
-        $Pending.Add(@($End, $Next))
-        $End = $Next
+    if (-not (Assert-Pending $true "## $Tag")) { throw "No unreleased entries: describe the changes for users first" }
+    foreach ($L in $Langs) {
+        Use-Lang $L
+        $P = Get-Pending $true
+        Move-Pending $P "## $Tag – $Date"
+        Write-Host "$($L.File): '$Unreleased' and $($P.Ranges.Count - 1) Dev section(s) are now '## $Tag – $Date'"
     }
-    $Any = $false
-    foreach ($Range in $Pending) { if (Has-Entries $Range[0] $Range[1]) { $Any = $true } }
-    if (-not $Any) { throw "'$Unreleased' is empty: describe the changes for users first" }
-    $Subs = [ordered]@{}
-    foreach ($Range in $Pending) { Read-Subsections $Range[0] $Range[1] $Subs }
-    $Before = if ($Start -gt 0) { @($Lines[0..($Start - 1)]) } else { @() }
-    $After = if ($End -lt $Lines.Count) { @($Lines[$End..($Lines.Count - 1)]) } else { @() }
-    Write-Changelog $Before (@($Unreleased, '', "## $Tag – $Date", '') + @(Format-Subsections (Sort-Subsections $Subs))) $After
-    Write-Host "CHANGELOG.md: '$Unreleased' and $($Pending.Count - 1) Dev section(s) are now '## $Tag – $Date'"
     Set-ProjectVersion $Tag
     return
 }
 
 $Tag = Normalize-Tag $Section
-$Start = Find-Heading "^## $([regex]::Escape($Tag))\b"
-if ($Start -lt 0) { throw "CHANGELOG.md has no '## $Tag' section; run changelog.ps1 -Stamp $Tag before tagging" }
-$End = Section-End $Start
-$Body = if ($End - 1 -ge $Start + 1) { @($Lines[($Start + 1)..($End - 1)]) } else { @() }
-if (-not (Has-Entries $Start $End) -and -not ($Body -join '').Trim()) {
-    throw "CHANGELOG.md's $Tag section is empty"
-}
-
 if (-not $Repo) { $Repo = $env:GITHUB_REPOSITORY }
 if (-not $Repo) {
     $Url = git -C $Root remote get-url origin
@@ -202,11 +233,22 @@ if (-not $Repo) {
     $Repo = $Matches.slug
 }
 
-$Last = $Body.Count - 1
-while ($Last -ge 0 -and -not $Body[$Last].Trim()) { $Last-- }
-$Body = if ($Last -ge 0) { @($Body[0..$Last]) } else { @() }
-$Notes = @("## Что нового в $Tag") + $Body +
-    @('', "Все изменения по версиям: [CHANGELOG.md](https://github.com/$Repo/blob/$Tag/CHANGELOG.md)", '')
+# One block per language, English first.
+$Blocks = foreach ($L in $Langs) {
+    Use-Lang $L
+    $Start = Find-Heading "^## $([regex]::Escape($Tag))\b"
+    if ($Start -lt 0) { throw "$($L.File) has no '## $Tag' section; run changelog.ps1 -Stamp $Tag before tagging" }
+    $End = Section-End $Start
+    $Body = if ($End - 1 -ge $Start + 1) { @($Lines[($Start + 1)..($End - 1)]) } else { @() }
+    if (-not (Has-Entries $Start $End) -and -not ($Body -join '').Trim()) {
+        throw "$($L.File)'s $Tag section is empty"
+    }
+    $Last = $Body.Count - 1
+    while ($Last -ge 0 -and -not $Body[$Last].Trim()) { $Last-- }
+    $Body = if ($Last -ge 0) { @($Body[0..$Last]) } else { @() }
+    (@($L.Title -f $Tag) + $Body +
+        @('', "$($L.All): [$($L.File)](https://github.com/$Repo/blob/$Tag/$($L.File))")) -join "`n"
+}
 $Path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile)
-[IO.File]::WriteAllText($Path, (($Notes -join "`n").Trim() + "`n`n"), $Utf8)
+[IO.File]::WriteAllText($Path, (($Blocks -join "`n`n").Trim() + "`n`n"), $Utf8)
 Write-Host "Release notes for $Tag -> $OutFile"

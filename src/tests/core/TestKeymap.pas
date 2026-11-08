@@ -16,6 +16,7 @@ type
     [Test] procedure ReservedChordsStayFree;
     [Test] procedure FarPresetFreesEscape;
     [Test] procedure McPresetMovesItsKeys;
+    [Test] procedure TcPresetMovesItsKeys;
     [Test] procedure ReloadShortcutIsCtrlAltK;
   end;
 
@@ -116,6 +117,10 @@ begin
   Assert.IsTrue(Act = kaWorkspaceLibrary, 'Ctrl+Shift+D should match kaWorkspaceLibrary');
   Act := MatchAction(Profile, Ord('D'), [ssCtrl, ssAlt, ssShift]);
   Assert.IsTrue(Act = kaWorkspaceSave, 'Ctrl+Alt+Shift+D should match kaWorkspaceSave');
+  Act := MatchAction(Profile, vkF7, [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaFindToWorkspace, 'Ctrl+Alt+F7 should match kaFindToWorkspace');
+  Act := MatchAction(Profile, Ord('T'), [ssCtrl, ssAlt]);
+  Assert.IsTrue(Act = kaToggleTabLock, 'Ctrl+Alt+T should match kaToggleTabLock');
   Act := MatchAction(Profile, vkNext, [ssAlt]);
   Assert.IsTrue(Act = kaNextPanelTab, 'Alt+PgDn should match kaNextPanelTab');
   Act := MatchAction(Profile, vkPrior, [ssAlt]);
@@ -384,6 +389,28 @@ begin
   Assert.AreEqual('', ChordClashes(Mc), 'MC preset binds no chord twice');
 end;
 
+procedure TestTcPresetMovesItsKeys;
+var
+  Tc: TKeymapProfile;
+begin
+  Tc := LoadPreset('keymap.tc.json');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], vkF5, [ssAlt]) = kaPack,
+    'TC preset: Alt+F5 packs');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], vkF9, [ssAlt]) = kaUnpack,
+    'TC preset: Alt+F9 unpacks');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('A'), [ssCtrl]) = kaSelectAll,
+    'TC preset: Ctrl+A selects all');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('M'), [ssCtrl]) = kaMultiRename,
+    'TC preset: Ctrl+M renames by rules');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('P'), [ssCtrl]) = kaInsertPanelPath,
+    'TC preset: Ctrl+P inserts the folder path');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], vkTab, [ssCtrl]) = kaNextTab,
+    'TC preset: Ctrl+Tab is the next tab');
+  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], vkF5, []) = kaCopy,
+    'TC preset: the rest is the built-in keymap');
+  Assert.AreEqual('', ChordClashes(Tc), 'TC preset binds no chord twice');
+end;
+
 procedure TestOverridesHoldOnlyWhatChanged;
 var
   Profile, Merged: TKeymapProfile;
@@ -438,6 +465,11 @@ end;
 procedure TTestKeymap.McPresetMovesItsKeys;
 begin
   TestMcPresetMovesItsKeys;
+end;
+
+procedure TTestKeymap.TcPresetMovesItsKeys;
+begin
+  TestTcPresetMovesItsKeys;
 end;
 
 procedure TTestKeymap.ReservedChordsStayFree;

@@ -214,9 +214,10 @@ if ($Config -ne 'Release' -and -not $NoSamples) {
 }
 
 # The text files a package carries sit next to the exe: "Open changelog" after
-# an update opens the CHANGELOG.md of the program folder, so a build from a
+# an update opens the CHANGELOG of the program folder (CHANGELOG.md or the
+# translation CHANGELOG.<language>.md), so a build from a
 # checkout must refresh it too.
-foreach ($Doc in 'CHANGELOG.md', 'THIRD-PARTY.md', 'LICENSE') {
+foreach ($Doc in 'CHANGELOG.md', 'CHANGELOG.ru.md', 'THIRD-PARTY.md', 'LICENSE') {
     $DocSrc = Join-Path $PSScriptRoot "..\$Doc"
     if (Test-Path $DocSrc) { Copy-Item $DocSrc (Split-Path $Exe -Parent) -Force }
 }

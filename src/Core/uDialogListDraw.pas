@@ -45,7 +45,11 @@ procedure RowColors(const ATheme: IThemeRenderer; ASelected: Boolean;
   ANormalFg, ANormalBg: TAlphaColor; out AFg, ABg: TAlphaColor);
 begin
   if Assigned(ATheme) then
-    ATheme.ResolveDialogRowColors(ASelected, AFg, ABg)
+  begin
+    ATheme.ResolveDialogRowColors(ASelected, AFg, ABg);
+    if not ASelected then
+      ABg := ATheme.ResolveDialogListBg;
+  end
   else if ASelected then
   begin
     AFg := TAlphaColor($FF000000);

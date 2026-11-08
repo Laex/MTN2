@@ -54,6 +54,7 @@ const
     'List row background',
     'Selected list row text',
     'Selected list row background',
+    'List background',
     'Button text',
     'Button background',
     'Focused button text',

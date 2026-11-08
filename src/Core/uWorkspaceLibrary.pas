@@ -31,6 +31,23 @@ function WorkspaceLiveIsDirty: Boolean;
 function WorkspaceLiveCaption: string;
 function WorkspaceSnapshotDisplayLabel(const ASnap: TWorkspaceSnapshot): string;
 
+/// <summary>Keeps the live set before it is replaced: a set bound to a saved
+/// name is saved under it when changed, a set that was never saved is saved as
+/// "Unsaved <date>". Does nothing when the live set is empty or unchanged.</summary>
+procedure WorkspaceLibraryPreserveLive;
+/// <summary>AName, or AName with " (2)", " (3)" ... when a saved set has it.</summary>
+function WorkspaceLibraryUniqueName(const AName: string): string;
+/// <summary>Replaces the live set with the targets (the saved name stays).</summary>
+procedure WorkspaceLibraryReplaceLive(const ATargets: TArray<TWorkspaceLinkNode>);
+/// <summary>Keeps the live set, then makes a new empty one holding the targets
+/// and saves it under a free form of AName. Returns the name used, '' on failure.</summary>
+function WorkspaceLibraryAddToNew(const AName: string;
+  const ATargets: TArray<TWorkspaceLinkNode>): string;
+/// <summary>Keeps the live set, opens the saved set AId, adds the targets and
+/// saves it again. False when AId is unknown.</summary>
+function WorkspaceLibraryAddToSaved(const AId: string;
+  const ATargets: TArray<TWorkspaceLinkNode>): Boolean;
+
 implementation
 
 uses
@@ -449,6 +466,69 @@ begin
   if SameText(ASnap.Id, GBoundId) then
     Result := Result + '  [current]';
   Result := Result + Format('  (%d)', [Length(ASnap.Nodes)]);
+end;
+
+procedure WorkspaceLibraryPreserveLive;
+begin
+  if not WorkspaceLiveHasLinks or not WorkspaceLiveIsDirty then
+    Exit;
+  if GBoundName <> '' then
+    WorkspaceLibrarySaveCurrent(GBoundName)
+  else
+    WorkspaceLibrarySaveCurrent(WorkspaceLibraryUniqueName(
+      'Unsaved ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', Now)));
+end;
+
+function WorkspaceLibraryUniqueName(const AName: string): string;
+var
+  N: Integer;
+begin
+  Result := Trim(AName);
+  if not WorkspaceLibraryFindByName(Result) then
+    Exit;
+  N := 2;
+  while WorkspaceLibraryFindByName(Format('%s (%d)', [Trim(AName), N])) do
+    Inc(N);
+  Result := Format('%s (%d)', [Trim(AName), N]);
+end;
+
+procedure WorkspaceLibraryReplaceLive(const ATargets: TArray<TWorkspaceLinkNode>);
+begin
+  ClearWorkspaceLinks;
+  WorkspaceAddTargets(ATargets);
+end;
+
+function WorkspaceLibraryAddToNew(const AName: string;
+  const ATargets: TArray<TWorkspaceLinkNode>): string;
+begin
+  Result := '';
+  if Trim(AName) = '' then
+    Exit;
+  WorkspaceLibraryPreserveLive;
+  // Detach the live set from the saved set it was bound to.
+  BindLive('', '');
+  ClearWorkspaceLinks;
+  if WorkspaceAddTargets(ATargets) = 0 then
+    Exit;
+  Result := WorkspaceLibraryUniqueName(AName);
+  if not WorkspaceLibrarySaveCurrent(Result) then
+    Result := '';
+end;
+
+function WorkspaceLibraryAddToSaved(const AId: string;
+  const ATargets: TArray<TWorkspaceLinkNode>): Boolean;
+begin
+  EnsureLoaded;
+  Result := WorkspaceLibraryFindById(AId) >= 0;
+  if not Result then
+    Exit;
+  if not SameText(AId, GBoundId) then
+  begin
+    WorkspaceLibraryPreserveLive;
+    WorkspaceLibraryRestore(AId);
+  end;
+  WorkspaceAddTargets(ATargets);
+  WorkspaceLibrarySaveCurrent(GBoundName);
 end;
 
 initialization

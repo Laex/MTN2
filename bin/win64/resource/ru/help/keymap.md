@@ -62,9 +62,10 @@
 
 ### Примеры для привычек Far и MC
 
-В репозитории лежат два примера `keymap.json` – [`keymap.far.json` и `keymap.mc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Скопируйте нужный в папку настроек под именем `keymap.json` (или добавьте его действия в свой файл) и нажмите **Ctrl+Alt+K**.
+В репозитории лежат три примера `keymap.json` – [`keymap.far.json`, `keymap.mc.json` и `keymap.tc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Скопируйте нужный в папку настроек под именем `keymap.json` (или добавьте его действия в свой файл) и нажмите **Ctrl+Alt+K**.
 - **Far:** Esc в панелях очищает командную строку и не открывает консоль (она по-прежнему на Ctrl+O).
 - **MC:** Alt+. показывает скрытые файлы, Ctrl+\ открывает список папок, Alt+Enter вставляет имя файла в командную строку, Alt+A и Alt+Shift+A вставляют путь папки активной и второй панели, свойства переехали на Ctrl+Shift+P.
+- **Total Commander:** Alt+F5 и Alt+F9 – упаковать и распаковать, Ctrl+A – выделить всё, Ctrl+M – переименование по правилам, Ctrl+P – вставить путь папки, Ctrl+Tab и Ctrl+Shift+Tab – переключение вкладок, Alt+Down – история папок. Раскладка по умолчанию уже следует привычкам Norton Commander.
 
 ### Зарезервированные сочетания
 

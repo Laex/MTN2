@@ -1,0 +1,137 @@
+# Разделение функциональности: Ядро / Системные плагины / Пользовательские плагины
+
+[English](PLUGIN_BOUNDARIES.md) | **Русский**
+
+> **Роль документа:** классификация существующей и планируемой функциональности MTN2 по трём зонам ответственности – что обязано остаться в ядре, что поставляется продуктом как «системный» плагин, что относится к экосистеме сторонних «пользовательских» плагинов.
+> **Источники:** [ARCHITECTURE.ru.md](ARCHITECTURE.ru.md) §6 (паттерн Ядро–Тема–Плагин, инварианты 13–14), [SDS.ru.md](SDS.ru.md) §6.0/§6.8 (продуктовый приоритет и Far/TC мосты), [UI_PRIMITIVES.ru.md](UI_PRIMITIVES.ru.md) и связанные `*_PLUGIN.md`.
+> Как писать плагин и заменять встроенное: [PLUGIN_DEVELOPMENT.ru.md](PLUGIN_DEVELOPMENT.ru.md).
+> Ничего нового не проектирует – сводит уже принятые решения в одну таблицу, чтобы разделение было видно целиком, а не по кускам в разных файлах.
+
+---
+
+## 1. Три зоны – определения
+
+| Зона | Определение | Кто пишет | Где живёт код |
+|---|---|---|---|
+| **Ядро** | Функциональность, которая по инварианту 13 ARCHITECTURE.md обязана остаться в едином нативном exe – не выносится в плагины ни при каких обстоятельствах, независимо от того, сколько плагинов появится. | Только разработчик MTN2 | `src/Core`, `src/Forms`, `src/Themes` – компилируется в `MTN2.exe` |
+| **Системные плагины** | Плагины «первой партии»: используют тот же родной ABI (`uPluginHostAbi`, `cPluginAbiVersion`), что и сторонние, но поставляются вместе с продуктом по умолчанию и реализуют функциональность, которую продукт обещает «из коробки» (архивы, workspace-панель…). | Разработчик MTN2 | `src/plugins/<id>/` – отдельные DLL/WASM рядом с exe (`plugins\<id>\*.dll`/`*.wasm`) |
+| **Пользовательские плагины** | Та же экосистема ABI, но код и поставка – сторонние. Хост не различает системный и пользовательский плагин на уровне протокола – разница только в том, кто их написал и откуда они попали в `plugins\`. | Сторонние разработчики / пользователь | Вне репозитория; тот же контракт `plugins\<id>\*.dll`/`*.so`/`*.wasm` + опциональный `plugin.json` |
+
+**Ключевой нюанс (инвариант 14, ARCHITECTURE.md):** деление «системный / пользовательский» – это вопрос **поставки**, не архитектуры. Протокол один и тот же (Host API, Pull, JSON, запрет `TCanvas`, async I/O). Настоящая архитектурная граница, которую видит хост – не «кто автор», а **уровень доверия/изоляции**:
+
+| Форма поставки | Доступ к памяти процесса | Куда попадает сейчас |
+|---|---|---|
+| DLL/SO (родной ABI v1) | Полный (native, доверенный код) | `mtn.7z` (системный) |
+| WASM (Wasmtime, без WASI) | Только копии UTF-8/JSON по смещениям в линейной памяти guest, песочница | `mtn.ws`, `mtn.tmp`, `mtn.highlight` (системные) |
+| Far/TC bridge (будущее) | Через отдельный ABI-мост поверх родного Plugin Manager | не реализовано («Far API Wrapper» – «Total Commander plugin bridge») |
+
+Системный и пользовательский плагин в DLL-форме одинаково доверенные (полный доступ к процессу) – «системность» тут не даёт дополнительных прав и не отбирает их.
+
+---
+
+## 2. Ядро – что не выносится никогда
+
+Источник: ARCHITECTURE.md §6 (таблица ролей), инварианты 1–19 (§9), в первую очередь №13 «Ядро как артефакт» и №1 «Безопасность UI».
+
+| Подсистема | Модули | Почему это ядро |
+|---|---|---|
+| Layout / Focus / Z-order / MDI-композитор | `uMdiCompositor`, `TDualPanelWindow`, `TMainForm` | Инвариант 13; «Не резать `TDualPanelWindow`» (ARCHITECTURE.md §6, «Правила швов плагинной системы») |
+| Рендеринг (double buffering, dynamic grid) | `uTerminalRenderer.pas`, `TTerminalGrid` | Плагину никогда не отдаётся `TCanvas` (общий инвариант всех примитивов, UI_PRIMITIVES.md) |
+| Тема (`IThemeRenderer`) | `uDataTheme.pas` + файлы тем: `NDN` вшита в exe (`src/Assets/themes/NDN.theme.json`), семь остальных в `resource\themes\` | Роль «Тема» отдельна от «Плагина» в самом паттерне (§6); альтернативные темы – Pascal-классы, «не loadable-плагины – это отдельная, более поздняя работа» (ARCHITECTURE.md §6) |
+| Keymap-диспетчер и активный keymap | `uKeymap.pas` | Плагину доступен только rebind существующих действий через `IKeymapRegistry` – «Новые keymap-действия не вводим через DLL: enum закрыт» (ARCHITECTURE.md §6, правило 6) |
+| Jobs Manager / фоновые задачи | `uDualPanelJobList.pas`, `TPanelJobController` | Инвариант 1: весь I/O – только через async VFS/Jobs ядра |
+| VFS Core & маршрутизация (`uVfsRegistry`) | `uVfsRegistry.pas` | Сам registry, классификация transfer-маршрутов, `plugin.json`-загрузка – ядро; отдельные VFS-**провайдеры** могут быть плагинами (см. §3) |
+| Ядерные VFS-схемы: `file`, `zip`, `sys`, `recycle`, `find`, `ws` | `uFileVfs`, `uZipVirtualFileSystem`, `uSysFoldersVfs`, `uRecycleBinVfs`, `uFindVfs`, `uWorkspaceVfs` | Явно защищены от перехвата: «WASM `register_vfs_scheme` для `file`/`recycle`/`sys`/`find`/`ws` хост принимает и игнорирует» (ARCHITECTURE.md §6, правило 1) |
+| `sftp://` | `uSftpVfs.pas` | Сейчас in-process провайдер ядра, не вынесен в плагин (ARCHITECTURE.md §1) – кандидат на будущий системный плагин, см. §4 |
+| Dialog Host (движок диалогов) | `uDialogHost.pas`, `uDialogTypes.pas`, `uDialogJson.pas` | Layout/focus/modal-overlay – Host; cdecl `mtn_dialog_*` для контента ещё не экспортирован (DIALOG_PLUGIN.md «Статус реализации») |
+| Overlay Renderer | `uOverlayRenderer.pas` | «Canvas плагину не отдаётся»; плагин только публикует логический запрос превью (ARCHITECTURE.md §6, OVERLAY_PLUGIN.md) |
+| Text Area (Viewer/Editor) | `uEditorWindow.pas`, `uEditorDoc.pas`, `uEditorPainter.pas` | «Not a plugin API yet; extract TEXTAREA_PLUGIN only if a second multiline consumer appears» (ARCHITECTURE.md §3) |
+| Toolbar (F-bar) / Status line Dual Panel | `uFunctionBar.pas`, `uDualPanelStatus.pas` | «Host-only… cdecl ещё не экспортируется» (TOOLBAR_PLUGIN.md, STATUS_PLUGIN.md) |
+| Event Bus (`IMessageBus`) | `uMessageBus.pas` | Инфраструктура pub/sub сама по себе ядро; ей пользуются и системные, и пользовательские плагины |
+| Process bridge / ConPTY, ANSI Parser | `uConPty.pas`, `uANSIParser.pas`, `uConsoleBuffer.pas` | Инвариант 10 «Process-изоляция только через process bridge ядра» |
+| Config / Session / Keymap-файлы | `uConfigLocation.pas`, `uSession` | Персистентность состояния приложения – ядро |
+| Plugin Manager (загрузчик, реестры, ABI) | `uPluginHost.pas`, `uPluginLoader.pas`, `uPluginManifest.pas`, `uPluginHostAbi.pas`, `uPanelPluginRegistry.pas`, `uWasmPluginHost.pas` | Сама инфраструктура, которая *обслуживает* оба вида плагинов – по определению ядро |
+
+---
+
+## 3. Системные плагины – что уже вынесено или явно спланировано как «плагин первой партии»
+
+Источник: ARCHITECTURE.md §6 (таблица «Plugin seams», «Правила швов плагинной системы»).
+
+| Плагин | Схема/точка входа | Статус | Роль |
+|---|---|---|---|
+| `mtn.7z` | `7z://`, DLL (родной ABI v1) | **Сделано** («Родные плагины: Plugin Manager + DLL/SO») | Родной VFS-плагин архивов `.7z` через локальный `7z.dll` (LGPL, не Far ArcLite) – list/exists/read, F5-extract через host-мост `vtrPluginExtract`, pack («Pack в `7z://`») |
+| `mtn.ws` | меню Commands → Workspace, WASM | **Сделано** («WASM Host для родных плагинов») | Сама схема `ws:///` – в ядре (`uWorkspaceVfs.pas`); WASM-плагин добавляет только пункты меню поверх неё. Нет `wasmtime.dll` → пункты меню не появляются, схема продолжает работать |
+| `mtn.highlight` | подсветка текста, WASM | **Сделано** | Раскрашивает около 70 языков в просмотрщике и редакторе библиотекой `syntect`; разбор идёт в песочнице WASM, состояние между строками хранит плагин (`register_highlighter_state`) |
+| `mtn.tmp` | `tmp:///`, WASM | **Сделано** (демо/референс) | Демонстрационная панель поверх WASM guest ABI – образец для сторонних авторов |
+| `mtn.wasm.demo` (`samples\plugins`) | `wasmdemo://`, WASM (`.wat`) | **Сделано** (образец, в сборку не входит) | Read-only fake VFS – эталонный пример гостевого ABI (`mtn_vfs_list`/`exists`/`read_text`/…) |
+| `mtn.net` | `net://`, `ftp://`, `ftps://`, `nsftp://`, `scp://`, `dav://`, `davs://`, `s3://`, DLL (ABI 4) | **Сделано** | Сетевой клиент FTP/FTPS/SFTP/SCP/WebDAV/S3 на libcurl: пункт в окне выбора диска, список сохранённых подключений, схема VFS версии 2 (ход и отмена передач, постраничный листинг), вопросы о пароле, ключе сервера и сертификате. Встроенный `sftp://` не заменяет: SFTP плагина идёт под `nsftp://` |
+| **SFTP-провайдер** | `sftp://` | **In-process в ядре, не вынесен** | Остаётся в ядре: рядом с ним работает `mtn.net`, у которого свой SFTP под схемой `nsftp://` |
+| **Far API Wrapper** | мост VFS-плагинов Far Manager | **Не реализовано** («Far API Wrapper», «отложено») | Не «плагин» в родном ABI – мост, транслирующий `PluginPanelItem` Far → Pull MTN2. Системный в смысле поставки (часть продукта), но отдельная, более поздняя категория моста совместимости |
+| **TC Plugin Bridge (WCX/WFX)** | мост packer/FS-плагинов Total Commander | **Не реализовано** («Total Commander plugin bridge», «отложено») | То же – мост совместимости, не собственный ABI-плагин |
+
+**Правило приоритета поставки** (SDS §6.0): родные плагины MTN2 → WASM → Far → Total Commander. Любой внешний формат обязан уметь жить как родной VFS/panel-плагин; мосты Far/TC – совместимость с уже написанной сторонней экосистемой, не единственный путь поддержки форматов.
+
+---
+
+## 4. Пользовательские (сторонние) плагины – что экосистема уже позволяет и чего ей пока не хватает
+
+Хост не вводит отдельного «пользовательского» ABI – сторонний плагин пишется и грузится ровно так же, как `mtn.7z`/`mtn.ws` (`plugins\<id>\*.dll` или `*.wasm` + опциональный `plugin.json`). Разница только в том, что три пункта ниже – единственное, что сторонний плагин физически может сделать сегодня; остальное описано в контрактах `*_PLUGIN.md`, но cdecl-экспорт ещё не открыт.
+
+### 4.1. Доступно сторонним плагинам уже сейчас
+
+| Возможность | Host API | Ограничение |
+|---|---|---|
+| Зарегистрировать VFS-схему | `RegisterPluginScheme` / `RegisterVfsScheme` | Нельзя перехватить `file`/`recycle`/`sys`/`find`/`ws` – хост игнорирует такую попытку. Схему со встроенным обработчиком (`sftp`) без разрешения плагин не занимает |
+| Заменить встроенную схему или расширение архива | `overrides` в `plugin.json` + `plugins\overrides.json` | Только по явному разрешению пользователя; зарезервированные схемы не заменяются; `.zip` меняет переход по Enter, не внутренний `!/`-путь (ARCHITECTURE.md §6, правило 7) |
+| Зарегистрировать панель для своей схемы | `RegisterPanelPlugin` → `IPanelPluginRegistry` | Идентификация плагина для схемы; сама отрисовка панели всё ещё через `TFilePanelModel` ядра (Pull cdecl для панели – шаг «cdecl Pull-адаптер», не начат) |
+| Добавить пункт меню | `RegisterMenuItem` → `IMenuRegistry` | Новые пункты – да; новые *действия* keymap – нет |
+| Добавить пункт в окно выбора диска | `RegisterDriveItem` → реестр пунктов диска | Не больше пяти пунктов от всех плагинов; адрес не может быть `file://` |
+| Перебиндить существующий хоткей | `RegisterKeyBinding` → `IKeymapRegistry` | Только rebind существующего действия; сочетание для своей команды – см. ниже |
+| Перехватить встроенную команду | `RegisterCommandHook` → `ICommandRegistry` | Команды панелей, верхнего меню, просмотрщика и редактора; перехватчик может отменить команду (ARCHITECTURE.md §6, правило 8) |
+| Открывать файлы типа в F3 / F4 по-своему | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | Плагин открывает файл сам, подсовывает встроенному окну другой URI или пропускает; окно просмотра и редактора остаётся хостовым (ARCHITECTURE.md §6, правило 9) |
+| Добавить свою команду и сочетание клавиш | `RegisterCommand` + `RegisterKeyBinding` | Сочетание, занятое встроенным действием, остаётся за ним |
+| Опубликовать событие / подписаться | `HostPublish` / `mtn_host_publish` → `IMessageBus` | – |
+| Запросить перерисовку окна | `HostInvalidate` / `mtn_host_invalidate` | – |
+| Скопировать/переместить через свой backend | `ClassifyVfsTransfer` | plugin-owned Copy/Move остаются в backend плагина; cross-scheme кроме `plugin→file` – `vecNotSupported` |
+
+### 4.2. Описано контрактом, но cdecl ещё не экспортирован (недоступно сторонним плагинам сегодня)
+
+Источник: [UI_PRIMITIVES.ru.md](UI_PRIMITIVES.ru.md) – таблица 7 примитивов.
+
+| Примитив | Документ | Текущий статус |
+|---|---|---|
+| Панель (полный cdecl Pull: `get_row_json`/`handle_event`) | [PANEL_PLUGIN.ru.md](PANEL_PLUGIN.ru.md) | Строки панели плагина поставляет его VFS-схема; доступна реакция на активацию строки (`RegisterPanelActivate`). Полный `get_row_json` / `handle_event` не экспортирован |
+| Диалог | [DIALOG_PLUGIN.ru.md](DIALOG_PLUGIN.ru.md) | Доступен одноразовый модальный диалог (`ShowDialog`: JSON-декларация, ответ – id контрола и values); отдельные `mtn_dialog_*` для живого диалога не экспортированы |
+| Text Area (Viewer/Editor) | [TEXTAREA_PLUGIN.ru.md](TEXTAREA_PLUGIN.ru.md) | Host-only, «until a second multiline consumer appears» – шаг «overlay / textarea / dialog cdecl» |
+| Toolbar / F-bar | [TOOLBAR_PLUGIN.ru.md](TOOLBAR_PLUGIN.ru.md) | Плагин задаёт подпись своей команды (`SetCommandCaption`) для F-клавиши с модификаторами; набор кнопок остаётся хостовым |
+| Status line | [STATUS_PLUGIN.ru.md](STATUS_PLUGIN.ru.md) | Плагин добавляет именованный текстовый сегмент (`SetStatusSegment`) в строку состояния панелей; состав и вид задаёт хост |
+| Graphic Overlay | [OVERLAY_PLUGIN.ru.md](OVERLAY_PLUGIN.ru.md) | Host-only, Canvas не отдаётся – шаг «overlay / textarea / dialog cdecl» |
+| Input Line | [INPUT_PLUGIN.ru.md](INPUT_PLUGIN.ru.md) | Общий примитив диалогов/cmdline, отдельного cdecl нет |
+
+### 4.3. Явно недоступно и не планируется как ABI-плагин
+
+- **Макросы/скриптинг («Макросы / скриптинг»)** – это не тот же механизм, что DLL/WASM-плагины. Движок макросов (PascalScript/Lua/QuickJS – ещё не выбран) выполняет **пользовательские скрипты**, но сам движок – код ядра; скрипт пользователя не проходит через `uPluginHostAbi` и не грузится как `plugins\<id>\*.dll`. Не путать «пользовательский плагин» (сторонний DLL/WASM по Host API) с «пользовательским макросом» (скрипт уровня приложения) – в документации это разные механизмы расширения.
+- **Far/TC-плагины напрямую** – сторонний Far/TC-плагин (`.dll` в формате Far/WCX/WFX) никогда не грузится напрямую родным Plugin Manager'ом; он проходит либо не проходит через мост (§3, «Far API Wrapper» – «Total Commander plugin bridge»), которого пока нет.
+
+---
+
+## 5. Сводная таблица
+
+| Зона | Примеры | Файлы/каталоги | Готовность |
+|---|---|---|---|
+| **Ядро** | Dual Panel, Editor/Viewer, Theme Engine, Keymap, Jobs, VFS Core+схемы `file/zip/sys/recycle/find/ws/sftp`, Dialog Host, Overlay Renderer, ConPTY, Event Bus, Plugin Manager сам по себе | `src/Core`, `src/Forms`, `src/Themes` | Реализовано |
+| **Системные плагины (готово)** | `mtn.7z` (7z-архивы), `mtn.ws` (workspace-меню), `mtn.tmp` | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp` | Сделано, покрыто тестами |
+| **Системные плагины (запланировано)** | SFTP как отдельный плагин, Far API Wrapper, TC Plugin Bridge | – | Не начато («Far API Wrapper» – «Total Commander plugin bridge» «отложено»; SFTP-вынос не начат) |
+| **Пользовательские плагины (доступно)** | VFS-схема + панель (идентификация) + пункты меню + rebind хоткеев + pub/sub + invalidate | Host API (`uPluginHostAbi.pas`) | Работает уже сейчас, тем же путём что `mtn.7z` |
+| **Пользовательские плагины (запланировано)** | Полный Pull для панели, диалоги, F-bar/status/overlay/text-area как плагин-контент | `PANEL_PLUGIN.md` и другие `*_PLUGIN.md` | Контракт описан, cdecl не экспортирован: Pull для самой панели, overlay и text area (см. §6) |
+| **Не ABI-плагин (отдельный механизм)** | Макросы/скриптинг пользователя | – | Не путать с DLL/WASM-плагинами |
+
+---
+
+## 6. Состояние реализации
+
+- Готово: швы хоста, родной VFS-плагин `mtn.7z`, идентификатор плагина панели и перерисовка (`mtn_host_invalidate`), мост копирования, WASM-хост. Это колонка «Системные плагины (готово)» и базовый набор «Пользовательские плагины (доступно)» из §5. Диалог плагина (`ShowDialog`), подпись команды и сегмент статуса тоже готовы.
+- Не готово: Pull для самой панели (cdecl `get_row_json` / `handle_event`) и cdecl для overlay и text area. Именно они переводят строки §4.2 из «описано, не экспортировано» в «доступно»; overlay и text area отложены до появления второго потребителя примитива.
+- Мосты Far и Total Commander закрывают последнюю строку §3 и откладываются до стабильного родного API и WASM.
+- Эти шаги сознательно отложены до закрытия очереди повседневных функций. Разделение на зоны от сроков не меняется, столбец «Готовность» в §5 обновляется по мере их закрытия.

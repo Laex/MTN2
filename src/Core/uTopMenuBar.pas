@@ -107,6 +107,7 @@ type
     tmaCmdFolderHotlistAdd,
     tmaCmdWorkspaceLibrary,
     tmaCmdWorkspaceSave,
+    tmaCmdFindToWorkspace,
     tmaCmdSshConnections,
     tmaCmdAssociations,
     tmaCmdBranchView,
@@ -148,6 +149,7 @@ type
     tmaOptKeymap,
     tmaOptTheme,
     tmaOptColumnsConfig,
+    tmaOptMaskGroups,
     tmaOptDisplay,
     tmaOptInterface,
     tmaOptExternalTools,
@@ -514,6 +516,8 @@ begin
       Result := kaWorkspaceLibrary;
     tmaCmdWorkspaceSave:
       Result := kaWorkspaceSave;
+    tmaCmdFindToWorkspace:
+      Result := kaFindToWorkspace;
     tmaCmdSshConnections:
       Result := kaSshConnections;
     tmaCmdAssociations:

@@ -130,6 +130,8 @@ type
     kaExportList,     // unbound by default -- save the marked items as a text list
     kaQuickSearch,    // unbound by default -- open the quick search field without Alt
     kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
+    kaFindToWorkspace,  // Ctrl+Alt+F7 -- link the found (or marked) items in the Workspace panel
+    kaToggleTabLock,    // Ctrl+Alt+T -- lock or unlock the active panel tab
     // Viewer / editor (contexts kcDocument, kcViewer, kcMarkdown, kcEditor --
     // see KeymapActionContext).
     kaDocToggleEdit, // F6 -- viewer <-> editor
@@ -654,6 +656,8 @@ begin
   AddBinding(Result, kaCopyItemName, KeyBinding(vkInsert, True, False, True));
   AddBinding(Result, kaShellContextMenu, KeyBinding(vkF10, True, False, False));
   AddBinding(Result, kaShellContextMenu, KeyBinding(vkApps, False, False, False));
+  AddBinding(Result, kaFindToWorkspace, KeyBinding(vkF7, False, True, True));
+  AddBinding(Result, kaToggleTabLock, KeyBinding(Ord('T'), False, True, True));
   AddBinding(Result, kaInsertItemName, KeyBinding(vkReturn, False, False, True));
   AddBinding(Result, kaInsertItemPath, KeyBinding(vkReturn, True, False, True));
   AddBinding(Result, kaInsertItemPath, KeyBinding(Ord('F'), False, False, True));
@@ -1049,6 +1053,8 @@ const
     'ExportList',            // kaExportList
     'QuickSearch',           // kaQuickSearch
     'ShellContextMenu',      // kaShellContextMenu
+    'FindToWorkspace',       // kaFindToWorkspace
+    'ToggleTabLock',         // kaToggleTabLock
     'DocViewEdit',           // kaDocToggleEdit
     'DocHex',                // kaDocHex
     'DocMarkdown',           // kaDocMarkdown

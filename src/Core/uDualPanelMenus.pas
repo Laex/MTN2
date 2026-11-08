@@ -18,6 +18,7 @@ type
   TSortSelectEvent = uSortMenuController.TSortSelectEvent;
   TSortPriorityToggleEvent = uSortMenuController.TSortPriorityToggleEvent;
   TColumnModeSelectEvent = uColumnModeMenuController.TColumnModeSelectEvent;
+  TColumnSetSelectEvent = uColumnModeMenuController.TColumnSetSelectEvent;
   TMenuPanelBoundsEvent = uDualPanelOverlays.TMenuPanelBoundsEvent;
   TActiveSideEvent = uDualPanelOverlays.TActiveSideEvent;
 
@@ -49,6 +50,7 @@ type
     procedure SetOnSortSelect(const AHandler: TSortSelectEvent);
     procedure SetOnSortPriorityToggle(const AHandler: TSortPriorityToggleEvent);
     procedure SetOnColumnModeSelect(const AHandler: TColumnModeSelectEvent);
+    procedure SetOnColumnSetSelect(const AHandler: TColumnSetSelectEvent);
     /// <summary>ARoot stays owned by the caller (see TUserMenuController.Open).</summary>
     procedure OpenUserMenu(ARoot: TUserMenuItem; const ATitle: string = '');
     procedure CloseUserMenu;
@@ -137,6 +139,12 @@ procedure TMenuStubController.SetOnColumnModeSelect(
   const AHandler: TColumnModeSelectEvent);
 begin
   FColumnModeMenu.SetOnColumnModeSelect(AHandler);
+end;
+
+procedure TMenuStubController.SetOnColumnSetSelect(
+  const AHandler: TColumnSetSelectEvent);
+begin
+  FColumnModeMenu.SetOnColumnSetSelect(AHandler);
 end;
 
 function TMenuStubController.GetUserMenuVisible: Boolean;

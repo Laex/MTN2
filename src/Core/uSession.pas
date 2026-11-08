@@ -231,6 +231,8 @@ begin
   Result.AddPair('cursor', TJSONNumber.Create(ATab.CursorIndex));
   Result.AddPair('scroll', TJSONNumber.Create(ATab.ScrollOffset));
   Result.AddPair('historyIndex', TJSONNumber.Create(ATab.HistoryIndex));
+  if ATab.Locked then
+    Result.AddPair('locked', TJSONBool.Create(True));
   Hist := TJSONArray.Create;
   for S in ATab.History do
     Hist.Add(S);
@@ -310,6 +312,7 @@ begin
   Result.CursorIndex := Max(JsonInt(O, 'cursor', 0), 0);
   Result.ScrollOffset := Max(JsonInt(O, 'scroll', 0), 0);
   Result.HistoryIndex := Max(JsonInt(O, 'historyIndex', 0), 0);
+  Result.Locked := (O.GetValue('locked') is TJSONBool) and TJSONBool(O.GetValue('locked')).AsBoolean;
 
   SetLength(Result.History, 0);
   V := O.GetValue('history');

@@ -127,6 +127,7 @@
       "col_accessed": "Дата &доступа",
       "col_type": "&Тип",
       "col_attr": "&Атрибуты",
+      "set_label": "Сохранить как набор колонок (по желанию):",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -665,8 +666,19 @@
       "clear": "&Сбросить",
       "cancel": "Отмена"
     },
+    "DIALOG_MASKGROUPS": {
+      "$title": "Группы масок",
+      "lbl_groups": "Группы (в любой маске пишите @Имя):",
+      "lbl_name": "Имя:",
+      "lbl_masks": "Маски:",
+      "edit": "&Изменить",
+      "save": "Сохранить",
+      "delete": "&Удалить",
+      "cancel": "Закрыть"
+    },
     "DIALOG_SELECTMASK": {
       "$title": "Выделение",
+      "group_label": "Сохранить как группу масок (по желанию):",
       "select_folders": "&Выделять папки",
       "ok": "ОК",
       "cancel": "Отмена"
@@ -935,6 +947,8 @@
     "keymap.action.ExportList": "Сохранить список в файл",
     "keymap.action.QuickSearch": "Быстрый поиск (без Alt)",
     "keymap.action.ShellContextMenu": "Контекстное меню Windows",
+    "keymap.action.FindToWorkspace": "Найденное в рабочее пространство",
+    "keymap.action.ToggleTabLock": "Закрепить или открепить вкладку панели",
     "keymap.action.DocViewEdit": "Просмотр <-> редактор",
     "keymap.action.DocHex": "Hex <-> текст",
     "keymap.action.DocMarkdown": "Markdown <-> текст",
@@ -1235,6 +1249,13 @@
     "workspace.confirmDelete": "Удалить сохранённое пространство «%s»?",
     "workspace.dialogTitle": "Рабочие пространства",
     "workspace.confirmDiscard": "Отменить несохранённые изменения пространства?",
+    "workspace.pickTitle": "Найденное в рабочее пространство",
+    "workspace.pickAdd": "Добавить в текущий набор",
+    "workspace.pickReplace": "Заменить текущий набор",
+    "workspace.pickNew": "Новый набор...",
+    "workspace.pickSaved": "Добавить в сохранённый набор: %s",
+    "workspace.newSetTitle": "Новый набор пространства",
+    "workspace.newSetName": "Найденное",
 
     "editor.reloadEncodingTitle": "Перечитать кодировку?",
     "editor.reloadEncodingMsg": "Отменить несохранённые изменения и перекодировать?",
@@ -1573,6 +1594,7 @@
     "themeRole.dialog.rowBg": "Фон строки списка",
     "themeRole.dialog.rowCursorFg": "Текст выбранной строки списка",
     "themeRole.dialog.rowCursorBg": "Фон выбранной строки списка",
+    "themeRole.dialog.listBg": "Фон списка",
     "themeRole.button.fg": "Текст кнопки",
     "themeRole.button.bg": "Фон кнопки",
     "themeRole.button.focusFg": "Текст кнопки в фокусе",
@@ -1974,6 +1996,7 @@
     "hint.tmaCmdFolderHotlistAdd": "Добавляет текущую папку в избранные.",
     "hint.tmaCmdWorkspaceLibrary": "Список сохранённых рабочих пространств: открыть, переименовать, удалить.",
     "hint.tmaCmdWorkspaceSave": "Сохраняет текущее рабочее пространство: панели и вкладки.",
+    "hint.tmaCmdFindToWorkspace": "Добавляет в рабочее пространство ссылки на отмеченные элементы панели, а если отметок нет – на все (результаты Alt+F7), и открывает его в другой панели.",
     "hint.tmaCmdSshConnections": "Список сохранённых подключений SSH и SFTP; F7 добавляет, Enter открывает.",
     "hint.tmaCmdAssociations": "Задаёт, какая программа открывает какие файлы по Enter.",
     "hint.tmaCmdBranchView": "Показывает все файлы папки и её подпапок в одном списке или возвращает обычный вид.",
@@ -2003,6 +2026,7 @@
     "hint.tmaOptEnvironment": "Открывает environment.json: профили переменных окружения для оболочек.",
     "hint.tmaOptMarkdownColors": "Задаёт цвета, которыми показывается Markdown.",
     "hint.tmaOptColumnsConfig": "Задаёт, какие колонки показывают панели и в каком порядке.",
+    "hint.tmaOptMaskGroups": "Создаёт, меняет и удаляет именованные группы масок файлов, которые можно писать в масках как @Имя.",
     "hint.tmaOptZoomIn": "Увеличивает шрифт.",
     "hint.tmaOptZoomOut": "Уменьшает шрифт.",
     "hint.tmaOptResetZoom": "Возвращает обычный размер шрифта.",
@@ -2015,6 +2039,7 @@
     "alias.tmaOptConfigLocation": "настройки, папка, расположение, конфиг",
     "alias.tmaOptMarkdownColors": "цвета, разметка",
     "alias.tmaOptColumnsConfig": "колонки, столбцы, панель",
+    "alias.tmaOptMaskGroups": "маски, группы масок, фильтр, выделение",
     "alias.tmaOptZoomIn": "масштаб, увеличить, крупнее",
     "alias.tmaOptZoomOut": "масштаб, уменьшить, мельче",
     "alias.tmaOptResetZoom": "масштаб, сбросить",
@@ -2119,6 +2144,7 @@
     "alias.tmaCmdFolderHotlistAdd": "добавить в избранное, закладка",
     "alias.tmaCmdWorkspaceLibrary": "рабочее пространство, сессия",
     "alias.tmaCmdWorkspaceSave": "сохранить, сессия",
+    "alias.tmaCmdFindToWorkspace": "результаты поиска, найденное, сохранить результаты",
     "alias.tmaCmdSshConnections": "удалённый, сервер, подключение",
     "alias.tmaCmdAssociations": "ассоциации, типы файлов",
     "alias.tmaCmdBranchView": "плоский вид, ветка",
@@ -2241,6 +2267,7 @@
     "tmaCmdFolderHotlistAdd": "&Добавить в избранное",
     "tmaCmdWorkspaceLibrary": "&Рабочие пространства...",
     "tmaCmdWorkspaceSave": "Сохранить рабо&чее пространство",
+    "tmaCmdFindToWorkspace": "Найденное в рабочее пр&остранство",
     "tmaCmdSshConnections": "SSH/SFTP соединения...",
     "tmaCmdAssociations": "Ассоциации файлов...",
     "tmaCmdBranchView": "П&лоский/иерархический вид",
@@ -2282,6 +2309,7 @@
     "tmaOptConfigLocation": "Расп&оложение настроек...",
     "tmaOptMarkdownColors": "Цвет&а Markdown...",
     "tmaOptColumnsConfig": "&Колонки...",
+    "tmaOptMaskGroups": "Группы &масок...",
     "tmaOptZoomIn": "&Увеличить масштаб",
     "tmaOptZoomOut": "Уменьшить &масштаб",
     "tmaOptResetZoom": "&Сбросить масштаб",
@@ -2503,6 +2531,7 @@
     "full": "&Полный",
     "created": "&Создание",
     "types": "&Типы",
-    "custom": "&Настраиваемый"
+    "custom": "&Настраиваемый",
+    "set": "Свои: %s"
   }
 }

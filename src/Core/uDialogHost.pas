@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
   System.Generics.Collections, uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
-  uInputLine, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl;
+  uInputLine, uMaskGroups, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl;
 
 type
   TDialogHost = class
@@ -973,7 +973,7 @@ end;
 function TDialogHost.DropPopupBounds(out ARect: TRectI): Boolean;
 var
   R: TRectI;
-  N, ItemH, FrameH, SpaceBelow, SpaceAbove: Integer;
+  N, ItemH, SpaceBelow, SpaceAbove: Integer;
   ClientTop, ClientBottom: Integer;
   OpenBelow, CanBelow, CanAbove, FitsBelow, FitsAbove: Boolean;
 begin
@@ -988,10 +988,10 @@ begin
   ClientBottom := FBounds.Bottom - 1;
   SpaceBelow := ClientBottom - (R.Bottom + 1) + 1;
   SpaceAbove := R.Top - 1 - ClientTop + 1;
-  CanBelow := SpaceBelow >= 3;
-  CanAbove := SpaceAbove >= 3;
-  FitsBelow := SpaceBelow >= N + 2;
-  FitsAbove := SpaceAbove >= N + 2;
+  CanBelow := SpaceBelow >= 1;
+  CanAbove := SpaceAbove >= 1;
+  FitsBelow := SpaceBelow >= N;
+  FitsAbove := SpaceAbove >= N;
   // Prefer a side that can show every item; otherwise the side with more room
   // so Size/Zoom lists near the middle of a dialog still have a usable popup.
   if FitsBelow then
@@ -1004,18 +1004,17 @@ begin
     OpenBelow := False
   else
     OpenBelow := SpaceBelow >= SpaceAbove;
-  // Outer rect includes a single-line box frame (visible items + 2).
+  // The list is a frameless block docked to the field: as wide as the field,
+  // one row per visible item, starting on the row next to it.
   if OpenBelow then
   begin
-    ItemH := Min(N, Max(SpaceBelow - 2, 1));
-    FrameH := ItemH + 2;
-    ARect := TRectI.Make(R.Left, R.Bottom + 1, R.Right, R.Bottom + FrameH);
+    ItemH := Min(N, Max(SpaceBelow, 1));
+    ARect := TRectI.Make(R.Left, R.Bottom + 1, R.Right, R.Bottom + ItemH);
   end
   else
   begin
-    ItemH := Min(N, Max(SpaceAbove - 2, 1));
-    FrameH := ItemH + 2;
-    ARect := TRectI.Make(R.Left, R.Top - FrameH, R.Right, R.Top - 1);
+    ItemH := Min(N, Max(SpaceAbove, 1));
+    ARect := TRectI.Make(R.Left, R.Top - ItemH, R.Right, R.Top - 1);
   end;
   if ARect.Left < FBounds.Left + 1 then
     ARect.Left := FBounds.Left + 1;
@@ -1029,7 +1028,7 @@ begin
     ARect.Right := ARect.Left;
   if ARect.Bottom < ARect.Top then
     ARect.Bottom := ARect.Top;
-  Result := (ARect.Height >= 3) and (ARect.Width >= 3);
+  Result := (ARect.Height >= 1) and (ARect.Width >= 3);
 end;
 
 function TDialogHost.DropPopupViewHeight: Integer;
@@ -1038,7 +1037,7 @@ var
 begin
   Result := 0;
   if DropPopupBounds(Frame) then
-    Result := Max(Frame.Height - 2, 0);
+    Result := Max(Frame.Height, 0);
 end;
 
 procedure TDialogHost.EnsureDropHoverInView;
@@ -1075,8 +1074,7 @@ begin
   if not DropPopupBounds(Frame) then
     Exit;
   EnsureDropHoverInView;
-  Content := TRectI.Make(Frame.Left + 1, Frame.Top + 1,
-    Frame.Right - 1, Frame.Bottom - 1);
+  Content := Frame;
   if (Content.Right < Content.Left) or (Content.Bottom < Content.Top) then
     Exit;
   C := FDecl.Controls[FDropOpenIndex];
@@ -1086,12 +1084,18 @@ begin
   TextW := Content.Width;
   if NeedBar then
     TextW := Max(Content.Width - 1, 1);
-  // Same chrome as Sort/Column overlay menus: white body, black frame.
-  FrameFg := TAlphaColor($FF000000);
-  FrameBg := TAlphaColor($FFFFFFFF);
+  // The frame takes the theme's dialog body colours; without a theme, white
+  // body and black frame.
+  if Assigned(FTheme) then
+    FTheme.ResolveDialogRowColors(False, FrameFg, FrameBg)
+  else
+  begin
+    FrameFg := TAlphaColor($FF000000);
+    FrameBg := TAlphaColor($FFFFFFFF);
+  end;
 
-  DrawPanelFrameGlyphs(AGrid, Frame, chBoxTL, chBoxTR, chBoxBL, chBoxBR, chBoxH, chBoxV,
-    FrameFg, FrameFg, FrameBg);
+  // The shadow separates the block from the dialog body, which has no frame to do so.
+  DrawDialogShadow(AGrid, Frame);
 
   for J := 0 to ViewH - 1 do
   begin
@@ -1102,6 +1106,9 @@ begin
       Line := C.Items[Idx];
     Line := PadGridLine(Line, Max(TextW, 1));
     ResolveRowHighlight(Idx = FDropHover, FrameFg, FrameBg, RowFg, RowBg);
+    // The list background sets the frameless block apart from the dialog body.
+    if (Idx <> FDropHover) and Assigned(FTheme) then
+      RowBg := FTheme.ResolveDialogListBg;
     PutGridText(AGrid, Content.Left, Content.Top + J, Line, RowFg, RowBg);
   end;
   if NeedBar then
@@ -2746,27 +2753,27 @@ begin
   if Popup.Contains(ALocalCol, ALocalRow) then
   begin
     EnsureDropHoverInView;
-    Row := ALocalRow - (Popup.Top + 1);
-    ViewH := Popup.Height - 2;
+    Row := ALocalRow - Popup.Top;
+    ViewH := Popup.Height;
     Count := Length(FDecl.Controls[FDropOpenIndex].Items);
     NeedBar := Count > ViewH;
-    if NeedBar and (ALocalCol = Popup.Right - 1) and (ViewH > 0) then
+    if NeedBar and (ALocalCol = Popup.Right) and (ViewH > 0) then
     begin
-      if ALocalRow = Popup.Top + 1 then
+      if ALocalRow = Popup.Top then
         FDropHover := EnsureRange(FDropHover - 1, 0, Count - 1)
-      else if ALocalRow = Popup.Bottom - 1 then
+      else if ALocalRow = Popup.Bottom then
         FDropHover := EnsureRange(FDropHover + 1, 0, Count - 1)
       else
         FDropHover := EnsureRange(
-          Round((ALocalRow - Popup.Top - 2) * (Count - 1) / Max(ViewH - 3, 1)),
+          Round((ALocalRow - Popup.Top - 1) * (Count - 1) / Max(ViewH - 3, 1)),
           0, Count - 1);
       EnsureDropHoverInView;
       NotifyChanged;
       Exit(True);
     end;
-    if (ALocalCol > Popup.Left) and
-       ((not NeedBar and (ALocalCol < Popup.Right)) or
-        (NeedBar and (ALocalCol < Popup.Right - 1))) and
+    if (ALocalCol >= Popup.Left) and
+       ((not NeedBar and (ALocalCol <= Popup.Right)) or
+        (NeedBar and (ALocalCol < Popup.Right))) and
        (Row >= 0) and (Row < ViewH) then
     begin
       Idx := FDropScrollTop + Row;
@@ -3216,6 +3223,7 @@ function TDialogHost.HandleClosedDropDownKeys(var AKey: Word; AShift: TShiftStat
   var AKeyChar: Char): Boolean;
 var
   K: TKeyChord;
+  GroupName: string;
 begin
   K := TKeyChord.Make(AKey, AKeyChar, AShift);
 
@@ -3224,6 +3232,25 @@ begin
      IsHistoryDropDownChord(K) then
   begin
     OpenDropDown(FFocusIndex);
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+
+  // Mask field: Ctrl+G saves the masks as a group (named after the first mask)
+  // and puts the reference @Name in the field.
+  if (AKey = Ord('G')) and (ssCtrl in AShift) and not (ssAlt in AShift) and
+     (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
+     (FDecl.Controls[FFocusIndex].Kind = dckInput) and
+     (SameText(FDecl.Controls[FFocusIndex].History, 'masks') or
+      SameText(FDecl.Controls[FFocusIndex].History, 'findmask')) then
+  begin
+    GroupName := MaskGroupSaveAuto(FDecl.Controls[FFocusIndex].Edit.Text);
+    if GroupName <> '' then
+    begin
+      InputLineSetText(FDecl.Controls[FFocusIndex].Edit, '@' + GroupName);
+      NotifyChanged;
+    end;
     AKey := 0;
     AKeyChar := #0;
     Exit(True);

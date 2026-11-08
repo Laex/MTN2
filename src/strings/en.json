@@ -130,6 +130,7 @@
       "col_accessed": "&Accessed date",
       "col_type": "&Type",
       "col_attr": "Attri&butes",
+      "set_label": "Save as column set (optional):",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -668,8 +669,19 @@
       "clear": "&Clear",
       "cancel": "Cancel"
     },
+    "DIALOG_MASKGROUPS": {
+      "$title": "Mask groups",
+      "lbl_groups": "Groups (use @Name in any mask):",
+      "lbl_name": "Name:",
+      "lbl_masks": "Masks:",
+      "edit": "&Edit",
+      "save": "Save",
+      "delete": "&Delete",
+      "cancel": "Close"
+    },
     "DIALOG_SELECTMASK": {
       "$title": "Select",
+      "group_label": "Save as mask group (optional):",
       "select_folders": "&Select folders",
       "ok": "OK",
       "cancel": "Cancel"
@@ -938,6 +950,8 @@
     "keymap.action.ExportList": "Save list to a file",
     "keymap.action.QuickSearch": "Quick search (without Alt)",
     "keymap.action.ShellContextMenu": "Windows context menu",
+    "keymap.action.FindToWorkspace": "Found items to Workspace panel",
+    "keymap.action.ToggleTabLock": "Lock or unlock the panel tab",
     "keymap.action.DocViewEdit": "Viewer <-> editor",
     "keymap.action.DocHex": "Hex <-> text",
     "keymap.action.DocMarkdown": "Markdown <-> text",
@@ -1238,6 +1252,13 @@
     "workspace.confirmDelete": "Delete saved workspace \"%s\"?",
     "workspace.dialogTitle": "Workspaces",
     "workspace.confirmDiscard": "Discard unsaved workspace changes?",
+    "workspace.pickTitle": "Found items to the workspace",
+    "workspace.pickAdd": "Add to the current set",
+    "workspace.pickReplace": "Replace the current set",
+    "workspace.pickNew": "New set...",
+    "workspace.pickSaved": "Add to the saved set: %s",
+    "workspace.newSetTitle": "New workspace set",
+    "workspace.newSetName": "Found items",
 
     "editor.reloadEncodingTitle": "Reload encoding?",
     "editor.reloadEncodingMsg": "Discard unsaved changes and re-decode?",
@@ -1576,6 +1597,7 @@
     "themeRole.dialog.rowBg": "List row background",
     "themeRole.dialog.rowCursorFg": "Selected list row text",
     "themeRole.dialog.rowCursorBg": "Selected list row background",
+    "themeRole.dialog.listBg": "List background",
     "themeRole.button.fg": "Button text",
     "themeRole.button.bg": "Button background",
     "themeRole.button.focusFg": "Focused button text",
@@ -1958,6 +1980,7 @@
     "tmaCmdFolderHotlistAdd": "Add to hotlist",
     "tmaCmdWorkspaceLibrary": "Workspaces...",
     "tmaCmdWorkspaceSave": "Save workspace",
+    "tmaCmdFindToWorkspace": "Found items to Workspace",
     "tmaCmdSshConnections": "SSH/SFTP Connections...",
     "tmaCmdAssociations": "File associations...",
     "tmaCmdBranchView": "Flat/branch view",
@@ -1999,6 +2022,7 @@
     "tmaOptConfigLocation": "Settings location...",
     "tmaOptMarkdownColors": "Markdown colors...",
     "tmaOptColumnsConfig": "Columns...",
+    "tmaOptMaskGroups": "Mask groups...",
     "tmaOptZoomIn": "Zoom In",
     "tmaOptZoomOut": "Zoom Out",
     "tmaOptResetZoom": "Reset Zoom",
@@ -2220,6 +2244,7 @@
     "full": "Full",
     "created": "Created",
     "types": "Types",
-    "custom": "Custom"
+    "custom": "Custom",
+    "set": "Custom: %s"
   }
 }

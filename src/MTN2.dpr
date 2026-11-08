@@ -158,6 +158,8 @@ uses
   uHelpViewer in 'Core\uHelpViewer.pas',
   uQuickTextView in 'Core\uQuickTextView.pas',
   uFileFind in 'Core\uFileFind.pas',
+  uMaskGroups in 'Core\uMaskGroups.pas',
+  uColumnSets in 'Core\uColumnSets.pas',
   uFileCompare in 'Core\uFileCompare.pas',
   uFolderSize in 'Core\uFolderSize.pas',
   uDualPanelOperations in 'Core\uDualPanelOperations.pas',

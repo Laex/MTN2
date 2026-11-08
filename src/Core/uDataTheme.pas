@@ -59,6 +59,7 @@ type
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkedRowBand(out AFg, ABg: TAlphaColor);
     procedure ResolveDialogRowColors(ACursor: Boolean; out AFg, ABg: TAlphaColor);
+    function ResolveDialogListBg: TAlphaColor;
     procedure ResolvePanelChromeColors(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     procedure ResolveMarkdownStyleColors(AKind: TMdSpanKind;
@@ -586,6 +587,11 @@ begin
     AFg := FSpec.Colors[trDialogRowFg];
     ABg := FSpec.Colors[trDialogRowBg];
   end;
+end;
+
+function TDataTheme.ResolveDialogListBg: TAlphaColor;
+begin
+  Result := FSpec.Colors[trDialogListBg];
 end;
 
 procedure TDataTheme.ResolvePanelChromeColors(APart: TPanelChromePart;

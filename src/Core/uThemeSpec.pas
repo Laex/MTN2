@@ -48,6 +48,7 @@ type
     trDialogFg, trDialogBg, trDialogBorder, trDialogHotFg,
     trDialogTitleFg, trDialogTitleBg,
     trDialogRowFg, trDialogRowBg, trDialogRowCursorFg, trDialogRowCursorBg,
+    trDialogListBg,
     trButtonFg, trButtonBg, trButtonFocusFg, trButtonFocusBg,
     trButtonHotFg, trButtonHotFocusFg,
     trCheckFg, trCheckBg, trCheckHotFg,
@@ -280,6 +281,7 @@ const
     (Key: 'dialog.rowBg'; Fallback: Ord(trDialogBg)),
     (Key: 'dialog.rowCursorFg'; Fallback: Ord(trCursorFg)),
     (Key: 'dialog.rowCursorBg'; Fallback: Ord(trCursorBg)),
+    (Key: 'dialog.listBg'; Fallback: Ord(trDialogRowBg)),
     (Key: 'button.fg'; Fallback: -1),
     (Key: 'button.bg'; Fallback: -1),
     (Key: 'button.focusFg'; Fallback: -1),
@@ -379,6 +381,25 @@ const
     'window', 'dialog', 'panelActive', 'panelIdle');
 
   cPlaceholder = '{0}';
+
+const
+  /// Share of the dialog text colour mixed into the body colour to get the
+  /// default list background.
+  cListBgTintPct = 10;
+
+function TintToward(AColor, ABase: TAlphaColor; APercent: Integer): TAlphaColor;
+var
+  Shift: Integer;
+  Ch: Cardinal;
+begin
+  Result := $FF000000;
+  for Shift := 0 to 2 do
+  begin
+    Ch := (((ABase shr (Shift * 8)) and $FF) * Cardinal(100 - APercent) +
+      ((AColor shr (Shift * 8)) and $FF) * Cardinal(APercent)) div 100;
+    Result := Result or (Ch shl (Shift * 8));
+  end;
+end;
 
 function ThemeColorRoleKey(ARole: TThemeColorRole): string;
 begin
@@ -1304,6 +1325,10 @@ begin
   Pal := Result.Palette;
   for Role := Low(TThemeColorRole) to High(TThemeColorRole) do
     Result.Colors[Role] := RoleValue(Role, 0);
+  // Without its own list background a theme gets one slightly off the dialog body.
+  if not Colors[trDialogListBg].Has then
+    Result.Colors[trDialogListBg] := TintToward(Result.Colors[trDialogRowFg],
+      Result.Colors[trDialogRowBg], cListBgTintPct);
   // Markdown: text first; every other element follows the text colors unless
   // it has its own.
   for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do

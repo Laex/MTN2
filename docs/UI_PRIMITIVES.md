@@ -1,26 +1,28 @@
-# Контракты UI-примитивов (плагин ↔ ядро)
+# UI Primitive Contracts (Plugin ↔ Core)
 
-> **Роль документа:** оглавление технических контрактов базовых визуальных контейнеров ядра.  
-> **Контекст:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) §6.
+**English** | [Русский](UI_PRIMITIVES.ru.md)
 
-Каждый документ описывает взаимодействие **одного** примитива с плагином-поставщиком данных (Pull-модель, без `TCanvas` у плагина).
+> **Role of this document:** an index of the technical contracts for the core's basic visual containers.  
+> **Context:** [SDS.md](SDS.md) §6.2, [ARCHITECTURE.md](ARCHITECTURE.md) §6.
 
-**Поставка:** сейчас плагины реализуются внутри единой кодовой базы, но контракты ниже обязательны уже сейчас. После стабилизации системы код плагинов выносится во внешние загружаемые модули (DLL/SO/WASM) без изменения протоколов. Порядок экосистемы: **родные плагины MTN2 → Far → Total Commander** (SDS §6.0). Подробнее – SDS, §6. Dual Panel F-bar / status line сейчас Host-only (`uFunctionBar`, `uDualPanelStatus`); cdecl toolbar/status – цель контрактов, не текущий runtime.
+Each document describes how **one** primitive interacts with a data-providing plugin (Pull model, no `TCanvas` for the plugin).
 
-| # | Примитив | Документ |
+**Delivery:** plugins are currently implemented inside the single code base, but the contracts below are binding already. Once the system is stable, plugin code moves into external loadable modules (DLL/SO/WASM) without changing the protocols. Ecosystem order: **native MTN2 plugins → Far → Total Commander** (SDS §6.0). See SDS, §6 for details. The Dual Panel F-bar / status line are currently Host-only (`uFunctionBar`, `uDualPanelStatus`); the cdecl toolbar/status is the goal of the contracts, not the current runtime.
+
+| # | Primitive | Document |
 |---|---|---|
-| 1 | Панель (Panel) / файловый список | [PANEL_PLUGIN.md](PANEL_PLUGIN.md) |
-| 2 | Текстовое поле (Input Line) | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) |
-| 3 | Текстовая область (Text Area) – Viewer / Editor | [TEXTAREA_PLUGIN.md](TEXTAREA_PLUGIN.md) |
-| 4 | Диалоговое окно (Dialog) | [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) |
-| 5 | Панель инструментов (Toolbar / Button Bar) | [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md) |
-| 6 | Строка состояния (Status Line) | [STATUS_PLUGIN.md](STATUS_PLUGIN.md) |
-| 7 | Графический оверлей (Media Overlay) | [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md) |
+| 1 | Panel / file list | [PANEL_PLUGIN.md](PANEL_PLUGIN.md) |
+| 2 | Text field (Input Line) | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) |
+| 3 | Text area (Text Area) – Viewer / Editor | [TEXTAREA_PLUGIN.md](TEXTAREA_PLUGIN.md) |
+| 4 | Dialog window (Dialog) | [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md) |
+| 5 | Toolbar (Toolbar / Button Bar) | [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md) |
+| 6 | Status line (Status Line) | [STATUS_PLUGIN.md](STATUS_PLUGIN.md) |
+| 7 | Graphic overlay (Media Overlay) | [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md) |
 
-### Общие инварианты всех примитивов
+### Common invariants of all primitives
 
-1. Плагин не рисует и не выбирает цвета – только логические данные и события.
-2. Стиль ячеек – `IThemeRenderer`; композитинг и focus – ядро (Host).
-3. Pull / callback из UI-потока без блокирующего I/O; диск и сеть – Async VFS / Jobs.
-4. Сигнал «данные изменились» – `mtn_host_invalidate(WindowId)` (или эквивалент Event Bus).
-5. Ошибки не пробрасываются исключениями через границу DLL – коды / JSON / пустая модель.
+1. The plugin neither draws nor picks colors – only logical data and events.
+2. Cell style is `IThemeRenderer`; compositing and focus belong to the core (Host).
+3. Pull / callback from the UI thread without blocking I/O; disk and network go through Async VFS / Jobs.
+4. The "data changed" signal is `mtn_host_invalidate(WindowId)` (or the Event Bus equivalent).
+5. Errors are not propagated as exceptions across the DLL boundary – codes / JSON / an empty model.

@@ -1,206 +1,208 @@
-# MTN2 в терминале Linux
+# MTN2 in a Linux terminal
 
-`mtn2-tui` – версия MTN2 для текстового терминала Linux. Окна те же, что в графической программе: две
-панели с вкладками, просмотрщик, редактор, консоль, терминалы, меню, диалоги и справка. Вместо окна программа
-занимает весь терминал: на экран выводятся только изменившиеся ячейки (TrueColor, широкие символы CJK в две
-колонки), ввод идёт с клавиатуры и мыши терминала. Работает по SSH, в `tmux`, в контейнерах и на серверах без X11.
+**English** | [Русский](LINUX.ru.md)
 
-Сборка – [BUILDING.md](BUILDING.md), раздел «Сборка под Linux». Версия с обычным окном SDL2 (`mtn2-sdl`) описана в разделе «Версия с окном SDL2» ниже.
+`mtn2-tui` is the MTN2 version for a Linux text terminal. The windows are the same as in the graphical program: two
+panels with tabs, a viewer, an editor, a console, terminals, menus, dialogs and help. Instead of a window the program
+takes over the whole terminal: only the changed cells are written to the screen (TrueColor, wide CJK characters take two
+columns), and input comes from the terminal keyboard and mouse. It works over SSH, in `tmux`, in containers and on servers without X11.
 
-## Требования
+For building, see [BUILDING.md](BUILDING.md), the section "Building for Linux". The version with a regular SDL2 window (`mtn2-sdl`) is described in the section "The SDL2 window version" below.
 
-Linux x86-64 с glibc 2.34 или новее (Ubuntu 22.04, Debian 12, Fedora 35, RHEL 9 и новее) и `libstdc++`, `libz`.
-Установка и запуск проверены на Debian 12, Ubuntu 22.04 и 24.04, Fedora и openSUSE Leap 15.6. Программе нужны модули преобразования кодировок glibc (`gconv`): в обычных установках они есть, а в урезанных контейнерных образах openSUSE их нет, и программа падает при старте; лечится пакетом `glibc-locale`. Дистрибутивы с musl (Alpine) не поддерживаются.
-Графический стек не нужен: Skia и FireMonkey, на которых построено окно Windows-версии, в Linux-программах не используются (`mtn2-tui` рисует текстом, `mtn2-sdl` – через SDL2 и FreeType). Для открытия файлов в графической среде используется `xdg-open`, для SFTP – клиент `sftp`. Плагин «Сетевые подключения» (FTP, FTPS, WebDAV, S3) загружает системную `libcurl.so.4` (пакет `libcurl4` или `libcurl4t64`); без неё он сообщает, что библиотека не найдена. Плагин «Макросы» берёт библиотеку Lua из своей папки (`plugins/mtn.lua/liblua5.4.so.0`, она лежит в архиве и пакетах), а если её там нет – системную (`liblua5.4.so.0`: пакет `liblua5.4-0` в Debian и Ubuntu, `lua-libs` в Fedora и RHEL); без обеих он сообщает, какой пакет поставить.
+## Requirements
 
-В программу встроен только английский язык. Остальные языки и справка F1 лежат в папке `resource/<язык>/` рядом с программой (она входит в архив и пакет); новый язык добавляется копированием такой папки, см. [SDS.md](SDS.md) (раздел о локализации).
+Linux x86-64 with glibc 2.34 or newer (Ubuntu 22.04, Debian 12, Fedora 35, RHEL 9 and newer) and `libstdc++`, `libz`.
+Installation and launch have been verified on Debian 12, Ubuntu 22.04 and 24.04, Fedora and openSUSE Leap 15.6. The program needs the glibc character set conversion modules (`gconv`): regular installations have them, but trimmed-down openSUSE container images do not, and the program crashes at startup; the `glibc-locale` package fixes this. Distributions with musl (Alpine) are not supported.
+No graphics stack is needed: Skia and FireMonkey, on which the Windows version window is built, are not used in the Linux programs (`mtn2-tui` draws with text, `mtn2-sdl` through SDL2 and FreeType). `xdg-open` is used to open files in a graphical environment, and the `sftp` client for SFTP. The "Network connections" plugin (FTP, FTPS, WebDAV, S3) loads the system `libcurl.so.4` (package `libcurl4` or `libcurl4t64`); without it the plugin reports that the library was not found. The "Macros" plugin takes the Lua library from its own folder (`plugins/mtn.lua/liblua5.4.so.0`, it is included in the archive and the packages), and if it is not there, the system one (`liblua5.4.so.0`: package `liblua5.4-0` on Debian and Ubuntu, `lua-libs` on Fedora and RHEL); without either it reports which package to install.
 
-## Установка
+Only English is built into the program. The other languages and the F1 help are in the `resource/<language>/` folder next to the program (it is included in the archive and the package); a new language is added by copying such a folder, see [SDS.md](SDS.md) (the localization section).
 
-Релиз содержит `MTN2-<версия>-linux-x64.tar.gz` и пакеты `MTN2-<версия>-linux-x64.deb` и `MTN2-<версия>-linux-x64.rpm`.
+## Installation
 
-```bash
-tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh    # для себя: ~/.local/opt/mtn2, команда mtn2
-sudo ./mtn2/install.sh                                  # для всех: /opt/mtn2, команда mtn2
-sudo apt install ./MTN2-*-linux-x64.deb                 # то же пакетом (рекомендует 7zip или p7zip-full и chafa)
-sudo dnf install ./MTN2-*-linux-x64.rpm                 # Fedora, RHEL и производные (рекомендует p7zip, chafa, libcurl, SDL2)
-./mtn2/install.sh --uninstall                           # удалить
-```
-
-Папку из архива можно и не устанавливать: `mtn2/mtn2-tui` запускается где лежит.
-
-## Запуск
+The release contains `MTN2-<version>-linux-x64.tar.gz` and the packages `MTN2-<version>-linux-x64.deb` and `MTN2-<version>-linux-x64.rpm`.
 
 ```bash
-mtn2-tui [параметры] [путь ...]
+tar xzf MTN2-*-linux-x64.tar.gz && ./mtn2/install.sh    # for yourself: ~/.local/opt/mtn2, the command is mtn2
+sudo ./mtn2/install.sh                                  # for everyone: /opt/mtn2, the command is mtn2
+sudo apt install ./MTN2-*-linux-x64.deb                 # the same as a package (recommends 7zip or p7zip-full and chafa)
+sudo dnf install ./MTN2-*-linux-x64.rpm                 # Fedora, RHEL and derivatives (recommends p7zip, chafa, libcurl, SDL2)
+./mtn2/install.sh --uninstall                           # remove
 ```
 
-| Параметр | Что делает |
+The folder from the archive does not have to be installed: `mtn2/mtn2-tui` runs from wherever it is.
+
+## Launch
+
+```bash
+mtn2-tui [options] [path ...]
+```
+
+| Option | What it does |
 |---|---|
-| `путь` | папка открывается новой вкладкой; для файла открывается его папка с курсором на нём. Путей может быть несколько |
-| `--view файл` | открыть файл в просмотре |
-| `--edit файл`, `-e файл` | открыть файл в редакторе |
-| `--update [stable\|nightly]` | скачать и установить последнюю версию канала без запуска программы; выбранный канал запоминается (он же в «Справка – Обновления»). Для установки из пакета только проверяет: обновляет менеджер пакетов |
-| `--install-desktop`, `--uninstall-desktop` | записать или удалить ярлык меню и значок в `~/.local/share` (`mtn2-tui` ярлык с запуском в терминале) |
-| `--no-mouse` | не просить у терминала события мыши (тогда выделение и копирование – средствами терминала) |
-| `--colors=truecolor\|256\|16` | число цветов; по умолчанию – по `COLORTERM` и `TERM` (Windows Terminal определяется по `WT_SESSION`) |
-| `--dump [Ш В]` | нарисовать один экран простым текстом в стандартный вывод и выйти (для проверок без терминала) |
-| `--paths`, `--list-commands`, `--list-plugins` | вывести папки программы и настроек, встроенные команды с клавишами, установленные плагины |
-| `--check-keymap [файл]`, `--export-theme [id]` | проверить `keymap.json`; вывести тему как JSON (без id – список тем) |
-| `--shell-init bash\|zsh\|fish\|powershell`, `--cd-file файл` | функция `mtn`, после выхода переводящая оболочку в папку активной панели: `eval "$(mtn2-tui --shell-init bash)"` в `~/.bashrc` |
-| `--version`, `--help` | версия, справка |
+| `path` | a folder opens in a new tab; for a file, its folder opens with the cursor on it. There can be several paths |
+| `--view file` | open the file in the viewer |
+| `--edit file`, `-e file` | open the file in the editor |
+| `--update [stable\|nightly]` | download and install the latest version of the channel without starting the program; the selected channel is remembered (the same one as in "Help – Check for updates..."). For a package installation it only checks: the package manager does the updating |
+| `--install-desktop`, `--uninstall-desktop` | write or remove the menu shortcut and the icon in `~/.local/share` (`mtn2-tui` is a shortcut that runs in a terminal) |
+| `--no-mouse` | do not ask the terminal for mouse events (selecting and copying are then done by the terminal) |
+| `--colors=truecolor\|256\|16` | number of colors; by default it is detected from `COLORTERM` and `TERM` (Windows Terminal is detected by `WT_SESSION`) |
+| `--dump [W H]` | draw one screen as plain text to standard output and exit (for checks without a terminal) |
+| `--paths`, `--list-commands`, `--list-plugins` | print the program and settings folders, the built-in commands with their keys, the installed plugins |
+| `--check-keymap [file]`, `--export-theme [id]` | check `keymap.json`; print a theme as JSON (without an id, the list of themes) |
+| `--shell-init bash\|zsh\|fish\|powershell`, `--cd-file file` | the `mtn` function that, after exit, changes the shell to the folder of the active panel: `eval "$(mtn2-tui --shell-init bash)"` in `~/.bashrc` |
+| `--version`, `--help` | version, help |
 
-Выход – `F10` или `Alt+X`. Панели, вкладки и настройки сохраняются при выходе.
+Exit is `F10` or `Alt+X`. Panels, tabs and settings are saved on exit.
 
-## Версия с окном SDL2
+## The SDL2 window version
 
-`mtn2-sdl` – та же программа в обычном графическом окне: рабочий стол Linux (X11 или Wayland, в Windows – WSLg), шрифт из системы, мышь и колесо, ввод в любой раскладке, буфер обмена рабочего стола. Окна, меню, диалоги, плагины и настройки те же, что у `mtn2-tui`, и лежат в том же `~/.config/mtn2`. Версия пробная; она входит в архив `tar.gz` и пакет `.deb` (команда `mtn2-sdl` рядом с `mtn2`), а из исходников собирается ключом `-Sdl`.
+`mtn2-sdl` is the same program in a regular graphical window: the Linux desktop (X11 or Wayland, WSLg on Windows), the system font, mouse and wheel, input in any keyboard layout, the desktop clipboard. The windows, menus, dialogs, plugins and settings are the same as in `mtn2-tui` and live in the same `~/.config/mtn2`. This version is experimental; it is included in the `tar.gz` archive and the `.deb` package (the `mtn2-sdl` command next to `mtn2`), and is built from source with the `-Sdl` switch.
 
-Одно окно на пользователя: `mtn2-sdl <путь ...>`, запущенный при уже открытом окне, передаёт пути этому окну (новые вкладки, окно выходит на передний план) и завершается; так же передаются `--view` и `--edit`. Обмен идёт через сокет Unix `mtn2-sdl.sock` в `$XDG_RUNTIME_DIR` (без него – в `/tmp` с идентификатором пользователя), доступный только владельцу. `--new-window` открывает отдельное окно. `mtn2-tui` привязан к своему терминалу и не передаёт папки.
+One window per user: `mtn2-sdl <path ...>`, started while a window is already open, passes the paths to that window (new tabs, the window comes to the foreground) and exits; `--view` and `--edit` are passed the same way. The exchange goes through the Unix socket `mtn2-sdl.sock` in `$XDG_RUNTIME_DIR` (without it, in `/tmp` with the user id), accessible only to the owner. `--new-window` opens a separate window. `mtn2-tui` is bound to its own terminal and does not pass folders on.
 
-### Зависимости
+### Dependencies
 
-| Пакет | Для чего |
+| Package | Purpose |
 |---|---|
-| `libsdl2-2.0-0` | окно, события, буфер обмена (обязательно) |
-| `libfreetype6` | рисование символов (обязательно) |
-| `fontconfig`, `fonts-dejavu-core` | поиск файла шрифта; нужен хотя бы один моноширинный шрифт |
-| `libsdl2-image-2.0-0` | картинки PNG, JPEG, GIF, WebP в быстром просмотре; без неё показываются только BMP |
+| `libsdl2-2.0-0` | window, events, clipboard (required) |
+| `libfreetype6` | glyph rendering (required) |
+| `fontconfig`, `fonts-dejavu-core` | font file lookup; at least one monospaced font is needed |
+| `libsdl2-image-2.0-0` | PNG, JPEG, GIF, WebP images in Quick View; without it only BMP is shown |
 
 ```bash
 sudo apt install libsdl2-2.0-0 libfreetype6 fontconfig fonts-dejavu-core libsdl2-image-2.0-0
 ```
 
-Библиотеки подключаются при запуске, а не при сборке: без `libsdl2-image` программа стартует, а при нехватке остальных пишет, чего не хватает. Проверка: `mtn2-sdl --self-check` выводит найденные библиотеки, файл шрифта, ресурсы и плагины.
+The libraries are loaded at startup, not at build time: without `libsdl2-image` the program starts, and when any of the others is missing it says what is missing. Check: `mtn2-sdl --self-check` prints the libraries found, the font file, the resources and the plugins.
 
-### Сборка и запуск
+### Building and running
 
-Сборка идёт из Windows тем же компилятором, что и `mtn2-tui`:
+The build is done from Windows with the same compiler as `mtn2-tui`:
 
 ```powershell
-./src/build-linux.ps1 -Sdl             # -> bin\linux64\mtn2-sdl (вместе с mtn2-tui)
+./src/build-linux.ps1 -Sdl             # -> bin\linux64\mtn2-sdl (together with mtn2-tui)
 ```
 
-Запуск – `./mtn2-sdl [параметры] [путь ...]` рядом с `plugins/` и `libwasmtime.so`; в WSL с WSLg окно появляется на рабочем столе Windows.
+Run it with `./mtn2-sdl [options] [path ...]` next to `plugins/` and `libwasmtime.so`; in WSL with WSLg the window appears on the Windows desktop.
 
-| Параметр | Что делает |
+| Option | What it does |
 |---|---|
-| `путь` | папка открывается новой вкладкой; для файла открывается его папка с курсором на нём. Путей может быть несколько |
-| `--view файл`, `--edit файл` (`-e файл`) | открыть файл в просмотре или в редакторе |
-| `--update [stable\|nightly]` | то же, что у `mtn2-tui` |
-| `--install-desktop`, `--uninstall-desktop` | записать или удалить ярлык меню и значок |
-| `--font=ИМЯ` | семейство шрифта (по умолчанию DejaVu Sans Mono) |
-| `--size=N` | размер шрифта в пикселях |
-| `--cols=N`, `--rows=N` | размер сетки при открытии окна |
-| `--snapshot=файл.png` | нарисовать один кадр в PNG без окна и выйти (для проверок без рабочего стола) |
-| `--self-check` | проверить библиотеки, шрифт, ресурсы и плагины |
-| `--paths`, `--list-commands`, `--list-plugins`, `--check-keymap`, `--export-theme`, `--shell-init`, `--cd-file` | то же, что у `mtn2-tui` |
-| `--version`, `--help` | версия, справка |
+| `path` | a folder opens in a new tab; for a file, its folder opens with the cursor on it. There can be several paths |
+| `--view file`, `--edit file` (`-e file`) | open the file in the viewer or in the editor |
+| `--update [stable\|nightly]` | the same as in `mtn2-tui` |
+| `--install-desktop`, `--uninstall-desktop` | write or remove the menu shortcut and the icon |
+| `--font=NAME` | font family (DejaVu Sans Mono by default) |
+| `--size=N` | font size in pixels |
+| `--cols=N`, `--rows=N` | grid size when the window opens |
+| `--snapshot=file.png` | draw one frame to a PNG without a window and exit (for checks without a desktop) |
+| `--self-check` | check the libraries, the font, the resources and the plugins |
+| `--paths`, `--list-commands`, `--list-plugins`, `--check-keymap`, `--export-theme`, `--shell-init`, `--cd-file` | the same as in `mtn2-tui` |
+| `--version`, `--help` | version, help |
 
-В окне размер шрифта меняется `Ctrl` и колесом, `Ctrl+Плюс`, `Ctrl+Минус`; `Ctrl+0` возвращает исходный. Выбранный размер запоминается в `sdl.json` в каталоге настроек; параметр `--size` главнее сохранённого.
+In the window the font size changes with `Ctrl` and the wheel, `Ctrl+Plus`, `Ctrl+Minus`; `Ctrl+0` restores the original. The selected size is stored in `sdl.json` in the settings folder; the `--size` option takes precedence over the stored one.
 
-### Что нужно знать
+### Things to know
 
-- Набранный текст берётся из событий текстового ввода, а сочетания с `Ctrl` и `Alt` – из физических клавиш, поэтому они работают в любой раскладке. `AltGr` печатает символы и не включает `Alt`.
-- Файл, брошенный в окно из файлового менеджера, вставляется в программу как путь.
-- Картинка быстрого просмотра рисуется пикселями поверх сетки и остаётся, пока просмотр открыт.
-- Ошибки запуска и работы записываются в `sdl-error.log` в каталоге настроек.
-- Ввод через IME (китайский, японский, корейский и другие): набор и окно кандидатов рисует система у нижней строки окна (там командная строка); в самом окне набираемый текст появляется после подтверждения.
-- Значки файлов в панелях берутся из темы значков рабочего стола: тип файла определяется по `/usr/share/mime`, значок ищется в теме из `~/.config/gtk-3.0/settings.ini`, затем в Adwaita, Yaru, breeze, Papirus и hicolor (`~/.local/share/icons`, `~/.icons`, `/usr/share/icons`). Нужна `libsdl2-image` (без неё читаются только BMP, и остаются символы типа файла). Колонка включается флажком «Show panel icons» в «Настройки – Шрифт / экран...».
-- Вкладки с картинкой, которые открывает плагин (просмотр картинок и видео), показываются кадрами поверх сетки; клавиши доходят до плагина. Мышь во вкладке (нажатие, перетаскивание, колесо, двойной щелчок) и размер области доходят до плагина, как в Windows. Нативные окна плагинов (собственное окно Windows) не поддерживаются.
-- Пока нет перетаскивания файлов из окна наружу.
-- Ярлык и значок: при запуске окно записывает `~/.local/share/applications/mtn2-sdl.desktop` и значок `~/.local/share/icons/hicolor/256x256/apps/mtn2.png`, поэтому на панели задач у окна своё имя и значок, а не значок оконного менеджера по умолчанию. Имя окна (`StartupWMClass`, `app_id` в Wayland) – `mtn2-sdl`. Файл с отметкой `X-MTN2-Generated` обновляется при переносе программы; чужой файл с таким именем не трогается. Отключить запись – переменная окружения `MTN2_NO_DESKTOP_ENTRY=1`; программа, установленная из пакета, ярлык не пишет (его даёт пакет). Те же файлы пишет `install.sh` для пользователя и убирает `install.sh --uninstall`.
-- В WSL процессы живут, пока работает дистрибутив: окно, запущенное без открытой консоли WSL, надо стартовать отсоединённо (`setsid nohup ./mtn2-sdl &`).
+- Typed text comes from text input events, and `Ctrl` and `Alt` combinations come from physical keys, so they work in any keyboard layout. `AltGr` types characters and does not turn on `Alt`.
+- A file dropped into the window from a file manager is inserted into the program as a path.
+- The Quick View image is drawn in pixels over the grid and stays as long as the view is open.
+- Startup and runtime errors are written to `sdl-error.log` in the settings folder.
+- Input through an IME (Chinese, Japanese, Korean and others): the system draws the composition and the candidate window at the bottom line of the window (where the command line is); in the window itself the typed text appears after it is confirmed.
+- File icons in the panels come from the desktop icon theme: the file type is determined from `/usr/share/mime`, the icon is looked up in the theme from `~/.config/gtk-3.0/settings.ini`, then in Adwaita, Yaru, breeze, Papirus and hicolor (`~/.local/share/icons`, `~/.icons`, `/usr/share/icons`). `libsdl2-image` is needed (without it only BMP is read, and the file type characters remain). The column is turned on by the "Show panel icons" checkbox in "Options – Font / Display...".
+- Tabs with a picture that a plugin opens (image and video viewing) are shown as frames over the grid; keys reach the plugin. The mouse in the tab (press, drag, wheel, double click) and the size of the area reach the plugin, as on Windows. Native plugin windows (a window of its own on Windows) are not supported.
+- Dragging files out of the window is not supported yet.
+- Shortcut and icon: at startup the window writes `~/.local/share/applications/mtn2-sdl.desktop` and the icon `~/.local/share/icons/hicolor/256x256/apps/mtn2.png`, so the taskbar shows the window with its own name and icon rather than the default window manager icon. The window name (`StartupWMClass`, `app_id` on Wayland) is `mtn2-sdl`. A file marked `X-MTN2-Generated` is updated when the program is moved; a foreign file with that name is left alone. Writing is turned off with the environment variable `MTN2_NO_DESKTOP_ENTRY=1`; a program installed from a package does not write the shortcut (the package provides it). The same files are written by `install.sh` for the user and removed by `install.sh --uninstall`.
+- In WSL, processes live as long as the distribution is running: a window started without an open WSL console must be started detached (`setsid nohup ./mtn2-sdl &`).
 
-## Что нужно от терминала
+## What the terminal must provide
 
-- UTF-8 и TrueColor (kitty, WezTerm, Alacritty, foot, GNOME Terminal, Konsole, Windows Terminal, iTerm2). В терминалах
-  на 256 цветов программа сама подбирает ближайшие цвета, на 16 цветах (консоль `linux`) – ближайшие из палитры ANSI.
-- Расширенная клавиатура. При старте программа включает протокол kitty keyboard; терминал, который его знает
-  (kitty, foot, Ghostty, Alacritty 0.13+, WezTerm с `enable_kitty_keyboard`), передаёт все сочетания, включая `Ctrl+Shift+...`, `Ctrl+;` и
-  `Ctrl+Tab`, а на нелатинской раскладке сочетания работают по клавише, как на Windows. В остальных терминалах
-  запрашивается режим `modifyOtherKeys` xterm. Если и его нет, часть сочетаний недоступна: команды с
-  `Ctrl+Shift` вызывайте через меню (`F9`).
-- Терминал с протоколом kitty (kitty, foot, WezTerm, Ghostty, Alacritty) сообщает и об отпускании `Ctrl` и `Alt`:
-  выбор диска, быстрый поиск и список истории завершаются, как в Windows, в момент отпускания. Программа включает эти
-  события сама, если терминал отвечает на запрос протокола; `MTN2_NO_KEY_EVENTS=1` в окружении отключает их. В `mtn2-sdl`
-  отпускание приходит от SDL в любом случае.
-- Остальные терминалы отпускание клавиш не передают, поэтому то, что на Windows живёт, пока зажат `Ctrl` или `Alt`,
-  завершается само: выбор диска по `Ctrl+Left/Right` применяется через 0,7 с после последнего нажатия, а быстрый
-  поиск по `Alt` и список истории `Alt+Left/Right` закрываются через 1,5 с или любой клавишей без `Alt`.
-- Мышь: нажатия, перетаскивание и колесо (протокол SGR 1006). Чтобы выделить текст средствами терминала, держите
+- UTF-8 and TrueColor (kitty, WezTerm, Alacritty, foot, GNOME Terminal, Konsole, Windows Terminal, iTerm2). In 256-color
+  terminals the program picks the nearest colors itself, on 16 colors (the `linux` console) the nearest ones from the ANSI palette.
+- An extended keyboard. At startup the program turns on the kitty keyboard protocol; a terminal that knows it
+  (kitty, foot, Ghostty, Alacritty 0.13+, WezTerm with `enable_kitty_keyboard`) passes all combinations, including `Ctrl+Shift+...`, `Ctrl+;` and
+  `Ctrl+Tab`, and on a non-Latin layout the combinations work by key, as on Windows. In the other terminals
+  the xterm `modifyOtherKeys` mode is requested. If that is missing too, some combinations are unavailable: call the commands with
+  `Ctrl+Shift` through the menu (`F9`).
+- A terminal with the kitty protocol (kitty, foot, WezTerm, Ghostty, Alacritty) also reports the release of `Ctrl` and `Alt`:
+  drive selection, quick search and the history list finish at the moment of release, as on Windows. The program turns these
+  events on itself if the terminal answers the protocol query; `MTN2_NO_KEY_EVENTS=1` in the environment turns them off. In `mtn2-sdl`
+  the release comes from SDL in any case.
+- The other terminals do not pass key releases, so what on Windows lives while `Ctrl` or `Alt` is held
+  finishes by itself: drive selection with `Ctrl+Left/Right` is applied 0.7 s after the last press, and quick
+  search by `Alt` and the history list `Alt+Left/Right` close after 1.5 s or on any key without `Alt`.
+- Mouse: presses, dragging and the wheel (SGR 1006 protocol). To select text with the terminal's own means, hold
   `Shift`.
-- Буфер обмена: копирование отправляется в терминал последовательностью OSC 52. Её понимают Windows Terminal, mintty,
-  WezTerm, kitty, iTerm2, Alacritty и большинство современных терминалов; в `tmux` включите `set -g set-clipboard on`.
-  PuTTY последовательность OSC 52 не обрабатывает: в нём выделенный в консоли программы текст в буфер не попадает,
-  держите `Shift` и выделяйте средствами PuTTY (рамки окна при этом попадают в выделение) или выключите мышь
-  программы клавишей `Ctrl+Shift+M`: тогда текст выделяет и копирует сам терминал. Без OSC 52 запасного пути
-  с удалённой стороны нет: `tmux`, `wl-copy` и `xclip` помогают только там, где они есть и им есть куда писать
-  (сеанс `tmux` или графический сеанс). Выделенный в консоли
-  программы текст копируется по `Ctrl+Ins` или `Ctrl+C`. Вставка – обычная вставка терминала (`Ctrl+Shift+V`), она
-  приходит в программу как «вставка в скобках».
-- Копирование файлов: `Ctrl+C` и `Ctrl+X` на панели кладут список файлов в буфер рабочего стола через `wl-copy`
-  (Wayland) или `xclip` (X11), поэтому их можно вставить в Nautilus, Dolphin, Thunar и другие файловые менеджеры, а
-  файлы, скопированные там, вставляются в панель по `Ctrl+V`. Пакеты: `wl-clipboard` или `xclip`. Без них (и по
-  SSH без графической среды) список передаётся только внутри программы.
+- Clipboard: copying is sent to the terminal with the OSC 52 sequence. It is understood by Windows Terminal, mintty,
+  WezTerm, kitty, iTerm2, Alacritty and most modern terminals; in `tmux` turn on `set -g set-clipboard on`.
+  PuTTY does not handle the OSC 52 sequence: text selected in the program console does not reach the clipboard in it;
+  hold `Shift` and select with PuTTY's own means (the window frames then end up in the selection) or turn off the
+  program mouse with `Ctrl+Shift+M`: then the terminal itself selects and copies text. Without OSC 52 there is no fallback
+  on the remote side: `tmux`, `wl-copy` and `xclip` help only where they exist and have somewhere to write
+  (a `tmux` session or a graphical session). Text selected in the program
+  console is copied with `Ctrl+Ins` or `Ctrl+C`. Paste is the regular terminal paste (`Ctrl+Shift+V`), it
+  reaches the program as a "bracketed paste".
+- Copying files: `Ctrl+C` and `Ctrl+X` on a panel put the list of files into the desktop clipboard through `wl-copy`
+  (Wayland) or `xclip` (X11), so they can be pasted into Nautilus, Dolphin, Thunar and other file managers, and
+  files copied there are pasted into a panel with `Ctrl+V`. Packages: `wl-clipboard` or `xclip`. Without them (and over
+  SSH without a graphical environment) the list is passed only inside the program.
 
-## Что работает
+## What works
 
-- Панели, вкладки и рабочие пространства, быстрый поиск, фильтр, выделение по маске, сравнение каталогов,
-  синхронизация, история и избранные папки.
-- Перетаскивание мышью из одной панели в другую (в `mtn2-tui` и `mtn2-sdl`): строка файла или выделение, подсветка панели или папки под указателем, при отпускании открывается обычный диалог копирования; с `Shift` – диалог переноса. Перетаскивание на ту же папку ничего не делает. Файлы можно тянуть и из архивов, и с серверов.
-- Копирование, перенос, удаление, создание папок и ссылок (символические и жёсткие), контрольные суммы, поиск файлов.
-- Колонка «Attr» показывает права (`rwxr-xr-x`); скрытыми считаются файлы, имя которых начинается с точки.
-- Команда «Атрибуты» (`Ctrl+A`) открывает диалог прав: режим в восьмеричной записи (`0644`, `4755`) с подсказкой в виде `rw-r--r--`, владелец и группа, «Обрабатывать вложенные папки». В план попадают только изменённые поля; смена владельца требует прав root. Там же три флага файловой системы, как у `chattr`: неизменяемый (`i`), только дописывание (`a`) и не копировать при резервном копировании (`d`); для `i` и `a` нужны права root, а файловая система без флагов (например, `tmpfs`) их не принимает.
-- Диски: точки монтирования из `/proc/self/mountinfo` (`F4` на диске в списке показывает устройство, файловую систему, размер и параметры монтирования); быстрые папки: домашняя, пользовательские каталоги XDG,
+- Panels, tabs and workspaces, quick search, filter, selection by mask, directory comparison,
+  synchronization, history and favorite folders.
+- Mouse dragging from one panel to the other (in `mtn2-tui` and `mtn2-sdl`): a file row or the selection, highlighting of the panel or folder under the pointer, and on release the regular copy dialog opens; with `Shift` the move dialog. Dragging onto the same folder does nothing. Files can be dragged from archives and from servers too.
+- Copying, moving, deleting, creating folders and links (symbolic and hard), checksums, file search.
+- The "Attr" column shows permissions (`rwxr-xr-x`); files whose name starts with a dot are considered hidden.
+- The "File attributes" command (`Ctrl+A`) opens the permissions dialog: the mode in octal notation (`0644`, `4755`) with a hint of the form `rw-r--r--`, owner and group, "Process subfolders". Only the changed fields go into the plan; changing the owner requires root rights. The same dialog has three file system flags, like `chattr`: immutable (`i`), append only (`a`) and do not back up (`d`); `i` and `a` require root rights, and a file system without flags (for example `tmpfs`) does not accept them.
+- Drives: mount points from `/proc/self/mountinfo` (`F4` on a drive in the list shows the device, file system, size and mount options); quick folders: home, the XDG user directories,
   `/`, `/etc`, `/usr`, `/var`, `/opt`, `/tmp`, `/media`, `/mnt`.
-- Корзина по спецификации freedesktop.org: `~/.local/share/Trash` (`files` и `info`).
-- Просмотрщик, редактор, Quick View, Markdown. Обновление списка при изменении каталога – через inotify.
-- Папка консоли переходит в панель, а команда из командной строки возвращает в панели по завершении (параметр «Всегда возвращаться в панели»): папку оболочки программа читает из `/proc`, конец команды – по тому, что оболочка снова на переднем плане и вывод стих.
-- Консоль под панелями (`Ctrl+O`) и терминалы во вкладках работают на настоящем псевдотерминале: bash, zsh, fish,
-  `ssh`-профили. Оболочки берутся из `/etc/shells` и `$SHELL`; `Enter` на исполняемом файле запускает его в консоли.
-- Архивы zip как папки, SFTP (нужен клиент `sftp`).
-- Плагины из папки `plugins/`: библиотеки `.so` и WebAssembly-модули (нужен `libwasmtime.so`, он лежит рядом с программой).
-  Плагин `mtn.7z` открывает 7z, RAR, TAR, ISO и другие архивы как папки и упаковывает в 7z через программу 7-Zip:
-  установите пакет `7zip` (команда `7zz`) или `p7zip-full` (команда `7z`); без неё плагин сообщает, что архивов
-  не откроет.
-- Макросы на Lua (плагин `mtn.lua`): запись клавиш (`Ctrl+.`), запуск макроса клавишей или из меню «Макросы», управление макросами. Библиотека Lua входит в архив и пакеты; при самостоятельной сборке нужна системная (см. «Требования»). Макрос видит только те клавиши, которые передаёт терминал (см. «Что нужно от терминала»): сочетания, которых терминал не различает, записать и назначить нельзя.
-- Docker и Kubernetes (плагин `mtn.docker`): контейнеры, образы и поды как папки `docker:///` с копированием файлов туда и обратно, просмотром логов и запуском/остановкой контейнеров из меню «Плагины». Нужны программы `docker` (и `kubectl` для подов) в `PATH`.
-- Метаданные файла под курсором в строке состояния (плагин `mtn.meta`): изображения, MP3. Версии исполняемых файлов – только в Windows.
-- Просмотр документов (плагин `mtn.docview`: docx, xlsx, pptx, svg, SQLite), CSV-таблицы (плагин `mtn.csv`) и PDF (плагин `mtn.pdf`): F3 и быстрый просмотр. PDF рисуется библиотекой PDFium (`plugins/mtn.pdf/libpdfium.so` лежит в архиве и пакетах; при самостоятельной сборке её кладёт `src/tools/fetch-pdfium.ps1 -Linux`). Без библиотеки плагин PDF уступает место текстовому просмотру плагина документов.
-- Реестр, процессы и службы Windows (плагин `mtn.winsys`) в Linux не собираются.
-- Картинки (png, jpeg, gif, bmp, webp и другие, что понимает `chafa`) в быстром просмотре показываются цветными блоками:
-  программа вызывает `chafa --format=symbols` и выводит результат в ячейки панели. Нужен пакет `chafa`; без него на месте
-  картинки подсказка. Картинка из архива или с сервера (SFTP и других) сначала копируется во временный файл (до 32 МБ).
-- Файл, который нечем открыть в окружении без рабочего стола, открывается во встроенном просмотрщике; с
-  рабочим столом (`DISPLAY` или `WAYLAND_DISPLAY`) – через `xdg-open`.
+- Trash according to the freedesktop.org specification: `~/.local/share/Trash` (`files` and `info`).
+- Viewer, editor, Quick View, Markdown. The list refreshes when a directory changes, through inotify.
+- The console folder carries over to the panel, and a command from the command line returns to the panels when it finishes (the "Always return to the panels when a command ends" option): the program reads the shell folder from `/proc`, and detects the end of the command by the shell being in the foreground again and the output going quiet.
+- The console under the panels (`Ctrl+O`) and the terminals in tabs run on a real pseudo-terminal: bash, zsh, fish,
+  `ssh` profiles. Shells are taken from `/etc/shells` and `$SHELL`; `Enter` on an executable file runs it in the console.
+- Zip archives as folders, SFTP (the `sftp` client is needed).
+- Plugins from the `plugins/` folder: `.so` libraries and WebAssembly modules (`libwasmtime.so` is needed, it sits next to the program).
+  The `mtn.7z` plugin opens 7z, RAR, TAR, ISO and other archives as folders and packs into 7z through the 7-Zip program:
+  install the `7zip` package (the `7zz` command) or `p7zip-full` (the `7z` command); without it the plugin reports that it
+  cannot open archives.
+- Lua macros (the `mtn.lua` plugin): key recording (`Ctrl+.`), running a macro by key or from the "Macros" menu, macro management. The Lua library is included in the archive and the packages; when building yourself the system one is needed (see "Requirements"). A macro sees only the keys the terminal passes (see "What the terminal must provide"): combinations the terminal does not distinguish cannot be recorded or assigned.
+- Docker and Kubernetes (the `mtn.docker` plugin): containers, images and pods as `docker:///` folders with copying files back and forth, viewing logs and starting/stopping containers from the "Plugins" menu. The `docker` program (and `kubectl` for pods) must be in `PATH`.
+- Metadata of the file under the cursor in the status line (the `mtn.meta` plugin): images, MP3. Executable file versions are Windows only.
+- Document viewing (the `mtn.docview` plugin: docx, xlsx, pptx, svg, SQLite), CSV tables (the `mtn.csv` plugin) and PDF (the `mtn.pdf` plugin): F3 and Quick View. PDF is rendered by the PDFium library (`plugins/mtn.pdf/libpdfium.so` is included in the archive and the packages; when building yourself it is placed by `src/tools/fetch-pdfium.ps1 -Linux`). Without the library the PDF plugin gives way to the text view of the documents plugin.
+- The Windows registry, processes and services (the `mtn.winsys` plugin) are not built on Linux.
+- Images (png, jpeg, gif, bmp, webp and others that `chafa` understands) are shown in Quick View as colored blocks:
+  the program calls `chafa --format=symbols` and outputs the result into the panel cells. The `chafa` package is needed; without it a hint
+  appears in place of the image. An image from an archive or from a server (SFTP and others) is first copied to a temporary file (up to 32 MB).
+- A file that has nothing to open it with in an environment without a desktop is opened in the built-in viewer; with
+  a desktop (`DISPLAY` or `WAYLAND_DISPLAY`) through `xdg-open`.
 
-## Чего нет
+## What is missing
 
-- Нативные плагины, написанные для Windows (`.dll`): в Linux работают плагины-библиотеки `.so`, собранные под Linux.
-- Значки файлов в панелях в `mtn2-tui` (в терминале нечем их показать; в `mtn2-sdl` они есть), перетаскивание файлов в другие программы, картинки и видео,
-  которые плагин показывает во вкладке (они есть в `mtn2-sdl`), и окна плагинов, нарисованные ими самими.
-- Смена шрифта и масштаба (это забота терминала).
-- Атрибуты Windows (скрытый, системный, архивный, дата создания): диалог прав меняет режим, владельца и группу.
+- Native plugins written for Windows (`.dll`): on Linux the `.so` plugin libraries built for Linux work.
+- File icons in the panels in `mtn2-tui` (a terminal has nothing to show them with; `mtn2-sdl` has them), dragging files into other programs, pictures and video
+  that a plugin shows in a tab (they exist in `mtn2-sdl`), and plugin windows that the plugins draw themselves.
+- Changing the font and scale (that is up to the terminal).
+- Windows attributes (hidden, system, archive, creation date): the permissions dialog changes the mode, owner and group.
 
-## Обновление
+## Updating
 
-«Помощь – Проверить обновления» и тихая проверка после запуска работают, как в Windows: берётся пакет
-`MTN2-<версия>-linux-x64.tar.gz` последнего релиза, проверяется контрольная сумма, распаковывается рядом с программой
-и устанавливается. Нужны права на запись в папку программы и `tar`. После установки программа запускается заново в том
-же терминале. Версия берётся из файла `version` рядом с программой.
+"Help – Check for updates..." and the quiet check after startup work as on Windows: the package
+`MTN2-<version>-linux-x64.tar.gz` of the latest release is taken, the checksum is verified, it is unpacked next to the program
+and installed. Write access to the program folder and `tar` are needed. After installation the program restarts in the same
+terminal. The version is taken from the `version` file next to the program.
 
-В пакетах `.deb` и `.rpm` самообновление отключено: рядом с программой лежит пустой файл `no-self-update`, программа не обращается к GitHub при запуске, а команда «Проверить обновления» подсказывает обновить пакет менеджером пакетов (`apt`, `dnf`) или поставить новый пакет. Чтобы вернуть самообновление, удалите этот файл (папка `/opt/mtn2` принадлежит root, поэтому понадобится `sudo`; обновлённые файлы менеджер пакетов может потом заменить).
+In the `.deb` and `.rpm` packages self-update is turned off: an empty `no-self-update` file lies next to the program, the program does not contact GitHub at startup, and the "Check for updates..." command suggests updating the package with the package manager (`apt`, `dnf`) or installing a new package. To restore self-update, delete this file (the `/opt/mtn2` folder belongs to root, so `sudo` is needed; the package manager may later replace the updated files).
 
-## Права администратора
+## Administrator rights
 
-Если операция (копирование, перенос, удаление, создание папки, сохранение файла) закончилась отказом в доступе,
-программа предлагает повторить её от администратора. Пароль спрашивается в окне программы и передаётся команде
-`sudo -S -v`; сам пароль не хранится, дальше работает кэш `sudo`, он же решает, когда права истекают (тогда пароль
-запрашивается снова). Каждая операция – одна команда `sudo` (`rm`, `mkdir`, `cp`, `mv`, `cat`). Нужен установленный
-`sudo` и учётная запись, которой он разрешён; под root предложения нет.
+If an operation (copy, move, delete, create a folder, save a file) ends with an access denied error,
+the program offers to repeat it as administrator. The password is asked for in the program window and passed to the command
+`sudo -S -v`; the password itself is not stored, the `sudo` cache does the rest, and it also decides when the rights expire (then the password
+is asked for again). Each operation is one `sudo` command (`rm`, `mkdir`, `cp`, `mv`, `cat`). `sudo` must be
+installed and the account must be allowed to use it; as root there is no offer.
 
-## Файлы
+## Files
 
-Настройки лежат в `$XDG_CONFIG_HOME/mtn2` (по умолчанию `~/.config/mtn2`): `session.json`, `keymap.json`,
-`themes/`, истории. Ошибки интерфейса, которые не остановили программу, записываются в `tui-error.log` там же.
+Settings are in `$XDG_CONFIG_HOME/mtn2` (by default `~/.config/mtn2`): `session.json`, `keymap.json`,
+`themes/`, histories. Interface errors that did not stop the program are written to `tui-error.log` in the same place.

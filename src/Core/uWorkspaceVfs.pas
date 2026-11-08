@@ -59,12 +59,17 @@ type
 function WorkspaceExportLinks: TArray<TWorkspaceLinkNode>;
 procedure WorkspaceImportLinks(const ANodes: TArray<TWorkspaceLinkNode>);
 function WorkspaceLinkCount: Integer;
+/// <summary>Adds a root-level link for each target (TargetURI and IsDir are
+/// read). A target that is already linked anywhere is skipped; a name that is
+/// taken gets " (2)", " (3)" ... before the extension. Returns the number of
+/// links added.</summary>
+function WorkspaceAddTargets(const ATargets: TArray<TWorkspaceLinkNode>): Integer;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.SyncObjs,
-  System.Generics.Collections;
+  System.Generics.Collections, System.Generics.Defaults;
 
 type
   TWsNode = record
@@ -432,6 +437,56 @@ begin
     Result := GNodes.Count;
   finally
     GLock.Release;
+  end;
+end;
+
+function WorkspaceAddTargets(const ATargets: TArray<TWorkspaceLinkNode>): Integer;
+var
+  Linked, Taken: TDictionary<string, Boolean>;
+  I, N: Integer;
+  Node: TWsNode;
+  Name, Base, Ext, Candidate: string;
+begin
+  Result := 0;
+  Linked := TDictionary<string, Boolean>.Create;
+  Taken := TDictionary<string, Boolean>.Create(TIStringComparer.Ordinal);
+  GLock.Acquire;
+  try
+    for I := 0 to GNodes.Count - 1 do
+    begin
+      Taken.AddOrSetValue(GNodes[I].Path, True);
+      if GNodes[I].TargetURI <> '' then
+        Linked.AddOrSetValue(GNodes[I].TargetURI, True);
+    end;
+    for I := 0 to High(ATargets) do
+    begin
+      if (ATargets[I].TargetURI = '') or Linked.ContainsKey(ATargets[I].TargetURI) then
+        Continue;
+      Name := LeafNameOfUri(ATargets[I].TargetURI);
+      Candidate := Name;
+      if Taken.ContainsKey(Candidate) then
+      begin
+        Ext := ExtractFileExt(Name);
+        Base := Copy(Name, 1, Length(Name) - Length(Ext));
+        N := 2;
+        repeat
+          Candidate := Format('%s (%d)%s', [Base, N, Ext]);
+          Inc(N);
+        until not Taken.ContainsKey(Candidate);
+      end;
+      Node := Default(TWsNode);
+      Node.Path := Candidate;
+      Node.TargetURI := ATargets[I].TargetURI;
+      Node.IsDir := ATargets[I].IsDir;
+      GNodes.Add(Node);
+      Taken.AddOrSetValue(Candidate, True);
+      Linked.AddOrSetValue(Node.TargetURI, True);
+      Inc(Result);
+    end;
+  finally
+    GLock.Release;
+    Taken.Free;
+    Linked.Free;
   end;
 end;
 

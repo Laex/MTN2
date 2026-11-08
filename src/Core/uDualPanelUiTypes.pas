@@ -160,6 +160,8 @@ type
     HotPos: Integer; // 1-based in Caption, 0 = none (MenuResolveMnemonic)
     Shortcut: string;
     Mode: TPanelColumnMode;
+    /// <summary>Not empty: this row applies the saved column set of that name.</summary>
+    SetName: string;
   end;
 
   TStubKind = (skNone, skShellInfo);
@@ -172,7 +174,7 @@ type
     hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkHostColorPicker, hdkTheme,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker,
-    hdkColumnsConfig, hdkDisplay, hdkInterface, hdkArchivePassword, hdkTmpSaveList, hdkExportList,
+    hdkColumnsConfig, hdkMaskGroups, hdkDisplay, hdkInterface, hdkArchivePassword, hdkTmpSaveList, hdkExportList,
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename, hdkWorkspaceConfirm,
     hdkSetAttributes,
     hdkSshConnections, hdkSshConnectionEdit, hdkSshConnectionConfirm,

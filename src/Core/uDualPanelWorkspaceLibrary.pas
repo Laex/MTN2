@@ -6,7 +6,8 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uWorkspaceLibrary, uStrings;
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uWorkspaceLibrary, uWorkspaceVfs,
+  uStrings;
 
 type
   TWorkspaceLibKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -15,6 +16,8 @@ type
   TWorkspaceLibNavigate = reference to procedure(const AUri: string);
   TWorkspaceLibUnfocusCmd = reference to procedure;
   TWorkspaceLibEmptySave = reference to procedure;
+
+  TPickKind = (pkAdd, pkReplace, pkNew, pkSaved);
 
   TWorkspaceLibraryDialogController = class
   private
@@ -31,6 +34,18 @@ type
     FRenameId: string;
     FPendingId: string;
     FConfirmDelete: Boolean;
+    // Found items waiting for the choice of the set that takes them.
+    FPickMode: Boolean;
+    FPickTargets: TArray<TWorkspaceLinkNode>;
+    FPickKinds: TArray<TPickKind>;
+    FPickIds: TArray<string>;
+    FOnFindAdded: TProc;
+    procedure OpenPick;
+    procedure DispatchPickCommand(const AControlId: string);
+    procedure DoPick(AIndex: Integer);
+    procedure BeginPickNew;
+    procedure FinishPick;
+    procedure CancelPick;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     procedure DoRestore(const AId: string);
@@ -46,6 +61,12 @@ type
       const AOnEmptySave: TWorkspaceLibEmptySave);
     procedure OpenList;
     procedure RefreshList;
+    /// <summary>Puts the targets into a workspace set: straight into the live
+    /// one when nothing is saved or live yet, otherwise after asking which set
+    /// (add to the live one, replace it, a new one or a saved one).</summary>
+    procedure BeginFindToWorkspace(const ATargets: TArray<TWorkspaceLinkNode>);
+    /// <summary>Called once the targets are in a set.</summary>
+    property OnFindAdded: TProc read FOnFindAdded write FOnFindAdded;
     procedure BeginSave;
     procedure BeginRename(AIndex: Integer);
     function HandleListInput(var AKey: Word; AShift: TShiftState;
@@ -100,6 +121,7 @@ var
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
+  CancelPick;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
 
@@ -112,6 +134,134 @@ begin
   SetKind(hdkWorkspaceLibrary);
   FDialog.Open(BuildWorkspaceLibraryDialog(Items, 0, WorkspaceLiveCaption),
     FOnCommand);
+  Notify;
+end;
+
+procedure TWorkspaceLibraryDialogController.CancelPick;
+begin
+  FPickMode := False;
+  SetLength(FPickTargets, 0);
+  SetLength(FPickKinds, 0);
+  SetLength(FPickIds, 0);
+end;
+
+procedure TWorkspaceLibraryDialogController.FinishPick;
+begin
+  CancelPick;
+  SetLength(FEntries, 0);
+  if Assigned(FOnFindAdded) then
+    FOnFindAdded();
+end;
+
+procedure TWorkspaceLibraryDialogController.BeginFindToWorkspace(
+  const ATargets: TArray<TWorkspaceLinkNode>);
+begin
+  if Length(ATargets) = 0 then
+    Exit;
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  CancelPick;
+  FPickTargets := ATargets;
+  if not WorkspaceLiveHasLinks and (Length(WorkspaceLibraryGet) = 0) then
+  begin
+    WorkspaceAddTargets(FPickTargets);
+    FinishPick;
+    Exit;
+  end;
+  OpenPick;
+end;
+
+procedure TWorkspaceLibraryDialogController.OpenPick;
+var
+  Entries: TArray<TWorkspaceSnapshot>;
+  Items: TArray<string>;
+  Targets: TArray<TWorkspaceLinkNode>;
+  I: Integer;
+
+  procedure AddRow(AKind: TPickKind; const AId, ALabel: string);
+  begin
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)] := ALabel;
+    SetLength(FPickKinds, Length(Items));
+    FPickKinds[High(Items)] := AKind;
+    SetLength(FPickIds, Length(Items));
+    FPickIds[High(Items)] := AId;
+  end;
+
+begin
+  Targets := FPickTargets;
+  CancelPick;
+  FPickTargets := Targets;
+  Entries := WorkspaceLibraryGet;
+  AddRow(pkAdd, '', T('ui.workspace.pickAdd', 'Add to the current set') +
+    Format('  (%d)', [WorkspaceLinkCount]));
+  if WorkspaceLiveHasLinks then
+    AddRow(pkReplace, '', T('ui.workspace.pickReplace', 'Replace the current set'));
+  AddRow(pkNew, '', T('ui.workspace.pickNew', 'New set...'));
+  for I := 0 to High(Entries) do
+    AddRow(pkSaved, Entries[I].Id, T('ui.workspace.pickSaved',
+      'Add to the saved set: %s', [WorkspaceSnapshotDisplayLabel(Entries[I])]));
+  FPickMode := True;
+  if Assigned(FOnPrepareUi) then
+    FOnPrepareUi();
+  SetKind(hdkWorkspaceLibrary);
+  FDialog.Open(BuildWorkspaceLibraryDialog(Items, 0, '',
+    T('ui.workspace.pickTitle', 'Found items to the workspace')), FOnCommand);
+  Notify;
+end;
+
+procedure TWorkspaceLibraryDialogController.DispatchPickCommand(
+  const AControlId: string);
+var
+  Idx, I: Integer;
+  Accepted: Boolean;
+begin
+  Idx := FDialog.GetListSelectedIndex('workspaces');
+  Accepted := DialogCmdIsListAccept(AControlId, 'workspaces');
+  // The Save button of the list dialog starts a new set here.
+  if DialogCmdIs(AControlId, 'save') then
+    for I := 0 to High(FPickKinds) do
+      if FPickKinds[I] = pkNew then
+      begin
+        Idx := I;
+        Accepted := True;
+      end;
+  FDialog.Close;
+  if Accepted and (Idx >= 0) and (Idx <= High(FPickKinds)) then
+    DoPick(Idx)
+  else
+    CancelPick;
+end;
+
+procedure TWorkspaceLibraryDialogController.DoPick(AIndex: Integer);
+begin
+  case FPickKinds[AIndex] of
+    pkAdd:
+      begin
+        WorkspaceAddTargets(FPickTargets);
+        FinishPick;
+      end;
+    pkReplace:
+      begin
+        WorkspaceLibraryReplaceLive(FPickTargets);
+        FinishPick;
+      end;
+    pkSaved:
+      begin
+        WorkspaceLibraryAddToSaved(FPickIds[AIndex], FPickTargets);
+        FinishPick;
+      end;
+    pkNew:
+      BeginPickNew;
+  end;
+end;
+
+procedure TWorkspaceLibraryDialogController.BeginPickNew;
+begin
+  SetKind(hdkWorkspaceSave);
+  FDialog.Open(BuildInputDialog(T('ui.workspace.newSetTitle', 'New workspace set'),
+    T('ui.workspace.namePrompt', 'Name:'),
+    T('ui.workspace.newSetName', 'Found items')), FOnCommand);
   Notify;
 end;
 
@@ -149,6 +299,7 @@ procedure TWorkspaceLibraryDialogController.BeginSave;
 var
   Suggested: string;
 begin
+  CancelPick;
   if not WorkspaceLiveHasLinks then
   begin
     if Assigned(FOnEmptySave) then
@@ -229,6 +380,8 @@ var
   Idx: Integer;
 begin
   Result := False;
+  if FPickMode then
+    Exit;
   if AKey = vkDelete then
   begin
     Idx := FDialog.GetListSelectedIndex('workspaces');
@@ -260,6 +413,11 @@ var
   Idx: Integer;
   Accepted: Boolean;
 begin
+  if FPickMode then
+  begin
+    DispatchPickCommand(AControlId);
+    Exit;
+  end;
   Idx := FDialog.GetListSelectedIndex('workspaces');
   if DialogCmdIs(AControlId, 'save') then
   begin
@@ -287,6 +445,14 @@ begin
   Accepted := not DialogCmdIsReject(AControlId);
   NameVal := FDialog.GetInputValue('name');
   FDialog.Close;
+  if FPickMode then
+  begin
+    if Accepted and (WorkspaceLibraryAddToNew(NameVal, FPickTargets) <> '') then
+      FinishPick
+    else
+      OpenPick;
+    Exit;
+  end;
   if Accepted then
     WorkspaceLibrarySaveCurrent(NameVal);
   OpenList;

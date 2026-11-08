@@ -80,6 +80,7 @@ if (Test-Path (Join-Path $Root 'samples\macros')) {
 Copy-Item (Join-Path $Root 'THIRD-PARTY.md') $Stage
 # What's new for the user, version by version (also linked from the release page).
 Copy-Item (Join-Path $Root 'CHANGELOG.md') $Stage
+Copy-Item (Join-Path $Root 'CHANGELOG.ru.md') $Stage
 
 $Safe = $Version -replace '[^\w.\-]', '_'
 $Zip = Join-Path $Dist "MTN2-$Safe-win64.zip"

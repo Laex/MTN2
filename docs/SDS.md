@@ -1,66 +1,68 @@
-## Техническое описание проекта (System Design Specification)
+## Technical Description (System Design Specification)
 
-### Проект: Modern Terminal Navigator 2 (MTN2) – Delphi Edition
+**English** | [Русский](SDS.ru.md)
 
-> **Роль документа:** полная спецификация (концепция, структуры данных, API, roadmap).
-> **Краткий обзор слоёв, потоков и инвариантов:** см. [ARCHITECTURE.md](ARCHITECTURE.md).
-> **Сборка, тесты, CI/CD:** см. [BUILDING.md](BUILDING.md). **Лицензия:** [MPL-2.0](../LICENSE).
-> При расхождении формулировок приоритет у этого SDS, кроме инвариантов, явно зафиксированных в Architecture.
-> Документ подготовлен с помощью ИИ-ассистентов (см. [README](../README.ru.md#как-создавался-проект)).
+### Project: Modern Terminal Navigator 2 (MTN2) – Delphi Edition
 
-**MTN2** – кроссплатформенный двухпанельный файловый менеджер (TUI в GUI-окне) с MDI, ориентированный на **повседневную эксплуатацию**. Визуальный и сценарный базис – **Necromancer's DOS Navigator (NDN)**; удачные практики дополняются из **FAR Manager** и **Total Commander**. Реализация – Delphi / FireMonkey: виртуальная текстовая сетка на GPU-холсте.
+> **Role of this document:** the full specification (concept, data structures, API, roadmap).
+> **Short overview of layers, threads and invariants:** see [ARCHITECTURE.md](ARCHITECTURE.md).
+> **Build, tests, CI/CD:** see [BUILDING.md](BUILDING.md). **License:** [MPL-2.0](../LICENSE).
+> If wordings differ, this SDS takes priority, except for the invariants explicitly fixed in the Architecture document.
+> This document was prepared with the help of AI assistants, including in-house ones.
+
+**MTN2** is a cross-platform dual-panel file manager (a TUI inside a GUI window) with MDI, aimed at **everyday use**. The visual and workflow basis is **Necromancer's DOS Navigator (NDN)**; good practices are borrowed from **FAR Manager** and **Total Commander**. Implementation: Delphi / FireMonkey, a virtual text grid on a GPU canvas.
 
 ---
 
-### 1. Введение и концепция
+### 1. Introduction and concept
 
-#### 1.0. Продуктовый фокус
+#### 1.0. Product focus
 
-MTN2 – в первую очередь **ежедневный файловый менеджер**, а не демонстрация плагинной платформы и не «ещё один терминал».
+MTN2 is first of all an **everyday file manager**, not a demonstration of a plugin platform and not "yet another terminal".
 
-| Ориентир            | Что берём                                                                                                                                          |
+| Reference           | What is taken                                                                                                                                      |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **NDN (базис)**     | MDI, ощущение интерфейса и диалогов, тема по умолчанию (`NDN`), плотность TUI, работа «клавиатурой вперёд».                                  |
-| **FAR**             | Предсказуемый keymap и панели (F-клавиши, `Ctrl+O`, user menu / ассоциации), качественный Viewer/Editor, привычные сценарии навигации и выделения. |
-| **Total Commander** | Архивы как папки, вкладки и удобные массовые операции, сравнение каталогов, Multi-Rename, практичный поиск, стабильные copy/move с прогрессом.     |
+| **NDN (basis)**     | MDI, the look and feel of the interface and dialogs, the default theme (`NDN`), TUI density, "keyboard first" operation.                         |
+| **FAR**             | A predictable keymap and panels (F-keys, `Ctrl+O`, user menu / associations), a high-quality Viewer/Editor, familiar navigation and selection workflows. |
+| **Total Commander** | Archives as folders, tabs and convenient bulk operations, directory comparison, Multi-Rename, practical search, stable copy/move with progress.   |
 
-**Приоритет развития:** паритет повседневных сценариев (навигация, копирование/удаление, поиск, сессии, ассоциации, архивы, сеть) → затем платформа расширений. Порядок экосистемы плагинов: **1) родные плагины MTN2** → **2) Far** → **3) Total Commander** (см. §6.0). Архитектурные контракты соблюдаются с самого начала, но **не опережают** UX файлового менеджера.
+**Development priority:** parity in everyday workflows (navigation, copy/delete, search, sessions, associations, archives, network) first, then the extension platform. Plugin ecosystem order: **1) native MTN2 plugins** → **2) Far** → **3) Total Commander** (see §6.0). Architectural contracts are observed from the start, but they **do not run ahead** of file manager UX.
 
-Критерий готовности к ежедневной замене NDN/FAR на локальных дисках: пользователь может провести рабочий день в MTN2 без возврата к другому FM для базовых операций.
+Readiness criterion for replacing NDN/FAR on local disks every day: a user can spend a working day in MTN2 without going back to another file manager for basic operations.
 
-#### 1.1. Отказ от классической консоли в пользу GUI-TUI гибрида
+#### 1.1. A GUI-TUI hybrid instead of the classic console
 
-Вместо запуска приложения внутри системной консоли (cmd.exe, bash) программа создает стандартное окно GUI (FMX Form). Внутри этого окна рендерится **динамическая** виртуальная текстовая сетка: число столбцов и строк (`Cols × Rows`) пересчитывается при изменении размера окна и масштаба (zoom) шрифта/ячейки.
+Instead of running inside a system console (cmd.exe, bash), the program creates a standard GUI window (FMX Form). A **dynamic** virtual text grid is rendered inside this window: the number of columns and rows (`Cols × Rows`) is recomputed when the window size and the font/cell zoom change.
 
-**Ключевые преимущества этого подхода:**
+**Key advantages of this approach:**
 
-- **Абсолютная переносимость**: Одинаковое поведение графики, шрифтов и клавиатурных сочетаний на Windows, macOS и Linux без необходимости адаптироваться к различиям raw-mode терминалов. *(Windows: интерактивный ConPTY реализован (`31f903c`); POSIX PTY – roadmap, «PTY на Linux/macOS».)*
-- **Использование современных шрифтов**: Поддержка TrueType/OpenType моноширинных шрифтов с лигатурами и Unicode (включая эмодзи и иконки Powerline; вне BMP – через grapheme/cluster-aware раскладку ячеек).
-- **Свобода цвета**: Полноценная поддержка 32-битного RGBA-цвета, градиентов, эффектов размытия и теней для перекрывающихся окон.
-- **Высокая производительность**: Отрисовка текстового буфера средствами GPU (DirectX, Metal, OpenGL/Vulkan) с частотой 60+ FPS.
+- **Absolute portability**: identical behaviour of graphics, fonts and keyboard shortcuts on Windows, macOS and Linux, with no need to adapt to differences between raw-mode terminals. *(Windows: the interactive ConPTY is implemented; POSIX PTY is on the roadmap, "PTY on Linux/macOS".)*
+- **Modern fonts**: support for TrueType/OpenType monospaced fonts with ligatures and Unicode (including emoji and Powerline icons; outside the BMP through grapheme/cluster-aware cell layout).
+- **Freedom of colour**: full support for 32-bit RGBA colour, gradients, blur effects and shadows for overlapping windows.
+- **High performance**: the text buffer is drawn on the GPU (DirectX, Metal, OpenGL/Vulkan) at 60+ FPS.
 
-#### 1.2. Целевые показатели производительности
+#### 1.2. Performance targets
 
-| Метрика                      | Целевой показатель (v0.1) | Описание / Механизм реализации                                                                                                                 |
+| Metric                       | Target (v0.1)             | Description / implementation mechanism                                                                                                         |
 | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Оперативная память (RSS)** | ≤ 15 МБ                   | Delphi компилирует в оптимизированный нативный код с минимальным оверхедом рантайма                                                            |
-| **Рендеринг кадра**          | ≤ 16 мс (60 FPS)          | Аппаратное ускорение FMX + двойная буферизация на текстуре (Bitmap)                                                                            |
-| **Открытие файлов до 10 ГБ** | < 0.5 сек (первый экран)  | Потоковый Viewer на базе `TFileStream` с фоновым индексированием строк и ленивой загрузкой                                                     |
-| **Бинарный артефакт ядра**   | Один исполняемый файл     | Нативное ядро без обязательных внешних runtime-зависимостей (кроме системных библиотек графики). Плагины DLL/SO/WASM – опциональные расширения |
+| **Memory (RSS)**             | ≤ 15 MB                   | Delphi compiles to optimized native code with minimal runtime overhead                                                                         |
+| **Frame rendering**          | ≤ 16 ms (60 FPS)          | FMX hardware acceleration + double buffering on a texture (Bitmap)                                                                             |
+| **Opening files up to 10 GB** | < 0.5 s (first screen)   | A streaming Viewer based on `TFileStream` with background line indexing and lazy loading                                                       |
+| **Core binary artifact**     | A single executable       | A native core with no mandatory external runtime dependencies (except system graphics libraries). DLL/SO/WASM plugins are optional extensions |
 
 ---
 
-### 2. Архитектура системы
+### 2. System architecture
 
-MTN2 использует модульную архитектуру с разделением логики представления (TUI/GUI рендерер) и логики работы с данными (VFS, Jobs). Обзор слоёв и инвариантов – в [ARCHITECTURE.md](ARCHITECTURE.md).
+MTN2 uses a modular architecture that separates the presentation logic (TUI/GUI renderer) from the data-handling logic (VFS, Jobs). An overview of layers and invariants is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ```mermaid
 graph TD
-    Input[Ввод: FMX OnKeyDown / OnMouseDown] --> CONF[Конфигуратор и Keymapper]
+    Input[Input: FMX OnKeyDown / OnMouseDown] --> CONF[Configurator and Keymapper]
     
-    subgraph Core ["Ядро MTN2 (Delphi FMX)"]
-        CONF --> UI[Менеджер окон MDI и Compositor]
-        UI --> RENDER[TTerminalRenderer: FMX Canvas и GPU]
+    subgraph Core ["MTN2 core (Delphi FMX)"]
+        CONF --> UI[MDI window manager and Compositor]
+        UI --> RENDER[TTerminalRenderer: FMX Canvas and GPU]
         UI --> PTY[Process Bridge / ConPTY]
         UI --> BUS[IMessageBus]
         VFS[Async VFS Core]
@@ -68,51 +70,51 @@ graph TD
         UI --> JOBS
     end
 
-    subgraph ThemeSystem ["Система Темизации"]
-        THEME[IThemeRenderer] -->|Отрисовка виджетов в grid| UI
-        NDN[TDataTheme + тема NDN - по умолчанию] -.-> THEME
-        FAR[TDataTheme + файлы тем пользователя] -.-> THEME
+    subgraph ThemeSystem ["Theming system"]
+        THEME[IThemeRenderer] -->|Drawing widgets in the grid| UI
+        NDN[TDataTheme + NDN theme - default] -.-> THEME
+        FAR[TDataTheme + user theme files] -.-> THEME
     end
 
-    subgraph Plugins ["Функциональные Плагины (Только данные)"]
-        SYS_P[Системные: Panels, Viewer, Editor]
-        USER_P[Пользовательские: SFTP, Git, DB Viewer]
+    subgraph Plugins ["Functional plugins (data only)"]
+        SYS_P[System: Panels, Viewer, Editor]
+        USER_P[User: SFTP, Git, DB Viewer]
     end
 
-    SYS_P -.->|Регистрация и Pull-данные| UI
-    USER_P -.->|Регистрация и Pull-данные| UI
+    SYS_P -.->|Registration and pull data| UI
+    USER_P -.->|Registration and pull data| UI
     SYS_P <--> VFS
     USER_P <--> VFS
     
-    VFS <--> Local[Локальная ФС / System.IOUtils]
-    PTY <--> ExtProc[Внешние процессы: git, bash, cmd]
+    VFS <--> Local[Local FS / System.IOUtils]
+    PTY <--> ExtProc[External processes: git, bash, cmd]
 ```
 
-#### Основные слои
+#### Main layers
 
-1. **FMX Event / Input Layer**: Перехватывает события клавиатуры и мыши и транслирует их во внутренние команды.
-2. **MDI Window Manager & Compositor**: Виртуальные окна (Dual Panel, Viewer, Editor, диалоги), z-order, фокус; общий экранный буфер ячеек.
-3. **FMX Canvas Renderer (**`TTerminalRenderer`**)**: Dynamic grid + двухбуферная отрисовка на GPU.
-4. **Async VFS**: Единый слой для URI (`file://`, `sftp://`, цепочки архивов через `!/`). Только неблокирующие операции с cancel и ошибками.
-5. **Background Jobs (PPL)**: Очередь долгих операций (копирование, удаление, поиск) без зависания UI.
-6. **Process Bridge**: Неблокирующий запуск процессов и вывод во внутренний консольный буфер (Windows: настоящий ConPTY; POSIX PTY – цель, «PTY на Linux/macOS»).
-7. **Theme Engine**: Делегирование стиля виджетов в `IThemeRenderer` (NDN по умолчанию).
+1. **FMX Event / Input Layer**: intercepts keyboard and mouse events and translates them into internal commands.
+2. **MDI Window Manager & Compositor**: virtual windows (Dual Panel, Viewer, Editor, dialogs), z-order, focus; a shared screen cell buffer.
+3. **FMX Canvas Renderer (**`TTerminalRenderer`**)**: dynamic grid + double-buffered GPU drawing.
+4. **Async VFS**: a single layer for URIs (`file://`, `sftp://`, archive chains through `!/`). Non-blocking operations only, with cancellation and errors.
+5. **Background Jobs (PPL)**: a queue of long operations (copy, delete, search) that keeps the UI responsive.
+6. **Process Bridge**: non-blocking process launch and output into an internal console buffer (Windows: a real ConPTY; POSIX PTY is a goal, "PTY on Linux/macOS").
+7. **Theme Engine**: delegates widget styling to `IThemeRenderer` (NDN by default).
 
-#### Разделение ответственности (кратко)
+#### Division of responsibility (in brief)
 
-| Роль                            | Отвечает за                                              |
+| Role                            | Responsible for                                          |
 | ------------------------------- | -------------------------------------------------------- |
-| **Ядро**                        | Layout, focus, compositing, keymap, Jobs, declarative UI |
-| **Тема (**`IThemeRenderer`**)** | Внешний вид виджетов в ячейках сетки                     |
-| **Плагины**                     | Данные и логика («что показать»), без `TCanvas`          |
+| **Core**                        | Layout, focus, compositing, keymap, Jobs, declarative UI |
+| **Theme (**`IThemeRenderer`**)** | The look of widgets in grid cells                       |
+| **Plugins**                     | Data and logic ("what to show"), no `TCanvas`            |
 
 ---
 
-### 3. Спецификация структур данных (Object Pascal)
+### 3. Data structure specification (Object Pascal)
 
-#### 3.1. Ячейка терминала и экранный буфер
+#### 3.1. Terminal cell and screen buffer
 
-Каждая позиция на экране представлена структурой `TCharCell`. Для символов вне BMP и emoji ядро использует grapheme-aware раскладку (кластер может занимать одну или несколько логических ячеек).
+Every screen position is represented by a `TCharCell` structure. For characters outside the BMP and for emoji, the core uses a grapheme-aware layout (a cluster can occupy one or several logical cells).
 
 ```pascal
 type
@@ -120,9 +122,9 @@ type
   TCharCellAttributes = set of TCharCellAttribute;
 
   TCharCell = record
-    CharValue: Char;               // Базовый UTF-16 code unit; кластеры – на уровне раскладчика
-    FgColor: TAlphaColor;          // Цвет текста (32-bit RGBA)
-    BgColor: TAlphaColor;          // Цвет фона (32-bit RGBA)
+    CharValue: Char;               // Base UTF-16 code unit; clusters are handled at the layout level
+    FgColor: TAlphaColor;          // Text colour (32-bit RGBA)
+    BgColor: TAlphaColor;          // Background colour (32-bit RGBA)
     Attributes: TCharCellAttributes;
   end;
 
@@ -130,9 +132,9 @@ type
   TTerminalGrid = array of TTerminalRow;
 ```
 
-#### 3.2. Оконный менеджер (MDI)
+#### 3.2. Window manager (MDI)
 
-Каждое окно (Dual Panel, редактор, диалог) инкапсулирует логику взаимодействия и делегирует стилизацию виджетов в `IThemeRenderer`. Локальный буфер `FBuffer` кэширует визуальное представление окна.
+Each window (Dual Panel, editor, dialog) encapsulates its interaction logic and delegates widget styling to `IThemeRenderer`. The local `FBuffer` buffer caches the window's visual representation.
 
 ```pascal
 type
@@ -152,50 +154,50 @@ type
     FZIndex: Integer;
     FIsFocused: Boolean;
     FState: TWindowState;
-    FBuffer: TTerminalGrid;           // Кэшированный буфер отрендеренного окна
-    FTheme: IThemeRenderer;           // Ссылка на глобальный/локальный плагин темы
+    FBuffer: TTerminalGrid;           // Cached buffer of the rendered window
+    FTheme: IThemeRenderer;           // Reference to the global/local theme plugin
   public
-    // Вызывает методы FTheme для отрисовки рамки и элементов во внутренний FBuffer
+    // Calls FTheme methods to draw the frame and elements into the internal FBuffer
     procedure RebuildBuffer; virtual;
     procedure Resize(AWidth, AHeight: Integer); virtual;
-    // Копирует кэшированный FBuffer в общий буфер композитора
+    // Copies the cached FBuffer into the shared compositor buffer
     procedure Paint(const ACompositorBuffer: TTerminalGrid); virtual;
     procedure HandleInput(var AKey: Word; AShift: TShiftState; var AHandled: Boolean); virtual;
   end;
 ```
 
-#### 3.3. Dual Panel, вкладки и панели
+#### 3.3. Dual Panel, tabs and panels
 
-Иерархия (см. также Architecture, §3):
+Hierarchy (see also Architecture, §3):
 
 ```text
 TDualPanelWindow (MDI)
-├── Dual Panel Tabs          – вкладки рабочих пространств
+├── Dual Panel Tabs          – workspace tabs
 └── Active TDualPanelState
     ├── Left:  Panel Tabs → TTab (URI, history, cursor)
     └── Right: Panel Tabs → TTab
 ```
 
-- **Dual Panel Tabs** – вкладки на всё двухпанельное окно; каждая хранит полный снимок `TDualPanelState`.
-- **Panel Tabs** – вкладки каталогов внутри каждой стороны (`Left` / `Right`).
-- Viewer / Editor – Dual Panel Tab (`wkDocument`) на той же полосе, что Home/Work; Console – отдельный `TTerminalWindow`.
-- **Контракты UI-примитивов (плагин ↔ ядро):** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
+- **Dual Panel Tabs** – tabs for the whole two-panel window; each stores a full `TDualPanelState` snapshot.
+- **Panel Tabs** – directory tabs inside each side (`Left` / `Right`).
+- Viewer / Editor – a Dual Panel Tab (`wkDocument`) on the same strip as Home/Work; Console is a separate `TTerminalWindow`.
+- **UI primitive contracts (plugin ↔ core):** [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
 
 ```pascal
 type
   TTab = record
     Id: Cardinal;
-    Title: string;            // Подпись Panel Tab (home, documents, …)
-    CurrentURI: string;       // Например, 'file:///D:/Work'
-    History: TArray<string>;  // История переходов (назад/вперед)
+    Title: string;            // Panel Tab caption (home, documents, …)
+    CurrentURI: string;       // For example, 'file:///D:/Work'
+    History: TArray<string>;  // Navigation history (back/forward)
     HistoryIndex: Integer;
-    CursorIndex: Integer;     // Индекс выделенного элемента
-    ScrollOffset: Integer;    // Смещение прокрутки панели
-    SelectedURIs: TArray<string>; // multi-select по URI строки
+    CursorIndex: Integer;     // Index of the highlighted item
+    ScrollOffset: Integer;    // Panel scroll offset
+    SelectedURIs: TArray<string>; // multi-select by URI strings
   end;
 
   TPanelSide = (psLeft, psRight);
-  TPanelViewKind = (pvkFiles, pvkInfo); // Ctrl+L – Info на соседней стороне
+  TPanelViewKind = (pvkFiles, pvkInfo); // Ctrl+L – Info on the opposite side
   TPanelColumnMode = (pcmBrief, pcmSize, pcmDate, pcmFull, pcmCreated, pcmTypes);
   TPanelSortColumn = (pscNone, pscName, pscExt, pscSize, pscModified,
     pscCreated, pscAccessed, pscAttr, pscType);
@@ -204,9 +206,9 @@ type
     Tabs: TArray<TTab>;
     ActiveTabIndex: Integer;
     DriveDirs: array['A'..'Z'] of string; // last path per drive (Alt+F1/F2, Ctrl+←/→)
-    ColumnMode: TPanelColumnMode;         // Ctrl+3 – меню режимов
-    SortColumn: TPanelSortColumn;         // Ctrl+F3..F9 / Ctrl+F12 / клик заголовка
-    SortDescending: Boolean;              // заглавная буква в углу рабочего поля
+    ColumnMode: TPanelColumnMode;         // Ctrl+3 – modes menu
+    SortColumn: TPanelSortColumn;         // Ctrl+F3..F9 / Ctrl+F12 / header click
+    SortDescending: Boolean;              // capital letter in the corner of the work area
     ViewKind: TPanelViewKind;
   end;
 
@@ -218,7 +220,7 @@ type
     RightVisible: Boolean;  // Ctrl+F2
   end;
 
-  // Одна вкладка уровня Dual Panel = полный снимок панелей или документ
+  // One Dual Panel-level tab = a full snapshot of the panels or a document
   TWorkspaceKind = (wkPanels, wkDocument);
 
   TDualPanelWorkspaceTab = record
@@ -234,67 +236,67 @@ type
   end;
 ```
 
-`TDualPanelWindow` – наследник `TTerminalWindow`, владеющий `TDualPanelWindowState`. Геометрия колонок, Brief multi-column, icon reserve и hit-test – `uPanelColumns.pas`. Shell-иконки строк – `uShellIcons.pas` (§4.2). Overlay-меню Sort / Column modes / User menu – `uDualPanelMenus.pas`.
+`TDualPanelWindow` is a descendant of `TTerminalWindow` that owns a `TDualPanelWindowState`. Column geometry, Brief multi-column layout, the icon reserve and hit-testing live in `uPanelColumns.pas`. Row shell icons are in `uShellIcons.pas` (§4.2). The Sort / Column modes / User menu overlay menus are in `uDualPanelMenus.pas`.
 
-**FAR-буква сортировки.** У каждой файловой панели (`pvkFiles`) в левом верхнем углу **рабочего поля** (первая клетка строки заголовков колонок, `Left+1` / `Top+1` – не на рамке) рисуется глиф текущего `SortColumn`: `n` имя, `x` расширение, `w` время записи, `s` размер, `u` без сортировки, `c` создан, `a` доступ, `t` атрибуты, `y` тип. Заглавная буква – `SortDescending`. Цвет – акцент темы `pcpHotMark` на фоне `pcpColumnHeader`, с запасным контрастом через `ContrastingGlyphFg` (`uThemeDrawing.pas`), чтобы глиф читался на любой палитре. Info / Quick View букву не показывают. `PanelSortModeLetter` – `uPanelColumns.pas`; отрисовка после заголовков – `DrawPanelSortLetter` в `uDualPanelPanelDraw.pas` (`DispatchDrawPanelFiles`).
+**FAR sort letter.** Every file panel (`pvkFiles`) draws a glyph for the current `SortColumn` in the top-left corner of the **work area** (the first cell of the column header row, `Left+1` / `Top+1` – not on the frame): `n` name, `x` extension, `w` write time, `s` size, `u` unsorted, `c` created, `a` accessed, `t` attributes, `y` type. A capital letter means `SortDescending`. The colour is the theme accent `pcpHotMark` on the `pcpColumnHeader` background, with a fallback contrast through `ContrastingGlyphFg` (`uThemeDrawing.pas`) so that the glyph is readable on any palette. Info / Quick View do not show the letter. `PanelSortModeLetter` is in `uPanelColumns.pas`; it is drawn after the headers by `DrawPanelSortLetter` in `uDualPanelPanelDraw.pas` (`DispatchDrawPanelFiles`).
 
-Верхняя полоса выпадающего меню (F9 / Alt / мышь) управляется `uTopMenuBar.pas`; структура грузится из встроенного ресурса `MENU_MAIN` (RCDATA ← `src/config/menu.json`), с fallback на файл рядом с exe/в исходниках и захардкоженную структуру, если ресурса нет. Меню выше окна прокручивается (`FSubmenuTop` в `uTopMenuBar.pas`, полоса `DrawDialogScrollBar` на правой границе, колесо мыши двигает выбор); в диалогах выше окна содержимое сдвигается вслед за фокусом (`FScrollY` в `uDialogHost.pas`), элементы вне поля зрения не рисуются и не попадают под мышь. Палитра команд (Shift+F9; `uCommandPalette.pas`, `uDualPanelPaletteDialog.pas`, `dialogs/commandpalette.json`) перечисляет живое меню (`TTopMenuController.ListItems`), ищет по названию, категории и синонимам и запускает пункт через `RunItem`. Синонимы складываются из трёх источников: поле `aliases` пункта в `menu.json` (английские), ключи `menu.alias.<действие>` файла строк выбранного языка и необязательный `aliases.json` в папке настроек (перечитывается при каждом открытии палитры). В слове запроса допустимы `?` и `*`.
+The top drop-down menu bar (F9 / Alt / mouse) is managed by `uTopMenuBar.pas`; its structure is loaded from the embedded `MENU_MAIN` resource (RCDATA ← `src/config/menu.json`), with a fallback to a file next to the exe / in the sources and to a hard-coded structure if the resource is missing. A menu taller than the window scrolls (`FSubmenuTop` in `uTopMenuBar.pas`, a `DrawDialogScrollBar` bar on the right border, the mouse wheel moves the selection); in dialogs taller than the window the content shifts following the focus (`FScrollY` in `uDialogHost.pas`), and items outside the visible area are neither drawn nor hit by the mouse. The command palette (Shift+F9; `uCommandPalette.pas`, `uDualPanelPaletteDialog.pas`, `dialogs/commandpalette.json`) lists the live menu (`TTopMenuController.ListItems`), searches by title, category and synonyms, and runs an item through `RunItem`. Synonyms come from three sources: the item's `aliases` field in `menu.json` (English), the `menu.alias.<action>` keys of the selected language's strings file, and an optional `aliases.json` in the settings folder (re-read every time the palette opens). `?` and `*` are allowed in a query word.
 
-Смена диска (Alt+F1/Alt+F2, `uDualPanelDrivePopup.pas`) – под списком дисков разделитель и пронумерованные спецпункты `1. System folders` / `2. Recycle bin` / `3. Temporary` / `4. Workspace` (выбор Enter/клик/цифра 1–4). Курсор popup ставится на **текущий** URI активной вкладки панели (`HostPanelPath` = `ActiveTab.CurrentURI`, индекс – `DrivePopupCursorIndex` / глиф `DriveBarGlyphFromUri`: буква диска или `1`–`4`), а не всегда на первый диск. Переход к системным виртуальным папкам Windows (Рабочий стол, Документы, Загрузки и др.) – `sys://folders` VFS (`uSysFoldersVfs.pas`); просмотр и восстановление файлов Корзины – `recycle://` VFS (`uRecycleBinVfs.pas`, `IShellFolder2`/`IFileOperation`; Ctrl+Alt+R restore, F8 = безвозвратный purge); `tmp:///` – плагин Temporary (пункт 3, если схема зарегистрирована); `ws:///` – панель ссылок ядра (`uWorkspaceVfs.pas`, пункт 4, F8 = Unlink). Листинги `sys://` и `recycle://` синтетические: `..` возвращает не «на уровень выше внутри VFS» (родителя там нет), а в директорию, из которой был сделан переход (через историю табов, `TDualPanelWindow.HistoryBack`). F-bar (`uFunctionBar.pas`) в этих листингах переключается на урезанный контекст (`fbcSysFolders`/`fbcRecycleBin`), скрывающий недоступные операции (Copy/Move/MkDir и т.п.).
+The drive change popup (Alt+F1/Alt+F2, `uDualPanelDrivePopup.pas`) shows, below the drive list, a separator and numbered special items `1. System folders` / `2. Recycle bin` / `3. Temporary` / `4. Workspace` (choose with Enter / click / digit 1–4). The popup cursor is placed on the **current** URI of the panel's active tab (`HostPanelPath` = `ActiveTab.CurrentURI`, the index is `DrivePopupCursorIndex` / glyph `DriveBarGlyphFromUri`: a drive letter or `1`–`4`), not always on the first drive. Navigation to the Windows system virtual folders (Desktop, Documents, Downloads, etc.) is the `sys://folders` VFS (`uSysFoldersVfs.pas`); viewing and restoring Recycle Bin files is the `recycle://` VFS (`uRecycleBinVfs.pas`, `IShellFolder2`/`IFileOperation`; Ctrl+Alt+R restore, F8 = permanent purge); `tmp:///` is the Temporary plugin (item 3, if the scheme is registered); `ws:///` is the core link panel (`uWorkspaceVfs.pas`, item 4, F8 = Unlink). The `sys://` and `recycle://` listings are synthetic: `..` does not mean "one level up inside the VFS" (there is no parent there) but returns to the directory the user came from (through the tab history, `TDualPanelWindow.HistoryBack`). In these listings the F-bar (`uFunctionBar.pas`) switches to a reduced context (`fbcSysFolders`/`fbcRecycleBin`) that hides unavailable operations (Copy/Move/MkDir, etc.).
 
-Оверлеи Dual Panel рисуются снизу вверх (`DispatchDrawOverlays` в `uDualPanelPanelDraw.pas`): Change Drive / jobs / меню / поиск → **диалог** → **stub поверх диалога** → подменю F9. Ввод и клик – в обратном порядке (`uDualPanelWindow` / `uDualPanelClick.pas`): сначала stub, потом диалог. F-bar берёт контекст из `ResolveChromeContext` (`uDualPanelStatus.pas`): видимый stub важнее диалога; вид диалога (`THostDialogKind`) даёт свой набор подписей (`fbcWorkspaceLibrary`, `fbcFolderHotlist`, `fbcColorCoding`, `fbcColorCodingEdit`, списки – `fbcDialogList`), а не общий `Enter:OK`. Строковые литералы в `.pas` идут в кодовой странице компилятора (обычно Windows-1251): типографское тире задавайте как `#$2014`, иначе в UI получится `вЂ"`.
+Dual Panel overlays are drawn bottom to top (`DispatchDrawOverlays` in `uDualPanelPanelDraw.pas`): Change Drive / jobs / menu / search → **dialog** → **stub over the dialog** → F9 submenu. Input and clicks go in the reverse order (`uDualPanelWindow` / `uDualPanelClick.pas`): the stub first, then the dialog. The F-bar takes its context from `ResolveChromeContext` (`uDualPanelStatus.pas`): a visible stub takes precedence over a dialog; the dialog kind (`THostDialogKind`) supplies its own set of captions (`fbcWorkspaceLibrary`, `fbcFolderHotlist`, `fbcColorCoding`, `fbcColorCodingEdit`, lists – `fbcDialogList`) instead of a generic `Enter:OK`. String literals in `.pas` files use the compiler code page (usually Windows-1251): write the typographic dash as `#$2014`, otherwise the UI shows `вЂ"`.
 
-Взаимодействие с внешними окнами ОС по перетаскиванию файлов реализовано нативным мостом Windows OLE Drag & Drop (`uWinFileDragDrop.pas`).
+Interaction with external OS windows by dragging files is implemented by a native Windows OLE Drag & Drop bridge (`uWinFileDragDrop.pas`).
 
-Отрисовка аппаратного мигающего курсора (интервал 530 мс) интегрирована в `TInputLine` (командная строка, поля ввода диалогов) и `TEditorWindow` (редактор/просмотрщик).
+The hardware blinking cursor (530 ms interval) is integrated into `TInputLine` (the command line and dialog input fields) and `TEditorWindow` (editor/viewer).
 
-История каталогов (Alt+F12) – `uFolderHistory.pas` + dialog `folderhistory.json`.
+Directory history (Alt+F12) is `uFolderHistory.pas` + the dialog `folderhistory.json`.
 
-История введённых команд (Alt+F8) – хранится в `TDualPanelCmdLineManager` (`uDualPanelCmdLine.pas`, `history.json`) + dialog `cmdhistory.json`, единая для cmdline Dual Panel, фоновой консоли (`Ctrl+O`) и вкладок Terminal Workspace (`Ctrl+Shift+N`) – `TBaseConsoleWindow` (`uBaseConsoleWindow.pas`) даёт Alt+F8 обоим наследникам через `OnGetCmdHistory`/`OnCommandExecuted`, а сам ввод хоста-моста в `TMainForm`/`TDualPanelWindow` (`ConsoleGetCmdHistory`/`RecordConsoleCommand`). В Dual Panel выбор строки подставляет её в командную строку (без немедленного запуска); в консоли/терминале – своей строки ввода нет, поэтому команда выполняется сразу (`ExecuteCommandNow`). Команды, набранные прямо в шелле консоли/терминала (Enter на непустой строке ввода, вне alt-screen TUI), тоже пишутся в эту историю – перехват на Enter через `TConsoleBuffer.GetInputAfterPrompt`/`NoteCommandSubmitted`, до отправки в PTY.
+The history of entered commands (Alt+F8) is stored in `TDualPanelCmdLineManager` (`uDualPanelCmdLine.pas`, `history.json`) + the dialog `cmdhistory.json`, and is shared by the Dual Panel command line, the background console (`Ctrl+O`) and the Terminal Workspace tabs (`Ctrl+Shift+N`) – `TBaseConsoleWindow` (`uBaseConsoleWindow.pas`) provides Alt+F8 to both descendants through `OnGetCmdHistory`/`OnCommandExecuted`, while the bridge host's own input lives in `TMainForm`/`TDualPanelWindow` (`ConsoleGetCmdHistory`/`RecordConsoleCommand`). In Dual Panel, choosing a line puts it into the command line (without running it immediately); in the console/terminal there is no input line of its own, so the command is executed at once (`ExecuteCommandNow`). Commands typed directly in the console/terminal shell (Enter on a non-empty input line, outside an alt-screen TUI) are also recorded in this history – they are intercepted on Enter through `TConsoleBuffer.GetInputAfterPrompt`/`NoteCommandSubmitted`, before being sent to the PTY.
 
 ---
 
-### 4. Реализация рендерера на FireMonkey (FMX)
+### 4. FireMonkey (FMX) renderer implementation
 
-Рендеринг – двухбуферный, с **dynamic grid**: `Cols`/`Rows` зависят от клиентской области формы и масштаба ячейки.
+Rendering is double-buffered with a **dynamic grid**: `Cols`/`Rows` depend on the form's client area and the cell scale.
 
-#### 4.1. Опциональный движок рендеринга Skia (Skia4Delphi)
+#### 4.1. Optional Skia rendering engine (Skia4Delphi)
 
-По умолчанию рендеринг выполняется штатным графическим движком FMX Canvas (Direct2D/Metal/OpenGL) с минимальными требованиями к бинарному размеру и окружению.
+By default rendering uses the standard FMX Canvas graphics engine (Direct2D/Metal/OpenGL) with minimal requirements for binary size and environment.
 
-Для повышения четкости моноширинных шрифтов на HiDPI и субпиксельного сглаживания внедрена опциональная поддержка **Skia4Delphi** с легким откатом:
-* **Включение Skia**: в `MTN2.dproj` должен быть `DCC_Define` с `SKIA`; в `MTN2.dpr` – `uses FMX.Skia` и `GlobalUseSkia := not NoSkiaRequested` под `{$IFDEF SKIA}`, до `Application.Initialize`. Собранный так exe по умолчанию рисует через Skia.
-* **Запуск без Skia**: `MTN2.exe --no-skia` оставляет ту же сборку, но холст – штатный FMX (`GlobalUseSkia := False`). `sk4d.dll` рядом с exe по-прежнему нужен. Полный список ключей – [ARCHITECTURE.md](ARCHITECTURE.md) §10.
-* **Откат на этапе сборки**: уберите `SKIA` из `DCC_Define` и блоки `FMX.Skia` / `GlobalUseSkia` в `MTN2.dpr`. Юниты с `{$IFDEF SKIA}` вернутся на ветки без Skia-оптимизаций; canvas – штатный FMX.
+To improve the sharpness of monospaced fonts on HiDPI and to provide subpixel smoothing, optional support for **Skia4Delphi** is provided, with an easy fallback:
+* **Enabling Skia**: `MTN2.dproj` must have a `DCC_Define` with `SKIA`; `MTN2.dpr` must have `uses FMX.Skia` and `GlobalUseSkia := not NoSkiaRequested` under `{$IFDEF SKIA}`, before `Application.Initialize`. An exe built this way draws through Skia by default.
+* **Running without Skia**: `MTN2.exe --no-skia` keeps the same build but uses the standard FMX canvas (`GlobalUseSkia := False`). `sk4d.dll` is still required next to the exe. The full list of switches is in [ARCHITECTURE.md](ARCHITECTURE.md) §10.
+* **Build-time fallback**: remove `SKIA` from `DCC_Define` and the `FMX.Skia` / `GlobalUseSkia` blocks in `MTN2.dpr`. Units with `{$IFDEF SKIA}` switch to the branches without Skia optimizations; the canvas is the standard FMX one.
 
-**Что даёт Skia в MTN2 сейчас (поверх общего FMX→Skia canvas):**
+**What Skia provides in MTN2 (on top of the general FMX→Skia canvas):**
 
-1. **Текст без растяжения** – глифы центрируются в snapped-ячейке (natural advance), без `Scale` matrix, которая размывала AA. Кэш глифов (`TGlyphCache.GetGlyph`, `uTerminalRenderer.pas`) растеризует каждый символ в **физических** пикселях (`BitmapScale` = масштаб сцены, размер = клетка × масштаб). Поэтому на кадр он копируется 1:1 при любом масштабе Windows (125%, 150%, 200%). Раньше битмап был логического размера и растягивался ближайшим соседом: при дробном масштабе штрихи получались неровными и «мыльными». Смена масштаба (перенос окна на монитор с другим DPI) сбрасывает кэш.
-   **Вертикальная посадка** – `CalculateCellMetrics` после расчёта высоты строки вызывает `MeasureInk`: рисует пробные символы (`W Å É g j p q y [ ] | _ ( ) { } Ё Й Д Ц Щ ф у`) тем же вызовом `FillText`, что и кэш, и находит реальные верх и низ «чернил». `FitGlyphLine` оставляет высоту клетки равной округлённой высоте строки и увеличивает её, только если «чернила» не помещаются (Ubuntu Mono 12/18/20: хвосты `g j p q y [ ] | _` раньше теряли нижний ряд пикселей). Верх строки внутри клетки (`GlyphTop`) ставится на целый физический пиксель: база по центру, затем сдвиг, чтобы «чернила» уместились. Глиф рисуется с `TTextAlign.Leading` от `GlyphTop` в прямоугольник заметно выше клетки: `FillText` не рисует строку, которая не влезает в прямоугольник, поэтому обрезает только край битмапа. Результат замера кэшируется по шрифту, кеглю и масштабу. Опция «Межстрочный интервал» (`TTerminalRenderer.SetLineSpacing`, `session.json` → `lineSpacing`, по умолчанию выключена) передаёт в `FitGlyphLine` добавку `cLineSpacingEm` = 0.15 кегля: клетка выше, строка по центру. Сами шрифты сообщают нулевой `lineGap` (Skia, GDI и DirectWrite согласны), а 0.15 – это запас Windows Terminal (Cascadia Mono 11 пт: 17 → 19 px). Почему MTN2 выглядит иначе, чем Far, и когда они совпадают, – в справке, `help/*/settings.md`, раздел «Шрифт и межстрочный интервал». Кегль внутри программы и в `session.json` (`fontSize`) – пиксели FMX при 100%; диалог «Шрифт / экран» показывает его в пунктах (`cFontPoints` в `uDisplaySettings`, 1 пт = 96/72 px, перевод – `DisplayFontSizeAt` / `IndexOfDisplayFontSize`). «ОК» без изменения кегля сохраняет точное значение, даже если его нет в списке. Известное ограничение: под `--no-skia` при 125% у части шрифтов верхний знак Й/Ё/Å может терять 1 px.
-2. **Шрифт** – при наличии `CascadiaMono.ttf` выбирается Cascadia Mono, иначе Consolas.
-3. **Тени диалогов** – затемнение исходных Fg/Bg ячеек (сохраняется содержимое под тенью), а не плоская серая заливка.
-4. **Modal dim** – перед рамкой диалога затемняется весь грид вне bounds (FAR-стиль).
-   Тени и затемнение подчиняются `uThemeDrawing.GShadowStyle` (`TShadowStyle` в `uDisplaySettings`: классические / мягкие / нет; диалог «Шрифт / экран», `session.json` → `shadowStyle`). Для `DrawDialogShadow` и `DrawButtonShadow` сила берётся из `ShadowCoverFor` (`cShadowCover` / 80 / 0), для `DimGridExcept` – из `DimCoverFor` (как есть / половина / 0). Все тени диалогов, кнопок и уведомлений проходят через эти функции, темы свои тени не рисуют.
-5. **Shell-иконки в панелях** – blit `TBitmap` с alpha в ячейки (`TCharCell.IconId`); HighSpeed=False, чтобы прозрачный фон (`parent_up.png`) просвечивал цвет строки.
+1. **Text without stretching** – glyphs are centred in a snapped cell (natural advance), with no `Scale` matrix, which would blur the anti-aliasing. The glyph cache (`TGlyphCache.GetGlyph`, `uTerminalRenderer.pas`) rasterizes each character in **physical** pixels (`BitmapScale` = scene scale, size = cell × scale). It is therefore copied to the frame 1:1 at any Windows scale (125%, 150%, 200%). The bitmap is not stretched with nearest-neighbour sampling, so strokes stay even and crisp at fractional scales. A scale change (moving the window to a monitor with a different DPI) resets the cache.
+   **Vertical fit** – after computing the row height, `CalculateCellMetrics` calls `MeasureInk`: it draws test characters (`W Å É g j p q y [ ] | _ ( ) { } Ё Й Д Ц Щ ф у`) with the same `FillText` call the cache uses and finds the real top and bottom of the "ink". `FitGlyphLine` keeps the cell height equal to the rounded row height and increases it only if the "ink" does not fit (so the tails of `g j p q y [ ] | _` keep their bottom pixel row in Ubuntu Mono 12/18/20). The top of the line inside the cell (`GlyphTop`) is set to a whole physical pixel: the base is centred, then shifted so that the "ink" fits. The glyph is drawn with `TTextAlign.Leading` from `GlyphTop` into a rectangle clearly taller than the cell: `FillText` does not draw a string that does not fit into the rectangle, so only the edge of the bitmap is clipped. The measurement result is cached by font, size and scale. The "Line spacing" option (`TTerminalRenderer.SetLineSpacing`, `session.json` → `lineSpacing`, off by default) passes `FitGlyphLine` an addition `cLineSpacingEm` = 0.15 of the font size: the cell is taller and the line is centred. The fonts themselves report a zero `lineGap` (Skia, GDI and DirectWrite agree), and 0.15 is the Windows Terminal allowance (Cascadia Mono 11 pt: 17 → 19 px). Why MTN2 looks different from Far, and when they match, is explained in the help, `help/*/settings.md`, section "Font and line spacing". The font size inside the program and in `session.json` (`fontSize`) is in FMX pixels at 100%; the "Font / Display" dialog shows it in points (`cFontPoints` in `uDisplaySettings`, 1 pt = 96/72 px, conversion by `DisplayFontSizeAt` / `IndexOfDisplayFontSize`). "OK" without changing the size keeps the exact value even if it is not in the list. Known limitation: under `--no-skia` at 125% the top mark of Й/Ё/Å can lose 1 px in some fonts.
+2. **Font** – Cascadia Mono is chosen when `CascadiaMono.ttf` is available, otherwise Consolas.
+3. **Dialog shadows** – darkening of the underlying Fg/Bg cells (the content under the shadow is preserved) instead of a flat grey fill.
+4. **Modal dim** – before the dialog frame is drawn, the whole grid outside the bounds is darkened (FAR style).
+   Shadows and dimming obey `uThemeDrawing.GShadowStyle` (`TShadowStyle` in `uDisplaySettings`: classic / soft / none; the "Font / Display" dialog, `session.json` → `shadowStyle`). For `DrawDialogShadow` and `DrawButtonShadow` the strength comes from `ShadowCoverFor` (`cShadowCover` / 80 / 0), for `DimGridExcept` from `DimCoverFor` (as is / half / 0). All dialog, button and notification shadows go through these functions; themes do not draw their own shadows.
+5. **Shell icons in panels** – a `TBitmap` blit with alpha into cells (`TCharCell.IconId`); HighSpeed=False, so that the transparent background (`parent_up.png`) lets the row colour show through.
 
-Архитектура Host/Theme/cell-grid сохраняется: иконки – гибрид (cell + bitmap overlay в рендерере). Полноценный Quick View / превью медиа – «Quick View, Hex и потоковый Viewer»; отдельный Skia-only paint всего грида – только если профилирование это оправдает.
+The Host/Theme/cell-grid architecture is preserved: icons are a hybrid (cell + bitmap overlay in the renderer). Full Quick View / media preview is covered under "Quick View, Hex and streaming Viewer"; a separate Skia-only paint of the whole grid would be done only if profiling justifies it.
 
-#### 4.2. Столбец shell-иконок в панелях
+#### 4.2. Shell icon column in panels
 
-Первый столбец списка файлов – растровые иконки Windows (не emoji):
+The first column of the file list holds Windows raster icons (not emoji):
 
-| Элемент | Источник |
+| Item | Source |
 | --- | --- |
-| Обычные файлы | `SHGetFileInfo` по расширению (`*.ext` + `SHGFI_USEFILEATTRIBUTES`) |
-| `.exe` / `.dll` / `.ico` / `.lnk` / … | сначала иконка из файла по URI; иначе – по расширению |
-| Каталог | системная folder-icon |
-| `..` (parent) | `Assets/parent_up.png` (RCDATA `ICON_PARENT_UP`; зелёная стрелка, прозрачный фон) |
+| Regular files | `SHGetFileInfo` by extension (`*.ext` + `SHGFI_USEFILEATTRIBUTES`) |
+| `.exe` / `.dll` / `.ico` / `.lnk` / … | first the icon from the file by URI; otherwise by extension |
+| Directory | the system folder icon |
+| `..` (parent) | `Assets/parent_up.png` (RCDATA `ICON_PARENT_UP`; a green arrow, transparent background) |
 
-**Загрузка – фоновая («Live reload открытых файлов + фоновая загрузка shell-иконок»).** `SHGetFileInfo`/`ExtractIconEx` уходят на выделенный worker-поток (`TShellIconWorker`), не на UI: `ShellIconIdForRow` при промахе кэша лишь ставит задачу в очередь и сразу возвращает `0` (fallback-глиф остаётся на месте), готовая иконка приходит в кэш через `TThread.Queue` и триггерит `NotifyChanged` (реальный repaint формы). Worker выкачивает оконные сообщения (`MsgWaitForMultipleObjects` + `PeekMessage`/`DispatchMessage`) – без этого COM-маршалинг некоторых shell-расширений (иконки-оверлеи облачных клиентов, антивирусов) мог бы подвесить поток навсегда. `ShellIconIdForRowWait` – синхронный резолв в обход очереди, только для smoke-тестов без message loop.
+**Loading is done in the background ("Live reload of open files + background loading of shell icons").** `SHGetFileInfo`/`ExtractIconEx` run on a dedicated worker thread (`TShellIconWorker`), not on the UI thread: on a cache miss `ShellIconIdForRow` only queues a task and immediately returns `0` (the fallback glyph stays in place); the finished icon arrives in the cache through `TThread.Queue` and triggers `NotifyChanged` (a real repaint of the form). The worker pumps window messages (`MsgWaitForMultipleObjects` + `PeekMessage`/`DispatchMessage`) – without this, COM marshalling of some shell extensions (overlay icons of cloud clients and antivirus software) could hang the thread forever. `ShellIconIdForRowWait` is a synchronous resolve that bypasses the queue, for smoke tests without a message loop only.
 
-**Юниты:** `uShellIcons.pas` (кэш id→bitmap + фоновый worker), `uPanelColumns` (`PanelIconReserve` = 2 ячейки иконки + 1 gap), `TTerminalRenderer` (blit по `IconId`), `TDualPanelWindow.DrawList`.
+**Units:** `uShellIcons.pas` (the id→bitmap cache + the background worker), `uPanelColumns` (`PanelIconReserve` = 2 icon cells + 1 gap), `TTerminalRenderer` (blit by `IconId`), `TDualPanelWindow.DrawList`.
 
-**Smoke:** `src/tests/panels/TestPanelColumns.pas`, `src/tests/panels/TestShellIcons.pas` (покрывает и синхронный, и асинхронный путь резолва). При сборке `build.ps1` копирует `parent_up.png` в `bin/Assets/` (file-fallback рядом с exe).
+**Smoke tests:** `src/tests/panels/TestPanelColumns.pas`, `src/tests/panels/TestShellIcons.pas` (covers both the synchronous and the asynchronous resolve path). During the build `build.ps1` copies `parent_up.png` to `bin/Assets/` (a file fallback next to the exe).
 
 ```pascal
 type
@@ -306,7 +308,7 @@ type
     FRows: Integer;
     FFontName: string;
     FFontSize: Single;
-    FZoom: Single;                 // Масштаб (1.0 = 100%)
+    FZoom: Single;                 // Scale (1.0 = 100%)
     FCellWidth: Single;
     FCellHeight: Single;
     FNeedRebuildBuffer: Boolean;
@@ -325,39 +327,39 @@ type
   end;
 ```
 
-- **Механика отрисовки**:
-  1. `Resize` / `SetZoom` → `CalculateCellMetrics` → `RecalcGridDimensions` (`Cols = Trunc(ClientWidth / CellWidth)`, аналогично для `Rows`) → пересоздание `FGrid` и `Resize` окон композитора.
-  2. `RenderGridToBitmap` выполняется только при изменении содержимого или метрик (`FNeedRebuildBuffer`); ping-pong front/back frame.
-  3. `Draw` в `OnPaint` копирует готовый front frame через `ACanvas.DrawBitmap`.
-  4. Символы – `FillText` (под Skia без stretch); box-drawing – вектор; `IconId` – alpha-blit shell-иконки.
-  5. WordWrap у текста ячеек отключён.
+- **Drawing mechanics**:
+  1. `Resize` / `SetZoom` → `CalculateCellMetrics` → `RecalcGridDimensions` (`Cols = Trunc(ClientWidth / CellWidth)`, likewise for `Rows`) → re-creation of `FGrid` and `Resize` of the compositor windows.
+  2. `RenderGridToBitmap` runs only when the content or the metrics change (`FNeedRebuildBuffer`); front/back frame ping-pong.
+  3. `Draw` in `OnPaint` copies the finished front frame through `ACanvas.DrawBitmap`.
+  4. Characters are drawn with `FillText` (without stretch under Skia); box-drawing is vector; `IconId` is an alpha blit of a shell icon.
+  5. WordWrap is disabled for cell text.
 
 ---
 
-### 5. Асинхронные операции и Виртуальная ФС (VFS)
+### 5. Asynchronous operations and the Virtual File System (VFS)
 
-#### 5.1. Контракт Async VFS и схемы URI
+#### 5.1. The Async VFS contract and URI schemes
 
-UI-поток **не вызывает** блокирующие методы провайдера. Все операции выполняются в worker-потоке Jobs Manager и завершаются callback'ом / событием job.
+The UI thread **does not call** blocking provider methods. All operations run on a Jobs Manager worker thread and finish with a callback / job event.
 
-**Поддерживаемые схемы URI в ядре (`v0.2.x`):**
+**URI schemes supported in the core (`v0.2.x`):**
 
-- `file://` – локальная файловая система (`uFileVfs.pas`).
-- `sys://folders` – системные виртуальные каталоги Windows (Рабочий стол, Документы, Загрузки, Изображения, Музыка, Видео, Профиль, System32, Program Files и др.) (`uSysFoldersVfs.pas`). Элементы сопоставляются с реальными целевыми путями `TargetURI`.
-- `zip://` и `!/` – прозрачные ZIP-архивы (`uZipVfs.pas`) с кэшированием структуры через `uZipArchiveCache.pas`.
-- `find://` – виртуальные панели результатов поиска (`uFindVfs.pas`).
-- `recycle://` – Корзина Windows (`uRecycleBinVfs.pas`, через `IShellFolder2`, канонический корень `recycle:///`). В основном read-only (`ListDirectoryAsync`/`ExistsAsync`); `DeleteAsync` – настоящая безвозвратная очистка (purge, не повторная отправка в Корзину); `MoveAsync`/`CopyAsync`/`WriteTextAsync` → `vecNotSupported` (для возврата файла используйте `RestoreRecycleBinItem`, Ctrl+Alt+R).
-- `ws://` – панель ссылок на файлы и каталоги (`uWorkspaceVfs.pas`, корень `ws:///`). Не копии: F5 записывает reference, F8 снимает его (Unlink). Виртуальные группы – F7. Change Drive **4**. Именованные снимки живого набора – `workspaces.json` + **Commands → Workspaces...** (`Ctrl+Shift+D`); см. `src/plugins/mtn.ws/resource/en/help/readme.md`. Схема в ядре; WASM `mtn.ws` только регистрирует меню.
+- `file://` – the local file system (`uFileVfs.pas`).
+- `sys://folders` – Windows system virtual folders (Desktop, Documents, Downloads, Pictures, Music, Videos, Profile, System32, Program Files, etc.) (`uSysFoldersVfs.pas`). Items are mapped to real `TargetURI` target paths.
+- `zip://` and `!/` – transparent ZIP archives (`uZipVfs.pas`) with structure caching through `uZipArchiveCache.pas`.
+- `find://` – virtual search result panels (`uFindVfs.pas`).
+- `recycle://` – the Windows Recycle Bin (`uRecycleBinVfs.pas`, through `IShellFolder2`, canonical root `recycle:///`). Mostly read-only (`ListDirectoryAsync`/`ExistsAsync`); `DeleteAsync` is a real permanent purge (not another move to the Recycle Bin); `MoveAsync`/`CopyAsync`/`WriteTextAsync` → `vecNotSupported` (to restore a file use `RestoreRecycleBinItem`, Ctrl+Alt+R).
+- `ws://` – a panel of links to files and directories (`uWorkspaceVfs.pas`, root `ws:///`). Not copies: F5 records a reference, F8 removes it (Unlink). Virtual groups – F7. Change Drive **4**. Named snapshots of the live set are `workspaces.json` + **Commands → Workspaces...** (`Ctrl+Shift+D`); see `src/plugins/mtn.ws/resource/en/help/readme.md`. The scheme lives in the core; the WASM `mtn.ws` only registers a menu.
 
-**Схемы плагинов (появляются, только если модуль загружен):** `7z://` (`mtn.7z`), `tmp:///` (Temporary, Change Drive **3**). WASM-хост отклоняет `register_vfs_scheme` для ядерных `file` / `recycle` / `sys` / `find` / `ws`, чтобы пустая панель не падала в file VFS с «Invalid path».
+**Plugin schemes (present only if the module is loaded):** `7z://` (`mtn.7z`), `tmp:///` (Temporary, Change Drive **3**). The WASM host rejects `register_vfs_scheme` for the core `file` / `recycle` / `sys` / `find` / `ws` schemes, so that an empty panel does not fall into the file VFS with "Invalid path".
 
-**Централизованный резолвер конфигурации (`uConfigLocation.pas`):**
+**Centralized configuration resolver (`uConfigLocation.pas`):**
 
-Разрешает пути к файлам настроек (`keymap.json`, `session.json`, `history.json`, `workspaces.json`, `associations.json`, `usermenu.json`):
-- **Portable режим**: при наличии файла `portable.dat` в директории приложения конфиг читается/пишется рядом с `.exe`. Переключение режимов – «Настройки → Расположение настроек...» (`uConfigMode`): проверка прав и конфликтов, копирование с побайтовой сверкой, смена `portable.dat` и удаление оригиналов; при сбое до смены маркера копии убираются, заменённые файлы возвращаются (`*.before-switch` хранит заменённое).
-- **Стандартный режим**: по умолчанию используется `%APPDATA%\MTN2\`.
+Resolves paths to the settings files (`keymap.json`, `session.json`, `history.json`, `workspaces.json`, `associations.json`, `usermenu.json`):
+- **Portable mode**: if a `portable.dat` file exists in the application directory, the configuration is read/written next to the `.exe`. Modes are switched with "Options → Settings location..." (`uConfigMode`): permission and conflict checks, copying with a byte-by-byte comparison, changing `portable.dat` and deleting the originals; if the switch fails before the marker is changed, the copies are removed and the replaced files are returned (`*.before-switch` keeps what was replaced).
+- **Standard mode**: `%APPDATA%\MTN2\` is used by default.
 
-**Дефолтные JSON-ассеты – встроенные ресурсы, не файлы рядом с exe.** Диалоги (`DIALOG_*`), меню (`MENU_MAIN`) и дефолтный профиль хоткеев (`KEYMAP_DEFAULT`) компилируются как RCDATA в `MTN2.rc`/`MTN2Resource.rc` из `src/dialogs/*.json`, `src/config/menu.json`, `src/keymap.json` соответственно и грузятся из ресурсов exe при старте (`uDialogResources.pas`, `uTopMenuBar.LoadMenuFromResource`, `uKeymap.LoadDefaultKeymapProfile`) – портативный `.exe` не зависит от соседних файлов. Только `keymap.json` дополнительно поддерживает **пользовательский override**: если в конфиг-директории (`GetConfigFilePath`) лежит собственный `keymap.json`, он подмешивается поверх встроенного дефолта через `MergeKeymapJson` – заменяются только явно перечисленные там хоткеи, остальное остаётся от ресурса. При изменении `menu.json`/`keymap.json`/`dialogs/*.json` в исходниках нужно пересобрать `MTN2.dres` (`brcc32 MTN2Resource.rc`, см. `src/build.ps1` или Pre-build в `MTN2.dproj`), иначе изменения не попадут в скомпилированный ресурс. Канонический вывод – `bin\win64\MTN2.exe` (`DCC_ExeOutput=..\bin`); `src\Win64\Debug\MTN2.exe` может остаться со старым `.dres` (типичный симптом: `Dialog resource "DIALOG_WORKSPACES" not found`).
+**Default JSON assets are embedded resources, not files next to the exe.** Dialogs (`DIALOG_*`), the menu (`MENU_MAIN`) and the default hotkey profile (`KEYMAP_DEFAULT`) are compiled as RCDATA into `MTN2.rc`/`MTN2Resource.rc` from `src/dialogs/*.json`, `src/config/menu.json` and `src/keymap.json` respectively, and are loaded from the exe resources at startup (`uDialogResources.pas`, `uTopMenuBar.LoadMenuFromResource`, `uKeymap.LoadDefaultKeymapProfile`) – a portable `.exe` does not depend on neighbouring files. Only `keymap.json` additionally supports a **user override**: if the config directory (`GetConfigFilePath`) contains its own `keymap.json`, it is merged over the built-in default through `MergeKeymapJson` – only the hotkeys listed explicitly there are replaced, the rest comes from the resource. When `menu.json`/`keymap.json`/`dialogs/*.json` change in the sources, `MTN2.dres` must be rebuilt (`brcc32 MTN2Resource.rc`, see `src/build.ps1` or the Pre-build step in `MTN2.dproj`), otherwise the changes do not reach the compiled resource. The canonical output is `bin\win64\MTN2.exe` (`DCC_ExeOutput=..\bin`); `src\Win64\Debug\MTN2.exe` can keep an outdated `.dres` (the typical symptom: `Dialog resource "DIALOG_WORKSPACES" not found`).
 
 ```pascal
 type
@@ -406,7 +408,7 @@ type
     procedure GetStreamAsync(const AURI: string; AMode: Word; ACancel: IJobCancelToken; AOnDone: TVfsStreamCallback);
   end;
 
-  // Реестр VFS-провайдеров (file://, sys://folders, sftp://, …)
+  // Registry of VFS providers (file://, sys://folders, sftp://, …)
   TVFSRegistry = class
   public
     class procedure RegisterProvider(const AScheme: string; const AProvider: IVirtualFileSystem);
@@ -414,34 +416,34 @@ type
   end;
 ```
 
-Правила:
-- Callback'и маршалятся в UI-поток через `TThread.Queue` / очередь событий Jobs.
-- Провайдер обязан проверять `ACancel.IsCancellationRequested` в циклах чтения/записи.
-- При отмене: `AError.Code = vecCancelled`.
-- Владение `TStream` из `GetStreamAsync` переходит вызывающему; закрытие – в `finally` на стороне job.
+Rules:
+- Callbacks are marshalled to the UI thread through `TThread.Queue` / the Jobs event queue.
+- A provider must check `ACancel.IsCancellationRequested` in read/write loops.
+- On cancellation: `AError.Code = vecCancelled`.
+- Ownership of the `TStream` from `GetStreamAsync` passes to the caller; it is closed in a `finally` on the job side.
 
-#### 5.2. Прозрачные архивы (Nested VFS) и кэширование
+#### 5.2. Transparent archives (Nested VFS) and caching
 
-Архивы (ZIP, TAR, 7Z, …) монтируются как папки. Каноническая грамматика цепочки – сегменты `!/`:
+Archives (ZIP, TAR, 7Z, …) are mounted as folders. The canonical chain grammar uses `!/` segments:
 
 ```text
 sftp://server.example/home/user/outer.zip!/inner.tar!/docs/readme.txt
 file:///D:/data/bundle.zip!/nested.zip!/a.txt
 ```
 
-1. Часть до первого `!/` – базовый URI (`file`, `sys`, `sftp`, …).
-2. Каждый следующий сегмент – путь внутри архивного слоя; тип определяется по имени/сигнатуре.
-3. `TVFSRegistry` / Plugin Manager строит стек провайдеров outer → inner.
-4. Запись `zip://host/path/archive.zip/entry` допустима только для **однослойного** mount; для вложенности обязательна форма с `!/`.
-5. Кэширование оглавления архивов (`uZipArchiveCache.pas`) устраняет повторный разбор структуры при навигации по вложенным папкам.
+1. The part before the first `!/` is the base URI (`file`, `sys`, `sftp`, …).
+2. Each following segment is a path inside an archive layer; the type is determined by name/signature.
+3. `TVFSRegistry` / Plugin Manager builds a provider stack outer → inner.
+4. The form `zip://host/path/archive.zip/entry` is allowed only for a **single-layer** mount; for nesting the `!/` form is mandatory.
+5. Caching of archive tables of contents (`uZipArchiveCache.pas`) avoids re-parsing the structure when navigating nested folders.
 
-**Поставка провайдеров:** ZIP в ядре («Прозрачные архивы»); прочие форматы и контейнеры – **родные** VFS-плагины MTN2; затем опционально мосты Far / Total Commander (WCX). Порядок – §6.0.
+**Provider delivery:** ZIP in the core ("Transparent archives"); other formats and containers are **native** MTN2 VFS plugins; then, optionally, Far / Total Commander (WCX) bridges. Order: §6.0.
 
-#### 5.3. Фоновые задачи (Background Jobs)
+#### 5.3. Background Jobs
 
-Долгие операции (копирование, удаление, pack/unpack) оформляются как job с progress, result и cancel. I/O идёт в worker-потоке; UI держит job только пока он **foreground** или в ask. Кнопка **Background** в Copy/Delete отпускает панели (как в Total Commander). Несколько job: локальный `file://` может идти параллельно; один и тот же архив, тот же `sftp://` authority или пересекающиеся URI – в очередь. Список job – Ctrl+Shift+J / клик по статус-строке (`kaJobList`). Поиск по-прежнему на своём контроллере, не в этом списке.
+Long operations (copy, delete, pack/unpack) are modelled as a job with progress, result and cancel. I/O runs on a worker thread; the UI holds a job only while it is **foreground** or in the ask state. The **Background** button in Copy/Delete releases the panels (as in Total Commander). With several jobs, a local `file://` job can run in parallel; the same archive, the same `sftp://` authority or overlapping URIs are queued. The job list is Ctrl+Shift+J / a click on the status line (`kaJobList`). Search stays on its own controller and is not in this list.
 
-**Остановка пользователем.** Любая отмена, которую инициирует пользователь (Esc, «Отмена» в окне прогресса, «Отмена» и «Отменить все» в списке заданий, Esc во время поиска), идёт через один вопрос – `hdkStopConfirm` (`stopconfirm.json`, текст вопроса задаёт вызывающий код через `TDualPanelWindow.RequestStopConfirm`). Кнопка «Продолжить» по умолчанию и привязана к Esc: она вызывает обработчик отказа и возвращает прежний экран (окно прогресса, список заданий). Кнопка «Прервать» вызывает `RequestCancel`; для задания окно прогресса при этом не возвращается: задание переводится в фон (`BackgroundJob`) и пока воркер не заметил токен отмены, плашка не показывается (`JobHasChip`), хотя запись остаётся в списке заданий. Контроллеры поиска и задания сообщают об Esc событием `OnStopRequest`; пока оно не назначено, они отменяют сами (так проще тестировать).
+**Stopping by the user.** Any cancellation initiated by the user (Esc, "Cancel" in the progress window, "Cancel" and "Cancel all" in the job list, Esc during search) goes through one question – `hdkStopConfirm` (`stopconfirm.json`; the question text is supplied by the calling code through `TDualPanelWindow.RequestStopConfirm`). The "Continue" button is the default and is bound to Esc: it calls the rejection handler and returns to the previous screen (the progress window, the job list). The "Stop" button calls `RequestCancel`; for a job the progress window does not come back: the job is sent to the background (`BackgroundJob`), and until the worker notices the cancellation token no chip is shown (`JobHasChip`), although the entry stays in the job list. The search and job controllers report Esc with the `OnStopRequest` event; while it is unassigned they cancel on their own (which is easier to test).
 
 ```pascal
 uses
@@ -470,8 +472,8 @@ begin
       SourceStream := nil;
       DestStream := nil;
       try
-        // Получение потоков – внутри worker (через sync-обёртку провайдера
-        // либо вложенные async-completion; UI не участвует)
+        // Streams are obtained inside the worker (through the provider's sync
+        // wrapper or nested async completions; the UI is not involved)
         SourceStream := VFSOpenStreamBlocking(ASourceURI, fmOpenRead, ACancel, Error);
         if Error.Code <> vecOk then
         begin
@@ -502,7 +504,7 @@ begin
           DestStream.WriteBuffer(Buffer, ReadBytes);
           Inc(TotalCopied, ReadBytes);
 
-          // Снимки для замыкания: не захватывать TotalCopied напрямую из цикла
+          // Snapshots for the closure: do not capture TotalCopied from the loop directly
           CopiedSnapshot := TotalCopied;
           TotalSnapshot := TotalSize;
           TThread.Queue(nil,
@@ -538,48 +540,48 @@ begin
 end;
 ```
 
-#### 5.4. Командная строка и эмуляция терминала (PTY)
+#### 5.4. Command line and terminal emulation (PTY)
 
-Поскольку MTN2 – графическое приложение (FMX), запуск консольных программ идёт через process bridge во внутренний буфер. Детали моделей и эволюции – в [ARCHITECTURE.md](ARCHITECTURE.md) §8.
+Since MTN2 is a graphical (FMX) application, console programs are launched through a process bridge into an internal buffer. Details of the models are in [ARCHITECTURE.md](ARCHITECTURE.md) §8.
 
-##### Текущее состояние (`v0.2.8`, после дефект-фикс прохода `31f903c` "Fix console")
+##### Current state (`v0.2.8`)
 
-1. **Одна Command Line** – только у `TDualPanelWindow` (общая для панелей и консольного режима).
-2. **Не путь → команда**: Host включает `ConsoleMode` у Dual Panel (панели не рисуются, cmdline/F-keys/status остаются), показывает MDI-`TConsoleWindow` над cmdline; **persistent** shell через настоящий **ConPTY** (`StartShell` + `WriteInput`, см. п.9); one-shot команда – тот же `LaunchProcess`/ConPTY-путь без keep-stdin.
-3. `Ctrl+O` **(FAR-style)**: Console MDI над общей cmdline; нижняя линия рамки Console – граница над cmdline. Обратно – обычные панели; shell не убивается.
-4. **Буфер**: `TConsoleBuffer` + `TANSIParser` – построчный cell-scrollback (≥10 000) с SGR (16/256/**TrueColor**), EL/ED, OSC strip (с лимитом длины `FOscLen`/`cMaxOscLen` и принудительным `ResetState` при превышении – не виснет на оборванном OSC), tab-раскрытие до 8-колоночного табстопа, lone-CR overwrite; `TConsoleWindow` рисует `TCharCell` Fg/Bg. **Плюс** alternate screen (DECSET/DECRST `1049`/`47`) поверх отдельного 2D `TAltScreenGrid`/`TPrimaryScreenGrid` (`uAltScreenGrid.pas`, `uPrimaryScreenGrid.pas`) с CUP/CUU/CUD/CUF/CUB (`MoveAbs`/`MoveRel`) и save/restore cursor – ядро «Alternate Screen Buffer + интерактивные TUI», детали ниже. Выделение мышью / Shift+стрелки, Ctrl+A, Ctrl+C.
-5. **Cmdline UX (`v0.2.4`)**: Tab-complete по именам активной панели; Up/Down – история (`history.json`); Ctrl+Enter / Ctrl+Shift+Enter – имя / путь.
+1. **A single Command Line** – only in `TDualPanelWindow` (shared by the panels and the console mode).
+2. **Not a path → a command**: the Host turns on `ConsoleMode` of the Dual Panel (the panels are not drawn, the cmdline/F-keys/status stay), shows an MDI `TConsoleWindow` above the cmdline; a **persistent** shell runs through a real **ConPTY** (`StartShell` + `WriteInput`, see item 9); a one-shot command takes the same `LaunchProcess`/ConPTY path without keeping stdin.
+3. `Ctrl+O` **(FAR style)**: the Console MDI above the shared cmdline; the bottom line of the Console frame is the border above the cmdline. Back – the normal panels; the shell is not killed.
+4. **Buffer**: `TConsoleBuffer` + `TANSIParser` – a line-based cell scrollback (≥10 000) with SGR (16/256/**TrueColor**), EL/ED, OSC strip (with a length limit `FOscLen`/`cMaxOscLen` and a forced `ResetState` when it is exceeded, so it does not hang on a truncated OSC), tab expansion to an 8-column tab stop, lone-CR overwrite; `TConsoleWindow` draws `TCharCell` Fg/Bg. **Plus** the alternate screen (DECSET/DECRST `1049`/`47`) on top of a separate 2D `TAltScreenGrid`/`TPrimaryScreenGrid` (`uAltScreenGrid.pas`, `uPrimaryScreenGrid.pas`) with CUP/CUU/CUD/CUF/CUB (`MoveAbs`/`MoveRel`) and save/restore cursor – the core of "Alternate Screen Buffer + interactive TUI", details below. Mouse selection / Shift+arrows, Ctrl+A, Ctrl+C.
+5. **Cmdline UX (`v0.2.4`)**: Tab completion by the names in the active panel; Up/Down – history (`history.json`); Ctrl+Enter / Ctrl+Shift+Enter – name / path.
 6. **F5 robocopy-lite (`v0.2.5`)**: Only newer / Retry / Exclude mask / Preserve timestamps / Follow symlinks.
-7. **Directory Sync (`v0.2.5` / `v0.3.6` / `v0.3.5`)**: one-way Active→Inactive или two-way ⇄ (`Ctrl+Alt+S`); сравнение по дате или по содержимому; dry-run / Synchronize через copy job с `DestURIs`; конфликты two-way (оба изменились с прошлого sync) не копируются.
-8. **Terminal Workspaces (`v0.2.7`, доработано после закрытия)**: `TTerminalWorkspaceWindow` с профилями (CMD/PS/pwsh/WSL), raw input, `Ctrl+Shift+N`. **Больше не плавающее MDI-окно** – живёт как Dual Panel Tab (`wkTerminal` в `TWorkspaceKind`, владеет `TDualPanelWindow.FTerminals`), наравне с `wkPanels`/`wkDocument`; открывается/закрывается/рисуется тем же путём, что и Viewer/Editor. **Эфемерна** – как `wkDocument`, не сохраняется и не восстанавливается в `session.json` (старое поле `terminals: [{profile,cwd}]` убрано вместе с всей связанной save/restore-логикой в `uMainForm.pas`/`uSession.pas`). Высота вкладки – на 2 строки меньше полной, снизу видны общие F-key bar и status line Dual Panel (контекст `fbcTerminal`: `Esc:Close`, `Ctrl+A/C/V`; статус – профиль + Running/Not running) вместо собственной строки статуса терминала (убрана). `F10` в Panel Console (`Ctrl+O`) больше не закрывает консоль (только `Esc`/`Ctrl+O`). Process bridge теперь настоящий ConPTY (см. п.9), не pipes. **Enter-последовательность профиль-зависима** (`ProfileReturnSeq`, `uShellProfiles.pas`): cmd/PS/pwsh – CRLF (piped stdin без CRLF не сабмитит строку); WSL – одиночный LF (CRLF под Linux `icrnl` доходит как два Enter подряд, второй пустой перерисовывает промпт – было видно как дублирование промпта после каждой команды в WSL-консоли). **Исторически** (под pipes, до перехода на ConPTY в `31f903c`) PowerShell/pwsh виснул навсегда на любой ошибке команды, не лечилось `try/catch`/`$ErrorActionPreference='Stop'`; приложенческая митигация – `ProfileInitCommand` (`$ErrorActionPreference='SilentlyContinue'` при старте профиля) + `PsPipeSafeCommand`/`IsSimplePsExpression` (безопасно оборачивает простые команды в `| % {"$_"}`, чтобы результат обошёл движок форматирования) – **оставлена в коде как defense-in-depth**; сама причина (pipes без реального console-handle) устранена переходом на `CreatePseudoConsole`: зависаний PowerShell/pwsh на ошибках команд нет.
-9. **Process bridge**: `uConPty.pas` / `TConPtySession` – настоящий **ConPTY** (`CreatePseudoConsole`/`ResizePseudoConsole`/`ClosePseudoConsole`), безусловно для `Start`/`StartShell` (нет отдельного pipe-only fallback пути); `Resize` реально меняет размер псевдоконсоли. `Terminate` – упорядоченное закрытие: close stdin → `TerminateProcess` → `ClosePseudoConsole` → join reader-потока с таймаутом 2 сек (не блокирует UI навсегда) → закрытие хендлов; per-profile кодировка ввода/вывода (`ProfileOutputEncoding`, cmd – OEM/CP866, PS/pwsh/WSL – UTF-8) с pending multi-byte хвостом (`FDecodeTail`) между чанками `ReadFile`.
-10. **Синхронизация cwd**: смена локального URI активной панели → тихий `cd /d` в живой shell (`OnShellCwdSync`), **по умолчанию выключено** (`session.json` → `autoSyncConsoleCwd`, default `false` – консоль и активная панель держат каждая свой каталог). Ручная синхронизация в обе стороны по `Ctrl+Shift+O` (`kaSyncConsoleDir`, keymap.json): при активной Dual Panel – каталог активной панели → консоль (`TDualPanelWindow.SyncConsoleDirNow`); при активной фоновой консоли – её `WorkingDir` → активная панель (`TConsoleWindow.OnSyncDirToPanels` → `TMainForm.ConsoleSyncDirToPanels` → `TDualPanelWindow.SetActivePanelDir`), пункт меню Commands → "Sync console dir".
-11. **Viewer / Editor**: `TEditorWindow` + `TEditorDoc` как Dual Panel Tab (`OpenDocument`); F3 = ViewOnly, F4 = edit. Документ целиком в RAM (потоковый Viewer – цель «Quick View, Hex и потоковый Viewer» / инвариант Architecture). **Live reload** («Live reload открытых файлов + фоновая загрузка shell-иконок»): локальный файл без несохранённых правок молча перечитывается при внешнем изменении на диске (`TDirectoryWatcher` на содержащем каталоге); `ContentGen` – счётчик перезагрузок для инвалидации внешних кэшей (например, Markdown fence-индекса).
-12. **Panel icons**: первый столбец – shell-иконки Windows (`uShellIcons`), загрузка фоновая («Live reload открытых файлов + фоновая загрузка shell-иконок», не блокирует UI); `..` → `parent_up.png`; gap перед Name (§4.2).
-13. **Skia** (`DCC_Define SKIA`): чёткий mono-текст, modal dim, alpha-blit иконок (§4.1). Ключ `--no-skia` переключает холст на штатный FMX, не пересобирая exe ([ARCHITECTURE.md](ARCHITECTURE.md) §10).
-14. **Alt+F12**: история папок (`folderhistory.json` / dialog `DIALOG_FOLDERHISTORY`).
-15. **Alt+F8**: история введённых команд (`cmdhistory.json` / dialog `DIALOG_CMDHISTORY`), источник – тот же `history.json`, что и Up/Down в cmdline (п.5). Доступен и в cmdline Dual Panel (выбор строки подставляет её, не запускает), и в фоновой консоли/вкладках Terminal Workspace (`TBaseConsoleWindow.OpenCmdHistoryDialog`, свой `TDialogHost`), где выбор строки выполняет её сразу (`ExecuteCommandNow`) – там нет своей строки ввода для правки.
-16. **Естественный выход шелла из фоновой консоли**: ConPTY не закрывает write-конец output pipe, пока сам процесс жив внутри псевдоконсоли – после `exit` внутри шелла блокирующий `ReadFile` в reader-потоке не получает EOF сам по себе (в отличие от `Terminate`, который явно зовёт `TerminateProcess`+`ClosePseudoConsole`). Ватчер `TConPtySession.StartExitWatcher` ждёт выход процесса на собственном дубликате хендла и сам закрывает псевдоконсоль, разблокируя `ReadFile` → штатный `QueueExit`/`OnExit`. Фоновая консоль после этого **по умолчанию перезапускает шелл** на последнем `cwd` (`TConsoleWindow.RestartOnExit`, default `true`, `session.json` → `consoleRestartOnExit`); вкладка Terminal Workspace (`Ctrl+Shift+N`) по умолчанию **закрывается** (`TTerminalWorkspaceWindow.CloseOnExit`, default `true`, `session.json` → `terminalCloseOnExit`).
+7. **Directory Sync (`v0.2.5` / `v0.3.6` / `v0.3.5`)**: one-way Active→Inactive or two-way ⇄ (`Ctrl+Alt+S`); comparison by date or by content; dry-run / Synchronize through a copy job with `DestURIs`; two-way conflicts (both sides changed since the last sync) are not copied.
+8. **Terminal Workspaces (`v0.2.7`)**: `TTerminalWorkspaceWindow` with profiles (CMD/PS/pwsh/WSL), raw input, `Ctrl+Shift+N`. It is not a floating MDI window: it lives as a Dual Panel Tab (`wkTerminal` in `TWorkspaceKind`, owned by `TDualPanelWindow.FTerminals`), on a par with `wkPanels`/`wkDocument`, and is opened, closed and drawn the same way as the Viewer/Editor. It is **ephemeral** – like `wkDocument` it is not saved to or restored from `session.json`. The tab is 2 rows shorter than the full height; below it the shared F-key bar and status line of the Dual Panel are visible (context `fbcTerminal`: `Esc:Close`, `Ctrl+A/C/V`; status – profile + Running/Not running) instead of a status line of the terminal's own. `F10` in the Panel Console (`Ctrl+O`) does not close the console (only `Esc`/`Ctrl+O` do). The process bridge is a real ConPTY (see item 9), not pipes. **The Enter sequence depends on the profile** (`ProfileReturnSeq`, `uShellProfiles.pas`): cmd/PS/pwsh – CRLF (piped stdin without CRLF does not submit the line); WSL – a single LF (under Linux `icrnl` CRLF arrives as two Enters in a row, and the second, empty one redraws the prompt, so the prompt would be duplicated after every command in a WSL console). The application-level safeguards against PowerShell/pwsh hanging on a command error are kept as defense in depth: `ProfileInitCommand` (`$ErrorActionPreference='SilentlyContinue'` at profile start) and `PsPipeSafeCommand`/`IsSimplePsExpression` (safely wraps simple commands in `| % {"$_"}` so that the result bypasses the formatting engine). The underlying cause (pipes without a real console handle) does not exist with `CreatePseudoConsole`: PowerShell/pwsh does not hang on command errors.
+9. **Process bridge**: `uConPty.pas` / `TConPtySession` – a real **ConPTY** (`CreatePseudoConsole`/`ResizePseudoConsole`/`ClosePseudoConsole`), used unconditionally by `Start`/`StartShell` (there is no separate pipe-only fallback path); `Resize` really resizes the pseudo-console. `Terminate` is an ordered shutdown: close stdin → `TerminateProcess` → `ClosePseudoConsole` → join the reader thread with a 2-second timeout (does not block the UI forever) → close the handles; per-profile input/output encoding (`ProfileOutputEncoding`, cmd – OEM/CP866, PS/pwsh/WSL – UTF-8) with a pending multi-byte tail (`FDecodeTail`) kept between `ReadFile` chunks.
+10. **cwd synchronization**: changing the local URI of the active panel → a quiet `cd /d` in the live shell (`OnShellCwdSync`), **off by default** (`session.json` → `autoSyncConsoleCwd`, default `false` – the console and the active panel each keep their own directory). Manual two-way synchronization with `Ctrl+Shift+O` (`kaSyncConsoleDir`, keymap.json): with the Dual Panel active – the active panel's directory → the console (`TDualPanelWindow.SyncConsoleDirNow`); with the background console active – its `WorkingDir` → the active panel (`TConsoleWindow.OnSyncDirToPanels` → `TMainForm.ConsoleSyncDirToPanels` → `TDualPanelWindow.SetActivePanelDir`), menu item Commands → "Sync console dir".
+11. **Viewer / Editor**: `TEditorWindow` + `TEditorDoc` as a Dual Panel Tab (`OpenDocument`); F3 = ViewOnly, F4 = edit. The whole document is in RAM (a streaming Viewer is the goal of "Quick View, Hex and streaming Viewer" / an Architecture invariant). **Live reload** ("Live reload of open files + background loading of shell icons"): a local file without unsaved edits is silently re-read when it changes on disk externally (`TDirectoryWatcher` on the containing directory); `ContentGen` is a reload counter used to invalidate external caches (for example the Markdown fence index).
+12. **Panel icons**: the first column holds Windows shell icons (`uShellIcons`), loaded in the background ("Live reload of open files + background loading of shell icons", does not block the UI); `..` → `parent_up.png`; a gap before Name (§4.2).
+13. **Skia** (`DCC_Define SKIA`): crisp mono text, modal dim, alpha blit of icons (§4.1). The `--no-skia` switch moves the canvas to the standard FMX without rebuilding the exe ([ARCHITECTURE.md](ARCHITECTURE.md) §10).
+14. **Alt+F12**: folder history (`folderhistory.json` / dialog `DIALOG_FOLDERHISTORY`).
+15. **Alt+F8**: history of entered commands (`cmdhistory.json` / dialog `DIALOG_CMDHISTORY`); the source is the same `history.json` as Up/Down in the cmdline (item 5). It is available both in the Dual Panel cmdline (choosing a line puts it in without running it) and in the background console / Terminal Workspace tabs (`TBaseConsoleWindow.OpenCmdHistoryDialog`, its own `TDialogHost`), where choosing a line runs it at once (`ExecuteCommandNow`) – there is no input line of its own to edit it in.
+16. **Natural shell exit from the background console**: ConPTY does not close the write end of the output pipe while the process itself is alive inside the pseudo-console – after `exit` in the shell the blocking `ReadFile` in the reader thread does not get EOF by itself (unlike `Terminate`, which explicitly calls `TerminateProcess`+`ClosePseudoConsole`). The `TConPtySession.StartExitWatcher` watcher waits for the process to exit on its own duplicate of the handle and closes the pseudo-console itself, unblocking `ReadFile` → the regular `QueueExit`/`OnExit`. After that the background console **restarts the shell by default** in the last `cwd` (`TConsoleWindow.RestartOnExit`, default `true`, `session.json` → `consoleRestartOnExit`); a Terminal Workspace tab (`Ctrl+Shift+N`) is **closed** by default (`TTerminalWorkspaceWindow.CloseOnExit`, default `true`, `session.json` → `terminalCloseOnExit`).
 
-##### Целевые модели (канон после «Панельный persistent shell + FAR Ctrl+O» – «Alternate Screen Buffer + интерактивные TUI»)
+##### Target models (the canon after "Panel persistent shell + FAR Ctrl+O" – "Alternate Screen Buffer + interactive TUI")
 
-| Режим                  | Назначение                                   | Shell                                        | Ввод                                                        |
+| Mode                   | Purpose                                      | Shell                                        | Input                                                       |
 | ---------------------- | -------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| **Panel Console**      | FAR-практика: cmdline под панелями + вывод   | Долгоживущий `cmd.exe`; PS/WSL – позже | Команды с cmdline; `cd` синхронизируется с URI панели       |
-| **Console Window**     | MDI-окно вывода/сессии (как Viewer)          | Тот же session Panel Console или отдельный   | Scroll; Esc/F10; `Ctrl+O` → панели                          |
-| **Terminal Workspace** | Мультиплексор (Windows Terminal / tmux-like) | Профиль: CMD / PowerShell / WSL              | Raw passthrough в PTY (кроме системных хоткеев вкладок/MDI) |
+| **Panel Console**      | FAR practice: a cmdline under the panels + output | A long-lived `cmd.exe`; PS/WSL – later  | Commands from the cmdline; `cd` is synchronized with the panel URI |
+| **Console Window**     | An MDI output/session window (like the Viewer) | The same Panel Console session or a separate one | Scroll; Esc/F10; `Ctrl+O` → panels                    |
+| **Terminal Workspace** | A multiplexer (Windows Terminal / tmux-like) | Profile: CMD / PowerShell / WSL              | Raw passthrough into the PTY (except system tab/MDI hotkeys) |
 
-**Инвариант:** для cmdline под панелями канон – **persistent shell + sync** `cd`, а не бесконечная серия one-shot `cmd /c`. One-shot (`v0.1.13`–`0.1.14`) – промежуточный вариант.
+**Invariant:** for the cmdline under the panels the canon is a **persistent shell + `cd` sync**, not an endless series of one-shot `cmd /c`. One-shot (`v0.1.13`–`0.1.14`) is an intermediate variant.
 
-##### Механизм (целевой)
+##### Mechanism (target)
 
-1. **Command Line Widget** – ввод под панелями; submit → запись в stdin фонового PTY (или очередь, пока shell занят).
-2. **Вывод** – VT-поток → `IANSIParser` → экранный `TTerminalGrid` + scrollback; `Ctrl+O` показывает этот буфер (панели скрыты или Console MDI на переднем плане – UX FAR-toggle).
-3. **Синхронизация пути**: при смене каталога панели Host невидимо отправляет в shell `cd /d "<path>"` (cmd) / эквивалент профиля; ошибки sync не ломают панели.
-4. **PTY-мост**: ConPTY (Windows) / `forkpty` (POSIX); resize PTY при изменении сетки окна.
-5. **Чтение**: worker/`TProcessOutputReader` → только `TThread.Queue` в UI.
+1. **Command Line Widget** – input under the panels; submit → a write into the stdin of the background PTY (or a queue while the shell is busy).
+2. **Output** – a VT stream → `IANSIParser` → the screen `TTerminalGrid` + scrollback; `Ctrl+O` shows this buffer (the panels are hidden or the Console MDI is in front – the FAR toggle UX).
+3. **Path synchronization**: when the panel directory changes, the Host invisibly sends `cd /d "<path>"` (cmd) / the profile's equivalent to the shell; sync errors do not break the panels.
+4. **PTY bridge**: ConPTY (Windows) / `forkpty` (POSIX); the PTY is resized when the window grid changes.
+5. **Reading**: a worker / `TProcessOutputReader` → only `TThread.Queue` into the UI.
 
-##### Ключевые типы (целевые)
+##### Key types (target)
 
 ```pascal
 type
@@ -588,7 +590,7 @@ type
     procedure ParseChunk(const ABytes: TBytes; const AScreen: TTerminalGrid);
   end;
 
-  // Долгоживущая PTY-сессия (panel console / terminal workspace).
+  // A long-lived PTY session (panel console / terminal workspace).
   IPtySession = interface
     ['{A7C2E901-4B1D-4F0A-9C3E-2D8F6B1A0E55}']
     function StartShell(const AProfile, ACwd: string; ACols, ARows: Word): Boolean;
@@ -598,92 +600,92 @@ type
     function IsRunning: Boolean;
   end;
 
-  // Профиль оболочки для Terminal Workspace.
+  // Shell profile for the Terminal Workspace.
   TShellProfile = (spCmd, spPowerShell, spPowerShellCore, spWsl);
 ```
 
-Реализации сегодня: `uConPty.pas` (pipe capture; имя историческое), `uConsoleBuffer.pas` (line-buffer), `uConsoleWindow.pas`. Целевые `IANSIParser` / VT-grid / `IPtySession`+ConPTY – «Панельный persistent shell + FAR Ctrl+O» – «Alternate Screen Buffer + интерактивные TUI».
+Implementations today: `uConPty.pas` (pipe capture; the name is historical), `uConsoleBuffer.pas` (line-buffer), `uConsoleWindow.pas`. The target `IANSIParser` / VT-grid / `IPtySession`+ConPTY – "Panel persistent shell + FAR Ctrl+O" – "Alternate Screen Buffer + interactive TUI".
 
 ---
 
-### 6. Плагины и расширяемость
+### 6. Plugins and extensibility
 
-MTN2 реализует микроядерную плагинную архитектуру на основе **Model-View-Presenter** с **Pull-моделью** данных. Контракты примитивов: [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
+MTN2 implements a microkernel plugin architecture based on **Model-View-Presenter** with a **Pull model** for data. Primitive contracts: [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
 
-#### 6.0. Приоритет экосистемы плагинов
+#### 6.0. Plugin ecosystem priority
 
-Расширения поставляются в таком порядке (более поздний слой **не** заменяет предыдущий):
+Extensions are delivered in this order (a later layer does **not** replace the previous one):
 
-| Приоритет        | Слой                        | Назначение                                                                                                                                                                                                 |
+| Priority         | Layer                       | Purpose                                                                                                                                                                                                    |
 | ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1 (основной)** | **Родные плагины MTN2**     | Host API / Pull / JSON / `IVirtualFileSystem` из §6.1–6.3. Панели, темы, Viewer/Editor, VFS (SFTP, дополнительные архивы, «заход внутрь» контейнеров). Сначала in-process, затем DLL/SO, опционально WASM. |
-| **2**            | **Плагины Far Manager**     | Мост (Windows): VFS/`OpenPlugin` → модель панели MTN2. После стабильного родного Plugin Manager.                                                                                                           |
-| **3**            | **Плагины Total Commander** | Мост (Windows): packer **WCX** / file-system **WFX** → тот же Nested VFS / панель. После Far-моста или параллельно, но не раньше родного API.                                                              |
+| **1 (primary)**  | **Native MTN2 plugins**     | Host API / Pull / JSON / `IVirtualFileSystem` from §6.1–6.3. Panels, themes, Viewer/Editor, VFS (SFTP, additional archives, "entering" containers). First in-process, then DLL/SO, optionally WASM.        |
+| **2**            | **Far Manager plugins**     | A bridge (Windows): VFS/`OpenPlugin` → the MTN2 panel model. After the native Plugin Manager is stable.                                                                                                    |
+| **3**            | **Total Commander plugins** | A bridge (Windows): packer **WCX** / file-system **WFX** → the same Nested VFS / panel. After the Far bridge or in parallel, but not before the native API.                                                |
 
-**Инвариант:** любой внешний формат (RAR, 7Z, ISO, «плагин открывает файл как папку») в продукте должен уметь жить как **родной** VFS/panel-плагин. Мосты Far/TC – совместимость с уже написанной экосистемой, не единственный путь поддержки форматов.
+**Invariant:** any external format (RAR, 7Z, ISO, "a plugin opens a file as a folder") must be able to live in the product as a **native** VFS/panel plugin. The Far/TC bridges provide compatibility with the existing ecosystem and are not the only way to support formats.
 
-Встроенный ZIP («Прозрачные архивы») – часть ядра; прочие архивы и контейнеры – через родной VFS-плагин (или позже через Far/TC-мост).
+The built-in ZIP ("Transparent archives") is part of the core; other archives and containers go through a native VFS plugin (or later through a Far/TC bridge).
 
-#### Стратегия поставки плагинов (сейчас → позже)
+#### Plugin delivery strategy (now → later)
 
-Пока MTN2 развивается как ежедневный файловый менеджер, разработка ведётся в виде **единой кодовой базы** (монолитный исполняемый файл): системные «плагины» (панели, Viewer/Editor, тема, локальный VFS и т.д.) компилируются вместе с ядром как обычные Delphi-модули/классы. При этом **все требования взаимодействия плагинов и ядра обязательны уже сейчас** – границы Host API, Pull-модель, запрет Canvas у плагинов, async VFS, `invalidate`, контракты из [UI_PRIMITIVES.md](UI_PRIMITIVES.md). Цель: не смешивать UI и данные даже внутри одного бинарника.
+While MTN2 is developed as an everyday file manager, development is done as a **single code base** (a monolithic executable): the system "plugins" (panels, Viewer/Editor, theme, local VFS, etc.) are compiled together with the core as ordinary Delphi units/classes. At the same time **all requirements for the interaction between plugins and the core are mandatory already now** – the Host API boundaries, the Pull model, the ban on Canvas for plugins, async VFS, `invalidate`, and the contracts from [UI_PRIMITIVES.md](UI_PRIMITIVES.md). The goal is not to mix UI and data even inside one binary.
 
-После **стабилизации** ежедневного FM (`0.2.x`) порядок выноса такой:
-1. **Родной Plugin Manager + DLL/SO** – вынос отработанных модулей и приём сторонних родных плагинов (в т.ч. VFS для архивов/контейнеров).
-2. **WASM Host** – изолированная песочница для безопасных родных плагинов.
-3. **Far API Wrapper**, затем **Total Commander packer/FS bridge** – совместимость, не замена родного API.
+After the everyday FM has **stabilized** (`0.2.x`), the order of extraction is:
+1. **Native Plugin Manager + DLL/SO** – extracting proven modules and accepting third-party native plugins (including VFS for archives/containers).
+2. **WASM Host** – an isolated sandbox for safe native plugins.
+3. **Far API Wrapper**, then the **Total Commander packer/FS bridge** – compatibility, not a replacement for the native API.
 
-Смена формы поставки не должна ломать контракты: те же вызовы, JSON и жизненный цикл, что отработаны в монолите.
+A change in the form of delivery must not break the contracts: the same calls, JSON and lifecycle that have been proven in the monolith.
 
-#### 6.1. Разделение обязанностей: Ядро, Тема и Плагины
+#### 6.1. Division of responsibilities: Core, Theme and Plugins
 
-1. **Ядро (Core)**: Layout MDI, сетка ячеек, размеры, клиппинг, focus, keymap, пул Jobs, declarative UI. Ядро решает *структуру* экрана («где и что за контейнер»).
-2. **Системный плагин темизации (**`IThemeRenderer`**)**: Визуальный стиль в ячейках – рамки, кнопки, скроллбары, палитра. Тема решает *как выглядят* виджеты.
-3. **Остальные плагины (системные и пользовательские)**: Только *что отображать* (сухие данные).
-  - Системные модули: панели файлового менеджера, Viewer, Editor.
-  - Пользовательские: SFTP, Git, просмотрщики БД.
-  - Без доступа к Canvas/текстуре; только Pull-данные и логические события.
+1. **Core**: MDI layout, the cell grid, sizes, clipping, focus, keymap, the Jobs pool, declarative UI. The core decides the *structure* of the screen ("where and what container").
+2. **System theming plugin (**`IThemeRenderer`**)**: the visual style in cells – frames, buttons, scrollbars, the palette. The theme decides *how widgets look*.
+3. **All other plugins (system and user)**: only *what to display* (plain data).
+  - System modules: file manager panels, Viewer, Editor.
+  - User ones: SFTP, Git, database viewers.
+  - No access to Canvas/texture; only Pull data and logical events.
 
-#### 6.2. Базовые визуальные контейнеры ядра и Декларативный UI
+#### 6.2. Basic visual containers of the core and Declarative UI
 
-Плагин может описать кастомный диалог **JSON-декларацией**; ядро парсит и собирает UI из примитивов.
+A plugin can describe a custom dialog with a **JSON declaration**; the core parses it and builds the UI from primitives.
 
-Оглавление контрактов плагин ↔ ядро: [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
+Table of contents of the plugin ↔ core contracts: [UI_PRIMITIVES.md](UI_PRIMITIVES.md).
 
-**Основные компоненты ядра:**
+**Main core components:**
 
-1. **Панель (Panel)** – список с scroll, курсором, multi-select (внутри Dual Panel + Panel Tabs). Контракт: [PANEL_PLUGIN.md](PANEL_PLUGIN.md).
-2. **Текстовое поле (Input Line)**. Контракт: [INPUT_PLUGIN.md](INPUT_PLUGIN.md).
-3. **Текстовая область (Text Area)** – Viewer / Editor. Контракт: [TEXTAREA_PLUGIN.md](TEXTAREA_PLUGIN.md).
-4. **Диалоговое окно (Dialog)**. Контракт: [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md).
-5. **Панель инструментов (Toolbar / Button Bar)** – обычно F1–F12. Контракт: [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md).
-6. **Строка состояния (Status Line / Status Bar)** – одно- или двухстрочный примитив с логическими сегментами (текущий URI, свободное место, число/размер выделенных, тип файла под курсором, прогресс job). Данные поставляет Host или плагин (сухой текст/метрики); внешний вид сегментов и разделителей задаёт `IThemeRenderer`. В декларативном UI: `{ "type": "status", "id": "panel_status", "segments": ["uri", "selected", "free"] }`. Контракт: [STATUS_PLUGIN.md](STATUS_PLUGIN.md).
-7. **Графический оверлей (Media Overlay)** – растровые превью поверх сетки. Плагин запрашивает превью логически (URI + bounds); рисует ядро/`Overlay Renderer`, не плагин. Контракт: [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md).
+1. **Panel** – a list with scrolling, a cursor and multi-select (inside Dual Panel + Panel Tabs). Contract: [PANEL_PLUGIN.md](PANEL_PLUGIN.md).
+2. **Text field (Input Line)**. Contract: [INPUT_PLUGIN.md](INPUT_PLUGIN.md).
+3. **Text area (Text Area)** – Viewer / Editor. Contract: [TEXTAREA_PLUGIN.md](TEXTAREA_PLUGIN.md).
+4. **Dialog window (Dialog)**. Contract: [DIALOG_PLUGIN.md](DIALOG_PLUGIN.md).
+5. **Toolbar (Toolbar / Button Bar)** – usually F1–F12. Contract: [TOOLBAR_PLUGIN.md](TOOLBAR_PLUGIN.md).
+6. **Status line (Status Line / Status Bar)** – a one- or two-line primitive with logical segments (current URI, free space, number/size of selected items, the type of the file under the cursor, job progress). The data is supplied by the Host or a plugin (plain text/metrics); the look of segments and separators is set by `IThemeRenderer`. In declarative UI: `{ "type": "status", "id": "panel_status", "segments": ["uri", "selected", "free"] }`. Contract: [STATUS_PLUGIN.md](STATUS_PLUGIN.md).
+7. **Graphics overlay (Media Overlay)** – raster previews over the grid. A plugin requests a preview logically (URI + bounds); the core / `Overlay Renderer` draws it, not the plugin. Contract: [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md).
 
-**Пример JSON-декларации:**
+**Example JSON declaration:**
 
 ```json
 {
   "type": "dialog",
-  "title": "Поиск файлов",
+  "title": "Find files",
   "width": 50, "height": 10,
   "children": [
-    { "type": "label", "text": "Маска поиска:" },
+    { "type": "label", "text": "Search mask:" },
     { "type": "input", "id": "search_mask", "value": "*.*" },
-    { "type": "checkbox", "id": "search_subdirs", "text": "В подпапках", "checked": true },
-    { "type": "button", "id": "btn_start", "text": "Начать поиск" }
+    { "type": "checkbox", "id": "search_subdirs", "text": "In subfolders", "checked": true },
+    { "type": "button", "id": "btn_start", "text": "Start search" }
   ]
 }
 ```
 
-#### 6.3. Протокол взаимодействия и Pull-модель данных
+#### 6.3. Interaction protocol and the Pull data model
 
-1. Пользователь прокручивает список в Панели.
-2. Ядро вычисляет видимый диапазон строк.
-3. Ядро запрашивает у плагина только эти строки.
-4. Плагин возвращает текстовые/JSON метаданные (без цветов и стилей).
+1. The user scrolls a list in a Panel.
+2. The core computes the visible range of rows.
+3. The core requests only those rows from the plugin.
+4. The plugin returns text/JSON metadata (without colours and styles).
 
-##### Пример C-совместимого API (DLL/SO; WASM Host – целевой контракт на будущее)
+##### Example of a C-compatible API (DLL/SO; the WASM Host is a target contract for the future)
 
 ```pascal
 function mtn_plugin_get_item_count(WindowId: Integer): Integer; cdecl;
@@ -695,7 +697,7 @@ procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
   Param1: Integer; Param2: Integer); cdecl;
 ```
 
-##### Пример JSON строки панели
+##### Example of a panel row in JSON
 
 ```json
 {
@@ -708,9 +710,9 @@ procedure mtn_plugin_handle_event(WindowId: Integer; EventType: Integer;
 }
 ```
 
-*Примечание: плагин не возвращает* `fg_color` */* `bg_color` */* `bold`*. Стилизацию решают ядро и активная тема.*
+*Note: the plugin does not return* `fg_color` */* `bg_color` */* `bold`*. Styling is decided by the core and the active theme.*
 
-#### 6.4. Системный плагин темизации (`IThemeRenderer`)
+#### 6.4. System theming plugin (`IThemeRenderer`)
 
 ```pascal
 type
@@ -719,7 +721,7 @@ type
 
   IThemeRenderer = interface
     ['{8A5D3F6A-4E2B-4A1C-8DF0-DF29D55C7B7D}']
-    // Палитра/фон рабочего стола композитора.
+    // Palette/desktop background of the compositor.
     function DesktopColor: TAlphaColor;
     procedure DrawDesktop(const AGrid: TTerminalGrid; const ABounds: TRectI);
 
@@ -738,32 +740,32 @@ type
     procedure DrawTabBar(const AGrid: TTerminalGrid; const ABounds: TRectI;
       const ATabNames: TArray<string>; AActiveTabIndex: Integer;
       AState: TThemeWidgetState; AKind: TTabBarKind = tbkPanel);
-    // AKind: tbkWorkspace = Dual Panel Tabs; tbkPanel = Panel Tabs внутри стороны.
+    // AKind: tbkWorkspace = Dual Panel Tabs; tbkPanel = Panel Tabs inside a side.
 
     procedure DrawToolBar(const AGrid: TTerminalGrid; const ABounds: TRectI;
       const AItems: TArray<string>; AState: TThemeWidgetState);
 
-    // Отрисовка строки состояния (сегменты – уже отформатированный текст от Host)
+    // Drawing the status line (segments are text already formatted by the Host)
     procedure DrawStatusLine(const AGrid: TTerminalGrid; const ABounds: TRectI;
       const ASegments: TArray<string>; AState: TThemeWidgetState);
   end;
 ```
 
-##### Реализации
+##### Implementations
 
-Единственная реализация – `TDataTheme`: цвета, символы, начертания и наборы рамок берёт из файла темы (`*.theme.json`, формат – `docs/THEMES.md`). Корневая тема `NDN` вшита в exe (`src/Assets/themes/NDN.theme.json`), остальные поставляются файлами `resource\themes\*.theme.json` рядом с exe:
+The only implementation is `TDataTheme`: it takes colours, symbols, typefaces and frame sets from a theme file (`*.theme.json`, format – `docs/THEMES.md`). The root theme `NDN` is embedded in the exe (`src/Assets/themes/NDN.theme.json`); the others are delivered as `resource\themes\*.theme.json` files next to the exe:
 
-- **`NDN` (по умолчанию, классическая Far, стиль Necromancer's DOS Navigator)** – тёмно-синие панели, двойные рамки, табы в стиле NDN, цветовая кодировка типов файлов.
-- **`ModernUnicode`** – тёмная палитра, одинарные рамки, TrueColor.
-- **`ASCII`** – только ASCII (`+`, `-`, `|`) для минималистичного GUI-стиля без псевдографики Unicode; **не** для системной консоли (её в архитектуре нет).
-- **`NortonCommander`**, **`MidnightCommander`**, **`TotalCommander`** – оформление классических файловых менеджеров: синие панели с голубым текстом и двойными рамками (Norton), синие панели с одинарными рамками и бирюзовыми строкой меню и панелью клавиш (Midnight), светлые панели Windows (Total).
-- **`Monochrome`**, **`HighContrast`** – чёрно-белая и контрастная схемы.
-- **`SolarizedDark`**, **`SolarizedLight`**, **`Dracula`**, **`Nord`**, **`GruvboxDark`**, **`Monokai`**, **`TokyoNight`**, **`OneDark`**, **`DarkPlus`**, **`Light`** – палитры популярных редакторов и светлая тема.
-- **`GreenPhosphor`**, **`AmberPhosphor`** – одноцветные «мониторные» схемы с двойными рамками.
-- **`NavigatorGray`**, **`NavigatorDark`**, **`NavigatorNight`**, **`NavigatorLCD`** – схемы в духе классических DOS-навигаторов: серые панели с пурпурными кнопками, чёрные панели с синим меню, чёрные с бирюзовыми акцентами и серая шкала для ЖК-экранов (`NavigatorLCD` расширяет `Monochrome`).
-- Свои темы пользователя – файлы в `<конфиг>\themes`, создаются и настраиваются в диалоге «Настройки → Тема...».
+- **`NDN` (default, classic Far, Necromancer's DOS Navigator style)** – dark-blue panels, double frames, NDN-style tabs, colour coding of file types.
+- **`ModernUnicode`** – a dark palette, single frames, TrueColor.
+- **`ASCII`** – ASCII only (`+`, `-`, `|`) for a minimalist GUI style without Unicode box drawing; **not** for a system console (the architecture has none).
+- **`NortonCommander`**, **`MidnightCommander`**, **`TotalCommander`** – the look of classic file managers: blue panels with cyan text and double frames (Norton), blue panels with single frames and a cyan menu line and key bar (Midnight), light Windows panels (Total).
+- **`Monochrome`**, **`HighContrast`** – black-and-white and high-contrast schemes.
+- **`SolarizedDark`**, **`SolarizedLight`**, **`Dracula`**, **`Nord`**, **`GruvboxDark`**, **`Monokai`**, **`TokyoNight`**, **`OneDark`**, **`DarkPlus`**, **`Light`** – palettes of popular editors and a light theme.
+- **`GreenPhosphor`**, **`AmberPhosphor`** – single-colour "monitor" schemes with double frames.
+- **`NavigatorGray`**, **`NavigatorDark`**, **`NavigatorNight`**, **`NavigatorLCD`** – schemes in the spirit of classic DOS navigators: grey panels with magenta buttons, black panels with a blue menu, black with cyan accents, and a grey scale for LCD screens (`NavigatorLCD` extends `Monochrome`).
+- The user's own themes are files in `<config>\themes`, created and tuned in the "Options → Theme..." dialog.
 
-#### 6.5. Внутренняя шина сообщений (`IMessageBus`)
+#### 6.5. Internal message bus (`IMessageBus`)
 
 ```pascal
 type
@@ -777,1624 +779,121 @@ type
   end;
 ```
 
-#### 6.6. Подсистема скриптинга и макросов
+#### 6.6. Scripting and macro subsystem
 
-Макросы выполняет плагин `mtn.lua` (`src/plugins/mtn.lua`) на Lua 5.4 или 5.5. Библиотека Lua подключается при запуске: на Windows это `lua55.dll` / `lua54.dll` рядом с плагином, на Linux – системная `liblua5.5` / `liblua5.4` или файл рядом с плагином; без неё плагин остаётся в списке, а команды макросов сообщают, что именно установить.
+Macros are run by the `mtn.lua` plugin (`src/plugins/mtn.lua`) on Lua 5.4 or 5.5. The Lua library is attached at startup: on Windows it is `lua55.dll` / `lua54.dll` next to the plugin, on Linux the system `liblua5.5` / `liblua5.4` or a file next to the plugin; without it the plugin stays in the list, and the macro commands report exactly what to install.
 
-Макрос – текстовый файл Lua в папке `macros` каталога настроек; файл вызывает `macro { name, area, requires, key, menu, run }`. Состояние Lua – песочница: базовая библиотека, `string`, `table`, `math`, `utf8`, `coroutine`; `io`, `os`, `package`, `debug` недоступны. Макрос выполняется в сопрограмме: каждый вызов `mtn.key`, `mtn.text`, `mtn.action` уходит в главный поток через `PostToMain` и возвращается, когда программа обработала действие. Счётчик инструкций и Esc останавливают макрос, который не завершается.
+A macro is a Lua text file in the `macros` folder of the settings directory; the file calls `macro { name, area, requires, key, menu, run }`. The Lua state is a sandbox: the base library, `string`, `table`, `math`, `utf8`, `coroutine`; `io`, `os`, `package`, `debug` are unavailable. A macro runs in a coroutine: every call of `mtn.key`, `mtn.text`, `mtn.action` goes to the main thread through `PostToMain` and returns when the program has processed the action. An instruction counter and Esc stop a macro that does not finish.
 
-Уровень 2 API использует функции `THostApiTable` (`Doc*`, `Panel*`, `Clipboard*`, `ShowDialog`, `Subscribe`) без изменения ABI: `mtn.editor.*` читает и заменяет текст документа, `mtn.panel.*` читает список панели и меняет курсор, отметки и папку, `mtn.clipboard.*` работает с буфером, `mtn.input` / `mtn.confirm` / `mtn.choose` строят диалог JSON и ждут ответа, `mtn.exec` запускает программу из списка `exec` макроса через `PlatformRunCaptured` в отдельном потоке (по умолчанию 10 с, не больше 60 с, вывод до 1 МБ). Вызов `mtn.on(тема, функция)` при загрузке файла регистрирует обработчик события шины (`doc.*`, `panel.*`): он запускается как макрос и получает payload таблицей; события во время работы макроса или другого обработчика отбрасываются. Реализация – `uLuaHostFns.pas`. Вызов `mtn.column{...}` при загрузке файла объявляет колонку схемы `file` (`RegisterPanelColumns`); значения функции `value` вычисляются в отдельной сопрограмме с тем же бюджетом инструкций, что у макроса, для обеих панелей при загрузке и на каждое событие `panel.dir` и передаются через `SetPanelColumnValues` (до 3000 файлов, текстом, без сортировки); сбойная колонка отключается до перезагрузки.
+Level 2 of the API uses the `THostApiTable` functions (`Doc*`, `Panel*`, `Clipboard*`, `ShowDialog`, `Subscribe`) with no ABI change: `mtn.editor.*` reads and replaces the document text, `mtn.panel.*` reads the panel list and changes the cursor, the marks and the folder, `mtn.clipboard.*` works with the clipboard, `mtn.input` / `mtn.confirm` / `mtn.choose` build a JSON dialog and wait for the answer, `mtn.exec` runs a program from the macro's `exec` list through `PlatformRunCaptured` in a separate thread (10 s by default, at most 60 s, output up to 1 MB). The call `mtn.on(topic, function)` registers a bus event handler (`doc.*`, `panel.*`) when the file is loaded: it runs as a macro and receives the payload as a table; events that arrive while a macro or another handler is running are dropped. Implementation – `uLuaHostFns.pas`. The call `mtn.column{...}` declares a column of the `file` scheme when the file is loaded (`RegisterPanelColumns`); the values of the `value` function are computed in a separate coroutine with the same instruction budget as a macro, for both panels on load and on every `panel.dir` event, and are passed through `SetPanelColumnValues` (up to 3000 files, as text, without sorting); a failing column is disabled until reload.
 
-Запись (`Ctrl+.`) собирает нажатые клавиши через подписку на шину и сохраняет их как макрос с вызовами `mtn.key` / `mtn.text`. Клавиша макроса проверяется через `KeyOwner` хоста: занятую клавишу плагин не назначает без подтверждения. Условия `requires` и область `area` проверяются перед стартом по состоянию программы (`mtn.state()`).
+Recording (`Ctrl+.`) collects the pressed keys through a bus subscription and saves them as a macro with `mtn.key` / `mtn.text` calls. A macro key is checked through the host's `KeyOwner`: the plugin does not assign a key that is already taken without confirmation. The `requires` conditions and the `area` are checked before the start against the program state (`mtn.state()`).
 
-Окна плагина – диалоги JSON v2.0 (`ShowDialog`), справка – страница `help.md` плагина. Тесты – `TestLuaMacros.pas`.
+Plugin windows are JSON v2.0 dialogs (`ShowDialog`), the help is the plugin's `help.md` page. Tests – `TestLuaMacros.pas`.
 
-#### 6.7. Внутренние ассоциации файлов и Пользовательское меню
+#### 6.7. Internal file associations and the User menu
 
-При `Enter` / `F4` ядро сверяет RegEx-ассоциации и маршрутизирует:
-- встроенный модуль (Viewer / Hex / Editor);
-- внешний процесс через PTY;
-- системный `ShellExecute` (если явно задано).
+On `Enter` / `F4` the core checks the RegEx associations and routes to:
+- a built-in module (Viewer / Hex / Editor);
+- an external process through the PTY;
+- the system `ShellExecute` (if set explicitly).
 
-**Пользовательское меню (F2)** – дерево собственных команд пользователя в духе NDN/FAR («Меню пользователя F2 и меню папки»): пункты-команды с горячей клавишей, вложенные подменю и разделители.
+**The User menu (F2)** is a tree of the user's own commands in the spirit of NDN/FAR ("User menu F2 and folder menu"): command items with a hotkey, nested submenus and separators.
 
-- **Где хранится.** Главное меню – `usermenu.json` в каталоге конфигурации (`uConfigLocation`). Меню папки – `.mtn2menu.json` в самой папке; действует на неё и на все вложенные, выигрывает ближайшее вверх по дереву (меню в корне проекта работает в любой его подпапке). Файл перечитывается при каждом открытии, ручная правка применяется без перезапуска. Пока главное меню не сохранено, показываются примеры (Проводник, Блокнот, SHA-256, подменю Git).
-- **Формат.** `{"version":1,"items":[{"kind":"command","hotkey":"E","caption":"...","command":"..."},{"kind":"separator"},{"kind":"submenu","hotkey":"G","caption":"Git","items":[...]}]}`. Поле `kind` необязательно: строка с `items` считается подменю.
-- **Клавиши в меню.** Enter / → – выполнить или войти в подменю; горячая клавиша пункта – то же (в любой раскладке: «Ф» = `A`); ← / Esc – на уровень выше, Esc на верхнем уровне закрывает; Ins – новый пункт перед курсором; F4 – изменить; Del – удалить (с подтверждением); Ctrl+↑/↓ – переставить; **Shift+F2** – переключить меню папки ↔ главное (в папке без меню открывается пустое, первый Ins создаёт `.mtn2menu.json` в текущей папке). Мышь: щелчок по строке – выполнить/войти, вне меню – закрыть.
-- **Выполнение.** Команда выполняется в консоли панели (как набранная в командной строке, с видимым выводом), рабочий каталог – папка активной панели; текст командной строки не очищается. Оболочка консоли может быть cmd, PowerShell или WSL – синтаксис команды пользователь выбирает под свой профиль.
+- **Where it is stored.** The main menu is `usermenu.json` in the configuration directory (`uConfigLocation`). The folder menu is `.mtn2menu.json` in the folder itself; it applies to that folder and all nested ones, and the nearest one up the tree wins (a menu in a project root works in any of its subfolders). The file is re-read every time it is opened, so a manual edit is applied without a restart. Until the main menu is saved, examples are shown (Explorer, Notepad, SHA-256, a Git submenu).
+- **Format.** `{"version":1,"items":[{"kind":"command","hotkey":"E","caption":"...","command":"..."},{"kind":"separator"},{"kind":"submenu","hotkey":"G","caption":"Git","items":[...]}]}`. The `kind` field is optional: an entry with `items` is treated as a submenu.
+- **Keys in the menu.** Enter / → – run or enter a submenu; the item's hotkey does the same (in any keyboard layout: Cyrillic "Ф" = `A`); ← / Esc – one level up, Esc at the top level closes; Ins – a new item before the cursor; F4 – edit; Del – delete (with confirmation); Ctrl+↑/↓ – reorder; **Shift+F2** – switch folder menu ↔ main menu (in a folder with no menu an empty one opens, and the first Ins creates `.mtn2menu.json` in the current folder). Mouse: a click on a row runs it / enters it, a click outside the menu closes it.
+- **Execution.** The command runs in the panel console (as if typed on the command line, with visible output), the working directory is the folder of the active panel; the command line text is not cleared. The console shell can be cmd, PowerShell or WSL – the user chooses the command syntax to fit their profile.
 
-- **Возврат в панели.** У пункта-команды поле `ReturnMode` (`umrDefault` / `umrReturn` / `umrStay`; в `usermenu.json` – `returnToPanels`: нет ключа / `true` / `false`). `umrDefault` берёт значение из `GConsoleSettings.ReturnToPanels` (Параметры → Консоль...). Остальные механизмы возврата – ARCHITECTURE §8.5.
-- **Подстановки** (имена FAR Manager, `uUserMenu.ExpandUserMenuCommand`):
+- **Returning to the panels.** A command item has a `ReturnMode` field (`umrDefault` / `umrReturn` / `umrStay`; in `usermenu.json` it is `returnToPanels`: no key / `true` / `false`). `umrDefault` takes the value from `GConsoleSettings.ReturnToPanels` (Options → Console...). The other return mechanisms are in ARCHITECTURE §8.5.
+- **Substitutions** (FAR Manager names, `uUserMenu.ExpandUserMenuCommand`):
 
-| Подстановка | Значение |
+| Substitution | Value |
 | --- | --- |
-| `!!` | символ `!` |
-| `!.!` | имя файла под курсором с расширением |
-| `!` | то же без расширения |
-| `!\` | папка панели с завершающим `\` |
-| `!:` | диск папки панели (`C:`) |
-| `!&` | выделенные имена (или текущее), через пробел, в кавычках при необходимости |
-| `!@!` | путь к временному UTF-8 файлу со списком полных путей выделенного (`%TEMP%\MTN2\list-*.txt`, файлы старше суток удаляются при создании следующего) |
-| `!?Вопрос?ответ!` | спросить у пользователя перед запуском (отдельный диалог ввода на каждый запрос; отмена любого запроса отменяет команду) |
-| `!#` / `!^` | последующие подстановки относятся к пассивной / активной панели |
+| `!!` | the `!` character |
+| `!.!` | the name of the file under the cursor with its extension |
+| `!` | the same without the extension |
+| `!\` | the panel folder with a trailing `\` |
+| `!:` | the drive of the panel folder (`C:`) |
+| `!&` | the selected names (or the current one), separated by spaces, quoted when necessary |
+| `!@!` | the path to a temporary UTF-8 file with the list of full paths of the selection (`%TEMP%\MTN2\list-*.txt`; files older than a day are deleted when the next one is created) |
+| `!?Question?answer!` | ask the user before running (a separate input dialog for each query; cancelling any query cancels the command) |
+| `!#` / `!^` | the following substitutions refer to the passive / active panel |
 
-- **Код.** Модель, JSON и подстановки – `uUserMenu.pas`; всплывающее меню (навигация, отрисовка, клавиши редактирования) – `uUserMenuController.pas`; диалоги редактирования/удаления/запросов, выбор главного меню или меню папки и запуск – `uDualPanelUserMenu.pas`; диалог пункта – `src/dialogs/usermenuedit.json` (`DIALOG_USERMENUEDIT`). Контекст панелей для подстановок собирает `TDualPanelWindow.HostUserMenuContext`, запуск – `HostRunUserMenuCommand`.
+- **Code.** The model, JSON and substitutions are in `uUserMenu.pas`; the popup menu (navigation, drawing, editing keys) is in `uUserMenuController.pas`; the edit/delete/query dialogs, the choice of the main or folder menu and the launch are in `uDualPanelUserMenu.pas`; the item dialog is `src/dialogs/usermenuedit.json` (`DIALOG_USERMENUEDIT`). The panel context for substitutions is built by `TDualPanelWindow.HostUserMenuContext`, the launch is `HostRunUserMenuCommand`.
 
-#### 6.8. Родные VFS-плагины и совместимость Far / Total
+#### 6.8. Native VFS plugins and Far / Total compatibility
 
-##### 6.8.1. Родные плагины MTN2 (приоритет 1)
+##### 6.8.1. Native MTN2 plugins (priority 1)
 
-Целевой путь расширения Nested VFS и «захода внутрь» файлов:
-- реализация `IVirtualFileSystem` (или panel-плагин с URI) по контрактам §5–§6;
-- регистрация в Plugin Manager / `TVFSRegistry` по схеме, расширению или сигнатуре;
-- грамматика `!/` общая с ядром (как у ZIP «Прозрачные архивы»);
-- поставка: in-process → DLL/SO («Родные плагины: Plugin Manager + DLL/SO») → опционально WASM («WASM Host для родных плагинов»).
+The target path for extending the Nested VFS and "entering" files:
+- an implementation of `IVirtualFileSystem` (or a panel plugin with a URI) following the contracts of §5–§6;
+- registration in the Plugin Manager / `TVFSRegistry` by scheme, extension or signature;
+- the `!/` grammar is shared with the core (as with ZIP "Transparent archives");
+- delivery: in-process → DLL/SO ("Native plugins: Plugin Manager + DLL/SO") → optionally WASM ("WASM Host for native plugins").
 
-Примеры: TAR/7Z/RAR, ISO, «документ как папка», сетевые схемы beyond `file://` (`sftp://` – «Сетевой VFS», **реализовано** in-process, `uSftpVfs.pas`; остальные протоколы – плагин `mtn.net`: FTP, FTPS, SFTP по паролю (`nsftp://`), SCP, WebDAV, S3; **реализовано**).
+Examples: TAR/7Z/RAR, ISO, "a document as a folder", network schemes beyond `file://` (`sftp://` – "Network VFS", **implemented** in-process, `uSftpVfs.pas`; the other protocols are the `mtn.net` plugin: FTP, FTPS, SFTP with a password (`nsftp://`), SCP, WebDAV, S3; **implemented**).
 
-##### 6.8.2. Плагины Far Manager (приоритет 2, Windows)
+##### 6.8.2. Far Manager plugins (priority 2, Windows)
 
-**Far API Wrapper** загружает VFS-плагины FAR (`*.dll`), эмулирует `PluginStartupInfo` и транслирует `PluginPanelItem` → JSON / Pull MTN2.
+The **Far API Wrapper** loads FAR VFS plugins (`*.dll`), emulates `PluginStartupInfo` and translates `PluginPanelItem` → JSON / MTN2 Pull.
 
-- **Поддерживаются:** VFS-плагины (архивы, FTP, Network, Registry) – «открыть как панель / каталог».
-- **Не поддерживаются:** кастомные диалоги FAR и прямая работа с консольным экранным буфером.
-- **Зависимость:** стабильный родной Host API и Plugin Manager («Родные плагины: Plugin Manager + DLL/SO»+); см. «Far API Wrapper».
+- **Supported:** VFS plugins (archives, FTP, Network, Registry) – "open as a panel / directory".
+- **Not supported:** custom FAR dialogs and direct work with the console screen buffer.
+- **Dependency:** a stable native Host API and Plugin Manager ("Native plugins: Plugin Manager + DLL/SO"+); see "Far API Wrapper".
 
-##### 6.8.3. Плагины Total Commander (приоритет 3, Windows)
+##### 6.8.3. Total Commander plugins (priority 3, Windows)
 
-**TC Plugin Bridge** подключает экосистему Total Commander после (или вслед за) Far-мостом:
+The **TC Plugin Bridge** connects the Total Commander ecosystem after (or following) the Far bridge:
 
-| Тип TC                | Роль в MTN2                                                                  |
+| TC type               | Role in MTN2                                                                 |
 | --------------------- | ---------------------------------------------------------------------------- |
-| **WCX** (packer)      | Архив/контейнер как слой Nested VFS (`…file.ext!/…`); list / extract наружу. |
-| **WFX** (file system) | Виртуальная ФС как panel/VFS URI (сеть, облака, специальные пространства).   |
-| **WDX / WLX / и пр.** | Вне обязательного минимума; позже по потребности (колонки, Lister).          |
+| **WCX** (packer)      | An archive/container as a Nested VFS layer (`…file.ext!/…`); list / extract outward. |
+| **WFX** (file system) | A virtual FS as a panel/VFS URI (network, clouds, special spaces).           |
+| **WDX / WLX / etc.**  | Outside the mandatory minimum; later, on demand (columns, Lister).           |
 
-- **Зависимость:** родной Plugin Manager; желательно уже работающий Far-мост как образец адаптации чужого ABI («Total Commander plugin bridge»).
-- Неподдерживаемые UI-колбэки TC отвергаются явно, без краша ядра.
+- **Dependency:** the native Plugin Manager; ideally an already working Far bridge as a model for adapting a foreign ABI ("Total Commander plugin bridge").
+- Unsupported TC UI callbacks are rejected explicitly, without crashing the core.
 
 ---
 
-### 7. Дорожная карта (Roadmap)
+### 7. Roadmap
 
-> Справка для пользователя (клавиши, меню, настройки) – `docs/HELP.md` (исходник). По **F1** открывается окно справки (`uHelpViewer.pas`): темы – Markdown-файлы `bin/win64/resource/<язык>/help/` (`index.md` – титульная страница с содержанием, одна тема на раздел `HELP.md`; есть `ru` и `en` с одинаковыми именами файлов; при отсутствии папки языка интерфейса берётся `en`, затем `ru`). Окно – модальное поверх Dual Panel, внутри – `TEditorWindow` в `HelpMode` (Markdown-просмотр): Tab/Shift+Tab – выбор ссылки, Enter/щелчок – переход (`тема.md`, `тема.md#якорь`, `#якорь`), Backspace/Alt+← – назад, F1 – содержание, Esc/F10 – закрыть. Окно отстоит на 10 ячеек от каждой границы окна программы. В Markdown-просмотре ссылка `[текст](адрес)` показывается только подчёркнутым текстом (`ccaUnderline`, рисует `TTerminalRenderer`), адрес – в `TMdSpan.Target`.
+> User help (keys, menus, settings) is the built-in help on **F1**: the topics are in `bin/win64/resource/<language>/help/` (`index.md` is the title page with a table of contents, one topic per section); the help window is `uHelpViewer.pas`.
 
-Разработка идёт версиями; каждая версия заканчивается запускаемой сборкой и проверкой по чек-листу. Порядок отражает продуктовый фокус (§1.0). Контракты плагин↔ядро соблюдаются с первого содержательного слоя UI (монолит, см. §6).
+Development goes in versions; each version ends with a runnable build and a check against a checklist. The order reflects the product focus (§1.0). Plugin↔core contracts are observed from the first substantial UI layer (monolith, see §6).
 
-**Версии:** `0.1.x` – путь к ежедневному локальному FM; `0.2.x` – паритет NDN/FAR/TC + консоль/терминал; `0.3.x` – платформа: родные плагины → WASM; `0.4.x` – Linux (`mtn2-tui`, `mtn2-sdl`), сетевые плагины (`mtn.net`), подсветка синтаксиса (`mtn.highlight`), палитра команд, расширяемость плагинами; мосты к плагинам Far и Total Commander остаются позже.
+**Versions:** `0.1.x` – the path to an everyday local FM; `0.2.x` – parity with NDN/FAR/TC + console/terminal; `0.3.x` – the platform: native plugins → WASM; `0.4.x` – Linux (`mtn2-tui`, `mtn2-sdl`), network plugins (`mtn.net`), syntax highlighting (`mtn.highlight`), the command palette, extensibility through plugins; the bridges to Far and Total Commander plugins remain for later.
 
-**Направления:**
+**Directions:**
 
-| Направление                  | Суть                                                                     |
+| Direction                    | Essence                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------ |
-| **FM паритет**               | архивы, keymap из файла, sync, Multi-Rename                              |
-| **Консоль / терминал**       | persistent shell, VT, cmdline UX, workspaces, alt screen, POSIX PTY, IPC |
-| **Просмотр / автоматизация** | потоковый Viewer / Quick View/Hex, Markdown, макросы, темы               |
-| **Платформа**                | родные DLL/SO → WASM → сетевые плагины; мосты Far / Total Commander позже |
-| **UI / локализация**         | язык; шрифт и прочие визуальные параметры (без перезапуска)              |
-| **Ввод / меню**              | акцентные буквы в переводах, выделение мышью и по словам, меню F2, выход |
-
-Консольный трек не блокирует архивы и keymap. Полноценный VT и Terminal Workspaces идут после базового FM `0.2`, когда панельный shell уже канонизирован (§5.4).
-
-**Приоритет:** функции повседневной работы под Windows важнее POSIX-порта и экосистемы сторонних плагинов. Проект остаётся кроссплатформенным по цели: очередь откладывает «PTY на Linux/macOS», но код, добавляемый сейчас, не должен закрывать путь к нему (см. §8.4 в ARCHITECTURE.md – карта точек связности с Windows).
-
-> Бэклог повседневных возможностей – ниже, после очереди.
-
-**Очередь для повседневного Windows-FM:** пункты 1–6 и 8–13 реализованы (Ctrl+H для Hidden/System, Alt+F7 с поиском текста, фильтр по истории команд, раскраска по маске, `mtn2 <путь>` в уже запущенный экземпляр, двусторонняя синхронизация и построчный diff, Markdown, подсветка синтаксиса плагином, темы, шрифт, мультиязычность). Остался один пункт:
-
-| Очередь | Функция | Что даёт | Состояние |
-| --- | --- | --- | --- |
-| 7 | Макросы/скриптинг | Автоматизация повторяющихся действий | сделано плагином `mtn.lua` (§6.6): запись по `Ctrl+.`, запуск по клавише или из меню «Макросы», управление макросами, образцы в `samples/macros` ([#60](https://github.com/Laex/MTN2/issues/60)) |
-
-**Сознательно откладывается за пределы Windows-daily-use приоритета** (не убрано из плана, но не в очереди выше):
-- **PTY на macOS** ([#61](https://github.com/Laex/MTN2/issues/61)): Linux реализован (`mtn2-sdl`, `mtn2-tui`; проверка на разных дистрибутивах – [#70](https://github.com/Laex/MTN2/issues/70)), macOS остаётся целью. Новый код в консольном/VFS-слое не должен намертво завязываться на Windows API там, где portable-абстракция дешева (см. ARCHITECTURE.md §8.4).
-- **Far / Total Commander bridge** ([#59](https://github.com/Laex/MTN2/issues/59)): родные плагины, WASM и сетевые (`mtn.net`: FTP, FTPS, SFTP, SCP, WebDAV, S3) реализованы; мосты к плагинам Far и Total Commander – нет, запрос закрыт плагином `mtn.net`. Это инфраструктура под сторонний экосистемный контент, а не функция, которую видит пользователь при обычной работе с файлами/консолью. Имеет смысл, когда станет ясно, каких конкретно плагинов не хватает.
-
-**Бэклог повседневных возможностей.** Сравнение с FAR, Total Commander и NDN по коду и чек-листам этого документа.
-
-Уже есть: вкладки панелей и рабочих пространств, история и избранные папки; все основные файловые операции в фоне, атрибуты и владелец, ссылки, Корзина, drag & drop с Проводником; поиск файлов и текста, живой фильтр, плоский вид; синхронизация каталогов и построчный diff; zip и 7z как папки, SFTP-панель и SSH-терминал; ConPTY-консоль и терминалы во вкладках; потоковый просмотр, hex, Markdown; меню пользователя и меню папки, ассоциации, раскраска, темы из файлов с редактором, шрифт, EN/RU/DE/ZH, справка F1, палитра команд (Shift+F9).
-
-Возможности 1-го приоритета (контекстная F1, Quick View текста, сортировка имён для любых алфавитов, выделение различающихся файлов, даты в диалоге атрибутов, свойства Windows, история просмотренных и отредактированных файлов, внешний просмотрщик и редактор) реализованы; описание – в разделах версий `v0.3.32` и `v0.3.33` ниже.
-
-**Колонки плагинов в файловой панели** (`uPluginColumns.pas`, `uPanelColumns.pas`). Плагин описывает колонки схемы вызовом хоста `RegisterPanelColumns` (ABI 9: идентификатор, заголовок и ключ его перевода из `strings.json` плагина, ширина, выравнивание, можно ли сортировать, показывать ли по умолчанию; необязательный список `builtin` задаёт, какие встроенные колонки применимы к схеме, и диалог «Columns...» показывает только перечень, объявленный плагином) и присылает значения в листинге VFS: у строки есть объект `"extra"`, где идентификатор колонки отображается в текст, число или `{"t": текст, "n": число}` (число сортируется как число, остальное – естественным порядком текста). Для папок, которые плагин сам не листит (локальные), значения даёт вызов `SetPanelColumnValues` (папка, имя строки, идентификатор колонки; значение – текст, число или `{"t", "n"}`); модель панели подставляет их в строки (`TFilePanelModel.RebuildSortedRows`) перед сортировкой по колонке плагина и пересортировывает панель, когда плагин прислал новую порцию. Колонки видны в режиме «Custom» для схемы папки активной вкладки: они добавляются в `BuildCustomColumnDefs` после встроенных и включаются в диалоге «Columns...» (флажки схемы текущей папки; выбор хранится отдельно для каждой схемы в `session.json`, ключ `pluginColumns`; пока выбора не было, видны колонки с признаком `default`). Для узкой панели `BuildCustomColumnDefs` отбрасывает замыкающие колонки, пока Name не станет уже `cMinPanelNameWidth`. Сортировка по колонке плагина – `pscPlugin` в `TPanelSortColumn` с идентификатором колонки в `TPanelState.SortPluginId` (в сессии `sortColumn` и `sortPluginColumn`): щелчок по заголовку, меню `Ctrl+F12` (пункты после «Type») и глифы в рамке работают так же, как для встроенных колонок. Потребители: `mtn.docker` (состояние, образ, порты, идентификатор образа), `mtn.winsys` (PID, PPID, потоки процессов; состояние, PID и отображаемое имя служб), `mtn.meta` (размер в пикселях и камера изображения, исполнитель и название MP3; значения считает рабочий поток по списку файлов активной панели, не более 2000 файлов).
-
-Возможности 2-го приоритета:
-
-| # | Возможность | Состояние |
-| --- | --- | --- |
-| 1 | Подсветка синтаксиса в редакторе и просмотрщике | сделано: системный плагин `mtn.highlight` (около 70 языков, сборка на Rust); свои языки добавляются плагином (`register_highlighter`) |
-| 2 | Multi-Rename (пакетное переименование, [#57](https://github.com/Laex/MTN2/issues/57)) | сделано (`Ctrl+Alt+N`): диалог с масками имени и расширения (`[N]`, `[E]`, `[C]`), счётчиком, заменой текста, регистром букв и списком «старое -> новое»; имена с конфликтами блокируют переименование; применяется заданием перемещения |
-| 3 | Дерево каталогов (Alt+F10) | сделано: дерево папок диска над активной панелью |
-| 4 | Дополнение путей с диска в командной строке | сделано (`v0.3.35`) |
-| 5 | UNC-пути и сетевые ресурсы в выборе диска | сделано: после дисков в списке идут сетевые ресурсы `\\сервер\ресурс` активных панелей и недавно посещённых папок (`UncShareRoot`, `AppendUncShares` в `uDriveInfo.pas`); тесты – `TestDriveUnc.pas` |
-| 6 | Контрольные суммы (подсчёт и проверка) | сделано (`v0.3.35`) |
-| 7 | Редактор: автоотступ, блочное (колоночное) выделение, закладки | сделано: Enter переносит отступ строки (`DoEnter`), закладки – `Ctrl+F2` (поставить / снять), `Ctrl+Shift+F2` / `Ctrl+Alt+F2` (следующая / предыдущая), `Ctrl+Alt+B` (список с переходом); хранятся в `TEditorDoc` и сдвигаются вместе со строками; автоотступ включается флажком в «Шрифт / экран» и `Ctrl+Alt+I` (`GEditorAutoIndent`, хранится в сессии); тесты – `TestEditorBookmarks.pas`; блоки – № 15а |
-| 8 | Окно по F4 в меню выбора диска (Alt+F1 / Alt+F2), как в Far | сделано: F4 на диске открывает диалог атрибутов его корневой папки с томом и устройством, флагами Compressed / Encrypted / Not indexed / Sparse / Temporary / Offline и кнопкой «Свойства Windows» ([#35](https://github.com/Laex/MTN2/issues/35)); тесты – `TestSetAttrExtras.pas` |
-| 9 | Фильтр по истории команд при наборе, как в Far | сделано: история в командной строке и в фильтре; опция, не замена истории стрелками ([#33](https://github.com/Laex/MTN2/issues/33)) |
-| 10 | Запасной шрифт для символов, которых нет в основном (как «Alternative font» в ConEmu) | сделано: поле «Запасной шрифт» в «Шрифт / экран»; пустое поле или шрифт, которого нет в системе, оставляют подбор за Windows; рамки рисуются кодом |
-| 11 | Поиск по выводу консоли (подсветка и переход по найденному в прокрутке) | сделано: `Ctrl+Shift+F`, `F3` / `Shift+F3` (подсказки есть и в строке F-клавиш); совпадения подсвечены, текущее выделено (`FindStep`, `FoundColumns` в `uBaseConsoleWindow.pas`, правила поиска – `ConsoleFindMatch` в `uConsoleBuffer.pas`); тесты – `TestConsoleFind.pas` |
-| 12 | Задачи (Tasks): наборы профилей и команд, запускаемые одним действием | нет; частично пересекается с меню пользователя (F2) и рабочими пространствами |
-| 13 | Китайские, японские и корейские иероглифы в консоли, панелях и редакторе | сделано в пределах основной таблицы Unicode: широкий символ занимает две ячейки, см. «Двойная ширина: иероглифы CJK» ниже; остальное зависит от подстановки шрифтов |
-| 14 | Вынос терминала (фонового или во вкладке) в отдельное окно и возврат во вкладку; перенос в вкладку терминала, открытого вне программы | идея, отложена. Вынос между окнами MTN2: сессия `TConPtySession` остаётся в процессе, меняется только окно, которое её показывает (нужна вторая форма FMX и отвязка `TConsoleWindow` от главной формы). Перенос внешнего терминала надёжен только при отдельном процессе-хосте оболочки, к которому подключаются окна MTN2 (переделка слоя ConPTY); иначе остаётся зеркало буфера консоли |
-
-Запросы пользователей (issue):
-
-| # | Возможность | Состояние |
-| --- | --- | --- |
-| 15 | Команды над строками в редакторе: сортировка по возрастанию и убыванию, удаление повторяющихся строк, форматирование по ширине, сдвиг влево и вправо ([#65](https://github.com/Laex/MTN2/issues/65)) | сделано: `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S`, `Ctrl+Alt+U`, `Ctrl+Alt+F`, `Alt+Вправо` / `Alt+Влево`; действуют на выделение, без выделения – на весь файл (сдвиг – на строку с курсором); правила в `uEditorLineOps.pas`; там же смена регистра (`Ctrl+Alt+C`), выравнивание (`Ctrl+Alt+L` / `E` / `R`) и символы рамок для режима рисования (`Ctrl+Alt+D`); автоперенос (`Ctrl+Alt+W`, `GEditorAutoWrap`) и инкрементный поиск (`Ctrl+Alt+T`) – в `TEditorWindow`; тесты – `TestEditorTextTools.pas` |
-| 15а | Вертикальные блоки в редакторе ([#65](https://github.com/Laex/MTN2/issues/65)) | сделано: `Alt+Shift`+стрелки/`Home`/`End`/`PgUp`/`PgDn`, `Alt`+мышь; прямоугольник между столбцом якоря и виртуальным столбцом курсора (`FColumnMode`, `FBlockCol` в `uEditorWindow.pas`); `Del`/`Backspace`/ввод/вырезание/вставка по строкам, вставка скопированного блока блоком; колонки считаются в символах; в hex, Markdown и с переносом блок недоступен; тесты – `TestEditorColumnBlock.pas` |
-| 16 | Запись и воспроизведение макросов клавиатуры, привязка к сочетанию (`Ctrl+.` зарезервировано) ([#60](https://github.com/Laex/MTN2/issues/60)) | сделано: плагин `mtn.lua`, запись по `Ctrl+.`, Lua-макросы с проверкой области и состояния; Windows и Linux (`mtn2-sdl`, `mtn2-tui`) |
-| 17 | Работа с архивами 7z: удаление из архива, создание 7z, шифрованные архивы ([#32](https://github.com/Laex/MTN2/issues/32)) | сделано: удаление из 7z (`SevenZipDeleteInner`: архив переписывается без записи); упаковка в 7z окном `Shift+F1` со степенью сжатия, паролем и шифрованием имён файлов (Windows через `7z.dll`, Linux через `7zz` / `7z`); в зашифрованный архив можно дописывать файлы и удалять их из него |
-| 18 | Встроенный движок подсветки синтаксиса на готовой библиотеке (TextMate-грамматики или Tree-sitter) вместо собственных токенайзеров ([#56](https://github.com/Laex/MTN2/issues/56)) | закрыт плагином `mtn.highlight` (около 70 языков); встроенного движка на TextMate-грамматиках или Tree-sitter нет |
-| 19 | Собственная история команд консоли для строки приглашения (чтобы возврат набранного работал в `cmd.exe`) ([#33](https://github.com/Laex/MTN2/issues/33)) | сделано для `cmd`: `↑` / `↓` листают общую историю (Alt+F8), `↓` после самой новой команды возвращает набранную строку (`HandleOwnHistoryNav`); PowerShell, bash и остальные оболочки пользуются своей историей; тесты – `TestConsoleHistoryRecall.pas` |
-| 20 | Поиск среди пунктов меню, палитра команд ([#77](https://github.com/Laex/MTN2/issues/77)) | сделано: `Shift+F9`; поиск по названию, категории, синонимам и сочетаниям клавиш, в том числе для команд без пункта меню; под списком пояснение к выбранному пункту (en, ru, de, zh) или меню пункта и соседи; свои слова – `aliases.json`; тесты – `TestCommandPalette.pas` |
-| 21 | Отдельные оболочка, окружение и история команд для каждой вкладки панелей ([#79](https://github.com/Laex/MTN2/issues/79), [#78](https://github.com/Laex/MTN2/issues/78)) | частично: консольная программа из панели может идти во вкладке-терминале, остальные вкладки доступны; своей оболочки на вкладку панелей нет, история общая; отложено |
-| 22 | Правила оформления диалогов ([#69](https://github.com/Laex/MTN2/issues/69)), новый язык интерфейса ([#62](https://github.com/Laex/MTN2/issues/62)) | нужна помощь; правила пока только в коде и в `TestDialogAlignment` |
-
-Возможности 3-го приоритета: разрезка и склейка файлов, поиск дубликатов; мультиязычность: формы множественного числа, перевод уже открытого диалога. Режим «хвоста» в просмотрщике (`Ctrl+Shift+F`) и проверка полноты языковых пакетов (`TestGermanStrings`, `TestChineseStrings`, `TestLocalePacks`) сделаны.
-
-Известные недочёты:
-
-- Консоль: при работе сторонних программ позиция курсора MTN2 должна следовать за выводом, а консоль – прокручиваться за выводом.
-- `dialogs/help.json` остаётся только запасным вариантом на случай, если нет папки `help`.
-- Горячие точки по истории исправлений: `uDualPanelWindow.pas`, `uMainForm.pas`, `uEditorWindow.pas`. Новые функции выносятся в отдельные модули, как `uHelpViewer` и `uHelpContext`.
-- Самые сложные функции (разбор ввода и рисования, цикломатическая сложность выше 40): `uDialogHost.HandleInputCore`, `uDualPanelWindow.HandleInput`, `uConsoleBuffer.AppendOutputEx`, `uDialogJson.ParseControlObject`, `uDualPanelInput.DispatchModalDialogInput`, `uTopMenuBar.HandleInput`, `uWasmPluginHost.DefineAllHostImports`. Их стоит делить на части вместе с тестами; у `uMainForm.pas` собственных тестов нет.
-- Копирование в `mtn2-tui` через OSC 52 не работает в терминалах без его поддержки (PuTTY); запасной путь с удалённой стороны невозможен, см. `LINUX.md`.
-
-
----
-
-#### Каркас приложения (`v0.1.0`)
-
-**Цель:** пустое FMX-окно MTN2 собирается и запускается (целевая платформа – **Windows x64**).
-
-**Состав**
-
-- [x] Проект Delphi FMX (Windows **x64** / Win64), точка входа, главная форма (`src/MTN2.dpr`, `src/Forms/uMainForm.`*).
-- [x] Заголовок окна, базовый About/версия в caption и меню Help → About (`v0.1.0`).
-
-**Проверка**
-
-- [x] Сборка Release/Debug без ошибок (`src/build.ps1`).
-- [x] Запуск: окно открывается, закрывается крестиком, не падает при ресайзе.
-
----
-
-#### Рендерер сетки (`v0.1.1`)
-
-**Цель:** на форме видна текстовая сетка с GPU double buffer и dynamic grid.
-
-**Состав**
-
-- [x] `TTerminalRenderer`: `TBitmap` back-buffer, `OnPaint` → `DrawBitmap` (`src/Core/uTerminalRenderer.pas`, типы – `uTerminalTypes.pas`).
-- [x] Пересчёт `Cols×Rows` при resize; zoom: Ctrl+Wheel, Ctrl+Plus/Minus, меню View.
-- [x] Демо-заполнение сетки (латинница, кириллица, рамка ASCII/Unicode).
-
-**Проверка**
-
-- [x] Запуск: сетка заполняет клиентскую область (Win64 Debug/Release).
-- [x] Ресайз меняет число столбцов/строк; double buffer без полной перерисовки текста каждый Paint.
-- [x] Zoom меняет размер ячейки и перестраивает сетку (caption показывает `cols×rows` и zoom%).
-- [x] Кириллица / Consolas в демо-строке.
-
----
-
-#### Тема и одно окно (`v0.1.2`)
-
-**Цель:** одно `TTerminalWindow` рисуется через `TNDNTheme`.
-
-**Состав**
-
-- [x] `IThemeRenderer` + `TNDNTheme` (рамка, заголовок, MDI-кнопки-заглушки, desktop/status/toolbar/tabs/scrollbar) – `src/Core/uThemeTypes.pas`, тема `NDN` (с «Темы из файлов и редактор тем» – `TDataTheme` и `src/Assets/themes/NDN.theme.json`).
-- [x] `TTerminalWindow.RebuildBuffer` / `Paint` в общий grid через локальный `FBuffer` – `src/Core/uTerminalWindow.pas`.
-- [x] Хук `TTerminalRenderer.OnCompose` / `Recompose`: композитинг desktop + окна вместо демо-заполнения.
-- [x] Фокус окна (визуально по клику), обработка Esc (закрытие) / Enter (открытие).
-
-**Проверка**
-
-- [x] Запуск: окно в стиле NDN (двойная рамка, заголовок, MDI-заглушки) на dotted-desktop.
-- [x] Ресайз/зум формы пересчитывает область окна (grid rebuild → recompose).
-- [x] Клик внутри/снаружи меняет фокус (цвет рамки/заголовка); Esc/Enter скрывают/показывают окно.
-
----
-
-#### MDI-композитор (`v0.1.3`)
-
-**Цель:** несколько окон, z-order и фокус.
-
-**Состав**
-
-- [x] Список окон, hit-test, активация по клику/Tab – `src/Core/uMdiCompositor.pas`.
-- [x] Перекрытие окон, перерисовка по z-order (paint bottom→top, hit-test top→bottom).
-- [x] Горячие клавиши: Tab / Shift+Tab – следующее/предыдущее окно; Esc – закрыть активное; Enter – восстановить все.
-
-**Проверка**
-
-- [x] Запуск: 3 демо-окна (Files / Viewer / Editor) каскадом.
-- [x] Клик по нижнему выводит его наверх и даёт фокус (cyan-рамка).
-- [x] Tab / Shift+Tab переключают фокус; буфер активного окна пересобирается корректно.
-
----
-
-#### Dual Panel shell + вкладки (мок-данные) (`v0.1.4`)
-
-**Цель:** каркас двух панелей с Dual Panel Tabs и Panel Tabs без реального диска.
-
-**Состав**
-
-- [x] `TDualPanelWindow` + структуры `TDualPanelWindowState` / `TTab` – `uDualPanelTypes.pas`, `uDualPanelWindow.pas`.
-- [x] TabBar уровня workspace и tab bar на каждой стороне (тема `DrawTabBar`).
-- [x] Список с курсором/scroll на мок-строках (`MockRowsForURI`, Pull-совместимая `TPanelRow`).
-- [x] Toolbar F1–F12 (подписи есть, команды – no-op).
-- [x] Status Line (сторона / URI / позиция курсора).
-
-**Проверка**
-
-- [x] Запуск: две панели, Tab переключает сторону, стрелки/PgUp/PgDn двигают курсор со scroll.
-- [x] Ctrl+Tab – Dual Panel (workspace) tab; Ctrl+T – Panel Tab на активной стороне.
-- [x] Toolbar и status видны, стиль NDN (cyan-курсор, жёлтые каталоги).
-
----
-
-#### Локальный VFS: только просмотр (`v0.1.5`)
-
-**Цель:** реальный список каталога `file://` через async VFS.
-
-**Состав**
-
-- [x] `IVirtualFileSystem` / `file://`: `ListDirectoryAsync`, ошибки, cancel.
-- [x] Системный panel-плагин (монолит): open → list → invalidate → Pull.
-- [x] Строка `..`, сортировка по имени (минимум), индикация «Чтение…» / access denied.
-- [x] Стартовый URI (например, домашний каталог / диск).
-
-**Проверка**
-
-- [x] Запуск: видны реальные файлы текущей машины.
-- [x] Обновление (Ctrl+R): список перечитывается, UI не зависает на большом каталоге.
-- [x] Каталог без прав → понятная ошибка, приложение живо.
-- [x] Быстрое переключение папок не устраивает гонку (побеждает последний list / cancel).
-
----
-
-#### Навигация по ФС (`v0.1.6`)
-
-**Цель:** повседневное «ходить по дискам» как в NDN/FAR.
-
-**Состав**
-
-- [x] Enter в каталог / на `..`; история назад/вперёд на Panel Tab.
-- [x] Смена диска/корня (минимум: ввод пути или простой диалог).
-- [x] Независимые URI левой и правой панели; Panel Tabs с разными путями.
-- [x] Выделение: курсор, Ins/toggle, select all (минимум).
-
-**Проверка**
-
-- [x] Запуск: пройти вглубь дерева и вернуться назад/через `..`.
-- [x] Левая и правая панели независимы; вкладки панели помнят свой URI.
-- [x] Выделение нескольких файлов отображается темой; selection не теряется при scroll (в пределах вкладки).
-
----
-
-#### Jobs: copy / move / delete (`v0.1.7`)
-
-**Цель:** безопасные файловые операции с прогрессом (практика TC/FAR).
-
-**Состав**
-
-- [x] Jobs Manager: copy, move, delete; `IJobCancelToken`; progress в UI/Status.
-- [x] Диалоги подтверждения (Dialog-примитив, монолит).
-- [x] Refresh панелей по завершении; ошибки `TVfsError` пользователю.
-- [x] F5/F6/F8 (или NDN-эквиваленты) на Toolbar реально вызывают команды.
-
-**Проверка**
-
-- [x] Запуск: скопировать файл между панелями; прогресс виден; cancel (после подтверждения) обрывает job.
-- [x] UI отзывчив во время копирования крупного файла.
-- [x] Delete в корзину или с подтверждением (как зафиксируете) – без падения и с обновлением списка.
-- [x] Конфликт имени (уже есть) – предсказуемый диалог/ошибка, не молчаливая порча данных.
-
----
-
-#### Keymap, ассоциации, User Menu (`v0.1.8`)
-
-**Цель:** клавиатурный каркас «как FAR/NDN» для ежедневных действий.
-
-**Состав**
-
-- [x] Дефолтный keymap (F3/F4/F5/F6/F7/F8, Tab, Alt+F1/F2 – по возможности).
-- [x] Внутренние ассоциации: Enter на файле → правило (пока: view/edit/shell).
-- [x] Минимальный User Menu (F2): пункты-заглушки + 1–2 реальных действия.
-- [x] Командная строка (Input Line) под панелями: отображение, фокус, пока без полного PTY.
-
-**Проверка**
-
-- [x] Запуск: горячие клавиши совпадают с памяткой в Toolbar.
-- [x] Enter на `.txt` открывает заглушку Viewer или Editor по ассоциации.
-- [x] F2 открывает меню; Esc закрывает; фокус возвращается на панель.
-- [x] Фокус на command line и обратно (клавиша/клик) стабилен.
-
----
-
-#### Viewer F3 (`v0.1.9`)
-
-**Цель:** просмотр файлов в MDI (режим view).
-
-**Состав**
-
-- [x] Text Area в режиме view; Dual Panel Tab через `TEditorWindow` (ViewOnly), отдельного `uViewerWindow` нет.
-- [x] Открытие с панели (F3); документ загружается в память (`TEditorDoc`) – потоковый Viewer для крупных файлов отложен («Quick View, Hex и потоковый Viewer»).
-- [x] Вертикальная полоса прокрутки (NDN: ▲/▼/бегунок) справа внутри рамки; клик + клавиши/колёсико.
-- [x] Поиск в файле: F7 или `/` – prompt; Enter/F3 – next; Shift+F3 – previous.
-- [x] Chrome: F-key bar + status (позиция / размер / find).
-- [x] Закрытие Viewer, возврат фокуса на панель.
-
-**Проверка**
-
-- [x] Запуск: F3 на небольшом тексте – читаемый просмотр.
-- [x] Полоса прокрутки отражает позицию; клик по ▲/▼/треку листает текст.
-- [x] F7 → ввод → Enter находит строку; F3 повторяет поиск.
-- [x] Несколько Viewer подряд открываются/закрываются без утечки окон в композиторе.
-- [x] *(долг закрыт в «Quick View, Hex и потоковый Viewer»)* F3 на файле ≫ десятков МБ без полной загрузки в RAM – потоковый line-index Viewer в `uEditorDoc.pas`; замер на 100 МБ: первый экран ~3.2 с, прирост рабочего набора +8.5 МБ, UI не блокируется.
-
----
-
-#### Editor F4 (`v0.1.10`)
-
-**Цель:** простой редактор небольших файлов + сохранение.
-
-**Состав**
-
-- [x] Text Area mode edit; load/save через async VFS.
-- [x] Вертикальная полоса прокрутки (как Viewer/Console); клик + клавиши/колёсико; горизонтальный сдвиг курсора – `FLeftCol`.
-- [x] Chrome: F-key bar + status (строка/колонка, dirty).
-- [x] Ctrl+C/X/V – clipboard по выделению (строка / блок); Ctrl+Z / Ctrl+Shift+Z – Undo/Redo; Ctrl+Y – удалить строку (Far).
-- [x] Dirty-флаг, confirm при закрытии.
-- [x] Ассоциация F4 / Enter для текстовых типов.
-
-**Проверка**
-
-- [x] Запуск: открыть, изменить, сохранить, переоткрыть – изменения на диске.
-- [x] Закрытие с dirty → диалог; Cancel оставляет окно.
-- [x] Полоса прокрутки листает длинный файл; курсор остаётся в модели документа.
-- [x] Ctrl+C/V и Undo работают; dirty сохраняется корректно.
-- [x] Файл read-only → понятная ошибка save, редактор не падает.
-
----
-
-#### Поиск файлов (`v0.1.11`)
-
-**Цель:** поиск по маске в фоне (диалог из §6.2).
-
-**Состав**
-
-- [x] Dialog «Поиск»: маска, подпапки, старт/отмена.
-- [x] Job поиска; результаты как виртуальная панель `find://session/<id>/` (Pull/VFS); `..` → корень поиска; F3/F5 по `file://`.
-- [x] Status/progress во время поиска; пустой результат – сообщение в overlay.
-
-**Проверка**
-
-- [x] Запуск: найти `*.pas` / `*.md` в тестовом дереве.
-- [x] Cancel останавливает обход; UI не завис.
-- [x] Enter на результате / `..` из find-панели.
-
----
-
-#### Сессия (`v0.1.12`)
-
-**Цель:** продолжить работу на следующий день с теми же панелями.
-
-**Состав**
-
-- [x] Save/load JSON: Dual Panel Tabs, Panel Tabs, URI, курсоры, zoom, активная сторона.
-- [x] Автосохранение при выходе; загрузка при старте (с безопасным fallback).
-
-**Проверка**
-
-- [x] Запуск → настроить панели/вкладки/zoom → выход → запуск: состояние восстановлено.
-- [x] битый/старый session-файл не препятствует старту (дефолтная сессия).
-
----
-
-#### Console + Ctrl+O (Windows) (`v0.1.13`)
-
-**Цель:** замыкание ежедневного локального контура FAR-практики на Windows.
-
-**Состав**
-
-- [x] One-shot `cmd /c` через pipes (не ConPTY): вывод в line-buffer; Esc прерывает.
-- [x] MDI-`TConsoleWindow` над общей cmdline Dual Panel; нижняя ═ рамки Console – граница над cmdline.
-- [x] `Ctrl+O` / команда: `ConsoleMode` (панели не рисуются, cmdline/F-keys/status те же); обратно – панели.
-- [x] Неблокирующее чтение с coalesce/throttle; Terminate при закрытии окна/приложения.
-
-**Проверка**
-
-- [x] Запуск: `dir` / `git status` из той же cmdline → вывод в Console; панели скрыты, cmdline на месте.
-- [x] `Ctrl+O` туда-обратно; следующая команда с той же cmdline; граница Console над cmdline видна.
-- [x] Долгий вывод не блокирует UI; ошибочная команда показывает текст ошибки cmd.
-
-**Критерий «можно жить на локальных дисках»:** «Каркас приложения» – «Console + Ctrl+O (Windows)» пройдены; базовый рабочий день (навигация, copy/delete, view/edit, поиск, сессия, простая команда) без другого FM.
-
-
----
-
-#### Пробелы повседневного UX (`v0.1.14`)
-
-**Цель:** закрыть дыры ежедневного UX после первой версии для ежедневной работы.
-
-**Состав**
-
-- [x] Rename: Shift+F6 (и User Menu) через `MoveAsync` в тот же каталог.
-- [x] Колонковые заголовки Name/Size/Date под Panel Tabs.
-- [x] Viewer in-file find (F7/`/`, F3 next / Shift+F3 prev).
-- [x] Editor clipboard + Undo/Redo.
-- [x] Ассоциации: исходники → Edit; plain text → View; бинарники/медиа → View; User Menu без мёртвых заглушек.
-
-**Проверка**
-
-- [x] Shift+F6 переименовывает; курсор на новое имя после refresh.
-- [x] Заголовки колонок видны; клик по списку совпадает с геометрией.
-- [x] Поиск в Viewer / clipboard+Undo в Editor – см. «Viewer F3» – «Editor F4».
-
----
-
-#### Доводка UX (`v0.1.14+`)
-
-**Цель:** зафиксировать улучшения ежедневного UX, сделанные после формального закрытия 13.1 (без смены major roadmap-трека).
-
-**Состав**
-
-- [x] Диалоги Host / overlays: FAR-тень (затемнение клеток под окном, слегка видимые символы); клик по `[x]` = Cancel.
-- [x] Буквы дисков на нижней кромке панели; клик и **Ctrl+Left/Right** – смена диска; per-drive last path в сессии (`driveDirs`).
-- [x] Delete: F8 → Recycle Bin (`IFileOperation` + UAC prompt при необходимости); Shift+F8 – permanent wipe.
-- [x] Просмотр/восстановление Корзины: `recycle://` VFS (`uRecycleBinVfs.pas`); пункт `2. Recycle bin` в Change Drive popup (`uDualPanelDrivePopup.pas`, под списком дисков рядом с `1. System folders`; позже добавлены `3. Temporary` / `4. Workspace`, цифры 1–4); Ctrl+Alt+R restore, F8 = безвозвратный purge; `..` в этом листинге и в `sys://folders` возвращает в директорию, откуда был сделан переход (`TDualPanelWindow.HistoryBack`), а не «наверх» внутри VFS; F-bar подстраивается под контекст (`fbcSysFolders`/`fbcRecycleBin` в `uFunctionBar.pas`).
-- [x] Console: выделение мышью / Shift+стрелки, Ctrl+A, Ctrl+C (копирование при выделении).
-- [x] Клавиши доп. клавиатуры для буфера обмена (`Shift+Ins` вставить, `Ctrl+Ins` копировать, `Shift+Del` вырезать) – во всех местах ввода текста: `TInputLine` (cmdline/диалоги/поиск Viewer), редактор/Viewer (`uEditorWindow.pas`), Panel Console и Terminal Workspace (`Ctrl+V` в Panel Console – новое, раньше вставки не было вовсе).
-- [x] Копирование в буфер с панели: **Alt+Shift+Ins** – полные пути, **Ctrl+Shift+Ins** – только имена (`kaCopyFullPath` / `kaCopyItemName`, общий `TDualPanelWindow.CopyItemsToClipboard`); выделение – по строке на элемент, без выделения – элемент под курсором, `..` – текущая папка. Пункты «Copy full path» / «Copy name» в меню Files.
-- [x] Dir-watch reload пишет в сторону, которую обновляет (не портит активную панель); курсор неактивной панели – слабая подсветка.
-- [x] Сессия: zoom, вкладки, URI, курсоры, `driveDirs` в `%APPDATA%\MTN2\session.json`. Для панели ссылок `ws:///` – `lastWorkspaceId` / `restoreWorkspaceOnStart` (сами узлы в `workspaces.json`, не в сессии).
-
-**Проверка**
-
-- [x] Диалог (F7 mkdir / confirm) – тень на списке файлов; `[x]` закрывает.
-- [x] Ctrl+Left/Right меняет диск активной панели; повторный заход на букву восстанавливает путь.
-- [x] F8 → корзина; отказ доступа даёт понятное сообщение (не «code 120»).
-- [x] Ручной UX доп.-клавиатурных clipboard-биндингов в запущенном приложении – пока только сборка без ошибок (`dcc64`), живые нажатия не проверялись.
-
-
----
-
-#### Прозрачные архивы (`v0.2.0`)
-
-**Цель:** архив как папка (практика TC).
-
-**Состав**
-
-- [x] Nested VFS, грамматика `!/`, ZIP (минимум); Enter в `.zip`.
-- [x] Копирование файла из архива наружу (read path); запись внутрь – `vecNotSupported`.
-
-**Проверка**
-
-- [x] Запуск: зайти в ZIP как в каталог, выйти через `..`/историю.
-- [x] Извлечь файл copy на диск; UI и cancel работают как в «Jobs: copy / move / delete».
-- [x] Вложенный ZIP (`a.zip!/b.zip!/…`) – хотя бы один уровень вложенности стабилен.
-
----
-
-#### Panel layout / FAR panel chrome (`v0.2.0+`)
-
-**Цель:** паритет режимов колонок и панельных хоткеев FAR без смены major roadmap-трека.
-
-**Состав**
-
-- [x] Режимы колонок (`TPanelColumnMode`): Brief / Size / Date / Full / Created / Types; сохранение в сессии (`columnMode`).
-- [x] Первый столбец – shell-иконки Windows (`uShellIcons` / `SHGetFileInfo`, 2 ячейки + gap перед Name):
-  - по расширению; для `.exe/.dll/.ico/.lnk/.msi…` – попытка иконки из файла по URI;
-  - `..` – `Assets/parent_up.png` (RCDATA `ICON_PARENT_UP`; зелёная стрелка, прозрачный фон);
-  - fallback-глиф в ячейке, если bitmap недоступен; smoke `TestShellIcons`.
-- [x] **Ctrl+3** – overlay «Column modes» (как Ctrl+F12 «Sort by»): выбор режима, hotkeys B/S/D/F/C/T, текущий отмечен ●.
-- [x] Brief multi-column: column-major заполнение; мин. ширина колонки **28** ячеек (`cBriefMinColW`); вертикальные `│` между колонками.
-- [x] Сортировка: Ctrl+F3..F9, **Ctrl+F12** Sort by, клик по заголовку (asc → desc → none).
-- [x] FAR-буква режима сортировки в левом верхнем углу рабочего поля файловой панели (строка заголовков, не рамка): `n`/`x`/`w`/`s`/`u`/`c`/`a`/`t`/`y`; заглавная = обратный порядок. Цвет – `pcpHotMark` на `pcpColumnHeader` через `ContrastingGlyphFg`. `PanelSortModeLetter` (`uPanelColumns.pas`), `DrawPanelSortLetter` (`uDualPanelPanelDraw.pas`). Info / Quick View – без буквы.
-- [x] **Ctrl+L** – Info-панель на соседней стороне (диск / память); **Ctrl+F1/F2** – hide/show стороны.
-- [x] **Ctrl+U** – обмен местами левой и правой панелей (состояние + reload списков; ActiveSide остаётся на той же физической стороне).
-- [x] Геометрия колонок / hit-test вынесены в `uPanelColumns.pas`; меню – `uDualPanelMenus.pas`.
-- [x] F-bar (Ctrl+): подписи `3:Modes`, `U:Swap`, `L:Info`, `F12:Sort` (+ Cons/Refr/All/PTab; `Ent:Name` / `SEnt:Path`) совпадают с `HandleInput`.
-- [x] Help (F1) / About: хоткеи 14.1 + panel polish (Shift-select, multi-F3, Ctrl+Enter, Brief) в `dialogs/help.json`.
-- [x] Smoke-тест Brief geometry: `src/tests/panels/TestPanelColumns.pas`.
-- [x] Panel polish (14.1+): Shift+Arrows/Home/End/Pg* – инверсия выделения; Brief Shift+Left/Right – span без landing; Gray+/− – только файлы; `*.`* = все имена (в т.ч. без точки); F3 на каталоге(ах) – параллельный размер выделенных папок, stub ≈½ ширины, путь через `PathCompactPathEx`; **Ctrl+Enter** / **Ctrl+Shift+Enter** – имя / полный путь в cmdline; smoke `src/tests/panels/TestPanelSelect.pas`.
-
-**Проверка**
-
-- [x] Ctrl+3 открывает меню; выбор меняет layout активной панели; Esc закрывает без смены.
-- [x] Brief: при ширине ≥ 56 появляется ≥2 колонки; курсор Left/Right/Pg* и клик попадают в нужную ячейку.
-- [x] Ctrl+U меняет URI/вкладки сторон; фокус остаётся на той же стороне экрана.
-- [x] Ctrl+L / Ctrl+F1/F2 не ломают layout и dir-watch.
-- [x] Удержание Ctrl показывает Modes/Swap/Info/Sort на F-bar; F1 Help перечисляет те же сочетания.
-- [x] `TestPanelColumns` – все checks OK (в т.ч. таблица FAR-глифов `PanelSortModeLetter`).
-- [x] `TestDualPanelPanelDraw` – буква в `(Left+1, Top+1)` рабочего поля, не на рамке; Fg≠Bg.
-- [x] `TestPanelSelect` – маски `*.*`/`*`, skip folders, `ShiftNavInvertRange` OK.
-- [x] F3 на нескольких выделенных каталогах заполняет Size в списке; footer `Selected:` учитывает суммы; Esc отменяет пачку.
-- [x] Ctrl+Enter / Ctrl+Shift+Enter вставляют имя / путь в cmdline (кавычки при пробелах).
-
-**Отложено (не polish 14.1):** filter panels. Select folders для Gray+/− и F3 при курсоре на файле с выделенными каталогами – «Select folders для Gray+/− и F3 по выделенным каталогам». Quick View больше форматов – «Quick View: больше форматов».
-
-
----
-
-#### Конфигурация keymap / профили (`v0.2.1`)
-
-**Цель:** пользователь меняет клавиши без пересборки.
-
-**Сейчас (в коде):** дефолтный профиль хоткеев встроен в exe как ресурс `KEYMAP_DEFAULT` (RCDATA ← `src/keymap.json`) и грузится через `uKeymap.LoadDefaultKeymapProfile`; если в конфиг-директории (`GetConfigFilePath`, `%APPDATA%\MTN2` или portable) лежит пользовательский `keymap.json`, он применяется **поверх** дефолта через `MergeKeymapJson` – переопределяются только явно перечисленные там actions, остальное остаётся от встроенного профиля. Кэш `ActiveKeymap` / `ReloadKeymap` (без чтения файла на каждый ключ); F-bar panels берёт подписи из профиля; `Ctrl+Alt+K` – hot-reload (сообщение отличает «reloaded: overrides from user file» от «no user keymap.json – using embedded default»).
-
-**Состав**
-
-- [x] JSON конфиг; профили «NDN» / «FAR» (дефолт NDN).
-- [x] Дефолт – встроенный ресурс `KEYMAP_DEFAULT`, не файл рядом с exe; пользовательский `keymap.json` – частичный override поверх него (`ParseKeymapJson`/`MergeKeymapJson` делят общий цикл применения биндингов, `ApplyBindingsFromRootObj`).
-- [x] Перезагрузка конфига (`ReloadKeymap` / `Ctrl+Alt+K`) без рестарта.
-- [x] F-bar подписи синхронизированы с фактическими биндингами (panels).
-
-**Проверка**
-
-- [x] Отсутствующий/битый пользовательский `keymap.json` → остаётся встроенный дефолт (`MergeKeymapJson` fail-soft: профиль, уже загруженный из ресурса, не трогается); отсутствие самого ресурса → `GetDefaultNDNProfile` (хардкод, последний рубеж).
-- [x] `TestKeymap` – parse/match/cache OK (перепрогнан после рефакторинга `ParseKeymapJson`/`MergeKeymapJson`).
-
-**Отложено (smoke позже):** ручная смена биндинга в файле → `Ctrl+Alt+K` → новое поведение в UI.
-
-
----
-
-#### Панельный persistent shell + FAR Ctrl+O (`v0.2.2`)
-
-**Цель:** канон Panel Console (§5.4): долгоживущий `cmd.exe`, cmdline под панелями, синхрон cwd.
-
-**Сейчас (в коде):** persistent shell через настоящий ConPTY (`StartShell` / `WriteInput`, реализовано в `31f903c`, изначально – pipes + `cmd.exe /d /q`); ANSI cell-scrollback – «VT/ANSI parser + scrollback + TrueColor».
-
-**Состав**
-
-- [x] `IPtySession` + `TConPtySession.StartShell`: `cmd.exe` без `/c`; команды с cmdline → stdin; один session на Dual Panel Console.
-- [x] Невидимый `cd /d "<path>"` при смене URI активной панели (`OnShellCwdSync`); archive/find – без sync; ошибка sync – status, панели живы.
-- [x] `Ctrl+O`: FAR-toggle – панели ↔ экран того же session-буфера (MDI Console; shell не убивается).
-- [x] Отказ от one-shot `cmd /c` как основного пути (fallback при недоступности session).
-
-**Проверка**
-
-- [x] `TestPtySession` – StartShell, две команды в одном процессе, Terminate, one-shot fallback.
-- [x] Sync cwd: `NavigateSideTo` / `SwitchSide` / `SwapPanels` → `SyncWorkingDir` (если shell уже жив).
-- [x] `Ctrl+O` hide/show не вызывает `Terminate`; выход MTN2 / CloseConsole – завершает процесс.
-
-
----
-
-#### VT/ANSI parser + scrollback + TrueColor (`v0.2.3`)
-
-**Цель:** вывод shell/утилит с цветами и длинным scrollback (не plain-текст лог).
-
-**Сейчас (в коде):** `uANSIParser.pas` + cell-rows в `TConsoleBuffer`; `TConsoleWindow` рисует `TCharCell`; `Resize` теперь реально меняет размер псевдоконсоли (`ResizePseudoConsole`, было hook/no-op под pipes до `31f903c`).
-
-**Состав**
-
-- [x] `IANSIParser` / `TANSIParser`: SGR (16 / 256 / **24-bit** `38;2`/`48;2`), EL (`K`), ED (`J`), OSC strip; CR/LF/BS.
-- [x] Scrollback ≥ 10 000 строк (`TConsoleBuffer`, trim); видимые строки – массив `TCharCell` (RGBA уже в модели ячейки).
-- [x] `TConsoleWindow` рисует через parser/cells; wheel / PgUp|PgDn / Home|End – scrollback (не в PTY).
-- [x] Resize окна → `TConsoleWindow.SyncPtySize` → `IPtySession.Resize` (было no-op под pipes при закрытии «VT/ANSI parser + scrollback + TrueColor»; с `31f903c` реально вызывает `ResizePseudoConsole`).
-
-**Проверка**
-
-- [x] `TestANSIParser`: SGR / TrueColor / erase / 12k→10k trim / scroll viewport.
-- [x] Сборка MTN2 Win64 Debug; Console paint использует `GetVisibleRows` (цвета, не escape-мусор в UI).
-- [x] Ресайз Console вызывает `Resize` без падения последующего вывода.
-- [x] **Найдено и исправлено 5 багов** `TConsoleBuffer` (`uConsoleBuffer.pas`), общих для Panel Console и Terminal Workspace (обе используют один и тот же класс):
-  1. Вставка текста, начинающегося с `X:\`, на строку с промптом принималась за входящий shell-prompt и уезжала на новую строку (`AppendLocalInput` + флаг `AIsLocalInput` в `AppendOutputEx` – локальный ввод больше не проходит эвристику «похоже на новый prompt»).
-  2. Пачка backspace/`\b \b`-идиома (эрейз одного символа) в одном PTY-чанке ошибочно принималась за «приклеенный новый контент» и стирала строку (`HasPrintableChar` – control-символы и пробел-как-эрейз больше не считаются «настоящим» контентом).
-  3. CR-редрав строки (или контент, приходящий во время отложенного `FPendingEraseToEOL`) резался на фантомную вторую строку с потерей префикса промпта (`FixPromptNewlines` получил обход для CR-ведомых чанков и pending-erase состояния).
-  4. `GetInputAfterPrompt`'s upward-scan не имел нижней границы – после `CommitInputLine` мог найти **старую** уже отправленную команду в scrollback и принять её за текущий незавершённый ввод, ломая вторую и последующие команды в сессии (новое поле `FInputLineStart`).
-  5. WSL дублировал промпт после каждой команды (см. «Terminal Workspaces + профили оболочек») – тот же класс проблемы, другая причина (`ProfileReturnSeq`, не буфер).
-  - Регрессия: 10 `Test*.dpr` (включая новый `TestConsoleBuffer`/`TestConsoleBufferCmd`/`TestCmdBackspaceFlow` кейсы) – `exit=0`; живые PTY-сессии cmd/PowerShell/WSL.
-
-**Отложено (не «VT/ANSI parser + scrollback + TrueColor»):** полные CSI cursor (CUP/CUU/…) и 2D VT-экран / alt screen – «Terminal Workspaces + профили оболочек» – «Alternate Screen Buffer + интерактивные TUI»; настоящий ConPTY `ResizePseudoConsole` – с ConPTY.
-
-
----
-
-#### Cmdline UX: Tab-complete и вставка путей (`v0.2.4`)
-
-**Цель:** FAR-удобства ввода без ухода в полноценный shell-autocomplete движок.
-
-**Сейчас (в коде):** `TDualPanelCmdLineManager` – Tab-complete по именам активной панели; Up/Down – `history.json`; Ctrl+Enter уже в 14.1+.
-
-**Состав**
-
-- [x] `Tab` на cmdline: дополнение по VFS/списку активной панели (имена файлов/папок, кавычки при пробелах; повторный Tab циклит).
-- [x] `Ctrl+Enter` / `Ctrl+Shift+Enter`: подставить имя / абсолютный путь (panel polish 14.1+).
-- [x] История cmdline (Up/Down), файл `%APPDATA%\MTN2\history.json` (или portable), до 100 записей.
-
-**Проверка**
-
-- [x] `TestDualPanelCmdLine` – resolve + quote/token/filter + Tab cycle + history Up.
-- [x] Ctrl+Enter вставляет имя; Ctrl+Shift+Enter – полный путь.
-
-
----
-
-#### Directory Sync (`v0.2.5`)
-
-**Цель:** one-way синхронизация каталогов Active → Inactive (TC-класс, без Multi-Rename).
-
-**Состав**
-
-- [x] F5 robocopy-lite: Preserve timestamps, Only newer, Retry (0/1/3), Exclude mask, Follow symlinks.
-- [x] Directory Synchronizer (`uDualPanelSync`): missing | newer; dry-run / Synchronize; только `file://`.
-- [x] Job API: optional `DestURIs` parallel to `Sources` (`BeginJobPairs`).
-- [ ] Multi-Rename Tool – **отложено** (после «Directory Sync»).
-
-**Проверка**
-
-- [x] F5: флаги читаются из `copymove.json` и влияют на skip/retry.
-- [x] Sync: preview counts; dry-run без записи; apply копирует недостающее/новее.
-- [ ] Multi-Rename – n/a (отложено).
-
-
----
-
-#### Сетевой VFS (`v0.2.6`) – **реализовано**
-
-**Цель:** ежедневная работа по SFTP или FTP.
-
-**Статус:** реализовано in-process (без плагина/DLL/WASM), тем же способом, что `ws://`/`sys://`/`recycle://`. Протокол – SFTP (общий с SSH-консолью, см. «Terminal Workspaces + профили оболочек»), по системному `sftp.exe` в batch-режиме – без новых внешних зависимостей.
-
-**Состав**
-
-- [x] Провайдер SFTP (один протокол end-to-end); URI `sftp://[user@]host[:port]/path`, list/exists/mkdir/delete/read/write/copy/rename. `src/Core/uSftpVfs.pas`, зарегистрирован в `uVfsRegistry.pas`. F5/F6 Copy/Move с участием `sftp://` идут в `vtrSftp` (`ClassifyVfsTransfer`), а не в File VFS – иначе `SftpGetToLocal`/`SftpPutFromLocal` никогда не вызывались. Навигация (`..`, заголовки вкладок, сравнение URI) – `uVfsTypes.pas` (`IsSftpUri`/`SftpAuthorityOf`/`SftpRemotePathOf`/`MakeSftpUri`, вплетены в `ParentVfsUri`/`JoinVfsUri`/`VfsUriTitle`/`SameVfsUri`/`IsVfsUriNavigationRoot`). Прямой ввод `sftp://user@host/path` в командной строке панели – `uDualPanelCmd.pas` (generic `scheme://` passthrough).
-- [x] Диалог соединения – **SSH/SFTP Connections...** (`Ctrl+Alt+Shift+N`, `src/Core/uDualPanelSshConnections.pas`, JSON `src/dialogs/sshconnections.json` + `sshconnectionedit.json`), общий с SSH-консолью («Terminal Workspaces + профили оболочек») список подключений `src/Core/uSshConnections.pas` (`sshconnections.json` в каталоге конфига). Пароль/ключ – **только ключ** (identity file) или ssh-agent/`~/.ssh/config`; пароли не хранятся и не запрашиваются (`sftp.exe` в batch-режиме идёт с `-o BatchMode=yes`, поэтому парольная аутентификация для этой панели принципиально недоступна – нужен ключ на сервере; для интерактивной SSH-консоли пароль работает как обычно, там честный ConPTY).
-
-**Проверка**
-
-- [x] Запуск: подключение к живому серверу (ключевая аутентификация), листинг директории – подтверждено вручную.
-- [x] Скачать/залить файл (F5 между `file://` и `sftp://`) – `vtrSftp` + `SftpTransfer`; progress/cancel; list-таймаут 20 с, transfer – 30 мин; одно повторное подключение на transient (timeout / dropped / unreachable / refused). Регрессия маршрута: `TestVfsRegistry` (`file↔sftp`, `sftp↔sftp`, archive+sftp отвергается). Живой F5 по-прежнему зависит от ключа на сервере.
-- [x] Обрыв сети → ошибка job, UI жив; повтор – `ConnectTimeout=15` + `ConnectionAttempts=1` + retry; cancel убивает `sftp.exe`. Сообщения: нет ключа / host key / unknown host / refused / timeout – `ClassifySftpFailure` (`TestSftpVfs`). Диалог ошибки job показывает `sftp://…`, не пустой локальный путь.
-
-**Известные ограничения:** парсинг `sftp ls -la` эвристический (эмпирически формат OpenSSH-сервера); нестандартные SFTP-серверы могут не распарситься. Пароль в панели по-прежнему недоступен (`BatchMode=yes`) – только ключ / ssh-agent; интерактивный пароль – в SSH-консоли. `sftp://` ↔ `sftp://` идёт через локальный temp (у OpenSSH batch нет remote-to-remote copy).
-
-
----
-
-#### Terminal Workspaces + профили оболочек (`v0.2.7`)
-
-**Цель:** вкладка «чистый терминал» (мультиплексор), без панелей.
-
-**Состав**
-
-- [x] `TTerminalWorkspaceWindow` (`uTerminalWorkspace.pas`): PTY-экран + scrollback (буфер «VT/ANSI parser + scrollback + TrueColor»); полный клиент без shared cmdline.
-- [x] Профили (`uShellProfiles`): CMD, PowerShell Desktop, PowerShell Core, WSL – только доступные в списке.
-- [x] SSH-профиль (`ssh:<connection-id>`, `v0.2.6`, вместе с «Сетевой VFS»): сохранённые подключения из общего списка **SSH/SFTP Connections...** (`Ctrl+Alt+Shift+N`) появляются в этом же диалоге профилей, строят `ssh.exe -tt [-p port] [-i identity] user@host`. Аутентификация – ключ/agent/`~/.ssh/config`, как у обычного `ssh` в консоли; пароль работает интерактивно (честный ConPTY), в отличие от SFTP-панели «Сетевой VFS».
-- [x] Создание: **Ctrl+Shift+N** / Commands → New terminal… → диалог профиля.
-- [x] Input mode **raw**: клавиши → ConPTY stdin; Host-исключения (Ctrl+Tab, F10, zoom, NewTerminal).
-- [x] **Терминал как вкладка:** терминал – не отдельное MDI-окно, а Dual Panel Tab (`wkTerminal`). `TDualPanelWindow.OpenTerminal`/`FTerminals` мирроит существующий `OpenDocument`/`FDocuments` паттерн (создание, рендер `Term.Paint` в общий `Buffer`, диспетчеризация ввода/мыши, закрытие через `TerminalCloseRequest`/`RemoveWorkspaceTabAt`). Вкладка на 2 строки короче полной высоты – снизу общие F-key bar/status line Dual Panel (контекст `fbcTerminal`); прежняя собственная строка статуса терминала убрана. `uMainForm.pas` лишился `FTerminals`/`OpenTerminalWorkspace`/`TerminalContentChanged`/`CloseTerminalWorkspace` и завязанных на них веток мышиного/клавиатурного диспетчера (терминал больше никогда не бывает `FMdi.Active`).
-- [x] Session: терминалы **эфемерны** – как `wkDocument`, не сохраняются/не восстанавливаются. Старое поле `terminals: [{profile,cwd}]` в `session.json` убрано (`uSession.pas`) вместе с `CollectTerminalSession`/`RestoreTerminalSession`.
-- [x] Настоящий ConPTY (`CreatePseudoConsole`) – **реализовано** в `31f903c` ("Fix console"). `uConPty.pas` теперь безусловно использует `CreatePseudoConsole`/`ResizePseudoConsole`/`ClosePseudoConsole` для `Start` и `StartShell` (нет отдельного pipe-only пути); `Terminate` переписан на корректный порядок закрытия (stdin → `TerminateProcess` → `ClosePseudoConsole` → join reader с таймаутом → хендлы). **Причина, по которой это было нужно**: любая ошибка внутри PowerShell/pwsh-команды вешала PTY-сессию навсегда (не лечилось ни `try/catch`, ни `$ErrorActionPreference='Stop'`, ни `2>&1`); митигация – `ProfileInitCommand` + `PsPipeSafeCommand`/`IsSimplePsExpression` (`uShellProfiles.pas`) – **оставлена в коде** как defense-in-depth; под ConPTY зависание не воспроизводится.
-
-**Проверка**
-
-- [x] Сборка Win64; открытие профиля; несколько вкладок-терминалов + панели в одном Dual Panel Tab bar; закрытие убивает PTY.
-- [x] Регрессия на 11 `Test*.dpr` (включая новый `TestPsPipeSafeCommand.pas`) – `exit=0`; live-PTY проверка typing/Enter/ошибок/сложных объектов через реальный `TTerminalWorkspaceWindow.HandleInput` и реальные cmd/PowerShell/WSL-процессы.
-- [x] Ручной UX в запущенном GUI (мышь/клавиатура) – не проверялось; для этого десктоп-приложения нет автоматизации. Все проверки выше – программные вызовы тех же методов, не буквальный клик/клавиша в окне.
-- [x] Fix: WSL-профиль дублировал промпт после каждой команды (`ProfileReturnSeq` слал `\r\n` для WSL так же, как для cmd/PS; под Linux `icrnl` превращает `\r` в `\n`, и `\r\n` долетает как два Enter подряд – второй, пустой, просто перерисовывает промпт). Теперь `ProfileReturnSeq` шлёт для WSL одиночный `\n`; cmd/PS/pwsh не изменились. Проверено на живой WSL-сессии (`uShellProfiles.pas`).
-- [x] Fix: `F10` в Panel Console (`Ctrl+O`) закрывал консоль – отключено, `F10` теперь no-op там (`uConsoleWindow.pas`, `uFunctionBar.pas`).
-
-
----
-
-#### Alternate Screen Buffer + интерактивные TUI (`v0.2.8`)
-
-**Цель:** `vim` / `htop` / `less` в Terminal Workspace (и panel console при запуске TUI).
-
-**Сейчас (в коде, `31f903c` "Fix console"):** ядро реализовано и подключено (не заглушка) – `uAltScreenGrid.pas`/`uPrimaryScreenGrid.pas` дают отдельный 2D-грид под alt screen; `uConsoleBuffer.pas` (`FAltGrid`/`FAltActive`) переключает вывод между обычным line-buffer и alt-grid. ConPTY-миграция, устранила зависание PowerShell/pwsh.
-
-**Состав**
-
-- [x] Alternate screen (DECSET/DECRST `1049`/`47`): переключение буферов через `FAltActive` (`uConsoleBuffer.pas`); `1049` и `47` трактуются одинаково (вход/выход в тот же грид, без отдельного save/restore курсора под `1049` – достаточно для vim/htop/less, целевого набора). Выход восстанавливает scrollback/history view (line-buffer остаётся нетронутым, пока активен alt grid).
-- [x] Курсорная адресация на alt grid: CUP/CUU/CUD/CUF/CUB через `MoveAbs`/`MoveRel`, save/restore cursor (DECSC/DECRC) через `TAltScreenGrid.SaveCursor`/`RestoreCursor`, `EraseLine`/`EraseDisplay` на alt grid.
-- [x] Минимальный ввод для fullscreen apps (стрелки, Ctrl+C) – переиспользует raw-input путь Terminal Workspace из «Terminal Workspaces + профили оболочек» (клавиши → PTY stdin); специально под alt screen новых клавиш не добавлялось. Мышь – не реализована, опционально позже.
-- [x] Проверка на WSL или Git Bash / native, что доступно в CI/dev.
-- [x] Регрессия: новый `TestPrimaryScreenGrid.pas` (`src/tools/`) в наборе `Test*.dpr`.
-
-**Проверка**
-
-- [x] Запуск `vim` или `nano` в реальном GUI → fullscreen; выход (`:q` / Ctrl+X) возвращает обычный scrollback. Зависание PowerShell/pwsh, ради которого нужен ConPTY, устранено.
-- [x] История команд до TUI не потеряна – проверено вместе с пунктом выше.
-
----
-
-#### PTY на Linux/macOS (`v0.2.9`)
-
-**Цель:** паритет panel console + terminal workspace на POSIX.
-
-**Состав**
-
-- [x] PTY на Linux: `src/Platform/Posix/uConPty.pas` с теми же контрактами, что и на Windows; версии `mtn2-sdl` и `mtn2-tui` (`docs/LINUX.md`).
-- [x] Паритет сценариев «Панельный persistent shell + FAR Ctrl+O» – «Cmdline UX: Tab-complete и вставка путей» и базовый workspace («Terminal Workspaces + профили оболочек») на Linux.
-- [ ] macOS: сборки нет.
-
-**Проверка**
-
-- [x] Linux: cmdline + `Ctrl+O` + цветной вывод, интерактивные процессы (`less`/`nano`) принимают ввод.
-- [ ] macOS: запуск не проверялся.
-
----
-
-#### Quick View, Hex и потоковый Viewer (`v0.2.10`)
-
-**Цель:** быстрый просмотр медиа/бинарников и Viewer без полной загрузки крупных файлов в RAM.
-
-**Состав**
-
-- [x] Media Overlay + `Ctrl+Q` для изображений – **реализовано**: показывает превью в **противоположной** панели с live-обновлением по курсору – канон NC/NDN/FAR/TC (не плавающая рамка поверх активной панели и не ручной toggle per-move, как в первой версии). `uOverlayRenderer.pas` (Host-only путь из OVERLAY_PLUGIN.md §4, без cdecl-API плагина – тот – позже): `ReadBytesAsync` (лимит 32 МБ) в фоне; decode (`TBitmap.LoadFromStream`) и blit-scale в `Draw` – на UI-потоке (FMX `TBitmap`/`TCanvas` не потокобезопасны), без пред-масштабирования – `Draw` каждый кадр скейлит полный битмап под текущий pixel-rect, поэтому resize не требует re-decode (`UpdateOverlayBounds` – дешёвое обновление геометрии без decode, вызывается на каждой перерисовке). Новый `TPanelViewKind.pvkQuickView` (`uDualPanelTypes.pas`) – тот же механизм, что `pvkInfo`/Ctrl+L: `Ctrl+Q` переводит **противоположную** от активной панель в `pvkQuickView` (`TDualPanelWindow.ToggleQuickView`, "один спецпанель за раз" – сбрасывает `pvkInfo`, если был); `DrawPanel`/`DrawQuickViewContent` на **каждой** перерисовке берут строку курсора активной панели и переиздают запрос при смене URI – живой follow без повторного `Ctrl+Q`. Не-картинка под курсором – текстовая заглушка `(no preview: .ext)`/`(directory)` в самой quick-view панели (cell-grid, не canvas). Выход из режима: повторный `Ctrl+Q`, `Esc` (перехват раньше cmdline-clear/Console-toggle), или переключение `Tab`/`SwitchSide` на панель, где сейчас включён Quick View (`SwitchSide` явно закрывает его – панель не может одновременно вести курсор и зеркалить чужой). `DrawPanel` дополнительно самовосстанавливается (`IsQuickViewTarget` требует `ASide <> ActiveSide`), если какой-то из ~30 прямых мест присвоения `ActiveSide` в файле обойдёт `SwitchSide` – не аудировалось поштучно. Canvas-pass в `uMainForm.FormPaint` – как раньше, под гейтом `TDualPanelWindow.QuickViewVisible` (теперь проверяет `pvkQuickView` на любой стороне, а не факт декодированной картинки). Пункт меню есть (Files → "Quick View (image)...", `menu.json`). Расширения whitelist – «Quick View: больше форматов» (GIF/ICO/TIFF/WEBP/JFIF вдобавок к PNG/JPEG/BMP).
-- [x] Hex-режим Viewer (`TEditorWindow`): авто для файлов с NUL; F4 / Ctrl+H переключение Hex↔Text; F8 – принудительный decode как текст; лимит `cEditorMaxBytes` (16 МБ, см. ниже).
-- [x] Потоковый текстовый Viewer (долг «Viewer F3») – **реализовано** в `uEditorDoc.pas`: локальные (`file://`) текстовые файлы `> cEditorMaxBytes` вместо ошибки "File too large" открываются в режиме line-index (фоновый скан на LF-байтах → `FLineOffsets`, строки читаются seek+read по требованию с FIFO-кэшем `cStreamCacheCap` строк). Только для View (F3) – режим всегда read-only, `uEditorWindow.pas` не менялся (публичный контракт `LineCount`/`GetLine` не изменился). Сниффер кодировки читает первые `cStreamSampleBytes` (64 КБ); произвольный срез может рассечь многобайтовую UTF-8 последовательность, и `IsLikelyUtf8` забраковал бы валидный UTF-8 – файл показывался бы кракозябрами. Поэтому `TrimUtf8SampleTail` (`uTextEncoding.pas`) отбрасывает незавершённый хвост сэмпла перед определением.
-  **Развитие после первой итерации** (три ограничения, изначально оставленные вне неё, сняты одно за другим в отдельной сессии): `cEditorMaxBytes` поднят 2 МБ → **16 МБ**; архивные записи (`zip://…`) больше лимита теперь тоже стримятся – извлекаются во временный файл через тот же `CopyAsync`, которым F5 уже вытаскивает файл из архива (`TEditorDoc.StartStreamingOpenFromArchive`), временный файл удаляется в `Close`; UTF-16 (LE/BE) файлы больше лимита теперь стримятся тоже – построчный индекс сканирует пары байт по 2-байтовой сетке code unit'а вместо однобайтового `0x0A` (`Utf16PairIsLF`), обрезка завершающего перевода строки в `StreamingGetLine` стала кодировко-зависимой (2 байта для UTF-16, как раньше – 1 байт для остального), а гэйт `ApplyEncoding` для потокового документа обобщён на «нельзя менять ширину code unit'а» (было – «нельзя переключать именно в UTF-16»), так что LE↔BE переключение теперь разрешено, а переход на однобайтовую кодировку из UTF-16-потока – по-прежнему нет.
-  **Долги «Quick View, Hex и потоковый Viewer», закрытые позже:** F4 на потоковом документе – «F4 на больших файлах»; hex-редактирование – «Hex-редактирование»; снять OS read-only – «Снять OS read-only и открыть на правку». Piece table/rope по диску по-прежнему вне плана.
-
-**Проверка**
-
-- [x] Запуск: `Ctrl+Q` на PNG/JPEG – картинка в bounds, смена файла обновляет превью.
-- [x] Hex: F3 на `.dll`/бинарнике – dump offset|hex|ASCII, scroll, Esc закрывает; F4/Ctrl+H на тексте → Hex.
-- [x] F3 на файле > 50 МБ – первый экран быстро; рабочий набор не растёт пропорционально размеру файла. Замер на 100 МБ: открытие ~3.2 с, прирост рабочего набора +8.5 МБ, процесс отвечает всё время индексации.
-- [x] Регрессия: `TestStreamingViewer.pas` (`src/tools/`) – 72 проверки: обрезка UTF-8 сэмпла, line-index и произвольный доступ, вытеснение кэша строк, файл без завершающего `\n`, многобайтовый символ ровно на границе сэмпла, отказ бинарника, потоковый UTF-16 LE/BE (line-index, вытеснение кэша, отсутствие завершающего `\n`, симметричный гейт `ApplyEncoding`), неизменность обычного пути для файлов < лимита, read-only гарантии. Проверено, что тест падает (11 проверок) при отключённом `TrimUtf8SampleTail`. Архивная ветка стриминга – отдельная регрессия `TestStreamingArchiveViewer.pas` (15 проверок: line-index большой записи в zip, отсутствие утечки временного файла после `Close`, неизменность обычного пути для маленьких записей).
-
----
-
-#### Markdown Viewer (`v0.2.11`)
-
-**Цель:** cell-aware F3 для `.md`.
-
-**Состав**
-
-- [x] Парсер → строки + spans; стили темы; картинки через Overlay. **Реализовано Host-only** (по прецеденту Media Overlay из «Quick View, Hex и потоковый Viewer» – `TEXTAREA_PLUGIN.md` §3.2 явно называет плагинный cdecl-контракт для этого на будущее, здесь его нет намеренно). Новый `src/Core/uMarkdownParser.pas` (`TMarkdownParser.ParseLine`) – чистый построчный парсер без I/O: заголовки ATX `#`…`######` (H3–H6 схлопнуты в один визуальный ярус `mskH3to6` – в TUI-палитре нет запаса на 6 разных весов), fenced code block ```` ``` ````/`~~~` (состояние `TMdFenceState.InFence` переносится между вызовами `ParseLine` – единственное, что нужно помнить между строками), blockquote `>`, списки `-`/`*`/`+`/`N.`, HR (`---`/`***`/`___`, с пробелами или без), инлайн `**bold**`/`*italic*`/`` `code` ``/`~~strike~~`/`[text](url)` и отдельная строка `![alt](path)` под Overlay. Обрамляющие маркеры `**bold**`/`***bold+italic***` **вырезаются** из `DisplayText` (остаётся только сам текст, окрашенный span'ом) – это единственный инлайн-случай, где отображаемый текст отличается от исходной строки помимо заголовков; `*italic*`/`` `code` ``/`~~strike~~`/`[text](url)` красятся токеном целиком, включая разделители (сознательное упрощение, см. "Развитие" ниже). Одна исходная строка = одна экранная строка (без reflow), как и в обычном Viewer – единственное отступление от этого правила специально для картинок (см. ниже). Новый `src/Core/uMarkdownIndex.pas` (`TMarkdownFenceIndex`) даёт ленивое восстановление fence-состояния для больших файлов: помнит, докуда доскроллил (`FLastLine`/`FLastState`), плюс редкие чекпоинты каждые 500 строк, так что открытие файла не парсит его целиком и прыжок (Goto/Ctrl+End) сканирует только от ближайшего известного чекпоинта, а не от начала файла. Новый `src/Core/uMarkdownPainter.pas` (`TMarkdownPainter.DrawLine`) – тот самый механизм "текст + spans → цветные ячейки", которого в кодовой базе раньше не было нигде (`uColorCoding.pas` красит только целую строку панели целиком): резолвит цвет каждого вида span'а через тему один раз на все 15 `TMdSpanKind` и раскладывает по `TCharCell`. **Стили из темы**: `IThemeRenderer.ResolveMarkdownStyleColors` (новый метод, `uThemeTypes.pas`) реализован во всех 8 встроенных темах (`uNDNTheme`, `uModernUnicodeTheme`, `uASCIITheme`, `uTotalCommanderTheme`, `uSolarizedDarkTheme`, `uDraculaTheme`, `uNordTheme`, `uHighContrastTheme`) из уже объявленной в каждой теме палитры, плюс механический forwarding в `uThemeProxy.pas` – тот же паттерн, что «Дополнительные темы» использовал для добавления тем как таковых. Важная находка в процессе: `TTerminalRenderer` реально рисует из `TCharCellAttributes` только `ccaBold` – `ccaItalic`/`ccaUnderline` не имеют визуального эффекта нигде в кодовой базе, поэтому markdown-стили опираются на цвет/фон/bold, а не на italic/underline. **Картинки через Overlay**: переиспользован тот же `uOverlayRenderer.pas`, что и Ctrl+Q Quick View из «Quick View, Hex и потоковый Viewer» (`RequestOverlayPreview`/`UpdateOverlayBounds`/`ClearOverlayPreview`, тот же паттерн вычисления `AbsBounds = LocalBounds + Area.Left/Top`, что `TDualPanelWindow.DrawQuickViewContent`) – сам `uOverlayRenderer.pas` не тронут, он уже был свободен от `TDualPanelWindow`. Путь к картинке резолвится относительно папки самого `.md`-файла (`TEditorWindow.ResolveMarkdownImageUri`, только локальные `file://`/обычные пути – HTTP(S)-ссылки на этот VFS не отображаются, контролируемый fallback текстом). Стандалон-строка `![alt](path)` – единственное исключение из правила "одна строка = один ряд": под неё резервируется блок `cMdImageRows = 8` экранных строк (иначе картинка была бы высотой в один символ). Интеграция – `src/Core/uEditorWindow.pas`: новый `FMarkdownMode: Boolean` (по образцу существующего `FHexMode`, взаимоисключающие), авто-включается при первом `DocChanged` после открытия `.md` через F3 (только для Viewer, F4/Editor всегда остаётся сырым текстом); `Ctrl+M` – ручной тоггл Markdown-рендер ↔ raw text; `DrawMarkdownContent` – третья ветка диспетчинга в `DrawContent` рядом с `DrawHexContent`; курсор – одна мигающая ячейка в начале первой визуальной строки текущей строки (не подсветка всей строки – см. "Развитие" ниже; посимвольного выделения/копирования в этом режиме по-прежнему нет – view-only). `src/Forms/uMainForm.pas` `FormPaint` получил параллельный `QuickViewVisible` гейт `TEditorWindow.MarkdownImageOverlayVisible`, дергающий тот же `DrawOverlayPreview`. `src/Core/uFunctionBar.pas` получил `fbcViewerMarkdown` (F4 показывает "Raw" вместо "Hex", подсказка `M:Raw`).
-  **Развитие после первой итерации:** (1) курсор был целиком закрашивающей строку подсветкой фона – заменён на одну мигающую ячейку в начале строки (`FCursorVisible`, тот же блинк, что у text/hex режимов), поскольку `DisplayText` в общем случае больше не совпадает по колонкам с исходной строкой (см. п.2) и точная позиция курсора не имеет смысла для view-only рендера – курсор теперь чисто "текущая строка"-индикатор, не caret. (2) `**bold**`/`***bold+italic***` – обрамляющие `*` теперь **вырезаются** из отображаемого текста (раньше красился весь токен целиком, включая звёздочки); `uMarkdownParser.ParseInline` переписан с прямого посимвольного span'а над исходной строкой на билдер, который параллельно собирает новый `Text` и `Spans` в его координатах (`TMdInlineResult`) – вырезание применяется только к bold/bold+italic, `*italic*`/`` `code` ``/`~~strike~~`/`[]()` по-прежнему копируются с разделителями (сознательно – не унифицировано на все инлайн-конструкции). (3) HR (`---`/`***`/`___`) теперь рисуется настоящей горизонтальной чертой (`chBoxH`, `─`) на всю ширину – не разработчиком в парсере (тот как и раньше отдаёт `mskHRule`-span на исходный текст), а в `uMarkdownPainter.TMarkdownPainter.DrawLine`: при `Kind = mskHRule` символ ячейки подменяется на `chBoxH` независимо от того, что реально лежит в `DisplayText` на этой позиции (работает и в зоне паддинга за концом строки). (4) Перенос длинных строк – `DrawMarkdownContent` больше не рисует одну исходную строку в один экранный ряд без остатка: длинная строка режется на чанки через новый `TMarkdownParser.ComputeWrapStarts(AText, AWidth)`, каждый чанк красится отдельным вызовом `TMarkdownPainter.DrawLine` с новым параметром `AStartCharIndex` (тот же приём горизонтального среза, что `TEditorPainter.DrawTextLine` уже использует для скролла). Сознательно **не** взят путь обычного Viewer (`MapDisplayRowToLine`/`FTopLine`-как-display-row) – тот пересканирует все строки документа на каждый вызов, что свело бы на нет ленивость Markdown-режима на больших файлах; вместо этого перенос считается прямо во время того же последовательного прохода по исходным строкам, которым уже пользуются картинки (`FTopLine` остаётся индексом исходной строки, а не экранной строки – из этого вытекает единственный принятый компромисс: `EnsureCursorVisible` использует наивную построчную арифметику и может на кадр-другой промахнуться с точным положением курсора рядом с картинкой/длинной перенесённой строкой – не блокирующий, самоисправляющийся при дальнейшем скролле дефект, сознательно не устранялся). (5) Баг, найденный разработчиком: одиночное `_` внутри идентификатора вроде `WM_COPYDATA` ошибочно считалось началом `*italic*` (а при наличии второго идентификатора с `_` на той же строке – вроде `WM_COPYDATA` и `WM_USER` – оба подчёркивания спарились бы в один огромный ложный italic-span между ними). Исправлено правилом CommonMark "intraword underscore": `_`/`__` считаются валидным разделителем эмфазиса, только если не зажаты буквой/цифрой/`_` с обеих сторон (`IsWordChar`, проверка в `TryMarker` слева от открывающего и справа от закрывающего маркера) – у `*`/`**`/`***` такого ограничения в CommonMark нет и здесь оно не добавлялось. Регрессия расширена до 83 проверок (+5): одиночный и парный intraword-`_` не создают span, легитимные `_italic_`/`__bold__` на границах слов по-прежнему работают.
-  **Второй проход по (4)** (отдельный запрос разработчика – перенос по разделителям, а не посимвольно): `ComputeWrapStarts` изначально резал строго по ширине (`ceil(len/TextW)`, как готовый `GetWrappedRowCount` обычного text-Viewer); переписан на перенос по границе слова – ищет самый правый разделитель (пробел, таб, `. , ; : ! ? - ) ] } / \`, `IsWrapBreakChar`) в пределах ширины и переносит сразу после него (разделитель остаётся на закрываемой строке), с откатом на жёсткий разрыв только если во всём диапазоне ширины разделителя вообще нет (например длинный URL без пробелов). Поскольку чанк теперь может быть КОРОЧЕ ширины (перенос произошёл раньше правого края), `TMarkdownPainter.DrawLine` получил второй параметр среза `AEndCharIndex` (по умолчанию `MaxInt` – «до конца строки») – без него хвост чанка стал бы дорисовываться символами уже следующего чанка в те же ячейки. Паддинг за `AEndCharIndex` теперь красится цветом последнего фактически нарисованного в этом вызове символа (а не последнего символа всей строки, как было) – так, чтобы код-блок/заголовок/HR оставался закрашен на всю ширину на каждой перенесённой строке, а обрыв посреди абзаца хвостом не тянул чужой цвет. Регрессия расширена до 78 проверок: 5 новых на `ComputeWrapStarts` (перенос по пробелам, откат на жёсткий разрыв для строки без разделителей, `"cat dog elephant"@6` явно показывает разрыв по границе слова вместо середины "dog", пустая строка, `AWidth<=0`) и 2 на `TMarkdownPainter` (`AEndCharIndex` обрезает чанк, не давая следующему чанку "просочиться" в те же ячейки).
-
-**Проверка**
-
-- [x] Запуск: F3 на `.md` с заголовками/списками/code – визуально отличается от raw. Сборка Win64 через `src/build.ps1` проходит чисто. Регрессия `src/tests/editor/TestMarkdownParser.pas` (по образцу `TestStreamingViewer.pas`) – 83 проверки парсера, `ComputeWrapStarts`, `TMarkdownPainter` и `TMarkdownFenceIndex` (заголовки всех уровней, fence-состояние через несколько вызовов `ParseLine` включая незакрытый fence на EOF, blockquote/списки/HR, инлайн bold/italic/bold+italic/strike/code/link со снятием разделителей для bold, unmatched-маркеры не роняют парсер, картинки standalone/inline/пустой alt, HR-рендер как `chBoxH`, срез по `AStartCharIndex` для word-wrap, ленивый fence-индекс – прямой и обратный прыжок, переиспользование чекпоинта, `Reset`) – все проходят.
-- [x] Картинка из MD отображается или даёт контролируемый fallback – путь реализован (`RequestOverlayPreview` для поддерживаемых расширений, текстовый `[image: alt]` для остального/неразрешимых ссылок), живым прогоном не подтверждено (см. выше).
-- [x] Очень большой `.md` не блокирует UI на открытии (ленивый parse/pull) – `TMarkdownFenceIndex` сканирует только вперёд от последнего известного чекпоинта, открытие никогда не парсит файл целиком; регрессия проверяет корректность на файле с fence на 1200+ строк и прыжками вперёд/назад.
-
----
-
-#### Макросы / скриптинг (`v0.2.12`)
-
-**Цель:** автоматизация уровня FAR (базовый набор).
-
-**Состав**
-
-- [x] Движок: Lua 5.4 / 5.5 в плагине `mtn.lua`.
-- [x] Три образца: сортировка строк без повторов, создание папки, отчёт об отмеченных файлах.
-
-**Проверка**
-
-- [x] Запуск: назначить макрос на клавишу → повторяемый эффект.
-- [x] Ошибка скрипта не роняет процесс; сообщение пользователю.
-
----
-
-#### Дополнительные темы (`v0.2.13`)
-
-> Классы тем заменены файлами тем (раздел «Темы из файлов и редактор тем»).
-
-**Цель:** переключение облика без смены логики.
-
-**Состав**
-
-- [x] Темы: классическая палитра FAR/VGA (`NDN`), `ModernUnicode`, `ASCII`, `TotalCommander`, `SolarizedDark`, `Dracula`, `Nord`, `HighContrast` и другие. Один класс `TDataTheme` (`src/Core/uDataTheme.pas`) рисует любую тему, а файл `*.theme.json` задаёт цвета, символы и начертания; корневая тема `NDN` вшита в exe (`src/Assets/themes/NDN.theme.json`), поставляемые лежат в `resource\themes\`, свои – в каталоге настроек (формат и наследование – `docs/THEMES.md`). Положение частей окна, в том числе трёхъячеечной кнопки закрытия `[x]`, для всех тем одинаково (её хит-тест `uThemeDrawing.WindowFrameCloseHit` рассчитан на эту геометрию). `src/Core/uThemeRegistry.pas` – единый каталог тем (`Id`, `DisplayName`, `BuiltIn`, `Extends`), которым пользуются и главная форма, и диалог выбора «Тема...» в Настройках; новая тема появляется в списке без правок диалога и контроллера.
-- [x] Выбор темы в конфиге/диалоге. **Реализовано**: живое переключение без пересоздания окон – новый `src/Core/uThemeProxy.pas` (`TThemeProxy`), прозрачно форвардящий все методы `IThemeRenderer` на подменяемый `FInner`. Каждое окно/диалог/контроллер получает `IThemeRenderer` один раз в конструкторе и хранит именно эту ссылку всю жизнь (`uMdiCompositor`, `uTerminalWindow`, `uDialogHost`, `uTopMenuBar`, поповер-контроллеры…) – пересоздавать десятки живых окон ради смены темы не вариант, поэтому `TMainForm.FormCreate` выдаёт всем один и тот же `TThemeProxy`; `TMainForm.SwitchTheme` вызывает `FThemeProxy.SetInner(...)`, и все держатели этой ссылки перерисовываются новой темой на следующий кадр без единого каскадного вызова. (В контроллерах уже были заготовленные, но нигде не вызывавшиеся методы `SetTheme` – `uSortMenuController`, `uDualPanelJobs` и др. – прокси делает их ненужными для этой задачи, трогать не стали.) Диалог выбора – новый `src/dialogs/theme.json` (список + OK/Cancel, тот же паттерн, что `folderhistory.json`), зарегистрирован как `DIALOG_THEME` в `MTN2.rc`/`MTN2Resource.rc`, `cResDialogTheme` в `uDialogResources.pas`, `BuildThemeDialog` в `uDialogTypes.pas`. Пункт меню «Theme...» в Options (F9) – `tmaOptTheme` в `uTopMenuBar.TTopMenuAction` (+ `StringToTopMenuAction` + резервный хардкод категории) и `config/menu.json`; `TDualPanelWindow.OpenThemeDialog` строит список из `uThemeRegistry.GetAvailableThemes`, текущую тему узнаёт через новый pull-колбэк `OnGetActiveThemeId`, выбор сообщает наверх через новый `OnThemeSelect` – `TMainForm` подписывается на оба и переключает `FThemeProxy`. Активная тема сохраняется в `session.json` (`ThemeName`) – раньше это поле только загружалось и молча сохранялось как было («No live theme-switch UI yet» – комментарий в `PersistSession` убран), теперь `PersistSession` пишет туда live `FThemeName`.
-
-**Проверка**
-
-- [x] Смена темы перерисовывает панели и диалоги; данные и keymap не затрагиваются: `IThemeRenderer` красит уже готовую сетку символов и не касается ни `TPanelModel`, ни `uKeymap`. Выбранная тема сохраняется в `session.json`.
-- [x] Нет «дыр» в отрисовке tab/status/toolbar на каждой теме. Все восемь тем реализуют весь `IThemeRenderer` (`DrawTabBar`, `DrawStatusLine`, `DrawToolBar`, `DrawMenuBar`, `DrawScrollBar`, `ResolvePanelChromeColors` – все ветви `TPanelChromePart`). Общая для всех тем «хостовая» обвязка – предупреждающий диалог, тень окна, затемнение фона (`uThemeDrawing.pas`) – темой не переопределяется. `THighContrastTheme` не приглушает ничего, даже скрытые файлы и неактивную панель.
-- [x] Цвета из темы берут и элементы, у которых в `IThemeRenderer` нет своего метода – через существующие роли `ResolvePanelChromeColors` / `ResolveDialogRowColors`:
-  - верхнее меню (F9) и его подменю (`TTopMenuController.DrawTopBar` / `DrawSubmenu`): полоса – роль `pcpPanelTabActive`, открытая категория – та же пара с инверсией, рамка подменю – `DrawDialogFrame`; буква горячей клавиши – тёмно-красная `cSubmenuHotFg` во всех темах;
-  - строка F-клавиш, командная строка, индикатор `DROP` при перетаскивании, панель информации Ctrl+L;
-  - тело Viewer / Editor (текст, курсор, выделение, строка состояния, рамка, полоса прокрутки, подсветка поиска) – `IThemeRenderer.ResolveEditorColors` (`TEditorThemeColors`).
-- [x] Разделитель над итогами панели и нижняя граница окна Viewer / Editor двойные только у тем, которые рисуют активную панель двойной рамкой (`IThemeRenderer.UsesDoubleLineForActivePanel`), и только у окна в фокусе.
-- [x] Заголовок колонок в `TTotalCommanderTheme` – светло-серая полоса (`cFaceHighlight`) с чёрным текстом, как в Total Commander.
-
----
-
-#### Single-instance IPC (`mtn2 .`) (`v0.2.14`)
-
-**Цель:** вызов из встроенного терминала/внешней оболочки открывает вкладку в уже запущенном MTN2.
-
-**Состав**
-
-- [x] Mutex/single-instance; IPC (WM_COPYDATA): путь/URI → новая Dual Panel tab. **Реализовано**: новый `src/Platform/Windows/uSingleInstance.pas` – именованный мьютекс (`Local\...`, не `Global\`, это per-user desktop-приложение) детектит уже запущенный инстанс; вместо `FindWindow` по классу/заголовку (класс окна FMX не стабильный публичный контракт, заголовок динамический) HWND первого инстанса публикуется в маленький именованный file mapping, второй инстанс читает его напрямую и шлёт `WM_COPYDATA` (блокирующий `SendMessage` – доставка подтверждена до выхода второго процесса). Приём – новый `case WM_COPYDATA` в уже существующем хуке `MainFormWndProc` (`uMainForm.pas`, тот же, что уже обрабатывал `WM_QUERYENDSESSION`/`WM_ENDSESSION`), новый `TMainForm.HandleActivateRequest` восстанавливает окно (`ShowWindow`+`SW_RESTORE` при `IsIconic`, `SetForegroundWindow`) и открывает путь. Открытие пути – новый публичный `TDualPanelWindow.OpenPathAsNewTab` (новая вкладка на активной стороне; для каталога – `NavigateActiveTo`, для файла – уже существующий `GotoFileLocation`, который и так делает «перейти в родительскую папку + выделить файл»), общий для двух входных точек: `FormCreate` (после `TryRestoreSession` – `ParamStr(1)`, новая вкладка не трогает восстановленные из сессии) и `HandleActivateRequest`.
-- [x] Перехват `mtn2 <path>` из Terminal Workspace и из внешней cmd без второго UI-процесса (второй процесс сразу делегирует и выходит) – **не потребовало отдельного кода**: `mtn2 <path>`, набранный во встроенном Terminal Workspace, запускает реальный `mtn2.exe` через реальный PTY-шелл точно так же, как из внешнего терминала, и проходит тот же путь `TryAcquireSingleInstance` → делегирование → выход (`MTN2.dpr`, до `Application.Initialize`, второй процесс никогда не трогает FMX/платформенный слой). Предполагает `mtn2.exe` в `PATH` – вопрос установки, вне кода.
-
-**Проверка**
-
-- [x] При уже запущенном MTN2: `mtn2 D:\foo` активирует окно и открывает путь: второй `mtn2.exe` передаёт путь первому и выходит с кодом 0, не создавая окна; первый открывает путь новой вкладкой (для файла – через `GotoFileLocation`), восстанавливает окно из свёрнутого (`ShowWindow` + `SW_RESTORE`) и выводит на передний план (`SetForegroundWindow`).
-- [x] Без запущенного – обычный старт с путём; порты/handles не текут. **Проверено**: без инстанса путь открывается при обычном старте; при запущенном – без пути активирует окно без новой вкладки (`session.json` не меняется), с несуществующим путём – не падает, вкладка не создаётся; после закрытия во всех сценариях `Get-Process` подтверждает 0 оставшихся процессов `MTN2.exe`.
-
----
-
-#### Родные плагины: Plugin Manager + DLL/SO (`v0.3.0`)
-
-**Цель:** форма поставки **родных** плагинов MTN2 после стабилизации ежедневного FM. Far/TC-мосты – только после родных плагинов.
-
-Правила и текущие швы: [ARCHITECTURE.md](ARCHITECTURE.md), §6.
-
-**Состав**
-
-- [x] Plugin Manager: загрузка/выгрузка родного плагина (DLL Win32), опциональный манифест `plugin.json`, версии Host API (`cPluginAbiVersion`). SO/POSIX – не в этой версии.
-- [x] Загрузка ≥1 бывшего in-process плагина как DLL/SO (например panel или VFS). ZIP остаётся в ядре; первый реальный VFS-плагин – новый `mtn.7z`, не вынос модуля.
-- [x] Регистрация VFS-провайдеров: `RegisterPluginScheme` / `UnregisterPlugin`; plugin-owned Copy/Move идут в backend плагина. Copy plugin→file – хостовый extract-мост (`vtrPluginExtract`).
-- [x] Родной VFS DLL `src/plugins/mtn.7z`: схема `7z://`, list / exists / read незашифрованных `.7z` через локальный `7z.dll` (LGPL, рядом с плагином, не из Far). F5 extract на диск – через host-мост. Pack сюда не входит.
-- [x] Тот же Host API / Pull; регрессия «Локальный VFS: только просмотр» – «Прозрачные архивы» на внешней сборке. Pull cdecl (`get_row_json` / `handle_event`) не экспортируется.
-
-**Проверка**
-
-- [x] Запуск ядра без опционального плагина: нет `7z.dll` → `mtn_plugin_init` −2, хост пропускает плагин; helper DLL без `mtn_plugin_*` не валит загрузчик.
-- [x] Файловая панель через DLL проходит smoke: list, navigate, copy. Для `7z://` list/navigate + F5 extract на диск (`TestSevenZipPlugin`).
-- [x] Demo родной VFS-плагин монтируется через схему: Enter на `.7z` → `7z:///<abs>!/`; ZIP по-прежнему `file://…zip!/`.
-- [x] Выгрузка/ошибка загрузки плагина не роняет ядро (`TestSevenZipPlugin` UnloadAll; `7z.dll` = skip).
-
----
-
-#### WASM Host для родных плагинов (`v0.3.1`)
-
-**Цель:** изолированная песочница **родного** контракта MTN2 (не Far/TC ABI).
-
-**Состав**
-
-- [x] Wasmtime C API (`wasmtime.dll` v26, опционально, как `7z.dll`) + demo-плагин `mtn.wasm.demo` (read-only fake VFS `wasmdemo://`). **Реализовано**: `src/Core/uWasmtimeApi.pas` – динамический `LoadLibrary` без обязательной зависимости ядра; `src/Core/uWasmPluginHost.pas` – store на плагин, fuel + limiter, linker **без WASI**; `TPluginLoader` грузит `plugins\<id>\*.wat`/`*.wasm` рядом с DLL. Demo – `samples/plugins/mtn.wasm.demo/plugin.wat` (wat2wasm в рантайме). Гостевой ABI – не таблица указателей `THostApiTable`, а импорты `mtn_host.register_vfs_scheme` / `register_panel_plugin` / `register_menu_item` / `publish` и экспорты `mtn_vfs_list` / `exists` / `read_text` / `copy` / `mkdir` / `delete`: UTF-8 копируется в линейную память по i32-смещениям, размер результата – `mtn_last_size`, host scratch – последние 32 KiB guest memory. Plugin-id берёт хост из имени папки, модуль его не передаёт. Нет `wasmtime.dll` → `plrSkippedNoRuntime`, ядро живёт. Fetch: `src/tools/fetch-wasmtime.ps1`. Workspace: `src/plugins/mtn.ws` (`cargo` → `plugin.wasm`).
-
-**Проверка**
-
-- [x] Запуск: demo WASM отвечает на Pull; падение модуля изолировано. **`TestWasmHost.pas`**: list `wasmdemo:///` отдаёт `hello.txt` + `docs/`, ReadText – `hello, wasm`; модуль с `unreachable` в `mtn_plugin_init` даёт `plrInitFailed`, в LoadedPluginIds не остаётся, процесс жив. **Workspace panel** `ws:///` – встроенный VFS ядра (`uWorkspaceVfs.pas`): панель **ссылок** на исходные файлы и каталоги (не копии содержимого); F5 добавляет reference, F8 снимает его, оригинал на диске не трогается. Иерархия: `ws:///folder/file` + виртуальные каталоги (F7). Change Drive **4** (курсор popup на текущем URI, в т.ч. на пункте 4, если уже открыт `ws:///`). WASM `mtn.ws` только меню (**Commands → Workspace** / **Clear workspace**); хост отклоняет `register_vfs_scheme` для `file`/`recycle`/`sys`/`find`/`ws`. Библиотека снимков: `workspaces.json`, диалог **Commands → Workspaces...** (`Ctrl+Shift+D`), save (`Ctrl+Alt+Shift+D`); restore подменяет живой набор; при старте – `session.json` → `lastWorkspaceId` / `restoreWorkspaceOnStart`. Ins на пустом наборе не закрывает список: поверх – stub `Nothing to save`, Esc возвращает к списку. F-bar диалога – `fbcWorkspaceLibrary` (`Enter:Go` / `Ins:Save` / `Del:Del`). Пользовательская справка: `src/plugins/mtn.ws/resource/en/help/readme.md`. **`TestWorkspacePlugin.pas`**, **`TestWorkspaceLibrary.pas`**, chrome/оверлеи – **`TestDualPanelStatus.pas`**, **`TestDualPanelPanelDraw.pas`**, **`TestDualPanelClick.pas`**.
-- [x] Нет прямого доступа WASM к памяти процесса (контракт API). **Подтверждено контрактом + тестом**: в guest не передаются host-указатели, только смещения; OOB `register_vfs_scheme(ptr=2147483647)` хост отвергает bounds-check'ом, схему не регистрирует, не падает; импорт `wasi_snapshot_preview1` не инстанцируется (файловой системы хоста у модуля нет).
-
----
-
-#### Far API Wrapper (`v0.3.2`)
-
-**Цель:** совместимость с VFS-плагинами **Far Manager** (Windows), после родного Plugin Manager.
-
-**Состав**
-
-- [ ] Эмуляция `PluginStartupInfo` / `PluginPanelItem` → JSON / Pull MTN2.
-- [ ] Проверка на 1–2 известных VFS-плагинах FAR (архив/FTP – какие доступны).
-
-**Проверка**
-
-- [ ] Запуск: листинг панели FAR-плагина в MTN2.
-- [ ] Неподдерживаемые (UI/console buffer) плагины отвергаются явно, без краша.
-
----
-
-#### Total Commander plugin bridge (`v0.3.3`)
-
-**Цель:** совместимость с packer/FS-плагинами **Total Commander** (Windows), после родного API и желательно после Far-моста.
-
-**Состав**
-
-- [ ] WCX → Nested VFS слой (list / extract); Enter в поддерживаемый тип → `…ext!/`.
-- [ ] WFX → panel/VFS URI (минимум: list + navigate + copy наружу, где применимо).
-- [ ] Проверка на 1–2 известных WCX/WFX (архив / виртуальная ФС).
-
-**Проверка**
-
-- [ ] Запуск: заход в архив через WCX как в каталог; выход через `..`.
-- [ ] WFX: листинг и навигация без краша; неподдерживаемые колбэки – явный отказ.
-
----
-
-#### Поиск по содержимому файлов (grep) (`v0.3.4`)
-
-**Цель:** находить файлы по тексту внутри, не только по маске имени – Alt+F7 в FAR/TC ищет и «где встречается строка X». Диалог, job и результирующая `find://` панель уже существовали (заложены ещё в «Поиск файлов» – «Прозрачные архивы») с plain-text содержимым; отсутствовали только regex-режим и показ номера строки/фрагмента совпадения – добавлены только эти два пункта.
-
-**Состав**
-
-- [x] Диалог поиска (`dialogs/search.json`, `uFileFind.pas`): поле «Текст внутри файла» (уже было) + новый чекбокс **Regex** рядом с Whole words; case-sensitive и «искать в подпапках» – как раньше.
-- [x] Job поиска в фоне (уже было, `FindFilesAsync`, off-thread, `TThread.Queue` прогресс/результат) – расширен: `TFindOptions.UseRegex`, построчный грep через `System.RegularExpressions.TRegEx` при regex-режиме или прежний `TextContainsAbs` при обычном; байтовый лимит на файл (`cFindMaxContentBytes` = 4 МБ) не менялся.
-- [x] Regex-паттерн валидируется один раз до старта обхода (`ValidateRegexPattern`) – `TRegEx.Create` сам по себе ленивый и не компилирует паттерн, поэтому валидатор форсирует компиляцию через холостой `IsMatch('')`; без этого форсирования битый паттерн не бросал исключение и job просто находил 0 файлов молча. Ошибочный паттерн теперь выводится как `Invalid regex: <текст ошибки>` мгновенно, без запуска обхода.
-- [x] Результат – та же `find://session/<id>/` виртуальная панель («Поиск файлов» – «Прозрачные архивы»), теперь через `TFindHit` (`Path`+`Line`+`Snippet`) вместо голых путей; номер строки и фрагмент первого совпадения текут через `TVfsEntry.MatchLine/MatchSnippet` → `TPanelRow.MatchLine/MatchSnippet` и заменяют размер/дату в инфо-строке панели (`L<N>: <фрагмент>`), когда курсор стоит на найденном файле.
-
-**Проверка**
-
-- [x] Живое тестирование (screenshot-автоматизация): `*.pas` + `TFindHit` (plain) в `src/Core` – ровно 5 файлов, где строка реально встречается; инфо-строка на `uDualPanelSearch.pas` показала `L15: const AHits: TArray<TFindHit>): Boolean;`.
-- [x] Regex `TFind(Hit|Session)` – 6 файлов (включая `uFindVfs.pas`, совпавший только по «Session»); инфо-строка на `uFileFind.pas` показала `L30: TFindHit = record`.
-- [x] Битый паттерn `TFind(Hit` с включённым Regex – мгновенно `Invalid regex: Error in regular expression at offset 9: missing )`, job не стартовал, приложение осталось отзывчивым (`Responding: True`).
-- [x] Cancel останавливает обход на середине дерева – не менялось, унаследовано от `FindFilesAsync`'s `JobCancelRequested` checks («Поиск файлов»).
-
----
-
-#### Сравнение каталогов по содержимому (diff-каталогов) (`v0.3.5`)
-
-**Цель:** показать, чем именно отличаются файлы двух каталогов – не только «новее / отсутствует», как Directory Sync («Directory Sync»), а построчный diff, по аналогии с directory-compare в TC.
-
-**Состав**
-
-- [x] Directory Synchronizer (`uDualPanelSync.pas`): режим сравнения по содержимому (хэш/побайтово) в дополнение к текущему сравнению по дате/размеру. Radio group `compare_by` (Date / size | Content) в `dirsync.json`; переключение пересобирает превью на месте. Одинаковые mtime, разные байты → `srContentDiff` (`[!=]`), one-way копирует Active→Inactive, two-way оставляет для ручного выбора.
-- [x] Построчный diff двух файлов под курсором – расширение существующего Compare Files (`Ctrl+Alt+C`): `BuildTextDiff` (Myers) → unified-префиксы `-`/`+` в диалоге `filediff.json`. Бинарные файлы по-прежнему «differ at offset».
-
-**Проверка**
-
-- [x] `TestDualPanelSync`: два файла с одинаковой датой и разным содержимым – date-режим пропускает, content-режим помечает `srContentDiff`; identical bytes не попадают в список.
-- [x] `TestFileCompare`: diff `old`/`new` показывает `- old` и `+ new` на фоне неизменного контекста.
-
----
-
-#### Двунаправленная синхронизация каталогов (`v0.3.6`)
-
-**Цель:** two-way режим Directory Sync – «Directory Sync» закрыт как one-way Active→Inactive, TC и FAR-плагины обычно дают и режим «в обе стороны».
-
-**Состав**
-
-- [x] Directory Synchronizer: режим «⇄» – направление копирования каждого файла определяется тем, чья версия новее (`srNewer` / `srNewerOnDst` / missing с каждой стороны). Конфликты (оба mtime отличаются от снимка последней успешной синхронизации в `dirsync-state.json`) получают `srConflict` и **не** попадают в copy job – в превью отдельным тегом `[!]`, в статусе `N conflict(s)`.
-- [x] UI: переключатель One-way (→) / Two-way (⇄) в диалоге Directory Sync (`dirsync.json`, radio group `sync_mode`); one-way по-прежнему копирует только Active→Inactive. Снимок пары каталогов пишется после успешного job (или сразу, если копировать нечего), конфликтные пути сохраняют старые ticks.
-
-**Проверка**
-
-- [x] `TestDualPanelSync.pas`: файл новее слева → `srNewer` (направо); новее справа → `srNewerOnDst` (налево); two-way job за один проход собирает обе стороны (`CollectDirSyncJobPairs(..., True)` = 5 пар), one-way фильтрует до → только.
-- [x] Тот же тест: оба файла изменены относительно snapshot → `srConflict`, `[!]` в превью, conflict в статусе, в job-парах конфликт отсутствует. `TestDialogJson` парсит radio one-way/two-way.
-
----
-
-#### Подсветка синтаксиса в редакторе/Viewer (`v0.3.7`)
-
-**Цель:** цветной код вместо монохромного текста для распространённых языков – FAR Colorer, TC Lister-плагины.
-
-**Состав**
-
-- [x] Подсветка подключается плагином: `register_highlighter` (см. `PLUGIN_DEVELOPMENT.md`), пример `mtn.demo.highlight` для JSON, INI и подобных файлов.
-- [ ] Встроенный построчный tokenizer по расширению файла (`.pas`/`.cs`/`.py`/`.json`/`.md`/…) – keywords/строки/комментарии/числа через SGR-цвета текущей темы; без плагина файлы показываются монохромно.
-- [ ] Интеграция в `uEditorWindow.pas`/`uEditorDoc.pas` построчно, совместимо с потоковым Viewer («Quick View, Hex и потоковый Viewer») – подсветка не требует загрузки файла целиком в RAM.
-
-**Проверка**
-
-- [ ] Открыть `.pas` – keywords/строки/комментарии разного цвета.
-- [ ] Неизвестное расширение – обычный монохромный текст, без ошибок.
-
----
-
-#### Цветовая раскраска строк панели по типу файла (`v0.3.8`)
-
-**Цель:** TC «Color coding» / FAR highlighting – свой цвет строки в списке файлов панели по расширению/маске, поверх темы. По ходу реализации переработано в FAR-стиль: именованные группы с масками и раздельными цветами на три визуальных состояния (Normal/Selected/Current), а не плоское «маска → цвет».
-
-**Состав**
-
-- [x] Конфиг правил – `colorcoding.json` (embedded resource `COLORCODING_DEFAULT` + опциональный user-override в конфиг-папке), формат FAR highlight-групп: `{ "name", "mask", "normal"/"selected"/"current": { "fg", "bg" } }`. Парсинг и резолюция – новый юнит `uColorCoding.pas` (`TColorCodingGroup`, `ColorCodingResolve`, `ReloadColorCoding`).
-- [x] Применение цвета к строке панели – `uDualPanelDrawUtils.pas` (`DrawPanelList` → внутренняя `ApplyColorCoding`, вызывается в конце `ResolveRowColors`, после того как цвет темы уже выбран). Normal-цвет группы перекрывает цвет темы безусловно; Selected/Current – опционально: если группа их не задаёт, подсветка выделения/курсора остаётся штатной (цвет темы).
-- [x] Детерминированный порядок разрешения зафиксирован: группы проверяются сверху вниз, первая совпавшая по маске побеждает целиком (не ищем более специфичную дальше по списку).
-- [x] Дополнительные группы по запросу: `Documents` (`*.doc;*.docx;*.rtf;*.txt`, `#00AAAA`), `Object Pascal` (`*.pas;*.dpr;*.dproj`, `#55FFFF`), `Markdown` (`*.md`, `#FF5555`). Цвета подобраны так, чтобы не совпадать ни с соседними группами, ни со встроенными цветами темы (`src/Assets/themes/NDN.theme.json`) – в частности, `Object Pascal` не белый (`cDirFg` у директорий тоже белый), а `Markdown` не светло-пурпурный (это цвет `media`-типа темы, которым уже красятся `*.pdf` и картинки/видео).
-
-**Проверка**
-
-- [x] Группа `Archives` (`*.zip;*.rar;*.7z;...`) красит архивы жёлтым в панели, не трогая остальную тему; `Executables`/`Temporary` аналогично – проверено сборкой и визуально в рамках сессии.
-- [x] Несколько групп с пересекающимися масками – первая по списку побеждает; группа без `selected`/`current` не перекрывает штатную подсветку выделения/курсора.
-- [x] `Documents`/`Object Pascal`/`Markdown`: `*.md` красный (`#FF5555`, отличим от `*.pdf`), `*.pas`/`*.dpr`/`*.dproj` голубые (`#55FFFF`, отличимы от белых директорий), `*.doc(x)`/`*.rtf`/`*.txt` бирюзовые (`#00AAAA`).
-
----
-
-#### Инкрементальный поиск по истории командной строки (`v0.3.9`)
-
-**Цель:** live-фильтрация истории команд прямо в уже открытом диалоге `Alt+F8` – раньше список был полным и без фильтра, сужать приходилось глазами; Up/Down browse в cmdline (без диалога) не менялся.
-
-**Состав**
-
-- [x] Живой фильтр набирается прямо в открытом диалоге `Alt+F8` (не отдельный режим/хоткей запуска) – `TDualPanelWindow.HandleCmdHistoryFilterInput`/`FCmdHistFilter` (Dual Panel, `uDualPanelWindow.pas`) и `TBaseConsoleWindow.HandleCmdHistoryFilterInput` (Console, `uBaseConsoleWindow.pas`), включаются, пока `FDialogKind = hdkCmdHistory`.
-- [x] Печатные символы дописывают фильтр и сразу пересобирают список (`RefreshCmdHistoryDialog`); `Backspace` укорачивает фильтр посимвольно. Совпадение – по подстроке (регистронезависимо, `Pos(LowerCase(Filter), LowerCase(Item))`), не только по префиксу.
-- [x] Заголовок диалога отражает текущий фильтр (`'Command history: ' + FCmdHistFilter`).
-- [x] Enter – подставляет выбранную строку в cmdline (Dual Panel) или выполняет сразу (консоль/терминал), как и обычный выбор из `Alt+F8` без фильтра.
-
-**Проверка**
-
-- [x] `Alt+F8`, ввод `git` – список сужается до команд с `git` в истории (подстрока в любом месте, не только в начале); заголовок диалога показывает `Command history: git`.
-- [x] `Esc` закрывает диалог без изменения текущей строки ввода (штатное поведение `Alt+F8`, фильтр не переживает диалог – сбрасывается при следующем открытии).
-
----
-
-#### Показ/скрытие скрытых и системных файлов по хоткею (`v0.3.10`)
-
-**Цель:** стандартный toggle Hidden/System атрибутов в листинге панели, как в FAR/TC. Атрибут уже читается и попадает в модель строки (`TVfsEntry.IsHidden`/`IsSystem`, `uFileVfs.pas`/`uPanelModel.pas`), но фильтра «не показывать» пока нет – обе категории всегда видны в списке.
-
-**Состав**
-
-- [x] Хоткей `Ctrl+H` (`kaToggleHidden`, `uKeymap.pas`/`keymap.json`) – toggle показа Hidden/System-файлов в активной панели.
-- [x] Фильтрация на уровне построения строк панели, не в VFS-слое – `TFilePanelModel.FShowHidden`/`SetShowHidden`/`ShowHidden` (`uPanelModel.pas`): при `FShowHidden = False` строки с `IsHidden` или `IsSystem` исключаются из отображаемого списка, кроме родительской `..`.
-- [x] Персистентность – per-panel, поле `showHidden` в `session.json` (`uSession.pas`, по умолчанию `True`, как и Windows Explorer/FAR из коробки).
-
-**Проверка**
-
-- [x] `Ctrl+H` скрывает/показывает файлы с атрибутом Hidden/System без перезапуска приложения.
-- [x] Настройка переживает перезапуск (хранится в `session.json` per-panel).
-
----
-
-#### Ctrl/Shift+Gray+/− выделения файлов как в FAR (`v0.3.11`)
-
-**Цель:** голые `Gray+`/`Gray−` (выделение/снятие по маске через диалог) и `Gray*` (инверсия) уже работали; модификаторы `Ctrl`/`Shift` не были подключены и полностью игнорировались (клавиша проваливалась как обычный ввод). Довести до полного соответствия FAR (`@SelectFiles`).
-
-**Состав**
-
-- [x] `Ctrl+Gray+` / `Ctrl+Gray−` – мгновенное (без диалога) выделение/снятие файлов с тем же расширением, что у файла под курсором; `TDualPanelWindow.ApplySelectByExtension`, маска `'*'+Ext` (`'*.'` для файлов без расширения), переиспользует `TabSelectByMask`/`TabUnselectByMask` – папки, как и у голого `Gray+/−`, не участвуют.
-- [x] `Shift+Gray+` / `Shift+Gray−` – мгновенное выделение/снятие **всех** файлов панели; `TDualPanelWindow.ApplySelectAllFiles`, маска `'*'` через тот же `TabSelectByMask`/`TabUnselectByMask`.
-- [x] Обработчики подключены в `HandleInput` сразу за существующим hardcoded-блоком голых `Gray+/−/*` (после `RestoreGrayOpKey`, который восстанавливает `AKey` для numpad-клавиш, физически зажатых под FMX-модификаторами).
-- [x] `Alt+Gray+/−` (выделение по имени) – «Alt+Gray+/−: выделение по имени».
-
-**Проверка**
-
-- [x] Живое тестирование (screenshot-автоматизация): курсор на `.pdf`-файле, `Ctrl+Gray+` выделил все 4 `.pdf` в панели (не тронув `.docx`/`.md`/`.png`), `Ctrl+Gray−` снял выделение с них же.
-- [x] `Shift+Gray+` выделил все 13 файлов панели (статусбар `Selected: 1.2 M, files: 13`), `Shift+Gray−` снял выделение полностью.
-- [x] Приложение оставалось отзывчивым (`Responding: True`) на каждом шаге; сборка через `build.ps1` без ошибок.
-
----
-
-#### Раскраска файлов переезжает в тему: `NDNtheme.json`, `ThemeFile` (`v0.3.12`)
-
-**Цель:** двусмысленность в имени `theme.json` (какая тема? единственная ли?) и риск, что отдельный тема-агностичный пользовательский слой раскраски (`colorcoding.json`, «Цветовая раскраска строк панели по типу файла») визуально столкнётся с палитрой темы после её смены (литеральный `#RRGGBB` не спасает – цвет может стать неотличим от нового выделения). Готовим почву под вторую тему (`FARtheme.json`) заранее, а не постфактум.
-
-**Состав**
-
-- [x] Тема по умолчанию – `src/Assets/themes/NDN.theme.json` (ресурс `THEME_NDN`). Раскраска файлов по типам входит в тему (`"fileColoring"`) и становится активной вместе с ней; отдельного слоя раскраски нет.
-- [x] `uColorCoding.ReloadColorCoding` упрощён до одного merge: `THEME_DEFAULT.fileColoring` + активный файл темы на диске (было: тема-слой отдельно смёрженный с пользовательским слоем, потом смёрженные между собой).
-- [x] `TMtnSession.ThemeFile` (`session.json`, поле `"themeFile"`) – какой файл на диске использовать как override активной темы; независим от `TMtnSession.ThemeName` (тот выбирает Pascal-класс `IThemeRenderer`), по умолчанию `NDNtheme.json` (`uColorCoding.SetActiveThemeFileName`/`GetActiveThemeFileName`). Независимость полей – намеренная: `ThemeFile` можно указать без смены `ThemeName`, чтобы прогнать JSON-рескин через уже существующий `TNDNTheme` до появления отдельного класса темы.
-- [x] `TColorCodingGroup` остаётся read-only моделью (запись файла темы обратно на диск – в разделе «Редактор групп раскраски и диалог выбора цвета»).
-
-**Проверка**
-
-- [x] `TestColorCodingMerge.pas` – при написании юнит-тестов на новую однослойную схему пойман и исправлен реальный баг: `TJSONObject.TryGetValue<Boolean>` обнулял `Enabled`-подобные поля при отсутствии ключа в JSON (актуально для `Enabled`, добавленного в модель позже) – без теста всплыло бы только визуально.
-- [x] Полная сборка (`build.ps1`), запуск `MTN2.exe` без падений.
-
----
-
-#### Редактор групп раскраски и диалог выбора цвета (`v0.3.13`)
-
-**Цель:** до этого раскраску файлов («Цветовая раскраска строк панели по типу файла» – «Раскраска файлов переезжает в тему: `NDNtheme.json`, `ThemeFile`») можно было поменять только руками правя `NDNtheme.json` в конфиг-папке. Нужен UI – по образцу FAR "File highlighting", плюс то полезное из TC, что реально стоило перенять.
-
-**Состав**
-
-- [x] `Options → Color coding...` (`tmaOptColorCoding`, `dialogs/colorcoding.json`) – список групп с Add/Edit/Delete/Up/Down/Save/Cancel (`Ins`/`F4`/`Del`/`Ctrl+Up`/`Ctrl+Down`/`Ctrl+Space` – тот же raw-key приём, что у directory hotlist). Редактирует **эффективный** (уже смёрженный) список – `uColorCoding.GetActiveColorCodingGroups`; Save сравнивает сериализованный JSON текущей рабочей копии с копией на момент открытия и пишет на диск (`SaveActiveThemeFileColoring`, новая функция – раньше `uColorCoding.pas` только парсил, не сериализовал) **только если список реально изменился**.
-- [x] `TColorCodingGroup.Enabled` (JSON `"enabled"`, по умолчанию `true`) – мягкое удаление: `MergeColorCodingGroups` не умеет удалить запись `THEME_DEFAULT`, только заменить/добавить по `name`, поэтому `Delete` группы, присутствовавшей на момент открытия диалога, всегда становится `Enabled:=False` (tombstone); группу, добавленную в этом же открытии, `Delete` убирает по-настоящему.
-- [x] `TColorCodingGroup.ApplyTo` (`ccaFilesAndDirs`/`ccaFilesOnly`/`ccaDirsOnly`, JSON `"applyTo"`) – условие по типу строки поверх маски, которого нет у FAR-групп (взято по мотивам TC); `ColorCodingResolve` получил параметр `AIsDirectory`.
-- [x] `dialogs/colorcodingedit.json` – редактор одной группы: имя, маска, apply-to, enabled, 3×(Fg/Bg) с live-превью справа от каждой пары.
-- [x] `dckColorSample` (`uDialogTypes.pas`) – новый тип контрола declarative dialog модели: свотч, каждую отрисовку заново парсящий текущий (ещё не подтверждённый) текст указанных `fgFrom`/`bgFrom` полей. Дефолт для незаданного канала – не плейсхолдер: при указанном `panelState` (Normal/Selected/Current) берётся **реальный цвет темы** для этой строки (`IThemeRenderer.ResolveFileRowColors`), т.е. свотч показывает именно то, что увидит пользователь в панели.
-- [x] `dialogs/colorpicker.json` (`F9` на сфокусированном Fg/Bg-поле) – один составной элемент `dckColorPicker` (`uColorPickerControl.pas`): сетка 24 оттенка × 9 уровней яркости, серая шкала, ползунки H, S, L, R, G, B и поле hex с образцами «было / стало»; выбор стрелками и мышью, значение читается через `TDialogHost.GetColorPickerHex`; кнопка «Цвет темы» очищает поле.
-- [x] Побочная находка и фикс: глобальный перехват `F9` для активации верхнего меню (`TTopMenuController`) стоял раньше диалог-специфичной обработки в `HandleInput` и глушил `F9` пикера – добавлен guard `FDialogKind <> hdkColorCodingEdit`.
-
-**Проверка**
-
-- [x] `TestDialogJson.pas` (расширен) – весь набор диалогов, включая новые, парсится; `colorsample`-контролы находятся с правильными `FgSourceId`/`BgSourceId`.
-- [x] `TestColorSampleRender.pas` – headless-рендер через реальный `TDialogHost.Draw` в `TTerminalGrid`: свотч без темы даёт серый дефолт, с `TNDNTheme` – Normal/Selected/Current дают три разных, соответствующих классической FAR-палитре цвета (серый/жёлтый/чёрный на синем/синем/голубом); элемент выбора цвета проверен на реальном движении по строкам и ползунку.
-- [x] Живое тестирование по скриншотам пользователя нашло и поправило то, что headless-тесты не покрывали: ширины полей не умещались в диалог (`colorpicker.json`, 1 ячейка переполнения – найдено расчётом, не угадыванием), белый дефолт свотча сливался с белым телом диалога (→ серый), поля Name/Mask/Apply to были уже, чем позволяла ширина окна.
-
----
-
-#### Убрана задвоенная тень у кнопок диалогов (`v0.3.14`)
-
-**Цель:** по скриншоту пользователя – тень под кнопками читалась как две наложенные друг на друга (символьный ▄▀-хвост поверх дополнительного размытия под Skia). Затрагивает все диалоги (кнопки есть почти в каждом), не только Color coding – найдено и исправлено попутно при визуальной проверке нового диалога.
-
-**Состав**
-
-- [x] `uThemeDrawing.DrawButtonShadow` красил ▄▀ **двумя** тонами затемнения (тёмная "ближняя" половина глифа + отдельная светлая "дальняя" половина фона) – второй, более светлый слой вместе со сглаживанием краёв под Skia читался как тень на тени. Убран до одного тона.
-- [x] Константа силы затемнения (`cShadowCover`, уже была Skia-специфично подобрана в `DrawDialogShadow`) вынесена в общее место и переиспользована в `DrawButtonShadow` – раньше это были две независимые константы, рисковавшие разойтись.
-
-**Проверка**
-
-- [x] Полная сборка (`build.ps1`), запуск `MTN2.exe` без падений. Визуальное подтверждение самим пользователем после фикса не запрашивалось отдельно – фикс выведен из чтения кода рендер-пайплайна (`uTerminalRenderer.pas`, спец-путь заливки ▄▀ точным прямоугольником) и скриншота, приложенного к исходному репорту.
-
----
-
-#### Настраиваемый режим колонок Custom (`v0.3.15`)
-
-**Цель:** шесть готовых пресетов `TPanelColumnMode` не покрывают случай, когда нужен произвольный набор колонок – например, сразу три даты (Modified/Created/Accessed) одновременно, чего нет ни в одном пресете. Пользователь сам решает в диалоге, какие поля показывать.
-
-**Состав**
-
-- [x] `pcmCustom` – седьмое значение `TPanelColumnMode` (`uDualPanelTypes.pas`). Набор видимых полей – не per-panel, а общий на всё приложение (`GCustomColumnsConfig: TCustomColumnsConfig`, `uPanelColumns.pas`), как Theme/Zoom, а не как остальные пресеты; сам режим (`pcmCustom`) при этом остаётся per-panel, как и раньше.
-- [x] `TCustomColumnsConfig` – 7 независимых булевых флагов (Ext/Size/Modified/Created/Accessed/Type/Attr); в отличие от пресетов (ровно одна колонка даты) может показывать сразу все три даты одновременно. `BuildCustomColumnDefs` – единый источник истины (заголовок/ширина/ключ сортировки на поле, канонический порядок Ext→Size→Modified→Created→Accessed→Type→Attr), которым пользуются `PanelColumnWidths`/`FormatPanelRowMeta`/`HitPanelSortColumn`/`DrawPanelColumnHeaders`, чтобы эти 4 места не разошлись в трактовке "что значит ShowXxx".
-- [x] `Options → Columns...` (`tmaOptColumnsConfig`, `dialogs/columnsconfig.json`, `hdkColumnsConfig`) – диалог с 7 чекбоксами; `BuildColumnsConfigDialog`/`TDualPanelWindow.OpenColumnsConfigDialog`/`DialogCommand` по образцу существующих `Build*Dialog`/`hdkTheme`/`hdkDirSync`.
-- [x] **Ctrl+Shift+F7** (`kaColumnCustom`) – прямое переключение активной панели в Custom тем же путём, что Ctrl+Shift+F1..F6 (`ApplyColumnMode`); также добавлен пункт "Custom" в overlay `Ctrl+\`` (`uColumnModeMenuController.BuildItems`).
-- [x] `GCustomColumnsConfig` сохраняется в сессии (`session.json`, объект `"customColumns"`) – `TMtnSession.CustomColumns`, `uSession.pas`; читается/пишется в `TMainForm.TryRestoreSession`/`PersistSession` тем же способом, что `ThemeName`/`Zoom`.
-- [x] Побочный фикс в режиме Custom: `FormatPanelRowName` дублировал расширение и в Name, и в Ext (баг был и в `pcmTypes`, просто раньше это было негде включить/выключить отдельно). Новый параметр `AStripExt` отрезает хвост Name длиной `ARow.Extension`, когда рядом уже есть отдельная колонка Ext (`pcmTypes` или `pcmCustom` с `ShowExt`).
-- [x] Второй фикс от того же источника: у директорий с точкой в имени (`My.Folder`) в `Name` оставалась висячая точка при включённом Ext. Причина – `MakePanelRowFromEntry` (`uDualPanelTypes.pas`) довычисляет `Extension` из `AEntry.Name` без проверки `IsDirectory`, а `Text` директории несёт добавленный `/` (`RowsFromVfsItems`) – рассинхронизация длин ломала `Copy` в `AStripExt`. Исправлено в двух местах: `MakePanelRowFromEntry` больше не трогает `Extension` для директорий, и `FormatPanelRowName` дополнительно исключает `IsDirectory`/`IsParent` из стрипа как defense-in-depth.
-
-**Проверка**
-
-- [x] Ctrl+Shift+F7 переключает активную панель в Custom с дефолтным набором (Size+Modified+Attr, как у `pcmFull`).
-- [x] Ctrl+` содержит пункт "Custom"; Options → "Columns..." открывает диалог, отражающий текущий `GCustomColumnsConfig`.
-- [x] Одновременное включение Modified+Created+Accessed показывает все три колонки дат сразу; клик по каждой сортирует и подсвечивает нужную стрелку.
-- [x] При включённом Ext расширение больше не дублируется в Name (тот же фикс работает и для `pcmTypes`).
-- [x] Перезапуск приложения восстанавливает и режим Custom, и выбранный набор колонок из `session.json`.
-- [x] Полная сборка (`build.ps1`) без ошибок; живое тестирование пользователем – подтверждено ("Все работает правильно").
-
----
-
-#### Alt+Gray+/−: выделение по имени (`v0.3.16`)
-
-**Цель:** FAR `Alt+Gray+` / `Alt+Gray−` – мгновенно выделить/снять файлы с тем же *именем без расширения*, что у строки под курсором (`readme.txt` → `readme.md` / `readme`). Папки участвуют только если включён Select folders («Select folders для Gray+/− и F3 по выделенным каталогам»).
-
-**Состав**
-
-- [x] `TabSelectByNameStem` / `FileNameStem` (`uDualPanelTypes.pas`) – сравнение stem регистронезависимо (`SameText`); `..` пропускается.
-- [x] `TDualPanelWindow.ApplySelectByName` + hardcoded `Alt+vkAdd`/`Alt+vkSubtract` в `DispatchPanelFreeInput` сразу после Ctrl/Shift+Gray (до Alt quick-search). `IsAltQuickSearchChord` больше не глотает Gray+/−/*.
-- [x] Регрессия: `TestPanelSelect` (stem + folders), `TestDualPanelInput` (Alt+Gray+).
-
-**Проверка**
-
-- [x] Курсор на `a.txt` рядом с `a.md` / `b.txt` – Alt+Gray+ выделяет только `a.*`.
-- [x] Smoke: `TestPanelSelect`, `TestDualPanelInput`.
-
----
-
-#### Select folders для Gray+/− и F3 по выделенным каталогам (`v0.3.17`)
-
-**Цель:** FAR-чекбокс «Select folders» в диалоге Gray+/− (по умолчанию выкл.) и F3, когда курсор на файле, но в выделении есть каталоги – посчитать их размер, а не открыть Viewer файла.
-
-**Состав**
-
-- [x] `dialogs/selectmask.json` (`DIALOG_SELECTMASK`) – маска + checkbox `select_folders`; последнее значение живёт в `TDualPanelSelectionHelper.SelectFolders` (сессия, не `session.json`).
-- [x] `TabSelectByMask` / `TabUnselectByMask` принимают `AIncludeFolders`; Ctrl/Shift+Gray и Alt+Gray используют тот же флаг.
-- [x] `OpenViewOrEdit(False)`: если есть выделенные каталоги, всегда `CalculateFolderSizeUnderCursor`, даже когда курсор на файле.
-
-**Проверка**
-
-- [x] Gray+ с включённым Select folders отмечает и директории по маске.
-- [x] F3 на файле при выделенных папках запускает Folder size, не Viewer.
-- [x] `TestPanelSelect`, `TestDialogJson` (selectmask.json).
-
----
-
-#### F4 на больших файлах (`v0.3.18`)
-
-**Цель:** долг «Quick View, Hex и потоковый Viewer» – F4 больше не обязан оставаться read-only из-за streaming. Файлы до `cEditorEditMaxBytes` (256 МБ) грузятся в RAM; больше – остаются потоковым Viewer.
-
-**Состав**
-
-- [x] `TEditorDoc.OpenAsync(AURI, AWantEdit)`: F3 – `cEditorMaxBytes` + stream; F4 – попытка полного буфера до 256 МБ.
-- [x] `TryPromoteStreaming`: F6 из F3-stream или первая клавиша правки в F4-stream поднимает документ в буфер, если размер позволяет.
-- [x] Статус `Loaded N MB` / `Too large to edit` вместо тихого RO.
-
-**Проверка**
-
-- [x] F4 на текстовом файле 20 МБ открывает редактор (не stream-RO).
-- [x] F3 на 100 МБ по-прежнему stream; F6 на файле ≤256 МБ повышает в буфер.
-
----
-
-#### Снять OS read-only и открыть на правку (`v0.3.19`)
-
-**Цель:** атрибут `R` больше не тупик. Явное подтверждение снимает `faReadOnly` и открывает файл на редактирование.
-
-**Состав**
-
-- [x] F4 / печать / F6 на локальном RO-файле – `BuildConfirmDialog`: «Clear the OS read-only attribute and edit?».
-- [x] `TEditorDoc.TryClearOsReadOnly` – `TFile.GetAttributes`/`SetAttributes`, затем `RefreshReadOnly`. Архивы и view-only F3 не предлагают снять атрибут.
-
-**Проверка**
-
-- [x] F4 на файле с атрибутом R → Yes снимает R и позволяет правку; No оставляет RO.
-
----
-
-#### Pack в `7z://` (`v0.3.20`)
-
-**Цель:** extract из `7z://` уже был; pack (файл/дерево → `.7z`) не входил в «Родные плагины: Plugin Manager + DLL/SO».
-
-**Состав**
-
-- [x] `SevenZipAddLocalPath` (`uSevenZipApi.pas`) – новый `.7z` или update существующего через temp + `IOutArchive.UpdateItems` (сохраняет старые записи, кроме overwrite).
-- [x] Плагин `SzCopyItem`: `file://` → `7z://` только для `.7z` (не RAR/TAR).
-- [x] Shift+F1: если противоположная панель – `7z://`, pack внутрь неё; если dest оканчивается на `.7z` – создать/дописать архив. ZIP-pack по умолчанию на локальной папке не менялся.
-- [x] F5 copy на `7z://` больше не отвергается `JobDestRejectedReason`. ZIP `file://…zip!/` по-прежнему нельзя как dest copy.
-
-**Проверка**
-
-- [x] `TestSevenZipPlugin`: pack `file://`→`7z://`, повтор без overwrite → already exists, overwrite дописывает.
-- [x] `TestDualPanelJobDialogs`: dest `.7z` не форсируется в `.zip`; `7z://` dest разрешён для pack/copy.
-
----
-
-#### Quick View: больше форматов (`v0.3.21`)
-
-**Цель:** Ctrl+Q умел только PNG/JPEG/BMP, хотя классификация панели уже знала GIF/ICO/WEBP.
-
-**Состав**
-
-- [x] `IsOverlayImageExtension`: `.png/.jpg/.jpeg/.jfif/.bmp/.gif/.ico/.tif/.tiff/.webp`. Decode по-прежнему `TBitmap.LoadFromStream` (WIC на Windows); SVG/HEIC не добавлялись (не bitmap-кодеки FMX).
-
-**Проверка**
-
-- [x] Ctrl+Q на `.gif`/`.ico`/`.webp` показывает превью, если WIC декодирует; иначе прежняя заглушка ошибки overlay.
-
----
-
-#### Hex-редактирование (`v0.3.22`)
-
-**Цель:** Hex больше не view-only. F4 по бинарнику (и Ctrl+H в редакторе) позволяет overwrite нибблов, Ins/Del байт, Save сырых байт.
-
-**Состав**
-
-- [x] `EditorCanHexEdit`; `DocChanged` больше не форсирует ViewOnly на binary при F4.
-- [x] Ниббл 0–9A–F, Ins вставляет `00`, Del/Backspace удаляют байт; сохранение `FRawBytes` на диск (`file://` only).
-- [x] Undo/Redo в hex – снимок байт, не строк.
-
-**Проверка**
-
-- [x] `TestEditorLayout`: `EditorCanHexEdit`, ApplyNibble.
-- [x] F4 на маленьком `.dll` – правка байта, Save, повторное F3 показывает изменение.
-
----
-
-#### Диалог атрибутов и владельца (`v0.3.23`)
-
-**Цель:** FAR-подобный Set attributes для локальных файлов и каталогов: Read-only / Hidden / Archive / System и смена владельца, с опциональным recurse. `Ctrl+A` остаётся Select all.
-
-**Состав**
-
-- [x] `Ctrl+Shift+A` / Files → Set attributes… (`hotChar` B). Нелокальные панели (архив, find, tmp, ws, recycle, sys) – заглушка.
-- [x] Dropdown Keep / Set / Clear на каждый атрибут; смешанная выборка → Keep. Owner показан, «Change owner» по умолчанию выкл.
-- [x] `uWinFileAttr`: `SetFileAttributes` только для R/H/S/A; владелец через `GetNamedSecurityInfo` / `SetNamedSecurityInfo` (retry с SeTakeOwnership/SeRestore).
-
-**Проверка**
-
-- [x] `TestWinFileAttr`: set/clear R, mixed Keep, recurse Hidden, owner = текущий.
-- [x] `TestDialogJson` / `TestKeymap` / `TestDualPanelTopMenu`.
-
----
-
-#### Live reload открытых файлов + фоновая загрузка shell-иконок (`v0.3.24`)
-
-**Цель:** файл, открытый в Editor/Viewer, отражает изменения, сделанные снаружи (другой программой), без потери несохранённых правок; загрузка shell-иконок панели вынесена из синхронного вызова в фоновый поток, чтобы не подвешивать UI.
-
-**Состав**
-
-- [x] **Live reload (`uEditorDoc.pas`).** Локальный (не-streaming) файл отслеживается через `TDirectoryWatcher` (`uDirWatch.pas`) на **содержащем каталоге** (у Windows нет лёгкого уведомления по одному файлу) и молча перечитывается, когда размер/время записи на диске расходятся с тем, что было загружено или сохранено в последний раз (`FKnownSize`/`FKnownWriteTime`). Срабатывает **только** при отсутствии несохранённых правок (`FDirty = False`) – правка в процессе никогда не затирается молча; собственная запись (`SaveAsync`) не вызывает reload, т.к. эти поля обновляются сразу после сохранения. Исключены: streaming-документы («Quick View, Hex и потоковый Viewer» – реакция означала бы пересканировать `FLineOffsets` целиком, отдельная задача), бинарники, записи внутри архивов и стримингованные из них временные копии.
-- [x] **`ContentGen`.** Новое публичное свойство `TEditorDoc.ContentGen` (алиас `FGen`, уже использовавшегося для защиты от устаревших async-завершений) – счётчик перезагрузок содержимого (Open / re-decode / live reload). Потребитель со своим построчным кэшем поверх содержимого документа (сейчас – Markdown Viewer: fence-индекс и кэш обёрнутых строк, `uEditorWindow.pas`) сравнивает его с последним увиденным значением, чтобы понять, когда инвалидировать кэш, не реагируя на каждый несвязанный `OnChanged` (переключение dirty-флага, сохранение, …).
-- [x] `ReloadFromDisk` намеренно не проходит через `FReady := False` ("Loading"), которым пользуется обычный `OpenAsync` – документ остаётся `Ready` всё время, поэтому существующие вызовы `ClampCursor`/`EnsureCursorVisible` на каждый `OnChanged` сами подстраивают курсор/скролл под изменившееся содержимое; отдельного восстановления позиции не потребовалось.
-- [x] **Фоновая загрузка shell-иконок (`uShellIcons.pas`).** `TShellIconWorker` – выделенный поток с апартаментом `COINIT_APARTMENTTHREADED`; `SHGetFileInfo`/`ExtractIconEx` теперь всегда выполняются там, не на UI-потоке. Поток ждёт через `MsgWaitForMultipleObjects` и выкачивает оконные сообщения (`PeekMessage`/`DispatchMessage`) – без этого COM-маршалинг shell-расширений (иконки-оверлеи облачной синхронизации, антивирусов и т.п.), которым для ответа нужен работающий цикл сообщений на вызывающем потоке, мог подвесить поток навсегда (тот же класс дедлока, что и старое предупреждение в заголовке юнита про `SendMessage` на UI-поток до старта message loop – только теперь потенциально постоянный, т.к. у выделенного потока раньше не было цикла сообщений вообще).
-- [x] Доставка готовой иконки в кэш (`ApplyDelivered`) теперь вызывает `NotifyChanged` (invalidate + `FOnContentChanged`), а не голый `Invalidate` – раньше иконка помечала внутренний буфер грязным, но реальная перерисовка `TForm` откладывалась до следующего **несвязанного** события (движение курсора, blink таймера), и до тех пор иконка визуально не появлялась.
-
-**Проверка**
-
-- [x] Регрессия: `src/tests/core/TestLiveReload.pas` – внешнее изменение файла подхватывается в пределах debounce-окна (~300 мс) без потери позиции; несохранённая правка не даёт reload сработать (`ContentGen` не меняется); собственное сохранение не вызывает эхо-reload; файл никогда не держится с эксклюзивной блокировкой (`ReadBytesAsync` открывает `fmShareDenyNone`).
-- [x] Регрессия: `src/tests/panels/TestShellIcons.pas` – синхронный (`ShellIconIdForRowWait`) и асинхронный (`ShellIconIdForRow` + `CheckSynchronize`) пути резолва иконок, кэш по расширению/пути, embedded-иконки `.exe`.
-
----
-
-#### Мультиязычность UI (`v0.3.25`)
-
-**Статус: частично реализовано.** Механизм перевода, выбор языка и русский перевод диалогов, верхнего меню, F-бара, заголовков колонок, строки статуса, попапов Sort / Column modes / Change Drive, заголовков окон и инфо-панели – в коде (коммиты `17a7475`, `fb82140`, «Акцентные буквы меню в переводах»). Текст справки F1 пока только на английском – см. «Осталось».
-
-**Цель:** интерфейс на английском и русском с каркасом под следующие языки; смена языка без перезапуска. Ядро (VFS, Jobs, рендерер, ConPTY, темы) не переписывается: изменения касаются только UI.
-
-**Не цель:** локализация содержимого файлов пользователя; перевод идентификаторов keymap / URI / action-имён меню.
-
-**Как устроено (в коде)**
-
-- **`uStrings.pas`** – единственная точка перевода:
-  - `T(key, default[, args])` – строки из Pascal (сообщения, подтверждения, подписи меню); `TDialog(namespace, id, default)` – статические подписи диалогов, вызывается только из `uDialogResources`.
-  - `SetLocale` / `CurrentLocale` / `AvailableLocales` (для списка языков: `en` всегда первый, плюс пакеты `resource\<locale>\` с подходящей версией).
-  - Локаль `en` – сквозной проход без поиска: возвращается английский текст самого места вызова (`default`). Английский поэтому не может сломаться от устаревшего файла перевода, а `strings/en.json` в рантайме **не загружается** – это шаблон для переводчика со всеми ключами.
-  - Встроен только английский. Любой другой язык – папка языкового пакета `resource\<locale>\` рядом с exe (`locale.json`, `strings.json`, `help\*.md`): новый язык добавляется копированием папки без пересборки. Таблица грузится лениво при первом обращении после `SetLocale`. Ищется только папка exe (portable-копия не подхватывает чужой `resource\` выше по диску); тесты направляют поиск на `bin\win64\resource` через `SetResourceRoot`.
-  - Контроль версии. В exe встроен RCDATA `RESOURCE_VERSION` (`src/resource.version` – номер набора ключей и раскладки пакета), в `locale.json` пакета – `"version"`. Совпадает – пакет применяется; старше – применяется, недостающие ключи остаются английскими, `--self-check` выдаёт предупреждение; новее, без `locale.json` или с нечитаемым – пакет игнорируется (в список языков не попадает, `--self-check` – ошибка). Номер поднимают при смене или удалении ключей и при смене формата пакета.
-  - `TStringPack` – та же таблица для одного плагина: хост (`uPluginServices`) держит пакет `plugins\<id>\resource\<locale>\strings.json` на плагин и сверяет версию пакета с полем манифеста `"resources"` (0 – плагин версии не объявляет, подходит любой пакет). Плагин получает перевод только через хост: `Translate` в `THostApiTable` (ABI 3) и импорт `translate` у WASM; язык задаёт хост (`host_info`), о смене сообщает событие `language.changed`.
-  - Любой промах (нет ключа, нет файла, битый JSON, не совпали плейсхолдеры `Format`) возвращает английский `default` – никогда сырой ключ или пустую строку.
-- **Ключи** (`resource/<locale>/strings.json`):
-  - `dialogs.DIALOG_<ИМЯ>.$title` и `dialogs.DIALOG_<ИМЯ>.<id контрола>` – подписи диалогов; ключ – имя RCDATA-ресурса + `id` контрола, поэтому 40+ `dialogs/*.json` не форкаются по языкам. Переводятся метки, чекбоксы, радио, кнопки и статусы **с `id`**; поля ввода, списки и выпадающие списки несут данные и переводятся в коде (`DialogSetListItems` + `T`). Контролы, чей текст всегда перезаписывается в рантайме (message / path / prompt), и заголовки многоколоночных списков (их отступы привязаны к колонкам строк) намеренно без ключа.
-  - `menu.category.<английский заголовок>` и `menu.<имя action>` (RTTI-имя `TTopMenuAction`) – верхнее меню; горячая буква перевода – маркер `&` («Акцентные буквы меню в переводах»).
-  - `ui.*` – строки из Pascal (`ui.delete.promptOne`, `ui.userMenu.title`, …).
-  - `fbar.<английская подпись>` – F-бар. Подписи по-прежнему строятся по-английски (и из профиля клавиш, `KeymapFBarShortLabel`), а переводятся одним проходом в конце `FunctionBarGetItems` (`TranslateFBarItems`): номер F-клавиши и имя клавиши подсказки (`Esc:`, `Enter:`) не меняются – по ним работает щелчок. Слот F-клавиши при ширине 80 колонок вмещает ~6 символов, поэтому `fbar.*` – свои короткие формы (`Копир`, `Перен`, `Папка`), а не подписи меню.
-  - `status.<английский текст>` – строка статуса. Переводится там, где сегмент создаётся (`S()` – заголовок, `H(клавиша, действие)` – подсказка, `T('status.selection' / 'status.free' / 'status.findCount' / 'status.resultCount')` – форматы), **не** целыми сегментами: сегмент может быть путём или именем файла.
-  - `col.*` – заголовки колонок (`PanelColumnTitle`; должны помещаться в ширину колонки: Ext/Attr 5, Size/Type 8, даты 14), `colMode.*` – режим колонок в статусе (`PanelColumnModeTitle`). `PanelColumnModeName` / `PanelSortColumnName` остаются идентификаторами `session.json` и не переводятся.
-- **Геометрия.** Для не-`en` после перевода диалог расширяется под длинные подписи и строки кнопок перецентрируются (`uDialogLocaleLayout.FitDialogToTranslatedText`: элементы одной колонки остаются в одной колонке; выросшая подпись отодвигает только колонку своего соседа справа, с прежним зазором; строка без соседей растёт на месте; отодвинутое поле сужается, если иначе не помещается; ряд кнопок раскладывается отдельно – кнопки растут по подписи, сохраняют промежутки и центрируются с тенью, отступив от рамки хотя бы на клетку; ширина не уменьшается). Подпись кнопки обрезается по её рамке (`PutGridTextClipped` в `DrawButton` всех тем), а не залезает на тень и соседей.
-- **Выбор языка** – Options → **User interface...** (`tmaOptInterface`, `interface.json`, `BuildInterfaceDialog`) → поле **Language** (`DisplayLanguageName`: English или `name` из `locale.json` пакета, иначе код в верхнем регистре). Хранится в `session.json` (`"language"`, `TMtnSession.Language`); при старте `PeekSessionLanguage` + `SetLocale` вызываются до первой сборки меню. `PersistSession` пишет живое `CurrentLocale`.
-- **Смена без перезапуска.** OK в диалоге Interface: `SetLocale` + `TDualPanelWindow.ReloadMenuStructure` (пересборка верхнего меню из `MENU_MAIN`). Диалоги переводятся при каждом открытии, `T()` вызывается при построении строки – следующий открытый диалог/сообщение уже на новом языке.
-
-**Отличия от первоначального плана.** Вместо `uLang.pas` / `Lang()` – `uStrings.pas` / `T()`; английский – не каталог, а текст места вызова; в диалогах ключом служит существующий `id` контрола, а не новое поле `textKey`; отдельного пункта Options → Language нет – язык в диалоге Font / Display; диалоги не переводятся на flow-протокол 1.0, а расширяются автоматически.
-
-**Сделано**
-
-- [x] Каталог и поиск строк (`uStrings.pas`), fallback на английский, внешний файл-override.
-- [x] Попапы Sort (`sortMenu.*`) и Column modes (`columnModeMenu.*`) – подписи с маркером `&`, горячая буква срабатывает в любой раскладке (общие `MenuResolveMnemonic` / `MenuHotKeyMatches` в `uDualPanelOverlays.pas`, ими же пользуется верхнее меню); Change Drive – заголовок, спецпункты (`ui.drivePopup.*`), тип диска (`DriveKindTitle`, ключи `ui.driveKind.<KindLabel>`; сам `KindLabel` остаётся английским идентификатором).
-- [x] Заголовки окон (`ui.window.*`: Просмотр / Редактор / Hex / Markdown, консоль и терминал с состоянием, «масштаб» в заголовке главного окна), окна поиска (`ui.search.*`), заголовки диалогов, собираемые в коде (история команд, выбор цвета, рабочие пространства), стандартные имена вкладок рабочих пространств (`ui.workspace.*` – только для новой сессии; сохранённые имена – данные пользователя). Инфо-панель Ctrl+L (`ui.info.*`); `KindLabel` остаётся английским идентификатором, показ – `DriveKindTitle`.
-- [x] F-бар всех контекстов (панели, консоль, терминал, Viewer/Editor, диалоги, задания, поиск, меню F2), заголовки колонок (включая режим «Свой»), строка статуса (заголовки, подсказки, «Выделено», «Свободно», режим колонок, сторона панели).
-- [x] Все статические подписи всех диалогов, верхнее меню (категории и пункты, с горячими буквами), подтверждения и сообщения операций (удаление, переименование, создание папки, копирование, задания, SSH, ассоциации, рабочие пространства, перекодировка, read-only, закрытие консоли), меню пользователя F2.
-- [x] Автоширина переведённых диалогов, обрезка подписи кнопки.
-- [x] Выбор языка в Display, сохранение в сессии, применение при старте и без перезапуска (меню + всё, что строится заново).
-- [x] Идентификаторы не переводятся: action-имена keymap, `TTopMenuAction`, URI-схемы, `id` контролов.
-
-**Осталось**
-
-- [x] Текст справки F1 (`dialogs/help.json`: у строк нет `id`, переводить нечем – переводится только заголовок и кнопка). Кандидат на замену – справочная система из `HELP.md`. **Закрыто «Справка F1»:** справка на Markdown в `bin/win64/resource/<язык>/help/`.
-- [ ] Формы множественного числа (1 / 2–4 / 5+) для `%d`-фраз – сейчас `Format` с одной формой.
-- [ ] Перевод уже **открытого** диалога и попапа при смене языка (сейчас – со следующего открытия).
-- [ ] Ошибки VFS / заданий из провайдеров.
-- [x] Каталоги строк плагинов (`plugins\<id>\resource\<язык>\`) и языки сверх EN+RU: немецкий, упрощённый китайский.
-- [x] Тест полноты (`TestLocalePacks.pas`): шаблон `src/strings/en.json` и каждый пакет `resource\<язык>\` содержат один и тот же набор ключей, значения не пустые, форматные подстановки совпадают с шаблоном. Пакеты находятся по папке, новый язык проверяется без правки теста.
-
-**Проверка**
-
-- [x] Сборка `src/build.ps1` чистая; `brcc32` встраивает `RESOURCE_VERSION`.
-- [x] `TestStrings` (локали, поиск, внешний override, fallback при плохом `Format`, перевод диалогов en/ru и широкий прогон по всем диалогам, `ui.*`, меню), `TestTopMenuBar`, `TestDisplaySettings`, `TestButtonTextClip`, `TestDualPanelStatus`, `TestPanelColumns`, `TestDualPanelPanelDraw` (на локали `en`).
-
----
-
-#### Шрифт и визуальные параметры (`v0.3.26`)
-
-**Цель:** один диалог Options → Font / Display… для гарнитуры, кегля и соседних визуальных настроек сетки; применение **без перезапуска**, сохранение в `session.json`. Тема, раскраска файлов и набор колонок **не** входят сюда – у них уже свои диалоги («Дополнительные темы» – «Редактор групп раскраски и диалог выбора цвета» / 44).
-
-**Исходное состояние.**
-
-| Параметр | Сейчас | UI |
-| --- | --- | --- |
-| Гарнитура | `PreferMonoFontFamily`: при Skia и наличии файла – Cascadia Mono, иначе Consolas (`uTerminalRenderer.pas`). `FontName` можно записать в поле, но метрики ячейки от этого сами не пересчитываются | нет |
-| Кегль | `FBaseFontSize := 14`, эффективный размер = база × zoom | нет |
-| Zoom | `SetZoom` / `AdjustZoom`; Ctrl+Wheel, Ctrl+0, пункты меню Zoom In/Out/Reset | хоткеи + меню, без численного поля |
-| Курсор | мигание 530 мс (`cBlinkIntervalMs` в `uMainForm.pas`), всегда включено | нет |
-| Иконки в панели | столбец shell-иконок всегда включён («Live reload открытых файлов + фоновая загрузка shell-иконок») | нет |
-| Тема / color coding / Custom columns | отдельные диалоги | не дублировать |
-| Skia | `DCC_Define SKIA` на этапе сборки | не runtime-опция |
-
-Смена zoom уже пересчитывает `CellWidth`/`CellHeight` → `Cols`×`Rows` → resize композитора. Смена шрифта/кегля должна идти **тем же путём**, что `SetZoom`, а не записью в property в обход метрик (иначе глиф-кэш и сетка разъедутся).
-
-**Состав**
-
-- [x] **`TTerminalRenderer.SetFont`.** Одна точка: имя + базовый кегль → `CalculateCellMetrics` → `RecalcGridDimensions` → invalidate глиф-кэша (`TGlyphCache.Clear`) → `Recompose`. Невалидная/пропавшая гарнитура – откат на `PreferMonoFontFamily`, без падения. Диапазон кегля ограничен (например 8–32 pt); zoom по-прежнему отдельный множитель поверх базы (Ctrl+Wheel не перезаписывает `BaseFontSize`).
-- [x] **Список моноширинных шрифтов.** Только моноширинные семейства Windows (Consolas, Cascadia Mono, Cascadia Code, Lucida Console, Courier New, плюс то, что система отдаёт как monospace). Пропорциональные гарнитуры в список не попадают: сетка строится по ширине одного глифа. Если выбранный шрифт деинсталлировали – fallback и пометка в диалоге, не пустая сетка.
-- [x] **Диалог `src/dialogs/display.json`** (`DIALOG_DISPLAY`, `BuildDisplayDialog`). По образцу Theme/Columns: `TSettingsDialogController.OpenDisplay`, пункт Options → **Font / Display...** (`tmaOptDisplay`, `hotChar` F – Zoom In тогда уступает букву или остаётся на I, как сейчас). Поля:
-  1. список гарнитур (текущая предвыбрана);
-  2. кегль (dropdown фиксированных pt, не свободный ввод – проще удержать сетку);
-  3. zoom, % (тот же `FZoom`, что уже в сессии; пункты Zoom In/Out/Reset **остаются**, диалог их не отменяет);
-  4. мигание курсора: вкл/выкл и интервал (минимум: checkbox «Blink cursor»; интервал – dropdown 300/530/1000 мс, 530 = текущий канон);
-  5. checkbox **Show panel icons** – прячет столбец `IconId` / `PanelIconReserve`, не выгружая `uShellIcons` (воркер просто не кормят работой).
-  OK применяет пачку и закрывает; Cancel откатывает к снимку на момент открытия (как если бы `SetFont`/zoom/blink вызывались live для превью – тогда Cancel обязан вернуть прежнее). Допустимо применять только по OK, без live-preview: меньше края с полуприменённой сеткой; тогда превью не обещать.
-- [x] **Сессия.** Новые поля `TMtnSession` рядом с `Zoom` / `ThemeName`: `FontName`, `FontSize`, `CursorBlink` (bool), `CursorBlinkMs`, `ShowPanelIcons`. Пустые/старые `session.json` → нынешние дефолты (Cascadia/Consolas, 14 pt, blink 530, иконки вкл). `TryRestoreSession` вызывает `SetFont` до первого compose, чтобы не мелькал дефолтный Consolas.
-- [ ] **Не входит.** Смена темы, групп раскраски, набора Custom-колонок, языка («Мультиязычность UI»), opacity окна, hinting/ligatures как отдельные тумблеры, runtime-включение Skia, межстрочный зазор поверх метрики глифа (ячейка = измеренный advance; отдельный padding – только если без него кегль 8/32 даёт наложение, тогда явный `CellPadY` в том же диалоге и в сессии).
-
-**Проверка**
-
-- [x] Options → Font / Display… открывается; OK на другой моноширинной гарнитуре и кегле пересчитывает `cols×rows` в caption, панели/диалоги/F-бар перерисовываются без перезапуска; пропорциональный шрифт выбрать нельзя.
-- [x] Zoom в диалоге и Ctrl+Wheel – один `FZoom`; Reset Zoom (Ctrl+0) сбрасывает множитель, не кегль и не гарнитуру.
-- [x] Выключение blink: курсор статичен и видим; 530 мс – как раньше. Выключение иконок: первый столбец списка – имя, без `IconId`; повторное включение возвращает столбец без перезапуска.
-- [x] Перезапуск поднимает те же FontName/FontSize/Zoom/blink/иконки из `session.json`. Несуществующая гарнитура в JSON → fallback, сессия после выхода содержит реально использованное имя.
-- [x] `TestDialogJson` / `TestDualPanelTopMenu` / сессионный тест (поля читаются/пишутся, дефолт при отсутствии ключей). Сборка `src/build.ps1` чистая после `brcc32` с `DIALOG_DISPLAY`.
-
----
-
-#### Акцентные буквы меню в переводах (`v0.3.27`)
-
-**Цель:** при русском интерфейсе в горизонтальном меню (F9) и выпадающих списках подсвечиваются горячие буквы, как в английском.
-
-**Причина дефекта.** Горячая буква задавалась в `menu.json` (`hotChar`, латиница) и искалась в тексте пункта. В переведённом тексте её нет – подсветки не было, клавиша оставалась невидимой.
-
-**Состав**
-
-- [x] **Маркер `&` в переводе.** Перевод сам отмечает свою горячую букву: `"&Файлы"`, `"Пере&местить"`; `&&` – символ `&`. `TTopMenuController.LoadMenuFromJson` вырезает маркер, берёт букву и её позицию (`TSubmenuItem.HotPos` – подсвечивается именно помеченная буква, даже если такая же встречается раньше). Без маркера английский `hotChar` сохраняется, только если буква есть в видимом тексте – иначе горячей клавиши нет.
-- [x] **Регистр и раскладка.** Сравнение без учёта регистра для любых алфавитов (`System.UpCase` умеет только латиницу). Клавиша срабатывает в любой раскладке: сначала точное совпадение, затем та же физическая клавиша другой раскладки (`uInputLine.TextKeyLayoutAlternate`, QWERTY ↔ ЙЦУКЕН).
-- [x] **Приоритет пунктов.** При открытом выпадающем меню буква ищется сначала среди его пунктов, затем среди категорий (раньше `C` в меню Files открывало Commands вместо Copy).
-- [x] **Переводы.** В `bin/win64/resource/ru/strings.json` расставлены уникальные в пределах подменю буквы для всех категорий и пунктов; три пункта «Команд» и два «...по расширению» остались без буквы (не хватило свободных).
-- [x] **Цвет.** Горячие буквы всех меню – один цвет `cMenuHotKeyFg` (`uDualPanelOverlays.pas`, тёмно-красный, жирный, на любом фоне строки); им же рисуются горячие клавиши меню F2 («Меню пользователя F2 и меню папки»).
-
-**Проверка**
-
-- [x] Сборка чистая; `TestTopMenuBar`, `TestStrings` (сырой перевод содержит маркер, заголовок пункта – без него).
-
----
-
-#### Выделение текста мышью и по словам (`v0.3.28`)
-
-**Цель:** единое поведение выделения во Viewer/Editor, строках ввода (командная строка, поля диалогов, строка поиска) и консолях.
-
-**Состав**
-
-- [x] **Слово и разделители.** Слово – буквы любого алфавита, цифры и `_`; всё остальное – разделители (пробелы, пунктуация, `\`, `/`, `.`, `:`). Общие функции – `uInputLine.pas`: `TextIsWordChar`, `TextWordStepRight/Left`, `TextWordRangeAt`; `EditorIsWordChar` делегирует туда же.
-- [x] **Ctrl+←/→, Ctrl+Shift+←/→.** Шаг до следующего разделителя (вправо – до конца слова, влево – к началу); с Shift выделение растёт или сжимается от неподвижного якоря. В редакторе на краю строки шаг – перевод строки. В панели Ctrl+Shift+←/→ при непустой командной строке идут в неё, а не в предпросмотр диска.
-- [x] **Щелчки.** Двойной щелчок – слово (на разделителе – серия одинаковых символов), следующий быстрый щелчок – вся строка (в редакторе вместе с переводом строки). Счётчик – `TMouseClickCounter` (та же клетка, системный интервал двойного щелчка). В HEX-режиме двойной щелчок не действует.
-- [x] **Щелчок в строке ввода** ставит курсор (раньше только давал фокус): поля диалогов (`TDialogHost.HandleClick`), командная строка (`TDualPanelCmdLineManager.HandleClick`, смещение поля после приглашения – `DualPanelCmdLineEditX`).
-- [x] **Shift+щелчок** расширяет/сужает выделение от текущего курсора – в редакторе, консолях, командной строке и полях диалогов (`AShift` протянут через `HandleClick` диалога и `TDualPanelClickHost.ClickCmdLine`).
-- [x] **Консоли** (панельная, фоновая, вкладка терминала): двойной/тройной щелчок и Shift+щелчок; консоль под панелями получает `HandleMouseDown`, а не только `HandleClick`.
-
-**Проверка**
-
-- [x] `TestDualPanelCmdLine` (шаги по словам, Ctrl+Shift, щелчки 1/2/3, Shift+щелчок), `TestEditorLayout`, `TestEditorInput`, `TestDualPanelInput`, `TestDualPanelClick`.
-
----
-
-#### Меню пользователя F2 и меню папки (`v0.3.29`)
-
-**Цель:** заменить заглушку F2 (7 зашитых пунктов, повторявших F3/F4/F5/Shift+F6/F7/Alt+F7/Ctrl+R) настоящим пользовательским меню NDN/FAR – см. §6.7.
-
-**Состав**
-
-- [x] Модель и хранение: `uUserMenu.pas` (`TUserMenuItem` – команда / подменю / разделитель; `usermenu.json`; `.mtn2menu.json` с поиском вверх по дереву – `FindFolderUserMenu`; примеры по умолчанию только у главного меню).
-- [x] Подстановки FAR `!!`, `!.!`, `!`, `!\`, `!:`, `!&`, `!@!`, `!?Вопрос?ответ!`, `!#`, `!^` (`ExpandUserMenuCommand`, `ParseUserMenuPrompts`); некорректный `!?` оставляется как есть.
-- [x] Всплывающее меню: подменю со стеком, разделители пропускаются курсором, прокрутка, горячие клавиши в обеих раскладках, редактирование на месте (Ins / F4 / Del / Ctrl+↑↓), Shift+F2, мышь. После запуска команды меню закрывается.
-- [x] Диалоги: `DIALOG_USERMENUEDIT` (клавиша, тип, название, команда, подсказка по подстановкам), подтверждение удаления (для подменю – «со всеми пунктами»), запросы `!?…!` через `BuildInputDialog`. Новые `THostDialogKind`: `hdkUserMenuEdit`, `hdkUserMenuConfirm`, `hdkUserMenuPrompt`.
-- [x] F-бар и статус: отдельный контекст `fbcUserMenuEdit` (Enter / Ins / F4 / Del / Shift+F2 / Esc); у меню сортировки и режимов колонок прежний `fbcUserMenu`. Подсказки F-бара понимают модификаторы (`Shift+F2`).
-- [x] Переводы `ui.userMenu.*` и `DIALOG_USERMENUEDIT` в `en.json` / `ru.json`.
-
-**Проверка**
-
-- [x] `TestUserMenuController`: навигация и подменю, запуск и горячие клавиши (включая другую раскладку), запросы редактирования и перестановка, щелчки, JSON round trip, все подстановки и запросы, меню папки (поиск вверх, пустое при отсутствии, Shift+F2 туда и обратно, не-локальная панель), разбор подсказки `Shift+F2`.
-- [x] Ресурс диалога и строки присутствуют в `bin\win64\MTN2.exe`.
-
-**Не входит:** многострочные команды (в одной строке можно `&&`), правка файла меню целиком по Alt+F4, перевод сохранённых пользователем подписей.
-
----
-
-#### Корректное завершение (`v0.3.30`)
-
-**Цель:** убрать access violation при выходе и во время работы консолей.
-
-**Состав**
-
-- [x] **AV в `UnregisterCorePlatformServices` при закрытии.** `HookProcessWindowsForShutdown` (`uMainForm.pas`) подменяет оконную процедуру скрытых окон FMX (`TWinSystemAppearanceService`, ThreadSync), чтобы они не блокировали выход из сеанса Windows. Их деструкторы вызывают `DeallocateHWnd`, который передаёт *текущую* оконную процедуру в `FreeObjectInstance` – а это была `AllowEndSessionWndProc` из кода exe, куда `FreeObjectInstance` и писал. Исправление: `UnhookWindowsForShutdown` в начале `FormDestroy` возвращает исходные процедуры (при выходе из сеанса процесс завершается раньше, хуки остаются).
-- [x] **Гонка потока-наблюдателя ConPTY** (`uConPty.pas`). Поток `StartExitWatcher` ждал завершения процесса оболочки и затем входил в `FIoLock` сессии; `Destroy` → `Terminate` убивал процесс (что и будило поток) и освобождал `FIoLock` – поток входил в разрушенную критическую секцию. Исправление: общий ref-counted объект времени жизни `IConPtySessionLife`; поток держит только его, `Destroy` первым делом отвязывает сессию под его замком; `ClosePseudoConsole` вызывается вне замков.
-
-**Проверка**
-
-- [x] Под `cdb` (MTN2 собран с map-файлом, `DCC_MapFile=3`) до исправлений – по AV на каждый запуск/закрытие; после – ни одного AV в трёх прогонах.
-
----
-
-#### Справка F1 (`v0.3.31`)
-
-**Цель:** вместо диалога-шпаргалки (`dialogs/help.json`) – полноценная справка по F1 на Markdown, в модальном окне поверх панелей.
-
-**Состав**
-
-- [x] Темы – `bin/win64/resource/<язык>/help/*.md`, по одной на раздел `HELP.md`; `index.md` – титульная страница с содержанием. Языки `ru` и `en`; при отсутствии папки языка интерфейса берётся `en`, затем `ru`. `.gitignore`: `/bin/*` + `!/bin/win64/help/`.
-- [x] `uHelpViewer.pas` (`THelpViewer`) – модальное окно (отступ 10 ячеек от краёв окна программы) с `TEditorWindow` в `HelpMode` (контекст F-строки `fbcHelp` / `fbcHelpSearch`, заголовок по первому `#`, позиция в файле не сохраняется). Ввод, мышь и отрисовка в `TDualPanelWindow` перехватываются первыми.
-- [x] Ссылки Markdown: `[текст](адрес)` показывается подчёркнутым текстом (`TMdSpan.Target`, `ccaUnderline` рисует `TTerminalRenderer`). Tab / Shift+Tab – выбор ссылки, Enter / щелчок – переход (`тема.md`, `тема.md#якорь`, `#якорь`; якорь – slug заголовка), Backspace / Alt+← – назад, F1 – содержание, Esc / F10 – закрыть.
-- [x] F3 / Shift+F7 / Alt+F7 в справке ищут следующее совпадение только после поиска F7 (подписи до этого скрыты), а не открывают строку поиска.
-- [x] Нет папки справки → прежний диалог `help.json`.
-
-**Проверка**
-
-- [x] `TestMarkdownParser.pas` (ссылки: только текст, адрес в `Target`); дымовой тест окна справки (открытие, ссылки, назад, F1, поиск, отступы, подчёркивание) на `ru` и `en`.
-
----
-
-#### Повседневные мелочи: сортировка, история файлов, свойства, даты, Quick View текста (`v0.3.32`)
-
-**Цель:** закрыть пункты 1-го приоритета бэклога повседневных возможностей (§7).
-
-**Состав**
-
-- [x] **Сортировка имён для любого алфавита** (`uVfsUtils.CompareNaturalText`). Было: вне ASCII – по кодам символов и с учётом регистра («Яблоко» < «абрикос»). Стало: цифры – как числа, текстовые участки целиком через `CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE or SORT_STRINGSORT)`; на других ОС – `CompareText(loUserLocale)`. Порядок транзитивен; «ё» ≈ «е»; знаки препинания перед буквами.
-- [x] **История файлов Alt+F11** (`uFileHistory.pas`, `filehistory.json`, 100 записей; `TFileHistoryDialogController`). Пишется в `TDualPanelWindow.OpenDocument`. Enter – в прежнем режиме, F3 / F4 – просмотр / правка, Ctrl+Enter – к файлу в панели, Del – убрать, набор – фильтр.
-- [x] **Свойства Windows Alt+Enter** (`uShellAssoc.ShellShowProperties`: `SHObjectProperties` / `SHMultiFileProperties`). Выделение или элемент под курсором, только локальные и сетевые пути; вызов делает `TMainForm` (`OnShowProperties`).
-- [x] **Даты в Ctrl+Shift+A** (`uWinFileAttr`: `TFileAttrTimes`, `ApplyFileTimes`). Поля «Создан / Изменён / Доступ», кнопки «Текущее» / «Исходные», пустое поле – не менять; пишутся только изменённые поля; время как в колонках панели (`FileTimeToLocalFileTime`). Подписи диалога получили `id` и переводятся.
-- [x] **Quick View для текста Ctrl+Q** (`uQuickTextView.pas`, `TEditorWindow.Chromeless`). Текст / Markdown / hex / потоковые большие файлы в пассивной панели; SFTP, Корзина и члены архивов > 16 МБ – подсказка F3; колесо мыши прокручивает превью.
-- [x] **Порядок имён:** схема «ASCII по кодам, остальное по языку» не применяется – такой порядок не транзитивен; дефис значим (`a-b` ≠ `ab`). Сортировка 10 000 имён занимает около 17 мс.
-- [x] **Свойства для нескольких путей:** `SHMultiFileProperties` с `IDataObject` от `SHCreateDataObject`; корень – пустой PIDL рабочего стола, поэтому элементы могут быть из разных папок (Ctrl+B, результаты поиска). Окно немодальное и живёт в процессе оболочки, MTN2 его закрытия не ждёт; изменения атрибутов подхватывает `uDirWatch`. Для `..` без выделения, архивов, SFTP, Корзины и системных папок команда выводит сообщение.
-- [x] **Порядок обработки Alt+Enter:** `kaProperties` проверяется в `DispatchKeymapActionPrimary` (первым в `DispatchPanelFreeInput`), до быстрого поиска по Alt: `IsAltQuickSearchChord` принимает и Alt+Enter. Правый Alt раскладок с AltGr приходит как Ctrl+Alt; `TMainForm.KeyDown` для Enter снимает такой фантомный Ctrl (правый Alt без левого Alt и правого Ctrl), иначе запускалось бы действие Ctrl+Alt+Enter.
-- [x] **Диалог дат:** записываются только изменённые поля; поле с исходным текстом не трогается, поэтому миллисекунды файла не теряются при округлении до секунд. Неверная дата выводится строкой `date_error` внутри диалога. Кнопки дат стоят в отдельной строке, потому что `FitDialogToTranslatedText` центрирует любую строку с кнопками. Значения выпадающих списков (Keep / Set / Clear) пока не переводятся.
-- [x] **Диалог истории файлов:** клавиши списка перехватываются в `DispatchModalDialogInput` до общего Enter, иначе Ctrl+Enter сработал бы как «ОК». Для отсутствующего файла Enter / F3 / F4 показывают «Файл не найден» с путём; запись убирается клавишей Del. Файлы справки в историю не пишутся: справка открывает свой `TEditorWindow` мимо `OpenDocument`.
-- [x] **Quick View:** `ShowFile` и `Clear` вызываются во время отрисовки и перерисовку не запрашивают, окончание загрузки запрашивает. Картинки Markdown в превью заменяются текстовой заглушкой (Overlay занят картиночным превью). Позицию курсора для колеса FMX не передаёт, поэтому `TMainForm.TryDualPanelQuickViewWheel` берёт её сам и передаёт в `HandleMouseWheelAt` (прокрутка по 3 строки). Задержки перед открытием при быстрой прокрутке списка нет: `TEditorDoc` отбрасывает устаревшие загрузки, но чтение отменяется только флагом.
-
-**Проверка**
-
-- [x] `TestVfsUtils.pas`, `TestHistoryDialogs.pas`, `TestKeymap.pas`, `TestWinFileAttr.pas`, `TestSetAttrDialog.pas` (новый), `TestQuickTextView.pas` (новый); отдельная программа проверила вызов «Свойств» для одного и трёх файлов.
-- [x] Новые клавиши (Alt+Enter, Alt+F11) добавлены и в `src/keymap.json` – ресурс `KEYMAP_DEFAULT`, из которого приложение берёт раскладку по умолчанию. `TestKeymap` сверяет его с `GetDefaultNDNProfile`: действие, привязанное в коде, без клавиши в ресурсе – ошибка теста.
-
-#### Контекстная F1, сравнение папок, внешний просмотрщик и редактор (`v0.3.33`)
-
-**Цель:** закрыть оставшиеся пункты 1-го приоритета бэклога повседневных возможностей (§7).
-
-**Состав**
-
-- [x] **Контекстная F1** (`uHelpContext.pas`: `THelpScreen`, `HelpTopicForScreen`). Тема по экрану: панель (архив, SFTP, Корзина, поиск – свои темы), просмотр / правка, терминал, верхнее меню, меню пользователя / сортировки / колонок, выбор диска, командная строка, открытый диалог. Справка открывается поверх меню и диалога, не закрывая их. F1 при открытом диалоге и меню перехватывается до них (`IsContextHelpChord`), кроме поля записи клавиши в редакторе раскладки.
-- [x] **Сравнение папок Ctrl+Shift+C** (`uPanelCompare.ComparePanelRows`, `TDualPanelWindow.CompareFolders`). По текущим строкам панелей: уникальные, более новые (допуск 2 с), одинаковое время и разный размер – обе стороны; папки – только отсутствующие. Выделение заменяется на обеих панелях; «Папки одинаковы» – сообщением. Пункт **Commands → Compare folders**.
-- [x] **Внешний просмотрщик / редактор Alt+F3 / Alt+F4** (`uExternalTools.pas`, `externaltools.json`, диалог **Options → External viewer/editor...**). `%1` – путь; пустая команда – программа Windows / «Изменить» (`uShellAssoc.ShellEditFile`), иначе Блокнот. Alt+F4 при назначенном действии не доходит до `DefWindowProc` (`TMainForm.TryHandleBoundAltF4`), поэтому окно не закрывается.
-- [x] **F1 в консольном режиме:** первой клавишу получает консоль и передаёт запущенной программе (far, mc, ...). Ветка «выйти из консоли и показать `cmdline.md`» в `OpenHelp` срабатывает, только если флаг консоли стоит, а окна консоли нет.
-- [x] **Сравнение папок:** файл и папка с одним именем не выделяются ни на одной стороне – это разные объекты, решать пользователю. Работает на любой VFS (архивы, SFTP, результаты поиска), потому что использует уже загруженные строки панелей. Итог – выделение и счётчики в подвале панелей, а также сообщение «Папки одинаковы», если различий нет.
-
-**Проверка**
-
-- [x] Новые `TestHelpContext.pas` (в том числе: у каждого вида диалога есть тема, и её файл есть в `bin/win64/help/en` и `bin/win64/help/ru`), `TestPanelCompare.pas`, `TestExternalTools.pas`; дополнены `TestKeymap.pas`, `TestDualPanelInput.pas`.
-- [x] Попутно: командная строка с фокусом (Ctrl+↓) получает весь ввод – `-`, `+`, `*`, F-клавиши больше не уходят в привязки панели (`DispatchPanelFreeInput`).
-
-#### История полей ввода в диалогах (`v0.3.34`)
-
-**Цель:** поля, где значения повторяются, – выпадающий список прежних значений, как в FAR.
-
-**Состав**
-
-- [x] **Хранилище** `uDialogHistory.pas`: по ключу поля – последние 20 значений, новые сверху, без повторов (без учёта регистра); файл `dialoghistory.json`.
-- [x] **Поле с историей** – тот же `dckInput` с атрибутом `"history": "<ключ>"` в JSON диалога (или `DialogSetInputHistory` для общего `input.json`). `TDialogHost` рисует **↓** в последней ячейке (инверсные цвета поля), раскрывает историю тем же выпадающим списком, что и `dckDropDown`: **Ctrl+↓** / **Alt+↓** / щелчок по стрелке; Enter подставляет, Del удаляет из истории, Esc закрывает список. Любая команда, кроме отмены, записывает поля в историю (`RecordInputHistory`).
-- [x] **Ключи:** `masks` (выделение / снятие по маске), `findmask` / `findtext` (поиск файлов), `copydest` / `copyexclude` (копирование и перенос), `linktarget`, `mkdir`, `newfile`, `editfind` / `editreplace`, `usermenuprompt`.
-- [x] **Попутно:** `DispatchModalDialogInput` сам превращал Enter в команду диалога, минуя `TDialogHost`. Теперь при раскрытом списке Enter отдаётся диалогу (выбор строки), а перед командой записывается история. Стрелка `dckDropDown` тоже рисуется в инверсных цветах.
-
-**Проверка**
-
-- [x] `TestDialogHistory.pas` (новый): хранилище и поле в `TDialogHost` на настоящем ресурсе диалога маски; `TestDualPanelInput.pas`: Enter при раскрытом списке и запись истории.
-
-#### Командная строка, история в фильтре и поиске, контрольные суммы (`v0.3.35`)
-
-**Цель:** пункты 1–3 следующего захода бэклога повседневных возможностей (§7).
-
-**Состав**
-
-- [x] **Выпадающий список истории вне диалогов** (`uHistoryPopup.pas`): тот же вид и клавиши, что у списка `dckDropDown`; открывается над полем (без места – под ним); Enter подставляет, Del удаляет, Esc закрывает, прочие клавиши закрывают список и работают как обычно; щелчок по строке подставляет.
-- [x] **Командная строка:** Ctrl+↓ / Alt+↓ в строке с фокусом – история команд списком; Enter подставляет, не выполняя. Tab дополняет пути с диска, если в слове есть `\`, `/` или `X:` (`CmdLinePathCompletions`, относительные – от папки активной панели).
-- [x] **Живой фильтр Ctrl+F** и **поиск F7** в просмотрщике / редакторе: Ctrl+↓ / Alt+↓ раскрывают прежние значения (`uDialogHistory`: `livefilter`, `editfind` – общий с полем «Найти» диалога замены); значение записывается по Enter.
-- [x] **Контрольные суммы Ctrl+Alt+H** (`uChecksums.pas`, Files → Checksums...): MD5 / SHA-1 / SHA-256 / SHA-512, потоковый расчёт в фоне с отменой; список `хеш *имя`, Копировать / Сохранить; на файле сумм – проверка (`OK` / `FAILED` / `MISSING`).
-- [x] **Контрольные суммы – форматы:** строки результата `хеш *имя`; при проверке файла сумм разбираются `хеш  имя`, `хеш *имя` и BSD-вид `SHA256 (имя) = хеш`. Сохранение: `<имя>.<алг>` для одного файла и `checksums.<алг>` для нескольких, в папке панели. Последний выбранный алгоритм запоминается.
-- [x] **Ограничения:** щелчки мышью по списку поиска F7 в просмотрщике и редакторе не обрабатываются (окно редактора не передаёт щелчки в строку статуса). Контрольные суммы на `..` без выделения ничего не делают, как «Свойства».
-- [x] **Таблицы Markdown без квадратичной стоимости:** раскладка таблицы (колонки, выравнивание, ширины под окно) считается один раз на блок и ширину (`TMarkdownParser.ComputeTableLayout`, кэш в `TEditorWindow`), строка форматируется по ней (`FormatPipeTableRow`). Все строки таблицы из 200 строк: 0,34 с → 6 мс, из 1000 строк: 8,6 с → 31 мс; вывод совпадает со старым (`TestMarkdownParser`).
-
-**Проверка**
-
-- [x] Новые `TestHistoryPopup.pas` (список, дополнение путей) и `TestChecksums.pas` (эталонные хеши, файлы больше блока, отмена, форматы строк, сбор файлов, проверка); прежние тесты ввода, клавиш, диалогов, меню проходят.
-
-#### Двойная ширина: иероглифы CJK
-
-**Цель:** китайские, японские и корейские символы занимают в сетке две колонки и не ломают выравнивание панелей, консоли, вкладок и заголовков.
-
-**Состав**
-
-- [x] **Ширина символа** (`uCharWidth.pas`): `CharDisplayWidth` даёт 2 колонки иероглифам CJK, хирагане, катакане, хангылю и полноширинным формам основной таблицы Unicode (BMP), 1 колонку – остальным; таблица из 12 диапазонов. Рядом `TextDisplayWidth`, `TextFitChars` (сколько символов помещается в N колонок) и `StripWideFillers`.
-- [x] **Ячейка:** широкий символ лежит в первой ячейке с признаком `ccaWide`, вторая – заполнитель (пробел с признаком `ccaWideTail`) с теми же цветами. Запись через `DrawGridChar` создаёт пару, перезапись любой половины гасит вторую. Широкий символ в последней колонке не рисуется (пробел).
-- [x] **Консоль:** `TPrimaryScreenGrid.PutCell` и `TAltScreenGrid.PutCell` сдвигают курсор на 2; символ, не помещающийся в последнюю колонку, переносится на следующую строку; Backspace по месту ввода удаляет обе половины. Строки истории остаются выровненными по ячейкам (заполнитель – пробел), поэтому колонки выделения совпадают; при копировании `StripWideFillers` убирает заполнители. Режим без сетки (`PutCellAtCursorLocked`) записывает пару ячеек так же.
-- [x] **Рендерер:** первая ячейка рисуется одним глифом на две колонки (`GetGlyph` с `AWide`; ключ кэша содержит признак ширины, кэш вмещает 4096 глифов), заполнитель пропускается. Шрифты подставляет Windows (Yu Gothic, Malgun Gothic, SimSun и др.) – со Skia и на обычном холсте FMX, запасной шрифт не нужен.
-- [x] **Вкладки и заголовки:** раскладка и проверка щелчков – `uDualPanelTabs`, рисование – `uDataTheme` / `uThemeDrawing`; заголовок вкладки панели (`VfsUriDirTabTitle`) считается по колонкам.
-- [x] **Панели:** `PutGridText`, `PutGridTextClipped`, `PutTerminalText` продвигаются по ширине; `PadRight`, `FormatPanelRowName`, `EllipsizeKeepingExt` и строка информации под панелью считают и сокращают по колонкам. Редактор: `TEditorPainter.DrawTextLine` рисует иероглифы в две колонки.
-
-**Не сделано**
-
-- Редактор и просмотрщик: положение курсора, горизонтальная прокрутка и выделение считаются по символам, поэтому в строке с иероглифами курсор смещён относительно текста.
-- Строка ввода командной строки панелей и поля ввода диалогов: курсор считается по символам.
-- Диалоги и кнопки: подписи раскладываются по `Length`; иероглифы в них могут сдвинуть соседние элементы.
-- Символы вне BMP (суррогатные пары, эмодзи), комбинирующие знаки, нулевая ширина, вариационные селекторы, двунаправленный текст.
-- Прочие столбцы панелей (краткий режим, свои колонки), помимо имени.
-- Работа с настоящей консолью: вывод `dir` и утилит с CJK-именами через ConPTY, положение курсора после иероглифов в PowerShell и Far.
-
-**Проверка**
-
-- [x] `TestCharWidth` (границы диапазонов, подгонка и очистка заполнителей), `TestWideChars` (пара ячеек, перезапись половин, перенос на краю, обе сетки, буфер консоли), `TestWidePanelText` (дополнение, сокращение, колонка имени, вкладки), `TestTerminalRenderer` (глиф на две ячейки, чернила в обеих половинах кадра).
-
-#### Всплывающие уведомления
-
-**Цель:** подтверждать команды, результат которых не виден на экране (копирование пути / имени в буфер обмена), не мешая работе.
-
-**Состав**
-
-- [x] **`uToast.pas`** (`TToast`): одна строка в двойной рамке цветов диалога, с тенью, справа внизу – нижняя кромка на две строки выше командной строки, тень ложится на рамку панели. Не модальное: ввод не перехватывает, следующая клавиша работает как обычно. Скрывается по `TTimer` (2,5 с, предупреждение – 3,5 с); новое уведомление заменяет текущее и перезапускает отсчёт, очереди нет. Рамка – `DrawPanelFrameGlyphs`, а не `DrawDialogFrame` темы: у той кнопка закрытия, а уведомление щелчков не принимает. Полная форма – `uNotice.NoticeRequest(TNoticeRequest)`: вторая строка-подсказка цветом «горячих подсказок» диалога (рамка растёт вверх, низ на месте), своя длительность и `Always` – показ даже при выключенных уведомлениях. `Always` используется только для уведомления о выходе в сеть: проверка обновлений (`TUpdateController.NoticeChecking` из `StartCheck` – при старте и по кнопке «Проверить»; подсказка «как отключить» – только у проверки при старте; 6 с, но `CheckDone` снимает его раньше через `NoticeDismiss` по `Tag` – только если на экране всё ещё оно, отключается флажком `show_check_notice` в диалоге «Обновления» и полем `showCheckNotice` в `update.json`).
-- [x] **Текст:** шаблон с одним `%s` и аргумент отдельно – аргумент (путь) сокращается посередине под ширину окна при отрисовке (`ToastFitText` → `FitFolderHistoryLabel`: диск и хвост пути сохраняются); неверный перевод не роняет формат.
-- [x] **Отрисовка** последней в `TDualPanelWindow.DrawContent` (панели, просмотрщик/редактор, терминал), но не поверх диалога и справки F1 – чтобы не закрывать кнопки. Скрытие по таймеру идёт через `NotifyChanged`, не `Invalidate`: вне ввода/отрисовки хост иначе не перерисовывает окно.
-- [x] **Alt+Shift+Ins / Ctrl+Shift+Ins** (`CopyItemsToClipboard`): «Полный путь «…» скопирован в буфер обмена» / «Имя «…» скопировано…», для нескольких – «Скопировано полных путей: N» / «Скопировано имён: N», без результата – предупреждение «Нечего копировать» (строки `ui.toast.*`).
-- [x] **`uNotice.pas`** – точка входа без зависимостей: `Notice(шаблон, аргумент, вид)` из любого модуля; обработчик ставит `TDualPanelWindow` (`SetNoticeHandler`), без него (тесты) уведомление пропадает. В режиме консоли Ctrl+O уведомления не показываются – там они не рисуются и всплыли бы устаревшими.
-- [x] **Остальные «тихие» действия:** Ctrl+C / Ctrl+X на панели (`ClipboardCopyFiles`, при вырезании – подсказка «Ctrl+V переместит»), копирование текста в просмотрщике / редакторе (выделение или строка N), в командной строке и в терминале (`TBaseConsoleWindow.CopySelection`), Ctrl+R (`RefreshActive`), Ctrl+Shift+O (`SyncConsoleDirNow`: папка консоли, для архива и результатов поиска – предупреждение), Ctrl+Alt+R (восстановлено из корзины), Ctrl+Alt+D (добавлено в избранное), выделение по маске / расширению / имени без изменений (`NoteSelectionUnchanged`, предупреждение). Не трогались действия с видимым результатом: сохранение в редакторе (строка состояния «Saved»), сохранение workspace (открывается список), «Копировать» / «Сохранить» в окне контрольных сумм (строка состояния диалога), OK в диалогах настроек.
-- [x] **Попутно – Ctrl+Shift+O в PowerShell:** синхронизация папки слала PowerShell/pwsh команду cmd `cd /d <путь>` (ошибка «Не удается найти позиционный параметр») и завершала её CRLF, после чего PSReadLine оставался на приглашении `>>`. `BuildCdLineForProfile` теперь даёт PowerShell/pwsh `Set-Location -LiteralPath '<путь>'` (кавычки, в том числе типографские, удваиваются; `[ ]` и `$` не раскрываются), а конец строки у всех профилей – `ProfileReturnSeq`, как у `RunCommand` (WSL и Git Bash больше не получают лишний пустой Enter). Тест – `TestShellProfiles.pas`.
-- [x] **Настройка:** флажок «Показывать всплывающие уведомления» в Options → User interface (`TDisplaySettings.ShowNotifications`, глобальный `GShowToasts`), в `session.json` – `showNotifications` (нет ключа – вкл).
-
-**Проверка**
-
-- [x] Новый `TestToast.pas` (сокращение текста, неверный шаблон, размещение и слишком маленькое окно); `TestDisplaySettings.pas` – сохранение и умолчание `showNotifications`; прежние тесты ввода, клавиш, диалогов, строк, меню проходят.
-
-
----
-
-#### Темы из файлов и редактор тем
-
-**Цель:** восемь тем были Pascal-классами по ~700 строк, почти одинаковыми по устройству и различавшимися палитрой и набором символов. Свою тему можно было получить только правкой кода. Все темы теперь – данные: один класс рисует любую тему по файлу, а пользователь создаёт и настраивает темы в диалоге.
-
-**Состав**
-
-- [x] `uThemeSpec.pas` – модель файла темы (`TThemeDoc`: только заданное файлом) и полной темы (`TThemeSpec`), разбор и запись JSON, роли цветов с ролями-запасными (`ThemeColorRoleFallback`), разворачивание цепочки `extends`. Формат – `docs/THEMES.md`.
-- [x] `uDataTheme.pas` – `TDataTheme`, единственная реализация `IThemeRenderer`; геометрия виджетов общая, цвета, символы, начертания и наборы рамок – из темы.
-- [x] Темы вынесены в файлы: `NDN` вшита в exe (`THEME_NDN`), остальные семь лежат в `resource\themes\*.theme.json`; классы `src/Themes/u*Theme.pas` удалены. Совпадение отрисовки со старыми классами проверено побайтно по всем виджетам, состояниям и правилам цвета (строки файлов, панели, Markdown, редактор).
-- [x] `uThemeRegistry.pas` – список тем (встроенные, затем пользовательские из `<конфиг>\themes`), загрузка цепочки баз (`extends`: одна тема или список), сохранение и удаление пользовательских тем. Встроенные темы только для чтения.
-- [x] Раскраска файлов стала частью темы: `fileColoring` хранит только отличия от баз (и порядок групп в `fileColoringOrder`); `NDNtheme.json` и `TMtnSession.ThemeFile` заменены: прежний файл раскраски и `markdown-colors.json` при первом запуске импортируются в пользовательскую тему (`ImportLegacyFiles`).
-- [x] Стили Markdown перенесены в тему (`fg`, `bg`, `attrs`); глобальный слой `markdown-colors.json` и его применение в `TMarkdownPainter` и редакторе убраны, «Цвета Markdown...» правит активную тему.
-- [x] Цвета в теме могут быть ссылками: `@роль` и имена палитры (палитра наследуется и привязывается там, где записана); `extends` – список баз; формат теме – схема 2 (без совместимости со схемой 1).
-- [x] Тема не найдена при запуске – сообщение и классическая тема Far (`NDN`).
-- [x] `uDualPanelThemeDialogs.pas` – диалоги: список тем с «Настроить / Создать / Удалить», имя новой темы и основа («пустая» или любая тема), редактор (разделы ролей, Markdown, стили текста, символы, рамки) с немедленным предпросмотром, запрос имени при сохранении копии встроенной темы. Правка раскраски файлов у встроенной темы сохраняется в новую тему с выбранным именем, у пользовательской – на месте.
-
-**Проверка**
-
-- [x] `TestThemeSpec.pas` – разбор и запись, роли-запасные, цепочки (пропавшие и циклические базы), наборы рамок, слияние раскраски, внешний вид восьми встроенных тем, сохранение и удаление пользовательских тем, импорт прежнего файла раскраски.
-- [x] `TestThemeDialogs.pas` – сценарии диалогов на настоящем `TDialogHost`: настройка встроенной темы с сохранением в новую, правка пользовательской на месте, занятые имена, удаление, отмена, проверка значений символов и цветов, раскраска встроенной и пользовательской темы.
+| **FM parity**                | archives, keymap from a file, sync, Multi-Rename                         |
+| **Console / terminal**       | persistent shell, VT, cmdline UX, workspaces, alt screen, POSIX PTY, IPC |
+| **Viewing / automation**     | streaming Viewer / Quick View/Hex, Markdown, macros, themes              |
+| **Platform**                 | native DLL/SO → WASM → network plugins; Far / Total Commander bridges later |
+| **UI / localization**        | language; font and other visual parameters (without a restart)           |
+| **Input / menu**             | accent letters in translations, selection by mouse and by words, the F2 menu, exit |
+
+The console track does not block archives and keymap. A full VT and Terminal Workspaces come after the basic FM `0.2`, when the panel shell is already canonized (§5.4).
+
+**Priority:** everyday features under Windows matter more than the POSIX port and the third-party plugin ecosystem. The project stays cross-platform by goal: code added now must not close the way to other platforms (see §8.4 in ARCHITECTURE.md – the map of Windows coupling points).
+
+**Open and deferred:**
+
+- **PTY on macOS** ([#61](https://github.com/Laex/MTN2/issues/61)): Linux is implemented (`mtn2-sdl`, `mtn2-tui`; verification on different distributions – [#70](https://github.com/Laex/MTN2/issues/70)), macOS remains a goal. New code in the console/VFS layer must not be tied firmly to the Windows API where a portable abstraction is cheap (see ARCHITECTURE.md §8.4).
+- **Bridges to Far and Total Commander plugins** ([#59](https://github.com/Laex/MTN2/issues/59)): native plugins, WASM and network ones (`mtn.net`: FTP, FTPS, SFTP, SCP, WebDAV, S3) exist; the bridges do not. This is infrastructure for third-party content, not a feature for everyday work; it makes sense once it is clear which plugins are missing.
+- **Tasks:** sets of profiles and commands launched with a single action. Partly overlaps with the user menu (F2) and workspaces.
+- **Detaching a terminal into a separate window** and returning it to a tab. Between MTN2 windows the `TConPtySession` session stays in the process, only the window that shows it changes (this needs a second FMX form and decoupling `TConsoleWindow` from the main form). Moving a terminal opened outside the program is reliable only with a separate shell host process to which MTN2 windows connect (a rework of the ConPTY layer); otherwise a mirror of the console buffer remains.
+- **A separate shell, environment and command history for each panel tab** ([#79](https://github.com/Laex/MTN2/issues/79), [#78](https://github.com/Laex/MTN2/issues/78)): a console program from a panel can run in a terminal tab, but a panel tab has no shell of its own, and the history is shared.
+- **Dialog layout rules** ([#69](https://github.com/Laex/MTN2/issues/69)) and **a new interface language** ([#62](https://github.com/Laex/MTN2/issues/62)): help is needed; the rules exist only in the code and in `TestDialogAlignment`.
+- **Later:** splitting and joining files, finding duplicates; plural forms in translations, translating an already open dialog.
+
+**Known shortcomings:**
+
+- Console: while third-party programs run, the MTN2 cursor position should follow the output, and the console should scroll with the output.
+- `dialogs/help.json` remains only as a fallback in case there is no `help` folder.
+- Hot spots by fix history: `uDualPanelWindow.pas`, `uMainForm.pas`, `uEditorWindow.pas`. New features go into separate modules, like `uHelpViewer` and `uHelpContext`.
+- The most complex functions (input and drawing parsing, cyclomatic complexity above 40): `uDialogHost.HandleInputCore`, `uDualPanelWindow.HandleInput`, `uConsoleBuffer.AppendOutputEx`, `uDialogJson.ParseControlObject`, `uDualPanelInput.DispatchModalDialogInput`, `uTopMenuBar.HandleInput`, `uWasmPluginHost.DefineAllHostImports`. They should be split into parts together with tests; `uMainForm.pas` has no tests of its own.
+- Copying in `mtn2-tui` through OSC 52 does not work in terminals that do not support it (PuTTY); a fallback path from the remote side is impossible, see `LINUX.md`.

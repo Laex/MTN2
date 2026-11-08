@@ -278,6 +278,10 @@ function BuildPanelFilterDialog(const AItems: TArray<string>;
   const ACurrentMask: string): TDialogDeclaration;
 function BuildSelectMaskDialog(const ATitle, APrompt, AValue: string;
   ASelectFolders: Boolean): TDialogDeclaration;
+/// <summary>Mask groups: AItems are the list rows, ASelected the row to select,
+/// AName and AMasks fill the two edit lines.</summary>
+function BuildMaskGroupsDialog(const AItems: TArray<string>; ASelected: Integer;
+  const AName, AMasks: string): TDialogDeclaration;
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
 function BuildSearchDialog(const AMask, AContaining: string;
@@ -349,7 +353,8 @@ function BuildFolderHotlistDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0;
   const AAccents: TArray<TListAccent> = nil): TDialogDeclaration;
 function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer; const ALiveCaption: string): TDialogDeclaration;
+  ASelectedIndex: Integer; const ALiveCaption: string;
+  const ATitle: string = ''): TDialogDeclaration;
 function BuildCreateLinkDialog(const ALinkName, ATarget: string;
   ALinkTypeIndex: Integer = 0): TDialogDeclaration;
 /// <summary>ACreated / AModified / AAccessed: date text for the three time
@@ -981,6 +986,15 @@ begin
   DialogSetCheckbox(Result, 'select_folders', ASelectFolders);
 end;
 
+function BuildMaskGroupsDialog(const AItems: TArray<string>; ASelected: Integer;
+  const AName, AMasks: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogMaskGroups, Result);
+  DialogSetListItems(Result, 'groups', AItems, ASelected);
+  DialogSetInputValue(Result, 'gname', AName);
+  DialogSetInputValue(Result, 'gmasks', AMasks);
+end;
+
 function BuildPanelFilterDialog(const AItems: TArray<string>;
   const ACurrentMask: string): TDialogDeclaration;
 begin
@@ -1373,14 +1387,17 @@ begin
 end;
 
 function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer; const ALiveCaption: string): TDialogDeclaration;
+  ASelectedIndex: Integer; const ALiveCaption: string;
+  const ATitle: string): TDialogDeclaration;
 var
   Items: TArray<string>;
   Sel: Integer;
   Title: string;
 begin
   RequireDialogResource(cResDialogWorkspaces, Result);
-  Title := T('ui.workspaces.dialogTitle', 'Workspaces');
+  Title := ATitle;
+  if Title = '' then
+    Title := T('ui.workspaces.dialogTitle', 'Workspaces');
   if ALiveCaption <> '' then
     Title := Title + ' ' + #$2014 + ' ' + ALiveCaption;
   DialogSetTitle(Result, Title);

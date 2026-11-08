@@ -401,6 +401,7 @@ begin
   Result.WorkspaceBackTarget := '';
   Result.JunctionBackName := '';
   Result.WorkspaceOriginUri := '';
+  Result.Locked := False;
 end;
 
 class function TDualPanelTabManager.FindTabById(const ATabs: TArray<TTab>;

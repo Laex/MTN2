@@ -91,7 +91,9 @@ function ApplyFindFilterText(var AOptions: TFindOptions;
 function FindEntryPassesFilters(const AOptions: TFindOptions; AIsDir: Boolean;
   ASize: Int64; AModified: TDateTime; AAttr: Integer): Boolean;
 
-/// <summary>Split `*.pas;*.dfm` / comma-separated masks (empty -> `*.*`).</summary>
+/// <summary>Split `*.pas;*.dfm` / comma-separated masks (empty -> `*.*`). A part
+/// written @Name stands for the masks of that mask group (see uMaskGroups); an
+/// unknown group stays a literal mask.</summary>
 function SplitMasks(const AMask: string): TArray<string>;
 /// <summary>True if AName matches any mask from SplitMasks / System.Masks.</summary>
 function NameMatchesAnyMask(const AName: string;
@@ -159,7 +161,7 @@ implementation
 
 uses
   System.IOUtils, System.Masks, System.Math, System.Generics.Collections,
-  System.RegularExpressions, uPlatformFileOps, uFindArchive;
+  System.RegularExpressions, uPlatformFileOps, uFindArchive, uMaskGroups;
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean): TFindOptions;
@@ -311,29 +313,49 @@ begin
   Result := True;
 end;
 
+procedure SplitMasksInto(const AMask: string; ADepth: Integer;
+  var AResult: TArray<string>);
+var
+  Part, Group: string;
+  I, Start: Integer;
+
+  procedure AddPart;
+  begin
+    Part := Trim(Copy(AMask, Start, I - Start));
+    if Part = '' then
+      Exit;
+    if (Part[1] = '@') and (ADepth < 4) then
+    begin
+      Group := MaskGroupMasks(Copy(Part, 2, MaxInt));
+      if Group <> '' then
+      begin
+        SplitMasksInto(Group, ADepth + 1, AResult);
+        Exit;
+      end;
+    end;
+    SetLength(AResult, Length(AResult) + 1);
+    AResult[High(AResult)] := Part;
+  end;
+
+begin
+  Start := 1;
+  for I := 1 to Length(AMask) + 1 do
+    if (I > Length(AMask)) or (AMask[I] = ';') or (AMask[I] = ',') then
+    begin
+      AddPart;
+      Start := I + 1;
+    end;
+end;
+
 function SplitMasks(const AMask: string): TArray<string>;
 var
-  S, Part: string;
-  I, Start, N: Integer;
+  S: string;
 begin
   S := Trim(AMask);
   if S = '' then
     S := '*.*';
   SetLength(Result, 0);
-  Start := 1;
-  N := 0;
-  for I := 1 to Length(S) + 1 do
-    if (I > Length(S)) or (S[I] = ';') or (S[I] = ',') then
-    begin
-      Part := Trim(Copy(S, Start, I - Start));
-      if Part <> '' then
-      begin
-        Inc(N);
-        SetLength(Result, N);
-        Result[N - 1] := Part;
-      end;
-      Start := I + 1;
-    end;
+  SplitMasksInto(S, 0, Result);
   if Length(Result) = 0 then
   begin
     SetLength(Result, 1);

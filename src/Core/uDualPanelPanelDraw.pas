@@ -365,12 +365,13 @@ procedure DrawPanelEmbeddedTabs(const ABuffer: TTerminalGrid; const ABounds: TRe
 var
   I, HeadX, TabsRight, TabMaxLen, PlusCol: Integer;
   Cap: string;
-  CloseFg, TabFg, TabBg, Discard: TAlphaColor;
+  CloseFg, AccentFg, TabFg, TabBg, Discard: TAlphaColor;
   DragHover: Boolean;
 begin
   if not Assigned(AResolveChrome) then
     Exit;
   AResolveChrome(pcpCloseMark, AActive, CloseFg, Discard);
+  AResolveChrome(pcpHotMark, AActive, AccentFg, Discard);
   HeadX := PanelTabHeadX(ABounds);
   // Shared with HitPanelTabAtCol via PanelTabHeadX / ComputePanelTabLayout.
   ComputePanelTabLayout(APanel, ABounds, TabsRight, TabMaxLen);
@@ -386,6 +387,13 @@ begin
       AResolveChrome(pcpPanelTabActive, AActive, TabFg, TabBg)
     else
       AResolveChrome(pcpPanelTabIdle, AActive, TabFg, TabBg);
+    // A locked tab takes the theme's accent as its background, so it differs
+    // in hue from the other tabs; the text stays readable on it.
+    if APanel.Tabs[I].Locked then
+    begin
+      TabBg := MixTint(AccentFg, TabBg, 65);
+      TabFg := ContrastingGlyphFg(TabBg, TabFg, TabFg);
+    end;
     PutGridText(ABuffer, HeadX, ABounds.Top, Cap, TabFg, TabBg);
     if Length(APanel.Tabs) > 1 then
       PaintTabCloseMark(ABuffer, TabCaptionCloseCol(HeadX, Cap, True, True),
