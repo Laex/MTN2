@@ -6,7 +6,7 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
-## Dev v0.5.3.2 – 2026-11-08
+## v0.5.4 – 2026-11-08
 
 ### New
 
