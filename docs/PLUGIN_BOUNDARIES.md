@@ -86,7 +86,7 @@ The host does not introduce a separate "user" ABI – a third-party plugin is wr
 | Replace a built-in scheme or archive extension | `overrides` in `plugin.json` + `plugins\overrides.json` | Only with the user's explicit permission; reserved schemes are not replaced; `.zip` changes the Enter transition, not the internal `!/` path (ARCHITECTURE.md §6, rule 7) |
 | Register a panel for its own scheme | `RegisterPanelPlugin` → `IPanelPluginRegistry` | Identifies the plugin for the scheme; the panel is still drawn through the core's `TFilePanelModel` (the Pull cdecl for the panel is the "cdecl Pull adapter" step, not started) |
 | Add a menu item | `RegisterMenuItem` → `IMenuRegistry` | New items – yes; new keymap *actions* – no |
-| Add an entry to the drive selection window | `RegisterDriveItem` → the drive item registry | At most five items from all plugins; the address cannot be `file://` |
+| Add an entry to the drive selection window | `RegisterDriveItem` → the drive item registry | At most ten items from all plugins; the address cannot be `file://` |
 | Rebind an existing hotkey | `RegisterKeyBinding` → `IKeymapRegistry` | Only a rebind of an existing action; for a shortcut for its own command, see below |
 | Intercept a built-in command | `RegisterCommandHook` → `ICommandRegistry` | Commands of the panels, the top menu, the viewer and the editor; a hook may cancel the command (ARCHITECTURE.md §6, rule 8) |
 | Open files of a type in F3 / F4 its own way | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | The plugin opens the file itself, passes a different URI to the built-in window, or declines; the viewer and editor window stays the host's (ARCHITECTURE.md §6, rule 9) |

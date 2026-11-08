@@ -51,6 +51,14 @@ begin
   Assert.IsTrue(SameText(FileUriToPath(ParentVfsUri('7z:///C:/Work/a.7z!/')),
     'C:\Work'), 'parent of archive root is folder');
   Assert.IsTrue(VfsUriTitle('7z:///C:/Work/a.7z!/') = 'a.7z', 'title at root');
+
+  // Another plugin scheme served as an archive keeps its address when resolved.
+  Assert.AreEqual('jtree:///C:/Work/a.json!/', ResolveVfsUri('jtree:///C:/Work/a.json!/'));
+  Assert.AreEqual('jtree:///C:/Work/a.json!/x/y', ResolveVfsUri('jtree:///C:/Work/a.json!/x/y'));
+  Assert.AreEqual('7z:///C:/Work/a.7z!/', ResolveVfsUri('7z:///C:/Work/a.7z!/'));
+  Assert.AreEqual('jtree:///C:/Work/a.json!/x', ParentVfsUri('jtree:///C:/Work/a.json!/x/y'));
+  Assert.IsTrue(SameText(FileUriToPath(ParentVfsUri('jtree:///C:/Work/a.json!/')), 'C:\Work'),
+    'parent of the root is the folder of the file');
 end;
 
 initialization

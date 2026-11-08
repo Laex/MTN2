@@ -1417,6 +1417,7 @@ end;
 function ArchiveBaseLocalPath(const ABaseUri: string): string;
 var
   S: string;
+  P: Integer;
 begin
   S := Trim(ABaseUri);
   if PlatformPosixPaths and S.StartsWith('7z://', True) then
@@ -1432,6 +1433,13 @@ begin
     S := Copy(S, Length('7z://') + 1, MaxInt);
     S := StringReplace(S, '/', PathDelim, [rfReplaceAll]);
     Exit(NormalizeLocalPath(S));
+  end;
+  // An archive served by a plugin scheme (jtree:///C:/a.json) names a local file the same way.
+  P := Pos(':///', S);
+  if (P > 1) and not S.StartsWith('file:', True) then
+  begin
+    S := Copy(S, P + Length(':///') - (Ord(PlatformPosixPaths) * 1), MaxInt);
+    Exit(NormalizeLocalPath(StringReplace(S, '/', PathDelim, [rfReplaceAll])));
   end;
   Result := FileUriToPath(ABaseUri);
 end;
@@ -2306,7 +2314,9 @@ begin
   end;
   if not SplitArchiveUri(AURI, Base, Segs) then
     Exit(AURI);
-  if IsSevenZipUri(Base) then
+  // A plugin scheme (7z://, jtree://, ...) names its archive itself; only a
+  // file base is a local path to canonicalize.
+  if (Pos('://', Base) > 1) and not StartsText('file:', Trim(Base)) then
     ResolvedBase := Base
   else
     ResolvedBase := PathToFileUri(FileUriToPath(Base));

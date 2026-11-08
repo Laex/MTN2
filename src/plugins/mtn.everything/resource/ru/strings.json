@@ -1,0 +1,14 @@
+{
+  "dlg": {
+    "title": "Поиск Everything",
+    "hint": "Искать:",
+    "ok": "OK",
+    "cancel": "Отмена"
+  },
+  "menu": {
+    "search": "Поиск Everything..."
+  },
+  "msg": {
+    "failed": "Everything: "
+  }
+}

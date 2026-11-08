@@ -15,8 +15,8 @@ uses
   System.SysUtils, System.Generics.Collections;
 
 const
-  /// <summary>Digits 5..9 follow the four built-in items.</summary>
-  cMaxDriveItems = 5;
+  /// <summary>Glyphs 5..9, ! @ # $ % follow the four built-in items.</summary>
+  cMaxDriveItems = 10;
   cMaxDriveItemCaptionChars = 40;
 
 type

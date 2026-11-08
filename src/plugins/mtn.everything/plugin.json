@@ -1,0 +1,15 @@
+{
+  "id": "mtn.everything",
+  "name": "Everything",
+  "version": "0.1.0",
+  "abi": 9,
+  "startup": true,
+  "resources": 1,
+  "schemes": ["everything"],
+  "description": {
+    "en": "The results of a search in the Everything program as a panel (everything:///query). Plugins > Everything search asks for the query. The rows are the real files, so F3, F4, F5, F6 and F8 act on them. Windows only; needs Everything running.",
+    "ru": "Результаты поиска программы Everything как панель (everything:///запрос). Плагины > Everything search спрашивает запрос. Строки – настоящие файлы, поэтому F3, F4, F5, F6 и F8 работают с ними. Только Windows; Everything должна быть запущена."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

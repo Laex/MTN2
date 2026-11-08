@@ -1,0 +1,15 @@
+{
+  "id": "mtn.rclone",
+  "name": "Rclone",
+  "version": "0.1.0",
+  "abi": 9,
+  "startup": true,
+  "resources": 1,
+  "schemes": ["rclone"],
+  "description": {
+    "en": "The remotes configured in rclone (Google Drive, OneDrive, Dropbox, S3, Yandex Disk and dozens of other storages) as folders of the panels (rclone:///). Browse, view with F3, edit with F4, copy and move with F5 and F6, make folders with F7, delete with F8. Adds Rclone to the Change Drive list (Alt+F1 / Alt+F2). Needs rclone in PATH and a configured remote (rclone config).",
+    "ru": "Хранилища, настроенные в rclone (Google Drive, OneDrive, Dropbox, S3, Яндекс Диск и десятки других), как папки панелей (rclone:///). Обзор, просмотр F3, правка F4, копирование и перенос F5 и F6, папки F7, удаление F8. Добавляет Rclone в список дисков (Alt+F1 / Alt+F2). Нужны rclone в PATH и настроенное хранилище (rclone config)."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

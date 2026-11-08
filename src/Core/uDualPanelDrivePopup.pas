@@ -367,10 +367,10 @@ begin
       SpecialIdx := Idx - (Length(FState.Drives) + 1);
       IsCur := CurGlyph = ChangeDriveSpecialGlyph(SpecialIdx);
       if IsCur then
-        Line := Format('* %d. %s', [SpecialIdx + 1,
+        Line := Format('* %s. %s', [ChangeDriveSpecialGlyph(SpecialIdx),
           ChangeDriveSpecialTitle(SpecialIdx)])
       else
-        Line := Format('  %d. %s', [SpecialIdx + 1,
+        Line := Format('  %s. %s', [ChangeDriveSpecialGlyph(SpecialIdx),
           ChangeDriveSpecialTitle(SpecialIdx)]);
       if Length(Line) < InnerW - 1 then
         Line := Line + StringOfChar(' ', (InnerW - 1) - Length(Line));
@@ -517,9 +517,9 @@ begin
   // Digit keys 1..ChangeDriveItemCount jump straight to the matching numbered
   // item below the separator and confirm it, mirroring the letter shortcuts
   // for drives below.
-  if (AKeyChar >= '1') and (AKeyChar <= Chr(Ord('0') + ChangeDriveItemCount)) then
+  if ChangeDriveGlyphIndex(AKeyChar) >= 0 then
   begin
-    FState.CursorIndex := Length(FState.Drives) + 1 + (Ord(AKeyChar) - Ord('1'));
+    FState.CursorIndex := Length(FState.Drives) + 1 + ChangeDriveGlyphIndex(AKeyChar);
     EnsureScroll;
     Confirm;
     AKey := 0;

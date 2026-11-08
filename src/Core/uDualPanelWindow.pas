@@ -15927,6 +15927,14 @@ begin
   Snap := FreeInputSnap;
   if OfferPanelLocalChord(AKey, AShift, AKeyChar, Snap.CmdFocused) then
     Exit(True);
+  // A plugin blanked this F-key slot for the folder: the key does nothing there.
+  if (AKey >= vkF1) and (AKey <= vkF10) and
+     PluginChrome.IsSchemeKeyDisabled(ActiveFolderUri, AKey, AShift * [ssShift, ssCtrl, ssAlt]) then
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
   Result := DispatchPanelFreeInput(FFreeInputHost, FKeymapHost, Snap, AKey, AShift,
     AKeyChar);
 end;

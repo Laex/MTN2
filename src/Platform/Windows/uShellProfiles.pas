@@ -136,6 +136,33 @@ begin
     Result := Buf[0] <> #0;
 end;
 
+function FindPwshExe(out APwshExe: string): Boolean;
+var
+  Candidates: TArray<string>;
+  Candidate: string;
+begin
+  APwshExe := '';
+  if FileExistsInPath('pwsh.exe') then
+  begin
+    APwshExe := 'pwsh.exe';
+    Exit(True);
+  end;
+  // PATH can lack pwsh: the Store package directory that PATH names changes
+  // with every update. The per-user alias and the MSI location do not.
+  Candidates := [
+    TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'),
+      'Microsoft\WindowsApps\Microsoft.PowerShell_8wekyb3d8bbwe\pwsh.exe'),
+    TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Microsoft\WindowsApps\pwsh.exe'),
+    TPath.Combine(GetEnvironmentVariable('ProgramFiles'), 'PowerShell\7\pwsh.exe')];
+  for Candidate in Candidates do
+    if (Candidate <> '') and TFile.Exists(Candidate) then
+    begin
+      APwshExe := Candidate;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
 function GetWslExePath(out AWslExe: string): Boolean;
 var
   WinDir, SysnativePath, System32Path: string;
@@ -344,7 +371,7 @@ begin
   if Id = cShellProfilePowerShell then
     Exit(FileExistsInPath('powershell.exe'));
   if Id = cShellProfilePwsh then
-    Exit(FileExistsInPath('pwsh.exe'));
+    Exit(FindPwshExe(RealName));
   if Id = cShellProfileGitBash then
     Exit(GetGitBashExePath(GitBashExe));
   if Id = cShellProfileWsl then
@@ -640,7 +667,7 @@ end;
 function ResolveShellCmdLine(const AProfileId, ACwd: string;
   out ACmdLine, AWorkingDir: string): Boolean;
 var
-  Id, Cwd, GitBashExe: string;
+  Id, Cwd, GitBashExe, PwshExe: string;
 begin
   Result := False;
   ACmdLine := '';
@@ -664,7 +691,8 @@ begin
   end;
   if Id = cShellProfilePwsh then
   begin
-    ACmdLine := BuildInteractivePsCmdLine('pwsh.exe');
+    FindPwshExe(PwshExe);
+    ACmdLine := BuildInteractivePsCmdLine(QuoteArgIfNeeded(PwshExe));
     AWorkingDir := Cwd;
     Exit(True);
   end;

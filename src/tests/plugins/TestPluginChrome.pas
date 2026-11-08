@@ -16,6 +16,8 @@ type
     [Test] procedure TestUnregisterDropsThePluginSegments;
     [Test] procedure TestCommandCaptionShowsOnItsFunctionKey;
     [Test] procedure TestSchemeFBarLabelsFollowRootAndInside;
+    [Test] procedure TestEmptyLabelDisablesTheKey;
+    [Test] procedure TestSchemeFBarAppliesToArchiveStyleUris;
     [Test] procedure TestStyledSegmentKeepsTextAndColoredParts;
     [Test] procedure TestStyledPartKeepsItsClickCommand;
     [Test] procedure TestStyledSegmentWithoutTextIsRemoved;
@@ -196,6 +198,39 @@ begin
     Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('other:///', $76, [], L), 'other scheme');
     PluginChrome.UnregisterPlugin('t.a');
     Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('tnet:///', $76, [], L), 'gone with the plugin');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestEmptyLabelDisablesTheKey;
+begin
+  try
+    PluginChrome.SetSchemeFBar('t.a', 'tnet',
+      '{"root":{"F7":"","Shift+F4":"New"},"inside":{"F8":""}}');
+    Assert.IsTrue(PluginChrome.IsSchemeKeyDisabled('tnet:///', $76, []), 'blank slot');
+    Assert.IsFalse(PluginChrome.IsSchemeKeyDisabled('tnet:///', $73, [ssShift]), 'labelled slot');
+    Assert.IsFalse(PluginChrome.IsSchemeKeyDisabled('tnet:///', $77, []), 'inside key at the root');
+    Assert.IsTrue(PluginChrome.IsSchemeKeyDisabled('tnet://h/a', $77, []), 'inside');
+    Assert.IsFalse(PluginChrome.IsSchemeKeyDisabled('tnet:///', $76, [ssCtrl]), 'other modifiers');
+    Assert.IsFalse(PluginChrome.IsSchemeKeyDisabled('file:///C:/', $76, []), 'other scheme');
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestPluginChrome.TestSchemeFBarAppliesToArchiveStyleUris;
+var
+  L: string;
+begin
+  try
+    PluginChrome.SetSchemeFBar('t.a', 'tjson',
+      '{"root":{"F4":"Root"},"inside":{"F4":"In"}}');
+    Assert.IsTrue(PluginChrome.TryGetSchemeFBarLabel('tjson:///C:/a.json!/', $73, [], L));
+    Assert.AreEqual('Root', L);
+    Assert.IsTrue(PluginChrome.TryGetSchemeFBarLabel('tjson:///C:/a.json!/x/y', $73, [], L));
+    Assert.AreEqual('In', L);
+    Assert.IsFalse(PluginChrome.TryGetSchemeFBarLabel('file:///C:/a.zip!/x', $73, [], L));
   finally
     Clean;
   end;

@@ -1,0 +1,16 @@
+{
+  "id": "mtn.jtree",
+  "name": "JSON and YAML tree",
+  "version": "0.1.0",
+  "abi": 9,
+  "startup": true,
+  "resources": 1,
+  "schemes": ["jtree"],
+  "archiveExtensions": ["json", "yaml", "yml"],
+  "description": {
+    "en": "Opens JSON and YAML files like folders (Enter on the file): objects and arrays are folders, values are files. The Value and Type columns show the content; F3 views a value, F5 copies a value or a whole subtree out as text. Read-only.",
+    "ru": "Открывает файлы JSON и YAML как папки (Enter на файле): объекты и массивы – папки, значения – файлы. Колонки «Значение» и «Тип» показывают содержимое; F3 показывает значение, F5 копирует значение или целую ветку наружу как текст. Только чтение."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

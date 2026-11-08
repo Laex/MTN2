@@ -60,6 +60,9 @@ type
     /// the panel is at AUri; False when no plugin labels it.</summary>
     function TryGetSchemeFBarLabel(const AUri: string; AKey: Word; AShift: TShiftState;
       out ALabel: string): Boolean;
+    /// <summary>A plugin gave the F-key an empty label for the folder at AUri: the
+    /// panel does not act on the key there.</summary>
+    function IsSchemeKeyDisabled(const AUri: string; AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Removes every segment of APluginId.</summary>
     /// <summary>One line per thing the plugin registered, for the plugin's information
     /// dialog (already in the user's language).</summary>
@@ -117,6 +120,7 @@ type
     procedure SetSchemeFBar(const APluginId, AScheme, AJson: string);
     function TryGetSchemeFBarLabel(const AUri: string; AKey: Word; AShift: TShiftState;
       out ALabel: string): Boolean;
+    function IsSchemeKeyDisabled(const AUri: string; AKey: Word; AShift: TShiftState): Boolean;
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
   end;
@@ -441,9 +445,17 @@ begin
   if FFBar.Count = 0 then
     Exit;
   Scheme := GenericVfsSchemeOf(AUri);
-  if Scheme = '' then
-    Exit;
-  IsRoot := (GenericVfsAuthorityOf(AUri) = '') and (GenericVfsPathOf(AUri) = '/');
+  if Scheme <> '' then
+    IsRoot := (GenericVfsAuthorityOf(AUri) = '') and (GenericVfsPathOf(AUri) = '/')
+  else
+  begin
+    // A file served as an archive by a plugin scheme: scheme:///path!/inner.
+    I := Pos('://', AUri);
+    if (I < 2) or not HasArchiveChain(AUri) then
+      Exit;
+    Scheme := LowerCase(Copy(AUri, 1, I - 1));
+    IsRoot := Pos('!/', AUri) = Length(AUri) - 1;
+  end;
   for I := 0 to FFBar.Count - 1 do
     if (FFBar[I].Scheme = Scheme) and (FFBar[I].Root = IsRoot) and
        (FFBar[I].Key = AKey) and (FFBar[I].Mods = AShift) then
@@ -451,6 +463,14 @@ begin
       ALabel := FFBar[I].Text;
       Exit(True);
     end;
+end;
+
+function TPluginChrome.IsSchemeKeyDisabled(const AUri: string; AKey: Word;
+  AShift: TShiftState): Boolean;
+var
+  Lbl: string;
+begin
+  Result := TryGetSchemeFBarLabel(AUri, AKey, AShift, Lbl) and (Lbl = '');
 end;
 
 function TPluginChrome.DescribePlugin(const APluginId: string): TArray<string>;

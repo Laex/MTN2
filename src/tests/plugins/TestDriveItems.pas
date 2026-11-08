@@ -15,6 +15,7 @@ type
     [Test] procedure TestAtMostFiveItemsAreAccepted;
     [Test] procedure TestUnregisterDropsThePluginItems;
     [Test] procedure TestItemsFollowTheBuiltInNumberedEntries;
+    [Test] procedure TestItemsPastNineGetShiftedDigitGlyphs;
     [Test] procedure TestPanelOnItemSchemeIsMarkedAsThatItem;
     [Test] procedure TestChangeNotificationOnRegisterAndUnregister;
   end;
@@ -134,6 +135,27 @@ begin
     DriveItems.UnregisterPlugin('t.a');
     Assert.IsFalse(IsChangeDriveSpecialGlyph(Char(Ord('1') + ChangeDriveSpecialCount)));
     Assert.AreEqual(ChangeDriveSpecialCount, ChangeDriveItemCount);
+  finally
+    Clean;
+  end;
+end;
+
+procedure TTestDriveItems.TestItemsPastNineGetShiftedDigitGlyphs;
+var
+  I: Integer;
+  Glyph: Char;
+  Uri: string;
+begin
+  try
+    for I := 1 to cMaxDriveItems do
+      DriveItems.RegisterItem('t.a', 'i' + IntToStr(I), 'I' + IntToStr(I), 'xa' + IntToStr(I) + '://', I);
+    Glyph := ChangeDriveSpecialGlyph(ChangeDriveItemCount - 1);
+    Assert.IsFalse(CharInSet(UpCase(Glyph), ['A'..'Z']), 'a glyph never collides with a drive letter');
+    Assert.IsTrue(IsChangeDriveSpecialGlyph(Glyph));
+    Assert.AreEqual(ChangeDriveItemCount - 1, ChangeDriveGlyphIndex(Glyph));
+    Assert.IsTrue(TryChangeDriveSpecialUri(Glyph, Uri));
+    Assert.AreEqual('xa' + IntToStr(cMaxDriveItems) + '://', Uri);
+    Assert.AreEqual(-1, ChangeDriveGlyphIndex('Z'));
   finally
     Clean;
   end;

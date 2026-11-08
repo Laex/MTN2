@@ -6,6 +6,24 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The JSON and YAML tree plugin: Enter on a `.json`, `.yaml` or `.yml` file opens it like a folder. Objects and arrays are folders, values are files; the Value and Type columns show the content, F3 views a value, F5 copies a value or a whole subtree out as text. Read-only. YAML: the common subset (no anchors, aliases or tags).
+- The Everything plugin (Windows): Plugins > Everything search asks for a query and opens the results of the Everything program as a panel (`everything:///query`). The rows are the real files, so F3, F4, F5, F6 and F8 act on them. Needs Everything running.
+- The Rclone plugin: the storages configured in rclone (Google Drive, OneDrive, Dropbox, S3, Yandex Disk and dozens of others) open as folders of the panels (`rclone:///`, Change Drive list). Browsing, viewing (F3), editing (F4), copying and moving (F5, F6), making folders (F7) and deleting (F8) work between a storage and a local folder or between two storages. Needs `rclone` in PATH and a configured storage.
+
+### Changed
+
+- The Change Drive list (Alt+F1 / Alt+F2) holds up to ten items from plugins; the items after the ninth are marked with the symbols `!`, `@`, `#`, `$` and `%` (also the hotkeys in the dialog), which no drive letter uses.
+- A plugin can switch off F-keys for its folders: an empty caption in the function bar also makes the key do nothing there (the Rclone list of storages, the JSON tree, Everything results).
+
+### Fixed
+
+- A JSON, YAML or other file opened by a plugin as a folder no longer ends with "Path not found", and ".." at its top leads back to the folder of the file.
+- A huge JSON file is refused with a clear message instead of an error (the tree takes files up to 200 MB).
+- The Rclone panel is no longer empty when rclone prints a notice before the listing (for example about a shared Google Drive client id).
+- The PowerShell 7 (pwsh) profile starts even when pwsh is not in PATH (for example after a Store update left an outdated PATH entry): the per-user alias and the standard install folder are tried too.
+
 ## v0.5.4 – 2026-11-08
 
 ### New

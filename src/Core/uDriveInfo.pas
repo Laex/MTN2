@@ -83,7 +83,9 @@ function CycleDriveIndex(ACount, ACurrentIndex, ADelta: Integer): Integer;
 
 const
   /// <summary>Same numbered extras as Change Drive (Alt+F1/F2), after the
-  /// physical drives. Glyphs are '1'.. so they never collide with A-Z.</summary>
+  /// physical drives. Glyphs are digits, then shifted digits, so they never
+  /// collide with A-Z.</summary>
+  cChangeDriveGlyphs = '123456789!@#$%';
   ChangeDriveSpecialCount = 4;
   ChangeDriveSpecialLabels: array[0..ChangeDriveSpecialCount - 1] of string =
     ('System folders', 'Recycle bin', 'Temporary', 'Workspace');
@@ -104,6 +106,8 @@ function ChangeDriveSpecialTitle(AIndex: Integer): string;
 function DriveKindTitle(const AKindLabel: string): string;
 function ChangeDriveSpecialGlyph(AIndex: Integer): Char;
 function IsChangeDriveSpecialGlyph(AGlyph: Char): Boolean;
+/// <summary>Index of the numbered item a glyph stands for, -1 for none.</summary>
+function ChangeDriveGlyphIndex(AGlyph: Char): Integer;
 function TryChangeDriveSpecialUri(AGlyph: Char; out AUri: string): Boolean;
 /// <summary>Drive letter, or special glyph '1'.. when AUri is sys/recycle/tmp/ws.</summary>
 function DriveBarGlyphFromUri(const AUri: string): Char;
@@ -752,13 +756,19 @@ function ChangeDriveSpecialGlyph(AIndex: Integer): Char;
 begin
   if (AIndex < 0) or (AIndex >= ChangeDriveItemCount) then
     Exit(#0);
-  Result := Char(Ord('1') + AIndex);
+  Result := cChangeDriveGlyphs[AIndex + 1];
+end;
+
+function ChangeDriveGlyphIndex(AGlyph: Char): Integer;
+begin
+  Result := Pos(AGlyph, cChangeDriveGlyphs) - 1;
+  if (AGlyph = #0) or (Result >= ChangeDriveItemCount) then
+    Result := -1;
 end;
 
 function IsChangeDriveSpecialGlyph(AGlyph: Char): Boolean;
 begin
-  Result := (AGlyph >= '1') and
-    (AGlyph <= Char(Ord('0') + ChangeDriveItemCount));
+  Result := ChangeDriveGlyphIndex(AGlyph) >= 0;
 end;
 
 function TryChangeDriveSpecialUri(AGlyph: Char; out AUri: string): Boolean;
@@ -769,7 +779,7 @@ begin
   Result := False;
   if not IsChangeDriveSpecialGlyph(AGlyph) then
     Exit;
-  Idx := Ord(AGlyph) - Ord('1');
+  Idx := ChangeDriveGlyphIndex(AGlyph);
   AUri := ChangeDriveItemUri(Idx);
   Result := True;
 end;
@@ -819,7 +829,7 @@ var
 begin
   Glyph := DriveBarGlyphFromUri(AUri);
   if IsChangeDriveSpecialGlyph(Glyph) then
-    Exit(Length(ADrives) + 1 + (Ord(Glyph) - Ord('1')));
+    Exit(Length(ADrives) + 1 + ChangeDriveGlyphIndex(Glyph));
   DriveIdx := IndexOfDriveLetter(ADrives, Glyph);
   if DriveIdx >= 0 then
     Exit(DriveIdx);

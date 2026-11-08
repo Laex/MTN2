@@ -61,7 +61,8 @@ begin
 
   Assert.IsTrue(ResolveShellCmdLine(cShellProfilePwsh, 'C:\Test', CmdLine, WorkingDir),
     'pwsh resolve failed');
-  Assert.IsTrue(CmdLine = 'pwsh.exe -NoLogo',
+  // pwsh.exe by name when PATH has it, otherwise its full (quoted) path.
+  Assert.IsTrue(CmdLine.EndsWith('pwsh.exe -NoLogo') or CmdLine.EndsWith('pwsh.exe" -NoLogo'),
     'pwsh cmdline mismatch: ' + CmdLine);
 
   Assert.IsTrue(QuoteCmdExePath('D:\Program Files\MTN2\') = '"D:\Program Files\MTN2"',
