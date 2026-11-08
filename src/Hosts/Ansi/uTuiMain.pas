@@ -15,7 +15,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.IOUtils,
   uTerminalTypes, uTermInput, uAnsiFrame, uAnsiTerm, uAnsiClipboard, uHostShell,
   uCoreTimer, uPlatformInfo, uUpdater, uConfigLocation, uResourceAccess, uSelfCheck,
-  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry,
+  uPlatformUpdate, uThemeDrawing, uStrings, uDisplaySettings, uStartupTargets, uUpdateCli, uDesktopEntry, uCliInfo,
   uNotice, uDualPanelInput, uDualPanelJobRules, System.UITypes;
 
 const
@@ -96,6 +96,12 @@ begin
   WriteLine('  --colors=MODE  truecolor, 256 or 16 (default: from COLORTERM and TERM)');
   WriteLine('  --dump [W H]   draw one screen as plain text to standard output and exit');
   WriteLine('  --self-check   check the files next to the program and exit');
+  WriteLine('  --paths        show the program, settings, plugin and theme folders');
+  WriteLine('  --list-commands  list the built-in commands with their keys');
+  WriteLine('  --list-plugins   list the installed plugins');
+  WriteLine('  --check-keymap [FILE]  check keymap.json for unknown actions and keys');
+  WriteLine('  --export-theme [ID]  print a theme as JSON (without ID: list the themes)');
+  WriteLine('  --shell-init SHELL  print a shell function that follows the active panel on exit (bash, zsh, fish, powershell)');
   WriteLine('  --version      show the version');
   WriteLine('  --help         show this help');
 end;
@@ -344,6 +350,7 @@ begin
         end;
       end;
       Shell.PersistSession;
+      Shell.SaveExitFolder;
     finally
       // The terminal is put back even when tearing the shell down raises.
       GToggleMouseCapture := nil;
@@ -375,6 +382,8 @@ function RunTui: Integer;
 var
   Opts: TTuiOptions;
   Channel: string;
+  InfoCommand: TCliInfoCommand;
+  InfoArgument: string;
 begin
   GGraphicsEngineLabel :=
     function: string
@@ -394,6 +403,8 @@ begin
   end;
   if SelfCheckRequested then
     Exit(RunSelfCheckToStdOut);
+  if CliInfoRequestedOnCommandLine(InfoCommand, InfoArgument) then
+    Exit(RunCliInfo(InfoCommand, InfoArgument, WriteLine));
   if UpdateRequested(Channel) then
     Exit(RunUpdateCommand(Channel, WriteLine));
   if InstallDesktopRequested then

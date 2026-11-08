@@ -124,6 +124,9 @@ type
     procedure HandleEvent(const AEvent: TTermEvent);
     /// <summary>Saves the panels and settings; call before leaving.</summary>
     procedure PersistSession;
+    /// <summary>Writes the folder of the active panel to the file named by
+    /// --cd-file, for the shell function from --shell-init; no-op without it.</summary>
+    procedure SaveExitFolder;
     /// <summary>Saves the panels and settings now; False when the file could not
     /// be written.</summary>
     function TryPersistSession: Boolean;
@@ -166,7 +169,7 @@ implementation
 
 uses
   System.IOUtils, uThemeRegistry, uColorCoding, uKeymap, uStrings, uChromeRows,
-  uShellProfiles, uDualPanelTypes, uConsoleSettings,
+  uShellProfiles, uDualPanelTypes, uConsoleSettings, uCliInfo,
   uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uPluginColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
   uToast, uSharkSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
@@ -561,6 +564,12 @@ end;
 procedure THostShell.PersistSession;
 begin
   TryPersistSession;
+end;
+
+procedure THostShell.SaveExitFolder;
+begin
+  if Assigned(FDualPanel) then
+    WriteCdFile(CdFileOnCommandLine, FDualPanel.ActiveLocalPath);
 end;
 
 function THostShell.DualPanelSaveSettings(out AError: string): Boolean;

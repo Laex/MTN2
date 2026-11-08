@@ -11,7 +11,7 @@ function RunSdl: Integer;
 implementation
 
 uses
-  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost, uInstanceSocket, uStartupTargets, uUpdateCli, uDesktopEntry;
+  System.SysUtils, uPlatformInfo, uPlatformUpdate, uUpdater, uSelfCheck, uThemeDrawing, uStrings, uPlatformFonts, uSdlApi, uFreeTypeApi, uSdlHost, uInstanceSocket, uStartupTargets, uUpdateCli, uDesktopEntry, uCliInfo;
 
 type
   TSdlOptions = record
@@ -79,6 +79,12 @@ begin
   WriteLine('  --new-window      do not hand the folder over to a window that is already open');
   WriteLine('  --snapshot=FILE   draw one screen to a PNG file and exit, without a window');
   WriteLine('  --self-check      check the files next to the program and exit');
+  WriteLine('  --paths           show the program, settings, plugin and theme folders');
+  WriteLine('  --list-commands   list the built-in commands with their keys');
+  WriteLine('  --list-plugins    list the installed plugins');
+  WriteLine('  --check-keymap [FILE]  check keymap.json for unknown actions and keys');
+  WriteLine('  --export-theme [ID]  print a theme as JSON (without ID: list the themes)');
+  WriteLine('  --shell-init SHELL  print a shell function that follows the active panel on exit (bash, zsh, fish, powershell)');
   WriteLine('  --version         show the version');
   WriteLine('  --help            show this help');
   WriteLine('Ctrl + wheel, Ctrl + and Ctrl - change the size, Ctrl 0 resets it.');
@@ -125,6 +131,8 @@ function RunSdl: Integer;
 var
   Opts: TSdlOptions;
   Channel: string;
+  InfoCommand: TCliInfoCommand;
+  InfoArgument: string;
 begin
   // Glyph edges are smooth, as under Skia: a stronger dim and a lighter shadow strip.
   GModalDimPercent := 88;
@@ -147,6 +155,8 @@ begin
   end;
   if SelfCheckRequested then
     Exit(RunSdlSelfCheck);
+  if CliInfoRequestedOnCommandLine(InfoCommand, InfoArgument) then
+    Exit(RunCliInfo(InfoCommand, InfoArgument, WriteLine));
   if UpdateRequested(Channel) then
     Exit(RunUpdateCommand(Channel, WriteLine));
   if InstallDesktopRequested then

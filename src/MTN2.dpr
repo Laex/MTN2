@@ -191,6 +191,7 @@ uses
   uUpdateCli in 'Core\uUpdateCli.pas',
   uUpdater in 'Core\uUpdater.pas',
   uSelfCheck in 'Core\uSelfCheck.pas',
+  uCliInfo in 'Core\uCliInfo.pas',
   uElevatedHelper in 'Platform\Windows\uElevatedHelper.pas',
   uUpdateController in 'Core\uUpdateController.pas',
   uNotice in 'Core\uNotice.pas',
@@ -206,6 +207,8 @@ var
   AlreadyRunning: Boolean;
   ExistingHwnd: HWND;
   UpdateChannel: string;
+  InfoCommand: TCliInfoCommand;
+  InfoArgument: string;
 begin
   // Libraries loaded later (plugins and their dependencies) are never looked
   // up in the current directory, which a user can point at a folder holding
@@ -216,6 +219,17 @@ begin
   if SelfCheckRequested then
   begin
     ExitCode := RunSelfCheckToStdOut;
+    Exit;
+  end;
+
+  // --version, --paths, --list-commands, ...: print and exit, no window.
+  if CliInfoRequestedOnCommandLine(InfoCommand, InfoArgument) then
+  begin
+    ExitCode := RunCliInfo(InfoCommand, InfoArgument,
+      procedure(const ALine: string)
+      begin
+        PlatformWriteStdOut(ALine + #13#10);
+      end);
     Exit;
   end;
 

@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uPluginColumns, uListExport,
-  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uToast, uSharkSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uCliInfo, uToast, uSharkSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
   uPluginSurface, uPluginServices, uTaskbarProgress;
 
@@ -3038,6 +3038,7 @@ begin
   if FSystemShutdown then
     Exit;
   PersistSession;
+  WriteCdFile(CdFileOnCommandLine, FDualPanel.ActiveLocalPath);
   ReleaseTaskbarButton;
   // An update the user chose to install "on exit" (or deferred by a busy job).
   if Assigned(FUpdater) then

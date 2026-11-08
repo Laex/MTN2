@@ -62,7 +62,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Linux tests failed ($LASTEXITCODE)" }
           ./src/tools/package-linux.ps1 -Version $env:TAG
 
+      - name: Checksums and SBOM
+        shell: pwsh
+        # SHA256SUMS (every package, sha256sum format) and the CycloneDX list of
+        # the bundled third-party components; both are release assets.
+        run: ./src/tools/release-metadata.ps1 -Version $env:TAG
+
       - name: Publish GitHub Release
+        # The packages, then the files that describe them (must run after the
+        # packages are final: SHA256SUMS lists what is in dist now).
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,6 +78,7 @@ jobs:
           $Zips = @(Get-ChildItem dist -Filter *.zip | ForEach-Object FullName)
           if ($Zips.Count -ne 2) { throw "expected 2 packages in dist, found $($Zips.Count)" }
           $Zips += @(Get-ChildItem dist -Filter '*-linux-x64.*' | ForEach-Object FullName)
+          $Zips += @('dist/SHA256SUMS') + @(Get-ChildItem dist -Filter '*-sbom.cdx.json' | ForEach-Object FullName)
           gh release view $env:TAG *> $null
           if ($LASTEXITCODE -eq 0) {
             # Releases are immutable (repo setting): a published zip can't be

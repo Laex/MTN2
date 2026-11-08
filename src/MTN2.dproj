@@ -374,6 +374,7 @@
         <DCCReference Include="Core\uUpdateCli.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>
         <DCCReference Include="Core\uSelfCheck.pas"/>
+        <DCCReference Include="Core\uCliInfo.pas"/>
         <DCCReference Include="Platform\Windows\uElevatedHelper.pas"/>
         <DCCReference Include="Core\uUpdateController.pas"/>
         <DCCReference Include="Core\uNotice.pas"/>

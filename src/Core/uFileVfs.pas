@@ -342,10 +342,12 @@ begin
     Result := TVfsError.Make(vecIOError, E.Message, AURI);
 end;
 
-// Chooses where the bytes of a new destination file are written. An existing
-// destination is replaced only with AOverwrite, and then by a sibling file
-// that is swapped in after the bytes are complete, so a failed or cancelled
-// copy leaves the previous file or directory in place.
+// Chooses where the bytes of a new destination file are written: always a
+// sibling file (ADst plus ".mtnpart") that takes the real name only after the
+// bytes are complete, so a copy that fails, is cancelled or is cut off by a
+// crash never leaves a truncated file under the destination's name. An existing
+// destination is replaced only with AOverwrite, and a failed or cancelled copy
+// then leaves the previous file or directory in place.
 function ChooseCopyWritePath(const ADst: string; AOverwrite: Boolean;
   out AWritePath: string; out AStaged: Boolean; var AError: TVfsError): Boolean;
 begin
@@ -366,17 +368,14 @@ begin
     AError := TVfsError.Make(vecAlreadyExists, 'Destination already exists', PathToFileUri(ADst));
     Exit;
   end;
-  if TFile.Exists(WinApiPath(ADst)) or TDirectory.Exists(WinApiPath(ADst)) then
+  AWritePath := UnusedSiblingPath(ADst, '.mtnpart');
+  if AWritePath = '' then
   begin
-    AWritePath := UnusedSiblingPath(ADst, '.mtnpart');
-    if AWritePath = '' then
-    begin
-      AError := TVfsError.Make(vecIOError,
-        'Cannot make room to replace the destination', PathToFileUri(ADst));
-      Exit;
-    end;
-    AStaged := True;
+    AError := TVfsError.Make(vecIOError,
+      'Cannot make room to write the destination', PathToFileUri(ADst));
+    Exit;
   end;
+  AStaged := True;
   Result := True;
 end;
 
@@ -473,7 +472,7 @@ begin
     CleanupFailedCopy(AWritePath);
     Exit;
   end;
-  if AStaged and not ReplacePathWith(AWritePath, ADst, MoveMsg) then
+  if AStaged and not ReplacePathWith(WinApiPath(AWritePath), WinApiPath(ADst), MoveMsg) then
   begin
     AError := TVfsError.Make(vecIOError, MoveMsg, PathToFileUri(ADst));
     CleanupFailedCopy(AWritePath);
@@ -649,6 +648,9 @@ begin
   Attempt := 0;
   while True do
   begin
+    // Each attempt starts clean: a failure of the previous one must not make
+    // a successful retry report it again.
+    AError := TVfsError.Ok;
     CopyFileWithProgress(ASrc, ADst, ACancel, AOnProgress, AError, AOverwrite,
       APreserveTimestamps, ABaseDoneBytes, AItemTotalBytes, AAppend);
     if AError.Code in [vecOk, vecCancelled, vecAlreadyExists] then

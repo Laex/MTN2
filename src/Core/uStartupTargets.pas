@@ -30,6 +30,7 @@ type
   private
     FPendingMode: TStartupMode;
     FAwaitingFile: Boolean;
+    FSkipNext: Boolean;
     procedure Add(const APath: string; AMode: TStartupMode);
   public
     Targets: TStartupTargets;
@@ -99,6 +100,17 @@ var
 begin
   if AArg = '' then
     Exit(False);
+  // --cd-file FILE belongs to the shell integration, not to the targets.
+  if FSkipNext then
+  begin
+    FSkipNext := False;
+    Exit(False);
+  end;
+  if SameText(AArg, '--cd-file') then
+  begin
+    FSkipNext := True;
+    Exit(False);
+  end;
   if FAwaitingFile then
   begin
     FAwaitingFile := False;

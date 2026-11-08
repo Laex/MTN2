@@ -19,6 +19,7 @@ type
     [Test] procedure ShortEditSwitchIsEdit;
     [Test] procedure OtherSwitchesAreNotTargets;
     [Test] procedure FileNameMayStartWithADash;
+    [Test] procedure CdFileAndItsValueAreNotTargets;
     [Test] procedure EncodedTargetsComeBack;
     [Test] procedure EmptyLineMeansNoTargets;
     [Test] procedure UnknownPiecesAreDropped;
@@ -38,6 +39,17 @@ begin
   for Arg in AArgs do
     Parser.Take(Arg);
   Result := Parser.Targets;
+end;
+
+procedure TTestStartupTargets.CdFileAndItsValueAreNotTargets;
+var
+  T: TStartupTargets;
+begin
+  T := Parse(['--cd-file', '/tmp/cwd.txt', '/data/one']);
+  Assert.AreEqual(1, Integer(Length(T)));
+  Assert.AreEqual(ExpandFileName('/data/one'), T[0].Path);
+  T := Parse(['--cd-file=/tmp/cwd.txt', '/data/one']);
+  Assert.AreEqual(1, Integer(Length(T)));
 end;
 
 procedure TTestStartupTargets.PlainPathsOpenInOrder;

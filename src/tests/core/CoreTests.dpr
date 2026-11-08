@@ -38,6 +38,7 @@ uses
   TestMenuNavigation in 'TestMenuNavigation.pas',
   TestPluginMenu in 'TestPluginMenu.pas',
   TestSelfCheck in 'TestSelfCheck.pas',
+  TestCliInfo in 'TestCliInfo.pas',
   TestSettingsTransfer in 'TestSettingsTransfer.pas',
   TestStrings in 'TestStrings.pas',
   TestConsoleLaunch in 'TestConsoleLaunch.pas',

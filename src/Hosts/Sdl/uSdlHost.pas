@@ -309,6 +309,7 @@ begin
   if Assigned(FShell) then
   begin
     FShell.PersistSession;
+    FShell.SaveExitFolder;
     FShell.DetachUpdater;
     FShell.DetachPlugins;
     FreeAndNil(FShell);
