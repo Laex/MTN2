@@ -32,10 +32,21 @@ uses
   uWorkspaceVfs,
   uWorkspaceLibrary;
 
+// Test paths are written Windows-style; elsewhere they become rooted POSIX paths.
+function NativePath(const APath: string): string;
+begin
+  Result := APath;
+{$IFNDEF MSWINDOWS}
+  if (Length(Result) > 2) and (Result[2] = ':') then
+    Result := '/' + LowerCase(Result[1]) + Copy(Result, 3, MaxInt);
+  Result := StringReplace(Result, Char(92), '/', [rfReplaceAll]);
+{$ENDIF}
+end;
+
 function Target(const APath: string): TWorkspaceLinkNode;
 begin
   Result := Default(TWorkspaceLinkNode);
-  Result.TargetURI := PathToFileUri(APath);
+  Result.TargetURI := PathToFileUri(NativePath(APath));
 end;
 
 function SnapshotByName(const AName: string; out ASnap: TWorkspaceSnapshot): Boolean;
@@ -93,7 +104,7 @@ begin
   Assert.AreEqual('Hits', WorkspaceLibraryAddToNew('Hits', [Target('C:\A\a.txt')]));
   Assert.AreEqual('Hits (2)', WorkspaceLibraryAddToNew('Hits', [Target('C:\A\b.txt')]));
   Assert.IsTrue(SnapshotByName('Hits', Snap), 'first set is not overwritten');
-  Assert.IsTrue(Snap.Nodes[0].TargetURI = PathToFileUri('C:\A\a.txt'));
+  Assert.IsTrue(Snap.Nodes[0].TargetURI = PathToFileUri(NativePath('C:\A\a.txt')));
   Assert.AreEqual('', WorkspaceLibraryAddToNew('  ', [Target('C:\A\c.txt')]),
     'a blank name is refused');
 end;

@@ -27,10 +27,21 @@ uses
   uVfsTypes,
   uWorkspaceVfs;
 
+// Test paths are written Windows-style; elsewhere they become rooted POSIX paths.
+function NativePath(const APath: string): string;
+begin
+  Result := APath;
+{$IFNDEF MSWINDOWS}
+  if (Length(Result) > 2) and (Result[2] = ':') then
+    Result := '/' + LowerCase(Result[1]) + Copy(Result, 3, MaxInt);
+  Result := StringReplace(Result, Char(92), '/', [rfReplaceAll]);
+{$ENDIF}
+end;
+
 function Target(const APath: string; AIsDir: Boolean = False): TWorkspaceLinkNode;
 begin
   Result := Default(TWorkspaceLinkNode);
-  Result.TargetURI := PathToFileUri(APath);
+  Result.TargetURI := PathToFileUri(NativePath(APath));
   Result.IsDir := AIsDir;
 end;
 
