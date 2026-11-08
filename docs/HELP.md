@@ -1,498 +1,1180 @@
-# MTN2 – справка пользователя
+# MTN2 – User Guide
 
-Modern Terminal Navigator 2 – двухпанельный файловый менеджер в духе NDN / FAR Manager со встроенной консолью, терминалами, просмотрщиком и редактором.
+**English** | [Русский](HELP.ru.md) | [Deutsch](HELP.de.md) | [中文](HELP.zh.md)
 
-> Этот файл – исходник будущей справочной системы по **F1**. Каждый раздел второго уровня (`##`) – отдельная тема справки; якоря разделов служат её идентификаторами. Клавиши указаны для встроенного профиля; их можно переопределить (см. [Настройка клавиш](#настройка-клавиш)).
+Modern Terminal Navigator 2 is a dual-panel file manager in the spirit of NDN / FAR Manager with a built-in console, terminals, viewer and editor.
 
-## Содержание
+Keys are given for the built-in profile; you can redefine them (see [Key bindings](#key-bindings)).
 
-- [Экран программы](#экран-программы)
-- [Панели и навигация](#панели-и-навигация)
-- [Выделение файлов](#выделение-файлов)
-- [Операции с файлами](#операции-с-файлами)
-- [Диски и особые места](#диски-и-особые-места)
-- [Вкладки и рабочие пространства](#вкладки-и-рабочие-пространства)
-- [Вид панели и сортировка](#вид-панели-и-сортировка)
-- [Поиск и фильтры](#поиск-и-фильтры)
-- [История и избранные папки](#история-и-избранные-папки)
-- [Командная строка и консоль](#командная-строка-и-консоль)
-- [Терминалы](#терминалы)
-- [Просмотр и редактирование файлов](#просмотр-и-редактирование-файлов)
-- [Работа с текстом и мышью](#работа-с-текстом-и-мышью)
-- [Верхнее меню (F9)](#верхнее-меню-f9)
-- [Меню пользователя (F2)](#меню-пользователя-f2)
-- [Архивы](#архивы)
-- [Сеть: SSH и SFTP](#сеть-ssh-и-sftp)
-- [Синхронизация и сравнение](#синхронизация-и-сравнение)
-- [Фоновые задания](#фоновые-задания)
-- [Плагины: Git, CSV, временная панель](#плагины-git-csv-временная-панель)
-- [Ассоциации файлов](#ассоциации-файлов)
-- [Настройки](#настройки)
-- [Настройка клавиш](#настройка-клавиш)
-- [Файлы настроек](#файлы-настроек)
+## Contents
+
+- [Program screen](#program-screen)
+- [Panels and navigation](#panels-and-navigation)
+- [Selecting files](#selecting-files)
+- [File operations](#file-operations)
+- [Drives and special places](#drives-and-special-places)
+- [Tabs and workspaces](#tabs-and-workspaces)
+- [Panel view and sorting](#panel-view-and-sorting)
+- [Search and filters](#search-and-filters)
+- [History and folder hotlist](#history-and-folder-hotlist)
+- [Command line and console](#command-line-and-console)
+- [Terminals](#terminals)
+- [Environment profiles](#environment-profiles)
+- [Viewing and editing files](#viewing-and-editing-files)
+- [Working with text and the mouse](#working-with-text-and-the-mouse)
+- [Top menu (F9)](#top-menu-f9)
+- [User menu (F2)](#user-menu-f2)
+- [Archives](#archives)
+- [Network: SSH and SFTP](#network-ssh-and-sftp)
+- [Synchronization and comparison](#synchronization-and-comparison)
+- [Background jobs](#background-jobs)
+- [File associations](#file-associations)
+- [Settings](#settings)
+- [Updates](#updates)
+- [Key bindings](#key-bindings)
+- [Settings files](#settings-files)
+
+### Using the help
+
+| Key | Action |
+| --- | --- |
+| Tab / Shift+Tab | next / previous link |
+| Enter, click on a link | follow the link |
+| Backspace, Alt+← | go back |
+| F1 | this page (contents) |
+| F7, Shift+F7 / Alt+F7 | search text, next / previous match |
+| ↑ ↓ PgUp PgDn Home End | scroll |
+| Esc, F10 | close the help |
+
+## Key bindings
+
+The built-in key set can be partly redefined by the `keymap.json` file in the settings folder (or via **Options → Keymap...**): only the changed actions are listed, the rest stay built-in. **Ctrl+Alt+K** – reload the file without a restart.
+
+Besides the panels, the viewer and editor commands can be rebound. Their names in `keymap.json` start with:
+- `Doc` – both viewing and editing: `DocHex`, `DocFind`, `DocEncoding`, `DocClose`…;
+- `Viewer` – viewing only: `ViewerWrap`;
+- `Markdown` – rendered Markdown: `MarkdownSource`;
+- `Editor` – editing only: `EditorSave`, `EditorUndo`, `EditorDeleteLine`…
+
+The same chord can mean different things on the panels and in a document – Ctrl+H shows hidden files on a panel and toggles hex in a document. A narrower meaning overrides a general one: F4 over rendered Markdown toggles the source, not hex.
+
+Global commands work in any window – the panels, a document, a terminal:
+- `Help` (F1), `TopMenu` (F9), `CommandPalette` (Shift+F9);
+- `NextTab` / `PrevTab` (Ctrl+Alt+PgDn / Ctrl+Alt+PgUp);
+- `AppConsoleToggle` (Ctrl+O), `NewTerminal` (Ctrl+Shift+N), `SelectConsoleProfile` (Ctrl+Alt+O);
+- `AppQuit` (Alt+X), `ZoomReset` (Ctrl+0), `ReloadKeymap` (Ctrl+Alt+K);
+- `ToggleMouse` (Ctrl+Shift+M, text terminal version only).
+
+**A chord the window binds itself.** It stays the window's:
+- F10 closes a document and quits only on the panels (`Quit`);
+- Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
+
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+
+**Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
+
+In the console (Ctrl+O) and a terminal the commands named `Shell…` can be rebound:
+- `ShellHistory` (Alt+F8), `ShellSelectAll` (Ctrl+A);
+- `ShellCopyOrInterrupt` (Ctrl+C – copy the selection, or interrupt the command without one), `ShellCopy` (Ctrl+Ins), `ShellPaste` (Ctrl+V, Shift+Ins);
+- `ShellFind` (Ctrl+Shift+F – search the output), `ShellFindNext` / `ShellFindPrev` (F3 / Shift+F3);
+- in the console also `ConsoleSyncDir` (Ctrl+Shift+O – the panel goes to the console's folder).
+
+Every other key goes to the shell.
+
+**Settings → Keymap** groups the actions by window – global, file panels, viewer and editor, console and terminal – under readable names; the `keymap.json` name shows in the edit window. The F-key labels at the bottom, hints such as `A:All` and the shortcuts in the top menu come from the keymap: after a rebinding they show the new key.
+
+An action can have several shortcuts: list them separated by `;` in the edit window, or as separate entries in `keymap.json`. Besides letters, digits and special keys, the signs `/`, `,`, `.`, `'`, `=` can be assigned; write semicolon and the main-block minus as `Semicolon` and `Minus` (`-`, `+` and `*` mean the numeric keypad keys).
+
+Modifiers must match exactly: Ctrl+Shift+A is not Ctrl+A. Arrows, Home/End, typing and `/` in the viewer are not configurable.
+
+### Tab keys
+
+All tab keys are ordinary keymap actions and can be rebound in `keymap.json`. Panel tabs and workspaces (the tabs of the top row) are different things, each with its own actions:
+
+| What | Action in `keymap.json` | Default |
+| --- | --- | --- |
+| New panel tab | `NewTab` | Ctrl+T |
+| Next / previous panel tab | `NextPanelTab` / `PrevPanelTab` | Ctrl+Tab / Ctrl+Shift+Tab |
+| Close the panel tab | `CloseTab` | Ctrl+W |
+| New workspace | `NewWorkspace` | Ctrl+Shift+W |
+| Next / previous workspace | `NextTab` / `PrevTab` | Ctrl+Alt+PgDn / Ctrl+Alt+PgUp |
+
+The `[+]` and `[x]` buttons in the tab rows and the top menu items do the same.
+
+### Your own `keymap.json` and updates
+
+The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones.
+- The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update.
+- A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own).
+- An action without keys is written as an empty list.
+
+### Examples for Far and MC habits
+
+The repository holds three example `keymap.json` files, [`keymap.far.json`, `keymap.mc.json` and `keymap.tc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**.
+- **Far:** Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O).
+- **MC:** Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
+- **Total Commander:** Alt+F5 and Alt+F9 pack and unpack, Ctrl+A selects all, Ctrl+M renames by rules, Ctrl+P inserts the folder path, Ctrl+Tab and Ctrl+Shift+Tab switch tabs, Alt+Down opens the folder history. The default keymap already follows Norton Commander habits.
+
+### Reserved keys
+
+Not taken yet and kept for planned features: **Shift+F3** (archive commands), **F11** (the plugin menu), **Ctrl+Alt+Ins** (network UNC paths), **Ctrl+.** (macro recording). An automatic check keeps the built-in keymap from taking them.
 
 ---
 
-## Экран программы
+[Contents](#contents)
 
-Сверху вниз:
+## Program screen
 
-- **Верхнее меню** – категории Слева / Файлы / Правка / Команды / Настройки / Справа и часы. Открывается **F9**, **Alt** или щелчком.
-- **Вкладки рабочих пространств** – наборы панелей и терминалов (см. [Вкладки и рабочие пространства](#вкладки-и-рабочие-пространства)).
-- **Две файловые панели** – активная выделена рамкой; **Tab** переключает сторону. На нижней кромке панели – буквы дисков.
-- **Командная строка** – приглашение с текущей папкой.
-- **Строка F-клавиш** – подсказки действий для текущего режима; по ним можно щёлкать мышью. С зажатыми Shift / Ctrl / Alt строка показывает соответствующие действия. В окне шириной от 100 колонок слева от F-клавиш на панелях показана клавиша палитры команд.
-- **Строка статуса** – сведения о панели; щелчок по секции открывает связанный диалог: сторона и свободное место – список дисков, путь – историю папок, режим колонок – меню режимов, элемент или выделение – свойства. В просмотре и редакторе: позиция – «Перейти к строке», кодировка – выбор кодировки, результат поиска – «Найти».
+From top to bottom:
+- **Top menu** – the Left / Files / Edit / Commands / Options / Right categories and a clock. Opened with **F9**, **Alt** or a click.
+- **Workspace tabs** – sets of panels and terminals (see [Tabs and workspaces](#tabs-and-workspaces)).
+- **Two file panels** – the active one is highlighted by its frame; **Tab** switches sides. Drive letters are shown on the bottom edge of a panel.
+- **Command line** – a prompt with the current folder.
+- **F-key bar** – hints for the actions of the current mode; you can click them. While Shift / Ctrl / Alt is held, the bar shows the matching actions. In a window 100 columns wide or more, the bar on the panels also names the key of the command palette on its left.
+- **Status line** – facts about the panel; clicking a section opens its dialog: the side and the free space open the drive list, the path opens the folder history, the column mode opens the mode menu, the item or the selection opens its properties. In the viewer and editor: the position opens Go to line, the encoding opens the encoding list, the search result opens Find.
 
-Под панелями живёт **консоль**: **Ctrl+O** (или **Esc** при пустой командной строке) прячет панели и показывает вывод команд.
+The **console** lives under the panels: **Ctrl+O** (or **Esc** with the focus on the panel) hides the panels and shows the command output.
 
-В заголовке окна стоит **[Администратор]**, если сам MTN2 запущен от имени администратора, и **[Помощник администратора]**, пока работает помощник администратора (см. [Операции с файлами](#операции-с-файлами)).
+The window title shows **[Administrator]** when MTN2 itself was started as administrator, and **[Admin helper]** while the administrator helper runs (see [File operations](#file-operations)).
 
-**F1** – справка по тому, что сейчас на экране (панели, просмотр, открытый диалог или меню); **F1** в самой справке – оглавление. **F10** – выход.
+**Dialog buttons** press like real ones: a pressed button moves right and covers its shadow.
+- **Mouse.** The command runs when the mouse button is released over the same button; move the pointer away and release there, and nothing happens.
+- **Enter and Space.** They hold the button down until the key is released, and the command runs on release; pressing **Esc** meanwhile lifts the button without running the command and leaves the dialog open.
+- **The highlighted letter and Y / N.** They push the button down for a moment and then fire it.
+- Otherwise **Esc** closes the dialog at once.
 
-## Панели и навигация
+**Hotkey letters in dialogs.** Buttons, checkboxes and radio buttons have one letter of their caption highlighted in colour (underlined in some themes).
+- Pressing that letter presses the button, toggles the checkbox or selects the radio button; while the focus is in an input field, press it with Alt.
+- The letter also works from the other keyboard layout: "Skip" with a highlighted S responds both to S and to the Cyrillic letter on the same key.
+- The default button (in angle brackets) and the cancel button need no letter – Enter and Esc do that.
 
-| Клавиша | Действие |
+**F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. **F10** – quit.
+
+---
+
+[Contents](#contents)
+
+## Panels and navigation
+
+| Key | Action |
 | --- | --- |
-| ↑ ↓ PgUp PgDn Home End | перемещение курсора |
-| Enter | войти в папку / архив, открыть файл (по [ассоциации](#ассоциации-файлов)) |
-| Shift+Enter | запустить файл или команду в отдельном окне ОС |
-| Alt+Shift+Enter | запустить командную строку в фоне: консоль на короткое время показывает запуск, затем возвращаются панели; при пустой строке запускает консольную программу под курсором так же |
-| Ctrl+Alt+Enter | запустить командную строку в новой вкладке терминала (оболочка фоновой консоли); при пустой строке запускает консольную программу под курсором в терминале вкладки панелей |
-| Alt+Shift+F3 | показать элемент под курсором на соседней панели |
-| Tab | переключить активную панель |
-| Ctrl+\\ | в корень диска (из архива – выйти из архива) |
-| Alt+← / Alt+→ | назад / вперёд по истории папок |
-| Ctrl+U | поменять панели местами |
-| Ctrl+] | пассивная панель := папка активной |
-| Ctrl+[ | активная панель := папка пассивной |
-| Ctrl+Alt+M | курсор пассивной панели – на файл с тем же именем, что под курсором активной (если такого нет – сообщение) |
-| Ctrl+F1 / Ctrl+F2 | скрыть / показать левую / правую панель |
-| Ctrl+P | скрыть / показать неактивную панель |
-| Ctrl+L | информационная панель (диск, память) на соседней стороне |
-| Ctrl+H | показать / скрыть скрытые и системные файлы |
-| Ctrl+R | обновить панель |
-| Ctrl+Q | быстрый просмотр файла на соседней панели: картинка, текст, Markdown или hex |
-| Alt+буква | быстрый поиск по имени в панели |
+| ↑ ↓ PgUp PgDn Home End | move the cursor |
+| ← / → | in Brief mode – one column left / right; in the other modes – to the first / last item (like Home / End) |
+| Enter | enter a folder / archive, open a file (by [association](#file-associations)); run a console program in the built-in console (see below) |
+| Backspace | up one level, like Enter on `..` (with an empty command line; otherwise it erases a character there) |
+| Ctrl+PgUp / Ctrl+PgDn | up one level / enter the folder under the cursor, as in FAR; on a file Ctrl+PgDn opens it as an archive (see [Archives](#archives)) |
+| Shift+Enter | run a file or command in a separate OS window |
+| Alt+Shift+Enter | run the command line in the background: the console shows it for a moment, then the panels come back; with an empty line it runs the console program under the cursor the same way |
+| Ctrl+Alt+Enter | run the command line in a new terminal tab (the shell of the background console); with an empty line it runs the console program under the cursor in the terminal tab of the panels tab |
+| Alt+Shift+F3 | show the item under the cursor on the other panel |
+| Tab | switch the active panel |
+| Ctrl+\\ | go to the drive root (inside an archive – leave the archive) |
+| Alt+← / Alt+→ | back / forward through the folder history |
+| Ctrl+U | swap the panels |
+| Ctrl+] | passive panel := folder of the active one |
+| Ctrl+[ | active panel := folder of the passive one |
+| Ctrl+Alt+P | paired folders on / off: entering a subfolder (Enter, Ctrl+PgDn) or going up (`..`, Ctrl+PgUp) in one panel does the same in the other, if the other panel has a folder of that name (or a parent); both panels must show plain local folders; the setting belongs to the tab and is kept between runs |
+| Ctrl+Alt+G | group the rows: by type, by date, none (each press moves to the next) |
+| Ctrl+F1 / Ctrl+F2 | hide / show the left / right panel |
+| Ctrl+P | hide / show the inactive panel |
+| Ctrl+L | information panel (drive, memory) on the other side |
+| Ctrl+H | show / hide hidden and system files |
+| Ctrl+R | refresh the panel |
+| Ctrl+Q | quick view of the file on the other panel: picture, text, Markdown or hex |
+| Alt+F10 | folder tree of the drive over the active panel (see below) |
+| Alt+letter | quick search by name in the panel |
 
-**Быстрый просмотр (Ctrl+Q)** показывает на соседней панели файл под курсором: картинку, текст (кодировка определяется сама), оформленный Markdown или hex-дамп двоичного файла; большие файлы читаются потоково. Колесо мыши над ним прокручивает просмотр. Tab передаёт клавиатуру текстовому просмотру (рамка становится активной): стрелки, PgUp/PgDn, Home/End и ←/→ прокручивают текст с подсветкой синтаксиса, Tab или Esc возвращает на файловую панель. Файлы на SFTP и крупные файлы внутри архивов не читаются при каждом движении курсора – для них показывается подсказка открыть файл по F3. Повторное Ctrl+Q закрывает быстрый просмотр; для картинки Tab закрывает его и переходит на соседнюю панель.
+**Paired folders (Ctrl+Alt+P)** – example: the left panel shows `D:\Work1`, the right one `D:\Work2`, both have `src\Core`. With the mode on, Enter on `src` in the left panel opens `D:\Work1\src` and `D:\Work2\src` at once, and Enter on `Core` goes one level deeper in both; `..` in one panel goes up in both. If the other panel has no folder of that name (say `v2` has no `docs`), it stays where it is. Good for comparing two copies of a tree folder by folder.
 
-Щелчок мышью ставит курсор, двойной щелчок – как Enter. Файлы можно перетаскивать мышью между панелями и в другие программы (и обратно).
+**Grouping (Ctrl+Alt+G)** – the rows are ordered by group first, and the current sort applies inside each group; the first row of a group shows its heading at the right of the name, and every other group has a slightly tinted background. By type: folders, images, audio, video, documents, archives, programs, code and data, other. By date: today, yesterday, last 7 days, last 30 days, last year, older, no date. Example: press Ctrl+Alt+G twice in a Downloads folder and sort by size – the files of each day are listed together, the largest first. The mode is kept per panel and saved with the session.
 
-## Выделение файлов
+**Folder tree (Alt+F10)** opens over the active panel. It is open over one panel at a time.
 
-| Клавиша | Действие |
+**Opening.** The drive root is shown with the path to the current folder open and the cursor on it.
+
+**Keyboard**
+- ↑ ↓ PgUp PgDn Home End – move.
+- → or `+` – open a branch (`[+]─`) or step into it.
+- ← or `-` – close a branch (`[-]─`) or go to the parent.
+- A letter – jump to the next folder starting with it.
+- Enter – open the folder in the active panel and close the tree.
+- Esc or Alt+F10 – close the tree; the same panel shows again.
+
+**The other panel.** It goes to the folder under the cursor once the cursor stops.
+
+**Focus**
+- Tab or a click on the other panel moves the focus there; the tree stays, like a FAR tree panel.
+- Tab or a click on the tree's frame brings the focus back.
+
+**Mouse.** The tree works as an index:
+- a click on a folder shows it in the other panel at once and moves the focus there;
+- a click on `[+]` / `[-]` opens or closes the branch without moving the focus;
+- the wheel scrolls the tree without moving the cursor.
+
+**Following and background reading**
+- When the other panel goes to another folder, the tree opens the path to it and puts the cursor there; for another drive it rebuilds itself.
+- Folders are read in the background; if the panel under the tree goes to another folder meanwhile, the tree closes.
+
+**Quick view (Ctrl+Q)** shows the file under the cursor on the other panel: a picture, text (the encoding is detected), rendered Markdown or a hex dump of a binary file.
+- Large files are streamed.
+- The mouse wheel over the preview scrolls it.
+- Files on SFTP and big files inside archives are not read on every cursor move – the panel suggests opening them with F3.
+- Tab or Ctrl+Q again closes the quick view.
+
+**Console programs** (a console-subsystem `.exe`, `.bat`, `.cmd`, `.ps1`) run on Enter so that their output stays on screen, not in a separate Windows window:
+- in the background console (Ctrl+O) when its shell is cmd, PowerShell or pwsh and nothing runs in it: like a command typed in the command line;
+- otherwise (a WSL, Git Bash or SSH console, or one busy with another command) – in a new terminal tab with cmd, or PowerShell for a `.ps1`; the tab stays open after the program ends.
+
+With **Run programs from the panels in a terminal tab** (**Commands → Background console...**) every console program goes to a terminal tab, so the other tabs stay usable while it runs.
+- The first program started from a panels tab opens a terminal tab next to it.
+- The next ones are typed into that tab's shell (in the folder of the file) while it is idle and nothing is typed on its input line, otherwise a new tab opens.
+- The tab's shell has its own environment profile (**F6** in the shell list) and its own shell history.
+
+Window programs and documents open with their Windows program as before. **Shift+Enter** still runs any file in a separate window.
+
+A mouse click places the cursor, a double click acts like Enter. Files can be dragged with the mouse between the panels and to other programs (and back).
+
+---
+
+[Contents](#contents)
+
+## Selecting files
+
+| Key | Action |
 | --- | --- |
-| Ins | выделить / снять и перейти ниже |
-| Shift+стрелки, Shift+Home/End/PgUp/PgDn | выделять по ходу курсора |
-| Shift+Серый + | выделить все файлы |
-| Ctrl+M | вернуть выделение, которое было до последнего сброса (например, после копирования); повторное нажатие возвращает обратно |
-| Серый + / Серый − | выделить / снять по маске (`*.txt`, `a*.*`) |
-| Серый * | инвертировать выделение |
-| Ctrl+Серый + / Ctrl+Серый − | выделить / снять файлы с тем же расширением, что под курсором |
-| Shift+Серый − | снять выделение со всех файлов |
-| Alt+Серый + / Alt+Серый − | выделить / снять файлы с тем же именем |
+| Ins | select / deselect and move down |
+| Shift+arrows, Shift+Home/End/PgUp/PgDn | select as the cursor moves |
+| Shift+Gray + | select all files |
+| Ctrl+M | bring back the selection held before it was last cleared (after a copy, say); a second press swaps back |
+| Gray + / Gray − | select / deselect by mask (`*.txt`, `a*.*`) |
+| Gray * | invert the selection |
+| Ctrl+Gray + / Ctrl+Gray − | select / deselect files with the same extension as the one under the cursor |
+| Shift+Gray − | deselect all files |
+| Alt+Gray + / Alt+Gray − | select / deselect files with the same name |
 
-В диалоге выбора по маске флажок «Выделять папки» распространяет маску и на папки. Операции (копирование, удаление, …) работают с выделенными элементами, а если ничего не выделено – с элементом под курсором.
+In the select-by-mask dialog the “Select folders” check box applies the mask to folders as well. Operations (copy, delete, …) work on the selected items, or on the item under the cursor if nothing is selected.
 
-## Операции с файлами
+### Mask groups
 
-| Клавиша | Действие |
+<!--mask-groups-->In any mask (selection, panel filter, search, colour groups) `@Name` expands to a named set of masks, for example `@Images` or `*.log;@Documents`. The groups Images, Audio, Video, Documents, Archives and Sources are built in. Your own groups, or replacements of built-in ones, go into `maskgroups.json` in the settings folder: `{ "groups": { "Logs": "*.log;*.out" } }`. An unknown name stays ordinary mask text. The Options menu item "Mask groups..." opens a list where groups are added, changed and deleted; the select-by-mask dialog can also save its mask as a group. In a mask field of a dialog (select, filter, search), Ctrl+G saves the typed masks as a group named after the first mask and puts `@Name` in the field.
+
+### Column sets
+
+The column modes menu lists named column sets under Custom (Minimal, Dates and Technical are built in). A set applies its columns to the Custom mode. To save the current choice, type a name in the "Save as column set" field of the Custom columns dialog; sets are kept in `columnsets.json` in the settings folder.
+
+---
+
+[Contents](#contents)
+
+## File operations
+
+| Key | Action |
 | --- | --- |
-| F3 | просмотр файла; на папках – подсчёт размера выделенных папок (Esc – отмена) |
-| F4 | редактирование |
-| Shift+F4 | создать файл |
-| F5 | копировать |
-| Shift+F5 | копия под другим именем в той же папке |
-| F6 | переместить / переименовать |
-| Shift+F6 | переименовать элемент под курсором |
-| F7 | создать папку |
-| Alt+F6 | создать ссылку (символьная ссылка, жёсткая ссылка, junction) |
-| F8, Del | удалить в Корзину |
-| Shift+F8, Shift+Del | удалить безвозвратно (затереть) |
-| Ctrl+A | атрибуты, владелец и даты (создан / изменён / доступ) |
-| Alt+Enter | окно «Свойства» Windows (для выделенных или элемента под курсором; только файлы и папки на диске) |
-| Ctrl+Alt+C | сравнить файлы под курсорами обеих панелей или два отмеченных файла активной панели |
-| Ctrl+Alt+H | контрольные суммы (MD5, SHA-1, SHA-256, SHA-512) выделенных файлов и папок; на файле `.md5` / `.sha1` / `.sha256` / `.sha512` – проверка по нему |
-| Ctrl+Alt+N | групповое переименование выделенных элементов: маска имени и расширения, счётчик, замена текста, регистр букв |
-| Ctrl+Shift+C | сравнить папки: выделить различающиеся файлы на обеих панелях |
-| Alt+F3 / Alt+F4 | внешний просмотрщик / редактор |
-| Ctrl+C / Ctrl+X / Ctrl+V | копировать / вырезать / вставить файлы через буфер обмена |
-| Alt+Shift+Ins | скопировать полный путь в буфер обмена |
-| Ctrl+Shift+Ins | скопировать только имя (без пути) в буфер обмена |
-| Ctrl+Z | описание файла: строка ввода, текст сохраняется в `Descript.ion` рядом с файлом |
+| F3 | view a file; on folders – calculate the size of the selected folders (Esc – cancel) |
+| F4 | edit |
+| Shift+F4 | create a file |
+| F5 | copy |
+| Shift+F5 | copy under another name in the same folder |
+| F6 | move / rename |
+| Shift+F6 | rename the item under the cursor |
+| F7 | create a folder |
+| Alt+F6 | create a link (symbolic link, hard link, junction) |
+| F8, Del | delete to the Recycle Bin |
+| Shift+F8, Shift+Del | delete permanently (wipe) |
+| Ctrl+A | attributes, owner and dates (created / modified / accessed) |
+| Alt+Enter | the Windows “Properties” window (for the selection or the item under the cursor; files and folders on disk only) |
+| Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |
+| Ctrl+Alt+C | compare the files under the cursors of both panels, or the two marked files of the active panel; the dialog shows size, modified time and a content verdict |
+| Ctrl+Alt+H | checksums (MD5, SHA-1, SHA-256, SHA-512) of the selected files and folders; on a `.md5` / `.sha1` / `.sha256` / `.sha512` file – verify it |
+| Ctrl+Alt+M | rename the selected items in one go: name and extension masks, counter, search and replace, letter case |
+| Ctrl+C / Ctrl+X / Ctrl+V | copy / cut / paste files through the clipboard |
+| Alt+Shift+Ins | copy the full path to the clipboard |
+| Ctrl+Shift+Ins | copy only the name (no path) to the clipboard |
+| Ctrl+Z | describe the file: an input line, the text is kept in `Descript.ion` next to the file |
 
-**Alt+Shift+Ins** и **Ctrl+Shift+Ins** берут выделенные элементы (по одному в строке), а без выделения – элемент под курсором; на `..` – текущую папку. Вставить результат можно где угодно по **Shift+Ins** / **Ctrl+V**. Копирование подтверждает короткое уведомление в правом нижнем углу (или сообщает, что копировать нечего); отключается в **Настройки → Интерфейс...**.
+**Alt+Shift+Ins** and **Ctrl+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` – the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → User interface...**.
 
-В диалоге **Ctrl+A** даты вводятся в формате даты системы, время – `чч:мм:сс` (секунды и время можно не указывать). Пустое поле – дата не меняется: так выглядят даты, которые у выделенных файлов различаются. **Текущее** ставит во все три поля текущее время, **Исходные** возвращает прочитанные значения. Флажок «Обрабатывать вложенные папки» действует и на даты.
+<!--export-list-->**Files → Export list...** saves the selected items (or, with nothing selected, the item under the cursor) to a file.
 
-В том же диалоге – остальные признаки файла: **Сжатый**, **Шифрованный**, **Не индексируется**, **Разреженный**, **Временный** и **Автономный** (для каждого: оставить / включить / выключить; сжатие, шифрование и разреженность выполняет файловая система, на томе без такой возможности будет ошибка). Для корня диска (**F4** в списке дисков **Alt+F1** / **Alt+F2**) вверху показаны том (путь с GUID) и устройство; кнопка **Свойства Windows** открывает системное окно свойств.
+**The dialog asks for**
+- the file name;
+- the layout – by extension (`.md` – Markdown table, `.csv` – CSV, anything else – aligned text), plain text, Markdown or CSV;
+- the fields: name, full path, extension, size, modified / created / accessed date, type and attributes.
 
-Диалог копирования/перемещения позволяет: сохранить все временные метки, копировать только более новые файлы, копировать содержимое символьных ссылок (без неё символьная ссылка или junction переносится как ссылка), задать маску исключения. При конфликте имён программа спрашивает, что делать (заменить, пропустить, переименовать, для всех…).
+The header line can be switched off (a Markdown table always has one). Folders show `<DIR>` in place of the size. The choice is remembered between launches; the item has no default key, one can be assigned in the key bindings dialog (action `ExportList`).
 
-**Контрольные суммы.** Расчёт идёт в фоне (Esc – отмена). В списке результата: **Копировать** – в буфер обмена, **Сохранить** – в `<файл>.sha256` (для одного файла) или `checksums.sha256` в папке панели. Проверка показывает для каждой строки `OK`, `FAILED` или `MISSING`. Понимаются строки `хеш *имя`, `хеш  имя` и `SHA256 (имя) = хеш`.
+<!--attributes-->In the **Ctrl+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional).
+- An empty field keeps the date: that is how dates that differ between the selected files are shown.
+- **Current** puts the current time into all three fields, **Original** restores the values read from the files.
+- “Process subfolders” applies to the dates too.
 
-**Групповое переименование.** Маски имени и расширения понимают `[N]` (старое имя без расширения), `[E]` (старое расширение) и `[C]` (счётчик с заданными началом, шагом и числом цифр); остальной текст остаётся как набран. «Найти» и «Заменить» работают по новому имени и расширению, регистр букв выбирается из списка. Список под полями сразу показывает пары «старое -> новое». Имя, которое пусто, недопустимо, встречается дважды или уже занято в папке (в том числе другим элементом набора), отмечается знаком `!`; пока такие есть, **Переименовать** не выполняется. Выбрать можно только элементы одной папки. Переименование идёт заданием в фоне, как перемещение.
+The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not indexed**, **Sparse**, **Temporary** and **Offline** (each one: keep / set / clear; compression, encryption and the sparse flag are done by the file system, so a volume without them reports an error).
 
-**Защищённые папки.** Если копирование, перемещение, удаление, создание папки или переименование на локальном пути (например, в `C:\Program Files`) заканчивается ошибкой «Отказано в доступе», в окне ошибки появляется кнопка **Админ**, а создание папки и переименование спрашивают «Повторить с правами администратора?». После согласия Windows показывает обычный запрос UAC, и MTN2 запускает небольшой процесс-помощник с правами администратора: упавший элемент и остаток задания выполняются в нём, в тех же окнах прогресса и ошибок. До подтверждения ничего с этими правами не выполняется. Пока помощник работает, в заголовке окна стоит **[Помощник администратора]** и показано уведомление; он завершается сам через две минуты без работы или при закрытии MTN2. Помощник только копирует, перемещает, удаляет, создаёт папки и сохраняет текст на локальных путях: запускать программы он не умеет, а говорить с ним может только запустивший его MTN2. Из архива кнопка **Админ** есть только при распаковке в локальную папку: архив читает сам MTN2, результат записывает помощник. Для остальных операций с архивами и виртуальными папками такого шага нет. Если сам MTN2 запущен от имени администратора (правый щелчок, «Запуск от имени администратора»), в заголовке стоит **[Администратор]** и помощник не нужен; зато Windows блокирует перетаскивание из программ без повышенных прав, например из Проводника.
+**Drive root.** For a drive root (**F4** in the **Alt+F1** / **Alt+F2** drive list) the volume (GUID path) and the device are shown at the top; the **System properties** button opens the Windows properties window.
 
-## Диски и особые места
+**Windows context menu** – the same menu as a right click in Explorer: “Open with”, “Send to”, archiver, antivirus and version-control items and so on.
 
-**Alt+F1 / Alt+F2** – выбор диска для левой / правой панели. Под списком дисков – особые места (выбор цифрой, Enter или щелчком):
+**How to open it:** **Shift+F10** or the **Menu** key at the cursor row, **Files → Windows context menu**, or holding the right mouse button on a file for about a second.
 
-1. **Системные папки** – Рабочий стол, Документы, Загрузки и др.
-2. **Корзина** – просмотр; **Ctrl+Alt+R** восстанавливает элемент, **F8** удаляет окончательно. Быстрый переход – **Ctrl+Alt+F8**.
-3. **Временная панель** – если подключён плагин Temporary.
-4. **Рабочий набор** – панель ссылок на файлы и папки (не копий): **F5** добавляет ссылку, **F8** убирает её, **F7** создаёт группу.
+**What it acts on**
+- From the keyboard and the menu – the selection, or without one the item under the cursor (on `..` – the current folder).
+- Holding the mouse button opens the menu of the file under the mouse.
 
-В списке после дисков идут сетевые ресурсы вида `\\сервер\ресурс`, в которых сейчас открыта одна из панелей или которые открывались недавно (до восьми); Enter открывает ресурс, ресурс активной панели отмечен звёздочкой. **F4** на диске показывает атрибуты его корневой папки.
+Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 
-**Ctrl+← / Ctrl+→** – предпросмотр соседнего диска на нижней кромке панели; переход – при отпускании Ctrl (Esc – отмена). Щелчок по букве диска – сразу переход. Для каждого диска запоминается последняя папка.
+<!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
-Команда **..** в системных папках и Корзине возвращает туда, откуда вы пришли.
+<!--checksums-->**Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
 
-## Вкладки и рабочие пространства
+<!--multi-rename-->**Multi-rename.** The name and extension masks understand:
+- `[N]` – the old name without extension;
+- `[E]` – the old extension;
+- `[C]` – a counter with the given start, step and number of digits;
+- `[Date]` and `[Time]` – the modification date (`2026-11-05`) and time (`14-30-07`); `[Year]`, `[Month]` and `[Day]` – parts of the date;
+- `[Parent]` – the name of the folder; `[Size]` – the size in bytes;
+- `[Dim]`, `[Camera]`, `[Artist]` and `[Title]` – the values of the metadata plugin columns (image size and camera, audio artist and title) as the panel shows them; they are empty until the plugin has read the file;
+- other text stays as typed.
 
-**Вкладки панели** – у каждой стороны свои. Новую вкладку создаёт кнопка **[+]** после последней вкладки или двойной щелчок по пустому месту строки вкладок:
+Search and Replace work on the new name and extension, and the letter case comes from the list. With **Regular expression** Search is a pattern and Replace may use `$1`, `$2`; a pattern that is not valid leaves the names unchanged. Tokens may be typed in any letter case; a value that is unknown is empty, and characters a name cannot hold become `_`. The list under the fields shows the "old -> new" pairs as you type.
 
-| Клавиша | Действие |
+**Errors.** A name that is empty, invalid, used twice or already taken in the folder (also by another item of the batch) is marked with `!`, and **Rename** does nothing while any is left.
+
+Only items of one folder can be chosen. The renaming runs as a background job, like a move.
+
+---
+
+[Contents](#contents)
+
+<!--admin-->**Protected folders.** When a copy, move, delete, new folder or rename fails with “Access denied” on a local path (for example in `C:\Program Files`), the error window offers **Admin**, and new folder and rename ask “Repeat as administrator?”.
+
+**How it works**
+- After a yes Windows shows its usual UAC prompt and MTN2 starts a small helper process with administrator rights.
+- The failed item and the rest of the job run there, with the same progress and error windows.
+- Nothing runs with these rights before you confirm.
+- While the helper runs the window title shows **[Admin helper]** and a notice says so; it ends by itself after two minutes without work, or when MTN2 closes.
+
+**Limits**
+- The helper only copies, moves, deletes, creates folders and saves text on local paths: it cannot start programs, and only the MTN2 that started it can talk to it.
+- Archives and virtual folders have no such step.
+
+**MTN2 as administrator.** If MTN2 itself is started as administrator (right click, Run as administrator) the title shows **[Administrator]** and no helper is needed; Windows then blocks drag and drop from non-elevated programs such as Explorer.
+
+## Drives and special places
+
+**Alt+F1 / Alt+F2** – choose the drive for the left / right panel. Below the drive list are special places (choose by digit, Enter or a click):
+1. **System folders** – Desktop, Documents, Downloads and others.
+2. **Recycle bin** – browse it; **Ctrl+Alt+R** restores an item, **F8** deletes it permanently. Quick jump – **Ctrl+Alt+F8**.
+3. **Temporary** – a temporary panel, if the Temporary plugin is installed.
+4. **Workspace** – a panel of links to files and folders (not copies): **F5** adds a link, **F8** removes it, **F7** creates a group.
+
+After the drives the list shows network shares such as `\\server\share` in which a panel is open now or was open lately (up to eight). Enter opens the share, the share of the active panel is marked with an asterisk.
+
+**On a drive**
+- **F4** shows the attributes of its root folder.
+- **Del** on a removable or optical drive or a mapped network drive disconnects it (ejects the medium) after a confirmation; a drive with open files stays connected and the program says why.
+
+**Ctrl+← / Ctrl+→** – preview the neighbouring drive on the bottom edge of the panel; the jump happens when Ctrl is released (Esc – cancel). A click on a drive letter jumps at once. The last folder is remembered for each drive.
+
+The **..** entry in system folders and the Recycle Bin takes you back to where you came from.
+
+---
+
+[Contents](#contents)
+
+## Tabs and workspaces
+
+<!--panel-tabs-->**Panel tabs** – each side has its own. The **[+]** button after the last tab, or a double click on an empty spot of the tab row, creates a new one:
+
+| Key | Action |
 | --- | --- |
-| Ctrl+T | новая вкладка |
-| Ctrl+W | закрыть вкладку |
-| Ctrl+Alt+T | закрепить или открепить вкладку (закреплённая выделена фоном акцентного цвета: переход в другую папку открывает новую вкладку, закрыть её нельзя) |
-| Alt+PgDn / Alt+PgUp | следующая / предыдущая вкладка панели |
+| Ctrl+T | new tab |
+| Ctrl+W | close the tab |
+| Ctrl+Alt+T | lock or unlock the tab (a locked tab has an accent-coloured background: going to another folder opens a new tab, and it cannot be closed) |
+| Ctrl+Tab / Ctrl+Shift+Tab | next / previous panel tab (on a document or terminal – workspace) |
 
-**Рабочие пространства** – вкладки верхней строки (**Ctrl+Shift+W** – новое, **Ctrl+Tab** / **Ctrl+Shift+Tab** или **Ctrl+Alt+PgDn** / **Ctrl+Alt+PgUp** – следующее и предыдущее). Каждое содержит свою пару панелей или терминал. Двойной щелчок по вкладке – переименовать; кнопка **[+]** сразу после последней вкладки создаёт новое.
+<!--workspaces-->**Workspaces** – the tabs of the top row (**Ctrl+Shift+W** creates one, **Ctrl+Alt+PgDn** / **Ctrl+Alt+PgUp** switch). Each one holds its own pair of panels or a terminal. A double click on a tab renames it; the **[+]** button right after the last tab creates a new one.
 
-**Сохранённые рабочие пространства** – **Ctrl+Shift+D** (список, переход, удаление), **Ctrl+Alt+Shift+D** – сохранить текущее.
+<!--saved-->**Saved workspaces** – **Ctrl+Shift+D** (list, jump, delete), **Ctrl+Alt+Shift+D** – save the current one.
 
-**Результаты поиска в рабочее пространство** – **Ctrl+Alt+F7** (меню **Команды**): ссылки на отмеченные элементы активной панели, а без отметок – на все (например, результаты **Alt+F7**), добавляются в панель ссылок `ws:///`, и она открывается в соседней панели. Одинаковые имена получают номер, уже добавленные элементы не повторяются, элементы архивов и виртуальных схем пропускаются. Если рабочее пространство уже не пусто или есть сохранённые наборы, появится выбор: добавить в текущий набор, заменить его, создать новый набор или добавить в один из сохранённых; изменённый набор перед заменой сохраняется. Чтобы вернуться к набору позже, сохраните его **Ctrl+Alt+Shift+D**.
+<!--findtows-->**Search results to a workspace** – **Ctrl+Alt+F7** (the **Commands** menu) adds links to the marked items of the active panel, or to all of them when none is marked (for example the **Alt+F7** results), to the `ws:///` link panel and opens it in the other panel. Equal names get a number, items already linked are not repeated, and items inside archives or plugin schemes are skipped. When the workspace already has links or saved sets exist, a choice appears: add to the current set, replace it, create a new set, or add to a saved one; a changed set is saved before it is replaced. Save the set with **Ctrl+Alt+Shift+D** to come back to it later.
 
-## Вид панели и сортировка
+---
 
-| Клавиша | Действие |
+[Contents](#contents)
+
+## Panel view and sorting
+
+| Key | Action |
 | --- | --- |
-| Ctrl+\` | меню режимов колонок |
-| Ctrl+Shift+F1 … F7 | режим: краткий, размер, дата, полный, создан, типы, свой |
-| Ctrl+F12 | меню сортировки |
-| Ctrl+F3 / F4 / F5 / F6 | сортировка по имени / расширению / дате изменения / размеру |
-| Ctrl+F7 / F8 / F9 | без сортировки / по дате создания / по дате доступа |
+| Ctrl+\` | column modes menu |
+| Ctrl+Shift+F1 … F7 | mode: brief, size, date, full, created, types, custom |
+| Ctrl+F12 | sort menu |
+| Ctrl+F3 / F4 / F5 / F6 | sort by name / extension / modification date / size |
+| Ctrl+F7 / F8 / F9 | unsorted / by creation date / by access date |
 
-Имена сравниваются без учёта регистра и по алфавиту языка системы, числа внутри имени – как числа: `file2` раньше `file10`, «абрикос» раньше «Яблоко», «ё» стоит рядом с «е» («ёлка» раньше «ель»), знаки препинания – перед буквами (`_build` раньше `A`). Повторный выбор того же порядка сортировки переключает направление. Буква в левом верхнем углу панели показывает сортировку (заглавная – по убыванию). Состав колонок режима «Свой» – **Настройки → Колонки...**. Раскраска строк по маскам – **Настройки → Цветовая разметка...**. У каждой группы есть поле «Приоритет»; пункт «Группы по приоритету» в меню сортировки (`Ctrl+F12`) включает его для панели: папки остаются выше файлов; среди файлов (и отдельно среди папок) сначала идут строки групп с меньшим приоритетом (например, `-1` для архивов), в конце – с большим (например, `1` для временных файлов), внутри одного приоритета действует выбранный порядок. Строка `..` остаётся сверху.
+Choosing the same sort order again reverses the direction. The letter in the top-left corner of the panel shows the sort order (upper case – descending). The columns of the “Custom” mode are set in **Options → Columns...**. Row colors by mask – **Options → Color coding...**.
 
-## Поиск и фильтры
+---
 
-| Клавиша | Действие |
+[Contents](#contents)
+
+## Search and filters
+
+| Key | Action |
 | --- | --- |
-| Alt+F7 | поиск файлов (маска, содержимое, подпапки, регистр, слова целиком, регулярные выражения); кнопка «В фоне» в диалоге запускает поиск сразу в фоне, то же делает кнопка «В фоне» в окне хода выполнения поиска (отдельная плашка и задача, можно несколько), а кнопка «В панель» убирает окно и оставляет панель на пополняемом списке найденного; выход из списка не прекращает идущий поиск; щелчок по плашке возвращает окно и список |
-| Ctrl+I | фильтр панели: диалог со списком готовых фильтров и строкой для своей маски; Enter или двойной щелчок по списку применяет фильтр, «Сбросить» снимает его |
-| Ctrl+B | плоский вид: все файлы поддерева в одном списке |
-| Alt+буква | быстрый поиск по имени |
+| Alt+F7 | find files (mask, contents, subfolders, case, whole words, regular expressions) |
+| Ctrl+I | panel filter: a dialog with a list of ready-made filters and a line for your own mask; Enter or a double click on the list applies the filter, Clear removes it |
+| Ctrl+B | flat view: all files of the subtree in one list |
+| Alt+letter | quick search by name |
 
-Результаты поиска открываются как панель – с ними работают обычные операции. Поиск с подпапками не заходит в символические ссылки и junction на папки (ссылка на родительскую папку зациклила бы обход). На плашке идущего поиска показывается число найденных файлов.
+### Quick search
 
-## История и избранные папки
+Alt+letter opens a search box in the active panel; further letters are added to it and the cursor moves to the first file whose name begins with the typed text. Backspace erases the last character, Esc closes the box and Enter opens the file under the cursor. Up and Down move to the neighbouring files; any other key or a Ctrl chord closes the search and acts as usual.
 
-| Клавиша | Действие |
+Options (Settings – Interface):
+
+- **Keep quick search open after Alt is released** – the box stays open until Esc or Enter is pressed;
+- **Keep an empty quick search open** – an empty box is not closed by Backspace;
+- **Quick search also filters the panel** – besides the cursor, only the matching files remain in the panel; the box then stays open after Alt is released, Esc or Enter brings all files back and the cursor stays on the same file;
+- **Keep the quick search filter in other folders** – Enter on a folder or a click carries the filter into the new folder, and then only Esc removes it;
+- **Fuzzy quick search filter** – names that contain the typed letters in order, not necessarily next to each other, also match (`mnr` finds `main_readme.txt`); the cursor goes to a file with a matching beginning, or else to the first one in the list.
+
+Search results open as a panel – the usual operations work on them.
+
+Esc while a search runs asks “Stop the search?”: **Stop** ends the search, **Continue** (Esc) lets it keep running.
+
+---
+
+[Contents](#contents)
+
+## History and folder hotlist
+
+| Key | Action |
 | --- | --- |
-| Alt+F12 | история посещённых папок |
-| Alt+F11 | история просмотренных и отредактированных файлов |
-| Alt+F8 | история команд |
-| Ctrl+D | избранные папки |
-| Ctrl+Alt+D | добавить текущую папку в избранное |
+| Alt+F12 | history of visited folders |
+| Ctrl+Shift+F12 | frequent folders (by visit count and recency) |
+| Alt+F11 | history of viewed and edited files |
+| Alt+F8 | command history |
+| Ctrl+D | folder hotlist |
+| Ctrl+Alt+D | add the current folder to the hotlist |
 
-В списках: **Ins** – добавить, **F2** – изменить, **Del** – удалить (где применимо). Выбор из истории команд подставляет команду в командную строку, но не выполняет её. В истории папок (Alt+F12) набор текста фильтрует список по пути, **Backspace** стирает последний символ фильтра. В историях папок, файлов и команд (Alt+F12, Alt+F11, Alt+F8) **Del** убирает выбранную запись из истории, а **Ctrl+Del** очищает всю историю.
+In the lists: **Ins** – add, **F2** – edit, **Del** – delete (where applicable). Choosing an entry from the command history puts the command on the command line but does not run it.
 
-**История файлов (Alt+F11)** – последние 100 файлов, открытых по F3/F4, сверху самые свежие; пометка слева – режим, в котором файл открывали последним (**П** – просмотр, **Р** – правка). **Enter** открывает файл в том же режиме, **F3** / **F4** – принудительно в просмотре / редакторе, **Ctrl+Enter** – переходит к файлу в панели, **Del** – убирает его из истории. Набор текста фильтрует список по пути. Позиция в файле восстанавливается.
+In the folder, file and command history (Alt+F12, Alt+F11, Alt+F8) **Del** removes the selected entry from the history and **Ctrl+Del** clears the whole history; typing filters the list.
 
-## Командная строка и консоль
+<!--frecent-->**Frequent folders (Ctrl+Shift+F12)** – the folders you enter most often, with recent visits weighing more. Typing narrows the list, **Enter** opens the folder, **Del** forgets its count, **Ctrl+Del** clears the ranking. Unlike Alt+F12, which is ordered by time, the folders you use every day stay at the top.
 
-Командная строка всегда под панелями: достаточно начать печатать. Команда выполняется во встроенной консоли, её вывод виден по **Ctrl+O**.
+<!--file-history-->**File history (Alt+F11)** – the last 100 files opened with F3/F4, newest first; the mark on the left is the mode the file was last opened in (**V** – view, **E** – edit).
+- **Enter** opens the file in the same mode.
+- **F3** / **F4** – in the viewer / editor.
+- **Ctrl+Enter** – goes to the file in the panel.
+- **Del** – removes it from the history.
+- Typing filters the list by path. The position inside the file is restored.
 
-| Клавиша | Действие |
+---
+
+[Contents](#contents)
+
+## Command line and console
+
+The command line is always below the panels: just start typing. A command runs in the built-in console; its output is shown with **Ctrl+O**.
+
+| Key | Action |
 | --- | --- |
-| Enter | выполнить команду (или перейти, если введён путь) |
-| Ctrl+↓ / Ctrl+↑ | фокус в командную строку / обратно в панель |
-| ↑ / ↓ | история команд |
-| Tab | дополнение: имя из панели, а если в слове есть `\`, `/` или `X:` – путь с диска (повторные нажатия перебирают варианты) |
-| Ctrl+↓ / Alt+↓ (в строке с фокусом) | история команд списком: Enter – подставить, Del – удалить из истории, Esc – закрыть |
-| Ctrl+Enter | вставить имя элемента под курсором |
-| Ctrl+F, Ctrl+Shift+Enter | вставить полный путь элемента |
-| Alt+Shift+Enter | запустить командную строку в фоне: консоль на короткое время показывает запуск, затем возвращаются панели (**Параметры → Консоль...** ниже); при пустой строке запускает консольную программу под курсором так же |
-| Ctrl+Alt+Enter | запустить командную строку в новой вкладке терминала: новая вкладка рабочего пространства с оболочкой фоновой консоли (cmd, PowerShell, WSL, ...), команда стартует там, вкладка остаётся открытой; при пустой строке запускает консольную программу под курсором в терминале вкладки панелей |
-| Esc | очистить строку; при пустой строке – показать/скрыть консоль |
-| Ctrl+O | панели ↔ консоль |
-| Ctrl+Shift+O | синхронизировать папку между активной панелью и консолью |
-| Ctrl+Alt+O | выбрать оболочку фоновой консоли (cmd, PowerShell, WSL, …) |
+| Enter | run the command; a typed folder path goes to the folder, a file (including a name put there by Ctrl+Enter) runs: a console program in the built-in console, anything else with its Windows program. Then the focus goes back to the panel and the arrows move the cursor again |
+| Ctrl+↓ / Ctrl+↑ | focus the command line / back to the panel |
+| ↑ / ↓ (while typing a command) | command history |
+| Tab | completion: a name from the panel, or a path from the disk when the word has `\`, `/` or `X:` (repeated presses cycle the matches) |
+| Ctrl+↓ / Alt+↓ (line focused) | command history as a list: Enter – put on the line, Del – remove from the history, Esc – close |
+| Typing in the line | the older commands that start with the typed text appear above the line as a list that does not take the keys: ↑ / ↓ select an entry, Enter puts it on the line (Enter with nothing selected runs the line), Del removes the entry from the history, Esc closes the list. With **Don't move focus to the command line when typing** (Options → User interface) set, what you type on the panels goes into the line without moving the focus there (Space and Backspace only when the line already has text); Ctrl+↓ or a click moves the focus |
+| Ctrl+Enter | insert the name of the item under the cursor |
+| Ctrl+F, Ctrl+Shift+Enter | insert the full path of the item |
+| Alt+Shift+Enter | run the command line in the background: the console shows the start for a moment, then the panels come back (**Options → Console...** below); with an empty line it runs the console program under the cursor the same way |
+| Ctrl+Alt+Enter | run the command line in a new terminal tab: a new workspace tab with the shell of the background console (cmd, PowerShell, WSL, ...), the command starts there and the tab stays open; with an empty line it runs the console program under the cursor in the terminal tab of the panels tab |
+| Esc | step by step: clear the line → give the focus back to the panel → show the console. With an empty line the first step is skipped; with the focus on the panel text left in the line is cleared first, and with an empty line Esc shows the console at once |
+| Ctrl+O | panels ↔ console |
+| Ctrl+Shift+O | synchronize the folder between the active panel and the console |
+| Ctrl+Alt+O | choose the shell of the background console (cmd, PowerShell, WSL, …) |
 
-**В консоли:** **Ctrl+C** прерывает команду; **Esc** только прячет консоль, но не останавливает процесс. Колесо мыши прокручивает вывод. Текст выделяется мышью (см. [Работа с текстом и мышью](#работа-с-текстом-и-мышью)).
+<!--console-profile-->**Commands → Background console...** is the same dialog.
+- **Start shell at program launch** is off by default: the shell starts on the first **Ctrl+O** or the first command from the command line. Turn the option on to start the shell together with the program, as before.
+- **Run programs from the panels in a terminal tab** sends console programs started with Enter in a panel to terminal tabs instead of this console.
 
-**Поиск по выводу** (консоль и терминал): **Ctrl+Shift+F** – ввести текст; совпадения подсвечены во всей истории, текущее выделено, как выделение мышью. **F3** / **Shift+F3** – следующее / предыдущее совпадение (по кругу), пока поиск задан и в окне не работает полноэкранная программа; пустая строка в диалоге снимает поиск. В консоли с оболочкой cmd клавиши **↑** / **↓** листают общую историю команд (как Alt+F8), а **↓** после самой новой команды возвращает набранную строку.
+**In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](#working-with-text-and-the-mouse)).
 
-**Вставка в консоль** (**Ctrl+V**, **Shift+Ins**): каждый перевод строки уходит оболочке как Enter, поэтому вставленные строки выполняются одна за другой, последняя тоже. Если включено **Подтверждать вставку нескольких строк**, программа сначала спрашивает.
+**Searching the output** (console and terminal):
+- **Ctrl+Shift+F** asks for the text; matches are highlighted in the whole history and the current one is selected like a mouse selection. An empty string in the dialog clears the search.
+- **F3** / **Shift+F3** go to the next / previous match (wrapping around) while a search is set and no full-screen program runs in the window.
+- In a console with the cmd shell **↑** / **↓** walk the shared command history (as Alt+F8) and **↓** after the newest command brings back the line that was being typed.
 
-**Параметры → Консоль...** задаёт размер истории консоли и терминалов (1000 – 50 000 строк, по умолчанию 10 000), подтверждение вставки нескольких строк (выключено; в полноэкранных программах вроде vim подтверждения нет) удаление пробелов в концах строк при копировании и вставке и флажок **Всегда возвращаться в панели по завершении команды** (выключен). Если он включён, команда из командной строки под панелями возвращает в панели, как только оболочка снова показала приглашение; команда, набранная в фоновой консоли (Ctrl+O), всегда остаётся в консоли. **Alt+Shift+Enter** запускает командную строку в консоли в фоне: консоль показывается столько, сколько задано в поле **Фоновый запуск** (0,5 – 10 с, по умолчанию 2 с), и панели возвращаются сами; клавиша, нажатая в консоли раньше, оставляет консоль на экране, а команда продолжает выполняться в любом случае. Изменения действуют сразу, в том числе на открытые консоли.
+**Paste into the console** (**Ctrl+V**, **Shift+Ins**): every line break goes to the shell as Enter, so pasted lines run one after another, the last one too. With **Confirm multi-line paste** on, the program asks first.
 
-## Терминалы
+**Options → Console...** sets:
+- the scrollback size of the console and terminals (1000 – 50,000 lines, 10,000 by default);
+- the confirmation of a multi-line paste (off; a full-screen program such as vim never asks);
+- the removal of trailing spaces on copy and on paste;
+- **Always return to the panels when a command ends** (off). With it on, a command run from the command line under the panels sends you back to the panels as soon as the shell shows its prompt again; a command typed in the background console (Ctrl+O) always stays in the console.
 
-**Ctrl+Shift+N** – новый терминал в отдельной вкладке рабочего пространства: выбор профиля оболочки (cmd, PowerShell, WSL, сохранённые SSH-подключения). Полноэкранные программы (vim, mc, htop, …) работают в терминале так же, как в обычной консоли.
+**Background run.** **Alt+Shift+Enter** runs the command line in the console in the background: the console is shown for the time set in **Background run** (0.5 – 10 s, 2 s by default) and the panels come back by themselves. A key pressed in the console before that keeps it in front; the command goes on running either way.
 
-В списке профилей:
+Changes apply at once, to open consoles too.
 
-- **1–9, 0, A–Z** – запустить профиль с этим номером (номер выделен цветом в начале строки).
-- **Ins** – сделать копию выбранного профиля: оболочка та же, настройки свои. **Del** удаляет копию (сам профиль удалить нельзя).
-- **F6** – профиль окружения для выбранной оболочки: открывается список «нет» и профили из `environment.json` (кроме `default`), выбор применяется по `Enter` и запоминается. Название выбранного показано в строке после `+`. Копия оболочки, которой назначен профиль окружения, запускается с ним, и в списке на `Ctrl+Shift+N` получаются отдельные строки вроде «PowerShell +work» и «PowerShell +clean».
-- **Ctrl+Вверх / Ctrl+Вниз** – переставить профиль; порядок запоминается (файл `shellprofiles.json` в папке настроек).
-- **F4** – режим клавиш профиля: *авто* (клавиши получает программа, пока в консоли работает полноэкранное приложение, например mc или vim), *терминал* (программа в терминале получает все клавиши, в том числе F1, F9 и Alt+буква) и *хост* (клавиши окна MTN2 всегда первые). При режимах «авто» и «терминал» окну остаются только клавиши выхода: F11, Ctrl+O, переключение вкладок, Ctrl+Shift+N и Ctrl+Alt+O. Режим действует и на фоновую консоль (Ctrl+O), если выбран её профиль.
+<!--save-output-->**Commands → Save console output...** writes the background console's scrollback (Ctrl+O) to a UTF-8 text file; **Clear console buffer** erases it, the shell keeps running.
 
-## Просмотр и редактирование файлов
+---
 
-**F3** – просмотр, **F4** – редактирование, **F6** – переключение просмотр ↔ редактор без закрытия файла.
+[Contents](#contents)
 
-**Alt+F3** / **Alt+F4** – открыть файл под курсором внешним просмотрщиком / редактором. Команды задаются в **Настройки → Внешний просмотрщик/редактор...**; без них Alt+F3 открывает файл программой Windows, Alt+F4 – командой Windows «Изменить», а если её нет – Блокнотом. Только для файлов на диске.
+## Terminals
 
-| Клавиша | Действие |
+**Ctrl+Shift+N** – a new terminal in a separate workspace tab: choose a shell profile (cmd, PowerShell, WSL, saved SSH connections). Full-screen programs (vim, mc, htop, …) work in the terminal just as in a regular console.
+
+<!--profiles-->In the profile list:
+
+- **1-9, 0, A-Z** – start the profile with that number (highlighted at the start of the line).
+- **Ins** – copy the selected profile: the same shell, its own settings. **Del** deletes a copy (a profile itself cannot be deleted).
+- **Ctrl+Up / Ctrl+Down** – move the profile; the order is remembered (`shellprofiles.json` in the settings folder).
+- **F4** – the profile's keys mode. The mode applies to the background console (Ctrl+O) too when its profile is chosen.
+
+The modes:
+- *auto* – the program gets the keys while a full-screen application such as mc or vim runs in the console;
+- *terminal* – the program gets every key, including F1, F9 and Alt+letter;
+- *host* – the MTN2 window's keys come first.
+
+In *auto* and *terminal* the window keeps only the keys that leave the console: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+- **F6** – the environment profile of the selected shell or its copy (see [Environment profiles](#environment-profiles)).
+
+---
+
+[Contents](#contents)
+
+## Environment profiles
+
+**Options → Environment profiles...** opens the `environment.json` file in the editor (on first use it is created with an example).
+
+A profile is a named list of `NAME=value` entries that are laid over the environment of every new shell: terminal tabs and the console under the panels. Shells that are already running keep their environment; a shell started after the file is saved sees the change.
+
+```json
+{
+  "profiles": [
+    { "name": "default", "vars": ["EDITOR=vim", "WORK=%TEMP%\\work", "OLD_VARIABLE="] },
+    { "name": "proxy", "auto": false, "shells": ["pwsh"], "vars": ["HTTPS_PROXY=http://proxy:3128"] }
+  ]
+}
+```
+
+**Entries.**
+- Profiles apply in the order of the file and entries in the order of the list, so a later entry sees the result of an earlier one.
+- An entry with an empty value (`OLD_VARIABLE=`) removes the variable.
+- `%NAME%` is replaced by the current value of the variable on every system; on Linux and macOS `$NAME` and `${NAME}` work too. A name that is not set stays as written.
+- On Windows names are compared without regard to case.
+
+**Which profiles apply to a shell**
+- `default` – applies to every shell, first.
+- `auto` (on by default) – the profile applies by itself. With `"auto": false` it applies only to a shell that names it (see below).
+- `shells` – the shell profiles the profile is meant for: `pwsh`, `wsl`, `wsl:Ubuntu`, the id of a copy such as `pwsh#2`. A bare `wsl` also covers `wsl:Ubuntu`, and a base id covers its copies. Empty or missing – every shell.
+- `off` – `true` switches the profile off altogether, even where it is named.
+
+<!--choice-->**Profile for one shell.** In the shell list (**Ctrl+Shift+N**) **F6** opens the choice of an environment profile for the selected shell or its copy. Such a shell starts with `default` and the chosen profile; `(none)` goes back to the automatic profiles. Only profiles that are not off and are not `default` are listed.
+
+The file is part of **Export settings / Import settings**.
+
+---
+
+[Contents](#contents)
+
+## Viewing and editing files
+
+**F3** – view, **F4** – edit, **F6** – switch viewer ↔ editor without closing the file.
+
+**Alt+F3** / **Alt+F4** – open the cursor file in the external viewer / editor. The commands are set in **Options → External viewer/editor...**; without them Alt+F3 opens the file with its Windows program and Alt+F4 with the Windows “Edit” command, or Notepad if there is none. Files on disk only.
+
+| Key | Action |
 | --- | --- |
-| F7, Ctrl+F (в просмотре также `/`) | диалог поиска (см. ниже) |
-| Shift+F7 / Alt+F7, F3 / Shift+F3 | следующее / предыдущее совпадение (при включённом **Обратном поиске** меняются местами) |
-| Ctrl+F7 | поиск и замена (редактор): те же параметры и кнопки, плюс **Заменить** и **Все** |
-| Alt+F8 | перейти к строке |
-| F8 | следующая кодировка; Shift+F8 – выбрать кодировку |
-| F4 (в просмотре), Ctrl+H | HEX-режим (в HEX-режиме редактора байты можно править) |
-| Ctrl+M | Markdown: оформленный вид ↔ исходный текст |
-| Tab / Shift+Tab | Markdown: следующая / предыдущая ссылка |
-| Enter, щелчок по ссылке | Markdown: открыть внешнюю ссылку (`https://…`, `mailto:…`) программой по умолчанию – после подтверждения |
-| F2 | сохранить (редактор) / перенос строк (просмотр) |
-| Ctrl+Shift+F | просмотр: следить за концом растущего файла (лог); выход – ещё раз та же клавиша, прокрутка вверх, Up, PgUp, Home, смена режима |
-| Ctrl+Shift+J | просмотр, редактор: оставить только строки с заданным текстом или подходящие под регулярное выражение (плагин «Фильтр строк»); результат с номерами исходных строк открывается в новой вкладке |
-| Ctrl+S | сохранить |
-| Ctrl+Z / Ctrl+Shift+Z | отменить / повторить |
-| Ctrl+Y, Ctrl+D | удалить строку |
-| Ctrl+K | удалить до конца строки |
-| Ctrl+N | вставить пустую строку ниже |
-| Ctrl+Alt+S / Ctrl+Alt+Shift+S | сортировать строки выделения (без выделения – всего файла) по возрастанию / по убыванию |
-| Ctrl+Alt+U | удалить повторяющиеся строки |
-| Ctrl+Alt+F | отформатировать текст по заданной ширине (абзацы разделяются пустыми строками) |
-| Alt+→ / Alt+← | сдвинуть выделенные строки (без выделения – текущую) вправо / влево |
-| Ctrl+Alt+C | сменить регистр выделения (в том числе блока) или слова под курсором: по кругу строчные → заголовочные → прописные |
-| Ctrl+Alt+L / Ctrl+Alt+E / Ctrl+Alt+R | выровнять выделенные строки (без выделения – абзац вокруг курсора) по левому краю / по центру / по правому краю самой длинной строки |
-| Ctrl+Alt+W | автоперенос: при наборе за ширину из «Формат текста» (Ctrl+Alt+F) строка разрывается по последнему пробелу; включается и выключается этой же клавишей |
-| Ctrl+Alt+T | инкрементный поиск: найденное выделяется по мере набора, Backspace стирает букву, ↓ / ↑ (F3 / Shift+F3) – следующее и предыдущее совпадение, Enter оставляет найденное (F3 продолжит поиск), Esc возвращает курсор |
-| Ctrl+Alt+D | режим рисования линий: стрелки рисуют рамку из одинарных линий (второе нажатие – из двойных, третье – выключает), перекрёстки и углы подбираются сами, весь рисунок отменяется одним Ctrl+Z; Esc завершает |
-| Alt+Shift+стрелки (и Home / End / PgUp / PgDn), Alt+мышь | выделить прямоугольный блок – одни и те же столбцы нескольких строк; Del, Backspace, ввод текста и Ctrl+X / Ctrl+C / Ctrl+V действуют на каждую строку блока, скопированный блок вставляется блоком |
-| Enter (в редакторе) | новая строка начинается с отступа строки, которую она продолжает (пробелы и табуляции слева от курсора); режим включается и выключается по **Ctrl+Alt+I**, в меню «Правка» и в настройках («Интерфейс») |
-| Ctrl+F2 | поставить / снять закладку на строке с курсором (в рамке слева у строки стоит ■) |
-| Ctrl+Shift+F2 / Ctrl+Alt+F2 | перейти к следующей / предыдущей закладке (по кругу) |
-| Ctrl+Alt+B | список закладок (номер строки и текст): Enter переходит к выбранной |
-| Ctrl+Home / Ctrl+End | в начало / конец файла |
-| Ctrl+C / Ctrl+X / Ctrl+V | копировать (без выделения – строку) / вырезать / вставить |
-| Esc, F10 (в просмотре также цифра 5 на цифровой клавиатуре) | закрыть |
+| F7, Ctrl+F (in the viewer also `/`) | the search dialog (see below) |
+| Shift+F7 / Alt+F7, F3 / Shift+F3 | next / previous match (with **Reverse search** on, the two swap) |
+| Ctrl+F7 | find and replace (editor): the same options and buttons, plus **Replace** and **All** |
+| Alt+F8 | go to line |
+| F8 | next encoding; Shift+F8 – choose an encoding |
+| F4 (in the viewer), Ctrl+H | HEX mode (in the editor's HEX mode bytes can be edited) |
+| Ctrl+M | Markdown: rendered view ↔ source text |
+| Tab / Shift+Tab | Markdown: next / previous link |
+| Enter, click on a link | Markdown: open a local link (`other.md`, `other.md#section`, `#section`) in the same window; an external link (`https://…`, `mailto:…`) opens in the default application after a confirmation |
+| Backspace / Alt+← | Markdown: return from a followed local link |
+| F2 | save (editor) / word wrap (viewer; remembered per file along with the position) |
+| Ctrl+Shift+F | viewer: follow the end of a growing file (a log); leave with the same key, a scroll up, Up, PgUp, Home or another mode |
+| Ctrl+S | save |
+| Ctrl+Z / Ctrl+Shift+Z | undo / redo |
+| Ctrl+Y, Ctrl+D | delete the line |
+| Ctrl+K | delete to the end of the line |
+| Ctrl+N | insert an empty line below |
+| Ctrl+Alt+S / Ctrl+Alt+Shift+S | sort the selected lines (the whole file without a selection) ascending / descending |
+| Ctrl+Alt+U | remove repeated lines |
+| Ctrl+Alt+F | format the text to a given width (paragraphs are separated by blank lines) |
+| Alt+→ / Alt+← | shift the selected lines (the current line without a selection) right / left |
+| Alt+Shift+arrows (and Home / End / PgUp / PgDn), Alt+mouse | select a rectangular block – the same columns of several lines; Del, Backspace, typing and Ctrl+X / Ctrl+C / Ctrl+V act on every line of the block, a copied block is pasted as a block |
+| Enter (editor) | the new line starts with the indent of the line it continues (the blanks left of the cursor); the mode is switched on and off with **Ctrl+Alt+I**, in the Edit menu and in the settings (User interface) |
+| Ctrl+F2 | set / clear the bookmark of the cursor line (the line is marked with ■ in the frame on the left) |
+| Ctrl+Shift+F2 / Ctrl+Alt+F2 | go to the next / previous bookmark (wrapping around) |
+| Ctrl+Alt+B | list of the bookmarks (line number and text): Enter goes to the chosen one |
+| Ctrl+Home / Ctrl+End | to the start / end of the file |
+| Ctrl+C / Ctrl+X / Ctrl+V | copy (without a selection – the line) / cut / paste |
+| Esc, F10 (in the viewer also 5 on the numeric keypad) | close |
 
-Большие файлы открываются потоково, без загрузки целиком. Если файл изменился на диске, открытое окно обновляется. Файл «только для чтения» программа предложит открыть на запись, сняв атрибут.
+Large files are streamed, not loaded as a whole. If the file changes on disk, the open window is updated. For a read-only file the program offers to open it for writing by clearing the attribute.
 
-**Диалог поиска.** В поле хранятся прежние строки поиска (**Ctrl+↓** / **Alt+↓**); параметры – **Учитывать регистр**, **Слова целиком**, **Регулярные выражения** и **Обратный поиск**. Кнопка **Слово** подставляет в поле слово под курсором, **Выделение** – выделенный текст (если выделения нет – текущую строку; у многострочного выделения – первую строку). При включённых **Регулярных выражениях** текст этих двух кнопок экранируется. Найденное совпадение выделяется, **F3** / **Shift+F3** продолжают поиск от него. Совпадение не пересекает границу строки. С **Регулярными выражениями** шаблон – выражение PCRE, а в замене `$0` – всё совпадение, `$1` ... `$9` – группы, `$$` – знак доллара; без этого параметра замена берётся как есть. Шаблон, который нельзя скомпилировать, сообщается ошибкой, поиск не выполняется. **Заменить** в диалоге замены идёт по совпадениям по одному: каждое показано выделенным, с текстом, его заменой и строкой, в которой оно находится, и отвечается кнопками **Заменить** (заменить и перейти к следующему), **Все** (заменить остальные без вопросов), **Пропустить** или **Отмена**. Если дошли до конца текста, а поиск начался с середины, программа предлагает продолжить с начала (с конца при обратном поиске). **Все** в диалоге замены заменяет все совпадения во всём тексте сразу. Оба способа в режиме «Все» показывают в конце число замен, отменяются одним **Ctrl+Z** и возвращают курсор туда, где он был до замены. Регистр, слова целиком и регулярные выражения запоминаются между запусками; **Обратный поиск** – только до закрытия MTN2.
+<!--bookmarks-->**Bookmarks.** **Ctrl+F2** marks the cursor line, **Ctrl+Shift+F2** / **Ctrl+Alt+F2** go to the next / previous one and **Ctrl+Alt+B** opens the list: Enter goes to the chosen line, Esc closes it.
 
-## Работа с текстом и мышью
+<!--find-->**Search dialog.** The field keeps earlier searches (**Ctrl+↓** / **Alt+↓**); the options are **Case sensitive**, **Whole words**, **Regular expressions** and **Reverse search**.
 
-Одинаково в просмотре и редакторе, в командной строке, в полях диалогов и в консолях.
+**The field and matches**
+- **Word** puts the word under the cursor into the field, **Selection** puts in the selection (the current line when nothing is selected; the first line of a multi-line selection). With **Regular expressions** on, the text of those two buttons is escaped.
+- A found match is selected and **F3** / **Shift+F3** go on from it. A match never spans a line break.
+- With **Regular expressions** the pattern is a PCRE expression and in the replacement `$0` is the whole match, `$1` ... `$9` are the groups and `$$` is a dollar sign; without the option the replacement is taken as it is. A pattern that cannot be compiled is reported and nothing is searched.
 
-**Словом** считаются буквы любого алфавита, цифры и `_`. Всё остальное – пробелы, знаки препинания, `\`, `/`, `.`, `:` – **разделители**.
+<!--replace-->**Replacing**
+- **Replace** in the Replace dialog goes through the matches one by one: each is shown selected, with the text, its replacement and the line that holds it, and is answered with **Replace** (replace it and go on to the next), **All** (replace the rest without asking), **Skip** or **Cancel**.
+- When the end of the text is reached and the search began in the middle, it offers to continue from the beginning (from the end when searching backwards).
+- **All** in the Replace dialog replaces every match of the whole text in one go.
+- Both ways show how many replacements were made at the end of **All**, are undone with a single **Ctrl+Z**, and put the cursor back where it was before the replace.
 
-| Действие | Результат |
+**What is remembered.** Case, whole words and regular expressions are remembered between runs; **Reverse search** only until MTN2 closes.
+
+---
+
+[Contents](#contents)
+
+## Working with text and the mouse
+
+The same in the viewer and editor, on the command line, in dialog fields and in consoles.
+
+A **word** is made of letters of any alphabet, digits and `_`. Everything else – spaces, punctuation, `\`, `/`, `.`, `:` – is a **separator**.
+
+| Action | Result |
 | --- | --- |
-| Ctrl+← / Ctrl+→ | к началу слова / к концу слова (до следующего разделителя) |
-| Ctrl+Shift+← / Ctrl+Shift+→ | то же с выделением; шаг назад снимает выделение с пройденной части |
-| Shift+стрелки, Shift+Home/End | выделение |
-| Щелчок | поставить курсор |
-| Двойной щелчок | выделить слово (на разделителе – серию одинаковых символов) |
-| Следующий быстрый щелчок | выделить всю строку |
-| Shift+щелчок | расширить или сузить выделение до места щелчка |
-| Протягивание мышью | выделение (просмотр, редактор, консоль) |
-| Alt+протягивание мышью | прямоугольный блок (просмотр, редактор) |
-| Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del, Ctrl+V / Shift+Ins | буфер обмена |
-| Ctrl+A | выделить всё |
+| Ctrl+← / Ctrl+→ | to the start of a word / to the end of a word (up to the next separator) |
+| Ctrl+Shift+← / Ctrl+Shift+→ | the same with selection; stepping back deselects the part passed over |
+| Shift+arrows, Shift+Home/End | selection |
+| Click | place the cursor |
+| Double click | select a word (on a separator – a run of identical characters) |
+| Next quick click | select the whole line |
+| Shift+click | extend or shrink the selection to the click point |
+| Mouse drag | selection (viewer, editor, console) |
+| Alt+mouse drag | rectangular block (viewer, editor) |
+| Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del, Ctrl+V / Shift+Ins | clipboard |
+| Ctrl+A | select all |
 
-В панелях при непустой командной строке Ctrl+Shift+←/→ работают в командной строке.
+In the panels, when the command line is not empty, Ctrl+Shift+←/→ work on the command line.
 
-**История полей ввода.** У полей со стрелкой **↓** в правом конце (маски выделения, поиск файлов – маска и текст, путь и исключения при копировании/переносе, цель ссылки, создание папки и файла, поиск и замена в редакторе, запросы меню пользователя) программа помнит последние 20 значений, сверху – использованное последним; список открывается на нём. **Ctrl+↓** / **Alt+↓** или щелчок по стрелке раскрывают список: **Enter** – подставить, **Del** – удалить из истории, **Esc** – закрыть список. Значение попадает в историю при подтверждении диалога.
+<!--mouse-->**Text terminal version (mtn2-tui).** The program asks the terminal for the mouse, so a drag selects inside MTN2 and the text goes to the clipboard through the terminal (an escape sequence that some terminals, PuTTY by default among them, ignore; inside tmux and on a desktop MTN2 also fills the tmux buffer and the system clipboard).
 
-## Верхнее меню (F9)
+To select with the terminal itself:
+- hold **Shift** while dragging;
+- or turn the mouse off with **Ctrl+Shift+M** (**Options → Terminal mouse on/off**); the same key turns it back on.
 
-**F9** или **Alt** открывает меню. Стрелки – перемещение, **Enter** – выполнить, **Esc** – закрыть. Подсвеченная (акцентная) буква пункта выполняет его сразу – в любой раскладке клавиатуры: при открытом подменю буква ищется среди его пунктов, иначе – среди категорий. Справа от пунктов показаны их клавиши. Недоступные в текущем режиме пункты – серые. Если меню не помещается в окно, оно прокручивается: на правой границе видна полоса со стрелками ▲ ▼, выбранный пункт всегда в поле зрения, колесо мыши двигает выбор.
+The `--no-mouse` option starts the program with the mouse off.
 
-**Shift+F9** (или пункт «Найти команду...» в меню ≡) открывает палитру команд – поиск по пунктам меню. Набор текста сужает список: ищутся слова из названия пункта, названия категории и привычных синонимов («shell» или «оболочка» найдут «Фоновая консоль...»; «фк» найдёт её по первым буквам слов). Запрос виден в поле над списком; в слове запроса допустимы `?` (один символ) и `*` (любая цепочка символов). Свои слова для поиска добавляются в файл `aliases.json` в папке настроек: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – имя пункта и слова через запятую или списком. Файл перечитывается при каждом открытии палитры. Под списком показана строка о выбранном пункте: пояснение (если оно задано в `menu.json` полем `hint` или в языковом файле ключом `menu.hint.<действие>`), иначе меню пункта и соседние пункты. Стрелки – выбор, **Enter** – выполнить, **Backspace** – стереть, **Esc** – закрыть. В списке только пункты, доступные сейчас; выполненные недавно идут первыми. Клавишу можно сменить в раскладке (команда `CommandPalette`). Команды без пункта меню (Ctrl+Enter, Alt+Shift+Enter и другие клавиши панелей) показаны в категории «Клавиши» вместе со своими сочетаниями. Поиск идёт и по колонке сочетаний: «F9» найдёт команды, у которых в сочетании есть F9, «shift» – все сочетания с Shift, «ctrl+f» – сочетания, содержащие Ctrl+F.
+**Input history.** Fields with **↓** at the right end remember their last 20 values. These are selection masks, file search (mask and text), copy/move destination and exclusions, link target, new folder and file, editor find and replace, user menu prompts.
 
-**Подсказки о клавишах.** Когда программа попадает в новое состояние, она один раз за всё время показывает короткое уведомление с полезными клавишами: после поиска, в архиве, во временной панели, в рабочем пространстве, в папке SFTP или плагина, в Корзине, при выделении файлов, в быстром просмотре и информационной панели, при второй вкладке панели или рабочем пространстве, при фоновых заданиях, в консоли и терминале, в просмотре, hex-режиме, Markdown и редакторе, при открытом меню, при наборе команды и после запуска консольной программы по Enter. Отдельные подсказки о редких сочетаниях: при нескольких выделенных файлах, на архиве под курсором, в длинной папке, после долгих переходов по папкам, при одноимённых папках на панелях и при выделенных строках в редакторе. Клавиши берутся из текущей раскладки. Показанные подсказки запоминаются между запусками. В **Параметры → Интерфейс** подсказки отключаются флажком «Показывать подсказки о клавишах», а кнопка «Сбросить подсказки» делает их снова новыми; при выключенных всплывающих уведомлениях подсказок тоже нет.
+**Using the list.** **Ctrl+↓** / **Alt+↓** or a click on the arrow drops the list down:
+- **Enter** – use the entry;
+- **Del** – remove it from the history;
+- **Esc** – close the list.
 
-## Меню пользователя (F2)
+A value is added when the dialog is accepted.
 
-Собственный список команд: пункты с горячими клавишами, вложенные подменю и разделители. Команда выполняется в консоли панели, в папке активной панели; её вывод виден по **Ctrl+O**.
+---
 
-**Два меню:**
+[Contents](#contents)
 
-- **Главное** – общее для всех папок.
-- **Меню папки** – файл `.mtn2menu.json` в папке. Действует на эту папку и на все вложенные; если такие файлы есть на нескольких уровнях, берётся ближайший. Удобно для проектов: меню в корне репозитория доступно в любой его подпапке.
+## Top menu (F9)
 
-**F2** открывает меню папки, если оно есть, иначе главное. **Shift+F2** в открытом меню переключает меню папки ↔ главное. Чтобы создать меню для папки: F2, затем Shift+F2 (откроется пустое меню этой папки) и **Ins**.
+**F9** or **Alt** opens the menu.
+- Arrows move, **Enter** runs, **Esc** closes.
+- The highlighted (accent) letter of an item runs it at once – in any keyboard layout: with a submenu open the letter is looked up among its items, otherwise among the categories.
+- Item keys are shown to the right of the items. Items unavailable in the current mode are gray.
+- A menu that does not fit in the window scrolls: a bar with ▲ ▼ marks shows on its right border, the selected item always stays in view, and the mouse wheel moves the selection.
 
-**Клавиши в меню:**
+**Shift+F9** (or "Find command..." in the ≡ menu) opens the command palette, a search over the menu items.
 
-| Клавиша | Действие |
+**Searching**
+- Typing narrows the list: the words of the caption, of the category and common synonyms are matched ("shell" finds "Background console..."; "bc" finds it by the first letters of its words).
+- The query shows in the field above the list; a word of the query may contain `?` (one character) and `*` (any run of characters).
+- The search also covers the shortcut column: "F9" finds the commands whose shortcut uses F9, "shift" every shortcut with Shift, "ctrl+f" the shortcuts that contain Ctrl+F.
+- Your own search words go into `aliases.json` in the settings folder: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – the item name and the words, comma separated or as a list. The file is read again each time the palette opens.
+
+**Keys**
+- Arrows select, **Enter** runs, **Backspace** erases, **Esc** closes.
+- **Ctrl+K** opens the key list on the selected command, so its key can be changed; closing the list returns to the palette with the same search and command, and the new key shown (a command without a key of its own says so).
+- The palette's own key can be changed in the keymap (command `CommandPalette`).
+
+**What is listed.** Only the items available now; the commands run last come first. Commands that have no menu item (Ctrl+Enter, Alt+Shift+Enter and the other panel keys) are listed in the "Keys" category together with their shortcuts.
+
+**Key hints.** When the program enters a new state, it shows a short notice with the useful keys once for good.
+
+**When they appear**
+- After a search, in an archive, in a temporary panel, in a workspace, in an SFTP or plugin folder, in the Recycle Bin.
+- When files are selected, in the quick view and the info panel, with a second panel tab or workspace, with background jobs.
+- In the console and a terminal, in the viewer, the hex view, Markdown and the editor, with the menu open, while a command is being typed and after a console program is started with Enter.
+- Further hints name rarely used keys: with several files selected, on an archive under the cursor, in a long folder, after many folder changes, with a folder of the same name in both panels and with lines selected in the editor.
+
+**How they work.** The keys come from the current keymap. The hints already shown are remembered between runs. In **Options → User interface** the "Show key hints" check box switches them off and the "Reset hints" button makes them new again; with pop-up notifications off there are no hints either.
+
+---
+
+[Contents](#contents)
+
+## User menu (F2)
+
+Your own list of commands: items with hot keys, nested submenus and separators. A command runs in the panel console, in the folder of the active panel; its output is shown with **Ctrl+O**.
+
+**Two menus:**
+
+- **Main** – shared by all folders.
+- **Folder menu** – the `.mtn2menu.json` file in a folder. It applies to that folder and all folders below it; if such files exist on several levels, the nearest one is used. Handy for projects: a menu in the root of a repository is available in any of its subfolders.
+
+**F2** opens the folder menu if there is one, otherwise the main menu. **Shift+F2** in an open menu switches folder menu ↔ main menu. To create a menu for a folder: F2, then Shift+F2 (an empty menu of this folder opens) and **Ins**.
+
+**Keys in the menu:**
+
+| Key | Action |
 | --- | --- |
-| Enter, горячая клавиша пункта, щелчок | выполнить команду или войти в подменю |
-| → | войти в подменю |
-| ← / Esc | на уровень выше; Esc на верхнем уровне закрывает меню |
-| Ins | добавить пункт перед курсором |
-| F4 | изменить пункт |
-| Del | удалить пункт (подменю – вместе с содержимым) |
-| Ctrl+↑ / Ctrl+↓ | переставить пункт |
-| Shift+F2 | меню папки ↔ главное |
+| Enter, item hot key, click | run the command or enter the submenu |
+| → | enter the submenu |
+| ← / Esc | one level up; Esc at the top level closes the menu |
+| Ins | add an item before the cursor |
+| F4 | edit the item |
+| Del | delete the item (a submenu – together with its contents) |
+| Ctrl+↑ / Ctrl+↓ | move the item |
+| Shift+F2 | folder menu ↔ main menu |
 
-**Пункт меню:** горячая клавиша (один символ), тип (команда / подменю / разделитель), название и команда. Если название не задано, показывается сама команда.
+<!--item-->**Menu item:** hot key (one character), type (command / submenu / separator), caption and command. If the caption is empty, the command itself is shown.
 
-**Подстановки в команде:**
+<!--substitutions-->**Substitutions in a command:**
 
-| Запись | Заменяется на |
+| Pattern | Replaced with |
 | --- | --- |
-| `!.!` | имя файла под курсором с расширением |
-| `!` | имя файла без расширения |
-| `!\` | папку панели с завершающим `\` |
-| `!:` | диск папки (`C:`) |
-| `!&` | выделенные имена через пробел (или имя под курсором); имена с пробелами – в кавычках |
-| `!@!` | путь к временному файлу со списком полных путей выделенных элементов (по одному в строке, UTF-8) |
-| `!?Вопрос?ответ!` | ответ пользователя: перед запуском появится окно с вопросом и предложенным ответом; отмена отменяет команду |
-| `!#` | дальнейшие подстановки берутся с **пассивной** панели |
-| `!^` | дальнейшие подстановки – снова с **активной** панели |
-| `!!` | сам символ `!` |
+| `!.!` | name of the file under the cursor with extension |
+| `!` | file name without extension |
+| `!\` | panel folder with a trailing `\` |
+| `!:` | drive of the folder (`C:`) |
+| `!&` | selected names separated by spaces (or the name under the cursor); names with spaces are quoted |
+| `!@!` | path to a temporary file listing the full paths of the selected items (one per line, UTF-8) |
+| `!?Question?answer!` | user's answer: before running, a window with the question and a suggested answer appears; Cancel cancels the command |
+| `!#` | further substitutions are taken from the **passive** panel |
+| `!^` | further substitutions – from the **active** panel again |
+| `!!` | the `!` character itself |
 
-Имена с пробелами подставляются как есть – берите их в кавычки сами: `"!\!.!"`.
+Names with spaces are substituted as is – quote them yourself: `"!\!.!"`.
 
-Те же подстановки работают в команде, которую спрашивает **Ctrl+G** на панелях: она выполняется над выделенными файлами (или над файлом под курсором), не попадая в меню пользователя.
-
-**Примеры:**
+**Examples:**
 
 ```
-notepad.exe "!\!.!"                    открыть файл в Блокноте
-explorer.exe /select,"!\!.!"           показать файл в Проводнике
-certutil -hashfile "!.!" SHA256        контрольная сумма
-fc "!.!" "!#!\!.!"                     сравнить с одноимённым файлом на другой панели
-7z a "!?Имя архива?backup!.7z" @!@!    упаковать выделенное, спросив имя архива
-git commit -am "!?Сообщение коммита?!" коммит с вопросом о сообщении
+notepad.exe "!\!.!"                    open the file in Notepad
+explorer.exe /select,"!\!.!"           show the file in Explorer
+certutil -hashfile "!.!" SHA256        checksum
+fc "!.!" "!#!\!.!"                     compare with the same-named file on the other panel
+7z a "!?Archive name?backup!.7z" @!@!  pack the selection, asking for the archive name
+git commit -am "!?Commit message?!"    commit, asking for the message
 ```
 
-Команда выполняется той оболочкой, которая выбрана для консоли (cmd, PowerShell, WSL), – пишите команды в её синтаксисе. Несколько команд в одной строке можно объединить через `&&` (cmd, PowerShell 7).
+The command runs in the shell chosen for the console (cmd, PowerShell, WSL) – write commands in its syntax. Several commands on one line can be joined with `&&` (cmd, PowerShell 7).
 
-Пока главное меню ни разу не сохранено, в нём показываются примеры. Файлы меню можно править и вручную – изменения видны при следующем открытии меню.
+Until the main menu has been saved even once, it shows examples. Menu files can also be edited by hand – changes are picked up the next time the menu opens.
 
-**После запуска** в окне пункта задаёт, куда попадёт программа по завершении команды: **Как в настройках консоли** (флажок **Всегда возвращаться в панели** в **Параметры → Консоль...**), **Вернуться в панели** или **Остаться в консоли**.
+**After run** in the item dialog says where the program goes once a command has finished: **As in the console options** (the **Always return to the panels** box in **Options → Console...**), **Return to the panels** or **Stay in the console**.
 
-## Архивы
+---
 
-- **Enter** на архиве открывает его как папку; **Ctrl+\\** или `..` в корне архива – выход.
-- **F5** из архива распаковывает выделенное, **F5** в открытый архив – добавляет.
-- **Shift+F1** – упаковать выделенное, **Shift+F2** – распаковать.
-- Формат 7z и другие – через плагин 7-Zip (`7z.dll` входит в комплект; его можно заменить своим в `plugins\mtn.7z\`). Для зашифрованных архивов программа спросит пароль.
+[Contents](#contents)
 
-## Сеть: SSH и SFTP
+## Archives
 
-**Ctrl+Alt+Shift+N** – список SSH/SFTP-подключений: добавить, изменить, удалить, открыть как панель (SFTP) или как терминал (SSH). Для SFTP-панели нужна аутентификация по ключу (или ssh-agent / `~/.ssh/config`); пароль для панели не хранится и не запрашивается. В SSH-терминале пароль вводится как обычно.
+- **Enter** on an archive opens it as a folder; **Ctrl+\\** or `..` in the archive root – leave it.
+- **Ctrl+PgDn** opens a file as an archive whatever its extension: `.docx`, `.xlsx` or `.odt` (ZIP inside), or an archive with an unusual extension. The format is found from the file's content; on a file that is not an archive nothing happens.
+- **F5** from an archive extracts the selection, **F5** into an open archive adds to it.
+- **Shift+F1** – pack the selection, **Shift+F2** – unpack.
+<!--pack-->- The pack dialog suggests the name of the current folder as the archive name and lets you pick the type: `zip` or `7z`. A `7z` archive can get a compression level, a password and encrypted file names (these fields are greyed out for `zip`); files can be added to and deleted from an encrypted `7z` archive.
+<!--password-->- 7z and other formats – through the 7-Zip plugin (`7z.dll` comes with the program; you can replace it with your own copy in `plugins\mtn.7z\`).
+- For encrypted archives the program asks for the password: on entering one whose file names are encrypted, otherwise on the first view or copy of an encrypted file. A wrong password is asked again; the right one is kept until the program closes.
 
-## Сеть: FTP, WebDAV, S3 и другие (плагин «Сетевые подключения»)
+---
 
-Плагин `mtn.net` открывает серверы **FTP**, **FTPS**, **SFTP** (по паролю или ключу, с проверкой отпечатка ключа сервера), **SCP**, **WebDAV** и **S3** как обычные папки панелей: просмотр, **F3** / **F4**, копирование и перемещение (**F5** / **F6**) в обе стороны и между двумя серверами, переименование, удаление, создание папки; ход копирования виден в окне задания, отмена прерывает передачу.
+[Contents](#contents)
 
-- **Alt+F1** / **Alt+F2** – в списке дисков пункт **Сетевые подключения** (следующая цифра после «Рабочего пространства»). Тот же список открывают **Ctrl+Shift+B** и меню **Команды**.
-- В списке подключений: **F7** – новое подключение, **F4** – изменить, **F8** – удалить, **Enter** – открыть. Подключение хранит протокол, сервер, порт, способ входа, начальную папку, при желании – пароль (в зашифрованном для пользователя Windows виде), прокси, кодировку имён и другие настройки.
-- Адрес можно набрать и целиком: `net://Название/папка`, `ftp://user@host/папка`, `ftps://`, `nsftp://`, `scp://`, `dav://`, `davs://`, `s3://бакет/ключ`; **Команды – Открыть сетевой адрес...**.
-- **Команды – Права на сервере...** меняет права выделенных файлов (FTP и SFTP).
-- Плагину нужна `libcurl` в `plugins\mtn.net`. Встроенный `sftp://` (через системный `ssh`, только по ключам) работает как раньше.
+## Network: SSH and SFTP
 
-Подробности – в справке плагина («Параметры – Плагины...»).
+**Ctrl+Alt+Shift+N** – the list of SSH/SFTP connections: add, edit, delete, open as a panel (SFTP) or as a terminal (SSH). An SFTP panel needs key authentication (or ssh-agent / `~/.ssh/config`); a password for the panel is neither stored nor asked for. In an SSH terminal the password is entered as usual.
 
-## Синхронизация и сравнение
+---
 
-- **Ctrl+Alt+S** – синхронизация папок активной и пассивной панели: односторонняя или двусторонняя; флажок пробного прогона показывает, что будет сделано, ничего не меняя.
-- **Ctrl+Alt+C** – сравнить файлы под курсорами обеих панелей.
-- **Ctrl+Shift+C** – сравнить папки: на обеих панелях выделяются файлы, которых нет на другой стороне, и более новые из одноимённых; при одинаковом времени, но разном размере – оба. Папки выделяются, только если их нет на другой стороне. Сравниваются текущие списки панелей, без вложенных папок, поэтому работает и в архивах, и на SFTP.
+[Contents](#contents)
 
-## Фоновые задания
+## Synchronization and comparison
 
-Копирование, перемещение и удаление выполняются в фоне. Окно прогресса можно отправить в фон; **Ctrl+Shift+J** – список заданий (прогресс, отмена).
+<!--dir-sync-->- **Ctrl+Alt+S** – synchronize the folders of the active and passive panels: one-way or two-way; the dry-run check box shows what would be done without changing anything.
+- In the synchronization dialog every difference is a list row with its action: `->` copies to the right, `<-` to the left, `--` skips; conflicts start as skipped. The **Right**, **Left** and **Skip** buttons set the action of the selected row (a manual choice is marked `*`), **Reset** returns the automatic one, and **Only skipped** shows the rows that still need a decision. Differences left skipped stay open for the next synchronization.
+<!--compare-files-->- **Ctrl+Alt+C** – compare the files under the cursors of both panels, or the two marked files of the active panel; the dialog shows size, modified time and a content verdict. With two or more files marked, the same-named files are compared (marks on both panels: only the marked ones; marks on one panel: the other panel is searched by name) and a list shows each pair as identical or different; Enter on a pair opens the differences. Folders are skipped.
+  For text files a full-screen compare-and-merge window opens: two columns with line numbers, the differences marked in the middle and the changed part of a line highlighted (`~` changed, `<` only on the left, `>` only on the right). **Ctrl+Down** and **Ctrl+Up** (or **Tab** and **Shift+Tab**) move between differences, **Ctrl+Left** and **Ctrl+Right** scroll long lines, **Right** copies a difference from left to right, **Left** from right to left, **Ctrl+Z** undoes a copy, **Ctrl+S** writes the changed files with their original encoding and line breaks. **Esc** closes the window; with unsaved changes press it again to close without saving. Binary, very large (over 16 MB or 60000 lines) and identical files are shown in the earlier summary window.
+<!--compare-folders-->- **Ctrl+Shift+C** – compare folders: both panels select the files missing on the other side and the newer of same-named ones; same time but a different size selects both.
 
-Когда копирование, перемещение или удаление останавливается с ошибкой, окно ошибки предлагает **Повторить**, **Пропустить**, **Пропустить всё**, **Отмена** и, для «Отказано в доступе» на локальном пути, **Админ**: он повторяет этот элемент и остаток задания через помощника администратора (см. [Операции с файлами](#операции-с-файлами)).
+Details of the comparison:
+- Folders are selected only when missing on the other side.
+- The current panel lists are compared, without subfolders, so it works in archives and on SFTP too.
+- The dialog asks what counts as a difference: time, size, content.
+- Content is compared byte by byte, only for same-size files on disk, and runs in the background (Esc cancels).
 
-Задания в фоне показаны справа в строке вкладок: по плашке на каждое, а в конце – кнопка со списком. На плашке значок операции и ход выполнения: `»` копирование, `►` перемещение, `▼` в корзину, `‼` удаление, `■` упаковка, `□` распаковка. Вместо процента бывает `..` (ждёт очереди), `?` (ждёт ответа на вопрос) и `!` (ошибка). Щелчок по плашке возвращает именно это задание: его окно прогресса, вопрос или сообщение об ошибке. Кнопка `[≡N]` открывает список заданий. Пока фоновых заданий нет, справа ничего не показывается, и это не зависит от строки статуса. Когда задача, какое-то время работавшая в фоне, завершается, об этом сообщает уведомление; если она остановилась с ошибкой, уведомление показывается даже при выключенных уведомлениях, а щелчок по плашке задачи открывает ошибку.
+---
 
-## Плагины: Git, CSV, временная панель
+[Contents](#contents)
 
-- **Git** (плагин «Git status»). В строке состояния – ветка и число изменений, имена файлов в панелях окрашены по состоянию в git. **Ctrl+Shift+D** (пункт «Плагины → Git diff файла») открывает во вкладке просмотра изменения файла или папки под курсором относительно HEAD; пункт «Плагины → Git blame файла» показывает у каждой строки файла коммит, автора и дату (для файла, которого git не знает, ничего не открывается). Обе команды работают фоновым заданием и требуют установленного `git`.
-- **CSV и TSV** (плагин «CSV table viewer»). **F3** на файле `.csv` или `.tsv` показывает его выровненной таблицей с линией под заголовком: разделитель (запятая, точка с запятой, табуляция, вертикальная черта) определяется сам, ячейки в кавычках понимаются. Большой файл показывается первыми строками, с пометкой об обрезке; **F4** по-прежнему открывает редактор.
-- **Фильтр строк** – **Ctrl+Shift+J** в просмотре и редакторе, см. таблицу клавиш выше.
-- **Временная панель.** Пункт «Плагины → Панель из вывода команды...» запускает команду оболочки (`cmd.exe` в Windows, `sh` в Linux) в папке активной панели и собирает во временную панель файлы и папки, имена которых она вывела (например, `rg -l TODO` или `git ls-files -m`); строки вида `путь:12:текст` тоже понимаются, последняя команда запоминается. Пункт «Плагины → Найти повторяющиеся файлы» ищет в текущей папке и её подпапках файлы с одинаковым содержимым (по размеру, затем по SHA-256) и показывает их во временной панели группами; прогресс виден в окне, поиск можно отменить. Обе команды работают в фоне.
-- Первая строка каждой панели плагина – **..**: она возвращает в папку, из которой панель была открыта.
+## Background jobs
 
-## Ассоциации файлов
+<!--job-list-->Copying, moving and deleting run in the background. The progress window can be sent to the background; **Ctrl+Shift+J** – the job list (progress, cancel).
 
-**Ctrl+Alt+Shift+A** – что делает **Enter** для файлов с заданным расширением: просмотр, редактирование, открытие программой Windows или своя команда (`%1` – путь к файлу). В списке: **Ins** – добавить, **F2** – изменить, **Del** – удалить.
+<!--stop-->A job can be stopped from the progress window with the **Cancel** button, **Esc** or a click outside the window; the Cancel and Cancel all buttons in the job list do the same.
 
-## Настройки
+A question comes first: “Cancel the current operation?”:
+- **Stop** stops the job;
+- **Continue** (the default button, also Esc) returns to the previous window.
 
-Меню **Настройки** (F9):
+After **Stop** the progress window closes at once and the job finishes stopping by itself: until it notices the request it stays in the job list, without a chip.
 
-- **Тема...** – оформление; меняется сразу.
-- **Шрифт / экран...** – шрифт, кегль, масштаб, мигание и вид курсора, значки файлов в панели, тени и вид отмеченных файлов; всё применяется без перезапуска.
-- **Интерфейс...** – **язык интерфейса** (English / Русский / Deutsch / 简体中文), всплывающие уведомления, строки заголовка, меню, функциональных клавиш и статуса, перетаскивание файлов, автоотступ в редакторе; всё применяется без перезапуска. Флажок **«Выделять и папки»** в том же диалоге включает папки в Shift+Серый + / Shift+Серый − и в выделение по расширению (по умолчанию – только файлы, как в Far). Флажок **«Точный размер в байтах»** показывает размеры в нижней рамке панели (итог папки или выделенного, размер элемента под курсором) и в строке статуса точным числом байт с разделителем групп разрядов, принятым в системе (`1 234 567`), а не как `1.2 M`; если число не помещается, остаётся короткая запись. Колонка «Размер» в списке файлов не меняется. Флажок **«Показывать слэш после имени каталога»** (включён по умолчанию) задаёт, заканчиваются ли имена папок в списке файлов символом `/`. Флажок **«Открывать меню по одиночному Alt»** (включён по умолчанию) задаёт, открывается ли меню верхней строки нажатием и отпусканием Alt. Список **«Заставка»** задаёт, через сколько минут без нажатий клавиш и действий мышью по окну поплывут акулы (по умолчанию 5; «Выкл.» отключает запуск по простою). Экран становится чёрным, по нему плывут акулы разных видов, нарисованные серыми буквами, и охотятся на стаи рыб; любая клавиша или действие мышью останавливает их и больше ничего не делает. Запустить заставку сразу можно щелчком по последней ячейке справа в строке меню (при показанной строке меню).
-- **Колонки...** – состав колонок режима «Свой».
-- **Консоль...** – размер истории консоли и терминалов, подтверждение вставки нескольких строк, удаление пробелов в концах строк при копировании и вставке, возврат в панели по завершении команды из командной строки (подробнее – в справке о командной строке).
-- **Профили окружения...** – открывает в редакторе файл `environment.json` (при первом открытии в нём лежит пример). Профиль – имя и список строк `ИМЯ=значение` (`vars`), а также необязательные настройки: `auto` (по умолчанию `true`; прежнее написание – `enabled`) – профиль применяется сам ко всем подходящим оболочкам, при `false` – только там, где его назвали по `F6` в списке `Ctrl+Shift+N`; `shells` – оболочки, к которым профиль относится (`pwsh`, `wsl`, `wsl:Ubuntu`, `pwsh#2` для копии; `wsl` охватывает и `wsl:Ubuntu`, базовый профиль – и его копии; без `shells` – все оболочки); `off: true` – профиль выключен совсем и не применяется даже там, где назван. Профиль с именем `default` применяется ко всем оболочкам всегда (если не выключен), первым; оболочка, которой назван профиль, получает `default` и этот профиль, остальные оболочки – `default` и профили с `auto`. Профили применяются по порядку к окружению каждой новой оболочки: вкладок-терминалов и консоли под панелями. Пустое значение (`ИМЯ=`) убирает переменную; `%ИМЯ%` (в Linux ещё `$ИМЯ` и `${ИМЯ}`) подставляет текущее значение, в том числе заданное строкой выше, так что `PATH=C:\Tools;%PATH%` дописывает папку в начало пути. Файл перечитывается при каждом запуске оболочки: уже работающие оболочки сохраняют прежнее окружение.
-- **Экспорт настроек... Флажок **«Автоотступ в редакторе по Enter»** (включён по умолчанию) задаёт, переносит ли Enter отступ строки на новую строку; то же делает **Ctrl+Alt+I** в редакторе. / Импорт настроек...** – настройки одним zip-файлом: сессия и параметры отображения, клавиши, меню пользователя, ассоциации, избранные папки, список SSH-подключений, рабочие пространства, собственные темы; истории не входят. Поле имени файла – поле ввода со списком ↓ ранее использованных файлов; по умолчанию это `mtn2-settings.zip` в папке активной панели. Перед импортом прежние файлы сохраняются в `settings-backup.zip` в папке настроек. Новые настройки вступают в силу после перезапуска MTN2.
-- **Цветовая разметка...** – цвета строк по маскам имён.
-- **Раскладка клавиш...** – просмотр и изменение клавиш.
-- **Плагины...** – установленные плагины.
-- **Внешний просмотрщик/редактор...** – команды для Alt+F3 / Alt+F4; `%1` – путь к файлу (без `%1` путь дописывается в конец), например `"C:\Program Files\Notepad++\notepad++.exe" %1`.
-- **Масштаб**: Ctrl+колесо мыши, **Ctrl+0** – сброс.
-- **Полный экран**: **F11** разворачивает окно на весь экран и возвращает обратно (действие `ToggleFullscreen` в раскладке клавиш).
+Dialog buttons are pressed with **Enter** and **Space**: the button looks pressed while the key is held and acts when the key is released. Esc before the release lifts the button without acting.
 
-### Уведомления
+<!--queue-->**Queue, pause and speed.** Copy and move jobs that touch the same drive run one after another; the rest wait in the queue (`..`). In the job list (**Ctrl+Shift+J**), with a job selected:
+- **Pause/Resume** holds a running copy at its next chunk (chip `||`, state "paused") or keeps a queued job from starting; a held job keeps its drive busy until it is resumed or cancelled;
+- **Up** and **Down** change the start order of queued jobs;
+- **Speed** steps the copy speed limit of the job through none, 1, 5, 20 and 100 MB/s (shown in the state column). The limit applies to copying between local folders.
 
-Команды, после которых на экране ничего не меняется, подтверждают себя коротким уведомлением в правом нижнем углу; оно исчезает через несколько секунд и не перехватывает клавиши. Уведомления появляются для:
+<!--errors-->When a copy, move or delete stops with an error, the error window offers **Retry**, **Skip**, **Skip all**, **Cancel** and, for “Access denied” on a local path, **Admin**: it repeats the item and the rest of the job through the administrator helper (see [File operations](#file-operations)).
 
-- **Alt+Shift+Ins** / **Ctrl+Shift+Ins** – скопированный путь / имя (или «Нечего копировать»);
-- **Ctrl+C** / **Ctrl+X** (**Ctrl+Ins** / **Ctrl+Del**) на панели – файлы, помещённые в буфер обмена;
-- копирования текста в просмотрщике / редакторе (без выделения – текущая строка), в командной строке и в терминале;
-- **Ctrl+R** – панель обновлена;
-- **Ctrl+Shift+O** – папка, в которую перешла консоль;
-- **Ctrl+Alt+R** – элемент, восстановленный из корзины;
-- **Ctrl+Alt+D** – папка, добавленная в избранные;
-- выделения по маске (**серый +/−**, **Ctrl+серый +/−**, **Alt+серый +/−**), которое ничего не изменило, – красным.
+Background jobs show at the right of the tab bar: one chip per job and a list button at the end.
 
-Уведомления отключаются в **Настройки → Интерфейс...** («Показывать всплывающие уведомления»).
+**Chips**
+- A chip has an icon for the operation and its progress: `»` copy, `►` move, `▼` recycle, `‼` delete, `■` pack, `□` unpack.
+- Instead of a percentage it can show `..` (queued), `?` (waiting for an answer) or `!` (failed).
+- Clicking a chip brings that job back: its progress window, question or error message.
+- The `[≡N]` button opens the job list.
+- With no background jobs nothing is shown there, whether or not the status line is visible.
 
-## Настройка клавиш
+**Finishing.** When a job that ran in the background for a while finishes, a toast says so; if it stopped with an error, the toast is shown even with notifications turned off, and clicking the job's chip opens the error.
 
-Встроенный набор клавиш можно частично переопределить файлом `keymap.json` в папке настроек (или через **Настройки → Раскладка клавиш...**): указываются только изменённые действия, остальные остаются встроенными. **Ctrl+Alt+K** – перечитать файл без перезапуска.
+---
 
-Файл накладывается на встроенную раскладку: действия, которые в нём есть, побеждают встроенные. Диалог **Настройки → Раскладка клавиш** записывает в файл только изменённые действия, поэтому остальные сочетания после обновления программы подхватываются сами. Файл, сохранённый прежними версиями, содержит все действия и «замораживает» старые сочетания: чтобы получить новые, удалите из него строки нужных действий или весь файл (заранее сохраните копию, если в файле есть свои изменения). Действие без клавиш записывается пустым списком.
+[Contents](#contents)
 
-Пока не заняты и оставлены под будущие возможности: **Shift+F3** (команды архива), **F11** (меню плагинов), **Ctrl+Alt+Ins** (сетевые UNC-пути), **Ctrl+.** (запись макроса).
+## File associations
 
-## Файлы настроек
+**Ctrl+Alt+Shift+A** – what **Enter** does for files with a given extension: view, edit, open with the Windows program or a custom command (`%1` – path to the file). In the list: **Ins** – add, **F2** – edit, **Del** – delete.
 
-Папка настроек – `%APPDATA%\MTN2\`. Если рядом с `MTN2.exe` лежит файл `portable.dat`, настройки хранятся рядом с программой (переносной режим). Режим переключается пунктом «Расположение настроек...» меню «Настройки»: файлы переносятся сами, перезапуск не нужен. Переменная окружения `MTN2_CONFIG_DIR` с путём к папке перенаправляет настройки туда (оба режима и переключатель при этом не действуют); папка создаётся при первом запуске.
+---
 
-| Файл | Содержимое |
+[Contents](#contents)
+
+## Settings
+
+The **Options** menu (F9):
+<!--theme-->- **Theme...** – pick the appearance; changes at once.
+
+**Customize...** opens the editor of the selected theme: sections (colors of windows, dialogs, buttons, cursor, panels and more, Markdown, text styles, glyphs, frames) with their values.
+- **Enter** on a row edits the value: a color is typed as `#RRGGBB` or picked with **F9** / the **[...]** button.
+- **Inherit** returns the value of the base theme; rows with an asterisk are set by the theme itself.
+- A color is a `#RRGGBB` value, a reference to another role of the theme (`@cursor.bg`) or a name from the palette.
+- The **Bases** section lists the themes this one builds on (several separated by `;`, later ones override earlier ones).
+- Changes show at once.
+
+**Saving**
+- **Save** writes the theme to a file. Built-in themes are read-only: a copy of a built-in theme is saved under a new name (a file in the `themes` folder of the settings folder), your own theme is updated in place by **Save**.
+- **Save as...** writes the theme under another name.
+- **New...** makes a theme from scratch ("blank") or from any other one.
+- **Delete** removes your own theme.
+
+If the theme of the saved session is not found, the program says so and uses the classic Far theme.
+<!--display-->- **Font / Display...** – font, size, zoom, cursor shape and blinking, file icons in the panel, **line spacing** (see below), **shadows** and how **marked files** look; everything applies without a restart.
+
+**Shadows and marked files**
+- Window and button **shadows**: Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them.
+- **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
+<!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
+
+**What it sets**
+- The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
+- The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
+- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel, **vertical lines between columns** (Full and custom modes; Brief always has them, off by default) the **editor auto-indent on Enter** (can be switched off) and **filtering the panel while quick searching** (Alt+letter: besides moving the cursor, the files whose names do not begin with the typed text are hidden; the search box stays open after Alt is released and Esc or Enter removes the filter; the option **fuzzy filter** also keeps names that contain the typed letters in order, not necessarily next to each other; the option **keep the filter in other folders** carries it into a folder opened with Enter or a click, and then only Esc removes it; off by default).
+
+**Hidden window rows**
+- With the menu bar hidden, F9 shows it over the top row while the menu is open.
+- With the window title bar hidden the **[_] [□] [x]** buttons move to the right end of the menu bar, or of the tab bar when that is hidden too.
+- The window title is shown in the free space of the tab bar; the window is dragged by the free parts of the menu and tab bars and resized by its edges.
+- A right click on a free spot of the tab bar opens the top menu, like F9.
+
+**Selection and size boxes**
+- **“Select all also folders”** makes Shift+Gray + / Shift+Gray − and select by extension take folders too (files only by default, as in Far).
+- **“Show exact size in bytes”** shows the sizes in the panel footer (the totals of the folder or of the selection, the size of the item under the cursor) and in the status line as the exact number of bytes with the system digit grouping (`1,234,567`) instead of `1.2 M`; when the number does not fit, the short form stays. The Size column of the file list does not change.
+
+**Vim keys on the panel.** The **“Vim keys on the panel”** box (off by default) enables these keys on the panel while the command line is empty:
+- **j / k** – cursor down / up;
+- **h** – go to the parent folder; **l** – open the item;
+- **g / G** – jump to the first / last row;
+- **/** – start the quick search; **:** – move to the command line.
+<!--columns-->- **Columns...** – the columns of the “Custom” mode.
+<!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
+<!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
+<!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.
+
+**What is included.** The session and display options, keys, user menu, associations, hotlist, SSH connection list, workspaces, own themes; histories are not included.
+
+**How it works**
+- The file name field is an input with a ↓ drop-down of the files used before; by default it is `mtn2-settings.zip` in the folder of the active panel.
+- Before an import the replaced files are saved as `settings-backup.zip` in the settings folder.
+- The new settings take effect after MTN2 restarts.
+<!--location-->- **Settings location...** – chooses where the settings are kept: the user folder (standard mode) or next to the program (portable mode, the `portable.dat` file).
+
+**What the dialog shows.** Both places, how many files move and what stands in the way: no write access to the program folder, a program folder shared by all users, files at the target that are replaced (they stay as `*.before-switch`).
+
+**Moving**
+- The session, histories, keys, plugin settings and your own themes move together and the old copies are deleted.
+- The change applies at once, without a restart. If anything fails, the old place stays in force.
+- The languages and shipped themes in `resource\` always stay with the program.
+<!--color-coding-->- **Color coding...** – row colors by name masks and, optionally, by size, age and attributes (the **Condition** field: terms such as `size>10M`, `age<7d`, `+H`, `-R`; the letters are H hidden, R read-only, S system, A archive, C compressed, E encrypted, L link; `age<7d` means modified less than 7 days ago); they are stored in the theme, so an edit made with a built-in theme is saved as a new theme (the program asks for its name). **F9** on a color field, or a click on the **[...]** button at its right end (it shows the field's color), opens the color picker (see below).
+  Condition examples (a group applies only when the mask and the condition both match):
+  - `size>100M` – files larger than 100 MB, for example to paint big logs red with the mask `*.log`.
+  - `size>0 size<4K` – small non-empty files.
+  - `age<1d` – changed within the last day; `age<90m` – within 90 minutes.
+  - `age>30d` – not touched for a month (grey out stale files); `age>2w` – older than two weeks.
+  - `+H` – hidden files only; `+HS` – hidden and system; `-R` – anything that is not read-only.
+  - `size>1G age>90d -R` – big, old and writable: all three must hold (candidates for cleanup).
+  - A folder has no size, so a group with a size term never matches folders; a condition with only attributes or age works for folders too. Groups are checked top to bottom and the first match wins, so put the narrow group (`*.log` + `size>100M`) above the general one (`*.log`).
+- **Keymap...** – view and change keys.
+<!--plugins-->- **Plugins...** – installed plugins. On the first run every plugin is switched off.
+
+**Controls**
+- **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it.
+- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`).
+- **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start).
+- **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
+- **Add...** installs a plugin from a folder or a `.zip` file (it must contain `plugin.json`; the folder is named after its `id`). An installed plugin is switched off: turn it on with Space and press **OK**. A plugin with the same `id` is replaced after a confirmation; a loaded plugin keeps its old version until the next start. An archive with paths outside the plugin folder is refused.
+- **Remove** deletes the folder of the selected plugin after a confirmation. If its files are in use (the plugin is loaded), switch it off, restart the program and try again.
+<!--external-tools-->- **External viewer/editor...** – the Alt+F3 / Alt+F4 commands; `%1` is the file path (without `%1` the path is added at the end), e.g. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
+- **Environment profiles...** – variables laid over the environment of new shells; see [Environment profiles](#environment-profiles).
+<!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** for every element.
+
+**Elements and styles**
+- Elements: headings, bold, italic, strikethrough, code, quote, list markers, rules, links, tables.
+- The style comes from a list: Theme, Plain, Bold, Italic, Bold italic, Underline, Strikethrough and combinations.
+- An empty field or **Theme** in the style list keeps the theme's own; **Plain** turns off the style the element has (for example the underline of links).
+- **F9** on a field or a click on its **[...]** button opens the color picker.
+- The **Text / document** row sets the text color and the background of the whole Markdown view (only for Markdown, other files keep the theme colors); elements without a background of their own follow it.
+- The sample next to a row is drawn with its colors and style.
+
+**Import from Obsidian...** reads the colors from an Obsidian theme (`theme.css`, for example `<vault>\.obsidian\themes\<theme>\theme.css`).
+- The **Dark** or **Light** palette is picked in the import dialog.
+- The imported colors and text styles (weight, italic and underline the theme sets for headings, bold, links, quotes and table headers) replace the fields and lists (nothing is saved until OK).
+
+**Reset** empties all fields and sets every style to **Theme**, so the theme's own colors and styles apply.
+
+**Where they are stored.** In the active theme: with a built-in theme the program asks for the name of a new theme, your own theme is updated in place; the fields hold only what the theme sets itself (the rest is inherited).
+- **Zoom**: Ctrl+mouse wheel, **Ctrl+0** – reset.
+
+<!--color-picker-->### Color picker
+
+The picker has:
+- a grid of swatches (hues across, light to dark down; the bottom row is gray);
+- sliders **H, S, L** (hue, saturation, lightness) and **R, G, B**;
+- a **Hex** field next to two swatches: the color **was** when the picker opened and the color **now**.
+
+**Keys**
+- **Up / Down** switch between the grid, the sliders and the hex field.
+- **Left / Right** move along the grid or change a slider by 1 (**Shift** – by 10, **PgUp / PgDn** – by 10, **Home / End** – to the ends).
+
+**Mouse.** A click picks a swatch or sets a slider; a click on the **was** swatch returns to the original color.
+
+The grid uses the current saturation, so the **S** slider makes it paler or more vivid. **Use** takes the color, **Theme color** clears the field so the theme's color applies again.
+
+### Font and line spacing
+
+The **Line spacing (as in a terminal)** checkbox in **Options → Font / Display...** makes rows 15% of the font size taller; the text stays centred in the row, frames and highlights stretch over its whole height. It is off by default: rows are as tall as the font's line, and more of them fit on the screen. For Cascadia Mono 11 pt that is 17 pixels without spacing and 19 with it – the same as in Windows Terminal.
+
+Font size is in typographic points, as in Windows Terminal and the Windows console: 6 to 24 pt, in half-point steps from 8 to 12 pt. At 100% Windows scaling 1 pt = 4/3 pixel: 10.5 pt is 14 pixels (the former default), 11 pt is 14.7 pixels.
+
+Two more options in the same dialog make the text crisper:
+- **Snap font size to device pixels** rounds the letter size to whole physical screen pixels. With 125% or 150% Windows scaling and fractional sizes (11 pt) the strokes then have an equal weight. The cell size can change slightly. Off by default.
+- **Text contrast** (Off, Low, Medium, High) fills in the faint anti-aliased fringe: thin light text on a dark background reads firmer. Off by default.
+- **Cell width** and **Cell height** add 0 to 4 physical pixels to every cell. They help a font whose letters touch or whose rows sit too tight. Letters stay centred in the cell, frames fill it completely. 0 by default.
+- **Fallback font** names a second font family for the characters the main font lacks, such as CJK ideographs and symbols. Type the family name; an empty field, or a family that is not installed, leaves the choice to Windows. The fallback does not change the cell size: that comes from the main font.
+
+#### Why text looks different from Far
+
+Far does not draw its text itself: the console window it runs in does – Windows Terminal or the classic Windows console – with its own font and rules. Compared with the same font, size and colours, MTN2 and Far draw the same letters: stroke weight and antialiasing match. The differences come from settings:
+- **Font and size.** Windows Terminal defaults to Cascadia Mono 11 pt. MTN2 uses the font and size from Font / Display (Cascadia Mono if installed, otherwise Consolas; 10.5 pt). Narrow, light fonts such as Ubuntu Mono look thinner and paler, especially on blue.
+- **Row height.** Windows Terminal adds about 15% of the font size to the font's line. In MTN2 that is the Line spacing checkbox; without it rows are tighter. The classic Windows console takes the row height from the font's Windows metrics, which can be another 1–3 pixels taller (Cascadia Mono 11 pt – 20 pixels).
+- **Colours.** MTN2's colours come from its theme; Far's from its own highlighting and the terminal's colour scheme. In the default theme plain files are light grey; in Far they are usually cyan, with twice the contrast on blue, so the text looks bolder.
+- **Antialiasing.** MTN2 uses greyscale antialiasing. So does Windows Terminal when the profile's `antialiasingMode` is `grayscale` (the default); with `cleartype` letters get coloured fringes. The classic Windows console uses ClearType when it is on in Windows.
+- **Windows scaling.** Both draw text in physical screen pixels, so it is equally sharp at 125% and 150%.
+
+#### When they match
+
+MTN2 matches Far in Windows Terminal in cell size, stroke weight and row height when:
+- the font is the same (Windows Terminal's default is Cascadia Mono);
+- the size is the same (Windows Terminal's default is 11 pt);
+- Line spacing (as in a terminal) is on;
+- the Windows Terminal profile uses `grayscale` antialiasing;
+- MTN2's theme and Far use similar colours.
+
+With the classic Windows console (Far without Windows Terminal) they will not match exactly: its row height and ClearType are its own.
+
+### Notifications
+
+Commands that change nothing on screen confirm themselves with a short notice in the bottom right corner; it disappears after a few seconds and does not take keys. Notices appear for:
+- **Alt+Shift+Ins** / **Ctrl+Shift+Ins** – the path / name copied (or “Nothing to copy”);
+- **Ctrl+C** / **Ctrl+X** (**Ctrl+Ins** / **Ctrl+Del**) on the panel – the files placed on the clipboard;
+- copying text in the viewer / editor (without a selection – the current line), in the command line and in a terminal;
+- **Ctrl+R** – the panel refreshed;
+- **Ctrl+Shift+O** – the folder the console went to;
+- **Ctrl+Alt+R** – the item restored from the Recycle Bin;
+- **Ctrl+Alt+D** – the folder added to the hotlist;
+- selection by mask (**Gray +/−**, **Ctrl+Gray +/−**, **Alt+Gray +/−**) that changed nothing – shown in red.
+
+Notices are turned off in **Options → User interface...** (“Show pop-up notifications”). The update-check notice is the exception: it has its own checkbox (see [Updates](#updates)).
+
+### Updates
+
+Checking for and installing new versions, their settings and what goes over the network are on the [Updates](#updates) page.
+
+---
+
+[Contents](#contents)
+
+## Updates
+
+MTN2 can update itself: it finds a new version on GitHub, downloads and installs it, but only when the user agrees.
+
+### How an update goes
+
+A few seconds after startup, once a day, MTN2 checks GitHub for a new version. If there is one, it asks: **Update**, **Later** or **Skip this version** (a skipped version is not offered again). Nothing is downloaded or installed without an answer.
+
+After the download (the package is checked against its SHA-256) MTN2 offers to **Restart** now or install **On exit**. While copy jobs are running, installation waits until exit. Only program files are replaced (including `7z.dll`, which comes with the package) – settings and other user files stay as they are.
+
+### Check settings
+
+**≡ → Check for updates...** (F9, then the leftmost top-menu item) shows the installed version, checks right away (**Check now**) and has two checkboxes:
+
+- **Check for updates at startup** – once a day at startup. With it off, MTN2 does not go online by itself.
+- **Show a notice when checking** – every check that goes online (at startup or with **Check now**) shows a notice “Checking github.com for MTN2 updates...” in the bottom right corner for a few seconds.
+
+Details:
+- For the startup check the notice has a second line on how to turn the check off.
+- It is shown even when other pop-up notices are off and disappears as soon as GitHub has answered.
+- While a dialog is open it stays hidden under it.
+
+### What goes over the network
+
+The check is a single HTTPS request to `api.github.com` for the latest release of the `Laex/MTN2` repository. It carries nothing but the MTN2 version in the `User-Agent` header – no file names, paths or settings. The update itself is the release package downloaded from GitHub after **Update**.
+
+---
+
+[Contents](#contents)
+
+## Key bindings
+
+The built-in key set can be partly redefined by the `keymap.json` file in the settings folder (or via **Options → Keymap...**): only the changed actions are listed, the rest stay built-in. **Ctrl+Alt+K** – reload the file without a restart.
+
+Besides the panels, the viewer and editor commands can be rebound. Their names in `keymap.json` start with:
+- `Doc` – both viewing and editing: `DocHex`, `DocFind`, `DocEncoding`, `DocClose`…;
+- `Viewer` – viewing only: `ViewerWrap`;
+- `Markdown` – rendered Markdown: `MarkdownSource`;
+- `Editor` – editing only: `EditorSave`, `EditorUndo`, `EditorDeleteLine`…
+
+The same chord can mean different things on the panels and in a document – Ctrl+H shows hidden files on a panel and toggles hex in a document. A narrower meaning overrides a general one: F4 over rendered Markdown toggles the source, not hex.
+
+Global commands work in any window – the panels, a document, a terminal:
+- `Help` (F1), `TopMenu` (F9), `CommandPalette` (Shift+F9);
+- `NextTab` / `PrevTab` (Ctrl+Alt+PgDn / Ctrl+Alt+PgUp);
+- `AppConsoleToggle` (Ctrl+O), `NewTerminal` (Ctrl+Shift+N), `SelectConsoleProfile` (Ctrl+Alt+O);
+- `AppQuit` (Alt+X), `ZoomReset` (Ctrl+0), `ReloadKeymap` (Ctrl+Alt+K);
+- `ToggleMouse` (Ctrl+Shift+M, text terminal version only).
+
+**A chord the window binds itself.** It stays the window's:
+- F10 closes a document and quits only on the panels (`Quit`);
+- Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
+
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+
+**Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
+
+In the console (Ctrl+O) and a terminal the commands named `Shell…` can be rebound:
+- `ShellHistory` (Alt+F8), `ShellSelectAll` (Ctrl+A);
+- `ShellCopyOrInterrupt` (Ctrl+C – copy the selection, or interrupt the command without one), `ShellCopy` (Ctrl+Ins), `ShellPaste` (Ctrl+V, Shift+Ins);
+- `ShellFind` (Ctrl+Shift+F – search the output), `ShellFindNext` / `ShellFindPrev` (F3 / Shift+F3);
+- in the console also `ConsoleSyncDir` (Ctrl+Shift+O – the panel goes to the console's folder).
+
+Every other key goes to the shell.
+
+**Settings → Keymap** groups the actions by window – global, file panels, viewer and editor, console and terminal – under readable names; the `keymap.json` name shows in the edit window. The F-key labels at the bottom, hints such as `A:All` and the shortcuts in the top menu come from the keymap: after a rebinding they show the new key.
+
+An action can have several shortcuts: list them separated by `;` in the edit window, or as separate entries in `keymap.json`. Besides letters, digits and special keys, the signs `/`, `,`, `.`, `'`, `=` can be assigned; write semicolon and the main-block minus as `Semicolon` and `Minus` (`-`, `+` and `*` mean the numeric keypad keys).
+
+Modifiers must match exactly: Ctrl+Shift+A is not Ctrl+A. Arrows, Home/End, typing and `/` in the viewer are not configurable.
+
+### Tab keys
+
+All tab keys are ordinary keymap actions and can be rebound in `keymap.json`. Panel tabs and workspaces (the tabs of the top row) are different things, each with its own actions:
+
+| What | Action in `keymap.json` | Default |
+| --- | --- | --- |
+| New panel tab | `NewTab` | Ctrl+T |
+| Next / previous panel tab | `NextPanelTab` / `PrevPanelTab` | Ctrl+Tab / Ctrl+Shift+Tab |
+| Close the panel tab | `CloseTab` | Ctrl+W |
+| New workspace | `NewWorkspace` | Ctrl+Shift+W |
+| Next / previous workspace | `NextTab` / `PrevTab` | Ctrl+Alt+PgDn / Ctrl+Alt+PgUp |
+
+The `[+]` and `[x]` buttons in the tab rows and the top menu items do the same.
+
+### Your own `keymap.json` and updates
+
+The `keymap.json` in the settings folder is laid over the built-in keymap: the actions it lists win over the built-in ones.
+- The **Settings → Keymap** dialog writes only the changed actions to the file, so the other keys follow the built-in keymap after an update.
+- A file saved by earlier versions lists all actions and freezes the old keys: to get the new ones, delete the lines of the actions you need from it, or the whole file (keep a copy first if it holds changes of your own).
+- An action without keys is written as an empty list.
+
+### Examples for Far and MC habits
+
+The repository holds three example `keymap.json` files, [`keymap.far.json`, `keymap.mc.json` and `keymap.tc.json`](https://github.com/Laex/MTN2/tree/main/docs/keymap-presets). Copy the one you want into the settings folder as `keymap.json` (or add its actions to your own file) and press **Ctrl+Alt+K**.
+- **Far:** Esc on the panels clears the command line and does not open the console (it stays on Ctrl+O).
+- **MC:** Alt+. shows hidden files, Ctrl+\ opens the folder list, Alt+Enter inserts the file name into the command line, Alt+A and Alt+Shift+A insert the folder path of the active and the other panel, and Properties moves to Ctrl+Shift+P.
+- **Total Commander:** Alt+F5 and Alt+F9 pack and unpack, Ctrl+A selects all, Ctrl+M renames by rules, Ctrl+P inserts the folder path, Ctrl+Tab and Ctrl+Shift+Tab switch tabs, Alt+Down opens the folder history. The default keymap already follows Norton Commander habits.
+
+### Reserved keys
+
+Not taken yet and kept for planned features: **Shift+F3** (archive commands), **F11** (the plugin menu), **Ctrl+Alt+Ins** (network UNC paths), **Ctrl+.** (macro recording). An automatic check keeps the built-in keymap from taking them.
+
+---
+
+[Contents](#contents)
+
+## Settings files
+
+The settings folder is `%APPDATA%\MTN2\`. If a `portable.dat` file lies next to `MTN2.exe`, settings are kept next to the program (portable mode).
+
+| File | Contents |
 | --- | --- |
-| `session.json` | состояние окна, панелей и вкладок, тема, шрифт, язык |
-| `keymap.json` | переопределённые клавиши |
-| `aliases.json` | свои слова для поиска в палитре команд |
-| `history.json` | история команд |
-| `folderhistory.json` | история папок |
-| `filehistory.json` | история файлов (Alt+F11) |
-| `externaltools.json` | внешний просмотрщик и редактор (Alt+F3 / Alt+F4) |
-| `environment.json` | профили окружения для оболочек (Настройки → Профили окружения) |
-| `dialoghistory.json` | история полей ввода в диалогах |
-| `workspaces.json` | сохранённые рабочие пространства |
-| `sshconnections.json` | SSH/SFTP-подключения |
-| `associations.json` | ассоциации файлов |
-| `usermenu.json` | главное меню пользователя (F2) |
-| `.mtn2menu.json` (в любой папке) | меню этой папки и вложенных |
+| `session.json` | state of the window, panels and tabs, theme, font, language |
+| `keymap.json` | redefined keys |
+| `environment.json` | environment profiles for shells |
+| `aliases.json` | your own search words for the command palette |
+| `history.json` | command history |
+| `folderhistory.json` | folder history |
+| `filehistory.json` | file history (Alt+F11) |
+| `externaltools.json` | external viewer and editor (Alt+F3 / Alt+F4) |
+| `themes\*.theme.json` | your themes (Settings → Theme...) |
+| `dialoghistory.json` | dialog input field history |
+| `workspaces.json` | saved workspaces |
+| `sshconnections.json` | SSH/SFTP connections |
+| `associations.json` | file associations |
+| `usermenu.json` | main user menu (F2) |
+| `.mtn2menu.json` (in any folder) | menu of that folder and the folders below |
+
+---
+
+[Contents](#contents)

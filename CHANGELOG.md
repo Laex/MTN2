@@ -6,6 +6,8 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.4.3 – 2026-11-08
+
 ### New
 
 - The JSON and YAML tree plugin: Enter on a `.json`, `.yaml` or `.yml` file opens it like a folder. Objects and arrays are folders, values are files; the Value and Type columns show the content, F3 views a value, F5 copies a value or a whole subtree out as text. Read-only. YAML: the common subset (no anchors, aliases or tags).

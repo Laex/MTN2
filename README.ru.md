@@ -237,7 +237,7 @@ Dev-сборки содержат свежие изменения и могут 
 - [BUILDING.ru.md](docs/BUILDING.ru.md) – сборка, тесты, CI/CD.
 - [LINUX.ru.md](docs/LINUX.ru.md) – версии для Linux (терминал и окно SDL2): установка, параметры, зависимости.
 - [THEMES.ru.md](docs/THEMES.ru.md) – формат файла темы и роли цветов.
-- [HELP.md](docs/HELP.md) – исходный текст справки пользователя одним файлом.
+- [HELP.ru.md](docs/HELP.ru.md) – исходный текст справки пользователя одним файлом.
 - Плагинные контракты: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.ru.md), [PANEL](docs/PANEL_PLUGIN.ru.md),
   [DIALOG](docs/DIALOG_PLUGIN.ru.md), [INPUT](docs/INPUT_PLUGIN.ru.md), [OVERLAY](docs/OVERLAY_PLUGIN.ru.md),
   [STATUS](docs/STATUS_PLUGIN.ru.md), [TEXTAREA](docs/TEXTAREA_PLUGIN.ru.md), [TOOLBAR](docs/TOOLBAR_PLUGIN.ru.md),
