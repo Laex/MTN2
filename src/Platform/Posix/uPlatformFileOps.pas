@@ -20,6 +20,10 @@ procedure PlatformFillEntryByPath(const APath: string; var AEntry: TVfsEntry);
 /// <summary>True when a FindFirst result code means "access denied".</summary>
 function PlatformSearchDenied(ACode: Integer): Boolean;
 
+/// <summary>True when the scan record is a directory symbolic link, which a
+/// recursive walk must not enter (it can point back at an ancestor).</summary>
+function PlatformIsDirectoryLink(const SR: TSearchRec): Boolean;
+
 /// <summary>True when E reports an access-denied failure of a file operation.</summary>
 function PlatformIsAccessDenied(E: Exception): Boolean;
 
@@ -101,6 +105,13 @@ end;
 function PlatformSearchDenied(ACode: Integer): Boolean;
 begin
   Result := (ACode = EACCES) or (ACode = EPERM);
+end;
+
+function PlatformIsDirectoryLink(const SR: TSearchRec): Boolean;
+begin
+  {$WARN SYMBOL_PLATFORM OFF}
+  Result := ((SR.Attr and faDirectory) <> 0) and ((SR.Attr and faSymLink) <> 0);
+  {$WARN SYMBOL_PLATFORM ON}
 end;
 
 function PlatformIsAccessDenied(E: Exception): Boolean;

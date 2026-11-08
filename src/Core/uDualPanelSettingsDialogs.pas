@@ -335,6 +335,7 @@ begin
   DialogSetCheckbox(Decl, 'column_separators', Cur.ColumnSeparators);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
+  DialogSetCheckbox(Decl, 'dir_slash', Cur.DirSlash);
   DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
   DialogSetListItems(Decl, 'saver', DisplaySaverItems, IndexOfDisplaySaver(Cur.SaverMinutes));
   // Without the screensaver subsystem the row stays, greyed out, showing Off.
@@ -752,6 +753,7 @@ begin
     Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
+    Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
     Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
     Disp.SaverMinutes := DisplaySaverMinutesAt(FDialog.GetListSelectedIndex('saver'));
     LanguageIdx := FDialog.GetListSelectedIndex('language');

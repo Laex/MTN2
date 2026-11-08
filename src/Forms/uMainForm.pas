@@ -1664,6 +1664,7 @@ begin
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.ExactSelectionSize := GExactSelectionSize;
+  Result.DirSlash := GDirSlash;
   Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
   Result.CaretUnderline := GCaretUnderline;
@@ -1715,12 +1716,14 @@ begin
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
+  FSession.DirSlash := ASettings.DirSlash;
   FSession.NdnFooter := ASettings.NdnFooter;
   GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GExactSelectionSize := ASettings.ExactSelectionSize;
+  GDirSlash := ASettings.DirSlash;
   GSaverMinutes := ASettings.SaverMinutes;
   GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
@@ -1864,6 +1867,7 @@ begin
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
   GExactSelectionSize := Sess.ExactSelectionSize;
+  GDirSlash := Sess.DirSlash;
   GNdnFooter := Sess.NdnFooter;
   GSaverMinutes := Sess.SaverMinutes;
   GCaretUnderline := Sess.CaretUnderline;
@@ -1985,6 +1989,7 @@ begin
   Sess.AltOpensMenu := GAltOpensMenu;
   Sess.EditorAutoIndent := GEditorAutoIndent;
   Sess.ExactSelectionSize := GExactSelectionSize;
+  Sess.DirSlash := GDirSlash;
   Sess.NdnFooter := GNdnFooter;
   Sess.SaverMinutes := GSaverMinutes;
   Sess.CaretUnderline := GCaretUnderline;
@@ -2881,6 +2886,7 @@ begin
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
   FSession.ExactSelectionSize := False;
+  FSession.DirSlash := True;
   FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
   FSession.CaretUnderline := False;

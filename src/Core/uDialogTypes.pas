@@ -188,6 +188,8 @@ const
   cDlgCmdElevate = 'elevate';
   cDlgCmdBackground = 'background';
   cDlgCmdForeground = 'foreground';
+  /// <summary>Progress dialog of a search: go on in the background and keep the results in the panel.</summary>
+  cDlgCmdPanel = 'panel';
   cDlgCmdCancelJob = 'canceljob';
   cDlgCmdCancelAll = 'cancelall';
   cDlgCmdPauseJob = 'pausejob';

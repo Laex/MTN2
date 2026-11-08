@@ -238,7 +238,7 @@ var
   NamePart, MetaPart, SizePart: string;
   MaxName: Integer;
 begin
-  NamePart := ARow.Text;
+  NamePart := PanelRowDisplayText(ARow);
   if ARow.DirText <> '' then
     NamePart := IncludeTrailingPathDelimiter(ARow.DirText) + NamePart;
   if (ARow.MatchSnippet <> '') and (ARow.MatchLine <= 0) then

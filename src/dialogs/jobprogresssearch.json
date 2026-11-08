@@ -1,0 +1,71 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Search",
+  "width": 76,
+  "height": 9,
+  "children": [
+    {
+      "type": "label",
+      "id": "verb",
+      "text": "",
+      "col": 1,
+      "row": 0,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "src",
+      "text": "",
+      "col": 1,
+      "row": 1,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "file_bar",
+      "text": "",
+      "col": 1,
+      "row": 2,
+      "width": 72,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 3,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "background",
+      "text": "&Background",
+      "col": 11,
+      "row": 5,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "panel",
+      "text": "&Panel",
+      "col": 29,
+      "row": 5,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 47,
+      "row": 5,
+      "width": 16,
+      "height": 1
+    }
+  ]
+}

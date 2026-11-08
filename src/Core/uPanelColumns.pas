@@ -967,7 +967,7 @@ begin
       PadRight(PathText, PathW));
   end;
   // ASCII only - Unicode arrows (->) break under Consolas/grid glyph path.
-  Result := ARow.Text;
+  Result := PanelRowDisplayText(ARow);
   if ShouldStripPanelRowExt(ARow, AStripExt, Result) then
   begin
     Result := Copy(Result, 1, Length(Result) - PanelRowExtLength(ARow, Result));

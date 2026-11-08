@@ -265,6 +265,8 @@ begin
     Result := cResDialogJobProgressError
   else if AJob.Kind = pjkDelete then
     Result := cResDialogJobProgressDelete
+  else if (AJob.Kind = pjkPlugin) and AJob.CanAttach then
+    Result := cResDialogJobProgressSearch
   else if AJob.Kind = pjkPlugin then
     Result := cResDialogJobProgressPlugin
   else

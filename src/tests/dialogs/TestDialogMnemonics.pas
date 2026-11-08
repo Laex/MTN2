@@ -163,8 +163,12 @@ var
   Hot: Char;
   Seen: string;
   Cap: string;
+  Unmarked: TArray<string>;
+  J: Integer;
+  Assignable: Boolean;
 begin
   Seen := '';
+  Unmarked := nil;
   for I := 0 to High(ADecl.Controls) do
   begin
     C := ADecl.Controls[I];
@@ -179,13 +183,25 @@ begin
       Continue;
     end;
     if Hot = #0 then
-      AReport.Add(AName + ': "' + Cap + '" has no hotkey letter')
+      Unmarked := Unmarked + [Cap]
     else if not Hot.IsLetter then
       AReport.Add(AName + ': "' + Cap + '" marks "' + Hot + '", not a letter')
     else if Pos(Hot, Seen) > 0 then
       AReport.Add(AName + ': "' + Cap + '" repeats the letter ' + Hot)
     else
       Seen := Seen + Hot;
+  end;
+  // A control may go without a letter only when every letter of its caption is
+  // already another control's hotkey (letters typable as a hotkey: ASCII and Cyrillic).
+  for Cap in Unmarked do
+  begin
+    Assignable := False;
+    for J := 1 to Length(Cap) do
+      if Cap[J].IsLetter and ((Ord(Cap[J]) < 128) or ((Ord(Cap[J]) >= $400) and (Ord(Cap[J]) <= $4FF))) and
+         (Pos(Cap[J].ToLower, Seen.ToLower) = 0) then
+        Assignable := True;
+    if Assignable then
+      AReport.Add(AName + ': "' + Cap + '" has no hotkey letter');
   end;
 end;
 

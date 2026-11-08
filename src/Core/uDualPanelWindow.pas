@@ -414,6 +414,7 @@ type
     procedure HostRequestJobStop;
     procedure HostRequestSearchStop;
     procedure HostHideSearchResults;
+    function HostCurrentFindSession: string;
     procedure HostSearchLimitReached;
     procedure HostSearchBackgroundDone(AFound: Integer);
     function HostOpenFindSession(var ASessionId: string; const ARoot, AMask: string;
@@ -3254,6 +3255,23 @@ begin
     procedure begin FSearchUi.CancelSearch; end, nil);
 end;
 
+function TDualPanelWindow.HostCurrentFindSession: string;
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Tab: TTab;
+  Uri: string;
+begin
+  Ws := ActiveWorkspace;
+  Panel := ActivePanel(Ws);
+  Tab := ActiveTab(Panel);
+  Uri := Tab.CurrentURI;
+  if IsFindUri(Uri) then
+    Result := FindSessionIdFromUri(Uri)
+  else
+    Result := '';
+end;
+
 // A search sent to the background takes its live results out of the panel:
 // the tab goes back to the folder it was in before the results appeared.
 procedure TDualPanelWindow.HostHideSearchResults;
@@ -3677,6 +3695,7 @@ begin
   FSearchUi.OnOpenSession := HostOpenFindSession;
   FSearchUi.OnUpdateSession := HostUpdateFindSession;
   FSearchUi.OnSessionShown := HostFindSessionShown;
+  FSearchUi.OnCurrentSession := HostCurrentFindSession;
   FSearchDlg := TSearchDialogController.Create(FDialog, FSearchUi, DialogCommand,
     HostSetDialogKind, HostSearchBlocked, HostPrepareSearchUi,
     HostActivePanelUri, NotifyChanged);

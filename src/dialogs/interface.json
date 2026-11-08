@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Interface",
   "width": 62,
-  "height": 33,
+  "height": 34,
   "children": [
     {
       "type": "checkbox",
@@ -66,7 +66,7 @@
       "id": "reset_hints",
       "text": "&Reset hints",
       "col": 32,
-      "row": 29,
+      "row": 30,
       "width": 26,
       "height": 1
     },
@@ -289,9 +289,19 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "dir_slash",
+      "text": "Show a slash after directory names",
+      "checked": true,
+      "col": 1,
+      "row": 27,
+      "width": 58,
+      "height": 1
+    },
+    {
       "type": "separator",
       "col": 0,
-      "row": 27,
+      "row": 28,
       "width": 60,
       "height": 1
     },
@@ -301,7 +311,7 @@
       "text": "OK",
       "default": true,
       "col": 4,
-      "row": 29,
+      "row": 30,
       "width": 12,
       "height": 1
     },
@@ -311,7 +321,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 18,
-      "row": 29,
+      "row": 30,
       "width": 12,
       "height": 1
     }

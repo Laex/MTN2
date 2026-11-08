@@ -35,6 +35,8 @@ var
   /// <summary>Sizes in the panel footer (totals, cursor line) and the status line are
   /// shown as the exact number of bytes with the system digit grouping, not as 1.5 M.</summary>
   GExactSelectionSize: Boolean = False;
+  /// <summary>Directory names in the panel listing end with a path separator.</summary>
+  GDirSlash: Boolean = True;
   /// <summary>Panel footer in the NDN/DN layout: the totals sit in the bottom border,
   /// the rule above the info strip stays plain. Off: totals centered on that rule.</summary>
   GNdnFooter: Boolean = True;
@@ -82,6 +84,8 @@ type
     EditorAutoIndent: Boolean;
     /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
     ExactSelectionSize: Boolean;
+    /// <summary>uDisplaySettings.GDirSlash.</summary>
+    DirSlash: Boolean;
     /// <summary>uDisplaySettings.GNdnFooter.</summary>
     NdnFooter: Boolean;
     /// <summary>uSharkSaver.GSaverMinutes.</summary>
@@ -376,6 +380,7 @@ begin
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
   Result.ExactSelectionSize := False;
+  Result.DirSlash := True;
   Result.NdnFooter := True;
   Result.SaverMinutes := 5;
   Result.CaretUnderline := False;

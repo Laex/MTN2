@@ -691,6 +691,12 @@ begin
       FJobs.BackgroundJob;
     FDialog.Close;
   end
+  else if DialogCmdIs(AControlId, cDlgCmdPanel) then
+  begin
+    if Assigned(FJobs) then
+      FJobs.PanelJob;
+    FDialog.Close;
+  end
   else if Assigned(FJobs) and (FJobs.Phase = pjpError) then
   begin
     FJobs.CloseJobUi;

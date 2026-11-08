@@ -136,6 +136,8 @@ type
     Stopping: Boolean;
     /// <summary>pjkPlugin: text the chip shows in place of the percentage.</summary>
     Badge: string;
+    /// <summary>pjkPlugin: the job can keep its results in the panel (its dialog has a Panel button).</summary>
+    CanAttach: Boolean;
   end;
 
   TSortMenuItem = record

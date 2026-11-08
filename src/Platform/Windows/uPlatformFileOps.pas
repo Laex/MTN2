@@ -17,6 +17,11 @@ procedure PlatformFillEntry(const SR: TSearchRec; var AEntry: TVfsEntry);
 /// <summary>True when a FindFirst result code means "access denied".</summary>
 function PlatformSearchDenied(ACode: Integer): Boolean;
 
+/// <summary>True when the scan record is a directory symbolic link or junction,
+/// which a recursive walk must not enter (it can point back at an ancestor).
+/// Other reparse points (cloud placeholders) are ordinary folders.</summary>
+function PlatformIsDirectoryLink(const SR: TSearchRec): Boolean;
+
 /// <summary>True when E reports an access-denied failure of a file operation.</summary>
 function PlatformIsAccessDenied(E: Exception): Boolean;
 
@@ -119,6 +124,19 @@ end;
 function PlatformSearchDenied(ACode: Integer): Boolean;
 begin
   Result := ACode = ERROR_ACCESS_DENIED;
+end;
+
+function PlatformIsDirectoryLink(const SR: TSearchRec): Boolean;
+const
+  cReparseTagMountPoint = $A0000003;
+  cReparseTagSymlink = $A000000C;
+begin
+  {$WARN SYMBOL_PLATFORM OFF}
+  Result := ((SR.Attr and faDirectory) <> 0) and
+    ((SR.Attr and faSymLink) <> 0) and
+    ((SR.FindData.dwReserved0 = cReparseTagMountPoint) or
+     (SR.FindData.dwReserved0 = cReparseTagSymlink));
+  {$WARN SYMBOL_PLATFORM ON}
 end;
 
 // A failed create/write/move raises an exception that carries the Win32 error

@@ -103,8 +103,8 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
   rectangular blocks, bookmarks, and auto-indent.
 - **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin), plugin VFS.
 - **Search (`Alt+F7`):** by mask, content (UTF-8, UTF-16, Windows-1251, CP866), hex bytes with `??` wildcards, size, date and attributes.
-  Results appear in a panel while the search runs (up to 50,000 files) and behave like an ordinary folder.
-- **Compare and synchronize:** folders by time, size or content (in the background, can be interrupted); two files with a line-by-line diff
+  Results appear in a panel while the search runs (up to 50,000 files) and behave like an ordinary folder. A running search can be sent to the background (a chip in the tab row counts the files found) or kept in the panel, where the list keeps growing.
+- **Compare and synchronize:** folders by time, size or content (in the background, can be interrupted); two files or groups of marked files with a line-by-line diff
   (`Ctrl+Alt+C`); directory synchronization; jump to the same-named file in the other panel (`Ctrl+Alt+M`).
 - **Logs and binaries:** follow the end of a growing file (`Ctrl+Shift+F`, handles log rotation), byte search in hex mode,
   highlighting of plain text files and pictures in quick view.

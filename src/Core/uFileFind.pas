@@ -1127,7 +1127,8 @@ begin
                         List.Add(MakeFindHit(Full, SR, True, 0, ''));
                         QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
                       end;
-                      if Opts.Subdirs then
+                      // A link to an ancestor would make the walk endless.
+                      if Opts.Subdirs and not PlatformIsDirectoryLink(SR) then
                         Stack.Push(Full);
                     end
                     else

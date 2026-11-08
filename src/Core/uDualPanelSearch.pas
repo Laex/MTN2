@@ -31,6 +31,9 @@ type
     AMask: string; const AHits: TArray<TFindHit>);
   /// <summary>True while some panel tab still shows the find session.</summary>
   TSearchSessionShownFunc = reference to function(const ASessionId: string): Boolean;
+  /// <summary>The id of the find session the active panel shows; empty when
+  /// it shows none.</summary>
+  TSearchCurrentSessionFunc = reference to function: string;
 
   /// <summary>A search sent to the background: it has its own job-list entry
   /// and chip, and lives until its results are closed.</summary>
@@ -48,6 +51,9 @@ type
     /// <summary>A panel shows the session now; it is hidden again when the
     /// search goes back to the background.</summary>
     Opened: Boolean;
+    /// <summary>The user chose to keep the results in the panel without the
+    /// progress dialog; hiding the dialog then leaves the panel alone.</summary>
+    Attached: Boolean;
     JobKey: string;
   end;
 
@@ -76,6 +82,7 @@ type
     FOnOpenSession: TSearchSessionOpenEvent;
     FOnUpdateSession: TSearchSessionUpdateEvent;
     FOnSessionShown: TSearchSessionShownFunc;
+    FOnCurrentSession: TSearchCurrentSessionFunc;
     function GetBackgroundCount: Integer;
     function FindBackground(AId: Integer): TBackgroundSearch;
     procedure OpenBackground(AId: Integer);
@@ -86,6 +93,7 @@ type
     procedure JobCancel(AId: Integer);
     procedure JobOpen(AId: Integer);
     procedure JobForeground(AId: Integer; AForeground: Boolean);
+    procedure JobAttach(AId: Integer);
     function JobIdOf(const AKey: string): Integer;
     procedure HandleSearchInputDialog(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char);
@@ -108,10 +116,12 @@ type
     /// background at once.</summary>
     procedure StartSearchInBackground;
     /// <summary>Hides the overlay of the running search and lets it go on as a
-    /// background search with a job of its own; the job opens its results.</summary>
-    procedure SendToBackground;
-    /// <summary>Ends the background searches whose results no panel shows any
-    /// more, and their jobs. Called whenever the panels change.</summary>
+    /// background search with a job of its own; the job opens its results.
+    /// AKeepPanel leaves the live results in the panel, where they go on growing.</summary>
+    procedure SendToBackground(AKeepPanel: Boolean = False);
+    /// <summary>Ends the finished background searches whose results no panel
+    /// shows any more, with their jobs; a search still running only stops
+    /// feeding a panel and goes on. Called whenever the panels change.</summary>
     procedure SweepBackgrounds;
     procedure GotoSearchResult;
     function HandleSearchInput(var AKey: Word; AShift: TShiftState;
@@ -156,6 +166,8 @@ type
       write FOnUpdateSession;
     property OnSessionShown: TSearchSessionShownFunc read FOnSessionShown
       write FOnSessionShown;
+    property OnCurrentSession: TSearchCurrentSessionFunc read FOnCurrentSession
+      write FOnCurrentSession;
   end;
 
 implementation
@@ -390,7 +402,11 @@ begin
     begin
       JobForeground(RunId, AForeground);
     end,
-    False);
+    False,
+    procedure
+    begin
+      JobAttach(RunId);
+    end);
   PluginJobUpdate(cJobOwner, FFgJobKey,
     T('ui.search.found', 'Found: %d', [0]) + #10 + Root, -1);
   PluginJobSetForeground(JobIdOf(FFgJobKey), True);
@@ -665,13 +681,49 @@ begin
   end;
   // A running search comes back with its progress dialog; the panel shows
   // its results only while that dialog (or the finished search) is open.
+  B.Attached := False;
   if not B.Done then
   begin
     JobId := JobIdOf(B.JobKey);
     if JobId > 0 then
       PluginJobSetForeground(JobId, True);
   end;
+  // Results the panel already shows stay where they are.
+  if B.Opened and Assigned(FOnSessionShown) and FOnSessionShown(B.SessionId) then
+    Exit;
   OpenBackground(AId);
+end;
+
+procedure TSearchController.JobAttach(AId: Integer);
+var
+  B: TBackgroundSearch;
+  JobId: Integer;
+begin
+  B := FindBackground(AId);
+  if B = nil then
+  begin
+    // The search of the progress dialog becomes a background search whose
+    // results stay in the panel.
+    if (AId = FRunId) and (FSearch.Phase = spRunning) and Assigned(FSearch.Cancel) and
+       not FSearch.Cancel.IsCancellationRequested then
+    begin
+      SendToBackground(True);
+      B := FindBackground(AId);
+    end;
+    if B = nil then
+      Exit;
+  end
+  else
+  begin
+    // A background search that came back with its dialog: the panel it opened
+    // stays, the dialog goes.
+    B.Attached := True;
+    JobId := JobIdOf(B.JobKey);
+    if JobId > 0 then
+      PluginJobSetForeground(JobId, False);
+  end;
+  if not B.Opened then
+    OpenBackground(AId);
 end;
 
 procedure TSearchController.JobForeground(AId: Integer; AForeground: Boolean);
@@ -684,7 +736,8 @@ begin
   if B <> nil then
   begin
     // Hiding the dialog of a search that still runs puts it away again.
-    if not B.Done and Assigned(B.Token) and not B.Token.IsCancellationRequested then
+    if not B.Done and not B.Attached and Assigned(B.Token) and
+       not B.Token.IsCancellationRequested then
       HideBackground(B);
     Exit;
   end;
@@ -693,10 +746,11 @@ begin
     SendToBackground;
 end;
 
-procedure TSearchController.SendToBackground;
+procedure TSearchController.SendToBackground(AKeepPanel: Boolean);
 var
   S: TBackgroundSearch;
   Id, JobId: Integer;
+  KeepSession: string;
 begin
   if FSearch.Phase <> spRunning then
     Exit;
@@ -716,7 +770,18 @@ begin
   // The overlay lets go of the walk; its callbacks now find the search by number.
   FSearch.Cancel := nil;
   FSearch.Phase := spNone;
-  if FResultsShown and Assigned(FOnHideResults) then
+  // The panel keeps the live results only when it shows a session this search
+  // can go on feeding.
+  KeepSession := '';
+  if AKeepPanel and FResultsShown and Assigned(FOnCurrentSession) then
+    KeepSession := FOnCurrentSession;
+  S.Attached := AKeepPanel;
+  if KeepSession <> '' then
+  begin
+    S.SessionId := KeepSession;
+    S.Opened := True;
+  end
+  else if FResultsShown and Assigned(FOnHideResults) then
   begin
     FOpening := True;
     try
@@ -742,6 +807,11 @@ begin
       procedure(AForeground: Boolean)
       begin
         JobForeground(Id, AForeground);
+      end,
+      True,
+      procedure
+      begin
+        JobAttach(Id);
       end)
   else
   begin
@@ -766,7 +836,16 @@ begin
   begin
     S := FBackgrounds[I];
     if S.Opened and not FOnSessionShown(S.SessionId) then
-      DropBackground(S.Id);
+    begin
+      if S.Done then
+        DropBackground(S.Id)
+      else
+      begin
+        // The user left the list: the search goes on without a panel.
+        S.Opened := False;
+        S.Attached := False;
+      end;
+    end;
   end;
 end;
 

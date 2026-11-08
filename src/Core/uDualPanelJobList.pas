@@ -121,6 +121,9 @@ type
       ARetryLimit: Integer = 0; const AExcludeMask: string = '');
     procedure ConfirmJob;
     procedure BackgroundJob;
+    /// <summary>The Panel button of a plugin job's progress dialog: the job goes on
+    /// in the background and keeps showing its results in the panel.</summary>
+    procedure PanelJob;
     procedure ForegroundJob;
     procedure ForegroundJobByIndex(AIndex: Integer);
     /// <summary>Brings job AId back: its progress or error dialog, or its
@@ -185,6 +188,7 @@ begin
     Result.CurrentName := AInfo.Text;
   Result.Stopping := AInfo.CancelRequested;
   Result.Badge := AInfo.Badge;
+  Result.CanAttach := AInfo.CanAttach;
   if AInfo.Percent >= 0 then
   begin
     Result.BytesTotal := 100;
@@ -984,6 +988,14 @@ begin
   Job := ActiveJob;
   if Job <> nil then
     Job.BackgroundJob;
+end;
+
+procedure TPanelJobList.PanelJob;
+var
+  Info: TPluginJobInfo;
+begin
+  if ForegroundPluginJob(Info) and Info.CanAttach then
+    PluginJobAttach(Info.Id);
 end;
 
 procedure TPanelJobList.ForegroundJob;

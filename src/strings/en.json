@@ -288,6 +288,7 @@
       "column_separators": "Vertical lines between columns (&X)",
       "editor_autoindent": "Editor a&uto-indent on Enter",
       "exact_sizes": "Show exact size in &bytes",
+      "dir_slash": "Show a slash after directory names",
       "ndn_footer": "NDN footer: t&wo extra lines (totals, free space)",
       "backspace_drive_menu": "Backspace in a drive root opens the &drive menu",
       "drive_other_folder": "Drive &change opens the other panel's folder",
@@ -527,6 +528,12 @@
     "DIALOG_JOBPROGRESSPLUGIN": {
       "$title": "Plugin",
       "background": "&Background",
+      "cancel": "Cancel"
+    },
+    "DIALOG_JOBPROGRESSSEARCH": {
+      "$title": "Search",
+      "background": "&Background",
+      "panel": "&Panel",
       "cancel": "Cancel"
     },
     "DIALOG_JOBPROGRESSERROR": {

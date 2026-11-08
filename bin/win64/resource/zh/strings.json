@@ -286,6 +286,7 @@
       "column_separators": "列之间显示竖线(&X)",
       "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
       "exact_sizes": "以字节显示精确大小(&B)",
+      "dir_slash": "在目录名后显示斜杠",
       "ndn_footer": "NDN 风格页脚(合计和可用空间)(&W)",
       "backspace_drive_menu": "在驱动器根目录按退格键打开驱动器菜单(&D)",
       "drive_other_folder": "切换驱动器时打开另一面板的文件夹(&C)",
@@ -525,6 +526,12 @@
     "DIALOG_JOBPROGRESSPLUGIN": {
       "$title": "插件",
       "background": "后台(&B)",
+      "cancel": "取消"
+    },
+    "DIALOG_JOBPROGRESSSEARCH": {
+      "$title": "搜索",
+      "background": "后台(&B)",
+      "panel": "到面板(&P)",
       "cancel": "取消"
     },
     "DIALOG_JOBPROGRESSERROR": {

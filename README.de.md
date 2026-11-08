@@ -102,8 +102,8 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
   Quick View (`Ctrl+Q`), Markdown-Vorschau, externer Viewer/Editor.
 - **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, FTP / FTPS / WebDAV / S3 (Plugin „Netzwerkverbindungen“), Plugin-VFS.
 - **Suche (`Alt+F7`):** nach Maske, Inhalt (UTF-8, UTF-16, Windows-1251, CP866), Hex-Bytes mit Platzhalter `??`, Größe, Datum und Attributen.
-  Treffer erscheinen schon während der Suche in einem Panel (bis zu 50.000 Dateien) und verhalten sich wie ein normaler Ordner.
-- **Vergleichen und Synchronisieren:** Ordner nach Zeit, Größe oder Inhalt (im Hintergrund, abbrechbar); zwei Dateien mit zeilenweisem Unterschied
+  Treffer erscheinen schon während der Suche in einem Panel (bis zu 50.000 Dateien) und verhalten sich wie ein normaler Ordner. Eine laufende Suche lässt sich in den Hintergrund schicken (ein Chip in der Tab-Zeile zählt die gefundenen Dateien) oder im Panel behalten, wo die Liste weiterwächst.
+- **Vergleichen und Synchronisieren:** Ordner nach Zeit, Größe oder Inhalt (im Hintergrund, abbrechbar); zwei Dateien oder Gruppen markierter Dateien mit zeilenweisem Unterschied
   (`Ctrl+Alt+C`); Verzeichnissynchronisierung; Sprung zur gleichnamigen Datei im anderen Panel (`Ctrl+Alt+M`).
 - **Logs und Binärdateien:** dem Ende einer wachsenden Datei folgen (`Ctrl+Shift+F`, mit Log-Rotation), Bytesuche im Hex-Modus,
   Hervorhebung von Textdateien und Bilder in der Schnellansicht.

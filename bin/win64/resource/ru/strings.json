@@ -285,6 +285,7 @@
       "column_separators": "Вертикальные линии между колонками (&X)",
       "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "exact_sizes": "&Точный размер в байтах",
+      "dir_slash": "Пока&зывать слэш после имени каталога",
       "ndn_footer": "Подвал как в &NDN (итоги и свободное место)",
       "backspace_drive_menu": "Backspace в корне диска открывает &меню дисков",
       "drive_other_folder": "Смена диска &открывает папку другой панели",
@@ -524,6 +525,12 @@
     "DIALOG_JOBPROGRESSPLUGIN": {
       "$title": "Плагин",
       "background": "&В фоне",
+      "cancel": "Отмена"
+    },
+    "DIALOG_JOBPROGRESSSEARCH": {
+      "$title": "Поиск",
+      "background": "&В фоне",
+      "panel": "В &панель",
       "cancel": "Отмена"
     },
     "DIALOG_JOBPROGRESSERROR": {

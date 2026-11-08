@@ -13,6 +13,7 @@ type
   public
     [Test] procedure TestCaptionsAndFooters;
     [Test] procedure TestExactSizeFormatAndFooter;
+    [Test] procedure DirectorySlashFollowsTheSetting;
     [Test] procedure TestSeparatorAndTitle;
     [Test] procedure TestDriveLetterHit;
     [Test] [Category('WindowsOnly')] procedure TestDrivePreviewHelpers;
@@ -1023,6 +1024,33 @@ begin
 end;
 
 { TTestDualPanelPanelDraw }
+
+procedure TTestDualPanelPanelDraw.DirectorySlashFollowsTheSetting;
+var
+  Saved: Boolean;
+  Dir, Parent, Fil: TPanelRow;
+begin
+  Dir := Default(TPanelRow);
+  Dir.Text := 'src/';
+  Dir.IsDirectory := True;
+  Parent := Default(TPanelRow);
+  Parent.Text := '..';
+  Parent.IsDirectory := True;
+  Parent.IsParent := True;
+  Fil := Default(TPanelRow);
+  Fil.Text := 'a.txt';
+  Saved := GDirSlash;
+  try
+    GDirSlash := True;
+    Assert.AreEqual('src/', PanelRowDisplayText(Dir), 'the slash is kept by default');
+    GDirSlash := False;
+    Assert.AreEqual('src', PanelRowDisplayText(Dir), 'a directory loses the slash');
+    Assert.AreEqual('..', PanelRowDisplayText(Parent), 'the parent row is unchanged');
+    Assert.AreEqual('a.txt', PanelRowDisplayText(Fil), 'a file is unchanged');
+  finally
+    GDirSlash := Saved;
+  end;
+end;
 
 procedure TTestDualPanelPanelDraw.TestExactSizeFormatAndFooter;
 begin

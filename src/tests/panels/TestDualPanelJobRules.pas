@@ -272,6 +272,12 @@ begin
   S.Cancel := nil;
   S.Kind := pjkDelete;
   Assert.IsTrue(JobProgressResourceName(S) = 'DIALOG_JOBPROGRESSDELETE', 'delete resource');
+  S.Kind := pjkPlugin;
+  Assert.IsTrue(JobProgressResourceName(S) = 'DIALOG_JOBPROGRESSPLUGIN', 'plugin resource');
+  S.CanAttach := True;
+  Assert.IsTrue(JobProgressResourceName(S) = 'DIALOG_JOBPROGRESSSEARCH',
+    'a job that can keep its results in the panel gets the Panel button');
+  S.CanAttach := False;
   S.Phase := pjpError;
   S.Message := '';
   Assert.IsTrue(JobProgressResourceName(S) = 'DIALOG_JOBPROGRESSERROR', 'error resource');

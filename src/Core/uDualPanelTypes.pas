@@ -278,6 +278,9 @@ function FileNameStem(const AName: string): string;
 function EllipsizeKeepingExt(const AText: string; AMaxLen: Integer): string;
 function PanelRowMaskName(const ARow: TPanelRow): string;
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;
+/// <summary>The name a panel row is drawn with: a directory loses its trailing
+/// slash when uDisplaySettings.GDirSlash is off.</summary>
+function PanelRowDisplayText(const ARow: TPanelRow): string;
 function TabHasSelectedDirectories(const ATab: TTab;
   const ARows: TPanelRows): Boolean;
 function CollectSelectedDirectoryUris(const ATab: TTab;
@@ -311,7 +314,7 @@ implementation
 
 uses
   System.Generics.Collections, System.Generics.Defaults, uFindSession, uFileFind,
-  uCharWidth, uPlatformPaths, uStrings;
+  uCharWidth, uPlatformPaths, uStrings, uDisplaySettings;
 
 function MakeTab(AId: Cardinal; const ATitle, AURI: string): TTab;
 begin
@@ -1260,6 +1263,14 @@ begin
     Dec(N);
     Result := EllipsizeKeepingExtChars(AText, N);
   end;
+end;
+
+function PanelRowDisplayText(const ARow: TPanelRow): string;
+begin
+  Result := ARow.Text;
+  if (not GDirSlash) and ARow.IsDirectory and not ARow.IsParent and
+     (Result <> '') and (Result[Length(Result)] = '/') then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;

@@ -25,6 +25,7 @@ type
     [Test] procedure ArchivesAreSearchedOnlyWhenAsked;
     [Test] procedure EncryptedArchiveEntriesAreListedButNotRead;
     [Test] procedure ArchiveHitsNameTheArchiveAndTheEntry;
+    [Test] procedure RecursiveWalkDoesNotEnterJunctions;
   end;
 
 implementation
@@ -684,6 +685,55 @@ begin
     Assert.IsTrue(Found[0].Entry.ModificationTime > 0, 'modification time');
   finally
     Done.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+function MakeJunction(const ALink, ATarget: string): Boolean;
+var
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+  Cmd: string;
+  Code: DWORD;
+begin
+  Cmd := 'cmd.exe /c mklink /J "' + ALink + '" "' + ATarget + '"';
+  UniqueString(Cmd);
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  SI.dwFlags := STARTF_USESHOWWINDOW;
+  SI.wShowWindow := SW_HIDE;
+  if not CreateProcess(nil, PChar(Cmd), nil, nil, False, CREATE_NO_WINDOW, nil,
+       nil, SI, PI) then
+    Exit(False);
+  WaitForSingleObject(PI.hProcess, 15000);
+  GetExitCodeProcess(PI.hProcess, Code);
+  CloseHandle(PI.hProcess);
+  CloseHandle(PI.hThread);
+  Result := (Code = 0) and TDirectory.Exists(ALink);
+end;
+
+procedure TTestFileFind.RecursiveWalkDoesNotEnterJunctions;
+var
+  Dir, Sub: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-find-loop-' + TPath.GetGUIDFileName(False));
+  Sub := TPath.Combine(Dir, 'sub');
+  TDirectory.CreateDirectory(Sub);
+  try
+    TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'x');
+    Assert.IsTrue(MakeJunction(TPath.Combine(Sub, 'loop'), Dir),
+      'the test junction is created');
+    Ev := TEvent.Create(nil, True, False, '');
+    try
+      WaitFind(Dir, '*.txt', True);
+    finally
+      Ev.Free;
+      Ev := nil;
+    end;
+    Assert.AreEqual<Integer>(1, Length(Paths),
+      'a junction back to an ancestor is not walked');
+  finally
+    RemoveDirectory(PChar(TPath.Combine(Sub, 'loop')));
     TDirectory.Delete(Dir, True);
   end;
 end;

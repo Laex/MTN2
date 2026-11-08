@@ -229,9 +229,9 @@ end;
 
 procedure TestInterfaceDialog;
 const
-  cChecks: array[0..11] of string = ('show_title_bar', 'show_menu_bar', 'show_key_bar',
+  cChecks: array[0..12] of string = ('show_title_bar', 'show_menu_bar', 'show_key_bar',
     'show_status_line', 'notifications', 'key_hints', 'alt_menu', 'file_drag',
-    'select_folders', 'pack_same_panel', 'editor_autoindent', 'exact_sizes');
+    'select_folders', 'pack_same_panel', 'editor_autoindent', 'exact_sizes', 'dir_slash');
 var
   LDecl: TDialogDeclaration;
   I, K: Integer;

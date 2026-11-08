@@ -28,6 +28,8 @@ type
     [Test] procedure TestLeavingTheResultsEndsTheSearch;
     [Test] procedure TestProgressDialogJobMovesTheSearchBetweenForegroundAndBackground;
     [Test] procedure TestStartSearchInBackgroundSkipsTheOverlay;
+    [Test] procedure TestPanelButtonKeepsTheResultsInThePanel;
+    [Test] procedure TestOpeningAnAttachedSearchKeepsItsPanel;
     [Test] procedure TestFinishedSearchWithoutHitsLeavesNoJob;
     [Test] procedure TestCancellingAFinishedSearchDiscardsIt;
   end;
@@ -730,6 +732,144 @@ begin
   end;
 end;
 
+procedure TestPanelButtonKeepsTheResultsInThePanel;
+var
+  C: TSearchController;
+  Dir: string;
+  Key: Word;
+  KeyChar: Char;
+  Jobs: TArray<TPluginJobInfo>;
+  Opened, Hidden, Reported: Integer;
+  Shown: Boolean;
+begin
+  Dir := MakeTree('MTN2_TestBgPanel', ['a.txt', 'b.txt']);
+  C := MakeController;
+  try
+    Opened := 0;
+    Hidden := 0;
+    Reported := -1;
+    Shown := True;
+    C.OnOpenSession :=
+      function(var ASessionId: string; const ARoot, AMask: string;
+        const AHits: TArray<TFindHit>): Boolean
+      begin
+        Inc(Opened);
+        ASessionId := 'S1';
+        Result := True;
+      end;
+    C.OnHideResults :=
+      procedure
+      begin
+        Inc(Hidden);
+      end;
+    C.OnSessionShown :=
+      function(const ASessionId: string): Boolean
+      begin
+        Result := Shown;
+      end;
+    C.OnBackgroundDone :=
+      procedure(AFound: Integer)
+      begin
+        Reported := AFound;
+      end;
+    C.Phase := spDialog;
+    C.RootPath := Dir;
+    C.Mask := '*.txt';
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    Jobs := PluginJobSnapshot;
+    Assert.IsTrue(Jobs[0].CanAttach, 'the search dialog offers the Panel button');
+
+    Assert.IsTrue(PluginJobAttach(Jobs[0].Id), 'the job has an attach handler');
+    Assert.IsTrue(C.Phase = spNone, 'the progress dialog is gone');
+    Assert.AreEqual(1, C.BackgroundCount, 'the search goes on in the background');
+    Assert.AreEqual(1, Opened, 'the panel shows its results');
+    Assert.AreEqual(0, Hidden, 'and keeps them');
+    Assert.IsFalse(PluginJobSnapshot[0].Foreground, 'no dialog is up');
+
+    C.SweepBackgrounds;
+    Assert.AreEqual(1, C.BackgroundCount, 'a shown search is not swept');
+
+    Shown := False;
+    C.SweepBackgrounds;
+    Assert.AreEqual(1, C.BackgroundCount, 'leaving the list does not end a running search');
+    Assert.AreEqual(1, Integer(Length(PluginJobSnapshot)), 'its job stays');
+
+    Assert.IsTrue(PluginJobOpen(Jobs[0].Id), 'the job opens again');
+    Assert.AreEqual(2, Opened, 'the panel is back on the results');
+    Assert.IsTrue(PluginJobSnapshot[0].Foreground, 'with the progress dialog');
+    PluginJobSetForeground(Jobs[0].Id, False);
+    Assert.AreEqual(1, Hidden, 'hiding that dialog takes the results out of the panel');
+
+    WaitWhile(
+      function: Boolean
+      begin
+        Result := not JobsDone;
+      end);
+    Assert.AreEqual(2, Reported, 'a finished search nobody watches is reported');
+  finally
+    C.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TestOpeningAnAttachedSearchKeepsItsPanel;
+var
+  C: TSearchController;
+  Dir: string;
+  Key: Word;
+  KeyChar: Char;
+  Jobs: TArray<TPluginJobInfo>;
+  Opened, Hidden: Integer;
+begin
+  Dir := MakeTree('MTN2_TestBgPanelReopen', ['a.txt']);
+  C := MakeController;
+  try
+    Opened := 0;
+    Hidden := 0;
+    C.OnOpenSession :=
+      function(var ASessionId: string; const ARoot, AMask: string;
+        const AHits: TArray<TFindHit>): Boolean
+      begin
+        Inc(Opened);
+        ASessionId := 'S1';
+        Result := True;
+      end;
+    C.OnHideResults :=
+      procedure
+      begin
+        Inc(Hidden);
+      end;
+    C.OnSessionShown :=
+      function(const ASessionId: string): Boolean
+      begin
+        Result := True;
+      end;
+    C.Phase := spDialog;
+    C.RootPath := Dir;
+    C.Mask := '*.txt';
+    Key := vkReturn;
+    KeyChar := #0;
+    C.HandleSearchInput(Key, [], KeyChar);
+    Jobs := PluginJobSnapshot;
+    PluginJobAttach(Jobs[0].Id);
+    Assert.AreEqual(1, Opened);
+
+    Assert.IsTrue(PluginJobOpen(Jobs[0].Id), 'the chip brings the dialog back');
+    Assert.AreEqual(1, Opened, 'the panel that already shows the results is not reopened');
+    Assert.IsTrue(PluginJobSnapshot[0].Foreground);
+
+    Assert.IsTrue(PluginJobAttach(Jobs[0].Id), 'the dialog offers the Panel button again');
+    Assert.IsFalse(PluginJobSnapshot[0].Foreground, 'the dialog goes');
+    Assert.AreEqual(0, Hidden, 'the panel stays');
+    Assert.AreEqual(1, C.BackgroundCount);
+  finally
+    C.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
 procedure TestFinishedSearchWithoutHitsLeavesNoJob;
 var
   C: TSearchController;
@@ -856,6 +996,16 @@ end;
 procedure TTestSearchController.TestProgressDialogJobMovesTheSearchBetweenForegroundAndBackground;
 begin
   TestSearchController.TestProgressDialogJobMovesTheSearchBetweenForegroundAndBackground;
+end;
+
+procedure TTestSearchController.TestPanelButtonKeepsTheResultsInThePanel;
+begin
+  TestSearchController.TestPanelButtonKeepsTheResultsInThePanel;
+end;
+
+procedure TTestSearchController.TestOpeningAnAttachedSearchKeepsItsPanel;
+begin
+  TestSearchController.TestOpeningAnAttachedSearchKeepsItsPanel;
 end;
 
 procedure TTestSearchController.TestStartSearchInBackgroundSkipsTheOverlay;

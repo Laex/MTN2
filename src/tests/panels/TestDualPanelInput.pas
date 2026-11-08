@@ -1217,6 +1217,11 @@ begin
     Key := vkReturn;
     Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on Background');
     Assert.IsTrue(Spy.CmdId = 'background', 'Enter on Background sends the job to the background');
+    Spy.CmdId := '';
+    Spy.Last := 'panel';
+    Key := vkReturn;
+    Assert.IsTrue(DispatchModalDialogInput(Host, hdkJobProgress, Key, [], Ch), 'Enter on Panel');
+    Assert.IsTrue(Spy.CmdId = 'panel', 'Enter on Panel keeps the results in the panel');
 
     Spy.Hotlist := True;
     Key := vkDelete;

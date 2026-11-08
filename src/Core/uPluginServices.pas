@@ -169,6 +169,8 @@ type
     Percent: Integer;
     /// <summary>Short text for the tab-bar chip (a counter, say); '' = the chip shows progress.</summary>
     Badge: string;
+    /// <summary>The job has an attach handler: its progress dialog offers a Panel button.</summary>
+    CanAttach: Boolean;
     CancelRequested: Boolean;
     /// <summary>The user opened the job's progress dialog; false = it runs in the background.</summary>
     Foreground: Boolean;
@@ -180,10 +182,12 @@ type
 /// job's progress dialog. AOnForeground runs after the progress dialog of the job
 /// is shown (True) or hidden (False). AAnnounce False starts the job without the
 /// "started in the background" notice; PluginJobAnnounce shows it later.
+/// AOnAttach runs when the user picks the Panel button of the progress dialog:
+/// the job goes on in the background and keeps its results in the panel.
 /// Main thread only.</summary>
 procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc;
   const AOnOpen: TProc = nil; const AOnForeground: TProc<Boolean> = nil;
-  AAnnounce: Boolean = True);
+  AAnnounce: Boolean = True; const AOnAttach: TProc = nil);
 /// <summary>Shows the "started in the background" notice of a job begun quietly.</summary>
 procedure PluginJobAnnounce(const APluginId, AKey: string);
 /// <summary>Id of the job AKey of a plugin; 0 when there is none.</summary>
@@ -199,6 +203,8 @@ function PluginJobSnapshot: TArray<TPluginJobInfo>;
 function PluginJobCancel(AId: Integer): Boolean;
 /// <summary>Runs the open handler of job AId; False when it has none.</summary>
 function PluginJobOpen(AId: Integer): Boolean;
+/// <summary>Runs the attach handler of job AId; False when it has none.</summary>
+function PluginJobAttach(AId: Integer): Boolean;
 /// <summary>Shows (True) or hides (False) the progress dialog of job AId.</summary>
 procedure PluginJobSetForeground(AId: Integer; AForeground: Boolean);
 /// <summary>Called on the main thread whenever a plugin job starts, changes or ends.</summary>
@@ -236,6 +242,7 @@ type
     OnCancel: TProc;
     OnOpen: TProc;
     OnForeground: TProc<Boolean>;
+    OnAttach: TProc;
   end;
 
 var
@@ -558,7 +565,8 @@ begin
 end;
 
 procedure PluginJobBegin(const APluginId, AKey, ATitle: string; const AOnCancel: TProc;
-  const AOnOpen: TProc; const AOnForeground: TProc<Boolean>; AAnnounce: Boolean);
+  const AOnOpen: TProc; const AOnForeground: TProc<Boolean>; AAnnounce: Boolean;
+  const AOnAttach: TProc);
 var
   Entry: TPluginJobEntry;
   I: Integer;
@@ -578,6 +586,8 @@ begin
   Entry.OnCancel := AOnCancel;
   Entry.OnOpen := AOnOpen;
   Entry.OnForeground := AOnForeground;
+  Entry.OnAttach := AOnAttach;
+  Entry.Info.CanAttach := Assigned(AOnAttach);
   GJobs.Add(Entry);
   if AAnnounce then
     PluginJobAnnounce(APluginId, AKey);
@@ -615,6 +625,28 @@ begin
     if GJobs[I].Info.Id = AId then
     begin
       Handler := GJobs[I].OnOpen;
+      if not Assigned(Handler) then
+        Exit;
+      Result := True;
+      try
+        Handler();
+      except
+        // A faulty handler must not break the host.
+      end;
+      Exit;
+    end;
+end;
+
+function PluginJobAttach(AId: Integer): Boolean;
+var
+  I: Integer;
+  Handler: TProc;
+begin
+  Result := False;
+  for I := 0 to GJobs.Count - 1 do
+    if GJobs[I].Info.Id = AId then
+    begin
+      Handler := GJobs[I].OnAttach;
       if not Assigned(Handler) then
         Exit;
       Result := True;

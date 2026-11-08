@@ -1731,12 +1731,13 @@ end;
 function JobProgressEnterSwallowed(const AHost: TDualPanelModalInputHost;
   AKind: THostDialogKind; AKey: Word): Boolean;
 begin
-  // Enter presses the focused Background or Cancel like a click (Cancel only
-  // asks whether to stop). With no such button focused it is swallowed, so
+  // Enter presses the focused Background, Panel or Cancel like a click (Cancel
+  // only asks whether to stop). With no such button focused it is swallowed, so
   // it never acts on the job by accident.
   Result := (AKey = vkReturn) and (AKind = hdkJobProgress) and
     not (Assigned(AHost.FocusedOrDefaultButtonId) and
          (DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdBackground) or
+          DialogCmdIs(AHost.FocusedOrDefaultButtonId(), cDlgCmdPanel) or
           DialogCmdIsCancel(AHost.FocusedOrDefaultButtonId())));
 end;
 
