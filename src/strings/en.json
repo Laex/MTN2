@@ -806,7 +806,8 @@
       "ok": "Go",
       "save": "&Save",
       "cancel": "Cancel",
-      "wsHeader": "Name                                            Links"
+      "wsHeader": "Name                                            Links",
+      "wsHint": "Ins - save    F2 - rename    Del - delete"
     }
   },
   "ui": {

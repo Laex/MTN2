@@ -805,7 +805,8 @@
       "ok": "Gehe zu",
       "save": "&Speichern",
       "cancel": "Abbrechen",
-      "wsHeader": "Name                                            Links"
+      "wsHeader": "Name                                            Links",
+      "wsHint": "Einfg - speichern  F2 - umbenennen  Entf - löschen"
     }
   },
   "ui": {

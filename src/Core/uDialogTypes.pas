@@ -1401,6 +1401,9 @@ begin
   if ALiveCaption <> '' then
     Title := Title + ' ' + #$2014 + ' ' + ALiveCaption;
   DialogSetTitle(Result, Title);
+  // The keys belong to the library list; the pick list (own title) has none.
+  if ATitle <> '' then
+    DialogSetLabelText(Result, 'wsHint', '');
   if Length(AItems) = 0 then
   begin
     SetLength(Items, 1);

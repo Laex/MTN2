@@ -804,7 +804,8 @@
       "$title": "工作区",
       "ok": "转到",
       "save": "保存(&S)",
-      "cancel": "取消"
+      "cancel": "取消",
+      "wsHint": "Ins - 保存    F2 - 重命名    Del - 删除"
     }
   },
   "ui": {

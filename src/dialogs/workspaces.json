@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Workspaces",
   "width": 62,
-  "height": 18,
+  "height": 20,
   "children": [
     {
       "type": "label",
@@ -34,12 +34,28 @@
       "height": 1
     },
     {
+      "type": "separator",
+      "col": 0,
+      "row": 14,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "wsHint",
+      "text": "Ins - save    F2 - rename    Del - delete",
+      "col": 1,
+      "row": 13,
+      "width": 58,
+      "height": 1
+    },
+    {
       "type": "button",
       "id": "ok",
       "text": "Go",
       "default": true,
       "col": 13,
-      "row": 14,
+      "row": 16,
       "width": 10,
       "height": 1
     },
@@ -48,7 +64,7 @@
       "id": "save",
       "text": "&Save",
       "col": 25,
-      "row": 14,
+      "row": 16,
       "width": 10,
       "height": 1
     },
@@ -58,7 +74,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 37,
-      "row": 14,
+      "row": 16,
       "width": 10,
       "height": 1
     }
