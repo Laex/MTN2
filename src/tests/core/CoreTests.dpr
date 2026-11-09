@@ -37,6 +37,7 @@ uses
   TestPluginInputChord in 'TestPluginInputChord.pas',
   TestResourceScripts in 'TestResourceScripts.pas',
   TestMessageBus in 'TestMessageBus.pas',
+  TestCellEdges in 'TestCellEdges.pas',
   TestMenuNavigation in 'TestMenuNavigation.pas',
   TestPluginMenu in 'TestPluginMenu.pas',
   TestSelfCheck in 'TestSelfCheck.pas',

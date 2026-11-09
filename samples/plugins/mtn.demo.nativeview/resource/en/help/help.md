@@ -4,7 +4,7 @@ Shows how a plugin gets a window of its own inside the program.
 
 ## Use
 
-Press **Ctrl+Shift+G** over the file panels. A tab opens; its area is a window drawn by the plugin: a gradient, a bouncing ball and a mark where you click. **Space** pauses the ball, **Esc** closes the tab. A dialog or the menu opened over the tab hides the window until it is closed.
+Press **Ctrl+Alt+F5** over the file panels. A tab opens; its area is a window drawn by the plugin: a gradient, a bouncing ball and a mark where you click. **Space** pauses the ball, **Esc** closes the tab. A dialog or the menu opened over the tab hides the window until it is closed.
 
 ## For authors
 

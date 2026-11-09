@@ -136,6 +136,18 @@ begin
     Result := Buf[0] <> #0;
 end;
 
+/// <summary>True for an existing file, including a Store app-execution alias:
+/// that reparse point cannot be opened, so FileExists / TFile.Exists reject it,
+/// while its attributes are readable.</summary>
+function ExecutableFileExists(const APath: string): Boolean;
+var
+  Attrs: DWORD;
+begin
+  Attrs := GetFileAttributes(PChar(APath));
+  Result := (Attrs <> INVALID_FILE_ATTRIBUTES) and
+    (Attrs and FILE_ATTRIBUTE_DIRECTORY = 0);
+end;
+
 function FindPwshExe(out APwshExe: string): Boolean;
 var
   Candidates: TArray<string>;
@@ -155,7 +167,7 @@ begin
     TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Microsoft\WindowsApps\pwsh.exe'),
     TPath.Combine(GetEnvironmentVariable('ProgramFiles'), 'PowerShell\7\pwsh.exe')];
   for Candidate in Candidates do
-    if (Candidate <> '') and TFile.Exists(Candidate) then
+    if (Candidate <> '') and ExecutableFileExists(Candidate) then
     begin
       APwshExe := Candidate;
       Exit(True);

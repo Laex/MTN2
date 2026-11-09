@@ -10,6 +10,9 @@ uses
 
 procedure StartPluginHost(const APluginsDir: string);
 procedure StopPluginHost;
+/// <summary>Loads the running plugins again so the text they registered (menu
+/// captions, commands) follows the program language. Call after SetLocale.</summary>
+procedure HostReloadPlugins;
 /// <summary>True when the mtn.7z plugin is installed but has no archive engine
 /// (7z.dll next to it, or a 7-Zip program), so 7z / RAR / encrypted archives
 /// cannot be opened.</summary>
@@ -68,6 +71,9 @@ function HostEnsurePluginScheme(const AScheme: string): Boolean;
 /// <summary>Load the catalogued plugin whose manifest lists this file's
 /// archive extension. No-op when already loaded.</summary>
 function HostEnsureArchiveExtension(const AFileName: string): Boolean;
+/// <summary>Load the catalogued plugin whose manifest lists this file in
+/// highlightExtensions. No-op when already loaded.</summary>
+function HostEnsureHighlightFile(const AFileName: string): Boolean;
 /// <summary>Load every catalogued plugin so menu items and key rebinds
 /// exist. Cheap after the first call.</summary>
 procedure HostEnsureAllPlugins;
@@ -88,7 +94,8 @@ implementation
 uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
-  uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings;
+  uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings,
+  uPluginHighlight;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -229,6 +236,11 @@ begin
   Result := PluginLoader.EnsureArchiveExtension(AFileName);
 end;
 
+function HostEnsureHighlightFile(const AFileName: string): Boolean;
+begin
+  Result := PluginLoader.EnsureHighlightFile(AFileName);
+end;
+
 procedure HostEnsureAllPlugins;
 begin
   PluginLoader.EnsureAll;
@@ -239,6 +251,11 @@ begin
   PluginLoader.UnloadAll;
   SetPluginHelpResolver(nil);
   GPluginsDir := '';
+end;
+
+procedure HostReloadPlugins;
+begin
+  PluginLoader.ReloadLoadedPlugins;
 end;
 
 function HostLoadedPluginIds: TArray<string>;
@@ -580,5 +597,6 @@ end;
 
 initialization
   SetVfsLazyLoad(HostEnsurePluginScheme, HostEnsureArchiveExtension);
+  SetHighlightLazyLoad(HostEnsureHighlightFile);
 
 end.

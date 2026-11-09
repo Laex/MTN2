@@ -5,8 +5,8 @@
   "abi": 2,
   "startup": true,
   "description": {
-    "en": "The smallest useful plugin, written in WebAssembly text: Ctrl+Alt+F7 adds one to a counter shown in the status line.",
-    "ru": "Самый маленький полезный плагин на тексте WebAssembly: Ctrl+Alt+F7 прибавляет единицу к счётчику в строке состояния."
+    "en": "The smallest useful plugin, written in WebAssembly text: Ctrl+Alt+F11 adds one to a counter shown in the status line.",
+    "ru": "Самый маленький полезный плагин на тексте WebAssembly: Ctrl+Alt+F11 прибавляет единицу к счётчику в строке состояния."
   },
   "author": "MTN2 samples",
   "help": "help.md"

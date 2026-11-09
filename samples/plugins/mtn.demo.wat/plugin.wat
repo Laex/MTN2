@@ -1,5 +1,5 @@
 ;; Demo plugin in WebAssembly text: a counter that lives in the plugin.
-;; Ctrl+Alt+F7 ("Count" in the function bar) adds one and shows the number in
+;; Ctrl+Alt+F11 ("Count" in the function bar) adds one and shows the number in
 ;; the status line.
 ;;
 ;; Shows: the smallest useful WASM plugin - host imports with (ptr, len)
@@ -26,7 +26,7 @@
   (data (i32.const 64) "Count")
   (data (i32.const 80) "count")
   (data (i32.const 96) "Count: ")
-  (data (i32.const 128) "Ctrl+Alt+F7")
+  (data (i32.const 128) "Ctrl+Alt+F11")
 
   (global $count (mut i32) (i32.const 0))
 
@@ -60,7 +60,7 @@
 
   (func (export "mtn_plugin_init") (result i32)
     (drop (call $register_command (i32.const 16) (i32.const 14) (i32.const 48) (i32.const 8)))
-    (drop (call $bind (i32.const 16) (i32.const 14) (i32.const 128) (i32.const 11)))
+    (drop (call $bind (i32.const 16) (i32.const 14) (i32.const 128) (i32.const 12)))
     (drop (call $set_caption (i32.const 16) (i32.const 14) (i32.const 64) (i32.const 5)))
     (call $show)
     (i32.const 0))

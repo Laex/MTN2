@@ -366,6 +366,7 @@ begin
   if not GFontSettingsApply then
     RemoveFontControls(Decl);
   DialogSetCheckbox(Decl, 'caret_underline', Cur.CaretUnderline);
+  DialogSetCheckbox(Decl, 'edge_borders', Cur.EdgeBorders);
   FDialog.Open(Decl, FOnCommand);
   Notify;
 end;
@@ -771,6 +772,7 @@ begin
     Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
     Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
     Disp.CaretUnderline := FDialog.GetCheckbox('caret_underline');
+    Disp.EdgeBorders := FDialog.GetCheckbox('edge_borders');
     Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
     Disp.SnapFontSize := FDialog.GetCheckbox('snap_font_size');
     Disp.TextContrast := ClampTextContrast(FDialog.GetListSelectedIndex('text_contrast'));

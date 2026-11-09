@@ -835,10 +835,10 @@ begin
   try
     Assert.IsTrue(StageAndLoad('mtn.demo.wat'), 'the WAT plugin loads');
     Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 0', 'initial status');
-    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF7, [ssCtrl, ssAlt], Id) and (Id = 'demo.wat.count'),
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF11, [ssCtrl, ssAlt], Id) and (Id = 'demo.wat.count'),
       'the guest bound its chord');
-    Assert.IsTrue(PluginFBarLabel(vkF7, [ssCtrl, ssAlt]) = 'Count', 'the bar caption');
-    Assert.IsTrue(TryRunBoundCommand(vkF7, [ssCtrl, ssAlt]) and TryRunBoundCommand(vkF7, [ssCtrl, ssAlt]),
+    Assert.IsTrue(PluginFBarLabel(vkF11, [ssCtrl, ssAlt]) = 'Count', 'the bar caption');
+    Assert.IsTrue(TryRunBoundCommand(vkF11, [ssCtrl, ssAlt]) and TryRunBoundCommand(vkF11, [ssCtrl, ssAlt]),
       'the chord runs the command');
     Assert.IsTrue(string.Join(',', PluginChrome.StatusSegments) = 'Count: 2', 'the counter counts');
     CommandRegistry.TryExecute('demo.wat.count');

@@ -7,7 +7,7 @@ The plugin shows pictures in a viewer tab of MTN2, scaled to fit the tab.
 - Put the cursor on a picture (`.jpg`, `.jpeg`, `.png`, `.bmp`, `.gif`, `.tif`, `.tiff`, `.webp`) and press **F3**.
 - **Right**, **Down** or **Space** shows the next picture of the folder, **Left**, **Up** or **Backspace** the previous one; the order is by name.
 - The mouse wheel zooms around the pointer, dragging with the left button moves the picture, a double click switches between fit and 100 %. **+**, **-**, **0** and **1** zoom in, out, fit and 100 %; **r** rotates clockwise, **f** switches full screen.
-- **Ctrl+Shift+V** shows the picture under the panel cursor in the other panel and follows the cursor; press it again to close; **Ctrl+Shift+Y** rotates that picture.
+- **Ctrl+Shift+I** shows the picture under the panel cursor in the other panel and follows the cursor; press it again to close; **Ctrl+Shift+Y** rotates that picture.
 - **Esc** leaves full screen first, then closes the tab (**F10** closes at once). The status line shows the picture size and its place in the folder.
 - An animated GIF is shown as its first frame. A picture over 4096 pixels on a side is shrunk first. The EXIF orientation of photos is applied.
 

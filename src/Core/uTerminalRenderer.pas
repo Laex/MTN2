@@ -409,6 +409,7 @@ end;
 constructor TTerminalRenderer.Create;
 begin
   inherited Create;
+  GEdgeBordersDrawn := True;
   FFrames[0] := TBitmap.Create;
   FFrames[1] := TBitmap.Create;
   FFrontIndex := 0;
@@ -1192,10 +1193,11 @@ end;
 
 procedure TTerminalRenderer.PaintDecorations(ACanvas: TCanvas);
 var
-  X, Y, LastX, DevL, DevR, DevT, DevB, UlDev, CaretDev: Integer;
+  X, Y, LastX, DevL, DevR, DevT, DevB, UlDev, CaretDev, BoxT: Integer;
   Sc: Single;
   Row: TTerminalRow;
   Attrs: TCharCellAttributes;
+  EdgeRect: TRect;
 begin
   Sc := FSceneScale;
   if Sc <= 0 then
@@ -1211,7 +1213,8 @@ begin
     for X := 0 to LastX do
     begin
       Attrs := Row[X].Attributes;
-      if Attrs * [ccaUnderline, ccaStrike, ccaInsertCaret] = [] then
+      if (Attrs * [ccaUnderline, ccaStrike, ccaInsertCaret] = []) and
+         (Row[X].Edges = []) then
         Continue;
       DevL := Round(FXLeft[X] * Sc);
 
@@ -1255,6 +1258,25 @@ begin
         else
           ACanvas.FillRect(RectF(DevL / Sc, DevT / Sc, (DevL + CaretDev) / Sc, DevB / Sc),
             0, 0, [], 1);
+      end;
+
+      // Edge lines along the outer sides of the cell, over its text; the cell's
+      // own pixels, so neighbouring cells' lines meet without gaps.
+      if Row[X].Edges <> [] then
+      begin
+        ACanvas.Fill.Color := Row[X].EdgeColor;
+        DevT := Round(Y * FCellHeight * Sc);
+        DevB := Round((Y + 1) * FCellHeight * Sc);
+        DevR := Round((X + 1) * FCellWidth * Sc);
+        // The box-drawing line weight and middle line of DrawBoxGlyph.
+        BoxT := Max(1, Round(Min(DevR - Round(X * FCellWidth * Sc), DevB - DevT) * 0.11));
+        if Row[X].EdgeThick > 0 then
+          BoxT := Row[X].EdgeThick * UlDev;
+        for EdgeRect in CellEdgeRects(Row[X].Edges, DevL, Round(FYTop[Y] * Sc),
+          Round(FXLeft[X + 1] * Sc), Round(FYTop[Y + 1] * Sc),
+          BoxT, Row[X].EdgeSpan, (DevT + DevB) div 2) do
+          ACanvas.FillRect(RectF(EdgeRect.Left / Sc, EdgeRect.Top / Sc,
+            EdgeRect.Right / Sc, EdgeRect.Bottom / Sc), 0, 0, [], 1);
       end;
     end;
   end;

@@ -13,8 +13,9 @@ unit uCommandRegistry;
 
   A plugin command has its own id (never a built-in name) and a handler. It
   runs from ExecuteCommand and from a key chord registered with
-  RegisterCommandBinding; a chord that a built-in keymap action already owns
-  stays with that action.
+  RegisterCommandBinding; a chord that a built-in keymap action or an earlier
+  plugin command already owns stays with its owner: the binding is refused and
+  the plugin's information dialog says so.
 
   Everything runs on the main thread. A hook or handler that raises is treated
   as if it had returned False / had not run, so a faulty plugin cannot break
@@ -125,13 +126,22 @@ type
     Binding: TKeyBinding;
   end;
 
+  TRejectedBinding = record
+    PluginId: string;
+    CommandId: string;
+    Chord: string;
+    Owner: string;
+  end;
+
   TCommandRegistry = class(TInterfacedObject, ICommandRegistry)
   private
     FHooks: TList<THookEntry>;
     FCommands: TList<TCommandEntry>;
     FBindings: TList<TBindingEntry>;
+    FRejected: TList<TRejectedBinding>;
     FRunning: TList<string>;
     function IndexOfCommand(const ACommandId: string): Integer;
+    function ChordOwner(const ABinding: TKeyBinding; const ACommandId: string): string;
     procedure SortHooks;
   public
     constructor Create;
@@ -172,12 +182,14 @@ begin
   FHooks := TList<THookEntry>.Create;
   FCommands := TList<TCommandEntry>.Create;
   FBindings := TList<TBindingEntry>.Create;
+  FRejected := TList<TRejectedBinding>.Create;
   FRunning := TList<string>.Create;
 end;
 
 destructor TCommandRegistry.Destroy;
 begin
   FRunning.Free;
+  FRejected.Free;
   FBindings.Free;
   FCommands.Free;
   FHooks.Free;
@@ -258,10 +270,29 @@ begin
     FCommands[I] := E;
 end;
 
+{ What already uses ABinding: a keymap action (display name), a key handled in
+  code, or another command of a plugin that registered its chord first; ''
+  when it is free. }
+function TCommandRegistry.ChordOwner(const ABinding: TKeyBinding;
+  const ACommandId: string): string;
+var
+  I: Integer;
+begin
+  Result := KeymapChordOwner(ABinding);
+  if Result <> '' then
+    Exit;
+  for I := 0 to FBindings.Count - 1 do
+    if SameKeyBinding(ABinding, FBindings[I].Binding) and
+       not SameText(FBindings[I].CommandId, ACommandId) then
+      Exit(FBindings[I].CommandId);
+  Result := '';
+end;
+
 procedure TCommandRegistry.RegisterCommandBinding(const APluginId, ACommandId,
   AKeyCombo: string);
 var
   E: TBindingEntry;
+  R: TRejectedBinding;
   I: Integer;
 begin
   E.PluginId := Trim(APluginId);
@@ -272,6 +303,15 @@ begin
   I := IndexOfCommand(E.CommandId);
   if (I < 0) or not SameText(FCommands[I].PluginId, E.PluginId) then
     Exit;
+  R.Owner := ChordOwner(E.Binding, E.CommandId);
+  if R.Owner <> '' then
+  begin
+    R.PluginId := E.PluginId;
+    R.CommandId := E.CommandId;
+    R.Chord := KeyBindingToStr(E.Binding);
+    FRejected.Add(R);
+    Exit;
+  end;
   FBindings.Add(E);
 end;
 
@@ -309,6 +349,7 @@ var
   E: TCommandEntry;
   B: TBindingEntry;
   H: THookEntry;
+  R: TRejectedBinding;
   Lines: TList<string>;
   Chords, Hooked, Line: string;
 begin
@@ -332,6 +373,10 @@ begin
           Line := Line + T('ui.plugininfo.commandLabel', ', bar label "%s"', [E.Caption]);
         Lines.Add(Line);
       end;
+    for R in FRejected do
+      if SameText(R.PluginId, APluginId) then
+        Lines.Add(T('ui.plugininfo.keyTaken', 'Key %s for %s is not bound: %s already uses it',
+          [R.Chord, R.CommandId, R.Owner]));
     Hooked := '';
     for H in FHooks do
       if SameText(H.PluginId, APluginId) then
@@ -375,6 +420,9 @@ begin
   for I := FBindings.Count - 1 downto 0 do
     if SameText(FBindings[I].PluginId, APluginId) then
       FBindings.Delete(I);
+  for I := FRejected.Count - 1 downto 0 do
+    if SameText(FRejected[I].PluginId, APluginId) then
+      FRejected.Delete(I);
 end;
 
 function TCommandRegistry.TryIntercept(const ACommand, AOrigin: string): Boolean;

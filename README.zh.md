@@ -92,7 +92,7 @@ Linux（`mtn2-tui`、`mtn2-sdl`）请见下文“安装指南”。程序在首�
 - **日志与二进制文件：** 跟随不断增长文件的末尾（`Ctrl+Shift+F`，支持日志轮转）、十六进制模式下的字节搜索、文本文件高亮、快速查看中的图片。
 - **命令行与自动化：** 按已输入前缀列出历史命令、为 shell 设置环境配置（`environment.json`）、`MTN2 路径1 路径2` 以标签页打开、`--view` 与 `--edit` 打开查看器和编辑器、`--update` 无窗口更新、将文件列表导出为 Markdown 或 CSV。
 - **宏：** “宏”插件运行用 Lua 编写的宏。`Ctrl+.` 把按下的按键录制到宏文件；宏可用自己的快捷键或在面板、查看器、编辑器和控制台的“宏”菜单中启动，启动前还能检查程序状态（区域、已标记文件、选区）。宏是普通文本文件，发行包附带三个示例（`samples\macros`）。说明见宏对话框中的 F1 帮助。
-- **Git 与其他：** “Git status” 插件在状态栏显示分支与变更数量，按 git 状态为面板中的文件名着色，Ctrl+Shift+D 在内置查看器中打开文件的 `git diff`；Ctrl+Shift+F12 跳转到常用文件夹；可选的面板 Vim 按键（`hjkl`、`g`、`G`、`/`、`:`）；带优先级的颜色分组；空闲时出现鲨鱼屏保。
+- **Git 与其他：** “Git status” 插件在状态栏显示分支与变更数量，按 git 状态为面板中的文件名着色，Ctrl+Shift+G 在内置查看器中打开文件的 `git diff`；Ctrl+Shift+F12 跳转到常用文件夹；可选的面板 Vim 按键（`hjkl`、`g`、`G`、`/`、`:`）；带优先级的颜色分组；空闲时出现鲨鱼屏保。
 - **个性化设置：** 可自定义快捷键映射（`keymap.json`）、基于文件的主题系统（Far Classic、Norton Commander、Midnight Commander、Total Commander、Gruvbox、Tokyo Night、Dracula、Nord、Solarized、Light、High Contrast 等；可通过内置主题编辑器创建自定义主题）、用户菜单（F2）、命令面板（`Shift+F9`，搜索菜单项）、文件关联、F1 上下文帮助。
 - **多语言：** 界面和帮助文档支持英语、俄语、德语和简体中文；语言可在 **选项 → 界面...**（Options → User interface...）中选择并实时生效，无需重启。可通过在 `MTN2.exe` 同级目录下放置 `resource\<语言代码>\` 文件夹（`locale.json`、`strings.json`，帮助文档在 `help\` 中）添加自定义语言，无需重新编译。程序内仅内置英语。
 - **Unicode：** CJK 汉字（基本多语言平面）、平假名、片假名、谚文及全角字符在控制台、面板、标签页和标题中均以双列宽度显示；缺失字符自动使用系统字体回退渲染。

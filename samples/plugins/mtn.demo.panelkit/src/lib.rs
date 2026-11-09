@@ -2,11 +2,11 @@
 //!
 //!   Ctrl+Shift+P  copy the full paths of the selected files (or the file under the cursor) to the
 //!                 clipboard, one per line
-//!   Ctrl+Shift+M  show the folder of the active panel in the other panel too
+//!   Ctrl+Shift+Q  show the folder of the active panel in the other panel too
 //!   Ctrl+Shift+X  select every file with the extension of the file under the cursor
 //!   Ctrl+Shift+K  count the files and bytes under the active folder in a background thread, with a
 //!                 progress notice; press it again while it runs to stop it
-//!   Ctrl+Shift+L  read the file under the cursor through the host (any scheme: a folder, an archive,
+//!   Ctrl+Alt+Q  read the file under the cursor through the host (any scheme: a folder, an archive,
 //!                 sftp://) and tell its size and first line; needs the permission "vfs.read"
 //!   Ctrl+Shift+H  checksum (FNV-1a) of the file under the cursor, any size and any scheme, read in
 //!                 pieces by a background thread; press it again to stop
@@ -544,10 +544,10 @@ pub unsafe extern "C" fn mtn_plugin_init(host: *const HostApi) -> i64 {
     let id = PLUGIN_ID.as_ptr() as *const c_char;
     let commands: [(&[u8], CommandCb, &[u8]); 6] = [
         (b"panelkit.copypaths\0", copy_paths, b"Ctrl+Shift+P\0"),
-        (b"panelkit.mirror\0", mirror_folder, b"Ctrl+Shift+M\0"),
+        (b"panelkit.mirror\0", mirror_folder, b"Ctrl+Shift+Q\0"),
         (b"panelkit.selectext\0", select_same_extension, b"Ctrl+Shift+X\0"),
         (b"panelkit.count\0", count_in_background, b"Ctrl+Shift+K\0"),
-        (b"panelkit.peek\0", peek_file, b"Ctrl+Shift+L\0"),
+        (b"panelkit.peek\0", peek_file, b"Ctrl+Alt+Q\0"),
         (b"panelkit.hash\0", hash_file, b"Ctrl+Shift+H\0"),
     ];
     for (name, run, chord) in commands {

@@ -91,6 +91,7 @@ end;
 constructor TPixelGridRenderer.Create(const AGlyphs: IGlyphSource);
 begin
   inherited Create;
+  GEdgeBordersDrawn := True;
   FBlinkOn := True;
   SetGlyphSource(AGlyphs);
 end;
@@ -311,6 +312,7 @@ var
   Cl: TRect;
   Glyph: TGlyphBitmap;
   IconPixels: TBytes;
+  EdgeRect: TRect;
 begin
   Cell := AGrid[AY][AX];
   Cells := 1;
@@ -368,6 +370,11 @@ begin
     else
       FillRect(TRect.Create(PX, PY, PX + Min(2, FCellW), PY + FCellH),
         Opaque(InsertCaretColor(Cell.BgColor)));
+  if Cell.Edges <> [] then
+    for EdgeRect in CellEdgeRects(Cell.Edges, PX, PY, PX + W, PY + FCellH,
+      IfThen(Cell.EdgeThick > 0, Cell.EdgeThick * Bar, Max(1, (W * 2 + 9) div 18)),
+      Cell.EdgeSpan, PY + FCellH div 2) do
+      FillRect(EdgeRect, Opaque(Cell.EdgeColor));
   MarkDirty(Cl);
 end;
 

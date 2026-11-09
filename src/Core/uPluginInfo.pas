@@ -69,14 +69,17 @@ function BuildPluginInfo(const APluginId, APluginDir: string): TPluginInfo;
 var
   M: TPluginManifest;
   Lines, Perms: TList<string>;
-  Locale, P: string;
+  Locale, P, Diff: string;
+  Declared: TArray<string>;
 begin
   Result := Default(TPluginInfo);
   Result.Id := APluginId;
   Result.Name := APluginId;
   Locale := CurrentLocale;
+  Declared := [];
   if TryReadPluginManifest(APluginDir, M) then
   begin
+    Declared := M.HighlightExtensions;
     if M.Name <> '' then
       Result.Name := M.Name;
     Result.Version := M.Version;
@@ -94,7 +97,19 @@ begin
     AddAll(Lines, PanelPluginRegistry.DescribePlugin(APluginId));
     AddAll(Lines, GlobalVfsRegistry.DescribePlugin(APluginId));
     AddAll(Lines, PluginChrome.DescribePlugin(APluginId));
-  AddAll(Lines, DescribeHighlighters(APluginId));
+    AddAll(Lines, DescribeHighlighters(APluginId));
+    if Length(Declared) > 0 then
+      if Length(HighlighterExtensions(APluginId)) = 0 then
+        // Not loaded yet: the manifest is what the plugin promised to color.
+        Lines.Add(Format(T('ui.plugininfo.highlight', 'Colors the text of files: %s'),
+          [string.Join(' ', Declared)]))
+      else
+      begin
+        Diff := HighlightManifestDiff(Declared, HighlighterExtensions(APluginId));
+        if Diff <> '' then
+          Lines.Add(Format(T('ui.plugininfo.manifestDiff',
+            'plugin.json differs from the plugin in highlightExtensions: %s'), [Diff]));
+      end;
     Result.HasSettings := PluginSettings.HasConfigure(APluginId);
     if Result.HasSettings then
       Lines.Add(T('ui.plugininfo.settings', 'Has settings (the Settings button)'));

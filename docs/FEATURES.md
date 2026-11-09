@@ -194,10 +194,10 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Interface extensions** – own commands and keys, drive list entries, status line text and chips, JSON dialogs, image tabs.
 - **Intercepting and replacing built-ins** – command hooks (copy, view, save, etc.), opening files by type on `F3`/`F4`, replacing scheme and archive handlers with the user's permission.
 - **File and document access** – reading files through any scheme with the `vfs.read` permission, working with document text and panel rows.
-- **Git** – branch and change status in the status line, names colored by state, `Ctrl+Shift+D` for a file diff, file blame.
+- **Git** – branch and change status in the status line, names colored by state, `Ctrl+Shift+G` for a file diff, file blame.
 - **File metadata** – image dimensions and camera, MP3 tags, program version and company in the status line and columns.
 - **Temporary panel** – a panel from command output (`rg -l`, `git ls-files`), duplicate file search by SHA-256.
-- **Line filter** – `Ctrl+Shift+J` in the viewer or editor opens the lines matching a text or regular expression.
+- **Line filter** – `Ctrl+Alt+J` in the viewer or editor opens the lines matching a text or regular expression.
 - **Long plugin operations** – run as background jobs with cancellation.
 
 ## Updates, installation, portable mode

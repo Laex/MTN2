@@ -1,6 +1,6 @@
 # Line filter
 
-Ctrl+Shift+J in the viewer or editor opens a dialog:
+Ctrl+Alt+J in the viewer or editor opens a dialog:
 
 - the text or regular expression to look for;
 - the option to treat it as a regular expression;

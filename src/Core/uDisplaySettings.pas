@@ -92,6 +92,8 @@ type
     SaverMinutes: Integer;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
     CaretUnderline: Boolean;
+    /// <summary>uTerminalTypes.GEdgeBorders.</summary>
+    EdgeBorders: Boolean;
     ShadowStyle: TShadowStyle;
     MarkedRowStyle: TMarkedRowStyle;
     /// <summary>The cursor row is highlighted in the passive panel too
@@ -384,6 +386,7 @@ begin
   Result.NdnFooter := True;
   Result.SaverMinutes := 5;
   Result.CaretUnderline := False;
+  Result.EdgeBorders := True;
   Result.ShadowStyle := ssClassic;
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;

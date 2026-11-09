@@ -1,10 +1,10 @@
 -- Counts the lines and words of the selection (or the whole document when
 -- nothing is selected) and shows them in a notice. Reads the editor only.
--- Ctrl+Alt+4, or Plugins menu.
+-- Ctrl+Alt+7, or Plugins menu.
 macro {
   name = "Count words",
   area = "editor",
-  key = "Ctrl+Alt+4",
+  key = "Ctrl+Alt+7",
   menu = true,
   run = function()
     local text = mtn.editor.selection()

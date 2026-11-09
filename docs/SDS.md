@@ -45,10 +45,12 @@ Instead of running inside a system console (cmd.exe, bash), the program creates 
 
 | Metric                       | Target (v0.1)             | Description / implementation mechanism                                                                                                         |
 | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Memory (RSS)**             | ≤ 15 MB                   | Delphi compiles to optimized native code with minimal runtime overhead                                                                         |
+| **Memory (private bytes)**   | ≤ 50 MB without plugins   | Delphi compiles to optimized native code with minimal runtime overhead; plugins are loaded on demand                                           |
 | **Frame rendering**          | ≤ 16 ms (60 FPS)          | FMX hardware acceleration + double buffering on a texture (Bitmap)                                                                             |
 | **Opening files up to 10 GB** | < 0.5 s (first screen)   | A streaming Viewer based on `TFileStream` with background line indexing and lazy loading                                                       |
-| **Core binary artifact**     | A single executable       | A native core with no mandatory external runtime dependencies (except system graphics libraries). DLL/SO/WASM plugins are optional extensions |
+| **Core binary artifact**     | The executable and two DLLs | A native core; the only libraries it needs are Skia (`sk4d.dll`) and Wasmtime (`wasmtime.dll`). DLL/SO/WASM plugins are optional extensions |
+
+Measured on Windows 11, release build, a few seconds after start with an empty configuration: about 42 MB of private bytes (68 MB working set) with no plugins, about 64 MB (81 MB) with all the plugins that ship with the program. On disk: `MTN2.exe` 22 MB, `sk4d.dll` 22 MB, `wasmtime.dll` 11 MB, the plugins 58 MB. The frame time and the opening of large files have not been re-measured on this build.
 
 ---
 

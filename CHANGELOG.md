@@ -6,6 +6,19 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Changed
+
+- The Windows build uses about 6 MB less memory at startup: the unused default FMX style is no longer loaded.
+- The syntax highlighting plugin loads when the viewer or the editor first opens a file of a language it colors, not at start: until then the program takes about 10 MB less memory. The first source file opens a little slower.
+- Plugin keys no longer overlap the program's own: the Git diff moved to `Ctrl+Shift+G` (it was taken by the saved workspaces list), the Line filter to `Ctrl+Alt+J` (it was taken by the job list). A key that a built-in action, a key handled in code (cursor and editing keys, word and file jumps, clipboard keys, rectangular selection) or an earlier plugin already uses is not bound to a plugin, for a command as well as for an extra key of a built-in action, and the plugin's information dialog says which one holds it. The sample plugins and macros were moved off taken keys as well.
+- The lists of dropdown fields are outlined with thin lines along the outer edges of their cells instead of frame characters: the highlight of a row reaches the line, and a list opened from a field has no line on the side that touches the field. The dropdown menus keep their frame characters. Options > Display > "Thin lines in dropdown lists only" switches back to the framed look (a list opened from a field is then drawn in a single-line frame of characters, open on the side that touches the field); text-mode (terminal) hosts keep it anyway.
+
+### Fixed
+
+- The pwsh console profile starts when PowerShell 7 is installed from the Microsoft Store and is not on PATH (the Store alias was rejected as a missing file).
+- On Linux (SDL) characters missing from the main font are taken from a font that really has them, and under WSL from the CJK fonts of the Windows host, so Chinese, Japanese and Korean text is shown without installing a font.
+- After the interface language is changed, the menu items of the plugins (Macros, Plugins and others) switch to the new language at once; before, they kept the language of the previous start. A plugin without a pack for the language shows English.
+
 ## Dev v0.5.5.1 – 2026-11-09
 
 ### Fixed

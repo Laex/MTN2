@@ -1,6 +1,6 @@
 library NotesPlugin;
 
-{ Demo plugin in Delphi: quick notes. Ctrl+Alt+F8 ("Note" in the function bar)
+{ Demo plugin in Delphi: quick notes. Ctrl+Alt+F12 ("Note" in the function bar)
   asks for a line of text and appends it, with the time, to mtn2-notes.txt in
   the user's profile folder (or the file chosen under Settings in the Plugins
   dialog); the status line shows how many notes the file has.
@@ -202,7 +202,7 @@ begin
   GHost := AHostApi;
   CountExistingNotes;
   AHostApi.RegisterCommand(PAnsiChar(cPluginId), PAnsiChar(cCommandId), @OnAddNote, nil);
-  AHostApi.RegisterKeyBinding(PAnsiChar(cPluginId), PAnsiChar(cCommandId), 'Ctrl+Alt+F8');
+  AHostApi.RegisterKeyBinding(PAnsiChar(cPluginId), PAnsiChar(cCommandId), 'Ctrl+Alt+F12');
   AHostApi.SetCommandCaption(PAnsiChar(cPluginId), PAnsiChar(cCommandId), 'Note');
   AHostApi.RegisterSettings(PAnsiChar(cPluginId), @OnConfigure, nil);
   ShowCount;

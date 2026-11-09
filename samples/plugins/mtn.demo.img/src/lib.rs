@@ -9,7 +9,7 @@
 //!   r / R          rotate clockwise / back             f                   full screen on / off
 //!   Right, Space   next picture of the folder          Left, Backspace     previous picture
 //!   Home / End     first / last picture                Esc                 leaves full screen, then closes
-//!   Ctrl+Shift+V   show the picture of the file under the panel cursor in the other panel (like
+//!   Ctrl+Shift+I   show the picture of the file under the panel cursor in the other panel (like
 //!                  Quick View) and follow the cursor; press again to close it
 //!   Ctrl+Shift+Y   rotate the picture shown in the other panel
 //!
@@ -603,7 +603,7 @@ unsafe extern "C" fn on_panel_event(_user: *mut c_void, _topic: *const c_char, _
     follow_panel();
 }
 
-/// Ctrl+Shift+V: the picture of the cursor file in the other panel, following the cursor.
+/// Ctrl+Shift+I: the picture of the cursor file in the other panel, following the cursor.
 unsafe extern "C" fn toggle_panel(_user: *mut c_void) {
     let close = with_viewer(|v| {
         if v.surface != 0 {
@@ -710,7 +710,7 @@ pub unsafe extern "C" fn mtn_plugin_init(host: *const HostApi) -> i64 {
     let id = PLUGIN_ID.as_ptr() as *const c_char;
     register(id, EXTENSIONS.as_ptr() as *const c_char, MODE_VIEW, on_document, null_mut(), 100);
     let commands: [(&[u8], CommandCb, &[u8]); 2] = [
-        (b"img.panel\0", toggle_panel, b"Ctrl+Shift+V\0"),
+        (b"img.panel\0", toggle_panel, b"Ctrl+Shift+I\0"),
         (b"img.rotate\0", rotate_panel, b"Ctrl+Shift+Y\0"),
     ];
     for (name, run, chord) in commands {

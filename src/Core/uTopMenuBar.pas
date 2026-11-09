@@ -250,6 +250,9 @@ type
     FSubmenuIndex: Integer;
     FCategories: TArray<TTopMenuCategory>;
     FSubmenuBounds: TRectI;
+    /// <summary>The submenu is outlined with cell edges: the sides are lines on the
+    /// item cells and the row under the last item is blank, like the title row.</summary>
+    FSubmenuEdge: Boolean;
     /// <summary>First item shown and number of item rows shown; a menu taller than
     /// the window scrolls so that the selected item stays in view.</summary>
     FSubmenuTop: Integer;
@@ -1507,10 +1510,18 @@ begin
   ItemW := MaxCapW + 2;
   if MaxShortW > 0 then
     Inc(ItemW, MaxShortW + 2);
-  W := ItemW + 2;
+  // Thin side lines read poorly on light themes, so the sides are frame
+  // characters. The edge-line layout below stays until it is dropped for good.
+  // FSubmenuEdge := EdgeBordersActive;
+  FSubmenuEdge := False;
+  if FSubmenuEdge then
+    W := ItemW
+  else
+    W := ItemW + 2;
   if X + W > AClientWidth - 1 then
     X := Max(1, AClientWidth - W - 1);
   N := Length(Cat.Items);
+  // The title row, the items and the bottom frame row.
   H := N + 2;
   // Rows 1 .. AClientHeight - 2: the bar is above and the function bar below.
   if (AClientHeight > 0) and (H > AClientHeight - 2) then
@@ -1602,7 +1613,9 @@ var
   Fg, Bg: TAlphaColor;
   SubFg, SubBg, SubSelFg, SubSelBg: TAlphaColor;
   IsSel: Boolean;
-  MarkX: Integer;
+  MarkX, ItemX: Integer;
+  EdgeColor, TitleBg: TAlphaColor;
+  Span: TCellEdgeSpan;
 
   procedure DrawBorderMark(const AGrid: TTerminalGrid; AX, AY: Integer; AMark: Char);
   var
@@ -1632,12 +1645,36 @@ begin
   // hand-rolled double-line box in fixed NDN colours.
   FTheme.ResolveDialogRowColors(False, SubFg, SubBg);
   FTheme.ResolveDialogRowColors(True, SubSelFg, SubSelBg);
-  FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
+  EdgeColor := 0;
+  TitleBg := 0;
+  if FSubmenuEdge then
+  begin
+    // The top and bottom frame rows stay characters; their corner cells take the
+    // neighbouring line character, and the sides are edge lines on the item
+    // cells that meet those lines (half-height edges in the frame rows), so no
+    // cell is spent on the side frame.
+    FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
+    EdgeColor := AGrid[R.Top][R.Left].FgColor;
+    TitleBg := AGrid[R.Top][R.Left].BgColor;
+    for Y := R.Top to R.Bottom do
+      if (Y = R.Top) or (Y = R.Bottom) then
+      begin
+        AGrid[Y][R.Left].CharValue := FrameLineChar(AGrid[Y][R.Left].CharValue);
+        AGrid[Y][R.Right].CharValue := FrameLineChar(AGrid[Y][R.Right].CharValue);
+      end;
+    ItemX := R.Left;
+    InnerW := R.Width;
+  end
+  else
+  begin
+    FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
+    ItemX := R.Left + 1;
+    InnerW := R.Width - 2;
+  end;
 
   // Drop shadow
   DrawDialogShadow(AGrid, R);
 
-  InnerW := R.Width - 2;
   for I := FSubmenuTop to High(Cat.Items) do
   begin
     Y := R.Top + 1 + I - FSubmenuTop;
@@ -1658,9 +1695,9 @@ begin
       // The header row carries the group colour in its text and leaves the
       // right column empty, which cuts the colour bands apart.
       if Item.PluginGroup > 0 then
-        PutGridText(AGrid, R.Left + 1, Y, Line, PluginGroupColor(Item.PluginGroup), SubBg)
+        PutGridText(AGrid, ItemX, Y, Line, PluginGroupColor(Item.PluginGroup), SubBg)
       else
-        PutGridText(AGrid, R.Left + 1, Y, Line, SubFg, SubBg);
+        PutGridText(AGrid, ItemX, Y, Line, SubFg, SubBg);
       Continue;
     end;
 
@@ -1699,10 +1736,10 @@ begin
       Bg := SubBg;
     end;
 
-    PutGridText(AGrid, R.Left + 1, Y, Line, Fg, Bg);
+    PutGridText(AGrid, ItemX, Y, Line, Fg, Bg);
     // The plugin's color band: one cell at the right edge of its rows.
     if Item.PluginGroup > 0 then
-      PutGridText(AGrid, R.Left + InnerW, Y, ' ', Fg, PluginGroupColor(Item.PluginGroup));
+      PutGridText(AGrid, ItemX + InnerW - 1, Y, ' ', Fg, PluginGroupColor(Item.PluginGroup));
 
     // Mnemonic char in submenu: fixed dark red on whichever background the
     // row already has (idle or selected) - no background inversion, as in
@@ -1713,7 +1750,7 @@ begin
     // caption can point past an earlier occurrence of the same letter).
     if (Item.HotChar <> #0) and (Item.HotPos > 0) and (Item.HotPos <= Length(Cap))
       and IsItemEnabled(Item) then
-      PutGridText(AGrid, R.Left + 2 + TextDisplayWidth(Copy(Item.Caption, 1, Item.HotPos - 1)), Y,
+      PutGridText(AGrid, ItemX + 1 + TextDisplayWidth(Copy(Item.Caption, 1, Item.HotPos - 1)), Y,
         Item.Caption[Item.HotPos], cSubmenuHotFg, Bg, [ccaBold]);
   end;
   if Length(Cat.Items) > FSubmenuVisible then
@@ -1727,6 +1764,21 @@ begin
       DrawBorderMark(AGrid, MarkX, R.Top, #$25B2);
     if FSubmenuTop + FSubmenuVisible < Length(Cat.Items) then
       DrawBorderMark(AGrid, MarkX, R.Bottom, #$25BC);
+  end;
+  if FSubmenuEdge then
+  begin
+    // Added last: writing text into a cell replaces the cell and its edges.
+    for Y := R.Top to R.Bottom do
+    begin
+      if Y = R.Top then
+        Span := esLower
+      else if Y = R.Bottom then
+        Span := esUpper
+      else
+        Span := esFull;
+      AddGridEdges(AGrid, R.Left, Y, [ceLeft], EdgeColor, 0, Span);
+      AddGridEdges(AGrid, R.Right, Y, [ceRight], EdgeColor, 0, Span);
+    end;
   end;
 end;
 

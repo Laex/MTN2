@@ -26,6 +26,12 @@ type
     /// plugin registers in mtn_plugin_init. The host uses them to load the
     /// DLL the first time that scheme is resolved, instead of at startup.</summary>
     Schemes: TArray<string>;
+    /// <summary>Optional "highlightExtensions": ["rs", "makefile", ...] - the file
+    /// extensions and whole file names the plugin colors (lower case, no dot). The host
+    /// loads the plugin the first time the viewer or the editor opens such a file,
+    /// so a plugin that only colors text needs no "startup". The list must match what
+    /// the plugin registers; the host reports a difference in the plugin's information.</summary>
+    HighlightExtensions: TArray<string>;
     /// <summary>Optional "overrides": ["sftp", ".zip"] - built-in handlers
     /// this plugin asks to replace: a scheme, or a file name extension with
     /// the leading dot. Takes effect only when the user lists the plugin id
@@ -129,6 +135,7 @@ begin
   AManifest.HasAbi := False;
   SetLength(AManifest.ArchiveExtensions, 0);
   SetLength(AManifest.Schemes, 0);
+  SetLength(AManifest.HighlightExtensions, 0);
   SetLength(AManifest.Overrides, 0);
   AManifest.Startup := False;
   AManifest.Wasi := False;
@@ -230,6 +237,9 @@ begin
         end;
       AManifest.Schemes := Exts;
     end;
+    AManifest.HighlightExtensions := ReadTrimmedStrings(Obj.Values['highlightExtensions'], True);
+    for I := 0 to High(AManifest.HighlightExtensions) do
+      AManifest.HighlightExtensions[I] := AManifest.HighlightExtensions[I].TrimLeft(['.']);
     AManifest.Overrides := ReadTrimmedStrings(Obj.Values['overrides'], True);
     N := Obj.Values['startup'];
     AManifest.Startup := (N is TJSONBool) and TJSONBool(N).AsBoolean;

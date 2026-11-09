@@ -1,6 +1,6 @@
 # Counter (WAT)
 
-**Ctrl+Alt+F7** (*Count* in the function bar) adds one to a counter. The status line shows **Count: N**. The counter restarts at zero with MTN2.
+**Ctrl+Alt+F11** (*Count* in the function bar) adds one to a counter. The status line shows **Count: N**. The counter restarts at zero with MTN2.
 
 ## For authors
 

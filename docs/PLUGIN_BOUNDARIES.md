@@ -90,7 +90,7 @@ The host does not introduce a separate "user" ABI – a third-party plugin is wr
 | Rebind an existing hotkey | `RegisterKeyBinding` → `IKeymapRegistry` | Only a rebind of an existing action; for a shortcut for its own command, see below |
 | Intercept a built-in command | `RegisterCommandHook` → `ICommandRegistry` | Commands of the panels, the top menu, the viewer and the editor; a hook may cancel the command (ARCHITECTURE.md §6, rule 8) |
 | Open files of a type in F3 / F4 its own way | `RegisterDocumentProvider` → `IDocumentProviderRegistry` | The plugin opens the file itself, passes a different URI to the built-in window, or declines; the viewer and editor window stays the host's (ARCHITECTURE.md §6, rule 9) |
-| Add its own command and shortcut | `RegisterCommand` + `RegisterKeyBinding` | A shortcut taken by a built-in action stays with it |
+| Add its own command and shortcut | `RegisterCommand` + `RegisterKeyBinding` | A shortcut taken by a built-in action, by a key handled in code (cursor, editing, clipboard and selection keys) or by an earlier plugin command stays with its owner: the binding is refused, and the plugin information dialog names the owner |
 | Publish an event / subscribe | `HostPublish` / `mtn_host_publish` → `IMessageBus` | – |
 | Request a window repaint | `HostInvalidate` / `mtn_host_invalidate` | – |
 | Copy/move through its own backend | `ClassifyVfsTransfer` | Plugin-owned Copy/Move stay in the plugin's backend; cross-scheme except `plugin→file` is `vecNotSupported` |

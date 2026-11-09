@@ -18,6 +18,8 @@ uses
   System.StartUpCopy,
   Winapi.Windows,
   FMX.Forms,
+  FMX.Types,
+  FMX.Styles,
   uCharWidth in 'Core\uCharWidth.pas',
   uPlatformProcess in 'Platform\Windows\uPlatformProcess.pas',
   uFileAttrTypes in 'Core\uFileAttrTypes.pas',
@@ -277,6 +279,10 @@ begin
   {$ENDIF}
   InstallFmxRenderProfile;
   Application.Initialize;
+  // MTN2 draws its own UI and uses no styled FMX controls. A pre-set empty
+  // style keeps FMX from loading its default style tree (several MB of
+  // objects) when the first form is shown.
+  TStyleManager.SetStyle(TFmxObject.Create(nil));
   // The taskbar button shows this until the main window gets its own caption.
   Application.Title := 'Modern Terminal Navigator 2';
   Application.CreateForm(TMainForm, MainForm);

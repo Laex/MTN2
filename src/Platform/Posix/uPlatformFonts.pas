@@ -144,8 +144,34 @@ begin
 end;
 
 function PlatformFontFileForChar(ACodePoint: Integer): string;
+const
+  // Fonts of a Windows host that WSL mounts; fontconfig does not know them.
+  cHostCjkFonts: array[0..4] of string = (
+    '/mnt/c/Windows/Fonts/msyh.ttc', '/mnt/c/Windows/Fonts/simsun.ttc',
+    '/mnt/c/Windows/Fonts/msgothic.ttc', '/mnt/c/Windows/Fonts/malgun.ttf',
+    '/mnt/c/Windows/Fonts/YuGothR.ttc');
+var
+  Lines: TStringList;
+  Charset, Name: string;
 begin
-  Result := MatchedFile(':charset=' + IntToHex(ACodePoint, 1));
+  Charset := ':charset=' + IntToHex(ACodePoint, 1);
+  // fc-match always answers with its best guess, covering the character or
+  // not; fc-list names only the fonts that have it.
+  Lines := TStringList.Create;
+  try
+    Lines.Text := RunCapture('fc-list ''' + Charset + ''' -f ''%{file}\n'' 2>/dev/null');
+    Result := '';
+    if Lines.Count > 0 then
+      Result := Trim(Lines[0]);
+  finally
+    Lines.Free;
+  end;
+  if (Result = '') and (ACodePoint >= $2E80) then
+    for Name in cHostCjkFonts do
+      if FileExists(Name) then
+        Exit(Name);
+  if Result = '' then
+    Result := MatchedFile(Charset);
 end;
 
 end.

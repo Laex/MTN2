@@ -226,6 +226,7 @@ begin
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
+  FSession.EdgeBorders := True;
   FSession.ShowPanelIcons := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
   FSession.MarkedRows := MarkedRowStyleId(mrsText);
@@ -403,6 +404,7 @@ begin
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
+  Result.EdgeBorders := GEdgeBorders;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -441,6 +443,7 @@ begin
     FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  FSession.EdgeBorders := ASettings.EdgeBorders;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
@@ -457,6 +460,7 @@ begin
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
   GColumnSeparators := ASettings.ColumnSeparators;
+  GEdgeBorders := ASettings.EdgeBorders;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
@@ -495,6 +499,7 @@ begin
   if LanguageChanged then
   begin
     SetLocale(ASettings.Language);
+    HostReloadPlugins;
     FDualPanel.ReloadMenuStructure;
     PluginAnnounceLanguage;
   end;
@@ -544,6 +549,7 @@ begin
   GSaverMinutes := Sess.SaverMinutes;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
+  GEdgeBorders := Sess.EdgeBorders;
   GNdnFooter := Sess.NdnFooter;
   if GHostShowsIcons then
     GShowPanelIcons := Sess.ShowPanelIcons;
@@ -607,6 +613,7 @@ begin
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
+  Sess.EdgeBorders := GEdgeBorders;
   Sess.NdnFooter := GNdnFooter;
   if GHostShowsIcons then
     Sess.ShowPanelIcons := GShowPanelIcons;

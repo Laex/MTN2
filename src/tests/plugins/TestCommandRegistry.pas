@@ -16,6 +16,9 @@ type
     [Test] procedure TestHookIsNotReentered;
     [Test] procedure TestPluginCommandLifecycle;
     [Test] procedure TestCommandBindingMatchesChord;
+    [Test] procedure TestCommandBindingYieldsToCoreAndEarlierPlugin;
+    [Test] procedure TestCommandBindingRefusesKeysHandledInCode;
+    [Test] procedure TestKeymapRegistryRefusesKeyOfAnotherAction;
     [Test] procedure TestInterceptKeymapAction;
   end;
 
@@ -23,7 +26,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uKeymap,
+  uKeymap, uKeymapRegistry,
   uCommandRegistry;
 
 procedure TestHookInterceptsBuiltInCommand;
@@ -227,6 +230,101 @@ begin
   end;
 end;
 
+procedure TestCommandBindingYieldsToCoreAndEarlierPlugin;
+var
+  Id: string;
+  Info: TArray<string>;
+  Line: string;
+  Reported: Boolean;
+begin
+  try
+    CommandRegistry.RegisterCommand('t.core', 't.core.run', procedure begin end);
+    CommandRegistry.RegisterCommand('t.first', 't.first.run', procedure begin end);
+    CommandRegistry.RegisterCommand('t.second', 't.second.run', procedure begin end);
+
+    CommandRegistry.RegisterCommandBinding('t.core', 't.core.run', 'F5');
+    Assert.IsTrue(not CommandRegistry.TryMatchBinding(vkF5, [], Id),
+      'a chord of a built-in action is refused');
+    Info := CommandRegistry.DescribePlugin('t.core');
+    Reported := False;
+    for Line in Info do
+      if Line.Contains('F5') and Line.Contains(KeymapActionDisplayName(kaCopy)) then
+        Reported := True;
+    Assert.IsTrue(Reported, 'the plugin information names the action that owns the chord');
+
+    CommandRegistry.RegisterCommandBinding('t.first', 't.first.run', 'Ctrl+Shift+F9');
+    CommandRegistry.RegisterCommandBinding('t.second', 't.second.run', 'Ctrl+Shift+F9');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF9, [ssCtrl, ssShift], Id) and
+      (Id = 't.first.run'), 'the earlier plugin keeps the chord');
+
+    CommandRegistry.UnregisterPlugin('t.first');
+    CommandRegistry.RegisterCommand('t.first', 't.first.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.first', 't.first.run', 'Ctrl+Shift+F9');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF9, [ssCtrl, ssShift], Id) and
+      (Id = 't.first.run'), 'the same plugin rebinds its chord after a reload');
+  finally
+    CommandRegistry.UnregisterPlugin('t.core');
+    CommandRegistry.UnregisterPlugin('t.first');
+    CommandRegistry.UnregisterPlugin('t.second');
+  end;
+end;
+
+procedure TestCommandBindingRefusesKeysHandledInCode;
+var
+  Id: string;
+  Reported: Boolean;
+  Line: string;
+begin
+  try
+    CommandRegistry.RegisterCommand('t.reserved', 't.reserved.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.reserved', 't.reserved.run', 'Ctrl+Right');
+    CommandRegistry.RegisterCommandBinding('t.reserved', 't.reserved.run', 'Shift+Insert');
+    Assert.IsTrue(not CommandRegistry.TryMatchBinding(vkRight, [ssCtrl], Id),
+      'a word jump handled in code is refused');
+    Assert.IsTrue(not CommandRegistry.TryMatchBinding(vkInsert, [ssShift], Id),
+      'a clipboard key handled in code is refused');
+    Reported := False;
+    for Line in CommandRegistry.DescribePlugin('t.reserved') do
+      if Line.Contains('Ctrl+Right') then
+        Reported := True;
+    Assert.IsTrue(Reported, 'the plugin information lists the refused key');
+    CommandRegistry.RegisterCommandBinding('t.reserved', 't.reserved.run', 'Ctrl+Alt+F11');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF11, [ssCtrl, ssAlt], Id),
+      'a free chord is bound');
+  finally
+    CommandRegistry.UnregisterPlugin('t.reserved');
+  end;
+end;
+
+procedure TestKeymapRegistryRefusesKeyOfAnotherAction;
+var
+  Profile: TKeymapProfile;
+  Act: TKeymapAction;
+  Reported: Boolean;
+  Line: string;
+begin
+  try
+    KeymapRegistry.RegisterBinding('t.keys', 'Move', 'F5');
+    KeymapRegistry.RegisterBinding('t.keys', 'Move', 'Ctrl+Left');
+    KeymapRegistry.RegisterBinding('t.keys', 'Copy', 'F5');
+    KeymapRegistry.RegisterBinding('t.keys', 'Copy', 'Ctrl+Alt+F11');
+    Profile := ActiveKeymap;
+    Act := MatchActiveAction(vkF5, []);
+    Assert.IsTrue(Act = kaCopy, 'F5 stays with Copy');
+    Assert.IsTrue(MatchActiveAction(vkF11, [ssCtrl, ssAlt]) = kaCopy,
+      'a free key is added to the action');
+    Assert.IsTrue(MatchActiveAction(vkLeft, [ssCtrl]) <> kaMove,
+      'a key handled in code is not given to an action');
+    Reported := False;
+    for Line in KeymapRegistry.DescribePlugin('t.keys') do
+      if Line.Contains('Ctrl+Left') then
+        Reported := True;
+    Assert.IsTrue(Reported, 'the plugin information lists the refused key');
+  finally
+    KeymapRegistry.UnregisterPlugin('t.keys');
+  end;
+end;
+
 procedure TestInterceptKeymapAction;
 var
   Seen: string;
@@ -282,6 +380,21 @@ end;
 procedure TTestCommandRegistry.TestCommandBindingMatchesChord;
 begin
   TestCommandRegistry.TestCommandBindingMatchesChord;
+end;
+
+procedure TTestCommandRegistry.TestCommandBindingYieldsToCoreAndEarlierPlugin;
+begin
+  TestCommandRegistry.TestCommandBindingYieldsToCoreAndEarlierPlugin;
+end;
+
+procedure TTestCommandRegistry.TestCommandBindingRefusesKeysHandledInCode;
+begin
+  TestCommandRegistry.TestCommandBindingRefusesKeysHandledInCode;
+end;
+
+procedure TTestCommandRegistry.TestKeymapRegistryRefusesKeyOfAnotherAction;
+begin
+  TestCommandRegistry.TestKeymapRegistryRefusesKeyOfAnotherAction;
 end;
 
 procedure TTestCommandRegistry.TestInterceptKeymapAction;

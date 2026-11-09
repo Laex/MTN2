@@ -23,7 +23,8 @@ type
     ['{7C6F1A2E-9B3D-4C5A-8E1F-2D4B6A8C0E12}']
     /// <summary>Registers AKeyCombo (e.g. "Ctrl+Shift+F5") as an additional
     /// hotkey for AAction (e.g. "Copy" - see KEYMAP_ACTION_NAMES in uKeymap.pas).
-    /// Silently ignored if AAction/AKeyCombo cannot be parsed.</summary>
+    /// Ignored if AAction/AKeyCombo cannot be parsed; refused (and listed in the
+    /// plugin information) if the key already belongs to another action.</summary>
     procedure RegisterBinding(const APluginId, AAction, AKeyCombo: string);
     /// <summary>Removes all bindings registered by APluginId.</summary>
     /// <summary>One line per thing the plugin registered, for the plugin's information
@@ -38,10 +39,22 @@ function KeymapRegistry: IKeymapRegistry;
 /// False if the trailing key token isn't recognized by StringToVK.</summary>
 function TryParseKeyCombo(const ACombo: string; out ABinding: TKeyBinding): Boolean;
 
+/// <summary>What owns ABinding when it is handled in code instead of the keymap
+/// (cursor and editing keys, word and file jumps, clipboard keys, rectangular
+/// selection, drive cycling); '' when no such handler uses it. Plugin chords are
+/// consulted before these handlers, so a plugin must not take them.</summary>
+function ReservedChordOwner(const ABinding: TKeyBinding): string;
+
+/// <summary>What already uses ABinding: a keymap action (display name) or a key
+/// handled in code; '' when it is free. AExceptAction is skipped, so adding a
+/// key to the action that already owns it is not a clash.</summary>
+function KeymapChordOwner(const ABinding: TKeyBinding;
+  AExceptAction: TKeymapAction = kaNone): string;
+
 implementation
 
 uses
-  uStrings;
+  System.UITypes, uStrings;
 
 type
   TOverlayEntry = record
@@ -50,9 +63,17 @@ type
     Binding: TKeyBinding;
   end;
 
+  TRejectedEntry = record
+    PluginId: string;
+    Action: TKeymapAction;
+    Chord: string;
+    Owner: string;
+  end;
+
   TKeymapRegistry = class(TInterfacedObject, IKeymapRegistry)
   private
     FEntries: TList<TOverlayEntry>;
+    FRejected: TList<TRejectedEntry>;
     procedure ApplyOverlay(var AProfile: TKeymapProfile);
   public
     constructor Create;
@@ -95,14 +116,69 @@ begin
   Result := True;
 end;
 
+function IsOneOf(AKey: Word; const AKeys: array of Word): Boolean;
+var
+  I: Integer;
+begin
+  for I := Low(AKeys) to High(AKeys) do
+    if AKeys[I] = AKey then
+      Exit(True);
+  Result := False;
+end;
+
+function ReservedChordOwner(const ABinding: TKeyBinding): string;
+var
+  K: Word;
+  Plain: Boolean;
+begin
+  Result := '';
+  K := ABinding.Key;
+  Plain := not ABinding.Alt and not ABinding.Ctrl;
+  if Plain and IsOneOf(K, [vkUp, vkDown, vkLeft, vkRight, vkPrior, vkNext,
+       vkHome, vkEnd, vkBack, vkDelete, vkReturn, vkNumpad5, vkClear]) and
+     not ((K = vkDelete) and ABinding.Shift) then
+    Exit(T('ui.reserved.edit', 'cursor and editing keys'));
+  if ABinding.Ctrl and not ABinding.Alt and
+     IsOneOf(K, [vkLeft, vkRight, vkHome, vkEnd]) then
+    Exit(T('ui.reserved.jump', 'word and file jumps'));
+  if ABinding.Alt and ABinding.Shift and not ABinding.Ctrl and
+     IsOneOf(K, [vkUp, vkDown, vkLeft, vkRight, vkPrior, vkNext, vkHome, vkEnd]) then
+    Exit(T('ui.reserved.block', 'rectangular selection'));
+  if ABinding.Alt and ABinding.Shift and not ABinding.Ctrl and (K = vkF3) then
+    Exit(T('ui.reserved.opposite', 'workspace on the opposite panel'));
+  if ((K = vkInsert) and (ABinding.Shift <> ABinding.Ctrl) and not ABinding.Alt) or
+     ((K = vkDelete) and (ABinding.Shift <> ABinding.Ctrl) and not ABinding.Alt) or
+     (ABinding.Ctrl and not ABinding.Alt and not ABinding.Shift and
+      IsOneOf(K, [Ord('A'), Ord('C'), Ord('X'), Ord('V')])) then
+    Exit(T('ui.reserved.clipboard', 'clipboard keys'));
+end;
+
+function KeymapChordOwner(const ABinding: TKeyBinding;
+  AExceptAction: TKeymapAction): string;
+var
+  Act: TKeymapAction;
+  Profile: TKeymapProfile;
+  I: Integer;
+begin
+  Profile := ActiveKeymap;
+  for Act := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+    if Act <> AExceptAction then
+      for I := 0 to High(Profile.Bindings[Act]) do
+        if SameKeyBinding(ABinding, Profile.Bindings[Act][I]) then
+          Exit(KeymapActionDisplayName(Act));
+  Result := ReservedChordOwner(ABinding);
+end;
+
 constructor TKeymapRegistry.Create;
 begin
   inherited Create;
   FEntries := TList<TOverlayEntry>.Create;
+  FRejected := TList<TRejectedEntry>.Create;
 end;
 
 destructor TKeymapRegistry.Destroy;
 begin
+  FRejected.Free;
   FEntries.Free;
   inherited Destroy;
 end;
@@ -110,6 +186,7 @@ end;
 procedure TKeymapRegistry.RegisterBinding(const APluginId, AAction, AKeyCombo: string);
 var
   Entry: TOverlayEntry;
+  Rej: TRejectedEntry;
   Act: TKeymapAction;
   Binding: TKeyBinding;
 begin
@@ -117,6 +194,18 @@ begin
     Exit;
   if not TryParseKeyCombo(AKeyCombo, Binding) then
     Exit;
+
+  // A key owned by another action or handled in code stays with its owner;
+  // adding a key to the action that already has it is harmless.
+  Rej.Owner := KeymapChordOwner(Binding, Act);
+  if Rej.Owner <> '' then
+  begin
+    Rej.PluginId := APluginId;
+    Rej.Action := Act;
+    Rej.Chord := KeyBindingToStr(Binding);
+    FRejected.Add(Rej);
+    Exit;
+  end;
 
   Entry.PluginId := APluginId;
   Entry.Action := Act;
@@ -131,6 +220,7 @@ end;
 function TKeymapRegistry.DescribePlugin(const APluginId: string): TArray<string>;
 var
   E: TOverlayEntry;
+  R: TRejectedEntry;
   Lines: TList<string>;
 begin
   Lines := TList<string>.Create;
@@ -139,6 +229,10 @@ begin
       if SameText(E.PluginId, APluginId) then
         Lines.Add(T('ui.plugininfo.key', 'Extra key %s for %s',
           [KeyBindingToStr(E.Binding), KeymapActionDisplayName(E.Action)]));
+    for R in FRejected do
+      if SameText(R.PluginId, APluginId) then
+        Lines.Add(T('ui.plugininfo.keyTaken', 'Key %s for %s is not bound: %s already uses it',
+          [R.Chord, KeymapActionDisplayName(R.Action), R.Owner]));
     Result := Lines.ToArray;
   finally
     Lines.Free;
@@ -152,6 +246,9 @@ begin
   for I := FEntries.Count - 1 downto 0 do
     if SameText(FEntries[I].PluginId, APluginId) then
       FEntries.Delete(I);
+  for I := FRejected.Count - 1 downto 0 do
+    if SameText(FRejected[I].PluginId, APluginId) then
+      FRejected.Delete(I);
   if KeymapCacheLoaded then
     ReloadKeymap('');
 end;

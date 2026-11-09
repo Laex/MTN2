@@ -85,6 +85,8 @@ type
     /// <summary>Idle minutes before the screensaver (uSharkSaver.GSaverMinutes); 0 = off.</summary>
     SaverMinutes: Integer;
     CaretUnderline: Boolean;
+    /// <summary>uTerminalTypes.GEdgeBorders.</summary>
+    EdgeBorders: Boolean;
     /// <summary>uDisplaySettings.PassiveCursor.</summary>
     PassiveCursor: Boolean;
     /// <summary>uDisplaySettings.ColumnSeparators.</summary>
@@ -683,6 +685,7 @@ begin
       Root.AddPair('ndnFooter', TJSONBool.Create(ASession.NdnFooter));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
+      Root.AddPair('edgeBorders', TJSONBool.Create(ASession.EdgeBorders));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
       Root.AddPair('columnSeparators', TJSONBool.Create(ASession.ColumnSeparators));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
@@ -779,6 +782,7 @@ begin
   ASession.NdnFooter := True;
   ASession.SaverMinutes := 5;
   ASession.CaretUnderline := False;
+  ASession.EdgeBorders := True;
   ASession.PassiveCursor := True;
   ASession.ColumnSeparators := False;
   ASession.ShowKeyBar := True;
@@ -895,6 +899,7 @@ begin
       ASession.NdnFooter := JsonBool(Root, 'ndnFooter', True);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
+      ASession.EdgeBorders := JsonBool(Root, 'edgeBorders', True);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);
       ASession.ColumnSeparators := JsonBool(Root, 'columnSeparators', False);
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);

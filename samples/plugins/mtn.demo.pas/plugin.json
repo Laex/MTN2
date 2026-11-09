@@ -5,8 +5,8 @@
   "abi": 2,
   "startup": true,
   "description": {
-    "en": "Ctrl+Alt+F8 asks for a line of text and adds it, with the time, to a notes file. Settings: which file.",
-    "ru": "Ctrl+Alt+F8 спрашивает строку текста и добавляет её с временем в файл заметок. В настройках выбирается файл."
+    "en": "Ctrl+Alt+F12 asks for a line of text and adds it, with the time, to a notes file. Settings: which file.",
+    "ru": "Ctrl+Alt+F12 спрашивает строку текста и добавляет её с временем в файл заметок. В настройках выбирается файл."
   },
   "author": "MTN2 samples",
   "help": "help.md"

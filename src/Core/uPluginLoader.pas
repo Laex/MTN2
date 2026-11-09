@@ -83,6 +83,7 @@ type
         PluginId: string;
         Schemes: TArray<string>;
         ArchiveExtensions: TArray<string>;
+        HighlightExtensions: TArray<string>;
         Files: TArray<string>;
         Attempted: Boolean;
         /// <summary>Loaded at CatalogPlugins: the manifest asks for "startup",
@@ -96,6 +97,7 @@ type
       end;
     var
       FLoaded: TList<TLoadedPlugin>;
+      FReloading: Boolean;
       FCatalog: TList<TCatalogedPlugin>;
       FOnLog: TPluginLoadLogEvent;
       FEnsuring: Boolean;
@@ -148,6 +150,12 @@ type
     /// <summary>Unloads every loaded module of APluginId, dropping its
     /// registrations first. The catalog entry stays.</summary>
     procedure UnloadPlugin(const APluginId: string);
+    /// <summary>Unloads every loaded plugin and loads it again, so what it
+    /// registered with translated text (menu captions, commands, labels) is
+    /// registered again in the current program language. Where a native
+    /// library cannot be unloaded and loaded again in one process (Posix), it
+    /// stays mapped and is initialised again.</summary>
+    procedure ReloadLoadedPlugins;
     function IsPluginLoaded(const APluginId: string): Boolean;
     function IsPluginDisabled(const APluginId: string): Boolean;
     /// <summary>Built-ins the catalogued plugin asks to replace (its manifest
@@ -175,6 +183,9 @@ type
     /// <summary>Loads the catalogued plugin whose plugin.json lists this
     /// file's extension in archiveExtensions.</summary>
     function EnsureArchiveExtension(const AFileName: string): Boolean;
+    /// <summary>Loads the catalogued plugin whose plugin.json lists this file's
+    /// extension or whole name in highlightExtensions.</summary>
+    function EnsureHighlightFile(const AFileName: string): Boolean;
     /// <summary>Loads every catalogued plugin that has not been attempted
     /// yet. Used when the UI needs registrations that are not in
     /// plugin.json (menu items, key rebinds).</summary>
@@ -2170,10 +2181,12 @@ begin
     E.Disabled := IsDisabled(PluginId);
     E.LoadAtStart := False;
     SetLength(E.Overrides, 0);
+    SetLength(E.HighlightExtensions, 0);
     if TryReadPluginManifest(PluginDir, Manifest) then
     begin
       E.Schemes := Manifest.Schemes;
       E.ArchiveExtensions := Manifest.ArchiveExtensions;
+      E.HighlightExtensions := Manifest.HighlightExtensions;
       E.Overrides := Manifest.Overrides;
       PluginPermissionsDeclare(PluginId, Manifest.Permissions);
       E.LoadAtStart := Manifest.Startup or
@@ -2223,6 +2236,22 @@ begin
     Exit;
   for I := 0 to FCatalog.Count - 1 do
     if ListHasExt(FCatalog[I].ArchiveExtensions, Key) then
+      Exit(EnsureIndex(I));
+end;
+
+function TPluginLoader.EnsureHighlightFile(const AFileName: string): Boolean;
+var
+  I: Integer;
+  Key, Name: string;
+begin
+  Result := False;
+  if FEnsuring or (AFileName = '') then
+    Exit;
+  Key := ExtensionKey(AFileName);
+  Name := LowerCase(ExtractFileName(AFileName));
+  for I := 0 to FCatalog.Count - 1 do
+    if ListHasExt(FCatalog[I].HighlightExtensions, Key) or
+       ListHasExt(FCatalog[I].HighlightExtensions, Name) then
       Exit(EnsureIndex(I));
 end;
 
@@ -2305,7 +2334,13 @@ begin
   if FLoaded[AIndex].HostApi <> nil then
     Dispose(FLoaded[AIndex].HostApi);
   if (FLoaded[AIndex].ModuleHandle <> 0) and not FLoaded[AIndex].KeepLoaded then
-    PlatformFreeLibrary(FLoaded[AIndex].ModuleHandle);
+{$IFNDEF MSWINDOWS}
+    // A Delphi library cannot be closed and opened again in one process (the
+    // second dlopen crashes): while reloading, it stays mapped and is
+    // initialised again through its entry point.
+    if not FReloading then
+{$ENDIF}
+      PlatformFreeLibrary(FLoaded[AIndex].ModuleHandle);
 end;
 
 procedure TPluginLoader.UnloadPlugin(const APluginId: string);
@@ -2317,6 +2352,34 @@ begin
     begin
       UnloadAt(I);
       FLoaded.Delete(I);
+    end;
+end;
+
+procedure TPluginLoader.ReloadLoadedPlugins;
+var
+  Ids: TArray<string>;
+  Id: string;
+  I: Integer;
+  E: TCatalogedPlugin;
+begin
+  Ids := nil;
+  for I := 0 to FLoaded.Count - 1 do
+    Ids := Ids + [FLoaded[I].PluginId];
+  FReloading := True;
+  try
+    for Id in Ids do
+      UnloadPlugin(Id);
+  finally
+    FReloading := False;
+  end;
+  for I := 0 to FCatalog.Count - 1 do
+    if TArray.IndexOf<string>(Ids, FCatalog[I].PluginId) >= 0 then
+    begin
+      E := FCatalog[I];
+      E.Attempted := False;
+      FCatalog[I] := E;
+      if not FCatalog[I].Disabled then
+        EnsureIndex(I);
     end;
 end;
 

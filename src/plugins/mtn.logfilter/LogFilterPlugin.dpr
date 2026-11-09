@@ -1,6 +1,6 @@
 library LogFilterPlugin;
 
-{ Native MTN2 plugin: Ctrl+Shift+J in the viewer or editor asks for a text or a
+{ Native MTN2 plugin: Ctrl+Alt+J in the viewer or editor asks for a text or a
   regular expression and opens the lines of the document that match it (or, for
   an inverted filter, do not) in a new viewer tab, each with its number in the
   original text. }
@@ -14,7 +14,7 @@ uses
 const
   cPluginId = 'mtn.logfilter';
   cCommandId = 'logfilter.filter';
-  cKeyChord = 'Ctrl+Shift+J';
+  cKeyChord = 'Ctrl+Alt+J';
   cSettingPattern = 'lastPattern';
   cSettingFlags = 'lastFlags';
   cMaxLines = 3000000;

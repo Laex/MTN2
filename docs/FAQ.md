@@ -60,7 +60,7 @@ Releases page, so building it yourself is not needed for ordinary use. Build req
 
 ### Why is the archive so large?
 
-The archive is about 23 MB. Most of the size comes from the Skia graphics engine (`sk4d.dll`) and the WebAssembly
+The archive is about 38 MB (about 150 MB unpacked). Most of the size comes from the Skia graphics engine (`sk4d.dll`) and the WebAssembly
 runtime (`wasmtime.dll`) used by plugins; `MTN2.exe` itself is one executable without a virtual machine or garbage
 collector.
 

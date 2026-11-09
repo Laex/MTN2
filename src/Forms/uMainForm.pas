@@ -1670,6 +1670,7 @@ begin
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
+  Result.EdgeBorders := GEdgeBorders;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
   Result.ShadowStyle := GShadowStyle;
@@ -1729,7 +1730,9 @@ begin
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  FSession.EdgeBorders := ASettings.EdgeBorders;
   GColumnSeparators := ASettings.ColumnSeparators;
+  GEdgeBorders := ASettings.EdgeBorders;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
   ApplyChromeRows(ASettings.ShowMenuBar, ASettings.ShowKeyBar, ASettings.ShowStatusLine);
@@ -1773,6 +1776,7 @@ begin
   if LanguageChanged then
   begin
     SetLocale(ASettings.Language);
+    HostReloadPlugins;
     if Assigned(FDualPanel) then
       FDualPanel.ReloadMenuStructure;
     PluginAnnounceLanguage;
@@ -1873,6 +1877,7 @@ begin
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
+  GEdgeBorders := Sess.EdgeBorders;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
   GShadowStyle := ShadowStyleFromId(Sess.ShadowStyle);
@@ -1995,6 +2000,7 @@ begin
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
+  Sess.EdgeBorders := GEdgeBorders;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.ShadowStyle := ShadowStyleId(GShadowStyle);
@@ -2892,6 +2898,7 @@ begin
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
+  FSession.EdgeBorders := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);

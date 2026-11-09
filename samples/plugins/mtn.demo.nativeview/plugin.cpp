@@ -1,6 +1,6 @@
 // Demo plugin in C++: a window of the plugin inside the program.
 //
-// Ctrl+Shift+G opens a viewer tab whose area is a native window (HWND) that the plugin draws in
+// Ctrl+Alt+F5 opens a viewer tab whose area is a native window (HWND) that the plugin draws in
 // itself with GDI: a gradient, a bouncing ball and the last click. The program keeps the window
 // over the cells of the tab, hides it under dialogs and menus and resizes the windows inside it
 // to fill it. A player such as libmpv would be given the same handle as its output window.
@@ -184,7 +184,7 @@ MTN_EXPORT int64_t mtn_plugin_init(const MtnHostApi *host) {
                        reinterpret_cast<LPCWSTR>(&mtn_plugin_init), &module);
     g_module = module;
     host->register_command(kPluginId, "nativeview.open", open_view, nullptr);
-    host->register_key_binding(kPluginId, "nativeview.open", "Ctrl+Shift+G");
+    host->register_key_binding(kPluginId, "nativeview.open", "Ctrl+Alt+F5");
     return 0;
 }
 

@@ -20,7 +20,9 @@ type
     [Test] procedure TestBlockCommentCarriesOverTheLines;
     [Test] procedure TestEditedLineRecolorsTheLinesBelow;
     [Test] procedure TestWholeFileIsColoredQuickly;
+    [Test] procedure TestManifestListsTheRegisteredExtensions;
     [Test] procedure TestUnloadedPluginColorsNothing;
+    [Test] procedure TestFirstFileOfALanguageLoadsThePlugin;
   end;
 
 implementation
@@ -218,6 +220,45 @@ begin
       Format('%d lines in %d ms', [Length(Lines), Watch.ElapsedMilliseconds]));
   finally
     Tracker.Free;
+  end;
+end;
+
+procedure TTestHighlightPlugin.TestManifestListsTheRegisteredExtensions;
+var
+  M: TPluginManifest;
+  Dir: string;
+begin
+  Dir := ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
+    NativePath('../../plugins/mtn.highlight')));
+  Assert.IsTrue(TryReadPluginManifest(Dir, M), 'the manifest reads');
+  Assert.IsTrue(not M.Startup, 'the plugin loads on demand');
+  Assert.AreEqual('', HighlightManifestDiff(M.HighlightExtensions,
+    HighlighterExtensions('mtn.highlight'), 20),
+    'highlightExtensions matches what the plugin registers');
+end;
+
+procedure TTestHighlightPlugin.TestFirstFileOfALanguageLoadsThePlugin;
+var
+  Root: string;
+begin
+  PluginLoader.UnloadAll;
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-hl-test');
+  try
+    PluginLoader.CatalogPlugins(Root);
+    SetHighlightLazyLoad(
+      function(const AFileName: string): Boolean
+      begin
+        Result := PluginLoader.EnsureHighlightFile(AFileName);
+      end);
+    Assert.AreEqual<Integer>(0, Length(HighlighterExtensions('mtn.highlight')),
+      'nothing is loaded before a file asks for it');
+    Assert.AreEqual<Integer>(0, HighlighterForFile('archive.zip'), 'an unlisted file loads nothing');
+    Assert.AreEqual<Integer>(0, Length(HighlighterExtensions('mtn.highlight')),
+      'an unlisted file leaves the plugin unloaded');
+    Assert.IsTrue(HighlighterForFile('main.rs') <> 0, 'a listed file loads the plugin and is colored');
+    Assert.IsTrue(HighlighterForFile('C:\w\Makefile') <> 0, 'a whole file name loads it as well');
+  finally
+    SetHighlightLazyLoad(nil);
   end;
 end;
 

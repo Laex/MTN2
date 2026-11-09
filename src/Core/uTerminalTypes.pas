@@ -3,7 +3,7 @@ unit uTerminalTypes;
 interface
 
 uses
-  System.UITypes, uCharWidth;
+  System.Types, System.UITypes, uCharWidth;
 
 type
   TCharCellAttribute = (ccaBold, ccaItalic, ccaUnderline, ccaBlink, ccaReverse,
@@ -13,6 +13,15 @@ type
     ccaWide, ccaWideTail);
   TCharCellAttributes = set of TCharCellAttribute;
 
+  /// <summary>Sides of a cell that carry a thin line along the cell's outer edge.</summary>
+  TCellEdge = (ceLeft, ceRight, ceTop, ceBottom);
+  TCellEdges = set of TCellEdge;
+  /// <summary>How much of the cell height its left and right edge lines cover: all
+  /// of it, or only the half that meets a horizontal frame character on the
+  /// middle line of the cell (the upper half in a bottom frame row, the lower
+  /// half in a top one).</summary>
+  TCellEdgeSpan = (esFull, esUpper, esLower);
+
   TCharCell = record
     CharValue: Char;
     FgColor: TAlphaColor;
@@ -20,6 +29,15 @@ type
     Attributes: TCharCellAttributes;
     /// <summary>Shell icon cache id (0 = none). Drawn by TTerminalRenderer.</summary>
     IconId: Integer;
+    /// <summary>Lines drawn along the edges of the cell, over its text, by hosts that
+    /// paint pixels (the others ignore them). Empty for a cell that has none.</summary>
+    Edges: TCellEdges;
+    /// <summary>Thickness of the edge lines in underline widths (1 = as thick as an
+    /// underline), or 0 for as thick as the host draws box-drawing lines, so the
+    /// edges join frame characters; meaningful only while Edges is not empty.</summary>
+    EdgeThick: Byte;
+    EdgeColor: TAlphaColor;
+    EdgeSpan: TCellEdgeSpan;
     class function Make(const AChar: Char; AFg, ABg: TAlphaColor;
       AAttributes: TCharCellAttributes = []): TCharCell; static;
   end;
@@ -97,6 +115,29 @@ var
   /// <summary>Draw the insert caret as a bar along the bottom of its cell, as
   /// in Far, instead of a thin vertical bar at the cell's left edge.</summary>
   GCaretUnderline: Boolean = False;
+  /// <summary>The user's choice (Options > Display): thin outline lines for the lists of
+  /// dropdown fields instead of frame cells. Off restores the framed look.</summary>
+  GEdgeBorders: Boolean = True;
+  /// <summary>Set by a renderer that paints TCharCell.Edges; a text-mode host leaves
+  /// it off, so the callers keep drawing frame characters there.</summary>
+  GEdgeBordersDrawn: Boolean = False;
+
+/// <summary>True when a window should outline itself with cell edges: the user wants
+/// it and the host can draw them.</summary>
+function EdgeBordersActive: Boolean;
+/// <summary>Adds edge lines to a cell of the grid (outside the grid: nothing). The
+/// lines belong to the cell until a later draw into it replaces the cell.</summary>
+procedure AddGridEdges(const AGrid: TTerminalGrid; AX, AY: Integer; AEdges: TCellEdges;
+  AColor: TAlphaColor; AThick: Byte = 1; ASpan: TCellEdgeSpan = esFull);
+/// <summary>The horizontal line character that continues a frame corner: a double
+/// line for the double-line corners, a single one otherwise.</summary>
+function FrameLineChar(ACorner: Char): Char;
+/// <summary>The rectangles of the edge lines of a cell occupying [ALeft, ARight) x
+/// [ATop, ABottom) pixels, each AThickPx thick and kept inside the cell; ASpan
+/// shortens the left and right lines to the half that meets the horizontal line
+/// of a frame character centred on AMidPx (the middle of the cell when negative).</summary>
+function CellEdgeRects(AEdges: TCellEdges; ALeft, ATop, ARight, ABottom,
+  AThickPx: Integer; ASpan: TCellEdgeSpan = esFull; AMidPx: Integer = -1): TArray<TRect>;
 
 /// <summary>Mark a cell for an insert caret (drawn after glyphs): a 2-px bar at
 /// its left edge, or a bottom bar when GCaretUnderline is on.</summary>
@@ -113,7 +154,71 @@ begin
             (C1.FgColor = C2.FgColor) and
             (C1.BgColor = C2.BgColor) and
             (C1.Attributes = C2.Attributes) and
-            (C1.IconId = C2.IconId);
+            (C1.IconId = C2.IconId) and
+            (C1.Edges = C2.Edges) and
+            ((C1.Edges = []) or
+             ((C1.EdgeColor = C2.EdgeColor) and (C1.EdgeThick = C2.EdgeThick) and
+              (C1.EdgeSpan = C2.EdgeSpan)));
+end;
+
+function EdgeBordersActive: Boolean;
+begin
+  Result := GEdgeBorders and GEdgeBordersDrawn;
+end;
+
+procedure AddGridEdges(const AGrid: TTerminalGrid; AX, AY: Integer; AEdges: TCellEdges;
+  AColor: TAlphaColor; AThick: Byte; ASpan: TCellEdgeSpan);
+begin
+  if (AY < 0) or (AY > High(AGrid)) or (AX < 0) or (AX > High(AGrid[AY])) then
+    Exit;
+  AGrid[AY][AX].Edges := AGrid[AY][AX].Edges + AEdges;
+  AGrid[AY][AX].EdgeColor := AColor;
+  AGrid[AY][AX].EdgeThick := AThick;
+  AGrid[AY][AX].EdgeSpan := ASpan;
+end;
+
+function FrameLineChar(ACorner: Char): Char;
+begin
+  case ACorner of
+    #$2554, #$2557, #$255A, #$255D, #$2552, #$2555, #$2558, #$255B:
+      Result := #$2550;
+  else
+    Result := #$2500;
+  end;
+end;
+
+function CellEdgeRects(AEdges: TCellEdges; ALeft, ATop, ARight, ABottom,
+  AThickPx: Integer; ASpan: TCellEdgeSpan; AMidPx: Integer): TArray<TRect>;
+var
+  T, SideTop, SideBottom, Mid: Integer;
+begin
+  SetLength(Result, 0);
+  if (ARight <= ALeft) or (ABottom <= ATop) then
+    Exit;
+  T := AThickPx;
+  if T < 1 then
+    T := 1;
+  if T > ARight - ALeft then
+    T := ARight - ALeft;
+  if T > ABottom - ATop then
+    T := ABottom - ATop;
+  SideTop := ATop;
+  SideBottom := ABottom;
+  Mid := AMidPx;
+  if Mid < 0 then
+    Mid := (ATop + ABottom) div 2;
+  case ASpan of
+    esUpper: SideBottom := Mid - T div 2 + T;
+    esLower: SideTop := Mid - T div 2;
+  end;
+  if ceLeft in AEdges then
+    Result := Result + [TRect.Create(ALeft, SideTop, ALeft + T, SideBottom)];
+  if ceRight in AEdges then
+    Result := Result + [TRect.Create(ARight - T, SideTop, ARight, SideBottom)];
+  if ceTop in AEdges then
+    Result := Result + [TRect.Create(ALeft, ATop, ARight, ATop + T)];
+  if ceBottom in AEdges then
+    Result := Result + [TRect.Create(ALeft, ABottom - T, ARight, ABottom)];
 end;
 
 class function TCharCell.Make(const AChar: Char; AFg, ABg: TAlphaColor;
@@ -124,6 +229,10 @@ begin
   Result.BgColor := ABg;
   Result.Attributes := AAttributes;
   Result.IconId := 0;
+  Result.Edges := [];
+  Result.EdgeThick := 0;
+  Result.EdgeSpan := esFull;
+  Result.EdgeColor := 0;
 end;
 
 procedure AllocTerminalGrid(var AGrid: TTerminalGrid; ACols, ARows: Integer);

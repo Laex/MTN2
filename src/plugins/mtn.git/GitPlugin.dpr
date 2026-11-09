@@ -735,7 +735,7 @@ begin
   begin
     Id := UTF8String(cPluginId);
     GHostApi.RegisterCommand(PAnsiChar(Id), cDiffCommand, @CmdDiff, nil);
-    GHostApi.RegisterKeyBinding(PAnsiChar(Id), cDiffCommand, 'Ctrl+Shift+D');
+    GHostApi.RegisterKeyBinding(PAnsiChar(Id), cDiffCommand, 'Ctrl+Shift+G');
     if Assigned(GHostApi.RegisterMenuItem) then
       GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', cDiffCommand,
         PAnsiChar(UTF8String(Tr('ui.menu.diff', 'Git diff of the file'))), @CmdDiff, nil, 70);

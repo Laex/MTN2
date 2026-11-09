@@ -309,6 +309,10 @@ var
       BlendTowardBlack(Cell.BgColor, Cover),
       Cell.Attributes);
     Next.IconId := Cell.IconId;
+    Next.Edges := Cell.Edges;
+    Next.EdgeThick := Cell.EdgeThick;
+    Next.EdgeSpan := Cell.EdgeSpan;
+    Next.EdgeColor := BlendTowardBlack(Cell.EdgeColor, Cover);
     AGrid[AY][AX] := Next;
   end;
 
@@ -344,6 +348,10 @@ begin
         BlendTowardBlack(Cell.BgColor, ACover),
         Cell.Attributes);
       Next.IconId := Cell.IconId;
+      Next.Edges := Cell.Edges;
+      Next.EdgeThick := Cell.EdgeThick;
+      Next.EdgeSpan := Cell.EdgeSpan;
+      Next.EdgeColor := BlendTowardBlack(Cell.EdgeColor, ACover);
       AGrid[Y][X] := Next;
     end;
 end;

@@ -154,6 +154,9 @@ type
     procedure RemoveDropHoverFromHistory;
     procedure OpenDropDown(AControlIndex: Integer);
     function DropPopupBounds(out ARect: TRectI): Boolean;
+    /// <summary>The cells of the open list that show items: the whole block with
+    /// the thin outline, the block inside its character frame without it.</summary>
+    function DropContentBounds(const APopup: TRectI): TRectI;
     function DropPopupViewHeight: Integer;
     procedure EnsureDropHoverInView;
     procedure DrawDropDownPopup(const AGrid: TTerminalGrid);
@@ -976,6 +979,7 @@ var
   N, ItemH, SpaceBelow, SpaceAbove: Integer;
   ClientTop, ClientBottom: Integer;
   OpenBelow, CanBelow, CanAbove, FitsBelow, FitsAbove: Boolean;
+  Extra: Integer;
 begin
   Result := False;
   if (FDropOpenIndex < 0) or (FDropOpenIndex > High(FControlBounds)) then
@@ -984,6 +988,11 @@ begin
   N := Length(FDecl.Controls[FDropOpenIndex].Items);
   if N < 1 then
     Exit;
+  // The character frame needs one more row, on the side away from the field.
+  Extra := 0;
+  if not EdgeBordersActive then
+    Extra := 1;
+  N := N + Extra;
   ClientTop := FBounds.Top + 1;
   ClientBottom := FBounds.Bottom - 1;
   SpaceBelow := ClientBottom - (R.Bottom + 1) + 1;
@@ -1016,6 +1025,12 @@ begin
     ItemH := Min(N, Max(SpaceAbove, 1));
     ARect := TRectI.Make(R.Left, R.Top - ItemH, R.Right, R.Top - 1);
   end;
+  // The character frame stands one cell outside the field on each side.
+  if Extra > 0 then
+  begin
+    Dec(ARect.Left);
+    Inc(ARect.Right);
+  end;
   if ARect.Left < FBounds.Left + 1 then
     ARect.Left := FBounds.Left + 1;
   if ARect.Right > FBounds.Right - 1 then
@@ -1028,7 +1043,20 @@ begin
     ARect.Right := ARect.Left;
   if ARect.Bottom < ARect.Top then
     ARect.Bottom := ARect.Top;
-  Result := (ARect.Height >= 1) and (ARect.Width >= 3);
+  Result := (ARect.Height >= 1 + Extra) and (ARect.Width >= 3 + 2 * Extra);
+end;
+
+function TDialogHost.DropContentBounds(const APopup: TRectI): TRectI;
+begin
+  Result := APopup;
+  if EdgeBordersActive then
+    Exit;
+  Result.Left := APopup.Left + 1;
+  Result.Right := APopup.Right - 1;
+  if APopup.Top > FControlBounds[FDropOpenIndex].Bottom then
+    Result.Bottom := APopup.Bottom - 1
+  else
+    Result.Top := APopup.Top + 1;
 end;
 
 function TDialogHost.DropPopupViewHeight: Integer;
@@ -1037,7 +1065,7 @@ var
 begin
   Result := 0;
   if DropPopupBounds(Frame) then
-    Result := Max(Frame.Height, 0);
+    Result := Max(DropContentBounds(Frame).Height, 0);
 end;
 
 procedure TDialogHost.EnsureDropHoverInView;
@@ -1062,6 +1090,44 @@ begin
   FDropScrollTop := EnsureRange(FDropScrollTop, 0, MaxTop);
 end;
 
+/// <summary>Single-line frame around a list docked to its field: left and right
+/// sides and the side away from the field; the docked side stays open.</summary>
+procedure DrawListFrame(const AGrid: TTerminalGrid; const AFrame: TRectI;
+  AOpensBelow: Boolean; AFg, ABg: TAlphaColor);
+var
+  X, Y, FarY, FirstY, LastY: Integer;
+begin
+  if AOpensBelow then
+  begin
+    FarY := AFrame.Bottom;
+    FirstY := AFrame.Top;
+    LastY := AFrame.Bottom - 1;
+  end
+  else
+  begin
+    FarY := AFrame.Top;
+    FirstY := AFrame.Top + 1;
+    LastY := AFrame.Bottom;
+  end;
+  for Y := FirstY to LastY do
+  begin
+    PutGridText(AGrid, AFrame.Left, Y, #$2502, AFg, ABg);
+    PutGridText(AGrid, AFrame.Right, Y, #$2502, AFg, ABg);
+  end;
+  for X := AFrame.Left + 1 to AFrame.Right - 1 do
+    PutGridText(AGrid, X, FarY, #$2500, AFg, ABg);
+  if AOpensBelow then
+  begin
+    PutGridText(AGrid, AFrame.Left, FarY, #$2514, AFg, ABg);
+    PutGridText(AGrid, AFrame.Right, FarY, #$2518, AFg, ABg);
+  end
+  else
+  begin
+    PutGridText(AGrid, AFrame.Left, FarY, #$250C, AFg, ABg);
+    PutGridText(AGrid, AFrame.Right, FarY, #$2510, AFg, ABg);
+  end;
+end;
+
 procedure TDialogHost.DrawDropDownPopup(const AGrid: TTerminalGrid);
 var
   Frame, Content: TRectI;
@@ -1069,12 +1135,15 @@ var
   J, Idx, ViewH, Count, TextW: Integer;
   Line: string;
   RowFg, RowBg, FrameFg, FrameBg: TAlphaColor;
-  NeedBar: Boolean;
+  NeedBar, Outlined, OpensBelow: Boolean;
+  ListBg: TAlphaColor;
 begin
   if not DropPopupBounds(Frame) then
     Exit;
+  Outlined := EdgeBordersActive;
+  OpensBelow := Frame.Top > FControlBounds[FDropOpenIndex].Bottom;
   EnsureDropHoverInView;
-  Content := Frame;
+  Content := DropContentBounds(Frame);
   if (Content.Right < Content.Left) or (Content.Bottom < Content.Top) then
     Exit;
   C := FDecl.Controls[FDropOpenIndex];
@@ -1104,7 +1173,14 @@ begin
       Line := ''
     else
       Line := C.Items[Idx];
-    Line := PadGridLine(Line, Max(TextW, 1));
+    // The outline lines run along the outer cell edges, so the text keeps one
+    // blank cell away from the left one and, without a scroll bar, the right one.
+    if Outlined and (Line <> '') then
+      Line := ' ' + Line;
+    if Outlined and not NeedBar then
+      Line := PadGridLine(Line, Max(TextW - 1, 1)) + ' '
+    else
+      Line := PadGridLine(Line, Max(TextW, 1));
     ResolveRowHighlight(Idx = FDropHover, FrameFg, FrameBg, RowFg, RowBg);
     // The list background sets the frameless block apart from the dialog body.
     if (Idx <> FDropHover) and Assigned(FTheme) then
@@ -1114,6 +1190,28 @@ begin
   if NeedBar then
     DrawDialogScrollBar(AGrid, Content.Right, Content.Top, Content.Bottom,
       FDropScrollTop, Count, ViewH);
+  if not Outlined then
+  begin
+    ListBg := FrameBg;
+    if Assigned(FTheme) then
+      ListBg := FTheme.ResolveDialogListBg;
+    DrawListFrame(AGrid, Frame, OpensBelow, FrameFg, ListBg);
+  end;
+  if Outlined then
+  begin
+    // Added last: writing text into a cell replaces the cell and its edges.
+    for J := Content.Top to Content.Bottom do
+    begin
+      AddGridEdges(AGrid, Content.Left, J, [ceLeft], FrameFg);
+      AddGridEdges(AGrid, Content.Right, J, [ceRight], FrameFg);
+    end;
+    // The side docked to the field has no line: the field itself bounds the list there.
+    for J := Content.Left to Content.Right do
+      if OpensBelow then
+        AddGridEdges(AGrid, J, Content.Bottom, [ceBottom], FrameFg)
+      else
+        AddGridEdges(AGrid, J, Content.Top, [ceTop], FrameFg);
+  end;
 end;
 
 procedure TDialogHost.CaptureListSelection;
@@ -2753,6 +2851,9 @@ begin
   if Popup.Contains(ALocalCol, ALocalRow) then
   begin
     EnsureDropHoverInView;
+    Popup := DropContentBounds(Popup);
+    if not Popup.Contains(ALocalCol, ALocalRow) then
+      Exit(True);
     Row := ALocalRow - Popup.Top;
     ViewH := Popup.Height;
     Count := Length(FDecl.Controls[FDropOpenIndex].Items);

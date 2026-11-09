@@ -74,6 +74,21 @@ procedure RegisterStatefulHighlighter(const APluginId, AExtensions: string; cons
 /// <summary>The highlighter that serves the file name AFileName (its extension, or its whole name
 /// such as "Makefile"), 0 when none.</summary>
 function HighlighterForFile(const AFileName: string): Integer;
+/// <summary>Called by HighlighterForFile when no registered highlighter serves the
+/// file, so a plugin that declares its extensions in the manifest can be loaded on
+/// the first file it colors. True when it loaded something; the lookup then runs
+/// again.</summary>
+type
+  THighlightLazyLoad = reference to function(const AFileName: string): Boolean;
+procedure SetHighlightLazyLoad(ALoad: THighlightLazyLoad);
+/// <summary>Every extension (".rs") and whole file name (".makefile") that APluginId's
+/// highlighters serve, lower case, without duplicates.</summary>
+function HighlighterExtensions(const APluginId: string): TArray<string>;
+/// <summary>How the extensions a plugin.json declares differ from what the plugin
+/// registered: the extensions only one side has, as "+rs" (registered, not declared)
+/// and "-rs" (declared, not registered), at most AMax of them. '' when they match.</summary>
+function HighlightManifestDiff(const ADeclared, ARegistered: TArray<string>;
+  AMax: Integer = 8): string;
 function HighlighterIsStateful(AId: Integer): Boolean;
 /// <summary>The spans of ALine, which starts in state AStateIn, and the state it ends in (cached).
 /// False when the line stays plain; AStateOut is still the state to go on with, or -1 when
@@ -124,6 +139,7 @@ const
 var
   GEntries: TList<THighlighterEntry>;
   GNextId: Integer = 0;
+  GLazyLoad: THighlightLazyLoad;
 
 function SplitExtensions(const AExtensions: string): TArray<string>;
 var
@@ -226,20 +242,97 @@ begin
         Exit(E.Id);
 end;
 
-function HighlighterForFile(const AFileName: string): Integer;
+function FindHighlighterForFile(const AFileName: string): Integer;
 var
   E: THighlighterEntry;
   X, Ext, Name: string;
 begin
   Result := 0;
-  if (AFileName = '') or (GEntries.Count = 0) then
-    Exit;
   Ext := LowerCase(ExtractFileExt(AFileName));
   Name := LowerCase(ExtractFileName(AFileName));
   for E in GEntries do
     for X in E.Extensions do
       if ((Ext <> '') and (X = Ext)) or (Name = Copy(X, 2, MaxInt)) then
         Exit(E.Id);
+end;
+
+function HighlighterForFile(const AFileName: string): Integer;
+begin
+  Result := 0;
+  if AFileName = '' then
+    Exit;
+  Result := FindHighlighterForFile(AFileName);
+  if (Result = 0) and Assigned(GLazyLoad) and GLazyLoad(AFileName) then
+    Result := FindHighlighterForFile(AFileName);
+end;
+
+procedure SetHighlightLazyLoad(ALoad: THighlightLazyLoad);
+begin
+  GLazyLoad := ALoad;
+end;
+
+function HighlightManifestDiff(const ADeclared, ARegistered: TArray<string>;
+  AMax: Integer): string;
+var
+  Declared, Registered: TDictionary<string, Boolean>;
+  X, K: string;
+  Parts: TArray<string>;
+  Total: Integer;
+
+  function Norm(const S: string): string;
+  begin
+    Result := LowerCase(Trim(S)).TrimLeft(['.']);
+  end;
+
+begin
+  Declared := TDictionary<string, Boolean>.Create;
+  Registered := TDictionary<string, Boolean>.Create;
+  try
+    for X in ADeclared do
+      Declared.AddOrSetValue(Norm(X), True);
+    for X in ARegistered do
+      Registered.AddOrSetValue(Norm(X), True);
+    Parts := [];
+    for K in Registered.Keys do
+      if not Declared.ContainsKey(K) then
+        Parts := Parts + ['+' + K];
+    for K in Declared.Keys do
+      if not Registered.ContainsKey(K) then
+        Parts := Parts + ['-' + K];
+    TArray.Sort<string>(Parts);
+    Total := Length(Parts);
+    if Total > AMax then
+      SetLength(Parts, AMax);
+    Result := string.Join(' ', Parts);
+    if Total > AMax then
+      Result := Result + ' ...';
+  finally
+    Registered.Free;
+    Declared.Free;
+  end;
+end;
+
+function HighlighterExtensions(const APluginId: string): TArray<string>;
+var
+  E: THighlighterEntry;
+  X, Id: string;
+  Seen: TDictionary<string, Boolean>;
+begin
+  Result := [];
+  Id := LowerCase(Trim(APluginId));
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for E in GEntries do
+      if E.PluginId = Id then
+        for X in E.Extensions do
+          if not Seen.ContainsKey(X) then
+          begin
+            Seen.Add(X, True);
+            Result := Result + [X];
+          end;
+  finally
+    Seen.Free;
+  end;
 end;
 
 function HighlighterIsStateful(AId: Integer): Boolean;
@@ -463,6 +556,7 @@ initialization
   GEntries := TList<THighlighterEntry>.Create;
 
 finalization
+  GLazyLoad := nil;
   while GEntries.Count > 0 do
     DropEntry(GEntries.Count - 1);
   FreeAndNil(GEntries);

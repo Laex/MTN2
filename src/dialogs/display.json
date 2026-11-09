@@ -242,6 +242,16 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "edge_borders",
+      "text": "&Thin lines in dropdown lists only",
+      "checked": true,
+      "col": 47,
+      "row": 4,
+      "width": 39,
+      "height": 1
+    },
+    {
       "type": "label",
       "text": "Shadows",
       "id": "lbl_shadows",
