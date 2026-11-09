@@ -3,7 +3,19 @@
   "name": "Network connections",
   "version": "0.1.0",
   "abi": 4,
-  "startup": true,
+  "declarative": true,
+  "commands": [
+    {"id": "net.open", "key": "Ctrl+Shift+B", "label": {"en": "Net", "ru": "Сеть"}}
+  ],
+  "driveItems": [
+    {"id": "net", "caption": {"en": "Network connections", "ru": "Сетевые подключения"}, "uri": "net:///", "priority": 100}
+  ],
+  "menuItems": [
+    {"id": "net.open", "caption": {"en": "Network connections", "ru": "Сетевые подключения"}, "priority": 60},
+    {"id": "net_new", "caption": {"en": "New network connection...", "ru": "Новое сетевое подключение..."}, "priority": 61},
+    {"id": "net_address", "caption": {"en": "Open network address...", "ru": "Открыть сетевой адрес..."}, "priority": 62},
+    {"id": "net_chmod", "caption": {"en": "Permissions on the server...", "ru": "Права на сервере..."}, "priority": 63}
+  ],
   "keepLoaded": true,
   "resources": 1,
   "schemes": ["net", "ftp", "ftps", "nsftp", "scp", "dav", "davs", "s3"],
