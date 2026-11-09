@@ -31,8 +31,20 @@ type
   /// True = handled, the built-in handler is skipped.</summary>
   TCommandHook = reference to function(const ACommand, AOrigin: string): Boolean;
 
+  /// <summary>A plugin command as the command palette lists it.</summary>
+  TPluginCommandInfo = record
+    PluginId: string;
+    CommandId: string;
+    /// <summary>The label the plugin gave the command; '' when none.</summary>
+    Caption: string;
+    /// <summary>The key chord bound to the command; '' when none.</summary>
+    Chord: string;
+  end;
+
   ICommandRegistry = interface
     ['{5E2B7D94-3A1C-4F68-B0D5-9C4E1A7F3B26}']
+    /// <summary>Every plugin command, in registration order.</summary>
+    function ListCommands: TArray<TPluginCommandInfo>;
     /// <summary>Adds a hook for the built-in command ACommand (a keymap action
     /// name). An unknown name is ignored. A plugin's second hook for the same
     /// command replaces its first.</summary>
@@ -131,6 +143,7 @@ type
     procedure SetCommandCaption(const APluginId, ACommandId, ACaption: string);
     function TryGetFBarLabel(AKey: Word; AShift: TShiftState; out ALabel: string): Boolean;
     function DescribePlugin(const APluginId: string): TArray<string>;
+    function ListCommands: TArray<TPluginCommandInfo>;
     procedure UnregisterPlugin(const APluginId: string);
     function TryIntercept(const ACommand, AOrigin: string): Boolean;
     function TryExecute(const ACommandId: string): Boolean;
@@ -332,6 +345,20 @@ begin
     Result := Lines.ToArray;
   finally
     Lines.Free;
+  end;
+end;
+
+function TCommandRegistry.ListCommands: TArray<TPluginCommandInfo>;
+var
+  I: Integer;
+begin
+  SetLength(Result, FCommands.Count);
+  for I := 0 to FCommands.Count - 1 do
+  begin
+    Result[I].PluginId := FCommands[I].PluginId;
+    Result[I].CommandId := FCommands[I].CommandId;
+    Result[I].Caption := FCommands[I].Caption;
+    Result[I].Chord := CommandChordText(FCommands[I].CommandId);
   end;
 end;
 

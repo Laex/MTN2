@@ -38,6 +38,7 @@ type
     [Test] procedure TestKeysWithoutMenuItemAreListedWithTheirShortcut;
     [Test] procedure TestKeyOnlyCommandRunsItsAction;
     [Test] procedure TestShortcutColumnIsSearched;
+    [Test] procedure TestPluginCommandWithoutMenuItemIsListedAndRuns;
   end;
 
 implementation
@@ -46,7 +47,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
   uDialogHost, uDialogTypes, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
-  uDualPanelKeymapDialog;
+  uDualPanelKeymapDialog, uCommandRegistry;
 
 const
   cMenuJson =
@@ -868,6 +869,47 @@ begin
     Assert.IsTrue(not Contains(RankedKeys(E, 'f'), 'key:RunInBackground'),
       'a letter does not match inside a key name such as Shift');
   finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestPluginCommandWithoutMenuItemIsListedAndRuns;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Items: TArray<TPluginMenuItemDesc>;
+  Ran: Integer;
+  I, Count: Integer;
+begin
+  Ran := 0;
+  M := MakeMenu(cMenuJson);
+  try
+    CommandRegistry.RegisterCommand('t.pal', 't.pal.only', procedure begin Inc(Ran); end);
+    CommandRegistry.RegisterCommandBinding('t.pal', 't.pal.only', 'Ctrl+Alt+F12');
+    CommandRegistry.RegisterCommand('t.pal', 't.pal.menu', procedure begin Inc(Ran, 100); end);
+    SetLength(Items, 1);
+    Items[0] := Default(TPluginMenuItemDesc);
+    Items[0].PluginId := 't.pal';
+    Items[0].ItemId := 't.pal.menu';
+    Items[0].Caption := 'Palette menu command';
+    Items[0].OnClick := procedure begin Inc(Ran, 100); end;
+    M.SetPluginMenuItems(Items);
+
+    E := BuildPaletteEntries(M);
+    I := IndexOfKey(E, 'plugin:t.pal:t.pal.only');
+    Assert.IsTrue(I >= 0, 'a command no menu item runs is listed');
+    Assert.AreEqual('Ctrl+Alt+F12', E[I].Shortcut, 'its key is shown');
+    Assert.IsTrue(Contains(RankedKeys(E, 'pal only'), 'plugin:t.pal:t.pal.only'), 'found by its id');
+    Assert.IsTrue(M.RunItem(E[I].Item), 'the entry runs');
+    Assert.AreEqual(1, Ran, 'it runs the registered handler');
+
+    Count := 0;
+    for I := 0 to High(E) do
+      if E[I].Item.IsPluginItem and (E[I].Item.PluginItemId = 't.pal.menu') then
+        Inc(Count);
+    Assert.AreEqual(1, Count, 'a command with a menu item is listed once');
+  finally
+    CommandRegistry.UnregisterPlugin('t.pal');
     M.Free;
   end;
 end;

@@ -191,6 +191,9 @@ type
     /// PluginId = not a plugin item (built-in, from menu.json/RCDATA).</summary>
     IsPluginItem: Boolean;
     PluginId: string;
+    /// <summary>The id the plugin registered the item under; the command palette
+    /// compares it with the plugin's command ids.</summary>
+    PluginItemId: string;
     PluginOnClick: TProc;
     /// <summary>1-based number of the plugin's group in the Plugins menu; the
     /// submenu colors a column at the right edge of the rows by it. 0 = none.</summary>
@@ -206,6 +209,7 @@ type
 
   TPluginMenuItemDesc = record
     PluginId: string;
+    ItemId: string;
     /// <summary>Name shown on the line that opens the plugin's group.</summary>
     PluginTitle: string;
     ParentTitle: string;
@@ -1159,6 +1163,7 @@ begin
     NewItem.Action := tmaNone;
     NewItem.IsPluginItem := True;
     NewItem.PluginId := Desc.PluginId;
+    NewItem.PluginItemId := Desc.ItemId;
     NewItem.PluginOnClick := Desc.OnClick;
     NewItem.PluginGroup := Group;
     SetLength(Cat.Items, Length(Cat.Items) + 1);
@@ -1206,6 +1211,7 @@ begin
       NewItem.Action := tmaNone;
       NewItem.IsPluginItem := True;
       NewItem.PluginId := Desc.PluginId;
+      NewItem.PluginItemId := Desc.ItemId;
       NewItem.PluginOnClick := Desc.OnClick;
       SetLength(MacroCat.Items, Length(MacroCat.Items) + 1);
       MacroCat.Items[High(MacroCat.Items)] := NewItem;

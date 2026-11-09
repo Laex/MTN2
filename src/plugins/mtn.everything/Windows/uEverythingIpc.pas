@@ -26,6 +26,7 @@ const
   cClassName14 = 'EVERYTHING_TASKBAR_NOTIFICATION';
   cClassName15 = 'EVERYTHING_TASKBAR_NOTIFICATION_(1.5a)';
   cReplyClass = 'MTN2EverythingReply';
+  cReplyTimeoutMs = 15000;
 
 threadvar
   // The reply of the query being run on this thread.
@@ -68,6 +69,26 @@ begin
   Result := CreateWindowEx(0, cReplyClass, nil, 0, 0, 0, 0, 0, HWND_MESSAGE, 0, HInstance, nil);
 end;
 
+// Everything answers after the query call has returned, from its own thread; the
+// reply is delivered to the reply window only while this thread processes messages.
+procedure WaitForReply(AReplyWnd: HWND);
+var
+  Msg: TMsg;
+  NoHandle: THandle;
+  Deadline: UInt64;
+begin
+  NoHandle := 0;
+  Deadline := GetTickCount64 + cReplyTimeoutMs;
+  while not GGotReply and (GetTickCount64 < Deadline) do
+  begin
+    // Peeking also delivers the sent WM_COPYDATA; the window filter keeps the
+    // host's own queued messages out of this loop.
+    PeekMessage(Msg, AReplyWnd, 0, 0, PM_REMOVE);
+    if not GGotReply then
+      MsgWaitForMultipleObjects(0, NoHandle, False, 20, QS_SENDMESSAGE);
+  end;
+end;
+
 function EverythingSearch(const AQuery: string; AMaxResults: Integer; out AItems: TEvItems;
   out AError: string): Boolean;
 var
@@ -103,6 +124,7 @@ begin
       AError := 'Everything did not accept the query';
       Exit;
     end;
+    WaitForReply(Wnd);
     if not GGotReply then
     begin
       AError := 'Everything gave no answer';

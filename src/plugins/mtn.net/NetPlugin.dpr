@@ -153,7 +153,7 @@ begin
     end;
     if Assigned(AHostApi.RegisterMenuItem) then
     begin
-      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_open',
+      AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net.open',
         PAnsiChar(UTF8String(Tr('ui.menu.open', 'Network connections'))), @CmdOpenList, nil, 60);
       AHostApi.RegisterMenuItem(PAnsiChar(cPluginId), 'Plugins', 'net_new',
         PAnsiChar(UTF8String(Tr('ui.menu.new', 'New network connection...'))), @CmdNewSession, nil, 61);

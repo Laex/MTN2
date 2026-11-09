@@ -233,6 +233,7 @@ begin
     if Entry.Caption = '' then
       Continue;
     Items[I].PluginId := Entry.PluginId;
+    Items[I].ItemId := Entry.ItemId;
     if Assigned(FTitleResolver) then
       Items[I].PluginTitle := FTitleResolver(Entry.PluginId);
     Items[I].ParentTitle := Entry.ParentPath;

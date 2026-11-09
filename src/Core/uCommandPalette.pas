@@ -1,7 +1,8 @@
 unit uCommandPalette;
 
 { Search over the commands of the top menu. The entries are the live menu
-  (built-in items and plugin items alike); the search text is matched against
+  (built-in items and plugin items alike) and the plugin commands that have no
+  menu item; the search text is matched against
   the caption, the category title and the aliases that the string tables give
   to an item as 'menu.alias.<action name>' (comma separated words in any
   language, so a command is found by the name another program or another
@@ -78,7 +79,7 @@ implementation
 
 uses
   System.Classes, System.IOUtils, System.JSON, System.Generics.Defaults,
-  System.TypInfo, uStrings, uCharWidth, uConfigLocation;
+  System.TypInfo, uStrings, uCharWidth, uConfigLocation, uCommandRegistry;
 
 var
   GRecent: TArray<string>; // newest first
@@ -150,6 +151,57 @@ begin
     Result := GetEnumName(TypeInfo(TTopMenuAction), Ord(AItem.Action));
 end;
 
+// The plugin commands that no plugin menu item runs (a command bound to a key
+// only), listed after the menu commands so every command is reachable here.
+procedure AddUncoveredPluginCommands(AMenu: TTopMenuController;
+  AUser: TDictionary<string, string>; AList: TList<TPaletteEntry>);
+var
+  Covered: TDictionary<string, Boolean>;
+  Info: TPluginCommandInfo;
+  E: TPaletteEntry;
+  CommandId: string;
+begin
+  Covered := TDictionary<string, Boolean>.Create;
+  try
+    AMenu.ListItems(
+      procedure(ACategory: string; AItem: TSubmenuItem)
+      begin
+        if AItem.IsPluginItem then
+          Covered.AddOrSetValue(LowerCase(AItem.PluginId + #0 + AItem.PluginItemId), True);
+      end);
+    for Info in CommandRegistry.ListCommands do
+    begin
+      if Covered.ContainsKey(LowerCase(Info.PluginId + #0 + Info.CommandId)) then
+        Continue;
+      CommandId := Info.CommandId;
+      E := Default(TPaletteEntry);
+      E.Action := kaNone;
+      E.Item.IsPluginItem := True;
+      E.Item.PluginId := Info.PluginId;
+      E.Item.PluginItemId := CommandId;
+      E.Item.Aliases := Info.PluginId + ', ' + CommandId;
+      if Info.Caption <> '' then
+        E.Item.Caption := Info.Caption
+      else
+        E.Item.Caption := CommandId;
+      E.Item.PluginOnClick :=
+        procedure
+        begin
+          CommandRegistry.TryExecute(CommandId);
+        end;
+      E.Title := CleanTitle(E.Item.Caption);
+      E.Category := T('menu.category.Plugins', 'Plugins');
+      E.Shortcut := Info.Chord;
+      E.Key := ItemKey(E.Item);
+      E.Aliases := AliasesOf(E, AUser);
+      E.Description := T('menu.hint.' + E.Key, '');
+      AList.Add(E);
+    end;
+  finally
+    Covered.Free;
+  end;
+end;
+
 function BuildPaletteEntries(AMenu: TTopMenuController;
   const AUserAliasesPath: string): TArray<TPaletteEntry>;
 var
@@ -185,6 +237,7 @@ begin
         E.Description := T('menu.hint.' + E.Key, AItem.Hint);
         List.Add(E);
       end);
+    AddUncoveredPluginCommands(AMenu, User, List);
     Result := List.ToArray;
   finally
     List.Free;

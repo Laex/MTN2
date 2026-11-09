@@ -388,6 +388,9 @@ begin
   GHostApi.RegisterCommand(PAnsiChar(PluginId), PAnsiChar(CommandId), @CmdFilter, nil);
   if Assigned(GHostApi.RegisterKeyBinding) then
     GHostApi.RegisterKeyBinding(PAnsiChar(PluginId), PAnsiChar(CommandId), PAnsiChar(Chord));
+  if Assigned(GHostApi.RegisterMenuItem) then
+    GHostApi.RegisterMenuItem(PAnsiChar(PluginId), 'Plugins', PAnsiChar(CommandId),
+      PAnsiChar(UTF8String(Tr('menu.filter', 'Filter lines...'))), @MenuFilter, nil, 50);
   Result := 0;
 end;
 

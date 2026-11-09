@@ -43,7 +43,7 @@ function PlatformRunCaptured(const AExe: string; const AArgs: TArray<string>;
 implementation
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows;
+  System.SysUtils, System.Classes, System.Win.Registry, Winapi.Windows;
 
 const
   cWaitSliceMs = 400;
@@ -221,11 +221,51 @@ begin
   until False;
 end;
 
-/// <summary>Spawns AExe with AArgs, writes AStdIn to its stdin then closes
-/// it, captures merged stdout+stderr. ATimeoutMs=0 waits until the process
-/// exits or ACancel is signalled. Timeout/cancel kill the child. A nonzero
-/// exit code is srOk - the caller reads AOutput to explain the failure.</summary>
-function PlatformRunCaptured(const AExe: string; const AArgs: TArray<string>;
+function RegistryPathValue(ARoot: HKEY; const AKey: string): string;
+var
+  Reg: TRegistry;
+begin
+  Result := '';
+  Reg := TRegistry.Create(KEY_READ);
+  try
+    Reg.RootKey := ARoot;
+    if Reg.OpenKeyReadOnly(AKey) and Reg.ValueExists('Path') then
+      Result := Reg.ReadString('Path');
+  finally
+    Reg.Free;
+  end;
+end;
+
+function ExpandEnvVars(const S: string): string;
+var
+  Len: DWORD;
+begin
+  Len := ExpandEnvironmentStrings(PChar(S), nil, 0);
+  if Len = 0 then
+    Exit(S);
+  SetLength(Result, Len);
+  Len := ExpandEnvironmentStrings(PChar(S), PChar(Result), Len);
+  SetLength(Result, Len - 1);
+end;
+
+// A process started from a shell that predates an install has an out-of-date
+// PATH. The user and machine PATH from the registry are always current.
+function FindInRegistryPath(const AExe: string): string;
+var
+  SearchDirs: string;
+  Buf: array[0..MAX_PATH] of Char;
+  FilePart: PChar;
+begin
+  Result := '';
+  if (AExe = '') or (AExe.IndexOfAny(['\', '/', ':']) >= 0) then
+    Exit;
+  SearchDirs := ExpandEnvVars(RegistryPathValue(HKEY_CURRENT_USER, 'Environment') + ';' +
+    RegistryPathValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'));
+  if SearchPath(PChar(SearchDirs), PChar(AExe), '.exe', Length(Buf), Buf, FilePart) > 0 then
+    Result := Buf;
+end;
+
+function RunCapturedOnce(const AExe: string; const AArgs: TArray<string>;
   const AStdIn: string; ATimeoutMs: Cardinal; ACancel: IJobCancelToken;
   out AOutput: string; out AExitCode: Cardinal): TSpawnResult;
 var
@@ -286,6 +326,26 @@ begin
     Reader.Free;
     CloseHandleIfOpen(StdOutRead);
   end;
+end;
+
+/// <summary>Spawns AExe with AArgs, writes AStdIn to its stdin then closes
+/// it, captures merged stdout+stderr. ATimeoutMs=0 waits until the process
+/// exits or ACancel is signalled. Timeout/cancel kill the child. A nonzero
+/// exit code is srOk - the caller reads AOutput to explain the failure. A bare
+/// program name that is not in this process's PATH is looked up in the
+/// registry PATH.</summary>
+function PlatformRunCaptured(const AExe: string; const AArgs: TArray<string>;
+  const AStdIn: string; ATimeoutMs: Cardinal; ACancel: IJobCancelToken;
+  out AOutput: string; out AExitCode: Cardinal): TSpawnResult;
+var
+  Full: string;
+begin
+  Result := RunCapturedOnce(AExe, AArgs, AStdIn, ATimeoutMs, ACancel, AOutput, AExitCode);
+  if Result <> srSpawnFailed then
+    Exit;
+  Full := FindInRegistryPath(AExe);
+  if Full <> '' then
+    Result := RunCapturedOnce(Full, AArgs, AStdIn, ATimeoutMs, ACancel, AOutput, AExitCode);
 end;
 
 end.

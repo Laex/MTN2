@@ -737,11 +737,11 @@ begin
     GHostApi.RegisterCommand(PAnsiChar(Id), cDiffCommand, @CmdDiff, nil);
     GHostApi.RegisterKeyBinding(PAnsiChar(Id), cDiffCommand, 'Ctrl+Shift+D');
     if Assigned(GHostApi.RegisterMenuItem) then
-      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', 'git_diff',
+      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', cDiffCommand,
         PAnsiChar(UTF8String(Tr('ui.menu.diff', 'Git diff of the file'))), @CmdDiff, nil, 70);
     GHostApi.RegisterCommand(PAnsiChar(Id), cBlameCommand, @CmdBlame, nil);
     if Assigned(GHostApi.RegisterMenuItem) then
-      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', 'git_blame',
+      GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', cBlameCommand,
         PAnsiChar(UTF8String(Tr('ui.menu.blame', 'Git blame of the file'))), @CmdBlame, nil, 71);
   end;
   LoadLabels;

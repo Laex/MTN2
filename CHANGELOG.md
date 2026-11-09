@@ -6,6 +6,14 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.5.1 – 2026-11-09
+
+### Fixed
+
+- The command palette (`Shift+F9`) lists the plugin commands that have no menu item (for example the Line filter and macros kept out of the menu), with their keys. Line filter gets a Plugins menu item, and the Git and Net commands show their keys in the palette.
+- The Everything plugin: a search no longer ends with "Everything gave no answer"; the plugin waits for the reply, which Everything 1.4 sends after the query call has returned.
+- Plugins that run external programs (Rclone, Docker, SFTP) report "did not run (is it installed and in PATH?)" no more when the program was installed after the session that started MTN2: the program is also looked up in the current user and machine PATH from the registry.
+
 ## v0.5.5 – 2026-11-09
 
 ### New
