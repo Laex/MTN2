@@ -16,6 +16,9 @@ type
     [Test] procedure TestDisabledPluginsFile;
     [Test] procedure TestPluginOrderFile;
     [Test] procedure TestShippedSevenZipOffersZipOverride;
+    [Test] procedure TestDeclarativeRegistrations;
+    [Test] procedure TestConditionsDriveItemsAndDocumentExtensions;
+    [Test] procedure TestShippedDeclarationsNameIdsTheSourcesRegister;
   end;
 
 implementation
@@ -107,6 +110,108 @@ begin
   Assert.IsTrue(not M.Startup, 'only a JSON boolean turns startup on');
 end;
 
+procedure TestDeclarativeRegistrations;
+var
+  M: TPluginManifest;
+begin
+  Assert.IsTrue(TryParsePluginManifestJson('{"id":"x"}', M));
+  Assert.IsTrue(not M.Declarative and (Length(M.Commands) = 0) and (Length(M.MenuItems) = 0),
+    'a manifest without declarations is not declarative');
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"x","declarative":true,' +
+    '"commands":[{"id":"x.run","key":"Ctrl+Alt+J","label":"Run"},{"id":""},{"key":"F5"}],' +
+    '"menuItems":[{"id":"x.run","caption":{"en":"Run it","ru":"Run ru"},"priority":50},{"id":"x.two"}]}', M));
+  Assert.IsTrue(M.Declarative, 'declarative');
+  Assert.IsTrue(Length(M.Commands) = 1, 'entries without an id are dropped');
+  Assert.AreEqual('x.run', M.Commands[0].Id);
+  Assert.AreEqual('Ctrl+Alt+J', M.Commands[0].Key);
+  Assert.AreEqual('Run', LocalizedText(M.Commands[0].LabelLocales, M.Commands[0].LabelTexts, 'de'),
+    'a plain label serves every language');
+  Assert.IsTrue(Length(M.MenuItems) = 2);
+  Assert.IsTrue(M.MenuItems[0].Priority = 50);
+  Assert.IsTrue(M.MenuItems[1].Priority = 100, 'default priority');
+  Assert.AreEqual('Run ru', LocalizedText(M.MenuItems[0].CaptionLocales, M.MenuItems[0].CaptionTexts, 'ru'));
+  Assert.AreEqual('Run it', LocalizedText(M.MenuItems[0].CaptionLocales, M.MenuItems[0].CaptionTexts, 'de'),
+    'English is the fallback');
+end;
+
+procedure TestConditionsDriveItemsAndDocumentExtensions;
+var
+  M: TPluginManifest;
+  C: TManifestCondition;
+begin
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"x","declarative":true,' +
+    '"driveItems":[{"id":"d","caption":"D","uri":"d:///","priority":7,"when":{"os":"windows"}},{"id":"nouri"}],' +
+    '"menuItems":[{"id":"m","when":{"exe":"tool","env":"HOME","file":"a.cfg"}}],' +
+    '"documentExtensions":[".CSV","tsv"]}', M));
+  Assert.IsTrue(Length(M.DriveItems) = 1, 'a drive item needs a uri');
+  Assert.AreEqual('d:///', M.DriveItems[0].Uri);
+  Assert.IsTrue(M.DriveItems[0].Priority = 7);
+  Assert.IsTrue(Length(M.DriveItems[0].When.Os) = 1, 'os condition');
+  Assert.AreEqual('tool', M.MenuItems[0].When.Exe);
+  Assert.AreEqual('HOME', M.MenuItems[0].When.Env);
+  Assert.AreEqual('a.cfg', M.MenuItems[0].When.FileName);
+  Assert.IsTrue((Length(M.DocumentExtensions) = 2) and (M.DocumentExtensions[0] = 'csv'),
+    'extensions are lower case without the dot');
+
+  C := Default(TManifestCondition);
+  Assert.IsTrue(ManifestConditionHolds(C), 'no condition always holds');
+  C.Os := [CurrentOsName];
+  Assert.IsTrue(ManifestConditionHolds(C), 'the current os');
+  C.Os := ['no-such-os'];
+  Assert.IsTrue(not ManifestConditionHolds(C), 'another os');
+  C := Default(TManifestCondition);
+  C.Exe := 'mtn-no-such-tool-xyz';
+  Assert.IsTrue(not ManifestConditionHolds(C), 'a missing program');
+  C := Default(TManifestCondition);
+  C.FileName := ParamStr(0);
+  Assert.IsTrue(ManifestConditionHolds(C), 'an existing file');
+  C.FileName := ParamStr(0) + '.missing';
+  Assert.IsTrue(not ManifestConditionHolds(C), 'a missing file');
+  C := Default(TManifestCondition);
+  C.Env := 'MTN_NO_SUCH_VARIABLE_XYZ';
+  Assert.IsTrue(not ManifestConditionHolds(C), 'an unset variable');
+  C.Env := 'PATH';
+  Assert.IsTrue(ManifestConditionHolds(C), 'a set variable');
+end;
+
+procedure TestShippedDeclarationsNameIdsTheSourcesRegister;
+var
+  Root, Dir, Src, Text, Id: string;
+  M: TPluginManifest;
+  Checked: Integer;
+  Ids: TArray<string>;
+  Cmd: TManifestCommand;
+  Item: TManifestMenuItem;
+  Drive: TManifestDriveItem;
+begin
+  Root := ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)), NativePath('../../plugins')));
+  Checked := 0;
+  for Dir in TDirectory.GetDirectories(Root) do
+  begin
+    if not (TryReadPluginManifest(Dir, M) and M.Declarative) then
+      Continue;
+    Text := '';
+    for Src in TDirectory.GetFiles(Dir, '*.*', TSearchOption.soAllDirectories) do
+      if SameText(ExtractFileExt(Src), '.dpr') or SameText(ExtractFileExt(Src), '.pas') then
+        Text := Text + TFile.ReadAllText(Src, TEncoding.UTF8);
+    Ids := [];
+    for Cmd in M.Commands do
+      Ids := Ids + [Cmd.Id];
+    for Item in M.MenuItems do
+      Ids := Ids + [Item.Id];
+    for Drive in M.DriveItems do
+      Ids := Ids + [Drive.Id];
+    Assert.IsTrue(Length(Ids) > 0, M.Id + ' declares something');
+    for Id in Ids do
+      Assert.IsTrue(Text.Contains('''' + Id + ''''),
+        M.Id + ' declares ' + Id + ' but its sources never register it');
+    Inc(Checked);
+  end;
+  Assert.IsTrue(Checked >= 2, 'the shipped declarative plugins were found');
+end;
+
 procedure TestShippedSevenZipOffersZipOverride;
 var
   Dir: string;
@@ -196,6 +301,21 @@ begin
 end;
 
 { TTestPluginManifest }
+
+procedure TTestPluginManifest.TestDeclarativeRegistrations;
+begin
+  TestPluginManifest.TestDeclarativeRegistrations;
+end;
+
+procedure TTestPluginManifest.TestConditionsDriveItemsAndDocumentExtensions;
+begin
+  TestPluginManifest.TestConditionsDriveItemsAndDocumentExtensions;
+end;
+
+procedure TTestPluginManifest.TestShippedDeclarationsNameIdsTheSourcesRegister;
+begin
+  TestPluginManifest.TestShippedDeclarationsNameIdsTheSourcesRegister;
+end;
 
 procedure TTestPluginManifest.TestShippedSevenZipOffersZipOverride;
 begin

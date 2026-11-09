@@ -11,6 +11,47 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>"when" of a declared entry: the entry exists only where every given
+  /// condition holds. Os: "windows", "linux" or "macos" (any of the listed); Exe: a
+  /// program found on PATH; FileName: an existing file or folder; Env: an environment
+  /// variable that is not empty. An empty condition always holds.</summary>
+  TManifestCondition = record
+    Os: TArray<string>;
+    Exe: string;
+    FileName: string;
+    Env: string;
+  end;
+
+  /// <summary>A command the plugin declares: its id, the key chord bound to it ('' for
+  /// none) and the label the command palette and the function bar show until the
+  /// plugin is loaded.</summary>
+  TManifestCommand = record
+    Id: string;
+    Key: string;
+    LabelLocales: TArray<string>;
+    LabelTexts: TArray<string>;
+    When: TManifestCondition;
+  end;
+
+  /// <summary>An item of the Plugins menu the plugin declares.</summary>
+  TManifestMenuItem = record
+    Id: string;
+    CaptionLocales: TArray<string>;
+    CaptionTexts: TArray<string>;
+    Priority: Integer;
+    When: TManifestCondition;
+  end;
+
+  /// <summary>An item of the Change Drive list the plugin declares.</summary>
+  TManifestDriveItem = record
+    Id: string;
+    CaptionLocales: TArray<string>;
+    CaptionTexts: TArray<string>;
+    Uri: string;
+    Priority: Integer;
+    When: TManifestCondition;
+  end;
+
   TPluginManifest = record
     Id: string;
     Name: string;
@@ -32,6 +73,25 @@ type
     /// so a plugin that only colors text needs no "startup". The list must match what
     /// the plugin registers; the host reports a difference in the plugin's information.</summary>
     HighlightExtensions: TArray<string>;
+    /// <summary>Optional "declarative": true - everything the plugin registers for the
+    /// menu, the command palette and key chords is listed in "commands" and "menuItems".
+    /// The host builds those from the manifest and loads the plugin when one is used,
+    /// so it needs no "startup". At load the plugin's own registrations are checked
+    /// against the lists: one that is not declared is refused, one that is declared and
+    /// not registered is dropped, and the plugin's information dialog says so.</summary>
+    Declarative: Boolean;
+    /// <summary>Optional "commands": [{"id": "x.run", "key": "Ctrl+Alt+J", "label": ...}];
+    /// "label" is a string or an object per language like "description".</summary>
+    Commands: TArray<TManifestCommand>;
+    /// <summary>Optional "menuItems": [{"id": "x.run", "caption": ..., "priority": 50}].</summary>
+    MenuItems: TArray<TManifestMenuItem>;
+    /// <summary>Optional "driveItems": [{"id": "x", "caption": ..., "uri": "x:///", "priority": 60}].</summary>
+    DriveItems: TArray<TManifestDriveItem>;
+    /// <summary>Optional "documentExtensions": ["csv", "tsv"] - the file extensions the
+    /// plugin registers a document provider for (lower case, no dot). The host loads the
+    /// plugin the first time a file with such an extension is opened in the viewer, the
+    /// editor or Quick View.</summary>
+    DocumentExtensions: TArray<string>;
     /// <summary>Optional "overrides": ["sftp", ".zip"] - built-in handlers
     /// this plugin asks to replace: a scheme, or a file name extension with
     /// the leading dot. Takes effect only when the user lists the plugin id
@@ -91,6 +151,12 @@ function TryReadOverrideAllowList(const APluginsDir: string;
 /// <summary>The description in ALocale ("ru"), else English, else the plain
 /// string, else the first one given; '' when the manifest has none.</summary>
 function ManifestDescription(const AManifest: TPluginManifest; const ALocale: string): string;
+/// <summary>True when every condition of ACondition holds on the running system.</summary>
+function ManifestConditionHolds(const ACondition: TManifestCondition): Boolean;
+/// <summary>"windows", "linux" or "macos".</summary>
+function CurrentOsName: string;
+/// <summary>The label / caption in ALocale of a declared command or menu item.</summary>
+function LocalizedText(const ALocales, ATexts: TArray<string>; const ALocale: string): string;
 /// <summary><APluginDir>\resource\<ALocale>: the plugin's pack for one language
 /// (locale.json, strings.json, help\).</summary>
 function PluginResourceDir(const APluginDir, ALocale: string): string;
@@ -136,6 +202,11 @@ begin
   SetLength(AManifest.ArchiveExtensions, 0);
   SetLength(AManifest.Schemes, 0);
   SetLength(AManifest.HighlightExtensions, 0);
+  AManifest.Declarative := False;
+  SetLength(AManifest.Commands, 0);
+  SetLength(AManifest.MenuItems, 0);
+  SetLength(AManifest.DriveItems, 0);
+  SetLength(AManifest.DocumentExtensions, 0);
   SetLength(AManifest.Overrides, 0);
   AManifest.Startup := False;
   AManifest.Wasi := False;
@@ -173,6 +244,124 @@ begin
     end;
 end;
 
+/// <summary>Text in ALocale from a "label"/"caption" value: a string, or an object per
+/// language; falls back to English, then to the first entry.</summary>
+function LocalizedText(const ALocales, ATexts: TArray<string>; const ALocale: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to High(ALocales) do
+    if SameText(ALocales[I], ALocale) then
+      Exit(ATexts[I]);
+  for I := 0 to High(ALocales) do
+    if SameText(ALocales[I], 'en') or (ALocales[I] = '') then
+      Exit(ATexts[I]);
+  if Length(ATexts) > 0 then
+    Result := ATexts[0];
+end;
+
+function CurrentOsName: string;
+begin
+{$IF Defined(MSWINDOWS)}
+  Result := 'windows';
+{$ELSEIF Defined(MACOS)}
+  Result := 'macos';
+{$ELSE}
+  Result := 'linux';
+{$ENDIF}
+end;
+
+function ExecutableOnPath(const AName: string): Boolean;
+var
+  Dir, Ext: string;
+  Exts: TArray<string>;
+begin
+{$IFDEF MSWINDOWS}
+  Exts := ['', '.exe', '.cmd', '.bat', '.com'];
+{$ELSE}
+  Exts := [''];
+{$ENDIF}
+  for Dir in GetEnvironmentVariable('PATH').Split([TPath.PathSeparator]) do
+    if Dir <> '' then
+      for Ext in Exts do
+        if TFile.Exists(TPath.Combine(Dir, AName + Ext)) then
+          Exit(True);
+  Result := False;
+end;
+
+function ManifestConditionHolds(const ACondition: TManifestCondition): Boolean;
+var
+  S: string;
+  Found: Boolean;
+begin
+  Result := False;
+  if Length(ACondition.Os) > 0 then
+  begin
+    Found := False;
+    for S in ACondition.Os do
+      if S = CurrentOsName then
+        Found := True;
+    if not Found then
+      Exit;
+  end;
+  if (ACondition.Exe <> '') and not ExecutableOnPath(ACondition.Exe) then
+    Exit;
+  if (ACondition.FileName <> '') and not (TFile.Exists(ACondition.FileName) or
+     TDirectory.Exists(ACondition.FileName)) then
+    Exit;
+  if (ACondition.Env <> '') and (GetEnvironmentVariable(ACondition.Env) = '') then
+    Exit;
+  Result := True;
+end;
+
+function ReadCondition(AValue: TJSONValue): TManifestCondition;
+var
+  N: TJSONValue;
+begin
+  Result := Default(TManifestCondition);
+  if not (AValue is TJSONObject) then
+    Exit;
+  N := TJSONObject(AValue).Values['os'];
+  if N is TJSONString then
+    Result.Os := [LowerCase(Trim(TJSONString(N).Value))]
+  else
+    Result.Os := ReadTrimmedStrings(N, True);
+  N := TJSONObject(AValue).Values['exe'];
+  if N is TJSONString then
+    Result.Exe := Trim(TJSONString(N).Value);
+  N := TJSONObject(AValue).Values['file'];
+  if N is TJSONString then
+    Result.FileName := Trim(TJSONString(N).Value);
+  N := TJSONObject(AValue).Values['env'];
+  if N is TJSONString then
+    Result.Env := Trim(TJSONString(N).Value);
+end;
+
+procedure ReadLocalized(AValue: TJSONValue; out ALocales, ATexts: TArray<string>);
+var
+  Pair: TJSONPair;
+begin
+  SetLength(ALocales, 0);
+  SetLength(ATexts, 0);
+  if AValue is TJSONString then
+  begin
+    SetLength(ALocales, 1);
+    SetLength(ATexts, 1);
+    ALocales[0] := '';
+    ATexts[0] := Trim(TJSONString(AValue).Value);
+  end
+  else if AValue is TJSONObject then
+    for Pair in TJSONObject(AValue) do
+      if Pair.JsonValue is TJSONString then
+      begin
+        SetLength(ALocales, Length(ALocales) + 1);
+        SetLength(ATexts, Length(ATexts) + 1);
+        ALocales[High(ALocales)] := LowerCase(Trim(Pair.JsonString.Value));
+        ATexts[High(ATexts)] := Trim(TJSONString(Pair.JsonValue).Value);
+      end;
+end;
+
 function TryParsePluginManifestJson(const AJson: string;
   out AManifest: TPluginManifest): Boolean;
 var
@@ -183,6 +372,10 @@ var
   Exts: TArray<string>;
   I: Integer;
   Pair: TJSONPair;
+  Item: TJSONObject;
+  Cmd: TManifestCommand;
+  MItem: TManifestMenuItem;
+  DItem: TManifestDriveItem;
 begin
   ClearManifest(AManifest);
   Result := False;
@@ -240,6 +433,66 @@ begin
     AManifest.HighlightExtensions := ReadTrimmedStrings(Obj.Values['highlightExtensions'], True);
     for I := 0 to High(AManifest.HighlightExtensions) do
       AManifest.HighlightExtensions[I] := AManifest.HighlightExtensions[I].TrimLeft(['.']);
+    N := Obj.Values['declarative'];
+    AManifest.Declarative := (N is TJSONBool) and TJSONBool(N).AsBoolean;
+    N := Obj.Values['commands'];
+    if N is TJSONArray then
+      for I := 0 to TJSONArray(N).Count - 1 do
+        if TJSONArray(N).Items[I] is TJSONObject then
+        begin
+          Item := TJSONObject(TJSONArray(N).Items[I]);
+          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') then
+            Continue;
+          Cmd := Default(TManifestCommand);
+          Cmd.Id := Trim(TJSONString(Item.Values['id']).Value);
+          if Item.Values['key'] is TJSONString then
+            Cmd.Key := Trim(TJSONString(Item.Values['key']).Value);
+          ReadLocalized(Item.Values['label'], Cmd.LabelLocales, Cmd.LabelTexts);
+          Cmd.When := ReadCondition(Item.Values['when']);
+          SetLength(AManifest.Commands, Length(AManifest.Commands) + 1);
+          AManifest.Commands[High(AManifest.Commands)] := Cmd;
+        end;
+    N := Obj.Values['menuItems'];
+    if N is TJSONArray then
+      for I := 0 to TJSONArray(N).Count - 1 do
+        if TJSONArray(N).Items[I] is TJSONObject then
+        begin
+          Item := TJSONObject(TJSONArray(N).Items[I]);
+          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') then
+            Continue;
+          MItem := Default(TManifestMenuItem);
+          MItem.Id := Trim(TJSONString(Item.Values['id']).Value);
+          MItem.Priority := 100;
+          if Item.Values['priority'] is TJSONNumber then
+            MItem.Priority := TJSONNumber(Item.Values['priority']).AsInt;
+          ReadLocalized(Item.Values['caption'], MItem.CaptionLocales, MItem.CaptionTexts);
+          MItem.When := ReadCondition(Item.Values['when']);
+          SetLength(AManifest.MenuItems, Length(AManifest.MenuItems) + 1);
+          AManifest.MenuItems[High(AManifest.MenuItems)] := MItem;
+        end;
+    N := Obj.Values['driveItems'];
+    if N is TJSONArray then
+      for I := 0 to TJSONArray(N).Count - 1 do
+        if TJSONArray(N).Items[I] is TJSONObject then
+        begin
+          Item := TJSONObject(TJSONArray(N).Items[I]);
+          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') or
+             not (Item.Values['uri'] is TJSONString) then
+            Continue;
+          DItem := Default(TManifestDriveItem);
+          DItem.Id := Trim(TJSONString(Item.Values['id']).Value);
+          DItem.Uri := Trim(TJSONString(Item.Values['uri']).Value);
+          DItem.Priority := 100;
+          if Item.Values['priority'] is TJSONNumber then
+            DItem.Priority := TJSONNumber(Item.Values['priority']).AsInt;
+          ReadLocalized(Item.Values['caption'], DItem.CaptionLocales, DItem.CaptionTexts);
+          DItem.When := ReadCondition(Item.Values['when']);
+          SetLength(AManifest.DriveItems, Length(AManifest.DriveItems) + 1);
+          AManifest.DriveItems[High(AManifest.DriveItems)] := DItem;
+        end;
+    AManifest.DocumentExtensions := ReadTrimmedStrings(Obj.Values['documentExtensions'], True);
+    for I := 0 to High(AManifest.DocumentExtensions) do
+      AManifest.DocumentExtensions[I] := AManifest.DocumentExtensions[I].TrimLeft(['.']);
     AManifest.Overrides := ReadTrimmedStrings(Obj.Values['overrides'], True);
     N := Obj.Values['startup'];
     AManifest.Startup := (N is TJSONBool) and TJSONBool(N).AsBoolean;

@@ -28,6 +28,21 @@ type
     /// <summary>Greys out (or re-enables) a registered item; False when the plugin
     /// has no such item. Registering the item again enables it.</summary>
     function SetMenuItemEnabled(const APluginId, AItemId: string; AEnabled: Boolean): Boolean;
+    /// <summary>Marks APluginId as declarative: its menu items come from its manifest
+    /// (DeclareMenuItem) and an item it registers without having declared it is
+    /// refused and reported in its information.</summary>
+    procedure DeclarePlugin(const APluginId: string);
+    /// <summary>Adds an item from a manifest. Clicking it loads the plugin
+    /// (CommandRegistry.LoadDeclared) and then runs the handler the plugin
+    /// registered for the item. The caption and priority given here stay when the
+    /// plugin registers the item.</summary>
+    procedure DeclareMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
+      APriority: Integer);
+    /// <summary>Called after a declarative plugin loaded: a declared item the
+    /// plugin did not register is dropped and reported in its information.</summary>
+    procedure ReconcilePlugin(const APluginId: string);
+    /// <summary>Forgets what the manifest of APluginId declared.</summary>
+    procedure ForgetDeclared(const APluginId: string);
     /// <summary>Removes all items registered by APluginId.</summary>
     /// <summary>One line per thing the plugin registered, for the plugin's information
     /// dialog (already in the user's language).</summary>
@@ -62,6 +77,8 @@ type
     OnClick: TProc;
     Priority: Integer;
     Disabled: Boolean;
+    /// <summary>Declared by a manifest, not registered by the plugin yet.</summary>
+    Stub: Boolean;
   end;
 
   TMenuRegistry = class(TInterfacedObject, IMenuRegistry)
@@ -70,6 +87,12 @@ type
     FController: TTopMenuController;
     FTitleResolver: TFunc<string, string>;
     FOrderResolver: TFunc<string, Integer>;
+    FDeclarative: TList<string>;
+    FDeclared: TList<string>;
+    FNotes: TList<TPair<string, string>>;
+    function DeclaredKey(const APluginId, AItemId: string): string;
+    procedure Note(const APluginId, AText: string);
+    procedure RunStub(const APluginId, AItemId: string);
     procedure Reapply;
   public
     constructor Create;
@@ -77,6 +100,11 @@ type
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
     function SetMenuItemEnabled(const APluginId, AItemId: string; AEnabled: Boolean): Boolean;
+    procedure DeclarePlugin(const APluginId: string);
+    procedure DeclareMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
+      APriority: Integer);
+    procedure ReconcilePlugin(const APluginId: string);
+    procedure ForgetDeclared(const APluginId: string);
     function DescribePlugin(const APluginId: string): TArray<string>;
     procedure UnregisterPlugin(const APluginId: string);
     procedure AttachController(AController: TTopMenuController);
@@ -88,10 +116,16 @@ constructor TMenuRegistry.Create;
 begin
   inherited Create;
   FEntries := TList<TRegEntry>.Create;
+  FDeclarative := TList<string>.Create;
+  FDeclared := TList<string>.Create;
+  FNotes := TList<TPair<string, string>>.Create;
 end;
 
 destructor TMenuRegistry.Destroy;
 begin
+  FNotes.Free;
+  FDeclared.Free;
+  FDeclarative.Free;
   FEntries.Free;
   inherited Destroy;
 end;
@@ -128,9 +162,18 @@ begin
   Entry.OnClick := AOnClick;
   Entry.Priority := APriority;
 
+  if (FDeclarative.IndexOf(LowerCase(APluginId)) >= 0) and (DeclaredKey(APluginId, AItemId) = '') then
+  begin
+    Note(APluginId, T('ui.plugininfo.notDeclared',
+      '%s is not declared in plugin.json and was not registered', [AItemId]));
+    Exit;
+  end;
   for I := 0 to FEntries.Count - 1 do
     if SameText(FEntries[I].PluginId, APluginId) and SameText(FEntries[I].ItemId, AItemId) then
     begin
+      // The manifest caption shows until the plugin gives its own.
+      if FEntries[I].Stub and (Entry.Caption = '') then
+        Entry.Caption := FEntries[I].Caption;
       FEntries[I] := Entry;
       Reapply;
       Exit;
@@ -161,9 +204,135 @@ begin
     end;
 end;
 
+function TMenuRegistry.DeclaredKey(const APluginId, AItemId: string): string;
+var
+  Key: string;
+begin
+  Key := LowerCase(APluginId) + '|' + LowerCase(AItemId);
+  if FDeclared.IndexOf(Key) >= 0 then
+    Result := Key
+  else
+    Result := '';
+end;
+
+procedure TMenuRegistry.Note(const APluginId, AText: string);
+var
+  N: TPair<string, string>;
+begin
+  for N in FNotes do
+    if SameText(N.Key, APluginId) and (N.Value = AText) then
+      Exit;
+  FNotes.Add(TPair<string, string>.Create(APluginId, AText));
+end;
+
+procedure TMenuRegistry.DeclarePlugin(const APluginId: string);
+begin
+  if (Trim(APluginId) <> '') and (FDeclarative.IndexOf(LowerCase(Trim(APluginId))) < 0) then
+    FDeclarative.Add(LowerCase(Trim(APluginId)));
+end;
+
+procedure TMenuRegistry.DeclareMenuItem(const APluginId, AParentPath, AItemId,
+  ACaption: string; APriority: Integer);
+var
+  Entry: TRegEntry;
+  I: Integer;
+  PluginId, ItemId: string;
+begin
+  PluginId := Trim(APluginId);
+  ItemId := Trim(AItemId);
+  if (PluginId = '') or (ItemId = '') or (FDeclarative.IndexOf(LowerCase(PluginId)) < 0) then
+    Exit;
+  if DeclaredKey(PluginId, ItemId) = '' then
+    FDeclared.Add(LowerCase(PluginId) + '|' + LowerCase(ItemId));
+  for I := 0 to FEntries.Count - 1 do
+    if SameText(FEntries[I].PluginId, PluginId) and SameText(FEntries[I].ItemId, ItemId) then
+    begin
+      // A stub follows the language the manifest text is read in; a registered item is left alone.
+      if FEntries[I].Stub then
+      begin
+        Entry := FEntries[I];
+        Entry.Caption := ACaption;
+        FEntries[I] := Entry;
+        Reapply;
+      end;
+      Exit;
+    end;
+  Entry := Default(TRegEntry);
+  Entry.PluginId := PluginId;
+  Entry.ItemId := ItemId;
+  Entry.ParentPath := AParentPath;
+  Entry.Caption := ACaption;
+  Entry.Priority := APriority;
+  Entry.Stub := True;
+  Entry.OnClick :=
+    procedure
+    begin
+      RunStub(PluginId, ItemId);
+    end;
+  FEntries.Add(Entry);
+  Reapply;
+end;
+
+procedure TMenuRegistry.RunStub(const APluginId, AItemId: string);
+var
+  I: Integer;
+  Handler: TProc;
+begin
+  if not CommandRegistry.LoadDeclared(APluginId) then
+  begin
+    ReconcilePlugin(APluginId);
+    Exit;
+  end;
+  ReconcilePlugin(APluginId);
+  Handler := nil;
+  for I := 0 to FEntries.Count - 1 do
+    if SameText(FEntries[I].PluginId, APluginId) and SameText(FEntries[I].ItemId, AItemId) and
+       not FEntries[I].Stub then
+      Handler := FEntries[I].OnClick;
+  if Assigned(Handler) then
+    Handler();
+end;
+
+procedure TMenuRegistry.ReconcilePlugin(const APluginId: string);
+var
+  I: Integer;
+  Changed: Boolean;
+begin
+  Changed := False;
+  for I := FEntries.Count - 1 downto 0 do
+    if SameText(FEntries[I].PluginId, APluginId) and FEntries[I].Stub then
+    begin
+      Note(APluginId, T('ui.plugininfo.notRegistered',
+        '%s is declared in plugin.json but the plugin did not register it',
+        [FEntries[I].ItemId]));
+      FEntries.Delete(I);
+      Changed := True;
+    end;
+  if Changed then
+    Reapply;
+end;
+
+procedure TMenuRegistry.ForgetDeclared(const APluginId: string);
+var
+  I: Integer;
+  Prefix: string;
+begin
+  Prefix := LowerCase(APluginId) + '|';
+  for I := FDeclared.Count - 1 downto 0 do
+    if FDeclared[I].StartsWith(Prefix) then
+      FDeclared.Delete(I);
+  I := FDeclarative.IndexOf(LowerCase(APluginId));
+  if I >= 0 then
+    FDeclarative.Delete(I);
+  for I := FNotes.Count - 1 downto 0 do
+    if SameText(FNotes[I].Key, APluginId) then
+      FNotes.Delete(I);
+end;
+
 function TMenuRegistry.DescribePlugin(const APluginId: string): TArray<string>;
 var
   E: TRegEntry;
+  N: TPair<string, string>;
   Lines: TList<string>;
 begin
   Lines := TList<string>.Create;
@@ -172,6 +341,9 @@ begin
       if SameText(E.PluginId, APluginId) then
         Lines.Add(T('ui.plugininfo.menu', 'Menu item: %s > %s',
           [StringReplace(T('menu.category.Plugins', 'Plugins'), '&', '', []), E.Caption]));
+    for N in FNotes do
+      if SameText(N.Key, APluginId) then
+        Lines.Add(N.Value);
     Result := Lines.ToArray;
   finally
     Lines.Free;
@@ -185,6 +357,9 @@ begin
   for I := FEntries.Count - 1 downto 0 do
     if SameText(FEntries[I].PluginId, APluginId) then
       FEntries.Delete(I);
+  for I := FNotes.Count - 1 downto 0 do
+    if SameText(FNotes[I].Key, APluginId) then
+      FNotes.Delete(I);
   Reapply;
 end;
 

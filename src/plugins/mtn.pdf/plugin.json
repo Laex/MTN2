@@ -3,7 +3,7 @@
   "name": "PDF viewer",
   "version": "0.1.0",
   "abi": 2,
-  "startup": true,
+  "documentExtensions": ["pdf"],
   "description": {
     "en": "F3 on a .pdf file shows its pages as pictures (PDFium): PgUp/PgDn, arrows, +/-, wheel and drag. Quick View shows the text of the first pages or, by the settings, the pages as pictures. Needs pdfium.dll (libpdfium.so on Linux) next to the plugin.",
     "ru": "F3 на файле .pdf показывает его страницы картинками (PDFium): PgUp/PgDn, стрелки, +/-, колесо и перетаскивание. Быстрый просмотр показывает текст первых страниц или, по настройке, страницы картинками. Нужен pdfium.dll (в Linux libpdfium.so) рядом с плагином."

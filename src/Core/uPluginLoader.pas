@@ -44,7 +44,7 @@ uses
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns,
-  uWasmPluginHost, uPlatformInfo;
+  uWasmPluginHost, uPlatformInfo, uStrings;
 
 type
   TPluginLoadKind = (lpkNative, lpkWasm);
@@ -84,6 +84,7 @@ type
         Schemes: TArray<string>;
         ArchiveExtensions: TArray<string>;
         HighlightExtensions: TArray<string>;
+        DocumentExtensions: TArray<string>;
         Files: TArray<string>;
         Attempted: Boolean;
         /// <summary>Loaded at CatalogPlugins: the manifest asks for "startup",
@@ -94,6 +95,10 @@ type
         Disabled: Boolean;
         /// <summary>The manifest's "overrides" (built-ins the plugin asks to replace).</summary>
         Overrides: TArray<string>;
+        /// <summary>The manifest says "declarative": the menu items, commands and chords
+        /// it lists exist before the plugin is loaded.</summary>
+        Declarative: Boolean;
+        Manifest: TPluginManifest;
       end;
     var
       FLoaded: TList<TLoadedPlugin>;
@@ -106,6 +111,8 @@ type
       FDisabled: TArray<string>;
       FOrder: TArray<string>;
     function BuildHostApiTable: THostApiTable;
+    function EnsureById(const APluginId: string): Boolean;
+    procedure DeclareRegistrations(const AEntry: TCatalogedPlugin);
     function IsOverrideAllowed(const APluginId: string): Boolean;
     function IsDisabled(const APluginId: string): Boolean;
     procedure SortCatalogByOrder;
@@ -186,10 +193,16 @@ type
     /// <summary>Loads the catalogued plugin whose plugin.json lists this file's
     /// extension or whole name in highlightExtensions.</summary>
     function EnsureHighlightFile(const AFileName: string): Boolean;
+    /// <summary>Loads every catalogued plugin whose plugin.json lists the file's
+    /// extension in documentExtensions. True when one is loaded.</summary>
+    function EnsureDocumentFile(const AFileName: string): Boolean;
     /// <summary>Loads every catalogued plugin that has not been attempted
-    /// yet. Used when the UI needs registrations that are not in
-    /// plugin.json (menu items, key rebinds).</summary>
+    /// yet and is not declarative. Used when the UI needs registrations that are
+    /// not in plugin.json (menu items, key rebinds); a declarative plugin
+    /// needs no load for that.</summary>
     procedure EnsureAll;
+    /// <summary>Loads every catalogued plugin, declarative ones included.</summary>
+    procedure EnsureEvery;
     function CatalogPluginIds: TArray<string>;
     /// <summary>Calls mtn_plugin_shutdown then FreeLibrary for every loaded
     /// plugin, in reverse load order. Safe to call multiple times.</summary>
@@ -1774,7 +1787,15 @@ begin
       if AEnabled then
         EnsureIndex(I)
       else
+      begin
         UnloadPlugin(E.PluginId);
+        if E.Declarative then
+        begin
+          CommandRegistry.UnregisterPlugin(E.PluginId);
+          MenuRegistry.UnregisterPlugin(E.PluginId);
+          DriveItems.UnregisterPlugin(E.PluginId);
+        end;
+      end;
       Exit(True);
     end;
 end;
@@ -2127,6 +2148,55 @@ begin
     FEnsuring := False;
   end;
   Result := PluginIsLoaded(E.PluginId);
+  if E.Declarative then
+  begin
+    CommandRegistry.ReconcilePlugin(E.PluginId);
+    MenuRegistry.ReconcilePlugin(E.PluginId);
+    DriveItems.ReconcilePlugin(E.PluginId);
+  end;
+end;
+
+function TPluginLoader.EnsureById(const APluginId: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[I].PluginId, APluginId) then
+      Exit(EnsureIndex(I));
+  Result := False;
+end;
+
+// Builds the menu items, commands and chords a declarative plugin lists in its
+// manifest; using one of them loads the plugin.
+procedure TPluginLoader.DeclareRegistrations(const AEntry: TCatalogedPlugin);
+var
+  Cmd: TManifestCommand;
+  Item: TManifestMenuItem;
+  Drive: TManifestDriveItem;
+  Id, Locale: string;
+begin
+  Id := AEntry.PluginId;
+  Locale := CurrentLocale;
+  CommandRegistry.DeclarePlugin(Id,
+    function: Boolean
+    begin
+      Result := EnsureById(Id);
+    end);
+  MenuRegistry.DeclarePlugin(Id);
+  DriveItems.DeclarePlugin(Id);
+  // An entry whose "when" does not hold is not declared, so the plugin cannot register it either.
+  for Cmd in AEntry.Manifest.Commands do
+    if ManifestConditionHolds(Cmd.When) then
+      CommandRegistry.DeclareCommand(Id, Cmd.Id,
+        LocalizedText(Cmd.LabelLocales, Cmd.LabelTexts, Locale), Cmd.Key);
+  for Item in AEntry.Manifest.MenuItems do
+    if ManifestConditionHolds(Item.When) then
+      MenuRegistry.DeclareMenuItem(Id, 'Plugins', Item.Id,
+        LocalizedText(Item.CaptionLocales, Item.CaptionTexts, Locale), Item.Priority);
+  for Drive in AEntry.Manifest.DriveItems do
+    if ManifestConditionHolds(Drive.When) then
+      DriveItems.DeclareItem(Id, Drive.Id,
+        LocalizedText(Drive.CaptionLocales, Drive.CaptionTexts, Locale), Drive.Uri, Drive.Priority);
 end;
 
 // Plugins named in FOrder come first, in that order; the others keep their
@@ -2168,6 +2238,13 @@ var
   E: TCatalogedPlugin;
   Manifest: TPluginManifest;
 begin
+  for I := 0 to FCatalog.Count - 1 do
+    if FCatalog[I].Declarative then
+    begin
+      CommandRegistry.ForgetDeclared(FCatalog[I].PluginId);
+      MenuRegistry.ForgetDeclared(FCatalog[I].PluginId);
+      DriveItems.ForgetDeclared(FCatalog[I].PluginId);
+    end;
   FCatalog.Clear;
   FAllEnsured := False;
   if not TDirectory.Exists(ADir) then
@@ -2180,10 +2257,16 @@ begin
     E.Attempted := PluginIsLoaded(PluginId);
     E.Disabled := IsDisabled(PluginId);
     E.LoadAtStart := False;
+    E.Declarative := False;
+    E.Manifest := Default(TPluginManifest);
     SetLength(E.Overrides, 0);
     SetLength(E.HighlightExtensions, 0);
+    SetLength(E.DocumentExtensions, 0);
     if TryReadPluginManifest(PluginDir, Manifest) then
     begin
+      E.DocumentExtensions := Manifest.DocumentExtensions;
+      E.Declarative := Manifest.Declarative;
+      E.Manifest := Manifest;
       E.Schemes := Manifest.Schemes;
       E.ArchiveExtensions := Manifest.ArchiveExtensions;
       E.HighlightExtensions := Manifest.HighlightExtensions;
@@ -2201,6 +2284,9 @@ begin
     FCatalog.Add(E);
   end;
   SortCatalogByOrder;
+  for I := 0 to FCatalog.Count - 1 do
+    if FCatalog[I].Declarative and not FCatalog[I].Disabled then
+      DeclareRegistrations(FCatalog[I]);
   for I := 0 to FCatalog.Count - 1 do
     if FCatalog[I].LoadAtStart and not FCatalog[I].Disabled then
       EnsureIndex(I);
@@ -2239,6 +2325,22 @@ begin
       Exit(EnsureIndex(I));
 end;
 
+function TPluginLoader.EnsureDocumentFile(const AFileName: string): Boolean;
+var
+  I: Integer;
+  Key: string;
+begin
+  Result := False;
+  if FEnsuring or (AFileName = '') then
+    Exit;
+  Key := ExtensionKey(AFileName);
+  if Key = '' then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    if ListHasExt(FCatalog[I].DocumentExtensions, Key) and EnsureIndex(I) then
+      Result := True;
+end;
+
 function TPluginLoader.EnsureHighlightFile(const AFileName: string): Boolean;
 var
   I: Integer;
@@ -2262,8 +2364,19 @@ begin
   if FAllEnsured or FEnsuring then
     Exit;
   for I := 0 to FCatalog.Count - 1 do
-    EnsureIndex(I);
+    if not FCatalog[I].Declarative then
+      EnsureIndex(I);
   FAllEnsured := True;
+end;
+
+procedure TPluginLoader.EnsureEvery;
+var
+  I: Integer;
+begin
+  if FEnsuring then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    EnsureIndex(I);
 end;
 
 function TPluginLoader.CatalogPluginIds: TArray<string>;
@@ -2381,6 +2494,11 @@ begin
       if not FCatalog[I].Disabled then
         EnsureIndex(I);
     end;
+  // Plugins that stayed unloaded show the manifest texts of the new language.
+  for I := 0 to FCatalog.Count - 1 do
+    if FCatalog[I].Declarative and not FCatalog[I].Disabled and
+       not PluginIsLoaded(FCatalog[I].PluginId) then
+      DeclareRegistrations(FCatalog[I]);
 end;
 
 procedure TPluginLoader.UnloadAll;

@@ -20,6 +20,10 @@ type
     [Test] procedure TestCommandBindingRefusesKeysHandledInCode;
     [Test] procedure TestKeymapRegistryRefusesKeyOfAnotherAction;
     [Test] procedure TestInterceptKeymapAction;
+    [Test] procedure TestDeclaredCommandLoadsPluginOnUse;
+    [Test] procedure TestDeclaredCommandFailsWhenPluginDoesNotLoad;
+    [Test] procedure TestDeclaredBindingIsIdempotent;
+    [Test] procedure TestDeclaredMenuItemsAreReconciled;
   end;
 
 implementation
@@ -27,7 +31,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uKeymap, uKeymapRegistry,
-  uCommandRegistry;
+  uCommandRegistry, uMenuRegistry;
 
 procedure TestHookInterceptsBuiltInCommand;
 var
@@ -325,6 +329,127 @@ begin
   end;
 end;
 
+procedure TestDeclaredCommandLoadsPluginOnUse;
+var
+  Id: string;
+  Ran, Loads: Integer;
+  Info: TPluginCommandInfo;
+  Found, Reported: Boolean;
+  Line: string;
+begin
+  Ran := 0;
+  Loads := 0;
+  try
+    CommandRegistry.DeclarePlugin('t.decl',
+      function: Boolean
+      begin
+        Inc(Loads);
+        CommandRegistry.RegisterCommand('t.decl', 't.decl.run', procedure begin Inc(Ran); end);
+        CommandRegistry.RegisterCommandBinding('t.decl', 't.decl.run', 'Ctrl+Alt+F11');
+        CommandRegistry.RegisterCommand('t.decl', 't.decl.extra', procedure begin end);
+        CommandRegistry.RegisterCommandBinding('t.decl', 't.decl.run', 'Ctrl+Alt+F10');
+        Result := True;
+      end);
+    CommandRegistry.DeclareCommand('t.decl', 't.decl.run', 'Run', 'Ctrl+Alt+F11');
+    CommandRegistry.DeclareCommand('t.decl', 't.decl.gone', 'Gone', '');
+    Found := False;
+    for Info in CommandRegistry.ListCommands do
+      if Info.CommandId = 't.decl.run' then
+        Found := True;
+    Assert.IsTrue(Found, 'a declared command is listed before the plugin loads');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF11, [ssCtrl, ssAlt], Id) and
+      (Id = 't.decl.run'), 'its chord works before the plugin loads');
+    Assert.AreEqual(0, Loads, 'declaring does not load');
+
+    Assert.IsTrue(CommandRegistry.TryExecute('t.decl.run'), 'running the stub runs the command');
+    Assert.AreEqual(1, Loads, 'the first use loads the plugin');
+    Assert.AreEqual(1, Ran, 'the real handler runs after the load');
+    Assert.IsTrue(CommandRegistry.TryExecute('t.decl.run'));
+    Assert.AreEqual(1, Loads, 'the plugin loads once');
+    Assert.AreEqual(2, Ran);
+
+    Assert.IsTrue(not CommandRegistry.HasCommand('t.decl.extra'),
+      'a command the manifest does not list is refused');
+    Assert.IsTrue(not CommandRegistry.TryMatchBinding(vkF10, [ssCtrl, ssAlt], Id),
+      'a chord the manifest does not list is refused');
+    Assert.IsTrue(not CommandRegistry.HasCommand('t.decl.gone'),
+      'a declared command the plugin did not register is dropped');
+    Reported := False;
+    for Line in CommandRegistry.DescribePlugin('t.decl') do
+      if Line.Contains('t.decl.extra') or Line.Contains('t.decl.gone') then
+        Reported := True;
+    Assert.IsTrue(Reported, 'the plugin information lists the differences');
+  finally
+    CommandRegistry.UnregisterPlugin('t.decl');
+    CommandRegistry.ForgetDeclared('t.decl');
+  end;
+end;
+
+procedure TestDeclaredCommandFailsWhenPluginDoesNotLoad;
+begin
+  try
+    CommandRegistry.DeclarePlugin('t.broken', function: Boolean begin Result := False; end);
+    CommandRegistry.DeclareCommand('t.broken', 't.broken.run', 'Run', '');
+    Assert.IsTrue(CommandRegistry.HasCommand('t.broken.run'));
+    Assert.IsTrue(not CommandRegistry.TryExecute('t.broken.run'), 'a failed load runs nothing');
+    Assert.IsTrue(not CommandRegistry.HasCommand('t.broken.run'), 'the stub is dropped');
+  finally
+    CommandRegistry.UnregisterPlugin('t.broken');
+    CommandRegistry.ForgetDeclared('t.broken');
+  end;
+end;
+
+procedure TestDeclaredBindingIsIdempotent;
+var
+  Id: string;
+begin
+  try
+    CommandRegistry.DeclarePlugin('t.idem', function: Boolean begin Result := True; end);
+    CommandRegistry.DeclareCommand('t.idem', 't.idem.run', '', 'Ctrl+Alt+F11');
+    CommandRegistry.RegisterCommand('t.idem', 't.idem.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.idem', 't.idem.run', 'Ctrl+Alt+F11');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF11, [ssCtrl, ssAlt], Id), 'bound');
+    Assert.AreEqual('Ctrl+Alt+F11', CommandRegistry.CommandChordText('t.idem.run'));
+    Assert.IsTrue(Length(CommandRegistry.DescribePlugin('t.idem')) = 1,
+      'one line for the command, nothing refused');
+  finally
+    CommandRegistry.UnregisterPlugin('t.idem');
+    CommandRegistry.ForgetDeclared('t.idem');
+  end;
+end;
+
+procedure TestDeclaredMenuItemsAreReconciled;
+var
+  Lines: TArray<string>;
+  Line: string;
+  Gone, Extra: Boolean;
+begin
+  try
+    MenuRegistry.DeclarePlugin('t.menu');
+    MenuRegistry.DeclareMenuItem('t.menu', 'Plugins', 't.menu.run', 'Run', 10);
+    MenuRegistry.DeclareMenuItem('t.menu', 'Plugins', 't.menu.gone', 'Gone', 20);
+    MenuRegistry.RegisterMenuItem('t.menu', 'Plugins', 't.menu.run', 'Run it', procedure begin end, 5);
+    MenuRegistry.RegisterMenuItem('t.menu', 'Plugins', 't.menu.extra', 'Extra', procedure begin end);
+    MenuRegistry.ReconcilePlugin('t.menu');
+    Lines := MenuRegistry.DescribePlugin('t.menu');
+    Gone := False;
+    Extra := False;
+    for Line in Lines do
+    begin
+      if Line.Contains('t.menu.gone') then
+        Gone := True;
+      if Line.Contains('t.menu.extra') then
+        Extra := True;
+    end;
+    Assert.IsTrue(Gone, 'the dropped declared item is reported');
+    Assert.IsTrue(Extra, 'the undeclared item is reported');
+    Assert.IsTrue(Length(Lines) = 3, 'one item and two notes');
+  finally
+    MenuRegistry.UnregisterPlugin('t.menu');
+    MenuRegistry.ForgetDeclared('t.menu');
+  end;
+end;
+
 procedure TestInterceptKeymapAction;
 var
   Seen: string;
@@ -400,6 +525,26 @@ end;
 procedure TTestCommandRegistry.TestInterceptKeymapAction;
 begin
   TestCommandRegistry.TestInterceptKeymapAction;
+end;
+
+procedure TTestCommandRegistry.TestDeclaredCommandLoadsPluginOnUse;
+begin
+  TestCommandRegistry.TestDeclaredCommandLoadsPluginOnUse;
+end;
+
+procedure TTestCommandRegistry.TestDeclaredCommandFailsWhenPluginDoesNotLoad;
+begin
+  TestCommandRegistry.TestDeclaredCommandFailsWhenPluginDoesNotLoad;
+end;
+
+procedure TTestCommandRegistry.TestDeclaredBindingIsIdempotent;
+begin
+  TestCommandRegistry.TestDeclaredBindingIsIdempotent;
+end;
+
+procedure TTestCommandRegistry.TestDeclaredMenuItemsAreReconciled;
+begin
+  TestCommandRegistry.TestDeclaredMenuItemsAreReconciled;
 end;
 
 initialization

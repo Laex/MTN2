@@ -55,7 +55,8 @@ implementation
 uses
   System.Generics.Collections,
   uStrings, uPluginManifest, uPluginPermissions, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry,
-  uMenuRegistry, uKeymapRegistry, uPluginChrome, uPluginSettings, uVfsRegistry, uPluginHighlight;
+  uMenuRegistry, uKeymapRegistry, uPluginChrome, uPluginSettings, uVfsRegistry, uPluginHighlight,
+  uDriveItems;
 
 procedure AddAll(AInto: TList<string>; const ALines: TArray<string>);
 var
@@ -93,6 +94,7 @@ begin
     AddAll(Lines, CommandRegistry.DescribePlugin(APluginId));
     AddAll(Lines, KeymapRegistry.DescribePlugin(APluginId));
     AddAll(Lines, MenuRegistry.DescribePlugin(APluginId));
+    AddAll(Lines, DriveItems.DescribePlugin(APluginId));
     AddAll(Lines, DocumentProviders.DescribePlugin(APluginId));
     AddAll(Lines, PanelPluginRegistry.DescribePlugin(APluginId));
     AddAll(Lines, GlobalVfsRegistry.DescribePlugin(APluginId));

@@ -3,7 +3,10 @@
   "name": "Everything",
   "version": "0.1.0",
   "abi": 9,
-  "startup": true,
+  "declarative": true,
+  "menuItems": [
+    {"id": "everything_search", "caption": {"en": "Everything search...", "ru": "Поиск Everything..."}, "priority": 50}
+  ],
   "resources": 1,
   "schemes": ["everything"],
   "description": {

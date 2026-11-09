@@ -1416,6 +1416,8 @@
     "plugininfo.commandLabel": ", bar label \"%s\"",
     "plugininfo.hooks": "Watches or replaces commands: %s",
     "plugininfo.keyTaken": "Key %s for %s is not bound: %s already uses it",
+    "plugininfo.notDeclared": "%s is not declared in plugin.json and was not registered",
+    "plugininfo.notRegistered": "%s is declared in plugin.json but the plugin did not register it",
     "reserved.edit": "cursor and editing keys",
     "reserved.jump": "word and file jumps",
     "reserved.block": "rectangular selection",

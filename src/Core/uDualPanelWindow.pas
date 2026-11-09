@@ -10513,7 +10513,7 @@ begin
   if Assigned(FDialog) and FDialog.Visible then
     Exit;
   CloseTransientUiBeforeDialog;
-  HostEnsureAllPlugins;
+  HostEnsureEveryPlugin;
   HostPluginsBegin;
   ShowPluginList(0);
 end;

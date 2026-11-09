@@ -1406,6 +1406,8 @@
     "plugininfo.commandLabel": ", Beschriftung in der Leiste \"%s\"",
     "plugininfo.hooks": "Beobachtet oder ersetzt Befehle: %s",
     "plugininfo.keyTaken": "Taste %s für %s ist nicht belegt: %s verwendet sie bereits",
+    "plugininfo.notDeclared": "%s ist in plugin.json nicht deklariert und wurde nicht registriert",
+    "plugininfo.notRegistered": "%s ist in plugin.json deklariert, aber das Plugin hat es nicht registriert",
     "reserved.edit": "Cursor- und Bearbeitungstasten",
     "reserved.jump": "Wort- und Dateisprünge",
     "reserved.block": "rechteckige Auswahl",

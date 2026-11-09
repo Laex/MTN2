@@ -63,7 +63,14 @@ type
     function TryQuickInteractive(const AURI: string): Boolean;
   end;
 
+type
+  TDocumentLazyLoad = reference to function(const AURI: string): Boolean;
+
 function DocumentProviders: IDocumentProviderRegistry;
+
+/// <summary>Called with the URI of a file before the providers are asked about it,
+/// so a plugin that declares the extension in its manifest can be loaded first.</summary>
+procedure SetDocumentLazyLoad(ALoad: TDocumentLazyLoad);
 
 /// <summary>True while TryQuickRedirect runs a provider, so a handler that
 /// serves both F3 and Quick View can tell them apart.</summary>
@@ -86,6 +93,14 @@ uses
   uStrings,
   System.IOUtils, uShellAssoc,
   uVfsTypes;
+
+var
+  GLazyLoad: TDocumentLazyLoad;
+
+procedure SetDocumentLazyLoad(ALoad: TDocumentLazyLoad);
+begin
+  GLazyLoad := ALoad;
+end;
 
 type
   TProviderEntry = record
@@ -286,6 +301,8 @@ var
 begin
   ARedirectURI := '';
   Result := dokPass;
+  if Assigned(GLazyLoad) then
+    GLazyLoad(AURI);
   if FEntries.Count = 0 then
     Exit;
   Ext := DocumentUriExtension(AURI);
@@ -325,6 +342,8 @@ var
 begin
   ARedirectURI := '';
   Result := False;
+  if Assigned(GLazyLoad) then
+    GLazyLoad(AURI);
   if FEntries.Count = 0 then
     Exit;
   Ext := DocumentUriExtension(AURI);
@@ -360,6 +379,8 @@ var
   Kind: TDocumentOpenKind;
 begin
   Result := False;
+  if Assigned(GLazyLoad) then
+    GLazyLoad(AURI);
   if FEntries.Count = 0 then
     Exit;
   Ext := DocumentUriExtension(AURI);

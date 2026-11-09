@@ -17,13 +17,14 @@ type
     [Test] procedure TestInvalidRegistrationsAreIgnored;
     [Test] procedure TestOpenWithSystemRefusesNonLocalUris;
     [Test] procedure TestQuickViewAsksOnlyQuickProviders;
+    [Test] procedure TestLazyLoadHookRunsBeforeTheProvidersAreAsked;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  uDocumentProviders;
+  uDocumentProviders, uPluginHost;
 
 procedure TestUriExtension;
 begin
@@ -291,6 +292,36 @@ end;
 procedure TTestDocumentProviders.TestOpenWithSystemRefusesNonLocalUris;
 begin
   TestDocumentProviders.TestOpenWithSystemRefusesNonLocalUris;
+end;
+
+procedure TestLazyLoadHookRunsBeforeTheProvidersAreAsked;
+var
+  Redirect, Asked: string;
+begin
+  try
+    SetDocumentLazyLoad(
+      function(const AURI: string): Boolean
+      begin
+        Asked := AURI;
+        DocumentProviders.RegisterProvider('t.lazy', 'a', '.foo', [dmView],
+          function(const AU: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+          begin
+            Result := dokHandled;
+          end);
+        Result := True;
+      end);
+    Assert.IsTrue(DocumentProviders.TryOpen('file:///C:/x.foo', True, Redirect) = dokHandled,
+      'a provider registered by the hook answers the same call');
+    Assert.IsTrue(Asked = 'file:///C:/x.foo', 'the hook gets the URI');
+  finally
+    SetDocumentLazyLoad(HostEnsureDocumentFile);
+    DocumentProviders.UnregisterPlugin('t.lazy');
+  end;
+end;
+
+procedure TTestDocumentProviders.TestLazyLoadHookRunsBeforeTheProvidersAreAsked;
+begin
+  TestDocumentProviders.TestLazyLoadHookRunsBeforeTheProvidersAreAsked;
 end;
 
 procedure TTestDocumentProviders.TestQuickViewAsksOnlyQuickProviders;

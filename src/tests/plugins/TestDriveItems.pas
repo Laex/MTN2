@@ -18,6 +18,7 @@ type
     [Test] procedure TestItemsPastNineGetShiftedDigitGlyphs;
     [Test] procedure TestPanelOnItemSchemeIsMarkedAsThatItem;
     [Test] procedure TestChangeNotificationOnRegisterAndUnregister;
+    [Test] procedure TestDeclaredItemsAreStubsUntilThePluginRegisters;
   end;
 
 implementation
@@ -174,6 +175,42 @@ begin
     Assert.AreEqual(ChangeDriveSpecialGlyph(3), DriveBarGlyphFromUri('ws:///'),
       'built-in items keep their glyphs');
   finally
+    Clean;
+  end;
+end;
+
+procedure TTestDriveItems.TestDeclaredItemsAreStubsUntilThePluginRegisters;
+var
+  Items: TArray<TDriveItem>;
+  Lines: string;
+begin
+  try
+    DriveItems.DeclarePlugin('t.a');
+    DriveItems.DeclareItem('t.a', 'x', 'Manifest X', 'xa:///', 50);
+    DriveItems.DeclareItem('t.a', 'gone', 'Gone', 'ga:///', 60);
+    Items := DriveItems.Items;
+    Assert.IsTrue((Length(Items) = 2) and Items[0].Stub, 'declared items are listed before the load');
+
+    DriveItems.DeclareItem('t.a', 'x', 'Manifest X ru', 'xa:///', 50);
+    Assert.AreEqual('Manifest X ru', DriveItems.Items[0].Caption, 'a stub follows the language');
+
+    Assert.IsTrue(DriveItems.RegisterItem('t.a', 'x', 'Plugin X', 'xa:///', 50), 'declared item registers');
+    Assert.IsTrue(not DriveItems.RegisterItem('t.a', 'extra', 'Extra', 'ea:///', 70),
+      'an undeclared item is refused');
+    DriveItems.ReconcilePlugin('t.a');
+    Items := DriveItems.Items;
+    Assert.IsTrue(Length(Items) = 1, 'the declared item that was not registered is dropped');
+    Assert.AreEqual('Plugin X', Items[0].Caption);
+    Assert.IsTrue(not Items[0].Stub, 'a registered item is no stub');
+
+    DriveItems.DeclareItem('t.a', 'x', 'Manifest again', 'xa:///', 50);
+    Assert.AreEqual('Plugin X', DriveItems.Items[0].Caption, 'a registered item keeps its caption');
+
+    Lines := string.Join(' ', DriveItems.DescribePlugin('t.a'));
+    Assert.IsTrue(Lines.Contains('extra') and Lines.Contains('gone'), 'both mismatches are reported');
+  finally
+    DriveItems.UnregisterPlugin('t.a');
+    DriveItems.ForgetDeclared('t.a');
     Clean;
   end;
 end;

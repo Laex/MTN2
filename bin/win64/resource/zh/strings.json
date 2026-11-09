@@ -1405,6 +1405,8 @@
     "plugininfo.commandLabel": ",按键栏标签\"%s\"",
     "plugininfo.hooks": "监视或替换命令: %s",
     "plugininfo.keyTaken": "按键 %s 未绑定到 %s: %s 已占用该按键",
+    "plugininfo.notDeclared": "%s 未在 plugin.json 中声明，未注册",
+    "plugininfo.notRegistered": "%s 已在 plugin.json 中声明，但插件没有注册它",
     "reserved.edit": "光标和编辑键",
     "reserved.jump": "按词和文件首尾跳转",
     "reserved.block": "矩形选择",

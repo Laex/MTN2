@@ -3,7 +3,13 @@
   "name": "Temporary panel",
   "version": "0.2.0",
   "abi": 7,
-  "startup": true,
+  "declarative": true,
+  "menuItems": [
+    {"id": "tmp_open", "caption": "Temporary panel", "priority": 40},
+    {"id": "tmp_clear", "caption": "Clear temporary panel", "priority": 41},
+    {"id": "tmp_panelize", "caption": {"en": "Panelize command output...", "ru": "Панель из вывода команды..."}, "priority": 42},
+    {"id": "tmp_duplicates", "caption": {"en": "Find duplicate files", "ru": "Найти повторяющиеся файлы"}, "priority": 43}
+  ],
   "description": {
     "en": "A panel that holds a list of files collected from anywhere (like the Far Manager temporary panel); the files themselves stay where they are.",
     "ru": "Панель со списком файлов, собранных из разных мест (как временная панель в Far Manager); сами файлы остаются на своих местах."

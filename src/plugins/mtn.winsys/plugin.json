@@ -4,7 +4,19 @@
   "version": "0.1.0",
   "abi": 9,
   "platforms": ["windows", "linux"],
-  "startup": true,
+  "declarative": true,
+  "driveItems": [
+    {"id": "reg", "caption": {"en": "Registry", "ru": "Реестр"}, "uri": "reg:///", "priority": 110, "when": {"os": "windows"}},
+    {"id": "proc", "caption": {"en": "Processes", "ru": "Процессы"}, "uri": "proc:///", "priority": 111},
+    {"id": "svc", "caption": {"en": "Services", "ru": "Службы"}, "uri": "svc:///", "priority": 112}
+  ],
+  "menuItems": [
+    {"id": "svc_start", "caption": {"en": "Services: start", "ru": "Службы: запустить"}, "priority": 70},
+    {"id": "svc_stop", "caption": {"en": "Services: stop", "ru": "Службы: остановить"}, "priority": 71},
+    {"id": "svc_restart", "caption": {"en": "Services: restart", "ru": "Службы: перезапустить"}, "priority": 72},
+    {"id": "svc_pause", "caption": {"en": "Services: pause", "ru": "Службы: приостановить"}, "priority": 73, "when": {"os": "windows"}},
+    {"id": "svc_resume", "caption": {"en": "Services: resume", "ru": "Службы: возобновить"}, "priority": 74, "when": {"os": "windows"}}
+  ],
   "resources": 1,
   "schemes": ["reg", "proc", "svc"],
   "description": {

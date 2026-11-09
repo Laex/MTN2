@@ -65,6 +65,22 @@ type
     /// <summary>The function bar label for a bound plain F-key chord, if the
     /// command has a caption.</summary>
     function TryGetFBarLabel(AKey: Word; AShift: TShiftState; out ALabel: string): Boolean;
+    /// <summary>Marks APluginId as declarative: its commands and chords come from its
+    /// manifest (DeclareCommand), ALoad loads the plugin when one of them is used,
+    /// and a command or chord the plugin registers without having declared it is
+    /// refused and reported in its information.</summary>
+    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+    /// <summary>Adds a command from a manifest: listed and bound right away, it
+    /// loads the plugin when it runs. AKeyCombo '' = no chord.</summary>
+    procedure DeclareCommand(const APluginId, ACommandId, ACaption, AKeyCombo: string);
+    /// <summary>Loads a declarative plugin through the function given to
+    /// DeclarePlugin. False when it is not declarative or did not load.</summary>
+    function LoadDeclared(const APluginId: string): Boolean;
+    /// <summary>Called after a declarative plugin loaded: a declared command the
+    /// plugin did not register is dropped and reported in its information.</summary>
+    procedure ReconcilePlugin(const APluginId: string);
+    /// <summary>Forgets what the manifest of APluginId declared (and its stubs).</summary>
+    procedure ForgetDeclared(const APluginId: string);
     /// <summary>Removes the hooks, commands and bindings of APluginId.</summary>
     /// <summary>One line per thing the plugin registered, for the plugin's information
     /// dialog (already in the user's language).</summary>
@@ -118,6 +134,24 @@ type
     CommandId: string;
     Handler: TProc;
     Caption: string;
+    /// <summary>Declared by a manifest, not registered by the plugin yet.</summary>
+    Stub: Boolean;
+  end;
+
+  TDeclaredCommand = record
+    PluginId: string;
+    CommandId: string;
+    Key: string;
+  end;
+
+  TDeclaredPlugin = record
+    PluginId: string;
+    Load: TFunc<Boolean>;
+  end;
+
+  TCommandNote = record
+    PluginId: string;
+    Text: string;
   end;
 
   TBindingEntry = record
@@ -139,7 +173,15 @@ type
     FCommands: TList<TCommandEntry>;
     FBindings: TList<TBindingEntry>;
     FRejected: TList<TRejectedBinding>;
+    FDeclaredPlugins: TList<TDeclaredPlugin>;
+    FDeclared: TList<TDeclaredCommand>;
+    FNotes: TList<TCommandNote>;
     FRunning: TList<string>;
+    function IsDeclarative(const APluginId: string): Boolean;
+    function IsDeclared(const APluginId, ACommandId: string): Boolean;
+    function DeclaredBinding(const APluginId, ACommandId: string;
+      out ABinding: TKeyBinding): Boolean;
+    procedure Note(const APluginId, AText: string);
     function IndexOfCommand(const ACommandId: string): Integer;
     function ChordOwner(const ABinding: TKeyBinding; const ACommandId: string): string;
     procedure SortHooks;
@@ -150,6 +192,11 @@ type
       APriority: Integer = 100);
     procedure RegisterCommand(const APluginId, ACommandId: string; AHandler: TProc);
     procedure RegisterCommandBinding(const APluginId, ACommandId, AKeyCombo: string);
+    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+    procedure DeclareCommand(const APluginId, ACommandId, ACaption, AKeyCombo: string);
+    function LoadDeclared(const APluginId: string): Boolean;
+    procedure ReconcilePlugin(const APluginId: string);
+    procedure ForgetDeclared(const APluginId: string);
     procedure SetCommandCaption(const APluginId, ACommandId, ACaption: string);
     function TryGetFBarLabel(AKey: Word; AShift: TShiftState; out ALabel: string): Boolean;
     function DescribePlugin(const APluginId: string): TArray<string>;
@@ -183,12 +230,18 @@ begin
   FCommands := TList<TCommandEntry>.Create;
   FBindings := TList<TBindingEntry>.Create;
   FRejected := TList<TRejectedBinding>.Create;
+  FDeclaredPlugins := TList<TDeclaredPlugin>.Create;
+  FDeclared := TList<TDeclaredCommand>.Create;
+  FNotes := TList<TCommandNote>.Create;
   FRunning := TList<string>.Create;
 end;
 
 destructor TCommandRegistry.Destroy;
 begin
   FRunning.Free;
+  FNotes.Free;
+  FDeclared.Free;
+  FDeclaredPlugins.Free;
   FRejected.Free;
   FBindings.Free;
   FCommands.Free;
@@ -257,17 +310,179 @@ var
   E: TCommandEntry;
   I: Integer;
 begin
+  E := Default(TCommandEntry);
   E.PluginId := Trim(APluginId);
   E.CommandId := Trim(ACommandId);
   E.Handler := AHandler;
   if (E.PluginId = '') or (E.CommandId = '') or not Assigned(AHandler) or
      IsBuiltInCommandName(E.CommandId) then
     Exit;
+  if IsDeclarative(E.PluginId) and not IsDeclared(E.PluginId, E.CommandId) then
+  begin
+    Note(E.PluginId, T('ui.plugininfo.notDeclared',
+      '%s is not declared in plugin.json and was not registered', [E.CommandId]));
+    Exit;
+  end;
   I := IndexOfCommand(E.CommandId);
   if I < 0 then
     FCommands.Add(E)
   else if SameText(FCommands[I].PluginId, E.PluginId) then
+  begin
+    // The label the manifest gave stays until the plugin sets its own.
+    E.Caption := FCommands[I].Caption;
     FCommands[I] := E;
+  end;
+end;
+
+function TCommandRegistry.IsDeclarative(const APluginId: string): Boolean;
+var
+  P: TDeclaredPlugin;
+begin
+  for P in FDeclaredPlugins do
+    if SameText(P.PluginId, APluginId) then
+      Exit(True);
+  Result := False;
+end;
+
+function TCommandRegistry.IsDeclared(const APluginId, ACommandId: string): Boolean;
+var
+  D: TDeclaredCommand;
+begin
+  for D in FDeclared do
+    if SameText(D.PluginId, APluginId) and SameText(D.CommandId, ACommandId) then
+      Exit(True);
+  Result := False;
+end;
+
+function TCommandRegistry.DeclaredBinding(const APluginId, ACommandId: string;
+  out ABinding: TKeyBinding): Boolean;
+var
+  D: TDeclaredCommand;
+begin
+  for D in FDeclared do
+    if SameText(D.PluginId, APluginId) and SameText(D.CommandId, ACommandId) then
+      Exit((D.Key <> '') and TryParseKeyCombo(D.Key, ABinding));
+  Result := False;
+end;
+
+procedure TCommandRegistry.Note(const APluginId, AText: string);
+var
+  N: TCommandNote;
+begin
+  for N in FNotes do
+    if SameText(N.PluginId, APluginId) and (N.Text = AText) then
+      Exit;
+  N.PluginId := APluginId;
+  N.Text := AText;
+  FNotes.Add(N);
+end;
+
+procedure TCommandRegistry.DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+var
+  P: TDeclaredPlugin;
+  I: Integer;
+begin
+  P.PluginId := Trim(APluginId);
+  P.Load := ALoad;
+  if P.PluginId = '' then
+    Exit;
+  for I := 0 to FDeclaredPlugins.Count - 1 do
+    if SameText(FDeclaredPlugins[I].PluginId, P.PluginId) then
+    begin
+      FDeclaredPlugins[I] := P;
+      Exit;
+    end;
+  FDeclaredPlugins.Add(P);
+end;
+
+procedure TCommandRegistry.DeclareCommand(const APluginId, ACommandId, ACaption,
+  AKeyCombo: string);
+var
+  D: TDeclaredCommand;
+  E: TCommandEntry;
+  I: Integer;
+begin
+  D.PluginId := Trim(APluginId);
+  D.CommandId := Trim(ACommandId);
+  D.Key := Trim(AKeyCombo);
+  if (D.PluginId = '') or (D.CommandId = '') or not IsDeclarative(D.PluginId) or
+     IsBuiltInCommandName(D.CommandId) then
+    Exit;
+  if not IsDeclared(D.PluginId, D.CommandId) then
+    FDeclared.Add(D);
+  I := IndexOfCommand(D.CommandId);
+  if I >= 0 then
+  begin
+    // A stub follows the language the manifest text is read in; a registered command is left alone.
+    if FCommands[I].Stub and SameText(FCommands[I].PluginId, D.PluginId) then
+    begin
+      E := FCommands[I];
+      E.Caption := Trim(ACaption);
+      FCommands[I] := E;
+    end;
+    Exit;
+  end;
+  E := Default(TCommandEntry);
+  E.PluginId := D.PluginId;
+  E.CommandId := D.CommandId;
+  E.Caption := Trim(ACaption);
+  E.Stub := True;
+  FCommands.Add(E);
+  if D.Key <> '' then
+    RegisterCommandBinding(D.PluginId, D.CommandId, D.Key);
+end;
+
+function TCommandRegistry.LoadDeclared(const APluginId: string): Boolean;
+var
+  P: TDeclaredPlugin;
+begin
+  Result := False;
+  for P in FDeclaredPlugins do
+    if SameText(P.PluginId, APluginId) then
+    begin
+      if not Assigned(P.Load) then
+        Exit;
+      try
+        Result := P.Load();
+      except
+        Result := False;
+      end;
+      ReconcilePlugin(APluginId);
+      Exit;
+    end;
+end;
+
+procedure TCommandRegistry.ReconcilePlugin(const APluginId: string);
+var
+  I, J: Integer;
+begin
+  for I := FCommands.Count - 1 downto 0 do
+    if SameText(FCommands[I].PluginId, APluginId) and FCommands[I].Stub then
+    begin
+      Note(APluginId, T('ui.plugininfo.notRegistered',
+        '%s is declared in plugin.json but the plugin did not register it',
+        [FCommands[I].CommandId]));
+      for J := FBindings.Count - 1 downto 0 do
+        if SameText(FBindings[J].CommandId, FCommands[I].CommandId) and
+           SameText(FBindings[J].PluginId, APluginId) then
+          FBindings.Delete(J);
+      FCommands.Delete(I);
+    end;
+end;
+
+procedure TCommandRegistry.ForgetDeclared(const APluginId: string);
+var
+  I: Integer;
+begin
+  for I := FDeclared.Count - 1 downto 0 do
+    if SameText(FDeclared[I].PluginId, APluginId) then
+      FDeclared.Delete(I);
+  for I := FDeclaredPlugins.Count - 1 downto 0 do
+    if SameText(FDeclaredPlugins[I].PluginId, APluginId) then
+      FDeclaredPlugins.Delete(I);
+  for I := FNotes.Count - 1 downto 0 do
+    if SameText(FNotes[I].PluginId, APluginId) then
+      FNotes.Delete(I);
 end;
 
 { What already uses ABinding: a keymap action (display name), a key handled in
@@ -293,6 +508,7 @@ procedure TCommandRegistry.RegisterCommandBinding(const APluginId, ACommandId,
 var
   E: TBindingEntry;
   R: TRejectedBinding;
+  Declared: TKeyBinding;
   I: Integer;
 begin
   E.PluginId := Trim(APluginId);
@@ -303,6 +519,19 @@ begin
   I := IndexOfCommand(E.CommandId);
   if (I < 0) or not SameText(FCommands[I].PluginId, E.PluginId) then
     Exit;
+  for I := 0 to FBindings.Count - 1 do
+    if SameText(FBindings[I].CommandId, E.CommandId) and
+       SameKeyBinding(FBindings[I].Binding, E.Binding) then
+      Exit;
+  if IsDeclarative(E.PluginId) and
+     not (DeclaredBinding(E.PluginId, E.CommandId, Declared) and
+          SameKeyBinding(Declared, E.Binding)) then
+  begin
+    Note(E.PluginId, T('ui.plugininfo.notDeclared',
+      '%s is not declared in plugin.json and was not registered',
+      [KeyBindingToStr(E.Binding)]));
+    Exit;
+  end;
   R.Owner := ChordOwner(E.Binding, E.CommandId);
   if R.Owner <> '' then
   begin
@@ -350,6 +579,7 @@ var
   B: TBindingEntry;
   H: THookEntry;
   R: TRejectedBinding;
+  N: TCommandNote;
   Lines: TList<string>;
   Chords, Hooked, Line: string;
 begin
@@ -377,6 +607,9 @@ begin
       if SameText(R.PluginId, APluginId) then
         Lines.Add(T('ui.plugininfo.keyTaken', 'Key %s for %s is not bound: %s already uses it',
           [R.Chord, R.CommandId, R.Owner]));
+    for N in FNotes do
+      if SameText(N.PluginId, APluginId) then
+        Lines.Add(N.Text);
     Hooked := '';
     for H in FHooks do
       if SameText(H.PluginId, APluginId) then
@@ -423,6 +656,9 @@ begin
   for I := FRejected.Count - 1 downto 0 do
     if SameText(FRejected[I].PluginId, APluginId) then
       FRejected.Delete(I);
+  for I := FNotes.Count - 1 downto 0 do
+    if SameText(FNotes[I].PluginId, APluginId) then
+      FNotes.Delete(I);
 end;
 
 function TCommandRegistry.TryIntercept(const ACommand, AOrigin: string): Boolean;
@@ -462,6 +698,15 @@ begin
   I := IndexOfCommand(ACommandId);
   if I < 0 then
     Exit(False);
+  if FCommands[I].Stub then
+  begin
+    // A declared command: loading the plugin makes it register the real handler.
+    if not LoadDeclared(FCommands[I].PluginId) then
+      Exit(False);
+    I := IndexOfCommand(ACommandId);
+    if (I < 0) or FCommands[I].Stub then
+      Exit(False);
+  end;
   Handler := FCommands[I].Handler;
   try
     Handler();

@@ -26,6 +26,7 @@ type
     [Test] [Category('WindowsOnly')] procedure TestCatalogLoadsOnDemand;
     [Test] [Category('WindowsOnly')] procedure TestOverridesNeedAllowList;
     [Test] [Category('WindowsOnly')] procedure TestCommandApiFromNativePlugin;
+    [Test] [Category('WindowsOnly')] procedure TestDeclarativeManifestLoadsPluginOnFirstUse;
     [Test] [Category('WindowsOnly')] procedure TestDisabledPluginIsNotLoaded;
     [Test] [Category('WindowsOnly')] procedure TestOverridePermissionCanBeChangedAtRuntime;
     [Test] procedure TestLoadOrderFollowsTheUsersList;
@@ -164,6 +165,55 @@ begin
   Assert.IsTrue(GlobalVfsRegistry.TryResolve('sample://x', Backend),
     'sample:// resolves after EnsureScheme');
   PluginLoader.UnloadAll;
+end;
+
+procedure TestDeclarativeManifestLoadsPluginOnFirstUse;
+var
+  PluginsRoot: string;
+  Ran: Integer;
+  Sub: ISubscription;
+begin
+  Ran := 0;
+  PluginsRoot := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-test-declarative');
+  Sub := MessageBus.Subscribe('sample.ran',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Inc(Ran);
+    end);
+  PluginLoader.UnloadAll;
+  StageSamplePluginIntoPluginDir(PluginsRoot);
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(PluginsRoot, 'SamplePlugin'), 'plugin.json'),
+    '{"id":"SamplePlugin","abi":1,"declarative":true,' +
+    '"commands":[{"id":"sample.hello","key":"Ctrl+Alt+F12"},{"id":"sample.missing"}],' +
+    '"menuItems":[{"id":"sample.hello","caption":"Say hello","priority":7}]}', TEncoding.UTF8);
+  try
+    PluginLoader.CatalogPlugins(PluginsRoot);
+    Assert.IsTrue(not PluginLoader.IsPluginLoaded('SamplePlugin'), 'cataloguing does not load it');
+    Assert.IsTrue(CommandRegistry.HasCommand('sample.hello'), 'the declared command exists before the load');
+    Assert.IsTrue(CommandRegistry.CommandChordText('sample.hello') = 'Ctrl+Alt+F12',
+      'the declared chord is bound before the load');
+    Assert.IsTrue(not PluginLoader.IsPluginLoaded('SamplePlugin'), 'declaring does not load it');
+
+    Assert.IsTrue(TryRunBoundCommand(vkF12, [ssCtrl, ssAlt]) and (Ran = 1),
+      'the chord loads the plugin and runs its command');
+    Assert.IsTrue(PluginLoader.IsPluginLoaded('SamplePlugin'), 'the first use loaded it');
+    Assert.IsTrue(not CommandRegistry.HasCommand('sample.dialog'),
+      'a command the manifest does not list is refused');
+    Assert.IsTrue(not CommandRegistry.HasCommand('sample.missing'),
+      'a declared command the plugin did not register is dropped');
+    Assert.IsTrue(string.Join(' ', CommandRegistry.DescribePlugin('SamplePlugin')).Contains('sample.missing'),
+      'the plugin information says why');
+  finally
+    Sub := nil;
+    PluginLoader.UnloadAll;
+    CommandRegistry.ForgetDeclared('SamplePlugin');
+    MenuRegistry.ForgetDeclared('SamplePlugin');
+    try
+      TDirectory.Delete(PluginsRoot, True);
+    except
+      // A leftover folder only costs disk space.
+    end;
+  end;
 end;
 
 procedure TestCommandApiFromNativePlugin;
@@ -463,6 +513,11 @@ begin
     if TDirectory.Exists(Root) then
       TDirectory.Delete(Root, True);
   end;
+end;
+
+procedure TTestPluginLoader.TestDeclarativeManifestLoadsPluginOnFirstUse;
+begin
+  TestPluginLoader.TestDeclarativeManifestLoadsPluginOnFirstUse;
 end;
 
 procedure TTestPluginLoader.TestCommandApiFromNativePlugin;

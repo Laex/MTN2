@@ -50,7 +50,7 @@ Instead of running inside a system console (cmd.exe, bash), the program creates 
 | **Opening files up to 10 GB** | < 0.5 s (first screen)   | A streaming Viewer based on `TFileStream` with background line indexing and lazy loading                                                       |
 | **Core binary artifact**     | The executable and two DLLs | A native core; the only libraries it needs are Skia (`sk4d.dll`) and Wasmtime (`wasmtime.dll`). DLL/SO/WASM plugins are optional extensions |
 
-Measured on Windows 11, release build, a few seconds after start with an empty configuration: about 42 MB of private bytes (68 MB working set) with no plugins, about 64 MB (81 MB) with all the plugins that ship with the program. On disk: `MTN2.exe` 22 MB, `sk4d.dll` 22 MB, `wasmtime.dll` 11 MB, the plugins 58 MB. The frame time and the opening of large files have not been re-measured on this build.
+Measured on Windows 11, release build, a few seconds after start with an empty configuration: about 37 MB of private bytes (61 MB working set) with no plugins, about 42 MB (65 MB) with all the plugins that ship with the program (most of them load on first use). On disk: `MTN2.exe` 22 MB, `sk4d.dll` 22 MB, `wasmtime.dll` 11 MB, the plugins 58 MB. The frame time and the opening of large files have not been re-measured on this build.
 
 ---
 

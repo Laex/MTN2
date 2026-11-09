@@ -3,7 +3,6 @@
   "name": "JSON and YAML tree",
   "version": "0.1.0",
   "abi": 9,
-  "startup": true,
   "resources": 1,
   "schemes": ["jtree"],
   "archiveExtensions": ["json", "yaml", "yml"],

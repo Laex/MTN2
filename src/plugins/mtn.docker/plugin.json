@@ -3,7 +3,17 @@
   "name": "Docker and Kubernetes",
   "version": "0.1.0",
   "abi": 9,
-  "startup": true,
+  "declarative": true,
+  "driveItems": [
+    {"id": "docker", "caption": "Docker", "uri": "docker:///", "priority": 120}
+  ],
+  "menuItems": [
+    {"id": "ctr_start", "caption": {"en": "Docker: start container", "ru": "Docker: запустить контейнер"}, "priority": 80},
+    {"id": "ctr_stop", "caption": {"en": "Docker: stop container", "ru": "Docker: остановить контейнер"}, "priority": 81},
+    {"id": "ctr_restart", "caption": {"en": "Docker: restart container", "ru": "Docker: перезапустить контейнер"}, "priority": 82},
+    {"id": "ctr_pause", "caption": {"en": "Docker: pause container", "ru": "Docker: приостановить контейнер"}, "priority": 83},
+    {"id": "ctr_unpause", "caption": {"en": "Docker: unpause container", "ru": "Docker: возобновить контейнер"}, "priority": 84}
+  ],
   "resources": 1,
   "schemes": ["docker"],
   "description": {

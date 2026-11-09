@@ -74,9 +74,14 @@ function HostEnsureArchiveExtension(const AFileName: string): Boolean;
 /// <summary>Load the catalogued plugin whose manifest lists this file in
 /// highlightExtensions. No-op when already loaded.</summary>
 function HostEnsureHighlightFile(const AFileName: string): Boolean;
-/// <summary>Load every catalogued plugin so menu items and key rebinds
-/// exist. Cheap after the first call.</summary>
+/// <summary>Load every catalogued plugin that is not declarative so menu items
+/// and key rebinds exist. Cheap after the first call.</summary>
 procedure HostEnsureAllPlugins;
+/// <summary>Load the catalogued plugins whose manifest lists the file's extension in
+/// documentExtensions.</summary>
+function HostEnsureDocumentFile(const AFileName: string): Boolean;
+/// <summary>Load every catalogued plugin, declarative ones included.</summary>
+procedure HostEnsureEveryPlugin;
 /// <summary>Display labels for the Loaded plugins dialog, parallel to
 /// HostLoadedPluginIds. Each row is FormatPluginListLabel from
 /// uPluginManifest (id, plugin.json name/version).</summary>
@@ -95,7 +100,7 @@ uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
   uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings,
-  uPluginHighlight;
+  uPluginHighlight, uDocumentProviders;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -244,6 +249,16 @@ end;
 procedure HostEnsureAllPlugins;
 begin
   PluginLoader.EnsureAll;
+end;
+
+function HostEnsureDocumentFile(const AFileName: string): Boolean;
+begin
+  Result := PluginLoader.EnsureDocumentFile(AFileName);
+end;
+
+procedure HostEnsureEveryPlugin;
+begin
+  PluginLoader.EnsureEvery;
 end;
 
 procedure StopPluginHost;
@@ -598,5 +613,6 @@ end;
 initialization
   SetVfsLazyLoad(HostEnsurePluginScheme, HostEnsureArchiveExtension);
   SetHighlightLazyLoad(HostEnsureHighlightFile);
+  SetDocumentLazyLoad(HostEnsureDocumentFile);
 
 end.
