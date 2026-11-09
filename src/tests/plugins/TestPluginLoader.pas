@@ -28,6 +28,8 @@ type
     [Test] [Category('WindowsOnly')] procedure TestCommandApiFromNativePlugin;
     [Test] [Category('WindowsOnly')] procedure TestDeclarativeManifestLoadsPluginOnFirstUse;
     [Test] [Category('WindowsOnly')] procedure TestDisabledPluginIsNotLoaded;
+    [Test] [Category('WindowsOnly')] procedure TestPluginLoadsOnTheEventItNames;
+    [Test] [Category('WindowsOnly')] procedure TestStartupWhenGatesTheStartupLoad;
     [Test] [Category('WindowsOnly')] procedure TestOverridePermissionCanBeChangedAtRuntime;
     [Test] procedure TestLoadOrderFollowsTheUsersList;
   end;
@@ -60,6 +62,7 @@ uses
   uDialogTypes,
   uPluginHostAbi,
   uVfsCdeclAdapter,
+  uPluginServices,
   uPluginLoader;
 
 procedure StageSamplePluginIntoPluginDir(const APluginsRoot: string);
@@ -208,6 +211,79 @@ begin
     PluginLoader.UnloadAll;
     CommandRegistry.ForgetDeclared('SamplePlugin');
     MenuRegistry.ForgetDeclared('SamplePlugin');
+    try
+      TDirectory.Delete(PluginsRoot, True);
+    except
+      // A leftover folder only costs disk space.
+    end;
+  end;
+end;
+
+procedure TestPluginLoadsOnTheEventItNames;
+var
+  PluginsRoot, Repo, Plain, Marker: string;
+begin
+  PluginsRoot := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-test-activate');
+  Repo := TPath.Combine(ExtractFilePath(ParamStr(0)), 'activate-repo');
+  Plain := TPath.Combine(ExtractFilePath(ParamStr(0)), 'activate-plain');
+  Marker := 'mtn-activate-marker';
+  PluginLoader.UnloadAll;
+  StageSamplePluginIntoPluginDir(PluginsRoot);
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(PluginsRoot, 'SamplePlugin'), 'plugin.json'),
+    '{"id":"SamplePlugin","abi":1,"activateOn":[{"event":"panel.dir","dirHas":"' + Marker + '"}]}',
+    TEncoding.UTF8);
+  TDirectory.CreateDirectory(TPath.Combine(Repo, Marker));
+  TDirectory.CreateDirectory(TPath.Combine(Repo, 'sub'));
+  TDirectory.CreateDirectory(Plain);
+  try
+    PluginLoader.CatalogPlugins(PluginsRoot);
+    Assert.IsTrue(not PluginLoader.IsPluginLoaded('SamplePlugin'), 'cataloguing does not load it');
+    Assert.IsTrue(PluginHasTopicSubscriber('panel.dir'), 'the program is asked to publish the event');
+    PluginPublishEvent('panel.cursor', PluginUriPayload(PathToFileUri(Repo)));
+    PluginPublishEvent('panel.dir', PluginUriPayload(PathToFileUri(Plain)));
+    PluginPublishEvent('panel.dir', PluginUriPayload('ftp://host/' + Marker));
+    Assert.IsTrue(not PluginLoader.IsPluginLoaded('SamplePlugin'),
+      'another event, a folder without the entry and a remote folder do not load it');
+    PluginPublishEvent('panel.dir', PluginUriPayload(PathToFileUri(TPath.Combine(Repo, 'sub'))));
+    Assert.IsTrue(PluginLoader.IsPluginLoaded('SamplePlugin'),
+      'a folder below one that has the entry loads it');
+    Assert.IsTrue(not PluginHasTopicSubscriber('panel.dir'), 'the trigger is dropped once nothing waits');
+  finally
+    PluginLoader.UnloadAll;
+    try
+      TDirectory.Delete(PluginsRoot, True);
+      TDirectory.Delete(Repo, True);
+      TDirectory.Delete(Plain, True);
+    except
+      // A leftover folder only costs disk space.
+    end;
+  end;
+end;
+
+procedure TestStartupWhenGatesTheStartupLoad;
+var
+  PluginsRoot, Gate: string;
+begin
+  PluginsRoot := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-test-startupwhen');
+  Gate := TPath.Combine(ExtractFilePath(ParamStr(0)), 'startupwhen-gate.txt');
+  PluginLoader.UnloadAll;
+  StageSamplePluginIntoPluginDir(PluginsRoot);
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(PluginsRoot, 'SamplePlugin'), 'plugin.json'),
+    '{"id":"SamplePlugin","abi":1,"startup":true,"startupWhen":{"file":"' +
+    StringReplace(Gate, '\', '/', [rfReplaceAll]) + '"}}', TEncoding.UTF8);
+  try
+    if TFile.Exists(Gate) then
+      TFile.Delete(Gate);
+    PluginLoader.CatalogPlugins(PluginsRoot);
+    Assert.IsTrue(not PluginLoader.IsPluginLoaded('SamplePlugin'), 'the condition fails: not loaded at start');
+    PluginLoader.UnloadAll;
+    TFile.WriteAllText(Gate, 'x');
+    PluginLoader.CatalogPlugins(PluginsRoot);
+    Assert.IsTrue(PluginLoader.IsPluginLoaded('SamplePlugin'), 'the condition holds: loaded at start');
+  finally
+    PluginLoader.UnloadAll;
+    if TFile.Exists(Gate) then
+      TFile.Delete(Gate);
     try
       TDirectory.Delete(PluginsRoot, True);
     except
@@ -513,6 +589,16 @@ begin
     if TDirectory.Exists(Root) then
       TDirectory.Delete(Root, True);
   end;
+end;
+
+procedure TTestPluginLoader.TestPluginLoadsOnTheEventItNames;
+begin
+  TestPluginLoader.TestPluginLoadsOnTheEventItNames;
+end;
+
+procedure TTestPluginLoader.TestStartupWhenGatesTheStartupLoad;
+begin
+  TestPluginLoader.TestStartupWhenGatesTheStartupLoad;
 end;
 
 procedure TTestPluginLoader.TestDeclarativeManifestLoadsPluginOnFirstUse;

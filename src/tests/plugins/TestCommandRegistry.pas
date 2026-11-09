@@ -24,6 +24,7 @@ type
     [Test] procedure TestDeclaredCommandFailsWhenPluginDoesNotLoad;
     [Test] procedure TestDeclaredBindingIsIdempotent;
     [Test] procedure TestDeclaredMenuItemsAreReconciled;
+    [Test] procedure TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
   end;
 
 implementation
@@ -450,6 +451,35 @@ begin
   end;
 end;
 
+procedure TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
+var
+  Lines: TArray<string>;
+begin
+  try
+    CommandRegistry.DeclarePlugin('t.open', function: Boolean begin Result := True; end, True);
+    CommandRegistry.DeclareCommand('t.open', 't.open.run', 'Run', '');
+    CommandRegistry.RegisterCommand('t.open', 't.open.run', procedure begin end);
+    CommandRegistry.RegisterCommand('t.open', 't.open.macro', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.open', 't.open.macro', 'Ctrl+Alt+F9');
+    CommandRegistry.ReconcilePlugin('t.open');
+    Assert.IsTrue(CommandRegistry.HasCommand('t.open.macro'), 'an unlisted command is accepted');
+    Assert.IsTrue(CommandRegistry.CommandChordText('t.open.macro') = 'Ctrl+Alt+F9', 'and its chord');
+
+    MenuRegistry.DeclarePlugin('t.open', True);
+    MenuRegistry.DeclareMenuItem('t.open', 'Plugins', 't.open.run', 'Run', 10);
+    MenuRegistry.RegisterMenuItem('t.open', 'Plugins', 't.open.run', 'Run', procedure begin end, 10);
+    MenuRegistry.RegisterMenuItem('t.open', 'Plugins', 't.open.macro', 'Macro', procedure begin end, 20);
+    MenuRegistry.ReconcilePlugin('t.open');
+    Lines := MenuRegistry.DescribePlugin('t.open');
+    Assert.IsTrue(Length(Lines) = 2, 'both items are listed and nothing is reported as refused');
+  finally
+    CommandRegistry.UnregisterPlugin('t.open');
+    CommandRegistry.ForgetDeclared('t.open');
+    MenuRegistry.UnregisterPlugin('t.open');
+    MenuRegistry.ForgetDeclared('t.open');
+  end;
+end;
+
 procedure TestInterceptKeymapAction;
 var
   Seen: string;
@@ -540,6 +570,11 @@ end;
 procedure TTestCommandRegistry.TestDeclaredBindingIsIdempotent;
 begin
   TestCommandRegistry.TestDeclaredBindingIsIdempotent;
+end;
+
+procedure TTestCommandRegistry.TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
+begin
+  TestCommandRegistry.TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
 end;
 
 procedure TTestCommandRegistry.TestDeclaredMenuItemsAreReconciled;

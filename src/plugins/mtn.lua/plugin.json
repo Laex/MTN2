@@ -4,6 +4,19 @@
   "version": "0.1.0",
   "abi": 8,
   "startup": true,
+  "startupWhen": {"file": "%config%/macros/*.lua"},
+  "declarative": true,
+  "openRegistrations": true,
+  "commands": [
+    {"id": "macro.record", "key": "Ctrl+.", "label": {"en": "Record / stop recording", "ru": "Запись макроса / стоп"}},
+    {"id": "macro.pause", "key": "Ctrl+Shift+.", "label": {"en": "Pause / resume recording", "ru": "Пауза / продолжить запись"}}
+  ],
+  "menuItems": [
+    {"id": "macro.manage", "parent": "Macros", "caption": {"en": "&Manage macros...", "ru": "&Управление макросами..."}, "priority": 10},
+    {"id": "macro.record", "parent": "Macros", "caption": {"en": "&Record / stop recording", "ru": "&Запись / остановка"}, "priority": 20},
+    {"id": "macro.pause", "parent": "Macros", "caption": {"en": "&Pause / resume recording", "ru": "&Пауза / продолжить запись"}, "priority": 25},
+    {"id": "macro.reload", "parent": "Macros", "caption": {"en": "Re&load macros", "ru": "Пере&читать макросы"}, "priority": 30}
+  ],
   "description": {
     "en": "Macros written in Lua: Ctrl+. records the keys you press into a macro file, a macro runs from a key or the Macros menu in the panels, viewer, editor and console, and can check the state of the program before it starts, read and change the editor and panels, ask questions in dialogs, run listed programs and react to program events.",
     "ru": "Макросы на Lua: Ctrl+. записывает нажатые клавиши в файл макроса, макрос запускается клавишей или из меню «Макросы» на панелях, в просмотрщике, редакторе и консоли и может проверять состояние программы перед запуском, читать и менять редактор и панели, задавать вопросы в диалогах, запускать разрешённые программы и реагировать на события программы."

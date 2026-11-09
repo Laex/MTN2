@@ -31,7 +31,7 @@ type
     /// <summary>Marks APluginId as declarative: its menu items come from its manifest
     /// (DeclareMenuItem) and an item it registers without having declared it is
     /// refused and reported in its information.</summary>
-    procedure DeclarePlugin(const APluginId: string);
+    procedure DeclarePlugin(const APluginId: string; AOpen: Boolean = False);
     /// <summary>Adds an item from a manifest. Clicking it loads the plugin
     /// (CommandRegistry.LoadDeclared) and then runs the handler the plugin
     /// registered for the item. The caption and priority given here stay when the
@@ -88,6 +88,7 @@ type
     FTitleResolver: TFunc<string, string>;
     FOrderResolver: TFunc<string, Integer>;
     FDeclarative: TList<string>;
+    FOpen: TList<string>;
     FDeclared: TList<string>;
     FNotes: TList<TPair<string, string>>;
     function DeclaredKey(const APluginId, AItemId: string): string;
@@ -100,7 +101,7 @@ type
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       AOnClick: TProc; APriority: Integer = 100);
     function SetMenuItemEnabled(const APluginId, AItemId: string; AEnabled: Boolean): Boolean;
-    procedure DeclarePlugin(const APluginId: string);
+    procedure DeclarePlugin(const APluginId: string; AOpen: Boolean = False);
     procedure DeclareMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
       APriority: Integer);
     procedure ReconcilePlugin(const APluginId: string);
@@ -117,6 +118,7 @@ begin
   inherited Create;
   FEntries := TList<TRegEntry>.Create;
   FDeclarative := TList<string>.Create;
+  FOpen := TList<string>.Create;
   FDeclared := TList<string>.Create;
   FNotes := TList<TPair<string, string>>.Create;
 end;
@@ -126,6 +128,7 @@ begin
   FNotes.Free;
   FDeclared.Free;
   FDeclarative.Free;
+  FOpen.Free;
   FEntries.Free;
   inherited Destroy;
 end;
@@ -162,7 +165,8 @@ begin
   Entry.OnClick := AOnClick;
   Entry.Priority := APriority;
 
-  if (FDeclarative.IndexOf(LowerCase(APluginId)) >= 0) and (DeclaredKey(APluginId, AItemId) = '') then
+  if (FDeclarative.IndexOf(LowerCase(APluginId)) >= 0) and (FOpen.IndexOf(LowerCase(APluginId)) < 0) and
+     (DeclaredKey(APluginId, AItemId) = '') then
   begin
     Note(APluginId, T('ui.plugininfo.notDeclared',
       '%s is not declared in plugin.json and was not registered', [AItemId]));
@@ -225,10 +229,16 @@ begin
   FNotes.Add(TPair<string, string>.Create(APluginId, AText));
 end;
 
-procedure TMenuRegistry.DeclarePlugin(const APluginId: string);
+procedure TMenuRegistry.DeclarePlugin(const APluginId: string; AOpen: Boolean);
 begin
-  if (Trim(APluginId) <> '') and (FDeclarative.IndexOf(LowerCase(Trim(APluginId))) < 0) then
+  if Trim(APluginId) = '' then
+    Exit;
+  if FDeclarative.IndexOf(LowerCase(Trim(APluginId))) < 0 then
     FDeclarative.Add(LowerCase(Trim(APluginId)));
+  if AOpen and (FOpen.IndexOf(LowerCase(Trim(APluginId))) < 0) then
+    FOpen.Add(LowerCase(Trim(APluginId)))
+  else if not AOpen then
+    FOpen.Remove(LowerCase(Trim(APluginId)));
 end;
 
 procedure TMenuRegistry.DeclareMenuItem(const APluginId, AParentPath, AItemId,
@@ -321,6 +331,7 @@ begin
   for I := FDeclared.Count - 1 downto 0 do
     if FDeclared[I].StartsWith(Prefix) then
       FDeclared.Delete(I);
+  FOpen.Remove(LowerCase(APluginId));
   I := FDeclarative.IndexOf(LowerCase(APluginId));
   if I >= 0 then
     FDeclarative.Delete(I);

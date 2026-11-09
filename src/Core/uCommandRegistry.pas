@@ -69,7 +69,10 @@ type
     /// manifest (DeclareCommand), ALoad loads the plugin when one of them is used,
     /// and a command or chord the plugin registers without having declared it is
     /// refused and reported in its information.</summary>
-    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+    /// AOpen: the plugin may also register commands the manifest does not list
+    /// (macros, for example); the listed ones still get their stubs.
+    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>;
+      AOpen: Boolean = False);
     /// <summary>Adds a command from a manifest: listed and bound right away, it
     /// loads the plugin when it runs. AKeyCombo '' = no chord.</summary>
     procedure DeclareCommand(const APluginId, ACommandId, ACaption, AKeyCombo: string);
@@ -147,6 +150,8 @@ type
   TDeclaredPlugin = record
     PluginId: string;
     Load: TFunc<Boolean>;
+    /// <summary>Registrations beyond the manifest are accepted.</summary>
+    Open: Boolean;
   end;
 
   TCommandNote = record
@@ -178,6 +183,7 @@ type
     FNotes: TList<TCommandNote>;
     FRunning: TList<string>;
     function IsDeclarative(const APluginId: string): Boolean;
+    function IsStrict(const APluginId: string): Boolean;
     function IsDeclared(const APluginId, ACommandId: string): Boolean;
     function DeclaredBinding(const APluginId, ACommandId: string;
       out ABinding: TKeyBinding): Boolean;
@@ -192,7 +198,8 @@ type
       APriority: Integer = 100);
     procedure RegisterCommand(const APluginId, ACommandId: string; AHandler: TProc);
     procedure RegisterCommandBinding(const APluginId, ACommandId, AKeyCombo: string);
-    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+    procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>;
+      AOpen: Boolean = False);
     procedure DeclareCommand(const APluginId, ACommandId, ACaption, AKeyCombo: string);
     function LoadDeclared(const APluginId: string): Boolean;
     procedure ReconcilePlugin(const APluginId: string);
@@ -317,7 +324,7 @@ begin
   if (E.PluginId = '') or (E.CommandId = '') or not Assigned(AHandler) or
      IsBuiltInCommandName(E.CommandId) then
     Exit;
-  if IsDeclarative(E.PluginId) and not IsDeclared(E.PluginId, E.CommandId) then
+  if IsStrict(E.PluginId) and not IsDeclared(E.PluginId, E.CommandId) then
   begin
     Note(E.PluginId, T('ui.plugininfo.notDeclared',
       '%s is not declared in plugin.json and was not registered', [E.CommandId]));
@@ -332,6 +339,16 @@ begin
     E.Caption := FCommands[I].Caption;
     FCommands[I] := E;
   end;
+end;
+
+function TCommandRegistry.IsStrict(const APluginId: string): Boolean;
+var
+  P: TDeclaredPlugin;
+begin
+  for P in FDeclaredPlugins do
+    if SameText(P.PluginId, APluginId) then
+      Exit(not P.Open);
+  Result := False;
 end;
 
 function TCommandRegistry.IsDeclarative(const APluginId: string): Boolean;
@@ -377,13 +394,15 @@ begin
   FNotes.Add(N);
 end;
 
-procedure TCommandRegistry.DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>);
+procedure TCommandRegistry.DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>;
+  AOpen: Boolean);
 var
   P: TDeclaredPlugin;
   I: Integer;
 begin
   P.PluginId := Trim(APluginId);
   P.Load := ALoad;
+  P.Open := AOpen;
   if P.PluginId = '' then
     Exit;
   for I := 0 to FDeclaredPlugins.Count - 1 do
@@ -523,7 +542,7 @@ begin
     if SameText(FBindings[I].CommandId, E.CommandId) and
        SameKeyBinding(FBindings[I].Binding, E.Binding) then
       Exit;
-  if IsDeclarative(E.PluginId) and
+  if IsStrict(E.PluginId) and
      not (DeclaredBinding(E.PluginId, E.CommandId, Declared) and
           SameKeyBinding(Declared, E.Binding)) then
   begin

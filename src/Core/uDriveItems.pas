@@ -45,7 +45,7 @@ type
     /// <summary>Marks APluginId as declarative: its items come from its manifest
     /// (DeclareItem) and an item it registers without having declared it is
     /// refused and reported in its information.</summary>
-    procedure DeclarePlugin(const APluginId: string);
+    procedure DeclarePlugin(const APluginId: string; AOpen: Boolean = False);
     /// <summary>Adds an item from a manifest (shown before the plugin loads); the
     /// plugin's own registration of the same id replaces it.</summary>
     procedure DeclareItem(const APluginId, AItemId, ACaption, AUri: string;
@@ -70,6 +70,7 @@ type
   private
     FItems: TList<TDriveItem>;
     FDeclarative: TList<string>;
+    FOpen: TList<string>;
     FDeclared: TList<string>;
     FNotes: TList<string>;
     function IndexOf(const APluginId, AItemId: string): Integer;
@@ -81,7 +82,7 @@ type
       APriority: Integer): Boolean;
     function Items: TArray<TDriveItem>;
     procedure UnregisterPlugin(const APluginId: string);
-    procedure DeclarePlugin(const APluginId: string);
+    procedure DeclarePlugin(const APluginId: string; AOpen: Boolean = False);
     procedure DeclareItem(const APluginId, AItemId, ACaption, AUri: string;
       APriority: Integer);
     procedure ReconcilePlugin(const APluginId: string);
@@ -108,6 +109,7 @@ begin
   inherited Create;
   FItems := TList<TDriveItem>.Create;
   FDeclarative := TList<string>.Create;
+  FOpen := TList<string>.Create;
   FDeclared := TList<string>.Create;
   FNotes := TList<string>.Create;
 end;
@@ -117,6 +119,7 @@ begin
   FNotes.Free;
   FDeclared.Free;
   FDeclarative.Free;
+  FOpen.Free;
   FItems.Free;
   inherited Destroy;
 end;
@@ -156,6 +159,7 @@ begin
   Item.Priority := APriority;
   Item.Stub := False;
   if (FDeclarative.IndexOf(LowerCase(Item.PluginId)) >= 0) and
+     (FOpen.IndexOf(LowerCase(Item.PluginId)) < 0) and
      (FDeclared.IndexOf(LowerCase(Item.PluginId) + '|' + LowerCase(Item.ItemId)) < 0) then
   begin
     Note(T('ui.plugininfo.notDeclared',
@@ -190,10 +194,16 @@ begin
     FNotes.Add(Line);
 end;
 
-procedure TDriveItemRegistry.DeclarePlugin(const APluginId: string);
+procedure TDriveItemRegistry.DeclarePlugin(const APluginId: string; AOpen: Boolean);
 begin
-  if (Trim(APluginId) <> '') and (FDeclarative.IndexOf(LowerCase(Trim(APluginId))) < 0) then
+  if Trim(APluginId) = '' then
+    Exit;
+  if FDeclarative.IndexOf(LowerCase(Trim(APluginId))) < 0 then
     FDeclarative.Add(LowerCase(Trim(APluginId)));
+  if AOpen and (FOpen.IndexOf(LowerCase(Trim(APluginId))) < 0) then
+    FOpen.Add(LowerCase(Trim(APluginId)))
+  else if not AOpen then
+    FOpen.Remove(LowerCase(Trim(APluginId)));
 end;
 
 procedure TDriveItemRegistry.DeclareItem(const APluginId, AItemId, ACaption, AUri: string;
@@ -261,6 +271,7 @@ begin
   for I := FNotes.Count - 1 downto 0 do
     if FNotes[I].StartsWith(Prefix) then
       FNotes.Delete(I);
+  FOpen.Remove(LowerCase(APluginId));
   I := FDeclarative.IndexOf(LowerCase(APluginId));
   if I >= 0 then
     FDeclarative.Delete(I);

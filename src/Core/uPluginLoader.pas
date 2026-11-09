@@ -39,7 +39,7 @@ unit uPluginLoader;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.IOUtils, System.Math, System.Generics.Collections, System.JSON,
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
@@ -113,6 +113,8 @@ type
     function BuildHostApiTable: THostApiTable;
     function EnsureById(const APluginId: string): Boolean;
     procedure DeclareRegistrations(const AEntry: TCatalogedPlugin);
+    procedure RefreshEventTriggers;
+    procedure HandleTriggerEvent(const ATopic, APayloadJson: string);
     function IsOverrideAllowed(const APluginId: string): Boolean;
     function IsDisabled(const APluginId: string): Boolean;
     procedure SortCatalogByOrder;
@@ -1618,6 +1620,7 @@ end;
 destructor TPluginLoader.Destroy;
 begin
   UnloadAll;
+  PluginSetEventTrigger(nil, nil);
   FCatalog.Free;
   FLoaded.Free;
   inherited Destroy;
@@ -2154,6 +2157,7 @@ begin
     MenuRegistry.ReconcilePlugin(E.PluginId);
     DriveItems.ReconcilePlugin(E.PluginId);
   end;
+  RefreshEventTriggers;
 end;
 
 function TPluginLoader.EnsureById(const APluginId: string): Boolean;
@@ -2181,9 +2185,9 @@ begin
     function: Boolean
     begin
       Result := EnsureById(Id);
-    end);
-  MenuRegistry.DeclarePlugin(Id);
-  DriveItems.DeclarePlugin(Id);
+    end, AEntry.Manifest.OpenRegistrations);
+  MenuRegistry.DeclarePlugin(Id, AEntry.Manifest.OpenRegistrations);
+  DriveItems.DeclarePlugin(Id, AEntry.Manifest.OpenRegistrations);
   // An entry whose "when" does not hold is not declared, so the plugin cannot register it either.
   for Cmd in AEntry.Manifest.Commands do
     if ManifestConditionHolds(Cmd.When) then
@@ -2191,7 +2195,7 @@ begin
         LocalizedText(Cmd.LabelLocales, Cmd.LabelTexts, Locale), Cmd.Key);
   for Item in AEntry.Manifest.MenuItems do
     if ManifestConditionHolds(Item.When) then
-      MenuRegistry.DeclareMenuItem(Id, 'Plugins', Item.Id,
+      MenuRegistry.DeclareMenuItem(Id, Item.Parent, Item.Id,
         LocalizedText(Item.CaptionLocales, Item.CaptionTexts, Locale), Item.Priority);
   for Drive in AEntry.Manifest.DriveItems do
     if ManifestConditionHolds(Drive.When) then
@@ -2272,7 +2276,8 @@ begin
       E.HighlightExtensions := Manifest.HighlightExtensions;
       E.Overrides := Manifest.Overrides;
       PluginPermissionsDeclare(PluginId, Manifest.Permissions);
-      E.LoadAtStart := Manifest.Startup or
+      E.LoadAtStart := (Manifest.Startup and
+        (not Manifest.HasStartupWhen or ManifestConditionHolds(Manifest.StartupWhen))) or
         ((Length(Manifest.Overrides) > 0) and IsOverrideAllowed(PluginId));
     end
     else
@@ -2290,6 +2295,96 @@ begin
   for I := 0 to FCatalog.Count - 1 do
     if FCatalog[I].LoadAtStart and not FCatalog[I].Disabled then
       EnsureIndex(I);
+  RefreshEventTriggers;
+end;
+
+// A plugin that is still unloaded and lists "activateOn" gets loaded by the event it
+// names; the hook is dropped once no such plugin is left.
+procedure TPluginLoader.RefreshEventTriggers;
+var
+  Topics: TArray<string>;
+  I, J: Integer;
+begin
+  for I := 0 to FCatalog.Count - 1 do
+    if not FCatalog[I].Disabled and not FCatalog[I].Attempted and
+       not PluginIsLoaded(FCatalog[I].PluginId) then
+      for J := 0 to High(FCatalog[I].Manifest.ActivateOn) do
+        if not TArray.Contains<string>(Topics, FCatalog[I].Manifest.ActivateOn[J].Event) then
+          Topics := Topics + [FCatalog[I].Manifest.ActivateOn[J].Event];
+  if Length(Topics) = 0 then
+    PluginSetEventTrigger(nil, nil)
+  else
+    PluginSetEventTrigger(Topics,
+      procedure(const ATopic, APayloadJson: string)
+      begin
+        HandleTriggerEvent(ATopic, APayloadJson);
+      end);
+end;
+
+// True when the folder AUri, or one of its parents, holds an entry named AName.
+function FolderChainHas(const AUri, AName: string): Boolean;
+var
+  Dir, Parent: string;
+begin
+  Result := False;
+  if (AName = '') or not AUri.StartsWith('file://', True) then
+    Exit;
+  Dir := ExcludeTrailingPathDelimiter(FileUriToPath(AUri));
+  while Dir <> '' do
+  begin
+    if TDirectory.Exists(TPath.Combine(Dir, AName)) or TFile.Exists(TPath.Combine(Dir, AName)) then
+      Exit(True);
+    Parent := ExcludeTrailingPathDelimiter(ExtractFilePath(Dir));
+    if (Parent = '') or (Parent = Dir) then
+      Break;
+    Dir := Parent;
+  end;
+end;
+
+procedure TPluginLoader.HandleTriggerEvent(const ATopic, APayloadJson: string);
+var
+  I, J: Integer;
+  Uri: string;
+  Payload: TJSONValue;
+  Hit: Boolean;
+  Wanted: TArray<Integer>;
+begin
+  if FEnsuring then
+    Exit;
+  Uri := '';
+  Payload := nil;
+  try
+    for I := 0 to FCatalog.Count - 1 do
+    begin
+      if FCatalog[I].Disabled or FCatalog[I].Attempted or PluginIsLoaded(FCatalog[I].PluginId) then
+        Continue;
+      Hit := False;
+      for J := 0 to High(FCatalog[I].Manifest.ActivateOn) do
+        if SameText(FCatalog[I].Manifest.ActivateOn[J].Event, ATopic) then
+        begin
+          if FCatalog[I].Manifest.ActivateOn[J].DirHas = '' then
+            Hit := True
+          else
+          begin
+            if Payload = nil then
+            begin
+              Payload := TJSONObject.ParseJSONValue(APayloadJson);
+              if Payload is TJSONObject then
+                TJSONObject(Payload).TryGetValue<string>('uri', Uri);
+            end;
+            Hit := Hit or FolderChainHas(Uri, FCatalog[I].Manifest.ActivateOn[J].DirHas);
+          end;
+        end;
+      if Hit then
+        Wanted := Wanted + [I];
+    end;
+  finally
+    Payload.Free;
+  end;
+  for I in Wanted do
+    EnsureIndex(I);
+  if Length(Wanted) > 0 then
+    RefreshEventTriggers;
 end;
 
 function TPluginLoader.EnsureScheme(const AScheme: string): Boolean;
@@ -2499,6 +2594,7 @@ begin
     if FCatalog[I].Declarative and not FCatalog[I].Disabled and
        not PluginIsLoaded(FCatalog[I].PluginId) then
       DeclareRegistrations(FCatalog[I]);
+  RefreshEventTriggers;
 end;
 
 procedure TPluginLoader.UnloadAll;
@@ -2516,6 +2612,7 @@ begin
     FCatalog[I] := E;
   end;
   FAllEnsured := False;
+  RefreshEventTriggers;
 end;
 
 var

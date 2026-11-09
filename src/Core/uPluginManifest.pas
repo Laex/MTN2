@@ -33,9 +33,11 @@ type
     When: TManifestCondition;
   end;
 
-  /// <summary>An item of the Plugins menu the plugin declares.</summary>
+  /// <summary>A menu item the plugin declares, in the Plugins menu unless Parent names
+  /// another menu path.</summary>
   TManifestMenuItem = record
     Id: string;
+    Parent: string;
     CaptionLocales: TArray<string>;
     CaptionTexts: TArray<string>;
     Priority: Integer;
@@ -50,6 +52,12 @@ type
     Uri: string;
     Priority: Integer;
     When: TManifestCondition;
+  end;
+
+  /// <summary>An event that loads an unloaded plugin; see ActivateOn.</summary>
+  TManifestTrigger = record
+    Event: string;
+    DirHas: string;
   end;
 
   TPluginManifest = record
@@ -103,6 +111,21 @@ type
     /// hooks on built-in commands or command key chords, since nothing else
     /// would ever trigger its lazy load.</summary>
     Startup: Boolean;
+    /// <summary>Optional "startupWhen": a condition (the same keys as "when"); with
+    /// "startup" the plugin loads at start only while it holds, for example while
+    /// the folder of the user's macros has files. Without it "startup" is
+    /// unconditional.</summary>
+    StartupWhen: TManifestCondition;
+    HasStartupWhen: Boolean;
+    /// <summary>Optional "activateOn": events that load the plugin when it is still
+    /// unloaded, for a plugin that works on what the panels show: [{"event":
+    /// "panel.dir", "dirHas": ".git"}] loads it once a panel enters a local folder
+    /// that has an entry of that name in it or in a parent folder.</summary>
+    ActivateOn: TArray<TManifestTrigger>;
+    /// <summary>Optional "openRegistrations": true - with "declarative", the plugin may
+    /// also register commands, keys, menu items and drive entries the manifest does not
+    /// list (macros, for example). The listed ones still exist before the load.</summary>
+    OpenRegistrations: Boolean;
     /// <summary>Optional "wasi": true - the WASM module is built for WASI (a Go or
     /// Rust runtime). The host gives it an empty WASI preview1: no files, no
     /// environment, no arguments, and a larger memory limit. Ignored for a
@@ -190,7 +213,7 @@ function PluginListDisplayLabel(const APluginId, APluginDir: string): string;
 implementation
 
 uses
-  System.IOUtils, System.JSON, System.Math, System.Generics.Collections;
+  System.IOUtils, System.JSON, System.Math, System.Generics.Collections, uConfigLocation;
 
 procedure ClearManifest(out AManifest: TPluginManifest);
 begin
@@ -209,6 +232,10 @@ begin
   SetLength(AManifest.DocumentExtensions, 0);
   SetLength(AManifest.Overrides, 0);
   AManifest.Startup := False;
+  AManifest.StartupWhen := Default(TManifestCondition);
+  AManifest.HasStartupWhen := False;
+  AManifest.ActivateOn := nil;
+  AManifest.OpenRegistrations := False;
   AManifest.Wasi := False;
   AManifest.MemoryMib := 0;
   AManifest.KeepLoaded := False;
@@ -290,6 +317,18 @@ begin
   Result := False;
 end;
 
+function ConditionFileExists(const AName: string): Boolean;
+var
+  Path: string;
+begin
+  Path := StringReplace(AName, '%config%', GetConfigDirectory, [rfIgnoreCase]);
+  Path := StringReplace(StringReplace(Path, '\', PathDelim, [rfReplaceAll]), '/', PathDelim, [rfReplaceAll]);
+  if (Pos('*', ExtractFileName(Path)) = 0) and (Pos('?', ExtractFileName(Path)) = 0) then
+    Exit(TFile.Exists(Path) or TDirectory.Exists(Path));
+  Result := TDirectory.Exists(ExtractFilePath(Path)) and
+    (Length(TDirectory.GetFiles(ExtractFilePath(Path), ExtractFileName(Path))) > 0);
+end;
+
 function ManifestConditionHolds(const ACondition: TManifestCondition): Boolean;
 var
   S: string;
@@ -307,8 +346,7 @@ begin
   end;
   if (ACondition.Exe <> '') and not ExecutableOnPath(ACondition.Exe) then
     Exit;
-  if (ACondition.FileName <> '') and not (TFile.Exists(ACondition.FileName) or
-     TDirectory.Exists(ACondition.FileName)) then
+  if (ACondition.FileName <> '') and not ConditionFileExists(ACondition.FileName) then
     Exit;
   if (ACondition.Env <> '') and (GetEnvironmentVariable(ACondition.Env) = '') then
     Exit;
@@ -376,6 +414,8 @@ var
   Cmd: TManifestCommand;
   MItem: TManifestMenuItem;
   DItem: TManifestDriveItem;
+  Trigger: TManifestTrigger;
+  TV: TJSONValue;
 begin
   ClearManifest(AManifest);
   Result := False;
@@ -463,6 +503,9 @@ begin
           MItem := Default(TManifestMenuItem);
           MItem.Id := Trim(TJSONString(Item.Values['id']).Value);
           MItem.Priority := 100;
+          MItem.Parent := 'Plugins';
+          if (Item.Values['parent'] is TJSONString) and (Trim(TJSONString(Item.Values['parent']).Value) <> '') then
+            MItem.Parent := Trim(TJSONString(Item.Values['parent']).Value);
           if Item.Values['priority'] is TJSONNumber then
             MItem.Priority := TJSONNumber(Item.Values['priority']).AsInt;
           ReadLocalized(Item.Values['caption'], MItem.CaptionLocales, MItem.CaptionTexts);
@@ -496,6 +539,29 @@ begin
     AManifest.Overrides := ReadTrimmedStrings(Obj.Values['overrides'], True);
     N := Obj.Values['startup'];
     AManifest.Startup := (N is TJSONBool) and TJSONBool(N).AsBoolean;
+    N := Obj.Values['startupWhen'];
+    if N is TJSONObject then
+    begin
+      AManifest.StartupWhen := ReadCondition(N);
+      AManifest.HasStartupWhen := True;
+    end;
+    N := Obj.Values['openRegistrations'];
+    AManifest.OpenRegistrations := (N is TJSONBool) and TJSONBool(N).AsBoolean;
+    N := Obj.Values['activateOn'];
+    if N is TJSONArray then
+      for TV in TJSONArray(N) do
+        if (TV is TJSONObject) and (TJSONObject(TV).Values['event'] is TJSONString) then
+        begin
+          Trigger := Default(TManifestTrigger);
+          Trigger.Event := LowerCase(Trim(TJSONString(TJSONObject(TV).Values['event']).Value));
+          if TJSONObject(TV).Values['dirHas'] is TJSONString then
+            Trigger.DirHas := Trim(TJSONString(TJSONObject(TV).Values['dirHas']).Value);
+          if Trigger.Event <> '' then
+          begin
+            SetLength(AManifest.ActivateOn, Length(AManifest.ActivateOn) + 1);
+            AManifest.ActivateOn[High(AManifest.ActivateOn)] := Trigger;
+          end;
+        end;
     N := Obj.Values['wasi'];
     AManifest.Wasi := (N is TJSONBool) and TJSONBool(N).AsBoolean;
     N := Obj.Values['memoryMib'];

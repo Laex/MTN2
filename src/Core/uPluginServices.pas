@@ -135,6 +135,10 @@ procedure PluginAnnounceLanguage;
 /// plugin subscribing to the same topic again replaces its handler.</summary>
 procedure PluginSubscribe(const APluginId, ATopic: string; const AHandler: TPluginEventHandler);
 procedure PluginEventsUnregister(const APluginId: string);
+/// <summary>Sets what runs before the subscribers of a published event are told, and
+/// the topics it wants to see: the loader uses it to load a plugin whose manifest
+/// names the event in "activateOn". Passing nil clears it.</summary>
+procedure PluginSetEventTrigger(const ATopics: TArray<string>; const ATrigger: TPluginEventHandler);
 /// <summary>Tells the subscribers; a handler that raises does not stop the others.</summary>
 procedure PluginPublishEvent(const ATopic, APayloadJson: string);
 /// <summary>"doc.*" event payload for a document URI.</summary>
@@ -251,6 +255,8 @@ var
   GJobsChanged: TProc;
   GNextJobId: Integer;
   GSubscriptions: TList<TSubscription>;
+  GTriggerTopics: TArray<string>;
+  GTrigger: TPluginEventHandler;
   GResources: TObjectDictionary<string, TPluginResources>;
   // Changes when a plugin goes; work posted by that plugin earlier is dropped.
   GGenerations: TDictionary<string, Integer>;
@@ -491,15 +497,25 @@ end;
 
 function PluginHasSubscribers: Boolean;
 begin
-  Result := GSubscriptions.Count > 0;
+  Result := (GSubscriptions.Count > 0) or (Length(GTriggerTopics) > 0);
+end;
+
+procedure PluginSetEventTrigger(const ATopics: TArray<string>; const ATrigger: TPluginEventHandler);
+begin
+  GTriggerTopics := ATopics;
+  GTrigger := ATrigger;
 end;
 
 function PluginHasTopicSubscriber(const ATopic: string): Boolean;
 var
   Sub: TSubscription;
+  Topic: string;
 begin
   for Sub in GSubscriptions do
     if SameText(Sub.Topic, ATopic) then
+      Exit(True);
+  for Topic in GTriggerTopics do
+    if SameText(Topic, ATopic) then
       Exit(True);
   Result := False;
 end;
@@ -793,6 +809,7 @@ procedure PluginPublishEvent(const ATopic, APayloadJson: string);
 var
   Snapshot: TArray<TSubscription>;
   Sub: TSubscription;
+  Trigger: TPluginEventHandler;
 
   // A plugin unloaded by an earlier handler of this event is not called.
   function StillSubscribed: Boolean;
@@ -806,6 +823,14 @@ var
   end;
 
 begin
+  // A local copy keeps the closure alive while it replaces the hook.
+  Trigger := GTrigger;
+  if Assigned(Trigger) then
+    try
+      Trigger(ATopic, APayloadJson);
+    except
+      // A faulty trigger must not stop the event.
+    end;
   if GSubscriptions.Count = 0 then
     Exit;
   Snapshot := GSubscriptions.ToArray;

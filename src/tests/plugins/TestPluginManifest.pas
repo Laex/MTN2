@@ -19,6 +19,7 @@ type
     [Test] procedure TestDeclarativeRegistrations;
     [Test] procedure TestConditionsDriveItemsAndDocumentExtensions;
     [Test] procedure TestShippedDeclarationsNameIdsTheSourcesRegister;
+    [Test] procedure TestActivationDeclarations;
   end;
 
 implementation
@@ -212,6 +213,36 @@ begin
   Assert.IsTrue(Checked >= 2, 'the shipped declarative plugins were found');
 end;
 
+procedure TestActivationDeclarations;
+var
+  M: TPluginManifest;
+  C: TManifestCondition;
+begin
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"x","startup":true,"startupWhen":{"file":"%config%/macros/*.lua"},' +
+    '"openRegistrations":true,"declarative":true,' +
+    '"activateOn":[{"event":"Panel.Dir","dirHas":".git"},{"event":""},{"dirHas":"a"},{"event":"language.changed"}],' +
+    '"menuItems":[{"id":"a"},{"id":"b","parent":"Macros"}]}', M));
+  Assert.IsTrue(M.HasStartupWhen and (M.StartupWhen.FileName = '%config%/macros/*.lua'), 'startupWhen');
+  Assert.IsTrue(M.OpenRegistrations, 'openRegistrations');
+  Assert.IsTrue(Length(M.ActivateOn) = 2, 'entries without an event are skipped');
+  Assert.IsTrue((M.ActivateOn[0].Event = 'panel.dir') and (M.ActivateOn[0].DirHas = '.git'), 'dirHas');
+  Assert.IsTrue((M.ActivateOn[1].Event = 'language.changed') and (M.ActivateOn[1].DirHas = ''), 'bare event');
+  Assert.IsTrue((M.MenuItems[0].Parent = 'Plugins') and (M.MenuItems[1].Parent = 'Macros'), 'menu parent');
+
+  Assert.IsTrue(TryParsePluginManifestJson('{"id":"x","startup":true}', M));
+  Assert.IsTrue(not M.HasStartupWhen and not M.OpenRegistrations and (Length(M.ActivateOn) = 0),
+    'the activation keys are optional');
+
+  C := Default(TManifestCondition);
+  C.FileName := ExtractFilePath(ParamStr(0)) + '*.exe';
+  Assert.IsTrue(ManifestConditionHolds(C), 'a wildcard that matches');
+  C.FileName := ExtractFilePath(ParamStr(0)) + '*.mtn-no-such-ext';
+  Assert.IsTrue(not ManifestConditionHolds(C), 'a wildcard that matches nothing');
+  C.FileName := '%config%/mtn-no-such-folder-xyz/*.lua';
+  Assert.IsTrue(not ManifestConditionHolds(C), '%config% in a missing folder');
+end;
+
 procedure TestShippedSevenZipOffersZipOverride;
 var
   Dir: string;
@@ -315,6 +346,11 @@ end;
 procedure TTestPluginManifest.TestShippedDeclarationsNameIdsTheSourcesRegister;
 begin
   TestPluginManifest.TestShippedDeclarationsNameIdsTheSourcesRegister;
+end;
+
+procedure TTestPluginManifest.TestActivationDeclarations;
+begin
+  TestPluginManifest.TestActivationDeclarations;
 end;
 
 procedure TTestPluginManifest.TestShippedSevenZipOffersZipOverride;

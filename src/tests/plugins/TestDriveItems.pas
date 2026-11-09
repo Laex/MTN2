@@ -19,6 +19,7 @@ type
     [Test] procedure TestPanelOnItemSchemeIsMarkedAsThatItem;
     [Test] procedure TestChangeNotificationOnRegisterAndUnregister;
     [Test] procedure TestDeclaredItemsAreStubsUntilThePluginRegisters;
+    [Test] procedure TestOpenPluginMayRegisterUndeclaredItems;
   end;
 
 implementation
@@ -175,6 +176,20 @@ begin
     Assert.AreEqual(ChangeDriveSpecialGlyph(3), DriveBarGlyphFromUri('ws:///'),
       'built-in items keep their glyphs');
   finally
+    Clean;
+  end;
+end;
+
+procedure TTestDriveItems.TestOpenPluginMayRegisterUndeclaredItems;
+begin
+  try
+    DriveItems.DeclarePlugin('t.o', True);
+    Assert.IsTrue(DriveItems.RegisterItem('t.o', 'extra', 'Extra', 'ea:///', 70), 'an undeclared item is accepted');
+    DriveItems.ReconcilePlugin('t.o');
+    Assert.IsTrue(Length(DriveItems.Items) = 1, 'it stays after the reconcile');
+  finally
+    DriveItems.UnregisterPlugin('t.o');
+    DriveItems.ForgetDeclared('t.o');
     Clean;
   end;
 end;

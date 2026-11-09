@@ -95,9 +95,12 @@ begin
   Target := TPath.Combine(FPlugins, 'mtn.net');
   TDirectory.CreateDirectory(Target);
   TFile.Copy(Dll, TPath.Combine(Target, PlatformSharedLibName('NetPlugin')), True);
-  // The manifest the plugin ships with (the runner lives in src\tests\dcu).
-  TFile.Copy(TPath.GetFullPath(TPath.Combine(ExtractFilePath(ParamStr(0)),
-    '..\..\plugins\mtn.net\plugin.json')), TPath.Combine(Target, 'plugin.json'), True);
+  // The manifest the plugin ships with (the runner lives in src\tests\dcu), without
+  // keepLoaded: the library is freed on unload, so the staged folder can be deleted.
+  TFile.WriteAllText(TPath.Combine(Target, 'plugin.json'),
+    StringReplace(TFile.ReadAllText(TPath.GetFullPath(TPath.Combine(ExtractFilePath(ParamStr(0)),
+      '..\..\plugins\mtn.net\plugin.json')), TEncoding.UTF8),
+      '"keepLoaded": true,', '', []), TEncoding.UTF8);
   CurlDll := GetEnvironmentVariable('MTN2_CURL_DLL');
   if CurlDll <> '' then
   begin
