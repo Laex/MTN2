@@ -34,7 +34,7 @@ it is one more two-panel manager with its own habits.
 - **Nothing to memorize.** A command palette (**Shift+F9**) with explanations, key hints in new situations, context help on **F1**.
 - **Your look, your keys.** More than ten themes (Far, Norton, Midnight, Total Commander, Dracula, Nord and more), a theme editor, file color groups, a fully remappable key layout.
 - **Windows and Linux.** A graphical window on Windows; on Linux `mtn2-tui` (over SSH and in `tmux`) and an SDL2 window; `tar.gz`, `.deb` and `.rpm` packages.
-- **Free and no surprises.** MPL-2.0, no telemetry, no installer, a portable edition, updates only with your consent, plugins (native and WebAssembly).
+- **Free and no surprises.** MPL-2.0, no telemetry, no installer, a portable edition, updates only with your consent, plugins (native, WebAssembly and Lua macros).
 
 ## Quick start
 
@@ -64,7 +64,7 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
   `MTN2.exe`, the regular one in `%APPDATA%\MTN2`. Settings, themes and key bindings are plain JSON files.
 - **Keyboard first.** The key layout is close to Far Manager and fully remappable; tabs and terminals work as in ConEmu.
 - **A real terminal.** The console runs on ConPTY (cmd, PowerShell, WSL, SSH), not an imitation.
-- **Extensible.** Native and WebAssembly plugins: custom file systems, panels, commands, dialogs, text highlighting.
+- **Extensible.** Native and WebAssembly plugins and Lua macros: custom file systems, panels, commands, dialogs, text highlighting. A plugin loads on first use, so one you do not need takes no memory.
 
 > The Habr article expands the name as Modern Turbo Navigator; the current name is **Modern Terminal Navigator**.
 
@@ -121,6 +121,8 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
 - **Plugins:** native DLLs and WebAssembly (via Wasmtime) – custom VFS schemes and dedicated panels, menu items,
   key bindings, and message bus. Dialog, overlay, and status bar plugin protocols are specified,
   though currently reserved for internal use – see [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md).
+  A plugin manifest (`plugin.json`) declares its commands, menu items and the events that wake it, so the program
+  loads the plugin only when one of them is used.
 - **Updates:** daily check for new GitHub releases; download (with SHA-256 verification), installation,
   and restart occur only after user confirmation. Menu **≡ → Check for updates...**.
 

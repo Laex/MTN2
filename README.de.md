@@ -34,7 +34,7 @@ sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
 - **Nichts auswendig lernen.** Befehlspalette (**Umschalt+F9**) mit Erklärungen, Tastenhinweise in neuen Situationen, kontextbezogene Hilfe auf **F1**.
 - **Ihr Aussehen, Ihre Tasten.** Mehr als zehn Themes (Far, Norton, Midnight, Total Commander, Dracula, Nord u. a.), Theme-Editor, Farbgruppen für Dateien, frei änderbare Tastenbelegung.
 - **Windows und Linux.** Grafisches Fenster unter Windows; unter Linux `mtn2-tui` (über SSH und in `tmux`) und ein SDL2-Fenster; Pakete `tar.gz`, `.deb`, `.rpm`.
-- **Frei und ohne Überraschungen.** MPL-2.0, keine Telemetrie, kein Installer, portable Version, Updates nur mit Ihrer Zustimmung, Plugins (nativ und WebAssembly).
+- **Frei und ohne Überraschungen.** MPL-2.0, keine Telemetrie, kein Installer, portable Version, Updates nur mit Ihrer Zustimmung, Plugins (nativ, WebAssembly und Lua-Makros).
 
 ## Schnellstart
 
@@ -63,7 +63,7 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
   `MTN2.exe` ab, die normale in `%APPDATA%\MTN2`. Einstellungen, Themes und Tastenbelegung sind einfache JSON-Dateien.
 - **Tastatur zuerst.** Die Belegung ähnelt Far Manager und ist frei änderbar; Tabs und Terminals funktionieren wie in ConEmu.
 - **Ein echtes Terminal.** Die Konsole läuft auf ConPTY (cmd, PowerShell, WSL, SSH), keine Nachbildung.
-- **Erweiterbar.** Native und WebAssembly-Plugins: eigene Dateisysteme, Panels, Befehle, Dialoge, Textfärbung.
+- **Erweiterbar.** Native und WebAssembly-Plugins sowie Lua-Makros: eigene Dateisysteme, Panels, Befehle, Dialoge, Textfärbung. Ein Plugin wird beim ersten Gebrauch geladen; ein nicht benötigtes belegt keinen Speicher.
 
 > Der Habr-Artikel löst den Namen als Modern Turbo Navigator auf; der aktuelle Name lautet **Modern Terminal Navigator**.
 
@@ -120,6 +120,8 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
 - **Plugins:** native DLLs und WebAssembly (über Wasmtime) – eigene VFS-Schemata und Panels, Menüeinträge,
   Tastenbelegungen, Nachrichtenbus. Protokolle für Dialoge, Overlays und Statuszeilen sind spezifiziert,
   aktuell jedoch dem Hauptprogramm vorbehalten – siehe [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md).
+  Das Manifest eines Plugins (`plugin.json`) nennt seine Befehle, Menüeinträge und die Ereignisse, die es wecken;
+  das Programm lädt das Plugin erst, wenn eines davon gebraucht wird.
 - **Updates:** tägliche Prüfung auf neue GitHub-Releases; Download (mit SHA-256-Prüfung), Installation
   und Neustart erfolgen erst nach Bestätigung durch den Benutzer. Menü **≡ → Nach Updates suchen...**.
 
@@ -179,7 +181,7 @@ Start: `bin\win64\MTN2.exe [--no-skia] [--fps] [pfad]`. Details unter [docs/BUIL
 | `src/Platform` | Plattformschicht: `Windows` und `Posix` mit gleichnamigen Modulen |
 | `src/Hosts` | Hosts: `Ansi` – Version für das Textterminal |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Hauptformular, JSON-Dialoge, Standardthema |
-| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, WASM-Demo) |
+| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, WASM-Demo) |
 | `src/tests` | DUnitX-Regressionstests nach Gruppen und Test-Runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, Projektgruppe `Group.groupproj`, Hilfsskripte |
 | `bin/win64`, `bin/linux64` | Build-Ausgabe nach Plattformen |

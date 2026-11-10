@@ -28,7 +28,7 @@ MTN2 面向在 DOS Navigator 与 Far Manager 陪伴下成长、习惯用键盘�
 - **无需死记硬背。** 带说明的命令面板（**Shift+F9**）、新场景下的按键提示、**F1** 上下文帮助。
 - **你的外观，你的按键。** 十余种主题（Far、Norton、Midnight、Total Commander、Dracula、Nord 等）、主题编辑器、文件颜色分组、可完全自定义的快捷键。
 - **Windows 与 Linux。** Windows 上为图形窗口；Linux 上有 `mtn2-tui`（支持 SSH 与 `tmux`）和 SDL2 窗口；提供 `tar.gz`、`.deb`、`.rpm` 软件包。
-- **自由且无意外。** MPL-2.0 许可，无遥测、无安装程序，提供便携版，仅在你同意后更新，支持插件（原生与 WebAssembly）。
+- **自由且无意外。** MPL-2.0 许可，无遥测、无安装程序，提供便携版，仅在你同意后更新，支持插件（原生、WebAssembly 与 Lua 宏）。
 
 ## 快速开始
 
@@ -55,7 +55,7 @@ Linux（`mtn2-tui`、`mtn2-sdl`）请见下文“安装指南”。程序在首�
 - **便携。** 单个目录，无需安装程序，不写注册表；便携版的设置保存在 `MTN2.exe` 同级目录，普通版保存在 `%APPDATA%\MTN2`。设置、主题与快捷键映射均为普通 JSON 文件。
 - **键盘优先。** 快捷键布局接近 Far Manager，可完全自定义；标签页与终端的用法类似 ConEmu。
 - **真正的终端。** 控制台基于 ConPTY（cmd、PowerShell、WSL、SSH），而非模拟。
-- **可扩展。** 原生与 WebAssembly 插件：自定义文件系统、面板、命令、对话框、文本着色。
+- **可扩展。** 原生与 WebAssembly 插件以及 Lua 宏：自定义文件系统、面板、命令、对话框、文本着色。插件在首次使用时才加载，不用的插件不占内存。
 
 > Habr 文章将名称解释为 Modern Turbo Navigator；当前名称为 **Modern Terminal Navigator**。
 
@@ -96,7 +96,7 @@ Linux（`mtn2-tui`、`mtn2-sdl`）请见下文“安装指南”。程序在首�
 - **个性化设置：** 可自定义快捷键映射（`keymap.json`）、基于文件的主题系统（Far Classic、Norton Commander、Midnight Commander、Total Commander、Gruvbox、Tokyo Night、Dracula、Nord、Solarized、Light、High Contrast 等；可通过内置主题编辑器创建自定义主题）、用户菜单（F2）、命令面板（`Shift+F9`，搜索菜单项）、文件关联、F1 上下文帮助。
 - **多语言：** 界面和帮助文档支持英语、俄语、德语和简体中文；语言可在 **选项 → 界面...**（Options → User interface...）中选择并实时生效，无需重启。可通过在 `MTN2.exe` 同级目录下放置 `resource\<语言代码>\` 文件夹（`locale.json`、`strings.json`，帮助文档在 `help\` 中）添加自定义语言，无需重新编译。程序内仅内置英语。
 - **Unicode：** CJK 汉字（基本多语言平面）、平假名、片假名、谚文及全角字符在控制台、面板、标签页和标题中均以双列宽度显示；缺失字符自动使用系统字体回退渲染。
-- **插件系统：** 原生 DLL 与 WebAssembly（基于 Wasmtime）—— 支持自定义 VFS 方案及专属面板、菜单项、按键绑定、消息总线。已定义对话框、覆盖层与状态栏的插件协议，目前由主程序内部使用——详见 [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md)。
+- **插件系统：** 原生 DLL 与 WebAssembly（基于 Wasmtime）—— 支持自定义 VFS 方案及专属面板、菜单项、按键绑定、消息总线。已定义对话框、覆盖层与状态栏的插件协议，目前由主程序内部使用——详见 [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md)。插件清单（`plugin.json`）声明其命令、菜单项和唤醒它的事件，程序仅在用到其中之一时才加载该插件。
 - **自动更新：** 每日自动检查 GitHub 上的新版本；下载（包含 SHA-256 校验）、安装及重启均需用户确认。菜单入口：**≡ → 检查更新...**。
 
 支持 Windows x64（图形界面程序）与 Linux x86-64：`mtn2-tui` 运行在全屏文本终端中，拥有完全相同的面板、查看器、编辑器、控制台与插件，支持 SSH 远程连接与 `tmux`（参见 [docs/LINUX.md](docs/LINUX.md)）。实验性的 Linux 图形界面版本 `mtn2-sdl` 在普通 SDL2 窗口中显示相同的窗口：使用系统字体，支持鼠标与滚轮、任意键盘布局输入、桌面剪贴板，以及快速预览中的图片。它可运行于 X11 与 Wayland（Windows 下通过 WSLg），包含在 `tar.gz`、`.deb` 与 `.rpm` 软件包中，需要 `libSDL2` 与 `libfreetype`（PNG 和 JPEG 另需 `libSDL2_image`）：依赖项与参数详见 [docs/LINUX.md](docs/LINUX.md)（俄语）。macOS 构建已在规划中。
@@ -140,7 +140,7 @@ Linux 版本在 Windows 环境下通过 `dcclinux64` 编译器进行交叉编译
 | `src/Platform` | 平台适配层：包含同名模块的 `Windows` 与 `Posix` |
 | `src/Hosts` | 外壳宿主：`Ansi` – 文本终端版本 |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | 主窗体、JSON 对话框、默认主题 |
-| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.git`、`mtn.csv`、`mtn.docview`、`mtn.pdf`、`mtn.logfilter`、`mtn.lua`、`mtn.ws`、WASM 演示） |
+| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.git`、`mtn.csv`、`mtn.docview`、`mtn.pdf`、`mtn.logfilter`、`mtn.lua`、`mtn.ws`、`mtn.winsys`、`mtn.docker`、`mtn.rclone`、`mtn.everything`、`mtn.jtree`、`mtn.meta`、WASM 演示） |
 | `src/tests` | 按组划分的 DUnitX 回归测试及运行脚本 `run-tests.ps1` |
 | `src/tools` | DialogDesigner、ExportDialogJson、`Group.groupproj` 项目组、工具脚本 |
 | `bin/win64`, `bin/linux64` | 各平台构建输出目录 |
