@@ -22,6 +22,7 @@ type
   public
     [Test] procedure FocusChangeScrollsAndSameFocusKeepsTheWheel;
     [Test] procedure ListAndRadioGroupAreCutAndOtherControlsDrop;
+    [Test] procedure TextControlsLeaveACellBeforeTheBorder;
   end;
 
   [TestFixture]
@@ -162,6 +163,24 @@ begin
   Assert.IsTrue(not EmptyBox(Lay.Bounds[1]), 'a radio group that crosses the view is kept');
   Assert.IsTrue(Lay.Bounds[1].Bottom = 10, 'the radio group is cut to the client bottom');
   Assert.IsTrue(EmptyBox(Lay.Bounds[2]), 'a label wholly outside the view is dropped');
+end;
+
+procedure TTestDialogV2Layout.TextControlsLeaveACellBeforeTheBorder;
+var
+  Controls: TArray<TDialogControl>;
+  Frame: TRectI;
+  Lay: TDialogV2Layout;
+begin
+  SetLength(Controls, 3);
+  Controls[0] := AtRow(dckCheckbox, 'wide', 0, 1, nil, 'A checkbox caption much longer than the box');
+  Controls[1] := AtRow(dckLabel, 'note', 1, 1, nil, 'A label caption much longer than the box');
+  Controls[2] := AtRow(dckInput, 'edit', 2, 1, nil, '');
+  Frame := TRectI.Make(0, 0, 21, 11);
+
+  Lay := LayoutDialogV2(Controls, Frame, 0, 0, -1);
+  Assert.AreEqual(19, Lay.Bounds[0].Right, 'a checkbox keeps a blank cell before the border');
+  Assert.AreEqual(19, Lay.Bounds[1].Right, 'a label keeps a blank cell before the border');
+  Assert.AreEqual(20, Lay.Bounds[2].Right, 'an input still reaches the client edge');
 end;
 
 function BlankGrid(AWidth, AHeight: Integer): TTerminalGrid;

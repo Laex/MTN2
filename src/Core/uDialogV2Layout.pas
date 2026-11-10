@@ -200,6 +200,11 @@ begin
       T := ClientTop;
     if Rgt > ClientRight then
       Rgt := ClientRight;
+    // Text that is wider than its box (a longer translation) stops one cell
+    // short of the frame border instead of touching it.
+    if (C.Kind in [dckLabel, dckCheckbox, dckRadio, dckDropDown]) and
+       (Rgt >= ClientRight) and (L < ClientRight) then
+      Rgt := ClientRight - 1;
     if Bot > ClientBottom then
       Bot := ClientBottom;
     if Rgt < L then

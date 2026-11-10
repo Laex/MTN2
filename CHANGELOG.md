@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Fixed
+
+- In the Font / Display dialog the right column no longer touches the window border: a checkbox, label or dropdown that is wider than its box now stops one cell short of the frame, and the longer Russian and German captions were shortened.
+
 ## v0.5.6 – 2026-11-09
 
 ### Changed
