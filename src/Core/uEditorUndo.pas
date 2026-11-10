@@ -12,6 +12,7 @@ type
   TEditorUndoEntry = record
     Lines: TArray<string>;
     Bytes: TBytes;
+    Changed: TBytes;
     HexMode: Boolean;
     CursorRow: Integer;
     CursorCol: Integer;

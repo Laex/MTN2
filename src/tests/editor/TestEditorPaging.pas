@@ -15,6 +15,8 @@ type
     [Test] procedure TestPageDownKeepsTheCursorOnItsScreenRow;
     [Test] procedure TestPageUpKeepsTheCursorOnItsScreenRow;
     [Test] procedure TestPageDownNearTheEndStopsOnTheLastLine;
+    [Test] procedure TestPageDownKeepsTheScreenRowInHex;
+    [Test] procedure TestPageDownKeepsTheScreenRowInWrappedView;
   end;
 
 implementation
@@ -35,7 +37,8 @@ begin
   end;
 end;
 
-function OpenLines(ACount: Integer; out ADir: string): TEditorWindow;
+function OpenLines(ACount: Integer; out ADir: string; AViewOnly: Boolean = False;
+  const ALine: string = 'line '): TEditorWindow;
 var
   Path: string;
   Text: TStringBuilder;
@@ -47,14 +50,14 @@ begin
   Text := TStringBuilder.Create;
   try
     for I := 1 to ACount do
-      Text.Append('line ').Append(I).Append(sLineBreak);
+      Text.Append(ALine).Append(I).Append(sLineBreak);
     TFile.WriteAllText(Path, Text.ToString, TEncoding.UTF8);
   finally
     Text.Free;
   end;
   Result := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
   Result.Area := TRectI.Make(0, 0, 80, 30);
-  Result.Open(PathToFileUri(Path), False);
+  Result.Open(PathToFileUri(Path), AViewOnly);
   Pump;
   Assert.IsTrue(Result.DocReady, 'document loaded');
 end;
@@ -123,6 +126,56 @@ begin
     View.GetViewPos(Top, Row, Col);
     Assert.IsTrue(Row >= 59, 'the cursor reached the end of the file');
     Assert.IsTrue((Row >= Top) and (Row - Top < 30), 'the cursor stays in the view');
+  finally
+    View.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestEditorPaging.TestPageDownKeepsTheScreenRowInHex;
+var
+  Dir: string;
+  View: TEditorWindow;
+  Top, Row, Col, ScreenRow: Integer;
+begin
+  View := OpenLines(2000, Dir, True);
+  try
+    View.ToggleHexMode;
+    Assert.IsTrue(View.HexMode, 'hex mode on');
+    View.SetViewPos(50, 55, 0);
+    View.GetViewPos(Top, Row, Col);
+    ScreenRow := Row - Top;
+    PressPage(View, vkNext);
+    View.GetViewPos(Top, Row, Col);
+    Assert.IsTrue(Row > 55 + 5, 'the cursor went down by a page');
+    Assert.AreEqual(ScreenRow, Row - Top, 'same screen row after PgDn in hex');
+  finally
+    View.Free;
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestEditorPaging.TestPageDownKeepsTheScreenRowInWrappedView;
+var
+  Dir: string;
+  View: TEditorWindow;
+  Top, Row, Col, Top2, Row2: Integer;
+begin
+  // Every line wraps into several screen rows, so the view's top (a screen
+  // row) runs ahead of the cursor's line number.
+  View := OpenLines(500, Dir, True, StringOfChar('w', 200) + ' ');
+  try
+    PressPage(View, vkF2);
+    View.SetViewPos(0, 0, 0);
+    PressPage(View, vkNext);
+    View.GetViewPos(Top, Row, Col);
+    Assert.IsTrue(Top >= 20, 'the view went down by a page, the cursor stays on the top row');
+    Assert.IsTrue(Row > 0, 'the cursor moved');
+    Assert.IsTrue(Top > Row, 'the top is counted in screen rows');
+    PressPage(View, vkNext);
+    View.GetViewPos(Top2, Row2, Col);
+    Assert.IsTrue(Top2 >= Top + 20, 'the view went down by another page');
+    Assert.IsTrue(Row2 > Row, 'the cursor moved again');
   finally
     View.Free;
     TDirectory.Delete(Dir, True);

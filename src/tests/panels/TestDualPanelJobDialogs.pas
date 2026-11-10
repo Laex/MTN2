@@ -16,6 +16,7 @@ type
     [Test] procedure TestConfirmIntoSameFolderStaysOpen;
     [Test] procedure TestPackIntoRenamedSevenZip;
     [Test] procedure TestTypedNameMakesANewItem;
+    [Test] procedure TestNewNameRules;
     [Test] procedure TestSingleTargetReplacesTheFolder;
     [Test] [Category('WindowsOnly')] procedure TestSearchRootAndSync;
   end;
@@ -33,6 +34,7 @@ uses
   uDualPanelSync,
   uFindSession,
   uDualPanelJobDialogs,
+  uDualPanelOperations,
   uDualPanelJobList,
   uDualPanelJobs,
   uDualPanelJobRules,
@@ -88,14 +90,57 @@ begin
 end;
 
 procedure TestTypedNameMakesANewItem;
+var
+  Dir, Source, Err: string;
 begin
-  Assert.IsTrue(JobDestTextIsNewName('copy.txt', 1), 'a bare name');
-  Assert.IsTrue(JobDestTextIsNewName('  D:\out\copy.txt ', 1), 'a path without a closing separator');
-  Assert.IsFalse(JobDestTextIsNewName('D:\out\', 1), 'a closing backslash names a folder');
-  Assert.IsFalse(JobDestTextIsNewName('D:/out/', 1), 'a closing slash names a folder');
-  Assert.IsFalse(JobDestTextIsNewName('', 1), 'an empty field');
-  Assert.IsFalse(JobDestTextIsNewName('tmp:///', 1), 'a URI is never a bare name');
-  Assert.IsFalse(JobDestTextIsNewName('copy.txt', 2), 'several items go into a folder');
+  Dir := TPath.Combine(TPath.GetTempPath, 'MTN2_TypedName');
+  Source := PathToFileUri(TPath.Combine(Dir, 'a.txt'));
+  ForceDirectories(Dir);
+  try
+    Assert.AreEqual(PathToFileUri(TPath.Combine(Dir, 'copy.txt')),
+      JobNewNameTarget('copy.txt', Source, 1, Err), 'a bare name goes next to the item');
+    Assert.AreEqual('', Err, 'a good name has no problem');
+    Assert.AreEqual(PathToFileUri(TPath.Combine(Dir, 'copy.txt')),
+      JobNewNameTarget('  copy.txt ', Source, 1, Err), 'spaces around the name are dropped');
+    Assert.AreEqual('', JobNewNameTarget('sub' + PathDelim + 'copy.txt', Source, 1, Err),
+      'a path is a folder');
+    Assert.AreEqual('', Err, 'a path is not an error');
+    Assert.AreEqual('', JobNewNameTarget('D:copy.txt', Source, 1, Err), 'a colon makes it a path');
+    Assert.AreEqual('', JobNewNameTarget('tmp:///', Source, 1, Err), 'a URI is a folder');
+    Assert.AreEqual('', JobNewNameTarget('copy.txt', Source, 2, Err), 'several items go into a folder');
+    Assert.AreEqual('', JobNewNameTarget('', Source, 1, Err), 'an empty field is no name');
+    Assert.AreEqual('', JobNewNameTarget('a.txt', Source, 1, Err), 'the item''s own name is refused');
+    Assert.AreNotEqual('', Err, 'the reason is given');
+    Assert.AreEqual('', JobNewNameTarget('..', Source, 1, Err), 'two dots stay the parent folder');
+    Assert.AreEqual('', Err, 'two dots are not an error');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TestNewNameRules;
+begin
+  Assert.AreEqual('', FileNameProblem('report 2024.final.txt'), 'an ordinary name');
+  Assert.AreNotEqual('', FileNameProblem(''), 'empty');
+  Assert.AreNotEqual('', FileNameProblem('.'), 'a dot');
+  Assert.AreNotEqual('', FileNameProblem('..'), 'two dots');
+  Assert.AreNotEqual('', FileNameProblem('a' + #1 + 'b'), 'a control character');
+  Assert.AreNotEqual('', FileNameProblem('a/b'), 'a slash');
+  Assert.AreNotEqual('', FileNameProblem(StringOfChar('x', 256)), 'longer than 255');
+  Assert.AreEqual('', FileNameProblem(StringOfChar('x', 255)), 'exactly 255');
+{$IFDEF MSWINDOWS}
+  Assert.AreNotEqual('', FileNameProblem('a?b'), 'a question mark');
+  Assert.AreNotEqual('', FileNameProblem('a<b'), 'an angle bracket');
+  Assert.AreNotEqual('', FileNameProblem('trailing '), 'a trailing space');
+  Assert.AreNotEqual('', FileNameProblem('trailing.'), 'a trailing dot');
+  Assert.AreNotEqual('', FileNameProblem('con'), 'a reserved name');
+  Assert.AreNotEqual('', FileNameProblem('NUL.txt'), 'a reserved name with an extension');
+  Assert.AreEqual('', FileNameProblem('console.txt'), 'a name that only starts like a reserved one');
+{$ELSE}
+  Assert.AreEqual('', FileNameProblem('a?b'), 'a question mark is fine on Linux');
+  Assert.AreEqual('', FileNameProblem('con'), 'a device name is fine on Linux');
+  Assert.AreEqual('', FileNameProblem('trailing '), 'a trailing space is fine on Linux');
+{$ENDIF}
 end;
 
 procedure TestSingleTargetReplacesTheFolder;
@@ -409,6 +454,11 @@ end;
 procedure TTestDualPanelJobDialogs.TestTypedNameMakesANewItem;
 begin
   TestDualPanelJobDialogs.TestTypedNameMakesANewItem;
+end;
+
+procedure TTestDualPanelJobDialogs.TestNewNameRules;
+begin
+  TestDualPanelJobDialogs.TestNewNameRules;
 end;
 
 procedure TTestDualPanelJobDialogs.TestSingleTargetReplacesTheFolder;

@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils,
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uDualPanelJobs,
-  uDualPanelJobList, uDualPanelJobRules, uVfsTypes;
+  uDualPanelJobList, uDualPanelJobRules, uDualPanelOperations, uVfsTypes;
 
 const
   /// <summary>Prefix of the plugin secret key that asks for encrypted file names
@@ -90,10 +90,13 @@ function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
 /// a plain local folder); anything else - an absolute path, a URI, a base that
 /// is not a local folder - comes back unchanged.</summary>
 function JobResolveRelativeDest(const ADestPath, ABaseDirUri: string): string;
-/// <summary>True when the destination typed for a one-item Copy / Move names
-/// the new item rather than a folder: a local path without a closing
-/// separator. The caller still checks that no folder of that name exists.</summary>
-function JobDestTextIsNewName(const ADestPath: string; ASourceCount: Integer): Boolean;
+/// <summary>The target of a one-item Copy / Move whose destination field holds
+/// a bare name (no \ / :): that name in the folder the item is in. Empty when
+/// the field is a folder instead (a path, a URI, an existing folder of that
+/// name, several items, an item inside an archive); AError is then empty too.
+/// An unusable name returns empty with the reason in AError.</summary>
+function JobNewNameTarget(const ADestText, ASourceUri: string; ASourceCount: Integer;
+  out AError: string): string;
 /// <summary>The extension (with the dot) of an archive type of the Pack dialog.</summary>
 function JobPackArchiveExt(ATypeIdx: Integer): string;
 /// <summary>The 7-Zip level (-mx) of an item of the Pack dialog's compression
@@ -308,13 +311,35 @@ begin
   Result := TPath.Combine(Base, Dest);
 end;
 
-function JobDestTextIsNewName(const ADestPath: string; ASourceCount: Integer): Boolean;
+function JobNewNameTarget(const ADestText, ASourceUri: string; ASourceCount: Integer;
+  out AError: string): string;
 var
-  Dest: string;
+  Name, SourcePath, Dir: string;
 begin
-  Dest := Trim(ADestPath);
-  Result := (ASourceCount = 1) and (Dest <> '') and (Pos('://', Dest) = 0) and
-    not CharInSet(Dest[Length(Dest)], ['\', '/']);
+  Result := '';
+  AError := '';
+  Name := Trim(ADestText);
+  if (ASourceCount <> 1) or (Name = '') or (Pos('\', Name) > 0) or
+     (Pos('/', Name) > 0) or (Pos(':', Name) > 0) then
+    Exit;
+  SourcePath := FileUriToPath(ASourceUri);
+  if (SourcePath = '') or HasArchiveChain(ASourceUri) then
+    Exit;
+  Dir := ExtractFileDir(ExcludeTrailingPathDelimiter(SourcePath));
+  if Dir = '' then
+    Exit;
+  // A folder of that name is a place to copy into, as before.
+  if TDirectory.Exists(TPath.Combine(Dir, Name)) then
+    Exit;
+  AError := FileNameProblem(Name);
+  if AError <> '' then
+    Exit;
+  Result := PathToFileUri(TPath.Combine(Dir, Name));
+  if SameText(Result, ASourceUri) then
+  begin
+    AError := 'the name is the same as the item''s';
+    Result := '';
+  end;
 end;
 
 function JobConfirmDestText(AKind: TPanelJobKind; const ADestDirURI: string): string;
@@ -531,7 +556,7 @@ end;
 function TJobDialogController.ApplyJobConfirmOptions(
   const AFields: TDialogCommandFields): Boolean;
 var
-  DestURI, DestPath, ExcludeMask, ArchivePath: string;
+  DestURI, DestPath, ExcludeMask, ArchivePath, NewNameUri, NameError: string;
   ExistingIdx: Integer;
 begin
   Result := True;
@@ -554,17 +579,13 @@ begin
   FJobs.ApplyCopyMoveOptions(DestURI, JobOverwriteModeFromIndex(ExistingIdx),
     AFields.PreserveTs, AFields.OnlyNewer, AFields.FollowSymlinks,
     JobRetryLimitFromIndex(AFields.RetryIdx), ExcludeMask);
-  // One item to "name" (no closing separator, no such folder): the copy or
-  // move is made under that name, as in a file manager's rename-copy.
-  if (FJobs.Kind in [pjkCopy, pjkMove]) and
-     JobDestTextIsNewName(DestPath, Length(FJobs.State.Sources)) and
-     (FileUriToPath(DestURI) <> '') and not HasArchiveChain(DestURI) and
-     not TDirectory.Exists(FileUriToPath(DestURI)) and
-     not IsSevenZipArchivePath(FileUriToPath(DestURI)) and
-     not SameText(DestURI, FJobs.State.Sources[0]) then
-    FJobs.SetSingleTarget(DestURI)
-  else
-    FJobs.SetSingleTarget('');
+  // One item and a bare name in the field: the copy or move is made in the
+  // item's folder under that name.
+  NewNameUri := '';
+  if (FJobs.Kind in [pjkCopy, pjkMove]) and (Length(FJobs.State.Sources) > 0) then
+    NewNameUri := JobNewNameTarget(AFields.DestPath, FJobs.State.Sources[0],
+      Length(FJobs.State.Sources), NameError);
+  FJobs.SetSingleTarget(NewNameUri);
   if FJobs.Kind <> pjkPack then
     Exit;
   ArchivePath := FileUriToPath(DestURI);
@@ -648,6 +669,8 @@ end;
 
 procedure TJobDialogController.HandleJobConfirmCmd(const AControlId: string;
   const AFields: TDialogCommandFields);
+var
+  BadName: string;
 begin
   // Copy or Move onto the folder the items are in does nothing: the dialog
   // stays open and a toast gives the reason.
@@ -660,6 +683,20 @@ begin
     if Assigned(FOnWarn) then
       FOnWarn(JobSameFolderWarning);
     Exit;
+  end;
+  // A bare name that cannot name a file here: the dialog stays open with the
+  // reason.
+  if (DialogCmdIsAccept(AControlId) or JobConfirmWantsBackground(AControlId)) and
+     Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove]) and
+     (Length(FJobs.State.Sources) = 1) then
+  begin
+    JobNewNameTarget(AFields.DestPath, FJobs.State.Sources[0], 1, BadName);
+    if BadName <> '' then
+    begin
+      if Assigned(FOnWarn) then
+        FOnWarn(T('ui.job.badName', 'Invalid name: %s', [BadName]));
+      Exit;
+    end;
   end;
   if JobConfirmWantsBackground(AControlId) then
   begin

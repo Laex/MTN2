@@ -45,6 +45,8 @@ type
     // with the text.
     FBookmarks: TList<Integer>;
     FRawBytes: TBytes;
+    // One flag per byte of FRawBytes edited since load or save; empty when none was.
+    FByteChanged: TBytes;
     FReady: Boolean;
     FLoading: Boolean;
     FSaving: Boolean;
@@ -172,6 +174,7 @@ type
     procedure InsertLine(AIndex: Integer; const AValue: string);
     procedure DeleteLine(AIndex: Integer);
     procedure MarkDirty;
+    procedure ClearDirty;
     function SnapshotLines: TArray<string>;
     function HasBookmark(ALine: Integer): Boolean;
     /// <summary>Sets or clears the bookmark of ALine; True when it is set now.</summary>
@@ -190,7 +193,13 @@ type
     procedure InsertByte(AIndex: Integer; AValue: Byte);
     procedure DeleteByte(AIndex: Integer);
     function SnapshotBytes: TBytes;
-    procedure RestoreBytes(const ABytes: TBytes; AMarkDirty: Boolean);
+    /// <summary>True when the byte was edited (typed, inserted) since the document
+    /// was loaded or saved.</summary>
+    function ByteChanged(AIndex: Integer): Boolean;
+    /// <summary>The edited-byte flags, to be given back to RestoreBytes.</summary>
+    function SnapshotChanged: TBytes;
+    procedure RestoreBytes(const ABytes: TBytes; AMarkDirty: Boolean;
+      const AChanged: TBytes = nil);
     property URI: string read FURI;
     property Path: string read FPath;
     property Ready: Boolean read FReady;
@@ -321,7 +330,7 @@ begin
   FReady := False;
   FLoading := False;
   FSaving := False;
-  FDirty := False;
+  ClearDirty;
   FReadOnly := False;
   FWantEdit := False;
   FFollow := False;
@@ -492,6 +501,12 @@ begin
   if FLines.Count = 0 then
     FLines.Add('');
   MarkDirty;
+end;
+
+procedure TEditorDoc.ClearDirty;
+begin
+  FDirty := False;
+  SetLength(FByteChanged, 0);
 end;
 
 procedure TEditorDoc.MarkDirty;
@@ -1128,7 +1143,7 @@ begin
     Text := DecodeTextWithEncoding(FRawBytes, AEncoding);
     ApplyLoadedText(Text);
     FBinary := False;
-    FDirty := False;
+    ClearDirty;
     FError := '';
     if FReadOnly then
       FStatus := 'Read-only'
@@ -1159,6 +1174,9 @@ begin
   if (AIndex < 0) or (AIndex >= Length(FRawBytes)) then
     Exit;
   FRawBytes[AIndex] := AValue;
+  if Length(FByteChanged) <> Length(FRawBytes) then
+    SetLength(FByteChanged, Length(FRawBytes));
+  FByteChanged[AIndex] := 1;
   FDirty := True;
   NotifyChanged;
 end;
@@ -1166,7 +1184,7 @@ end;
 procedure TEditorDoc.InsertByte(AIndex: Integer; AValue: Byte);
 var
   N: Integer;
-  Tmp: TBytes;
+  Tmp, Flags: TBytes;
 begin
   if FStreaming or FReadOnly or (not FReady) then
     Exit;
@@ -1182,6 +1200,18 @@ begin
   if AIndex < N then
     Move(FRawBytes[AIndex], Tmp[AIndex + 1], N - AIndex);
   FRawBytes := Tmp;
+  Flags := FByteChanged;
+  SetLength(FByteChanged, N + 1);
+  if Length(Flags) = N then
+  begin
+    if AIndex > 0 then
+      Move(Flags[0], FByteChanged[0], AIndex);
+    if AIndex < N then
+      Move(Flags[AIndex], FByteChanged[AIndex + 1], N - AIndex);
+  end
+  else
+    FillChar(FByteChanged[0], N + 1, 0);
+  FByteChanged[AIndex] := 1;
   FDirty := True;
   NotifyChanged;
 end;
@@ -1196,6 +1226,10 @@ begin
   N := Length(FRawBytes);
   if (AIndex < 0) or (AIndex >= N) then
     Exit;
+  if Length(FByteChanged) = N then
+    Delete(FByteChanged, AIndex, 1)
+  else
+    SetLength(FByteChanged, 0);
   if N = 1 then
     SetLength(FRawBytes, 0)
   else
@@ -1216,9 +1250,25 @@ begin
   Result := Copy(FRawBytes);
 end;
 
-procedure TEditorDoc.RestoreBytes(const ABytes: TBytes; AMarkDirty: Boolean);
+function TEditorDoc.ByteChanged(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < Length(FByteChanged)) and
+    (Length(FByteChanged) = Length(FRawBytes)) and (FByteChanged[AIndex] <> 0);
+end;
+
+function TEditorDoc.SnapshotChanged: TBytes;
+begin
+  Result := Copy(FByteChanged);
+end;
+
+procedure TEditorDoc.RestoreBytes(const ABytes: TBytes; AMarkDirty: Boolean;
+  const AChanged: TBytes);
 begin
   FRawBytes := Copy(ABytes);
+  if Length(AChanged) = Length(FRawBytes) then
+    FByteChanged := Copy(AChanged)
+  else
+    SetLength(FByteChanged, 0);
   if AMarkDirty then
     FDirty := True;
   NotifyChanged;
@@ -1328,7 +1378,7 @@ begin
           TouchHighlight(0);
           FLines.Add('');
           RefreshReadOnly;
-          FDirty := False;
+          ClearDirty;
           FError := '';
           FReady := True;
           FStatus := Format('Hex  %d bytes', [Length(FRawBytes)]);
@@ -1350,7 +1400,7 @@ begin
         FEncoding := Enc;
         ApplyLoadedText(Text);
         RefreshReadOnly;
-        FDirty := False;
+        ClearDirty;
         FError := '';
         FReady := True;
         if Length(FRawBytes) > cEditorMaxBytes then
@@ -1374,7 +1424,7 @@ begin
   ApplyLoadedText('');
   FCrlf := True;
   RefreshReadOnly;
-  FDirty := False;
+  ClearDirty;
   FError := '';
   FReady := True;
   FStatus := '';
@@ -1702,7 +1752,7 @@ begin
             TouchHighlight(0);
             FLines.Add('');
             FReadOnly := True;
-            FDirty := False;
+            ClearDirty;
             FError := '';
             FReady := True;
             if Size > Length(FRawBytes) then
@@ -1726,7 +1776,7 @@ begin
             FLineCacheOrder.Clear;
             FBinary := False;
             FReadOnly := True; // streaming docs start view-only until promote
-            FDirty := False;
+            ClearDirty;
             FError := '';
           end;
           NotifyChanged;
@@ -1838,7 +1888,7 @@ begin
     FStatus := Format('Loaded  %d MB', [Length(FRawBytes) div (1024 * 1024)]);
   end;
   FReadOnly := False;
-  FDirty := False;
+  ClearDirty;
   FError := '';
   RefreshReadOnly;
   NotifyChanged;
@@ -1952,7 +2002,7 @@ begin
             end
             else
             begin
-              FDirty := False;
+              ClearDirty;
               FError := '';
               FStatus := 'Saved';
               RefreshReadOnly;
@@ -1993,7 +2043,7 @@ begin
       else
       begin
         FRawBytes := EncodeTextBytes(Text, Enc);
-        FDirty := False;
+        ClearDirty;
         FError := '';
         FStatus := 'Saved';
         RefreshReadOnly;

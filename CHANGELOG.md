@@ -6,9 +6,16 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.6.11 – 2026-11-11
+
+### New
+
+- The hex editor marks the bytes edited since the file was opened or saved with a different background (in the hex and in the text column); the mark follows inserts, deletes and undo.
+
 ### Changed
 
-- In the F5/F6 dialog, for one file or folder a path without a closing slash that is not an existing folder names the new item: type a new name on F5 to get a copy in the same folder (F6 moves and renames). A path with a closing slash still means a folder.
+- PgUp/PgDn also keep the cursor on the same screen row in the hex view and in the viewer with word wrap (Markdown is unchanged).
+- In the F5/F6 dialog, for one file or folder a bare name (no `\`, `/` or `:`) that is not an existing folder is the new name of the item: type a new name on F5 to get a copy in the same folder (F6 moves and renames). A name that Windows or Linux would not accept is refused with the reason, and the dialog stays open. A path or a name with a slash still means a folder. Rename (Shift+F6) and copy under another name (Shift+F5) refuse such names the same way, with the reason.
 
 ## Dev v0.5.6.8 – 2026-11-10
 

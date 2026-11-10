@@ -4464,23 +4464,34 @@ begin
 end;
 
 // PgUp/PgDn move the view and the cursor one page together, so the cursor
-// stays on the same screen row. Wrapped and Markdown views count screen rows
-// rather than lines and keep the plain cursor move.
+// stays on the same screen row. A wrapped view counts screen rows instead of
+// lines; the Markdown view keeps the plain cursor move.
 procedure TEditorWindow.PageCursor(ADown, AExtendSel: Boolean);
 var
   Page, ScreenRow: Integer;
+  Wrapped: Boolean;
 begin
   Page := Max(ViewHeight, 1);
   if not ADown then
     Page := -Page;
-  if FMarkdownMode or FHexMode or (FWordWrap and FViewOnly) then
+  if FMarkdownMode then
   begin
     MoveCursor(Page, 0, AExtendSel);
     Exit;
   end;
-  ScreenRow := FCursorRow - FTopLine;
-  MoveCursor(Page, 0, AExtendSel);
-  ScrollTo(FCursorRow - ScreenRow);
+  Wrapped := FWordWrap and FViewOnly and not FHexMode and (TextWidth > 0);
+  if Wrapped then
+  begin
+    ScreenRow := MapLineToDisplayRow(FCursorRow, FCursorCol, TextWidth) - FTopLine;
+    MoveCursor(Page, 0, AExtendSel);
+    ScrollTo(MapLineToDisplayRow(FCursorRow, FCursorCol, TextWidth) - ScreenRow);
+  end
+  else
+  begin
+    ScreenRow := FCursorRow - FTopLine;
+    MoveCursor(Page, 0, AExtendSel);
+    ScrollTo(FCursorRow - ScreenRow);
+  end;
   EnsureCursorVisible;
 end;
 
@@ -4503,7 +4514,10 @@ begin
   if not Assigned(FUndoBuffer) then
     Exit;
   if FHexMode then
-    E.Bytes := FDoc.SnapshotBytes
+    begin
+      E.Bytes := FDoc.SnapshotBytes;
+      E.Changed := FDoc.SnapshotChanged;
+    end
   else
     E.Lines := FDoc.SnapshotLines;
   E.HexMode := FHexMode;
@@ -4515,7 +4529,7 @@ end;
 procedure TEditorWindow.ApplySnapshot(const AEntry: TEditorUndoEntry);
 begin
   if AEntry.HexMode then
-    FDoc.RestoreBytes(AEntry.Bytes, True)
+    FDoc.RestoreBytes(AEntry.Bytes, True, AEntry.Changed)
   else
     FDoc.RestoreLines(AEntry.Lines, True);
   FCursorRow := AEntry.CursorRow;
@@ -4535,6 +4549,7 @@ begin
   BreakInsertCoalesce;
   Cur.Lines := FDoc.SnapshotLines;
   Cur.Bytes := FDoc.SnapshotBytes;
+  Cur.Changed := FDoc.SnapshotChanged;
   Cur.HexMode := FHexMode;
   Cur.CursorRow := FCursorRow;
   Cur.CursorCol := FCursorCol;
@@ -4552,6 +4567,7 @@ begin
   BreakInsertCoalesce;
   Cur.Lines := FDoc.SnapshotLines;
   Cur.Bytes := FDoc.SnapshotBytes;
+  Cur.Changed := FDoc.SnapshotChanged;
   Cur.HexMode := FHexMode;
   Cur.CursorRow := FCursorRow;
   Cur.CursorCol := FCursorCol;
@@ -5279,7 +5295,18 @@ begin
     if (1 + Y >= 0) and (1 + Y <= High(Buffer)) then
       TEditorPainter.DrawHexLine(Buffer[1 + Y], TextW, Line, FThemeColors.BodyFg, FThemeColors.BodyBg);
     for ByteIdx := 0 to Per - 1 do
-      if IsCellSelected(LineIdx, ByteIdx) then
+      if FDoc.ByteChanged(LineIdx * Per + ByteIdx) and not IsCellSelected(LineIdx, ByteIdx) then
+      begin
+        HexX := TEditorHexFormatter.HexGlyphCol(ByteIdx);
+        if (HexX >= 0) and (HexX + 1 < TextW) then
+          PutGridText(Buffer, 1 + HexX, 1 + Y, Copy(Line, 1 + HexX, 2),
+            FThemeColors.MatchFg, FThemeColors.MatchBg);
+        AscX := AscStart + ByteIdx;
+        if (AscX >= 0) and (AscX < TextW) then
+          PutGridText(Buffer, 1 + AscX, 1 + Y, Line[1 + AscX],
+            FThemeColors.MatchFg, FThemeColors.MatchBg);
+      end
+      else if IsCellSelected(LineIdx, ByteIdx) then
       begin
         HexX := TEditorHexFormatter.HexGlyphCol(ByteIdx);
         if (HexX >= 0) and (HexX + 1 < TextW) then

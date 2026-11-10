@@ -22,6 +22,7 @@ uses
   TestEditorLoadCancel in 'TestEditorLoadCancel.pas',
   TestEditorColumnBlock in 'TestEditorColumnBlock.pas',
   TestEditorPaging in 'TestEditorPaging.pas',
+  TestHexChangedBytes in 'TestHexChangedBytes.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',
   TestMarkdownCursor in 'TestMarkdownCursor.pas',

@@ -66,6 +66,12 @@ begin
 
   Assert.IsTrue(TDualPanelOperationsController.ValidateRenameName('  new.txt  ', Err), 'plain name accepted');
   Assert.IsTrue(Err = '', 'no error on rename success');
+{$IFDEF MSWINDOWS}
+  Assert.IsFalse(TDualPanelOperationsController.ValidateRenameName('a?b', Err), 'question mark rejected');
+  Assert.IsTrue(Pos('Invalid name', Err) > 0, 'invalid name message');
+  Assert.IsFalse(TDualPanelOperationsController.ValidateRenameName('con', Err), 'reserved name rejected');
+{$ENDIF}
+  Assert.IsFalse(TDualPanelOperationsController.ValidateRenameName('..', Err), 'two dots rejected');
 end;
 
 procedure TestClassifyActivateCurrent;
