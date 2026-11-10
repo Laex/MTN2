@@ -40,6 +40,8 @@ type
     Caption: string;
     /// <summary>The key chord bound to the command; '' when none.</summary>
     Chord: string;
+    /// <summary>The chord the plugin itself gave the command; '' when none.</summary>
+    DefaultChord: string;
   end;
 
   ICommandRegistry = interface
@@ -55,9 +57,31 @@ type
     /// an empty id, or an id another plugin already owns is ignored. The same
     /// plugin registering the id again replaces the handler.</summary>
     procedure RegisterCommand(const APluginId, ACommandId: string; AHandler: TProc);
+    /// <summary>Gives a plugin menu item a command of the same id, running the
+    /// item, so a key can be bound to it. Nothing happens when that id already
+    /// names a command or a built-in command.</summary>
+    procedure RegisterMenuCommand(const APluginId, ACommandId: string; AHandler: TProc);
+    /// <summary>Drops the command RegisterMenuCommand made for the item.</summary>
+    procedure RemoveMenuCommand(const APluginId, ACommandId: string);
     /// <summary>Binds a key combination ("Ctrl+Shift+F5") to the plugin
     /// command ACommandId. An unparsable combination is ignored.</summary>
     procedure RegisterCommandBinding(const APluginId, ACommandId, AKeyCombo: string);
+    /// <summary>Reads the key chords the user gave to plugin commands from the
+    /// JSON file APath (command id -> chord) and writes later changes back to
+    /// it. A chord there replaces the one the plugin registers; an empty chord
+    /// leaves the command without a key. A missing or malformed file changes
+    /// nothing.</summary>
+    procedure UseUserBindings(const APath: string);
+    /// <summary>Gives the plugin command ACommandId the user's chord
+    /// AKeyCombo ('' = no key) in place of the plugin's own. False with AError
+    /// set when the command is unknown, the text is not one key chord, or a
+    /// built-in action, a key handled in code or another plugin command
+    /// already uses the chord (AError names the owner).</summary>
+    function SetUserBinding(const ACommandId, AKeyCombo: string;
+      out AError: string): Boolean;
+    /// <summary>Drops the user's chord of ACommandId: the plugin's own chord
+    /// applies again.</summary>
+    procedure ResetUserBinding(const ACommandId: string);
     /// <summary>Sets the short label (a few characters) the function bar shows
     /// for the plugin command ACommandId on the F-key its chord is bound to.
     /// Only the owner can set it; an empty caption clears it.</summary>
@@ -121,6 +145,7 @@ function PluginFBarLabel(AKey: Word; AMods: TShiftState): string;
 implementation
 
 uses
+  System.IOUtils, System.JSON,
   uStrings,
   uKeymapRegistry;
 
@@ -139,6 +164,8 @@ type
     Caption: string;
     /// <summary>Declared by a manifest, not registered by the plugin yet.</summary>
     Stub: Boolean;
+    /// <summary>Made for a plugin menu item (RegisterMenuCommand).</summary>
+    FromMenu: Boolean;
   end;
 
   TDeclaredCommand = record
@@ -182,6 +209,14 @@ type
     FDeclared: TList<TDeclaredCommand>;
     FNotes: TList<TCommandNote>;
     FRunning: TList<string>;
+    /// <summary>Lower-cased command id -> the user's chord ('' = no key).</summary>
+    FUserKeys: TDictionary<string, string>;
+    /// <summary>Lower-cased command id -> the first chord the plugin registered.</summary>
+    FDefaultKeys: TDictionary<string, string>;
+    FUserKeysPath: string;
+    procedure SaveUserKeys;
+    procedure ApplyUserBinding(const ACommandId: string);
+    procedure DropBindings(const ACommandId: string);
     function IsDeclarative(const APluginId: string): Boolean;
     function IsStrict(const APluginId: string): Boolean;
     function IsDeclared(const APluginId, ACommandId: string): Boolean;
@@ -197,7 +232,13 @@ type
     procedure RegisterHook(const APluginId, ACommand: string; AHook: TCommandHook;
       APriority: Integer = 100);
     procedure RegisterCommand(const APluginId, ACommandId: string; AHandler: TProc);
+    procedure RegisterMenuCommand(const APluginId, ACommandId: string; AHandler: TProc);
+    procedure RemoveMenuCommand(const APluginId, ACommandId: string);
     procedure RegisterCommandBinding(const APluginId, ACommandId, AKeyCombo: string);
+    procedure UseUserBindings(const APath: string);
+    function SetUserBinding(const ACommandId, AKeyCombo: string;
+      out AError: string): Boolean;
+    procedure ResetUserBinding(const ACommandId: string);
     procedure DeclarePlugin(const APluginId: string; ALoad: TFunc<Boolean>;
       AOpen: Boolean = False);
     procedure DeclareCommand(const APluginId, ACommandId, ACaption, AKeyCombo: string);
@@ -241,10 +282,14 @@ begin
   FDeclared := TList<TDeclaredCommand>.Create;
   FNotes := TList<TCommandNote>.Create;
   FRunning := TList<string>.Create;
+  FUserKeys := TDictionary<string, string>.Create;
+  FDefaultKeys := TDictionary<string, string>.Create;
 end;
 
 destructor TCommandRegistry.Destroy;
 begin
+  FDefaultKeys.Free;
+  FUserKeys.Free;
   FRunning.Free;
   FNotes.Free;
   FDeclared.Free;
@@ -332,13 +377,46 @@ begin
   end;
   I := IndexOfCommand(E.CommandId);
   if I < 0 then
-    FCommands.Add(E)
+  begin
+    FCommands.Add(E);
+    ApplyUserBinding(E.CommandId);
+  end
   else if SameText(FCommands[I].PluginId, E.PluginId) then
   begin
     // The label the manifest gave stays until the plugin sets its own.
     E.Caption := FCommands[I].Caption;
     FCommands[I] := E;
   end;
+end;
+
+procedure TCommandRegistry.RegisterMenuCommand(const APluginId, ACommandId: string;
+  AHandler: TProc);
+var
+  E: TCommandEntry;
+begin
+  E := Default(TCommandEntry);
+  E.PluginId := Trim(APluginId);
+  E.CommandId := Trim(ACommandId);
+  E.Handler := AHandler;
+  E.FromMenu := True;
+  if (E.PluginId = '') or (E.CommandId = '') or not Assigned(AHandler) or
+     IsBuiltInCommandName(E.CommandId) or (IndexOfCommand(E.CommandId) >= 0) then
+    Exit;
+  FCommands.Add(E);
+  ApplyUserBinding(E.CommandId);
+end;
+
+procedure TCommandRegistry.RemoveMenuCommand(const APluginId, ACommandId: string);
+var
+  I: Integer;
+begin
+  I := IndexOfCommand(Trim(ACommandId));
+  if (I < 0) or not FCommands[I].FromMenu or
+     not SameText(FCommands[I].PluginId, Trim(APluginId)) then
+    Exit;
+  DropBindings(FCommands[I].CommandId);
+  FDefaultKeys.Remove(LowerCase(FCommands[I].CommandId));
+  FCommands.Delete(I);
 end;
 
 function TCommandRegistry.IsStrict(const APluginId: string): Boolean;
@@ -449,6 +527,7 @@ begin
   FCommands.Add(E);
   if D.Key <> '' then
     RegisterCommandBinding(D.PluginId, D.CommandId, D.Key);
+  ApplyUserBinding(D.CommandId);
 end;
 
 function TCommandRegistry.LoadDeclared(const APluginId: string): Boolean;
@@ -551,6 +630,11 @@ begin
       [KeyBindingToStr(E.Binding)]));
     Exit;
   end;
+  if not FDefaultKeys.ContainsKey(LowerCase(E.CommandId)) then
+    FDefaultKeys.Add(LowerCase(E.CommandId), KeyBindingToStr(E.Binding));
+  // The user's own chord stands in for the plugin's.
+  if FUserKeys.ContainsKey(LowerCase(E.CommandId)) then
+    Exit;
   R.Owner := ChordOwner(E.Binding, E.CommandId);
   if R.Owner <> '' then
   begin
@@ -561,6 +645,155 @@ begin
     Exit;
   end;
   FBindings.Add(E);
+end;
+
+procedure TCommandRegistry.DropBindings(const ACommandId: string);
+var
+  I: Integer;
+begin
+  for I := FBindings.Count - 1 downto 0 do
+    if SameText(FBindings[I].CommandId, ACommandId) then
+      FBindings.Delete(I);
+end;
+
+procedure TCommandRegistry.SaveUserKeys;
+var
+  Root: TJSONObject;
+  Pair: TPair<string, string>;
+begin
+  if FUserKeysPath = '' then
+    Exit;
+  Root := TJSONObject.Create;
+  try
+    for Pair in FUserKeys do
+      Root.AddPair(Pair.Key, Pair.Value);
+    try
+      TFile.WriteAllText(FUserKeysPath, Root.Format(2), TEncoding.UTF8);
+    except
+      // The chord stays in effect for this run; only its persistence is lost.
+    end;
+  finally
+    Root.Free;
+  end;
+end;
+
+{ Puts the user's chord of a command in place of the plugin's. A chord that
+  has become taken since it was saved leaves the command without a key. }
+procedure TCommandRegistry.ApplyUserBinding(const ACommandId: string);
+var
+  Chord: string;
+  E: TBindingEntry;
+  I: Integer;
+begin
+  if not FUserKeys.TryGetValue(LowerCase(ACommandId), Chord) then
+    Exit;
+  I := IndexOfCommand(ACommandId);
+  if I < 0 then
+    Exit;
+  DropBindings(ACommandId);
+  if (Chord = '') or not TryParseKeyCombo(Chord, E.Binding) or
+     (ChordOwner(E.Binding, ACommandId) <> '') then
+    Exit;
+  E.PluginId := FCommands[I].PluginId;
+  E.CommandId := FCommands[I].CommandId;
+  FBindings.Add(E);
+end;
+
+procedure TCommandRegistry.UseUserBindings(const APath: string);
+var
+  Root: TJSONValue;
+  Pair: TJSONPair;
+  I: Integer;
+begin
+  if SameText(APath, FUserKeysPath) then
+    Exit;
+  FUserKeysPath := APath;
+  FUserKeys.Clear;
+  if (APath <> '') and FileExists(APath) then
+  begin
+    try
+      Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(APath, TEncoding.UTF8));
+    except
+      Root := nil;
+    end;
+    try
+      if Root is TJSONObject then
+        for Pair in TJSONObject(Root) do
+          if (Pair.JsonValue is TJSONString) and not Pair.JsonString.Value.StartsWith('//') then
+            FUserKeys.AddOrSetValue(LowerCase(Pair.JsonString.Value),
+              Trim(Pair.JsonValue.Value));
+    finally
+      Root.Free;
+    end;
+  end;
+  for I := 0 to FCommands.Count - 1 do
+    ApplyUserBinding(FCommands[I].CommandId);
+end;
+
+function TCommandRegistry.SetUserBinding(const ACommandId, AKeyCombo: string;
+  out AError: string): Boolean;
+var
+  Binding: TKeyBinding;
+  Chord, Owner: string;
+begin
+  Result := False;
+  AError := '';
+  if IndexOfCommand(ACommandId) < 0 then
+  begin
+    AError := T('ui.pluginkey.unknown', 'Unknown plugin command');
+    Exit;
+  end;
+  Chord := Trim(AKeyCombo);
+  if Chord <> '' then
+  begin
+    if (Pos(';', Chord) > 0) or not TryParseKeyCombo(Chord, Binding) then
+    begin
+      AError := T('ui.pluginkey.invalid', 'Enter one key, for example Ctrl+Shift+F5');
+      Exit;
+    end;
+    Chord := KeyBindingToStr(Binding);
+    // The plugin's own chord needs no override of the user's.
+    if FDefaultKeys.TryGetValue(LowerCase(ACommandId), Owner) and SameText(Owner, Chord) then
+    begin
+      ResetUserBinding(ACommandId);
+      Exit(True);
+    end;
+    Owner := ChordOwner(Binding, ACommandId);
+    if Owner <> '' then
+    begin
+      AError := T('ui.pluginkey.taken', 'Already used by: %s', [Owner]);
+      Exit;
+    end;
+  end;
+  FUserKeys.AddOrSetValue(LowerCase(ACommandId), Chord);
+  ApplyUserBinding(ACommandId);
+  SaveUserKeys;
+  Result := True;
+end;
+
+procedure TCommandRegistry.ResetUserBinding(const ACommandId: string);
+var
+  Chord: string;
+  E: TBindingEntry;
+  I: Integer;
+begin
+  if not FUserKeys.ContainsKey(LowerCase(ACommandId)) then
+    Exit;
+  FUserKeys.Remove(LowerCase(ACommandId));
+  I := IndexOfCommand(ACommandId);
+  if I >= 0 then
+  begin
+    DropBindings(ACommandId);
+    if FDefaultKeys.TryGetValue(LowerCase(ACommandId), Chord) and
+       TryParseKeyCombo(Chord, E.Binding) and
+       (ChordOwner(E.Binding, ACommandId) = '') then
+    begin
+      E.PluginId := FCommands[I].PluginId;
+      E.CommandId := FCommands[I].CommandId;
+      FBindings.Add(E);
+    end;
+  end;
+  SaveUserKeys;
 end;
 
 procedure TCommandRegistry.SetCommandCaption(const APluginId, ACommandId, ACaption: string);
@@ -656,6 +889,9 @@ begin
     Result[I].CommandId := FCommands[I].CommandId;
     Result[I].Caption := FCommands[I].Caption;
     Result[I].Chord := CommandChordText(FCommands[I].CommandId);
+    if not FDefaultKeys.TryGetValue(LowerCase(FCommands[I].CommandId),
+         Result[I].DefaultChord) then
+      Result[I].DefaultChord := '';
   end;
 end;
 
@@ -668,7 +904,10 @@ begin
       FHooks.Delete(I);
   for I := FCommands.Count - 1 downto 0 do
     if SameText(FCommands[I].PluginId, APluginId) then
+    begin
+      FDefaultKeys.Remove(LowerCase(FCommands[I].CommandId));
       FCommands.Delete(I);
+    end;
   for I := FBindings.Count - 1 downto 0 do
     if SameText(FBindings[I].PluginId, APluginId) then
       FBindings.Delete(I);

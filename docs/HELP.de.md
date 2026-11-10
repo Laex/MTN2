@@ -682,7 +682,7 @@ Ein Wert wird hinzugefügt, wenn der Dialog bestätigt wird.
 
 **Tasten**
 - Pfeile wählen, **Enter** führt aus, **Rücktaste** löscht, **Esc** schließt.
-- **Strg+K** öffnet die Tastenliste beim gewählten Befehl, um seine Taste zu ändern; nach dem Schließen der Liste öffnet sich die Palette wieder mit derselben Suche und demselben Befehl, die neue Taste ist sichtbar (ein Befehl ohne eigene Taste meldet das).
+- **Strg+K** öffnet die Tastenliste beim gewählten Befehl, um seine Taste zu ändern; nach dem Schließen der Liste öffnet sich die Palette wieder mit derselben Suche und demselben Befehl, die neue Taste ist sichtbar (ein Befehl ohne eigene Taste meldet das). Bei einem Plugin-Befehl öffnet sich stattdessen ein Feld für eine einzelne Taste (ein leeres Feld lässt den Befehl ohne Taste; die Taste des Plugins kommt durch ihre Eingabe oder mit **Zurücksetzen** zurück); die Wahl steht in `plugin-keys.json` im Einstellungsordner.
 - Die Taste der Palette selbst lässt sich in der Tastenbelegung ändern (Befehl `CommandPalette`).
 
 **Was aufgeführt wird.** Nur jetzt verfügbare Einträge; zuletzt ausgeführte stehen oben. Befehle ohne Menüpunkt (Ctrl+Enter, Alt+Shift+Enter und die übrigen Panel-Tasten) stehen mit ihren Tastenkombinationen in der Kategorie „Tasten“.

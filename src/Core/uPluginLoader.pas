@@ -44,7 +44,7 @@ uses
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns,
-  uWasmPluginHost, uPlatformInfo, uStrings;
+  uWasmPluginHost, uPlatformInfo, uStrings, uConfigLocation;
 
 type
   TPluginLoadKind = (lpkNative, lpkWasm);
@@ -1615,6 +1615,7 @@ begin
   inherited Create;
   FLoaded := TList<TLoadedPlugin>.Create;
   FCatalog := TList<TCatalogedPlugin>.Create;
+  CommandRegistry.UseUserBindings(GetConfigFilePath('plugin-keys.json'));
 end;
 
 destructor TPluginLoader.Destroy;

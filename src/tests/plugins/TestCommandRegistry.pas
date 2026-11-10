@@ -25,12 +25,15 @@ type
     [Test] procedure TestDeclaredBindingIsIdempotent;
     [Test] procedure TestDeclaredMenuItemsAreReconciled;
     [Test] procedure TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
+    [Test] procedure TestUserBindingReplacesPluginChordAndPersists;
+    [Test] procedure TestUserBindingRefusesTakenOrMalformedChord;
+    [Test] procedure TestMenuItemGetsABindableCommand;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.UITypes,
+  System.SysUtils, System.Classes, System.UITypes, System.IOUtils,
   uKeymap, uKeymapRegistry,
   uCommandRegistry, uMenuRegistry;
 
@@ -480,6 +483,97 @@ begin
   end;
 end;
 
+procedure TestUserBindingReplacesPluginChordAndPersists;
+var
+  Path, Id, Err: string;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-keys-' + TGUID.NewGuid.ToString + '.json');
+  try
+    CommandRegistry.UseUserBindings(Path);
+    CommandRegistry.RegisterCommand('t.uk', 't.uk.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.uk', 't.uk.run', 'Ctrl+Alt+F11');
+    Assert.IsTrue(CommandRegistry.SetUserBinding('t.uk.run', 'Ctrl+Alt+F10', Err), Err);
+    Assert.AreEqual('Ctrl+Alt+F10', CommandRegistry.CommandChordText('t.uk.run'));
+    Assert.IsTrue(not CommandRegistry.TryMatchBinding(vkF11, [ssCtrl, ssAlt], Id),
+      'the plugin chord no longer runs the command');
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF10, [ssCtrl, ssAlt], Id), 'the user chord does');
+    Assert.IsTrue(TFile.ReadAllText(Path).Contains('Ctrl+Alt+F10'), 'the chord is written to the file');
+
+    // A plugin that registers again (reload) keeps the user's chord.
+    CommandRegistry.UnregisterPlugin('t.uk');
+    CommandRegistry.RegisterCommand('t.uk', 't.uk.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.uk', 't.uk.run', 'Ctrl+Alt+F11');
+    Assert.AreEqual('Ctrl+Alt+F10', CommandRegistry.CommandChordText('t.uk.run'));
+
+    CommandRegistry.ResetUserBinding('t.uk.run');
+    Assert.AreEqual('Ctrl+Alt+F11', CommandRegistry.CommandChordText('t.uk.run'),
+      'reset brings the plugin chord back');
+    Assert.IsTrue(not TFile.ReadAllText(Path).Contains('t.uk.run'), 'and drops the file entry');
+
+    Assert.IsTrue(CommandRegistry.SetUserBinding('t.uk.run', '', Err), Err);
+    Assert.AreEqual('', CommandRegistry.CommandChordText('t.uk.run'), 'an empty chord unbinds the command');
+
+    // A fresh start reads the file back.
+    CommandRegistry.UnregisterPlugin('t.uk');
+    CommandRegistry.UseUserBindings('');
+    CommandRegistry.UseUserBindings(Path);
+    CommandRegistry.RegisterCommand('t.uk', 't.uk.run', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.uk', 't.uk.run', 'Ctrl+Alt+F11');
+    Assert.AreEqual('', CommandRegistry.CommandChordText('t.uk.run'), 'the saved choice applies');
+  finally
+    CommandRegistry.UnregisterPlugin('t.uk');
+    CommandRegistry.UseUserBindings('');
+    if FileExists(Path) then
+      TFile.Delete(Path);
+  end;
+end;
+
+procedure TestUserBindingRefusesTakenOrMalformedChord;
+var
+  Err: string;
+begin
+  try
+    CommandRegistry.UseUserBindings('');
+    CommandRegistry.RegisterCommand('t.ur', 't.ur.run', procedure begin end);
+    CommandRegistry.RegisterCommand('t.ur', 't.ur.other', procedure begin end);
+    CommandRegistry.RegisterCommandBinding('t.ur', 't.ur.other', 'Ctrl+Alt+F8');
+    Assert.IsTrue(not CommandRegistry.SetUserBinding('t.ur.run', 'F5', Err), 'a built-in key stays with it');
+    Assert.IsTrue(Err <> '', 'and the owner is named');
+    Assert.IsTrue(not CommandRegistry.SetUserBinding('t.ur.run', 'Ctrl+Alt+F8', Err),
+      'another plugin command keeps its key');
+    Assert.IsTrue(not CommandRegistry.SetUserBinding('t.ur.run', 'F1; F2', Err), 'one key only');
+    Assert.IsTrue(not CommandRegistry.SetUserBinding('t.ur.run', 'NoSuchKey', Err), 'unparsable text');
+    Assert.IsTrue(not CommandRegistry.SetUserBinding('t.ur.nothing', 'Ctrl+Alt+F7', Err), 'unknown command');
+    Assert.AreEqual('', CommandRegistry.CommandChordText('t.ur.run'), 'nothing was bound');
+  finally
+    CommandRegistry.UnregisterPlugin('t.ur');
+  end;
+end;
+
+procedure TestMenuItemGetsABindableCommand;
+var
+  Ran: Boolean;
+  Id, Err: string;
+begin
+  try
+    CommandRegistry.UseUserBindings('');
+    MenuRegistry.RegisterMenuItem('t.mc', 'Plugins', 't.mc.item', 'Item',
+      procedure begin Ran := True; end);
+    Assert.IsTrue(CommandRegistry.HasCommand('t.mc.item'), 'the item has a command of its id');
+    Assert.IsTrue(CommandRegistry.SetUserBinding('t.mc.item', 'Ctrl+Alt+F6', Err), Err);
+    Assert.IsTrue(CommandRegistry.TryMatchBinding(vkF6, [ssCtrl, ssAlt], Id), 'the key finds it');
+    Ran := False;
+    Assert.IsTrue(CommandRegistry.TryExecute(Id), 'running the command');
+    Assert.IsTrue(Ran, 'runs the menu item');
+    MenuRegistry.UnregisterPlugin('t.mc');
+    CommandRegistry.UnregisterPlugin('t.mc');
+    Assert.IsTrue(not CommandRegistry.HasCommand('t.mc.item'), 'the command goes with the plugin');
+  finally
+    MenuRegistry.UnregisterPlugin('t.mc');
+    CommandRegistry.UnregisterPlugin('t.mc');
+  end;
+end;
+
 procedure TestInterceptKeymapAction;
 var
   Seen: string;
@@ -575,6 +669,21 @@ end;
 procedure TTestCommandRegistry.TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
 begin
   TestCommandRegistry.TestOpenDeclarativePluginMayRegisterMoreThanItDeclared;
+end;
+
+procedure TTestCommandRegistry.TestUserBindingReplacesPluginChordAndPersists;
+begin
+  TestCommandRegistry.TestUserBindingReplacesPluginChordAndPersists;
+end;
+
+procedure TTestCommandRegistry.TestUserBindingRefusesTakenOrMalformedChord;
+begin
+  TestCommandRegistry.TestUserBindingRefusesTakenOrMalformedChord;
+end;
+
+procedure TTestCommandRegistry.TestMenuItemGetsABindableCommand;
+begin
+  TestCommandRegistry.TestMenuItemGetsABindableCommand;
 end;
 
 procedure TTestCommandRegistry.TestDeclaredMenuItemsAreReconciled;

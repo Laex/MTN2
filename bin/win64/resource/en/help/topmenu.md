@@ -16,7 +16,7 @@
 
 **Keys**
 - Arrows select, **Enter** runs, **Backspace** erases, **Esc** closes.
-- **Ctrl+K** opens the key list on the selected command, so its key can be changed; closing the list returns to the palette with the same search and command, and the new key shown (a command without a key of its own says so).
+- **Ctrl+K** opens the key list on the selected command, so its key can be changed; closing the list returns to the palette with the same search and command, and the new key shown (a command without a key of its own says so). On a plugin command it opens a field for a single key instead (an empty field leaves the command without a key; the plugin's own key is brought back by entering it or with **Reset**); the choice is kept in `plugin-keys.json` in the settings folder.
 - The palette's own key can be changed in the keymap (command `CommandPalette`).
 
 **What is listed.** Only the items available now; the commands run last come first. Commands that have no menu item (Ctrl+Enter, Alt+Shift+Enter and the other panel keys) are listed in the "Keys" category together with their shortcuts.

@@ -59,6 +59,9 @@ type
     /// the Plugins menu follow it. A plugin the resolver gives a negative number for
     /// goes after the others, in registration order.</summary>
     procedure SetOrderResolver(const AResolver: TFunc<string, Integer>);
+    /// <summary>Rebuilds the menu so the shortcut column shows the keys the
+    /// plugin commands have now.</summary>
+    procedure RefreshShortcuts;
   end;
 
 function MenuRegistry: IMenuRegistry;
@@ -94,8 +97,12 @@ type
     function DeclaredKey(const APluginId, AItemId: string): string;
     procedure Note(const APluginId, AText: string);
     procedure RunStub(const APluginId, AItemId: string);
+    procedure RunItem(const APluginId, AItemId: string);
+    /// <summary>Gives the item a command of the same id, so a key can be bound to it.</summary>
+    procedure BindMenuCommand(const APluginId, AItemId: string);
     procedure Reapply;
   public
+    procedure RefreshShortcuts;
     constructor Create;
     destructor Destroy; override;
     procedure RegisterMenuItem(const APluginId, AParentPath, AItemId, ACaption: string;
@@ -179,11 +186,46 @@ begin
       if FEntries[I].Stub and (Entry.Caption = '') then
         Entry.Caption := FEntries[I].Caption;
       FEntries[I] := Entry;
+      BindMenuCommand(APluginId, AItemId);
       Reapply;
       Exit;
     end;
 
   FEntries.Add(Entry);
+  BindMenuCommand(APluginId, AItemId);
+  Reapply;
+end;
+
+procedure TMenuRegistry.RunItem(const APluginId, AItemId: string);
+var
+  I: Integer;
+  Handler: TProc;
+begin
+  for I := 0 to FEntries.Count - 1 do
+    if SameText(FEntries[I].PluginId, APluginId) and SameText(FEntries[I].ItemId, AItemId) then
+    begin
+      Handler := FEntries[I].OnClick;
+      if Assigned(Handler) then
+        Handler();
+      Exit;
+    end;
+end;
+
+procedure TMenuRegistry.BindMenuCommand(const APluginId, AItemId: string);
+var
+  PluginId, ItemId: string;
+begin
+  PluginId := APluginId;
+  ItemId := AItemId;
+  CommandRegistry.RegisterMenuCommand(PluginId, ItemId,
+    procedure
+    begin
+      RunItem(PluginId, ItemId);
+    end);
+end;
+
+procedure TMenuRegistry.RefreshShortcuts;
+begin
   Reapply;
 end;
 
@@ -280,6 +322,7 @@ begin
       RunStub(PluginId, ItemId);
     end;
   FEntries.Add(Entry);
+  BindMenuCommand(PluginId, ItemId);
   Reapply;
 end;
 
@@ -315,6 +358,7 @@ begin
       Note(APluginId, T('ui.plugininfo.notRegistered',
         '%s is declared in plugin.json but the plugin did not register it',
         [FEntries[I].ItemId]));
+      CommandRegistry.RemoveMenuCommand(APluginId, FEntries[I].ItemId);
       FEntries.Delete(I);
       Changed := True;
     end;

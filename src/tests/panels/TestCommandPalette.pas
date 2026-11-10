@@ -34,6 +34,7 @@ type
     [Test] procedure TestEnterOnEmptyResultRunsNothing;
     [Test] procedure TestCtrlKOpensTheKeyListOnTheCommand;
     [Test] procedure TestCtrlKOnACommandWithoutKeyKeepsThePalette;
+    [Test] procedure TestCtrlKOnAPluginCommandAsksForItsKeyEditor;
     [Test] procedure TestResumeKeepsTheSelectedCommand;
     [Test] procedure TestKeysWithoutMenuItemAreListedWithTheirShortcut;
     [Test] procedure TestKeyOnlyCommandRunsItsAction;
@@ -513,7 +514,7 @@ begin
     try
       Asked := kaNone;
       C.OnAssignKey :=
-        function(AAction: TKeymapAction): Boolean
+        function(AAction: TKeymapAction; const APluginCommand: string): Boolean
         begin
           Asked := AAction;
           K.OpenList(AAction);
@@ -577,7 +578,7 @@ begin
     C := MakePalette(D, M);
     try
       C.OnAssignKey :=
-        function(AAction: TKeymapAction): Boolean
+        function(AAction: TKeymapAction; const APluginCommand: string): Boolean
         begin
           Result := True;
         end;
@@ -605,6 +606,55 @@ begin
   end;
 end;
 
+procedure TTestCommandPalette.TestCtrlKOnAPluginCommandAsksForItsKeyEditor;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Key: Word;
+  Ch: Char;
+  Asked: TKeymapAction;
+  AskedCommand: string;
+  I: Integer;
+begin
+  M := MakeMenu(cMenuJson);
+  D := TDialogHost.Create(nil);
+  try
+    CommandRegistry.RegisterCommand('t.pal', 't.pal.zqxrun', procedure begin end);
+    C := MakePalette(D, M);
+    try
+      Asked := kaCopy;
+      AskedCommand := '';
+      C.OnAssignKey :=
+        function(AAction: TKeymapAction; const APluginCommand: string): Boolean
+        begin
+          Asked := AAction;
+          AskedCommand := APluginCommand;
+          Result := False;
+        end;
+      C.OpenList;
+      for I := 1 to Length('zqxrun') do
+      begin
+        Key := 0;
+        Ch := 'zqxrun'[I];
+        C.HandleFilterInput(Key, [], Ch);
+      end;
+      Assert.AreEqual<Integer>(1, C.RowCount, 'the plugin command is found');
+      Key := Ord('K');
+      Ch := #0;
+      Assert.IsTrue(C.HandleFilterInput(Key, [ssCtrl], Ch));
+      Assert.AreEqual('t.pal.zqxrun', AskedCommand, 'the editor is asked for the plugin command');
+      Assert.AreEqual(Ord(kaNone), Ord(Asked), 'and not for a keymap action');
+    finally
+      C.Free;
+    end;
+  finally
+    CommandRegistry.UnregisterPlugin('t.pal');
+    D.Free;
+    M.Free;
+  end;
+end;
+
 procedure TTestCommandPalette.TestCtrlKOnACommandWithoutKeyKeepsThePalette;
 var
   M: TTopMenuController;
@@ -627,7 +677,7 @@ begin
       Asked := kaCopy;
       Calls := 0;
       C.OnAssignKey :=
-        function(AAction: TKeymapAction): Boolean
+        function(AAction: TKeymapAction; const APluginCommand: string): Boolean
         begin
           Inc(Calls);
           Asked := AAction;

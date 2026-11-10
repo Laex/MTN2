@@ -142,7 +142,7 @@ A short overview of the features; details are in the help (F1), the other docume
 ## Menus, keys and command palette
 
 - **Main menu** – `F9` or a single `Alt`, a Plugins menu with the commands of all plugins, scrolling for long menus.
-- **Command palette** – `Shift+F9`: search over menu items and keys with synonyms in several languages, command descriptions, `Ctrl+K` changes a command's key.
+- **Command palette** – `Shift+F9`: search over menu items and keys with synonyms in several languages, command descriptions, `Ctrl+K` changes a command's key, a plugin command's too.
 - **Key bindings** – Settings → Key Bindings and `keymap.json` for panels, viewer, editor, console and global keys; only changes are stored.
 - **Ready-made keymaps** – Far, Midnight Commander and Total Commander-style samples in `docs/keymap-presets`.
 - **Function key bar** – captions for all modifiers, mouse clicks, only available actions shown.

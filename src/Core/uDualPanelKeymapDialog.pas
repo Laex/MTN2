@@ -45,6 +45,10 @@ type
     /// the reassignment instead of warning again.</summary>
     FConfirmOverwrite: Boolean;
     FOnListClosed: TProc;
+    /// <summary>Id of the plugin command the key editor is open on; '' while
+    /// the editor (or no dialog) belongs to a keymap action.</summary>
+    FEditPluginCommand: string;
+    function DispatchPluginEditCommand(const AControlId: string): Boolean;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     function ActionRowLabel(AAction: TKeymapAction): string;
@@ -74,6 +78,9 @@ type
     /// <summary>Opens the list of actions; AAction, when given, is the row
     /// the list starts on.</summary>
     procedure OpenList(AAction: TKeymapAction = kaNone);
+    /// <summary>Opens the key editor on the plugin command ACommandId, one key
+    /// in the field; closing it (OK or Cancel) calls OnListClosed.</summary>
+    procedure OpenPluginKeyEdit(const ACommandId: string);
     procedure RefreshList(ASelectedIndex: Integer = -1);
     procedure BeginEdit(AIndex: Integer);
     procedure ResetSelected;
@@ -97,7 +104,7 @@ function KeymapContextCaption(AContext: TKeymapContext): string;
 implementation
 
 uses
-  uKeymapRegistry, uStrings;
+  uKeymapRegistry, uCommandRegistry, uMenuRegistry, uStrings;
 
 const
   /// <summary>English captions of the actions, in TKeymapAction order;
@@ -411,6 +418,65 @@ begin
   Notify;
 end;
 
+procedure TKeymapDialogController.OpenPluginKeyEdit(const ACommandId: string);
+var
+  Info: TPluginCommandInfo;
+  Title: string;
+begin
+  if Assigned(FOnCanStart) and not FOnCanStart() then
+    Exit;
+  for Info in CommandRegistry.ListCommands do
+    if SameText(Info.CommandId, ACommandId) then
+    begin
+      if Assigned(FOnPrepareUi) then
+        FOnPrepareUi();
+      FEditPluginCommand := Info.CommandId;
+      if Info.Caption <> '' then
+        Title := Format('%s [%s]', [Info.Caption, Info.CommandId])
+      else
+        Title := Info.CommandId;
+      SetKind(hdkKeymapEdit);
+      FDialog.Open(BuildKeymapEditDialog(Title, Info.Chord, ''), FOnCommand);
+      Notify;
+      Exit;
+    end;
+end;
+
+function TKeymapDialogController.DispatchPluginEditCommand(
+  const AControlId: string): Boolean;
+var
+  Error, DefaultChord: string;
+  Info: TPluginCommandInfo;
+begin
+  if DialogCmdIs(AControlId, 'reset') then
+  begin
+    DefaultChord := '';
+    for Info in CommandRegistry.ListCommands do
+      if SameText(Info.CommandId, FEditPluginCommand) then
+        DefaultChord := Info.DefaultChord;
+    FDialog.SetInputValue('km_keys', DefaultChord);
+    FDialog.SetStatus('km_status', '');
+    Notify;
+    Exit(False);
+  end;
+  if DialogCmdIsAccept(AControlId) and
+     not CommandRegistry.SetUserBinding(FEditPluginCommand,
+       FDialog.GetInputValue('km_keys'), Error) then
+  begin
+    FDialog.SetStatus('km_status', Error);
+    SetKind(hdkKeymapEdit);
+    Notify;
+    Exit(False);
+  end;
+  FEditPluginCommand := '';
+  FDialog.Close;
+  if DialogCmdIsAccept(AControlId) then
+    MenuRegistry.RefreshShortcuts;
+  if Assigned(FOnListClosed) then
+    FOnListClosed();
+  Result := True;
+end;
+
 procedure TKeymapDialogController.RefreshList(ASelectedIndex: Integer);
 var
   Sel: Integer;
@@ -599,6 +665,8 @@ var
   ParseError, Names, Status: string;
   I: Integer;
 begin
+  if FEditPluginCommand <> '' then
+    Exit(DispatchPluginEditCommand(AControlId));
   SelectAfter := Ord(FEditAction) - 1;
   if DialogCmdIs(AControlId, 'reset') then
   begin

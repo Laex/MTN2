@@ -488,7 +488,8 @@ type
     procedure HostDialogValueChanged(const AControlId: string);
     procedure HostRejectJob(const ATitle, AMessage: string);
     procedure HostWarnJob(const AMessage: string);
-    function HostAssignPaletteKey(AAction: TKeymapAction): Boolean;
+    function HostAssignPaletteKey(AAction: TKeymapAction;
+      const APluginCommand: string): Boolean;
     procedure HostKeymapListClosed;
     procedure HostOpenOverwriteAsk(const APath, ANewLine, AExistingLine: string);
     procedure HostOpenDeleteError(const APath, AHeadline, AQuestion, AErrorLine: string;
@@ -2898,17 +2899,26 @@ begin
   FToast.Show(AMessage, '', tkWarning);
 end;
 
-function TDualPanelWindow.HostAssignPaletteKey(AAction: TKeymapAction): Boolean;
+function TDualPanelWindow.HostAssignPaletteKey(AAction: TKeymapAction;
+  const APluginCommand: string): Boolean;
 begin
-  if AAction = kaNone then
+  if (AAction = kaNone) and (APluginCommand = '') then
   begin
     FToast.Show(T('ui.toast.noKeyForCommand',
       'This command has no key to assign'), '', tkInfo);
     Exit(False);
   end;
   FReturnToPalette := True;
-  FKeymapDlg.OpenList(AAction);
-  Result := FDialogKind = hdkKeymap;
+  if APluginCommand <> '' then
+  begin
+    FKeymapDlg.OpenPluginKeyEdit(APluginCommand);
+    Result := FDialogKind = hdkKeymapEdit;
+  end
+  else
+  begin
+    FKeymapDlg.OpenList(AAction);
+    Result := FDialogKind = hdkKeymap;
+  end;
   if not Result then
     FReturnToPalette := False;
 end;

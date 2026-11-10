@@ -12,10 +12,12 @@ uses
 
 type
   TPaletteMenuGetter = reference to function: TTopMenuController;
-  /// <summary>Ctrl+K on a command: opens the key list on the command's action.
-  /// Called with kaNone for a command that has no key to assign; False when
-  /// nothing was opened.</summary>
-  TPaletteAssignKey = reference to function(AAction: TKeymapAction): Boolean;
+  /// <summary>Ctrl+K on a command: opens the key list on the command's action,
+  /// or the key editor of a plugin command (APluginCommand, with AAction
+  /// kaNone). Called with both empty for a command that has no key to assign;
+  /// False when nothing was opened.</summary>
+  TPaletteAssignKey = reference to function(AAction: TKeymapAction;
+    const APluginCommand: string): Boolean;
   /// <summary>Runs a panel action that has no menu item, as its key would.</summary>
   TPaletteRunAction = reference to procedure(AAction: TKeymapAction);
 
@@ -69,7 +71,7 @@ type
 implementation
 
 uses
-  System.Math, uStrings, uKeyChord, uDualPanelKeymapDialog;
+  System.Math, uStrings, uKeyChord, uDualPanelKeymapDialog, uCommandRegistry;
 
 const
   cRowWidth = 76;
@@ -204,6 +206,7 @@ procedure TCommandPaletteDialogController.AssignKeyToSelected;
 var
   Idx: Integer;
   Action: TKeymapAction;
+  PluginCommand: string;
 begin
   if not Assigned(FOnAssignKey) then
     Exit;
@@ -211,11 +214,15 @@ begin
   if (Idx < 0) or (Idx > High(FShown)) then
     Exit;
   Action := FAll[FShown[Idx]].Action;
+  PluginCommand := '';
   if (Action = kaNone) and not FAll[FShown[Idx]].Item.IsPluginItem then
-    Action := TopMenuKeymapAction(FAll[FShown[Idx]].Item.Action);
-  if Action = kaNone then
+    Action := TopMenuKeymapAction(FAll[FShown[Idx]].Item.Action)
+  else if (Action = kaNone) and
+          CommandRegistry.HasCommand(FAll[FShown[Idx]].Item.PluginItemId) then
+    PluginCommand := FAll[FShown[Idx]].Item.PluginItemId;
+  if (Action = kaNone) and (PluginCommand = '') then
   begin
-    FOnAssignKey(kaNone);
+    FOnAssignKey(kaNone, '');
     Exit;
   end;
   FResumeQuery := FQuery;
@@ -225,7 +232,7 @@ begin
   SetLength(FShown, 0);
   SetLength(FAll, 0);
   FQuery := '';
-  FOnAssignKey(Action);
+  FOnAssignKey(Action, PluginCommand);
 end;
 
 function TCommandPaletteDialogController.RowCount: Integer;
