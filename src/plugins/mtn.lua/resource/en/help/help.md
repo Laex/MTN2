@@ -56,10 +56,11 @@ Functions available to `run`:
 | `mtn.key("F7")` | press a key or combination |
 | `mtn.text("abc")` | type text |
 | `mtn.action(name)` | run a program command |
-| `mtn.state()` | table with the state: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode` |
+| `mtn.state()` | table with the state: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode`, `busy`, `jobs` |
 | `mtn.selected()` | list of the marked items |
 | `mtn.message(text)` | show a notice |
 | `mtn.wait_idle()` | let the program draw and handle what the macro started |
+| `mtn.wait_jobs()` | wait until every background job (copy, move, delete, pack, plugin tasks) has finished; a job that asks a question waits for the answer |
 
 Each call that touches the program waits for the program to handle it before the macro goes on. The Lua environment has the base library and `string`, `table`, `math`, `utf8` and `coroutine`; there are no `io`, `os`, `package` or `debug`. A macro that runs too long without waiting is stopped.
 

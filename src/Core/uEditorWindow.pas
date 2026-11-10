@@ -413,6 +413,9 @@ type
     /// description, text by kind (0 selection, 1 all, 2 cursor line), replacing
     /// it as one undo step, moving the cursor. False for a document that has no
     /// such text (loading, hex view, plugin picture) or cannot be edited.</summary>
+    /// <summary>True while the document is being read or written, so it does not
+    /// take input yet.</summary>
+    function PluginDocBusy: Boolean;
     function PluginDocInfoJson: string;
     function PluginDocGetText(AWhat: Integer; out AText: string): Boolean;
     function PluginDocReplace(AWhat: Integer; const AText: string): Boolean;
@@ -1183,6 +1186,11 @@ begin
   else
     // Area is compositor-absolute (PaintEmbedded), like the Markdown image bounds.
     ABounds := TRectI.Make(1 + Area.Left, 1 + Area.Top, TextWidth + Area.Left, ViewHeight + Area.Top);
+end;
+
+function TEditorWindow.PluginDocBusy: Boolean;
+begin
+  Result := FDoc.Loading or FDoc.Saving;
 end;
 
 function TEditorWindow.PluginDocInfoJson: string;

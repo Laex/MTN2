@@ -56,10 +56,11 @@ macro {
 | `mtn.key("F7")` | нажать клавишу или сочетание |
 | `mtn.text("abc")` | ввести текст |
 | `mtn.action(name)` | выполнить команду программы |
-| `mtn.state()` | таблица состояния: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode` |
+| `mtn.state()` | таблица состояния: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode`, `busy`, `jobs` |
 | `mtn.selected()` | список отмеченных элементов |
 | `mtn.message(text)` | показать уведомление |
 | `mtn.wait_idle()` | дать программе отрисовать и обработать начатое макросом |
+| `mtn.wait_jobs()` | ждать, пока не завершатся все фоновые задачи (копирование, перемещение, удаление, упаковка, задачи плагинов); задача, задавшая вопрос, ждёт ответа |
 
 Каждый вызов, затрагивающий программу, дожидается, пока программа его обработает, и только потом макрос продолжается. В окружении Lua есть базовая библиотека и `string`, `table`, `math`, `utf8`, `coroutine`; `io`, `os`, `package` и `debug` недоступны. Макрос, который долго работает без ожидания, останавливается.
 

@@ -56,10 +56,11 @@ macro {
 | `mtn.key("F7")` | 按下按键或组合键 |
 | `mtn.text("abc")` | 输入文本 |
 | `mtn.action(name)` | 执行程序命令 |
-| `mtn.state()` | 状态表：`area`、`has_selection`、`selected_count`、`cursor_kind`、`cursor_name`、`panel_kind`、`active_side`、`editor_modified`、`editor_has_selection`、`viewer_mode` |
+| `mtn.state()` | 状态表：`area`、`has_selection`、`selected_count`、`cursor_kind`、`cursor_name`、`panel_kind`、`active_side`、`editor_modified`、`editor_has_selection`、`viewer_mode`, `busy`, `jobs` |
 | `mtn.selected()` | 已标记项目的列表 |
 | `mtn.message(text)` | 显示通知 |
 | `mtn.wait_idle()` | 让程序绘制并处理宏已开始的操作 |
+| `mtn.wait_jobs()` | 等待所有后台任务（复制、移动、删除、打包、插件任务）完成；正在等待回答的任务会等到有回答 |
 
 每个涉及程序的调用都会等程序处理完毕，宏才继续执行。Lua 环境包含基础库以及 `string`、`table`、`math`、`utf8`、`coroutine`；`io`、`os`、`package` 和 `debug` 不可用。长时间不等待地运行的宏会被停止。
 

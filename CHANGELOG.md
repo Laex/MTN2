@@ -6,12 +6,15 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.6.4 – 2026-11-10
+
 ### Changed
 
 - On the first run all plugins are switched on instead of off; turn off the ones that are not needed in Options → Plugins. Existing installations keep their choice.
 
 ### Fixed
 
+- A macro that opens a file in the editor (F4) and then sends keys no longer loses them: the macro commands that can start a background read, save or folder listing (`mtn.key`, `mtn.text`, `mtn.action`, `mtn.panel.*`, `mtn.editor.*`, `mtn.clipboard.set`) wait until it is done. `mtn.state()` has new `busy` and `jobs` fields, and the new `mtn.wait_jobs()` waits for the background jobs (copy, move, delete, pack) to finish.
 - In the Font / Display dialog the right column no longer touches the window border: a checkbox, label or dropdown that is wider than its box now stops one cell short of the frame, and the longer Russian and German captions were shortened. Dialogs in other languages also widen by that cell when a caption would otherwise touch the border (the About dialog in Russian, for one).
 
 ## v0.5.6 – 2026-11-09

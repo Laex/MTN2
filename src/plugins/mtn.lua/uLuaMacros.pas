@@ -145,10 +145,15 @@ const
     'local xs, xd, xr = mtn_exec_start, mtn_exec_done, mtn_exec_result' + #10 +
     'local yield = coroutine.yield' + #10 +
     'mtn = {}' + #10 +
-    'function mtn.key(c) local ok = k(c); yield(); return ok end' + #10 +
-    'function mtn.text(x) local ok = t(x); yield(); return ok end' + #10 +
-    'function mtn.action(n) local ok = a(n); yield(); return ok end' + #10 +
+    // Documents and folder listings are read in the background and take no input
+    // until they are ready; every call that can start one waits for it.
+    'local function settle() while s().busy do yield() end end' + #10 +
+    'function mtn.key(c) local ok = k(c); yield(); settle(); return ok end' + #10 +
+    'function mtn.text(x) local ok = t(x); yield(); settle(); return ok end' + #10 +
+    'function mtn.action(n) local ok = a(n); yield(); settle(); return ok end' + #10 +
     'function mtn.wait_idle() yield() end' + #10 +
+    // copy, move, delete and other jobs that go on in the background
+    'function mtn.wait_jobs() yield() while s().jobs > 0 do yield() end end' + #10 +
     'mtn.state = s' + #10 +
     'mtn.message = m' + #10 +
     'mtn.selected = sel' + #10 +
@@ -158,7 +163,7 @@ const
     'function mtn.column(def) if type(def) ~= "table" or type(def.value) ~= "function" then return end' +
     ' local fn = def.value def.value = function(f) local v = fn(f)' +
     ' if type(v) == "number" then return tostring(v) end return v end col(def) end' + #10 +
-    'local function after(ok) yield() return ok end' + #10 +
+    'local function after(ok) yield() settle() return ok end' + #10 +
     'local function str(x) if type(x) ~= "string" then error("text expected", 3) end return x end' + #10 +
     'local function side(x) if x == nil or x == "left" or x == "right" then return x end error("side is left or right", 3) end' + #10 +
     // editor and viewer document; lines and columns count from 1
@@ -305,6 +310,8 @@ type
     ActiveSide: string;
     EditorModified: Boolean;
     EditorHasSelection: Boolean;
+    Jobs: Integer;        // background jobs that have not finished
+    Busy: Boolean;        // a document is being read or saved, or a folder listed
     CanEdit: Boolean;
     Selected: TArray<string>;
   end;
@@ -326,6 +333,9 @@ begin
       Exit;
     Root := TJSONObject(V);
     Result.Area := JsonStr(Root, 'area');
+    Result.Busy := JsonBool(Root, 'busy');
+    if Root.GetValue('jobs') is TJSONNumber then
+      Result.Jobs := TJSONNumber(Root.GetValue('jobs')).AsInt;
     if Root.GetValue('doc') is TJSONObject then
     begin
       Doc := TJSONObject(Root.GetValue('doc'));
@@ -449,6 +459,8 @@ begin
   SetBool(L, 'editor_modified', F.EditorModified);
   SetBool(L, 'editor_has_selection', F.EditorHasSelection);
   SetBool(L, 'viewer_mode', F.Area = 'viewer');
+  SetBool(L, 'busy', F.Busy);
+  SetInt(L, 'jobs', F.Jobs);
   Result := 1;
 end;
 

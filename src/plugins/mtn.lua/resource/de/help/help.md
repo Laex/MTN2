@@ -56,10 +56,11 @@ Funktionen in `run`:
 | `mtn.key("F7")` | Taste oder Kombination drücken |
 | `mtn.text("abc")` | Text eingeben |
 | `mtn.action(name)` | einen Programmbefehl ausführen |
-| `mtn.state()` | Zustandstabelle: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode` |
+| `mtn.state()` | Zustandstabelle: `area`, `has_selection`, `selected_count`, `cursor_kind`, `cursor_name`, `panel_kind`, `active_side`, `editor_modified`, `editor_has_selection`, `viewer_mode`, `busy`, `jobs` |
 | `mtn.selected()` | Liste der markierten Einträge |
 | `mtn.message(text)` | eine Meldung anzeigen |
 | `mtn.wait_idle()` | dem Programm Zeit geben, das vom Makro Begonnene zu zeichnen und zu verarbeiten |
+| `mtn.wait_jobs()` | warten, bis alle Hintergrundaufgaben (Kopieren, Verschieben, Löschen, Packen, Plugin-Aufgaben) beendet sind; eine Aufgabe mit offener Frage wartet auf die Antwort |
 
 Jeder Aufruf, der das Programm berührt, wartet, bis das Programm ihn verarbeitet hat, und erst dann läuft das Makro weiter. Die Lua-Umgebung enthält die Basisbibliothek sowie `string`, `table`, `math`, `utf8` und `coroutine`; `io`, `os`, `package` und `debug` stehen nicht zur Verfügung. Ein Makro, das lange ohne Warten läuft, wird gestoppt.
 

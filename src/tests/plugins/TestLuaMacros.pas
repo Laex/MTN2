@@ -21,6 +21,9 @@ type
   public
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
+    [Test] procedure TestHostCallsWaitWhileTheProgramIsBusy;
+    [Test] procedure TestWaitJobsReturnsWhenTheJobsAreDone;
+    [Test] procedure TestKeysWaitWhileTheProgramIsBusy;
     [Test] procedure TestMacroSendsKeysTextAndActionsInOrder;
     [Test] procedure TestMacroReadsTheProgramState;
     [Test] procedure TestAreaMismatchStopsTheRun;
@@ -320,6 +323,62 @@ begin
     Cb(nil);
     Inc(Guard);
   end;
+end;
+
+procedure TTestLuaMacros.TestHostCallsWaitWhileTheProgramIsBusy;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "c", run = function() mtn.clipboard.set("a"); mtn.text("next") end }');
+  GState := '{"area":"panels","busy":true}';
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual('a', GClipboard);
+  Assert.AreEqual(0, GTexts.Count, 'the next call waits for a folder listing');
+  GState := cPanelsState;
+  Pump;
+  Assert.AreEqual('next', GTexts[0]);
+  Assert.IsNull(FEngine.Running);
+end;
+
+procedure TTestLuaMacros.TestWaitJobsReturnsWhenTheJobsAreDone;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "j", run = function() mtn.key("F5"); mtn.wait_jobs(); mtn.text("done") end }');
+  GState := '{"area":"panels","jobs":1}';
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual(0, GTexts.Count, 'the macro waits while a job runs');
+  GState := cPanelsState;
+  Pump;
+  Assert.AreEqual('done', GTexts[0]);
+  Assert.IsNull(FEngine.Running);
+end;
+
+procedure TTestLuaMacros.TestKeysWaitWhileTheProgramIsBusy;
+var
+  M: TMacro;
+begin
+  if not LuaLoaded then
+    Exit;
+  M := Load('macro { name = "w", run = function() mtn.key("F4"); mtn.key("Ctrl+Home"); mtn.text("1") end }');
+  GState := '{"area":"editor","busy":true}';
+  Assert.IsTrue(FEngine.Run(M));
+  Pump;
+  Assert.AreEqual(1, GKeys.Count, 'the next key is held back while the document loads');
+  Assert.AreEqual('F4', GKeys[0]);
+  Assert.IsNotNull(FEngine.Running);
+  GState := '{"area":"editor","doc":{"canEdit":true,"hasSelection":false}}';
+  Pump;
+  Assert.AreEqual(2, GKeys.Count);
+  Assert.AreEqual('Ctrl+Home', GKeys[1]);
+  Assert.AreEqual('1', GTexts[0]);
+  Assert.IsNull(FEngine.Running);
 end;
 
 procedure TTestLuaMacros.TestMacroSendsKeysTextAndActionsInOrder;

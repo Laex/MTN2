@@ -12736,6 +12736,7 @@ var
   Root: TJSONObject;
   Part: TJSONValue;
   Info: string;
+  Doc: TEditorWindow;
 begin
   Ws := ActiveWorkspace;
   Root := TJSONObject.Create;
@@ -12756,12 +12757,20 @@ begin
             Root.AddPair('doc', TJSONObject(Part))
           else
             Part.Free;
+          // A macro waits until the document is read or saved before it goes on.
+          Doc := ActiveDocument;
+          if (Doc <> nil) and Doc.PluginDocBusy then
+            Root.AddPair('busy', TJSONBool.Create(True));
         end;
       wkTerminal:
         Root.AddPair('area', 'terminal');
     else
       begin
         Root.AddPair('area', 'panels');
+        // A folder that is still being listed: a macro waits for its rows.
+        if (Assigned(FLeftModel) and FLeftModel.IsLoading) or
+           (Assigned(FRightModel) and FRightModel.IsLoading) then
+          Root.AddPair('busy', TJSONBool.Create(True));
         Info := PluginPanelInfoJson;
         if Info <> '' then
         begin
@@ -12773,6 +12782,9 @@ begin
         end;
       end;
     end;
+    // Running and waiting file jobs and plugin jobs, for a macro's wait_jobs.
+    if Assigned(FJobs) then
+      Root.AddPair('jobs', TJSONNumber.Create(Length(FJobs.States)));
     Result := Root.ToJSON;
   finally
     Root.Free;
