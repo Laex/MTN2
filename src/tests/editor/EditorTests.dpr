@@ -21,6 +21,7 @@ uses
   TestEditorBookmarks in 'TestEditorBookmarks.pas',
   TestEditorLoadCancel in 'TestEditorLoadCancel.pas',
   TestEditorColumnBlock in 'TestEditorColumnBlock.pas',
+  TestEditorPaging in 'TestEditorPaging.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',
   TestMarkdownCursor in 'TestMarkdownCursor.pas',

@@ -10,6 +10,10 @@ This file describes what changes for the user from version to version: new featu
 
 - A plugin command or a plugin menu item (Plugins menu) can be given a key from the command palette: Ctrl+K on it opens a field for one key. The choice replaces the key the plugin registers and is kept in `plugin-keys.json` in the settings folder; a key that a built-in action or another plugin command already uses is refused.
 
+### Changed
+
+- In the editor, PgUp/PgDn page the view and the cursor together, so the cursor stays on the same screen row as in other editors. Before, the first press moved only the cursor and the text shifted by one line.
+
 ## Dev v0.5.6.4 – 2026-11-10
 
 ### Changed

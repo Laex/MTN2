@@ -24,6 +24,7 @@ type
   TEditorMoveProc = procedure(ARowDelta, AColDelta: Integer;
     AExtendSel: Boolean) of object;
   TEditorWordProc = procedure(AForward, AExtendSel: Boolean) of object;
+  TEditorPageProc = procedure(ADown, AExtendSel: Boolean) of object;
   TEditorBlockMoveProc = procedure(ARowDelta, AColDelta: Integer) of object;
   TEditorCharProc = procedure(ACh: Char) of object;
   TEditorAlignProc = procedure(AMode: TAlignMode) of object;
@@ -71,6 +72,7 @@ type
     ToggleDrawLines: TEditorProc;
     MoveWord: TEditorWordProc;
     MoveCursor: TEditorMoveProc;
+    PageCursor: TEditorPageProc;
     MoveBlockCursor: TEditorBlockMoveProc;
     BreakInsertCoalesce: TEditorProc;
     GotoFileHome: TEditorExtendProc;
@@ -352,15 +354,15 @@ begin
     vkDown:          AHost.MoveCursor(1, 0, Extend);
     vkLeft:          AHost.MoveCursor(0, -1, Extend);
     vkRight:         AHost.MoveCursor(0, 1, Extend);
-    vkPrior:
+    vkPrior, vkNext:
       begin
         AHost.BreakInsertCoalesce();
-        AHost.MoveCursor(-AViewH, 0, Extend);
-      end;
-    vkNext:
-      begin
-        AHost.BreakInsertCoalesce();
-        AHost.MoveCursor(AViewH, 0, Extend);
+        if Assigned(AHost.PageCursor) then
+          AHost.PageCursor(K.Key = vkNext, Extend)
+        else if K.Key = vkNext then
+          AHost.MoveCursor(AViewH, 0, Extend)
+        else
+          AHost.MoveCursor(-AViewH, 0, Extend);
       end;
     vkHome:          AHost.GotoLineHome(Extend);
     vkEnd:           AHost.GotoLineEnd(Extend);

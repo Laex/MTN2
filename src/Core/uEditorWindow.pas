@@ -329,6 +329,7 @@ type
     procedure PaintTextSelection(AY, ALineIdx, AAbsBase: Integer; const AVis: string;
       ATextW: Integer);
     procedure MoveCursor(ARowDelta, AColDelta: Integer; AExtendSel: Boolean = False);
+    procedure PageCursor(ADown, AExtendSel: Boolean);
     procedure MoveWord(AForward: Boolean; AExtendSel: Boolean);
     procedure GotoLine(ALine1Based: Integer);
     procedure ToggleViewMode;
@@ -2361,6 +2362,7 @@ begin
   FKeymapHost.ToggleDrawLines := ToggleDrawLines;
   FKeymapHost.MoveWord := MoveWord;
   FKeymapHost.MoveCursor := MoveCursor;
+  FKeymapHost.PageCursor := PageCursor;
   FKeymapHost.MoveBlockCursor := MoveBlockCursor;
   FKeymapHost.BreakInsertCoalesce := BreakInsertCoalesce;
   FKeymapHost.GotoFileHome := GotoFileHome;
@@ -4459,6 +4461,27 @@ begin
   ClampCursor;
   EnsureCursorVisible;
   NotifyHost;
+end;
+
+// PgUp/PgDn move the view and the cursor one page together, so the cursor
+// stays on the same screen row. Wrapped and Markdown views count screen rows
+// rather than lines and keep the plain cursor move.
+procedure TEditorWindow.PageCursor(ADown, AExtendSel: Boolean);
+var
+  Page, ScreenRow: Integer;
+begin
+  Page := Max(ViewHeight, 1);
+  if not ADown then
+    Page := -Page;
+  if FMarkdownMode or FHexMode or (FWordWrap and FViewOnly) then
+  begin
+    MoveCursor(Page, 0, AExtendSel);
+    Exit;
+  end;
+  ScreenRow := FCursorRow - FTopLine;
+  MoveCursor(Page, 0, AExtendSel);
+  ScrollTo(FCursorRow - ScreenRow);
+  EnsureCursorVisible;
 end;
 
 procedure TEditorWindow.ClearHistory;
