@@ -117,6 +117,22 @@ type
     /// same as CursorPosLocked (legacy has no row/col cursor to move
     /// relative to).</summary>
     procedure MoveRelLocked(ADir: Char; ACount: Integer);
+    procedure SyncGridSizeLocked(ACols, ARows: Integer);
+    procedure BreakLineBeforeChunkLocked(const AChunk: string; AIsLocalInput: Boolean);
+    // Parser callbacks of AppendOutputEx. Each one goes to the alternate
+    // screen while it is active, otherwise to the primary buffer.
+    procedure ParsedCellLocked(AChar: Char; AFg, ABg: TAlphaColor; AAttrs: TCharCellAttributes);
+    procedure ParsedNewLineLocked;
+    procedure ParsedCarriageReturnLocked;
+    procedure ParsedBackspaceLocked(AIsLocalInput: Boolean);
+    procedure ParsedEraseLineLocked(AElMode: Integer);
+    procedure ParsedEraseDisplayLocked(AEdMode: Integer);
+    procedure ParsedCursorPosLocked(ARow, ACol: Integer);
+    procedure ParsedCursorMoveLocked(ADir: Char; ACount: Integer);
+    procedure ParsedCursorSaveRestoreLocked(ASave: Boolean);
+    procedure ParsedSetModeLocked(AMode: Integer; ASet: Boolean; ACols, ARows: Integer);
+    procedure SetAltScreenLocked(ASet: Boolean; ACols, ARows: Integer);
+    procedure NoteCursorVisibilityLocked(AVisible: Boolean);
   public
     constructor Create(AMaxLines: Integer = 10000);
     destructor Destroy; override;
@@ -1182,10 +1198,222 @@ begin
   Result := (PromptEnd > 0) and (Trim(Copy(ALine, PromptEnd + 1, MaxInt)) <> '');
 end;
 
+procedure TConsoleBuffer.SyncGridSizeLocked(ACols, ARows: Integer);
+begin
+  if (ACols <= 0) or (ARows <= 0) then
+    Exit;
+  // Grid mode latches on the first call that carries real PTY geometry and
+  // stays on until a full Clear (see EnableGridModeLocked).
+  if not FGridEnabled then
+    EnableGridModeLocked(ACols, ARows)
+  else if (ACols <> FActiveGrid.Cols) or (ARows <> FActiveGrid.Rows) then
+    // Output arrives on the reader thread while ResizePrimaryScreen runs on
+    // the UI thread. A chunk drawn for the new size can get here first; with
+    // the grid still at the previous width a prompt would wrap mid-string.
+    // Reflowing to the size the chunk claims keeps the grid in sync whichever
+    // thread wins.
+    FActiveGrid.Reflow(ACols, ARows, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+end;
+
+{ Starts a new line when PTY output would otherwise be glued onto a finished
+  prompt line. Only the cursorless plain buffer needs this guess: grid mode
+  follows the stream's own CR/LF/CUP, and local echo extends the line being
+  typed. }
+procedure TConsoleBuffer.BreakLineBeforeChunkLocked(const AChunk: string;
+  AIsLocalInput: Boolean);
+var
+  CurrLine: string;
+begin
+  if FGridEnabled or AIsLocalInput or (AChunk = '') or
+     CharInSet(AChunk[1], [#10, #13]) or (FPlainLines.Count = 0) then
+    Exit;
+  CurrLine := TrimRight(FPlainLines[FPlainLines.Count - 1]);
+  if CurrLine = '' then
+    Exit;
+  // The shell may emit "D:\path>next" with no newline after a line that
+  // already ends with '>'.
+  if (CurrLine[Length(CurrLine)] = '>') and LooksLikeDrivePrompt(AChunk) then
+    StartNewLineLocked;
+  // Output after a submitted "D:\path>cmd" goes to its own row. A burst of
+  // control chars only ("\b\b" from two quick backspaces) edits the line in
+  // place instead.
+  if LineHasInputAfterPrompt(CurrLine) and
+     ((Length(AChunk) > 1) or (AChunk[1] = ' ')) and HasPrintableChar(AChunk) then
+    StartNewLineLocked;
+end;
+
+procedure TConsoleBuffer.ParsedCellLocked(AChar: Char; AFg, ABg: TAlphaColor;
+  AAttrs: TCharCellAttributes);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.PutCell(AChar, AFg, ABg, AAttrs);
+    Exit;
+  end;
+  if FSuppressingBackspaceEcho then
+    Exit;
+  FPendingCR := False;
+  if AChar = #9 then
+    // Expand tabs to the next 8-cell stop; a literal #9 cell renders as a
+    // blank and collapses all column-aligned output (dir, ls -la, source).
+    TabLocked(AFg, ABg, AAttrs)
+  else
+    PutCharLocked(AChar, AFg, ABg, AAttrs);
+end;
+
+procedure TConsoleBuffer.ParsedNewLineLocked;
+begin
+  if FAltActive then
+  begin
+    FAltGrid.NewLine(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+    Exit;
+  end;
+  // A newline never occurs inside an erase echo: if the show-cursor that ends
+  // the echo did not arrive, stop suppressing rather than swallow later output.
+  FSuppressingBackspaceEcho := False;
+  NewLineLocked2(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+  FPendingCR := False;
+end;
+
+procedure TConsoleBuffer.ParsedCarriageReturnLocked;
+begin
+  if FAltActive then
+    FAltGrid.CarriageReturn
+  else if not FSuppressingBackspaceEcho then
+    CarriageReturnLocked;
+end;
+
+procedure TConsoleBuffer.ParsedBackspaceLocked(AIsLocalInput: Boolean);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.Backspace;
+    Exit;
+  end;
+  if FSuppressingBackspaceEcho then
+    Exit;
+  FPendingCR := False;
+  BackspaceEraseLocked(AIsLocalInput);
+end;
+
+procedure TConsoleBuffer.ParsedEraseLineLocked(AElMode: Integer);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.EraseLine(AElMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+    Exit;
+  end;
+  if FSuppressingBackspaceEcho then
+    Exit;
+  FPendingCR := False;
+  EraseLineLocked(AElMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+end;
+
+procedure TConsoleBuffer.ParsedEraseDisplayLocked(AEdMode: Integer);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.EraseDisplay(AEdMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+    Exit;
+  end;
+  if FSuppressingBackspaceEcho then
+    Exit;
+  FPendingCR := False;
+  // Outside the alternate screen ED is a full reset whatever its mode.
+  EraseDisplayLocked(AEdMode);
+end;
+
+procedure TConsoleBuffer.ParsedCursorPosLocked(ARow, ACol: Integer);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.MoveAbs(ARow, ACol);
+    Exit;
+  end;
+  // cmd erases a char with CUP, spaces and CUP back. While that echo is being
+  // swallowed it must not move the grid cursor either (see
+  // NotePendingLocalBackspace).
+  if FSuppressingBackspaceEcho then
+    Exit;
+  FPendingCR := False;
+  CursorPosLocked(ARow, ACol);
+end;
+
+procedure TConsoleBuffer.ParsedCursorMoveLocked(ADir: Char; ACount: Integer);
+begin
+  if FAltActive then
+  begin
+    FAltGrid.MoveRel(ADir, ACount);
+    Exit;
+  end;
+  FPendingCR := False;
+  MoveRelLocked(ADir, ACount);
+end;
+
+procedure TConsoleBuffer.ParsedCursorSaveRestoreLocked(ASave: Boolean);
+begin
+  if not FAltActive then
+    Exit;
+  if ASave then
+    FAltGrid.SaveCursor
+  else
+    FAltGrid.RestoreCursor;
+end;
+
+{ Modes 1049 and 47 enter and leave the same grid; 1049 gets no cursor
+  save/restore of its own. }
+procedure TConsoleBuffer.SetAltScreenLocked(ASet: Boolean; ACols, ARows: Integer);
+begin
+  if ASet and not FAltActive then
+  begin
+    // Without real geometry (the one-argument AppendOutput / AppendLocalInput
+    // pass 0,0) there is nothing to allocate: stay on the primary screen.
+    if (ACols > 0) and (ARows > 0) then
+    begin
+      FAltGrid.Alloc(ACols, ARows);
+      FAltGrid.ClearAll(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+      FAltActive := True;
+    end;
+  end
+  else if (not ASet) and FAltActive then
+  begin
+    FAltActive := False;
+    FAppCursorKeys := False;
+  end;
+end;
+
+{ conhost brackets its CUP-based erase echo in hide/show-cursor (ESC[?25l ...
+  ESC[?25h). For a backspace already applied locally that bracket marks the
+  echo to swallow (see NotePendingLocalBackspace). }
+procedure TConsoleBuffer.NoteCursorVisibilityLocked(AVisible: Boolean);
+begin
+  if (not AVisible) and FPendingLocalBackspace then
+  begin
+    FSuppressingBackspaceEcho := True;
+    FPendingLocalBackspace := False;
+  end
+  else if AVisible and FSuppressingBackspaceEcho then
+    FSuppressingBackspaceEcho := False;
+end;
+
+procedure TConsoleBuffer.ParsedSetModeLocked(AMode: Integer; ASet: Boolean;
+  ACols, ARows: Integer);
+begin
+  case AMode of
+    1:
+      FAppCursorKeys := ASet;
+    47, 1049:
+      SetAltScreenLocked(ASet, ACols, ARows);
+    25:
+      if not FAltActive then
+        NoteCursorVisibilityLocked(ASet);
+  end;
+end;
+
 function TConsoleBuffer.AppendOutputEx(const AText: string; ACols, ARows: Integer;
   AIsLocalInput: Boolean): Integer;
 var
-  CurrLine, ProcessedText: string;
+  Chunk: string;
 begin
   Result := 0;
   if AText = '' then
@@ -1193,246 +1421,39 @@ begin
 
   FLock.Enter;
   try
-    // Latches on the first real PTY-geometry call and never reverts (short
-    // of a full Clear()) -- see EnableGridModeLocked / FGridEnabled.
-    if (not FGridEnabled) and (ACols > 0) and (ARows > 0) then
-      EnableGridModeLocked(ACols, ARows)
-    else if FGridEnabled and (ACols > 0) and (ARows > 0) and
-            ((ACols <> FActiveGrid.Cols) or (ARows <> FActiveGrid.Rows)) then
-      // PTY output arrives on the reader thread; ResizePrimaryScreen is
-      // called separately from the UI thread's SyncPtySize. If a resized
-      // chunk of real output reaches here before that call lands, the grid
-      // is still the narrower previous size while conhost is already drawing
-      // for the new one -- e.g. a 35-char prompt wraps mid-string onto a
-      // second row because the grid still thinks it's ~35 cols wide,
-      // confirmed via a byte-level trace (grid cursor ends at row+1 col0
-      // right where the prompt text ends, with ACols=183 already claimed).
-      // Reflowing here, keyed off the size this exact chunk already claims,
-      // keeps the grid in sync regardless of which thread wins the race.
-      FActiveGrid.Reflow(ACols, ARows, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
+    SyncGridSizeLocked(ACols, ARows);
 
-    // Local keyboard/paste echo is never a shell prompt arriving over the PTY -
-    // skip the "text looks like an incoming prompt" heuristics below, which
-    // would otherwise force e.g. a pasted "D:\some\path" onto a new line just
-    // because it happens to start with a drive letter like a real prompt.
-    // Read FPendingEraseToEOL before parsing touches (and clears) it.
-    // FixPromptNewlines mutates the actual byte stream fed to the parser
-    // (it inserts a synthetic CRLF wherever it thinks a prompt has content
-    // glued onto it) -- a workaround for output without real newlines.
-    // Grid mode must never let it run:
-    // real conhost always follows a freshly-drawn prompt with an OSC
-    // window-title sequence (ESC ]0;...BEL), which this heuristic mistakes
-    // for "real command text glued onto the prompt" and splits with a
-    // bogus synthetic newline whose LF moves the prompt's cursor one row
-    // below where it visually stops. Grid mode trusts the real byte stream's own CR/LF/CUP; it must not
-    // also be fed a stream some other heuristic has silently rewritten.
+    // FixPromptNewlines rewrites the stream, inserting a CRLF where content
+    // looks glued onto a prompt. Local echo is never an incoming prompt (a
+    // pasted "D:\some\path" must stay on its line), and grid mode has to see
+    // the real bytes: conhost follows a prompt with an OSC title sequence,
+    // which would be taken for glued-on text and push the cursor a row down.
+    // FPendingEraseToEOL is read here, before parsing clears it.
     if AIsLocalInput or FGridEnabled then
-      ProcessedText := AText
+      Chunk := AText
     else
-      ProcessedText := FixPromptNewlines(AText, FPendingEraseToEOL);
+      Chunk := FixPromptNewlines(AText, FPendingEraseToEOL);
 
     EnsureCurrentLineLocked;
-    // FPlainLines can legitimately be empty in grid mode (nothing archived
-    // yet -- see EnsureCurrentLineLocked); guard the index instead of
-    // relying on the legacy-only ">= 1 entry" invariant. CurrLine's value
-    // only matters below, where both consumers are already gated to
-    // "not FGridEnabled" anyway.
-    if FPlainLines.Count > 0 then
-      CurrLine := TrimRight(FPlainLines[FPlainLines.Count - 1])
-    else
-      CurrLine := '';
-    // Shell may emit "D:\path>next" without a leading newline when the prior
-    // line already ends with '>'. FixPromptNewlines splits that case. Do NOT
-    // start a new line for ordinary typed characters (local line-buffered echo).
-    // Grid mode already tracks real cursor position from the byte stream's
-    // own CUP/LF/CR (the reason grid mode exists), so these chunk-boundary
-    // prompt-guessing heuristics -- built to compensate for the legacy
-    // buffer's lack of a cursor -- are legacy-only; run them against a grid
-    // session's frozen archive tail and they could force a bogus blank line
-    // into history, disconnected from what the live grid shows.
-    if (not FGridEnabled) and not AIsLocalInput and (CurrLine <> '') and (CurrLine[Length(CurrLine)] = '>') and
-       (Length(ProcessedText) > 0) and not CharInSet(ProcessedText[1], [#10, #13]) and
-       LooksLikeDrivePrompt(ProcessedText) then
-      StartNewLineLocked;
+    BreakLineBeforeChunkLocked(Chunk, AIsLocalInput);
 
-    // PTY output after a submitted "D:\path>cmd" must not append on the same row.
-    // Local input never hits this: pasting/typing more onto an already-started
-    // command (e.g. "cd " then paste a path) must extend the same line. A pure
-    // control-char burst (e.g. "\b\b" from two fast backspaces echoed in one
-    // chunk) is never "glued-on content" either - it must edit the existing
-    // line in place, not wipe it by forcing a new blank one.
-    if (not FGridEnabled) and not AIsLocalInput and (CurrLine <> '') and LineHasInputAfterPrompt(CurrLine) and
-       (Length(ProcessedText) > 0) and not CharInSet(ProcessedText[1], [#10, #13]) and
-       ((Length(ProcessedText) > 1) or (ProcessedText[1] = ' ')) and
-       HasPrintableChar(ProcessedText) then
-      StartNewLineLocked;
-
-    FAnsiParser.ParseText(
-      ProcessedText,
-      procedure(C: Char; Fg, Bg: TAlphaColor; Attrs: TCharCellAttributes)
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.PutCell(C, Fg, Bg, Attrs);
-          Exit;
-        end;
-        if FSuppressingBackspaceEcho then
-          Exit;
-        FPendingCR := False;
-        if C = #9 then
-          // Expand tabs to the next 8-cell stop; a literal #9 cell renders as a
-          // blank and collapses all column-aligned output (dir, ls -la, source).
-          TabLocked(Fg, Bg, Attrs)
-        else
-          PutCharLocked(C, Fg, Bg, Attrs);
-      end,
+    FAnsiParser.ParseText(Chunk,
+      ParsedCellLocked,
+      ParsedNewLineLocked,
+      ParsedCarriageReturnLocked,
       procedure
       begin
-        if FAltActive then
-        begin
-          FAltGrid.NewLine(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-          Exit;
-        end;
-        // Stale-guard: a real newline should never occur mid-erase-pattern;
-        // if the expected show-cursor never arrived, drop the suppression
-        // rather than let it leak into unrelated later output.
-        FSuppressingBackspaceEcho := False;
-        NewLineLocked2(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-        FPendingCR := False;
+        ParsedBackspaceLocked(AIsLocalInput);
       end,
-      procedure
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.CarriageReturn;
-          Exit;
-        end;
-        if FSuppressingBackspaceEcho then
-          Exit;
-        CarriageReturnLocked;
-      end,
-      procedure
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.Backspace;
-          Exit;
-        end;
-        if FSuppressingBackspaceEcho then
-          Exit;
-        FPendingCR := False;
-        BackspaceEraseLocked(AIsLocalInput);
-      end,
-      procedure(AElMode: Integer)
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.EraseLine(AElMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-          Exit;
-        end;
-        if FSuppressingBackspaceEcho then
-          Exit;
-        FPendingCR := False;
-        EraseLineLocked(AElMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-      end,
-      procedure(AEdMode: Integer)
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.EraseDisplay(AEdMode, FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-          Exit;
-        end;
-        if FSuppressingBackspaceEcho then
-          Exit;
-        // Mode is intentionally ignored either way -- ED always means a full
-        // reset here (legacy default, kept for grid mode too on purpose),
-        // not partial-ED semantics.
-        FPendingCR := False;
-        EraseDisplayLocked(AEdMode);
-      end,
-      procedure(ARow, ACol: Integer)
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.MoveAbs(ARow, ACol);
-          Exit;
-        end;
-        // Real cmd's CUP-based backspace-erase (ESC[row;colH, overwrite with
-        // spaces, ESC[row;colH back) is swallowed wholesale here so it can't
-        // move the grid cursor to the erase pattern's own position -- see
-        // NotePendingLocalBackspace / FSuppressingBackspaceEcho.
-        if FSuppressingBackspaceEcho then
-          Exit;
-        FPendingCR := False;
-        CursorPosLocked(ARow, ACol);
-      end,
-      procedure(ADir: Char; ACount: Integer)
-      begin
-        if FAltActive then
-        begin
-          FAltGrid.MoveRel(ADir, ACount);
-          Exit;
-        end;
-        FPendingCR := False;
-        MoveRelLocked(ADir, ACount);
-      end,
-      procedure(ASave: Boolean)
-      begin
-        if FAltActive then
-        begin
-          if ASave then
-            FAltGrid.SaveCursor
-          else
-            FAltGrid.RestoreCursor;
-        end;
-      end,
+      ParsedEraseLineLocked,
+      ParsedEraseDisplayLocked,
+      ParsedCursorPosLocked,
+      ParsedCursorMoveLocked,
+      ParsedCursorSaveRestoreLocked,
       procedure(AMode: Integer; ASet: Boolean)
       begin
-        if AMode = 1 then
-          FAppCursorKeys := ASet;
-        // The only callback that must act regardless of FAltActive -- it's
-        // what flips the flag. 1049 and 47 are treated identically (enter/
-        // exit the same grid, no distinct cursor save/restore for 1049) --
-        // sufficient for vim/htop/less, the stage's actual target set.
-        if (AMode = 1049) or (AMode = 47) then
-        begin
-          if ASet and not FAltActive then
-          begin
-            if (ACols > 0) and (ARows > 0) then
-            begin
-              FAltGrid.Alloc(ACols, ARows);
-              FAltGrid.ClearAll(FAnsiParser.CurrentFg, FAnsiParser.CurrentBg);
-              FAltActive := True;
-            end;
-            // else: safe no-op -- caller hasn't wired real geometry yet
-            // (AppendOutput/AppendLocalInput's 1-arg wrappers pass 0,0).
-          end
-          else if (not ASet) and FAltActive then
-          begin
-            FAltActive := False;
-            FAppCursorKeys := False;
-          end;
-          Exit;
-        end;
-        // Mode 25 (cursor visibility): real conhost line-editing brackets its
-        // CUP-based erase echo in hide/show-cursor (ESC[?25l ... ESC[?25h).
-        // Outside alt-screen, use that bracket to swallow the echo for a
-        // backspace we already applied locally (see NotePendingLocalBackspace);
-        // otherwise mode 25 stays a no-op, matching today's behavior.
-        if (AMode = 25) and not FAltActive then
-        begin
-          if (not ASet) and FPendingLocalBackspace then
-          begin
-            FSuppressingBackspaceEcho := True;
-            FPendingLocalBackspace := False;
-          end
-          else if ASet and FSuppressingBackspaceEcho then
-            FSuppressingBackspaceEcho := False;
-        end;
-        // Mode 1000+ (mouse reporting): no-op for v1, matches "mouse
-        // optional/later" from the stage's own checklist.
-      end
-    );
+        ParsedSetModeLocked(AMode, ASet, ACols, ARows);
+      end);
     TrimLocked(Result);
   finally
     FLock.Leave;

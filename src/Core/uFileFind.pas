@@ -1047,6 +1047,194 @@ begin
   Result.HasEntry := True;
 end;
 
+type
+  { One search run on its worker thread: walks the tree under the root and
+    collects the hits, handing them to the main thread in batches. }
+  TFindWalk = class
+  private
+    FOpts: TFindOptions;
+    FMasks: TArray<string>;
+    FCancel: IJobCancelToken;
+    FOnProgress: TFindProgressCallback;
+    FOnHits: TFindHitsCallback;
+    FList: TList<TFindHit>;
+    FStack: TStack<string>;
+    FArchives: TArchiveRootResolver;
+    FArchiveVfs: IVirtualFileSystem;
+    FLimit: Integer;
+    FDelivered: Integer;
+    FLastProgressTick: Cardinal;
+    FLastHitsTick: Cardinal;
+    FTruncated: Boolean;
+    procedure QueueHits(AForce: Boolean);
+    procedure ReportProgress(const ADir: string);
+    function AddHit(const APath: string; const SR: TSearchRec; AIsDir: Boolean;
+      ALine: Integer; const ASnippet: string): Boolean;
+    function VisitFolder(const AFull: string; const SR: TSearchRec): Boolean;
+    function VisitFile(const AFull: string; const SR: TSearchRec): Boolean;
+    procedure ScanDirectory(const ADir: string);
+    procedure Walk;
+  public
+    constructor Create(const AOptions: TFindOptions; const AMasks: TArray<string>;
+      ACancel: IJobCancelToken; AOnProgress: TFindProgressCallback;
+      AOnHits: TFindHitsCallback);
+    destructor Destroy; override;
+    function Run(out AHits: TArray<TFindHit>): TVfsError;
+    property Truncated: Boolean read FTruncated;
+  end;
+
+constructor TFindWalk.Create(const AOptions: TFindOptions;
+  const AMasks: TArray<string>; ACancel: IJobCancelToken;
+  AOnProgress: TFindProgressCallback; AOnHits: TFindHitsCallback);
+begin
+  inherited Create;
+  FOpts := AOptions;
+  FMasks := AMasks;
+  FCancel := ACancel;
+  FOnProgress := AOnProgress;
+  FOnHits := AOnHits;
+  FList := TList<TFindHit>.Create;
+  FStack := TStack<string>.Create;
+  FArchives := TArchiveRootResolver.Create;
+  FLimit := FOpts.MaxResults;
+  if FLimit <= 0 then
+    FLimit := cFindMaxResults;
+end;
+
+destructor TFindWalk.Destroy;
+begin
+  FArchives.Free;
+  FStack.Free;
+  FList.Free;
+  inherited;
+end;
+
+procedure TFindWalk.QueueHits(AForce: Boolean);
+begin
+  QueueFindHits(FOnHits, FList, FDelivered, FLastHitsTick, AForce);
+end;
+
+procedure TFindWalk.ReportProgress(const ADir: string);
+begin
+  if (FLastProgressTick <> 0) and
+     (TThread.GetTickCount - FLastProgressTick < 80) then
+    Exit;
+  FLastProgressTick := TThread.GetTickCount;
+  QueueFindProgress(FOnProgress, FList.Count, ADir);
+  QueueHits(False);
+end;
+
+{ False when the result limit is reached: the hit is dropped and the walk stops. }
+function TFindWalk.AddHit(const APath: string; const SR: TSearchRec;
+  AIsDir: Boolean; ALine: Integer; const ASnippet: string): Boolean;
+begin
+  if FList.Count >= FLimit then
+  begin
+    FTruncated := True;
+    Exit(False);
+  end;
+  FList.Add(MakeFindHit(APath, SR, AIsDir, ALine, ASnippet));
+  QueueHits(False);
+  Result := True;
+end;
+
+function TFindWalk.VisitFolder(const AFull: string; const SR: TSearchRec): Boolean;
+begin
+  if FOpts.SearchFolders and NameMatchesAnyMask(SR.Name, FMasks) and
+     not FindNeedsContent(FOpts) and
+     FindEntryPassesFilters(FOpts, True, 0, SR.TimeStamp, SR.Attr) and
+     not AddHit(AFull, SR, True, 0, '') then
+    Exit(False);
+  // A link to an ancestor would make the walk endless.
+  if FOpts.Subdirs and not PlatformIsDirectoryLink(SR) then
+    FStack.Push(AFull);
+  Result := True;
+end;
+
+function TFindWalk.VisitFile(const AFull: string; const SR: TSearchRec): Boolean;
+var
+  Line: Integer;
+  Snippet: string;
+begin
+  if NameMatchesAnyMask(SR.Name, FMasks) and
+     FindEntryPassesFilters(FOpts, False, SR.Size, SR.TimeStamp, SR.Attr) and
+     FindContentMatch(AFull, FOpts, Line, Snippet) and
+     not AddHit(AFull, SR, False, Line, Snippet) then
+    Exit(False);
+  if FOpts.SearchArchives then
+    FindInArchive(AFull, FOpts, FMasks, FArchives, FArchiveVfs, FCancel, FList,
+      FLimit, FTruncated,
+      procedure
+      begin
+        QueueHits(False);
+      end);
+  Result := not FTruncated;
+end;
+
+procedure TFindWalk.ScanDirectory(const ADir: string);
+var
+  SR: TSearchRec;
+  Code: Integer;
+  Full: string;
+  Go: Boolean;
+begin
+  Code := FindFirst(SafeCombinePath(ADir, '*'), faAnyFile, SR);
+  try
+    while (Code = 0) and not JobCancelRequested(FCancel) do
+    begin
+      if (SR.Name <> '.') and (SR.Name <> '..') then
+      begin
+        Full := SafeCombinePath(ADir, SR.Name);
+        if (SR.Attr and faDirectory) <> 0 then
+          Go := VisitFolder(Full, SR)
+        else
+          Go := VisitFile(Full, SR);
+        if not Go then
+          Break;
+      end;
+      Code := FindNext(SR);
+    end;
+  finally
+    FindClose(SR);
+  end;
+end;
+
+procedure TFindWalk.Walk;
+var
+  Dir: string;
+begin
+  FStack.Push(FOpts.RootPath);
+  while (FStack.Count > 0) and not JobCancelRequested(FCancel) and
+    not FTruncated do
+  begin
+    Dir := FStack.Pop;
+    ReportProgress(Dir);
+    ScanDirectory(Dir);
+  end;
+end;
+
+function TFindWalk.Run(out AHits: TArray<TFindHit>): TVfsError;
+begin
+  Result := TVfsError.Ok;
+  try
+    if JobCancelRequested(FCancel) then
+      Result := TVfsError.Make(vecCancelled, 'Cancelled', FOpts.RootPath)
+    else if not TDirectory.Exists(FOpts.RootPath) then
+      Result := TVfsError.Make(vecNotFound, 'Path not found', FOpts.RootPath)
+    else
+    begin
+      Walk;
+      if JobCancelRequested(FCancel) then
+        Result := TVfsError.Make(vecCancelled, 'Cancelled', FOpts.RootPath);
+    end;
+  except
+    on E: Exception do
+      Result := TVfsError.Make(vecIOError, E.Message, FOpts.RootPath);
+  end;
+  QueueHits(True);
+  AHits := FList.ToArray;
+end;
+
 procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
   AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback;
   AOnHits: TFindHitsCallback);
@@ -1073,134 +1261,17 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      List: TList<TFindHit>;
-      Err: TVfsError;
-      LastProgressTick, LastHitsTick: Cardinal;
-      Delivered, Limit: Integer;
-      Truncated: Boolean;
+      Search: TFindWalk;
       Hits: TArray<TFindHit>;
-      Stack: TStack<string>;
-      Dir, Full, Name: string;
-      SR: TSearchRec;
-      Code: Integer;
-      IsDir: Boolean;
-      Needle: string;
-      HitLine: Integer;
-      HitSnippet: string;
-      Archives: TArchiveRootResolver;
-      ArchiveVfs: IVirtualFileSystem;
-
+      Err: TVfsError;
+      Truncated: Boolean;
     begin
-      Err := TVfsError.Ok;
-      List := TList<TFindHit>.Create;
-      Stack := TStack<string>.Create;
-      Archives := TArchiveRootResolver.Create;
-      LastProgressTick := 0;
-      LastHitsTick := 0;
-      Delivered := 0;
-      Truncated := False;
-      Limit := Opts.MaxResults;
-      if Limit <= 0 then
-        Limit := cFindMaxResults;
-      Needle := Opts.ContainingText;
+      Search := TFindWalk.Create(Opts, Masks, Cancel, OnProgress, OnHits);
       try
-        try
-          if JobCancelRequested(Cancel) then
-            Err := TVfsError.Make(vecCancelled, 'Cancelled', Opts.RootPath)
-          else if not TDirectory.Exists(Opts.RootPath) then
-            Err := TVfsError.Make(vecNotFound, 'Path not found', Opts.RootPath)
-          else
-          begin
-            Stack.Push(Opts.RootPath);
-            while (Stack.Count > 0) and not JobCancelRequested(Cancel) and
-              not Truncated do
-            begin
-              Dir := Stack.Pop;
-              if (LastProgressTick = 0) or
-                 (TThread.GetTickCount - LastProgressTick >= 80) then
-              begin
-                LastProgressTick := TThread.GetTickCount;
-                QueueFindProgress(OnProgress, List.Count, Dir);
-                QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
-              end;
-
-              Code := FindFirst(SafeCombinePath(Dir, '*'), faAnyFile, SR);
-              try
-                while Code = 0 do
-                begin
-                  if JobCancelRequested(Cancel) then
-                    Break;
-                  Name := SR.Name;
-                  if (Name <> '.') and (Name <> '..') then
-                  begin
-                    Full := SafeCombinePath(Dir, Name);
-                    IsDir := (SR.Attr and faDirectory) <> 0;
-                    if IsDir then
-                    begin
-                      if Opts.SearchFolders and NameMatchesAnyMask(Name, Masks) and
-                         (Needle = '') and (Trim(Opts.HexBytes) = '') and
-                         FindEntryPassesFilters(Opts, True, 0, SR.TimeStamp, SR.Attr) then
-                      begin
-                        if List.Count >= Limit then
-                        begin
-                          Truncated := True;
-                          Break;
-                        end;
-                        List.Add(MakeFindHit(Full, SR, True, 0, ''));
-                        QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
-                      end;
-                      // A link to an ancestor would make the walk endless.
-                      if Opts.Subdirs and not PlatformIsDirectoryLink(SR) then
-                        Stack.Push(Full);
-                    end
-                    else
-                    begin
-                      if NameMatchesAnyMask(Name, Masks) and
-                         FindEntryPassesFilters(Opts, False, SR.Size, SR.TimeStamp,
-                           SR.Attr) and
-                         FindContentMatch(Full, Opts, HitLine, HitSnippet) then
-                      begin
-                        if List.Count >= Limit then
-                        begin
-                          Truncated := True;
-                          Break;
-                        end;
-                        List.Add(MakeFindHit(Full, SR, False, HitLine, HitSnippet));
-                        QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
-                      end;
-                      if Opts.SearchArchives then
-                      begin
-                        FindInArchive(Full, Opts, Masks, Archives, ArchiveVfs, Cancel,
-                          List, Limit, Truncated,
-                          procedure
-                          begin
-                            QueueFindHits(OnHits, List, Delivered, LastHitsTick, False);
-                          end);
-                        if Truncated then
-                          Break;
-                      end;
-                    end;
-                  end;
-                  Code := FindNext(SR);
-                end;
-              finally
-                FindClose(SR);
-              end;
-            end;
-
-            if JobCancelRequested(Cancel) then
-              Err := TVfsError.Make(vecCancelled, 'Cancelled', Opts.RootPath);
-          end;
-        except
-          on E: Exception do
-            Err := TVfsError.Make(vecIOError, E.Message, Opts.RootPath);
-        end;
-        QueueFindHits(OnHits, List, Delivered, LastHitsTick, True);
-        Hits := List.ToArray;
+        Err := Search.Run(Hits);
+        Truncated := Search.Truncated;
       finally
-        Archives.Free;
-        Stack.Free;
-        List.Free;
+        Search.Free;
       end;
 
       TThread.Queue(nil,

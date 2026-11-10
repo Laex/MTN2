@@ -400,210 +400,246 @@ begin
       end;
 end;
 
+/// <summary>String member AName of AObj; '' when it is absent or not a string.</summary>
+function JsonText(AObj: TJSONObject; const AName: string; ATrim: Boolean = True): string;
+var
+  N: TJSONValue;
+begin
+  Result := '';
+  N := AObj.Values[AName];
+  if not (N is TJSONString) then
+    Exit;
+  Result := TJSONString(N).Value;
+  if ATrim then
+    Result := Trim(Result);
+end;
+
+function JsonFlag(AObj: TJSONObject; const AName: string): Boolean;
+var
+  N: TJSONValue;
+begin
+  N := AObj.Values[AName];
+  Result := (N is TJSONBool) and TJSONBool(N).AsBoolean;
+end;
+
+function JsonInt(AObj: TJSONObject; const AName: string; ADefault: Integer): Integer;
+var
+  N: TJSONValue;
+begin
+  N := AObj.Values[AName];
+  if N is TJSONNumber then
+    Result := TJSONNumber(N).AsInt
+  else
+    Result := ADefault;
+end;
+
+/// <summary>Every string of a JSON array, empty ones included; ANormalize trims and
+/// lower-cases each.</summary>
+function ReadStringItems(AValue: TJSONValue; ANormalize: Boolean): TArray<string>;
+var
+  V: TJSONValue;
+  S: string;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONArray) then
+    Exit;
+  for V in TJSONArray(AValue) do
+    if V is TJSONString then
+    begin
+      S := TJSONString(V).Value;
+      if ANormalize then
+        S := LowerCase(Trim(S));
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)] := S;
+    end;
+end;
+
+/// <summary>File extensions, lower-case and without the leading dot.</summary>
+function ReadExtensions(AValue: TJSONValue): TArray<string>;
+var
+  I: Integer;
+begin
+  Result := ReadTrimmedStrings(AValue, True);
+  for I := 0 to High(Result) do
+    Result[I] := Result[I].TrimLeft(['.']);
+end;
+
+function ReadManifestCommands(AValue: TJSONValue): TArray<TManifestCommand>;
+var
+  V: TJSONValue;
+  Item: TJSONObject;
+  Cmd: TManifestCommand;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONArray) then
+    Exit;
+  for V in TJSONArray(AValue) do
+  begin
+    if not (V is TJSONObject) then
+      Continue;
+    Item := TJSONObject(V);
+    Cmd := Default(TManifestCommand);
+    Cmd.Id := JsonText(Item, 'id');
+    if Cmd.Id = '' then
+      Continue;
+    Cmd.Key := JsonText(Item, 'key');
+    ReadLocalized(Item.Values['label'], Cmd.LabelLocales, Cmd.LabelTexts);
+    Cmd.When := ReadCondition(Item.Values['when']);
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Cmd;
+  end;
+end;
+
+function ReadManifestMenuItems(AValue: TJSONValue): TArray<TManifestMenuItem>;
+var
+  V: TJSONValue;
+  Item: TJSONObject;
+  MItem: TManifestMenuItem;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONArray) then
+    Exit;
+  for V in TJSONArray(AValue) do
+  begin
+    if not (V is TJSONObject) then
+      Continue;
+    Item := TJSONObject(V);
+    MItem := Default(TManifestMenuItem);
+    MItem.Id := JsonText(Item, 'id');
+    if MItem.Id = '' then
+      Continue;
+    MItem.Parent := JsonText(Item, 'parent');
+    if MItem.Parent = '' then
+      MItem.Parent := 'Plugins';
+    MItem.Priority := JsonInt(Item, 'priority', 100);
+    ReadLocalized(Item.Values['caption'], MItem.CaptionLocales, MItem.CaptionTexts);
+    MItem.When := ReadCondition(Item.Values['when']);
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := MItem;
+  end;
+end;
+
+function ReadManifestDriveItems(AValue: TJSONValue): TArray<TManifestDriveItem>;
+var
+  V: TJSONValue;
+  Item: TJSONObject;
+  DItem: TManifestDriveItem;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONArray) then
+    Exit;
+  for V in TJSONArray(AValue) do
+  begin
+    if not (V is TJSONObject) then
+      Continue;
+    Item := TJSONObject(V);
+    DItem := Default(TManifestDriveItem);
+    DItem.Id := JsonText(Item, 'id');
+    if (DItem.Id = '') or not (Item.Values['uri'] is TJSONString) then
+      Continue;
+    DItem.Uri := JsonText(Item, 'uri');
+    DItem.Priority := JsonInt(Item, 'priority', 100);
+    ReadLocalized(Item.Values['caption'], DItem.CaptionLocales, DItem.CaptionTexts);
+    DItem.When := ReadCondition(Item.Values['when']);
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := DItem;
+  end;
+end;
+
+function ReadManifestTriggers(AValue: TJSONValue): TArray<TManifestTrigger>;
+var
+  V: TJSONValue;
+  Trigger: TManifestTrigger;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for V in TJSONArray(AValue) do
+  begin
+    if not (V is TJSONObject) then
+      Continue;
+    Trigger := Default(TManifestTrigger);
+    Trigger.Event := LowerCase(JsonText(TJSONObject(V), 'event'));
+    if Trigger.Event = '' then
+      Continue;
+    Trigger.DirHas := JsonText(TJSONObject(V), 'dirHas');
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Trigger;
+  end;
+end;
+
+procedure ReadManifestIdentity(AObj: TJSONObject; var AManifest: TPluginManifest);
+var
+  N: TJSONValue;
+begin
+  AManifest.Id := JsonText(AObj, 'id', False);
+  AManifest.Name := JsonText(AObj, 'name', False);
+  AManifest.Version := JsonText(AObj, 'version', False);
+  N := AObj.Values['abi'];
+  if N is TJSONNumber then
+  begin
+    AManifest.AbiVersion := TJSONNumber(N).AsInt64;
+    AManifest.HasAbi := True;
+  end;
+  ReadLocalized(AObj.Values['description'], AManifest.DescriptionLocales,
+    AManifest.DescriptionTexts);
+  AManifest.Author := JsonText(AObj, 'author');
+  AManifest.Homepage := JsonText(AObj, 'homepage');
+  AManifest.Help := JsonText(AObj, 'help');
+end;
+
+procedure ReadManifestContributions(AObj: TJSONObject; var AManifest: TPluginManifest);
+begin
+  AManifest.ArchiveExtensions := ReadStringItems(AObj.Values['archiveExtensions'], False);
+  AManifest.Schemes := ReadStringItems(AObj.Values['schemes'], True);
+  AManifest.HighlightExtensions := ReadExtensions(AObj.Values['highlightExtensions']);
+  AManifest.DocumentExtensions := ReadExtensions(AObj.Values['documentExtensions']);
+  AManifest.Commands := ReadManifestCommands(AObj.Values['commands']);
+  AManifest.MenuItems := ReadManifestMenuItems(AObj.Values['menuItems']);
+  AManifest.DriveItems := ReadManifestDriveItems(AObj.Values['driveItems']);
+  AManifest.Overrides := ReadTrimmedStrings(AObj.Values['overrides'], True);
+end;
+
+procedure ReadManifestRuntime(AObj: TJSONObject; var AManifest: TPluginManifest);
+var
+  N: TJSONValue;
+begin
+  AManifest.Declarative := JsonFlag(AObj, 'declarative');
+  AManifest.Startup := JsonFlag(AObj, 'startup');
+  N := AObj.Values['startupWhen'];
+  if N is TJSONObject then
+  begin
+    AManifest.StartupWhen := ReadCondition(N);
+    AManifest.HasStartupWhen := True;
+  end;
+  AManifest.OpenRegistrations := JsonFlag(AObj, 'openRegistrations');
+  AManifest.ActivateOn := ReadManifestTriggers(AObj.Values['activateOn']);
+  AManifest.Wasi := JsonFlag(AObj, 'wasi');
+  AManifest.MemoryMib := Max(0, Min(256, JsonInt(AObj, 'memoryMib', 0)));
+  AManifest.KeepLoaded := JsonFlag(AObj, 'keepLoaded');
+  AManifest.ResourceVersion := JsonInt(AObj, 'resources', 0);
+  AManifest.Permissions := ReadTrimmedStrings(AObj.Values['permissions'], True);
+end;
+
 function TryParsePluginManifestJson(const AJson: string;
   out AManifest: TPluginManifest): Boolean;
 var
   Val: TJSONValue;
-  Obj: TJSONObject;
-  N: TJSONValue;
-  Arr: TJSONArray;
-  Exts: TArray<string>;
-  I: Integer;
-  Pair: TJSONPair;
-  Item: TJSONObject;
-  Cmd: TManifestCommand;
-  MItem: TManifestMenuItem;
-  DItem: TManifestDriveItem;
-  Trigger: TManifestTrigger;
-  TV: TJSONValue;
 begin
   ClearManifest(AManifest);
   Result := False;
   if Trim(AJson) = '' then
     Exit;
   Val := TJSONObject.ParseJSONValue(AJson);
-  if not (Val is TJSONObject) then
-  begin
-    Val.Free;
-    Exit;
-  end;
-  Obj := TJSONObject(Val);
   try
-    N := Obj.Values['id'];
-    if N is TJSONString then
-      AManifest.Id := TJSONString(N).Value;
-    N := Obj.Values['name'];
-    if N is TJSONString then
-      AManifest.Name := TJSONString(N).Value;
-    N := Obj.Values['version'];
-    if N is TJSONString then
-      AManifest.Version := TJSONString(N).Value;
-    N := Obj.Values['abi'];
-    if N is TJSONNumber then
-    begin
-      AManifest.AbiVersion := TJSONNumber(N).AsInt64;
-      AManifest.HasAbi := True;
-    end;
-    N := Obj.Values['archiveExtensions'];
-    if N is TJSONArray then
-    begin
-      Arr := TJSONArray(N);
-      SetLength(Exts, 0);
-      for I := 0 to Arr.Count - 1 do
-        if Arr.Items[I] is TJSONString then
-        begin
-          SetLength(Exts, Length(Exts) + 1);
-          Exts[High(Exts)] := TJSONString(Arr.Items[I]).Value;
-        end;
-      AManifest.ArchiveExtensions := Exts;
-    end;
-    N := Obj.Values['schemes'];
-    if N is TJSONArray then
-    begin
-      Arr := TJSONArray(N);
-      SetLength(Exts, 0);
-      for I := 0 to Arr.Count - 1 do
-        if Arr.Items[I] is TJSONString then
-        begin
-          SetLength(Exts, Length(Exts) + 1);
-          Exts[High(Exts)] := LowerCase(Trim(TJSONString(Arr.Items[I]).Value));
-        end;
-      AManifest.Schemes := Exts;
-    end;
-    AManifest.HighlightExtensions := ReadTrimmedStrings(Obj.Values['highlightExtensions'], True);
-    for I := 0 to High(AManifest.HighlightExtensions) do
-      AManifest.HighlightExtensions[I] := AManifest.HighlightExtensions[I].TrimLeft(['.']);
-    N := Obj.Values['declarative'];
-    AManifest.Declarative := (N is TJSONBool) and TJSONBool(N).AsBoolean;
-    N := Obj.Values['commands'];
-    if N is TJSONArray then
-      for I := 0 to TJSONArray(N).Count - 1 do
-        if TJSONArray(N).Items[I] is TJSONObject then
-        begin
-          Item := TJSONObject(TJSONArray(N).Items[I]);
-          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') then
-            Continue;
-          Cmd := Default(TManifestCommand);
-          Cmd.Id := Trim(TJSONString(Item.Values['id']).Value);
-          if Item.Values['key'] is TJSONString then
-            Cmd.Key := Trim(TJSONString(Item.Values['key']).Value);
-          ReadLocalized(Item.Values['label'], Cmd.LabelLocales, Cmd.LabelTexts);
-          Cmd.When := ReadCondition(Item.Values['when']);
-          SetLength(AManifest.Commands, Length(AManifest.Commands) + 1);
-          AManifest.Commands[High(AManifest.Commands)] := Cmd;
-        end;
-    N := Obj.Values['menuItems'];
-    if N is TJSONArray then
-      for I := 0 to TJSONArray(N).Count - 1 do
-        if TJSONArray(N).Items[I] is TJSONObject then
-        begin
-          Item := TJSONObject(TJSONArray(N).Items[I]);
-          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') then
-            Continue;
-          MItem := Default(TManifestMenuItem);
-          MItem.Id := Trim(TJSONString(Item.Values['id']).Value);
-          MItem.Priority := 100;
-          MItem.Parent := 'Plugins';
-          if (Item.Values['parent'] is TJSONString) and (Trim(TJSONString(Item.Values['parent']).Value) <> '') then
-            MItem.Parent := Trim(TJSONString(Item.Values['parent']).Value);
-          if Item.Values['priority'] is TJSONNumber then
-            MItem.Priority := TJSONNumber(Item.Values['priority']).AsInt;
-          ReadLocalized(Item.Values['caption'], MItem.CaptionLocales, MItem.CaptionTexts);
-          MItem.When := ReadCondition(Item.Values['when']);
-          SetLength(AManifest.MenuItems, Length(AManifest.MenuItems) + 1);
-          AManifest.MenuItems[High(AManifest.MenuItems)] := MItem;
-        end;
-    N := Obj.Values['driveItems'];
-    if N is TJSONArray then
-      for I := 0 to TJSONArray(N).Count - 1 do
-        if TJSONArray(N).Items[I] is TJSONObject then
-        begin
-          Item := TJSONObject(TJSONArray(N).Items[I]);
-          if not (Item.Values['id'] is TJSONString) or (Trim(TJSONString(Item.Values['id']).Value) = '') or
-             not (Item.Values['uri'] is TJSONString) then
-            Continue;
-          DItem := Default(TManifestDriveItem);
-          DItem.Id := Trim(TJSONString(Item.Values['id']).Value);
-          DItem.Uri := Trim(TJSONString(Item.Values['uri']).Value);
-          DItem.Priority := 100;
-          if Item.Values['priority'] is TJSONNumber then
-            DItem.Priority := TJSONNumber(Item.Values['priority']).AsInt;
-          ReadLocalized(Item.Values['caption'], DItem.CaptionLocales, DItem.CaptionTexts);
-          DItem.When := ReadCondition(Item.Values['when']);
-          SetLength(AManifest.DriveItems, Length(AManifest.DriveItems) + 1);
-          AManifest.DriveItems[High(AManifest.DriveItems)] := DItem;
-        end;
-    AManifest.DocumentExtensions := ReadTrimmedStrings(Obj.Values['documentExtensions'], True);
-    for I := 0 to High(AManifest.DocumentExtensions) do
-      AManifest.DocumentExtensions[I] := AManifest.DocumentExtensions[I].TrimLeft(['.']);
-    AManifest.Overrides := ReadTrimmedStrings(Obj.Values['overrides'], True);
-    N := Obj.Values['startup'];
-    AManifest.Startup := (N is TJSONBool) and TJSONBool(N).AsBoolean;
-    N := Obj.Values['startupWhen'];
-    if N is TJSONObject then
-    begin
-      AManifest.StartupWhen := ReadCondition(N);
-      AManifest.HasStartupWhen := True;
-    end;
-    N := Obj.Values['openRegistrations'];
-    AManifest.OpenRegistrations := (N is TJSONBool) and TJSONBool(N).AsBoolean;
-    N := Obj.Values['activateOn'];
-    if N is TJSONArray then
-      for TV in TJSONArray(N) do
-        if (TV is TJSONObject) and (TJSONObject(TV).Values['event'] is TJSONString) then
-        begin
-          Trigger := Default(TManifestTrigger);
-          Trigger.Event := LowerCase(Trim(TJSONString(TJSONObject(TV).Values['event']).Value));
-          if TJSONObject(TV).Values['dirHas'] is TJSONString then
-            Trigger.DirHas := Trim(TJSONString(TJSONObject(TV).Values['dirHas']).Value);
-          if Trigger.Event <> '' then
-          begin
-            SetLength(AManifest.ActivateOn, Length(AManifest.ActivateOn) + 1);
-            AManifest.ActivateOn[High(AManifest.ActivateOn)] := Trigger;
-          end;
-        end;
-    N := Obj.Values['wasi'];
-    AManifest.Wasi := (N is TJSONBool) and TJSONBool(N).AsBoolean;
-    N := Obj.Values['memoryMib'];
-    if N is TJSONNumber then
-      AManifest.MemoryMib := Max(0, Min(256, TJSONNumber(N).AsInt));
-    N := Obj.Values['keepLoaded'];
-    AManifest.KeepLoaded := (N is TJSONBool) and TJSONBool(N).AsBoolean;
-    N := Obj.Values['description'];
-    if N is TJSONString then
-    begin
-      SetLength(AManifest.DescriptionLocales, 1);
-      SetLength(AManifest.DescriptionTexts, 1);
-      AManifest.DescriptionLocales[0] := '';
-      AManifest.DescriptionTexts[0] := Trim(TJSONString(N).Value);
-    end
-    else if N is TJSONObject then
-      for Pair in TJSONObject(N) do
-        if Pair.JsonValue is TJSONString then
-        begin
-          SetLength(AManifest.DescriptionLocales, Length(AManifest.DescriptionLocales) + 1);
-          SetLength(AManifest.DescriptionTexts, Length(AManifest.DescriptionTexts) + 1);
-          AManifest.DescriptionLocales[High(AManifest.DescriptionLocales)] :=
-            LowerCase(Trim(Pair.JsonString.Value));
-          AManifest.DescriptionTexts[High(AManifest.DescriptionTexts)] :=
-            Trim(TJSONString(Pair.JsonValue).Value);
-        end;
-    N := Obj.Values['author'];
-    if N is TJSONString then
-      AManifest.Author := Trim(TJSONString(N).Value);
-    N := Obj.Values['homepage'];
-    if N is TJSONString then
-      AManifest.Homepage := Trim(TJSONString(N).Value);
-    N := Obj.Values['help'];
-    if N is TJSONString then
-      AManifest.Help := Trim(TJSONString(N).Value);
-    N := Obj.Values['resources'];
-    if N is TJSONNumber then
-      AManifest.ResourceVersion := TJSONNumber(N).AsInt;
-    AManifest.Permissions := ReadTrimmedStrings(Obj.Values['permissions'], True);
+    if not (Val is TJSONObject) then
+      Exit;
+    ReadManifestIdentity(TJSONObject(Val), AManifest);
+    ReadManifestContributions(TJSONObject(Val), AManifest);
+    ReadManifestRuntime(TJSONObject(Val), AManifest);
     Result := AManifest.Id <> '';
   finally
-    Obj.Free;
+    Val.Free;
   end;
 end;
 
