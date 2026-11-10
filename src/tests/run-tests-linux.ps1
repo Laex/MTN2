@@ -3,6 +3,7 @@
 #   ./src/tests/run-tests-linux.ps1                  # every group
 #   ./src/tests/run-tests-linux.ps1 -Group core,vfs  # some groups
 #   ./src/tests/run-tests-linux.ps1 -Test TestVfs*   # fixture units by name (wildcards)
+#   ./src/tests/run-tests-linux.ps1 -Jobs 1          # one group at a time (default: all at once)
 #
 # The fixtures are the Test*.pas units of src\tests\<group>, except those listed
 # in linux-excluded.txt (they test Windows-only code). For every group a runner
@@ -14,7 +15,9 @@ param(
     [string[]]$Test,
     [string]$Distro = 'Ubuntu-24.04',
     [string]$Sdk = '',
-    [int]$TimeoutSec = 600
+    [int]$TimeoutSec = 600,
+    # Groups compiled and run at the same time; 0 = all of them.
+    [int]$Jobs = 0
 )
 $ErrorActionPreference = 'Stop'
 $Group = @($Group | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
@@ -40,6 +43,7 @@ foreach ($Line in Get-Content (Join-Path $Tests 'linux-excluded.txt')) {
 
 $Libs = "$(Join-Path $Studio 'lib\linux64\release');$Sdk\usr\lib\x86_64-linux-gnu;$Sdk\lib\x86_64-linux-gnu;$Sdk\usr\lib\gcc\x86_64-linux-gnu\13"
 $Failed = @()
+$Planned = @()
 
 # Native plugin libraries the plugin tests load from the runner's folder.
 function Build-PluginLibrary([string]$Dpr, [string]$Units) {
@@ -83,36 +87,68 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         (($Fixtures | ForEach-Object { "  $_" }) -join ",`n") + ';', '', 'begin', '  RunRegisteredTests;', 'end.') |
         Set-Content $Dpr -Encoding UTF8
     $Units = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.logfilter;$Src\plugins\mtn.lua;$Src\plugins\mtn.csv;$Src\plugins\mtn.docview;$Src\plugins\mtn.pdf;$Src\plugins\mtn.git;$Src\plugins\mtn.net;$Src\plugins\mtn.winsys;$Src\plugins\mtn.winsys\Posix;$Src\plugins\mtn.docker;$Src\plugins\mtn.rclone;$Src\plugins\mtn.everything;$Src\plugins\mtn.jtree;$Src\plugins\mtn.meta;$Src\tests\common;$($Dir.FullName)$ExtraUnits;$Studio\source\DunitX"
-    $Dcu = Join-Path $Out "obj\$($Dir.Name)"
+    $Planned += [pscustomobject]@{ Name = $Dir.Name; Runner = $Name; Dpr = $Dpr; Units = $Units; Dir = $Dir.FullName }
+}
+
+# Each group has its own runner program, unit folder and report, so the groups
+# are compiled and run at the same time; the results are listed in group order.
+$Throttle = if ($Jobs -gt 0) { $Jobs } else { [Math]::Max($Planned.Count, 1) }
+$Indexed = for ($I = 0; $I -lt $Planned.Count; $I++) {
+    [pscustomobject]@{ Order = $I; Group = $Planned[$I] }
+}
+$Results = $Indexed | ForEach-Object -ThrottleLimit $Throttle -Parallel {
+    $G = $_.Group
+    $Studio = $using:Studio
+    $Sdk = $using:Sdk
+    $Libs = $using:Libs
+    $Out = $using:Out
+    $Exe = $using:Exe
+    $Distro = $using:Distro
+    $TimeoutSec = $using:TimeoutSec
+    $WasmtimeLib = $using:WasmtimeLib
+    $Name = $G.Runner
+    $Dcu = Join-Path $Out "obj\$($G.Name)"
     New-Item -ItemType Directory -Force $Dcu | Out-Null
-    $Result = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `
-        "-U$Units" "-N0$Dcu" "-E$Exe" $Dpr 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ("BUILD   {0}" -f $Dir.Name)
-        $Result | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 8 | ForEach-Object { Write-Host "        $_" }
-        $Failed += $Dir.Name
-        continue
-    }
-    $WslOut = '/mnt/' + $Exe.Substring(0, 1).ToLower() + $Exe.Substring(2).Replace('\', '/')
-    $WslDir = '/mnt/' + $Dir.FullName.Substring(0, 1).ToLower() + $Dir.FullName.Substring(2).Replace('\', '/')
-    $Xml = "$Exe\$Name.xml"
-    Remove-Item $Xml -ErrorAction SilentlyContinue
-    $WslWasmtime = if (Test-Path $WasmtimeLib) { '/mnt/' + $WasmtimeLib.Substring(0, 1).ToLower() + $WasmtimeLib.Substring(2).Replace('\', '/') } else { '' }
-    $Log = & wsl -d $Distro -- bash -c "cd '$WslDir' && MTN2_WASMTIME_DLL='$WslWasmtime' timeout $TimeoutSec '$WslOut/$Name' --hidebanner --consolemode:Quiet --exitbehavior:Continue --exclude:Manual,WindowsOnly --xmlfile:'$WslOut/$Name.xml' 2>&1"
-    $Code = $LASTEXITCODE
+    $Sw = [Diagnostics.Stopwatch]::StartNew()
+    $Status = 'PASS'
     $Counts = ''
-    if (Test-Path $Xml) {
-        $R = ([xml](Get-Content $Xml -Raw)).'test-results'
-        $Counts = "$($R.total) tests, $([int]$R.failures + [int]$R.errors) failed, $($R.'not-run') not run"
-    }
-    if ($Code -eq 0) {
-        Write-Host ("PASS    {0,-8} {1}" -f $Dir.Name, $Counts)
+    $Detail = @()
+    $Result = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `
+        "-U$($G.Units)" "-N0$Dcu" "-E$Exe" $G.Dpr 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $Status = 'BUILD'
+        $Detail = @($Result | Where-Object { $_ -match 'Error|Fatal' } | Select-Object -First 8)
     } else {
-        Write-Host ("FAIL    {0,-8} {1} (exit {2})" -f $Dir.Name, $Counts, $Code)
-        $At = [Array]::FindIndex([string[]]$Log, [Predicate[string]] { param($l) $l -match '^Failing Tests' })
-        $Shown = if ($At -ge 0) { $Log[$At..([Math]::Min($Log.Count - 1, $At + 40))] } else { $Log | Select-Object -Last 15 }
-        $Shown | Where-Object { $_.Trim() } | ForEach-Object { Write-Host "        $_" }
-        $Failed += $Dir.Name
+        $WslOut = '/mnt/' + $Exe.Substring(0, 1).ToLower() + $Exe.Substring(2).Replace('\', '/')
+        $WslDir = '/mnt/' + $G.Dir.Substring(0, 1).ToLower() + $G.Dir.Substring(2).Replace('\', '/')
+        $Xml = "$Exe\$Name.xml"
+        Remove-Item $Xml -ErrorAction SilentlyContinue
+        $WslWasmtime = if (Test-Path $WasmtimeLib) { '/mnt/' + $WasmtimeLib.Substring(0, 1).ToLower() + $WasmtimeLib.Substring(2).Replace('\', '/') } else { '' }
+        $Log = & wsl -d $Distro -- bash -c "cd '$WslDir' && MTN2_WASMTIME_DLL='$WslWasmtime' timeout $TimeoutSec '$WslOut/$Name' --hidebanner --consolemode:Quiet --exitbehavior:Continue --exclude:Manual,WindowsOnly --xmlfile:'$WslOut/$Name.xml' 2>&1"
+        $Code = $LASTEXITCODE
+        if (Test-Path $Xml) {
+            $R = ([xml](Get-Content $Xml -Raw)).'test-results'
+            $Counts = "$($R.total) tests, $([int]$R.failures + [int]$R.errors) failed, $($R.'not-run') not run"
+        }
+        if ($Code -ne 0) {
+            $Status = "FAIL (exit $Code)"
+            $At = [Array]::FindIndex([string[]]$Log, [Predicate[string]] { param($l) $l -match '^Failing Tests' })
+            $Detail = if ($At -ge 0) { @($Log[$At..([Math]::Min($Log.Count - 1, $At + 40))]) } else { @($Log | Select-Object -Last 15) }
+        }
+    }
+    [pscustomobject]@{
+        Order = $_.Order; Name = $G.Name; Status = $Status; Counts = $Counts; Detail = $Detail
+        Secs = [Math]::Round($Sw.Elapsed.TotalSeconds, 1)
+    }
+}
+
+foreach ($R in ($Results | Sort-Object Order)) {
+    if ($R.Status -eq 'PASS') {
+        Write-Host ("PASS    {0,-8} {1} ({2}s)" -f $R.Name, $R.Counts, $R.Secs)
+    } else {
+        Write-Host ("{0,-7} {1,-8} {2} ({3}s)" -f ($R.Status -replace ' .*$', ''), $R.Name, $R.Counts, $R.Secs)
+        $R.Detail | Where-Object { $_.Trim() } | ForEach-Object { Write-Host "        $_" }
+        $Failed += $R.Name
     }
 }
 if ($Failed) { Write-Host "Failed: $($Failed -join ', ')"; exit 1 }
