@@ -119,6 +119,7 @@ type
       AOverwriteMode: TJobOverwriteMode; APreserveTimestamps: Boolean;
       AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
       ARetryLimit: Integer = 0; const AExcludeMask: string = '');
+    procedure SetSingleTarget(const ATargetUri: string);
     procedure ConfirmJob;
     procedure BackgroundJob;
     /// <summary>The Panel button of a plugin job's progress dialog: the job goes on
@@ -954,6 +955,17 @@ begin
   if Job <> nil then
     Job.ApplyCopyMoveOptions(ADestDirURI, AOverwriteMode, APreserveTimestamps,
       AOnlyNewer, AFollowSymlinks, ARetryLimit, AExcludeMask);
+end;
+
+procedure TPanelJobList.SetSingleTarget(const ATargetUri: string);
+var
+  Job: TPanelJobController;
+begin
+  Job := ConfirmingJob;
+  if Job = nil then
+    Job := ActiveJob;
+  if Job <> nil then
+    Job.SetSingleTarget(ATargetUri);
 end;
 
 procedure TPanelJobList.ConfirmJob;

@@ -90,6 +90,10 @@ function JobConfirmDestUri(AKind: TPanelJobKind; const ADestPath,
 /// a plain local folder); anything else - an absolute path, a URI, a base that
 /// is not a local folder - comes back unchanged.</summary>
 function JobResolveRelativeDest(const ADestPath, ABaseDirUri: string): string;
+/// <summary>True when the destination typed for a one-item Copy / Move names
+/// the new item rather than a folder: a local path without a closing
+/// separator. The caller still checks that no folder of that name exists.</summary>
+function JobDestTextIsNewName(const ADestPath: string; ASourceCount: Integer): Boolean;
 /// <summary>The extension (with the dot) of an archive type of the Pack dialog.</summary>
 function JobPackArchiveExt(ATypeIdx: Integer): string;
 /// <summary>The 7-Zip level (-mx) of an item of the Pack dialog's compression
@@ -302,6 +306,15 @@ begin
   if Base = '' then
     Exit;
   Result := TPath.Combine(Base, Dest);
+end;
+
+function JobDestTextIsNewName(const ADestPath: string; ASourceCount: Integer): Boolean;
+var
+  Dest: string;
+begin
+  Dest := Trim(ADestPath);
+  Result := (ASourceCount = 1) and (Dest <> '') and (Pos('://', Dest) = 0) and
+    not CharInSet(Dest[Length(Dest)], ['\', '/']);
 end;
 
 function JobConfirmDestText(AKind: TPanelJobKind; const ADestDirURI: string): string;
@@ -541,6 +554,17 @@ begin
   FJobs.ApplyCopyMoveOptions(DestURI, JobOverwriteModeFromIndex(ExistingIdx),
     AFields.PreserveTs, AFields.OnlyNewer, AFields.FollowSymlinks,
     JobRetryLimitFromIndex(AFields.RetryIdx), ExcludeMask);
+  // One item to "name" (no closing separator, no such folder): the copy or
+  // move is made under that name, as in a file manager's rename-copy.
+  if (FJobs.Kind in [pjkCopy, pjkMove]) and
+     JobDestTextIsNewName(DestPath, Length(FJobs.State.Sources)) and
+     (FileUriToPath(DestURI) <> '') and not HasArchiveChain(DestURI) and
+     not TDirectory.Exists(FileUriToPath(DestURI)) and
+     not IsSevenZipArchivePath(FileUriToPath(DestURI)) and
+     not SameText(DestURI, FJobs.State.Sources[0]) then
+    FJobs.SetSingleTarget(DestURI)
+  else
+    FJobs.SetSingleTarget('');
   if FJobs.Kind <> pjkPack then
     Exit;
   ArchivePath := FileUriToPath(DestURI);

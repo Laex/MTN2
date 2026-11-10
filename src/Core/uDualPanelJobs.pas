@@ -204,6 +204,10 @@ type
       AOverwriteMode: TJobOverwriteMode; APreserveTimestamps: Boolean;
       AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
       ARetryLimit: Integer = 0; const AExcludeMask: string = '');
+    /// <summary>In the confirm phase of a one-item job: the item goes to
+    /// exactly ATargetUri (a new name) instead of into the destination folder.
+    /// An empty URI goes back to the folder.</summary>
+    procedure SetSingleTarget(const ATargetUri: string);
     procedure ConfirmJob;
     procedure QueueAfterConfirm;
     procedure StartIfQueued;
@@ -947,6 +951,21 @@ begin
   FJob.RetryLeft := FJob.RetryLimit;
   FJob.ExcludeMask := Trim(AExcludeMask);
   ResetExcludeMasks;
+end;
+
+procedure TPanelJobController.SetSingleTarget(const ATargetUri: string);
+begin
+  if (FJob.Phase <> pjpConfirm) or (Length(FJob.Sources) <> 1) then
+    Exit;
+  if ATargetUri = '' then
+  begin
+    SetLength(FJob.DestURIs, 0);
+    FJob.OriginDstDirURI := JobOriginDstDir(FJob.DestDirURI, nil);
+    Exit;
+  end;
+  FJob.DestURIs := [ATargetUri];
+  FJob.DestDirURI := ParentFileUri(ATargetUri);
+  FJob.OriginDstDirURI := JobOriginDstDir('', FJob.DestURIs);
 end;
 
 procedure TPanelJobController.BeginJobPairs(const ASources, ADestURIs: TArray<string>;

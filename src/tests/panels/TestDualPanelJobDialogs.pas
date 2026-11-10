@@ -15,6 +15,8 @@ type
     [Test] procedure TestPanelFoldersAreSame;
     [Test] procedure TestConfirmIntoSameFolderStaysOpen;
     [Test] procedure TestPackIntoRenamedSevenZip;
+    [Test] procedure TestTypedNameMakesANewItem;
+    [Test] procedure TestSingleTargetReplacesTheFolder;
     [Test] [Category('WindowsOnly')] procedure TestSearchRootAndSync;
   end;
 
@@ -82,6 +84,49 @@ begin
     Controller.Free;
     Jobs.Free;
     Host.Free;
+  end;
+end;
+
+procedure TestTypedNameMakesANewItem;
+begin
+  Assert.IsTrue(JobDestTextIsNewName('copy.txt', 1), 'a bare name');
+  Assert.IsTrue(JobDestTextIsNewName('  D:\out\copy.txt ', 1), 'a path without a closing separator');
+  Assert.IsFalse(JobDestTextIsNewName('D:\out\', 1), 'a closing backslash names a folder');
+  Assert.IsFalse(JobDestTextIsNewName('D:/out/', 1), 'a closing slash names a folder');
+  Assert.IsFalse(JobDestTextIsNewName('', 1), 'an empty field');
+  Assert.IsFalse(JobDestTextIsNewName('tmp:///', 1), 'a URI is never a bare name');
+  Assert.IsFalse(JobDestTextIsNewName('copy.txt', 2), 'several items go into a folder');
+end;
+
+procedure TestSingleTargetReplacesTheFolder;
+var
+  Jobs: TPanelJobList;
+  Dir, Target: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'MTN2_SingleTarget');
+  Target := PathToFileUri(TPath.Combine(Dir, 'b.txt'));
+  Jobs := TPanelJobList.Create(nil, nil,
+    procedure begin end,
+    procedure(const ATitle, AMessage: string) begin end,
+    procedure(const APath, ANewLine, AExistingLine: string) begin end,
+    procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
+      AOfferPermanent: Boolean) begin end,
+    procedure(const AHeadline, APath, AErrorLine: string) begin end,
+    procedure(ASucceeded: Boolean) begin end,
+    procedure(const AOriginSrc, AOriginDst: string) begin end,
+    procedure(const AOriginSrc: string) begin end);
+  try
+    Jobs.BeginJob(TArray<string>.Create(PathToFileUri(TPath.Combine(Dir, 'a.txt'))),
+      PathToFileUri(TPath.Combine(Dir, 'other')), pjkCopy);
+    Assert.IsTrue(Jobs.Phase = pjpConfirm, 'the confirm dialog is up');
+    Jobs.SetSingleTarget(Target);
+    Assert.IsTrue(Length(Jobs.State.DestURIs) = 1, 'the item has an exact target');
+    Assert.AreEqual(Target, Jobs.State.DestURIs[0], 'the target is the typed name');
+    Assert.AreEqual(Dir, FileUriToPath(Jobs.State.DestDirURI), 'the folder is the target''s parent');
+    Jobs.SetSingleTarget('');
+    Assert.IsTrue(Length(Jobs.State.DestURIs) = 0, 'an empty target goes back to the folder');
+  finally
+    Jobs.Free;
   end;
 end;
 
@@ -359,6 +404,16 @@ end;
 procedure TTestDualPanelJobDialogs.TestPanelFoldersAreSame;
 begin
   TestDualPanelJobDialogs.TestPanelFoldersAreSame;
+end;
+
+procedure TTestDualPanelJobDialogs.TestTypedNameMakesANewItem;
+begin
+  TestDualPanelJobDialogs.TestTypedNameMakesANewItem;
+end;
+
+procedure TTestDualPanelJobDialogs.TestSingleTargetReplacesTheFolder;
+begin
+  TestDualPanelJobDialogs.TestSingleTargetReplacesTheFolder;
 end;
 
 procedure TTestDualPanelJobDialogs.TestConfirmIntoSameFolderStaysOpen;

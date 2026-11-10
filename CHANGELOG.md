@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Changed
+
+- In the F5/F6 dialog, for one file or folder a path without a closing slash that is not an existing folder names the new item: type a new name on F5 to get a copy in the same folder (F6 moves and renames). A path with a closing slash still means a folder.
+
 ## Dev v0.5.6.8 – 2026-11-10
 
 ### New
