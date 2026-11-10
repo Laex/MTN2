@@ -201,8 +201,10 @@ begin
     if Rgt > ClientRight then
       Rgt := ClientRight;
     // Text that is wider than its box (a longer translation) stops one cell
-    // short of the frame border instead of touching it.
+    // short of the frame border instead of touching it. A separator line
+    // reaches the border on purpose, where it joins the frame.
     if (C.Kind in [dckLabel, dckCheckbox, dckRadio, dckDropDown]) and
+       not ((C.Kind = dckLabel) and IsHRuleText(C.Text)) and
        (Rgt >= ClientRight) and (L < ClientRight) then
       Rgt := ClientRight - 1;
     if Bot > ClientBottom then

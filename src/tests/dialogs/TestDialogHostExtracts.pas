@@ -171,7 +171,8 @@ var
   Frame: TRectI;
   Lay: TDialogV2Layout;
 begin
-  SetLength(Controls, 3);
+  SetLength(Controls, 4);
+  Controls[3] := AtRow(dckLabel, 'rule', 3, 1, nil, StringOfChar(#$2500, 40));
   Controls[0] := AtRow(dckCheckbox, 'wide', 0, 1, nil, 'A checkbox caption much longer than the box');
   Controls[1] := AtRow(dckLabel, 'note', 1, 1, nil, 'A label caption much longer than the box');
   Controls[2] := AtRow(dckInput, 'edit', 2, 1, nil, '');
@@ -181,6 +182,7 @@ begin
   Assert.AreEqual(19, Lay.Bounds[0].Right, 'a checkbox keeps a blank cell before the border');
   Assert.AreEqual(19, Lay.Bounds[1].Right, 'a label keeps a blank cell before the border');
   Assert.AreEqual(20, Lay.Bounds[2].Right, 'an input still reaches the client edge');
+  Assert.AreEqual(20, Lay.Bounds[3].Right, 'a separator line still joins the frame');
 end;
 
 function BlankGrid(AWidth, AHeight: Integer): TTerminalGrid;

@@ -73,7 +73,7 @@ If the theme of the saved session is not found, the program says so and uses the
   - `size>1G age>90d -R` – big, old and writable: all three must hold (candidates for cleanup).
   - A folder has no size, so a group with a size term never matches folders; a condition with only attributes or age works for folders too. Groups are checked top to bottom and the first match wins, so put the narrow group (`*.log` + `size>100M`) above the general one (`*.log`).
 - **Keymap...** – view and change keys.
-<!--plugins-->- **Plugins...** – installed plugins. On the first run every plugin is switched off.
+<!--plugins-->- **Plugins...** – installed plugins. Every plugin is on by default.
 
 **Controls**
 - **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it.

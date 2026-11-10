@@ -106,7 +106,6 @@ const
   cDisabledPluginsFile = 'disabled-plugins.json';
   cPluginOrderFile = 'plugin-order.json';
   cPermissionsFile = 'plugin-permissions.json';
-  cSessionFile = 'session.json';
 
 var
   GPluginsDir: string;
@@ -132,19 +131,9 @@ begin
     Result := PluginLoader.IsPluginDisabled(AId);
 end;
 
-/// <summary>True on the first run: neither the list of switched-off plugins nor the
-/// session file exists in the settings folder, so the program has never been used
-/// with these settings.</summary>
-function IsFirstPluginRun: Boolean;
-begin
-  Result := not TFile.Exists(GetConfigFilePath(cDisabledPluginsFile)) and
-    not TFile.Exists(GetConfigFilePath(cSessionFile));
-end;
-
 procedure StartPluginHost(const APluginsDir: string);
 var
   Allowed, Disabled, Order: TArray<string>;
-  Dir: string;
 begin
   GPluginsDir := ExcludeTrailingPathDelimiter(APluginsDir);
   MenuRegistry.SetTitleResolver(
@@ -185,19 +174,8 @@ begin
   // Plugins the user trusts to replace built-in handlers; must be set
   // before cataloguing, which loads those plugins right away.
   TryReadOverrideAllowList(GPluginsDir, Allowed);
-  // A fresh install starts with every plugin switched off; the user turns on the
-  // ones wanted in Options - Plugins. The list is written at once, so it is the
-  // marker that the next start is not a first run.
-  if IsFirstPluginRun then
-  begin
-    SetLength(Disabled, 0);
-    if TDirectory.Exists(GPluginsDir) then
-      for Dir in TDirectory.GetDirectories(GPluginsDir, '*', TSearchOption.soTopDirectoryOnly) do
-        Disabled := Disabled + [TPath.GetFileName(Dir)];
-    WriteDisabledPlugins(GetConfigFilePath(cDisabledPluginsFile), Disabled);
-  end
-  else
-    TryReadDisabledPlugins(GetConfigFilePath(cDisabledPluginsFile), Disabled);
+  // Every plugin is on until the user switches it off in Options - Plugins.
+  TryReadDisabledPlugins(GetConfigFilePath(cDisabledPluginsFile), Disabled);
   PluginLoader.SetDisabledPlugins(Disabled);
   TryReadPluginOrder(GetConfigFilePath(cPluginOrderFile), Order);
   PluginLoader.SetPluginOrder(Order);

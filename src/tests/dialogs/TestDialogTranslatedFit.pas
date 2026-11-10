@@ -21,6 +21,7 @@ type
     [Test] procedure TestLabelPushesItsFields;
     [Test] procedure TestLonelyLineGrowsInPlace;
     [Test] procedure TestGrowthMovesOnlyItsNeighbour;
+    [Test] procedure TestTextAuthoredToTheEdgeKeepsAClearCell;
     [Test] procedure TestFittingDialogKeepsWidth;
     [Test] procedure TestButtonRowPackedAndCentered;
     [Test] procedure TestStackedButtonsKeepOneColumn;
@@ -165,6 +166,23 @@ begin
   Assert.AreEqual(20, ById(D, 'retry').Col, 'a field whose label fits stays');
   Assert.AreEqual(1 + Length('Keep all timestamps and much more') + 4 + 4, ById(D, 'newer').Col,
     'the neighbour of the grown checkbox moves just past it, authored gap kept');
+end;
+
+procedure TTestDialogTranslatedFit.TestTextAuthoredToTheEdgeKeepsAClearCell;
+var
+  D: TDialogDeclaration;
+begin
+  // The box reaches the last client cell and the translation fills it.
+  D := Dialog(40, [
+    Ctl(dckLabel, 'sub', StringOfChar('s', 38), 0, 0, 38),
+    Ctl(dckCheckbox, 'chk', StringOfChar('c', 34), 0, 1, 38)]);
+  FitDialogToTranslatedText(D);
+  Assert.AreEqual(41, D.Width, 'the dialog grows by the one cell the text needs');
+  Assert.AreEqual(39, ById(D, 'sub').BoxW + ById(D, 'sub').Col, 'the box stretches with the dialog');
+
+  D := Dialog(40, [Ctl(dckLabel, 'sub', 'short', 0, 0, 38)]);
+  FitDialogToTranslatedText(D);
+  Assert.AreEqual(40, D.Width, 'a short caption in a full-width box does not widen the dialog');
 end;
 
 procedure TTestDialogTranslatedFit.TestFittingDialogKeepsWidth;

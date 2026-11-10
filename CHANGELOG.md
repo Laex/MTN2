@@ -6,9 +6,13 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Changed
+
+- On the first run all plugins are switched on instead of off; turn off the ones that are not needed in Options → Plugins. Existing installations keep their choice.
+
 ### Fixed
 
-- In the Font / Display dialog the right column no longer touches the window border: a checkbox, label or dropdown that is wider than its box now stops one cell short of the frame, and the longer Russian and German captions were shortened.
+- In the Font / Display dialog the right column no longer touches the window border: a checkbox, label or dropdown that is wider than its box now stops one cell short of the frame, and the longer Russian and German captions were shortened. Dialogs in other languages also widen by that cell when a caption would otherwise touch the border (the About dialog in Russian, for one).
 
 ## v0.5.6 – 2026-11-09
 

@@ -3,7 +3,7 @@ unit TestSevenZipDllWarning;
 { The startup warning about a missing archive engine: HostSevenZipDllMissing is
   True only when the mtn.7z plugin folder exists and no engine is found (7z.dll
   in it; on POSIX also a 7-Zip program in the search path). Also the first
-  start of the plugin host: with fresh settings every plugin is switched off. }
+  start of the plugin host: with fresh settings every plugin is switched on. }
 
 interface
 
@@ -15,7 +15,7 @@ type
   TTestSevenZipDllWarning = class
   public
     [Test] procedure MissingOnlyWhenPluginFolderLacksDll;
-    [Test] procedure FreshSettingsSwitchEveryPluginOff;
+    [Test] procedure FreshSettingsKeepEveryPluginOn;
     [Test] procedure ExistingSettingsKeepPluginsOn;
     [Test] procedure OffPluginsNeedNoDllAndAreReported;
   end;
@@ -64,10 +64,9 @@ begin
     TDirectory.CreateDirectory(TPath.Combine(Result, Id));
 end;
 
-procedure TTestSevenZipDllWarning.FreshSettingsSwitchEveryPluginOff;
+procedure TTestSevenZipDllWarning.FreshSettingsKeepEveryPluginOn;
 var
   Root, Cfg, Prev: string;
-  Ids: TArray<string>;
 begin
   Prev := GetConfigDirectory;
   Root := MakeRoot(['mtn.a', 'mtn.b']);
@@ -75,12 +74,11 @@ begin
   try
     SetConfigDirectoryOverride(Cfg);
     StartPluginHost(Root);
-    Assert.IsTrue(TryReadDisabledPlugins(TPath.Combine(Cfg, 'disabled-plugins.json'), Ids),
-      'the list is written at once');
-    Assert.IsTrue(Length(Ids) = 2, 'both plugins are on it');
-    Assert.IsTrue(Pos('[ ]', HostPluginRows[0]) > 0, 'and shown as switched off');
+    Assert.IsTrue(Pos('[x]', HostPluginRows[0]) > 0, 'the first plugin starts on');
+    Assert.IsTrue(Pos('[x]', HostPluginRows[1]) > 0, 'the second plugin starts on');
+    Assert.IsFalse(TFile.Exists(TPath.Combine(Cfg, 'disabled-plugins.json')), 'nothing is written');
     StopPluginHost;
-    // A second start reads the list instead of switching everything off again.
+    // A later start reads the list of switched-off plugins.
     TFile.WriteAllText(TPath.Combine(Cfg, 'disabled-plugins.json'), '{"disabled":["mtn.a"]}', TEncoding.UTF8);
     StartPluginHost(Root);
     Assert.IsTrue(Pos('[ ]', HostPluginRows[0]) > 0, 'mtn.a stays off');
@@ -126,8 +124,10 @@ begin
   Cfg := TPath.Combine(TPath.GetTempPath, 'mtn2-firstrun-cfg-' + TPath.GetGUIDFileName(False));
   try
     SetConfigDirectoryOverride(Cfg);
+    TDirectory.CreateDirectory(Cfg);
+    TFile.WriteAllText(TPath.Combine(Cfg, 'disabled-plugins.json'), '{"disabled":["mtn.7z"]}', TEncoding.UTF8);
     StartPluginHost(Root);
-    Assert.IsTrue(HostAllPluginsOff, 'a fresh start: every plugin is off');
+    Assert.IsTrue(HostAllPluginsOff, 'every plugin is on the switched-off list');
     Assert.IsFalse(HostSevenZipDllMissing, 'no warning about a dll of a plugin that is off');
     StopPluginHost;
     TFile.WriteAllText(TPath.Combine(Cfg, 'disabled-plugins.json'), '{"disabled":[]}', TEncoding.UTF8);

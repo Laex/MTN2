@@ -73,7 +73,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
   - `size>1G age>90d -R` – groß, alt und beschreibbar: alle drei Bedingungen müssen zutreffen (Kandidaten zum Aufräumen).
   - Ein Ordner hat keine Größe, daher trifft eine Gruppe mit Größenterm nie auf Ordner zu; Bedingungen nur mit Attributen oder Alter gelten auch für Ordner. Die Gruppen werden von oben nach unten geprüft, die erste passende gewinnt: die engere Gruppe (`*.log` + `size>100M`) gehört über die allgemeine (`*.log`).
 - **Tastenbelegung...** – Tasten ansehen und ändern.
-<!--plugins-->- **Plugins...** – installierte Plugins. Beim ersten Start sind alle Plugins ausgeschaltet.
+<!--plugins-->- **Plugins...** – installierte Plugins. Standardmäßig sind alle Plugins eingeschaltet.
 
 **Bedienung**
 - **Leertaste** auf einer Zeile schaltet das Plugin aus oder ein (`[x]` ist ein, `[ ]` ist aus); die Wahl gilt mit **OK** und bleibt zwischen den Starts erhalten, **Abbrechen** verwirft sie.

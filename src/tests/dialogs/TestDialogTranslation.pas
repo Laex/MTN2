@@ -16,6 +16,7 @@ type
   public
     [TearDown] procedure TearDown;
     [Test] procedure TestEveryCaptionHasId;
+    [Test] procedure TestTranslatedCaptionsStayInsideTheFrame;
     [Test] procedure TestDropDownItems;
     [Test] procedure TestAlignedHeaderKeepsInputs;
   end;
@@ -25,7 +26,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
   System.RegularExpressions,
-  uStrings, uDialogTypes, uDialogResources, uDialogHost;
+  uStrings, uCharWidth, uThemeTypes, uDialogTypes, uDialogResources, uDialogHost;
 
 function IndexOfId(const D: TDialogDeclaration; const AId: string): Integer;
 begin
@@ -89,6 +90,80 @@ begin
     end;
   end;
   Assert.IsTrue(Bad = '', 'captions without an id (not translatable):' + Bad);
+end;
+
+// Every shipped dialog in every translation: a caption fits its box and no
+// text control reaches the cell next to the frame.
+procedure TTestDialogTranslation.TestTranslatedCaptionsStayInsideTheFrame;
+const
+  cLocales: array[0..2] of string = ('ru', 'de', 'zh');
+var
+  F, Loc, Bad, Name: string;
+  D: TDialogDeclaration;
+  C: TDialogControl;
+  N, Need: Integer;
+
+  function IsRule(const AText: string): Boolean;
+  var
+    I: Integer;
+  begin
+    Result := AText <> '';
+    for I := 1 to Length(AText) do
+      if not ((AText[I] = '-') or (AText[I] = '=') or (AText[I] = '_') or
+         (Ord(AText[I]) = $2500) or (Ord(AText[I]) = $2501) or (Ord(AText[I]) = $2550)) then
+        Exit(False);
+  end;
+
+  // Cells the control's own text needs; a drop-down has no caption of its own.
+  function CellsNeeded: Integer;
+  begin
+    Result := 0;
+    case C.Kind of
+      dckCheckbox, dckRadio:
+        Result := TextDisplayWidth(StripHotKeyMarker(C.Text)) + 4;
+      dckLabel:
+        if (C.BoxH <= 1) and not IsRule(C.Text) then
+          Result := TextDisplayWidth(C.Text);
+      dckDropDown:
+        Result := C.BoxW;
+    end;
+  end;
+
+  procedure Note(const AWhat: string);
+  begin
+    Bad := Bad + sLineBreak + Loc + ' ' + Name + ': ' + C.Id + ' ' + AWhat;
+  end;
+
+begin
+  Bad := '';
+  N := 0;
+  for Loc in cLocales do
+  begin
+    SetLocale(Loc);
+    // Runner working dir is src\tests\dialogs.
+    for F in TDirectory.GetFiles(TPath.GetFullPath('../../dialogs'), '*.json',
+      TSearchOption.soAllDirectories) do
+    begin
+      Name := 'DIALOG_' + UpperCase(TPath.GetFileNameWithoutExtension(F));
+      if not TryLoadDialogResource(Name, D) or not IsDialogProtocolV2(D.Version) or
+         D.NoAutoLayout then
+        Continue;
+      Inc(N);
+      for C in D.Controls do
+      begin
+        Need := CellsNeeded;
+        if Need = 0 then
+          Continue;
+        if Need > C.BoxW then
+          Note(Format('caption needs %d cells, box is %d', [Need, C.BoxW]))
+        else if C.Col + Need > D.Width - 3 then
+          Note(Format('touches the frame (col %d + %d cells, dialog %d)', [C.Col, Need, D.Width]));
+      end;
+    end;
+  end;
+  SetLocale('');
+  Assert.IsTrue(N >= 60, 'dialogs loaded: ' + IntToStr(N));
+  Assert.IsTrue(Bad = '', 'captions outside their box or against the frame:' + Bad);
 end;
 
 procedure TTestDialogTranslation.TestDropDownItems;

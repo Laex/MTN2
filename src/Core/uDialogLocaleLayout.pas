@@ -600,6 +600,10 @@ begin
       NewClient := Max(NewClient, NewCol[I] + NewW[I] + Inset[I])
     else
       NewClient := Max(NewClient, NewCol[I] + NewW[I] + 1);
+    // The text itself never touches the frame, even when the box was
+    // authored right up to it.
+    if (ADecl.Controls[I].Kind in [dckLabel, dckCheckbox, dckRadio]) and not Rule[I] then
+      NewClient := Max(NewClient, NewCol[I] + CaptionCells(ADecl.Controls[I]) + 1);
   end;
   NewClient := Max(NewClient, PackButtonRows(ADecl));
   NewClient := Max(NewClient, TitleMinWidth(ADecl.Title) - 2);
