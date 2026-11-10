@@ -160,11 +160,15 @@ jobs:
           if ($env:DEV_VERSION) { ./src/tools/package-release.ps1 -Version $env:DEV_VERSION -RequireWasmtime -Require7z -RequireCurl -RequireLua }
           else { ./src/tools/package-release.ps1 -Version "ci-${{ github.sha }}" }
 
+      # A dev build is published as a release below; the artifact is for
+      # checked-only runs (pull requests). The zips are already compressed.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: env.DEV_VERSION == ''
         with:
           name: MTN2-win64
           path: dist/*.zip
           retention-days: 3
+          compression-level: 0
 
       - name: Linux build, tests and package
         # The terminal program for Linux: needs the Linux SDK and WSL on the
@@ -179,16 +183,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Linux tests failed ($LASTEXITCODE)" }
           # Packages are only published with dev builds.
           if ($env:DEV_VERSION) { ./src/tools/package-linux.ps1 -Version $env:DEV_VERSION }
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: ${{ vars.LINUX_BUILD == 'true' && env.DEV_VERSION != '' }}
-        with:
-          name: MTN2-linux-x64
-          path: |
-            dist/*-linux-x64.tar.gz
-            dist/*-linux-x64.deb
-            dist/*-linux-x64.rpm
-          retention-days: 3
 
       - name: Check packages
         if: env.DEV_VERSION != ''
