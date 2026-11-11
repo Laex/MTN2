@@ -33,7 +33,7 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils, System.JSON, System.Math,
-  uVfsTypes, uSharkSaver,
+  uVfsTypes, uScreenSaver,
   uDualPanelTypes,
   uPanelColumns, uListExport,
   uConfigLocation,

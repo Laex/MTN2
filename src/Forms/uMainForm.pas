@@ -12,7 +12,7 @@ uses
   uEditorWindow, uConsoleWindow, uMdiCompositor, uThemeRegistry, uThemeSpec, uThemeController, uKeyRouting,
   uTerminalRenderer, uSession, uWinFileDragDrop, uKeymap, uShellProfiles, uShellAssoc,
   uBaseConsoleWindow, uPluginHost, uPluginPanelServices, uVfsTypes, uColorCoding, uPanelColumns, uPluginColumns, uListExport,
-  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uCliInfo, uToast, uSharkSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
+  uDisplaySettings, uConsoleSettings, uEditorSearch, uSettingsTransfer, uConfigMode, uElevation, uStrings, uUpdateController, uCliInfo, uToast, uScreenSaver, uFrameStats, uThemeDrawing, uChromeRows, uDualPanelDrag,
   uDialogHost, uConsoleLaunch, uWindowChrome, uNotice, uHiddenDialogs, uPluginUi, uPluginChrome,
   uPluginSurface, uPluginServices, uTaskbarProgress;
 
@@ -1667,6 +1667,7 @@ begin
   Result.DirSlash := GDirSlash;
   Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
+  Result.SaverId := GSaverId;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
@@ -1721,11 +1722,13 @@ begin
   FSession.NdnFooter := ASettings.NdnFooter;
   GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
+  FSession.SaverId := ASettings.SaverId;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GSaverMinutes := ASettings.SaverMinutes;
+  GSaverId := ASettings.SaverId;
   GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
@@ -1874,6 +1877,7 @@ begin
   GDirSlash := Sess.DirSlash;
   GNdnFooter := Sess.NdnFooter;
   GSaverMinutes := Sess.SaverMinutes;
+  GSaverId := Sess.SaverId;
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
@@ -1997,6 +2001,7 @@ begin
   Sess.DirSlash := GDirSlash;
   Sess.NdnFooter := GNdnFooter;
   Sess.SaverMinutes := GSaverMinutes;
+  Sess.SaverId := GSaverId;
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
@@ -2895,6 +2900,7 @@ begin
   FSession.DirSlash := True;
   FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
+  FSession.SaverId := cDefaultSaverId;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;

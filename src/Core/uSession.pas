@@ -82,8 +82,10 @@ type
     DirSlash: Boolean;
     /// <summary>uDisplaySettings.NdnFooter.</summary>
     NdnFooter: Boolean;
-    /// <summary>Idle minutes before the screensaver (uSharkSaver.GSaverMinutes); 0 = off.</summary>
+    /// <summary>Idle minutes before the screensaver (uScreenSaver.GSaverMinutes); 0 = off.</summary>
     SaverMinutes: Integer;
+    /// <summary>Id of the chosen screensaver picture (uScreenSaver.GSaverId).</summary>
+    SaverId: string;
     CaretUnderline: Boolean;
     /// <summary>uTerminalTypes.GEdgeBorders.</summary>
     EdgeBorders: Boolean;
@@ -149,7 +151,7 @@ implementation
 
 uses
   System.Classes, System.Generics.Collections, System.IOUtils, System.JSON,
-  System.Math, uConfigLocation, uDisplaySettings, uConsoleSettings;
+  System.Math, uConfigLocation, uDisplaySettings, uConsoleSettings, uScreenSaver;
 
 function DefaultSessionFilePath: string;
 begin
@@ -684,6 +686,7 @@ begin
       Root.AddPair('dirSlash', TJSONBool.Create(ASession.DirSlash));
       Root.AddPair('ndnFooter', TJSONBool.Create(ASession.NdnFooter));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
+      Root.AddPair('saverId', ASession.SaverId);
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
       Root.AddPair('edgeBorders', TJSONBool.Create(ASession.EdgeBorders));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
@@ -781,6 +784,7 @@ begin
   ASession.DirSlash := True;
   ASession.NdnFooter := True;
   ASession.SaverMinutes := 5;
+  ASession.SaverId := cDefaultSaverId;
   ASession.CaretUnderline := False;
   ASession.EdgeBorders := True;
   ASession.PassiveCursor := True;
@@ -898,6 +902,7 @@ begin
       ASession.DirSlash := JsonBool(Root, 'dirSlash', True);
       ASession.NdnFooter := JsonBool(Root, 'ndnFooter', True);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
+      ASession.SaverId := JsonStr(Root, 'saverId', cDefaultSaverId);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
       ASession.EdgeBorders := JsonBool(Root, 'edgeBorders', True);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);

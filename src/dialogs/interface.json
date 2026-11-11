@@ -289,6 +289,18 @@
       "height": 1
     },
     {
+      "type": "dropdown",
+      "id": "saver_effect",
+      "selected": 0,
+      "items": [
+        "Sharks"
+      ],
+      "col": 34,
+      "row": 7,
+      "width": 24,
+      "height": 1
+    },
+    {
       "type": "checkbox",
       "id": "dir_slash",
       "text": "Show a slash after directory names",

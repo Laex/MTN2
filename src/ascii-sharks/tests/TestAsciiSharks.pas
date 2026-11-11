@@ -69,7 +69,7 @@ implementation
 
 uses
   System.SysUtils, System.Math, System.UITypes, uTerminalTypes, uSharkMath, uSharkSpecies,
-  uSharkShapes, uSharkWorld, uSharkRender, uSharkSaver;
+  uSharkShapes, uSharkWorld, uSharkRender, uSharkSaver, uScreenSaver;
 
 const
   cBlack = TAlphaColor($FF000000);
@@ -516,11 +516,11 @@ end;
 
 procedure TTestSharkSaver.InputStopsTheSharksAndIsUsedUp;
 var
-  Saver: TSharkSaver;
+  Saver: TScreenSaver;
   Changes: Integer;
 begin
   Changes := 0;
-  Saver := TSharkSaver.Create(procedure begin Inc(Changes); end);
+  Saver := TScreenSaver.Create(procedure begin Inc(Changes); end);
   try
     Assert.IsFalse(Saver.Wake, 'nothing to stop: the input is not used up');
     Saver.Start;
@@ -536,9 +536,9 @@ end;
 
 procedure TTestSharkSaver.MovementRightAfterTheStartDoesNotStopThem;
 var
-  Saver: TSharkSaver;
+  Saver: TScreenSaver;
 begin
-  Saver := TSharkSaver.Create(nil);
+  Saver := TScreenSaver.Create(nil);
   try
     Saver.Start;
     Assert.IsTrue(Saver.WakeByMove, 'the pointer that clicked is still settling');
@@ -553,11 +553,11 @@ end;
 
 procedure TTestSharkSaver.ToggleStartsAndStopsAndDrawsBlack;
 var
-  Saver: TSharkSaver;
+  Saver: TScreenSaver;
   Grid: TTerminalGrid;
   X, Y, Changed, Black: Integer;
 begin
-  Saver := TSharkSaver.Create(nil);
+  Saver := TScreenSaver.Create(nil);
   try
     Grid := NewGrid(100, 30);
     Saver.Draw(Grid, 100, 30);
@@ -585,11 +585,11 @@ end;
 
 procedure TTestSharkSaver.ResizeWhileSwimmingKeepsDrawing;
 var
-  Saver: TSharkSaver;
+  Saver: TScreenSaver;
   Grid: TTerminalGrid;
   X, Y, Black, Cols, Rows: Integer;
 begin
-  Saver := TSharkSaver.Create(nil);
+  Saver := TScreenSaver.Create(nil);
   try
     Saver.Start;
     Grid := NewGrid(100, 30);
@@ -629,14 +629,14 @@ end;
 {$ELSE}
 
 uses
-  uSharkSaver;
+  uSharkSaver, uScreenSaver;
 
 procedure TTestSharkSaverLeftOut.SaverIsInertWithoutTheSubsystem;
 var
-  Saver: TSharkSaver;
+  Saver: TScreenSaver;
 begin
   Assert.IsFalse(SharksBuiltIn);
-  Saver := TSharkSaver.Create(nil);
+  Saver := TScreenSaver.Create(nil);
   try
     Saver.Start;
     Assert.IsFalse(Saver.Active, 'it never starts');

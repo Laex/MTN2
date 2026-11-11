@@ -12,7 +12,7 @@ uses
   uTerminalTypes, uThemeTypes, uThemeSpec, uColorCoding, uMarkdownColors, uThemeDrawing, uTerminalWindow, uDualPanelTypes, uDualPanelUiTypes,
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindArchive, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
-  uHistoryPopup, uStartupTargets, uSharkSaver,
+  uHistoryPopup, uStartupTargets, uScreenSaver,
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uColumnSets, uPluginColumns, uDirWatch, uDialogTypes, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
@@ -263,7 +263,7 @@ type
     /// there was a last look (a restored session's tabs and workspaces are not news).</summary>
     FHintActive: THintSituations;
     FHintStarted: Boolean;
-    FSaver: TSharkSaver;
+    FSaver: TScreenSaver;
     /// <summary>The click and the release that follow a mouse press which only
     /// stopped the screensaver are not input for the window.</summary>
     FSaverSwallowClick: Boolean;
@@ -1752,7 +1752,7 @@ begin
         NotifyChanged;
     end);
   FKeyHints := TKeyHintTracker.Create(True);
-  FSaver := TSharkSaver.Create(
+  FSaver := TScreenSaver.Create(
     procedure
     begin
       if Life.Alive then

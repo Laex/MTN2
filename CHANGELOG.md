@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The screensaver picture can be chosen in Options > User interface. The `mtn.screensaver` plugin adds the pictures found as libraries (`.dll` on Windows, `.so` on Linux) in the `savers` folder next to it; the sample "Starfield" comes with it. Text-grid pictures work in all three programs (MTN2, MTN2-sdl, MTN2-tui).
+
 ## Dev v0.5.7.1 – 2026-11-11
 
 ### Fixed

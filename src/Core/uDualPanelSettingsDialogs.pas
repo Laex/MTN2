@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns, uPluginColumns,
-  uShellProfiles, uEnvProfiles, uSharkSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
+  uShellProfiles, uEnvProfiles, uScreenSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
   TSettingsKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -423,10 +423,12 @@ begin
   DialogSetCheckbox(Decl, 'dir_slash', Cur.DirSlash);
   DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
   DialogSetListItems(Decl, 'saver', DisplaySaverItems, IndexOfDisplaySaver(Cur.SaverMinutes));
+  DialogSetListItems(Decl, 'saver_effect', DisplaySaverEffectItems, IndexOfDisplaySaverEffect(Cur.SaverId));
   // Without the screensaver subsystem the row stays, greyed out, showing Off.
-  if not SharksBuiltIn then
+  if Length(RegisteredSavers) = 0 then
     for I := 0 to High(Decl.Controls) do
-      if SameText(Decl.Controls[I].Id, 'saver') or SameText(Decl.Controls[I].Id, 'lbl_saver') then
+      if SameText(Decl.Controls[I].Id, 'saver') or SameText(Decl.Controls[I].Id, 'lbl_saver') or
+         SameText(Decl.Controls[I].Id, 'saver_effect') then
         Decl.Controls[I].Disabled := True;
   FDialog.Open(Decl, FOnCommand);
   Notify;
@@ -848,6 +850,7 @@ begin
     Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
     Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
     Disp.SaverMinutes := DisplaySaverMinutesAt(FDialog.GetListSelectedIndex('saver'));
+    Disp.SaverId := DisplaySaverEffectIdAt(FDialog.GetListSelectedIndex('saver_effect'), Disp.SaverId);
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
       Disp.Language := FLanguageCodes[LanguageIdx]

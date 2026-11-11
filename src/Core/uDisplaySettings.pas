@@ -88,8 +88,10 @@ type
     DirSlash: Boolean;
     /// <summary>uDisplaySettings.GNdnFooter.</summary>
     NdnFooter: Boolean;
-    /// <summary>uSharkSaver.GSaverMinutes.</summary>
+    /// <summary>uScreenSaver.GSaverMinutes.</summary>
     SaverMinutes: Integer;
+    /// <summary>uScreenSaver.GSaverId.</summary>
+    SaverId: string;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
     CaretUnderline: Boolean;
     /// <summary>uTerminalTypes.GEdgeBorders.</summary>
@@ -177,6 +179,12 @@ function DisplayBlinkMsItems: TArray<string>;
 function DisplaySaverItems: TArray<string>;
 function IndexOfDisplaySaver(AMinutes: Integer): Integer;
 function DisplaySaverMinutesAt(AIndex: Integer): Integer;
+/// <summary>Captions of the registered screensaver pictures, in registration order.</summary>
+function DisplaySaverEffectItems: TArray<string>;
+/// <summary>Index of picture AId in DisplaySaverEffectItems; 0 when it is not registered.</summary>
+function IndexOfDisplaySaverEffect(const AId: string): Integer;
+/// <summary>Id of the picture at AIndex; AFallback when the index is outside the list.</summary>
+function DisplaySaverEffectIdAt(AIndex: Integer; const AFallback: string): string;
 /// <summary>ASize in pixels -> the nearest point size in the list.</summary>
 function IndexOfDisplayFontSize(ASize: Single): Integer;
 function IndexOfDisplayZoom(AZoom: Single): Integer;
@@ -213,7 +221,7 @@ implementation
 
 uses
   System.Math, System.Classes, System.IOUtils, System.Generics.Collections,
-  uPlatformFonts, uStrings, uSharkSaver;
+  uPlatformFonts, uStrings, uScreenSaver;
 
 const
   // Points; half steps where terminals are usually set (8..12 pt). 6 and 24 pt
@@ -385,6 +393,7 @@ begin
   Result.DirSlash := True;
   Result.NdnFooter := True;
   Result.SaverMinutes := 5;
+  Result.SaverId := cDefaultSaverId;
   Result.CaretUnderline := False;
   Result.EdgeBorders := True;
   Result.ShadowStyle := ssClassic;
@@ -500,6 +509,39 @@ begin
   if AIndex > High(cSaverMinuteChoices) then
     AIndex := High(cSaverMinuteChoices);
   Result := cSaverMinuteChoices[AIndex];
+end;
+
+function DisplaySaverEffectItems: TArray<string>;
+var
+  Infos: TArray<TSaverInfo>;
+  I: Integer;
+begin
+  Infos := RegisteredSavers;
+  SetLength(Result, Length(Infos));
+  for I := 0 to High(Infos) do
+    Result[I] := T('saver.' + Infos[I].Id, Infos[I].Caption);
+end;
+
+function IndexOfDisplaySaverEffect(const AId: string): Integer;
+var
+  Infos: TArray<TSaverInfo>;
+  I: Integer;
+begin
+  Infos := RegisteredSavers;
+  for I := 0 to High(Infos) do
+    if SameText(Infos[I].Id, AId) then
+      Exit(I);
+  Result := 0;
+end;
+
+function DisplaySaverEffectIdAt(AIndex: Integer; const AFallback: string): string;
+var
+  Infos: TArray<TSaverInfo>;
+begin
+  Infos := RegisteredSavers;
+  if (AIndex < 0) or (AIndex > High(Infos)) then
+    Exit(AFallback);
+  Result := Infos[AIndex].Id;
 end;
 
 function DisplayBlinkMsItems: TArray<string>;

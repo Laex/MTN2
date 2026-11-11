@@ -103,6 +103,21 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src;$Src\Windows" -N"$Pl
         Write-Host "OK: compiled $($_.Name) -> $Dest"
     }
 
+    # Screensaver modules (savers\*.dpr) go to <plugin>\savers.
+    $SaversSrc = Join-Path $Src 'savers'
+    if (Test-Path $SaversSrc) {
+        $SaversDest = Join-Path $Dest 'savers'
+        New-Item -ItemType Directory -Force -Path $SaversDest | Out-Null
+        Get-ChildItem -Path $SaversSrc -Filter '*.dpr' -File | ForEach-Object {
+            $SaverCmd = @"
+call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$SaversSrc" -N"$PluginDcu" -E"$SaversDest" -NSSystem;System.Win;Winapi;System.IOUtils "$($_.FullName)"
+"@
+            cmd /c $SaverCmd
+            if ($LASTEXITCODE -ne 0) { throw "$Name saver compile failed: $LASTEXITCODE ($($_.Name))" }
+            Write-Host "OK: compiled $($_.Name) -> $SaversDest"
+        }
+    }
+
     if (Test-Path (Join-Path $Src 'Cargo.toml')) {
         $Cargo = Get-Command cargo -ErrorAction SilentlyContinue
         if ($Cargo) {

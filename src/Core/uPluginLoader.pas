@@ -43,7 +43,7 @@ uses
   uVfsTypes, uPluginHostAbi, uVfsCdeclAdapter, uVfsCdeclAdapterV2, uVfsRegistry, uPanelPluginRegistry,
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
-  uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns,
+  uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns, uPluginSaver, uScreenSaver,
   uWasmPluginHost, uPlatformInfo, uStrings, uConfigLocation;
 
 type
@@ -560,6 +560,28 @@ begin
       PluginChrome.SetSchemeFBar(UTF8ToString(APluginId), UTF8ToString(AScheme),
         UTF8ToString(AJson));
     Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRegisterSaver(APluginId, AId, ACaption: PAnsiChar; AModes: Int64;
+  ACallbacks: PSaverCallbacks; AUserData: Pointer): Int64; cdecl;
+var
+  Caption: string;
+begin
+  try
+    if (APluginId = nil) or (AId = nil) then
+      Exit(-1);
+    if ACaption = nil then
+      Caption := ''
+    else
+      Caption := UTF8ToString(ACaption);
+    if PluginRegisterSaver(UTF8ToString(APluginId), UTF8ToString(AId), Caption, AModes,
+         ACallbacks, AUserData) then
+      Result := 0
+    else
+      Result := -1;
   except
     Result := -1;
   end;
@@ -1901,6 +1923,7 @@ begin
   Result.KeyOwner := @ThunkKeyOwner;
   Result.RegisterPanelColumns := @ThunkRegisterPanelColumns;
   Result.SetPanelColumnValues := @ThunkSetPanelColumnValues;
+  Result.RegisterSaver := @ThunkRegisterSaver;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -2510,6 +2533,7 @@ procedure TPluginLoader.UnloadAt(AIndex: Integer);
 begin
   // Drop registry entries before FreeLibrary so new resolves cannot call
   // into a module that is about to disappear.
+  UnregisterSavers(FLoaded[AIndex].PluginId);
   KeymapRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   CommandRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   DocumentProviders.UnregisterPlugin(FLoaded[AIndex].PluginId);

@@ -222,6 +222,7 @@
         <DCCReference Include="Core\uFolderFrecent.pas"/>
         <DCCReference Include="Core\uRowDecorations.pas"/>
         <DCCReference Include="Core\uPluginColumns.pas"/>
+        <DCCReference Include="Core\uPluginSaver.pas"/>
         <DCCReference Include="Core\uFileHistory.pas"/>
         <DCCReference Include="Core\uHelpContext.pas"/>
         <DCCReference Include="Core\uPanelCompare.pas"/>
@@ -372,6 +373,7 @@
         <DCCReference Include="Platform\Windows\uTaskbarProgress.pas"/>
         <DCCReference Include="Core\uStartupTargets.pas"/>
         <DCCReference Include="Core\uEnvProfiles.pas"/>
+        <DCCReference Include="Core\uScreenSaver.pas"/>
         <DCCReference Include="ascii-sharks\uSharkSaver.pas"/>
         <DCCReference Include="Core\uUpdateCli.pas"/>
         <DCCReference Include="Core\uUpdater.pas"/>

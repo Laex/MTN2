@@ -33,6 +33,14 @@ uses
 {$ALIGN 8} // 64-bit 8-byte structure alignment
 
 const
+  /// <summary>Modes a screensaver picture draws in (RegisterSaver).</summary>
+  cSaverModeText = 1;
+  /// <summary>Attribute bits of TSaverCell.Attributes.</summary>
+  cSaverAttrBold = 1;
+  cSaverAttrItalic = 2;
+  cSaverAttrUnderline = 4;
+  cSaverAttrReverse = 8;
+
   /// <summary>Bumped whenever THostApiTable gains fields. The table only
   /// grows at the end, so a plugin built against an older version reads a
   /// prefix of the table the host hands out and keeps working. Plugins must
@@ -57,8 +65,9 @@ const
   /// 6: OpenDocument, SetRowDecorations.
   /// 7: JobBegin, JobUpdate, JobEnd.
   /// 8: SendKey, SendText, RunAction, AppState, SetMenuItemEnabled, KeyOwner.
-  /// 9: RegisterPanelColumns, SetPanelColumnValues.</summary>
-  cPluginAbiVersion: Int64 = 9;
+  /// 9: RegisterPanelColumns, SetPanelColumnValues.
+  /// 10: RegisterSaver.</summary>
+  cPluginAbiVersion: Int64 = 10;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -535,6 +544,45 @@ type
   /// first chord bound to it is sent. 0 = sent, -1 = unknown name or no chord.</summary>
   THostRunActionFn = function(AAction: PAnsiChar): Int64; cdecl;
 
+  /// <summary>One character cell of a screensaver picture, no pointers inside.
+  /// CodePoint: Unicode code point (0 = blank); Fg, Bg: colors as $AARRGGBB;
+  /// Attributes: cSaverAttr* bits.</summary>
+  TSaverCell = record
+    CodePoint: UInt32;
+    Fg: UInt32;
+    Bg: UInt32;
+    Attributes: UInt32;
+  end;
+  PSaverCell = ^TSaverCell;
+
+  /// <summary>Callbacks of one screensaver picture a plugin registers with
+  /// RegisterSaver. AUserData is the pointer given at registration. The host
+  /// calls them on the main thread, one picture running at a time.
+  /// TickMs: milliseconds between Advance calls (10..1000).
+  /// Prepare: the saver starts; 0 = ready. The window size is not known yet.
+  /// Advance: time passes while the saver runs.
+  /// Draw: fill ACols x ARows cells of ACells (row by row). The host has set
+  /// every cell to a white blank on black; 0 = drawn, anything else ends the
+  /// picture.
+  /// Finish: the saver stops.</summary>
+  TSaverCallbacks = record
+    TickMs: function(AUserData: Pointer): Int64; cdecl;
+    Prepare: function(AUserData: Pointer): Int64; cdecl;
+    Advance: procedure(AUserData: Pointer; ADeltaMs: Int64); cdecl;
+    Draw: function(AUserData: Pointer; ACols, ARows: Int64; ACells: PSaverCell): Int64; cdecl;
+    Finish: procedure(AUserData: Pointer); cdecl;
+  end;
+  PSaverCallbacks = ^TSaverCallbacks;
+
+  /// <summary>Registers the screensaver picture AId (the id the user's choice is
+  /// kept under); ACaption is the name in the list, in the program language.
+  /// AModes is a bit set of cSaverMode* values the picture draws in; the host
+  /// accepts it when the text mode is among them. The host copies the callback
+  /// table. Registering an id again replaces the picture. 0 = registered,
+  /// -1 = refused. Main thread only. Unloading the plugin removes its pictures.</summary>
+  THostRegisterSaverFn = function(APluginId, AId, ACaption: PAnsiChar; AModes: Int64;
+    ACallbacks: PSaverCallbacks; AUserData: Pointer): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -622,6 +670,8 @@ type
     // ABI 9
     RegisterPanelColumns: THostRegisterPanelColumnsFn;
     SetPanelColumnValues: THostSetPanelColumnValuesFn;
+    // ABI 10
+    RegisterSaver: THostRegisterSaverFn;
   end;
   PHostApiTable = ^THostApiTable;
 

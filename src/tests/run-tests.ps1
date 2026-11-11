@@ -122,7 +122,7 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     }
 }
 
-$UnitPath = @('Core', 'ascii-sharks', 'ascii-sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'plugins\mtn.logfilter', 'plugins\mtn.lua', 'plugins\mtn.csv', 'plugins\mtn.docview', 'plugins\mtn.pdf', 'plugins\mtn.git', 'plugins\mtn.net', 'plugins\mtn.winsys', 'plugins\mtn.winsys\Windows', 'plugins\mtn.docker', 'plugins\mtn.rclone', 'plugins\mtn.everything', 'plugins\mtn.jtree', 'plugins\mtn.meta', 'plugins\mtn.meta\Windows', 'tests\common' |
+$UnitPath = @('Core', 'ascii-sharks', 'ascii-sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.tmp', 'plugins\mtn.logfilter', 'plugins\mtn.lua', 'plugins\mtn.csv', 'plugins\mtn.screensaver', 'plugins\mtn.docview', 'plugins\mtn.pdf', 'plugins\mtn.git', 'plugins\mtn.net', 'plugins\mtn.winsys', 'plugins\mtn.winsys\Windows', 'plugins\mtn.docker', 'plugins\mtn.rclone', 'plugins\mtn.everything', 'plugins\mtn.jtree', 'plugins\mtn.meta', 'plugins\mtn.meta\Windows', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 $Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }
