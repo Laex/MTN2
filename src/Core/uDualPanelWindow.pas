@@ -12689,6 +12689,9 @@ begin
   FInjectingKeys := True;
   try
     HandleInput(Key, Shift, KeyChar);
+    // A dialog button pressed by this key runs its command now, not when the
+    // press timer fires, so the macro's next call sees its effect.
+    FlushDialogButtonPress;
   finally
     FInjectingKeys := Was;
   end;
@@ -12726,6 +12729,7 @@ begin
       end;
       HandleInput(Key, [], KeyChar);
     end;
+    FlushDialogButtonPress;
   finally
     FInjectingKeys := Was;
   end;

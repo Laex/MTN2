@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.7.1 – 2026-11-11
+
+### Fixed
+
+- A macro that presses a button of a dialog with a key (for example Enter on "Save changes?" after Escape in the editor) no longer goes on before the button's command has run: the command runs at once, so the next macro call sees its effect.
+
 ## v0.5.7 – 2026-11-11
 
 ### New
