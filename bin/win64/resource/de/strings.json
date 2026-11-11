@@ -301,7 +301,6 @@
       "quick_search_filter": "Schnellsuche filtert auch das Panel (&G)",
       "quick_search_keep_filter": "Filter beim Ordnerwechsel beibehalten (&V)",
       "quick_search_fuzzy": "Unscharfer Schnellsuche-Filter: Buchstaben in Reihenfolge (&Q)",
-      "lbl_saver": "Ruhebild",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
@@ -1847,8 +1846,6 @@
     "mouse.offHint": "Ctrl+Shift+M schaltet sie wieder ein",
     "mouse.selectTip": "Text nicht in der Zwischenablage? Mit Shift markiert das Terminal; Ctrl+Shift+M schaltet die Maus aus",
     "terminalEnv.none": "(keins)",
-    "display.saverOff": "Aus",
-    "display.saverMinutes": "%d Min.",
     "profileKeys.auto": "auto",
     "profileKeys.program": "Terminal",
     "profileKeys.host": "Host",

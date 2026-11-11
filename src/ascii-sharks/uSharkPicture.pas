@@ -1,41 +1,27 @@
-unit uSharkSaver;
+unit uSharkPicture;
 
 {$I sharks.inc}
 
-{ Screensaver picture: sharks swimming across a black screen. It registers
-  itself with the screensaver registry (uScreenSaver) under the id 'sharks'.
-
-  This is the only unit of the subsystem (folder ascii-sharks) the rest of the
-  program uses. Without MTN_ASCII_SHARKS (see sharks.inc) nothing is
-  registered, so no other unit needs to know whether the subsystem is built. }
+{ The sharks swimming across a black screen, as a picture that draws into a
+  grid of cells: the world, its renderer and the clock that steps them. It
+  knows nothing of the program around it, so the screensaver library of the
+  sharks and the tests use it the same way. }
 
 interface
-
-const
-  /// <summary>The sharks are part of this build.</summary>
-{$IFDEF MTN_ASCII_SHARKS}
-  SharksBuiltIn = True;
-{$ELSE}
-  SharksBuiltIn = False;
-{$ENDIF}
-  cSharkTickMs = 90;
-  cSharkSaverId = 'sharks';
-
-implementation
 
 {$IFDEF MTN_ASCII_SHARKS}
 
 uses
-  System.SysUtils, System.Math, uTerminalTypes, uScreenSaver, uPlatformInfo, uSharkShapes,
-  uSharkWorld, uSharkRender;
+  uTerminalTypes, uSharkWorld, uSharkRender;
 
 const
-  cSimStep = 1 / 60;
-  cMaxSteps = 8;
+  /// <summary>Milliseconds between Advance calls.</summary>
+  cSharkTickMs = 90;
 
 type
-  /// <summary>The world and its renderer of one running saver.</summary>
-  TSharkEffect = class(TInterfacedObject, ISaverEffect)
+  /// <summary>The world and its renderer of one running picture; Draw lays the
+  /// world out on the first frame and follows the size of the window.</summary>
+  TSharkPicture = class
   private
     FWorld: TSharkWorld;
     FRenderer: TSharkRenderer;
@@ -44,14 +30,26 @@ type
     FCols, FRows: Integer;
     procedure Layout(ACols, ARows: Integer);
   public
-    constructor Create;
+    constructor Create(ASeed: Cardinal);
     destructor Destroy; override;
-    function TickMs: Integer;
     procedure Prepare;
     procedure Advance(ASeconds: Double);
     procedure Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
     procedure Finish;
   end;
+
+{$ENDIF}
+
+implementation
+
+{$IFDEF MTN_ASCII_SHARKS}
+
+uses
+  System.SysUtils, System.Math, uSharkShapes;
+
+const
+  cSimStep = 1 / 60;
+  cMaxSteps = 8;
 
 function SharkSpecsFor(ACols: Integer; ARandom: Cardinal): TArray<TSharkSpec>;
 const
@@ -77,28 +75,23 @@ begin
   end;
 end;
 
-{ TSharkEffect }
+{ TSharkPicture }
 
-constructor TSharkEffect.Create;
+constructor TSharkPicture.Create(ASeed: Cardinal);
 begin
   inherited Create;
   FRenderer := TSharkRenderer.Create;
-  FSeed := Cardinal(PlatformTickCount64);
+  FSeed := ASeed;
 end;
 
-destructor TSharkEffect.Destroy;
+destructor TSharkPicture.Destroy;
 begin
   FreeAndNil(FWorld);
   FreeAndNil(FRenderer);
   inherited Destroy;
 end;
 
-function TSharkEffect.TickMs: Integer;
-begin
-  Result := cSharkTickMs;
-end;
-
-procedure TSharkEffect.Prepare;
+procedure TSharkPicture.Prepare;
 begin
   // The window size is not known yet: the first frame lays the world out.
   FreeAndNil(FWorld);
@@ -107,12 +100,12 @@ begin
   FAccumulator := 0;
 end;
 
-procedure TSharkEffect.Finish;
+procedure TSharkPicture.Finish;
 begin
   FreeAndNil(FWorld);
 end;
 
-procedure TSharkEffect.Layout(ACols, ARows: Integer);
+procedure TSharkPicture.Layout(ACols, ARows: Integer);
 begin
   FCols := ACols;
   FRows := ARows;
@@ -125,7 +118,7 @@ begin
   FAccumulator := 0;
 end;
 
-procedure TSharkEffect.Advance(ASeconds: Double);
+procedure TSharkPicture.Advance(ASeconds: Double);
 var
   Steps: Integer;
 begin
@@ -144,7 +137,7 @@ begin
   FRenderer.Render(FWorld, ASeconds);
 end;
 
-procedure TSharkEffect.Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+procedure TSharkPicture.Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
 var
   I: Integer;
 begin
@@ -171,13 +164,6 @@ begin
   end;
   FRenderer.Paint(AGrid, FWorld.Time);
 end;
-
-initialization
-  RegisterSaver(cSharkSaverId, 'Sharks', '',
-    function: ISaverEffect
-    begin
-      Result := TSharkEffect.Create;
-    end);
 
 {$ENDIF}
 

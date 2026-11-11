@@ -1668,6 +1668,7 @@ begin
   Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
   Result.SaverId := GSaverId;
+  Result.SaverRandom := GSaverRandom;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
@@ -1723,12 +1724,14 @@ begin
   GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.SaverId := ASettings.SaverId;
+  FSession.SaverRandom := ASettings.SaverRandom;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GSaverMinutes := ASettings.SaverMinutes;
   GSaverId := ASettings.SaverId;
+  GSaverRandom := ASettings.SaverRandom;
   GCaretUnderline := ASettings.CaretUnderline;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
@@ -1878,6 +1881,7 @@ begin
   GNdnFooter := Sess.NdnFooter;
   GSaverMinutes := Sess.SaverMinutes;
   GSaverId := Sess.SaverId;
+  GSaverRandom := Sess.SaverRandom;
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
@@ -2002,6 +2006,7 @@ begin
   Sess.NdnFooter := GNdnFooter;
   Sess.SaverMinutes := GSaverMinutes;
   Sess.SaverId := GSaverId;
+  Sess.SaverRandom := GSaverRandom;
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
@@ -2901,6 +2906,7 @@ begin
   FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
   FSession.SaverId := cDefaultSaverId;
+  FSession.SaverRandom := False;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
@@ -3257,7 +3263,9 @@ begin
   // Gated by QuickViewVisible: the overlay's stored bounds only make sense
   // while Dual Panel is showing its wkPanels list, not Console/Viewer/
   // Editor/Terminal, and this Canvas pass has no other way to know that.
-  if Assigned(FDualPanel) and FDualPanel.QuickViewVisible then
+  if Assigned(FDualPanel) and FDualPanel.SaverPixelsVisible then
+    DrawOverlayPreview(Canvas, FRenderer.CellWidth, FRenderer.CellHeight)
+  else if Assigned(FDualPanel) and FDualPanel.QuickViewVisible then
     DrawOverlayPreview(Canvas, FRenderer.CellWidth, FRenderer.CellHeight)
   // Markdown Viewer image reuses the same Media Overlay singleton.
   // F3 opens the Viewer as a Dual Panel document tab, so FMdi.Active is

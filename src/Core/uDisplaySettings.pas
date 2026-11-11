@@ -92,6 +92,8 @@ type
     SaverMinutes: Integer;
     /// <summary>uScreenSaver.GSaverId.</summary>
     SaverId: string;
+    /// <summary>uScreenSaver.GSaverRandom.</summary>
+    SaverRandom: Boolean;
     /// <summary>uTerminalTypes.GCaretUnderline.</summary>
     CaretUnderline: Boolean;
     /// <summary>uTerminalTypes.GEdgeBorders.</summary>
@@ -175,16 +177,6 @@ function DisplayTextContrastItems: TArray<string>;
 function DisplayFontSizeItems: TArray<string>;
 function DisplayZoomItems: TArray<string>;
 function DisplayBlinkMsItems: TArray<string>;
-/// <summary>Interface dialog "Screensaver" dropdown: off, then the idle minutes.</summary>
-function DisplaySaverItems: TArray<string>;
-function IndexOfDisplaySaver(AMinutes: Integer): Integer;
-function DisplaySaverMinutesAt(AIndex: Integer): Integer;
-/// <summary>Captions of the registered screensaver pictures, in registration order.</summary>
-function DisplaySaverEffectItems: TArray<string>;
-/// <summary>Index of picture AId in DisplaySaverEffectItems; 0 when it is not registered.</summary>
-function IndexOfDisplaySaverEffect(const AId: string): Integer;
-/// <summary>Id of the picture at AIndex; AFallback when the index is outside the list.</summary>
-function DisplaySaverEffectIdAt(AIndex: Integer; const AFallback: string): string;
 /// <summary>ASize in pixels -> the nearest point size in the list.</summary>
 function IndexOfDisplayFontSize(ASize: Single): Integer;
 function IndexOfDisplayZoom(AZoom: Single): Integer;
@@ -394,6 +386,7 @@ begin
   Result.NdnFooter := True;
   Result.SaverMinutes := 5;
   Result.SaverId := cDefaultSaverId;
+  Result.SaverRandom := False;
   Result.CaretUnderline := False;
   Result.EdgeBorders := True;
   Result.ShadowStyle := ssClassic;
@@ -476,72 +469,6 @@ begin
   SetLength(Result, Length(cZoomPercents));
   for I := 0 to High(cZoomPercents) do
     Result[I] := Format('%d%%', [cZoomPercents[I]]);
-end;
-
-function DisplaySaverItems: TArray<string>;
-var
-  I: Integer;
-begin
-  SetLength(Result, Length(cSaverMinuteChoices));
-  for I := 0 to High(cSaverMinuteChoices) do
-    if cSaverMinuteChoices[I] = 0 then
-      Result[I] := T('ui.display.saverOff', 'Off')
-    else
-      Result[I] := Format(T('ui.display.saverMinutes', '%d min'), [cSaverMinuteChoices[I]]);
-end;
-
-function IndexOfDisplaySaver(AMinutes: Integer): Integer;
-var
-  I: Integer;
-begin
-  // A value from the session file that is not in the list takes the nearest
-  // shorter one; the dialog shows that, and OK writes it.
-  Result := 0;
-  for I := 0 to High(cSaverMinuteChoices) do
-    if cSaverMinuteChoices[I] <= AMinutes then
-      Result := I;
-end;
-
-function DisplaySaverMinutesAt(AIndex: Integer): Integer;
-begin
-  if AIndex < 0 then
-    AIndex := 0;
-  if AIndex > High(cSaverMinuteChoices) then
-    AIndex := High(cSaverMinuteChoices);
-  Result := cSaverMinuteChoices[AIndex];
-end;
-
-function DisplaySaverEffectItems: TArray<string>;
-var
-  Infos: TArray<TSaverInfo>;
-  I: Integer;
-begin
-  Infos := RegisteredSavers;
-  SetLength(Result, Length(Infos));
-  for I := 0 to High(Infos) do
-    Result[I] := T('saver.' + Infos[I].Id, Infos[I].Caption);
-end;
-
-function IndexOfDisplaySaverEffect(const AId: string): Integer;
-var
-  Infos: TArray<TSaverInfo>;
-  I: Integer;
-begin
-  Infos := RegisteredSavers;
-  for I := 0 to High(Infos) do
-    if SameText(Infos[I].Id, AId) then
-      Exit(I);
-  Result := 0;
-end;
-
-function DisplaySaverEffectIdAt(AIndex: Integer; const AFallback: string): string;
-var
-  Infos: TArray<TSaverInfo>;
-begin
-  Infos := RegisteredSavers;
-  if (AIndex < 0) or (AIndex > High(Infos)) then
-    Exit(AFallback);
-  Result := Infos[AIndex].Id;
 end;
 
 function DisplayBlinkMsItems: TArray<string>;

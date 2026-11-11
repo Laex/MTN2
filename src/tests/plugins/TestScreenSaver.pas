@@ -3,7 +3,7 @@ unit TestScreenSaver;
 interface
 
 uses
-  DUnitX.TestFramework;
+  System.JSON, DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -35,13 +35,50 @@ type
   end;
 
   [TestFixture]
+  TTestPixelSaver = class
+  private
+    FSavedId: string;
+    FSavedPixelHost: Boolean;
+  public
+    [Setup] procedure Setup;
+    [TearDown] procedure TearDown;
+    [Test] procedure PixelOnlyPictureIsHiddenWhereThereAreNoPixels;
+    [Test] procedure PixelHostGetsABgraFrameAndBlackCharacters;
+    [Test] procedure TextHostStillGetsTheCharactersOfAMixedPicture;
+    [Test] procedure FrameSizeFollowsTheWindowAndIsCapped;
+    [Test] procedure FailedPixelDrawLeavesABlackScreen;
+    [Test] procedure RegistrationNeedsTheCallbackOfEachMode;
+  end;
+
+  [TestFixture]
+  TTestSaverSettings = class
+  private
+    FSavedId: string;
+    FSavedMinutes: Integer;
+    FSavedRandom: Boolean;
+    function ReadJson: TJSONObject;
+  public
+    [Setup] procedure Setup;
+    [TearDown] procedure TearDown;
+    [Test] procedure ChoiceListsThePicturesAndTheCurrentValues;
+    [Test] procedure SmallBufferIsReported;
+    [Test] procedure ValidChoiceIsApplied;
+    [Test] procedure UnknownPictureChangesNothing;
+    [Test] procedure UnknownMinutesChangesNothing;
+    [Test] procedure EmptyIdAndNegativeMinutesKeepTheCurrentValues;
+    [Test] procedure RandomFlagIsReadAndSetAndKeptWithMinusOne;
+    [Test] procedure RandomStartPicksAUsablePicture;
+  end;
+
+  [TestFixture]
   TTestSaverModules = class
   public
     [Test] procedure InfoGivesIdNameAndTick;
     [Test] procedure InfoWithoutIdIsRefused;
     [Test] procedure TickIsKeptWithinLimits;
     [Test] procedure ModesDefaultToText;
-    [Test] procedure ModesWithoutTextAreRefused;
+    [Test] procedure PixelsModeIsKnown;
+    [Test] procedure UnknownModesAreRefused;
   end;
 
 implementation
@@ -248,8 +285,9 @@ end;
 
 type
   TPluginProbe = record
-    Prepares, Finishes, Draws: Integer;
-    DrawResult: Int64;
+    Prepares, Finishes, Draws, PixelDraws: Integer;
+    DrawResult, PixelResult, PixelW, PixelH: Int64;
+    FirstPixel: Cardinal;
   end;
 
 var
@@ -287,8 +325,20 @@ begin
   Inc(GProbe.Finishes);
 end;
 
+function ProbeDrawPixels(AUserData: Pointer; AWidth, AHeight: Int64; APixels: PByte): Int64; cdecl;
+begin
+  Inc(GProbe.PixelDraws);
+  GProbe.PixelW := AWidth;
+  GProbe.PixelH := AHeight;
+  // The host hands over opaque black: B, G, R, A.
+  GProbe.FirstPixel := PCardinal(APixels)^;
+  PCardinal(APixels)^ := $FF112233;
+  Result := GProbe.PixelResult;
+end;
+
 function ProbeCallbacks: TSaverCallbacks;
 begin
+  Result := Default(TSaverCallbacks);
   Result.TickMs := ProbeTickMs;
   Result.Prepare := ProbePrepare;
   Result.Advance := ProbeAdvance;
@@ -398,6 +448,185 @@ begin
   end;
 end;
 
+{ TTestPixelSaver }
+
+procedure TTestPixelSaver.Setup;
+begin
+  FSavedId := GSaverId;
+  FSavedPixelHost := GSaverPixelHost;
+  GProbe := Default(TPluginProbe);
+end;
+
+procedure TTestPixelSaver.TearDown;
+begin
+  UnregisterSavers(cOwner);
+  GSaverId := FSavedId;
+  GSaverPixelHost := FSavedPixelHost;
+end;
+
+procedure TTestPixelSaver.PixelOnlyPictureIsHiddenWhereThereAreNoPixels;
+var
+  Callbacks: TSaverCallbacks;
+  Owner: string;
+  Effect: ISaverEffect;
+begin
+  Callbacks := ProbeCallbacks;
+  Callbacks.Draw := nil;
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  Assert.IsTrue(PluginRegisterSaver(cOwner, 'test.px', 'Px', cSaverModePixels, @Callbacks, nil));
+  GSaverPixelHost := False;
+  Assert.AreEqual(-1, IndexOfId('test.px'), 'not listed in a text terminal');
+  GSaverId := 'test.px';
+  Effect := CreateSaverEffect('test.px', Owner);
+  Assert.IsFalse(Owner = cOwner, 'and not used there');
+  Effect := nil;
+  GSaverPixelHost := True;
+  Assert.IsTrue(IndexOfId('test.px') >= 0, 'listed where bitmaps can be shown');
+end;
+
+procedure TTestPixelSaver.PixelHostGetsABgraFrameAndBlackCharacters;
+var
+  Callbacks: TSaverCallbacks;
+  Saver: TScreenSaver;
+  Grid: TTerminalGrid;
+  W, H: Integer;
+  Pixels: PByte;
+  Gen, Gen2: Cardinal;
+begin
+  Callbacks := ProbeCallbacks;
+  Callbacks.Draw := nil;
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  Assert.IsTrue(PluginRegisterSaver(cOwner, 'test.px', 'Px', cSaverModePixels, @Callbacks, nil));
+  GSaverPixelHost := True;
+  GSaverId := 'test.px';
+  Saver := TScreenSaver.Create(nil);
+  try
+    Saver.Start;
+    Grid := NewGrid(10, 4);
+    Assert.IsFalse(Saver.PixelFrame(W, H, Pixels, Gen), 'nothing before the first Draw');
+    Saver.Draw(Grid, 10, 4);
+    Assert.IsTrue(Saver.PixelFrame(W, H, Pixels, Gen));
+    Assert.AreEqual(10 * cSaverPixelCellW, W);
+    Assert.AreEqual(4 * cSaverPixelCellH, H);
+    Assert.AreEqual(Cardinal($FF000000), GProbe.FirstPixel, 'the plugin gets opaque black');
+    Assert.AreEqual(Cardinal($FF112233), PCardinal(Pixels)^, 'and the frame it painted');
+    Assert.AreEqual(' ', string(Grid[2][3].CharValue), 'the characters under the bitmap are blank');
+    Assert.AreEqual(Cardinal($FF000000), Cardinal(Grid[2][3].BgColor));
+    Saver.Draw(Grid, 10, 4);
+    Assert.IsTrue(Saver.PixelFrame(W, H, Pixels, Gen2));
+    Assert.AreNotEqual(Gen, Gen2, 'every frame is a new generation');
+    Saver.Stop;
+    Assert.IsFalse(Saver.PixelFrame(W, H, Pixels, Gen), 'no frame once stopped');
+  finally
+    Saver.Free;
+  end;
+end;
+
+procedure TTestPixelSaver.TextHostStillGetsTheCharactersOfAMixedPicture;
+var
+  Callbacks: TSaverCallbacks;
+  Saver: TScreenSaver;
+  Grid: TTerminalGrid;
+  W, H: Integer;
+  Pixels: PByte;
+  Gen: Cardinal;
+begin
+  Callbacks := ProbeCallbacks;
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  Assert.IsTrue(PluginRegisterSaver(cOwner, 'test.mixed', 'Mixed',
+    cSaverModeText or cSaverModePixels, @Callbacks, nil));
+  GSaverPixelHost := False;
+  GSaverId := 'test.mixed';
+  Saver := TScreenSaver.Create(nil);
+  try
+    Saver.Start;
+    Grid := NewGrid(4, 2);
+    Saver.Draw(Grid, 4, 2);
+    Assert.IsFalse(Saver.PixelFrame(W, H, Pixels, Gen));
+    Assert.AreEqual('A', string(Grid[0][0].CharValue));
+    Assert.AreEqual(0, GProbe.PixelDraws, 'the pixel callback is not used in a text host');
+  finally
+    Saver.Free;
+  end;
+end;
+
+procedure TTestPixelSaver.FrameSizeFollowsTheWindowAndIsCapped;
+var
+  Callbacks: TSaverCallbacks;
+  Saver: TScreenSaver;
+  Grid: TTerminalGrid;
+  W, H: Integer;
+  Pixels: PByte;
+  Gen: Cardinal;
+begin
+  Callbacks := ProbeCallbacks;
+  Callbacks.Draw := nil;
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  Assert.IsTrue(PluginRegisterSaver(cOwner, 'test.px', 'Px', cSaverModePixels, @Callbacks, nil));
+  GSaverPixelHost := True;
+  GSaverId := 'test.px';
+  Saver := TScreenSaver.Create(nil);
+  try
+    Saver.Start;
+    Grid := NewGrid(300, 100);
+    Saver.Draw(Grid, 300, 100);
+    Assert.IsTrue(Saver.PixelFrame(W, H, Pixels, Gen));
+    Assert.IsTrue(W <= cSaverPixelMaxW, 'width capped');
+    Assert.IsTrue(H <= cSaverPixelMaxH, 'height capped');
+    Assert.AreEqual(Int64(W), GProbe.PixelW);
+    Assert.AreEqual(Int64(H), GProbe.PixelH);
+    Assert.IsTrue(Abs(W / H - (300 * cSaverPixelCellW) / (100 * cSaverPixelCellH)) < 0.02,
+      'the cap keeps the proportions');
+  finally
+    Saver.Free;
+  end;
+end;
+
+procedure TTestPixelSaver.FailedPixelDrawLeavesABlackScreen;
+var
+  Callbacks: TSaverCallbacks;
+  Saver: TScreenSaver;
+  Grid: TTerminalGrid;
+  W, H: Integer;
+  Pixels: PByte;
+  Gen: Cardinal;
+begin
+  Callbacks := ProbeCallbacks;
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  GProbe.PixelResult := -1;
+  Assert.IsTrue(PluginRegisterSaver(cOwner, 'test.mixed', 'Mixed',
+    cSaverModeText or cSaverModePixels, @Callbacks, nil));
+  GSaverPixelHost := True;
+  GSaverId := 'test.mixed';
+  Saver := TScreenSaver.Create(nil);
+  try
+    Saver.Start;
+    Grid := NewGrid(4, 2);
+    Saver.Draw(Grid, 4, 2);
+    Assert.IsFalse(Saver.PixelFrame(W, H, Pixels, Gen), 'no bitmap from a failed picture');
+    Assert.AreEqual(' ', string(Grid[0][0].CharValue), 'a black screen, not half a picture');
+    Saver.Draw(Grid, 4, 2);
+    Assert.AreEqual(1, GProbe.PixelDraws, 'a failed picture is not asked again');
+  finally
+    Saver.Free;
+  end;
+end;
+
+procedure TTestPixelSaver.RegistrationNeedsTheCallbackOfEachMode;
+var
+  Callbacks: TSaverCallbacks;
+begin
+  Callbacks := ProbeCallbacks;
+  Assert.IsFalse(PluginRegisterSaver(cOwner, 'test.nopx', 'x', cSaverModePixels, @Callbacks, nil),
+    'pixel mode without DrawPixels');
+  Assert.IsFalse(PluginRegisterSaver(cOwner, 'test.nopx2', 'x',
+    cSaverModeText or cSaverModePixels, @Callbacks, nil), 'text and pixels, but no DrawPixels');
+  Callbacks.DrawPixels := ProbeDrawPixels;
+  Callbacks.Draw := nil;
+  Assert.IsFalse(PluginRegisterSaver(cOwner, 'test.notext', 'x', cSaverModeText, @Callbacks, nil),
+    'text mode without Draw');
+end;
+
 { TTestSaverModules }
 
 procedure TTestSaverModules.InfoGivesIdNameAndTick;
@@ -441,16 +670,163 @@ begin
   Assert.AreEqual(Int64(cSaverModeText), Info.Modes);
 end;
 
-procedure TTestSaverModules.ModesWithoutTextAreRefused;
+procedure TTestSaverModules.PixelsModeIsKnown;
 var
   Info: TSaverModuleInfo;
 begin
-  Assert.IsFalse(ParseSaverInfo('{"id":"a","modes":["pixels"]}', Info));
+  Assert.IsTrue(ParseSaverInfo('{"id":"a","modes":["pixels"]}', Info));
+  Assert.AreEqual(Int64(cSaverModePixels), Info.Modes);
+  Assert.IsTrue(ParseSaverInfo('{"id":"a","modes":["text","pixels"]}', Info));
+  Assert.AreEqual(Int64(cSaverModeText or cSaverModePixels), Info.Modes);
+end;
+
+procedure TTestSaverModules.UnknownModesAreRefused;
+var
+  Info: TSaverModuleInfo;
+begin
+  Assert.IsFalse(ParseSaverInfo('{"id":"a","modes":["hologram"]}', Info));
+  Assert.IsFalse(ParseSaverInfo('{"id":"a","modes":[]}', Info));
+end;
+
+{ TTestSaverSettings }
+
+procedure TTestSaverSettings.Setup;
+begin
+  FSavedId := GSaverId;
+  FSavedMinutes := GSaverMinutes;
+  FSavedRandom := GSaverRandom;
+  RegisterFake('test.set.a', cOwner);
+  RegisterFake('test.set.b', cOwner);
+end;
+
+procedure TTestSaverSettings.TearDown;
+begin
+  UnregisterSavers(cOwner);
+  GSaverId := FSavedId;
+  GSaverMinutes := FSavedMinutes;
+  GSaverRandom := FSavedRandom;
+end;
+
+function TTestSaverSettings.ReadJson: TJSONObject;
+var
+  Buf: array[0..8191] of AnsiChar;
+  Len: Int64;
+begin
+  Len := PluginSaverSettingsJson(@Buf[0], SizeOf(Buf));
+  Assert.IsTrue(Len > 0, 'JSON written');
+  Result := TJSONObject.ParseJSONValue(UTF8ToString(UTF8String(PAnsiChar(@Buf[0])))) as TJSONObject;
+  Assert.IsNotNull(Result);
+end;
+
+procedure TTestSaverSettings.ChoiceListsThePicturesAndTheCurrentValues;
+var
+  Root: TJSONObject;
+  List: TJSONArray;
+  I: Integer;
+  Found: Boolean;
+begin
+  GSaverId := 'test.set.b';
+  GSaverMinutes := cSaverMinuteChoices[1];
+  Root := ReadJson;
+  try
+    Assert.AreEqual('test.set.b', Root.GetValue('saverId').Value);
+    Assert.AreEqual(IntToStr(cSaverMinuteChoices[1]), Root.GetValue('minutes').Value);
+    Assert.AreEqual<Integer>(Length(cSaverMinuteChoices),
+      (Root.GetValue('minuteChoices') as TJSONArray).Count);
+    List := Root.GetValue('savers') as TJSONArray;
+    Found := False;
+    for I := 0 to List.Count - 1 do
+      if (List.Items[I] as TJSONObject).GetValue('id').Value = 'test.set.a' then
+        Found := True;
+    Assert.IsTrue(Found, 'registered picture listed');
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TTestSaverSettings.SmallBufferIsReported;
+var
+  Buf: array[0..7] of AnsiChar;
+begin
+  Assert.AreEqual<Int64>(-2, PluginSaverSettingsJson(@Buf[0], SizeOf(Buf)));
+  Assert.AreEqual<Int64>(-2, PluginSaverSettingsJson(nil, 0));
+end;
+
+procedure TTestSaverSettings.ValidChoiceIsApplied;
+begin
+  GSaverId := 'test.set.a';
+  GSaverMinutes := 0;
+  Assert.AreEqual<Int64>(0,
+    PluginSaverApplySettings('TEST.SET.B', cSaverMinuteChoices[High(cSaverMinuteChoices)], -1));
+  Assert.AreEqual('test.set.b', GSaverId, 'the registered spelling of the id');
+  Assert.AreEqual(cSaverMinuteChoices[High(cSaverMinuteChoices)], GSaverMinutes);
+end;
+
+procedure TTestSaverSettings.UnknownPictureChangesNothing;
+begin
+  GSaverId := 'test.set.a';
+  GSaverMinutes := 0;
+  Assert.AreEqual<Int64>(-1, PluginSaverApplySettings('no.such', cSaverMinuteChoices[1], 1));
+  Assert.AreEqual('test.set.a', GSaverId);
+  Assert.AreEqual(0, GSaverMinutes, 'minutes untouched when the picture is refused');
+end;
+
+procedure TTestSaverSettings.UnknownMinutesChangesNothing;
+begin
+  GSaverId := 'test.set.a';
+  GSaverMinutes := 0;
+  Assert.AreEqual<Int64>(-1, PluginSaverApplySettings('test.set.b', 7777, 1));
+  Assert.AreEqual('test.set.a', GSaverId, 'picture untouched when the minutes are refused');
+  Assert.AreEqual(0, GSaverMinutes);
+end;
+
+procedure TTestSaverSettings.EmptyIdAndNegativeMinutesKeepTheCurrentValues;
+begin
+  GSaverId := 'test.set.a';
+  GSaverMinutes := cSaverMinuteChoices[1];
+  Assert.AreEqual<Int64>(0, PluginSaverApplySettings(nil, -1, -1));
+  Assert.AreEqual<Int64>(0, PluginSaverApplySettings('', -1, -1));
+  Assert.AreEqual('test.set.a', GSaverId);
+  Assert.AreEqual(cSaverMinuteChoices[1], GSaverMinutes);
+end;
+
+procedure TTestSaverSettings.RandomFlagIsReadAndSetAndKeptWithMinusOne;
+var
+  Root: TJSONObject;
+begin
+  GSaverRandom := False;
+  Assert.AreEqual<Int64>(0, PluginSaverApplySettings(nil, -1, 1));
+  Assert.IsTrue(GSaverRandom);
+  Root := ReadJson;
+  try
+    Assert.AreEqual('true', Root.GetValue('random').Value);
+  finally
+    Root.Free;
+  end;
+  Assert.AreEqual<Int64>(0, PluginSaverApplySettings(nil, -1, -1));
+  Assert.IsTrue(GSaverRandom, 'kept');
+  Assert.AreEqual<Int64>(0, PluginSaverApplySettings(nil, -1, 0));
+  Assert.IsFalse(GSaverRandom);
+end;
+
+procedure TTestSaverSettings.RandomStartPicksAUsablePicture;
+var
+  I: Integer;
+  Id: string;
+  Info: TSaverInfo;
+begin
+  for I := 1 to 30 do
+  begin
+    Id := RandomUsableSaverId;
+    Assert.IsTrue(FindSaver(Id, Info), 'a registered picture: ' + Id);
+  end;
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TTestScreenSaverRegistry);
   TDUnitX.RegisterTestFixture(TTestPluginSaver);
+  TDUnitX.RegisterTestFixture(TTestPixelSaver);
   TDUnitX.RegisterTestFixture(TTestSaverModules);
+  TDUnitX.RegisterTestFixture(TTestSaverSettings);
 
 end.

@@ -587,6 +587,16 @@ begin
   end;
 end;
 
+function ThunkSaverGetSettings(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+begin
+  Result := PluginSaverSettingsJson(ABuf, ABufSize);
+end;
+
+function ThunkSaverSetSettings(AId: PAnsiChar; AMinutes, ARandom: Int64): Int64; cdecl;
+begin
+  Result := PluginSaverApplySettings(AId, AMinutes, ARandom);
+end;
+
 function ThunkRegisterPanelColumns(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
 begin
   try
@@ -1924,6 +1934,8 @@ begin
   Result.RegisterPanelColumns := @ThunkRegisterPanelColumns;
   Result.SetPanelColumnValues := @ThunkSetPanelColumnValues;
   Result.RegisterSaver := @ThunkRegisterSaver;
+  Result.SaverGetSettings := @ThunkSaverGetSettings;
+  Result.SaverSetSettings := @ThunkSaverSetSettings;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

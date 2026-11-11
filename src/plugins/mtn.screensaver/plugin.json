@@ -5,8 +5,8 @@
   "abi": 10,
   "startup": true,
   "description": {
-    "en": "Screensaver pictures from the savers folder of this plugin: every library there is one picture, chosen in Options > User interface. The sharks stay built in.",
-    "ru": "Картинки хранителя экрана из папки savers этого плагина: каждая библиотека там – одна картинка, выбирается в Параметры > Интерфейс. Акулы остаются встроенными."
+    "en": "Screensaver pictures from the savers folder of this plugin: every library there is one picture. The sharks, the starfield and the plasma come with it; the picture and the start time are set in the Settings window.",
+    "ru": "Картинки хранителя экрана из папки savers этого плагина: каждая библиотека там – одна картинка. В комплекте акулы, звёздное поле и плазма; картинка и время запуска задаются в окне настроек."
   },
   "author": "MTN2"
 }

@@ -302,7 +302,6 @@
       "quick_search_filter": "Quick search also filters the panel (&G)",
       "quick_search_keep_filter": "Keep the quick search filter in other folders (&J)",
       "quick_search_fuzzy": "Fuzzy quick search filter: letters in order (&Z)",
-      "lbl_saver": "Screensaver",
       "ok": "OK",
       "cancel": "Cancel"
     },
@@ -1866,8 +1865,6 @@
     "mouse.offHint": "Ctrl+Shift+M turns it back on",
     "mouse.selectTip": "Text does not reach the clipboard? Hold Shift to select with the terminal, or Ctrl+Shift+M turns the mouse off",
     "terminalEnv.none": "(none)",
-    "display.saverOff": "Off",
-    "display.saverMinutes": "%d min",
     "profileKeys.auto": "auto",
     "profileKeys.program": "terminal",
     "profileKeys.host": "host",

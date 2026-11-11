@@ -8,7 +8,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### New
 
-- The screensaver picture can be chosen in Options > User interface. The `mtn.screensaver` plugin adds the pictures found as libraries (`.dll` on Windows, `.so` on Linux) in the `savers` folder next to it; the sample "Starfield" comes with it. Text-grid pictures work in all three programs (MTN2, MTN2-sdl, MTN2-tui).
+- Screensaver pictures now come from the `mtn.screensaver` plugin: it adds the pictures found as libraries (`.dll` on Windows, `.so` on Linux) in the `savers` folder next to it; the sharks, "Starfield" and "Plasma" come with it, and without the plugin the screensaver does not start. All screensaver settings moved from Options > User interface to the Settings window of the plugin. Text-grid pictures work in all three programs (MTN2, MTN2-sdl, MTN2-tui); pixel pictures ("Plasma") work in MTN2 and MTN2-sdl, and MTN2-tui does not list them. The plugin has a Settings window (plugins dialog) with the picture, the start time and a "Random screensaver" check box (a random picture at every start).
 
 ## Dev v0.5.7.1 – 2026-11-11
 

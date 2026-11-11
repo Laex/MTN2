@@ -47,7 +47,7 @@ function OverlayFrame: TOverlayFrame;
 implementation
 
 uses
-  System.SysUtils, uSdlImage;
+  System.SysUtils, uSdlImage, uScreenSaver;
 
 var
   GModel: TOverlayModel;
@@ -146,6 +146,7 @@ end;
 
 initialization
   GModel := TOverlayModel.Create(DecodeWithSdl);
+  GSaverPixelHost := True;
 
 finalization
   GModel.Free;

@@ -11,6 +11,11 @@ unit uScreenSaver;
   which it uses up. With no picture registered the saver never starts.
 
   A picture draws into the character grid, so it works the same in every host.
+  A picture may also have a pixel mode (ISaverPixelEffect): a host that can
+  show a bitmap over the grid (GSaverPixelHost) then gets a BGRA frame of the
+  window from it (TScreenSaver.PixelFrame) instead of the characters; the text
+  terminal never does, so a picture with only the pixel mode is not offered
+  there.
   Main thread only. }
 
 interface
@@ -24,6 +29,14 @@ const
   cSaverMinuteChoices: array[0..6] of Integer = (0, 1, 2, 5, 10, 15, 30);
   /// <summary>The picture used when the chosen one is not registered.</summary>
   cDefaultSaverId = 'sharks';
+  /// <summary>Bits of TSaverInfo.Modes.</summary>
+  cSaverText = 1;
+  cSaverPixels = 2;
+  /// <summary>Pixels a frame has per window cell, before the size cap.</summary>
+  cSaverPixelCellW = 8;
+  cSaverPixelCellH = 16;
+  cSaverPixelMaxW = 1280;
+  cSaverPixelMaxH = 800;
 
 type
   /// <summary>One picture of the saver. The controller creates it when the saver
@@ -41,11 +54,23 @@ type
     procedure Finish;
   end;
 
+  /// <summary>The pixel mode of a picture; an ISaverEffect that also has it
+  /// implements this too.</summary>
+  ISaverPixelEffect = interface
+    ['{2D8E4F61-9A37-4C1B-8E52-6F0A3B7D9C14}']
+    /// <summary>Fills AWidth x AHeight BGRA pixels; APixels points to a buffer
+    /// the picture owns, valid until the next call. False when it has no pixel
+    /// frame now (the characters are drawn instead).</summary>
+    function DrawPixels(AWidth, AHeight: Integer; out APixels: PByte): Boolean;
+  end;
+
   TSaverEffectFactory = reference to function: ISaverEffect;
 
   TSaverInfo = record
     Id: string;
     Caption: string;
+    /// <summary>cSaverText / cSaverPixels bits.</summary>
+    Modes: Integer;
     /// <summary>The plugin that registered it; '' for a built-in picture.</summary>
     OwnerId: string;
   end;
@@ -56,20 +81,31 @@ var
   GSaverMinutes: Integer = 5;
   /// <summary>Id of the chosen picture; persisted in session.json (saverId).</summary>
   GSaverId: string = cDefaultSaverId;
+  /// <summary>True: every start shows a randomly chosen picture of the usable
+  /// ones instead of GSaverId; persisted in session.json (saverRandom).</summary>
+  GSaverRandom: Boolean = False;
+  /// <summary>True in a host that shows a bitmap over the grid (set by its
+  /// overlay renderer); pictures with only the pixel mode are listed and used
+  /// only then.</summary>
+  GSaverPixelHost: Boolean = False;
 
-/// <summary>Registers (or replaces) the picture AId. False for an empty id or a
-/// missing factory.</summary>
+/// <summary>Registers (or replaces) the picture AId. False for an empty id, a
+/// missing factory or no mode.</summary>
 function RegisterSaver(const AId, ACaption, AOwnerId: string;
-  const AFactory: TSaverEffectFactory): Boolean;
+  const AFactory: TSaverEffectFactory; AModes: Integer = cSaverText): Boolean;
 /// <summary>Removes the pictures of AOwnerId; a running saver showing one of
 /// them stops first.</summary>
 procedure UnregisterSavers(const AOwnerId: string);
-/// <summary>The registered pictures in registration order.</summary>
+/// <summary>The registered pictures this host can show, in registration order.</summary>
 function RegisteredSavers: TArray<TSaverInfo>;
 function FindSaver(const AId: string; out AInfo: TSaverInfo): Boolean;
 /// <summary>A new picture for AId, or for the default id, or for the first
 /// registered one when AId is unknown; nil when nothing is registered.</summary>
 function CreateSaverEffect(const AId: string; out AOwnerId: string): ISaverEffect;
+
+/// <summary>The id of a randomly chosen picture that this host can show; ''
+/// when there is none.</summary>
+function RandomUsableSaverId: string;
 
 /// <summary>True when the idle time has run out: the saver is on
 /// (AMinutes > 0) and AIdleMs reached AMinutes.</summary>
@@ -84,6 +120,10 @@ type
     FOnChanged: TProc;
     FTimer: TObject;
     FLastInputMs, FStartedMs: UInt64;
+    FFrameValid: Boolean;
+    FFrameW, FFrameH: Integer;
+    FFramePixels: PByte;
+    FFrameGen: Cardinal;
     procedure TimerTick(Sender: TObject);
     procedure SaversRemoved(const AOwnerId: string);
     procedure SetTimerInterval(AMs: Integer);
@@ -106,13 +146,18 @@ type
     /// <summary>Paints a frame onto AGrid (AWidth x AHeight cells); nothing
     /// while stopped.</summary>
     procedure Draw(const AGrid: TTerminalGrid; AWidth, AHeight: Integer);
+    /// <summary>True when the last Draw made a pixel frame instead of
+    /// characters: AGen changes with every new frame; the host shows the
+    /// bitmap over the whole window.</summary>
+    function PixelFrame(out AWidth, AHeight: Integer; out APixels: PByte;
+      out AGen: Cardinal): Boolean;
     property Active: Boolean read FActive;
   end;
 
 implementation
 
 uses
-  uCoreTimer, uPlatformInfo;
+  System.Math, System.UITypes, uCoreTimer, uPlatformInfo;
 
 type
   TSaverEntry = record
@@ -134,15 +179,28 @@ begin
   Result := -1;
 end;
 
+function ModesUsable(AModes: Integer): Boolean;
+begin
+  Result := (AModes and cSaverText <> 0) or (GSaverPixelHost and (AModes and cSaverPixels <> 0));
+end;
+
+function IndexOfUsableSaver(const AId: string): Integer;
+begin
+  Result := IndexOfSaver(AId);
+  if (Result >= 0) and not ModesUsable(GEntries[Result].Info.Modes) then
+    Result := -1;
+end;
+
 function RegisterSaver(const AId, ACaption, AOwnerId: string;
-  const AFactory: TSaverEffectFactory): Boolean;
+  const AFactory: TSaverEffectFactory; AModes: Integer): Boolean;
 var
   Entry: TSaverEntry;
   Idx: Integer;
 begin
-  Result := (Trim(AId) <> '') and Assigned(AFactory);
+  Result := (Trim(AId) <> '') and Assigned(AFactory) and (AModes and (cSaverText or cSaverPixels) <> 0);
   if not Result then
     Exit;
+  Entry.Info.Modes := AModes and (cSaverText or cSaverPixels);
   Entry.Info.Id := Trim(AId);
   Entry.Info.Caption := ACaption;
   Entry.Info.OwnerId := AOwnerId;
@@ -173,9 +231,10 @@ function RegisteredSavers: TArray<TSaverInfo>;
 var
   I: Integer;
 begin
-  SetLength(Result, GEntries.Count);
+  Result := nil;
   for I := 0 to GEntries.Count - 1 do
-    Result[I] := GEntries[I].Info;
+    if ModesUsable(GEntries[I].Info.Modes) then
+      Result := Result + [GEntries[I].Info];
 end;
 
 function FindSaver(const AId: string; out AInfo: TSaverInfo): Boolean;
@@ -193,15 +252,31 @@ var
   Idx: Integer;
 begin
   AOwnerId := '';
-  Idx := IndexOfSaver(AId);
+  Idx := IndexOfUsableSaver(AId);
   if Idx < 0 then
-    Idx := IndexOfSaver(cDefaultSaverId);
-  if (Idx < 0) and (GEntries.Count > 0) then
+    Idx := IndexOfUsableSaver(cDefaultSaverId);
+  if Idx < 0 then
+  begin
     Idx := 0;
+    while (Idx < GEntries.Count) and not ModesUsable(GEntries[Idx].Info.Modes) do
+      Inc(Idx);
+    if Idx >= GEntries.Count then
+      Idx := -1;
+  end;
   if Idx < 0 then
     Exit(nil);
   AOwnerId := GEntries[Idx].Info.OwnerId;
   Result := GEntries[Idx].Factory();
+end;
+
+function RandomUsableSaverId: string;
+var
+  Infos: TArray<TSaverInfo>;
+begin
+  Infos := RegisteredSavers;
+  if Length(Infos) = 0 then
+    Exit('');
+  Result := Infos[Random(Length(Infos))].Id;
 end;
 
 function SaverIdleDue(AMinutes: Integer; AIdleMs: UInt64): Boolean;
@@ -288,7 +363,10 @@ var
 begin
   if FActive then
     Exit;
-  Effect := CreateSaverEffect(GSaverId, FOwnerId);
+  if GSaverRandom then
+    Effect := CreateSaverEffect(RandomUsableSaverId, FOwnerId)
+  else
+    Effect := CreateSaverEffect(GSaverId, FOwnerId);
   if Effect = nil then
   begin
     // Nothing to show: wait a full idle time before trying again.
@@ -329,9 +407,51 @@ begin
 end;
 
 procedure TScreenSaver.Draw(const AGrid: TTerminalGrid; AWidth, AHeight: Integer);
+var
+  PixelEffect: ISaverPixelEffect;
+  PW, PH, X, Y: Integer;
+  Pixels: PByte;
 begin
-  if FActive and (AWidth > 0) and (AHeight > 0) then
-    FEffect.Draw(AGrid, AWidth, AHeight);
+  FFrameValid := False;
+  if not (FActive and (AWidth > 0) and (AHeight > 0)) then
+    Exit;
+  if GSaverPixelHost and Supports(FEffect, ISaverPixelEffect, PixelEffect) then
+  begin
+    PW := AWidth * cSaverPixelCellW;
+    PH := AHeight * cSaverPixelCellH;
+    while (PW > cSaverPixelMaxW) or (PH > cSaverPixelMaxH) do
+    begin
+      PW := PW div 2;
+      PH := PH div 2;
+    end;
+    if (PW > 0) and (PH > 0) and PixelEffect.DrawPixels(PW, PH, Pixels) then
+    begin
+      FFrameValid := True;
+      FFrameW := PW;
+      FFrameH := PH;
+      FFramePixels := Pixels;
+      Inc(FFrameGen);
+      // The bitmap covers the window; the characters under it are black.
+      for Y := 0 to Min(AHeight, Length(AGrid)) - 1 do
+        for X := 0 to Min(AWidth, Length(AGrid[Y])) - 1 do
+          AGrid[Y][X] := TCharCell.Make(' ', TAlphaColor($FFFFFFFF), TAlphaColor($FF000000));
+      Exit;
+    end;
+  end;
+  FEffect.Draw(AGrid, AWidth, AHeight);
+end;
+
+function TScreenSaver.PixelFrame(out AWidth, AHeight: Integer; out APixels: PByte;
+  out AGen: Cardinal): Boolean;
+begin
+  Result := FActive and FFrameValid;
+  if Result then
+  begin
+    AWidth := FFrameW;
+    AHeight := FFrameH;
+    APixels := FFramePixels;
+    AGen := FFrameGen;
+  end;
 end;
 
 initialization

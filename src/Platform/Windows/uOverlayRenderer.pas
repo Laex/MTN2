@@ -80,7 +80,7 @@ implementation
 
 uses
   System.Math, FMX.Types,
-  uVfsTypes, uVfsRegistry;
+  uVfsTypes, uVfsRegistry, uScreenSaver;
 
 type
   TOverlayState = (osIdle, osLoading, osReady, osError);
@@ -502,6 +502,7 @@ begin
 end;
 
 initialization
+  GSaverPixelHost := True;
 
 finalization
   FreeAndNil(GHost);

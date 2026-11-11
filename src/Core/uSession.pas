@@ -86,6 +86,8 @@ type
     SaverMinutes: Integer;
     /// <summary>Id of the chosen screensaver picture (uScreenSaver.GSaverId).</summary>
     SaverId: string;
+    /// <summary>A random picture at every start (uScreenSaver.GSaverRandom).</summary>
+    SaverRandom: Boolean;
     CaretUnderline: Boolean;
     /// <summary>uTerminalTypes.GEdgeBorders.</summary>
     EdgeBorders: Boolean;
@@ -687,6 +689,7 @@ begin
       Root.AddPair('ndnFooter', TJSONBool.Create(ASession.NdnFooter));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('saverId', ASession.SaverId);
+      Root.AddPair('saverRandom', TJSONBool.Create(ASession.SaverRandom));
       Root.AddPair('caretUnderline', TJSONBool.Create(ASession.CaretUnderline));
       Root.AddPair('edgeBorders', TJSONBool.Create(ASession.EdgeBorders));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
@@ -785,6 +788,7 @@ begin
   ASession.NdnFooter := True;
   ASession.SaverMinutes := 5;
   ASession.SaverId := cDefaultSaverId;
+  ASession.SaverRandom := False;
   ASession.CaretUnderline := False;
   ASession.EdgeBorders := True;
   ASession.PassiveCursor := True;
@@ -903,6 +907,7 @@ begin
       ASession.NdnFooter := JsonBool(Root, 'ndnFooter', True);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.SaverId := JsonStr(Root, 'saverId', cDefaultSaverId);
+      ASession.SaverRandom := JsonBool(Root, 'saverRandom', False);
       ASession.CaretUnderline := JsonBool(Root, 'caretUnderline', False);
       ASession.EdgeBorders := JsonBool(Root, 'edgeBorders', True);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);

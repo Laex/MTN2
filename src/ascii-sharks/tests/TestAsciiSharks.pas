@@ -2,9 +2,10 @@ unit TestAsciiSharks;
 
 {$I ..\sharks.inc}
 
-{ The screensaver subsystem: the numbers, the world of fish and sharks, its
-  drawing in text cells, and the idle / wake rules of the saver. Empty when the
-  subsystem is left out of the build (NO_ASCII_SHARKS). }
+{ The sharks: the numbers, the world of fish and sharks, its drawing in text
+  cells, and the idle / wake rules of the screensaver, run with the sharks as
+  the registered picture. Empty when the units are left out of the build
+  (NO_ASCII_SHARKS). }
 
 interface
 
@@ -55,12 +56,6 @@ type
     [Test] procedure ResizeWhileSwimmingKeepsDrawing;
     [Test] procedure ChoicesStartWithOff;
   end;
-{$ELSE}
-  [TestFixture]
-  TTestSharkSaverLeftOut = class
-  public
-    [Test] procedure SaverIsInertWithoutTheSubsystem;
-  end;
 {$ENDIF}
 
 implementation
@@ -69,10 +64,62 @@ implementation
 
 uses
   System.SysUtils, System.Math, System.UITypes, uTerminalTypes, uSharkMath, uSharkSpecies,
-  uSharkShapes, uSharkWorld, uSharkRender, uSharkSaver, uScreenSaver;
+  uSharkShapes, uSharkWorld, uSharkRender, uSharkPicture, uScreenSaver, uPlatformInfo;
 
 const
   cBlack = TAlphaColor($FF000000);
+
+type
+  /// <summary>The sharks as the picture the screensaver registry shows.</summary>
+  TSharkTestEffect = class(TInterfacedObject, ISaverEffect)
+  private
+    FPicture: TSharkPicture;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function TickMs: Integer;
+    procedure Prepare;
+    procedure Advance(ASeconds: Double);
+    procedure Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+    procedure Finish;
+  end;
+
+constructor TSharkTestEffect.Create;
+begin
+  inherited Create;
+  FPicture := TSharkPicture.Create(Cardinal(PlatformTickCount64));
+end;
+
+destructor TSharkTestEffect.Destroy;
+begin
+  FPicture.Free;
+  inherited Destroy;
+end;
+
+function TSharkTestEffect.TickMs: Integer;
+begin
+  Result := cSharkTickMs;
+end;
+
+procedure TSharkTestEffect.Prepare;
+begin
+  FPicture.Prepare;
+end;
+
+procedure TSharkTestEffect.Advance(ASeconds: Double);
+begin
+  FPicture.Advance(ASeconds);
+end;
+
+procedure TSharkTestEffect.Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+begin
+  FPicture.Draw(AGrid, ACols, ARows);
+end;
+
+procedure TSharkTestEffect.Finish;
+begin
+  FPicture.Finish;
+end;
 
 function NewGrid(AWidth, AHeight: Integer): TTerminalGrid;
 begin
@@ -626,36 +673,19 @@ begin
     Assert.IsTrue(cSaverMinuteChoices[I] > cSaverMinuteChoices[I - 1], 'ascending');
 end;
 
-{$ELSE}
-
-uses
-  uSharkSaver, uScreenSaver;
-
-procedure TTestSharkSaverLeftOut.SaverIsInertWithoutTheSubsystem;
-var
-  Saver: TScreenSaver;
-begin
-  Assert.IsFalse(SharksBuiltIn);
-  Saver := TScreenSaver.Create(nil);
-  try
-    Saver.Start;
-    Assert.IsFalse(Saver.Active, 'it never starts');
-    Assert.IsFalse(Saver.Wake, 'and never uses up an input');
-  finally
-    Saver.Free;
-  end;
-end;
-
 {$ENDIF}
 
 initialization
 {$IFDEF MTN_ASCII_SHARKS}
+  RegisterSaver(cDefaultSaverId, 'Sharks', '',
+    function: ISaverEffect
+    begin
+      Result := TSharkTestEffect.Create;
+    end);
   TDUnitX.RegisterTestFixture(TTestSharkMath);
   TDUnitX.RegisterTestFixture(TTestSharkWorld);
   TDUnitX.RegisterTestFixture(TTestSharkRender);
   TDUnitX.RegisterTestFixture(TTestSharkSaver);
-{$ELSE}
-  TDUnitX.RegisterTestFixture(TTestSharkSaverLeftOut);
 {$ENDIF}
 
 end.

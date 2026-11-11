@@ -35,6 +35,7 @@ uses
 const
   /// <summary>Modes a screensaver picture draws in (RegisterSaver).</summary>
   cSaverModeText = 1;
+  cSaverModePixels = 2;
   /// <summary>Attribute bits of TSaverCell.Attributes.</summary>
   cSaverAttrBold = 1;
   cSaverAttrItalic = 2;
@@ -563,25 +564,45 @@ type
   /// Advance: time passes while the saver runs.
   /// Draw: fill ACols x ARows cells of ACells (row by row). The host has set
   /// every cell to a white blank on black; 0 = drawn, anything else ends the
-  /// picture.
-  /// Finish: the saver stops.</summary>
+  /// picture. May be nil for a picture that has only the pixel mode.
+  /// Finish: the saver stops.
+  /// DrawPixels: fill AWidth x AHeight pixels of 4 bytes in B, G, R, A order,
+  /// rows top to bottom without padding; the host has set every pixel to opaque
+  /// black. 0 = drawn, anything else ends the picture. Called only in a host
+  /// that shows pictures (not the text terminal); a picture with the text mode
+  /// too is drawn with Draw elsewhere. May be nil for a text-only picture.</summary>
   TSaverCallbacks = record
     TickMs: function(AUserData: Pointer): Int64; cdecl;
     Prepare: function(AUserData: Pointer): Int64; cdecl;
     Advance: procedure(AUserData: Pointer; ADeltaMs: Int64); cdecl;
     Draw: function(AUserData: Pointer; ACols, ARows: Int64; ACells: PSaverCell): Int64; cdecl;
     Finish: procedure(AUserData: Pointer); cdecl;
+    DrawPixels: function(AUserData: Pointer; AWidth, AHeight: Int64; APixels: PByte): Int64; cdecl;
   end;
   PSaverCallbacks = ^TSaverCallbacks;
 
   /// <summary>Registers the screensaver picture AId (the id the user's choice is
   /// kept under); ACaption is the name in the list, in the program language.
   /// AModes is a bit set of cSaverMode* values the picture draws in; the host
-  /// accepts it when the text mode is among them. The host copies the callback
+  /// accepts it when the text mode, or the pixel mode with a DrawPixels
+  /// callback, is among them. The host copies the callback
   /// table. Registering an id again replaces the picture. 0 = registered,
   /// -1 = refused. Main thread only. Unloading the plugin removes its pictures.</summary>
   THostRegisterSaverFn = function(APluginId, AId, ACaption: PAnsiChar; AModes: Int64;
     ACallbacks: PSaverCallbacks; AUserData: Pointer): Int64; cdecl;
+  /// <summary>The screensaver choice of the user, as a UTF-8 JSON object: "saverId"
+  /// (the chosen picture), "random" (true = a random picture at every start),
+  /// "minutes" (idle minutes, 0 = never), "minuteChoices"
+  /// (the allowed values) and "savers" (the pictures this host can show, each
+  /// with "id" and "caption"). Writes it and a NUL into ABuf and returns its
+  /// length in bytes; -2 = ABuf (ABufSize bytes) is too small.</summary>
+  THostSaverGetSettingsFn = function(ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Sets the screensaver choice: AId is a picture id ('' = keep) and
+  /// AMinutes the idle minutes (-1 = keep) and ARandom 1 = a random picture at
+  /// every start, 0 = the chosen one (-1 = keep). 0 = set, -1 = an unknown
+  /// picture or a value that is not one of the choices (nothing is changed
+  /// then).</summary>
+  THostSaverSetSettingsFn = function(AId: PAnsiChar; AMinutes, ARandom: Int64): Int64; cdecl;
 
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
@@ -672,6 +693,8 @@ type
     SetPanelColumnValues: THostSetPanelColumnValuesFn;
     // ABI 10
     RegisterSaver: THostRegisterSaverFn;
+    SaverGetSettings: THostSaverGetSettingsFn;
+    SaverSetSettings: THostSaverSetSettingsFn;
   end;
   PHostApiTable = ^THostApiTable;
 

@@ -39,7 +39,7 @@ Push-Location $Src
 try {
     $Rtl = Join-Path $Studio 'lib\linux64\release'
     $Libs = "$Rtl;$Sdk\usr\lib\x86_64-linux-gnu;$Sdk\lib\x86_64-linux-gnu;$Sdk\usr\lib\gcc\x86_64-linux-gnu\13"
-    $Units = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl"
+    $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl"
     $Args = @("--syslibroot:$Sdk", "--libpath:$Libs", '--linker-option:-lstdc++',
         "-U$Units", "-I$Units", "-N0$DcuDir", "-E$OutDir", '-V', '-$D-', '-$O+')
     if ($Rebuild) { $Args += '-B' }
@@ -52,7 +52,7 @@ try {
         # The SDL program has its own picture preview unit, so its compiled units live apart.
         $SdlDcu = Join-Path $Root 'dcu\linux64-sdl'
         New-Item -ItemType Directory -Force $SdlDcu | Out-Null
-        $SdlUnits = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Common;$Src\Hosts\Sdl"
+        $SdlUnits = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Common;$Src\Hosts\Sdl"
         $SdlArgs = @("--syslibroot:$Sdk", "--libpath:$Libs", '--linker-option:-lstdc++',
             "-U$SdlUnits", "-I$SdlUnits", "-N0$SdlDcu", "-E$OutDir", '-V', '-$D-', '-$O+')
         if ($Rebuild) { $SdlArgs += '-B' }
@@ -94,6 +94,20 @@ if (-not $NoPlugins) {
                 throw "$($Plugin.Name): dcclinux64 failed with $LASTEXITCODE"
             }
             Write-Host "OK: $($Plugin.Name)\lib$($Dpr.BaseName).so"
+        }
+        $SaversSrc = Join-Path $Plugin.FullName 'savers'
+        if (Test-Path $SaversSrc) {
+            $SaversDest = Join-Path $Dest 'savers'
+            New-Item -ItemType Directory -Force $SaversDest | Out-Null
+            foreach ($Dpr in Get-ChildItem $SaversSrc -Filter '*.dpr' -File) {
+                $Output = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `
+                    "-U$Src\Core;$Src\ascii-sharks;$SaversSrc" "-N0$PluginDcu" "-E$SaversDest" '-$D-' '-$O+' $Dpr.FullName 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    $Output | Where-Object { $_ -match 'Error|Fatal' } | ForEach-Object { Write-Host $_ }
+                    throw "$($Plugin.Name): saver $($Dpr.Name) failed with $LASTEXITCODE"
+                }
+                Write-Host "OK: $($Plugin.Name)\savers\lib$($Dpr.BaseName).so"
+            }
         }
         Get-ChildItem $Plugin.FullName -File | Where-Object { $_.Extension -in '.json', '.wat', '.wasm', '.md', '.txt' } |
             ForEach-Object { Copy-Item $_.FullName (Join-Path $Dest $_.Name) -Force }

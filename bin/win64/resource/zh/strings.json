@@ -300,7 +300,6 @@
       "quick_search_filter": "快速搜索时同时过滤面板(&J)",
       "quick_search_keep_filter": "切换文件夹时保留过滤(&Z)",
       "quick_search_fuzzy": "模糊过滤：字母按顺序出现(&Y)",
-      "lbl_saver": "屏保",
       "ok": "确定",
       "cancel": "取消"
     },
@@ -1846,8 +1845,6 @@
     "mouse.offHint": "Ctrl+Shift+M 重新开启",
     "mouse.selectTip": "文本没进剪贴板？按住 Shift 可用终端选择，或按 Ctrl+Shift+M 关闭鼠标",
     "terminalEnv.none": "(无)",
-    "display.saverOff": "关",
-    "display.saverMinutes": "%d 分钟",
     "profileKeys.auto": "自动",
     "profileKeys.program": "终端",
     "profileKeys.host": "主机",

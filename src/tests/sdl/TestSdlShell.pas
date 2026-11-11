@@ -4,8 +4,6 @@ unit TestSdlShell;
   through the input mapper into the host shell, the shell composes the grid
   and the pixel renderer draws it. The glyph source is a fixed pattern. }
 
-{$I ..\..\ascii-sharks\sharks.inc}
-
 interface
 
 uses
@@ -19,10 +17,8 @@ type
     [Test] procedure EscapeClosesTheDialog;
     [Test] procedure TypedTextReachesTheCommandLine;
     [Test] procedure MouseClickInTheMenuBarOpensAMenu;
-{$IFDEF MTN_ASCII_SHARKS}
     [Test] procedure LastMenuBarCellStartsTheSaverAndAKeyStopsIt;
     [Test] procedure OtherMenuBarCellsDoNotStartTheSaver;
-{$ENDIF}
     [Test] procedure QuitKeyEndsTheLoop;
     [Test] procedure ChangedCellsAreTheOnesTheShellRedraws;
     [Test] procedure PluginPictureTabOpensAndGetsKeys;
@@ -39,7 +35,41 @@ implementation
 uses
   System.SysUtils, System.Classes, System.Types, System.Generics.Collections,
   System.UITypes, System.RegularExpressions, uTerminalTypes, uTermInput, uHostShell, uSdlApi, uSdlInput,
-  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets, uDualPanelTypes, uVfsTypes;
+  uPixelGrid, uFakeGlyphs, System.IOUtils, uPluginSurface, uStartupTargets, uDualPanelTypes, uVfsTypes, uScreenSaver;
+
+type
+  /// <summary>A picture that draws one letter, so the saver has something to show.</summary>
+  TLetterSaver = class(TInterfacedObject, ISaverEffect)
+  public
+    function TickMs: Integer;
+    procedure Prepare;
+    procedure Advance(ASeconds: Double);
+    procedure Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+    procedure Finish;
+  end;
+
+function TLetterSaver.TickMs: Integer;
+begin
+  Result := 90;
+end;
+
+procedure TLetterSaver.Prepare;
+begin
+end;
+
+procedure TLetterSaver.Advance(ASeconds: Double);
+begin
+end;
+
+procedure TLetterSaver.Draw(const AGrid: TTerminalGrid; ACols, ARows: Integer);
+begin
+  if (ACols > 0) and (ARows > 0) then
+    AGrid[0][0].CharValue := 'S';
+end;
+
+procedure TLetterSaver.Finish;
+begin
+end;
 
 const
   cScancodeBit = $40000000;
@@ -216,7 +246,6 @@ begin
   end;
 end;
 
-{$IFDEF MTN_ASCII_SHARKS}
 procedure TTestSdlShell.LastMenuBarCellStartsTheSaverAndAKeyStopsIt;
 var
   Rig: THostRig;
@@ -257,8 +286,6 @@ begin
     Rig.Free;
   end;
 end;
-
-{$ENDIF}
 
 procedure TTestSdlShell.QuitKeyEndsTheLoop;
 var
@@ -616,6 +643,11 @@ begin
 end;
 
 initialization
+  RegisterSaver(cDefaultSaverId, 'Letter', 'test.sdl',
+    function: ISaverEffect
+    begin
+      Result := TLetterSaver.Create;
+    end);
   TDUnitX.RegisterTestFixture(TTestSdlShell);
 
 end.

@@ -16,7 +16,6 @@ type
   TTestDisplaySettings = class
   public
     [Test] procedure TestClampAndIndex;
-    [Test] procedure TestSaverChoices;
     [Test] procedure TestFontEnum;
     [Test] procedure TestSessionRoundTrip;
     [Test] procedure TestSessionMissingKeys;
@@ -597,21 +596,6 @@ end;
 procedure TTestDisplaySettings.TestClampAndIndex;
 begin
   TestDisplaySettings.TestClampAndIndex;
-end;
-
-procedure TTestDisplaySettings.TestSaverChoices;
-var
-  Items: TArray<string>;
-begin
-  Items := DisplaySaverItems;
-  Assert.AreEqual(Integer(Length(cSaverMinuteChoices)), Integer(Length(Items)));
-  Assert.AreEqual(0, DisplaySaverMinutesAt(0), 'the first row is off');
-  Assert.AreEqual(5, DisplaySaverMinutesAt(IndexOfDisplaySaver(5)));
-  Assert.AreEqual(10, DisplaySaverMinutesAt(IndexOfDisplaySaver(12)),
-    'a value between two rows shows as the shorter one');
-  Assert.AreEqual(30, DisplaySaverMinutesAt(IndexOfDisplaySaver(500)));
-  Assert.AreEqual(0, DisplaySaverMinutesAt(IndexOfDisplaySaver(-3)));
-  Assert.AreEqual(30, DisplaySaverMinutesAt(99), 'an index past the list takes the last row');
 end;
 
 procedure TTestDisplaySettings.TestFontEnum;

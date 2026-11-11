@@ -15,7 +15,11 @@ unit uSaverModules;
     procedure mtn_saver_resize(AHandle, ACols, ARows: Int64);
     procedure mtn_saver_advance(AHandle, ADeltaMs: Int64);
     function mtn_saver_draw_text(AHandle, ACols, ARows: Int64; ACells: PSaverCell): Int64;
-      // fills ACols x ARows cells (row by row), 0 = drawn
+      // fills ACols x ARows cells (row by row), 0 = drawn; needed by a module
+      // whose modes include "text"
+    function mtn_saver_draw_pixels(AHandle, AWidth, AHeight: Int64; APixels: PByte): Int64;
+      // fills AWidth x AHeight BGRA pixels (opaque black beforehand), 0 = drawn;
+      // needed by a module whose modes include "pixels"
     procedure mtn_saver_destroy(AHandle: Int64);
   A module may run several instances; instances are told apart by the handle. }
 
@@ -53,12 +57,13 @@ type
     procedure Advance(AHandle, ADeltaMs: Int64);
     /// <summary>False when the module failed to draw the frame.</summary>
     function DrawText(AHandle, ACols, ARows: Int64; ACells: PSaverCell): Boolean;
+    function DrawPixels(AHandle, AWidth, AHeight: Int64; APixels: PByte): Boolean;
     procedure Close(AHandle: Int64);
   end;
 
 /// <summary>Reads the info JSON of a module. False when it has no id, or the text
-/// is not an object. The tick interval is kept within 10..1000 ms and the modes
-/// default to text.</summary>
+/// is not an object, or none of its modes is known. The tick interval is kept
+/// within 10..1000 ms and the modes default to text.</summary>
 function ParseSaverInfo(const AJson: string; out AInfo: TSaverModuleInfo): Boolean;
 
 /// <summary>Loads the native library APath as a module. False (with nothing kept
@@ -86,6 +91,7 @@ type
     FResize: procedure(AHandle, ACols, ARows: Int64); cdecl;
     FAdvance: procedure(AHandle, ADeltaMs: Int64); cdecl;
     FDraw: function(AHandle, ACols, ARows: Int64; ACells: PSaverCell): Int64; cdecl;
+    FDrawPixels: function(AHandle, AWidth, AHeight: Int64; APixels: PByte): Int64; cdecl;
     FDestroy: procedure(AHandle: Int64); cdecl;
   public
     constructor Create(AHandle: HMODULE; const AInfo: TSaverModuleInfo);
@@ -96,6 +102,7 @@ type
     procedure Resize(AHandle, ACols, ARows: Int64);
     procedure Advance(AHandle, ADeltaMs: Int64);
     function DrawText(AHandle, ACols, ARows: Int64; ACells: PSaverCell): Boolean;
+    function DrawPixels(AHandle, AWidth, AHeight: Int64; APixels: PByte): Boolean;
     procedure Close(AHandle: Int64);
   end;
 
@@ -134,7 +141,9 @@ begin
       Arr := TJSONArray(V);
       for I := 0 to Arr.Count - 1 do
         if SameText(Arr.Items[I].Value, 'text') then
-          AInfo.Modes := AInfo.Modes or cSaverModeText;
+          AInfo.Modes := AInfo.Modes or cSaverModeText
+        else if SameText(Arr.Items[I].Value, 'pixels') then
+          AInfo.Modes := AInfo.Modes or cSaverModePixels;
     end
     else
       AInfo.Modes := cSaverModeText;
@@ -166,9 +175,12 @@ begin
   @FResize := GetProcAddress(FHandle, 'mtn_saver_resize');
   @FAdvance := GetProcAddress(FHandle, 'mtn_saver_advance');
   @FDraw := GetProcAddress(FHandle, 'mtn_saver_draw_text');
+  @FDrawPixels := GetProcAddress(FHandle, 'mtn_saver_draw_pixels');
   @FDestroy := GetProcAddress(FHandle, 'mtn_saver_destroy');
   Result := Assigned(FCreate) and Assigned(FResize) and Assigned(FAdvance) and
-    Assigned(FDraw) and Assigned(FDestroy);
+    Assigned(FDestroy) and
+    ((FInfo.Modes and cSaverModeText = 0) or Assigned(FDraw)) and
+    ((FInfo.Modes and cSaverModePixels = 0) or Assigned(FDrawPixels));
 end;
 
 function TNativeSaverModule.Info: TSaverModuleInfo;
@@ -206,7 +218,17 @@ end;
 function TNativeSaverModule.DrawText(AHandle, ACols, ARows: Int64; ACells: PSaverCell): Boolean;
 begin
   try
-    Result := FDraw(AHandle, ACols, ARows, ACells) = 0;
+    Result := Assigned(FDraw) and (FDraw(AHandle, ACols, ARows, ACells) = 0);
+  except
+    Result := False;
+  end;
+end;
+
+function TNativeSaverModule.DrawPixels(AHandle, AWidth, AHeight: Int64;
+  APixels: PByte): Boolean;
+begin
+  try
+    Result := Assigned(FDrawPixels) and (FDrawPixels(AHandle, AWidth, AHeight, APixels) = 0);
   except
     Result := False;
   end;

@@ -172,7 +172,7 @@ uses
   uShellProfiles, uDualPanelTypes, uConsoleSettings, uCliInfo,
   uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uPluginColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
-  uToast, uSharkSaver, uScreenSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
+  uToast, uScreenSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
   uOverlayRenderer, uKeyRouting, uShellAssoc;
 
@@ -224,6 +224,7 @@ begin
   FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
   FSession.SaverId := cDefaultSaverId;
+  FSession.SaverRandom := False;
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
@@ -403,6 +404,7 @@ begin
   Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
   Result.SaverId := GSaverId;
+  Result.SaverRandom := GSaverRandom;
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
@@ -455,12 +457,14 @@ begin
   GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
   FSession.SaverId := ASettings.SaverId;
+  FSession.SaverRandom := ASettings.SaverRandom;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GSaverMinutes := ASettings.SaverMinutes;
   GSaverId := ASettings.SaverId;
+  GSaverRandom := ASettings.SaverRandom;
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
   GColumnSeparators := ASettings.ColumnSeparators;
@@ -552,6 +556,7 @@ begin
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
   GSaverMinutes := Sess.SaverMinutes;
   GSaverId := Sess.SaverId;
+  GSaverRandom := Sess.SaverRandom;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
   GEdgeBorders := Sess.EdgeBorders;
@@ -614,6 +619,7 @@ begin
   Sess.KeyHintsSeen := FDualPanel.KeyHintsSeen;
   Sess.SaverMinutes := GSaverMinutes;
   Sess.SaverId := GSaverId;
+  Sess.SaverRandom := GSaverRandom;
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;

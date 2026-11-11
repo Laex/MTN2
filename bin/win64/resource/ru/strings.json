@@ -299,7 +299,6 @@
       "quick_search_filter": "Фильтровать панель при быстром поис&ке",
       "quick_search_keep_filter": "Сохранять фильтр при переходе в другую папк&у",
       "quick_search_fuzzy": "Не&чёткий фильтр: буквы по порядку",
-      "lbl_saver": "Заставка",
       "ok": "ОК",
       "cancel": "Отмена"
     },
@@ -1863,8 +1862,6 @@
     "mouse.offHint": "Ctrl+Shift+M включает её обратно",
     "mouse.selectTip": "Выделение не попало в буфер? Shift при выделении – выделяет терминал; Ctrl+Shift+M выключает мышь программы",
     "terminalEnv.none": "(нет)",
-    "display.saverOff": "Выкл.",
-    "display.saverMinutes": "%d мин",
     "profileKeys.auto": "авто",
     "profileKeys.program": "терминал",
     "profileKeys.host": "хост",

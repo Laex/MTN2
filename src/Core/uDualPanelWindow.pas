@@ -264,6 +264,7 @@ type
     FHintActive: THintSituations;
     FHintStarted: Boolean;
     FSaver: TScreenSaver;
+    FSaverPixelsShown: Boolean;
     /// <summary>The click and the release that follow a mouse press which only
     /// stopped the screensaver are not input for the window.</summary>
     FSaverSwallowClick: Boolean;
@@ -1288,6 +1289,7 @@ type
     procedure PluginPanelRefresh;
     procedure PublishPanelEvents;
     procedure DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
+    procedure ShowSaverPixels(W, H: Integer);
     function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
     function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
     function PluginPanelListJson(ASide: Integer): string;
@@ -1625,6 +1627,9 @@ type
     /// Viewer with an image Overlay in the viewport. Host FormPaint uses
     /// this because FMdi.Active is DualPanel, not the nested TEditorWindow.</summary>
     function MarkdownImageOverlayVisible: Boolean;
+    /// <summary>True while a pixel picture of the screensaver is published as
+    /// the overlay bitmap; the host paints that bitmap in its Canvas pass.</summary>
+    function SaverPixelsVisible: Boolean;
     /// <summary>The cells the notice covers, in the grid of the whole window;
     /// empty (Width 0) when none is on screen. A picture painted over the grid
     /// leaves them free.</summary>
@@ -9898,6 +9903,11 @@ begin
     Result.Right + Area.Left, Result.Bottom + Area.Top);
 end;
 
+function TDualPanelWindow.SaverPixelsVisible: Boolean;
+begin
+  Result := FSaverPixelsShown;
+end;
+
 function TDualPanelWindow.MarkdownImageOverlayVisible: Boolean;
 var
   Doc: TEditorWindow;
@@ -15548,7 +15558,35 @@ begin
         FToast.Draw(Buffer, Theme, W, H);
   end;
   if Assigned(FSaver) then
+  begin
     FSaver.Draw(Buffer, W, H);
+    ShowSaverPixels(W, H);
+  end;
+end;
+
+{ A pixel picture of the screensaver covers the whole window with one bitmap
+  over the grid; when the saver stops or draws characters again the bitmap goes. }
+procedure TDualPanelWindow.ShowSaverPixels(W, H: Integer);
+const
+  cSaverOverlayUri = 'saver-pixels:frame';
+var
+  PW, PH: Integer;
+  Gen: Cardinal;
+  Pixels: PByte;
+  Bounds: TRectI;
+begin
+  if FSaver.PixelFrame(PW, PH, Pixels, Gen) then
+  begin
+    Bounds := TRectI.Make(Area.Left, Area.Top, Area.Left + W - 1, Area.Top + H - 1);
+    SetOverlayPixels(cSaverOverlayUri, PW, PH, Pixels, Bounds, Bounds);
+    FSaverPixelsShown := True;
+  end
+  else if FSaverPixelsShown then
+  begin
+    FSaverPixelsShown := False;
+    if OverlayCurrentURI = cSaverOverlayUri then
+      ClearOverlayPreview;
+  end;
 end;
 
 function TDualPanelWindow.DrivePreviewActive: Boolean;
