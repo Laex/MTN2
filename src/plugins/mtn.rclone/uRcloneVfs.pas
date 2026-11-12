@@ -8,20 +8,23 @@ unit uRcloneVfs;
 interface
 
 uses
-  uPluginHostAbi;
+  uPluginHostAbi, uVfsTypes;
 
 type
-  /// <summary>Runs a program; False when it could not be started or did not finish in time
-  /// (AOutput then explains why). Otherwise ACode is its exit code.</summary>
+  /// <summary>Runs a program; False when it could not be started, did not finish in time
+  /// or was stopped through ACancel (AOutput then explains why). Otherwise ACode is its
+  /// exit code.</summary>
   TRcRunFunc = function(const AExe: string; const AArgs: TArray<string>; const AStdIn: string;
-    ATimeoutMs: Cardinal; out AOutput: string; out ACode: Cardinal): Boolean;
+    ATimeoutMs: Cardinal; const ACancel: IJobCancelToken; out AOutput: string;
+    out ACode: Cardinal): Boolean;
 
 var
   /// <summary>The program runner; tests put a fake one here.</summary>
   GRcRunTool: TRcRunFunc;
 
 function DefaultRcRunTool(const AExe: string; const AArgs: TArray<string>; const AStdIn: string;
-  ATimeoutMs: Cardinal; out AOutput: string; out ACode: Cardinal): Boolean;
+  ATimeoutMs: Cardinal; const ACancel: IJobCancelToken; out AOutput: string;
+  out ACode: Cardinal): Boolean;
 
 function RcloneVfsCallbacks: TVfsCallbacksCdeclV2;
 
@@ -29,7 +32,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.StrUtils, System.JSON, System.DateUtils, System.TimeSpan,
-  System.IOUtils, uVfsTypes, uPlatformProcess, uRcloneFormat;
+  System.IOUtils, System.SyncObjs, uPlatformProcess, uRcloneFormat;
 
 const
   cListTimeoutMs = 120000;
@@ -38,14 +41,17 @@ const
   cCopyTimeoutMs = 3600000;
 
 function DefaultRcRunTool(const AExe: string; const AArgs: TArray<string>; const AStdIn: string;
-  ATimeoutMs: Cardinal; out AOutput: string; out ACode: Cardinal): Boolean;
+  ATimeoutMs: Cardinal; const ACancel: IJobCancelToken; out AOutput: string;
+  out ACode: Cardinal): Boolean;
 var
   Status: TSpawnResult;
 begin
-  Status := PlatformRunCaptured(AExe, AArgs, AStdIn, ATimeoutMs, nil, AOutput, ACode);
+  Status := PlatformRunCaptured(AExe, AArgs, AStdIn, ATimeoutMs, ACancel, AOutput, ACode);
   Result := Status = srOk;
   if Status = srTimeout then
     AOutput := Format('%s did not finish in %d s', [AExe, ATimeoutMs div 1000])
+  else if Status = srCancelled then
+    AOutput := 'Cancelled'
   else if Status <> srOk then
     AOutput := AExe + ' did not run (is it installed and in PATH?)';
 end;
@@ -74,14 +80,59 @@ begin
     Result := verIOError;
 end;
 
-// verOk = done, otherwise the result code with the message set on ACtx.
+type
+  /// <summary>Stops the program of one call: when the user cancels (seen through
+  /// the operation context, which must outlive the token's use) or when the
+  /// plugin itself calls Cancel.</summary>
+  TRunCancel = class(TInterfacedObject, IJobCancelToken)
+  private
+    FCtx: PVfsOpContext;
+    FStopped: Integer;
+  public
+    constructor Create(ACtx: PVfsOpContext);
+    function IsCancellationRequested: Boolean;
+    procedure Cancel;
+    function UserCancelled: Boolean;
+  end;
+
+constructor TRunCancel.Create(ACtx: PVfsOpContext);
+begin
+  inherited Create;
+  FCtx := ACtx;
+end;
+
+function TRunCancel.UserCancelled: Boolean;
+begin
+  Result := (FCtx <> nil) and Assigned(FCtx^.IsCancelled) and (FCtx^.IsCancelled(FCtx) <> 0);
+end;
+
+function TRunCancel.IsCancellationRequested: Boolean;
+begin
+  Result := (TInterlocked.CompareExchange(FStopped, 0, 0) <> 0) or UserCancelled;
+end;
+
+procedure TRunCancel.Cancel;
+begin
+  TInterlocked.Exchange(FStopped, 1);
+end;
+
+// verOk = done, otherwise the result code with the message set on ACtx. The
+// program is stopped when the user cancels the call, or through ACancel.
 function Run(ACtx: PVfsOpContext; const AArgs: TArray<string>; const AStdIn: string;
-  ATimeoutMs: Cardinal; out AOutput: string): Int64;
+  ATimeoutMs: Cardinal; out AOutput: string; ACancel: TRunCancel = nil): Int64;
 var
   Code: Cardinal;
+  Cancel: IJobCancelToken;
 begin
-  if not GRcRunTool(cRcloneExe, AArgs, AStdIn, ATimeoutMs, AOutput, Code) then
+  if ACancel = nil then
+    ACancel := TRunCancel.Create(ACtx);
+  Cancel := ACancel;
+  if not GRcRunTool(cRcloneExe, AArgs, AStdIn, ATimeoutMs, Cancel, AOutput, Code) then
+  begin
+    if ACancel.UserCancelled then
+      Exit(Fail(ACtx, verCancelled, 'Cancelled'));
     Exit(Fail(ACtx, verIOError, AOutput));
+  end;
   if Code <> 0 then
     Exit(Fail(ACtx, CodeOfFailure(AOutput), AOutput));
   Result := Ord(verOk);
@@ -260,22 +311,31 @@ end;
 
 type
   /// <summary>Follows the totals log of a running transfer and passes them to
-  /// the host. The context must outlive the thread: stop it before the call
-  /// that owns the context returns.</summary>
+  /// the host; stops the transfer once its size is known to exceed AMaxBytes
+  /// (0 = no limit). The context must outlive the thread: stop it before the
+  /// call that owns the context returns.</summary>
   TStatsFollower = class(TThread)
   private
     FCtx: PVfsOpContext;
     FLog: string;
+    FMaxBytes: Int64;
+    FCancel: IJobCancelToken;
+    FTooLarge: Boolean;
   protected
     procedure Execute; override;
   public
-    constructor Create(ACtx: PVfsOpContext; const ALog: string);
+    constructor Create(ACtx: PVfsOpContext; const ALog: string; AMaxBytes: Int64;
+      const ACancel: IJobCancelToken);
+    property TooLarge: Boolean read FTooLarge;
   end;
 
-constructor TStatsFollower.Create(ACtx: PVfsOpContext; const ALog: string);
+constructor TStatsFollower.Create(ACtx: PVfsOpContext; const ALog: string; AMaxBytes: Int64;
+  const ACancel: IJobCancelToken);
 begin
   FCtx := ACtx;
   FLog := ALog;
+  FMaxBytes := AMaxBytes;
+  FCancel := ACancel;
   inherited Create(False);
 end;
 
@@ -291,7 +351,15 @@ begin
   while not Terminated do
   begin
     Sleep(cPollMs);
-    if ParseStatsLog(ReadFileTail(FLog, cTailBytes), Done, Total) and (Done <> LastDone) then
+    if not ParseStatsLog(ReadFileTail(FLog, cTailBytes), Done, Total) then
+      Continue;
+    if (FMaxBytes > 0) and (Total > FMaxBytes) then
+    begin
+      FTooLarge := True;
+      FCancel.Cancel;
+      Exit;
+    end;
+    if Done <> LastDone then
     begin
       LastDone := Done;
       FCtx^.ReportProgress(FCtx, Done, Total, Done, Total, nil);
@@ -299,28 +367,55 @@ begin
   end;
 end;
 
-// Copies the remote file to ATmp. With a context that takes progress the
-// transfer logs its totals to a file next to ATmp, which a follower reads;
-// the log then also holds the error text that otherwise comes on the output.
-function CopyToTemp(ACtx: PVfsOpContext; const AAddr: TRcAddr; const ATmp: string): Int64;
+function FailTooLarge(ACtx: PVfsOpContext; AMaxBytes: Int64): Int64;
+begin
+  Result := Fail(ACtx, verNotSupported, Format('File too large (max %d KB).', [AMaxBytes div 1024]));
+end;
+
+// A stopped transfer leaves what it had received next to the target, under
+// the target's name with a ".partial" ending.
+procedure DeletePartials(const ALocalPath: string);
+var
+  Name: string;
+begin
+  try
+    for Name in TDirectory.GetFiles(ExtractFileDir(ALocalPath),
+      ExtractFileName(ALocalPath) + '.*.partial') do
+      TFile.Delete(Name);
+  except
+    // Leftovers in a folder that cannot be read or cleaned stay where they are.
+  end;
+end;
+
+// Runs a copy or a move. With a context that takes progress the transfer logs
+// its totals to a temporary file, which a follower reads; the log then also
+// holds the error text that otherwise comes on the output. A transfer whose
+// size turns out to exceed AMaxBytes (0 = no limit) is stopped and refused.
+function RunTransfer(ACtx: PVfsOpContext; const AArgs: TArray<string>; AMaxBytes: Int64): Int64;
 var
   Output, Log, Text: string;
-  Args: TArray<string>;
   Follower: TStatsFollower;
+  Cancel: TRunCancel;
+  Keep: IJobCancelToken;
 begin
-  Args := CopyToArgs(RemoteSpec(AAddr), ATmp, False);
   if (ACtx = nil) or not Assigned(ACtx^.ReportProgress) then
-    Exit(Run(ACtx, Args, '', cCopyTimeoutMs, Output));
-  Log := ATmp + '.log';
-  Follower := TStatsFollower.Create(ACtx, Log);
+    Exit(Run(ACtx, AArgs, '', cCopyTimeoutMs, Output));
+  Log := TPath.GetTempFileName;
+  Cancel := TRunCancel.Create(ACtx);
+  Keep := Cancel;
+  Follower := TStatsFollower.Create(ACtx, Log, AMaxBytes, Keep);
   try
     try
-      Result := Run(ACtx, Args + StatsLogArgs(Log), '', cCopyTimeoutMs, Output);
+      Result := Run(ACtx, AArgs + StatsLogArgs(Log), '', cCopyTimeoutMs, Output, Cancel);
     finally
       Follower.Terminate;
       Follower.WaitFor;
     end;
-    if Result <> Ord(verOk) then
+    if Result = Ord(verOk) then
+      Exit;
+    if Follower.TooLarge then
+      Exit(FailTooLarge(ACtx, AMaxBytes));
+    if Result <> Ord(verCancelled) then
     begin
       Text := LogMessages(ReadFileTail(Log, 65536));
       if Text <> '' then
@@ -334,7 +429,8 @@ begin
 end;
 
 // Reads the file: text through "cat", bytes through a temporary local copy so that
-// binary content survives.
+// binary content survives. A file of more than AMaxBytes bytes is refused, as a
+// local one is, so the caller can fall back to copying it.
 function ReadContent(ACtx: PVfsOpContext; const AAddr: TRcAddr; AMaxBytes: Int64;
   AAsBytes: Boolean; out ABytes: TBytes): Int64;
 var
@@ -350,12 +446,17 @@ begin
   end;
   Tmp := TPath.GetTempFileName;
   try
-    Result := CopyToTemp(ACtx, AAddr, Tmp);
-    if Result = Ord(verOk) then
-      ABytes := TFile.ReadAllBytes(Tmp);
+    Result := RunTransfer(ACtx, CopyToArgs(RemoteSpec(AAddr), Tmp, False), AMaxBytes);
+    if Result <> Ord(verOk) then
+      Exit;
+    // A small transfer can end before its size was seen in the totals.
+    if (AMaxBytes > 0) and (TFile.GetSize(Tmp) > AMaxBytes) then
+      Exit(FailTooLarge(ACtx, AMaxBytes));
+    ABytes := TFile.ReadAllBytes(Tmp);
   finally
     if TFile.Exists(Tmp) then
       TFile.Delete(Tmp);
+    DeletePartials(Tmp);
   end;
 end;
 
@@ -478,7 +579,7 @@ end;
 
 function TransferItem(AFromURI, AToURI: PAnsiChar; ACtx: PVfsOpContext; AMove: Boolean): Int64;
 var
-  From, To_, FromSpec, ToSpec, Output: string;
+  From, To_, FromSpec, ToSpec: string;
   Addr: TRcAddr;
 begin
   try
@@ -491,7 +592,9 @@ begin
     ToSpec := SpecOf(To_);
     if (FromSpec = '') or (ToSpec = '') then
       Exit(Fail(ACtx, verNotSupported, 'Only files of a remote and local files can be transferred'));
-    Result := Run(ACtx, CopyToArgs(FromSpec, ToSpec, AMove), '', cCopyTimeoutMs, Output);
+    Result := RunTransfer(ACtx, CopyToArgs(FromSpec, ToSpec, AMove), 0);
+    if (Result <> Ord(verOk)) and not ParseRcloneUri(To_, Addr) then
+      DeletePartials(ToSpec);
   except
     on E: Exception do
       Result := Fail(ACtx, verIOError, E.Message);

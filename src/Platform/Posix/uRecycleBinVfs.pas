@@ -132,24 +132,6 @@ begin
     end);
 end;
 
-procedure QueueBytes(const AOnDone: TVfsBytesCallback; const ABytes: TBytes;
-  const AError: TVfsError);
-var
-  Bytes: TBytes;
-  Err: TVfsError;
-  Cb: TVfsBytesCallback;
-begin
-  Bytes := ABytes;
-  Err := AError;
-  Cb := AOnDone;
-  TThread.Queue(nil,
-    procedure
-    begin
-      if Assigned(Cb) then
-        Cb(Bytes, Err);
-    end);
-end;
-
 function PercentDecode(const AText: string): string;
 var
   Bytes: TBytes;

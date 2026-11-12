@@ -1092,7 +1092,8 @@ begin
   else if FDoc.Ready then
     Title := ModeTitle + ' - ' + Star + ExtractFileName(FDoc.Path)
   else if FDoc.Loading then
-    Title := ModeTitle + ' - ' + T('ui.editor.loading', 'Loading...')
+    Title := ModeTitle + ' - ' + EditorLoadingTitle(VfsUriTitle(FDoc.URI),
+      EditorLoadingPercent(FDoc.LoadDone, FDoc.LoadTotal))
   else if FDoc.Error <> '' then
     Title := ModeTitle + ' - error'
   else
@@ -5779,13 +5780,16 @@ procedure TEditorWindow.DrawLoadingProgress;
 const
   cBarMaxW = 50;
   cBarRow = 3;
+  // A load that ends sooner shows no bar: it would only flash.
+  cBarDelayMs = 250;
 var
   BarW, Fill: Integer;
   Text: string;
 begin
-  Text := EditorLoadingProgressText(FDoc.LoadDone, FDoc.LoadTotal);
+  Text := EditorLoadingProgressText(FDoc.LoadDone, FDoc.LoadTotal, FDoc.LoadSpeed);
   BarW := Min(cBarMaxW, Area.Width - 4);
-  if (Text = '') or (BarW < 4) or (Area.Height < cBarRow + 3) then
+  if (Text = '') or (BarW < 4) or (Area.Height < cBarRow + 3) or
+     (FDoc.LoadElapsedMs < cBarDelayMs) then
     Exit;
   Fill := EditorLoadingBarFill(FDoc.LoadDone, FDoc.LoadTotal, BarW);
   PutGridText(Buffer, 1, cBarRow, StringOfChar(chBlock, Fill), FThemeColors.ScrollThumb,
@@ -5823,7 +5827,7 @@ begin
   else if FDoc.Loading then
   begin
     FillGridRect(Buffer, 1, 1, W - 2, H - 2, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
-    PutGridText(Buffer, 1, 1, EditorLoadingText(FDoc.LoadDone, FDoc.LoadTotal) + '  ' +
+    PutGridText(Buffer, 1, 1, EditorLoadingText(FDoc.Status, FDoc.LoadDone, FDoc.LoadTotal) + '  ' +
       T('ui.editor.loadingHint', 'Esc cancels'), FThemeColors.HintFg, FThemeColors.BodyBg);
     DrawLoadingProgress;
   end

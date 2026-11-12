@@ -27,6 +27,11 @@ function JobBlocksNewOperation(const AJob: TPanelJobState): Boolean;
 function JobShowsOverlay(const AJob: TPanelJobState): Boolean;
 function JobWantsProgressDialog(const AJob: TPanelJobState): Boolean;
 function JobProgressResourceName(const AJob: TPanelJobState): string;
+/// <summary>How a progress bar of AWidth cells with its percentage is laid
+/// out: the cells of the bar itself, how many of them are filled, and the
+/// percentage text that follows after one space.</summary>
+procedure JobProgressBarParts(AWidth, APct: Integer; out ABarW, AFillW: Integer;
+  out APctStr: string);
 function FormatJobProgressBar(AWidth, APct: Integer): string;
 function JobProgressSrcLine(const AJob: TPanelJobState; AMaxLen: Integer): string;
 function JobProgressDstLine(const AJob: TPanelJobState; AMaxLen: Integer): string;
@@ -403,16 +408,23 @@ begin
   Result := '..' + Copy(AText, Length(AText) - (AMaxLen - 2) + 1, AMaxLen - 2);
 end;
 
-function FormatJobProgressBar(AWidth, APct: Integer): string;
+procedure JobProgressBarParts(AWidth, APct: Integer; out ABarW, AFillW: Integer;
+  out APctStr: string);
 var
   Pct: Integer;
+begin
+  Pct := EnsureRange(APct, 0, 100);
+  APctStr := Format('%3d%%', [Pct]);
+  ABarW := Max(AWidth - Length(APctStr) - 1, 4);
+  AFillW := EnsureRange(Round(ABarW * Pct / 100), 0, ABarW);
+end;
+
+function FormatJobProgressBar(AWidth, APct: Integer): string;
+var
   PctStr: string;
   BarW, FillW: Integer;
 begin
-  Pct := EnsureRange(APct, 0, 100);
-  PctStr := Format('%3d%%', [Pct]);
-  BarW := Max(AWidth - Length(PctStr) - 1, 4);
-  FillW := EnsureRange(Round(BarW * Pct / 100), 0, BarW);
+  JobProgressBarParts(AWidth, APct, BarW, FillW, PctStr);
   Result := StringOfChar(chBlock, FillW) + StringOfChar(chShadeLight, BarW - FillW) +
     ' ' + PctStr;
 end;

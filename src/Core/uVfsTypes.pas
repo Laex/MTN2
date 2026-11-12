@@ -270,6 +270,11 @@ procedure JobThrottle(const ACancel: IJobCancelToken; ABytes: Integer);
 /// token that does not follow it).</summary>
 procedure JobNoteReadProgress(const ACancel: IJobCancelToken; ADone, ATotal: Int64);
 
+/// <summary>Delivers the result of a whole-file read to AOnDone on the main
+/// thread (a no-op without a callback).</summary>
+procedure QueueBytes(const AOnDone: TVfsBytesCallback; const ABytes: TBytes;
+  const AError: TVfsError);
+
 /// <summary>Reads up to ACount bytes of AStream into ABuf chunk by chunk,
 /// reporting progress to the token between chunks. ABuf is cut to what the
 /// stream gave. False when the token was cancelled midway; ABuf is empty then.</summary>
@@ -571,6 +576,25 @@ var
 begin
   if Assigned(ACancel) and Supports(ACancel, IJobReadProgress, Sink) then
     Sink.NoteReadProgress(ADone, ATotal);
+end;
+
+procedure QueueBytes(const AOnDone: TVfsBytesCallback; const ABytes: TBytes;
+  const AError: TVfsError);
+var
+  Bytes: TBytes;
+  Err: TVfsError;
+  Done: TVfsBytesCallback;
+begin
+  if not Assigned(AOnDone) then
+    Exit;
+  Bytes := ABytes;
+  Err := AError;
+  Done := AOnDone;
+  TThread.Queue(nil,
+    procedure
+    begin
+      Done(Bytes, Err);
+    end);
 end;
 
 function JobReadStream(AStream: TStream; ACount: Int64; const ACancel: IJobCancelToken;

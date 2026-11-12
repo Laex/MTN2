@@ -26,6 +26,9 @@ function JobPopupBackgroundHit(const ABounds: TRectI; AKind: TPanelJobKind;
 
 implementation
 
+uses
+  uDualPanelJobRules;
+
 const
   cJobPopupBackgroundCaption = 'Background';
   cJobPopupBackgroundWidth = 15; // '[ Background ]'
@@ -175,14 +178,10 @@ end;
 procedure DrawJobProgressBar(const AGrid: TTerminalGrid; AX, AY, AWidth,
   APct: Integer; ABarFg, ATrackFg, ABg: TAlphaColor);
 var
-  Pct: Integer;
   PctStr, Bar: string;
   BarW, FillW: Integer;
 begin
-  Pct := EnsureRange(APct, 0, 100);
-  PctStr := Format('%3d%%', [Pct]);
-  BarW := Max(AWidth - Length(PctStr) - 1, 4);
-  FillW := EnsureRange(Round(BarW * Pct / 100), 0, BarW);
+  JobProgressBarParts(AWidth, APct, BarW, FillW, PctStr);
   Bar := StringOfChar(chBlock, FillW) + StringOfChar(chShadeLight, BarW - FillW);
   PutGridText(AGrid, AX, AY, Copy(Bar, 1, BarW), ABarFg, ABg);
   PutGridText(AGrid, AX + BarW + 1, AY, PctStr, ATrackFg, ABg);

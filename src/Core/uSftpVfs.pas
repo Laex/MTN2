@@ -728,25 +728,6 @@ begin
     end);
 end;
 
-procedure QueueBytes(AOnDone: TVfsBytesCallback; const ABytes: TBytes;
-  const AError: TVfsError);
-var
-  Bytes: TBytes;
-  Err: TVfsError;
-  Done: TVfsBytesCallback;
-begin
-  if not Assigned(AOnDone) then
-    Exit;
-  Bytes := ABytes;
-  Err := AError;
-  Done := AOnDone;
-  TThread.Queue(nil,
-    procedure
-    begin
-      Done(Bytes, Err);
-    end);
-end;
-
 procedure StartSftpWork(const AWork: TProc);
 begin
   TThread.CreateAnonymousThread(AWork).Start;
@@ -964,18 +945,84 @@ begin
   Result := True;
 end;
 
+type
+  /// <summary>Tells the token of a read how much of the file has arrived, by
+  /// the size of the local file the transfer writes. The size of the remote
+  /// file is not known here, so the total stays 0.</summary>
+  TReceivedFollower = class(TThread)
+  private
+    FPath: string;
+    FCancel: IJobCancelToken;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const APath: string; const ACancel: IJobCancelToken);
+  end;
+
+constructor TReceivedFollower.Create(const APath: string; const ACancel: IJobCancelToken);
+begin
+  FPath := APath;
+  FCancel := ACancel;
+  inherited Create(False);
+end;
+
+procedure TReceivedFollower.Execute;
+const
+  cPollMs = 150;
+var
+  FS: TFileStream;
+  Size, Last: Int64;
+begin
+  Last := 0;
+  while not Terminated do
+  begin
+    Sleep(cPollMs);
+    try
+      FS := TFileStream.Create(FPath, fmOpenRead or fmShareDenyNone);
+      try
+        Size := FS.Size;
+      finally
+        FS.Free;
+      end;
+    except
+      // Not created yet, or held without sharing: try again at the next poll.
+      Continue;
+    end;
+    if Size > Last then
+    begin
+      Last := Size;
+      JobNoteReadProgress(FCancel, Size, 0);
+    end;
+  end;
+end;
+
 function SftpReadToBytes(const AAuthority, ARemotePath, AURI: string;
   AMaxBytes: Int64; ACancel: IJobCancelToken; out ABytes: TBytes;
   out AError: TVfsError): Boolean;
 var
   TempPath: string;
+  Follower: TReceivedFollower;
+  Got: Boolean;
 begin
   SetLength(ABytes, 0);
   if JobCancelRequested(ACancel) then
     Exit(FailTransfer(AError, vecCancelled, 'Cancelled', AURI));
   TempPath := NewTempFileName('mtn2sftp_');
   try
-    if not SftpGetToLocal(AAuthority, ARemotePath, TempPath, False, ACancel, AError) then
+    Follower := nil;
+    if Supports(ACancel, IJobReadProgress) then
+      Follower := TReceivedFollower.Create(TempPath, ACancel);
+    try
+      Got := SftpGetToLocal(AAuthority, ARemotePath, TempPath, False, ACancel, AError);
+    finally
+      if Follower <> nil then
+      begin
+        Follower.Terminate;
+        Follower.WaitFor;
+        Follower.Free;
+      end;
+    end;
+    if not Got then
       Exit(False);
     try
       Result := ReadTempFileCapped(TempPath, AURI, AMaxBytes, ABytes, AError);

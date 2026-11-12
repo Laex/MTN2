@@ -40,14 +40,22 @@ function EditorCaretDrawCol(ACursorCol, AChunkStart1, AChunkEnd1, ADisplayLen,
   ATextW: Integer; ALastChunk: Boolean; out ADrawCol: Integer): Boolean;
 function EditorStatusFlag(AHexMode, AViewOnly, AWordWrap, AReadOnly,
   ASaving: Boolean; const ADocStatus: string): string;
-/// <summary>The note shown while a document loads; it carries the bytes read
-/// when the size is not known (the progress line shows them otherwise).</summary>
-function EditorLoadingText(ADone, ATotal: Int64): string;
+/// <summary>The note shown while a document loads: ANote names the stage (the
+/// loading note when empty), followed by the bytes read when the size is not
+/// known (the progress line shows them otherwise).</summary>
+function EditorLoadingText(const ANote: string; ADone, ATotal: Int64): string;
 /// <summary>Share of the load done, 0..100; -1 while the size is not known.</summary>
 function EditorLoadingPercent(ADone, ATotal: Int64): Integer;
-/// <summary>The percentage and sizes next to the progress bar; '' while the
+/// <summary>The percentage and sizes next to the progress bar, followed by the
+/// rate and the time left when ASpeed (bytes per second) is known; '' while the
 /// size is not known.</summary>
-function EditorLoadingProgressText(ADone, ATotal: Int64): string;
+function EditorLoadingProgressText(ADone, ATotal: Int64; ASpeed: Int64 = 0): string;
+/// <summary>What the window title says after the mode while a document loads:
+/// the file name with the percentage (APercent < 0 = not known), or the bare
+/// loading note for a document without a name.</summary>
+function EditorLoadingTitle(const AName: string; APercent: Integer): string;
+/// <summary>A span of seconds as m:ss, or h:mm:ss from an hour on.</summary>
+function EditorDurationText(ASeconds: Int64): string;
 /// <summary>How many of ABarWidth cells of the progress bar are filled.</summary>
 function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;
 
@@ -56,9 +64,11 @@ implementation
 uses
   uInputLine, uStrings, uCharWidth, uVfsUtils;
 
-function EditorLoadingText(ADone, ATotal: Int64): string;
+function EditorLoadingText(const ANote: string; ADone, ATotal: Int64): string;
 begin
-  Result := T('ui.editor.loading', 'Loading...');
+  Result := ANote;
+  if Result = '' then
+    Result := T('ui.editor.loading', 'Loading...');
   if (ATotal <= 0) and (ADone > 0) then
     Result := Result + ' ' + TVfsUtils.FormatFileSize(ADone);
 end;
@@ -76,7 +86,28 @@ begin
   Result := Integer(ClampLoadDone(ADone, ATotal) * 100 div ATotal);
 end;
 
-function EditorLoadingProgressText(ADone, ATotal: Int64): string;
+function EditorLoadingTitle(const AName: string; APercent: Integer): string;
+begin
+  if AName = '' then
+    Result := T('ui.editor.loading', 'Loading...')
+  else if APercent < 0 then
+    Result := AName + ' - ' + T('ui.editor.loading', 'Loading...')
+  else
+    Result := Format('%s - %d%%', [AName, APercent]);
+end;
+
+function EditorDurationText(ASeconds: Int64): string;
+begin
+  if ASeconds < 0 then
+    ASeconds := 0;
+  if ASeconds < 3600 then
+    Result := Format('%d:%.2d', [ASeconds div 60, ASeconds mod 60])
+  else
+    Result := Format('%d:%.2d:%.2d', [ASeconds div 3600, ASeconds mod 3600 div 60,
+      ASeconds mod 60]);
+end;
+
+function EditorLoadingProgressText(ADone, ATotal: Int64; ASpeed: Int64): string;
 begin
   if ATotal <= 0 then
     Exit('');
@@ -84,6 +115,13 @@ begin
   Result := T('ui.editor.loadingProgress', '%d%%  %s of %s',
     [EditorLoadingPercent(ADone, ATotal), TVfsUtils.FormatFileSize(ADone),
      TVfsUtils.FormatFileSize(ATotal)]);
+  if ASpeed <= 0 then
+    Exit;
+  Result := Result + '  ' + T('ui.editor.loadingSpeed', '%s/s', [TVfsUtils.FormatFileSize(ASpeed)]);
+  // Rounded up, so the last second does not show as 0:00.
+  if ADone < ATotal then
+    Result := Result + '  ' + T('ui.editor.loadingEta', '%s left',
+      [EditorDurationText((ATotal - ADone + ASpeed - 1) div ASpeed)]);
 end;
 
 function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;

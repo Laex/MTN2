@@ -120,25 +120,6 @@ begin
     end);
 end;
 
-procedure QueueBytes(const AOnDone: TVfsBytesCallback; const ABytes: TBytes;
-  const AError: TVfsError);
-var
-  Bytes: TBytes;
-  Err: TVfsError;
-  Cb: TVfsBytesCallback;
-begin
-  Bytes := ABytes;
-  Err := AError;
-  Cb := AOnDone;
-  if not Assigned(Cb) then
-    Exit;
-  TThread.Queue(nil,
-    procedure
-    begin
-      Cb(Bytes, Err);
-    end);
-end;
-
 procedure TFindVirtualFileSystem.ListDirectoryAsync(const AURI: string;
   ACancel: IJobCancelToken; AOnDone: TVfsListCallback);
 var

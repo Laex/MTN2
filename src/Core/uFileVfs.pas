@@ -108,24 +108,6 @@ begin
     end);
 end;
 
-procedure QueueBytes(AOnDone: TVfsBytesCallback; const ABytes: TBytes;
-  const AError: TVfsError);
-var
-  Bytes: TBytes;
-  Err: TVfsError;
-  Done: TVfsBytesCallback;
-begin
-  Bytes := ABytes;
-  Err := AError;
-  Done := AOnDone;
-  TThread.Queue(nil,
-    procedure
-    begin
-      if Assigned(Done) then
-        Done(Bytes, Err);
-    end);
-end;
-
 procedure QueueProgress(AOnProgress: TVfsProgressCallback; ADone, ATotal: Int64;
   const AName: string; AItemDone: Int64 = 0; AItemTotal: Int64 = 0;
   const AItemSrcPath: string = ''; const AItemDstPath: string = '');

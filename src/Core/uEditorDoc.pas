@@ -65,6 +65,12 @@ type
     // while the size is unknown.
     FLoadDone: Int64;
     FLoadTotal: Int64;
+    // Average rate of the load in bytes per second, measured from its first
+    // report (FLoadStartTick, FLoadStartDone); 0 until it can be told.
+    FLoadSpeed: Int64;
+    FLoadStartTick: UInt64;
+    FLoadBeganTick: UInt64;
+    FLoadStartDone: Int64;
     FOnChanged: TNotifyEvent;
     // Streaming Viewer for local text files too big for whole-buffer
     // load (cEditorMaxBytes). View-only - FReadOnly is forced True. FLines
@@ -115,6 +121,8 @@ type
     /// progress lands in FLoadDone / FLoadTotal.</summary>
     function NewLoadToken(AGen: Cardinal): IJobCancelToken;
     procedure SetLoadProgress(AGen: Cardinal; ADone, ATotal: Int64);
+    /// <summary>A new stage of the load starts counting from nothing.</summary>
+    procedure ResetLoadProgress;
     procedure NotifyChanged;
     procedure ApplyLoadedText(const AText: string);
     function BuildSaveText: string;
@@ -216,6 +224,10 @@ type
     property LoadDone: Int64 read FLoadDone;
     /// <summary>Size of what is being loaded; 0 while it is not known.</summary>
     property LoadTotal: Int64 read FLoadTotal;
+    /// <summary>Average rate of the load, bytes per second; 0 while unknown.</summary>
+    property LoadSpeed: Int64 read FLoadSpeed;
+    /// <summary>Milliseconds since the load in flight was started.</summary>
+    function LoadElapsedMs: UInt64;
     property Saving: Boolean read FSaving;
     property Dirty: Boolean read FDirty;
     property ReadOnly: Boolean read FReadOnly;
@@ -776,6 +788,10 @@ begin
 end;
 
 procedure TEditorDoc.SetLoadProgress(AGen: Cardinal; ADone, ATotal: Int64);
+const
+  cMinRateMs = 1000;
+var
+  Tick: UInt64;
 begin
   // A report can arrive after its load ended or was replaced.
   if (AGen <> FGen) or not FLoading then
@@ -784,7 +800,30 @@ begin
     Exit;
   FLoadDone := ADone;
   FLoadTotal := ATotal;
+  Tick := TThread.GetTickCount64;
+  if FLoadStartTick = 0 then
+  begin
+    FLoadStartTick := Tick;
+    FLoadStartDone := ADone;
+  end
+  // A rate over less than a second jumps too much to be shown.
+  else if (Tick - FLoadStartTick >= cMinRateMs) and (ADone > FLoadStartDone) then
+    FLoadSpeed := (ADone - FLoadStartDone) * 1000 div Int64(Tick - FLoadStartTick);
   NotifyChanged;
+end;
+
+function TEditorDoc.LoadElapsedMs: UInt64;
+begin
+  Result := TThread.GetTickCount64 - FLoadBeganTick;
+end;
+
+procedure TEditorDoc.ResetLoadProgress;
+begin
+  FLoadDone := 0;
+  FLoadTotal := 0;
+  FLoadSpeed := 0;
+  FLoadStartTick := 0;
+  FLoadStartDone := 0;
 end;
 
 procedure TEditorDoc.ReadWithStatAsync(AGen: Cardinal; const AURI: string;
@@ -1357,8 +1396,8 @@ begin
   FReady := False;
   FError := '';
   FStatus := T('ui.editor.loading', 'Loading...');
-  FLoadDone := 0;
-  FLoadTotal := 0;
+  ResetLoadProgress;
+  FLoadBeganTick := TThread.GetTickCount64;
   FCancel := NewLoadToken(Gen);
   NotifyChanged;
 
@@ -1426,14 +1465,14 @@ begin
           ClearDirty;
           FError := '';
           FReady := True;
-          FStatus := Format('Hex  %d bytes', [Length(FRawBytes)]);
+          FStatus := T('ui.editor.hexBytes', 'Hex  %d bytes', [Length(FRawBytes)]);
           StartWatchingCurrentFile; // no-op for binary (see StartWatchingCurrentFile)
         end
         else
         begin
           SetLength(FRawBytes, 0);
           FBinary := False;
-          FError := 'Cannot decode text';
+          FError := T('ui.editor.cannotDecode', 'Cannot decode text');
           FStatus := '';
           FReady := False;
         end;
@@ -1560,7 +1599,7 @@ begin
         FS.Position := 0;
         // A cancelled read is dropped by the caller along with its generation.
         if JobReadStream(FS, HexLen, ACancel, AHexBuf) and (Length(AHexBuf) <> HexLen) then
-          AErr := 'Cannot read file';
+          AErr := T('ui.editor.cannotRead', 'Cannot read file');
       end;
     finally
       FS.Free;
@@ -1753,9 +1792,8 @@ var
   Cancel: IJobCancelToken;
 begin
   Life := FLife;
-  FStatus := 'Indexing...';
-  FLoadDone := 0;
-  FLoadTotal := 0;
+  FStatus := T('ui.editor.stageIndexing', 'Indexing...');
+  ResetLoadProgress;
   NotifyChanged;
   FCancel := NewLoadToken(AGen);
   Cancel := FCancel;
@@ -1800,10 +1838,10 @@ begin
             FError := '';
             FReady := True;
             if Size > Length(FRawBytes) then
-              FStatus := Format('Hex  first %d of %d bytes',
+              FStatus := T('ui.editor.hexFirstBytes', 'Hex  first %d of %d bytes',
                 [Length(FRawBytes), Size])
             else
-              FStatus := Format('Hex  %d bytes', [Length(FRawBytes)]);
+              FStatus := T('ui.editor.hexBytes', 'Hex  %d bytes', [Length(FRawBytes)]);
           end
           else
           begin
@@ -1842,11 +1880,10 @@ var
   Cancel: IJobCancelToken;
 begin
   Life := FLife;
-  FStatus := 'Extracting...';
+  FStatus := T('ui.editor.stageExtracting', 'Extracting...');
   NotifyChanged;
   TempPath := TPath.GetTempFileName;
-  FLoadDone := 0;
-  FLoadTotal := 0;
+  ResetLoadProgress;
   FCancel := TJobCancelToken.Create;
   Cancel := FCancel;
   FVfs.CopyAsync(AURI, PathToFileUri(TempPath), Cancel,
@@ -1870,7 +1907,7 @@ begin
         end;
         FLoading := False;
         FCancel := nil;
-        FError := 'File too large to preview as text.';
+        FError := T('ui.editor.tooLargeForText', 'File too large to preview as text.');
         FStatus := '';
         FReady := False;
         NotifyChanged;
@@ -1928,7 +1965,7 @@ begin
     FLines.Clear;
     TouchHighlight(0);
     FLines.Add('');
-    FStatus := Format('Hex  %d bytes', [Length(FRawBytes)]);
+    FStatus := T('ui.editor.hexBytes', 'Hex  %d bytes', [Length(FRawBytes)]);
   end
   else
   begin

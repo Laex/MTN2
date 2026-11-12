@@ -8,7 +8,13 @@ This file describes what changes for the user from version to version: new featu
 
 ### New
 
-- The "Loading..." note of the viewer and the editor is followed by a progress bar when the file size is known, with the percentage, the amount read and the full size under it (for example "45%  7.2 MB of 16.0 MB"). This works for files on disks and network folders, for files inside ZIP archives, for files opened through the `mtn.rclone` plugin and for large files that are first extracted from an archive or fetched from a plugin's file system. Esc now also stops such a read midway instead of waiting for it to end.
+- The "Loading..." note of the viewer and the editor is followed by a progress bar when the file size is known, with the percentage, the amount read and the full size under it (for example "45%  7.2 MB of 16.0 MB"). This works for files on disks and network folders, for files inside ZIP archives, for files opened through the `mtn.rclone` plugin and for large files that are first extracted from an archive or fetched from a plugin's file system. Esc now also stops such a read midway instead of waiting for it to end. Once the rate can be told, the line under the bar also shows it and the time left ("1.2 MB/s  0:07 left"), and the window title shows the file name with the percentage while the file loads. The note names the stage ("Loading...", "Extracting...", "Indexing..."), and the bar appears only when the load takes longer than a quarter of a second. A file opened over SFTP shows how much of it has arrived.
+- Copying and moving files through the `mtn.rclone` plugin shows the progress of the transfer.
+
+### Fixed
+
+- Cancelling an operation of the `mtn.rclone` plugin (Esc while a file loads, cancelling a copy) stops the rclone program at once; it used to carry on in the background until it finished.
+- A remote file larger than the viewer's whole-file limit is no longer downloaded in full through the `mtn.rclone` plugin only to show its beginning: the download stops as soon as the size is known and the file opens in the viewer for large files.
 
 ## Dev v0.5.7.5 – 2026-11-12
 

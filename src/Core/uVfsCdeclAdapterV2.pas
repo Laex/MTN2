@@ -525,6 +525,7 @@ begin
       Attempt: Integer;
     begin
       State := TOpState.Create(Cancel, nil);
+      State.ReadProgress := True;
       try
         Text := '';
         Err := TVfsError.Ok;

@@ -22,6 +22,9 @@ type
     [Test] procedure TestReadTextUsesCat;
     [Test] procedure TestReadBytesReportsTheTransferTotals;
     [Test] procedure TestFailedReadTakesItsErrorFromTheLog;
+    [Test] procedure TestReadOfTooLargeFileIsStoppedAndRefused;
+    [Test] procedure TestCancelStopsTheProgram;
+    [Test] procedure TestCopyReportsTheTransferTotals;
     [Test] procedure TestWriteSendsTheTextOnStdin;
     [Test] procedure TestDeleteChoosesPurgeForFolders;
     [Test] procedure TestRemoteRootIsNotDeleted;
@@ -34,7 +37,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.JSON, uPluginHostAbi, uRcloneFormat, uRcloneVfs;
+  System.SysUtils, System.Classes, System.IOUtils, System.JSON, uPluginHostAbi, uVfsTypes, uRcloneFormat, uRcloneVfs;
 
 var
   GCalls: TArray<string>;
@@ -42,11 +45,16 @@ var
   GReply: TFunc<string, string>;
   GExit: TFunc<string, Cardinal>;
   GMissing: Boolean;
+  /// How long the fake program runs, and whether it was stopped before that.
+  GRunMs: Cardinal;
+  GStopped: Boolean;
 
 function FakeRun(const AExe: string; const AArgs: TArray<string>; const AStdIn: string;
-  ATimeoutMs: Cardinal; out AOutput: string; out ACode: Cardinal): Boolean;
+  ATimeoutMs: Cardinal; const ACancel: IJobCancelToken; out AOutput: string;
+  out ACode: Cardinal): Boolean;
 var
   Line: string;
+  Tick: UInt64;
 begin
   Line := AExe + ' ' + string.Join(' ', AArgs);
   GCalls := GCalls + [Line];
@@ -59,6 +67,19 @@ begin
   end;
   AOutput := GReply(Line);
   ACode := GExit(Line);
+  // A program that takes time is killed when the call is cancelled.
+  GStopped := False;
+  Tick := TThread.GetTickCount64;
+  while (TThread.GetTickCount64 - Tick < GRunMs) and not GStopped do
+  begin
+    GStopped := (ACancel <> nil) and ACancel.IsCancellationRequested;
+    Sleep(10);
+  end;
+  if GStopped then
+  begin
+    AOutput := 'Cancelled';
+    Exit(False);
+  end;
   Result := True;
 end;
 
@@ -98,6 +119,8 @@ begin
   GCalls := nil;
   GStdIn := '';
   GMissing := False;
+  GRunMs := 0;
+  GStopped := False;
   GReply := function(ALine: string): string begin Result := ''; end;
   GExit := function(ALine: string): Cardinal begin Result := 0; end;
 end;
@@ -242,17 +265,17 @@ begin
     begin
       Result := '';
       TFile.WriteAllText(LogPathOf(ALine),
-        '{"level":"notice","msg":"t","stats":{"bytes":300,"totalBytes":1200}}' + #10);
-      // The transfer lasts long enough for the log to be looked at.
-      Sleep(500);
+        '{"level":"notice","msg":"t","stats":{"bytes":30,"totalBytes":90}}' + #10);
     end;
+  // The transfer lasts long enough for the log to be looked at.
+  GRunMs := 500;
   Uri := 'rclone:///gdrive/b.bin';
   Assert.AreEqual(Int64(Ord(verOk)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx, @Buf[0],
     SizeOf(Buf), Neg));
   Assert.IsTrue(Pos('rclone copyto', LastCall) = 1);
   Assert.IsTrue(Pos('--use-json-log', LastCall) > 0, 'the transfer logs its totals');
-  Assert.AreEqual(Int64(300), GSeenDone);
-  Assert.AreEqual(Int64(1200), GSeenTotal);
+  Assert.AreEqual(Int64(30), GSeenDone);
+  Assert.AreEqual(Int64(90), GSeenTotal);
   Assert.IsFalse(TFile.Exists(LogPathOf(LastCall)), 'the log is removed');
 end;
 
@@ -279,6 +302,79 @@ begin
   Assert.AreEqual(Int64(Ord(verNotFound)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx, @Buf[0],
     SizeOf(Buf), Neg));
   Assert.AreEqual('object not found', GSeenError);
+end;
+
+procedure TTestRcloneVfs.TestReadOfTooLargeFileIsStoppedAndRefused;
+var
+  Cb: TVfsCallbacksCdeclV2;
+  Ctx: TVfsOpContext;
+  Buf: array[0..255] of Byte;
+  Neg: Int64;
+  Uri: UTF8String;
+begin
+  Cb := RcloneVfsCallbacks;
+  Ctx := Default(TVfsOpContext);
+  Ctx.ReportProgress := NoteProgress;
+  GReply := function(ALine: string): string
+    begin
+      Result := '';
+      TFile.WriteAllText(LogPathOf(ALine),
+        '{"level":"notice","msg":"t","stats":{"bytes":10,"totalBytes":5000}}' + #10);
+    end;
+  GRunMs := 5000;
+  Uri := 'rclone:///gdrive/huge.bin';
+  Assert.AreEqual(Int64(Ord(verNotSupported)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx,
+    @Buf[0], SizeOf(Buf), Neg));
+  Assert.IsTrue(GStopped, 'the transfer is stopped once its size is known');
+end;
+
+function AlwaysCancelled(ACtx: PVfsOpContext): Int64; cdecl;
+begin
+  Result := 1;
+end;
+
+procedure TTestRcloneVfs.TestCancelStopsTheProgram;
+var
+  Cb: TVfsCallbacksCdeclV2;
+  Ctx: TVfsOpContext;
+  Buf: TBytes;
+  Neg, More: Int64;
+  Uri: UTF8String;
+begin
+  Cb := RcloneVfsCallbacks;
+  Ctx := Default(TVfsOpContext);
+  Ctx.IsCancelled := AlwaysCancelled;
+  GRunMs := 5000;
+  SetLength(Buf, 4096);
+  Uri := 'rclone:///gdrive/dir';
+  Assert.AreEqual(Int64(Ord(verCancelled)), Cb.ListDirectory(PAnsiChar(Uri), nil, @Ctx, 0,
+    PAnsiChar(@Buf[0]), Length(Buf), Neg, More));
+  Assert.IsTrue(GStopped, 'the program does not run to its end');
+end;
+
+procedure TTestRcloneVfs.TestCopyReportsTheTransferTotals;
+var
+  Cb: TVfsCallbacksCdeclV2;
+  Ctx: TVfsOpContext;
+  From, To_: UTF8String;
+begin
+  Cb := RcloneVfsCallbacks;
+  Ctx := Default(TVfsOpContext);
+  Ctx.ReportProgress := NoteProgress;
+  GSeenDone := -1;
+  GSeenTotal := -1;
+  GReply := function(ALine: string): string
+    begin
+      Result := '';
+      TFile.WriteAllText(LogPathOf(ALine),
+        '{"level":"notice","msg":"t","stats":{"bytes":700,"totalBytes":9000}}' + #10);
+    end;
+  GRunMs := 500;
+  From := 'rclone:///gdrive/a.bin';
+  To_ := 'rclone:///gdrive/b.bin';
+  Assert.AreEqual(Int64(Ord(verOk)), Cb.CopyItem(PAnsiChar(From), PAnsiChar(To_), 0, nil, @Ctx));
+  Assert.AreEqual(Int64(700), GSeenDone);
+  Assert.AreEqual(Int64(9000), GSeenTotal);
 end;
 
 procedure TTestRcloneVfs.TestWriteSendsTheTextOnStdin;

@@ -15,6 +15,8 @@ type
     [Test] procedure TestStatus;
     [Test] procedure TestLoadingText;
     [Test] procedure TestLoadingBarFill;
+    [Test] procedure TestLoadingSpeedAndTimeLeft;
+    [Test] procedure TestLoadingTitle;
     [Test] procedure TestCaretDrawCol;
     [Test] procedure TestHexCells;
     [Test] procedure TestHexFindBytes;
@@ -165,15 +167,37 @@ end;
 
 procedure TestLoadingText;
 begin
-  Assert.AreEqual('Loading...', EditorLoadingText(0, 0), 'nothing known yet');
-  Assert.AreEqual('Loading... 300 B', EditorLoadingText(300, 0), 'size unknown');
-  Assert.AreEqual('Loading...', EditorLoadingText(200, 800), 'the progress line has the sizes');
+  Assert.AreEqual('Loading...', EditorLoadingText('', 0, 0), 'nothing known yet');
+  Assert.AreEqual('Loading... 300 B', EditorLoadingText('', 300, 0), 'size unknown');
+  Assert.AreEqual('Loading...', EditorLoadingText('', 200, 800), 'the progress line has the sizes');
+  Assert.AreEqual('Extracting... 300 B', EditorLoadingText('Extracting...', 300, 0),
+    'the stage names the note');
   Assert.AreEqual('', EditorLoadingProgressText(300, 0), 'no progress line without a size');
   Assert.AreEqual('0%  0 B of 800 B', EditorLoadingProgressText(0, 800), 'size known');
   Assert.AreEqual('25%  200 B of 800 B', EditorLoadingProgressText(200, 800), 'part read');
   Assert.AreEqual('100%  800 B of 800 B', EditorLoadingProgressText(900, 800),
     'more read than the size announced');
   Assert.AreEqual(-1, EditorLoadingPercent(5, 0), 'no percentage without a size');
+end;
+
+procedure TestLoadingSpeedAndTimeLeft;
+begin
+  Assert.AreEqual('25%  200 B of 800 B  100 B/s  0:06 left',
+    EditorLoadingProgressText(200, 800, 100), 'rate and time left');
+  Assert.AreEqual('0%  1 B of 800 B  100 B/s  0:08 left',
+    EditorLoadingProgressText(1, 800, 100), 'time left is rounded up');
+  Assert.AreEqual('100%  800 B of 800 B  100 B/s',
+    EditorLoadingProgressText(800, 800, 100), 'nothing left at the end');
+  Assert.AreEqual('0:00', EditorDurationText(0));
+  Assert.AreEqual('1:05', EditorDurationText(65));
+  Assert.AreEqual('2:03:04', EditorDurationText(2 * 3600 + 3 * 60 + 4));
+end;
+
+procedure TestLoadingTitle;
+begin
+  Assert.AreEqual('a.txt - 40%', EditorLoadingTitle('a.txt', 40), 'name and percentage');
+  Assert.AreEqual('a.txt - Loading...', EditorLoadingTitle('a.txt', -1), 'size not known');
+  Assert.AreEqual('Loading...', EditorLoadingTitle('', 40), 'no name');
 end;
 
 procedure TestLoadingBarFill;
@@ -297,6 +321,16 @@ end;
 procedure TTestEditorLayout.TestLoadingBarFill;
 begin
   TestEditorLayout.TestLoadingBarFill;
+end;
+
+procedure TTestEditorLayout.TestLoadingSpeedAndTimeLeft;
+begin
+  TestEditorLayout.TestLoadingSpeedAndTimeLeft;
+end;
+
+procedure TTestEditorLayout.TestLoadingTitle;
+begin
+  TestEditorLayout.TestLoadingTitle;
 end;
 
 procedure TTestEditorLayout.TestCaretDrawCol;
