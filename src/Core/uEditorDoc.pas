@@ -70,6 +70,13 @@ type
     FLoadSpeed: Int64;
     FLoadStartTick: UInt64;
     FLoadBeganTick: UInt64;
+    // The whole-file limit of the load in flight.
+    FLoadMaxBytes: Int64;
+    // A remote file over that limit is copied to a temporary file to be viewed.
+    // With FAskBeforeDownload the load stops before the copy (FDownloadPending)
+    // until AnswerDownload.
+    FAskBeforeDownload: Boolean;
+    FDownloadPending: Boolean;
     FLoadStartDone: Int64;
     FOnChanged: TNotifyEvent;
     // Streaming Viewer for local text files too big for whole-buffer
@@ -174,7 +181,8 @@ type
     /// nothing on disk.</summary>
     procedure BeginEmptyNewFile;
   public
-    constructor Create;
+    /// <summary>AVfs: the file systems to read from; the default ones when nil.</summary>
+    constructor Create(const AVfs: IVirtualFileSystem = nil);
     destructor Destroy; override;
     procedure OpenAsync(const AURI: string; AWantEdit: Boolean = False);
     procedure Close;
@@ -228,6 +236,15 @@ type
     property LoadSpeed: Int64 read FLoadSpeed;
     /// <summary>Milliseconds since the load in flight was started.</summary>
     function LoadElapsedMs: UInt64;
+    /// <summary>The largest file the load in flight reads whole.</summary>
+    property LoadLimitBytes: Int64 read FLoadMaxBytes;
+    /// <summary>When set, a remote file too large to be read whole is not
+    /// copied to a temporary file at once: the load waits (DownloadPending)
+    /// for AnswerDownload.</summary>
+    property AskBeforeDownload: Boolean read FAskBeforeDownload write FAskBeforeDownload;
+    property DownloadPending: Boolean read FDownloadPending;
+    /// <summary>Ends the wait: the copy starts, or the load stops with an error.</summary>
+    procedure AnswerDownload(AAccept: Boolean);
     property Saving: Boolean read FSaving;
     property Dirty: Boolean read FDirty;
     property ReadOnly: Boolean read FReadOnly;
@@ -283,11 +300,13 @@ begin
     Result := E.Message;
 end;
 
-constructor TEditorDoc.Create;
+constructor TEditorDoc.Create(const AVfs: IVirtualFileSystem);
 begin
   inherited Create;
   FLife := NewLifeFlag;
-  FVfs := CreateDefaultVfs;
+  FVfs := AVfs;
+  if FVfs = nil then
+    FVfs := CreateDefaultVfs;
   FLines := TList<string>.Create;
   FBookmarks := TList<Integer>.Create;
   FHlDirtyFrom := MaxInt;
@@ -375,6 +394,7 @@ begin
   FStreamPath := '';
   FStreamPathIsTemp := False;
   FStreamFileSize := 0;
+  FDownloadPending := False;
   SetLength(FLineOffsets, 0);
   FIndexCount := 0;
   FIndexing := False;
@@ -809,6 +829,24 @@ begin
   // A rate over less than a second jumps too much to be shown.
   else if (Tick - FLoadStartTick >= cMinRateMs) and (ADone > FLoadStartDone) then
     FLoadSpeed := (ADone - FLoadStartDone) * 1000 div Int64(Tick - FLoadStartTick);
+  NotifyChanged;
+end;
+
+procedure TEditorDoc.AnswerDownload(AAccept: Boolean);
+begin
+  if not FDownloadPending then
+    Exit;
+  FDownloadPending := False;
+  if AAccept then
+  begin
+    StartStreamingOpenFromArchive(FURI, FGen);
+    Exit;
+  end;
+  FLoading := False;
+  FCancel := nil;
+  FError := T('ui.editor.tooLargeForText', 'File too large to preview as text.');
+  FStatus := '';
+  FReady := False;
   NotifyChanged;
 end;
 
@@ -1405,6 +1443,7 @@ begin
     MaxBytes := cEditorEditMaxBytes
   else
     MaxBytes := cEditorMaxBytes;
+  FLoadMaxBytes := MaxBytes;
   ReadWithStatAsync(Gen, URI, MaxBytes, FCancel,
     procedure(const ABytes: TBytes; const AError: TVfsError)
     var
@@ -1432,6 +1471,13 @@ begin
       // ZIP), then stream from that temp copy.
       if (AError.Code = vecNotSupported) and (HasArchiveChain(URI) or IsGenericVfsUri(URI)) then
       begin
+        // Unpacking an archive entry is local work; a remote file is a download.
+        if FAskBeforeDownload and not HasArchiveChain(URI) then
+        begin
+          FDownloadPending := True;
+          NotifyChanged;
+          Exit;
+        end;
         StartStreamingOpenFromArchive(URI, Gen);
         Exit;
       end;

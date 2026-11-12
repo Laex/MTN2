@@ -15,6 +15,7 @@ type
     [Test] procedure TestStatus;
     [Test] procedure TestLoadingText;
     [Test] procedure TestLoadingBarFill;
+    [Test] procedure TestLoadingMarqueeRunsThereAndBack;
     [Test] procedure TestLoadingSpeedAndTimeLeft;
     [Test] procedure TestLoadingTitle;
     [Test] procedure TestCaretDrawCol;
@@ -180,6 +181,24 @@ begin
   Assert.AreEqual(-1, EditorLoadingPercent(5, 0), 'no percentage without a size');
 end;
 
+procedure TestLoadingMarqueeRunsThereAndBack;
+var
+  Start, Len: Integer;
+begin
+  EditorLoadingMarquee(0, 40, Start, Len);
+  Assert.AreEqual(8, Len, 'a fifth of the bar');
+  Assert.AreEqual(0, Start, 'starts at the left end');
+  EditorLoadingMarquee(32, 40, Start, Len);
+  Assert.AreEqual(32, Start, 'reaches the right end');
+  EditorLoadingMarquee(33, 40, Start, Len);
+  Assert.AreEqual(31, Start, 'turns back');
+  EditorLoadingMarquee(64, 40, Start, Len);
+  Assert.AreEqual(0, Start, 'back at the left end');
+  EditorLoadingMarquee(7, 1, Start, Len);
+  Assert.AreEqual(0, Start, 'a bar with no room to move');
+  Assert.AreEqual(1, Len);
+end;
+
 procedure TestLoadingSpeedAndTimeLeft;
 begin
   Assert.AreEqual('25%  200 B of 800 B  100 B/s  0:06 left',
@@ -331,6 +350,11 @@ end;
 procedure TTestEditorLayout.TestLoadingTitle;
 begin
   TestEditorLayout.TestLoadingTitle;
+end;
+
+procedure TTestEditorLayout.TestLoadingMarqueeRunsThereAndBack;
+begin
+  TestEditorLayout.TestLoadingMarqueeRunsThereAndBack;
 end;
 
 procedure TTestEditorLayout.TestCaretDrawCol;

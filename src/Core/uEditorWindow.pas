@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps;
+  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer;
 
 var
   /// <summary>Width the last Format text command used; the dialog opens with
@@ -34,7 +34,7 @@ const
 
 type
   TEditorConfirm = (ecNone, ecAskSave, ecDiscardEncoding, ecClearReadOnly,
-    ecOpenLink, ecNotFound, ecReplaceAsk, ecReplaceWrap);
+    ecOpenLink, ecNotFound, ecReplaceAsk, ecReplaceWrap, ecDownload);
 
   /// <summary>A step-by-step replace in progress (the Replace button of the
   /// Replace dialog): one match is shown at a time and answered with Replace,
@@ -169,6 +169,10 @@ type
     FAlive: Boolean;
     FLife: ILifeFlag;
     FConfirm: TEditorConfirm;
+    // Repaints a loading window, so the bar of a load of unknown size moves
+    // and the rate stays current between progress reports.
+    FLoadAnim: TCoreTimer;
+    FLoadAnimPhase: Integer;
     FPendingEncoding: TTextFileEncoding;
     FDialog: TDialogHost;
     FCloseAfterSave: Boolean;
@@ -232,6 +236,8 @@ type
     function CanEdit: Boolean;
     function TryUnlockEdit: Boolean;
     procedure OfferClearReadOnly;
+    procedure OfferDownload;
+    procedure LoadAnimTick(Sender: TObject);
     procedure HexTypeChar(ACh: Char);
     procedure HexDeleteAtCursor(ABackspace: Boolean);
     procedure HexInsertZero;
@@ -583,6 +589,10 @@ uses
   uFileFind, System.Character;
 
 const
+  /// <summary>How often a loading window repaints itself.</summary>
+  cLoadAnimMs = 100;
+
+const
   /// <summary>uDialogHistory key of the Find dialog; replace.json's Find field
   /// uses the same one.</summary>
   cEditFindHistory = 'editfind';
@@ -603,7 +613,12 @@ begin
   FAlive := True;
   FLife := NewLifeFlag;
   FDoc := TEditorDoc.Create;
+  FDoc.AskBeforeDownload := True;
   FDoc.OnChanged := DocChanged;
+  FLoadAnim := TCoreTimer.Create(nil);
+  FLoadAnim.Enabled := False;
+  FLoadAnim.Interval := cLoadAnimMs;
+  FLoadAnim.OnTimer := LoadAnimTick;
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
   FUndoBuffer := TEditorUndoBuffer.Create;
@@ -809,6 +824,49 @@ begin
   NotifyHost;
 end;
 
+procedure TEditorWindow.OfferDownload;
+var
+  Decl: TDialogDeclaration;
+begin
+  if (FConfirm <> ecNone) or FDialog.Visible then
+    Exit;
+  Decl := BuildUpdateMessageDialog(
+    T('ui.editor.downloadMsg', 'Download the whole file to view it?'),
+    T('ui.editor.downloadDetails', 'Larger than %d MB; it goes to a temporary folder.',
+      [FDoc.LoadLimitBytes div (1024 * 1024)]),
+    T('ui.editor.downloadOk', 'Download'), True);
+  DialogSetTitle(Decl, T('ui.editor.downloadTitle', 'Large file'));
+  FConfirm := ecDownload;
+  FDialog.Open(Decl,
+    procedure(const AControlId, AValuesJson: string)
+    var
+      Accept: Boolean;
+    begin
+      Accept := DialogCmdIsOk(AControlId);
+      FDialog.Close;
+      FConfirm := ecNone;
+      FDoc.AnswerDownload(Accept);
+      NotifyHost;
+      // A refused download leaves nothing to show in the tab.
+      if not Accept then
+        RequestClose;
+    end);
+  NotifyHost;
+end;
+
+procedure TEditorWindow.LoadAnimTick(Sender: TObject);
+begin
+  if not FAlive then
+    Exit;
+  if not FDoc.Loading then
+  begin
+    FLoadAnim.Enabled := False;
+    Exit;
+  end;
+  Inc(FLoadAnimPhase);
+  NotifyHost;
+end;
+
 procedure TEditorWindow.HexTypeChar(ACh: Char);
 var
   Digit, Per, AbsIdx: Integer;
@@ -956,6 +1014,7 @@ destructor TEditorWindow.Destroy;
 begin
   FAlive := False;
   FLife.Alive := False;
+  FreeAndNil(FLoadAnim);
   FHlTracker.Free;
   if FSurfaceHandle <> 0 then
   begin
@@ -1025,6 +1084,15 @@ begin
   if not FAlive then
     Exit;
   UpdateIndexNotice;
+  FLoadAnim.Enabled := FDoc.Loading and not FDoc.DownloadPending;
+  if FDoc.DownloadPending then
+  begin
+    // Chromeless (Quick View) draws no dialogs.
+    if FChromeless then
+      FDoc.AnswerDownload(True)
+    else
+      OfferDownload;
+  end;
   Life := FLife;
   // A live reload (FDoc's own file-watcher) replaces the document's content
   // without going through Open, so the markdown fence index / line cache -
@@ -5774,8 +5842,9 @@ begin
     ForceClose;
 end;
 
-// Two rows under the loading note: a bar and the percentage with the sizes.
-// Nothing is drawn while the size is unknown or the window is too small.
+// Two rows under the loading note: a bar and the percentage with the sizes;
+// a moving segment alone while the size is unknown. Nothing is drawn in a
+// window that is too small.
 procedure TEditorWindow.DrawLoadingProgress;
 const
   cBarMaxW = 50;
@@ -5783,14 +5852,23 @@ const
   // A load that ends sooner shows no bar: it would only flash.
   cBarDelayMs = 250;
 var
-  BarW, Fill: Integer;
+  BarW, Fill, Start: Integer;
   Text: string;
 begin
   Text := EditorLoadingProgressText(FDoc.LoadDone, FDoc.LoadTotal, FDoc.LoadSpeed);
   BarW := Min(cBarMaxW, Area.Width - 4);
-  if (Text = '') or (BarW < 4) or (Area.Height < cBarRow + 3) or
-     (FDoc.LoadElapsedMs < cBarDelayMs) then
+  if (BarW < 4) or (Area.Height < cBarRow + 3) or (FDoc.LoadElapsedMs < cBarDelayMs) then
     Exit;
+  if Text = '' then
+  begin
+    // Size unknown: a segment that keeps moving shows the load is alive.
+    EditorLoadingMarquee(FLoadAnimPhase, BarW, Start, Fill);
+    PutGridText(Buffer, 1, cBarRow, StringOfChar(chShadeLight, BarW), FThemeColors.ScrollFg,
+      FThemeColors.BodyBg);
+    PutGridText(Buffer, 1 + Start, cBarRow, StringOfChar(chBlock, Fill),
+      FThemeColors.ScrollThumb, FThemeColors.BodyBg);
+    Exit;
+  end;
   Fill := EditorLoadingBarFill(FDoc.LoadDone, FDoc.LoadTotal, BarW);
   PutGridText(Buffer, 1, cBarRow, StringOfChar(chBlock, Fill), FThemeColors.ScrollThumb,
     FThemeColors.BodyBg);

@@ -56,6 +56,9 @@ function EditorLoadingProgressText(ADone, ATotal: Int64; ASpeed: Int64 = 0): str
 function EditorLoadingTitle(const AName: string; APercent: Integer): string;
 /// <summary>A span of seconds as m:ss, or h:mm:ss from an hour on.</summary>
 function EditorDurationText(ASeconds: Int64): string;
+/// <summary>Where the moving segment of a bar of ABarWidth cells stands at
+/// step APhase of a load of unknown size: it runs to the right end and back.</summary>
+procedure EditorLoadingMarquee(APhase, ABarWidth: Integer; out AStart, ALength: Integer);
 /// <summary>How many of ABarWidth cells of the progress bar are filled.</summary>
 function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;
 
@@ -122,6 +125,22 @@ begin
   if ADone < ATotal then
     Result := Result + '  ' + T('ui.editor.loadingEta', '%s left',
       [EditorDurationText((ATotal - ADone + ASpeed - 1) div ASpeed)]);
+end;
+
+procedure EditorLoadingMarquee(APhase, ABarWidth: Integer; out AStart, ALength: Integer);
+var
+  Travel, Step: Integer;
+begin
+  AStart := 0;
+  ALength := EnsureRange(ABarWidth div 5, 1, Max(ABarWidth, 1));
+  Travel := ABarWidth - ALength;
+  if Travel <= 0 then
+    Exit;
+  Step := Abs(APhase) mod (2 * Travel);
+  if Step <= Travel then
+    AStart := Step
+  else
+    AStart := 2 * Travel - Step;
 end;
 
 function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;

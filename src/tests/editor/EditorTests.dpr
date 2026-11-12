@@ -20,6 +20,7 @@ uses
   TestEditorTextTools in 'TestEditorTextTools.pas',
   TestEditorBookmarks in 'TestEditorBookmarks.pas',
   TestEditorLoadCancel in 'TestEditorLoadCancel.pas',
+  TestEditorDownloadQuestion in 'TestEditorDownloadQuestion.pas',
   TestEditorColumnBlock in 'TestEditorColumnBlock.pas',
   TestEditorPaging in 'TestEditorPaging.pas',
   TestHexChangedBytes in 'TestHexChangedBytes.pas',
