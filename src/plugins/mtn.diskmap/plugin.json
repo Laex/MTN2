@@ -1,0 +1,13 @@
+{
+  "id": "mtn.diskmap",
+  "name": "Folder map",
+  "version": "0.1.0",
+  "abi": 2,
+  "documentExtensions": ["mtn-directory"],
+  "description": {
+    "en": "With the cursor on a local folder, Quick View (Ctrl+Q) draws a treemap of the space its files take. The folder is scanned in the background; Tab gives the keyboard to the map (arrows, Enter to zoom in, Backspace to zoom out, G to show the tile in the panel).",
+    "ru": "Когда курсор стоит на локальной папке, быстрый просмотр (Ctrl+Q) рисует плитку-диаграмму занятого места. Папка сканируется в фоне; Tab передаёт клавиатуру карте (стрелки, Enter – войти, Backspace – выйти, G – показать плитку в панели)."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

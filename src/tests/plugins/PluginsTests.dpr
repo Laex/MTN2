@@ -62,7 +62,8 @@ uses
   TestWasmHost in 'TestWasmHost.pas',
   TestHighlightPlugin in 'TestHighlightPlugin.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas',
-  TestPluginInstall in 'TestPluginInstall.pas';
+  TestPluginInstall in 'TestPluginInstall.pas',
+  TestDiskMap in 'TestDiskMap.pas';
 
 begin
   RunRegisteredTests;

@@ -18,6 +18,7 @@ type
     [Test] procedure TestOpenWithSystemRefusesNonLocalUris;
     [Test] procedure TestQuickViewAsksOnlyQuickProviders;
     [Test] procedure TestLazyLoadHookRunsBeforeTheProvidersAreAsked;
+    [Test] procedure TestQuickDirectoryAsksOnlyProvidersNamingFolders;
   end;
 
 implementation
@@ -327,6 +328,54 @@ end;
 procedure TTestDocumentProviders.TestQuickViewAsksOnlyQuickProviders;
 begin
   TestDocumentProviders.TestQuickViewAsksOnlyQuickProviders;
+end;
+
+procedure TestQuickDirectoryAsksOnlyProvidersNamingFolders;
+var
+  Asked: string;
+  Calls: Integer;
+begin
+  Asked := '';
+  Calls := 0;
+  try
+    DocumentProviders.RegisterProvider('t.any', 'p', '*', [dmQuick],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        Inc(Calls);
+        Result := dokHandled;
+      end);
+    DocumentProviders.RegisterProvider('t.viewonly', 'p', cDirectoryExtension, [dmView],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        Inc(Calls);
+        Result := dokHandled;
+      end);
+    Assert.IsFalse(DocumentProviders.TryQuickDirectory('file:///C:/dir'),
+      'a wildcard provider and a view-only one are not asked about folders');
+    Assert.AreEqual(0, Calls);
+    DocumentProviders.RegisterProvider('t.dir', 'p', cDirectoryExtension, [dmQuick],
+      function(const AURI: string; AViewOnly: Boolean; out ARedirectURI: string): TDocumentOpenKind
+      begin
+        Asked := AURI;
+        if AURI.EndsWith('#dir') then
+          Result := dokHandled
+        else
+          Result := dokPass;
+      end);
+    Assert.IsTrue(DocumentProviders.TryQuickDirectory('file:///C:/dir'), 'handled');
+    Assert.AreEqual('file:///C:/dir#dir', Asked, 'the folder view is asked for in the fragment');
+    Assert.IsFalse(DocumentProviders.TryQuickDirectory(''), 'no folder, no question');
+    Assert.AreEqual(0, Calls, 'neither the wildcard nor the view-only provider ran');
+  finally
+    DocumentProviders.UnregisterPlugin('t.any');
+    DocumentProviders.UnregisterPlugin('t.viewonly');
+    DocumentProviders.UnregisterPlugin('t.dir');
+  end;
+end;
+
+procedure TTestDocumentProviders.TestQuickDirectoryAsksOnlyProvidersNamingFolders;
+begin
+  TestDocumentProviders.TestQuickDirectoryAsksOnlyProvidersNamingFolders;
 end;
 
 initialization

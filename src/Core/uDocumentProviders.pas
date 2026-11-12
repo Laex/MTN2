@@ -61,7 +61,17 @@ type
     /// with "#view" appended and answers "handled" once its surface is open.
     /// True when one did.</summary>
     function TryQuickInteractive(const AURI: string): Boolean;
+    /// <summary>Quick View of a folder under the cursor: asks the dmQuick providers
+    /// registered for cDirectoryExtension to open their surface in the Quick View
+    /// panel. The provider hears the folder URI with "#dir" appended and answers
+    /// "handled" once its surface is open. True when one did.</summary>
+    function TryQuickDirectory(const AURI: string): Boolean;
   end;
+
+const
+  /// <summary>The extension a provider names (plugin.json "documentExtensions":
+  /// ["mtn-directory"]) to serve folders in Quick View. A file never has it.</summary>
+  cDirectoryExtension = '.mtn-directory';
 
 type
   TDocumentLazyLoad = reference to function(const AURI: string): Boolean;
@@ -117,6 +127,7 @@ type
     FEntries: TList<TProviderEntry>;
     procedure SortEntries;
     class function Matches(const AEntry: TProviderEntry; const AExt: string): Boolean;
+    class function NamesDirectories(const AEntry: TProviderEntry): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -128,6 +139,7 @@ type
       out ARedirectURI: string): TDocumentOpenKind;
     function TryQuickRedirect(const AURI: string; out ARedirectURI: string): Boolean;
     function TryQuickInteractive(const AURI: string): Boolean;
+    function TryQuickDirectory(const AURI: string): Boolean;
   end;
 
 var
@@ -202,6 +214,16 @@ var
 begin
   for E in AEntry.Extensions do
     if (E = '*') or ((AExt <> '') and (E = AExt)) then
+      Exit(True);
+  Result := False;
+end;
+
+class function TDocumentProviderRegistry.NamesDirectories(const AEntry: TProviderEntry): Boolean;
+var
+  E: string;
+begin
+  for E in AEntry.Extensions do
+    if E = cDirectoryExtension then
       Exit(True);
   Result := False;
 end;
@@ -389,6 +411,43 @@ begin
   for E in Snapshot do
   begin
     if not (dmQuick in E.Modes) or not Matches(E, Ext) then
+      Continue;
+    Redirect := '';
+    GQuickActive := True;
+    try
+      try
+        Kind := E.Handler(Asked, True, Redirect);
+      except
+        Kind := dokPass;
+      end;
+    finally
+      GQuickActive := False;
+    end;
+    if Kind = dokHandled then
+      Exit(True);
+  end;
+end;
+
+function TDocumentProviderRegistry.TryQuickDirectory(const AURI: string): Boolean;
+var
+  Snapshot: TArray<TProviderEntry>;
+  E: TProviderEntry;
+  Redirect, Asked: string;
+  Kind: TDocumentOpenKind;
+begin
+  Result := False;
+  if AURI = '' then
+    Exit;
+  if Assigned(GLazyLoad) then
+    GLazyLoad('folder' + cDirectoryExtension);
+  if FEntries.Count = 0 then
+    Exit;
+  Asked := AURI + '#dir';
+  Snapshot := FEntries.ToArray;
+  for E in Snapshot do
+  begin
+    // A wildcard provider serves files; only one that names folders is asked.
+    if not (dmQuick in E.Modes) or not NamesDirectories(E) then
       Continue;
     Redirect := '';
     GQuickActive := True;

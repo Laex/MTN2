@@ -181,7 +181,7 @@ Start: `bin\win64\MTN2.exe [--no-skia] [--fps] [pfad]`. Details unter [docs/BUIL
 | `src/Platform` | Plattformschicht: `Windows` und `Posix` mit gleichnamigen Modulen |
 | `src/Hosts` | Hosts: `Ansi` – Version für das Textterminal |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Hauptformular, JSON-Dialoge, Standardthema |
-| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, WASM-Demo) |
+| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, `mtn.diskmap`, WASM-Demo) |
 | `src/tests` | DUnitX-Regressionstests nach Gruppen und Test-Runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, Projektgruppe `Group.groupproj`, Hilfsskripte |
 | `bin/win64`, `bin/linux64` | Build-Ausgabe nach Plattformen |

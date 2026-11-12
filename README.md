@@ -222,7 +222,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 | `src/Platform` | Platform abstraction layer: `Windows` and `Posix` modules |
 | `src/Hosts` | Shell hosts: `Ansi` – text terminal version |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Main form, JSON dialogs, default theme |
-| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, WASM demo) |
+| `src/plugins` | Built-in plugins (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, `mtn.diskmap`, WASM demo) |
 | `src/tests` | DUnitX regression tests by group and test runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, `Group.groupproj` project group, utility scripts |
 | `bin/win64`, `bin/linux64` | Build output by platform |

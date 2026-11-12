@@ -140,7 +140,7 @@ Linux 版本在 Windows 环境下通过 `dcclinux64` 编译器进行交叉编译
 | `src/Platform` | 平台适配层：包含同名模块的 `Windows` 与 `Posix` |
 | `src/Hosts` | 外壳宿主：`Ansi` – 文本终端版本 |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | 主窗体、JSON 对话框、默认主题 |
-| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.git`、`mtn.csv`、`mtn.docview`、`mtn.pdf`、`mtn.logfilter`、`mtn.lua`、`mtn.ws`、`mtn.winsys`、`mtn.docker`、`mtn.rclone`、`mtn.everything`、`mtn.jtree`、`mtn.meta`、WASM 演示） |
+| `src/plugins` | 内置插件（`mtn.7z`、`mtn.tmp`、`mtn.git`、`mtn.csv`、`mtn.docview`、`mtn.pdf`、`mtn.logfilter`、`mtn.lua`、`mtn.ws`、`mtn.winsys`、`mtn.docker`、`mtn.rclone`、`mtn.everything`、`mtn.jtree`、`mtn.meta`、`mtn.diskmap`、WASM 演示） |
 | `src/tests` | 按组划分的 DUnitX 回归测试及运行脚本 `run-tests.ps1` |
 | `src/tools` | DialogDesigner、ExportDialogJson、`Group.groupproj` 项目组、工具脚本 |
 | `bin/win64`, `bin/linux64` | 各平台构建输出目录 |

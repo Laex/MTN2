@@ -118,6 +118,7 @@ type
     // Plugin picture shown in the Quick View panel (0 = none).
     FSurfacePanelHandle: Integer;
     FSurfacePanelGen: Cardinal;
+    FSurfaceWaitTries: Integer;
     // Folder and cursor row last reported to the plugins (panel.dir / panel.cursor).
     FPanelEventUri, FPanelEventCursor: array[TPanelSide] of string;
     FHostWindowId: Int64;
@@ -253,6 +254,13 @@ type
     /// <summary>The plugin surface in the Quick View panel was opened by Tab for
     /// an interactive view of the file; it closes when the keyboard leaves it.</summary>
     FQuickSurfaceOwned: Boolean;
+    /// <summary>The plugin surface in the Quick View panel shows the folder under
+    /// the cursor (FQuickDirUri) and follows the cursor; Tab gives it the keyboard.</summary>
+    FQuickDirAuto: Boolean;
+    FQuickDirUri: string;
+    /// <summary>The folder a plugin was last asked about, so a plugin that declines
+    /// it is not asked again on every repaint.</summary>
+    FQuickDirTried: string;
     /// <summary>Tab moved the keyboard to the Quick View text: navigation keys
     /// scroll it and the file panel keeps its cursor.</summary>
     FQuickViewFocused: Boolean;
@@ -1023,6 +1031,7 @@ type
     function QuickViewPictureShown: Boolean;
     function OpenQuickInteractive: Boolean;
     procedure CloseQuickInteractive;
+    procedure SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow);
     function HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure CancelFolderSize;
@@ -9726,6 +9735,12 @@ var
   Panel: TPanelState;
 begin
   Result := False;
+  // The folder surface is already open: Tab only hands it the keyboard.
+  if FQuickDirAuto and (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
+  begin
+    FQuickSurfaceOwned := True;
+    Exit(True);
+  end;
   if (FSurfacePanelHandle <> 0) or not QuickViewVisible then
     Exit;
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) or Row.IsDirectory or Row.IsParent or
@@ -9742,6 +9757,9 @@ var
   H: Integer;
 begin
   FQuickSurfaceOwned := False;
+  FQuickDirAuto := False;
+  // The folder under the cursor gets a new surface on the next paint.
+  FQuickDirTried := '';
   if FSurfacePanelHandle = 0 then
     Exit;
   H := FSurfacePanelHandle;
@@ -9806,6 +9824,10 @@ end;
 procedure TDualPanelWindow.CloseQuickView;
 begin
   FQuickViewFocused := False;
+  FQuickDirAuto := False;
+  FQuickDirTried := '';
+  if FQuickSurfaceOwned or (FSurfacePanelHandle <> 0) then
+    CloseQuickInteractive;
   if PanelViewKind(psLeft) = pvkQuickView then
     SetPanelViewKind(psLeft, pvkFiles);
   if PanelViewKind(psRight) = pvkQuickView then
@@ -12530,6 +12552,8 @@ begin
   H := FSurfacePanelHandle;
   FSurfacePanelHandle := 0;
   FQuickSurfaceOwned := False;
+  FQuickDirAuto := False;
+  FQuickDirTried := '';
   SurfaceTabClosed(H);
 end;
 
@@ -12558,7 +12582,10 @@ begin
     SurfaceAttach(AHandle,
       procedure
       begin
+        // The panels rebuild, or the new frame waits for the next key press.
         Invalidate;
+        if Assigned(FOnContentChanged) then
+          FOnContentChanged(Self);
       end,
       procedure
       begin
@@ -14670,7 +14697,23 @@ begin
   if SurfaceIsNative(FSurfacePanelHandle) then
     Exit;
   if not SurfaceFrame(FSurfacePanelHandle, W, H, Gen, Pixels) then
+  begin
+    // The plugin draws its first frame in answer to the size this paint
+    // reports; a repaint requested from inside the paint can be dropped, so
+    // ask again once the paint is over (a few times at most).
+    if FSurfaceWaitTries < 40 then
+    begin
+      Inc(FSurfaceWaitTries);
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          if FAlive and Assigned(FOnContentChanged) then
+            FOnContentChanged(Self);
+        end, 25);
+    end;
     Exit;
+  end;
+  FSurfaceWaitTries := 0;
   AbsBounds := QuickViewInteriorAbsBounds(ABounds, Area);
   Uri := 'plugin-surface:' + IntToStr(FSurfacePanelHandle);
   if (OverlayCurrentURI <> Uri) or (Gen <> FSurfacePanelGen) then
@@ -14699,6 +14742,35 @@ begin
   Result := FQuickRedirectTo;
 end;
 
+{ Keeps the plugin surface in the Quick View panel in step with the folder under
+  the cursor: closes it when the cursor left that folder and asks the plugins
+  for a surface when the cursor stands on a folder. Not while the keyboard is
+  in the surface (the cursor cannot move then). }
+procedure TDualPanelWindow.SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow);
+var
+  OnFolder: Boolean;
+begin
+  if FQuickSurfaceOwned then
+    Exit;
+  OnFolder := AHasRow and ARow.IsDirectory and (not ARow.IsParent) and (ARow.URI <> '');
+  if FQuickDirAuto and not (OnFolder and (ARow.URI = FQuickDirUri)) then
+    CloseQuickInteractive;
+  if not OnFolder then
+  begin
+    FQuickDirTried := '';
+    Exit;
+  end;
+  if (FSurfacePanelHandle <> 0) or (ARow.URI = FQuickDirTried) then
+    Exit;
+  FQuickDirTried := ARow.URI;
+  if DocumentProviders.TryQuickDirectory(ARow.URI) and (FSurfacePanelHandle <> 0) and
+     SurfaceExists(FSurfacePanelHandle) then
+  begin
+    FQuickDirAuto := True;
+    FQuickDirUri := ARow.URI;
+  end;
+end;
+
 procedure TDualPanelWindow.DrawQuickViewContent(const ABounds: TRectI;
   ASide: TPanelSide; AFrame, ABodyBg: TAlphaColor);
 var
@@ -14721,16 +14793,17 @@ begin
   // preview follows the cursor again.
   if FQuickSurfaceOwned and not FQuickViewFocused then
     CloseQuickInteractive;
-  if (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
-  begin
-    DrawSurfacePanel(ABounds, ABodyBg);
-    Exit;
-  end;
 
   // The active side always drives what's previewed, regardless of which
   // side is physically drawing this panel - only reached when ASide isn't
   // the active side (IsQuickViewTarget guards that in DrawPanel).
   HasRow := GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx);
+  SyncQuickDirectorySurface(HasRow, Row);
+  if (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
+  begin
+    DrawSurfacePanel(ABounds, ABodyBg);
+    Exit;
+  end;
   // A picture is the file itself or, for a file a plugin renders for Quick
   // View, the picture the plugin redirects to.
   ImageUri := '';
