@@ -73,7 +73,7 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         $F.BaseName
     }
     # The fixtures of the screensaver subsystem live with its code.
-    $SubsystemTests = Join-Path $Src 'ascii-sharks\tests'
+    $SubsystemTests = Join-Path $Src 'plugins\mtn.screensaver\savers\sharks\tests'
     $ExtraUnits = ''
     if ($Dir.Name -eq 'core' -and (Test-Path $SubsystemTests)) {
         $Fixtures = @($Fixtures) + @(Get-ChildItem $SubsystemTests -Filter 'Test*.pas' -File | Sort-Object Name | ForEach-Object { $_.BaseName })
@@ -86,7 +86,7 @@ foreach ($Dir in Get-ChildItem $Tests -Directory) {
         "{`$R '$Src\MTN2Tui.dres'}", '', 'uses', '  uTestRunner,',
         (($Fixtures | ForEach-Object { "  $_" }) -join ",`n") + ';', '', 'begin', '  RunRegisteredTests;', 'end.') |
         Set-Content $Dpr -Encoding UTF8
-    $Units = "$Src\Core;$Src\ascii-sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.logfilter;$Src\plugins\mtn.lua;$Src\plugins\mtn.csv;$Src\plugins\mtn.screensaver;$Src\plugins\mtn.docview;$Src\plugins\mtn.pdf;$Src\plugins\mtn.git;$Src\plugins\mtn.net;$Src\plugins\mtn.winsys;$Src\plugins\mtn.winsys\Posix;$Src\plugins\mtn.docker;$Src\plugins\mtn.rclone;$Src\plugins\mtn.everything;$Src\plugins\mtn.jtree;$Src\plugins\mtn.meta;$Src\tests\common;$($Dir.FullName)$ExtraUnits;$Studio\source\DunitX"
+    $Units = "$Src\Core;$Src\plugins\mtn.screensaver\savers\sharks;$Src\Platform\Posix;$Src\Hosts\Ansi;$Src\Hosts\Common;$Src\Hosts\Sdl;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix;$Src\plugins\mtn.tmp;$Src\plugins\mtn.logfilter;$Src\plugins\mtn.lua;$Src\plugins\mtn.csv;$Src\plugins\mtn.screensaver;$Src\plugins\mtn.docview;$Src\plugins\mtn.pdf;$Src\plugins\mtn.git;$Src\plugins\mtn.net;$Src\plugins\mtn.winsys;$Src\plugins\mtn.winsys\Posix;$Src\plugins\mtn.docker;$Src\plugins\mtn.rclone;$Src\plugins\mtn.everything;$Src\plugins\mtn.jtree;$Src\plugins\mtn.meta;$Src\tests\common;$($Dir.FullName)$ExtraUnits;$Studio\source\DunitX"
     $Planned += [pscustomobject]@{ Name = $Dir.Name; Runner = $Name; Dpr = $Dpr; Units = $Units; Dir = $Dir.FullName }
 }
 

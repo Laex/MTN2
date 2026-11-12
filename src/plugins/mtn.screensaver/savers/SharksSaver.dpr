@@ -2,15 +2,15 @@ library SharksSaver;
 
 { Screensaver module (see uSaverModules for the contract): sharks hunting
   schools of fish on a black screen. Text mode only; the world and its drawing
-  are the units of the ascii-sharks folder. }
+  are the units of the sharks folder. }
 
-{$I ..\..\..\ascii-sharks\sharks.inc}
+{$I sharks\sharks.inc}
 
 uses
   System.SysUtils, System.UITypes, System.Generics.Collections,
   uPluginHostAbi in '..\..\..\Core\uPluginHostAbi.pas',
   uTerminalTypes in '..\..\..\Core\uTerminalTypes.pas',
-  uSharkPicture in '..\..\..\ascii-sharks\uSharkPicture.pas';
+  uSharkPicture in 'sharks\uSharkPicture.pas';
 
 const
   cInfoJson = '{"id":"sharks","name":"Sharks","tickMs":90,"modes":["text"]}';

@@ -19,6 +19,8 @@ type
     [Test] procedure TestASampleOfKnownMappings;
     [Test] procedure TestHandleClickRouting;
     [Test] procedure TestF9OpensTheMenuOfTheActivePanel;
+    [Test] procedure TestItemLettersActOnlyInTheOpenSubmenu;
+    [Test] procedure TestMenuLettersAreUniquePerDropdown;
     [Test] procedure TestHomeEndPageKeysMoveInsideTheMenu;
     [Test] procedure TestReleaseOutsideAnItemRunsNothing;
     [Test] procedure TestAnItemRunsOnReleaseNotOnPress;
@@ -28,7 +30,8 @@ type
 implementation
 
 uses
-  System.SysUtils, System.TypInfo, System.UITypes,
+  System.SysUtils, System.TypInfo, System.UITypes, System.IOUtils, System.JSON,
+  System.Generics.Collections,
   uTerminalTypes,
   uThemeTypes,
   uThemeDrawing,
@@ -153,15 +156,111 @@ begin
       end;
     Assert.IsTrue(C.PanelCategory = 1, 'the left panel is active: Left');
     C.ToggleMenu;
-    Assert.IsTrue(C.CategoryIndex = 1, 'F9 opens Left');
+    Assert.IsTrue(C.CategoryIndex = 1, 'F9 selects Left');
+    Assert.IsFalse(C.SubmenuOpen, 'F9 does not drop the submenu down');
     C.ToggleMenu;
     RightActive := True;
     Assert.IsTrue(C.PanelCategory = 7, 'the right panel is active: Right, the last category');
     C.ToggleMenu;
-    Assert.IsTrue(C.Active and (C.CategoryIndex = 7), 'F9 opens Right');
+    Assert.IsTrue(C.Active and (C.CategoryIndex = 7), 'F9 selects Right');
+    Assert.IsFalse(C.SubmenuOpen, 'and leaves its submenu closed');
   finally
     C.Free;
   end;
+end;
+
+procedure TestItemLettersActOnlyInTheOpenSubmenu;
+const
+  cJson =
+    '{"categories":[' +
+    '{"title":"Alpha","hotChar":"A","items":[' +
+    '{"caption":"Run","hotChar":"R","shortcut":"","action":"tmaFileCopy"}]},' +
+    '{"title":"Beta","hotChar":"B","items":[' +
+    '{"caption":"Save","hotChar":"S","shortcut":"","action":"tmaFileMove"}]}]}';
+var
+  C: TTopMenuController;
+  Key: Word;
+  Ch: Char;
+
+  procedure Press(AChar: Char);
+  begin
+    Key := 0;
+    Ch := AChar;
+    C.HandleInput(Key, [], Ch);
+  end;
+
+begin
+  C := MakeController;
+  try
+    Assert.IsTrue(C.LoadMenuFromJson(cJson), 'menu JSON parses');
+
+    C.ActivateMenu(0, False);
+    Press('R');
+    Assert.AreEqual(0, GExecutedCount, 'an item letter does nothing while its submenu is closed');
+    Assert.IsTrue(C.Active and not C.SubmenuOpen, 'and the menu stays as it was');
+
+    Press('B');
+    Assert.AreEqual(1, C.CategoryIndex, 'a category letter selects that category');
+    Assert.IsTrue(C.SubmenuOpen, 'and opens its submenu');
+    Assert.AreEqual(0, GExecutedCount, 'without running anything');
+
+    Press('S');
+    Assert.AreEqual(1, GExecutedCount, 'an item letter runs the item of the open submenu');
+    Assert.IsTrue(GExecutedAction = tmaFileMove, 'the one shown in that submenu');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestMenuLettersAreUniquePerDropdown;
+var
+  Root, Cat, Item: TJSONObject;
+  Cats, Items: TJSONArray;
+  Seen: TDictionary<Char, string>;
+  Dups: string;
+  Cap: string;
+  Hot: Char;
+  Pos, I, J: Integer;
+begin
+  Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(
+    ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
+      '..' + PathDelim + '..' + PathDelim + 'config' + PathDelim + 'menu.json')),
+    TEncoding.UTF8)) as TJSONObject;
+  try
+    Cats := Root.GetValue('categories') as TJSONArray;
+    Dups := '';
+    for I := 0 to Cats.Count - 1 do
+    begin
+      Cat := Cats.Items[I] as TJSONObject;
+      Seen := TDictionary<Char, string>.Create;
+      try
+        Items := Cat.GetValue('items') as TJSONArray;
+        for J := 0 to Items.Count - 1 do
+        begin
+          Item := Items.Items[J] as TJSONObject;
+          if Item.GetValue<Boolean>('isSeparator', False) then
+            Continue;
+          Cap := Item.GetValue<string>('caption', '');
+          Hot := #0;
+          if Item.GetValue<string>('hotChar', '') <> '' then
+            Hot := UpperCase(Item.GetValue<string>('hotChar', ''))[1];
+          MenuResolveMnemonic(Cap, Hot, Pos);
+          if Hot = #0 then
+            Continue;
+          if Seen.ContainsKey(Hot) then
+            Dups := Dups + Format(' %s/%s: "%s" and "%s";', [
+              Cat.GetValue<string>('title', ''), Hot, Seen[Hot], Cap])
+          else
+            Seen.Add(Hot, Cap);
+        end;
+      finally
+        Seen.Free;
+      end;
+    end;
+  finally
+    Root.Free;
+  end;
+  Assert.AreEqual('', Dups, 'a letter is shown on two items of one dropdown, so the second never runs');
 end;
 
 procedure TestHomeEndPageKeysMoveInsideTheMenu;
@@ -314,6 +413,16 @@ end;
 procedure TTestTopMenuBar.TestF9OpensTheMenuOfTheActivePanel;
 begin
   TestTopMenuBar.TestF9OpensTheMenuOfTheActivePanel;
+end;
+
+procedure TTestTopMenuBar.TestItemLettersActOnlyInTheOpenSubmenu;
+begin
+  TestTopMenuBar.TestItemLettersActOnlyInTheOpenSubmenu;
+end;
+
+procedure TTestTopMenuBar.TestMenuLettersAreUniquePerDropdown;
+begin
+  TestTopMenuBar.TestMenuLettersAreUniquePerDropdown;
 end;
 
 procedure TTestTopMenuBar.TestHomeEndPageKeysMoveInsideTheMenu;

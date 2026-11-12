@@ -15718,7 +15718,7 @@ begin
         // Opening loads plugins first so their items are already in the menu.
         // Any other key must not pay that cost.
         HostEnsureAllPlugins;
-        FTopMenu.ActivateMenu(FTopMenu.PanelCategory, True);
+        FTopMenu.ActivateMenu(FTopMenu.PanelCategory, False);
         AKey := 0;
         AKeyChar := #0;
         Invalidate;

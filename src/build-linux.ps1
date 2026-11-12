@@ -101,7 +101,7 @@ if (-not $NoPlugins) {
             New-Item -ItemType Directory -Force $SaversDest | Out-Null
             foreach ($Dpr in Get-ChildItem $SaversSrc -Filter '*.dpr' -File) {
                 $Output = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `
-                    "-U$Src\Core;$Src\ascii-sharks;$SaversSrc" "-N0$PluginDcu" "-E$SaversDest" '-$D-' '-$O+' $Dpr.FullName 2>&1
+                    "-U$Src\Core;$SaversSrc;$SaversSrc\sharks" "-N0$PluginDcu" "-E$SaversDest" '-$D-' '-$O+' $Dpr.FullName 2>&1
                 if ($LASTEXITCODE -ne 0) {
                     $Output | Where-Object { $_ -match 'Error|Fatal' } | ForEach-Object { Write-Host $_ }
                     throw "$($Plugin.Name): saver $($Dpr.Name) failed with $LASTEXITCODE"

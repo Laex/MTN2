@@ -16,7 +16,7 @@
 | `mtn.screensaver` plugin | `plugins/mtn.screensaver` | Loads the picture libraries from its `savers` folder and registers each one through `RegisterSaver`. |
 | Picture library | `savers/*.dll` (Windows), `savers/*.so` (Linux) | One picture (or several, see below). |
 
-The plugin starts with the program (`"startup": true` in its `plugin.json`), so the pictures are in the list from the first start. The host has no picture of its own: the sharks are the library `savers/SharksSaver.dpr` (built from the units of `src/ascii-sharks`), and without the plugin the screensaver does not start. Unloading the plugin removes its pictures; a running saver stops first.
+The plugin starts with the program (`"startup": true` in its `plugin.json`), so the pictures are in the list from the first start. The host has no picture of its own: the sharks are the library `savers/SharksSaver.dpr` (built from the units of `savers/sharks`), and without the plugin the screensaver does not start. Unloading the plugin removes its pictures; a running saver stops first.
 
 ## 2. Modes
 

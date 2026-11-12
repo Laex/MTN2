@@ -110,7 +110,7 @@ call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$Src;$Src\Windows" -N"$Pl
         New-Item -ItemType Directory -Force -Path $SaversDest | Out-Null
         Get-ChildItem -Path $SaversSrc -Filter '*.dpr' -File | ForEach-Object {
             $SaverCmd = @"
-call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$PSScriptRoot\ascii-sharks;$SaversSrc" -N"$PluginDcu" -E"$SaversDest" -NSSystem;System.Win;Winapi;System.IOUtils "$($_.FullName)"
+call "$RsVars" && dcc64 -B $PluginSwitches -U"$CoreDir;$SaversSrc;$SaversSrc\sharks" -N"$PluginDcu" -E"$SaversDest" -NSSystem;System.Win;Winapi;System.IOUtils "$($_.FullName)"
 "@
             cmd /c $SaverCmd
             if ($LASTEXITCODE -ne 0) { throw "$Name saver compile failed: $LASTEXITCODE ($($_.Name))" }

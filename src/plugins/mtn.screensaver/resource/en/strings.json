@@ -1,0 +1,16 @@
+{
+  "dlg": {
+    "title": "Screensaver",
+    "random": "Random screensaver (&R)",
+    "saver": "Picture:",
+    "minutes": "Start after (minutes):",
+    "never": "Never",
+    "ok": "OK",
+    "cancel": "Cancel"
+  },
+  "saver": {
+    "sharks": "Sharks",
+    "starfield": "Starfield",
+    "plasma": "Plasma"
+  }
+}

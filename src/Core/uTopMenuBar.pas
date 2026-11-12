@@ -1374,7 +1374,7 @@ begin
   if FActive then
     DeactivateMenu
   else
-    ActivateMenu(PanelCategory, True);
+    ActivateMenu(PanelCategory, False);
 end;
 
 procedure TTopMenuController.MoveSubmenuToEdge(AFirst: Boolean);
@@ -1836,7 +1836,7 @@ begin
     // keymap's TopMenu key (F9) is the host's (TDualPanelWindow.HandleInput).
     if (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
     begin
-      ActivateMenu(PanelCategory, True);
+      ActivateMenu(PanelCategory, False);
       AKey := 0;
       Result := True;
       Exit;
@@ -1949,10 +1949,12 @@ begin
     Exit;
   end;
 
-  // Mnemonic hotkey inside active menu (Category or Submenu item)
-  // With a dropdown open its own items win: the category letters overlap
-  // item letters heavily (e.g. Files > Copy vs Commands), and a letter that
-  // is lit up in the open dropdown must do what it shows.
+  // Mnemonic hotkey: a category letter on the bar, or an item letter of the
+  // open dropdown. With a dropdown open its own items win: the category
+  // letters overlap item letters heavily (e.g. Files > Copy vs Commands), and
+  // a letter that is lit up in the open dropdown must do what it shows. With
+  // the dropdown closed only the bar's letters act, so an item that is not
+  // on screen never runs.
   if AKeyChar <> #0 then
   begin
     HotSub := -1;
@@ -1970,8 +1972,6 @@ begin
       Exit;
     end;
 
-    if (HotSub < 0) and not FSubmenuOpen then
-      HotSub := FindHotSubItem(AKeyChar);
     if HotSub >= 0 then
     begin
       FSubmenuIndex := HotSub;
