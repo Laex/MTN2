@@ -6,6 +6,8 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## v0.5.8 – 2026-11-12
+
 ### New
 
 - Quick View (Ctrl+Q) shows a map of disk usage when the cursor of the other panel is on a folder: the new `mtn.diskmap` plugin scans the folder in the background and draws a treemap, with a tile for every subfolder and large file, sized by the space it takes. The map fills in as the scan goes on: the large folders appear first, then the folders and files inside them, and every tile grows as its contents are found. A scan stops after 30 seconds or 3 million entries and the map is marked as incomplete. Tab moves into the map: the arrow keys pick a tile, Enter or a double click zooms into a folder, Backspace zooms out, G goes to the picked folder or file in the panel. The Settings window of the plugin has a check box to turn the map off. The map is drawn only in programs with a graphic window (MTN2 and MTN2-sdl); MTN2-tui still shows "(directory)".
@@ -13,27 +15,14 @@ This file describes what changes for the user from version to version: new featu
 - While the size of a loading file is not known, a segment runs back and forth along the bar, so a load that is still going can be told from one that hangs. The rate and the time left stay current between progress reports.
 - Opening a remote file (a plugin's file system) that is too large to be read whole now asks first: the file would be downloaded in full to a temporary folder. "Download" starts it; refusing closes the tab. Quick View downloads without asking, as it shows no dialogs.
 - Copying and moving files through the `mtn.rclone` plugin shows the progress of the transfer.
+- Screensaver pictures now come from the `mtn.screensaver` plugin: it adds the pictures found as libraries (`.dll` on Windows, `.so` on Linux) in the `savers` folder next to it; the sharks, "Starfield" and "Plasma" come with it, and without the plugin the screensaver does not start. All screensaver settings moved from Options > User interface to the Settings window of the plugin. Text-grid pictures work in all three programs (MTN2, MTN2-sdl, MTN2-tui); pixel pictures ("Plasma") work in MTN2 and MTN2-sdl, and MTN2-tui does not list them. The plugin has a Settings window (plugins dialog) with the picture, the start time and a "Random screensaver" check box (a random picture at every start).
 
 ### Fixed
 
 - Cancelling an operation of the `mtn.rclone` plugin (Esc while a file loads, cancelling a copy) stops the rclone program at once; it used to carry on in the background until it finished.
 - A remote file larger than the viewer's whole-file limit is no longer downloaded in full through the `mtn.rclone` plugin only to show its beginning: the download stops as soon as the size is known and the file opens in the viewer for large files.
-
-## Dev v0.5.7.5 – 2026-11-12
-
-### New
-
-- Screensaver pictures now come from the `mtn.screensaver` plugin: it adds the pictures found as libraries (`.dll` on Windows, `.so` on Linux) in the `savers` folder next to it; the sharks, "Starfield" and "Plasma" come with it, and without the plugin the screensaver does not start. All screensaver settings moved from Options > User interface to the Settings window of the plugin. Text-grid pictures work in all three programs (MTN2, MTN2-sdl, MTN2-tui); pixel pictures ("Plasma") work in MTN2 and MTN2-sdl, and MTN2-tui does not list them. The plugin has a Settings window (plugins dialog) with the picture, the start time and a "Random screensaver" check box (a random picture at every start).
-
-### Fixed
-
 - F9 and Alt no longer drop the Left/Right submenu down at once: they only select the category of the active panel, and the submenu opens with Enter, the Down arrow or the category's letter. The highlighted letters of a closed submenu no longer run its items, so F9 and a category letter (for example the one of Options) reach that category instead of an item of Left.
 - The highlighted letters in the Files, Edit, Commands and Options dropdowns no longer repeat within one menu in English and Russian: an item whose letter was already taken now gets a free letter from its name, or none when all are taken. German and Chinese keep a repeated letter where the Russian text has one, so the marked items stay the same across languages.
-
-## Dev v0.5.7.1 – 2026-11-11
-
-### Fixed
-
 - A macro that presses a button of a dialog with a key (for example Enter on "Save changes?" after Escape in the editor) no longer goes on before the button's command has run: the command runs at once, so the next macro call sees its effect.
 
 ## v0.5.7 – 2026-11-11
