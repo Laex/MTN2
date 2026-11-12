@@ -121,13 +121,15 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Viewer** – `F3`: text with word wrap, hex mode with byte search, encoding choice; large files open immediately while lines are indexed in the background.
 - **Tail mode** – `Ctrl+Shift+F`: the window follows the end of a growing log, file rotation is handled.
 - **Quick View** – `Ctrl+Q` in the other panel; `Tab` passes the keyboard to it for scrolling text or an image.
+- **Disk usage map** – with the cursor on a folder, Quick View draws a treemap of the space it takes (the `mtn.diskmap` plugin): it fills in while the folder is scanned, `Tab` moves into the map to pick a tile, zoom into a folder and go to it in the panel; drawn in MTN2 and mtn2-sdl.
 - **Syntax highlighting** – about 70 languages in the viewer and editor; numbers, punctuation and links highlighted in `.txt` and `.log`.
 - **Markdown** – headings, italics, strikethrough, tables, images at their own size, links between files and sections, selection and search over the displayed text.
 - **Markdown colors** – custom colors and styles for elements, palette import from an Obsidian theme.
 - **PDF** – pages as images with zoom and paging, the document text in Quick View.
 - **Documents and data** – text from `.docx`, `.xlsx`, `.pptx`, `.svg`, the schema and rows of SQLite databases, aligned CSV and TSV tables.
 - **Images and video** – an image viewer with zoom and rotation, a video player with sound (via plugins).
-- **Remote and archived files** – large files from servers and archives open through a temporary copy, `Esc` cancels the download.
+- **Remote and archived files** – large files from servers and archives open through a temporary copy, `Esc` cancels the download; a plugin's remote file too large to read whole is downloaded only after a confirmation.
+- **Load progress** – the viewer and editor show a bar with the percentage, speed and time left while a file loads, and the stage (loading, extracting, indexing).
 
 ## Editor
 
