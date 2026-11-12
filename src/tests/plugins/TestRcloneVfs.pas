@@ -262,8 +262,14 @@ begin
   GSeenDone := -1;
   GSeenTotal := -1;
   GReply := function(ALine: string): string
+    var
+      Head: string;
     begin
       Result := '';
+      // Like rclone, the fake creates the copy it was told to make (the
+      // argument before the log options).
+      Head := Copy(ALine, 1, Pos(' --use-json-log', ALine) - 1);
+      TFile.WriteAllBytes(Copy(Head, LastDelimiter(' ', Head) + 1, MaxInt), nil);
       TFile.WriteAllText(LogPathOf(ALine),
         '{"level":"notice","msg":"t","stats":{"bytes":30,"totalBytes":90}}' + #10);
     end;
