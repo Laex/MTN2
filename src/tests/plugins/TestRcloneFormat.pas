@@ -25,6 +25,9 @@ type
     [Test] procedure TestAboutJsonGivesFreeAndTotal;
     [Test] procedure TestCatLimitsTheCount;
     [Test] procedure TestCopyAndMoveVerbs;
+    [Test] procedure TestStatsLogGivesTheNewestTotals;
+    [Test] procedure TestStatsLogWithoutTotalsIsNotProgress;
+    [Test] procedure TestLogMessagesSkipTotalsAndRepeats;
   end;
 
 implementation
@@ -177,6 +180,40 @@ begin
   Assert.AreEqual('copyto', CopyToArgs('a:x', 'b:y', False)[0]);
   Assert.AreEqual('moveto', CopyToArgs('a:x', 'b:y', True)[0]);
   Assert.AreEqual('b:y', CopyToArgs('a:x', 'b:y', False)[3]);
+end;
+
+const
+  cStatsLine1 = '{"level":"notice","msg":"Transferred: 10%","stats":{"bytes":100,"totalBytes":1000}}';
+  cStatsLine2 = '{"level":"notice","msg":"Transferred: 40%","stats":{"bytes":400,"totalBytes":1000}}';
+
+procedure TTestRcloneFormat.TestStatsLogGivesTheNewestTotals;
+var
+  Done, Total: Int64;
+begin
+  // The tail of a log can begin in the middle of a line.
+  Assert.IsTrue(ParseStatsLog('"bytes":1,"totalBytes":2}}' + #10 + cStatsLine1 + #10 +
+    cStatsLine2 + #10, Done, Total));
+  Assert.AreEqual(Int64(400), Done);
+  Assert.AreEqual(Int64(1000), Total);
+end;
+
+procedure TTestRcloneFormat.TestStatsLogWithoutTotalsIsNotProgress;
+var
+  Done, Total: Int64;
+begin
+  Assert.IsFalse(ParseStatsLog('', Done, Total), 'empty log');
+  Assert.IsFalse(ParseStatsLog('{"level":"error","msg":"boom"}' + #10, Done, Total), 'no totals line');
+  Assert.IsFalse(ParseStatsLog('{"msg":"x","stats":{"bytes":0,"totalBytes":0}}' + #10, Done, Total),
+    'size not known yet');
+end;
+
+procedure TTestRcloneFormat.TestLogMessagesSkipTotalsAndRepeats;
+begin
+  Assert.AreEqual('directory not found' + sLineBreak + 'Failed to copyto: directory not found',
+    LogMessages('{"level":"error","msg":"directory not found"}' + #10 +
+      '{"level":"error","msg":"directory not found"}' + #10 + cStatsLine1 + #10 +
+      '{"level":"notice","msg":"Failed to copyto: directory not found"}' + #10));
+  Assert.AreEqual('', LogMessages(cStatsLine1 + #10));
 end;
 
 initialization

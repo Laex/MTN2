@@ -73,6 +73,8 @@ type
     Ctx: TVfsOpContext;
     Cancel: IJobCancelToken;
     OnProgress: TVfsProgressCallback;
+    /// <summary>A whole-file read: its progress goes to the cancel token.</summary>
+    ReadProgress: Boolean;
     ErrorText: string;
     LastReportTick: UInt64;
     constructor Create(const ACancel: IJobCancelToken;
@@ -93,6 +95,12 @@ begin
     St := TOpState(ACtx^.Cookie);
     if JobCancelRequested(St.Cancel) then
       Exit(1);
+    if St.ReadProgress then
+    begin
+      // The token paces and queues its own reports.
+      JobNoteReadProgress(St.Cancel, ADone, ATotal);
+      Exit;
+    end;
     if not Assigned(St.OnProgress) then
       Exit;
     Tick := TThread.GetTickCount64;
@@ -585,6 +593,7 @@ begin
       Attempt: Integer;
     begin
       State := TOpState.Create(Cancel, nil);
+      State.ReadProgress := True;
       try
         SetLength(Data, 0);
         Err := TVfsError.Ok;

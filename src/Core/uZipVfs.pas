@@ -2125,7 +2125,7 @@ var
   Segs: TArray<string>;
   Stack: TArray<TZipLayer>;
   Zip: TZipFile;
-  Idx, Got: Integer;
+  Idx: Integer;
   Local: TStream;
   H, LH: TZipHeader;
 begin
@@ -2165,12 +2165,8 @@ begin
     end;
     Zip.Read(Idx, Local, LH);
     try
-      SetLength(ABuf, H.UncompressedSize);
-      if Length(ABuf) > 0 then
-      begin
-        Got := Local.Read(ABuf[0], Length(ABuf));
-        SetLength(ABuf, Got);
-      end;
+      if not JobReadStream(Local, H.UncompressedSize, ACancel, ABuf) then
+        AErr := TVfsError.Make(vecCancelled, 'Cancelled', AURI);
     finally
       Local.Free;
     end;

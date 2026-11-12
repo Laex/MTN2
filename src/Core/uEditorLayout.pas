@@ -40,11 +40,58 @@ function EditorCaretDrawCol(ACursorCol, AChunkStart1, AChunkEnd1, ADisplayLen,
   ATextW: Integer; ALastChunk: Boolean; out ADrawCol: Integer): Boolean;
 function EditorStatusFlag(AHexMode, AViewOnly, AWordWrap, AReadOnly,
   ASaving: Boolean; const ADocStatus: string): string;
+/// <summary>The note shown while a document loads; it carries the bytes read
+/// when the size is not known (the progress line shows them otherwise).</summary>
+function EditorLoadingText(ADone, ATotal: Int64): string;
+/// <summary>Share of the load done, 0..100; -1 while the size is not known.</summary>
+function EditorLoadingPercent(ADone, ATotal: Int64): Integer;
+/// <summary>The percentage and sizes next to the progress bar; '' while the
+/// size is not known.</summary>
+function EditorLoadingProgressText(ADone, ATotal: Int64): string;
+/// <summary>How many of ABarWidth cells of the progress bar are filled.</summary>
+function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;
 
 implementation
 
 uses
-  uInputLine, uStrings, uCharWidth;
+  uInputLine, uStrings, uCharWidth, uVfsUtils;
+
+function EditorLoadingText(ADone, ATotal: Int64): string;
+begin
+  Result := T('ui.editor.loading', 'Loading...');
+  if (ATotal <= 0) and (ADone > 0) then
+    Result := Result + ' ' + TVfsUtils.FormatFileSize(ADone);
+end;
+
+// The file can grow while it is read, so ADone may pass ATotal.
+function ClampLoadDone(ADone, ATotal: Int64): Int64;
+begin
+  Result := EnsureRange(ADone, 0, ATotal);
+end;
+
+function EditorLoadingPercent(ADone, ATotal: Int64): Integer;
+begin
+  if ATotal <= 0 then
+    Exit(-1);
+  Result := Integer(ClampLoadDone(ADone, ATotal) * 100 div ATotal);
+end;
+
+function EditorLoadingProgressText(ADone, ATotal: Int64): string;
+begin
+  if ATotal <= 0 then
+    Exit('');
+  ADone := ClampLoadDone(ADone, ATotal);
+  Result := T('ui.editor.loadingProgress', '%d%%  %s of %s',
+    [EditorLoadingPercent(ADone, ATotal), TVfsUtils.FormatFileSize(ADone),
+     TVfsUtils.FormatFileSize(ATotal)]);
+end;
+
+function EditorLoadingBarFill(ADone, ATotal: Int64; ABarWidth: Integer): Integer;
+begin
+  if (ATotal <= 0) or (ABarWidth <= 0) then
+    Exit(0);
+  Result := Integer(ClampLoadDone(ADone, ATotal) * ABarWidth div ATotal);
+end;
 
 // Same alphabet as the input lines (Ctrl+arrows, double-click word).
 function EditorIsWordChar(ACh: Char): Boolean;

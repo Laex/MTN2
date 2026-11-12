@@ -13,6 +13,8 @@ type
     [Test] procedure TestWrap;
     [Test] procedure TestWrapWideCharacters;
     [Test] procedure TestStatus;
+    [Test] procedure TestLoadingText;
+    [Test] procedure TestLoadingBarFill;
     [Test] procedure TestCaretDrawCol;
     [Test] procedure TestHexCells;
     [Test] procedure TestHexFindBytes;
@@ -161,6 +163,28 @@ begin
   Assert.IsTrue(EditorStatusFlag(False, False, False, False, False, 'Saved') = 'Saved', 'doc status');
 end;
 
+procedure TestLoadingText;
+begin
+  Assert.AreEqual('Loading...', EditorLoadingText(0, 0), 'nothing known yet');
+  Assert.AreEqual('Loading... 300 B', EditorLoadingText(300, 0), 'size unknown');
+  Assert.AreEqual('Loading...', EditorLoadingText(200, 800), 'the progress line has the sizes');
+  Assert.AreEqual('', EditorLoadingProgressText(300, 0), 'no progress line without a size');
+  Assert.AreEqual('0%  0 B of 800 B', EditorLoadingProgressText(0, 800), 'size known');
+  Assert.AreEqual('25%  200 B of 800 B', EditorLoadingProgressText(200, 800), 'part read');
+  Assert.AreEqual('100%  800 B of 800 B', EditorLoadingProgressText(900, 800),
+    'more read than the size announced');
+  Assert.AreEqual(-1, EditorLoadingPercent(5, 0), 'no percentage without a size');
+end;
+
+procedure TestLoadingBarFill;
+begin
+  Assert.AreEqual(0, EditorLoadingBarFill(0, 800, 40), 'nothing read');
+  Assert.AreEqual(10, EditorLoadingBarFill(200, 800, 40), 'a quarter');
+  Assert.AreEqual(40, EditorLoadingBarFill(800, 800, 40), 'all read');
+  Assert.AreEqual(40, EditorLoadingBarFill(900, 800, 40), 'never past the bar');
+  Assert.AreEqual(0, EditorLoadingBarFill(5, 0, 40), 'size unknown');
+end;
+
 procedure TestCaretDrawCol;
 var
   Col: Integer;
@@ -263,6 +287,16 @@ end;
 procedure TTestEditorLayout.TestStatus;
 begin
   TestEditorLayout.TestStatus;
+end;
+
+procedure TTestEditorLayout.TestLoadingText;
+begin
+  TestEditorLayout.TestLoadingText;
+end;
+
+procedure TTestEditorLayout.TestLoadingBarFill;
+begin
+  TestEditorLayout.TestLoadingBarFill;
 end;
 
 procedure TTestEditorLayout.TestCaretDrawCol;

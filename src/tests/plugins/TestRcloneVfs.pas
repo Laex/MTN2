@@ -20,6 +20,8 @@ type
     [Test] procedure TestMissingPathIsNotFound;
     [Test] procedure TestExistsTellsFolderFromFile;
     [Test] procedure TestReadTextUsesCat;
+    [Test] procedure TestReadBytesReportsTheTransferTotals;
+    [Test] procedure TestFailedReadTakesItsErrorFromTheLog;
     [Test] procedure TestWriteSendsTheTextOnStdin;
     [Test] procedure TestDeleteChoosesPurgeForFolders;
     [Test] procedure TestRemoteRootIsNotDeleted;
@@ -32,7 +34,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.JSON, uPluginHostAbi, uRcloneFormat, uRcloneVfs;
+  System.SysUtils, System.Classes, System.IOUtils, System.JSON, uPluginHostAbi, uRcloneFormat, uRcloneVfs;
 
 var
   GCalls: TArray<string>;
@@ -196,6 +198,87 @@ begin
   Assert.AreEqual('hello', string(PAnsiChar(@Buf[0])));
   Assert.IsTrue(Pos('rclone cat', LastCall) = 1);
   Assert.IsTrue(Pos('--count 100', LastCall) > 0);
+end;
+
+var
+  GSeenDone, GSeenTotal: Int64;
+  GSeenError: string;
+
+function NoteProgress(ACtx: PVfsOpContext; ADone, ATotal, AItemDone, AItemTotal: Int64;
+  AName: PAnsiChar): Int64; cdecl;
+begin
+  GSeenDone := ADone;
+  GSeenTotal := ATotal;
+  Result := 0;
+end;
+
+procedure NoteError(ACtx: PVfsOpContext; AText: PAnsiChar); cdecl;
+begin
+  GSeenError := UTF8ToString(AText);
+end;
+
+// The log file a transfer was told to write; the option comes last.
+function LogPathOf(const ALine: string): string;
+const
+  cOpt = '--log-file ';
+begin
+  Result := Copy(ALine, Pos(cOpt, ALine) + Length(cOpt), MaxInt);
+end;
+
+procedure TTestRcloneVfs.TestReadBytesReportsTheTransferTotals;
+var
+  Cb: TVfsCallbacksCdeclV2;
+  Ctx: TVfsOpContext;
+  Buf: array[0..255] of Byte;
+  Neg: Int64;
+  Uri: UTF8String;
+begin
+  Cb := RcloneVfsCallbacks;
+  Ctx := Default(TVfsOpContext);
+  Ctx.ReportProgress := NoteProgress;
+  GSeenDone := -1;
+  GSeenTotal := -1;
+  GReply := function(ALine: string): string
+    begin
+      Result := '';
+      TFile.WriteAllText(LogPathOf(ALine),
+        '{"level":"notice","msg":"t","stats":{"bytes":300,"totalBytes":1200}}' + #10);
+      // The transfer lasts long enough for the log to be looked at.
+      Sleep(500);
+    end;
+  Uri := 'rclone:///gdrive/b.bin';
+  Assert.AreEqual(Int64(Ord(verOk)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx, @Buf[0],
+    SizeOf(Buf), Neg));
+  Assert.IsTrue(Pos('rclone copyto', LastCall) = 1);
+  Assert.IsTrue(Pos('--use-json-log', LastCall) > 0, 'the transfer logs its totals');
+  Assert.AreEqual(Int64(300), GSeenDone);
+  Assert.AreEqual(Int64(1200), GSeenTotal);
+  Assert.IsFalse(TFile.Exists(LogPathOf(LastCall)), 'the log is removed');
+end;
+
+procedure TTestRcloneVfs.TestFailedReadTakesItsErrorFromTheLog;
+var
+  Cb: TVfsCallbacksCdeclV2;
+  Ctx: TVfsOpContext;
+  Buf: array[0..255] of Byte;
+  Neg: Int64;
+  Uri: UTF8String;
+begin
+  Cb := RcloneVfsCallbacks;
+  Ctx := Default(TVfsOpContext);
+  Ctx.ReportProgress := NoteProgress;
+  Ctx.SetErrorText := NoteError;
+  GSeenError := '';
+  GReply := function(ALine: string): string
+    begin
+      Result := '';
+      TFile.WriteAllText(LogPathOf(ALine), '{"level":"error","msg":"object not found"}' + #10);
+    end;
+  GExit := function(ALine: string): Cardinal begin Result := 3; end;
+  Uri := 'rclone:///gdrive/none.bin';
+  Assert.AreEqual(Int64(Ord(verNotFound)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx, @Buf[0],
+    SizeOf(Buf), Neg));
+  Assert.AreEqual('object not found', GSeenError);
 end;
 
 procedure TTestRcloneVfs.TestWriteSendsTheTextOnStdin;

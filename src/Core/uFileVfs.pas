@@ -1707,9 +1707,8 @@ begin
   end;
   FS := TFileStream.Create(WinApiPath(Path), fmOpenRead or fmShareDenyNone);
   try
-    SetLength(ABuf, Size);
-    if Size > 0 then
-      SetLength(ABuf, FS.Read(ABuf[0], Size));
+    if not JobReadStream(FS, Size, ACancel, ABuf) then
+      AErr := TVfsError.Make(vecCancelled, 'Cancelled', AURI);
   finally
     FS.Free;
   end;

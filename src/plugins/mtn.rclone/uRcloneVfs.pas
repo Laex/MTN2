@@ -233,6 +233,106 @@ begin
   end;
 end;
 
+// The last AMaxBytes of a file another program may still be writing; '' when
+// it cannot be read.
+function ReadFileTail(const APath: string; AMaxBytes: Integer): string;
+var
+  FS: TFileStream;
+  Buf: TBytes;
+begin
+  Result := '';
+  try
+    FS := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      if FS.Size > AMaxBytes then
+        FS.Position := FS.Size - AMaxBytes;
+      SetLength(Buf, FS.Size - FS.Position);
+      if Length(Buf) > 0 then
+        SetLength(Buf, FS.Read(Buf[0], Length(Buf)));
+      Result := TEncoding.UTF8.GetString(Buf);
+    finally
+      FS.Free;
+    end;
+  except
+    Result := '';
+  end;
+end;
+
+type
+  /// <summary>Follows the totals log of a running transfer and passes them to
+  /// the host. The context must outlive the thread: stop it before the call
+  /// that owns the context returns.</summary>
+  TStatsFollower = class(TThread)
+  private
+    FCtx: PVfsOpContext;
+    FLog: string;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ACtx: PVfsOpContext; const ALog: string);
+  end;
+
+constructor TStatsFollower.Create(ACtx: PVfsOpContext; const ALog: string);
+begin
+  FCtx := ACtx;
+  FLog := ALog;
+  inherited Create(False);
+end;
+
+procedure TStatsFollower.Execute;
+const
+  cPollMs = 100;
+  // A totals line names every file in flight; one file fits well within this.
+  cTailBytes = 16384;
+var
+  Done, Total, LastDone: Int64;
+begin
+  LastDone := -1;
+  while not Terminated do
+  begin
+    Sleep(cPollMs);
+    if ParseStatsLog(ReadFileTail(FLog, cTailBytes), Done, Total) and (Done <> LastDone) then
+    begin
+      LastDone := Done;
+      FCtx^.ReportProgress(FCtx, Done, Total, Done, Total, nil);
+    end;
+  end;
+end;
+
+// Copies the remote file to ATmp. With a context that takes progress the
+// transfer logs its totals to a file next to ATmp, which a follower reads;
+// the log then also holds the error text that otherwise comes on the output.
+function CopyToTemp(ACtx: PVfsOpContext; const AAddr: TRcAddr; const ATmp: string): Int64;
+var
+  Output, Log, Text: string;
+  Args: TArray<string>;
+  Follower: TStatsFollower;
+begin
+  Args := CopyToArgs(RemoteSpec(AAddr), ATmp, False);
+  if (ACtx = nil) or not Assigned(ACtx^.ReportProgress) then
+    Exit(Run(ACtx, Args, '', cCopyTimeoutMs, Output));
+  Log := ATmp + '.log';
+  Follower := TStatsFollower.Create(ACtx, Log);
+  try
+    try
+      Result := Run(ACtx, Args + StatsLogArgs(Log), '', cCopyTimeoutMs, Output);
+    finally
+      Follower.Terminate;
+      Follower.WaitFor;
+    end;
+    if Result <> Ord(verOk) then
+    begin
+      Text := LogMessages(ReadFileTail(Log, 65536));
+      if Text <> '' then
+        Result := Fail(ACtx, CodeOfFailure(Text), Text);
+    end;
+  finally
+    Follower.Free;
+    if TFile.Exists(Log) then
+      TFile.Delete(Log);
+  end;
+end;
+
 // Reads the file: text through "cat", bytes through a temporary local copy so that
 // binary content survives.
 function ReadContent(ACtx: PVfsOpContext; const AAddr: TRcAddr; AMaxBytes: Int64;
@@ -250,7 +350,7 @@ begin
   end;
   Tmp := TPath.GetTempFileName;
   try
-    Result := Run(ACtx, CopyToArgs(RemoteSpec(AAddr), Tmp, False), '', cCopyTimeoutMs, Output);
+    Result := CopyToTemp(ACtx, AAddr, Tmp);
     if Result = Ord(verOk) then
       ABytes := TFile.ReadAllBytes(Tmp);
   finally

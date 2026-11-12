@@ -22,6 +22,9 @@ type
     [Test] procedure TestSampleTrim;
     [Test] procedure TestStreamingBasics;
     [Test] procedure TestFirstLinesShownWhileIndexing;
+    [Test] procedure TestLoadShowsFileSize;
+    [Test] procedure TestReadStreamReportsProgress;
+    [Test] procedure TestReadStreamStopsWhenCancelled;
     [Test] procedure TestIndexingToastShownWhileStatusLineHidden;
     [Test] procedure TestCacheEviction;
     [Test] procedure TestNoTrailingNewline;
@@ -350,6 +353,97 @@ begin
   Trimmed := Copy(Bytes);
   TrimUtf8SampleTail(Trimmed);
   Assert.IsTrue(Length(Trimmed) = 0, 'empty input is safe');
+end;
+
+procedure TestLoadShowsFileSize;
+var
+  Path: string;
+  Doc: TEditorDoc;
+  SeenTotal: Int64;
+  Tick: UInt64;
+begin
+  Path := TempPath('load_size.txt');
+  TFile.WriteAllText(Path, StringOfChar('x', 5000));
+  Doc := TEditorDoc.Create;
+  try
+    Doc.OpenAsync(PathToFileUri(Path));
+    Assert.AreEqual(Int64(0), Doc.LoadTotal, 'size unknown before the stat lands');
+    SeenTotal := 0;
+    Tick := PlatformTickCount64;
+    while Doc.Loading do
+    begin
+      CheckSynchronize(0);
+      if Doc.Loading and (Doc.LoadTotal > 0) then
+        SeenTotal := Doc.LoadTotal;
+      if PlatformTickCount64 - Tick > 60000 then
+        Assert.Fail('timeout loading');
+    end;
+    Assert.AreEqual(Int64(5000), SeenTotal, 'the file size is known while the read runs');
+    Assert.IsTrue(Doc.Ready, 'loaded');
+  finally
+    Doc.Free;
+  end;
+end;
+
+procedure TestReadStreamReportsProgress;
+const
+  cSize = 600 * 1024;
+var
+  Src: TBytesStream;
+  Data, Buf: TBytes;
+  Token: TJobCancelToken;
+  Cancel: IJobCancelToken;
+  I, Reports: Integer;
+  FirstDone, FirstTotal: Int64;
+begin
+  SetLength(Data, cSize);
+  for I := 0 to cSize - 1 do
+    Data[I] := Byte(I * 7);
+  Reports := 0;
+  FirstDone := -1;
+  FirstTotal := -1;
+  Token := TJobCancelToken.Create;
+  Cancel := Token;
+  Token.OnReadProgress :=
+    procedure(ADone, ATotal: Int64)
+    begin
+      if Reports = 0 then
+      begin
+        FirstDone := ADone;
+        FirstTotal := ATotal;
+      end;
+      Inc(Reports);
+    end;
+  Src := TBytesStream.Create(Data);
+  try
+    Assert.IsTrue(JobReadStream(Src, cSize, Cancel, Buf), 'read to the end');
+  finally
+    Src.Free;
+  end;
+  CheckSynchronize(0);
+  Assert.AreEqual(cSize, Integer(Length(Buf)), 'all bytes read');
+  Assert.IsTrue(CompareMem(@Buf[0], @Data[0], cSize), 'bytes match across chunks');
+  Assert.IsTrue(Reports >= 1, 'progress reported');
+  Assert.AreEqual(Int64(0), FirstDone, 'the first report comes before any byte');
+  Assert.AreEqual(Int64(cSize), FirstTotal, 'with the size to read');
+end;
+
+procedure TestReadStreamStopsWhenCancelled;
+var
+  Src: TBytesStream;
+  Data, Buf: TBytes;
+  Cancel: IJobCancelToken;
+begin
+  SetLength(Data, 4096);
+  Cancel := TJobCancelToken.Create;
+  Cancel.Cancel;
+  Src := TBytesStream.Create(Data);
+  try
+    Assert.IsFalse(JobReadStream(Src, Length(Data), Cancel, Buf), 'cancelled read');
+    Assert.AreEqual(0, Integer(Length(Buf)), 'nothing is returned');
+  finally
+    Src.Free;
+  end;
 end;
 
 procedure TestFirstLinesShownWhileIndexing;
@@ -811,6 +905,21 @@ end;
 procedure TTestStreamingViewer.TestStreamingBasics;
 begin
   TestStreamingViewer.TestStreamingBasics;
+end;
+
+procedure TTestStreamingViewer.TestLoadShowsFileSize;
+begin
+  TestStreamingViewer.TestLoadShowsFileSize;
+end;
+
+procedure TTestStreamingViewer.TestReadStreamReportsProgress;
+begin
+  TestStreamingViewer.TestReadStreamReportsProgress;
+end;
+
+procedure TTestStreamingViewer.TestReadStreamStopsWhenCancelled;
+begin
+  TestStreamingViewer.TestReadStreamStopsWhenCancelled;
 end;
 
 procedure TTestStreamingViewer.TestFirstLinesShownWhileIndexing;

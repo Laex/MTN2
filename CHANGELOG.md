@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The "Loading..." note of the viewer and the editor is followed by a progress bar when the file size is known, with the percentage, the amount read and the full size under it (for example "45%  7.2 MB of 16.0 MB"). This works for files on disks and network folders, for files inside ZIP archives, for files opened through the `mtn.rclone` plugin and for large files that are first extracted from an archive or fetched from a plugin's file system. Esc now also stops such a read midway instead of waiting for it to end.
+
 ## Dev v0.5.7.5 – 2026-11-12
 
 ### New

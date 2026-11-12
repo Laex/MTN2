@@ -197,9 +197,23 @@ type
     procedure Throttle(ABytes: Integer);
   end;
 
+  /// <summary>Called on the main thread with the bytes read so far and the
+  /// size being read.</summary>
+  TJobReadProgressProc = reference to procedure(ADone, ATotal: Int64);
+
+  /// <summary>Optionally implemented by a cancel token. A whole-file read tells
+  /// it how far it got, so the UI waiting for the bytes can show progress.</summary>
+  IJobReadProgress = interface
+    ['{2E8B4C17-6D93-4A5F-8C20-71F3A9D5E6B4}']
+    /// <summary>Called by the worker after every chunk.</summary>
+    procedure NoteReadProgress(ADone, ATotal: Int64);
+  end;
+
   TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver,
-    IJobErrorResolver, IJobSkipCounter, IJobThrottle)
+    IJobErrorResolver, IJobSkipCounter, IJobThrottle, IJobReadProgress)
   private
+    FOnReadProgress: TJobReadProgressProc;
+    FReadProgressTick: UInt64; // the worker's own: when it last queued a report
     FCancelled: Integer; // 0/1 - written from UI, read from workers
     FPaused: Integer;    // 0/1 - written from UI, read from workers
     FLimitKB: Integer;   // written from UI, read from workers
@@ -227,6 +241,10 @@ type
     /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
     property ErrorResolver: TVfsErrorResolver read FErrorResolver
       write FErrorResolver;
+    procedure NoteReadProgress(ADone, ATotal: Int64);
+    /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
+    property OnReadProgress: TJobReadProgressProc read FOnReadProgress
+      write FOnReadProgress;
   end;
 
 /// <summary>The token's per-file conflict resolver, or nil when it has none.</summary>
@@ -247,6 +265,16 @@ function JobCancelRequested(const ACancel: IJobCancelToken): Boolean;
 /// <summary>Reports ABytes copied to the token's pause and speed limit (a no-op
 /// for a token without them).</summary>
 procedure JobThrottle(const ACancel: IJobCancelToken; ABytes: Integer);
+
+/// <summary>Reports how far a whole-file read got to the token (a no-op for a
+/// token that does not follow it).</summary>
+procedure JobNoteReadProgress(const ACancel: IJobCancelToken; ADone, ATotal: Int64);
+
+/// <summary>Reads up to ACount bytes of AStream into ABuf chunk by chunk,
+/// reporting progress to the token between chunks. ABuf is cut to what the
+/// stream gave. False when the token was cancelled midway; ABuf is empty then.</summary>
+function JobReadStream(AStream: TStream; ACount: Int64; const ACancel: IJobCancelToken;
+  var ABuf: TBytes): Boolean;
 
 function FileUriToPath(const AURI: string): string;
 function PathToFileUri(const APath: string): string;
@@ -513,6 +541,66 @@ var
 begin
   if Assigned(ACancel) and Supports(ACancel, IJobThrottle, Throttle) then
     Throttle.Throttle(ABytes);
+end;
+
+procedure TJobCancelToken.NoteReadProgress(ADone, ATotal: Int64);
+const
+  cMinQueueMs = 100;
+var
+  Handler: TJobReadProgressProc;
+  NowTick: UInt64;
+begin
+  Handler := FOnReadProgress;
+  if not Assigned(Handler) then
+    Exit;
+  NowTick := TThread.GetTickCount64;
+  // The first report always passes, so the size shows before any byte arrives.
+  if (FReadProgressTick <> 0) and (NowTick - FReadProgressTick < cMinQueueMs) then
+    Exit;
+  FReadProgressTick := NowTick;
+  TThread.Queue(nil,
+    procedure
+    begin
+      Handler(ADone, ATotal);
+    end);
+end;
+
+procedure JobNoteReadProgress(const ACancel: IJobCancelToken; ADone, ATotal: Int64);
+var
+  Sink: IJobReadProgress;
+begin
+  if Assigned(ACancel) and Supports(ACancel, IJobReadProgress, Sink) then
+    Sink.NoteReadProgress(ADone, ATotal);
+end;
+
+function JobReadStream(AStream: TStream; ACount: Int64; const ACancel: IJobCancelToken;
+  var ABuf: TBytes): Boolean;
+const
+  // Small enough for a slow share to report several times a second.
+  cChunk = 256 * 1024;
+var
+  Done: Int64;
+  Want, Got: Integer;
+begin
+  Result := True;
+  SetLength(ABuf, ACount);
+  Done := 0;
+  JobNoteReadProgress(ACancel, 0, ACount);
+  while Done < ACount do
+  begin
+    if JobCancelRequested(ACancel) then
+    begin
+      SetLength(ABuf, 0);
+      Exit(False);
+    end;
+    Want := Integer(Min(Int64(cChunk), ACount - Done));
+    Got := AStream.Read(ABuf[Done], Want);
+    if Got <= 0 then
+      Break;
+    Inc(Done, Got);
+    JobNoteReadProgress(ACancel, Done, ACount);
+  end;
+  SetLength(ABuf, Done);
 end;
 
 function JobConflictResolver(const ACancel: IJobCancelToken): TVfsConflictResolver;

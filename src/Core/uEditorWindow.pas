@@ -277,6 +277,7 @@ type
     /// <summary>Plugin picture tab (uPluginSurface): the frame, drawn through
     /// the Media Overlay, in place of a document.</summary>
     procedure DrawSurfaceContent;
+    procedure DrawLoadingProgress;
     function SurfaceInput(AKey: Word; AShift: TShiftState; AKeyChar: Char): Boolean;
     procedure EnsureMarkdownCursorVisible(AViewH, ATextW: Integer);
     procedure EnsureCursorVisible;
@@ -5772,6 +5773,29 @@ begin
     ForceClose;
 end;
 
+// Two rows under the loading note: a bar and the percentage with the sizes.
+// Nothing is drawn while the size is unknown or the window is too small.
+procedure TEditorWindow.DrawLoadingProgress;
+const
+  cBarMaxW = 50;
+  cBarRow = 3;
+var
+  BarW, Fill: Integer;
+  Text: string;
+begin
+  Text := EditorLoadingProgressText(FDoc.LoadDone, FDoc.LoadTotal);
+  BarW := Min(cBarMaxW, Area.Width - 4);
+  if (Text = '') or (BarW < 4) or (Area.Height < cBarRow + 3) then
+    Exit;
+  Fill := EditorLoadingBarFill(FDoc.LoadDone, FDoc.LoadTotal, BarW);
+  PutGridText(Buffer, 1, cBarRow, StringOfChar(chBlock, Fill), FThemeColors.ScrollThumb,
+    FThemeColors.BodyBg);
+  PutGridText(Buffer, 1 + Fill, cBarRow, StringOfChar(chShadeLight, BarW - Fill),
+    FThemeColors.ScrollFg, FThemeColors.BodyBg);
+  PutGridText(Buffer, 1, cBarRow + 1, Copy(Text, 1, Area.Width - 3), FThemeColors.HintFg,
+    FThemeColors.BodyBg);
+end;
+
 procedure TEditorWindow.DrawContent;
 var
   W, H, ViewH, TextW, Y, X, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
@@ -5799,8 +5823,9 @@ begin
   else if FDoc.Loading then
   begin
     FillGridRect(Buffer, 1, 1, W - 2, H - 2, ' ', FThemeColors.BodyFg, FThemeColors.BodyBg);
-    PutGridText(Buffer, 1, 1, T('ui.editor.loading', 'Loading...') + '  ' +
+    PutGridText(Buffer, 1, 1, EditorLoadingText(FDoc.LoadDone, FDoc.LoadTotal) + '  ' +
       T('ui.editor.loadingHint', 'Esc cancels'), FThemeColors.HintFg, FThemeColors.BodyBg);
+    DrawLoadingProgress;
   end
   else if (not FDoc.Ready) and (FDoc.Error <> '') then
   begin

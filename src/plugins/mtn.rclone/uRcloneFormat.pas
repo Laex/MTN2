@@ -56,6 +56,15 @@ function ListArgs(const AAddr: TRcAddr): TArray<string>;
 function StatArgs(const AAddr: TRcAddr): TArray<string>;
 function CatArgs(const AAddr: TRcAddr; AMaxBytes: Int64): TArray<string>;
 function CopyToArgs(const AFromSpec, AToSpec: string; AMove: Boolean): TArray<string>;
+/// <summary>Options that make a transfer write its running totals to a log file,
+/// one JSON object per line.</summary>
+function StatsLogArgs(const ALogPath: string): TArray<string>;
+/// <summary>The bytes transferred and their total from the newest totals line of
+/// such a log; False while it holds none or the total is not known.</summary>
+function ParseStatsLog(const ALog: string; out ADone, ATotal: Int64): Boolean;
+/// <summary>The messages of such a log apart from the totals, one per line and
+/// each once: what explains a failed run.</summary>
+function LogMessages(const ALog: string): string;
 
 implementation
 
@@ -328,6 +337,87 @@ begin
   else
     Result := Base('copyto');
   Result := Result + [AFromSpec, AToSpec];
+end;
+
+function StatsLogArgs(const ALogPath: string): TArray<string>;
+begin
+  Result := ['--use-json-log', '--stats', '300ms', '--stats-log-level', 'NOTICE',
+    '--log-file', ALogPath];
+end;
+
+// The object of one log line; nil for a line that is not one (a tail of the
+// log can begin in the middle of a line).
+function LogLineObject(const ALine: string): TJSONObject;
+var
+  Value: TJSONValue;
+begin
+  Result := nil;
+  if Trim(ALine) = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(ALine);
+  if Value is TJSONObject then
+    Result := TJSONObject(Value)
+  else
+    Value.Free;
+end;
+
+function ParseStatsLog(const ALog: string; out ADone, ATotal: Int64): Boolean;
+var
+  Lines: TArray<string>;
+  Obj: TJSONObject;
+  Stats: TJSONObject;
+  I: Integer;
+begin
+  ADone := 0;
+  ATotal := 0;
+  Lines := ALog.Split([#10]);
+  for I := High(Lines) downto 0 do
+  begin
+    Obj := LogLineObject(Lines[I]);
+    if Obj = nil then
+      Continue;
+    try
+      if not Obj.TryGetValue<TJSONObject>('stats', Stats) then
+        Continue;
+      if not Stats.TryGetValue<Int64>('bytes', ADone) then
+        ADone := 0;
+      if not Stats.TryGetValue<Int64>('totalBytes', ATotal) then
+        ATotal := 0;
+      Exit(ATotal > 0);
+    finally
+      Obj.Free;
+    end;
+  end;
+  Result := False;
+end;
+
+function LogMessages(const ALog: string): string;
+var
+  Line, Msg: string;
+  Obj, Stats: TJSONObject;
+  Seen: TStringList;
+begin
+  Seen := TStringList.Create;
+  try
+    for Line in ALog.Split([#10]) do
+    begin
+      Obj := LogLineObject(Line);
+      if Obj = nil then
+        Continue;
+      try
+        if Obj.TryGetValue<TJSONObject>('stats', Stats) then
+          Continue;
+        if Obj.TryGetValue<string>('msg', Msg) and (Trim(Msg) <> '') and
+           (Seen.IndexOf(Trim(Msg)) < 0) then
+          Seen.Add(Trim(Msg));
+      finally
+        Obj.Free;
+      end;
+    end;
+    Result := string.Join(sLineBreak, Seen.ToStringArray);
+  finally
+    Seen.Free;
+  end;
 end;
 
 end.

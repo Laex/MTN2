@@ -907,6 +907,7 @@
     "editor.follow": "Слежение",
     "editor.indexingNotice": "Индексация файла: %s",
     "editor.loadingHint": "Esc – отмена",
+    "editor.loadingProgress": "%d%%  %s из %s",
     "surface.waiting": "Загрузка...",
     "drivePopup.disconnectTitle": "Отключение диска",
     "drivePopup.disconnectQuestion": "Отключить %s?",

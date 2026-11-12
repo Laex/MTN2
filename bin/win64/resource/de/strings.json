@@ -909,6 +909,7 @@
     "editor.follow": "Folgen",
     "editor.indexingNotice": "Datei wird indiziert: %s",
     "editor.loadingHint": "Esc bricht ab",
+    "editor.loadingProgress": "%d%%  %s von %s",
     "surface.waiting": "Wird geladen...",
     "drivePopup.disconnectTitle": "Laufwerk trennen",
     "drivePopup.disconnectQuestion": "%s trennen?",

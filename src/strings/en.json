@@ -910,6 +910,7 @@
     "editor.follow": "Follow",
     "editor.indexingNotice": "Indexing the file: %s",
     "editor.loadingHint": "Esc cancels",
+    "editor.loadingProgress": "%d%%  %s of %s",
     "surface.waiting": "Loading...",
     "drivePopup.disconnectTitle": "Disconnect drive",
     "drivePopup.disconnectQuestion": "Disconnect %s?",

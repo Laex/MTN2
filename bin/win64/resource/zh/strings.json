@@ -908,6 +908,7 @@
     "editor.follow": "跟随",
     "editor.indexingNotice": "正在为文件建立索引：%s",
     "editor.loadingHint": "Esc 取消",
+    "editor.loadingProgress": "%d%%  %s / %s",
     "surface.waiting": "加载中...",
     "drivePopup.disconnectTitle": "断开驱动器",
     "drivePopup.disconnectQuestion": "断开 %s?",

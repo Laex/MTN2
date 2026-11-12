@@ -61,6 +61,10 @@ type
     FLife: ILifeFlag;
     FSaveGen: Cardinal;
     FCancel: IJobCancelToken;
+    // Bytes of the load in flight read so far and its size; FLoadTotal is 0
+    // while the size is unknown.
+    FLoadDone: Int64;
+    FLoadTotal: Int64;
     FOnChanged: TNotifyEvent;
     // Streaming Viewer for local text files too big for whole-buffer
     // load (cEditorMaxBytes). View-only - FReadOnly is forced True. FLines
@@ -107,6 +111,10 @@ type
     FRecheckAfterKnownStat: Boolean;
     FKnownStatSeq: Cardinal;
     function KnownStatPending: Boolean;
+    /// <summary>A cancel token for the load of generation AGen whose read
+    /// progress lands in FLoadDone / FLoadTotal.</summary>
+    function NewLoadToken(AGen: Cardinal): IJobCancelToken;
+    procedure SetLoadProgress(AGen: Cardinal; ADone, ATotal: Int64);
     procedure NotifyChanged;
     procedure ApplyLoadedText(const AText: string);
     function BuildSaveText: string;
@@ -204,6 +212,10 @@ type
     property Path: string read FPath;
     property Ready: Boolean read FReady;
     property Loading: Boolean read FLoading;
+    /// <summary>Bytes read so far while Loading.</summary>
+    property LoadDone: Int64 read FLoadDone;
+    /// <summary>Size of what is being loaded; 0 while it is not known.</summary>
+    property LoadTotal: Int64 read FLoadTotal;
     property Saving: Boolean read FSaving;
     property Dirty: Boolean read FDirty;
     property ReadOnly: Boolean read FReadOnly;
@@ -747,6 +759,34 @@ begin
   Result := FKnownStatPending and (FKnownStatGen = FGen);
 end;
 
+function TEditorDoc.NewLoadToken(AGen: Cardinal): IJobCancelToken;
+var
+  Life: ILifeFlag;
+  Token: TJobCancelToken;
+begin
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  Token.OnReadProgress :=
+    procedure(ADone, ATotal: Int64)
+    begin
+      if Life.Alive then
+        SetLoadProgress(AGen, ADone, ATotal);
+    end;
+  Result := Token;
+end;
+
+procedure TEditorDoc.SetLoadProgress(AGen: Cardinal; ADone, ATotal: Int64);
+begin
+  // A report can arrive after its load ended or was replaced.
+  if (AGen <> FGen) or not FLoading then
+    Exit;
+  if (ADone = FLoadDone) and (ATotal = FLoadTotal) then
+    Exit;
+  FLoadDone := ADone;
+  FLoadTotal := ATotal;
+  NotifyChanged;
+end;
+
 procedure TEditorDoc.ReadWithStatAsync(AGen: Cardinal; const AURI: string;
   AMaxBytes: Int64; const ACancel: IJobCancelToken; const AOnDone: TVfsBytesCallback);
 begin
@@ -763,6 +803,9 @@ begin
       FReadStatValid := AExists;
       FReadStatSize := ASize;
       FReadStatWriteTime := AWriteTime;
+      // The size shows at once, before the read reports its first chunk.
+      if AExists and (ASize > 0) then
+        SetLoadProgress(AGen, 0, ASize);
       FVfs.ReadBytesAsync(AURI, AMaxBytes, ACancel, AOnDone);
     end);
 end;
@@ -1314,7 +1357,9 @@ begin
   FReady := False;
   FError := '';
   FStatus := T('ui.editor.loading', 'Loading...');
-  FCancel := TJobCancelToken.Create;
+  FLoadDone := 0;
+  FLoadTotal := 0;
+  FCancel := NewLoadToken(Gen);
   NotifyChanged;
 
   if AWantEdit then
@@ -1512,13 +1557,10 @@ begin
           HexLen := cEditorEditMaxBytes
         else
           HexLen := ASize;
-        SetLength(AHexBuf, HexLen);
-        if HexLen > 0 then
-        begin
-          FS.Position := 0;
-          if FS.Read(AHexBuf[0], Integer(HexLen)) <> HexLen then
-            AErr := 'Cannot read file';
-        end;
+        FS.Position := 0;
+        // A cancelled read is dropped by the caller along with its generation.
+        if JobReadStream(FS, HexLen, ACancel, AHexBuf) and (Length(AHexBuf) <> HexLen) then
+          AErr := 'Cannot read file';
       end;
     finally
       FS.Free;
@@ -1712,8 +1754,10 @@ var
 begin
   Life := FLife;
   FStatus := 'Indexing...';
+  FLoadDone := 0;
+  FLoadTotal := 0;
   NotifyChanged;
-  FCancel := TJobCancelToken.Create;
+  FCancel := NewLoadToken(AGen);
   Cancel := FCancel;
   TThread.CreateAnonymousThread(
     procedure
@@ -1801,11 +1845,17 @@ begin
   FStatus := 'Extracting...';
   NotifyChanged;
   TempPath := TPath.GetTempFileName;
+  FLoadDone := 0;
+  FLoadTotal := 0;
   FCancel := TJobCancelToken.Create;
   Cancel := FCancel;
   FVfs.CopyAsync(AURI, PathToFileUri(TempPath), Cancel,
     procedure(const ADone, ATotal: Int64; const AName: string;
-      const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string) begin end,
+      const AItemDone, AItemTotal: Int64; const AItemSrcPath, AItemDstPath: string)
+    begin
+      if Life.Alive then
+        SetLoadProgress(AGen, ADone, ATotal);
+    end,
     procedure(const ASuccess: Boolean; const AError: TVfsError)
     begin
       if not Life.Alive or (AGen <> FGen) then
