@@ -17,6 +17,7 @@ uses
   TestConsoleBufferCmd in 'TestConsoleBufferCmd.pas',
   TestFindEncoding in 'TestFindEncoding.pas',
   TestConsoleFind in 'TestConsoleFind.pas',
+  TestConsoleSelectionKeys in 'TestConsoleSelectionKeys.pas',
   TestConsoleShellCwd in 'TestConsoleShellCwd.pas',
   TestConsoleRunCommand in 'TestConsoleRunCommand.pas',
   TestConsoleHistoryRecall in 'TestConsoleHistoryRecall.pas',

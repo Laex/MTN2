@@ -170,6 +170,9 @@ type
     /// a click/scroll that unpins the tail must not hide the PTY caret while
     /// that line is still on screen.</summary>
     function GetInputCursor(out ALineIndex, ACol: Integer): Boolean;
+    /// <summary>Number of leading columns of a line taken by the shell prompt
+    /// (0 when no prompt is recognised).</summary>
+    function GetPromptCols(ALineIndex: Integer): Integer;
     /// <summary>Append and return how many leading lines were trimmed.
     /// AIsLocalInput suppresses the PTY "incoming prompt" line-split heuristics
     /// (see AppendLocalInput).</summary>
@@ -1554,6 +1557,11 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TConsoleBuffer.GetPromptCols(ALineIndex: Integer): Integer;
+begin
+  Result := FindPromptProtectedEnd(GetLine(ALineIndex));
 end;
 
 function TConsoleBuffer.GetInputCursor(out ALineIndex, ACol: Integer): Boolean;

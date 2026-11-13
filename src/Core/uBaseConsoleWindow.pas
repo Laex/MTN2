@@ -86,6 +86,7 @@ type
     FRunning:       Boolean;
     FProfileId:     string;
     FCallbackGen:   Integer;
+    FSelFromLiveTail: Boolean;
     FCursorRow:     Integer;
     FCursorCol:     Integer;
     FCursorVisible: Boolean;
@@ -182,7 +183,7 @@ type
     procedure PasteClipboard;
 
     { Raw PTY write (used by TTerminalWorkspaceWindow). }
-    procedure SendRaw(const AText: string);
+    procedure SendRaw(const AText: string); virtual;
     /// <summary>Sends a profile's silent post-startup setup command (see
     /// ProfileInitCommand) one character at a time, matching how genuine
     /// keystrokes already arrive. Writing the whole string (incl. its own
@@ -240,6 +241,30 @@ type
     /// <summary>Shift+arrows / PgUp / PgDn / Home / End extend the scrollback
     /// selection.</summary>
     function HandleSelectionKeys(var AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Any key other than a Shift+navigation key ends the current
+    /// selection, so the next Shift+navigation starts at the input cursor.</summary>
+    procedure DropSelectionOnKey(AKey: Word; AShift: TShiftState);
+    /// <summary>Lowest column a keyboard selection that started in the input
+    /// line may reach on the input row: the end of the prompt.</summary>
+    function InputSelFloor(out ARow, ACol: Integer): Boolean;
+    /// <summary>Last row a selection may reach (see ClampPos).</summary>
+    function LastSelectableRow: Integer;
+    /// <summary>One column step of the selection cursor, wrapping across rows.</summary>
+    procedure StepSelCol(var ARow, ACol: Integer; ADelta: Integer);
+    /// <summary>Selection columns when it lies wholly in the input line
+    /// after the prompt; AInCol is the shell cursor column.</summary>
+    function InputSelectionSpan(out AC1, AC2, AInCol: Integer): Boolean;
+    /// <summary>Deletes columns [AC1, AC2) of the input line through the
+    /// shell; False when this profile cannot do it.</summary>
+    function EraseInputSpan(AC1, AC2, AInCol: Integer): Boolean;
+    /// <summary>Moves the selection cursor to the input cursor when no
+    /// selection exists yet.</summary>
+    procedure BeginKeyboardSelection;
+    /// <summary>A selection inside the input line is replaced by the next
+    /// printable key and removed by Del / Backspace. True when the key was
+    /// consumed.</summary>
+    function HandleInputSelectionEdit(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     /// <summary>Bare arrows / PgUp / PgDn / Home / End scroll the scrollback
     /// (Panel Console; the terminal sends them to the shell instead).</summary>
     function HandleScrollKeys(var AKey: Word; AShift: TShiftState): Boolean;
@@ -752,6 +777,13 @@ procedure TBaseConsoleWindow.ClearSelection;
 begin
   FSelAnchorRow := -1;
   FSelAnchorCol := 0;
+  // A keyboard selection begun at the live prompt turned off tail-following;
+  // give the arrows back to the shell (HandleShellNav needs FollowTail).
+  if FSelFromLiveTail then
+  begin
+    FSelFromLiveTail := False;
+    FHistory.FollowTail := True;
+  end;
 end;
 
 function TBaseConsoleWindow.HasSelection: Boolean;
@@ -855,14 +887,24 @@ begin
   end;
 end;
 
+function TBaseConsoleWindow.LastSelectableRow: Integer;
+var
+  InRow, InCol: Integer;
+begin
+  Result := Max(FHistory.LineCount - 1, 0);
+  // Empty rows of the screen grid below the last output are not selectable;
+  // the input cursor's row always is.
+  if not FHistory.GetInputCursor(InRow, InCol) then
+    InRow := 0;
+  while (Result > InRow) and (FHistory.GetLine(Result) = '') do
+    Dec(Result);
+end;
+
 procedure TBaseConsoleWindow.ClampPos(var ARow, ACol: Integer);
 var
-  N: Integer;
   Line: string;
 begin
-  N := Max(FHistory.LineCount - 1, 0);
-  if ARow < 0 then ARow := 0;
-  if ARow > N then ARow := N;
+  ARow := EnsureRange(ARow, 0, LastSelectableRow);
   Line := FHistory.GetLine(ARow);
   if ACol < 0 then            ACol := 0;
   if ACol > Length(Line) then ACol := Length(Line);
@@ -906,38 +948,55 @@ begin
   NotifyHost;
 end;
 
+procedure TBaseConsoleWindow.StepSelCol(var ARow, ACol: Integer; ADelta: Integer);
+var
+  Line: string;
+  NextRow, NextCol: Integer;
+begin
+  ACol := ACol + ADelta;
+  Line := FHistory.GetLine(ARow);
+  if ACol < 0 then
+  begin
+    if ARow > 0 then
+    begin
+      Dec(ARow);
+      ACol := Length(FHistory.GetLine(ARow));
+    end
+    else
+      ACol := 0;
+  end
+  else if ACol > Length(Line) then
+  begin
+    // Wrap to the next row only when ClampPos keeps it selectable.
+    NextRow := ARow + 1;
+    NextCol := 0;
+    ClampPos(NextRow, NextCol);
+    if NextRow > ARow then
+    begin
+      ARow := NextRow;
+      ACol := 0;
+    end
+    else
+      ACol := Length(Line);
+  end;
+end;
+
 procedure TBaseConsoleWindow.MoveSelCursor(ARowDelta, AColDelta: Integer;
   AExtendSel: Boolean);
 var
-  Row, Col: Integer;
-  Line: string;
+  Row, Col, FloorRow, FloorCol: Integer;
 begin
   Row := FCursorRow;
   Col := FCursorCol;
   if AColDelta <> 0 then
+    StepSelCol(Row, Col, AColDelta);
+  // Selecting leftwards in the input line stops at the end of the prompt.
+  if AExtendSel and (AColDelta < 0) and InputSelFloor(FloorRow, FloorCol) and
+     (((Row < FloorRow) and (FCursorRow = FloorRow)) or
+      ((Row = FloorRow) and (Col < FloorCol))) then
   begin
-    Col := Col + AColDelta;
-    Line := FHistory.GetLine(Row);
-    if Col < 0 then
-    begin
-      if Row > 0 then
-      begin
-        Dec(Row);
-        Col := Length(FHistory.GetLine(Row));
-      end
-      else
-        Col := 0;
-    end
-    else if Col > Length(Line) then
-    begin
-      if Row < FHistory.LineCount - 1 then
-      begin
-        Inc(Row);
-        Col := 0;
-      end
-      else
-        Col := Length(Line);
-    end;
+    Row := FloorRow;
+    Col := FloorCol;
   end;
   if ARowDelta <> 0 then
   begin
@@ -1514,15 +1573,139 @@ begin
   AKeyChar := #0;
 end;
 
+const
+  /// <summary>Keys that, with Shift, move the selection cursor.</summary>
+  cSelNavKeys = [vkLeft, vkRight, vkUp, vkDown, vkPrior, vkNext, vkHome, vkEnd];
+
+function TBaseConsoleWindow.InputSelFloor(out ARow, ACol: Integer): Boolean;
+var
+  InCol, RefRow, RefCol, P: Integer;
+begin
+  Result := False;
+  ARow := 0;
+  ACol := 0;
+  if AltScreenActive or not FHistory.GetInputCursor(ARow, InCol) then
+    Exit;
+  if FSelAnchorRow >= 0 then
+  begin
+    RefRow := FSelAnchorRow;
+    RefCol := FSelAnchorCol;
+  end
+  else
+  begin
+    RefRow := FCursorRow;
+    RefCol := FCursorCol;
+  end;
+  if RefRow <> ARow then
+    Exit;
+  P := FHistory.GetPromptCols(ARow);
+  if RefCol < P then
+    Exit;
+  ACol := P;
+  Result := True;
+end;
+
+function TBaseConsoleWindow.InputSelectionSpan(out AC1, AC2, AInCol: Integer): Boolean;
+var
+  R1, R2, C1, C2, InRow: Integer;
+begin
+  Result := False;
+  if (FSelAnchorRow < 0) or not HasSelection or AltScreenActive then
+    Exit;
+  GetSelRange(R1, C1, R2, C2);
+  if not FHistory.GetInputCursor(InRow, AInCol) or (R1 <> InRow) or
+     (R2 <> InRow) or (C1 < FHistory.GetPromptCols(InRow)) then
+    Exit;
+  AC1 := C1;
+  AC2 := C2;
+  Result := True;
+end;
+
+function TBaseConsoleWindow.EraseInputSpan(AC1, AC2, AInCol: Integer): Boolean;
+var
+  Seq: string;
+  K: Integer;
+begin
+  if ProfileUsesLineBufferedInput(ProfileId) then
+  begin
+    // The local edit buffer only changes at its end.
+    Result := AC2 >= Length(FHistory.GetLine(FCursorRow));
+    if Result then
+      AppendLocalInput(StringOfChar(ProfileBackspaceChar(ProfileId), AC2 - AC1));
+    Exit;
+  end;
+  // The shell owns line editing: move its cursor to the end of the span, then
+  // backspace over it.
+  Seq := '';
+  for K := 1 to Abs(AC2 - AInCol) do
+    if AC2 > AInCol then
+      Seq := Seq + #27'[C'
+    else
+      Seq := Seq + #27'[D';
+  SendRaw(Seq + StringOfChar(ProfileBackspaceChar(ProfileId), AC2 - AC1));
+  Result := True;
+end;
+
+function TBaseConsoleWindow.HandleInputSelectionEdit(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  IsDel, IsChar: Boolean;
+  C1, C2, InCol: Integer;
+begin
+  Result := False;
+  IsDel := ((AKey = vkDelete) or (AKey = vkBack)) and (AShift * cKeyMods = []);
+  IsChar := TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and
+    (AShift * [ssCtrl, ssAlt] = []);
+  if not (IsDel or IsChar) or not InputSelectionSpan(C1, C2, InCol) or
+     not EraseInputSpan(C1, C2, InCol) then
+    Exit;
+  ClearSelection;
+  NotifyHost;
+  if IsDel then
+  begin
+    AKey := 0;
+    AKeyChar := #0;
+    Result := True;
+  end;
+end;
+
+procedure TBaseConsoleWindow.DropSelectionOnKey(AKey: Word; AShift: TShiftState);
+begin
+  if FSelAnchorRow < 0 then
+    Exit;
+  if AKey in [vkShift, vkControl, vkMenu, vkLWin, vkRWin, vkEscape] then
+    Exit;
+  if (AShift * cKeyMods = [ssShift]) and (AKey in cSelNavKeys) then
+    Exit;
+  ClearSelection;
+  NotifyHost;
+end;
+
+procedure TBaseConsoleWindow.BeginKeyboardSelection;
+var
+  InRow, InCol: Integer;
+begin
+  // A new selection starts at the terminal's input cursor, not at the stale
+  // selection cursor left from an earlier selection or search.
+  if (FSelAnchorRow >= 0) or not FHistory.GetInputCursor(InRow, InCol) then
+    Exit;
+  FSelFromLiveTail := FHistory.FollowTail;
+  ClampPos(InRow, InCol);
+  FCursorRow := InRow;
+  FCursorCol := InCol;
+end;
+
 function TBaseConsoleWindow.HandleSelectionKeys(var AKey: Word;
   AShift: TShiftState): Boolean;
 var
-  ViewH: Integer;
+  ViewH, InRow, InCol: Integer;
 begin
   Result := False;
   ViewH := ViewHeight;
   if AShift * cKeyMods = [ssShift] then
   begin
+    if AKey in cSelNavKeys then
+      BeginKeyboardSelection;
     case AKey of
       vkLeft:  begin MoveSelCursor(0, -1, True);     AKey := 0; Exit(True); end;
       vkRight: begin MoveSelCursor(0,  1, True);     AKey := 0; Exit(True); end;
@@ -1532,7 +1715,10 @@ begin
       vkNext:  begin MoveSelCursor( ViewH, 0, True); AKey := 0; Exit(True); end;
       vkHome:
         begin
-          SetCursorPos(FCursorRow, 0, True);
+          if InputSelFloor(InRow, InCol) and (FCursorRow = InRow) then
+            SetCursorPos(InRow, InCol, True)
+          else
+            SetCursorPos(FCursorRow, 0, True);
           AKey := 0; Exit(True);
         end;
       vkEnd:
@@ -1704,6 +1890,8 @@ begin
     FSelAnchorCol := Col;
     FCursorRow    := Row;
     FCursorCol    := Col;
+    if FHistory.FollowTail then
+      FSelFromLiveTail := True;
     FHistory.FollowTail := False;
     EnsureCursorVisible;
     NotifyHost;
@@ -1731,6 +1919,8 @@ begin
   FSelAnchorCol := WStart;
   FCursorRow := ARow;
   FCursorCol := WEnd;
+  if FHistory.FollowTail then
+    FSelFromLiveTail := True;
   FHistory.FollowTail := False;
   EnsureCursorVisible;
   NotifyHost;

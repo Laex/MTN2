@@ -6,6 +6,14 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
+
+### Fixed
+
+- In consoles, keyboard selection (Shift+arrows, Shift+Home/End, Shift+PgUp/PgDn) starts at the current input cursor instead of where the previous selection or search ended.
+
 ## v0.5.8 – 2026-11-12
 
 ### New

@@ -433,6 +433,9 @@ begin
   // Shift+Insert.
   if HandleSharedKeys(AKey, AShift, AKeyChar) then
     Exit;
+  if HandleInputSelectionEdit(AKey, AShift, AKeyChar) then
+    Exit;
+  DropSelectionOnKey(AKey, AShift);
 
   // F-keys and Alt / Ctrl combinations of a console in program-keys mode.
   if HandleProgramKey(AKey, AShift, AKeyChar) then
