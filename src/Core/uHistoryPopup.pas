@@ -41,6 +41,9 @@ type
     FHover: Integer;
     FTop: Integer;
     FBounds: TRectI; // frame, grid cells
+    FEdges: Boolean;  // outlined by cell edges rather than frame characters
+    FHeader: Integer; // frame rows above the entries: 1 with characters, 0 with edges
+    FBelow: Boolean;  // opened under the field
     FOnRemove: TProc<string>;
     function ViewHeight: Integer;
     procedure EnsureHoverInView;
@@ -101,24 +104,35 @@ begin
       FHover := I;
       Break;
     end;
-  // As wide as the field, at least wide enough for the longest entry that
-  // fits the area.
+  // As wide as the field, at least wide enough for the longest entry; the left
+  // edge stays at the field (right of the prompt), so a long entry is cut
+  // with an ellipsis instead of pushing the block over the prompt.
   MaxLen := 0;
   for I := 0 to High(FItems) do
     MaxLen := Max(MaxLen, Length(FItems[I]));
-  W := Max(AFieldRight - AFieldLeft + 1, Min(MaxLen + 3, AAreaW));
-  W := EnsureRange(W, 10, Max(AAreaW, 10));
-  Left := EnsureRange(AFieldLeft, 0, Max(AAreaW - W, 0));
+  // The outline takes the cell left of the field, so the text lines up with
+  // the field's own text.
+  Left := EnsureRange(AFieldLeft - 1, 0, Max(AAreaW - 3, 0));
+  W := Max(AFieldRight - Left + 1, MaxLen + 2 + 1);
+  W := Min(W, Max(AAreaW - Left, 3));
   Rows := Min(Length(FItems), cHistoryPopupMaxRows);
-  // A frameless block docked to the field: above it when there is room, else below.
-  if AFieldRow - Rows >= 0 then
-    Top := AFieldRow - Rows
+  // Outlined by cell edges (left, right and the side away from the field), or,
+  // where the host cannot draw them, by a frame row on top and frame cells at
+  // the sides. Docked above the field when there is room, else below.
+  FEdges := EdgeBordersActive;
+  FHeader := Ord(not FEdges);
+  if AFieldRow - Rows - FHeader >= 0 then
+  begin
+    Top := AFieldRow - Rows - FHeader;
+    FBelow := False;
+  end
   else
   begin
     Top := AFieldRow + 1;
-    Rows := Max(Min(Rows, AAreaH - Top), 1);
+    FBelow := True;
+    Rows := Max(Min(Rows, AAreaH - Top - FHeader), 1);
   end;
-  FBounds := TRectI.Make(Left, Top, Left + W - 1, Top + Rows - 1);
+  FBounds := TRectI.Make(Left, Top, Left + W - 1, Top + Rows - 1 + FHeader);
   FTop := 0;
   FVisible := True;
   EnsureHoverInView;
@@ -146,7 +160,7 @@ end;
 
 function THistoryPopup.ViewHeight: Integer;
 begin
-  Result := Max(FBounds.Height, 1);
+  Result := Max(FBounds.Height - FHeader, 1);
 end;
 
 procedure THistoryPopup.EnsureHoverInView;
@@ -310,7 +324,9 @@ begin
     Exit(False);
   end;
   Result := True;
-  Idx := FTop + (ARow - FBounds.Top);
+  Idx := FTop + (ARow - FBounds.Top - FHeader);
+  if ARow < FBounds.Top + FHeader then
+    Exit;
   if (Idx < 0) or (Idx > High(FItems)) then
     Exit;
   APicked := FItems[Idx];
@@ -322,7 +338,7 @@ procedure THistoryPopup.Draw(const AGrid: TTerminalGrid; const ATheme: IThemeRen
 var
   J, Idx, ViewH, TextW: Integer;
   Line: string;
-  FrameFg, FrameBg, RowFg, RowBg: TAlphaColor;
+  FrameFg, FrameBg, RowFg, RowBg, ListBg: TAlphaColor;
   NeedBar: Boolean;
 begin
   if not FVisible then
@@ -336,14 +352,16 @@ begin
     FrameFg := TAlphaColor($FF000000);
     FrameBg := TAlphaColor($FFFFFFFF);
   end;
-  // The shadow separates the block from what is under it, which has no frame to do so.
+  if Assigned(ATheme) then
+    ListBg := ATheme.ResolveDialogListBg
+  else
+    ListBg := FrameBg;
   DrawDialogShadow(AGrid, FBounds);
   ViewH := ViewHeight;
   NeedBar := Length(FItems) > ViewH;
-  TextW := FBounds.Width;
-  if NeedBar then
-    Dec(TextW);
-  TextW := Max(TextW, 1);
+  // The side cells (frame characters or the blank next to an edge line) take
+  // one cell each; the scroll bar replaces the right one.
+  TextW := Max(FBounds.Width - 2, 1);
   for J := 0 to ViewH - 1 do
   begin
     Idx := FTop + J;
@@ -372,11 +390,43 @@ begin
       RowFg := FrameFg;
       RowBg := FrameBg;
     end;
-    PutGridText(AGrid, FBounds.Left, FBounds.Top + J, Line, RowFg, RowBg);
+    PutGridText(AGrid, FBounds.Left + 1, FBounds.Top + FHeader + J, Line, RowFg, RowBg);
+    if FEdges then
+    begin
+      PutGridText(AGrid, FBounds.Left, FBounds.Top + J, ' ', RowFg, RowBg);
+      PutGridText(AGrid, FBounds.Right, FBounds.Top + J, ' ', RowFg, RowBg);
+    end
+    else
+    begin
+      DrawGridChar(AGrid, FBounds.Left, FBounds.Top + FHeader + J, chDblV, FrameFg, ListBg);
+      DrawGridChar(AGrid, FBounds.Right, FBounds.Top + FHeader + J, chDblV, FrameFg, ListBg);
+    end;
+  end;
+  if not FEdges then
+  begin
+    DrawGridChar(AGrid, FBounds.Left, FBounds.Top, chDblTL, FrameFg, ListBg);
+    DrawGridChar(AGrid, FBounds.Right, FBounds.Top, chDblTR, FrameFg, ListBg);
+    for J := FBounds.Left + 1 to FBounds.Right - 1 do
+      DrawGridChar(AGrid, J, FBounds.Top, chDblH, FrameFg, ListBg);
   end;
   if NeedBar then
-    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top, FBounds.Bottom,
+    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top + FHeader, FBounds.Bottom,
       FTop, Length(FItems), ViewH);
+  if FEdges then
+  begin
+    // Added last: writing text into a cell replaces the cell and its edges.
+    for J := FBounds.Top to FBounds.Bottom do
+    begin
+      AddGridEdges(AGrid, FBounds.Left, J, [ceLeft], FrameFg);
+      AddGridEdges(AGrid, FBounds.Right, J, [ceRight], FrameFg);
+    end;
+    // The side toward the field has no line: the field bounds the list there.
+    for J := FBounds.Left to FBounds.Right do
+      if FBelow then
+        AddGridEdges(AGrid, J, FBounds.Bottom, [ceBottom], FrameFg)
+      else
+        AddGridEdges(AGrid, J, FBounds.Top, [ceTop], FrameFg);
+  end;
 end;
 
 end.

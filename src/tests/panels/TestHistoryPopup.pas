@@ -38,8 +38,9 @@ var
   Picked, Removed: string;
   Valid: Boolean;
   Items: TArray<string>;
-  I: Integer;
+  I, J: Integer;
   Grid: TTerminalGrid;
+  SavedEdges, SavedDrawn: Boolean;
 begin
   P := THistoryPopup.Create;
   try
@@ -51,8 +52,8 @@ begin
 
     P.Open(['dir', 'git status', 'make'], 'git status', 20, 10, 50, 80, 25);
     Assert.IsTrue(P.Visible and (P.Hover = 1), 'opens on the current entry');
-    Assert.IsTrue((P.Bounds.Bottom = 19) and (P.Bounds.Height = 3), 'above the field, 3 rows, no frame');
-    Assert.IsTrue((P.Bounds.Left = 10) and (P.Bounds.Right = 50), 'as wide as the field');
+    Assert.IsTrue((P.Bounds.Bottom = 19) and (P.Bounds.Height = 4), 'above the field, 3 rows and the top frame');
+    Assert.IsTrue((P.Bounds.Left = 9) and (P.Bounds.Right = 50), 'as wide as the field, outline one cell left of it');
 
     Assert.IsTrue(Key(P, vkDown, [], Picked) = hpkHandled, 'Down moves');
     Assert.IsTrue(Key(P, vkReturn, [], Picked) = hpkPicked, 'Enter picks');
@@ -82,10 +83,14 @@ begin
     for I := 0 to High(Items) do
       Items[I] := 'cmd' + IntToStr(I);
     P.Open(Items, '', 20, 0, 40, 80, 25);
-    Assert.IsTrue(P.Bounds.Height = cHistoryPopupMaxRows, 'at most 12 rows');
+    Assert.IsTrue(P.Bounds.Height = cHistoryPopupMaxRows + 1, 'at most 12 rows and the top frame');
     Key(P, vkEnd, [], Picked);
     Assert.IsTrue(P.Hover = 29, 'End');
-    Assert.IsTrue(P.HandleClick(5, P.Bounds.Top, Picked, Valid) and Valid and (Picked = 'cmd18'),
+    Assert.IsTrue(P.HandleClick(5, P.Bounds.Top, Picked, Valid) and not Valid,
+      'a click on the frame is taken but picks nothing');
+    P.Open(Items, '', 20, 0, 40, 80, 25);
+    Key(P, vkEnd, [], Picked);
+    Assert.IsTrue(P.HandleClick(5, P.Bounds.Top + 1, Picked, Valid) and Valid and (Picked = 'cmd18'),
       'click on the first visible row after scrolling: ' + Picked);
     P.Open(Items, '', 20, 0, 40, 80, 25);
     Assert.IsTrue(not P.HandleClick(70, 2, Picked, Valid) and not Valid and not P.Visible,
@@ -96,10 +101,49 @@ begin
       SetLength(Grid[I], 80);
     P.Open(['alpha', 'beta'], 'beta', 20, 10, 50, 80, 25);
     P.Draw(Grid, nil);
-    Assert.IsTrue((Grid[P.Bounds.Top][10].CharValue = 'a') and
-      (Grid[P.Bounds.Top + 1][10].CharValue = 'b'), 'rows drawn from the first cell of the block');
-    Assert.IsTrue(Grid[P.Bounds.Top + 1][10].BgColor <> Grid[P.Bounds.Top][10].BgColor,
+    Assert.IsTrue((Grid[P.Bounds.Top + 1][10].CharValue = 'a') and
+      (Grid[P.Bounds.Top + 2][10].CharValue = 'b'), 'text lines up with the field');
+    Assert.IsTrue(Grid[P.Bounds.Top + 2][10].BgColor <> Grid[P.Bounds.Top + 1][10].BgColor,
       'hovered row highlighted');
+    Assert.IsTrue((Grid[P.Bounds.Top][9].CharValue = chDblTL) and
+      (Grid[P.Bounds.Top][50].CharValue = chDblTR) and
+      (Grid[P.Bounds.Top][30].CharValue = chDblH), 'frame along the top');
+    Assert.IsTrue((Grid[P.Bounds.Top + 1][9].CharValue = chDblV) and
+      (Grid[P.Bounds.Top + 2][50].CharValue = chDblV), 'frame on the left and right');
+    Assert.IsTrue(Grid[P.Bounds.Bottom + 1][9].CharValue <> chDblH, 'no frame along the bottom');
+
+    // A long entry cuts its text instead of moving the block over the prompt.
+    P.Open(['x' + StringOfChar('y', 100)], '', 20, 12, 79, 80, 25);
+    Assert.AreEqual(11, P.Bounds.Left, 'the left edge stays at the field');
+    Assert.AreEqual(79, P.Bounds.Right);
+
+    // Where cell edges can be drawn, the outline is edges: no frame row or characters.
+    SavedEdges := GEdgeBorders;
+    SavedDrawn := GEdgeBordersDrawn;
+    GEdgeBorders := True;
+    GEdgeBordersDrawn := True;
+    try
+      for I := 0 to 24 do
+        for J := 0 to 79 do
+          Grid[I][J] := TCharCell.Make(' ', 0, 0);
+      P.Open(['alpha', 'beta', 'gamma'], '', 20, 10, 50, 80, 25);
+      Assert.AreEqual(17, P.Bounds.Top, 'three rows, no frame row');
+      Assert.AreEqual(19, P.Bounds.Bottom);
+      Assert.AreEqual(9, P.Bounds.Left, 'outline one cell left of the field');
+      P.Draw(Grid, nil);
+      Assert.AreEqual('a', string(Grid[17][10].CharValue), 'text lines up with the field');
+      Assert.IsTrue(ceLeft in Grid[18][9].Edges, 'left edge line');
+      Assert.IsTrue(ceRight in Grid[18][50].Edges, 'right edge line');
+      Assert.IsTrue(ceTop in Grid[17][30].Edges, 'top edge line');
+      Assert.IsFalse(ceBottom in Grid[19][30].Edges, 'the side toward the field has none');
+      Assert.AreNotEqual(chDblV, Grid[18][9].CharValue, 'no frame characters');
+      Assert.AreEqual(17, P.Bounds.Top);
+      Assert.IsTrue(P.HandleClick(12, 17, Picked, Valid) and Valid and (Picked = 'alpha'),
+        'the first row is an entry');
+    finally
+      GEdgeBorders := SavedEdges;
+      GEdgeBordersDrawn := SavedDrawn;
+    end;
   finally
     P.Free;
   end;

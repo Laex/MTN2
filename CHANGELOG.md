@@ -10,6 +10,10 @@ This file describes what changes for the user from version to version: new featu
 
 - In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
 
+### Changed
+
+- The command-line history list opens right after the prompt (long entries are cut instead of moving the list over the prompt) and is outlined on the left, top and right (with cell edges where the window supports them), the outline one cell left of the text.
+
 ### Fixed
 
 - In consoles, keyboard selection (Shift+arrows, Shift+Home/End, Shift+PgUp/PgDn) starts at the current input cursor instead of where the previous selection or search ended.
