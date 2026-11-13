@@ -95,7 +95,6 @@ begin
   Result.TerminalCloseOnExit := True;
   Result.ProgramsInTerminal := True;
   Result.RestoreWorkspaceOnStart := True;
-  Result.CustomColumns := DefaultCustomColumnsConfig;
   Result.ListExport := DefaultListExportConfig;
   Result.FontName := 'Consolas';
   Result.FallbackFont := 'SimSun';

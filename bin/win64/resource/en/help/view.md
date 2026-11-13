@@ -3,7 +3,7 @@
 | Key | Action |
 | --- | --- |
 | Ctrl+\` | column modes menu |
-| Ctrl+Shift+F1 … F7 | mode: brief, size, date, full, created, types, custom |
+| Ctrl+Shift+F1 … F6 | mode: brief, size, date, full, created, types |
 | Ctrl+F12 | sort menu |
 | Ctrl+F3 / F4 / F5 / F6 | sort by name / extension / modification date / size |
 | Ctrl+F7 / F8 / F9 | unsorted / by creation date / by access date |

@@ -396,7 +396,7 @@ Der Eintrag **..** in den Systemordnern und im Papierkorb führt dorthin zurück
 | Taste | Aktion |
 | --- | --- |
 | Ctrl+\` | Menü der Spaltenmodi |
-| Ctrl+Shift+F1 … F7 | Modus: kurz, Größe, Datum, voll, erstellt, Typen, eigene |
+| Ctrl+Shift+F1 … F6 | Modus: kurz, Größe, Datum, voll, erstellt, Typen |
 | Ctrl+F12 | Sortiermenü |
 | Ctrl+F3 / F4 / F5 / F6 | nach Name / Erweiterung / Änderungsdatum / Größe sortieren |
 | Ctrl+F7 / F8 / F9 | unsortiert / nach Erstellungsdatum / nach Zugriffsdatum |

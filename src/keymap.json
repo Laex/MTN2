@@ -121,7 +121,7 @@
     "ColumnFull": { "key": "F4", "ctrl": true, "shift": true, "description": "Column Mode: Full" },
     "ColumnCreated": { "key": "F5", "ctrl": true, "shift": true, "description": "Column Mode: Created" },
     "ColumnTypes": { "key": "F6", "ctrl": true, "shift": true, "description": "Column Mode: Types" },
-    "ColumnCustom": { "key": "F7", "ctrl": true, "shift": true, "description": "Column Mode: Custom" },
+    "ColumnsConfig": { "key": "F7", "ctrl": true, "shift": true, "description": "Columns dialog" },
     "EditCopy": [
       { "key": "C", "ctrl": true, "description": "Copy (text, or files/folders on panels)" },
       { "key": "Insert", "ctrl": true, "description": "Copy (Ctrl+Ins)" }

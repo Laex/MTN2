@@ -133,11 +133,11 @@ begin
   Assert.IsTrue(FormatPanelRowIcon(Row) = '~', 'media icon');
   Row := MakePanelRow('note.txt', False, 10, '10', '', 'file:///note.txt');
   Assert.IsTrue(FormatPanelRowIcon(Row) = #$00B7, 'doc icon');
-  PanelColumnWidths(pcmFull, 80, NameW, MetaW);
+  PanelColumnWidths(pcmFull, DefaultCustomColumnsConfig, 80, NameW, MetaW);
   Assert.IsTrue(NameW + MetaW + 1 + PanelIconReserve = 80, 'full width accounts icon');
-  Assert.IsTrue(HitPanelSortColumn(pcmFull, 80, 0, SortCol) and (SortCol = pscName),
+  Assert.IsTrue(HitPanelSortColumn(pcmFull, DefaultCustomColumnsConfig, 80, 0, SortCol) and (SortCol = pscName),
     'icon click sorts by name');
-  Assert.IsTrue(HitPanelSortColumn(pcmFull, 80, PanelIconReserve, SortCol) and
+  Assert.IsTrue(HitPanelSortColumn(pcmFull, DefaultCustomColumnsConfig, 80, PanelIconReserve, SortCol) and
     (SortCol = pscName), 'name click sorts by name');
 
   Writeln('Header / menu sort cycle');
@@ -184,7 +184,7 @@ begin
   try
     Assert.IsTrue(PanelIconColumnWidth = 0, 'icons off: width 0');
     Assert.IsTrue(PanelIconReserve = 0, 'icons off: reserve 0');
-    PanelColumnWidths(pcmFull, 80, NameW, MetaW);
+    PanelColumnWidths(pcmFull, DefaultCustomColumnsConfig, 80, NameW, MetaW);
     Assert.IsTrue(NameW + MetaW + 1 = 80, 'full width without icon column');
   finally
     GShowPanelIcons := True;
@@ -365,15 +365,15 @@ var
   Gaps: TArray<Integer>;
   NameW, MetaW, I: Integer;
 begin
-  PanelColumnWidths(pcmFull, 80, NameW, MetaW);
-  Gaps := ColumnGapOffsets(pcmFull, 80, '');
+  PanelColumnWidths(pcmFull, DefaultCustomColumnsConfig, 80, NameW, MetaW);
+  Gaps := ColumnGapOffsets(pcmFull, DefaultCustomColumnsConfig, 80, '');
   Assert.IsTrue(Length(Gaps) >= 1, 'full mode has a gap after the name');
   Assert.AreEqual(NameW, Gaps[0], 'first gap follows the name column');
   for I := 1 to High(Gaps) do
     Assert.IsTrue(Gaps[I] > Gaps[I - 1], 'gaps increase');
   Assert.IsTrue(Gaps[High(Gaps)] < NameW + 1 + MetaW - 1,
     'the last column keeps at least one cell after the last gap');
-  Assert.IsTrue(Length(ColumnGapOffsets(pcmBrief, 80, '')) = 0,
+  Assert.IsTrue(Length(ColumnGapOffsets(pcmBrief, DefaultCustomColumnsConfig, 80, '')) = 0,
     'brief mode has no meta columns');
 end;
 

@@ -488,7 +488,6 @@ begin
     kaColumnFull: AMode := pcmFull;
     kaColumnCreated: AMode := pcmCreated;
     kaColumnTypes: AMode := pcmTypes;
-    kaColumnCustom: AMode := pcmCustom;
   else
     begin
       AMode := pcmBrief;
@@ -765,6 +764,7 @@ begin
     kaJobList: AHost.OpenJobList();
     kaSyncConsoleDir: AHost.SyncConsoleDirNow();
     kaColumnMode: AHost.OpenColumnModeMenu();
+    kaColumnsConfig: AHost.OpenColumnsConfigDialog();
   else
     Exit(False);
   end;

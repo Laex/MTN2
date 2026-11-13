@@ -534,7 +534,8 @@ type
     procedure HostTreeNavigate(ASide: TPanelSide; const AURI: string);
     procedure DrawHostFilesHeaders(const ABounds: TRectI; const APanel: TPanelState);
     procedure DrawHostFilesList(const AListBounds: TRectI; const ATab: TTab;
-      AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
+      AActive: Boolean; AMode: TPanelColumnMode;
+      const ACustom: TCustomColumnsConfig; ASide: TPanelSide);
     procedure DrawHostFilesScroll(AX, ATop, ABottom, APos, ACount, AViewH: Integer);
     procedure PreviewCycleActiveDrive(ADelta: Integer);
     function TryPasteClipboardToCmdLine: Boolean;
@@ -1170,6 +1171,7 @@ type
     procedure CommitDrivePreview;
     procedure CancelDrivePreview;
     procedure ApplyColumnMode(ASide: TPanelSide; AMode: TPanelColumnMode);
+    procedure ApplyCustomColumns(ASide: TPanelSide; const AConfig: TCustomColumnsConfig);
     procedure SyncSideSort(ASide: TPanelSide);
     procedure ApplyHeaderSort(ASide: TPanelSide; ACol: TPanelSortColumn);
     procedure ApplyHeaderSortPlugin(ASide: TPanelSide; ACol: TPanelSortColumn;
@@ -2527,17 +2529,18 @@ procedure TDualPanelWindow.DrawHostFilesHeaders(const ABounds: TRectI;
   const APanel: TPanelState);
 begin
   uDualPanelDrawUtils.DrawPanelColumnHeaders(
-    Buffer, ABounds, APanel.ColumnMode, APanel.SortColumn, APanel.SortDescending,
+    Buffer, ABounds, APanel.ColumnMode, APanel.CustomColumns, APanel.SortColumn, APanel.SortDescending,
     Theme, PluginColumnSchemeOf(ActiveTab(APanel).CurrentURI), APanel.SortPluginId);
 end;
 
 procedure TDualPanelWindow.DrawHostFilesList(const AListBounds: TRectI;
-  const ATab: TTab; AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
+  const ATab: TTab; AActive: Boolean; AMode: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig; ASide: TPanelSide);
 begin
   // While the command line has the focus neither panel is being driven, so
   // both draw the cursor row like an inactive panel.
   uDualPanelDrawUtils.DrawPanelList(
-    Buffer, AListBounds, ATab, AActive and not CmdFocused, AMode,
+    Buffer, AListBounds, ATab, AActive and not CmdFocused, AMode, ACustom,
     ModelForSide(ASide), Theme);
 end;
 
@@ -3496,9 +3499,7 @@ var
 begin
   if not ColumnSetFind(AName, S) then
     Exit;
-  GCustomColumnsConfig := S.Config;
-  ApplyColumnMode(ActiveWorkspace.State.ActiveSide, pcmCustom);
-  NotifyChanged;
+  ApplyCustomColumns(ActiveWorkspace.State.ActiveSide, S.Config);
 end;
 
 function TDualPanelWindow.OverlayDialogVisible: Boolean;
@@ -3653,13 +3654,13 @@ begin
   FSettings.OnGetConsoleCwdToPanels := HostGetConsoleCwdToPanels;
   FSettings.OnSetConsoleCwdToPanels := HostSetConsoleCwdToPanels;
   FSettings.OnColumnsAccepted :=
-    procedure
+    procedure(AConfig: TCustomColumnsConfig)
     var
       Ws: TDualPanelWorkspaceTab;
     begin
       Ws := ActiveWorkspace;
       if Ws.Kind = wkPanels then
-        ApplyColumnMode(Ws.State.ActiveSide, pcmCustom);
+        ApplyCustomColumns(Ws.State.ActiveSide, AConfig);
     end;
   FSettings.OnResetKeyHints :=
     procedure
@@ -4356,6 +4357,7 @@ begin
   SetLength(Result.Tabs, Length(AUris));
   ClearPanelDriveDirs(Result.DriveDirs);
   Result.ColumnMode := pcmFull;
+  Result.CustomColumns := DefaultCustomColumnsConfig;
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
   Result.SortByPriority := False;
@@ -10467,7 +10469,7 @@ begin
   Ws := ActiveWorkspace;
   Panel := ActivePanel(Ws);
   if Assigned(FMenus) then
-    FMenus.OpenColumnModeMenu(Panel.ColumnMode);
+    FMenus.OpenColumnModeMenu(Panel.ColumnMode, Panel.CustomColumns);
 end;
 
 procedure TDualPanelWindow.OpenAboutDialog;
@@ -11269,13 +11271,17 @@ end;
 procedure TDualPanelWindow.OpenColumnsConfigDialog;
 var
   Scheme: string;
+  Config: TCustomColumnsConfig;
   Ws: TDualPanelWorkspaceTab;
 begin
   Scheme := '';
   Ws := ActiveWorkspace;
   if Ws.Kind = wkPanels then
     Scheme := PluginColumnSchemeOf(ActiveTab(ActivePanel(Ws)).CurrentURI);
-  FSettings.OpenColumns(Scheme);
+  Config := DefaultCustomColumnsConfig;
+  if Ws.Kind = wkPanels then
+    Config := ActivePanel(Ws).CustomColumns;
+  FSettings.OpenColumns(Config, Scheme);
 end;
 
 procedure TDualPanelWindow.OpenMaskGroupsDialog;
@@ -14334,6 +14340,31 @@ begin
   NotifyChanged;
 end;
 
+procedure TDualPanelWindow.ApplyCustomColumns(ASide: TPanelSide;
+  const AConfig: TCustomColumnsConfig);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  if (Panel.ColumnMode = pcmCustom) and SameColumnsConfig(Panel.CustomColumns, AConfig) then
+    Exit;
+  Panel.ColumnMode := pcmCustom;
+  Panel.CustomColumns := AConfig;
+  if ASide = psLeft then
+    Ws.State.LeftPanel := Panel
+  else
+    Ws.State.RightPanel := Panel;
+  SaveActiveWorkspace(Ws);
+  NotifyChanged;
+end;
+
 procedure TDualPanelWindow.SyncSideSort(ASide: TPanelSide);
 var
   Ws: TDualPanelWorkspaceTab;
@@ -16174,6 +16205,7 @@ var
   Idx, ViewH, Cols: Integer;
   HitList: Boolean;
   ColMode: TPanelColumnMode;
+  ColCustom: TCustomColumnsConfig;
   ColScheme: string;
 begin
   Result := False;
@@ -16209,17 +16241,19 @@ begin
   begin
     Bounds := FLeftBounds;
     ColMode := Ws.State.LeftPanel.ColumnMode;
+    ColCustom := Ws.State.LeftPanel.CustomColumns;
     ColScheme := PluginColumnSchemeOf(ActiveTab(Ws.State.LeftPanel).CurrentURI);
   end
   else
   begin
     Bounds := FRightBounds;
     ColMode := Ws.State.RightPanel.ColumnMode;
+    ColCustom := Ws.State.RightPanel.CustomColumns;
     ColScheme := PluginColumnSchemeOf(ActiveTab(Ws.State.RightPanel).CurrentURI);
   end;
 
   if DispatchPanelChromeClick(FClickHost, Side, Bounds, PanelViewKind(Side),
-     ColMode, ALocalCol, ALocalRow, ADoubleClick, ColScheme) then
+     ColMode, ColCustom, ALocalCol, ALocalRow, ADoubleClick, ColScheme) then
     Exit(True);
 
   Ws.State.ActiveSide := Side;

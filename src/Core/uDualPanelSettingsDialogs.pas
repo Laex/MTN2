@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uPanelColumns, uPluginColumns,
+  uDialogHost, uDialogTypes, uDualPanelUiTypes, uDualPanelTypes, uPanelColumns, uPluginColumns,
   uShellProfiles, uEnvProfiles, uScreenSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type
@@ -44,7 +44,8 @@ type
     FOnSetConsoleCwdToPanels: TProc<Boolean>;
     FOnGetProgramsInTerminal: TFunc<Boolean>;
     FOnResetKeyHints: TProc;
-    FOnColumnsAccepted: TProc;
+    FOnColumnsAccepted: TProc<TCustomColumnsConfig>;
+    FColumnsConfig: TCustomColumnsConfig;
     FOnSetProgramsInTerminal: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
@@ -99,7 +100,8 @@ type
       const AOnShowStub: TSettingsShowStub;
       const AOnGetDisplay: TSettingsGetDisplay;
       const AOnApplyDisplay: TSettingsApplyDisplay);
-    procedure OpenColumns(const AScheme: string = '');
+    /// <summary>AConfig is the choice the dialog starts from.</summary>
+    procedure OpenColumns(const AConfig: TCustomColumnsConfig; const AScheme: string = '');
     /// <summary>Lists the mask groups and lets the user add, change and delete them.</summary>
     procedure OpenMaskGroups;
     procedure OpenDisplay;
@@ -129,7 +131,8 @@ type
     property OnResetKeyHints: TProc read FOnResetKeyHints write FOnResetKeyHints;
     /// <summary>Called after OK in the Columns dialog: the chosen columns show
     /// only in the Custom column mode, so the host switches to it.</summary>
-    property OnColumnsAccepted: TProc read FOnColumnsAccepted write FOnColumnsAccepted;
+    /// <summary>Called with the columns chosen in the Columns dialog.</summary>
+    property OnColumnsAccepted: TProc<TCustomColumnsConfig> read FOnColumnsAccepted write FOnColumnsAccepted;
     property OnGetProgramsInTerminal: TFunc<Boolean>
       read FOnGetProgramsInTerminal write FOnGetProgramsInTerminal;
     property OnSetProgramsInTerminal: TProc<Boolean>
@@ -233,7 +236,8 @@ begin
     FOnNotify();
 end;
 
-procedure TSettingsDialogController.OpenColumns(const AScheme: string);
+procedure TSettingsDialogController.OpenColumns(const AConfig: TCustomColumnsConfig;
+  const AScheme: string);
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
@@ -241,12 +245,13 @@ begin
     FOnPrepareUi();
 
   FColumnsScheme := AScheme;
+  FColumnsConfig := AConfig;
   SetKind(hdkColumnsConfig);
   FDialog.Open(BuildColumnsConfigDialog(
-    GCustomColumnsConfig.ShowExt, GCustomColumnsConfig.ShowSize,
-    GCustomColumnsConfig.ShowModified, GCustomColumnsConfig.ShowCreated,
-    GCustomColumnsConfig.ShowAccessed, GCustomColumnsConfig.ShowType,
-    GCustomColumnsConfig.ShowAttr, AScheme, ColumnSetRows), FOnCommand);
+    AConfig.ShowExt, AConfig.ShowSize,
+    AConfig.ShowModified, AConfig.ShowCreated,
+    AConfig.ShowAccessed, AConfig.ShowType,
+    AConfig.ShowAttr, AScheme, ColumnSetRows), FOnCommand);
   Notify;
 end;
 
@@ -694,26 +699,16 @@ begin
   Notify;
 end;
 
-// Rows of the column sets list: the name, and a marker on built-in sets the file
-// does not replace.
+// Rows of the column sets list: the set names.
 function TSettingsDialogController.ColumnSetRows: TArray<string>;
 var
   Sets: TArray<TColumnSet>;
-  I, NameW: Integer;
-  Tag: string;
+  I: Integer;
 begin
   Sets := ColumnSets;
-  Tag := T('ui.columnSets.builtIn', '(built-in)');
-  NameW := 0;
-  for I := 0 to High(Sets) do
-    NameW := Max(NameW, Length(Sets[I].Name));
   SetLength(Result, Length(Sets));
   for I := 0 to High(Sets) do
-  begin
     Result[I] := Sets[I].Name;
-    if ColumnSetIsBuiltIn(Sets[I].Name) and not ColumnSetIsStored(Sets[I].Name) then
-      Result[I] := Result[I].PadRight(NameW) + '  ' + Tag;
-  end;
 end;
 
 // Edit loads the selected set into the checkboxes and the name field (OK then
@@ -777,19 +772,19 @@ begin
     // Built-in columns the scheme's plugin excluded have no checkbox: the
     // setting they hold for other folders stays as it is.
     if BuiltinColumnAvailable(FColumnsScheme, 'ext') then
-      GCustomColumnsConfig.ShowExt := FDialog.GetCheckbox('col_ext');
+      FColumnsConfig.ShowExt := FDialog.GetCheckbox('col_ext');
     if BuiltinColumnAvailable(FColumnsScheme, 'size') then
-      GCustomColumnsConfig.ShowSize := FDialog.GetCheckbox('col_size');
+      FColumnsConfig.ShowSize := FDialog.GetCheckbox('col_size');
     if BuiltinColumnAvailable(FColumnsScheme, 'modified') then
-      GCustomColumnsConfig.ShowModified := FDialog.GetCheckbox('col_modified');
+      FColumnsConfig.ShowModified := FDialog.GetCheckbox('col_modified');
     if BuiltinColumnAvailable(FColumnsScheme, 'created') then
-      GCustomColumnsConfig.ShowCreated := FDialog.GetCheckbox('col_created');
+      FColumnsConfig.ShowCreated := FDialog.GetCheckbox('col_created');
     if BuiltinColumnAvailable(FColumnsScheme, 'accessed') then
-      GCustomColumnsConfig.ShowAccessed := FDialog.GetCheckbox('col_accessed');
+      FColumnsConfig.ShowAccessed := FDialog.GetCheckbox('col_accessed');
     if BuiltinColumnAvailable(FColumnsScheme, 'type') then
-      GCustomColumnsConfig.ShowType := FDialog.GetCheckbox('col_type');
+      FColumnsConfig.ShowType := FDialog.GetCheckbox('col_type');
     if BuiltinColumnAvailable(FColumnsScheme, 'attr') then
-      GCustomColumnsConfig.ShowAttr := FDialog.GetCheckbox('col_attr');
+      FColumnsConfig.ShowAttr := FDialog.GetCheckbox('col_attr');
     Cols := SchemePluginColumns(FColumnsScheme);
     if Length(Cols) > 0 then
     begin
@@ -803,13 +798,13 @@ begin
       SetSchemeColumnSelection(FColumnsScheme, Ids);
     end;
     if Trim(FDialog.GetInputValue('set_name')) <> '' then
-      ColumnSetSave(FDialog.GetInputValue('set_name'), GCustomColumnsConfig);
+      ColumnSetSave(FDialog.GetInputValue('set_name'), FColumnsConfig);
   end;
   FDialog.Close;
   if Accepted then
   begin
     if Assigned(FOnColumnsAccepted) then
-      FOnColumnsAccepted();
+      FOnColumnsAccepted(FColumnsConfig);
     Notify;
   end;
 end;

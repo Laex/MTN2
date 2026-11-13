@@ -17,8 +17,21 @@ type
     pcmFull,     // Name | Size | Modified | Attr  (default)
     pcmCreated,  // Name | Size | Created | Attr
     pcmTypes,    // Name | Ext | Size | Type | Attr
-    pcmCustom    // Name | user-picked subset (see uPanelColumns.GCustomColumnsConfig)
+    pcmCustom    // Name | user-picked subset (TPanelState.CustomColumns)
   );
+
+  /// <summary>Which optional columns pcmCustom shows - one flag per existing
+  /// sortable field, independent of each other (Modified/Created/Accessed
+  /// can all be on at once, unlike the single-date-column preset modes).</summary>
+  TCustomColumnsConfig = record
+    ShowExt: Boolean;
+    ShowSize: Boolean;
+    ShowModified: Boolean;
+    ShowCreated: Boolean;
+    ShowAccessed: Boolean;
+    ShowType: Boolean;
+    ShowAttr: Boolean;
+  end;
 
   /// <summary>Active list sort key (click column headers / Ctrl+F12 to change).
   /// Header cycle per column: ascending -> descending -> none.</summary>
@@ -89,6 +102,8 @@ type
     ActiveTabIndex: Integer;
     DriveDirs: TPanelDriveDirs;
     ColumnMode: TPanelColumnMode;
+    /// <summary>The columns pcmCustom shows on this panel.</summary>
+    CustomColumns: TCustomColumnsConfig;
     SortColumn: TPanelSortColumn;
     SortDescending: Boolean;
     /// <summary>Id of the plugin column SortColumn = pscPlugin sorts by.</summary>
@@ -702,6 +717,7 @@ begin
   Result.ActiveTabIndex := APanel.ActiveTabIndex;
   Result.DriveDirs := APanel.DriveDirs;
   Result.ColumnMode := APanel.ColumnMode;
+  Result.CustomColumns := APanel.CustomColumns;
   Result.SortColumn := APanel.SortColumn;
   Result.SortDescending := APanel.SortDescending;
   Result.SortPluginId := APanel.SortPluginId;

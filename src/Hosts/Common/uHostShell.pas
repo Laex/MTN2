@@ -548,7 +548,6 @@ begin
   FDualPanel.QuickSearchFuzzy := Sess.QuickSearchFuzzy;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
-  GCustomColumnsConfig := Sess.CustomColumns;
   LoadSchemeColumnSelectionsFromJson(Sess.PluginColumns);
   GListExportConfig := Sess.ListExport;
   GShowToasts := Sess.ShowNotifications;
@@ -653,7 +652,6 @@ begin
   Sess.QuickSearchKeepFilter := FDualPanel.QuickSearchKeepFilter;
   Sess.QuickSearchFuzzy := FDualPanel.QuickSearchFuzzy;
   Sess.Language := CurrentLocale;
-  Sess.CustomColumns := GCustomColumnsConfig;
   Sess.PluginColumns := SchemeColumnSelectionsToJson;
   Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;

@@ -12,19 +12,6 @@ uses
   uDualPanelTypes;
 
 type
-  /// <summary>Which optional columns pcmCustom shows - one flag per existing
-  /// sortable field, independent of each other (Modified/Created/Accessed
-  /// can all be on at once, unlike the single-date-column preset modes).</summary>
-  TCustomColumnsConfig = record
-    ShowExt: Boolean;
-    ShowSize: Boolean;
-    ShowModified: Boolean;
-    ShowCreated: Boolean;
-    ShowAccessed: Boolean;
-    ShowType: Boolean;
-    ShowAttr: Boolean;
-  end;
-
   /// <summary>One resolved pcmCustom column: header text, cell width, and
   /// the sort key a header click on it should activate.</summary>
   TCustomColumnDef = record
@@ -58,12 +45,6 @@ function PanelSortColumnCaption(ACol: TPanelSortColumn; const AScheme,
   APluginId: string): string;
 
 var
-  /// <summary>Live app-wide "which columns" setting for pcmCustom. One
-  /// setting shared by every panel currently in Custom mode (mirrors
-  /// Theme/Zoom being global rather than per-panel) - loaded from the
-  /// session in uSession.pas, mutated by the Columns... dialog in
-  /// uDualPanelWindow.pas.</summary>
-  GCustomColumnsConfig: TCustomColumnsConfig;
   /// <summary>Leading shell-icon column. App-wide, like Theme/Zoom.
   /// False still leaves uShellIcons loaded; draw/hit-test just skip the
   /// reserve and do not enqueue icon work.</summary>
@@ -107,8 +88,9 @@ procedure CycleMenuSort(var ACol: TPanelSortColumn; var APluginId: string;
   var ADescending: Boolean; ARequested: TPanelSortColumn;
   const ARequestedPluginId: string); overload;
 
-procedure PanelColumnWidths(AMode: TPanelColumnMode; AListWidth: Integer;
-  out ANameW, AMetaW: Integer; const AScheme: string = '');
+/// <summary>ACustom is the column set of a panel in pcmCustom; other modes ignore it.</summary>
+procedure PanelColumnWidths(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth: Integer; out ANameW, AMetaW: Integer; const AScheme: string = '');
 
 procedure PanelColumnHeaders(AMode: TPanelColumnMode;
   out ASizeTitle, ADateTitle, AAttrTitle, AExtTitle, ATypeTitle: string;
@@ -122,12 +104,12 @@ function PanelIconReserve: Integer;
 function FormatPanelRowIcon(const ARow: TPanelRow): Char;
 
 /// <summary>Which sort key the click column maps to (False = miss).</summary>
-function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
-  out ACol: TPanelSortColumn): Boolean; overload;
+function HitPanelSortColumn(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth, ARelCol: Integer; out ACol: TPanelSortColumn): Boolean; overload;
 /// <summary>As above for the folder of AScheme: a hit on a plugin column gives
 /// pscPlugin and its id; a hit on a column that cannot be sorted gives False.</summary>
-function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
-  const AScheme: string; out ACol: TPanelSortColumn;
+function HitPanelSortColumn(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth, ARelCol: Integer; const AScheme: string; out ACol: TPanelSortColumn;
   out APluginId: string): Boolean; overload;
 
 /// <summary>Sorts by ACol (APluginId names the column when ACol is pscPlugin);
@@ -144,7 +126,7 @@ function PanelGroupTitle(AKey: Integer): string;
 /// <summary>AScheme selects the plugin columns of pcmCustom; AFolderUri is the
 /// folder the row is in, where plugin cells set with SetFolderCells fill the
 /// columns the listing gave no value for.</summary>
-function FormatPanelRowMeta(AMode: TPanelColumnMode;
+function FormatPanelRowMeta(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
   const ARow: TPanelRow; AMetaW: Integer; const AScheme: string = '';
   const AFolderUri: string = ''): string;
 
@@ -573,8 +555,8 @@ begin
   Result := Default(TVfsExtraCell);
 end;
 
-procedure PanelColumnWidths(AMode: TPanelColumnMode; AListWidth: Integer;
-  out ANameW, AMetaW: Integer; const AScheme: string);
+procedure PanelColumnWidths(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth: Integer; out ANameW, AMetaW: Integer; const AScheme: string);
 var
   IconRes, I: Integer;
   Defs: TCustomColumnDefs;
@@ -592,7 +574,7 @@ begin
       AMetaW := cExtW + 1 + cSizeW + 1 + cTypeW + 1 + AttrColumnWidth;
     pcmCustom:
       begin
-        Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+        Defs := BuildCustomColumnDefs(ACustom, AScheme,
           MaxPanelMetaWidth(AListWidth));
         AMetaW := 0;
         for I := 0 to High(Defs) do
@@ -660,16 +642,17 @@ begin
   end;
 end;
 
-function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
-  out ACol: TPanelSortColumn): Boolean;
+function HitPanelSortColumn(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth, ARelCol: Integer; out ACol: TPanelSortColumn): Boolean;
 var
   PluginId: string;
 begin
-  Result := HitPanelSortColumn(AMode, AListWidth, ARelCol, '', ACol, PluginId);
+  Result := HitPanelSortColumn(AMode, ACustom, AListWidth, ARelCol, '', ACol, PluginId);
 end;
 
-function HitPanelSortColumn(AMode: TPanelColumnMode; AListWidth, ARelCol: Integer;
-  const AScheme: string; out ACol: TPanelSortColumn; out APluginId: string): Boolean;
+function HitPanelSortColumn(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth, ARelCol: Integer; const AScheme: string; out ACol: TPanelSortColumn;
+  out APluginId: string): Boolean;
 var
   NameW, MetaW, X, ColW, IconRes, I: Integer;
   SizeTitle, DateTitle, AttrTitle, ExtTitle, TypeTitle: string;
@@ -681,7 +664,7 @@ begin
   APluginId := '';
   if (ARelCol < 0) or (AListWidth <= 0) then
     Exit;
-  PanelColumnWidths(AMode, AListWidth, NameW, MetaW, AScheme);
+  PanelColumnWidths(AMode, ACustom, AListWidth, NameW, MetaW, AScheme);
   IconRes := PanelIconReserve;
   // Icon + Name share the name sort key.
   if ARelCol < IconRes + NameW then
@@ -693,7 +676,7 @@ begin
   if AMode = pcmCustom then
   begin
     // Dynamic column list - can't reuse the fixed Show* walk below.
-    Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme, MaxPanelMetaWidth(AListWidth));
+    Defs := BuildCustomColumnDefs(ACustom, AScheme, MaxPanelMetaWidth(AListWidth));
     for I := 0 to High(Defs) do
     begin
       if (ARelCol >= X) and (ARelCol < X + Defs[I].Width) then
@@ -1001,7 +984,7 @@ begin
     Result := PadRight(Copy(ADateText, 1, cDateW), cDateW);
 end;
 
-function FormatPanelRowMeta(AMode: TPanelColumnMode;
+function FormatPanelRowMeta(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
   const ARow: TPanelRow; AMetaW: Integer; const AScheme: string;
   const AFolderUri: string): string;
 var
@@ -1047,7 +1030,7 @@ begin
       Result := ExtPart + ' ' + SizePart + ' ' + TypePart + ' ' + AttrPart;
     pcmCustom:
       begin
-        Defs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme, AMetaW);
+        Defs := BuildCustomColumnDefs(ACustom, AScheme, AMetaW);
         Result := '';
         for I := 0 to High(Defs) do
         begin
@@ -1210,6 +1193,5 @@ begin
 end;
 
 initialization
-  GCustomColumnsConfig := DefaultCustomColumnsConfig;
   GShowPanelIcons := True;
 end.

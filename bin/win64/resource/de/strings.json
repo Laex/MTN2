@@ -942,7 +942,7 @@
     "keymap.action.ColumnFull": "Spalten: Voll",
     "keymap.action.ColumnCreated": "Spalten: Erstellt",
     "keymap.action.ColumnTypes": "Spalten: Typen",
-    "keymap.action.ColumnCustom": "Spalten: Eigene",
+    "keymap.action.ColumnsConfig": "Spalten-Dialog",
     "keymap.action.EditCopy": "In die Zwischenablage kopieren",
     "keymap.action.EditCut": "In die Zwischenablage ausschneiden",
     "keymap.action.EditPaste": "Aus der Zwischenablage einfügen",

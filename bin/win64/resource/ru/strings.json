@@ -940,7 +940,7 @@
     "keymap.action.ColumnFull": "Колонки: Полный",
     "keymap.action.ColumnCreated": "Колонки: Создан",
     "keymap.action.ColumnTypes": "Колонки: Типы",
-    "keymap.action.ColumnCustom": "Колонки: Свой",
+    "keymap.action.ColumnsConfig": "Диалог колонок",
     "keymap.action.EditCopy": "Копировать в буфер",
     "keymap.action.EditCut": "Вырезать в буфер",
     "keymap.action.EditPaste": "Вставить из буфера",

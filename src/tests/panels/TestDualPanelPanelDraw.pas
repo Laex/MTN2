@@ -96,7 +96,8 @@ type
       ASide: TPanelSide; AFrame, ABodyBg: TAlphaColor);
     procedure Headers(const ABounds: TRectI; const APanel: TPanelState);
     procedure List(const AListBounds: TRectI; const ATab: TTab;
-      AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
+      AActive: Boolean; AMode: TPanelColumnMode;
+      const ACustom: TCustomColumnsConfig; ASide: TPanelSide);
     procedure Scroll(AX, ATop, ABottom, APos, ACount, AViewH: Integer);
     procedure Quick(const ABounds: TRectI);
   end;
@@ -247,7 +248,8 @@ begin
 end;
 
 procedure TFilesSpy.List(const AListBounds: TRectI; const ATab: TTab;
-  AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide);
+  AActive: Boolean; AMode: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig; ASide: TPanelSide);
 begin
   Last := Last + 'list,';
   ListSide := ASide;

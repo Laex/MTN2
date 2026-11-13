@@ -33,6 +33,8 @@ type
     [Test] procedure TestPluginRestrictsBuiltinColumns;
     [Test] procedure TestColumnTitlesFollowTheProgramLanguage;
     [Test] procedure TestSessionKeepsPluginSortAndSelection;
+    [Test] procedure TestSessionKeepsCustomColumnsPerPanel;
+    [Test] procedure TestSessionWithSharedCustomColumnsGivesEachPanelACopy;
   end;
 
 implementation
@@ -41,7 +43,7 @@ uses
   System.SysUtils, System.IOUtils,
   uVfsTypes, uVfsCdeclAdapter, uDialogTypes, uDualPanelTypes, uPanelColumns, uPluginColumns, uPluginServices, uStrings,
   uDialogLocaleLayout, uSession, uDialogHost, uDualPanelUiTypes,
-  uDualPanelSettingsDialogs;
+  uDualPanelSettingsDialogs, uColumnSets;
 
 const
   cScheme = 'demo';
@@ -54,7 +56,6 @@ procedure TTestPluginColumns.Setup;
 begin
   SetSchemePluginColumns('mtn.test', cScheme, cDeclared);
   ClearSchemeColumnSelections;
-  GCustomColumnsConfig := DefaultCustomColumnsConfig;
 end;
 
 procedure TTestPluginColumns.TearDown;
@@ -148,8 +149,8 @@ procedure TTestPluginColumns.TestCustomDefsAppendShownPluginColumns;
 var
   Plain, WithPlugin: TCustomColumnDefs;
 begin
-  Plain := BuildCustomColumnDefs(GCustomColumnsConfig);
-  WithPlugin := BuildCustomColumnDefs(GCustomColumnsConfig, cScheme);
+  Plain := BuildCustomColumnDefs(DefaultCustomColumnsConfig);
+  WithPlugin := BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme);
   Assert.AreEqual<Integer>(Length(Plain) + 2, Length(WithPlugin));
   Assert.AreEqual('state', WithPlugin[High(WithPlugin) - 1].PluginId);
   Assert.IsTrue(WithPlugin[High(WithPlugin) - 1].SortCol = pscPlugin);
@@ -157,7 +158,7 @@ begin
   Assert.IsTrue(WithPlugin[High(WithPlugin)].AlignRight);
 
   SetSchemeColumnSelection(cScheme, ['note']);
-  WithPlugin := BuildCustomColumnDefs(GCustomColumnsConfig, cScheme);
+  WithPlugin := BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme);
   Assert.AreEqual('note', WithPlugin[High(WithPlugin)].PluginId);
   Assert.IsTrue(WithPlugin[High(WithPlugin)].SortCol = pscNone, 'a column that cannot be sorted');
 end;
@@ -167,11 +168,11 @@ var
   Wide, Narrow: TCustomColumnDefs;
   I, Total: Integer;
 begin
-  Wide := BuildCustomColumnDefs(GCustomColumnsConfig, cScheme, MaxPanelMetaWidth(200));
-  Assert.AreEqual<Integer>(Length(BuildCustomColumnDefs(GCustomColumnsConfig, cScheme)), Length(Wide),
+  Wide := BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme, MaxPanelMetaWidth(200));
+  Assert.AreEqual<Integer>(Length(BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme)), Length(Wide),
     'a wide panel keeps every column');
 
-  Narrow := BuildCustomColumnDefs(GCustomColumnsConfig, cScheme, MaxPanelMetaWidth(40));
+  Narrow := BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme, MaxPanelMetaWidth(40));
   Assert.IsTrue(Length(Narrow) < Length(Wide), 'a narrow panel drops columns');
   Total := 0;
   for I := 0 to High(Narrow) do
@@ -209,8 +210,8 @@ var
   Meta, NoPlugin: string;
 begin
   Row := RowWithCells('svc', [TextCell('state', 'Running'), NumberCell('pid', 77)]);
-  Meta := FormatPanelRowMeta(pcmCustom, Row, 200, cScheme);
-  NoPlugin := FormatPanelRowMeta(pcmCustom, Row, 200, '');
+  Meta := FormatPanelRowMeta(pcmCustom, DefaultCustomColumnsConfig, Row, 200, cScheme);
+  NoPlugin := FormatPanelRowMeta(pcmCustom, DefaultCustomColumnsConfig, Row, 200, '');
   Assert.IsTrue(Pos('Running', Meta) > 0, 'text cell is shown');
   Assert.IsTrue(Pos('    77', Meta) > 0, 'right-aligned number is padded on the left');
   Assert.IsTrue(Pos('Running', NoPlugin) = 0, 'no plugin columns without the scheme');
@@ -228,10 +229,10 @@ begin
   Assert.IsFalse(FolderCellText('file:///C:/Other/', 'a.jpg', 'state', Text));
 
   Row := RowWithCells('a.jpg', nil);
-  Assert.IsTrue(Pos('ready', FormatPanelRowMeta(pcmCustom, Row, 200, cScheme, 'file:///C:/Pics/')) > 0,
+  Assert.IsTrue(Pos('ready', FormatPanelRowMeta(pcmCustom, DefaultCustomColumnsConfig, Row, 200, cScheme, 'file:///C:/Pics/')) > 0,
     'the cell fills the row');
   Own := RowWithCells('a.jpg', [TextCell('state', 'own')]);
-  Assert.IsTrue(Pos('ready', FormatPanelRowMeta(pcmCustom, Own, 200, cScheme, 'file:///C:/Pics/')) = 0,
+  Assert.IsTrue(Pos('ready', FormatPanelRowMeta(pcmCustom, DefaultCustomColumnsConfig, Own, 200, cScheme, 'file:///C:/Pics/')) = 0,
     'the listing value wins');
 
   SetFolderCells('mtn.test', 'file:///C:/Pics/', '');
@@ -288,8 +289,8 @@ procedure TTestPluginColumns.TestHeaderHitFindsPluginColumn;
     Defs: TCustomColumnDefs;
     NameW, MetaW, I: Integer;
   begin
-    PanelColumnWidths(pcmCustom, 120, NameW, MetaW, cScheme);
-    Defs := BuildCustomColumnDefs(GCustomColumnsConfig, cScheme, MaxPanelMetaWidth(120));
+    PanelColumnWidths(pcmCustom, DefaultCustomColumnsConfig, 120, NameW, MetaW, cScheme);
+    Defs := BuildCustomColumnDefs(DefaultCustomColumnsConfig, cScheme, MaxPanelMetaWidth(120));
     Result := PanelIconReserve + NameW + 1;
     for I := 0 to High(Defs) do
     begin
@@ -304,15 +305,15 @@ var
   Col: TPanelSortColumn;
   PluginId: string;
 begin
-  Assert.IsTrue(HitPanelSortColumn(pcmCustom, 120, ColumnStart('pid') + 1, cScheme, Col, PluginId),
+  Assert.IsTrue(HitPanelSortColumn(pcmCustom, DefaultCustomColumnsConfig, 120, ColumnStart('pid') + 1, cScheme, Col, PluginId),
     'a hit on a plugin column');
   Assert.IsTrue(Col = pscPlugin);
   Assert.AreEqual('pid', PluginId);
-  Assert.IsTrue(HitPanelSortColumn(pcmCustom, 120, ColumnStart('state'), cScheme, Col, PluginId));
+  Assert.IsTrue(HitPanelSortColumn(pcmCustom, DefaultCustomColumnsConfig, 120, ColumnStart('state'), cScheme, Col, PluginId));
   Assert.AreEqual('state', PluginId);
 
   SetSchemeColumnSelection(cScheme, ['note']);
-  Assert.IsFalse(HitPanelSortColumn(pcmCustom, 120, ColumnStart('note') + 1, cScheme, Col, PluginId),
+  Assert.IsFalse(HitPanelSortColumn(pcmCustom, DefaultCustomColumnsConfig, 120, ColumnStart('note') + 1, cScheme, Col, PluginId),
     'a column that cannot be sorted gives no hit');
 end;
 
@@ -383,14 +384,14 @@ begin
   try
     Switched := 0;
     Settings.OnColumnsAccepted :=
-      procedure
+      procedure(AConfig: TCustomColumnsConfig)
       begin
         Inc(Switched);
       end;
-    Settings.OpenColumns(cScheme);
+    Settings.OpenColumns(DefaultCustomColumnsConfig, cScheme);
     Settings.DispatchColumnsCommand(cDlgCmdCancel);
     Assert.AreEqual(0, Switched, 'Cancel keeps the column mode');
-    Settings.OpenColumns(cScheme);
+    Settings.OpenColumns(DefaultCustomColumnsConfig, cScheme);
     Settings.DispatchColumnsCommand(cDlgCmdOk);
     Assert.AreEqual(1, Switched, 'OK switches to the Custom mode');
   finally
@@ -413,7 +414,7 @@ begin
       Kind := AKind;
     end, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil);
   try
-    Settings.OpenColumns('');
+    Settings.OpenColumns(DefaultCustomColumnsConfig, '');
     for Id in ['set_edit', 'set_edit', 'sets', 'set_rename', 'set_delete'] do
     begin
       // The window resets the kind before dispatching a command.
@@ -549,6 +550,86 @@ begin
     LoadSchemeColumnSelectionsFromJson(Loaded.PluginColumns);
     Assert.AreEqual<Integer>(1, Length(ShownPluginColumns(cScheme)));
     Assert.AreEqual('pid', ShownPluginColumns(cScheme)[0].Id);
+  finally
+    TFile.Delete(Path);
+  end;
+end;
+
+function SessionWithOnePanelsTab: TMtnSession;
+var
+  Tab: TTab;
+begin
+  Result := Default(TMtnSession);
+  Result.Version := cSessionVersion;
+  Result.Zoom := 1.0;
+  Tab := MakeTab(1, 'C:', 'file:///C:/');
+  SetLength(Result.Panels.WorkspaceTabs, 1);
+  Result.Panels.WorkspaceTabs[0].Id := 1;
+  Result.Panels.WorkspaceTabs[0].Title := 'Workspace';
+  Result.Panels.WorkspaceTabs[0].Kind := wkPanels;
+  Result.Panels.WorkspaceTabs[0].State.LeftVisible := True;
+  Result.Panels.WorkspaceTabs[0].State.RightVisible := True;
+  SetLength(Result.Panels.WorkspaceTabs[0].State.LeftPanel.Tabs, 1);
+  Result.Panels.WorkspaceTabs[0].State.LeftPanel.Tabs[0] := Tab;
+  SetLength(Result.Panels.WorkspaceTabs[0].State.RightPanel.Tabs, 1);
+  Result.Panels.WorkspaceTabs[0].State.RightPanel.Tabs[0] := Tab;
+end;
+
+procedure TTestPluginColumns.TestSessionKeepsCustomColumnsPerPanel;
+var
+  Path: string;
+  Saved, Loaded: TMtnSession;
+  Left, Right: TCustomColumnsConfig;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-custom-columns-session.json');
+  Saved := SessionWithOnePanelsTab;
+  Left := Default(TCustomColumnsConfig);
+  Left.ShowSize := True;
+  Right := Default(TCustomColumnsConfig);
+  Right.ShowAttr := True;
+  Right.ShowType := True;
+  Saved.Panels.WorkspaceTabs[0].State.LeftPanel.ColumnMode := pcmCustom;
+  Saved.Panels.WorkspaceTabs[0].State.LeftPanel.CustomColumns := Left;
+  Saved.Panels.WorkspaceTabs[0].State.RightPanel.ColumnMode := pcmCustom;
+  Saved.Panels.WorkspaceTabs[0].State.RightPanel.CustomColumns := Right;
+  Assert.IsTrue(SaveSession(Path, Saved), 'save');
+  try
+    Assert.IsTrue(TryLoadSession(Path, Loaded), 'load');
+    with Loaded.Panels.WorkspaceTabs[0].State do
+    begin
+      Assert.IsTrue(SameColumnsConfig(LeftPanel.CustomColumns, Left), 'left panel columns');
+      Assert.IsTrue(SameColumnsConfig(RightPanel.CustomColumns, Right), 'right panel columns');
+    end;
+  finally
+    TFile.Delete(Path);
+  end;
+end;
+
+procedure TTestPluginColumns.TestSessionWithSharedCustomColumnsGivesEachPanelACopy;
+var
+  Path: string;
+  Saved, Loaded: TMtnSession;
+  Shared: TCustomColumnsConfig;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-shared-columns-session.json');
+  Saved := SessionWithOnePanelsTab;
+  Assert.IsTrue(SaveSession(Path, Saved), 'save');
+  try
+    // A session of an earlier version holds one choice for the whole program
+    // and no choice in the panels.
+    Shared := Default(TCustomColumnsConfig);
+    Shared.ShowModified := True;
+    var Text := TFile.ReadAllText(Path, TEncoding.UTF8);
+    Text := StringReplace(Text, '"customColumns"', '"unusedColumns"', [rfReplaceAll]);
+    Text := '{"customColumns":{"modified":true,"ext":false,"size":false,"created":false,' +
+      '"accessed":false,"type":false,"attr":false},' + Copy(Text, 2, MaxInt);
+    TFile.WriteAllText(Path, Text, TEncoding.UTF8);
+    Assert.IsTrue(TryLoadSession(Path, Loaded), 'load');
+    with Loaded.Panels.WorkspaceTabs[0].State do
+    begin
+      Assert.IsTrue(SameColumnsConfig(LeftPanel.CustomColumns, Shared), 'left panel');
+      Assert.IsTrue(SameColumnsConfig(RightPanel.CustomColumns, Shared), 'right panel');
+    end;
   finally
     TFile.Delete(Path);
   end;

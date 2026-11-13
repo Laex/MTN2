@@ -152,7 +152,8 @@ type
   TDrawFilesHeadersProc = procedure(const ABounds: TRectI;
     const APanel: TPanelState) of object;
   TDrawFilesListProc = procedure(const AListBounds: TRectI; const ATab: TTab;
-    AActive: Boolean; AMode: TPanelColumnMode; ASide: TPanelSide) of object;
+    AActive: Boolean; AMode: TPanelColumnMode;
+    const ACustom: TCustomColumnsConfig; ASide: TPanelSide) of object;
   TDrawFilesScrollProc = procedure(AX, ATop, ABottom, APos, ACount,
     AViewH: Integer) of object;
 
@@ -798,7 +799,7 @@ begin
   DrawPanelSortLetter(ABuffer, ASnap.Bounds, ASnap.Panel.SortColumn,
     ASnap.Panel.SortDescending, ASnap.Active, AHost.ResolveChrome);
   AHost.DrawList(ASnap.ListBounds, ASnap.Tab, ASnap.Active, ASnap.Panel.ColumnMode,
-    ASnap.Side);
+    ASnap.Panel.CustomColumns, ASnap.Side);
   if ASnap.DropHighlight then
     DrawPanelDropHighlight(ABuffer, ATheme, ASnap.Bounds, ASnap.DropFg, ASnap.DropBg);
   AHost.DrawScrollBar(ASnap.Bounds.Right - 1, ASnap.Bounds.Top + 2,

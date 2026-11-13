@@ -23,7 +23,7 @@ procedure DrawPanelScrollBar(const ABuffer: TTerminalGrid; AX, ATop, ABottom, AP
 /// <summary>Draw column name headers inside ABounds (row ABounds.Top+1).
 /// Full FAR-style header with sort arrows; fallback palette when ATheme nil.</summary>
 procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  AMode: TPanelColumnMode; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
+  AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
   const ATheme: IThemeRenderer; const AScheme: string = '';
   const ASortPluginId: string = '');
 
@@ -34,12 +34,13 @@ procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TR
 /// AQuickSearchActive / AQuickSearchText: overlay quick-search field on the panel.</summary>
 procedure DrawPanelList(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const ATab: TTab; ASideActive: Boolean; AColumnMode: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig;
   const AModel: IPanelModel; const ATheme: IThemeRenderer);
 /// <summary>Offsets of the one-cell gaps between the columns of the Full and
 /// custom modes, from the left edge of the name column (after the icon).
 /// Empty when the mode has no meta columns.</summary>
-function ColumnGapOffsets(AMode: TPanelColumnMode; AListWidth: Integer;
-  const AScheme: string): TArray<Integer>;
+function ColumnGapOffsets(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth: Integer; const AScheme: string): TArray<Integer>;
 function ColorCodingItemName(const AText: string): string;
 procedure FallbackFileRowColors(AIsDirectory, AIsParent, AIsHidden,
   ASelected, AIsCursor, ASideActive: Boolean; out AFg, ABg: TAlphaColor);
@@ -139,8 +140,8 @@ end;
 // Offsets of the one-cell gaps between the columns of the Full and custom
 // modes, counted from the left edge of the name column; the header and the
 // rows share the arithmetic.
-function ColumnGapOffsets(AMode: TPanelColumnMode; AListWidth: Integer;
-  const AScheme: string): TArray<Integer>;
+function ColumnGapOffsets(AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  AListWidth: Integer; const AScheme: string): TArray<Integer>;
 var
   NameW, MetaW, Off, I: Integer;
   Widths: TArray<Integer>;
@@ -157,12 +158,12 @@ var
 begin
   SetLength(Result, 0);
   SetLength(Widths, 0);
-  PanelColumnWidths(AMode, AListWidth, NameW, MetaW, AScheme);
+  PanelColumnWidths(AMode, ACustom, AListWidth, NameW, MetaW, AScheme);
   if MetaW <= 0 then
     Exit;
   if AMode = pcmCustom then
   begin
-    CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+    CustomDefs := BuildCustomColumnDefs(ACustom, AScheme,
       MaxPanelMetaWidth(AListWidth));
     for I := 0 to High(CustomDefs) do
       AddWidth(CustomDefs[I].Width);
@@ -214,7 +215,7 @@ end;
   DrawPanelColumnHeaders
   ========================================================================= }
 procedure DrawPanelColumnHeaders(const ABuffer: TTerminalGrid; const ABounds: TRectI;
-  AMode: TPanelColumnMode; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
+  AMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig; ASortColumn: TPanelSortColumn; ASortDescending: Boolean;
   const ATheme: IThemeRenderer; const AScheme: string; const ASortPluginId: string);
 var
   NameW, MetaW, ListLeft, ListRight, HeaderY, ColLeft, ColW, IconRes, I: Integer;
@@ -248,7 +249,7 @@ begin
   HeaderY   := ABounds.Top + 1;
   if ListRight < ListLeft then
     Exit;
-  PanelColumnWidths(AMode, ListRight - ListLeft + 1, NameW, MetaW, AScheme);
+  PanelColumnWidths(AMode, ACustom, ListRight - ListLeft + 1, NameW, MetaW, AScheme);
 
   if Assigned(ATheme) then
     ATheme.ResolvePanelChromeColors(pcpColumnHeader, True, HeadFg, HeadBg)
@@ -265,7 +266,7 @@ begin
   if GColumnSeparators then
   begin
     RuleFg := SeparatorFg(ATheme, HeadFg, HeadBg);
-    for GapOff in ColumnGapOffsets(AMode, ListRight - ListLeft + 1, AScheme) do
+    for GapOff in ColumnGapOffsets(AMode, ACustom, ListRight - ListLeft + 1, AScheme) do
       if ListLeft + IconRes + GapOff <= ListRight then
         DrawGridChar(ABuffer, ListLeft + IconRes + GapOff, HeaderY, chBoxV, RuleFg, HeadBg);
   end;
@@ -277,7 +278,7 @@ begin
   if AMode = pcmCustom then
   begin
     // Dynamic column list - one header per enabled field, canonical order.
-    CustomDefs := BuildCustomColumnDefs(GCustomColumnsConfig, AScheme,
+    CustomDefs := BuildCustomColumnDefs(ACustom, AScheme,
       MaxPanelMetaWidth(ListRight - ListLeft + 1));
     for I := 0 to High(CustomDefs) do
     begin
@@ -397,6 +398,7 @@ end;
 
 procedure DrawPanelList(const ABuffer: TTerminalGrid; const ABounds: TRectI;
   const ATab: TTab; ASideActive: Boolean; AColumnMode: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig;
   const AModel: IPanelModel; const ATheme: IThemeRenderer);
 var
   Y, Col, Idx, ViewH, NameW, MetaW, Count: Integer;
@@ -488,7 +490,7 @@ begin
   Mode  := AColumnMode;
   ViewH := ABounds.Height;
   Scheme := PluginColumnSchemeOf(ATab.CurrentURI);
-  PanelColumnWidths(Mode, ABounds.Width, NameW, MetaW, Scheme);
+  PanelColumnWidths(Mode, ACustom, ABounds.Width, NameW, MetaW, Scheme);
   IconRes  := PanelIconReserve;
   if Assigned(AModel) then
     Count := AModel.ItemCount
@@ -542,7 +544,7 @@ begin
   end;
 
   if GColumnSeparators then
-    Gaps := ColumnGapOffsets(Mode, ABounds.Width, Scheme);
+    Gaps := ColumnGapOffsets(Mode, ACustom, ABounds.Width, Scheme);
   for Y := 0 to ViewH - 1 do
   begin
     Idx := ATab.ScrollOffset + Y;
@@ -559,7 +561,7 @@ begin
     if IconRes > 0 then
       PaintIconCells(ABounds.Left);
     NamePart := FormatPanelRowName(Row, NameW, (Mode = pcmTypes) or
-      ((Mode = pcmCustom) and GCustomColumnsConfig.ShowExt));
+      ((Mode = pcmCustom) and ACustom.ShowExt));
     PutGridText(ABuffer, ABounds.Left + IconRes, ABounds.Top + Y, NamePart, Fg, Bg);
     if (Row.GroupKey <> 0) and ((Idx = 0) or (AModel.GetRow(Idx - 1).GroupKey <> Row.GroupKey)) then
     begin
@@ -570,7 +572,7 @@ begin
     end;
     if MetaW > 0 then
     begin
-      MetaPart := FormatPanelRowMeta(Mode, Row, MetaW, Scheme, ATab.CurrentURI);
+      MetaPart := FormatPanelRowMeta(Mode, ACustom, Row, MetaW, Scheme, ATab.CurrentURI);
       PutGridText(ABuffer, ABounds.Left + IconRes + NameW + 1, ABounds.Top + Y,
         MetaPart, Fg, Bg);
       if GColumnSeparators then

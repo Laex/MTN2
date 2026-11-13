@@ -123,8 +123,8 @@ function DispatchClickOverlays(const AHost: TDualPanelClickHost;
   AShift: TShiftState; ADoubleClick: Boolean; out AHandled: Boolean): Boolean;
 function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
   ASide: TPanelSide; const ABounds: TRectI; AViewKind: TPanelViewKind;
-  AColumnMode: TPanelColumnMode; ACol, ARow: Integer;
-  ADoubleClick: Boolean; const AScheme: string = ''): Boolean;
+  AColumnMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  ACol, ARow: Integer; ADoubleClick: Boolean; const AScheme: string = ''): Boolean;
 
 implementation
 
@@ -498,8 +498,8 @@ end;
 
 function DispatchPanelChromeClick(const AHost: TDualPanelClickHost;
   ASide: TPanelSide; const ABounds: TRectI; AViewKind: TPanelViewKind;
-  AColumnMode: TPanelColumnMode; ACol, ARow: Integer;
-  ADoubleClick: Boolean; const AScheme: string): Boolean;
+  AColumnMode: TPanelColumnMode; const ACustom: TCustomColumnsConfig;
+  ACol, ARow: Integer; ADoubleClick: Boolean; const AScheme: string): Boolean;
 var
   DriveLetter: Char;
   SortCol: TPanelSortColumn;
@@ -535,7 +535,7 @@ begin
     pczHeaders:
       begin
         AHost.ActivateSide(ASide);
-        if HitPanelSortColumn(AColumnMode, ABounds.Right - ABounds.Left - 2,
+        if HitPanelSortColumn(AColumnMode, ACustom, ABounds.Right - ABounds.Left - 2,
           ACol - (ABounds.Left + 1), AScheme, SortCol, PluginId) then
         begin
           if (SortCol = pscPlugin) and Assigned(AHost.ApplyHeaderSortPlugin) then

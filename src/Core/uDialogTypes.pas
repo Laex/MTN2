@@ -394,7 +394,7 @@ function BuildCompareGroupDialog(const AStatus: string;
   ASelected: Integer): TDialogDeclaration;
 /// <summary>Options > Columns... - which fields pcmCustom shows. One
 /// checkbox per flag; caller (uDualPanelWindow.OpenColumnsConfigDialog)
-/// passes uPanelColumns.GCustomColumnsConfig's current values.</summary>
+/// passes the active panel's current values.</summary>
 /// <summary>AScheme is the scheme of the current folder: the built-in columns its
 /// plugin excluded (BuiltinColumnAvailable) get no checkbox, and the columns it
 /// declared get one each, ids "pcol_0", "pcol_1", ... in declaration order,

@@ -21,7 +21,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uThemeTypes,
-  uDualPanelTypes,
+  uDualPanelTypes, uPanelColumns,
   uDualPanelUiTypes,
   uKeymap,
   uDualPanelInput,
@@ -546,18 +546,18 @@ begin
 
     Spy.TabHit := True;
     Assert.IsTrue(DispatchPanelChromeClick(Host, psLeft, Bounds, pvkFiles, pcmFull,
-      5, 2, False) and (Spy.Last = 'ptab'), 'tab hit');
+      DefaultCustomColumnsConfig, 5, 2, False) and (Spy.Last = 'ptab'), 'tab hit');
 
     Spy.TabHit := False;
     Assert.IsTrue(DispatchPanelChromeClick(Host, psRight, Bounds, pvkFiles, pcmFull,
-      5, 2, True) and (Spy.Last = 'newptab') and (Spy.Side = psRight),
+      DefaultCustomColumnsConfig, 5, 2, True) and (Spy.Last = 'newptab') and (Spy.Side = psRight),
       'empty tab row double-click');
 
     Assert.IsTrue(DispatchPanelChromeClick(Host, psLeft, Bounds, pvkInfo, pcmFull,
-      8, 8, False) and (Spy.Last = 'activate+inv'), 'info activates only');
+      DefaultCustomColumnsConfig, 8, 8, False) and (Spy.Last = 'activate+inv'), 'info activates only');
 
     Assert.IsTrue(not DispatchPanelChromeClick(Host, psLeft, Bounds, pvkFiles, pcmFull,
-      8, 8, False), 'body is not chrome');
+      DefaultCustomColumnsConfig, 8, 8, False), 'body is not chrome');
   finally
     Spy.Free;
   end;

@@ -1,6 +1,7 @@
 unit TestColumnSets;
 
-{ Named sets of the Custom column mode: built-in ones, a file, and saving. }
+{ Named sets of the Custom column mode: the file with the starter sets, saving,
+  renaming and deleting. }
 
 interface
 
@@ -15,26 +16,27 @@ type
   public
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
-    [Test] procedure BuiltInSetsAreListedAlphabetically;
+    [Test] procedure MissingFileIsCreatedWithTheStarterSets;
+    [Test] procedure ExistingFileGetsNoStarterSets;
+    [Test] procedure SetsAreListedAlphabetically;
     [Test] procedure SavedSetIsFoundWithoutRegardToCase;
     [Test] procedure SavingTheSameNameReplacesTheSet;
-    [Test] procedure SavedSetReplacesABuiltInOne;
+    [Test] procedure SavingAStarterSetNameReplacesIt;
     [Test] procedure BlankNameIsRefused;
-    [Test] procedure BrokenFileKeepsTheBuiltInSets;
+    [Test] procedure BrokenFileListsNoSetsButSavingWorks;
     [Test] procedure DeletedSetIsGone;
-    [Test] procedure DeletingAnOverrideRestoresTheBuiltInSet;
-    [Test] procedure BuiltInSetCannotBeDeleted;
+    [Test] procedure DeletedStarterSetStaysDeleted;
     [Test] procedure RenamedSetKeepsItsColumns;
     [Test] procedure RenameToATakenNameIsRefused;
     [Test] procedure RenameMayChangeOnlyTheCase;
-    [Test] procedure BuiltInSetCannotBeRenamed;
+    [Test] procedure StarterSetCanBeRenamed;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.IOUtils,
-  uPanelColumns, uColumnSets;
+  uDualPanelTypes, uPanelColumns, uColumnSets;
 
 function Cfg(AExt, ASize, AModified: Boolean): TCustomColumnsConfig;
 begin
@@ -59,13 +61,34 @@ begin
     TFile.Delete(FPath);
 end;
 
-procedure TTestColumnSets.BuiltInSetsAreListedAlphabetically;
+procedure TTestColumnSets.MissingFileIsCreatedWithTheStarterSets;
+var
+  S: TColumnSet;
+begin
+  Assert.IsFalse(TFile.Exists(FPath));
+  Assert.IsTrue(ColumnSetFind('Minimal', S), 'Minimal');
+  Assert.IsTrue(ColumnSetFind('Dates', S), 'Dates');
+  Assert.IsTrue(ColumnSetFind('Technical', S), 'Technical');
+  Assert.IsTrue(TFile.Exists(FPath), 'the file is written');
+  Assert.IsTrue(ColumnSetIsStored('Dates'), 'a starter set is a stored one');
+end;
+
+procedure TTestColumnSets.ExistingFileGetsNoStarterSets;
+var
+  S: TColumnSet;
+begin
+  TFile.WriteAllText(FPath, '{ "sets": { "Mine": { "size": true } } }', TEncoding.UTF8);
+  Assert.AreEqual<Integer>(1, Length(ColumnSets), 'only the set of the file');
+  Assert.IsFalse(ColumnSetFind('Dates', S), 'no starter set is added');
+end;
+
+procedure TTestColumnSets.SetsAreListedAlphabetically;
 var
   Sets: TArray<TColumnSet>;
   I: Integer;
 begin
   Sets := ColumnSets;
-  Assert.IsTrue(Length(Sets) >= 3, 'there are built-in sets');
+  Assert.IsTrue(Length(Sets) >= 3, 'the starter sets are there');
   for I := 1 to High(Sets) do
     Assert.IsTrue(CompareText(Sets[I - 1].Name, Sets[I].Name) <= 0, 'alphabetical');
 end;
@@ -96,7 +119,7 @@ begin
   Assert.IsTrue(SameColumnsConfig(S.Config, Cfg(False, True, True)), 'the later one wins');
 end;
 
-procedure TTestColumnSets.SavedSetReplacesABuiltInOne;
+procedure TTestColumnSets.SavingAStarterSetNameReplacesIt;
 var
   S: TColumnSet;
 begin
@@ -111,12 +134,12 @@ begin
   Assert.IsFalse(TFile.Exists(FPath), 'nothing is written');
 end;
 
-procedure TTestColumnSets.BrokenFileKeepsTheBuiltInSets;
+procedure TTestColumnSets.BrokenFileListsNoSetsButSavingWorks;
 var
   S: TColumnSet;
 begin
   TFile.WriteAllText(FPath, '{ not json', TEncoding.UTF8);
-  Assert.IsTrue(ColumnSetFind('Dates', S), 'built-in set survives');
+  Assert.AreEqual<Integer>(0, Length(ColumnSets), 'nothing is listed');
   Assert.IsTrue(ColumnSetSave('Mine', Cfg(True, False, False)), 'saving over a broken file works');
   Assert.IsTrue(ColumnSetFind('Mine', S));
 end;
@@ -131,23 +154,14 @@ begin
   Assert.IsFalse(ColumnSetIsStored('Mine'));
 end;
 
-procedure TTestColumnSets.DeletingAnOverrideRestoresTheBuiltInSet;
+procedure TTestColumnSets.DeletedStarterSetStaysDeleted;
 var
   S: TColumnSet;
 begin
-  ColumnSetSave('Minimal', Cfg(True, True, True));
-  Assert.IsTrue(ColumnSetDelete('Minimal'));
-  Assert.IsTrue(ColumnSetFind('Minimal', S), 'built-in set is back');
-  Assert.IsFalse(SameColumnsConfig(S.Config, Cfg(True, True, True)), 'built-in columns');
-end;
-
-procedure TTestColumnSets.BuiltInSetCannotBeDeleted;
-var
-  S: TColumnSet;
-begin
-  Assert.IsTrue(ColumnSetIsBuiltIn('dates'));
-  Assert.IsFalse(ColumnSetDelete('Dates'), 'nothing stored to delete');
-  Assert.IsTrue(ColumnSetFind('Dates', S));
+  Assert.IsTrue(ColumnSetDelete('Minimal'), 'deleted');
+  Assert.IsFalse(ColumnSetFind('Minimal', S), 'gone');
+  Assert.IsFalse(ColumnSetFind('minimal', S), 'still gone on the next read');
+  Assert.IsTrue(ColumnSetFind('Dates', S), 'the others stay');
 end;
 
 procedure TTestColumnSets.RenamedSetKeepsItsColumns;
@@ -166,7 +180,7 @@ begin
   ColumnSetSave('Mine', Cfg(True, False, True));
   ColumnSetSave('Other', Cfg(False, True, False));
   Assert.IsFalse(ColumnSetRename('Mine', 'other'), 'stored name taken');
-  Assert.IsFalse(ColumnSetRename('Mine', 'Dates'), 'built-in name taken');
+  Assert.IsFalse(ColumnSetRename('Mine', 'Dates'), 'starter set name taken');
   Assert.IsFalse(ColumnSetRename('Mine', '  '), 'blank name');
   Assert.IsTrue(ColumnSetIsStored('Mine'), 'set is untouched');
 end;
@@ -190,9 +204,17 @@ begin
   Assert.AreEqual('MINE', S.Name);
 end;
 
-procedure TTestColumnSets.BuiltInSetCannotBeRenamed;
+procedure TTestColumnSets.StarterSetCanBeRenamed;
+var
+  S: TColumnSet;
+  Before: TCustomColumnsConfig;
 begin
-  Assert.IsFalse(ColumnSetRename('Dates', 'Calendar'));
+  ColumnSetFind('Dates', S);
+  Before := S.Config;
+  Assert.IsTrue(ColumnSetRename('Dates', 'Calendar'));
+  Assert.IsFalse(ColumnSetFind('Dates', S), 'old name is gone');
+  Assert.IsTrue(ColumnSetFind('Calendar', S));
+  Assert.IsTrue(SameColumnsConfig(S.Config, Before), 'same columns');
 end;
 
 end.

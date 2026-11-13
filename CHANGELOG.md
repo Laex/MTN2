@@ -6,11 +6,19 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.8.5 – 2026-11-13
+
+### Changed
+
+- Ctrl+Shift+F7 opens the Options > Columns... dialog.
+- Each file panel has its own columns for custom column sets: choosing a set in the Column modes menu or confirming the "Custom columns" dialog changes only the active panel, and each panel keeps its columns between sessions. The separate "Custom" menu item is gone; the column sets are listed right after the preset modes.
+- The sets Minimal, Dates and Technical are created in `columnsets.json` when the file does not exist, and are ordinary sets from then on: they can be edited, renamed and deleted like any other.
+
 ## Dev v0.5.8.4 – 2026-11-13
 
 ### New
 
-- The "Custom columns" dialog lists the column sets and can edit (load a set into the checkboxes), rename and delete them; deleting a built-in set that was replaced by a saved one brings the built-in columns back.
+- The "Custom columns" dialog lists the column sets and can edit (load a set into the checkboxes), rename and delete them.
 - In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
 
 ### Changed

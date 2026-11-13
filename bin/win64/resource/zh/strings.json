@@ -941,7 +941,7 @@
     "keymap.action.ColumnFull": "列: 完整",
     "keymap.action.ColumnCreated": "列: 创建时间",
     "keymap.action.ColumnTypes": "列: 类型",
-    "keymap.action.ColumnCustom": "列: 自定义",
+    "keymap.action.ColumnsConfig": "列对话框",
     "keymap.action.EditCopy": "复制到剪贴板",
     "keymap.action.EditCut": "剪切到剪贴板",
     "keymap.action.EditPaste": "从剪贴板粘贴",

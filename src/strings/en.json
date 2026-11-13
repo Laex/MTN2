@@ -943,7 +943,7 @@
     "keymap.action.ColumnFull": "Columns: Full",
     "keymap.action.ColumnCreated": "Columns: Created",
     "keymap.action.ColumnTypes": "Columns: Types",
-    "keymap.action.ColumnCustom": "Columns: Custom",
+    "keymap.action.ColumnsConfig": "Columns dialog",
     "keymap.action.EditCopy": "Copy to clipboard",
     "keymap.action.EditCut": "Cut to clipboard",
     "keymap.action.EditPaste": "Paste from clipboard",

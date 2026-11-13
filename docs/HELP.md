@@ -260,7 +260,7 @@ In the select-by-mask dialog the “Select folders” check box applies the mask
 
 ### Column sets
 
-The column modes menu lists named column sets under Custom (Minimal, Dates and Technical are built in). A set applies its columns to the Custom mode. To save the current choice, type a name in the "Save as column set" field of the Custom columns dialog; sets are kept in `columnsets.json` in the settings folder. The same dialog lists the sets: Edit loads the selected set into the checkboxes and the name field (OK saves the changes under that name), Rename gives the selected set the name typed in the field, Delete removes it. Built-in sets cannot be renamed or deleted; saving a set under a built-in name replaces it, and deleting that set brings the built-in one back.
+The column modes menu lists the named column sets after the preset modes. Choosing a set gives the panel it was chosen on those columns; the other panel keeps its own, and each panel remembers its own columns. The sets are kept in `columnsets.json` in the settings folder; when the file does not exist it is created with the sets Minimal, Dates and Technical, and from then on they are ordinary sets that can be changed, renamed or deleted. To save the current choice, type a name in the "Save as column set" field of the Custom columns dialog (Options, Columns), which edits the columns of the active panel. The same dialog lists the sets: Edit loads the selected set into the checkboxes and the name field (OK saves the changes under that name), Rename gives the selected set the name typed in the field, Delete removes it.
 
 ---
 
@@ -407,7 +407,7 @@ The **..** entry in system folders and the Recycle Bin takes you back to where y
 | Key | Action |
 | --- | --- |
 | Ctrl+\` | column modes menu |
-| Ctrl+Shift+F1 … F7 | mode: brief, size, date, full, created, types, custom |
+| Ctrl+Shift+F1 … F6 | mode: brief, size, date, full, created, types |
 | Ctrl+F12 | sort menu |
 | Ctrl+F3 / F4 / F5 / F6 | sort by name / extension / modification date / size |
 | Ctrl+F7 / F8 / F9 | unsorted / by creation date / by access date |

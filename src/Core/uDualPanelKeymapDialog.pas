@@ -199,7 +199,7 @@ const
     'Columns: Full',
     'Columns: Created',
     'Columns: Types',
-    'Columns: Custom',
+    'Columns dialog',
     'Copy to clipboard',
     'Cut to clipboard',
     'Paste from clipboard',

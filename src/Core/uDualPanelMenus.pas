@@ -70,7 +70,8 @@ type
     function HandleSortMenuInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function HandleSortMenuClick(ALocalCol, ALocalRow: Integer): Boolean;
-    procedure OpenColumnModeMenu(ACurrent: TPanelColumnMode);
+    procedure OpenColumnModeMenu(ACurrent: TPanelColumnMode;
+      const ACustom: TCustomColumnsConfig);
     procedure CloseColumnModeMenu;
     procedure LayoutColumnModeMenu;
     procedure DrawColumnModeMenu(const AGrid: TTerminalGrid);
@@ -294,11 +295,12 @@ begin
   Result := FSortMenu.HandleClick(ALocalCol, ALocalRow);
 end;
 
-procedure TMenuStubController.OpenColumnModeMenu(ACurrent: TPanelColumnMode);
+procedure TMenuStubController.OpenColumnModeMenu(ACurrent: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig);
 begin
   FUserMenu.Close;
   FSortMenu.Close;
-  FColumnModeMenu.Open(ACurrent);
+  FColumnModeMenu.Open(ACurrent, ACustom);
 end;
 
 procedure TMenuStubController.CloseColumnModeMenu;

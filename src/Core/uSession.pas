@@ -49,9 +49,6 @@ type
     /// 'NDNtheme.json' when blank). Only read, so the file can be imported as
     /// a user theme (uThemeRegistry.ImportLegacyFiles); never written.</summary>
     ThemeFile: string;
-    /// <summary>Options > Columns... selection - which fields pcmCustom
-    /// shows. App-wide, like ThemeName/Zoom (not per-panel).</summary>
-    CustomColumns: TCustomColumnsConfig;
     /// <summary>Which plugin columns each scheme shows, as the JSON object of
     /// uPluginColumns.SchemeColumnSelectionsToJson; '' = none chosen.</summary>
     PluginColumns: string;
@@ -249,6 +246,33 @@ begin
   Result.AddPair('selected', Sel);
 end;
 
+function CustomColumnsToJson(const AConfig: TCustomColumnsConfig): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('ext', TJSONBool.Create(AConfig.ShowExt));
+  Result.AddPair('size', TJSONBool.Create(AConfig.ShowSize));
+  Result.AddPair('modified', TJSONBool.Create(AConfig.ShowModified));
+  Result.AddPair('created', TJSONBool.Create(AConfig.ShowCreated));
+  Result.AddPair('accessed', TJSONBool.Create(AConfig.ShowAccessed));
+  Result.AddPair('type', TJSONBool.Create(AConfig.ShowType));
+  Result.AddPair('attr', TJSONBool.Create(AConfig.ShowAttr));
+end;
+
+function CustomColumnsFromJson(O: TJSONObject;
+  const ABase: TCustomColumnsConfig): TCustomColumnsConfig;
+begin
+  Result := ABase;
+  if O = nil then
+    Exit;
+  Result.ShowExt := JsonBool(O, 'ext', Result.ShowExt);
+  Result.ShowSize := JsonBool(O, 'size', Result.ShowSize);
+  Result.ShowModified := JsonBool(O, 'modified', Result.ShowModified);
+  Result.ShowCreated := JsonBool(O, 'created', Result.ShowCreated);
+  Result.ShowAccessed := JsonBool(O, 'accessed', Result.ShowAccessed);
+  Result.ShowType := JsonBool(O, 'type', Result.ShowType);
+  Result.ShowAttr := JsonBool(O, 'attr', Result.ShowAttr);
+end;
+
 function PanelToJson(const APanel: TPanelState): TJSONObject;
 var
   Tabs: TJSONArray;
@@ -259,6 +283,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('activeTab', TJSONNumber.Create(APanel.ActiveTabIndex));
   Result.AddPair('columnMode', PanelColumnModeName(APanel.ColumnMode));
+  Result.AddPair('customColumns', CustomColumnsToJson(APanel.CustomColumns));
   Result.AddPair('sortColumn', PanelSortColumnName(APanel.SortColumn));
   Result.AddPair('sortDescending', TJSONBool.Create(APanel.SortDescending));
   if (APanel.SortColumn = pscPlugin) and (APanel.SortPluginId <> '') then
@@ -358,7 +383,8 @@ begin
   end;
 end;
 
-function PanelFromJson(O: TJSONObject): TPanelState;
+function PanelFromJson(O: TJSONObject;
+  const ADefaultColumns: TCustomColumnsConfig): TPanelState;
 var
   V: TJSONValue;
   Arr: TJSONArray;
@@ -369,6 +395,7 @@ var
 begin
   Result.ActiveTabIndex := 0;
   Result.ColumnMode := pcmFull;
+  Result.CustomColumns := ADefaultColumns;
   Result.SortColumn := pscNone;
   Result.SortDescending := False;
   Result.SortByPriority := False;
@@ -382,6 +409,9 @@ begin
   Result.ActiveTabIndex := Max(JsonInt(O, 'activeTab', 0), 0);
   if not TryPanelColumnModeFromName(JsonStr(O, 'columnMode', 'Full'), Result.ColumnMode) then
     Result.ColumnMode := pcmFull;
+  V := O.GetValue('customColumns');
+  if V is TJSONObject then
+    Result.CustomColumns := CustomColumnsFromJson(TJSONObject(V), ADefaultColumns);
   if not TryPanelSortColumnFromName(JsonStr(O, 'sortColumn', 'None'), Result.SortColumn) then
     Result.SortColumn := pscNone;
   Result.SortDescending := JsonBool(O, 'sortDescending', False);
@@ -438,7 +468,8 @@ begin
   SeedPanelDriveDirs(Result);
 end;
 
-function WorkspaceFromJson(O: TJSONObject): TDualPanelWorkspaceTab;
+function WorkspaceFromJson(O: TJSONObject;
+  const ADefaultColumns: TCustomColumnsConfig): TDualPanelWorkspaceTab;
 var
   Side: string;
   V: TJSONValue;
@@ -464,7 +495,7 @@ begin
   end;
   V := O.GetValue('left');
   if V is TJSONObject then
-    Result.State.LeftPanel := PanelFromJson(TJSONObject(V))
+    Result.State.LeftPanel := PanelFromJson(TJSONObject(V), ADefaultColumns)
   else
   begin
     Result.State.LeftPanel.ActiveTabIndex := 0;
@@ -472,7 +503,7 @@ begin
   end;
   V := O.GetValue('right');
   if V is TJSONObject then
-    Result.State.RightPanel := PanelFromJson(TJSONObject(V))
+    Result.State.RightPanel := PanelFromJson(TJSONObject(V), ADefaultColumns)
   else
   begin
     Result.State.RightPanel.ActiveTabIndex := 0;
@@ -504,32 +535,6 @@ begin
       Exit;
   end;
   Result := True;
-end;
-
-function CustomColumnsToJson(const AConfig: TCustomColumnsConfig): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('ext', TJSONBool.Create(AConfig.ShowExt));
-  Result.AddPair('size', TJSONBool.Create(AConfig.ShowSize));
-  Result.AddPair('modified', TJSONBool.Create(AConfig.ShowModified));
-  Result.AddPair('created', TJSONBool.Create(AConfig.ShowCreated));
-  Result.AddPair('accessed', TJSONBool.Create(AConfig.ShowAccessed));
-  Result.AddPair('type', TJSONBool.Create(AConfig.ShowType));
-  Result.AddPair('attr', TJSONBool.Create(AConfig.ShowAttr));
-end;
-
-function CustomColumnsFromJson(O: TJSONObject): TCustomColumnsConfig;
-begin
-  Result := DefaultCustomColumnsConfig;
-  if O = nil then
-    Exit;
-  Result.ShowExt := JsonBool(O, 'ext', Result.ShowExt);
-  Result.ShowSize := JsonBool(O, 'size', Result.ShowSize);
-  Result.ShowModified := JsonBool(O, 'modified', Result.ShowModified);
-  Result.ShowCreated := JsonBool(O, 'created', Result.ShowCreated);
-  Result.ShowAccessed := JsonBool(O, 'accessed', Result.ShowAccessed);
-  Result.ShowType := JsonBool(O, 'type', Result.ShowType);
-  Result.ShowAttr := JsonBool(O, 'attr', Result.ShowAttr);
 end;
 
 const
@@ -655,7 +660,6 @@ begin
         Root.AddPair('theme', ASession.ThemeName);
       if ASession.ThemeFile <> '' then
         Root.AddPair('themeFile', ASession.ThemeFile);
-      Root.AddPair('customColumns', CustomColumnsToJson(ASession.CustomColumns));
       if ASession.PluginColumns <> '' then
       begin
         V := TJSONObject.ParseJSONValue(ASession.PluginColumns);
@@ -746,6 +750,7 @@ var
   RootVal: TJSONValue;
   Root: TJSONObject;
   Arr: TJSONArray;
+  SharedColumns: TCustomColumnsConfig;
   I: Integer;
   V: TJSONValue;
 begin
@@ -764,7 +769,6 @@ begin
   ASession.ConsoleStartOnLaunch := False;
   ASession.ThemeName := '';
   ASession.ThemeFile := '';
-  ASession.CustomColumns := DefaultCustomColumnsConfig;
   ASession.PluginColumns := '';
   ASession.ListExport := DefaultListExportConfig;
   ASession.LastWorkspaceId := '';
@@ -848,11 +852,16 @@ begin
       if not (V is TJSONArray) then
         Exit;
       Arr := TJSONArray(V);
+      // Sessions written before columns were per panel hold one shared choice.
+      SharedColumns := DefaultCustomColumnsConfig;
+      V := Root.GetValue('customColumns');
+      if V is TJSONObject then
+        SharedColumns := CustomColumnsFromJson(TJSONObject(V), SharedColumns);
       SetLength(ASession.Panels.WorkspaceTabs, Arr.Count);
       for I := 0 to Arr.Count - 1 do
         if Arr.Items[I] is TJSONObject then
           ASession.Panels.WorkspaceTabs[I] :=
-            WorkspaceFromJson(TJSONObject(Arr.Items[I]))
+            WorkspaceFromJson(TJSONObject(Arr.Items[I]), SharedColumns)
         else
           Exit;
       if ASession.Panels.ActiveWorkspaceIndex >
@@ -874,9 +883,6 @@ begin
         JsonBool(Root, 'consoleStartOnLaunch', False);
       ASession.ThemeName := JsonStr(Root, 'theme', '');
       ASession.ThemeFile := JsonStr(Root, 'themeFile', '');
-      V := Root.GetValue('customColumns');
-      if V is TJSONObject then
-        ASession.CustomColumns := CustomColumnsFromJson(TJSONObject(V));
       V := Root.GetValue('pluginColumns');
       if V is TJSONObject then
         ASession.PluginColumns := V.ToJSON;

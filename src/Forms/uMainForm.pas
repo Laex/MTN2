@@ -1866,7 +1866,6 @@ begin
   FDualPanel.QuickSearchFuzzy := Sess.QuickSearchFuzzy;
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
-  GCustomColumnsConfig := Sess.CustomColumns;
   LoadSchemeColumnSelectionsFromJson(Sess.PluginColumns);
   GListExportConfig := Sess.ListExport;
   GShowPanelIcons := Sess.ShowPanelIcons;
@@ -2046,7 +2045,6 @@ begin
   // SetLocale call) -- always the source of truth, not whatever
   // session.json happened to have on disk before this save.
   Sess.Language := CurrentLocale;
-  Sess.CustomColumns := GCustomColumnsConfig;
   Sess.PluginColumns := SchemeColumnSelectionsToJson;
   Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;

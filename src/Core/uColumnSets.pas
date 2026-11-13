@@ -4,12 +4,14 @@ unit uColumnSets;
 // menu lists them under Custom; the Custom columns dialog saves the current
 // choice under a name. Sets live in columnsets.json, for example:
 //   { "sets": { "Dates": { "size": true, "modified": true, "created": true } } }
-// Built-in sets can be replaced by a set of the same name from the file.
+// When the file is missing it is created with the starter sets (Minimal, Dates,
+// Technical); from then on the file is the only source and every set in it can
+// be edited, renamed or deleted.
 
 interface
 
 uses
-  uPanelColumns;
+  uDualPanelTypes;
 
 type
   TColumnSet = record
@@ -17,7 +19,7 @@ type
     Config: TCustomColumnsConfig;
   end;
 
-/// <summary>All sets, built-in ones and those from the file, in alphabetical order.</summary>
+/// <summary>All sets of the file (created with the starter sets when missing), in alphabetical order.</summary>
 function ColumnSets: TArray<TColumnSet>;
 
 /// <summary>The set of this name (matched without regard to case).</summary>
@@ -30,18 +32,14 @@ function SameColumnsConfig(const A, B: TCustomColumnsConfig): Boolean;
 /// False for a blank name or when the file cannot be written.</summary>
 function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
 
-/// <summary>True for Minimal, Dates and Technical, whether or not the file replaces them.</summary>
-function ColumnSetIsBuiltIn(const AName: string): Boolean;
-
-/// <summary>True when the file holds a set of this name (a deletable or renamable one).</summary>
+/// <summary>True when the file holds a set of this name.</summary>
 function ColumnSetIsStored(const AName: string): Boolean;
 
-/// <summary>Removes the set from the file. A built-in set replaced by the file
-/// goes back to its built-in columns. False when the file holds no such set or
-/// cannot be written.</summary>
+/// <summary>Removes the set from the file. False when the file holds no such set
+/// or cannot be written.</summary>
 function ColumnSetDelete(const AName: string): Boolean;
 
-/// <summary>Gives a set of the file another name, keeping its columns. False for
+/// <summary>Gives a set another name, keeping its columns. False for
 /// a set not in the file, a blank new name, a name taken by another set
 /// (a change of case only is fine), or when the file cannot be written.</summary>
 function ColumnSetRename(const AOldName, ANewName: string): Boolean;
@@ -153,13 +151,56 @@ begin
   end;
 end;
 
+procedure AddStarterSets(AList: TList<TColumnSet>);
+begin
+  PutSet(AList, 'Minimal', MakeConfig(False, True, False, False, False, False, False));
+  PutSet(AList, 'Dates', MakeConfig(False, True, True, True, True, False, False));
+  PutSet(AList, 'Technical', MakeConfig(True, True, True, False, False, True, True));
+end;
+
+// Creates the file with the starter sets when it does not exist. AStarters
+// receives them so the caller can fall back to them when the file cannot be
+// written.
+function EnsureFile(AStarters: TList<TColumnSet>): Boolean;
+var
+  Root, Sets: TJSONObject;
+  S: TColumnSet;
+begin
+  if TFile.Exists(FilePath) then
+    Exit(True);
+  AddStarterSets(AStarters);
+  Root := TJSONObject.Create;
+  try
+    Sets := TJSONObject.Create;
+    Root.AddPair('sets', Sets);
+    for S in AStarters do
+      Sets.AddPair(S.Name, ConfigToJson(S.Config));
+    try
+      ForceDirectories(ExtractFilePath(FilePath));
+      TFile.WriteAllText(FilePath, Root.Format(2), TEncoding.UTF8);
+      Result := True;
+    except
+      Result := False;
+    end;
+  finally
+    Root.Free;
+  end;
+end;
+
 function LoadAll: TList<TColumnSet>;
+var
+  Starters: TList<TColumnSet>;
 begin
   Result := TList<TColumnSet>.Create;
-  PutSet(Result, 'Minimal', MakeConfig(False, True, False, False, False, False, False));
-  PutSet(Result, 'Dates', MakeConfig(False, True, True, True, True, False, False));
-  PutSet(Result, 'Technical', MakeConfig(True, True, True, False, False, True, True));
-  LoadFileSets(Result);
+  Starters := TList<TColumnSet>.Create;
+  try
+    if EnsureFile(Starters) then
+      LoadFileSets(Result)
+    else
+      Result.AddRange(Starters);
+  finally
+    Starters.Free;
+  end;
 end;
 
 function ColumnSets: TArray<TColumnSet>;
@@ -205,8 +246,15 @@ end;
 function LoadRoot(out ASets: TJSONObject): TJSONObject;
 var
   Parsed: TJSONValue;
+  Starters: TList<TColumnSet>;
 begin
   Result := nil;
+  Starters := TList<TColumnSet>.Create;
+  try
+    EnsureFile(Starters);
+  finally
+    Starters.Free;
+  end;
   if TFile.Exists(FilePath) then
   begin
     try
@@ -269,20 +317,12 @@ begin
   end;
 end;
 
-function ColumnSetIsBuiltIn(const AName: string): Boolean;
-begin
-  Result := SameText(Trim(AName), 'Minimal') or SameText(Trim(AName), 'Dates') or
-    SameText(Trim(AName), 'Technical');
-end;
-
 function ColumnSetIsStored(const AName: string): Boolean;
 var
   Root, Sets: TJSONObject;
   I: Integer;
 begin
   Result := False;
-  if not TFile.Exists(FilePath) then
-    Exit;
   Root := LoadRoot(Sets);
   try
     for I := 0 to Sets.Count - 1 do

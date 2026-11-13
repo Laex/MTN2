@@ -108,7 +108,6 @@ begin
   Saved := Default(TMtnSession);
   Saved.Version := cSessionVersion;
   Saved.Zoom := 1;
-  Saved.CustomColumns := DefaultCustomColumnsConfig;
   Saved.ListExport := DefaultListExportConfig;
   SetLength(Saved.Panels.WorkspaceTabs, 1);
   Saved.Panels.WorkspaceTabs[0].Id := 1;

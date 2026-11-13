@@ -27,8 +27,9 @@ type
     FIndex: Integer;
     FBounds: TRectI;
     FCurrent: TPanelColumnMode;
+    FCurrentColumns: TCustomColumnsConfig;
     procedure BuildItems;
-    function IndexOf(AMode: TPanelColumnMode): Integer;
+    function IndexOfCurrent: Integer;
     procedure DoSelect(AIndex: Integer);
     function IsCurrentItem(AIndex: Integer): Boolean;
   public
@@ -37,10 +38,12 @@ type
       const AGetActiveSide: TActiveSideEvent);
     procedure SetTheme(const ATheme: IThemeRenderer);
     procedure SetOnColumnModeSelect(const AHandler: TColumnModeSelectEvent);
-    /// <summary>Lists the saved column sets under Custom; choosing one calls AHandler
-    /// with its name.</summary>
+    /// <summary>Lists the saved column sets after the preset modes; choosing one
+    /// calls AHandler with its name.</summary>
     procedure SetOnColumnSetSelect(const AHandler: TColumnSetSelectEvent);
-    procedure Open(ACurrent: TPanelColumnMode);
+    /// <summary>ACustom is the column set of the panel; it marks the set the
+    /// panel shows when ACurrent is pcmCustom.</summary>
+    procedure Open(ACurrent: TPanelColumnMode; const ACustom: TCustomColumnsConfig);
     procedure Close;
     procedure Layout;
     procedure Draw(const AGrid: TTerminalGrid);
@@ -108,21 +111,15 @@ function TColumnModeMenuController.IsCurrentItem(AIndex: Integer): Boolean;
 var
   Item: TColumnModeMenuItem;
   S: TColumnSet;
-  AnySet: Boolean;
 begin
   Item := FItems[AIndex];
   if Item.Mode <> FCurrent then
     Exit(False);
   if Item.Mode <> pcmCustom then
     Exit(True);
-  // A set is current when the Custom mode shows exactly its columns.
-  if Item.SetName <> '' then
-    Exit(ColumnSetFind(Item.SetName, S) and SameColumnsConfig(S.Config, GCustomColumnsConfig));
-  AnySet := False;
-  for S in ColumnSets do
-    if SameColumnsConfig(S.Config, GCustomColumnsConfig) then
-      AnySet := True;
-  Result := not (FIncludeSets and AnySet);
+  // A set is current when the panel shows exactly its columns.
+  Result := ColumnSetFind(Item.SetName, S) and
+    SameColumnsConfig(S.Config, FCurrentColumns);
 end;
 
 procedure TColumnModeMenuController.BuildItems;
@@ -158,7 +155,6 @@ begin
   Add('full', 'Full', 'F', 'Ctrl+Shift+F4', pcmFull);
   Add('created', 'Created', 'C', 'Ctrl+Shift+F5', pcmCreated);
   Add('types', 'Types', 'T', 'Ctrl+Shift+F6', pcmTypes);
-  Add('custom', 'Custom', 'X', 'Ctrl+Shift+F7', pcmCustom);
   if FIncludeSets then
     for S in ColumnSets do
     begin
@@ -171,21 +167,23 @@ begin
     end;
 end;
 
-function TColumnModeMenuController.IndexOf(AMode: TPanelColumnMode): Integer;
+function TColumnModeMenuController.IndexOfCurrent: Integer;
 var
   I: Integer;
 begin
   for I := 0 to High(FItems) do
-    if FItems[I].Mode = AMode then
+    if IsCurrentItem(I) then
       Exit(I);
   Result := 0;
 end;
 
-procedure TColumnModeMenuController.Open(ACurrent: TPanelColumnMode);
+procedure TColumnModeMenuController.Open(ACurrent: TPanelColumnMode;
+  const ACustom: TCustomColumnsConfig);
 begin
   FCurrent := ACurrent;
+  FCurrentColumns := ACustom;
   BuildItems;
-  FIndex := IndexOf(ACurrent);
+  FIndex := IndexOfCurrent;
   FVisible := True;
   Layout;
   if Assigned(FOnInvalidate) then

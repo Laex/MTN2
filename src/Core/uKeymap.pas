@@ -102,8 +102,8 @@ type
     kaColumnFull,
     kaColumnCreated,
     kaColumnTypes,
-    // Ctrl+Shift+F7 - user-configured column set (Options > Columns...).
-    kaColumnCustom,
+    // Ctrl+Shift+F7 - Options > Columns... dialog.
+    kaColumnsConfig,
     // Edit menu clipboard (Ctrl+C/X/V): files on panels, text in cmdline.
     kaEditCopy,
     kaEditCut,
@@ -704,7 +704,7 @@ begin
   AddBinding(Result, kaColumnFull, KeyBinding(vkF4, True, False, True));
   AddBinding(Result, kaColumnCreated, KeyBinding(vkF5, True, False, True));
   AddBinding(Result, kaColumnTypes, KeyBinding(vkF6, True, False, True));
-  AddBinding(Result, kaColumnCustom, KeyBinding(vkF7, True, False, True));
+  AddBinding(Result, kaColumnsConfig, KeyBinding(vkF7, True, False, True));
 
   AddBinding(Result, kaEditCopy, KeyBinding(Ord('C'), False, False, True));
   AddBinding(Result, kaEditCopy, KeyBinding(vkInsert, False, False, True));
@@ -1027,7 +1027,7 @@ const
     'ColumnFull',            // kaColumnFull
     'ColumnCreated',         // kaColumnCreated
     'ColumnTypes',           // kaColumnTypes
-    'ColumnCustom',          // kaColumnCustom
+    'ColumnsConfig',         // kaColumnsConfig
     'EditCopy',              // kaEditCopy
     'EditCut',               // kaEditCut
     'EditPaste',             // kaEditPaste
@@ -1544,7 +1544,7 @@ begin
     kaColumnFull: Result := 'Full';
     kaColumnCreated: Result := 'Creat';
     kaColumnTypes: Result := 'Types';
-    kaColumnCustom: Result := 'Cust';
+    kaColumnsConfig: Result := 'Cols';
   else
     Result := '';
   end;
