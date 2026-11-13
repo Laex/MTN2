@@ -1257,9 +1257,17 @@ var
   P: Integer;
 begin
   Result := Pos('!/', AURI);
+  // A single marker is the answer whether or not the file exists, so the
+  // filesystem is not touched (it may be an unreachable network drive).
+  if (Result = 0) or (Pos('!/', AURI, Result + 1) = 0) then
+    Exit;
   P := Result;
   while P > 0 do
   begin
+    // A name with an extension before the marker is the archive file; only an
+    // extensionless one ("Games!/a.rar") needs the existence check.
+    if SafeExtension(Copy(AURI, 1, P - 1)) <> '' then
+      Exit(P);
     if FileExists(ArchiveBaseLocalPath(Copy(AURI, 1, P - 1))) then
       Exit(P);
     P := Pos('!/', AURI, P + 1);

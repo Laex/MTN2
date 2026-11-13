@@ -29,6 +29,7 @@ type
     [Test] procedure TestHeaderSortCyclesPerPluginColumn;
     [Test] procedure TestColumnsDialogListsPluginColumns;
     [Test] procedure TestColumnsDialogOkSwitchesToCustomMode;
+    [Test] procedure TestColumnSetButtonsKeepTheDialogOpen;
     [Test] procedure TestPluginRestrictsBuiltinColumns;
     [Test] procedure TestColumnTitlesFollowTheProgramLanguage;
     [Test] procedure TestSessionKeepsPluginSortAndSelection;
@@ -39,7 +40,8 @@ implementation
 uses
   System.SysUtils, System.IOUtils,
   uVfsTypes, uVfsCdeclAdapter, uDialogTypes, uDualPanelTypes, uPanelColumns, uPluginColumns, uPluginServices, uStrings,
-  uDialogLocaleLayout, uSession, uDialogHost, uDualPanelSettingsDialogs;
+  uDialogLocaleLayout, uSession, uDialogHost, uDualPanelUiTypes,
+  uDualPanelSettingsDialogs;
 
 const
   cScheme = 'demo';
@@ -355,14 +357,14 @@ begin
   Plain := BuildColumnsConfigDialog(False, True, True, False, False, False, True);
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
   Assert.AreEqual<Integer>(Length(Plain.Controls) + 3, Length(Decl.Controls), 'one checkbox per declared column');
-  Assert.AreEqual<Integer>(Plain.Height + 3, Decl.Height, 'the dialog grows by one row each');
+  Assert.IsTrue(Decl.Height > Plain.Height, 'a longer checkbox column makes the dialog taller');
   Assert.IsTrue(ControlById(Decl, 'pcol_0').Checked, 'a default column is checked');
   Assert.IsTrue(ControlById(Decl, 'pcol_1').Checked);
   Assert.IsFalse(ControlById(Decl, 'pcol_2').Checked, 'a column that is not default is not');
   Assert.AreEqual<Integer>(ControlById(Decl, 'col_attr').Row + 1, ControlById(Decl, 'pcol_0').Row,
     'plugin columns follow the built-in ones');
-  Assert.AreEqual<Integer>(ControlById(Plain, 'ok').Row + 3, ControlById(Decl, 'ok').Row,
-    'the buttons move down');
+  Assert.IsTrue(ControlById(Decl, 'ok').Row > ControlById(Decl, 'pcol_2').Row,
+    'the buttons stay below the checkboxes');
   SetSchemeColumnSelection(cScheme, ['note']);
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
   Assert.IsFalse(ControlById(Decl, 'pcol_0').Checked, 'the saved choice is shown');
@@ -391,6 +393,35 @@ begin
     Settings.OpenColumns(cScheme);
     Settings.DispatchColumnsCommand(cDlgCmdOk);
     Assert.AreEqual(1, Switched, 'OK switches to the Custom mode');
+  finally
+    Settings.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TTestPluginColumns.TestColumnSetButtonsKeepTheDialogOpen;
+var
+  Host: TDialogHost;
+  Settings: TSettingsDialogController;
+  Id: string;
+  Kind: THostDialogKind;
+begin
+  Host := TDialogHost.Create(nil);
+  Settings := TSettingsDialogController.Create(Host, nil,
+    procedure(AKind: THostDialogKind)
+    begin
+      Kind := AKind;
+    end, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil);
+  try
+    Settings.OpenColumns('');
+    for Id in ['set_edit', 'set_edit', 'sets', 'set_rename', 'set_delete'] do
+    begin
+      // The window resets the kind before dispatching a command.
+      Kind := hdkNone;
+      Settings.DispatchColumnsCommand(Id);
+      Assert.IsTrue(Host.Visible, Id + ' keeps the dialog open');
+      Assert.IsTrue(Kind = hdkColumnsConfig, Id + ' keeps the dialog kind');
+    end;
   finally
     Settings.Free;
     Host.Free;
@@ -466,7 +497,7 @@ begin
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
   Assert.AreEqual<Integer>(Length(Plain.Controls) - 5 + 3, Length(Decl.Controls),
     'five built-in checkboxes are gone, three plugin ones are added');
-  Assert.AreEqual<Integer>(Plain.Height - 5 + 3, Decl.Height);
+  Assert.AreEqual<Integer>(Plain.Height, Decl.Height, 'the sets block keeps the dialog height');
   Assert.AreEqual<Integer>(ControlById(Decl, 'col_modified').Row + 1, ControlById(Decl, 'pcol_0').Row,
     'plugin columns follow the remaining built-in ones');
 

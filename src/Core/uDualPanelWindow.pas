@@ -75,6 +75,7 @@ type
     FDescDir: string;
     FDescStamp: TDateTime;
     FDescCheckedAt: UInt64;
+    FDescBusy: Boolean;
     FDescMap: TDictionary<string, string>;
     /// <summary>The folder and file names of the open Describe dialog.</summary>
     FDescribeDir: string;
@@ -4625,8 +4626,8 @@ var
   M: IPanelModel;
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
-  Cur, Up, Prev: string;
-  Active: TPanelSide;
+  Cur: string;
+  Life: ILifeFlag;
 begin
   M := ModelForSide(ASide);
   if not Assigned(M) or M.IsLoading then
@@ -4650,24 +4651,51 @@ begin
      IsFindUri(Cur) or IsWorkspaceUri(Cur) then
     Exit;
   FListedOkUri[ASide] := '';
-  Up := ParentFileUri(Cur);
-  while (Up <> '') and not DirectoryExists(FileUriToPath(Up)) do
-  begin
-    Prev := Up;
-    Up := ParentFileUri(Up);
-    if SameVfsUri(Up, Prev) then
-      Up := '';
-  end;
-  if Up = '' then
-    Exit;
-  Active := Ws.State.ActiveSide;
-  NavigateSideTo(ASide, Up, False);
-  Ws := ActiveWorkspace;
-  if Ws.State.ActiveSide <> Active then
-  begin
-    Ws.State.ActiveSide := Active;
-    SaveActiveWorkspace(Ws);
-  end;
+  // The existence probes run off the UI thread: DirectoryExists blocks for a
+  // long time on an unreachable network drive.
+  Life := FLife;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Probe, Last: string;
+    begin
+      Probe := ParentFileUri(Cur);
+      while (Probe <> '') and not DirectoryExists(FileUriToPath(Probe)) do
+      begin
+        Last := Probe;
+        Probe := ParentFileUri(Probe);
+        if SameVfsUri(Probe, Last) then
+          Probe := '';
+      end;
+      if Probe = '' then
+        Exit;
+      TThread.Queue(nil,
+        procedure
+        var
+          W: TDualPanelWorkspaceTab;
+          P: TPanelState;
+          PrevActive: TPanelSide;
+        begin
+          if not Life.Alive then
+            Exit;
+          W := ActiveWorkspace;
+          if ASide = psLeft then
+            P := W.State.LeftPanel
+          else
+            P := W.State.RightPanel;
+          // The panel moved on while the probe ran.
+          if not SameVfsUri(ActiveTab(P).CurrentURI, Cur) then
+            Exit;
+          PrevActive := W.State.ActiveSide;
+          NavigateSideTo(ASide, Probe, False);
+          W := ActiveWorkspace;
+          if W.State.ActiveSide <> PrevActive then
+          begin
+            W.State.ActiveSide := PrevActive;
+            SaveActiveWorkspace(W);
+          end;
+        end);
+    end).Start;
 end;
 
 procedure TDualPanelWindow.HandlePluginNavigate(const ATopic: string;
@@ -9101,31 +9129,70 @@ end;
 
 function TDualPanelWindow.DescriptionOf(const ADirUri, AName: string): string;
 var
-  Dir, Path: string;
-  Stamp: TDateTime;
+  Dir, KnownDir: string;
+  KnownStamp: TDateTime;
   Tick: UInt64;
+  Life: ILifeFlag;
 begin
   Result := '';
   Dir := FileUriToPath(ADirUri);
   if (Dir = '') or (AName = '') then
     Exit;
   Tick := PlatformTickCount64;
-  if (not SameLocalPath(Dir, FDescDir)) or (FDescMap = nil) or (Tick - FDescCheckedAt > 1500) then
+  // The file is read off the UI thread: on an unreachable network drive the
+  // existence probes block for a long time. The status line shows the cached
+  // map and is repainted when a refresh lands.
+  if not FDescBusy and
+     ((not SameLocalPath(Dir, FDescDir)) or (FDescMap = nil) or
+      (Tick - FDescCheckedAt > 1500)) then
   begin
-    // The timestamp is looked at every second or so, not on every frame.
-    Path := DescriptionsFilePath(Dir);
-    if not FileAge(Path, Stamp) then
-      Stamp := 0;
-    if (not SameLocalPath(Dir, FDescDir)) or (FDescMap = nil) or (Stamp <> FDescStamp) then
-    begin
-      FreeAndNil(FDescMap);
-      FDescMap := LoadDescriptions(Dir);
-      FDescDir := Dir;
-      FDescStamp := Stamp;
-    end;
-    FDescCheckedAt := Tick;
+    FDescBusy := True;
+    Life := FLife;
+    KnownDir := FDescDir;
+    KnownStamp := FDescStamp;
+    if FDescMap = nil then
+      KnownDir := '';
+    TThread.CreateAnonymousThread(
+      procedure
+      var
+        Path: string;
+        Stamp: TDateTime;
+        Map: TDictionary<string, string>;
+      begin
+        Map := nil;
+        try
+          Path := DescriptionsFilePath(Dir);
+          if not FileAge(Path, Stamp) then
+            Stamp := 0;
+          if (not SameLocalPath(Dir, KnownDir)) or (Stamp <> KnownStamp) then
+            Map := LoadDescriptions(Dir);
+        except
+          FreeAndNil(Map);
+          Stamp := 0;
+        end;
+        TThread.Queue(nil,
+          procedure
+          begin
+            if not Life.Alive then
+            begin
+              Map.Free;
+              Exit;
+            end;
+            FDescBusy := False;
+            FDescCheckedAt := PlatformTickCount64;
+            if Map <> nil then
+            begin
+              FreeAndNil(FDescMap);
+              FDescMap := Map;
+              FDescDir := Dir;
+              FDescStamp := Stamp;
+              Invalidate;
+            end;
+          end);
+      end).Start;
   end;
-  if not FDescMap.TryGetValue(AName, Result) then
+  if (FDescMap = nil) or not SameLocalPath(Dir, FDescDir) or
+     not FDescMap.TryGetValue(AName, Result) then
     Result := '';
 end;
 

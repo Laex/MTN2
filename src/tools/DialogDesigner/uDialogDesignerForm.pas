@@ -10,7 +10,7 @@ uses
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
   FMX.Edit, FMX.Layouts, FMX.Memo, FMX.Memo.Types, FMX.ScrollBox, FMX.Menus,
   FMX.ListBox, FMX.Controls.Presentation, FMX.Objects, FMX.DialogService.Sync,
-  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogJson, uDialogHost,
+  uTerminalTypes, uThemeTypes, uDialogTypes, uFileFind, uDialogJson, uDialogHost,
   uDialogResources, uThemeRegistry, uTerminalRenderer, uInputLine, uStrings;
 
 type
@@ -844,7 +844,8 @@ begin
   if TryLoadProjectDialogFile('search.json', Json, APath) then
     Exit(PrettyJson(Json));
   Result := PrettyJson(DeclarationToJson(
-    BuildSearchDialog('*.*', '', False, False, False, True, True)));
+    BuildSearchDialog('*.*', '', False, False, False, True, '', True, False, 0,
+      Default(TFindFilterText))));
 end;
 
 function TDialogDesignerForm.DialogResourceName: string;
@@ -1721,7 +1722,8 @@ begin
   case Tag of
     1: Decl := BuildConfirmDialog('Confirm', 'Proceed with the operation?');
     2: Decl := BuildInputDialog('Input', 'Value:', '');
-    3: Decl := BuildSearchDialog('*.*', '', False, False, False, True, True);
+    3: Decl := BuildSearchDialog('*.*', '', False, False, False, True, '', True, False, 0,
+      Default(TFindFilterText));
     4: Decl := BuildCopyMoveDialog('Copy', 'Copy to:', 'D:\Dest', 0, True);
     5: Decl := BuildHelpDialog;
     6: Decl := BuildAskSaveDialog('readme.md');

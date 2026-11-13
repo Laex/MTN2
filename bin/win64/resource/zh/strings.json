@@ -129,6 +129,10 @@
       "col_type": "类型(&T)",
       "col_attr": "属性(&B)",
       "set_label": "另存为列集合（可选）：",
+      "sets_label": "列集合：",
+      "set_edit": "编辑(&I)",
+      "set_rename": "重命名(&R)",
+      "set_delete": "删除(&L)",
       "ok": "确定",
       "cancel": "取消"
     },

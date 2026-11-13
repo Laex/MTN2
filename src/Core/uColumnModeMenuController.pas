@@ -253,7 +253,7 @@ begin
     if Y >= R.Bottom then
       Break;
     if IsCurrentItem(I) then
-      Mark := #$25CF // ●
+      Mark := #$25C6 // diamond
     else
       Mark := ' ';
     Cap := FItems[I].Caption;

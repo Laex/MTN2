@@ -6,17 +6,22 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.8.4 – 2026-11-13
+
 ### New
 
+- The "Custom columns" dialog lists the column sets and can edit (load a set into the checkboxes), rename and delete them; deleting a built-in set that was replaced by a saved one brings the built-in columns back.
 - In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
 
 ### Changed
 
 - The command-line history list opens right after the prompt (long entries are cut instead of moving the list over the prompt) and is outlined on the left, top and right (with cell edges where the window supports them), the outline one cell left of the text.
+- In the Change Drive dialog the current drive is marked with a diamond instead of an asterisk, and its row is drawn in lighter text. The Column modes menu marks the current mode with a diamond too.
 
 ### Fixed
 
 - In consoles, keyboard selection (Shift+arrows, Shift+Home/End, Shift+PgUp/PgDn) starts at the current input cursor instead of where the previous selection or search ended.
+- Switching to a disconnected network drive no longer freezes the window: the status line reads the folder's `Descript.ion` in the background, and neither the check for a vanished folder nor the parsing of a path with a `!` in a folder name waits on the drive. Leaving such a drive no longer hangs either.
 
 ## v0.5.8 – 2026-11-12
 

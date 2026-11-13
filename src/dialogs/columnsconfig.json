@@ -1,9 +1,9 @@
-{
+﻿{
   "type": "dialog",
   "version": "2.0",
   "title": "Custom columns",
-  "width": 38,
-  "height": 16,
+  "width": 84,
+  "height": 15,
   "children": [
     {
       "type": "checkbox",
@@ -12,7 +12,7 @@
       "checked": false,
       "col": 1,
       "row": 0,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -22,7 +22,7 @@
       "checked": true,
       "col": 1,
       "row": 1,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -32,7 +32,7 @@
       "checked": true,
       "col": 1,
       "row": 2,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -42,7 +42,7 @@
       "checked": false,
       "col": 1,
       "row": 3,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -52,7 +52,7 @@
       "checked": false,
       "col": 1,
       "row": 4,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -62,7 +62,7 @@
       "checked": false,
       "col": 1,
       "row": 5,
-      "width": 34,
+      "width": 36,
       "height": 1
     },
     {
@@ -72,39 +72,79 @@
       "checked": true,
       "col": 1,
       "row": 6,
-      "width": 34,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 7,
       "width": 36,
       "height": 1
     },
     {
       "type": "label",
-      "id": "set_label",
       "text": "Save as column set (optional):",
-      "col": 1,
-      "row": 8,
-      "width": 34,
+      "id": "set_label",
+      "col": 40,
+      "row": 0,
+      "width": 40,
       "height": 1
     },
     {
       "type": "input",
       "id": "set_name",
       "value": "",
-      "col": 1,
-      "row": 9,
-      "width": 34,
+      "col": 40,
+      "row": 1,
+      "width": 41,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "text": "Column sets:",
+      "id": "sets_label",
+      "col": 40,
+      "row": 3,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "list",
+      "id": "sets",
+      "selected": 0,
+      "items": [
+      ],
+      "col": 40,
+      "row": 4,
+      "width": 41,
+      "height": 2
+    },
+    {
+      "type": "button",
+      "id": "set_edit",
+      "text": "Ed&it",
+      "col": 40,
+      "row": 7,
+      "width": 11,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "set_rename",
+      "text": "&Rename",
+      "col": 52,
+      "row": 7,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "set_delete",
+      "text": "&Delete",
+      "col": 69,
+      "row": 7,
+      "width": 12,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 10,
-      "width": 36,
+      "row": 9,
+      "width": 82,
       "height": 1
     },
     {
@@ -112,8 +152,8 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 5,
-      "row": 12,
+      "col": 29,
+      "row": 11,
       "width": 12,
       "height": 1
     },
@@ -122,8 +162,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 19,
-      "row": 12,
+      "col": 43,
+      "row": 11,
       "width": 12,
       "height": 1
     }

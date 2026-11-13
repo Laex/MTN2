@@ -131,6 +131,10 @@
       "col_type": "&Type",
       "col_attr": "Attri&butes",
       "set_label": "Save as column set (optional):",
+      "sets_label": "Column sets:",
+      "set_edit": "Ed&it",
+      "set_rename": "&Rename",
+      "set_delete": "&Delete",
       "ok": "OK",
       "cancel": "Cancel"
     },

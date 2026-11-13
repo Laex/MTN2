@@ -398,10 +398,12 @@ function BuildCompareGroupDialog(const AStatus: string;
 /// <summary>AScheme is the scheme of the current folder: the built-in columns its
 /// plugin excluded (BuiltinColumnAvailable) get no checkbox, and the columns it
 /// declared get one each, ids "pcol_0", "pcol_1", ... in declaration order,
-/// checked by IsPluginColumnShown.</summary>
+/// checked by IsPluginColumnShown. ASetItems are the rows of the column sets
+/// list (list id "sets").</summary>
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
   AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
-  const AScheme: string = ''): TDialogDeclaration;
+  const AScheme: string = '';
+  const ASetItems: TArray<string> = nil): TDialogDeclaration;
 /// <summary>Files > Export list...: target file, layout and the fields of the
 /// saved list, prefilled from AConfig.</summary>
 function BuildExportListDialog(const APath: string;
@@ -1624,10 +1626,13 @@ end;
 
 function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
   AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
-  const AScheme: string): TDialogDeclaration;
+  const AScheme: string; const ASetItems: TArray<string>): TDialogDeclaration;
+const
+  // Rows the column sets block on the right uses; the footer starts below it.
+  cFooterRow = 9;
 var
   Cols: TPluginColumns;
-  I, J, Row: Integer;
+  I, Row, Delta: Integer;
   Box, Tmpl: TDialogControl;
 begin
   RequireDialogResource(cResDialogColumnsConfig, Result);
@@ -1638,45 +1643,53 @@ begin
   DialogSetCheckbox(Result, 'col_accessed', AShowAccessed);
   DialogSetCheckbox(Result, 'col_type', AShowType);
   DialogSetCheckbox(Result, 'col_attr', AShowAttr);
+  DialogSetListItems(Result, 'sets', ASetItems, 0);
   Cols := SchemePluginColumns(AScheme);
   Tmpl := Default(TDialogControl);
   for I := 0 to High(Result.Controls) do
     if Result.Controls[I].Id = 'col_attr' then
       Tmpl := Result.Controls[I];
-  // Built-in columns the scheme's plugin excluded are dropped; the rows below
-  // move up to close the gap.
+  // Built-in columns the scheme's plugin excluded are dropped; the checkboxes
+  // that remain are numbered from the top again, and the plugin ones follow.
   for I := High(Result.Controls) downto 0 do
     if (Copy(Result.Controls[I].Id, 1, 4) = 'col_') and
        not BuiltinColumnAvailable(AScheme, Copy(Result.Controls[I].Id, 5, MaxInt)) then
-    begin
-      Row := Result.Controls[I].Row;
       Delete(Result.Controls, I, 1);
-      for J := 0 to High(Result.Controls) do
-        if Result.Controls[J].Row > Row then
-          Dec(Result.Controls[J].Row);
-      Dec(Result.Height);
+  Row := 0;
+  for I := 0 to High(Result.Controls) do
+    if Copy(Result.Controls[I].Id, 1, 4) = 'col_' then
+    begin
+      Result.Controls[I].Row := Row;
+      Inc(Row);
     end;
-  if Length(Cols) = 0 then
-    Exit;
-  // The plugin checkboxes follow the last built-in one.
-  Row := -1;
-  for I := 0 to High(Result.Controls) do
-    if (Copy(Result.Controls[I].Id, 1, 4) = 'col_') and (Result.Controls[I].Row > Row) then
-      Row := Result.Controls[I].Row;
-  Inc(Row);
-  for I := 0 to High(Result.Controls) do
-    if Result.Controls[I].Row >= Row then
-      Inc(Result.Controls[I].Row, Length(Cols));
-  Inc(Result.Height, Length(Cols));
   for I := 0 to High(Cols) do
   begin
     Box := Tmpl;
     Box.Id := 'pcol_' + IntToStr(I);
     Box.Text := StringReplace(PluginColumnTitle(Cols[I]), '&', '', [rfReplaceAll]);
     Box.Checked := IsPluginColumnShown(AScheme, Cols[I]);
-    Box.Row := Row + I;
+    Box.Row := Row;
+    Inc(Row);
     SetLength(Result.Controls, Length(Result.Controls) + 1);
     Result.Controls[High(Result.Controls)] := Box;
+  end;
+  // A checkbox column longer than the sets block pushes the footer down; the
+  // sets list grows with it and its buttons stay on the last row of the column.
+  Delta := Row - cFooterRow;
+  if Delta > 0 then
+  begin
+    for I := 0 to High(Result.Controls) do
+      if Result.Controls[I].Row >= cFooterRow then
+      begin
+        if Copy(Result.Controls[I].Id, 1, 4) <> 'pcol' then
+          Inc(Result.Controls[I].Row, Delta);
+      end
+      else if Result.Controls[I].Id = 'sets' then
+        Inc(Result.Controls[I].BoxH, Delta)
+      else if Copy(Result.Controls[I].Id, 1, 4) = 'set_' then
+        if Result.Controls[I].Kind = dckButton then
+          Inc(Result.Controls[I].Row, Delta);
+    Inc(Result.Height, Delta);
   end;
 end;
 

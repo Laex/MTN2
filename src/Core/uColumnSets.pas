@@ -30,6 +30,22 @@ function SameColumnsConfig(const A, B: TCustomColumnsConfig): Boolean;
 /// False for a blank name or when the file cannot be written.</summary>
 function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
 
+/// <summary>True for Minimal, Dates and Technical, whether or not the file replaces them.</summary>
+function ColumnSetIsBuiltIn(const AName: string): Boolean;
+
+/// <summary>True when the file holds a set of this name (a deletable or renamable one).</summary>
+function ColumnSetIsStored(const AName: string): Boolean;
+
+/// <summary>Removes the set from the file. A built-in set replaced by the file
+/// goes back to its built-in columns. False when the file holds no such set or
+/// cannot be written.</summary>
+function ColumnSetDelete(const AName: string): Boolean;
+
+/// <summary>Gives a set of the file another name, keeping its columns. False for
+/// a set not in the file, a blank new name, a name taken by another set
+/// (a change of case only is fine), or when the file cannot be written.</summary>
+function ColumnSetRename(const AOldName, ANewName: string): Boolean;
+
 /// <summary>Reads and writes this file instead of the one in the settings folder.
 /// An empty path goes back to the settings folder.</summary>
 procedure ColumnSetsUsePath(const APath: string);
@@ -184,18 +200,13 @@ begin
     (A.ShowAttr = B.ShowAttr);
 end;
 
-function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
+// The file's JSON with a "sets" object in place, or a fresh one when the file is
+// missing or unreadable. The caller frees it.
+function LoadRoot(out ASets: TJSONObject): TJSONObject;
 var
-  Root, Sets: TJSONObject;
   Parsed: TJSONValue;
-  Name: string;
-  I: Integer;
 begin
-  Result := False;
-  Name := Trim(AName);
-  if Name = '' then
-    Exit;
-  Root := nil;
+  Result := nil;
   if TFile.Exists(FilePath) then
   begin
     try
@@ -204,31 +215,129 @@ begin
       Parsed := nil;
     end;
     if Parsed is TJSONObject then
-      Root := TJSONObject(Parsed)
+      Result := TJSONObject(Parsed)
     else
       Parsed.Free;
   end;
-  if Root = nil then
-    Root := TJSONObject.Create;
+  if Result = nil then
+    Result := TJSONObject.Create;
+  if not (Result.GetValue('sets') is TJSONObject) then
+  begin
+    Result.RemovePair('sets').Free;
+    Result.AddPair('sets', TJSONObject.Create);
+  end;
+  ASets := TJSONObject(Result.GetValue('sets'));
+end;
+
+function StoreRoot(ARoot: TJSONObject): Boolean;
+begin
   try
-    if not (Root.GetValue('sets') is TJSONObject) then
-    begin
-      Root.RemovePair('sets').Free;
-      Root.AddPair('sets', TJSONObject.Create);
-    end;
-    Sets := TJSONObject(Root.GetValue('sets'));
+    ForceDirectories(ExtractFilePath(FilePath));
+    TFile.WriteAllText(FilePath, ARoot.Format(2), TEncoding.UTF8);
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+// Removes every pair whose name matches without regard to case.
+procedure RemoveSetPairs(ASets: TJSONObject; const AName: string);
+var
+  I: Integer;
+begin
+  for I := ASets.Count - 1 downto 0 do
+    if SameText(ASets.Pairs[I].JsonString.Value, AName) then
+      ASets.RemovePair(ASets.Pairs[I].JsonString.Value).Free;
+end;
+
+function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
+var
+  Root, Sets: TJSONObject;
+  Name: string;
+begin
+  Name := Trim(AName);
+  if Name = '' then
+    Exit(False);
+  Root := LoadRoot(Sets);
+  try
     // A set whose name differs only in case is replaced, not duplicated.
-    for I := Sets.Count - 1 downto 0 do
-      if SameText(Sets.Pairs[I].JsonString.Value, Name) then
-        Sets.RemovePair(Sets.Pairs[I].JsonString.Value).Free;
+    RemoveSetPairs(Sets, Name);
     Sets.AddPair(Name, ConfigToJson(AConfig));
-    try
-      ForceDirectories(ExtractFilePath(FilePath));
-      TFile.WriteAllText(FilePath, Root.Format(2), TEncoding.UTF8);
-      Result := True;
-    except
-      Result := False;
-    end;
+    Result := StoreRoot(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+function ColumnSetIsBuiltIn(const AName: string): Boolean;
+begin
+  Result := SameText(Trim(AName), 'Minimal') or SameText(Trim(AName), 'Dates') or
+    SameText(Trim(AName), 'Technical');
+end;
+
+function ColumnSetIsStored(const AName: string): Boolean;
+var
+  Root, Sets: TJSONObject;
+  I: Integer;
+begin
+  Result := False;
+  if not TFile.Exists(FilePath) then
+    Exit;
+  Root := LoadRoot(Sets);
+  try
+    for I := 0 to Sets.Count - 1 do
+      if SameText(Sets.Pairs[I].JsonString.Value, Trim(AName)) and
+         (Sets.Pairs[I].JsonValue is TJSONObject) then
+        Exit(True);
+  finally
+    Root.Free;
+  end;
+end;
+
+function ColumnSetDelete(const AName: string): Boolean;
+var
+  Root, Sets: TJSONObject;
+begin
+  if not ColumnSetIsStored(AName) then
+    Exit(False);
+  Root := LoadRoot(Sets);
+  try
+    RemoveSetPairs(Sets, Trim(AName));
+    Result := StoreRoot(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+function ColumnSetRename(const AOldName, ANewName: string): Boolean;
+var
+  Root, Sets: TJSONObject;
+  NewName, OldName: string;
+  Moved: TJSONValue;
+  Other: TColumnSet;
+  I: Integer;
+begin
+  Result := False;
+  OldName := Trim(AOldName);
+  NewName := Trim(ANewName);
+  if (NewName = '') or not ColumnSetIsStored(OldName) then
+    Exit;
+  if not SameText(OldName, NewName) and ColumnSetFind(NewName, Other) then
+    Exit;
+  Root := LoadRoot(Sets);
+  try
+    Moved := nil;
+    for I := 0 to Sets.Count - 1 do
+      if SameText(Sets.Pairs[I].JsonString.Value, OldName) then
+      begin
+        Moved := Sets.Pairs[I].JsonValue.Clone as TJSONValue;
+        Break;
+      end;
+    if Moved = nil then
+      Exit;
+    RemoveSetPairs(Sets, OldName);
+    Sets.AddPair(NewName, Moved);
+    Result := StoreRoot(Root);
   finally
     Root.Free;
   end;

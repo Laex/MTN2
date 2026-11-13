@@ -352,7 +352,11 @@ begin
       if Idx = FState.CursorIndex then
         ResolveOverlayTextColors(FTheme, False, False, True, cCursorFg, cCursorBg, Fg, Bg)
       else
+      begin
         ResolveOverlayTextColors(FTheme, False, False, False, cFileFg, cPanelBg, Fg, Bg);
+        if IsCur then
+          Fg := MixTint(TAlphaColor($FFFFFFFF), Fg, 60);
+      end;
       PutDriveLine(AGrid, R.Left + 1, Y, Line, FState.Drives[Idx], Fg, Bg);
     end
     else if Idx = Length(FState.Drives) then
@@ -367,7 +371,7 @@ begin
       SpecialIdx := Idx - (Length(FState.Drives) + 1);
       IsCur := CurGlyph = ChangeDriveSpecialGlyph(SpecialIdx);
       if IsCur then
-        Line := Format('* %s. %s', [ChangeDriveSpecialGlyph(SpecialIdx),
+        Line := Format('%s %s. %s', [#$25C6, ChangeDriveSpecialGlyph(SpecialIdx),
           ChangeDriveSpecialTitle(SpecialIdx)])
       else
         Line := Format('  %s. %s', [ChangeDriveSpecialGlyph(SpecialIdx),

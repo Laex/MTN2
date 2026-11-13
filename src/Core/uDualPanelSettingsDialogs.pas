@@ -135,6 +135,8 @@ type
     property OnSetProgramsInTerminal: TProc<Boolean>
       read FOnSetProgramsInTerminal write FOnSetProgramsInTerminal;
     procedure DispatchColumnsCommand(const AControlId: string);
+    function ColumnSetRows: TArray<string>;
+    procedure ManageColumnSet(const AControlId: string);
     procedure ShowMaskGroups(const ASelectName, AName, AMasks: string);
     procedure DispatchMaskGroupsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
@@ -244,7 +246,7 @@ begin
     GCustomColumnsConfig.ShowExt, GCustomColumnsConfig.ShowSize,
     GCustomColumnsConfig.ShowModified, GCustomColumnsConfig.ShowCreated,
     GCustomColumnsConfig.ShowAccessed, GCustomColumnsConfig.ShowType,
-    GCustomColumnsConfig.ShowAttr, AScheme), FOnCommand);
+    GCustomColumnsConfig.ShowAttr, AScheme, ColumnSetRows), FOnCommand);
   Notify;
 end;
 
@@ -692,6 +694,67 @@ begin
   Notify;
 end;
 
+// Rows of the column sets list: the name, and a marker on built-in sets the file
+// does not replace.
+function TSettingsDialogController.ColumnSetRows: TArray<string>;
+var
+  Sets: TArray<TColumnSet>;
+  I, NameW: Integer;
+  Tag: string;
+begin
+  Sets := ColumnSets;
+  Tag := T('ui.columnSets.builtIn', '(built-in)');
+  NameW := 0;
+  for I := 0 to High(Sets) do
+    NameW := Max(NameW, Length(Sets[I].Name));
+  SetLength(Result, Length(Sets));
+  for I := 0 to High(Sets) do
+  begin
+    Result[I] := Sets[I].Name;
+    if ColumnSetIsBuiltIn(Sets[I].Name) and not ColumnSetIsStored(Sets[I].Name) then
+      Result[I] := Result[I].PadRight(NameW) + '  ' + Tag;
+  end;
+end;
+
+// Edit loads the selected set into the checkboxes and the name field (OK then
+// saves it under that name); Rename gives the selected set the name in the field;
+// Delete removes it from the file. The dialog stays open.
+procedure TSettingsDialogController.ManageColumnSet(const AControlId: string);
+var
+  Sets: TArray<TColumnSet>;
+  Idx: Integer;
+  Cur: TColumnSet;
+  NewName: string;
+begin
+  Sets := ColumnSets;
+  Idx := FDialog.GetListSelectedIndex('sets');
+  if (Idx < 0) or (Idx > High(Sets)) then
+    Exit;
+  Cur := Sets[Idx];
+  if DialogCmdIs(AControlId, 'set_rename') then
+  begin
+    NewName := Trim(FDialog.GetInputValue('set_name'));
+    if ColumnSetRename(Cur.Name, NewName) then
+      FDialog.SetListItems('sets', ColumnSetRows, Idx);
+  end
+  else if DialogCmdIs(AControlId, 'set_delete') then
+  begin
+    if ColumnSetDelete(Cur.Name) then
+      FDialog.SetListItems('sets', ColumnSetRows, Idx);
+  end
+  else
+  begin
+    FDialog.SetCheckbox('col_ext', Cur.Config.ShowExt);
+    FDialog.SetCheckbox('col_size', Cur.Config.ShowSize);
+    FDialog.SetCheckbox('col_modified', Cur.Config.ShowModified);
+    FDialog.SetCheckbox('col_created', Cur.Config.ShowCreated);
+    FDialog.SetCheckbox('col_accessed', Cur.Config.ShowAccessed);
+    FDialog.SetCheckbox('col_type', Cur.Config.ShowType);
+    FDialog.SetCheckbox('col_attr', Cur.Config.ShowAttr);
+    FDialog.SetInputValue('set_name', Cur.Name);
+  end;
+end;
+
 procedure TSettingsDialogController.DispatchColumnsCommand(
   const AControlId: string);
 var
@@ -700,6 +763,14 @@ var
   Ids: TArray<string>;
   I: Integer;
 begin
+  if DialogCmdIs(AControlId, 'set_edit') or DialogCmdIs(AControlId, 'sets') or
+     DialogCmdIs(AControlId, 'set_rename') or DialogCmdIs(AControlId, 'set_delete') then
+  begin
+    // The window clears the dialog kind before every command; the dialog stays up.
+    SetKind(hdkColumnsConfig);
+    ManageColumnSet(AControlId);
+    Exit;
+  end;
   Accepted := DialogCmdIsAccept(AControlId);
   if Accepted then
   begin

@@ -281,7 +281,7 @@ var
   Sep: string;
 begin
   if AIsCurrent then
-    Mark := '*'
+    Mark := #$25C6
   else
     Mark := ' ';
   Kind := PadTrunc(DriveKindTitle(AInfo.KindLabel), 12);

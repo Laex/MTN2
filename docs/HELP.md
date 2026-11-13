@@ -260,7 +260,7 @@ In the select-by-mask dialog the “Select folders” check box applies the mask
 
 ### Column sets
 
-The column modes menu lists named column sets under Custom (Minimal, Dates and Technical are built in). A set applies its columns to the Custom mode. To save the current choice, type a name in the "Save as column set" field of the Custom columns dialog; sets are kept in `columnsets.json` in the settings folder.
+The column modes menu lists named column sets under Custom (Minimal, Dates and Technical are built in). A set applies its columns to the Custom mode. To save the current choice, type a name in the "Save as column set" field of the Custom columns dialog; sets are kept in `columnsets.json` in the settings folder. The same dialog lists the sets: Edit loads the selected set into the checkboxes and the name field (OK saves the changes under that name), Rename gives the selected set the name typed in the field, Delete removes it. Built-in sets cannot be renamed or deleted; saving a set under a built-in name replaces it, and deleting that set brings the built-in one back.
 
 ---
 

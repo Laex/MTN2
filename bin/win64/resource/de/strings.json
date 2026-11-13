@@ -130,6 +130,10 @@
       "col_type": "&Typ",
       "col_attr": "Attri&bute",
       "set_label": "Als Spaltensatz speichern (optional):",
+      "sets_label": "Spaltensätze:",
+      "set_edit": "Än&dern",
+      "set_rename": "&Umbenennen",
+      "set_delete": "&Löschen",
       "ok": "OK",
       "cancel": "Abbrechen"
     },
