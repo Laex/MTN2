@@ -147,7 +147,7 @@ end;
 function PairMarkedFilesByName(const ALeftRows, ARightRows: TPanelRows;
   const ALeftTab, ARightTab: TTab; out ASkipped: Integer): TArray<TComparePair>;
 var
-  LeftMarked, RightMarked, I, J: Integer;
+  LeftMarked, RightMarked, J: Integer;
   MarkedIsLeft, BothMarked: Boolean;
   Pairs: TList<TComparePair>;
   Other: TDictionary<string, Integer>;

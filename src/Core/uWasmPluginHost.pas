@@ -2083,189 +2083,139 @@ begin
   Result := True;
 end;
 
+type
+  THostImportSpec = record
+    Name: AnsiString;
+    /// <summary>Count of i32 parameters (result i32), or cSigSize / cSigReadAt.</summary>
+    Arity: Integer;
+    Callback: Pointer;
+  end;
+
+const
+  cSigSize = -1;
+  cSigReadAt = -2;
+
+function HostImportTable: TArray<THostImportSpec>;
+var
+  N: Integer;
+
+  procedure Add(const AName: AnsiString; AArity: Integer; ACallback: Pointer);
+  begin
+    Result[N].Name := AName;
+    Result[N].Arity := AArity;
+    Result[N].Callback := ACallback;
+    Inc(N);
+  end;
+
+begin
+  SetLength(Result, 64);
+  N := 0;
+  Add(cVfsOpen, 4, @HostVfsOpen);
+  Add(cVfsSize, cSigSize, @HostVfsSize);
+  Add(cVfsReadAt, cSigReadAt, @HostVfsReadAt);
+  Add(cVfsClose, 1, @HostVfsClose);
+  Add(cVfsCancel, 1, @HostVfsCancel);
+  Add(cSurfaceGetFullscreen, 1, @HostSurfaceGetFullscreen);
+  Add(cRegCommand, 4, @HostRegCommand);
+  Add(cRegCommandHook, 5, @HostRegCommandHook);
+  Add(cExecCommand, 2, @HostExecCommand);
+  Add(cRegDocProvider, 6, @HostRegDocProvider);
+  Add(cShowDialog, 4, @HostShowDialog);
+  Add(cSurfaceOpenEx, 11, @HostSurfaceOpenEx);
+  Add(cSurfaceSetFullscreen, 2, @HostSurfaceSetFullscreen);
+  Add(cPanelList, 3, @HostPanelList);
+  Add(cPanelSetCursor, 3, @HostPanelSetCursor);
+  Add(cPanelSelect, 4, @HostPanelSelect);
+  Add(cDocSetSelection, 4, @HostDocSetSelection);
+  Add(cDocLine, 3, @HostDocLine);
+  Add(cProgressSet, 5, @HostProgressSet);
+  Add(cProgressEnd, 2, @HostProgressEnd);
+  Add(cRegHighlighter, 4, @HostRegHighlighter);
+  Add(cRegHighlighterState, 5, @HostRegHighlighterState);
+  Add(cVfsList, 4, @HostVfsList);
+  Add(cVfsExists, 4, @HostVfsExists);
+  Add(cVfsRead, 5, @HostVfsRead);
+  Add(cVfsResult, 3, @HostVfsResult);
+  Add(cHostInfo, 2, @HostHostInfo);
+  Add(cTranslate, 6, @HostTranslate);
+  Add(cDocInfo, 2, @HostDocInfo);
+  Add(cDocGetText, 3, @HostDocGetText);
+  Add(cDocReplace, 3, @HostDocReplace);
+  Add(cDocSetCursor, 2, @HostDocSetCursor);
+  Add(cPanelInfo, 2, @HostPanelInfo);
+  Add(cPanelGoto, 3, @HostPanelGoto);
+  Add(cPanelRefresh, 0, @HostPanelRefresh);
+  Add(cClipboardGet, 2, @HostClipboardGet);
+  Add(cClipboardSet, 2, @HostClipboardSet);
+  Add(cShowMessage, 3, @HostShowMessage);
+  Add(cSubscribe, 4, @HostSubscribe);
+  Add(cSurfaceOpen, 8, @HostSurfaceOpen);
+  Add(cSurfaceSetFrame, 5, @HostSurfaceSetFrame);
+  Add(cSurfaceSetInfo, 5, @HostSurfaceSetInfo);
+  Add(cSurfaceSetTimer, 2, @HostSurfaceSetTimer);
+  Add(cSurfaceClose, 1, @HostSurfaceClose);
+  Add(cRegPanelActivate, 4, @HostRegPanelActivate);
+  Add(cRegKeyBinding, 4, @HostRegKeyBinding);
+  Add(cRegSettings, 2, @HostRegSettings);
+  Add(cGetSetting, 4, @HostGetSetting);
+  Add(cSetSetting, 4, @HostSetSetting);
+  Add(cSetCaption, 4, @HostSetCommandCaption);
+  Add(cSetStatusSegment, 4, @HostSetStatusSegment);
+  Add(cRegVfs, 3, @HostRegVfs);
+  Add(cRegPanel, 3, @HostRegPanel);
+  Add(cPublish, 4, @HostPublish);
+  Add(cRegMenu, 9, @HostRegMenu);
+  SetLength(Result, N);
+end;
+
+/// <summary>Function type of an import: AArity i32 parameters and an i32
+/// result, or one of the two i64 signatures.</summary>
+function MakeImportType(AArity: Integer): PWasmFunctype;
+var
+  Params: TBytes;
+  I: Integer;
+begin
+  case AArity of
+    cSigSize: Exit(MakeFuncType([WASM_I32], [WASM_I64]));
+    cSigReadAt: Exit(MakeFuncType([WASM_I32, WASM_I64, WASM_I32, WASM_I32], [WASM_I64]));
+  end;
+  SetLength(Params, AArity);
+  for I := 0 to AArity - 1 do
+    Params[I] := WASM_I32;
+  Result := MakeFuncType(Params, [WASM_I32]);
+end;
+
 /// <summary>Defines every mtn_host import on ALinker.</summary>
 function DefineAllHostImports(ALinker: PWasmtimeLinker; out AError: string): Boolean;
 var
-  Ty0, Ty1, Ty2, Ty3, Ty4, Ty5, Ty6, Ty8, Ty9, Ty11, TySize, TyReadAt: PWasmFunctype;
+  Types: array[cSigReadAt..11] of PWasmFunctype;
+  Spec: THostImportSpec;
+  I: Integer;
 begin
   AError := '';
   GDefineLinker := ALinker;
-  Ty0 := MakeFuncType([], [WASM_I32]);
-  Ty1 := MakeFuncType([WASM_I32], [WASM_I32]);
-  Ty2 := MakeFuncType([WASM_I32, WASM_I32], [WASM_I32]);
-  Ty3 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty4 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty5 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty6 := MakeFuncType([WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty8 := MakeFuncType(
-    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32], [WASM_I32]);
-  Ty11 := MakeFuncType(
-    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32,
-     WASM_I32, WASM_I32], [WASM_I32]);
-  Ty9 := MakeFuncType(
-    [WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32],
-    [WASM_I32]);
-  if (Ty11 = nil) or (Ty0 = nil) or (Ty1 = nil) or (Ty8 = nil) or (Ty2 = nil) or (Ty3 = nil) or (Ty4 = nil) or (Ty5 = nil) or (Ty6 = nil) or
-     (Ty9 = nil) then
-  begin
-    if Ty6 <> nil then
-      Wasmtime.FunctypeDelete(Ty6);
-    if Ty11 <> nil then
-      Wasmtime.FunctypeDelete(Ty11);
-    if Ty0 <> nil then
-      Wasmtime.FunctypeDelete(Ty0);
-    if Ty1 <> nil then
-      Wasmtime.FunctypeDelete(Ty1);
-    if Ty8 <> nil then
-      Wasmtime.FunctypeDelete(Ty8);
-    if Ty2 <> nil then
-      Wasmtime.FunctypeDelete(Ty2);
-    if Ty3 <> nil then
-      Wasmtime.FunctypeDelete(Ty3);
-    if Ty4 <> nil then
-      Wasmtime.FunctypeDelete(Ty4);
-    if Ty5 <> nil then
-      Wasmtime.FunctypeDelete(Ty5);
-    if Ty9 <> nil then
-      Wasmtime.FunctypeDelete(Ty9);
-    AError := 'wasm_functype_new failed';
-    Exit(False);
-  end;
-  TySize := MakeFuncType([WASM_I32], [WASM_I64]);
-  TyReadAt := MakeFuncType([WASM_I32, WASM_I64, WASM_I32, WASM_I32], [WASM_I64]);
+  Result := False;
+  for I := Low(Types) to High(Types) do
+    Types[I] := nil;
   try
-    if (TySize = nil) or (TyReadAt = nil) then
+    for Spec in HostImportTable do
     begin
-      AError := 'wasm_functype_new failed';
-      Exit(False);
+      if Types[Spec.Arity] = nil then
+        Types[Spec.Arity] := MakeImportType(Spec.Arity);
+      if Types[Spec.Arity] = nil then
+      begin
+        AError := 'wasm_functype_new failed';
+        Exit;
+      end;
+      if not DefineHostImport(Spec.Name, Types[Spec.Arity], Spec.Callback, AError) then
+        Exit;
     end;
-    if not DefineHostImport(cVfsOpen, Ty4, @HostVfsOpen, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsSize, TySize, @HostVfsSize, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsReadAt, TyReadAt, @HostVfsReadAt, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsClose, Ty1, @HostVfsClose, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsCancel, Ty1, @HostVfsCancel, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceGetFullscreen, Ty1, @HostSurfaceGetFullscreen, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegCommand, Ty4, @HostRegCommand, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegCommandHook, Ty5, @HostRegCommandHook, AError) then
-      Exit(False);
-    if not DefineHostImport(cExecCommand, Ty2, @HostExecCommand, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegDocProvider, Ty6, @HostRegDocProvider, AError) then
-      Exit(False);
-    if not DefineHostImport(cShowDialog, Ty4, @HostShowDialog, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceOpenEx, Ty11, @HostSurfaceOpenEx, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceSetFullscreen, Ty2, @HostSurfaceSetFullscreen, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelList, Ty3, @HostPanelList, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelSetCursor, Ty3, @HostPanelSetCursor, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelSelect, Ty4, @HostPanelSelect, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocSetSelection, Ty4, @HostDocSetSelection, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocLine, Ty3, @HostDocLine, AError) then
-      Exit(False);
-    if not DefineHostImport(cProgressSet, Ty5, @HostProgressSet, AError) then
-      Exit(False);
-    if not DefineHostImport(cProgressEnd, Ty2, @HostProgressEnd, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegHighlighter, Ty4, @HostRegHighlighter, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegHighlighterState, Ty5, @HostRegHighlighterState, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsList, Ty4, @HostVfsList, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsExists, Ty4, @HostVfsExists, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsRead, Ty5, @HostVfsRead, AError) then
-      Exit(False);
-    if not DefineHostImport(cVfsResult, Ty3, @HostVfsResult, AError) then
-      Exit(False);
-    if not DefineHostImport(cHostInfo, Ty2, @HostHostInfo, AError) then
-      Exit(False);
-    if not DefineHostImport(cTranslate, Ty6, @HostTranslate, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocInfo, Ty2, @HostDocInfo, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocGetText, Ty3, @HostDocGetText, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocReplace, Ty3, @HostDocReplace, AError) then
-      Exit(False);
-    if not DefineHostImport(cDocSetCursor, Ty2, @HostDocSetCursor, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelInfo, Ty2, @HostPanelInfo, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelGoto, Ty3, @HostPanelGoto, AError) then
-      Exit(False);
-    if not DefineHostImport(cPanelRefresh, Ty0, @HostPanelRefresh, AError) then
-      Exit(False);
-    if not DefineHostImport(cClipboardGet, Ty2, @HostClipboardGet, AError) then
-      Exit(False);
-    if not DefineHostImport(cClipboardSet, Ty2, @HostClipboardSet, AError) then
-      Exit(False);
-    if not DefineHostImport(cShowMessage, Ty3, @HostShowMessage, AError) then
-      Exit(False);
-    if not DefineHostImport(cSubscribe, Ty4, @HostSubscribe, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceOpen, Ty8, @HostSurfaceOpen, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceSetFrame, Ty5, @HostSurfaceSetFrame, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceSetInfo, Ty5, @HostSurfaceSetInfo, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceSetTimer, Ty2, @HostSurfaceSetTimer, AError) then
-      Exit(False);
-    if not DefineHostImport(cSurfaceClose, Ty1, @HostSurfaceClose, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegPanelActivate, Ty4, @HostRegPanelActivate, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegKeyBinding, Ty4, @HostRegKeyBinding, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegSettings, Ty2, @HostRegSettings, AError) then
-      Exit(False);
-    if not DefineHostImport(cGetSetting, Ty4, @HostGetSetting, AError) then
-      Exit(False);
-    if not DefineHostImport(cSetSetting, Ty4, @HostSetSetting, AError) then
-      Exit(False);
-    if not DefineHostImport(cSetCaption, Ty4, @HostSetCommandCaption, AError) then
-      Exit(False);
-    if not DefineHostImport(cSetStatusSegment, Ty4, @HostSetStatusSegment, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegVfs, Ty3, @HostRegVfs, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegPanel, Ty3, @HostRegPanel, AError) then
-      Exit(False);
-    if not DefineHostImport(cPublish, Ty4, @HostPublish, AError) then
-      Exit(False);
-    if not DefineHostImport(cRegMenu, Ty9, @HostRegMenu, AError) then
-      Exit(False);
+    Result := True;
   finally
-    if TySize <> nil then
-      Wasmtime.FunctypeDelete(TySize);
-    if TyReadAt <> nil then
-      Wasmtime.FunctypeDelete(TyReadAt);
-    Wasmtime.FunctypeDelete(Ty11);
-    Wasmtime.FunctypeDelete(Ty0);
-    Wasmtime.FunctypeDelete(Ty1);
-    Wasmtime.FunctypeDelete(Ty8);
-    Wasmtime.FunctypeDelete(Ty2);
-    Wasmtime.FunctypeDelete(Ty3);
-    Wasmtime.FunctypeDelete(Ty4);
-    Wasmtime.FunctypeDelete(Ty5);
-    Wasmtime.FunctypeDelete(Ty6);
-    Wasmtime.FunctypeDelete(Ty9);
+    for I := Low(Types) to High(Types) do
+      if Types[I] <> nil then
+        Wasmtime.FunctypeDelete(Types[I]);
   end;
-  Result := True;
 end;
 
 function EnsureWasmEngine(out AError: string): Boolean;

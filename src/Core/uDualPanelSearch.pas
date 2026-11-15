@@ -885,8 +885,8 @@ procedure TSearchController.DrawSearchUi(const AGrid: TTerminalGrid;
   AClientWidth, AClientHeight: Integer);
 var
   R: TRectI;
-  Y, ViewH, Idx, MaxW: Integer;
-  Line, Path, Rel, InnerPath: string;
+  Y, ViewH, Idx: Integer;
+  Path, Rel, InnerPath: string;
   Title: string;
   Fg, Bg: TAlphaColor;
 begin

@@ -52,7 +52,7 @@ procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
 implementation
 
 uses
-  System.SysUtils, System.Math, uThemeTypes, uDialogRenderer, uCharWidth;
+  System.SysUtils, System.Math, System.Generics.Collections, uThemeTypes, uDialogRenderer, uCharWidth;
 
 function ClientWidthOf(AWidth: Integer): Integer;
 begin
@@ -468,6 +468,34 @@ begin
   end;
 end;
 
+/// <summary>Writes the computed columns and widths back to the non-button
+/// controls. A stretched control keeps its authored right inset (a rule keeps
+/// the same inset on both sides) against the final client width.</summary>
+procedure ApplyFittedGeometry(var ADecl: TDialogDeclaration; AClientW: Integer;
+  const ANewCol, ANewW, AInset: TArray<Integer>; const AStretch, ARule: TArray<Boolean>);
+var
+  I, W: Integer;
+begin
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    if ADecl.Controls[I].Kind = dckButton then
+      Continue;
+    W := ANewW[I];
+    if AStretch[I] then
+    begin
+      if ARule[I] then
+        W := Max(1, AClientW - 2 * ANewCol[I])
+      else
+        W := Max(W, AClientW - AInset[I] - ANewCol[I]);
+    end;
+    ADecl.Controls[I].Col := ANewCol[I];
+    ADecl.Controls[I].BoxW := Max(W, 1);
+    if ARule[I] and (ADecl.Controls[I].Text <> '') then
+      ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
+        ADecl.Controls[I].BoxW);
+  end;
+end;
+
 procedure FitDialogToTranslatedText(var ADecl: TDialogDeclaration);
 var
   I, J, ClientW, NewClient, Tmp, Lim: Integer;
@@ -544,18 +572,8 @@ begin
         Next[I] := J;
   end;
 
-  // Insertion-sort columns so shifts accumulate left to right.
-  for I := 1 to High(Cols) do
-  begin
-    J := I;
-    while (J > 0) and (Cols[J] < Cols[J - 1]) do
-    begin
-      Tmp := Cols[J];
-      Cols[J] := Cols[J - 1];
-      Cols[J - 1] := Tmp;
-      Dec(J);
-    end;
-  end;
+  // Columns sorted so shifts accumulate left to right.
+  TArray.Sort<Integer>(Cols);
 
   // New column positions, left to right: never left of the authored one,
   // and past every grown control whose right neighbour starts here, by that
@@ -608,25 +626,7 @@ begin
   NewClient := Max(NewClient, PackButtonRows(ADecl));
   NewClient := Max(NewClient, TitleMinWidth(ADecl.Title) - 2);
 
-  for I := 0 to High(ADecl.Controls) do
-  begin
-    if IsButton(I) then
-      Continue;
-    if Stretch[I] then
-    begin
-      // A rule keeps the same inset on both sides; any other control keeps
-      // its authored right inset.
-      if Rule[I] then
-        NewW[I] := Max(1, NewClient - 2 * NewCol[I])
-      else
-        NewW[I] := Max(NewW[I], NewClient - Inset[I] - NewCol[I]);
-    end;
-    ADecl.Controls[I].Col := NewCol[I];
-    ADecl.Controls[I].BoxW := Max(NewW[I], 1);
-    if Rule[I] and (ADecl.Controls[I].Text <> '') then
-      ADecl.Controls[I].Text := StringOfChar(ADecl.Controls[I].Text[1],
-        ADecl.Controls[I].BoxW);
-  end;
+  ApplyFittedGeometry(ADecl, NewClient, NewCol, NewW, Inset, Stretch, Rule);
   ADecl.Width := Max(ADecl.Width, NewClient + 2);
   KeepAuthoredColumns(ADecl, GroupCol);
   CenterButtonRows(ADecl, ClientWidthOf(ADecl.Width), GroupCol);

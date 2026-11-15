@@ -15011,7 +15011,6 @@ var
   Bytes: Int64;
   Tab: TTab;
   M: IPanelModel;
-  Rows: TPanelRows;
   Snap: TDrawFilesSnapshot;
   SelFg, SelBg: TAlphaColor;
 begin
@@ -15178,7 +15177,6 @@ procedure TDualPanelWindow.PopulatePanelStatusSnap(var Snap: TPanelStatusSnapsho
 var
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
   Count: Integer;
   Path, SelText, CursorText, Desc: string;
   Bytes: Int64;
