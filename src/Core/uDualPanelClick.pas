@@ -357,11 +357,47 @@ begin
   end;
 end;
 
+procedure HandleSearchOverlayClick(const AHost: TDualPanelClickHost;
+  const ASnap: TClickOverlaySnapshot; ALocalCol, ALocalRow: Integer);
+var
+  Bounds: TRectI;
+begin
+  if ASnap.SearchPhase = spDialog then
+    Exit;
+  AHost.LayoutSearchUi(ASnap.AreaWidth, ASnap.AreaHeight);
+  Bounds := AHost.SearchBounds();
+  if not (WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
+          (not Bounds.Contains(ALocalCol, ALocalRow))) then
+    Exit;
+  if ASnap.SearchPhase = spRunning then
+    // [x] and a click outside ask to stop, like Esc.
+    AHost.RequestSearchStop
+  else
+  begin
+    AHost.CloseSearchUi();
+    AHost.NotifyChanged();
+  end;
+end;
+
+// Routes the click to the open user/sort/column-mode popup; False when none
+// is open.
+function TryDispatchMenuPopup(const AHost: TDualPanelClickHost;
+  const ASnap: TClickOverlaySnapshot; ALocalCol, ALocalRow: Integer): Boolean;
+begin
+  Result := True;
+  if ASnap.UserMenuVisible then
+    ConsumeMenuClick(AHost.HandleUserMenuClick, AHost, ALocalCol, ALocalRow)
+  else if ASnap.SortMenuVisible then
+    ConsumeMenuClick(AHost.HandleSortMenuClick, AHost, ALocalCol, ALocalRow)
+  else if ASnap.ColumnModeMenuVisible then
+    ConsumeMenuClick(AHost.HandleColumnModeMenuClick, AHost, ALocalCol, ALocalRow)
+  else
+    Result := False;
+end;
+
 function DispatchClickOverlays(const AHost: TDualPanelClickHost;
   const ASnap: TClickOverlaySnapshot; ALocalCol, ALocalRow: Integer;
   AShift: TShiftState; ADoubleClick: Boolean; out AHandled: Boolean): Boolean;
-var
-  Bounds: TRectI;
 begin
   Result := True;
   AHandled := True;
@@ -423,42 +459,12 @@ begin
 
   if ASnap.SearchPhase <> spNone then
   begin
-    if ASnap.SearchPhase <> spDialog then
-    begin
-      AHost.LayoutSearchUi(ASnap.AreaWidth, ASnap.AreaHeight);
-      Bounds := AHost.SearchBounds();
-      if ASnap.SearchPhase = spRunning then
-      begin
-        // [x] and a click outside ask to stop, like Esc.
-        if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
-           (not Bounds.Contains(ALocalCol, ALocalRow)) then
-          AHost.RequestSearchStop;
-      end
-      else if WindowFrameCloseHit(Bounds, ALocalCol, ALocalRow) or
-              (not Bounds.Contains(ALocalCol, ALocalRow)) then
-      begin
-        AHost.CloseSearchUi();
-        AHost.NotifyChanged();
-      end;
-    end;
+    HandleSearchOverlayClick(AHost, ASnap, ALocalCol, ALocalRow);
     Exit;
   end;
 
-  if ASnap.UserMenuVisible then
-  begin
-    ConsumeMenuClick(AHost.HandleUserMenuClick, AHost, ALocalCol, ALocalRow);
+  if TryDispatchMenuPopup(AHost, ASnap, ALocalCol, ALocalRow) then
     Exit;
-  end;
-  if ASnap.SortMenuVisible then
-  begin
-    ConsumeMenuClick(AHost.HandleSortMenuClick, AHost, ALocalCol, ALocalRow);
-    Exit;
-  end;
-  if ASnap.ColumnModeMenuVisible then
-  begin
-    ConsumeMenuClick(AHost.HandleColumnModeMenuClick, AHost, ALocalCol, ALocalRow);
-    Exit;
-  end;
 
   // A click on the tree goes to it; elsewhere it reaches the panels.
   if ASnap.FolderTreeVisible and AHost.HandleFolderTreeClick(ALocalCol, ALocalRow) then

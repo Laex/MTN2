@@ -269,6 +269,8 @@ type
     function IsItemEnabled(const AItem: TSubmenuItem): Boolean;
     procedure ExecuteItem(const AItem: TSubmenuItem);
     procedure MoveSubmenuCursor(ADelta: Integer);
+    function HandleNavigationKey(AKey: Word): Boolean;
+    function HandleMnemonicKey(AKeyChar: Char): Boolean;
     procedure MoveSubmenuToEdge(AFirst: Boolean);
     function SubmenuItemAt(ACol, ARow: Integer): Integer;
     procedure SnapSubmenuToSelectable;
@@ -1826,8 +1828,6 @@ end;
 
 function TTopMenuController.HandleInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
-var
-  HotCat, HotSub: Integer;
 begin
   Result := False;
   if not FActive then
@@ -1856,76 +1856,8 @@ begin
     Exit;
   end;
 
-  // Left / Right navigation between top categories
-  if AKey = vkLeft then
+  if HandleNavigationKey(AKey) then
   begin
-    if FCategoryIndex > 0 then
-      Dec(FCategoryIndex)
-    else
-      FCategoryIndex := High(FCategories);
-    FSubmenuIndex := 0;
-    SnapSubmenuToSelectable;
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-
-  if AKey = vkRight then
-  begin
-    if FCategoryIndex < High(FCategories) then
-      Inc(FCategoryIndex)
-    else
-      FCategoryIndex := 0;
-    FSubmenuIndex := 0;
-    SnapSubmenuToSelectable;
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-
-  // Home / End / PgUp / PgDn: first or last item of an open dropdown, else the first
-  // or last category on the bar.
-  if (AKey = vkHome) or (AKey = vkEnd) or (AKey = vkPrior) or (AKey = vkNext) then
-  begin
-    if FSubmenuOpen then
-      MoveSubmenuToEdge((AKey = vkHome) or (AKey = vkPrior))
-    else
-    begin
-      if (AKey = vkHome) or (AKey = vkPrior) then
-        FCategoryIndex := 0
-      else
-        FCategoryIndex := High(FCategories);
-      FSubmenuIndex := 0;
-    end;
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-
-  // Down arrow opens/moves inside submenu
-  if AKey = vkDown then
-  begin
-    if not FSubmenuOpen then
-    begin
-      FSubmenuOpen := True;
-      SnapSubmenuToSelectable;
-    end
-    else
-      MoveSubmenuCursor(1);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-
-  // Up arrow moves up inside submenu
-  if AKey = vkUp then
-  begin
-    if FSubmenuOpen then
-      MoveSubmenuCursor(-1);
     if Assigned(FOnInvalidate) then
       FOnInvalidate;
     AKey := 0;
@@ -1956,34 +1888,85 @@ begin
   // the dropdown closed only the bar's letters act, so an item that is not
   // on screen never runs.
   if AKeyChar <> #0 then
-  begin
-    HotSub := -1;
-    if FSubmenuOpen then
-      HotSub := FindHotSubItem(AKeyChar);
-
-    HotCat := -1;
-    if HotSub < 0 then
-      HotCat := FindHotCategory(AKeyChar);
-    if HotCat >= 0 then
-    begin
-      ActivateMenu(HotCat, True);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
-
-    if HotSub >= 0 then
-    begin
-      FSubmenuIndex := HotSub;
-      ExecuteItem(FCategories[FCategoryIndex].Items[HotSub]);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
-  end;
+    HandleMnemonicKey(AKeyChar);
 
   AKey := 0;
   AKeyChar := #0;
+end;
+
+// Left/Right between categories, Home/End/PgUp/PgDn to the first or last
+// item of an open dropdown (else the first or last category), Down/Up inside
+// the dropdown. True when AKey was one of these; the caller redraws.
+function TTopMenuController.HandleNavigationKey(AKey: Word): Boolean;
+begin
+  Result := True;
+  case AKey of
+    vkLeft:
+      begin
+        if FCategoryIndex > 0 then
+          Dec(FCategoryIndex)
+        else
+          FCategoryIndex := High(FCategories);
+        FSubmenuIndex := 0;
+        SnapSubmenuToSelectable;
+      end;
+    vkRight:
+      begin
+        if FCategoryIndex < High(FCategories) then
+          Inc(FCategoryIndex)
+        else
+          FCategoryIndex := 0;
+        FSubmenuIndex := 0;
+        SnapSubmenuToSelectable;
+      end;
+    vkHome, vkEnd, vkPrior, vkNext:
+      if FSubmenuOpen then
+        MoveSubmenuToEdge((AKey = vkHome) or (AKey = vkPrior))
+      else
+      begin
+        if (AKey = vkHome) or (AKey = vkPrior) then
+          FCategoryIndex := 0
+        else
+          FCategoryIndex := High(FCategories);
+        FSubmenuIndex := 0;
+      end;
+    vkDown:
+      if not FSubmenuOpen then
+      begin
+        FSubmenuOpen := True;
+        SnapSubmenuToSelectable;
+      end
+      else
+        MoveSubmenuCursor(1);
+    vkUp:
+      if FSubmenuOpen then
+        MoveSubmenuCursor(-1);
+  else
+    Result := False;
+  end;
+end;
+
+function TTopMenuController.HandleMnemonicKey(AKeyChar: Char): Boolean;
+var
+  HotCat, HotSub: Integer;
+begin
+  Result := True;
+  HotSub := -1;
+  if FSubmenuOpen then
+    HotSub := FindHotSubItem(AKeyChar);
+
+  HotCat := -1;
+  if HotSub < 0 then
+    HotCat := FindHotCategory(AKeyChar);
+  if HotCat >= 0 then
+    ActivateMenu(HotCat, True)
+  else if HotSub >= 0 then
+  begin
+    FSubmenuIndex := HotSub;
+    ExecuteItem(FCategories[FCategoryIndex].Items[HotSub]);
+  end
+  else
+    Result := False;
 end;
 
 function TTopMenuController.HandleTopBarClick(ACol: Integer): Boolean;
