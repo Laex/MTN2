@@ -90,6 +90,9 @@ type
     procedure RefreshBackgroundJob(ASearch: TBackgroundSearch);
     procedure HideBackground(ASearch: TBackgroundSearch);
     procedure EndForegroundJob;
+    procedure ShowSearchError(const AMessage: string);
+    function TryBuildFindOptions(const ARoot, AMask: string;
+      out AOpts: TFindOptions; out AError: string): Boolean;
     procedure JobCancel(AId: Integer);
     procedure JobOpen(AId: Integer);
     procedure JobForeground(AId: Integer; AForeground: Boolean);
@@ -295,11 +298,68 @@ begin
   FSearch.Bounds := TRectI.Make(Left, Top, Left + W - 1, Top + H - 1);
 end;
 
-procedure TSearchController.StartSearch;
+// Shows a search that could not start as an empty results page carrying the
+// reason.
+procedure TSearchController.ShowSearchError(const AMessage: string);
+begin
+  FSearch.Message := AMessage;
+  FSearch.Phase := spResults;
+  SetLength(FSearch.Results, 0);
+  if Assigned(FOnInvalidate) then
+    FOnInvalidate;
+end;
+
+// Validates the dialog input and fills the find options. A bad pattern or
+// size is reported before the walk starts instead of silently matching
+// nothing on every file; past this point the overlay says the search is
+// running, and Esc only cancels a walk that has already started.
+function TSearchController.TryBuildFindOptions(const ARoot, AMask: string;
+  out AOpts: TFindOptions; out AError: string): Boolean;
 var
-  Mask, Root, RegexError, FilterError: string;
+  RegexError, FilterError: string;
   HexPattern: TArray<Integer>;
   ByBytes: Boolean;
+begin
+  Result := False;
+  ByBytes := FSearch.HexMode and (Trim(FSearch.HexText) <> '');
+  if ByBytes and
+     not TryParseHexPattern(FSearch.HexText, HexPattern, RegexError) then
+  begin
+    AError := 'Invalid hex: ' + RegexError;
+    Exit;
+  end;
+  if not ByBytes and FSearch.UseRegex and (Trim(FSearch.ContainingText) <> '') and
+     not ValidateRegexPattern(FSearch.ContainingText, RegexError) then
+  begin
+    AError := 'Invalid regex: ' + RegexError;
+    Exit;
+  end;
+
+  AOpts := DefaultFindOptions(ARoot, AMask, FSearch.Subdirs);
+  AOpts.ContainingText := FSearch.ContainingText;
+  AOpts.CaseSensitive := FSearch.CaseSensitive;
+  AOpts.WholeWords := FSearch.WholeWords;
+  AOpts.SearchFolders := FSearch.SearchFolders;
+  AOpts.UseRegex := FSearch.UseRegex;
+  AOpts.SearchArchives := FSearch.SearchArchives;
+  AOpts.ForceEncoding := (FSearch.EncodingIdx > 0) and
+    TryTextEncodingFromListIndex(FSearch.EncodingIdx - 1, AOpts.Encoding);
+  if ByBytes then
+  begin
+    AOpts.ContainingText := '';
+    AOpts.HexBytes := FSearch.HexText;
+  end;
+  if not ApplyFindFilterText(AOpts, FSearch.Filters, FilterError) then
+  begin
+    AError := FilterError;
+    Exit;
+  end;
+  Result := True;
+end;
+
+procedure TSearchController.StartSearch;
+var
+  Mask, Root, ErrorText: string;
   Token: IJobCancelToken;
   Opts: TFindOptions;
   Life: ILifeFlag;
@@ -316,61 +376,13 @@ begin
   FSearch.RootPath := Root;
   if Root = '' then
   begin
-    FSearch.Message := 'No search path';
-    FSearch.Phase := spResults;
-    SetLength(FSearch.Results, 0);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
+    ShowSearchError('No search path');
     Exit;
   end;
 
-  // Validate the regex once up front - a bad pattern is reported instantly
-  // instead of silently matching nothing on every file in the walk.
-  ByBytes := FSearch.HexMode and (Trim(FSearch.HexText) <> '');
-  if ByBytes and
-     not TryParseHexPattern(FSearch.HexText, HexPattern, RegexError) then
+  if not TryBuildFindOptions(Root, Mask, Opts, ErrorText) then
   begin
-    FSearch.Message := 'Invalid hex: ' + RegexError;
-    FSearch.Phase := spResults;
-    SetLength(FSearch.Results, 0);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    Exit;
-  end;
-  if not ByBytes and FSearch.UseRegex and (Trim(FSearch.ContainingText) <> '') and
-     not ValidateRegexPattern(FSearch.ContainingText, RegexError) then
-  begin
-    FSearch.Message := 'Invalid regex: ' + RegexError;
-    FSearch.Phase := spResults;
-    SetLength(FSearch.Results, 0);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    Exit;
-  end;
-
-  Opts := DefaultFindOptions(Root, Mask, FSearch.Subdirs);
-  Opts.ContainingText := FSearch.ContainingText;
-  Opts.CaseSensitive := FSearch.CaseSensitive;
-  Opts.WholeWords := FSearch.WholeWords;
-  Opts.SearchFolders := FSearch.SearchFolders;
-  Opts.UseRegex := FSearch.UseRegex;
-  Opts.SearchArchives := FSearch.SearchArchives;
-  Opts.ForceEncoding := (FSearch.EncodingIdx > 0) and
-    TryTextEncodingFromListIndex(FSearch.EncodingIdx - 1, Opts.Encoding);
-  if ByBytes then
-  begin
-    Opts.ContainingText := '';
-    Opts.HexBytes := FSearch.HexText;
-  end;
-  // A rejected size stops here. Past this point the overlay says the search
-  // is running, and Esc only cancels a walk that has already started.
-  if not ApplyFindFilterText(Opts, FSearch.Filters, FilterError) then
-  begin
-    FSearch.Message := FilterError;
-    FSearch.Phase := spResults;
-    SetLength(FSearch.Results, 0);
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
+    ShowSearchError(ErrorText);
     Exit;
   end;
 
