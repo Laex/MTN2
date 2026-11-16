@@ -13,6 +13,7 @@ type
     [Test] procedure ParentRowAndFoldersKeepTheirOwnKeys;
     [Test] procedure FileKindsMapToTypeGroups;
     [Test] procedure AgeClassesFollowTheCalendarDay;
+    [Test] procedure DateAndExtHelpersMatchRowKeys;
     [Test] procedure RowsAreOrderedByGroupThenByTheSortColumn;
     [Test] procedure GroupingIsSavedInTheSession;
   end;
@@ -74,6 +75,20 @@ begin
   Assert.AreEqual(24, PanelRowGroupKey(pgbDate, FileRow('a', EncodeDateTime(2025, 12, 1, 9, 0, 0, 0)), Moment), 'last year');
   Assert.AreEqual(25, PanelRowGroupKey(pgbDate, FileRow('a', EncodeDateTime(2020, 1, 1, 9, 0, 0, 0)), Moment), 'older');
   Assert.AreEqual(29, PanelRowGroupKey(pgbDate, FileRow('a', 0), Moment), 'no date');
+end;
+
+procedure TTestPanelGrouping.DateAndExtHelpersMatchRowKeys;
+var
+  Moment: TDateTime;
+begin
+  Moment := EncodeDateTime(2026, 6, 15, 12, 0, 0, 0);
+  Assert.AreEqual(20, PanelDateGroupKey(EncodeDateTime(2026, 6, 15, 0, 1, 0, 0), Moment));
+  Assert.AreEqual(29, PanelDateGroupKey(0, Moment));
+  Assert.AreEqual(2, PanelTypeExtGroupKey('.jpg'));
+  Assert.AreEqual(7, PanelTypeExtGroupKey('.exe'));
+  Assert.AreEqual(9, PanelTypeExtGroupKey('.unknown'));
+  Assert.AreEqual(PanelTypeExtGroupKey('.pas'),
+    PanelRowGroupKey(pgbType, FileRow('a.pas', Moment), Moment));
 end;
 
 procedure TTestPanelGrouping.RowsAreOrderedByGroupThenByTheSortColumn;

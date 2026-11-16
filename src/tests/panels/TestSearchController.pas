@@ -32,6 +32,9 @@ type
     [Test] procedure TestOpeningAnAttachedSearchKeepsItsPanel;
     [Test] procedure TestFinishedSearchWithoutHitsLeavesNoJob;
     [Test] procedure TestCancellingAFinishedSearchDiscardsIt;
+    [Test] procedure FindWalkDoneActionClassification;
+    [Test] procedure FindWalkProgressAndLimitGates;
+    [Test] procedure SearchDialogKeyClassification;
   end;
 
 implementation
@@ -1011,6 +1014,74 @@ end;
 procedure TTestSearchController.TestStartSearchInBackgroundSkipsTheOverlay;
 begin
   TestSearchController.TestStartSearchInBackgroundSkipsTheOverlay;
+end;
+
+procedure TTestSearchController.FindWalkDoneActionClassification;
+begin
+  Assert.AreEqual(Ord(fdaIgnore),
+    Ord(ClassifyFindWalkDone(False, False, False, False, True, True, vecOk, 1)),
+    'dead');
+  Assert.AreEqual(Ord(fdaBgEmptyNotifyAndDrop),
+    Ord(ClassifyFindWalkDone(True, True, False, False, True, True, vecOk, 0)),
+    'bg empty ok');
+  Assert.AreEqual(Ord(fdaBgEmptyDropOnly),
+    Ord(ClassifyFindWalkDone(True, True, False, False, True, True, vecCancelled, 0)),
+    'bg empty cancel');
+  Assert.AreEqual(Ord(fdaBgUpdateOpenedSession),
+    Ord(ClassifyFindWalkDone(True, True, True, False, True, True, vecOk, 2)),
+    'bg opened');
+  Assert.AreEqual(Ord(fdaBgOpenCancelledHits),
+    Ord(ClassifyFindWalkDone(True, True, False, False, True, True, vecCancelled, 2)),
+    'bg cancel hits');
+  Assert.AreEqual(Ord(fdaBgNotifyFound),
+    Ord(ClassifyFindWalkDone(True, True, False, False, True, True, vecOk, 2)),
+    'bg notify');
+  Assert.AreEqual(Ord(fdaIgnore),
+    Ord(ClassifyFindWalkDone(True, False, False, False, False, True, vecOk, 1)),
+    'stale run');
+  Assert.AreEqual(Ord(fdaFgMergeShownHits),
+    Ord(ClassifyFindWalkDone(True, False, False, True, True, True, vecOk, 1)),
+    'fg shown');
+  Assert.AreEqual(Ord(fdaFgCancelClear),
+    Ord(ClassifyFindWalkDone(True, False, False, False, True, True, vecCancelled, 0)),
+    'fg cancel');
+  Assert.AreEqual(Ord(fdaFgNavigateHits),
+    Ord(ClassifyFindWalkDone(True, False, False, False, True, True, vecOk, 3)),
+    'fg navigate');
+  Assert.AreEqual(Ord(fdaFgShowResultsOverlay),
+    Ord(ClassifyFindWalkDone(True, False, False, False, True, True, vecOk, 0)),
+    'fg none');
+end;
+
+procedure TTestSearchController.FindWalkProgressAndLimitGates;
+begin
+  Assert.IsTrue(not FindWalkProgressApplies(False, True, True, True), 'dead');
+  Assert.IsTrue(FindWalkProgressApplies(True, True, False, False), 'bg');
+  Assert.IsTrue(FindWalkProgressApplies(True, False, True, True), 'fg live');
+  Assert.IsTrue(not FindWalkProgressApplies(True, False, True, False), 'fg not running');
+  Assert.IsTrue(ShouldQueueFindLimitNotice(vecOk, True), 'limit');
+  Assert.IsTrue(not ShouldQueueFindLimitNotice(vecOk, False), 'no truncate');
+  Assert.IsTrue(not ShouldQueueFindLimitNotice(vecCancelled, True), 'cancel');
+end;
+
+procedure TTestSearchController.SearchDialogKeyClassification;
+begin
+  Assert.AreEqual(Ord(sdaClose),
+    Ord(ClassifySearchDialogKey(0, vkEscape, #0, [])), 'esc');
+  Assert.AreEqual(Ord(sdaToggleFocus),
+    Ord(ClassifySearchDialogKey(0, vkTab, #0, [])), 'tab');
+  Assert.AreEqual(Ord(sdaStart),
+    Ord(ClassifySearchDialogKey(0, vkReturn, #0, [])), 'enter');
+  Assert.AreEqual(Ord(sdaToggleSubdirs),
+    Ord(ClassifySearchDialogKey(1, vkSpace, ' ', [])), 'subdirs space');
+  Assert.AreEqual(Ord(sdaSwallow),
+    Ord(ClassifySearchDialogKey(1, Ord('A'), 'a', [])), 'subdirs letter');
+  Assert.AreEqual(Ord(sdaBackspace),
+    Ord(ClassifySearchDialogKey(0, vkBack, #0, [])), 'backspace');
+  Assert.AreEqual(Ord(sdaAppendChar),
+    Ord(ClassifySearchDialogKey(0, Ord('A'), 'a', [])), 'append');
+  Assert.AreEqual(Ord(sdaSwallow),
+    Ord(ClassifySearchDialogKey(0, vkF1, #0, [])), 'other');
 end;
 
 initialization

@@ -45,6 +45,26 @@ type
 /// <summary>The situation of a panel showing AURI (hsNone for a plain folder).</summary>
 function HintSituationOfUri(const AURI: string): THintSituation;
 
+/// <summary>Last path segment of a file:// URI, else ''.</summary>
+function FileUriLeafName(const AURI: string): string;
+
+/// <summary>True when both sides are file:// folders with the same leaf name
+/// but different URIs (compare / sync candidate).</summary>
+function SameNameDistinctFolders(const ALeftUri, ARightUri: string): Boolean;
+
+/// <summary>Hints for an open document surface (viewer / hex / markdown /
+/// editor). Empty when the doc is not ready.</summary>
+function DocumentHintSituations(AReady, AHex, AMarkdown, AViewOnly,
+  AHasSelection: Boolean): THintSituations;
+
+/// <summary>Hints for the dual-panel file surface (not console mode). Callers
+/// pass live counts and chrome flags; URI scheme mapping stays in
+/// HintSituationOfUri.</summary>
+function PanelSurfaceHintSituations(AUriSituation: THintSituation;
+  ACmdLineFocusedNonEmpty: Boolean; ASelectedCount, AHistoryLen,
+  ARowCount: Integer; AArchiveFile, AQuickView, AInfoPanel,
+  APanelTabs: Boolean; const ALeftUri, ARightUri: string): THintSituations;
+
 /// <summary>The English template of a hint. {Name} stands for the keys of the
 /// keymap action called Name (the keymap.json name).</summary>
 function KeyHintTemplate(ASituation: THintSituation): string;
@@ -130,6 +150,74 @@ begin
     Result := hsPluginFolder
   else
     Result := hsNone;
+end;
+
+function FileUriLeafName(const AURI: string): string;
+begin
+  Result := '';
+  if not SameText(Copy(AURI, 1, 7), 'file://') then
+    Exit;
+  Result := ExtractFileName(FileUriToPath(AURI));
+end;
+
+function SameNameDistinctFolders(const ALeftUri, ARightUri: string): Boolean;
+var
+  LeftName, RightName: string;
+begin
+  LeftName := FileUriLeafName(ALeftUri);
+  RightName := FileUriLeafName(ARightUri);
+  Result := (LeftName <> '') and SameText(LeftName, RightName) and
+    (not SameVfsUri(ALeftUri, ARightUri));
+end;
+
+function DocumentHintSituations(AReady, AHex, AMarkdown, AViewOnly,
+  AHasSelection: Boolean): THintSituations;
+begin
+  Result := [];
+  if not AReady then
+    Exit;
+  if AHex then
+    Include(Result, hsHexView)
+  else if AMarkdown then
+    Include(Result, hsMarkdown)
+  else if AViewOnly then
+    Include(Result, hsViewer)
+  else
+  begin
+    Include(Result, hsEditor);
+    if AHasSelection then
+      Include(Result, hsEditorSelection);
+  end;
+end;
+
+function PanelSurfaceHintSituations(AUriSituation: THintSituation;
+  ACmdLineFocusedNonEmpty: Boolean; ASelectedCount, AHistoryLen,
+  ARowCount: Integer; AArchiveFile, AQuickView, AInfoPanel,
+  APanelTabs: Boolean; const ALeftUri, ARightUri: string): THintSituations;
+begin
+  Result := [];
+  if AUriSituation <> hsNone then
+    Include(Result, AUriSituation)
+  else if ACmdLineFocusedNonEmpty then
+    Include(Result, hsCommandLine);
+  if ASelectedCount > 0 then
+    Include(Result, hsSelection);
+  if ASelectedCount >= 3 then
+    Include(Result, hsManySelected);
+  if AHistoryLen >= 8 then
+    Include(Result, hsFolderTravel);
+  if SameNameDistinctFolders(ALeftUri, ARightUri) then
+    Include(Result, hsSameNameFolders);
+  if ARowCount >= 150 then
+    Include(Result, hsLongFolder);
+  if AArchiveFile then
+    Include(Result, hsArchiveFile);
+  if AQuickView then
+    Include(Result, hsQuickView);
+  if AInfoPanel then
+    Include(Result, hsInfoPanel);
+  if APanelTabs then
+    Include(Result, hsPanelTabs);
 end;
 
 procedure WrapKeyHint(const AText: string; AMaxCols: Integer;

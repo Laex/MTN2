@@ -355,6 +355,23 @@ type
 /// match a member's exact case.</summary>
 function StringToTopMenuAction(const AName: string): TTopMenuAction;
 
+/// <summary>True for a lone Alt release (no key / char) that activates the
+/// menu when it is closed. Alt+letter is left for quick search.</summary>
+function TopMenuAltReleaseActivates(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+
+/// <summary>True for Esc or a second Alt release that closes an open menu.</summary>
+function TopMenuActiveDismisses(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+
+/// <summary>Inner-width separator row text, optionally with a centered title
+/// gap ("─ Name ─────").</summary>
+function SubmenuSeparatorLine(const ATitle: string; AInnerW: Integer): string;
+
+/// <summary>Padded caption plus optional shortcut filling AInnerW cells.</summary>
+function SubmenuItemLine(const ACaption, AShortcut: string;
+  AInnerW: Integer): string;
+
 /// <summary>Shortcut text of a menu item: the keys of the keymap action it
 /// runs, so a rebound key shows in the menu; menu.json's own "shortcut" text
 /// for items with no keymap action (and plugin items).</summary>
@@ -740,6 +757,56 @@ begin
   if (V < 0) or (GetEnumName(TypeInfo(TTopMenuAction), V) <> AName) then
     Exit(tmaNone);
   Result := TTopMenuAction(V);
+end;
+
+function TopMenuAltReleaseActivates(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+begin
+  Result := (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0);
+end;
+
+function TopMenuActiveDismisses(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+begin
+  Result := (AKey = vkEscape) or TopMenuAltReleaseActivates(AKey, AKeyChar, AShift);
+end;
+
+function SubmenuSeparatorLine(const ATitle: string; AInnerW: Integer): string;
+var
+  Cap: string;
+begin
+  if AInnerW <= 0 then
+    Exit('');
+  Result := StringOfChar(#$2500, AInnerW); // ─
+  if ATitle = '' then
+    Exit;
+  Cap := ' ' + ATitle + ' ';
+  if TextDisplayWidth(Cap) > AInnerW - 2 then
+    Cap := Copy(Cap, 1, TextFitChars(Cap, AInnerW - 2));
+  Result := #$2500 + Cap + StringOfChar(#$2500, AInnerW - 1 - TextDisplayWidth(Cap));
+end;
+
+function SubmenuItemLine(const ACaption, AShortcut: string;
+  AInnerW: Integer): string;
+var
+  CapW: Integer;
+  Text: string;
+begin
+  if AInnerW <= 0 then
+    Exit('');
+  CapW := AInnerW - 2;
+  if AShortcut <> '' then
+    CapW := Max(CapW - Length(AShortcut) - 1, 4);
+  Text := ACaption;
+  if TextDisplayWidth(Text) > CapW then
+    Text := Copy(Text, 1, TextFitChars(Text, CapW));
+  while TextDisplayWidth(Text) < CapW do
+    Text := Text + ' ';
+  Result := ' ' + Text;
+  if AShortcut <> '' then
+    Result := Result + ' ' + AShortcut;
+  while TextDisplayWidth(Result) < AInnerW do
+    Result := Result + ' ';
 end;
 
 function TTopMenuController.LoadMenuFromJson(const AJsonText: string): Boolean;
@@ -1609,7 +1676,7 @@ procedure TTopMenuController.DrawSubmenu(const AGrid: TTerminalGrid; AClientWidt
 var
   Cat: TTopMenuCategory;
   R: TRectI;
-  I, Y, InnerW, CapW: Integer;
+  I, Y, InnerW: Integer;
   Item: TSubmenuItem;
   Cap, Line, ShortText: string;
   Fg, Bg: TAlphaColor;
@@ -1685,15 +1752,8 @@ begin
     Item := Cat.Items[I];
     if Item.IsSeparator then
     begin
-      Line := StringOfChar(#$2500, InnerW); // ─
-      if Item.SeparatorTitle <> '' then
-      begin
-        // The name sits in a gap of the line: "─ Name ─────".
-        Cap := ' ' + Item.SeparatorTitle + ' ';
-        if TextDisplayWidth(Cap) > InnerW - 2 then
-          Cap := Copy(Cap, 1, TextFitChars(Cap, InnerW - 2));
-        Line := #$2500 + Cap + StringOfChar(#$2500, InnerW - 1 - TextDisplayWidth(Cap));
-      end;
+      // The name sits in a gap of the line: "─ Name ─────".
+      Line := SubmenuSeparatorLine(Item.SeparatorTitle, InnerW);
       // The header row carries the group colour in its text and leaves the
       // right column empty, which cuts the colour bands apart.
       if Item.PluginGroup > 0 then
@@ -1703,23 +1763,11 @@ begin
       Continue;
     end;
 
-    Cap := Item.Caption;
     ShortText := TopMenuItemShortcut(Item);
-    CapW := InnerW - 2;
-    if ShortText <> '' then
-      CapW := Max(CapW - Length(ShortText) - 1, 4);
-
-    if TextDisplayWidth(Cap) > CapW then
-      Cap := Copy(Cap, 1, TextFitChars(Cap, CapW));
-    while TextDisplayWidth(Cap) < CapW do
-      Cap := Cap + ' ';
-
-    Line := ' ' + Cap;
-    if ShortText <> '' then
-      Line := Line + ' ' + ShortText;
-
-    while TextDisplayWidth(Line) < InnerW do
-      Line := Line + ' ';
+    Line := SubmenuItemLine(Item.Caption, ShortText, InnerW);
+    Cap := Item.Caption;
+    if TextDisplayWidth(Cap) > InnerW - 2 then
+      Cap := Copy(Cap, 1, TextFitChars(Cap, Max(InnerW - 2, 1)));
 
     IsSel := I = FSubmenuIndex;
     if not IsItemEnabled(Item) then
@@ -1834,7 +1882,7 @@ begin
   begin
     // A single Alt release (without character) activates the menu; the
     // keymap's TopMenu key (F9) is the host's (TDualPanelWindow.HandleInput).
-    if (ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0) then
+    if TopMenuAltReleaseActivates(AKey, AKeyChar, AShift) then
     begin
       ActivateMenu(PanelCategory, False);
       AKey := 0;
@@ -1849,7 +1897,7 @@ begin
 
   // Esc or a second Alt press toggles the menu off (the TopMenu key too,
   // in the host).
-  if (AKey = vkEscape) or ((ssAlt in AShift) and (AKey = 0) and (AKeyChar = #0)) then
+  if TopMenuActiveDismisses(AKey, AKeyChar, AShift) then
   begin
     DeactivateMenu;
     AKey := 0;

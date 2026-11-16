@@ -21,6 +21,7 @@ type
     [Test] procedure OnlyCsvGetsByteOrderMark;
     [Test] procedure DatesAreLocaleIndependent;
     [Test] procedure NoFieldsOrNoItemsGiveEmptyText;
+    [Test] procedure ParseFormatRadioAndResolvePath;
   end;
 
 implementation
@@ -152,6 +153,20 @@ begin
     Config(lefText, True, []), 'x.txt'));
   Assert.AreEqual('', FormatItemList(nil,
     Config(lefText, True, [lxfName]), 'x.txt'));
+end;
+
+procedure TTestListExport.ParseFormatRadioAndResolvePath;
+begin
+  Assert.IsTrue(ParseListExportFormatRadio('fmt_text') = lefText, 'text');
+  Assert.IsTrue(ParseListExportFormatRadio('fmt_md') = lefMarkdown, 'md');
+  Assert.IsTrue(ParseListExportFormatRadio('fmt_csv') = lefCsv, 'csv');
+  Assert.IsTrue(ParseListExportFormatRadio('other') = lefAuto, 'auto');
+  Assert.AreEqual('C:\out\list.txt',
+    ResolveExportListPath('C:\out\list.txt', 'D:\panel', 'E:\docs'), 'abs');
+  Assert.AreEqual(IncludeTrailingPathDelimiter('D:\panel') + 'list.txt',
+    ResolveExportListPath('list.txt', 'D:\panel', 'E:\docs'), 'panel');
+  Assert.AreEqual(IncludeTrailingPathDelimiter('E:\docs') + 'list.txt',
+    ResolveExportListPath('list.txt', '', 'E:\docs'), 'fallback');
 end;
 
 initialization

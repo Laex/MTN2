@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.IOUtils,
   uVfsTypes, uDualPanelTypes, uAssociations, uVfsRegistry, uZipVfs, uPluginHost,
-  uWorkspaceVfs;
+  uWorkspaceVfs, uPanelModel;
 
 type
   TDualPanelOperationsController = class
@@ -19,6 +19,10 @@ type
 
   TActivateCurrentKind = (ackNone, ackFindGoto, ackHistoryBack, ackNavigate,
     ackZipNavigate, ackView, ackEdit, ackShell, ackCommand);
+  /// <summary>Plugin Manager dialog control id: plcDismiss closes via OK/Cancel
+  /// (or any unknown id); the rest keep the manager open after the action.</summary>
+  TPluginListCommandKind = (plcDismiss, plcUp, plcDown, plcInfo, plcAdd,
+    plcRemove, plcSettings, plcPermissions, plcToggle);
   TDirectoryExistsFn = reference to function(const APath: string): Boolean;
   /// <summary>Pending cursor name / enter-view memory when NavigateSideTo
   /// leaves or enters a folder.</summary>
@@ -35,6 +39,8 @@ type
 
 function ClassifyActivateCurrent(AFindHit, ALeaveSynthetic, AIsDirOrParent,
   AIsZip: Boolean; AAssoc: TAssocAction): TActivateCurrentKind;
+/// <summary>Maps a Plugin Manager dialog control id to its action.</summary>
+function ClassifyPluginListCommand(const AControlId: string): TPluginListCommandKind;
 /// <summary>Archive, find, SFTP or generic plugin on either URI: local-disk
 /// parent matching and junction back markers do not apply.</summary>
 function NavigationEitherSideIsVirtualView(const AFromUri, AToUri: string): Boolean;
@@ -86,6 +92,20 @@ function ZipEncryptedProbe(const ATabUri: string; const AURIs: TArray<string>;
 /// <summary>URI to open in the viewer/editor: an encrypted ZIP entry goes
 /// through the 7z backend when the plugin can resolve it.</summary>
 function ReadableArchiveRowUri(const ARow: TPanelRow): string;
+
+/// <summary>Panel sides touched by a PANEL_PLUGIN WindowId invalidate
+/// (left=1, right=2, else both).</summary>
+function PanelSidesForWindowId(AWindowId: Integer): TArray<TPanelSide>;
+
+/// <summary>True when a pending select name can be applied: non-empty and the
+/// model for that side has finished loading.</summary>
+function ModelInvalidatedShouldApplyPending(const APendingName: string;
+  AModelAssigned, AModelLoading: Boolean): Boolean;
+
+/// <summary>True when deferred directory watches may flush (any pending and
+/// both models idle).</summary>
+function ModelInvalidatedShouldFlushWatch(ALeftWatch, ARightWatch,
+  ABothModelsIdle: Boolean): Boolean;
 
 implementation
 
@@ -205,6 +225,27 @@ begin
     Exit(False);
   end;
   Result := True;
+end;
+
+function ClassifyPluginListCommand(const AControlId: string): TPluginListCommandKind;
+begin
+  if AControlId = 'up' then
+    Exit(plcUp);
+  if AControlId = 'down' then
+    Exit(plcDown);
+  if AControlId = 'info' then
+    Exit(plcInfo);
+  if AControlId = 'add' then
+    Exit(plcAdd);
+  if AControlId = 'remove' then
+    Exit(plcRemove);
+  if AControlId = 'settings' then
+    Exit(plcSettings);
+  if AControlId = 'permissions' then
+    Exit(plcPermissions);
+  if AControlId = 'toggle' then
+    Exit(plcToggle);
+  Result := plcDismiss;
 end;
 
 function ClassifyActivateCurrent(AFindHit, ALeaveSynthetic, AIsDirOrParent,
@@ -478,6 +519,40 @@ begin
      not HostSevenZipDllMissing and
      GlobalVfsRegistry.TryResolve(ZipEntryToSevenZipUri(ARow.URI), Backend) then
     Result := ZipEntryToSevenZipUri(ARow.URI);
+end;
+
+function PanelSidesForWindowId(AWindowId: Integer): TArray<TPanelSide>;
+begin
+  case AWindowId of
+    cPanelWindowIdLeft:
+      begin
+        SetLength(Result, 1);
+        Result[0] := psLeft;
+      end;
+    cPanelWindowIdRight:
+      begin
+        SetLength(Result, 1);
+        Result[0] := psRight;
+      end;
+  else
+    begin
+      SetLength(Result, 2);
+      Result[0] := psLeft;
+      Result[1] := psRight;
+    end;
+  end;
+end;
+
+function ModelInvalidatedShouldApplyPending(const APendingName: string;
+  AModelAssigned, AModelLoading: Boolean): Boolean;
+begin
+  Result := (APendingName <> '') and AModelAssigned and (not AModelLoading);
+end;
+
+function ModelInvalidatedShouldFlushWatch(ALeftWatch, ARightWatch,
+  ABothModelsIdle: Boolean): Boolean;
+begin
+  Result := (ALeftWatch or ARightWatch) and ABothModelsIdle;
 end;
 
 end.

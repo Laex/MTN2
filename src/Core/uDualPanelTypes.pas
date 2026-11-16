@@ -210,6 +210,14 @@ function MakePanelRowFromEntry(const AEntry: TVfsEntry;
 /// <summary>Logical PANEL_PLUGIN file_type for theme coloring.</summary>
 function ClassifyPanelFileType(const AName: string;
   AIsDirectory, AIsParent: Boolean): string;
+/// <summary>Age class for pgbDate: 20 today .. 25 older, or 29 when AModTime
+/// is missing.</summary>
+function PanelDateGroupKey(AModTime, ANow: TDateTime): Integer;
+
+/// <summary>File-kind class for pgbType from a lower-cased extension
+/// (including the leading '.'): 2 image .. 8 code, else 9.</summary>
+function PanelTypeExtGroupKey(const AExt: string): Integer;
+
 /// <summary>The group a row belongs to for AGroupBy; 0 for no grouping and for the
 /// parent row. 1 is the folders; 2..9 the file kinds of pgbType; 20..29 the age
 /// classes of pgbDate (today, yesterday, last 7 days, last 30 days, last year,
@@ -367,65 +375,70 @@ begin
     (AExt = '.wav') or (AExt = '.flac') or (AExt = '.pdf');
 end;
 
+function PanelDateGroupKey(AModTime, ANow: TDateTime): Integer;
+var
+  Days: Integer;
+begin
+  if AModTime <= 0 then
+    Exit(29);
+  Days := Trunc(ANow) - Trunc(AModTime);
+  if Days <= 0 then
+    Result := 20
+  else if Days = 1 then
+    Result := 21
+  else if Days < 7 then
+    Result := 22
+  else if Days < 30 then
+    Result := 23
+  else if Days < 365 then
+    Result := 24
+  else
+    Result := 25;
+end;
+
+function PanelTypeExtGroupKey(const AExt: string): Integer;
+begin
+  if (AExt = '.png') or (AExt = '.jpg') or (AExt = '.jpeg') or (AExt = '.gif') or
+     (AExt = '.bmp') or (AExt = '.ico') or (AExt = '.webp') or (AExt = '.svg') or
+     (AExt = '.tif') or (AExt = '.tiff') then
+    Result := 2
+  else if (AExt = '.mp3') or (AExt = '.wav') or (AExt = '.flac') or (AExt = '.ogg') or
+          (AExt = '.m4a') or (AExt = '.aac') or (AExt = '.wma') then
+    Result := 3
+  else if (AExt = '.mp4') or (AExt = '.avi') or (AExt = '.mkv') or (AExt = '.mov') or
+          (AExt = '.wmv') or (AExt = '.webm') then
+    Result := 4
+  else if (AExt = '.doc') or (AExt = '.docx') or (AExt = '.odt') or (AExt = '.rtf') or
+          (AExt = '.pdf') or (AExt = '.txt') or (AExt = '.md') or (AExt = '.xls') or
+          (AExt = '.xlsx') or (AExt = '.ods') or (AExt = '.ppt') or (AExt = '.pptx') or
+          (AExt = '.csv') then
+    Result := 5
+  else if (AExt = '.zip') or (AExt = '.7z') or (AExt = '.rar') or (AExt = '.tar') or
+          (AExt = '.gz') or (AExt = '.tgz') or (AExt = '.bz2') or (AExt = '.xz') or
+          (AExt = '.cab') or (AExt = '.iso') then
+    Result := 6
+  else if IsExecutablePanelFileExt(AExt) then
+    Result := 7
+  else if (AExt = '.pas') or (AExt = '.dpr') or (AExt = '.dfm') or (AExt = '.c') or
+          (AExt = '.h') or (AExt = '.cpp') or (AExt = '.cs') or (AExt = '.py') or
+          (AExt = '.js') or (AExt = '.ts') or (AExt = '.go') or (AExt = '.rs') or
+          (AExt = '.java') or (AExt = '.json') or (AExt = '.xml') or (AExt = '.yml') or
+          (AExt = '.yaml') or (AExt = '.lua') or (AExt = '.sql') then
+    Result := 8
+  else
+    Result := 9;
+end;
+
 function PanelRowGroupKey(AGroupBy: TPanelGroupBy; const ARow: TPanelRow;
   ANow: TDateTime): Integer;
-var
-  Ext: string;
-  Days: Integer;
 begin
   if (AGroupBy = pgbNone) or ARow.IsParent then
     Exit(0);
   if ARow.IsDirectory then
     Exit(1);
   if AGroupBy = pgbDate then
-  begin
-    if ARow.ModificationTime <= 0 then
-      Exit(29);
-    Days := Trunc(ANow) - Trunc(ARow.ModificationTime);
-    if Days <= 0 then
-      Result := 20
-    else if Days = 1 then
-      Result := 21
-    else if Days < 7 then
-      Result := 22
-    else if Days < 30 then
-      Result := 23
-    else if Days < 365 then
-      Result := 24
-    else
-      Result := 25;
-    Exit;
-  end;
-  Ext := LowerCase(SafeExtension(ARow.Text));
-  if (Ext = '.png') or (Ext = '.jpg') or (Ext = '.jpeg') or (Ext = '.gif') or
-     (Ext = '.bmp') or (Ext = '.ico') or (Ext = '.webp') or (Ext = '.svg') or
-     (Ext = '.tif') or (Ext = '.tiff') then
-    Result := 2
-  else if (Ext = '.mp3') or (Ext = '.wav') or (Ext = '.flac') or (Ext = '.ogg') or
-          (Ext = '.m4a') or (Ext = '.aac') or (Ext = '.wma') then
-    Result := 3
-  else if (Ext = '.mp4') or (Ext = '.avi') or (Ext = '.mkv') or (Ext = '.mov') or
-          (Ext = '.wmv') or (Ext = '.webm') then
-    Result := 4
-  else if (Ext = '.doc') or (Ext = '.docx') or (Ext = '.odt') or (Ext = '.rtf') or
-          (Ext = '.pdf') or (Ext = '.txt') or (Ext = '.md') or (Ext = '.xls') or
-          (Ext = '.xlsx') or (Ext = '.ods') or (Ext = '.ppt') or (Ext = '.pptx') or
-          (Ext = '.csv') then
-    Result := 5
-  else if (Ext = '.zip') or (Ext = '.7z') or (Ext = '.rar') or (Ext = '.tar') or
-          (Ext = '.gz') or (Ext = '.tgz') or (Ext = '.bz2') or (Ext = '.xz') or
-          (Ext = '.cab') or (Ext = '.iso') then
-    Result := 6
-  else if IsExecutablePanelFileExt(Ext) then
-    Result := 7
-  else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or (Ext = '.c') or
-          (Ext = '.h') or (Ext = '.cpp') or (Ext = '.cs') or (Ext = '.py') or
-          (Ext = '.js') or (Ext = '.ts') or (Ext = '.go') or (Ext = '.rs') or
-          (Ext = '.java') or (Ext = '.json') or (Ext = '.xml') or (Ext = '.yml') or
-          (Ext = '.yaml') or (Ext = '.lua') or (Ext = '.sql') then
-    Result := 8
-  else
-    Result := 9;
+    Exit(PanelDateGroupKey(ARow.ModificationTime, ANow));
+  Result := PanelTypeExtGroupKey(LowerCase(SafeExtension(ARow.Text)));
 end;
 
 function ClassifyPanelFileType(const AName: string;

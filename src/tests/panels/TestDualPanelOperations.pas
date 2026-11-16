@@ -22,6 +22,8 @@ type
     [Test] procedure TestShouldRememberWorkspaceOrigin;
     [Test] procedure TestApplyNavigateTabBackMarkers;
     [Test] procedure TestAppendTabHistoryNavigate;
+    [Test] procedure PanelSidesAndModelInvalidateGates;
+    [Test] procedure PluginListCommandClassification;
   end;
 
 implementation
@@ -31,6 +33,7 @@ uses
   uVfsTypes,
   uAssociations,
   uDualPanelTypes,
+  uPanelModel,
   uDualPanelOperations;
 
 procedure TestFolderSegments;
@@ -410,6 +413,39 @@ end;
 procedure TTestDualPanelOperations.TestAppendTabHistoryNavigate;
 begin
   TestDualPanelOperations.TestAppendTabHistoryNavigate;
+end;
+
+procedure TTestDualPanelOperations.PanelSidesAndModelInvalidateGates;
+var
+  Sides: TArray<TPanelSide>;
+begin
+  Sides := PanelSidesForWindowId(cPanelWindowIdLeft);
+  Assert.IsTrue(Length(Sides) = 1, 'left count');
+  Assert.IsTrue(Sides[0] = psLeft, 'left');
+  Sides := PanelSidesForWindowId(cPanelWindowIdRight);
+  Assert.IsTrue(Length(Sides) = 1, 'right count');
+  Assert.IsTrue(Sides[0] = psRight, 'right');
+  Sides := PanelSidesForWindowId(cPanelWindowIdNone);
+  Assert.IsTrue(Length(Sides) = 2, 'both');
+  Assert.IsTrue(ModelInvalidatedShouldApplyPending('x', True, False), 'apply');
+  Assert.IsTrue(not ModelInvalidatedShouldApplyPending('', True, False), 'empty');
+  Assert.IsTrue(not ModelInvalidatedShouldApplyPending('x', True, True), 'loading');
+  Assert.IsTrue(ModelInvalidatedShouldFlushWatch(True, False, True), 'flush');
+  Assert.IsTrue(not ModelInvalidatedShouldFlushWatch(True, False, False), 'busy');
+end;
+
+procedure TTestDualPanelOperations.PluginListCommandClassification;
+begin
+  Assert.AreEqual(Ord(plcDismiss), Ord(ClassifyPluginListCommand('ok')), 'ok');
+  Assert.AreEqual(Ord(plcDismiss), Ord(ClassifyPluginListCommand('cancel')), 'cancel');
+  Assert.AreEqual(Ord(plcUp), Ord(ClassifyPluginListCommand('up')), 'up');
+  Assert.AreEqual(Ord(plcDown), Ord(ClassifyPluginListCommand('down')), 'down');
+  Assert.AreEqual(Ord(plcInfo), Ord(ClassifyPluginListCommand('info')), 'info');
+  Assert.AreEqual(Ord(plcAdd), Ord(ClassifyPluginListCommand('add')), 'add');
+  Assert.AreEqual(Ord(plcRemove), Ord(ClassifyPluginListCommand('remove')), 'remove');
+  Assert.AreEqual(Ord(plcSettings), Ord(ClassifyPluginListCommand('settings')), 'settings');
+  Assert.AreEqual(Ord(plcPermissions), Ord(ClassifyPluginListCommand('permissions')), 'perm');
+  Assert.AreEqual(Ord(plcToggle), Ord(ClassifyPluginListCommand('toggle')), 'toggle');
 end;
 
 initialization

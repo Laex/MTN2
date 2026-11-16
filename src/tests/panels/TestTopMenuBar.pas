@@ -25,13 +25,15 @@ type
     [Test] procedure TestReleaseOutsideAnItemRunsNothing;
     [Test] procedure TestAnItemRunsOnReleaseNotOnPress;
     [Test] procedure TestWideCaptionsKeepTheHotLetterOnItsCell;
+    [Test] procedure TopMenuAltReleaseAndDismissChords;
+    [Test] procedure SubmenuSeparatorAndItemLines;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.TypInfo, System.UITypes, System.IOUtils, System.JSON,
-  System.Generics.Collections,
+  System.SysUtils, System.Classes, System.TypInfo, System.UITypes, System.IOUtils,
+  System.JSON, System.Generics.Collections,
   uTerminalTypes,
   uThemeTypes,
   uThemeDrawing,
@@ -443,6 +445,31 @@ end;
 procedure TTestTopMenuBar.TestReleaseOutsideAnItemRunsNothing;
 begin
   TestTopMenuBar.TestReleaseOutsideAnItemRunsNothing;
+end;
+
+procedure TTestTopMenuBar.TopMenuAltReleaseAndDismissChords;
+begin
+  Assert.IsTrue(TopMenuAltReleaseActivates(0, #0, [ssAlt]), 'alt release');
+  Assert.IsTrue(not TopMenuAltReleaseActivates(0, 'F', [ssAlt]), 'alt+letter');
+  Assert.IsTrue(not TopMenuAltReleaseActivates(vkF9, #0, []), 'f9 alone');
+  Assert.IsTrue(TopMenuActiveDismisses(vkEscape, #0, []), 'esc');
+  Assert.IsTrue(TopMenuActiveDismisses(0, #0, [ssAlt]), 'second alt');
+  Assert.IsTrue(not TopMenuActiveDismisses(vkReturn, #0, []), 'enter');
+end;
+
+procedure TTestTopMenuBar.SubmenuSeparatorAndItemLines;
+var
+  Line: string;
+begin
+  Line := SubmenuSeparatorLine('', 5);
+  Assert.AreEqual(StringOfChar(#$2500, 5), Line, 'plain');
+  Line := SubmenuSeparatorLine('Name', 12);
+  Assert.IsTrue(Pos(' Name ', Line) > 0, 'title gap');
+  Assert.IsTrue(Length(Line) >= 12, 'width');
+  Line := SubmenuItemLine('Copy', 'F5', 12);
+  Assert.IsTrue(Pos('Copy', Line) > 0, 'caption');
+  Assert.IsTrue(Pos('F5', Line) > 0, 'shortcut');
+  Assert.AreEqual('', SubmenuItemLine('x', '', 0), 'empty width');
 end;
 
 initialization

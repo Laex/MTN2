@@ -760,6 +760,24 @@ begin
   Assert.IsTrue(not IsQuickViewPreviewable(True, False, Row), 'not overlay image');
   Assert.IsTrue(IsQuickViewPreviewable(True, True, Row), 'previewable image');
 
+  Row := Default(TPanelRow);
+  Assert.AreEqual('', ResolveQuickViewImageUri(False, Row, ''), 'no row');
+  Row.IsDirectory := True;
+  Row.URI := 'file:///C:/dir';
+  Assert.AreEqual('', ResolveQuickViewImageUri(True, Row, ''), 'directory');
+  Row := Default(TPanelRow);
+  Row.URI := 'file:///C:/a.png';
+  Row.Extension := '.png';
+  Assert.AreEqual('file:///C:/a.png', ResolveQuickViewImageUri(True, Row, ''),
+    'direct image');
+  Row.URI := 'file:///C:/a.txt';
+  Row.Extension := '.txt';
+  Assert.AreEqual('', ResolveQuickViewImageUri(True, Row, 'file:///C:/a.txt'),
+    'same non-image target');
+  Assert.AreEqual('file:///C:/preview.png',
+    ResolveQuickViewImageUri(True, Row, 'file:///C:/preview.png'),
+    'plugin image target');
+
   Bounds := TRectI.Make(10, 10, 30, 20);
   Area := TRectI.Make(5, 5, 100, 50);
   AbsB := QuickViewInteriorAbsBounds(Bounds, Area);

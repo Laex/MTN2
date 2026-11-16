@@ -81,6 +81,8 @@ function ListItemSourceUri(const ARow: TPanelRow): string;
 function ListItemLocalPath(const ARow: TPanelRow): string;
 
 function ClassifyMouseDown(ARow: Integer; AKind: TWorkspaceKind): TMouseDownTarget;
+/// <summary>Wheel step for folder tree / Quick View: up is -3, down is +3.</summary>
+function MouseWheelScrollDelta(AWheelDelta: Integer): Integer;
 
 implementation
 
@@ -352,6 +354,14 @@ begin
     Exit(mdtEmbedded);
   end;
   Result := mdtNone;
+end;
+
+function MouseWheelScrollDelta(AWheelDelta: Integer): Integer;
+begin
+  if AWheelDelta > 0 then
+    Result := -3
+  else
+    Result := 3;
 end;
 
 end.

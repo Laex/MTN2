@@ -280,6 +280,9 @@ begin
   Assert.IsTrue(ClassifyMouseDown(1, wkDocument) = mdtWorkspaceTab, 'document tabs');
   Assert.IsTrue(ClassifyMouseDown(5, wkDocument) = mdtEmbedded, 'document body');
   Assert.IsTrue(ClassifyMouseDown(5, wkPanels) = mdtNone, 'panels fall through');
+  Assert.AreEqual(-3, MouseWheelScrollDelta(120), 'wheel up');
+  Assert.AreEqual(3, MouseWheelScrollDelta(-120), 'wheel down');
+  Assert.AreEqual(3, MouseWheelScrollDelta(0), 'zero counts as down');
 end;
 
 { TTestDualPanelDrag }

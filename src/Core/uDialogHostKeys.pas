@@ -69,6 +69,23 @@ type
 /// <summary>y/n (and Cyrillic да/нет) mapped to Yes/No buttons.</summary>
 function DialogYesNoAnswer(AKey: Word; AKeyChar: Char): TDialogYesNoAnswer;
 
+/// <summary>True when mnemonic / YesNo hotkeys run: Alt held, or focus is not
+/// in an input field.</summary>
+function DialogMnemonicKeysActive(AShift: TShiftState;
+  AFocusedIsInput: Boolean): Boolean;
+
+/// <summary>Uppercase letter candidates to try as dialog mnemonics, in order:
+/// typed letter, layout alternate, then physical A..Z when different.</summary>
+function DialogMnemonicLetterCandidates(AKey: Word; AKeyChar: Char): TArray<Char>;
+
+/// <summary>Join non-empty AParts with '; ', dropping a trailing empty slot
+/// (Backspace on a multi hotkey field).</summary>
+function HotKeyMultiJoinExceptLast(const AParts: TArray<string>): string;
+
+/// <summary>Append AChord to ACurrent with '; ', or replace when ACurrent is
+/// blank. Duplicate chords leave ACurrent unchanged.</summary>
+function HotKeyMultiAppendChord(const ACurrent, AChord: string): string;
+
 /// <summary>Multi-chord hotkey field text after one keystroke.</summary>
 function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
   AShift: TShiftState): string;
@@ -89,6 +106,34 @@ function ListSelectedIndexAfterNavKey(ASelected, ALast, AViewH: Integer;
 /// is not a list command. Does not cover Del-as-Delete-button.</summary>
 function ClassifyListKeyCommand(AKey: Word; AKeyChar: Char;
   AShift: TShiftState): string;
+
+/// <summary>True for Up/Down/Home/End/PgUp/PgDn used by list/radio/dropdown
+/// selection movement.</summary>
+function IsListSelectionNavKey(AKey: Word): Boolean;
+
+/// <summary>'' = pass the key to InputLine; 'password-copy' / 'readonly-edit'
+/// = swallow without changing the field.</summary>
+function ClassifyFocusedInputGuard(APassword, AReadOnly: Boolean;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState): string;
+
+type
+  /// <summary>What an open DropDown does with a key after accept/space
+  /// normalization. odkaSwallow keeps the popup up and eats the key.</summary>
+  TOpenDropDownKeyAction = (odkaCommit, odkaClose, odkaDeleteHistory,
+    odkaTabAway, odkaNavHover, odkaSwallow);
+
+/// <summary>AAcceptOrSpace is True after NormalizeAcceptKey or Space.
+/// AIsHistoryInput gates Del as "forget highlighted history entry".</summary>
+function ClassifyOpenDropDownKey(AKey: Word; AKeyChar: Char;
+  AAcceptOrSpace, AIsHistoryInput: Boolean): TOpenDropDownKeyAction;
+
+/// <summary>True for F4 / Alt+Down / Space on a closed focused DropDown.</summary>
+function ShouldOpenFocusedDropDown(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+
+/// <summary>True for Ctrl+G on an input whose History is masks / findmask.</summary>
+function IsMaskHistoryGroupSaveChord(AKey: Word; AShift: TShiftState;
+  const AHistory: string): Boolean;
 
 function DialogHandleOpenDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
@@ -136,11 +181,74 @@ begin
   Result := dyaNone;
 end;
 
+function DialogMnemonicKeysActive(AShift: TShiftState;
+  AFocusedIsInput: Boolean): Boolean;
+begin
+  Result := (ssAlt in AShift) or (not AFocusedIsInput);
+end;
+
+function DialogMnemonicLetterCandidates(AKey: Word; AKeyChar: Char): TArray<Char>;
+var
+  Ch, Alt: Char;
+begin
+  SetLength(Result, 0);
+  Ch := #0;
+  if AKeyChar.IsLetter then
+    Ch := AKeyChar.ToUpper;
+  if Ch <> #0 then
+  begin
+    Alt := TextKeyLayoutAlternate(AKeyChar).ToUpper;
+    if (Alt <> #0) and (Alt <> Ch) then
+      Result := [Ch, Alt]
+    else
+      Result := [Ch];
+  end;
+  if (AKey >= vkA) and (AKey <= vkZ) and (Char(AKey) <> Ch) then
+  begin
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Char(AKey);
+  end;
+end;
+
+function HotKeyMultiJoinExceptLast(const AParts: TArray<string>): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to High(AParts) - 1 do
+    if AParts[I] <> '' then
+    begin
+      if Result <> '' then
+        Result := Result + '; ';
+      Result := Result + AParts[I];
+    end;
+end;
+
+function HotKeyMultiAppendChord(const ACurrent, AChord: string): string;
+var
+  Parts: TArray<string>;
+  P: string;
+  I: Integer;
+begin
+  if AChord = '' then
+    Exit(ACurrent);
+  Parts := ACurrent.Split([';']);
+  for I := 0 to High(Parts) do
+    Parts[I] := Trim(Parts[I]);
+  for P in Parts do
+    if SameText(P, AChord) then
+      Exit(ACurrent);
+  if Trim(ACurrent) = '' then
+    Result := AChord
+  else
+    Result := Trim(ACurrent) + '; ' + AChord;
+end;
+
 function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
   AShift: TShiftState): string;
 var
   Parts: TArray<string>;
-  Chord, P: string;
+  Chord: string;
   I: Integer;
 begin
   Parts := ACurrent.Split([';']);
@@ -151,28 +259,10 @@ begin
     if AKey = vkDelete then
       Exit('');
     if AKey = vkBack then
-    begin
-      Result := '';
-      for I := 0 to High(Parts) - 1 do
-        if Parts[I] <> '' then
-        begin
-          if Result <> '' then
-            Result := Result + '; ';
-          Result := Result + Parts[I];
-        end;
-      Exit;
-    end;
+      Exit(HotKeyMultiJoinExceptLast(Parts));
   end;
   Chord := KeystrokeBindingText(AKey, AKeyChar, AShift);
-  if Chord = '' then
-    Exit(ACurrent);
-  for P in Parts do
-    if SameText(P, Chord) then
-      Exit(ACurrent);
-  if Trim(ACurrent) = '' then
-    Result := Chord
-  else
-    Result := Trim(ACurrent) + '; ' + Chord;
+  Result := HotKeyMultiAppendChord(ACurrent, Chord);
 end;
 
 function DropDownHoverAfterNavKey(AHover, ALast, AViewH: Integer;
@@ -251,11 +341,70 @@ begin
     end;
 end;
 
+function IsListSelectionNavKey(AKey: Word): Boolean;
+begin
+  Result := (AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or
+    (AKey = vkEnd) or (AKey = vkPrior) or (AKey = vkNext);
+end;
+
+function ClassifyFocusedInputGuard(APassword, AReadOnly: Boolean;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState): string;
+var
+  K: TKeyChord;
+begin
+  Result := '';
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if APassword and (K.MatchesAny(vkC, [ssCtrl], [ssShift, ssAlt]) or
+     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
+     K.MatchesAny(vkInsert, [ssCtrl], [ssShift, ssAlt])) then
+    Exit('password-copy');
+  if AReadOnly and (K.IsPrintable or (AKey = vkBack) or (AKey = vkDelete) or
+     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
+     K.MatchesAny(vkV, [ssCtrl], [ssShift, ssAlt]) or
+     K.MatchesAny(vkInsert, [ssShift], [ssCtrl, ssAlt])) then
+    Exit('readonly-edit');
+end;
+
+function ClassifyOpenDropDownKey(AKey: Word; AKeyChar: Char;
+  AAcceptOrSpace, AIsHistoryInput: Boolean): TOpenDropDownKeyAction;
+begin
+  if AAcceptOrSpace then
+    Exit(odkaCommit);
+  if AKey = vkEscape then
+    Exit(odkaClose);
+  if (AKey = vkDelete) and AIsHistoryInput then
+    Exit(odkaDeleteHistory);
+  if AKey = vkTab then
+    Exit(odkaTabAway);
+  if (AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or (AKey = vkEnd) or
+     (AKey = vkPrior) or (AKey = vkNext) then
+    Exit(odkaNavHover);
+  Result := odkaSwallow;
+end;
+
+function ShouldOpenFocusedDropDown(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): Boolean;
+var
+  K: TKeyChord;
+begin
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  Result := (AKey = vkF4) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl, ssShift]) or
+    (AKey = vkSpace) or (AKeyChar = ' ');
+end;
+
+function IsMaskHistoryGroupSaveChord(AKey: Word; AShift: TShiftState;
+  const AHistory: string): Boolean;
+begin
+  Result := (AKey = Ord('G')) and (ssCtrl in AShift) and not (ssAlt in AShift) and
+    (SameText(AHistory, 'masks') or SameText(AHistory, 'findmask'));
+end;
+
 function DialogHandleOpenDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
   ViewH, Last, DropIdx: Integer;
   C: TDialogControl;
+  Action: TOpenDropDownKeyAction;
 begin
   DropIdx := Ops.DropOpenIndex();
   Result := DropIdx >= 0;
@@ -265,53 +414,52 @@ begin
   // Open DropDown: Enter commits, Esc collapses (does not cancel dialog).
   // Every key is consumed: one that fell through would accept or cancel the
   // dialog behind the popup.
-  if Ops.NormalizeAcceptKey(AKey, AKeyChar) or (AKey = vkSpace) or (AKeyChar = ' ') then
-  begin
-    Ops.CommitDropDown();
+  Action := ClassifyOpenDropDownKey(AKey, AKeyChar,
+    Ops.NormalizeAcceptKey(AKey, AKeyChar) or (AKey = vkSpace) or (AKeyChar = ' '),
+    Ops.IsHistoryInput(DropIdx));
+  case Action of
+    odkaCommit:
+      begin
+        Ops.CommitDropDown();
+        AKey := 0;
+        AKeyChar := #0;
+      end;
+    odkaClose:
+      begin
+        Ops.CloseDropDown();
+        AKey := 0;
+        AKeyChar := #0;
+      end;
+    odkaDeleteHistory:
+      begin
+        Ops.RemoveDropHoverFromHistory();
+        AKey := 0;
+        AKeyChar := #0;
+      end;
+    odkaTabAway:
+      begin
+        Ops.CloseDropDown();
+        Ops.SetFocusIndex(Ops.NextFocusable(Ops.FocusIndex(), not (ssShift in AShift)));
+        Ops.NotifyChanged();
+        AKey := 0;
+      end;
+    odkaNavHover:
+      begin
+        C := Ops.GetControl(DropIdx);
+        if Length(C.Items) > 0 then
+        begin
+          Last := High(C.Items);
+          ViewH := Max(Ops.DropPopupViewHeight(), 1);
+          Ops.SetDropHover(DropDownHoverAfterNavKey(Ops.DropHover(), Last, ViewH, AKey));
+          Ops.EnsureDropHoverInView();
+          Ops.NotifyChanged();
+        end;
+        AKey := 0;
+      end;
+  else
     AKey := 0;
     AKeyChar := #0;
-    Exit;
   end;
-  if AKey = vkEscape then
-  begin
-    Ops.CloseDropDown();
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  // History list: Del forgets the highlighted entry.
-  if (AKey = vkDelete) and Ops.IsHistoryInput(DropIdx) then
-  begin
-    Ops.RemoveDropHoverFromHistory();
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if AKey = vkTab then
-  begin
-    Ops.CloseDropDown();
-    Ops.SetFocusIndex(Ops.NextFocusable(Ops.FocusIndex(), not (ssShift in AShift)));
-    Ops.NotifyChanged();
-    AKey := 0;
-    Exit;
-  end;
-  if (AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or (AKey = vkEnd) or
-     (AKey = vkPrior) or (AKey = vkNext) then
-  begin
-    C := Ops.GetControl(DropIdx);
-    if Length(C.Items) > 0 then
-    begin
-      Last := High(C.Items);
-      ViewH := Max(Ops.DropPopupViewHeight(), 1);
-      Ops.SetDropHover(DropDownHoverAfterNavKey(Ops.DropHover(), Last, ViewH, AKey));
-      Ops.EnsureDropHoverInView();
-      Ops.NotifyChanged();
-    end;
-    AKey := 0;
-    Exit;
-  end;
-  AKey := 0;
-  AKeyChar := #0;
 end;
 
 function DialogHandleDialogNavKeys(const Ops: TDialogKeyOps; var AKey: Word;
@@ -366,12 +514,11 @@ begin
 
   // Mask field: Ctrl+G saves the masks as a group (named after the first mask)
   // and puts the reference @Name in the field.
-  if (AKey = Ord('G')) and (ssCtrl in AShift) and not (ssAlt in AShift) and
-     (Focus >= 0) and (Focus < Ops.ControlCount()) then
+  if (Focus >= 0) and (Focus < Ops.ControlCount()) then
   begin
     C := Ops.GetControl(Focus);
     if (C.Kind = dckInput) and
-       (SameText(C.History, 'masks') or SameText(C.History, 'findmask')) then
+       IsMaskHistoryGroupSaveChord(AKey, AShift, C.History) then
     begin
       GroupName := MaskGroupSaveAuto(C.Edit.Text);
       if GroupName <> '' then
@@ -391,16 +538,12 @@ begin
   if (Focus >= 0) and (Focus < Ops.ControlCount()) then
   begin
     C := Ops.GetControl(Focus);
-    if C.Kind = dckDropDown then
+    if (C.Kind = dckDropDown) and ShouldOpenFocusedDropDown(AKey, AKeyChar, AShift) then
     begin
-      if (AKey = vkF4) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl, ssShift]) or
-         (AKey = vkSpace) or (AKeyChar = ' ') then
-      begin
-        Ops.OpenDropDown(Focus);
-        AKey := 0;
-        AKeyChar := #0;
-        Exit(True);
-      end;
+      Ops.OpenDropDown(Focus);
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
     end;
   end;
 
@@ -463,7 +606,7 @@ begin
   // Hot-keys run for Alt, and for any key while focus is not in an input.
   // A miss leaves the key alone: zeroing it here would swallow the letter a
   // list, picker or input still has to handle.
-  if (ssAlt in AShift) or not Ops.FocusedIsInput() then
+  if DialogMnemonicKeysActive(AShift, Ops.FocusedIsInput()) then
   begin
     case DialogYesNoAnswer(AKey, AKeyChar) of
       dyaYes:
@@ -481,26 +624,14 @@ begin
           Exit(True);
         end;
     end;
-    // A hotkey matches the typed letter first (any script: &Удалить takes
-    // у), then the same key on the other layout (the Latin e on the У key
-    // takes &Удалить), then the physical key, so Latin hotkeys also work
-    // from a layout other than JCUKEN.
-    Ch := #0;
-    if AKeyChar.IsLetter then
-      Ch := AKeyChar.ToUpper;
-    if (Ch <> #0) and (Ops.TryMnemonic(Ch) or
-       Ops.TryMnemonic(TextKeyLayoutAlternate(AKeyChar).ToUpper)) then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if (AKey >= vkA) and (AKey <= vkZ) and (Char(AKey) <> Ch) and Ops.TryMnemonic(Char(AKey)) then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
+    // Typed letter, layout alternate, then physical A..Z.
+    for Ch in DialogMnemonicLetterCandidates(AKey, AKeyChar) do
+      if Ops.TryMnemonic(Ch) then
+      begin
+        AKey := 0;
+        AKeyChar := #0;
+        Exit(True);
+      end;
   end;
 
   Result := False;
@@ -643,8 +774,7 @@ begin
   begin
     C := Ops.GetControl(Focus);
     if (C.Kind in [dckList, dckRadioGroup, dckDropDown]) and
-       ((AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or (AKey = vkEnd) or
-        (AKey = vkPrior) or (AKey = vkNext)) then
+       IsListSelectionNavKey(AKey) then
     begin
       if Length(C.Items) > 0 then
       begin
@@ -667,29 +797,16 @@ var
   Focus: Integer;
   C: TDialogControl;
   LineRes: TInputLineResult;
-  K: TKeyChord;
+  Guard: string;
 begin
   if not Ops.FocusedIsInput() then
     Exit(False);
 
   Focus := Ops.FocusIndex();
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
   // Copy/writeback: dynarray-of-record field as var can drop edits otherwise.
   C := Ops.GetControl(Focus);
-  // Password inputs: no Ctrl+C / Ctrl+X / Ctrl+Insert copy-out.
-  if C.Password and (K.MatchesAny(vkC, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkInsert, [ssCtrl], [ssShift, ssAlt])) then
-  begin
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-  // Read-only inputs: moving, selecting and copying only.
-  if C.ReadOnly and (K.IsPrintable or (AKey = vkBack) or (AKey = vkDelete) or
-     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkV, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkInsert, [ssShift], [ssCtrl, ssAlt])) then
+  Guard := ClassifyFocusedInputGuard(C.Password, C.ReadOnly, AKey, AKeyChar, AShift);
+  if Guard <> '' then
   begin
     AKey := 0;
     AKeyChar := #0;

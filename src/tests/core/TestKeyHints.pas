@@ -26,6 +26,9 @@ type
     [Test] procedure TestDisabledTrackerGivesNothing;
     [Test] procedure TestHintFitsAToast;
     [Test] procedure TestSeenSetSurvivesARestart;
+    [Test] procedure SameNameDistinctFoldersDetectsPair;
+    [Test] procedure DocumentHintSituationsBranches;
+    [Test] procedure PanelSurfaceHintSituationsThresholds;
   end;
 
 implementation
@@ -198,6 +201,64 @@ begin
     Second.Free;
     First.Free;
   end;
+end;
+
+procedure TTestKeyHints.SameNameDistinctFoldersDetectsPair;
+begin
+  Assert.IsTrue(SameNameDistinctFolders(
+    'file:///C:/Work/docs', 'file:///D:/Backup/docs'), 'same leaf, different URI');
+  Assert.IsTrue(not SameNameDistinctFolders(
+    'file:///C:/Work/docs', 'file:///C:/Work/docs'), 'same URI');
+  Assert.IsTrue(not SameNameDistinctFolders(
+    'file:///C:/Work/docs', 'file:///D:/Backup/other'), 'different leaf');
+  Assert.IsTrue(not SameNameDistinctFolders('tmp:///', 'file:///C:/Work/docs'),
+    'non-file scheme');
+  Assert.AreEqual('docs', FileUriLeafName('file:///C:/Work/docs'), 'leaf');
+  Assert.AreEqual('', FileUriLeafName('ws:///'), 'non-file leaf');
+end;
+
+procedure TTestKeyHints.DocumentHintSituationsBranches;
+var
+  H: THintSituations;
+begin
+  Assert.IsTrue(DocumentHintSituations(False, True, False, False, False) = [],
+    'not ready');
+  H := DocumentHintSituations(True, True, False, False, False);
+  Assert.IsTrue(H = [hsHexView], 'hex');
+  H := DocumentHintSituations(True, False, True, False, False);
+  Assert.IsTrue(H = [hsMarkdown], 'markdown');
+  H := DocumentHintSituations(True, False, False, True, False);
+  Assert.IsTrue(H = [hsViewer], 'viewer');
+  H := DocumentHintSituations(True, False, False, False, False);
+  Assert.IsTrue(H = [hsEditor], 'editor');
+  H := DocumentHintSituations(True, False, False, False, True);
+  Assert.IsTrue(H = [hsEditor, hsEditorSelection], 'editor selection');
+end;
+
+procedure TTestKeyHints.PanelSurfaceHintSituationsThresholds;
+var
+  H: THintSituations;
+begin
+  H := PanelSurfaceHintSituations(hsNone, True, 0, 0, 0, False, False, False,
+    False, '', '');
+  Assert.IsTrue(H = [hsCommandLine], 'cmdline when no URI situation');
+  H := PanelSurfaceHintSituations(hsArchive, True, 0, 0, 0, False, False, False,
+    False, '', '');
+  Assert.IsTrue(H = [hsArchive], 'URI beats cmdline');
+  H := PanelSurfaceHintSituations(hsNone, False, 2, 0, 0, False, False, False,
+    False, '', '');
+  Assert.IsTrue(H = [hsSelection], 'selection under many threshold');
+  H := PanelSurfaceHintSituations(hsNone, False, 3, 8, 150, True, True, True,
+    True, 'file:///C:/A/docs', 'file:///D:/B/docs');
+  Assert.IsTrue(hsSelection in H, 'selection');
+  Assert.IsTrue(hsManySelected in H, 'many');
+  Assert.IsTrue(hsFolderTravel in H, 'travel');
+  Assert.IsTrue(hsLongFolder in H, 'long');
+  Assert.IsTrue(hsArchiveFile in H, 'archive file');
+  Assert.IsTrue(hsQuickView in H, 'qv');
+  Assert.IsTrue(hsInfoPanel in H, 'info');
+  Assert.IsTrue(hsPanelTabs in H, 'tabs');
+  Assert.IsTrue(hsSameNameFolders in H, 'same name');
 end;
 
 initialization

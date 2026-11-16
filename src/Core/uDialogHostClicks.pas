@@ -73,10 +73,44 @@ type
 function DialogHandleClickCore(const Ops: TDialogClickOps; ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 
+/// <summary>Hover index after a click on the open DropDown scrollbar: top /
+/// bottom arrows step by one, track maps the click row into 0..ALast.</summary>
+function DropHoverAfterScrollBarClick(AHover, ALast, AViewH, ALocalRow,
+  APopupTop, APopupBottom: Integer): Integer;
+
+/// <summary>True when ALocalCol is over the item list of an open DropDown
+/// (not the scrollbar column when ANeedBar).</summary>
+function OpenDropDownClickHitsItemCol(ALocalCol, APopupLeft, APopupRight: Integer;
+  ANeedBar: Boolean): Boolean;
+
 implementation
 
 uses
   System.Math, uThemeDrawing, uInputLine, uColorPickerControl, uDatePickerControl;
+
+function DropHoverAfterScrollBarClick(AHover, ALast, AViewH, ALocalRow,
+  APopupTop, APopupBottom: Integer): Integer;
+var
+  ViewH: Integer;
+begin
+  ViewH := Max(AViewH, 1);
+  if ALocalRow = APopupTop then
+    Result := EnsureRange(AHover - 1, 0, ALast)
+  else if ALocalRow = APopupBottom then
+    Result := EnsureRange(AHover + 1, 0, ALast)
+  else
+    Result := EnsureRange(
+      Round((ALocalRow - APopupTop - 1) * ALast / Max(ViewH - 3, 1)),
+      0, ALast);
+end;
+
+function OpenDropDownClickHitsItemCol(ALocalCol, APopupLeft, APopupRight: Integer;
+  ANeedBar: Boolean): Boolean;
+begin
+  Result := (ALocalCol >= APopupLeft) and
+    ((not ANeedBar and (ALocalCol <= APopupRight)) or
+     (ANeedBar and (ALocalCol < APopupRight)));
+end;
 
 function DialogHandleFrameClick(const Ops: TDialogClickOps; ALocalCol, ALocalRow: Integer): Boolean;
 var
@@ -127,21 +161,13 @@ begin
     NeedBar := Count > ViewH;
     if NeedBar and (ALocalCol = Popup.Right) and (ViewH > 0) then
     begin
-      if ALocalRow = Popup.Top then
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() - 1, 0, Count - 1))
-      else if ALocalRow = Popup.Bottom then
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() + 1, 0, Count - 1))
-      else
-        Ops.SetDropHover(EnsureRange(
-          Round((ALocalRow - Popup.Top - 1) * (Count - 1) / Max(ViewH - 3, 1)),
-          0, Count - 1));
+      Ops.SetDropHover(DropHoverAfterScrollBarClick(
+        Ops.DropHover(), Count - 1, ViewH, ALocalRow, Popup.Top, Popup.Bottom));
       Ops.EnsureDropHoverInView();
       Ops.NotifyChanged();
       Exit(True);
     end;
-    if (ALocalCol >= Popup.Left) and
-       ((not NeedBar and (ALocalCol <= Popup.Right)) or
-        (NeedBar and (ALocalCol < Popup.Right))) and
+    if OpenDropDownClickHitsItemCol(ALocalCol, Popup.Left, Popup.Right, NeedBar) and
        (Row >= 0) and (Row < ViewH) then
     begin
       Idx := Ops.DropScrollTop() + Row;

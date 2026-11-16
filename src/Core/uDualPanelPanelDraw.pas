@@ -128,6 +128,10 @@ function PanelTabDragHoverIndex(ASide: TPanelSide; ADragActive: Boolean;
   ADragKind, ALeftKind, ARightKind, AHover: Integer): Integer;
 function IsQuickViewPreviewable(AHasRow, AIsOverlayImage: Boolean;
   const ARow: TPanelRow): Boolean;
+/// <summary>Image URI for Quick View: the row itself when it is an overlay
+/// image, else a plugin redirect that is an image extension; '' otherwise.</summary>
+function ResolveQuickViewImageUri(AHasRow: Boolean; const ARow: TPanelRow;
+  const APluginTarget: string): string;
 function QuickViewInteriorAbsBounds(const APanelBounds, AWindowArea: TRectI): TRectI;
 procedure DrawPanelShell(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
@@ -191,7 +195,7 @@ procedure DispatchDrawPanelFiles(const ABuffer: TTerminalGrid;
 implementation
 
 uses
-  uChromeRows, uStrings;
+  uChromeRows, uStrings, uImageInfo;
 
 const
   // Free-space bar of the NDN footer: cells left empty at each end, and how much
@@ -685,6 +689,19 @@ function IsQuickViewPreviewable(AHasRow, AIsOverlayImage: Boolean;
 begin
   Result := AHasRow and (not ARow.IsDirectory) and (not ARow.IsParent) and
     (ARow.URI <> '') and AIsOverlayImage;
+end;
+
+function ResolveQuickViewImageUri(AHasRow: Boolean; const ARow: TPanelRow;
+  const APluginTarget: string): string;
+begin
+  Result := '';
+  if not AHasRow or ARow.IsDirectory or ARow.IsParent or (ARow.URI = '') then
+    Exit;
+  if IsOverlayImageExtension(ARow.Extension) then
+    Exit(ARow.URI);
+  if (APluginTarget <> '') and (APluginTarget <> ARow.URI) and
+     IsOverlayImageExtension(ExtractFileExt(APluginTarget)) then
+    Result := APluginTarget;
 end;
 
 function QuickViewInteriorAbsBounds(const APanelBounds, AWindowArea: TRectI): TRectI;

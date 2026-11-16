@@ -11,6 +11,21 @@ uses
   uVfsTypes, uFileFind, uFindSession;
 
 type
+  /// <summary>What StartSearch's FindFilesAsync done-callback does next.
+  /// Background empty paths drop the job; other background paths still refresh
+  /// the job chip when the entry remains.</summary>
+  TFindWalkDoneAction = (
+    fdaIgnore,
+    fdaBgEmptyNotifyAndDrop,
+    fdaBgEmptyDropOnly,
+    fdaBgUpdateOpenedSession,
+    fdaBgOpenCancelledHits,
+    fdaBgNotifyFound,
+    fdaFgMergeShownHits,
+    fdaFgCancelClear,
+    fdaFgNavigateHits,
+    fdaFgShowResultsOverlay);
+
   TSearchGotoEvent = reference to procedure(const AFilePath: string);
   /// <summary>Shows AHits as the find panel; True when it did. AUpdate is True
   /// once an earlier call showed it: the list only grew, so the panel keeps its
@@ -100,6 +115,12 @@ type
       var AKeyChar: Char);
     procedure HandleSearchInputRunning(var AKey: Word; var AKeyChar: Char);
     procedure HandleSearchInputResults(var AKey: Word; var AKeyChar: Char);
+    procedure QueueFindLimitNotice(AErrorCode: TVfsErrorCode; ATruncated: Boolean;
+      const ALife: ILifeFlag);
+    procedure ApplyFindWalkDone(AAction: TFindWalkDoneAction; ARunId: Integer;
+      ABg: TBackgroundSearch; const AHits: TArray<TFindHit>;
+      const AError: TVfsError; ATruncated: Boolean; const ARoot, AMask: string;
+      const ALife: ILifeFlag);
   public
     constructor Create(const ATheme: IThemeRenderer; const AOnInvalidate: TProc;
       const AOnGoto: TSearchGotoEvent;
@@ -171,6 +192,32 @@ type
       write FOnCurrentSession;
   end;
 
+/// <summary>True while a progress tick still belongs to a live walk (bg chip
+/// or the foreground overlay of the current run).</summary>
+function FindWalkProgressApplies(AAlive, AIsBackground, ARunCurrent,
+  APhaseRunning: Boolean): Boolean;
+
+/// <summary>True when the walk hit cFindMaxResults and finished cleanly.</summary>
+function ShouldQueueFindLimitNotice(AErrorCode: TVfsErrorCode;
+  ATruncated: Boolean): Boolean;
+
+/// <summary>Done-callback disposition for a find walk. AIsBackground means the
+/// run already left the overlay; ARunCurrent/APhaseRunning gate the foreground
+/// path only.</summary>
+function ClassifyFindWalkDone(AAlive, AIsBackground, ABgOpened,
+  AResultsShown, ARunCurrent, APhaseRunning: Boolean;
+  AErrorCode: TVfsErrorCode; AHitCount: Integer): TFindWalkDoneAction;
+
+type
+  /// <summary>What the find overlay dialog does with a key while FocusField is
+  /// mask (0) or subdirs checkbox (1).</summary>
+  TSearchDialogKeyAction = (sdaClose, sdaToggleFocus, sdaStart, sdaToggleSubdirs,
+    sdaBackspace, sdaAppendChar, sdaSwallow);
+
+/// <summary>Dialog-phase key disposition for Alt+F7 before the walk starts.</summary>
+function ClassifySearchDialogKey(AFocusField: Integer; AKey: Word;
+  AKeyChar: Char; AShift: TShiftState): TSearchDialogKeyAction;
+
 implementation
 
 uses
@@ -194,6 +241,78 @@ const
   cEllipsis = #$2026;
   // The job-list entry of a search that runs in the background.
   cJobOwner = 'host';
+
+function FindWalkProgressApplies(AAlive, AIsBackground, ARunCurrent,
+  APhaseRunning: Boolean): Boolean;
+begin
+  if not AAlive then
+    Exit(False);
+  if AIsBackground then
+    Exit(True);
+  Result := ARunCurrent and APhaseRunning;
+end;
+
+function ShouldQueueFindLimitNotice(AErrorCode: TVfsErrorCode;
+  ATruncated: Boolean): Boolean;
+begin
+  Result := (AErrorCode = vecOk) and ATruncated;
+end;
+
+function ClassifyFindWalkDone(AAlive, AIsBackground, ABgOpened,
+  AResultsShown, ARunCurrent, APhaseRunning: Boolean;
+  AErrorCode: TVfsErrorCode; AHitCount: Integer): TFindWalkDoneAction;
+begin
+  if not AAlive then
+    Exit(fdaIgnore);
+  if AIsBackground then
+  begin
+    if AHitCount = 0 then
+    begin
+      if AErrorCode <> vecCancelled then
+        Exit(fdaBgEmptyNotifyAndDrop);
+      Exit(fdaBgEmptyDropOnly);
+    end;
+    if ABgOpened then
+      Exit(fdaBgUpdateOpenedSession);
+    if AErrorCode = vecCancelled then
+      Exit(fdaBgOpenCancelledHits);
+    Exit(fdaBgNotifyFound);
+  end;
+  if not (ARunCurrent and APhaseRunning) then
+    Exit(fdaIgnore);
+  if AResultsShown then
+    Exit(fdaFgMergeShownHits);
+  if AErrorCode = vecCancelled then
+    Exit(fdaFgCancelClear);
+  if (AErrorCode = vecOk) and (AHitCount > 0) then
+    Exit(fdaFgNavigateHits);
+  Result := fdaFgShowResultsOverlay;
+end;
+
+function ClassifySearchDialogKey(AFocusField: Integer; AKey: Word;
+  AKeyChar: Char; AShift: TShiftState): TSearchDialogKeyAction;
+var
+  K: TKeyChord;
+begin
+  if AKey = vkEscape then
+    Exit(sdaClose);
+  if AKey = vkTab then
+    Exit(sdaToggleFocus);
+  if AKey = vkReturn then
+    Exit(sdaStart);
+  if AFocusField = 1 then
+  begin
+    if (AKey = vkSpace) or (AKeyChar = ' ') then
+      Exit(sdaToggleSubdirs);
+    Exit(sdaSwallow);
+  end;
+  if AKey = vkBack then
+    Exit(sdaBackspace);
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if K.IsPrintable and K.HasMods([], [ssShift]) then
+    Exit(sdaAppendChar);
+  Result := sdaSwallow;
+end;
 
 constructor TSearchController.Create(const ATheme: IThemeRenderer;
   const AOnInvalidate: TProc; const AOnGoto: TSearchGotoEvent;
@@ -386,9 +505,10 @@ begin
   FindFilesAsync(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
-      if not Life.Alive then
-        Exit;
       Bg := FindBackground(RunId);
+      if not FindWalkProgressApplies(Life.Alive, Bg <> nil, RunId = FRunId,
+        FSearch.Phase = spRunning) then
+        Exit;
       if Bg <> nil then
       begin
         Bg.CurrentDir := ACurrentDir;
@@ -397,8 +517,6 @@ begin
         PluginJobSetBadge(cJobOwner, Bg.JobKey, IntToStr(AFoundCount));
         Exit;
       end;
-      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) then
-        Exit;
       FSearch.FoundCount := AFoundCount;
       FSearch.CurrentDir := ACurrentDir;
       PluginJobUpdate(cJobOwner, 'find:' + IntToStr(RunId),
@@ -410,92 +528,19 @@ begin
     procedure(const AHits: TArray<TFindHit>; const AError: TVfsError;
       ATruncated: Boolean)
     begin
-      if not Life.Alive then
-        Exit;
       Bg := FindBackground(RunId);
-      if Bg <> nil then
-      begin
-        Bg.Done := True;
-        Bg.Token := nil;
-        Bg.Hits := AHits;
-        if Length(AHits) = 0 then
-        begin
-          // Nothing to open: the job ends with a note unless the user stopped it.
-          if (AError.Code <> vecCancelled) and Assigned(FOnBackgroundDone) then
-            FOnBackgroundDone(0);
-          DropBackground(RunId);
-          Exit;
-        end;
-        if Bg.Opened then
-        begin
-          if Assigned(FOnUpdateSession) then
-            FOnUpdateSession(Bg.SessionId, Bg.Root, Bg.Mask, AHits);
-        end
-        else if AError.Code = vecCancelled then
-          // A search the user stopped shows what it found right away.
-          OpenBackground(RunId)
-        else if Assigned(FOnBackgroundDone) then
-          FOnBackgroundDone(Length(AHits));
-        if FindBackground(RunId) <> nil then
-        begin
-          RefreshBackgroundJob(Bg);
-          // A finished search has no progress dialog to keep up.
-          PluginJobSetForeground(JobIdOf(Bg.JobKey), False);
-        end;
-        Exit;
-      end;
-      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) then
-        Exit;
-      FSearch.Cancel := nil;
-      EndForegroundJob;
-      // Queued so the notice opens after this callback has closed or
-      // rebuilt the search UI.
-      if (AError.Code = vecOk) and ATruncated and Assigned(FOnLimitReached) then
-        TThread.Queue(nil,
-          procedure
-          begin
-            if Life.Alive then
-              FOnLimitReached;
-          end);
-      // The panel keeps whatever was found, also after a stop or an error.
-      if FResultsShown then
-      begin
-        if Length(AHits) > 0 then
-          FOnNavigateFindResults(Root, Mask, AHits, True);
-        CloseSearchUi;
-        Exit;
-      end;
-      if AError.Code = vecCancelled then
-      begin
-        FSearch.Phase := spNone;
-        if Assigned(FOnInvalidate) then
-          FOnInvalidate;
-        Exit;
-      end;
-      if (AError.Code = vecOk) and (Length(AHits) > 0) then
-      begin
-        CloseSearchUi;
-        if Assigned(FOnNavigateFindResults) and
-           FOnNavigateFindResults(Root, Mask, AHits, False) then
-          Exit;
-      end;
-      FSearch.Results := AHits;
-      FSearch.FoundCount := Length(AHits);
-      FSearch.Cursor := 0;
-      FSearch.Scroll := 0;
-      if AError.Code <> vecOk then
-        FSearch.Message := AError.Message
-      else
-        FSearch.Message := T('ui.search.none', 'No files found');
-      FSearch.Phase := spResults;
-      if Assigned(FOnInvalidate) then
-        FOnInvalidate;
+      ApplyFindWalkDone(
+        ClassifyFindWalkDone(Life.Alive, Bg <> nil,
+          (Bg <> nil) and Bg.Opened, FResultsShown, RunId = FRunId,
+          FSearch.Phase = spRunning, AError.Code, Length(AHits)),
+        RunId, Bg, AHits, AError, ATruncated, Root, Mask, Life);
     end,
     procedure(const ANewHits: TArray<TFindHit>)
     begin
-      if not Life.Alive then
-        Exit;
       Bg := FindBackground(RunId);
+      if not FindWalkProgressApplies(Life.Alive, Bg <> nil, RunId = FRunId,
+        FSearch.Phase = spRunning) then
+        Exit;
       if Bg <> nil then
       begin
         Bg.Hits := Bg.Hits + ANewHits;
@@ -503,14 +548,146 @@ begin
           FOnUpdateSession(Bg.SessionId, Bg.Root, Bg.Mask, Bg.Hits);
         Exit;
       end;
-      if (RunId <> FRunId) or (FSearch.Phase <> spRunning) or
-         not Assigned(FOnNavigateFindResults) then
+      if not Assigned(FOnNavigateFindResults) then
         Exit;
       FSearch.Results := FSearch.Results + ANewHits;
       FSearch.FoundCount := Length(FSearch.Results);
       if FOnNavigateFindResults(Root, Mask, FSearch.Results, FResultsShown) then
         FResultsShown := True;
     end);
+end;
+
+procedure TSearchController.QueueFindLimitNotice(AErrorCode: TVfsErrorCode;
+  ATruncated: Boolean; const ALife: ILifeFlag);
+begin
+  // Queued so the notice opens after this callback has closed or rebuilt UI.
+  if ShouldQueueFindLimitNotice(AErrorCode, ATruncated) and
+     Assigned(FOnLimitReached) then
+    TThread.Queue(nil,
+      procedure
+      begin
+        if ALife.Alive then
+          FOnLimitReached;
+      end);
+end;
+
+procedure TSearchController.ApplyFindWalkDone(AAction: TFindWalkDoneAction;
+  ARunId: Integer; ABg: TBackgroundSearch; const AHits: TArray<TFindHit>;
+  const AError: TVfsError; ATruncated: Boolean; const ARoot, AMask: string;
+  const ALife: ILifeFlag);
+begin
+  case AAction of
+    fdaIgnore:
+      Exit;
+    fdaBgEmptyNotifyAndDrop:
+      begin
+        ABg.Done := True;
+        ABg.Token := nil;
+        ABg.Hits := AHits;
+        if Assigned(FOnBackgroundDone) then
+          FOnBackgroundDone(0);
+        DropBackground(ARunId);
+      end;
+    fdaBgEmptyDropOnly:
+      begin
+        ABg.Done := True;
+        ABg.Token := nil;
+        ABg.Hits := AHits;
+        DropBackground(ARunId);
+      end;
+    fdaBgUpdateOpenedSession:
+      begin
+        ABg.Done := True;
+        ABg.Token := nil;
+        ABg.Hits := AHits;
+        if Assigned(FOnUpdateSession) then
+          FOnUpdateSession(ABg.SessionId, ABg.Root, ABg.Mask, AHits);
+        if FindBackground(ARunId) <> nil then
+        begin
+          RefreshBackgroundJob(ABg);
+          PluginJobSetForeground(JobIdOf(ABg.JobKey), False);
+        end;
+      end;
+    fdaBgOpenCancelledHits:
+      begin
+        ABg.Done := True;
+        ABg.Token := nil;
+        ABg.Hits := AHits;
+        // A search the user stopped shows what it found right away.
+        OpenBackground(ARunId);
+        if FindBackground(ARunId) <> nil then
+        begin
+          RefreshBackgroundJob(ABg);
+          PluginJobSetForeground(JobIdOf(ABg.JobKey), False);
+        end;
+      end;
+    fdaBgNotifyFound:
+      begin
+        ABg.Done := True;
+        ABg.Token := nil;
+        ABg.Hits := AHits;
+        if Assigned(FOnBackgroundDone) then
+          FOnBackgroundDone(Length(AHits));
+        if FindBackground(ARunId) <> nil then
+        begin
+          RefreshBackgroundJob(ABg);
+          PluginJobSetForeground(JobIdOf(ABg.JobKey), False);
+        end;
+      end;
+    fdaFgMergeShownHits:
+      begin
+        FSearch.Cancel := nil;
+        EndForegroundJob;
+        QueueFindLimitNotice(AError.Code, ATruncated, ALife);
+        if Length(AHits) > 0 then
+          FOnNavigateFindResults(ARoot, AMask, AHits, True);
+        CloseSearchUi;
+      end;
+    fdaFgCancelClear:
+      begin
+        FSearch.Cancel := nil;
+        EndForegroundJob;
+        QueueFindLimitNotice(AError.Code, ATruncated, ALife);
+        FSearch.Phase := spNone;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+      end;
+    fdaFgNavigateHits:
+      begin
+        FSearch.Cancel := nil;
+        EndForegroundJob;
+        QueueFindLimitNotice(AError.Code, ATruncated, ALife);
+        CloseSearchUi;
+        if Assigned(FOnNavigateFindResults) and
+           FOnNavigateFindResults(ARoot, AMask, AHits, False) then
+          Exit;
+        FSearch.Results := AHits;
+        FSearch.FoundCount := Length(AHits);
+        FSearch.Cursor := 0;
+        FSearch.Scroll := 0;
+        FSearch.Message := T('ui.search.none', 'No files found');
+        FSearch.Phase := spResults;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+      end;
+    fdaFgShowResultsOverlay:
+      begin
+        FSearch.Cancel := nil;
+        EndForegroundJob;
+        QueueFindLimitNotice(AError.Code, ATruncated, ALife);
+        FSearch.Results := AHits;
+        FSearch.FoundCount := Length(AHits);
+        FSearch.Cursor := 0;
+        FSearch.Scroll := 0;
+        if AError.Code <> vecOk then
+          FSearch.Message := AError.Message
+        else
+          FSearch.Message := T('ui.search.none', 'No files found');
+        FSearch.Phase := spResults;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+      end;
+  end;
 end;
 
 procedure TSearchController.CancelSearch;
@@ -927,60 +1104,54 @@ end;
 procedure TSearchController.HandleSearchInputDialog(var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char);
 begin
-  if AKey = vkEscape then
-  begin
-    CloseSearchUi;
-    AKey := 0;
-    Exit;
-  end;
-  if AKey = vkTab then
-  begin
-    FSearch.FocusField := 1 - FSearch.FocusField;
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
-    AKey := 0;
-    Exit;
-  end;
-  if AKey = vkReturn then
-  begin
-    StartSearch;
-    AKey := 0;
-    Exit;
-  end;
-  if FSearch.FocusField = 1 then
-  begin
-    if (AKey = vkSpace) or (AKeyChar = ' ') then
-    begin
-      FSearch.Subdirs := not FSearch.Subdirs;
-      if Assigned(FOnInvalidate) then
-        FOnInvalidate;
-    end;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if AKey = vkBack then
-  begin
-    if FSearch.Mask <> '' then
-    begin
-      Delete(FSearch.Mask, Length(FSearch.Mask), 1);
-      if Assigned(FOnInvalidate) then
-        FOnInvalidate;
-    end;
-    AKey := 0;
-    Exit;
-  end;
-  if TKeyChord.Make(AKey, AKeyChar, AShift).IsPrintable and TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([], [ssShift]) then
-  begin
-    FSearch.Mask := FSearch.Mask + AKeyChar;
-    if Assigned(FOnInvalidate) then
-      FOnInvalidate;
+  case ClassifySearchDialogKey(FSearch.FocusField, AKey, AKeyChar, AShift) of
+    sdaClose:
+      begin
+        CloseSearchUi;
+        AKey := 0;
+      end;
+    sdaToggleFocus:
+      begin
+        FSearch.FocusField := 1 - FSearch.FocusField;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+        AKey := 0;
+      end;
+    sdaStart:
+      begin
+        StartSearch;
+        AKey := 0;
+      end;
+    sdaToggleSubdirs:
+      begin
+        FSearch.Subdirs := not FSearch.Subdirs;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+        AKey := 0;
+        AKeyChar := #0;
+      end;
+    sdaBackspace:
+      begin
+        if FSearch.Mask <> '' then
+        begin
+          Delete(FSearch.Mask, Length(FSearch.Mask), 1);
+          if Assigned(FOnInvalidate) then
+            FOnInvalidate;
+        end;
+        AKey := 0;
+      end;
+    sdaAppendChar:
+      begin
+        FSearch.Mask := FSearch.Mask + AKeyChar;
+        if Assigned(FOnInvalidate) then
+          FOnInvalidate;
+        AKey := 0;
+        AKeyChar := #0;
+      end;
+  else
     AKey := 0;
     AKeyChar := #0;
-    Exit;
   end;
-  AKey := 0;
-  AKeyChar := #0;
 end;
 
 procedure TSearchController.HandleSearchInputRunning(var AKey: Word;

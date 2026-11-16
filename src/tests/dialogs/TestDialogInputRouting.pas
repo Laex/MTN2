@@ -23,13 +23,21 @@ type
     [Test] procedure DropDownHoverAfterNavKeyClamps;
     [Test] procedure ListSelectedIndexAfterNavKeySteps;
     [Test] procedure ListKeyCommandClassification;
+    [Test] procedure DropHoverAfterScrollBarClickSteps;
+    [Test] procedure OpenDropDownClickHitsItemColGates;
+    [Test] procedure OpenDropDownKeyClassification;
+    [Test] procedure ClosedDropDownOpenAndMaskChords;
+    [Test] procedure ListSelectionNavKeyAndInputGuards;
+    [Test] procedure HotKeyMultiJoinAndAppend;
+    [Test] procedure MnemonicKeysActiveAndLetterCandidates;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson, uDialogHostKeys;
+  System.SysUtils, System.Classes, System.UITypes, System.Character,
+  uDialogHost, uDialogTypes, uDialogJson, uDialogHostKeys, uDialogHostClicks,
+  uInputLine;
 
 const
   cRouting =
@@ -287,6 +295,113 @@ begin
   Assert.AreEqual('', ClassifyListKeyCommand(vkUp, #0, []), 'bare up');
   Assert.AreEqual('', ClassifyListKeyCommand(vkDelete, #0, [ssCtrl]),
     'ctrl+del not a list cmd');
+end;
+
+procedure TTestDialogInputRouting.DropHoverAfterScrollBarClickSteps;
+begin
+  Assert.IsTrue(DropHoverAfterScrollBarClick(2, 9, 5, 10, 10, 14) = 1,
+    'top arrow');
+  Assert.IsTrue(DropHoverAfterScrollBarClick(2, 9, 5, 14, 10, 14) = 3,
+    'bottom arrow');
+  Assert.IsTrue(DropHoverAfterScrollBarClick(0, 9, 5, 10, 10, 14) = 0,
+    'top clamps');
+  Assert.IsTrue(DropHoverAfterScrollBarClick(9, 9, 5, 14, 10, 14) = 9,
+    'bottom clamps');
+  // track: Round((12-10-1)*9 / Max(5-3,1)) = Round(4.5) -> 4
+  Assert.IsTrue(DropHoverAfterScrollBarClick(0, 9, 5, 12, 10, 14) = 4,
+    'track maps');
+end;
+
+procedure TTestDialogInputRouting.OpenDropDownClickHitsItemColGates;
+begin
+  Assert.IsTrue(OpenDropDownClickHitsItemCol(5, 2, 10, False), 'no bar inside');
+  Assert.IsTrue(OpenDropDownClickHitsItemCol(10, 2, 10, False), 'no bar right');
+  Assert.IsTrue(not OpenDropDownClickHitsItemCol(10, 2, 10, True),
+    'bar column excluded');
+  Assert.IsTrue(OpenDropDownClickHitsItemCol(9, 2, 10, True), 'left of bar');
+  Assert.IsTrue(not OpenDropDownClickHitsItemCol(1, 2, 10, False), 'left of popup');
+end;
+
+procedure TTestDialogInputRouting.OpenDropDownKeyClassification;
+begin
+  Assert.AreEqual(Ord(odkaCommit),
+    Ord(ClassifyOpenDropDownKey(vkReturn, #0, True, False)), 'accept');
+  Assert.AreEqual(Ord(odkaCommit),
+    Ord(ClassifyOpenDropDownKey(vkSpace, ' ', True, False)), 'space via flag');
+  Assert.AreEqual(Ord(odkaClose),
+    Ord(ClassifyOpenDropDownKey(vkEscape, #0, False, False)), 'esc');
+  Assert.AreEqual(Ord(odkaDeleteHistory),
+    Ord(ClassifyOpenDropDownKey(vkDelete, #0, False, True)), 'del history');
+  Assert.AreEqual(Ord(odkaSwallow),
+    Ord(ClassifyOpenDropDownKey(vkDelete, #0, False, False)), 'del non-history');
+  Assert.AreEqual(Ord(odkaTabAway),
+    Ord(ClassifyOpenDropDownKey(vkTab, #0, False, False)), 'tab');
+  Assert.AreEqual(Ord(odkaNavHover),
+    Ord(ClassifyOpenDropDownKey(vkDown, #0, False, False)), 'nav');
+  Assert.AreEqual(Ord(odkaSwallow),
+    Ord(ClassifyOpenDropDownKey(Ord('A'), 'a', False, False)), 'other');
+end;
+
+procedure TTestDialogInputRouting.ClosedDropDownOpenAndMaskChords;
+begin
+  Assert.IsTrue(ShouldOpenFocusedDropDown(vkF4, #0, []), 'f4');
+  Assert.IsTrue(ShouldOpenFocusedDropDown(vkSpace, ' ', []), 'space');
+  Assert.IsTrue(ShouldOpenFocusedDropDown(vkDown, #0, [ssAlt]), 'alt+down');
+  Assert.IsTrue(not ShouldOpenFocusedDropDown(vkDown, #0, []), 'bare down');
+  Assert.IsTrue(IsMaskHistoryGroupSaveChord(Ord('G'), [ssCtrl], 'masks'),
+    'masks');
+  Assert.IsTrue(IsMaskHistoryGroupSaveChord(Ord('G'), [ssCtrl], 'findmask'),
+    'findmask');
+  Assert.IsTrue(not IsMaskHistoryGroupSaveChord(Ord('G'), [ssCtrl], 'path'),
+    'other history');
+  Assert.IsTrue(not IsMaskHistoryGroupSaveChord(Ord('G'), [ssCtrl, ssAlt], 'masks'),
+    'ctrl+alt+g');
+end;
+
+procedure TTestDialogInputRouting.ListSelectionNavKeyAndInputGuards;
+begin
+  Assert.IsTrue(IsListSelectionNavKey(vkUp), 'up');
+  Assert.IsTrue(IsListSelectionNavKey(vkNext), 'pgdn');
+  Assert.IsTrue(not IsListSelectionNavKey(vkLeft), 'left');
+  Assert.AreEqual('password-copy',
+    ClassifyFocusedInputGuard(True, False, Ord('C'), 'c', [ssCtrl]),
+    'password ctrl+c');
+  Assert.AreEqual('',
+    ClassifyFocusedInputGuard(False, False, Ord('C'), 'c', [ssCtrl]),
+    'normal ctrl+c');
+  Assert.AreEqual('readonly-edit',
+    ClassifyFocusedInputGuard(False, True, vkBack, #0, []), 'readonly back');
+  Assert.AreEqual('',
+    ClassifyFocusedInputGuard(False, True, vkLeft, #0, []), 'readonly left');
+end;
+
+procedure TTestDialogInputRouting.HotKeyMultiJoinAndAppend;
+begin
+  Assert.AreEqual('A; B', HotKeyMultiJoinExceptLast(['A', 'B', 'C']), 'drop last');
+  Assert.AreEqual('', HotKeyMultiJoinExceptLast(['A']), 'single');
+  Assert.AreEqual('Ctrl+X', HotKeyMultiAppendChord('', 'Ctrl+X'), 'first');
+  Assert.AreEqual('Ctrl+X; Alt+Y', HotKeyMultiAppendChord('Ctrl+X', 'Alt+Y'),
+    'append');
+  Assert.AreEqual('Ctrl+X', HotKeyMultiAppendChord('Ctrl+X', 'Ctrl+X'), 'dup');
+  Assert.AreEqual('Ctrl+X', HotKeyMultiAppendChord('Ctrl+X', ''), 'empty chord');
+end;
+
+procedure TTestDialogInputRouting.MnemonicKeysActiveAndLetterCandidates;
+var
+  Letters: TArray<Char>;
+begin
+  Assert.IsTrue(DialogMnemonicKeysActive([ssAlt], True), 'alt on input');
+  Assert.IsTrue(DialogMnemonicKeysActive([], False), 'non-input');
+  Assert.IsTrue(not DialogMnemonicKeysActive([], True), 'bare input');
+
+  Letters := DialogMnemonicLetterCandidates(vkA, 'a');
+  Assert.IsTrue(Length(Letters) = 2, 'typed + layout alternate');
+  Assert.IsTrue(Letters[0] = 'A', 'typed upper');
+  Assert.IsTrue(Letters[1] = TextKeyLayoutAlternate('a').ToUpper, 'layout alternate');
+
+  Letters := DialogMnemonicLetterCandidates(vkB, #0);
+  Assert.IsTrue(Length(Letters) = 1, 'physical only');
+  Assert.IsTrue(Letters[0] = 'B', 'physical B');
 end;
 
 end.

@@ -4329,13 +4329,13 @@ var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Doc: TEditorWindow;
-  Situation: THintSituation;
-  I, PanelWorkspaces: Integer;
+  I, PanelWorkspaces, RowCount: Integer;
   Tab: TTab;
   Rows: TPanelRows;
   Row: TPanelRow;
   Idx: Integer;
-  LeftName, RightName: string;
+  ArchiveFile: Boolean;
+  CmdLineFocused: Boolean;
 begin
   Result := [];
   if Assigned(FTopMenu) and FTopMenu.Active then
@@ -4355,21 +4355,12 @@ begin
     wkDocument:
       begin
         Doc := ActiveDocument;
-        if Assigned(Doc) and Doc.MenuDocReady then
-        begin
-          if Doc.HexMode then
-            Include(Result, hsHexView)
-          else if Doc.MarkdownMode then
-            Include(Result, hsMarkdown)
-          else if Doc.ViewOnly then
-            Include(Result, hsViewer)
-          else
-          begin
-            Include(Result, hsEditor);
-            if Doc.HasSelection then
-              Include(Result, hsEditorSelection);
-          end;
-        end;
+        Result := Result + DocumentHintSituations(
+          Assigned(Doc) and Doc.MenuDocReady,
+          Assigned(Doc) and Doc.HexMode,
+          Assigned(Doc) and Doc.MarkdownMode,
+          Assigned(Doc) and Doc.ViewOnly,
+          Assigned(Doc) and Doc.HasSelection);
       end;
     wkTerminal:
       Include(Result, hsTerminal);
@@ -4379,44 +4370,30 @@ begin
       else
       begin
         Panel := ActivePanel(Ws);
-        Situation := HintSituationOfUri(ActiveTab(Panel).CurrentURI);
-        if Situation <> hsNone then
-          Include(Result, Situation)
-        else if Assigned(FCmdLineMgr) and FCmdLineMgr.Focused and
-           (Trim(FCmdLineMgr.Text) <> '') then
-          Include(Result, hsCommandLine);
-        if Length(ActiveTab(Panel).SelectedURIs) > 0 then
-          Include(Result, hsSelection);
-        if Length(ActiveTab(Panel).SelectedURIs) >= 3 then
-          Include(Result, hsManySelected);
-        if Length(ActiveTab(Panel).History) >= 8 then
-          Include(Result, hsFolderTravel);
-        // The same folder name in both panels: a copy to compare or sync.
-        LeftName := '';
-        RightName := '';
-        if SameText(Copy(ActiveTab(Ws.State.LeftPanel).CurrentURI, 1, 7), 'file://') then
-          LeftName := ExtractFileName(FileUriToPath(ActiveTab(Ws.State.LeftPanel).CurrentURI));
-        if SameText(Copy(ActiveTab(Ws.State.RightPanel).CurrentURI, 1, 7), 'file://') then
-          RightName := ExtractFileName(FileUriToPath(ActiveTab(Ws.State.RightPanel).CurrentURI));
-        if (LeftName <> '') and SameText(LeftName, RightName) and
-           (not SameVfsUri(ActiveTab(Ws.State.LeftPanel).CurrentURI,
-             ActiveTab(Ws.State.RightPanel).CurrentURI)) then
-          Include(Result, hsSameNameFolders);
+        CmdLineFocused := Assigned(FCmdLineMgr) and FCmdLineMgr.Focused and
+          (Trim(FCmdLineMgr.Text) <> '');
+        RowCount := 0;
+        ArchiveFile := False;
         if GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
         begin
-          if Length(Rows) >= 150 then
-            Include(Result, hsLongFolder);
-          if Row.IsArchive and (not Row.IsDirectory) and (not Row.IsParent) then
-            Include(Result, hsArchiveFile);
+          RowCount := Length(Rows);
+          ArchiveFile := Row.IsArchive and (not Row.IsDirectory) and
+            (not Row.IsParent);
         end;
-        if (Ws.State.LeftPanel.ViewKind = pvkQuickView) or
-           (Ws.State.RightPanel.ViewKind = pvkQuickView) then
-          Include(Result, hsQuickView);
-        if (Ws.State.LeftPanel.ViewKind = pvkInfo) or
-           (Ws.State.RightPanel.ViewKind = pvkInfo) then
-          Include(Result, hsInfoPanel);
-        if Length(Panel.Tabs) > 1 then
-          Include(Result, hsPanelTabs);
+        Result := Result + PanelSurfaceHintSituations(
+          HintSituationOfUri(ActiveTab(Panel).CurrentURI),
+          CmdLineFocused,
+          Length(ActiveTab(Panel).SelectedURIs),
+          Length(ActiveTab(Panel).History),
+          RowCount,
+          ArchiveFile,
+          (Ws.State.LeftPanel.ViewKind = pvkQuickView) or
+            (Ws.State.RightPanel.ViewKind = pvkQuickView),
+          (Ws.State.LeftPanel.ViewKind = pvkInfo) or
+            (Ws.State.RightPanel.ViewKind = pvkInfo),
+          Length(Panel.Tabs) > 1,
+          ActiveTab(Ws.State.LeftPanel).CurrentURI,
+          ActiveTab(Ws.State.RightPanel).CurrentURI);
       end;
   end;
 end;
@@ -4455,87 +4432,47 @@ procedure TDualPanelWindow.ModelInvalidated(AWindowId: Integer);
 var
   M: IPanelModel;
   BothModelsIdle: Boolean;
+  Sides: TArray<TPanelSide>;
+  Side: TPanelSide;
 begin
   if not FAlive then
     Exit;
   // Side-scoped invalidate (PANEL_PLUGIN WindowId): left=1, right=2.
-  case AWindowId of
-    cPanelWindowIdLeft:
-      begin
-        FPlainTotals[psLeft].Valid := False;
-        FSelTotals[psLeft].Valid := False;
-      end;
-    cPanelWindowIdRight:
-      begin
-        FPlainTotals[psRight].Valid := False;
-        FSelTotals[psRight].Valid := False;
-      end;
-  else
-    InvalidatePlainTotals;
-  end;
-  case AWindowId of
-    cPanelWindowIdLeft:
-      RestoreTabCursorSide(psLeft);
-    cPanelWindowIdRight:
-      RestoreTabCursorSide(psRight);
-  else
-    begin
-      RestoreTabCursorSide(psLeft);
-      RestoreTabCursorSide(psRight);
-    end;
-  end;
-  // Wait for the target side's list to finish - Open() first notifies with
-  // LoadingRows, and applying then would clear FPendingSelectName too early.
-  if FPendingSelectName <> '' then
+  Sides := PanelSidesForWindowId(AWindowId);
+  if Length(Sides) = 1 then
   begin
-    M := ModelForSide(FPendingSelectSide);
-    if Assigned(M) and not M.IsLoading then
-      ApplyPendingSelect(FPendingSelectSide, RowsForSide(FPendingSelectSide));
+    FPlainTotals[Sides[0]].Valid := False;
+    FSelTotals[Sides[0]].Valid := False;
   end
   else
+    InvalidatePlainTotals;
+  for Side in Sides do
+    RestoreTabCursorSide(Side);
+  // Wait for the target side's list to finish - Open() first notifies with
+  // LoadingRows, and applying then would clear FPendingSelectName too early.
+  M := ModelForSide(FPendingSelectSide);
+  if ModelInvalidatedShouldApplyPending(FPendingSelectName, Assigned(M),
+    Assigned(M) and M.IsLoading) then
+    ApplyPendingSelect(FPendingSelectSide, RowsForSide(FPendingSelectSide))
+  else if FPendingSelectName = '' then
   begin
     // After delete/move CursorIndex may be past EOF - without clamp the
     // cursor highlight disappears (no row matches Idx = CursorIndex).
-    case AWindowId of
-      cPanelWindowIdLeft:
-        begin
-          M := ModelForSide(psLeft);
-          if Assigned(M) and not M.IsLoading then
-            ClampCursorSide(psLeft);
-        end;
-      cPanelWindowIdRight:
-        begin
-          M := ModelForSide(psRight);
-          if Assigned(M) and not M.IsLoading then
-            ClampCursorSide(psRight);
-        end;
-    else
-      begin
-        M := ModelForSide(psLeft);
-        if Assigned(M) and not M.IsLoading then
-          ClampCursorSide(psLeft);
-        M := ModelForSide(psRight);
-        if Assigned(M) and not M.IsLoading then
-          ClampCursorSide(psRight);
-      end;
+    for Side in Sides do
+    begin
+      M := ModelForSide(Side);
+      if Assigned(M) and not M.IsLoading then
+        ClampCursorSide(Side);
     end;
   end;
   // A deferred watch may have arrived while a list load was in flight.
   BothModelsIdle := Assigned(FLeftModel) and not FLeftModel.IsLoading and
     Assigned(FRightModel) and not FRightModel.IsLoading;
-  if (FWatchPending[psLeft] or FWatchPending[psRight]) and BothModelsIdle then
+  if ModelInvalidatedShouldFlushWatch(FWatchPending[psLeft],
+    FWatchPending[psRight], BothModelsIdle) then
     FlushDirWatchPending;
-  case AWindowId of
-    cPanelWindowIdLeft:
-      MaybeAskArchivePassword(psLeft);
-    cPanelWindowIdRight:
-      MaybeAskArchivePassword(psRight);
-  else
-    begin
-      MaybeAskArchivePassword(psLeft);
-      MaybeAskArchivePassword(psRight);
-    end;
-  end;
+  for Side in Sides do
+    MaybeAskArchivePassword(Side);
   LeaveRemovedFolder(psLeft);
   LeaveRemovedFolder(psRight);
   NotifyChanged;
@@ -9628,10 +9565,7 @@ begin
   if FolderTreeShown and not (Assigned(FDialog) and FDialog.Visible) and
      FFolderTreeCtrl.Bounds.Contains(ALocalCol, ALocalRow) then
   begin
-    if AWheelDelta > 0 then
-      FFolderTreeCtrl.ScrollBy(-3)
-    else
-      FFolderTreeCtrl.ScrollBy(3);
+    FFolderTreeCtrl.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
     Exit(True);
   end;
   if not QuickViewVisible or not Assigned(FQuickText) or (FQuickText.Uri = '') then
@@ -9648,10 +9582,7 @@ begin
     Bounds := FRightBounds;
   if not Bounds.Contains(ALocalCol, ALocalRow) then
     Exit;
-  if AWheelDelta > 0 then
-    FQuickText.ScrollBy(-3)
-  else
-    FQuickText.ScrollBy(3);
+  FQuickText.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
   Result := True;
 end;
 
@@ -10585,11 +10516,11 @@ end;
 function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
 var
   Row, Delta, Top: Integer;
+  Kind: TPluginListCommandKind;
 begin
   Result := True;
-  if (AControlId <> 'toggle') and (AControlId <> 'permissions') and
-     (AControlId <> 'settings') and (AControlId <> 'info') and (AControlId <> 'up') and
-     (AControlId <> 'down') and (AControlId <> 'add') and (AControlId <> 'remove') then
+  Kind := ClassifyPluginListCommand(AControlId);
+  if Kind = plcDismiss then
   begin
     // OK applies the pending on/off choices; Cancel, Esc and the close box drop them.
     FDialog.Close;
@@ -10603,70 +10534,63 @@ begin
   Row := FDialog.GetListSelectedIndex('plugins');
   Top := FDialog.GetListScrollTop;
   FDialog.Close;
-  if (AControlId = 'up') or (AControlId = 'down') then
-  begin
-    // The selection follows the plugin to its new place.
-    if AControlId = 'up' then
-      Delta := -1
-    else
-      Delta := 1;
-    if HostMovePlugin(Row, Delta) then
-      Inc(Row, Delta);
-    ShowPluginList(Row);
-    FDialog.SetListScrollTop(Top);
-    Exit;
-  end;
-  if AControlId = 'info' then
-  begin
-    ShowPluginInfo(Row);
-    Exit;
-  end;
-  if AControlId = 'add' then
-  begin
-    AskInstallPlugin(Row);
-    Exit;
-  end;
-  if AControlId = 'remove' then
-  begin
-    AskRemovePlugin(Row);
-    Exit;
-  end;
-  if AControlId = 'settings' then
-  begin
-    // The plugin shows its own dialog and the list comes back when it is closed;
-    // one without settings gets a message.
-    FPluginListReturnRow := Row;
-    if HostConfigurePlugin(Row) then
-    begin
-      if Assigned(FDialog) and FDialog.Visible then
-        Exit;
-      FPluginListReturnRow := -1;
-    end
-    else
-    begin
-      // A message dialog; closing it brings the list back (hdkHost branch).
-      if not ShowHostDialog(BuildConfirmDialog(T('ui.plugins.noSettingsTitle', 'Plugin settings'),
-           Format(T('ui.plugins.noSettings', 'The plugin %s has no settings.'),
-             [HostPluginIdAt(Row)])), nil, 'settings.md') then
+  case Kind of
+    plcUp, plcDown:
       begin
-        FPluginListReturnRow := -1;
+        // The selection follows the plugin to its new place.
+        if Kind = plcUp then
+          Delta := -1
+        else
+          Delta := 1;
+        if HostMovePlugin(Row, Delta) then
+          Inc(Row, Delta);
         ShowPluginList(Row);
+        FDialog.SetListScrollTop(Top);
       end;
-      Exit;
-    end;
-  end
-  else if AControlId = 'permissions' then
-  begin
-    ShowPluginPermissions(Row);
-    Exit;
-  end
-  else
-    HostTogglePlugin(Row);
-  // The list is rebuilt so the marks show the new state; the menu is rebuilt
-  // too, since a plugin that left or arrived takes its items with it. The rows
-  // stay where they were: the list does not jump.
-  ShowPluginList(Row);
-  FDialog.SetListScrollTop(Top);
+    plcInfo:
+      ShowPluginInfo(Row);
+    plcAdd:
+      AskInstallPlugin(Row);
+    plcRemove:
+      AskRemovePlugin(Row);
+    plcSettings:
+      begin
+        // The plugin shows its own dialog and the list comes back when it is closed;
+        // one without settings gets a message.
+        FPluginListReturnRow := Row;
+        if HostConfigurePlugin(Row) then
+        begin
+          if Assigned(FDialog) and FDialog.Visible then
+            Exit;
+          FPluginListReturnRow := -1;
+        end
+        else
+        begin
+          // A message dialog; closing it brings the list back (hdkHost branch).
+          if not ShowHostDialog(BuildConfirmDialog(T('ui.plugins.noSettingsTitle', 'Plugin settings'),
+               Format(T('ui.plugins.noSettings', 'The plugin %s has no settings.'),
+                 [HostPluginIdAt(Row)])), nil, 'settings.md') then
+          begin
+            FPluginListReturnRow := -1;
+            ShowPluginList(Row);
+          end;
+          Exit;
+        end;
+        ShowPluginList(Row);
+        FDialog.SetListScrollTop(Top);
+      end;
+    plcPermissions:
+      ShowPluginPermissions(Row);
+    plcToggle:
+      begin
+        HostTogglePlugin(Row);
+        // The list is rebuilt so the marks show the new state; the menu is rebuilt
+        // too, since a plugin that left or arrived takes its items with it. The rows
+        // stay where they were: the list does not jump.
+        ShowPluginList(Row);
+        FDialog.SetListScrollTop(Top);
+      end;
+  end;
 end;
 
 function TDualPanelWindow.CurrentHelpScreen: THelpScreen;
@@ -11074,25 +10998,13 @@ begin
   end;
   Cfg.Header := FDialog.GetCheckbox('header');
   Fmt := FDialog.GetRadio('format');
-  if Fmt = 'fmt_text' then
-    Cfg.Format := lefText
-  else if Fmt = 'fmt_md' then
-    Cfg.Format := lefMarkdown
-  else if Fmt = 'fmt_csv' then
-    Cfg.Format := lefCsv
-  else
-    Cfg.Format := lefAuto;
+  Cfg.Format := ParseListExportFormatRadio(Fmt);
   FDialog.Close;
   GListExportConfig := Cfg;
 
-  if LocalPathRootOf(Path) = '' then
-  begin
-    Ws := ActiveWorkspace;
-    Dir := FileUriToPath(ActiveTab(ActivePanel(Ws)).CurrentURI);
-    if Dir = '' then
-      Dir := PlatformDocumentsDir;
-    Path := TPath.Combine(Dir, Path);
-  end;
+  Ws := ActiveWorkspace;
+  Dir := FileUriToPath(ActiveTab(ActivePanel(Ws)).CurrentURI);
+  Path := ResolveExportListPath(Path, Dir, PlatformDocumentsDir);
   try
     Bytes := TEncoding.UTF8.GetBytes(FormatItemList(FExportItems, Cfg, Path));
     if ListExportNeedsBom(Cfg.Format, Path) then
@@ -14602,19 +14514,10 @@ begin
   end;
   // A picture is the file itself or, for a file a plugin renders for Quick
   // View, the picture the plugin redirects to.
-  ImageUri := '';
-  if HasRow and (not Row.IsDirectory) and (not Row.IsParent) and (Row.URI <> '') then
-  begin
-    if IsOverlayImageExtension(Row.Extension) then
-      ImageUri := Row.URI
-    else
-    begin
-      ImageUri := QuickViewTarget(Row.URI);
-      if (ImageUri = Row.URI) or
-         not IsOverlayImageExtension(ExtractFileExt(ImageUri)) then
-        ImageUri := '';
-    end;
-  end;
+  if HasRow then
+    ImageUri := ResolveQuickViewImageUri(True, Row, QuickViewTarget(Row.URI))
+  else
+    ImageUri := '';
   Previewable := IsQuickViewPreviewable(HasRow, ImageUri <> '', Row);
 
   if not Previewable then

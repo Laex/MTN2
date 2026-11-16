@@ -8,8 +8,8 @@ unit uListExport;
 interface
 
 uses
-  System.SysUtils,
-  uDualPanelTypes;
+  System.SysUtils, System.IOUtils,
+  uDualPanelTypes, uVfsTypes;
 
 type
   /// <summary>lefAuto picks the layout from the file extension: .md and
@@ -36,6 +36,14 @@ type
   end;
 
 function DefaultListExportConfig: TListExportConfig;
+
+/// <summary>Radio id from the export dialog (fmt_text / fmt_md / fmt_csv) to
+/// a layout; anything else is lefAuto.</summary>
+function ParseListExportFormatRadio(const AFmt: string): TListExportFormat;
+
+/// <summary>Absolute APath unchanged; a relative name is joined under APanelDir
+/// when that is non-empty, else under AFallbackDir.</summary>
+function ResolveExportListPath(const APath, APanelDir, AFallbackDir: string): string;
 
 /// <summary>The layout the file name selects when the config says lefAuto;
 /// an explicit config format is returned as it is.</summary>
@@ -72,6 +80,31 @@ begin
   Result.Format := lefAuto;
   Result.Header := True;
   Result.Fields := [lxfName, lxfSize, lxfModified];
+end;
+
+function ParseListExportFormatRadio(const AFmt: string): TListExportFormat;
+begin
+  if AFmt = 'fmt_text' then
+    Result := lefText
+  else if AFmt = 'fmt_md' then
+    Result := lefMarkdown
+  else if AFmt = 'fmt_csv' then
+    Result := lefCsv
+  else
+    Result := lefAuto;
+end;
+
+function ResolveExportListPath(const APath, APanelDir, AFallbackDir: string): string;
+var
+  Dir: string;
+begin
+  Result := APath;
+  if LocalPathRootOf(Result) <> '' then
+    Exit;
+  Dir := APanelDir;
+  if Dir = '' then
+    Dir := AFallbackDir;
+  Result := TPath.Combine(Dir, Result);
 end;
 
 function ResolveListExportFormat(AFormat: TListExportFormat;
