@@ -67,8 +67,10 @@ const
   /// 7: JobBegin, JobUpdate, JobEnd.
   /// 8: SendKey, SendText, RunAction, AppState, SetMenuItemEnabled, KeyOwner.
   /// 9: RegisterPanelColumns, SetPanelColumnValues.
-  /// 10: RegisterSaver.</summary>
-  cPluginAbiVersion: Int64 = 10;
+  /// 10: RegisterSaver, SaverGetSettings, SaverSetSettings.
+  /// 11: RegisterService, ServiceReply, ServiceNotify, CallService,
+  /// CallServiceAsync, ServiceStatus, CancelService.</summary>
+  cPluginAbiVersion: Int64 = 11;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -604,6 +606,63 @@ type
   /// then).</summary>
   THostSaverSetSettingsFn = function(AId: PAnsiChar; AMinutes, ARandom: Int64): Int64; cdecl;
 
+  /// <summary>The entry point of a service a plugin registers (docs/PLUGIN_SERVICES.md).
+  /// AMessageJson is one JSON-RPC message in UTF-8, valid only during the call.
+  /// ACall is the call id of a request (answer it with ServiceReply, from any
+  /// thread) and 0 for a notification. Returns quickly, on the main thread. 0 =
+  /// the message was accepted, anything else = refused (the call then ends
+  /// with the error -32603).</summary>
+  TServiceHandlerFn = function(AUserData: Pointer; ACall: Int64;
+    AMessageJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Receives the notifications of an asynchronous call and then its
+  /// response, on the main thread. AMessageJson is valid only during the call.</summary>
+  TServiceMessageFn = procedure(AUserData: Pointer; AJobId: Int64;
+    AMessageJson: PAnsiChar); cdecl;
+
+  /// <summary>Offers the service AName (lower-case words joined by dots) at
+  /// version AVersion (>= 1). ADescribeJson is the description of
+  /// service.describe (inputSchema, capabilities). Providers of one name run in
+  /// ascending APriority (100 is the usual one). Registering a name again from
+  /// the same plugin replaces it. Main thread only. 0 = registered, otherwise
+  /// the JSON-RPC error code: -32003 a reserved name, -32602 a bad argument.
+  /// Unloading the plugin removes its services and ends their open calls.</summary>
+  THostRegisterServiceFn = function(APluginId, AName: PAnsiChar; AVersion: Int64;
+    ADescribeJson: PAnsiChar; AHandler: TServiceHandlerFn; AUserData: Pointer;
+    APriority: Int64): Int64; cdecl;
+  /// <summary>Completes the call ACall with the JSON-RPC response AResponseJson.
+  /// Any thread; the response reaches the caller on the main thread, after the
+  /// notifications sent before it. 0 = queued, -1 = not valid.</summary>
+  THostServiceReplyFn = function(ACall: Int64; AResponseJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Sends the caller of ACall a JSON-RPC notification (progress, partial
+  /// data). Any thread. 0 = queued, -1 = not valid.</summary>
+  THostServiceNotifyFn = function(ACall: Int64; ANotificationJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Calls service AName and waits for the response: ARequestJson is a
+  /// JSON-RPC request whose method is AName; ATimeoutMs is the longest silence of
+  /// the provider (1..60000). The response is written to ABuf with a NUL. Main
+  /// thread only; it blocks, so use it for fast services. 0 = response written,
+  /// -2 = ABuf too small (ANegotiatedSize is the size needed), otherwise the
+  /// JSON-RPC error code of the failure (no provider -32601, bad parameters
+  /// -32602, too many calls -32004, no answer in time -32005).</summary>
+  THostCallServiceFn = function(APluginId, AName, ARequestJson: PAnsiChar;
+    ATimeoutMs: Int64; ABuf: PAnsiChar; ABufSize: Int64;
+    out ANegotiatedSize: Int64): Int64; cdecl;
+  /// <summary>Calls service AName and returns at once; AOnMessage receives the
+  /// notifications and then the response on the main thread. ATimeoutMs is the
+  /// longest silence of the provider, 0 = no limit. Main thread only. 0 =
+  /// started (AJobId set), otherwise the error code as for CallService; no
+  /// message is delivered then.</summary>
+  THostCallServiceAsyncFn = function(APluginId, AName, ARequestJson: PAnsiChar;
+    ATimeoutMs: Int64; AOnMessage: TServiceMessageFn; AUserData: Pointer;
+    out AJobId: Int64): Int64; cdecl;
+  /// <summary>The state of a call as UTF-8 JSON: "state" (running, done,
+  /// cancelled, failed), "progress", "total", "message". Text result as for
+  /// THostTextOutFn; -1 = no such call (only the last 64 finished ones are kept).</summary>
+  THostServiceStatusFn = function(AJobId: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
+  /// <summary>Cancels an open call: its caller gets the error -32001 and its
+  /// provider a cancellation notification. Main thread only. 0 = cancelled, -1 =
+  /// not open.</summary>
+  THostCancelServiceFn = function(AJobId: Int64): Int64; cdecl;
+
   /// <summary>Table of host-exported functions passed to mtn_plugin_init.
   /// Field order/types are the ABI - see cPluginAbiVersion.</summary>
   THostApiTable = record
@@ -695,6 +754,14 @@ type
     RegisterSaver: THostRegisterSaverFn;
     SaverGetSettings: THostSaverGetSettingsFn;
     SaverSetSettings: THostSaverSetSettingsFn;
+    // ABI 11
+    RegisterService: THostRegisterServiceFn;
+    ServiceReply: THostServiceReplyFn;
+    ServiceNotify: THostServiceNotifyFn;
+    CallService: THostCallServiceFn;
+    CallServiceAsync: THostCallServiceAsyncFn;
+    ServiceStatus: THostServiceStatusFn;
+    CancelService: THostCancelServiceFn;
   end;
   PHostApiTable = ^THostApiTable;
 

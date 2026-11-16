@@ -44,7 +44,7 @@ uses
   uKeymap, uKeymapRegistry, uMenuRegistry, uCommandRegistry, uPluginInputChord, uDocumentProviders, uPluginUi,
   uPluginChrome, uRowDecorations, uDriveItems, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
   uPluginManifest, uPluginPermissions, uPluginVfs, uPluginColumns, uPluginSaver, uScreenSaver,
-  uWasmPluginHost, uPlatformInfo, uStrings, uConfigLocation;
+  uWasmPluginHost, uPlatformInfo, uStrings, uConfigLocation, uPluginServiceHost;
 
 type
   TPluginLoadKind = (lpkNative, lpkWasm);
@@ -198,6 +198,9 @@ type
     /// <summary>Loads every catalogued plugin whose plugin.json lists the file's
     /// extension in documentExtensions. True when one is loaded.</summary>
     function EnsureDocumentFile(const AFileName: string): Boolean;
+    /// <summary>Loads every catalogued plugin whose plugin.json lists the service
+    /// name in "services". True when one is loaded.</summary>
+    function EnsureService(const AName: string): Boolean;
     /// <summary>Loads every catalogued plugin that has not been attempted
     /// yet and is not declarative. Used when the UI needs registrations that are
     /// not in plugin.json (menu items, key rebinds); a declarative plugin
@@ -1936,6 +1939,13 @@ begin
   Result.RegisterSaver := @ThunkRegisterSaver;
   Result.SaverGetSettings := @ThunkSaverGetSettings;
   Result.SaverSetSettings := @ThunkSaverSetSettings;
+  Result.RegisterService := @HostRegisterService;
+  Result.ServiceReply := @HostServiceReply;
+  Result.ServiceNotify := @HostServiceNotify;
+  Result.CallService := @HostCallService;
+  Result.CallServiceAsync := @HostCallServiceAsync;
+  Result.ServiceStatus := @HostServiceStatus;
+  Result.CancelService := @HostCancelService;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;
@@ -2472,6 +2482,25 @@ begin
       Result := True;
 end;
 
+function TPluginLoader.EnsureService(const AName: string): Boolean;
+var
+  I, J: Integer;
+  Name: string;
+begin
+  Result := False;
+  Name := LowerCase(Trim(AName));
+  if FEnsuring or (Name = '') then
+    Exit;
+  for I := 0 to FCatalog.Count - 1 do
+    for J := 0 to High(FCatalog[I].Manifest.Services) do
+      if FCatalog[I].Manifest.Services[J] = Name then
+      begin
+        if EnsureIndex(I) then
+          Result := True;
+        Break;
+      end;
+end;
+
 function TPluginLoader.EnsureHighlightFile(const AFileName: string): Boolean;
 var
   I: Integer;
@@ -2546,6 +2575,7 @@ begin
   // Drop registry entries before FreeLibrary so new resolves cannot call
   // into a module that is about to disappear.
   UnregisterSavers(FLoaded[AIndex].PluginId);
+  PluginServicesUnregister(FLoaded[AIndex].PluginId);
   KeymapRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   CommandRegistry.UnregisterPlugin(FLoaded[AIndex].PluginId);
   DocumentProviders.UnregisterPlugin(FLoaded[AIndex].PluginId);

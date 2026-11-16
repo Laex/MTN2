@@ -74,6 +74,8 @@ function HostEnsureArchiveExtension(const AFileName: string): Boolean;
 /// <summary>Load the catalogued plugin whose manifest lists this file in
 /// highlightExtensions. No-op when already loaded.</summary>
 function HostEnsureHighlightFile(const AFileName: string): Boolean;
+/// <summary>Load the catalogued plugins whose manifest lists this service name.</summary>
+function HostEnsureService(const AName: string): Boolean;
 /// <summary>Load every catalogued plugin that is not declarative so menu items
 /// and key rebinds exist. Cheap after the first call.</summary>
 procedure HostEnsureAllPlugins;
@@ -222,6 +224,11 @@ end;
 function HostEnsureHighlightFile(const AFileName: string): Boolean;
 begin
   Result := PluginLoader.EnsureHighlightFile(AFileName);
+end;
+
+function HostEnsureService(const AName: string): Boolean;
+begin
+  Result := PluginLoader.EnsureService(AName);
 end;
 
 procedure HostEnsureAllPlugins;

@@ -56,7 +56,10 @@ uses
   TestStartupTargets in 'TestStartupTargets.pas',
   TestEnvProfiles in 'TestEnvProfiles.pas',
   TestAsciiSharks in 'TestAsciiSharks.pas',
-  TestDesktopEntry in 'TestDesktopEntry.pas';
+  TestDesktopEntry in 'TestDesktopEntry.pas',
+  TestJsonRpc in 'TestJsonRpc.pas',
+  TestServiceRegistry in 'TestServiceRegistry.pas',
+  TestServiceSchema in 'TestServiceSchema.pas';
 
 begin
   RunRegisteredTests;

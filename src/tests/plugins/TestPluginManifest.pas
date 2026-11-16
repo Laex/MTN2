@@ -59,6 +59,11 @@ begin
   Assert.IsTrue(Length(M.Schemes) = 2, 'schemes count');
   Assert.IsTrue(M.Schemes[0] = 'tmp', 'schemes[0]');
   Assert.IsTrue(M.Schemes[1] = 'tmp', 'schemes lowercased');
+  Assert.IsTrue(Length(M.Services) = 0, 'services optional');
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"mtn.x","services":["Search.Files","text.extract"]}', M), 'services json');
+  Assert.IsTrue((Length(M.Services) = 2) and (M.Services[0] = 'search.files') and
+    (M.Services[1] = 'text.extract'), 'services lowercased');
 end;
 
 procedure TestListLabel;

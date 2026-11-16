@@ -27,7 +27,7 @@ What a service is not: it is not a replacement for the VFS, panel or dialog cont
 | Priority | An integer; providers of one name are tried in ascending order, like command hooks. The host picks the first provider whose declared capabilities fit the request |
 | Description | The JSON of §4: what the service does and the schema of its parameters |
 
-**Reserved names.** A plugin cannot register a name that starts with `host.` or equals one of the core scheme names `file`, `recycle`, `sys`, `find`, `ws`. The registration is refused with the error code `-32003`.
+**Reserved names.** A plugin cannot register a name that starts with `host.` or `service.`, or equals `host`, `service` or one of the core scheme names `file`, `recycle`, `sys`, `find`, `ws`. The registration is refused with the error code `-32003`.
 
 **Lazy loading.** A plugin that offers services lists their names in the `services` array of `plugin.json`; the host loads such a plugin when a request for one of the names arrives (the same way a plugin is loaded for its scheme). A plugin without the array registers its services only after it was loaded for another reason.
 
@@ -123,23 +123,25 @@ Request without parameters; the result is `{}`. The host uses it for a provider 
 
 `progressToken` is the `id` of the request; `total` is 0 when unknown. The host shows `message` in the job line. Partial data of a service is sent in service-specific notifications (for `search.files`: `search.hits`, §7).
 
-**Cancellation.** A caller cancels a call with `CancelService` (§6); the provider receives the notification `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1,"reason":"user"}}` and must stop its work, free what the call holds and answer the request with the error `-32001`. A late response to a cancelled call is dropped by the host.
+**Cancellation.** A caller cancels a call with `CancelService` (§6); the host answers the caller with the error `-32001` at once and sends the provider the notification `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1,"reason":"cancelled"}}`. The provider must stop its work and free what the call holds; whatever it sends for the call afterwards is dropped by the host. A call that ends for another reason (the time limit, the provider unloaded) is closed the same way.
 
 ---
 
-## 6. Host API (planned)
+## 6. Host API (ABI 11)
 
-The functions are added at the end of the Host API table, so a plugin built against an older ABI keeps working. A plugin that wants them checks `AHostApi^.AbiVersion` first.
+The functions are added at the end of the Host API table, so a plugin built against an older ABI keeps working. A plugin that wants them checks `AHostApi^.AbiVersion >= 11` first. Every text is UTF-8; "main thread" means the thread that runs the plugin's other callbacks.
 
 | Function | Purpose |
 |---|---|
-| `RegisterService(pluginId, name, version, describeJson, handler, userData, priority)` | Offers a service. `handler` is called for each request and notification |
-| `ServiceReply(call, responseJson)` | Completes a call of the provider; from any thread, once per call |
-| `ServiceNotify(call, notificationJson)` | Sends progress or partial data of a running call to its caller; from any thread |
-| `CallService(name, requestJson, buf, bufSize, negotiatedSize, timeoutMs)` | Synchronous call. Blocks until the response or the time limit; a response that does not fit returns the retry code with the needed size, as the VFS callbacks do |
-| `CallServiceAsync(name, requestJson, onMessage, userData, jobId)` | Asynchronous call: returns at once; `onMessage` receives the notifications and then the response |
-| `ServiceStatus(jobId, buf, bufSize, negotiatedSize)` | The state of a call as JSON: `state` (`queued`, `running`, `done`, `cancelled`, `failed`), `progress`, `total`, `message` |
-| `CancelService(jobId)` | Requests cancellation (§5); repeated calls are harmless |
+| `RegisterService(pluginId, name, version, describeJson, handler, userData, priority)` | Offers a service (main thread). 0 = registered, otherwise the error code: `-32003` for a reserved name, `-32602` for a bad argument. Registering a name again from the same plugin replaces it |
+| `ServiceReply(call, responseJson)` | Completes a call of the provider; from any thread, once per call. 0 = queued, -1 = not valid |
+| `ServiceNotify(call, notificationJson)` | Sends progress or partial data of a running call to its caller; from any thread. 0 = queued, -1 = not valid |
+| `CallService(pluginId, name, requestJson, timeoutMs, buf, bufSize, negotiatedSize)` | Synchronous call (main thread). `pluginId` is empty or `NULL` for the first provider. `timeoutMs` is 1..60000. 0 = the response is in `buf`; -2 = `buf` is too small and `negotiatedSize` is the size needed; otherwise the error code of the failure |
+| `CallServiceAsync(pluginId, name, requestJson, timeoutMs, onMessage, userData, jobId)` | Asynchronous call (main thread): returns at once; `onMessage` receives the notifications and then the response. 0 = started, otherwise the error code and no message follows |
+| `ServiceStatus(jobId, buf, bufSize)` | The state of a call as JSON: `state` (`running`, `done`, `cancelled`, `failed`), `progress`, `total`, `message`. Text result as for the other text functions; -1 = no such call |
+| `CancelService(jobId)` | Requests cancellation (§5) (main thread). 0 = cancelled, -1 = the call is not open |
+
+A plugin that is unloaded loses its services and the calls open on them end with `-32603`. The manifest field `"services": ["search.files"]` lists the names a plugin registers; the host loads the plugin the first time a caller asks for one of them.
 
 Provider handler: `function(userData: Pointer; call: Int64; requestJson: PAnsiChar): Int64; cdecl;`. It must return quickly: for a request (`call` is not 0) it starts the work, possibly on its own thread, and completes it with `ServiceReply`; for a notification (`call` is 0) it only reads it. The return value is 0 when the message was accepted.
 
@@ -149,8 +151,8 @@ Caller callback: `procedure(userData: Pointer; jobId: Int64; messageJson: PAnsiC
 
 ## 7. Threads, limits, safety
 
-- **Threads.** A provider answers from any thread. The host moves every message for a caller to the main thread before `onMessage` runs, in the order the provider sent them; the response is always the last message of a call. A synchronous `CallService` must not be made from the main thread for a service that can take long; the host uses `CallServiceAsync` for jobs the user can see.
-- **Limits.** One message is at most 4 MiB. At most 8 calls of a service run at once; the next one gets `-32004`. A synchronous call has a time limit given by the caller, at most 60 s. A provider that does not answer in time is answered `-32005` and its call is cancelled.
+- **Threads.** A provider answers from any thread. The host moves every message for a caller to the main thread before `onMessage` runs, in the order the provider sent them; the response is always the last message of a call. `CallService` waits on the main thread and delivers other messages meanwhile, so it suits fast services only; the host uses `CallServiceAsync` for jobs the user can see.
+- **Limits.** One message is at most 4 MiB. At most 8 calls of a service run at once; the next one gets `-32004`. A call has a time limit given by the caller, at most 60 s, counted from the last message of the provider (a notification restarts it); without a limit the call may be silent as long as it takes. A provider that is silent for the limit is answered `-32005` and its call is cancelled.
 - **Safety.** A provider is as trusted as its plugin (§1 of [PLUGIN_BOUNDARIES.md](PLUGIN_BOUNDARIES.md)). A provider that starts another program builds its argument list without a shell and never takes a program path from data of a request. Parameters from a request are never put on a command line as one string.
 - **Exceptions.** An exception inside a handler is answered with `-32603`; it does not reach the caller as a crash.
 
@@ -218,4 +220,5 @@ Differences the bridge has to handle:
 ## 10. Implementation state
 
 - Described here: the message format, the error codes, `service.describe` and `service.ping`, progress and cancellation, the Host API functions, `search.files`.
-- Not implemented yet: the registry and the router in the core, the Host API functions, the manifest field `services`, the use in Alt+F7, the providers (Everything, ripgrep), the bridge plugin. The WASM guest ABI gets the services later.
+- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`.
+- Not implemented yet: the use in Alt+F7, the providers (Everything, ripgrep), the bridge plugin. The WASM guest ABI gets the services later.

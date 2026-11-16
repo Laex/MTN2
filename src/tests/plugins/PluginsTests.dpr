@@ -63,7 +63,8 @@ uses
   TestHighlightPlugin in 'TestHighlightPlugin.pas',
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas',
   TestPluginInstall in 'TestPluginInstall.pas',
-  TestDiskMap in 'TestDiskMap.pas';
+  TestDiskMap in 'TestDiskMap.pas',
+  TestPluginServiceHost in 'TestPluginServiceHost.pas';
 
 begin
   RunRegisteredTests;

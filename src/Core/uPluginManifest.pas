@@ -75,6 +75,10 @@ type
     /// plugin registers in mtn_plugin_init. The host uses them to load the
     /// DLL the first time that scheme is resolved, instead of at startup.</summary>
     Schemes: TArray<string>;
+    /// <summary>Optional "services": ["search.files", ...] - the service names this
+    /// plugin registers (docs/PLUGIN_SERVICES.md). The host loads the plugin the first
+    /// time a caller asks for one of them.</summary>
+    Services: TArray<string>;
     /// <summary>Optional "highlightExtensions": ["rs", "makefile", ...] - the file
     /// extensions and whole file names the plugin colors (lower case, no dot). The host
     /// loads the plugin the first time the viewer or the editor opens such a file,
@@ -224,6 +228,7 @@ begin
   AManifest.HasAbi := False;
   SetLength(AManifest.ArchiveExtensions, 0);
   SetLength(AManifest.Schemes, 0);
+  SetLength(AManifest.Services, 0);
   SetLength(AManifest.HighlightExtensions, 0);
   AManifest.Declarative := False;
   SetLength(AManifest.Commands, 0);
@@ -592,6 +597,7 @@ procedure ReadManifestContributions(AObj: TJSONObject; var AManifest: TPluginMan
 begin
   AManifest.ArchiveExtensions := ReadStringItems(AObj.Values['archiveExtensions'], False);
   AManifest.Schemes := ReadStringItems(AObj.Values['schemes'], True);
+  AManifest.Services := ReadStringItems(AObj.Values['services'], True);
   AManifest.HighlightExtensions := ReadExtensions(AObj.Values['highlightExtensions']);
   AManifest.DocumentExtensions := ReadExtensions(AObj.Values['documentExtensions']);
   AManifest.Commands := ReadManifestCommands(AObj.Values['commands']);
