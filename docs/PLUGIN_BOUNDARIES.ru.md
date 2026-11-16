@@ -108,6 +108,7 @@
 | Status line | [STATUS_PLUGIN.ru.md](STATUS_PLUGIN.ru.md) | Плагин добавляет именованный текстовый сегмент (`SetStatusSegment`) в строку состояния панелей; состав и вид задаёт хост |
 | Graphic Overlay | [OVERLAY_PLUGIN.ru.md](OVERLAY_PLUGIN.ru.md) | Host-only, Canvas не отдаётся – шаг «overlay / textarea / dialog cdecl» |
 | Input Line | [INPUT_PLUGIN.ru.md](INPUT_PLUGIN.ru.md) | Общий примитив диалогов/cmdline, отдельного cdecl нет |
+| Услуги (JSON-RPC) | [PLUGIN_SERVICES.ru.md](PLUGIN_SERVICES.ru.md) | Плагин предлагает именованную услугу (первая – `search.files` для Alt+F7), ядро или другой плагин вызывает её сообщениями JSON-RPC 2.0. Описано; функции Host API ещё не экспортированы |
 
 ### 4.3. Явно недоступно и не планируется как ABI-плагин
 

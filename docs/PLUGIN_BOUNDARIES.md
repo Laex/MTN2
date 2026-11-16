@@ -108,6 +108,7 @@ Source: [UI_PRIMITIVES.md](UI_PRIMITIVES.md) – the table of 7 primitives.
 | Status line | [STATUS_PLUGIN.md](STATUS_PLUGIN.md) | The plugin adds a named text segment (`SetStatusSegment`) to the panels' status line; the composition and look are set by the host |
 | Graphic Overlay | [OVERLAY_PLUGIN.md](OVERLAY_PLUGIN.md) | Host-only, no Canvas is given – the "overlay / textarea / dialog cdecl" step |
 | Input Line | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) | A common primitive of dialogs/cmdline, no separate cdecl |
+| Services (JSON-RPC) | [PLUGIN_SERVICES.md](PLUGIN_SERVICES.md) | A plugin offers a named service (the first is `search.files` for Alt+F7) and the host or another plugin calls it with JSON-RPC 2.0 messages. Described; the Host API functions are not exported yet |
 
 ### 4.3. Explicitly unavailable and not planned as an ABI plugin
 
