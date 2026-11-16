@@ -66,6 +66,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File search** – `Alt+F7`: mask, text, hex bytes with `??`, size, date with a calendar, three-state attributes, code page choice with autodetection.
 - **Search in archives** – the "Search in archives" option: zip and plugin archive entries by mask and text; `Enter` opens the archive at the found file.
 - **Background search** – the "Background" button: several searches at once, each with a chip and a counter; results fill the panel as they arrive.
+- **Search through plugins** – the Everything plugin answers name searches from its index, the ripgrep plugin searches file text with `rg`, the Document viewer plugin lets the search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files; the "Use plugins" checkbox of `Alt+F7` switches them off and the built-in search takes over.
 - **Results panel** – found items open as a panel right away; `Ctrl+]` / `Ctrl+[` open the file's folder in the other panel; the function key bar shows only available actions.
 - **Results to workspace** – `Ctrl+Alt+F7` saves found files as links in a working set: add, replace or create a new one.
 - **Quick search** – `Alt+letter` by name; optionally the field stays open after `Alt` is released, and there is a variant without `Alt`.

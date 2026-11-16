@@ -31,7 +31,7 @@ implementation
 
 uses
   System.Classes, System.SyncObjs, System.Generics.Collections, uJsonRpc, uFindService,
-  uServiceRegistry, uPluginServiceHost;
+  uServiceRegistry, uPluginServiceHost, uTextExtractService;
 
 const
   /// <summary>The longest silence of a search provider.</summary>
@@ -60,7 +60,8 @@ procedure FindFilesRouted(const AOptions: TFindOptions; ACancel: IJobCancelToken
   AOnProgress: TFindProgressCallback; AOnDone: TFindDoneCallback;
   AOnHits: TFindHitsCallback);
 var
-  Opts: TFindOptions;
+  Opts, WalkOpts: TFindOptions;
+  Seen: TDictionary<string, Boolean>;
   Plugin: string;
   Hits: TList<TFindHit>;
   Limit, Finished: Integer;
@@ -71,13 +72,24 @@ begin
   Opts := AOptions;
   if Trim(Opts.Mask) = '' then
     Opts.Mask := '*.*';
-  if not FindOptionsServable(Opts) or not PickSearchProvider(Opts, Plugin) then
+  // Documents are searched by their text when a plugin extracts it.
+  WalkOpts := AOptions;
+  if (Opts.ContainingText <> '') and not Opts.BuiltInOnly and (Opts.TextExtract = nil) then
   begin
-    FindFilesAsync(AOptions, ACancel, AOnProgress, AOnDone, AOnHits);
+    if Assigned(GLazyLoad) then
+      GLazyLoad(cTextExtractService);
+    WalkOpts.TextExtract := CreateServiceTextExtractor(ACancel);
+    Opts.TextExtract := WalkOpts.TextExtract;
+  end;
+  if Opts.BuiltInOnly or not FindOptionsServable(Opts) or
+     not PickSearchProvider(Opts, Plugin) then
+  begin
+    FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
     Exit;
   end;
 
   Hits := TList<TFindHit>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
   Limit := Opts.MaxResults;
   if Limit <= 0 then
     Limit := cFindMaxResults;
@@ -95,7 +107,8 @@ begin
       Err: TVfsError;
       Msg: TRpcMessage;
       ParseCode: Integer;
-      Cancelled: Boolean;
+      Cancelled, Supplement, ProviderTruncated: Boolean;
+      Extra: TFindOptions;
     begin
       if not TryParseRpcMessage(AMessageJson, Msg, ParseCode) then
         Exit;
@@ -114,6 +127,7 @@ begin
             Break;
           end;
           Hits.Add(Hit);
+          Seen.AddOrSetValue(LowerCase(Hit.Path), True);
           SetLength(Kept, Length(Kept) + 1);
           Kept[High(Kept)] := Hit;
         end;
@@ -132,29 +146,84 @@ begin
       TInterlocked.Exchange(Finished, 1);
       Outcome := ParseSearchFilesResult(AMessageJson);
       Cancelled := JobCancelRequested(ACancel) or (Outcome.ErrorCode = cRpcCancelled);
+      Supplement := False;
       try
         if Cancelled then
           Err := TVfsError.Make(vecCancelled, 'Cancelled', Opts.RootPath)
         else if Outcome.Failed and (Hits.Count = 0) then
         begin
-          FindFilesAsync(AOptions, ACancel, AOnProgress, AOnDone, AOnHits);
+          FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
           Exit;
         end
         else if Outcome.Failed then
           Err := TVfsError.Make(vecIOError, Outcome.ErrorText, Opts.RootPath)
         else
           Err := TVfsError.Ok;
+        if not Cancelled and not Outcome.Failed and Assigned(Opts.TextExtract) and
+           (Hits.Count < Limit) then
+        begin
+          // The provider reads files as they are; the documents are searched here by
+          // their text, and the files it found already are not listed twice.
+          Supplement := True;
+          ProviderTruncated := LimitHit or Outcome.Truncated;
+          Extra := WalkOpts;
+          Extra.OnlyExtractable := True;
+          Extra.MaxResults := Limit - Hits.Count;
+          FindFilesAsync(Extra, ACancel, AOnProgress,
+            procedure(const AFound: TArray<TFindHit>; const AError: TVfsError;
+              ATruncated: Boolean)
+            var
+              H: TFindHit;
+            begin
+              try
+                for H in AFound do
+                  if not Seen.ContainsKey(LowerCase(H.Path)) then
+                  begin
+                    Seen.Add(LowerCase(H.Path), True);
+                    Hits.Add(H);
+                  end;
+                if Assigned(AOnDone) then
+                  AOnDone(Hits.ToArray, AError, ProviderTruncated or ATruncated);
+              finally
+                Seen.Free;
+                Hits.Free;
+              end;
+            end,
+            procedure(const ANew: TArray<TFindHit>)
+            var
+              Fresh: TArray<TFindHit>;
+              H: TFindHit;
+            begin
+              SetLength(Fresh, 0);
+              for H in ANew do
+                if not Seen.ContainsKey(LowerCase(H.Path)) then
+                begin
+                  Seen.Add(LowerCase(H.Path), True);
+                  Hits.Add(H);
+                  SetLength(Fresh, Length(Fresh) + 1);
+                  Fresh[High(Fresh)] := H;
+                end;
+              if (Length(Fresh) > 0) and Assigned(AOnHits) then
+                AOnHits(Fresh);
+            end);
+          Exit;
+        end;
         if Assigned(AOnDone) then
           AOnDone(Hits.ToArray, Err, LimitHit or Outcome.Truncated);
       finally
-        Hits.Free;
+        if not Supplement then
+        begin
+          Seen.Free;
+          Hits.Free;
+        end;
       end;
     end, Job);
 
   if Code <> 0 then
   begin
+    Seen.Free;
     Hits.Free;
-    FindFilesAsync(AOptions, ACancel, AOnProgress, AOnDone, AOnHits);
+    FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
     Exit;
   end;
 

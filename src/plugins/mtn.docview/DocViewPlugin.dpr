@@ -9,16 +9,17 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.Hash,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
-  uDocText in 'uDocText.pas';
+  uPluginServiceProvider in '..\..\Core\uPluginServiceProvider.pas',
+  uPluginServiceSettings in '..\..\Core\uPluginServiceSettings.pas',
+  uDocText in 'uDocText.pas',
+  uDocTextService in 'uDocTextService.pas';
 
 const
   cPluginId = 'mtn.docview';
-  cExtensions = '.docx,.xlsx,.pptx,.pdf,.svg,.sqlite,.sqlite3,.db,.db3';
   cModeView = 1;
   cModeQuick = 4;
   cQuickMaxBytes = 16 * 1024 * 1024;
   cPriority = 50;
-  cMaxBytes = 64 * 1024 * 1024;
   cTempFolder = 'mtn2-docview';
   cKeepDays = 1;
 
@@ -50,28 +51,6 @@ begin
   end;
 end;
 
-{ The text of the file at APath; '' when it has none. }
-function ExtractText(const APath: string): string;
-var
-  Ext: string;
-  Bytes: TBytes;
-begin
-  Result := '';
-  Ext := LowerCase(ExtractFileExt(APath));
-  if (Ext = '.docx') or (Ext = '.xlsx') or (Ext = '.pptx') then
-    Result := OfficeText(APath)
-  else if (Ext = '.sqlite') or (Ext = '.sqlite3') or (Ext = '.db') or (Ext = '.db3') then
-    Result := SqliteText(APath)
-  else if TFile.GetSize(APath) <= cMaxBytes then
-  begin
-    Bytes := TFile.ReadAllBytes(APath);
-    if Ext = '.pdf' then
-      Result := PdfText(Bytes)
-    else if Ext = '.svg' then
-      Result := SvgText(TEncoding.UTF8.GetString(Bytes));
-  end;
-end;
-
 { The text of the file at APath as a file in the temp folder; '' when it cannot be made. }
 function RenderToTemp(const AUri, APath: string): string;
 var
@@ -84,7 +63,7 @@ begin
     Copy(THashMD5.GetHashString(AUri), 1, 8)]));
   if TFile.Exists(Result) and (TFile.GetLastWriteTime(Result) >= TFile.GetLastWriteTime(APath)) then
     Exit;
-  Text := ExtractText(APath);
+  Text := ExtractDocumentText(APath);
   if Trim(Text) = '' then
     Exit('');
   TFile.WriteAllText(Result, Text, TEncoding.UTF8);
@@ -142,13 +121,16 @@ begin
   GHostApi := AHostApi^;
   RemoveOldTempFiles;
   PluginId := UTF8String(cPluginId);
-  Extensions := UTF8String(cExtensions);
+  Extensions := UTF8String(cDocExtensions);
   Result := GHostApi.RegisterDocumentProvider(PAnsiChar(PluginId), PAnsiChar(Extensions),
     cModeView or cModeQuick, @OnDocument, nil, cPriority);
+  RegisterServiceSettings(AHostApi, cPluginId);
+  RegisterTextExtractService(AHostApi, cPluginId);
 end;
 
 procedure mtn_plugin_shutdown; cdecl;
 begin
+  StopTextExtractService;
   FillChar(GHostApi, SizeOf(GHostApi), 0);
 end;
 

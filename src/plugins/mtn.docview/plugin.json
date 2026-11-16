@@ -2,7 +2,8 @@
   "id": "mtn.docview",
   "name": "Document viewer",
   "version": "0.1.0",
-  "abi": 2,
+  "abi": 11,
+  "services": ["text.extract"],
   "documentExtensions": ["docx", "xlsx", "pptx", "pdf", "svg", "sqlite", "sqlite3", "db", "db3"],
   "description": {
     "en": "F3 on a .docx, .xlsx, .pptx, .pdf, .svg or SQLite database file shows its text: paragraphs, sheet rows, slide text, page text, the SVG summary with indented source, the database schema with the first rows of every table. F4 still opens the editor.",

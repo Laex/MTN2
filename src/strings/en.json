@@ -649,6 +649,7 @@
       "lbl_hex": "Hex bytes:",
       "search_subdirs": "Search in &subfolders",
       "search_archives": "Search in arch&ives",
+      "search_plugins": "Use p&lugins",
       "lbl_encoding": "Code page:",
       "ok": "Find",
       "cancel": "Cancel",

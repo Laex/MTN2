@@ -66,7 +66,9 @@ uses
   TestPluginInstall in 'TestPluginInstall.pas',
   TestDiskMap in 'TestDiskMap.pas',
   TestPluginServiceHost in 'TestPluginServiceHost.pas',
-  TestFindRouter in 'TestFindRouter.pas';
+  TestFindRouter in 'TestFindRouter.pas',
+  TestTextExtractService in 'TestTextExtractService.pas',
+  TestPluginServiceSettings in 'TestPluginServiceSettings.pas';
 
 begin
   RunRegisteredTests;

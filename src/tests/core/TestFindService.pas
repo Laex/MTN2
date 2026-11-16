@@ -23,9 +23,21 @@ implementation
 uses
   System.SysUtils, System.JSON, System.DateUtils, uFileFind, uFindService, uJsonRpc;
 
+const
+{$IFDEF MSWINDOWS}
+  cRoot = 'C:\Work';
+{$ELSE}
+  cRoot = '/work';
+{$ENDIF}
+
+function JsonPath(const APath: string): string;
+begin
+  Result := APath.Replace('\', '\\');
+end;
+
 function Opts: TFindOptions;
 begin
-  Result := DefaultFindOptions('C:\Work', '*.pas', True);
+  Result := DefaultFindOptions(cRoot, '*.pas', True);
 end;
 
 function Has(const AWords: TArray<string>; const AWord: string): Boolean;
@@ -110,7 +122,7 @@ var
   Flag: Boolean;
 begin
   O := Opts;
-  O.RootPath := 'C:\Work\';
+  O.RootPath := cRoot + PathDelim;
   O.ContainingText := 'needle';
   O.MinSize := 100;
   O.ModifiedFrom := EncodeDateTime(2026, 1, 2, 3, 4, 5, 0);
@@ -122,7 +134,7 @@ begin
   P := TJSONObject.ParseJSONValue(Msg.ParamsJson) as TJSONObject;
   try
     Assert.IsTrue(P.TryGetValue<string>('root', Text));
-    Assert.AreEqual('C:\Work', Text, 'no trailing separator');
+    Assert.AreEqual(cRoot, Text, 'no trailing separator');
     Assert.AreEqual('*.pas', P.GetValue<string>('mask'));
     Assert.AreEqual('needle', P.GetValue<string>('text'));
     Assert.IsTrue(P.TryGetValue<Boolean>('subdirs', Flag) and not Flag);
@@ -142,11 +154,11 @@ var
 begin
   Assert.IsTrue(TryParseSearchHits(
     '{"jsonrpc":"2.0","method":"search.hits","params":{"progressToken":"1","hits":[' +
-    '{"path":"C:\\Work\\a.txt","isDir":false,"size":120,"modified":"2026-01-02T03:04:05",' +
+    '{"path":"' + JsonPath(cRoot + PathDelim + 'a.txt') + '","isDir":false,"size":120,"modified":"2026-01-02T03:04:05",' +
     '"created":"2025-01-02T03:04:05","accessed":"2026-02-02T03:04:05","attributes":35,"line":7,"snippet":"needle here"},' +
-    '{"path":"C:\\Work\\sub","isDir":true},{"size":5},{"path":""},7]}}', Hits), 'parsed');
+    '{"path":"' + JsonPath(cRoot + PathDelim + 'sub') + '","isDir":true},{"size":5},{"path":""},7]}}', Hits), 'parsed');
   Assert.AreEqual<Integer>(2, Length(Hits), 'entries without a path are dropped');
-  Assert.AreEqual('C:\Work\a.txt', Hits[0].Path);
+  Assert.AreEqual(cRoot + PathDelim + 'a.txt', Hits[0].Path);
   Assert.AreEqual('a.txt', Hits[0].Entry.Name);
   Assert.AreEqual('.txt', Hits[0].Entry.Extension);
   Assert.AreEqual<Int64>(120, Hits[0].Entry.Size);

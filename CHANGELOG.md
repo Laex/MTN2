@@ -8,7 +8,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### New
 
-- Alt+F7 file search can be served by a plugin. The Everything plugin answers name searches in local folders from the Everything index (when Everything is running), so results appear almost at once. The ripgrep plugin answers searches by file text with `rg` (found in the PATH or next to the plugin). Searches inside archives or with attribute filters, and searches when Everything or `rg` is not available, use the built-in search as before.
+- Alt+F7 file search can be served by a plugin. The Everything plugin answers name searches in local folders from the Everything index (when Everything is running), so results appear almost at once. The ripgrep plugin answers searches by file text with `rg` (found in the PATH or next to the plugin). Searches inside archives or with attribute filters, and searches when Everything or `rg` is not available, use the built-in search as before. The Find dialog has a "Use plugins" checkbox; clear it to always use the built-in search. Documents (.docx, .xlsx, .pptx, .pdf, .svg, SQLite databases) are now searched by their text when the Document viewer plugin is loaded. The Everything, ripgrep and Document viewer plugins have a Settings option to stop offering their JSON-RPC services.
 
 ### Fixed
 

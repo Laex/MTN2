@@ -17,6 +17,7 @@ type
     [Test] procedure TestProviderFailureBeforeHitsFallsBackToTheWalk;
     [Test] procedure TestProviderFailureAfterHitsEndsWithTheHitsFound;
     [Test] procedure TestUnservableOptionsSkipTheProvider;
+    [Test] procedure TestBuiltInOnlySkipsTheProvider;
     [Test] procedure TestCapabilityMissingSkipsTheProvider;
     [Test] procedure TestCancelEndsTheSearch;
   end;
@@ -133,7 +134,7 @@ end;
 
 function Opts: TFindOptions;
 begin
-  Result := DefaultFindOptions('C:\Work', '*.txt', True);
+  Result := DefaultFindOptions(TPath.GetTempPath, '*.txt', True);
 end;
 
 procedure TTestFindRouter.TestProviderHitsReachTheCaller;
@@ -224,6 +225,25 @@ begin
     Run(O);
     WaitDone;
     Assert.AreEqual<Integer>(0, GCalls, 'attribute filters stay with the walk');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFindRouter.TestBuiltInOnlySkipsTheProvider;
+var
+  Dir: string;
+  O: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn_router_' + IntToStr(TThread.GetTickCount64));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Assert.AreEqual<Int64>(0, Register);
+    O := DefaultFindOptions(Dir, '*.txt', True);
+    O.BuiltInOnly := True;
+    Run(O);
+    WaitDone;
+    Assert.AreEqual<Integer>(0, GCalls, 'the provider is not asked');
   finally
     TDirectory.Delete(Dir, True);
   end;

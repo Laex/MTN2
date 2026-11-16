@@ -657,6 +657,7 @@
       "lbl_hex": "Hex-байты:",
       "search_subdirs": "Искать во &вложенных папках",
       "search_archives": "Искать в ар&хивах",
+      "search_plugins": "Использовать &плагины",
       "lbl_encoding": "Кодировка:",
       "ok": "Найти",
       "cancel": "Отмена",

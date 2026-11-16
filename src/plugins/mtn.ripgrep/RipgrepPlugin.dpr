@@ -6,6 +6,7 @@ library RipgrepPlugin;
 uses
   System.SysUtils,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginServiceSettings in '..\..\Core\uPluginServiceSettings.pas',
   uRipgrepFormat in 'uRipgrepFormat.pas',
   uRipgrepService in 'uRipgrepService.pas';
 
@@ -21,7 +22,10 @@ function mtn_plugin_init(AHostApi: PHostApiTable): Int64; cdecl;
 begin
   Result := -1;
   try
-    if RegisterRipgrepService(AHostApi, cPluginId) then
+    RegisterServiceSettings(AHostApi, cPluginId);
+    // With the provider option cleared the plugin loads and offers nothing.
+    if not ServiceProviderEnabled(AHostApi, cPluginId) or
+       RegisterRipgrepService(AHostApi, cPluginId) then
       Result := 0;
   except
     Result := -1;

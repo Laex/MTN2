@@ -9,6 +9,7 @@ uses
   System.JSON,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
+  uPluginServiceSettings in '..\..\Core\uPluginServiceSettings.pas',
   uEverythingFormat in 'uEverythingFormat.pas',
   uEverythingService in 'uEverythingService.pas',
   uEverythingIpc in 'uEverythingIpc.pas';
@@ -307,6 +308,7 @@ begin
         PAnsiChar(Caption), @MenuSearch, nil, 50);
     end;
     {$IFDEF MSWINDOWS}
+    RegisterServiceSettings(AHostApi, cPluginId);
     RegisterEverythingService(AHostApi, cPluginId);
     {$ENDIF}
     Result := 0;

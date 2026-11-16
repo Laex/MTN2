@@ -187,12 +187,12 @@ begin
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      FSearch.EncodingIdx, FSearch.Filters)),
+      FSearch.UsePlugins, FSearch.EncodingIdx, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
+      FSearch.UsePlugins, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -255,6 +255,7 @@ begin
   FSearch.SearchFolders := AFields.SearchFolders;
   FSearch.UseRegex := AFields.UseRegex;
   FSearch.SearchArchives := AFields.SearchArchives;
+  FSearch.UsePlugins := AFields.SearchPlugins;
   FSearch.EncodingIdx := AFields.SearchEncodingIdx;
   FSearch.HexText := AFields.HexText;
   FSearch.HexMode := FHexMode;

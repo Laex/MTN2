@@ -657,6 +657,7 @@
       "lbl_hex": "Hex-Bytes:",
       "search_subdirs": "In &Unterordnern suchen",
       "search_archives": "In Arc&hiven suchen",
+      "search_plugins": "P&lugins verwenden",
       "lbl_encoding": "Codepage:",
       "ok": "Suchen",
       "cancel": "Abbrechen",

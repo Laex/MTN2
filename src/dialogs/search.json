@@ -2,7 +2,7 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Find file",
-  "width": 58,
+  "width": 66,
   "height": 25,
   "children": [
     {
@@ -11,7 +11,7 @@
       "id": "lbl_mask",
       "col": 1,
       "row": 0,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -21,7 +21,7 @@
       "history": "findmask",
       "col": 1,
       "row": 1,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -30,7 +30,7 @@
       "id": "lbl_text",
       "col": 1,
       "row": 2,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -40,7 +40,7 @@
       "history": "findtext",
       "col": 1,
       "row": 3,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -49,7 +49,7 @@
       "id": "lbl_hex",
       "col": 1,
       "row": 4,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -59,14 +59,14 @@
       "history": "findhex",
       "col": 1,
       "row": 5,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
       "row": 6,
-      "width": 56,
+      "width": 64,
       "height": 1
     },
     {
@@ -84,9 +84,9 @@
       "id": "search_words",
       "text": "&Whole words",
       "checked": false,
-      "col": 27,
+      "col": 39,
       "row": 7,
-      "width": 28,
+      "width": 25,
       "height": 1
     },
     {
@@ -104,9 +104,9 @@
       "id": "search_regex",
       "text": "&Regex",
       "checked": false,
-      "col": 27,
+      "col": 39,
       "row": 8,
-      "width": 28,
+      "width": 25,
       "height": 1
     },
     {
@@ -124,9 +124,9 @@
       "id": "search_archives",
       "text": "Search in arch&ives",
       "checked": false,
-      "col": 27,
+      "col": 39,
       "row": 9,
-      "width": 28,
+      "width": 25,
       "height": 1
     },
     {
@@ -151,10 +151,20 @@
       "height": 1
     },
     {
+      "type": "checkbox",
+      "id": "search_plugins",
+      "text": "Use p&lugins",
+      "checked": true,
+      "col": 39,
+      "row": 10,
+      "width": 25,
+      "height": 1
+    },
+    {
       "type": "separator",
       "col": 0,
       "row": 11,
-      "width": 56,
+      "width": 64,
       "height": 1
     },
     {
@@ -235,7 +245,7 @@
       "id": "lbl_format",
       "col": 1,
       "row": 14,
-      "width": 54,
+      "width": 62,
       "height": 1
     },
     {
@@ -299,7 +309,7 @@
       "type": "separator",
       "col": 0,
       "row": 19,
-      "width": 56,
+      "width": 64,
       "height": 1
     },
     {
@@ -307,7 +317,7 @@
       "id": "ok",
       "text": "Find",
       "default": true,
-      "col": 4,
+      "col": 8,
       "row": 21,
       "width": 12,
       "height": 1
@@ -316,7 +326,7 @@
       "type": "button",
       "id": "background",
       "text": "&Background",
-      "col": 18,
+      "col": 22,
       "row": 21,
       "width": 16,
       "height": 1
@@ -326,7 +336,7 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 36,
+      "col": 40,
       "row": 21,
       "width": 12,
       "height": 1

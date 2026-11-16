@@ -658,6 +658,7 @@
       "lbl_hex": "十六进制字节:",
       "search_subdirs": "搜索子文件夹(&S)",
       "search_archives": "搜索压缩包(&Z)",
+      "search_plugins": "使用插件(&P)",
       "lbl_encoding": "代码页:",
       "ok": "查找",
       "cancel": "取消",

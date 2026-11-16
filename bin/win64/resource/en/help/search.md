@@ -7,6 +7,10 @@
 | Ctrl+B | flat view: all files of the subtree in one list |
 | Alt+letter | quick search by name |
 
+### Search through plugins
+
+The Everything plugin answers name searches in local folders from its index, the ripgrep plugin (`rg` in the PATH or next to the plugin) searches file text, and the Document viewer plugin lets a text search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files. Searches inside archives, by hex bytes or by attributes use the built-in search. The **Use plugins** checkbox of the Find dialog turns the plugins off.
+
 ### Quick search
 
 Alt+letter opens a search box in the active panel; further letters are added to it and the cursor moves to the first file whose name begins with the typed text. Backspace erases the last character, Esc closes the box and Enter opens the file under the cursor. Up and Down move to the neighbouring files; any other key or a Ctrl chord closes the search and acts as usual.

@@ -53,7 +53,8 @@ type
   public
     constructor Create(AHost: PHostApiTable; const ARun: TServiceRun);
     destructor Destroy; override;
-    /// <summary>False when the host is too old for services or refuses the name.</summary>
+    /// <summary>False when the host is too old for services, refuses the name, or the user
+    /// cleared the "JSON-RPC provider" option of the plugin (uPluginServiceSettings).</summary>
     function Register(const APluginId, AName, ADescribeJson: string; APriority: Integer): Boolean;
     /// <summary>Waits for the running workers; call before the library is released.</summary>
     procedure Stop;
@@ -65,7 +66,7 @@ function RequestIdJson(const AMessageJson: string): string;
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.JSON;
+  System.SysUtils, System.Classes, System.JSON, uPluginServiceSettings;
 
 const
   cStopWaitMs = 20000;
@@ -298,7 +299,8 @@ var
 begin
   Result := False;
   if (FHost = nil) or (FHost.AbiVersion < 11) or not Assigned(FHost.RegisterService) or
-     not Assigned(FHost.ServiceReply) or not Assigned(FHost.ServiceNotify) then
+     not Assigned(FHost.ServiceReply) or not Assigned(FHost.ServiceNotify) or
+     not ServiceProviderEnabled(FHost, APluginId) then
     Exit;
   Id := UTF8String(APluginId);
   Name := UTF8String(AName);

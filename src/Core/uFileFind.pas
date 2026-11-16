@@ -14,6 +14,13 @@ const
   cFindMaxContentBytes = 4 * 1024 * 1024;
 
 type
+  /// <summary>Turns the files of some extensions (docx, pdf, ...) into text so a
+  /// content search can look inside them. Extract runs on the walk thread.</summary>
+  ITextExtractor = interface
+    function Serves(const AExt: string): Boolean;
+    function Extract(const APath: string; out AText: string): Boolean;
+  end;
+
   TFindOptions = record
     RootPath: string;
     Mask: string;              // one or several masks: *.pas;*.dfm
@@ -26,6 +33,9 @@ type
     ForceEncoding: Boolean;    // False = detect the encoding of each file
     Encoding: TTextFileEncoding; // used when ForceEncoding
     SearchArchives: Boolean;   // also look at the files inside archives
+    BuiltInOnly: Boolean;      // do not hand the search to a service provider
+    TextExtract: ITextExtractor; // nil = every file is read as it is
+    OnlyExtractable: Boolean;  // look only at the files TextExtract serves
     HexBytes: string;          // byte sequence ("4D 5A ?? 90") the file must contain; empty = none
     MinSize: Int64;            // bytes; -1 = no lower bound (files only)
     MaxSize: Int64;            // bytes; -1 = no upper bound (files only)
@@ -53,7 +63,7 @@ type
     Mask, RootPath, ContainingText, HexText: string;
     Filters: TFindFilterText;
     Subdirs, CaseSensitive, WholeWords, SearchFolders, UseRegex,
-      SearchArchives, HexMode: Boolean;
+      SearchArchives, HexMode, BuiltInOnly: Boolean;
     /// <summary>0 = detect per file; n = TextEncodingListItems[n - 1].</summary>
     EncodingIdx: Integer;
   end;
@@ -193,6 +203,9 @@ begin
   Result.ForceEncoding := False;
   Result.Encoding := tfeUtf8;
   Result.SearchArchives := False;
+  Result.BuiltInOnly := False;
+  Result.TextExtract := nil;
+  Result.OnlyExtractable := False;
   Result.HexBytes := '';
   Result.MinSize := -1;
   Result.MaxSize := -1;
@@ -248,6 +261,7 @@ begin
   AOpts.SearchFolders := ACriteria.SearchFolders;
   AOpts.UseRegex := ACriteria.UseRegex;
   AOpts.SearchArchives := ACriteria.SearchArchives;
+  AOpts.BuiltInOnly := ACriteria.BuiltInOnly;
   AOpts.ForceEncoding := (ACriteria.EncodingIdx > 0) and
     TryTextEncodingFromListIndex(ACriteria.EncodingIdx - 1, AOpts.Encoding);
   if ByBytes then
@@ -999,8 +1013,9 @@ function FindContentMatch(const AFilePath: string; const AOptions: TFindOptions;
 var
   Pattern: TArray<Integer>;
   Offset: Int64;
-  Error: string;
+  Error, Text: string;
   Bytes: TBytes;
+  Options: TFindOptions;
 begin
   ALine := 0;
   ASnippet := '';
@@ -1017,6 +1032,15 @@ begin
   end;
   if AOptions.ContainingText = '' then
     Exit(True);
+  if (AOptions.TextExtract <> nil) and AOptions.TextExtract.Serves(ExtractFileExt(AFilePath)) then
+  begin
+    if not AOptions.TextExtract.Extract(AFilePath, Text) then
+      Exit(False);
+    Options := AOptions;
+    Options.ForceEncoding := True;
+    Options.Encoding := tfeUtf8;
+    Exit(BytesContentMatch(TEncoding.UTF8.GetBytes(Text), Options, ALine, ASnippet));
+  end;
   if not ReadFileForFind(AFilePath, Bytes) then
     Exit(False);
   Result := BytesContentMatch(Bytes, AOptions, ALine, ASnippet);
@@ -1232,6 +1256,9 @@ var
   Line: Integer;
   Snippet: string;
 begin
+  if FOpts.OnlyExtractable and ((FOpts.TextExtract = nil) or
+     not FOpts.TextExtract.Serves(ExtractFileExt(SR.Name))) then
+    Exit(True);
   if NameMatchesAnyMask(SR.Name, FMasks) and
      FindEntryPassesFilters(FOpts, False, SR.Size, SR.TimeStamp, SR.Attr) and
      FindContentMatch(AFull, FOpts, Line, Snippet) and

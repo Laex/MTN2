@@ -32,7 +32,7 @@ function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialo
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEncodingIdx: Integer;
+  const AHex: string; ASubdirs, ASearchArchives, AUsePlugins: Boolean; AEncodingIdx: Integer;
   const AFilters: TFindFilterText): TDialogDeclaration;
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOverwriteIndex: Integer = 0; APreserveTimestamps: Boolean = False;
@@ -401,7 +401,7 @@ end;
 
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEncodingIdx: Integer;
+  const AHex: string; ASubdirs, ASearchArchives, AUsePlugins: Boolean; AEncodingIdx: Integer;
   const AFilters: TFindFilterText): TDialogDeclaration;
 var
   Items: TArray<string>;
@@ -417,6 +417,7 @@ begin
   DialogSetInputValue(Result, 'search_hex', AHex);
   DialogSetCheckbox(Result, 'search_subdirs', ASubdirs);
   DialogSetCheckbox(Result, 'search_archives', ASearchArchives);
+  DialogSetCheckbox(Result, 'search_plugins', AUsePlugins);
   // Item 0 lets the search detect the encoding of every file; the others are
   // the encodings of the editor, in the same order.
   Items := TextEncodingListItems;

@@ -31,6 +31,8 @@ What a service is not: it is not a replacement for the VFS, panel or dialog cont
 
 **Lazy loading.** A plugin that offers services lists their names in the `services` array of `plugin.json`; the host loads such a plugin when a request for one of the names arrives (the same way a plugin is loaded for its scheme). A plugin without the array registers its services only after it was loaded for another reason.
 
+**Turning a provider off.** The plugins that offer services (Everything, ripgrep, the document viewer) have a Settings dialog with the option "Offer this plugin as a provider of JSON-RPC services". When the user clears it (the plugin setting `jsonrpc_provider` = `0`), the plugin registers no service the next time it loads, so the host never calls it. `TServiceProvider.Register` in `uPluginServiceProvider.pas` applies the option, and `uPluginServiceSettings.pas` holds the dialog; a plugin of another kind adds the same dialog with `RegisterServiceSettings`.
+
 ---
 
 ## 3. Messages
@@ -90,7 +92,7 @@ Request without parameters. The result lists what the provider offers:
 ```
 
 - `inputSchema` is a JSON Schema object with the types `object`, `string`, `integer`, `number`, `boolean`, `array`, and the keywords `properties`, `required`, `enum`, `items`. The host checks the parameters of a request against it before the call and answers `-32602` itself.
-- `name`, `description` and `inputSchema` have the same shape as an entry of the usual "list of tools" of JSON-RPC tool servers, so an external process can be mapped to a service without changing the data (see §9).
+- `name`, `description` and `inputSchema` have the same shape as an entry of the usual "list of tools" of JSON-RPC tool servers, so an external process can be mapped to a service without changing the data (see §10).
 - `capabilities` is the list of strings the host matches against what a request needs. The words for each service are defined in the section of that service (§7).
 
 ### 4.2. `service.ping`
@@ -206,7 +208,37 @@ The host picks the first provider in priority order whose capabilities fit the r
 
 ---
 
-## 9. Compatibility with external processes
+## 9. Service `text.extract`
+
+Turns a document into plain text. A content search in Alt+F7 asks it for the files whose extension a provider serves, so a `.docx` or `.pdf` is searched by its text instead of its bytes.
+
+### 9.1. Request parameters
+
+| Field | Type | Meaning |
+|---|---|---|
+| `path` | string | The local path of the document |
+| `maxChars` | integer | The most characters of text the caller wants |
+
+### 9.2. Capabilities
+
+A provider lists one word `ext.<extension>` for every extension it reads (lower case, without the dot): `ext.docx`, `ext.pdf`. The host asks a provider only for an extension in its list. When no provider lists the extension, the file is read as it is.
+
+### 9.3. Result
+
+```json
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"1200 characters"}],"structuredContent":{"text":"...","truncated":false}}}
+```
+
+`truncated` is `true` when the text was cut at `maxChars`. A file the provider cannot read is answered with `-32002`, bad parameters with `-32602`; the host then treats the file as not containing the text. A file with no text gives an empty `text`.
+
+### 9.4. Use by the search
+
+The built-in walk reads such a file through the service and looks for the text in the answer. When a `search.files` provider (for example ripgrep) serves the search, the host runs a second pass over the files of the served extensions after the provider has finished, and lists a file that both found once. The checkbox "Use plugins" of the Find dialog switches both off.
+
+
+---
+
+## 10. Compatibility with external processes
 
 The message format (JSON-RPC 2.0), the shape of the description (`name`, `description`, `inputSchema`), the call result (`content`, `structuredContent`, `isError`), and the names and fields of the progress and cancellation notifications follow the conventions of common JSON-RPC tool servers. A plugin that starts an external process, performs the version handshake, reads its list of tools and registers each tool as a service can therefore pass the messages through almost unchanged. Such a bridge plugin is planned; it is not part of the contract above, and it adds its own rules for starting programs (an explicit user setting for every program, no program path taken from data, and limits on message size and time).
 
@@ -217,8 +249,8 @@ Differences the bridge has to handle:
 
 ---
 
-## 10. Implementation state
+## 11. Implementation state
 
-- Described here: the message format, the error codes, `service.describe` and `service.ping`, progress and cancellation, the Host API functions, `search.files`.
-- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`.
-- Not implemented yet: the use in Alt+F7, the providers (Everything, ripgrep), the bridge plugin. The WASM guest ABI gets the services later.
+- Described here: the message format, the error codes, `service.describe` and `service.ping`, progress and cancellation, the Host API functions, `search.files`, `text.extract`.
+- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`, the use in Alt+F7, the providers (Everything and ripgrep for `search.files`, the document viewer for `text.extract`).
+- Not implemented yet: the bridge plugin. The WASM guest ABI gets the services later.
