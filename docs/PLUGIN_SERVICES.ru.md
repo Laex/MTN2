@@ -192,7 +192,7 @@
 {"jsonrpc":"2.0","method":"search.hits","params":{"progressToken":"1","hits":[{"path":"C:\\Work\\a.txt","isDir":false,"size":120,"modified":"2026-01-02T03:04:05"}]}}
 ```
 
-В массиве `hits` не больше 500 записей на сообщение; `size` и `modified` необязательны. Итоговый ответ несёт сводку:
+В массиве `hits` не больше 500 записей на сообщение; `size`, `modified`, `created`, `accessed` (локальное время ISO 8601) и `attributes` (биты атрибутов Windows) необязательны; чего в записи нет, то в списке результатов остаётся пустым. Итоговый ответ несёт сводку:
 
 ```json
 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"12 found"}],"structuredContent":{"count":12,"truncated":false}}}

@@ -2,8 +2,9 @@
   "id": "mtn.everything",
   "name": "Everything",
   "version": "0.1.0",
-  "abi": 9,
+  "abi": 11,
   "declarative": true,
+  "services": ["search.files"],
   "menuItems": [
     {"id": "everything_search", "caption": {"en": "Everything search...", "ru": "Поиск Everything..."}, "priority": 50}
   ],

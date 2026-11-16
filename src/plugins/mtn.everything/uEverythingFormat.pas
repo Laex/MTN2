@@ -9,6 +9,9 @@ unit uEverythingFormat;
 
 interface
 
+uses
+  uSearchRequest;
+
 type
   TEvItem = record
     /// <summary>The folder that holds the item.</summary>
@@ -17,6 +20,11 @@ type
     IsDir: Boolean;
   end;
   TEvItems = TArray<TEvItem>;
+
+/// <summary>The Everything query that finds the names the request asks for under its root:
+/// the folder scope, the mask as an OR group, case and whole-word switches, files only
+/// unless folders are wanted. Size and date bounds are not in it (see SearchRequestBoundsPass).</summary>
+function BuildEverythingQuery(const ARequest: TSearchRequest): string;
 
 function EvEncode(const AText: string): string;
 function EvDecode(const AText: string): string;
@@ -190,6 +198,77 @@ begin
   // The terminator is the last character; SetLength does not clear a reused block.
   Result[High(Result)] := 0;
   Result[High(Result) - 1] := 0;
+end;
+
+// One mask as an Everything term: a name without wildcards must equal the whole file name.
+function MaskTerm(const AMask: string): string;
+var
+  M: string;
+begin
+  M := StringReplace(Trim(AMask), '"', '', [rfReplaceAll]);
+  if M = '' then
+    Exit('');
+  if (Pos('*', M) = 0) and (Pos('?', M) = 0) then
+    Result := 'wfn:"' + M + '"'
+  else if Pos(' ', M) > 0 then
+    Result := '"' + M + '"'
+  else
+    Result := M;
+end;
+
+function MaskQuery(const AMask: string): string;
+var
+  Parts: TArray<string>;
+  Terms: TArray<string>;
+  Part, Term: string;
+begin
+  Result := '';
+  SetLength(Terms, 0);
+  Parts := SplitSearchMasks(AMask);
+  for Part in Parts do
+  begin
+    // *.* and * are every name, as in the built-in walk.
+    if (Part = '*.*') or (Part = '*') then
+      Exit('');
+    Term := MaskTerm(Part);
+    if Term <> '' then
+    begin
+      SetLength(Terms, Length(Terms) + 1);
+      Terms[High(Terms)] := Term;
+    end;
+  end;
+  if Length(Terms) = 0 then
+    Exit('');
+  if Length(Terms) = 1 then
+    Result := Terms[0]
+  else
+    Result := '<' + string.Join('|', Terms) + '>';
+end;
+
+function BuildEverythingQuery(const ARequest: TSearchRequest): string;
+var
+  Root, Mask: string;
+begin
+  Root := StringReplace(Trim(ARequest.Root), '"', '', [rfReplaceAll]);
+  if (Length(Root) > 3) and (Root[Length(Root)] = '\') then
+    SetLength(Root, Length(Root) - 1);
+  if ARequest.Subdirs then
+  begin
+    if Root[Length(Root)] <> '\' then
+      Root := Root + '\';
+    Result := '"' + Root + '"';
+  end
+  else
+    Result := 'parent:"' + Root + '"';
+  if not ARequest.IncludeFolders then
+    Result := 'file: ' + Result;
+  if ARequest.CaseSensitive then
+    Result := 'case: ' + Result;
+  if ARequest.WholeWords then
+    Result := 'ww: ' + Result;
+  Mask := MaskQuery(ARequest.Mask);
+  if Mask <> '' then
+    Result := Result + ' ' + Mask;
 end;
 
 end.

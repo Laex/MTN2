@@ -56,6 +56,7 @@ uses
   TestRcloneVfs in 'TestRcloneVfs.pas',
   TestRcloneLive in 'TestRcloneLive.pas',
   TestEverythingFormat in 'TestEverythingFormat.pas',
+  TestRipgrepFormat in 'TestRipgrepFormat.pas',
   TestYamlLite in 'TestYamlLite.pas',
   TestJsonTree in 'TestJsonTree.pas',
   TestMetaFormat in 'TestMetaFormat.pas',

@@ -18,12 +18,20 @@ type
     [Test] procedure TestListReaderGivesNamesFoldersAndKinds;
     [Test] procedure TestListWithOffsetOutsideTheBlockIsRejected;
     [Test] procedure TestShortBlockIsRejected;
+    [Test] procedure TestRequestReadsEveryParameter;
+    [Test] procedure TestRequestDefaultsAndRejections;
+    [Test] procedure TestQueryScopesFilesUnderTheRoot;
+    [Test] procedure TestQueryGroupsSeveralMasks;
+    [Test] procedure TestQueryMatchesPlainNameAsWholeName;
+    [Test] procedure TestQueryAllNamesHasNoMaskTerm;
+    [Test] procedure TestQuerySwitchesFollowTheRequest;
+    [Test] procedure TestBoundsCheckSizeAndDate;
   end;
 
 implementation
 
 uses
-  System.SysUtils, uEverythingFormat;
+  System.SysUtils, uSearchRequest, uEverythingFormat;
 
 procedure TTestEverythingFormat.TestUriRoundTripsSlashesAndPercent;
 var
@@ -151,6 +159,102 @@ begin
   SetLength(Block, 10);
   Assert.IsFalse(ParseIpcList(@Block[0], Length(Block), Items));
   Assert.IsFalse(ParseIpcList(nil, 0, Items));
+end;
+
+const
+  cRequest =
+    '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"root":"C:\\Work","mask":"*.txt;*.md",' +
+    '"subdirs":false,"caseSensitive":true,"wholeWords":true,"includeFolders":true,' +
+    '"minSize":10,"maxSize":2000,"modifiedFrom":"2026-01-01T00:00:00","maxResults":7}}';
+
+function DefaultRequest: TSearchRequest;
+begin
+  Assert.IsTrue(ParseSearchRequest('{"params":{"root":"C:\\Work","mask":"*.txt"}}', Result));
+end;
+
+procedure TTestEverythingFormat.TestRequestReadsEveryParameter;
+var
+  R: TSearchRequest;
+begin
+  Assert.IsTrue(ParseSearchRequest(cRequest, R));
+  Assert.AreEqual('C:\Work', R.Root);
+  Assert.AreEqual('*.txt;*.md', R.Mask);
+  Assert.IsFalse(R.Subdirs);
+  Assert.IsTrue(R.CaseSensitive);
+  Assert.IsTrue(R.WholeWords);
+  Assert.IsTrue(R.IncludeFolders);
+  Assert.AreEqual<Int64>(10, R.MinSize);
+  Assert.AreEqual<Int64>(2000, R.MaxSize);
+  Assert.AreEqual('2026-01-01T00:00:00', R.ModifiedFrom);
+  Assert.AreEqual('', R.ModifiedTo);
+  Assert.AreEqual(7, R.MaxResults);
+end;
+
+procedure TTestEverythingFormat.TestRequestDefaultsAndRejections;
+var
+  R: TSearchRequest;
+begin
+  R := DefaultRequest;
+  Assert.IsTrue(R.Subdirs, 'subfolders are searched unless switched off');
+  Assert.IsFalse(R.IncludeFolders);
+  Assert.AreEqual<Int64>(-1, R.MinSize);
+  Assert.IsFalse(SearchRequestHasBounds(R));
+  Assert.IsFalse(ParseSearchRequest('{"params":{"mask":"*.txt"}}', R), 'no root');
+  Assert.IsFalse(ParseSearchRequest('{"id":1}', R), 'no params');
+  Assert.IsFalse(ParseSearchRequest('not json', R));
+end;
+
+procedure TTestEverythingFormat.TestQueryScopesFilesUnderTheRoot;
+begin
+  Assert.AreEqual('file: "C:\Work\" *.txt', BuildEverythingQuery(DefaultRequest));
+end;
+
+procedure TTestEverythingFormat.TestQueryGroupsSeveralMasks;
+var
+  R: TSearchRequest;
+begin
+  R := DefaultRequest;
+  R.Mask := '*.txt;*.md';
+  Assert.AreEqual('file: "C:\Work\" <*.txt|*.md>', BuildEverythingQuery(R));
+end;
+
+procedure TTestEverythingFormat.TestQueryMatchesPlainNameAsWholeName;
+var
+  R: TSearchRequest;
+begin
+  R := DefaultRequest;
+  R.Mask := 'readme.md';
+  Assert.AreEqual('file: "C:\Work\" wfn:"readme.md"', BuildEverythingQuery(R));
+end;
+
+procedure TTestEverythingFormat.TestQueryAllNamesHasNoMaskTerm;
+var
+  R: TSearchRequest;
+begin
+  R := DefaultRequest;
+  R.Mask := '*.*';
+  Assert.AreEqual('file: "C:\Work\"', BuildEverythingQuery(R));
+end;
+
+procedure TTestEverythingFormat.TestQuerySwitchesFollowTheRequest;
+var
+  R: TSearchRequest;
+begin
+  Assert.IsTrue(ParseSearchRequest(cRequest, R));
+  Assert.AreEqual('ww: case: parent:"C:\Work" <*.txt|*.md>', BuildEverythingQuery(R));
+end;
+
+procedure TTestEverythingFormat.TestBoundsCheckSizeAndDate;
+var
+  R: TSearchRequest;
+begin
+  Assert.IsTrue(ParseSearchRequest(cRequest, R));
+  Assert.IsTrue(SearchRequestHasBounds(R));
+  Assert.IsTrue(SearchRequestBoundsPass(R, False, 500, '2026-03-01T10:00:00'));
+  Assert.IsFalse(SearchRequestBoundsPass(R, False, 5, '2026-03-01T10:00:00'), 'below the minimum');
+  Assert.IsFalse(SearchRequestBoundsPass(R, False, 5000, '2026-03-01T10:00:00'), 'above the maximum');
+  Assert.IsFalse(SearchRequestBoundsPass(R, False, 500, '2025-12-31T23:59:59'), 'before the start date');
+  Assert.IsTrue(SearchRequestBoundsPass(R, True, 0, '2026-03-01T10:00:00'), 'size bounds skip folders');
 end;
 
 end.

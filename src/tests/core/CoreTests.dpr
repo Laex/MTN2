@@ -60,7 +60,8 @@ uses
   TestJsonRpc in 'TestJsonRpc.pas',
   TestServiceRegistry in 'TestServiceRegistry.pas',
   TestServiceSchema in 'TestServiceSchema.pas',
-  TestFindService in 'TestFindService.pas';
+  TestFindService in 'TestFindService.pas',
+  TestSearchHitsJson in 'TestSearchHitsJson.pas';
 
 begin
   RunRegisteredTests;

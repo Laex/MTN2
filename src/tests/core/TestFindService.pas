@@ -61,6 +61,9 @@ begin
   O := Opts;
   O.RootPath := '';
   Assert.IsFalse(FindOptionsServable(O), 'no root');
+  O := Opts;
+  O.Mask := '@Sources';
+  Assert.IsFalse(FindOptionsServable(O), 'a mask group is resolved by the host only');
 end;
 
 procedure TTestFindService.TestNeedsGrowWithTheRequest;
@@ -139,7 +142,8 @@ var
 begin
   Assert.IsTrue(TryParseSearchHits(
     '{"jsonrpc":"2.0","method":"search.hits","params":{"progressToken":"1","hits":[' +
-    '{"path":"C:\\Work\\a.txt","isDir":false,"size":120,"modified":"2026-01-02T03:04:05"},' +
+    '{"path":"C:\\Work\\a.txt","isDir":false,"size":120,"modified":"2026-01-02T03:04:05",' +
+    '"created":"2025-01-02T03:04:05","accessed":"2026-02-02T03:04:05","attributes":35,"line":7,"snippet":"needle here"},' +
     '{"path":"C:\\Work\\sub","isDir":true},{"size":5},{"path":""},7]}}', Hits), 'parsed');
   Assert.AreEqual<Integer>(2, Length(Hits), 'entries without a path are dropped');
   Assert.AreEqual('C:\Work\a.txt', Hits[0].Path);
@@ -148,9 +152,15 @@ begin
   Assert.AreEqual<Int64>(120, Hits[0].Entry.Size);
   Assert.IsTrue(Hits[0].HasEntry, 'has entry');
   Assert.IsTrue(Abs(Hits[0].Entry.ModificationTime - EncodeDateTime(2026, 1, 2, 3, 4, 5, 0)) < 1E-6, 'modified');
+  Assert.IsTrue(Abs(Hits[0].Entry.CreationTime - EncodeDateTime(2025, 1, 2, 3, 4, 5, 0)) < 1E-6, 'created');
+  Assert.IsTrue(Abs(Hits[0].Entry.AccessTime - EncodeDateTime(2026, 2, 2, 3, 4, 5, 0)) < 1E-6, 'accessed');
+  Assert.IsTrue(Hits[0].Entry.IsReadOnly and Hits[0].Entry.IsHidden and Hits[0].Entry.IsArchive, 'attributes 35');
+  Assert.IsFalse(Hits[0].Entry.IsSystem, 'system bit not set');
+  Assert.AreEqual<Integer>(7, Hits[0].Line);
+  Assert.AreEqual('needle here', Hits[0].Snippet);
   Assert.IsTrue(Hits[1].Entry.IsDirectory, 'folder');
   Assert.AreEqual<Int64>(-1, Hits[1].Entry.Size, 'a folder has no size');
-  Assert.AreEqual<Integer>(0, Hits[0].Line);
+  Assert.AreEqual<Integer>(0, Hits[1].Line, 'a name match has no line');
 end;
 
 procedure TTestFindService.TestOtherMessagesAreNotHits;

@@ -73,6 +73,7 @@ function FindOptionsServable(const AOptions: TFindOptions): Boolean;
 begin
   Result := (AOptions.HexBytes = '') and not AOptions.SearchArchives and
     (AOptions.RequireAttr = 0) and (AOptions.ForbidAttr = 0) and
+    (Pos('@', AOptions.Mask) = 0) and
     IsLocalRoot(Trim(AOptions.RootPath));
 end;
 
@@ -226,6 +227,24 @@ begin
         Hit.Entry.Size := Num;
       if Obj.TryGetValue<string>('modified', Text) and TryParseIsoLocal(Text, Moment) then
         Hit.Entry.ModificationTime := Moment;
+      if (Obj.GetValue('line') is TJSONNumber) and
+         TryStrToInt64(TJSONNumber(Obj.GetValue('line')).Value, Num) and (Num > 0) then
+        Hit.Line := Integer(Num);
+      if Obj.TryGetValue<string>('snippet', Text) then
+        Hit.Snippet := Text;
+      if Obj.TryGetValue<string>('created', Text) and TryParseIsoLocal(Text, Moment) then
+        Hit.Entry.CreationTime := Moment;
+      if Obj.TryGetValue<string>('accessed', Text) and TryParseIsoLocal(Text, Moment) then
+        Hit.Entry.AccessTime := Moment;
+      if (Obj.GetValue('attributes') is TJSONNumber) and
+         TryStrToInt64(TJSONNumber(Obj.GetValue('attributes')).Value, Num) then
+      begin
+        Hit.Entry.IsReadOnly := (Num and $1) <> 0;
+        Hit.Entry.IsHidden := (Num and $2) <> 0;
+        Hit.Entry.IsSystem := (Num and $4) <> 0;
+        Hit.Entry.IsArchive := (Num and $20) <> 0;
+        Hit.Entry.IsLink := (Num and $400) <> 0;
+      end;
       Hit.HasEntry := True;
       SetLength(AHits, Length(AHits) + 1);
       AHits[High(AHits)] := Hit;

@@ -192,7 +192,7 @@ While the search runs the provider sends the notification
 {"jsonrpc":"2.0","method":"search.hits","params":{"progressToken":"1","hits":[{"path":"C:\\Work\\a.txt","isDir":false,"size":120,"modified":"2026-01-02T03:04:05"}]}}
 ```
 
-The `hits` array holds at most 500 entries per message; `size` and `modified` are optional. The final response carries the totals:
+The `hits` array holds at most 500 entries per message; `size`, `modified`, `created`, `accessed` (local ISO 8601) and `attributes` (Windows attribute bits) are optional; what a hit lacks stays empty in the results list. The final response carries the totals:
 
 ```json
 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"12 found"}],"structuredContent":{"count":12,"truncated":false}}}

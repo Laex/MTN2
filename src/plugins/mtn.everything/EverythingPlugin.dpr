@@ -10,6 +10,7 @@ uses
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uEverythingFormat in 'uEverythingFormat.pas',
+  uEverythingService in 'uEverythingService.pas',
   uEverythingIpc in 'uEverythingIpc.pas';
 
 const
@@ -305,6 +306,9 @@ begin
       AHostApi.RegisterMenuItem(PAnsiChar(Id), PAnsiChar(Parent), PAnsiChar(Item),
         PAnsiChar(Caption), @MenuSearch, nil, 50);
     end;
+    {$IFDEF MSWINDOWS}
+    RegisterEverythingService(AHostApi, cPluginId);
+    {$ENDIF}
     Result := 0;
   except
     Result := -1;
@@ -313,6 +317,7 @@ end;
 
 procedure mtn_plugin_shutdown; cdecl;
 begin
+  StopEverythingService;
   GHost := nil;
 end;
 

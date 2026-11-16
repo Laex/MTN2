@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- Alt+F7 file search can be served by a plugin. The Everything plugin answers name searches in local folders from the Everything index (when Everything is running), so results appear almost at once. The ripgrep plugin answers searches by file text with `rg` (found in the PATH or next to the plugin). Searches inside archives or with attribute filters, and searches when Everything or `rg` is not available, use the built-in search as before.
+
 ### Fixed
 
 - With several tabs on a file panel, a long folder path in a tab title is no longer cut down to the drive and the last folder. The title keeps as many trailing folders as fit after the "..." mark (for example `D:\...\Name\1`).
