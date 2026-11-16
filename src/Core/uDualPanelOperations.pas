@@ -7,7 +7,8 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uVfsTypes, uDualPanelTypes, uAssociations, uVfsRegistry, uZipVfs, uPluginHost;
+  uVfsTypes, uDualPanelTypes, uAssociations, uVfsRegistry, uZipVfs, uPluginHost,
+  uWorkspaceVfs;
 
 type
   TDualPanelOperationsController = class
@@ -19,9 +20,47 @@ type
   TActivateCurrentKind = (ackNone, ackFindGoto, ackHistoryBack, ackNavigate,
     ackZipNavigate, ackView, ackEdit, ackShell, ackCommand);
   TDirectoryExistsFn = reference to function(const APath: string): Boolean;
+  /// <summary>Pending cursor name / enter-view memory when NavigateSideTo
+  /// leaves or enters a folder.</summary>
+  TNavigatePendingSelectKind = (npskNone, npskSelect, npskRememberEnterView);
+  TNavigatePendingSelect = record
+    Kind: TNavigatePendingSelectKind;
+    Name: string;
+    ApplyViewPos: Boolean;
+    ViewPos: Integer;
+    RememberDriveDir: Boolean;
+    EnterViewKey: string;
+    EnterViewValue: Integer;
+  end;
 
 function ClassifyActivateCurrent(AFindHit, ALeaveSynthetic, AIsDirOrParent,
   AIsZip: Boolean; AAssoc: TAssocAction): TActivateCurrentKind;
+/// <summary>Archive, find, SFTP or generic plugin on either URI: local-disk
+/// parent matching and junction back markers do not apply.</summary>
+function NavigationEitherSideIsVirtualView(const AFromUri, AToUri: string): Boolean;
+/// <summary>What to select after NavigateSideTo changes the folder, and whether
+/// to remember the enter view position. AWorkspaceLinkName is
+/// WorkspaceLinkNameForTarget(AFromUri); AFindSessionParent is
+/// FindSessionParentFileUri(AFromUri) when AFromUri is find://, else ''.</summary>
+function DecideNavigatePendingSelect(const AFromUri, AToCanon: string;
+  const AWorkspaceBackUri, AWorkspaceBackTarget, AJunctionBackName,
+  AWorkspaceLinkName, AFindSessionParent: string; AEitherSideVirtual: Boolean;
+  AHasStoredViewPos: Boolean; AStoredViewPos: Integer;
+  AFromCursorIndex, AFromScrollOffset: Integer): TNavigatePendingSelect;
+/// <summary>Entering ws:/// from a plain folder remembers that folder as
+/// WorkspaceOriginUri, unless `..` already points back into Workspace.</summary>
+function ShouldRememberWorkspaceOrigin(const AToCanon, AFromUri,
+  AWorkspaceBackUri: string): Boolean;
+/// <summary>Updates WorkspaceBackUri / BackTarget / JunctionBackName for the
+/// navigate from AFromUri to AToCanon. ARawNavigateUri is the URI before
+/// ResolveVfsUri (junction detection compares the raw link path to Canon).</summary>
+procedure ApplyNavigateTabBackMarkers(var ATab: TTab;
+  const ARawNavigateUri, AToCanon, AFromUri: string;
+  AEitherSideVirtual: Boolean);
+/// <summary>Truncate forward history and append ACanon when AAddToHistory,
+/// skipping a duplicate of the current tip.</summary>
+procedure AppendTabHistoryNavigate(var ATab: TTab; const ACanon: string;
+  AAddToHistory: Boolean);
 /// <summary>Why AName cannot be the name of a file or folder on this system
 /// (the rules of Windows or of Linux, whichever runs); empty when it can.</summary>
 function FileNameProblem(const AName: string): string;
@@ -193,6 +232,172 @@ begin
   else
     Result := ackView;
   end;
+end;
+
+function NavigationEitherSideIsVirtualView(const AFromUri, AToUri: string): Boolean;
+begin
+  Result := HasArchiveChain(AFromUri) or HasArchiveChain(AToUri) or
+    IsFindUri(AFromUri) or IsFindUri(AToUri) or
+    IsSftpUri(AFromUri) or IsSftpUri(AToUri) or
+    IsGenericVfsUri(AFromUri) or IsGenericVfsUri(AToUri);
+end;
+
+function DecideNavigatePendingSelect(const AFromUri, AToCanon: string;
+  const AWorkspaceBackUri, AWorkspaceBackTarget, AJunctionBackName,
+  AWorkspaceLinkName, AFindSessionParent: string; AEitherSideVirtual: Boolean;
+  AHasStoredViewPos: Boolean; AStoredViewPos: Integer;
+  AFromCursorIndex, AFromScrollOffset: Integer): TNavigatePendingSelect;
+var
+  OldPath, NewPath, ParentPath: string;
+begin
+  Result.Kind := npskNone;
+  Result.Name := '';
+  Result.ApplyViewPos := False;
+  Result.ViewPos := -1;
+  Result.RememberDriveDir := False;
+  Result.EnterViewKey := '';
+  Result.EnterViewValue := 0;
+
+  // Leaving a folder via "..": place cursor on that folder in the parent list.
+  // Only THIS tab's workspace-enter marker, not a global dir-link lookup -
+  // the other panel at the same disk path must `..` to the disk parent.
+  if (AWorkspaceBackUri <> '') and
+     SameVfsUri(AFromUri, AWorkspaceBackTarget) and
+     SameVfsUri(AToCanon, AWorkspaceBackUri) then
+  begin
+    Result.Kind := npskSelect;
+    if AJunctionBackName <> '' then
+      Result.Name := AJunctionBackName
+    else
+      Result.Name := AWorkspaceLinkName;
+    Exit;
+  end;
+
+  if AEitherSideVirtual then
+  begin
+    if SameVfsUri(AToCanon, ParentVfsUri(AFromUri)) then
+    begin
+      // find:// parent is session root file URI - match via FindSessionParentFileUri
+      if IsFindUri(AFromUri) then
+      begin
+        if SameVfsUri(AToCanon, AFindSessionParent) then
+        begin
+          Result.Kind := npskSelect;
+          Result.Name := '';
+        end;
+      end
+      else
+      begin
+        Result.Kind := npskSelect;
+        Result.Name := VfsUriTitle(AFromUri);
+      end;
+    end
+    else if IsFindUri(AFromUri) and
+            SameVfsUri(AToCanon, AFindSessionParent) then
+    begin
+      Result.Kind := npskSelect;
+      Result.Name := '';
+    end;
+    Exit;
+  end;
+
+  OldPath := FileUriToPath(AFromUri);
+  NewPath := FileUriToPath(AToCanon);
+  Result.RememberDriveDir := True;
+  ParentPath := FileUriToPath(ResolveFileUri(ParentFileUri(AFromUri)));
+  if (OldPath <> '') and SameLocalPath(NewPath, ParentPath) then
+  begin
+    Result.Kind := npskSelect;
+    Result.Name := FileUriTitle(AFromUri);
+    Result.ApplyViewPos := True;
+    if AHasStoredViewPos then
+      Result.ViewPos := AStoredViewPos
+    else
+      Result.ViewPos := -1;
+  end
+  else if (OldPath <> '') and (NewPath <> '') and
+          SameLocalPath(OldPath,
+            FileUriToPath(ResolveFileUri(ParentFileUri(AToCanon)))) then
+  begin
+    Result.Kind := npskRememberEnterView;
+    Result.EnterViewKey := LowerCase(AFromUri);
+    Result.EnterViewValue := AFromCursorIndex - AFromScrollOffset;
+  end;
+end;
+
+function ShouldRememberWorkspaceOrigin(const AToCanon, AFromUri,
+  AWorkspaceBackUri: string): Boolean;
+begin
+  Result := IsWorkspaceUri(AToCanon) and not IsWorkspaceUri(AFromUri) and
+    (AFromUri <> '') and not IsFindUri(AFromUri) and
+    not IsWorkspaceUri(AWorkspaceBackUri);
+end;
+
+procedure ApplyNavigateTabBackMarkers(var ATab: TTab;
+  const ARawNavigateUri, AToCanon, AFromUri: string;
+  AEitherSideVirtual: Boolean);
+var
+  OldBackUri, LinkUri, LinkParent: string;
+begin
+  OldBackUri := ATab.WorkspaceBackUri;
+  UpdateWorkspaceBackMarker(ATab.WorkspaceBackUri, ATab.WorkspaceBackTarget,
+    AFromUri, AToCanon);
+  if ATab.WorkspaceBackUri <> OldBackUri then
+    ATab.JunctionBackName := '';
+  // The first folder of a remote host or of a plugin scheme (wherever in its
+  // tree it is entered) gets a `..` row that leads back to the folder the panel
+  // came from.
+  if ((IsSftpUri(AToCanon) and IsVfsUriNavigationRoot(AToCanon)) or
+      IsGenericVfsUri(AToCanon)) and
+     not IsSftpUri(AFromUri) and not IsGenericVfsUri(AFromUri) and
+     (AFromUri <> '') and not IsFindUri(AFromUri) and
+     not IsWorkspaceUri(AFromUri) then
+  begin
+    ATab.WorkspaceBackUri := AFromUri;
+    ATab.WorkspaceBackTarget := AToCanon;
+    ATab.JunctionBackName := '';
+  end;
+  // Entering a junction/symlink shows its resolved target; `..` there must
+  // lead back to the folder that holds the link, not to the target's parent.
+  if ((ATab.WorkspaceBackUri = '') or (ATab.JunctionBackName <> '')) and
+     not AEitherSideVirtual and not IsWorkspaceUri(ARawNavigateUri) and
+     not IsWorkspaceUri(AFromUri) then
+  begin
+    LinkUri := PathToFileUri(FileUriToPath(ARawNavigateUri));
+    LinkParent := ParentFileUri(LinkUri);
+    if (LinkParent <> '') and not SameVfsUri(LinkUri, AToCanon) and
+       not SameVfsUri(LinkParent, ParentFileUri(AToCanon)) then
+    begin
+      ATab.WorkspaceBackUri := LinkParent;
+      ATab.WorkspaceBackTarget := AToCanon;
+      ATab.JunctionBackName := FileUriTitle(LinkUri);
+    end;
+  end;
+  // The Temporary panel has no parent of its own; `..` there leads back to the
+  // place the panel was opened from.
+  if IsTmpPanelUri(AToCanon) and not IsTmpPanelUri(AFromUri) and
+     (AFromUri <> '') then
+  begin
+    ATab.WorkspaceBackUri := AFromUri;
+    ATab.WorkspaceBackTarget := AToCanon;
+    ATab.JunctionBackName := '';
+  end;
+end;
+
+procedure AppendTabHistoryNavigate(var ATab: TTab; const ACanon: string;
+  AAddToHistory: Boolean);
+begin
+  if not AAddToHistory then
+    Exit;
+  if (ATab.HistoryIndex >= 0) and (ATab.HistoryIndex < High(ATab.History)) then
+    SetLength(ATab.History, ATab.HistoryIndex + 1);
+  if (Length(ATab.History) = 0) or
+     not SameVfsUri(ATab.History[High(ATab.History)], ACanon) then
+  begin
+    SetLength(ATab.History, Length(ATab.History) + 1);
+    ATab.History[High(ATab.History)] := ACanon;
+  end;
+  ATab.HistoryIndex := High(ATab.History);
 end;
 
 function ShouldLeaveRemovedFolder(AError: TVfsErrorCode; const ACur,

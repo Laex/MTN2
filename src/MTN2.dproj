@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{A7C3E91F-4B2D-4E8A-9F15-6D2C8B0E1A47}</ProjectGuid>
         <ProjectVersion>20.4</ProjectVersion>
@@ -271,6 +271,8 @@
         <DCCReference Include="Core\uDialogTypes.pas"/>
         <DCCReference Include="Core\uDialogBuilders.pas"/>
         <DCCReference Include="Core\uDialogJson.pas"/>
+        <DCCReference Include="Core\uDialogJsonParse.pas"/>
+        <DCCReference Include="Core\uDialogJsonSerialize.pas"/>
         <DCCReference Include="Core\uDialogResources.pas"/>
         <DCCReference Include="Core\uDialogLocaleLayout.pas"/>
         <DCCReference Include="Core\uDialogValues.pas"/>
@@ -352,6 +354,7 @@
         <DCCReference Include="Core\uFolderSize.pas"/>
         <DCCReference Include="Core\uDualPanelOperations.pas"/>
         <DCCReference Include="Core\uConsoleBuffer.pas"/>
+        <DCCReference Include="Core\uConsolePtyPlainPrep.pas"/>
         <DCCReference Include="Core\uANSIParser.pas"/>
         <DCCReference Include="Platform\Windows\uConPty.pas"/>
         <DCCReference Include="Platform\Windows\uShellProfiles.pas"/>

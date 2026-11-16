@@ -20,13 +20,16 @@ type
     [Test] procedure ListArrowsBeatFocusMove;
     [Test] procedure UnusedKeyIsConsumed;
     [Test] procedure ReopenDropsPendingPress;
+    [Test] procedure DropDownHoverAfterNavKeyClamps;
+    [Test] procedure ListSelectedIndexAfterNavKeySteps;
+    [Test] procedure ListKeyCommandClassification;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson;
+  uDialogHost, uDialogTypes, uDialogJson, uDialogHostKeys;
 
 const
   cRouting =
@@ -234,6 +237,56 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+procedure TTestDialogInputRouting.DropDownHoverAfterNavKeyClamps;
+begin
+  Assert.IsTrue(DropDownHoverAfterNavKey(2, 9, 4, vkUp) = 1, 'up');
+  Assert.IsTrue(DropDownHoverAfterNavKey(0, 9, 4, vkUp) = 0, 'up clamps');
+  Assert.IsTrue(DropDownHoverAfterNavKey(2, 9, 4, vkDown) = 3, 'down');
+  Assert.IsTrue(DropDownHoverAfterNavKey(9, 9, 4, vkDown) = 9, 'down clamps');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 4, vkHome) = 0, 'home');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 4, vkEnd) = 9, 'end');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 4, vkPrior) = 1, 'pgup');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 4, vkNext) = 9, 'pgdn clamps');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 0, vkPrior) = 4,
+    'view height floors at 1');
+  Assert.IsTrue(DropDownHoverAfterNavKey(5, 9, 4, vkLeft) = 5,
+    'non-nav key leaves hover');
+end;
+
+procedure TTestDialogInputRouting.ListSelectedIndexAfterNavKeySteps;
+begin
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(2, 9, 4, vkUp, True) = 1, 'up');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(2, 9, 4, vkDown, True) = 3, 'down');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkHome, True) = 0, 'home');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkEnd, True) = 9, 'end');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkPrior, True) = 1,
+    'list pgup');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkNext, True) = 9,
+    'list pgdn');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkPrior, False) = 4,
+    'radio pgup steps one');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 4, vkNext, False) = 6,
+    'radio pgdn steps one');
+  Assert.IsTrue(ListSelectedIndexAfterNavKey(5, 9, 0, vkPrior, True) = 4,
+    'view height floors at 1');
+end;
+
+procedure TTestDialogInputRouting.ListKeyCommandClassification;
+begin
+  Assert.AreEqual('toggle', ClassifyListKeyCommand(vkSpace, #0, []), 'space');
+  Assert.AreEqual('toggle', ClassifyListKeyCommand(0, ' ', []), 'space char');
+  Assert.AreEqual('up', ClassifyListKeyCommand(vkUp, #0, [ssCtrl]), 'ctrl+up');
+  Assert.AreEqual('down', ClassifyListKeyCommand(vkDown, #0, [ssCtrl]),
+    'ctrl+down');
+  Assert.AreEqual('delete', ClassifyListKeyCommand(vkDelete, #0, []), 'del');
+  Assert.AreEqual('f2', ClassifyListKeyCommand(vkF2, #0, []), 'f2');
+  Assert.AreEqual('f4', ClassifyListKeyCommand(vkF4, #0, []), 'f4');
+  Assert.AreEqual('f5', ClassifyListKeyCommand(vkF5, #0, []), 'f5');
+  Assert.AreEqual('', ClassifyListKeyCommand(vkUp, #0, []), 'bare up');
+  Assert.AreEqual('', ClassifyListKeyCommand(vkDelete, #0, [ssCtrl]),
+    'ctrl+del not a list cmd');
 end;
 
 end.

@@ -15,6 +15,7 @@ uses
   TestConPtyEncoding in 'TestConPtyEncoding.pas',
   TestConsoleBuffer in 'TestConsoleBuffer.pas',
   TestConsoleBufferCmd in 'TestConsoleBufferCmd.pas',
+  TestConsolePtyPlainPrep in 'TestConsolePtyPlainPrep.pas',
   TestFindEncoding in 'TestFindEncoding.pas',
   TestConsoleFind in 'TestConsoleFind.pas',
   TestConsoleSelectionKeys in 'TestConsoleSelectionKeys.pas',

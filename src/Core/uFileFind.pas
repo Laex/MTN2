@@ -48,6 +48,16 @@ type
     AttrReadOnly, AttrHidden, AttrSystem, AttrArchive: TFindAttrState;
   end;
 
+  /// <summary>Dialog fields that feed a find walk before FindFilesAsync.</summary>
+  TFindWalkCriteria = record
+    Mask, RootPath, ContainingText, HexText: string;
+    Filters: TFindFilterText;
+    Subdirs, CaseSensitive, WholeWords, SearchFolders, UseRegex,
+      SearchArchives, HexMode: Boolean;
+    /// <summary>0 = detect per file; n = TextEncodingListItems[n - 1].</summary>
+    EncodingIdx: Integer;
+  end;
+
   /// <summary>One search hit. Line/Snippet are 0/'' unless ContainingText was
   /// set - then they point at the first matching line (1-based).</summary>
   TFindHit = record
@@ -71,6 +81,12 @@ type
 
 function DefaultFindOptions(const ARootPath, AMask: string;
   ASubdirs: Boolean = True): TFindOptions;
+
+/// <summary>Normalizes mask/root and builds TFindOptions. False with AError
+/// when the path is empty or hex/regex/size/date filters cannot be read.</summary>
+function TryPrepareFindWalk(const ACriteria: TFindWalkCriteria;
+  out ANormalizedRoot, ANormalizedMask: string; out AOpts: TFindOptions;
+  out AError: string): Boolean;
 
 /// <summary>A size with an optional K, M, G or T suffix (powers of 1024, a
 /// trailing B allowed); '' gives True with -1 (no bound).</summary>
@@ -185,6 +201,66 @@ begin
   Result.MaxResults := 0;
   Result.RequireAttr := 0;
   Result.ForbidAttr := 0;
+end;
+
+function TryPrepareFindWalk(const ACriteria: TFindWalkCriteria;
+  out ANormalizedRoot, ANormalizedMask: string; out AOpts: TFindOptions;
+  out AError: string): Boolean;
+var
+  RegexError, FilterError: string;
+  HexPattern: TArray<Integer>;
+  ByBytes: Boolean;
+begin
+  Result := False;
+  AError := '';
+  ANormalizedMask := Trim(ACriteria.Mask);
+  if ANormalizedMask = '' then
+    ANormalizedMask := '*.*';
+  ANormalizedRoot := Trim(ACriteria.RootPath);
+  if (ANormalizedRoot <> '') and (Length(ANormalizedRoot) = 2) and
+     (ANormalizedRoot[2] = ':') then
+    ANormalizedRoot := ANormalizedRoot + PathDelim;
+  if ANormalizedRoot = '' then
+  begin
+    AError := 'No search path';
+    Exit;
+  end;
+
+  ByBytes := ACriteria.HexMode and (Trim(ACriteria.HexText) <> '');
+  if ByBytes and
+     not TryParseHexPattern(ACriteria.HexText, HexPattern, RegexError) then
+  begin
+    AError := 'Invalid hex: ' + RegexError;
+    Exit;
+  end;
+  if not ByBytes and ACriteria.UseRegex and
+     (Trim(ACriteria.ContainingText) <> '') and
+     not ValidateRegexPattern(ACriteria.ContainingText, RegexError) then
+  begin
+    AError := 'Invalid regex: ' + RegexError;
+    Exit;
+  end;
+
+  AOpts := DefaultFindOptions(ANormalizedRoot, ANormalizedMask, ACriteria.Subdirs);
+  AOpts.ContainingText := ACriteria.ContainingText;
+  AOpts.CaseSensitive := ACriteria.CaseSensitive;
+  AOpts.WholeWords := ACriteria.WholeWords;
+  AOpts.SearchFolders := ACriteria.SearchFolders;
+  AOpts.UseRegex := ACriteria.UseRegex;
+  AOpts.SearchArchives := ACriteria.SearchArchives;
+  AOpts.ForceEncoding := (ACriteria.EncodingIdx > 0) and
+    TryTextEncodingFromListIndex(ACriteria.EncodingIdx - 1, AOpts.Encoding);
+  if ByBytes then
+  begin
+    AOpts.ContainingText := '';
+    AOpts.HexBytes := ACriteria.HexText;
+  end;
+  if not ApplyFindFilterText(AOpts, ACriteria.Filters, FilterError) then
+  begin
+    AError := FilterError;
+    Exit;
+  end;
+  Result := True;
 end;
 
 function TryParseFindSize(const AText: string; out ABytes: Int64): Boolean;

@@ -26,6 +26,7 @@ type
     [Test] procedure EncryptedArchiveEntriesAreListedButNotRead;
     [Test] procedure ArchiveHitsNameTheArchiveAndTheEntry;
     [Test] procedure RecursiveWalkDoesNotEnterJunctions;
+    [Test] procedure PrepareFindWalkNormalizesAndGuards;
   end;
 
 implementation
@@ -736,6 +737,54 @@ begin
     RemoveDirectory(PChar(TPath.Combine(Sub, 'loop')));
     TDirectory.Delete(Dir, True);
   end;
+end;
+
+procedure TTestFileFind.PrepareFindWalkNormalizesAndGuards;
+var
+  C: TFindWalkCriteria;
+  Root, Mask, Err: string;
+  Opts: TFindOptions;
+begin
+  C := Default(TFindWalkCriteria);
+  C.Mask := '  ';
+  C.RootPath := '';
+  Assert.IsFalse(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'empty root');
+  Assert.AreEqual('No search path', Err, 'empty root message');
+  Assert.AreEqual('*.*', Mask, 'empty mask becomes *.*');
+
+  C.RootPath := 'C:';
+  C.Mask := '*.pas';
+  Assert.IsTrue(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'drive root ok');
+  Assert.AreEqual('C:' + PathDelim, Root, 'drive gets path delim');
+  Assert.AreEqual('*.pas', Mask, 'mask kept');
+  Assert.AreEqual(Root, Opts.RootPath, 'opts root matches');
+
+  C.RootPath := 'C:\Work';
+  C.UseRegex := True;
+  C.ContainingText := '[';
+  Assert.IsFalse(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'bad regex');
+  Assert.IsTrue(Err.StartsWith('Invalid regex:'), 'regex prefix');
+
+  C.UseRegex := False;
+  C.ContainingText := '';
+  C.HexMode := True;
+  C.HexText := '4G';
+  Assert.IsFalse(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'bad hex');
+  Assert.IsTrue(Err.StartsWith('Invalid hex:'), 'hex prefix');
+
+  C.HexMode := True;
+  C.HexText := '4D 5A';
+  C.ContainingText := 'ignored';
+  Assert.IsTrue(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'hex walk ok');
+  Assert.AreEqual('', Opts.ContainingText, 'hex clears text');
+  Assert.AreEqual('4D 5A', Opts.HexBytes, 'hex bytes kept');
+
+  C.HexMode := False;
+  C.HexText := '';
+  C.ContainingText := 'needle';
+  C.Filters.SizeMin := 'not-a-size';
+  Assert.IsFalse(TryPrepareFindWalk(C, Root, Mask, Opts, Err), 'bad size');
+  Assert.IsTrue(Pos('size', LowerCase(Err)) > 0, 'size error names the field');
 end;
 
 initialization

@@ -5243,9 +5243,11 @@ var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Tab: TTab;
-  Canon, OldPath, NewPath, ParentPath: string;
-  OldBackUri, LinkUri, LinkParent: string;
-  OldIsArch, NewIsArch, EitherSideIsVirtualView: Boolean;
+  Canon, FindParent, LinkName: string;
+  NewIsArch, EitherSideIsVirtualView: Boolean;
+  StoredViewPos: Integer;
+  HasStoredViewPos: Boolean;
+  Pending: TNavigatePendingSelect;
 begin
   if AURI = '' then
     Exit;
@@ -5265,12 +5267,9 @@ begin
     NavigateSideTo(ASide, Canon, AAddToHistory);
     Exit;
   end;
-  OldIsArch := HasArchiveChain(Tab.CurrentURI);
   NewIsArch := HasArchiveChain(Canon);
-  EitherSideIsVirtualView := OldIsArch or NewIsArch or
-    IsFindUri(Tab.CurrentURI) or IsFindUri(Canon) or
-    IsSftpUri(Tab.CurrentURI) or IsSftpUri(Canon) or
-    IsGenericVfsUri(Tab.CurrentURI) or IsGenericVfsUri(Canon);
+  EitherSideIsVirtualView :=
+    NavigationEitherSideIsVirtualView(Tab.CurrentURI, Canon);
   if SameVfsUri(Tab.CurrentURI, Canon) then
   begin
     if (not NewIsArch) and (not IsFindUri(Canon)) then
@@ -5281,111 +5280,42 @@ begin
     Exit;
   end;
 
-  // Leaving a folder via "..": place cursor on that folder in the parent list.
-  // Only THIS tab's workspace-enter marker, not a global dir-link lookup -
-  // the other panel at the same disk path must `..` to the disk parent.
+  FindParent := '';
+  if IsFindUri(Tab.CurrentURI) then
+    FindParent := FindSessionParentFileUri(Tab.CurrentURI);
+  LinkName := '';
   if (Tab.WorkspaceBackUri <> '') and
      SameVfsUri(Tab.CurrentURI, Tab.WorkspaceBackTarget) and
-     SameVfsUri(Canon, Tab.WorkspaceBackUri) then
-  begin
-    if Tab.JunctionBackName <> '' then
-      FPendingSelectName := Tab.JunctionBackName
-    else
-      FPendingSelectName := WorkspaceLinkNameForTarget(Tab.CurrentURI);
-    FPendingSelectSide := ASide;
-  end
-  else if EitherSideIsVirtualView then
-  begin
-    if SameVfsUri(Canon, ParentVfsUri(Tab.CurrentURI)) then
-    begin
-      // find:// parent is session root file URI - match via FindSessionParentFileUri
-      if IsFindUri(Tab.CurrentURI) then
+     SameVfsUri(Canon, Tab.WorkspaceBackUri) and
+     (Tab.JunctionBackName = '') then
+    LinkName := WorkspaceLinkNameForTarget(Tab.CurrentURI);
+  HasStoredViewPos := FEnterViewPos.TryGetValue(LowerCase(Canon), StoredViewPos);
+  Pending := DecideNavigatePendingSelect(Tab.CurrentURI, Canon,
+    Tab.WorkspaceBackUri, Tab.WorkspaceBackTarget, Tab.JunctionBackName,
+    LinkName, FindParent, EitherSideIsVirtualView, HasStoredViewPos,
+    StoredViewPos, Tab.CursorIndex, Tab.ScrollOffset);
+  if Pending.RememberDriveDir then
+    RememberPanelDriveDir(Panel.DriveDirs, FileUriToPath(Tab.CurrentURI));
+  case Pending.Kind of
+    npskSelect:
       begin
-        if SameVfsUri(Canon, FindSessionParentFileUri(Tab.CurrentURI)) then
-        begin
-          FPendingSelectName := '';
-          FPendingSelectSide := ASide;
-        end;
-      end
-      else
-      begin
-        FPendingSelectName := VfsUriTitle(Tab.CurrentURI);
+        FPendingSelectName := Pending.Name;
         FPendingSelectSide := ASide;
+        if Pending.ApplyViewPos then
+          FPendingViewPos := Pending.ViewPos;
       end;
-    end
-    else if IsFindUri(Tab.CurrentURI) and
-            SameVfsUri(Canon, FindSessionParentFileUri(Tab.CurrentURI)) then
-    begin
-      FPendingSelectName := '';
-      FPendingSelectSide := ASide;
-    end;
-  end
+    npskRememberEnterView:
+      FEnterViewPos.AddOrSetValue(Pending.EnterViewKey, Pending.EnterViewValue);
   else
-  begin
-    OldPath := FileUriToPath(Tab.CurrentURI);
-    NewPath := FileUriToPath(Canon);
-    RememberPanelDriveDir(Panel.DriveDirs, OldPath);
-    ParentPath := FileUriToPath(ResolveFileUri(ParentFileUri(Tab.CurrentURI)));
-    if (OldPath <> '') and SameLocalPath(NewPath, ParentPath) then
-    begin
-      FPendingSelectName := FileUriTitle(Tab.CurrentURI);
-      FPendingSelectSide := ASide;
-      if not FEnterViewPos.TryGetValue(LowerCase(Canon), FPendingViewPos) then
-        FPendingViewPos := -1;
-    end
-    else if (OldPath <> '') and (NewPath <> '') and
-            SameLocalPath(OldPath, FileUriToPath(ResolveFileUri(ParentFileUri(Canon)))) then
-      FEnterViewPos.AddOrSetValue(LowerCase(Tab.CurrentURI),
-        Tab.CursorIndex - Tab.ScrollOffset);
+    { npskNone }
   end;
 
   // Entering the top of Workspace from a folder (not by `..` out of a link
   // target, whose back marker points into Workspace) remembers that folder.
-  if IsWorkspaceUri(Canon) and not IsWorkspaceUri(Tab.CurrentURI) and
-     (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
-     not IsWorkspaceUri(Tab.WorkspaceBackUri) then
+  if ShouldRememberWorkspaceOrigin(Canon, Tab.CurrentURI, Tab.WorkspaceBackUri) then
     Tab.WorkspaceOriginUri := Tab.CurrentURI;
-  OldBackUri := Tab.WorkspaceBackUri;
-  UpdateWorkspaceBackMarker(Tab.WorkspaceBackUri, Tab.WorkspaceBackTarget,
-    Tab.CurrentURI, Canon);
-  if Tab.WorkspaceBackUri <> OldBackUri then
-    Tab.JunctionBackName := '';
-  // The first folder of a remote host or of a plugin scheme (wherever in its
-  // tree it is entered) gets a `..` row that leads back to the folder the panel
-  // came from.
-  if ((IsSftpUri(Canon) and IsVfsUriNavigationRoot(Canon)) or IsGenericVfsUri(Canon)) and
-     not IsSftpUri(Tab.CurrentURI) and not IsGenericVfsUri(Tab.CurrentURI) and
-     (Tab.CurrentURI <> '') and not IsFindUri(Tab.CurrentURI) and
-     not IsWorkspaceUri(Tab.CurrentURI) then
-  begin
-    Tab.WorkspaceBackUri := Tab.CurrentURI;
-    Tab.WorkspaceBackTarget := Canon;
-    Tab.JunctionBackName := '';
-  end;
-  // Entering a junction/symlink shows its resolved target; `..` there must
-  // lead back to the folder that holds the link, not to the target's parent.
-  if ((Tab.WorkspaceBackUri = '') or (Tab.JunctionBackName <> '')) and
-     not EitherSideIsVirtualView and not IsWorkspaceUri(AURI) and
-     not IsWorkspaceUri(Tab.CurrentURI) then
-  begin
-    LinkUri := PathToFileUri(FileUriToPath(AURI));
-    LinkParent := ParentFileUri(LinkUri);
-    if (LinkParent <> '') and not SameVfsUri(LinkUri, Canon) and
-       not SameVfsUri(LinkParent, ParentFileUri(Canon)) then
-    begin
-      Tab.WorkspaceBackUri := LinkParent;
-      Tab.WorkspaceBackTarget := Canon;
-      Tab.JunctionBackName := FileUriTitle(LinkUri);
-    end;
-  end;
-  // The Temporary panel has no parent of its own; `..` there leads back to the
-  // place the panel was opened from.
-  if IsTmpPanelUri(Canon) and not IsTmpPanelUri(Tab.CurrentURI) and (Tab.CurrentURI <> '') then
-  begin
-    Tab.WorkspaceBackUri := Tab.CurrentURI;
-    Tab.WorkspaceBackTarget := Canon;
-    Tab.JunctionBackName := '';
-  end;
+  ApplyNavigateTabBackMarkers(Tab, AURI, Canon, Tab.CurrentURI,
+    EitherSideIsVirtualView);
   Tab.CurrentURI := Canon;
   if IsFindUri(Canon) then
     Tab.Title := FindSessionTitle(Canon)
@@ -5397,18 +5327,7 @@ begin
   TabClearSelection(Tab);
   FolderHistoryPush(Canon);
   FolderFrecentVisit(Canon);
-  if AAddToHistory then
-  begin
-    if (Tab.HistoryIndex >= 0) and (Tab.HistoryIndex < High(Tab.History)) then
-      SetLength(Tab.History, Tab.HistoryIndex + 1);
-    if (Length(Tab.History) = 0) or
-       not SameVfsUri(Tab.History[High(Tab.History)], Canon) then
-    begin
-      SetLength(Tab.History, Length(Tab.History) + 1);
-      Tab.History[High(Tab.History)] := Canon;
-    end;
-    Tab.HistoryIndex := High(Tab.History);
-  end;
+  AppendTabHistoryNavigate(Tab, Canon, AAddToHistory);
   if (not NewIsArch) and (not IsFindUri(Canon)) then
     RememberPanelDriveDir(Panel.DriveDirs, FileUriToPath(Canon));
   SetActiveTab(Panel, Tab);

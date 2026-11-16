@@ -73,6 +73,23 @@ function DialogYesNoAnswer(AKey: Word; AKeyChar: Char): TDialogYesNoAnswer;
 function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
   AShift: TShiftState): string;
 
+/// <summary>New DropDown hover index after Up/Down/Home/End/PgUp/PgDn.
+/// ALast is High(Items); AViewH is the popup page size (at least 1).
+/// Non-nav keys leave AHover unchanged.</summary>
+function DropDownHoverAfterNavKey(AHover, ALast, AViewH: Integer;
+  AKey: Word): Integer;
+
+/// <summary>New list/radio/dropdown selection after arrow keys. ALast is
+/// High(Items); AViewH is the list page height (at least 1). APageScroll:
+/// True for dckList PgUp/PgDn; False steps by 1 (radio/dropdown).</summary>
+function ListSelectedIndexAfterNavKey(ASelected, ALast, AViewH: Integer;
+  AKey: Word; APageScroll: Boolean): Integer;
+
+/// <summary>Key-command id for a list with KeyCommands, or '' when the chord
+/// is not a list command. Does not cover Del-as-Delete-button.</summary>
+function ClassifyListKeyCommand(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): string;
+
 function DialogHandleOpenDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 function DialogHandleDialogNavKeys(const Ops: TDialogKeyOps; var AKey: Word;
@@ -158,6 +175,82 @@ begin
     Result := Trim(ACurrent) + '; ' + Chord;
 end;
 
+function DropDownHoverAfterNavKey(AHover, ALast, AViewH: Integer;
+  AKey: Word): Integer;
+var
+  ViewH: Integer;
+begin
+  ViewH := Max(AViewH, 1);
+  if AKey = vkUp then
+    Result := EnsureRange(AHover - 1, 0, ALast)
+  else if AKey = vkDown then
+    Result := EnsureRange(AHover + 1, 0, ALast)
+  else if AKey = vkHome then
+    Result := 0
+  else if AKey = vkEnd then
+    Result := ALast
+  else if AKey = vkPrior then
+    Result := EnsureRange(AHover - ViewH, 0, ALast)
+  else if AKey = vkNext then
+    Result := EnsureRange(AHover + ViewH, 0, ALast)
+  else
+    Result := AHover;
+end;
+
+function ListSelectedIndexAfterNavKey(ASelected, ALast, AViewH: Integer;
+  AKey: Word; APageScroll: Boolean): Integer;
+var
+  ViewH: Integer;
+begin
+  ViewH := Max(AViewH, 1);
+  if AKey = vkUp then
+    Result := ASelected - 1
+  else if AKey = vkDown then
+    Result := ASelected + 1
+  else if AKey = vkHome then
+    Result := 0
+  else if AKey = vkEnd then
+    Result := ALast
+  else if AKey = vkPrior then
+  begin
+    if APageScroll then
+      Result := ASelected - ViewH
+    else
+      Result := ASelected - 1;
+  end
+  else if AKey = vkNext then
+  begin
+    if APageScroll then
+      Result := ASelected + ViewH
+    else
+      Result := ASelected + 1;
+  end
+  else
+    Result := ASelected;
+end;
+
+function ClassifyListKeyCommand(AKey: Word; AKeyChar: Char;
+  AShift: TShiftState): string;
+var
+  K: TKeyChord;
+begin
+  Result := '';
+  K := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if (AKey = vkSpace) or (AKeyChar = ' ') then
+    Exit('toggle');
+  if K.MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
+    Exit('up');
+  if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
+    Exit('down');
+  if AShift * [ssShift, ssCtrl, ssAlt] = [] then
+    case AKey of
+      vkDelete: Exit('delete');
+      vkF2: Exit('f2');
+      vkF4: Exit('f4');
+      vkF5: Exit('f5');
+    end;
+end;
+
 function DialogHandleOpenDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
@@ -210,18 +303,7 @@ begin
     begin
       Last := High(C.Items);
       ViewH := Max(Ops.DropPopupViewHeight(), 1);
-      if AKey = vkUp then
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() - 1, 0, Last))
-      else if AKey = vkDown then
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() + 1, 0, Last))
-      else if AKey = vkHome then
-        Ops.SetDropHover(0)
-      else if AKey = vkEnd then
-        Ops.SetDropHover(Last)
-      else if AKey = vkPrior then
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() - ViewH, 0, Last))
-      else
-        Ops.SetDropHover(EnsureRange(Ops.DropHover() + ViewH, 0, Last));
+      Ops.SetDropHover(DropDownHoverAfterNavKey(Ops.DropHover(), Last, ViewH, AKey));
       Ops.EnsureDropHoverInView();
       Ops.NotifyChanged();
     end;
@@ -511,12 +593,10 @@ end;
 function DialogHandleListCommandKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 var
-  K: TKeyChord;
   KeyCmd: string;
   BtnIdx, Focus: Integer;
   C: TDialogControl;
 begin
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
   Focus := Ops.FocusIndex();
 
   if (Focus >= 0) and (Focus < Ops.ControlCount()) then
@@ -524,20 +604,7 @@ begin
     C := Ops.GetControl(Focus);
     if (C.Kind = dckList) and C.KeyCommands then
     begin
-      KeyCmd := '';
-      if (AKey = vkSpace) or (AKeyChar = ' ') then
-        KeyCmd := 'toggle'
-      else if K.MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
-        KeyCmd := 'up'
-      else if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
-        KeyCmd := 'down'
-      else if AShift * [ssShift, ssCtrl, ssAlt] = [] then
-        case AKey of
-          vkDelete: KeyCmd := 'delete';
-          vkF2: KeyCmd := 'f2';
-          vkF4: KeyCmd := 'f4';
-          vkF5: KeyCmd := 'f5';
-        end;
+      KeyCmd := ClassifyListKeyCommand(AKey, AKeyChar, AShift);
       if KeyCmd <> '' then
       begin
         AKey := 0;
@@ -581,24 +648,9 @@ begin
     begin
       if Length(C.Items) > 0 then
       begin
-        if AKey = vkUp then
-          Ops.SetListSelectedIndex(Focus, C.SelectedIndex - 1)
-        else if AKey = vkDown then
-          Ops.SetListSelectedIndex(Focus, C.SelectedIndex + 1)
-        else if AKey = vkHome then
-          Ops.SetListSelectedIndex(Focus, 0)
-        else if AKey = vkEnd then
-          Ops.SetListSelectedIndex(Focus, High(C.Items))
-        else if (AKey = vkPrior) and (C.Kind = dckList) then
-          Ops.SetListSelectedIndex(Focus,
-            C.SelectedIndex - Max(Ops.ListViewHeight(Focus), 1))
-        else if (AKey = vkNext) and (C.Kind = dckList) then
-          Ops.SetListSelectedIndex(Focus,
-            C.SelectedIndex + Max(Ops.ListViewHeight(Focus), 1))
-        else if AKey = vkPrior then
-          Ops.SetListSelectedIndex(Focus, C.SelectedIndex - 1)
-        else
-          Ops.SetListSelectedIndex(Focus, C.SelectedIndex + 1);
+        Ops.SetListSelectedIndex(Focus,
+          ListSelectedIndexAfterNavKey(C.SelectedIndex, High(C.Items),
+            Ops.ListViewHeight(Focus), AKey, C.Kind = dckList));
         Ops.NotifyChanged();
       end;
       AKey := 0;
