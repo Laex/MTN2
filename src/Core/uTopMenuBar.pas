@@ -372,6 +372,64 @@ function SubmenuSeparatorLine(const ATitle: string; AInnerW: Integer): string;
 function SubmenuItemLine(const ACaption, AShortcut: string;
   AInnerW: Integer): string;
 
+/// <summary>Left column and inner width for submenu rows: edge mode uses the
+/// full frame width, character-frame mode insets by one cell.</summary>
+procedure SubmenuContentLayout(AEdgeMode: Boolean; const ABounds: TRectI;
+  out AItemX, AInnerW: Integer);
+
+/// <summary>Idle / selected / disabled colors for one submenu row.</summary>
+procedure ResolveSubmenuRowColors(AEnabled, ASelected: Boolean;
+  AIdleFg, AIdleBg, ASelFg, ASelBg, ADisabledFg: TAlphaColor;
+  out AFg, ABg: TAlphaColor);
+
+/// <summary>True when the scroll-up mark on the top frame should be drawn.</summary>
+function SubmenuScrollUpMarkNeeded(ATop: Integer): Boolean;
+
+/// <summary>True when the scroll-down mark on the bottom frame should be drawn.</summary>
+function SubmenuScrollDownMarkNeeded(ATop, AVisible, ACount: Integer): Boolean;
+
+/// <summary>True when the mnemonic cell of an enabled item should be painted.</summary>
+function SubmenuHotCharVisible(AHotChar: Char; AHotPos: Integer;
+  const ACap: string; AEnabled: Boolean): Boolean;
+
+/// <summary>Grid column of the mnemonic letter for a row starting at AItemX.</summary>
+function SubmenuHotCharCol(AItemX: Integer; const ACaption: string;
+  AHotPos: Integer): Integer;
+
+/// <summary>True when a plugin menu item belongs under the Macros category.</summary>
+function IsMacrosMenuParent(const AParentTitle: string): Boolean;
+
+/// <summary>True when the Plugins category needs a new per-plugin separator
+/// before Desc of APluginId (AGroup is 0 before the first group).</summary>
+function ShouldOpenPluginGroup(AGroup: Integer; const ALastPluginId,
+  APluginId: string): Boolean;
+
+/// <summary>True when a Macros item of priority >= 100 should be preceded by
+/// a separator after lower-priority commands.</summary>
+function ShouldInsertMacroPrioritySeparator(APriority: Integer;
+  const AItems: TArray<TSubmenuItem>): Boolean;
+
+/// <summary>Index at which to insert the Plugins category: the Options slot,
+/// or after the last category when Options is missing.</summary>
+function PluginsMenuInsertIndex(const ACategories: TArray<TTopMenuCategory>): Integer;
+
+/// <summary>Plain or titled separator row (AGroup colors plugin bands).</summary>
+function MakeSubmenuSeparatorItem(const ATitle: string = '';
+  AGroup: Integer = 0): TSubmenuItem;
+
+/// <summary>Plugin command row under the Plugins category.</summary>
+function MakePluginActionItem(const ADesc: TPluginMenuItemDesc;
+  AGroup: Integer): TSubmenuItem;
+
+/// <summary>Plugin command row under Macros, with mnemonic resolved.</summary>
+function MakeMacroActionItem(const ADesc: TPluginMenuItemDesc): TSubmenuItem;
+
+/// <summary>menu.json separator item.</summary>
+function ParseMenuJsonSeparatorItem: TSubmenuItem;
+
+/// <summary>menu.json action item: caption translation, mnemonic, action id.</summary>
+function ParseMenuJsonActionItem(AItemObj: TJSONObject): TSubmenuItem;
+
 /// <summary>Shortcut text of a menu item: the keys of the keymap action it
 /// runs, so a rebound key shows in the menu; menu.json's own "shortcut" text
 /// for items with no keymap action (and plugin items).</summary>
@@ -809,13 +867,182 @@ begin
     Result := Result + ' ';
 end;
 
+procedure SubmenuContentLayout(AEdgeMode: Boolean; const ABounds: TRectI;
+  out AItemX, AInnerW: Integer);
+begin
+  if AEdgeMode then
+  begin
+    AItemX := ABounds.Left;
+    AInnerW := ABounds.Width;
+  end
+  else
+  begin
+    AItemX := ABounds.Left + 1;
+    AInnerW := ABounds.Width - 2;
+  end;
+end;
+
+procedure ResolveSubmenuRowColors(AEnabled, ASelected: Boolean;
+  AIdleFg, AIdleBg, ASelFg, ASelBg, ADisabledFg: TAlphaColor;
+  out AFg, ABg: TAlphaColor);
+begin
+  if not AEnabled then
+  begin
+    AFg := ADisabledFg;
+    ABg := AIdleBg;
+  end
+  else if ASelected then
+  begin
+    AFg := ASelFg;
+    ABg := ASelBg;
+  end
+  else
+  begin
+    AFg := AIdleFg;
+    ABg := AIdleBg;
+  end;
+end;
+
+function SubmenuScrollUpMarkNeeded(ATop: Integer): Boolean;
+begin
+  Result := ATop > 0;
+end;
+
+function SubmenuScrollDownMarkNeeded(ATop, AVisible, ACount: Integer): Boolean;
+begin
+  Result := ATop + AVisible < ACount;
+end;
+
+function SubmenuHotCharVisible(AHotChar: Char; AHotPos: Integer;
+  const ACap: string; AEnabled: Boolean): Boolean;
+begin
+  Result := AEnabled and (AHotChar <> #0) and (AHotPos > 0) and
+    (AHotPos <= Length(ACap));
+end;
+
+function SubmenuHotCharCol(AItemX: Integer; const ACaption: string;
+  AHotPos: Integer): Integer;
+begin
+  Result := AItemX + 1 + TextDisplayWidth(Copy(ACaption, 1, AHotPos - 1));
+end;
+
+function IsMacrosMenuParent(const AParentTitle: string): Boolean;
+begin
+  Result := SameText(AParentTitle, cMacrosMenuPath);
+end;
+
+function ShouldOpenPluginGroup(AGroup: Integer; const ALastPluginId,
+  APluginId: string): Boolean;
+begin
+  Result := (AGroup = 0) or not SameText(APluginId, ALastPluginId);
+end;
+
+function ShouldInsertMacroPrioritySeparator(APriority: Integer;
+  const AItems: TArray<TSubmenuItem>): Boolean;
+begin
+  Result := (APriority >= 100) and (Length(AItems) > 0) and
+    not AItems[High(AItems)].IsSeparator and
+    (AItems[High(AItems)].PluginPriority < 100);
+end;
+
+function PluginsMenuInsertIndex(const ACategories: TArray<TTopMenuCategory>): Integer;
+var
+  J: Integer;
+begin
+  Result := High(ACategories);
+  for J := 0 to High(ACategories) do
+    if SameText(ACategories[J].Key, 'Options') or
+       SameText(ACategories[J].Title, 'Options') then
+      Exit(J);
+end;
+
+function MakeSubmenuSeparatorItem(const ATitle: string;
+  AGroup: Integer): TSubmenuItem;
+begin
+  Result := Default(TSubmenuItem);
+  Result.Caption := '-';
+  Result.IsSeparator := True;
+  Result.SeparatorTitle := ATitle;
+  Result.PluginGroup := AGroup;
+end;
+
+function MakePluginActionItem(const ADesc: TPluginMenuItemDesc;
+  AGroup: Integer): TSubmenuItem;
+begin
+  Result := Default(TSubmenuItem);
+  Result.Caption := ADesc.Caption;
+  Result.Shortcut := ADesc.Shortcut;
+  Result.PluginDisabled := ADesc.Disabled;
+  Result.Action := tmaNone;
+  Result.IsPluginItem := True;
+  Result.PluginId := ADesc.PluginId;
+  Result.PluginItemId := ADesc.ItemId;
+  Result.PluginOnClick := ADesc.OnClick;
+  Result.PluginGroup := AGroup;
+end;
+
+function MakeMacroActionItem(const ADesc: TPluginMenuItemDesc): TSubmenuItem;
+var
+  HotC: Char;
+  PosIdx: Integer;
+  Cap: string;
+begin
+  Result := MakePluginActionItem(ADesc, 0);
+  Result.PluginPriority := ADesc.Priority;
+  Cap := Result.Caption;
+  HotC := #0;
+  MenuResolveMnemonic(Cap, HotC, PosIdx);
+  Result.Caption := Cap;
+  Result.HotChar := HotC;
+  Result.HotPos := PosIdx;
+end;
+
+function ParseMenuJsonSeparatorItem: TSubmenuItem;
+begin
+  Result := Default(TSubmenuItem);
+  Result.Caption := '-';
+  Result.HotChar := #0;
+  Result.HotPos := 0;
+  Result.Shortcut := '';
+  Result.Action := tmaNone;
+  Result.IsSeparator := True;
+end;
+
+function ParseMenuJsonActionItem(AItemObj: TJSONObject): TSubmenuItem;
+var
+  CapStr, HotStr, ShortStr, ActStr: string;
+  HotC: Char;
+  PosIdx: Integer;
+begin
+  Result := Default(TSubmenuItem);
+  CapStr := AItemObj.GetValue<string>('caption', '');
+  HotStr := AItemObj.GetValue<string>('hotChar', '');
+  ShortStr := AItemObj.GetValue<string>('shortcut', '');
+  ActStr := AItemObj.GetValue<string>('action', '');
+  HotC := #0;
+  if HotStr <> '' then
+    HotC := HotUpper(HotStr[1]);
+  // Keyed by the action's own RTTI name, not by the English caption.
+  if ActStr <> '' then
+    CapStr := T('menu.' + ActStr, CapStr);
+  MenuResolveMnemonic(CapStr, HotC, PosIdx);
+  Result.Caption := CapStr;
+  Result.HotChar := HotC;
+  Result.HotPos := PosIdx;
+  Result.Shortcut := ShortStr;
+  Result.Aliases := AItemObj.GetValue<string>('aliases', '');
+  Result.Hint := AItemObj.GetValue<string>('hint', '');
+  Result.Action := StringToTopMenuAction(ActStr);
+  Result.IsSeparator := False;
+end;
+
 function TTopMenuController.LoadMenuFromJson(const AJsonText: string): Boolean;
 var
   Val, CatsVal, ItemsVal: TJSONValue;
   Obj, CatObj, ItemObj: TJSONObject;
   CatsArr, ItemsArr: TJSONArray;
   I, J, PosIdx: Integer;
-  CatTitle, HotStr, CapStr, ShortStr, ActStr: string;
+  CatTitle, HotStr: string;
   IsSep: Boolean;
   HotC: Char;
   NewCategories: TArray<TTopMenuCategory>;
@@ -870,43 +1097,9 @@ begin
             ItemObj := TJSONObject(ItemsArr.Items[J]);
             IsSep := ItemObj.GetValue<Boolean>('isSeparator', False);
             if IsSep then
-            begin
-              NewCategories[I].Items[J].Caption := '-';
-              NewCategories[I].Items[J].HotChar := #0;
-              NewCategories[I].Items[J].HotPos := 0;
-              NewCategories[I].Items[J].Shortcut := '';
-              NewCategories[I].Items[J].Action := tmaNone;
-              NewCategories[I].Items[J].IsSeparator := True;
-            end
+              NewCategories[I].Items[J] := ParseMenuJsonSeparatorItem
             else
-            begin
-              CapStr := ItemObj.GetValue<string>('caption', '');
-              HotStr := ItemObj.GetValue<string>('hotChar', '');
-              ShortStr := ItemObj.GetValue<string>('shortcut', '');
-              ActStr := ItemObj.GetValue<string>('action', '');
-
-              HotC := #0;
-              if HotStr <> '' then
-                HotC := HotUpper(HotStr[1]);
-
-              // Keyed by the action's own RTTI name (StringToTopMenuAction's
-              // enum-name lookup below already needs this pairing to exist),
-              // not by the English caption -- so renaming CapStr in
-              // menu.json never orphans a translation the way the untranslatable
-              // category title above can.
-              if ActStr <> '' then
-                CapStr := T('menu.' + ActStr, CapStr);
-              MenuResolveMnemonic(CapStr, HotC, PosIdx);
-
-              NewCategories[I].Items[J].Caption := CapStr;
-              NewCategories[I].Items[J].HotChar := HotC;
-              NewCategories[I].Items[J].HotPos := PosIdx;
-              NewCategories[I].Items[J].Shortcut := ShortStr;
-              NewCategories[I].Items[J].Aliases := ItemObj.GetValue<string>('aliases', '');
-              NewCategories[I].Items[J].Hint := ItemObj.GetValue<string>('hint', '');
-              NewCategories[I].Items[J].Action := StringToTopMenuAction(ActStr);
-              NewCategories[I].Items[J].IsSeparator := False;
-            end;
+              NewCategories[I].Items[J] := ParseMenuJsonActionItem(ItemObj);
           end;
         end;
       end;
@@ -1171,7 +1364,7 @@ end;
 
 procedure TTopMenuController.ApplyPluginItemsToCategories;
 var
-  I, J, At, Group: Integer;
+  I, At, Group: Integer;
   Desc: TPluginMenuItemDesc;
   NewItem: TSubmenuItem;
   Cat, MacroCat: TTopMenuCategory;
@@ -1212,44 +1405,24 @@ begin
   Group := 0;
   for Desc in FPluginItems do
   begin
-    if SameText(Desc.ParentTitle, cMacrosMenuPath) then
+    if IsMacrosMenuParent(Desc.ParentTitle) then
       Continue;
-    if (Group = 0) or not SameText(Desc.PluginId, LastPlugin) then
+    if ShouldOpenPluginGroup(Group, LastPlugin, Desc.PluginId) then
     begin
       Inc(Group);
-      NewItem := Default(TSubmenuItem);
-      NewItem.Caption := '-';
-      NewItem.IsSeparator := True;
-      NewItem.SeparatorTitle := Desc.PluginTitle;
-      if NewItem.SeparatorTitle = '' then
-        NewItem.SeparatorTitle := Desc.PluginId;
-      NewItem.PluginGroup := Group;
+      Title := Desc.PluginTitle;
+      if Title = '' then
+        Title := Desc.PluginId;
       SetLength(Cat.Items, Length(Cat.Items) + 1);
-      Cat.Items[High(Cat.Items)] := NewItem;
+      Cat.Items[High(Cat.Items)] := MakeSubmenuSeparatorItem(Title, Group);
     end;
     LastPlugin := Desc.PluginId;
-    NewItem := Default(TSubmenuItem);
-    NewItem.Caption := Desc.Caption;
-    NewItem.Shortcut := Desc.Shortcut;
-    NewItem.PluginDisabled := Desc.Disabled;
-    NewItem.Action := tmaNone;
-    NewItem.IsPluginItem := True;
-    NewItem.PluginId := Desc.PluginId;
-    NewItem.PluginItemId := Desc.ItemId;
-    NewItem.PluginOnClick := Desc.OnClick;
-    NewItem.PluginGroup := Group;
     SetLength(Cat.Items, Length(Cat.Items) + 1);
-    Cat.Items[High(Cat.Items)] := NewItem;
+    Cat.Items[High(Cat.Items)] := MakePluginActionItem(Desc, Group);
   end;
 
   // Between Commands and Options; before the last (Right) when there is no Options.
-  At := High(FCategories);
-  for J := 0 to High(FCategories) do
-    if SameText(FCategories[J].Key, 'Options') or SameText(FCategories[J].Title, 'Options') then
-    begin
-      At := J;
-      Break;
-    end;
+  At := PluginsMenuInsertIndex(FCategories);
   Insert(Cat, FCategories, At);
 
   // Items whose parent path is "Macros" get a menu of their own after Plugins,
@@ -1258,35 +1431,16 @@ begin
   MacroCat.Key := 'Macros';
   MacroCat.IsPluginsMenu := True;
   for Desc in FPluginItems do
-    if SameText(Desc.ParentTitle, cMacrosMenuPath) then
+    if IsMacrosMenuParent(Desc.ParentTitle) then
     begin
       // Commands of the menu (priority below 100) are set apart from the macros.
-      if (Desc.Priority >= 100) and (Length(MacroCat.Items) > 0) and
-         not MacroCat.Items[High(MacroCat.Items)].IsSeparator and
-         (MacroCat.Items[High(MacroCat.Items)].PluginPriority < 100) then
+      if ShouldInsertMacroPrioritySeparator(Desc.Priority, MacroCat.Items) then
       begin
-        NewItem := Default(TSubmenuItem);
-        NewItem.Caption := '-';
-        NewItem.IsSeparator := True;
         SetLength(MacroCat.Items, Length(MacroCat.Items) + 1);
-        MacroCat.Items[High(MacroCat.Items)] := NewItem;
+        MacroCat.Items[High(MacroCat.Items)] := MakeSubmenuSeparatorItem;
       end;
-      NewItem := Default(TSubmenuItem);
-      NewItem.PluginPriority := Desc.Priority;
-      NewItem.Caption := Desc.Caption;
-      NewItem.Shortcut := Desc.Shortcut;
-      NewItem.PluginDisabled := Desc.Disabled;
-      HotC := #0;
-      MenuResolveMnemonic(NewItem.Caption, HotC, PosIdx);
-      NewItem.HotChar := HotC;
-      NewItem.HotPos := PosIdx;
-      NewItem.Action := tmaNone;
-      NewItem.IsPluginItem := True;
-      NewItem.PluginId := Desc.PluginId;
-      NewItem.PluginItemId := Desc.ItemId;
-      NewItem.PluginOnClick := Desc.OnClick;
       SetLength(MacroCat.Items, Length(MacroCat.Items) + 1);
-      MacroCat.Items[High(MacroCat.Items)] := NewItem;
+      MacroCat.Items[High(MacroCat.Items)] := MakeMacroActionItem(Desc);
     end;
   if Length(MacroCat.Items) > 0 then
   begin
@@ -1716,13 +1870,13 @@ begin
   FTheme.ResolveDialogRowColors(True, SubSelFg, SubSelBg);
   EdgeColor := 0;
   TitleBg := 0;
+  FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
   if FSubmenuEdge then
   begin
     // The top and bottom frame rows stay characters; their corner cells take the
     // neighbouring line character, and the sides are edge lines on the item
     // cells that meet those lines (half-height edges in the frame rows), so no
     // cell is spent on the side frame.
-    FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
     EdgeColor := AGrid[R.Top][R.Left].FgColor;
     TitleBg := AGrid[R.Top][R.Left].BgColor;
     for Y := R.Top to R.Bottom do
@@ -1731,15 +1885,8 @@ begin
         AGrid[Y][R.Left].CharValue := FrameLineChar(AGrid[Y][R.Left].CharValue);
         AGrid[Y][R.Right].CharValue := FrameLineChar(AGrid[Y][R.Right].CharValue);
       end;
-    ItemX := R.Left;
-    InnerW := R.Width;
-  end
-  else
-  begin
-    FTheme.DrawDialogFrame(AGrid, R, Cat.Title, []);
-    ItemX := R.Left + 1;
-    InnerW := R.Width - 2;
   end;
+  SubmenuContentLayout(FSubmenuEdge, R, ItemX, InnerW);
 
   // Drop shadow
   DrawDialogShadow(AGrid, R);
@@ -1770,21 +1917,8 @@ begin
       Cap := Copy(Cap, 1, TextFitChars(Cap, Max(InnerW - 2, 1)));
 
     IsSel := I = FSubmenuIndex;
-    if not IsItemEnabled(Item) then
-    begin
-      Fg := cSubmenuDisabledFg;
-      Bg := SubBg;
-    end
-    else if IsSel then
-    begin
-      Fg := SubSelFg;
-      Bg := SubSelBg;
-    end
-    else
-    begin
-      Fg := SubFg;
-      Bg := SubBg;
-    end;
+    ResolveSubmenuRowColors(IsItemEnabled(Item), IsSel, SubFg, SubBg,
+      SubSelFg, SubSelBg, cSubmenuDisabledFg, Fg, Bg);
 
     PutGridText(AGrid, ItemX, Y, Line, Fg, Bg);
     // The plugin's color band: one cell at the right edge of its rows.
@@ -1798,9 +1932,8 @@ begin
     // they stay uniformly dim.
     // HotPos is resolved once at load time (an '&' marker in a translated
     // caption can point past an earlier occurrence of the same letter).
-    if (Item.HotChar <> #0) and (Item.HotPos > 0) and (Item.HotPos <= Length(Cap))
-      and IsItemEnabled(Item) then
-      PutGridText(AGrid, ItemX + 1 + TextDisplayWidth(Copy(Item.Caption, 1, Item.HotPos - 1)), Y,
+    if SubmenuHotCharVisible(Item.HotChar, Item.HotPos, Cap, IsItemEnabled(Item)) then
+      PutGridText(AGrid, SubmenuHotCharCol(ItemX, Item.Caption, Item.HotPos), Y,
         Item.Caption[Item.HotPos], cSubmenuHotFg, Bg, [ccaBold]);
   end;
   if Length(Cat.Items) > FSubmenuVisible then
@@ -1810,9 +1943,9 @@ begin
     // Marks on the frame next to the left corner: items hidden above / below.
     // They reuse the frame's own colours so every theme keeps its border look.
     MarkX := R.Left + 2;
-    if FSubmenuTop > 0 then
+    if SubmenuScrollUpMarkNeeded(FSubmenuTop) then
       DrawBorderMark(AGrid, MarkX, R.Top, #$25B2);
-    if FSubmenuTop + FSubmenuVisible < Length(Cat.Items) then
+    if SubmenuScrollDownMarkNeeded(FSubmenuTop, FSubmenuVisible, Length(Cat.Items)) then
       DrawBorderMark(AGrid, MarkX, R.Bottom, #$25BC);
   end;
   if FSubmenuEdge then

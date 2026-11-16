@@ -283,6 +283,14 @@ begin
   Assert.AreEqual(-3, MouseWheelScrollDelta(120), 'wheel up');
   Assert.AreEqual(3, MouseWheelScrollDelta(-120), 'wheel down');
   Assert.AreEqual(3, MouseWheelScrollDelta(0), 'zero counts as down');
+  Assert.IsTrue(ClassifyPanelMouseWheelHit(True, False, True, True, True, True) =
+    pmwhFolderTree, 'tree wins');
+  Assert.IsTrue(ClassifyPanelMouseWheelHit(True, True, True, True, True, True) =
+    pmwhNone, 'dialog blocks tree');
+  Assert.IsTrue(ClassifyPanelMouseWheelHit(False, False, False, True, True, True) =
+    pmwhQuickView, 'quick view');
+  Assert.IsTrue(ClassifyPanelMouseWheelHit(False, False, False, True, False, True) =
+    pmwhNone, 'no quick text');
 end;
 
 { TTestDualPanelDrag }

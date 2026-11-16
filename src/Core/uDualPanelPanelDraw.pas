@@ -133,6 +133,27 @@ function IsQuickViewPreviewable(AHasRow, AIsOverlayImage: Boolean;
 function ResolveQuickViewImageUri(AHasRow: Boolean; const ARow: TPanelRow;
   const APluginTarget: string): string;
 function QuickViewInteriorAbsBounds(const APanelBounds, AWindowArea: TRectI): TRectI;
+
+type
+  /// <summary>What DrawQuickViewContent paints after surface / image gates.</summary>
+  TQuickViewPaintKind = (qvkSurface, qvkImage, qvkText, qvkAskF3, qvkPlaceholder);
+
+/// <summary>AHasSurface wins; else image when APreviewable; else text / AskF3
+/// flags from PreviewKind; otherwise the generic placeholder.</summary>
+function ClassifyQuickViewPaint(AHasSurface, APreviewable, AText,
+  AAskF3: Boolean): TQuickViewPaintKind;
+
+type
+  /// <summary>What HandleQuickViewKey does while Quick View owns focus.
+  /// qvkaCloseSurfaceDead drops focus without swallowing the key.</summary>
+  TQuickViewKeyAction = (qvkaIgnore, qvkaDefocusLostContent, qvkaCloseSurfaceDead,
+    qvkaCloseSurfaceUnfocus, qvkaSurfaceDeliver, qvkaUnfocus, qvkaScrollText);
+
+/// <summary>AHasContent is text / picture / owned surface. APlainMods means no
+/// Ctrl/Alt/Shift. Surface paths win over Tab/Esc unfocus.</summary>
+function ClassifyQuickViewFocusKey(AFocused, AHasContent, ASurfaceOwned,
+  ASurfaceAlive, ATextShown: Boolean; AKey: Word;
+  APlainMods: Boolean): TQuickViewKeyAction;
 procedure DrawPanelShell(const ABuffer: TTerminalGrid;
   const ATheme: IThemeRenderer; const ABounds: TRectI;
   const APanel: TPanelState; AActive, AIsQuickViewTarget: Boolean;
@@ -702,6 +723,47 @@ begin
   if (APluginTarget <> '') and (APluginTarget <> ARow.URI) and
      IsOverlayImageExtension(ExtractFileExt(APluginTarget)) then
     Result := APluginTarget;
+end;
+
+function ClassifyQuickViewPaint(AHasSurface, APreviewable, AText,
+  AAskF3: Boolean): TQuickViewPaintKind;
+begin
+  if AHasSurface then
+    Exit(qvkSurface);
+  if APreviewable then
+    Exit(qvkImage);
+  if AText then
+    Exit(qvkText);
+  if AAskF3 then
+    Exit(qvkAskF3);
+  Result := qvkPlaceholder;
+end;
+
+function ClassifyQuickViewFocusKey(AFocused, AHasContent, ASurfaceOwned,
+  ASurfaceAlive, ATextShown: Boolean; AKey: Word;
+  APlainMods: Boolean): TQuickViewKeyAction;
+begin
+  if not AFocused then
+    Exit(qvkaIgnore);
+  if not AHasContent then
+    Exit(qvkaDefocusLostContent);
+  if ASurfaceOwned then
+  begin
+    if not ASurfaceAlive then
+      Exit(qvkaCloseSurfaceDead);
+    if ((AKey = vkTab) or (AKey = vkEscape)) and APlainMods then
+      Exit(qvkaCloseSurfaceUnfocus);
+    Exit(qvkaSurfaceDeliver);
+  end;
+  if (AKey = vkTab) or (AKey = vkEscape) then
+  begin
+    if not APlainMods then
+      Exit(qvkaIgnore);
+    Exit(qvkaUnfocus);
+  end;
+  if ATextShown then
+    Exit(qvkaScrollText);
+  Result := qvkaIgnore;
 end;
 
 function QuickViewInteriorAbsBounds(const APanelBounds, AWindowArea: TRectI): TRectI;

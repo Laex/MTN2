@@ -35,6 +35,8 @@ type
     [Test] procedure FindWalkDoneActionClassification;
     [Test] procedure FindWalkProgressAndLimitGates;
     [Test] procedure SearchDialogKeyClassification;
+    [Test] procedure SearchCriteriaScrollAndHitPath;
+    [Test] procedure FindJobTextAndOverlayTitle;
   end;
 
 implementation
@@ -1082,6 +1084,68 @@ begin
     Ord(ClassifySearchDialogKey(0, Ord('A'), 'a', [])), 'append');
   Assert.AreEqual(Ord(sdaSwallow),
     Ord(ClassifySearchDialogKey(0, vkF1, #0, [])), 'other');
+end;
+
+procedure TTestSearchController.SearchCriteriaScrollAndHitPath;
+var
+  Search: TSearchState;
+  Criteria: TFindWalkCriteria;
+  Root: string;
+begin
+  Search := Default(TSearchState);
+  Search.Mask := '*.pas';
+  Search.RootPath := 'C:\Work';
+  Search.ContainingText := 'foo';
+  Search.Subdirs := False;
+  Search.CaseSensitive := True;
+  Search.EncodingIdx := 2;
+  Criteria := FindWalkCriteriaFromSearch(Search);
+  Assert.AreEqual('*.pas', Criteria.Mask, 'mask');
+  Assert.AreEqual('C:\Work', Criteria.RootPath, 'root');
+  Assert.AreEqual('foo', Criteria.ContainingText, 'text');
+  Assert.IsTrue(not Criteria.Subdirs, 'subdirs');
+  Assert.IsTrue(Criteria.CaseSensitive, 'case');
+  Assert.AreEqual(2, Criteria.EncodingIdx, 'enc');
+
+  Assert.AreEqual(0, SearchResultsScrollForCursor(0, 0, 5), 'top');
+  Assert.AreEqual(3, SearchResultsScrollForCursor(0, 7, 5), 'follow down');
+  Assert.AreEqual(2, SearchResultsScrollForCursor(5, 2, 5), 'follow up');
+
+  Root := IncludeTrailingPathDelimiter('C:\Work\proj');
+  Assert.AreEqual('a.pas',
+    FormatSearchHitDisplayPath(Root + 'a.pas', 'C:\Work\proj', 80), 'rel');
+  Assert.AreEqual('long~',
+    FormatSearchHitDisplayPath('C:\Work\proj\longname.pas', 'C:\Work\proj', 5),
+    'truncate');
+  Assert.AreEqual('readme.txt',
+    FormatSearchHitDisplayPath('C:\Work\proj\readme.txt', 'C:\Work\proj', 80),
+    'plain local path survives a non-archive split');
+end;
+
+procedure TTestSearchController.FindJobTextAndOverlayTitle;
+var
+  Bg: TBackgroundSearch;
+  Hits: TArray<TFindHit>;
+begin
+  Assert.AreEqual('find:7', FindWalkJobKey(7), 'job key');
+  Assert.IsTrue(Pos('3', FormatFindProgressJobText(3, 'C:\a')) > 0, 'count');
+  Assert.IsTrue(Pos('C:\a', FormatFindProgressJobText(3, 'C:\a')) > 0, 'dir');
+  Assert.AreEqual('err', FindFgResultsMessage(vecNotFound, 'err'), 'error msg');
+  Assert.IsTrue(FindFgResultsMessage(vecOk, '') <> '', 'none msg');
+  Assert.IsTrue(Pos('Searching', SearchOverlayTitleForPhase(spRunning, 0)) > 0,
+    'running');
+  Assert.IsTrue(Pos('5', SearchOverlayTitleForPhase(spResults, 5)) > 0, 'results');
+
+  Bg := TBackgroundSearch.Create;
+  try
+    SetLength(Hits, 2);
+    MarkBackgroundSearchFinished(Bg, Hits);
+    Assert.IsTrue(Bg.Done, 'done');
+    Assert.IsTrue(Bg.Token = nil, 'token cleared');
+    Assert.IsTrue(Length(Bg.Hits) = 2, 'hits');
+  finally
+    Bg.Free;
+  end;
 end;
 
 initialization

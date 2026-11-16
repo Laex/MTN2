@@ -27,6 +27,9 @@ type
     [Test] procedure TestWideCaptionsKeepTheHotLetterOnItsCell;
     [Test] procedure TopMenuAltReleaseAndDismissChords;
     [Test] procedure SubmenuSeparatorAndItemLines;
+    [Test] procedure SubmenuLayoutColorsAndScrollMarks;
+    [Test] procedure PluginMenuInsertAndGroupGates;
+    [Test] procedure PluginAndMenuJsonItemBuilders;
   end;
 
 implementation
@@ -470,6 +473,114 @@ begin
   Assert.IsTrue(Pos('Copy', Line) > 0, 'caption');
   Assert.IsTrue(Pos('F5', Line) > 0, 'shortcut');
   Assert.AreEqual('', SubmenuItemLine('x', '', 0), 'empty width');
+end;
+
+procedure TTestTopMenuBar.SubmenuLayoutColorsAndScrollMarks;
+var
+  Bounds: TRectI;
+  ItemX, InnerW: Integer;
+  Fg, Bg: TAlphaColor;
+begin
+  Bounds := TRectI.Make(10, 2, 29, 12);
+  SubmenuContentLayout(False, Bounds, ItemX, InnerW);
+  Assert.AreEqual(11, ItemX, 'inset x');
+  Assert.AreEqual(18, InnerW, 'inset width');
+  SubmenuContentLayout(True, Bounds, ItemX, InnerW);
+  Assert.AreEqual(10, ItemX, 'edge x');
+  Assert.AreEqual(20, InnerW, 'edge width');
+
+  ResolveSubmenuRowColors(False, True, $FF111111, $FF222222, $FF333333,
+    $FF444444, $FF555555, Fg, Bg);
+  Assert.IsTrue((Fg = $FF555555) and (Bg = $FF222222), 'disabled');
+  ResolveSubmenuRowColors(True, True, $FF111111, $FF222222, $FF333333,
+    $FF444444, $FF555555, Fg, Bg);
+  Assert.IsTrue((Fg = $FF333333) and (Bg = $FF444444), 'selected');
+  ResolveSubmenuRowColors(True, False, $FF111111, $FF222222, $FF333333,
+    $FF444444, $FF555555, Fg, Bg);
+  Assert.IsTrue((Fg = $FF111111) and (Bg = $FF222222), 'idle');
+
+  Assert.IsTrue(not SubmenuScrollUpMarkNeeded(0), 'top');
+  Assert.IsTrue(SubmenuScrollUpMarkNeeded(2), 'scrolled');
+  Assert.IsTrue(SubmenuScrollDownMarkNeeded(0, 5, 10), 'more below');
+  Assert.IsTrue(not SubmenuScrollDownMarkNeeded(5, 5, 10), 'at end');
+
+  Assert.IsTrue(SubmenuHotCharVisible('C', 1, 'Copy', True), 'hot');
+  Assert.IsTrue(not SubmenuHotCharVisible('C', 1, 'Copy', False), 'disabled hot');
+  Assert.AreEqual(11, SubmenuHotCharCol(10, 'Copy', 1), 'hot col');
+end;
+
+procedure TTestTopMenuBar.PluginMenuInsertAndGroupGates;
+var
+  Cats: TArray<TTopMenuCategory>;
+  Items: TArray<TSubmenuItem>;
+begin
+  Assert.IsTrue(IsMacrosMenuParent(cMacrosMenuPath), 'macros path');
+  Assert.IsTrue(not IsMacrosMenuParent('Plugins'), 'other');
+  Assert.IsTrue(ShouldOpenPluginGroup(0, '', 'p1'), 'first group');
+  Assert.IsTrue(ShouldOpenPluginGroup(1, 'p1', 'p2'), 'new plugin');
+  Assert.IsTrue(not ShouldOpenPluginGroup(1, 'p1', 'p1'), 'same plugin');
+
+  SetLength(Items, 1);
+  Items[0] := Default(TSubmenuItem);
+  Items[0].PluginPriority := 10;
+  Assert.IsTrue(ShouldInsertMacroPrioritySeparator(100, Items), 'sep');
+  Items[0].IsSeparator := True;
+  Assert.IsTrue(not ShouldInsertMacroPrioritySeparator(100, Items), 'after sep');
+
+  SetLength(Cats, 2);
+  Cats[0].Key := 'Commands';
+  Cats[0].Title := 'Commands';
+  Cats[1].Key := 'Options';
+  Cats[1].Title := 'Options';
+  Assert.AreEqual(1, PluginsMenuInsertIndex(Cats), 'before options');
+  Cats[1].Key := 'Right';
+  Cats[1].Title := 'Right';
+  Assert.AreEqual(1, PluginsMenuInsertIndex(Cats), 'last when no options');
+end;
+
+procedure TTestTopMenuBar.PluginAndMenuJsonItemBuilders;
+var
+  Desc: TPluginMenuItemDesc;
+  Item: TSubmenuItem;
+  Obj: TJSONObject;
+begin
+  Item := MakeSubmenuSeparatorItem('SevenZip', 2);
+  Assert.IsTrue(Item.IsSeparator, 'sep');
+  Assert.AreEqual('SevenZip', Item.SeparatorTitle, 'sep title');
+  Assert.AreEqual(2, Item.PluginGroup, 'sep group');
+
+  Desc := Default(TPluginMenuItemDesc);
+  Desc.Caption := 'Pack';
+  Desc.PluginId := 'mtn.7z';
+  Desc.ItemId := 'pack';
+  Desc.Shortcut := 'Alt+F5';
+  Item := MakePluginActionItem(Desc, 3);
+  Assert.IsTrue(Item.IsPluginItem, 'plugin');
+  Assert.AreEqual('Pack', Item.Caption, 'caption');
+  Assert.AreEqual(3, Item.PluginGroup, 'group');
+  Assert.AreEqual('Alt+F5', Item.Shortcut, 'shortcut');
+
+  Desc.Priority := 150;
+  Desc.Caption := '&Macro';
+  Item := MakeMacroActionItem(Desc);
+  Assert.AreEqual(150, Item.PluginPriority, 'priority');
+  Assert.IsTrue(Item.HotChar <> #0, 'macro hot');
+
+  Item := ParseMenuJsonSeparatorItem;
+  Assert.IsTrue(Item.IsSeparator, 'json sep');
+  Obj := TJSONObject.Create;
+  try
+    Obj.AddPair('caption', 'Copy');
+    Obj.AddPair('hotChar', 'C');
+    Obj.AddPair('shortcut', 'F5');
+    Obj.AddPair('action', 'tmaFileCopy');
+    Item := ParseMenuJsonActionItem(Obj);
+    Assert.IsTrue(not Item.IsSeparator, 'json action');
+    Assert.AreEqual(tmaFileCopy, Item.Action, 'action');
+    Assert.IsTrue(Pos('Copy', Item.Caption) > 0, 'json caption');
+  finally
+    Obj.Free;
+  end;
 end;
 
 initialization

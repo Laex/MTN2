@@ -90,6 +90,23 @@ function HotKeyMultiAppendChord(const ACurrent, AChord: string): string;
 function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
   AShift: TShiftState): string;
 
+/// <summary>Low byte of AKey when hosts pack modifier flags above $FF.</summary>
+function NormalizeDialogVirtualKey(AKey: Word): Word;
+
+/// <summary>True for Esc / Tab / Enter that leave a hotkey field alone.</summary>
+function HotKeyFieldIgnoresNavKey(AKey: Word): Boolean;
+
+type
+  /// <summary>What a focused hotkey input does with one keystroke after nav
+  /// keys are filtered. hkfaSwallow keeps the field; hkfaApply writes AChord.</summary>
+  THotKeyFieldKeyAction = (hkfaSwallow, hkfaApply);
+
+/// <summary>AMulti selects HotKeyMultiText; otherwise Back/Del clear and other
+/// chords come from InputChordText. Empty single chords swallow.</summary>
+function ClassifyHotKeyFieldKey(AMulti: Boolean; const ACurrent: string;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState;
+  out AChord: string): THotKeyFieldKeyAction;
+
 /// <summary>New DropDown hover index after Up/Down/Home/End/PgUp/PgDn.
 /// ALast is High(Items); AViewH is the popup page size (at least 1).
 /// Non-nav keys leave AHover unchanged.</summary>
@@ -263,6 +280,44 @@ begin
   end;
   Chord := KeystrokeBindingText(AKey, AKeyChar, AShift);
   Result := HotKeyMultiAppendChord(ACurrent, Chord);
+end;
+
+function NormalizeDialogVirtualKey(AKey: Word): Word;
+begin
+  if AKey > $FF then
+    Result := AKey and $FF
+  else
+    Result := AKey;
+end;
+
+function HotKeyFieldIgnoresNavKey(AKey: Word): Boolean;
+begin
+  Result := (AKey = vkEscape) or (AKey = vkTab) or (AKey = vkReturn);
+end;
+
+function ClassifyHotKeyFieldKey(AMulti: Boolean; const ACurrent: string;
+  AKey: Word; AKeyChar: Char; AShift: TShiftState;
+  out AChord: string): THotKeyFieldKeyAction;
+begin
+  AChord := '';
+  if AMulti then
+  begin
+    AChord := HotKeyMultiText(ACurrent, AKey, AKeyChar, AShift);
+    if AChord = ACurrent then
+      Exit(hkfaSwallow);
+    Exit(hkfaApply);
+  end;
+  if (AShift * [ssShift, ssCtrl, ssAlt] = []) and
+     ((AKey = vkBack) or (AKey = vkDelete)) then
+  begin
+    AChord := '';
+    Exit(hkfaApply);
+  end;
+  AChord := InputChordText(AKey, AKeyChar, AShift);
+  // A bare modifier names no key yet; the field keeps its value.
+  if AChord = '' then
+    Exit(hkfaSwallow);
+  Result := hkfaApply;
 end;
 
 function DropDownHoverAfterNavKey(AHover, ALast, AViewH: Integer;
@@ -650,42 +705,30 @@ begin
   C := Ops.GetControl(Focus);
   if not ((C.Kind = dckInput) and C.HotKey) then
     Exit(False);
-  if (AKey = vkEscape) or (AKey = vkTab) or (AKey = vkReturn) then
+  if HotKeyFieldIgnoresNavKey(AKey) then
     Exit(False);
   // Some hosts add a flag above the low byte (Alt+Shift+T arrives as $154);
   // the virtual key is the low byte.
-  if AKey > $FF then
-    AKey := AKey and $FF;
-  if C.HotKeyMulti then
-  begin
-    Chord := HotKeyMultiText(C.Edit.Text, AKey, AKeyChar, AShift);
-    if Chord = C.Edit.Text then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end
-  else if (AShift * [ssShift, ssCtrl, ssAlt] = []) and ((AKey = vkBack) or (AKey = vkDelete)) then
-    Chord := ''
-  else
-  begin
-    Chord := InputChordText(AKey, AKeyChar, AShift);
-    // A bare modifier names no key yet; the field keeps its value.
-    if Chord = '' then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
+  AKey := NormalizeDialogVirtualKey(AKey);
+  case ClassifyHotKeyFieldKey(C.HotKeyMulti, C.Edit.Text, AKey, AKeyChar, AShift, Chord) of
+    hkfaSwallow:
+      begin
+        AKey := 0;
+        AKeyChar := #0;
+        Exit(True);
+      end;
+    hkfaApply:
+      begin
+        InputLineSetText(C.Edit, Chord);
+        InputLineSelectAll(C.Edit);
+        Ops.SetControl(Focus, C);
+        AKey := 0;
+        AKeyChar := #0;
+        Ops.NotifyChanged();
+        Exit(True);
+      end;
   end;
-  InputLineSetText(C.Edit, Chord);
-  InputLineSelectAll(C.Edit);
-  Ops.SetControl(Focus, C);
-  AKey := 0;
-  AKeyChar := #0;
-  Ops.NotifyChanged();
-  Result := True;
+  Result := False;
 end;
 
 function DialogHandleFocusedPickerKeys(const Ops: TDialogKeyOps; var AKey: Word;

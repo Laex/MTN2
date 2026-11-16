@@ -778,6 +778,27 @@ begin
     ResolveQuickViewImageUri(True, Row, 'file:///C:/preview.png'),
     'plugin image target');
 
+  Assert.IsTrue(ClassifyQuickViewPaint(True, True, True, False) = qvkSurface,
+    'surface');
+  Assert.IsTrue(ClassifyQuickViewPaint(False, True, True, False) = qvkImage,
+    'image');
+  Assert.IsTrue(ClassifyQuickViewPaint(False, False, True, False) = qvkText,
+    'text');
+  Assert.IsTrue(ClassifyQuickViewPaint(False, False, False, True) = qvkAskF3,
+    'ask f3');
+  Assert.IsTrue(ClassifyQuickViewPaint(False, False, False, False) = qvkPlaceholder,
+    'placeholder');
+  Assert.IsTrue(ClassifyQuickViewFocusKey(False, True, False, False, True,
+    vkTab, True) = qvkaIgnore, 'unfocused');
+  Assert.IsTrue(ClassifyQuickViewFocusKey(True, False, False, False, False,
+    vkTab, True) = qvkaDefocusLostContent, 'lost content');
+  Assert.IsTrue(ClassifyQuickViewFocusKey(True, True, True, False, False,
+    vkA, True) = qvkaCloseSurfaceDead, 'dead surface');
+  Assert.IsTrue(ClassifyQuickViewFocusKey(True, True, True, True, False,
+    vkEscape, True) = qvkaCloseSurfaceUnfocus, 'esc surface');
+  Assert.IsTrue(ClassifyQuickViewFocusKey(True, True, False, False, True,
+    vkDown, True) = qvkaScrollText, 'scroll text');
+
   Bounds := TRectI.Make(10, 10, 30, 20);
   Area := TRectI.Make(5, 5, 100, 50);
   AbsB := QuickViewInteriorAbsBounds(Bounds, Area);

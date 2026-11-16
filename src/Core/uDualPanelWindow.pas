@@ -9476,49 +9476,45 @@ function TDualPanelWindow.HandleQuickViewKey(var AKey: Word; AShift: TShiftState
   var AKeyChar: Char): Boolean;
 var
   Plain: Boolean;
+  Action: TQuickViewKeyAction;
 begin
   Result := False;
-  if not FQuickViewFocused then
-    Exit;
-  if not (QuickViewTextShown or QuickViewPictureShown or FQuickSurfaceOwned) then
-  begin
-    FQuickViewFocused := False;
-    Exit;
-  end;
   Plain := AShift * [ssCtrl, ssAlt, ssShift] = [];
-  if FQuickSurfaceOwned then
-  begin
-    if not ((FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle)) then
-    begin
-      CloseQuickInteractive;
-      FQuickViewFocused := False;
+  Action := ClassifyQuickViewFocusKey(FQuickViewFocused,
+    QuickViewTextShown or QuickViewPictureShown or FQuickSurfaceOwned,
+    FQuickSurfaceOwned,
+    (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle),
+    QuickViewTextShown, AKey, Plain);
+  case Action of
+    qvkaIgnore:
       Exit;
-    end;
-    if ((AKey = vkTab) or (AKey = vkEscape)) and Plain then
-    begin
-      CloseQuickInteractive;
+    qvkaDefocusLostContent:
+      begin
+        FQuickViewFocused := False;
+        Exit;
+      end;
+    qvkaCloseSurfaceDead:
+      begin
+        CloseQuickInteractive;
+        FQuickViewFocused := False;
+        Exit;
+      end;
+    qvkaCloseSurfaceUnfocus:
+      begin
+        CloseQuickInteractive;
+        FQuickViewFocused := False;
+      end;
+    qvkaSurfaceDeliver:
+      begin
+        if not SurfaceDeliverKey(FSurfacePanelHandle, AKey, AShift, AKeyChar) then
+          Exit;
+      end;
+    qvkaUnfocus:
       FQuickViewFocused := False;
-    end
-    else if not SurfaceDeliverKey(FSurfacePanelHandle, AKey, AShift, AKeyChar) then
-      Exit;
-    AKey := 0;
-    AKeyChar := #0;
-    Invalidate;
-    Exit(True);
+    qvkaScrollText:
+      if not FQuickText.ScrollKey(AKey, AShift) then
+        Exit;
   end;
-  if (AKey = vkTab) or (AKey = vkEscape) then
-  begin
-    if not Plain then
-      Exit;
-    FQuickViewFocused := False;
-  end
-  else if QuickViewTextShown then
-  begin
-    if not FQuickText.ScrollKey(AKey, AShift) then
-      Exit;
-  end
-  else
-    Exit;
   AKey := 0;
   AKeyChar := #0;
   Invalidate;
@@ -9561,29 +9557,32 @@ begin
     Exit(FDiffView.HandleMouseWheel(AWheelDelta));
   if Assigned(FTopMenu) and FTopMenu.HandleMouseWheel(AWheelDelta) then
     Exit(True);
-  // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
-  if FolderTreeShown and not (Assigned(FDialog) and FDialog.Visible) and
-     FFolderTreeCtrl.Bounds.Contains(ALocalCol, ALocalRow) then
-  begin
-    FFolderTreeCtrl.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
-    Exit(True);
-  end;
-  if not QuickViewVisible or not Assigned(FQuickText) or (FQuickText.Uri = '') then
-    Exit;
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
   // Quick View is always the side opposite the active one.
   Side := OppositeSide(ActiveWorkspace.State.ActiveSide);
-  if PanelViewKind(Side) <> pvkQuickView then
-    Exit;
   if Side = psLeft then
     Bounds := FLeftBounds
   else
     Bounds := FRightBounds;
-  if not Bounds.Contains(ALocalCol, ALocalRow) then
-    Exit;
-  FQuickText.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
-  Result := True;
+  case ClassifyPanelMouseWheelHit(
+    FolderTreeShown, Assigned(FDialog) and FDialog.Visible,
+    FolderTreeShown and FFolderTreeCtrl.Bounds.Contains(ALocalCol, ALocalRow),
+    QuickViewVisible and (PanelViewKind(Side) = pvkQuickView),
+    Assigned(FQuickText) and (FQuickText.Uri <> ''),
+    Bounds.Contains(ALocalCol, ALocalRow)) of
+    pmwhFolderTree:
+      begin
+        // Over the folder tree the wheel scrolls it; the cursor and the focus stay.
+        FFolderTreeCtrl.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
+        Exit(True);
+      end;
+    pmwhQuickView:
+      begin
+        FQuickText.ScrollBy(MouseWheelScrollDelta(AWheelDelta));
+        Exit(True);
+      end;
+  else
+    Result := False;
+  end;
 end;
 
 function TDualPanelWindow.QuickViewVisible: Boolean;
@@ -14507,11 +14506,6 @@ begin
   // the active side (IsQuickViewTarget guards that in DrawPanel).
   HasRow := GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx);
   SyncQuickDirectorySurface(HasRow, Row);
-  if (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle) then
-  begin
-    DrawSurfacePanel(ABounds, ABodyBg);
-    Exit;
-  end;
   // A picture is the file itself or, for a file a plugin renders for Quick
   // View, the picture the plugin redirects to.
   if HasRow then
@@ -14520,52 +14514,64 @@ begin
     ImageUri := '';
   Previewable := IsQuickViewPreviewable(HasRow, ImageUri <> '', Row);
 
-  if not Previewable then
-  begin
-    ClearOverlayPreview;
-    // Not a picture: text / Markdown / hex through the embedded Viewer.
-    case TQuickTextView.PreviewKind(HasRow, Row) of
-      qtpText:
+  case ClassifyQuickViewPaint(
+    (FSurfacePanelHandle <> 0) and SurfaceExists(FSurfacePanelHandle),
+    Previewable,
+    TQuickTextView.PreviewKind(HasRow, Row) = qtpText,
+    TQuickTextView.PreviewKind(HasRow, Row) = qtpAskF3) of
+    qvkSurface:
+      begin
+        DrawSurfacePanel(ABounds, ABodyBg);
+        Exit;
+      end;
+    qvkText:
+      begin
+        ClearOverlayPreview;
+        if not Assigned(FQuickText) then
         begin
-          if not Assigned(FQuickText) then
-          begin
-            FQuickText := TQuickTextView.Create(Theme);
-            FQuickText.OnChanged := QuickTextChanged;
-          end;
-          FQuickText.ShowFile(QuickViewTarget(Row.URI));
-          FQuickText.Paint(Buffer, ABounds, Area.Left, Area.Top);
-          Exit;
+          FQuickText := TQuickTextView.Create(Theme);
+          FQuickText.OnChanged := QuickTextChanged;
         end;
-      qtpAskF3:
-        begin
-          if Assigned(FQuickText) then
-            FQuickText.Clear;
-          DrawCenteredPlaceholder(Buffer, ABounds,
-            T('ui.quickView.pressF3', '(press F3 to view)'), AFrame, ABodyBg);
-          Exit;
-        end;
-    end;
-    if Assigned(FQuickText) then
-      FQuickText.Clear;
-    DrawCenteredPlaceholder(Buffer, ABounds,
-      FormatQuickViewPlaceholder(HasRow, Row), AFrame, ABodyBg);
-    Exit;
+        FQuickText.ShowFile(QuickViewTarget(Row.URI));
+        FQuickText.Paint(Buffer, ABounds, Area.Left, Area.Top);
+        Exit;
+      end;
+    qvkAskF3:
+      begin
+        ClearOverlayPreview;
+        if Assigned(FQuickText) then
+          FQuickText.Clear;
+        DrawCenteredPlaceholder(Buffer, ABounds,
+          T('ui.quickView.pressF3', '(press F3 to view)'), AFrame, ABodyBg);
+        Exit;
+      end;
+    qvkPlaceholder:
+      begin
+        ClearOverlayPreview;
+        if Assigned(FQuickText) then
+          FQuickText.Clear;
+        DrawCenteredPlaceholder(Buffer, ABounds,
+          FormatQuickViewPlaceholder(HasRow, Row), AFrame, ABodyBg);
+        Exit;
+      end;
+    qvkImage:
+      begin
+        if Assigned(FQuickText) then
+          FQuickText.Clear;
+        FQuickImageUri := ImageUri;
+        // Interior only (Left+1/Right-1/Top+1/Bottom-1) - same inset as the
+        // FillGridRect above - so the image doesn't paint over the frame
+        // characters at ABounds.Left/Right/Top/Bottom. Cell bounds here are
+        // window-local (like all DrawPanel geometry); the overlay Canvas pass in
+        // uMainForm.FormPaint works in absolute grid cells, so offset by this
+        // window's own placement before handing off.
+        AbsBounds := QuickViewInteriorAbsBounds(ABounds, Area);
+        if OverlayCurrentURI <> ImageUri then
+          RequestOverlayPreview(ImageUri, AbsBounds)
+        else
+          UpdateOverlayBounds(AbsBounds);
+      end;
   end;
-  if Assigned(FQuickText) then
-    FQuickText.Clear;
-  FQuickImageUri := ImageUri;
-
-  // Interior only (Left+1/Right-1/Top+1/Bottom-1) - same inset as the
-  // FillGridRect above - so the image doesn't paint over the frame
-  // characters at ABounds.Left/Right/Top/Bottom. Cell bounds here are
-  // window-local (like all DrawPanel geometry); the overlay Canvas pass in
-  // uMainForm.FormPaint works in absolute grid cells, so offset by this
-  // window's own placement before handing off.
-  AbsBounds := QuickViewInteriorAbsBounds(ABounds, Area);
-  if OverlayCurrentURI <> ImageUri then
-    RequestOverlayPreview(ImageUri, AbsBounds)
-  else
-    UpdateOverlayBounds(AbsBounds);
 end;
 
 procedure TDualPanelWindow.DrawPanel(const ABounds: TRectI; const APanel: TPanelState;

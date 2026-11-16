@@ -84,6 +84,16 @@ function ClassifyMouseDown(ARow: Integer; AKind: TWorkspaceKind): TMouseDownTarg
 /// <summary>Wheel step for folder tree / Quick View: up is -3, down is +3.</summary>
 function MouseWheelScrollDelta(AWheelDelta: Integer): Integer;
 
+type
+  /// <summary>Panel-local wheel target after saver / diff / top-menu are gone.</summary>
+  TPanelMouseWheelHit = (pmwhNone, pmwhFolderTree, pmwhQuickView);
+
+/// <summary>Folder tree wins when shown and hit; else Quick View when its
+/// text is ready and the point is inside its bounds.</summary>
+function ClassifyPanelMouseWheelHit(AFolderTreeShown, ADialogVisible,
+  AInFolderTree, AQuickViewVisible, AQuickTextReady,
+  AInQuickBounds: Boolean): TPanelMouseWheelHit;
+
 implementation
 
 uses
@@ -362,6 +372,18 @@ begin
     Result := -3
   else
     Result := 3;
+end;
+
+function ClassifyPanelMouseWheelHit(AFolderTreeShown, ADialogVisible,
+  AInFolderTree, AQuickViewVisible, AQuickTextReady,
+  AInQuickBounds: Boolean): TPanelMouseWheelHit;
+begin
+  if AFolderTreeShown and (not ADialogVisible) and AInFolderTree then
+    Exit(pmwhFolderTree);
+  if AQuickViewVisible and AQuickTextReady and (not ADialogVisible) and
+     AInQuickBounds then
+    Exit(pmwhQuickView);
+  Result := pmwhNone;
 end;
 
 end.

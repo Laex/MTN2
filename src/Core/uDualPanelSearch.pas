@@ -218,6 +218,37 @@ type
 function ClassifySearchDialogKey(AFocusField: Integer; AKey: Word;
   AKeyChar: Char; AShift: TShiftState): TSearchDialogKeyAction;
 
+/// <summary>Overlay dialog fields copied into a walk-prep criteria record.</summary>
+function FindWalkCriteriaFromSearch(const ASearch: TSearchState): TFindWalkCriteria;
+
+/// <summary>Scroll top that keeps ACursor visible in a view of AViewH rows.</summary>
+function SearchResultsScrollForCursor(AScroll, ACursor, AViewH: Integer): Integer;
+
+/// <summary>Hit path relative to ARootPath, with archive inner suffix and a
+/// trailing '~' when longer than AMaxWidth.</summary>
+function FormatSearchHitDisplayPath(const APath, ARootPath: string;
+  AMaxWidth: Integer): string;
+
+/// <summary>Job-list key of a find walk: find:&lt;run id&gt;.</summary>
+function FindWalkJobKey(ARunId: Integer): string;
+
+/// <summary>Progress chip text: Found: N plus the current directory.</summary>
+function FormatFindProgressJobText(AFoundCount: Integer;
+  const ACurrentDir: string): string;
+
+/// <summary>Marks a background search finished and stores its hits.</summary>
+procedure MarkBackgroundSearchFinished(ABg: TBackgroundSearch;
+  const AHits: TArray<TFindHit>);
+
+/// <summary>Message for the foreground results overlay when the walk ends
+/// without navigating to a panel.</summary>
+function FindFgResultsMessage(AErrorCode: TVfsErrorCode;
+  const AErrorMessage: string): string;
+
+/// <summary>Title of the find overlay for a phase (result count for spResults).</summary>
+function SearchOverlayTitleForPhase(APhase: TSearchPhase;
+  AResultCount: Integer): string;
+
 implementation
 
 uses
@@ -312,6 +343,103 @@ begin
   if K.IsPrintable and K.HasMods([], [ssShift]) then
     Exit(sdaAppendChar);
   Result := sdaSwallow;
+end;
+
+function FindWalkCriteriaFromSearch(const ASearch: TSearchState): TFindWalkCriteria;
+begin
+  Result := Default(TFindWalkCriteria);
+  Result.Mask := ASearch.Mask;
+  Result.RootPath := ASearch.RootPath;
+  Result.ContainingText := ASearch.ContainingText;
+  Result.HexText := ASearch.HexText;
+  Result.Filters := ASearch.Filters;
+  Result.Subdirs := ASearch.Subdirs;
+  Result.CaseSensitive := ASearch.CaseSensitive;
+  Result.WholeWords := ASearch.WholeWords;
+  Result.SearchFolders := ASearch.SearchFolders;
+  Result.UseRegex := ASearch.UseRegex;
+  Result.SearchArchives := ASearch.SearchArchives;
+  Result.HexMode := ASearch.HexMode;
+  Result.EncodingIdx := ASearch.EncodingIdx;
+end;
+
+function SearchResultsScrollForCursor(AScroll, ACursor, AViewH: Integer): Integer;
+begin
+  Result := AScroll;
+  if ACursor < Result then
+    Result := ACursor;
+  if ACursor >= Result + AViewH then
+    Result := ACursor - AViewH + 1;
+  if Result < 0 then
+    Result := 0;
+end;
+
+function FormatSearchHitDisplayPath(const APath, ARootPath: string;
+  AMaxWidth: Integer): string;
+var
+  Rel, ArchivePath, InnerPath: string;
+begin
+  // SplitArchiveHit clears its outs on a miss; keep APath until it succeeds.
+  Rel := APath;
+  InnerPath := '';
+  if SplitArchiveHit(APath, ArchivePath, InnerPath) then
+  begin
+    Rel := ArchivePath;
+    InnerPath := ' : ' + InnerPath;
+  end;
+  if ARootPath <> '' then
+  begin
+    if Rel.StartsWith(IncludeTrailingPathDelimiter(ARootPath), True) then
+      Rel := Copy(Rel, Length(IncludeTrailingPathDelimiter(ARootPath)) + 1, MaxInt)
+    else if SameLocalPath(Rel, ARootPath) then
+      Rel := ExtractFileName(Rel);
+  end;
+  Result := Rel + InnerPath;
+  if (AMaxWidth > 0) and (Length(Result) > AMaxWidth) then
+    Result := Copy(Result, 1, AMaxWidth - 1) + '~';
+end;
+
+function FindWalkJobKey(ARunId: Integer): string;
+begin
+  Result := 'find:' + IntToStr(ARunId);
+end;
+
+function FormatFindProgressJobText(AFoundCount: Integer;
+  const ACurrentDir: string): string;
+begin
+  Result := T('ui.search.found', 'Found: %d', [AFoundCount]) + #10 + ACurrentDir;
+end;
+
+procedure MarkBackgroundSearchFinished(ABg: TBackgroundSearch;
+  const AHits: TArray<TFindHit>);
+begin
+  if ABg = nil then
+    Exit;
+  ABg.Done := True;
+  ABg.Token := nil;
+  ABg.Hits := AHits;
+end;
+
+function FindFgResultsMessage(AErrorCode: TVfsErrorCode;
+  const AErrorMessage: string): string;
+begin
+  if AErrorCode <> vecOk then
+    Result := AErrorMessage
+  else
+    Result := T('ui.search.none', 'No files found');
+end;
+
+function SearchOverlayTitleForPhase(APhase: TSearchPhase;
+  AResultCount: Integer): string;
+begin
+  case APhase of
+    spRunning:
+      Result := T('ui.search.running', 'Searching') + cEllipsis;
+    spResults:
+      Result := T('ui.search.results', 'Results: %d', [AResultCount]);
+  else
+    Result := T('ui.search.title', 'Find');
+  end;
 end;
 
 constructor TSearchController.Create(const ATheme: IThemeRenderer;
@@ -439,20 +567,7 @@ begin
   // A bad pattern or size is reported before the walk starts instead of
   // silently matching nothing on every file; past this point the overlay says
   // the search is running, and Esc only cancels a walk that has already started.
-  Criteria := Default(TFindWalkCriteria);
-  Criteria.Mask := FSearch.Mask;
-  Criteria.RootPath := FSearch.RootPath;
-  Criteria.ContainingText := FSearch.ContainingText;
-  Criteria.HexText := FSearch.HexText;
-  Criteria.Filters := FSearch.Filters;
-  Criteria.Subdirs := FSearch.Subdirs;
-  Criteria.CaseSensitive := FSearch.CaseSensitive;
-  Criteria.WholeWords := FSearch.WholeWords;
-  Criteria.SearchFolders := FSearch.SearchFolders;
-  Criteria.UseRegex := FSearch.UseRegex;
-  Criteria.SearchArchives := FSearch.SearchArchives;
-  Criteria.HexMode := FSearch.HexMode;
-  Criteria.EncodingIdx := FSearch.EncodingIdx;
+  Criteria := FindWalkCriteriaFromSearch(FSearch);
   if not TryPrepareFindWalk(Criteria, Root, Mask, Opts, ErrorText) then
   begin
     FSearch.Mask := Mask;
@@ -477,7 +592,7 @@ begin
   // The progress dialog is the dialog of this job; the Background button of
   // that dialog hides it, which sends the search to the background.
   EndForegroundJob;
-  FFgJobKey := 'find:' + IntToStr(RunId);
+  FFgJobKey := FindWalkJobKey(RunId);
   PluginJobBegin(cJobOwner, FFgJobKey, T('ui.search.jobTitle', 'Search: %s', [Mask]),
     procedure
     begin
@@ -496,8 +611,7 @@ begin
     begin
       JobAttach(RunId);
     end);
-  PluginJobUpdate(cJobOwner, FFgJobKey,
-    T('ui.search.found', 'Found: %d', [0]) + #10 + Root, -1);
+  PluginJobUpdate(cJobOwner, FFgJobKey, FormatFindProgressJobText(0, Root), -1);
   PluginJobSetForeground(JobIdOf(FFgJobKey), True);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -513,15 +627,15 @@ begin
       begin
         Bg.CurrentDir := ACurrentDir;
         PluginJobUpdate(cJobOwner, Bg.JobKey,
-          T('ui.search.found', 'Found: %d', [AFoundCount]) + #10 + ACurrentDir, -1);
+          FormatFindProgressJobText(AFoundCount, ACurrentDir), -1);
         PluginJobSetBadge(cJobOwner, Bg.JobKey, IntToStr(AFoundCount));
         Exit;
       end;
       FSearch.FoundCount := AFoundCount;
       FSearch.CurrentDir := ACurrentDir;
-      PluginJobUpdate(cJobOwner, 'find:' + IntToStr(RunId),
-        T('ui.search.found', 'Found: %d', [AFoundCount]) + #10 + ACurrentDir, -1);
-      PluginJobSetBadge(cJobOwner, 'find:' + IntToStr(RunId), IntToStr(AFoundCount));
+      PluginJobUpdate(cJobOwner, FindWalkJobKey(RunId),
+        FormatFindProgressJobText(AFoundCount, ACurrentDir), -1);
+      PluginJobSetBadge(cJobOwner, FindWalkJobKey(RunId), IntToStr(AFoundCount));
       if Assigned(FOnInvalidate) then
         FOnInvalidate;
     end,
@@ -581,25 +695,19 @@ begin
       Exit;
     fdaBgEmptyNotifyAndDrop:
       begin
-        ABg.Done := True;
-        ABg.Token := nil;
-        ABg.Hits := AHits;
+        MarkBackgroundSearchFinished(ABg, AHits);
         if Assigned(FOnBackgroundDone) then
           FOnBackgroundDone(0);
         DropBackground(ARunId);
       end;
     fdaBgEmptyDropOnly:
       begin
-        ABg.Done := True;
-        ABg.Token := nil;
-        ABg.Hits := AHits;
+        MarkBackgroundSearchFinished(ABg, AHits);
         DropBackground(ARunId);
       end;
     fdaBgUpdateOpenedSession:
       begin
-        ABg.Done := True;
-        ABg.Token := nil;
-        ABg.Hits := AHits;
+        MarkBackgroundSearchFinished(ABg, AHits);
         if Assigned(FOnUpdateSession) then
           FOnUpdateSession(ABg.SessionId, ABg.Root, ABg.Mask, AHits);
         if FindBackground(ARunId) <> nil then
@@ -610,9 +718,7 @@ begin
       end;
     fdaBgOpenCancelledHits:
       begin
-        ABg.Done := True;
-        ABg.Token := nil;
-        ABg.Hits := AHits;
+        MarkBackgroundSearchFinished(ABg, AHits);
         // A search the user stopped shows what it found right away.
         OpenBackground(ARunId);
         if FindBackground(ARunId) <> nil then
@@ -623,9 +729,7 @@ begin
       end;
     fdaBgNotifyFound:
       begin
-        ABg.Done := True;
-        ABg.Token := nil;
-        ABg.Hits := AHits;
+        MarkBackgroundSearchFinished(ABg, AHits);
         if Assigned(FOnBackgroundDone) then
           FOnBackgroundDone(Length(AHits));
         if FindBackground(ARunId) <> nil then
@@ -665,7 +769,7 @@ begin
         FSearch.FoundCount := Length(AHits);
         FSearch.Cursor := 0;
         FSearch.Scroll := 0;
-        FSearch.Message := T('ui.search.none', 'No files found');
+        FSearch.Message := FindFgResultsMessage(vecOk, '');
         FSearch.Phase := spResults;
         if Assigned(FOnInvalidate) then
           FOnInvalidate;
@@ -679,10 +783,7 @@ begin
         FSearch.FoundCount := Length(AHits);
         FSearch.Cursor := 0;
         FSearch.Scroll := 0;
-        if AError.Code <> vecOk then
-          FSearch.Message := AError.Message
-        else
-          FSearch.Message := T('ui.search.none', 'No files found');
+        FSearch.Message := FindFgResultsMessage(AError.Code, AError.Message);
         FSearch.Phase := spResults;
         if Assigned(FOnInvalidate) then
           FOnInvalidate;
@@ -1021,7 +1122,7 @@ procedure TSearchController.DrawSearchUi(const AGrid: TTerminalGrid;
 var
   R: TRectI;
   Y, ViewH, Idx: Integer;
-  Path, Rel, InnerPath: string;
+  Rel: string;
   Title: string;
   Fg, Bg: TAlphaColor;
 begin
@@ -1034,14 +1135,7 @@ begin
   if (R.Width < 12) or (R.Height < 5) then
     Exit;
 
-  case FSearch.Phase of
-    spRunning:
-      Title := T('ui.search.running', 'Searching') + cEllipsis;
-    spResults:
-      Title := T('ui.search.results', 'Results: %d', [Length(FSearch.Results)]);
-  else
-    Title := T('ui.search.title', 'Find');
-  end;
+  Title := SearchOverlayTitleForPhase(FSearch.Phase, Length(FSearch.Results));
   DrawHostOverlayFrame(AGrid, FTheme, R, Title,
     cFileFg, cPanelBg, cFrameActive, cCursorFg);
 
@@ -1056,12 +1150,8 @@ begin
             T('ui.search.goHint', 'Enter=Go to  Esc=Close'), True, False, False, cMenuHot, cPanelBg);
 
         ViewH := Max(R.Height - 4, 1);
-        if FSearch.Cursor < FSearch.Scroll then
-          FSearch.Scroll := FSearch.Cursor;
-        if FSearch.Cursor >= FSearch.Scroll + ViewH then
-          FSearch.Scroll := FSearch.Cursor - ViewH + 1;
-        if FSearch.Scroll < 0 then
-          FSearch.Scroll := 0;
+        FSearch.Scroll := SearchResultsScrollForCursor(FSearch.Scroll,
+          FSearch.Cursor, ViewH);
 
         for Y := 0 to ViewH - 1 do
         begin
@@ -1074,22 +1164,8 @@ begin
               R.Right - 1, R.Top + 2 + Y, ' ', Fg, Bg);
             Continue;
           end;
-          Path := FSearch.Results[Idx].Path;
-          Rel := Path;
-          InnerPath := '';
-          if SplitArchiveHit(Path, Rel, InnerPath) then
-            InnerPath := ' : ' + InnerPath;
-          if FSearch.RootPath <> '' then
-          begin
-            if Rel.StartsWith(IncludeTrailingPathDelimiter(FSearch.RootPath), True) then
-              Rel := Copy(Rel, Length(IncludeTrailingPathDelimiter(FSearch.RootPath)) + 1,
-                MaxInt)
-            else if SameLocalPath(Rel, FSearch.RootPath) then
-              Rel := ExtractFileName(Rel);
-          end;
-          Rel := Rel + InnerPath;
-          if Length(Rel) > R.Width - 2 then
-            Rel := Copy(Rel, 1, R.Width - 3) + '~';
+          Rel := FormatSearchHitDisplayPath(FSearch.Results[Idx].Path,
+            FSearch.RootPath, R.Width - 2);
           if Idx = FSearch.Cursor then
             PutOverlayText(AGrid, FTheme, R.Left + 1, R.Top + 2 + Y, Rel,
               False, False, True, cCursorFg, cCursorBg)

@@ -14,6 +14,7 @@ type
     [Test] procedure FileKindsMapToTypeGroups;
     [Test] procedure AgeClassesFollowTheCalendarDay;
     [Test] procedure DateAndExtHelpersMatchRowKeys;
+    [Test] procedure ExtInListAndTypeBuckets;
     [Test] procedure RowsAreOrderedByGroupThenByTheSortColumn;
     [Test] procedure GroupingIsSavedInTheSession;
   end;
@@ -89,6 +90,18 @@ begin
   Assert.AreEqual(9, PanelTypeExtGroupKey('.unknown'));
   Assert.AreEqual(PanelTypeExtGroupKey('.pas'),
     PanelRowGroupKey(pgbType, FileRow('a.pas', Moment), Moment));
+end;
+
+procedure TTestPanelGrouping.ExtInListAndTypeBuckets;
+begin
+  Assert.IsTrue(ExtInList('.png', ['.png', '.jpg']), 'hit');
+  Assert.IsTrue(not ExtInList('.gif', ['.png', '.jpg']), 'miss');
+  Assert.IsTrue(IsMediaPanelFileExt('.mp3'), 'media');
+  Assert.IsTrue(IsExecutablePanelFileExt('.exe'), 'exe');
+  Assert.AreEqual(3, PanelTypeExtGroupKey('.flac'), 'audio bucket');
+  Assert.AreEqual(4, PanelTypeExtGroupKey('.webm'), 'video bucket');
+  Assert.AreEqual(6, PanelTypeExtGroupKey('.iso'), 'archive bucket');
+  Assert.AreEqual(8, PanelTypeExtGroupKey('.yaml'), 'code bucket');
 end;
 
 procedure TTestPanelGrouping.RowsAreOrderedByGroupThenByTheSortColumn;

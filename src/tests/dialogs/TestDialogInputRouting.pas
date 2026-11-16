@@ -30,6 +30,7 @@ type
     [Test] procedure ListSelectionNavKeyAndInputGuards;
     [Test] procedure HotKeyMultiJoinAndAppend;
     [Test] procedure MnemonicKeysActiveAndLetterCandidates;
+    [Test] procedure HotKeyFieldKeyClassification;
   end;
 
 implementation
@@ -402,6 +403,26 @@ begin
   Letters := DialogMnemonicLetterCandidates(vkB, #0);
   Assert.IsTrue(Length(Letters) = 1, 'physical only');
   Assert.IsTrue(Letters[0] = 'B', 'physical B');
+end;
+
+procedure TTestDialogInputRouting.HotKeyFieldKeyClassification;
+var
+  Chord: string;
+begin
+  Assert.AreEqual($54, NormalizeDialogVirtualKey($154), 'low byte');
+  Assert.AreEqual(vkEscape, NormalizeDialogVirtualKey(vkEscape), 'plain');
+  Assert.IsTrue(HotKeyFieldIgnoresNavKey(vkTab), 'tab');
+  Assert.IsTrue(not HotKeyFieldIgnoresNavKey(Ord('A')), 'letter');
+
+  Assert.AreEqual(Ord(hkfaApply),
+    Ord(ClassifyHotKeyFieldKey(False, 'X', vkBack, #0, [], Chord)), 'clear');
+  Assert.AreEqual('', Chord, 'cleared');
+  Assert.AreEqual(Ord(hkfaSwallow),
+    Ord(ClassifyHotKeyFieldKey(False, 'X', vkShift, #0, [ssShift], Chord)),
+    'bare mod');
+  Assert.AreEqual(Ord(hkfaSwallow),
+    Ord(ClassifyHotKeyFieldKey(True, 'Ctrl+A', Ord('A'), 'a', [ssCtrl], Chord)),
+    'multi dup');
 end;
 
 end.

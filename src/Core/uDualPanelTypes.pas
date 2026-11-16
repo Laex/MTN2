@@ -214,6 +214,16 @@ function ClassifyPanelFileType(const AName: string;
 /// is missing.</summary>
 function PanelDateGroupKey(AModTime, ANow: TDateTime): Integer;
 
+/// <summary>True when AExt equals one of AExts (exact string match).</summary>
+function ExtInList(const AExt: string; const AExts: array of string): Boolean;
+
+/// <summary>True for common executable / script / shortcut extensions.</summary>
+function IsExecutablePanelFileExt(const AExt: string): Boolean;
+
+/// <summary>True for common image / audio / video / PDF extensions used by
+/// ClassifyPanelFileType.</summary>
+function IsMediaPanelFileExt(const AExt: string): Boolean;
+
 /// <summary>File-kind class for pgbType from a lower-cased extension
 /// (including the leading '.'): 2 image .. 8 code, else 9.</summary>
 function PanelTypeExtGroupKey(const AExt: string): Integer;
@@ -360,19 +370,27 @@ begin
   Result.Locked := False;
 end;
 
+function ExtInList(const AExt: string; const AExts: array of string): Boolean;
+var
+  I: Integer;
+begin
+  for I := Low(AExts) to High(AExts) do
+    if AExt = AExts[I] then
+      Exit(True);
+  Result := False;
+end;
+
 function IsExecutablePanelFileExt(const AExt: string): Boolean;
 begin
-  Result := (AExt = '.exe') or (AExt = '.com') or (AExt = '.bat') or (AExt = '.cmd') or
-    (AExt = '.msi') or (AExt = '.ps1') or (AExt = '.vbs') or (AExt = '.lnk') or
-    (PlatformPosixPaths and ((AExt = '.sh') or (AExt = '.run') or (AExt = '.appimage')));
+  Result := ExtInList(AExt, ['.exe', '.com', '.bat', '.cmd', '.msi', '.ps1',
+    '.vbs', '.lnk']) or
+    (PlatformPosixPaths and ExtInList(AExt, ['.sh', '.run', '.appimage']));
 end;
 
 function IsMediaPanelFileExt(const AExt: string): Boolean;
 begin
-  Result := (AExt = '.png') or (AExt = '.jpg') or (AExt = '.jpeg') or (AExt = '.gif') or
-    (AExt = '.bmp') or (AExt = '.ico') or (AExt = '.webp') or (AExt = '.svg') or
-    (AExt = '.mp3') or (AExt = '.mp4') or (AExt = '.avi') or (AExt = '.mkv') or
-    (AExt = '.wav') or (AExt = '.flac') or (AExt = '.pdf');
+  Result := ExtInList(AExt, ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico',
+    '.webp', '.svg', '.mp3', '.mp4', '.avi', '.mkv', '.wav', '.flac', '.pdf']);
 end;
 
 function PanelDateGroupKey(AModTime, ANow: TDateTime): Integer;
@@ -398,32 +416,25 @@ end;
 
 function PanelTypeExtGroupKey(const AExt: string): Integer;
 begin
-  if (AExt = '.png') or (AExt = '.jpg') or (AExt = '.jpeg') or (AExt = '.gif') or
-     (AExt = '.bmp') or (AExt = '.ico') or (AExt = '.webp') or (AExt = '.svg') or
-     (AExt = '.tif') or (AExt = '.tiff') then
+  if ExtInList(AExt, ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
+    '.svg', '.tif', '.tiff']) then
     Result := 2
-  else if (AExt = '.mp3') or (AExt = '.wav') or (AExt = '.flac') or (AExt = '.ogg') or
-          (AExt = '.m4a') or (AExt = '.aac') or (AExt = '.wma') then
+  else if ExtInList(AExt, ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac',
+    '.wma']) then
     Result := 3
-  else if (AExt = '.mp4') or (AExt = '.avi') or (AExt = '.mkv') or (AExt = '.mov') or
-          (AExt = '.wmv') or (AExt = '.webm') then
+  else if ExtInList(AExt, ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.webm']) then
     Result := 4
-  else if (AExt = '.doc') or (AExt = '.docx') or (AExt = '.odt') or (AExt = '.rtf') or
-          (AExt = '.pdf') or (AExt = '.txt') or (AExt = '.md') or (AExt = '.xls') or
-          (AExt = '.xlsx') or (AExt = '.ods') or (AExt = '.ppt') or (AExt = '.pptx') or
-          (AExt = '.csv') then
+  else if ExtInList(AExt, ['.doc', '.docx', '.odt', '.rtf', '.pdf', '.txt',
+    '.md', '.xls', '.xlsx', '.ods', '.ppt', '.pptx', '.csv']) then
     Result := 5
-  else if (AExt = '.zip') or (AExt = '.7z') or (AExt = '.rar') or (AExt = '.tar') or
-          (AExt = '.gz') or (AExt = '.tgz') or (AExt = '.bz2') or (AExt = '.xz') or
-          (AExt = '.cab') or (AExt = '.iso') then
+  else if ExtInList(AExt, ['.zip', '.7z', '.rar', '.tar', '.gz', '.tgz',
+    '.bz2', '.xz', '.cab', '.iso']) then
     Result := 6
   else if IsExecutablePanelFileExt(AExt) then
     Result := 7
-  else if (AExt = '.pas') or (AExt = '.dpr') or (AExt = '.dfm') or (AExt = '.c') or
-          (AExt = '.h') or (AExt = '.cpp') or (AExt = '.cs') or (AExt = '.py') or
-          (AExt = '.js') or (AExt = '.ts') or (AExt = '.go') or (AExt = '.rs') or
-          (AExt = '.java') or (AExt = '.json') or (AExt = '.xml') or (AExt = '.yml') or
-          (AExt = '.yaml') or (AExt = '.lua') or (AExt = '.sql') then
+  else if ExtInList(AExt, ['.pas', '.dpr', '.dfm', '.c', '.h', '.cpp', '.cs',
+    '.py', '.js', '.ts', '.go', '.rs', '.java', '.json', '.xml', '.yml',
+    '.yaml', '.lua', '.sql']) then
     Result := 8
   else
     Result := 9;
