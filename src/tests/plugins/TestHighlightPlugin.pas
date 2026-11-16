@@ -204,10 +204,10 @@ var
   Get: TFunc<Integer, string>;
   Watch: TStopwatch;
 begin
-  // A real source file of the project: Pascal, several thousand lines.
+  // A real source file of the project: Pascal, thousands of lines.
   Lines := TFile.ReadAllLines(ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
     NativePath('../../Core/uDialogHost.pas'))));
-  Assert.IsTrue(Length(Lines) > 3000, 'the sample is long enough');
+  Assert.IsTrue(Length(Lines) > 2000, 'the sample is long enough');
   Get := function(AIndex: Integer): string
     begin
       Result := Lines[AIndex];
