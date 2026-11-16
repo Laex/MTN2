@@ -6,39 +6,28 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## v0.5.9 – 2026-11-17
+
 ### New
 
 - Alt+F7 file search can be served by a plugin. The Everything plugin answers name searches in local folders from the Everything index (when Everything is running), so results appear almost at once. The ripgrep plugin answers searches by file text with `rg` (found in the PATH or next to the plugin). Searches inside archives or with attribute filters, and searches when Everything or `rg` is not available, use the built-in search as before. The Find dialog has an "Engine" list: Auto picks the best plugin, Built-in always uses the built-in search, or a plugin can be chosen by name (the built-in search runs when that plugin cannot serve the search). Documents (.docx, .xlsx, .pptx, .pdf, .svg, SQLite databases) are now searched by their text when the Document viewer plugin is loaded. The Everything, ripgrep and Document viewer plugins have a Settings option to stop offering their JSON-RPC services.
 - The new Service bridge plugin connects external programs (in any language) that exchange one JSON message per line over stdin/stdout as providers of services named `bridge.<server>.<tool>`. The servers are listed in the plugin settings; a program starts only after its full command line is approved there, and a changed command asks again. A sample server is in the plugin folder.
 - WASM plugins can provide and call JSON-RPC services: new `service_register`, `service_reply`, `service_notify`, `service_message`, `service_call` and `service_cancel` imports. Calling the services of other plugins needs the new `services.call` permission, which the user grants in the plugin's Permissions dialog; providing a service needs none.
-
-### Fixed
-
-- With several tabs on a file panel, a long folder path in a tab title is no longer cut down to the drive and the last folder. The title keeps as many trailing folders as fit after the "..." mark (for example `D:\...\Name\1`).
-- The Alt+F7 results overlay shows relative paths for ordinary local hits again: splitting an archive hit no longer clears a plain local path.
-
-## Dev v0.5.8.5 – 2026-11-13
+- The "Custom columns" dialog lists the column sets and can edit (load a set into the checkboxes), rename and delete them.
+- In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
 
 ### Changed
 
 - Ctrl+Shift+F7 opens the Options > Columns... dialog.
 - Each file panel has its own columns for custom column sets: choosing a set in the Column modes menu or confirming the "Custom columns" dialog changes only the active panel, and each panel keeps its columns between sessions. The separate "Custom" menu item is gone; the column sets are listed right after the preset modes.
 - The sets Minimal, Dates and Technical are created in `columnsets.json` when the file does not exist, and are ordinary sets from then on: they can be edited, renamed and deleted like any other.
-
-## Dev v0.5.8.4 – 2026-11-13
-
-### New
-
-- The "Custom columns" dialog lists the column sets and can edit (load a set into the checkboxes), rename and delete them.
-- In consoles, a selection inside the command line is replaced by the next typed character and removed by Del or Backspace. Selecting the command line from the keyboard (Shift+Left, Shift+Home) stops at the end of the prompt.
-
-### Changed
-
 - The command-line history list opens right after the prompt (long entries are cut instead of moving the list over the prompt) and is outlined on the left, top and right (with cell edges where the window supports them), the outline one cell left of the text.
 - In the Change Drive dialog the current drive is marked with a diamond instead of an asterisk, and its row is drawn in lighter text. The Column modes menu marks the current mode with a diamond too.
 
 ### Fixed
 
+- With several tabs on a file panel, a long folder path in a tab title is no longer cut down to the drive and the last folder. The title keeps as many trailing folders as fit after the "..." mark (for example `D:\...\Name\1`).
+- The Alt+F7 results overlay shows relative paths for ordinary local hits again: splitting an archive hit no longer clears a plain local path.
 - In consoles, keyboard selection (Shift+arrows, Shift+Home/End, Shift+PgUp/PgDn) starts at the current input cursor instead of where the previous selection or search ended.
 - Switching to a disconnected network drive no longer freezes the window: the status line reads the folder's `Descript.ion` in the background, and neither the check for a vanished folder nor the parsing of a path with a `!` in a folder name waits on the drive. Leaving such a drive no longer hangs either.
 
