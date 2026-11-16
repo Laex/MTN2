@@ -201,6 +201,9 @@ type
     /// <summary>Loads every catalogued plugin whose plugin.json lists the service
     /// name in "services". True when one is loaded.</summary>
     function EnsureService(const AName: string): Boolean;
+    /// <summary>Ids and names of the enabled catalogued plugins whose manifest lists
+    /// the service AName.</summary>
+    procedure ServiceProviderPlugins(const AName: string; out AIds, ANames: TArray<string>);
     /// <summary>Loads every catalogued plugin that has not been attempted
     /// yet and is not declarative. Used when the UI needs registrations that are
     /// not in plugin.json (menu items, key rebinds); a declarative plugin
@@ -2499,6 +2502,31 @@ begin
           Result := True;
         Break;
       end;
+end;
+
+procedure TPluginLoader.ServiceProviderPlugins(const AName: string;
+  out AIds, ANames: TArray<string>);
+var
+  I, J: Integer;
+  Name: string;
+begin
+  SetLength(AIds, 0);
+  SetLength(ANames, 0);
+  Name := LowerCase(Trim(AName));
+  for I := 0 to FCatalog.Count - 1 do
+  begin
+    if FCatalog[I].Disabled then
+      Continue;
+    for J := 0 to High(FCatalog[I].Manifest.Services) do
+      if FCatalog[I].Manifest.Services[J] = Name then
+      begin
+        SetLength(AIds, Length(AIds) + 1);
+        SetLength(ANames, Length(ANames) + 1);
+        AIds[High(AIds)] := FCatalog[I].PluginId;
+        ANames[High(ANames)] := FCatalog[I].Manifest.Name;
+        Break;
+      end;
+  end;
 end;
 
 function TPluginLoader.EnsureHighlightFile(const AFileName: string): Boolean;

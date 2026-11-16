@@ -9,7 +9,7 @@
 
 ### Search through plugins
 
-The Everything plugin answers name searches in local folders from its index, the ripgrep plugin (`rg` in the PATH or next to the plugin) searches file text, and the Document viewer plugin lets a text search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files. Searches inside archives, by hex bytes or by attributes use the built-in search. The **Use plugins** checkbox of the Find dialog turns the plugins off.
+The Everything plugin answers name searches in local folders from its index, the ripgrep plugin (`rg` in the PATH or next to the plugin) searches file text, and the Document viewer plugin lets a text search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files. Searches inside archives, by hex bytes or by attributes use the built-in search. The **Engine** list of the Find dialog chooses: **Auto** picks the best plugin, **Built-in** turns the plugins off, or choose one plugin by name; the built-in search runs when that plugin cannot serve the search.
 
 ### Quick search
 

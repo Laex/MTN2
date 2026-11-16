@@ -200,7 +200,10 @@ type
     ExistingIdx, RetryIdx, PackTypeIdx, PackLevelIdx: Integer;
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
-      SyncByContent, EncryptNames, SearchArchives, SearchPlugins: Boolean;
+      SyncByContent, EncryptNames, SearchArchives: Boolean;
+    /// <summary>Item of the search engine list (uSearchEngines): 0 = automatic,
+    /// 1 = the built-in walk, n = the plugin n - 2 of the list.</summary>
+    SearchEngineIdx: Integer;
     /// <summary>Code page of the Find dialog: 0 detects it per file, n is
     /// item n - 1 of TextEncodingListItems.</summary>
     SearchEncodingIdx: Integer;
@@ -222,6 +225,8 @@ type
     /// <summary>Let search plugins (Everything, ripgrep) serve the search; False
     /// always uses the built-in walk.</summary>
     UsePlugins: Boolean;
+    /// <summary>Plugin id of the search provider the user chose; '' = the best one.</summary>
+    Engine: string;
     /// <summary>0 = detect the code page of each file, n = item n - 1 of
     /// TextEncodingListItems.</summary>
     EncodingIdx: Integer;
@@ -334,7 +339,7 @@ begin
   Result.SearchFolders := ADialog.GetCheckbox('search_folders');
   Result.UseRegex := ADialog.GetCheckbox('search_regex');
   Result.SearchArchives := ADialog.GetCheckbox('search_archives');
-  Result.SearchPlugins := ADialog.GetCheckbox('search_plugins');
+  Result.SearchEngineIdx := ADialog.GetListSelectedIndex('search_engine');
   Result.SearchEncodingIdx := ADialog.GetListSelectedIndex('search_encoding');
   Result.HexText := ADialog.GetInputValue('search_hex');
   Result.Filters.SizeMin := ADialog.GetInputValue('filter_size_min');

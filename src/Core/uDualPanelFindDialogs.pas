@@ -8,7 +8,8 @@ interface
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
-  uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory;
+  uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory,
+  uSearchEngines;
 
 type
   TFindKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -155,6 +156,7 @@ end;
 procedure TSearchDialogController.Open;
 var
   Mask, Uri: string;
+  EngineIdx: Integer;
 begin
   if not Assigned(FSearch) or not Assigned(FDialog) then
     Exit;
@@ -174,6 +176,7 @@ begin
   Mask := FSearch.Mask;
   if Mask = '' then
     Mask := '*.*';
+  EngineIdx := SearchEngineIndex(FSearch.UsePlugins, FSearch.Engine, SearchEngines);
   FSearch.FocusField := 0;
   FSearch.Phase := spNone;
   if not FSearch.HexMode then
@@ -187,12 +190,12 @@ begin
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      FSearch.UsePlugins, FSearch.EncodingIdx, FSearch.Filters)),
+      EngineIdx, FSearch.EncodingIdx, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      FSearch.UsePlugins, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
+      EngineIdx, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -245,6 +248,9 @@ begin
 end;
 
 procedure TSearchDialogController.ApplyFields(const AFields: TDialogCommandFields);
+var
+  UsePlugins: Boolean;
+  Engine: string;
 begin
   FSearch.Mask := AFields.Mask;
   if FSearch.Mask = '' then
@@ -255,7 +261,9 @@ begin
   FSearch.SearchFolders := AFields.SearchFolders;
   FSearch.UseRegex := AFields.UseRegex;
   FSearch.SearchArchives := AFields.SearchArchives;
-  FSearch.UsePlugins := AFields.SearchPlugins;
+  SearchEngineFromIndex(AFields.SearchEngineIdx, SearchEngines, UsePlugins, Engine);
+  FSearch.UsePlugins := UsePlugins;
+  FSearch.Engine := Engine;
   FSearch.EncodingIdx := AFields.SearchEncodingIdx;
   FSearch.HexText := AFields.HexText;
   FSearch.HexMode := FHexMode;

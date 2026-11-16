@@ -19,6 +19,9 @@ type
     [Test] procedure TestUnservableOptionsSkipTheProvider;
     [Test] procedure TestBuiltInOnlySkipsTheProvider;
     [Test] procedure TestCapabilityMissingSkipsTheProvider;
+    [Test] procedure TestChosenEngineServesTheSearch;
+    [Test] procedure TestChosenEngineThatIsNotAProviderUsesTheWalk;
+    [Test] procedure TestChosenEngineThatLacksACapabilityUsesTheWalk;
     [Test] procedure TestCancelEndsTheSearch;
   end;
 
@@ -285,6 +288,59 @@ end;
 procedure TTestToken.Cancel;
 begin
   FCancelled := True;
+end;
+
+procedure TTestFindRouter.TestChosenEngineServesTheSearch;
+var
+  O: TFindOptions;
+begin
+  Assert.AreEqual<Int64>(0, Register);
+  O := Opts;
+  O.Engine := cPlugin;
+  Run(O);
+  WaitDone;
+  Assert.AreEqual<Integer>(1, GCalls);
+  Assert.AreEqual<Integer>(3, Length(GHits));
+end;
+
+procedure TTestFindRouter.TestChosenEngineThatIsNotAProviderUsesTheWalk;
+var
+  Dir: string;
+  O: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn_router_' + IntToStr(TThread.GetTickCount64));
+  TDirectory.CreateDirectory(Dir);
+  try
+    Assert.AreEqual<Int64>(0, Register);
+    O := DefaultFindOptions(Dir, '*.txt', True);
+    O.Engine := 'mtn.other';
+    Run(O);
+    WaitDone;
+    Assert.AreEqual<Integer>(0, GCalls, 'another provider is not used in place of the chosen one');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFindRouter.TestChosenEngineThatLacksACapabilityUsesTheWalk;
+var
+  Dir: string;
+  O: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn_router_' + IntToStr(TThread.GetTickCount64));
+  TDirectory.CreateDirectory(Dir);
+  try
+    GCaps := 'name,mask';
+    Assert.AreEqual<Int64>(0, Register);
+    O := DefaultFindOptions(Dir, '*.txt', True);
+    O.ContainingText := 'needle';
+    O.Engine := cPlugin;
+    Run(O);
+    WaitDone;
+    Assert.AreEqual<Integer>(0, GCalls);
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
 end;
 
 procedure TTestFindRouter.TestCancelEndsTheSearch;

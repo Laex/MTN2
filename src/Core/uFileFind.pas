@@ -34,6 +34,7 @@ type
     Encoding: TTextFileEncoding; // used when ForceEncoding
     SearchArchives: Boolean;   // also look at the files inside archives
     BuiltInOnly: Boolean;      // do not hand the search to a service provider
+    Engine: string;            // plugin id of the provider to use; '' = the best one
     TextExtract: ITextExtractor; // nil = every file is read as it is
     OnlyExtractable: Boolean;  // look only at the files TextExtract serves
     HexBytes: string;          // byte sequence ("4D 5A ?? 90") the file must contain; empty = none
@@ -64,6 +65,8 @@ type
     Filters: TFindFilterText;
     Subdirs, CaseSensitive, WholeWords, SearchFolders, UseRegex,
       SearchArchives, HexMode, BuiltInOnly: Boolean;
+    /// <summary>Plugin id of the search provider the user chose; '' = the best one.</summary>
+    Engine: string;
     /// <summary>0 = detect per file; n = TextEncodingListItems[n - 1].</summary>
     EncodingIdx: Integer;
   end;
@@ -204,6 +207,7 @@ begin
   Result.Encoding := tfeUtf8;
   Result.SearchArchives := False;
   Result.BuiltInOnly := False;
+  Result.Engine := '';
   Result.TextExtract := nil;
   Result.OnlyExtractable := False;
   Result.HexBytes := '';
@@ -262,6 +266,7 @@ begin
   AOpts.UseRegex := ACriteria.UseRegex;
   AOpts.SearchArchives := ACriteria.SearchArchives;
   AOpts.BuiltInOnly := ACriteria.BuiltInOnly;
+  AOpts.Engine := ACriteria.Engine;
   AOpts.ForceEncoding := (ACriteria.EncodingIdx > 0) and
     TryTextEncodingFromListIndex(ACriteria.EncodingIdx - 1, AOpts.Encoding);
   if ByBytes then

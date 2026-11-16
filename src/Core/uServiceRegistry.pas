@@ -136,6 +136,9 @@ type
     /// its capabilities.</summary>
     function PickProvider(const AName: string; const ANeeds: TArray<string>;
       out APluginId: string): Boolean;
+    /// <summary>Whether APluginId provides AName with every word of ANeeds.</summary>
+    function ProviderServes(const AName, APluginId: string;
+      const ANeeds: TArray<string>): Boolean;
 
     /// <summary>Starts a call. ARequestJson is a JSON-RPC request whose method
     /// is AName; APluginId '' = the first provider. Returns 0 and the job id
@@ -378,40 +381,49 @@ begin
   end;
 end;
 
+function ProviderHasAll(AProvider: TServiceProviderInfo; const ANeeds: TArray<string>): Boolean;
+var
+  Need, Cap: string;
+  Found: Boolean;
+begin
+  for Need in ANeeds do
+  begin
+    Found := False;
+    for Cap in AProvider.Capabilities do
+      if Cap = LowerCase(Need) then
+      begin
+        Found := True;
+        Break;
+      end;
+    if not Found then
+      Exit(False);
+  end;
+  Result := True;
+end;
+
 function TServiceRegistry.PickProvider(const AName: string; const ANeeds: TArray<string>;
   out APluginId: string): Boolean;
 var
   P: TProvider;
-  Need, Cap: string;
-  Found, All: Boolean;
 begin
   APluginId := '';
   for P in FProviders do
-  begin
-    if P.Info.Name <> AName then
-      Continue;
-    All := True;
-    for Need in ANeeds do
-    begin
-      Found := False;
-      for Cap in P.Info.Capabilities do
-        if Cap = LowerCase(Need) then
-        begin
-          Found := True;
-          Break;
-        end;
-      if not Found then
-      begin
-        All := False;
-        Break;
-      end;
-    end;
-    if All then
+    if (P.Info.Name = AName) and ProviderHasAll(P.Info, ANeeds) then
     begin
       APluginId := P.Info.PluginId;
       Exit(True);
     end;
-  end;
+  Result := False;
+end;
+
+function TServiceRegistry.ProviderServes(const AName, APluginId: string;
+  const ANeeds: TArray<string>): Boolean;
+var
+  P: TProvider;
+begin
+  for P in FProviders do
+    if (P.Info.Name = AName) and SameText(P.Info.PluginId, APluginId) then
+      Exit(ProviderHasAll(P.Info, ANeeds));
   Result := False;
 end;
 

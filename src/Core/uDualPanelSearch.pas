@@ -159,6 +159,7 @@ type
     property UseRegex: Boolean read FSearch.UseRegex write FSearch.UseRegex;
     property SearchArchives: Boolean read FSearch.SearchArchives write FSearch.SearchArchives;
     property UsePlugins: Boolean read FSearch.UsePlugins write FSearch.UsePlugins;
+    property Engine: string read FSearch.Engine write FSearch.Engine;
     property EncodingIdx: Integer read FSearch.EncodingIdx write FSearch.EncodingIdx;
     property HexText: string read FSearch.HexText write FSearch.HexText;
     property HexMode: Boolean read FSearch.HexMode write FSearch.HexMode;
@@ -361,6 +362,7 @@ begin
   Result.UseRegex := ASearch.UseRegex;
   Result.SearchArchives := ASearch.SearchArchives;
   Result.BuiltInOnly := not ASearch.UsePlugins;
+  Result.Engine := ASearch.Engine;
   Result.HexMode := ASearch.HexMode;
   Result.EncodingIdx := ASearch.EncodingIdx;
 end;
@@ -467,6 +469,7 @@ begin
   FSearch.UseRegex := False;
   FSearch.SearchArchives := False;
   FSearch.UsePlugins := True;
+  FSearch.Engine := '';
   FSearch.EncodingIdx := 0;
   FSearch.HexText := '';
   FSearch.HexMode := False;

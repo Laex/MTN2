@@ -32,7 +32,7 @@ function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialo
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives, AUsePlugins: Boolean; AEncodingIdx: Integer;
+  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEngineIdx, AEncodingIdx: Integer;
   const AFilters: TFindFilterText): TDialogDeclaration;
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOverwriteIndex: Integer = 0; APreserveTimestamps: Boolean = False;
@@ -266,7 +266,7 @@ uses
   System.Math, System.StrUtils,
   uDialogResources, uFileAttrTypes, uDialogLocaleLayout, uDisplaySettings,
   uConsoleSettings, uStrings, uUpdater, uThemeDrawing, uPluginColumns,
-  uTextEncoding, uInputLine, uColorPickerControl, uDatePickerControl,
+  uTextEncoding, uSearchEngines, uInputLine, uColorPickerControl, uDatePickerControl,
   uTerminalTypes;
 
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
@@ -401,10 +401,11 @@ end;
 
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives, AUsePlugins: Boolean; AEncodingIdx: Integer;
+  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEngineIdx, AEncodingIdx: Integer;
   const AFilters: TFindFilterText): TDialogDeclaration;
 var
   Items: TArray<string>;
+  Engines: TArray<TSearchEngine>;
   I: Integer;
 begin
   RequireDialogResource(cResDialogSearch, Result);
@@ -417,7 +418,9 @@ begin
   DialogSetInputValue(Result, 'search_hex', AHex);
   DialogSetCheckbox(Result, 'search_subdirs', ASubdirs);
   DialogSetCheckbox(Result, 'search_archives', ASearchArchives);
-  DialogSetCheckbox(Result, 'search_plugins', AUsePlugins);
+  Engines := SearchEngines;
+  DialogSetListItems(Result, 'search_engine', SearchEngineItems(Engines,
+    T('ui.search.engineAuto', 'Auto'), T('ui.search.engineBuiltIn', 'Built-in')), AEngineIdx);
   // Item 0 lets the search detect the encoding of every file; the others are
   // the encodings of the editor, in the same order.
   Items := TextEncodingListItems;

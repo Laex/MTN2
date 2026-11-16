@@ -9,7 +9,8 @@ unit uFindRouter;
   the hits outside the size and date bounds are dropped. A provider that fails
   before its first hit hands the search to the walk; one that fails later ends
   the search with the hits found so far. Without a provider, or for options a
-  provider cannot serve, the walk runs at once. }
+  provider cannot serve, the walk runs at once. When the options name a provider
+  (Engine), only that one is asked; if it cannot serve them, the walk runs. }
 
 interface
 
@@ -51,6 +52,15 @@ var
   Needs: TArray<string>;
 begin
   Needs := FindServiceNeeds(AOptions);
+  if AOptions.Engine <> '' then
+  begin
+    // The user chose a provider: it serves the search or the built-in walk does.
+    APluginId := AOptions.Engine;
+    Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, Needs);
+    if not Result and Assigned(GLazyLoad) and GLazyLoad(cSearchFilesService) then
+      Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, Needs);
+    Exit;
+  end;
   Result := ServiceRegistry.PickProvider(cSearchFilesService, Needs, APluginId);
   if not Result and Assigned(GLazyLoad) and GLazyLoad(cSearchFilesService) then
     Result := ServiceRegistry.PickProvider(cSearchFilesService, Needs, APluginId);

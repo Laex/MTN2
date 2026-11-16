@@ -233,7 +233,7 @@ A provider lists one word `ext.<extension>` for every extension it reads (lower 
 
 ### 9.4. Use by the search
 
-The built-in walk reads such a file through the service and looks for the text in the answer. When a `search.files` provider (for example ripgrep) serves the search, the host runs a second pass over the files of the served extensions after the provider has finished, and lists a file that both found once. The checkbox "Use plugins" of the Find dialog switches both off.
+The built-in walk reads such a file through the service and looks for the text in the answer. When a `search.files` provider (for example ripgrep) serves the search, the host runs a second pass over the files of the served extensions after the provider has finished, and lists a file that both found once. The "Engine" list of the Find dialog chooses the provider: Auto (the rule above), Built-in (no provider and no text extraction), or one plugin, which is the only provider asked, and the built-in walk serves the search when it cannot.
 
 
 ---

@@ -151,13 +151,25 @@
       "height": 1
     },
     {
-      "type": "checkbox",
-      "id": "search_plugins",
-      "text": "Use p&lugins",
-      "checked": true,
+      "type": "label",
+      "text": "Engine:",
+      "id": "lbl_engine",
       "col": 39,
       "row": 10,
-      "width": 25,
+      "width": 8,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "search_engine",
+      "selected": 0,
+      "items": [
+        "Auto",
+        "Built-in"
+      ],
+      "col": 48,
+      "row": 10,
+      "width": 15,
       "height": 1
     },
     {

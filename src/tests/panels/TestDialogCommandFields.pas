@@ -54,7 +54,7 @@ begin
     Filters.AttrSystem := fasAny;
     Filters.AttrArchive := fasSet;
     Host.Open(BuildSearchDialog('*.pas', 'todo', True, False, True, False,
-      '74 6F 64 6F', True, False, False, 2, Filters), nil);
+      '74 6F 64 6F', True, False, 1, 2, Filters), nil);
     Fields := ReadDialogCommandFields(Host);
     Assert.AreEqual('*.pas', Fields.Mask, 'mask');
     Assert.AreEqual('todo', Fields.Containing, 'text');
@@ -65,7 +65,7 @@ begin
     Assert.AreEqual('74 6F 64 6F', Fields.HexText, 'hex');
     Assert.IsTrue(Fields.Subdirs, 'subdirs');
     Assert.IsFalse(Fields.SearchArchives, 'archives');
-    Assert.IsFalse(Fields.SearchPlugins, 'plugins');
+    Assert.AreEqual(1, Fields.SearchEngineIdx, 'engine');
     Assert.AreEqual(2, Fields.SearchEncodingIdx, 'encoding');
     Assert.AreEqual('10K', Fields.Filters.SizeMin, 'size min');
     Assert.AreEqual('1M', Fields.Filters.SizeMax, 'size max');

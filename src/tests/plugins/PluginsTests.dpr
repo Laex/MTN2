@@ -70,6 +70,7 @@ uses
   TestTextExtractService in 'TestTextExtractService.pas',
   TestBridgeProtocol in 'TestBridgeProtocol.pas',
   TestPlatformChild in 'TestPlatformChild.pas',
+  TestSearchEngines in 'TestSearchEngines.pas',
   TestBridgeConfig in 'TestBridgeConfig.pas',
   TestBridgeServer in 'TestBridgeServer.pas',
   TestPluginServiceSettings in 'TestPluginServiceSettings.pas';

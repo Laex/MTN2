@@ -76,6 +76,8 @@ function HostEnsureArchiveExtension(const AFileName: string): Boolean;
 function HostEnsureHighlightFile(const AFileName: string): Boolean;
 /// <summary>Load the catalogued plugins whose manifest lists this service name.</summary>
 function HostEnsureService(const AName: string): Boolean;
+/// <summary>The enabled catalogued plugins that list the service AName, in load order.</summary>
+procedure HostServiceProviders(const AName: string; out AIds, ANames: TArray<string>);
 /// <summary>Load every catalogued plugin that is not declarative so menu items
 /// and key rebinds exist. Cheap after the first call.</summary>
 procedure HostEnsureAllPlugins;
@@ -102,7 +104,7 @@ uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
   uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings,
-  uPluginHighlight, uDocumentProviders, uFindRouter;
+  uPluginHighlight, uDocumentProviders, uFindRouter, uSearchEngines;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -229,6 +231,25 @@ end;
 function HostEnsureService(const AName: string): Boolean;
 begin
   Result := PluginLoader.EnsureService(AName);
+end;
+
+procedure HostServiceProviders(const AName: string; out AIds, ANames: TArray<string>);
+begin
+  PluginLoader.ServiceProviderPlugins(AName, AIds, ANames);
+end;
+
+function CatalogSearchEngines: TArray<TSearchEngine>;
+var
+  Ids, Names: TArray<string>;
+  I: Integer;
+begin
+  HostServiceProviders('search.files', Ids, Names);
+  SetLength(Result, Length(Ids));
+  for I := 0 to High(Ids) do
+  begin
+    Result[I].Id := Ids[I];
+    Result[I].Title := Names[I];
+  end;
 end;
 
 procedure HostEnsureAllPlugins;
@@ -600,5 +621,6 @@ initialization
   SetHighlightLazyLoad(HostEnsureHighlightFile);
   SetDocumentLazyLoad(HostEnsureDocumentFile);
   SetServiceLazyLoad(HostEnsureService);
+  SetSearchEngineLister(CatalogSearchEngines);
 
 end.
