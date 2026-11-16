@@ -9,13 +9,22 @@ interface
 
 uses
   System.SysUtils, System.IOUtils,
-  uVfsTypes, uFolderHotlist, uPanelColumns, uPlatformFolders;
+  uVfsTypes, uDualPanelTypes, uFolderHotlist, uPanelColumns, uPlatformFolders;
 
 function HomeUri: string;
 function DocumentsUri: string;
 function ProjectsUri: string;
 
 function PanelItemFullPath(const AURI, APanelURI: string; AIsParent: Boolean): string;
+/// <summary>File names for the Describe dialog: selected rows, or the cursor
+/// row when nothing is selected. Parent and empty-URI rows are skipped.</summary>
+function CollectDescribeItemNames(const ATab: TTab;
+  const ARows: TPanelRows): TArray<string>;
+/// <summary>Paths or bare names for the clipboard: selected rows (parent
+/// skipped), or the cursor row when nothing is selected. ANameOnly keeps only
+/// the last path segment.</summary>
+function CollectClipboardItemTexts(const ATab: TTab; const ARows: TPanelRows;
+  ANameOnly: Boolean): TArray<string>;
 
 function FolderHistoryDisplayLabel(const AURI: string): string;
 /// <summary>Fit a history path into AMaxLen, keeping the drive (or UNC
@@ -56,6 +65,73 @@ end;
 function ProjectsUri: string;
 begin
   Result := PathToFileUri(PlatformProjectsDir);
+end;
+
+function CollectDescribeItemNames(const ATab: TTab;
+  const ARows: TPanelRows): TArray<string>;
+var
+  R: TPanelRow;
+  Keys: TArray<string>;
+  Full: string;
+
+  procedure AddName(const ARow: TPanelRow);
+  begin
+    if ARow.IsParent or (ARow.URI = '') then
+      Exit;
+    Full := PanelItemFullPath(ARow.URI, ATab.CurrentURI, False);
+    if Full <> '' then
+      Result := Result + [PathLastSegment(Full)];
+  end;
+
+begin
+  Result := nil;
+  if Length(ATab.SelectedURIs) > 0 then
+  begin
+    Keys := TabSelectionKeys(ATab);
+    for R in ARows do
+      if SelectionKeysHas(Keys, R.URI) then
+        AddName(R);
+  end
+  else if (ATab.CursorIndex >= 0) and (ATab.CursorIndex <= High(ARows)) then
+    AddName(ARows[ATab.CursorIndex]);
+end;
+
+function CollectClipboardItemTexts(const ATab: TTab; const ARows: TPanelRows;
+  ANameOnly: Boolean): TArray<string>;
+var
+  R: TPanelRow;
+  Keys: TArray<string>;
+  Text: string;
+
+  function ItemText(const ARow: TPanelRow): string;
+  begin
+    Result := PanelItemFullPath(ARow.URI, ATab.CurrentURI, ARow.IsParent);
+    if not ANameOnly or (Result = '') then
+      Exit;
+    // Archive members ("a.zip!\dir\f") split the same way; a drive root
+    // has no name and yields ''.
+    Result := PathLastSegment(Result);
+  end;
+
+begin
+  Result := nil;
+  if Length(ATab.SelectedURIs) > 0 then
+  begin
+    Keys := TabSelectionKeys(ATab);
+    for R in ARows do
+      if (not R.IsParent) and (R.URI <> '') and SelectionKeysHas(Keys, R.URI) then
+      begin
+        Text := ItemText(R);
+        if Text <> '' then
+          Result := Result + [Text];
+      end;
+  end
+  else if (ATab.CursorIndex >= 0) and (ATab.CursorIndex <= High(ARows)) then
+  begin
+    Text := ItemText(ARows[ATab.CursorIndex]);
+    if Text <> '' then
+      Result := [Text];
+  end;
 end;
 
 function PanelItemFullPath(const AURI, APanelURI: string; AIsParent: Boolean): string;

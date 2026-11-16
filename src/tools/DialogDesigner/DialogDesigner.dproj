@@ -163,6 +163,7 @@
         <DCCReference Include="..\..\Core\uFunctionBar.pas"/>
         <DCCReference Include="..\..\Core\uTextEncoding.pas"/>
         <DCCReference Include="..\..\Core\uDialogTypes.pas"/>
+        <DCCReference Include="..\..\Core\uDialogBuilders.pas"/>
         <DCCReference Include="..\..\Core\uDialogJson.pas"/>
         <DCCReference Include="..\..\Core\uDialogResources.pas"/>
         <DCCReference Include="..\..\Core\uDialogLocaleLayout.pas"/>

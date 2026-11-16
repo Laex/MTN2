@@ -47,7 +47,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
-  uDialogHost, uDialogTypes, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
   uDualPanelKeymapDialog, uCommandRegistry;
 
 const

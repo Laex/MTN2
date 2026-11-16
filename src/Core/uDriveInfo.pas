@@ -44,6 +44,9 @@ procedure ForceRefreshDriveInfo(const AOnRefreshed: TProc = nil);
 function TryCachedPathVolume(const APath: string; out AInfo: TDriveInfo;
   const AOnRefreshed: TProc = nil): Boolean;
 function FormatDriveSize(ABytes: Int64): string;
+/// <summary>Root path, with the volume label in parentheses when it differs
+/// from the root (used in disconnect notices and the confirm question).</summary>
+function DriveCaption(const AInfo: TDriveInfo): string;
 /// <summary>The rows of the volume information dialog: mount point, device,
 /// file system, kind, size, free space and mount options. Empty fields are
 /// left out.</summary>
@@ -195,6 +198,13 @@ begin
     Result := Result + S[I];
   end;
   Result := Result + 'G';
+end;
+
+function DriveCaption(const AInfo: TDriveInfo): string;
+begin
+  Result := AInfo.RootPath;
+  if (AInfo.LabelOrPath <> '') and not SameText(AInfo.LabelOrPath, AInfo.RootPath) then
+    Result := Result + ' (' + AInfo.LabelOrPath + ')';
 end;
 
 function PadTrunc(const AText: string; AWidth: Integer): string;

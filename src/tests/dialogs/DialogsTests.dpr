@@ -24,6 +24,8 @@ uses
   TestDialogTranslation in 'TestDialogTranslation.pas',
   TestDialogJson in 'TestDialogJson.pas',
   TestDialogHostExtracts in 'TestDialogHostExtracts.pas',
+  TestDialogInputRouting in 'TestDialogInputRouting.pas',
+  TestDialogClickRouting in 'TestDialogClickRouting.pas',
   TestDialogRenderer in 'TestDialogRenderer.pas',
   TestDisplaySettings in 'TestDisplaySettings.pas',
   TestReplaceAskDialog in 'TestReplaceAskDialog.pas',

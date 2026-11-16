@@ -380,7 +380,7 @@ implementation
 uses
   uPlatformInfo,
   System.Diagnostics,
-  FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes,
+  FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes, uDialogBuilders,
   uKeyChord, uFileRecycleBin, uDualPanelJobRules;
 
 const

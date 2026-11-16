@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uKeymap;
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uKeymap;
 
 type
   TKeymapKindSetter = reference to procedure(AKind: THostDialogKind);

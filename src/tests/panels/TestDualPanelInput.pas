@@ -1296,6 +1296,36 @@ begin
   Assert.IsTrue(NeedleBackspace(S) and (S = 'a'), 'backspace shortens');
   Assert.IsTrue(NeedleBackspace(S) and (S = ''), 'backspace last char');
   Assert.IsTrue(not NeedleBackspace(S) and (S = ''), 'empty backspace is no-op');
+
+  Assert.IsFalse(QuickSearchEndsOnKey(False, True, [], vkLeft, #0),
+    'non-sticky does not end');
+  Assert.IsFalse(QuickSearchEndsOnKey(True, False, [], vkLeft, #0),
+    'inactive does not end');
+  Assert.IsTrue(QuickSearchEndsOnKey(True, True, [ssCtrl], vkA, #0),
+    'Ctrl chord ends sticky search');
+  Assert.IsTrue(QuickSearchEndsOnKey(True, True, [], vkLeft, #0),
+    'Left ends sticky search');
+  Assert.IsFalse(QuickSearchEndsOnKey(True, True, [], vkUp, #0),
+    'Up keeps sticky search');
+  Assert.IsFalse(QuickSearchEndsOnKey(True, True, [], vkDown, #0),
+    'Down keeps sticky search');
+  Assert.IsFalse(QuickSearchEndsOnKey(True, True, [], vkBack, #0),
+    'Backspace keeps sticky search');
+  Assert.IsFalse(QuickSearchEndsOnKey(True, True, [], 0, 'a'),
+    'printable keeps sticky search');
+
+  Assert.AreEqual(qscKeepOpen,
+    ClassifyQuickSearchClear(True, True, vkReturn),
+    'Enter keeps filter open');
+  Assert.AreEqual(qscClearPassThrough,
+    ClassifyQuickSearchClear(False, True, vkReturn),
+    'sticky Enter clears and opens');
+  Assert.AreEqual(qscClearConsume,
+    ClassifyQuickSearchClear(False, True, vkEscape),
+    'Esc clears and consumes');
+  Assert.AreEqual(qscClearConsume,
+    ClassifyQuickSearchClear(False, False, vkEscape),
+    'non-sticky Esc clears and consumes');
 end;
 
 procedure TestPendingSelectMatch;

@@ -26,7 +26,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.IOUtils,
-  uTerminalTypes, uThemeTypes, uInputLine, uDialogTypes, uDialogJson, uDialogHost,
+  uTerminalTypes, uThemeTypes, uInputLine, uDialogTypes, uDialogBuilders, uDialogJson, uDialogHost,
   uDialogHistory;
 
 const

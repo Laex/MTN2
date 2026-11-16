@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils,
-  uDialogHost, uDialogTypes, uDualPanelTypes, uDualPanelUiTypes, uMultiRename;
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelTypes, uDualPanelUiTypes, uMultiRename;
 
 type
   TMultiRenameKindSetter = reference to procedure(AKind: THostDialogKind);

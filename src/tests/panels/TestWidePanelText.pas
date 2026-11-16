@@ -20,6 +20,7 @@ type
     [Test] procedure TestCursorInfoLineFitsWidth;
     [Test] procedure TestWorkspaceTabHitTestUsesCells;
     [Test] [Category('WindowsOnly')] procedure TestPanelTabTitleFitsCells;
+    [Test] [Category('WindowsOnly')] procedure TestPanelTabTitleKeepsAsManyFoldersAsFit;
   end;
 
 implementation
@@ -135,6 +136,17 @@ begin
   Title := VfsUriDirTabTitle('file:///C:/' + Repeated(cHan, 20), 12);
   Assert.IsTrue(TextDisplayWidth(Title) <= 12, 'width ' + IntToStr(TextDisplayWidth(Title)));
   Assert.IsTrue(Title.StartsWith('C:'), 'drive letter kept');
+end;
+
+procedure TTestWidePanelText.TestPanelTabTitleKeepsAsManyFoldersAsFit;
+const
+  cUri = 'file:///D:/Temp/Works/Students/Name/1';
+begin
+  Assert.AreEqual('D:\Temp\Works\Students\Name\1', VfsUriDirTabTitle(cUri, 40));
+  Assert.AreEqual('D:\...\Students\Name\1', VfsUriDirTabTitle(cUri, 22));
+  Assert.AreEqual('D:\...\Name\1', VfsUriDirTabTitle(cUri, 21));
+  Assert.AreEqual('D:\...\Name\1', VfsUriDirTabTitle(cUri, 18));
+  Assert.AreEqual('D:\...\1', VfsUriDirTabTitle(cUri, 8));
 end;
 
 end.

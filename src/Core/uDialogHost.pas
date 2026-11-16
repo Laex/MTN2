@@ -8,7 +8,8 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
   System.Generics.Collections, uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
-  uInputLine, uMaskGroups, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl;
+  uInputLine, uMaskGroups, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl,
+  uDialogHostKeys, uDialogHostClicks;
 
 type
   TDialogHost = class
@@ -128,20 +129,8 @@ type
     /// <summary>Protocol 2 places each control at its own column and row,
     /// inside the frame.</summary>
     procedure LayoutV2Controls;
-    /// <summary>Protocol 1 lays controls out in order. Buttons share a row
-    /// until one would pass the right edge, then wrap. Anything else takes
-    /// the whole width and starts a new row after a button row.</summary>
+    /// <summary>Protocol 1 lays controls out in order via LayoutDialogFlow.</summary>
     procedure LayoutFlowControls;
-    /// <summary>One button in the protocol-1 row. A button that would pass
-    /// the right edge wraps onto the next row.</summary>
-    procedure PlaceFlowButton(AIndex: Integer; const C: TDialogControl;
-      AInnerLeft, AInnerRight: Integer; var AY, ABtnX: Integer;
-      var AInButtonRow: Boolean);
-    /// <summary>A non-button in the protocol-1 flow. It ends a button row,
-    /// and a list or radio group takes ControlRowSpan rows.</summary>
-    procedure PlaceFlowBlock(AIndex: Integer; const C: TDialogControl;
-      AInnerLeft, AInnerRight: Integer; var AY, ABtnX: Integer;
-      var AInButtonRow: Boolean);
     procedure RebuildControlLayout;
     procedure EnsureLayout;
     procedure CloseDropDown;
@@ -216,110 +205,38 @@ type
     /// rows above and below it.</summary>
     procedure DrawControls(const AGrid: TTerminalGrid; ALabelFg, ALabelBg: TAlphaColor);
     procedure ReportListSelection;
-    /// <summary>The frame's close mark and a click outside the dialog both
-    /// cancel it. False when the click is inside, so a control can take it.</summary>
-    function HandleDialogFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
-    /// <summary>A click while a DropDown popup is open. A click on the popup
-    /// or its field is consumed. A click elsewhere closes the popup and
-    /// returns False, so the control under the pointer still receives it.
-    /// False when no popup is open.</summary>
-    function HandleOpenDropDownClick(ALocalCol, ALocalRow: Integer): Boolean;
-    /// <summary>A click on an input. The last cell of a color, date or history
-    /// field opens that popup. A disabled field takes the click and does not
-    /// move the caret. The edit line is the live control, not the copy.</summary>
-    procedure HandleInputClick(AIndex: Integer; const R: TRectI;
-      const C: TDialogControl; ALocalCol, ALocalRow: Integer;
-      AShift: TShiftState);
-    /// <summary>A click on a list. The right column of a multi-line list is
-    /// its scrollbar. A double click on a row accepts the dialog. False when
-    /// the point is not a row, so a later control under it can still take
-    /// the click.</summary>
-    function HandleListClick(AIndex: Integer; const R: TRectI;
-      const C: TDialogControl; ALocalCol, ALocalRow: Integer): Boolean;
-    /// <summary>A click on a radio-group row. The caption row is not a
-    /// choice. False when the point is not an item, so a later control under
-    /// it can still take the click.</summary>
-    function HandleRadioGroupClick(AIndex: Integer; const R: TRectI;
-      const C: TDialogControl; ALocalRow: Integer): Boolean;
-    /// <summary>A click on a button. With mouse capture the command waits
-    /// for the release and runs only if the pointer is still over it.</summary>
-    procedure HandleButtonClick(AIndex: Integer; const C: TDialogControl;
-      ALocalCol, ALocalRow: Integer);
-    /// <summary>A click toggles a checkbox. A disabled one takes the click
-    /// and stays as it is.</summary>
-    procedure HandleCheckboxClick(AIndex: Integer);
-    /// <summary>A click selects a radio button.</summary>
-    procedure HandleRadioClick(AIndex: Integer);
-    /// <summary>A click opens a DropDown, or closes it when it is already
-    /// open. A disabled one takes the click and stays closed.</summary>
-    procedure HandleDropDownFieldClick(AIndex: Integer; const C: TDialogControl);
-    /// <summary>A click on a calendar, in the control's own cells.</summary>
-    procedure HandleDatePickerClick(AIndex: Integer; const R: TRectI;
-      ALocalCol, ALocalRow: Integer);
-    /// <summary>A click on a color picker. The click count is passed through,
-    /// so a double click inside the picker is not lost.</summary>
-    procedure HandleColorPickerClick(AIndex: Integer; const R: TRectI;
-      ALocalCol, ALocalRow: Integer);
+    /// <summary>Routes a click through uDialogHostClicks in fixed priority order.</summary>
     function HandleClickCore(ALocalCol, ALocalRow: Integer;
       AShift: TShiftState): Boolean;
-    /// <summary>Keys while a DropDown popup is open. Enter and Space commit
-    /// the row, Esc and Tab collapse the popup without cancelling the dialog,
-    /// Del forgets a history row, arrows move the highlight. Any other key is
-    /// consumed too, so it cannot accept or cancel the dialog behind the
-    /// popup. False when no popup is open; the key is left unchanged.</summary>
-    function HandleOpenDropDownKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Enter accepts the dialog, Esc cancels it, Tab moves focus.
-    /// False for every other key, so the focused control still receives it.</summary>
-    function HandleDialogNavKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Opens a collapsed history field (Ctrl+Down, Alt+Down) or a
-    /// collapsed DropDown (F4, Alt+Down, Space). False when the key does not
-    /// open one; the key is left unchanged, so Space on a list still toggles
-    /// a row and a letter still reaches a mnemonic.</summary>
-    function HandleClosedDropDownKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Space toggles the focused checkbox, selects a radio button,
-    /// keeps a radio group's current item and presses a button. False for any
-    /// other key or control; the key is left unchanged.</summary>
-    function HandleFocusedSpaceKey(var AKey: Word; var AKeyChar: Char): Boolean;
-    /// <summary>Yes/No buttons and caption mnemonics. They run for Alt, and
-    /// for any key while focus is not in an input. False when nothing
-    /// matches; the key is left unchanged, so a list, picker or input still
-    /// receives it.</summary>
-    function HandleMnemonicKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>A focused key-capture input stores the keystroke as chord text
-    /// (Backspace / Delete clear it). False for other controls and for Tab, Enter and
-    /// Esc, which keep their dialog meaning; the key is left unchanged then.</summary>
-    function HandleHotKeyInput(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>A focused date or color picker takes the key. False for every
-    /// other control; the key is left unchanged.</summary>
-    function HandleFocusedPickerKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Space, Ctrl+Up and Ctrl+Down on a list with key commands fire
-    /// toggle, up and down. Plain Del presses the dialog's Delete button when
-    /// it has one. False when the list does not take the key; the key is left
-    /// unchanged, so arrows can still move the selection.</summary>
-    function HandleListCommandKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Up, Down, Home, End, PageUp and PageDown move the selection
-    /// of a focused list, radio group or DropDown. The key is taken even when
-    /// the control has no items: otherwise Up and Down would also move the
-    /// dialog focus. False for every other key or control.</summary>
-    function HandleListNavKeys(var AKey: Word): Boolean;
-    /// <summary>The focused input takes the key. A password field drops
-    /// copy-out, a read-only field drops edits, Enter accepts and Esc cancels.
-    /// False when focus is not an input; the key is left unchanged, so arrows
-    /// can still move the dialog focus.</summary>
-    function HandleFocusedInputKeys(var AKey: Word; AShift: TShiftState;
-      var AKeyChar: Char): Boolean;
-    /// <summary>Left, Right, Up and Down move the dialog focus when no
-    /// control has taken them. False for every other key.</summary>
-    function HandleFocusArrowKeys(var AKey: Word): Boolean;
+    /// <summary>Routes a key through uDialogHostKeys in fixed priority order.</summary>
     function HandleInputCore(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
+    /// <summary>Method-pointer sink for uDialogHostKeys free functions.</summary>
+    function BuildKeyOps: TDialogKeyOps;
+    /// <summary>Method-pointer sink for uDialogHostClicks free functions.</summary>
+    function BuildClickOps: TDialogClickOps;
+    function KeyCursorVisible: Boolean;
+    procedure KeyShowCursor;
+    procedure KeyCommitDropDown;
+    function KeyFocusIndex: Integer;
+    procedure KeySetFocusIndex(AValue: Integer);
+    function KeyDropOpenIndex: Integer;
+    function KeyDropHover: Integer;
+    procedure KeySetDropHover(AValue: Integer);
+    function KeyControlCount: Integer;
+    procedure KeySetControl(AIndex: Integer; const AControl: TDialogControl);
+    function ClickBounds: TRectI;
+    function ClickControlBounds(AIndex: Integer): TRectI;
+    function ClickHasPressTimer: Boolean;
+    function ClickHit(ACol, ARow: Integer): Integer;
+    procedure ClickResetClicks;
+    procedure ClickBeginButtonCapture(AIndex, ALocalCol, ALocalRow: Integer);
+    procedure ClickBeginInputDrag(AIndex, ALocalCol, ALocalRow: Integer);
+    procedure ClickApplyInputClick(AIndex, ALocalCol, ALocalRow: Integer;
+      AExtend: Boolean; AClicks: Integer);
+    function ClickDropScrollTop: Integer;
+    function ClickListScrollTop: Integer;
+    function ClickListSelectedIndexOf(const AId: string): Integer;
   public
     constructor Create(const ATheme: IThemeRenderer);
     destructor Destroy; override;
@@ -495,7 +412,7 @@ implementation
 
 uses
   System.Character, uKeyChord, uDialogLocaleLayout, uCharWidth,
-  uDialogValues, uDialogV2Layout, uDialogListDraw, uPluginInputChord;
+  uDialogValues, uDialogV2Layout, uDialogLayout, uDialogListDraw, uPluginInputChord;
 
 const
   cWarningBodyBg = TAlphaColor($FFAA0000);
@@ -590,9 +507,6 @@ begin
   GCaptureHost := nil;
   Host.MouseCaptureRelease(AAbsCol - GCaptureDX, AAbsRow - GCaptureDY);
 end;
-
-type
-  TDialogYesNoAnswer = (dyaNone, dyaYes, dyaNo);
 
 constructor TDialogHost.Create(const ATheme: IThemeRenderer);
 begin
@@ -2003,78 +1917,12 @@ begin
   FScrollFollow := L.ScrollFollow;
 end;
 
-procedure TDialogHost.PlaceFlowButton(AIndex: Integer; const C: TDialogControl;
-  AInnerLeft, AInnerRight: Integer; var AY, ABtnX: Integer;
-  var AInButtonRow: Boolean);
-var
-  BtnW: Integer;
-begin
-  BtnW := ButtonCellWidth(C);
-  if not AInButtonRow then
-  begin
-    AInButtonRow := True;
-    ABtnX := AInnerLeft;
-  end
-  else if (ABtnX > AInnerLeft) and (ABtnX + BtnW - 1 > AInnerRight) then
-  begin
-    // Wrap overflowing buttons onto the next row.
-    Inc(AY);
-    ABtnX := AInnerLeft;
-  end;
-  FControlBounds[AIndex] := TRectI.Make(ABtnX, AY,
-    Min(ABtnX + BtnW - 1, AInnerRight), AY);
-  Inc(ABtnX, BtnW + 2);
-end;
-
-procedure TDialogHost.PlaceFlowBlock(AIndex: Integer; const C: TDialogControl;
-  AInnerLeft, AInnerRight: Integer; var AY, ABtnX: Integer;
-  var AInButtonRow: Boolean);
-var
-  Span: Integer;
-begin
-  if AInButtonRow then
-  begin
-    Inc(AY);
-    AInButtonRow := False;
-    ABtnX := AInnerLeft;
-  end;
-  // A list and a radio group both occupy ControlRowSpan rows.
-  if C.Kind in [dckList, dckRadioGroup] then
-  begin
-    Span := ControlRowSpan(C);
-    FControlBounds[AIndex] := TRectI.Make(AInnerLeft, AY, AInnerRight, AY + Span - 1);
-    Inc(AY, Span);
-  end
-  else
-  begin
-    FControlBounds[AIndex] := TRectI.Make(AInnerLeft, AY, AInnerRight, AY);
-    Inc(AY);
-  end;
-end;
-
 procedure TDialogHost.LayoutFlowControls;
 var
-  I, Y, BtnX, InnerLeft, InnerRight: Integer;
-  InButtonRow: Boolean;
-  C: TDialogControl;
+  L: TDialogFlowLayout;
 begin
-  // Protocol 1.0: sequential flow layout.
-  InnerLeft := FBounds.Left + 2;
-  InnerRight := FBounds.Right - 2;
-  if InnerRight < InnerLeft then
-    InnerRight := InnerLeft;
-  Y := FBounds.Top + 2;
-  BtnX := InnerLeft;
-  InButtonRow := False;
-
-  for I := 0 to High(FDecl.Controls) do
-  begin
-    C := FDecl.Controls[I];
-    if C.Kind = dckButton then
-      PlaceFlowButton(I, C, InnerLeft, InnerRight, Y, BtnX, InButtonRow)
-    else
-      PlaceFlowBlock(I, C, InnerLeft, InnerRight, Y, BtnX, InButtonRow);
-  end;
+  L := LayoutDialogFlow(FDecl.Controls, FBounds);
+  FControlBounds := L.Bounds;
 end;
 
 procedure TDialogHost.RebuildControlLayout;
@@ -2819,351 +2667,215 @@ begin
   ReportListSelection;
 end;
 
-function TDialogHost.HandleDialogFrameClick(ALocalCol, ALocalRow: Integer): Boolean;
+function TDialogHost.ClickBounds: TRectI;
 begin
-  if WindowFrameCloseHit(FBounds, ALocalCol, ALocalRow) then
-  begin
-    CloseDropDown;
-    FireCancel;
-    Exit(True);
-  end;
-  if not FBounds.Contains(ALocalCol, ALocalRow) then
-  begin
-    CloseDropDown;
-    // Outside click = Cancel when a cancel button exists.
-    FireCancel;
-    Exit(True);
-  end;
-  Result := False;
+  Result := FBounds;
 end;
 
-function TDialogHost.HandleOpenDropDownClick(ALocalCol, ALocalRow: Integer): Boolean;
-var
-  Row, Idx, Count, ViewH: Integer;
-  Popup: TRectI;
-  NeedBar: Boolean;
+function TDialogHost.ClickControlBounds(AIndex: Integer): TRectI;
 begin
-  Result := False;
-  if (FDropOpenIndex < 0) or not DropPopupBounds(Popup) then
-    Exit;
-
-  // DropDown popup takes priority while open.
-  if Popup.Contains(ALocalCol, ALocalRow) then
-  begin
-    EnsureDropHoverInView;
-    Popup := DropContentBounds(Popup);
-    if not Popup.Contains(ALocalCol, ALocalRow) then
-      Exit(True);
-    Row := ALocalRow - Popup.Top;
-    ViewH := Popup.Height;
-    Count := Length(FDecl.Controls[FDropOpenIndex].Items);
-    NeedBar := Count > ViewH;
-    if NeedBar and (ALocalCol = Popup.Right) and (ViewH > 0) then
-    begin
-      if ALocalRow = Popup.Top then
-        FDropHover := EnsureRange(FDropHover - 1, 0, Count - 1)
-      else if ALocalRow = Popup.Bottom then
-        FDropHover := EnsureRange(FDropHover + 1, 0, Count - 1)
-      else
-        FDropHover := EnsureRange(
-          Round((ALocalRow - Popup.Top - 1) * (Count - 1) / Max(ViewH - 3, 1)),
-          0, Count - 1);
-      EnsureDropHoverInView;
-      NotifyChanged;
-      Exit(True);
-    end;
-    if (ALocalCol >= Popup.Left) and
-       ((not NeedBar and (ALocalCol <= Popup.Right)) or
-        (NeedBar and (ALocalCol < Popup.Right))) and
-       (Row >= 0) and (Row < ViewH) then
-    begin
-      Idx := FDropScrollTop + Row;
-      if (Idx >= 0) and (Idx <= High(FDecl.Controls[FDropOpenIndex].Items)) then
-      begin
-        FDropHover := Idx;
-        CommitDropDown;
-      end;
-      Exit(True);
-    end;
-    Exit(True);
-  end;
-  // Click outside popup collapses without changing selection.
-  if (FDropOpenIndex <= High(FControlBounds)) and
-     FControlBounds[FDropOpenIndex].Contains(ALocalCol, ALocalRow) then
-  begin
-    CloseDropDown;
-    Exit(True);
-  end;
-  CloseDropDown;
-  // The control under the pointer still receives this click.
-end;
-
-procedure TDialogHost.HandleInputClick(AIndex: Integer; const R: TRectI;
-  const C: TDialogControl; ALocalCol, ALocalRow: Integer;
-  AShift: TShiftState);
-var
-  Clicks: Integer;
-begin
-  if C.Disabled then
-    Exit;
-  FFocusIndex := AIndex;
-  if (C.ColorPick or C.DatePick) and (R.Width >= 3) and
-     (ALocalCol = R.Left + R.Width - 1) then
-  begin
-    NotifyChanged;
-    FireCommand(DialogPickCommand(C.Id));
-    Exit;
-  end;
-  if IsHistoryInput(AIndex) and (R.Width >= 3) and
-     (ALocalCol = R.Left + R.Width - 1) then
-  begin
-    OpenDropDown(AIndex);
-    NotifyChanged;
-    Exit;
-  end;
-  // Caret to the clicked cell; double click = word, triple = all;
-  // Shift+click extends the selection from the current caret.
-  if ssShift in AShift then
-  begin
-    FClicks.Reset;
-    InputLineMouseClick(FDecl.Controls[AIndex].Edit, ALocalCol - R.Left, 1, True);
-  end
+  if (AIndex < 0) or (AIndex > High(FControlBounds)) then
+    Result := TRectI.Make(-1, -1, -2, -2)
   else
-  begin
-    Clicks := FClicks.Hit(ALocalCol, ALocalRow);
-    InputLineMouseClick(FDecl.Controls[AIndex].Edit, ALocalCol - R.Left, Clicks);
-    // A single press starts a drag selection, finished on the release.
-    if (Clicks = 1) and Assigned(GDialogButtonPressStart) then
-    begin
-      DropPress;
-      FDragInput := AIndex;
-      GCaptureHost := Self;
-      GCaptureDX := GMouseDownCol - ALocalCol;
-      GCaptureDY := GMouseDownRow - ALocalRow;
-    end;
-  end;
+    Result := FControlBounds[AIndex];
+end;
+
+function TDialogHost.ClickHasPressTimer: Boolean;
+begin
+  Result := Assigned(GDialogButtonPressStart);
+end;
+
+function TDialogHost.ClickHit(ACol, ARow: Integer): Integer;
+begin
+  Result := FClicks.Hit(ACol, ARow);
+end;
+
+procedure TDialogHost.ClickResetClicks;
+begin
+  FClicks.Reset;
+end;
+
+procedure TDialogHost.ClickBeginButtonCapture(AIndex, ALocalCol, ALocalRow: Integer);
+begin
+  // Pressed until the release; the command runs only if the
+  // release is over this button (DialogButtonCaptureRelease).
+  DropPress;
+  FMouseIndex := AIndex;
+  FPressIndex := AIndex;
+  GCaptureHost := Self;
+  GCaptureDX := GMouseDownCol - ALocalCol;
+  GCaptureDY := GMouseDownRow - ALocalRow;
   NotifyChanged;
 end;
 
-function TDialogHost.HandleListClick(AIndex: Integer; const R: TRectI;
-  const C: TDialogControl; ALocalCol, ALocalRow: Integer): Boolean;
+procedure TDialogHost.ClickBeginInputDrag(AIndex, ALocalCol, ALocalRow: Integer);
+begin
+  DropPress;
+  FDragInput := AIndex;
+  GCaptureHost := Self;
+  GCaptureDX := GMouseDownCol - ALocalCol;
+  GCaptureDY := GMouseDownRow - ALocalRow;
+end;
+
+procedure TDialogHost.ClickApplyInputClick(AIndex, ALocalCol, ALocalRow: Integer;
+  AExtend: Boolean; AClicks: Integer);
 var
-  Row, Idx, Count, Span, Clicks: Integer;
+  R: TRectI;
 begin
-  Span := R.Height;
-  if (Span > 1) and (ALocalCol = R.Right) then
-  begin
-    // Scrollbar: ▲ / ▼ / track -> move selection.
-    FFocusIndex := AIndex;
-    EnsureListInView(AIndex);
-    Count := Length(FDecl.Controls[AIndex].Items);
-    if Count = 0 then
-      Exit(True);
-    if ALocalRow = R.Top then
-      SetListSelectedIndex(AIndex, ListSelectedIndexOf(C.Id) - 1)
-    else if ALocalRow = R.Bottom then
-      SetListSelectedIndex(AIndex, ListSelectedIndexOf(C.Id) + 1)
-    else if Count > Span then
-      SetListSelectedIndex(AIndex,
-        EnsureRange(Round((ALocalRow - R.Top - 1) * (Count - 1) /
-          Max(Span - 3, 1)), 0, Count - 1))
-    else
-      SetListSelectedIndex(AIndex, 0);
-    NotifyChanged;
-    Exit(True);
-  end;
-  Row := ALocalRow - R.Top;
-  if Span > 1 then
-  begin
-    EnsureListInView(AIndex);
-    Idx := FListScrollTop + Row;
-  end
-  else
-    Idx := Row;
-  if (Row >= 0) and (Row < Span) and (Idx >= 0) and
-     (Idx <= High(FDecl.Controls[AIndex].Items)) then
-  begin
-    FFocusIndex := AIndex;
-    SetListSelectedIndex(AIndex, Idx);
-    Clicks := FClicks.Hit(ALocalCol, ALocalRow);
-    NotifyChanged;
-    // A double click on a row is Enter on it.
-    if Clicks = 2 then
-      FireAccept;
-    Exit(True);
-  end;
-  Result := False;
-end;
-
-function TDialogHost.HandleRadioGroupClick(AIndex: Integer; const R: TRectI;
-  const C: TDialogControl; ALocalRow: Integer): Boolean;
-var
-  Row: Integer;
-begin
-  Row := ALocalRow - R.Top;
-  if C.Text <> '' then
-    Dec(Row);
-  if (Row >= 0) and (Row <= High(FDecl.Controls[AIndex].Items)) then
-  begin
-    FFocusIndex := AIndex;
-    SetListSelectedIndex(AIndex, Row);
-    NotifyChanged;
-    Exit(True);
-  end;
-  Result := False;
-end;
-
-procedure TDialogHost.HandleButtonClick(AIndex: Integer; const C: TDialogControl;
-  ALocalCol, ALocalRow: Integer);
-begin
-  FFocusIndex := AIndex;
-  if Assigned(GDialogButtonPressStart) then
-  begin
-    // Pressed until the release; the command runs only if the
-    // release is over this button (DialogButtonCaptureRelease).
-    DropPress;
-    FMouseIndex := AIndex;
-    FPressIndex := AIndex;
-    GCaptureHost := Self;
-    GCaptureDX := GMouseDownCol - ALocalCol;
-    GCaptureDY := GMouseDownRow - ALocalRow;
-    NotifyChanged;
-  end
-  else
-    FireCommand(C.Id);
-end;
-
-procedure TDialogHost.HandleCheckboxClick(AIndex: Integer);
-begin
-  if FDecl.Controls[AIndex].Disabled then
+  if (AIndex < 0) or (AIndex > High(FDecl.Controls)) or
+     (AIndex > High(FControlBounds)) then
     Exit;
-  FFocusIndex := AIndex;
-  DialogToggleCheckbox(FDecl.Controls[AIndex]);
-  NotifyChanged;
+  R := FControlBounds[AIndex];
+  InputLineMouseClick(FDecl.Controls[AIndex].Edit, ALocalCol - R.Left, AClicks, AExtend);
 end;
 
-procedure TDialogHost.HandleRadioClick(AIndex: Integer);
+function TDialogHost.ClickDropScrollTop: Integer;
 begin
-  FFocusIndex := AIndex;
-  SelectRadio(AIndex);
-  NotifyChanged;
+  Result := FDropScrollTop;
 end;
 
-procedure TDialogHost.HandleDropDownFieldClick(AIndex: Integer;
-  const C: TDialogControl);
+function TDialogHost.ClickListScrollTop: Integer;
 begin
-  if C.Disabled then
-    Exit;
-  FFocusIndex := AIndex;
-  if FDropOpenIndex = AIndex then
-    CloseDropDown
-  else
-    OpenDropDown(AIndex);
+  Result := FListScrollTop;
 end;
 
-procedure TDialogHost.HandleDatePickerClick(AIndex: Integer; const R: TRectI;
-  ALocalCol, ALocalRow: Integer);
+function TDialogHost.ClickListSelectedIndexOf(const AId: string): Integer;
 begin
-  FFocusIndex := AIndex;
-  DatePickerClick(FDecl.Controls[AIndex].Cal, ALocalCol - R.Left, ALocalRow - R.Top);
-  NotifyChanged;
+  Result := ListSelectedIndexOf(AId);
 end;
 
-procedure TDialogHost.HandleColorPickerClick(AIndex: Integer; const R: TRectI;
-  ALocalCol, ALocalRow: Integer);
+function TDialogHost.BuildClickOps: TDialogClickOps;
 begin
-  FFocusIndex := AIndex;
-  ColorPickerClick(FDecl.Controls[AIndex].Picker, ALocalCol - R.Left,
-    ALocalRow - R.Top, FClicks.Hit(ALocalCol, ALocalRow));
-  NotifyChanged;
+  Result.Visible := Visible;
+  Result.EnsureLayout := EnsureLayout;
+  Result.NotifyChanged := NotifyChanged;
+  Result.FireAccept := FireAccept;
+  Result.FireCancel := FireCancel;
+  Result.FireCommand := FireCommand;
+  Result.CloseDropDown := CloseDropDown;
+  Result.CommitDropDown := KeyCommitDropDown;
+  Result.OpenDropDown := OpenDropDown;
+  Result.EnsureDropHoverInView := EnsureDropHoverInView;
+  Result.IsHistoryInput := IsHistoryInput;
+  Result.SelectRadio := SelectRadio;
+  Result.EnsureListInView := EnsureListInView;
+  Result.SetListSelectedIndex := SetListSelectedIndex;
+  Result.ListSelectedIndexOf := ClickListSelectedIndexOf;
+  Result.DropPress := DropPress;
+  Result.HasPressTimer := ClickHasPressTimer;
+  Result.ClickHit := ClickHit;
+  Result.ResetClicks := ClickResetClicks;
+  Result.BeginButtonCapture := ClickBeginButtonCapture;
+  Result.BeginInputDrag := ClickBeginInputDrag;
+  Result.ApplyInputClick := ClickApplyInputClick;
+  Result.Bounds := ClickBounds;
+  Result.ControlBounds := ClickControlBounds;
+  Result.DropPopupBounds := DropPopupBounds;
+  Result.DropContentBounds := DropContentBounds;
+  Result.FocusIndex := KeyFocusIndex;
+  Result.SetFocusIndex := KeySetFocusIndex;
+  Result.DropOpenIndex := KeyDropOpenIndex;
+  Result.DropHover := KeyDropHover;
+  Result.SetDropHover := KeySetDropHover;
+  Result.DropScrollTop := ClickDropScrollTop;
+  Result.ListScrollTop := ClickListScrollTop;
+  Result.ControlCount := KeyControlCount;
+  Result.GetControl := GetControl;
+  Result.SetControl := KeySetControl;
 end;
 
 function TDialogHost.HandleClickCore(ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
-var
-  I: Integer;
-  C: TDialogControl;
-  R: TRectI;
 begin
-  Result := False;
-  if not FVisible then
-    Exit;
-  // Hit-test must use current layout even if Draw has not run yet this frame.
-  EnsureLayout;
-  if HandleDialogFrameClick(ALocalCol, ALocalRow) then
-    Exit(True);
-  if HandleOpenDropDownClick(ALocalCol, ALocalRow) then
-    Exit(True);
-
-  for I := 0 to High(FDecl.Controls) do
-  begin
-    if I > High(FControlBounds) then
-      Break;
-    R := FControlBounds[I];
-    if not R.Contains(ALocalCol, ALocalRow) then
-      Continue;
-    C := FDecl.Controls[I];
-    case C.Kind of
-      dckButton:
-        begin
-          HandleButtonClick(I, C, ALocalCol, ALocalRow);
-          Exit(True);
-        end;
-      dckCheckbox:
-        begin
-          HandleCheckboxClick(I);
-          Exit(True);
-        end;
-      dckRadio:
-        begin
-          HandleRadioClick(I);
-          Exit(True);
-        end;
-      dckInput:
-        begin
-          HandleInputClick(I, R, C, ALocalCol, ALocalRow, AShift);
-          Exit(True);
-        end;
-      dckDropDown:
-        begin
-          HandleDropDownFieldClick(I, C);
-          Exit(True);
-        end;
-      dckDatePicker:
-        begin
-          HandleDatePickerClick(I, R, ALocalCol, ALocalRow);
-          Exit(True);
-        end;
-      dckColorPicker:
-        begin
-          HandleColorPickerClick(I, R, ALocalCol, ALocalRow);
-          Exit(True);
-        end;
-      dckList:
-        if HandleListClick(I, R, C, ALocalCol, ALocalRow) then
-          Exit(True);
-      dckRadioGroup:
-        if HandleRadioGroupClick(I, R, C, ALocalRow) then
-          Exit(True);
-    end;
-  end;
-  Result := True;
+  Result := DialogHandleClickCore(BuildClickOps, ALocalCol, ALocalRow, AShift);
 end;
 
-function DialogYesNoAnswer(AKey: Word; AKeyChar: Char): TDialogYesNoAnswer;
+function TDialogHost.KeyCursorVisible: Boolean;
 begin
-  // By meaning first: y / д (Да) = Yes, n / н (Нет) = No, in any case. Then
-  // the physical key, for any other layout (the Russian т sits on N and
-  // answers No; н sits on Y but its meaning wins).
-  case AKeyChar of
-    'y', 'Y', #$0434, #$0414: Exit(dyaYes);
-    'n', 'N', #$043D, #$041D: Exit(dyaNo);
-  end;
-  if AKey = vkY then
-    Exit(dyaYes);
-  if AKey = vkN then
-    Exit(dyaNo);
-  Result := dyaNone;
+  Result := FCursorVisible;
+end;
+
+procedure TDialogHost.KeyShowCursor;
+begin
+  FCursorVisible := True;
+  NotifyChanged;
+end;
+
+procedure TDialogHost.KeyCommitDropDown;
+begin
+  CommitDropDown;
+end;
+
+function TDialogHost.KeyFocusIndex: Integer;
+begin
+  Result := FFocusIndex;
+end;
+
+procedure TDialogHost.KeySetFocusIndex(AValue: Integer);
+begin
+  FFocusIndex := AValue;
+end;
+
+function TDialogHost.KeyDropOpenIndex: Integer;
+begin
+  Result := FDropOpenIndex;
+end;
+
+function TDialogHost.KeyDropHover: Integer;
+begin
+  Result := FDropHover;
+end;
+
+procedure TDialogHost.KeySetDropHover(AValue: Integer);
+begin
+  FDropHover := AValue;
+end;
+
+function TDialogHost.KeyControlCount: Integer;
+begin
+  Result := Length(FDecl.Controls);
+end;
+
+procedure TDialogHost.KeySetControl(AIndex: Integer; const AControl: TDialogControl);
+begin
+  if (AIndex >= 0) and (AIndex <= High(FDecl.Controls)) then
+    FDecl.Controls[AIndex] := AControl;
+end;
+
+function TDialogHost.BuildKeyOps: TDialogKeyOps;
+begin
+  Result.Visible := Visible;
+  Result.CursorVisible := KeyCursorVisible;
+  Result.ShowCursor := KeyShowCursor;
+  Result.NotifyChanged := NotifyChanged;
+  Result.FireAccept := FireAccept;
+  Result.FireCancel := FireCancel;
+  Result.FireCommand := FireCommand;
+  Result.PressButton := PressButton;
+  Result.SelectRadio := SelectRadio;
+  Result.CommitDropDown := KeyCommitDropDown;
+  Result.CloseDropDown := CloseDropDown;
+  Result.OpenDropDown := OpenDropDown;
+  Result.IsHistoryInput := IsHistoryInput;
+  Result.RemoveDropHoverFromHistory := RemoveDropHoverFromHistory;
+  Result.EnsureDropHoverInView := EnsureDropHoverInView;
+  Result.NormalizeAcceptKey := NormalizeAcceptKey;
+  Result.NextFocusable := NextFocusable;
+  Result.FocusedIsInput := FocusedIsInput;
+  Result.TryYesNoButton := TryYesNoButton;
+  Result.TryMnemonic := TryMnemonic;
+  Result.ButtonIndexById := ButtonIndexById;
+  Result.SetListSelectedIndex := SetListSelectedIndex;
+  Result.ListViewHeight := ListViewHeight;
+  Result.FocusIndex := KeyFocusIndex;
+  Result.SetFocusIndex := KeySetFocusIndex;
+  Result.DropOpenIndex := KeyDropOpenIndex;
+  Result.DropHover := KeyDropHover;
+  Result.SetDropHover := KeySetDropHover;
+  Result.DropPopupViewHeight := DropPopupViewHeight;
+  Result.ControlCount := KeyControlCount;
+  Result.GetControl := GetControl;
+  Result.SetControl := KeySetControl;
 end;
 
 function TDialogHost.TryYesNoButton(AYes: Boolean): Boolean;
@@ -3219,566 +2931,10 @@ begin
   Result := False;
 end;
 
-function TDialogHost.HandleOpenDropDownKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  ViewH, Last: Integer;
-begin
-  Result := FDropOpenIndex >= 0;
-  if not Result then
-    Exit;
-
-  // Open DropDown: Enter commits, Esc collapses (does not cancel dialog).
-  // Every key is consumed: one that fell through would accept or cancel the
-  // dialog behind the popup.
-  if NormalizeAcceptKey(AKey, AKeyChar) or (AKey = vkSpace) or (AKeyChar = ' ') then
-  begin
-    CommitDropDown;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if AKey = vkEscape then
-  begin
-    CloseDropDown;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  // History list: Del forgets the highlighted entry.
-  if (AKey = vkDelete) and IsHistoryInput(FDropOpenIndex) then
-  begin
-    RemoveDropHoverFromHistory;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit;
-  end;
-  if AKey = vkTab then
-  begin
-    CloseDropDown;
-    FFocusIndex := NextFocusable(FFocusIndex, not (ssShift in AShift));
-    NotifyChanged;
-    AKey := 0;
-    Exit;
-  end;
-  if (AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or (AKey = vkEnd) or
-     (AKey = vkPrior) or (AKey = vkNext) then
-  begin
-    if Length(FDecl.Controls[FDropOpenIndex].Items) > 0 then
-    begin
-      Last := High(FDecl.Controls[FDropOpenIndex].Items);
-      ViewH := Max(DropPopupViewHeight, 1);
-      if AKey = vkUp then
-        FDropHover := EnsureRange(FDropHover - 1, 0, Last)
-      else if AKey = vkDown then
-        FDropHover := EnsureRange(FDropHover + 1, 0, Last)
-      else if AKey = vkHome then
-        FDropHover := 0
-      else if AKey = vkEnd then
-        FDropHover := Last
-      else if AKey = vkPrior then
-        FDropHover := EnsureRange(FDropHover - ViewH, 0, Last)
-      else
-        FDropHover := EnsureRange(FDropHover + ViewH, 0, Last);
-      EnsureDropHoverInView;
-      NotifyChanged;
-    end;
-    AKey := 0;
-    Exit;
-  end;
-  AKey := 0;
-  AKeyChar := #0;
-end;
-
-function TDialogHost.HandleDialogNavKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-begin
-  if NormalizeAcceptKey(AKey, AKeyChar) then
-  begin
-    FireAccept;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-
-  if AKey = vkEscape then
-  begin
-    FireCancel;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-
-  if AKey = vkTab then
-  begin
-    FFocusIndex := NextFocusable(FFocusIndex, not (ssShift in AShift));
-    NotifyChanged;
-    AKey := 0;
-    Exit(True);
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleClosedDropDownKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  K: TKeyChord;
-  GroupName: string;
-begin
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
-
-  // History input: Ctrl+Down / Alt+Down drop the history down.
-  if IsHistoryInput(FFocusIndex) and
-     IsHistoryDropDownChord(K) then
-  begin
-    OpenDropDown(FFocusIndex);
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-
-  // Mask field: Ctrl+G saves the masks as a group (named after the first mask)
-  // and puts the reference @Name in the field.
-  if (AKey = Ord('G')) and (ssCtrl in AShift) and not (ssAlt in AShift) and
-     (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
-     (FDecl.Controls[FFocusIndex].Kind = dckInput) and
-     (SameText(FDecl.Controls[FFocusIndex].History, 'masks') or
-      SameText(FDecl.Controls[FFocusIndex].History, 'findmask')) then
-  begin
-    GroupName := MaskGroupSaveAuto(FDecl.Controls[FFocusIndex].Edit.Text);
-    if GroupName <> '' then
-    begin
-      InputLineSetText(FDecl.Controls[FFocusIndex].Edit, '@' + GroupName);
-      NotifyChanged;
-    end;
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-
-  // Open DropDown: Space / Alt+Down / F4. A DropDown key that is none of
-  // these falls through, so arrows can still move its selection.
-  if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
-     (FDecl.Controls[FFocusIndex].Kind = dckDropDown) then
-  begin
-    if (AKey = vkF4) or K.MatchesAny(vkDown, [ssAlt], [ssCtrl, ssShift]) or
-       (AKey = vkSpace) or (AKeyChar = ' ') then
-    begin
-      OpenDropDown(FFocusIndex);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleFocusedSpaceKey(var AKey: Word;
-  var AKeyChar: Char): Boolean;
-begin
-  if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
-     ((AKey = vkSpace) or (AKeyChar = ' ')) then
-  begin
-    if FDecl.Controls[FFocusIndex].Kind = dckCheckbox then
-    begin
-      DialogToggleCheckbox(FDecl.Controls[FFocusIndex]);
-      NotifyChanged;
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if FDecl.Controls[FFocusIndex].Kind = dckRadio then
-    begin
-      SelectRadio(FFocusIndex);
-      NotifyChanged;
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if FDecl.Controls[FFocusIndex].Kind = dckRadioGroup then
-    begin
-      // Space keeps current selection (already exclusive).
-      NotifyChanged;
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if FDecl.Controls[FFocusIndex].Kind = dckButton then
-    begin
-      PressButton(FFocusIndex);
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleMnemonicKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  Ch: Char;
-begin
-  // Hot-keys run for Alt, and for any key while focus is not in an input.
-  // A miss leaves the key alone: zeroing it here would swallow the letter a
-  // list, picker or input still has to handle.
-  if (ssAlt in AShift) or not FocusedIsInput then
-  begin
-    case DialogYesNoAnswer(AKey, AKeyChar) of
-      dyaYes:
-        if TryYesNoButton(True) then
-        begin
-          AKey := 0;
-          AKeyChar := #0;
-          Exit(True);
-        end;
-      dyaNo:
-        if TryYesNoButton(False) then
-        begin
-          AKey := 0;
-          AKeyChar := #0;
-          Exit(True);
-        end;
-    end;
-    // A hotkey matches the typed letter first (any script: &Удалить takes
-    // у), then the same key on the other layout (the Latin e on the У key
-    // takes &Удалить), then the physical key, so Latin hotkeys also work
-    // from a layout other than JCUKEN.
-    Ch := #0;
-    if AKeyChar.IsLetter then
-      Ch := AKeyChar.ToUpper;
-    if (Ch <> #0) and (TryMnemonic(Ch) or
-       TryMnemonic(TextKeyLayoutAlternate(AKeyChar).ToUpper)) then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-    if (AKey >= vkA) and (AKey <= vkZ) and (Char(AKey) <> Ch) and TryMnemonic(Char(AKey)) then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end;
-
-  Result := False;
-end;
-
-{ The text of a multi-chord field after a keystroke: the chord appended (unless it
-  is listed already), the last chord dropped on Backspace, everything on Delete;
-  unchanged for a modifier alone. }
-function HotKeyMultiText(const ACurrent: string; AKey: Word; AKeyChar: Char;
-  AShift: TShiftState): string;
-var
-  Parts: TArray<string>;
-  Chord, P: string;
-  I: Integer;
-begin
-  Parts := ACurrent.Split([';']);
-  for I := 0 to High(Parts) do
-    Parts[I] := Trim(Parts[I]);
-  if AShift * [ssShift, ssCtrl, ssAlt] = [] then
-  begin
-    if AKey = vkDelete then
-      Exit('');
-    if AKey = vkBack then
-    begin
-      Result := '';
-      for I := 0 to High(Parts) - 1 do
-        if Parts[I] <> '' then
-        begin
-          if Result <> '' then
-            Result := Result + '; ';
-          Result := Result + Parts[I];
-        end;
-      Exit;
-    end;
-  end;
-  Chord := KeystrokeBindingText(AKey, AKeyChar, AShift);
-  if Chord = '' then
-    Exit(ACurrent);
-  for P in Parts do
-    if SameText(P, Chord) then
-      Exit(ACurrent);
-  if Trim(ACurrent) = '' then
-    Result := Chord
-  else
-    Result := Trim(ACurrent) + '; ' + Chord;
-end;
-
-function TDialogHost.HandleHotKeyInput(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  C: TDialogControl;
-  Chord: string;
-begin
-  if not ((FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
-     (FDecl.Controls[FFocusIndex].Kind = dckInput) and FDecl.Controls[FFocusIndex].HotKey) then
-    Exit(False);
-  if (AKey = vkEscape) or (AKey = vkTab) or (AKey = vkReturn) then
-    Exit(False);
-  C := FDecl.Controls[FFocusIndex];
-  // Some hosts add a flag above the low byte (Alt+Shift+T arrives as $154);
-  // the virtual key is the low byte.
-  if AKey > $FF then
-    AKey := AKey and $FF;
-  if C.HotKeyMulti then
-  begin
-    Chord := HotKeyMultiText(C.Edit.Text, AKey, AKeyChar, AShift);
-    if Chord = C.Edit.Text then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end
-  else if (AShift * [ssShift, ssCtrl, ssAlt] = []) and ((AKey = vkBack) or (AKey = vkDelete)) then
-    Chord := ''
-  else
-  begin
-    Chord := InputChordText(AKey, AKeyChar, AShift);
-    // A bare modifier names no key yet; the field keeps its value.
-    if Chord = '' then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      Exit(True);
-    end;
-  end;
-  InputLineSetText(C.Edit, Chord);
-  InputLineSelectAll(C.Edit);
-  FDecl.Controls[FFocusIndex] := C;
-  AKey := 0;
-  AKeyChar := #0;
-  NotifyChanged;
-  Result := True;
-end;
-
-function TDialogHost.HandleFocusedPickerKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-begin
-  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckDatePicker) then
-  begin
-    DatePickerHandleKey(FDecl.Controls[FFocusIndex].Cal, AKey, AShift, AKeyChar);
-    AKey := 0;
-    AKeyChar := #0;
-    NotifyChanged;
-    Exit(True);
-  end;
-
-  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckColorPicker) then
-  begin
-    ColorPickerHandleKey(FDecl.Controls[FFocusIndex].Picker, AKey, AShift, AKeyChar);
-    AKey := 0;
-    AKeyChar := #0;
-    NotifyChanged;
-    Exit(True);
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleListCommandKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  K: TKeyChord;
-  KeyCmd: string;
-  BtnIdx: Integer;
-begin
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
-
-  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckList) and
-     FDecl.Controls[FFocusIndex].KeyCommands then
-  begin
-    KeyCmd := '';
-    if (AKey = vkSpace) or (AKeyChar = ' ') then
-      KeyCmd := 'toggle'
-    else if K.MatchesAny(vkUp, [ssCtrl], [ssShift, ssAlt]) then
-      KeyCmd := 'up'
-    else if K.MatchesAny(vkDown, [ssCtrl], [ssShift, ssAlt]) then
-      KeyCmd := 'down'
-    else if AShift * [ssShift, ssCtrl, ssAlt] = [] then
-      case AKey of
-        vkDelete: KeyCmd := 'delete';
-        vkF2: KeyCmd := 'f2';
-        vkF4: KeyCmd := 'f4';
-        vkF5: KeyCmd := 'f5';
-      end;
-    if KeyCmd <> '' then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      FireCommand(KeyCmd);
-      Exit(True);
-    end;
-  end;
-
-  // Del in a list does what the dialog's Delete button does. Without that
-  // button the key is left unchanged.
-  if (FFocusIndex >= 0) and (FDecl.Controls[FFocusIndex].Kind = dckList) and
-     (AKey = vkDelete) and (AShift * [ssShift, ssCtrl, ssAlt] = []) then
-  begin
-    BtnIdx := ButtonIndexById(cDlgCmdDelete);
-    if BtnIdx >= 0 then
-    begin
-      AKey := 0;
-      AKeyChar := #0;
-      PressButton(BtnIdx);
-      Exit(True);
-    end;
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleListNavKeys(var AKey: Word): Boolean;
-begin
-  if (FFocusIndex >= 0) and
-     (FDecl.Controls[FFocusIndex].Kind in [dckList, dckRadioGroup, dckDropDown]) and
-     ((AKey = vkUp) or (AKey = vkDown) or (AKey = vkHome) or (AKey = vkEnd) or
-      (AKey = vkPrior) or (AKey = vkNext)) then
-  begin
-    if Length(FDecl.Controls[FFocusIndex].Items) > 0 then
-    begin
-      if AKey = vkUp then
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex - 1)
-      else if AKey = vkDown then
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex + 1)
-      else if AKey = vkHome then
-        SetListSelectedIndex(FFocusIndex, 0)
-      else if AKey = vkEnd then
-        SetListSelectedIndex(FFocusIndex,
-          High(FDecl.Controls[FFocusIndex].Items))
-      else if (AKey = vkPrior) and
-        (FDecl.Controls[FFocusIndex].Kind = dckList) then
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex -
-            Max(ListViewHeight(FFocusIndex), 1))
-      else if (AKey = vkNext) and
-        (FDecl.Controls[FFocusIndex].Kind = dckList) then
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex +
-            Max(ListViewHeight(FFocusIndex), 1))
-      else if AKey = vkPrior then
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex - 1)
-      else
-        SetListSelectedIndex(FFocusIndex,
-          FDecl.Controls[FFocusIndex].SelectedIndex + 1);
-      NotifyChanged;
-    end;
-    AKey := 0;
-    Exit(True);
-  end;
-
-  Result := False;
-end;
-
-function TDialogHost.HandleFocusedInputKeys(var AKey: Word; AShift: TShiftState;
-  var AKeyChar: Char): Boolean;
-var
-  C: TDialogControl;
-  LineRes: TInputLineResult;
-  K: TKeyChord;
-begin
-  if not FocusedIsInput then
-    Exit(False);
-
-  K := TKeyChord.Make(AKey, AKeyChar, AShift);
-  // Copy/writeback: dynarray-of-record field as var can drop edits otherwise.
-  C := FDecl.Controls[FFocusIndex];
-  // Password inputs: no Ctrl+C / Ctrl+X / Ctrl+Insert copy-out.
-  if C.Password and (K.MatchesAny(vkC, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkInsert, [ssCtrl], [ssShift, ssAlt])) then
-  begin
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-  // Read-only inputs: moving, selecting and copying only.
-  if C.ReadOnly and (K.IsPrintable or (AKey = vkBack) or (AKey = vkDelete) or
-     K.MatchesAny(vkX, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkV, [ssCtrl], [ssShift, ssAlt]) or
-     K.MatchesAny(vkInsert, [ssShift], [ssCtrl, ssAlt])) then
-  begin
-    AKey := 0;
-    AKeyChar := #0;
-    Exit(True);
-  end;
-  LineRes := InputLineHandleInput(C.Edit, AKey, AShift, AKeyChar);
-  FDecl.Controls[FFocusIndex] := C;
-  case LineRes of
-    ilrSubmit:
-      FireAccept;
-    ilrCancel:
-      FireCommand(cDlgCmdCancel);
-  else
-    NotifyChanged;
-  end;
-  Result := True;
-end;
-
-function TDialogHost.HandleFocusArrowKeys(var AKey: Word): Boolean;
-begin
-  if (AKey = vkLeft) or (AKey = vkRight) or (AKey = vkUp) or (AKey = vkDown) then
-  begin
-    FFocusIndex := NextFocusable(FFocusIndex, (AKey = vkRight) or (AKey = vkDown));
-    NotifyChanged;
-    AKey := 0;
-    Exit(True);
-  end;
-  Result := False;
-end;
-
 function TDialogHost.HandleInputCore(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
 begin
-  Result := False;
-  if not FVisible then
-    Exit;
-
-  if not FCursorVisible then
-  begin
-    FCursorVisible := True;
-    NotifyChanged;
-  end;
-
-  Result := True;
-
-  if HandleHotKeyInput(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleOpenDropDownKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleDialogNavKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleClosedDropDownKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleFocusedSpaceKey(AKey, AKeyChar) then
-    Exit;
-  if HandleMnemonicKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleFocusedPickerKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleListCommandKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleListNavKeys(AKey) then
-    Exit;
-  if HandleFocusedInputKeys(AKey, AShift, AKeyChar) then
-    Exit;
-  if HandleFocusArrowKeys(AKey) then
-    Exit;
-
-  // A key no control took is still consumed, so the window under the dialog
-  // does not see it.
-  AKey := 0;
-  AKeyChar := #0;
+  Result := DialogHandleInputCore(BuildKeyOps, AKey, AShift, AKeyChar);
 end;
 
 end.

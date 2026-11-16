@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.UITypes, uTerminalTypes, uThemeTypes, uMarkdownColors, uDialogTypes;
+  System.SysUtils, System.UITypes, uTerminalTypes, uThemeTypes, uMarkdownColors, uDialogTypes, uDialogBuilders;
 
 function Rgb(R, G, B: Cardinal): TAlphaColor;
 begin

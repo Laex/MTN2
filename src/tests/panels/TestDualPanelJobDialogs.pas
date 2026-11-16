@@ -19,13 +19,27 @@ type
     [Test] procedure TestNewNameRules;
     [Test] procedure TestSingleTargetReplacesTheFolder;
     [Test] [Category('WindowsOnly')] procedure TestSearchRootAndSync;
+    [Test] procedure TestCloseProgressOnlyWhenProgress;
+    [Test] procedure TestPrepareAskDefersNonProgress;
+    [Test] procedure TestPrepareAskClosesProgress;
+    [Test] procedure TestFlushSkipsWhileDialogVisible;
+    [Test] procedure TestFlushClearsDeferredAsk;
+    [Test] procedure TestSyncClosesProgressWithoutJob;
+    [Test] procedure TestSyncLeavesOtherDialogAlone;
+    [Test] procedure TestSyncReentryGuard;
+    [Test] procedure TestConsumeOverwriteRename;
+    [Test] procedure TestConsumeProgressStopWhenRunning;
+    [Test] procedure TestConsumeProgressRejectWhenIdleFallsThrough;
+    [Test] procedure TestConsumeJobListCancelAll;
+    [Test] procedure TestConsumeStopConfirm;
+    [Test] procedure TestKeepConfirmIfDialogStayed;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uDialogTypes,
+  uDialogTypes, uDialogBuilders,
   uDialogHost,
   uVfsTypes,
   uDualPanelTypes,
@@ -444,7 +458,442 @@ begin
   Assert.IsTrue(Length(Sources) = 2, 'one-way job skips reverse and conflict');
 end;
 
+function MakeIdleJobs: TPanelJobList;
+begin
+  Result := TPanelJobList.Create(nil, nil,
+    procedure begin end,
+    procedure(const ATitle, AMessage: string) begin end,
+    procedure(const APath, ANewLine, AExistingLine: string) begin end,
+    procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
+      AOfferPermanent: Boolean) begin end,
+    procedure(const AHeadline, APath, AErrorLine: string) begin end,
+    procedure(ASucceeded: Boolean) begin end,
+    procedure(const AOriginSrc, AOriginDst: string) begin end,
+    procedure(const AOriginSrc: string) begin end);
+end;
+
+procedure TestCloseProgressOnlyWhenProgress;
+var
+  Host: TDialogHost;
+  Kind: THostDialogKind;
+  Res: string;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Kind := hdkOverwriteAsk;
+    Res := 'keep';
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    Assert.IsFalse(JobUiCloseProgressForReplacement(Host, Kind, Res),
+      'a non-progress dialog is not closed for replacement');
+    Assert.IsTrue(Host.Visible, 'the dialog stays');
+    Assert.AreEqual(hdkOverwriteAsk, Kind, 'kind is unchanged');
+    Assert.AreEqual('keep', Res, 'progress resource is unchanged');
+
+    Kind := hdkJobProgress;
+    Res := 'progress';
+    Assert.IsTrue(JobUiCloseProgressForReplacement(Host, Kind, Res),
+      'progress may be replaced');
+    Assert.IsFalse(Host.Visible, 'progress is closed');
+    Assert.AreEqual(hdkNone, Kind, 'kind is cleared');
+    Assert.AreEqual('', Res, 'progress resource is cleared');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TestPrepareAskDefersNonProgress;
+var
+  Host: TDialogHost;
+  Kind: THostDialogKind;
+  Res: string;
+  Deferred: Boolean;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Kind := hdkJobConfirm;
+    Res := '';
+    Deferred := False;
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    Assert.IsFalse(JobUiPrepareAsk(Host, Kind, Res, Deferred),
+      'a confirm dialog blocks the ask');
+    Assert.IsTrue(Deferred, 'the ask is deferred');
+    Assert.IsTrue(Host.Visible, 'confirm stays open');
+    Assert.AreEqual(hdkJobConfirm, Kind, 'kind is unchanged');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TestPrepareAskClosesProgress;
+var
+  Host: TDialogHost;
+  Kind: THostDialogKind;
+  Res: string;
+  Deferred: Boolean;
+  Job: TPanelJobState;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Job := Default(TPanelJobState);
+    Job.Phase := pjpRunning;
+    Job.Presentation := jpForeground;
+    Job.Kind := pjkCopy;
+    Kind := hdkNone;
+    Res := '';
+    Deferred := True;
+    JobUiOpenProgress(Host, Job, Kind, Res, nil);
+    Assert.IsTrue(Host.Visible, 'progress is open');
+    Assert.AreEqual(hdkJobProgress, Kind, 'kind is progress');
+    Assert.AreNotEqual('', Res, 'progress resource is set');
+    Assert.IsTrue(JobUiPrepareAsk(Host, Kind, Res, Deferred),
+      'progress yields to the ask');
+    Assert.IsFalse(Deferred, 'deferred flag is cleared');
+    Assert.IsFalse(Host.Visible, 'progress is closed');
+    Assert.AreEqual(hdkNone, Kind, 'kind is cleared for the ask opener');
+    Assert.AreEqual('', Res, 'progress resource is cleared');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TestFlushSkipsWhileDialogVisible;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Deferred: Boolean;
+begin
+  Host := TDialogHost.Create(nil);
+  Jobs := MakeIdleJobs;
+  try
+    Deferred := True;
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    JobUiFlushPendingAsk(Host, Jobs, Deferred);
+    Assert.IsTrue(Deferred, 'flush waits while a dialog is up');
+  finally
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestFlushClearsDeferredAsk;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Deferred: Boolean;
+begin
+  Host := TDialogHost.Create(nil);
+  Jobs := MakeIdleJobs;
+  try
+    Deferred := True;
+    JobUiFlushPendingAsk(Host, Jobs, Deferred);
+    Assert.IsFalse(Deferred, 'a deferred ask is consumed when nothing is up');
+  finally
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestSyncClosesProgressWithoutJob;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Kind: THostDialogKind;
+  Res: string;
+  Syncing: Boolean;
+  Job: TPanelJobState;
+begin
+  Host := TDialogHost.Create(nil);
+  Jobs := MakeIdleJobs;
+  try
+    Job := Default(TPanelJobState);
+    Job.Phase := pjpRunning;
+    Job.Presentation := jpForeground;
+    Job.Kind := pjkCopy;
+    Kind := hdkNone;
+    Res := '';
+    Syncing := False;
+    JobUiOpenProgress(Host, Job, Kind, Res, nil);
+    JobUiSyncProgress(Host, Jobs, Kind, Res, Syncing, nil);
+    Assert.IsFalse(Host.Visible, 'progress closes when no job wants it');
+    Assert.AreEqual(hdkNone, Kind, 'kind is cleared');
+    Assert.AreEqual('', Res, 'progress resource is cleared');
+    Assert.IsFalse(Syncing, 'syncing flag is left clear');
+  finally
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestSyncLeavesOtherDialogAlone;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Kind: THostDialogKind;
+  Res: string;
+  Syncing: Boolean;
+begin
+  Host := TDialogHost.Create(nil);
+  Jobs := MakeIdleJobs;
+  try
+    Kind := hdkJobConfirm;
+    Res := 'x';
+    Syncing := False;
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    JobUiSyncProgress(Host, Jobs, Kind, Res, Syncing, nil);
+    Assert.IsTrue(Host.Visible, 'confirm stays');
+    Assert.AreEqual(hdkJobConfirm, Kind, 'kind is unchanged');
+    Assert.AreEqual('x', Res, 'progress resource is unchanged');
+  finally
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestSyncReentryGuard;
+var
+  Host: TDialogHost;
+  Jobs: TPanelJobList;
+  Kind: THostDialogKind;
+  Res: string;
+  Syncing: Boolean;
+begin
+  Host := TDialogHost.Create(nil);
+  Jobs := MakeIdleJobs;
+  try
+    Kind := hdkJobProgress;
+    Res := 'held';
+    Syncing := True;
+    JobUiSyncProgress(Host, Jobs, Kind, Res, Syncing, nil);
+    Assert.IsTrue(Syncing, 'reentry leaves the guard set');
+    Assert.AreEqual(hdkJobProgress, Kind, 'kind is untouched while syncing');
+    Assert.AreEqual('held', Res, 'progress resource is untouched while syncing');
+  finally
+    Jobs.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TestConsumeOverwriteRename;
+var
+  Ops: TJobUiDialogCmdOps;
+  Seen: string;
+  Stopped: Boolean;
+begin
+  Seen := '';
+  Stopped := False;
+  Ops := Default(TJobUiDialogCmdOps);
+  Ops.TryOverwriteRename :=
+    function(const AId: string): Boolean
+    begin
+      Seen := AId;
+      Result := True;
+    end;
+  Ops.RequestStop :=
+    procedure
+    begin
+      Stopped := True;
+    end;
+  Assert.IsTrue(JobUiTryConsumeDialogCommand(hdkOverwriteAsk, 'rename', False, False, Ops),
+    'rename is consumed');
+  Assert.AreEqual('rename', Seen, 'rename handler sees the id');
+  Assert.IsFalse(Stopped, 'stop is not requested');
+end;
+
+procedure TestConsumeProgressStopWhenRunning;
+var
+  Ops: TJobUiDialogCmdOps;
+  Stopped, Early: Boolean;
+begin
+  Stopped := False;
+  Early := False;
+  Ops := Default(TJobUiDialogCmdOps);
+  Ops.RequestStop :=
+    procedure
+    begin
+      Stopped := True;
+    end;
+  Ops.AfterEarly :=
+    procedure
+    begin
+      Early := True;
+    end;
+  Assert.IsTrue(JobUiTryConsumeDialogCommand(hdkJobProgress, cDlgCmdCancel, True, True, Ops),
+    'running progress reject is consumed');
+  Assert.IsTrue(Stopped, 'stop is requested');
+  Assert.IsTrue(Early, 'early notify runs');
+end;
+
+procedure TestConsumeProgressRejectWhenIdleFallsThrough;
+var
+  Ops: TJobUiDialogCmdOps;
+  Stopped: Boolean;
+begin
+  Stopped := False;
+  Ops := Default(TJobUiDialogCmdOps);
+  Ops.RequestStop :=
+    procedure
+    begin
+      Stopped := True;
+    end;
+  Assert.IsFalse(JobUiTryConsumeDialogCommand(hdkJobProgress, cDlgCmdCancel, True, False, Ops),
+    'idle progress reject falls through to dispatch');
+  Assert.IsFalse(Stopped, 'stop is not requested when idle');
+end;
+
+procedure TestConsumeJobListCancelAll;
+var
+  Ops: TJobUiDialogCmdOps;
+  Idx: Integer;
+  All, Early: Boolean;
+begin
+  Idx := -2;
+  All := False;
+  Early := False;
+  Ops := Default(TJobUiDialogCmdOps);
+  Ops.JobListSelectedIndex :=
+    function: Integer
+    begin
+      Result := 3;
+    end;
+  Ops.RequestJobListCancel :=
+    procedure(AIndex: Integer; AAll: Boolean)
+    begin
+      Idx := AIndex;
+      All := AAll;
+    end;
+  Ops.AfterEarly :=
+    procedure
+    begin
+      Early := True;
+    end;
+  Assert.IsTrue(JobUiTryConsumeDialogCommand(hdkJobList, cDlgCmdCancelAll, True, False, Ops),
+    'cancel-all is consumed');
+  Assert.AreEqual(3, Idx, 'selected job index is passed');
+  Assert.IsTrue(All, 'all flag is set');
+  Assert.IsTrue(Early, 'early notify runs');
+end;
+
+procedure TestConsumeStopConfirm;
+var
+  Ops: TJobUiDialogCmdOps;
+  Accepted, AfterStop: Boolean;
+begin
+  Accepted := False;
+  AfterStop := False;
+  Ops := Default(TJobUiDialogCmdOps);
+  Ops.AnswerStopConfirm :=
+    procedure(AAccepted: Boolean)
+    begin
+      Accepted := AAccepted;
+    end;
+  Ops.AfterStopConfirm :=
+    procedure
+    begin
+      AfterStop := True;
+    end;
+  Assert.IsTrue(JobUiTryConsumeDialogCommand(hdkStopConfirm, cDlgCmdOk, False, False, Ops),
+    'stop confirm is consumed');
+  Assert.IsTrue(Accepted, 'accept is passed');
+  Assert.IsTrue(AfterStop, 'stop-confirm flush runs');
+end;
+
+procedure TestKeepConfirmIfDialogStayed;
+var
+  Host: TDialogHost;
+  Kind: THostDialogKind;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Kind := hdkNone;
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    JobUiKeepConfirmIfDialogStayed(hdkJobConfirm, Kind, Host);
+    Assert.AreEqual(hdkJobConfirm, Kind, 'kind is restored while dialog stays');
+
+    Kind := hdkNone;
+    Host.Close;
+    JobUiKeepConfirmIfDialogStayed(hdkJobConfirm, Kind, Host);
+    Assert.AreEqual(hdkNone, Kind, 'kind stays none when dialog closed');
+
+    Kind := hdkNone;
+    Host.Open(BuildConfirmDialog('t', 'm'), nil);
+    JobUiKeepConfirmIfDialogStayed(hdkOverwriteAsk, Kind, Host);
+    Assert.AreEqual(hdkNone, Kind, 'other prior kinds are not restored');
+  finally
+    Host.Free;
+  end;
+end;
+
 { TTestDualPanelJobDialogs }
+
+procedure TTestDualPanelJobDialogs.TestCloseProgressOnlyWhenProgress;
+begin
+  TestDualPanelJobDialogs.TestCloseProgressOnlyWhenProgress;
+end;
+
+procedure TTestDualPanelJobDialogs.TestPrepareAskDefersNonProgress;
+begin
+  TestDualPanelJobDialogs.TestPrepareAskDefersNonProgress;
+end;
+
+procedure TTestDualPanelJobDialogs.TestPrepareAskClosesProgress;
+begin
+  TestDualPanelJobDialogs.TestPrepareAskClosesProgress;
+end;
+
+procedure TTestDualPanelJobDialogs.TestFlushSkipsWhileDialogVisible;
+begin
+  TestDualPanelJobDialogs.TestFlushSkipsWhileDialogVisible;
+end;
+
+procedure TTestDualPanelJobDialogs.TestFlushClearsDeferredAsk;
+begin
+  TestDualPanelJobDialogs.TestFlushClearsDeferredAsk;
+end;
+
+procedure TTestDualPanelJobDialogs.TestSyncClosesProgressWithoutJob;
+begin
+  TestDualPanelJobDialogs.TestSyncClosesProgressWithoutJob;
+end;
+
+procedure TTestDualPanelJobDialogs.TestSyncLeavesOtherDialogAlone;
+begin
+  TestDualPanelJobDialogs.TestSyncLeavesOtherDialogAlone;
+end;
+
+procedure TTestDualPanelJobDialogs.TestSyncReentryGuard;
+begin
+  TestDualPanelJobDialogs.TestSyncReentryGuard;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConsumeOverwriteRename;
+begin
+  TestDualPanelJobDialogs.TestConsumeOverwriteRename;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConsumeProgressStopWhenRunning;
+begin
+  TestDualPanelJobDialogs.TestConsumeProgressStopWhenRunning;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConsumeProgressRejectWhenIdleFallsThrough;
+begin
+  TestDualPanelJobDialogs.TestConsumeProgressRejectWhenIdleFallsThrough;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConsumeJobListCancelAll;
+begin
+  TestDualPanelJobDialogs.TestConsumeJobListCancelAll;
+end;
+
+procedure TTestDualPanelJobDialogs.TestConsumeStopConfirm;
+begin
+  TestDualPanelJobDialogs.TestConsumeStopConfirm;
+end;
+
+procedure TTestDualPanelJobDialogs.TestKeepConfirmIfDialogStayed;
+begin
+  TestDualPanelJobDialogs.TestKeepConfirmIfDialogStayed;
+end;
 
 procedure TTestDualPanelJobDialogs.TestPanelFoldersAreSame;
 begin

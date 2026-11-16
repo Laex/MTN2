@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHistory, uFolderFrecent,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uFolderHistory, uFolderFrecent,
   uFileHistory,
   uPanelUriLabels;
 

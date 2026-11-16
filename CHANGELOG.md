@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Fixed
+
+- With several tabs on a file panel, a long folder path in a tab title is no longer cut down to the drive and the last folder. The title keeps as many trailing folders as fit after the "..." mark (for example `D:\...\Name\1`).
+
 ## Dev v0.5.8.5 – 2026-11-13
 
 ### Changed

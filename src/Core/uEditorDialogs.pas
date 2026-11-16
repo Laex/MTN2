@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson, uTextEncoding, uEditorSearch;
+  uDialogHost, uDialogTypes, uDialogBuilders, uDialogJson, uTextEncoding, uEditorSearch;
 
 type
   TEditorAskSaveAction = (esaCancel, esaYes, esaNo);

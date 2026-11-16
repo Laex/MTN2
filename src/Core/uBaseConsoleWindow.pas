@@ -15,7 +15,7 @@ uses
   uClipboardService,
   uPlatformInfo,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uConsoleBuffer, uConPty,
-  uVfsTypes, uShellProfiles, uShellProfileOptions, uTerminalKeys, uDialogTypes, uDialogHost,
+  uVfsTypes, uShellProfiles, uShellProfileOptions, uTerminalKeys, uDialogTypes, uDialogBuilders, uDialogHost,
   uInputLine, uKeyChord, uConsoleSettings;
 
 type

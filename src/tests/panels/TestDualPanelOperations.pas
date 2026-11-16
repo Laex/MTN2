@@ -12,6 +12,11 @@ type
     [Test] [Category('WindowsOnly')] procedure TestFolderSegments;
     [Test] procedure TestRenameName;
     [Test] procedure TestClassifyActivateCurrent;
+    [Test] procedure TestShouldLeaveRemovedFolder;
+    [Test] procedure TestFindExistingParentFileUri;
+    [Test] procedure TestZipNamedFileIsOtherArchiveEarlyExit;
+    [Test] procedure TestZipEncryptedProbeEarlyExit;
+    [Test] procedure TestReadableArchiveRowUriPlain;
   end;
 
 implementation
@@ -20,6 +25,7 @@ uses
   System.SysUtils,
   uVfsTypes,
   uAssociations,
+  uDualPanelTypes,
   uDualPanelOperations;
 
 procedure TestFolderSegments;
@@ -98,6 +104,93 @@ begin
     'assoc command (user-defined rule)');
 end;
 
+procedure TestShouldLeaveRemovedFolder;
+const
+  CGone = 'file:///C:/Work/gone';
+begin
+  Assert.IsTrue(ShouldLeaveRemovedFolder(vecNotFound, CGone, CGone),
+    'listed-ok local folder that vanished');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecOk, CGone, CGone), 'ok listing stays');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecAccessDenied, CGone, CGone),
+    'other errors stay');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound, '', CGone), 'empty uri');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound, CGone, 'file:///C:/Other'),
+    'never listed here');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound, 'tmp:///', 'tmp:///'),
+    'non-file scheme');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound,
+    'file:///C:/a.zip!/inner', 'file:///C:/a.zip!/inner'), 'archive chain');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound, 'find://1', 'find://1'),
+    'find uri');
+  Assert.IsFalse(ShouldLeaveRemovedFolder(vecNotFound, 'ws:///', 'ws:///'),
+    'workspace uri');
+end;
+
+procedure TestFindExistingParentFileUri;
+var
+  Existing: TArray<string>;
+  Found: string;
+  Exists: TDirectoryExistsFn;
+begin
+  Existing := TArray<string>.Create('C:\Work', 'C:\');
+  Exists :=
+    function(const APath: string): Boolean
+    var
+      P: string;
+    begin
+      Result := False;
+      for P in Existing do
+        if SameText(ExcludeTrailingPathDelimiter(APath),
+           ExcludeTrailingPathDelimiter(P)) then
+          Exit(True);
+    end;
+  Found := FindExistingParentFileUri('file:///C:/Work/gone/deep', Exists);
+  Assert.IsTrue(SameVfsUri(Found, 'file:///C:/Work'), 'nearest existing parent');
+
+  Exists :=
+    function(const APath: string): Boolean
+    begin
+      Result := False;
+    end;
+  Found := FindExistingParentFileUri('file:///C:/Work/gone', Exists);
+  Assert.AreEqual('', Found, 'no ancestor exists');
+
+  Found := FindExistingParentFileUri('file:///C:/Work/gone', nil);
+  Assert.AreEqual('', Found, 'nil probe yields empty');
+end;
+
+procedure TestZipNamedFileIsOtherArchiveEarlyExit;
+begin
+  Assert.IsFalse(ZipNamedFileIsOtherArchive('tmp:///a.zip'), 'non-file scheme');
+  Assert.IsFalse(ZipNamedFileIsOtherArchive('file:///C:/a.zip!/inner'),
+    'archive chain');
+  Assert.IsFalse(ZipNamedFileIsOtherArchive('file:///C:/no-such-mtn2-zip-probe.zip'),
+    'missing file');
+end;
+
+procedure TestZipEncryptedProbeEarlyExit;
+var
+  Arch, Probe: string;
+begin
+  Assert.IsFalse(ZipEncryptedProbe('file:///C:/plain',
+    TArray<string>.Create('file:///C:/plain/a.txt'), Arch, Probe),
+    'plain folder is not a zip panel');
+  Assert.AreEqual('', Arch, 'archive path cleared');
+  Assert.AreEqual('', Probe, 'probe uri cleared');
+  Assert.IsFalse(ZipEncryptedProbe('tmp:///', nil, Arch, Probe), 'tmp is not zip');
+end;
+
+procedure TestReadableArchiveRowUriPlain;
+var
+  Row: TPanelRow;
+begin
+  Row := MakePanelRow('a.txt', False, 1, '1', '', 'file:///C:/Work/a.txt');
+  Assert.AreEqual(Row.URI, ReadableArchiveRowUri(Row), 'plain file keeps its uri');
+  Row.IsEncrypted := True;
+  Assert.AreEqual(Row.URI, ReadableArchiveRowUri(Row),
+    'encrypted outside a zip entry keeps its uri');
+end;
+
 { TTestDualPanelOperations }
 
 procedure TTestDualPanelOperations.TestFolderSegments;
@@ -113,6 +206,31 @@ end;
 procedure TTestDualPanelOperations.TestClassifyActivateCurrent;
 begin
   TestDualPanelOperations.TestClassifyActivateCurrent;
+end;
+
+procedure TTestDualPanelOperations.TestShouldLeaveRemovedFolder;
+begin
+  TestDualPanelOperations.TestShouldLeaveRemovedFolder;
+end;
+
+procedure TTestDualPanelOperations.TestFindExistingParentFileUri;
+begin
+  TestDualPanelOperations.TestFindExistingParentFileUri;
+end;
+
+procedure TTestDualPanelOperations.TestZipNamedFileIsOtherArchiveEarlyExit;
+begin
+  TestDualPanelOperations.TestZipNamedFileIsOtherArchiveEarlyExit;
+end;
+
+procedure TTestDualPanelOperations.TestZipEncryptedProbeEarlyExit;
+begin
+  TestDualPanelOperations.TestZipEncryptedProbeEarlyExit;
+end;
+
+procedure TTestDualPanelOperations.TestReadableArchiveRowUriPlain;
+begin
+  TestDualPanelOperations.TestReadableArchiveRowUriPlain;
 end;
 
 initialization

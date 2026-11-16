@@ -17,7 +17,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Math,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uUserMenu, uUserMenuController,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uUserMenu, uUserMenuController,
   uStrings, uConsoleSettings;
 
 type

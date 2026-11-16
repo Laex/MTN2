@@ -30,7 +30,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Character,
-  uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogHost,
+  uThemeTypes, uStrings, uDialogTypes, uDialogBuilders, uDialogResources, uDialogHost,
   TestDialogAlignment;
 
 function Button(const AId, AText: string): TDialogControl;

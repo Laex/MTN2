@@ -10,7 +10,7 @@ uses
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
   FMX.Edit, FMX.Layouts, FMX.Memo, FMX.Memo.Types, FMX.ScrollBox, FMX.Menus,
   FMX.ListBox, FMX.Controls.Presentation, FMX.Objects, FMX.DialogService.Sync,
-  uTerminalTypes, uThemeTypes, uDialogTypes, uFileFind, uDialogJson, uDialogHost,
+  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogBuilders, uFileFind, uDialogJson, uDialogHost,
   uDialogResources, uThemeRegistry, uTerminalRenderer, uInputLine, uStrings;
 
 type

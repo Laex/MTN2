@@ -41,7 +41,7 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils,
-  uVfsTypes, uVfsCdeclAdapter, uDialogTypes, uDualPanelTypes, uPanelColumns, uPluginColumns, uPluginServices, uStrings,
+  uVfsTypes, uVfsCdeclAdapter, uDialogTypes, uDialogBuilders, uDualPanelTypes, uPanelColumns, uPluginColumns, uPluginServices, uStrings,
   uDialogLocaleLayout, uSession, uDialogHost, uDualPanelUiTypes,
   uDualPanelSettingsDialogs, uColumnSets;
 

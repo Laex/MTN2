@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uDialogTypes, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost, uStrings;
+  uDialogTypes, uDialogBuilders, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost, uStrings;
 
 function Ctl(const AKind: TDialogControlKind; const AId, AText: string;
   ACol, ARow, AW: Integer): TDialogControl;

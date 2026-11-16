@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uDualPanelTypes, uPanelColumns, uPluginColumns,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uDualPanelTypes, uPanelColumns, uPluginColumns,
   uShellProfiles, uEnvProfiles, uScreenSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
 
 type

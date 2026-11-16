@@ -13,7 +13,7 @@ uses
   uDualPanelCmd, uVfsTypes, uVfsRegistry, uDriveInfo, uAssociations, uUserAssociations,
   uKeymap, uFileFind, uFindArchive, uFindSession, uEditorWindow, uEditorLineOps, uHelpViewer, uHelpContext, uQuickTextView,
   uHistoryPopup, uStartupTargets, uScreenSaver,
-  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uColumnSets, uPluginColumns, uDirWatch, uDialogTypes, uDialogJson,
+  uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uColumnSets, uPluginColumns, uDirWatch, uDialogTypes, uDialogBuilders, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
   uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
@@ -416,7 +416,6 @@ type
     function CanStartPanelLayoutChange(const Ws: TDualPanelWorkspaceTab): Boolean;
     procedure FlushPendingJobAsk;
     procedure SyncJobProgressDialog;
-    procedure OpenJobProgress(const AJob: TPanelJobState);
     function CloseJobProgressForReplacement: Boolean;
     procedure RequestStopConfirm(const AQuestion: string; const AOnAccept, AOnReject: TProc);
     procedure AnswerStopConfirm(AAccepted: Boolean);
@@ -2998,15 +2997,8 @@ end;
 procedure TDualPanelWindow.HostOpenOverwriteAsk(const APath, ANewLine,
   AExistingLine: string);
 begin
-  if Assigned(FDialog) and FDialog.Visible then
-  begin
-    if not CloseJobProgressForReplacement then
-    begin
-      FJobAskDeferred := True;
-      Exit;
-    end;
-  end;
-  FJobAskDeferred := False;
+  if not JobUiPrepareAsk(FDialog, FDialogKind, FJobProgressRes, FJobAskDeferred) then
+    Exit;
   FDialogKind := hdkOverwriteAsk;
   FDialog.Open(BuildOverwriteAskDialog(APath, ANewLine, AExistingLine), DialogCommand);
 end;
@@ -3014,15 +3006,8 @@ end;
 procedure TDualPanelWindow.HostOpenDeleteError(const APath, AHeadline, AQuestion,
   AErrorLine: string; AOfferPermanent: Boolean);
 begin
-  if Assigned(FDialog) and FDialog.Visible then
-  begin
-    if not CloseJobProgressForReplacement then
-    begin
-      FJobAskDeferred := True;
-      Exit;
-    end;
-  end;
-  FJobAskDeferred := False;
+  if not JobUiPrepareAsk(FDialog, FDialogKind, FJobProgressRes, FJobAskDeferred) then
+    Exit;
   FDialogKind := hdkDeleteError;
   FDialog.Open(BuildDeleteErrorDialog(AHeadline, APath, AQuestion, AErrorLine,
     AOfferPermanent, FJobs.State.AskOfferElevate), DialogCommand);
@@ -3031,15 +3016,8 @@ end;
 procedure TDualPanelWindow.HostOpenIOErrorAsk(const AHeadline, APath,
   AErrorLine: string);
 begin
-  if Assigned(FDialog) and FDialog.Visible then
-  begin
-    if not CloseJobProgressForReplacement then
-    begin
-      FJobAskDeferred := True;
-      Exit;
-    end;
-  end;
-  FJobAskDeferred := False;
+  if not JobUiPrepareAsk(FDialog, FDialogKind, FJobProgressRes, FJobAskDeferred) then
+    Exit;
   FDialogKind := hdkIOError;
   FDialog.Open(BuildIOErrorDialog(AHeadline, APath, AErrorLine,
     FJobs.State.AskOfferElevate), DialogCommand);
@@ -3106,22 +3084,7 @@ end;
 
 function TDualPanelWindow.CloseJobProgressForReplacement: Boolean;
 begin
-  Result := FDialogKind = hdkJobProgress;
-  if not Result then
-    Exit;
-  if Assigned(FDialog) and FDialog.Visible then
-    FDialog.Close;
-  FDialogKind := hdkNone;
-  FJobProgressRes := '';
-end;
-
-procedure TDualPanelWindow.OpenJobProgress(const AJob: TPanelJobState);
-begin
-  if not Assigned(FDialog) then
-    Exit;
-  FDialogKind := hdkJobProgress;
-  FJobProgressRes := JobProgressResourceName(AJob);
-  FDialog.Open(BuildJobProgressDialog(AJob), DialogCommand);
+  Result := JobUiCloseProgressForReplacement(FDialog, FDialogKind, FJobProgressRes);
 end;
 
 procedure TDualPanelWindow.RequestStopConfirm(const AQuestion: string;
@@ -3340,59 +3303,14 @@ begin
 end;
 
 procedure TDualPanelWindow.SyncJobProgressDialog;
-var
-  Lines: TArray<string>;
-  Job: TPanelJobState;
-  ResName: string;
-  DialogOpen: Boolean;
 begin
-  if FSyncingJobProgress then
-    Exit;
-  FSyncingJobProgress := True;
-  try
-    // The job list is a snapshot taken when it opened; keep its lines (and the
-    // percent in them) current while it stays on screen.
-    if (FDialogKind = hdkJobList) and Assigned(FJobs) and Assigned(FDialog) and
-       FDialog.Visible then
-    begin
-      Lines := FJobs.ListLines;
-      if Length(Lines) = 0 then
-        Lines := TArray<string>.Create('(no jobs)');
-      FDialog.SetListItems('jobs', Lines, FDialog.GetListSelectedIndex('jobs'));
-      Exit;
-    end;
-    if not Assigned(FJobs) or not FJobs.TryProgressDialogState(Job) then
-    begin
-      if FDialogKind = hdkJobProgress then
-        CloseJobProgressForReplacement;
-      Exit;
-    end;
-    DialogOpen := Assigned(FDialog) and FDialog.Visible;
-    if DialogOpen and (FDialogKind <> hdkJobProgress) then
-      Exit;
-    ResName := JobProgressResourceName(Job);
-    if DialogOpen and (FJobProgressRes = ResName) then
-      ApplyJobProgressToDialog(FDialog, Job)
-    else
-      OpenJobProgress(Job);
-  finally
-    FSyncingJobProgress := False;
-  end;
+  JobUiSyncProgress(FDialog, FJobs, FDialogKind, FJobProgressRes,
+    FSyncingJobProgress, DialogCommand);
 end;
 
 procedure TDualPanelWindow.FlushPendingJobAsk;
 begin
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
-  if not Assigned(FJobs) then
-    Exit;
-  if FJobAskDeferred then
-  begin
-    FJobAskDeferred := False;
-    FJobs.ReplayCurrentAsk;
-    Exit;
-  end;
-  FJobs.TryOpenNextAsk;
+  JobUiFlushPendingAsk(FDialog, FJobs, FJobAskDeferred);
 end;
 
 procedure TDualPanelWindow.OpenJobList;
@@ -4647,10 +4565,7 @@ begin
   end;
   // Only a local folder that listed fine before and is now gone: a path typed
   // by the user that never existed keeps its error line.
-  if (M.GetLastError.Code <> vecNotFound) or (Cur = '') or
-     not SameVfsUri(Cur, FListedOkUri[ASide]) or
-     not SameText(Copy(Cur, 1, 8), 'file:///') or HasArchiveChain(Cur) or
-     IsFindUri(Cur) or IsWorkspaceUri(Cur) then
+  if not ShouldLeaveRemovedFolder(M.GetLastError.Code, Cur, FListedOkUri[ASide]) then
     Exit;
   FListedOkUri[ASide] := '';
   // The existence probes run off the UI thread: DirectoryExists blocks for a
@@ -4659,16 +4574,13 @@ begin
   TThread.CreateAnonymousThread(
     procedure
     var
-      Probe, Last: string;
+      Probe: string;
     begin
-      Probe := ParentFileUri(Cur);
-      while (Probe <> '') and not DirectoryExists(FileUriToPath(Probe)) do
-      begin
-        Last := Probe;
-        Probe := ParentFileUri(Probe);
-        if SameVfsUri(Probe, Last) then
-          Probe := '';
-      end;
+      Probe := FindExistingParentFileUri(Cur,
+        function(const APath: string): Boolean
+        begin
+          Result := DirectoryExists(APath);
+        end);
       if Probe = '' then
         Exit;
       TThread.Queue(nil,
@@ -4832,43 +4744,9 @@ begin
     M.Refresh;
 end;
 
-// An encrypted file at or under one of AURIs, entries of the local ZIP the
-// panel at ATabUri shows. The built-in ZIP layer cannot decrypt, so the file
-// is addressed through the 7z backend (AProbeUri).
-function ZipEncryptedProbe(const ATabUri: string; const AURIs: TArray<string>;
-  out AArchivePath, AProbeUri: string): Boolean;
-var
-  S, Base, Probe: string;
-  Segs: TArray<string>;
-  Backend: IVirtualFileSystem;
-begin
-  Result := False;
-  AArchivePath := '';
-  AProbeUri := '';
-  if not IsZipArchiveUri(ATabUri) or HostSevenZipDllMissing then
-    Exit;
-  AArchivePath := ArchiveBasePath(ATabUri);
-  if (AArchivePath = '') or
-     not GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(AArchivePath), Backend) then
-    Exit;
-  for S in AURIs do
-    if SplitArchiveUri(S, Base, Segs) and (Length(Segs) = 1) and
-       ZipFindEncryptedEntry(ArchiveBaseLocalPath(Base), Segs[0], Probe) then
-    begin
-      AProbeUri := JoinVfsUri(PathToSevenZipRootUri(AArchivePath), Probe);
-      Exit(True);
-    end;
-end;
-
 function TDualPanelWindow.ReadableRowUri(const ARow: TPanelRow): string;
-var
-  Backend: IVirtualFileSystem;
 begin
-  Result := ARow.URI;
-  if ARow.IsEncrypted and not ARow.IsDirectory and IsZipArchiveUri(ARow.URI) and
-     not HostSevenZipDllMissing and
-     GlobalVfsRegistry.TryResolve(ZipEntryToSevenZipUri(ARow.URI), Backend) then
-    Result := ZipEntryToSevenZipUri(ARow.URI);
+  Result := ReadableArchiveRowUri(ARow);
 end;
 
 function TDualPanelWindow.FindLockedArchiveFile(const AURIs: TArray<string>;
@@ -5846,49 +5724,16 @@ var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
-  R: TPanelRow;
-  Paths, Keys: TArray<string>;
-  Path, Text: string;
+  Paths: TArray<string>;
+  Text: string;
   I: Integer;
-
-  function ItemText(const ARow: TPanelRow): string;
-  begin
-    Result := PanelItemFullPath(ARow.URI, Tab.CurrentURI, ARow.IsParent);
-    if not ANameOnly or (Result = '') then
-      Exit;
-    // Archive members ("a.zip!\dir\f") split the same way; a drive root
-    // has no name and yields ''.
-    Result := PathLastSegment(Result);
-  end;
-
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
     Exit;
   Panel := ActivePanel(Ws);
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Ws.State.ActiveSide);
-  SetLength(Paths, 0);
-
-  if Length(Tab.SelectedURIs) > 0 then
-  begin
-    Keys := TabSelectionKeys(Tab);
-    for R in Rows do
-      if (not R.IsParent) and (R.URI <> '') and SelectionKeysHas(Keys, R.URI) then
-      begin
-        Path := ItemText(R);
-        if Path <> '' then
-          Paths := Paths + [Path];
-      end;
-  end
-  else if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
-  begin
-    R := Rows[Tab.CursorIndex];
-    Path := ItemText(R);
-    if Path <> '' then
-      Paths := [Path];
-  end;
+  Paths := CollectClipboardItemTexts(Tab, RowsForSide(Ws.State.ActiveSide), ANameOnly);
 
   if Length(Paths) = 0 then
   begin
@@ -6738,22 +6583,6 @@ begin
     ToggleDrivePopup(Ws.State.ActiveSide);
 end;
 
-// A local file named like a ZIP whose content is another archive format (a RAR
-// saved as .zip): the 7z plugin reads it by content, the built-in ZIP cannot.
-function ZipNamedFileIsOtherArchive(const AFileUri: string): Boolean;
-var
-  Backend: IVirtualFileSystem;
-  Path: string;
-begin
-  Result := False;
-  if not AFileUri.StartsWith('file:', True) or HasArchiveChain(AFileUri) then
-    Exit;
-  Path := FileUriToPath(AFileUri);
-  if not TFile.Exists(Path) or FileHasZipSignature(Path) then
-    Exit;
-  Result := GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(Path), Backend);
-end;
-
 procedure TDualPanelWindow.ActivateRow(const ATab: TTab; const ARow: TPanelRow);
 var
   ArchiveKind: TArchiveExtensionKind;
@@ -7077,87 +6906,65 @@ procedure TDualPanelWindow.DialogCommand(const AControlId, AValuesJson: string);
 var
   Kind: THostDialogKind;
   Fields: TDialogCommandFields;
+  Ops: TJobUiDialogCmdOps;
 begin
   Kind := FDialogKind;
-  Fields.Name := FDialog.GetInputValue('name');
-  Fields.Password := FDialog.GetInputValue('password');
-  Fields.Mask := FDialog.GetInputValue('search_mask');
-  Fields.Containing := FDialog.GetInputValue('search_text');
-  Fields.DestPath := FDialog.GetInputValue('job_dest');
-  Fields.ExistingIdx := FDialog.GetListSelectedIndex('job_existing');
-  Fields.RetryIdx := FDialog.GetListSelectedIndex('job_retry');
-  Fields.PackTypeIdx := FDialog.GetListSelectedIndex('pack_type');
-  Fields.PackLevelIdx := FDialog.GetListSelectedIndex('pack_level');
-  Fields.EncryptNames := FDialog.GetCheckbox('pack_encrypt_names');
-  Fields.PreserveTs := FDialog.GetCheckbox('job_timestamps');
-  Fields.OnlyNewer := FDialog.GetCheckbox('job_only_newer');
-  Fields.FollowSymlinks := FDialog.GetCheckbox('job_symlinks');
-  Fields.UseExclude := FDialog.GetCheckbox('job_filter');
-  Fields.ExcludeMask := FDialog.GetInputValue('job_exclude');
-  Fields.DryRun := FDialog.GetCheckbox('dry_run');
-  Fields.Remember := FDialog.GetCheckbox('remember');
-  Fields.Subdirs := FDialog.GetCheckbox('search_subdirs');
-  Fields.CaseSens := FDialog.GetCheckbox('search_case');
-  Fields.WholeWords := FDialog.GetCheckbox('search_words');
-  Fields.SearchFolders := FDialog.GetCheckbox('search_folders');
-  Fields.UseRegex := FDialog.GetCheckbox('search_regex');
-  Fields.SearchArchives := FDialog.GetCheckbox('search_archives');
-  Fields.SearchEncodingIdx := FDialog.GetListSelectedIndex('search_encoding');
-  Fields.HexText := FDialog.GetInputValue('search_hex');
-  Fields.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
-  Fields.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
-  Fields.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
-  Fields.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
-  Fields.Filters.AttrReadOnly := TFindAttrState(FDialog.GetCheckboxState('filter_attr_ro'));
-  Fields.Filters.AttrHidden := TFindAttrState(FDialog.GetCheckboxState('filter_attr_hidden'));
-  Fields.Filters.AttrSystem := TFindAttrState(FDialog.GetCheckboxState('filter_attr_system'));
-  Fields.Filters.AttrArchive := TFindAttrState(FDialog.GetCheckboxState('filter_attr_archive'));
-  Fields.SyncTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
-  Fields.SyncByContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
-  // Rename from overwrite-ask: keep pending conflict; open name dialog.
-  if (Kind = hdkOverwriteAsk) and Assigned(FJobDialogs) and
-     FJobDialogs.TryHandleOverwriteRename(AControlId) then
+  Fields := ReadDialogCommandFields(FDialog);
+  Ops := Default(TJobUiDialogCmdOps);
+  if Assigned(FJobDialogs) then
+    Ops.TryOverwriteRename :=
+      function(const AId: string): Boolean
+      begin
+        Result := FJobDialogs.TryHandleOverwriteRename(AId);
+      end;
+  Ops.RequestStop :=
+    procedure
+    begin
+      HostRequestJobStop;
+    end;
+  Ops.HandleJobListAction :=
+    function(const AId: string): Boolean
+    begin
+      Result := HandleJobListAction(AId);
+    end;
+  Ops.JobListSelectedIndex :=
+    function: Integer
+    begin
+      Result := FDialog.GetListSelectedIndex('jobs');
+    end;
+  Ops.RequestJobListCancel :=
+    procedure(AIndex: Integer; AAll: Boolean)
+    begin
+      RequestJobListCancel(AIndex, AAll);
+    end;
+  Ops.AnswerStopConfirm :=
+    procedure(AAccepted: Boolean)
+    begin
+      AnswerStopConfirm(AAccepted);
+    end;
+  Ops.AfterEarly :=
+    procedure
+    begin
+      NotifyChanged;
+    end;
+  Ops.AfterStopConfirm :=
+    procedure
+    begin
+      NotifyChanged;
+      FlushDirWatchPending;
+      FlushPendingJobAsk;
+    end;
+  if JobUiTryConsumeDialogCommand(Kind, AControlId, Assigned(FJobs),
+     Assigned(FJobs) and (FJobs.Phase = pjpRunning), Ops) then
     Exit;
-  // Every user-initiated stop asks first; the operation is interrupted only
-  // from the question's Stop button.
-  if (Kind = hdkJobProgress) and DialogCmdIsReject(AControlId) and
-     Assigned(FJobs) and (FJobs.Phase = pjpRunning) then
-  begin
-    HostRequestJobStop;
-    NotifyChanged;
-    Exit;
-  end;
-  if (Kind = hdkJobList) and Assigned(FJobs) and HandleJobListAction(AControlId) then
-  begin
-    NotifyChanged;
-    Exit;
-  end;
-  if (Kind = hdkJobList) and Assigned(FJobs) and
-     (DialogCmdIs(AControlId, cDlgCmdCancelJob) or DialogCmdIs(AControlId, cDlgCmdCancelAll)) then
-  begin
-    RequestJobListCancel(FDialog.GetListSelectedIndex('jobs'),
-      DialogCmdIs(AControlId, cDlgCmdCancelAll));
-    NotifyChanged;
-    Exit;
-  end;
-  if Kind = hdkStopConfirm then
-  begin
-    AnswerStopConfirm(DialogCmdIsAccept(AControlId));
-    NotifyChanged;
-    FlushDirWatchPending;
-    FlushPendingJobAsk;
-    Exit;
-  end;
   // Close after reading fields, but run job confirm before Close's Notify
   // re-enters paint with Phase still at pjpConfirm and dialog gone.
   FDialogKind := hdkNone;
   if not DispatchDialogCommand(Kind, AControlId, AValuesJson, Fields) then
     Exit;
-  // The Copy / Move dialog stays up when it refuses the destination; it keeps
+  // The Copy / Move dialog stays up when the destination is refused; it keeps
   // its kind so it is still drawn and its buttons still work.
-  if (Kind = hdkJobConfirm) and (FDialogKind = hdkNone) and
-     Assigned(FDialog) and FDialog.Visible then
-    FDialogKind := hdkJobConfirm;
+  JobUiKeepConfirmIfDialogStayed(Kind, FDialogKind, FDialog);
   NotifyChanged;
   FlushDirWatchPending;
   FlushPendingJobAsk;
@@ -7471,13 +7278,6 @@ begin
       Exit;
     end;
   FFileOps.BeginSetAttributes([APath]);
-end;
-
-function DriveCaption(const AInfo: TDriveInfo): string;
-begin
-  Result := AInfo.RootPath;
-  if (AInfo.LabelOrPath <> '') and not SameText(AInfo.LabelOrPath, AInfo.RootPath) then
-    Result := Result + ' (' + AInfo.LabelOrPath + ')';
 end;
 
 // Always asks first: taking a drive offline in the middle of a copy, or by a
@@ -8936,27 +8736,30 @@ begin
   Result := True;
   // A sticky search ends on Ctrl chords and on keys that are not text, Backspace
   // or Up / Down; the key itself then acts as usual.
-  if QuickSearchLingers and FQuickSearchActive and
-     ((ssCtrl in AShift) or
-      ((ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) = nbaUnhandled) and
-       (AKey <> vkUp) and (AKey <> vkDown) and (AKey <> vkShift) and
-       (AKey <> vkControl) and (AKey <> vkMenu))) then
+  if QuickSearchEndsOnKey(QuickSearchLingers, FQuickSearchActive, AShift, AKey,
+     AKeyChar) then
   begin
     ClearQuickSearch;
     Exit(False);
   end;
   case ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) of
     nbaClear:
-      begin
-        // Enter on a folder carries the filter into it.
-        if FQuickSearchKeepFilter and FQuickSearchFiltering and (AKey = vkReturn) then
+      case ClassifyQuickSearchClear(
+        FQuickSearchKeepFilter and FQuickSearchFiltering,
+        QuickSearchLingers, AKey) of
+        qscKeepOpen:
           Exit(False);
-        ClearQuickSearch;
-        // Enter opens the item under the cursor; only Esc is consumed.
-        if QuickSearchLingers and (AKey = vkReturn) then
-          Exit(False);
-        AKey := 0;
-        AKeyChar := #0;
+        qscClearPassThrough:
+          begin
+            ClearQuickSearch;
+            Exit(False);
+          end;
+      else
+        begin
+          ClearQuickSearch;
+          AKey := 0;
+          AKeyChar := #0;
+        end;
       end;
     nbaBackspace:
       begin
@@ -9203,23 +9006,9 @@ var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
-  R: TPanelRow;
-  Keys, Names: TArray<string>;
+  Names: TArray<string>;
   Dir, Value, Prompt: string;
   Map: TDictionary<string, string>;
-
-  procedure AddName(const ARow: TPanelRow);
-  var
-    Full: string;
-  begin
-    if ARow.IsParent or (ARow.URI = '') then
-      Exit;
-    Full := PanelItemFullPath(ARow.URI, Tab.CurrentURI, False);
-    if Full <> '' then
-      Names := Names + [PathLastSegment(Full)];
-  end;
-
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -9234,17 +9023,7 @@ begin
     FToast.Show(T('ui.toast.describeLocal', 'Descriptions need a folder on a local disk'));
     Exit;
   end;
-  Rows := RowsForSide(Ws.State.ActiveSide);
-  Names := nil;
-  if Length(Tab.SelectedURIs) > 0 then
-  begin
-    Keys := TabSelectionKeys(Tab);
-    for R in Rows do
-      if SelectionKeysHas(Keys, R.URI) then
-        AddName(R);
-  end
-  else if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
-    AddName(Rows[Tab.CursorIndex]);
+  Names := CollectDescribeItemNames(Tab, RowsForSide(Ws.State.ActiveSide));
   if Length(Names) = 0 then
   begin
     FToast.Show(T('ui.toast.describeNothing', 'Nothing to describe'));

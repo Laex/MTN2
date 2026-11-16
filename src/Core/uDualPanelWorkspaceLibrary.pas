@@ -6,7 +6,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uWorkspaceLibrary, uWorkspaceVfs,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uWorkspaceLibrary, uWorkspaceVfs,
   uStrings;
 
 type

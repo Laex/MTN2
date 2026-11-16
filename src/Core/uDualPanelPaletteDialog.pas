@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uTopMenuBar, uCommandPalette, uHelpContext,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uTopMenuBar, uCommandPalette, uHelpContext,
   uDualPanelHistoryDialogs, uKeymap;
 
 type

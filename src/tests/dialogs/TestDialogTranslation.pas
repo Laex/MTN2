@@ -26,7 +26,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
   System.RegularExpressions,
-  uStrings, uCharWidth, uThemeTypes, uDialogTypes, uDialogResources, uDialogHost;
+  uStrings, uCharWidth, uThemeTypes, uDialogTypes, uDialogBuilders, uDialogResources, uDialogHost;
 
 function IndexOfId(const D: TDialogDeclaration; const AId: string): Integer;
 begin

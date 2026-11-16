@@ -39,7 +39,7 @@ uses
   uDisplaySettings,
   uSession,
   System.UITypes, uTerminalTypes, uThemeTypes, uThemeDrawing,
-  uStrings, uDialogTypes, uDialogResources, uDialogHost, uThemeRegistry;
+  uStrings, uDialogTypes, uDialogBuilders, uDialogResources, uDialogHost, uThemeRegistry;
 
 procedure TestClampAndIndex;
 begin

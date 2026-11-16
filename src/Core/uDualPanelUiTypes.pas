@@ -7,7 +7,8 @@ interface
 
 uses
   System.Classes,
-  uThemeTypes, uThemeSpec, uDualPanelTypes, uVfsTypes, uDriveInfo, uFileFind, uDisplaySettings;
+  uThemeTypes, uThemeSpec, uDualPanelTypes, uVfsTypes, uDriveInfo, uFileFind,
+  uDisplaySettings, uDialogHost;
 
 type
   TDrivePopupState = record
@@ -292,6 +293,56 @@ type
   TDisplaySettingsEvent = procedure(const ASettings: TDisplaySettings) of object;
   TGetDisplaySettingsEvent = function: TDisplaySettings of object;
 
+/// <summary>Snapshot of the dual-panel dialog fields DialogCommand reads
+/// before dispatch. Missing controls yield empty / false / -1 defaults from
+/// TDialogHost getters.</summary>
+function ReadDialogCommandFields(ADialog: TDialogHost): TDialogCommandFields;
+
 implementation
+
+uses
+  System.SysUtils;
+
+function ReadDialogCommandFields(ADialog: TDialogHost): TDialogCommandFields;
+begin
+  Result := Default(TDialogCommandFields);
+  if not Assigned(ADialog) then
+    Exit;
+  Result.Name := ADialog.GetInputValue('name');
+  Result.Password := ADialog.GetInputValue('password');
+  Result.Mask := ADialog.GetInputValue('search_mask');
+  Result.Containing := ADialog.GetInputValue('search_text');
+  Result.DestPath := ADialog.GetInputValue('job_dest');
+  Result.ExistingIdx := ADialog.GetListSelectedIndex('job_existing');
+  Result.RetryIdx := ADialog.GetListSelectedIndex('job_retry');
+  Result.PackTypeIdx := ADialog.GetListSelectedIndex('pack_type');
+  Result.PackLevelIdx := ADialog.GetListSelectedIndex('pack_level');
+  Result.EncryptNames := ADialog.GetCheckbox('pack_encrypt_names');
+  Result.PreserveTs := ADialog.GetCheckbox('job_timestamps');
+  Result.OnlyNewer := ADialog.GetCheckbox('job_only_newer');
+  Result.FollowSymlinks := ADialog.GetCheckbox('job_symlinks');
+  Result.UseExclude := ADialog.GetCheckbox('job_filter');
+  Result.ExcludeMask := ADialog.GetInputValue('job_exclude');
+  Result.DryRun := ADialog.GetCheckbox('dry_run');
+  Result.Remember := ADialog.GetCheckbox('remember');
+  Result.Subdirs := ADialog.GetCheckbox('search_subdirs');
+  Result.CaseSens := ADialog.GetCheckbox('search_case');
+  Result.WholeWords := ADialog.GetCheckbox('search_words');
+  Result.SearchFolders := ADialog.GetCheckbox('search_folders');
+  Result.UseRegex := ADialog.GetCheckbox('search_regex');
+  Result.SearchArchives := ADialog.GetCheckbox('search_archives');
+  Result.SearchEncodingIdx := ADialog.GetListSelectedIndex('search_encoding');
+  Result.HexText := ADialog.GetInputValue('search_hex');
+  Result.Filters.SizeMin := ADialog.GetInputValue('filter_size_min');
+  Result.Filters.SizeMax := ADialog.GetInputValue('filter_size_max');
+  Result.Filters.DateFrom := ADialog.GetInputValue('filter_date_from');
+  Result.Filters.DateTo := ADialog.GetInputValue('filter_date_to');
+  Result.Filters.AttrReadOnly := TFindAttrState(ADialog.GetCheckboxState('filter_attr_ro'));
+  Result.Filters.AttrHidden := TFindAttrState(ADialog.GetCheckboxState('filter_attr_hidden'));
+  Result.Filters.AttrSystem := TFindAttrState(ADialog.GetCheckboxState('filter_attr_system'));
+  Result.Filters.AttrArchive := TFindAttrState(ADialog.GetCheckboxState('filter_attr_archive'));
+  Result.SyncTwoWay := SameText(ADialog.GetRadio('sync_mode'), 'twoway');
+  Result.SyncByContent := SameText(ADialog.GetRadio('compare_by'), 'bycontent');
+end;
 
 end.

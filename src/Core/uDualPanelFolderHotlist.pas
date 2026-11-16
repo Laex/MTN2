@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uFolderHotlist, uVfsTypes,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uFolderHotlist, uVfsTypes,
   uPanelUriLabels, uStrings;
 
 type

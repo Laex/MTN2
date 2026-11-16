@@ -23,7 +23,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, uCoreTimer,
-  uDialogTypes, uUpdater;
+  uDialogTypes, uDialogBuilders, uUpdater;
 
 type
   TUpdateHost = record

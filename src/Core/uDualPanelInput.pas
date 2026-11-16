@@ -392,11 +392,21 @@ function RecoverPrintableKeyChar(AKey: Word; AKeyChar: Char): Char;
 
 type
   TNeedleBoxAction = (nbaUnhandled, nbaClear, nbaBackspace, nbaAppend);
+  /// <summary>How nbaClear resolves for sticky / keep-filter quick search.</summary>
+  TQuickSearchClearResult = (qscKeepOpen, qscClearPassThrough, qscClearConsume);
 
 /// <summary>Esc and Enter close the box; Backspace and printable keys edit it.</summary>
 function ClassifyNeedleBoxKey(AKey: Word; AKeyChar: Char;
   out AChar: Char): TNeedleBoxAction;
 function NeedleBackspace(var AText: string): Boolean;
+/// <summary>Sticky quick search ends on Ctrl chords and on keys that are not
+/// text, Backspace or Up/Down; the key then acts as usual.</summary>
+function QuickSearchEndsOnKey(ALingers, AActive: Boolean; AShift: TShiftState;
+  AKey: Word; AKeyChar: Char): Boolean;
+/// <summary>After nbaClear: keep the box (Enter carries a filter), clear and
+/// let Enter open the item (sticky), or clear and consume the key (Esc).</summary>
+function ClassifyQuickSearchClear(AKeepFilterAndFiltering, ALingers: Boolean;
+  AKey: Word): TQuickSearchClearResult;
 function DispatchPanelFreeInput(const AHost: TDualPanelFreeInputHost;
   const AKeymap: TDualPanelKeymapHost; const ASnap: TPanelFreeInputSnap;
   var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
@@ -1477,6 +1487,34 @@ begin
   Result := Length(AText) > 0;
   if Result then
     Delete(AText, Length(AText), 1);
+end;
+
+function QuickSearchEndsOnKey(ALingers, AActive: Boolean; AShift: TShiftState;
+  AKey: Word; AKeyChar: Char): Boolean;
+var
+  Ch: Char;
+begin
+  Result := False;
+  if not (ALingers and AActive) then
+    Exit;
+  if ssCtrl in AShift then
+    Exit(True);
+  if ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) <> nbaUnhandled then
+    Exit;
+  Result := (AKey <> vkUp) and (AKey <> vkDown) and (AKey <> vkShift) and
+    (AKey <> vkControl) and (AKey <> vkMenu);
+end;
+
+function ClassifyQuickSearchClear(AKeepFilterAndFiltering, ALingers: Boolean;
+  AKey: Word): TQuickSearchClearResult;
+begin
+  // Enter on a folder carries the filter into it.
+  if AKeepFilterAndFiltering and (AKey = vkReturn) then
+    Exit(qscKeepOpen);
+  // Sticky: Enter opens the item under the cursor; only Esc is consumed.
+  if ALingers and (AKey = vkReturn) then
+    Exit(qscClearPassThrough);
+  Result := qscClearConsume;
 end;
 
 function KeyCharIsLetter(AKeyChar: Char): Boolean;

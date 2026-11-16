@@ -26,7 +26,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogResources, uDialogHost;
+  uTerminalTypes, uThemeTypes, uDialogTypes, uDialogBuilders, uDialogResources, uDialogHost;
 
 function IndexOf(AHost: TDialogHost; const AId: string): Integer;
 var

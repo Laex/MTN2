@@ -40,7 +40,7 @@ implementation
 uses
   System.SysUtils, System.StrUtils, System.Classes, System.UITypes, System.Math,
   Winapi.Windows,
-  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogHost;
+  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogBuilders, uDialogResources, uDialogHost;
 
 const
   cAreaW = 120;

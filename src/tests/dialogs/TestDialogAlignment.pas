@@ -35,7 +35,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.Math, Winapi.Windows,
-  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogResources, uDialogRenderer, uDialogJson,
+  uTerminalTypes, uThemeTypes, uStrings, uDialogTypes, uDialogBuilders, uDialogResources, uDialogRenderer, uDialogJson,
   uDialogHost;
 
 var

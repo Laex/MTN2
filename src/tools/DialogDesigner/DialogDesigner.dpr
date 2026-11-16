@@ -18,6 +18,7 @@ uses
   uFunctionBar in '..\..\Core\uFunctionBar.pas',
   uTextEncoding in '..\..\Core\uTextEncoding.pas',
   uDialogTypes in '..\..\Core\uDialogTypes.pas',
+  uDialogBuilders in '..\..\Core\uDialogBuilders.pas',
   uDialogJson in '..\..\Core\uDialogJson.pas',
   uDialogResources in '..\..\Core\uDialogResources.pas',
   uDialogHost in '..\..\Core\uDialogHost.pas',

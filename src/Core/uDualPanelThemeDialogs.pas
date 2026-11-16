@@ -14,7 +14,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uTerminalTypes, uThemeTypes,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uTerminalTypes, uThemeTypes,
   uThemeSpec, uColorCoding, uMarkdownColors;
 
 type

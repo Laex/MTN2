@@ -21,7 +21,7 @@ type
 implementation
 
 uses
-  System.SysUtils, uTerminalTypes, uStrings, uDialogTypes, uDialogHost,
+  System.SysUtils, uTerminalTypes, uStrings, uDialogTypes, uDialogBuilders, uDialogHost,
   uThemeRegistry;
 
 function DrawDialog(const ADecl: TDialogDeclaration; out AHost: TDialogHost): TTerminalGrid;

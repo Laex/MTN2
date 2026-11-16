@@ -2328,8 +2328,9 @@ end;
 // Shortens by characters; VfsUriDirTabTitle then accounts for wide ones.
 function VfsUriDirTabTitleChars(const AURI: string; AMaxLen: Integer): string;
 var
-  Path, Drive, Tail, Full, Rest: string;
-  Avail: Integer;
+  Path, Drive, Tail, Full, Rest, Suffix, Cand: string;
+  Segs: TArray<string>;
+  Avail, I: Integer;
 begin
   // Archives, Find sessions and System Folders have no meaningful "current
   // folder inside a drive" - keep VfsUriTitle's short form for them, and
@@ -2375,8 +2376,23 @@ begin
   if Tail = '' then
     Tail := Path;
   Avail := AMaxLen - Length(Drive); // columns left after 'C:'
-  if Avail >= Length('\...\') + Length(Tail) then
-    Rest := '\...\' + Tail
+  // As many trailing folders as fit behind the '...' marker.
+  Segs := Copy(Path, 4, MaxInt).Split([PathDelim]);
+  Suffix := '';
+  for I := High(Segs) downto 0 do
+  begin
+    if Segs[I] = '' then
+      Continue;
+    if Suffix = '' then
+      Cand := Segs[I]
+    else
+      Cand := Segs[I] + '\' + Suffix;
+    if Avail < Length('\...\') + Length(Cand) then
+      Break;
+    Suffix := Cand;
+  end;
+  if Suffix <> '' then
+    Rest := '\...\' + Suffix
   else if Avail >= 2 then
     // No room left for the '...' marker on top of the drive - keep the
     // separator and as much of the tail's own END as fits (the part an

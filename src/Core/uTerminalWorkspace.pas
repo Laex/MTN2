@@ -16,7 +16,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.Rtti,
   uPlatformInfo,
   uTerminalTypes, uThemeTypes, uTerminalWindow, uConsoleBuffer, uConPty,
-  uShellProfiles, uDialogTypes, uDialogHost, uBaseConsoleWindow, uStrings,
+  uShellProfiles, uDialogTypes, uDialogBuilders, uDialogHost, uBaseConsoleWindow, uStrings,
   uKeyChord, uKeymap;
 
 type

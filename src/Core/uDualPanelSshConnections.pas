@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uSshConnections, uVfsTypes, uStrings;
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uSshConnections, uVfsTypes, uStrings;
 
 type
   TSshConnKindSetter = reference to procedure(AKind: THostDialogKind);

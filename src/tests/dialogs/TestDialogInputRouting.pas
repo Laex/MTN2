@@ -1,0 +1,239 @@
+unit TestDialogInputRouting;
+
+{ Characterization of TDialogHost.HandleInputCore order: which control wins
+  when several could take the same key, and that a button press from a prior
+  Open does not fire after a later Open bumps the generation. }
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TTestDialogInputRouting = class
+  public
+    [TearDown] procedure TearDown;
+    [Test] procedure HotKeyCaptureBeatsMnemonic;
+    [Test] procedure OpenDropDownConsumesEnterAndEsc;
+    [Test] procedure DialogNavBeatsFocusedList;
+    [Test] procedure ListArrowsBeatFocusMove;
+    [Test] procedure UnusedKeyIsConsumed;
+    [Test] procedure ReopenDropsPendingPress;
+  end;
+
+implementation
+
+uses
+  System.SysUtils, System.Classes, System.UITypes,
+  uDialogHost, uDialogTypes, uDialogJson;
+
+const
+  cRouting =
+    '{"type":"dialog","version":"2.0","title":"Route","width":44,"height":12,' +
+    '"children":[' +
+    '{"type":"input","id":"key","value":"","hotkey":true,"col":1,"row":0,"width":20,"height":1},' +
+    '{"type":"list","id":"files","items":["one","two","three"],"selected":0,' +
+    '"col":1,"row":1,"width":20,"height":3},' +
+    '{"type":"dropdown","id":"mode","items":["a","b","c"],"selected":0,' +
+    '"col":1,"row":5,"width":12,"height":1},' +
+    '{"type":"button","id":"yes","text":"&Yes","col":1,"row":7,"width":10,"height":1},' +
+    '{"type":"button","id":"no","text":"&No","cancel":true,"col":14,"row":7,"width":10,"height":1},' +
+    '{"type":"button","id":"ok","text":"OK","default":true,"col":28,"row":7,"width":10,"height":1}' +
+    ']}';
+
+var
+  Fired: string;
+
+procedure Press(AHost: TDialogHost; var AKey: Word; AShift: TShiftState;
+  var AChar: Char);
+begin
+  AHost.HandleInput(AKey, AShift, AChar);
+end;
+
+procedure PressKey(AHost: TDialogHost; AKey: Word; AShift: TShiftState = [];
+  AChar: Char = #0);
+var
+  Key: Word;
+  Ch: Char;
+begin
+  Key := AKey;
+  Ch := AChar;
+  Press(AHost, Key, AShift, Ch);
+end;
+
+function OpenRouting(AOnCommand: TDialogCommandEvent = nil): TDialogHost;
+begin
+  Result := TDialogHost.Create(nil);
+  Assert.IsTrue(Result.OpenJson(cRouting, AOnCommand), 'routing dialog opens');
+end;
+
+procedure TTestDialogInputRouting.TearDown;
+begin
+  GDialogPressHoldKey := 0;
+  CancelDialogButtonPress;
+  FlushDialogButtonPress;
+  GDialogButtonPressStart := nil;
+  Fired := '';
+end;
+
+procedure TTestDialogInputRouting.HotKeyCaptureBeatsMnemonic;
+var
+  Host: TDialogHost;
+begin
+  Fired := '';
+  Host := OpenRouting(
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      Fired := Fired + AControlId + ';';
+    end);
+  try
+    Host.FocusControlById('key');
+    PressKey(Host, Ord('Y'), [], 'y');
+    Assert.AreEqual('Y', Host.GetInputValue('key'),
+      'a focused hotkey field stores the letter');
+    Assert.AreEqual('', Fired, 'the Yes mnemonic does not run');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogInputRouting.OpenDropDownConsumesEnterAndEsc;
+var
+  Host: TDialogHost;
+  Key: Word;
+  Ch: Char;
+begin
+  Fired := '';
+  Host := OpenRouting(
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      Fired := Fired + AControlId + ';';
+    end);
+  try
+    Host.FocusControlById('mode');
+    PressKey(Host, vkF4);
+    Assert.IsTrue(Host.DropDownOpen, 'F4 opens the dropdown');
+
+    Key := vkReturn;
+    Ch := #0;
+    Press(Host, Key, [], Ch);
+    Assert.IsFalse(Host.DropDownOpen, 'Enter commits the popup');
+    Assert.AreEqual(0, Key, 'Enter is consumed');
+    Assert.AreEqual('', Fired, 'Enter does not accept the dialog');
+
+    PressKey(Host, vkF4);
+    Assert.IsTrue(Host.DropDownOpen, 'F4 opens again');
+    Key := vkEscape;
+    Ch := #0;
+    Press(Host, Key, [], Ch);
+    Assert.IsFalse(Host.DropDownOpen, 'Esc collapses the popup');
+    Assert.AreEqual(0, Key, 'Esc is consumed');
+    Assert.AreEqual('', Fired, 'Esc does not cancel the dialog');
+    Assert.IsTrue(Host.Visible, 'the dialog stays open');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogInputRouting.DialogNavBeatsFocusedList;
+var
+  Host: TDialogHost;
+begin
+  Fired := '';
+  Host := OpenRouting(
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      Fired := Fired + AControlId + ';';
+    end);
+  try
+    Host.FocusControlById('files');
+    Assert.AreEqual(0, Host.GetListSelectedIndex('files'));
+    PressKey(Host, vkTab);
+    Assert.AreEqual('mode', Host.FocusedControlId,
+      'Tab moves focus instead of staying on the list');
+    Assert.AreEqual(0, Host.GetListSelectedIndex('files'),
+      'Tab does not change the list selection');
+
+    Host.FocusControlById('files');
+    PressKey(Host, vkReturn);
+    Assert.IsTrue(Pos('ok;', Fired) > 0, 'Enter accepts via the default button');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogInputRouting.ListArrowsBeatFocusMove;
+var
+  Host: TDialogHost;
+begin
+  Host := OpenRouting(nil);
+  try
+    Host.FocusControlById('files');
+    Assert.AreEqual(0, Host.GetListSelectedIndex('files'));
+    PressKey(Host, vkDown);
+    Assert.AreEqual(1, Host.GetListSelectedIndex('files'),
+      'Down moves the list selection');
+    Assert.AreEqual('files', Host.FocusedControlId,
+      'Down does not move dialog focus off the list');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogInputRouting.UnusedKeyIsConsumed;
+var
+  Host: TDialogHost;
+  Key: Word;
+  Ch: Char;
+begin
+  Host := OpenRouting(nil);
+  try
+    Host.FocusControlById('yes');
+    Key := vkF7;
+    Ch := #0;
+    Press(Host, Key, [], Ch);
+    Assert.AreEqual(0, Key, 'an unused key is cleared');
+    Assert.AreEqual(#0, Ch, 'the unused key char is cleared');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogInputRouting.ReopenDropsPendingPress;
+var
+  Host: TDialogHost;
+  Starts: Integer;
+begin
+  Starts := 0;
+  GDialogButtonPressStart :=
+    procedure
+    begin
+      Inc(Starts);
+    end;
+  Fired := '';
+  Host := OpenRouting(
+    procedure(const AControlId, AValuesJson: string)
+    begin
+      Fired := Fired + AControlId + ';';
+    end);
+  try
+    PressKey(Host, vkReturn);
+    Assert.IsTrue(DialogButtonPressPending, 'Enter starts a press');
+    Assert.AreEqual(1, Starts, 'press timer started');
+    Assert.AreEqual('', Fired, 'nothing runs while pressed');
+
+    Assert.IsTrue(Host.OpenJson(cRouting,
+      procedure(const AControlId, AValuesJson: string)
+      begin
+        Fired := Fired + AControlId + ';';
+      end), 'reopen bumps the generation');
+    FlushDialogButtonPress;
+    Assert.AreEqual('', Fired,
+      'a press from the prior Open does not fire after reopen');
+  finally
+    Host.Free;
+  end;
+end;
+
+end.

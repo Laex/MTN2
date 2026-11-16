@@ -20,7 +20,7 @@ implementation
 
 uses
   System.SysUtils,
-  uDialogTypes,
+  uDialogTypes, uDialogBuilders,
   uDialogHost;
 
 function ControlIndex(AHost: TDialogHost; const AId: string): Integer;

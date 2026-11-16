@@ -15,7 +15,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.Rtti,
   System.Generics.Collections,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uEditorDoc, uVfsTypes,
-  uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uInputLine,
+  uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uDialogBuilders, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
   uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer;

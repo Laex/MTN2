@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.IOUtils, uConfigLocation, uConfigMode, uStrings, uCharWidth, uDialogTypes;
+  System.SysUtils, System.IOUtils, uConfigLocation, uConfigMode, uStrings, uCharWidth, uDialogTypes, uDialogBuilders;
 
 type
   TTempPair = class

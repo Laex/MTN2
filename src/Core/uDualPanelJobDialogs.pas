@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uDualPanelJobs,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uDualPanelJobs,
   uDualPanelJobList, uDualPanelJobRules, uDualPanelOperations, uVfsTypes;
 
 const
@@ -75,6 +75,27 @@ type
       const AFields: TDialogCommandFields): Boolean;
   end;
 
+  TJobUiTryOverwriteRename = reference to function(const AControlId: string): Boolean;
+  TJobUiHandleJobListAction = reference to function(const AControlId: string): Boolean;
+  TJobUiJobListSelectedIndex = reference to function: Integer;
+  TJobUiRequestJobListCancel = reference to procedure(AIndex: Integer; AAll: Boolean);
+  TJobUiAnswerStopConfirm = reference to procedure(AAccepted: Boolean);
+  TJobUiDialogCmdOps = record
+    /// <summary>Overwrite-ask "Rename": opens the name dialog and keeps the
+    /// conflict; True when that branch handled the command.</summary>
+    TryOverwriteRename: TJobUiTryOverwriteRename;
+    RequestStop: TProc;
+    HandleJobListAction: TJobUiHandleJobListAction;
+    JobListSelectedIndex: TJobUiJobListSelectedIndex;
+    RequestJobListCancel: TJobUiRequestJobListCancel;
+    AnswerStopConfirm: TJobUiAnswerStopConfirm;
+    /// <summary>NotifyChanged after progress-stop and job-list early exits.</summary>
+    AfterEarly: TProc;
+    /// <summary>NotifyChanged + FlushDirWatchPending + FlushPendingJobAsk after
+    /// the stop-confirm answer.</summary>
+    AfterStopConfirm: TProc;
+  end;
+
 function JobOverwriteModeFromIndex(AIdx: Integer): TJobOverwriteMode;
 function JobRetryLimitFromIndex(AIdx: Integer): Integer;
 /// <summary>For Pack, ATypeIdx is the archive type picked in the dialog and
@@ -136,6 +157,38 @@ procedure ApplyJobProgressToDecl(var ADecl: TDialogDeclaration;
   const AJob: TPanelJobState);
 procedure ApplyJobProgressToDialog(ADialog: TDialogHost;
   const AJob: TPanelJobState);
+/// <summary>Closes the progress dialog so another job dialog can take its
+/// place. True only when the open dialog was progress; otherwise the caller
+/// must not replace it (defer the ask instead).</summary>
+function JobUiCloseProgressForReplacement(ADialog: TDialogHost;
+  var AKind: THostDialogKind; var AProgressRes: string): Boolean;
+/// <summary>True when an ask dialog may open now. When another non-progress
+/// dialog is visible, sets AAskDeferred and returns False so Flush can replay
+/// later.</summary>
+function JobUiPrepareAsk(ADialog: TDialogHost; var AKind: THostDialogKind;
+  var AProgressRes: string; var AAskDeferred: Boolean): Boolean;
+procedure JobUiOpenProgress(ADialog: TDialogHost; const AJob: TPanelJobState;
+  var AKind: THostDialogKind; var AProgressRes: string;
+  const AOnCommand: TDialogCommandEvent);
+/// <summary>Keeps the progress dialog (or the job list) in step with AJobs.
+/// ASyncing blocks re-entry from the same tick.</summary>
+procedure JobUiSyncProgress(ADialog: TDialogHost; AJobs: TPanelJobList;
+  var AKind: THostDialogKind; var AProgressRes: string;
+  var ASyncing: Boolean; const AOnCommand: TDialogCommandEvent);
+/// <summary>When no dialog is up, replays a deferred ask or opens the next
+/// waiting one from AJobs.</summary>
+procedure JobUiFlushPendingAsk(ADialog: TDialogHost; AJobs: TPanelJobList;
+  var AAskDeferred: Boolean);
+/// <summary>True when DialogCommand must return without the generic kind
+/// dispatch: overwrite-rename, progress Esc/Cancel while running, job-list
+/// actions / cancel, or the stop-confirm answer.</summary>
+function JobUiTryConsumeDialogCommand(AKind: THostDialogKind;
+  const AControlId: string; AJobsAssigned, AJobsRunning: Boolean;
+  const AOps: TJobUiDialogCmdOps): Boolean;
+/// <summary>Copy / Move confirm stays open when the destination is refused:
+/// restore hdkJobConfirm so the dialog keeps drawing and accepting buttons.</summary>
+procedure JobUiKeepConfirmIfDialogStayed(APriorKind: THostDialogKind;
+  var AKind: THostDialogKind; ADialog: TDialogHost);
 
 implementation
 
@@ -203,6 +256,165 @@ function BuildJobProgressDialog(const AJob: TPanelJobState): TDialogDeclaration;
 begin
   RequireDialogResource(JobProgressResourceName(AJob), Result);
   ApplyJobProgressToDecl(Result, AJob);
+end;
+
+function JobUiCloseProgressForReplacement(ADialog: TDialogHost;
+  var AKind: THostDialogKind; var AProgressRes: string): Boolean;
+begin
+  Result := AKind = hdkJobProgress;
+  if not Result then
+    Exit;
+  if Assigned(ADialog) and ADialog.Visible then
+    ADialog.Close;
+  AKind := hdkNone;
+  AProgressRes := '';
+end;
+
+function JobUiPrepareAsk(ADialog: TDialogHost; var AKind: THostDialogKind;
+  var AProgressRes: string; var AAskDeferred: Boolean): Boolean;
+begin
+  if Assigned(ADialog) and ADialog.Visible then
+  begin
+    if not JobUiCloseProgressForReplacement(ADialog, AKind, AProgressRes) then
+    begin
+      AAskDeferred := True;
+      Exit(False);
+    end;
+  end;
+  AAskDeferred := False;
+  Result := True;
+end;
+
+procedure JobUiOpenProgress(ADialog: TDialogHost; const AJob: TPanelJobState;
+  var AKind: THostDialogKind; var AProgressRes: string;
+  const AOnCommand: TDialogCommandEvent);
+begin
+  if not Assigned(ADialog) then
+    Exit;
+  AKind := hdkJobProgress;
+  AProgressRes := JobProgressResourceName(AJob);
+  ADialog.Open(BuildJobProgressDialog(AJob), AOnCommand);
+end;
+
+procedure JobUiSyncProgress(ADialog: TDialogHost; AJobs: TPanelJobList;
+  var AKind: THostDialogKind; var AProgressRes: string;
+  var ASyncing: Boolean; const AOnCommand: TDialogCommandEvent);
+var
+  Lines: TArray<string>;
+  Job: TPanelJobState;
+  ResName: string;
+  DialogOpen: Boolean;
+begin
+  if ASyncing then
+    Exit;
+  ASyncing := True;
+  try
+    // The job list is a snapshot taken when it opened; keep its lines (and the
+    // percent in them) current while it stays on screen.
+    if (AKind = hdkJobList) and Assigned(AJobs) and Assigned(ADialog) and
+       ADialog.Visible then
+    begin
+      Lines := AJobs.ListLines;
+      if Length(Lines) = 0 then
+        Lines := TArray<string>.Create('(no jobs)');
+      ADialog.SetListItems('jobs', Lines, ADialog.GetListSelectedIndex('jobs'));
+      Exit;
+    end;
+    if not Assigned(AJobs) or not AJobs.TryProgressDialogState(Job) then
+    begin
+      if AKind = hdkJobProgress then
+        JobUiCloseProgressForReplacement(ADialog, AKind, AProgressRes);
+      Exit;
+    end;
+    DialogOpen := Assigned(ADialog) and ADialog.Visible;
+    if DialogOpen and (AKind <> hdkJobProgress) then
+      Exit;
+    ResName := JobProgressResourceName(Job);
+    if DialogOpen and (AProgressRes = ResName) then
+      ApplyJobProgressToDialog(ADialog, Job)
+    else
+      JobUiOpenProgress(ADialog, Job, AKind, AProgressRes, AOnCommand);
+  finally
+    ASyncing := False;
+  end;
+end;
+
+procedure JobUiFlushPendingAsk(ADialog: TDialogHost; AJobs: TPanelJobList;
+  var AAskDeferred: Boolean);
+begin
+  if Assigned(ADialog) and ADialog.Visible then
+    Exit;
+  if not Assigned(AJobs) then
+    Exit;
+  if AAskDeferred then
+  begin
+    AAskDeferred := False;
+    AJobs.ReplayCurrentAsk;
+    Exit;
+  end;
+  AJobs.TryOpenNextAsk;
+end;
+
+function JobUiTryConsumeDialogCommand(AKind: THostDialogKind;
+  const AControlId: string; AJobsAssigned, AJobsRunning: Boolean;
+  const AOps: TJobUiDialogCmdOps): Boolean;
+var
+  ListIdx: Integer;
+begin
+  Result := True;
+  // Rename from overwrite-ask: keep pending conflict; open name dialog.
+  if (AKind = hdkOverwriteAsk) and Assigned(AOps.TryOverwriteRename) and
+     AOps.TryOverwriteRename(AControlId) then
+    Exit;
+  // Every user-initiated stop asks first; the operation is interrupted only
+  // from the question's Stop button.
+  if (AKind = hdkJobProgress) and DialogCmdIsReject(AControlId) and
+     AJobsAssigned and AJobsRunning then
+  begin
+    if Assigned(AOps.RequestStop) then
+      AOps.RequestStop();
+    if Assigned(AOps.AfterEarly) then
+      AOps.AfterEarly();
+    Exit;
+  end;
+  if (AKind = hdkJobList) and AJobsAssigned and Assigned(AOps.HandleJobListAction) and
+     AOps.HandleJobListAction(AControlId) then
+  begin
+    if Assigned(AOps.AfterEarly) then
+      AOps.AfterEarly();
+    Exit;
+  end;
+  if (AKind = hdkJobList) and AJobsAssigned and
+     (DialogCmdIs(AControlId, cDlgCmdCancelJob) or
+      DialogCmdIs(AControlId, cDlgCmdCancelAll)) then
+  begin
+    ListIdx := -1;
+    if Assigned(AOps.JobListSelectedIndex) then
+      ListIdx := AOps.JobListSelectedIndex();
+    if Assigned(AOps.RequestJobListCancel) then
+      AOps.RequestJobListCancel(ListIdx,
+        DialogCmdIs(AControlId, cDlgCmdCancelAll));
+    if Assigned(AOps.AfterEarly) then
+      AOps.AfterEarly();
+    Exit;
+  end;
+  if AKind = hdkStopConfirm then
+  begin
+    if Assigned(AOps.AnswerStopConfirm) then
+      AOps.AnswerStopConfirm(DialogCmdIsAccept(AControlId));
+    if Assigned(AOps.AfterStopConfirm) then
+      AOps.AfterStopConfirm();
+    Exit;
+  end;
+  Result := False;
+end;
+
+procedure JobUiKeepConfirmIfDialogStayed(APriorKind: THostDialogKind;
+  var AKind: THostDialogKind; ADialog: TDialogHost);
+begin
+  if (APriorKind = hdkJobConfirm) and (AKind = hdkNone) and
+     Assigned(ADialog) and ADialog.Visible then
+    AKind := hdkJobConfirm;
 end;
 
 function BuildStopConfirmDialog(const AQuestion: string): TDialogDeclaration;

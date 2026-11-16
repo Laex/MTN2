@@ -26,6 +26,13 @@ type
   end;
 
   [TestFixture]
+  TTestDialogFlowLayout = class
+  public
+    [Test] procedure ButtonsShareARowUntilTheyWrap;
+    [Test] procedure ListTakesItsItemRows;
+  end;
+
+  [TestFixture]
   TTestDialogListDraw = class
   public
     [Test] procedure SingleRowShowsSelectionAndArrow;
@@ -36,8 +43,8 @@ implementation
 
 uses
   System.SysUtils, System.UITypes,
-  uDialogTypes, uDialogValues, uDialogV2Layout, uDialogListDraw, uDialogHost,
-  uTerminalTypes, uThemeTypes;
+  uDialogTypes, uDialogValues, uDialogV2Layout, uDialogLayout, uDialogListDraw,
+  uDialogHost, uTerminalTypes, uThemeTypes;
 
 procedure TTestDialogValues.EmptyIdIsLeftOut;
 var
@@ -183,6 +190,46 @@ begin
   Assert.AreEqual(19, Lay.Bounds[1].Right, 'a label keeps a blank cell before the border');
   Assert.AreEqual(20, Lay.Bounds[2].Right, 'an input still reaches the client edge');
   Assert.AreEqual(20, Lay.Bounds[3].Right, 'a separator line still joins the frame');
+end;
+
+procedure TTestDialogFlowLayout.ButtonsShareARowUntilTheyWrap;
+var
+  Controls: TArray<TDialogControl>;
+  Frame: TRectI;
+  Lay: TDialogFlowLayout;
+begin
+  SetLength(Controls, 3);
+  Controls[0] := MakeButton('ok', '&OK', True, False);
+  Controls[1] := MakeButton('skip', '&Skip', False, False);
+  Controls[2] := MakeButton('cancel', '&Cancel', False, True);
+  // Inner width fits two 10-cell buttons with a gap, but not a third.
+  Frame := TRectI.Make(0, 0, 30, 8);
+
+  Lay := LayoutDialogFlow(Controls, Frame);
+  Assert.AreEqual(Lay.Bounds[0].Top, Lay.Bounds[1].Top,
+    'the first two buttons share a row');
+  Assert.IsTrue(Lay.Bounds[1].Left > Lay.Bounds[0].Right,
+    'the second button sits to the right of the first');
+  Assert.IsTrue(Lay.Bounds[2].Top > Lay.Bounds[0].Top,
+    'a button that would pass the right edge wraps');
+end;
+
+procedure TTestDialogFlowLayout.ListTakesItsItemRows;
+var
+  Controls: TArray<TDialogControl>;
+  Frame: TRectI;
+  Lay: TDialogFlowLayout;
+begin
+  SetLength(Controls, 2);
+  Controls[0] := MakeList('files', ['a', 'b', 'c'], 0);
+  Controls[1] := MakeButton('ok', 'OK', True, False);
+  Frame := TRectI.Make(0, 0, 30, 12);
+
+  Lay := LayoutDialogFlow(Controls, Frame);
+  Assert.AreEqual(3, Lay.Bounds[0].Bottom - Lay.Bounds[0].Top + 1,
+    'a three-item list occupies three rows');
+  Assert.IsTrue(Lay.Bounds[1].Top = Lay.Bounds[0].Bottom + 1,
+    'the button starts on the row after the list');
 end;
 
 function BlankGrid(AWidth, AHeight: Integer): TTerminalGrid;

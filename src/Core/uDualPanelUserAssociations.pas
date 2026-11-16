@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDualPanelUiTypes, uUserAssociations, uStrings;
+  uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uUserAssociations, uStrings;
 
 type
   TUserAssocKindSetter = reference to procedure(AKind: THostDialogKind);

@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uVfsTypes, uAssociations;
+  uVfsTypes, uDualPanelTypes, uAssociations, uVfsRegistry, uZipVfs, uPluginHost;
 
 type
   TDualPanelOperationsController = class
@@ -18,12 +18,35 @@ type
 
   TActivateCurrentKind = (ackNone, ackFindGoto, ackHistoryBack, ackNavigate,
     ackZipNavigate, ackView, ackEdit, ackShell, ackCommand);
+  TDirectoryExistsFn = reference to function(const APath: string): Boolean;
 
 function ClassifyActivateCurrent(AFindHit, ALeaveSynthetic, AIsDirOrParent,
   AIsZip: Boolean; AAssoc: TAssocAction): TActivateCurrentKind;
 /// <summary>Why AName cannot be the name of a file or folder on this system
 /// (the rules of Windows or of Linux, whichever runs); empty when it can.</summary>
 function FileNameProblem(const AName: string): string;
+/// <summary>True when a local file:/// folder that listed fine before is now
+/// vecNotFound: LeaveRemovedFolder may walk up to an existing parent. A path
+/// that never listed keeps its error line.</summary>
+function ShouldLeaveRemovedFolder(AError: TVfsErrorCode; const ACur,
+  AListedOkUri: string): Boolean;
+/// <summary>Nearest ancestor file:/// URI whose local path exists, walking
+/// ParentFileUri from ACur (ACur itself is not tried). Empty when none does.
+/// ADirectoryExists is the path probe.</summary>
+function FindExistingParentFileUri(const ACur: string;
+  const ADirectoryExists: TDirectoryExistsFn): string;
+/// <summary>A local file named like a ZIP whose content is another archive
+/// format (a RAR saved as .zip): the 7z plugin reads it by content, the
+/// built-in ZIP cannot.</summary>
+function ZipNamedFileIsOtherArchive(const AFileUri: string): Boolean;
+/// <summary>An encrypted file at or under one of AURIs, entries of the local
+/// ZIP the panel at ATabUri shows. The built-in ZIP layer cannot decrypt, so
+/// the file is addressed through the 7z backend (AProbeUri).</summary>
+function ZipEncryptedProbe(const ATabUri: string; const AURIs: TArray<string>;
+  out AArchivePath, AProbeUri: string): Boolean;
+/// <summary>URI to open in the viewer/editor: an encrypted ZIP entry goes
+/// through the 7z backend when the plugin can resolve it.</summary>
+function ReadableArchiveRowUri(const ARow: TPanelRow): string;
 
 implementation
 
@@ -170,6 +193,86 @@ begin
   else
     Result := ackView;
   end;
+end;
+
+function ShouldLeaveRemovedFolder(AError: TVfsErrorCode; const ACur,
+  AListedOkUri: string): Boolean;
+begin
+  Result := (AError = vecNotFound) and (ACur <> '') and
+    SameVfsUri(ACur, AListedOkUri) and
+    SameText(Copy(ACur, 1, 8), 'file:///') and
+    not HasArchiveChain(ACur) and
+    not IsFindUri(ACur) and
+    not IsWorkspaceUri(ACur);
+end;
+
+function FindExistingParentFileUri(const ACur: string;
+  const ADirectoryExists: TDirectoryExistsFn): string;
+var
+  Probe, Last: string;
+begin
+  Result := '';
+  if not Assigned(ADirectoryExists) then
+    Exit;
+  Probe := ParentFileUri(ACur);
+  while (Probe <> '') and not ADirectoryExists(FileUriToPath(Probe)) do
+  begin
+    Last := Probe;
+    Probe := ParentFileUri(Probe);
+    if SameVfsUri(Probe, Last) then
+      Probe := '';
+  end;
+  Result := Probe;
+end;
+
+function ZipNamedFileIsOtherArchive(const AFileUri: string): Boolean;
+var
+  Backend: IVirtualFileSystem;
+  Path: string;
+begin
+  Result := False;
+  if not AFileUri.StartsWith('file:', True) or HasArchiveChain(AFileUri) then
+    Exit;
+  Path := FileUriToPath(AFileUri);
+  if not TFile.Exists(Path) or FileHasZipSignature(Path) then
+    Exit;
+  Result := GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(Path), Backend);
+end;
+
+function ZipEncryptedProbe(const ATabUri: string; const AURIs: TArray<string>;
+  out AArchivePath, AProbeUri: string): Boolean;
+var
+  S, Base, Probe: string;
+  Segs: TArray<string>;
+  Backend: IVirtualFileSystem;
+begin
+  Result := False;
+  AArchivePath := '';
+  AProbeUri := '';
+  if not IsZipArchiveUri(ATabUri) or HostSevenZipDllMissing then
+    Exit;
+  AArchivePath := ArchiveBasePath(ATabUri);
+  if (AArchivePath = '') or
+     not GlobalVfsRegistry.TryResolve(PathToSevenZipRootUri(AArchivePath), Backend) then
+    Exit;
+  for S in AURIs do
+    if SplitArchiveUri(S, Base, Segs) and (Length(Segs) = 1) and
+       ZipFindEncryptedEntry(ArchiveBaseLocalPath(Base), Segs[0], Probe) then
+    begin
+      AProbeUri := JoinVfsUri(PathToSevenZipRootUri(AArchivePath), Probe);
+      Exit(True);
+    end;
+end;
+
+function ReadableArchiveRowUri(const ARow: TPanelRow): string;
+var
+  Backend: IVirtualFileSystem;
+begin
+  Result := ARow.URI;
+  if ARow.IsEncrypted and not ARow.IsDirectory and IsZipArchiveUri(ARow.URI) and
+     not HostSevenZipDllMissing and
+     GlobalVfsRegistry.TryResolve(ZipEntryToSevenZipUri(ARow.URI), Backend) then
+    Result := ZipEntryToSevenZipUri(ARow.URI);
 end;
 
 end.

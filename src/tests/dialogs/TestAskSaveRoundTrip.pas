@@ -16,7 +16,7 @@ implementation
 
 uses
   System.SysUtils,
-  uDialogTypes,
+  uDialogTypes, uDialogBuilders,
   uDialogJson,
   uDialogResources,
   uInputLine,

@@ -25,7 +25,7 @@ implementation
 uses
   System.SysUtils, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uStrings,
-  uConsoleSettings, uDialogTypes, uDialogHost, uThemeRegistry;
+  uConsoleSettings, uDialogTypes, uDialogBuilders, uDialogHost, uThemeRegistry;
 
 procedure TTestConsoleSettings.TestScrollbackChoices;
 begin

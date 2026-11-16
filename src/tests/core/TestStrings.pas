@@ -37,7 +37,7 @@ implementation
 uses
   System.SysUtils, System.IOUtils,
   uStrings,
-  uDialogTypes,
+  uDialogTypes, uDialogBuilders,
   uDialogJson,
   uDialogResources,
   uDialogHost,

@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
+  uDialogHost, uDialogTypes, uDialogBuilders, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
   uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory;
 
 type
@@ -199,25 +199,7 @@ end;
 
 function TSearchDialogController.ReadDialogFields: TDialogCommandFields;
 begin
-  Result := Default(TDialogCommandFields);
-  Result.Mask := FDialog.GetInputValue('search_mask');
-  Result.Containing := FDialog.GetInputValue('search_text');
-  Result.Subdirs := FDialog.GetCheckbox('search_subdirs');
-  Result.CaseSens := FDialog.GetCheckbox('search_case');
-  Result.WholeWords := FDialog.GetCheckbox('search_words');
-  Result.SearchFolders := FDialog.GetCheckbox('search_folders');
-  Result.UseRegex := FDialog.GetCheckbox('search_regex');
-  Result.SearchArchives := FDialog.GetCheckbox('search_archives');
-  Result.SearchEncodingIdx := FDialog.GetListSelectedIndex('search_encoding');
-  Result.HexText := FDialog.GetInputValue('search_hex');
-  Result.Filters.SizeMin := FDialog.GetInputValue('filter_size_min');
-  Result.Filters.SizeMax := FDialog.GetInputValue('filter_size_max');
-  Result.Filters.DateFrom := FDialog.GetInputValue('filter_date_from');
-  Result.Filters.DateTo := FDialog.GetInputValue('filter_date_to');
-  Result.Filters.AttrReadOnly := TFindAttrState(FDialog.GetCheckboxState('filter_attr_ro'));
-  Result.Filters.AttrHidden := TFindAttrState(FDialog.GetCheckboxState('filter_attr_hidden'));
-  Result.Filters.AttrSystem := TFindAttrState(FDialog.GetCheckboxState('filter_attr_system'));
-  Result.Filters.AttrArchive := TFindAttrState(FDialog.GetCheckboxState('filter_attr_archive'));
+  Result := ReadDialogCommandFields(FDialog);
 end;
 
 procedure TSearchDialogController.SyncHexField;
