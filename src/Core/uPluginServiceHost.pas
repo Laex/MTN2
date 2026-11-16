@@ -30,6 +30,13 @@ function HostCallServiceAsync(APluginId, AName, ARequestJson: PAnsiChar; ATimeou
 function HostServiceStatus(AJobId: Int64; ABuf: PAnsiChar; ABufSize: Int64): Int64; cdecl;
 function HostCancelService(AJobId: Int64): Int64; cdecl;
 
+/// <summary>Starts a call from host code (main thread): the registry's Call plus
+/// the wake-up and watchdog that make the messages arrive. 0 = started.</summary>
+function ServiceCallAsync(const AName, APluginId, ARequestJson: string; ATimeoutMs: Integer;
+  AOnMessage: TServiceMessageProc; out AJobId: Int64): Integer;
+/// <summary>Cancels an open call from host code (main thread).</summary>
+function ServiceCancel(AJobId: Int64): Boolean;
+
 /// <summary>Drops the services of a plugin that is being unloaded; its open
 /// calls end with an error.</summary>
 procedure PluginServicesUnregister(const APluginId: string);
@@ -114,6 +121,21 @@ begin
   T := TThread.CreateAnonymousThread(WatchdogLoop);
   T.FreeOnTerminate := True;
   T.Start;
+end;
+
+function ServiceCallAsync(const AName, APluginId, ARequestJson: string; ATimeoutMs: Integer;
+  AOnMessage: TServiceMessageProc; out AJobId: Int64): Integer;
+begin
+  Result := ServiceRegistry.Call(AName, APluginId, ARequestJson, ATimeoutMs, AOnMessage, AJobId);
+  if (Result = 0) and (ATimeoutMs > 0) then
+    EnsureWatchdog;
+end;
+
+function ServiceCancel(AJobId: Int64): Boolean;
+begin
+  Result := ServiceRegistry.Cancel(AJobId);
+  if Result then
+    SchedulePump;
 end;
 
 function HostRegisterService(APluginId, AName: PAnsiChar; AVersion: Int64;
@@ -247,7 +269,7 @@ begin
       Plugin := UTF8ToString(APluginId);
     Fn := AOnMessage;
     Data := AUserData;
-    Result := ServiceRegistry.Call(UTF8ToString(AName), Plugin, UTF8ToString(ARequestJson),
+    Result := ServiceCallAsync(UTF8ToString(AName), Plugin, UTF8ToString(ARequestJson),
       Integer(ATimeoutMs),
       procedure(AId: Int64; const AMessageJson: string)
       var
@@ -256,8 +278,6 @@ begin
         U := UTF8String(AMessageJson);
         Fn(Data, AId, PAnsiChar(U));
       end, AJobId);
-    if (Result = 0) and (ATimeoutMs > 0) then
-      EnsureWatchdog;
   except
     Result := cRpcInternalError;
   end;
@@ -300,11 +320,8 @@ end;
 function HostCancelService(AJobId: Int64): Int64; cdecl;
 begin
   try
-    if ServiceRegistry.Cancel(AJobId) then
-    begin
-      SchedulePump;
-      Result := 0;
-    end
+    if ServiceCancel(AJobId) then
+      Result := 0
     else
       Result := -1;
   except

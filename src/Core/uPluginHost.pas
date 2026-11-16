@@ -102,7 +102,7 @@ uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
   uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings,
-  uPluginHighlight, uDocumentProviders;
+  uPluginHighlight, uDocumentProviders, uFindRouter;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -599,5 +599,6 @@ initialization
   SetVfsLazyLoad(HostEnsurePluginScheme, HostEnsureArchiveExtension);
   SetHighlightLazyLoad(HostEnsureHighlightFile);
   SetDocumentLazyLoad(HostEnsureDocumentFile);
+  SetServiceLazyLoad(HostEnsureService);
 
 end.

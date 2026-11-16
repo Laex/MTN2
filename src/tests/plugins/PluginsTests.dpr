@@ -64,7 +64,8 @@ uses
   TestWorkspacePlugin in 'TestWorkspacePlugin.pas',
   TestPluginInstall in 'TestPluginInstall.pas',
   TestDiskMap in 'TestDiskMap.pas',
-  TestPluginServiceHost in 'TestPluginServiceHost.pas';
+  TestPluginServiceHost in 'TestPluginServiceHost.pas',
+  TestFindRouter in 'TestFindRouter.pas';
 
 begin
   RunRegisteredTests;

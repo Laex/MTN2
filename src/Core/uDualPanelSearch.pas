@@ -252,7 +252,7 @@ function SearchOverlayTitleForPhase(APhase: TSearchPhase;
 implementation
 
 uses
-  uStrings, uKeyChord, uTextEncoding, uFindArchive, uPluginServices;
+  uStrings, uKeyChord, uTextEncoding, uFindArchive, uPluginServices, uFindRouter;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -616,7 +616,7 @@ begin
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
 
-  FindFilesAsync(Opts, Token,
+  FindFilesRouted(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
       Bg := FindBackground(RunId);
