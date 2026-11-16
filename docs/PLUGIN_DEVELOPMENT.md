@@ -232,6 +232,7 @@ Some host calls require a permission. The plugin names the rights it needs in th
 | Permission | What it opens |
 |---|---|
 | `vfs.read` | `vfs_list`, `vfs_exists`, `vfs_read`, `vfs_open`, `vfs_cancel`, `vfs_size`, `vfs_read_at`, `vfs_close`: browsing folders and reading files on any drive, in an archive, on sftp |
+| `services.call` | `service_call` of a WASM plugin: calling the services of other plugins ([PLUGIN_SERVICES.md](PLUGIN_SERVICES.md) §6.1). A native plugin is not held back by it |
 
 The other host calls (document, panels, clipboard, surfaces, highlighting) need no permission. The check relies on the plugin identifier that the plugin itself passes in the call; a native DLL runs in the program process with its rights, so permissions keep an honest plugin within its declared limits and show the user what it wants, but they do not isolate hostile code. The only reliable limit is a WASM plugin: it has no other path to the host than the `mtn_host` imports.
 

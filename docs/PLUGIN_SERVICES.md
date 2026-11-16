@@ -149,6 +149,24 @@ Provider handler: `function(userData: Pointer; call: Int64; requestJson: PAnsiCh
 
 Caller callback: `procedure(userData: Pointer; jobId: Int64; messageJson: PAnsiChar); cdecl;`. The text is valid only during the call.
 
+### 6.1. WASM plugins
+
+A WASM guest reaches the same services through imports of the module `mtn_host` (the full list with the other imports is in the header of `Core/uWasmPluginHost.pas`). All of them run on the main thread; texts are UTF-8 in guest memory.
+
+| Import | Purpose |
+|---|---|
+| `service_register(name_ptr, name_len, version, describe_ptr, describe_len, export_ptr, export_len, priority)` | Offers a service; an empty description counts as `{}`. 0 = registered, otherwise the error code as for `RegisterService`. The guest export named by `export_*` is `(call, handle, length)` |
+| `service_message(handle, out_ptr, out_cap)` | Fetches the text behind a handle that the host gave to a guest export: its length; the text is written only when it fits |
+| `service_reply(call, ptr, len)`, `service_notify(call, ptr, len)` | Complete a call of the guest's service or send it a notification. 0 = queued, -1 = not valid; only a call the guest was given can be answered |
+| `service_call(plugin_ptr, plugin_len, name_ptr, name_len, request_ptr, request_len, timeout_ms, export_ptr, export_len)` | Starts a call (`timeout_ms` 0..60000, plugin empty = first provider). A positive result is the job number, otherwise the error code. The guest export is `(job, handle, length)`; it hears every notification and the response, and the text is fetched with `service_message` |
+| `service_cancel(job)` | Cancels a call the guest started. 0 = cancelled, -1 = not valid |
+
+The host never enters the guest from inside one of its imports: a request for the guest's service, a notification or a response reaches the export from the message queue, a moment after the call that caused it. A `call` of 0 in the provider export is a notification. Calls the guest started end when the plugin is unloaded.
+
+Calling services needs the permission `services.call` (named in the manifest and granted by the user, see §2.6 of [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md)): a service can read files or start programs, which a guest otherwise cannot do. Without it `service_call` returns `-32003`. Providing a service needs no permission.
+
+A complete sample, `samples/plugins/mtn.wasm.services`, provides a service and calls it from a menu item.
+
 ---
 
 ## 7. Threads, limits, safety
@@ -265,5 +283,4 @@ A program is started only after the user approved its command line: when the set
 ## 11. Implementation state
 
 - Described here: the message format, the error codes, `service.describe` and `service.ping`, progress and cancellation, the Host API functions, `search.files`, `text.extract`.
-- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`, the use in Alt+F7, the providers (Everything and ripgrep for `search.files`, the document viewer for `text.extract`), the `mtn.bridge` plugin.
-- Not implemented yet: the WASM guest ABI gets the services later.
+- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`, the use in Alt+F7, the providers (Everything and ripgrep for `search.files`, the document viewer for `text.extract`), the `mtn.bridge` plugin, the services of the WASM guest ABI (§6.1).

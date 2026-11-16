@@ -135,12 +135,22 @@ begin
 end;
 
 procedure TestFindExistingParentFileUri;
+const
+{$IFDEF MSWINDOWS}
+  CWorkDir = 'C:\Work';
+  CRootDir = 'C:\';
+  CWorkUri = 'file:///C:/Work';
+{$ELSE}
+  CWorkDir = '/work';
+  CRootDir = '/';
+  CWorkUri = 'file:///work';
+{$ENDIF}
 var
   Existing: TArray<string>;
   Found: string;
   Exists: TDirectoryExistsFn;
 begin
-  Existing := TArray<string>.Create('C:\Work', 'C:\');
+  Existing := TArray<string>.Create(CWorkDir, CRootDir);
   Exists :=
     function(const APath: string): Boolean
     var
@@ -152,18 +162,18 @@ begin
            ExcludeTrailingPathDelimiter(P)) then
           Exit(True);
     end;
-  Found := FindExistingParentFileUri('file:///C:/Work/gone/deep', Exists);
-  Assert.IsTrue(SameVfsUri(Found, 'file:///C:/Work'), 'nearest existing parent');
+  Found := FindExistingParentFileUri(CWorkUri + '/gone/deep', Exists);
+  Assert.IsTrue(SameVfsUri(Found, CWorkUri), 'nearest existing parent');
 
   Exists :=
     function(const APath: string): Boolean
     begin
       Result := False;
     end;
-  Found := FindExistingParentFileUri('file:///C:/Work/gone', Exists);
+  Found := FindExistingParentFileUri(CWorkUri + '/gone', Exists);
   Assert.AreEqual('', Found, 'no ancestor exists');
 
-  Found := FindExistingParentFileUri('file:///C:/Work/gone', nil);
+  Found := FindExistingParentFileUri(CWorkUri + '/gone', nil);
   Assert.AreEqual('', Found, 'nil probe yields empty');
 end;
 
@@ -285,6 +295,14 @@ begin
 end;
 
 procedure TestApplyNavigateTabBackMarkers;
+const
+{$IFDEF MSWINDOWS}
+  CRootUri = 'file:///C:/';
+  CLinkUri = 'file:///C:/link';
+{$ELSE}
+  CRootUri = 'file:///';
+  CLinkUri = 'file:///link';
+{$ENDIF}
 var
   Tab: TTab;
 begin
@@ -305,17 +323,17 @@ begin
 
   Tab := Default(TTab);
   Tab.CurrentURI := 'file:///C:/Work';
-  ApplyNavigateTabBackMarkers(Tab, 'file:///C:/link', 'file:///D:/target',
+  ApplyNavigateTabBackMarkers(Tab, CLinkUri, 'file:///D:/target',
     'file:///C:/Work', False);
-  Assert.AreEqual('file:///C:/', Tab.WorkspaceBackUri, 'junction parent');
+  Assert.AreEqual(CRootUri, Tab.WorkspaceBackUri, 'junction parent');
   Assert.AreEqual('file:///D:/target', Tab.WorkspaceBackTarget,
     'junction target');
-  Assert.AreEqual(FileUriTitle('file:///C:/link'), Tab.JunctionBackName,
+  Assert.AreEqual(FileUriTitle(CLinkUri), Tab.JunctionBackName,
     'junction name');
 
   Tab := Default(TTab);
   Tab.CurrentURI := 'file:///C:/Work';
-  ApplyNavigateTabBackMarkers(Tab, 'file:///C:/link', 'file:///D:/target',
+  ApplyNavigateTabBackMarkers(Tab, CLinkUri, 'file:///D:/target',
     'file:///C:/Work', True);
   Assert.AreEqual('', Tab.WorkspaceBackUri, 'virtual skips junction');
   Assert.AreEqual('', Tab.JunctionBackName, 'virtual skips junction name');

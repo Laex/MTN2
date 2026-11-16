@@ -1094,14 +1094,14 @@ var
 begin
   Search := Default(TSearchState);
   Search.Mask := '*.pas';
-  Search.RootPath := 'C:\Work';
+  Search.RootPath := NativePath('C:\Work');
   Search.ContainingText := 'foo';
   Search.Subdirs := False;
   Search.CaseSensitive := True;
   Search.EncodingIdx := 2;
   Criteria := FindWalkCriteriaFromSearch(Search);
   Assert.AreEqual('*.pas', Criteria.Mask, 'mask');
-  Assert.AreEqual('C:\Work', Criteria.RootPath, 'root');
+  Assert.AreEqual(NativePath('C:\Work'), Criteria.RootPath, 'root');
   Assert.AreEqual('foo', Criteria.ContainingText, 'text');
   Assert.IsTrue(not Criteria.Subdirs, 'subdirs');
   Assert.IsTrue(Criteria.CaseSensitive, 'case');
@@ -1111,14 +1111,16 @@ begin
   Assert.AreEqual(3, SearchResultsScrollForCursor(0, 7, 5), 'follow down');
   Assert.AreEqual(2, SearchResultsScrollForCursor(5, 2, 5), 'follow up');
 
-  Root := IncludeTrailingPathDelimiter('C:\Work\proj');
+  Root := IncludeTrailingPathDelimiter(NativePath('C:\Work\proj'));
   Assert.AreEqual('a.pas',
-    FormatSearchHitDisplayPath(Root + 'a.pas', 'C:\Work\proj', 80), 'rel');
+    FormatSearchHitDisplayPath(Root + 'a.pas', NativePath('C:\Work\proj'), 80),
+    'rel');
   Assert.AreEqual('long~',
-    FormatSearchHitDisplayPath('C:\Work\proj\longname.pas', 'C:\Work\proj', 5),
-    'truncate');
+    FormatSearchHitDisplayPath(NativePath('C:\Work\proj\longname.pas'),
+      NativePath('C:\Work\proj'), 5), 'truncate');
   Assert.AreEqual('readme.txt',
-    FormatSearchHitDisplayPath('C:\Work\proj\readme.txt', 'C:\Work\proj', 80),
+    FormatSearchHitDisplayPath(NativePath('C:\Work\proj\readme.txt'),
+      NativePath('C:\Work\proj'), 80),
     'plain local path survives a non-archive split');
 end;
 

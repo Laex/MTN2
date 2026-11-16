@@ -19,6 +19,9 @@ uses
 const
   /// <summary>List folders, check existence and read files through any scheme.</summary>
   cPermVfsRead = 'vfs.read';
+  /// <summary>Call the services of other plugins (search, text extraction, bridged tools).
+  /// Only a WASM plugin needs it: a service can read files and start programs.</summary>
+  cPermServicesCall = 'services.call';
 
 /// <summary>True for a permission name this host knows.</summary>
 function IsKnownPermission(const AName: string): Boolean;
@@ -72,7 +75,7 @@ end;
 
 function KnownPermissions: TArray<string>;
 begin
-  Result := [cPermVfsRead];
+  Result := [cPermVfsRead, cPermServicesCall];
 end;
 
 function IsKnownPermission(const AName: string): Boolean;

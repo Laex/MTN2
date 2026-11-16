@@ -77,7 +77,7 @@ If the theme of the saved session is not found, the program says so and uses the
 
 **Controls**
 - **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it.
-- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`).
+- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`) or, for a WebAssembly plugin, calling the services of other plugins (`services.call`).
 - **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start).
 - **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
 - **Add...** installs a plugin from a folder or a `.zip` file (it must contain `plugin.json`; the folder is named after its `id`). An installed plugin is switched off: turn it on with Space and press **OK**. A plugin with the same `id` is replaced after a confirmation; a loaded plugin keeps its old version until the next start. An archive with paths outside the plugin folder is refused.

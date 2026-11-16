@@ -259,17 +259,22 @@ begin
   Cb := RcloneVfsCallbacks;
   Ctx := Default(TVfsOpContext);
   Ctx.ReportProgress := NoteProgress;
+  Ctx.SetErrorText := NoteError;
+  GSeenError := '';
   GSeenDone := -1;
   GSeenTotal := -1;
   GReply := function(ALine: string): string
     var
       Head: string;
+      Skip: Integer;
     begin
       Result := '';
       // Like rclone, the fake creates the copy it was told to make (the
       // argument before the log options).
       Head := Copy(ALine, 1, Pos(' --use-json-log', ALine) - 1);
-      TFile.WriteAllBytes(Copy(Head, LastDelimiter(' ', Head) + 1, MaxInt), nil);
+      // The copy path follows the remote; a temporary file name may hold a space.
+      Skip := Pos('gdrive:b.bin ', Head) + Length('gdrive:b.bin ');
+      TFile.WriteAllBytes(Copy(Head, Skip, MaxInt), nil);
       TFile.WriteAllText(LogPathOf(ALine),
         '{"level":"notice","msg":"t","stats":{"bytes":30,"totalBytes":90}}' + #10);
     end;
@@ -277,7 +282,7 @@ begin
   GRunMs := 500;
   Uri := 'rclone:///gdrive/b.bin';
   Assert.AreEqual(Int64(Ord(verOk)), Cb.ReadBytes(PAnsiChar(Uri), 100, nil, @Ctx, @Buf[0],
-    SizeOf(Buf), Neg));
+    SizeOf(Buf), Neg), GSeenError);
   Assert.IsTrue(Pos('rclone copyto', LastCall) = 1);
   Assert.IsTrue(Pos('--use-json-log', LastCall) > 0, 'the transfer logs its totals');
   Assert.AreEqual(Int64(30), GSeenDone);

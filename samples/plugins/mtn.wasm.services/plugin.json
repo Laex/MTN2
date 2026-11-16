@@ -1,0 +1,13 @@
+{
+  "id": "mtn.wasm.services",
+  "name": "WASM services demo",
+  "version": "0.1.0",
+  "abi": 2,
+  "description": {
+    "en": "A plugin written in WebAssembly that provides a JSON-RPC service and calls it from a menu item (Commands). Useful as a template for plugins that use services.",
+    "ru": "Плагин на WebAssembly, который предоставляет услугу JSON-RPC и вызывает её из пункта меню (Commands). Пригодится как заготовка для плагинов, использующих услуги."
+  },
+  "author": "MTN2",
+  "services": ["sample.hello"],
+  "permissions": ["services.call"]
+}

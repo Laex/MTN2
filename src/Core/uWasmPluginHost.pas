@@ -145,6 +145,23 @@ unit uWasmPluginHost;
       // the guest export takes (uri_ptr, uri_len) -> i64: 0 = not mine,
       // 1 = the plugin handled the file. A guest cannot redirect or launch
       // programs (no open_external import): that stays native-only.
+    service_register(name_ptr, name_len, version, describe_ptr, describe_len,
+      export_ptr, export_len, priority) -> i32
+      // provides a service (docs/PLUGIN_SERVICES.md); 0 = registered, else the
+      // negative JSON-RPC code. The guest export takes (call, handle, length): the
+      // request text is fetched with service_message; call 0 is a notification.
+      // Delivery happens from the message queue, never from inside a guest call.
+    service_reply(call, ptr, len) -> i32          // 0 = sent; only for a call the guest was given
+    service_notify(call, ptr, len) -> i32         // progress or other notification of that call
+    service_message(handle, out_ptr, out_cap) -> i32
+      // the text behind a handle given to a guest export: its length; the text is
+      // written only when it fits, a longer result means "call again with a bigger buffer"
+    service_call(plugin_ptr, plugin_len, name_ptr, name_len, request_ptr, request_len,
+      timeout_ms, export_ptr, export_len) -> i32
+      // needs the services.call permission. > 0 = the job number, else the negative
+      // JSON-RPC code. plugin may be empty (any provider). The guest export takes
+      // (job, handle, length) for every notification and the final response.
+    service_cancel(job) -> i32                    // 0 = cancelled; only for the guest's own jobs
   Exports:
     mtn_plugin_get_abi_version() -> i64
     mtn_plugin_init() -> i32
@@ -184,6 +201,9 @@ type
     FOutCap: Integer;
     FVfsResults: TDictionary<Integer, TBytes>;
     FVfsNext: Integer;
+    FSerial: Integer;
+    FServiceJobs: TList<Int64>;
+    FProviderCalls: TList<Int64>;
     procedure ReleaseEngineObjects;
     function Refuel(out AError: string): Boolean;
     function GetExportFunc(const AName: string; out AFunc: TWasmtimeFunc): Boolean;
@@ -230,6 +250,14 @@ type
     procedure StoreVfsResult(AHandle: Integer; const AData: TBytes);
     /// <summary>The result stays for another try when it does not fit ACap.</summary>
     function TakeVfsResult(AHandle, ACap: Integer; out AData: TBytes): Integer;
+    /// <summary>Remembers a service call the guest started, so it can be cancelled
+    /// when the instance goes away (main thread).</summary>
+    procedure TrackServiceJob(AJob: Int64);
+    function OwnsServiceJob(AJob: Int64): Boolean;
+    /// <summary>Remembers a call that was delivered to a service the guest provides;
+    /// only such calls may be answered by the guest (main thread).</summary>
+    procedure AcceptProviderCall(ACall: Int64);
+    function OwnsProviderCall(ACall: Int64): Boolean;
     function InvokeVoidExport(const AName: string; out AError: string): Boolean;
     function InvokeI32Export(const AName: string; out AValue: Integer;
       out AError: string): Boolean;
@@ -238,6 +266,9 @@ type
     /// stay under 2 KiB).</summary>
     function InvokeTwoStringExport(const AName, A, B: string; out AError: string): Boolean;
     property PluginId: string read FPluginId;
+    /// <summary>Process-wide number of the instance; asynchronous callbacks keep it
+    /// instead of the object and find the object again through it.</summary>
+    property Serial: Integer read FSerial;
     property Dead: Boolean read FDead;
     /// <summary>The module may import WASI preview1 (empty: no files, no
     /// environment). Set before LoadFromFile.</summary>
@@ -256,7 +287,7 @@ uses
   uVfsTypes, uTextEncoding, uVfsCdeclAdapter, uVfsRegistry, uPanelPluginRegistry,
   uMenuRegistry, uCommandRegistry, uDocumentProviders, uPluginUi, uPluginChrome, uKeymap,
   uKeymapRegistry, uPluginSettings, uPluginSurface, uPluginServices, uPluginHighlight,
-  uPluginVfs;
+  uPluginVfs, uServiceRegistry, uPluginServiceHost, uJsonRpc, uPluginPermissions;
 
 const
   cFuelPerCall: UInt64 = 50000000;
@@ -301,6 +332,12 @@ const
   cVfsReadAt: AnsiString = 'vfs_read_at';
   cVfsClose: AnsiString = 'vfs_close';
   cVfsCancel: AnsiString = 'vfs_cancel';
+  cServiceRegister: AnsiString = 'service_register';
+  cServiceReply: AnsiString = 'service_reply';
+  cServiceNotify: AnsiString = 'service_notify';
+  cServiceCall: AnsiString = 'service_call';
+  cServiceCancel: AnsiString = 'service_cancel';
+  cServiceMessage: AnsiString = 'service_message';
   cSurfaceGetFullscreen: AnsiString = 'surface_get_fullscreen';
   cHostInfo: AnsiString = 'host_info';
   cTranslate: AnsiString = 'translate';
@@ -424,6 +461,19 @@ begin
     Result := AVal.Of_.I32
   else
     Result := AVal.Of_.I64;
+end;
+
+var
+  GGuests: TDictionary<Integer, TWasmPluginInstance> = nil;
+  GGuestSerial: Integer = 0;
+
+/// <summary>The live instance with the number, or nil (main thread).</summary>
+function GuestBySerial(ASerial: Integer): TWasmPluginInstance;
+begin
+  if (GGuests = nil) or not GGuests.TryGetValue(ASerial, Result) then
+    Result := nil
+  else if Result.Dead then
+    Result := nil;
 end;
 
 function InstanceFromCaller(Caller: PWasmtimeCaller): TWasmPluginInstance;
@@ -1497,6 +1547,217 @@ begin
   SetI32Result(Results, NResults, Integer(PluginVfsCancel(Inst.PluginId, Vals^[0].Of_.I32)));
 end;
 
+/// <summary>Hands a service message to the guest export AExport(id, handle, length); the
+/// guest fetches the text with service_message. The call runs from the message queue, so
+/// a guest that is inside an import is never entered a second time. AOnFail runs when the
+/// guest cannot take the message.</summary>
+procedure QueueGuestMessage(ASerial: Integer; const AExport: string; AId: Integer;
+  const AJson: string; AOnFail: TProc);
+begin
+  TThread.ForceQueue(nil,
+    procedure
+    var
+      Inst: TWasmPluginInstance;
+      Bytes: TBytes;
+      Handle: Integer;
+      Err: string;
+    begin
+      Inst := GuestBySerial(ASerial);
+      if Inst = nil then
+      begin
+        if Assigned(AOnFail) then
+          AOnFail();
+        Exit;
+      end;
+      Bytes := TEncoding.UTF8.GetBytes(AJson);
+      Handle := Inst.ReserveVfsHandle;
+      Inst.StoreVfsResult(Handle, Bytes);
+      if not Inst.CallIntsVoidExport(AExport, [AId, Handle, Length(Bytes)], Err) then
+      begin
+        Inst.TakeVfsResult(Handle, MaxInt, Bytes);
+        if Assigned(AOnFail) then
+          AOnFail();
+      end;
+    end);
+end;
+
+function HostServiceRegister(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Name, Describe, ExportName: string;
+  Vals: ^TValBuf;
+  Serial: Integer;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, cRpcInvalidParams);
+  if NArgs < 8 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Name) or (Name = '') or
+     not ReadGuestUtf8(Caller, Vals^[3].Of_.I32, Vals^[4].Of_.I32, Describe) or
+     not ReadGuestUtf8(Caller, Vals^[5].Of_.I32, Vals^[6].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  if Describe = '' then
+    Describe := '{}';
+  Serial := Inst.Serial;
+  SetI32Result(Results, NResults, Integer(ServiceRegistry.RegisterService(Inst.PluginId, Name,
+    Vals^[2].Of_.I32, Describe,
+    function(ACall: Int64; const AMessageJson: string): Boolean
+    var
+      Msg: TRpcMessage;
+      ParseErr: Integer;
+      Id: TRpcId;
+      Owner: TWasmPluginInstance;
+    begin
+      Result := False;
+      Owner := GuestBySerial(Serial);
+      if (Owner = nil) or (ACall > High(Integer)) then
+        Exit;
+      Id := Default(TRpcId);
+      if ACall > 0 then
+      begin
+        Owner.AcceptProviderCall(ACall);
+        if TryParseRpcMessage(AMessageJson, Msg, ParseErr) then
+          Id := Msg.Id;
+      end;
+      QueueGuestMessage(Serial, ExportName, Integer(ACall), AMessageJson,
+        procedure
+        var
+          Answer: UTF8String;
+        begin
+          if ACall > 0 then
+          begin
+            Answer := UTF8String(BuildRpcError(Id, cRpcInternalError,
+              'the plugin did not take the call'));
+            HostServiceReply(ACall, PAnsiChar(Answer));
+          end;
+        end);
+      Result := True;
+    end, Vals^[7].Of_.I32)));
+end;
+
+/// <summary>service_reply and service_notify: the guest answers a call it was given.</summary>
+function GuestServiceSend(Caller: PWasmtimeCaller; Args: PWasmtimeVal; NArgs: NativeUInt;
+  ANotify: Boolean): Integer;
+var
+  Inst: TWasmPluginInstance;
+  Json: string;
+  Utf8: UTF8String;
+  Vals: ^TValBuf;
+  Call: Integer;
+begin
+  Result := -1;
+  if NArgs < 3 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  Call := Vals^[0].Of_.I32;
+  if (Call <= 0) or not Inst.OwnsProviderCall(Call) or
+     not ReadGuestUtf8(Caller, Vals^[1].Of_.I32, Vals^[2].Of_.I32, Json) or (Json = '') then
+    Exit;
+  Utf8 := UTF8String(Json);
+  if ANotify then
+    Result := Integer(HostServiceNotify(Call, PAnsiChar(Utf8)))
+  else
+    Result := Integer(HostServiceReply(Call, PAnsiChar(Utf8)));
+end;
+
+function HostServiceReplyImport(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, GuestServiceSend(Caller, Args, NArgs, False));
+end;
+
+function HostServiceNotifyImport(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, GuestServiceSend(Caller, Args, NArgs, True));
+end;
+
+function HostServiceCall(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Target, Name, Request, ExportName: string;
+  Vals: ^TValBuf;
+  Timeout, Serial: Integer;
+  Job: Int64;
+  Rc: Integer;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, cRpcInvalidParams);
+  if NArgs < 9 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  if not PluginHasPermission(Inst.PluginId, cPermServicesCall) then
+  begin
+    SetI32Result(Results, NResults, cRpcNotAllowed);
+    Exit;
+  end;
+  Vals := Pointer(Args);
+  Timeout := Vals^[6].Of_.I32;
+  if (Timeout < 0) or (Timeout > cServiceMaxTimeoutMs) or
+     not ReadGuestUtf8(Caller, Vals^[0].Of_.I32, Vals^[1].Of_.I32, Target) or
+     not ReadGuestUtf8(Caller, Vals^[2].Of_.I32, Vals^[3].Of_.I32, Name) or (Name = '') or
+     not ReadGuestUtf8(Caller, Vals^[4].Of_.I32, Vals^[5].Of_.I32, Request) or (Request = '') or
+     not ReadGuestUtf8(Caller, Vals^[7].Of_.I32, Vals^[8].Of_.I32, ExportName) or
+     (ExportName = '') then
+    Exit;
+  Serial := Inst.Serial;
+  Rc := ServiceCallAsync(Name, Target, Request, Timeout,
+    procedure(AJobId: Int64; const AMessageJson: string)
+    begin
+      if AJobId <= High(Integer) then
+        QueueGuestMessage(Serial, ExportName, Integer(AJobId), AMessageJson, nil);
+    end, Job);
+  if Rc <> 0 then
+    SetI32Result(Results, NResults, Rc)
+  else if Job > High(Integer) then
+  begin
+    ServiceCancel(Job);
+    SetI32Result(Results, NResults, cRpcInternalError);
+  end
+  else
+  begin
+    Inst.TrackServiceJob(Job);
+    SetI32Result(Results, NResults, Integer(Job));
+  end;
+end;
+
+function HostServiceCancelImport(Env: Pointer; Caller: PWasmtimeCaller;
+  Args: PWasmtimeVal; NArgs: NativeUInt;
+  Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
+var
+  Inst: TWasmPluginInstance;
+  Vals: ^TValBuf;
+begin
+  Result := nil;
+  SetI32Result(Results, NResults, -1);
+  if NArgs < 1 then
+    Exit;
+  Inst := InstanceFromCaller(Caller);
+  if Inst = nil then
+    Exit;
+  Vals := Pointer(Args);
+  if Inst.OwnsServiceJob(Vals^[0].Of_.I32) and ServiceCancel(Vals^[0].Of_.I32) then
+    SetI32Result(Results, NResults, 0);
+end;
+
 function HostSurfaceGetFullscreen(Env: Pointer; Caller: PWasmtimeCaller;
   Args: PWasmtimeVal; NArgs: NativeUInt;
   Results: PWasmtimeVal; NResults: NativeUInt): PWasmTrap; cdecl;
@@ -2108,8 +2369,14 @@ var
   end;
 
 begin
-  SetLength(Result, 64);
+  SetLength(Result, 72);
   N := 0;
+  Add(cServiceRegister, 8, @HostServiceRegister);
+  Add(cServiceReply, 3, @HostServiceReplyImport);
+  Add(cServiceNotify, 3, @HostServiceNotifyImport);
+  Add(cServiceCall, 9, @HostServiceCall);
+  Add(cServiceCancel, 1, @HostServiceCancelImport);
+  Add(cServiceMessage, 3, @HostVfsResult);
   Add(cVfsOpen, 4, @HostVfsOpen);
   Add(cVfsSize, cSigSize, @HostVfsSize);
   Add(cVfsReadAt, cSigReadAt, @HostVfsReadAt);
@@ -2313,10 +2580,26 @@ begin
   FPluginId := APluginId;
   FLock := TCriticalSection.Create;
   FVfsResults := TDictionary<Integer, TBytes>.Create;
+  FServiceJobs := TList<Int64>.Create;
+  FProviderCalls := TList<Int64>.Create;
+  if GGuests = nil then
+    GGuests := TDictionary<Integer, TWasmPluginInstance>.Create;
+  Inc(GGuestSerial);
+  FSerial := GGuestSerial;
+  GGuests.Add(FSerial, Self);
 end;
 
 destructor TWasmPluginInstance.Destroy;
+var
+  Job: Int64;
 begin
+  if GGuests <> nil then
+    GGuests.Remove(FSerial);
+  // Calls the guest started would otherwise keep running for nobody.
+  for Job in FServiceJobs do
+    ServiceCancel(Job);
+  FServiceJobs.Free;
+  FProviderCalls.Free;
   ShutdownPlugin;
   FVfsResults.Free;
   FLock.Free;
@@ -3189,6 +3472,38 @@ begin
   Result := FVfsNext;
 end;
 
+procedure PruneFinishedJobs(AList: TList<Int64>);
+var
+  I: Integer;
+  Status: TServiceJobStatus;
+begin
+  for I := AList.Count - 1 downto 0 do
+    if not ServiceRegistry.Status(AList[I], Status) or (Status.State <> sjsRunning) then
+      AList.Delete(I);
+end;
+
+procedure TWasmPluginInstance.TrackServiceJob(AJob: Int64);
+begin
+  PruneFinishedJobs(FServiceJobs);
+  FServiceJobs.Add(AJob);
+end;
+
+function TWasmPluginInstance.OwnsServiceJob(AJob: Int64): Boolean;
+begin
+  Result := FServiceJobs.Contains(AJob);
+end;
+
+procedure TWasmPluginInstance.AcceptProviderCall(ACall: Int64);
+begin
+  PruneFinishedJobs(FProviderCalls);
+  FProviderCalls.Add(ACall);
+end;
+
+function TWasmPluginInstance.OwnsProviderCall(ACall: Int64): Boolean;
+begin
+  Result := FProviderCalls.Contains(ACall);
+end;
+
 procedure TWasmPluginInstance.StoreVfsResult(AHandle: Integer; const AData: TBytes);
 begin
   FVfsResults.AddOrSetValue(AHandle, AData);
@@ -3848,5 +4163,10 @@ begin
         AOnDone(-1, -1, TVfsError.Make(vecNotSupported, 'Not supported by WASM plugin', ARootURI));
       end);
 end;
+
+initialization
+
+finalization
+  FreeAndNil(GGuests);
 
 end.

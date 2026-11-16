@@ -195,6 +195,9 @@ begin
   if SameText(AName, cPermVfsRead) then
     Result := T('ui.plugininfo.perm.vfsRead', 'read files and folders on any drive or archive') +
       ' (' + AName + ')'
+  else if SameText(AName, cPermServicesCall) then
+    Result := T('ui.plugininfo.perm.servicesCall', 'use the services of other plugins') +
+      ' (' + AName + ')'
   else
     Result := AName;
 end;

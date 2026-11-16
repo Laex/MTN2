@@ -77,7 +77,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 
 **Bedienung**
 - **Leertaste** auf einer Zeile schaltet das Plugin aus oder ein (`[x]` ist ein, `[ ]` ist aus); die Wahl gilt mit **OK** und bleibt zwischen den Starts erhalten, **Abbrechen** verwirft sie.
-- **Berechtigungen...** öffnet einen Dialog: dem Plugin erlauben, eingebaute Handler zu ersetzen (`[replaces .zip: on]`) und was sein Manifest anfordert, zum Beispiel Dateien über das Programm zu lesen (`[needs vfs.read: on]`).
+- **Berechtigungen...** öffnet einen Dialog: dem Plugin erlauben, eingebaute Handler zu ersetzen (`[replaces .zip: on]`) und was sein Manifest anfordert, zum Beispiel Dateien über das Programm zu lesen (`[needs vfs.read: on]`) oder, bei einem WebAssembly-Plugin, die Dienste anderer Plugins aufzurufen (`services.call`).
 - **Ctrl+Up** und **Ctrl+Down** ändern die Ladereihenfolge der Plugins (sie spielt zwischen Plugins gleicher Priorität eine Rolle und gilt ab dem nächsten Start).
 - **Info** zeigt, wofür das Plugin da ist und was es hinzugefügt hat (Befehle, Tasten, Dateitypen, Schemata), und öffnet seine Hilfeseite, wenn es eine hat.
 <!--external-tools-->- **Externer Viewer/Editor...** – die Befehle Alt+F3 / Alt+F4; `%1` ist der Dateipfad (ohne `%1` wird der Pfad am Ende angehängt), z. B. `"C:\Program Files\Notepad++\notepad++.exe" %1`.

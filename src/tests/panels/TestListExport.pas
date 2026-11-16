@@ -156,17 +156,27 @@ begin
 end;
 
 procedure TTestListExport.ParseFormatRadioAndResolvePath;
+const
+{$IFDEF MSWINDOWS}
+  CAbsFile = 'C:\out\list.txt';
+  CPanelDir = 'D:\panel';
+  CDocsDir = 'E:\docs';
+{$ELSE}
+  CAbsFile = '/out/list.txt';
+  CPanelDir = '/panel';
+  CDocsDir = '/docs';
+{$ENDIF}
 begin
   Assert.IsTrue(ParseListExportFormatRadio('fmt_text') = lefText, 'text');
   Assert.IsTrue(ParseListExportFormatRadio('fmt_md') = lefMarkdown, 'md');
   Assert.IsTrue(ParseListExportFormatRadio('fmt_csv') = lefCsv, 'csv');
   Assert.IsTrue(ParseListExportFormatRadio('other') = lefAuto, 'auto');
-  Assert.AreEqual('C:\out\list.txt',
-    ResolveExportListPath('C:\out\list.txt', 'D:\panel', 'E:\docs'), 'abs');
-  Assert.AreEqual(IncludeTrailingPathDelimiter('D:\panel') + 'list.txt',
-    ResolveExportListPath('list.txt', 'D:\panel', 'E:\docs'), 'panel');
-  Assert.AreEqual(IncludeTrailingPathDelimiter('E:\docs') + 'list.txt',
-    ResolveExportListPath('list.txt', '', 'E:\docs'), 'fallback');
+  Assert.AreEqual(CAbsFile,
+    ResolveExportListPath(CAbsFile, CPanelDir, CDocsDir), 'abs');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(CPanelDir) + 'list.txt',
+    ResolveExportListPath('list.txt', CPanelDir, CDocsDir), 'panel');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(CDocsDir) + 'list.txt',
+    ResolveExportListPath('list.txt', '', CDocsDir), 'fallback');
 end;
 
 initialization

@@ -23,6 +23,10 @@ type
     [Test] procedure TestExtendedApiFromWasm;
     [Test] procedure TestFileSystemReadFromWasm;
     [Test] procedure TestFileSystemStreamFromWasm;
+    [Test] procedure TestServiceProviderFromWasm;
+    [Test] procedure TestServiceSampleFromWasm;
+    [Test] procedure TestServiceCallFromWasm;
+    [Test] procedure TestServiceCallNeedsPermissionInWasm;
   end;
 
 implementation
@@ -50,6 +54,8 @@ uses
   uTopMenuBar,
   uMenuRegistry,
   uMessageBus,
+  uServiceRegistry,
+  uPluginServiceHost,
   uCommandRegistry,
   uDocumentProviders,
   uPluginUi,
@@ -868,6 +874,229 @@ begin
   end;
 end;
 
+{ Services from a guest }
+
+function WatText(const AText: string): string;
+begin
+  Result := StringReplace(AText, '"', '\22', [rfReplaceAll]);
+end;
+
+function LoadGuest(const ARoot, AId, AWat, APermissions: string; out ALog: string): Boolean;
+var
+  Loaded: Boolean;
+  Msg: string;
+begin
+  Loaded := False;
+  Msg := '';
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      Msg := AMessage;
+      if AResult = plrLoaded then
+        Loaded := True;
+    end;
+  StageDir(ARoot, AId, AWat);
+  WriteUtf8NoBom(TPath.Combine(TPath.Combine(ARoot, AId), 'plugin.json'),
+    Format('{"id":"%s","abi":2%s}', [AId, APermissions]));
+  PluginLoader.LoadPluginsFrom(ARoot);
+  ALog := Msg;
+  Result := Loaded;
+end;
+
+procedure TestServiceProvider;
+const
+  cReply = '{"jsonrpc":"2.0","id":1,"result":{"ok":true}}';
+var
+  Root, Log, Got: string;
+  Job: Int64;
+  I: Integer;
+begin
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-svcprov');
+  Got := '';
+  try
+    // on_call checks that the text behind the handle has the length it was told, that a
+    // call number the guest was not given cannot be answered, and then answers its own call.
+    Assert.IsTrue(LoadGuest(Root, 'mtn.wasm.svcprov',
+      string.Join(sLineBreak, [
+      '(module',
+      '  (import "mtn_host" "service_register"',
+      '    (func $reg (param i32 i32 i32 i32 i32 i32 i32 i32) (result i32)))',
+      '  (import "mtn_host" "service_message" (func $msg (param i32 i32 i32) (result i32)))',
+      '  (import "mtn_host" "service_reply" (func $rep (param i32 i32 i32) (result i32)))',
+      '  (memory (export "memory") 1)',
+      '  (data (i32.const 8) "wasm.echo")',
+      '  (data (i32.const 32) "on_call")',
+      '  (data (i32.const 64) "' + WatText(cReply) + '")',
+      '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))',
+      '  (func (export "mtn_plugin_init") (result i32)',
+      '    (if (i32.ne (call $reg (i32.const 8) (i32.const 9) (i32.const 1) (i32.const 0)',
+      '      (i32.const 0) (i32.const 32) (i32.const 7) (i32.const 0)) (i32.const 0))',
+      '      (then unreachable))',
+      '    (i32.const 0))',
+      '  (func (export "mtn_plugin_shutdown"))',
+      '  (func (export "on_call") (param i32 i32 i32)',
+      '    (if (i32.ne (call $msg (local.get 1) (i32.const 400) (i32.const 512)) (local.get 2))',
+      '      (then unreachable))',
+      '    (if (i32.ne (call $rep (i32.const 99999) (i32.const 64) (i32.const ' +
+        IntToStr(Length(cReply)) + ')) (i32.const -1)) (then unreachable))',
+      '    (drop (call $rep (local.get 0) (i32.const 64) (i32.const ' +
+        IntToStr(Length(cReply)) + ')))))']), '', Log), 'the module loads: ' + Log);
+    Assert.AreEqual(0, ServiceCallAsync('wasm.echo', '',
+      '{"jsonrpc":"2.0","id":1,"method":"wasm.echo"}', 5000,
+      procedure(AJobId: Int64; const AMessageJson: string)
+      begin
+        Got := AMessageJson;
+      end, Job), 'the guest service accepts a call');
+    for I := 1 to 100 do
+    begin
+      CheckSynchronize(30);
+      if Got <> '' then
+        Break;
+    end;
+    Assert.IsTrue(Pos('"ok":true', Got) > 0, 'the guest answered: ' + Got);
+  finally
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+procedure TestServiceSamplePlugin;
+var
+  Root, Src, Dest, Log, Got: string;
+  Job: Int64;
+  I: Integer;
+begin
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-svcsample');
+  Src := ExpandFileName(TPath.Combine(ExtractFilePath(ParamStr(0)),
+    NativePath('../../../samples/plugins/mtn.wasm.services')));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(Src, 'plugin.wat')), 'sample missing: ' + Src);
+  Dest := TPath.Combine(Root, 'mtn.wasm.services');
+  if TDirectory.Exists(Dest) then
+    TDirectory.Delete(Dest, True);
+  TDirectory.CreateDirectory(Dest);
+  TFile.Copy(TPath.Combine(Src, 'plugin.wat'), TPath.Combine(Dest, 'plugin.wat'), True);
+  TFile.Copy(TPath.Combine(Src, 'plugin.json'), TPath.Combine(Dest, 'plugin.json'), True);
+  Got := '';
+  Log := '';
+  PluginLoader.OnLog :=
+    procedure(const AFileName: string; AResult: TPluginLoadResult; const AMessage: string)
+    begin
+      Log := AMessage;
+    end;
+  try
+    PluginLoader.LoadPluginsFrom(Root);
+    Assert.AreEqual(0, ServiceCallAsync('sample.hello', '',
+      '{"jsonrpc":"2.0","id":1,"method":"sample.hello"}', 5000,
+      procedure(AJobId: Int64; const AMessageJson: string)
+      begin
+        Got := AMessageJson;
+      end, Job), 'the sample registers its service: ' + Log);
+    for I := 1 to 100 do
+    begin
+      CheckSynchronize(30);
+      if Got <> '' then
+        Break;
+    end;
+    Assert.IsTrue(Pos('Hello from a WASM service', Got) > 0, 'the sample answered: ' + Got);
+  finally
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+function ServiceCallerWat(const AInitCheck: string): string;
+const
+  cRequest = '{"jsonrpc":"2.0","id":7,"method":"test.double"}';
+begin
+  Result := string.Join(sLineBreak, [
+    '(module',
+    '  (import "mtn_host" "service_call"',
+    '    (func $call (param i32 i32 i32 i32 i32 i32 i32 i32 i32) (result i32)))',
+    '  (import "mtn_host" "service_message" (func $msg (param i32 i32 i32) (result i32)))',
+    '  (import "mtn_host" "publish" (func $pub (param i32 i32 i32 i32) (result i32)))',
+    '  (memory (export "memory") 1)',
+    '  (data (i32.const 8) "wasm.svc")',
+    '  (data (i32.const 32) "on_msg")',
+    '  (data (i32.const 64) "test.double")',
+    '  (data (i32.const 128) "' + WatText(cRequest) + '")',
+    '  (func (export "mtn_plugin_get_abi_version") (result i64) (i64.const 2))',
+    '  (func (export "mtn_plugin_init") (result i32)',
+    '    ' + Format(AInitCheck, ['(call $call (i32.const 0) (i32.const 0) (i32.const 64) ' +
+      '(i32.const 11) (i32.const 128) (i32.const ' + IntToStr(Length(cRequest)) +
+      ') (i32.const 5000) (i32.const 32) (i32.const 6))']),
+    '    (i32.const 0))',
+    '  (func (export "mtn_plugin_shutdown"))',
+    '  (func (export "on_msg") (param i32 i32 i32)',
+    '    (local $len i32)',
+    '    (local.set $len (call $msg (local.get 1) (i32.const 600) (i32.const 256)))',
+    '    (drop (call $pub (i32.const 8) (i32.const 8) (i32.const 600) (local.get $len)))))']);
+end;
+
+procedure TestServiceCaller;
+var
+  Root, Log, Told: string;
+  Sub: ISubscription;
+  I: Integer;
+begin
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-svccall');
+  Told := '';
+  Assert.AreEqual(0, ServiceRegistry.RegisterService('test.host', 'test.double', 1, '{}',
+    function(ACall: Int64; const AMessageJson: string): Boolean
+    var
+      U: UTF8String;
+    begin
+      U := UTF8String('{"jsonrpc":"2.0","id":7,"result":{"n":42}}');
+      HostServiceReply(ACall, PAnsiChar(U));
+      Result := True;
+    end), 'the host service registers');
+  Sub := MessageBus.Subscribe('wasm.svc',
+    procedure(const ATopic: string; const APayload: TObject)
+    begin
+      Told := Told + TPluginPayload(APayload).Json + ';';
+    end);
+  PluginPermissionGrant('mtn.wasm.svccall', cPermServicesCall, True);
+  try
+    // Init checks that the call started (a positive job number); on_msg publishes what
+    // the host hands over, so the response reached the guest through the export.
+    Assert.IsTrue(LoadGuest(Root, 'mtn.wasm.svccall',
+      ServiceCallerWat('(if (i32.le_s %s (i32.const 0)) (then unreachable))'),
+      ',"permissions":["services.call"]', Log), 'the module loads: ' + Log);
+    for I := 1 to 100 do
+    begin
+      CheckSynchronize(30);
+      if Told <> '' then
+        Break;
+    end;
+    Assert.IsTrue(Pos('"n":42', Told) > 0, 'the guest heard the answer: ' + Told);
+  finally
+    PluginPermissionGrant('mtn.wasm.svccall', cPermServicesCall, False);
+    Sub.Unsubscribe;
+    ServiceRegistry.UnregisterPlugin('test.host');
+    PluginLoader.UnloadAll;
+  end;
+end;
+
+procedure TestServiceCallNeedsPermission;
+var
+  Root, Log: string;
+begin
+  Root := TPath.Combine(ExtractFilePath(ParamStr(0)), 'plugins-wasm-svcdeny');
+  Assert.AreEqual(0, ServiceRegistry.RegisterService('test.host', 'test.double', 1, '{}',
+    function(ACall: Int64; const AMessageJson: string): Boolean
+    begin
+      Result := True;
+    end), 'the host service registers');
+  try
+    // Asked for in the manifest but not granted: init traps unless the call is refused
+    // with "not allowed" (-32003).
+    Assert.IsTrue(LoadGuest(Root, 'mtn.wasm.svcdeny',
+      ServiceCallerWat('(if (i32.ne %s (i32.const -32003)) (then unreachable))'),
+      ',"permissions":["services.call"]', Log),
+      'a refused service call is reported to the guest: ' + Log);
+  finally
+    ServiceRegistry.UnregisterPlugin('test.host');
+    PluginLoader.UnloadAll;
+  end;
+end;
+
 procedure TTestWasmHost.SetupFixture;
 begin
   if FindWasmtimeDll = '' then
@@ -913,6 +1142,30 @@ end;
 procedure TTestWasmHost.TestFileSystemStreamFromWasm;
 begin
   TestFileSystemStream;
+end;
+
+procedure TTestWasmHost.TestServiceProviderFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestServiceProvider;
+end;
+
+procedure TTestWasmHost.TestServiceSampleFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestServiceSamplePlugin;
+end;
+
+procedure TTestWasmHost.TestServiceCallFromWasm;
+begin
+  SkipWithoutRuntime;
+  TestServiceCaller;
+end;
+
+procedure TTestWasmHost.TestServiceCallNeedsPermissionInWasm;
+begin
+  SkipWithoutRuntime;
+  TestServiceCallNeedsPermission;
 end;
 
 procedure TTestWasmHost.TestFileSystemReadFromWasm;
