@@ -240,17 +240,30 @@ The built-in walk reads such a file through the service and looks for the text i
 
 ## 10. Compatibility with external processes
 
-The message format (JSON-RPC 2.0), the shape of the description (`name`, `description`, `inputSchema`), the call result (`content`, `structuredContent`, `isError`), and the names and fields of the progress and cancellation notifications follow the conventions of common JSON-RPC tool servers. A plugin that starts an external process, performs the version handshake, reads its list of tools and registers each tool as a service can therefore pass the messages through almost unchanged. Such a bridge plugin is planned; it is not part of the contract above, and it adds its own rules for starting programs (an explicit user setting for every program, no program path taken from data, and limits on message size and time).
+The message format (JSON-RPC 2.0), the shape of the description (`name`, `description`, `inputSchema`), the call result (`content`, `structuredContent`, `isError`), and the names and fields of the progress and cancellation notifications follow the conventions of common JSON-RPC tool servers. The `mtn.bridge` plugin starts external programs that speak this protocol over stdin and stdout (one JSON message per line) and registers each tool of a program as the service `bridge.<server>.<tool>`.
 
-Differences the bridge has to handle:
+### 10.1. Settings
 
-- An external server returns a list of results as a whole or in pages; the bridge turns the pages into `search.hits` messages.
-- `service.describe` of a service the bridge registers is built from the server's description of the tool; `capabilities` come from the bridge's settings.
+The plugin setting "Servers" is a JSON list. Each entry has `name` (a-z, 0-9, `_`, `-`, up to 32 characters), `command`, and optionally `args`, `cwd`, `env` (an object of strings), `startTimeoutMs` (1000..60000, default 10000) and `allow` (the tools that may be offered; empty means all). At most 16 servers are accepted.
+
+A program is started only after the user approved its command line: when the settings are saved, the plugin shows the whole command (program, arguments, folder, environment) and asks. The approval is tied to this exact command line; a changed command asks again. No program path is taken from data or from a service call.
+
+### 10.2. Behavior
+
+- The tool list is read once and kept in the plugin settings; services are registered while the plugin loads. A server without a kept list is started once at load to read it. Saving the settings clears the lists.
+- A server is started when its first service is called, and restarted after a failure up to three times in a row.
+- The `params` of a call are passed as the tool arguments. A tool result with `isError` becomes the error `-32603` with the text of the result. A progress notification of the server becomes a progress message of the call. A cancelled call sends a cancel notification to the server and ends with `-32001`.
+- Limits: 16 pending calls per server, 200 tools, 4 MB per line, a call time limit of 120 s (`-32005`).
+- The program runs in a process group (a job object on Windows) that ends with the host.
+- `service.describe` of a registered service is built from the tool description; its capability is `tool`.
+- The option "JSON-RPC provider" in the plugin settings stops the plugin from offering the servers.
+
+`samples/echo_server.py` in the plugin folder is a minimal server.
 
 ---
 
 ## 11. Implementation state
 
 - Described here: the message format, the error codes, `service.describe` and `service.ping`, progress and cancellation, the Host API functions, `search.files`, `text.extract`.
-- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`, the use in Alt+F7, the providers (Everything and ripgrep for `search.files`, the document viewer for `text.extract`).
-- Not implemented yet: the bridge plugin. The WASM guest ABI gets the services later.
+- Implemented: the registry and the router, the checking of parameters against `inputSchema`, the Host API functions of ABI 11, the manifest field `services`, the use in Alt+F7, the providers (Everything and ripgrep for `search.files`, the document viewer for `text.extract`), the `mtn.bridge` plugin.
+- Not implemented yet: the WASM guest ABI gets the services later.

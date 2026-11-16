@@ -201,6 +201,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File metadata** – image dimensions and camera, MP3 tags, program version and company in the status line and columns.
 - **Temporary panel** – a panel from command output (`rg -l`, `git ls-files`), duplicate file search by SHA-256.
 - **Line filter** – `Ctrl+Alt+J` in the viewer or editor opens the lines matching a text or regular expression.
+- **Service bridge** – the Service bridge plugin connects external programs (any language, JSON messages over stdin/stdout) as providers of JSON-RPC services; a program starts only after its full command line is approved in the plugin settings.
 - **Long plugin operations** – run as background jobs with cancellation.
 
 ## Updates, installation, portable mode

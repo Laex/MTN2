@@ -1,0 +1,11 @@
+{
+  "id": "mtn.bridge",
+  "name": "Service bridge",
+  "version": "0.1.0",
+  "abi": 11,
+  "description": {
+    "en": "Connects external programs (any language) that speak one JSON message per line over stdin/stdout as providers of JSON-RPC services named bridge.<server>.<tool>. A program runs only after its command line is approved in the plugin settings.",
+    "ru": "Подключает внешние программы (на любом языке), которые обмениваются JSON-сообщениями по одному на строку через stdin/stdout, как поставщиков услуг JSON-RPC с именами bridge.<сервер>.<инструмент>. Программа запускается только после того, как её командная строка подтверждена в настройках плагина."
+  },
+  "author": "MTN2"
+}

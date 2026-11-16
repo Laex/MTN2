@@ -68,6 +68,10 @@ uses
   TestPluginServiceHost in 'TestPluginServiceHost.pas',
   TestFindRouter in 'TestFindRouter.pas',
   TestTextExtractService in 'TestTextExtractService.pas',
+  TestBridgeProtocol in 'TestBridgeProtocol.pas',
+  TestPlatformChild in 'TestPlatformChild.pas',
+  TestBridgeConfig in 'TestBridgeConfig.pas',
+  TestBridgeServer in 'TestBridgeServer.pas',
   TestPluginServiceSettings in 'TestPluginServiceSettings.pas';
 
 begin
