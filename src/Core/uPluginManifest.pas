@@ -22,6 +22,13 @@ type
     Env: string;
   end;
 
+  /// <summary>The capabilities a service of the plugin offers (manifest field
+  /// "serviceCapabilities").</summary>
+  TManifestServiceCaps = record
+    Service: string;
+    Capabilities: TArray<string>;
+  end;
+
   /// <summary>A command the plugin declares: its id, the key chord bound to it ('' for
   /// none) and the label the command palette and the function bar show until the
   /// plugin is loaded.</summary>
@@ -79,7 +86,10 @@ type
     /// plugin registers (docs/PLUGIN_SERVICES.md). The host loads the plugin the first
     /// time a caller asks for one of them.</summary>
     Services: TArray<string>;
-    /// <summary>Optional "highlightExtensions": ["rs", "makefile", ...] - the file
+    /// <summary>Optional "serviceCapabilities": {"search.files": ["list"]} - the
+    /// capabilities a service of the plugin offers, known without loading it.</summary>
+    ServiceCapabilities: TArray<TManifestServiceCaps>;
+    /// <summary>Optional \    /// <summary>Optional "highlightExtensions": ["rs", "makefile", ...] - the file
     /// extensions and whole file names the plugin colors (lower case, no dot). The host
     /// loads the plugin the first time the viewer or the editor opens such a file,
     /// so a plugin that only colors text needs no "startup". The list must match what
@@ -229,6 +239,7 @@ begin
   SetLength(AManifest.ArchiveExtensions, 0);
   SetLength(AManifest.Schemes, 0);
   SetLength(AManifest.Services, 0);
+  SetLength(AManifest.ServiceCapabilities, 0);
   SetLength(AManifest.HighlightExtensions, 0);
   AManifest.Declarative := False;
   SetLength(AManifest.Commands, 0);
@@ -459,6 +470,21 @@ begin
     end;
 end;
 
+function ReadServiceCapabilities(AValue: TJSONValue): TArray<TManifestServiceCaps>;
+var
+  Pair: TJSONPair;
+begin
+  SetLength(Result, 0);
+  if not (AValue is TJSONObject) then
+    Exit;
+  for Pair in TJSONObject(AValue) do
+  begin
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)].Service := LowerCase(Trim(Pair.JsonString.Value));
+    Result[High(Result)].Capabilities := ReadStringItems(Pair.JsonValue, True);
+  end;
+end;
+
 /// <summary>File extensions, lower-case and without the leading dot.</summary>
 function ReadExtensions(AValue: TJSONValue): TArray<string>;
 var
@@ -598,6 +624,7 @@ begin
   AManifest.ArchiveExtensions := ReadStringItems(AObj.Values['archiveExtensions'], False);
   AManifest.Schemes := ReadStringItems(AObj.Values['schemes'], True);
   AManifest.Services := ReadStringItems(AObj.Values['services'], True);
+  AManifest.ServiceCapabilities := ReadServiceCapabilities(AObj.Values['serviceCapabilities']);
   AManifest.HighlightExtensions := ReadExtensions(AObj.Values['highlightExtensions']);
   AManifest.DocumentExtensions := ReadExtensions(AObj.Values['documentExtensions']);
   AManifest.Commands := ReadManifestCommands(AObj.Values['commands']);

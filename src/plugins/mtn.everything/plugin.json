@@ -5,6 +5,7 @@
   "abi": 11,
   "declarative": true,
   "services": ["search.files"],
+  "serviceCapabilities": {"search.files": ["name", "mask", "path", "subdirs", "case", "words", "folders", "size", "date", "list"]},
   "menuItems": [
     {"id": "everything_search", "caption": {"en": "Everything search...", "ru": "Поиск Everything..."}, "priority": 50}
   ],

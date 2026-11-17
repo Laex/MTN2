@@ -66,7 +66,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File search** – `Alt+F7`: mask, text, hex bytes with `??`, size, date with a calendar, three-state attributes, code page choice with autodetection.
 - **Search in archives** – the "Search in archives" option: zip and plugin archive entries by mask and text; `Enter` opens the archive at the found file.
 - **Background search** – the "Background" button: several searches at once, each with a chip and a counter; results fill the panel as they arrive.
-- **Search through plugins** – the Everything plugin answers name searches from its index, the ripgrep plugin searches file text with `rg`, the Document viewer plugin lets the search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files; the "Engine" list of `Alt+F7` chooses between Auto, the built-in search and a particular plugin.
+- **Search through plugins** – the Everything plugin answers name searches from its index, the ripgrep plugin searches file text with `rg`, the Document viewer plugin lets the search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files; a text search with a selective mask runs as a two-stage pipeline (names, then text), and the Pipeline button of `Alt+F7` chooses for each stage between Auto, the built-in code and a particular plugin.
 - **Results panel** – found items open as a panel right away; `Ctrl+]` / `Ctrl+[` open the file's folder in the other panel; the function key bar shows only available actions.
 - **Results to workspace** – `Ctrl+Alt+F7` saves found files as links in a working set: add, replace or create a new one.
 - **Quick search** – `Alt+letter` by name; optionally the field stays open after `Alt` is released, and there is a variant without `Alt`.
@@ -201,7 +201,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File metadata** – image dimensions and camera, MP3 tags, program version and company in the status line and columns.
 - **Temporary panel** – a panel from command output (`rg -l`, `git ls-files`), duplicate file search by SHA-256.
 - **Line filter** – `Ctrl+Alt+J` in the viewer or editor opens the lines matching a text or regular expression.
-- **Plugin services** – plugins offer and call each other's JSON-RPC services (file search, text extraction and others), including from WebAssembly plugins; calling another plugin's service needs the `services.call` permission. The Find dialog (`Alt+F7`) lets you choose the search engine among the available providers.
+- **Plugin services** – plugins offer and call each other's JSON-RPC services (file search, text extraction and others), including from WebAssembly plugins; calling another plugin's service needs the `services.call` permission. The Find dialog (`Alt+F7`) lets you choose the provider of each search stage among the available ones.
 - **Service bridge** – the Service bridge plugin connects external programs (any language, JSON messages over stdin/stdout) as providers of JSON-RPC services; a program starts only after its full command line is approved in the plugin settings.
 - **Long plugin operations** – run as background jobs with cancellation.
 

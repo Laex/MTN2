@@ -32,7 +32,7 @@ const
     '"description":"Finds files and folders by name with the Everything index",' +
     '"inputSchema":{"type":"object","properties":{"root":{"type":"string"},"mask":{"type":"string"},' +
     '"subdirs":{"type":"boolean"},"caseSensitive":{"type":"boolean"}},"required":["root"]},' +
-    '"capabilities":["name","mask","path","subdirs","case","words","folders","size","date"]}';
+    '"capabilities":["name","mask","path","subdirs","case","words","folders","size","date","list"]}';
 
 var
   GProvider: TServiceProvider;

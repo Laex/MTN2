@@ -61,21 +61,26 @@ begin
     Add('--fixed-strings');
   if ARequest.Encoding <> '' then
     Add('--encoding=' + ARequest.Encoding);
-  if not ARequest.Subdirs then
-    Add('--max-depth=1');
-  for Mask in SplitSearchMasks(ARequest.Mask) do
+  // A file list was already cut by the mask and the depth; rg reads exactly those files.
+  if Length(ARequest.Files) = 0 then
   begin
-    // *.* and * are every name, as in the built-in walk.
-    if (Mask = '*.*') or (Mask = '*') then
+    if not ARequest.Subdirs then
+      Add('--max-depth=1');
+    for Mask in SplitSearchMasks(ARequest.Mask) do
     begin
-      // A mask of every name leaves no glob at all.
-      Continue;
+      // *.* and * are every name, as in the built-in walk, and leave no glob at all.
+      if (Mask = '*.*') or (Mask = '*') then
+        Continue;
+      Add('--glob=' + Mask);
     end;
-    Add('--glob=' + Mask);
   end;
   Add('--regexp=' + ARequest.Text);
   Add('--');
-  Add(ARequest.Root);
+  if Length(ARequest.Files) = 0 then
+    Add(ARequest.Root)
+  else
+    for Mask in ARequest.Files do
+      Add(Mask);
   Result := List;
 end;
 

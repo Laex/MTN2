@@ -30,10 +30,15 @@ function BuildMaskGroupsDialog(const AItems: TArray<string>; ASelected: Integer;
   const AName, AMasks: string): TDialogDeclaration;
 function BuildArchivePasswordDialog(const AArchiveName, APrompt: string): TDialogDeclaration;
 function BuildAskSaveDialog(const AFileName: string): TDialogDeclaration;
+/// <summary>APipelineCaption is the text of the pipeline button; empty keeps the default.</summary>
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEngineIdx, AEncodingIdx: Integer;
-  const AFilters: TFindFilterText): TDialogDeclaration;
+  const AHex: string; ASubdirs, ASearchArchives: Boolean; const APipelineCaption: string;
+  AEncodingIdx: Integer; const AFilters: TFindFilterText): TDialogDeclaration;
+/// <summary>The pipeline dialog of the Find dialog: one list per stage (items from
+/// uSearchEngines), each with the selected item.</summary>
+function BuildPipelineDialog(const ANameItems, ATextItems: TArray<string>;
+  ANameIdx, ATextIdx: Integer): TDialogDeclaration;
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;
   AOverwriteIndex: Integer = 0; APreserveTimestamps: Boolean = False;
   AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
@@ -401,11 +406,10 @@ end;
 
 function BuildSearchDialog(const AMask, AContaining: string;
   ACaseSensitive, AWholeWords, ASearchFolders, AUseRegex: Boolean;
-  const AHex: string; ASubdirs, ASearchArchives: Boolean; AEngineIdx, AEncodingIdx: Integer;
-  const AFilters: TFindFilterText): TDialogDeclaration;
+  const AHex: string; ASubdirs, ASearchArchives: Boolean; const APipelineCaption: string;
+  AEncodingIdx: Integer; const AFilters: TFindFilterText): TDialogDeclaration;
 var
   Items: TArray<string>;
-  Engines: TArray<TSearchEngine>;
   I: Integer;
 begin
   RequireDialogResource(cResDialogSearch, Result);
@@ -418,9 +422,8 @@ begin
   DialogSetInputValue(Result, 'search_hex', AHex);
   DialogSetCheckbox(Result, 'search_subdirs', ASubdirs);
   DialogSetCheckbox(Result, 'search_archives', ASearchArchives);
-  Engines := SearchEngines;
-  DialogSetListItems(Result, 'search_engine', SearchEngineItems(Engines,
-    T('ui.search.engineAuto', 'Auto'), T('ui.search.engineBuiltIn', 'Built-in')), AEngineIdx);
+  if APipelineCaption <> '' then
+    DialogSetButtonText(Result, 'pipeline', APipelineCaption);
   // Item 0 lets the search detect the encoding of every file; the others are
   // the encodings of the editor, in the same order.
   Items := TextEncodingListItems;
@@ -439,6 +442,14 @@ begin
   DialogSetTriState(Result, 'filter_attr_archive', Ord(AFilters.AttrArchive));
   DialogSetLabelText(Result, 'lbl_format', Format(T('ui.search.filterFormat',
     'Size: 10K, 1.5M   Date: %s'), [DateToStr(EncodeDate(2026, 10, 27)) + ' [12:00]']));
+end;
+
+function BuildPipelineDialog(const ANameItems, ATextItems: TArray<string>;
+  ANameIdx, ATextIdx: Integer): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogPipeline, Result);
+  DialogSetListItems(Result, 'pipe_names', ANameItems, ANameIdx);
+  DialogSetListItems(Result, 'pipe_text', ATextItems, ATextIdx);
 end;
 
 function BuildCopyMoveDialog(const ATitle, APrompt, ADestPath: string;

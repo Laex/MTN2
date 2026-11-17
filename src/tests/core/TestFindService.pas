@@ -16,6 +16,9 @@ type
     [Test] procedure TestOtherMessagesAreNotHits;
     [Test] procedure TestFinalResult;
     [Test] procedure TestBounds;
+    [Test] procedure TestSelectiveOptions;
+    [Test] procedure TestStageNeeds;
+    [Test] procedure TestRequestCarriesTheFileList;
   end;
 
 implementation
@@ -209,6 +212,56 @@ begin
   Assert.IsTrue(R.Failed, 'isError ends the search as a failure');
 
   Assert.IsTrue(ParseSearchFilesResult('garbage').Failed);
+end;
+
+function HasWord(const AWords: TArray<string>; const AWord: string): Boolean;
+var
+  W: string;
+begin
+  Result := False;
+  for W in AWords do
+    if W = AWord then
+      Exit(True);
+end;
+
+procedure TTestFindService.TestSelectiveOptions;
+var
+  O: TFindOptions;
+begin
+  O := DefaultFindOptions(cRoot, '*.*', True);
+  Assert.IsFalse(FindOptionsSelective(O), 'every file');
+  O.Mask := '*';
+  Assert.IsFalse(FindOptionsSelective(O), 'every file by *');
+  O.Mask := '*.pas';
+  Assert.IsTrue(FindOptionsSelective(O), 'a mask leaves files out');
+  O.Mask := '*.*';
+  O.MinSize := 100;
+  Assert.IsTrue(FindOptionsSelective(O), 'a size bound leaves files out');
+end;
+
+procedure TTestFindService.TestStageNeeds;
+var
+  O: TFindOptions;
+begin
+  O := Opts;
+  O.ContainingText := 'needle';
+  Assert.IsTrue(HasWord(FindNameNeeds(O), 'list'), 'first stage lists');
+  Assert.IsFalse(HasWord(FindNameNeeds(O), 'content'), 'first stage reads no text');
+  Assert.IsTrue(HasWord(FindContentNeeds(O), 'files'), 'second stage takes a file list');
+  Assert.IsTrue(HasWord(FindContentNeeds(O), 'content'), 'second stage reads the text');
+  Assert.IsFalse(HasWord(FindContentNeeds(O), 'mask'), 'second stage does not match names');
+end;
+
+procedure TTestFindService.TestRequestCarriesTheFileList;
+var
+  Json: string;
+  Files: TArray<string>;
+begin
+  Files := TArray<string>.Create(cRoot + PathDelim + 'a.pas', cRoot + PathDelim + 'b.pas');
+  Json := BuildSearchFilesRequest(Opts, 7, Files);
+  Assert.IsTrue(Json.Contains('"files":['), 'files array');
+  Assert.IsTrue(Json.Contains(JsonPath(Files[1])), 'second file listed');
+  Assert.IsFalse(BuildSearchFilesRequest(Opts, 7).Contains('"files"'), 'no files without a list');
 end;
 
 procedure TTestFindService.TestBounds;

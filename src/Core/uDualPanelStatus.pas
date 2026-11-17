@@ -154,7 +154,7 @@ begin
       hdkColumnsConfig, hdkMaskGroups, hdkDisplay,
       hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
       hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
-      hdkCompareOptions, hdkDatePicker,
+      hdkCompareOptions, hdkDatePicker, hdkFindPipeline,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
@@ -332,6 +332,8 @@ begin
       Result := TArray<string>.Create(S('Checksums'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkDatePicker:
       Result := TArray<string>.Create(S('Date'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkFindPipeline:
+      Result := TArray<string>.Create(S('Search pipeline'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkCompareOptions:
       Result := TArray<string>.Create(S('Compare folders'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkMultiRename:

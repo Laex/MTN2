@@ -1655,6 +1655,7 @@ type
 implementation
 
 uses
+  uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl;
@@ -6845,6 +6846,8 @@ begin
       Result := FSearchDlg.DispatchCommand(AControlId, AFields);
     hdkDatePicker:
       Result := FSearchDlg.DispatchDatePickerCommand(AControlId);
+    hdkFindPipeline:
+      Result := FSearchDlg.DispatchPipelineCommand(AControlId);
     hdkHelp:
       FDialog.Close;
     hdkPluginList:
@@ -11227,7 +11230,7 @@ begin
   // its dialog/overlay (see FSearchUi's AOnNavigateFindResults callback,
   // which this mirrors: RegisterFindSession + NavigateActiveTo the session
   // URI, reusing the exact same find:// panel plumbing).
-  FindFilesAsync(Opts, Token,
+  FindFilesRouted(Opts, Token,
     procedure(AFoundCount: Integer; const ACurrentDir: string)
     begin
     end,

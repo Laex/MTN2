@@ -104,7 +104,7 @@ uses
   System.JSON, System.IOUtils, System.Math,
   uPluginLoader, uPluginHostAbi, uPluginManifest, uPluginPermissions, uVfsRegistry,
   uConfigLocation, uPluginSettings, uPlatformProcess, uMenuRegistry, uPluginUi, uStrings,
-  uPluginHighlight, uDocumentProviders, uFindRouter, uSearchEngines;
+  uPluginHighlight, uDocumentProviders, uFindRouter, uSearchEngines, uPluginServiceHost;
 
 const
   cDisabledPluginsFile = 'disabled-plugins.json';
@@ -238,9 +238,19 @@ begin
   PluginLoader.ServiceProviderPlugins(AName, AIds, ANames);
 end;
 
+function CapsHave(const ACaps: TArray<string>; const AWord: string): Boolean;
+var
+  C: string;
+begin
+  for C in ACaps do
+    if C = AWord then
+      Exit(True);
+  Result := False;
+end;
+
 function CatalogSearchEngines: TArray<TSearchEngine>;
 var
-  Ids, Names: TArray<string>;
+  Ids, Names, Caps: TArray<string>;
   I: Integer;
 begin
   HostServiceProviders('search.files', Ids, Names);
@@ -249,6 +259,19 @@ begin
   begin
     Result[I].Id := Ids[I];
     Result[I].Title := Names[I];
+    Caps := PluginLoader.ServiceDeclaredCapabilities('search.files', Ids[I]);
+    if Length(Caps) = 0 then
+    begin
+      // A manifest without capabilities: the provider is loaded to ask it.
+      HostEnsureService('search.files');
+      Result[I].CanList := ServiceRegistry.ProviderServes('search.files', Ids[I], ['list']);
+      Result[I].CanFiles := ServiceRegistry.ProviderServes('search.files', Ids[I], ['files']);
+    end
+    else
+    begin
+      Result[I].CanList := CapsHave(Caps, 'list');
+      Result[I].CanFiles := CapsHave(Caps, 'files');
+    end;
   end;
 end;
 

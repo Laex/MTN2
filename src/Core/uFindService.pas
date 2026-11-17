@@ -13,6 +13,10 @@ uses
 
 const
   cSearchFilesService = 'search.files';
+  /// <summary>Capability: lists files by name with no text to look for.</summary>
+  cCapList = 'list';
+  /// <summary>Capability: looks for the text only in the files of the request's files list.</summary>
+  cCapFiles = 'files';
   cSearchHitsMethod = 'search.hits';
   /// <summary>The most hits one search.hits message may carry.</summary>
   cSearchHitsPerMessage = 500;
@@ -37,8 +41,23 @@ function FindOptionsServable(const AOptions: TFindOptions): Boolean;
 /// Size and date bounds are not among them: the host applies those to the hits.</summary>
 function FindServiceNeeds(const AOptions: TFindOptions): TArray<string>;
 
-/// <summary>The JSON-RPC request of search.files for the options.</summary>
-function BuildSearchFilesRequest(const AOptions: TFindOptions; AId: Integer): string;
+/// <summary>Whether the mask or the size and date bounds of the options leave out files,
+/// so listing the names first and reading only those files is cheaper than reading
+/// the whole tree.</summary>
+function FindOptionsSelective(const AOptions: TFindOptions): Boolean;
+
+/// <summary>The capability words of the first stage of a pipeline: a provider that lists
+/// the files by name alone (no text), whatever the options ask for inside files.</summary>
+function FindNameNeeds(const AOptions: TFindOptions): TArray<string>;
+
+/// <summary>The capability words of the second stage of a pipeline: a provider that looks
+/// for the text only in the files it is given.</summary>
+function FindContentNeeds(const AOptions: TFindOptions): TArray<string>;
+
+/// <summary>The JSON-RPC request of search.files for the options. AFiles, when not empty,
+/// limits the search to those files.</summary>
+function BuildSearchFilesRequest(const AOptions: TFindOptions; AId: Integer;
+  const AFiles: TArray<string> = nil): string;
 
 /// <summary>The hits of one search.hits notification. False when the message is
 /// not a search.hits notification with a hits array; entries without a path
@@ -110,15 +129,61 @@ begin
   Result := List;
 end;
 
+function FindOptionsSelective(const AOptions: TFindOptions): Boolean;
+var
+  Masks: TArray<string>;
+  Mask: string;
+begin
+  if FindHitNeedsBoundCheck(AOptions) then
+    Exit(True);
+  Masks := SplitMasks(AOptions.Mask);
+  if Length(Masks) = 0 then
+    Exit(False);
+  for Mask in Masks do
+    if (Mask = '*') or (Mask = '*.*') then
+      Exit(False);
+  Result := True;
+end;
+
+function FindNameNeeds(const AOptions: TFindOptions): TArray<string>;
+var
+  NameOnly: TFindOptions;
+begin
+  NameOnly := AOptions;
+  NameOnly.ContainingText := '';
+  Result := FindServiceNeeds(NameOnly);
+  SetLength(Result, Length(Result) + 1);
+  Result[High(Result)] := cCapList;
+end;
+
+function FindContentNeeds(const AOptions: TFindOptions): TArray<string>;
+var
+  All: TArray<string>;
+  Word: string;
+begin
+  SetLength(Result, 0);
+  All := FindServiceNeeds(AOptions);
+  for Word in All do
+    if (Word <> 'name') and (Word <> 'mask') and (Word <> 'subdirs') and (Word <> 'folders') then
+    begin
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)] := Word;
+    end;
+  SetLength(Result, Length(Result) + 1);
+  Result[High(Result)] := cCapFiles;
+end;
+
 function IsoTime(ATime: TDateTime): string;
 begin
   Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss', ATime);
 end;
 
-function BuildSearchFilesRequest(const AOptions: TFindOptions; AId: Integer): string;
+function BuildSearchFilesRequest(const AOptions: TFindOptions; AId: Integer;
+  const AFiles: TArray<string>): string;
 var
   P: TJSONObject;
-  Root: string;
+  Root, Path: string;
+  List: TJSONArray;
 begin
   Root := ExcludeTrailingPathDelimiter(Trim(AOptions.RootPath));
   if (Length(Root) = 2) and (Root[2] = ':') then
@@ -148,7 +213,14 @@ begin
       P.AddPair('maxResults', TJSONNumber.Create(AOptions.MaxResults))
     else
       P.AddPair('maxResults', TJSONNumber.Create(cFindMaxResults));
-    Result := BuildRpcRequest(RpcIntId(AId), cSearchFilesService, P.ToJSON);
+    if Length(AFiles) > 0 then
+    begin
+      List := TJSONArray.Create;
+      for Path in AFiles do
+        List.Add(Path);
+      P.AddPair('files', List);
+    end;
+    Result :=BuildRpcRequest(RpcIntId(AId), cSearchFilesService, P.ToJSON);
   finally
     P.Free;
   end;

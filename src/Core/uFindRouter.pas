@@ -10,7 +10,11 @@ unit uFindRouter;
   before its first hit hands the search to the walk; one that fails later ends
   the search with the hits found so far. Without a provider, or for options a
   provider cannot serve, the walk runs at once. When the options name a provider
-  (Engine), only that one is asked; if it cannot serve them, the walk runs. }
+  (Engine, ContentEngine), only that one is asked; if it cannot serve them, the walk runs.
+
+  A search with a text and a mask or bounds that leave files out runs as a pipeline
+  (uFindPipeline): the first stage lists the names, the second looks for the text in the
+  files found. A text with an open mask goes to one provider. }
 
 interface
 
@@ -31,7 +35,7 @@ procedure FindFilesRouted(const AOptions: TFindOptions; ACancel: IJobCancelToken
 implementation
 
 uses
-  System.Classes, System.SyncObjs, System.Generics.Collections, uJsonRpc, uFindService,
+  System.Classes, System.SyncObjs, System.Generics.Collections, uJsonRpc, uFindService, uFindPipeline,
   uServiceRegistry, uPluginServiceHost, uTextExtractService;
 
 const
@@ -47,23 +51,51 @@ begin
   GLazyLoad := ALoad;
 end;
 
-function PickSearchProvider(const AOptions: TFindOptions; out APluginId: string): Boolean;
-var
-  Needs: TArray<string>;
+/// <summary>The provider that serves the capability words: the one the user chose (AEngine),
+/// which serves them or no provider does, or the best one.</summary>
+function ResolveProvider(const AEngine: string; const ANeeds: TArray<string>;
+  out APluginId: string): Boolean;
 begin
-  Needs := FindServiceNeeds(AOptions);
-  if AOptions.Engine <> '' then
+  if AEngine <> '' then
   begin
-    // The user chose a provider: it serves the search or the built-in walk does.
-    APluginId := AOptions.Engine;
-    Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, Needs);
+    APluginId := AEngine;
+    Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, ANeeds);
     if not Result and Assigned(GLazyLoad) and GLazyLoad(cSearchFilesService) then
-      Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, Needs);
+      Result := ServiceRegistry.ProviderServes(cSearchFilesService, APluginId, ANeeds);
     Exit;
   end;
-  Result := ServiceRegistry.PickProvider(cSearchFilesService, Needs, APluginId);
+  Result := ServiceRegistry.PickProvider(cSearchFilesService, ANeeds, APluginId);
   if not Result and Assigned(GLazyLoad) and GLazyLoad(cSearchFilesService) then
-    Result := ServiceRegistry.PickProvider(cSearchFilesService, Needs, APluginId);
+    Result := ServiceRegistry.PickProvider(cSearchFilesService, ANeeds, APluginId);
+end;
+
+/// <summary>The providers of the two stages for a search with a text, or False when the search
+/// is served as a whole. A pipeline needs a first stage that lists the names (a provider, or
+/// the walk when the user chose it) and runs when the user named a first-stage provider or
+/// when the mask or bounds leave out files: otherwise one provider reading the whole tree is
+/// quicker than listing every file first.</summary>
+function PlanPipeline(const AOptions: TFindOptions; out APlan: TFindPipelinePlan): Boolean;
+var
+  NameNeeds, ContentNeeds: TArray<string>;
+  Named: Boolean;
+begin
+  Result := False;
+  APlan := Default(TFindPipelinePlan);
+  if (AOptions.ContainingText = '') or AOptions.ContentBuiltIn and AOptions.NameBuiltIn then
+    Exit;
+  Named := AOptions.Engine <> '';
+  if not (Named or FindOptionsSelective(AOptions)) then
+    Exit;
+  NameNeeds := FindNameNeeds(AOptions);
+  ContentNeeds := FindContentNeeds(AOptions);
+  if not AOptions.NameBuiltIn then
+    if not ResolveProvider(AOptions.Engine, NameNeeds, APlan.NameProvider) then
+      Exit;
+  if not AOptions.ContentBuiltIn then
+    if not ResolveProvider(AOptions.ContentEngine, ContentNeeds, APlan.ContentProvider) then
+      APlan.ContentProvider := '';
+  // Names by the walk and text by the built-in code is the plain walk.
+  Result := (APlan.NameProvider <> '') or (APlan.ContentProvider <> '');
 end;
 
 procedure FindFilesRouted(const AOptions: TFindOptions; ACancel: IJobCancelToken;
@@ -78,10 +110,15 @@ var
   Job: Int64;
   LimitHit: Boolean;
   Code: Integer;
+  Plan: TFindPipelinePlan;
+  AllBuiltIn: Boolean;
+  Engine: string;
 begin
   Opts := AOptions;
   if Trim(Opts.Mask) = '' then
     Opts.Mask := '*.*';
+  AllBuiltIn := Opts.BuiltInOnly or
+    (Opts.NameBuiltIn and (Opts.ContentBuiltIn or (Opts.ContainingText = '')));
   // Documents are searched by their text when a plugin extracts it.
   WalkOpts := AOptions;
   if (Opts.ContainingText <> '') and not Opts.BuiltInOnly and (Opts.TextExtract = nil) then
@@ -91,8 +128,30 @@ begin
     WalkOpts.TextExtract := CreateServiceTextExtractor(ACancel);
     Opts.TextExtract := WalkOpts.TextExtract;
   end;
-  if Opts.BuiltInOnly or not FindOptionsServable(Opts) or
-     not PickSearchProvider(Opts, Plugin) then
+  if AllBuiltIn or not FindOptionsServable(Opts) then
+  begin
+    FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
+    Exit;
+  end;
+  if PlanPipeline(Opts, Plan) then
+  begin
+    RunFindPipeline(Opts, WalkOpts, Plan, ACancel, AOnProgress, AOnDone, AOnHits);
+    Exit;
+  end;
+  // One provider serves the whole search: the first-stage choice for a search by name, the
+  // second-stage choice for a search with a text.
+  if Opts.ContainingText <> '' then
+  begin
+    Engine := Opts.ContentEngine;
+    if Opts.ContentBuiltIn then
+    begin
+      FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
+      Exit;
+    end;
+  end
+  else
+    Engine := Opts.Engine;
+  if not ResolveProvider(Engine, FindServiceNeeds(Opts), Plugin) then
   begin
     FindFilesAsync(WalkOpts, ACancel, AOnProgress, AOnDone, AOnHits);
     Exit;

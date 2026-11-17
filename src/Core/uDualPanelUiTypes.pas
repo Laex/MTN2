@@ -184,7 +184,7 @@ type
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkChecksumOptions, hdkChecksumResult, hdkMultiRename, hdkCompareOptions, hdkDatePicker,
-    hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
+    hdkFindPipeline, hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.
     hdkPluginList, hdkPluginInfo, hdkPluginPerms,
@@ -201,9 +201,6 @@ type
     PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
       SyncByContent, EncryptNames, SearchArchives: Boolean;
-    /// <summary>Item of the search engine list (uSearchEngines): 0 = automatic,
-    /// 1 = the built-in walk, n = the plugin n - 2 of the list.</summary>
-    SearchEngineIdx: Integer;
     /// <summary>Code page of the Find dialog: 0 detects it per file, n is
     /// item n - 1 of TextEncodingListItems.</summary>
     SearchEncodingIdx: Integer;
@@ -225,8 +222,14 @@ type
     /// <summary>Let search plugins (Everything, ripgrep) serve the search; False
     /// always uses the built-in walk.</summary>
     UsePlugins: Boolean;
-    /// <summary>Plugin id of the search provider the user chose; '' = the best one.</summary>
+    /// <summary>Plugin id of the provider the user chose for listing the files; '' = the
+    /// best one.</summary>
     Engine: string;
+    /// <summary>Let search plugins look for the text; False always uses the built-in code.</summary>
+    ContentUsePlugins: Boolean;
+    /// <summary>Plugin id of the provider the user chose for looking for the text; '' =
+    /// the best one.</summary>
+    ContentEngine: string;
     /// <summary>0 = detect the code page of each file, n = item n - 1 of
     /// TextEncodingListItems.</summary>
     EncodingIdx: Integer;
@@ -339,7 +342,6 @@ begin
   Result.SearchFolders := ADialog.GetCheckbox('search_folders');
   Result.UseRegex := ADialog.GetCheckbox('search_regex');
   Result.SearchArchives := ADialog.GetCheckbox('search_archives');
-  Result.SearchEngineIdx := ADialog.GetListSelectedIndex('search_engine');
   Result.SearchEncodingIdx := ADialog.GetListSelectedIndex('search_encoding');
   Result.HexText := ADialog.GetInputValue('search_hex');
   Result.Filters.SizeMin := ADialog.GetInputValue('filter_size_min');

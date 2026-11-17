@@ -64,6 +64,14 @@ begin
     '{"id":"mtn.x","services":["Search.Files","text.extract"]}', M), 'services json');
   Assert.IsTrue((Length(M.Services) = 2) and (M.Services[0] = 'search.files') and
     (M.Services[1] = 'text.extract'), 'services lowercased');
+  Assert.IsTrue(Length(M.ServiceCapabilities) = 0, 'service capabilities optional');
+  Assert.IsTrue(TryParsePluginManifestJson(
+    '{"id":"mtn.x","serviceCapabilities":{"Search.Files":["List","name"]}}', M),
+    'service capabilities json');
+  Assert.IsTrue((Length(M.ServiceCapabilities) = 1) and
+    (M.ServiceCapabilities[0].Service = 'search.files') and
+    (Length(M.ServiceCapabilities[0].Capabilities) = 2) and
+    (M.ServiceCapabilities[0].Capabilities[0] = 'list'), 'service capabilities lowercased');
 end;
 
 procedure TestListLabel;

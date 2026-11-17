@@ -89,7 +89,7 @@ begin
       Result := 'jobs.md#job-list';
     hdkStopConfirm:
       Result := 'jobs.md#stop';
-    hdkSearch, hdkDatePicker, hdkTmpSaveList, hdkPanelFilter:
+    hdkSearch, hdkDatePicker, hdkFindPipeline, hdkTmpSaveList, hdkPanelFilter:
       Result := 'search.md';
     hdkSelectMask, hdkUnselectMask:
       Result := 'selection.md';

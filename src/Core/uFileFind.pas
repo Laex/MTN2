@@ -34,7 +34,16 @@ type
     Encoding: TTextFileEncoding; // used when ForceEncoding
     SearchArchives: Boolean;   // also look at the files inside archives
     BuiltInOnly: Boolean;      // do not hand the search to a service provider
-    Engine: string;            // plugin id of the provider to use; '' = the best one
+    /// <summary>Plugin id of the provider that lists the files by name (the first stage);
+    /// '' = the best one. Without a text to look for it is the provider of the whole search.</summary>
+    Engine: string;
+    /// <summary>Plugin id of the provider that looks for the text (the second stage, or the
+    /// whole search when no first stage runs); '' = the best one.</summary>
+    ContentEngine: string;
+    /// <summary>The names are listed by the built-in walk, not by a provider.</summary>
+    NameBuiltIn: Boolean;
+    /// <summary>The text is looked for by the built-in code, not by a provider.</summary>
+    ContentBuiltIn: Boolean;
     TextExtract: ITextExtractor; // nil = every file is read as it is
     OnlyExtractable: Boolean;  // look only at the files TextExtract serves
     HexBytes: string;          // byte sequence ("4D 5A ?? 90") the file must contain; empty = none
@@ -65,8 +74,10 @@ type
     Filters: TFindFilterText;
     Subdirs, CaseSensitive, WholeWords, SearchFolders, UseRegex,
       SearchArchives, HexMode, BuiltInOnly: Boolean;
-    /// <summary>Plugin id of the search provider the user chose; '' = the best one.</summary>
-    Engine: string;
+    /// <summary>Plugin id of the provider the user chose for listing the files, and for
+    /// looking for the text; '' = the best one. See TFindOptions.</summary>
+    Engine, ContentEngine: string;
+    NameBuiltIn, ContentBuiltIn: Boolean;
     /// <summary>0 = detect per file; n = TextEncodingListItems[n - 1].</summary>
     EncodingIdx: Integer;
   end;
@@ -208,6 +219,9 @@ begin
   Result.SearchArchives := False;
   Result.BuiltInOnly := False;
   Result.Engine := '';
+  Result.ContentEngine := '';
+  Result.NameBuiltIn := False;
+  Result.ContentBuiltIn := False;
   Result.TextExtract := nil;
   Result.OnlyExtractable := False;
   Result.HexBytes := '';
@@ -267,6 +281,9 @@ begin
   AOpts.SearchArchives := ACriteria.SearchArchives;
   AOpts.BuiltInOnly := ACriteria.BuiltInOnly;
   AOpts.Engine := ACriteria.Engine;
+  AOpts.ContentEngine := ACriteria.ContentEngine;
+  AOpts.NameBuiltIn := ACriteria.NameBuiltIn;
+  AOpts.ContentBuiltIn := ACriteria.ContentBuiltIn;
   AOpts.ForceEncoding := (ACriteria.EncodingIdx > 0) and
     TryTextEncodingFromListIndex(ACriteria.EncodingIdx - 1, AOpts.Encoding);
   if ByBytes then

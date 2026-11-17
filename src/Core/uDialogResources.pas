@@ -53,6 +53,7 @@ const
   cResDialogColorCodingEdit = 'DIALOG_COLORCODINGEDIT';
   cResDialogColorPicker = 'DIALOG_COLORPICKER';
   cResDialogDatePicker = 'DIALOG_DATEPICKER';
+  cResDialogPipeline = 'DIALOG_PIPELINE';
   cResDialogTheme = 'DIALOG_THEME';
   cResDialogThemeNew = 'DIALOG_THEMENEW';
   cResDialogThemeName = 'DIALOG_THEMENAME';

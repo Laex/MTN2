@@ -204,6 +204,9 @@ type
     /// <summary>Ids and names of the enabled catalogued plugins whose manifest lists
     /// the service AName.</summary>
     procedure ServiceProviderPlugins(const AName: string; out AIds, ANames: TArray<string>);
+    /// <summary>The capabilities the manifest of plugin APluginId declares for the service
+    /// AName; empty when it declares none.</summary>
+    function ServiceDeclaredCapabilities(const AName, APluginId: string): TArray<string>;
     /// <summary>Loads every catalogued plugin that has not been attempted
     /// yet and is not declarative. Used when the UI needs registrations that are
     /// not in plugin.json (menu items, key rebinds); a declarative plugin
@@ -2527,6 +2530,24 @@ begin
         Break;
       end;
   end;
+end;
+
+function TPluginLoader.ServiceDeclaredCapabilities(const AName,
+  APluginId: string): TArray<string>;
+var
+  I, J: Integer;
+  Name: string;
+begin
+  SetLength(Result, 0);
+  Name := LowerCase(Trim(AName));
+  for I := 0 to FCatalog.Count - 1 do
+    if SameText(FCatalog[I].PluginId, APluginId) then
+    begin
+      for J := 0 to High(FCatalog[I].Manifest.ServiceCapabilities) do
+        if FCatalog[I].Manifest.ServiceCapabilities[J].Service = Name then
+          Exit(FCatalog[I].Manifest.ServiceCapabilities[J].Capabilities);
+      Exit;
+    end;
 end;
 
 function TPluginLoader.EnsureHighlightFile(const AFileName: string): Boolean;

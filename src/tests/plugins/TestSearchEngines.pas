@@ -20,6 +20,8 @@ type
     [Test] procedure TestIndexOutOfRangeMeansAuto;
     [Test] procedure TestChoiceRoundTrips;
     [Test] procedure TestListerSuppliesTheEngines;
+    [Test] procedure TestStageEnginesKeepOnlyTheCapableProviders;
+    [Test] procedure TestPipelineCaptionNamesTheChoices;
   end;
 
 implementation
@@ -130,6 +132,35 @@ begin
   finally
     SetSearchEngineLister(nil);
   end;
+end;
+
+procedure TTestSearchEngines.TestStageEnginesKeepOnlyTheCapableProviders;
+var
+  All, Names, Text: TArray<TSearchEngine>;
+begin
+  All := Engines;
+  All[0].CanList := True;
+  All[1].CanFiles := True;
+  Names := SearchStageEngines(All, ssNames);
+  Text := SearchStageEngines(All, ssText);
+  Assert.AreEqual<Integer>(1, Length(Names));
+  Assert.AreEqual('mtn.everything', Names[0].Id);
+  Assert.AreEqual<Integer>(1, Length(Text));
+  Assert.AreEqual('mtn.ripgrep', Text[0].Id);
+end;
+
+procedure TTestSearchEngines.TestPipelineCaptionNamesTheChoices;
+var
+  Names, Text: TArray<string>;
+begin
+  Names := TArray<string>.Create('Auto', 'Built-in', 'Ev');
+  Text := TArray<string>.Create('Auto', 'Built-in', 'rg');
+  Assert.AreEqual('Pipeline: Auto', SearchPipelineCaption('Pipeline', 'Auto', Names, Text, 0, 0));
+  Assert.AreEqual('Pipeline: Ev > rg',
+    SearchPipelineCaption('Pipeline', 'Auto', Names, Text, 2, 2));
+  Names[2] := 'A very long provider name';
+  Assert.AreEqual('Pipeline...', SearchPipelineCaption('Pipeline', 'Auto', Names, Text, 2, 2));
+  Assert.AreEqual('Pipeline...', SearchPipelineCaption('Pipeline', 'Auto', Names, Text, 7, 1));
 end;
 
 end.

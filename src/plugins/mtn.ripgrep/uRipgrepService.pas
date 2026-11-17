@@ -34,9 +34,10 @@ const
     '"description":"Finds files by their text with ripgrep",' +
     '"inputSchema":{"type":"object","properties":{"root":{"type":"string"},"mask":{"type":"string"},' +
     '"text":{"type":"string"},"regex":{"type":"boolean"},"caseSensitive":{"type":"boolean"},' +
-    '"wholeWords":{"type":"boolean"}},"required":["root","text"]},' +
+    '"wholeWords":{"type":"boolean"},"files":{"type":"array","items":{"type":"string"}}},' +
+    '"required":["root","text"]},' +
     '"capabilities":["name","mask","path","subdirs","case","words","content","regex","encoding",' +
-    '"hidden","size","date"]}';
+    '"hidden","size","date","files"]}';
 
 var
   GProvider: TServiceProvider;

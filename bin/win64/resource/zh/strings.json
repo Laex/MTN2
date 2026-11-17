@@ -112,6 +112,14 @@
       "clear": "清除(&L)",
       "cancel": "取消"
     },
+    "DIALOG_PIPELINE": {
+      "$title": "搜索管道",
+      "lbl_pipe_names": "1. 查找文件（名称、大小、日期）:",
+      "lbl_pipe_text": "2. 在找到的文件中检查文本:",
+      "lbl_pipe_note": "搜索文本且掩码有所限制时，两个阶段都会运行。",
+      "ok": "确定",
+      "cancel": "取消"
+    },
     "DIALOG_COLORPICKER": {
       "hint": "方向键选择, Shift+左/右 步长 10, Tab 下一项",
       "$title": "选择颜色",
@@ -658,7 +666,7 @@
       "lbl_hex": "十六进制字节:",
       "search_subdirs": "搜索子文件夹(&S)",
       "search_archives": "搜索压缩包(&Z)",
-      "lbl_engine": "引擎:",
+      "pipeline": "管道(&N): 自动",
       "lbl_encoding": "代码页:",
       "ok": "查找",
       "cancel": "取消",
@@ -1337,6 +1345,7 @@
     "search.encodingAuto": "自动检测",
     "search.engineAuto": "自动",
     "search.engineBuiltIn": "内置",
+    "search.pipeline": "管道(&N)",
     "search.limit": "搜索已停止：已达到 %d 个结果的上限。请缩小掩码或文件夹范围。",
     "job.cancelling": "正在取消...",
     "job.verbCopy": "正在复制文件",

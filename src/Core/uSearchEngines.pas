@@ -1,9 +1,10 @@
 unit uSearchEngines;
 
-{ The "Search engine" list of the Find dialog (Alt+F7): item 0 lets the program pick the
-  best provider, item 1 is the built-in walk, the rest are the plugins that offer the
-  search.files service. The state of a search keeps the choice as UsePlugins and an engine
-  id; this unit converts between that pair and the list index. The host supplies the list
+{ The lists of the pipeline dialog of the Find dialog (Alt+F7), one per stage: item 0 lets
+  the program pick the best provider, item 1 is the built-in code, the rest are the plugins
+  that offer the search.files service with the capability of the stage. The state of a
+  search keeps each choice as UsePlugins and an engine id; this unit converts between that
+  pair and the list index. The host supplies the list
   of providers (SetSearchEngineLister), so this unit knows nothing about plugins. }
 
 interface
@@ -14,7 +15,15 @@ type
     Id: string;
     /// <summary>Name shown in the list.</summary>
     Title: string;
+    /// <summary>The provider lists files by name (capability "list"): it can run the
+    /// first stage of the pipeline.</summary>
+    CanList: Boolean;
+    /// <summary>The provider looks for text in a given list of files (capability
+    /// "files"): it can run the second stage.</summary>
+    CanFiles: Boolean;
   end;
+
+  TSearchStage = (ssNames, ssText);
 
   TSearchEngineLister = reference to function: TArray<TSearchEngine>;
 
@@ -27,6 +36,15 @@ procedure SetSearchEngineLister(ALister: TSearchEngineLister);
 
 /// <summary>The providers known to the host; empty without a lister.</summary>
 function SearchEngines: TArray<TSearchEngine>;
+
+/// <summary>The providers that can run a stage of the pipeline.</summary>
+function SearchStageEngines(const AEngines: TArray<TSearchEngine>;
+  AStage: TSearchStage): TArray<TSearchEngine>;
+
+/// <summary>The caption of the pipeline button: "Pipeline: Auto" while both stages are
+/// automatic, the two choices otherwise.</summary>
+function SearchPipelineCaption(const APipeline, AAuto: string;
+  const ANames, AText: TArray<string>; ANamesIdx, ATextIdx: Integer): string;
 
 /// <summary>The list items: Auto, Built-in, then one item per engine.</summary>
 function SearchEngineItems(const AEngines: TArray<TSearchEngine>;
@@ -59,6 +77,41 @@ begin
     Result := GLister()
   else
     SetLength(Result, 0);
+end;
+
+function SearchStageEngines(const AEngines: TArray<TSearchEngine>;
+  AStage: TSearchStage): TArray<TSearchEngine>;
+var
+  I, N: Integer;
+begin
+  SetLength(Result, Length(AEngines));
+  N := 0;
+  for I := 0 to High(AEngines) do
+    if ((AStage = ssNames) and AEngines[I].CanList) or
+       ((AStage = ssText) and AEngines[I].CanFiles) then
+    begin
+      Result[N] := AEngines[I];
+      Inc(N);
+    end;
+  SetLength(Result, N);
+end;
+
+function SearchPipelineCaption(const APipeline, AAuto: string;
+  const ANames, AText: TArray<string>; ANamesIdx, ATextIdx: Integer): string;
+const
+  cMaxCaption = 24;
+var
+  Detail: string;
+begin
+  if (ANamesIdx = cEngineIdxAuto) and (ATextIdx = cEngineIdxAuto) then
+    Exit(APipeline + ': ' + AAuto);
+  Detail := '';
+  if (ANamesIdx >= 0) and (ANamesIdx <= High(ANames)) and
+     (ATextIdx >= 0) and (ATextIdx <= High(AText)) then
+    Detail := ANames[ANamesIdx] + ' > ' + AText[ATextIdx];
+  Result := APipeline + ': ' + Detail;
+  if (Detail = '') or (Length(Result) > cMaxCaption) then
+    Result := APipeline + '...';
 end;
 
 function SearchEngineItems(const AEngines: TArray<TSearchEngine>;

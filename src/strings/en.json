@@ -114,6 +114,14 @@
       "clear": "C&lear",
       "cancel": "Cancel"
     },
+    "DIALOG_PIPELINE": {
+      "$title": "Search pipeline",
+      "lbl_pipe_names": "1. Find files (name, size, date):",
+      "lbl_pipe_text": "2. Check the text in the found files:",
+      "lbl_pipe_note": "Both stages run when a text is searched with a selective mask.",
+      "ok": "OK",
+      "cancel": "Cancel"
+    },
     "DIALOG_COLORPICKER": {
       "$title": "Pick color",
       "ok": "Use",
@@ -649,7 +657,7 @@
       "lbl_hex": "Hex bytes:",
       "search_subdirs": "Search in &subfolders",
       "search_archives": "Search in arch&ives",
-      "lbl_engine": "Engine:",
+      "pipeline": "Pipeli&ne: Auto",
       "lbl_encoding": "Code page:",
       "ok": "Find",
       "cancel": "Cancel",
@@ -1348,6 +1356,7 @@
     "search.encodingAuto": "Auto-detect",
     "search.engineAuto": "Auto",
     "search.engineBuiltIn": "Built-in",
+    "search.pipeline": "Pipeli&ne",
     "search.limit": "Search stopped: the limit of %d results is reached. Narrow the mask or the folder.",
     "job.cancelling": "Cancelling...",
     "job.verbCopy": "Copying the file",

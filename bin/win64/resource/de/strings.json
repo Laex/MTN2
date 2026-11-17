@@ -113,6 +113,14 @@
       "clear": "&Leeren",
       "cancel": "Abbrechen"
     },
+    "DIALOG_PIPELINE": {
+      "$title": "Such-Pipeline",
+      "lbl_pipe_names": "1. Dateien finden (Name, Größe, Datum):",
+      "lbl_pipe_text": "2. Text in den gefundenen Dateien prüfen:",
+      "lbl_pipe_note": "Beide Stufen laufen, wenn ein Text mit einer einschränkenden Maske gesucht wird.",
+      "ok": "OK",
+      "cancel": "Abbrechen"
+    },
     "DIALOG_COLORPICKER": {
       "$title": "Farbe wählen",
       "ok": "Übernehmen",
@@ -657,7 +665,7 @@
       "lbl_hex": "Hex-Bytes:",
       "search_subdirs": "In &Unterordnern suchen",
       "search_archives": "In Arc&hiven suchen",
-      "lbl_engine": "Suchmodul:",
+      "pipeline": "Pipeli&ne: Auto",
       "lbl_encoding": "Codepage:",
       "ok": "Suchen",
       "cancel": "Abbrechen",
@@ -1338,6 +1346,7 @@
     "search.encodingAuto": "Automatisch erkennen",
     "search.engineAuto": "Automatisch",
     "search.engineBuiltIn": "Integriert",
+    "search.pipeline": "Pipeli&ne",
     "search.limit": "Suche beendet: Das Limit von %d Ergebnissen ist erreicht. Maske oder Ordner einschränken.",
     "job.cancelling": "Abbrechen...",
     "job.verbCopy": "Datei wird kopiert",

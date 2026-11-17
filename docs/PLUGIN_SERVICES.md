@@ -143,7 +143,7 @@ The functions are added at the end of the Host API table, so a plugin built agai
 | `ServiceStatus(jobId, buf, bufSize)` | The state of a call as JSON: `state` (`running`, `done`, `cancelled`, `failed`), `progress`, `total`, `message`. Text result as for the other text functions; -1 = no such call |
 | `CancelService(jobId)` | Requests cancellation (§5) (main thread). 0 = cancelled, -1 = the call is not open |
 
-A plugin that is unloaded loses its services and the calls open on them end with `-32603`. The manifest field `"services": ["search.files"]` lists the names a plugin registers; the host loads the plugin the first time a caller asks for one of them.
+A plugin that is unloaded loses its services and the calls open on them end with `-32603`. The manifest field `"services": ["search.files"]` lists the names a plugin registers; the host loads the plugin the first time a caller asks for one of them. The optional field `"serviceCapabilities": {"search.files": ["name", "list"]}` repeats the capability words of a service, so that the host can offer the provider in a list (the Pipeline dialog) without loading the plugin.
 
 Provider handler: `function(userData: Pointer; call: Int64; requestJson: PAnsiChar): Int64; cdecl;`. It must return quickly: for a request (`call` is not 0) it starts the work, possibly on its own thread, and completes it with `ServiceReply`; for a notification (`call` is 0) it only reads it. The return value is 0 when the message was accepted.
 
@@ -199,10 +199,11 @@ Finds files and folders. Alt+F7 asks the registered providers before it walks th
 | `minSize`, `maxSize` | integer | Bytes; absent means no bound |
 | `modifiedFrom`, `modifiedTo` | string | ISO 8601 date and time; absent means no bound |
 | `maxResults` | integer | The most hits the caller wants |
+| `files` | array of strings | Files to look in; the provider checks only these files for `text` and ignores `root`, `mask` and `subdirs` (second stage of the pipeline, §8.5) |
 
 ### 8.2. Capabilities
 
-A provider lists the words for what it honors: `name`, `mask`, `path`, `subdirs`, `case`, `words`, `size`, `date`, `folders`, `content`, `regex`, `encoding`, `hidden`. The host uses a provider only when every word the request needs is in the list; the request needs `name` and `mask` always, and `content` when `text` is not empty. A bound the provider does not honor (for example, a lower size bound) is applied by the host to the hits.
+A provider lists the words for what it honors: `name`, `mask`, `path`, `subdirs`, `case`, `words`, `size`, `date`, `folders`, `content`, `regex`, `encoding`, `hidden`, `list`, `files`. `list` means the provider lists files by name without looking into them (it can run the first stage of the pipeline, §8.5); `files` means it accepts the `files` parameter (the second stage). The host uses a provider only when every word the request needs is in the list; the request needs `name` and `mask` always, and `content` when `text` is not empty. A bound the provider does not honor (for example, a lower size bound) is applied by the host to the hits.
 
 ### 8.3. Hits and result
 
@@ -223,6 +224,10 @@ The `hits` array holds at most 500 entries per message; `size`, `modified`, `cre
 ### 8.4. Choice of the provider and fallback
 
 The host picks the first provider in priority order whose capabilities fit the request. A request with a condition no provider honors (a byte pattern, files inside archives, attributes, a non-local root) is served by the built-in walk. When the chosen provider answers with `-32002`, `-32005` or any other error before the first hit, the host runs the built-in walk and shows a short note in the status line. After the first hit an error ends the search with the hits found so far.
+
+### 8.5. Pipeline
+
+A search with a text and a mask (or size or date bounds) that leaves files out runs in two stages. The first stage lists the files by name: a provider with `list` (for example Everything), or the built-in walk. The found files go in batches to the second stage, which looks for the text only in them: a provider with `files` (for example ripgrep), or the built-in text check. Documents whose text a `text.extract` provider reads always go to the built-in check. A search with a text and an open mask (`*` or `*.*`) is served by one provider as described in §8.4, because listing every file first would be slower. The Pipeline dialog of the Find dialog chooses the provider of each stage: Auto, Built-in or a provider that has the capability of the stage. A first-stage provider that fails before the first hit hands the stage to the built-in walk; a second-stage provider that fails before the first hit hands it to the built-in check.
 
 ---
 
@@ -251,7 +256,7 @@ A provider lists one word `ext.<extension>` for every extension it reads (lower 
 
 ### 9.4. Use by the search
 
-The built-in walk reads such a file through the service and looks for the text in the answer. When a `search.files` provider (for example ripgrep) serves the search, the host runs a second pass over the files of the served extensions after the provider has finished, and lists a file that both found once. The "Engine" list of the Find dialog chooses the provider: Auto (the rule above), Built-in (no provider and no text extraction), or one plugin, which is the only provider asked, and the built-in walk serves the search when it cannot.
+The built-in walk reads such a file through the service and looks for the text in the answer. When a `search.files` provider (for example ripgrep) serves the search, the host runs a second pass over the files of the served extensions after the provider has finished, and lists a file that both found once. The Pipeline dialog of the Find dialog chooses the provider of each stage: Auto (the rule above), Built-in (no provider and no text extraction), or one plugin, which is the only provider asked, and the built-in code serves the stage when it cannot.
 
 
 ---

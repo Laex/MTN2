@@ -23,6 +23,9 @@ type
     [Test] procedure TestChosenEngineThatIsNotAProviderUsesTheWalk;
     [Test] procedure TestChosenEngineThatLacksACapabilityUsesTheWalk;
     [Test] procedure TestCancelEndsTheSearch;
+    [Test] procedure TestTextWithAnOpenMaskIsServedByOneProvider;
+    [Test] procedure TestPipelineWalkFeedsTheTextProvider;
+    [Test] procedure TestPipelineProviderFeedsTheBuiltInTextCheck;
   end;
 
 implementation
@@ -341,6 +344,61 @@ begin
   finally
     TDirectory.Delete(Dir, True);
   end;
+end;
+
+procedure TTestFindRouter.TestTextWithAnOpenMaskIsServedByOneProvider;
+var
+  O: TFindOptions;
+begin
+  GCaps := 'name,mask,subdirs,folders,case,words,content,regex,encoding,hidden,size,date,files';
+  Assert.AreEqual<Int64>(0, Register);
+  O := DefaultFindOptions(TPath.GetTempPath, '*.*', True);
+  O.ContainingText := 'needle';
+  Run(O);
+  WaitDone;
+  Assert.AreEqual<Integer>(1, GCalls, 'one request for the whole search');
+  Assert.AreEqual<Integer>(3, Length(GHits));
+end;
+
+procedure TTestFindRouter.TestPipelineWalkFeedsTheTextProvider;
+var
+  Dir: string;
+  O: TFindOptions;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn_pipe_' + IntToStr(TThread.GetTickCount64));
+  TDirectory.CreateDirectory(Dir);
+  try
+    TFile.WriteAllText(TPath.Combine(Dir, 'a.txt'), 'needle');
+    GCaps := 'name,mask,subdirs,folders,case,words,content,regex,encoding,hidden,size,date,files';
+    Assert.AreEqual<Int64>(0, Register);
+    O := DefaultFindOptions(Dir, '*.txt', True);
+    O.ContainingText := 'needle';
+    O.NameBuiltIn := True;
+    O.ContentEngine := cPlugin;
+    Run(O);
+    WaitDone;
+    Assert.AreEqual<Integer>(1, GCalls, 'the provider checks the names the walk found');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
+end;
+
+procedure TTestFindRouter.TestPipelineProviderFeedsTheBuiltInTextCheck;
+var
+  O: TFindOptions;
+begin
+  GCaps := 'name,mask,subdirs,folders,case,words,size,date,list';
+  Assert.AreEqual<Int64>(0, Register);
+  O := DefaultFindOptions(TPath.GetTempPath, '*.txt', True);
+  O.ContainingText := 'needle';
+  O.Engine := cPlugin;
+  O.ContentBuiltIn := True;
+  Run(O);
+  WaitDone;
+  Assert.AreEqual<Integer>(1, GCalls, 'the provider lists the names');
+  // The listed files do not exist, so the built-in check keeps none of them.
+  Assert.AreEqual<Integer>(0, Length(GHits));
+  Assert.IsTrue(GError.Code = vecOk, 'the search ends without an error');
 end;
 
 procedure TTestFindRouter.TestCancelEndsTheSearch;

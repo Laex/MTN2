@@ -18,6 +18,7 @@ type
     [Test] procedure TestMatchEventGivesPathLineAndSnippet;
     [Test] procedure TestOtherEventsAreNotMatches;
     [Test] procedure TestOutputKeepsMatchesAndSkipsMessages;
+    [Test] procedure TestFileListReplacesRootAndGlobs;
   end;
 
 implementation
@@ -88,6 +89,23 @@ begin
   Args := BuildRgArguments(Req('{"params":{"root":"C:\\My Work","text":"-x \"quoted\" & more"}}'));
   Assert.IsTrue(Has(Args, '--regexp=-x "quoted" & more'), 'the text is one argument, as is');
   Assert.AreEqual('C:\My Work', Args[High(Args)], 'the root is one argument, as is');
+end;
+
+procedure TTestRipgrepFormat.TestFileListReplacesRootAndGlobs;
+var
+  Args: TArray<string>;
+  A: string;
+begin
+  Args := BuildRgArguments(Req('{"params":{"root":"C:\\Work","mask":"*.pas","text":"needle",' +
+    '"files":["C:\\Work\\a.pas","C:\\Work\\b.pas"]}}'));
+  Assert.AreEqual('C:\Work\b.pas', Args[High(Args)]);
+  Assert.AreEqual('C:\Work\a.pas', Args[High(Args) - 1]);
+  Assert.AreEqual('--', Args[High(Args) - 2]);
+  for A in Args do
+  begin
+    Assert.IsFalse(A.StartsWith('--glob='), 'no globs for a file list');
+    Assert.IsFalse(A.StartsWith('--max-depth'), 'no depth for a file list');
+  end;
 end;
 
 procedure TTestRipgrepFormat.TestMatchEventGivesPathLineAndSnippet;

@@ -19,6 +19,9 @@ type
     ModifiedFrom, ModifiedTo: string;
     /// <summary>0 = the provider's own limit.</summary>
     MaxResults: Integer;
+    /// <summary>Files to look in; empty = the whole tree under Root. When set, Mask and
+    /// Subdirs are already applied by whoever made the list.</summary>
+    Files: TArray<string>;
   end;
 
 /// <summary>Reads the params of a search.files request message. False when the message
@@ -64,8 +67,9 @@ end;
 
 function ParseSearchRequest(const ARequestJson: string; out ARequest: TSearchRequest): Boolean;
 var
-  Root, Params: TJSONValue;
+  Root, Params, List: TJSONValue;
   P: TJSONObject;
+  I: Integer;
 begin
   ARequest := Default(TSearchRequest);
   ARequest.MinSize := -1;
@@ -96,6 +100,15 @@ begin
     ARequest.ModifiedFrom := JsonStr(P, 'modifiedFrom');
     ARequest.ModifiedTo := JsonStr(P, 'modifiedTo');
     ARequest.MaxResults := Integer(JsonInt(P, 'maxResults', 0));
+    List := P.GetValue('files');
+    if List is TJSONArray then
+      for I := 0 to TJSONArray(List).Count - 1 do
+        if TJSONArray(List).Items[I] is TJSONString then
+          if TJSONArray(List).Items[I].Value <> '' then
+          begin
+            SetLength(ARequest.Files, Length(ARequest.Files) + 1);
+            ARequest.Files[High(ARequest.Files)] := TJSONArray(List).Items[I].Value;
+          end;
     Result := True;
   finally
     Root.Free;

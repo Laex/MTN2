@@ -37,6 +37,8 @@ type
     function ReadDialogFields: TDialogCommandFields;
     procedure ApplyFields(const AFields: TDialogCommandFields);
     procedure BeginDatePick(const AFieldId: string);
+    procedure OpenPipeline;
+    function PipelineCaption: string;
   public
     constructor Create(ADialog: TDialogHost; ASearch: TSearchController;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
@@ -53,6 +55,9 @@ type
     function HandleEditInput(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     function DispatchDatePickerCommand(const AControlId: string): Boolean;
+    /// <summary>Result of the pipeline dialog: OK keeps the two choices; the Find dialog
+    /// opens again either way.</summary>
+    function DispatchPipelineCommand(const AControlId: string): Boolean;
   end;
 
   TDirSyncDialogController = class
@@ -156,7 +161,6 @@ end;
 procedure TSearchDialogController.Open;
 var
   Mask, Uri: string;
-  EngineIdx: Integer;
 begin
   if not Assigned(FSearch) or not Assigned(FDialog) then
     Exit;
@@ -176,7 +180,6 @@ begin
   Mask := FSearch.Mask;
   if Mask = '' then
     Mask := '*.*';
-  EngineIdx := SearchEngineIndex(FSearch.UsePlugins, FSearch.Engine, SearchEngines);
   FSearch.FocusField := 0;
   FSearch.Phase := spNone;
   if not FSearch.HexMode then
@@ -190,12 +193,12 @@ begin
     DeclarationToJson(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      EngineIdx, FSearch.EncodingIdx, FSearch.Filters)),
+      PipelineCaption, FSearch.EncodingIdx, FSearch.Filters)),
     FOnCommand) then
     FDialog.Open(BuildSearchDialog(Mask, FSearch.ContainingText,
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
-      EngineIdx, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
+      PipelineCaption, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -247,10 +250,68 @@ begin
   end;
 end;
 
-procedure TSearchDialogController.ApplyFields(const AFields: TDialogCommandFields);
+function TSearchDialogController.PipelineCaption: string;
+var
+  NameEngines, TextEngines: TArray<TSearchEngine>;
+  AutoText, BuiltInText: string;
+  NameIdx, TextIdx: Integer;
+begin
+  AutoText := T('ui.search.engineAuto', 'Auto');
+  BuiltInText := T('ui.search.engineBuiltIn', 'Built-in');
+  NameEngines := SearchStageEngines(SearchEngines, ssNames);
+  TextEngines := SearchStageEngines(SearchEngines, ssText);
+  NameIdx := SearchEngineIndex(FSearch.UsePlugins, FSearch.Engine, NameEngines);
+  TextIdx := SearchEngineIndex(FSearch.ContentUsePlugins, FSearch.ContentEngine, TextEngines);
+  Result := SearchPipelineCaption(T('ui.search.pipeline', 'Pipeline'), AutoText,
+    SearchEngineItems(NameEngines, AutoText, BuiltInText),
+    SearchEngineItems(TextEngines, AutoText, BuiltInText), NameIdx, TextIdx);
+end;
+
+procedure TSearchDialogController.OpenPipeline;
+var
+  NameEngines, TextEngines: TArray<TSearchEngine>;
+  AutoText, BuiltInText: string;
+begin
+  AutoText := T('ui.search.engineAuto', 'Auto');
+  BuiltInText := T('ui.search.engineBuiltIn', 'Built-in');
+  NameEngines := SearchStageEngines(SearchEngines, ssNames);
+  TextEngines := SearchStageEngines(SearchEngines, ssText);
+  if Assigned(FOnSetKind) then
+    FOnSetKind(hdkFindPipeline);
+  FDialog.Open(BuildPipelineDialog(SearchEngineItems(NameEngines, AutoText, BuiltInText),
+    SearchEngineItems(TextEngines, AutoText, BuiltInText),
+    SearchEngineIndex(FSearch.UsePlugins, FSearch.Engine, NameEngines),
+    SearchEngineIndex(FSearch.ContentUsePlugins, FSearch.ContentEngine, TextEngines)),
+    FOnCommand);
+  if Assigned(FOnNotify) then
+    FOnNotify();
+end;
+
+function TSearchDialogController.DispatchPipelineCommand(const AControlId: string): Boolean;
 var
   UsePlugins: Boolean;
   Engine: string;
+  NameIdx, TextIdx: Integer;
+begin
+  Result := True;
+  if DialogCmdIsAccept(AControlId) and Assigned(FSearch) then
+  begin
+    NameIdx := FDialog.GetListSelectedIndex('pipe_names');
+    TextIdx := FDialog.GetListSelectedIndex('pipe_text');
+    SearchEngineFromIndex(NameIdx, SearchStageEngines(SearchEngines, ssNames),
+      UsePlugins, Engine);
+    FSearch.UsePlugins := UsePlugins;
+    FSearch.Engine := Engine;
+    SearchEngineFromIndex(TextIdx, SearchStageEngines(SearchEngines, ssText),
+      UsePlugins, Engine);
+    FSearch.ContentUsePlugins := UsePlugins;
+    FSearch.ContentEngine := Engine;
+  end;
+  FDialog.Close;
+  Open;
+end;
+
+procedure TSearchDialogController.ApplyFields(const AFields: TDialogCommandFields);
 begin
   FSearch.Mask := AFields.Mask;
   if FSearch.Mask = '' then
@@ -261,9 +322,6 @@ begin
   FSearch.SearchFolders := AFields.SearchFolders;
   FSearch.UseRegex := AFields.UseRegex;
   FSearch.SearchArchives := AFields.SearchArchives;
-  SearchEngineFromIndex(AFields.SearchEngineIdx, SearchEngines, UsePlugins, Engine);
-  FSearch.UsePlugins := UsePlugins;
-  FSearch.Engine := Engine;
   FSearch.EncodingIdx := AFields.SearchEncodingIdx;
   FSearch.HexText := AFields.HexText;
   FSearch.HexMode := FHexMode;
@@ -361,6 +419,12 @@ begin
   if DialogCmdIsPick(AControlId, PickField) then
   begin
     BeginDatePick(PickField);
+    Exit;
+  end;
+  if SameText(Trim(AControlId), 'pipeline') then
+  begin
+    ApplyFields(AFields);
+    OpenPipeline;
     Exit;
   end;
   FDialog.Close;

@@ -6,6 +6,11 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Changed
+
+- A text search with a mask or bounds that leave files out in Alt+F7 now runs as a pipeline: the first stage lists the files by name (the Everything plugin or the built-in walk) and the second looks for the text only in those files (the ripgrep plugin or the built-in check). The "Engine" list of the Find dialog is replaced by the "Pipeline" button, which opens a dialog with one list per stage: Auto, Built-in or a plugin that can serve the stage. A text search with an open mask (`*.*`) is still served by one plugin such as ripgrep. Plugin manifests can list the capabilities of their services (`serviceCapabilities`), so the lists need not load the plugins.
+- The flat view of Commands > Flat/hierarchical view (Ctrl+B) lists the files through the file-search plugin (for example Everything) when one can serve the folder, and falls back to the built-in walk otherwise.
+
 ## v0.5.9 – 2026-11-17
 
 ### New
