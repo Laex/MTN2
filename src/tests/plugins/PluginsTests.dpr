@@ -73,6 +73,7 @@ uses
   TestSearchEngines in 'TestSearchEngines.pas',
   TestBridgeConfig in 'TestBridgeConfig.pas',
   TestBridgeServer in 'TestBridgeServer.pas',
+  TestBridgeHttp in 'TestBridgeHttp.pas',
   TestPluginServiceSettings in 'TestPluginServiceSettings.pas';
 
 begin

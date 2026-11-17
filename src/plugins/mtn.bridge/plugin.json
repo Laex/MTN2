@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "abi": 11,
   "description": {
-    "en": "Connects external programs (any language) that speak one JSON message per line over stdin/stdout as providers of JSON-RPC services named bridge.<server>.<tool>. A program runs only after its command line is approved in the plugin settings.",
-    "ru": "Подключает внешние программы (на любом языке), которые обмениваются JSON-сообщениями по одному на строку через stdin/stdout, как поставщиков услуг JSON-RPC с именами bridge.<сервер>.<инструмент>. Программа запускается только после того, как её командная строка подтверждена в настройках плагина."
+    "en": "Connects external services (any language) as providers of JSON-RPC services named bridge.<server>.<tool>: a program that speaks one JSON message per line over stdin/stdout, or an HTTP address that takes one POST per message. A program is started, or an address contacted, only after it is approved in the plugin settings.",
+    "ru": "Подключает внешние службы (на любом языке) как поставщиков услуг JSON-RPC с именами bridge.<сервер>.<инструмент>: программу, которая обменивается JSON-сообщениями по одному на строку через stdin/stdout, или HTTP-адрес, принимающий по одному POST на сообщение. Программа запускается, а по адресу обращаются, только после подтверждения в настройках плагина."
   },
-  "author": "MTN2"
+  "author": "MTN2",
+  "help": "help.md"
 }

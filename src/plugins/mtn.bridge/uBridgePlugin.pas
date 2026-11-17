@@ -465,6 +465,67 @@ begin
   end;
 end;
 
+{ Consent: the whole command line or address is shown before anything runs or is contacted. }
+
+const
+  cConsentWrap = 70;
+
+// Cuts every line to pieces of at most AWidth characters, so a long address is shown whole.
+function WrapLines(const ALines: TArray<string>; AWidth: Integer): TArray<string>;
+var
+  Line: string;
+  P: Integer;
+begin
+  SetLength(Result, 0);
+  for Line in ALines do
+  begin
+    P := 1;
+    repeat
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)] := Copy(Line, P, AWidth);
+      Inc(P, AWidth);
+    until P > Length(Line);
+  end;
+end;
+
+procedure ShowConsent(const AServer: TBridgeServerConfig; AOnAnswer: THostDialogCommandCallback);
+var
+  Decl: TJSONObject;
+  Kids: TJSONArray;
+  Lines: TArray<string>;
+  Row, I: Integer;
+  Title, Text: string;
+begin
+  Lines := WrapLines(BridgeCommandText(AServer).Split([sLineBreak, #10]), cConsentWrap);
+  if AServer.Transport = btHttp then
+  begin
+    Title := Translated('bridge.consent.titleHttp', 'Contact this address?');
+    Text := Translated('bridge.consent.textHttp',
+      'The plugin is about to send requests to this address for server "');
+  end
+  else
+  begin
+    Title := Translated('bridge.consent.title', 'Run this program?');
+    Text := Translated('bridge.consent.text',
+      'The plugin is about to start this program for server "');
+  end;
+  Decl := DialogHead(Title, 76, 9 + Length(Lines), Kids);
+  try
+    Kids.AddElement(Ctl('label', '', Text + AServer.Name + '":', 2, 1, 72, False, False));
+    Row := 3;
+    for I := 0 to High(Lines) do
+    begin
+      Kids.AddElement(Ctl('label', '', Lines[I], 4, Row, 70, False, False));
+      Inc(Row);
+    end;
+    Kids.AddElement(Ctl('button', 'ok', Translated('bridge.consent.allow', 'Allow'), 22, Row + 1, 14, False, False));
+    Kids.AddElement(Ctl('button', 'cancel', Translated('bridge.consent.deny', 'Do not allow'), 38, Row + 1, 16, True, True));
+    ShowJson(Decl.ToJSON, AOnAnswer, nil);
+  finally
+    Decl.Free;
+  end;
+end;
+
 procedure NextConsent; forward;
 
 procedure OnConsentAnswer(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
@@ -483,81 +544,552 @@ begin
   end;
 end;
 
-// Asks about the first server of the queue: the whole command line is shown.
+// Asks about the first server of the queue.
 procedure NextConsent;
-var
-  Decl: TJSONObject;
-  Kids: TJSONArray;
-  Lines: TArray<string>;
-  Row, I: Integer;
-  Server: TBridgeServerConfig;
 begin
   if (GPendingConsent = nil) or (GPendingConsent.Count = 0) then
     Exit;
-  Server := GPendingConsent[0];
-  Lines := BridgeCommandText(Server).Split([sLineBreak, #10]);
-  Decl := DialogHead(Translated('bridge.consent.title', 'Run this program?'), 76, 9 + Length(Lines), Kids);
+  ShowConsent(GPendingConsent[0], OnConsentAnswer);
+end;
+
+{ The server list: one row per server with its number, name, transport, target and state. The
+  list is edited as a draft; OK writes it to the settings, Cancel drops it. Every command
+  closes the dialog, so the dialog is shown again, from the main thread's queue, with the
+  draft changed. }
+
+const
+  cListWidth = 95;
+  cListRows = 8;
+  cColNo = 2;
+  cColName = 14;
+  cColType = 5;
+  cColTarget = 46;
+  cColState = 23;
+  cStatusWidth = 96;
+
+var
+  GDraft: TList<TBridgeServerConfig>;
+  GDraftProvider: Boolean;
+  GSel: Integer;
+  GStatus: string;
+  // The outcome of the last check, by "name|consent key": a changed server is unchecked again.
+  GChecks: TDictionary<string, string>;
+  GEdit: TBridgeServerConfig;
+  GEditIndex: Integer;
+  GEditError: string;
+  GCheckIndex: Integer;
+
+procedure OnListAnswer(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl; forward;
+procedure ShowList; forward;
+procedure ShowEdit; forward;
+
+// The text cut to AWidth characters or padded with blanks to it.
+function Cell(const AText: string; AWidth: Integer): string;
+begin
+  if Length(AText) > AWidth then
+    Result := Copy(AText, 1, AWidth - 3) + '...'
+  else
+    Result := AText + StringOfChar(' ', AWidth - Length(AText));
+end;
+
+function CheckKey(const AServer: TBridgeServerConfig): string;
+begin
+  Result := AServer.Name + '|' + BridgeConsentKey(AServer);
+end;
+
+function TransportText(const AServer: TBridgeServerConfig): string;
+begin
+  if AServer.Transport = btHttp then
+    Result := 'http'
+  else
+    Result := 'stdio';
+end;
+
+function StateText(const AServer: TBridgeServerConfig; const AApprovals: string): string;
+begin
+  if (GChecks <> nil) and GChecks.TryGetValue(CheckKey(AServer), Result) then
+    Exit;
+  if BridgeIsApproved(AApprovals, AServer) then
+    Result := Translated('bridge.state.approved', 'approved')
+  else
+    Result := Translated('bridge.state.pending', 'not approved');
+end;
+
+function RowText(AIndex: Integer; const AServer: TBridgeServerConfig; const AApprovals: string): string;
+begin
+  Result := Cell(IntToStr(AIndex + 1), cColNo) + ' ' + Cell(AServer.Name, cColName) + ' ' +
+    Cell(TransportText(AServer), cColType) + ' ' + Cell(BridgeTargetText(AServer), cColTarget) + ' ' +
+    Cell(StateText(AServer, AApprovals), cColState);
+end;
+
+procedure AddRule(AKids: TJSONArray; ARow: Integer);
+var
+  O: TJSONObject;
+begin
+  O := TJSONObject.Create;
+  O.AddPair('type', 'separator');
+  O.AddPair('col', TJSONNumber.Create(0));
+  O.AddPair('row', TJSONNumber.Create(ARow));
+  O.AddPair('width', TJSONNumber.Create(98));
+  O.AddPair('height', TJSONNumber.Create(1));
+  AKids.AddElement(O);
+end;
+
+// The next dialog is shown from inside the answer of the previous one: the host has closed
+// the answered dialog by then, and returns to the Plugins list when no dialog is open as
+// the answer ends.
+procedure ContinueWith(AProc: THostMainCallback);
+begin
+  AProc(nil);
+end;
+
+procedure ReopenList(AUserData: Pointer); cdecl;
+begin
   try
-    Kids.AddElement(Ctl('label', '', Translated('bridge.consent.text',
-      'The plugin is about to start this program for server "') + Server.Name + '":',
-      2, 1, 72, False, False));
-    Row := 3;
-    for I := 0 to High(Lines) do
-    begin
-      Kids.AddElement(Ctl('label', '', Copy(Lines[I], 1, 72), 4, Row, 70, False, False));
-      Inc(Row);
-    end;
-    Kids.AddElement(Ctl('button', 'ok', Translated('bridge.consent.allow', 'Allow'), 22, Row + 1, 14, False, False));
-    Kids.AddElement(Ctl('button', 'cancel', Translated('bridge.consent.deny', 'Do not allow'), 38, Row + 1, 16, True, True));
-    ShowJson(Decl.ToJSON, OnConsentAnswer, nil);
+    ShowList;
+  except
+    // Never let an exception cross into the host.
+  end;
+end;
+
+procedure ReopenEdit(AUserData: Pointer); cdecl;
+begin
+  try
+    ShowEdit;
+  except
+    // Never let an exception cross into the host.
+  end;
+end;
+
+procedure FreeDraft;
+begin
+  FreeAndNil(GDraft);
+  FreeAndNil(GChecks);
+  GStatus := '';
+  GEditError := '';
+end;
+
+procedure ShowList;
+var
+  Decl, ListCtl, Check: TJSONObject;
+  Kids: TJSONArray;
+  Items: TJSONArray;
+  I: Integer;
+  Approvals: string;
+begin
+  if GDraft = nil then
+    Exit;
+  if GSel >= GDraft.Count then
+    GSel := GDraft.Count - 1;
+  if GSel < 0 then
+    GSel := 0;
+  Approvals := ReadSetting(cSettingApprovals);
+  Items := TJSONArray.Create;
+  for I := 0 to GDraft.Count - 1 do
+    Items.Add(RowText(I, GDraft[I], Approvals));
+  if GDraft.Count = 0 then
+    Items.Add(Translated('bridge.list.empty', '(no servers: press Add)'));
+  Decl := DialogHead(Translated('bridge.title', 'Service bridge'), 100, 21, Kids);
+  try
+    Kids.AddElement(Ctl('label', '', Translated('bridge.list.hint',
+      'Servers (their order is the order of the list):'), 2, 0, cListWidth, False, False));
+    Kids.AddElement(Ctl('label', '',
+      Cell('#', cColNo) + ' ' + Cell(Translated('bridge.col.name', 'Name'), cColName) + ' ' +
+      Cell(Translated('bridge.col.type', 'Type'), cColType) + ' ' +
+      Cell(Translated('bridge.col.target', 'Program or address'), cColTarget) + ' ' +
+      Cell(Translated('bridge.col.state', 'State'), cColState), 2, 1, cListWidth, False, False));
+    ListCtl := Ctl('list', 'servers', '', 2, 2, cListWidth, False, False);
+    ListCtl.RemovePair('height').Free;
+    ListCtl.AddPair('height', TJSONNumber.Create(cListRows));
+    ListCtl.AddPair('items', Items);
+    ListCtl.AddPair('selected', TJSONNumber.Create(GSel));
+    ListCtl.AddPair('keycommands', TJSONBool.Create(True));
+    Kids.AddElement(ListCtl);
+    AddRule(Kids, 10);
+    Kids.AddElement(Ctl('label', '', Copy(GStatus, 1, cStatusWidth), 2, 11, cStatusWidth, False, False));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.list.keys',
+      'F2 edit   Del delete   Ctrl+Up / Ctrl+Down move   F5 check'), 2, 12, cListWidth, False, False));
+    Check := Ctl('checkbox', cSettingProvider, Translated('bridge.provider',
+      'Offer the servers as providers of JSON-RPC services (needs a restart)'), 2, 13, cListWidth, False, False);
+    Check.AddPair('checked', TJSONBool.Create(GDraftProvider));
+    Kids.AddElement(Check);
+    Kids.AddElement(Ctl('button', 'add', Translated('bridge.add', 'Add'), 2, 15, 12, False, False));
+    Kids.AddElement(Ctl('button', 'edit', Translated('bridge.edit', 'Edit'), 17, 15, 12, True, False));
+    Kids.AddElement(Ctl('button', 'delete', Translated('bridge.delete', 'Delete'), 32, 15, 12, False, False));
+    Kids.AddElement(Ctl('button', 'up', Translated('bridge.up', 'Up'), 47, 15, 12, False, False));
+    Kids.AddElement(Ctl('button', 'down', Translated('bridge.down', 'Down'), 62, 15, 12, False, False));
+    Kids.AddElement(Ctl('button', 'check', Translated('bridge.check', 'Check'), 77, 15, 12, False, False));
+    Kids.AddElement(Ctl('button', 'ok', Translated('bridge.ok', 'OK'), 36, 17, 12, False, False));
+    Kids.AddElement(Ctl('button', 'cancel', Translated('bridge.cancel', 'Cancel'), 52, 17, 12, False, True));
+    ShowJson(Decl.ToJSON, OnListAnswer, nil);
   finally
     Decl.Free;
   end;
 end;
 
-procedure OnSettingsAnswer(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
+{ The edit dialog of one server }
+
+function SelectedType(const AValuesJson: string): TBridgeTransport;
 var
   Root: TJSONValue;
-  Json, Err, Approvals: string;
-  Servers: TArray<TBridgeServerConfig>;
-  S: TBridgeServerConfig;
-  Id, Key, Value: UTF8String;
-  Enabled: Boolean;
+begin
+  Result := btStdio;
+  Root := TJSONObject.ParseJSONValue(AValuesJson);
+  try
+    if (Root is TJSONObject) and
+       (TJSONObject(Root).GetValue<string>('type', '') = Translated('bridge.type.http', 'HTTP address')) then
+      Result := btHttp;
+  finally
+    Root.Free;
+  end;
+end;
+
+function ValueOf(const AValuesJson, AName: string): string;
+var
+  Root: TJSONValue;
+begin
+  Result := '';
+  Root := TJSONObject.ParseJSONValue(AValuesJson);
+  try
+    if Root is TJSONObject then
+      Result := TJSONObject(Root).GetValue<string>(AName, '');
+  finally
+    Root.Free;
+  end;
+end;
+
+function BoolValueOf(const AValuesJson, AName: string; ADefault: Boolean): Boolean;
+var
+  Root: TJSONValue;
+begin
+  Result := ADefault;
+  Root := TJSONObject.ParseJSONValue(AValuesJson);
+  try
+    if Root is TJSONObject then
+      Result := TJSONObject(Root).GetValue<Boolean>(AName, ADefault);
+  finally
+    Root.Free;
+  end;
+end;
+
+// Builds the server from the fields of the edit dialog; the fields of the other transport
+// are left out.
+function ServerFromFields(const AValuesJson: string): TBridgeServerConfig;
+var
+  Timeout: Integer;
+begin
+  Result := Default(TBridgeServerConfig);
+  Result.Name := Trim(ValueOf(AValuesJson, 'name'));
+  Result.Transport := SelectedType(AValuesJson);
+  if Result.Transport = btHttp then
+  begin
+    Result.Url := Trim(ValueOf(AValuesJson, 'url'));
+    Result.Headers := BridgeSplitWords(ValueOf(AValuesJson, 'headers'));
+  end
+  else
+  begin
+    Result.Command := Trim(ValueOf(AValuesJson, 'command'));
+    Result.Args := BridgeSplitWords(ValueOf(AValuesJson, 'args'));
+    Result.Dir := Trim(ValueOf(AValuesJson, 'cwd'));
+    Result.Env := BridgeSplitWords(ValueOf(AValuesJson, 'env'));
+  end;
+  if not TryStrToInt(Trim(ValueOf(AValuesJson, 'timeout')), Timeout) then
+    Timeout := cDefaultStartTimeoutMs;
+  Result.StartTimeoutMs := Timeout;
+  if Result.StartTimeoutMs < cMinStartTimeoutMs then
+    Result.StartTimeoutMs := cMinStartTimeoutMs;
+  if Result.StartTimeoutMs > cMaxStartTimeoutMs then
+    Result.StartTimeoutMs := cMaxStartTimeoutMs;
+  Result.Allow := BridgeSplitWords(ValueOf(AValuesJson, 'allow'));
+end;
+
+function NameTaken(const AName: string; AExceptIndex: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to GDraft.Count - 1 do
+    if (I <> AExceptIndex) and (GDraft[I].Name = AName) then
+      Exit(True);
+end;
+
+procedure OnEditAnswer(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
+var
+  Err: string;
 begin
   try
+    if GDraft = nil then
+      Exit;
     if not SameText(string(AControlId), 'ok') then
-      Exit;
-    Root := TJSONObject.ParseJSONValue(UTF8ToString(AValuesJson));
-    try
-      if not (Root is TJSONObject) then
-        Exit;
-      Json := TJSONObject(Root).GetValue<string>(cSettingServers, '');
-      Enabled := TJSONObject(Root).GetValue<Boolean>(cSettingProvider, True);
-    finally
-      Root.Free;
-    end;
-    if not ParseBridgeServers(Json, Servers, Err) then
     begin
-      // The list stays as it was.
-      ShowMessage(Err);
+      ContinueWith(ReopenList);
       Exit;
     end;
-    WriteSetting(cSettingServers, Json);
-    if Enabled then
-      WriteSetting(cSettingProvider, '1')
+    GEdit := ServerFromFields(UTF8ToString(AValuesJson));
+    if not ValidateBridgeServer(GEdit, Err) then
+      GEditError := Err
+    else if NameTaken(GEdit.Name, GEditIndex) then
+      GEditError := 'server name "' + GEdit.Name + '" is used twice'
+    else if (GEditIndex < 0) and (GDraft.Count >= cMaxServers) then
+      GEditError := 'too many servers'
     else
-      WriteSetting(cSettingProvider, '0');
-    // Another command line means another tool list: it is read at the next start.
-    for S in Servers do
+      GEditError := '';
+    if GEditError <> '' then
+    begin
+      ContinueWith(ReopenEdit);
+      Exit;
+    end;
+    if GEditIndex >= 0 then
+      GDraft[GEditIndex] := GEdit
+    else
+    begin
+      GDraft.Add(GEdit);
+      GEditIndex := GDraft.Count - 1;
+    end;
+    GSel := GEditIndex;
+    GStatus := '';
+    ContinueWith(ReopenList);
+  except
+    // Never let an exception cross into the host.
+  end;
+end;
+
+function InputCtl(const AId, AValue: string; ARow: Integer): TJSONObject;
+begin
+  Result := Ctl('input', AId, '', 21, ARow, 60, False, False);
+  Result.AddPair('value', AValue);
+end;
+
+procedure ShowEdit;
+var
+  Decl, Kind: TJSONObject;
+  Kids: TJSONArray;
+  Items: TJSONArray;
+  Row: Integer;
+begin
+  Decl := DialogHead(Translated('bridge.field.title', 'Server'), 84, 22, Kids);
+  try
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.name', 'Name:'), 2, 1, 18, False, False));
+    Kids.AddElement(InputCtl('name', GEdit.Name, 1));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.type', 'Type:'), 2, 2, 18, False, False));
+    Items := TJSONArray.Create;
+    Items.Add(Translated('bridge.type.stdio', 'Program (stdin/stdout)'));
+    Items.Add(Translated('bridge.type.http', 'HTTP address'));
+    Kind := Ctl('dropdown', 'type', '', 21, 2, 60, False, False);
+    Kind.AddPair('items', Items);
+    Kind.AddPair('selected', TJSONNumber.Create(Ord(GEdit.Transport)));
+    Kids.AddElement(Kind);
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.program', 'Program:'), 2, 4, 18, False, False));
+    Kids.AddElement(InputCtl('command', GEdit.Command, 4));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.args', 'Arguments:'), 2, 5, 18, False, False));
+    Kids.AddElement(InputCtl('args', BridgeJoinWords(GEdit.Args), 5));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.cwd', 'Folder:'), 2, 6, 18, False, False));
+    Kids.AddElement(InputCtl('cwd', GEdit.Dir, 6));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.env', 'Environment:'), 2, 7, 18, False, False));
+    Kids.AddElement(InputCtl('env', BridgeJoinWords(GEdit.Env), 7));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.url', 'Address:'), 2, 9, 18, False, False));
+    Kids.AddElement(InputCtl('url', GEdit.Url, 9));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.headers', 'Headers:'), 2, 10, 18, False, False));
+    Kids.AddElement(InputCtl('headers', BridgeJoinWords(GEdit.Headers), 10));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.timeout', 'Start timeout, ms:'), 2, 12, 18, False, False));
+    if GEdit.StartTimeoutMs = 0 then
+      GEdit.StartTimeoutMs := cDefaultStartTimeoutMs;
+    Kids.AddElement(InputCtl('timeout', IntToStr(GEdit.StartTimeoutMs), 12));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.allow', 'Allowed tools:'), 2, 13, 18, False, False));
+    Kids.AddElement(InputCtl('allow', BridgeJoinWords(GEdit.Allow), 13));
+    Kids.AddElement(Ctl('label', '', Translated('bridge.field.hint',
+      'Words are separated by blanks, "double quotes" group them; environment and headers are NAME=VALUE.'),
+      2, 15, 78, False, False));
+    Row := 16;
+    if GEditError <> '' then
+      Kids.AddElement(Ctl('label', '', Copy(GEditError, 1, 78), 2, Row, 78, False, False));
+    Kids.AddElement(Ctl('button', 'ok', Translated('bridge.ok', 'OK'), 28, 18, 12, True, False));
+    Kids.AddElement(Ctl('button', 'cancel', Translated('bridge.cancel', 'Cancel'), 44, 18, 12, False, True));
+    ShowJson(Decl.ToJSON, OnEditAnswer, nil);
+  finally
+    Decl.Free;
+  end;
+end;
+
+{ Check: the server is started the way a call would start it, asked for its tools and ended. }
+
+procedure ReportCheck(const AServer: TBridgeServerConfig);
+var
+  Count: Integer;
+  Err, Text: string;
+begin
+  if ProbeBridgeServer(AServer, RealBridgeChildFactory(), Count, Err) then
+    Text := Format(Translated('bridge.state.ok', 'OK, tools: %d'), [Count])
+  else
+    Text := Translated('bridge.state.fail', 'not available') + ': ' + Err;
+  GChecks.AddOrSetValue(CheckKey(AServer), Text);
+  GStatus := AServer.Name + ' - ' + Text;
+end;
+
+procedure OnCheckConsent(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
+var
+  Server: TBridgeServerConfig;
+begin
+  try
+    if (GDraft <> nil) and (GCheckIndex >= 0) and (GCheckIndex < GDraft.Count) then
+    begin
+      Server := GDraft[GCheckIndex];
+      if SameText(string(AControlId), 'ok') then
+      begin
+        WriteSetting(cSettingApprovals, BridgeWithApproval(ReadSetting(cSettingApprovals), Server));
+        ReportCheck(Server);
+      end
+      else
+        GStatus := Server.Name + ' - ' + Translated('bridge.state.pending', 'not approved');
+    end;
+    ContinueWith(ReopenList);
+  except
+    // Never let an exception cross into the host.
+  end;
+end;
+
+procedure CheckSelected;
+var
+  Server: TBridgeServerConfig;
+begin
+  Server := GDraft[GSel];
+  // A program or an address the user has not approved is never started or contacted: the
+  // check asks first, like the first start would.
+  if not BridgeIsApproved(ReadSetting(cSettingApprovals), Server) then
+  begin
+    GCheckIndex := GSel;
+    ShowConsent(Server, OnCheckConsent);
+    Exit;
+  end;
+  ReportCheck(Server);
+  ContinueWith(ReopenList);
+end;
+
+{ Answers of the list }
+
+// The row the text of the list stands for: the number in its first column.
+function RowIndexOf(const AText: string): Integer;
+var
+  P: Integer;
+begin
+  Result := -1;
+  P := Pos(' ', AText);
+  if P > 1 then
+    if TryStrToInt(Copy(AText, 1, P - 1), Result) then
+      Dec(Result)
+    else
+      Result := -1;
+  if (GDraft = nil) or (Result >= GDraft.Count) then
+    Result := -1;
+end;
+
+procedure SwapRows(AFrom, ATo: Integer);
+var
+  Tmp: TBridgeServerConfig;
+begin
+  if (ATo < 0) or (ATo >= GDraft.Count) then
+    Exit;
+  Tmp := GDraft[AFrom];
+  GDraft[AFrom] := GDraft[ATo];
+  GDraft[ATo] := Tmp;
+  GSel := ATo;
+end;
+
+// Writes the draft to the settings and asks about every server not approved yet.
+procedure SaveDraft;
+var
+  Old, Servers: TArray<TBridgeServerConfig>;
+  S: TBridgeServerConfig;
+  Err, Approvals: string;
+begin
+  Servers := GDraft.ToArray;
+  if ParseBridgeServers(ReadSetting(cSettingServers), Old, Err) then
+    for S in Old do
       WriteSetting(cToolsPrefix + S.Name, '');
-    Approvals := ReadSetting(cSettingApprovals);
-    if GPendingConsent = nil then
-      GPendingConsent := TList<TBridgeServerConfig>.Create;
-    GPendingConsent.Clear;
-    for S in Servers do
-      if not BridgeIsApproved(Approvals, S) then
-        GPendingConsent.Add(S);
-    NextConsent;
+  WriteSetting(cSettingServers, BridgeServersToJson(Servers));
+  if GDraftProvider then
+    WriteSetting(cSettingProvider, '1')
+  else
+    WriteSetting(cSettingProvider, '0');
+  // Another command line means another tool list: it is read at the next start.
+  for S in Servers do
+    WriteSetting(cToolsPrefix + S.Name, '');
+  Approvals := ReadSetting(cSettingApprovals);
+  if GPendingConsent = nil then
+    GPendingConsent := TList<TBridgeServerConfig>.Create;
+  GPendingConsent.Clear;
+  for S in Servers do
+    if not BridgeIsApproved(Approvals, S) then
+      GPendingConsent.Add(S);
+  FreeDraft;
+  NextConsent;
+end;
+
+procedure OnListAnswer(AUserData: Pointer; AControlId, AValuesJson: PAnsiChar); cdecl;
+var
+  Cmd, Values: string;
+  Row: Integer;
+begin
+  try
+    if GDraft = nil then
+      Exit;
+    Cmd := LowerCase(string(AControlId));
+    if Cmd = 'cancel' then
+    begin
+      FreeDraft;
+      Exit;
+    end;
+    Values := UTF8ToString(AValuesJson);
+    GDraftProvider := BoolValueOf(Values, cSettingProvider, GDraftProvider);
+    Row := RowIndexOf(ValueOf(Values, 'servers'));
+    if Row >= 0 then
+      GSel := Row
+    else
+      Row := GSel;
+    if Cmd = 'ok' then
+    begin
+      SaveDraft;
+      Exit;
+    end;
+    GStatus := '';
+    if Cmd = 'add' then
+    begin
+      GEdit := Default(TBridgeServerConfig);
+      GEdit.StartTimeoutMs := cDefaultStartTimeoutMs;
+      GEditIndex := -1;
+      GEditError := '';
+      ContinueWith(ReopenEdit);
+      Exit;
+    end;
+    if (Row < 0) or (Row >= GDraft.Count) then
+    begin
+      ContinueWith(ReopenList);
+      Exit;
+    end;
+    if (Cmd = 'edit') or (Cmd = 'f2') or (Cmd = 'f4') then
+    begin
+      GEdit := GDraft[Row];
+      GEditIndex := Row;
+      GEditError := '';
+      ContinueWith(ReopenEdit);
+      Exit;
+    end
+    else if Cmd = 'delete' then
+    begin
+      GDraft.Delete(Row);
+      if GSel >= GDraft.Count then
+        GSel := GDraft.Count - 1;
+    end
+    else if Cmd = 'up' then
+      SwapRows(Row, Row - 1)
+    else if Cmd = 'down' then
+      SwapRows(Row, Row + 1)
+    else if (Cmd = 'check') or (Cmd = 'f5') then
+    begin
+      CheckSelected;
+      Exit;
+    end;
+    ContinueWith(ReopenList);
   except
     // Never let an exception cross into the host.
   end;
@@ -565,33 +1097,20 @@ end;
 
 procedure OnConfigure(AUserData: Pointer); cdecl;
 var
-  Decl: TJSONObject;
-  Kids: TJSONArray;
-  Input: TJSONObject;
-  Check: TJSONObject;
-  Err: string;
   Servers: TArray<TBridgeServerConfig>;
+  Err: string;
 begin
   try
-    Decl := DialogHead(Translated('bridge.title', 'Service bridge'), 80, 14, Kids);
-    try
-      Kids.AddElement(Ctl('label', '', Translated('bridge.servers',
-        'Servers (a JSON list, see the documentation):'), 2, 1, 76, False, False));
-      Input := Ctl('input', cSettingServers, '', 2, 2, 76, False, False);
-      Input.AddPair('value', ReadSetting(cSettingServers));
-      Kids.AddElement(Input);
-      if not ParseBridgeServers(ReadSetting(cSettingServers), Servers, Err) then
-        Kids.AddElement(Ctl('label', '', Copy(Err, 1, 76), 2, 4, 76, False, False));
-      Check := Ctl('checkbox', cSettingProvider, Translated('bridge.provider',
-        'Offer the servers as providers of JSON-RPC services (needs a restart)'), 2, 6, 76, False, False);
-      Check.AddPair('checked', TJSONBool.Create(ServiceProviderEnabled(GHost, GPluginId)));
-      Kids.AddElement(Check);
-      Kids.AddElement(Ctl('button', 'ok', Translated('bridge.ok', 'OK'), 26, 9, 12, True, False));
-      Kids.AddElement(Ctl('button', 'cancel', Translated('bridge.cancel', 'Cancel'), 42, 9, 12, False, True));
-      ShowJson(Decl.ToJSON, OnSettingsAnswer, nil);
-    finally
-      Decl.Free;
-    end;
+    FreeDraft;
+    GDraft := TList<TBridgeServerConfig>.Create;
+    GChecks := TDictionary<string, string>.Create;
+    if ParseBridgeServers(ReadSetting(cSettingServers), Servers, Err) then
+      GDraft.AddRange(Servers)
+    else
+      GStatus := Err;
+    GDraftProvider := ServiceProviderEnabled(GHost, GPluginId);
+    GSel := 0;
+    ShowList;
   except
     // Never let an exception cross into the host.
   end;

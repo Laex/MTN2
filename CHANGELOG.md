@@ -6,6 +6,15 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The Service bridge plugin can connect a service by HTTP address as well as by program: the address takes one POST per JSON-RPC message and answers with a JSON body or an event stream, and the session id it sets is sent back with the next requests. The address and headers are shown for approval before the first request, like a program's command line.
+
+### Changed
+
+- F1 in the settings of the Screensavers and Service bridge plugins opens the help page of the plugin.
+- The Service bridge settings show the servers as a list with the columns number, name, type, program or address, and state. Servers can be added, edited, deleted and moved up or down, and Check starts the program or contacts the address and shows in the State column how many tools it offers or why it is not available.
+
 ## Dev v0.5.9.2 – 2026-11-17
 
 ### Changed

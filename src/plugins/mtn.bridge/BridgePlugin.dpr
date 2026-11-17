@@ -1,8 +1,9 @@
 library BridgePlugin;
 
-{ Native MTN2 plugin: connects external service processes (stdio, one JSON message per
-  line) as providers of JSON-RPC services named bridge.<server>.<tool>. A server runs only
-  after the user approved its command line in the plugin settings. }
+{ Native MTN2 plugin: connects external services (a program speaking one JSON message per
+  line over stdin/stdout, or an HTTP address taking one POST per message) as providers of
+  JSON-RPC services named bridge.<server>.<tool>. A server is used only after the user
+  approved its command line or address in the plugin settings. }
 
 uses
   System.SysUtils,
@@ -10,6 +11,7 @@ uses
   uPluginServiceSettings in '..\..\Core\uPluginServiceSettings.pas',
   uBridgeProtocol in 'uBridgeProtocol.pas',
   uBridgeConfig in 'uBridgeConfig.pas',
+  uBridgeHttp in 'uBridgeHttp.pas',
   uBridgeServer in 'uBridgeServer.pas',
   uBridgePlugin in 'uBridgePlugin.pas';
 

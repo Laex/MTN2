@@ -263,7 +263,7 @@ The built-in walk reads such a file through the service and looks for the text i
 
 ## 10. Compatibility with external processes
 
-The message format (JSON-RPC 2.0), the shape of the description (`name`, `description`, `inputSchema`), the call result (`content`, `structuredContent`, `isError`), and the names and fields of the progress and cancellation notifications follow the conventions of common JSON-RPC tool servers. The `mtn.bridge` plugin starts external programs that speak this protocol over stdin and stdout (one JSON message per line) and registers each tool of a program as the service `bridge.<server>.<tool>`.
+The message format (JSON-RPC 2.0), the shape of the description (`name`, `description`, `inputSchema`), the call result (`content`, `structuredContent`, `isError`), and the names and fields of the progress and cancellation notifications follow the conventions of common JSON-RPC tool servers. The `mtn.bridge` plugin starts external programs that speak this protocol over stdin and stdout (one JSON message per line), or contacts HTTP addresses that take one POST per message and answer with a JSON body or an event stream, and registers each tool of a server as the service `bridge.<server>.<tool>`.
 
 ### 10.1. Settings
 

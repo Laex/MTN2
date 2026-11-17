@@ -114,13 +114,18 @@ type
     property OnLog: TBridgeLogEvent read FOnLog write FOnLog;
   end;
 
-/// <summary>The factory that starts the real program.</summary>
+/// <summary>The factory that starts the real program or opens the real connection.</summary>
 function RealBridgeChildFactory: TBridgeChildFactory;
+
+/// <summary>Starts the server, reads its tools and ends it again: True with the number of
+/// tools when it answered, otherwise False with the reason.</summary>
+function ProbeBridgeServer(const AServer: TBridgeServerConfig; AFactory: TBridgeChildFactory;
+  out AToolCount: Integer; out AError: string): Boolean;
 
 implementation
 
 uses
-  uJsonRpc;
+  uJsonRpc, uBridgeHttp;
 
 const
   cWatchSliceMs = 100;
@@ -130,8 +135,27 @@ function RealBridgeChildFactory: TBridgeChildFactory;
 begin
   Result := function(const AServer: TBridgeServerConfig; out AChild: IChildProcess): Boolean
     begin
-      Result := PlatformStartChild(AServer.Command, AServer.Args, AServer.Dir, AServer.Env, AChild);
+      if AServer.Transport = btHttp then
+        Result := StartBridgeHttp(AServer, AChild)
+      else
+        Result := PlatformStartChild(AServer.Command, AServer.Args, AServer.Dir, AServer.Env, AChild);
     end;
+end;
+
+function ProbeBridgeServer(const AServer: TBridgeServerConfig; AFactory: TBridgeChildFactory;
+  out AToolCount: Integer; out AError: string): Boolean;
+var
+  Server: TBridgeServer;
+begin
+  AToolCount := 0;
+  Server := TBridgeServer.Create(AServer, AFactory);
+  try
+    Result := Server.Start(AError);
+    if Result then
+      AToolCount := Length(Server.Tools);
+  finally
+    Server.Free;
+  end;
 end;
 
 { TBridgeServer.TReaderThread }
@@ -534,7 +558,7 @@ begin
     Exit(True);
   if not FFactory(FConfig, FChild) or (FChild = nil) then
   begin
-    AError := 'cannot start "' + FConfig.Command + '"';
+    AError := 'cannot start "' + BridgeTargetText(FConfig) + '"';
     Exit;
   end;
   FLock.Enter;

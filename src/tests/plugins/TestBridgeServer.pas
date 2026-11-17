@@ -28,6 +28,8 @@ type
     [Test] procedure TestGarbageLinesAreIgnored;
     [Test] procedure TestPingOfTheServerIsAnswered;
     [Test] procedure TestStoppedServerRefusesCalls;
+    [Test] procedure TestProbeCountsTheTools;
+    [Test] procedure TestProbeReportsAServerThatDoesNotStart;
   end;
 
 implementation
@@ -747,6 +749,36 @@ begin
   finally
     S.Free;
   end;
+end;
+
+procedure TTestBridgeServer.TestProbeCountsTheTools;
+var
+  Child: IChildProcess;
+  Count: Integer;
+  Err: string;
+begin
+  Child := TFakeChild.Create(DefaultServer);
+  Assert.IsTrue(ProbeBridgeServer(Config('s'),
+    function(const AServer: TBridgeServerConfig; out AProcess: IChildProcess): Boolean
+    begin
+      AProcess := Child;
+      Result := True;
+    end, Count, Err), Err);
+  Assert.AreEqual(2, Count);
+end;
+
+procedure TTestBridgeServer.TestProbeReportsAServerThatDoesNotStart;
+var
+  Count: Integer;
+  Err: string;
+begin
+  Assert.IsFalse(ProbeBridgeServer(Config('s'),
+    function(const AServer: TBridgeServerConfig; out AProcess: IChildProcess): Boolean
+    begin
+      AProcess := nil;
+      Result := False;
+    end, Count, Err));
+  Assert.IsTrue(Pos('cannot start', Err) > 0, Err);
 end;
 
 end.
