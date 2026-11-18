@@ -10,6 +10,9 @@ uses
   System.SysUtils, System.Generics.Collections,
   uTreemap, uDiskMapTree, uDiskMapRaster;
 
+/// <summary>The folder above APath; '' for a root (a drive, a share, "/").</summary>
+function DiskParentFolder(const APath: string): string;
+
 type
   TDiskTile = record
     Node: TDiskNode;
@@ -17,8 +20,10 @@ type
     Depth: Integer;
   end;
 
-  /// <summary>What a key asks of the host besides redrawing.</summary>
-  TDiskKeyResult = (dkNone, dkHandled, dkGoto);
+  /// <summary>What a key asks of the host besides redrawing. dkParent: the map
+  /// is at the top of its scan and the folder above it should be mapped.
+  /// dkRefresh: the folder in APath should be scanned again.</summary>
+  TDiskKeyResult = (dkNone, dkHandled, dkGoto, dkParent, dkRefresh);
 
   TDiskMapView = class
   strict private
@@ -31,6 +36,13 @@ type
     FTextRest: string;
     FTextEmpty: string;
     FTextTotal: string;
+    FTextNotReady: string;
+    FTextNotFolder: string;
+    FTextHint: string;
+    // Shown in the status bar instead of the usual text until the next key or click.
+    FNotice: string;
+    // Name of a top-level tile to select once the scan has produced it.
+    FPendingSelect: string;
     procedure LayoutLevel(ARaster: TRaster; ANode: TDiskNode; const ARect: TTileRect;
       ADepth, AHue: Integer);
     procedure DrawBar(ARaster: TRaster; AY: Integer);
@@ -40,8 +52,13 @@ type
     function PathOfLocked(ANode: TDiskNode): string;
     function FirstTile: Integer;
     procedure MoveSelection(ADX, ADY: Integer);
-    procedure Drill;
+    procedure Drill(ANotify: Boolean);
+    procedure ApplyPendingSelect;
+    function LastTile: Integer;
     procedure ZoomOutLocked;
+    function SelectAtLocked(AX, AY: Integer): Boolean;
+    function GotoSelectedLocked(out APath: string; out AIsFile: Boolean): TDiskKeyResult;
+    function ZoomOutOrParentLocked(out APath: string): TDiskKeyResult;
   public
     constructor Create(const AScan: IDiskScan);
     destructor Destroy; override;
@@ -51,7 +68,17 @@ type
     function HandleKey(const AKey: string; out APath: string; out AIsFile: Boolean): TDiskKeyResult;
     /// <summary>Selects the tile under the point; a double click enters a folder.</summary>
     function Click(AX, AY: Integer; ADouble: Boolean): Boolean;
-    procedure ZoomOut;
+    /// <summary>Selects the tile under the point and names it for the file panel:
+    /// dkGoto with APath and AIsFile as for HandleKey, dkNone when no tile is there.</summary>
+    function ClickGoto(AX, AY: Integer; out APath: string; out AIsFile: Boolean): TDiskKeyResult;
+    /// <summary>One level out; at the top of the scan dkParent with the folder
+    /// above in APath (none above a root: dkHandled).</summary>
+    function ZoomOutOrParent(out APath: string): TDiskKeyResult;
+    /// <summary>The wheel: forward (AClicks > 0) enters the folder under the point,
+    /// back leaves the folder in view without leaving the scan. True when used.</summary>
+    function Wheel(AX, AY, AClicks: Integer): Boolean;
+    /// <summary>Selects the top-level tile of that name as soon as it is there.</summary>
+    procedure SelectWhenShown(const AName: string);
     function Title: string;
     function StatusText: string;
     function SelectedName: string;
@@ -61,6 +88,10 @@ type
     property TextRest: string read FTextRest write FTextRest;
     property TextEmpty: string read FTextEmpty write FTextEmpty;
     property TextTotal: string read FTextTotal write FTextTotal;
+    property TextNotReady: string read FTextNotReady write FTextNotReady;
+    property TextNotFolder: string read FTextNotFolder write FTextNotFolder;
+    /// <summary>The key reminder drawn at the right of the status bar when it fits.</summary>
+    property TextHint: string read FTextHint write FTextHint;
   end;
 
 /// <summary>$RRGGBB from hue 0..359, saturation and lightness 0..1.</summary>
@@ -137,6 +168,9 @@ begin
   FTextRest := 'other files';
   FTextEmpty := 'empty';
   FTextTotal := 'total';
+  FTextNotReady := 'the folder is still being scanned';
+  FTextNotFolder := 'not a folder (G shows it in the panel)';
+  FTextHint := 'Tab: keys  G: show in panel  Backspace: up  F5: rescan';
 end;
 
 destructor TDiskMapView.Destroy;
@@ -148,6 +182,20 @@ end;
 function TDiskMapView.TotalOf(ANode: TDiskNode): Int64;
 begin
   Result := ANode.ShownSize;
+end;
+
+function DiskParentFolder(const APath: string): string;
+var
+  Trimmed: string;
+begin
+  Trimmed := ExcludeTrailingPathDelimiter(APath);
+  Result := ExtractFilePath(Trimmed);
+  // ExtractFilePath keeps "C:" whole: a drive has nothing above it.
+  if SameText(Result, Trimmed) then
+    Exit('');
+  if (Length(Result) > 1) and (Result[Length(Result)] = PathDelim) and
+     (ExtractFileDrive(Result) + PathDelim <> Result) then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 function TDiskMapView.PathOfLocked(ANode: TDiskNode): string;
@@ -257,7 +305,8 @@ begin
         TextColor := $101010
       else
         TextColor := $F5F5F5;
-      ARaster.DrawText(R.X1 + 3, R.Y1 + 1, ARaster.FitText(Caption, R.Width - 6), TextColor,
+      ARaster.DrawText(R.X1 + 3, R.Y1 + 1,
+        ARaster.FitText(Caption + '  ' + FormatBytes(Kids[I].Size), R.Width - 6), TextColor,
         R.X2 - 2);
       Body.X1 := R.X1 + 2;
       Body.Y1 := R.Y1 + cHeaderHeight;
@@ -281,10 +330,18 @@ begin
 end;
 
 procedure TDiskMapView.DrawBar(ARaster: TRaster; AY: Integer);
+var
+  Info: string;
+  Avail, HintW: Integer;
 begin
   ARaster.FillRect(0, AY, ARaster.Width, ARaster.Height, cBarColor);
-  ARaster.DrawText(6, AY + 3, ARaster.FitText(StatusText, ARaster.Width - 12), cBarText,
-    ARaster.Width - 4);
+  Info := StatusText;
+  Avail := ARaster.Width - 12;
+  HintW := ARaster.TextWidth(FTextHint);
+  // The reminder is drawn only when it fits beside the whole status text.
+  if (FNotice = '') and (FTextHint <> '') and (ARaster.TextWidth(Info) + 24 + HintW <= Avail) then
+    ARaster.DrawText(ARaster.Width - 6 - HintW, AY + 3, FTextHint, cBarText, ARaster.Width - 4);
+  ARaster.DrawText(6, AY + 3, ARaster.FitText(Info, Avail), cBarText, ARaster.Width - 4);
 end;
 
 { Says what is going on while there is nothing to draw yet. }
@@ -309,6 +366,7 @@ begin
   FScan.Scan.Lock;
   try
     FTiles.Clear;
+    ApplyPendingSelect;
     Area.X1 := 0;
     Area.Y1 := 0;
     Area.X2 := ARaster.Width;
@@ -330,6 +388,8 @@ begin
   Scan := FScan.Scan;
   Scan.Lock;
   try
+    if FNotice <> '' then
+      Exit(FNotice);
     Total := TotalOf(FViewRoot);
     if FSelected <> nil then
     begin
@@ -337,6 +397,8 @@ begin
       if Total > 0 then
         Result := Result + Format('  -  %.1f%%', [FSelected.ShownSize * 100 / Total],
           TFormatSettings.Invariant);
+      // The path comes last: a narrow bar cuts it first.
+      Result := Result + '  -  ' + PathOfLocked(FSelected);
     end
     else
       Result := PathOfLocked(FViewRoot) + '  -  ' + FTextTotal + ' ' + FormatBytes(Total);
@@ -438,13 +500,74 @@ begin
     FSelected := FTiles[Best].Node;
 end;
 
-procedure TDiskMapView.Drill;
+procedure TDiskMapView.Drill(ANotify: Boolean);
 begin
-  if (FSelected <> nil) and FSelected.IsDir and FSelected.Done and
-     (FSelected.Children <> nil) and (FSelected.Children.Count > 0) then
+  if FSelected = nil then
+    Exit;
+  if not FSelected.IsDir then
+  begin
+    if ANotify then
+      FNotice := FTextNotFolder;
+  end
+  else if not FSelected.Done then
+  begin
+    if ANotify then
+    begin
+      if FScan.Scan.Finished then
+        FNotice := FTextIncomplete
+      else
+        FNotice := FTextNotReady;
+    end;
+  end
+  else if (FSelected.Children = nil) or (FSelected.Children.Count = 0) then
+  begin
+    if ANotify then
+      FNotice := FTextEmpty;
+  end
+  else
   begin
     FViewRoot := FSelected;
     FSelected := nil;
+  end;
+end;
+
+procedure TDiskMapView.ApplyPendingSelect;
+var
+  Kid: TDiskNode;
+begin
+  if (FPendingSelect = '') or (FSelected <> nil) then
+    Exit;
+  if FViewRoot.Children <> nil then
+    for Kid in FViewRoot.Children do
+      if Kid.IsDir and SameText(Kid.Name, FPendingSelect) then
+      begin
+        FSelected := Kid;
+        FPendingSelect := '';
+        Exit;
+      end;
+  // Nothing more will turn up: stop waiting.
+  if FScan.Scan.Finished then
+    FPendingSelect := '';
+end;
+
+{ The smallest tile of the level in view, which is the last one laid out. }
+function TDiskMapView.LastTile: Integer;
+var
+  I: Integer;
+begin
+  for I := FTiles.Count - 1 downto 0 do
+    if FTiles[I].Depth = 0 then
+      Exit(I);
+  Result := -1;
+end;
+
+procedure TDiskMapView.SelectWhenShown(const AName: string);
+begin
+  FScan.Scan.Lock;
+  try
+    FPendingSelect := AName;
+  finally
+    FScan.Scan.Unlock;
   end;
 end;
 
@@ -457,11 +580,25 @@ begin
   end;
 end;
 
-procedure TDiskMapView.ZoomOut;
+function TDiskMapView.ZoomOutOrParentLocked(out APath: string): TDiskKeyResult;
+begin
+  APath := '';
+  Result := dkHandled;
+  if FViewRoot.Parent <> nil then
+    ZoomOutLocked
+  else
+  begin
+    APath := DiskParentFolder(FScan.Scan.Path);
+    if APath <> '' then
+      Result := dkParent;
+  end;
+end;
+
+function TDiskMapView.ZoomOutOrParent(out APath: string): TDiskKeyResult;
 begin
   FScan.Scan.Lock;
   try
-    ZoomOutLocked;
+    Result := ZoomOutOrParentLocked(APath);
   finally
     FScan.Scan.Unlock;
   end;
@@ -475,10 +612,12 @@ begin
   Result := dkHandled;
   FScan.Scan.Lock;
   try
+    FNotice := '';
+    FPendingSelect := '';
     if (AKey = 'Enter') or (AKey = 'Return') then
-      Drill
+      Drill(True)
     else if AKey = 'Backspace' then
-      ZoomOutLocked
+      Result := ZoomOutOrParentLocked(APath)
     else if AKey = 'Left' then
       MoveSelection(-1, 0)
     else if AKey = 'Right' then
@@ -492,19 +631,19 @@ begin
       if FirstTile >= 0 then
         FSelected := FTiles[FirstTile].Node;
     end
-    else if (AKey = 'Ctrl+Enter') or (AKey = 'Shift+Enter') or (AKey = 'g') or (AKey = 'G') then
+    else if AKey = 'End' then
     begin
-      if FSelected <> nil then
-      begin
-        APath := PathOfLocked(FSelected);
-        AIsFile := not (FSelected.IsDir or FSelected.IsRest);
-        Result := dkGoto;
-      end
-      else
-      begin
-        APath := PathOfLocked(FViewRoot);
-        Result := dkGoto;
-      end;
+      if LastTile >= 0 then
+        FSelected := FTiles[LastTile].Node;
+    end
+    // The Cyrillic letters are G on a Russian layout.
+    else if (AKey = 'Ctrl+Enter') or (AKey = 'Shift+Enter') or (AKey = 'g') or (AKey = 'G') or
+            (AKey = #$043F) or (AKey = #$041F) then
+      Result := GotoSelectedLocked(APath, AIsFile)
+    else if (AKey = 'F5') or (AKey = 'Ctrl+R') then
+    begin
+      APath := FScan.Scan.Path;
+      Result := dkRefresh;
     end
     else
       Result := dkNone;
@@ -513,21 +652,85 @@ begin
   end;
 end;
 
-function TDiskMapView.Click(AX, AY: Integer; ADouble: Boolean): Boolean;
+function TDiskMapView.GotoSelectedLocked(out APath: string; out AIsFile: Boolean): TDiskKeyResult;
+begin
+  AIsFile := False;
+  if FSelected <> nil then
+  begin
+    APath := PathOfLocked(FSelected);
+    AIsFile := not (FSelected.IsDir or FSelected.IsRest);
+  end
+  else
+    APath := PathOfLocked(FViewRoot);
+  Result := dkGoto;
+end;
+
+function TDiskMapView.SelectAtLocked(AX, AY: Integer): Boolean;
 var
   I: Integer;
+begin
+  for I := FTiles.Count - 1 downto 0 do
+    if FTiles[I].Rect.Contains(AX, AY) then
+    begin
+      FSelected := FTiles[I].Node;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function TDiskMapView.Click(AX, AY: Integer; ADouble: Boolean): Boolean;
+begin
+  FScan.Scan.Lock;
+  try
+    FNotice := '';
+    FPendingSelect := '';
+    Result := SelectAtLocked(AX, AY);
+    if Result and ADouble then
+      Drill(True);
+  finally
+    FScan.Scan.Unlock;
+  end;
+end;
+
+function TDiskMapView.Wheel(AX, AY, AClicks: Integer): Boolean;
+var
+  Before: TDiskNode;
 begin
   Result := False;
   FScan.Scan.Lock;
   try
-    for I := FTiles.Count - 1 downto 0 do
-      if FTiles[I].Rect.Contains(AX, AY) then
-      begin
-        FSelected := FTiles[I].Node;
-        if ADouble then
-          Drill;
-        Exit(True);
-      end;
+    FNotice := '';
+    FPendingSelect := '';
+    if AClicks > 0 then
+    begin
+      Result := SelectAtLocked(AX, AY);
+      Before := FViewRoot;
+      if Result then
+        Drill(False);
+      Result := Result or (Before <> FViewRoot);
+    end
+    else if (AClicks < 0) and (FViewRoot.Parent <> nil) then
+    begin
+      ZoomOutLocked;
+      Result := True;
+    end;
+  finally
+    FScan.Scan.Unlock;
+  end;
+end;
+
+function TDiskMapView.ClickGoto(AX, AY: Integer; out APath: string;
+  out AIsFile: Boolean): TDiskKeyResult;
+begin
+  APath := '';
+  AIsFile := False;
+  Result := dkNone;
+  FScan.Scan.Lock;
+  try
+    FNotice := '';
+    FPendingSelect := '';
+    if SelectAtLocked(AX, AY) then
+      Result := GotoSelectedLocked(APath, AIsFile);
   finally
     FScan.Scan.Unlock;
   end;

@@ -30,6 +30,13 @@ type
     [Test] procedure TestViewArrowsEnterAndBackspaceMoveThroughTheTree;
     [Test] procedure TestViewClickSelectsTheTileUnderThePoint;
     [Test] procedure TestViewGotoNamesTheSelectedPath;
+    [Test] procedure TestViewClickGotoNamesTheTileUnderThePoint;
+    [Test] procedure TestViewBackspaceAtTheTopAsksForTheParentFolder;
+    [Test] procedure TestViewEndSelectsTheLastTileAndEnterOnAFileSaysSo;
+    [Test] procedure TestViewRussianLayoutGotoAndRefreshKeys;
+    [Test] procedure TestViewWheelEntersAndLeavesButStaysInsideTheScan;
+    [Test] procedure TestViewSelectWhenShownPicksTheNamedFolder;
+    [Test] procedure TestParentFolderStopsAtTheRoot;
     [Test] procedure TestViewRenderDrawsTilesInsteadOfTheBackground;
     [Test] procedure TestViewNamesWhatItWaitsForWhenThereAreNoTiles;
   end;
@@ -383,7 +390,7 @@ begin
     Assert.IsTrue(Fix.View.HandleKey('Backspace', Path, IsFile) = dkHandled);
     Assert.AreEqual('big', Fix.View.SelectedName, 'zooming out selects the folder left');
     Assert.AreEqual(ExcludeTrailingPathDelimiter(FDir), Fix.View.ViewRootPath);
-    Assert.IsTrue(Fix.View.HandleKey('F5', Path, IsFile) = dkNone, 'other keys are not taken');
+    Assert.IsTrue(Fix.View.HandleKey('F6', Path, IsFile) = dkNone, 'other keys are not taken');
   finally
     CloseFixture(Fix);
   end;
@@ -432,6 +439,146 @@ begin
   finally
     CloseFixture(Fix);
   end;
+end;
+
+procedure TTestDiskMap.TestViewClickGotoNamesTheTileUnderThePoint;
+var
+  Fix: TViewFixture;
+  Path: string;
+  IsFile: Boolean;
+begin
+  MakeFile('big\x.bin', 5000);
+  MakeFile('small\z.bin', 100);
+  OpenFixture(FDir, Fix);
+  try
+    Assert.IsTrue(Fix.View.ClickGoto(5000, 5000, Path, IsFile) = dkNone, 'outside every tile');
+    Assert.AreEqual('', Path);
+    Assert.IsTrue(Fix.View.ClickGoto(5, 5, Path, IsFile) = dkGoto);
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(FDir) + PathDelim + 'big', Path);
+    Assert.IsFalse(IsFile, 'a folder');
+    Assert.AreEqual('big', Fix.View.SelectedName, 'the tile is selected as well');
+    Fix.View.Render(Fix.Raster);
+    Assert.IsTrue(Fix.View.ClickGoto(50, 50, Path, IsFile) = dkGoto);
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(FDir) + PathDelim + 'big' + PathDelim + 'x.bin', Path);
+    Assert.IsTrue(IsFile, 'a file');
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestViewBackspaceAtTheTopAsksForTheParentFolder;
+var
+  Fix: TViewFixture;
+  Path: string;
+  IsFile: Boolean;
+begin
+  MakeFile('big\x.bin', 5000);
+  OpenFixture(FDir, Fix);
+  try
+    Assert.IsTrue(Fix.View.HandleKey('Backspace', Path, IsFile) = dkParent,
+      'the top of the scan has a folder above it');
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(TPath.GetTempPath), Path);
+    Assert.IsTrue(Fix.View.ZoomOutOrParent(Path) = dkParent, 'the mouse asks the same');
+    Fix.View.HandleKey('Right', Path, IsFile);
+    Fix.View.HandleKey('Enter', Path, IsFile);
+    Assert.IsTrue(Fix.View.HandleKey('Backspace', Path, IsFile) = dkHandled,
+      'inside the tree Backspace only zooms out');
+    Assert.AreEqual('', Path);
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestViewEndSelectsTheLastTileAndEnterOnAFileSaysSo;
+var
+  Fix: TViewFixture;
+  Path: string;
+  IsFile: Boolean;
+begin
+  MakeFile('big\x.bin', 5000);
+  MakeFile('note.txt', 10);
+  OpenFixture(FDir, Fix);
+  try
+    Assert.IsTrue(Fix.View.HandleKey('End', Path, IsFile) = dkHandled);
+    Assert.AreEqual('note.txt', Fix.View.SelectedName, 'the smallest tile comes last');
+    Fix.View.HandleKey('Enter', Path, IsFile);
+    Assert.AreEqual(Fix.View.TextNotFolder, Fix.View.StatusText, 'Enter on a file explains itself');
+    Fix.View.HandleKey('Home', Path, IsFile);
+    Assert.AreNotEqual(Fix.View.TextNotFolder, Fix.View.StatusText, 'the next key clears the notice');
+    Assert.IsTrue(Pos(PathDelim + 'big', Fix.View.StatusText) > 0, 'the status names the full path');
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestViewRussianLayoutGotoAndRefreshKeys;
+var
+  Fix: TViewFixture;
+  Path: string;
+  IsFile: Boolean;
+begin
+  MakeFile('big\x.bin', 5000);
+  OpenFixture(FDir, Fix);
+  try
+    Fix.View.HandleKey('Right', Path, IsFile);
+    Assert.IsTrue(Fix.View.HandleKey(#$043F, Path, IsFile) = dkGoto, 'small letter on a Russian layout');
+    Assert.IsTrue(Fix.View.HandleKey(#$041F, Path, IsFile) = dkGoto, 'capital letter');
+    Assert.IsTrue(Fix.View.HandleKey('F5', Path, IsFile) = dkRefresh);
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(FDir), ExcludeTrailingPathDelimiter(Path));
+    Assert.IsTrue(Fix.View.HandleKey('Ctrl+R', Path, IsFile) = dkRefresh);
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestViewWheelEntersAndLeavesButStaysInsideTheScan;
+var
+  Fix: TViewFixture;
+begin
+  MakeFile('big\x.bin', 5000);
+  MakeFile('small\z.bin', 100);
+  OpenFixture(FDir, Fix);
+  try
+    Assert.IsFalse(Fix.View.Wheel(5000, 5000, 1), 'nothing under the pointer');
+    Assert.IsFalse(Fix.View.Wheel(5, 5, -1), 'at the top the wheel never leaves the scan');
+    Assert.IsTrue(Fix.View.Wheel(5, 5, 1), 'forward enters the folder under the pointer');
+    Fix.View.Render(Fix.Raster);
+    Assert.IsTrue(Fix.View.Click(5, 5, False));
+    Assert.AreEqual('x.bin', Fix.View.SelectedName, 'the map now shows the inside of the folder');
+    Assert.IsTrue(Fix.View.Wheel(5, 5, -1), 'back leaves it');
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestViewSelectWhenShownPicksTheNamedFolder;
+var
+  Fix: TViewFixture;
+begin
+  MakeFile('big\x.bin', 5000);
+  MakeFile('small\z.bin', 100);
+  OpenFixture(FDir, Fix);
+  try
+    Fix.View.SelectWhenShown('small');
+    Fix.View.Render(Fix.Raster);
+    Assert.AreEqual('small', Fix.View.SelectedName);
+  finally
+    CloseFixture(Fix);
+  end;
+end;
+
+procedure TTestDiskMap.TestParentFolderStopsAtTheRoot;
+begin
+{$IFDEF MSWINDOWS}
+  Assert.AreEqual('C:\Work', DiskParentFolder('C:\Work\Sub'));
+  Assert.AreEqual('C:\Work', DiskParentFolder('C:\Work\Sub\'));
+  Assert.AreEqual('C:\', DiskParentFolder('C:\Work'), 'the drive root keeps its separator');
+  Assert.AreEqual('', DiskParentFolder('C:\'), 'nothing above a drive');
+{$ELSE}
+  Assert.AreEqual('/home', DiskParentFolder('/home/u'));
+  Assert.AreEqual('/', DiskParentFolder('/home'));
+  Assert.AreEqual('', DiskParentFolder('/'), 'nothing above the root');
+{$ENDIF}
 end;
 
 procedure TTestDiskMap.TestViewRenderDrawsTilesInsteadOfTheBackground;

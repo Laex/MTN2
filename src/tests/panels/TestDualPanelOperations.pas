@@ -332,6 +332,16 @@ begin
     'junction name');
 
   Tab := Default(TTab);
+  Tab.CurrentURI := CRootUri;
+  ApplyNavigateTabBackMarkers(Tab, CLinkUri, CRootUri + 'target', CRootUri,
+    False);
+  Assert.AreEqual(CRootUri, Tab.WorkspaceBackUri, 'sibling link parent');
+  Assert.AreEqual(CRootUri + 'target', Tab.WorkspaceBackTarget,
+    'sibling link target');
+  Assert.AreEqual(FileUriTitle(CLinkUri), Tab.JunctionBackName,
+    'sibling link name');
+
+  Tab := Default(TTab);
   Tab.CurrentURI := 'file:///C:/Work';
   ApplyNavigateTabBackMarkers(Tab, CLinkUri, 'file:///D:/target',
     'file:///C:/Work', True);

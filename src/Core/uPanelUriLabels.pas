@@ -16,6 +16,11 @@ function DocumentsUri: string;
 function ProjectsUri: string;
 
 function PanelItemFullPath(const AURI, APanelURI: string; AIsParent: Boolean): string;
+/// <summary>The folder whose map Quick View shows for the cursor row: the folder
+/// itself, or the panel's own folder when the cursor is on "..". Empty when the
+/// row is not a folder or there is no row.</summary>
+function QuickDirectoryTarget(AHasRow: Boolean; const ARow: TPanelRow;
+  const APanelURI: string): string;
 /// <summary>File names for the Describe dialog: selected rows, or the cursor
 /// row when nothing is selected. Parent and empty-URI rows are skipped.</summary>
 function CollectDescribeItemNames(const ATab: TTab;
@@ -132,6 +137,18 @@ begin
     if Text <> '' then
       Result := [Text];
   end;
+end;
+
+function QuickDirectoryTarget(AHasRow: Boolean; const ARow: TPanelRow;
+  const APanelURI: string): string;
+begin
+  Result := '';
+  if not AHasRow then
+    Exit;
+  if ARow.IsParent then
+    Result := APanelURI
+  else if ARow.IsDirectory then
+    Result := ARow.URI;
 end;
 
 function PanelItemFullPath(const AURI, APanelURI: string; AIsParent: Boolean): string;

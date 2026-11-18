@@ -108,6 +108,10 @@ procedure PluginSurfaceUnregister(const APluginId: string);
 /// (the tab must close; it then calls SurfaceTabClosed).</summary>
 procedure SurfaceAttach(AHandle: Integer; const ARepaint, AClose: TProc);
 
+/// <summary>AHandler runs after the plugin used a mouse button press or a double
+/// click on the surface (the tab may then give the keyboard to it).</summary>
+procedure SurfaceOnPointer(AHandle: Integer; const AHandler: TProc);
+
 /// <summary>The tab was closed: tells the plugin (unless it closed the surface
 /// itself) and forgets the surface. Safe to call twice.</summary>
 procedure SurfaceTabClosed(AHandle: Integer);
@@ -168,6 +172,7 @@ type
     ReportedWidth, ReportedHeight: Integer;
     Repaint: TProc;
     Close: TProc;
+    PointerUsed: TProc;
     Pixels: TBytes;
     Width, Height: Integer;
     Gen: Cardinal;
@@ -387,6 +392,13 @@ begin
   except
     Result := False;
   end;
+  if Result and ((AKind = 0) or (AKind = 4)) then
+  begin
+    // The plugin may have closed the surface while using the event.
+    S := Find(AHandle);
+    if (S <> nil) and Assigned(S.PointerUsed) then
+      S.PointerUsed();
+  end;
 end;
 
 function PluginSurfaceSetFrame(AHandle, AWidth, AHeight: Integer; APixels: PByte;
@@ -499,6 +511,15 @@ begin
     Exit;
   S.Repaint := ARepaint;
   S.Close := AClose;
+end;
+
+procedure SurfaceOnPointer(AHandle: Integer; const AHandler: TProc);
+var
+  S: TSurface;
+begin
+  S := Find(AHandle);
+  if S <> nil then
+    S.PointerUsed := AHandler;
 end;
 
 procedure SurfaceTabClosed(AHandle: Integer);

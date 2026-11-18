@@ -23,7 +23,10 @@ const
   cPriority = 60;
   cSurfacePanel = 2;
   cMouseDown = 0;
+  cMouseWheel = 3;
   cMouseDouble = 4;
+  cShiftBit = 1;
+  cCtrlBit = 2;
   cMouseSize = 5;
   cSettingEnabled = 'enabled';
   // The scan starts when the cursor has stayed on the folder this long, so
@@ -169,6 +172,68 @@ begin
   GHostApi.SurfaceSetInfo(ACtx.Handle, PAnsiChar(Title), PAnsiChar(Status));
 end;
 
+{ Maps APath in ACtx: a finished scan from the cache, or a new one that starts
+  once the delay has passed. The surface stays; its previous scan is dropped. }
+procedure AttachScan(ACtx: TSession; const APath: string);
+var
+  Scan: IDiskScan;
+  Cached: Boolean;
+begin
+  if Assigned(ACtx.Scan) and not ACtx.Scan.Scan.Finished then
+    ACtx.Scan.Scan.Cancel;
+  FreeAndNil(ACtx.View);
+  Scan := FindCached(APath);
+  Cached := Scan <> nil;
+  if not Cached then
+    Scan := TDiskScan.Create(APath, TDiskLimits.Standard);
+  ACtx.Scan := Scan;
+  ACtx.View := TDiskMapView.Create(Scan);
+  ACtx.View.TextScanning := Tr('status.scanning', 'scanning...');
+  ACtx.View.TextIncomplete := Tr('status.incomplete', 'incomplete (limit reached)');
+  ACtx.View.TextRest := Tr('status.rest', 'other files');
+  ACtx.View.TextEmpty := Tr('status.empty', 'empty');
+  ACtx.View.TextTotal := Tr('status.total', 'total');
+  ACtx.View.TextNotReady := Tr('status.notready', 'the folder is still being scanned');
+  ACtx.View.TextNotFolder := Tr('status.notfolder', 'not a folder (G shows it in the panel)');
+  ACtx.View.TextHint := Tr('status.hint', 'Tab: keys  G: show in panel  Backspace: up  F5: rescan');
+  ACtx.Opened := TStopwatch.StartNew;
+  ACtx.Started := Cached;
+  ACtx.Finished := Cached;
+  ACtx.Drawn := False;
+  ACtx.LastEntries := 0;
+end;
+
+procedure StartTimerFor(ACtx: TSession);
+begin
+  if ACtx.Finished then
+    GHostApi.SurfaceSetTimer(ACtx.Handle, 0)
+  else
+    GHostApi.SurfaceSetTimer(ACtx.Handle, cTickMs);
+end;
+
+{ The map of the folder above the one in view replaces the current one; the
+  folder it came from is selected in it. }
+procedure ShowParentFolder(ACtx: TSession; const APath: string);
+var
+  From: string;
+begin
+  if not TDirectory.Exists(APath) then
+    Exit;
+  From := ExtractFileName(ExcludeTrailingPathDelimiter(ACtx.Scan.Scan.Path));
+  AttachScan(ACtx, APath);
+  if From <> '' then
+    ACtx.View.SelectWhenShown(From);
+  StartTimerFor(ACtx);
+end;
+
+{ Scans APath again, ignoring every remembered scan. }
+procedure RescanFolder(ACtx: TSession; const APath: string);
+begin
+  GCache.Clear;
+  AttachScan(ACtx, APath);
+  StartTimerFor(ACtx);
+end;
+
 { Closes the surface from the plugin's side; the host sends no callback then. }
 procedure CloseSession(ACtx: TSession);
 begin
@@ -215,6 +280,18 @@ begin
           CloseSession(Ctx);
           Result := 1;
         end;
+      dkParent:
+        begin
+          ShowParentFolder(Ctx, Path);
+          Redraw(Ctx);
+          Result := 1;
+        end;
+      dkRefresh:
+        begin
+          RescanFolder(Ctx, Path);
+          Redraw(Ctx);
+          Result := 1;
+        end;
     end;
   except
     Result := 0;
@@ -225,6 +302,8 @@ function OnSurfaceMouse(AUserData: Pointer; AKind, AX, AY, AWidth, AHeight,
   AButton, AExtra, AShift: Int64): Int64; cdecl;
 var
   Ctx: TSession;
+  Path: string;
+  IsFile: Boolean;
 begin
   Result := 0;
   try
@@ -240,7 +319,20 @@ begin
       cMouseDown:
         begin
           if AButton = 2 then
-            Ctx.View.ZoomOut
+          begin
+            if Ctx.View.ZoomOutOrParent(Path) = dkParent then
+              ShowParentFolder(Ctx, Path);
+          end
+          else if (AShift and (cShiftBit or cCtrlBit)) <> 0 then
+          begin
+            // Shift or Ctrl click shows the tile in the panel, like the G key.
+            if Ctx.View.ClickGoto(Integer(AX), Integer(AY), Path, IsFile) = dkGoto then
+            begin
+              GoToInPanel(Path, IsFile);
+              CloseSession(Ctx);
+              Exit(1);
+            end;
+          end
           else
             Ctx.View.Click(Integer(AX), Integer(AY), False);
           Redraw(Ctx);
@@ -249,6 +341,12 @@ begin
       cMouseDouble:
         begin
           Ctx.View.Click(Integer(AX), Integer(AY), True);
+          Redraw(Ctx);
+          Result := 1;
+        end;
+      cMouseWheel:
+        if Ctx.View.Wheel(Integer(AX), Integer(AY), Integer(AExtra)) then
+        begin
           Redraw(Ctx);
           Result := 1;
         end;
@@ -309,29 +407,14 @@ end;
 function OpenFolder(const APath: string): Boolean;
 var
   Ctx: TSession;
-  Scan: IDiskScan;
   PluginId, Title: UTF8String;
-  Cached: Boolean;
 begin
   Result := False;
   if not GEnabled or not Assigned(GHostApi.SurfaceOpenEx) or
      not Assigned(GHostApi.SurfaceSetFrame) or not TDirectory.Exists(APath) then
     Exit;
-  Scan := FindCached(APath);
-  Cached := Scan <> nil;
-  if not Cached then
-    Scan := TDiskScan.Create(APath, TDiskLimits.Standard);
   Ctx := TSession.Create;
-  Ctx.Scan := Scan;
-  Ctx.View := TDiskMapView.Create(Scan);
-  Ctx.View.TextScanning := Tr('status.scanning', 'scanning...');
-  Ctx.View.TextIncomplete := Tr('status.incomplete', 'incomplete (limit reached)');
-  Ctx.View.TextRest := Tr('status.rest', 'other files');
-  Ctx.View.TextEmpty := Tr('status.empty', 'empty');
-  Ctx.View.TextTotal := Tr('status.total', 'total');
-  Ctx.Opened := TStopwatch.StartNew;
-  Ctx.Started := Cached;
-  Ctx.Finished := Cached;
+  AttachScan(Ctx, APath);
   PluginId := UTF8String(cPluginId);
   Title := UTF8String(Ctx.View.Title);
   Ctx.Handle := GHostApi.SurfaceOpenEx(PAnsiChar(PluginId), PAnsiChar(Title), cSurfacePanel,
@@ -342,7 +425,7 @@ begin
     Exit;
   end;
   GSessions.Add(Ctx);
-  if not Cached then
+  if not Ctx.Finished then
     GHostApi.SurfaceSetTimer(Ctx.Handle, cTickMs);
   Result := True;
 end;

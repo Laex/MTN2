@@ -12,6 +12,7 @@ type
     [Test] procedure TestCollectDescribeItemNames;
     [Test] procedure TestCollectClipboardItemTexts;
     [Test] procedure TestDriveCaption;
+    [Test] procedure TestQuickDirectoryTarget;
   end;
 
 implementation
@@ -88,6 +89,21 @@ begin
   Assert.AreEqual('D:\', DriveCaption(Info), 'same label keeps root only');
   Info.LabelOrPath := 'Data';
   Assert.AreEqual('D:\ (Data)', DriveCaption(Info), 'label is appended');
+end;
+
+procedure TTestPanelUriLabels.TestQuickDirectoryTarget;
+var
+  Parent, Folder, FileRow: TPanelRow;
+begin
+  Parent := MakePanelRow('..', True, -1, '', '', 'file:///C:/', True);
+  Folder := MakePanelRow('Sub', True, -1, '', '', 'file:///C:/Work/Sub');
+  FileRow := MakePanelRow('a.txt', False, 1, '1', '', 'file:///C:/Work/a.txt');
+  Assert.AreEqual('file:///C:/Work/Sub',
+    QuickDirectoryTarget(True, Folder, 'file:///C:/Work'), 'a folder row shows itself');
+  Assert.AreEqual('file:///C:/Work',
+    QuickDirectoryTarget(True, Parent, 'file:///C:/Work'), '".." shows the panel folder');
+  Assert.AreEqual('', QuickDirectoryTarget(True, FileRow, 'file:///C:/Work'), 'a file has no map');
+  Assert.AreEqual('', QuickDirectoryTarget(False, Parent, 'file:///C:/Work'), 'no row, no map');
 end;
 
 initialization

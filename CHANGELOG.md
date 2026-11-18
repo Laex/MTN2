@@ -6,6 +6,23 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- In the Folder map plugin, Ctrl+click or Shift+click on a tile shows it in the file panel and closes the map, like the G key. Quick View stays open and follows the cursor in the new folder.
+- In the Folder map plugin, Backspace (or the right mouse button) at the top of the scanned folder maps the folder above it, up to the root of the disk, and selects the folder you came from.
+- The Folder map plugin: the mouse wheel enters and leaves folders, End selects the last tile, F5 or Ctrl+R scans the folder again, G also works on a Russian layout, and a click gives the keyboard to the map.
+- The Folder map status line shows the full path of the selected tile and a key reminder, nested folder headers show their size, and Enter on a file, an empty folder or one still being scanned says why nothing happened.
+
+### Changed
+
+- Tab or Esc in the Folder map plugin returns the keyboard to the file panel without discarding the map.
+- With the cursor on `..`, the Folder map plugin in Quick View (Ctrl+Q) shows the map of the current folder, so the folder you have just entered and the whole disk stay in view.
+
+### Fixed
+
+- After leaving a link to a folder that sits next to its target, the cursor returns to the link instead of the target folder, so a delete no longer hits the wrong folder.
+- Ctrl+Enter and Ctrl+Shift+Enter no longer paste the "Reading..." or error line of a panel into the command line.
+
 ## v0.5.10 – 2026-11-17
 
 ### New

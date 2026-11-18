@@ -406,8 +406,11 @@ begin
   begin
     LinkUri := PathToFileUri(FileUriToPath(ARawNavigateUri));
     LinkParent := ParentFileUri(LinkUri);
+    // A link next to its own target shares the parent, but the cursor must
+    // still return to the link's name, not to the target's.
     if (LinkParent <> '') and not SameVfsUri(LinkUri, AToCanon) and
-       not SameVfsUri(LinkParent, ParentFileUri(AToCanon)) then
+       (not SameVfsUri(LinkParent, ParentFileUri(AToCanon)) or
+        not SameText(FileUriTitle(LinkUri), FileUriTitle(AToCanon))) then
     begin
       ATab.WorkspaceBackUri := LinkParent;
       ATab.WorkspaceBackTarget := AToCanon;

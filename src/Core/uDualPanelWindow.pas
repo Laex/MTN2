@@ -1032,7 +1032,9 @@ type
     function QuickViewPictureShown: Boolean;
     function OpenQuickInteractive: Boolean;
     procedure CloseQuickInteractive;
-    procedure SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow);
+    procedure SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow;
+      const APanelUri: string);
+    procedure SurfacePointerUsed(AHandle: Integer);
     function HandleQuickViewKey(var AKey: Word; AShift: TShiftState;
       var AKeyChar: Char): Boolean;
     procedure CancelFolderSize;
@@ -9232,7 +9234,8 @@ begin
     Exit;
   if Ws.Kind <> wkPanels then
     Exit;
-  if Row.IsParent then
+  // The "Reading..." and error rows have no URI; they are messages, not items.
+  if Row.IsParent or (Row.URI = '') then
     Exit;
   if AFullPath then
   begin
@@ -9504,8 +9507,17 @@ begin
       end;
     qvkaCloseSurfaceUnfocus:
       begin
-        CloseQuickInteractive;
-        FQuickViewFocused := False;
+        if FQuickDirAuto then
+        begin
+          // A folder map keeps its view; the cursor drives it again.
+          FQuickSurfaceOwned := False;
+          FQuickViewFocused := False;
+        end
+        else
+        begin
+          CloseQuickInteractive;
+          FQuickViewFocused := False;
+        end;
       end;
     qvkaSurfaceDeliver:
       begin
@@ -12278,8 +12290,25 @@ begin
         begin
           FSurfacePanelHandle := 0;
           SurfaceTabClosed(AHandle);
-          CloseQuickView;
+          if FQuickDirAuto then
+          begin
+            // A folder map that closes itself (it sent the panel to a tile):
+            // Quick View stays and follows the cursor, which may ask for a new map.
+            FQuickSurfaceOwned := False;
+            FQuickDirAuto := False;
+            FQuickDirTried := '';
+            FQuickViewFocused := False;
+            ClearOverlayPreview;
+            NotifyChanged;
+          end
+          else
+            CloseQuickView;
         end;
+      end);
+    SurfaceOnPointer(AHandle,
+      procedure
+      begin
+        SurfacePointerUsed(AHandle);
       end);
     NotifyChanged;
     Exit(True);
@@ -14454,31 +14483,50 @@ end;
 
 { Keeps the plugin surface in the Quick View panel in step with the folder under
   the cursor: closes it when the cursor left that folder and asks the plugins
-  for a surface when the cursor stands on a folder. Not while the keyboard is
-  in the surface (the cursor cannot move then). }
-procedure TDualPanelWindow.SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow);
+  for a surface when the cursor stands on a folder, or on ".." (then the
+  panel's own folder is shown). Not while the keyboard is in the surface (the
+  cursor cannot move then). }
+procedure TDualPanelWindow.SyncQuickDirectorySurface(AHasRow: Boolean; const ARow: TPanelRow;
+  const APanelUri: string);
 var
-  OnFolder: Boolean;
+  Target: string;
 begin
+  Target := QuickDirectoryTarget(AHasRow, ARow, APanelUri);
   if FQuickSurfaceOwned then
-    Exit;
-  OnFolder := AHasRow and ARow.IsDirectory and (not ARow.IsParent) and (ARow.URI <> '');
-  if FQuickDirAuto and not (OnFolder and (ARow.URI = FQuickDirUri)) then
+  begin
+    // The cursor moved by mouse while the keyboard was in the map: it follows the cursor.
+    if not FQuickDirAuto or (Target = FQuickDirUri) then
+      Exit;
+    FQuickSurfaceOwned := False;
+    FQuickViewFocused := False;
+  end;
+  if FQuickDirAuto and ((Target = '') or (Target <> FQuickDirUri)) then
     CloseQuickInteractive;
-  if not OnFolder then
+  if Target = '' then
   begin
     FQuickDirTried := '';
     Exit;
   end;
-  if (FSurfacePanelHandle <> 0) or (ARow.URI = FQuickDirTried) then
+  if (FSurfacePanelHandle <> 0) or (Target = FQuickDirTried) then
     Exit;
-  FQuickDirTried := ARow.URI;
-  if DocumentProviders.TryQuickDirectory(ARow.URI) and (FSurfacePanelHandle <> 0) and
+  FQuickDirTried := Target;
+  if DocumentProviders.TryQuickDirectory(Target) and (FSurfacePanelHandle <> 0) and
      SurfaceExists(FSurfacePanelHandle) then
   begin
     FQuickDirAuto := True;
-    FQuickDirUri := ARow.URI;
+    FQuickDirUri := Target;
   end;
+end;
+
+{ A click the map used gives it the keyboard, as Tab does. }
+procedure TDualPanelWindow.SurfacePointerUsed(AHandle: Integer);
+begin
+  if (AHandle <> FSurfacePanelHandle) or not FQuickDirAuto or FQuickSurfaceOwned or
+     not SurfaceExists(AHandle) then
+    Exit;
+  FQuickSurfaceOwned := True;
+  FQuickViewFocused := True;
+  Invalidate;
 end;
 
 procedure TDualPanelWindow.DrawQuickViewContent(const ABounds: TRectI;
@@ -14508,7 +14556,7 @@ begin
   // side is physically drawing this panel - only reached when ASide isn't
   // the active side (IsQuickViewTarget guards that in DrawPanel).
   HasRow := GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx);
-  SyncQuickDirectorySurface(HasRow, Row);
+  SyncQuickDirectorySurface(HasRow, Row, Tab.CurrentURI);
   // A picture is the file itself or, for a file a plugin renders for Quick
   // View, the picture the plugin redirects to.
   if HasRow then
