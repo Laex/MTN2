@@ -6,6 +6,8 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.3 – 2026-11-18
+
 ### New
 
 - Links (symbolic links and junctions) in the file panels are drawn in their own color (the `file.link` theme color) and carry a marker before the name: `~` for a folder, `@` for a file. The "Mark links" option in the Interface settings turns both off.
