@@ -504,7 +504,9 @@ procedure TDataTheme.ResolveFileRowColors(AIsDirectory, AIsParent, AIsHidden: Bo
     Hidden: Boolean;
   begin
     Hidden := AIsHidden and not AIsParent;
-    if AIsDirectory or AIsParent or SameText(AFileType, 'directory') then
+    if SameText(AFileType, cLinkFileType) then
+      Result := FSpec.Colors[trFileLink]
+    else if AIsDirectory or AIsParent or SameText(AFileType, 'directory') then
     begin
       if Hidden then
         Result := FSpec.Colors[trFileHiddenDir]

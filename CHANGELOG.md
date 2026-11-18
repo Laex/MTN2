@@ -8,6 +8,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### New
 
+- Links (symbolic links and junctions) in the file panels are drawn in their own color (the `file.link` theme color) and carry a marker before the name: `~` for a folder, `@` for a file. The "Mark links" option in the Interface settings turns both off.
 - In the Folder map plugin, Ctrl+click or Shift+click on a tile shows it in the file panel and closes the map, like the G key. Quick View stays open and follows the cursor in the new folder.
 - In the Folder map plugin, Backspace (or the right mouse button) at the top of the scanned folder maps the folder above it, up to the root of the disk, and selects the folder you came from.
 - The Folder map plugin: the mouse wheel enters and leaves folders, End selects the last tile, F5 or Ctrl+R scans the folder again, G also works on a Russian layout, and a click gives the keyboard to the map.

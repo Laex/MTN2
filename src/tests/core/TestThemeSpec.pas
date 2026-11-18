@@ -758,7 +758,7 @@ type
     Min: Double;
   end;
 const
-  cPairs: array[0..16] of TPair = (
+  cPairs: array[0..17] of TPair = (
     (Fg: trWindowFg; Bg: trWindowBg; Min: 3),
     (Fg: trCursorFg; Bg: trCursorBg; Min: 3),
     (Fg: trDialogFg; Bg: trDialogBg; Min: 3),
@@ -773,6 +773,7 @@ const
     (Fg: trFileArchive; Bg: trWindowBg; Min: 2.5),
     (Fg: trFileExecutable; Bg: trWindowBg; Min: 2.5),
     (Fg: trFileMedia; Bg: trWindowBg; Min: 2.5),
+    (Fg: trFileLink; Bg: trWindowBg; Min: 2.5),
     (Fg: trMarkFg; Bg: trWindowBg; Min: 2.5),
     (Fg: trWindowFg; Bg: trCursorIdleBg; Min: 2.5),
     (Fg: trDialogHotFg; Bg: trDialogBg; Min: 2.5));

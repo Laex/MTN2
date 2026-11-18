@@ -428,6 +428,7 @@ begin
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
   DialogSetCheckbox(Decl, 'dir_slash', Cur.DirSlash);
+  DialogSetCheckbox(Decl, 'mark_links', Cur.MarkLinks);
   DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
   FDialog.Open(Decl, FOnCommand);
   Notify;
@@ -906,6 +907,7 @@ begin
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
     Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
+    Disp.MarkLinks := FDialog.GetCheckbox('mark_links');
     Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
     LanguageIdx := FDialog.GetListSelectedIndex('language');
     if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then

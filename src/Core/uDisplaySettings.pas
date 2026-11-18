@@ -37,6 +37,9 @@ var
   GExactSelectionSize: Boolean = False;
   /// <summary>Directory names in the panel listing end with a path separator.</summary>
   GDirSlash: Boolean = True;
+  /// <summary>Links (symbolic links, junctions) in the panel listing carry a marker
+  /// before the name and use the theme's link color.</summary>
+  GMarkLinks: Boolean = True;
   /// <summary>Panel footer in the NDN/DN layout: the totals sit in the bottom border,
   /// the rule above the info strip stays plain. Off: totals centered on that rule.</summary>
   GNdnFooter: Boolean = True;
@@ -86,6 +89,8 @@ type
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
     DirSlash: Boolean;
+    /// <summary>uDisplaySettings.GMarkLinks.</summary>
+    MarkLinks: Boolean;
     /// <summary>uDisplaySettings.GNdnFooter.</summary>
     NdnFooter: Boolean;
     /// <summary>uScreenSaver.GSaverMinutes.</summary>
@@ -383,6 +388,7 @@ begin
   Result.EditorAutoIndent := True;
   Result.ExactSelectionSize := False;
   Result.DirSlash := True;
+  Result.MarkLinks := True;
   Result.NdnFooter := True;
   Result.SaverMinutes := 5;
   Result.SaverId := cDefaultSaverId;

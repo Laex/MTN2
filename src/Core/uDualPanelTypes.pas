@@ -315,7 +315,8 @@ function EllipsizeKeepingExt(const AText: string; AMaxLen: Integer): string;
 function PanelRowMaskName(const ARow: TPanelRow): string;
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;
 /// <summary>The name a panel row is drawn with: a directory loses its trailing
-/// slash when uDisplaySettings.GDirSlash is off.</summary>
+/// slash when uDisplaySettings.GDirSlash is off, and a link gets a marker in
+/// front of the name when uDisplaySettings.GMarkLinks is on.</summary>
 function PanelRowDisplayText(const ARow: TPanelRow): string;
 function TabHasSelectedDirectories(const ATab: TTab;
   const ARows: TPanelRows): Boolean;
@@ -1309,12 +1310,22 @@ begin
   end;
 end;
 
+function LinkMarkChar(AIsDirectory: Boolean): string;
+begin
+  if AIsDirectory then
+    Result := '~'
+  else
+    Result := '@';
+end;
+
 function PanelRowDisplayText(const ARow: TPanelRow): string;
 begin
   Result := ARow.Text;
   if (not GDirSlash) and ARow.IsDirectory and not ARow.IsParent and
      (Result <> '') and (Result[Length(Result)] = '/') then
     SetLength(Result, Length(Result) - 1);
+  if GMarkLinks and ARow.IsLink and not ARow.IsParent then
+    Result := LinkMarkChar(ARow.IsDirectory) + Result;
 end;
 
 function PanelRowIsDirectory(const ARow: TPanelRow): Boolean;

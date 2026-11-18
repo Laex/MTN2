@@ -71,7 +71,8 @@
       "hiddenDir": "mute",
       "hiddenArchive": "mute",
       "hiddenExecutable": "mute",
-      "hiddenMedia": "mute"
+      "hiddenMedia": "mute",
+      "link": "#007070"
     },
     "status": {
       "fg": "fg",

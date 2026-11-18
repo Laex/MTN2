@@ -221,6 +221,7 @@ begin
   FSession.EditorAutoIndent := True;
   FSession.ExactSelectionSize := False;
   FSession.DirSlash := True;
+  FSession.MarkLinks := True;
   FSession.NdnFooter := True;
   FSession.SaverMinutes := 5;
   FSession.SaverId := cDefaultSaverId;
@@ -401,6 +402,7 @@ begin
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.ExactSelectionSize := GExactSelectionSize;
   Result.DirSlash := GDirSlash;
+  Result.MarkLinks := GMarkLinks;
   Result.NdnFooter := GNdnFooter;
   Result.SaverMinutes := GSaverMinutes;
   Result.SaverId := GSaverId;
@@ -453,6 +455,7 @@ begin
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
   FSession.DirSlash := ASettings.DirSlash;
+  FSession.MarkLinks := ASettings.MarkLinks;
   FSession.NdnFooter := ASettings.NdnFooter;
   GNdnFooter := ASettings.NdnFooter;
   FSession.SaverMinutes := ASettings.SaverMinutes;
@@ -462,6 +465,7 @@ begin
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
+  GMarkLinks := ASettings.MarkLinks;
   GSaverMinutes := ASettings.SaverMinutes;
   GSaverId := ASettings.SaverId;
   GSaverRandom := ASettings.SaverRandom;

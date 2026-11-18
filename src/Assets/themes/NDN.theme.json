@@ -69,7 +69,8 @@
       "hiddenDir": "lightGray",
       "hiddenArchive": "darkCyan",
       "hiddenExecutable": "green",
-      "hiddenMedia": "hiddenMedia"
+      "hiddenMedia": "hiddenMedia",
+      "link": "lightCyan"
     },
     "status": {
       "fg": "black",

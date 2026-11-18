@@ -77,6 +77,8 @@ type
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
     DirSlash: Boolean;
+    /// <summary>uDisplaySettings.GMarkLinks.</summary>
+    MarkLinks: Boolean;
     /// <summary>uDisplaySettings.NdnFooter.</summary>
     NdnFooter: Boolean;
     /// <summary>Idle minutes before the screensaver (uScreenSaver.GSaverMinutes); 0 = off.</summary>
@@ -690,6 +692,7 @@ begin
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
       Root.AddPair('exactSelectionSize', TJSONBool.Create(ASession.ExactSelectionSize));
       Root.AddPair('dirSlash', TJSONBool.Create(ASession.DirSlash));
+      Root.AddPair('markLinks', TJSONBool.Create(ASession.MarkLinks));
       Root.AddPair('ndnFooter', TJSONBool.Create(ASession.NdnFooter));
       Root.AddPair('saverMinutes', TJSONNumber.Create(ASession.SaverMinutes));
       Root.AddPair('saverId', ASession.SaverId);
@@ -789,6 +792,7 @@ begin
   ASession.EditorAutoIndent := True;
   ASession.ExactSelectionSize := False;
   ASession.DirSlash := True;
+  ASession.MarkLinks := True;
   ASession.NdnFooter := True;
   ASession.SaverMinutes := 5;
   ASession.SaverId := cDefaultSaverId;
@@ -910,6 +914,7 @@ begin
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
       ASession.ExactSelectionSize := JsonBool(Root, 'exactSelectionSize', False);
       ASession.DirSlash := JsonBool(Root, 'dirSlash', True);
+      ASession.MarkLinks := JsonBool(Root, 'markLinks', True);
       ASession.NdnFooter := JsonBool(Root, 'ndnFooter', True);
       ASession.SaverMinutes := JsonInt(Root, 'saverMinutes', 5);
       ASession.SaverId := JsonStr(Root, 'saverId', cDefaultSaverId);

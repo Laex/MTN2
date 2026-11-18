@@ -14,6 +14,7 @@ type
     [Test] procedure TestCaptionsAndFooters;
     [Test] procedure TestExactSizeFormatAndFooter;
     [Test] procedure DirectorySlashFollowsTheSetting;
+    [Test] procedure LinkMarkerFollowsTheSetting;
     [Test] procedure TestSeparatorAndTitle;
     [Test] procedure TestDriveLetterHit;
     [Test] [Category('WindowsOnly')] procedure TestDrivePreviewHelpers;
@@ -1104,6 +1105,45 @@ begin
     Assert.AreEqual('a.txt', PanelRowDisplayText(Fil), 'a file is unchanged');
   finally
     GDirSlash := Saved;
+  end;
+end;
+
+procedure TTestDualPanelPanelDraw.LinkMarkerFollowsTheSetting;
+var
+  Saved, SavedSlash: Boolean;
+  DirLink, FileLink, Parent, Plain: TPanelRow;
+begin
+  DirLink := Default(TPanelRow);
+  DirLink.Text := 'php/';
+  DirLink.IsDirectory := True;
+  DirLink.IsLink := True;
+  FileLink := Default(TPanelRow);
+  FileLink.Text := 'a.txt';
+  FileLink.IsLink := True;
+  Parent := Default(TPanelRow);
+  Parent.Text := '..';
+  Parent.IsDirectory := True;
+  Parent.IsParent := True;
+  Parent.IsLink := True;
+  Plain := Default(TPanelRow);
+  Plain.Text := 'b.txt';
+  Saved := GMarkLinks;
+  SavedSlash := GDirSlash;
+  try
+    GDirSlash := True;
+    GMarkLinks := True;
+    Assert.AreEqual('~php/', PanelRowDisplayText(DirLink), 'a folder link gets ~');
+    Assert.AreEqual('@a.txt', PanelRowDisplayText(FileLink), 'a file link gets @');
+    Assert.AreEqual('..', PanelRowDisplayText(Parent), 'the parent row is never marked');
+    Assert.AreEqual('b.txt', PanelRowDisplayText(Plain), 'a plain file is not marked');
+    GDirSlash := False;
+    Assert.AreEqual('~php', PanelRowDisplayText(DirLink), 'the marker and the slash setting are independent');
+    GMarkLinks := False;
+    Assert.AreEqual('php', PanelRowDisplayText(DirLink), 'no marker when the setting is off');
+    Assert.AreEqual('a.txt', PanelRowDisplayText(FileLink), 'a file link is plain when the setting is off');
+  finally
+    GMarkLinks := Saved;
+    GDirSlash := SavedSlash;
   end;
 end;
 

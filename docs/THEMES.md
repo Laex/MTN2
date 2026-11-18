@@ -203,6 +203,7 @@ Name colors by type; `hidden*` are hidden files.
 | `file.hiddenExecutable` | `file.hidden` |
 | `file.hiddenMedia` | `file.hidden` |
 | `file.hiddenPlain` | `file.hidden` |
+| `file.link` | `file.dir` |
 
 ### Status line (`status`)
 
