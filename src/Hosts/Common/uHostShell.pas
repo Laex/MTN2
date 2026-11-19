@@ -64,6 +64,12 @@ type
     procedure HandleModifiers(const AEvent: TTermEvent);
     procedure HandleMouse(const AEvent: TTermEvent);
     procedure HandleMouseDown(const AEvent: TTermEvent);
+    function MouseDownShift(const AEvent: TTermEvent; out ADbl: Boolean): TShiftState;
+    function TryOverlayMouseDown(const AEvent: TTermEvent; ADbl: Boolean;
+      AShift: TShiftState): Boolean;
+    function TryWindowMouseDown(const AEvent: TTermEvent; AShift: TShiftState): Boolean;
+    procedure DualPanelMouseDown(const AEvent: TTermEvent; ADbl: Boolean;
+      AShift: TShiftState);
     procedure HandleMouseMove(const AEvent: TTermEvent);
     procedure HandleMouseUp(const AEvent: TTermEvent);
     procedure HandleWheel(const AEvent: TTermEvent);
@@ -1322,71 +1328,83 @@ begin
   Recompose;
 end;
 
-procedure THostShell.HandleMouseDown(const AEvent: TTermEvent);
+function THostShell.MouseDownShift(const AEvent: TTermEvent;
+  out ADbl: Boolean): TShiftState;
 var
-  Col, Row, LocalCol, LocalRow: Integer;
-  Shift: TShiftState;
-  Dbl: Boolean;
-  Active: TTerminalWindow;
-  MenuClick: Boolean;
-  Key: Word;
-  KeyChar: Char;
-  KeyShift: TShiftState;
   Tick: UInt64;
 begin
-  FPeekTimer.Enabled := False;
-  Col := AEvent.Col;
-  Row := AEvent.Row;
-  Shift := AEvent.Shift;
+  Result := AEvent.Shift;
   Tick := PlatformTickCount64;
-  Dbl := (AEvent.Button = TMouseButton.mbLeft) and (Col = FLastClickCol) and
-    (Row = FLastClickRow) and (Tick - FLastClickTick <= PlatformDoubleClickMs);
+  ADbl := (AEvent.Button = TMouseButton.mbLeft) and (AEvent.Col = FLastClickCol) and
+    (AEvent.Row = FLastClickRow) and (Tick - FLastClickTick <= PlatformDoubleClickMs);
   if AEvent.Button = TMouseButton.mbLeft then
   begin
-    FLastClickCol := Col;
-    FLastClickRow := Row;
+    FLastClickCol := AEvent.Col;
+    FLastClickRow := AEvent.Row;
     FLastClickTick := Tick;
-    if Dbl then
+    if ADbl then
     begin
       FLastClickCol := -1;
-      Include(Shift, ssDouble);
+      Include(Result, ssDouble);
     end;
     FButtonsDown := FButtonsDown or 1;
   end;
   if AEvent.Button = TMouseButton.mbLeft then
-    Include(Shift, ssLeft)
+    Include(Result, ssLeft)
   else if AEvent.Button = TMouseButton.mbRight then
-    Include(Shift, ssRight)
+    Include(Result, ssRight)
   else
-    Include(Shift, ssMiddle);
+    Include(Result, ssMiddle);
+end;
 
-  // The window buttons on the console frame sit above the console.
-  if (AEvent.Button = TMouseButton.mbLeft) and
-     FDualPanel.HandleConsoleFrameClick(Col - FDualPanel.Area.Left,
-       Row - FDualPanel.Area.Top) then
+function THostShell.TryOverlayMouseDown(const AEvent: TTermEvent; ADbl: Boolean;
+  AShift: TShiftState): Boolean;
+var
+  Col, Row: Integer;
+  Key: Word;
+  KeyChar: Char;
+  KeyShift: TShiftState;
+begin
+  Result := False;
+  if AEvent.Button <> TMouseButton.mbLeft then
     Exit;
+  Col := AEvent.Col;
+  Row := AEvent.Row;
+  // The window buttons on the console frame sit above the console.
+  if FDualPanel.HandleConsoleFrameClick(Col - FDualPanel.Area.Left,
+       Row - FDualPanel.Area.Top) then
+    Exit(True);
 
   // The function bar below a console is the dual panel's.
-  if (AEvent.Button = TMouseButton.mbLeft) and FDualPanel.Visible and
-     FDualPanel.ConsoleMode and Assigned(FConsole) and FConsole.Visible and
-     FDualPanel.HitTest(Col, Row) and
+  if FDualPanel.Visible and FDualPanel.ConsoleMode and Assigned(FConsole) and
+     FConsole.Visible and FDualPanel.HitTest(Col, Row) and
      FDualPanel.FunctionBarClickKey(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top,
-       Shift, Key, KeyChar, KeyShift) then
+       AShift, Key, KeyChar, KeyShift) then
   begin
     DispatchTerminalKey(Key, KeyChar, KeyShift);
-    Exit;
+    Exit(True);
   end;
 
   // A dialog or menu the panels opened over another window (the editor) is
   // drawn above it and takes the click first.
-  if (AEvent.Button = TMouseButton.mbLeft) and (FMdi.Active <> FDualPanel) and
-     FDualPanel.Visible and (FDualPanel.HasOpenDialog or FDualPanel.TopMenuOpen) and
+  if (FMdi.Active <> FDualPanel) and FDualPanel.Visible and
+     (FDualPanel.HasOpenDialog or FDualPanel.TopMenuOpen) and
      FDualPanel.HitTest(Col, Row) then
   begin
-    FDualPanel.HandleClick(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top, Dbl, Shift);
-    Exit;
+    FDualPanel.HandleClick(Col - FDualPanel.Area.Left, Row - FDualPanel.Area.Top, ADbl, AShift);
+    Exit(True);
   end;
+end;
 
+function THostShell.TryWindowMouseDown(const AEvent: TTermEvent;
+  AShift: TShiftState): Boolean;
+var
+  Col, Row, LocalCol, LocalRow: Integer;
+  Active: TTerminalWindow;
+begin
+  Result := False;
+  Col := AEvent.Col;
+  Row := AEvent.Row;
   FMdi.ActivateAt(Col, Row);
   Active := FMdi.Active;
   if (AEvent.Button = TMouseButton.mbLeft) and Assigned(Active) and Active.HitTest(Col, Row) then
@@ -1394,37 +1412,56 @@ begin
     LocalCol := Col - Active.Area.Left;
     LocalRow := Row - Active.Area.Top;
     if (Active is TDualPanelWindow) and
-       TDualPanelWindow(Active).HandleMouseDown(LocalCol, LocalRow, Shift) then
-      Exit;
+       TDualPanelWindow(Active).HandleMouseDown(LocalCol, LocalRow, AShift) then
+      Exit(True);
     if (Active is TEditorWindow) and
-       TEditorWindow(Active).HandleMouseDown(LocalCol, LocalRow, Shift) then
-      Exit;
+       TEditorWindow(Active).HandleMouseDown(LocalCol, LocalRow, AShift) then
+      Exit(True);
     if (Active is TConsoleWindow) and
-       TConsoleWindow(Active).HandleMouseDown(LocalCol, LocalRow, Shift) then
-      Exit;
+       TConsoleWindow(Active).HandleMouseDown(LocalCol, LocalRow, AShift) then
+      Exit(True);
   end;
   if Assigned(FConsole) and FConsole.Visible and FConsole.HitTest(Col, Row) and
      (FMdi.Active <> FConsole) and
-     FConsole.HandleMouseDown(Col - FConsole.Area.Left, Row - FConsole.Area.Top, Shift) then
-    Exit;
+     FConsole.HandleMouseDown(Col - FConsole.Area.Left, Row - FConsole.Area.Top, AShift) then
+    Exit(True);
+end;
 
-  if FDualPanel.Visible and FDualPanel.HitTest(Col, Row) then
+procedure THostShell.DualPanelMouseDown(const AEvent: TTermEvent; ADbl: Boolean;
+  AShift: TShiftState);
+var
+  LocalCol, LocalRow: Integer;
+  MenuClick: Boolean;
+begin
+  if not (FDualPanel.Visible and FDualPanel.HitTest(AEvent.Col, AEvent.Row)) then
+    Exit;
+  LocalCol := AEvent.Col - FDualPanel.Area.Left;
+  LocalRow := AEvent.Row - FDualPanel.Area.Top;
+  if AEvent.Button = TMouseButton.mbRight then
   begin
-    LocalCol := Col - FDualPanel.Area.Left;
-    LocalRow := Row - FDualPanel.Area.Top;
-    if AEvent.Button = TMouseButton.mbRight then
-    begin
-      if FDualPanel.RightClickOpensTopMenu(LocalCol, LocalRow) then
-        Exit;
-      FDualPanel.HandleClick(LocalCol, LocalRow, False, Shift, False);
-      Exit;
-    end;
-    MenuClick := FDualPanel.TopMenuOpen or (LocalRow = 0) or FDualPanel.HasOpenDialog;
-    FDualPanel.HandleClick(LocalCol, LocalRow, Dbl, Shift);
-    // A press on a file row can turn into a drag to the other panel.
-    if (AEvent.Button = TMouseButton.mbLeft) and not Dbl and not MenuClick then
-      FDualPanel.ArmPanelDrag(LocalCol, LocalRow);
+    if not FDualPanel.RightClickOpensTopMenu(LocalCol, LocalRow) then
+      FDualPanel.HandleClick(LocalCol, LocalRow, False, AShift, False);
+    Exit;
   end;
+  MenuClick := FDualPanel.TopMenuOpen or (LocalRow = 0) or FDualPanel.HasOpenDialog;
+  FDualPanel.HandleClick(LocalCol, LocalRow, ADbl, AShift);
+  // A press on a file row can turn into a drag to the other panel.
+  if (AEvent.Button = TMouseButton.mbLeft) and not ADbl and not MenuClick then
+    FDualPanel.ArmPanelDrag(LocalCol, LocalRow);
+end;
+
+procedure THostShell.HandleMouseDown(const AEvent: TTermEvent);
+var
+  Shift: TShiftState;
+  Dbl: Boolean;
+begin
+  FPeekTimer.Enabled := False;
+  Shift := MouseDownShift(AEvent, Dbl);
+  if TryOverlayMouseDown(AEvent, Dbl, Shift) then
+    Exit;
+  if TryWindowMouseDown(AEvent, Shift) then
+    Exit;
+  DualPanelMouseDown(AEvent, Dbl, Shift);
 end;
 
 procedure THostShell.HandleMouseMove(const AEvent: TTermEvent);

@@ -20,6 +20,7 @@ type
     [Test] procedure TestPermissionsOfAPluginWithEverything;
     [Test] procedure TestPermissionsAreRepackedWithoutReplacement;
     [Test] procedure TestPluginWithNothingToAllowHasOnlyButtons;
+    [Test] procedure TestListIndexPastTheEnd;
   end;
 
 implementation
@@ -227,6 +228,64 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+function ListRow(const ADecl: TDialogDeclaration; const AId: string;
+  out AItems: TArray<string>; out AIndex: Integer): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to High(ADecl.Controls) do
+    if ADecl.Controls[I].Id = AId then
+    begin
+      AItems := ADecl.Controls[I].Items;
+      AIndex := ADecl.Controls[I].SelectedIndex;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+procedure TTestPluginDialogs.TestListIndexPastTheEnd;
+var
+  Decl: TDialogDeclaration;
+  Items: TArray<string>;
+  Index: Integer;
+begin
+  Decl := BuildPluginListDialog(['a', 'b', 'c'], 9);
+  Assert.IsTrue(ListRow(Decl, 'plugins', Items, Index), 'plugin list');
+  Assert.AreEqual(0, Index, 'plugin list selects the first row');
+  Assert.IsTrue(Length(Items) = 3, 'three plugin rows');
+
+  Decl := BuildPluginListDialog(['a', 'b', 'c'], 1);
+  Assert.IsTrue(ListRow(Decl, 'plugins', Items, Index), 'plugin list in range');
+  Assert.AreEqual(1, Index);
+
+  Decl := BuildPluginListDialog(['a', 'b', 'c'], -2);
+  Assert.IsTrue(ListRow(Decl, 'plugins', Items, Index), 'negative plugin index');
+  Assert.AreEqual(0, Index);
+
+  Decl := BuildPluginListDialog([], 4);
+  Assert.IsTrue(ListRow(Decl, 'plugins', Items, Index), 'empty plugin list');
+  Assert.IsTrue(Length(Items) = 1, 'one placeholder row');
+  Assert.AreEqual('(no plugins)', Items[0]);
+  Assert.AreEqual(0, Index);
+
+  Decl := BuildFolderHistoryDialog(['a', 'b', 'c'], 9);
+  Assert.IsTrue(ListRow(Decl, 'folders', Items, Index), 'folder history');
+  Assert.AreEqual(2, Index, 'folder history selects the last row');
+
+  Decl := BuildFolderHistoryDialog(['a', 'b'], -3);
+  Assert.IsTrue(ListRow(Decl, 'folders', Items, Index), 'negative folder index');
+  Assert.AreEqual(0, Index);
+
+  Decl := BuildFolderHistoryDialog([], 4);
+  Assert.IsTrue(ListRow(Decl, 'folders', Items, Index), 'empty folder history');
+  Assert.AreEqual('(empty)', Items[0]);
+  Assert.AreEqual(0, Index);
+
+  Decl := BuildKeymapDialog(['a', 'b', 'c', 'd'], 99);
+  Assert.IsTrue(ListRow(Decl, 'actions', Items, Index), 'keymap');
+  Assert.AreEqual(3, Index, 'keymap selects the last row');
 end;
 
 initialization

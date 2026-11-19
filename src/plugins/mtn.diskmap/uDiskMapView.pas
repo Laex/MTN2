@@ -184,6 +184,14 @@ begin
   Result := ANode.ShownSize;
 end;
 
+{ A bare drive ("D:") is shown as its root ("D:\"). }
+function ShownPath(const APath: string): string;
+begin
+  Result := APath;
+  if (Length(Result) = 2) and (Result[2] = ':') then
+    Result := Result + PathDelim;
+end;
+
 function DiskParentFolder(const APath: string): string;
 var
   Trimmed: string;
@@ -391,17 +399,17 @@ begin
     if FNotice <> '' then
       Exit(FNotice);
     Total := TotalOf(FViewRoot);
+    // The folder in view comes first, so the bar always says which map this is.
+    Result := ShownPath(PathOfLocked(FViewRoot));
     if FSelected <> nil then
     begin
-      Result := TileLabel(FSelected) + '  -  ' + FormatBytes(FSelected.ShownSize);
+      Result := Result + '  >  ' + TileLabel(FSelected) + '  -  ' + FormatBytes(FSelected.ShownSize);
       if Total > 0 then
         Result := Result + Format('  -  %.1f%%', [FSelected.ShownSize * 100 / Total],
           TFormatSettings.Invariant);
-      // The path comes last: a narrow bar cuts it first.
-      Result := Result + '  -  ' + PathOfLocked(FSelected);
     end
     else
-      Result := PathOfLocked(FViewRoot) + '  -  ' + FTextTotal + ' ' + FormatBytes(Total);
+      Result := Result + '  -  ' + FTextTotal + ' ' + FormatBytes(Total);
     if not Scan.Finished then
       Result := Result + '  -  ' + FTextScanning
     else if Scan.Truncated then
@@ -589,9 +597,10 @@ begin
   else
   begin
     APath := DiskParentFolder(FScan.Scan.Path);
-    if APath <> '' then
-      Result := dkParent;
-  end;
+    // The top of a whole disk: the key is left to the host (the drive menu).
+    Result := dkParent;
+    if APath = '' then
+      Result := dkNone;  end;
 end;
 
 function TDiskMapView.ZoomOutOrParent(out APath: string): TDiskKeyResult;

@@ -9522,7 +9522,13 @@ begin
     qvkaSurfaceDeliver:
       begin
         if not SurfaceDeliverKey(FSurfacePanelHandle, AKey, AShift, AKeyChar) then
-          Exit;
+        begin
+          // Backspace the folder map cannot use is at the top of a whole disk:
+          // it stays in the map, as the file panel would move up (and the map
+          // with it) or open its drive menu while it is not the active one.
+          if not (FQuickDirAuto and (AKey = vkBack) and Plain) then
+            Exit;
+        end;
       end;
     qvkaUnfocus:
       FQuickViewFocused := False;

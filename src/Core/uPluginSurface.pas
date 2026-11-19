@@ -658,6 +658,7 @@ function SurfaceDeliverKey(AHandle: Integer; AKey: Word; AShift: TShiftState;
 var
   S: TSurface;
   Name: string;
+  Callback: TSurfaceKeyCallback;
 begin
   Result := False;
   S := Find(AHandle);
@@ -666,8 +667,11 @@ begin
   Name := SurfaceKeyName(AKey, AShift, AKeyChar);
   if Name = '' then
     Exit;
+  // The plugin may close its surface while handling the key; the local
+  // reference keeps the callback alive until it returns.
+  Callback := S.OnKey;
   try
-    Result := S.OnKey(Name);
+    Result := Callback(Name);
   except
     Result := False;
   end;

@@ -13,7 +13,7 @@ Tab gives the keyboard to the map:
 - Mouse – click selects and gives the keyboard to the map, double click zooms in, right click zooms out (like Backspace), Ctrl+click or Shift+click shows the tile in the file panel like G. The wheel forward enters the folder under the pointer, backward leaves it without leaving the scanned folder.
 - Tab or Esc – give the keyboard back to the file panel; the map stays and follows the panel cursor again.
 
-The status line shows the name, size, share and full path of the selected tile, and a key reminder when there is room. The header of a nested folder shows its size.
+The status line shows the folder in view, then the name, size and share of the selected tile, and a key reminder when there is room. The header of a nested folder shows its size.
 
 Only local folders are scanned; other folders keep the plain Quick View. Folder links are not followed. Sizes are file sizes, not space taken on disk.
 

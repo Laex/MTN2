@@ -505,7 +505,9 @@ begin
     Assert.AreEqual(Fix.View.TextNotFolder, Fix.View.StatusText, 'Enter on a file explains itself');
     Fix.View.HandleKey('Home', Path, IsFile);
     Assert.AreNotEqual(Fix.View.TextNotFolder, Fix.View.StatusText, 'the next key clears the notice');
-    Assert.IsTrue(Pos(PathDelim + 'big', Fix.View.StatusText) > 0, 'the status names the full path');
+    Assert.IsTrue(Fix.View.StatusText.StartsWith(Fix.View.ViewRootPath),
+      'the status starts with the folder in view');
+    Assert.IsTrue(Pos('big', Fix.View.StatusText) > 0, 'the status names the selected tile');
   finally
     CloseFixture(Fix);
   end;

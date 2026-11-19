@@ -274,6 +274,33 @@ uses
   uTextEncoding, uSearchEngines, uInputLine, uColorPickerControl, uDatePickerControl,
   uTerminalTypes;
 
+// A list resource always draws a row, so an empty source becomes one
+// placeholder row. DialogSetListItems then clamps the index onto the last
+// row. AResetOutOfRange first sends an index outside 0..High to row 0,
+// which is how the plugin list behaves.
+procedure DialogFillList(var ADecl: TDialogDeclaration; const AListId: string;
+  const AItems: TArray<string>; ASelectedIndex: Integer; const AEmptyText: string;
+  AResetOutOfRange: Boolean = False);
+var
+  Items: TArray<string>;
+  Sel: Integer;
+begin
+  if Length(AItems) = 0 then
+  begin
+    SetLength(Items, 1);
+    Items[0] := AEmptyText;
+    Sel := 0;
+  end
+  else
+  begin
+    Items := AItems;
+    Sel := ASelectedIndex;
+    if AResetOutOfRange and ((Sel < 0) or (Sel > High(Items))) then
+      Sel := 0;
+  end;
+  DialogSetListItems(ADecl, AListId, Items, Sel);
+end;
+
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
 var
   I, Delta: Integer;
@@ -657,129 +684,48 @@ end;
 
 function BuildFolderHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogFolderHistory, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'folders', Items, Sel);
+  DialogFillList(Result, 'folders', AItems, ASelectedIndex, '(empty)');
 end;
 
 function BuildJobListDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogJobList, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(no jobs)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'jobs', Items, Sel);
+  DialogFillList(Result, 'jobs', AItems, ASelectedIndex, '(no jobs)');
 end;
 
 function BuildCommandPaletteDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer; const AQuery: string): TDialogDeclaration;
-var
-  Items: TArray<string>;
 begin
   RequireDialogResource(cResDialogCommandPalette, Result);
-  Items := AItems;
-  if Length(Items) = 0 then
-    Items := [T('ui.palette.empty', '(no matches)')];
-  DialogSetListItems(Result, 'commands', Items,
-    EnsureRange(ASelectedIndex, 0, High(Items)));
+  DialogFillList(Result, 'commands', AItems, ASelectedIndex,
+    T('ui.palette.empty', '(no matches)'));
   DialogSetInputValue(Result, 'query', AQuery);
 end;
 
 function BuildFileHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
 begin
   RequireDialogResource(cResDialogFileHistory, Result);
-  Items := AItems;
-  if Length(Items) = 0 then
-    Items := [T('ui.fileHistory.empty', '(empty)')];
-  DialogSetListItems(Result, 'files', Items,
-    EnsureRange(ASelectedIndex, 0, High(Items)));
+  DialogFillList(Result, 'files', AItems, ASelectedIndex,
+    T('ui.fileHistory.empty', '(empty)'));
 end;
 
 function BuildCmdHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogCmdHistory, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'commands', Items, Sel);
+  DialogFillList(Result, 'commands', AItems, ASelectedIndex, '(empty)');
 end;
 
 function BuildFolderHotlistDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer; const AAccents: TArray<TListAccent>): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogFolderHotlist, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty - Ctrl+Alt+D adds the current directory)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'hotlist', Items, Sel);
+  DialogFillList(Result, 'hotlist', AItems, ASelectedIndex,
+    '(empty - Ctrl+Alt+D adds the current directory)');
   DialogSetListAccents(Result, 'hotlist', AAccents);
 end;
 
@@ -787,8 +733,6 @@ function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer; const ALiveCaption: string;
   const ATitle: string): TDialogDeclaration;
 var
-  Items: TArray<string>;
-  Sel: Integer;
   Title: string;
 begin
   RequireDialogResource(cResDialogWorkspaces, Result);
@@ -801,47 +745,16 @@ begin
   // The keys belong to the library list; the pick list (own title) has none.
   if ATitle <> '' then
     DialogSetLabelText(Result, 'wsHint', '');
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty - Ins saves the current workspace)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'workspaces', Items, Sel);
+  DialogFillList(Result, 'workspaces', AItems, ASelectedIndex,
+    '(empty - Ins saves the current workspace)');
 end;
 
 function BuildSshConnectionsDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogSshConnections, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty - Ins adds a connection)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'connections', Items, Sel);
+  DialogFillList(Result, 'connections', AItems, ASelectedIndex,
+    '(empty - Ins adds a connection)');
 end;
 
 function BuildSshConnectionEditDialog(const AName, AHost: string; APort: Integer;
@@ -857,27 +770,10 @@ end;
 
 function BuildAssociationsDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogAssociations, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(empty - Ins adds an association)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'associations', Items, Sel);
+  DialogFillList(Result, 'associations', AItems, ASelectedIndex,
+    '(empty - Ins adds an association)');
 end;
 
 function BuildAssociationEditDialog(const AExtension: string; AActionIndex: Integer;
@@ -951,21 +847,12 @@ end;
 function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   const APreview: TArray<string>; ADryRun: Boolean;
   ATwoWay: Boolean; AByContent: Boolean): TDialogDeclaration;
-var
-  Items: TArray<string>;
 begin
   RequireDialogResource(cResDialogDirSync, Result);
   DialogSetLabelText(Result, 'src_path', ASrcPath);
   DialogSetLabelText(Result, 'dst_path', ADstPath);
   DialogSetLabelText(Result, 'status', AStatus);
-  if Length(APreview) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(none)';
-  end
-  else
-    Items := APreview;
-  DialogSetListItems(Result, 'preview', Items, 0);
+  DialogFillList(Result, 'preview', APreview, 0, '(none)');
   DialogSetCheckbox(Result, 'dry_run', ADryRun);
   if ATwoWay then
     DialogSetRadio(Result, 'sync_mode', 'twoway')
@@ -1326,54 +1213,18 @@ end;
 
 function BuildInterfaceDialog(const ALanguageNames: TArray<string>;
   ALanguageIndex: Integer; AShowNotifications: Boolean): TDialogDeclaration;
-var
-  Languages: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogInterface, Result);
   DialogSetCheckbox(Result, 'notifications', AShowNotifications);
-  if Length(ALanguageNames) = 0 then
-  begin
-    SetLength(Languages, 1);
-    Languages[0] := 'English';
-    Sel := 0;
-  end
-  else
-  begin
-    Languages := ALanguageNames;
-    Sel := ALanguageIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Languages) then
-      Sel := High(Languages);
-  end;
-  DialogSetListItems(Result, 'language', Languages, Sel);
+  DialogFillList(Result, 'language', ALanguageNames, ALanguageIndex, 'English');
 end;
 
 function BuildShellProfileListDialog(const ATitle: string;
   const ATitles: TArray<string>; ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogTerminalProfile, Result);
   DialogSetTitle(Result, ATitle);
-  if Length(ATitles) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(none)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := ATitles;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'profiles', Items, Sel);
+  DialogFillList(Result, 'profiles', ATitles, ASelectedIndex, '(none)');
 end;
 
 function BuildTerminalEnvDialog(const AItems: TArray<string>;
@@ -1467,20 +1318,11 @@ end;
 
 function BuildPluginListDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
 begin
   RequireDialogResource(cResDialogPluginList, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(no plugins)';
-  end
-  else
-    Items := AItems;
-  if (ASelectedIndex < 0) or (ASelectedIndex > High(Items)) then
-    ASelectedIndex := 0;
-  DialogSetListItems(Result, 'plugins', Items, ASelectedIndex);
+  // An index outside 0..High selects row 0. DialogSetListItems would
+  // otherwise clamp it onto the last row.
+  DialogFillList(Result, 'plugins', AItems, ASelectedIndex, '(no plugins)', True);
 end;
 
 function BuildPluginPermissionsDialog(const ATitle, AIntro, AOverrideText: string;
@@ -1572,27 +1414,10 @@ end;
 
 function BuildColorCodingDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer; const ASwatches: TArray<TListSwatch>): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogColorCoding, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(no groups - press Ins to add one)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'groups', Items, Sel);
+  DialogFillList(Result, 'groups', AItems, ASelectedIndex,
+    '(no groups - press Ins to add one)');
   DialogSetListSwatches(Result, 'groups', ASwatches);
 end;
 
@@ -1719,27 +1544,9 @@ end;
 
 function BuildKeymapDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer): TDialogDeclaration;
-var
-  Items: TArray<string>;
-  Sel: Integer;
 begin
   RequireDialogResource(cResDialogKeymap, Result);
-  if Length(AItems) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0] := '(no actions)';
-    Sel := 0;
-  end
-  else
-  begin
-    Items := AItems;
-    Sel := ASelectedIndex;
-    if Sel < 0 then
-      Sel := 0;
-    if Sel > High(Items) then
-      Sel := High(Items);
-  end;
-  DialogSetListItems(Result, 'actions', Items, Sel);
+  DialogFillList(Result, 'actions', AItems, ASelectedIndex, '(no actions)');
 end;
 
 function BuildKeymapEditDialog(const AActionName, AKeysText,

@@ -101,9 +101,11 @@ end;
 function ConfigFromJson(AObj: TJSONObject): TCustomColumnsConfig;
 
   function Flag(const AKey: string): Boolean;
+  var
+    Value: TJSONValue;
   begin
-    Result := (AObj.GetValue(AKey) is TJSONBool) and
-      TJSONBool(AObj.GetValue(AKey)).AsBoolean;
+    Value := AObj.GetValue(AKey);
+    Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
   end;
 
 begin

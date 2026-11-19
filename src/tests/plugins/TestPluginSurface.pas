@@ -17,6 +17,7 @@ type
     [Test] procedure TestKeyReachesThePluginOnce;
     [Test] procedure TestUserClosingTheTabTellsThePlugin;
     [Test] procedure TestPluginClosingTheTabIsNotTold;
+    [Test] procedure TestKeyThatClosesTheSurfaceIsStillTaken;
     [Test] procedure TestUnloadedPluginIsNotCalledAgain;
     [Test] procedure TestRefusedTabLeavesNoSurface;
     [Test] procedure TestModesAreChecked;
@@ -125,6 +126,7 @@ begin
   Assert.AreEqual('F5', SurfaceKeyName(vkF5, [], #0));
   Assert.AreEqual('+', SurfaceKeyName(0, [ssShift], '+'));
   Assert.AreEqual('a', SurfaceKeyName(Ord('A'), [], 'a'));
+  Assert.AreEqual(#$043F, SurfaceKeyName(Ord('G'), [], #$043F), 'a Cyrillic letter keeps its own character');
   Assert.AreEqual('Ctrl+C', SurfaceKeyName(Ord('C'), [ssCtrl], #3));
   Assert.AreEqual('Ctrl+Shift+Left', SurfaceKeyName(vkLeft, [ssShift, ssCtrl], #0));
   Assert.AreEqual('', SurfaceKeyName(vkShift, [ssShift], #0), 'a bare modifier has no name');
@@ -186,6 +188,23 @@ begin
   Assert.AreEqual(0, Told, 'the plugin knows it closed the tab');
   Assert.IsFalse(SurfaceExists(H), 'the surface is gone');
   Assert.IsFalse(PluginSurfaceClose(H), 'closing twice is refused');
+end;
+
+procedure TTestPluginSurface.TestKeyThatClosesTheSurfaceIsStillTaken;
+var
+  H: Integer;
+begin
+  InstallHost(True);
+  H := 0;
+  H := PluginSurfaceOpen('t.surface', 'Pic',
+    function(const AKey: string): Boolean
+    begin
+      PluginSurfaceClose(H);
+      Result := True;
+    end, nil, nil);
+  Assert.IsTrue(SurfaceDeliverKey(H, Ord('G'), [], 'g'),
+    'a key that made the plugin close its surface was still used');
+  Assert.IsFalse(SurfaceExists(H), 'the surface is gone');
 end;
 
 procedure TTestPluginSurface.TestUnloadedPluginIsNotCalledAgain;

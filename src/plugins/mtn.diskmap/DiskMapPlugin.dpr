@@ -234,9 +234,13 @@ begin
   StartTimerFor(ACtx);
 end;
 
-{ Closes the surface from the plugin's side; the host sends no callback then. }
+{ Closes the surface from the plugin's side; the host sends no callback then.
+  Nothing happens when the host closed it meanwhile (the panel moved and the
+  map was dropped), because the session is already freed. }
 procedure CloseSession(ACtx: TSession);
 begin
+  if not GSessions.Contains(ACtx) then
+    Exit;
   GSessions.Remove(ACtx);
   if Assigned(GHostApi.SurfaceClose) then
     GHostApi.SurfaceClose(ACtx.Handle);
@@ -268,7 +272,7 @@ begin
     Ctx := TSession(AUserData);
     if AKey = nil then
       Exit;
-    case Ctx.View.HandleKey(string(AKey), Path, IsFile) of
+    case Ctx.View.HandleKey(UTF8ToString(AKey), Path, IsFile) of
       dkHandled:
         begin
           Redraw(Ctx);
