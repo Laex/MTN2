@@ -222,6 +222,7 @@
     {
       "name": "Archives",
       "mask": "*.zip;*.rar;*.7z;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.iso;*.cab;*.wim",
+      "applyTo": "files",
       "sortPriority": -2,
       "normal": {
         "fg": "#FF55FF"
@@ -230,6 +231,7 @@
     {
       "name": "Executables",
       "mask": "*.exe;*.com;*.bat;*.cmd;*.msi;*.ps1;*.vbs",
+      "applyTo": "files",
       "sortPriority": -1,
       "normal": {
         "fg": "#55FF55"
@@ -238,6 +240,7 @@
     {
       "name": "Temporary",
       "mask": "*.tmp;*.bak;*.old",
+      "applyTo": "files",
       "sortPriority": 1,
       "normal": {
         "fg": "#AAAAAA"
@@ -246,6 +249,7 @@
     {
       "name": "Documents",
       "mask": "*.doc;*.docx;*.rtf;*.txt",
+      "applyTo": "files",
       "normal": {
         "fg": "#00AAAA"
       }
@@ -253,6 +257,7 @@
     {
       "name": "Object Pascal",
       "mask": "*.pas;*.dpr;*.dproj",
+      "applyTo": "files",
       "normal": {
         "fg": "#55FFFF"
       }
@@ -260,6 +265,7 @@
     {
       "name": "Markdown",
       "mask": "*.md",
+      "applyTo": "files",
       "normal": {
         "fg": "#FF5555"
       }

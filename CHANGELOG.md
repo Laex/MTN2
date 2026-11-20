@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.8 – 2026-11-21
+
+### Fixed
+
+- In the built-in themes, color coding by extension (archives, temporary files and so on) applies to files only: a folder named like `name.7z` or `name.tmp` keeps the folder color. Themes you saved earlier keep their groups as they are; choose "Files only" for them in the color coding editor.
+
 ## Dev v0.5.10.7 – 2026-11-20
 
 ### Changed
