@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.6 – 2026-11-20
+
+### Fixed
+
+- In consoles, the mouse wheel and the keyboard scroll from the current view instead of jumping to an old position. When scrolling hides the last line, following the output of a running program stops, and it resumes once the console is scrolled back to the bottom.
+
 ## Dev v0.5.10.3 – 2026-11-18
 
 ### New

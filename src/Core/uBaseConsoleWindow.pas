@@ -864,7 +864,7 @@ begin
   FSelAnchorCol := 0;
   FCursorRow    := Last;
   FCursorCol    := Length(Line);
-  FHistory.FollowTail := False;
+  FHistory.DetachTail(ViewHeight);
   NotifyHost;
 end;
 
@@ -918,12 +918,12 @@ begin
   FHistory.GetScrollMetrics(ViewH, Total, Top);
   if FCursorRow < Top then
   begin
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     FHistory.ScrollTo(FCursorRow, ViewH);
   end
   else if FCursorRow >= Top + ViewH then
   begin
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     FHistory.ScrollTo(FCursorRow - ViewH + 1, ViewH);
   end;
 end;
@@ -943,7 +943,7 @@ begin
     ClearSelection;
   FCursorRow := ARow;
   FCursorCol := ACol;
-  FHistory.FollowTail := False;
+  FHistory.DetachTail(ViewHeight);
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -1099,7 +1099,7 @@ begin
   FSelAnchorCol := Col;
   FCursorRow := Row;
   FCursorCol := Col + Length(FFindLower);
-  FHistory.FollowTail := False;
+  FHistory.DetachTail(ViewHeight);
   EnsureCursorVisible;
   NotifyHost;
   Result := True;
@@ -1754,28 +1754,28 @@ begin
     case AKey of
       vkUp:
         begin
-          FHistory.FollowTail := False;
+          FHistory.DetachTail(ViewHeight);
           FHistory.ScrollBy(-1, ViewH);
           NotifyHost;
           AKey := 0; Exit(True);
         end;
       vkDown:
         begin
-          FHistory.FollowTail := False;
+          FHistory.DetachTail(ViewHeight);
           FHistory.ScrollBy(1, ViewH);
           NotifyHost;
           AKey := 0; Exit(True);
         end;
       vkPrior:
         begin
-          FHistory.FollowTail := False;
+          FHistory.DetachTail(ViewHeight);
           FHistory.ScrollBy(-ViewH, ViewH);
           NotifyHost;
           AKey := 0; Exit(True);
         end;
       vkNext:
         begin
-          FHistory.FollowTail := False;
+          FHistory.DetachTail(ViewHeight);
           FHistory.ScrollBy(ViewH, ViewH);
           NotifyHost;
           AKey := 0; Exit(True);
@@ -1804,7 +1804,7 @@ var
 begin
   ViewH := ViewHeight;
   Steps := Max(Abs(WheelDelta) div 120, 1);
-  FHistory.FollowTail := False;
+  FHistory.DetachTail(ViewHeight);
   if WheelDelta > 0 then
     for I := 1 to Steps do
       FHistory.ScrollBy(-1, ViewH)
@@ -1851,7 +1851,7 @@ begin
     FHistory.GetScrollMetrics(ViewH, Total, Top);
     MaxTop := Max(Total - ViewH, 0);
     Result := True;
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     if ALocalRow = AScrollTopY then
       FHistory.ScrollBy(-1, ViewH)
     else if ALocalRow = AScrollBottomY then
@@ -1892,7 +1892,7 @@ begin
     FCursorCol    := Col;
     if FHistory.FollowTail then
       FSelFromLiveTail := True;
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     EnsureCursorVisible;
     NotifyHost;
   end;
@@ -1921,7 +1921,7 @@ begin
   FCursorCol := WEnd;
   if FHistory.FollowTail then
     FSelFromLiveTail := True;
-  FHistory.FollowTail := False;
+  FHistory.DetachTail(ViewHeight);
   EnsureCursorVisible;
   NotifyHost;
 end;
@@ -1956,7 +1956,7 @@ begin
   // Drag above/below -> auto-scroll.
   if ALocalRow < 1 then
   begin
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     FHistory.ScrollBy(-1, ViewH);
     if HitTextCell(Max(ALocalCol, 1), 1, Row, Col) then
     begin
@@ -1972,7 +1972,7 @@ begin
   end
   else if ALocalRow > ViewH then
   begin
-    FHistory.FollowTail := False;
+    FHistory.DetachTail(ViewHeight);
     FHistory.ScrollBy(1, ViewH);
     if HitTextCell(Max(ALocalCol, 1), ViewH, Row, Col) then
     begin

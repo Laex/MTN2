@@ -187,6 +187,7 @@ type
     procedure ScrollBy(ADelta, AViewH: Integer);
     procedure ScrollTo(ATop, AViewH: Integer);
     procedure ScrollToStart;
+    procedure DetachTail(AViewH: Integer);
     procedure ScrollToEnd;
     property FollowTail: Boolean read FFollowTail write FFollowTail;
     property AnsiParser: TANSIParser read FAnsiParser;
@@ -1542,6 +1543,23 @@ begin
   try
     FScroll := 0;
     FFollowTail := False;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TConsoleBuffer.DetachTail(AViewH: Integer);
+var
+  Total, Top: Integer;
+begin
+  FLock.Enter;
+  try
+    if FFollowTail then
+    begin
+      GetScrollMetrics(AViewH, Total, Top);
+      FScroll := Top;
+      FFollowTail := False;
+    end;
   finally
     FLock.Leave;
   end;
