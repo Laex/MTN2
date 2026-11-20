@@ -1672,7 +1672,6 @@
     "themeRole.file.hiddenExecutable": "Скрытый исполняемый файл",
     "themeRole.file.hiddenMedia": "Скрытый медиафайл",
     "themeRole.file.hiddenPlain": "Скрытый прочий файл",
-    "themeRole.file.link": "Символическая ссылка или junction",
     "themeRole.status.fg": "Текст строки состояния",
     "themeRole.status.bg": "Фон строки состояния",
     "themeRole.status.separator": "Разделитель строки состояния",

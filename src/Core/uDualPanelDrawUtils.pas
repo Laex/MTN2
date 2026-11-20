@@ -9,8 +9,7 @@ interface
 uses
   System.SysUtils, System.Math, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uDualPanelTypes, uVfsTypes, uPanelModel, uPanelColumns,
-  uShellIcons, uDriveInfo, uInputLine, uColorCoding, uRowDecorations, uPluginColumns,
-  uThemeSpec, uDisplaySettings;
+  uShellIcons, uDriveInfo, uInputLine, uColorCoding, uRowDecorations, uPluginColumns;
 
 { --- Scrollbar ------------------------------------------------------------ }
 
@@ -459,16 +458,11 @@ var
   end;
 
   procedure ResolveRowColors;
-  var
-    RowFileType: string;
   begin
-    RowFileType := Row.FileType;
-    if GMarkLinks and Row.IsLink and not Row.IsParent then
-      RowFileType := cLinkFileType;
     Selected := SelectionKeysHas(SelKeys, Row.URI);
     if Assigned(ATheme) then
       ResolvePanelRowColors(ATheme, Row.IsDirectory, Row.IsParent, Row.IsHidden,
-        RowFileType, Selected, Idx = ATab.CursorIndex, ASideActive,
+        Row.FileType, Selected, Idx = ATab.CursorIndex, ASideActive,
         GMarkedRowStyle, Fg, Bg)
     else
       FallbackFileRowColors(Row.IsDirectory, Row.IsParent, Row.IsHidden,

@@ -1675,7 +1675,6 @@
     "themeRole.file.hiddenExecutable": "Hidden executable",
     "themeRole.file.hiddenMedia": "Hidden media file",
     "themeRole.file.hiddenPlain": "Hidden other file",
-    "themeRole.file.link": "Symbolic link or junction",
     "themeRole.status.fg": "Status line text",
     "themeRole.status.bg": "Status line background",
     "themeRole.status.separator": "Status line separator",

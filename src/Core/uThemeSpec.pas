@@ -58,7 +58,7 @@ type
     trMarkFg, trMarkBg, trMarkBandFg, trMarkBandBg,
     trFileDir, trFileArchive, trFileExecutable, trFileMedia, trFilePlain,
     trFileHidden, trFileHiddenDir, trFileHiddenArchive, trFileHiddenExecutable,
-    trFileHiddenMedia, trFileHiddenPlain, trFileLink,
+    trFileHiddenMedia, trFileHiddenPlain,
     trStatusFg, trStatusBg, trStatusSeparator,
     trToolFg, trToolBg, trToolKeyFg,
     trMenuFg, trMenuBg, trMenuHotFg, trClockFg,
@@ -175,8 +175,6 @@ type
 const
   cThemeSchemaVersion = 2;
   cThemeFileExt = '.theme.json';
-  /// <summary>FileType a panel row takes on to be drawn in the link color.</summary>
-  cLinkFileType = 'link';
   cFrameSingle = 'single';
   cFrameDouble = 'double';
   cFrameAscii = 'ascii';
@@ -317,7 +315,6 @@ const
     (Key: 'file.hiddenExecutable'; Fallback: Ord(trFileHidden)),
     (Key: 'file.hiddenMedia'; Fallback: Ord(trFileHidden)),
     (Key: 'file.hiddenPlain'; Fallback: Ord(trFileHidden)),
-    (Key: 'file.link'; Fallback: Ord(trFileDir)),
     (Key: 'status.fg'; Fallback: -1),
     (Key: 'status.bg'; Fallback: -1),
     (Key: 'status.separator'; Fallback: Ord(trStatusFg)),

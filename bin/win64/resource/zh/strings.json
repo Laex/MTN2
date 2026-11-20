@@ -1664,7 +1664,6 @@
     "themeRole.file.hiddenExecutable": "隐藏可执行文件",
     "themeRole.file.hiddenMedia": "隐藏媒体文件",
     "themeRole.file.hiddenPlain": "隐藏的其他文件",
-    "themeRole.file.link": "符号链接或联接点",
     "themeRole.status.fg": "状态栏文字",
     "themeRole.status.bg": "状态栏背景",
     "themeRole.status.separator": "状态栏分隔符",

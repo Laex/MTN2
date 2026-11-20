@@ -88,7 +88,6 @@ const
     'Hidden executable',
     'Hidden media file',
     'Hidden other file',
-    'Link',
     'Status line text',
     'Status line background',
     'Status line separator',
