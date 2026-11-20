@@ -73,6 +73,7 @@ type
     TermTitle: string;
     SideLabel, Path, PosText, ColMode, ItemText, FreeText: string;
     CmdFocused: Boolean;
+    PairedFolders: Boolean;
     Chrome: TPanelChromeStatus;
   end;
 
@@ -513,6 +514,12 @@ begin
     ASnap.CmdFocused);
   AKinds := PanelStatusKinds(ASnap.Kind = wkPanels, ASnap.ColMode <> '',
     ASnap.CmdFocused, ASnap.ItemText <> '', ASnap.FreeText <> '');
+  // The mode marker sits right after the position, so it is always visible.
+  if (ASnap.Kind = wkPanels) and ASnap.PairedFolders then
+  begin
+    Insert(S('Paired'), Result, 3);
+    Insert(sskPaired, AKinds, 3);
+  end;
   // Text segments plugins set (SetStatusSegment) follow the host's own.
   if ASnap.Kind = wkPanels then
     Result := Result + PluginChrome.StatusSegments;

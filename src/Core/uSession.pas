@@ -326,8 +326,6 @@ begin
   Result.AddPair('activeSide', Side);
   Result.AddPair('leftVisible', TJSONBool.Create(AWs.State.LeftVisible));
   Result.AddPair('rightVisible', TJSONBool.Create(AWs.State.RightVisible));
-  if AWs.State.PairedFolders then
-    Result.AddPair('pairedFolders', TJSONBool.Create(True));
   Result.AddPair('left', PanelToJson(AWs.State.LeftPanel));
   Result.AddPair('right', PanelToJson(AWs.State.RightPanel));
 end;
@@ -489,7 +487,6 @@ begin
     Result.State.ActiveSide := psLeft;
   Result.State.LeftVisible := JsonBool(O, 'leftVisible', True);
   Result.State.RightVisible := JsonBool(O, 'rightVisible', True);
-  Result.State.PairedFolders := JsonBool(O, 'pairedFolders', False);
   if not Result.State.LeftVisible and not Result.State.RightVisible then
   begin
     Result.State.LeftVisible := True;

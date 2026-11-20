@@ -2177,6 +2177,7 @@
     "Left": "Left",
     "Right": "Right",
     "Cmdline": "Cmdline",
+    "Paired": "Paired",
     "Terminal": "Terminal",
     "Running": "Running",
     "Not running": "Not running",

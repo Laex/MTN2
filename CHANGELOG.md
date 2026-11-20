@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.7 – 2026-11-20
+
+### Changed
+
+- While the "Paired folders" mode is on, the status line shows a "Paired" marker; a click on it turns the mode off. The mode is no longer kept between launches and is off after every start.
+
 ## Dev v0.5.10.6 – 2026-11-20
 
 ### Fixed

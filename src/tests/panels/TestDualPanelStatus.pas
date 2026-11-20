@@ -26,7 +26,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uTerminalTypes,
+  uTerminalTypes, uStatusSegments,
   uThemeTypes,
   uKeymap,
   uFunctionBar,
@@ -252,6 +252,7 @@ var
   Snap: TPanelStatusSnapshot;
   Overlay: TStatusOverlaySnapshot;
   Segs: TArray<string>;
+  Kinds: TArray<TStatusSegKind>;
   Grid: TTerminalGrid;
   Joined: string;
 begin
@@ -293,6 +294,13 @@ begin
     Assert.IsTrue((Length(Segs) = 6) and (Segs[0] = 'Left') and (Segs[3] = 'Full') and
       (Segs[4] = 'readme.md'), 'default when chrome declines');
     Assert.IsTrue(Spy.Calls = 1, 'default still asks ChromeContext');
+
+    Snap.PairedFolders := True;
+    Segs := AssembleStatusLine(Host, Snap, Kinds);
+    Assert.IsTrue(Length(Segs) = 7, 'the paired marker adds a section');
+    Assert.IsTrue(Segs[3] = 'Paired', 'the marker follows the position');
+    Assert.IsTrue(Kinds[3] = sskPaired, 'the marker is clickable');
+    Assert.IsTrue(Kinds[4] = sskColumnMode, 'the other sections keep their kinds');
   finally
     Spy.Free;
   end;

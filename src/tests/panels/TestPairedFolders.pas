@@ -19,7 +19,7 @@ type
     [Test] procedure StepUpFollowsToTheParent;
     [Test] procedure StepsOtherThanOneLevelDoNotMove;
     [Test] procedure FoldersThatAreNotPlainLocalNeverMove;
-    [Test] procedure FlagIsSavedInTheSession;
+    [Test] procedure FlagIsNotKeptInTheSession;
   end;
 
 implementation
@@ -120,7 +120,7 @@ begin
     'the step starts in search results');
 end;
 
-procedure TTestPairedFolders.FlagIsSavedInTheSession;
+procedure TTestPairedFolders.FlagIsNotKeptInTheSession;
 var
   Path: string;
   Saved, Loaded: TMtnSession;
@@ -151,8 +151,8 @@ begin
   Assert.IsTrue(TryLoadSession(Path, Loaded), 'load session');
   Assert.IsFalse(Loaded.Panels.WorkspaceTabs[0].State.PairedFolders,
     'a tab saved with the flag off loads with it off');
-  Assert.IsTrue(Loaded.Panels.WorkspaceTabs[1].State.PairedFolders,
-    'a tab saved with the flag on loads with it on');
+  Assert.IsFalse(Loaded.Panels.WorkspaceTabs[1].State.PairedFolders,
+    'a tab saved with the flag on loads with it off');
 end;
 
 initialization

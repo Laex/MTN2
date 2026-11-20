@@ -173,7 +173,7 @@ The window title shows **[Administrator]** when MTN2 itself was started as admin
 | Ctrl+U | swap the panels |
 | Ctrl+] | passive panel := folder of the active one |
 | Ctrl+[ | active panel := folder of the passive one |
-| Ctrl+Alt+P | paired folders on / off: entering a subfolder (Enter, Ctrl+PgDn) or going up (`..`, Ctrl+PgUp) in one panel does the same in the other, if the other panel has a folder of that name (or a parent); both panels must show plain local folders; the setting belongs to the tab and is kept between runs |
+| Ctrl+Alt+P | paired folders on / off: entering a subfolder (Enter, Ctrl+PgDn) or going up (`..`, Ctrl+PgUp) in one panel does the same in the other, if the other panel has a folder of that name (or a parent); both panels must show plain local folders; the setting belongs to the tab and is turned off when the program restarts; while it is on, the status line shows "Paired" (click it to turn the mode off) |
 | Ctrl+Alt+G | group the rows: by type, by date, none (each press moves to the next) |
 | Ctrl+F1 / Ctrl+F2 | hide / show the left / right panel |
 | Ctrl+P | hide / show the inactive panel |

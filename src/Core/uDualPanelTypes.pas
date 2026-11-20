@@ -123,7 +123,8 @@ type
     LeftVisible: Boolean;   // FAR Ctrl+F1 - hide/show left
     RightVisible: Boolean;  // FAR Ctrl+F2 - hide/show right
     /// <summary>Paired folders: a step into a subfolder or up to the parent in
-    /// one panel is repeated in the other one.</summary>
+    /// one panel is repeated in the other one. Not saved in the session: the
+    /// mode is off after every start.</summary>
     PairedFolders: Boolean;
   end;
 

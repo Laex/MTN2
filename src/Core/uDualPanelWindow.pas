@@ -14885,6 +14885,7 @@ begin
   Snap.FreeText := FFreeText;
   Snap.Path := TruncateStatusPath(Path);
 
+  Snap.PairedFolders := (Ws.Kind = wkPanels) and Ws.State.PairedFolders;
   if Ws.Kind = wkPanels then
   begin
     if Ws.State.ActiveSide = psLeft then
@@ -14975,6 +14976,7 @@ begin
     sskPath: OpenFolderHistoryDialog;
     sskColumnMode: OpenColumnModeMenu;
     sskItem: ShowProperties;
+    sskPaired: TogglePairedFolders;
   else
     Exit;
   end;
@@ -14986,12 +14988,29 @@ procedure TDualPanelWindow.DrawAppStatusLine(AY, AWidth: Integer);
 var
   Segs: TArray<string>;
   Spans: TArray<TStatusSpans>;
+  Span: TStatusSpan;
+  I: Integer;
 begin
   Segs := BuildPanelStatusSegments;
   if ActiveWorkspace.Kind = wkPanels then
     Spans := PluginStatusSpans(Length(Segs))
   else
     Spans := nil;
+  // The paired folders marker stands out so the mode is not forgotten.
+  for I := 0 to Min(High(Segs), High(FStatusKinds)) do
+    if FStatusKinds[I] = sskPaired then
+    begin
+      if Length(Spans) <> Length(Segs) then
+        SetLength(Spans, Length(Segs));
+      Span := Default(TStatusSpan);
+      Span.Text := Segs[I];
+      Span.HasFg := True;
+      Span.Fg := TAlphaColors.Black;
+      Span.HasBg := True;
+      Span.Bg := TAlphaColors.Gold;
+      Span.Bold := True;
+      Spans[I] := [Span];
+    end;
   DrawAppStatusLineRow(Buffer, Theme, AY, AWidth, Segs, cMenuFg, cMenuBg, Spans);
 end;
 

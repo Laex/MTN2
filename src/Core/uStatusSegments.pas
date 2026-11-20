@@ -16,7 +16,8 @@ type
     sskItem,       // cursor item or selection: its properties
     sskFree,       // free space: the drive list
     sskEncoding,   // text encoding of a document
-    sskFind        // result of the last search in a document: Find
+    sskFind,       // result of the last search in a document: Find
+    sskPaired      // paired folders mode is on: click turns it off
   );
 
 /// <summary>Index of the section under ACol, -1 between sections and outside
