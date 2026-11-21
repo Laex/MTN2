@@ -152,6 +152,8 @@ function SzCopyItem(AFromURI, AToURI: PAnsiChar; AOverwrite: Int64;
   AUserData: Pointer): Int64; cdecl;
 var
   FromURI, ToURI, FromPath, ArchivePath, Inner, Dummy, Err: string;
+  IsDir: Boolean;
+  Code: Int64;
 begin
   FromURI := UTF8ToString(AFromURI);
   ToURI := UTF8ToString(AToURI);
@@ -161,10 +163,22 @@ begin
     FromPath := FileUriToPath(ToURI);
     if (FromPath = '') or ParseSevenZipUri(ToURI, Dummy, Dummy) then
       Exit(Int64(verNotSupported));
-    if (AOverwrite = 0) and TFile.Exists(FromPath) then
-      Exit(Int64(verAlreadyExists));
-    if SevenZipExtractToFile(ArchivePath, Inner, FromPath, Err) then
-      Exit(Int64(verOk));
+    // A folder unpacks in one pass over the archive: unpacking its files one
+    // by one re-reads a solid archive from the start for every file.
+    if SevenZipExistsAt(ArchivePath, Inner, IsDir, Code) and IsDir then
+    begin
+      if SevenZipExtractTree(ArchivePath, Inner, FromPath, AOverwrite <> 0, Err) then
+        Exit(Int64(verOk));
+      if Err = 'Already exists' then
+        Exit(Int64(verAlreadyExists));
+    end
+    else
+    begin
+      if (AOverwrite = 0) and TFile.Exists(FromPath) then
+        Exit(Int64(verAlreadyExists));
+      if SevenZipExtractToFile(ArchivePath, Inner, FromPath, Err) then
+        Exit(Int64(verOk));
+    end;
     if Err = 'Not found' then
       Exit(Int64(verNotFound));
     if (Err = 'Encrypted') or (Err = 'Access denied') then

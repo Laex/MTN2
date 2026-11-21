@@ -34,6 +34,13 @@ function SevenZipExtractFile(const AArchivePath, AInnerPath: string; AMaxBytes: 
 /// bounded by the plugin buffer. A failed unpack removes the partial file.</summary>
 function SevenZipExtractToFile(const AArchivePath, AInnerPath, ADestPath: string;
   out AError: string): Boolean;
+/// <summary>Unpacks the contents of one archive folder (the root when AInnerDir
+/// is empty) into a local folder in a single pass over the archive, so a solid
+/// archive is not unpacked again from its start for every file. Without
+/// AOverwrite nothing is written when any target file already exists
+/// ('Already exists').</summary>
+function SevenZipExtractTree(const AArchivePath, AInnerDir, ADestDir: string;
+  AOverwrite: Boolean; out AError: string): Boolean;
 function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;
   out AError: string): Boolean;
 function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string;
@@ -555,6 +562,119 @@ begin
     end;
   finally
     DropTempDir(Dir);
+  end;
+end;
+
+function SevenZipExtractTree(const AArchivePath, AInnerDir, ADestDir: string;
+  AOverwrite: Boolean; out AError: string): Boolean;
+var
+  Items: TArray<T7zItem>;
+  Files, Dirs: TList<string>;
+  Want, Prefix, Rel, Dest, Dir, Src, Output: string;
+  I: Integer;
+  Found: Boolean;
+  Code: Cardinal;
+begin
+  Result := False;
+  AError := '';
+  Want := SevenZipNormInner(AInnerDir);
+  if Want = '' then
+    Prefix := ''
+  else
+    Prefix := Want + '/';
+  if not SevenZipListArchive(AArchivePath, Items, AError) then
+    Exit;
+
+  Files := TList<string>.Create;
+  Dirs := TList<string>.Create;
+  try
+    Found := Want = '';
+    for I := 0 to High(Items) do
+    begin
+      if (Items[I].Path = Want) and Items[I].IsDir then
+        Found := True;
+      if (Prefix <> '') and (Copy(Items[I].Path, 1, Length(Prefix)) <> Prefix) then
+        Continue;
+      Rel := Copy(Items[I].Path, Length(Prefix) + 1, MaxInt);
+      if Rel = '' then
+        Continue;
+      Found := True;
+      // An entry that climbs out of the target folder is not unpacked.
+      if (Rel = '..') or Rel.StartsWith('../') or Rel.EndsWith('/..') or
+         (Pos('/../', Rel) > 0) then
+        Continue;
+      if Items[I].IsDir then
+        Dirs.Add(Rel)
+      else
+      begin
+        if (not AOverwrite) and FileExists(TPath.Combine(ADestDir, Rel)) then
+        begin
+          AError := 'Already exists';
+          Exit;
+        end;
+        Files.Add(Rel);
+      end;
+    end;
+    if not Found then
+    begin
+      AError := 'Not found';
+      Exit;
+    end;
+
+    try
+      TDirectory.CreateDirectory(ADestDir);
+      for Rel in Dirs do
+        TDirectory.CreateDirectory(TPath.Combine(ADestDir, Rel));
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Exit;
+      end;
+    end;
+    if Files.Count = 0 then
+      Exit(True);
+
+    Dir := NewTempDir;
+    try
+      if Want = '' then
+        Result := RunEngine(['x'] + CommonArgs(AArchivePath, False) +
+          ['-o' + Dir, '--', AArchivePath], Output, Code) and (Code <= 1)
+      else
+        Result := RunEngine(['x'] + CommonArgs(AArchivePath, False) +
+          ['-o' + Dir, '--', AArchivePath, Want], Output, Code) and (Code <= 1);
+      if not Result then
+      begin
+        if LooksEncrypted(Output, AArchivePath) then
+          AError := 'Encrypted'
+        else
+          AError := 'Extract failed';
+        Exit;
+      end;
+      if Want = '' then
+        Src := Dir
+      else
+        Src := TPath.Combine(Dir, Want);
+      try
+        for Rel in Files do
+        begin
+          Dest := TPath.Combine(ADestDir, Rel);
+          TDirectory.CreateDirectory(ExtractFilePath(Dest));
+          TFile.Copy(TPath.Combine(Src, Rel), Dest, True);
+        end;
+      except
+        on E: Exception do
+        begin
+          AError := E.Message;
+          Result := False;
+        end;
+      end;
+    finally
+      DropTempDir(Dir);
+    end;
+  finally
+    Dirs.Free;
+    Files.Free;
   end;
 end;
 

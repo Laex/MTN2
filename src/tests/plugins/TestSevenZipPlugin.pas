@@ -368,6 +368,17 @@ begin
     JoinVfsUri(DelRoot, 'sub'), True, VErr);
   Assert.IsTrue(VErr.Code = vecOk, 'pack folder: ' + VErr.Message);
 
+  // A packed folder unpacks as a whole into a local folder.
+  OutFile := TPath.Combine(WorkDir, 'unpacked-sub');
+  if TDirectory.Exists(OutFile) then
+    TDirectory.Delete(OutFile, True);
+  WaitCopy(HostVfs, JoinVfsUri(DelRoot, 'sub'), PathToFileUri(OutFile), False, VErr);
+  Assert.IsTrue(VErr.Code = vecOk, 'unpack folder: ' + VErr.Message);
+  Assert.AreEqual('inner-payload',
+    TFile.ReadAllText(TPath.Combine(OutFile, 'inner.txt'), TEncoding.UTF8), 'unpacked folder file');
+  WaitCopy(HostVfs, JoinVfsUri(DelRoot, 'sub'), PathToFileUri(OutFile), False, VErr);
+  Assert.IsTrue(VErr.Code = vecAlreadyExists, 'unpack folder without overwrite keeps files');
+
   WaitDelete(HostVfs, JoinVfsUri(DelRoot, 'drop.txt'), VErr);
   Assert.IsTrue(VErr.Code = vecOk, 'delete file from 7z: ' + VErr.Message);
   WaitList(HostVfs, DelRoot, Items, VErr);

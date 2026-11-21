@@ -233,7 +233,7 @@ implementation
 
 uses
   uStrings,
-  System.IOUtils, System.SyncObjs, System.Math,
+  System.IOUtils, System.SyncObjs, System.Math, System.StrUtils,
   uFileVfs, uZipVfs, uFindVfs, uSysFoldersVfs, uRecycleBinVfs, uWorkspaceVfs,
   uSftpVfs;
 
@@ -1161,6 +1161,17 @@ begin
   end;
   if IsDir then
   begin
+    // An archive folder unpacks in one pass: per-file unpacking re-reads a
+    // solid archive from its start for every file.
+    if StartsText('7z://', ASrcURI) then
+    begin
+      if WaitCopyFile(ASrcURI, ADestPath) then
+        Exit(True);
+      if FErr.Code in [vecOk, vecNotSupported] then
+        FErr := TVfsError.Ok
+      else
+        Exit;
+    end;
     try
       TDirectory.CreateDirectory(ADestPath);
     except

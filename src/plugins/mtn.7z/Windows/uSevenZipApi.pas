@@ -32,6 +32,13 @@ function SevenZipExtractFile(const AArchivePath, AInnerPath: string; AMaxBytes: 
 /// bounded by the plugin buffer. A failed unpack removes the partial file.</summary>
 function SevenZipExtractToFile(const AArchivePath, AInnerPath, ADestPath: string;
   out AError: string): Boolean;
+/// <summary>Unpacks the contents of one archive folder (the root when AInnerDir
+/// is empty) into a local folder in a single pass over the archive, so a solid
+/// archive is not unpacked again from its start for every file. Without
+/// AOverwrite nothing is written when any target file already exists
+/// ('Already exists'). A failed unpack removes the file being written.</summary>
+function SevenZipExtractTree(const AArchivePath, AInnerDir, ADestDir: string;
+  AOverwrite: Boolean; out AError: string): Boolean;
 function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;
   out AError: string): Boolean;
 function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string;
@@ -269,6 +276,41 @@ type
     property OpRes: Int32 read FOpRes;
     /// <summary>7z.dll asked for the password: the item is encrypted.</summary>
     property Asked: Boolean read FAsked;
+  end;
+
+  /// <summary>Extract callback that writes each requested item to its own local
+  /// file (AIndexToPath maps an archive index to the target path).</summary>
+  T7zTreeExtractCallback = class(TInterfacedObject, IProgress, IArchiveExtractCallback,
+    ICryptoGetTextPassword, ICryptoGetTextPassword2)
+  private
+    FTargets: TDictionary<UInt32, string>;
+    FCurrent: ISequentialOutStream;
+    FCurrentPath: string;
+    FFailedPath: string;
+    FOpRes: Int32;
+    FPassword: string;
+    FHasPassword: Boolean;
+    FAsked: Boolean;
+    FCreateError: string;
+  public
+    constructor Create(ATargets: TDictionary<UInt32, string>; AHasPassword: Boolean;
+      const APassword: string);
+    function SetTotal(total: UInt64): HRESULT; stdcall;
+    function SetCompleted(completeValue: PUInt64): HRESULT; stdcall;
+    function GetStream(index: UInt32; out outStream: ISequentialOutStream;
+      askExtractMode: Int32): HRESULT; stdcall;
+    function PrepareOperation(askExtractMode: Int32): HRESULT; stdcall;
+    function SetOperationResult(opRes: Int32): HRESULT; stdcall;
+    function CryptoGetTextPassword(out password: TBStr): HRESULT; stdcall;
+    function CryptoGetTextPassword2(out passwordIsDefined: Int32;
+      out password: TBStr): HRESULT; stdcall;
+    /// <summary>First non-zero item result, 0 when every item unpacked.</summary>
+    property OpRes: Int32 read FOpRes;
+    property Asked: Boolean read FAsked;
+    /// <summary>Message of the failure to create a target file, empty if none.</summary>
+    property CreateError: string read FCreateError;
+    /// <summary>Target of the first item that did not unpack.</summary>
+    property FailedPath: string read FFailedPath;
   end;
 
   T7zUpdateCallback = class(TInterfacedObject, IProgress, IArchiveUpdateCallback)
@@ -681,6 +723,88 @@ begin
 end;
 
 function T7zExtractCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
+  out password: TBStr): HRESULT;
+begin
+  passwordIsDefined := Ord(FHasPassword);
+  Result := CryptoGetTextPassword(password);
+end;
+
+constructor T7zTreeExtractCallback.Create(ATargets: TDictionary<UInt32, string>;
+  AHasPassword: Boolean; const APassword: string);
+begin
+  inherited Create;
+  FTargets := ATargets;
+  FHasPassword := AHasPassword;
+  FPassword := APassword;
+end;
+
+function T7zTreeExtractCallback.SetTotal(total: UInt64): HRESULT;
+begin
+  Result := S_OK;
+end;
+
+function T7zTreeExtractCallback.SetCompleted(completeValue: PUInt64): HRESULT;
+begin
+  Result := S_OK;
+end;
+
+function T7zTreeExtractCallback.GetStream(index: UInt32; out outStream: ISequentialOutStream;
+  askExtractMode: Int32): HRESULT;
+var
+  Path: string;
+begin
+  outStream := nil;
+  FCurrent := nil;
+  FCurrentPath := '';
+  if (askExtractMode <> 0) or not FTargets.TryGetValue(index, Path) then
+    Exit(S_OK);
+  try
+    FCurrent := T7zFileStream.Create(Path, fmCreate);
+  except
+    on E: Exception do
+    begin
+      FCreateError := E.Message;
+      if FFailedPath = '' then
+        FFailedPath := Path;
+      Exit(E_ABORT);
+    end;
+  end;
+  FCurrentPath := Path;
+  outStream := FCurrent;
+  Result := S_OK;
+end;
+
+function T7zTreeExtractCallback.PrepareOperation(askExtractMode: Int32): HRESULT;
+begin
+  Result := S_OK;
+end;
+
+function T7zTreeExtractCallback.SetOperationResult(opRes: Int32): HRESULT;
+begin
+  if (opRes <> 0) and (FOpRes = 0) then
+  begin
+    FOpRes := opRes;
+    FFailedPath := FCurrentPath;
+  end;
+  // Releasing the stream closes the file before the next item starts.
+  FCurrent := nil;
+  FCurrentPath := '';
+  if opRes <> 0 then
+    Result := E_ABORT
+  else
+    Result := S_OK;
+end;
+
+function T7zTreeExtractCallback.CryptoGetTextPassword(out password: TBStr): HRESULT;
+begin
+  FAsked := True;
+  password := nil;
+  if not FHasPassword then
+    Exit(E_ABORT);
+  Result := AllocPassword(FPassword, password);
+end;
+
+function T7zTreeExtractCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
   out password: TBStr): HRESULT;
 begin
   passwordIsDefined := Ord(FHasPassword);
@@ -1442,6 +1566,138 @@ begin
     GLock.Release;
     if not Done then
       DeleteFile(PChar(ADestPath));
+  end;
+end;
+
+function SevenZipExtractTree(const AArchivePath, AInnerDir, ADestDir: string;
+  AOverwrite: Boolean; out AError: string): Boolean;
+var
+  Items: TArray<T7zItem>;
+  Targets: TDictionary<UInt32, string>;
+  Indices: TArray<UInt32>;
+  Written: TList<string>;
+  Arc: IInArchive;
+  Cb: T7zTreeExtractCallback;
+  HoldCb: IArchiveExtractCallback;
+  Want, Prefix, Rel, Dest, Password, Dir, FailedPath: string;
+  I: Integer;
+  Key: UInt32;
+  Found, HasPassword: Boolean;
+  Hr: HRESULT;
+begin
+  Result := False;
+  AError := '';
+  Want := SevenZipNormInner(AInnerDir);
+  if Want = '' then
+    Prefix := ''
+  else
+    Prefix := Want + '/';
+  if not SevenZipListArchive(AArchivePath, Items, AError) then
+    Exit;
+
+  Targets := TDictionary<UInt32, string>.Create;
+  Written := TList<string>.Create;
+  try
+    Found := Want = '';
+    for I := 0 to High(Items) do
+    begin
+      if SameText(Items[I].Path, Want) and Items[I].IsDir then
+        Found := True;
+      if (Prefix <> '') and not SameText(Copy(Items[I].Path, 1, Length(Prefix)), Prefix) then
+        Continue;
+      Rel := Copy(Items[I].Path, Length(Prefix) + 1, MaxInt);
+      if Rel = '' then
+        Continue;
+      Found := True;
+      // An entry that climbs out of the target folder is not unpacked.
+      if (Rel = '..') or Rel.StartsWith('../') or Rel.EndsWith('/..') or
+         (Pos('/../', Rel) > 0) or (Pos(':', Rel) > 0) then
+        Continue;
+      Dest := TPath.Combine(ADestDir, Rel.Replace('/', PathDelim));
+      if Items[I].IsDir then
+      begin
+        Written.Add(Dest);
+        Continue;
+      end;
+      if (not AOverwrite) and FileExists(Dest) then
+      begin
+        AError := 'Already exists';
+        Exit;
+      end;
+      Targets.Add(Items[I].Index, Dest);
+    end;
+    if not Found then
+    begin
+      AError := 'Not found';
+      Exit;
+    end;
+
+    try
+      ForceDirectories(ADestDir);
+      for Dest in Written do
+        ForceDirectories(Dest);
+      for Dest in Targets.Values do
+      begin
+        Dir := ExtractFilePath(Dest);
+        if (Dir <> '') and not DirectoryExists(Dir) then
+          ForceDirectories(Dir);
+      end;
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Exit;
+      end;
+    end;
+    if Targets.Count = 0 then
+      Exit(True);
+
+    SetLength(Indices, Targets.Count);
+    I := 0;
+    for Key in Targets.Keys do
+    begin
+      Indices[I] := Key;
+      Inc(I);
+    end;
+    TArray.Sort<UInt32>(Indices);
+
+    GLock.Acquire;
+    try
+      if not OpenArchive(AArchivePath, Arc, AError) then
+        Exit;
+      HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
+      Cb := T7zTreeExtractCallback.Create(Targets, HasPassword, Password);
+      HoldCb := Cb;
+      Hr := Arc.Extract(@Indices[0], Length(Indices), 0, HoldCb);
+      Arc.Close;
+      if (not HResOk(Hr)) or (Cb.OpRes <> 0) or (Cb.CreateError <> '') then
+      begin
+        if Cb.Asked or (Cb.OpRes = 9) then
+          AError := 'Encrypted'
+        else if Cb.CreateError <> '' then
+        begin
+          if Pos(LowerCase(SysErrorMessage(ERROR_ACCESS_DENIED)),
+               LowerCase(Cb.CreateError)) > 0 then
+            AError := 'Access denied'
+          else
+            AError := Cb.CreateError;
+        end
+        else
+          AError := 'Extract failed';
+        FailedPath := Cb.FailedPath;
+        HoldCb := nil;
+        if FailedPath <> '' then
+          DeleteFile(PChar(FailedPath));
+        Exit;
+      end;
+      Result := True;
+    finally
+      HoldCb := nil;
+      GLock.Release;
+    end;
+  finally
+    Written.Free;
+    Targets.Free;
   end;
 end;
 

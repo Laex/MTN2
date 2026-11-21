@@ -31,6 +31,7 @@ type
     [Test] procedure TestPackWithPassword;
     [Test] procedure TestPackWithEncryptedNames;
     [Test] procedure TestPackCompressionLevel;
+    [Test] procedure TestExtractFolderInOnePass;
   end;
 
 implementation
@@ -402,6 +403,49 @@ begin
         Tag + 'the ultra archive reads back');
     finally
       SevenZipSetCompressionLevel(Arc, -1);
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestExtractFolderInOnePass;
+var
+  Dll, Arc, SrcDir, Dest, Err, Tag: string;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  SrcDir := TPath.Combine(TPath.GetTempPath, 'mtn2-7z-tree-src');
+  if TDirectory.Exists(SrcDir) then
+    TDirectory.Delete(SrcDir, True);
+  TDirectory.CreateDirectory(TPath.Combine(SrcDir, 'sub' + PathDelim + 'deep'));
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'a.txt'), 'alpha');
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'sub' + PathDelim + 'b.txt'), 'beta');
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'sub' + PathDelim + 'deep' + PathDelim + 'c.txt'), 'gamma');
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Arc := NewPackArchive('tree.7z');
+    Dest := TPath.Combine(TPath.GetTempPath, 'mtn2-7z-tree-dst');
+    if TDirectory.Exists(Dest) then
+      TDirectory.Delete(Dest, True);
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, SrcDir, 'pack', True, Err),
+        Tag + 'pack the folder: ' + Err);
+      Assert.IsTrue(SevenZipExtractTree(Arc, 'pack', Dest, False, Err),
+        Tag + 'unpack the folder: ' + Err);
+      Assert.AreEqual('alpha', TFile.ReadAllText(TPath.Combine(Dest, 'a.txt')), Tag + 'top file');
+      Assert.AreEqual('beta', TFile.ReadAllText(TPath.Combine(Dest, 'sub' + PathDelim + 'b.txt')), Tag + 'nested file');
+      Assert.AreEqual('gamma', TFile.ReadAllText(TPath.Combine(Dest, 'sub' + PathDelim + 'deep' + PathDelim + 'c.txt')), Tag + 'deep file');
+      Assert.IsFalse(SevenZipExtractTree(Arc, 'pack', Dest, False, Err), Tag + 'existing files');
+      Assert.AreEqual('Already exists', Err, Tag + 'existing files error');
+      TFile.WriteAllText(TPath.Combine(Dest, 'a.txt'), 'changed');
+      Assert.IsTrue(SevenZipExtractTree(Arc, 'pack', Dest, True, Err),
+        Tag + 'overwrite: ' + Err);
+      Assert.AreEqual('alpha', TFile.ReadAllText(TPath.Combine(Dest, 'a.txt')), Tag + 'overwritten');
+      Assert.IsFalse(SevenZipExtractTree(Arc, 'missing', Dest, True, Err), Tag + 'missing folder');
+      Assert.AreEqual('Not found', Err, Tag + 'missing folder error');
+    finally
       SevenZipUnloadEngine;
     end;
   end;

@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.10 – 2026-11-21
+
+### Fixed
+
+- Copying a folder out of an archive (7z, RAR and others, F5) unpacks the whole folder in one pass. Before, every file was unpacked on its own, and in a solid archive that meant reading it again from the start each time: a 30 MB RAR with about 1300 files took minutes, now it takes about a second. [#106](https://github.com/Laex/MTN2/issues/106)
+
 ## Dev v0.5.10.8 – 2026-11-21
 
 ### Fixed
