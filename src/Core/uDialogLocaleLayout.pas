@@ -168,6 +168,9 @@ const
   cCaptionKinds = [dckButton, dckCheckbox, dckRadio];
   cFieldKinds = [dckInput, dckDropDown, dckList];
   cMinFieldCells = 8;
+  /// <summary>SnapshotColumns keeps the page above this many columns, so two
+  /// controls on different pages never count as one column.</summary>
+  cPageStride = 100000;
 
 /// <summary>The column of every control, as a snapshot taken before a fitting
 /// pass: controls that share a value start in one column and are to stay so.</summary>
@@ -177,7 +180,23 @@ var
 begin
   SetLength(Result, Length(ADecl.Controls));
   for I := 0 to High(ADecl.Controls) do
-    Result[I] := Max(ADecl.Controls[I].Col, 0);
+    Result[I] := Max(ADecl.Controls[I].Col, 0) + ADecl.Controls[I].TabPage * cPageStride;
+end;
+
+/// <summary>True when two controls can be on screen together: they share a page
+/// or one of them is on every page.</summary>
+function ShareScreen(const A, B: TDialogControl): Boolean;
+begin
+  Result := (A.TabPage = B.TabPage) or (A.TabPage = 0) or (B.TabPage = 0);
+end;
+
+function MaxTabPage(const ADecl: TDialogDeclaration): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(ADecl.Controls) do
+    Result := Max(Result, ADecl.Controls[I].TabPage);
 end;
 
 /// <summary>True when another control started in the same column as the control
@@ -209,7 +228,7 @@ end;
 /// (a button also owns the cell of its shadow). True when something moved.</summary>
 function ResolveRowOverlaps(var ADecl: TDialogDeclaration): Boolean;
 var
-  Row, I, J, K, Tmp, Free, Top, Bottom: Integer;
+  Row, I, J, K, Tmp, Free, Top, Bottom, Page: Integer;
   Order: TArray<Integer>;
 begin
   Result := False;
@@ -221,11 +240,13 @@ begin
     Bottom := Max(Bottom, Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1);
   end;
   for Row := Top to Bottom do
+  for Page := 0 to MaxTabPage(ADecl) do
   begin
     Order := nil;
     for I := 0 to High(ADecl.Controls) do
       if (Max(ADecl.Controls[I].Row, 0) <= Row) and
-         (Row <= Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1) then
+         (Row <= Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1) and
+         ((ADecl.Controls[I].TabPage = 0) or (ADecl.Controls[I].TabPage = Page)) then
         Order := Order + [I];
     for J := 1 to High(Order) do
     begin
@@ -566,6 +587,7 @@ begin
       Continue;
     for J := 0 to High(ADecl.Controls) do
       if (J <> I) and not IsButton(J) and (OrigCol[J] > OrigCol[I]) and
+         ShareScreen(ADecl.Controls[I], ADecl.Controls[J]) and
          (ADecl.Controls[J].Row <= LastRow(I)) and
          (ADecl.Controls[I].Row <= LastRow(J)) and
          ((Next[I] < 0) or (OrigCol[J] < OrigCol[Next[I]])) then
@@ -648,7 +670,7 @@ end;
 procedure FitDialogCaptions(var ADecl: TDialogDeclaration);
 var
   Rows, Order: TArray<Integer>;
-  I, J, K, Row, Tmp, Col, OrigCol, W, FreeCol, NewClient, OldClient, Delta: Integer;
+  I, J, K, Row, Page, Tmp, Col, OrigCol, W, FreeCol, NewClient, OldClient, Delta: Integer;
   ButtonsGrew, Grew: Boolean;
   GroupCol: TArray<Integer>;
 begin
@@ -671,11 +693,13 @@ begin
   end;
 
   for Row in Rows do
+  for Page := 0 to MaxTabPage(ADecl) do
   begin
-    // This row's controls, left to right.
+    // This row's controls on one page, left to right.
     Order := nil;
     for I := 0 to High(ADecl.Controls) do
-      if ADecl.Controls[I].Row = Row then
+      if (ADecl.Controls[I].Row = Row) and
+         ((ADecl.Controls[I].TabPage = 0) or (ADecl.Controls[I].TabPage = Page)) then
         Order := Order + [I];
     for I := 1 to High(Order) do
     begin

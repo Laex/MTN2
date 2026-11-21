@@ -203,6 +203,7 @@ Geometry synonyms: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. If `width`/
 | `status` | Single-line `text` by `id`; updated through `SetStatus`. Not in the values. STATUS_PLUGIN segments are outside the current Dialog. |
 | `list` | `id`, `items[]`, `selected` (index); arrows / click on a row; in the values – the **text** of the selected item. `"frame": true` outlines the list with a single frame one cell around its area. `"keycommands": true` hands Space (command `toggle`), Delete (`delete`), F2 / F4 / F5 (`f2` / `f4` / `f5`) and Ctrl+Up / Ctrl+Down (commands `up` and `down`) to the dialog owner instead of the buttons while the list has focus; plain arrows still move the selection |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; collapsed combo (text + `↓`); Space / Alt+Down / F4 / click open the popup; Esc closes without a change; in the values – the **text** |
+| `tabs` / `tab_strip` | A strip of tabs: `id`, `items[]` (captions), `selected` (index of the shown page, 0-based). Takes one row, usually at the top (`row` 0, `width` of the client area). Every other control belongs to a page through `"tab": N` (0-based); a control without `tab` is shown on all pages. Controls of the other pages get no box and take no part in focus or scrolling. Captions are translated through `<id>_items`. Not in the values. |
 
 Not implemented: `panel` (see [PANEL_PLUGIN.md](PANEL_PLUGIN.md) separately), arbitrary `set_control_json` other than `SetStatus`.
 
@@ -226,7 +227,7 @@ Not implemented: `panel` (see [PANEL_PLUGIN.md](PANEL_PLUGIN.md) separately), ar
 | `dropdown` | selected **text** (not the index); the index is `GetListSelectedIndex` |
 | `radio_group` | selected **item id** (if `item_ids` / an id on the children is set), otherwise the text |
 | `radio` | one key per `group` -> the id (or text) of the selected radio |
-| `label` / `separator` / `button` / `status` | none |
+| `label` / `separator` / `button` / `status` / `tabs` | none |
 
 ---
 
@@ -246,6 +247,7 @@ The caller usually closes the dialog in the handler; the Host does not call `Clo
 ### Keyboard / mouse (brief)
 
 - Tab / Shift+Tab – focus chain (input, checkbox, radio, radio_group, button, list, dropdown).
+- Tabs: Ctrl+PgDn / Ctrl+Tab – next page, Ctrl+PgUp / Ctrl+Shift+Tab – previous (wrapping around); Left/Right on a focused strip; a click on a caption. Tab / Shift+Tab walk only the controls of the shown page (and the strip). A hot letter or `FocusControlById` of a control on another page opens that page first.
 - List / RadioGroup / DropDown (closed): Up/Down/Home/End.
 - DropDown: Space / Alt+Down / F4 / click – open the popup; Enter/click on an item – select; Esc – collapse.
 - Radio: Space / click selects within the group.

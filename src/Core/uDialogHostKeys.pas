@@ -29,6 +29,7 @@ type
   TDialogKeyCharFn = function(ACh: Char): Boolean of object;
   TDialogKeyNormFn = function(var AKey: Word; var AKeyChar: Char): Boolean of object;
   TDialogKeyProc = procedure of object;
+  TDialogKeyTabProc = procedure(AStrip, ANew: Integer) of object;
 
   /// <summary>Primitives the key handlers need from the open dialog host.</summary>
   TDialogKeyOps = record
@@ -64,6 +65,7 @@ type
     ControlCount: TDialogKeyIntFn;
     GetControl: TDialogKeyControlFn;
     SetControl: TDialogKeySetControlProc;
+    SelectTab: TDialogKeyTabProc;
   end;
 
 /// <summary>y/n (and Cyrillic да/нет) mapped to Yes/No buttons.</summary>
@@ -154,6 +156,8 @@ function IsMaskHistoryGroupSaveChord(AKey: Word; AShift: TShiftState;
 
 function DialogHandleOpenDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
+function DialogHandleTabKeys(const Ops: TDialogKeyOps; var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
 function DialogHandleDialogNavKeys(const Ops: TDialogKeyOps; var AKey: Word;
   AShift: TShiftState; var AKeyChar: Char): Boolean;
 function DialogHandleClosedDropDownKeys(const Ops: TDialogKeyOps; var AKey: Word;
@@ -178,7 +182,7 @@ function DialogHandleInputCore(const Ops: TDialogKeyOps; var AKey: Word;
 implementation
 
 uses
-  System.Math, System.Character, System.StrUtils,
+  System.Math, System.Character, System.StrUtils, uDialogTabs,
   uKeyChord, uInputLine, uMaskGroups, uPluginInputChord,
   uColorPickerControl, uDatePickerControl;
 
@@ -515,6 +519,53 @@ begin
     AKey := 0;
     AKeyChar := #0;
   end;
+end;
+
+function DialogHandleTabKeys(const Ops: TDialogKeyOps; var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Delta, I, Strip, Focus: Integer;
+  C: TDialogControl;
+begin
+  Result := False;
+  Delta := 0;
+  if ssCtrl in AShift then
+    case AKey of
+      vkPrior:
+        Delta := -1;
+      vkNext:
+        Delta := 1;
+      vkTab:
+        if ssShift in AShift then
+          Delta := -1
+        else
+          Delta := 1;
+    end;
+  Strip := -1;
+  for I := 0 to Ops.ControlCount() - 1 do
+    if Ops.GetControl(I).Kind = dckTab then
+    begin
+      Strip := I;
+      Break;
+    end;
+  if Strip < 0 then
+    Exit;
+  C := Ops.GetControl(Strip);
+  Focus := Ops.FocusIndex();
+  // Left / Right on the focused strip turn the pages too.
+  if (Delta = 0) and (Focus = Strip) and (AShift * [ssShift, ssCtrl, ssAlt] = []) then
+    case AKey of
+      vkLeft:
+        Delta := -1;
+      vkRight:
+        Delta := 1;
+    end;
+  if Delta = 0 then
+    Exit;
+  Ops.SelectTab(Strip, DialogTabStep(C.SelectedIndex, Length(C.Items), Delta));
+  AKey := 0;
+  AKeyChar := #0;
+  Result := True;
 end;
 
 function DialogHandleDialogNavKeys(const Ops: TDialogKeyOps; var AKey: Word;
@@ -896,6 +947,8 @@ begin
   if DialogHandleHotKeyInput(Ops, AKey, AShift, AKeyChar) then
     Exit;
   if DialogHandleOpenDropDownKeys(Ops, AKey, AShift, AKeyChar) then
+    Exit;
+  if DialogHandleTabKeys(Ops, AKey, AShift, AKeyChar) then
     Exit;
   if DialogHandleDialogNavKeys(Ops, AKey, AShift, AKeyChar) then
     Exit;

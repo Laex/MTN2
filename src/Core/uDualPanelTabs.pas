@@ -59,7 +59,8 @@ function TabCaptionCloseCol(ATabLeft: Integer; const ACap: string;
 procedure PaintTabCloseMark(const AGrid: TTerminalGrid; ACol, ARow: Integer;
   AFg, ABg: TAlphaColor);
 
-/// <summary>First column of the panel tab bar (after the left frame).</summary>
+/// <summary>First column of the panel tab bar (after the left frame, and after
+/// the sort letter when that sits on the tab row).</summary>
 function PanelTabHeadX(const ABounds: TRectI): Integer;
 
 /// <summary>Right edge tabs must stop drawing before (reserves a margin at
@@ -177,7 +178,7 @@ type
 implementation
 
 uses
-  uStrings, uPlatformPaths;
+  uStrings, uPlatformPaths, uDisplaySettings;
 
 { =========================================================================
   Caption helpers
@@ -262,6 +263,9 @@ end;
 function PanelTabHeadX(const ABounds: TRectI): Integer;
 begin
   Result := ABounds.Left + 1;
+  // Without the header row the sort letter sits in the first cell of the tab row.
+  if GShowSortLetter and not GShowColumnHeaders then
+    Inc(Result);
 end;
 
 procedure ComputePanelTabLayout(const APanel: TPanelState; const ABounds: TRectI;

@@ -287,6 +287,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Interface",
+      "tabs_items": {
+        "Window": "Window",
+        "Panels": "Panels",
+        "Behavior": "Behavior"
+      },
       "lbl_language": "Language",
       "show_title_bar": "Show window &title bar",
       "show_menu_bar": "Show &menu bar",
@@ -301,6 +306,8 @@
       "pack_same_panel": "Pack to the sam&e panel (Shift+F1)",
       "passive_cursor": "Cursor in the inacti&ve panel",
       "column_separators": "Vertical lines between columns (&X)",
+      "show_column_headers": "Show column headers",
+      "show_sort_letter": "Show the sort mode letter",
       "editor_autoindent": "Editor a&uto-indent on Enter",
       "exact_sizes": "Show exact size in &bytes",
       "dir_slash": "Show a slash after directory names",
@@ -399,6 +406,12 @@
       "lbl_bg": "Background",
       "lbl_sample": "Sample",
       "lbl_style": "Style",
+      "tabs_items": {
+        "Text": "Text",
+        "Emphasis": "Emphasis",
+        "Blocks": "Blocks",
+        "Links and tables": "Links and tables"
+      },
       "lbl_text": "Text / document",
       "lbl_h1": "Heading 1",
       "lbl_h2": "Heading 2",

@@ -203,6 +203,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `status` | Однострочный `text` по `id`; обновление через `SetStatus`. Не входит в values. Сегменты STATUS_PLUGIN – вне текущего Dialog. |
 | `list` | `id`, `items[]`, `selected` (index); стрелки / клик по строке; в values – **текст** выбранного item. `"frame": true` обводит список одинарной рамкой на одну ячейку вокруг его области. `"keycommands": true` отдаёт владельцу диалога Пробел (команда `toggle`), Delete (`delete`), F2 / F4 / F5 (`f2` / `f4` / `f5`) и Ctrl+Вверх / Ctrl+Вниз (команды `up` и `down`) вместо кнопок, пока список в фокусе; обычные стрелки по-прежнему двигают выбор |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; свёрнутый combo (текст + `↓`); Space / Alt+Down / F4 / клик открывают popup; Esc закрывает без смены; в values – **текст** |
+| `tabs` / `tab_strip` | Полоса вкладок: `id`, `items[]` (заголовки), `selected` (индекс показанной страницы, с 0). Занимает одну строку, обычно сверху (`row` 0, `width` – вся клиентская область). Остальные элементы относятся к странице через `"tab": N` (с 0); элемент без `tab` виден на всех страницах. Элементы других страниц не получают прямоугольника и не участвуют в фокусе и прокрутке. Заголовки переводятся через `<id>_items`. В values нет. |
 
 Не реализовано: `panel` (см. [PANEL_PLUGIN.ru.md](PANEL_PLUGIN.ru.md) отдельно), произвольный `set_control_json` кроме `SetStatus`.
 
@@ -226,7 +227,7 @@ JSON ↔ модель: `TryParseDialogJson` / `DeclarationToJson` (`uDialogJson`
 | `dropdown` | selected **text** (не index); индекс – `GetListSelectedIndex` |
 | `radio_group` | selected **item id** (если задан `item_ids` / id у children), иначе text |
 | `radio` | один ключ на `group` → id (или text) выбранного radio |
-| `label` / `separator` / `button` / `status` | нет |
+| `label` / `separator` / `button` / `status` / `tabs` | нет |
 
 ---
 
@@ -246,6 +247,7 @@ Caller обычно закрывает диалог в handler; Host сам `Clo
 ### Клавиатура / мышь (кратко)
 
 - Tab / Shift+Tab – focus chain (input, checkbox, radio, radio_group, button, list, dropdown).
+- Вкладки: Ctrl+PgDn / Ctrl+Tab – следующая страница, Ctrl+PgUp / Ctrl+Shift+Tab – предыдущая (по кругу); Влево/Вправо на полосе в фокусе; клик по заголовку. Tab / Shift+Tab обходят только элементы показанной страницы (и полосу). Горячая буква или `FocusControlById` элемента другой страницы сначала открывает эту страницу.
 - List / RadioGroup / DropDown (closed): Up/Down/Home/End.
 - DropDown: Space / Alt+Down / F4 / клик – открыть popup; Enter/клик по item – выбрать; Esc – свернуть.
 - Radio: Space / клик выбирает в группе.

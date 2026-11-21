@@ -134,7 +134,7 @@ uses
 
 function PanelListBounds(const ABounds: TRectI): TRectI;
 begin
-  Result := TRectI.Make(ABounds.Left + 1, ABounds.Top + 2,
+  Result := TRectI.Make(ABounds.Left + 1, ABounds.Top + 1 + PanelHeaderRows,
     ABounds.Right - 2, ABounds.Bottom - 2 - PanelFooterRows);
 end;
 
@@ -160,7 +160,7 @@ begin
     Exit(pczDrives);
   if AViewKind = pvkInfo then
     Exit(pczInfo);
-  if ALocalRow = ABounds.Top + 1 then
+  if GShowColumnHeaders and (ALocalRow = ABounds.Top + 1) then
     Exit(pczHeaders);
   Result := pczBody;
 end;

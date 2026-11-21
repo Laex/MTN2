@@ -6,7 +6,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Panels and navigation
 
-- **Column modes and column sets** – two views: brief (names in columns of a set width (10-50 characters), details in the status line) and wide (built-in variants size, date, full, created, types plus your own sets); the Custom Columns dialog saves a selection, plugin columns included, under a name (the starter sets Minimal, Dates, Technical can be changed or deleted), each panel keeps its own columns, and vertical lines between columns can be turned on in the settings.
+- **Column modes and column sets** – two views: brief (names in columns of a set width (10-50 characters), details in the status line) and wide (built-in variants size, date, full, created, types plus your own sets); the Custom Columns dialog saves a selection, plugin columns included, under a name, each panel keeps its own columns, vertical lines between columns can be turned on in the settings, and the header row and the sort mode letter can be hidden.
 - **Plugin columns** – in custom mode plugins add their own columns (Docker, processes, services, image, MP3 and program metadata); sort by clicking the header or with `Ctrl+F12`.
 - **List grouping** – `Ctrl+Alt+G`: groups by file type or modification date with captions and alternating background; the mode is kept per panel.
 - **Paired folders** – `Ctrl+Alt+P`: entering a subfolder or going up is repeated in the other panel when it has a folder with the same name.
@@ -82,7 +82,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Archives
 
-- **Archives as folders** – ZIP is built in, 7z, RAR and dozens of formats (zst, vhd, msi, deb, rpm, dmg, squashfs, etc.) via 7-Zip; the format is detected by content, not by extension.
+- **Archives as folders** – ZIP is built in, 7z, RAR and dozens of formats (zst, vhd, msi, deb, rpm, dmg, squashfs, etc.) via 7-Zip; the format is detected by content, not by extension; a folder is unpacked in one pass, which is fast even from a solid archive.
 - **Packing** – `Shift+F1`: zip or 7z, compression level, password and name encryption; adding to an existing archive.
 - **Archive editing** – copying and moving into an open archive, deleting entries, editing a file inside an archive and saving it back with `F2`.
 - **Encrypted archives** – AES ZIP and 7z with encrypted contents or names; the password is asked once per session.
@@ -161,7 +161,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 - **Themes** – about twenty themes: Far Classic, NDN, Norton Commander, Midnight Commander, Total Commander, High Contrast, Navigator, Gruvbox, Monokai, Tokyo Night, Solarized, phosphor and others.
 - **Custom themes** – a theme editor for colors, frames and symbols, an HSL/RGB/hex color picker, inheritance from several themes and role references; the format is described in `docs/THEMES.md`.
-- **File color highlighting** – groups by mask and condition (size, age, attributes) with sort priority.
+- **File color highlighting** – groups by mask and condition (size, age, attributes) with sort priority; a group can apply to files only, so a folder named `name.7z` keeps the folder color.
 - **Font and sharpness** – size in points, a fallback font for missing glyphs, Windows Terminal-style line spacing, contrast and cell size.
 - **Cursor** – shape and blinking, a Far-style underline cursor.
 - **Shadows and dialog look** – classic, soft or no shadows; buttons press like real ones.
@@ -177,7 +177,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Settings and configuration
 
-- **Settings dialogs** – "Font / Display" and "Interface" with options for panel, command line and notification behavior.
+- **Settings dialogs** – "Font / Display" and "Interface" with options for panel, command line and notification behavior; the Interface window is split into the tabs Window, Panels and Behavior.
 - **Settings export and import** – a single zip with the session, keys, user menu, folder hotlist, connections and themes.
 - **Settings location** – moving between the user folder and portable mode next to the program; the `MTN2_CONFIG_DIR` variable sets a custom folder.
 - **Command line arguments** – paths open as tabs, `--view` and `--edit`, paths are passed to an already open window.

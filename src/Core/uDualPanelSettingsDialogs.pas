@@ -441,6 +441,8 @@ begin
   DialogSetCheckbox(Decl, 'quick_search_fuzzy', Cur.QuickSearchFuzzy);
   DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
   DialogSetCheckbox(Decl, 'column_separators', Cur.ColumnSeparators);
+  DialogSetCheckbox(Decl, 'show_column_headers', Cur.ShowColumnHeaders);
+  DialogSetCheckbox(Decl, 'show_sort_letter', Cur.ShowSortLetter);
   DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
   DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
   DialogSetCheckbox(Decl, 'dir_slash', Cur.DirSlash);
@@ -467,7 +469,8 @@ begin
   Entries := ProfileEntriesOrdered;
   for I := 0 to High(Entries) do
   begin
-    ATitles := ATitles + [Entries[I].Title];
+    ATitles := ATitles + [Format('%-30s [%s]', [Entries[I].Title,
+      ProfileKeyModeTitle(Entries[I].KeyMode)])];
     AIds := AIds + [Entries[I].Id];
     if SameText(Entries[I].Id, Prefer) then
       ASel := I;
@@ -979,6 +982,8 @@ begin
     Disp.QuickSearchFuzzy := FDialog.GetCheckbox('quick_search_fuzzy');
     Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
     Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
+    Disp.ShowColumnHeaders := FDialog.GetCheckbox('show_column_headers');
+    Disp.ShowSortLetter := FDialog.GetCheckbox('show_sort_letter');
     Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
     Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
     Disp.DirSlash := FDialog.GetCheckbox('dir_slash');

@@ -16,6 +16,8 @@ uses
   TestConsoleSettings in 'TestConsoleSettings.pas',
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogScroll in 'TestDialogScroll.pas',
+  TestDialogTabs in 'TestDialogTabs.pas',
+  TestDialogScreenFit in 'TestDialogScreenFit.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogAlignment in 'TestDialogAlignment.pas',
   TestDialogButtonLayout in 'TestDialogButtonLayout.pas',

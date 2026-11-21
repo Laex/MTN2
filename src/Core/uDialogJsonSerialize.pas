@@ -162,6 +162,18 @@ begin
           end;
           One := One + ']';
         end;
+      dckTab:
+        begin
+          One := Format('{"type":"tabs","id":"%s","selected":%d,"items":[',
+            [EscapeJson(C.Id), C.SelectedIndex]);
+          for J := 0 to High(C.Items) do
+          begin
+            if J > 0 then
+              One := One + ',';
+            One := One + '"' + EscapeJson(C.Items[J]) + '"';
+          end;
+          One := One + ']';
+        end;
       dckRadio:
         begin
           One := Format(
@@ -199,6 +211,8 @@ begin
     else
       Continue;
     end;
+    if C.TabPage > 0 then
+      One := One + Format(',"tab":%d', [C.TabPage - 1]);
     One := One + ControlGeometryJson(C, ForceGeom) + '}';
     N := Length(Parts);
     SetLength(Parts, N + 1);

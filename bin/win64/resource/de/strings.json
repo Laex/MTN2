@@ -286,6 +286,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Oberfläche",
+      "tabs_items": {
+        "Window": "Fenster",
+        "Panels": "Panels",
+        "Behavior": "Verhalten"
+      },
       "lbl_language": "Sprache",
       "show_title_bar": "&Titelleiste anzeigen",
       "show_menu_bar": "&Menüleiste anzeigen",
@@ -300,6 +305,8 @@
       "pack_same_panel": "Im selben Be&dienfeld packen (Shift+F1)",
       "passive_cursor": "Cursor im ina&ktiven Panel",
       "column_separators": "Senkrechte Linien zwischen Spalten (&X)",
+      "show_column_headers": "Spaltenüberschriften anzeigen",
+      "show_sort_letter": "Buchstaben der Sortierung anzeigen",
       "editor_autoindent": "Automatischer Einzug im &Editor bei Enter",
       "exact_sizes": "Genaue Größe in &Bytes anzeigen",
       "dir_slash": "Schrägstrich nach Ordnernamen anzeigen",
@@ -398,6 +405,12 @@
       "lbl_bg": "Hintergrund",
       "lbl_sample": "Beispiel",
       "lbl_style": "Stil",
+      "tabs_items": {
+        "Text": "Text",
+        "Emphasis": "Hervorhebung",
+        "Blocks": "Blöcke",
+        "Links and tables": "Links und Tabellen"
+      },
       "lbl_text": "Text / Dokument",
       "lbl_h1": "Überschrift 1",
       "lbl_h2": "Überschrift 2",
@@ -418,7 +431,7 @@
       "hint": "F9 oder [...] - Farbe wählen; leer = Farbe des Designs",
       "ok": "OK",
       "cancel": "Abbrechen",
-      "import": "&Aus Obsidian importieren...",
+      "import": "&Obsidian-Import...",
       "reset": "&Zurücksetzen"
     },
     "DIALOG_MARKDOWNIMPORT": {

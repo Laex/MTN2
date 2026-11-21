@@ -49,6 +49,14 @@ var
   /// <summary>Panel footer in the NDN/DN layout: the totals sit in the bottom border,
   /// the rule above the info strip stays plain. Off: totals centered on that rule.</summary>
   GNdnFooter: Boolean = True;
+  /// <summary>Interface dialog "Show column headers"; persisted in session.json
+  /// (showColumnHeaders). Off: the header row of a file panel is dropped and the
+  /// list starts one row higher.</summary>
+  GShowColumnHeaders: Boolean = True;
+  /// <summary>Interface dialog "Show the sort mode letter"; persisted in
+  /// session.json (showSortLetter). The letter sits in the header row, or on the
+  /// top border when the headers are hidden.</summary>
+  GShowSortLetter: Boolean = True;
   /// <summary>False in a host that draws with the terminal's own font (mtn2-tui):
   /// the font, size, zoom and cell controls of the display dialog do not apply.</summary>
   GFontSettingsApply: Boolean = True;
@@ -117,6 +125,8 @@ type
     /// <summary>Vertical rules between the panel columns
     /// (uThemeDrawing.GColumnSeparators).</summary>
     ColumnSeparators: Boolean;
+    ShowColumnHeaders: Boolean;
+    ShowSortLetter: Boolean;
     /// <summary>Width of one Brief column in characters
     /// (uPanelColumns.GBriefColumnWidth).</summary>
     BriefColumnWidth: Integer;
@@ -177,6 +187,9 @@ function DefaultDisplaySettings: TDisplaySettings;
 /// <summary>Rows between the list separator and the drive bar of a file panel: the
 /// cursor line alone, or with the NDN totals and free-space lines.</summary>
 function PanelFooterRows: Integer;
+/// <summary>Rows between the panel's top border and the list: the header row (1)
+/// or none when the column headers are hidden.</summary>
+function PanelHeaderRows: Integer;
 function ClampDisplayFontSize(ASize: Single): Single;
 function ClampDisplayZoom(AZoom: Single): Single;
 function ClampDisplayBlinkMs(AMs: Integer): Integer;
@@ -377,6 +390,14 @@ begin
     Result := 1;
 end;
 
+function PanelHeaderRows: Integer;
+begin
+  if GShowColumnHeaders then
+    Result := 1
+  else
+    Result := 0;
+end;
+
 function DefaultDisplaySettings: TDisplaySettings;
 begin
   Result.FontName := '';
@@ -408,6 +429,8 @@ begin
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;
   Result.ColumnSeparators := False;
+  Result.ShowColumnHeaders := True;
+  Result.ShowSortLetter := True;
   Result.BriefColumnWidth := cBriefColumnWidthDefault;
   Result.LineSpacing := False;
   Result.SnapFontSize := False;

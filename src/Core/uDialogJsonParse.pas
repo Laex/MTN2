@@ -20,7 +20,7 @@ procedure ParseControlObject(const AObj: TJSONObject; AList: TList<TDialogContro
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils, System.Math;
 
 function JsonBool(const AObj: TJSONObject; const AName: string;
   ADefault: Boolean): Boolean;
@@ -86,6 +86,8 @@ begin
     C.BoxH := JsonInt(AObj, 'height', 0)
   else if Assigned(AObj.Values['h']) then
     C.BoxH := JsonInt(AObj, 'h', 0);
+  if Assigned(AObj.Values['tab']) then
+    C.TabPage := Max(JsonInt(AObj, 'tab', -1), -1) + 1;
 end;
 
 procedure AppendParsed(AList: TList<TDialogControl>; const ACtrl: TDialogControl;
@@ -278,6 +280,15 @@ begin
     MakeDropDown(JsonStr(AObj, 'id'), Items, JsonInt(AObj, 'selected', 0)), AObj);
 end;
 
+procedure ParseTabs(const AObj: TJSONObject; AList: TList<TDialogControl>);
+var
+  Items: TArray<string>;
+begin
+  CopyJsonStrings(AObj.Values['items'] as TJSONArray, Items);
+  AppendParsed(AList,
+    MakeTabs(JsonStr(AObj, 'id'), Items, JsonInt(AObj, 'selected', 0)), AObj);
+end;
+
 procedure ParseRadioGroup(const AObj: TJSONObject; AList: TList<TDialogControl>);
 var
   Items, ItemIds: TArray<string>;
@@ -320,7 +331,7 @@ end;
 // One parser per JSON control type, so ParseControlObject stays a lookup.
 // button_row and dialog append nothing of their own: they walk children.
 const
-  cControlParsers: array[0..19] of TNamedControlParser = (
+  cControlParsers: array[0..21] of TNamedControlParser = (
     (Typ: 'label'; Parse: ParseLabel),
     (Typ: 'input'; Parse: ParseInput),
     (Typ: 'checkbox'; Parse: ParseCheckbox),
@@ -337,6 +348,8 @@ const
     (Typ: 'dropdownlist'; Parse: ParseDropDown),
     (Typ: 'drop_down'; Parse: ParseDropDown),
     (Typ: 'combo'; Parse: ParseDropDown),
+    (Typ: 'tabs'; Parse: ParseTabs),
+    (Typ: 'tab_strip'; Parse: ParseTabs),
     (Typ: 'radio_group'; Parse: ParseRadioGroup),
     (Typ: 'radiogroup'; Parse: ParseRadioGroup),
     (Typ: 'button_row'; Parse: ParseChildControls),

@@ -389,7 +389,7 @@ begin
         ADecl.Controls[I].Text :=
           TDialog(ANamespace, ADecl.Controls[I].Id, ADecl.Controls[I].Text);
     end;
-    if ADecl.Controls[I].Kind in [dckDropDown, dckRadioGroup] then
+    if ADecl.Controls[I].Kind in [dckDropDown, dckRadioGroup, dckTab] then
       TranslateItems(ADecl.Controls[I]);
   end;
   if not SameText(CurrentLocale, 'en') then

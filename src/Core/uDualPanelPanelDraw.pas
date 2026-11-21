@@ -345,7 +345,7 @@ end;
 
 function PanelSortLetterRow(const ABounds: TRectI): Integer;
 begin
-  Result := ABounds.Top + 1;
+  Result := ABounds.Top + PanelHeaderRows;
 end;
 
 procedure DrawCenteredPanelTitle(const ABuffer: TTerminalGrid; const ABounds: TRectI;
@@ -368,6 +368,10 @@ begin
     Exit;
   AResolveChrome(pcpColumnHeader, AActive, HeadFg, HeadBg);
   AResolveChrome(pcpHotMark, AActive, HotFg, Discard);
+  // Without the header row the letter sits on the top border and keeps the
+  // border's background.
+  if not GShowColumnHeaders then
+    HeadBg := ABuffer[PanelSortLetterRow(ABounds)][PanelSortLetterCol(ABounds)].BgColor;
   // Theme hot-mark on the header strip; fall back to header text or
   // white/black so the glyph stays readable on every palette.
   Fg := ContrastingGlyphFg(HeadBg, HotFg, HeadFg);
@@ -596,7 +600,7 @@ begin
   PanelH := BottomY - TopY + 1;
   if PanelH < 5 + PanelFooterRows then
     PanelH := 5 + PanelFooterRows;
-  AListTop := TopY + 2;
+  AListTop := TopY + 1 + PanelHeaderRows;
   AListBottom := TopY + PanelH - 3 - PanelFooterRows;
 
   LeftOn := ALeftOn;
@@ -874,14 +878,16 @@ begin
     ASnap.InfoLine, ASnap.FreeLine, ASnap.FreeUsedPermille, AHost.ResolveChrome);
   AHost.DrawDriveLetters(ASnap.Bounds, ASnap.Tab, ASnap.Side, ASnap.Frame,
     ASnap.BodyBg);
-  AHost.DrawHeaders(ASnap.Bounds, ASnap.Panel);
-  DrawPanelSortLetter(ABuffer, ASnap.Bounds, ASnap.Panel.SortColumn,
-    ASnap.Panel.SortDescending, ASnap.Active, AHost.ResolveChrome);
+  if GShowColumnHeaders then
+    AHost.DrawHeaders(ASnap.Bounds, ASnap.Panel);
+  if GShowSortLetter then
+    DrawPanelSortLetter(ABuffer, ASnap.Bounds, ASnap.Panel.SortColumn,
+      ASnap.Panel.SortDescending, ASnap.Active, AHost.ResolveChrome);
   AHost.DrawList(ASnap.ListBounds, ASnap.Tab, ASnap.Active, ASnap.Panel.ColumnMode,
     ASnap.Panel.CustomColumns, ASnap.Side);
   if ASnap.DropHighlight then
     DrawPanelDropHighlight(ABuffer, ATheme, ASnap.Bounds, ASnap.DropFg, ASnap.DropBg);
-  AHost.DrawScrollBar(ASnap.Bounds.Right - 1, ASnap.Bounds.Top + 2,
+  AHost.DrawScrollBar(ASnap.Bounds.Right - 1, ASnap.Bounds.Top + 1 + PanelHeaderRows,
     ASnap.Bounds.Bottom - 2 - PanelFooterRows, ASnap.Tab.ScrollOffset, ASnap.Count, ASnap.PageSize);
   DispatchPanelSearchFields(ASnap.Bounds, ASnap.Side, ASnap.ActiveSide,
     ASnap.QuickSearch, AHost.DrawQuickSearch);

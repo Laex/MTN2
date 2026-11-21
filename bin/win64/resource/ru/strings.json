@@ -284,6 +284,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Интерфейс",
+      "tabs_items": {
+        "Window": "Окно",
+        "Panels": "Панели",
+        "Behavior": "Поведение"
+      },
       "lbl_language": "Язык",
       "show_title_bar": "Показывать за&головок окна",
       "show_menu_bar": "Показывать строку м&еню",
@@ -298,6 +303,8 @@
       "pack_same_panel": "Упаковывать в ту &же панель (Shift+F1)",
       "passive_cursor": "Курсор в &неактивной панели",
       "column_separators": "Вертикальные линии между колонками (&X)",
+      "show_column_headers": "Показ&ывать заголовки колонок",
+      "show_sort_letter": "Показыват&ь букву режима сортировки",
       "editor_autoindent": "Автоотступ в &редакторе по Enter",
       "exact_sizes": "&Точный размер в байтах",
       "dir_slash": "Пока&зывать слэш после имени каталога",
@@ -396,6 +403,12 @@
       "lbl_bg": "Фон",
       "lbl_sample": "Образец",
       "lbl_style": "Начертание",
+      "tabs_items": {
+        "Text": "Текст",
+        "Emphasis": "Выделение",
+        "Blocks": "Блоки",
+        "Links and tables": "Ссылки и таблицы"
+      },
       "lbl_text": "Текст и документ",
       "lbl_h1": "Заголовок 1",
       "lbl_h2": "Заголовок 2",

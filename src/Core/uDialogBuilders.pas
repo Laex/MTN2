@@ -1254,6 +1254,28 @@ begin
     AItems, ASelectedIndex);
 end;
 
+// Wider than the shared resource so the key mode at the end of a row is never
+// cut: the list and the rule grow, the buttons keep to the middle.
+procedure WidenShellProfileDialog(var ADecl: TDialogDeclaration; AExtra: Integer);
+var
+  I: Integer;
+begin
+  ADecl.Width := ADecl.Width + AExtra;
+  for I := 0 to High(ADecl.Controls) do
+    case ADecl.Controls[I].Kind of
+      dckList:
+        Inc(ADecl.Controls[I].BoxW, AExtra);
+      dckLabel:
+        if IsHRuleText(ADecl.Controls[I].Text) then
+          ADecl.Controls[I] := WithControlBox(
+            MakeHRule(ADecl.Controls[I].BoxW + AExtra),
+            ADecl.Controls[I].Col, ADecl.Controls[I].Row,
+            ADecl.Controls[I].BoxW + AExtra, 1);
+      dckButton:
+        Inc(ADecl.Controls[I].Col, AExtra div 2);
+    end;
+end;
+
 function BuildTerminalProfileDialog(const ATitles: TArray<string>;
   ASelectedIndex: Integer; const AAccents: TArray<TListAccent>): TDialogDeclaration;
 const
@@ -1263,26 +1285,12 @@ var
 begin
   Result := BuildShellProfileListDialog(
     T('ui.terminalProfile.title', 'New terminal'), ATitles, ASelectedIndex);
-  // Wider than the shared resource so the key mode at the end of a row is
-  // never cut; two hint rows under the rule, the buttons move down for them.
-  Result.Width := Result.Width + cExtraWidth;
+  // Two hint rows under the rule, the buttons move down for them.
+  WidenShellProfileDialog(Result, cExtraWidth);
   Result.Height := Result.Height + 2;
   for I := 0 to High(Result.Controls) do
-    case Result.Controls[I].Kind of
-      dckList:
-        Inc(Result.Controls[I].BoxW, cExtraWidth);
-      dckLabel:
-        if IsHRuleText(Result.Controls[I].Text) then
-          Result.Controls[I] := WithControlBox(
-            MakeHRule(Result.Controls[I].BoxW + cExtraWidth),
-            Result.Controls[I].Col, Result.Controls[I].Row,
-            Result.Controls[I].BoxW + cExtraWidth, 1);
-      dckButton:
-        begin
-          Inc(Result.Controls[I].Row, 2);
-          Inc(Result.Controls[I].Col, cExtraWidth div 2);
-        end;
-    end;
+    if Result.Controls[I].Kind = dckButton then
+      Inc(Result.Controls[I].Row, 2);
   DialogSetListAccents(Result, 'profiles', AAccents);
   N := Length(Result.Controls);
   SetLength(Result.Controls, N + 2);
@@ -1303,6 +1311,7 @@ var
 begin
   Result := BuildShellProfileListDialog(
     T('ui.consoleProfile.title', 'Background console'), ATitles, ASelectedIndex);
+  WidenShellProfileDialog(Result, 12);
   // Three checkboxes take the rows under the profile list that hold the rule
   // and the empty row above the buttons; the rule and the buttons move four
   // rows down. The shared terminal-profile resource has no room for it, so

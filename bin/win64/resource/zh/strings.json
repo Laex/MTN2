@@ -285,6 +285,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "界面",
+      "tabs_items": {
+        "Window": "窗口",
+        "Panels": "面板",
+        "Behavior": "行为"
+      },
       "lbl_language": "语言",
       "show_title_bar": "显示窗口标题栏(&T)",
       "show_menu_bar": "显示菜单栏(&M)",
@@ -299,6 +304,8 @@
       "pack_same_panel": "打包到同一面板 (Shift+F1)(&A)",
       "passive_cursor": "非活动面板显示光标(&V)",
       "column_separators": "列之间显示竖线(&X)",
+      "show_column_headers": "显示列标题",
+      "show_sort_letter": "显示排序方式字母",
       "editor_autoindent": "编辑器按 Enter 自动缩进(&U)",
       "exact_sizes": "以字节显示精确大小(&B)",
       "dir_slash": "在目录名后显示斜杠",
@@ -397,6 +404,12 @@
       "lbl_bg": "背景",
       "lbl_sample": "示例",
       "lbl_style": "样式",
+      "tabs_items": {
+        "Text": "文本",
+        "Emphasis": "强调",
+        "Blocks": "块",
+        "Links and tables": "链接和表格"
+      },
       "lbl_text": "正文 / 文档",
       "lbl_h1": "标题 1",
       "lbl_h2": "标题 2",

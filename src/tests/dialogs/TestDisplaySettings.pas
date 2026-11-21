@@ -32,7 +32,7 @@ implementation
 
 uses
   System.SysUtils, System.IOUtils, System.JSON, System.Math,
-  uVfsTypes, uScreenSaver,
+  uVfsTypes, uScreenSaver, uDialogTabs,
   uDualPanelTypes,
   uPanelColumns, uListExport,
   uConfigLocation,
@@ -502,7 +502,7 @@ end;
 // check box states and the buttons, in English and in Russian.
 procedure TestInterfaceDialogDrawn;
 
-  function DrawnText: string;
+  function DrawnText(APage: Integer): string;
   var
     Host: TDialogHost;
     Decl: TDialogDeclaration;
@@ -513,6 +513,7 @@ procedure TestInterfaceDialogDrawn;
     try
       Decl := BuildInterfaceDialog(['English', 'Russian'], 1, True);
       DialogSetCheckbox(Decl, 'alt_menu', True);
+      Decl.Controls[DialogTabStripIndex(Decl.Controls)].SelectedIndex := APage;
       Host.Open(Decl, nil);
       AllocTerminalGrid(Grid, 100, 40);
       ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
@@ -534,16 +535,18 @@ var
 begin
   try
     SetLocale('');
-    Text := DrawnText;
+    Text := DrawnText(0);
     Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
     Assert.IsTrue(Pos('Russian', Text) > 0, 'saved language shown');
     Assert.IsTrue(Pos('Show pop-up notifications', Text) > 0, 'notifications checkbox drawn');
-    Assert.IsTrue(Pos('Open menu on a single Alt press', Text) > 0, 'Alt menu checkbox drawn');
-    Assert.IsTrue(Pos('Editor auto-indent on Enter', Text) > 0, 'auto-indent checkbox drawn');
+    Assert.IsTrue(Pos('Open menu on a single Alt press', Text) = 0, 'Alt menu is on another page');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
     Assert.IsTrue(Pos('Font', Text) = 0, 'no font controls');
+    Text := DrawnText(2);
+    Assert.IsTrue(Pos('Open menu on a single Alt press', Text) > 0, 'Alt menu checkbox drawn');
+    Assert.IsTrue(Pos('Editor auto-indent on Enter', Text) > 0, 'auto-indent checkbox drawn');
     SetLocale('ru');
-    Text := DrawnText;
+    Text := DrawnText(2);
     Assert.IsTrue(Pos('Открывать меню по одиночному Alt', Text) > 0, 'Russian caption drawn in full');
   finally
     SetLocale('');

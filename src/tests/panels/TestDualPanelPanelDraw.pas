@@ -26,6 +26,7 @@ type
     [Test] procedure TestDrawPanelDispatch;
     [Test] procedure TestDrawPanelFilesDispatch;
     [Test] procedure TestNdnFooterRows;
+    [Test] procedure TestHeaderRowAndSortLetterCanBeHidden;
     [Test] procedure TestPanelLayout;
     [Test] procedure TestTabCloseMarkContrast;
   end;
@@ -43,6 +44,7 @@ uses
   uDriveItems,
   uDualPanelDrawUtils,
   uDualPanelPanelDraw,
+  uDualPanelTabs,
   uDualPanelClick,
   uDisplaySettings;
 
@@ -90,7 +92,7 @@ type
   public
     Last: string;
     ListSide: TPanelSide;
-    ScrollX, ScrollViewH: Integer;
+    ScrollX, ScrollTop, ScrollViewH: Integer;
     procedure ResolveChrome(APart: TPanelChromePart; AActive: Boolean;
       out AFg, ABg: TAlphaColor);
     procedure DriveLetters(const ABounds: TRectI; const ATab: TTab;
@@ -260,6 +262,7 @@ procedure TFilesSpy.Scroll(AX, ATop, ABottom, APos, ACount, AViewH: Integer);
 begin
   Last := Last + 'scroll,';
   ScrollX := AX;
+  ScrollTop := ATop;
   ScrollViewH := AViewH;
 end;
 
@@ -949,6 +952,81 @@ begin
   Assert.IsTrue((LeftB.Left = 0) and (RightB.Left = 40), 'neither visible still splits both');
 end;
 
+procedure TestHeaderRowAndSortLetterCanBeHidden;
+var
+  Spy: TFilesSpy;
+  Host: TDualPanelFilesDrawHost;
+  Snap: TDrawFilesSnapshot;
+  Grid: TTerminalGrid;
+  LeftB, RightB: TRectI;
+  ListTop, ListBottom, HiddenTop: Integer;
+  SavedHeaders, SavedLetter: Boolean;
+begin
+  SavedHeaders := GShowColumnHeaders;
+  SavedLetter := GShowSortLetter;
+  Spy := TFilesSpy.Create;
+  try
+    GShowColumnHeaders := True;
+    GShowSortLetter := True;
+    ComputePanelLayout(80, 24, True, True, LeftB, RightB, ListTop, ListBottom);
+    Assert.AreEqual(LeftB.Top + 2, PanelListBounds(LeftB).Top, 'the list starts under the header row');
+    Assert.IsTrue(ClassifyPanelClickZone(LeftB.Top + 1, LeftB, pvkFiles) = pczHeaders,
+      'the header row is a header click zone');
+
+    GShowColumnHeaders := False;
+    ComputePanelLayout(80, 24, True, True, LeftB, RightB, HiddenTop, ListBottom);
+    Assert.AreEqual(ListTop - 1, HiddenTop, 'the list moves up by the header row');
+    Assert.AreEqual(LeftB.Top + 1, PanelListBounds(LeftB).Top, 'click list bounds follow the header row');
+    Assert.IsTrue(ClassifyPanelClickZone(LeftB.Top + 1, LeftB, pvkFiles) = pczBody,
+      'the first list row is the body when the headers are hidden');
+
+    Host := Default(TDualPanelFilesDrawHost);
+    Host.ResolveChrome := Spy.ResolveChrome;
+    Host.DrawDriveLetters := Spy.DriveLetters;
+    Host.DrawHeaders := Spy.Headers;
+    Host.DrawList := Spy.List;
+    Host.DrawScrollBar := Spy.Scroll;
+    Host.DrawQuickSearch := Spy.Quick;
+    AllocTerminalGrid(Grid, 20, 8);
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    Snap := Default(TDrawFilesSnapshot);
+    Snap.Bounds := TRectI.Make(0, 0, 19, 7);
+    Snap.ListBounds := PanelListBounds(Snap.Bounds);
+    Snap.Frame := TAlphaColors.Yellow;
+    Snap.BodyBg := TAlphaColors.Blue;
+    Snap.Active := True;
+    Snap.Count := 10;
+    Snap.PageSize := 4;
+    Snap.Panel.SortColumn := pscName;
+    DispatchDrawPanelFiles(Grid, nil, Host, Snap);
+    Assert.IsTrue(Spy.Last = 'drive,list,scroll,', 'no header drawing when the headers are hidden');
+    Assert.AreEqual(Snap.Bounds.Top, PanelSortLetterRow(Snap.Bounds), 'the letter moves to the top border');
+    Assert.IsTrue(Grid[PanelSortLetterRow(Snap.Bounds)][PanelSortLetterCol(Snap.Bounds)].CharValue = 'n',
+      'the sort letter stays visible without the headers');
+    Assert.AreEqual(Snap.Bounds.Top + 1, Spy.ScrollTop, 'the scroll bar starts at the first list row');
+    Assert.AreEqual(PanelSortLetterCol(Snap.Bounds) + 1, PanelTabHeadX(Snap.Bounds),
+      'the tabs start after the sort letter on the tab row');
+
+    GShowSortLetter := False;
+    Assert.AreEqual(Snap.Bounds.Left + 1, PanelTabHeadX(Snap.Bounds),
+      'the tabs start after the frame when the letter is off');
+    GShowSortLetter := True;
+    GShowColumnHeaders := True;
+    Assert.AreEqual(Snap.Bounds.Left + 1, PanelTabHeadX(Snap.Bounds),
+      'the tabs start after the frame when the letter is in the header row');
+    GShowColumnHeaders := False;
+    GShowSortLetter := False;
+    ClearTerminalGrid(Grid, TAlphaColors.White, TAlphaColors.Black, ' ');
+    DispatchDrawPanelFiles(Grid, nil, Host, Snap);
+    Assert.IsFalse(Grid[PanelSortLetterRow(Snap.Bounds)][PanelSortLetterCol(Snap.Bounds)].CharValue = 'n',
+      'the sort letter is not drawn when it is switched off');
+  finally
+    Spy.Free;
+    GShowColumnHeaders := SavedHeaders;
+    GShowSortLetter := SavedLetter;
+  end;
+end;
+
 procedure TestNdnFooterRows;
 var
   Spy: TFilesSpy;
@@ -1205,6 +1283,11 @@ end;
 procedure TTestDualPanelPanelDraw.TestDrawPanelFilesDispatch;
 begin
   TestDualPanelPanelDraw.TestDrawPanelFilesDispatch;
+end;
+
+procedure TTestDualPanelPanelDraw.TestHeaderRowAndSortLetterCanBeHidden;
+begin
+  TestDualPanelPanelDraw.TestHeaderRowAndSortLetterCanBeHidden;
 end;
 
 procedure TTestDualPanelPanelDraw.TestNdnFooterRows;

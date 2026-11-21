@@ -943,7 +943,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 - Die Zeile **Text / Dokument** legt die Textfarbe und den Hintergrund der ganzen Markdown-Ansicht fest (nur für Markdown, andere Dateien behalten die Farben des Farbschemas); Elemente ohne eigenen Hintergrund folgen ihr.
 - Das Beispiel neben einer Zeile wird mit ihren Farben und ihrem Stil gezeichnet.
 
-**Aus Obsidian importieren...** liest die Farben aus einem Obsidian-Design (`theme.css`, zum Beispiel `<Tresor>\.obsidian\themes\<Design>\theme.css`).
+**Obsidian-Import...** liest die Farben aus einem Obsidian-Design (`theme.css`, zum Beispiel `<Tresor>\.obsidian\themes\<Design>\theme.css`).
 - Die Palette **Dunkel** oder **Hell** wird im Importdialog gewählt.
 - Die importierten Farben und Textstile (Gewicht, Kursivschrift und Unterstreichung, die das Design für Überschriften, Fett, Links, Zitate und Tabellenköpfe festlegt) ersetzen die Felder und Listen (nichts wird gespeichert, bevor OK gedrückt wird).
 

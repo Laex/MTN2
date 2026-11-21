@@ -110,6 +110,13 @@ var
     AReport.Add(AName + ': ' + AText);
   end;
 
+  // Controls of two tab pages are never on screen together.
+  function SameScreen(A, B: Integer): Boolean;
+  begin
+    Result := (Ctl[A].TabPage = Ctl[B].TabPage) or (Ctl[A].TabPage = 0) or
+      (Ctl[B].TabPage = 0);
+  end;
+
   function Named(AIndex: Integer): string;
   begin
     if Ctl[AIndex].Id <> '' then
@@ -148,7 +155,7 @@ begin
       Problem(Format('%s outside the frame (%d..%d, row %d; client %dx%d)',
         [Named(I), Box[I].L, Box[I].R, Box[I].T, ClientW, ClientH]));
     for J := I + 1 to N - 1 do
-      if (Box[I].L <= Box[J].R) and (Box[J].L <= Box[I].R) and
+      if SameScreen(I, J) and (Box[I].L <= Box[J].R) and (Box[J].L <= Box[I].R) and
          (Box[I].T <= Box[J].B) and (Box[J].T <= Box[I].B) then
         Problem(Format('%s overlaps %s', [Named(I), Named(J)]));
     case Ctl[I].Kind of
@@ -173,7 +180,8 @@ begin
   if Length(AAuthoredCols) = N then
     for I := 0 to N - 1 do
       for J := I + 1 to N - 1 do
-        if (Max(AAuthoredCols[I], 0) = Max(AAuthoredCols[J], 0)) and (Box[I].L <> Box[J].L) then
+        if SameScreen(I, J) and (Max(AAuthoredCols[I], 0) = Max(AAuthoredCols[J], 0)) and
+           (Box[I].L <> Box[J].L) then
           Problem(Format('%s and %s start in one column as authored (%d) but now in %d and %d',
             [Named(I), Named(J), Max(AAuthoredCols[I], 0), Box[I].L, Box[J].L]));
 
@@ -188,7 +196,7 @@ begin
       Continue;
     Need := -1; // nearest control right of the label in its row
     for J := 0 to N - 1 do
-      if (J <> I) and (Box[J].T = Box[I].T) and (Box[J].L > Box[I].L) and
+      if (J <> I) and SameScreen(I, J) and (Box[J].T = Box[I].T) and (Box[J].L > Box[I].L) and
          ((Need < 0) or (Box[J].L < Box[Need].L)) then
         Need := J;
     if (Need < 0) or not IsField(Ctl[Need]) then
@@ -197,7 +205,8 @@ begin
       Problem(Format('%s runs into %s', [Named(I), Named(Need)]));
     // Only rows the label starts.
     J := 0;
-    while (J < N) and not ((Box[J].T = Box[I].T) and (Box[J].L < Box[I].L)) do
+    while (J < N) and not (SameScreen(I, J) and (Box[J].T = Box[I].T) and
+      (Box[J].L < Box[I].L)) do
       Inc(J);
     if J < N then
       Continue;

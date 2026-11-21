@@ -94,6 +94,8 @@ type
     PassiveCursor: Boolean;
     /// <summary>uDisplaySettings.ColumnSeparators.</summary>
     ColumnSeparators: Boolean;
+    ShowColumnHeaders: Boolean;
+    ShowSortLetter: Boolean;
     /// <summary>uPanelColumns.GBriefColumnWidth.</summary>
     BriefColumnWidth: Integer;
     ShowKeyBar: Boolean;
@@ -700,6 +702,8 @@ begin
       Root.AddPair('edgeBorders', TJSONBool.Create(ASession.EdgeBorders));
       Root.AddPair('passiveCursor', TJSONBool.Create(ASession.PassiveCursor));
       Root.AddPair('columnSeparators', TJSONBool.Create(ASession.ColumnSeparators));
+      Root.AddPair('showColumnHeaders', TJSONBool.Create(ASession.ShowColumnHeaders));
+      Root.AddPair('showSortLetter', TJSONBool.Create(ASession.ShowSortLetter));
       Root.AddPair('briefColumnWidth', TJSONNumber.Create(ASession.BriefColumnWidth));
       Root.AddPair('showKeyBar', TJSONBool.Create(ASession.ShowKeyBar));
       Root.AddPair('showStatusLine', TJSONBool.Create(ASession.ShowStatusLine));
@@ -801,6 +805,8 @@ begin
   ASession.EdgeBorders := True;
   ASession.PassiveCursor := True;
   ASession.ColumnSeparators := False;
+  ASession.ShowColumnHeaders := True;
+  ASession.ShowSortLetter := True;
   ASession.BriefColumnWidth := cBriefColumnWidthDefault;
   ASession.ShowKeyBar := True;
   ASession.ShowStatusLine := True;
@@ -924,6 +930,8 @@ begin
       ASession.EdgeBorders := JsonBool(Root, 'edgeBorders', True);
       ASession.PassiveCursor := JsonBool(Root, 'passiveCursor', True);
       ASession.ColumnSeparators := JsonBool(Root, 'columnSeparators', False);
+      ASession.ShowColumnHeaders := JsonBool(Root, 'showColumnHeaders', True);
+      ASession.ShowSortLetter := JsonBool(Root, 'showSortLetter', True);
       ASession.BriefColumnWidth := ClampBriefColumnWidth(JsonInt(Root, 'briefColumnWidth', cBriefColumnWidthDefault));
       ASession.ShowKeyBar := JsonBool(Root, 'showKeyBar', True);
       ASession.ShowStatusLine := JsonBool(Root, 'showStatusLine', True);

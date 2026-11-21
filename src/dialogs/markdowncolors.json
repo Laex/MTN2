@@ -2,15 +2,30 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Markdown colors",
-  "width": 84,
-  "height": 26,
+  "width": 78,
+  "height": 15,
   "children": [
+    {
+      "type": "tabs",
+      "id": "tabs",
+      "selected": 0,
+      "items": [
+        "Text",
+        "Emphasis",
+        "Blocks",
+        "Links and tables"
+      ],
+      "col": 1,
+      "row": 0,
+      "width": 70,
+      "height": 1
+    },
     {
       "type": "label",
       "id": "lbl_element",
       "text": "Element",
       "col": 1,
-      "row": 0,
+      "row": 1,
       "width": 18,
       "height": 1
     },
@@ -19,26 +34,35 @@
       "id": "lbl_fg",
       "text": "Foreground",
       "col": 21,
-      "row": 0,
-      "width": 10,
+      "row": 1,
+      "width": 11,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_bg",
       "text": "Background",
-      "col": 32,
-      "row": 0,
-      "width": 10,
+      "col": 33,
+      "row": 1,
+      "width": 11,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_sample",
       "text": "Sample",
-      "col": 43,
-      "row": 0,
-      "width": 18,
+      "col": 45,
+      "row": 1,
+      "width": 9,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_style",
+      "text": "Style",
+      "col": 55,
+      "row": 1,
+      "width": 19,
       "height": 1
     },
     {
@@ -46,9 +70,10 @@
       "id": "lbl_text",
       "text": "Text / document",
       "col": 1,
-      "row": 1,
+      "row": 2,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -56,19 +81,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 1,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
       "id": "md_text_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 1,
+      "col": 33,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "colorsample",
@@ -77,19 +104,34 @@
       "fgFrom": "md_text_fg",
       "bgFrom": "md_text_bg",
       "styleFrom": "md_text_style",
-      "col": 43,
-      "row": 1,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 2,
+      "width": 9,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "dropdown",
+      "id": "md_text_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 2,
+      "width": 19,
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "id": "lbl_h1",
       "text": "Heading 1",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -97,19 +139,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 2,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
       "id": "md_h1_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 2,
+      "col": 33,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "colorsample",
@@ -121,19 +165,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_h1_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 2,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 3,
+      "width": 9,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h1_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 3,
+      "width": 19,
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "id": "lbl_h2",
       "text": "Heading 2",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -141,19 +200,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
       "id": "md_h2_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 3,
+      "col": 33,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "colorsample",
@@ -165,19 +226,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_h2_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 3,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 4,
+      "width": 9,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h2_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 4,
+      "width": 19,
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "id": "lbl_h3to6",
       "text": "Headings 3-6",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -185,19 +261,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 4,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
       "id": "md_h3to6_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 4,
+      "col": 33,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "colorsample",
@@ -209,19 +287,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_h3to6_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 4,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 5,
+      "width": 9,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "dropdown",
+      "id": "md_h3to6_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 5,
+      "width": 19,
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "id": "lbl_bold",
       "text": "Bold",
       "col": 1,
-      "row": 5,
+      "row": 2,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
@@ -229,19 +322,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 5,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "md_bold_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 5,
+      "col": 33,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "colorsample",
@@ -253,19 +348,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_bold_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 5,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 2,
+      "width": 9,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_bold_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 2,
+      "width": 19,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "id": "lbl_italic",
       "text": "Italic",
       "col": 1,
-      "row": 6,
+      "row": 3,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
@@ -273,19 +383,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 6,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "md_italic_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 6,
+      "col": 33,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "colorsample",
@@ -297,19 +409,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_italic_style",
       "baseStyle": "italic",
-      "col": 43,
-      "row": 6,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 3,
+      "width": 9,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_italic_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 3,
+      "width": 19,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "id": "lbl_boldItalic",
       "text": "Bold italic",
       "col": 1,
-      "row": 7,
+      "row": 4,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
@@ -317,19 +444,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 7,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "md_boldItalic_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 7,
+      "col": 33,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "colorsample",
@@ -341,19 +470,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_boldItalic_style",
       "baseStyle": "bold+italic",
-      "col": 43,
-      "row": 7,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 4,
+      "width": 9,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_boldItalic_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 4,
+      "width": 19,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "id": "lbl_strike",
       "text": "Strikethrough",
       "col": 1,
-      "row": 8,
+      "row": 5,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
@@ -361,19 +505,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 8,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "md_strike_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 8,
+      "col": 33,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "colorsample",
@@ -385,19 +531,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_strike_style",
       "baseStyle": "strike",
-      "col": 43,
-      "row": 8,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 5,
+      "width": 9,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "md_strike_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 5,
+      "width": 19,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "id": "lbl_inlineCode",
       "text": "Inline code",
       "col": 1,
-      "row": 9,
+      "row": 2,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
@@ -405,19 +566,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 9,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
       "id": "md_inlineCode_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 9,
+      "col": 33,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "colorsample",
@@ -428,19 +591,34 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "styleFrom": "md_inlineCode_style",
-      "col": 43,
-      "row": 9,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 2,
+      "width": 9,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "dropdown",
+      "id": "md_inlineCode_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 2,
+      "width": 19,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "id": "lbl_codeBlock",
       "text": "Code block",
       "col": 1,
-      "row": 10,
+      "row": 3,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
@@ -448,19 +626,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 10,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
       "id": "md_codeBlock_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 10,
+      "col": 33,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "colorsample",
@@ -471,19 +651,34 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "styleFrom": "md_codeBlock_style",
-      "col": 43,
-      "row": 10,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 3,
+      "width": 9,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "dropdown",
+      "id": "md_codeBlock_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 3,
+      "width": 19,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "id": "lbl_quote",
       "text": "Quote",
       "col": 1,
-      "row": 11,
+      "row": 4,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
@@ -491,19 +686,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 11,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
       "id": "md_quote_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 11,
+      "col": 33,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "colorsample",
@@ -514,19 +711,34 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "styleFrom": "md_quote_style",
-      "col": 43,
-      "row": 11,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 4,
+      "width": 9,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "dropdown",
+      "id": "md_quote_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 4,
+      "width": 19,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "id": "lbl_listMarker",
       "text": "List marker",
       "col": 1,
-      "row": 12,
+      "row": 5,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
@@ -534,19 +746,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 12,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
       "id": "md_listMarker_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 12,
+      "col": 33,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "colorsample",
@@ -558,19 +772,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_listMarker_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 12,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 5,
+      "width": 9,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "dropdown",
+      "id": "md_listMarker_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 5,
+      "width": 19,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "id": "lbl_hrule",
       "text": "Horizontal rule",
       "col": 1,
-      "row": 13,
+      "row": 6,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
@@ -578,19 +807,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 13,
+      "row": 6,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "input",
       "id": "md_hrule_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 13,
+      "col": 33,
+      "row": 6,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "colorsample",
@@ -600,19 +831,21 @@
       "bgFrom": "md_hrule_bg",
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
-      "col": 43,
-      "row": 13,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 6,
+      "width": 9,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "id": "lbl_link",
       "text": "Link",
       "col": 1,
-      "row": 14,
+      "row": 2,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
@@ -620,19 +853,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 14,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
       "id": "md_link_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 14,
+      "col": 33,
+      "row": 2,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "colorsample",
@@ -644,19 +879,34 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_link_style",
       "baseStyle": "underline",
-      "col": 43,
-      "row": 14,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 2,
+      "width": 9,
+      "height": 1,
+      "tab": 3
+    },
+    {
+      "type": "dropdown",
+      "id": "md_link_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 2,
+      "width": 19,
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "label",
       "id": "lbl_imageMarker",
       "text": "Image placeholder",
       "col": 1,
-      "row": 15,
+      "row": 3,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
@@ -664,19 +914,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 15,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
       "id": "md_imageMarker_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 15,
+      "col": 33,
+      "row": 3,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "colorsample",
@@ -687,19 +939,34 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "styleFrom": "md_imageMarker_style",
-      "col": 43,
-      "row": 15,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 3,
+      "width": 9,
+      "height": 1,
+      "tab": 3
+    },
+    {
+      "type": "dropdown",
+      "id": "md_imageMarker_style",
+      "selected": 0,
+      "items": [
+        "Theme"
+      ],
+      "col": 55,
+      "row": 3,
+      "width": 19,
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "label",
       "id": "lbl_tableBorder",
       "text": "Table border",
       "col": 1,
-      "row": 16,
+      "row": 4,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
@@ -707,19 +974,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 16,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
       "id": "md_tableBorder_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 16,
+      "col": 33,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "colorsample",
@@ -729,19 +998,21 @@
       "bgFrom": "md_tableBorder_bg",
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
-      "col": 43,
-      "row": 16,
-      "width": 18,
-      "height": 1
+      "col": 45,
+      "row": 4,
+      "width": 9,
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "label",
       "id": "lbl_tableHeader",
       "text": "Table header",
       "col": 1,
-      "row": 17,
+      "row": 5,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
@@ -749,19 +1020,21 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 17,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "input",
       "id": "md_tableHeader_bg",
       "value": "",
       "colorpick": true,
-      "col": 32,
-      "row": 17,
+      "col": 33,
+      "row": 5,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "colorsample",
@@ -773,257 +1046,11 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_tableHeader_style",
       "baseStyle": "bold",
-      "col": 43,
-      "row": 17,
-      "width": 18,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 18,
-      "width": 82,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "hint",
-      "text": "F9 or [...] - pick a color; empty = the theme's color",
-      "col": 1,
-      "row": 19,
-      "width": 60,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "status",
-      "text": "",
-      "col": 1,
-      "row": 21,
-      "width": 60,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 20,
-      "width": 82,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "ok",
-      "text": "OK",
-      "default": true,
-      "col": 8,
-      "row": 22,
-      "width": 10,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "cancel",
-      "text": "Cancel",
-      "cancel": true,
-      "col": 20,
-      "row": 22,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "import",
-      "text": "&Import from Obsidian...",
-      "col": 34,
-      "row": 22,
-      "width": 28,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "reset",
-      "text": "&Reset",
-      "col": 64,
-      "row": 22,
-      "width": 9,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_style",
-      "text": "Style",
-      "col": 62,
-      "row": 0,
-      "width": 18,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_text_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 1,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_h1_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 2,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_h2_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 3,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_h3to6_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 4,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_bold_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
+      "col": 45,
       "row": 5,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_italic_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 6,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_boldItalic_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 7,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_strike_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 8,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_inlineCode_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 9,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_codeBlock_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 10,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_quote_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 11,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_listMarker_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 12,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_link_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 14,
-      "width": 19,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "md_imageMarker_style",
-      "selected": 0,
-      "items": [
-        "Theme"
-      ],
-      "col": 62,
-      "row": 15,
-      "width": 19,
-      "height": 1
+      "width": 9,
+      "height": 1,
+      "tab": 3
     },
     {
       "type": "dropdown",
@@ -1032,9 +1059,80 @@
       "items": [
         "Theme"
       ],
-      "col": 62,
-      "row": 17,
+      "col": 55,
+      "row": 5,
       "width": 19,
+      "height": 1,
+      "tab": 3
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 7,
+      "width": 76,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint",
+      "text": "F9 or [...] - pick a color; empty = the theme's color",
+      "col": 1,
+      "row": 8,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "status",
+      "text": "",
+      "col": 1,
+      "row": 10,
+      "width": 60,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 9,
+      "width": 76,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "OK",
+      "default": true,
+      "col": 5,
+      "row": 11,
+      "width": 6,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 13,
+      "row": 11,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "import",
+      "text": "&Import from Obsidian...",
+      "col": 25,
+      "row": 11,
+      "width": 27,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "reset",
+      "text": "&Reset",
+      "col": 54,
+      "row": 11,
+      "width": 9,
       "height": 1
     }
   ]

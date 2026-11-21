@@ -93,6 +93,7 @@ uses
   uDialogJson in 'Core\uDialogJson.pas',
   uDialogResources in 'Core\uDialogResources.pas',
   uDialogValues in 'Core\uDialogValues.pas',
+  uDialogTabs in 'Core\uDialogTabs.pas',
   uDialogV2Layout in 'Core\uDialogV2Layout.pas',
   uDialogLayout in 'Core\uDialogLayout.pas',
   uDialogListDraw in 'Core\uDialogListDraw.pas',

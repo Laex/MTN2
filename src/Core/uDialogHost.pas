@@ -9,7 +9,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils,
   System.Generics.Collections, uTerminalTypes, uThemeTypes, uThemeDrawing, uDialogTypes, uDialogJson, uDialogRenderer,
   uInputLine, uMaskGroups, uFunctionBar, uColorCoding, uDialogHistory, uColorPickerControl, uDatePickerControl,
-  uDialogHostKeys, uDialogHostClicks;
+  uDialogHostKeys, uDialogHostClicks, uDialogTabs;
 
 type
   TDialogHost = class
@@ -66,6 +66,11 @@ type
     FOpenGen: Cardinal;
     FOnDeferredCommand: TNotifyEvent;
     function FirstFocusable: Integer;
+    /// <summary>Shows page ANew of the tab strip at AStrip. Focus moves to the
+    /// strip when its control is on the page that goes away.</summary>
+    procedure SelectTab(AStrip, ANew: Integer);
+    procedure DrawTabStrip(const AGrid: TTerminalGrid; const R: TRectI;
+      AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
     function NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
     /// <summary>Joins full-width separator rules to the dialog frame:
     /// ╟─╢ on a double frame, ├─┤ on a single one, +-+ on an ASCII one.</summary>
@@ -586,7 +591,8 @@ end;
 function TDialogHost.CanFocus(AIndex: Integer): Boolean;
 begin
   Result := (FDecl.Controls[AIndex].Kind in [dckInput, dckCheckbox, dckRadio,
-    dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker, dckDatePicker]) and
+    dckRadioGroup, dckButton, dckList, dckDropDown, dckColorPicker, dckDatePicker,
+    dckTab]) and not DialogControlHiddenByTab(FDecl.Controls, AIndex) and
     not ((FDecl.Controls[AIndex].Kind in [dckCheckbox, dckInput, dckDropDown]) and
       FDecl.Controls[AIndex].Disabled) and
     not ((FDecl.Controls[AIndex].Kind = dckList) and FDecl.Controls[AIndex].Plain);
@@ -596,10 +602,31 @@ function TDialogHost.FirstFocusable: Integer;
 var
   I: Integer;
 begin
+  // The strip is reached by Tab; a dialog opens on its first real control.
+  for I := 0 to High(FDecl.Controls) do
+    if CanFocus(I) and (FDecl.Controls[I].Kind <> dckTab) then
+      Exit(I);
   for I := 0 to High(FDecl.Controls) do
     if CanFocus(I) then
       Exit(I);
   Result := -1;
+end;
+
+procedure TDialogHost.SelectTab(AStrip, ANew: Integer);
+begin
+  if (AStrip < 0) or (AStrip > High(FDecl.Controls)) or
+     (FDecl.Controls[AStrip].Kind <> dckTab) or
+     (Length(FDecl.Controls[AStrip].Items) = 0) then
+    Exit;
+  DropPress;
+  FDecl.Controls[AStrip].SelectedIndex :=
+    EnsureRange(ANew, 0, High(FDecl.Controls[AStrip].Items));
+  if (FFocusIndex < 0) or (FFocusIndex > High(FDecl.Controls)) or
+     DialogControlHiddenByTab(FDecl.Controls, FFocusIndex) then
+    FFocusIndex := AStrip;
+  FScrollY := 0;
+  FScrollFollow := -1;
+  NotifyChanged;
 end;
 
 function TDialogHost.NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
@@ -647,6 +674,9 @@ begin
   for I := 0 to High(FDecl.Controls) do
     if SameText(FDecl.Controls[I].Id, AId) then
     begin
+      if DialogControlHiddenByTab(FDecl.Controls, I) then
+        FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex :=
+          FDecl.Controls[I].TabPage - 1;
       FFocusIndex := I;
       NotifyChanged;
       Exit;
@@ -2462,6 +2492,45 @@ begin
           DrawDropDownControl(AGrid, R, I, C);
       dckButton:
         DrawButtonControl(AGrid, R, I, C);
+      dckTab:
+        DrawTabStrip(AGrid, R, I, C, ALabelFg, ALabelBg);
+    end;
+  end;
+end;
+
+procedure TDialogHost.DrawTabStrip(const AGrid: TTerminalGrid; const R: TRectI;
+  AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
+var
+  Spans: TArray<TDialogTabSpan>;
+  I: Integer;
+  Cap: string;
+  Fg, Bg: TAlphaColor;
+  Colors: TInputLineColors;
+begin
+  Spans := DialogTabSpans(C);
+  for I := 0 to High(Spans) do
+  begin
+    if Spans[I].Left >= R.Width then
+      Break;
+    if I = C.SelectedIndex then
+    begin
+      if AIndex = FFocusIndex then
+        ResolveSelectedRowColors(Fg, Bg)
+      else
+      begin
+        Colors := InputLineDialogColors(False);
+        Fg := Colors.Fg;
+        Bg := Colors.Bg;
+      end;
+      Cap := '[ ' + C.Items[I] + ' ]';
+      PutGridText(AGrid, R.Left + Spans[I].Left, R.Top,
+        Copy(Cap, 1, R.Width - Spans[I].Left), Fg, Bg, [ccaBold]);
+    end
+    else
+    begin
+      Cap := '  ' + C.Items[I] + '  ';
+      PutGridText(AGrid, R.Left + Spans[I].Left, R.Top,
+        Copy(Cap, 1, R.Width - Spans[I].Left), ALabelFg, ALabelBg);
     end;
   end;
 end;
@@ -2782,6 +2851,7 @@ begin
   Result.ControlCount := KeyControlCount;
   Result.GetControl := GetControl;
   Result.SetControl := KeySetControl;
+  Result.SelectTab := SelectTab;
 end;
 
 function TDialogHost.HandleClickCore(ALocalCol, ALocalRow: Integer;
@@ -2876,6 +2946,7 @@ begin
   Result.ControlCount := KeyControlCount;
   Result.GetControl := GetControl;
   Result.SetControl := KeySetControl;
+  Result.SelectTab := SelectTab;
 end;
 
 function TDialogHost.TryYesNoButton(AYes: Boolean): Boolean;
@@ -2911,6 +2982,12 @@ begin
        ((C.Kind = dckCheckbox) and C.Disabled) or
        (HotKeyCharOf(C.Text) <> ACh) then
       Continue;
+    if DialogControlHiddenByTab(FDecl.Controls, I) then
+    begin
+      FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex :=
+        C.TabPage - 1;
+      FScrollFollow := -1;
+    end;
     FFocusIndex := I;
     case C.Kind of
       dckButton:

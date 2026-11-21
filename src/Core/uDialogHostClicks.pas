@@ -13,6 +13,7 @@ uses
 type
   TDialogClickBoolFn = function: Boolean of object;
   TDialogClickProc = procedure of object;
+  TDialogClickTabProc = procedure(AStrip, ANew: Integer) of object;
   TDialogClickIntFn = function: Integer of object;
   TDialogClickSetIntProc = procedure(AValue: Integer) of object;
   TDialogClickIndexFn = function(AIndex: Integer): Boolean of object;
@@ -68,6 +69,7 @@ type
     ControlCount: TDialogClickIntFn;
     GetControl: TDialogClickControlFn;
     SetControl: TDialogClickSetControlProc;
+    SelectTab: TDialogClickTabProc;
   end;
 
 function DialogHandleClickCore(const Ops: TDialogClickOps; ALocalCol, ALocalRow: Integer;
@@ -86,7 +88,7 @@ function OpenDropDownClickHitsItemCol(ALocalCol, APopupLeft, APopupRight: Intege
 implementation
 
 uses
-  System.Math, uThemeDrawing, uInputLine, uColorPickerControl, uDatePickerControl;
+  System.Math, uDialogTabs, uThemeDrawing, uInputLine, uColorPickerControl, uDatePickerControl;
 
 function DropHoverAfterScrollBarClick(AHover, ALast, AViewH, ALocalRow,
   APopupTop, APopupBottom: Integer): Integer;
@@ -367,6 +369,19 @@ begin
   Ops.NotifyChanged();
 end;
 
+procedure DialogHandleTabClick(const Ops: TDialogClickOps; AIndex: Integer;
+  const R: TRectI; const C: TDialogControl; ALocalCol: Integer);
+var
+  Hit: Integer;
+begin
+  Ops.SetFocusIndex(AIndex);
+  Hit := DialogTabAtOffset(C, ALocalCol - R.Left);
+  if Hit >= 0 then
+    Ops.SelectTab(AIndex, Hit)
+  else
+    Ops.NotifyChanged();
+end;
+
 function DialogHandleClickCore(const Ops: TDialogClickOps; ALocalCol, ALocalRow: Integer;
   AShift: TShiftState): Boolean;
 var
@@ -414,6 +429,11 @@ begin
       dckDropDown:
         begin
           DialogHandleDropDownFieldClick(Ops, I, C);
+          Exit(True);
+        end;
+      dckTab:
+        begin
+          DialogHandleTabClick(Ops, I, R, C, ALocalCol);
           Exit(True);
         end;
       dckDatePicker:

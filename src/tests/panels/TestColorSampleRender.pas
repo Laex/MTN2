@@ -318,6 +318,8 @@ begin
   Host := TDialogHost.Create(nil);
   try
     Host.Open(Decl, NoopCommand);
+    // The bold row sits on another tab page than the text row; focusing its field shows it.
+    Host.FocusControlById('md_bold_bg');
     Host.Draw(Grid, W, H);
     R := Host.ControlBoundsAt(Smp);
     Assert.AreEqual(TAlphaColor($FFC6C6C6), Grid[R.Top][R.Left].FgColor, 'text color comes from the text row');

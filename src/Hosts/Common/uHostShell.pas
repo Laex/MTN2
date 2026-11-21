@@ -236,6 +236,8 @@ begin
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
+  FSession.ShowColumnHeaders := True;
+  FSession.ShowSortLetter := True;
   FSession.BriefColumnWidth := cBriefColumnWidthDefault;
   FSession.EdgeBorders := True;
   FSession.ShowPanelIcons := True;
@@ -418,6 +420,8 @@ begin
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
+  Result.ShowColumnHeaders := GShowColumnHeaders;
+  Result.ShowSortLetter := GShowSortLetter;
   Result.BriefColumnWidth := GBriefColumnWidth;
   Result.EdgeBorders := GEdgeBorders;
   Result.ShowKeyBar := GShowKeyBar;
@@ -458,6 +462,8 @@ begin
     FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  FSession.ShowColumnHeaders := ASettings.ShowColumnHeaders;
+  FSession.ShowSortLetter := ASettings.ShowSortLetter;
   FSession.BriefColumnWidth := ASettings.BriefColumnWidth;
   FSession.EdgeBorders := ASettings.EdgeBorders;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
@@ -482,6 +488,8 @@ begin
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
   GColumnSeparators := ASettings.ColumnSeparators;
+  GShowColumnHeaders := ASettings.ShowColumnHeaders;
+  GShowSortLetter := ASettings.ShowSortLetter;
   GBriefColumnWidth := ASettings.BriefColumnWidth;
   GEdgeBorders := ASettings.EdgeBorders;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
@@ -573,6 +581,8 @@ begin
   GSaverRandom := Sess.SaverRandom;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
+  GShowColumnHeaders := Sess.ShowColumnHeaders;
+  GShowSortLetter := Sess.ShowSortLetter;
   GBriefColumnWidth := ClampBriefColumnWidth(Sess.BriefColumnWidth);
   GEdgeBorders := Sess.EdgeBorders;
   GNdnFooter := Sess.NdnFooter;
@@ -640,6 +650,8 @@ begin
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
+  Sess.ShowColumnHeaders := GShowColumnHeaders;
+  Sess.ShowSortLetter := GShowSortLetter;
   Sess.BriefColumnWidth := GBriefColumnWidth;
   Sess.EdgeBorders := GEdgeBorders;
   Sess.NdnFooter := GNdnFooter;

@@ -6,6 +6,20 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.12 – 2026-11-22
+
+### Changed
+
+- The Interface dialog is split into the tabs Window, Panels and Behavior, so it fits an 80x24 terminal; the tabs switch with a click, Ctrl+PgUp/Ctrl+PgDn or Ctrl+Tab.
+- The Markdown colors dialog is split into the tabs Text, Emphasis, Blocks and Links and tables and fits an 80x24 terminal.
+- Dialogs wider than the screen (Mask groups, Multi-rename, Synchronize, File history, Plugins and others, also in translated captions) are squeezed to fit an 80x24 terminal instead of losing their right part: fields and lists get narrower first, then spare cells of captions; buttons stay whole.
+- Dialog descriptions (plugins and built-in windows) can have tabs: a `tabs` control and a `tab` number on the controls of each page.
+
+### Added
+
+- The profile list of the Background console dialog shows the key mode of each profile in a second column, as the New terminal dialog does.
+- Two options in the Interface dialog: "Show column headers" and "Show the sort mode letter". With the headers off the list starts one row higher; the sort letter then sits on the top border. [#97](https://github.com/Laex/MTN2/issues/97)
+
 ## Dev v0.5.10.11 – 2026-11-22
 
 ### Changed

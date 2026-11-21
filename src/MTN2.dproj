@@ -276,6 +276,7 @@
         <DCCReference Include="Core\uDialogResources.pas"/>
         <DCCReference Include="Core\uDialogLocaleLayout.pas"/>
         <DCCReference Include="Core\uDialogValues.pas"/>
+        <DCCReference Include="Core\uDialogTabs.pas"/>
         <DCCReference Include="Core\uDialogV2Layout.pas"/>
         <DCCReference Include="Core\uDialogLayout.pas"/>
         <DCCReference Include="Core\uDialogListDraw.pas"/>

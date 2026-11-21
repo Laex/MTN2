@@ -11,7 +11,7 @@ uses
 
 type
   TDialogControlKind = (dckLabel, dckInput, dckCheckbox, dckButton, dckStatus,
-    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample, dckColorPicker, dckDatePicker);
+    dckList, dckRadio, dckRadioGroup, dckDropDown, dckColorSample, dckColorPicker, dckDatePicker, dckTab);
 
   /// <summary>dckColorSample: which panel row visual state an UNSET Fg/Bg
   /// channel should preview as the theme's own resolved color for (matching
@@ -138,6 +138,10 @@ type
     /// <summary>Protocol 2.0: cell size. 0 = Host default for the control kind.</summary>
     BoxW: Integer;
     BoxH: Integer;
+    /// <summary>Protocol 2.0: the page of the dialog's tab strip (dckTab) this
+    /// control sits on, 1-based (JSON "tab": N, 0-based). 0 = shown on every
+    /// page. A control of another page has no box and no focus.</summary>
+    TabPage: Integer;
   end;
 
   TDialogControls = TArray<TDialogControl>;
@@ -247,6 +251,10 @@ function MakeDatePicker(const AId: string): TDialogControl;
 /// <summary>"normal"/"selected"/"current" -> TColorSamplePanelState; anything
 /// else (including '') -> cspsNone.</summary>
 function ColorSamplePanelStateFromStr(const AStr: string): TColorSamplePanelState;
+/// <summary>The tab strip: one caption per page in Items, SelectedIndex is the
+/// page shown. Controls choose a page with TabPage.</summary>
+function MakeTabs(const AId: string; const AItems: TArray<string>;
+  ASelectedIndex: Integer = 0): TDialogControl;
 function MakeList(const AId: string; const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogControl;
 /// <summary>Collapsed combo: selected item + popup list (DropDownList).</summary>
@@ -634,6 +642,13 @@ begin
   else
     Result.SelectedIndex := EnsureRange(ASelectedIndex, 0, High(Result.Items));
   ClearControlLayout(Result);
+end;
+
+function MakeTabs(const AId: string; const AItems: TArray<string>;
+  ASelectedIndex: Integer): TDialogControl;
+begin
+  Result := MakeDropDown(AId, AItems, ASelectedIndex);
+  Result.Kind := dckTab;
 end;
 
 end.
