@@ -21,7 +21,7 @@
 
 - **Темы.** Файл темы – JSON ([docs/THEMES.md](docs/THEMES.ru.md)); готовой темой можно поделиться в Discussions.
 - **Язык интерфейса.** Строки лежат в `bin/win64/resource/<язык>/strings.json` (шаблон со всеми ключами – `src/strings/en.json`);
-  свой язык добавляется папкой `resource\<язык>\` рядом с `MTN2.exe`. В `locale.json` папки указана версия набора ключей;
+  свой язык добавляется папкой `resource\<язык>\` рядом с `MTN2.exe` ([docs/LANGUAGE_PACKS.ru.md](docs/LANGUAGE_PACKS.ru.md)). В `locale.json` папки указана версия набора ключей;
   при изменении ключей поднимите `src/resource.version` и версии пакетов. Слова для поиска в палитре команд: английские – поле `aliases` пункта в `src/config/menu.json`, слова своего языка – необязательные ключи `menu.alias.<действие>` в `strings.json`.
 - **Плагины.** Нативные DLL и WebAssembly (C, C++, Rust, Go и другие); контракты описаны в
   [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.ru.md), образцы лежат в [samples](samples).

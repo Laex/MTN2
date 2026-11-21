@@ -96,6 +96,15 @@ Open **Settings → Theme...**. Built-in themes include Far Classic, Norton Comm
 Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, light ones, High Contrast and ASCII, and custom themes can be created in the theme editor or as a file. The format is documented in
 [THEMES.md](THEMES.md). Button shadow style can be changed in **Settings → Font / display...**.
 
+### How do I add my own language?
+
+Only English is built into the program. Any other language is a folder `resource\<code>\` next to `MTN2.exe`
+(`<code>` is the language code, for example `uk`) with `locale.json` (`{"version": 1, "name": "..."}`),
+`strings.json` (key to translated text; the template with every key is `src/strings/en.json`) and, optionally, `help\`.
+Nothing is recompiled, and the pack does not have to be in the repository or in a release: unpack it into `resource\`
+and choose the language in the settings. The file format, the version rules and the check with `--self-check` are in
+[LANGUAGE_PACKS.md](LANGUAGE_PACKS.md).
+
 ### How do I remap keys?
 
 Use the key editor or edit the `keymap.json` file in the settings folder. The default layout is close to Far Manager.

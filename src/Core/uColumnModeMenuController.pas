@@ -124,7 +124,7 @@ end;
 
 procedure TColumnModeMenuController.BuildItems;
 
-  // AKey: columnModeMenu.<AKey> in strings/<locale>.json; a translation
+  // AKey: columnModeMenu.<AKey> in resource/<locale>/strings.json; a translation
   // marks its hotkey with '&' (MenuResolveMnemonic).
   procedure Add(const AKey, ACaption: string; AHot: Char; const AShortcut: string;
     AMode: TPanelColumnMode);

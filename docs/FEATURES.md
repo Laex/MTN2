@@ -172,7 +172,7 @@ A short overview of the features; details are in the help (F1), the other docume
 ## Language and localization
 
 - **Interface languages** – English, Russian, German, Simplified Chinese: menus, dialogs, key and status lines, F1 help.
-- **Language packs** – files in `resource\<language>\`; a new language is added by copying a folder, plugins are translated with their own packs.
+- **Language packs** – files in `resource\<language>\`; a new language is added by copying a folder (a pack does not have to be in the repository or the release: unpack it into `resource\` next to `MTN2.exe`, see [LANGUAGE_PACKS.md](LANGUAGE_PACKS.md)), plugins are translated with their own packs.
 - **Language on first start** – taken from the Windows language when a translation exists.
 
 ## Settings and configuration

@@ -132,7 +132,7 @@ end;
 
 procedure TSortMenuController.BuildItems;
 
-  // AKey: sortMenu.<AKey> in strings/<locale>.json; a translation marks its
+  // AKey: sortMenu.<AKey> in resource/<locale>/strings.json; a translation marks its
   // hotkey with '&' (MenuResolveMnemonic).
   procedure Add(const AKey, ACaption: string; AHot: Char; const AShortcut: string;
     ACol: TPanelSortColumn);

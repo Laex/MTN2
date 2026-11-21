@@ -239,6 +239,7 @@ Run: `bin\win64\MTN2.exe [--no-skia] [--fps] [path]`. Details in [docs/BUILDING.
 - [BUILDING.md](docs/BUILDING.md) – build guide, tests, CI/CD.
 - [LINUX.md](docs/LINUX.md) – Linux terminal edition: installation, options, dependencies.
 - [THEMES.md](docs/THEMES.md) – theme file format and color roles.
+- [LANGUAGE_PACKS.md](docs/LANGUAGE_PACKS.md) – adding an interface language.
 - [HELP.md](docs/HELP.md) – complete user guide in a single file.
 - Plugin contracts: [PLUGIN_BOUNDARIES](docs/PLUGIN_BOUNDARIES.md), [PANEL](docs/PANEL_PLUGIN.md),
   [DIALOG](docs/DIALOG_PLUGIN.md), [INPUT](docs/INPUT_PLUGIN.md), [OVERLAY](docs/OVERLAY_PLUGIN.md),
