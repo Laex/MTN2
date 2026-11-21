@@ -36,6 +36,8 @@ type
     FAltGrid: TAltScreenGrid;
     FAltActive: Boolean;
     FAppCursorKeys: Boolean;
+    FMouseTracking: Integer;
+    FMouseSgr: Boolean;
     /// <summary>Set right after a local backspace erase (NotePendingLocalBackspace),
     /// cleared once the matching real-echo suppression window opens or a
     /// newline arrives without one ever starting (stale-guard). See
@@ -196,6 +198,11 @@ type
     /// <summary>DECCKM (ESC[?1h): the program wants arrows and Home/End as
     /// ESC O x instead of ESC [ x.</summary>
     property AppCursorKeys: Boolean read FAppCursorKeys;
+    /// <summary>The mouse reporting mode the program asked for: 0 none, 1000
+    /// buttons, 1002 buttons and drags, 1003 all motion.</summary>
+    property MouseTracking: Integer read FMouseTracking;
+    /// <summary>The program asked for SGR mouse reports (mode 1006).</summary>
+    property MouseSgr: Boolean read FMouseSgr;
   end;
 
 /// <summary>Finds the next (AForward) or previous match of ALowerNeedle (already
@@ -1245,6 +1252,13 @@ begin
       FAppCursorKeys := ASet;
     47, 1049:
       SetAltScreenLocked(ASet, ACols, ARows);
+    1000, 1002, 1003:
+      if ASet then
+        FMouseTracking := AMode
+      else if FMouseTracking = AMode then
+        FMouseTracking := 0;
+    1006:
+      FMouseSgr := ASet;
     25:
       if not FAltActive then
         NoteCursorVisibilityLocked(ASet);

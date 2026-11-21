@@ -476,7 +476,7 @@ begin
     vkReturn:
       begin
         NoteCommandSubmitted(FHistory.GetInputAfterPrompt);
-        SendRaw(ProfileReturnSeq(ProfileId));
+        SendRaw(EnterSeq);
         AKey := 0; AKeyChar := #0;
         Exit;
       end;

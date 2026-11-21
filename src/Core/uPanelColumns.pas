@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils, System.Math,
-  uDualPanelTypes;
+  uDualPanelTypes, uDisplaySettings;
 
 type
   /// <summary>One resolved pcmCustom column: header text, cell width, and
@@ -134,6 +134,13 @@ function FormatPanelRowName(const ARow: TPanelRow; ANameW: Integer;
   AStripExt: Boolean = False): string;
 
 /// <summary>FAR Brief multi-column: how many name columns fit in AListWidth.</summary>
+var
+  /// <summary>Width of one Brief column in characters; the panel holds as many
+  /// columns of this width as fit.</summary>
+  GBriefColumnWidth: Integer = cBriefColumnWidthDefault;
+
+/// <summary>Brings a stored or typed width into the accepted range.</summary>
+function ClampBriefColumnWidth(AValue: Integer): Integer;
 function BriefColumnCount(AListWidth: Integer): Integer;
 function BriefCellWidth(AListWidth, AColCount: Integer): Integer;
 function BriefPageSize(AViewH, AColCount: Integer): Integer;
@@ -168,7 +175,6 @@ const
   cExtW  = 5;
   cTypeW = 8;
   cIconW = 2;
-  cBriefMinColW = 28;
 
 // R/H/S/A/L flags on Windows, the permission string (rwxr-xr-x) elsewhere.
 function AttrColumnWidth: Integer;
@@ -1070,11 +1076,14 @@ begin
     Result := Result + StringOfChar(' ', AMetaW - Length(Result));
 end;
 
+function ClampBriefColumnWidth(AValue: Integer): Integer;
+begin
+  Result := EnsureRange(AValue, cBriefColumnWidthMin, cBriefColumnWidthMax);
+end;
+
 function BriefColumnCount(AListWidth: Integer): Integer;
 begin
-  if AListWidth < cBriefMinColW then
-    Exit(1);
-  Result := Max(AListWidth div cBriefMinColW, 1);
+  Result := Max(AListWidth div GBriefColumnWidth, 1);
 end;
 
 function BriefCellWidth(AListWidth, AColCount: Integer): Integer;

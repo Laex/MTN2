@@ -21,7 +21,7 @@ uses
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInstall, uPluginInfo, uPluginServices, uPluginInputChord, uPluginSurface,
   uFolderHistory, uFolderFrecent, uANSIParser,
   uLinkUtils, uFileAttrTypes, uWinFileAttr, uFileCompare, uRecycleBinVfs, uWorkspaceVfs,
-  uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uOverlayRenderer,
+  uDualPanelSync, uDualPanelTabs, uShellProfiles, uTerminalWorkspace, uBaseConsoleWindow, uOverlayRenderer, uTermInput,
   uColorCodingEditHelpers, uDualPanelColorCoding, uDualPanelKeymapDialog, uDualPanelFolderHotlist,
   uDualPanelWorkspaceLibrary, uWorkspaceLibrary,
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
@@ -517,6 +517,7 @@ type
     procedure HostMenuSortPriorityToggle;
     procedure HostMenuColumnModeSelect(AMode: TPanelColumnMode);
     procedure HostMenuColumnSetSelect(const AName: string);
+    procedure ApplyColumnSet(ASide: TPanelSide; const ASet: TColumnSet);
     function OverlayDialogVisible: Boolean;
     function OverlaySearchActive: Boolean;
     function OverlayJobActive: Boolean;
@@ -1618,6 +1619,13 @@ type
     property Dialog: TDialogHost read FDialog;
     function ActiveDocument: TEditorWindow;
     function ActiveTerminal: TTerminalWorkspaceWindow;
+    /// <summary>Sends a mouse event at a screen cell to the program that asked
+    /// for mouse reports: in the active console window AActive, or in the
+    /// terminal tab shown here when AActive is this window. Nothing laid over
+    /// the text (menu, dialog, help, diff, screen saver, tab drag) may take
+    /// the mouse. False: the window handles the event.</summary>
+    function ProgramMouse(AActive: TTerminalWindow; ACol, ARow: Integer;
+      AAction: TTermMouseAction; AButton: TMouseButton; AShift: TShiftState): Boolean;
     procedure FocusCommandLine;
     procedure ClearCommandLine;
     /// <summary>Called by the blink timer to toggle cursor visibility and redraw.</summary>
@@ -3420,7 +3428,40 @@ var
 begin
   if not ColumnSetFind(AName, S) then
     Exit;
-  ApplyCustomColumns(ActiveWorkspace.State.ActiveSide, S.Config);
+  ApplyColumnSet(ActiveWorkspace.State.ActiveSide, S);
+end;
+
+procedure TDualPanelWindow.ApplyColumnSet(ASide: TPanelSide; const ASet: TColumnSet);
+var
+  Ws: TDualPanelWorkspaceTab;
+  Panel: TPanelState;
+  Scheme: string;
+  Ids, Known: TArray<string>;
+  Col: TPluginColumn;
+  Id: string;
+begin
+  Ws := ActiveWorkspace;
+  if Ws.Kind <> wkPanels then
+    Exit;
+  if ASide = psLeft then
+    Panel := Ws.State.LeftPanel
+  else
+    Panel := Ws.State.RightPanel;
+  // The plugin columns of the set apply to the folder scheme it was saved for.
+  Scheme := PluginColumnSchemeOf(ActiveTab(Panel).CurrentURI);
+  if ColumnSetPluginIds(ASet, Scheme, Ids) then
+  begin
+    Known := nil;
+    for Id in Ids do
+      if TryFindPluginColumn(Scheme, Id, Col) then
+      begin
+        SetLength(Known, Length(Known) + 1);
+        Known[High(Known)] := Id;
+      end;
+    SetSchemeColumnSelection(Scheme, Known);
+  end;
+  ApplyCustomColumns(ASide, ASet.Config);
+  NotifyChanged;
 end;
 
 function TDualPanelWindow.OverlayDialogVisible: Boolean;
@@ -3703,6 +3744,7 @@ begin
   FMenus.SetOnSortPriorityToggle(HostMenuSortPriorityToggle);
   FMenus.SetOnColumnModeSelect(HostMenuColumnModeSelect);
   FMenus.SetOnColumnSetSelect(HostMenuColumnSetSelect);
+  FMenus.SetOnSettings(OpenColumnsConfigDialog);
   FInputOverlays := [
     TInputOverlayEntry.Make(OverlayStubVisible, HandleStubInput),
     TInputOverlayEntry.Make(OverlayDialogVisible, HandleModalDialogInput),
@@ -12851,6 +12893,44 @@ end;
 function TDualPanelWindow.ActiveTerminal: TTerminalWorkspaceWindow;
 begin
   Result := TerminalForWorkspace(FState.ActiveWorkspaceIndex);
+end;
+
+function TDualPanelWindow.ProgramMouse(AActive: TTerminalWindow; ACol, ARow: Integer;
+  AAction: TTermMouseAction; AButton: TMouseButton; AShift: TShiftState): Boolean;
+var
+  Win: TBaseConsoleWindow;
+  LocalCol, LocalRow: Integer;
+begin
+  Result := False;
+  if not Assigned(AActive) then
+    Exit;
+  if Visible and (HasOpenDialog or TopMenuOpen) then
+    Exit;
+  if AActive = Self then
+  begin
+    if not Visible or DiffViewVisible or HelpVisible or SaverActive or
+       TabDragBusy(FTabDragArmed, FTabDragActive) or
+       (ActiveWorkspace.Kind <> wkTerminal) then
+      Exit;
+    Win := ActiveTerminal;
+    LocalCol := ACol - Area.Left;
+    LocalRow := ARow - Area.Top - ContentTopRow;
+    if (Win = nil) or
+       ((ARow - Area.Top < ContentTopRow) and not (AAction in [tmaRelease, tmaMove])) then
+      Exit;
+  end
+  else if AActive is TBaseConsoleWindow then
+  begin
+    // A press or wheel over another window belongs to that one.
+    if not (AAction in [tmaRelease, tmaMove]) and not AActive.HitTest(ACol, ARow) then
+      Exit;
+    Win := TBaseConsoleWindow(AActive);
+    LocalCol := ACol - AActive.Area.Left;
+    LocalRow := ARow - AActive.Area.Top;
+  end
+  else
+    Exit;
+  Result := Win.HandleProgramMouse(AAction, AButton, AShift, LocalCol, LocalRow);
 end;
 
 procedure TDualPanelWindow.ClearAllTerminals;

@@ -16,10 +16,60 @@ uses
 function EncodeTerminalKey(AKey: Word; AShift: TShiftState; AKeyChar: Char;
   AAppCursor: Boolean; out ASeq: string): Boolean;
 
+/// <summary>A bare navigation key (arrows, Home/End, PgUp/PgDn, Insert,
+/// Delete, with or without Shift) stays with the window - scrolls, selects,
+/// edits the input line - rather than going to the console. That holds only
+/// at a shell prompt: while AProgramRunning (a full-screen or console
+/// program is up) the program gets them.</summary>
+function WindowKeepsNavKey(AKey: Word; AShift: TShiftState;
+  AProgramRunning: Boolean): Boolean;
+
+/// <summary>The report of a mouse event for a program that asked for mouse
+/// input. ABase: 0 left, 1 middle, 2 right, 3 no button, 64..67 wheel up,
+/// down, left, right. ACol and ARow are one-based. ASgr selects ESC[&lt;b;x;yM
+/// (m on release); otherwise the legacy ESC[M form, which cannot address a
+/// cell beyond 223 (False is returned then).</summary>
+function EncodeMouseReport(ABase: Integer; AShift: TShiftState; AMotion,
+  ARelease, ASgr: Boolean; ACol, ARow: Integer; out AReport: string): Boolean;
+
 implementation
 
 uses
   System.SysUtils;
+
+function EncodeMouseReport(ABase: Integer; AShift: TShiftState; AMotion,
+  ARelease, ASgr: Boolean; ACol, ARow: Integer; out AReport: string): Boolean;
+var
+  Code: Integer;
+  Final: Char;
+begin
+  AReport := '';
+  Code := ABase;
+  if ssShift in AShift then
+    Inc(Code, 4);
+  if ssAlt in AShift then
+    Inc(Code, 8);
+  if ssCtrl in AShift then
+    Inc(Code, 16);
+  if AMotion then
+    Inc(Code, 32);
+  if ASgr then
+  begin
+    if ARelease then
+      Final := 'm'
+    else
+      Final := 'M';
+    AReport := #27'[<' + IntToStr(Code) + ';' + IntToStr(ACol) + ';' +
+      IntToStr(ARow) + Final;
+    Exit(True);
+  end;
+  if (ACol > 223) or (ARow > 223) then
+    Exit(False);
+  if ARelease then
+    Code := (Code and not 3) or 3;
+  AReport := #27'[M' + Char(32 + Code) + Char(32 + ACol) + Char(32 + ARow);
+  Result := True;
+end;
 
 /// <summary>xterm modifier parameter: 1 + Shift(1) + Alt(2) + Ctrl(4).</summary>
 function ModParam(AShift: TShiftState): Integer;
@@ -72,6 +122,14 @@ begin
     vkF11: Result := CsiTilde(23, AMod);
     vkF12: Result := CsiTilde(24, AMod);
   end;
+end;
+
+function WindowKeepsNavKey(AKey: Word; AShift: TShiftState;
+  AProgramRunning: Boolean): Boolean;
+begin
+  Result := not AProgramRunning and ([ssCtrl, ssAlt] * AShift = []) and
+    (AKey in [vkUp, vkDown, vkLeft, vkRight, vkPrior, vkNext, vkHome, vkEnd,
+      vkInsert, vkDelete]);
 end;
 
 function EncodeTerminalKey(AKey: Word; AShift: TShiftState; AKeyChar: Char;

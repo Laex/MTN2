@@ -155,7 +155,11 @@ type
     Separator: Boolean;
   end;
 
+  /// <summary>What a row of the Column modes menu does.</summary>
+  TColumnModeMenuAction = (cmaMode, cmaSettings);
+
   TColumnModeMenuItem = record
+    Action: TColumnModeMenuAction;
     Caption: string;
     HotChar: Char;
     HotPos: Integer; // 1-based in Caption, 0 = none (MenuResolveMnemonic)

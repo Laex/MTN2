@@ -3,10 +3,12 @@ unit uColumnSets;
 // Named sets of the optional columns of the Custom column mode. The Column modes
 // menu lists them under Custom; the Custom columns dialog saves the current
 // choice under a name. Sets live in columnsets.json, for example:
-//   { "sets": { "Dates": { "size": true, "modified": true, "created": true } } }
-// When the file is missing it is created with the starter sets (Minimal, Dates,
-// Technical); from then on the file is the only source and every set in it can
-// be edited, renamed or deleted.
+//   { "sets": { "Dates": { "size": true, "modified": true, "created": true,
+//     "plugins": { "file": ["camera", "year"] } } } }
+// "plugins" lists, per folder scheme, the plugin columns the set shows; a set
+// without it leaves the plugin columns as they are.
+// The file is the only source (no sets exist while it is missing) and every set
+// in it can be edited, renamed or deleted.
 
 interface
 
@@ -14,12 +16,30 @@ uses
   uDualPanelTypes;
 
 type
+  /// <summary>The plugin columns (ids) a set shows in the folders of one scheme.</summary>
+  TSetPluginColumns = record
+    Scheme: string;
+    Ids: TArray<string>;
+  end;
+
   TColumnSet = record
     Name: string;
     Config: TCustomColumnsConfig;
+    /// <summary>Empty when the set says nothing about plugin columns.</summary>
+    Plugins: TArray<TSetPluginColumns>;
   end;
 
-/// <summary>All sets of the file (created with the starter sets when missing), in alphabetical order.</summary>
+/// <summary>The plugin columns the set shows for AScheme; False when the set
+/// says nothing about that scheme.</summary>
+function ColumnSetPluginIds(const ASet: TColumnSet; const AScheme: string;
+  out AIds: TArray<string>): Boolean;
+
+/// <summary>The columns a preset mode (Size, Date, Full, Created, Types) shows;
+/// False for Brief and Custom.</summary>
+function PresetColumnsConfig(AMode: TPanelColumnMode;
+  out AConfig: TCustomColumnsConfig): Boolean;
+
+/// <summary>All sets of the file, in alphabetical order.</summary>
 function ColumnSets: TArray<TColumnSet>;
 
 /// <summary>The set of this name (matched without regard to case).</summary>
@@ -29,8 +49,10 @@ function ColumnSetFind(const AName: string; out ASet: TColumnSet): Boolean;
 function SameColumnsConfig(const A, B: TCustomColumnsConfig): Boolean;
 
 /// <summary>Saves the config under AName in the file, replacing a set of that name.
-/// False for a blank name or when the file cannot be written.</summary>
-function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
+/// APlugins replaces the plugin columns of its schemes; the other schemes of an
+/// existing set keep theirs. False for a blank name or when the file cannot be written.</summary>
+function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig;
+  const APlugins: TArray<TSetPluginColumns> = nil): Boolean;
 
 /// <summary>True when the file holds a set of this name.</summary>
 function ColumnSetIsStored(const AName: string): Boolean;
@@ -82,13 +104,15 @@ begin
 end;
 
 procedure PutSet(AList: TList<TColumnSet>; const AName: string;
-  const AConfig: TCustomColumnsConfig);
+  const AConfig: TCustomColumnsConfig;
+  const APlugins: TArray<TSetPluginColumns> = nil);
 var
   I: Integer;
   S: TColumnSet;
 begin
   S.Name := AName;
   S.Config := AConfig;
+  S.Plugins := APlugins;
   for I := 0 to AList.Count - 1 do
     if SameText(AList[I].Name, AName) then
     begin
@@ -125,6 +149,76 @@ begin
   Result.AddPair('attr', TJSONBool.Create(AConfig.ShowAttr));
 end;
 
+function PluginsFromJson(AObj: TJSONObject): TArray<TSetPluginColumns>;
+var
+  Node: TJSONValue;
+  Pair: TJSONPair;
+  Arr: TJSONArray;
+  I, N: Integer;
+begin
+  SetLength(Result, 0);
+  Node := AObj.GetValue('plugins');
+  if not (Node is TJSONObject) then
+    Exit;
+  for Pair in TJSONObject(Node) do
+    if Pair.JsonValue is TJSONArray then
+    begin
+      Arr := TJSONArray(Pair.JsonValue);
+      N := Length(Result);
+      SetLength(Result, N + 1);
+      Result[N].Scheme := LowerCase(Pair.JsonString.Value);
+      SetLength(Result[N].Ids, 0);
+      for I := 0 to Arr.Count - 1 do
+        if Arr.Items[I] is TJSONString then
+        begin
+          SetLength(Result[N].Ids, Length(Result[N].Ids) + 1);
+          Result[N].Ids[High(Result[N].Ids)] := Arr.Items[I].Value;
+        end;
+    end;
+end;
+
+function IdsToJson(const AIds: TArray<string>): TJSONArray;
+var
+  S: string;
+begin
+  Result := TJSONArray.Create;
+  for S in AIds do
+    Result.Add(S);
+end;
+
+function ColumnSetPluginIds(const ASet: TColumnSet; const AScheme: string;
+  out AIds: TArray<string>): Boolean;
+var
+  P: TSetPluginColumns;
+begin
+  for P in ASet.Plugins do
+    if SameText(P.Scheme, AScheme) then
+    begin
+      AIds := P.Ids;
+      Exit(True);
+    end;
+  AIds := nil;
+  Result := False;
+end;
+
+function PresetColumnsConfig(AMode: TPanelColumnMode;
+  out AConfig: TCustomColumnsConfig): Boolean;
+begin
+  Result := True;
+  case AMode of
+    pcmSize: AConfig := MakeConfig(False, True, False, False, False, False, False);
+    pcmDate: AConfig := MakeConfig(False, True, True, False, False, False, False);
+    pcmFull: AConfig := MakeConfig(False, True, True, False, False, False, True);
+    pcmCreated: AConfig := MakeConfig(False, True, False, True, False, False, True);
+    pcmTypes: AConfig := MakeConfig(True, True, False, False, False, True, True);
+  else
+    begin
+      AConfig := MakeConfig(False, False, False, False, False, False, False);
+      Result := False;
+    end;
+  end;
+end;
+
 procedure LoadFileSets(AList: TList<TColumnSet>);
 var
   Root: TJSONValue;
@@ -147,62 +241,17 @@ begin
     for Pair in Sets do
       if (Trim(Pair.JsonString.Value) <> '') and (Pair.JsonValue is TJSONObject) then
         PutSet(AList, Trim(Pair.JsonString.Value),
-          ConfigFromJson(TJSONObject(Pair.JsonValue)));
-  finally
-    Root.Free;
-  end;
-end;
-
-procedure AddStarterSets(AList: TList<TColumnSet>);
-begin
-  PutSet(AList, 'Minimal', MakeConfig(False, True, False, False, False, False, False));
-  PutSet(AList, 'Dates', MakeConfig(False, True, True, True, True, False, False));
-  PutSet(AList, 'Technical', MakeConfig(True, True, True, False, False, True, True));
-end;
-
-// Creates the file with the starter sets when it does not exist. AStarters
-// receives them so the caller can fall back to them when the file cannot be
-// written.
-function EnsureFile(AStarters: TList<TColumnSet>): Boolean;
-var
-  Root, Sets: TJSONObject;
-  S: TColumnSet;
-begin
-  if TFile.Exists(FilePath) then
-    Exit(True);
-  AddStarterSets(AStarters);
-  Root := TJSONObject.Create;
-  try
-    Sets := TJSONObject.Create;
-    Root.AddPair('sets', Sets);
-    for S in AStarters do
-      Sets.AddPair(S.Name, ConfigToJson(S.Config));
-    try
-      ForceDirectories(ExtractFilePath(FilePath));
-      TFile.WriteAllText(FilePath, Root.Format(2), TEncoding.UTF8);
-      Result := True;
-    except
-      Result := False;
-    end;
+          ConfigFromJson(TJSONObject(Pair.JsonValue)),
+          PluginsFromJson(TJSONObject(Pair.JsonValue)));
   finally
     Root.Free;
   end;
 end;
 
 function LoadAll: TList<TColumnSet>;
-var
-  Starters: TList<TColumnSet>;
 begin
   Result := TList<TColumnSet>.Create;
-  Starters := TList<TColumnSet>.Create;
-  try
-    if EnsureFile(Starters) then
-      LoadFileSets(Result)
-    else
-      Result.AddRange(Starters);
-  finally
-    Starters.Free;
-  end;
+  LoadFileSets(Result);
 end;
 
 function ColumnSets: TArray<TColumnSet>;
@@ -248,15 +297,8 @@ end;
 function LoadRoot(out ASets: TJSONObject): TJSONObject;
 var
   Parsed: TJSONValue;
-  Starters: TList<TColumnSet>;
 begin
   Result := nil;
-  Starters := TList<TColumnSet>.Create;
-  try
-    EnsureFile(Starters);
-  finally
-    Starters.Free;
-  end;
   if TFile.Exists(FilePath) then
   begin
     try
@@ -300,10 +342,25 @@ begin
       ASets.RemovePair(ASets.Pairs[I].JsonString.Value).Free;
 end;
 
-function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig): Boolean;
+function SchemeListed(const APlugins: TArray<TSetPluginColumns>;
+  const AScheme: string): Boolean;
 var
-  Root, Sets: TJSONObject;
+  P: TSetPluginColumns;
+begin
+  for P in APlugins do
+    if SameText(P.Scheme, AScheme) then
+      Exit(True);
+  Result := False;
+end;
+
+function ColumnSetSave(const AName: string; const AConfig: TCustomColumnsConfig;
+  const APlugins: TArray<TSetPluginColumns>): Boolean;
+var
+  Root, Sets, Obj, Plugins: TJSONObject;
   Name: string;
+  Kept: TArray<TSetPluginColumns>;
+  P: TSetPluginColumns;
+  I: Integer;
 begin
   Name := Trim(AName);
   if Name = '' then
@@ -311,8 +368,24 @@ begin
   Root := LoadRoot(Sets);
   try
     // A set whose name differs only in case is replaced, not duplicated.
+    Kept := nil;
+    for I := 0 to Sets.Count - 1 do
+      if SameText(Sets.Pairs[I].JsonString.Value, Name) and
+         (Sets.Pairs[I].JsonValue is TJSONObject) then
+        Kept := PluginsFromJson(TJSONObject(Sets.Pairs[I].JsonValue));
     RemoveSetPairs(Sets, Name);
-    Sets.AddPair(Name, ConfigToJson(AConfig));
+    Obj := ConfigToJson(AConfig);
+    Plugins := TJSONObject.Create;
+    for P in Kept do
+      if not SchemeListed(APlugins, P.Scheme) then
+        Plugins.AddPair(P.Scheme, IdsToJson(P.Ids));
+    for P in APlugins do
+      Plugins.AddPair(P.Scheme, IdsToJson(P.Ids));
+    if Plugins.Count > 0 then
+      Obj.AddPair('plugins', Plugins)
+    else
+      Plugins.Free;
+    Sets.AddPair(Name, Obj);
     Result := StoreRoot(Root);
   finally
     Root.Free;

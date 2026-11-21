@@ -131,6 +131,7 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Custom columns",
+      "lbl_brief_width": "Brief view, width (10-50):",
       "col_ext": "&Extension",
       "col_size": "&Size",
       "col_modified": "&Modified date",
@@ -1897,6 +1898,7 @@
     "mouse.selectTip": "Text does not reach the clipboard? Hold Shift to select with the terminal, or Ctrl+Shift+M turns the mouse off",
     "terminalEnv.none": "(none)",
     "profileKeys.auto": "auto",
+    "profileKeys.running": "while running",
     "profileKeys.program": "terminal",
     "profileKeys.host": "host",
     "shellProfiles.copyTitle": "%s (copy %s)",
@@ -2288,6 +2290,7 @@
     "created": "Created",
     "types": "Types",
     "custom": "Custom",
-    "set": "Custom: %s"
+    "wide": "Wide: %s",
+    "settings": "Settings..."
   }
 }

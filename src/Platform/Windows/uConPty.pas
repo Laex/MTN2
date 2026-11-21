@@ -122,6 +122,9 @@ type
     /// <summary>The shell process has a child process: a command it started
     /// is still running.</summary>
     function HasChildProcess: Boolean;
+    /// <summary>Like HasChildProcess, but a GUI program the shell launched
+    /// and left running does not count: only a console program does.</summary>
+    function HasConsoleChildProcess: Boolean;
     /// <summary>Current folder of the shell process, read from the system; '' when
     /// this platform does not tell (the prompt is parsed instead).</summary>
     function ShellCwd: string;
@@ -722,18 +725,61 @@ begin
   Result := '';
 end;
 
-function TConPtySession.HasChildProcess: Boolean;
+const
+  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
+  cSubsystemGui = 2;
+
+function QueryFullProcessImageNameW(AProcess: THandle; AFlags: DWORD;
+  AName: PWideChar; var ASize: DWORD): BOOL; stdcall;
+  external kernel32 name 'QueryFullProcessImageNameW';
+
+/// <summary>The PE optional header's Subsystem field of the executable
+/// behind APid is GUI. False when the image cannot be opened or read, so an
+/// unknown program is treated as a console one.</summary>
+function IsGuiProcess(APid: DWORD): Boolean;
 var
-  Pid: DWORD;
+  H: THandle;
+  Buf: array[0..MAX_PATH * 2] of WideChar;
+  Size: DWORD;
+  Stream: TFileStream;
+  PeOffset: Integer;
+  Subsystem: Word;
+begin
+  Result := False;
+  H := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, APid);
+  if H = 0 then
+    Exit;
+  try
+    Size := Length(Buf);
+    if not QueryFullProcessImageNameW(H, 0, @Buf[0], Size) then
+      Exit;
+  finally
+    CloseHandle(H);
+  end;
+  try
+    Stream := TFileStream.Create(string(PWideChar(@Buf[0])),
+      fmOpenRead or fmShareDenyNone);
+    try
+      Stream.Position := $3C;
+      Stream.ReadBuffer(PeOffset, SizeOf(PeOffset));
+      // Signature (4) + file header (20) + 68 bytes into the optional header.
+      Stream.Position := Int64(PeOffset) + 24 + 68;
+      Stream.ReadBuffer(Subsystem, SizeOf(Subsystem));
+      Result := Subsystem = cSubsystemGui;
+    finally
+      Stream.Free;
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+function ShellHasChild(APid: DWORD; AConsoleOnly: Boolean): Boolean;
+var
   Snap: THandle;
   Entry: TProcessEntry32;
 begin
   Result := False;
-  if (FProcess = 0) or not IsRunning then
-    Exit;
-  Pid := GetProcessId(FProcess);
-  if Pid = 0 then
-    Exit;
   Snap := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if Snap = INVALID_HANDLE_VALUE then
     Exit;
@@ -742,13 +788,36 @@ begin
     if Process32First(Snap, Entry) then
       repeat
         // conhost.exe is the pseudoconsole's own host, not a command.
-        if (Entry.th32ParentProcessID = Pid) and
-           not SameText(ExtractFileName(Entry.szExeFile), 'conhost.exe') then
+        if (Entry.th32ParentProcessID = APid) and
+           not SameText(ExtractFileName(Entry.szExeFile), 'conhost.exe') and
+           not (AConsoleOnly and IsGuiProcess(Entry.th32ProcessID)) then
           Exit(True);
       until not Process32Next(Snap, Entry);
   finally
     CloseHandle(Snap);
   end;
+end;
+
+function TConPtySession.HasChildProcess: Boolean;
+var
+  Pid: DWORD;
+begin
+  Result := False;
+  if (FProcess = 0) or not IsRunning then
+    Exit;
+  Pid := GetProcessId(FProcess);
+  Result := (Pid <> 0) and ShellHasChild(Pid, False);
+end;
+
+function TConPtySession.HasConsoleChildProcess: Boolean;
+var
+  Pid: DWORD;
+begin
+  Result := False;
+  if (FProcess = 0) or not IsRunning then
+    Exit;
+  Pid := GetProcessId(FProcess);
+  Result := (Pid <> 0) and ShellHasChild(Pid, True);
 end;
 
 function TConPtySession.IsRunning: Boolean;

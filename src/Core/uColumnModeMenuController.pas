@@ -12,6 +12,8 @@ uses
 type
   TColumnModeSelectEvent = reference to procedure(AMode: TPanelColumnMode);
   TColumnSetSelectEvent = reference to procedure(const AName: string);
+  /// <summary>The Settings row at the bottom of the menu was chosen.</summary>
+  TColumnSettingsEvent = reference to procedure;
 
   TColumnModeMenuController = class
   private
@@ -19,6 +21,9 @@ type
     FOnInvalidate: TProc;
     FOnColumnModeSelect: TColumnModeSelectEvent;
     FOnColumnSetSelect: TColumnSetSelectEvent;
+    FOnSettings: TColumnSettingsEvent;
+    /// <summary>Index of the Settings row, drawn below a separator line; -1 when absent.</summary>
+    FSettingsRow: Integer;
     FIncludeSets: Boolean;
     FGetActivePanelBounds: TMenuPanelBoundsEvent;
     FGetActiveSide: TActiveSideEvent;
@@ -41,6 +46,7 @@ type
     /// <summary>Lists the saved column sets after the preset modes; choosing one
     /// calls AHandler with its name.</summary>
     procedure SetOnColumnSetSelect(const AHandler: TColumnSetSelectEvent);
+    procedure SetOnSettings(const AHandler: TColumnSettingsEvent);
     /// <summary>ACustom is the column set of the panel; it marks the set the
     /// panel shows when ACurrent is pcmCustom.</summary>
     procedure Open(ACurrent: TPanelColumnMode; const ACustom: TCustomColumnsConfig);
@@ -96,9 +102,20 @@ begin
   FIncludeSets := Assigned(AHandler);
 end;
 
+procedure TColumnModeMenuController.SetOnSettings(
+  const AHandler: TColumnSettingsEvent);
+begin
+  FOnSettings := AHandler;
+end;
+
 procedure TColumnModeMenuController.DoSelect(AIndex: Integer);
 begin
-  if FItems[AIndex].SetName <> '' then
+  if FItems[AIndex].Action = cmaSettings then
+  begin
+    if Assigned(FOnSettings) then
+      FOnSettings;
+  end
+  else if FItems[AIndex].SetName <> '' then
   begin
     if Assigned(FOnColumnSetSelect) then
       FOnColumnSetSelect(FItems[AIndex].SetName);
@@ -113,7 +130,7 @@ var
   S: TColumnSet;
 begin
   Item := FItems[AIndex];
-  if Item.Mode <> FCurrent then
+  if (Item.Action <> cmaMode) or (Item.Mode <> FCurrent) then
     Exit(False);
   if Item.Mode <> pcmCustom then
     Exit(True);
@@ -127,7 +144,7 @@ procedure TColumnModeMenuController.BuildItems;
   // AKey: columnModeMenu.<AKey> in resource/<locale>/strings.json; a translation
   // marks its hotkey with '&' (MenuResolveMnemonic).
   procedure Add(const AKey, ACaption: string; AHot: Char; const AShortcut: string;
-    AMode: TPanelColumnMode);
+    AMode: TPanelColumnMode; AWide: Boolean = True);
   var
     N: Integer;
     Cap: string;
@@ -135,7 +152,10 @@ procedure TColumnModeMenuController.BuildItems;
   begin
     N := Length(FItems);
     SetLength(FItems, N + 1);
+    FItems[N] := Default(TColumnModeMenuItem);
     Cap := T('columnModeMenu.' + AKey, ACaption);
+    if AWide then
+      Cap := T('columnModeMenu.wide', 'Wide: %s', [Cap]);
     Hot := AHot;
     MenuResolveMnemonic(Cap, Hot, FItems[N].HotPos);
     FItems[N].Caption := Cap;
@@ -149,7 +169,8 @@ var
   N: Integer;
 begin
   SetLength(FItems, 0);
-  Add('brief', 'Brief', 'B', 'Ctrl+Shift+F1', pcmBrief);
+  FSettingsRow := -1;
+  Add('brief', 'Brief', 'B', 'Ctrl+Shift+F1', pcmBrief, False);
   Add('size', 'Size', 'S', 'Ctrl+Shift+F2', pcmSize);
   Add('date', 'Date', 'D', 'Ctrl+Shift+F3', pcmDate);
   Add('full', 'Full', 'F', 'Ctrl+Shift+F4', pcmFull);
@@ -161,10 +182,17 @@ begin
       N := Length(FItems);
       SetLength(FItems, N + 1);
       FItems[N] := Default(TColumnModeMenuItem);
-      FItems[N].Caption := T('columnModeMenu.set', 'Custom: %s', [S.Name]);
+      FItems[N].Caption := T('columnModeMenu.wide', 'Wide: %s', [S.Name]);
       FItems[N].Mode := pcmCustom;
       FItems[N].SetName := S.Name;
     end;
+  // The Settings row sits below a line (FSettingsRow) that is not a row itself.
+  N := Length(FItems);
+  SetLength(FItems, N + 1);
+  FItems[N] := Default(TColumnModeMenuItem);
+  FItems[N].Action := cmaSettings;
+  FItems[N].Caption := T('columnModeMenu.settings', 'Settings...');
+  FSettingsRow := N;
 end;
 
 function TColumnModeMenuController.IndexOfCurrent: Integer;
@@ -218,7 +246,7 @@ begin
   W := MaxW + 2;
   if W > PanelBounds.Width - 1 then
     W := Max(PanelBounds.Width - 1, 24);
-  H := Length(FItems) + 2;
+  H := Length(FItems) + 2 + Ord(FSettingsRow >= 0);
   if H > PanelBounds.Height - 1 then
     H := Max(PanelBounds.Height - 1, 3);
   FBounds := TRectI.Make(
@@ -247,9 +275,14 @@ begin
   InnerW := R.Width - 2;
   for I := 0 to High(FItems) do
   begin
-    Y := R.Top + 1 + I;
+    Y := R.Top + 1 + I + Ord((FSettingsRow >= 0) and (I >= FSettingsRow));
     if Y >= R.Bottom then
       Break;
+    if I = FSettingsRow then
+    begin
+      ResolveOverlayTextColors(FTheme, False, False, False, cFileFg, cPanelBg, Fg, Bg);
+      PutGridText(AGrid, R.Left + 1, Y - 1, StringOfChar(#$2500, InnerW), Fg, Bg);
+    end;
     if IsCurrentItem(I) then
       Mark := #$25C6 // diamond
     else
@@ -333,15 +366,15 @@ begin
   if TKeyChord.Make(AKey, AKeyChar, AShift).HasMods([ssCtrl, ssShift], [ssAlt]) and
      (AKey >= vkF1) and (AKey <= vkF6) then
   begin
-    I := AKey - vkF1;
-    if (I >= 0) and (I <= High(FItems)) then
-    begin
-      DoSelect(I);
-      Close;
-      AKey := 0;
-      AKeyChar := #0;
-      Exit;
-    end;
+    for I := 0 to High(FItems) do
+      if SameText(FItems[I].Shortcut, 'Ctrl+Shift+F' + IntToStr(AKey - vkF1 + 1)) then
+      begin
+        DoSelect(I);
+        Close;
+        AKey := 0;
+        AKeyChar := #0;
+        Exit;
+      end;
   end;
   Ch := AKeyChar;
   if Ch <> #0 then
@@ -380,6 +413,13 @@ begin
   if FBounds.Contains(ALocalCol, ALocalRow) then
   begin
     Idx := ALocalRow - (FBounds.Top + 1);
+    if (FSettingsRow >= 0) and (Idx = FSettingsRow) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if (FSettingsRow >= 0) and (Idx > FSettingsRow) then
+      Dec(Idx);
     if (Idx >= 0) and (Idx <= High(FItems)) then
     begin
       FIndex := Idx;

@@ -85,6 +85,9 @@ type
     function IsRunning: Boolean;
     /// <summary>The shell has a foreground command running.</summary>
     function HasChildProcess: Boolean;
+    /// <summary>Same as HasChildProcess: a foreground process group other
+    /// than the shell's is always a terminal program.</summary>
+    function HasConsoleChildProcess: Boolean;
     /// <summary>Current folder of the shell process (/proc/&lt;pid&gt;/cwd); '' when unknown.</summary>
     function ShellCwd: string;
     property LastError: string read FLastError;
@@ -740,6 +743,11 @@ begin
     Exit;
   Fg := c_tcgetpgrp(FMasterFd);
   Result := (Fg > 0) and (Fg <> FPid);
+end;
+
+function TConPtySession.HasConsoleChildProcess: Boolean;
+begin
+  Result := HasChildProcess;
 end;
 
 function TConPtySession.DecodePtyChunk(const ABuf: TBytes; ACount: Integer): string;

@@ -11,12 +11,13 @@ type
   public
     [Test] procedure TestTerminateClearsCallbacks;
     [Test] procedure TestHasChildProcessWhileCommandRuns;
+    [Test] procedure TestConsoleChildCountsButGuiChildDoesNot;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows,
+  System.SysUtils, System.Classes, System.IOUtils, Winapi.Windows,
   uConPty,
   uShellProfiles;
 
@@ -82,6 +83,61 @@ begin
   end;
 end;
 
+// A console command counts as a console child; a GUI program the shell
+// launched and left running is a child too, but not a console one.
+procedure TestConsoleChildCountsButGuiChildDoesNot;
+var
+  Pty: TConPtySession;
+  Script: string;
+  Seen: Boolean;
+  UntilTick: UInt64;
+begin
+  Script := TPath.Combine(TPath.GetTempPath, 'mtn_gui_child.vbs');
+  TFile.WriteAllText(Script, 'WScript.Sleep 6000');
+  Pty := TConPtySession.Create;
+  try
+    Pty.OnOutput := procedure(const AText: string)
+      begin
+      end;
+    Assert.IsTrue(Pty.StartShell(cShellProfileCmd, GetCurrentDir, 80, 25),
+      'StartShell failed: ' + Pty.LastError);
+    Pump(1500);
+    Assert.IsFalse(Pty.HasConsoleChildProcess, 'bare prompt has no console child');
+
+    Pty.WriteInput('ping -n 4 127.0.0.1' + #13#10);
+    Seen := False;
+    UntilTick := GetTickCount64 + 2000;
+    while not Seen and (GetTickCount64 < UntilTick) do
+    begin
+      Pump(100);
+      Seen := Pty.HasConsoleChildProcess;
+    end;
+    Assert.IsTrue(Seen, 'a running console command is a console child');
+
+    UntilTick := GetTickCount64 + 10000;
+    while Seen and (GetTickCount64 < UntilTick) do
+    begin
+      Pump(200);
+      Seen := Pty.HasConsoleChildProcess;
+    end;
+    Assert.IsFalse(Seen, 'the command ended');
+
+    Pty.WriteInput('start wscript.exe //B //Nologo "' + Script + '"' + #13#10);
+    Seen := False;
+    UntilTick := GetTickCount64 + 3000;
+    while not Seen and (GetTickCount64 < UntilTick) do
+    begin
+      Pump(100);
+      Seen := Pty.HasChildProcess;
+    end;
+    Assert.IsTrue(Seen, 'the launched GUI program is a child of the shell');
+    Assert.IsFalse(Pty.HasConsoleChildProcess, 'a GUI child is not a console child');
+  finally
+    Pty.Free;
+    TFile.Delete(Script);
+  end;
+end;
+
 procedure TestTerminateClearsCallbacks;
 var
   Pty: TConPtySession;
@@ -131,6 +187,11 @@ end;
 procedure TTestPtyLifecycle.TestHasChildProcessWhileCommandRuns;
 begin
   TestPtyLifecycle.TestHasChildProcessWhileCommandRuns;
+end;
+
+procedure TTestPtyLifecycle.TestConsoleChildCountsButGuiChildDoesNot;
+begin
+  TestPtyLifecycle.TestConsoleChildCountsButGuiChildDoesNot;
 end;
 
 initialization

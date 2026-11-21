@@ -63,6 +63,7 @@ type
     procedure HandleKey(const AEvent: TTermEvent);
     procedure HandleModifiers(const AEvent: TTermEvent);
     procedure HandleMouse(const AEvent: TTermEvent);
+    function TryProgramMouse(const AEvent: TTermEvent): Boolean;
     procedure HandleMouseDown(const AEvent: TTermEvent);
     function MouseDownShift(const AEvent: TTermEvent; out ADbl: Boolean): TShiftState;
     function TryOverlayMouseDown(const AEvent: TTermEvent; ADbl: Boolean;
@@ -176,7 +177,7 @@ implementation
 uses
   System.IOUtils, uThemeRegistry, uColorCoding, uKeymap, uStrings, uChromeRows,
   uShellProfiles, uDualPanelTypes, uConsoleSettings, uCliInfo,
-  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uPanelColumns, uPluginColumns, uListExport, uThemeDrawing,
+  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uTerminalWorkspace, uPanelColumns, uPluginColumns, uListExport, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
   uToast, uScreenSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
@@ -235,6 +236,7 @@ begin
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
+  FSession.BriefColumnWidth := cBriefColumnWidthDefault;
   FSession.EdgeBorders := True;
   FSession.ShowPanelIcons := True;
   FSession.ShadowStyle := ShadowStyleId(ssClassic);
@@ -416,6 +418,7 @@ begin
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
+  Result.BriefColumnWidth := GBriefColumnWidth;
   Result.EdgeBorders := GEdgeBorders;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -455,6 +458,7 @@ begin
     FDualPanel.KeyHintsEnabled := ASettings.ShowKeyHints;
   FSession.PassiveCursor := ASettings.PassiveCursor;
   FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  FSession.BriefColumnWidth := ASettings.BriefColumnWidth;
   FSession.EdgeBorders := ASettings.EdgeBorders;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
@@ -478,6 +482,7 @@ begin
   GCaretUnderline := ASettings.CaretUnderline;
   GShowPassiveCursor := ASettings.PassiveCursor;
   GColumnSeparators := ASettings.ColumnSeparators;
+  GBriefColumnWidth := ASettings.BriefColumnWidth;
   GEdgeBorders := ASettings.EdgeBorders;
   FSession.ShowMenuBar := ASettings.ShowMenuBar;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
@@ -568,6 +573,7 @@ begin
   GSaverRandom := Sess.SaverRandom;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
+  GBriefColumnWidth := ClampBriefColumnWidth(Sess.BriefColumnWidth);
   GEdgeBorders := Sess.EdgeBorders;
   GNdnFooter := Sess.NdnFooter;
   if GHostShowsIcons then
@@ -634,6 +640,7 @@ begin
   Sess.ShowStatusLine := GShowStatusLine;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
+  Sess.BriefColumnWidth := GBriefColumnWidth;
   Sess.EdgeBorders := GEdgeBorders;
   Sess.NdnFooter := GNdnFooter;
   if GHostShowsIcons then
@@ -1549,8 +1556,18 @@ begin
   end;
 end;
 
+{ A console or terminal tab whose program asked for mouse reports gets the
+  mouse events over its text area; the rest is the window's. }
+function THostShell.TryProgramMouse(const AEvent: TTermEvent): Boolean;
+begin
+  Result := FDualPanel.ProgramMouse(FMdi.Active, AEvent.Col, AEvent.Row,
+    AEvent.MouseAction, AEvent.Button, AEvent.Shift);
+end;
+
 procedure THostShell.HandleMouse(const AEvent: TTermEvent);
 begin
+  if TryProgramMouse(AEvent) then
+    Exit;
   case AEvent.MouseAction of
     tmaPress: HandleMouseDown(AEvent);
     tmaRelease: HandleMouseUp(AEvent);

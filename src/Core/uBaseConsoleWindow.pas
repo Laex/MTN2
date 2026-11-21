@@ -16,7 +16,7 @@ uses
   uPlatformInfo,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uTerminalWindow, uConsoleBuffer, uConPty,
   uVfsTypes, uShellProfiles, uShellProfileOptions, uTerminalKeys, uDialogTypes, uDialogBuilders, uDialogHost,
-  uInputLine, uKeyChord, uConsoleSettings;
+  uInputLine, uKeyChord, uConsoleSettings, uTermInput;
 
 type
   TConsoleCommandEvent = reference to procedure(const ACommand: string);
@@ -87,6 +87,16 @@ type
     FProfileId:     string;
     FCallbackGen:   Integer;
     FSelFromLiveTail: Boolean;
+    /// <summary>Last answer of ConsoleProgramRunning and the tick it was taken;
+    /// asking the system for the process list on every key would be slow.</summary>
+    FConsoleChild:  Boolean;
+    FConsoleChildTick: UInt64;
+    /// <summary>Report base code of the button whose press went to the program
+    /// (-1 = none) and the cell of the last report, so the release and the
+    /// drag follow the press and a motion report is sent once per cell.</summary>
+    FReportedButton: Integer;
+    FReportedCol:   Integer;
+    FReportedRow:   Integer;
     FCursorRow:     Integer;
     FCursorCol:     Integer;
     FCursorVisible: Boolean;
@@ -123,6 +133,13 @@ type
     /// window: a full-screen app is up or the shell has a running child
     /// process. At a bare shell prompt it is False.</summary>
     function EscGoesToProgram: Boolean;
+    /// <summary>The shell has a running child that is a console program (not a
+    /// GUI one it merely launched). Re-read at most every 250 ms.</summary>
+    function ConsoleProgramRunning: Boolean;
+    /// <summary>What Enter sends. A program that owns the keyboard (Far, vim)
+    /// reads the LF of a CR+LF pair as a second key (Shift+Enter in Far), so
+    /// while one is up a lone CR goes out instead of the profile's line end.</summary>
+    function EnterSeq: string;
     /// <summary>KeysToProgram, and AKey is not one of those exit keys.</summary>
     function ProgramOwnsKey(AKey: Word; AKeyChar: Char; AShift: TShiftState): Boolean;
     /// <summary>Arrow/Home/End sequence for AFinal: ESC O x when the program
@@ -307,6 +324,18 @@ type
     /// <summary>Mouse wheel scrolls local scrollback (never CSI to the shell).</summary>
     function HandleMouseWheel(WheelDelta: Integer): Boolean; virtual;
 
+    /// <summary>True while a program asked for mouse reports (and is still
+    /// running, so a mode left behind by a killed program does not swallow
+    /// the mouse).</summary>
+    function ProgramWantsMouse: Boolean;
+    /// <summary>Sends a mouse event to the program that asked for mouse
+    /// reports. ALocalCol/ALocalRow are window-local (the text area starts at
+    /// column 1, row 1). Shift keeps the mouse for the window (selection), as
+    /// in xterm, except for the release of a button already reported.
+    /// False: the window handles the event.</summary>
+    function HandleProgramMouse(AAction: TTermMouseAction; AButton: TMouseButton;
+      AShift: TShiftState; ALocalCol, ALocalRow: Integer): Boolean;
+
     procedure SetCursorVisible(AVisible: Boolean);
 
     /// <summary>The program gets the keys the host window also binds: the
@@ -360,6 +389,7 @@ begin
   if FProfileId = '' then
     FProfileId        := cShellProfileCmd;
   FWorkingDir         := '';
+  FReportedButton     := -1;
   FPendingClose       := False;
   FNavIndex           := -1;
   FSelAnchorRow       := -1;
@@ -429,6 +459,30 @@ begin
     (Assigned(FPty) and FPty.IsRunning and FPty.HasChildProcess);
 end;
 
+function TBaseConsoleWindow.ConsoleProgramRunning: Boolean;
+const
+  cRecheckMs = 250;
+var
+  Now: UInt64;
+begin
+  if not (Assigned(FPty) and FPty.IsRunning) then
+    Exit(False);
+  Now := TThread.GetTickCount64;
+  if (FConsoleChildTick = 0) or (Now - FConsoleChildTick >= cRecheckMs) then
+  begin
+    FConsoleChild := FPty.HasConsoleChildProcess;
+    FConsoleChildTick := Now;
+  end;
+  Result := FConsoleChild;
+end;
+
+function TBaseConsoleWindow.EnterSeq: string;
+begin
+  Result := ProfileReturnSeq(ProfileId);
+  if (Result = #13#10) and (AltScreenActive or ConsoleProgramRunning) then
+    Result := #13;
+end;
+
 function TBaseConsoleWindow.CursorKeySeq(AFinal: Char): string;
 begin
   if Assigned(FHistory) and FHistory.AppCursorKeys then
@@ -446,6 +500,7 @@ begin
   case ProfileKeyMode(FProfileId) of
     pkmProgram: Result := True;
     pkmHost: Result := False;
+    pkmRunning: Result := AltScreenActive or ConsoleProgramRunning;
   else
     Result := AltScreenActive;
   end;
@@ -467,10 +522,8 @@ begin
   if not KeysToProgram then
     Exit;
   // At a shell prompt a bare navigation key still scrolls or edits through
-  // the handlers below; only a full-screen program takes those too.
-  if not AltScreenActive and ([ssCtrl, ssAlt] * AShift = []) and
-     (AKey in [vkUp, vkDown, vkLeft, vkRight, vkPrior, vkNext, vkHome, vkEnd,
-       vkInsert, vkDelete]) then
+  // the handlers below; a running program takes those too.
+  if WindowKeepsNavKey(AKey, AShift, AltScreenActive or ConsoleProgramRunning) then
     Exit;
   if not EncodeTerminalKey(AKey, AShift, AKeyChar, FHistory.AppCursorKeys, Seq) then
     Exit;
@@ -1813,6 +1866,107 @@ begin
       FHistory.ScrollBy(1, ViewH);
   NotifyHost;
   Result := True;
+end;
+
+{ ---- Mouse reports for a program -------------------------------------------- }
+
+function TBaseConsoleWindow.ProgramWantsMouse: Boolean;
+begin
+  Result := (FHistory.MouseTracking <> 0) and Assigned(FPty) and FPty.IsRunning and
+    not (Assigned(FDialog) and FDialog.Visible) and
+    (AltScreenActive or ConsoleProgramRunning);
+end;
+
+function TBaseConsoleWindow.HandleProgramMouse(AAction: TTermMouseAction;
+  AButton: TMouseButton; AShift: TShiftState; ALocalCol, ALocalRow: Integer): Boolean;
+var
+  Base, Col, Row: Integer;
+  Inside, Release, Motion: Boolean;
+  Report: string;
+
+  function Send(ABase: Integer): Boolean;
+  begin
+    Result := EncodeMouseReport(ABase, AShift, Motion, Release, FHistory.MouseSgr,
+      Col, Row, Report);
+    if Result then
+      SendRaw(Report);
+  end;
+
+begin
+  Result := False;
+  Release := False;
+  Motion := False;
+  Inside := (ALocalCol >= 1) and (ALocalCol <= TextWidth) and
+    (ALocalRow >= 1) and (ALocalRow <= ViewHeight);
+  Col := EnsureRange(ALocalCol, 1, Max(TextWidth, 1));
+  Row := EnsureRange(ALocalRow, 1, Max(ViewHeight, 1));
+  case AAction of
+    tmaPress:
+      begin
+        if not Inside or (ssShift in AShift) or not ProgramWantsMouse then
+          Exit;
+        case AButton of
+          TMouseButton.mbLeft: Base := 0;
+          TMouseButton.mbMiddle: Base := 1;
+        else
+          Base := 2;
+        end;
+        FReportedButton := Base;
+        FReportedCol := Col;
+        FReportedRow := Row;
+        Send(Base);
+        Result := True;
+      end;
+    tmaRelease:
+      begin
+        if FReportedButton < 0 then
+          Exit;
+        Release := True;
+        Send(FReportedButton);
+        FReportedButton := -1;
+        Result := True;
+      end;
+    tmaMove:
+      begin
+        if not ProgramWantsMouse then
+        begin
+          // The program quit while a button was held: the release has no
+          // target any more.
+          FReportedButton := -1;
+          Exit;
+        end;
+        Motion := True;
+        if FReportedButton >= 0 then
+        begin
+          // A drag; mode 1000 reports only presses and releases.
+          Result := True;
+          if (FHistory.MouseTracking >= 1002) and
+             ((Col <> FReportedCol) or (Row <> FReportedRow)) then
+          begin
+            FReportedCol := Col;
+            FReportedRow := Row;
+            Send(FReportedButton);
+          end;
+        end
+        else if (FHistory.MouseTracking = 1003) and Inside and not (ssShift in AShift) then
+        begin
+          Result := True;
+          if (Col <> FReportedCol) or (Row <> FReportedRow) then
+          begin
+            FReportedCol := Col;
+            FReportedRow := Row;
+            Send(3);
+          end;
+        end;
+      end;
+    tmaWheelUp, tmaWheelDown, tmaWheelLeft, tmaWheelRight:
+      begin
+        if not Inside or (ssShift in AShift) or not ProgramWantsMouse then
+          Exit;
+        Send(64 + Ord(AAction) - Ord(tmaWheelUp));
+        Result := True;
+      end;
+  end;
 end;
 
 { ---- Common mouse ---------------------------------------------------------- }

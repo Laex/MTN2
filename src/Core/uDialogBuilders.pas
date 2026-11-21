@@ -272,7 +272,7 @@ uses
   uDialogResources, uFileAttrTypes, uDialogLocaleLayout, uDisplaySettings,
   uConsoleSettings, uStrings, uUpdater, uThemeDrawing, uPluginColumns,
   uTextEncoding, uSearchEngines, uInputLine, uColorPickerControl, uDatePickerControl,
-  uTerminalTypes;
+  uTerminalTypes, uPanelColumns;
 
 // A list resource always draws a row, so an empty source becomes one
 // placeholder row. DialogSetListItems then clamps the index onto the last
@@ -910,8 +910,9 @@ function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
   AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
   const AScheme: string; const ASetItems: TArray<string>): TDialogDeclaration;
 const
-  // Rows the column sets block on the right uses; the footer starts below it.
-  cFooterRow = 9;
+  // Rows the column sets block and the Brief view row on the right use; the
+  // footer starts below them.
+  cFooterRow = 11;
 var
   Cols: TPluginColumns;
   I, Row, Delta: Integer;
@@ -926,6 +927,7 @@ begin
   DialogSetCheckbox(Result, 'col_type', AShowType);
   DialogSetCheckbox(Result, 'col_attr', AShowAttr);
   DialogSetListItems(Result, 'sets', ASetItems, 0);
+  DialogSetInputValue(Result, 'brief_width', IntToStr(GBriefColumnWidth));
   Cols := SchemePluginColumns(AScheme);
   Tmpl := Default(TDialogControl);
   for I := 0 to High(Result.Controls) do
@@ -946,6 +948,21 @@ begin
     end;
   for I := 0 to High(Cols) do
   begin
+    // The columns of one plugin follow each other under its own heading, so
+    // they are told apart from the built-in ones.
+    if (I = 0) or (Cols[I].PluginId <> Cols[I - 1].PluginId) then
+    begin
+      Box := Tmpl;
+      Box.Kind := dckLabel;
+      Box.Id := 'pcol_hdr_' + IntToStr(I);
+      Box.Text := '- ' + Cols[I].PluginId + ' -';
+      Box.Accent := True;
+      Box.Checked := False;
+      Box.Row := Row;
+      Inc(Row);
+      SetLength(Result.Controls, Length(Result.Controls) + 1);
+      Result.Controls[High(Result.Controls)] := Box;
+    end;
     Box := Tmpl;
     Box.Id := 'pcol_' + IntToStr(I);
     Box.Text := StringReplace(PluginColumnTitle(Cols[I]), '&', '', [rfReplaceAll]);
@@ -966,6 +983,9 @@ begin
         if Copy(Result.Controls[I].Id, 1, 4) <> 'pcol' then
           Inc(Result.Controls[I].Row, Delta);
       end
+      else if (Result.Controls[I].Id = 'brief_width') or
+              (Result.Controls[I].Id = 'lbl_brief_width') then
+        Inc(Result.Controls[I].Row, Delta)
       else if Result.Controls[I].Id = 'sets' then
         Inc(Result.Controls[I].BoxH, Delta)
       else if Copy(Result.Controls[I].Id, 1, 4) = 'set_' then

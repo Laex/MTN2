@@ -51,6 +51,7 @@ type
     procedure SetOnSortPriorityToggle(const AHandler: TSortPriorityToggleEvent);
     procedure SetOnColumnModeSelect(const AHandler: TColumnModeSelectEvent);
     procedure SetOnColumnSetSelect(const AHandler: TColumnSetSelectEvent);
+    procedure SetOnSettings(const AHandler: TColumnSettingsEvent);
     /// <summary>ARoot stays owned by the caller (see TUserMenuController.Open).</summary>
     procedure OpenUserMenu(ARoot: TUserMenuItem; const ATitle: string = '');
     procedure CloseUserMenu;
@@ -293,6 +294,12 @@ function TMenuStubController.HandleSortMenuClick(ALocalCol,
   ALocalRow: Integer): Boolean;
 begin
   Result := FSortMenu.HandleClick(ALocalCol, ALocalRow);
+end;
+
+procedure TMenuStubController.SetOnSettings(
+  const AHandler: TColumnSettingsEvent);
+begin
+  FColumnModeMenu.SetOnSettings(AHandler);
 end;
 
 procedure TMenuStubController.OpenColumnModeMenu(ACurrent: TPanelColumnMode;

@@ -381,7 +381,7 @@ uses
   uPlatformInfo,
   System.Diagnostics,
   FMX.Platform.Win, uOverlayRenderer, uNativeSurface, uSingleInstance, uUpdater, uDialogTypes, uDialogBuilders,
-  uKeyChord, uFileRecycleBin, uDualPanelJobRules;
+  uKeyChord, uFileRecycleBin, uDualPanelJobRules, uTermInput;
 
 const
   cBlinkIntervalMs = 530;   // standard Windows cursor blink rate
@@ -1673,6 +1673,7 @@ begin
   Result.CaretUnderline := GCaretUnderline;
   Result.PassiveCursor := GShowPassiveCursor;
   Result.ColumnSeparators := GColumnSeparators;
+  Result.BriefColumnWidth := GBriefColumnWidth;
   Result.EdgeBorders := GEdgeBorders;
   Result.ShowKeyBar := GShowKeyBar;
   Result.ShowStatusLine := GShowStatusLine;
@@ -1739,8 +1740,10 @@ begin
   FSession.PassiveCursor := ASettings.PassiveCursor;
   GShowPassiveCursor := ASettings.PassiveCursor;
   FSession.ColumnSeparators := ASettings.ColumnSeparators;
+  FSession.BriefColumnWidth := ASettings.BriefColumnWidth;
   FSession.EdgeBorders := ASettings.EdgeBorders;
   GColumnSeparators := ASettings.ColumnSeparators;
+  GBriefColumnWidth := ASettings.BriefColumnWidth;
   GEdgeBorders := ASettings.EdgeBorders;
   FSession.ShowKeyBar := ASettings.ShowKeyBar;
   FSession.ShowStatusLine := ASettings.ShowStatusLine;
@@ -1888,6 +1891,7 @@ begin
   GCaretUnderline := Sess.CaretUnderline;
   GShowPassiveCursor := Sess.PassiveCursor;
   GColumnSeparators := Sess.ColumnSeparators;
+  GBriefColumnWidth := ClampBriefColumnWidth(Sess.BriefColumnWidth);
   GEdgeBorders := Sess.EdgeBorders;
   ApplyChromeRows(Sess.ShowMenuBar, Sess.ShowKeyBar, Sess.ShowStatusLine);
   ApplyTitleBar(Sess.ShowTitleBar);
@@ -2014,6 +2018,7 @@ begin
   Sess.CaretUnderline := GCaretUnderline;
   Sess.PassiveCursor := GShowPassiveCursor;
   Sess.ColumnSeparators := GColumnSeparators;
+  Sess.BriefColumnWidth := GBriefColumnWidth;
   Sess.EdgeBorders := GEdgeBorders;
   Sess.ShowKeyBar := GShowKeyBar;
   Sess.ShowStatusLine := GShowStatusLine;
@@ -2914,6 +2919,7 @@ begin
   FSession.CaretUnderline := False;
   FSession.PassiveCursor := True;
   FSession.ColumnSeparators := False;
+  FSession.BriefColumnWidth := cBriefColumnWidthDefault;
   FSession.EdgeBorders := True;
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
@@ -3301,12 +3307,26 @@ var
   K: Word;
   C: Char;
   P: TPointF;
+  Col, Row: Integer;
+  WheelAction: TTermMouseAction;
 begin
   // The wheel over a plugin surface is the plugin's (clicks, away from the user positive).
   P := ScreenToClient(Screen.MousePos);
   if TrySurfaceMouse(3, P.X, P.Y, TMouseButton.mbMiddle, WheelDelta div 120, Shift) then
   begin
     Recompose;
+    Handled := True;
+    Exit;
+  end;
+  if WheelDelta > 0 then
+    WheelAction := tmaWheelUp
+  else
+    WheelAction := tmaWheelDown;
+  if Assigned(FDualPanel) and Assigned(FMdi) and PointToCell(P.X, P.Y, Col, Row) and
+     not (ssCtrl in Shift) and
+     FDualPanel.ProgramMouse(FMdi.Active, Col, Row, WheelAction, TMouseButton.mbLeft,
+       Shift) then
+  begin
     Handled := True;
     Exit;
   end;
@@ -3466,6 +3486,14 @@ begin
       CancelContextMenuHold;
     Exit;
   end;
+  // A program that asked for mouse reports gets the press over its text.
+  if Assigned(FDualPanel) and FDualPanel.ProgramMouse(FMdi.Active, Col, Row,
+       tmaPress, Button, Shift) then
+  begin
+    CancelContextMenuHold;
+    Recompose;
+    Exit;
+  end;
   // The window buttons on the console frame sit above the console, which
   // would take the click otherwise.
   if (Button = TMouseButton.mbLeft) and Assigned(FDualPanel) and
@@ -3603,6 +3631,20 @@ begin
     Exit;
   end;
 
+  // Motion for a program that asked for mouse reports: a drag of the button
+  // it got pressed, or any motion in all-motion mode.
+  if Assigned(FDualPanel) and PointToCell(X, Y, Col, Row) then
+  begin
+    if ssRight in Shift then
+      Btn := TMouseButton.mbRight
+    else if ssMiddle in Shift then
+      Btn := TMouseButton.mbMiddle
+    else
+      Btn := TMouseButton.mbLeft;
+    if FDualPanel.ProgramMouse(FMdi.Active, Col, Row, tmaMove, Btn, Shift) then
+      Exit;
+  end;
+
   if not FChromeCommandPending then
     FHoverSuppressed := False;
   if Assigned(FDualPanel) and (not FChromeCommandPending) and PointToCell(X, Y, Col, Row) and
@@ -3738,6 +3780,18 @@ begin
     FSurfaceMouseHandle := 0;
     Recompose;
     Exit;
+  end;
+  // The release of a button the program got pressed goes to it, wherever the
+  // pointer is now.
+  if Assigned(FDualPanel) and Assigned(FMdi) then
+  begin
+    if not PointToCell(X, Y, Col, Row) then
+    begin
+      Col := -1;
+      Row := -1;
+    end;
+    if FDualPanel.ProgramMouse(FMdi.Active, Col, Row, tmaRelease, Button, Shift) then
+      Exit;
   end;
   if Button = TMouseButton.mbRight then
   begin

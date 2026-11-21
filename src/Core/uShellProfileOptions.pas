@@ -11,8 +11,11 @@ interface
 type
   /// <summary>Who gets a key the host window also binds (F1, F9, Alt+letter
   /// menu keys, ...). Auto: the program while a full-screen application (mc,
-  /// vim) is up in the console, the host otherwise.</summary>
-  TProfileKeyMode = (pkmAuto, pkmProgram, pkmHost);
+  /// vim) is up in the console, the host otherwise. Running: the same, and
+  /// also while a console program the shell started (Far, a TUI that does
+  /// not use the alternate screen) is running. Program: always the program.
+  /// Host: always the host.</summary>
+  TProfileKeyMode = (pkmAuto, pkmRunning, pkmProgram, pkmHost);
 
   TProfileEntry = record
     Id: string;
@@ -99,6 +102,7 @@ end;
 function ModeName(AMode: TProfileKeyMode): string;
 begin
   case AMode of
+    pkmRunning: Result := 'running';
     pkmProgram: Result := 'program';
     pkmHost: Result := 'host';
   else
@@ -108,7 +112,9 @@ end;
 
 function ModeFromName(const AName: string): TProfileKeyMode;
 begin
-  if SameText(AName, 'program') then
+  if SameText(AName, 'running') then
+    Result := pkmRunning
+  else if SameText(AName, 'program') then
     Result := pkmProgram
   else if SameText(AName, 'host') then
     Result := pkmHost
@@ -282,7 +288,8 @@ end;
 function NextProfileKeyMode(AMode: TProfileKeyMode): TProfileKeyMode;
 begin
   case AMode of
-    pkmAuto: Result := pkmProgram;
+    pkmAuto: Result := pkmRunning;
+    pkmRunning: Result := pkmProgram;
     pkmProgram: Result := pkmHost;
   else
     Result := pkmAuto;
@@ -292,6 +299,7 @@ end;
 function ProfileKeyModeTitle(AMode: TProfileKeyMode): string;
 begin
   case AMode of
+    pkmRunning: Result := T('ui.profileKeys.running', 'while running');
     pkmProgram: Result := T('ui.profileKeys.program', 'program');
     pkmHost: Result := T('ui.profileKeys.host', 'host');
   else

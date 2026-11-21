@@ -130,6 +130,7 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Eigene Spalten",
+      "lbl_brief_width": "Kurzansicht, Breite (10-50):",
       "col_ext": "E&rweiterung",
       "col_size": "&Größe",
       "col_modified": "Ä&nderungsdatum",
@@ -1878,6 +1879,7 @@
     "mouse.selectTip": "Text nicht in der Zwischenablage? Mit Shift markiert das Terminal; Ctrl+Shift+M schaltet die Maus aus",
     "terminalEnv.none": "(keins)",
     "profileKeys.auto": "auto",
+    "profileKeys.running": "während Programm läuft",
     "profileKeys.program": "Terminal",
     "profileKeys.host": "Host",
     "shellProfiles.copyTitle": "%s (Kopie %s)",
@@ -2552,6 +2554,7 @@
     "created": "Erstellt",
     "types": "Typen",
     "custom": "Eigene",
-    "set": "Benutzerdefiniert: %s"
+    "wide": "Breit: %s",
+    "settings": "Einstellungen..."
   }
 }

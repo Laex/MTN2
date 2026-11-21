@@ -19,6 +19,7 @@ type
     [Test] procedure TestAltScreenEditingSequences;
     [Test] procedure TestCharsetDesignationIsNotDrawn;
     [Test] procedure TestApplicationCursorKeysMode;
+    [Test] procedure TestMouseReportingModes;
   end;
 
 implementation
@@ -388,6 +389,30 @@ begin
   end;
 end;
 
+procedure TestMouseReportingModes;
+var
+  Buffer: TConsoleBuffer;
+begin
+  Buffer := TConsoleBuffer.Create(100);
+  try
+    Assert.AreEqual(0, Buffer.MouseTracking);
+    Assert.IsFalse(Buffer.MouseSgr);
+    // ConPTY announces any-motion tracking and SGR reports in one sequence.
+    Buffer.AppendOutputEx(#27'[?1003;1006h', 20, 5);
+    Assert.AreEqual(1003, Buffer.MouseTracking);
+    Assert.IsTrue(Buffer.MouseSgr);
+    Buffer.AppendOutputEx(#27'[?1003;1006l', 20, 5);
+    Assert.AreEqual(0, Buffer.MouseTracking);
+    Assert.IsFalse(Buffer.MouseSgr);
+    Buffer.AppendOutputEx(#27'[?1002h', 20, 5);
+    Assert.AreEqual(1002, Buffer.MouseTracking);
+    Buffer.AppendOutputEx(#27'[?1000l', 20, 5);
+    Assert.AreEqual(1002, Buffer.MouseTracking, 'resetting another mode changes nothing');
+  finally
+    Buffer.Free;
+  end;
+end;
+
 { TTestANSIParser }
 
 procedure TTestANSIParser.TestStandardColorsAndAttributes;
@@ -438,6 +463,11 @@ end;
 procedure TTestANSIParser.TestApplicationCursorKeysMode;
 begin
   TestANSIParser.TestApplicationCursorKeysMode;
+end;
+
+procedure TTestANSIParser.TestMouseReportingModes;
+begin
+  TestANSIParser.TestMouseReportingModes;
 end;
 
 initialization

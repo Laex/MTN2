@@ -1,6 +1,6 @@
 unit TestColumnSets;
 
-{ Named sets of the Custom column mode: the file with the starter sets, saving,
+{ Named sets of the Custom column mode: the sets file, saving,
   renaming and deleting. }
 
 interface
@@ -16,20 +16,20 @@ type
   public
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
-    [Test] procedure MissingFileIsCreatedWithTheStarterSets;
-    [Test] procedure ExistingFileGetsNoStarterSets;
+    [Test] procedure MissingFileHasNoSets;
+    [Test] procedure ExistingFileListsOnlyItsSets;
     [Test] procedure SetsAreListedAlphabetically;
     [Test] procedure SavedSetIsFoundWithoutRegardToCase;
     [Test] procedure SavingTheSameNameReplacesTheSet;
-    [Test] procedure SavingAStarterSetNameReplacesIt;
     [Test] procedure BlankNameIsRefused;
     [Test] procedure BrokenFileListsNoSetsButSavingWorks;
     [Test] procedure DeletedSetIsGone;
-    [Test] procedure DeletedStarterSetStaysDeleted;
     [Test] procedure RenamedSetKeepsItsColumns;
     [Test] procedure RenameToATakenNameIsRefused;
     [Test] procedure RenameMayChangeOnlyTheCase;
-    [Test] procedure StarterSetCanBeRenamed;
+    [Test] procedure PluginColumnsAreStoredPerScheme;
+    [Test] procedure SavingWithoutPluginsKeepsThoseOfTheSet;
+    [Test] procedure PresetModesHaveTheirColumns;
   end;
 
 implementation
@@ -61,25 +61,20 @@ begin
     TFile.Delete(FPath);
 end;
 
-procedure TTestColumnSets.MissingFileIsCreatedWithTheStarterSets;
-var
-  S: TColumnSet;
+procedure TTestColumnSets.MissingFileHasNoSets;
 begin
   Assert.IsFalse(TFile.Exists(FPath));
-  Assert.IsTrue(ColumnSetFind('Minimal', S), 'Minimal');
-  Assert.IsTrue(ColumnSetFind('Dates', S), 'Dates');
-  Assert.IsTrue(ColumnSetFind('Technical', S), 'Technical');
-  Assert.IsTrue(TFile.Exists(FPath), 'the file is written');
-  Assert.IsTrue(ColumnSetIsStored('Dates'), 'a starter set is a stored one');
+  Assert.AreEqual<Integer>(0, Length(ColumnSets), 'no sets');
+  Assert.IsFalse(TFile.Exists(FPath), 'listing writes nothing');
 end;
 
-procedure TTestColumnSets.ExistingFileGetsNoStarterSets;
+procedure TTestColumnSets.ExistingFileListsOnlyItsSets;
 var
   S: TColumnSet;
 begin
   TFile.WriteAllText(FPath, '{ "sets": { "Mine": { "size": true } } }', TEncoding.UTF8);
   Assert.AreEqual<Integer>(1, Length(ColumnSets), 'only the set of the file');
-  Assert.IsFalse(ColumnSetFind('Dates', S), 'no starter set is added');
+  Assert.IsTrue(ColumnSetFind('Mine', S));
 end;
 
 procedure TTestColumnSets.SetsAreListedAlphabetically;
@@ -87,8 +82,11 @@ var
   Sets: TArray<TColumnSet>;
   I: Integer;
 begin
+  ColumnSetSave('Zed', Cfg(True, False, False));
+  ColumnSetSave('alpha', Cfg(False, True, False));
+  ColumnSetSave('Mid', Cfg(False, False, True));
   Sets := ColumnSets;
-  Assert.IsTrue(Length(Sets) >= 3, 'the starter sets are there');
+  Assert.AreEqual<Integer>(3, Length(Sets));
   for I := 1 to High(Sets) do
     Assert.IsTrue(CompareText(Sets[I - 1].Name, Sets[I].Name) <= 0, 'alphabetical');
 end;
@@ -119,15 +117,6 @@ begin
   Assert.IsTrue(SameColumnsConfig(S.Config, Cfg(False, True, True)), 'the later one wins');
 end;
 
-procedure TTestColumnSets.SavingAStarterSetNameReplacesIt;
-var
-  S: TColumnSet;
-begin
-  ColumnSetSave('Minimal', Cfg(True, True, True));
-  Assert.IsTrue(ColumnSetFind('Minimal', S));
-  Assert.IsTrue(SameColumnsConfig(S.Config, Cfg(True, True, True)));
-end;
-
 procedure TTestColumnSets.BlankNameIsRefused;
 begin
   Assert.IsFalse(ColumnSetSave('   ', Cfg(True, True, True)));
@@ -154,16 +143,6 @@ begin
   Assert.IsFalse(ColumnSetIsStored('Mine'));
 end;
 
-procedure TTestColumnSets.DeletedStarterSetStaysDeleted;
-var
-  S: TColumnSet;
-begin
-  Assert.IsTrue(ColumnSetDelete('Minimal'), 'deleted');
-  Assert.IsFalse(ColumnSetFind('Minimal', S), 'gone');
-  Assert.IsFalse(ColumnSetFind('minimal', S), 'still gone on the next read');
-  Assert.IsTrue(ColumnSetFind('Dates', S), 'the others stay');
-end;
-
 procedure TTestColumnSets.RenamedSetKeepsItsColumns;
 var
   S: TColumnSet;
@@ -180,7 +159,6 @@ begin
   ColumnSetSave('Mine', Cfg(True, False, True));
   ColumnSetSave('Other', Cfg(False, True, False));
   Assert.IsFalse(ColumnSetRename('Mine', 'other'), 'stored name taken');
-  Assert.IsFalse(ColumnSetRename('Mine', 'Dates'), 'starter set name taken');
   Assert.IsFalse(ColumnSetRename('Mine', '  '), 'blank name');
   Assert.IsTrue(ColumnSetIsStored('Mine'), 'set is untouched');
 end;
@@ -204,17 +182,64 @@ begin
   Assert.AreEqual('MINE', S.Name);
 end;
 
-procedure TTestColumnSets.StarterSetCanBeRenamed;
+function PluginSet(const AScheme: string; const AIds: array of string): TArray<TSetPluginColumns>;
+var
+  I: Integer;
+begin
+  SetLength(Result, 1);
+  Result[0].Scheme := AScheme;
+  SetLength(Result[0].Ids, Length(AIds));
+  for I := 0 to High(AIds) do
+    Result[0].Ids[I] := AIds[I];
+end;
+
+procedure TTestColumnSets.PluginColumnsAreStoredPerScheme;
 var
   S: TColumnSet;
-  Before: TCustomColumnsConfig;
+  Ids: TArray<string>;
 begin
-  ColumnSetFind('Dates', S);
-  Before := S.Config;
-  Assert.IsTrue(ColumnSetRename('Dates', 'Calendar'));
-  Assert.IsFalse(ColumnSetFind('Dates', S), 'old name is gone');
-  Assert.IsTrue(ColumnSetFind('Calendar', S));
-  Assert.IsTrue(SameColumnsConfig(S.Config, Before), 'same columns');
+  Assert.IsTrue(ColumnSetSave('Photos', Cfg(False, True, True), PluginSet('file', ['camera', 'year'])));
+  Assert.IsTrue(ColumnSetSave('Photos', Cfg(False, True, True), PluginSet('zip', ['ratio'])));
+  Assert.IsTrue(ColumnSetFind('Photos', S));
+  Assert.IsTrue(ColumnSetPluginIds(S, 'file', Ids), 'the first scheme stays');
+  Assert.AreEqual<Integer>(2, Length(Ids));
+  Assert.AreEqual('camera', Ids[0]);
+  Assert.IsTrue(ColumnSetPluginIds(S, 'zip', Ids), 'the second scheme is added');
+  Assert.AreEqual<Integer>(1, Length(Ids));
+  Assert.IsFalse(ColumnSetPluginIds(S, 'ftp', Ids), 'a scheme the set does not mention');
+  Assert.IsTrue(ColumnSetSave('Photos', Cfg(False, True, True), PluginSet('file', [])));
+  ColumnSetFind('Photos', S);
+  Assert.IsTrue(ColumnSetPluginIds(S, 'file', Ids) and (Length(Ids) = 0),
+    'a scheme saved with no plugin columns says so');
+end;
+
+procedure TTestColumnSets.SavingWithoutPluginsKeepsThoseOfTheSet;
+var
+  S: TColumnSet;
+  Ids: TArray<string>;
+begin
+  ColumnSetSave('Photos', Cfg(False, True, True), PluginSet('file', ['camera']));
+  ColumnSetSave('Photos', Cfg(True, True, True));
+  ColumnSetFind('Photos', S);
+  Assert.IsTrue(S.Config.ShowExt, 'the columns are replaced');
+  Assert.IsTrue(ColumnSetPluginIds(S, 'file', Ids) and (Length(Ids) = 1), 'the plugin columns stay');
+  Assert.IsTrue(ColumnSetRename('Photos', 'Pictures'));
+  ColumnSetFind('Pictures', S);
+  Assert.IsTrue(ColumnSetPluginIds(S, 'file', Ids), 'a renamed set keeps them');
+end;
+
+procedure TTestColumnSets.PresetModesHaveTheirColumns;
+var
+  C: TCustomColumnsConfig;
+begin
+  Assert.IsFalse(PresetColumnsConfig(pcmBrief, C), 'Brief has no columns');
+  Assert.IsFalse(PresetColumnsConfig(pcmCustom, C), 'Custom is not a preset');
+  Assert.IsTrue(PresetColumnsConfig(pcmFull, C));
+  Assert.IsTrue(C.ShowSize and C.ShowModified and C.ShowAttr and not C.ShowCreated);
+  Assert.IsTrue(PresetColumnsConfig(pcmTypes, C));
+  Assert.IsTrue(C.ShowExt and C.ShowType and C.ShowSize and C.ShowAttr);
+  Assert.IsTrue(PresetColumnsConfig(pcmSize, C));
+  Assert.IsTrue(C.ShowSize and not C.ShowModified and not C.ShowAttr);
 end;
 
 end.

@@ -46,6 +46,9 @@ type
     FOnResetKeyHints: TProc;
     FOnColumnsAccepted: TProc<TCustomColumnsConfig>;
     FColumnsConfig: TCustomColumnsConfig;
+    FColumnsOpenConfig: TCustomColumnsConfig;
+    FColumnsOpenPlugins: string;
+    FColumnsLoadedSet: Boolean;
     FOnSetProgramsInTerminal: TProc<Boolean>;
     FOnShowStub: TSettingsShowStub;
     FOnGetDisplay: TSettingsGetDisplay;
@@ -236,6 +239,16 @@ begin
     FOnNotify();
 end;
 
+// The ids of the plugin columns shown for AScheme, as one comparable string.
+function ShownPluginSignature(const AScheme: string): string;
+var
+  C: TPluginColumn;
+begin
+  Result := '';
+  for C in ShownPluginColumns(AScheme) do
+    Result := Result + C.Id + #1;
+end;
+
 procedure TSettingsDialogController.OpenColumns(const AConfig: TCustomColumnsConfig;
   const AScheme: string);
 begin
@@ -246,6 +259,9 @@ begin
 
   FColumnsScheme := AScheme;
   FColumnsConfig := AConfig;
+  FColumnsOpenConfig := AConfig;
+  FColumnsOpenPlugins := ShownPluginSignature(AScheme);
+  FColumnsLoadedSet := False;
   SetKind(hdkColumnsConfig);
   FDialog.Open(BuildColumnsConfigDialog(
     AConfig.ShowExt, AConfig.ShowSize,
@@ -700,16 +716,36 @@ begin
   Notify;
 end;
 
-// Rows of the column sets list: the set names.
+const
+  cPresetModes: array[0..4] of TPanelColumnMode =
+    (pcmSize, pcmDate, pcmFull, pcmCreated, pcmTypes);
+  cPresetKeys: array[0..4] of string = ('size', 'date', 'full', 'created', 'types');
+  cPresetDefaults: array[0..4] of string = ('Size', 'Date', 'Full', 'Created', 'Types');
+
+// Rows of the column sets list: the built-in wide variants (read-only), then
+// the stored sets.
 function TSettingsDialogController.ColumnSetRows: TArray<string>;
 var
   Sets: TArray<TColumnSet>;
   I: Integer;
 begin
   Sets := ColumnSets;
-  SetLength(Result, Length(Sets));
+  SetLength(Result, Length(cPresetModes) + Length(Sets));
+  for I := 0 to High(cPresetModes) do
+    Result[I] := StringReplace(
+      T('columnModeMenu.' + cPresetKeys[I], cPresetDefaults[I]), '&', '', []);
   for I := 0 to High(Sets) do
-    Result[I] := Sets[I].Name;
+    Result[Length(cPresetModes) + I] := Sets[I].Name;
+end;
+
+function IdListed(const AIds: TArray<string>; const AId: string): Boolean;
+var
+  S: string;
+begin
+  for S in AIds do
+    if SameText(S, AId) then
+      Exit(True);
+  Result := False;
 end;
 
 // Edit loads the selected set into the checkboxes and the name field (OK then
@@ -721,12 +757,24 @@ var
   Idx: Integer;
   Cur: TColumnSet;
   NewName: string;
+  Cols: TPluginColumns;
+  SetIds: TArray<string>;
+  I: Integer;
 begin
   Sets := ColumnSets;
   Idx := FDialog.GetListSelectedIndex('sets');
-  if (Idx < 0) or (Idx > High(Sets)) then
+  if (Idx < 0) or (Idx > High(Sets) + Length(cPresetModes)) then
     Exit;
-  Cur := Sets[Idx];
+  if Idx < Length(cPresetModes) then
+  begin
+    // A built-in variant cannot be renamed or deleted; Edit loads its columns.
+    if DialogCmdIs(AControlId, 'set_rename') or DialogCmdIs(AControlId, 'set_delete') then
+      Exit;
+    Cur := Default(TColumnSet);
+    PresetColumnsConfig(cPresetModes[Idx], Cur.Config);
+  end
+  else
+    Cur := Sets[Idx - Length(cPresetModes)];
   if DialogCmdIs(AControlId, 'set_rename') then
   begin
     NewName := Trim(FDialog.GetInputValue('set_name'));
@@ -740,6 +788,7 @@ begin
   end
   else
   begin
+    FColumnsLoadedSet := True;
     FDialog.SetCheckbox('col_ext', Cur.Config.ShowExt);
     FDialog.SetCheckbox('col_size', Cur.Config.ShowSize);
     FDialog.SetCheckbox('col_modified', Cur.Config.ShowModified);
@@ -747,6 +796,13 @@ begin
     FDialog.SetCheckbox('col_accessed', Cur.Config.ShowAccessed);
     FDialog.SetCheckbox('col_type', Cur.Config.ShowType);
     FDialog.SetCheckbox('col_attr', Cur.Config.ShowAttr);
+    if ColumnSetPluginIds(Cur, FColumnsScheme, SetIds) then
+    begin
+      Cols := SchemePluginColumns(FColumnsScheme);
+      for I := 0 to High(Cols) do
+        FDialog.SetCheckbox('pcol_' + IntToStr(I), IdListed(SetIds, Cols[I].Id));
+    end;
+    // A built-in variant is saved only under a name of its own.
     FDialog.SetInputValue('set_name', Cur.Name);
   end;
 end;
@@ -758,6 +814,9 @@ var
   Cols: TPluginColumns;
   Ids: TArray<string>;
   I: Integer;
+  SetPlugins: TArray<TSetPluginColumns>;
+  BriefWidth: Integer;
+  ColumnsChanged: Boolean;
 begin
   if DialogCmdIs(AControlId, 'set_edit') or DialogCmdIs(AControlId, 'sets') or
      DialogCmdIs(AControlId, 'set_rename') or DialogCmdIs(AControlId, 'set_delete') then
@@ -787,6 +846,7 @@ begin
     if BuiltinColumnAvailable(FColumnsScheme, 'attr') then
       FColumnsConfig.ShowAttr := FDialog.GetCheckbox('col_attr');
     Cols := SchemePluginColumns(FColumnsScheme);
+    SetPlugins := nil;
     if Length(Cols) > 0 then
     begin
       Ids := nil;
@@ -797,14 +857,29 @@ begin
           Ids[High(Ids)] := Cols[I].Id;
         end;
       SetSchemeColumnSelection(FColumnsScheme, Ids);
+      SetLength(SetPlugins, 1);
+      SetPlugins[0].Scheme := LowerCase(Trim(FColumnsScheme));
+      SetPlugins[0].Ids := Ids;
     end;
+    // An empty or unreadable entry gives the default width; a number outside
+    // the range gives the nearest bound.
+    if not TryStrToInt(Trim(FDialog.GetInputValue('brief_width')), BriefWidth) then
+      BriefWidth := cBriefColumnWidthDefault;
+    GBriefColumnWidth := ClampBriefColumnWidth(BriefWidth);
     if Trim(FDialog.GetInputValue('set_name')) <> '' then
-      ColumnSetSave(FDialog.GetInputValue('set_name'), FColumnsConfig);
-  end;
+      ColumnSetSave(FDialog.GetInputValue('set_name'), FColumnsConfig, SetPlugins);
+    // OK on a dialog opened only for the Brief width must not switch the panel
+    // to the Wide columns it was never showing.
+    ColumnsChanged := FColumnsLoadedSet or
+      not SameColumnsConfig(FColumnsConfig, FColumnsOpenConfig) or
+      (ShownPluginSignature(FColumnsScheme) <> FColumnsOpenPlugins);
+  end
+  else
+    ColumnsChanged := False;
   FDialog.Close;
   if Accepted then
   begin
-    if Assigned(FOnColumnsAccepted) then
+    if ColumnsChanged and Assigned(FOnColumnsAccepted) then
       FOnColumnsAccepted(FColumnsConfig);
     Notify;
   end;

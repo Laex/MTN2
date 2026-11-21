@@ -6,6 +6,26 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.10.11 – 2026-11-22
+
+### Changed
+
+- The sets Minimal, Dates and Technical are no longer created in `columnsets.json`; the built-in wide variants are listed first in the sets list of the Columns dialog. Existing files keep their sets.
+- The column modes menu lists two kinds of view: Brief, and Wide with the built-in variants (size, date, full, created, types) followed by your own column sets.
+- In the Custom columns dialog the columns of a plugin are listed under the name of the plugin, apart from the built-in ones.
+
+### Fixed
+
+- In a console or terminal tab, Enter pressed in a running console or full-screen program (Far Manager, vim) no longer sends an extra line feed; in Far it opened Explorer on `..` as if Shift+Enter had been pressed.
+- While a console program such as Far Manager is running and the profile's keys mode is "while running" or "terminal", PgUp, PgDn, Insert and Shift with the arrow, Home and End keys go to the program instead of scrolling or selecting in the window.
+
+### Added
+
+- A fourth key mode for shell profiles, "while running" (F4 in the shell list): the program gets every key while a console program started from the shell, such as Far Manager, is running, and the window's keys apply at the bare prompt. A GUI program launched from the shell does not count. [#105](https://github.com/Laex/MTN2/discussions/105)
+- A program that asks for the mouse (Far Manager, `htop`, `mc`) now receives clicks, drags and the wheel over the console or terminal text; hold Shift to select text with the mouse as before. [#105](https://github.com/Laex/MTN2/discussions/105)
+- The width of a Brief column can be set (10-50 characters, 28 by default): the "Brief view" field in the Columns dialog; the panel holds as many columns of that width as fit. The column modes menu ends with a separator and a "Settings..." item that opens it. The plugin headings in that dialog are highlighted. [#103](https://github.com/Laex/MTN2/discussions/103)
+- Column sets can include the columns that plugins add. A set saved in the Custom columns dialog remembers them for the folder type it was saved in, and choosing the set shows them again.
+
 ## Dev v0.5.10.10 – 2026-11-21
 
 ### Fixed

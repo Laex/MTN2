@@ -69,7 +69,7 @@ Global commands work in any window – the panels, a document, a terminal:
 - F10 closes a document and quits only on the panels (`Quit`);
 - Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
 
-**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto*, *while running* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
 
 **Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
 
@@ -407,12 +407,12 @@ The **..** entry in system folders and the Recycle Bin takes you back to where y
 | Key | Action |
 | --- | --- |
 | Ctrl+\` | column modes menu |
-| Ctrl+Shift+F1 … F6 | mode: brief, size, date, full, created, types |
+| Ctrl+Shift+F1 … F6 | mode: brief, or a wide variant: size, date, full, created, types |
 | Ctrl+F12 | sort menu |
 | Ctrl+F3 / F4 / F5 / F6 | sort by name / extension / modification date / size |
 | Ctrl+F7 / F8 / F9 | unsorted / by creation date / by access date |
 
-Choosing the same sort order again reverses the direction. The letter in the top-left corner of the panel shows the sort order (upper case – descending). The columns of the “Custom” mode are set in **Options → Columns...**. Row colors by mask – **Options → Color coding...**.
+Choosing the same sort order again reverses the direction. The letter in the top-left corner of the panel shows the sort order (upper case – descending). The panel has two kinds of view: **Brief** (names only, in several columns; the width of a column (10–50 characters, 28 by default; the panel holds as many columns as fit) is set in **Options → Columns...** (“Brief view”, the same for all panels), and the details of the file are in the status line) and **Wide** (one column of names plus the columns you choose; the menu lists the built-in variants size, date, full, created and types, and then your own column sets). The columns of a wide variant, including the columns that plugins add (shown under the name of the plugin), are set in **Options → Columns...**; the dialog saves them as a named set. Row colors by mask – **Options → Color coding...**.
 
 ---
 
@@ -502,6 +502,8 @@ The command line is always below the panels: just start typing. A command runs i
 
 **In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](#working-with-text-and-the-mouse)).
 
+**Mouse in a program.** A program that asks for mouse input (Far Manager, `htop`, `mc`, `vim` with `mouse=a`) receives clicks, drags and the wheel over the console text, and the window no longer scrolls or selects there. Hold **Shift** to select text with the mouse as usual. Scrolling the history and the window buttons keep working outside the text area.
+
 **Searching the output** (console and terminal):
 - **Ctrl+Shift+F** asks for the text; matches are highlighted in the whole history and the current one is selected like a mouse selection. An empty string in the dialog clears the search.
 - **F3** / **Shift+F3** go to the next / previous match (wrapping around) while a search is set and no full-screen program runs in the window.
@@ -538,10 +540,22 @@ Changes apply at once, to open consoles too.
 
 The modes:
 - *auto* – the program gets the keys while a full-screen application such as mc or vim runs in the console;
-- *terminal* – the program gets every key, including F1, F9 and Alt+letter;
+- *while running* – as *auto*, and also while a console program started from the shell is running, even one that does not use the alternate screen, such as Far Manager. At the bare prompt the window's keys apply; a GUI program launched from the shell does not count;
+- *terminal* – the program gets every key, including F1, F9 and Alt+letter; the only keys that stay with the window are the bare navigation keys (arrows, Home, End, PgUp, PgDn, Insert, Delete, with or without Shift) at the bare prompt, where they scroll, select and recall history. It is the mode for shells that are themselves the program (bash in WSL, ssh, Git Bash), which need their own Ctrl+R, Ctrl+A and so on;
 - *host* – the MTN2 window's keys come first.
 
-In *auto* and *terminal* the window keeps only the keys that leave the console: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+Who gets the keys:
+
+| Mode | At the bare prompt | An ordinary command (`ping`, `git`, a build) | A full-screen program (`vim`, `htop`) | A console program without the alternate screen (Far Manager) |
+|---|---|---|---|---|
+| auto | window | window | program | window |
+| while running | window | program | program | program |
+| terminal | program | program | program | program |
+| host | window | window | window | window |
+
+"Window" here means the MTN2 window's own keys: help, scrolling and selecting the output, command recall. In *auto* the window keeps scrolling and selecting while an ordinary command runs; a program such as Far needs *while running* or *terminal*. "While running" tells a program from the prompt by a console process started by the shell, so it does not apply to a shell that is itself the program (WSL, ssh): use *terminal* for those.
+
+In *auto*, *while running* and *terminal* the window keeps only the keys that leave the console: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
 - **F6** – the environment profile of the selected shell or its copy (see [Environment profiles](#environment-profiles)).
 
 ---
@@ -1099,7 +1113,7 @@ Global commands work in any window – the panels, a document, a terminal:
 - F10 closes a document and quits only on the panels (`Quit`);
 - Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
 
-**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto*, *while running* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
 
 **Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
 

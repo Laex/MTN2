@@ -22,6 +22,8 @@ type
     [Test] procedure CopyAddMoveDeleteRoundTrip;
     [Test] procedure ProfileIsNotDeletable;
     [Test] procedure TerminalKeysUseXtermSequences;
+    [Test] procedure NavKeysGoToARunningProgram;
+    [Test] procedure MouseReportsAreEncodedForTheProgram;
   end;
 
 implementation
@@ -98,11 +100,14 @@ begin
   Assert.IsTrue(ProfileKeyMode('cmd') = pkmAuto, 'the default is auto');
   SetProfileKeyMode('cmd', pkmProgram);
   SetProfileKeyMode('cmd#2', pkmHost);
+  SetProfileKeyMode('pwsh', pkmRunning);
   ShellProfileOptionsUsePath(FPath); // forgets what is in memory
   Assert.IsTrue(ProfileKeyMode('cmd') = pkmProgram);
   Assert.IsTrue(ProfileKeyMode('cmd#2') = pkmHost);
-  Assert.IsTrue(ProfileKeyMode('pwsh') = pkmAuto);
-  Assert.IsTrue(NextProfileKeyMode(pkmAuto) = pkmProgram);
+  Assert.IsTrue(ProfileKeyMode('pwsh') = pkmRunning);
+  Assert.IsTrue(ProfileKeyMode('wsl') = pkmAuto);
+  Assert.IsTrue(NextProfileKeyMode(pkmAuto) = pkmRunning);
+  Assert.IsTrue(NextProfileKeyMode(pkmRunning) = pkmProgram);
   Assert.IsTrue(NextProfileKeyMode(pkmProgram) = pkmHost);
   Assert.IsTrue(NextProfileKeyMode(pkmHost) = pkmAuto);
 end;
@@ -202,6 +207,39 @@ begin
   Assert.IsFalse(EncodeTerminalKey(vkA, [], 'a', False, S), 'a plain character has no sequence');
   Assert.IsFalse(EncodeTerminalKey(vkReturn, [], #13, False, S));
   Assert.IsFalse(EncodeTerminalKey(vkEscape, [], #27, False, S));
+end;
+
+procedure TTestShellProfileOptions.NavKeysGoToARunningProgram;
+begin
+  Assert.IsTrue(WindowKeepsNavKey(vkPrior, [], False), 'PgUp scrolls at a prompt');
+  Assert.IsTrue(WindowKeepsNavKey(vkLeft, [ssShift], False), 'Shift+arrow selects at a prompt');
+  Assert.IsFalse(WindowKeepsNavKey(vkPrior, [], True), 'PgUp goes to a running program');
+  Assert.IsFalse(WindowKeepsNavKey(vkInsert, [], True));
+  Assert.IsFalse(WindowKeepsNavKey(vkRight, [ssShift], True), 'Shift+arrow goes to a running program');
+  Assert.IsFalse(WindowKeepsNavKey(vkLeft, [ssCtrl], False), 'a Ctrl combination always goes to the program');
+  Assert.IsFalse(WindowKeepsNavKey(vkA, [], False), 'a letter is not a navigation key');
+end;
+
+procedure TTestShellProfileOptions.MouseReportsAreEncodedForTheProgram;
+var
+  S: string;
+begin
+  Assert.IsTrue(EncodeMouseReport(0, [], False, False, True, 10, 5, S));
+  Assert.AreEqual(#27'[<0;10;5M', S, 'left press');
+  Assert.IsTrue(EncodeMouseReport(0, [], False, True, True, 10, 5, S));
+  Assert.AreEqual(#27'[<0;10;5m', S, 'SGR release keeps the button');
+  Assert.IsTrue(EncodeMouseReport(2, [ssCtrl], True, False, True, 1, 1, S));
+  Assert.AreEqual(#27'[<50;1;1M', S, 'right drag with Ctrl: 2 + 16 + 32');
+  Assert.IsTrue(EncodeMouseReport(3, [], True, False, True, 7, 2, S));
+  Assert.AreEqual(#27'[<35;7;2M', S, 'motion without a button');
+  Assert.IsTrue(EncodeMouseReport(65, [ssShift, ssAlt], False, False, True, 3, 4, S));
+  Assert.AreEqual(#27'[<77;3;4M', S, 'wheel down with Shift and Alt');
+  Assert.IsTrue(EncodeMouseReport(1, [], False, False, False, 10, 5, S));
+  Assert.AreEqual(#27'[M' + Chr(33) + Chr(42) + Chr(37), S, 'legacy press');
+  Assert.IsTrue(EncodeMouseReport(1, [], False, True, False, 10, 5, S));
+  Assert.AreEqual(#27'[M' + Chr(35) + Chr(42) + Chr(37), S, 'legacy release has no button');
+  Assert.IsFalse(EncodeMouseReport(0, [], False, False, False, 224, 5, S),
+    'the legacy form cannot address column 224');
 end;
 
 initialization

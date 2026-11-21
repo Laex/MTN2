@@ -129,6 +129,7 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "自定义列",
+      "lbl_brief_width": "简要视图，列宽（10-50）：",
       "col_ext": "扩展名(&E)",
       "col_size": "大小(&S)",
       "col_modified": "修改日期(&M)",
@@ -1877,6 +1878,7 @@
     "mouse.selectTip": "文本没进剪贴板？按住 Shift 可用终端选择，或按 Ctrl+Shift+M 关闭鼠标",
     "terminalEnv.none": "(无)",
     "profileKeys.auto": "自动",
+    "profileKeys.running": "运行时",
     "profileKeys.program": "终端",
     "profileKeys.host": "主机",
     "shellProfiles.copyTitle": "%s (副本 %s)",
@@ -2551,6 +2553,7 @@
     "created": "创建",
     "types": "类型",
     "custom": "自定义",
-    "set": "自定义：%s"
+    "wide": "宽：%s",
+    "settings": "设置..."
   }
 }

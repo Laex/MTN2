@@ -6,7 +6,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Panels and navigation
 
-- **Column modes and column sets** – brief, full and custom modes; the Custom Columns dialog saves a selection under a name (the starter sets Minimal, Dates, Technical can be changed or deleted), each panel keeps its own columns, and vertical lines between columns can be turned on in the settings.
+- **Column modes and column sets** – two views: brief (names in columns of a set width (10-50 characters), details in the status line) and wide (built-in variants size, date, full, created, types plus your own sets); the Custom Columns dialog saves a selection, plugin columns included, under a name (the starter sets Minimal, Dates, Technical can be changed or deleted), each panel keeps its own columns, and vertical lines between columns can be turned on in the settings.
 - **Plugin columns** – in custom mode plugins add their own columns (Docker, processes, services, image, MP3 and program metadata); sort by clicking the header or with `Ctrl+F12`.
 - **List grouping** – `Ctrl+Alt+G`: groups by file type or modification date with captions and alternating background; the mode is kept per panel.
 - **Paired folders** – `Ctrl+Alt+P`: entering a subfolder or going up is repeated in the other panel when it has a folder with the same name.
@@ -104,7 +104,7 @@ A short overview of the features; details are in the help (F1), the other docume
 ## Terminal, console and command line
 
 - **Console under the panels** – `Ctrl+O`: cmd, PowerShell, WSL, Git Bash and other shells; the panel follows the console folder after commands.
-- **Terminal tabs** – `Ctrl+Shift+N`: shell profiles with numbers, a key mode (auto, terminal, host) and their own environment.
+- **Terminal tabs** – `Ctrl+Shift+N`: shell profiles with numbers, a key mode (auto, while running, terminal, host) and their own environment; programs that ask for the mouse (Far, `htop`, `mc`) receive it, `Shift` keeps text selection.
 - **Terminal emulation** – full-screen programs (`htop`, `mc`, `vim`, `less`) with application cursor mode, scroll regions, and function keys and shortcuts passed through.
 - **Environment profiles** – `environment.json`: named variable sets for new shells with substitution of current values.
 - **Command line** – running a file by name, `Ctrl+Enter` / `Ctrl+F` insert the name and path, `Esc` step by step clears the line and shows the console.

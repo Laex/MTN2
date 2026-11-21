@@ -28,7 +28,7 @@ type
     [Test] procedure TestHeaderHitFindsPluginColumn;
     [Test] procedure TestHeaderSortCyclesPerPluginColumn;
     [Test] procedure TestColumnsDialogListsPluginColumns;
-    [Test] procedure TestColumnsDialogOkSwitchesToCustomMode;
+    [Test] procedure TestColumnsDialogOkSwitchesToCustomModeOnlyWhenChanged;
     [Test] procedure TestColumnSetButtonsKeepTheDialogOpen;
     [Test] procedure TestPluginRestrictsBuiltinColumns;
     [Test] procedure TestColumnTitlesFollowTheProgramLanguage;
@@ -357,13 +357,19 @@ var
 begin
   Plain := BuildColumnsConfigDialog(False, True, True, False, False, False, True);
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
-  Assert.AreEqual<Integer>(Length(Plain.Controls) + 3, Length(Decl.Controls), 'one checkbox per declared column');
-  Assert.IsTrue(Decl.Height > Plain.Height, 'a longer checkbox column makes the dialog taller');
+  Assert.AreEqual<Integer>(Length(Plain.Controls) + 3 + 1, Length(Decl.Controls),
+    'one checkbox per declared column and a heading for their plugin');
+  Assert.IsTrue(Decl.Height >= Plain.Height, 'the dialog never gets shorter');
+  Assert.IsTrue(ControlById(Decl, 'brief_layout').Row < ControlById(Decl, 'ok').Row,
+    'the Brief view list stays above the buttons');
   Assert.IsTrue(ControlById(Decl, 'pcol_0').Checked, 'a default column is checked');
   Assert.IsTrue(ControlById(Decl, 'pcol_1').Checked);
   Assert.IsFalse(ControlById(Decl, 'pcol_2').Checked, 'a column that is not default is not');
-  Assert.AreEqual<Integer>(ControlById(Decl, 'col_attr').Row + 1, ControlById(Decl, 'pcol_0').Row,
-    'plugin columns follow the built-in ones');
+  Assert.AreEqual<Integer>(ControlById(Decl, 'col_attr').Row + 1, ControlById(Decl, 'pcol_hdr_0').Row,
+    'the heading of the plugin follows the built-in columns');
+  Assert.AreEqual<Integer>(ControlById(Decl, 'pcol_hdr_0').Row + 1, ControlById(Decl, 'pcol_0').Row,
+    'plugin columns follow their heading');
+  Assert.IsTrue(ControlById(Decl, 'pcol_hdr_0').Kind = dckLabel, 'the heading is a label');
   Assert.IsTrue(ControlById(Decl, 'ok').Row > ControlById(Decl, 'pcol_2').Row,
     'the buttons stay below the checkboxes');
   SetSchemeColumnSelection(cScheme, ['note']);
@@ -372,7 +378,7 @@ begin
   Assert.IsTrue(ControlById(Decl, 'pcol_2').Checked);
 end;
 
-procedure TTestPluginColumns.TestColumnsDialogOkSwitchesToCustomMode;
+procedure TTestPluginColumns.TestColumnsDialogOkSwitchesToCustomModeOnlyWhenChanged;
 var
   Host: TDialogHost;
   Settings: TSettingsDialogController;
@@ -392,6 +398,10 @@ begin
     Settings.DispatchColumnsCommand(cDlgCmdCancel);
     Assert.AreEqual(0, Switched, 'Cancel keeps the column mode');
     Settings.OpenColumns(DefaultCustomColumnsConfig, cScheme);
+    Settings.DispatchColumnsCommand(cDlgCmdOk);
+    Assert.AreEqual(0, Switched, 'OK without a column change keeps the column mode');
+    Settings.OpenColumns(DefaultCustomColumnsConfig, cScheme);
+    Host.SetCheckbox('col_ext', not Host.GetCheckbox('col_ext'));
     Settings.DispatchColumnsCommand(cDlgCmdOk);
     Assert.AreEqual(1, Switched, 'OK switches to the Custom mode');
   finally
@@ -496,11 +506,11 @@ begin
 
   Plain := BuildColumnsConfigDialog(False, True, True, False, False, False, True);
   Decl := BuildColumnsConfigDialog(False, True, True, False, False, False, True, cScheme);
-  Assert.AreEqual<Integer>(Length(Plain.Controls) - 5 + 3, Length(Decl.Controls),
-    'five built-in checkboxes are gone, three plugin ones are added');
+  Assert.AreEqual<Integer>(Length(Plain.Controls) - 5 + 3 + 1, Length(Decl.Controls),
+    'five built-in checkboxes are gone, three plugin ones and their heading are added');
   Assert.AreEqual<Integer>(Plain.Height, Decl.Height, 'the sets block keeps the dialog height');
-  Assert.AreEqual<Integer>(ControlById(Decl, 'col_modified').Row + 1, ControlById(Decl, 'pcol_0').Row,
-    'plugin columns follow the remaining built-in ones');
+  Assert.AreEqual<Integer>(ControlById(Decl, 'col_modified').Row + 2, ControlById(Decl, 'pcol_0').Row,
+    'plugin columns follow the remaining built-in ones and their heading');
 
   SetSchemePluginColumns('mtn.test', cScheme, '{"builtin":[]}');
   Assert.IsFalse(BuiltinColumnAvailable(cScheme, 'size'), 'an empty list excludes all of them');

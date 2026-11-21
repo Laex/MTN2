@@ -128,6 +128,7 @@
     },
     "DIALOG_COLUMNSCONFIG": {
       "$title": "Настраиваемые колонки",
+      "lbl_brief_width": "Краткий вид, ширина (10-50):",
       "col_ext": "&Расширение",
       "col_size": "Ра&змер",
       "col_modified": "Дата &изменения",
@@ -1894,6 +1895,7 @@
     "mouse.selectTip": "Выделение не попало в буфер? Shift при выделении – выделяет терминал; Ctrl+Shift+M выключает мышь программы",
     "terminalEnv.none": "(нет)",
     "profileKeys.auto": "авто",
+    "profileKeys.running": "по запуску",
     "profileKeys.program": "терминал",
     "profileKeys.host": "хост",
     "shellProfiles.copyTitle": "%s (копия %s)",
@@ -2575,6 +2577,7 @@
     "created": "&Создание",
     "types": "&Типы",
     "custom": "&Настраиваемый",
-    "set": "Свои: %s"
+    "wide": "Широкий: %s",
+    "settings": "Настройка..."
   }
 }

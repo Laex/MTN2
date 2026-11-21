@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, uDisplaySettings,
   uVfsTypes,
   uDualPanelTypes,
   uDualPanelDrawUtils,
@@ -71,6 +71,8 @@ begin
 end;
 
 procedure TestBriefColumns;
+var
+  Saved: Integer;
 begin
   Assert.IsTrue(BriefColumnCount(27) = 1, 'width 27 -> 1 col');
   Assert.IsTrue(BriefColumnCount(28) = 1, 'width 28 -> 1 col (min cell)');
@@ -79,6 +81,21 @@ begin
   Assert.IsTrue(BriefColumnCount(84) = 3, 'width 84 -> 3 cols');
   Assert.IsTrue(PanelListColumnCount(pcmBrief, 56) = 2, 'Brief@56 -> 2');
   Assert.IsTrue(PanelListColumnCount(pcmFull, 200) = 1, 'Full always 1 col');
+  Saved := GBriefColumnWidth;
+  try
+    GBriefColumnWidth := 40;
+    Assert.IsTrue(BriefColumnCount(120) = 3, 'a column width of 40 -> 3 cols at 120');
+    Assert.IsTrue(BriefColumnCount(30) = 1, 'a narrow panel keeps one column');
+    GBriefColumnWidth := 10;
+    Assert.IsTrue(PanelListColumnCount(pcmBrief, 100) = 10, 'width 10 -> 10 cols at 100');
+    Assert.IsTrue(PanelListColumnCount(pcmFull, 100) = 1, 'the width is for Brief only');
+  finally
+    GBriefColumnWidth := Saved;
+  end;
+  Assert.AreEqual(cBriefColumnWidthMax, ClampBriefColumnWidth(99), 'width has an upper bound');
+  Assert.AreEqual(cBriefColumnWidthMin, ClampBriefColumnWidth(3), 'width has a lower bound');
+  Assert.AreEqual(cBriefColumnWidthMin, ClampBriefColumnWidth(-5), 'a negative width gives the lower bound');
+  Assert.AreEqual(35, ClampBriefColumnWidth(35), 'a width in range is kept');
 end;
 
 procedure TestBriefCellAndPage;

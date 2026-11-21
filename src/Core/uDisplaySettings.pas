@@ -9,6 +9,12 @@ uses
   System.SysUtils;
 
 const
+  /// <summary>Width of one Brief column in characters: the default and the
+  /// range the Columns dialog accepts.</summary>
+  cBriefColumnWidthDefault = 28;
+  cBriefColumnWidthMin = 10;
+  cBriefColumnWidthMax = 50;
+
   // Font sizes are FMX pixels at 100% scaling (TTerminalRenderer, session.json
   // fontSize); the Display dialog shows them as typographic points
   // (1 pt = 96/72 px), the unit Windows Terminal and the console use.
@@ -111,6 +117,9 @@ type
     /// <summary>Vertical rules between the panel columns
     /// (uThemeDrawing.GColumnSeparators).</summary>
     ColumnSeparators: Boolean;
+    /// <summary>Width of one Brief column in characters
+    /// (uPanelColumns.GBriefColumnWidth).</summary>
+    BriefColumnWidth: Integer;
     /// <summary>Taller rows (TTerminalRenderer.SetLineSpacing), like a
     /// terminal window. Off by default: more rows fit.</summary>
     LineSpacing: Boolean;
@@ -399,6 +408,7 @@ begin
   Result.MarkedRowStyle := mrsText;
   Result.PassiveCursor := True;
   Result.ColumnSeparators := False;
+  Result.BriefColumnWidth := cBriefColumnWidthDefault;
   Result.LineSpacing := False;
   Result.SnapFontSize := False;
   Result.TextContrast := 0;
