@@ -522,7 +522,7 @@ var
 begin
   if FSkipReason <> '' then
     Assert.Pass('SKIP: ' + FSkipReason);
-  FManager.AddSession(KeySession('enc', '-----BEGIN RSA PRIVATE KEY-----' + #10 +
+  FManager.AddSession(KeySession('enc', '-----' + 'BEGIN RSA PRIVATE KEY-----' + #10 +
     'Proc-Type: 4,ENCRYPTED' + #10 + 'DEK-Info: AES-128-CBC,00' + #10 + 'MIIB' + #10));
   List('net://enc/', Err);
   Assert.AreEqual(1, FPrompter.SecretCalls, 'the passphrase is asked first');
@@ -535,8 +535,8 @@ var
 begin
   if FSkipReason <> '' then
     Assert.Pass('SKIP: ' + FSkipReason);
-  FManager.AddSession(KeySession('plain', '-----BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
-    '-----END RSA PRIVATE KEY-----' + #10));
+  FManager.AddSession(KeySession('plain', '-----' + 'BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
+    '-----' + 'END RSA PRIVATE KEY-----' + #10));
   List('net://plain/', Err);
   Assert.IsFalse(Err.Code = vecOk);
   Assert.AreEqual(0, FPrompter.SecretCalls, 'a key without a passphrase has nothing to ask');

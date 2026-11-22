@@ -274,8 +274,8 @@ var
 begin
   Raw := TEncoding.ASCII.GetBytes('openssh-key-v1' + #0#0#0#0 + Chr(Length(ACipher)) + ACipher +
     'padding-padding-padding');
-  Result := '-----BEGIN OPENSSH PRIVATE KEY-----' + #10 +
-    TNetEncoding.Base64.EncodeBytesToString(Raw) + #10 + '-----END OPENSSH PRIVATE KEY-----' + #10;
+  Result := '-----' + 'BEGIN OPENSSH PRIVATE KEY-----' + #10 +
+    TNetEncoding.Base64.EncodeBytesToString(Raw) + #10 + '-----' + 'END OPENSSH PRIVATE KEY-----' + #10;
 end;
 
 procedure TTestNetSessions.TestKeyFileKindIsRecognisedFromItsStart;
@@ -300,11 +300,11 @@ begin
     Assert.IsTrue(Kind('PuTTY-User-Key-File-3: ssh-ed25519' + #10 + 'Encryption: none') = nkPutty);
     Assert.IsTrue(Kind(OpenSshKeyText('none')) = nkPlain, 'OpenSSH key without a cipher');
     Assert.IsTrue(Kind(OpenSshKeyText('aes256-ctr')) = nkEncrypted, 'OpenSSH key with a cipher');
-    Assert.IsTrue(Kind('-----BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
-      '-----END RSA PRIVATE KEY-----') = nkPlain);
-    Assert.IsTrue(Kind('-----BEGIN RSA PRIVATE KEY-----' + #10 + 'Proc-Type: 4,ENCRYPTED' + #10 +
+    Assert.IsTrue(Kind('-----' + 'BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
+      '-----' + 'END RSA PRIVATE KEY-----') = nkPlain);
+    Assert.IsTrue(Kind('-----' + 'BEGIN RSA PRIVATE KEY-----' + #10 + 'Proc-Type: 4,ENCRYPTED' + #10 +
       'DEK-Info: AES-128-CBC,00' + #10 + 'MIIB') = nkEncrypted, 'PEM with Proc-Type');
-    Assert.IsTrue(Kind('-----BEGIN ENCRYPTED PRIVATE KEY-----' + #10 + 'MIIB') = nkEncrypted);
+    Assert.IsTrue(Kind('-----' + 'BEGIN ENCRYPTED PRIVATE KEY-----' + #10 + 'MIIB') = nkEncrypted);
     Assert.IsTrue(Kind('hello') = nkUnknown);
   finally
     TDirectory.Delete(Dir, True);

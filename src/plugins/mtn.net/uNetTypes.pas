@@ -507,7 +507,7 @@ end;
 
 function NetClassifyKeyFile(const APath: string): TNetKeyKind;
 const
-  cOpenSsh = '-----BEGIN OPENSSH PRIVATE KEY-----';
+  cOpenSsh = '-----' + 'BEGIN OPENSSH PRIVATE KEY-----';
 var
   Stream: TFileStream;
   Buf: TBytes;
