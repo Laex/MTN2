@@ -6,6 +6,7 @@ core/TestTerminalRenderer      # FireMonkey renderer
 dialogs/TestDialogAlignment    # Windows units in the fixture
 dialogs/TestDialogButtonLayout
 dialogs/TestDialogMnemonics
+dialogs/TestDialogScreenFit
 dialogs/TestIOErrorAskDialog
 vfs/TestCopyIntoSelf
 vfs/TestCopyLockedSource       # Win32 sharing modes
